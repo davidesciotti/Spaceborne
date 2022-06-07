@@ -1,0 +1,4 @@
+zcut: yes
+nbar normalization: yes
+bias: multi-bin
+niz: davide

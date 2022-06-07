@@ -1,0 +1,184 @@
+#cosmological_parameters--omega_m	cosmological_parameters--omega_b	cosmological_parameters--w	cosmological_parameters--wa	cosmological_parameters--h0	cosmological_parameters--n_s	cosmological_parameters--sigma8_input	intrinsic_alignment_parameters--a	intrinsic_alignment_parameters--etaia	intrinsic_alignment_parameters--betaia
+#sampler=fisher
+#n_varied=10
+#module_0=consistent_parameters 1.0
+#module_1=camb Jan15
+## CITE http://arxiv.org/abs/1201.3654
+## CITE http://arxiv.org/abs/astro-ph/9911177
+#module_2=sigma8_rescale 1.0
+#module_3=Halofit_Takahashi Camb-Nov-13
+## CITE http://arxiv.org/abs/astro-ph/0207664
+## CITE http://arxiv.org/abs/1208.2701
+## CITE http://arxiv.org/abs/1208.2701
+#module_4=linear_alignments 1.0
+## CITE MNRAS 424 3 1647 (2012)
+## CITE New J Phys 9 12 444 (2007)
+#module_5=load_nz 1
+#module_6=constant_bias_per_bin 1
+#module_7=project_2d 1.0
+#module_8=add_intrinsic 1.0
+#module_9=2pt 1
+#step_size=0.05
+#tolerance=0.01
+#num_diff_type=three-point
+#maxiter=10
+#use_numdifftools=False
+## START_OF_PARAMS_INI
+## [runtime]
+## sampler = fisher
+## root = /renoir/gouyou/SSC_project/cosmosis/cosmosis_ssc
+## 
+## [grid]
+## nsample_dimension = 20
+## 
+## [fisher]
+## step_size = 0.05
+## num_diff_type = three-point
+## 
+## [output]
+## filename = fisher/euclid_SSC/WL/CS_WLlmax5000_nell30.txt
+## format = text
+## 
+## [pipeline]
+## quiet = F
+## timing = T
+## debug = F
+## modules = consistency camb sigma8_rescale halofit intrinsic_alignment load_nz bias pk_to_cl add_intrinsic 2pt_like
+## values = fisher/euclid_SSC/WL/euclid_values.ini
+## likelihoods = euclid
+## 
+## [2pt_like]
+## file = cosmosis_ssc-standard-library/likelihood/2pt/2pt_like.py
+## data_file = fisher/euclid_SSC/WL/output_nell30/euclid_simulation_5000_fsky0.375_SSC.fits
+## covmat_name = COVMAT
+## like_name = euclid
+## data_sets = shear_cl
+## 
+## [consistency]
+## file = cosmosis_ssc-standard-library/utility/consistency/consistency_interface.py
+## 
+## [camb]
+## file = cosmosis_ssc-standard-library/boltzmann/camb/camb.so
+## mode = all
+## feedback = 0
+## accuracy_boost = 2.
+## l_accuracy_boost = 2.
+## high_accuracy_default = T
+## transfer_high_precision = T
+## nk = 10000
+## kmin = 1e-6
+## kmax = 50.
+## nz = 500
+## 
+## [sigma8_rescale]
+## file = cosmosis_ssc-standard-library/utility/sample_sigma8/sigma8_rescale.py
+## 
+## [halofit]
+## file = cosmosis-ist-library/boltzmann/halofit/halofit_interface.so
+## do_nonlinear = T
+## accuracy_boost = 2.
+## l_accuracy_boost = 2.
+## high_accuracy_default = T
+## transfer_high_precision = T
+## nk = 10000
+## kmin = 1e-6
+## kmax = 50.
+## nz = 500
+## 
+## [bias]
+## file = cosmosis-ist-library/bias/constant_bias_per_bin/constant_bias_per_bin.py
+## 
+## [intrinsic_alignment]
+## file = cosmosis-ist-library/intrinsic_alignments/eNLA/linear_alignments_interface.py
+## method = bk_corrected
+## 
+## [pk_to_cl]
+## file = cosmosis_ssc-standard-library/structure/projection/project_2d.py
+## ell_min = 10.0
+## ell_max = 5000.0
+## n_ell = 30
+## limber_rel_tol = 1.e-12
+## shear-shear = source-source
+## position-shear = F
+## position-position = F
+## shear-intrinsic = source-source
+## intrinsic-intrinsic = source-source
+## position-intrinsic = F
+## verbose = T
+## 
+## [add_intrinsic]
+## file = cosmosis_ssc-standard-library/shear/add_intrinsic/add_intrinsic.py
+## shear-shear = T
+## position-shear = F
+## 
+## [load_nz]
+## file = cosmosis_ssc-standard-library/number_density/load_nz/load_nz.py
+## filepath = fisher/euclid_SSC/WL/euclid_nofz.dat
+## output_section = nz_source
+## 
+## END_OF_PARAMS_INI
+## START_OF_VALUES_INI
+## [cosmological_parameters]
+## omega_m = 0.192 0.32 0.448
+## omega_b = 0.03 0.05 0.07
+## w = -1.4  -1.0 -0.6
+## wa = -0.4 0.0 0.4
+## h0 = 0.402 0.67 0.938
+## n_s = 0.576 0.96 1.344
+## sigma8_input = 0.4893498 0.815583 1.1418162
+## tau = 0.058
+## omega_k = 0.0
+## omnuh2 = 0.000645145613
+## massless_nu = 2.046
+## massive_nu = 1
+## a_s = 2.181866264961206e-9
+## 
+## [intrinsic_alignment_parameters]
+## a = 1.032 1.72 2.408
+## etaia = -0.574 -0.41 -0.246
+## betaia = 1.302 2.17 3.038
+## 
+## [galaxy_bias]
+## b1 = 1.0998
+## b2 = 1.2202
+## b3 = 1.2724
+## b4 = 1.3166
+## b5 = 1.3581
+## b6 = 1.3998
+## b7 = 1.4446
+## b8 = 1.4965
+## b9 = 1.5652
+## b10 = 1.7430
+## bin1_high_edge = 0.418
+## bin2_high_edge = 0.560
+## bin3_high_edge = 0.678
+## bin4_high_edge = 0.789
+## bin5_high_edge = 0.900
+## bin6_high_edge = 1.019
+## bin7_high_edge = 1.155
+## bin8_high_edge = 1.324
+## bin9_high_edge = 1.576
+## 
+## END_OF_VALUES_INI
+## START_OF_PRIORS_INI
+## END_OF_PRIORS_INI
+#mu_0=0.32
+#mu_1=0.05
+#mu_2=-1.0
+#mu_3=0.0
+#mu_4=0.67
+#mu_5=0.96
+#mu_6=0.815583
+#mu_7=1.72
+#mu_8=-0.41
+#mu_9=2.17
+681601.0671711975	-337398.3495015213	-27215.297142381292	-8631.729775296746	92468.03554128003	147267.48923631056	570980.2271641915	236.67767881263288	33.10203367287898	-761.8698996731107
+-337398.34950131085	335447.50552973675	4244.229668692172	1585.968436698539	-94835.55458226273	-174125.71764468757	-201558.36072886703	968.7250587454229	1360.9566249245577	-422.07154513268347
+-27215.29714238564	4244.22966870358	2125.4037338673124	589.147854431376	-585.6011417234549	1398.5094491063658	-25979.255747550982	-11.585641830403565	18.50669076333095	87.57179462725139
+-8631.729775297907	1585.968436700585	589.1478544313836	184.76762286444279	-293.9224589427231	175.6322780010918	-8679.605271522747	-21.888032351267782	-18.55925466001402	36.83314769803324
+92468.03554123384	-94835.55458225803	-585.6011417210597	-293.9224589422804	28304.59205051086	56117.18942729658	52115.39866775905	-268.08871392596114	-367.3224215590183	136.8820935244403
+147267.48923626286	-174125.71764467287	1398.5094491085001	175.6322780015989	56117.189427295314	124010.16045137355	64960.34278756253	-545.4995971446933	-706.2732430698359	365.61000735552085
+570980.2271642744	-201558.36072904384	-25979.255747551462	-8679.605271522625	52115.398667797774	64960.34278760328	540991.2801789908	950.0027979815796	904.3556906592933	-1358.6657721452061
+236.6776788125212	968.7250587457042	-11.58564183040456	-21.888032351268112	-268.08871392603226	-545.4995971447652	950.0027979816585	73.83804652268684	102.40125060405543	-31.74593467491527
+33.10203367271813	1360.9566249247475	18.50669076333347	-18.559254660012478	-367.32242155907164	-706.273243069876	904.3556906593163	102.40125060405555	147.94949556791957	-30.141611977396266
+-761.8698996730132	-422.07154513344057	87.57179462726072	36.83314769803862	136.88209352462758	365.6100073557245	-1358.6657721454944	-31.74593467491492	-30.141611977395577	47.273557817151044

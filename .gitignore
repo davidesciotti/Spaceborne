@@ -8,7 +8,5 @@ jobs/SSC_comparison_variable_ellmax/output/covmat
 jobs/SSC_comparison_variable_Rl/output/covmat
 
 
-jobs
-
 *.fits
 **.DS_Store

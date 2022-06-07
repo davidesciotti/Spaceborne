@@ -7,11 +7,9 @@ jobs/SSC_comparison/output/covmat
 jobs/SSC_comparison_variable_ellmax/output/covmat
 jobs/SSC_comparison_variable_Rl/output/covmat
 
-jobs/SSC_comparison/input/replot_vincenzo
 
 config
 jobs
-bin
 
 *.fits
 **.DS_Store

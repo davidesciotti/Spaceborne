@@ -4,7 +4,6 @@ from pathlib import Path
 
 project_path = Path.cwd().parent
 sys.path.append(str(project_path))
-import lib.my_module as mm
 
 
 ###############################################################################

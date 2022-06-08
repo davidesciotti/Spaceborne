@@ -9,4 +9,4 @@ jobs/SSC_comparison_variable_Rl/output/covmat
 
 
 *.fits
-**.DS_Store
+**/.DS_Store

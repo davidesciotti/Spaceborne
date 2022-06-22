@@ -16,12 +16,12 @@ sys.path.append(str(project_path))
 
 # useful modules
 import lib.my_module as mm
-import bin.ell_values_running as ell_utils
-import bin.Cl_preprocessing_running as Cl_utils
-import bin.covariance_running as covmat_utils
-import bin.FM_running as FM_utils
-import bin.plots_FM_running as plot_utils
-import bin.utils_running as utils
+import bins.ell_values_running as ell_utils
+import bins.Cl_preprocessing_running as Cl_utils
+import bins.covariance_running as covmat_utils
+import bins.FM_running as FM_utils
+import bins.plots_FM_running as plot_utils
+import bins.utils_running as utils
 
 # job configuration
 import jobs.PyCCL_forecast.configs.config_PyCCL_forecast as config
@@ -75,11 +75,11 @@ assert np.all(Sijkl == Sijkl_dav), 'Sijkl should be Sijkl_dav'
 ell_max_WL = general_config['ell_max_WL']
 ell_max_GC = general_config['ell_max_GC']
 ell_max_XC = ell_max_GC
-ell_max_WL = general_config['ell_max_WL']
 nbl = general_config['nbl']
+npairs_auto, npairs_cross, npairs_3x2pt = mm.get_pairs(general_config['zbins'])
 
 # which SS-only covariance to use
-which_SSC = covariance_config['which_SSC']
+whos_SSC = covariance_config['which_SSC']
 
 # compute ell and delta ell values
 ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_config)
@@ -102,46 +102,84 @@ cl_dict_2D, Rl_dict_2D = Cl_utils.import_and_interpolate_cls(general_config, cov
 # reshape them to 3D
 cl_dict_3D, Rl_dict_3D = Cl_utils.reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D)
 
-# ! new code - use PyCCL or cosmolike SSC instead
-for which_SSC in ['PyCCL', 'CosmoLike', 'PySSC']:
+# compute covariance matrix
+cov_dict = covmat_utils.compute_cov(general_config, covariance_config, ell_dict, delta_dict, cl_dict_3D, Rl_dict_3D,
+                                    Sijkl)
 
-    # compute covariance matrix
-    cov_dict = covmat_utils.compute_cov(general_config, covariance_config, ell_dict, delta_dict, cl_dict_3D, Rl_dict_3D,
-                                        Sijkl)
+# ! new code - use PyCCL or cosmolike's SSC instead
+probe_tested = 'WL'
+whos_SSC = 'PyCCL'
+which_ells = 'ISTF'
+# for (whos_SSC, hm_recipe, GS_or_GScNG)  in zip()['PyCCL', 'CosmoLike', 'PySSC']:
 
-    # sum GO + SS_PyCCL - i.e. overwrite cov_dict[f'cov_WL_SS_2D']
-    if which_SSC == 'PyCCL':
+for hm_recipe in ['KiDS1000', 'Krause2017']:
+    for GS_or_GScNG in ['GS', 'GScNG']:
 
-        plot_config['custom_label'] = ' ' + which_SSC
+        if probe_tested == 'WL':
+            ell_max = ell_max_WL
+        elif probe_tested == 'GC':
+            ell_max = ell_max_GC
 
-        hm_recipe = covariance_config['PyCCL_config']['hm_recipe']
-        PyCCL_probe = covariance_config['PyCCL_config']['probe']
-        SSC_or_cNG = covariance_config['PyCCL_config']['SSC_or_cNG']
+        plot_config['custom_label'] = f' {whos_SSC}'
 
-        # load and reshape cov_SS_PyCCL
-        cov_PyCCL_6D = np.load(project_path.parent / f'PyCCL_SSC/output/covmat/cov_PyCCL_{SSC_or_cNG}_{PyCCL_probe}_nbl{nbl}_ellsIST-F_hm_recipe{hm_recipe}_6D.npy')
-        cov_PyCCL_4D = mm.cov_6D_to_4D(cov_PyCCL_6D, nbl, npairs=55, ind=ind[:55, :])
-        cov_PyCCL_2D = mm.cov_4D_to_2D(cov_PyCCL_4D, nbl, npairs_AB=55, npairs_CD=None, block_index='vincenzo')
-        cov_dict[f'cov_{PyCCL_probe}_GS_2D'] = cov_dict[f'cov_{PyCCL_probe}_GO_2D'] + cov_PyCCL_2D
+        # sum GO + whatever - i.e. overwrite cov_dict[f'cov_WL_SS_2D']
+        if whos_SSC == 'PyCCL':
 
-    elif which_SSC == 'CosmoLike':
-        plot_config['custom_label'] = ' CosmoLike'
-        # import and reshape Robin's SS-only cov
-        path_robin = '/Users/davide/Documents/Lavoro/Programmi/SSC_paper_jan22/PySSC_vs_CosmoLike/Robin' \
-                     '/cov_SS_full_sky_rescaled/lmax5000_noextrap/davides_reshape'
-        cov_CosmoLike_WLonly_SS_6D = np.load(f'{path_robin}/cov_R_WLonly_SSC_lmax5000_6D.npy')
-        cov_CosmoLike_WLonly_SS_4D = mm.cov_6D_to_4D(cov_CosmoLike_WLonly_SS_6D, nbl, npairs=55, ind=ind[:55, :])
-        cov_CosmoLike_WLonly_SS_2D = mm.cov_4D_to_2D(cov_CosmoLike_WLonly_SS_4D, nbl, npairs_AB=55, npairs_CD=None,
-                                                     block_index='vincenzo')
-        cov_dict[f'cov_WL_GS_2D'] = cov_dict[f'cov_WL_GO_2D'] + cov_CosmoLike_WLonly_SS_2D
+            # hm_recipe = covariance_config['PyCCL_config']['hm_recipe']
+            # SSC_or_cNG = covariance_config['PyCCL_config']['SSC_or_cNG']
 
-    elif which_SSC == 'PySSC':
-        plot_config['custom_label'] = ' PySSC'
+            # load and reshape cov_SS_PyCCL
+            cov_PyCCL_SSC_6D = np.load(
+                project_path.parent / f'PyCCL_SSC/output/covmat/cov_PyCCL_SSC_{probe_tested}_nbl{nbl}_ells{which_ells}_ellmax{ell_max}_hm_recipe{hm_recipe}_6D.npy')
+            cov_PyCCL_cNG_6D = np.load(
+                project_path.parent / f'PyCCL_SSC/output/covmat/cov_PyCCL_cNG_{probe_tested}_nbl{nbl}_ells{which_ells}_ellmax{ell_max}_hm_recipe{hm_recipe}_6D.npy')
 
-    # compute and save Fisher Matrix
-    FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
+            cov_PyCCL_SSC_4D = mm.cov_6D_to_4D(cov_PyCCL_SSC_6D, nbl, npairs=npairs_auto, ind=ind[:npairs_auto, :])
+            cov_PyCCL_cNG_4D = mm.cov_6D_to_4D(cov_PyCCL_cNG_6D, nbl, npairs=npairs_auto, ind=ind[:npairs_auto, :])
 
-    np.savetxt(job_path / f"output/FM/FM_{PyCCL_probe}_GS_lmax{PyCCL_probe}{ell_max_}}_nbl{nbl}_{which_SSC}.txt", FM_dict['FM_{PyCCL_probe}_GS'])
+            cov_PyCCL_SSC_2D = mm.cov_4D_to_2D(cov_PyCCL_SSC_4D, nbl, npairs_AB=npairs_auto, npairs_CD=None,
+                                               block_index='vincenzo')
+            cov_PyCCL_cNG_2D = mm.cov_4D_to_2D(cov_PyCCL_cNG_4D, nbl, npairs_AB=npairs_auto, npairs_CD=None,
+                                               block_index='vincenzo')
+
+            if GS_or_GScNG == 'GS':
+                cov_dict[f'cov_{probe_tested}_GS_2D'] = cov_dict[f'cov_{probe_tested}_GO_2D'] + cov_PyCCL_SSC_2D
+            if GS_or_GScNG == 'GScNG':
+                cov_dict[f'cov_{probe_tested}_GS_2D'] = cov_dict[
+                                                            f'cov_{probe_tested}_GO_2D'] + cov_PyCCL_SSC_2D + cov_PyCCL_cNG_2D
+
+
+        elif whos_SSC == 'CosmoLike':
+
+            probe_tested = 'WL'  # we only have CosmoLike for WL
+
+            # set correct names cor the saved file
+            hm_recipe = ''
+            GS_or_GScNG = 'GS'
+
+            # import and reshape Robin's SS-only cov
+            path_robin = '/Users/davide/Documents/Lavoro/Programmi/SSC_paper_jan22/PySSC_vs_CosmoLike/Robin' \
+                         '/cov_SS_full_sky_rescaled/lmax5000_noextrap/davides_reshape'
+            cov_CosmoLike_WLonly_SS_6D = np.load(f'{path_robin}/cov_R_WLonly_SSC_lmax{ell_max_WL}_6D.npy')
+            cov_CosmoLike_WLonly_SS_4D = mm.cov_6D_to_4D(cov_CosmoLike_WLonly_SS_6D, nbl, npairs=npairs_auto,
+                                                         ind=ind[:npairs_auto, :])
+            cov_CosmoLike_WLonly_SS_2D = mm.cov_4D_to_2D(cov_CosmoLike_WLonly_SS_4D, nbl, npairs_AB=npairs_auto,
+                                                         npairs_CD=None,
+                                                         block_index='vincenzo')
+
+            cov_dict[f'cov_WL_GS_2D'] = cov_dict[f'cov_WL_GO_2D'] + cov_CosmoLike_WLonly_SS_2D
+
+        elif whos_SSC == 'PySSC':
+            # set correct names cor the saved file
+            hm_recipe = ''
+            GS_or_GScNG = 'GS'
+
+        # compute and save Fisher Matrix
+        FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
+
+        np.savetxt(
+            job_path / f"output/FM/FM_{probe_tested}_{GS_or_GScNG}_lmax{probe_tested}{ell_max}_nbl{nbl}_{whos_SSC}{hm_recipe}.txt",
+            FM_dict[f'FM_{probe_tested}_GS'])
 
     # ! end new code
 
@@ -168,14 +206,20 @@ if FM_config['save_FM']:
     np.savetxt(job_path / f"/output/FM/FM_GC_GS_lmaxGC{ell_max_GC}_nbl{nbl}.txt", FM_dict['FM_GC_GS'])
     np.savetxt(job_path / f"/output/FM/FM_3x2pt_GS_lmaxXC{ell_max_XC}_nbl{nbl}.txt", FM_dict['FM_3x2pt_GS'])
 
+    np.savetxt(job_path / f"/output/FM/FM_WL_GS_lmaxWL{ell_max_WL}_nbl{nbl}.txt", FM_dict['FM_WL_GS'])
+    np.savetxt(job_path / f"/output/FM/FM_GC_GS_lmaxGC{ell_max_GC}_nbl{nbl}.txt", FM_dict['FM_GC_GS'])
+    np.savetxt(job_path / f"/output/FM/FM_3x2pt_GS_lmaxXC{ell_max_XC}_nbl{nbl}.txt", FM_dict['FM_3x2pt_GS'])
+
 ######################################################### TESTS ########################################################
 # check FMS
 if general_config['which_forecast'] == 'sylvain':
     path_import = '/Users/davide/Documents/Lavoro/Programmi/SSCcomp_prove/output/FM/common_ell_and_deltas/Cij_14may'
-elif general_config['which_forecast'] == 'IST':
+elif general_config['which_forecast'] == 'ISTF':
     path_import = '/Users/davide/Documents/Lavoro/Programmi/SSCcomp_prove/output/FM/ISTspecs_indVincenzo/Cij_14may'
 elif general_config['which_forecast'] == 'CLOE':
     path_import = '/Users/davide/Documents/Lavoro/Programmi/SSCcomp_prove/output/FM/ISTspecs_indVincenzo/Cij_14may'
+else:
+    raise ValueError('which_forecast must be either sylvain, ISTF or CLOE')
 
 FM_d_old = dict(mm.get_kv_pairs(path_import, filetype="txt"))
 tolerance = 0.0001
@@ -185,7 +229,7 @@ tolerance = 0.0001
 
 print('\ncovariance_config=', covariance_config['block_index'], 'ind_ordering=', ind_ordering, '\n')
 
-for PyCCL_probe in ['WL', 'GC', '3x2pt']:
+for probe_tested in ['WL', 'GC', '3x2pt']:
     for GO_or_GS in ['GO', 'GS']:
 
         if GO_or_GS == 'GS':
@@ -193,18 +237,18 @@ for PyCCL_probe in ['WL', 'GC', '3x2pt']:
         else:
             GO_or_GS_old = 'G'
 
-        if PyCCL_probe == '3x2pt':
+        if probe_tested == '3x2pt':
             probe_lmax = 'XC'
             probe_lmax2 = 'GC'
         else:
-            probe_lmax = PyCCL_probe
-            probe_lmax2 = PyCCL_probe
+            probe_lmax = probe_tested
+            probe_lmax2 = probe_tested
 
         nbl = general_config['nbl']
         ell_max = general_config[f'ell_max_{probe_lmax2}']
 
-        FM_old = FM_d_old[f'FM_{PyCCL_probe}_{GO_or_GS_old}_lmax{probe_lmax}{ell_max}_nbl{nbl}']
-        FM_new = FM_dict[f'FM_{PyCCL_probe}_{GO_or_GS}']
+        FM_old = FM_d_old[f'FM_{probe_tested}_{GO_or_GS_old}_lmax{probe_lmax}{ell_max}_nbl{nbl}']
+        FM_new = FM_dict[f'FM_{probe_tested}_{GO_or_GS}']
 
         diff = mm.percent_diff(FM_old, FM_new)
         # mm.matshow(diff, title=f'{probe}, {GO_or_GS}')
@@ -218,4 +262,5 @@ for PyCCL_probe in ['WL', 'GC', '3x2pt']:
             else:
                 test_result_emoji = '❌'
 
-            print(f'is the percent difference between the FM < {tolerance}?, {PyCCL_probe}, {GO_or_GS}, {test_result_emoji}')
+            print(
+                f'is the percent difference between the FM < {tolerance}?, {probe_tested}, {GO_or_GS}, {test_result_emoji}')

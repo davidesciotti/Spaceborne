@@ -22,6 +22,9 @@ def percent_diff(array_1, array_2):
 
 
 def percent_diff_mean(array_1, array_2):
+    """
+    result is in "percent" units
+    """
     mean = (array_1 + array_2) / 2.0
     diff = (array_1 / mean - 1) * 100
     return diff
@@ -66,6 +69,9 @@ def plot_FM(array, style=".-"):
 
 
 def uncertainties_FM(FM):
+    '''
+    returns relative (not percentage!) error
+    '''
     fid = (0.32, 0.05, 1, 1, 0.67, 0.96, 0.816, 0.55, 1, 1)
     # fidmn = (0.32, 0.05, 1, 1, 0.67, 0.96, 0.816, 0.06, 0.55, 1) # with massive neutrinos
     FM_inv = np.linalg.inv(FM)
@@ -73,6 +79,7 @@ def uncertainties_FM(FM):
     for i in range(10):
         sigma_FM[i] = np.sqrt(FM_inv[i, i]) / fid[i]
     return sigma_FM
+
 
 
 def matshow(array, title="title", log=False, abs_val=False):
@@ -91,6 +98,10 @@ def matshow(array, title="title", log=False, abs_val=False):
 
 # load txt or dat files in dictionary
 def get_kv_pairs(path_import, filetype="dat"):
+    '''
+    to use it, wrap it in "dict(), e.g.:
+        loaded_dict = dict(get_kv_pairs(path_import, filetype="dat"))
+    '''
     for path in Path(path_import).glob(f"*.{filetype}"):
         yield path.stem, np.genfromtxt(str(path))
 
@@ -351,10 +362,10 @@ def get_output_folder(ind_ordering, which_forecast):
 
 
 def get_pairs(zbins):
-    npairs = int((zbins * (zbins + 1)) / 2)  # = 55 for zbins = 10, cast it as int
-    npairs_asimm = zbins ** 2
-    npairs_tot = 2 * npairs + npairs_asimm
-    return npairs, npairs_asimm, npairs_tot
+    npairs_auto = int((zbins * (zbins + 1)) / 2)  # = 55 for zbins = 10, cast it as int
+    npairs_cross = zbins ** 2
+    npairs_3x2pt = 2 * npairs_auto + npairs_cross
+    return npairs_auto, npairs_cross, npairs_3x2pt
 
 
 ###############################################################################

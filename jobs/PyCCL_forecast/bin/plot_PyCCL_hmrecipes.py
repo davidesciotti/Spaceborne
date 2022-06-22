@@ -14,10 +14,10 @@ params = {'lines.linewidth': 3.5,
           'ytick.labelsize': 'x-large',
           'mathtext.fontset': 'stix',
           'font.family': 'STIXGeneral',
-          'figure.figsize': (10, 10)
+          'figure.figsize': (10, 10),
+          'lines.markersize': 8
           }
 plt.rcParams.update(params)
-markersize = 10
 
 matplotlib.use('Qt5Agg')
 plt.rcParams['axes.grid'] = True
@@ -44,15 +44,6 @@ import lib.my_module as mm
 ########################################################################################################################
 ########################################################################################################################
 
-def uncertainties_FM(FM):
-    fid = (0.32, 0.05, 1, 1, 0.67, 0.96, 0.816, 0.55, 1, 1)
-    # fidmn = (0.32, 0.05, 1, 1, 0.67, 0.96, 0.816, 0.06, 0.55, 1) # with massive neutrinos
-    FM_inv = np.linalg.inv(FM)
-    sigma_FM = np.zeros(10)
-    for i in range(10):
-        sigma_FM[i] = np.sqrt(FM_inv[i, i]) / fid[i]
-    return sigma_FM
-
 
 ########################################################################################################################
 ########################################################################################################################
@@ -71,32 +62,49 @@ general_config = config.general_config
 covariance_config = config.covariance_config
 param_names_label = plot_config['param_names_label']
 
-fig, ax = plt.subplots(2, 1, figsize=(14, 10))
+fig, ax = plt.subplots(2, 1, figsize=(14, 10), sharex='col')
 
-for which_SSC in ['PyCCL', 'CosmoLike', 'PySSC']:
-    FM_dict[f'FM_WL_GS_{which_SSC}'] = np.genfromtxt(
-        f"{path}/output/FM/FM_WL_GS_lmaxWL{ell_max_WL}_nbl{nbl}_{which_SSC}.txt", )
-    uncert_dict[f'uncert_WL_GS_{which_SSC}'] = uncertainties_FM(FM_dict[f'FM_WL_GS_{which_SSC}'])
+probe = 'WL'
+ell_max = 5000
+whos_SSC = 'PyCCL'
+GS_or_GScNG = 'GScNG'
+to_compare = []
 
-    ax[0].plot(range(7), uncert_dict[f'uncert_WL_GS_{which_SSC}'][:7] * 100, "o--", label=f"{which_SSC} {GO_or_GS}")
+FM_dict = dict(mm.get_kv_pairs(job_path / 'output/FM', filetype="txt"))
 
-if name == 'diff_PyCCLvsCosmoLike':
-    diff = mm.percent_diff_mean(uncert_dict[f'uncert_WL_GS_PyCCL'], uncert_dict[f'uncert_WL_GS_CosmoLike'])
-elif name == 'diff_PyCCLvsPySSC':
-    diff = mm.percent_diff_mean(uncert_dict[f'uncert_WL_GS_PySSC'], uncert_dict[f'uncert_WL_GS_PyCCL'])
-
+for key in FM_dict.keys():
+    uncert_dict[key] = mm.uncertainties_FM(FM_dict[key])
 
 
-# ax[1].plot(range(7), diff_PyCCLvsCosmoLike[:7], "o--", label=f"(PyCCL/CosmoLike - 1) * 100")
-ax[1].plot(range(7), diff[:7], "o--", label=f"{name}")
+# plot constraints
+hm_recipes = ['KiDS1000', 'Krause2017']
+for hm_recipe in hm_recipes:
+
+    # only PyCCL has different halomodel recipes
+    if whos_SSC != 'PyCCL':
+        hm_recipe = ''
+
+    FM_name = f'FM_{probe}_{GS_or_GScNG}_lmax{probe}{ell_max}_nbl{nbl}_{whos_SSC}{hm_recipe}'
+    ax[0].plot(range(7), uncert_dict[FM_name][:7] * 100, '--', label=f"{whos_SSC} {GS_or_GScNG} {GO_or_GS} {hm_recipe}",
+               marker='o')
+
+    # list of constraints to compute the % difference of
+    to_compare.append(FM_name)
+
+diff_1 = mm.percent_diff_mean(uncert_dict[f'{to_compare[0]}'], uncert_dict[f'{to_compare[1]}'])
+diff_2 = mm.percent_diff_mean(uncert_dict[f'{to_compare[1]}'], uncert_dict[f'{to_compare[0]}'])
+
+ax[1].plot(range(7), diff_1[:7], "--", label=hm_recipes[0], marker='o')
+ax[1].plot(range(7), diff_2[:7], "--", label=hm_recipes[1], marker='o')
+ax[1].fill_between(range(7), diff_1[:7], diff_2[:7], color='grey', alpha=0.3)
 
 ax[0].legend()
 ax[1].legend()
-ax[1].set_xticks(range(7), param_names_label)
 
-ax[0].set_ylabel("$ \\sigma_\\alpha/ \\theta_{fid} [\\%]$")
-ax[1].set_ylabel("% diff wrt mean")
-# plt.title(f"FM forec., {probe}, {case}.")
+ax[1].set_xticks(range(7), param_names_label)
+ax[0].set_ylabel("$ \\sigma_\\alpha/ \\theta_{fid} \; [\\%]$")
+ax[1].set_ylabel("diff. w.r.t. mean [%]")
+fig.set_title(f"FM forec., {probe}.")
 
 # save fig
 fig.savefig(f"{path}/output/plots/{name}.pdf")

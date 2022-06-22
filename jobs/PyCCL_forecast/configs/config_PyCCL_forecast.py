@@ -11,7 +11,7 @@ general_config = {
     'zbins': 10,
     'nProbes': 2,
     'nbl': 30,
-    'which_forecast': 'IST',  # ie choose whether to have IST's or sylvain's deltas
+    'which_forecast': 'ISTF',  # ie choose whether to have IST's or sylvain's deltas
     'cl_folder': 'Cij_14may',
     'use_WA': True
 }
@@ -34,7 +34,7 @@ covariance_config = {
     'which_probe_response': 'constant',
 
     'PyCCL_config': {
-        'hm_recipe': 'KiDS_1000',
+        'hm_recipe': 'KiDS1000',
         'probe': 'GC',
         'SSC_or_cNG': 'SS'}
 }

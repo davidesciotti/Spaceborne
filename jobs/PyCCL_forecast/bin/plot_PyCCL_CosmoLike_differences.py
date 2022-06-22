@@ -50,12 +50,8 @@ import lib.my_module as mm
 ########################################################################################################################
 
 
-ell_max_WL = 5000
 nbl = 30
-GO_or_GS = 'GS'
-name = 'diff_PyCCLvsPySSC'
 
-FM_dict = {}
 uncert_dict = {}
 plot_config = config.plot_config
 general_config = config.general_config
@@ -67,8 +63,10 @@ fig, ax = plt.subplots(2, 1, figsize=(14, 10), sharex='col')
 probe = 'WL'
 ell_max = 5000
 whos_SSC = 'PyCCL'
-GS_or_GScNG = 'GScNG'
-to_compare = []
+hm_recipe = 'KiDS1000'
+GS_or_GScNG = 'GS'
+FM_to_compare = []
+
 
 FM_dict = dict(mm.get_kv_pairs(job_path / 'output/FM', filetype="txt"))
 
@@ -76,35 +74,55 @@ for key in FM_dict.keys():
     uncert_dict[key] = mm.uncertainties_FM(FM_dict[key])
 
 
-# plot constraints
-hm_recipes = ['KiDS1000', 'Krause2017']
-for hm_recipe in hm_recipes:
+# compare cases
+cases_to_compare = ['PyCCL', 'CosmoLike']
+# cases_to_compare = ['KiDS1000', 'Krause2017']
 
-    # only PyCCL has different halomodel recipes
+# abbreviate variable names
+case_0 = cases_to_compare[0]
+case_1 = cases_to_compare[1]
+
+# set the correct filename
+if cases_to_compare == ['PyCCL', 'CosmoLike']:
+    var_toloop = whos_SSC
+    name = f'{case_0}_vs_{case_1}_{GS_or_GScNG}_probe_{probe}_{hm_recipe}'
+elif cases_to_compare == ['KiDS1000', 'Krause2017']:
+    var_toloop = hm_recipe
+    name = f'PyCCL_{case_0}_vs_{case_1}_{GS_or_GScNG}_probe_{probe}_{hm_recipe}'
+else:
+    raise ValueError('cases_to_compare list is undefined')
+
+# remember to choose the correct variable to loop!
+for whos_SSC in cases_to_compare:
+
+    # only PyCCL has different halomodel recipes!
     if whos_SSC != 'PyCCL':
         hm_recipe = ''
 
     FM_name = f'FM_{probe}_{GS_or_GScNG}_lmax{probe}{ell_max}_nbl{nbl}_{whos_SSC}{hm_recipe}'
-    ax[0].plot(range(7), uncert_dict[FM_name][:7] * 100, '--', label=f"{whos_SSC} {GS_or_GScNG} {GO_or_GS} {hm_recipe}",
+    ax[0].plot(range(7), uncert_dict[FM_name][:7] * 100, '--', label=f"{whos_SSC} {GS_or_GScNG} {hm_recipe}",
                marker='o')
 
-    # list of constraints to compute the % difference of
-    to_compare.append(FM_name)
+    # list of names to compare
+    FM_to_compare.append(FM_name)
 
-diff_1 = mm.percent_diff_mean(uncert_dict[f'{to_compare[0]}'], uncert_dict[f'{to_compare[1]}'])
-diff_2 = mm.percent_diff_mean(uncert_dict[f'{to_compare[1]}'], uncert_dict[f'{to_compare[0]}'])
+# perc differences w.r.t. mean
+diff_1 = mm.percent_diff_mean(uncert_dict[f'{FM_to_compare[0]}'], uncert_dict[f'{FM_to_compare[1]}'])
+diff_2 = mm.percent_diff_mean(uncert_dict[f'{FM_to_compare[1]}'], uncert_dict[f'{FM_to_compare[0]}'])
 
-ax[1].plot(range(7), diff_1[:7], "--", label=hm_recipes[0], marker='o')
-ax[1].plot(range(7), diff_2[:7], "--", label=hm_recipes[1], marker='o')
+ax[1].plot(range(7), diff_1[:7], "--", label=case_0, marker='o')
+ax[1].plot(range(7), diff_2[:7], "--", label=case_1, marker='o')
 ax[1].fill_between(range(7), diff_1[:7], diff_2[:7], color='grey', alpha=0.3)
 
 ax[0].legend()
 ax[1].legend()
 
 ax[1].set_xticks(range(7), param_names_label)
+
 ax[0].set_ylabel("$ \\sigma_\\alpha/ \\theta_{fid} \; [\\%]$")
 ax[1].set_ylabel("diff. w.r.t. mean [%]")
-fig.set_title(f"FM forec., {probe}.")
+fig.suptitle(f'FM forec., {probe}., ' '$\ell_{max}$ ' f'{ell_max}')
 
-# save fig
 fig.savefig(f"{path}/output/plots/{name}.pdf")
+
+

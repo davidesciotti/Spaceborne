@@ -27,7 +27,6 @@ import ell_values_running as ell_utils
 import Cl_preprocessing_running as Cl_utils
 import covariance_running as covmat_utils
 import FM_running as FM_utils
-import plots_FM_running as plot_utils
 import utils_running as utils
 import unit_test
 
@@ -115,9 +114,9 @@ if covariance_config['save_covariance']:
             cov_dict['cov_WA_GS_2D'])
 
 if FM_config['save_FM']:
-    np.savetxt(job_path / f"output/FM/FM_WL_GO_lmaxWL{ell_max_WL}_nbl{nbl}.txt", FM_dict['FM_WL_GO'])  # WLonly
-    np.savetxt(job_path / f"output/FM/FM_GC_GO_lmaxGC{ell_max_GC}_nbl{nbl}.txt", FM_dict['FM_GC_GO'])  # GConly
-    np.savetxt(job_path / f"output/FM/FM_3x2pt_GO_lmaxXC{ell_max_XC}_nbl{nbl}.txt", FM_dict['FM_3x2pt_GO'])  # ALL
+    np.savetxt(job_path / f"output/FM/FM_WL_GO_lmaxWL{ell_max_WL}_nbl{nbl}.txt", FM_dict['FM_WL_GO'])
+    np.savetxt(job_path / f"output/FM/FM_GC_GO_lmaxGC{ell_max_GC}_nbl{nbl}.txt", FM_dict['FM_GC_GO'])
+    np.savetxt(job_path / f"output/FM/FM_3x2pt_GO_lmaxXC{ell_max_XC}_nbl{nbl}.txt", FM_dict['FM_3x2pt_GO'])
 
     np.savetxt(job_path / f"output/FM/FM_WL_GS_lmaxWL{ell_max_WL}_nbl{nbl}_Rl{which_probe_response_str}.txt",
                FM_dict['FM_WL_GS'])
@@ -133,6 +132,5 @@ if general_config['save_cls']:
     for key in cl_dict_3D.keys():
         np.save(job_path / f"output/cl_3D/{key}.npy", cl_dict_3D[f'{key}'])
 
-########### TESTS #############################################
-
+# test
 unit_test.FM_check(general_config, FM_dict)

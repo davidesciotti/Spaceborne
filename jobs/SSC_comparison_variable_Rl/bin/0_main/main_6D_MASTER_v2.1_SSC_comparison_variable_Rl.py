@@ -41,6 +41,8 @@ import plots_FM_running as plot_utils
 
 start_time = time.perf_counter()
 
+print("THIS CODE COMPUTES THE FORECASTS WITH VARIED VALUE OF A CONSTANT PROBE RESPONSE, DISCARD!!")
+
 
 ###############################################################################
 #################### PARAMETERS AND SETTINGS DEFINITION #######################

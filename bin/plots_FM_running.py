@@ -93,6 +93,10 @@ IST['GC_opt'] = np.array((0, 0, 0, 0, 0, 0, 0))
 # params = [Om, Ob, wz, wa, h, ns, s8, mn, ga, 7, 8, 9, 10]
 # xxx occhio a ga e mn
 
+def plot_FM_constr(FM, label, uncert_kind='relative'):
+    rel_uncert = mm.uncertainties_FM(FM)[:7]
+    plt.plot(range(7), rel_uncert * 100, "--", marker='o', label=label, markersize=markersize)
+
 
 def plot_FM(general_config, covariance_config, plot_config, FM_dict):
     # plot settings:
@@ -249,6 +253,8 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
         # SEYF = uncert_SEYF_SSC
 
     ##################################  PLOT ######################################
+
+
 
     if which_plot == "dav_vs_sylv":
 

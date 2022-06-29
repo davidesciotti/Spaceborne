@@ -15,18 +15,21 @@ job_path = Path.cwd().parent
 home_path = Path.home()
 job_name = job_path.parts[-1]
 
-sys.path.append(str(project_path))
+sys.path.append(str(project_path / 'lib'))
+sys.path.append(str(project_path / 'bin'))
+sys.path.append(str(project_path / 'jobs'))
 
 # job configuration
-import jobs.SSC_comparison.configs.config_SSC_comparison as config
+import SSC_comparison.configs.config_SSC_comparison as cfg
 
-import lib.my_module as mm
-import bin.ell_values_running as ell_utils
-import bin.Cl_preprocessing_running as Cl_utils
-import bin.covariance_running as covmat_utils
-import bin.FM_running as FM_utils
-import bin.plots_FM_running as plot_utils
-import bin.utils_running as utils
+import my_module as mm
+import ell_values_running as ell_utils
+import Cl_preprocessing_running as Cl_utils
+import covariance_running as covmat_utils
+import FM_running as FM_utils
+import plots_FM_running as plot_utils
+import utils_running as utils
+import unit_test
 
 start_time = time.perf_counter()
 
@@ -35,9 +38,9 @@ start_time = time.perf_counter()
 ###############################################################################
 
 # import the configuration dictionaries from config.py
-general_config = config.general_config
-covariance_config = config.covariance_config
-FM_config = config.FM_config
+general_config = cfg.general_config
+covariance_config = cfg.covariance_config
+FM_config = cfg.FM_config
 
 # consistency checks:
 utils.consistency_checks(general_config, covariance_config)
@@ -123,48 +126,13 @@ if FM_config['save_FM']:
     np.savetxt(job_path / f"output/FM/FM_3x2pt_GS_lmaxXC{ell_max_XC}_nbl{nbl}_Rl{which_probe_response_str}.txt",
                FM_dict['FM_3x2pt_GS'])
 
-# if FM_config['save_FM_as_dict']:
-#     sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)
+if FM_config['save_FM_as_dict']:
+    sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)
 
 if general_config['save_cls']:
     for key in cl_dict_3D.keys():
         np.save(job_path / f"output/cl_3D/{key}.npy", cl_dict_3D[f'{key}'])
 
 ########### TESTS #############################################
-# check FMS
-if general_config['which_forecast'] == 'sylvain':
-    path_import = '/Users/davide/Documents/Lavoro/Programmi/SSCcomp_prove/output/FM/common_ell_and_deltas/Cij_14may'
-elif general_config['which_forecast'] == 'IST':
-    path_import = '/Users/davide/Documents/Lavoro/Programmi/SSCcomp_prove/output/FM/ISTspecs_indVincenzo/Cij_14may'
-elif general_config['which_forecast'] == 'CLOE':
-    path_import = '/Users/davide/Documents/Lavoro/Programmi/SSCcomp_prove/output/FM/ISTspecs_indVincenzo/Cij_14may'
 
-FM_d_old = dict(mm.get_kv_pairs(path_import, filetype="txt"))
-tolerance = 0.0001
-
-for probe in ['WL', 'GC', '3x2pt']:
-    for GO_or_GS in ['GO', 'GS']:
-
-        if GO_or_GS == 'GS':
-            GO_or_GS_old = 'G+SSC'
-        else:
-            GO_or_GS_old = 'G'
-
-        if probe == '3x2pt':
-            probe_lmax = 'XC'
-            probe_lmax2 = 'GC'
-        else:
-            probe_lmax = probe
-            probe_lmax2 = probe
-
-        nbl = general_config['nbl']
-        ell_max = general_config[f'ell_max_{probe_lmax2}']
-
-        FM_old = FM_d_old[f'FM_{probe}_{GO_or_GS_old}_lmax{probe_lmax}{ell_max}_nbl{nbl}']
-        FM_new = FM_dict[f'FM_{probe}_{GO_or_GS}']
-
-        diff = mm.percent_diff(FM_old, FM_new)
-        # mm.matshow(diff, title=f'{probe}, {GO_or_GS}')
-
-        print(f'is the percent difference between the FM < {tolerance}?, {probe}, {GO_or_GS}',
-              np.all(np.abs(diff < tolerance)))
+unit_test.FM_check(general_config, FM_dict)

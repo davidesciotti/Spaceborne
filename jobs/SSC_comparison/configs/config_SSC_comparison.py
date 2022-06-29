@@ -60,7 +60,9 @@ covariance_config = {
 
 FM_config = {
     'nParams': 20,
-    'save_FM': True
+    'save_FM': True,
+    'save_FM_as_dict': True
+
 }
 
 plot_config = {

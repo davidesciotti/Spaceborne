@@ -107,7 +107,7 @@ cov_dict = covmat_utils.compute_cov(general_config, covariance_config, ell_dict,
                                     Sijkl)
 
 # ! new code - use PyCCL or cosmolike's SSC instead
-probe_tested = 'WL'
+probe_tested = 'GC'
 whos_SSC = 'PyCCL'
 which_ells = 'ISTF'
 # for (whos_SSC, hm_recipe, GS_or_GScNG)  in zip()['PyCCL', 'CosmoLike', 'PySSC']:
@@ -145,9 +145,8 @@ for hm_recipe in ['KiDS1000', 'Krause2017']:
             if GS_or_GScNG == 'GS':
                 cov_dict[f'cov_{probe_tested}_GS_2D'] = cov_dict[f'cov_{probe_tested}_GO_2D'] + cov_PyCCL_SSC_2D
             if GS_or_GScNG == 'GScNG':
-                cov_dict[f'cov_{probe_tested}_GS_2D'] = cov_dict[
-                                                            f'cov_{probe_tested}_GO_2D'] + cov_PyCCL_SSC_2D + cov_PyCCL_cNG_2D
-
+                cov_dict[f'cov_{probe_tested}_GS_2D'] = cov_dict[f'cov_{probe_tested}_GO_2D'] + \
+                                                        cov_PyCCL_SSC_2D + cov_PyCCL_cNG_2D
 
         elif whos_SSC == 'CosmoLike':
 

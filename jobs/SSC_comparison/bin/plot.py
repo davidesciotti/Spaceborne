@@ -20,8 +20,6 @@ import my_module as mm
 import plots_FM_running as plot_utils
 import SSC_comparison.configs.config_SSC_comparison as cfg
 
-
-
 matplotlib.use('Qt5Agg')
 
 params = {'lines.linewidth': 3.5,
@@ -38,20 +36,17 @@ params = {'lines.linewidth': 3.5,
 plt.rcParams.update(params)
 markersize = 10
 
-
 ell_max_WL = cfg.general_config['ell_max_WL']
 ell_max_GC = cfg.general_config['ell_max_GC']
 ell_max_XC = ell_max_GC
 nbl = cfg.general_config['nbl']
 
-
-
 # import all outputs from this script
 FM_dict = dict(mm.get_kv_pairs(job_path / 'output/FM', filetype="txt"))
 
 # choose what you want to plot
-probe = 'WL'
-GO_or_GS = 'GO'
+probe = 'GC'
+GO_or_GS = 'GS'
 
 if probe == '3x2pt':
     probe_lmax = 'XC'
@@ -63,8 +58,24 @@ if probe == 'WL':
 else:
     ell_max = ell_max_GC
 
-keys = [f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlconst.txt',
-        f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlvar.txt']
+keys = [f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlconst',
+        f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlvar',
+        f'FM_{probe}_GO_lmax{probe_lmax}{ell_max}_nbl{nbl}']
 
-for key in keys:
-    plot_utils.plot_FM_constr(FM_dict[key])
+# cases = ['Rlconst', 'Rlvar']
+# for i, key in enumerate(keys):
+#     plot_utils.plot_FM_constr(FM_dict[key], label=f'{cases[i]}')
+
+# compute uncertainties
+data = np.asarray([mm.uncertainties_FM(FM_dict[key])[:7] for key in keys]) * 100
+data[-1, :] = mm.percent_diff_mean(data[0, :], data[1, :])
+
+
+label_list = [f'{GO_or_GS} Rlconst',
+              f'{GO_or_GS} Rlvar',
+              f'% diff',]
+
+title = f'{probe}'
+
+
+plot_utils.bar_plot_v2(data, title, label_list)

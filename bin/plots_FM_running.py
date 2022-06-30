@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 import sys
 from pathlib import Path
 import pandas as pd
@@ -7,25 +8,19 @@ import array_to_latex as a2l
 import plotly.graph_objects as go
 import plotly.offline as pyo
 
+project_path = Path.cwd().parent.parent.parent
 
-project_path = Path.cwd().parent
-sys.path.append(str(project_path))
-import lib.my_module as mm
+sys.path.append(str(project_path / 'lib'))
+sys.path.append(str(project_path.parent / 'common_data/common_config'))
 
-script_name = sys.argv[0]
+import my_module as mm
+import ISTF_fid_params
+import mpl_cfg
 
+matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
-# params = {'lines.linewidth' : 3.5,
-#           'font.size' : 20,
-#           'axes.labelsize': 'x-large',
-#           'axes.titlesize':'x-large',
-#           'xtick.labelsize':'x-large',
-#           'ytick.labelsize':'x-large',
-#           'mathtext.fontset': 'stix',
-#           'font.family': 'STIXGeneral'
-#           }
-# plt.rcParams.update(params)
-# markersize = 10
+param_names_label = mpl_cfg.general_dict['param_names_label']
+ylabel_perc_diff_wrt_mean = mpl_cfg.general_dict['ylabel_perc_diff_wrt_mean']
 
 
 ###############################################################################
@@ -73,6 +68,33 @@ def bar_plot(uncert_gauss, uncert_SSC, difference):
     ax.grid()
     plt.show()
     plt.savefig(fname=f'bar_plot_{probe}.png', dpi=300, figsize=[16, 9])
+
+
+def bar_plot_v2(data, title, label_list, bar_width=0.25):
+    """
+    :param data: ususlly the percent uncertainties, but could also be the percent difference
+    """
+
+    # Set position of bar on x-axis
+    bar_centers = np.zeros(data.shape)
+    for i in range(data.shape[0]):
+        if i == 0:
+            bar_centers[i] = np.arange(data.shape[1]) - bar_width
+        else:
+            bar_centers[i] = [x + i * bar_width for x in bar_centers[0]]
+
+    # Make the plot
+    for i in range(data.shape[0]):
+        plt.bar(bar_centers[i], data[i], width=bar_width, edgecolor='grey', label=label_list[i])
+
+    # Adding xticks
+    plt.ylabel(ylabel_perc_diff_wrt_mean)
+    plt.xticks(range(7), param_names_label)
+
+    plt.title(title)
+    plt.legend()
+    plt.grid()
+    plt.show()
 
 
 # parametri fiduciali
@@ -254,8 +276,6 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
 
     ##################################  PLOT ######################################
 
-
-
     if which_plot == "dav_vs_sylv":
 
         mean = (sylv + dav) / 2
@@ -357,8 +377,10 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
 
         fig = go.Figure(
             data=[
-                go.Scatterpolar(r=restaurant_1, theta=categories, fill='toself', name=f'davide {custom_label} {GO_or_GS}'),
-                go.Scatterpolar(r=restaurant_2, theta=categories, fill='toself', name=f'sylvain {custom_label} {GO_or_GS}'),
+                go.Scatterpolar(r=restaurant_1, theta=categories, fill='toself',
+                                name=f'davide {custom_label} {GO_or_GS}'),
+                go.Scatterpolar(r=restaurant_2, theta=categories, fill='toself',
+                                name=f'sylvain {custom_label} {GO_or_GS}'),
                 # go.Scatterpolar(r=restaurant_3, theta=categories, fill='toself', name='Restaurant 3')
             ],
             layout=go.Layout(
@@ -369,8 +391,6 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
         )
 
         pyo.plot(fig)
-
-
 
     # cases
     # plot(uncert_mt, style = ".-")

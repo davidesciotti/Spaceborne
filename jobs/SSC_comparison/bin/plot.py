@@ -70,6 +70,7 @@ keys = [f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlconst',
 data = np.asarray([mm.uncertainties_FM(FM_dict[key])[:7] for key in keys]) * 100
 data[-1, :] = mm.percent_diff_mean(data[0, :], data[1, :])
 
+data = mm.uncertainties_FM(FM_dict[keys[0]])[:7]
 
 label_list = [f'{GO_or_GS} Rlconst',
               f'{GO_or_GS} Rlvar',

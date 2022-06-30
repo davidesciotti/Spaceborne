@@ -79,16 +79,23 @@ def bar_plot_v2(data, title, label_list, bar_width=0.25):
 
     # Set position of bar on x-axis
     bar_centers = np.zeros(data.shape)
-    for i in range(data.shape[0]):
-        if i == 0:
-            bar_centers[i] = np.arange(data.shape[1]) - bar_width
-        else:
-            bar_centers[i] = [x + i * bar_width for x in bar_centers[0]]
+
+    if data.ndim == 1:  # just one vector
+        data = np.expand_dims(data, 0)
+        bar_centers = np.arange(data.shape[1])
+        bar_centers = np.expand_dims(bar_centers, 0)
+
+    else:
+        for i in range(data.shape[0]):
+            if i == 0:
+                bar_centers[i, :] = np.arange(data.shape[1]) - bar_width
+            else:
+                bar_centers[i, :] = [x + i * bar_width for x in bar_centers[0]]
 
     plt.grid()
     # Make the plot
     for i in range(data.shape[0]):
-        plt.bar(bar_centers[i], data[i], width=bar_width, edgecolor='grey', label=label_list[i])
+        plt.bar(bar_centers[i, :], data[i, :], width=bar_width, edgecolor='grey', label=label_list[i])
 
     # Adding xticks
     plt.ylabel(ylabel_perc_diff_wrt_mean)

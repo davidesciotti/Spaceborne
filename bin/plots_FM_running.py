@@ -21,7 +21,7 @@ matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 param_names_label = mpl_cfg.general_dict['param_names_label']
 ylabel_perc_diff_wrt_mean = mpl_cfg.general_dict['ylabel_perc_diff_wrt_mean']
-
+# plt.rcParams['axes.axisbelow'] = True
 
 ###############################################################################
 ################## CODE TO PLOT THE FISHER CONSTRAINTS ########################
@@ -72,8 +72,10 @@ def bar_plot(uncert_gauss, uncert_SSC, difference):
 
 def bar_plot_v2(data, title, label_list, bar_width=0.25):
     """
-    :param data: ususlly the percent uncertainties, but could also be the percent difference
+    data: usually the percent uncertainties, but could also be the percent difference
     """
+
+    plt.figure(figsize=mpl_cfg.mpl_rcParams_dict['figure.figsize'])
 
     # Set position of bar on x-axis
     bar_centers = np.zeros(data.shape)
@@ -83,6 +85,7 @@ def bar_plot_v2(data, title, label_list, bar_width=0.25):
         else:
             bar_centers[i] = [x + i * bar_width for x in bar_centers[0]]
 
+    plt.grid()
     # Make the plot
     for i in range(data.shape[0]):
         plt.bar(bar_centers[i], data[i], width=bar_width, edgecolor='grey', label=label_list[i])
@@ -93,7 +96,6 @@ def bar_plot_v2(data, title, label_list, bar_width=0.25):
 
     plt.title(title)
     plt.legend()
-    plt.grid()
     plt.show()
 
 

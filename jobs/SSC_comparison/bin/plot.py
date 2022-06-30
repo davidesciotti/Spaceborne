@@ -45,7 +45,7 @@ nbl = cfg.general_config['nbl']
 FM_dict = dict(mm.get_kv_pairs(job_path / 'output/FM', filetype="txt"))
 
 # choose what you want to plot
-probe = 'GC'
+probe = '3x2pt'
 GO_or_GS = 'GS'
 
 if probe == '3x2pt':

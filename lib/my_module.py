@@ -69,16 +69,17 @@ def plot_FM(array, style=".-"):
 
 
 def uncertainties_FM(FM):
-    '''
-    returns relative (not percentage!) error
-    '''
+    """
+    returns relative *percentage!* error
+    """
     fid = (0.32, 0.05, 1, 1, 0.67, 0.96, 0.816, 0.55, 1, 1)
     # fidmn = (0.32, 0.05, 1, 1, 0.67, 0.96, 0.816, 0.06, 0.55, 1) # with massive neutrinos
     FM_inv = np.linalg.inv(FM)
     sigma_FM = np.zeros(10)
     for i in range(10):
         sigma_FM[i] = np.sqrt(FM_inv[i, i]) / fid[i]
-    return sigma_FM
+    return sigma_FM * 100
+
 
 
 

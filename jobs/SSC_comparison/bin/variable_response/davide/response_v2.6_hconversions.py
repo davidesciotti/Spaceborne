@@ -163,6 +163,8 @@ def get_external_Pk(whos_Pk='vincenzo', Pk_kind='nonlinear', use_h_units=True):
         k_column = 1  # in [h/Mpc]
         Pnl_column = 3  # in [Mpc^3/h^3]
         Plin_column = 2  # in [Mpc^3/h^3]
+    else:
+        raise ValueError('whos_Pk must be either stefano or vincenzo')
 
     if Pk_kind == 'linear':
         Pk_column = Plin_column
@@ -197,7 +199,8 @@ def get_external_Pk(whos_Pk='vincenzo', Pk_kind='nonlinear', use_h_units=True):
 
 
 def k_limber(z, ell, cosmo_astropy, use_h_units):
-    # astropy gives values in Mpc, so I call astropy_comoving_distance to have the correct values in both cases
+    # astropy gives values in Mpc, so I call astropy_comoving_distance to have the correct values in both cases (h units
+    # or not)
     comoving_distance = astropy_comoving_distance(z, cosmo_astropy, use_h_units)
     k_ell = (ell + 0.5) / comoving_distance
     return k_ell

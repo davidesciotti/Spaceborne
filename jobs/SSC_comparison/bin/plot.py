@@ -31,7 +31,6 @@ params = {'lines.linewidth': 3.5,
           'mathtext.fontset': 'stix',
           'font.family': 'STIXGeneral',
           'figure.figsize': (8, 8)
-          # 'backend': 'Qt5Agg'
           }
 plt.rcParams.update(params)
 markersize = 10
@@ -40,6 +39,7 @@ ell_max_WL = cfg.general_config['ell_max_WL']
 ell_max_GC = cfg.general_config['ell_max_GC']
 ell_max_XC = ell_max_GC
 nbl = cfg.general_config['nbl']
+nparams = 7
 
 # import all outputs from this script
 FM_dict = dict(mm.get_kv_pairs(job_path / 'output/FM', filetype="txt"))
@@ -59,18 +59,18 @@ else:
     ell_max = ell_max_GC
 
 keys = [f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlconst',
-        f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlvar',
-        f'FM_{probe}_GO_lmax{probe_lmax}{ell_max}_nbl{nbl}']
+        f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlvar']
+        # f'FM_{probe}_GO_lmax{probe_lmax}{ell_max}_nbl{nbl}']
 
-# cases = ['Rlconst', 'Rlvar']
-# for i, key in enumerate(keys):
-#     plot_utils.plot_FM_constr(FM_dict[key], label=f'{cases[i]}')
+data = np.zeros((1, nparams))
+for i, key in enumerate(keys):
+    uncert = np.asarray(mm.uncertainties_FM(FM_dict[key])[:nparams])
+    data = np.insert(arr=data, obj=-1, values=uncert, axis=0)
 
-# compute uncertainties
-data = np.asarray([mm.uncertainties_FM(FM_dict[key])[:7] for key in keys]) * 100
-data[-1, :] = mm.percent_diff_mean(data[0, :], data[1, :])
+# compute percent diff of the cases chosen
+diff = mm.percent_diff_mean(data[0, :], data[1, :])
+data = np.insert(arr=data, obj=-1, values=diff, axis=0)
 
-data = mm.uncertainties_FM(FM_dict[keys[0]])[:7]
 
 label_list = [f'{GO_or_GS} Rlconst',
               f'{GO_or_GS} Rlvar',

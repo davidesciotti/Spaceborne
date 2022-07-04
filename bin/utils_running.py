@@ -31,7 +31,9 @@ def consistency_checks(general_config, covariance_config):
         assert covariance_config['Rl'] == 4, 'For SSCcomp we used Rl=4'
         # assert general_config['cl_folder'] == 'common_ell_and_deltas', 'XXX check For SSCcomp we used Cij_14may Cls'
         assert general_config['nbl'] == 30, 'For SSCcomp we used nbl = 30'
-        assert general_config['ell_max_GC'] == 3000, 'For SSCcomp we used ell_max_GC = 3000'
+
+        # this is just for the optimistic! in the pessimistic case we used general_config['ell_max_GC'] = 750
+        # assert general_config['ell_max_GC'] == 3000, 'For SSCcomp we used ell_max_GC = 3000'
         assert general_config['use_WA'] is True, 'For SSCcomp we used Wadd'
 
     elif general_config['which_forecast'] == 'IST_NL':

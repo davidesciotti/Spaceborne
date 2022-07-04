@@ -21,8 +21,11 @@ matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 param_names_label = mpl_cfg.general_dict['param_names_label']
 ylabel_perc_diff_wrt_mean = mpl_cfg.general_dict['ylabel_perc_diff_wrt_mean']
+ylabel_sigma_relative_fid = mpl_cfg.general_dict['ylabel_sigma_relative_fid']
 # plt.rcParams['axes.axisbelow'] = True
 markersize = mpl_cfg.mpl_rcParams_dict['lines.markersize']
+
+print(ylabel_sigma_relative_fid)
 
 ###############################################################################
 ################## CODE TO PLOT THE FISHER CONSTRAINTS ########################
@@ -100,7 +103,7 @@ def bar_plot_v2(data, title, label_list, bar_width=0.25):
         plt.bar(bar_centers[i, :], data[i, :], width=bar_width, edgecolor='grey', label=label_list[i])
 
     # Adding xticks
-    plt.ylabel(ylabel_perc_diff_wrt_mean)
+    plt.ylabel(ylabel_sigma_relative_fid)
     plt.xticks(range(7), param_names_label)
 
     plt.title(title)

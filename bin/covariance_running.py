@@ -7,9 +7,9 @@ import numpy as np
 
 matplotlib.use('Qt5Agg')
 
-project_path = Path.cwd().parent.parent.parent
-sys.path.append(str(project_path))
-import lib.my_module as mm
+project_path_here = Path.cwd().parent.parent.parent
+sys.path.append(str(project_path_here / 'lib'))
+import my_module as mm
 
 
 ###############################################################################

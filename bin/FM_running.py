@@ -3,9 +3,9 @@ import time
 from pathlib import Path
 import numpy as np
 
-project_path = Path.cwd().parent.parent.parent
-sys.path.append(str(project_path))
-import lib.my_module as mm
+project_path_here = Path.cwd().parent.parent.parent
+sys.path.append(str(project_path_here / 'lib'))
+import my_module as mm
 
 script_name = sys.argv[0]
 start = time.perf_counter()
@@ -113,7 +113,7 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
     if cl_folder in ["Cij_thesis", "Cij_15gen"]:
         print("attention! I'm taking the derivatives from the GCph folder in the 15gen case")
         if cl_folder == "Cij_thesis":
-            derivatives_folder = project_path.parent / "common_data/vincenzo/thesis_data/Cij_derivatives_tesi"
+            derivatives_folder = project_path_here.parent / "common_data/vincenzo/thesis_data/Cij_derivatives_tesi"
         elif cl_folder == "Cij_15gen":
             derivatives_folder = 'C:/Users/dscio/Documents/Lavoro/Programmi/GCph/data/dCij'
 
@@ -123,7 +123,7 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
         probe_code_XC = "DG"
 
     elif cl_folder == "Cij_14may":
-        derivatives_folder = project_path.parent / f"common_data/vincenzo/14may/CijDers/EP{zbins}"
+        derivatives_folder = project_path_here.parent / f"common_data/vincenzo/14may/CijDers/EP{zbins}"
         suffix = "GR-Flat-eNLA-NA"
         probe_code_LL = "LL"
         probe_code_GG = "GG"

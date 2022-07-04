@@ -45,7 +45,7 @@ nparams = 7
 FM_dict = dict(mm.get_kv_pairs(job_path / 'output/FM', filetype="txt"))
 
 # choose what you want to plot
-probe = '3x2pt'
+probe = 'WL'
 GO_or_GS = 'GS'
 
 if probe == '3x2pt':
@@ -58,25 +58,32 @@ if probe == 'WL':
 else:
     ell_max = ell_max_GC
 
-keys = [f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlconst',
+keys = [f'FM_{probe}_GO_lmax{probe_lmax}{ell_max}_nbl{nbl}',
+        f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlconst',
         f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlvar']
-        # f'FM_{probe}_GO_lmax{probe_lmax}{ell_max}_nbl{nbl}']
 
-data = np.zeros((1, nparams))
+
+# data = np.zeros((1, nparams))
+data = []
 for i, key in enumerate(keys):
     uncert = np.asarray(mm.uncertainties_FM(FM_dict[key])[:nparams])
-    data = np.insert(arr=data, obj=-1, values=uncert, axis=0)
+    data.append(uncert)
 
 # compute percent diff of the cases chosen
-diff = mm.percent_diff_mean(data[0, :], data[1, :])
-data = np.insert(arr=data, obj=-1, values=diff, axis=0)
+diff = mm.percent_diff_mean(data[1], data[2])
+data.append(diff)
 
+data = np.asarray(data)
 
-label_list = [f'{GO_or_GS} Rlconst',
+label_list = [f'GO',
+              f'{GO_or_GS} Rlconst',
               f'{GO_or_GS} Rlvar',
-              f'% diff',]
+              f'% diff wrt mean, Rlconst vs Rlvar', ]
 
-title = f'{probe}'
+title = f'{probe}, ' '$\\ell_{max} = $' f'{ell_max}'
+
+plot_utils.bar_plot_v2(data, title, label_list, bar_width=0.20)
+
+plt.savefig(job_path / f'output/plots/{probe}_ell_max{ell_max}_{GO_or_GS}_Rlconst_vs_Rlvar.png')
 
 
-plot_utils.bar_plot_v2(data, title, label_list)

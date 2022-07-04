@@ -28,12 +28,12 @@ plt.rcParams.update(mpl_rcParams)
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 
-sys.path.append(project_path)
+sys.path.append(project_path / 'lib')
 sys.path.append(project_path.parent / 'common_data/common_config')
 sys.path.append(job_path / 'PyCCL_forecast/configs')
 
 import jobs.PyCCL_forecast.configs.config_PyCCL_forecast as config
-import lib.my_module as mm
+import my_module as mm
 # import mpl_rcParams
 
 ########################################################################################################################
@@ -97,7 +97,7 @@ for whos_SSC in cases_to_compare:
         hm_recipe = ''
 
     FM_name = f'FM_{probe}_{GS_or_GScNG}_lmax{probe}{ell_max}_nbl{nbl}_{whos_SSC}{hm_recipe}'
-    ax[0].plot(range(7), uncert_dict[FM_name][:7] * 100, '--', label=f"{whos_SSC} {GS_or_GScNG} {hm_recipe}",
+    ax[0].plot(range(7), uncert_dict[FM_name][:7], '--', label=f"{whos_SSC} {GS_or_GScNG} {hm_recipe}",
                marker='o')
 
     # list of names to compare

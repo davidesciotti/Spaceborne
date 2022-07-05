@@ -16,20 +16,23 @@ from matplotlib.cm import get_cmap
 project_path = Path.cwd().parent.parent.parent.parent.parent
 job_path = Path.cwd().parent.parent.parent
 
-sys.path.append(str(project_path.parent / 'common_data/common_lib'))
-sys.path.append(str(project_path.parent / 'common_data/common_config'))
-
-# general libraries
+sys.path.append(str(project_path / 'lib'))
 import my_module as mm
-import cosmo_lib as csmlib
-
-# general configurations
-import ISTF_fid_params
-import mpl_cfg
 
 matplotlib.use('Qt5Agg')
-plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
-markersize = ['lines.markersize']
+
+params = {'lines.linewidth': 3.5,
+          'font.size': 20,
+          'axes.labelsize': 'x-large',
+          'axes.titlesize': 'x-large',
+          'xtick.labelsize': 'x-large',
+          'ytick.labelsize': 'x-large',
+          'mathtext.fontset': 'stix',
+          'font.family': 'STIXGeneral',
+          'figure.figsize': (12, 8)
+          }
+plt.rcParams.update(params)
+markersize = 10
 
 start_time = time.perf_counter()
 

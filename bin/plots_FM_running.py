@@ -8,12 +8,15 @@ import array_to_latex as a2l
 import plotly.graph_objects as go
 import plotly.offline as pyo
 
-project_path = Path.cwd().parent.parent.parent
 
-sys.path.append(str(project_path / 'lib'))
-sys.path.append(str(project_path.parent / 'common_data/common_config'))
-
+project_path_here = Path.cwd().parent.parent.parent
+sys.path.append(str(project_path_here.parent / 'common_lib'))
+sys.path.append(str(project_path_here.parent / 'common_config'))
 import my_module as mm
+
+
+
+
 import ISTF_fid_params
 import mpl_cfg
 

@@ -24,7 +24,7 @@ sys.path.append(str(job_path))
 import configs.config_IST_forecast as config
 # import bin.utils.utils_IST_forecast
 
-import lib.my_module as mm
+import lib.my_module_old as mm
 import bin.ell_values_running as ell_utils
 import bin.Cl_preprocessing_running as Cl_utils
 import bin.covariance_running as covmat_utils

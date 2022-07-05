@@ -15,7 +15,7 @@ job_path = Path.cwd().parent
 home_path = Path.home()
 job_name = job_path.parts[-1]
 
-sys.path.append(str(project_path / 'lib'))
+sys.path.append(str(project_path.parent / 'common_lib'))
 sys.path.append(str(project_path / 'bin'))
 sys.path.append(str(project_path / 'jobs'))
 

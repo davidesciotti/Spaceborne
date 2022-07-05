@@ -2,8 +2,9 @@ import numpy as np
 import sys
 from pathlib import Path
 
-project_path = Path.cwd().parent
-sys.path.append(str(project_path))
+project_path_here = Path.cwd().parent.parent.parent
+sys.path.append(str(project_path_here.parent / 'common_lib'))
+import my_module as mm
 
 
 ###############################################################################

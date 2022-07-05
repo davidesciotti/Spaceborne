@@ -13,15 +13,17 @@ job_path = Path.cwd().parent
 project_path = job_path.parent.parent
 
 sys.path.append(str(project_path))
+sys.path.append(str(project_path) + '/lib')
+sys.path.append(str(project_path) + '/bin')
 
 # useful modules
-import lib.my_module as mm
-import bins.ell_values_running as ell_utils
-import bins.Cl_preprocessing_running as Cl_utils
-import bins.covariance_running as covmat_utils
-import bins.FM_running as FM_utils
-import bins.plots_FM_running as plot_utils
-import bins.utils_running as utils
+import my_module as mm
+import ell_values_running as ell_utils
+import Cl_preprocessing_running as Cl_utils
+import covariance_running as covmat_utils
+import FM_running as FM_utils
+import plots_FM_running as plot_utils
+import utils_running as utils
 
 # job configuration
 import jobs.PyCCL_forecast.configs.config_PyCCL_forecast as config
@@ -111,76 +113,76 @@ probe_tested = 'GC'
 whos_SSC = 'PyCCL'
 which_ells = 'ISTF'
 # for (whos_SSC, hm_recipe, GS_or_GScNG)  in zip()['PyCCL', 'CosmoLike', 'PySSC']:
+hm_recipe = 'KiDS1000'
+GS_or_GScNG = 'GS'
 
-for hm_recipe in ['KiDS1000', 'Krause2017']:
-    for GS_or_GScNG in ['GS', 'GScNG']:
 
-        if probe_tested == 'WL':
-            ell_max = ell_max_WL
-        elif probe_tested == 'GC':
-            ell_max = ell_max_GC
 
-        plot_config['custom_label'] = f' {whos_SSC}'
+if probe_tested == 'WL':
+    ell_max = ell_max_WL
+elif probe_tested == 'GC':
+    ell_max = ell_max_GC
 
-        # sum GO + whatever - i.e. overwrite cov_dict[f'cov_WL_SS_2D']
-        if whos_SSC == 'PyCCL':
+plot_config['custom_label'] = f' {whos_SSC}'
 
-            # hm_recipe = covariance_config['PyCCL_config']['hm_recipe']
-            # SSC_or_cNG = covariance_config['PyCCL_config']['SSC_or_cNG']
+# sum GO + whatever - i.e. overwrite cov_dict[f'cov_WL_SS_2D']
+if whos_SSC == 'PyCCL':
 
-            # load and reshape cov_SS_PyCCL
-            cov_PyCCL_SSC_6D = np.load(
-                project_path.parent / f'PyCCL_SSC/output/covmat/cov_PyCCL_SSC_{probe_tested}_nbl{nbl}_ells{which_ells}_ellmax{ell_max}_hm_recipe{hm_recipe}_6D.npy')
-            cov_PyCCL_cNG_6D = np.load(
-                project_path.parent / f'PyCCL_SSC/output/covmat/cov_PyCCL_cNG_{probe_tested}_nbl{nbl}_ells{which_ells}_ellmax{ell_max}_hm_recipe{hm_recipe}_6D.npy')
+    # hm_recipe = covariance_config['PyCCL_config']['hm_recipe']
+    # SSC_or_cNG = covariance_config['PyCCL_config']['SSC_or_cNG']
 
-            cov_PyCCL_SSC_4D = mm.cov_6D_to_4D(cov_PyCCL_SSC_6D, nbl, npairs=npairs_auto, ind=ind[:npairs_auto, :])
-            cov_PyCCL_cNG_4D = mm.cov_6D_to_4D(cov_PyCCL_cNG_6D, nbl, npairs=npairs_auto, ind=ind[:npairs_auto, :])
+    cov_PyCCL_SSC_6D = np.load(project_path.parent / f'PyCCL_SSC/output/covmat/cov_PyCCL_SSC_{probe_tested}_nbl{nbl}_ells{which_ells}_ellmax{ell_max}_hm_recipe{hm_recipe}_6D.npy')
+    cov_PyCCL_SSC_4D = mm.cov_6D_to_4D(cov_PyCCL_SSC_6D, nbl, npairs=npairs_auto, ind=ind[:npairs_auto, :])
+    cov_PyCCL_SSC_2D = mm.cov_4D_to_2D(cov_PyCCL_SSC_4D, nbl, npairs_AB=npairs_auto, npairs_CD=None,
+                                       block_index='vincenzo')
 
-            cov_PyCCL_SSC_2D = mm.cov_4D_to_2D(cov_PyCCL_SSC_4D, nbl, npairs_AB=npairs_auto, npairs_CD=None,
-                                               block_index='vincenzo')
-            cov_PyCCL_cNG_2D = mm.cov_4D_to_2D(cov_PyCCL_cNG_4D, nbl, npairs_AB=npairs_auto, npairs_CD=None,
-                                               block_index='vincenzo')
+    if GS_or_GScNG == 'GS':
+        cov_dict[f'cov_{probe_tested}_GS_2D'] = cov_dict[f'cov_{probe_tested}_GO_2D'] + cov_PyCCL_SSC_2D
 
-            if GS_or_GScNG == 'GS':
-                cov_dict[f'cov_{probe_tested}_GS_2D'] = cov_dict[f'cov_{probe_tested}_GO_2D'] + cov_PyCCL_SSC_2D
-            if GS_or_GScNG == 'GScNG':
-                cov_dict[f'cov_{probe_tested}_GS_2D'] = cov_dict[f'cov_{probe_tested}_GO_2D'] + \
-                                                        cov_PyCCL_SSC_2D + cov_PyCCL_cNG_2D
+    if GS_or_GScNG == 'GScNG':
+        cov_PyCCL_cNG_6D = np.load(
+            project_path.parent / f'PyCCL_SSC/output/covmat/cov_PyCCL_cNG_{probe_tested}_nbl{nbl}_ells{which_ells}_ellmax{ell_max}_hm_recipe{hm_recipe}_6D.npy')
 
-        elif whos_SSC == 'CosmoLike':
+        cov_PyCCL_cNG_4D = mm.cov_6D_to_4D(cov_PyCCL_cNG_6D, nbl, npairs=npairs_auto, ind=ind[:npairs_auto, :])
 
-            probe_tested = 'WL'  # we only have CosmoLike for WL
+        cov_PyCCL_cNG_2D = mm.cov_4D_to_2D(cov_PyCCL_cNG_4D, nbl, npairs_AB=npairs_auto, npairs_CD=None,
+                                           block_index='vincenzo')
+        cov_dict[f'cov_{probe_tested}_GS_2D'] = cov_dict[f'cov_{probe_tested}_GO_2D'] + \
+                                                cov_PyCCL_SSC_2D + cov_PyCCL_cNG_2D
 
-            # set correct names cor the saved file
-            hm_recipe = ''
-            GS_or_GScNG = 'GS'
+elif whos_SSC == 'CosmoLike':
 
-            # import and reshape Robin's SS-only cov
-            path_robin = '/Users/davide/Documents/Lavoro/Programmi/SSC_paper_jan22/PySSC_vs_CosmoLike/Robin' \
-                         '/cov_SS_full_sky_rescaled/lmax5000_noextrap/davides_reshape'
-            cov_CosmoLike_WLonly_SS_6D = np.load(f'{path_robin}/cov_R_WLonly_SSC_lmax{ell_max_WL}_6D.npy')
-            cov_CosmoLike_WLonly_SS_4D = mm.cov_6D_to_4D(cov_CosmoLike_WLonly_SS_6D, nbl, npairs=npairs_auto,
-                                                         ind=ind[:npairs_auto, :])
-            cov_CosmoLike_WLonly_SS_2D = mm.cov_4D_to_2D(cov_CosmoLike_WLonly_SS_4D, nbl, npairs_AB=npairs_auto,
-                                                         npairs_CD=None,
-                                                         block_index='vincenzo')
+    probe_tested = 'WL'  # we only have CosmoLike for WL
 
-            cov_dict[f'cov_WL_GS_2D'] = cov_dict[f'cov_WL_GO_2D'] + cov_CosmoLike_WLonly_SS_2D
+    # set correct names cor the saved file
+    hm_recipe = ''
+    GS_or_GScNG = 'GS'
 
-        elif whos_SSC == 'PySSC':
-            # set correct names cor the saved file
-            hm_recipe = ''
-            GS_or_GScNG = 'GS'
+    # import and reshape Robin's SS-only cov
+    path_robin = '/Users/davide/Documents/Lavoro/Programmi/SSC_paper_jan22/PySSC_vs_CosmoLike/Robin' \
+                 '/cov_SS_full_sky_rescaled/lmax5000_noextrap/davides_reshape'
+    cov_CosmoLike_WLonly_SS_6D = np.load(f'{path_robin}/cov_R_WLonly_SSC_lmax{ell_max_WL}_6D.npy')
+    cov_CosmoLike_WLonly_SS_4D = mm.cov_6D_to_4D(cov_CosmoLike_WLonly_SS_6D, nbl, npairs=npairs_auto,
+                                                 ind=ind[:npairs_auto, :])
+    cov_CosmoLike_WLonly_SS_2D = mm.cov_4D_to_2D(cov_CosmoLike_WLonly_SS_4D, nbl, npairs_AB=npairs_auto,
+                                                 npairs_CD=None,
+                                                 block_index='vincenzo')
 
-        # compute and save Fisher Matrix
-        FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
+    cov_dict[f'cov_WL_GS_2D'] = cov_dict[f'cov_WL_GO_2D'] + cov_CosmoLike_WLonly_SS_2D
 
-        np.savetxt(
-            job_path / f"output/FM/FM_{probe_tested}_{GS_or_GScNG}_lmax{probe_tested}{ell_max}_nbl{nbl}_{whos_SSC}{hm_recipe}.txt",
-            FM_dict[f'FM_{probe_tested}_GS'])
+elif whos_SSC == 'PySSC':
+    # set correct names cor the saved file
+    hm_recipe = ''
+    GS_or_GScNG = 'GS'
 
-    # ! end new code
+# compute and save Fisher Matrix
+FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
+
+np.savetxt(
+    job_path / f"output/FM/FM_{probe_tested}_{GS_or_GScNG}_lmax{probe_tested}{ell_max}_nbl{nbl}_{whos_SSC}{hm_recipe}.txt",
+    FM_dict[f'FM_{probe_tested}_GS'])
+
+# ! end new code
 
 assert 1 > 2
 

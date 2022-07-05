@@ -6,7 +6,7 @@ import time
 
 project_path = Path.cwd().parent
 sys.path.append(str(project_path))
-import lib.my_module as mm
+import lib.my_module_old as mm
 
 start_time = time.perf_counter()
 

@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 project_path_here = Path.cwd().parent.parent.parent
-sys.path.append(str(project_path_here / 'lib'))
+sys.path.append(str(project_path_here.parent / 'common_lib'))
 import my_module as mm
 
 script_name = sys.argv[0]

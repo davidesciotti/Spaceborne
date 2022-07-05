@@ -37,7 +37,7 @@ sys.path.append(project_path)
 sys.path.append(job_path / 'PyCCL_forecast/configs')
 
 import jobs.PyCCL_forecast.configs.config_PyCCL_forecast as config
-import lib.my_module as mm
+import lib.my_module_old as mm
 
 
 ########################################################################################################################

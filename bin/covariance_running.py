@@ -8,7 +8,7 @@ import numpy as np
 matplotlib.use('Qt5Agg')
 
 project_path_here = Path.cwd().parent.parent.parent
-sys.path.append(str(project_path_here / 'lib'))
+sys.path.append(str(project_path_here.parent / 'common_lib'))
 import my_module as mm
 
 
@@ -222,6 +222,10 @@ def compute_cov(general_config, covariance_config, ell_dict, delta_dict, cl_dict
         # path_santiago = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured/jobs/IST_NL/output/covmat/6D_for_Santiago'
         # with open(f"{path_santiago}/cov_3x2pt_GO_10D.pkl", "wb") as file:
         #     pickle.dump(cov_3x2pt_GO_10D, file)
+
+    # # TODO implement the other covmats in this module!
+    # if use_PyCCL_SS
+    # if use_PyCCL_cNG:
 
     ############################## SUM G + SSC ################################
     cov_WL_GS_4D = cov_WL_GO_4D + cov_WL_SS_4D

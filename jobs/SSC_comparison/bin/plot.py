@@ -37,53 +37,75 @@ markersize = 10
 
 ell_max_WL = cfg.general_config['ell_max_WL']
 ell_max_GC = cfg.general_config['ell_max_GC']
-ell_max_XC = ell_max_GC
 nbl = cfg.general_config['nbl']
 nparams = 7
 
 # import all outputs from this script
 FM_dict = dict(mm.get_kv_pairs(job_path / 'output/FM', filetype="txt"))
+FM_dict_PyCCL = dict(mm.get_kv_pairs(job_path.parent / 'PyCCL_forecast/output/FM', filetype="txt"))
+FM_dict = {**FM_dict, **FM_dict_PyCCL}
+
+fom = {}
 
 # choose what you want to plot
-probe = 'WL'
 GO_or_GS = 'GS'
 
-if probe == '3x2pt':
-    probe_lmax = 'XC'
-else:
-    probe_lmax = probe
+for probe in ['WL', 'GC']:
 
-if probe == 'WL':
-    ell_max = ell_max_WL
-else:
-    ell_max = ell_max_GC
+    if probe == '3x2pt':
+        probe_lmax = 'XC'
+    else:
+        probe_lmax = probe
 
-keys = [f'FM_{probe}_GO_lmax{probe_lmax}{ell_max}_nbl{nbl}',
+    if probe == 'WL':
+        ell_max = ell_max_WL
+    else:
+        ell_max = ell_max_GC
+
+    keys = [  # f'FM_{probe}_GO_lmax{probe_lmax}{ell_max}_nbl{nbl}',
         f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlconst',
-        f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlvar']
+        f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlvar',
+        f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_PyCCLKiDS1000',
+    ]
+
+    label_list = [  # f'GO',
+        f'{GO_or_GS} Rlconst',
+        f'{GO_or_GS} Rlvar',
+        f'{GO_or_GS} PyCCL',
+        f'% diff wrt mean, Rlconst vs PyCCL',
+        f'% diff wrt mean, Rlvar vs PyCCL']
+
+    data = []
+    for i, key in enumerate(keys):
+        uncert = np.asarray(mm.uncertainties_FM(FM_dict[key])[:nparams])
+        data.append(uncert)
+
+        fom[key] = mm.compute_FoM(FM_dict[key])
+
+    # compute percent diff of the cases chosen - careful of the indices!
+    diff_1 = mm.percent_diff_mean(data[-3], data[-1])
+    diff_2 = mm.percent_diff_mean(data[-2], data[-1])
+    data.append(diff_1)
+    data.append(diff_2)
+
+    data = np.asarray(data)
+
+    title = f'{probe}, ' '$\\ell_{max} = $' f'{ell_max}'
+
+    plot_utils.bar_plot_v2(data, title, label_list, bar_width=0.18)
+
+    plt.savefig(
+        job_path / f'output/plots/const_vs_var_rl/{probe}_ellmax{ell_max}_{GO_or_GS}_Rlconst_vs_Rlvar_vs_PyCCL.png')
 
 
-# data = np.zeros((1, nparams))
-data = []
-for i, key in enumerate(keys):
-    uncert = np.asarray(mm.uncertainties_FM(FM_dict[key])[:nparams])
-    data.append(uncert)
+# compute and print FoM
+probe = '3x2pt'
+probe_lmax = 'XC'
+print(mm.compute_FoM(FM_dict[f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlconst']))
+print(mm.compute_FoM(FM_dict[f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlvar']))
+print(mm.compute_FoM(FM_dict[f'FM_{probe}_GO_lmax{probe_lmax}{ell_max}_nbl{nbl}']))
 
-# compute percent diff of the cases chosen
-diff = mm.percent_diff_mean(data[1], data[2])
-data.append(diff)
 
-data = np.asarray(data)
 
-label_list = [f'GO',
-              f'{GO_or_GS} Rlconst',
-              f'{GO_or_GS} Rlvar',
-              f'% diff wrt mean, Rlconst vs Rlvar', ]
-
-title = f'{probe}, ' '$\\ell_{max} = $' f'{ell_max}'
-
-plot_utils.bar_plot_v2(data, title, label_list, bar_width=0.20)
-
-plt.savefig(job_path / f'output/plots/{probe}_ell_max{ell_max}_{GO_or_GS}_Rlconst_vs_Rlvar.png')
 
 

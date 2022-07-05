@@ -67,9 +67,9 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
         raise ValueError('cl_folder must be Cij_15gen, Cij_thesis or Cij_14may')
 
     # import responses
-    R_LL_import = np.genfromtxt(project_path_here / 'config/common_data/vincenzo/responses/rijllcorr-istf-alex.dat')
-    R_GL_import = np.genfromtxt(project_path_here / 'config/common_data/vincenzo/responses/rijglcorr-istf-alex.dat')
-    R_GG_import = np.genfromtxt(project_path_here / 'config/common_data/vincenzo/responses/rijggcorr-istf-alex.dat')
+    R_LL_import = np.genfromtxt(project_path_here / 'config/common_data/vincenzo/Pk_responses_2D/rijllcorr-istf-alex.dat')
+    R_GL_import = np.genfromtxt(project_path_here / 'config/common_data/vincenzo/Pk_responses_2D/rijglcorr-istf-alex.dat')
+    R_GG_import = np.genfromtxt(project_path_here / 'config/common_data/vincenzo/Pk_responses_2D/rijggcorr-istf-alex.dat')
 
     ###########################################################################
     # interpolate Vincenzo's Cls in ell values

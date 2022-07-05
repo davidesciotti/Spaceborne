@@ -241,7 +241,7 @@ k_min, k_max, k_num = 1e-5, 20, 800  # in [h/Mpc]?
 
 
 # ! options
-use_h_units = False
+use_h_units = True
 whos_PS = 'CLASS'
 Pk_kind = 'nonlinear'
 plot_Rmm = True
@@ -469,6 +469,7 @@ for zi, zval in enumerate(z_array_limber):
             for j in range(zbins):
                 # integrand[i, j, zi, ell_idx] = W_A[i, zi] * W_B[j, zi] * R1_mm_limb[zi, kli] * Pk_limb[zi, kli]
                 integrand[ell_idx, i, j, zi] = dV[zi] * W_LL_array[i, zi] * W_LL_array[j, zi] * R_of_ell_z * P_kl_z
+
 
 # plt.plot(z_array_limber, R1_mm_interp(kl, z_array_limber).T[0, :])
 

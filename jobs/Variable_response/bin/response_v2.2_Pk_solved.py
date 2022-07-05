@@ -359,7 +359,7 @@ k = k_classy
 dP_dk = np.gradient(Pnl, k, axis=1)
 
 dlogPk_dlogk = k / Pnl * dP_dk
-np.save('dlogPk_dlogk.npy', dlogPk_dlogk)
+np.save('../output/dlogPk_dlogk.npy', dlogPk_dlogk)
 np.save('k_dav.npy', k)
 np.save('z_dav.npy', z)
 

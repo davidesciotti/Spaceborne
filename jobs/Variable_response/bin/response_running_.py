@@ -13,8 +13,8 @@ from astropy.cosmology import w0waCDM
 import scipy.stats as stats
 from matplotlib.cm import get_cmap
 
-project_path = Path.cwd().parent.parent.parent.parent.parent
-job_path = Path.cwd().parent.parent.parent
+project_path = Path.cwd().parent.parent.parent
+job_path = Path.cwd().parent
 
 sys.path.append(str(project_path.parent / 'common_data/common_lib'))
 sys.path.append(str(project_path.parent / 'common_data/common_config'))
@@ -30,8 +30,6 @@ import mpl_cfg
 matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 markersize = ['lines.markersize']
-
-start_time = time.perf_counter()
 
 
 ###############################################################################
@@ -253,7 +251,7 @@ k_max_classy = 50
 use_h_units = True
 whos_PS = 'CLASS_clustertlkt'
 Pk_kind = 'nonlinear'
-plot_Rmm = False
+plot_Rmm = True
 PySSC_kernel_convention = True  # if True, normalize the IST WFs by r(z) ** 2
 save_Pk = False
 # ! options
@@ -280,7 +278,7 @@ else:
 # if use_h_units is False:
 #     k_max_G1 *= h
 #     k_fund *= h
-    # now there are in 1/Mpc
+# now there are in 1/Mpc
 
 
 # interpolate G1; attention: the function is G1_funct(z, k), while the array is G1[k, z]
@@ -297,21 +295,21 @@ cosmo.compute()
 
 # get k and P(k,z)
 if whos_PS in ['vincenzo', 'stefano']:
-    z_array, k_array, Pk = get_external_Pk(whos_Pk=whos_PS, Pk_kind=Pk_kind, use_h_units=use_h_units)
+    z_array, k_array, Pk = csmlib.get_external_Pk(whos_Pk=whos_PS, Pk_kind=Pk_kind, use_h_units=use_h_units)
 
 elif whos_PS == 'CLASS':
     z_array = np.linspace(z_min, z_max, z_num)
     k_array = np.logspace(np.log10(k_min), np.log10(k_max), k_num)  # this is in h/Mpc. The calculate_power function
     # takes care of the corerct h_units when computing Pk, but only returns Pk, so k_array has to be made consistent
     # by hand
-    Pk = calculate_power(cosmo, z_array, k_array, use_h_units=use_h_units, Pk_kind=Pk_kind)
+    Pk = csmlib.calculate_power(cosmo, z_array, k_array, use_h_units=use_h_units, Pk_kind=Pk_kind)
 
 elif whos_PS == 'CLASS_clustertlkt':
     z_array = np.linspace(z_min, z_max, z_num)
     k_array = np.logspace(np.log10(k_min), np.log10(k_max), k_num)  # this is in 1/Mpc. The Pk_with_classy_clustertlkt
     # function also returns k, rescaled or not
-    k_array, Pk = Pk_with_classy_clustertlkt(cosmo, z_array=z_array, k_array=k_array, use_h_units=use_h_units,
-                                             Pk_kind=Pk_kind)
+    k_array, Pk = csmlib.Pk_with_classy_clustertlkt(cosmo, z_array=z_array, k_array=k_array, use_h_units=use_h_units,
+                                                    Pk_kind=Pk_kind)
 
 else:
     raise ValueError('whos_PS must be either "vincenzo", "stefano", "CLASS" or "CLASS_clustertlkt"')
@@ -335,15 +333,11 @@ R1_mm_partial = 1 - 1 / 3 * k_array / Pk * dP_dk
 
 z_idx = 0
 plt.plot(k_array, R1_mm[z_idx, :], '.')
-plt.plot(k_array, G1_tot_funct(z_array, k_array, G1_funct, G1_extrap)[z_idx, :], '.', label = f'{use_h_units}')
+plt.plot(k_array, G1_tot_funct(z_array, k_array, G1_funct, G1_extrap)[z_idx, :], '.', label=f'{use_h_units}')
 plt.axvline(x=k_max_G1, color='k', ls='--', lw=1)
 
 plt.legend()
 plt.grid()
-
-
-
-
 
 # ...and plot it
 if plot_Rmm:
@@ -431,7 +425,7 @@ R1_mm_interp = interp2d(k_array, z_array, R1_mm, kind='linear')
 # import WF
 # ! these should be in Mpc ** -1 !! include a scaling below (after removing the z column)
 W_LL = np.genfromtxt(
-    '/Users/davide/Documents/Lavoro/Programmi/common_data/everyones_WF_from_Gdrive/davide/nz10000/gen2022/wil_dav_IA_IST_nz10000_bia2.17.txt')
+    project_path.parent / 'common_data/everyones_WF_from_Gdrive/davide/nz10000/gen2022/wil_dav_IA_IST_nz10000_bia2.17.txt')
 z_WF = W_LL[:, 0]
 W_LL = W_LL[:, 1:]  # resmove redshift column
 
@@ -551,27 +545,34 @@ for zi, zval in enumerate(z_array_limber):
 
 # plt.plot(z_array_limber, R1_mm_interp(kl, z_array_limber).T[0, :])
 
-
 # integrate over z with simpson's rule
 # ! is there a c/H0 factor in the integral?
-integral = simps(integrand, z_array_limber, axis=-1)
-
-# import Cl
-Cl_LL = np.load(job_path / 'output/cl_3D/C_LL_WLonly_3D.npy')
+R_LL = simps(integrand, z_array_limber, axis=-1)
 
 # finally, divide by Cl
-integral = integral / Cl_LL
+Cl_LL = np.load(job_path.parent / 'SSC_comparison/output/cl_3D/C_LL_WLonly_3D.npy')
+R_LL /= Cl_LL
+
+# test
+# import vincenzo
+R_LL_vinc = np.load(project_path / 'config/common_data/vincenzo/Pk_responses_2D/R_LL_WLonly_3D.npy')
 
 plt.figure()
 for i in range(zbins):
     j = i
-    plt.plot(ell_WL, integral[:, i, j], label='$R_\ell^{%i, %i}$' % (i, j))
+    plt.plot(ell_WL, R_LL[:, i, j])  # , label='$R_\ell^{%i, %i}$' % (i, j))
+    plt.plot(ell_WL, R_LL_vinc[:, i, j], '--')  # , label='$R_\ell^{%i, %i} vinc$' % (i, j))
     plt.legend()
+
 plt.xlabel('$\ell$')
 plt.ylabel('$R_\ell^{%i, %i}$' % (i, j))
 plt.grid()
 
 print('done')
+
+# np.save(job_path / 'output/R_LL_WLonly_3D.npy', R_LL)
+# np.save(job_path / 'output/R1_mm_kz.npy', R1_mm)
+
 
 # ! tests
 """

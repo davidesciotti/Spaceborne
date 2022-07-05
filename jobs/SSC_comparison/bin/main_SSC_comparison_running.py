@@ -61,83 +61,82 @@ assert np.array_equal(Sijkl, Sijkl_dav), 'Sijkl should be Sijkl_dav'
 ######################### FORECAST COMPUTATION ################################
 ###############################################################################
 
-for covariance_config['which_probe_response'] in ['constant', 'variable']:
-    for (general_config['ell_max_WL'], general_config['ell_max_GC']) in ((5000, 3000), (1500, 750)):
+for (general_config['ell_max_WL'], general_config['ell_max_GC']) in ((5000, 3000), (1500, 750)):
 
-        which_probe_response = covariance_config['which_probe_response']
-        # set the string, just for the file names
-        if which_probe_response == 'constant':
-            which_probe_response_str = 'const'
-        elif which_probe_response == 'variable':
-            which_probe_response_str = 'var'
-        else:
-            raise ValueError('which_probe_response must be either constant or variable')
-
-
-        # some variables used for I/O naming and to compute Sylvain's deltas
-        ell_max_WL = general_config['ell_max_WL']
-        ell_max_GC = general_config['ell_max_GC']
-        ell_max_XC = ell_max_GC
-        nbl = general_config['nbl']
-
-        # compute ell and delta ell values
-        ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_config)
-
-        nbl_WA = ell_dict['ell_WA'].shape[0]
-
-        # ! deltas are different for Sylvain! overwrite the standard delta_dict
-        delta_dict['delta_l_WL'] = mm.delta_l_Sylvain(nbl, 10 ** ell_dict['ell_WL'])
-        delta_dict['delta_l_GC'] = mm.delta_l_Sylvain(nbl, 10 ** ell_dict['ell_GC'])
-        delta_dict['delta_l_WA'] = mm.delta_l_Sylvain(nbl_WA, 10 ** ell_dict['ell_WA'])
-
-        # import and interpolate the cls
-        cl_dict_2D, Rl_dict_2D = Cl_utils.import_and_interpolate_cls(general_config, covariance_config, ell_dict)
-        # reshape them to 3D
-        cl_dict_3D, Rl_dict_3D = Cl_utils.reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D)
-
-        # compute covariance matrix
-        cov_dict = covmat_utils.compute_cov(general_config, covariance_config,
-                                            ell_dict, delta_dict, cl_dict_3D, Rl_dict_3D, Sijkl)
-        # compute Fisher Matrix
-        FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
-
-        # save:
-        if covariance_config['save_covariance']:
-            np.save(job_path / f'output/covmat/covmat_GO_WL_lmaxWL{ell_max_WL}_nbl{nbl}_2D.npy', cov_dict['cov_WL_GO_2D'])
-            np.save(job_path / f'output/covmat/covmat_GO_GC_lmaxGC{ell_max_GC}_nbl{nbl}_2D.npy', cov_dict['cov_GC_GO_2D'])
-            np.save(job_path / f'output/covmat/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl}_2D.npy', cov_dict['cov_3x2pt_GO_2D'])
-            np.save(job_path / f'output/covmat/covmat_GO_WA_lmaxWL{ell_max_WL}_nbl{nbl}_2D.npy', cov_dict['cov_WA_GO_2D'])
-
-            np.save(job_path / f'output/covmat/covmat_GS_WL_lmaxWL{ell_max_WL}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
-                    cov_dict['cov_WL_GS_2D'])
-            np.save(job_path / f'output/covmat/covmat_GS_GC_lmaxGC{ell_max_GC}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
-                    cov_dict['cov_GC_GS_2D'])
-            np.save(job_path / f'output/covmat/covmat_GS_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
-                    cov_dict['cov_3x2pt_GS_2D'])
-            np.save(job_path / f'output/covmat/covmat_GS_WA_lmaxWL{ell_max_WL}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
-                    cov_dict['cov_WA_GS_2D'])
-
-        if FM_config['save_FM']:
-            np.savetxt(job_path / f"output/FM/FM_WL_GO_lmaxWL{ell_max_WL}_nbl{nbl}.txt", FM_dict['FM_WL_GO'])
-            np.savetxt(job_path / f"output/FM/FM_GC_GO_lmaxGC{ell_max_GC}_nbl{nbl}.txt", FM_dict['FM_GC_GO'])
-            np.savetxt(job_path / f"output/FM/FM_3x2pt_GO_lmaxXC{ell_max_XC}_nbl{nbl}.txt", FM_dict['FM_3x2pt_GO'])
-
-            np.savetxt(job_path / f"output/FM/FM_WL_GS_lmaxWL{ell_max_WL}_nbl{nbl}_Rl{which_probe_response_str}.txt",
-                       FM_dict['FM_WL_GS'])
-            np.savetxt(job_path / f"output/FM/FM_GC_GS_lmaxGC{ell_max_GC}_nbl{nbl}_Rl{which_probe_response_str}.txt",
-                       FM_dict['FM_GC_GS'])
-            np.savetxt(job_path / f"output/FM/FM_3x2pt_GS_lmaxXC{ell_max_XC}_nbl{nbl}_Rl{which_probe_response_str}.txt",
-                       FM_dict['FM_3x2pt_GS'])
-
-        if FM_config['save_FM_as_dict']:
-            sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)
-
-        if general_config['save_cls']:
-            for key in cl_dict_3D.keys():
-                np.save(job_path / f"output/cl_3D/{key}.npy", cl_dict_3D[f'{key}'])
+    which_probe_response = covariance_config['which_probe_response']
+    # set the string, just for the file names
+    if which_probe_response == 'constant':
+        which_probe_response_str = 'const'
+    elif which_probe_response == 'variable':
+        which_probe_response_str = 'var'
+    else:
+        raise ValueError('which_probe_response must be either constant or variable')
 
 
-        # test
-        unit_test.FM_check(general_config, FM_dict)
+    # some variables used for I/O naming and to compute Sylvain's deltas
+    ell_max_WL = general_config['ell_max_WL']
+    ell_max_GC = general_config['ell_max_GC']
+    ell_max_XC = ell_max_GC
+    nbl = general_config['nbl']
+
+    # compute ell and delta ell values
+    ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_config)
+
+    nbl_WA = ell_dict['ell_WA'].shape[0]
+
+    # ! deltas are different for Sylvain! overwrite the standard delta_dict
+    delta_dict['delta_l_WL'] = mm.delta_l_Sylvain(nbl, 10 ** ell_dict['ell_WL'])
+    delta_dict['delta_l_GC'] = mm.delta_l_Sylvain(nbl, 10 ** ell_dict['ell_GC'])
+    delta_dict['delta_l_WA'] = mm.delta_l_Sylvain(nbl_WA, 10 ** ell_dict['ell_WA'])
+
+    # import and interpolate the cls
+    cl_dict_2D, Rl_dict_2D = Cl_utils.import_and_interpolate_cls(general_config, covariance_config, ell_dict)
+    # reshape them to 3D
+    cl_dict_3D, Rl_dict_3D = Cl_utils.reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D)
+
+    # compute covariance matrix
+    cov_dict = covmat_utils.compute_cov(general_config, covariance_config,
+                                        ell_dict, delta_dict, cl_dict_3D, Rl_dict_3D, Sijkl)
+    # compute Fisher Matrix
+    FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
+
+    # save:
+    if covariance_config['save_covariance']:
+        np.save(job_path / f'output/covmat/covmat_GO_WL_lmaxWL{ell_max_WL}_nbl{nbl}_2D.npy', cov_dict['cov_WL_GO_2D'])
+        np.save(job_path / f'output/covmat/covmat_GO_GC_lmaxGC{ell_max_GC}_nbl{nbl}_2D.npy', cov_dict['cov_GC_GO_2D'])
+        np.save(job_path / f'output/covmat/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl}_2D.npy', cov_dict['cov_3x2pt_GO_2D'])
+        np.save(job_path / f'output/covmat/covmat_GO_WA_lmaxWL{ell_max_WL}_nbl{nbl}_2D.npy', cov_dict['cov_WA_GO_2D'])
+
+        np.save(job_path / f'output/covmat/covmat_GS_WL_lmaxWL{ell_max_WL}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
+                cov_dict['cov_WL_GS_2D'])
+        np.save(job_path / f'output/covmat/covmat_GS_GC_lmaxGC{ell_max_GC}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
+                cov_dict['cov_GC_GS_2D'])
+        np.save(job_path / f'output/covmat/covmat_GS_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
+                cov_dict['cov_3x2pt_GS_2D'])
+        np.save(job_path / f'output/covmat/covmat_GS_WA_lmaxWL{ell_max_WL}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
+                cov_dict['cov_WA_GS_2D'])
+
+    if FM_config['save_FM']:
+        np.savetxt(job_path / f"output/FM/FM_WL_GO_lmaxWL{ell_max_WL}_nbl{nbl}.txt", FM_dict['FM_WL_GO'])
+        np.savetxt(job_path / f"output/FM/FM_GC_GO_lmaxGC{ell_max_GC}_nbl{nbl}.txt", FM_dict['FM_GC_GO'])
+        np.savetxt(job_path / f"output/FM/FM_3x2pt_GO_lmaxXC{ell_max_XC}_nbl{nbl}.txt", FM_dict['FM_3x2pt_GO'])
+
+        np.savetxt(job_path / f"output/FM/FM_WL_GS_lmaxWL{ell_max_WL}_nbl{nbl}_Rl{which_probe_response_str}.txt",
+                   FM_dict['FM_WL_GS'])
+        np.savetxt(job_path / f"output/FM/FM_GC_GS_lmaxGC{ell_max_GC}_nbl{nbl}_Rl{which_probe_response_str}.txt",
+                   FM_dict['FM_GC_GS'])
+        np.savetxt(job_path / f"output/FM/FM_3x2pt_GS_lmaxXC{ell_max_XC}_nbl{nbl}_Rl{which_probe_response_str}.txt",
+                   FM_dict['FM_3x2pt_GS'])
+
+    if FM_config['save_FM_as_dict']:
+        sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)
+
+    if general_config['save_cls']:
+        for key in cl_dict_3D.keys():
+            np.save(job_path / f"output/cl_3D/{key}.npy", cl_dict_3D[f'{key}'])
+
+
+    # test
+    unit_test.FM_check(general_config, FM_dict)
 
 print('done')

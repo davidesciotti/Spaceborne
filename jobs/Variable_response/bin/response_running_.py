@@ -202,6 +202,44 @@ def get_external_Pk(whos_Pk='vincenzo', Pk_kind='nonlinear', use_h_units=True):
 
     return z_array, k_array, Pk
 
+
+# ! quad with PySSC cl formula
+def dV_func(z):
+    zofr = cosmo_classy.z_of_r([z])
+    comov_dist = zofr[0] * r_scale  # Comoving distance r(z)
+    dr_dz = (1 / zofr[1]) * r_scale  # Derivative dr/dz
+
+    # it should be
+    dV = comov_dist ** 2 * dr_dz
+    return dV[0]
+
+
+def integrand(z, ell, i, j):
+    kl = kl_wrap(ell=ell, z=z)
+    return dV_func(z) * W_LL_ISTF_interp(z)[i] * W_LL_ISTF_interp(z)[j] * R1_mm_interp(kl, z)[0] * Pk_wrap(kl, z=z)
+
+
+def R_LL_quad(ell, i, j):
+    return quad(integrand, z_array_limber[0], z_array_limber[-1], args=(ell, i, j))[0]
+
+
+# ! quad with ISTF cl formula - tested for the cls, should be fine!
+def cl_integrand_v0(z, wf_A, wf_B, i, j, ell):
+    return (wf_A(z)[i] * wf_B(z)[j]) / (csmlib.E(z) * csmlib.r(z) ** 2) * \
+           R1_mm_interp(kl_wrap(ell, z), z)[0] * Pk_wrap(kl_wrap(ell, z), z)
+
+# use_h_units version
+def cl_integrand(z, wf_A, wf_B, i, j, ell):
+    return (wf_A(z)[i] * wf_B(z)[j]) / (csmlib.E(z) *
+                                        csmlib.astropy_comoving_distance(z, use_h_units=use_h_units) ** 2) * \
+           R1_mm_interp(kl_wrap(ell, z), z)[0] * Pk_wrap(kl_wrap(ell, z), z)
+
+
+def cl_integral(wf_A, wf_B, i, j, ell):
+    return c / H0 * quad(cl_integrand, z_array_limber[0], z_array_limber[-1], args=(wf_A, wf_B, i, j, ell))[0]
+
+
+
 ###############################################################################
 ###############################################################################
 ###############################################################################
@@ -242,13 +280,16 @@ k_min, k_max, k_num = 1e-5, 20, 800
 k_max_classy = 50
 
 # ! options
-use_h_units = True
+use_h_units = False
 whos_PS = 'vincenzo'
 Pk_kind = 'nonlinear'
 plot_Rmm = False
-PySSC_kernel_convention = True  # if True, normalize the IST WFs by r(z) ** 2
 save_Pk = False
+quad_integration = True
+cl_formula = 'PySSC'
+whos_WF = 'marco'
 # ! options
+
 
 # for whos_PS in ['stefano', 'vincenzo', 'CLASS', 'CLASS_clustertlkt']:
 # for use_h_units in [True, False]:
@@ -257,7 +298,7 @@ save_Pk = False
 # to compute (but not necessarily to use!), and one should of course say which units he's using
 cosmo_par_dict['P_k_max_h/Mpc'] = k_max_classy
 
-# note: 'use_h_units' means whether or not I want everything h units. This means that e.g. if use_h_units is True,
+# note: 'use_h_units' means whether I want everything h units or not. This means that e.g. if use_h_units is True,
 # what already is in h units should be left untouched, and what is not should be converted. so the scaling is not
 # universal, but depends on which unit is being used for the element in question.
 if use_h_units:
@@ -266,7 +307,6 @@ if use_h_units:
 else:
     x_label = '$k \\, [1/Mpc]$'
     k_scale, r_scale = 1., 1.
-
 
 # rescale - I do not scale G1 since it is only used for the interpolation below, and in the original table is in h/Mpc
 # if use_h_units is False:
@@ -370,7 +410,7 @@ Om0 = Oc0 + Ob0
 Ode0 = 1 - Om0
 
 # instantiate cosmo object from astropy
-cosmo_astropy = w0waCDM(H0=h * 100, Om0=Om0, Ode0=Ode0, w0=-1.0, wa=0.0, Neff=3.04, m_nu=0.06, Ob0=Ob0)
+cosmo_astropy = w0waCDM(H0=H0, Om0=Om0, Ode0=Ode0, w0=-1.0, wa=0.0, Neff=3.04, m_nu=0.06, Ob0=Ob0)
 
 # set the parameters, the functions wants a dict as input
 nbl = cfg.nbl
@@ -416,7 +456,6 @@ def kl_wrap(ell, z, use_h_units=use_h_units):
 z_array_limber = z_array[5:]  # ! this has been found by hand, fix this!
 
 # compute R1(k_ell, z)
-
 # 1. the easy way: interpolate and fill
 
 R1_mm_interp = interp2d(k_array, z_array, R1_mm, kind='linear')
@@ -426,38 +465,47 @@ R1_mm_interp = interp2d(k_array, z_array, R1_mm, kind='linear')
 
 # import WF
 # ! these should be in Mpc ** -1 !! include a scaling below (after removing the z column)
-W_LL = np.genfromtxt(
-    project_path.parent / 'common_data/everyones_WF_from_Gdrive/davide/nz10000/gen2022/wil_dav_IA_IST_nz10000_bia2.17.txt')
-z_WF = W_LL[:, 0]
-W_LL = W_LL[:, 1:]  # resmove redshift column
+if whos_WF == 'davide':
+    W_LL_ISTF = np.genfromtxt(
+        project_path.parent / 'common_data/everyones_WF_from_Gdrive/davide/nz10000/gen2022/wil_dav_IA_IST_nz10000_bia2.17.txt')
+elif whos_WF == 'marco':
+    W_LL_ISTF = np.load(
+        project_path.parent / 'common_data/everyones_WF_from_Gdrive/marco/wil_mar_bia2.17_IST_nz10000.npy')
+else:
+    raise ValueError('whos_WF must be either "davide" or "marco"')
+
+z_WF = W_LL_ISTF[:, 0]
+W_LL_ISTF = W_LL_ISTF[:, 1:]  # resmove redshift column
 
 # convert to h/Mpc if h_units is True, else leave it as it is
 if use_h_units:
-    W_LL /= h
+    W_LL_ISTF /= h
 
 # normalize by r(z)**2 to translate them into PySSC convention:
-if PySSC_kernel_convention:
-    my_r_of_z = csmlib.astropy_comoving_distance(z_WF, use_h_units=use_h_units, cosmo_astropy=cosmo_astropy)
-    W_LL /= np.repeat(my_r_of_z[:, None], zbins, axis=1) ** 2
-
+my_r_of_z = csmlib.astropy_comoving_distance(z_WF, use_h_units=use_h_units, cosmo_astropy=cosmo_astropy)
+W_LL_PySSC = W_LL_ISTF / np.repeat(my_r_of_z[:, None], zbins, axis=1) ** 2
 
 # interpolate WF
-W_interp = interp1d(z_WF, W_LL, kind='linear', axis=0)
-W_LL_array = W_interp(z_array_limber).T
-
-# ! tests
-my_r_of_z = csmlib.astropy_comoving_distance(z_array_limber, use_h_units=use_h_units, cosmo_astropy=cosmo_astropy)
+W_LL_ISTF_interp = interp1d(z_WF, W_LL_ISTF, kind='linear', axis=0)
+W_LL_PySSC_interp = interp1d(z_WF, W_LL_PySSC, kind='linear', axis=0)
+W_LL_ISTF_array = W_LL_ISTF_interp(z_array_limber).T
+W_LL_PySSC_array = W_LL_PySSC_interp(z_array_limber).T
 
 # r(z) and dr/dz in Mpc. The scaling by h is implemented below.
 zofr = cosmo_classy.z_of_r(z_array_limber)
+# * the following have been tested against csmlib.astropy_comoving_distance and
+# * np.gradient(csmlib.astropy_comoving_distance, z_array_limber), respectively; the h scaling works as well
 comov_dist = zofr[0] * r_scale  # Comoving distance r(z)
 dr_dz = (1 / zofr[1]) * r_scale  # Derivative dr/dz
 
 # it should be
 dV = comov_dist ** 2 * dr_dz
 
+# this is to project Rl with ISTF formula
+Hz_arr = csmlib.H(z_array_limber, cosmo_astropy=cosmo_astropy)
+
+
 # TODO check again all the r_scale, k_scale and h scalings in general, I altready found 3 mistakes
-# TODO does k_limber function return kl in the correct units?
 # TODO recover plateau from before?
 
 # # ! test k limber and stuff
@@ -488,108 +536,73 @@ plt.plot(ell_LL, R_of_ell_z[z_idx, :], label=f'R_of_ell_z vs ell, {use_h_units}'
 # plt.plot(z_array_limber, kl_arr[:, ell_idx], label=f'kl_val vs z, {use_h_units}')
 plt.legend()
 """
-# ! test k limber and stuff
 
 
-# plt.plot(z_array_limber, my_r_of_z, label='my_r_of_z')
-# plt.plot(z_array_limber, comov_dist, '--', label='comov_dist')
-# plt.plot(z_array_limber, np.gradient(comov_dist), label='np.gradient(zofr)')
-# plt.plot(z_array_limber, zofr[1], label='dz_dr?')
-# plt.plot(z_array_limber, np.gradient(comov_dist) / dr_dz, label='dcomov_dist')  # equal up to a factor!!
-# plt.legend()
+if quad_integration and cl_formula == 'PySSC':
+    print('quad integration started')
+    start = time.perf_counter()
+    R_LL_quad_arr = np.zeros((nbl, zbins, zbins))
+    for ell_idx, ellval in enumerate(ell_LL):
+        for i in range(zbins):
+            for j in range(zbins):
+                R_LL_quad_arr[ell_idx, i, j] = R_LL_quad(ellval, i, j)
+    print('quad integration done in ', time.perf_counter() - start, ' seconds')
 
-# ! end tests
+if quad_integration and cl_formula == 'ISTF':
+    print('quad integration started')
+    start = time.perf_counter()
+    R_LL_quad_arr = np.zeros((nbl, zbins, zbins))
+    for ell_idx, ellval in enumerate(ell_LL):
+        for i in range(zbins):
+            for j in range(zbins):
+                R_LL_quad_arr[ell_idx, i, j] = cl_integral(W_LL_ISTF_interp, W_LL_ISTF_interp, i, j, ellval)
+    print('quad integration done in ', time.perf_counter() - start, ' seconds')
 
-# ! test Pk for h_units consistency, AGAIN
-#
-# for use_h_units in [True, False]:
-#     z_test = 0.05
-#     kl_test = [kl_wrap(ell=ell_val, z=z_test, use_h_units=use_h_units) for ell_val in ell_LL]
-#     Pk_test = [Pk_wrap(k_ell=kl_wrap(ell=ell_val, z=z_test, use_h_units=use_h_units), z=z_test, use_h_units=use_h_units) for ell_val in ell_LL]
-#
-#     P_kl_z_list = []
-#     kl_list = []
-#     for ell in ell_LL:
-#
-#         kl = kl_wrap(ell=ell, z=z_test, use_h_units=use_h_units)  # returns in h_units if use_h_units is True
-#
-#         if use_h_units:
-#             kl *= h
-#
-#         kl, P_kl_z = Pk_with_classy_clustertlkt(cosmo_classy, z_test, kl, use_h_units, Pk_kind='nonlinear',
-#                                                 argument_type='scalar')
-#
-#         kl_list.append(kl)
-#         P_kl_z_list.append(P_kl_z)
-#
-#     plt.plot(kl_list, P_kl_z_list, label='P_kl_z_list')
-#     plt.plot(kl_test, Pk_test, '--', label='Pk_test')
-#     plt.xscale("log")
-#     plt.yscale("log")
-#
+# TODO interpolate n_i(z) in 1D as done here for the WF! much smarter
 
-
-
-
-
-# now project the responses
 integrand = np.zeros((nbl, zbins, zbins, z_array_limber.size))
-start_time = time.time()
-# for zi, zval in enumerate(z_array_limber):
-#     for ell_idx, ell_val in enumerate(ell_LL):
-#
-#         # evaluate kl, R1mm(kl, z) and P(kl, z)
-#
-#         # k_limber should already be in the correct units, from the cosmo_astropy call
-#         kl = k_limber(zval, ell_val, cosmo_astropy=cosmo_astropy, use_h_units=use_h_units)
-#
-#         R_of_ell_z = R1_mm_interp(kl, zval)[0]
-#         P_kl_z = calculate_power(cosmo, zval, kl, use_h_units=use_h_units, Pk_kind=Pk_kind,
-#                                  argument_type='scalar')
-#
-#         for i in range(zbins):
-#             for j in range(zbins):
-#                 # integrand[i, j, zi, ell_idx] = W_A[i, zi] * W_B[j, zi] * R1_mm_limb[zi, kli] * Pk_limb[zi, kli]
-#                 integrand[ell_idx, i, j, zi] = dV[zi] * W_LL_array[i, zi] * W_LL_array[j, zi] * R_of_ell_z * P_kl_z
-
-
-# integrand = np.zeros((nbl, zbins, zbins, z_array_limber.size))
 for zi, zval in enumerate(z_array_limber):
     for ell_idx, ell_val in enumerate(ell_LL):
 
-        # evaluate kl, R1mm(kl, z) and P(kl, z)
-
-        # k_limber should already be in the correct units, from the cosmo_astropy call
         kl = kl_wrap(ell=ell_val, z=zval)
-
         P_kl_z = Pk_wrap(k_ell=kl, z=zval)
-
-        """        
-        # Pk_with_classy_clustertlkt wants in input k in 1/Mpc; so, if I'm using h units, transform kl to 1/Mpc
-        # ! this is assuming that the k_limber function returns kl in the correct units
-        if use_h_units:
-            kl *= h
-
-        kl, P_kl_z = Pk_with_classy_clustertlkt(cosmo_classy, zval, kl, use_h_units, Pk_kind='nonlinear',
-                                                argument_type='scalar')
-        """
-
         R_of_ell_z = R1_mm_interp(kl, zval)[0]
 
-        for i in range(zbins):
-            for j in range(zbins):
-                # integrand[i, j, zi, ell_idx] = W_A[i, zi] * W_B[j, zi] * R1_mm_limb[zi, kli] * Pk_limb[zi, kli]
-                integrand[ell_idx, i, j, zi] = dV[zi] * W_LL_array[i, zi] * W_LL_array[j, zi] * R_of_ell_z * P_kl_z
+        if cl_formula == 'PySSC':
+            for i in range(zbins):
+                for j in range(zbins):
+                    integrand[ell_idx, i, j, zi] = dV[zi] * W_LL_PySSC_array[i, zi] * W_LL_PySSC_array[j, zi] * \
+                                                   R_of_ell_z * P_kl_z
 
+        # ! does not work
+        elif cl_formula == 'ISTF':
+            for i in range(zbins):
+                for j in range(zbins):
+                    integrand[ell_idx, i, j, zi] = (W_LL_ISTF_array[i, zi] * W_LL_ISTF_array[j, zi]) / \
+                                                   (Hz_arr[zi] * comov_dist[zi]) * R_of_ell_z * P_kl_z
+        else:
+            raise ValueError('cl_formula not recognized')
+
+
+# ! some tests on R(k_limber)
+ell_test = ell_LL[0]
+z_test = z_array_limber[0]
+R1_mm_interp_arr_test = [R1_mm_interp(kl_wrap(ell, z_test), z_array_limber) for ell in ell_LL]
+R1_mm_orig_arr_test = R1_mm[5, :]
 # plt.plot(z_array_limber, R1_mm_interp(kl, z_array_limber).T[0, :])
+plt.plot(k_array, R1_mm[5, :], label='R1_mm[5, :]')
+plt.plot(ell_LL, R1_mm_interp_arr_test, label='R1_mm_interp_arr_test')
+
 
 # integrate over z with simpson's rule
-# ! is there a c/H0 factor in the integral?
+# ! is there a c/H0 factor in the integral? I don't think so...
 R_LL = simps(integrand, z_array_limber, axis=-1)
 
 # finally, divide by Cl
 Cl_LL = np.load(job_path.parent / 'SSC_comparison/output/cl_3D/C_LL_WLonly_3D.npy')
 R_LL /= Cl_LL
+if quad_integration:
+    R_LL_quad_arr /= Cl_LL
 
 # test
 # import vincenzo
@@ -600,10 +613,14 @@ for i in range(zbins):
     j = i
     plt.plot(ell_LL, R_LL[:, i, j])  # , label='$R_\ell^{%i, %i}$' % (i, j))
     plt.plot(ell_LL, R_LL_vinc[:, i, j], '--')  # , label='$R_\ell^{%i, %i} vinc$' % (i, j))
+    if quad_integration:
+        plt.plot(ell_LL, R_LL_quad_arr[:, i, j], '.')  # , label='$R_\ell^{%i, %i}$' % (i, j))
     # plt.legend()
 
+plt.title(f'use_h_units = {use_h_units}, cl_formula = {cl_formula}')
 plt.xlabel('$\ell$')
-plt.ylabel('$R_\ell^{%i, %i}$' % (i, j))
+plt.ylabel('$R_\ell^{i, i}$')
+plt.xscale("log")
 plt.grid()
 
 print('done')

@@ -241,7 +241,7 @@ k_min, k_max, k_num = 1e-5, 20, 800  # in [h/Mpc]?
 
 
 # ! options
-use_h_units = False
+use_h_units = True
 whos_PS = 'CLASS'
 Pk_kind = 'nonlinear'
 plot_Rmm = True

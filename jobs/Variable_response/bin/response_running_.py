@@ -107,6 +107,8 @@ def Pk_with_classy_clustertlkt(cosmo, z_array, k_array, use_h_units, Pk_kind='no
         Pk = np.zeros((len(z_array), num_k))
         for z_idx, z_val in enumerate(z_array):
             Pk[z_idx, :] = np.array([classy_Pk(ki, z_val) for ki in k_array])
+    else:
+        raise ValueError('argument_type must be either "scalar" or "arrays"')
 
     # NOTE: You will need to convert these to h/Mpc and (Mpc/h)^3
     # to use in the toolkit. To do this you would do:
@@ -200,22 +202,6 @@ def get_external_Pk(whos_Pk='vincenzo', Pk_kind='nonlinear', use_h_units=True):
 
     return z_array, k_array, Pk
 
-
-def k_limber(z, ell, cosmo_astropy, use_h_units):
-    # astropy gives values in Mpc, so I call astropy_comoving_distance to have the correct values in both cases (h units
-    # or not)
-    comoving_distance = astropy_comoving_distance(z, cosmo_astropy, use_h_units)
-    k_ell = (ell + 0.5) / comoving_distance
-    return k_ell
-
-
-def astropy_comoving_distance(z, cosmo_astropy, use_h_units):
-    if use_h_units:
-        return cosmo_astropy.comoving_distance(z).value * h  # Mpc/h
-    else:
-        return cosmo_astropy.comoving_distance(z).value  # Mpc
-
-
 ###############################################################################
 ###############################################################################
 ###############################################################################
@@ -259,7 +245,7 @@ k_max_classy = 50
 use_h_units = True
 whos_PS = 'vincenzo'
 Pk_kind = 'nonlinear'
-plot_Rmm = True
+plot_Rmm = False
 PySSC_kernel_convention = True  # if True, normalize the IST WFs by r(z) ** 2
 save_Pk = False
 # ! options
@@ -281,7 +267,7 @@ else:
     x_label = '$k \\, [1/Mpc]$'
     k_scale, r_scale = 1., 1.
 
-#
+
 # rescale - I do not scale G1 since it is only used for the interpolation below, and in the original table is in h/Mpc
 # if use_h_units is False:
 #     k_max_G1 *= h
@@ -297,9 +283,9 @@ G1_funct = interp2d(x=z_G1, y=k_G1, z=G1, kind='linear')
 assert Pk_kind == 'nonlinear', 'Pk_kind must be "nonlinear"'
 
 # instantiate and initialize Class object
-cosmo = Class()
-cosmo.set(cosmo_par_dict)
-cosmo.compute()
+cosmo_classy = Class()
+cosmo_classy.set(cosmo_par_dict)
+cosmo_classy.compute()
 
 # get k and P(k,z)
 if whos_PS in ['vincenzo', 'stefano']:
@@ -310,13 +296,15 @@ elif whos_PS == 'CLASS':
     k_array = np.logspace(np.log10(k_min), np.log10(k_max), k_num)  # this is in h/Mpc. The calculate_power function
     # takes care of the corerct h_units when computing Pk, but only returns Pk, so k_array has to be made consistent
     # by hand
-    Pk = csmlib.calculate_power(cosmo=cosmo, z_array=z_array, k_array=k_array, use_h_units=use_h_units, Pk_kind=Pk_kind)
+    Pk = csmlib.calculate_power(cosmo=cosmo_classy, z_array=z_array, k_array=k_array, use_h_units=use_h_units,
+                                Pk_kind=Pk_kind)
 
 elif whos_PS == 'CLASS_clustertlkt':
     z_array = np.linspace(z_min, z_max, z_num)
     k_array = np.logspace(np.log10(k_min), np.log10(k_max), k_num)  # this is in 1/Mpc. The Pk_with_classy_clustertlkt
     # function also returns k, rescaled or not
-    k_array, Pk = csmlib.Pk_with_classy_clustertlkt(cosmo, z_array=z_array, k_array=k_array, use_h_units=use_h_units,
+    k_array, Pk = csmlib.Pk_with_classy_clustertlkt(cosmo=cosmo_classy, z_array=z_array, k_array=k_array,
+                                                    use_h_units=use_h_units,
                                                     Pk_kind=Pk_kind)
 
 else:
@@ -360,8 +348,8 @@ if plot_Rmm:
 
     # plt.figure()<<
     # the colors are chosen by calling the ScalarMappable that was initialised with c_m and norm
-    for z_idx, z_val in enumerate(z_reduced):
-        plt.plot(k_array, R1_mm[z_idx, :], color=cmap(norm(z_val)), lw=lw)
+    for z_idx, zval in enumerate(z_reduced):
+        plt.plot(k_array, R1_mm[z_idx, :], color=cmap(norm(zval)), lw=lw)
 
     plt.colorbar(s_m)
     plt.xscale('log')
@@ -384,10 +372,10 @@ Ode0 = 1 - Om0
 # instantiate cosmo object from astropy
 cosmo_astropy = w0waCDM(H0=h * 100, Om0=Om0, Ode0=Ode0, w0=-1.0, wa=0.0, Neff=3.04, m_nu=0.06, Ob0=Ob0)
 
-
 # set the parameters, the functions wants a dict as input
+nbl = cfg.nbl
 ell_cfg_dict_WL = {
-    'nbl': cfg.nbl,
+    'nbl': nbl,
     'ell_min': cfg.ell_min,
     'ell_max': cfg.ell_max_WL,
 }
@@ -401,6 +389,7 @@ ell_LL, _ = ell_utils.ISTF_ells(ell_cfg_dict_WL)
 ell_GG, _ = ell_utils.ISTF_ells(ell_cfg_dict_GC)
 ell_LG = ell_GG.copy()
 
+
 # # fill k_limber array with meshgrid
 # zz, ll = np.meshgrid(z_array, ell_WL)
 # kl_array_mesh = k_limber(zz, ell=ll, cosmo_astropy=cosmo_astropy, use_h_units=use_h_units)
@@ -412,20 +401,24 @@ ell_LG = ell_GG.copy()
 #     kl_array_manual[ell_idx, :] = k_limber(z_array, ell=ellval, cosmo_astropy=cosmo_astropy, use_h_units=use_h_units)
 
 
+def Pk_wrap(k_ell, z, cosmo_classy=cosmo_classy, use_h_units=use_h_units, Pk_kind='nonlinear', argument_type='scalar'):
+    """just a wrapper function to set some args to default values"""
+    return csmlib.calculate_power(cosmo_classy, z, k_ell, use_h_units=use_h_units,
+                                  Pk_kind=Pk_kind, argument_type=argument_type)
+
+
+def kl_wrap(ell, z, use_h_units=use_h_units):
+    """another simpe wrapper function, so as not to have to rewrite use_h_units=use_h_units"""
+    return csmlib.k_limber(ell, z, use_h_units=use_h_units)
+
+
 # at low redshift and high ells, k_limber explodes: cut the z range
 z_array_limber = z_array[5:]  # ! this has been found by hand, fix this!
-
-ell_test = ell_LL[10]
-kl = k_limber(z_array_limber, ell=ell_test, cosmo_astropy=cosmo_astropy, use_h_units=use_h_units)
-
-# compute P(k_ell, z)
-Pk = calculate_power(cosmo, z_array_limber, kl, use_h_units=use_h_units, Pk_kind=Pk_kind)
-
-
 
 # compute R1(k_ell, z)
 
 # 1. the easy way: interpolate and fill
+
 R1_mm_interp = interp2d(k_array, z_array, R1_mm, kind='linear')
 
 # 2. TODO the hard way: construct R1_mm function and evaluate it in kl, z
@@ -444,18 +437,19 @@ if use_h_units:
 
 # normalize by r(z)**2 to translate them into PySSC convention:
 if PySSC_kernel_convention:
-    my_r_of_z = astropy_comoving_distance(z_WF, cosmo_astropy, use_h_units=use_h_units)
+    my_r_of_z = csmlib.astropy_comoving_distance(z_WF, use_h_units=use_h_units, cosmo_astropy=cosmo_astropy)
     W_LL /= np.repeat(my_r_of_z[:, None], zbins, axis=1) ** 2
+
 
 # interpolate WF
 W_interp = interp1d(z_WF, W_LL, kind='linear', axis=0)
 W_LL_array = W_interp(z_array_limber).T
 
 # ! tests
-my_r_of_z = astropy_comoving_distance(z_array_limber, cosmo_astropy, use_h_units=use_h_units)
+my_r_of_z = csmlib.astropy_comoving_distance(z_array_limber, use_h_units=use_h_units, cosmo_astropy=cosmo_astropy)
 
 # r(z) and dr/dz in Mpc. The scaling by h is implemented below.
-zofr = cosmo.z_of_r(z_array_limber)
+zofr = cosmo_classy.z_of_r(z_array_limber)
 comov_dist = zofr[0] * r_scale  # Comoving distance r(z)
 dr_dz = (1 / zofr[1]) * r_scale  # Derivative dr/dz
 
@@ -506,6 +500,38 @@ plt.legend()
 
 # ! end tests
 
+# ! test Pk for h_units consistency, AGAIN
+#
+# for use_h_units in [True, False]:
+#     z_test = 0.05
+#     kl_test = [kl_wrap(ell=ell_val, z=z_test, use_h_units=use_h_units) for ell_val in ell_LL]
+#     Pk_test = [Pk_wrap(k_ell=kl_wrap(ell=ell_val, z=z_test, use_h_units=use_h_units), z=z_test, use_h_units=use_h_units) for ell_val in ell_LL]
+#
+#     P_kl_z_list = []
+#     kl_list = []
+#     for ell in ell_LL:
+#
+#         kl = kl_wrap(ell=ell, z=z_test, use_h_units=use_h_units)  # returns in h_units if use_h_units is True
+#
+#         if use_h_units:
+#             kl *= h
+#
+#         kl, P_kl_z = Pk_with_classy_clustertlkt(cosmo_classy, z_test, kl, use_h_units, Pk_kind='nonlinear',
+#                                                 argument_type='scalar')
+#
+#         kl_list.append(kl)
+#         P_kl_z_list.append(P_kl_z)
+#
+#     plt.plot(kl_list, P_kl_z_list, label='P_kl_z_list')
+#     plt.plot(kl_test, Pk_test, '--', label='Pk_test')
+#     plt.xscale("log")
+#     plt.yscale("log")
+#
+
+
+
+
+
 # now project the responses
 integrand = np.zeros((nbl, zbins, zbins, z_array_limber.size))
 start_time = time.time()
@@ -528,22 +554,25 @@ start_time = time.time()
 
 
 # integrand = np.zeros((nbl, zbins, zbins, z_array_limber.size))
-start_time = time.time()
 for zi, zval in enumerate(z_array_limber):
     for ell_idx, ell_val in enumerate(ell_LL):
 
         # evaluate kl, R1mm(kl, z) and P(kl, z)
 
         # k_limber should already be in the correct units, from the cosmo_astropy call
-        kl = k_limber(zval, ell_val, cosmo_astropy=cosmo_astropy, use_h_units=use_h_units)
+        kl = kl_wrap(ell=ell_val, z=zval)
 
+        P_kl_z = Pk_wrap(k_ell=kl, z=zval)
+
+        """        
         # Pk_with_classy_clustertlkt wants in input k in 1/Mpc; so, if I'm using h units, transform kl to 1/Mpc
         # ! this is assuming that the k_limber function returns kl in the correct units
         if use_h_units:
             kl *= h
 
-        kl, P_kl_z = Pk_with_classy_clustertlkt(cosmo, zval, kl, use_h_units, Pk_kind='nonlinear',
+        kl, P_kl_z = Pk_with_classy_clustertlkt(cosmo_classy, zval, kl, use_h_units, Pk_kind='nonlinear',
                                                 argument_type='scalar')
+        """
 
         R_of_ell_z = R1_mm_interp(kl, zval)[0]
 

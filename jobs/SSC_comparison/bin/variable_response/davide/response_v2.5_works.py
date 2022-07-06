@@ -241,7 +241,7 @@ k_min, k_max, k_num = 1e-5, 20, 800  # in [h/Mpc]?
 
 
 # ! options
-use_h_units = True
+use_h_units = False
 whos_PS = 'CLASS'
 Pk_kind = 'nonlinear'
 plot_Rmm = True
@@ -476,21 +476,21 @@ for zi, zval in enumerate(z_array_limber):
 
 # integrate over z with simpson's rule
 # ! is there a c/H0 factor in the integral?
-integral = simps(integrand, z_array_limber, axis=-1)
+R_LL = simps(integrand, z_array_limber, axis=-1)
 
 # import Cl
 Cl_LL = np.load(job_path / 'output/cl_3D/C_LL_WLonly_3D.npy')
 
 # finally, divide by Cl
-integral = integral / Cl_LL
+R_LL = R_LL / Cl_LL
 
 plt.figure()
-i = 5
-j = 5
-plt.plot(ell_WL, integral[:, i, j], label='$R_\ell^{%i, %i}$' % (i, j))
+for i in range(zbins):
+    plt.plot(ell_WL, R_LL[:, i, i], label='$R_\ell^{%i, %i}$' % (i, j))
 plt.legend()
 plt.xlabel('$\ell$')
 plt.ylabel('$R_\ell^{%i, %i}$' % (i, j))
 plt.grid()
+plt.xscale('log')
 
 print('done')

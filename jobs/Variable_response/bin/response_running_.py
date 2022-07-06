@@ -18,6 +18,8 @@ job_path = Path.cwd().parent
 
 sys.path.append(str(project_path.parent / 'common_data/common_lib'))
 sys.path.append(str(project_path.parent / 'common_data/common_config'))
+sys.path.append(str(project_path.parent / 'SSC_restructured_v2/bin'))
+sys.path.append(str(job_path / 'config'))
 
 # general libraries
 import my_module as mm
@@ -26,6 +28,12 @@ import cosmo_lib as csmlib
 # general configurations
 import ISTF_fid_params
 import mpl_cfg
+
+# job-specific congiguration
+import config_variable_response as cfg
+
+# from SSC_restructured_v2
+import ell_values_running as ell_utils
 
 matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -249,7 +257,7 @@ k_max_classy = 50
 
 # ! options
 use_h_units = True
-whos_PS = 'CLASS_clustertlkt'
+whos_PS = 'vincenzo'
 Pk_kind = 'nonlinear'
 plot_Rmm = True
 PySSC_kernel_convention = True  # if True, normalize the IST WFs by r(z) ** 2
@@ -302,7 +310,7 @@ elif whos_PS == 'CLASS':
     k_array = np.logspace(np.log10(k_min), np.log10(k_max), k_num)  # this is in h/Mpc. The calculate_power function
     # takes care of the corerct h_units when computing Pk, but only returns Pk, so k_array has to be made consistent
     # by hand
-    Pk = csmlib.calculate_power(cosmo, z_array, k_array, use_h_units=use_h_units, Pk_kind=Pk_kind)
+    Pk = csmlib.calculate_power(cosmo=cosmo, z_array=z_array, k_array=k_array, use_h_units=use_h_units, Pk_kind=Pk_kind)
 
 elif whos_PS == 'CLASS_clustertlkt':
     z_array = np.linspace(z_min, z_max, z_num)
@@ -324,20 +332,10 @@ if save_Pk:
 dP_dk = np.gradient(Pk, k_array, axis=1)
 dlogPk_dlogk = k_array / Pk * dP_dk
 
-# compute response...
+# compute response
 R1_mm = 1 - 1 / 3 * k_array / Pk * dP_dk + G1_tot_funct(z_array, k_array, G1_funct, G1_extrap)  # incl. extrapolation
 # R1_mm = 1 - 1 / 3 * k / Pnl * dP_dk + G1_funct(z, k).T  # doesn't incl. extrapolation
 
-# test this part
-R1_mm_partial = 1 - 1 / 3 * k_array / Pk * dP_dk
-
-z_idx = 0
-plt.plot(k_array, R1_mm[z_idx, :], '.')
-plt.plot(k_array, G1_tot_funct(z_array, k_array, G1_funct, G1_extrap)[z_idx, :], '.', label=f'{use_h_units}')
-plt.axvline(x=k_max_G1, color='k', ls='--', lw=1)
-
-plt.legend()
-plt.grid()
 
 # ...and plot it
 if plot_Rmm:
@@ -375,7 +373,6 @@ if plot_Rmm:
     plt.grid()
     plt.show()
 
-# assert 1 > 2
 ########################################### now, project the response ##################################################
 
 # instantiate cosmology to compute comoving distance from astropy
@@ -387,12 +384,22 @@ Ode0 = 1 - Om0
 # instantiate cosmo object from astropy
 cosmo_astropy = w0waCDM(H0=h * 100, Om0=Om0, Ode0=Ode0, w0=-1.0, wa=0.0, Neff=3.04, m_nu=0.06, Ob0=Ob0)
 
-# compute ell values
-ell_min = 10
-ell_max_WL = 5000
-nbl = 30
-ell_WL = np.logspace(np.log10(ell_min), np.log10(ell_max_WL), nbl + 1)  # WL
-ell_WL = (ell_WL[1:] + ell_WL[:-1]) / 2
+
+# set the parameters, the functions wants a dict as input
+ell_cfg_dict_WL = {
+    'nbl': cfg.nbl,
+    'ell_min': cfg.ell_min,
+    'ell_max': cfg.ell_max_WL,
+}
+
+# change ell_max for GC
+ell_cfg_dict_GC = ell_cfg_dict_WL.copy()
+ell_cfg_dict_GC['ell_max'] = cfg.ell_max_GC
+
+# compute ells using the function in SSC_restructured_v2
+ell_LL, _ = ell_utils.ISTF_ells(ell_cfg_dict_WL)
+ell_GG, _ = ell_utils.ISTF_ells(ell_cfg_dict_GC)
+ell_LG = ell_GG.copy()
 
 # # fill k_limber array with meshgrid
 # zz, ll = np.meshgrid(z_array, ell_WL)
@@ -408,11 +415,13 @@ ell_WL = (ell_WL[1:] + ell_WL[:-1]) / 2
 # at low redshift and high ells, k_limber explodes: cut the z range
 z_array_limber = z_array[5:]  # ! this has been found by hand, fix this!
 
-ell_test = ell_WL[10]
+ell_test = ell_LL[10]
 kl = k_limber(z_array_limber, ell=ell_test, cosmo_astropy=cosmo_astropy, use_h_units=use_h_units)
 
 # compute P(k_ell, z)
 Pk = calculate_power(cosmo, z_array_limber, kl, use_h_units=use_h_units, Pk_kind=Pk_kind)
+
+
 
 # compute R1(k_ell, z)
 
@@ -459,11 +468,11 @@ dV = comov_dist ** 2 * dr_dz
 
 # # ! test k limber and stuff
 """
-kl_arr = np.zeros((z_array_limber.size, ell_WL.size))
-R_of_ell_z = np.zeros((z_array_limber.size, ell_WL.size))
+kl_arr = np.zeros((z_array_limber.size, ell_LL.size))
+R_of_ell_z = np.zeros((z_array_limber.size, ell_LL.size))
 
 for zi, zval in enumerate(z_array_limber):
-    for ell_idx, ell_val in enumerate(ell_WL):
+    for ell_idx, ell_val in enumerate(ell_LL):
         # evaluate kl, R1(kl, z) and P(kl, z)
         kl_arr[zi, ell_idx] = k_limber(zval, ell_val, cosmo_astropy=cosmo_astropy, use_h_units=use_h_units)
         kl_val = k_limber(zval, ell_val, cosmo_astropy=cosmo_astropy, use_h_units=use_h_units)
@@ -477,8 +486,8 @@ z_idx = 5
 
 # plot vs ell
 # plt.figure()
-plt.plot(ell_WL, kl_arr[z_idx, :], label=f'kl_arr vs ell, {use_h_units}')
-plt.plot(ell_WL, R_of_ell_z[z_idx, :], label=f'R_of_ell_z vs ell, {use_h_units}')
+plt.plot(ell_LL, kl_arr[z_idx, :], label=f'kl_arr vs ell, {use_h_units}')
+plt.plot(ell_LL, R_of_ell_z[z_idx, :], label=f'R_of_ell_z vs ell, {use_h_units}')
 
 # plot vs z
 # plt.figure()
@@ -501,7 +510,7 @@ plt.legend()
 integrand = np.zeros((nbl, zbins, zbins, z_array_limber.size))
 start_time = time.time()
 # for zi, zval in enumerate(z_array_limber):
-#     for ell_idx, ell_val in enumerate(ell_WL):
+#     for ell_idx, ell_val in enumerate(ell_LL):
 #
 #         # evaluate kl, R1mm(kl, z) and P(kl, z)
 #
@@ -521,7 +530,7 @@ start_time = time.time()
 # integrand = np.zeros((nbl, zbins, zbins, z_array_limber.size))
 start_time = time.time()
 for zi, zval in enumerate(z_array_limber):
-    for ell_idx, ell_val in enumerate(ell_WL):
+    for ell_idx, ell_val in enumerate(ell_LL):
 
         # evaluate kl, R1mm(kl, z) and P(kl, z)
 
@@ -560,9 +569,9 @@ R_LL_vinc = np.load(project_path / 'config/common_data/vincenzo/Pk_responses_2D/
 plt.figure()
 for i in range(zbins):
     j = i
-    plt.plot(ell_WL, R_LL[:, i, j])  # , label='$R_\ell^{%i, %i}$' % (i, j))
-    plt.plot(ell_WL, R_LL_vinc[:, i, j], '--')  # , label='$R_\ell^{%i, %i} vinc$' % (i, j))
-    plt.legend()
+    plt.plot(ell_LL, R_LL[:, i, j])  # , label='$R_\ell^{%i, %i}$' % (i, j))
+    plt.plot(ell_LL, R_LL_vinc[:, i, j], '--')  # , label='$R_\ell^{%i, %i} vinc$' % (i, j))
+    # plt.legend()
 
 plt.xlabel('$\ell$')
 plt.ylabel('$R_\ell^{%i, %i}$' % (i, j))

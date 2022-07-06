@@ -228,6 +228,7 @@ def cl_integrand_v0(z, wf_A, wf_B, i, j, ell):
     return (wf_A(z)[i] * wf_B(z)[j]) / (csmlib.E(z) * csmlib.r(z) ** 2) * \
            R1_mm_interp(kl_wrap(ell, z), z)[0] * Pk_wrap(kl_wrap(ell, z), z)
 
+
 # use_h_units version
 def cl_integrand(z, wf_A, wf_B, i, j, ell):
     return (wf_A(z)[i] * wf_B(z)[j]) / (csmlib.E(z) *
@@ -237,7 +238,6 @@ def cl_integrand(z, wf_A, wf_B, i, j, ell):
 
 def cl_integral(wf_A, wf_B, i, j, ell):
     return c / H0 * quad(cl_integrand, z_array_limber[0], z_array_limber[-1], args=(wf_A, wf_B, i, j, ell))[0]
-
 
 
 ###############################################################################
@@ -355,15 +355,53 @@ if save_Pk:
     np.save(job_path / f'output/Pk/k_array_hunits={use_h_units}.npy', k_array)
     np.save(job_path / f'output/Pk/z_array.npy', z_array)
 
+
+def Pk_wrap(k_ell, z, cosmo_classy=cosmo_classy, use_h_units=use_h_units, Pk_kind='nonlinear', argument_type='scalar'):
+    """just a wrapper function to set some args to default values"""
+    return csmlib.calculate_power(cosmo_classy, z, k_ell, use_h_units=use_h_units,
+                                  Pk_kind=Pk_kind, argument_type=argument_type)
+
+
+def kl_wrap(ell, z, use_h_units=use_h_units):
+    """another simpe wrapper function, so as not to have to rewrite use_h_units=use_h_units"""
+    return csmlib.k_limber(ell, z, use_h_units=use_h_units)
+
+
 # take the derivative and compute log derivative
 # https://bdiemer.bitbucket.io/colossus/_static/tutorial_cosmology.html dedrivative of matter Pk, just as rough reference
 dP_dk = np.gradient(Pk, k_array, axis=1)
 dlogPk_dlogk = k_array / Pk * dP_dk
 
+# TODO check these
+dP_dk_func = interp2d(x=k_array, y=z_array, z=dP_dk, kind='linear')
+G1_tot_funct_scalar = interp2d(x=k_array, y=z_array, z=G1_tot_funct(z_array, k_array, G1_funct, G1_extrap),
+                               kind='linear')
+
 # compute response
 R1_mm = 1 - 1 / 3 * k_array / Pk * dP_dk + G1_tot_funct(z_array, k_array, G1_funct, G1_extrap)  # incl. extrapolation
+
+
 # R1_mm = 1 - 1 / 3 * k / Pnl * dP_dk + G1_funct(z, k).T  # doesn't incl. extrapolation
 
+
+def R1_mm_func(k, z):
+    result = 1 - 1 / 3 * k / Pk_wrap(k, z) * dP_dk_func(x=k, y=z) + G1_tot_funct_scalar(k, z)
+    return result[0]
+
+
+z_idx = 4
+# R1_mm_func_test = np.asarray([R1_mm_func(k, z_array[z_idx]) for k in k_array])
+# # plt.plot(k_array, R1_mm[z_idx, :], label=f'R1_mm')
+# # plt.plot(k_array, R1_func_test, label=f'R1_func_test')
+# plt.plot(k_array, 100 * (R1_mm_func_test / R1_mm[z_idx, :] - 1), label=f'R1_func_test')
+# plt.xscale('log')
+
+dPk_func_test = np.asarray([dP_dk_func(k, z_array[z_idx]) for k in k_array])
+plt.plot(k_array, dP_dk[z_idx, :], label=f'R1_mm')
+plt.plot(k_array, dPk_func_test, label=f'R1_func_test')
+plt.plot(k_array, 100 * (dPk_func_test / dP_dk[z_idx, :] - 1), label=f'dPk')
+plt.xscale('log')
+assert 1 > 2
 
 # ...and plot it
 if plot_Rmm:
@@ -429,7 +467,6 @@ ell_LL, _ = ell_utils.ISTF_ells(ell_cfg_dict_WL)
 ell_GG, _ = ell_utils.ISTF_ells(ell_cfg_dict_GC)
 ell_LG = ell_GG.copy()
 
-
 # # fill k_limber array with meshgrid
 # zz, ll = np.meshgrid(z_array, ell_WL)
 # kl_array_mesh = k_limber(zz, ell=ll, cosmo_astropy=cosmo_astropy, use_h_units=use_h_units)
@@ -439,17 +476,6 @@ ell_LG = ell_GG.copy()
 # kl_array_manual = np.zeros((nbl, z_num))
 # for ell_idx, ellval in enumerate(ell_WL):
 #     kl_array_manual[ell_idx, :] = k_limber(z_array, ell=ellval, cosmo_astropy=cosmo_astropy, use_h_units=use_h_units)
-
-
-def Pk_wrap(k_ell, z, cosmo_classy=cosmo_classy, use_h_units=use_h_units, Pk_kind='nonlinear', argument_type='scalar'):
-    """just a wrapper function to set some args to default values"""
-    return csmlib.calculate_power(cosmo_classy, z, k_ell, use_h_units=use_h_units,
-                                  Pk_kind=Pk_kind, argument_type=argument_type)
-
-
-def kl_wrap(ell, z, use_h_units=use_h_units):
-    """another simpe wrapper function, so as not to have to rewrite use_h_units=use_h_units"""
-    return csmlib.k_limber(ell, z, use_h_units=use_h_units)
 
 
 # at low redshift and high ells, k_limber explodes: cut the z range
@@ -504,7 +530,6 @@ dV = comov_dist ** 2 * dr_dz
 # this is to project Rl with ISTF formula
 Hz_arr = csmlib.H(z_array_limber, cosmo_astropy=cosmo_astropy)
 
-
 # TODO check again all the r_scale, k_scale and h scalings in general, I altready found 3 mistakes
 # TODO recover plateau from before?
 
@@ -537,6 +562,23 @@ plt.plot(ell_LL, R_of_ell_z[z_idx, :], label=f'R_of_ell_z vs ell, {use_h_units}'
 plt.legend()
 """
 
+
+
+
+# ! some tests on R(k_limber)
+z_test = z_array_limber[210]
+z_idx = np.argmin(np.abs(z_test - z_array))
+kl_array = [kl_wrap(ell=ell, z=z_test) for ell in ell_LL]
+R1_mm_interp_arr_test = [R1_mm_interp(kl_wrap(ell=ell, z=z_test), z_test)[0] for ell in ell_LL]
+R1_mm_orig_arr_test = R1_mm[z_idx, :]
+
+plt.figure()
+# plt.plot(z_array_limber, R1_mm_interp(kl, z_array_limber).T[0, :])
+plt.plot(k_array, R1_mm[5, :], label='R1_mm[5, :]')
+plt.plot(kl_array, R1_mm_interp_arr_test, '.', label='R1_mm_interp_arr_test')
+plt.show()
+
+assert 1 > 2
 
 if quad_integration and cl_formula == 'PySSC':
     print('quad integration started')
@@ -581,18 +623,7 @@ for zi, zval in enumerate(z_array_limber):
                     integrand[ell_idx, i, j, zi] = (W_LL_ISTF_array[i, zi] * W_LL_ISTF_array[j, zi]) / \
                                                    (Hz_arr[zi] * comov_dist[zi]) * R_of_ell_z * P_kl_z
         else:
-            raise ValueError('cl_formula not recognized')
-
-
-# ! some tests on R(k_limber)
-ell_test = ell_LL[0]
-z_test = z_array_limber[0]
-R1_mm_interp_arr_test = [R1_mm_interp(kl_wrap(ell, z_test), z_array_limber) for ell in ell_LL]
-R1_mm_orig_arr_test = R1_mm[5, :]
-# plt.plot(z_array_limber, R1_mm_interp(kl, z_array_limber).T[0, :])
-plt.plot(k_array, R1_mm[5, :], label='R1_mm[5, :]')
-plt.plot(ell_LL, R1_mm_interp_arr_test, label='R1_mm_interp_arr_test')
-
+            raise ValueError('cl_formula must be either PySSC or ISTF')
 
 # integrate over z with simpson's rule
 # ! is there a c/H0 factor in the integral? I don't think so...

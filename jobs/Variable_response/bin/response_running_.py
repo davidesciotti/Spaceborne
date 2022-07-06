@@ -7,6 +7,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from classy import Class
 import numpy as np
+from matplotlib import cm
 from scipy.integrate import quad, simps
 from scipy.interpolate import interp2d, interp1d
 from astropy.cosmology import w0waCDM
@@ -208,41 +209,76 @@ def dV_func(z):
     zofr = cosmo_classy.z_of_r([z])
     comov_dist = zofr[0] * r_scale  # Comoving distance r(z)
     dr_dz = (1 / zofr[1]) * r_scale  # Derivative dr/dz
-
-    # it should be
     dV = comov_dist ** 2 * dr_dz
     return dV[0]
 
 
-def integrand(z, ell, i, j):
+def integrand_PySSC(z, ell, i, j):
     kl = kl_wrap(ell=ell, z=z)
-    return dV_func(z) * W_LL_ISTF_interp(z)[i] * W_LL_ISTF_interp(z)[j] * R1_mm_interp(kl, z)[0] * Pk_wrap(kl, z=z)
+    return dV_func(z) * W_LL_PySSC_interp(z)[i] * W_LL_PySSC_interp(z)[j] * R1_mm_interp(kl, z)[0] * Pk_wrap(kl, z=z)
 
 
 def R_LL_quad(ell, i, j):
-    return quad(integrand, z_array_limber[0], z_array_limber[-1], args=(ell, i, j))[0]
+    return quad(integrand_PySSC, z_array_limber[0], z_array_limber[-1], args=(ell, i, j))[0]
 
 
 # ! quad with ISTF cl formula - tested for the cls, should be fine!
-def cl_integrand_v0(z, wf_A, wf_B, i, j, ell):
+def integrand_ISTF(z, wf_A, wf_B, i, j, ell):
     return (wf_A(z)[i] * wf_B(z)[j]) / (csmlib.E(z) * csmlib.r(z) ** 2) * \
            R1_mm_interp(kl_wrap(ell, z), z)[0] * Pk_wrap(kl_wrap(ell, z), z)
 
 
 # use_h_units version
-def cl_integrand(z, wf_A, wf_B, i, j, ell):
+def integrand_ISTF_v1(z, wf_A, wf_B, i, j, ell):
     return (wf_A(z)[i] * wf_B(z)[j]) / (csmlib.E(z) *
                                         csmlib.astropy_comoving_distance(z, use_h_units=use_h_units) ** 2) * \
            R1_mm_interp(kl_wrap(ell, z), z)[0] * Pk_wrap(kl_wrap(ell, z), z)
 
 
 def cl_integral(wf_A, wf_B, i, j, ell):
-    return c / H0 * quad(cl_integrand, z_array_limber[0], z_array_limber[-1], args=(wf_A, wf_B, i, j, ell))[0]
+    return c / H0 * quad(integrand_ISTF, z_array_limber[0], z_array_limber[-1], args=(wf_A, wf_B, i, j, ell))[0]
 
 
 def R1_mm_func(k, z):
     result = 1 - 1 / 3 * k / Pk_wrap(k, z) * dP_dk_func(x=k, y=z) + G1_tot_funct_scalar(k, z)
     return result[0]
+
+
+def plot_Rmm_funct():
+    # reproduce Alex's plot
+    z_max_plot = 1.8  # from the figure in the paper
+    z_max_idx = np.argmin(np.abs(z_array - z_max_plot))
+    z_reduced = z_array[:z_max_idx + 1]
+
+    # from https://stackoverflow.com/questions/26545897/drawing-a-colorbar-aside-a-line-plot-using-matplotlib
+    # norm is a class which, when called, can normalize data into the [0.0, 1.0] interval.
+    norm = matplotlib.colors.Normalize(
+        vmin=np.min(z_reduced),
+        vmax=np.max(z_reduced))
+
+    # choose a colormap and a line width
+    cmap = matplotlib.cm.jet
+    lw = 1
+
+    # create a ScalarMappable and initialize a data structure
+    s_m = matplotlib.cm.ScalarMappable(cmap=cmap, norm=norm)
+    s_m.set_array([])
+
+    plt.figure()
+    # the colors are chosen by calling the ScalarMappable that was initialised with c_m and norm
+    for z_idx, zval in enumerate(z_reduced):
+        plt.plot(k_array, R1_mm[z_idx, :], color=cmap(norm(zval)), lw=lw)
+
+    plt.colorbar(s_m)
+    plt.xscale('log')
+    plt.xlabel(x_label)
+    plt.ylabel('$R_1^{mm}(k, z)$')
+    plt.axvline(x=k_max_G1, color='k', ls='--', lw=lw)
+    plt.xlim(1e-2, 1e1)
+    plt.ylim(0.5, 4)
+    plt.grid()
+    plt.show()
+
 
 ###############################################################################
 ###############################################################################
@@ -285,14 +321,17 @@ k_max_classy = 50
 
 # ! options
 use_h_units = False
-whos_PS = 'vincenzo'
+whos_PS = 'CLASS_clustertlkt'
 Pk_kind = 'nonlinear'
 plot_Rmm = False
 save_Pk = False
 quad_integration = True
 cl_formula = 'PySSC'
-whos_WF = 'marco'
+whos_WF = 'davide'
 # ! options
+
+# cl_formula = 'PySSC', quad_integration = False * ok
+# cl_formula = 'ISTF', quad_integration = True * ok
 
 
 # for whos_PS in ['stefano', 'vincenzo', 'CLASS', 'CLASS_clustertlkt']:
@@ -348,9 +387,7 @@ elif whos_PS == 'CLASS_clustertlkt':
     k_array = np.logspace(np.log10(k_min), np.log10(k_max), k_num)  # this is in 1/Mpc. The Pk_with_classy_clustertlkt
     # function also returns k, rescaled or not
     k_array, Pk = csmlib.Pk_with_classy_clustertlkt(cosmo=cosmo_classy, z_array=z_array, k_array=k_array,
-                                                    use_h_units=use_h_units,
-                                                    Pk_kind=Pk_kind)
-
+                                                    use_h_units=use_h_units, Pk_kind=Pk_kind)
 else:
     raise ValueError('whos_PS must be either "vincenzo", "stefano", "CLASS" or "CLASS_clustertlkt"')
 
@@ -376,6 +413,7 @@ def kl_wrap(ell, z, use_h_units=use_h_units):
 dP_dk = np.gradient(Pk, k_array, axis=1)
 dlogPk_dlogk = k_array / Pk * dP_dk
 
+# these are needed to build R1_mm as a function!
 dP_dk_func = interp2d(x=k_array, y=z_array, z=dP_dk, kind='linear')
 G1_tot_funct_scalar = interp2d(x=k_array, y=z_array, z=G1_tot_funct(z_array, k_array, G1_funct, G1_extrap),
                                kind='linear')  # this is not very elegant, but the function only accepts arrays...
@@ -385,41 +423,8 @@ R1_mm = 1 - 1 / 3 * k_array / Pk * dP_dk + G1_tot_funct(z_array, k_array, G1_fun
 # R1_mm = 1 - 1 / 3 * k / Pnl * dP_dk + G1_funct(z, k).T  # doesn't incl. extrapolation
 
 
-# ...and plot it
 if plot_Rmm:
-    # reproduce Alex's plot
-    z_max_plot = 1.8  # from the figure in the paper
-    z_max_idx = np.argmin(np.abs(z_array - z_max_plot))
-    z_reduced = z_array[:z_max_idx + 1]
-
-    # from https://stackoverflow.com/questions/26545897/drawing-a-colorbar-aside-a-line-plot-using-matplotlib
-    # norm is a class which, when called, can normalize data into the [0.0, 1.0] interval.
-    norm = matplotlib.colors.Normalize(
-        vmin=np.min(z_reduced),
-        vmax=np.max(z_reduced))
-
-    # choose a colormap and a line width
-    cmap = matplotlib.cm.jet
-    lw = 1
-
-    # create a ScalarMappable and initialize a data structure
-    s_m = matplotlib.cm.ScalarMappable(cmap=cmap, norm=norm)
-    s_m.set_array([])
-
-    # plt.figure()<<
-    # the colors are chosen by calling the ScalarMappable that was initialised with c_m and norm
-    for z_idx, zval in enumerate(z_reduced):
-        plt.plot(k_array, R1_mm[z_idx, :], color=cmap(norm(zval)), lw=lw)
-
-    plt.colorbar(s_m)
-    plt.xscale('log')
-    plt.xlabel(x_label)
-    plt.ylabel('$R_1^{mm}(k, z)$')
-    plt.axvline(x=k_max_G1, color='k', ls='--', lw=lw)
-    plt.xlim(1e-2, 1e1)
-    plt.ylim(0.5, 4)
-    plt.grid()
-    plt.show()
+    plot_Rmm_funct()
 
 ########################################### now, project the response ##################################################
 
@@ -465,11 +470,7 @@ z_array_limber = z_array[5:]  # ! this has been found by hand, fix this!
 
 # compute R1(k_ell, z)
 # 1. the easy way: interpolate and fill
-
 R1_mm_interp = interp2d(k_array, z_array, R1_mm, kind='linear')
-
-# 2. TODO the hard way: construct R1_mm function and evaluate it in kl, z
-# ...
 
 # import WF
 # ! these should be in Mpc ** -1 !! include a scaling below (after removing the z column)
@@ -544,26 +545,6 @@ plt.plot(ell_LL, R_of_ell_z[z_idx, :], label=f'R_of_ell_z vs ell, {use_h_units}'
 plt.legend()
 """
 
-
-
-
-# ! some tests on R(k_limber)
-z_test = z_array_limber[20]
-z_idx = np.argmin(np.abs(z_test - z_array))
-kl_array = [kl_wrap(ell=ell, z=z_test) for ell in ell_LL]
-R1_mm_interp_arr_test = [R1_mm_interp(kl_wrap(ell=ell, z=z_test), z_test)[0] for ell in ell_LL]
-R1_mm_funct_arr_test = [R1_mm_func(kl_wrap(ell=ell, z=z_test), z_test) for ell in ell_LL]
-R1_mm_orig_arr_test = R1_mm[z_idx, :]
-
-plt.figure()
-# plt.plot(z_array_limber, R1_mm_interp(kl, z_array_limber).T[0, :])
-plt.plot(k_array, R1_mm[z_idx, :], label='R1_mm[5, :]')
-plt.plot(kl_array, R1_mm_interp_arr_test, '.', label='R1_mm_interp_arr_test')
-plt.plot(kl_array, R1_mm_funct_arr_test, '.', label='R1_mm_funct_arr_test')
-plt.show()
-
-assert 1 > 2
-
 if quad_integration and cl_formula == 'PySSC':
     print('quad integration started')
     start = time.perf_counter()
@@ -586,32 +567,44 @@ if quad_integration and cl_formula == 'ISTF':
 
 # TODO interpolate n_i(z) in 1D as done here for the WF! much smarter
 
-integrand = np.zeros((nbl, zbins, zbins, z_array_limber.size))
+simps_integrand = np.zeros((nbl, zbins, zbins, z_array_limber.size))
 for zi, zval in enumerate(z_array_limber):
     for ell_idx, ell_val in enumerate(ell_LL):
 
         kl = kl_wrap(ell=ell_val, z=zval)
-        P_kl_z = Pk_wrap(k_ell=kl, z=zval)
-        R_of_ell_z = R1_mm_interp(kl, zval)[0]
+        P_of_kl_z = Pk_wrap(k_ell=kl, z=zval)
+        R_of_kl_z = R1_mm_interp(kl, zval)[0]
 
         if cl_formula == 'PySSC':
             for i in range(zbins):
                 for j in range(zbins):
-                    integrand[ell_idx, i, j, zi] = dV[zi] * W_LL_PySSC_array[i, zi] * W_LL_PySSC_array[j, zi] * \
-                                                   R_of_ell_z * P_kl_z
+                    simps_integrand[ell_idx, i, j, zi] = dV[zi] * W_LL_PySSC_array[i, zi] * W_LL_PySSC_array[j, zi] * \
+                                                         R_of_kl_z * P_of_kl_z
 
         # ! does not work
         elif cl_formula == 'ISTF':
             for i in range(zbins):
                 for j in range(zbins):
-                    integrand[ell_idx, i, j, zi] = (W_LL_ISTF_array[i, zi] * W_LL_ISTF_array[j, zi]) / \
-                                                   (Hz_arr[zi] * comov_dist[zi]) * R_of_ell_z * P_kl_z
+                    simps_integrand[ell_idx, i, j, zi] = (W_LL_ISTF_array[i, zi] * W_LL_ISTF_array[j, zi]) / \
+                                                         (Hz_arr[zi] * comov_dist[zi]) * R_of_kl_z * P_of_kl_z
         else:
             raise ValueError('cl_formula must be either PySSC or ISTF')
 
+# ! test integrand: start
+ell_idx_test = 10
+ell_val_test = ell_LL[ell_idx_test]
+i_test = 5
+j_test = 5
+integrand_from_funct = [integrand_PySSC(z, ell=ell_val_test, i=i_test, j=j_test) for z in z_array_limber]
+
+plt.plot(z_array_limber, integrand_from_funct, label='integrand_from_funct')
+plt.plot(z_array_limber, simps_integrand[ell_idx_test, i_test, j_test, :], label='integrand from array')
+# ! test integrand: end
+
+
 # integrate over z with simpson's rule
 # ! is there a c/H0 factor in the integral? I don't think so...
-R_LL = simps(integrand, z_array_limber, axis=-1)
+R_LL = simps(simps_integrand, z_array_limber, axis=-1)
 
 # finally, divide by Cl
 Cl_LL = np.load(job_path.parent / 'SSC_comparison/output/cl_3D/C_LL_WLonly_3D.npy')
@@ -623,13 +616,14 @@ if quad_integration:
 # import vincenzo
 R_LL_vinc = np.load(project_path / 'config/common_data/vincenzo/Pk_responses_2D/R_LL_WLonly_3D.npy')
 
+color = cm.rainbow(np.linspace(0, 1, zbins))
 plt.figure()
 for i in range(zbins):
     j = i
-    plt.plot(ell_LL, R_LL[:, i, j])  # , label='$R_\ell^{%i, %i}$' % (i, j))
-    plt.plot(ell_LL, R_LL_vinc[:, i, j], '--')  # , label='$R_\ell^{%i, %i} vinc$' % (i, j))
+    plt.plot(ell_LL, R_LL[:, i, j], c=color[i])  # , label='$R_\ell^{%i, %i}$' % (i, j))
+    plt.plot(ell_LL, R_LL_vinc[:, i, j], '--', c=color[i])  # , label='$R_\ell^{%i, %i} vinc$' % (i, j))
     if quad_integration:
-        plt.plot(ell_LL, R_LL_quad_arr[:, i, j], '.')  # , label='$R_\ell^{%i, %i}$' % (i, j))
+        plt.plot(ell_LL, R_LL_quad_arr[:, i, j], '.', c=color[i])  # , label='$R_\ell^{%i, %i}$' % (i, j))
     # plt.legend()
 
 plt.title(f'use_h_units = {use_h_units}, cl_formula = {cl_formula}')

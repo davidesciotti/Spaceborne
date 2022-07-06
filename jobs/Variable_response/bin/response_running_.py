@@ -240,6 +240,10 @@ def cl_integral(wf_A, wf_B, i, j, ell):
     return c / H0 * quad(cl_integrand, z_array_limber[0], z_array_limber[-1], args=(wf_A, wf_B, i, j, ell))[0]
 
 
+def R1_mm_func(k, z):
+    result = 1 - 1 / 3 * k / Pk_wrap(k, z) * dP_dk_func(x=k, y=z) + G1_tot_funct_scalar(k, z)
+    return result[0]
+
 ###############################################################################
 ###############################################################################
 ###############################################################################
@@ -372,36 +376,14 @@ def kl_wrap(ell, z, use_h_units=use_h_units):
 dP_dk = np.gradient(Pk, k_array, axis=1)
 dlogPk_dlogk = k_array / Pk * dP_dk
 
-# TODO check these
 dP_dk_func = interp2d(x=k_array, y=z_array, z=dP_dk, kind='linear')
 G1_tot_funct_scalar = interp2d(x=k_array, y=z_array, z=G1_tot_funct(z_array, k_array, G1_funct, G1_extrap),
-                               kind='linear')
+                               kind='linear')  # this is not very elegant, but the function only accepts arrays...
 
 # compute response
 R1_mm = 1 - 1 / 3 * k_array / Pk * dP_dk + G1_tot_funct(z_array, k_array, G1_funct, G1_extrap)  # incl. extrapolation
-
-
 # R1_mm = 1 - 1 / 3 * k / Pnl * dP_dk + G1_funct(z, k).T  # doesn't incl. extrapolation
 
-
-def R1_mm_func(k, z):
-    result = 1 - 1 / 3 * k / Pk_wrap(k, z) * dP_dk_func(x=k, y=z) + G1_tot_funct_scalar(k, z)
-    return result[0]
-
-
-z_idx = 4
-# R1_mm_func_test = np.asarray([R1_mm_func(k, z_array[z_idx]) for k in k_array])
-# # plt.plot(k_array, R1_mm[z_idx, :], label=f'R1_mm')
-# # plt.plot(k_array, R1_func_test, label=f'R1_func_test')
-# plt.plot(k_array, 100 * (R1_mm_func_test / R1_mm[z_idx, :] - 1), label=f'R1_func_test')
-# plt.xscale('log')
-
-dPk_func_test = np.asarray([dP_dk_func(k, z_array[z_idx]) for k in k_array])
-plt.plot(k_array, dP_dk[z_idx, :], label=f'R1_mm')
-plt.plot(k_array, dPk_func_test, label=f'R1_func_test')
-plt.plot(k_array, 100 * (dPk_func_test / dP_dk[z_idx, :] - 1), label=f'dPk')
-plt.xscale('log')
-assert 1 > 2
 
 # ...and plot it
 if plot_Rmm:
@@ -566,16 +548,18 @@ plt.legend()
 
 
 # ! some tests on R(k_limber)
-z_test = z_array_limber[210]
+z_test = z_array_limber[20]
 z_idx = np.argmin(np.abs(z_test - z_array))
 kl_array = [kl_wrap(ell=ell, z=z_test) for ell in ell_LL]
 R1_mm_interp_arr_test = [R1_mm_interp(kl_wrap(ell=ell, z=z_test), z_test)[0] for ell in ell_LL]
+R1_mm_funct_arr_test = [R1_mm_func(kl_wrap(ell=ell, z=z_test), z_test) for ell in ell_LL]
 R1_mm_orig_arr_test = R1_mm[z_idx, :]
 
 plt.figure()
 # plt.plot(z_array_limber, R1_mm_interp(kl, z_array_limber).T[0, :])
-plt.plot(k_array, R1_mm[5, :], label='R1_mm[5, :]')
+plt.plot(k_array, R1_mm[z_idx, :], label='R1_mm[5, :]')
 plt.plot(kl_array, R1_mm_interp_arr_test, '.', label='R1_mm_interp_arr_test')
+plt.plot(kl_array, R1_mm_funct_arr_test, '.', label='R1_mm_funct_arr_test')
 plt.show()
 
 assert 1 > 2

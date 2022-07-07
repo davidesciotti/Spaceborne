@@ -213,13 +213,13 @@ def dV_func(z):
     return dV[0]
 
 
-def integrand_PySSC(z, ell, i, j):
+def integrand_PySSC(z, wf_A, wf_B, i, j, ell):
     kl = kl_wrap(ell=ell, z=z)
-    return dV_func(z) * W_LL_PySSC_interp(z)[i] * W_LL_PySSC_interp(z)[j] * R1_mm_interp(kl, z)[0] * Pk_wrap(kl, z=z)
+    return dV_func(z) * wf_A(z)[i] * wf_B(z)[j] * R1_mm_interp(kl, z)[0] * Pk_wrap(kl, z=z)
 
 
-def R_LL_quad(ell, i, j):
-    return quad(integrand_PySSC, z_array_limber[0], z_array_limber[-1], args=(ell, i, j))[0]
+def R_LL_quad(wf_A, wf_B, i, j, ell):
+    return quad(integrand_PySSC, z_array_limber[0], z_array_limber[-1], args=(wf_A, wf_B, i, j, ell))[0]
 
 
 # ! quad with ISTF cl formula - tested for the cls, should be fine!
@@ -326,12 +326,9 @@ Pk_kind = 'nonlinear'
 plot_Rmm = False
 save_Pk = False
 quad_integration = True
-cl_formula = 'PySSC'
+cl_formula = 'ISTF'
 whos_WF = 'davide'
 # ! options
-
-# cl_formula = 'PySSC', quad_integration = False * ok
-# cl_formula = 'ISTF', quad_integration = True * ok
 
 
 # for whos_PS in ['stefano', 'vincenzo', 'CLASS', 'CLASS_clustertlkt']:
@@ -552,7 +549,7 @@ if quad_integration and cl_formula == 'PySSC':
     for ell_idx, ellval in enumerate(ell_LL):
         for i in range(zbins):
             for j in range(zbins):
-                R_LL_quad_arr[ell_idx, i, j] = R_LL_quad(ellval, i, j)
+                R_LL_quad_arr[ell_idx, i, j] = R_LL_quad(W_LL_PySSC_interp, W_LL_PySSC_interp, i, j, ellval)
     print('quad integration done in ', time.perf_counter() - start, ' seconds')
 
 if quad_integration and cl_formula == 'ISTF':
@@ -585,8 +582,8 @@ for zi, zval in enumerate(z_array_limber):
         elif cl_formula == 'ISTF':
             for i in range(zbins):
                 for j in range(zbins):
-                    simps_integrand[ell_idx, i, j, zi] = (W_LL_ISTF_array[i, zi] * W_LL_ISTF_array[j, zi]) / \
-                                                         (Hz_arr[zi] * comov_dist[zi]) * R_of_kl_z * P_of_kl_z
+                    simps_integrand[ell_idx, i, j, zi] = c * (W_LL_ISTF_array[i, zi] * W_LL_ISTF_array[j, zi]) / \
+                                                         (Hz_arr[zi] * comov_dist[zi] ** 2) * R_of_kl_z * P_of_kl_z
         else:
             raise ValueError('cl_formula must be either PySSC or ISTF')
 
@@ -595,10 +592,22 @@ ell_idx_test = 10
 ell_val_test = ell_LL[ell_idx_test]
 i_test = 5
 j_test = 5
-integrand_from_funct = [integrand_PySSC(z, ell=ell_val_test, i=i_test, j=j_test) for z in z_array_limber]
 
+if cl_formula == 'PySSC':
+    integrand_from_funct = [
+        integrand_PySSC(z, W_LL_PySSC_interp, W_LL_PySSC_interp, ell=ell_val_test, i=i_test, j=j_test) for z in
+        z_array_limber]
+elif cl_formula == 'ISTF':
+    # careful of the c/H0 prefactor, which is not included in the integrand
+    integrand_from_funct = [
+        c / H0 * integrand_ISTF(z, W_LL_ISTF_interp, W_LL_ISTF_interp, ell=ell_val_test, i=i_test, j=j_test)
+        for z in z_array_limber]
+else:
+    raise ValueError('cl_formula must be either PySSC or ISTF')
+
+plt.figure()
 plt.plot(z_array_limber, integrand_from_funct, label='integrand_from_funct')
-plt.plot(z_array_limber, simps_integrand[ell_idx_test, i_test, j_test, :], label='integrand from array')
+plt.plot(z_array_limber, simps_integrand[ell_idx_test, i_test, j_test, :], '--', label='integrand from array')
 # ! test integrand: end
 
 

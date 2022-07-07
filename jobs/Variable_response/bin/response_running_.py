@@ -223,14 +223,14 @@ def R_LL_quad(wf_A, wf_B, i, j, ell):
 
 
 # ! quad with ISTF cl formula - tested for the cls, should be fine!
-def integrand_ISTF(z, wf_A, wf_B, i, j, ell):
+def integrand_ISTF_v0(z, wf_A, wf_B, i, j, ell):
     return (wf_A(z)[i] * wf_B(z)[j]) / (csmlib.E(z) * csmlib.r(z) ** 2) * \
            R1_mm_interp(kl_wrap(ell, z), z)[0] * Pk_wrap(kl_wrap(ell, z), z)
 
 
 # use_h_units version
-def integrand_ISTF_v1(z, wf_A, wf_B, i, j, ell):
-    return (wf_A(z)[i] * wf_B(z)[j]) / (csmlib.E(z) *
+def integrand_ISTF(z, wf_A, wf_B, i, j, ell):
+    return (wf_A(z)[i] * wf_B(z)[j]) / (csmlib.E(z) / r_scale *
                                         csmlib.astropy_comoving_distance(z, use_h_units=use_h_units) ** 2) * \
            R1_mm_interp(kl_wrap(ell, z), z)[0] * Pk_wrap(kl_wrap(ell, z), z)
 
@@ -508,7 +508,8 @@ for use_h_units in [True, False]:
     dV = comov_dist ** 2 * dr_dz
 
     # this is to project Rl with ISTF formula
-    Hz_arr = csmlib.H(z_array_limber, cosmo_astropy=cosmo_astropy)
+    # ! this too has to be scaled by h!
+    Hz_arr = csmlib.H(z_array_limber, cosmo_astropy=cosmo_astropy) / r_scale
 
     # TODO check again all the r_scale, k_scale and h scalings in general, I altready found 3 mistakes
     # TODO recover plateau from before?
@@ -525,6 +526,8 @@ for use_h_units in [True, False]:
             function = cl_integral
             wf_A = W_LL_ISTF_interp
             wf_B = W_LL_ISTF_interp
+        else:
+            raise ValueError('cl_formula must be either "PySSC" or "ISTF"')
 
         print('quad integration started')
         start = time.perf_counter()
@@ -583,7 +586,6 @@ for use_h_units in [True, False]:
         plt.plot(ell_LL, R_LL_vinc[:, i, j], '--', c=color[i])  # , label='$R_\ell^{%i, %i} vinc$' % (i, j))
         if quad_integration:
             plt.plot(ell_LL, R_LL_quad_arr[:, i, j], '.', c=color[i])  # , label='$R_\ell^{%i, %i}$' % (i, j))
-    plt.legend()
 
     plt.title(f'use_h_units = {use_h_units}, cl_formula = {cl_formula}')
     plt.xlabel('$\ell$')

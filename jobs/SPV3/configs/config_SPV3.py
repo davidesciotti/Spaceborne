@@ -58,6 +58,12 @@ covariance_config = {
     'which_probe_response': 'constant',
 }
 
+Sijkl_config = {
+    'save_Sijkl': False,
+    'input_WF': 'davide',
+    'WF_normalization': 'IST'
+}
+
 FM_config = {
     'nParams': 20,
     'save_FM': True,

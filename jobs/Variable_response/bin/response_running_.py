@@ -203,7 +203,7 @@ G1 = G1[:, 1:]
 # options for the Pk
 # z_max = 2.5
 z_min, z_max, z_num = 1e-3, 3., 303
-z_min, z_max, z_num = 1e-3, 3., 703
+# z_min, z_max, z_num = 1e-3, 3., 703
 zbins = 10
 
 k_min, k_max, k_num = 1e-5, 20, 800
@@ -211,7 +211,7 @@ k_max_classy = 70
 
 # ! options
 use_h_units = False
-whos_PS = 'CLASS_clustertlkt'
+whos_PS = 'vincenzo'
 Pk_kind = 'nonlinear'
 plot_Rmm = False
 save_Pk = False
@@ -357,6 +357,7 @@ ell_LG = ell_GG.copy()
 
 min_idx = np.argmin(np.abs(z_array - zmin_limber))
 z_array_limber = z_array[min_idx:]  # ! this has been found by hand, fix this!
+# z_array_limber = z_array[5:]  # ! this has been found by hand, fix this!
 
 # compute R1(k_ell, z)
 # 1. the easy way: interpolate and fill
@@ -490,12 +491,48 @@ plt.grid()
 
 
 # ! test: plot R_of_kl_z
-ell_test = 4000
-print([kl_wrap(ell=ell_test, z=z) for z in z_array_limber])
-R_of_kl_z = [R1_mm_interp(kl_wrap(ell=ell_test, z=z), z)[0] for z in z_array_limber]
+# ell_test = 4000
+# print([kl_wrap(ell=ell_test, z=z) for z in z_array_limber])
+# R_of_kl_z = [R1_mm_interp(kl_wrap(ell=ell_test, z=z), z)[0] for z in z_array_limber]
+#
+# plt.figure()
+# plt.plot(z_array_limber, R_of_kl_z, label='$R_\ell^{%i}$' % ell_test)
+
+# ! test: plot R_of_kl_z
+ell_test = 2000
+z_test = 1.6
+ztest_idx = 160  # random
+
+
+kl_arr = [kl_wrap(ell=ell, z=z_array[ztest_idx]) for ell in ell_LL]
+P_of_kl_z = [Pk_wrap(k_ell=kl, z=z_array[ztest_idx]) for kl in kl_arr]
+R_of_kl_z = [R1_mm_interp(kl, z_array[ztest_idx])[0] for kl in kl_arr]
 
 plt.figure()
-plt.plot(z_array_limber, R_of_kl_z, label='$R_\ell^{%i}$' % ell_test)
+plt.plot(k_array, R1_mm[ztest_idx, :], label='$R_\ell^{%i}$' % ell_test)
+plt.plot(kl_arr, R_of_kl_z, '.', label='$R_\ell^{%i}$' % ell_test)
+plt.xscale('log')
+
+plt.figure()
+plt.plot(k_array, Pk[ztest_idx, :], label='$R_\ell^{%i}$' % ell_test)
+plt.plot(kl_arr, P_of_kl_z, '.', label='$R_\ell^{%i}$' % ell_test)
+plt.xscale('log')
+plt.yscale('log')
+
+
+# z_array_limber = z_array[5:]
+# # ! test: kl_arr from older script
+# kl_arr_old = np.load(project_path / f'jobs/SSC_comparison/output/kl_arr_use_h_units_{use_h_units}.npy')
+# kl_arr_new = np.zeros(kl_arr_old.shape)
+# for zi, zval in enumerate(z_array_limber):
+#     for ell_idx, ell_val in enumerate(ell_LL):
+#         kl_arr_new[zi, ell_idx] = kl_wrap(ell=ell_val, z=zval)
+#
+#
+# print(np.allclose(kl_arr_new, kl_arr_old))
+# mm.matshow(kl_arr_new[:30, :], 'ratio')
+# mm.matshow(kl_arr_old[:30, :], 'kl_arr_old')
+
 
 print('done')
 

@@ -16,7 +16,7 @@ from matplotlib.cm import get_cmap
 project_path = Path.cwd().parent.parent.parent.parent.parent
 job_path = Path.cwd().parent.parent.parent
 
-sys.path.append(str(project_path / 'lib'))
+sys.path.append(str(project_path.parent / 'common_data/common_lib'))
 import my_module as mm
 
 matplotlib.use('Qt5Agg')
@@ -241,7 +241,7 @@ k_min, k_max, k_num = 1e-5, 20, 800  # in [h/Mpc]?
 
 
 # ! options
-use_h_units = True
+use_h_units = False
 whos_PS = 'CLASS'
 Pk_kind = 'nonlinear'
 plot_Rmm = True
@@ -432,6 +432,11 @@ for zi, zval in enumerate(z_array_limber):
 ell_idx = 0
 z_idx = 5
 
+# ! debug: save kl_arr
+np.save(job_path / f'output/kl_arr_use_h_units_{use_h_units}.npy', kl_arr)
+print(ell_WL)
+
+
 # plot vs ell
 # plt.figure()
 plt.plot(ell_WL, kl_arr[z_idx, :], label=f'kl_arr vs ell, {use_h_units}')
@@ -482,7 +487,7 @@ R_LL = simps(integrand, z_array_limber, axis=-1)
 Cl_LL = np.load(job_path / 'output/cl_3D/C_LL_WLonly_3D.npy')
 
 # finally, divide by Cl
-R_LL = R_LL / Cl_LL
+R_LL /= Cl_LL
 
 plt.figure()
 for i in range(zbins):

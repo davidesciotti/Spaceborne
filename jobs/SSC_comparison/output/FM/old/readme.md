@@ -1,1 +1,1 @@
-Note: these files are equale to the "FM_GS...RLconst.txt". I am saving them here just as a backup.
+Note: these files are equale to the "FM_GS...RLconst.txt". I am saving them here just as a backup. 

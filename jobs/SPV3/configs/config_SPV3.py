@@ -61,7 +61,8 @@ covariance_config = {
 Sijkl_config = {
     'save_Sijkl': False,
     'input_WF': 'davide',
-    'WF_normalization': 'IST'
+    'WF_normalization': 'IST',
+    'has_IA': True,  # whether or not to include IA in the WF used to compute Sijkl
 }
 
 FM_config = {

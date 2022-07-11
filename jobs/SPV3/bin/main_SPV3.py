@@ -20,15 +20,21 @@ sys.path.append(str(project_path / 'bin'))
 sys.path.append(str(project_path / 'jobs'))
 
 # job configuration
-import SSC_comparison.configs.config_SSC_comparison as cfg
+import SPV3.configs.config_SPV3 as cfg
 
+# general libraries
 import my_module as mm
+import cosmo_lib as csmlib
+
+# project libraries
 import ell_values_running as ell_utils
 import Cl_preprocessing_running as Cl_utils
+import compute_Sijkl as Sijkl_utils
 import covariance_running as covmat_utils
 import FM_running as FM_utils
 import utils_running as utils
 import unit_test
+
 
 start_time = time.perf_counter()
 
@@ -39,7 +45,9 @@ start_time = time.perf_counter()
 # import the configuration dictionaries from config.py
 general_config = cfg.general_config
 covariance_config = cfg.covariance_config
+Sijkl_config = cfg.Sijkl_config
 FM_config = cfg.FM_config
+cosmo_params_dict = csmlib.cosmo_param_dict_classy
 
 # consistency checks:
 utils.consistency_checks(general_config, covariance_config)
@@ -93,6 +101,9 @@ for (general_config['ell_max_WL'], general_config['ell_max_GC']) in ((5000, 3000
     cl_dict_2D, Rl_dict_2D = Cl_utils.import_and_interpolate_cls(general_config, covariance_config, ell_dict)
     # reshape them to 3D
     cl_dict_3D, Rl_dict_3D = Cl_utils.reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D)
+
+    # Sijkl from PySSC
+    Sijkl = Sijkl_utils.compute_Sijkl(cosmo_params_dict, Sijkl_config)
 
     # compute covariance matrix
     cov_dict = covmat_utils.compute_cov(general_config, covariance_config,

@@ -18,14 +18,18 @@ from pathlib import Path
 # ! don't touch the imports and/or their ordering, otherwise I get a malloc error when compiling
 
 # get project directory
-project_path = Path.cwd().parent
+project_path = Path.cwd().parent.parent.parent
+print(project_path)
 
-sys.path.append(str(project_path))
+sys.path.append(str(project_path / 'jobs/SPV3/configs'))
+import config_SPV3 as cfg
+
 sys.path.append(str(project_path.parent / 'common_data/common_config'))
-sys.path.append(str(project_path.parent / 'common_data/common_lib'))
-
 import ISTF_fid_params as ISTF
+
+sys.path.append(str(project_path.parent / 'common_data/common_lib'))
 import my_module as mm
+
 
 
 
@@ -37,7 +41,7 @@ import my_module as mm
 # 5) Omega_lambda non rientra nel set di parametri, lo devo includere?
 # TODO sylvain's redshift starts from 0, not accepted by Sijkl
 
-def load_WF(Sijkl_config):
+def load_WF(Sijkl_config, zbins):
 
     input_WF = cfg.Sijkl_config['input_WF']
     WF_normalization = cfg.Sijkl_config['WF_normalization']
@@ -77,8 +81,8 @@ def load_WF(Sijkl_config):
             wig = np.genfromtxt(f'{WF_path}/sylvain/new_WF_IA_corrected/wig_sylv_{WF_normalization}_nz7000.txt')
 
         elif input_WF == 'vincenzo_SPV3':
-            wil = np.genfromtxt(f'{SPV3_path}/KernelFun/WiWL-EP10.dat')
-            wig = np.genfromtxt(f'{SPV3_path}/KernelFun/WiGC-EP10.dat')
+            wil = np.genfromtxt(f'{WF_path}/vincenzo/SPV3/KernelFun/WiWL-EP{zbins}.dat')
+            wig = np.genfromtxt(f'{WF_path}/vincenzo/SPV3/KernelFun/WiGC-EP{zbins}.dat')
 
         z_arr = wil[:, 0]  # setting the redshift array, z_arr
         z_points = z_arr.shape[0]
@@ -91,23 +95,21 @@ def load_WF(Sijkl_config):
         wil = np.transpose(wil)
         wig = np.transpose(wig)
 
+        print(wil.shape, wig.shape)
+
         # vertically stack the WFs (row-wise, wil first, wig second)
         windows = np.vstack((wil, wig))
-
 
     else:
         raise ValueError('input_WF must be either davide, sylvain, marco, vincenzo_SPV3, vincenzo or luca')
 
 
-    return windows
+    return z_arr, windows
 
 
-def compute_Sijkl(cosmo_params_dict, Sijkl_config):
+def compute_Sijkl(cosmo_params_dict, Sijkl_config, zbins):
 
-
-    save_Sijkl = cfg.Sijkl_config['save_Sijkl']
     WF_normalization = cfg.Sijkl_config['WF_normalization']
-
 
     if WF_normalization == 'PySSC':
         convention = 0
@@ -116,13 +118,14 @@ def compute_Sijkl(cosmo_params_dict, Sijkl_config):
     else:
         raise ValueError('WF_normalization must be either PySSC or IST')
 
-    windows = load_WF(Sijkl_config)
+    z_arr, windows = load_WF(Sijkl_config, zbins)
 
     start = time.perf_counter()
-    Sijkl_arr = Sijkl(z_arr=z_arr, windows=w, cosmo_params=cosmo_params_davide, precision=10, tol=1e-3, convention=1)
+    Sijkl_arr = Sijkl(z_arr=z_arr, windows=windows, cosmo_params=cosmo_params_dict, precision=10, tol=1e-3,
+                      convention=convention)
     print(f'Sijkl matrix computed in {time.perf_counter() - start}')
 
-    # if save_Sijkl:
+    # if cfg.Sijkl_config['save_Sijkl']:
     #  fileName = f"Sijkl_WF{input_WF}_nz{z_points}_{has_IA}.npy"
 
 

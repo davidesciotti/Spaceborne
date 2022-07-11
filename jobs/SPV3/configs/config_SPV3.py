@@ -60,7 +60,7 @@ covariance_config = {
 
 Sijkl_config = {
     'save_Sijkl': False,
-    'input_WF': 'davide',
+    'input_WF': 'vincenzo_SPV3',
     'WF_normalization': 'IST',
     'has_IA': True,  # whether or not to include IA in the WF used to compute Sijkl
 }
@@ -69,7 +69,6 @@ FM_config = {
     'nParams': 20,
     'save_FM': True,
     'save_FM_as_dict': True
-
 }
 
 plot_config = {

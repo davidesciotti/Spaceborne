@@ -2,10 +2,13 @@
 perform consistency checks
 """
 
-survey_area = 15000  # deg^2
+survey_area = 15_000  # deg^2
+survey_area_SPV3 = 14_000  # deg^2, new in 2022
 deg2_in_sphere = 41252.96  # deg^2 in a spere
+
 fsky_IST = survey_area / deg2_in_sphere
 fsky_syvain = 0.375
+fsky_SPV3 = survey_area_SPV3 / deg2_in_sphere
 
 
 def consistency_checks(general_config, covariance_config):
@@ -46,3 +49,13 @@ def consistency_checks(general_config, covariance_config):
         assert general_config['cl_folder'] == 'Cl_CLOE', 'XXX check not quite sure about this cl_folder thing...'
         assert general_config['use_WA'] is False, 'IST_NL does not use Wadd'
         assert general_config['nbl'] == 20, 'IST_NL uses nbl = 20'
+
+    elif general_config['which_forecast'] == 'SPV3':
+        assert covariance_config['fsky'] == fsky_SPV3, 'SPV3 uses fsky = 0.3636'
+        assert covariance_config['ind_ordering'] == 'vincenzo', 'IST forecast used Vincenzos ind ordering'
+        assert covariance_config['GL_or_LG'] == 'GL', 'IST forecast uses GL'
+        assert covariance_config['Rl'] == 4, 'In the SSC comparison we used Rl=4'
+        assert general_config['cl_folder'] == 'Cij_14may', 'Latest Cls are Cij_14may'
+        assert general_config['nbl'] == 30, 'IST forecast uses nbl = 30'
+        assert general_config['ell_max_GC'] == 3000, 'IST forecast uses ell_max_GC = 3000'
+        assert general_config['use_WA'] is True, 'IST forecast uses Wadd'

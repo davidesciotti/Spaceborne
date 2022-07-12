@@ -1,10 +1,14 @@
 import numpy as np
 
 # official Euclid survey area
-survey_area = 15000  # deg^2
+survey_area = 15_000  # deg^2
+survey_area_SPV3 = 14_000  # deg^2, new in 2022
 deg2_in_sphere = 41252.96  # deg^2 in a spere
+
 fsky_IST = survey_area / deg2_in_sphere
 fsky_syvain = 0.375
+fsky_SPV3 = survey_area_SPV3 / deg2_in_sphere
+
 
 which_forecast = 'sylvain'
 
@@ -35,7 +39,7 @@ general_config = {
     'ell_max_GC': 3000,
     'zbins': 10,
     'nProbes': 2,
-    'nbl': 30,
+    'nbl': 32,
     'which_forecast': which_forecast,  # ie choose whether to have IST's or sylvain's deltas
     'cl_folder': cl_folder,
     'use_WA': True,
@@ -59,7 +63,7 @@ covariance_config = {
 }
 
 Sijkl_config = {
-    'save_Sijkl': False,
+    'save_Sijkl': True,
     'input_WF': 'vincenzo_SPV3',
     'WF_normalization': 'IST',
     'has_IA': True,  # whether or not to include IA in the WF used to compute Sijkl

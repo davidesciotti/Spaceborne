@@ -105,6 +105,10 @@ Sijkl = Sijkl_utils.compute_Sijkl(cosmo_params_dict, Sijkl_config, zbins=general
 mm.matshow(Sijkl[0,0,:,:])
 mm.matshow(Sijkl_dav[0,0,:,:])
 
+if cfg.Sijkl_config['save_Sijkl']:
+    np.save(project_path / f'output/sijkl/sijkl_wf{cfg.Sijkl_config["input_WF"]}.npy')
+
+
 assert 1 > 2
 
 

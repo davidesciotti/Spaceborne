@@ -54,7 +54,7 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
         C_XC_import[:, 0] = np.log10(C_XC_import[:, 0])
         C_GG_import[:, 0] = np.log10(C_GG_import[:, 0])
 
-    if cl_folder == "Cij_14may":
+    elif cl_folder == "Cij_14may":
         assert covariance_config['GL_or_LG'] == 'GL', 'Cij_14may uses GL'
         C_LL_import = np.genfromtxt(
             project_path_here / 'config/common_data/vincenzo/CijDers/14may/EP10/CijLL-GR-Flat-eNLA-NA.dat')
@@ -62,6 +62,18 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
             project_path_here / 'config/common_data/vincenzo/CijDers/14may/EP10/CijGL-GR-Flat-eNLA-NA.dat')
         C_GG_import = np.genfromtxt(
             project_path_here / 'config/common_data/vincenzo/CijDers/14may/EP10/CijGG-GR-Flat-eNLA-NA.dat')
+
+    elif cl_folder == "Cij_SPV3":
+        assert 1 > 2, 'Cij_SPV3 is not implemented'
+        assert covariance_config['GL_or_LG'] == 'GL', 'Cij_SPV3 uses GL'
+        C_LL_import = np.genfromtxt(
+            project_path_here / 'config/common_data/vincenzo/SPV3_07_2022/DataVecTabs/EP10/CijLL-GR-Flat-eNLA-NA.dat')
+        C_XC_import = np.genfromtxt(
+            project_path_here / 'config/common_data/vincenzo/SPV3_07_2022/DataVecTabs/EP10/CijGL-GR-Flat-eNLA-NA.dat')
+        C_GG_import = np.genfromtxt(
+            project_path_here / 'config/common_data/vincenzo/SPV3_07_2022/DataVecTabs/EP10/CijGG-GR-Flat-eNLA-NA.dat')
+
+
 
     else:
         raise ValueError('cl_folder must be Cij_15gen, Cij_thesis or Cij_14may')
@@ -205,3 +217,54 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     print('Cls and responses reshaped')
 
     return cl_dict_3D, Rl_dict_3D
+
+
+
+
+
+# ! teeeeeest
+C_LL_import = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/DataVecTabs/WLO/dv-WLO-Opt-EP10.dat')
+
+nbl = 32
+zbins = 10
+
+def cl_1D_to_3D(cl_1d, nbl, zbins):
+    p = 0
+    cl_3d = np.zeros((nbl, zbins, zbins))
+    for ell in range(nbl):
+        for iz in range(zbins):
+            for jz in range(iz, zbins):
+                cl_3d[ell, iz, jz] = cl_1d[p]
+                p += 1
+    return cl_3d
+
+cl_3d = cl_1D_to_3D(C_LL_import, nbl, zbins)
+
+
+
+cl_3d = mm.fill_3D_symmetric_array(cl_3d, nbl, zbins)
+
+
+
+for ell in range(nbl):
+    print(mm.check_symmetric(cl_3d[ell, ...], rtol=1e-05, atol=1e-08))
+
+import matplotlib.pyplot as plt
+ell = 0
+iz, jz = 0, 0
+# load old 3D array
+cl_3d_old = np.load('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/cl_3D/C_LL_WLonly_3D.npy')
+plt.plot(np.logspace(np.log10(10), np.log10(5000), 30), cl_3d_old[:, iz, jz])
+plt.plot(np.logspace(np.log10(10), np.log10(5000), nbl), cl_3d[:, iz, jz])
+# plt.xscale('log')
+# plt.yscale('log')
+
+mm.matshow()
+
+
+
+
+
+
+
+

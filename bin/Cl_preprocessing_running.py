@@ -6,6 +6,8 @@ project_path_here = Path.cwd().parent.parent.parent
 sys.path.append(str(project_path_here.parent / 'common_lib'))
 import my_module as mm
 
+print(project_path_here)
+
 
 def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
     """
@@ -220,6 +222,42 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     print('Cls and responses reshaped')
 
     return cl_dict_3D, Rl_dict_3D
+
+
+def get_spv3_cls_3d(probe, nbl, zbins, ell_max_WL):
+
+    if ell_max_WL == 5000:
+        case = 'Opt'
+    elif ell_max_WL == 1500:
+        case = 'Pes'
+    else:
+        raise ValueError('ell_max_WL must be 5000 or 3000')
+
+    if probe == 'WL':
+        probe_here = 'WLO'
+    elif probe == 'WA':
+        probe_here = 'WLA'
+    elif probe == 'GC':
+        probe_here = 'GCO'
+    elif probe == '3x2pt':
+        probe_here = 'All'
+    else:
+        raise ValueError('probe must be WL, WA, GC or 3x2pt')
+
+    # just to set the correct file name
+    if zbins in [7, 9]:
+        string_0 = '0'
+    else:
+        string_0 = ''
+
+    cl_1d = np.genfromtxt(project_path_here / f'jobs/SPV3/common_data/vincenzo/SPV3_07_2022/DataVecTabs/{probe_here}/dv-{probe_here}-{case}-EP{string_0}{zbins}.dat')
+
+    cl_3d = mm.cl_1D_to_3D(cl_1d, nbl, zbins)
+
+    if probe != '3x2pt':
+        cl_3d = mm.fill_3D_symmetric_array(cl_3d, nbl, zbins)
+
+    return cl_3d
 
 
 # ! teeeeeest

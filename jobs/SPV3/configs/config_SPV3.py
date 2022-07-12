@@ -39,7 +39,7 @@ general_config = {
     'ell_max_GC': 3000,
     'zbins': 10,
     'nProbes': 2,
-    'nbl': 32,
+    'nbl_WL': 32,
     'which_forecast': which_forecast,  # ie choose whether to have IST's or sylvain's deltas
     'cl_folder': cl_folder,
     'use_WA': True,

@@ -100,26 +100,21 @@ def ISTNL_ells(general_config):
     return ells, deltas
 
 
-def ISTF_ells(general_config):
+def ISTF_ells(nbl, ell_min, ell_max):
     """
-    ISTF recipe, doesn't output a dictionary (i.e., single-probe), which is also cleaner
+    ISTF recipe, doesn't output a dictionary (i.e., is single-probe), which is also cleaner
     """
-
-    nbl = general_config['nbl']
-    ell_min = general_config['ell_min']
-    ell_max = general_config['ell_max']
-
-    ell_bins = np.logspace(np.log10(ell_min), np.log10(ell_max), nbl + 1)  # WL
+    ell_bins = np.logspace(np.log10(ell_min), np.log10(ell_max), nbl + 1)
     ells = (ell_bins[1:] + ell_bins[:-1]) / 2
 
     deltas = np.diff(ell_bins)
 
     return ells, deltas
 
-    # save as text file
-    # probes = ['WL', 'GC', 'WA']
-    # ell_maxes = [ell_max_WL, ell_max_GC, ell_max_WA] # XXX probe ordering must be the same as above!!
+# save as text file
+# probes = ['WL', 'GC', 'WA']
+# ell_maxes = [ell_max_WL, ell_max_GC, ell_max_WA] # XXX probe ordering must be the same as above!!
 
-    # for probe, ell_max in zip(probes, ell_maxes):
-    #     np.savetxt(path / f"output/ell_values/ell_{probe}_ellMax{probe}{ell_max}_nbl{nbl}.txt", ell_dict[f'ell_{probe}'])
-    #     np.savetxt(path / f"output/ell_values/delta_l_{probe}_ellMax{probe}{ell_max}_nbl{nbl}.txt", delta_dict[f'delta_l_{probe}'])
+# for probe, ell_max in zip(probes, ell_maxes):
+#     np.savetxt(path / f"output/ell_values/ell_{probe}_ellMax{probe}{ell_max}_nbl{nbl}.txt", ell_dict[f'ell_{probe}'])
+#     np.savetxt(path / f"output/ell_values/delta_l_{probe}_ellMax{probe}{ell_max}_nbl{nbl}.txt", delta_dict[f'delta_l_{probe}'])

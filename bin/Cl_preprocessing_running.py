@@ -79,9 +79,12 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
         raise ValueError('cl_folder must be Cij_15gen, Cij_thesis or Cij_14may')
 
     # import responses
-    R_LL_import = np.genfromtxt(project_path_here / 'config/common_data/vincenzo/Pk_responses_2D/rijllcorr-istf-alex.dat')
-    R_GL_import = np.genfromtxt(project_path_here / 'config/common_data/vincenzo/Pk_responses_2D/rijglcorr-istf-alex.dat')
-    R_GG_import = np.genfromtxt(project_path_here / 'config/common_data/vincenzo/Pk_responses_2D/rijggcorr-istf-alex.dat')
+    R_LL_import = np.genfromtxt(
+        project_path_here / 'config/common_data/vincenzo/Pk_responses_2D/rijllcorr-istf-alex.dat')
+    R_GL_import = np.genfromtxt(
+        project_path_here / 'config/common_data/vincenzo/Pk_responses_2D/rijglcorr-istf-alex.dat')
+    R_GG_import = np.genfromtxt(
+        project_path_here / 'config/common_data/vincenzo/Pk_responses_2D/rijggcorr-istf-alex.dat')
 
     ###########################################################################
     # interpolate Vincenzo's Cls in ell values
@@ -219,52 +222,68 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     return cl_dict_3D, Rl_dict_3D
 
 
-
-
-
 # ! teeeeeest
-C_LL_import = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/DataVecTabs/WLO/dv-WLO-Opt-EP10.dat')
+import matplotlib.pyplot as plt
+
+base_path = '/Users/davide/Documents/Lavoro/Programmi'
+
+cl_ll_1d = np.genfromtxt(f'{base_path}/common_data/vincenzo/SPV3_07_2022/DataVecTabs/WLO/dv-WLO-Opt-EP10.dat')
+cl_gg_1d = np.genfromtxt(f'{base_path}/common_data/vincenzo/SPV3_07_2022/DataVecTabs/GCO/dv-GCO-Opt-EP10.dat')
 
 nbl = 32
 zbins = 10
 
-def cl_1D_to_3D(cl_1d, nbl, zbins):
-    p = 0
-    cl_3d = np.zeros((nbl, zbins, zbins))
-    for ell in range(nbl):
-        for iz in range(zbins):
-            for jz in range(iz, zbins):
-                cl_3d[ell, iz, jz] = cl_1d[p]
-                p += 1
-    return cl_3d
+cl_ll_3d = mm.cl_1D_to_3D(cl_ll_1d, nbl, zbins)
+cl_gg_3d = mm.cl_1D_to_3D(cl_gg_1d, nbl, zbins)
 
-cl_3d = cl_1D_to_3D(C_LL_import, nbl, zbins)
-
-
-
-cl_3d = mm.fill_3D_symmetric_array(cl_3d, nbl, zbins)
-
-
+cl_ll_3d = mm.fill_3D_symmetric_array(cl_ll_3d, nbl, zbins)
+cl_gg_3d = mm.fill_3D_symmetric_array(cl_gg_3d, nbl, zbins)
 
 for ell in range(nbl):
-    print(mm.check_symmetric(cl_3d[ell, ...], rtol=1e-05, atol=1e-08))
+    if not mm.check_symmetric(cl_ll_3d[ell, ...], rtol=1e-05, atol=1e-08) or \
+            not mm.check_symmetric(cl_gg_3d[ell, ...], rtol=1e-05, atol=1e-08):
+        print('not symmetric!')
 
-import matplotlib.pyplot as plt
+probe = 'WLO'
+case = 'Opt'
+if case == 'Opt':
+    nbl_GC = 29
+path = f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/DataVecTabs/{probe}'
+
+zbins_list = (7, 9, 10, 11, 13, 15)
+
+for zbins in zbins_list:
+    if zbins in [7, 9]:
+        string_0 = '0'
+    else:
+        string_0 = ''
+    file = np.genfromtxt(f'{path}/dv-{probe}-{case}-EP{string_0}{zbins}.dat')
+
+    print(file.shape, file.shape[0]/32, zbins*(zbins+1)/2)
+
+mydict = dict(mm.get_kv_pairs(path))
+for key in mydict.keys():
+    print(key, mydict[key].shape)
+
+
+
+
+
+
+
 ell = 0
 iz, jz = 0, 0
 # load old 3D array
-cl_3d_old = np.load('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/cl_3D/C_LL_WLonly_3D.npy')
-plt.plot(np.logspace(np.log10(10), np.log10(5000), 30), cl_3d_old[:, iz, jz])
-plt.plot(np.logspace(np.log10(10), np.log10(5000), nbl), cl_3d[:, iz, jz])
-# plt.xscale('log')
+cl_ll_3d_old = np.load(f'{base_path}/SSC_restructured_v2/jobs/SSC_comparison/output/cl_3D/C_LL_WLonly_3D.npy')
+cl_gg_3d_old = np.load(f'{base_path}/SSC_restructured_v2/jobs/SSC_comparison/output/cl_3D/C_GG_3D.npy')
+
+
+plt.plot(np.logspace(np.log10(10), np.log10(5000), 30), cl_gg_3d_old[:, iz, jz])
+plt.plot(np.logspace(np.log10(10), np.log10(5000), nbl), cl_gg_3d[:, iz, jz])
+plt.xscale('log')
 # plt.yscale('log')
 
-mm.matshow()
+mm.matshow(cl_gg_3d[ell, :, :], title='new')
+mm.matshow(cl_gg_3d_old[ell, :, :], title='old')
 
-
-
-
-
-
-
-
+plt.plot(cl_gg_1d)

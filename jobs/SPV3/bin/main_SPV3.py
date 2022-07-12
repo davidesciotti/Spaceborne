@@ -36,6 +36,12 @@ import unit_test
 
 start_time = time.perf_counter()
 
+# TODO ind will be different for the different number of z bins
+# TODO update consistency checks
+# TODO finish exploring the cls
+# TODO check that the number of ell bins is the same as int he files
+
+
 ###############################################################################
 #################### PARAMETERS AND SETTINGS DEFINITION #######################
 ###############################################################################
@@ -47,8 +53,9 @@ Sijkl_config = cfg.Sijkl_config
 FM_config = cfg.FM_config
 cosmo_params_dict = csmlib.cosmo_par_dict_classy
 
-# consistency checks:
-utils.consistency_checks(general_config, covariance_config)
+
+# utils.consistency_checks(general_config, covariance_config)
+
 
 # for the time being, I/O is manual and from the main
 # load inputs (job-specific)
@@ -88,12 +95,24 @@ nbl = general_config['nbl']
 # compute ell and delta ell values
 ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_config)
 
-nbl_WA = ell_dict['ell_WA'].shape[0]
+ell_WL, delta_WL = ell_utils.ISTF_ells(general_config['nbl'], general_config['ell_min'], general_config['ell_max_WL'])
 
-# ! deltas are different for Sylvain! overwrite the standard delta_dict
-delta_dict['delta_l_WL'] = mm.delta_l_Sylvain(nbl, 10 ** ell_dict['ell_WL'])
-delta_dict['delta_l_GC'] = mm.delta_l_Sylvain(nbl, 10 ** ell_dict['ell_GC'])
-delta_dict['delta_l_WA'] = mm.delta_l_Sylvain(nbl_WA, 10 ** ell_dict['ell_WA'])
+
+ell_dict['ell_GC'] = np.copy(ell_dict['ell_WL'][10**ell_dict['ell_WL'] < ell_max_GC])
+ell_dict['ell_WA'] = np.copy(ell_dict['ell_WL'][10**ell_dict['ell_WL'] > ell_max_GC])
+ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
+
+
+nbl_GC = ell_dict['ell_GC'].shape[0]
+nbl_WA = ell_dict['ell_WA'].shape[0]
+nbl_XC = nbl_GC
+
+# ! not sure about this
+delta_dict['delta_l_GC'] = np.copy(delta_dict['delta_l_WL'][:nbl_GC])
+delta_dict['delta_l_WA'] = np.copy(delta_dict['delta_l_WL'][nbl_GC:])
+
+
+assert 1 == 0, 'this is a test'
 
 # import and interpolate the cls
 cl_dict_2D, Rl_dict_2D = Cl_utils.import_and_interpolate_cls(general_config, covariance_config, ell_dict)

@@ -116,6 +116,19 @@ delta_dict['delta_l_GC'] = np.copy(delta_l_WL[:nbl_GC])
 delta_dict['delta_l_WA'] = np.copy(delta_l_WL[nbl_GC:])
 
 cl_ll_3d = cl_utils.get_spv3_cls_3d(probe='WL', nbl=nbl_WL, zbins=zbins, ell_max_WL=ell_max_WL)
+cl_gg_3d = cl_utils.get_spv3_cls_3d(probe='GC', nbl=nbl_GC, zbins=zbins, ell_max_WL=ell_max_WL)
+cl_wa_3d = cl_utils.get_spv3_cls_3d(probe='WA', nbl=nbl_WA, zbins=zbins, ell_max_WL=ell_max_WL)
+cl_3x2pt_5d = cl_utils.get_spv3_cls_3d(probe='3x2pt', nbl=nbl_XC, zbins=zbins, ell_max_WL=ell_max_WL)
+
+
+mm.matshow(cl_ll_3d[0, :, :])
+mm.matshow(cl_gg_3d[0, :, :])
+mm.matshow(cl_wa_3d[0, :, :])
+mm.matshow(cl_3x2pt_5d[0, 0, 0, :, :])
+
+
+
+
 
 assert 1 == 0, 'this is a test'
 

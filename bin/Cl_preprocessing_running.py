@@ -6,8 +6,6 @@ project_path_here = Path.cwd().parent.parent.parent
 sys.path.append(str(project_path_here.parent / 'common_lib'))
 import my_module as mm
 
-print(project_path_here)
-
 
 def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
     """
@@ -225,6 +223,12 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
 
 
 def get_spv3_cls_3d(probe, nbl, zbins, ell_max_WL):
+    """This function imports and interpolates the CPV3 cls, which have a different format wrt the usual input files"""
+
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+
+    # default values, changed only for the 3x2pt case
+    zpairs = zpairs_auto
 
     if ell_max_WL == 5000:
         case = 'Opt'
@@ -240,88 +244,47 @@ def get_spv3_cls_3d(probe, nbl, zbins, ell_max_WL):
     elif probe == 'GC':
         probe_here = 'GCO'
     elif probe == '3x2pt':
-        probe_here = 'All'
+        probe_here = probe
+        zpairs = zpairs_3x2pt
     else:
         raise ValueError('probe must be WL, WA, GC or 3x2pt')
 
-    # just to set the correct file name
-    if zbins in [7, 9]:
+    if zbins in [7, 9]:  # just to set the correct file name
         string_0 = '0'
     else:
         string_0 = ''
 
-    cl_1d = np.genfromtxt(project_path_here / f'jobs/SPV3/common_data/vincenzo/SPV3_07_2022/DataVecTabs/{probe_here}/dv-{probe_here}-{case}-EP{string_0}{zbins}.dat')
+    cl_1d = np.genfromtxt(
+        project_path_here / f'jobs/SPV3/input/DataVecTabs/{probe_here}/dv-{probe_here}-{case}-EP{string_0}{zbins}.dat')
 
-    cl_3d = mm.cl_1D_to_3D(cl_1d, nbl, zbins)
+    assert zpairs == int(cl_1d.shape[0] / nbl)  # check on the shape
 
     if probe != '3x2pt':
+        cl_3d = mm.cl_1D_to_3D(cl_1d, nbl, zbins, is_symmetric=True)
         cl_3d = mm.fill_3D_symmetric_array(cl_3d, nbl, zbins)
 
-    return cl_3d
-
-
-# ! teeeeeest
-import matplotlib.pyplot as plt
-
-base_path = '/Users/davide/Documents/Lavoro/Programmi'
-
-cl_ll_1d = np.genfromtxt(f'{base_path}/common_data/vincenzo/SPV3_07_2022/DataVecTabs/WLO/dv-WLO-Opt-EP10.dat')
-cl_gg_1d = np.genfromtxt(f'{base_path}/common_data/vincenzo/SPV3_07_2022/DataVecTabs/GCO/dv-GCO-Opt-EP10.dat')
-
-nbl = 32
-zbins = 10
-
-cl_ll_3d = mm.cl_1D_to_3D(cl_ll_1d, nbl, zbins)
-cl_gg_3d = mm.cl_1D_to_3D(cl_gg_1d, nbl, zbins)
-
-cl_ll_3d = mm.fill_3D_symmetric_array(cl_ll_3d, nbl, zbins)
-cl_gg_3d = mm.fill_3D_symmetric_array(cl_gg_3d, nbl, zbins)
-
-for ell in range(nbl):
-    if not mm.check_symmetric(cl_ll_3d[ell, ...], rtol=1e-05, atol=1e-08) or \
-            not mm.check_symmetric(cl_gg_3d[ell, ...], rtol=1e-05, atol=1e-08):
-        print('not symmetric!')
-
-probe = 'WLO'
-case = 'Opt'
-if case == 'Opt':
-    nbl_GC = 29
-path = f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/DataVecTabs/{probe}'
-
-zbins_list = (7, 9, 10, 11, 13, 15)
-
-for zbins in zbins_list:
-    if zbins in [7, 9]:
-        string_0 = '0'
     else:
-        string_0 = ''
-    file = np.genfromtxt(f'{path}/dv-{probe}-{case}-EP{string_0}{zbins}.dat')
+        # split into 3 1d datavectors
+        cl_ll_3x2pt_1d = cl_1d[:zpairs_auto]
+        cl_gl_3x2pt_1d = cl_1d[zpairs_auto:zpairs_auto + zpairs_cross]  # ! is it really gl? or lg?
+        cl_gg_3x2pt_1d = cl_1d[zpairs_auto + zpairs_cross:]
 
-    print(file.shape, file.shape[0]/32, zbins*(zbins+1)/2)
+        # reshape them individually (and symmetrize)
+        cl_ll_3x2pt_3d = mm.cl_1D_to_3D(cl_ll_3x2pt_1d, nbl, zbins, is_symmetric=True)
+        cl_gl_3x2pt_3d = mm.cl_1D_to_3D(cl_gl_3x2pt_1d, nbl, zbins, is_symmetric=False)
+        cl_gg_3x2pt_3d = mm.cl_1D_to_3D(cl_gg_3x2pt_1d, nbl, zbins, is_symmetric=True)
 
-mydict = dict(mm.get_kv_pairs(path))
-for key in mydict.keys():
-    print(key, mydict[key].shape)
+        cl_ll_3x2pt_3d = mm.fill_3D_symmetric_array(cl_ll_3x2pt_3d, nbl, zbins)
+        cl_gg_3x2pt_3d = mm.fill_3D_symmetric_array(cl_gg_3x2pt_3d, nbl, zbins)
 
+        D_3x2pt = np.zeros((nbl, 2, 2, zbins, zbins))
+        # use them to populate the datavector
+        D_3x2pt[:, 0, 0, :, :] = cl_ll_3x2pt_3d
+        D_3x2pt[:, 1, 1, :, :] = cl_gg_3x2pt_3d
+        D_3x2pt[:, 0, 1, :, :] = np.transpose(cl_gl_3x2pt_3d, (0, 2, 1))
+        D_3x2pt[:, 1, 0, :, :] = cl_gl_3x2pt_3d
 
+        return D_3x2pt  # in this case, return the datavector (i could call it cl_3d, and avoid this return statement,
+        # but it's not 3d!)
 
-
-
-
-
-ell = 0
-iz, jz = 0, 0
-# load old 3D array
-cl_ll_3d_old = np.load(f'{base_path}/SSC_restructured_v2/jobs/SSC_comparison/output/cl_3D/C_LL_WLonly_3D.npy')
-cl_gg_3d_old = np.load(f'{base_path}/SSC_restructured_v2/jobs/SSC_comparison/output/cl_3D/C_GG_3D.npy')
-
-
-plt.plot(np.logspace(np.log10(10), np.log10(5000), 30), cl_gg_3d_old[:, iz, jz])
-plt.plot(np.logspace(np.log10(10), np.log10(5000), nbl), cl_gg_3d[:, iz, jz])
-plt.xscale('log')
-# plt.yscale('log')
-
-mm.matshow(cl_gg_3d[ell, :, :], title='new')
-mm.matshow(cl_gg_3d_old[ell, :, :], title='old')
-
-plt.plot(cl_gg_1d)
+    return cl_3d

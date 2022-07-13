@@ -5,6 +5,7 @@ from pathlib import Path
 import matplotlib
 import scipy.io as sio
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import numpy as np
 import pandas as pd
 
@@ -20,6 +21,10 @@ sys.path.append(str(project_path.parent / 'common_data/common_lib'))
 import my_module as mm
 import cosmo_lib as csmlib
 
+# general config
+sys.path.append(str(project_path.parent / 'common_data/common_config'))
+import mpl_cfg
+
 # job configuration
 sys.path.append(str(project_path / 'jobs'))
 import SPV3.configs.config_SPV3 as cfg
@@ -33,6 +38,8 @@ import covariance_running as covmat_utils
 import FM_running as FM_utils
 import utils_running as utils
 import unit_test
+
+mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 start_time = time.perf_counter()
 
@@ -49,36 +56,11 @@ start_time = time.perf_counter()
 #################### PARAMETERS AND SETTINGS DEFINITION #######################
 ###############################################################################
 
-# import the configuration dictionaries from config.py
 general_config = cfg.general_config
 covariance_config = cfg.covariance_config
 Sijkl_config = cfg.Sijkl_config
 FM_config = cfg.FM_config
 cosmo_params_dict = csmlib.cosmo_par_dict_classy
-
-zbins = general_config['zbins']
-
-# utils.consistency_checks(general_config, covariance_config)
-
-
-# for the time being, I/O is manual and from the main
-# load inputs (job-specific)
-ind = np.genfromtxt(project_path / "config/common_data/ind/indici_vincenzo_like.dat").astype(int) - 1
-covariance_config['ind'] = ind
-
-Sijkl_dav = np.load(project_path / "config/common_data/Sijkl/Sijkl_WFdavide_nz10000_IA_3may.npy")  # davide, eNLA
-# Sijkl_marco = np.load(project_path / "config/common_data/Sijkl/Sijkl_WFmarco_nz10000_zNLA_gen22.npy")  # marco, zNLA
-# Sijkl_sylv = np.load(project_path / "config/common_data/Sijkl/sylvain_cosmologyFixe_IAFixe_Sijkl_GCph_WL_XC_3may.npy")  # sylvain, eNLA
-
-Sijkl = Sijkl_dav
-
-assert np.array_equal(Sijkl, Sijkl_dav), 'Sijkl should be Sijkl_dav'
-
-###############################################################################
-######################### FORECAST COMPUTATION ################################
-###############################################################################
-
-# for (general_config['ell_max_WL'], general_config['ell_max_GC']) in ((5000, 3000), (1500, 750)):
 
 which_probe_response = covariance_config['which_probe_response']
 # set the string, just for the file names
@@ -89,77 +71,79 @@ elif which_probe_response == 'variable':
 else:
     raise ValueError('which_probe_response must be either constant or variable')
 
-# some variables used for I/O naming
-ell_max_WL = general_config['ell_max_WL']
-ell_max_GC = general_config['ell_max_GC']
-ell_max_XC = ell_max_GC
-nbl_WL = general_config['nbl_WL']
+zbins_SPV3 = (7, 9, 10, 11, 13, 15)
 
-# compute ell and delta ell values
-ell_WL, delta_l_WL = ell_utils.ISTF_ells(general_config['nbl_WL'], general_config['ell_min'],
-                                         general_config['ell_max_WL'])
-ell_WL = np.log10(ell_WL)
+for general_config['zbins'] in zbins_SPV3:
+    # for (general_config['ell_max_WL'], general_config['ell_max_GC']) in ((5000, 3000), (1500, 750)):
 
-ell_dict = {}
-ell_dict['ell_WL'] = ell_WL
-ell_dict['ell_GC'] = np.copy(ell_WL[10 ** ell_WL < ell_max_GC])
-ell_dict['ell_WA'] = np.copy(ell_WL[10 ** ell_WL > ell_max_GC])
-ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
+    # utils.consistency_checks(general_config, covariance_config)
 
-nbl_GC = ell_dict['ell_GC'].shape[0]
-nbl_WA = ell_dict['ell_WA'].shape[0]
-nbl_XC = nbl_GC
+    zbins = general_config['zbins']
 
-# ! not super sure about these deltas
-delta_dict = {}
-delta_dict['delta_l_WL'] = delta_l_WL
-delta_dict['delta_l_GC'] = np.copy(delta_l_WL[:nbl_GC])
-delta_dict['delta_l_WA'] = np.copy(delta_l_WL[nbl_GC:])
+    ind = np.genfromtxt(f'{project_path}/config/common_data/ind_files/variable_zbins/indici_vincenzo_like_zbins{zbins}.dat', dtype=int)
+    covariance_config['ind'] = ind
 
-cl_ll_3d = cl_utils.get_spv3_cls_3d(probe='WL', nbl=nbl_WL, zbins=zbins, ell_max_WL=ell_max_WL)
-cl_gg_3d = cl_utils.get_spv3_cls_3d(probe='GC', nbl=nbl_GC, zbins=zbins, ell_max_WL=ell_max_WL)
-cl_wa_3d = cl_utils.get_spv3_cls_3d(probe='WA', nbl=nbl_WA, zbins=zbins, ell_max_WL=ell_max_WL)
-cl_3x2pt_5d = cl_utils.get_spv3_cls_3d(probe='3x2pt', nbl=nbl_XC, zbins=zbins, ell_max_WL=ell_max_WL)
-
-# mm.matshow(cl_ll_3d[0, :, :])
-# mm.matshow(cl_gg_3d[0, :, :])
-# mm.matshow(cl_wa_3d[0, :, :])
-# mm.matshow(cl_3x2pt_5d[0, 0, 0, :, :])
+    # Sijkl_dav = np.load(f"{project_path}/config/common_data/Sijkl/Sijkl_WFdavide_nz10000_IA_3may.npy")  # davide, eNLA
 
 
-ell_WL_old, _ = ell_utils.ISTF_ells(30, general_config['ell_min'], 5000)
-ell_GC_old, _ = ell_utils.ISTF_ells(30, general_config['ell_min'], 3000)
-cl_gg_old = np.load(
-    '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/cl_3D/C_GG_3D.npy')
-cl_ll_old = np.load(
-    '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/cl_3D/C_LL_WLonly_3D.npy')
-cl_3x2pt_old = np.load(
-    '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/cl_3D/D_3x2pt.npy')
 
-iz = 5
-jz = iz
+    # some variables used for I/O naming
+    ell_max_WL = general_config['ell_max_WL']
+    ell_max_GC = general_config['ell_max_GC']
+    ell_max_XC = ell_max_GC
+    nbl_WL = general_config['nbl_WL']
 
-plt.figure()
-# plt.plot(10 ** ell_dict['ell_GC'], cl_3x2pt_5d[:, 1, 1, iz, jz], '.-', label='cl_3x2pt')
-# plt.plot(10 ** ell_dict['ell_WL'], cl_ll_3d[:, iz, jz], '.-', label='cl_ll_3d_new')
-plt.plot(10 ** ell_dict['ell_GC'], cl_gg_3d[:, iz, jz], '.-', label='cl_gg_3d_new')
+    # compute ell and delta ell values
+    ell_WL, delta_l_WL = ell_utils.ISTF_ells(general_config['nbl_WL'], general_config['ell_min'],
+                                             general_config['ell_max_WL'])
+    ell_WL = np.log10(ell_WL)
 
-# plt.plot(ell_WL_old, cl_ll_old[:, iz, jz], '.-', label='cl_ll_old')
-plt.plot(ell_GC_old, cl_gg_old[:, iz, jz], '.-', label='cl_gg_old')
-# plt.yscale('log')
-plt.legend()
-plt.xlabel('$\ell$')
-plt.ylabel('$C_\ell$')
-plt.title(f'zi, zj = {iz}, {jz}')
+    ell_dict = {}
+    ell_dict['ell_WL'] = ell_WL
+    ell_dict['ell_GC'] = np.copy(ell_WL[10 ** ell_WL < ell_max_GC])
+    ell_dict['ell_WA'] = np.copy(ell_WL[10 ** ell_WL > ell_max_GC])
+    ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
+
+    nbl_GC = ell_dict['ell_GC'].shape[0]
+    nbl_WA = ell_dict['ell_WA'].shape[0]
+    nbl_XC = nbl_GC
+
+    # ! not super sure about these deltas
+    delta_dict = {}
+    delta_dict['delta_l_WL'] = delta_l_WL
+    delta_dict['delta_l_GC'] = np.copy(delta_l_WL[:nbl_GC])
+    delta_dict['delta_l_WA'] = np.copy(delta_l_WL[nbl_GC:])
+
+    cl_ll_3d = cl_utils.get_spv3_cls_3d(probe='WL', nbl=nbl_WL, zbins=zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
+    cl_gg_3d = cl_utils.get_spv3_cls_3d(probe='GC', nbl=nbl_GC, zbins=zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
+    cl_wa_3d = cl_utils.get_spv3_cls_3d(probe='WA', nbl=nbl_WA, zbins=zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
+    cl_3x2pt_5d = cl_utils.get_spv3_cls_3d(probe='3x2pt', nbl=nbl_XC, zbins=zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
+
+    rl_ll_3d = cl_utils.get_spv3_cls_3d(probe='WL', nbl=nbl_WL, zbins=zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
+    rl_gg_3d = cl_utils.get_spv3_cls_3d(probe='GC', nbl=nbl_GC, zbins=zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
+    rl_wa_3d = cl_utils.get_spv3_cls_3d(probe='WA', nbl=nbl_WA, zbins=zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
+    rl_3x2pt_5d = cl_utils.get_spv3_cls_3d(probe='3x2pt', nbl=nbl_XC, zbins=zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
+
+    cl_dict_3D = {
+        'C_LL_WLonly_3D': cl_ll_3d,
+        'C_GG_3D': cl_gg_3d,
+        'C_WA_3D': cl_wa_3d,
+        'D_3x2pt': cl_3x2pt_5d}
+
+    Rl_dict_3D = {
+        'R_LL_WLonly_3D': rl_ll_3d,
+        'R_GG_3D': rl_gg_3d,
+        'R_WA_3D': rl_wa_3d,
+        'R_3x2pt': rl_3x2pt_5d}
+
+    # Sijkl from PySSC
+    # Sijkl = Sijkl_utils.compute_Sijkl(cosmo_params_dict, Sijkl_config, zbins=general_config['zbins'])
+
+    # if cfg.Sijkl_config['save_Sijkl']:
+    #     np.save(f"Sijkl_WF{Sijkl_config['input_WF']}_nz{z_points}_{has_IA}.npy")
+
 
 assert 1 == 0, 'this is a test'
-
-# import and interpolate the cls
-cl_dict_2D, Rl_dict_2D = cl_utils.import_and_interpolate_cls(general_config, covariance_config, ell_dict)
-# reshape them to 3D
-cl_dict_3D, Rl_dict_3D = cl_utils.reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D)
-# Sijkl from PySSC
-Sijkl = Sijkl_utils.compute_Sijkl(cosmo_params_dict, Sijkl_config, zbins=general_config['zbins'])
 
 mm.matshow(Sijkl[0, 0, :, :])
 mm.matshow(Sijkl_dav[0, 0, :, :])

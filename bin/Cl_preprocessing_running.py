@@ -222,7 +222,7 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     return cl_dict_3D, Rl_dict_3D
 
 
-def get_spv3_cls_3d(probe, nbl, zbins, ell_max_WL):
+def get_spv3_cls_3d(probe: str, nbl: int, zbins: int, ell_max_WL, cls_or_responses: str):
     """This function imports and interpolates the CPV3 cls, which have a different format wrt the usual input files"""
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
@@ -254,8 +254,14 @@ def get_spv3_cls_3d(probe, nbl, zbins, ell_max_WL):
     else:
         string_0 = ''
 
-    cl_1d = np.genfromtxt(
-        project_path_here / f'jobs/SPV3/input/DataVecTabs/{probe_here}/dv-{probe_here}-{case}-EP{string_0}{zbins}.dat')
+    if cls_or_responses == 'cls':
+        cl_1d = np.genfromtxt(
+            project_path_here / f'jobs/SPV3/input/DataVecTabs/{probe_here}/dv-{probe_here}-{case}-EP{string_0}{zbins}.dat')
+    elif cls_or_responses == 'responses':
+        cl_1d = np.genfromtxt(
+            project_path_here / f'jobs/SPV3/input/ResFunTabs/{probe_here}/rf-{probe_here}-{case}-EP{string_0}{zbins}.dat')
+    else:
+        raise ValueError('cls_or_responses must be cls or responses')
 
     assert zpairs == int(cl_1d.shape[0] / nbl)  # check on the shape
 

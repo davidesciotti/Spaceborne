@@ -31,8 +31,6 @@ sys.path.append(str(project_path.parent / 'common_data/common_lib'))
 import my_module as mm
 
 
-
-
 # COSE DA CHIARIRE
 # 1) i parametri che passo nei due casi sono corretti? E le estensioni?
 # 2) definizione delle window functions:
@@ -42,13 +40,11 @@ import my_module as mm
 # TODO sylvain's redshift starts from 0, not accepted by Sijkl
 
 def load_WF(Sijkl_config, zbins):
-
     input_WF = cfg.Sijkl_config['input_WF']
     WF_normalization = cfg.Sijkl_config['WF_normalization']
     has_IA = cfg.Sijkl_config['has_IA']
 
     WF_path = project_path.parent / 'common_data/everyones_WF_from_Gdrive'
-
 
     if input_WF == 'luca':
 
@@ -84,6 +80,16 @@ def load_WF(Sijkl_config, zbins):
             wil = np.genfromtxt(f'{WF_path}/vincenzo/SPV3/KernelFun/WiWL-EP{zbins}.dat')
             wig = np.genfromtxt(f'{WF_path}/vincenzo/SPV3/KernelFun/WiGC-EP{zbins}.dat')
 
+        else:
+            raise ValueError('input_WF must be either davide, sylvain, marco, vincenzo_SPV3, vincenzo or luca')
+
+        if wil[0, 0] == 0 or wig[0, 0] == 0:
+            print('Warning: the redshift array for the weight functions starts from 0, not accepted by PySSC; '
+                  'removing the first row from the array')
+
+            wil = np.delete(wil, 0, axis=0)
+            wig = np.delete(wig, 0, axis=0)
+
         z_arr = wil[:, 0]  # setting the redshift array, z_arr
         z_points = z_arr.shape[0]
 
@@ -100,15 +106,10 @@ def load_WF(Sijkl_config, zbins):
         # vertically stack the WFs (row-wise, wil first, wig second)
         windows = np.vstack((wil, wig))
 
-    else:
-        raise ValueError('input_WF must be either davide, sylvain, marco, vincenzo_SPV3, vincenzo or luca')
-
-
     return z_arr, windows
 
 
 def compute_Sijkl(cosmo_params_dict, Sijkl_config, zbins):
-
     WF_normalization = cfg.Sijkl_config['WF_normalization']
 
     if WF_normalization == 'PySSC':
@@ -124,9 +125,5 @@ def compute_Sijkl(cosmo_params_dict, Sijkl_config, zbins):
     Sijkl_arr = Sijkl(z_arr=z_arr, windows=windows, cosmo_params=cosmo_params_dict, precision=10, tol=1e-3,
                       convention=convention)
     print(f'Sijkl matrix computed in {time.perf_counter() - start}')
-
-    # if cfg.Sijkl_config['save_Sijkl']:
-    #  fileName = f"Sijkl_WF{input_WF}_nz{z_points}_{has_IA}.npy"
-
 
     return Sijkl_arr

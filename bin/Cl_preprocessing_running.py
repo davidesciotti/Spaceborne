@@ -264,21 +264,20 @@ def get_spv3_cls_3d(probe, nbl, zbins, ell_max_WL):
         cl_3d = mm.fill_3D_symmetric_array(cl_3d, nbl, zbins)
 
     else:
-        # split into 3 1d datavectors
-        cl_ll_3x2pt_1d = cl_1d[:zpairs_auto]
-        cl_gl_3x2pt_1d = cl_1d[zpairs_auto:zpairs_auto + zpairs_cross]  # ! is it really gl? or lg?
-        cl_gg_3x2pt_1d = cl_1d[zpairs_auto + zpairs_cross:]
+        cl_2d = np.reshape(cl_1d, (nbl, zpairs_3x2pt))
 
-        # reshape them individually (and symmetrize)
-        cl_ll_3x2pt_3d = mm.cl_1D_to_3D(cl_ll_3x2pt_1d, nbl, zbins, is_symmetric=True)
-        cl_gl_3x2pt_3d = mm.cl_1D_to_3D(cl_gl_3x2pt_1d, nbl, zbins, is_symmetric=False)
-        cl_gg_3x2pt_3d = mm.cl_1D_to_3D(cl_gg_3x2pt_1d, nbl, zbins, is_symmetric=True)
+        # split into 3 2d datavectors
+        cl_ll_3x2pt_2d = cl_2d[:, :zpairs_auto]
+        cl_gl_3x2pt_2d = cl_2d[:, zpairs_auto:zpairs_auto + zpairs_cross]  # ! is it really gl? or lg?
+        cl_gg_3x2pt_2d = cl_2d[:, zpairs_auto + zpairs_cross:]
 
-        cl_ll_3x2pt_3d = mm.fill_3D_symmetric_array(cl_ll_3x2pt_3d, nbl, zbins)
-        cl_gg_3x2pt_3d = mm.fill_3D_symmetric_array(cl_gg_3x2pt_3d, nbl, zbins)
+        # reshape them individually - the symmetrization is done within the function
+        cl_ll_3x2pt_3d = mm.Cl_2D_to_3D_symmetric(cl_ll_3x2pt_2d, nbl=nbl, npairs=zpairs_auto, zbins=zbins)
+        cl_gl_3x2pt_3d = mm.Cl_2D_to_3D_asymmetric(cl_gl_3x2pt_2d, nbl=nbl, npairs=zpairs_cross, zbins=zbins)
+        cl_gg_3x2pt_3d = mm.Cl_2D_to_3D_symmetric(cl_gg_3x2pt_2d, nbl=nbl, npairs=zpairs_auto, zbins=zbins)
 
-        D_3x2pt = np.zeros((nbl, 2, 2, zbins, zbins))
         # use them to populate the datavector
+        D_3x2pt = np.zeros((nbl, 2, 2, zbins, zbins))
         D_3x2pt[:, 0, 0, :, :] = cl_ll_3x2pt_3d
         D_3x2pt[:, 1, 1, :, :] = cl_gg_3x2pt_3d
         D_3x2pt[:, 0, 1, :, :] = np.transpose(cl_gl_3x2pt_3d, (0, 2, 1))

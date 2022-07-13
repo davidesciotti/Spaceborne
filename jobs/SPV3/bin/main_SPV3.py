@@ -39,7 +39,7 @@ start_time = time.perf_counter()
 # TODO ind will be different for the different number of z bins
 # TODO update consistency_checks
 # TODO finish exploring the cls
-# TODO check that the number of ell bins is the same as int he files
+# TODO check that the number of ell bins is the same as in the files
 # TODO make sure you changed fsky
 # TODO change sigma_eps2?
 # TODO double check the delta values
@@ -96,7 +96,8 @@ ell_max_XC = ell_max_GC
 nbl_WL = general_config['nbl_WL']
 
 # compute ell and delta ell values
-ell_WL, delta_l_WL = ell_utils.ISTF_ells(general_config['nbl_WL'], general_config['ell_min'], general_config['ell_max_WL'])
+ell_WL, delta_l_WL = ell_utils.ISTF_ells(general_config['nbl_WL'], general_config['ell_min'],
+                                         general_config['ell_max_WL'])
 ell_WL = np.log10(ell_WL)
 
 ell_dict = {}
@@ -109,7 +110,7 @@ nbl_GC = ell_dict['ell_GC'].shape[0]
 nbl_WA = ell_dict['ell_WA'].shape[0]
 nbl_XC = nbl_GC
 
-# ! not super sure about this
+# ! not super sure about these deltas
 delta_dict = {}
 delta_dict['delta_l_WL'] = delta_l_WL
 delta_dict['delta_l_GC'] = np.copy(delta_l_WL[:nbl_GC])
@@ -120,15 +121,36 @@ cl_gg_3d = cl_utils.get_spv3_cls_3d(probe='GC', nbl=nbl_GC, zbins=zbins, ell_max
 cl_wa_3d = cl_utils.get_spv3_cls_3d(probe='WA', nbl=nbl_WA, zbins=zbins, ell_max_WL=ell_max_WL)
 cl_3x2pt_5d = cl_utils.get_spv3_cls_3d(probe='3x2pt', nbl=nbl_XC, zbins=zbins, ell_max_WL=ell_max_WL)
 
-
-mm.matshow(cl_ll_3d[0, :, :])
-mm.matshow(cl_gg_3d[0, :, :])
-mm.matshow(cl_wa_3d[0, :, :])
-mm.matshow(cl_3x2pt_5d[0, 0, 0, :, :])
-
+# mm.matshow(cl_ll_3d[0, :, :])
+# mm.matshow(cl_gg_3d[0, :, :])
+# mm.matshow(cl_wa_3d[0, :, :])
+# mm.matshow(cl_3x2pt_5d[0, 0, 0, :, :])
 
 
+ell_WL_old, _ = ell_utils.ISTF_ells(30, general_config['ell_min'], 5000)
+ell_GC_old, _ = ell_utils.ISTF_ells(30, general_config['ell_min'], 3000)
+cl_gg_old = np.load(
+    '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/cl_3D/C_GG_3D.npy')
+cl_ll_old = np.load(
+    '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/cl_3D/C_LL_WLonly_3D.npy')
+cl_3x2pt_old = np.load(
+    '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/cl_3D/D_3x2pt.npy')
 
+iz = 5
+jz = iz
+
+plt.figure()
+# plt.plot(10 ** ell_dict['ell_GC'], cl_3x2pt_5d[:, 1, 1, iz, jz], '.-', label='cl_3x2pt')
+# plt.plot(10 ** ell_dict['ell_WL'], cl_ll_3d[:, iz, jz], '.-', label='cl_ll_3d_new')
+plt.plot(10 ** ell_dict['ell_GC'], cl_gg_3d[:, iz, jz], '.-', label='cl_gg_3d_new')
+
+# plt.plot(ell_WL_old, cl_ll_old[:, iz, jz], '.-', label='cl_ll_old')
+plt.plot(ell_GC_old, cl_gg_old[:, iz, jz], '.-', label='cl_gg_old')
+# plt.yscale('log')
+plt.legend()
+plt.xlabel('$\ell$')
+plt.ylabel('$C_\ell$')
+plt.title(f'zi, zj = {iz}, {jz}')
 
 assert 1 == 0, 'this is a test'
 

@@ -10,7 +10,7 @@ fsky_syvain = 0.375
 fsky_SPV3 = survey_area_SPV3 / deg2_in_sphere
 
 
-which_forecast = 'sylvain'
+which_forecast = 'SPV3'
 
 if which_forecast == 'IST':
     fsky = fsky_IST
@@ -29,6 +29,12 @@ elif which_forecast == 'CLOE':
     GL_or_LG = 'LG'
     ind_ordering = 'CLOE'
     cl_folder = 'Cl_CLOE'
+
+elif which_forecast == 'SPV3':
+    fsky = fsky_SPV3
+    GL_or_LG = 'GL'
+    ind_ordering = 'vincenzo'
+    cl_folder = 'SPV3'
 
 else:
     raise ValueError('which_forecast must be IST, CLOE or syvain')

@@ -43,26 +43,27 @@ mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 start_time = time.perf_counter()
 
-# TODO ind will be different for the different number of z bins
+# TODO ind will be different for the different number of z bins ✅
 # TODO update consistency_checks
 # TODO finish exploring the cls
 # TODO check that the number of ell bins is the same as in the files
 # TODO make sure you changed fsky
 # TODO change sigma_eps2?
 # TODO double check the delta values
+# TODO super check that things work with different # of z bins
 
 
 ###############################################################################
 #################### PARAMETERS AND SETTINGS DEFINITION #######################
 ###############################################################################
 
-general_config = cfg.general_config
-covariance_config = cfg.covariance_config
-Sijkl_config = cfg.Sijkl_config
-FM_config = cfg.FM_config
+general_cfg = cfg.general_config
+covariance_cfg = cfg.covariance_config
+Sijkl_cfg = cfg.Sijkl_config
+FM_cfg = cfg.FM_config
 cosmo_params_dict = csmlib.cosmo_par_dict_classy
 
-which_probe_response = covariance_config['which_probe_response']
+which_probe_response = covariance_cfg['which_probe_response']
 # set the string, just for the file names
 if which_probe_response == 'constant':
     which_probe_response_str = 'const'
@@ -73,30 +74,27 @@ else:
 
 zbins_SPV3 = (7, 9, 10, 11, 13, 15)
 
-general_config['zbins'] = 10
+general_cfg['zbins'] = 11
 # for general_config['zbins'] in zbins_SPV3:
-    # for (general_config['ell_max_WL'], general_config['ell_max_GC']) in ((5000, 3000), (1500, 750)):
+# for (general_config['ell_max_WL'], general_config['ell_max_GC']) in ((5000, 3000), (1500, 750)):
 
 # utils.consistency_checks(general_config, covariance_config)
 
-zbins = general_config['zbins']
+zbins = general_cfg['zbins']
 
-ind = np.genfromtxt(f'{project_path}/config/common_data/ind_files/variable_zbins/indici_vincenzo_like_zbins{zbins}.dat', dtype=int)
-covariance_config['ind'] = ind
-
-# Sijkl_dav = np.load(f"{project_path}/config/common_data/Sijkl/Sijkl_WFdavide_nz10000_IA_3may.npy")  # davide, eNLA
-
-
+ind = np.genfromtxt(f'{project_path}/config/common_data/ind_files/variable_zbins/indici_vincenzo_like_zbins{zbins}.dat',
+                    dtype=int)
+covariance_cfg['ind'] = ind
 
 # some variables used for I/O naming
-ell_max_WL = general_config['ell_max_WL']
-ell_max_GC = general_config['ell_max_GC']
+ell_max_WL = general_cfg['ell_max_WL']
+ell_max_GC = general_cfg['ell_max_GC']
 ell_max_XC = ell_max_GC
-nbl_WL = general_config['nbl_WL']
+nbl_WL = general_cfg['nbl_WL']
 
 # compute ell and delta ell values
-ell_WL, delta_l_WL = ell_utils.ISTF_ells(general_config['nbl_WL'], general_config['ell_min'],
-                                         general_config['ell_max_WL'])
+ell_WL, delta_l_WL = ell_utils.ISTF_ells(general_cfg['nbl_WL'], general_cfg['ell_min'],
+                                         general_cfg['ell_max_WL'])
 ell_WL = np.log10(ell_WL)
 
 ell_dict = {}
@@ -107,7 +105,7 @@ ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
 
 nbl_GC = ell_dict['ell_GC'].shape[0]
 nbl_WA = ell_dict['ell_WA'].shape[0]
-nbl_XC = nbl_GC
+nbl_3x2pt = nbl_GC
 
 # ! not super sure about these deltas
 delta_dict = {}
@@ -118,12 +116,12 @@ delta_dict['delta_l_WA'] = np.copy(delta_l_WL[nbl_GC:])
 cl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL, zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
 cl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC, zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
 cl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA, zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
-cl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_XC, zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
+cl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt, zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
 
 rl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
 rl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
 rl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
-rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_XC, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
+rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
 
 cl_dict_3D = {
     'C_LL_WLonly_3D': cl_ll_3d,
@@ -137,60 +135,69 @@ Rl_dict_3D = {
     'R_WA_3D': rl_wa_3d,
     'R_3x2pt': rl_3x2pt_5d}
 
-
-if Sijkl_config['use_precomputed_sijkl']:
-    sijkl = np.load(f'{job_path}/output/sijkl/sijkl_wf{cfg.Sijkl_config["input_WF"]}_nz7000_zbins{zbins}_hasIA{Sijkl_config["has_IA"]}.npy')
+if Sijkl_cfg['use_precomputed_sijkl']:
+    sijkl = np.load(
+        f'{job_path}/output/sijkl/sijkl_wf{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins}_hasIA{Sijkl_cfg["has_IA"]}.npy')
 
 else:
-    sijkl = Sijkl_utils.compute_Sijkl(cosmo_params_dict, Sijkl_config, zbins=general_config['zbins'])
+    sijkl = Sijkl_utils.compute_Sijkl(cosmo_params_dict, Sijkl_cfg, zbins=general_cfg['zbins'])
 
-    if cfg.Sijkl_config['save_Sijkl']:
-        np.save(f'{job_path}/output/sijkl/sijkl_wf{cfg.Sijkl_config["input_WF"]}_nz7000_zbins{zbins}_hasIA{Sijkl_config["has_IA"]}.npy', sijkl)
-
-
-
+    if Sijkl_cfg['save_Sijkl']:
+        np.save(
+            f'{job_path}/output/sijkl/sijkl_wf{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins}_hasIA{Sijkl_cfg["has_IA"]}.npy',
+            sijkl)
 
 # compute covariance matrix
-cov_dict = covmat_utils.compute_cov(general_config, covariance_config,
+cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, delta_dict, cl_dict_3D, Rl_dict_3D, sijkl)
-assert 1 > 2
+
+for key in cov_dict.keys():
+    print(f'{key}: {cov_dict[key].shape}')
+
 # compute Fisher Matrix
-FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
+# FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
 
 # save:
-if covariance_config['save_covariance']:
-    np.save(job_path / f'output/covmat/covmat_GO_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}_2D.npy', cov_dict['cov_WL_GO_2D'])
-np.save(job_path / f'output/covmat/covmat_GO_GC_lmaxGC{ell_max_GC}_nbl{nbl_WL}_2D.npy', cov_dict['cov_GC_GO_2D'])
-np.save(job_path / f'output/covmat/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl_WL}_2D.npy',
+if covariance_cfg['save_covariance']:
+    np.save(f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}_zbins{zbins}_2D.npy',
+            cov_dict['cov_WL_GO_2D'])
+    np.save(f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}_zbins{zbins}_2D.npy',
+            cov_dict['cov_GC_GO_2D'])
+    np.save(f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins}_2D.npy',
         cov_dict['cov_3x2pt_GO_2D'])
-np.save(job_path / f'output/covmat/covmat_GO_WA_lmaxWL{ell_max_WL}_nbl{nbl_WL}_2D.npy', cov_dict['cov_WA_GO_2D'])
+    np.save(f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_WA_lmaxWL{ell_max_WL}_nbl{nbl_WA}_zbins{zbins}_2D.npy',
+            cov_dict['cov_WA_GO_2D'])
 
-np.save(job_path / f'output/covmat/covmat_GS_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}_Rl{which_probe_response_str}_2D.npy',
+    np.save(
+        f'{job_path}/output/covmat/zbins{zbins}/covmat_GS_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}_zbins{zbins}_Rl{which_probe_response_str}_2D.npy',
         cov_dict['cov_WL_GS_2D'])
-np.save(job_path / f'output/covmat/covmat_GS_GC_lmaxGC{ell_max_GC}_nbl{nbl_WL}_Rl{which_probe_response_str}_2D.npy',
+    np.save(
+        f'{job_path}/output/covmat/zbins{zbins}/covmat_GS_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}_zbins{zbins}_Rl{which_probe_response_str}_2D.npy',
         cov_dict['cov_GC_GS_2D'])
-np.save(
-    job_path / f'output/covmat/covmat_GS_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl_WL}_Rl{which_probe_response_str}_2D.npy',
-    cov_dict['cov_3x2pt_GS_2D'])
-np.save(job_path / f'output/covmat/covmat_GS_WA_lmaxWL{ell_max_WL}_nbl{nbl_WL}_Rl{which_probe_response_str}_2D.npy',
+    np.save(
+        f'{job_path}/output/covmat/zbins{zbins}/covmat_GS_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins}_Rl{which_probe_response_str}_2D.npy',
+        cov_dict['cov_3x2pt_GS_2D'])
+    np.save(
+        f'{job_path}/output/covmat/zbins{zbins}/covmat_GS_WA_lmaxWL{ell_max_WL}_nbl{nbl_WA}_zbins{zbins}_Rl{which_probe_response_str}_2D.npy',
         cov_dict['cov_WA_GS_2D'])
 
-if FM_config['save_FM']:
-    np.savetxt(job_path / f"output/FM/FM_WL_GO_lmaxWL{ell_max_WL}_nbl{nbl_WL}.txt", FM_dict['FM_WL_GO'])
-np.savetxt(job_path / f"output/FM/FM_GC_GO_lmaxGC{ell_max_GC}_nbl{nbl_WL}.txt", FM_dict['FM_GC_GO'])
-np.savetxt(job_path / f"output/FM/FM_3x2pt_GO_lmaxXC{ell_max_XC}_nbl{nbl_WL}.txt", FM_dict['FM_3x2pt_GO'])
+assert 1 == 0, 'stop here'
 
-np.savetxt(job_path / f"output/FM/FM_WL_GS_lmaxWL{ell_max_WL}_nbl{nbl_WL}_Rl{which_probe_response_str}.txt",
-           FM_dict['FM_WL_GS'])
-np.savetxt(job_path / f"output/FM/FM_GC_GS_lmaxGC{ell_max_GC}_nbl{nbl_WL}_Rl{which_probe_response_str}.txt",
-           FM_dict['FM_GC_GS'])
-np.savetxt(job_path / f"output/FM/FM_3x2pt_GS_lmaxXC{ell_max_XC}_nbl{nbl_WL}_Rl{which_probe_response_str}.txt",
-           FM_dict['FM_3x2pt_GS'])
+if FM_cfg['save_FM']:
+    np.savetxt(f"{job_path}/output/FM/FM_WL_GO_lmaxWL{ell_max_WL}_nbl{nbl_WL}.txt", FM_dict['FM_WL_GO'])
+    np.savetxt(f"{job_path}/output/FM/FM_GC_GO_lmaxGC{ell_max_GC}_nbl{nbl_WL}.txt", FM_dict['FM_GC_GO'])
+    np.savetxt(f"{job_path}/output/FM/FM_3x2pt_GO_lmaxXC{ell_max_XC}_nbl{nbl_WL}.txt", FM_dict['FM_3x2pt_GO'])
+    np.savetxt(f"{job_path}/output/FM/FM_WL_GS_lmaxWL{ell_max_WL}_nbl{nbl_WL}_Rl{which_probe_response_str}.txt",
+               FM_dict['FM_WL_GS'])
+    np.savetxt(f"{job_path}/output/FM/FM_GC_GS_lmaxGC{ell_max_GC}_nbl{nbl_WL}_Rl{which_probe_response_str}.txt",
+               FM_dict['FM_GC_GS'])
+    np.savetxt(f"{job_path}/output/FM/FM_3x2pt_GS_lmaxXC{ell_max_XC}_nbl{nbl_WL}_Rl{which_probe_response_str}.txt",
+               FM_dict['FM_3x2pt_GS'])
 
-if FM_config['save_FM_as_dict']:
+if FM_cfg['save_FM_as_dict']:
     sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)
 
-if general_config['save_cls']:
+if general_cfg['save_cls']:
     for key in cl_dict_3D.keys():
         np.save(job_path / f"output/cl_3D/{key}.npy", cl_dict_3D[f'{key}'])
 

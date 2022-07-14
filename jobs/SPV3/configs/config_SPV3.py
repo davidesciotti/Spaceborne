@@ -65,7 +65,9 @@ covariance_config = {
     'save_covariance': True,
     # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
     'block_index': 'ell',
-    'which_probe_response': 'constant',
+    'which_probe_response': 'variable',
+    'sigma_eps2': (0.3*np.sqrt(2))**2,
+    'ng': 30,
 }
 
 Sijkl_config = {
@@ -73,6 +75,7 @@ Sijkl_config = {
     'input_WF': 'vincenzo_SPV3',
     'WF_normalization': 'IST',
     'has_IA': True,  # whether or not to include IA in the WF used to compute Sijkl
+    'use_precomputed_sijkl': True,
 }
 
 FM_config = {

@@ -17,31 +17,31 @@ import my_module as mm
 ###############################################################################
 
 
-def compute_cov(general_config, covariance_config, ell_dict, delta_dict, cl_dict_3D, Rl_dict_3D, Sijkl):
+def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, Rl_dict_3D, Sijkl):
     """
     This code computes the Gaussian-only, SSC-only and Gaussian+SSC
     covariance matrices, for different ordering options
     """
 
     # import settings:
-    nbl = general_config['nbl']
-    ell_max_WL = general_config['ell_max_WL']
-    ell_max_GC = general_config['ell_max_GC']
-    zbins = general_config['zbins']
-    cl_folder = general_config['cl_folder']
-    nProbes = general_config['nProbes']
-    which_forecast = general_config['which_forecast']
+    nbl = general_cfg['nbl']
+    ell_max_WL = general_cfg['ell_max_WL']
+    ell_max_GC = general_cfg['ell_max_GC']
+    zbins = general_cfg['zbins']
+    cl_folder = general_cfg['cl_folder']
+    nProbes = general_cfg['nProbes']
+    which_forecast = general_cfg['which_forecast']
 
-    compute_covariance_in_blocks = covariance_config['compute_covariance_in_blocks']
-    save_SSC_only_covmats = covariance_config['save_SSC_only_covmats']
-    Rl = covariance_config['Rl']
-    fsky = covariance_config['fsky']
-    GL_or_LG = covariance_config['GL_or_LG']
-    ind_ordering = covariance_config['ind_ordering']
+    compute_covariance_in_blocks = covariance_cfg['compute_covariance_in_blocks']
+    save_SSC_only_covmats = covariance_cfg['save_SSC_only_covmats']
+    Rl = covariance_cfg['Rl']
+    fsky = covariance_cfg['fsky']
+    GL_or_LG = covariance_cfg['GL_or_LG']
+    ind_ordering = covariance_cfg['ind_ordering']
     # ! must copy the array! Otherwise it gets modifiesd and changed at each call
-    ind = covariance_config['ind'].copy()
-    block_index = covariance_config['block_index']
-    which_probe_response = covariance_config['which_probe_response']
+    ind = covariance_cfg['ind'].copy()
+    block_index = covariance_cfg['block_index']
+    which_probe_response = covariance_cfg['which_probe_response']
 
     print('TODO: find a better way to copy the ind file?')
     ind_copy = ind.copy()
@@ -117,7 +117,7 @@ def compute_cov(general_config, covariance_config, ell_dict, delta_dict, cl_dict
     print(f'computing the covariance in blocks? {compute_covariance_in_blocks}\n')
 
     # build noise vector
-    N = mm.build_noise(zbins, nProbes, sigma_eps2=0.09, ng=30)
+    N = mm.build_noise(zbins, nProbes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=covariance_cfg['ng'])
 
     ################### COMPUTE GAUSS ONLY COVARIANCE #########################
 
@@ -246,6 +246,7 @@ def compute_cov(general_config, covariance_config, ell_dict, delta_dict, cl_dict
     cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, nbl, npairs_tot, block_index=block_index)
 
     # '2DCLOE', i.e. the 'multi-diagonal', non-square blocks ordering, only for 3x2pt
+    # note: we found out that this is not actually used in CLOE...
     cov_3x2pt_GS_2DCLOE = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_GS_4D, nbl, zbins)
     cov_3x2pt_GO_2DCLOE = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_GO_4D, nbl, zbins)
 

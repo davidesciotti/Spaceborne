@@ -21,13 +21,13 @@ from pathlib import Path
 project_path = Path.cwd().parent.parent.parent
 print(project_path)
 
-sys.path.append(str(project_path / 'jobs/SPV3/configs'))
+sys.path.append(f'{project_path}/jobs/SPV3/configs')
 import config_SPV3 as cfg
 
-sys.path.append(str(project_path.parent / 'common_data/common_config'))
+sys.path.append(f'{project_path.parent}/common_data/common_config')
 import ISTF_fid_params as ISTF
 
-sys.path.append(str(project_path.parent / 'common_data/common_lib'))
+sys.path.append(f'{project_path.parent}/common_data/common_lib')
 import my_module as mm
 
 
@@ -77,8 +77,14 @@ def load_WF(Sijkl_config, zbins):
             wig = np.genfromtxt(f'{WF_path}/sylvain/new_WF_IA_corrected/wig_sylv_{WF_normalization}_nz7000.txt')
 
         elif input_WF == 'vincenzo_SPV3':
-            wil = np.genfromtxt(f'{WF_path}/vincenzo/SPV3/KernelFun/WiWL-EP{zbins}.dat')
-            wig = np.genfromtxt(f'{WF_path}/vincenzo/SPV3/KernelFun/WiGC-EP{zbins}.dat')
+
+            if zbins in [7, 9]:  # just to set the correct file name
+                string_0 = '0'
+            else:
+                string_0 = ''
+
+            wil = np.genfromtxt(f'{WF_path}/vincenzo/SPV3/KernelFun/WiWL-EP{string_0}{zbins}.dat')
+            wig = np.genfromtxt(f'{WF_path}/vincenzo/SPV3/KernelFun/WiGC-EP{string_0}{zbins}.dat')
 
         else:
             raise ValueError('input_WF must be either davide, sylvain, marco, vincenzo_SPV3, vincenzo or luca')
@@ -100,8 +106,6 @@ def load_WF(Sijkl_config, zbins):
         # transpose
         wil = np.transpose(wil)
         wig = np.transpose(wig)
-
-        print(wil.shape, wig.shape)
 
         # vertically stack the WFs (row-wise, wil first, wig second)
         windows = np.vstack((wil, wig))

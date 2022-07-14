@@ -73,89 +73,87 @@ else:
 
 zbins_SPV3 = (7, 9, 10, 11, 13, 15)
 
-for general_config['zbins'] in zbins_SPV3:
+general_config['zbins'] = 10
+# for general_config['zbins'] in zbins_SPV3:
     # for (general_config['ell_max_WL'], general_config['ell_max_GC']) in ((5000, 3000), (1500, 750)):
 
-    # utils.consistency_checks(general_config, covariance_config)
+# utils.consistency_checks(general_config, covariance_config)
 
-    zbins = general_config['zbins']
+zbins = general_config['zbins']
 
-    ind = np.genfromtxt(f'{project_path}/config/common_data/ind_files/variable_zbins/indici_vincenzo_like_zbins{zbins}.dat', dtype=int)
-    covariance_config['ind'] = ind
+ind = np.genfromtxt(f'{project_path}/config/common_data/ind_files/variable_zbins/indici_vincenzo_like_zbins{zbins}.dat', dtype=int)
+covariance_config['ind'] = ind
 
-    # Sijkl_dav = np.load(f"{project_path}/config/common_data/Sijkl/Sijkl_WFdavide_nz10000_IA_3may.npy")  # davide, eNLA
-
-
-
-    # some variables used for I/O naming
-    ell_max_WL = general_config['ell_max_WL']
-    ell_max_GC = general_config['ell_max_GC']
-    ell_max_XC = ell_max_GC
-    nbl_WL = general_config['nbl_WL']
-
-    # compute ell and delta ell values
-    ell_WL, delta_l_WL = ell_utils.ISTF_ells(general_config['nbl_WL'], general_config['ell_min'],
-                                             general_config['ell_max_WL'])
-    ell_WL = np.log10(ell_WL)
-
-    ell_dict = {}
-    ell_dict['ell_WL'] = ell_WL
-    ell_dict['ell_GC'] = np.copy(ell_WL[10 ** ell_WL < ell_max_GC])
-    ell_dict['ell_WA'] = np.copy(ell_WL[10 ** ell_WL > ell_max_GC])
-    ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
-
-    nbl_GC = ell_dict['ell_GC'].shape[0]
-    nbl_WA = ell_dict['ell_WA'].shape[0]
-    nbl_XC = nbl_GC
-
-    # ! not super sure about these deltas
-    delta_dict = {}
-    delta_dict['delta_l_WL'] = delta_l_WL
-    delta_dict['delta_l_GC'] = np.copy(delta_l_WL[:nbl_GC])
-    delta_dict['delta_l_WA'] = np.copy(delta_l_WL[nbl_GC:])
-
-    cl_ll_3d = cl_utils.get_spv3_cls_3d(probe='WL', nbl=nbl_WL, zbins=zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
-    cl_gg_3d = cl_utils.get_spv3_cls_3d(probe='GC', nbl=nbl_GC, zbins=zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
-    cl_wa_3d = cl_utils.get_spv3_cls_3d(probe='WA', nbl=nbl_WA, zbins=zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
-    cl_3x2pt_5d = cl_utils.get_spv3_cls_3d(probe='3x2pt', nbl=nbl_XC, zbins=zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
-
-    rl_ll_3d = cl_utils.get_spv3_cls_3d(probe='WL', nbl=nbl_WL, zbins=zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
-    rl_gg_3d = cl_utils.get_spv3_cls_3d(probe='GC', nbl=nbl_GC, zbins=zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
-    rl_wa_3d = cl_utils.get_spv3_cls_3d(probe='WA', nbl=nbl_WA, zbins=zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
-    rl_3x2pt_5d = cl_utils.get_spv3_cls_3d(probe='3x2pt', nbl=nbl_XC, zbins=zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
-
-    cl_dict_3D = {
-        'C_LL_WLonly_3D': cl_ll_3d,
-        'C_GG_3D': cl_gg_3d,
-        'C_WA_3D': cl_wa_3d,
-        'D_3x2pt': cl_3x2pt_5d}
-
-    Rl_dict_3D = {
-        'R_LL_WLonly_3D': rl_ll_3d,
-        'R_GG_3D': rl_gg_3d,
-        'R_WA_3D': rl_wa_3d,
-        'R_3x2pt': rl_3x2pt_5d}
-
-    # Sijkl from PySSC
-    # Sijkl = Sijkl_utils.compute_Sijkl(cosmo_params_dict, Sijkl_config, zbins=general_config['zbins'])
-
-    # if cfg.Sijkl_config['save_Sijkl']:
-    #     np.save(f"Sijkl_WF{Sijkl_config['input_WF']}_nz{z_points}_{has_IA}.npy")
+# Sijkl_dav = np.load(f"{project_path}/config/common_data/Sijkl/Sijkl_WFdavide_nz10000_IA_3may.npy")  # davide, eNLA
 
 
-assert 1 == 0, 'this is a test'
 
-mm.matshow(Sijkl[0, 0, :, :])
-mm.matshow(Sijkl_dav[0, 0, :, :])
+# some variables used for I/O naming
+ell_max_WL = general_config['ell_max_WL']
+ell_max_GC = general_config['ell_max_GC']
+ell_max_XC = ell_max_GC
+nbl_WL = general_config['nbl_WL']
 
-if cfg.Sijkl_config['save_Sijkl']:
-    np.save(project_path / f'output/sijkl/sijkl_wf{cfg.Sijkl_config["input_WF"]}.npy')
+# compute ell and delta ell values
+ell_WL, delta_l_WL = ell_utils.ISTF_ells(general_config['nbl_WL'], general_config['ell_min'],
+                                         general_config['ell_max_WL'])
+ell_WL = np.log10(ell_WL)
 
-assert 1 > 2
+ell_dict = {}
+ell_dict['ell_WL'] = ell_WL
+ell_dict['ell_GC'] = np.copy(ell_WL[10 ** ell_WL < ell_max_GC])
+ell_dict['ell_WA'] = np.copy(ell_WL[10 ** ell_WL > ell_max_GC])
+ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
+
+nbl_GC = ell_dict['ell_GC'].shape[0]
+nbl_WA = ell_dict['ell_WA'].shape[0]
+nbl_XC = nbl_GC
+
+# ! not super sure about these deltas
+delta_dict = {}
+delta_dict['delta_l_WL'] = delta_l_WL
+delta_dict['delta_l_GC'] = np.copy(delta_l_WL[:nbl_GC])
+delta_dict['delta_l_WA'] = np.copy(delta_l_WL[nbl_GC:])
+
+cl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL, zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
+cl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC, zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
+cl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA, zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
+cl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_XC, zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
+
+rl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
+rl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
+rl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
+rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_XC, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
+
+cl_dict_3D = {
+    'C_LL_WLonly_3D': cl_ll_3d,
+    'C_GG_3D': cl_gg_3d,
+    'C_WA_3D': cl_wa_3d,
+    'D_3x2pt': cl_3x2pt_5d}
+
+Rl_dict_3D = {
+    'R_LL_WLonly_3D': rl_ll_3d,
+    'R_GG_3D': rl_gg_3d,
+    'R_WA_3D': rl_wa_3d,
+    'R_3x2pt': rl_3x2pt_5d}
+
+
+if Sijkl_config['use_precomputed_sijkl']:
+    sijkl = np.load(f'{job_path}/output/sijkl/sijkl_wf{cfg.Sijkl_config["input_WF"]}_nz7000_zbins{zbins}_hasIA{Sijkl_config["has_IA"]}.npy')
+
+else:
+    sijkl = Sijkl_utils.compute_Sijkl(cosmo_params_dict, Sijkl_config, zbins=general_config['zbins'])
+
+    if cfg.Sijkl_config['save_Sijkl']:
+        np.save(f'{job_path}/output/sijkl/sijkl_wf{cfg.Sijkl_config["input_WF"]}_nz7000_zbins{zbins}_hasIA{Sijkl_config["has_IA"]}.npy', sijkl)
+
+
+
 
 # compute covariance matrix
 cov_dict = covmat_utils.compute_cov(general_config, covariance_config,
-                                    ell_dict, delta_dict, cl_dict_3D, Rl_dict_3D, Sijkl)
+                                    ell_dict, delta_dict, cl_dict_3D, Rl_dict_3D, sijkl)
+assert 1 > 2
 # compute Fisher Matrix
 FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
 

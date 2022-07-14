@@ -24,7 +24,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     """
 
     # import settings:
-    nbl_WL = general_cfg['nbl_WL']
     ell_max_WL = general_cfg['ell_max_WL']
     ell_max_GC = general_cfg['ell_max_GC']
     zbins = general_cfg['zbins']
@@ -59,7 +58,14 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     ell_XC, nbl_3x2pt = ell_GC, nbl_GC
 
     # sanity check
-    assert nbl_WL == general_cfg['nbl_WL'], 'nbl_WL != general_cfg["nbl_WL"], there is a discrepancy'
+    print(nbl_WL, general_cfg['nbl_WL'], general_cfg['nbl'])
+
+    if general_cfg['nbl_WL'] is None:
+        assert nbl_WL == general_cfg['nbl'], 'nbl_WL != general_cfg["nbl"], there is a discrepancy'
+
+    if general_cfg['nbl_WL'] is not None:
+        assert nbl_WL == general_cfg['nbl_WL'], 'nbl_WL != general_cfg["nbl_WL"], there is a discrepancy'
+
 
     if nbl_WL == nbl_GC == nbl_WA == nbl_3x2pt:
         print('all probes have the same number of ell bins')

@@ -36,10 +36,11 @@ general_config = {
     'zbins': 10,
     'nProbes': 2,
     'nbl': 30,
+    'nbl_WL': None,  # it's equal for all the other probes
     'which_forecast': which_forecast,  # ie choose whether to have IST's or sylvain's deltas
     'cl_folder': cl_folder,
     'use_WA': True,
-    'save_cls': True
+    'save_cls': False
 }
 
 if general_config['ell_max_WL'] == general_config['ell_max_GC']:
@@ -52,7 +53,7 @@ covariance_config = {
     'compute_covariance_in_blocks': False,
     'fsky': fsky,
     'Rl': 4,
-    'save_covariance': True,
+    'save_covariance': False,
     # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
     'block_index': 'ell',
     'which_probe_response': 'constant',
@@ -60,8 +61,8 @@ covariance_config = {
 
 FM_config = {
     'nParams': 20,
-    'save_FM': True,
-    'save_FM_as_dict': True
+    'save_FM': False,
+    'save_FM_as_dict': False
 
 }
 

@@ -13,10 +13,10 @@ from astropy.cosmology import w0waCDM
 import scipy.stats as stats
 from matplotlib.cm import get_cmap
 
-project_path = Path.cwd().parent.parent.parent.parent.parent
-job_path = Path.cwd().parent.parent.parent
+project_path = Path.cwd().parent.parent.parent
+job_path = Path.cwd().parent
 
-sys.path.append(str(project_path / 'lib'))
+sys.path.append(f'{project_path.parent}/common_data/common_lib')
 import my_module as mm
 
 matplotlib.use('Qt5Agg')
@@ -508,6 +508,7 @@ plt.legend()
 
 # now project the responses
 integrand = np.zeros((nbl, zbins, zbins, z_array_limber.size))
+cl_integrand = np.zeros((nbl, zbins, zbins, z_array_limber.size))
 start_time = time.time()
 # for zi, zval in enumerate(z_array_limber):
 #     for ell_idx, ell_val in enumerate(ell_WL):
@@ -551,6 +552,7 @@ for zi, zval in enumerate(z_array_limber):
             for j in range(zbins):
                 # integrand[i, j, zi, ell_idx] = W_A[i, zi] * W_B[j, zi] * R1_mm_limb[zi, kli] * Pk_limb[zi, kli]
                 integrand[ell_idx, i, j, zi] = dV[zi] * W_LL_array[i, zi] * W_LL_array[j, zi] * R_of_ell_z * P_kl_z
+                cl_integrand[ell_idx, i, j, zi] = dV[zi] * W_LL_array[i, zi] * W_LL_array[j, zi] * P_kl_z
 
 # plt.plot(z_array_limber, R1_mm_interp(kl, z_array_limber).T[0, :])
 
@@ -558,12 +560,13 @@ for zi, zval in enumerate(z_array_limber):
 # integrate over z with simpson's rule
 # ! is there a c/H0 factor in the integral?
 integral = simps(integrand, z_array_limber, axis=-1)
+cl_integral = simps(cl_integrand, z_array_limber, axis=-1)
 
 # import Cl
-Cl_LL = np.load(job_path / 'output/cl_3D/C_LL_WLonly_3D.npy')
+# Cl_LL = np.load(job_path / 'output/cl_3D/C_LL_WLonly_3D.npy')
 
 # finally, divide by Cl
-integral = integral / Cl_LL
+integral = integral / cl_integral
 
 plt.figure()
 for i in range(zbins):

@@ -210,13 +210,13 @@ k_min, k_max, k_num = 1e-5, 20, 800
 k_max_classy = 70
 
 # ! options
-use_h_units = False
+use_h_units = True
 whos_PS = 'vincenzo'
 Pk_kind = 'nonlinear'
 plot_Rmm = False
 save_Pk = False
 quad_integration = False
-cl_formula = 'ISTF'
+cl_formula = 'PySSC'
 whos_WF = 'davide'
 zmin_limber = 0.03  # found by trial and error
 # ! options
@@ -326,20 +326,10 @@ Ode0 = 1 - Om0
 cosmo_astropy = w0waCDM(H0=H0, Om0=Om0, Ode0=Ode0, w0=-1.0, wa=0.0, Neff=3.04, m_nu=0.06, Ob0=Ob0)
 
 # set the parameters, the functions wants a dict as input
-nbl = cfg.nbl
-ell_cfg_dict_WL = {
-    'nbl': nbl,
-    'ell_min': cfg.ell_min,
-    'ell_max': cfg.ell_max_WL,
-}
-
-# change ell_max for GC
-ell_cfg_dict_GC = ell_cfg_dict_WL.copy()
-ell_cfg_dict_GC['ell_max'] = cfg.ell_max_GC
-
 # compute ells using the function in SSC_restructured_v2
-ell_LL, _ = ell_utils.ISTF_ells(ell_cfg_dict_WL)
-ell_GG, _ = ell_utils.ISTF_ells(ell_cfg_dict_GC)
+nbl = cfg.nbl
+ell_LL, _ = ell_utils.compute_ells(nbl, cfg.ell_min, cfg.ell_max_WL, 'ISTF')
+ell_GG, _ = ell_utils.compute_ells(nbl, cfg.ell_min, cfg.ell_max_GC, 'ISTF')
 ell_LG = ell_GG.copy()
 
 # # fill k_limber array with meshgrid
@@ -436,6 +426,7 @@ if quad_integration:
 # TODO interpolate n_i(z) in 1D as done here for the WF! much smarter
 
 simps_integrand = np.zeros((nbl, zbins, zbins, z_array_limber.size))
+cl_simps_integrand = np.zeros((nbl, zbins, zbins, z_array_limber.size))
 for zi, zval in enumerate(z_array_limber):
     for ell_idx, ell_val in enumerate(ell_LL):
 
@@ -448,6 +439,8 @@ for zi, zval in enumerate(z_array_limber):
                 for j in range(zbins):
                     simps_integrand[ell_idx, i, j, zi] = dV[zi] * W_LL_PySSC_array[i, zi] * W_LL_PySSC_array[j, zi] * \
                                                          R_of_kl_z * P_of_kl_z
+                    cl_simps_integrand[ell_idx, i, j, zi] = dV[zi] * W_LL_PySSC_array[i, zi] * W_LL_PySSC_array[j, zi] * \
+                                                         P_of_kl_z
 
         # ! does not work
         elif cl_formula == 'ISTF':
@@ -463,12 +456,14 @@ for zi, zval in enumerate(z_array_limber):
 
 # integrate over z with simpson's rule
 R_LL = simps(simps_integrand, z_array_limber, axis=-1)
+cl = simps(cl_simps_integrand, z_array_limber, axis=-1)
+
 
 # finally, divide by Cl
-Cl_LL = np.load(job_path.parent / 'SSC_comparison/output/cl_3D/C_LL_WLonly_3D.npy')
-R_LL /= Cl_LL
+# Cl_LL = np.load(job_path.parent / 'SSC_comparison/output/cl_3D/C_LL_WLonly_3D.npy')
+R_LL /= cl
 if quad_integration:
-    R_LL_quad_arr /= Cl_LL
+    R_LL_quad_arr /= cl
 
 # test
 # import vincenzo

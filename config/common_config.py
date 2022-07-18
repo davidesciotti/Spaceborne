@@ -18,7 +18,7 @@ general_config = {
     'nbl': 30,
     'which_forecast': which_forecast, # ie choose whether to have IST's or sylvain's deltas
     'Cij_folder': 'Cij_14may',
-    'use_WA': True 
+    'use_WA': True  
     }
 
 if general_config['ell_max_WL'] == general_config['ell_max_GC']:

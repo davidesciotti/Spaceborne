@@ -3,50 +3,53 @@ import time
 from pathlib import Path
 
 import matplotlib
+import scipy.io as sio
 import matplotlib.pyplot as plt
-import numpy as np
+import matplotlib as mpl
 import scipy.sparse as spar
+import numpy as np
+import pandas as pd
 
-matplotlib.use('Qt5Agg')
+project_path = Path.cwd().parent.parent.parent
+job_path = Path.cwd().parent
+job_name = job_path.parts[-1]
 
-# get project directory
-project_path = Path.cwd().parent.parent.parent.parent
-job_path = Path.cwd().parent.parent
-home_path = Path.home()
+# general libraries
+sys.path.append(f'{project_path}/lib')
+import my_module as mm
+import cosmo_lib as csmlib
 
-# job-specific modules and configurations
-sys.path.append(str(job_path / 'configs'))
-sys.path.append(str(job_path / 'bin/utils'))
+# general config
+sys.path.append(f'{project_path}/config')
+import mpl_cfg
+import ISTF_fid_params as ISTFfid
 
 # job configuration
-import config_IST_NL as config
-# job utils
-import utils_IST_NL as utils
+sys.path.append(f'{job_path}/config')
+import config_IST_NL as cfg
 
-# lower level modules
-sys.path.append(str(project_path / 'lib'))
-sys.path.append(str(project_path / 'bin/1_ell_values'))
-sys.path.append(str(project_path / 'bin/2_cl_preprocessing'))
-sys.path.append(str(project_path / 'bin/3_covmat'))
-sys.path.append(str(project_path / 'bin/4_FM'))
-sys.path.append(str(project_path / 'bin/5_plots/plot_FM'))
-
-import Cl_preprocessing_running as Cl_utils
+# project libraries
+sys.path.append(f'{project_path}/bin')
+import ell_values_running as ell_utils
+import Cl_preprocessing_running as cl_utils
+import compute_Sijkl as Sijkl_utils
 import covariance_running as covmat_utils
 import FM_running as FM_utils
-import plots_FM_running as plot_utils
+import utils_running as utils
+import unit_test
 
-start_time = time.perf_counter()
+matplotlib.use('Qt5Agg')
+mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 ###############################################################################
 #################### PARAMETERS AND SETTINGS DEFINITION #######################
 ###############################################################################
 
 # import the configuration dictionaries from common_config.py
-general_config = config.general_config
-covariance_config = config.covariance_config
-FM_config = config.FM_config
-plot_config = config.plot_config
+general_config = cfg.general_config
+covariance_config = cfg.covariance_config
+FM_config = cfg.FM_config
+plot_config = cfg.plot_config
 
 # plot settings:
 params = plot_config['params']
@@ -61,7 +64,7 @@ utils.consistency_checks(general_config, covariance_config)
 # for the time being, I/O is manual and from the main
 # load inputs (job-specific)
 ind_ordering = covariance_config['ind_ordering']
-ind = np.genfromtxt(project_path / f"config/common_data/ind/indici_{ind_ordering}_like.dat").astype(int) - 1
+ind_2 = np.genfromtxt(f"{project_path}/input/ind_files/indici_{ind_ordering}_like_int.dat", dtype=int)
 covariance_config['ind'] = ind
 
 # this is the string indicating the flattening, or "block", convention
@@ -155,9 +158,9 @@ for NL_flag in range(5):
     ###############################################################################
 
     # ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_config)
-    # Cl_dict = Cl_utils.generate_Cls(general_config, ell_dict, cl_dict_2D)
+    # Cl_dict = cl_utils.generate_Cls(general_config, ell_dict, cl_dict_2D)
 
-    cl_dict_3D = Cl_utils.reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D)
+    cl_dict_3D = cl_utils.reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D)
     cov_dict = covmat_utils.compute_cov(general_config, covariance_config, ell_dict, delta_dict, cl_dict_3D, Sijkl)
 
     # save

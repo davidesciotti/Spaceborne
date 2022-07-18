@@ -151,8 +151,8 @@ else:
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, delta_dict, cl_dict_3D, Rl_dict_3D, sijkl)
 
-for key in cov_dict.keys():
-    print(f'{key}: {cov_dict[key].shape}')
+
+assert 1 == 2
 
 # compute Fisher Matrix
 # FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)

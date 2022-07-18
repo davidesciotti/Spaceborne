@@ -10,21 +10,21 @@ if which_forecast == 'IST':
     fsky = fsky_IST
     GL_or_LG = 'GL'
     ind_ordering = 'vincenzo'
-    Cij_folder = 'Cij_14may'
+    cl_folder = 'Cij_14may'
 
 
 elif which_forecast == 'sylvain':
     fsky = fsky_syvain
     GL_or_LG = 'GL'
     ind_ordering = 'vincenzo'
-    Cij_folder = 'common_ell_and_deltas'
+    cl_folder = 'common_ell_and_deltas'
 
 
 elif which_forecast == 'CLOE':
     fsky = fsky_IST
     GL_or_LG = 'GL'  # ! Actually, it may very well be (actually, it is at 99%) ind_ordering=triu, GL_or_LG=GL!!!!
     ind_ordering = 'triu'
-    Cij_folder = 'Cij_14may'
+    cl_folder = 'Cij_14may'
     # it was GL_or_LG = 'LG', ind_ordering = 'CLOE'
 
 general_config = {
@@ -35,8 +35,9 @@ general_config = {
     'nProbes': 2,
     'nbl': 20,
     'which_forecast': which_forecast,  # ie choose whether to have IST's or sylvain's deltas
-    'Cij_folder': Cij_folder,
-    'use_WA': False
+    'cl_folder': cl_folder,
+    'use_WA': False,
+    'nbl_WL': None,  # this means that I use the same number fo bins for all probes
 }
 
 # if I'm using the same ell_max there's no Wadd
@@ -55,6 +56,10 @@ covariance_config = {
     'Rl': 4,
     'save_covariance': True,
     # me and Vincenzo use instead "ell", corresponding to "C-style", flattening of the datavector.
+    'which_probe_response': 'variable',
+    'sigma_eps2': 0.3 ** 2,
+    'ng': 30,
+
 }
 
 FM_config = {

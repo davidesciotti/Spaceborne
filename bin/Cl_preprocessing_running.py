@@ -73,8 +73,6 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
         C_GG_import = np.genfromtxt(
             project_path_here / 'input/vincenzo/SPV3_07_2022/DataVecTabs/EP10/CijGG-GR-Flat-eNLA-NA.dat')
 
-
-
     else:
         raise ValueError('cl_folder must be Cij_15gen, Cij_thesis or Cij_14may')
 

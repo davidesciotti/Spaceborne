@@ -10,20 +10,22 @@ if which_forecast == 'IST':
     fsky = fsky_IST
     GL_or_LG = 'GL'
     ind_ordering = 'vincenzo'
-    Cij_folder = 'Cij_14may'
+    cl_folder = 'Cij_14may'
 
 elif which_forecast == 'sylvain':
     fsky = fsky_syvain
     GL_or_LG = 'GL'
     ind_ordering = 'vincenzo'
-    Cij_folder = 'common_ell_and_deltas'
+    cl_folder = 'common_ell_and_deltas'
 
 elif which_forecast == 'CLOE':
     fsky = fsky_IST
     GL_or_LG = 'LG'
     ind_ordering = 'CLOE'
-    Cij_folder = 'Cl_CLOE'
+    cl_folder = 'Cl_CLOE'
 
+else:
+    raise ValueError('which_forecast must be IST, CLOE or syvain')
 
 general_config = {
     'ell_min': 10,
@@ -33,8 +35,9 @@ general_config = {
     'nProbes': 2,
     'nbl': 30,
     'which_forecast': which_forecast,  # ie choose whether to have IST's or sylvain's deltas
-    'Cij_folder': Cij_folder,
+    'cl_folder': cl_folder,
     'use_WA': True
+    'save_cls': False
 }
 
 if general_config['ell_max_WL'] == general_config['ell_max_GC']:
@@ -47,14 +50,19 @@ covariance_config = {
     'compute_covariance_in_blocks': False,
     'fsky': fsky,
     'Rl': 4,
-    'save_covariance': True,
-    'block_index': 'ij'
+    'save_covariance': False,
+    'block_index': 'ij'  # ! should probably be ell
     # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
+    'block_index': 'ell',
+    'which_probe_response': 'variable',
+    'sigma_eps2': 0.3 ** 2,
+    'ng': 30,
 }
 
 FM_config = {
     'nParams': 20,
     'save_FM': False
+    'save_FM_as_dict': False
 }
 
 plot_config = {

@@ -10,27 +10,22 @@ matplotlib.use('Qt5Agg')
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
-home_path = Path.home()
 
-sys.path.append(str(project_path))
-sys.path.append(str(job_path))
+sys.path.append(f'{project_path}/lib')
+import my_module as mm
 
-# job-specific modules and configurations
-# sys.path.append(str(job_path / 'configs'))
-# sys.path.append(str(job_path / 'bin/utils'))
-
+sys.path.append(f'{project_path}/bin')
+import ell_values_running as ell_utils
+import Cl_preprocessing_running as Cl_utils
+import covariance_running as covmat_utils
+import FM_running as FM_utils
+import plots_FM_running as plot_utils
+import utils_running as utils
 
 # job configuration
-import configs.config_IST_forecast as config
-# import bin.utils.utils_IST_forecast
+sys.path.append(f'{job_path}/configs')
+import config_IST_forecast as config
 
-import lib.my_module_old as mm
-import bin.ell_values_running as ell_utils
-import bin.Cl_preprocessing_running as Cl_utils
-import bin.covariance_running as covmat_utils
-import bin.FM_running as FM_utils
-import bin.plots_FM_running as plot_utils
-import bin.utils_running as utils
 
 start_time = time.perf_counter()
 
@@ -59,12 +54,12 @@ utils.consistency_checks(general_config, covariance_config)
 # for the time being, I/O is manual and from the main
 # load inputs (job-specific)
 ind_ordering = covariance_config['ind_ordering']
-ind = np.genfromtxt(project_path / f"config/common_data/ind/indici_{ind_ordering}_like.dat").astype(int) - 1
+ind = np.genfromtxt(project_path / f"input/ind_files/indici_{ind_ordering}_like_int.dat", dtype=int)
 covariance_config['ind'] = ind
 
-Sijkl_dav = np.load(project_path / "config/common_data/Sijkl/Sijkl_WFdavide_nz10000_IA_3may.npy")  # davide, eNLA
-# Sijkl_marco = np.load(project_path / "config/common_data/Sijkl/Sijkl_WFmarco_nz10000_zNLA_gen22.npy")  # marco, zNLA
-# Sijkl_sylv = np.load(project_path / "config/common_data/Sijkl/sylvain_cosmologyFixe_IAFixe_Sijkl_GCph_WL_XC_3may.npy")  # sylvain, eNLA
+Sijkl_dav = np.load(project_path / "input/Sijkl/Sijkl_WFdavide_nz10000_IA_3may.npy")  # davide, eNLA
+# Sijkl_marco = np.load(project_path / "input/Sijkl/Sijkl_WFmarco_nz10000_zNLA_gen22.npy")  # marco, zNLA
+# Sijkl_sylv = np.load(project_path / "input/Sijkl/sylvain_cosmologyFixe_IAFixe_Sijkl_GCph_WL_XC_3may.npy")  # sylvain, eNLA
 
 Sijkl = Sijkl_dav
 
@@ -85,11 +80,11 @@ nbl = general_config['nbl']
 # compute ell and delta ell values
 ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_config)
 # import and interpolate the cls
-cl_dict_2D = utils.import_and_interpolate_cls(general_config, covariance_config, ell_dict)
+cl_dict_2D, rl_dict_2D = Cl_utils.import_and_interpolate_cls(general_config, covariance_config, ell_dict)
 # reshape them to 3D
-cl_dict_3D = Cl_utils.reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D)
+cl_dict_3D, rl_dict_3D = Cl_utils.reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, rl_dict_2D)
 # compute covariance matrix
-cov_dict = covmat_utils.compute_cov(general_config, covariance_config, ell_dict, delta_dict, cl_dict_3D, Sijkl)
+cov_dict = covmat_utils.compute_cov(general_config, covariance_config, ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 # compute Fisher Matrix
 FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
 # plot forecasts

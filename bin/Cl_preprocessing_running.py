@@ -36,20 +36,20 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
     if cl_folder == "Cij_thesis":
         assert covariance_config['GL_or_LG'] == 'LG', 'Cij_thesis uses LG'
         C_LL_import = np.genfromtxt(
-            project_path_here / 'config/common_data/vincenzo/thesis_data/Cij_tesi/CijGG-N4TB-GR-eNLA.dat')
+            project_path_here / 'input/vincenzo/thesis_data/Cij_tesi/CijGG-N4TB-GR-eNLA.dat')
         C_XC_import = np.genfromtxt(
-            project_path_here / 'config/common_data/vincenzo/thesis_data/Cij_tesi/CijDG-N4TB-GR-eNLA.dat')
+            project_path_here / 'input/vincenzo/thesis_data/Cij_tesi/CijDG-N4TB-GR-eNLA.dat')
         C_GG_import = np.genfromtxt(
-            project_path_here / 'config/common_data/vincenzo/thesis_data/Cij_tesi/CijDD-N4TB-GR-eNLA.dat')
+            project_path_here / 'input/vincenzo/thesis_data/Cij_tesi/CijDD-N4TB-GR-eNLA.dat')
 
     elif cl_folder == "Cij_15gen":  # Cij-NonLin-eNLA_15gen
         assert covariance_config['GL_or_LG'] == 'LG', 'Cij_14may uses LG'
         C_LL_import = np.genfromtxt(
-            project_path_here / 'config/common_data/vincenzo/Cij-NonLin-eNLA_15gen/CijLL-LCDM-NonLin-eNLA.dat')
+            project_path_here / 'input/vincenzo/Cij-NonLin-eNLA_15gen/CijLL-LCDM-NonLin-eNLA.dat')
         C_XC_import = np.genfromtxt(
-            project_path_here / 'config/common_data/vincenzo/Cij-NonLin-eNLA_15gen/CijLG-LCDM-NonLin-eNLA.dat')
+            project_path_here / 'input/vincenzo/Cij-NonLin-eNLA_15gen/CijLG-LCDM-NonLin-eNLA.dat')
         C_GG_import = np.genfromtxt(
-            project_path_here / 'config/common_data/vincenzo/Cij-NonLin-eNLA_15gen/CijGG-LCDM-NonLin-eNLA.dat')
+            project_path_here / 'input/vincenzo/Cij-NonLin-eNLA_15gen/CijGG-LCDM-NonLin-eNLA.dat')
         C_LL_import[:, 0] = np.log10(C_LL_import[:, 0])
         C_XC_import[:, 0] = np.log10(C_XC_import[:, 0])
         C_GG_import[:, 0] = np.log10(C_GG_import[:, 0])
@@ -57,21 +57,21 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
     elif cl_folder == "Cij_14may":
         assert covariance_config['GL_or_LG'] == 'GL', 'Cij_14may uses GL'
         C_LL_import = np.genfromtxt(
-            project_path_here / 'config/common_data/vincenzo/CijDers/14may/EP10/CijLL-GR-Flat-eNLA-NA.dat')
+            project_path_here / 'input/vincenzo/14may/CijDers/EP10/CijLL-GR-Flat-eNLA-NA.dat')
         C_XC_import = np.genfromtxt(
-            project_path_here / 'config/common_data/vincenzo/CijDers/14may/EP10/CijGL-GR-Flat-eNLA-NA.dat')
+            project_path_here / 'input/vincenzo/14may/CijDers/EP10/CijGL-GR-Flat-eNLA-NA.dat')
         C_GG_import = np.genfromtxt(
-            project_path_here / 'config/common_data/vincenzo/CijDers/14may/EP10/CijGG-GR-Flat-eNLA-NA.dat')
+            project_path_here / 'input/vincenzo/14may/CijDers/EP10/CijGG-GR-Flat-eNLA-NA.dat')
 
     elif cl_folder == "Cij_SPV3":
         assert 1 > 2, 'Cij_SPV3 is not implemented'
         assert covariance_config['GL_or_LG'] == 'GL', 'Cij_SPV3 uses GL'
         C_LL_import = np.genfromtxt(
-            project_path_here / 'config/common_data/vincenzo/SPV3_07_2022/DataVecTabs/EP10/CijLL-GR-Flat-eNLA-NA.dat')
+            project_path_here / 'input/vincenzo/SPV3_07_2022/DataVecTabs/EP10/CijLL-GR-Flat-eNLA-NA.dat')
         C_XC_import = np.genfromtxt(
-            project_path_here / 'config/common_data/vincenzo/SPV3_07_2022/DataVecTabs/EP10/CijGL-GR-Flat-eNLA-NA.dat')
+            project_path_here / 'input/vincenzo/SPV3_07_2022/DataVecTabs/EP10/CijGL-GR-Flat-eNLA-NA.dat')
         C_GG_import = np.genfromtxt(
-            project_path_here / 'config/common_data/vincenzo/SPV3_07_2022/DataVecTabs/EP10/CijGG-GR-Flat-eNLA-NA.dat')
+            project_path_here / 'input/vincenzo/SPV3_07_2022/DataVecTabs/EP10/CijGG-GR-Flat-eNLA-NA.dat')
 
 
 
@@ -80,11 +80,11 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
 
     # import responses
     R_LL_import = np.genfromtxt(
-        project_path_here / 'config/common_data/vincenzo/Pk_responses_2D/rijllcorr-istf-alex.dat')
+        project_path_here / 'input/vincenzo/Pk_responses_2D/rijllcorr-istf-alex.dat')
     R_GL_import = np.genfromtxt(
-        project_path_here / 'config/common_data/vincenzo/Pk_responses_2D/rijglcorr-istf-alex.dat')
+        project_path_here / 'input/vincenzo/Pk_responses_2D/rijglcorr-istf-alex.dat')
     R_GG_import = np.genfromtxt(
-        project_path_here / 'config/common_data/vincenzo/Pk_responses_2D/rijggcorr-istf-alex.dat')
+        project_path_here / 'input/vincenzo/Pk_responses_2D/rijggcorr-istf-alex.dat')
 
     ###########################################################################
     # interpolate Vincenzo's Cls in ell values

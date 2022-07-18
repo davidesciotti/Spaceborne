@@ -17,20 +17,20 @@ home_path = Path.home()
 job_name = job_path.parts[-1]
 
 # general libraries
-sys.path.append(str(project_path.parent / 'common_data/common_lib'))
+sys.path.append(f'{project_path.parent}/common_data/common_lib')
 import my_module as mm
 import cosmo_lib as csmlib
 
 # general config
-sys.path.append(str(project_path.parent / 'common_data/common_config'))
+sys.path.append(f'{project_path.parent}/common_data/common_config')
 import mpl_cfg
 
 # job configuration
-sys.path.append(str(project_path / 'jobs'))
-import SPV3.configs.config_SPV3 as cfg
+sys.path.append(f'{job_path}/config')
+import config_SPV3 as cfg
 
 # project libraries
-sys.path.append(str(project_path / 'bin'))
+sys.path.append(f'{project_path}/bin')
 import ell_values_running as ell_utils
 import Cl_preprocessing_running as cl_utils
 import compute_Sijkl as Sijkl_utils
@@ -74,7 +74,6 @@ else:
 
 zbins_SPV3 = (7, 9, 10, 11, 13, 15)
 
-general_cfg['zbins'] = 11
 # for general_config['zbins'] in zbins_SPV3:
 # for (general_config['ell_max_WL'], general_config['ell_max_GC']) in ((5000, 3000), (1500, 750)):
 
@@ -82,7 +81,7 @@ general_cfg['zbins'] = 11
 
 zbins = general_cfg['zbins']
 
-ind = np.genfromtxt(f'{project_path}/config/common_data/ind_files/variable_zbins/indici_vincenzo_like_zbins{zbins}.dat',
+ind = np.genfromtxt(f'{project_path}/input/ind_files/variable_zbins/indici_vincenzo_like_zbins{zbins}.dat',
                     dtype=int)
 covariance_cfg['ind'] = ind
 
@@ -93,8 +92,10 @@ ell_max_XC = ell_max_GC
 nbl_WL = general_cfg['nbl_WL']
 
 # compute ell and delta ell values
-ell_WL, delta_l_WL = ell_utils.ISTF_ells(general_cfg['nbl_WL'], general_cfg['ell_min'],
-                                         general_cfg['ell_max_WL'])
+ell_WL, delta_l_WL = ell_utils.compute_ells(general_cfg['nbl_WL'], general_cfg['ell_min'],
+                                         general_cfg['ell_max_WL'], recipe='ISTF')
+
+
 ell_WL = np.log10(ell_WL)
 
 ell_dict = {}
@@ -151,6 +152,10 @@ else:
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, delta_dict, cl_dict_3D, Rl_dict_3D, sijkl)
 
+# import vincenzo
+probe = 'WLO'
+cov_vinc = np.genfromtxt(f'{job_path}/input/covmat/zbins{zbins}/cm-{probe}-20-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL0-idSysGC0-EP{zbins}.dat')
+cov_dav = cov_dict['cov_WL_GO_2D']
 
 assert 1 == 2
 

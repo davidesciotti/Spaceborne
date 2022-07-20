@@ -24,7 +24,8 @@ def consistency_checks(general_config, covariance_config):
         assert covariance_config['Rl'] == 4, 'In the SSC comparison we used Rl=4'
         assert general_config['cl_folder'] == 'Cij_14may', 'Latest Cls are Cij_14may'
         assert general_config['nbl'] == 30, 'IST forecast uses nbl = 30'
-        assert general_config['ell_max_GC'] == 3000, 'IST forecast uses ell_max_GC = 3000'
+        assert (general_config['ell_max_WL'], general_config['ell_max_GC']) == (5000, 3000) or (3000, 750),\
+            'case is neither optimistic nor pessimistic'
         assert general_config['use_WA'] is True, 'IST forecast uses Wadd'
 
     elif general_config['which_forecast'] == 'sylvain':

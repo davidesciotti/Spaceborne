@@ -80,9 +80,13 @@ zbins_SPV3 = (7, 9, 10, 11, 13, 15)
 # utils.consistency_checks(general_config, covariance_config)
 
 zbins = general_cfg['zbins']
-
-ind = np.genfromtxt(f'{project_path}/input/ind_files/variable_zbins/indici_vincenzo_like_zbins{zbins}.dat',
-                    dtype=int)
+print('restore this!!!!!!!!')
+# ind = np.genfromtxt(
+#     f'{project_path}/input/ind_files/variable_zbins/indici_{covariance_cfg["ind_ordering"]}_like_zbins{zbins}.dat',
+#     dtype=int)
+ind = np.genfromtxt(
+    f'{project_path}/input/ind_files/indici_{covariance_cfg["ind_ordering"]}_like_int.dat',
+    dtype=int)
 covariance_cfg['ind'] = ind
 
 # some variables used for I/O naming
@@ -93,8 +97,7 @@ nbl_WL = general_cfg['nbl_WL']
 
 # compute ell and delta ell values
 ell_WL, delta_l_WL = ell_utils.compute_ells(general_cfg['nbl_WL'], general_cfg['ell_min'],
-                                         general_cfg['ell_max_WL'], recipe='ISTF')
-
+                                            general_cfg['ell_max_WL'], recipe='ISTF')
 
 ell_WL = np.log10(ell_WL)
 
@@ -124,6 +127,15 @@ rl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC, zbins, ell_max_WL=ell_max_WL, 
 rl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
 rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
 
+# ! debug
+np.save(f'{job_path}/output/cl_3d/cl_ll_3d_zbins{zbins}_ellmax{ell_max_WL}.npy', cl_ll_3d)
+np.save(f'{job_path}/output/cl_3d/cl_gg_3d_zbins{zbins}_ellmax{ell_max_WL}.npy', cl_gg_3d)
+np.save(f'{job_path}/output/cl_3d/cl_wa_3d_zbins{zbins}_ellmax{ell_max_WL}.npy', cl_wa_3d)
+
+np.save(f'{job_path}/output/cl_3d/ell_WL.npy', ell_WL)
+# ! end debug
+
+
 cl_dict_3D = {
     'C_LL_WLonly_3D': cl_ll_3d,
     'C_GG_3D': cl_gg_3d,
@@ -152,13 +164,6 @@ else:
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, delta_dict, cl_dict_3D, Rl_dict_3D, sijkl)
 
-# import vincenzo
-probe = 'WLO'
-cov_vinc = np.genfromtxt(f'{job_path}/input/covmat/zbins{zbins}/cm-{probe}-20-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL0-idSysGC0-EP{zbins}.dat')
-cov_dav = cov_dict['cov_WL_GO_2D']
-
-assert 1 == 2
-
 # compute Fisher Matrix
 # FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
 
@@ -168,7 +173,8 @@ if covariance_cfg['save_covariance']:
             cov_dict['cov_WL_GO_2D'])
     np.save(f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}_zbins{zbins}_2D.npy',
             cov_dict['cov_GC_GO_2D'])
-    np.save(f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins}_2D.npy',
+    np.save(
+        f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins}_2D.npy',
         cov_dict['cov_3x2pt_GO_2D'])
     np.save(f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_WA_lmaxWL{ell_max_WL}_nbl{nbl_WA}_zbins{zbins}_2D.npy',
             cov_dict['cov_WA_GO_2D'])

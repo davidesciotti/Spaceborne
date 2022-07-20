@@ -360,15 +360,6 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
         # bar_plot(uncert_sylv_G, uncert_sylv_SSC, diff)
 
 
-    elif which_plot == "bar_plot":
-        # davide
-        diff = mm.percent_diff(uncert_dav_SSC, uncert_dav_G)
-        bar_plot(uncert_dav_G, uncert_dav_SSC, diff)
-        # sylvain, just to check - GC is different, remember! we agree on the
-        # relative errors in the G and G + SSC cases, not on the % uncertainty increase!
-        # diff = mm.percent_diff(uncert_sylv_SSC, uncert_sylv_G)
-        # bar_plot(uncert_sylv_G, uncert_sylv_SSC, diff)
-
     elif which_plot == "SSC_degradation":
         ########## noSSC vs SSC
         diff_dav = mm.percent_diff(uncert_dav_SSC, uncert_dav_G)

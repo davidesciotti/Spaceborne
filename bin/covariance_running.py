@@ -73,7 +73,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     else:
         nbl_WA = ell_WA.shape[0]
 
-    print('nbl_WA: ', nbl_WA, 'nbl_WL: ', nbl_WL, 'nbl_GC: ', nbl_GC, 'nbl_3x2pt: ', nbl_3x2pt)
 
     # ell values in linear scale:
     if ell_WL.max() < 15:  # very rudimental check of whether they're in lin or log scale
@@ -124,7 +123,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
 
     # print settings
     print(f'\ncheck: \nwhich_forecast = {which_forecast} \nind_ordering = {ind_ordering} \nblock_index = {block_index}')
-    print(f"nbl = {nbl_WA} \nell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}")
+    print('nbl_WA: ', nbl_WA, 'nbl_WL: ', nbl_WL, 'nbl_GC: ', nbl_GC, 'nbl_3x2pt: ', nbl_3x2pt)
+    print(f"ell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}")
     print(f'computing the covariance in blocks? {compute_covariance_in_blocks}\n')
 
     # build noise vector

@@ -277,7 +277,7 @@ def get_spv3_cls_3d(probe: str, nbl: int, zbins: int, ell_max_WL, cls_or_respons
 
         # reshape them individually - the symmetrization is done within the function
         cl_ll_3x2pt_3d = mm.Cl_2D_to_3D_symmetric(cl_ll_3x2pt_2d, nbl=nbl, npairs=zpairs_auto, zbins=zbins)
-        cl_gl_3x2pt_3d = mm.Cl_2D_to_3D_asymmetric(cl_gl_3x2pt_2d, nbl=nbl, npairs=zpairs_cross, zbins=zbins)
+        cl_gl_3x2pt_3d = mm.Cl_2D_to_3D_asymmetric(cl_gl_3x2pt_2d, nbl=nbl, zbins=zbins)
         cl_gg_3x2pt_3d = mm.Cl_2D_to_3D_symmetric(cl_gg_3x2pt_2d, nbl=nbl, npairs=zpairs_auto, zbins=zbins)
 
         # use them to populate the datavector

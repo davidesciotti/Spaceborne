@@ -136,6 +136,7 @@ for (general_config['ell_max_WL'], general_config['ell_max_GC']) in ((5000, 3000
 
 
     # test
-    unit_test.FM_check(general_config, FM_dict)
 
 print('done')
+
+unit_test.FM_check(job_path / f"output/FM", general_config, covariance_config)

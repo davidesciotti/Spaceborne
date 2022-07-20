@@ -33,7 +33,7 @@ elif which_forecast == 'CLOE':
 elif which_forecast == 'SPV3':
     fsky = fsky_SPV3
     GL_or_LG = 'GL'
-    ind_ordering = 'vincenzo'
+    ind_ordering = 'triu' # ! still not super sure, but much better than vincenzo
     cl_folder = 'SPV3'
 
 else:

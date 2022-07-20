@@ -75,7 +75,7 @@ def bar_plot(uncert_gauss, uncert_SSC, difference):
     plt.savefig(fname=f'bar_plot_{probe}.png', dpi=300, figsize=[16, 9])
 
 
-def bar_plot_v2(data, title, label_list, bar_width=0.25):
+def bar_plot_v2(data, title, label_list, bar_width=0.25, nparams=7, param_names_label=param_names_label):
     """
     data: usually the percent uncertainties, but could also be the percent difference
     """
@@ -105,7 +105,7 @@ def bar_plot_v2(data, title, label_list, bar_width=0.25):
 
     # Adding xticks
     plt.ylabel(ylabel_sigma_relative_fid)
-    plt.xticks(range(7), param_names_label)
+    plt.xticks(range(nparams), param_names_label)
 
     plt.title(title)
     plt.legend()

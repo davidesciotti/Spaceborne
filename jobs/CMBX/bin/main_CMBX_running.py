@@ -98,37 +98,6 @@ FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_
 #     for plot_config['probe'] in ['WL', 'GC', '3x2pt']:
 # plot_utils.plot_FM(general_config, covariance_config, plot_config, FM_dict)
 
-# ! new, delete
-probe = 'WL'
-if ell_max_WL == 5000:
-    case = 'opt'
-else:
-    case = 'pes'
-
-if probe == 'WL':
-    nparams = 8
-
-FM_LCDM = np.delete(FM_dict[f'FM_{probe}_GO'], (2, 3), axis=0)
-FM_LCDM = np.delete(FM_LCDM, (2, 3), axis=1)
-
-uncert_dav_wCDM = mm.uncertainties_FM(FM_dict[f'FM_{probe}_GO'])[:7]
-uncert_dav_LCDM = mm.uncertainties_FM(FM_LCDM, nparams)[:5]
-uncert_ISTF_wCDM = ISTFfid.forecasts[f'{probe}_{case}_w0waCDM_flat']
-uncert_ISTF_LCDM = ISTFfid.forecasts[f'{probe}_{case}_LCDM_flat']
-
-
-print('uncert_dav_wCDM', uncert_dav_wCDM)
-print('uncert_ISTF_wCDM', uncert_ISTF_wCDM)
-print('uncert_dav_LCDM', uncert_dav_LCDM)
-print('uncert_ISTF_LCDM', uncert_ISTF_LCDM)
-
-diff = mm.percent_diff(uncert_dav_LCDM, uncert_ISTF_LCDM)
-print('diff', diff)
-
-# ! end new
-
-
-assert 1 > 2, 'stop here'
 
 # save:
 if covariance_config['save_covariance']:

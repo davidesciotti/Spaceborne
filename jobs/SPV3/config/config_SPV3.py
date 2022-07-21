@@ -2,7 +2,7 @@ import numpy as np
 
 # official Euclid survey area
 survey_area = 15_000  # deg^2
-survey_area_SPV3 = 14_000  # deg^2, new in 2022
+survey_area_SPV3 = 14_000  # ! deg^2, new in 2022
 deg2_in_sphere = 41252.96  # deg^2 in a spere
 
 fsky_IST = survey_area / deg2_in_sphere
@@ -66,15 +66,15 @@ covariance_config = {
     # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
     'block_index': 'ell',
     'which_probe_response': 'variable',
-    'sigma_eps2': (0.3*np.sqrt(2))**2,
-    'ng': 30,
+    'sigma_eps2': (0.26*np.sqrt(2))**2, # ! new
+    'ng': 28.723,  # ! new
 }
 
 Sijkl_config = {
     'save_Sijkl': True,
     'input_WF': 'vincenzo_SPV3',
     'WF_normalization': 'IST',
-    'has_IA': True,  # whether or not to include IA in the WF used to compute Sijkl
+    'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
     'use_precomputed_sijkl': True,
 }
 

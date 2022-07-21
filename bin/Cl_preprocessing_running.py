@@ -230,8 +230,10 @@ def get_spv3_cls_3d(probe: str, nbl: int, zbins: int, ell_max_WL, cls_or_respons
 
     if ell_max_WL == 5000:
         case = 'Opt'
+        case_nbl = 32  # the files are named after the number of ell bins for WL in all cases, even if it's not the actual nbl
     elif ell_max_WL == 1500:
         case = 'Pes'
+        case_nbl = 32
     else:
         raise ValueError('ell_max_WL must be 5000 or 3000')
 
@@ -254,7 +256,7 @@ def get_spv3_cls_3d(probe: str, nbl: int, zbins: int, ell_max_WL, cls_or_respons
 
     if cls_or_responses == 'cls':
         cl_1d = np.genfromtxt(
-            project_path_here / f'jobs/SPV3/input/DataVecTabs/{probe_here}/dv-{probe_here}-{case}-EP{string_0}{zbins}.dat')
+            project_path_here / f'jobs/SPV3/input/DataVecTabs/{probe_here}/dv-{probe_here}-{case_nbl}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-EP{string_0}{zbins}.dat')
     elif cls_or_responses == 'responses':
         cl_1d = np.genfromtxt(
             project_path_here / f'jobs/SPV3/input/ResFunTabs/{probe_here}/rf-{probe_here}-{case}-EP{string_0}{zbins}.dat')

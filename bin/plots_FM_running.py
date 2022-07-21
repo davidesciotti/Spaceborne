@@ -10,12 +10,13 @@ import plotly.offline as pyo
 
 
 project_path_here = Path.cwd().parent.parent.parent
+print(project_path_here)
 sys.path.append(f'{project_path_here}/lib')
 import my_module as mm
 
 
 sys.path.append(f'{project_path_here}/config')
-import ISTF_fid_params
+# import ISTF_fid_params
 import mpl_cfg
 
 matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)

@@ -131,7 +131,6 @@ rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt, zbins, ell_max_WL=ell
 np.save(f'{job_path}/output/cl_3d/cl_ll_3d_zbins{zbins}_ellmax{ell_max_WL}.npy', cl_ll_3d)
 np.save(f'{job_path}/output/cl_3d/cl_gg_3d_zbins{zbins}_ellmax{ell_max_WL}.npy', cl_gg_3d)
 np.save(f'{job_path}/output/cl_3d/cl_wa_3d_zbins{zbins}_ellmax{ell_max_WL}.npy', cl_wa_3d)
-
 np.save(f'{job_path}/output/cl_3d/ell_WL.npy', ell_WL)
 # ! end debug
 

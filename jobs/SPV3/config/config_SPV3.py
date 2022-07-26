@@ -9,7 +9,6 @@ fsky_IST = survey_area / deg2_in_sphere
 fsky_syvain = 0.375
 fsky_SPV3 = survey_area_SPV3 / deg2_in_sphere
 
-
 which_forecast = 'SPV3'
 
 if which_forecast == 'IST':
@@ -33,7 +32,7 @@ elif which_forecast == 'CLOE':
 elif which_forecast == 'SPV3':
     fsky = fsky_SPV3
     GL_or_LG = 'GL'
-    ind_ordering = 'triu' # ! still not super sure, but much better than vincenzo
+    ind_ordering = 'triu'  # ! still not super sure, but much better than vincenzo
     cl_folder = 'SPV3'
 
 else:
@@ -66,7 +65,7 @@ covariance_config = {
     # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
     'block_index': 'ell',
     'which_probe_response': 'variable',
-    'sigma_eps2': (0.26*np.sqrt(2))**2, # ! new
+    'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': 28.723,  # ! new
 }
 

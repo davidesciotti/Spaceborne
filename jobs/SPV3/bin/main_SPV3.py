@@ -8,8 +8,6 @@ import matplotlib as mpl
 import numpy as np
 import pandas as pd
 
-from jobs.SPV3.bin.check_cov import probe_vinc
-
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 home_path = Path.home()
@@ -20,7 +18,7 @@ sys.path.append(f'{project_path}/lib')
 import my_module as mm
 import cosmo_lib as csmlib
 
-# general config
+# general configurations
 sys.path.append(f'{project_path}/config')
 import mpl_cfg
 
@@ -129,7 +127,7 @@ for general_cfg['zbins'] in zbins_SPV3:
         'C_WA_3D': cl_wa_3d,
         'D_3x2pt': cl_3x2pt_5d}
 
-    Rl_dict_3D = {
+    rl_dict_3D = {
         'R_LL_WLonly_3D': rl_ll_3d,
         'R_GG_3D': rl_gg_3d,
         'R_WA_3D': rl_wa_3d,
@@ -151,12 +149,20 @@ for general_cfg['zbins'] in zbins_SPV3:
 
     # compute covariance matrix
     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                        ell_dict, delta_dict, cl_dict_3D, Rl_dict_3D, sijkl)
+                                        ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
 
     # compute Fisher Matrix
     # FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
 
     # save:
+    if general_cfg['save_cls_3d']:
+        for key in cl_dict_3D.keys():
+            np.save(f'{job_path}/output/cl_3d/{key}.npy', cl_dict_3D[key])
+
+    if general_cfg['save_rls_3d']:
+        for key in rl_dict_3D.keys():
+            np.save(f'{job_path}/output/rl_3d/{key}.npy', rl_dict_3D[key])
+
     if covariance_cfg['save_covariance']:
         np.save(
             f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}_zbins{zbins}_2D.npy',

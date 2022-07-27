@@ -5,6 +5,8 @@
       <sourceFolder url="file://$MODULE_DIR$/bin" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/config" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/jobs/SPV3/config" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/jobs/SSC_comparison/config" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/jobs/SSC_comparison_updt/config" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/lib" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/jobs/IST_forecast/output/covmat" />
       <excludeFolder url="file://$MODULE_DIR$/jobs/IST_NL/output/covmat" />

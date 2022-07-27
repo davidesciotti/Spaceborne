@@ -147,13 +147,13 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     C_LL_3D = np.zeros((nbl, zbins, zbins))  # 3D, for the datavector
     C_GG_3D = np.zeros((nbl, zbins, zbins))  # 3D, for GConly
     C_WA_3D = np.zeros((nbl_WA, zbins, zbins))  # 3D, ONLY for the datavector (there's no Wadd_only case)
-    D_3x2pt = np.zeros((nbl, nProbes, nProbes, zbins, zbins))
+    C_3x2pt_5D = np.zeros((nbl, nProbes, nProbes, zbins, zbins))
 
     R_LL_WLonly_3D = np.zeros((nbl, zbins, zbins))
     R_LL_3D = np.zeros((nbl, zbins, zbins))
     R_GG_3D = np.zeros((nbl, zbins, zbins))
     R_WA_3D = np.zeros((nbl_WA, zbins, zbins))
-    R_3x2pt = np.zeros((nbl, nProbes, nProbes, zbins, zbins))
+    R_3x2pt_5D = np.zeros((nbl, nProbes, nProbes, zbins, zbins))
 
     # fill upper triangle: LL, GG, WLonly
     triu_idx = np.triu_indices(zbins)
@@ -191,29 +191,29 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     # fill datavector correctly:
     print('is this way of filling the datavector agnostic to LG, GL???')
     # ! pay attention to LG, GL...
-    D_3x2pt[:, 0, 0, :, :] = C_LL_3D
-    D_3x2pt[:, 1, 1, :, :] = C_GG_3D
-    D_3x2pt[:, 0, 1, :, :] = np.transpose(C_XC_3D, (0, 2, 1))
-    D_3x2pt[:, 1, 0, :, :] = C_XC_3D
+    C_3x2pt_5D[:, 0, 0, :, :] = C_LL_3D
+    C_3x2pt_5D[:, 1, 1, :, :] = C_GG_3D
+    C_3x2pt_5D[:, 0, 1, :, :] = np.transpose(C_XC_3D, (0, 2, 1))
+    C_3x2pt_5D[:, 1, 0, :, :] = C_XC_3D
 
     # ! pay attention to LG, GL...
-    R_3x2pt[:, 0, 0, :, :] = R_LL_3D
-    R_3x2pt[:, 1, 1, :, :] = R_GG_3D
-    R_3x2pt[:, 0, 1, :, :] = np.transpose(R_XC_3D, (0, 2, 1))
-    R_3x2pt[:, 1, 0, :, :] = R_XC_3D
+    R_3x2pt_5D[:, 0, 0, :, :] = R_LL_3D
+    R_3x2pt_5D[:, 1, 1, :, :] = R_GG_3D
+    R_3x2pt_5D[:, 0, 1, :, :] = np.transpose(R_XC_3D, (0, 2, 1))
+    R_3x2pt_5D[:, 1, 0, :, :] = R_XC_3D
 
     # create dict with results:
     cl_dict_3D = {
         'C_LL_WLonly_3D': C_LL_WLonly_3D,
         'C_GG_3D': C_GG_3D,
         'C_WA_3D': C_WA_3D,
-        'D_3x2pt': D_3x2pt}
+        'C_3x2pt_5D': C_3x2pt_5D}
 
     Rl_dict_3D = {
         'R_LL_WLonly_3D': R_LL_WLonly_3D,
         'R_GG_3D': R_GG_3D,
         'R_WA_3D': R_WA_3D,
-        'R_3x2pt': R_3x2pt}
+        'R_3x2pt_5D': R_3x2pt_5D}
 
     print('Cls and responses reshaped')
 

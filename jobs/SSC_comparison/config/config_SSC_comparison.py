@@ -1,33 +1,14 @@
+from pathlib import Path
+import sys
 import numpy as np
+project_path = Path.cwd().parent.parent.parent
 
-# official Euclid survey area
-survey_area = 15000  # deg^2
-deg2_in_sphere = 41252.96  # deg^2 in a spere
-fsky_IST = survey_area / deg2_in_sphere
-fsky_syvain = 0.375
+sys.path.append(f'{project_path}/bin')
+import utils_running as utils
 
 which_forecast = 'sylvain'
+fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
-if which_forecast == 'IST':
-    fsky = fsky_IST
-    GL_or_LG = 'GL'
-    ind_ordering = 'vincenzo'
-    cl_folder = 'Cij_14may'
-
-elif which_forecast == 'sylvain':
-    fsky = fsky_syvain
-    GL_or_LG = 'GL'
-    ind_ordering = 'vincenzo'
-    cl_folder = 'Cij_14may'
-
-elif which_forecast == 'CLOE':
-    fsky = fsky_IST
-    GL_or_LG = 'LG'
-    ind_ordering = 'CLOE'
-    cl_folder = 'Cl_CLOE'
-
-else:
-    raise ValueError('which_forecast must be IST, CLOE or syvain')
 
 general_config = {
     'ell_min': 10,
@@ -66,32 +47,4 @@ FM_config = {
     'save_FM': False,
     'save_FM_as_dict': False
 
-}
-
-plot_config = {
-    'case': 'opt',
-    'probe': 'WL',
-    'GO_or_GS': 'GS',  # Gauss-only or Gauss + SSC
-    'covmat_dav_flag': 'no',
-    'which_plot': 'constrians_only',
-    'plot_sylvain': True,
-    'plot_ISTF': True,
-    'custom_label': '',
-
-    'params': {'lines.linewidth': 3.5,
-               'font.size': 25,
-               'axes.labelsize': 'xx-large',
-               'axes.titlesize': 'xx-large',
-               'xtick.labelsize': 'xx-large',
-               'ytick.labelsize': 'xx-large',
-               'mathtext.fontset': 'stix',
-               'font.family': 'STIXGeneral',
-               'figure.figsize': (16, 10)
-               },
-
-    'markersize': 10,
-    'dpi': 500,
-    'pic_format': 'pdf',
-    'param_names_label': ["$\Omega_{{\\rm m},0}$", "$\Omega_{{\\rm b},0}$", "$w_0$", "$w_a$", "$h$", "$n_{\\rm s}$",
-                          "$\sigma_8$"]
 }

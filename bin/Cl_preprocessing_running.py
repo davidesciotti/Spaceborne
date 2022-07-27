@@ -249,11 +249,6 @@ def get_spv3_cls_3d(probe: str, nbl: int, zbins: int, ell_max_WL, cls_or_respons
     else:
         raise ValueError('probe must be WL, WA, GC or 3x2pt')
 
-    if zbins in [7, 9]:  # just to set the correct file name
-        string_0 = '0'
-    else:
-        string_0 = ''
-
     if cls_or_responses == 'cls':
         name = 'dv'
         folder = 'DataVecTabs'
@@ -262,12 +257,12 @@ def get_spv3_cls_3d(probe: str, nbl: int, zbins: int, ell_max_WL, cls_or_respons
         name = 'rf'
         folder = 'ResFunTabs'
         case_str = '-' + case
-        print('THIS MUST BE UPDATED WHEN THE PESSIMISTIC DATAVECTORI BECOME AVAILABLE')
+        print('THIS MUST BE UPDATED WHEN THE PESSIMISTIC DATAVECTORS BECOME AVAILABLE')
     else:
         raise ValueError('cls_or_responses must be cls or responses')
 
     cl_1d = np.genfromtxt(f'{project_path_here}/jobs/SPV3/input/{folder}/{probe_here}/'
-                          f'{name}-{probe_here}-{case_nbl}-{specs}-EP{string_0}{zbins}{case_str}.dat')
+                          f'{name}-{probe_here}-{case_nbl}-{specs}-EP{zbins:02}{case_str}.dat')
 
     assert zpairs == int(cl_1d.shape[0] / nbl)  # check on the shape
 

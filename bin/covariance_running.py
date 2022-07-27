@@ -103,21 +103,21 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         ind[npairs:(npairs + npairs_asimm), [2, 3]] = ind[npairs:(npairs + npairs_asimm), [3, 2]]
 
     # load Cls
-    C_LL_3D = cl_dict_3D['C_LL_3D']
+    C_LL_3D = cl_dict_3D['C_LL_WLonly_3D']
     C_GG_3D = cl_dict_3D['C_GG_3D']
     C_WA_3D = cl_dict_3D['C_WA_3D']
-    D_3x2pt = cl_dict_3D['D_3x2pt']
+    C_3x2pt_5D = cl_dict_3D['C_3x2pt_5D']
 
     if which_probe_response == 'constant':
         R_LL_3D = np.full(C_LL_3D.shape, Rl)
         R_GG_3D = np.full(C_GG_3D.shape, Rl)
         R_WA_3D = np.full(C_WA_3D.shape, Rl)
-        R_3x2pt = np.full(D_3x2pt.shape, Rl)
+        R_3x2pt_5D = np.full(C_3x2pt_5D.shape, Rl)
     elif which_probe_response == 'variable':
         R_LL_3D = Rl_dict_3D['R_LL_WLonly_3D']
         R_GG_3D = Rl_dict_3D['R_GG_3D']
         R_WA_3D = Rl_dict_3D['R_WA_3D']
-        R_3x2pt = Rl_dict_3D['R_3x2pt']
+        R_3x2pt_5D = Rl_dict_3D['R_3x2pt_5D']
     else:
         raise ValueError("which_probe_response must be 'constant' or 'variable'")
 
@@ -147,7 +147,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
                                     delta_l=delta_l_WA, fsky=fsky, ind=ind, ell_WA=ell_WA)
     # ALL covariance
     cov_3x2pt_GO_4D = mm.covariance_ALL(nbl=nbl_3x2pt, npairs=npairs_tot,
-                                        Cij=D_3x2pt, noise=N, l_lin=l_lin_XC,
+                                        Cij=C_3x2pt_5D, noise=N, l_lin=l_lin_XC,
                                         delta_l=delta_l_XC, fsky=fsky, ind=ind)
     print("Gauss. cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
 
@@ -157,7 +157,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     cov_WL_SS_4D = mm.cov_SSC(nbl_WL, npairs, ind, C_LL_3D, Sijkl, fsky, "WL", zbins, R_LL_3D)
     cov_GC_SS_4D = mm.cov_SSC(nbl_GC, npairs, ind, C_GG_3D, Sijkl, fsky, "GC", zbins, R_GG_3D)
     cov_WA_SS_4D = mm.cov_SSC(nbl_WA, npairs, ind, C_WA_3D, Sijkl, fsky, "WA", zbins, R_WA_3D)
-    cov_3x2pt_SS_4D = mm.cov_SSC_ALL(nbl_3x2pt, npairs_tot, ind, D_3x2pt, Sijkl, fsky, zbins, R_3x2pt)
+    cov_3x2pt_SS_4D = mm.cov_SSC_ALL(nbl_3x2pt, npairs_tot, ind, C_3x2pt_5D, Sijkl, fsky, zbins, R_3x2pt_5D)
     print("SS cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
 
     if compute_covariance_in_blocks:
@@ -165,10 +165,10 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
 
         # store the input datavector and noise spectra in a dictionary
         cl_input_dict = {}
-        cl_input_dict['L', 'L'] = D_3x2pt[:, 0, 0, ...]
-        cl_input_dict['L', 'G'] = D_3x2pt[:, 0, 1, ...]
-        cl_input_dict['G', 'L'] = D_3x2pt[:, 1, 0, ...]
-        cl_input_dict['G', 'G'] = D_3x2pt[:, 1, 1, ...]
+        cl_input_dict['L', 'L'] = C_3x2pt_5D[:, 0, 0, ...]
+        cl_input_dict['L', 'G'] = C_3x2pt_5D[:, 0, 1, ...]
+        cl_input_dict['G', 'L'] = C_3x2pt_5D[:, 1, 0, ...]
+        cl_input_dict['G', 'G'] = C_3x2pt_5D[:, 1, 1, ...]
 
         noise_input_dict = {}
         noise_input_dict['L', 'L'] = N[0, 0, ...]
@@ -206,11 +206,11 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         print('cov_3x2pt_GO_10D computed in', time.perf_counter() - start, 'seconds')
 
         # tuple instead of list, otherwise numba complains
-        # also, I can't seem to pass a dictionary directly to a numba function... Passing D_3x2pt instead and converting
+        # also, I can't seem to pass a dictionary directly to a numba function... Passing C_3x2pt_5D instead and converting
         # it inside the cov_SSC_3x2pt_10D_dict function.
         probe_ordering_tuple = tuple(probe_ordering)
         start = time.perf_counter()
-        cov_3x2pt_SSC_10D = mm.cov_SSC_3x2pt_10D_dict(nbl_3x2pt, D_3x2pt, Sijkl, fsky, zbins, Rl, probe_ordering_tuple)
+        cov_3x2pt_SSC_10D = mm.cov_SSC_3x2pt_10D_dict(nbl_3x2pt, C_3x2pt_5D, Sijkl, fsky, zbins, Rl, probe_ordering_tuple)
         print('cov_3x2pt_SSC_10D computed in', time.perf_counter() - start, 'seconds')
 
         # convert each block to 4D and stack to make the 4D_3x2pt

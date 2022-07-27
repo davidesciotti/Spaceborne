@@ -14,6 +14,7 @@ general_config = {
     'ell_max_WL': 5000,
     'ell_max_GC': 3000,
     'zbins': 10,
+    'EP_or_ED': 'EP',
     'nProbes': 2,
     'nbl': 30,
     'nbl_WL': None,  # it's equal for all the other probes

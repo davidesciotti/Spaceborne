@@ -78,6 +78,8 @@ for general_cfg['zbins'] in zbins_SPV3:
     # utils.consistency_checks(general_config, covariance_config)
 
     zbins = general_cfg['zbins']
+    EP_or_ED = general_cfg['EP_or_ED']
+
     ind = np.genfromtxt(
         f'{project_path}/input/ind_files/variable_zbins/{covariance_cfg["ind_ordering"]}_like/indici_{covariance_cfg["ind_ordering"]}_like_zbins{zbins}.dat',
         dtype=int)
@@ -126,13 +128,13 @@ for general_cfg['zbins'] in zbins_SPV3:
         'C_LL_WLonly_3D': cl_ll_3d,
         'C_GG_3D': cl_gg_3d,
         'C_WA_3D': cl_wa_3d,
-        'C_3x2pt': cl_3x2pt_5d}
+        'C_3x2pt_5D': cl_3x2pt_5d}
 
     rl_dict_3D = {
         'R_LL_WLonly_3D': rl_ll_3d,
         'R_GG_3D': rl_gg_3d,
         'R_WA_3D': rl_wa_3d,
-        'R_3x2pt': rl_3x2pt_5d}
+        'R_3x2pt_5D': rl_3x2pt_5d}
 
     if Sijkl_cfg['use_precomputed_sijkl']:
         sijkl = np.load(
@@ -159,22 +161,22 @@ for general_cfg['zbins'] in zbins_SPV3:
 
     # this is just to set the correct probe names
     probe_dav_dict = {
-        'WL': 'LL_WLonly',
-        'GC': 'GG',
-        'WA': 'WA',
-        '3x2pt': '3x2pt',
+        'WL': 'LL_WLonly_3D',
+        'GC': 'GG_3D',
+        'WA': 'WA_3D',
+        '3x2pt': '3x2pt_5D',
     }
 
     cl_rl_path = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
     if general_cfg['save_cls_3d']:
         for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
             np.save(f'{cl_rl_path}/DataVecTabs/3D_reshaped/{probe_vinc}/'
-                    f'dv-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-EP{zbins:02}.npy', cl_dict_3D[f'C_{probe_dav_dict[probe_dav]}_3D'])
+                    f'dv-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy', cl_dict_3D[f'C_{probe_dav_dict[probe_dav]}'])
 
     if general_cfg['save_rls_3d']:
         for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
-            np.save(f'{cl_rl_path}/DataVecTabs/3D_reshaped/{probe_vinc}/'
-                    f'rf-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-EP{zbins:02}.npy', rl_dict_3D[f'R_{probe_dav_dict[probe_dav]}_3D'])
+            np.save(f'{cl_rl_path}/ResFunTabs/3D_reshaped/{probe_vinc}/'
+                    f'rf-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy', rl_dict_3D[f'R_{probe_dav_dict[probe_dav]}'])
 
     if covariance_cfg['save_covariance']:
         np.save(
@@ -217,7 +219,7 @@ for general_cfg['zbins'] in zbins_SPV3:
 
                 np.savetxt(
                     f'{path_vinc_fmt}/{GOGS_folder}/{folder_probe_vinc}/cm-{probe_vinc}-{nbl_WL}'
-                    f'-{general_cfg["specs"]}-EP{zbins}.dat',
+                    f'-{general_cfg["specs"]}-{EP_or_ED}{zbins}.dat',
                     cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.10e')
 
 assert 1 == 0, 'stop here'
@@ -235,9 +237,5 @@ if FM_cfg['save_FM']:
 
 if FM_cfg['save_FM_as_dict']:
     sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)
-
-if general_cfg['save_cls']:
-    for key in cl_dict_3D.keys():
-        np.save(job_path / f"output/cl_3D/{key}.npy", cl_dict_3D[f'{key}'])
 
 print('done')

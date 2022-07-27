@@ -4,13 +4,52 @@ import numpy as np
 perform consistency checks
 """
 
-survey_area = 15_000  # deg^2
+survey_area_ISTF = 15_000  # deg^2
 survey_area_SPV3 = 14_000  # deg^2, new in 2022
 deg2_in_sphere = 41252.96  # deg^2 in a spere
 
-fsky_IST = survey_area / deg2_in_sphere
+fsky_ISTF = survey_area_ISTF / deg2_in_sphere
 fsky_sylvain = 0.375
 fsky_SPV3 = survey_area_SPV3 / deg2_in_sphere
+
+
+
+def get_specs(which_forecast):
+
+    if which_forecast == 'IST':
+        fsky = fsky_ISTF
+        GL_or_LG = 'GL'
+        ind_ordering = 'vincenzo'
+        cl_folder = 'Cij_14may'
+
+    elif which_forecast == 'sylvain':
+        fsky = fsky_sylvain
+        GL_or_LG = 'GL'
+        ind_ordering = 'vincenzo'
+        cl_folder = 'Cij_14may'
+
+    elif which_forecast == 'CLOE':
+        fsky = fsky_ISTF
+        GL_or_LG = 'LG'
+        ind_ordering = 'CLOE'
+        cl_folder = 'Cl_CLOE'
+
+    elif which_forecast == 'SPV3':
+        fsky = fsky_SPV3
+        GL_or_LG = 'GL'
+        ind_ordering = 'triu'
+        cl_folder = 'SPV3'
+
+    elif which_forecast == 'SSCcomp_updt':
+        fsky = fsky_ISTF
+        GL_or_LG = 'GL'
+        ind_ordering = 'triu'
+        cl_folder = 'SPV3'
+
+    else:
+        raise ValueError('which_forecast must be IST, sylvain, CLOE, SPV3 or SSCcomp_updt')
+
+    return fsky, GL_or_LG, ind_ordering, cl_folder
 
 
 def consistency_checks(general_config, covariance_config):

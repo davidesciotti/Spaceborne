@@ -1,33 +1,13 @@
+from pathlib import Path
+import sys
 import numpy as np
+project_path = Path.cwd().parent.parent.parent
 
-# official Euclid survey area
-survey_area = 15000  # deg^2
-deg2_in_sphere = 41252.96  # deg^2 in a spere
-fsky_IST = survey_area / deg2_in_sphere
-fsky_syvain = 0.375
+sys.path.append(f'{project_path}/bin')
+import utils_running as utils
 
-which_forecast = 'sylvain'
-
-if which_forecast == 'IST':
-    fsky = fsky_IST
-    GL_or_LG = 'GL'
-    ind_ordering = 'vincenzo'
-    cl_folder = 'Cij_14may'
-
-elif which_forecast == 'sylvain':
-    fsky = fsky_syvain
-    GL_or_LG = 'GL'
-    ind_ordering = 'vincenzo'
-    cl_folder = 'Cij_14may'
-
-elif which_forecast == 'CLOE':
-    fsky = fsky_IST
-    GL_or_LG = 'LG'
-    ind_ordering = 'CLOE'
-    cl_folder = 'Cl_CLOE'
-
-else:
-    raise ValueError('which_forecast must be IST, CLOE or syvain')
+which_forecast = 'SPV3'
+fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
 general_config = {
     'ell_min': 10,
@@ -37,10 +17,11 @@ general_config = {
     'nProbes': 2,
     'nbl': 30,
     'nbl_WL': None,  # it's equal for all the other probes
-    'which_forecast': which_forecast,  # ie choose whether to have IST's or sylvain's deltas
+    'which_forecast': which_forecast,
     'cl_folder': cl_folder,
     'use_WA': True,
-    'save_cls': False
+    'save_cls': False,
+    'specs': 'wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4',
 }
 
 if general_config['ell_max_WL'] == general_config['ell_max_GC']:
@@ -53,12 +34,20 @@ covariance_config = {
     'compute_covariance_in_blocks': False,
     'fsky': fsky,
     'Rl': 4,
-    'save_covariance': False,
+    'save_covariance': True,
     # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
     'block_index': 'ell',
     'which_probe_response': 'variable',
     'sigma_eps2': 0.3 ** 2,
-    'ng': 30,
+    'ng': 28.73,  # ! new
+}
+
+Sijkl_config = {
+    'input_WF': 'vincenzo_SPV3',
+    'WF_normalization': 'IST',
+    'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
+    'use_precomputed_sijkl': True,
+    'save_Sijkl': False,
 }
 
 FM_config = {
@@ -66,32 +55,4 @@ FM_config = {
     'save_FM': False,
     'save_FM_as_dict': False
 
-}
-
-plot_config = {
-    'case': 'opt',
-    'probe': 'WL',
-    'GO_or_GS': 'GS',  # Gauss-only or Gauss + SSC
-    'covmat_dav_flag': 'no',
-    'which_plot': 'constrians_only',
-    'plot_sylvain': True,
-    'plot_ISTF': True,
-    'custom_label': '',
-
-    'params': {'lines.linewidth': 3.5,
-               'font.size': 25,
-               'axes.labelsize': 'xx-large',
-               'axes.titlesize': 'xx-large',
-               'xtick.labelsize': 'xx-large',
-               'ytick.labelsize': 'xx-large',
-               'mathtext.fontset': 'stix',
-               'font.family': 'STIXGeneral',
-               'figure.figsize': (16, 10)
-               },
-
-    'markersize': 10,
-    'dpi': 500,
-    'pic_format': 'pdf',
-    'param_names_label': ["$\Omega_{{\\rm m},0}$", "$\Omega_{{\\rm b},0}$", "$w_0$", "$w_a$", "$h$", "$n_{\\rm s}$",
-                          "$\sigma_8$"]
 }

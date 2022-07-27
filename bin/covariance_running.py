@@ -103,7 +103,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         ind[npairs:(npairs + npairs_asimm), [2, 3]] = ind[npairs:(npairs + npairs_asimm), [3, 2]]
 
     # load Cls
-    C_LL_3D = cl_dict_3D['C_LL_WLonly_3D']
+    C_LL_3D = cl_dict_3D['C_LL_3D']
     C_GG_3D = cl_dict_3D['C_GG_3D']
     C_WA_3D = cl_dict_3D['C_WA_3D']
     D_3x2pt = cl_dict_3D['D_3x2pt']

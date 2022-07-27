@@ -69,7 +69,8 @@ elif which_probe_response == 'variable':
 else:
     raise ValueError('which_probe_response must be either constant or variable')
 
-zbins_SPV3 = (7, 9, 10, 11, 13, 15)
+# zbins_SPV3 = (7, 9, 10, 11, 13, 15, 17, 19, 21)
+zbins_SPV3 = (10,)
 
 for general_cfg['zbins'] in zbins_SPV3:
     # for (general_config['ell_max_WL'], general_config['ell_max_GC']) in ((5000, 3000), (1500, 750)):
@@ -110,22 +111,22 @@ for general_cfg['zbins'] in zbins_SPV3:
     delta_dict['delta_l_GC'] = np.copy(delta_l_WL[:nbl_GC])
     delta_dict['delta_l_WA'] = np.copy(delta_l_WL[nbl_GC:])
 
-    cl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL, zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
-    cl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC, zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
-    cl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA, zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
-    cl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt, zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls')
+    cl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL, zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls', specs=general_cfg['specs'])
+    cl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC, zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls', specs=general_cfg['specs'])
+    cl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA, zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls', specs=general_cfg['specs'])
+    cl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt, zbins, ell_max_WL=ell_max_WL, cls_or_responses='cls', specs=general_cfg['specs'])
 
-    rl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
-    rl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
-    rl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
+    rl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses', specs=general_cfg['specs'])
+    rl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses', specs=general_cfg['specs'])
+    rl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses', specs=general_cfg['specs'])
     rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt, zbins, ell_max_WL=ell_max_WL,
-                                           cls_or_responses='responses')
+                                           cls_or_responses='responses', specs=general_cfg['specs'])
 
     cl_dict_3D = {
         'C_LL_WLonly_3D': cl_ll_3d,
         'C_GG_3D': cl_gg_3d,
         'C_WA_3D': cl_wa_3d,
-        'D_3x2pt': cl_3x2pt_5d}
+        'C_3x2pt': cl_3x2pt_5d}
 
     rl_dict_3D = {
         'R_LL_WLonly_3D': rl_ll_3d,
@@ -154,14 +155,26 @@ for general_cfg['zbins'] in zbins_SPV3:
     # compute Fisher Matrix
     # FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
 
-    # save:
+    # SAVE:
+
+    # this is just to set the correct probe names
+    probe_dav_dict = {
+        'WL': 'LL_WLonly',
+        'GC': 'GG',
+        'WA': 'WA',
+        '3x2pt': '3x2pt',
+    }
+
+    cl_rl_path = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
     if general_cfg['save_cls_3d']:
-        for key in cl_dict_3D.keys():
-            np.save(f'{job_path}/output/cl_3d/{key}.npy', cl_dict_3D[key])
+        for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
+            np.save(f'{cl_rl_path}/DataVecTabs/3D_reshaped/{probe_vinc}/'
+                    f'dv-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-EP{zbins:02}.npy', cl_dict_3D[f'C_{probe_dav_dict[probe_dav]}_3D'])
 
     if general_cfg['save_rls_3d']:
-        for key in rl_dict_3D.keys():
-            np.save(f'{job_path}/output/rl_3d/{key}.npy', rl_dict_3D[key])
+        for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
+            np.save(f'{cl_rl_path}/DataVecTabs/3D_reshaped/{probe_vinc}/'
+                    f'rf-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-EP{zbins:02}.npy', rl_dict_3D[f'R_{probe_dav_dict[probe_dav]}_3D'])
 
     if covariance_cfg['save_covariance']:
         np.save(
@@ -206,10 +219,6 @@ for general_cfg['zbins'] in zbins_SPV3:
                     f'{path_vinc_fmt}/{GOGS_folder}/{folder_probe_vinc}/cm-{probe_vinc}-{nbl_WL}'
                     f'-{general_cfg["specs"]}-EP{zbins}.dat',
                     cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.10e')
-
-
-
-
 
 assert 1 == 0, 'stop here'
 

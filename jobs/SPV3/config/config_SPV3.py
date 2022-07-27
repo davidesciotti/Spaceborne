@@ -74,7 +74,7 @@ Sijkl_config = {
     'input_WF': 'vincenzo_SPV3',
     'WF_normalization': 'IST',
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
-    'use_precomputed_sijkl': True,
+    'use_precomputed_sijkl': False,
 }
 
 FM_config = {

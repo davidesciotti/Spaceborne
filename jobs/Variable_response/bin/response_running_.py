@@ -187,7 +187,7 @@ c = 299792.458  # km/s
 H0 = h * 100  # km/(s*Mpc)
 
 # get growth only values - DIMENSIONLESS
-G1 = np.genfromtxt(project_path / f'config/common_data/alex_response/Resp_G1_fromsims.dat')
+G1 = np.genfromtxt(project_path / f'input/alex_response/Resp_G1_fromsims.dat')
 
 # take k and z values (the latter from the header)
 # these are all in [h/Mpc]
@@ -467,7 +467,7 @@ if quad_integration:
 
 # test
 # import vincenzo
-R_LL_vinc = np.load(project_path / 'config/common_data/vincenzo/Pk_responses_2D/R_LL_WLonly_3D.npy')
+R_LL_vinc = np.load(f'{project_path}/input/vincenzo/Pk_responses_2D/R_LL_WLonly_3D.npy')
 
 color = cm.rainbow(np.linspace(0, 1, zbins))
 plt.figure()
@@ -515,6 +515,7 @@ plt.xscale('log')
 plt.yscale('log')
 
 
+
 # z_array_limber = z_array[5:]
 # # ! test: kl_arr from older script
 # kl_arr_old = np.load(project_path / f'jobs/SSC_comparison/output/kl_arr_use_h_units_{use_h_units}.npy')
@@ -529,8 +530,12 @@ plt.yscale('log')
 # mm.matshow(kl_arr_old[:30, :], 'kl_arr_old')
 
 
+np.save(f'{job_path}/output/ell_values.npy', ell_LL)
+np.save(f'{job_path}/output/R1_mm_kz.npy', R1_mm)
+np.save(f'{job_path}/output/R_LL_WLonly_3D.npy', R_LL)
+if quad_integration:
+    np.save(f'{job_path}/output/R_LL_WLonly_3D_quad.npy', R_LL_quad_arr)
+
 print('done')
 
-# np.save(job_path / 'output/R_LL_WLonly_3D.npy', R_LL)
-# np.save(job_path / 'output/R1_mm_kz.npy', R1_mm)
 

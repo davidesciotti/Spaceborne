@@ -48,7 +48,7 @@ mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 # import the configuration dictionaries from common_config.py
 general_config = cfg.general_config
 covariance_config = cfg.covariance_config
-FM_config = cfg.FM_config
+FM_config = cfg.FM_cfg
 plot_config = cfg.plot_config
 
 # plot settings:

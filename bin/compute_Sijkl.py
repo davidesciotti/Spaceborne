@@ -19,7 +19,6 @@ from pathlib import Path
 
 # get project directory
 project_path = Path.cwd().parent.parent.parent
-print(project_path)
 
 sys.path.append(f'{project_path}/jobs/SPV3/configs')
 import config_SPV3 as cfg
@@ -37,28 +36,26 @@ import my_module as mm
 # 3) va bene se CovSSC non è simmetrica?
 # 4) LE INTERPOLAZIONI NON SONO BUONE PER GLI ULTIMI W
 # 5) Omega_lambda non rientra nel set di parametri, lo devo includere?
-# TODO sylvain's redshift starts from 0, not accepted by Sijkl
 
-def load_WF(Sijkl_config, zbins):
-    input_WF = cfg.Sijkl_config['input_WF']
-    WF_normalization = cfg.Sijkl_config['WF_normalization']
-    has_IA = cfg.Sijkl_config['has_IA']
 
-    WF_path = project_path.parent / 'common_data/everyones_WF_from_Gdrive'
+def load_WF(Sijkl_cfg, zbins):
+
+    input_WF = Sijkl_cfg['input_WF']
+    WF_normalization = Sijkl_cfg['WF_normalization']
+    has_IA = Sijkl_cfg['has_IA']
+
+    if not has_IA:
+        raise ValueError('has_IA must be True')
+
+    WF_path = f'{project_path.parent}/common_data/everyones_WF_from_Gdrive'
 
     if input_WF == 'luca':
 
-        data_luca = np.load(project_path / f"data/CLOE/seyfert_inputs_for_SSC/inputs_for_SSC.npz")
+        wil = np.load(f'{WF_path}/luca/wil_SEYFERT_IA_{WF_normalization}_nz10000.npy')
+        wig = np.load(f'{WF_path}/luca/wig_SEYFERT_{WF_normalization}_nz10000.npy')
+        z_arr = np.genfromtxt(f'{WF_path}/luca/z_values.txt')  # same as me: np.linspace (1e-3, 4, 1e4)
 
-        wil_luca = data_luca['W_L_iz_over_chi2_z']
-        wig_luca = data_luca['W_G_iz_over_chi2_z']
-
-        z_arr = data_luca['z_grid']  # same as me: np.linspace (1e-3, 4, 1e4)
-        z_points = z_arr.shape[0]
-
-        windows = np.vstack((wil_luca, wig_luca))  # vertically stacking the WFs (row-wise, wil first, wig second)
-
-    elif input_WF != 'luca':
+    else:
 
         if input_WF == 'davide':
             wil = np.genfromtxt(f'{WF_path}/davide/nz10000/wil_dav_IA_{WF_normalization}_nz10000.txt')
@@ -78,6 +75,8 @@ def load_WF(Sijkl_config, zbins):
 
         elif input_WF == 'vincenzo_SPV3':
 
+            assert WF_normalization == 'IST', 'WF_normalization must be IST for Vincenzo SPV3 WFs'
+
             if zbins in [7, 9]:  # just to set the correct file name
                 string_0 = '0'
             else:
@@ -92,14 +91,16 @@ def load_WF(Sijkl_config, zbins):
         if wil[0, 0] == 0 or wig[0, 0] == 0:
             print('Warning: the redshift array for the weight functions starts from 0, not accepted by PySSC; '
                   'removing the first row from the array')
-
             wil = np.delete(wil, 0, axis=0)
             wig = np.delete(wig, 0, axis=0)
 
-        z_arr = wil[:, 0]  # setting the redshift array, z_arr
-        z_points = z_arr.shape[0]
+        # set the redshift array, z_arr
+        z_arr = wil[:, 0]
 
-        # deleting the redshift column (0-th column):
+        # check that the redshift array in wil and wig is effectively the same
+        assert np.array_equal(wil[:, 0], wig[:, 0]), 'the redshift array for the weight functions is not the same'
+
+        # delete the redshift column (0-th column):
         wil = np.delete(wil, 0, axis=1)
         wig = np.delete(wig, 0, axis=1)
 
@@ -107,14 +108,15 @@ def load_WF(Sijkl_config, zbins):
         wil = np.transpose(wil)
         wig = np.transpose(wig)
 
-        # vertically stack the WFs (row-wise, wil first, wig second)
-        windows = np.vstack((wil, wig))
+    # vertically stack the WFs (row-wise, wil first, wig second)
+    windows = np.vstack((wil, wig))
 
     return z_arr, windows
 
 
-def compute_Sijkl(cosmo_params_dict, Sijkl_config, zbins):
-    WF_normalization = cfg.Sijkl_config['WF_normalization']
+def compute_Sijkl(cosmo_params_dict, Sijkl_cfg, zbins):
+
+    WF_normalization = Sijkl_cfg['WF_normalization']
 
     if WF_normalization == 'PySSC':
         convention = 0
@@ -123,7 +125,7 @@ def compute_Sijkl(cosmo_params_dict, Sijkl_config, zbins):
     else:
         raise ValueError('WF_normalization must be either PySSC or IST')
 
-    z_arr, windows = load_WF(Sijkl_config, zbins)
+    z_arr, windows = load_WF(Sijkl_cfg, zbins)
 
     start = time.perf_counter()
     Sijkl_arr = Sijkl(z_arr=z_arr, windows=windows, cosmo_params=cosmo_params_dict, precision=10, tol=1e-3,
@@ -131,3 +133,4 @@ def compute_Sijkl(cosmo_params_dict, Sijkl_config, zbins):
     print(f'Sijkl matrix computed in {time.perf_counter() - start}')
 
     return Sijkl_arr
+

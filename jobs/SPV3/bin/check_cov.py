@@ -26,13 +26,14 @@ start_time = time.perf_counter()
 # ! options
 probe_vinc = '3x2pt'
 nbl_WL = 32
-zbins = 10
+zbins = 15
 plot_cl = False
-plot_cov = True
+plot_cov = False
 # ! end options
 
 
 # for probe_vinc in ['WLO', 'GCO', '3x2pt']:
+# for zbins in (7, 9, 10, 11, 13, 15):
 
 if probe_vinc == 'WLO':
     probe_dav = 'WL'
@@ -52,9 +53,15 @@ elif probe_vinc == '3x2pt':
 else:
     raise ValueError(f'Unknown probe_vinc: {probe_vinc}')
 
+if zbins in [7, 9]:
+    zero_str = '0'
+else:
+    zero_str = ''
+
+
 start = time.perf_counter()
 cov_vin = np.genfromtxt(
-    f'{job_path}/input/covmat/cm-{probe_vinc}-{nbl_WL}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-EP{zbins}.dat')
+    f'{job_path}/input/covmat/cm-{probe_vinc}-{nbl_WL}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-EP{zero_str}{zbins}.dat')
 cov_dav = np.load(
     f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_{probe_dav}_lmax{probe_dav_2}{ell_max}_nbl{nbl}_zbins{zbins}_2D.npy')
 # cov_dav_old = np.load(
@@ -64,17 +71,17 @@ print(f'cov loaded in {time.perf_counter() - start:.2f} s')
 
 # CHECKS
 if cov_vin.shape == cov_dav.shape:
-    print(f'{probe_vinc}: the shapes of cov_vin and cov_dav are equal ✅')
+    print(f'probe: {probe_vinc}, zbins: {zbins}: the shapes of cov_vin and cov_dav are equal ✅')
 else:
-    print(f'{probe_vinc}: the shapes of cov_vin and cov_dav are different ❌')
+    print(f'probe: {probe_vinc}, zbins: {zbins}: the shapes of cov_vin and cov_dav are different ❌')
 
 diff = mm.percent_diff_nan(cov_vin, cov_dav, eraseNaN=True)
 
 rtol = 1e0  # in "percent" units
 if np.all(np.abs(diff) < rtol):
-    print(f'{probe_vinc}: cov_vin and cov_dav are different by less than {rtol}% ✅')
+    print(f'probe: {probe_vinc}, zbins: {zbins}: cov_vin and cov_dav are different by less than {rtol}% ✅')
 else:
-    print(f'{probe_vinc}: cov_vin and cov_dav are different by less than {rtol}% ❌')
+    print(f'probe: {probe_vinc}, zbins: {zbins}: cov_vin and cov_dav are different by less than {rtol}% ❌')
     print(f'max discrepancy: {np.max(np.abs(diff)):.2f}%')
 
 zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
@@ -102,7 +109,7 @@ if plot_cl:
               '#17becf']
 
     plt.figure()
-    for i in range(10):
+    for i in range(zbins):
         j = i
         plt.plot(ell_LL_new, cl_dav_new[:, i, j], c=colors[i])
         plt.plot(ell_LL_old, cl_dav_old[:, i, j], '--', c=colors[i])

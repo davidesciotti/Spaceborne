@@ -39,7 +39,7 @@ start_time = time.perf_counter()
 
 general_config = config.general_config
 covariance_config = config.covariance_config
-FM_config = config.FM_config
+FM_config = config.FM_cfg
 plot_config = config.plot_config
 
 FM_dict = dict(mm.get_kv_pairs(job_path / 'output/FM', filetype="txt"))

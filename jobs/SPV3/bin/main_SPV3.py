@@ -8,18 +8,20 @@ import matplotlib as mpl
 import numpy as np
 import pandas as pd
 
+from jobs.SPV3.bin.check_cov import probe_vinc
+
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 home_path = Path.home()
 job_name = job_path.parts[-1]
 
 # general libraries
-sys.path.append(f'{project_path.parent}/common_data/common_lib')
+sys.path.append(f'{project_path}/lib')
 import my_module as mm
 import cosmo_lib as csmlib
 
 # general config
-sys.path.append(f'{project_path.parent}/common_data/common_config')
+sys.path.append(f'{project_path}/config')
 import mpl_cfg
 
 # job configuration
@@ -42,12 +44,12 @@ mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
 # TODO ind will be different for the different number of z bins ✅
-# TODO update consistency_checks
-# TODO finish exploring the cls
+# TODO finish exploring the cls ✅
+# TODO make sure you changed fsky ✅
+# TODO change sigma_eps2? ✅
 # TODO check that the number of ell bins is the same as in the files
-# TODO make sure you changed fsky
-# TODO change sigma_eps2?
 # TODO double check the delta values
+# TODO update consistency_checks
 # TODO super check that things work with different # of z bins
 
 
@@ -118,7 +120,8 @@ for general_cfg['zbins'] in zbins_SPV3:
     rl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
     rl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
     rl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
-    rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
+    rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt, zbins, ell_max_WL=ell_max_WL,
+                                           cls_or_responses='responses')
 
     cl_dict_3D = {
         'C_LL_WLonly_3D': cl_ll_3d,
@@ -139,7 +142,7 @@ for general_cfg['zbins'] in zbins_SPV3:
     else:
         start_time = time.perf_counter()
         sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins)
-        print(f'zbins {zbins}: Sijkl computation took {time.perf_counter() - start_time} seconds')
+        print(f'zbins {zbins}: Sijkl computation took {time.perf_counter() - start_time:.2} seconds')
 
         if Sijkl_cfg['save_Sijkl']:
             np.save(
@@ -155,15 +158,18 @@ for general_cfg['zbins'] in zbins_SPV3:
 
     # save:
     if covariance_cfg['save_covariance']:
-        np.save(f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}_zbins{zbins}_2D.npy',
-                cov_dict['cov_WL_GO_2D'])
-        np.save(f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}_zbins{zbins}_2D.npy',
-                cov_dict['cov_GC_GO_2D'])
+        np.save(
+            f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}_zbins{zbins}_2D.npy',
+            cov_dict['cov_WL_GO_2D'])
+        np.save(
+            f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}_zbins{zbins}_2D.npy',
+            cov_dict['cov_GC_GO_2D'])
         np.save(
             f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins}_2D.npy',
             cov_dict['cov_3x2pt_GO_2D'])
-        np.save(f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_WA_lmaxWL{ell_max_WL}_nbl{nbl_WA}_zbins{zbins}_2D.npy',
-                cov_dict['cov_WA_GO_2D'])
+        np.save(
+            f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_WA_lmaxWL{ell_max_WL}_nbl{nbl_WA}_zbins{zbins}_2D.npy',
+            cov_dict['cov_WA_GO_2D'])
 
         np.save(
             f'{job_path}/output/covmat/zbins{zbins}/covmat_GS_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}_zbins{zbins}_Rl{which_probe_response_str}_2D.npy',
@@ -177,6 +183,27 @@ for general_cfg['zbins'] in zbins_SPV3:
         np.save(
             f'{job_path}/output/covmat/zbins{zbins}/covmat_GS_WA_lmaxWL{ell_max_WL}_nbl{nbl_WA}_zbins{zbins}_Rl{which_probe_response_str}_2D.npy',
             cov_dict['cov_WA_GS_2D'])
+
+    if covariance_cfg['save_covariance_dat']:
+        path_vinc_fmt = f'{job_path}/output/covmat/vincenzos_format'
+
+        for probe, probe_vinc in zip(['WL', 'GC', '3x2pt', 'WA'], ['WLO', 'GCO', '3x2pt', 'WLA']):
+            for GOGS_folder, GOGS_filename in zip(['GaussOnly', 'GaussSSC'], ['GO', 'GS']):
+
+                # this is just because the 3x2pt folder is called "All" instead of "3x2pt"
+                if probe == '3x2pt':
+                    folder_probe_vinc = 'All'
+                else:
+                    folder_probe_vinc = probe_vinc
+
+                np.savetxt(
+                    f'{path_vinc_fmt}/{GOGS_folder}/{folder_probe_vinc}/cm-{probe_vinc}-{nbl_WL}'
+                    f'-{general_cfg["specs"]}-EP{zbins}.dat',
+                    cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.10e')
+
+
+
+
 
 assert 1 == 0, 'stop here'
 

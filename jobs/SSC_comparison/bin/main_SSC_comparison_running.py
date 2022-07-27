@@ -1,33 +1,43 @@
 import sys
 import time
 from pathlib import Path
-
 import matplotlib
 import scipy.io as sio
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import numpy as np
-
-matplotlib.use('Qt5Agg')
+import pandas as pd
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 home_path = Path.home()
 job_name = job_path.parts[-1]
 
-sys.path.append(str(project_path.parent / 'common_lib'))
-sys.path.append(str(project_path / 'bin'))
-sys.path.append(str(project_path / 'jobs'))
+# general libraries
+sys.path.append(f'{project_path.parent}/common_data/common_lib')
+import my_module as mm
+import cosmo_lib as csmlib
+
+# general configurations
+sys.path.append(f'{project_path.parent}/common_data/common_config')
+import mpl_cfg
 
 # job configuration
-import SSC_comparison.configs.config_SSC_comparison as cfg
+sys.path.append(f'{job_path}/config')
+import config_SSC_comparison as cfg
 
-import my_module as mm
+# project libraries
+sys.path.append(f'{project_path}/bin')
 import ell_values_running as ell_utils
 import Cl_preprocessing_running as cl_utils
+import compute_Sijkl as Sijkl_utils
 import covariance_running as covmat_utils
 import FM_running as FM_utils
 import utils_running as utils
 import unit_test
+
+matplotlib.use('Qt5Agg')
+mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 start_time = time.perf_counter()
 
@@ -45,10 +55,10 @@ utils.consistency_checks(general_cfg, covariance_cfg)
 
 # for the time being, I/O is manual and from the main
 # load inputs (job-specific)
-ind = np.genfromtxt(project_path / "input/ind_files/indici_vincenzo_like_int.dat", dtype=int)
+ind = np.genfromtxt(f"{project_path}/input/ind_files/indici_vincenzo_like_int.dat", dtype=int)
 covariance_cfg['ind'] = ind
 
-Sijkl_dav = np.load(project_path / "input/Sijkl/Sijkl_WFdavide_nz10000_IA_3may.npy")  # davide, eNLA
+Sijkl_dav = np.load(f"{project_path}/input/Sijkl/Sijkl_WFdavide_nz10000_IA_3may.npy")  # davide, eNLA
 # Sijkl_marco = np.load(project_path / "input/Sijkl/Sijkl_WFmarco_nz10000_zNLA_gen22.npy")  # marco, zNLA
 # Sijkl_sylv = np.load(project_path / "input/Sijkl/sylvain_cosmologyFixe_IAFixe_Sijkl_GCph_WL_XC_3may.npy")  # sylvain, eNLA
 
@@ -120,6 +130,10 @@ for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (15
         rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_spv3, general_cfg['zbins'], ell_max_WL=ell_max_WL,
                                                cls_or_responses='responses')
 
+        rl_ll_3d_fn = interp1d(ell_WL_spv3, rl_ll_3d, axis=0)
+        rl_ll_3d_interp = rl_ll_3d_fn(ell_dict['ell_WL'])
+
+
         colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22',
                   '#17becf']
 
@@ -129,8 +143,9 @@ for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (15
         # for i in range(general_cfg['zbins']):
         i = 0
         plt.plot(ell_WL_spv3, rl_ll_3d[:, i, i], label='new', c=colors[i])
-        plt.plot(10**ell_dict['ell_WL'], Rl_dict_3D['R_LL_WLonly_3D'][:, i, i], '--', label='old', c=colors[i])
-        plt.plot(ell_LL_my_rl, my_resp[:, i, i], '-.', label='davide', c=colors[i])
+        plt.plot(ell_dict['ell_WL'], rl_ll_3d_interp[:, i, i], label='interp', c=colors[i])
+        # plt.plot(10**ell_dict['ell_WL'], Rl_dict_3D['R_LL_WLonly_3D'][:, i, i], '--', label='old', c=colors[i])
+        # plt.plot(ell_LL_my_rl, my_resp[:, i, i], '-.', label='davide', c=colors[i])
         plt.legend()
         plt.show()
         plt.grid()
@@ -146,38 +161,38 @@ for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (15
 
     # save:
     if covariance_cfg['save_covariance']:
-        np.save(job_path / f'output/covmat/covmat_GO_WL_lmaxWL{ell_max_WL}_nbl{nbl}_2D.npy', cov_dict['cov_WL_GO_2D'])
-        np.save(job_path / f'output/covmat/covmat_GO_GC_lmaxGC{ell_max_GC}_nbl{nbl}_2D.npy', cov_dict['cov_GC_GO_2D'])
-        np.save(job_path / f'output/covmat/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl}_2D.npy', cov_dict['cov_3x2pt_GO_2D'])
-        np.save(job_path / f'output/covmat/covmat_GO_WA_lmaxWL{ell_max_WL}_nbl{nbl}_2D.npy', cov_dict['cov_WA_GO_2D'])
+        np.save(f'{job_path}/output/covmat/covmat_GO_WL_lmaxWL{ell_max_WL}_nbl{nbl}_2D.npy', cov_dict['cov_WL_GO_2D'])
+        np.save(f'{job_path}/output/covmat/covmat_GO_GC_lmaxGC{ell_max_GC}_nbl{nbl}_2D.npy', cov_dict['cov_GC_GO_2D'])
+        np.save(f'{job_path}/output/covmat/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl}_2D.npy', cov_dict['cov_3x2pt_GO_2D'])
+        np.save(f'{job_path}/output/covmat/covmat_GO_WA_lmaxWL{ell_max_WL}_nbl{nbl}_2D.npy', cov_dict['cov_WA_GO_2D'])
 
-        np.save(job_path / f'output/covmat/covmat_GS_WL_lmaxWL{ell_max_WL}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
+        np.save(f'{job_path}/output/covmat/covmat_GS_WL_lmaxWL{ell_max_WL}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
                 cov_dict['cov_WL_GS_2D'])
-        np.save(job_path / f'output/covmat/covmat_GS_GC_lmaxGC{ell_max_GC}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
+        np.save(f'{job_path}/output/covmat/covmat_GS_GC_lmaxGC{ell_max_GC}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
                 cov_dict['cov_GC_GS_2D'])
-        np.save(job_path / f'output/covmat/covmat_GS_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
+        np.save(f'{job_path}/output/covmat/covmat_GS_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
                 cov_dict['cov_3x2pt_GS_2D'])
-        np.save(job_path / f'output/covmat/covmat_GS_WA_lmaxWL{ell_max_WL}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
+        np.save(f'{job_path}/output/covmat/covmat_GS_WA_lmaxWL{ell_max_WL}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
                 cov_dict['cov_WA_GS_2D'])
 
     if FM_cfg['save_FM']:
-        np.savetxt(job_path / f"output/FM/FM_WL_GO_lmaxWL{ell_max_WL}_nbl{nbl}.txt", FM_dict['FM_WL_GO'])
-        np.savetxt(job_path / f"output/FM/FM_GC_GO_lmaxGC{ell_max_GC}_nbl{nbl}.txt", FM_dict['FM_GC_GO'])
-        np.savetxt(job_path / f"output/FM/FM_3x2pt_GO_lmaxXC{ell_max_XC}_nbl{nbl}.txt", FM_dict['FM_3x2pt_GO'])
+        np.savetxt(f"{job_path}/output/FM/FM_WL_GO_lmaxWL{ell_max_WL}_nbl{nbl}.txt", FM_dict['FM_WL_GO'])
+        np.savetxt(f"{job_path}/output/FM/FM_GC_GO_lmaxGC{ell_max_GC}_nbl{nbl}.txt", FM_dict['FM_GC_GO'])
+        np.savetxt(f"{job_path}/output/FM/FM_3x2pt_GO_lmaxXC{ell_max_XC}_nbl{nbl}.txt", FM_dict['FM_3x2pt_GO'])
 
-        np.savetxt(job_path / f"output/FM/FM_WL_GS_lmaxWL{ell_max_WL}_nbl{nbl}_Rl{which_probe_response_str}.txt",
+        np.savetxt(f"{job_path}/output/FM/FM_WL_GS_lmaxWL{ell_max_WL}_nbl{nbl}_Rl{which_probe_response_str}.txt",
                    FM_dict['FM_WL_GS'])
-        np.savetxt(job_path / f"output/FM/FM_GC_GS_lmaxGC{ell_max_GC}_nbl{nbl}_Rl{which_probe_response_str}.txt",
+        np.savetxt(f"{job_path}/output/FM/FM_GC_GS_lmaxGC{ell_max_GC}_nbl{nbl}_Rl{which_probe_response_str}.txt",
                    FM_dict['FM_GC_GS'])
-        np.savetxt(job_path / f"output/FM/FM_3x2pt_GS_lmaxXC{ell_max_XC}_nbl{nbl}_Rl{which_probe_response_str}.txt",
+        np.savetxt(f"{job_path}/output/FM/FM_3x2pt_GS_lmaxXC{ell_max_XC}_nbl{nbl}_Rl{which_probe_response_str}.txt",
                    FM_dict['FM_3x2pt_GS'])
 
     if FM_cfg['save_FM_as_dict']:
-        sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)
+        sio.savemat(f'{job_path}/output/FM/FM_dict.mat', FM_dict)
 
     if general_cfg['save_cls']:
         for key in cl_dict_3D.keys():
-            np.save(job_path / f"output/cl_3D/{key}.npy", cl_dict_3D[f'{key}'])
+            np.save(f"{job_path}/output/cl_3D/{key}.npy", cl_dict_3D[f'{key}'])
 
 
     # test

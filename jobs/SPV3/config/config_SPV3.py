@@ -48,7 +48,8 @@ general_config = {
     'which_forecast': which_forecast,  # ie choose whether to have IST's or sylvain's deltas
     'cl_folder': cl_folder,
     'use_WA': True,
-    'save_cls': True
+    'save_cls': True,
+    'specs': 'wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4',
 }
 
 if general_config['ell_max_WL'] == general_config['ell_max_GC']:
@@ -61,20 +62,21 @@ covariance_config = {
     'compute_covariance_in_blocks': False,
     'fsky': fsky,
     'Rl': 4,
-    'save_covariance': True,
     # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
     'block_index': 'ell',
     'which_probe_response': 'variable',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
-    'ng': 28.723,  # ! new
+    'ng': 28.73,  # ! new
+    'save_covariance': True,
+    'save_covariance_dat': True,
 }
 
 Sijkl_config = {
-    'save_Sijkl': True,
     'input_WF': 'vincenzo_SPV3',
     'WF_normalization': 'IST',
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
-    'use_precomputed_sijkl': False,
+    'use_precomputed_sijkl': True,
+    'save_Sijkl': False,
 }
 
 FM_config = {

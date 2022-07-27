@@ -34,8 +34,10 @@ def check_FMs_against_oldSSCscript(FM_new_path, general_config, covariance_confi
 
     if covariance_config['which_probe_response'] == 'variable':
         raise Exception('old scripts did not implement variable probe response, nothing to compare the results to')
-    if ((general_config['ell_max_WL'], general_config['ell_max_GC']) == (1500, 750)) and general_config['which_forecast'] != 'sylvain':
-        raise Exception('old scripts did not implement the pessimistic case unless which_forecasts is "sylvain", apparently')
+    if ((general_config['ell_max_WL'], general_config['ell_max_GC']) == (1500, 750)) and general_config[
+        'which_forecast'] != 'sylvain':
+        raise Exception(
+            'old scripts did not implement the pessimistic case unless which_forecasts is "sylvain", apparently')
 
     if general_config['which_forecast'] == 'sylvain':
         path_import = '/Users/davide/Documents/Lavoro/Programmi/SSCcomp_prove/output/FM/common_ell_and_deltas/Cij_14may'
@@ -51,7 +53,6 @@ def check_FMs_against_oldSSCscript(FM_new_path, general_config, covariance_confi
     FM_d_new = dict(mm.get_kv_pairs(FM_new_path, filetype="txt"))
 
     # TODO plot forecasts to get an idea of the difference: do not just compare the FMs
-
 
     for probe in ['WL', 'GC', '3x2pt']:
         for GO_or_GS in ['GO', 'GS']:
@@ -84,9 +85,8 @@ def check_FMs_against_oldSSCscript(FM_new_path, general_config, covariance_confi
 
                 # transform into nicer and easier to understand string (symbol)
                 if test_result_bool:
-                    test_result_str = '✅'
+                    result_emoji = '✅'
                 else:
-                    test_result_str = '❌'
+                    result_emoji = '❌'
 
-                print(
-                    f'is the percent difference between the FM < {tolerance}?, {probe}, {GO_or_GS}, {test_result_str}')
+                print(f'is the percent difference between the FM < {tolerance}?, {probe}, {GO_or_GS}, {result_emoji}')

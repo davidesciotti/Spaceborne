@@ -56,7 +56,7 @@ covariance_config = {
     'save_covariance': False,
     # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
     'block_index': 'ell',
-    'which_probe_response': 'variable',
+    'which_probe_response': 'constant',
     'sigma_eps2': 0.3 ** 2,
     'ng': 30,
 }

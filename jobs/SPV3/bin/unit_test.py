@@ -94,9 +94,10 @@ def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, check_dat, specs):
         result_emoji = '✅'
         additional_info = ''
     else:
+        higher_rtol = 5.  # in "percent" units
         result_emoji = '❌'
-        no_outliers = np.where(np.abs(diff) < rtol)[0].shape[0]
-        additional_info = f'\nmax discrepancy: {np.max(np.abs(diff)):.2f}%;\nnumber of elements with discrepancy > {rtol}: {no_outliers}'
+        no_outliers = np.where(np.abs(diff) > higher_rtol)[0].shape[0]
+        additional_info = f'\nmax discrepancy: {np.max(np.abs(diff)):.2f}%;\nnumber of elements with discrepancy > {higher_rtol}: {no_outliers}'
 
     print(f'are cov_vin and cov_dav different by less than {rtol}% ? {result_emoji} {additional_info}')
 
@@ -133,9 +134,10 @@ def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, check_dat, specs):
         plt.show()
 
 
-for probe_vinc in ['WLO', 'GCO', '3x2pt']:
-    for zbins in (7, 9, 10, 11, 13, 15):
-        test_cov(probe_vinc, 32, zbins, plot_cl=False, plot_cov=False, check_dat=True, specs=cfg.general_config['specs'])
+# for probe_vinc in ['WLO', 'GCO', '3x2pt']:
+probe_vinc = '3x2pt'
+for zbins in (7, 9, 10, 11, 13, 15):
+    test_cov(probe_vinc, 32, zbins, plot_cl=False, plot_cov=False, check_dat=True, specs=cfg.general_config['specs'])
 
 print('done')
 

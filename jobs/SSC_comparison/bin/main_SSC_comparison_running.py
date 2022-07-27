@@ -14,12 +14,12 @@ home_path = Path.home()
 job_name = job_path.parts[-1]
 
 # general libraries
-sys.path.append(f'{project_path.parent}/common_data/common_lib')
+sys.path.append(f'{project_path}/lib')
 import my_module as mm
 import cosmo_lib as csmlib
 
 # general configurations
-sys.path.append(f'{project_path.parent}/common_data/common_config')
+sys.path.append(f'{project_path.parent}/config')
 import mpl_cfg
 
 # job configuration
@@ -70,10 +70,6 @@ assert np.array_equal(Sijkl, Sijkl_dav), 'Sijkl should be Sijkl_dav'
 ######################### FORECAST COMPUTATION ################################
 ###############################################################################
 
-# ! options
-new_responses = True
-# ! end options
-
 for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (1500, 750)):
 
     which_probe_response = covariance_cfg['which_probe_response']
@@ -102,62 +98,19 @@ for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (15
     delta_dict['delta_l_GC'] = mm.delta_l_Sylvain(nbl, 10 ** ell_dict['ell_GC'])
     delta_dict['delta_l_WA'] = mm.delta_l_Sylvain(nbl_WA, 10 ** ell_dict['ell_WA'])
 
+    # ! ################################################ MAIN BODY #####################################################
     # import and interpolate the cls
     cl_dict_2D, Rl_dict_2D = cl_utils.import_and_interpolate_cls(general_cfg, covariance_cfg, ell_dict)
+
     # reshape them to 3D
     cl_dict_3D, Rl_dict_3D = cl_utils.reshape_cls_2D_to_3D(general_cfg, ell_dict, cl_dict_2D, Rl_dict_2D)
-
-    if new_responses:
-
-        # take the ell values for the interpolation and the number of ell bins
-        nbl_WL_spv3 = 32
-        ell_WL_spv3, _ = ell_utils.compute_ells(nbl_WL_spv3, general_cfg['ell_min'],
-                                                general_cfg['ell_max_WL'], recipe='ISTF')
-
-        ell_dict_spv3 = {}
-        ell_dict_spv3['ell_WL'] = ell_WL_spv3
-        ell_dict_spv3['ell_GC'] = np.copy(ell_WL_spv3[ell_WL_spv3 < ell_max_GC])
-        ell_dict_spv3['ell_WA'] = np.copy(ell_WL_spv3[ell_WL_spv3 > ell_max_GC])
-        ell_dict_spv3['ell_XC'] = np.copy(ell_dict_spv3['ell_GC'])
-
-        nbl_GC_spv3 = ell_dict_spv3['ell_GC'].shape[0]
-        nbl_WA_spv3 = ell_dict_spv3['ell_WA'].shape[0]
-        nbl_3x2pt_spv3 = nbl_GC_spv3
-
-        rl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_spv3, general_cfg['zbins'], ell_max_WL=ell_max_WL, cls_or_responses='responses')
-        rl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_spv3, general_cfg['zbins'], ell_max_WL=ell_max_WL, cls_or_responses='responses')
-        rl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_spv3, general_cfg['zbins'], ell_max_WL=ell_max_WL, cls_or_responses='responses')
-        rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_spv3, general_cfg['zbins'], ell_max_WL=ell_max_WL,
-                                               cls_or_responses='responses')
-
-        rl_ll_3d_fn = interp1d(ell_WL_spv3, rl_ll_3d, axis=0)
-        rl_ll_3d_interp = rl_ll_3d_fn(ell_dict['ell_WL'])
-
-
-        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22',
-                  '#17becf']
-
-        my_resp = np.load('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/Variable_response/output/R_LL_WLonly_3D.npy')
-        ell_LL_my_rl = np.load('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/Variable_response/output/ell_LL.npy')
-
-        # for i in range(general_cfg['zbins']):
-        i = 0
-        plt.plot(ell_WL_spv3, rl_ll_3d[:, i, i], label='new', c=colors[i])
-        plt.plot(ell_dict['ell_WL'], rl_ll_3d_interp[:, i, i], label='interp', c=colors[i])
-        # plt.plot(10**ell_dict['ell_WL'], Rl_dict_3D['R_LL_WLonly_3D'][:, i, i], '--', label='old', c=colors[i])
-        # plt.plot(ell_LL_my_rl, my_resp[:, i, i], '-.', label='davide', c=colors[i])
-        plt.legend()
-        plt.show()
-        plt.grid()
-
-        assert 1 > 2, 'this is not implemented yet'
-
 
     # compute covariance matrix
     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                         ell_dict, delta_dict, cl_dict_3D, Rl_dict_3D, Sijkl)
     # compute Fisher Matrix
     FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict)
+    # ! ############################################## END MAIN BODY ###################################################
 
     # save:
     if covariance_cfg['save_covariance']:
@@ -199,4 +152,4 @@ for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (15
 
 print('done')
 
-unit_test.FM_check(job_path / f"output/FM", general_cfg, covariance_cfg)
+unit_test.check_FMs_against_oldSSCscript(job_path / f"output/FM", general_cfg, covariance_cfg)

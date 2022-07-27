@@ -233,9 +233,9 @@ def get_spv3_cls_3d(probe: str, nbl: int, zbins: int, ell_max_WL, cls_or_respons
         case_nbl = 32  # the files are named after the number of ell bins for WL in all cases, even if it's not the actual nbl
     elif ell_max_WL == 1500:
         case = 'Pes'
-        case_nbl = 32
+        case_nbl = None
     else:
-        raise ValueError('ell_max_WL must be 5000 or 3000')
+        raise ValueError('ell_max_WL must be 5000 or 1500')
 
     if probe == 'WL':
         probe_here = 'WLO'
@@ -267,7 +267,9 @@ def get_spv3_cls_3d(probe: str, nbl: int, zbins: int, ell_max_WL, cls_or_respons
         raise ValueError('cls_or_responses must be cls or responses')
 
     cl_1d = np.genfromtxt(
-        project_path_here / f'jobs/SPV3/input/{folder}/{probe_here}/{name}-{probe_here}-{case_nbl}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-EP{string_0}{zbins}{case_str}.dat')
+        project_path_here / f'jobs/SPV3/input/{folder}/{probe_here}/'
+                            f'{name}-{probe_here}-{case_nbl}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-'
+                            f'EP{string_0}{zbins}{case_str}.dat')
 
     assert zpairs == int(cl_1d.shape[0] / nbl)  # check on the shape
 

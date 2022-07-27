@@ -59,7 +59,6 @@ general_cfg = cfg.general_config
 covariance_cfg = cfg.covariance_config
 Sijkl_cfg = cfg.Sijkl_config
 FM_cfg = cfg.FM_config
-cosmo_params_dict = csmlib.cosmo_par_dict_classy
 
 which_probe_response = covariance_cfg['which_probe_response']
 # set the string, just for the file names
@@ -121,7 +120,6 @@ for general_cfg['zbins'] in zbins_SPV3:
     rl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
     rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt, zbins, ell_max_WL=ell_max_WL, cls_or_responses='responses')
 
-
     cl_dict_3D = {
         'C_LL_WLonly_3D': cl_ll_3d,
         'C_GG_3D': cl_gg_3d,
@@ -139,7 +137,9 @@ for general_cfg['zbins'] in zbins_SPV3:
             f'{job_path}/output/sijkl/sijkl_wf{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins}_hasIA{Sijkl_cfg["has_IA"]}.npy')
 
     else:
-        sijkl = Sijkl_utils.compute_Sijkl(cosmo_params_dict, Sijkl_cfg, zbins=general_cfg['zbins'])
+        start_time = time.perf_counter()
+        sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins)
+        print(f'zbins {zbins}: Sijkl computation took {time.perf_counter() - start_time} seconds')
 
         if Sijkl_cfg['save_Sijkl']:
             np.save(

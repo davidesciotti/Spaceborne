@@ -42,7 +42,7 @@ with PySSC.
 # import the configuration dictionaries from config_PyCCL_forecast.py
 general_config = config.general_config
 covariance_config = config.covariance_config
-FM_config = config.FM_config
+FM_config = config.FM_cfg
 plot_config = config.plot_config
 
 # plot settings:

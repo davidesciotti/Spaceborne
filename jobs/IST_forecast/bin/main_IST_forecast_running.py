@@ -47,7 +47,7 @@ start_time = time.perf_counter()
 # import the configuration dictionaries from common_config.py
 general_config = cfg.general_config
 covariance_config = cfg.covariance_config
-FM_config = cfg.FM_config
+FM_config = cfg.FM_cfg
 plot_config = cfg.plot_config
 
 for general_config['ell_max_WL'], general_config['ell_max_GC'] in (5000, 3000), (1500, 750):

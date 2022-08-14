@@ -74,16 +74,9 @@ def load_WF(Sijkl_cfg, zbins):
             wig = np.genfromtxt(f'{WF_path}/sylvain/new_WF_IA_corrected/wig_sylv_{WF_normalization}_nz7000.txt')
 
         elif input_WF == 'vincenzo_SPV3':
-
             assert WF_normalization == 'IST', 'WF_normalization must be IST for Vincenzo SPV3 WFs'
-
-            if zbins in [7, 9]:  # just to set the correct file name
-                string_0 = '0'
-            else:
-                string_0 = ''
-
-            wil = np.genfromtxt(f'{WF_path}/vincenzo/SPV3/KernelFun/WiWL-EP{string_0}{zbins}.dat')
-            wig = np.genfromtxt(f'{WF_path}/vincenzo/SPV3/KernelFun/WiGC-EP{string_0}{zbins}.dat')
+            wil = np.genfromtxt(f'{WF_path}/vincenzo/SPV3/KernelFun/WiWL-EP{zbins:02}.dat')
+            wig = np.genfromtxt(f'{WF_path}/vincenzo/SPV3/KernelFun/WiGC-EP{zbins:02}.dat')
 
         else:
             raise ValueError('input_WF must be either davide, sylvain, marco, vincenzo_SPV3, vincenzo or luca')
@@ -130,7 +123,7 @@ def compute_Sijkl(cosmo_params_dict, Sijkl_cfg, zbins):
     start = time.perf_counter()
     Sijkl_arr = Sijkl(z_arr=z_arr, windows=windows, cosmo_params=cosmo_params_dict, precision=10, tol=1e-3,
                       convention=convention)
-    print(f'Sijkl matrix computed in {time.perf_counter() - start}')
+    print(f'Sijkl matrix computed in {time.perf_counter() - start:.2f} s')
 
     return Sijkl_arr
 

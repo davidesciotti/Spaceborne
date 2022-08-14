@@ -108,6 +108,7 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
 def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     # fill the 3D (nbl x zbins x zbins) matrices, or equivalently nbl (zbins x zbins) matrices
 
+    print('note: this function makes no sense, generalize it to work with responses OR cls')
     nbl = general_config['nbl']
     ell_max_WL = general_config['ell_max_WL']
     ell_max_GC = general_config['ell_max_GC']
@@ -220,7 +221,8 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     return cl_dict_3D, Rl_dict_3D
 
 
-def get_spv3_cls_3d(probe: str, nbl: int, zbins: int, ell_max_WL, cls_or_responses: str, specs: str):
+def get_spv3_cls_3d(probe: str, nbl: int, nbl_WL_32: int, zbins: int, ell_max_WL, cls_or_responses: str, specs: str,
+                    EP_or_ED: str):
     """This function imports and interpolates the CPV3 cls, which have a different format wrt the usual input files"""
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
@@ -228,14 +230,7 @@ def get_spv3_cls_3d(probe: str, nbl: int, zbins: int, ell_max_WL, cls_or_respons
     # default values, changed only for the 3x2pt case
     zpairs = zpairs_auto
 
-    if ell_max_WL == 5000:
-        case = 'Opt'
-        case_nbl = 32  # the files are named after the number of ell bins for WL in all cases, even if it's not the actual nbl
-    elif ell_max_WL == 1500:
-        case = 'Pes'
-        case_nbl = None
-    else:
-        raise ValueError('ell_max_WL must be 5000 or 1500')
+    assert ell_max_WL == 5000, 'ell_max_WL must be 5000, only the optimistic datavectors are available'
 
     if probe == 'WL':
         probe_here = 'WLO'
@@ -251,20 +246,20 @@ def get_spv3_cls_3d(probe: str, nbl: int, zbins: int, ell_max_WL, cls_or_respons
 
     if cls_or_responses == 'cls':
         name = 'dv'
-        folder = 'DataVecTabs'
-        case_str = ''
+        folder = 'DataVectors'
     elif cls_or_responses == 'responses':
         name = 'rf'
         folder = 'ResFunTabs'
-        case_str = '-' + case
-        print('THIS MUST BE UPDATED WHEN THE PESSIMISTIC DATAVECTORS BECOME AVAILABLE')
     else:
         raise ValueError('cls_or_responses must be cls or responses')
 
     cl_1d = np.genfromtxt(f'{project_path_here}/jobs/SPV3/input/{folder}/{probe_here}/'
-                          f'{name}-{probe_here}-{case_nbl}-{specs}-EP{zbins:02}{case_str}.dat')
+                          f'{name}-{probe_here}-{nbl_WL_32}-{specs}-{EP_or_ED}{zbins:02}.dat')
 
-    assert zpairs == int(cl_1d.shape[0] / nbl)  # check on the shape
+    # this check can only be done for the optimistic case, since these are the only datavectors I have (from which
+    # I can obtain the pessimistic ones simply by removing some ell bins)
+    assert zpairs == int(cl_1d.shape[0] / nbl), 'the number of elements in the datavector is incompatible with ' \
+                                                'the number of ell bins for this case/probe'
 
     if probe != '3x2pt':
         cl_3d = mm.cl_1D_to_3D(cl_1d, nbl, zbins, is_symmetric=True)

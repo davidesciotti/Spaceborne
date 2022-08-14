@@ -26,7 +26,7 @@ matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
-def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, check_dat, specs):
+def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, check_dat, specs, EP_or_ED):
 
     """this test compares the GO covmat for SPV3 against vincenzo's files on Google Drive
     check_dat specifies whether one wants to check the covmats saved in dat format (quite unnecessary..., but still)"""
@@ -67,14 +67,14 @@ def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, check_dat, specs):
 
     start = time.perf_counter()
     cov_vin = np.genfromtxt(
-        f'{job_path}/input/covmat/cm-{probe_vinc}-{nbl_WL}-{specs}-EP{zero_str}{zbins}.dat')
+        f'{job_path}/input/CovMats/{probe_vinc_folder}/cm-{probe_vinc}-{nbl_WL}-{specs}-{EP_or_ED}{zbins:02}.dat')
 
     if check_dat:
         cov_dav = np.genfromtxt(
-            f'{job_path}/output/covmat/vincenzos_format/GaussOnly/{probe_vinc_folder}/cm-{probe_vinc}-{nbl_WL}-{specs}-EP{zbins}.dat')
+            f'{job_path}/output/covmat/vincenzos_format/GaussOnly/{probe_vinc_folder}/cm-{probe_vinc}-{nbl_WL}-{specs}-{EP_or_ED}{zbins:02}.dat')
     else:
         cov_dav = np.load(
-            f'{job_path}/output/covmat/zbins{zbins}/covmat_GO_{probe_dav}_lmax{probe_dav_2}{ell_max}_nbl{nbl}_zbins{zbins}_2D.npy')
+            f'{job_path}/output/covmat/zbins{zbins:02}/covmat_GO_{probe_dav}_lmax{probe_dav_2}{ell_max}_nbl{nbl}_zbins{zbins:02}_2D.npy')
     # cov_dav_old = np.load(
     #     f'{job_path.parent}/SSC_comparison/output/covmat/covmat_GO_{probe_dav}_lmax{probe_dav}{ell_max}_nbl30_2D.npy')
 
@@ -132,12 +132,3 @@ def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, check_dat, specs):
             plt.plot(ell_LL_old, cl_dav_old[:, i, j], '--', c=colors[i])
         plt.grid()
         plt.show()
-
-
-# for probe_vinc in ['WLO', 'GCO', '3x2pt']:
-probe_vinc = '3x2pt'
-for zbins in (7, 9, 10, 11, 13, 15):
-    test_cov(probe_vinc, 32, zbins, plot_cl=False, plot_cov=False, check_dat=True, specs=cfg.general_config['specs'])
-
-print('done')
-

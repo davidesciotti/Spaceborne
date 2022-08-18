@@ -70,8 +70,10 @@ if check_cov_pesopt:
                   np.array_equal(cov_opt[:cov_pes_elem, :cov_pes_elem], cov_pes))
 
 if compare_covmats:
-    for probe_vinc in ['WLO', 'GCO', '3x2pt']:
-        for zbins in zbins_list:
-            ut.test_cov(probe_vinc, 32, zbins, plot_cl=False, plot_cov=False, check_dat=True,
-                        specs=cfg.general_config['specs'], EP_or_ED=EP_or_ED)
+    probe_vinc = 'WLO'
+    zbins = 10
+    # for probe_vinc in ['WLO', 'GCO', '3x2pt']:
+        # for zbins in zbins_list:
+    ut.test_cov(probe_vinc, 32, zbins, plot_cl=False, plot_cov=True, check_dat=False,
+                specs=cfg.general_config['specs'], EP_or_ED=EP_or_ED)
     print(f'probe_vinc {probe_vinc}, zbins {zbins} done')

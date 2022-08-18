@@ -52,18 +52,13 @@ def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, check_dat, specs, EP_
     else:
         raise ValueError(f'Unknown probe_vinc: {probe_vinc}')
 
-    if zbins in [7, 9]:
-        zero_str = '0'
-    else:
-        zero_str = ''
-
     if probe_vinc == '3x2pt':
         probe_vinc_folder = 'All'
     else:
         probe_vinc_folder = probe_vinc
 
 
-    print(f'\nprobe: {probe_vinc}, zbins: {zbins}')
+    print(f'\n********** probe: {probe_vinc}, zbins: {zbins} **********')
 
     start = time.perf_counter()
     cov_vin = np.genfromtxt(
@@ -89,6 +84,8 @@ def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, check_dat, specs, EP_
 
     diff = mm.percent_diff_nan(cov_vin, cov_dav, eraseNaN=True)
 
+    print(np.where(np.abs(diff) > 5))
+
     rtol = 1e0  # in "percent" units
     if np.all(np.abs(diff) < rtol):
         result_emoji = '✅'
@@ -97,7 +94,7 @@ def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, check_dat, specs, EP_
         higher_rtol = 5.  # in "percent" units
         result_emoji = '❌'
         no_outliers = np.where(np.abs(diff) > higher_rtol)[0].shape[0]
-        additional_info = f'\nmax discrepancy: {np.max(np.abs(diff)):.2f}%;\nnumber of elements with discrepancy > {higher_rtol}: {no_outliers}'
+        additional_info = f'\nmax discrepancy: {np.max(np.abs(diff)):.2f}%;\nnumber of elements with discrepancy > {higher_rtol} %: {no_outliers}'
 
     print(f'are cov_vin and cov_dav different by less than {rtol}% ? {result_emoji} {additional_info}')
 
@@ -111,9 +108,13 @@ def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, check_dat, specs, EP_
         else:
             zpairs = zpairs_3x2pt
 
-        mm.matshow(cov_vin[:zpairs, :zpairs], log=True, title='cov_vin')
-        mm.matshow(cov_dav[:zpairs, :zpairs], log=True, title='cov_dav')
-        mm.matshow(diff[:zpairs, :zpairs], log=True, title='percent_diff')
+        # mm.matshow(cov_vin[:zpairs, :zpairs], log=True, title=f'{probe_dav}, cov_vin')
+        # mm.matshow(cov_dav[:zpairs, :zpairs], log=True, title=f'{probe_dav}, cov_dav')
+        # mm.matshow(diff[:zpairs, :zpairs], log=True, title=f'{probe_dav}, percent_diff')
+
+        mm.matshow(cov_vin[:-zpairs, :-zpairs], log=True, abs_val=True, title=f'{probe_dav}, cov_vin')
+        mm.matshow(cov_dav[:-zpairs, :-zpairs], log=True, abs_val=True, title=f'{probe_dav}, cov_dav')
+        mm.matshow(diff[:-zpairs, :-zpairs], log=True, abs_val=True, title=f'{probe_dav}, percent_diff')
 
     if plot_cl:
 

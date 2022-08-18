@@ -71,7 +71,7 @@ else:
 
 zbins_SPV3 = (3, 5, 7, 9, 10, 11, 13, 15, 17)
 zbins_SPV3 = (3, 5, 7, 9, 10)
-# zbins_SPV3 = (10,)
+zbins_SPV3 = (10,)
 
 for general_cfg['zbins'] in zbins_SPV3:
     for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((1500, 750), (5000, 3000)):

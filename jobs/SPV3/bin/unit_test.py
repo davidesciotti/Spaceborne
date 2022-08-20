@@ -26,8 +26,8 @@ matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
-def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, check_dat, specs, EP_or_ED):
 
+def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, check_dat, specs, EP_or_ED):
     """this test compares the GO covmat for SPV3 against vincenzo's files on Google Drive
     check_dat specifies whether one wants to check the covmats saved in dat format (quite unnecessary..., but still)"""
 
@@ -52,21 +52,15 @@ def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, check_dat, specs, EP_
     else:
         raise ValueError(f'Unknown probe_vinc: {probe_vinc}')
 
-    if probe_vinc == '3x2pt':
-        probe_vinc_folder = 'All'
-    else:
-        probe_vinc_folder = probe_vinc
-
-
     print(f'\n********** probe: {probe_vinc}, zbins: {zbins} **********')
 
     start = time.perf_counter()
     cov_vin = np.genfromtxt(
-        f'{job_path}/input/CovMats/{probe_vinc_folder}/cm-{probe_vinc}-{nbl_WL}-{specs}-{EP_or_ED}{zbins:02}.dat')
+        f'{job_path}/input/CovMats/{probe_vinc}/cm-{probe_vinc}-{nbl_WL}-{specs}-{EP_or_ED}{zbins:02}.dat')
 
     if check_dat:
         cov_dav = np.genfromtxt(
-            f'{job_path}/output/covmat/vincenzos_format/GaussOnly/{probe_vinc_folder}/cm-{probe_vinc}-{nbl_WL}-{specs}-{EP_or_ED}{zbins:02}.dat')
+            f'{job_path}/output/covmat/vincenzos_format/GaussOnly/{probe_vinc}/cm-{probe_vinc}-{nbl_WL}-{specs}-{EP_or_ED}{zbins:02}.dat')
     else:
         cov_dav = np.load(
             f'{job_path}/output/covmat/zbins{zbins:02}/covmat_GO_{probe_dav}_lmax{probe_dav_2}{ell_max}_nbl{nbl}_zbins{zbins:02}_2D.npy')
@@ -83,8 +77,6 @@ def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, check_dat, specs, EP_
     print(f'are the shapes of cov_vin and cov_dav equal? {result_emoji}')
 
     diff = mm.percent_diff_nan(cov_vin, cov_dav, eraseNaN=True)
-
-    print(np.where(np.abs(diff) > 5))
 
     rtol = 1e0  # in "percent" units
     if np.all(np.abs(diff) < rtol):
@@ -108,13 +100,9 @@ def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, check_dat, specs, EP_
         else:
             zpairs = zpairs_3x2pt
 
-        # mm.matshow(cov_vin[:zpairs, :zpairs], log=True, title=f'{probe_dav}, cov_vin')
-        # mm.matshow(cov_dav[:zpairs, :zpairs], log=True, title=f'{probe_dav}, cov_dav')
-        # mm.matshow(diff[:zpairs, :zpairs], log=True, title=f'{probe_dav}, percent_diff')
-
-        mm.matshow(cov_vin[:-zpairs, :-zpairs], log=True, abs_val=True, title=f'{probe_dav}, cov_vin')
-        mm.matshow(cov_dav[:-zpairs, :-zpairs], log=True, abs_val=True, title=f'{probe_dav}, cov_dav')
-        mm.matshow(diff[:-zpairs, :-zpairs], log=True, abs_val=True, title=f'{probe_dav}, percent_diff')
+        mm.matshow(cov_vin[:zpairs, :zpairs], log=True, abs_val=True, title=f'{probe_dav}, cov_vin')
+        mm.matshow(cov_dav[:zpairs, :zpairs], log=True, abs_val=True, title=f'{probe_dav}, cov_dav')
+        mm.matshow(diff[:zpairs, :zpairs], log=True, abs_val=True, title=f'{probe_dav}, percent_diff')
 
     if plot_cl:
 

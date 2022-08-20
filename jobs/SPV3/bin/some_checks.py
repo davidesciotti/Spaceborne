@@ -1,14 +1,18 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib
+
+import my_module
 import unit_test as ut
 import sys
 from pathlib import Path
 # get project directory
 project_path = Path.cwd().parent.parent.parent.parent
 # import configuration and functions modules
-sys.path.append(str(project_path / 'config'))
+sys.path.append(f'{project_path}/config')
 import config_SPV3 as cfg
+sys.path.append(f'{project_path.parent}/common_data/common_lib')
+import my_module as mm
 
 matplotlib.use('Qt5Agg')
 
@@ -16,13 +20,17 @@ matplotlib.use('Qt5Agg')
 plot_cl = False
 check_cov_pesopt = False
 compare_covmats = True
-zbins = 10
+new_vs_old_input_files = False
 EP_or_ED = 'EP'
-zbins_list = (3, 5, 7, 9, 10)
+zbins_list = (10,)
 # ! end options
+
+nbl_opt = 32
+nbl_pes = 26
 
 
 if plot_cl:
+    # check that the pes cls are just a subset of the opt ones
     probe = 'WLO'
     path = f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/DataVecTabs/3D_reshaped/{probe}'
     nbl_WL_opt = 32
@@ -38,9 +46,9 @@ if plot_cl:
         raise ValueError('Probe not recognized')
 
     cl_ll_3d_opt = np.load(
-        f'{path}/dv-{probe}-{nbl_WL_opt}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-EP10.npy')
+        f'{path}/dv-{probe}-{nbl_WL_opt}-{cfg.general_config["specs"]}-EP10.npy')
     cl_ll_3d_pes = np.load(
-        f'{path}/dv-{probe}-{nbl_WL_pes}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-EP10.npy')
+        f'{path}/dv-{probe}-{nbl_WL_pes}-{cfg.general_config["specs"]}-EP10.npy')
     ell_opt = np.loadtxt(f'{path}/ell_{probe_dav}_ellmaxWL{ellmaxWL_opt}.txt')
     ell_pes = np.loadtxt(f'{path}/ell_{probe_dav}_ellmaxWL{ellmaxWL_pes}.txt')
 
@@ -57,12 +65,10 @@ if check_cov_pesopt:
     # this checks that the pes covmat can be obtained from the opt one, simply by cutting it
     for probe_v in probe_v_lst:
         for zbins in zbins_list:
-            nbl_opt = 32
-            nbl_pes = 26
             cov_opt = np.genfromtxt(
-                f'{path}/{probe_v}/cm-{probe_v}-{nbl_opt}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED}{zbins:02}.dat')
+                f'{path}/{probe_v}/cm-{probe_v}-{nbl_opt}-{cfg.general_config["specs"]}-{EP_or_ED}{zbins:02}.dat')
             cov_pes = np.genfromtxt(
-                f'{path}/{probe_v}/cm-{probe_v}-{nbl_pes}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED}{zbins:02}.dat')
+                f'{path}/{probe_v}/cm-{probe_v}-{nbl_pes}-{cfg.general_config["specs"]}-{EP_or_ED}{zbins:02}.dat')
 
             cov_pes_elem = cov_pes.shape[0]
 
@@ -71,9 +77,31 @@ if check_cov_pesopt:
 
 if compare_covmats:
     probe_vinc = 'WLO'
-    zbins = 10
-    # for probe_vinc in ['WLO', 'GCO', '3x2pt']:
+    # zbins = 10
+    for probe_vinc in ['WLO', 'GCO', '3x2pt']:
+        for zbins in zbins_list:
+            ut.test_cov(probe_vinc, 32, zbins, plot_cl=False, plot_cov=True, check_dat=True,
+                        specs=cfg.general_config['specs'], EP_or_ED=EP_or_ED)
+        print(f'probe_vinc {probe_vinc}, zbins {zbins} done')
+
+
+if new_vs_old_input_files:
+
+    path_new = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022'
+    path_old = path_new + '/old_probably_discard'
+
+    folder_id_dict = {
+        'DataVectors': 'dv',
+        'CovMats': 'cm',
+        'ResFunTabs': 'rf',
+    }
+
+    for probe_vinc in ('GCO', 'WLO', '3x2pt'):
         # for zbins in zbins_list:
-    ut.test_cov(probe_vinc, 32, zbins, plot_cl=False, plot_cov=True, check_dat=False,
-                specs=cfg.general_config['specs'], EP_or_ED=EP_or_ED)
-    print(f'probe_vinc {probe_vinc}, zbins {zbins} done')
+        for folder, id in folder_id_dict.items():
+            print(f'probe_vinc: {probe_vinc}, zbins: {zbins}, folder: {folder}, id: {id}')
+            vinc_new = np.genfromtxt(f'{path_new}/{folder}/{probe_vinc}/{id}-{probe_vinc}-{nbl_opt}-{cfg.general_config["specs"]}-{EP_or_ED}{zbins:02}.dat')
+            vinc_old = np.genfromtxt(f'{path_old}/{folder}/{probe_vinc}/{id}-{probe_vinc}-{nbl_opt}-{cfg.general_config["specs"]}-{EP_or_ED}{zbins:02}.dat')
+            mm.compare_2D_arrays(vinc_new, vinc_old, plot=False, log_arr=True, log_diff=False, abs_val=True, rtol=1.)
+
+

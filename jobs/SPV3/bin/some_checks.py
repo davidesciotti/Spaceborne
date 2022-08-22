@@ -22,9 +22,9 @@ matplotlib.use('Qt5Agg')
 # ! options
 plot_cl = False
 check_cov_pesopt = False
-compare_covmats = False
+compare_covmats = True
 new_vs_old_input_files = False
-plot_nz = True
+plot_nz = False
 EP_or_ED = cfg.general_config['EP_or_ED']
 zbins_list = (10,)
 # ! end options
@@ -32,8 +32,7 @@ zbins_list = (10,)
 nbl_opt = 32
 nbl_pes = 26
 
-colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22',
-          '#17becf']
+colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 
 if plot_cl:
     # check that the pes cls are just a subset of the opt ones
@@ -86,7 +85,7 @@ if compare_covmats:
     zbins = 10
     for probe_vinc in ['WLO', 'GCO']:
         for zbins in zbins_list:
-            ut.test_cov(probe_vinc, 32, zbins, plot_cl=True, plot_cov=True, check_dat=False,
+            ut.test_cov(probe_vinc, 32, zbins, plot_cl=False, plot_cov=True, check_dat=False,
                         specs=cfg.general_config['specs'], EP_or_ED=EP_or_ED)
         print(f'probe_vinc {probe_vinc}, zbins {zbins} done')
 
@@ -134,6 +133,7 @@ if plot_nz:
         print('nbar = ngal/degsq for the bin:')
         print(np.trapz(y=niz_redbook[:, zbin + 1], x=niz_redbook[:, 0]))
 
+print('done')
 
 
 

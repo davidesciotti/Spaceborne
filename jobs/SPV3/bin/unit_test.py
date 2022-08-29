@@ -27,7 +27,7 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
 
-def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, check_dat, specs, EP_or_ED):
+def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, plot_hist, check_dat, specs, EP_or_ED, rtol=1.):
     """this test compares the GO covmat for SPV3 against vincenzo's files on Google Drive
     check_dat specifies whether one wants to check the covmats saved in dat format (quite unnecessary..., but still)"""
 
@@ -78,19 +78,23 @@ def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, check_dat, specs, EP_
 
     diff = mm.percent_diff_nan(cov_vin, cov_dav, eraseNaN=True)
 
-    rtol = 1e0  # in "percent" units
     if np.all(np.abs(diff) < rtol):
         result_emoji = '✅'
         additional_info = ''
     else:
-        higher_rtol = 5.  # in "percent" units
         result_emoji = '❌'
-        no_outliers = np.where(np.abs(diff) > higher_rtol)[0].shape[0]
-        additional_info = f'\nmax discrepancy: {np.max(np.abs(diff)):.2f}%;\nnumber of elements with discrepancy > {higher_rtol} %: {no_outliers}'
+        no_outliers = np.where(np.abs(diff) > rtol)[0].shape[0]
+        outliers_fract = no_outliers / diff.shape[0] ** 2 * 100
+        additional_info = f'\nmax discrepancy: {np.max(np.abs(diff)):.2f}%;' \
+                          f'\nfraction of elements with discrepancy > {rtol} %: {outliers_fract:.2f} %' \
+                          f'\nnumber of elements with discrepancy > {rtol} %: {no_outliers}'
 
     print(f'are cov_vin and cov_dav different by less than {rtol}% ? {result_emoji} {additional_info}')
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+
+    if plot_hist:
+        plt.hist(diff[np.where(np.abs(diff) > rtol)], bins = 50)
 
     # PLOTS
     if plot_cov:

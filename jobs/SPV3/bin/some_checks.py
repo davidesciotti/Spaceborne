@@ -81,13 +81,13 @@ if check_cov_pesopt:
                   np.array_equal(cov_opt[:cov_pes_elem, :cov_pes_elem], cov_pes))
 
 if compare_covmats:
-    # probe_vinc = 'WLO'
+    probe_vinc = 'WLO'
     zbins = 10
-    for probe_vinc in ['WLO', 'GCO']:
-        for zbins in zbins_list:
-            ut.test_cov(probe_vinc, 32, zbins, plot_cl=False, plot_cov=True, check_dat=False,
-                        specs=cfg.general_config['specs'], EP_or_ED=EP_or_ED)
-        print(f'probe_vinc {probe_vinc}, zbins {zbins} done')
+    # for probe_vinc in ['WLO', 'GCO']:
+    for zbins in zbins_list:
+        ut.test_cov(probe_vinc, 32, zbins, plot_hist=True, plot_cl=False, plot_cov=True, check_dat=False,
+                    specs=cfg.general_config['specs'], EP_or_ED=EP_or_ED, rtol=5.)
+    print(f'probe_vinc {probe_vinc}, zbins {zbins} done')
 
 if new_vs_old_input_files:
 
@@ -124,9 +124,8 @@ if plot_nz:
     plt.legend()
     plt.grid()
 
-
     for zbin in range(zbins):
-        ng = 30 # gal/arcmin2
+        ng = 30  # gal/arcmin2
         conversion_factor = 11818102.860035626  # deg to arcmin^2
         n_bar = ng / zbins * conversion_factor
 
@@ -134,6 +133,3 @@ if plot_nz:
         print(np.trapz(y=niz_redbook[:, zbin + 1], x=niz_redbook[:, 0]))
 
 print('done')
-
-
-

@@ -74,11 +74,11 @@ else:
 
 zbins_SPV3 = (3, 5, 7, 9, 10, 11, 13, 15, 17)
 # zbins_SPV3 = (3, 5, 7, 9, 10)
-zbins_SPV3 = (17,)
-# general_cfg['ell_max_WL'], general_cfg['ell_max_GC'] = 5000, 3000
+# zbins_SPV3 = (10,)
 
 for general_cfg['zbins'] in zbins_SPV3:
-    for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((1500, 750), (5000, 3000)):
+    # for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (1500, 750)):
+    for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000),):
 
         # utils.consistency_checks(general_cfg, covariance_cfg)
 
@@ -109,7 +109,8 @@ for general_cfg['zbins'] in zbins_SPV3:
         ell_dict = {}
         ell_dict['ell_WL'] = np.copy(ell_WL_nbl32[10 ** ell_WL_nbl32 < ell_max_WL])
         ell_dict['ell_GC'] = np.copy(ell_WL_nbl32[10 ** ell_WL_nbl32 < ell_max_GC])
-        ell_dict['ell_WA'] = np.copy(ell_WL_nbl32[(10 ** ell_WL_nbl32 > ell_max_GC) & (10 ** ell_WL_nbl32 < ell_max_WL)])
+        ell_dict['ell_WA'] = np.copy(
+            ell_WL_nbl32[(10 ** ell_WL_nbl32 > ell_max_GC) & (10 ** ell_WL_nbl32 < ell_max_WL)])
         ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
 
         # set corresponding # of ell bins
@@ -183,18 +184,16 @@ for general_cfg['zbins'] in zbins_SPV3:
             'R_3x2pt_5D': rl_3x2pt_5d}
 
         if Sijkl_cfg['use_precomputed_sijkl']:
-            sijkl = np.load(
-                f'{job_path}/output/sijkl/sijkl_wf{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins:02}_hasIA{Sijkl_cfg["has_IA"]}.npy')
+            sijkl = np.load(f'{job_path}/output/sijkl/sijkl_WF{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins:02}_'
+                            f'{EP_or_ED}_hasIA{Sijkl_cfg["has_IA"]}.npy')
 
         else:
             start_time = time.perf_counter()
-            sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins)
-            print(f'zbins {zbins}: Sijkl computation took {time.perf_counter() - start_time:.2} seconds')
+            sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins, EP_or_ED=EP_or_ED)
 
             if Sijkl_cfg['save_Sijkl']:
-                np.save(
-                    f'{job_path}/output/sijkl/sijkl_wf{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins:02}_hasIA{Sijkl_cfg["has_IA"]}.npy',
-                    sijkl)
+                np.save(f'{job_path}/output/sijkl/sijkl_WF{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins:02}_{EP_or_ED}_'
+                        f'hasIA{Sijkl_cfg["has_IA"]}.npy', sijkl)
 
         # compute covariance matrix
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
@@ -236,32 +235,33 @@ for general_cfg['zbins'] in zbins_SPV3:
                         10 ** ell_dict[f'ell_{probe_dav}'])
 
         if covariance_cfg['save_covariance'] and ell_max_WL == 5000:
-            np.save(f'{covmat_path}/covmat_GO_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}_zbins{zbins:02}_2D.npy',
+            np.save(f'{covmat_path}/covmat_GO_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}_zbins{zbins:02}_{EP_or_ED}_2D.npy',
                     cov_dict['cov_WL_GO_2D'])
-            np.save(f'{covmat_path}/covmat_GO_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}_zbins{zbins:02}_2D.npy',
+            np.save(f'{covmat_path}/covmat_GO_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}_zbins{zbins:02}_{EP_or_ED}_2D.npy',
                     cov_dict['cov_GC_GO_2D'])
-            np.save(f'{covmat_path}/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins:02}_2D.npy',
+            np.save(f'{covmat_path}/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}_2D.npy',
                     cov_dict['cov_3x2pt_GO_2D'])
-            np.save(f'{covmat_path}/covmat_GO_WA_lmaxWL{ell_max_WL}_nbl{nbl_WA}_zbins{zbins:02}_2D.npy',
+            np.save(f'{covmat_path}/covmat_GO_WA_lmaxWL{ell_max_WL}_nbl{nbl_WA}_zbins{zbins:02}_{EP_or_ED}_2D.npy',
                     cov_dict['cov_WA_GO_2D'])
 
             np.save(f'{covmat_path}/covmat_GS_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}'
-                    f'_zbins{zbins:02}_Rl{which_probe_response_str}_2D.npy', cov_dict['cov_WL_GS_2D'])
+                    f'_zbins{zbins:02}_{EP_or_ED}_Rl{which_probe_response_str}_2D.npy', cov_dict['cov_WL_GS_2D'])
             np.save(f'{covmat_path}/covmat_GS_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}'
-                    f'_zbins{zbins:02}_Rl{which_probe_response_str}_2D.npy', cov_dict['cov_GC_GS_2D'])
+                    f'_zbins{zbins:02}_{EP_or_ED}_Rl{which_probe_response_str}_2D.npy', cov_dict['cov_GC_GS_2D'])
             np.save(f'{covmat_path}/covmat_GS_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl_3x2pt}'
-                    f'_zbins{zbins:02}_Rl{which_probe_response_str}_2D.npy', cov_dict['cov_3x2pt_GS_2D'])
+                    f'_zbins{zbins:02}_{EP_or_ED}_Rl{which_probe_response_str}_2D.npy', cov_dict['cov_3x2pt_GS_2D'])
             np.save(f'{covmat_path}/covmat_GS_WA_lmaxWL{ell_max_WL}_nbl{nbl_WA}'
-                    f'_zbins{zbins:02}_Rl{which_probe_response_str}_2D.npy', cov_dict['cov_WA_GS_2D'])
+                    f'_zbins{zbins:02}_{EP_or_ED}_Rl{which_probe_response_str}_2D.npy', cov_dict['cov_WA_GS_2D'])
 
         elif covariance_cfg['save_covariance'] and ell_max_WL == 1500:
             # in this case, save only WA
             np.save(f'{covmat_path}/covmat_GO_WA_lmaxWL{ell_max_WL}_nbl{nbl_WA}'
-                    f'_zbins{zbins:02}_2D.npy', cov_dict['cov_WA_GO_2D'])
+                    f'_zbins{zbins:02}_{EP_or_ED}_2D.npy', cov_dict['cov_WA_GO_2D'])
             np.save(f'{covmat_path}/covmat_GS_WA_lmaxWL{ell_max_WL}_nbl{nbl_WA}'
-                    f'_zbins{zbins:02}_Rl{which_probe_response_str}_2D.npy', cov_dict['cov_WA_GS_2D'])
+                    f'_zbins{zbins:02}_{EP_or_ED}_Rl{which_probe_response_str}_2D.npy', cov_dict['cov_WA_GS_2D'])
 
-        if covariance_cfg['save_covariance_dat']:
+        if covariance_cfg['save_covariance_dat'] and ell_max_WL == 5000:
+            # save in .dat for Vincenzo, only in the optimistic case
             path_vinc_fmt = f'{job_path}/output/covmat/vincenzos_format'
             for probe, probe_vinc in zip(['WL', 'GC', '3x2pt', 'WA'], ['WLO', 'GCO', '3x2pt', 'WLA']):
                 for GOGS_folder, GOGS_filename in zip(['GaussOnly', 'GaussSSC'], ['GO', 'GS']):

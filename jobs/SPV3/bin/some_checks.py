@@ -26,7 +26,7 @@ compare_covmats = True
 new_vs_old_input_files = False
 plot_nz = False
 EP_or_ED = cfg.general_config['EP_or_ED']
-zbins_list = (10,)
+zbins_list = (3, 5, 7, 9, 10, 11, 13, 15, 17)
 # ! end options
 
 nbl_opt = 32
@@ -82,12 +82,12 @@ if check_cov_pesopt:
 
 if compare_covmats:
     probe_vinc = 'WLO'
-    zbins = 10
-    # for probe_vinc in ['WLO', 'GCO']:
-    for zbins in zbins_list:
-        ut.test_cov(probe_vinc, 32, zbins, plot_hist=True, plot_cl=False, plot_cov=True, check_dat=False,
-                    specs=cfg.general_config['specs'], EP_or_ED=EP_or_ED, rtol=5.)
-    print(f'probe_vinc {probe_vinc}, zbins {zbins} done')
+    # zbins = 10
+    for probe_vinc in ['WLO', 'GCO', '3x2pt']:
+        for zbins in zbins_list:
+            ut.test_cov(probe_vinc, 32, zbins, plot_hist=False, plot_cl=False, plot_cov=False, check_dat=False,
+                        specs=cfg.general_config['specs'], EP_or_ED=EP_or_ED, rtol=5.)
+        print(f'probe_vinc {probe_vinc}, zbins {zbins} done')
 
 if new_vs_old_input_files:
 

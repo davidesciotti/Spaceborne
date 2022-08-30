@@ -22,11 +22,13 @@ matplotlib.use('Qt5Agg')
 # ! options
 plot_cl = False
 check_cov_pesopt = False
-compare_covmats = True
+compare_covmats = False
 new_vs_old_input_files = False
 plot_nz = False
-EP_or_ED = cfg.general_config['EP_or_ED']
+check_EP_vs_ED = True
+EP_or_ED = 'ED'
 zbins_list = (3, 5, 7, 9, 10, 11, 13, 15, 17)
+probe_list = ('WLO', 'GCO', '3x2pt')
 # ! end options
 
 nbl_opt = 32
@@ -42,6 +44,7 @@ if plot_cl:
     nbl_WL_pes = 26
     ellmaxWL_opt = 5000
     ellmaxWL_pes = 1500
+    zbins = 10
 
     if probe in ['WLO', 'GCO']:
         probe_dav = probe[:2]
@@ -51,9 +54,9 @@ if plot_cl:
         raise ValueError('Probe not recognized')
 
     cl_ll_3d_opt = np.load(
-        f'{path}/dv-{probe}-{nbl_WL_opt}-{cfg.general_config["specs"]}-EP10.npy')
+        f'{path}/dv-{probe}-{nbl_WL_opt}-{cfg.general_config["specs"]}-{EP_or_ED}{zbins}.npy')
     cl_ll_3d_pes = np.load(
-        f'{path}/dv-{probe}-{nbl_WL_pes}-{cfg.general_config["specs"]}-EP10.npy')
+        f'{path}/dv-{probe}-{nbl_WL_pes}-{cfg.general_config["specs"]}-{EP_or_ED}{zbins}.npy')
     ell_opt = np.loadtxt(f'{path}/ell_{probe_dav}_ellmaxWL{ellmaxWL_opt}.txt')
     ell_pes = np.loadtxt(f'{path}/ell_{probe_dav}_ellmaxWL{ellmaxWL_pes}.txt')
 
@@ -81,15 +84,16 @@ if check_cov_pesopt:
                   np.array_equal(cov_opt[:cov_pes_elem, :cov_pes_elem], cov_pes))
 
 if compare_covmats:
-    probe_vinc = 'WLO'
-    # zbins = 10
-    for probe_vinc in ['WLO', 'GCO', '3x2pt']:
+    # probe_list = ('WLO',)
+    # zbins_list = (10,)
+    for probe_vinc in probe_list:
         for zbins in zbins_list:
-            ut.test_cov(probe_vinc, 32, zbins, plot_hist=False, plot_cl=False, plot_cov=False, check_dat=False,
+            ut.test_cov(probe_vinc, 32, zbins, plot_hist=False, plot_cl=False, plot_cov=False, check_dat=True,
                         specs=cfg.general_config['specs'], EP_or_ED=EP_or_ED, rtol=5.)
         print(f'probe_vinc {probe_vinc}, zbins {zbins} done')
 
 if new_vs_old_input_files:
+    """ Check the new input files"""
 
     path_new = job_path
     path_old = f'{path_new}/old_probably_discard'
@@ -132,4 +136,12 @@ if plot_nz:
         print('nbar = ngal/degsq for the bin:')
         print(np.trapz(y=niz_redbook[:, zbin + 1], x=niz_redbook[:, 0]))
 
+if check_EP_vs_ED:
+    probe_list = ('WLO',)
+    zbins_list = (10,)
+    for probe in probe_list:
+        for zbins in zbins_list:
+            cov_EP = np.genfromtxt(f'{path}/{probe}/cm-{probe}-{nbl_opt}-{cfg.general_config["specs"]}-EP{zbins:02}.dat')
+            cov_ED = np.genfromtxt(f'{path}/{probe}/cm-{probe}-{nbl_opt}-{cfg.general_config["specs"]}-ED{zbins:02}.dat')
+            mm.compare_2D_arrays(cov_EP, cov_ED, 'EP', 'ED')
 print('done')

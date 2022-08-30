@@ -73,7 +73,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     else:
         nbl_WA = ell_WA.shape[0]
 
-
     # ell values in linear scale:
     if ell_WL.max() < 15:  # very rudimental check of whether they're in lin or log scale
         print('looks like the ell values are already in linear scale')
@@ -122,14 +121,23 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         raise ValueError("which_probe_response must be 'constant' or 'variable'")
 
     # print settings
-    print(f'\ncheck: \nwhich_forecast = {which_forecast} \nind_ordering = {ind_ordering} \nblock_index = {block_index}'
+    print(f'\ncheck: \nwhich_forecast = {which_forecast} \nind_ordering = {ind_ordering} \nblock_index = {block_index}\n'
           f'zbins: {zbins} \n'
           f'nbl_WA: {nbl_WA} nbl_WL: {nbl_WL} nbl_GC:  {nbl_GC}, nbl_3x2pt:  {nbl_3x2pt}\n'
           f'ell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}\n'
           f'computing the covariance in blocks? {compute_covariance_in_blocks}\n')
 
     # build noise vector
-    N = mm.build_noise(zbins, nProbes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=covariance_cfg['ng'])
+    if general_cfg['EP_or_ED'] == 'EP':
+        ng = covariance_cfg['ng']
+    elif general_cfg['EP_or_ED'] == 'ED':
+        print('lenses or sources? Flagship or Redbook?')
+        ng = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/InputNz/Lenses/Flagship/ngbTab-ED{zbins:02}.dat')[0, :]
+        assert 28. < np.sum(ng) < 29., 'the sum of ng over all bins is not 28.73'  # rough check
+    else:
+        raise ValueError('EP_or_ED must be "EP" or "ED"')
+
+    N = mm.build_noise(zbins, nProbes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=ng, EP_or_ED=general_cfg['EP_or_ED'])
 
     ################### COMPUTE GAUSS ONLY COVARIANCE #########################
 
@@ -211,7 +219,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         # it inside the cov_SSC_3x2pt_10D_dict function.
         probe_ordering_tuple = tuple(probe_ordering)
         start = time.perf_counter()
-        cov_3x2pt_SSC_10D = mm.cov_SSC_3x2pt_10D_dict(nbl_3x2pt, C_3x2pt_5D, Sijkl, fsky, zbins, Rl, probe_ordering_tuple)
+        cov_3x2pt_SSC_10D = mm.cov_SSC_3x2pt_10D_dict(nbl_3x2pt, C_3x2pt_5D, Sijkl, fsky, zbins, Rl,
+                                                      probe_ordering_tuple)
         print('cov_3x2pt_SSC_10D computed in', time.perf_counter() - start, 'seconds')
 
         # convert each block to 4D and stack to make the 4D_3x2pt

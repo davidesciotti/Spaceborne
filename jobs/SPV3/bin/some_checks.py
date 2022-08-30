@@ -1,8 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib
-
-import my_module
 import unit_test as ut
 import sys
 from pathlib import Path
@@ -25,7 +23,7 @@ check_cov_pesopt = False
 compare_covmats = False
 new_vs_old_input_files = False
 plot_nz = False
-check_EP_vs_ED = True
+check_EP_vs_ED = False
 EP_or_ED = 'ED'
 zbins_list = (3, 5, 7, 9, 10, 11, 13, 15, 17)
 probe_list = ('WLO', 'GCO', '3x2pt')
@@ -116,11 +114,17 @@ if new_vs_old_input_files:
 
 if plot_nz:
     lens_or_source = 'Lenses'
-    niz_flagship = np.genfromtxt(f'{job_path}/input/InputNz/{lens_or_source}/Flagship/niTab-{EP_or_ED}{zbins:02}.dat')
-    niz_redbook = np.genfromtxt(f'{job_path}/input/InputNz/{lens_or_source}/RedBook/niTab-{EP_or_ED}{zbins:02}.dat')
+    flagship_or_redbook = 'RedBook'
+    for zbins in zbins_list:
+        niz_flagship = np.genfromtxt(
+            f'{job_path}/input/InputNz/Lenses/{flagship_or_redbook}/niTab-{EP_or_ED}{zbins:02}.dat')
+        niz_redbook = np.genfromtxt(
+            f'{job_path}/input/InputNz/Sources/{flagship_or_redbook}/niTab-{EP_or_ED}{zbins:02}.dat')
 
-    print(f'niz_flagship shape: {niz_flagship.shape}')
-    print(f'niz_redbook shape: {niz_redbook.shape}')
+        # print(f'niz_flagship shape: {niz_flagship.shape}')
+        # print(f'niz_redbook shape: {niz_redbook.shape}')
+
+        print(f'zbins {zbins}; is niz_A == niz_B?', np.array_equal(niz_flagship, niz_redbook))
 
     for zbin in range(zbins):
         plt.plot(niz_flagship[:, 0], niz_flagship[:, zbin + 1], '--', label='niz_flagship', c=colors[zbin])
@@ -128,20 +132,28 @@ if plot_nz:
     plt.legend()
     plt.grid()
 
-    for zbin in range(zbins):
-        ng = 30  # gal/arcmin2
-        conversion_factor = 11818102.860035626  # deg to arcmin^2
-        n_bar = ng / zbins * conversion_factor
-
-        print('nbar = ngal/degsq for the bin:')
-        print(np.trapz(y=niz_redbook[:, zbin + 1], x=niz_redbook[:, 0]))
-
 if check_EP_vs_ED:
     probe_list = ('WLO',)
     zbins_list = (10,)
     for probe in probe_list:
         for zbins in zbins_list:
-            cov_EP = np.genfromtxt(f'{path}/{probe}/cm-{probe}-{nbl_opt}-{cfg.general_config["specs"]}-EP{zbins:02}.dat')
-            cov_ED = np.genfromtxt(f'{path}/{probe}/cm-{probe}-{nbl_opt}-{cfg.general_config["specs"]}-ED{zbins:02}.dat')
+            cov_EP = np.genfromtxt(
+                f'{path}/{probe}/cm-{probe}-{nbl_opt}-{cfg.general_config["specs"]}-EP{zbins:02}.dat')
+            cov_ED = np.genfromtxt(
+                f'{path}/{probe}/cm-{probe}-{nbl_opt}-{cfg.general_config["specs"]}-ED{zbins:02}.dat')
             mm.compare_2D_arrays(cov_EP, cov_ED, 'EP', 'ED')
+
+for flag_or_rbook in ('Flagship', 'RedBook'):
+    for lens_or_source in ('Sources', 'Lenses'):
+        print(flag_or_rbook, lens_or_source)
+        path_A = f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/InputNz/{lens_or_source}/{flag_or_rbook}'
+        path_B = f'/Users/davide/Downloads/InputNz/{lens_or_source}/{flag_or_rbook}'
+        # mm.compare_folder_content(path_A, path_B, 'dat')
+        for type in ('ngbTab', 'niTab'):
+            for bin_type in ('EP', 'ED'):
+                for zbins in zbins_list:
+                    A = np.genfromtxt(f'{path_A}/{type}-{bin_type}{zbins:02}.dat')
+                    B = np.genfromtxt(f'{path_B}/{type}-{bin_type}{zbins:02}.dat')
+                    print(np.array_equal(A, B))
+
 print('done')

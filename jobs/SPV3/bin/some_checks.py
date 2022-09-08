@@ -143,17 +143,5 @@ if check_EP_vs_ED:
                 f'{path}/{probe}/cm-{probe}-{nbl_opt}-{cfg.general_config["specs"]}-ED{zbins:02}.dat')
             mm.compare_2D_arrays(cov_EP, cov_ED, 'EP', 'ED')
 
-for flag_or_rbook in ('Flagship', 'RedBook'):
-    for lens_or_source in ('Sources', 'Lenses'):
-        print(flag_or_rbook, lens_or_source)
-        path_A = f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/InputNz/{lens_or_source}/{flag_or_rbook}'
-        path_B = f'/Users/davide/Downloads/InputNz/{lens_or_source}/{flag_or_rbook}'
-        # mm.compare_folder_content(path_A, path_B, 'dat')
-        for type in ('ngbTab', 'niTab'):
-            for bin_type in ('EP', 'ED'):
-                for zbins in zbins_list:
-                    A = np.genfromtxt(f'{path_A}/{type}-{bin_type}{zbins:02}.dat')
-                    B = np.genfromtxt(f'{path_B}/{type}-{bin_type}{zbins:02}.dat')
-                    print(np.array_equal(A, B))
 
 print('done')

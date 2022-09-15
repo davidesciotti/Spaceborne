@@ -1,6 +1,256 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PropertiesComponent">
-    <property name="settings.editor.selected.configurable" value="preferences.lookFeel" />
+  <component name="ChangeListManager">
+    <list default="true" id="bc90b328-d3dc-49f6-9263-d66cfee42111" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/SSC_restructured_v2.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/SSC_restructured_v2.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/plots_FM_running.py" beforeDir="false" afterPath="$PROJECT_DIR$/bin/plots_FM_running.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/ISTF_fid_params.py" beforeDir="false" afterPath="$PROJECT_DIR$/config/ISTF_fid_params.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/mpl_cfg.py" beforeDir="false" afterPath="$PROJECT_DIR$/config/mpl_cfg.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/input/Sijkl" beforeDir="false" afterPath="$PROJECT_DIR$/input/Sijkl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/input/everyones_WF_from_Gdrive" beforeDir="false" afterPath="$PROJECT_DIR$/input/everyones_WF_from_Gdrive" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/input/ind_files" beforeDir="false" afterPath="$PROJECT_DIR$/input/ind_files" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/input/sylvain" beforeDir="false" afterPath="$PROJECT_DIR$/input/sylvain" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/input/vincenzo" beforeDir="false" afterPath="$PROJECT_DIR$/input/vincenzo" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SPV3/bin/main_SPV3.py" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/SPV3/bin/main_SPV3.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SPV3/bin/unit_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/SPV3/bin/unit_test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SPV3/config/config_SPV3.py" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/SPV3/config/config_SPV3.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SPV3/input/DataVectors" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/SPV3/input/DataVectors" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SPV3/input/InputNz" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/SPV3/input/InputNz" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SPV3/input/KernelFun" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/SPV3/input/KernelFun" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SPV3/input/ResFunTabs" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/SPV3/input/ResFunTabs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison/bin/plot.py" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/SSC_comparison/bin/plot.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison/output/plots/const_vs_var_rl/3x2pt_ellmax3000_GS_Rlconst_vs_Rlvar_vs_PyCCL.png" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/SSC_comparison/output/plots/const_vs_var_rl/3x2pt_ellmax3000_GS_Rlconst_vs_Rlvar_vs_PyCCL.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison/output/plots/const_vs_var_rl/WL_ellmax5000_GS_Rlconst_vs_Rlvar_vs_PyCCL.png" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/SSC_comparison/output/plots/const_vs_var_rl/WL_ellmax5000_GS_Rlconst_vs_Rlvar_vs_PyCCL.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/main_SSC_comparison_updt_running.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/misc/plot_R(x)_Table1_paper.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/misc/replot_vincenzo.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/plot.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/plot_constraints.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/variable_response/.ipynb_checkpoints/response_from_sims-checkpoint.ipynb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/variable_response/davide/Pnl.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/variable_response/davide/camb_pk_demo.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/variable_response/davide/dlogPk_dlogk.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/variable_response/davide/k_dav.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/variable_response/davide/response.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/variable_response/davide/response_v2.1.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/variable_response/davide/response_v2.2_Pk_solved.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/variable_response/davide/response_v2.3_bu.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/variable_response/davide/response_v2.4_functions.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/variable_response/davide/response_v2.5_works.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/variable_response/davide/response_v2.6_hconversions.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/variable_response/davide/response_v2.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/variable_response/davide/z_dav.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/variable_response/sylvain/.ipynb_checkpoints/response_from_sims-checkpoint.ipynb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/variable_response/sylvain/response_from_sims.ipynb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/bin/variable_response/sylvain/response_from_sims_original.ipynb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/config/config_SSC_comparison_updt.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/GSoverGOvsNbEllOptAll.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/GSoverGOvsNbEllOptGCO.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/GSoverGOvsNbEllOptWLO.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/GSoverGOvsNbEllPesAll.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/GSoverGOvsNbEllPesGCO.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/GSoverGOvsNbEllPesWLO.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/GSoverGOvsNbZedOptAll.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/GSoverGOvsNbZedOptGCO.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/GSoverGOvsNbZedOptWLO.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/GSoverGOvsNbZedPesAll.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/GSoverGOvsNbZedPesGCO.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/GSoverGOvsNbZedPesWLO.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/RatioFoM-3x2pt-Opt-10.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/RatioFoM-3x2pt-Opt-11.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/RatioFoM-3x2pt-Opt-12.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/RatioFoM-3x2pt-Opt-13.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/RatioFoM-3x2pt-Opt-14.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/RatioFoM-3x2pt-Opt-15.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/RatioFoM-3x2pt-Pes-10.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/RatioFoM-3x2pt-Pes-11.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/RatioFoM-3x2pt-Pes-12.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/RatioFoM-3x2pt-Pes-13.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/RatioFoM-3x2pt-Pes-14.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/RatioFoM-3x2pt-Pes-15.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/input/replot_vincenzo/ReadMeTables.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/Pk/Pk_kind=nonlinear_hunits=False.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/Pk/Pk_kind=nonlinear_hunits=True.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/Pk/k_array_hunits=False.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/Pk/k_array_hunits=True.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/Pk/z_array.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/cl_3D/C_GG_3D.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/cl_3D/C_LL_WLonly_3D.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/cl_3D/C_WA_3D.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/cl_3D/D_3x2pt.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/plots/const_vs_var_rl/3x2pt_ellmax3000_GS_Rlconst_vs_Rlvar.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/plots/const_vs_var_rl/3x2pt_ellmax3000_GS_Rlconst_vs_Rlvar_vs_PyCCL.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/plots/const_vs_var_rl/3x2pt_ellmax750_GS_Rlconst_vs_Rlvar_vs_PyCCL.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/plots/const_vs_var_rl/GC_ellmax3000_GS_Rlconst_vs_Rlvar.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/plots/const_vs_var_rl/GC_ellmax3000_GS_Rlconst_vs_Rlvar_vs_PyCCL.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/plots/const_vs_var_rl/WL_ellmax5000_GS_Rlconst_vs_Rlvar.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/plots/const_vs_var_rl/WL_ellmax5000_GS_Rlconst_vs_Rlvar_vs_PyCCL.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/plots/dav_vs_sylv_WL.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/plots/replot_vincenzo/figs/fig_5_replot.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/plots/replot_vincenzo/figs/fig_6_replot.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/plots/replot_vincenzo/figs/fig_7_replot.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/plots/replot_vincenzo/figs/fig_8_replot.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/plots/replot_vincenzo/figs/fig_9_replot.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt/output/sijkl" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/cosmo_lib.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/cosmo_lib.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/my_module.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/my_module.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$/../cosmicfish_reloaded" value="master" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="ROOT_SYNC" value="DONT_SYNC" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="2EfqMkbt0QT0bOthQ2x5usVDtSe" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/dscio/Documents/Lavoro/Programmi/common_data&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;
+  }
+}</component>
+  <component name="PyConsoleOptionsProvider">
+    <option name="myPythonConsoleState">
+      <console-settings custom-start-script="import sys; print('Python %s on %s' % (sys.version, sys.platform))&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;%load_ext autoreload&#10;%autoreload 2" module-name="SSC_restructured_v2" is-module-sdk="true">
+        <option name="useSoftWraps" value="true" />
+        <option name="myCustomStartScript" value="import sys; print('Python %s on %s' % (sys.version, sys.platform))&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;%load_ext autoreload&#10;%autoreload 2" />
+        <option name="myUseModuleSdk" value="true" />
+        <option name="myModuleName" value="SSC_restructured_v2" />
+      </console-settings>
+    </option>
+    <option name="myUseExistingConsole" value="true" />
+  </component>
+  <component name="RunManager" selected="Python.plot">
+    <configuration name="ISTF_fid_params" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="common_data" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../common_data/common_config" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../common_data/common_config/ISTF_fid_params.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="main_SPV3" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="SSC_restructured_v2" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="/opt/anaconda3/bin/python" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/jobs/SPV3/bin" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/jobs/SPV3/bin/main_SPV3.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="plot" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="SSC_restructured_v2" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/jobs/SSC_comparison/bin" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/jobs/SSC_comparison/bin/plot.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="plots_FM_running" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="SSC_restructured_v2" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/bin" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/bin/plots_FM_running.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.plot" />
+        <item itemvalue="Python.ISTF_fid_params" />
+        <item itemvalue="Python.main_SPV3" />
+        <item itemvalue="Python.plots_FM_running" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="bc90b328-d3dc-49f6-9263-d66cfee42111" name="Changes" comment="" />
+      <created>1662996941714</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1662996941714</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
 </project>

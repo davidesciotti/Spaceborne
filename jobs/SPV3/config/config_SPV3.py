@@ -43,15 +43,15 @@ covariance_config = {
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': 28.73,  # ! new
     'save_covariance': True,
-    'save_covariance_dat': True,
+    'save_covariance_dat': False,  # this is the format used by Vincenzo
 }
 
 Sijkl_config = {
     'input_WF': 'vincenzo_SPV3',
     'WF_normalization': 'IST',
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
-    'use_precomputed_sijkl': False,
-    'save_Sijkl': True,
+    'use_precomputed_sijkl': True,
+    'save_Sijkl': False,
 }
 
 FM_config = {

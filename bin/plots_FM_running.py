@@ -8,12 +8,10 @@ import array_to_latex as a2l
 import plotly.graph_objects as go
 import plotly.offline as pyo
 
-
 project_path_here = Path.cwd().parent.parent.parent
 print(project_path_here)
 sys.path.append(f'{project_path_here}/lib')
 import my_module as mm
-
 
 sys.path.append(f'{project_path_here}/config')
 # import ISTF_fid_params
@@ -28,6 +26,7 @@ ylabel_sigma_relative_fid = mpl_cfg.general_dict['ylabel_sigma_relative_fid']
 markersize = mpl_cfg.mpl_rcParams_dict['lines.markersize']
 
 print(ylabel_sigma_relative_fid)
+
 
 ###############################################################################
 ################## CODE TO PLOT THE FISHER CONSTRAINTS ########################
@@ -76,12 +75,11 @@ def bar_plot(uncert_gauss, uncert_SSC, difference):
     plt.savefig(fname=f'bar_plot_{probe}.png', dpi=300, figsize=[16, 9])
 
 
-def bar_plot_v2(data, title, label_list, bar_width=0.25, nparams=7, param_names_label=param_names_label):
+def bar_plot_v2(data, title, label_list, bar_width=0.25, nparams=7, param_names_label=param_names_label,
+                second_axis=True):
     """
     data: usually the percent uncertainties, but could also be the percent difference
     """
-
-    plt.figure(figsize=mpl_cfg.mpl_rcParams_dict['figure.figsize'])
 
     # Set position of bar on x-axis
     bar_centers = np.zeros(data.shape)
@@ -100,17 +98,46 @@ def bar_plot_v2(data, title, label_list, bar_width=0.25, nparams=7, param_names_
 
     plt.grid()
 
-    # Make the plot
-    for i in range(data.shape[0]):
-        plt.bar(bar_centers[i, :], data[i, :], width=bar_width, edgecolor='grey', label=label_list[i])
+    if second_axis:
 
-    # Adding xticks
-    plt.ylabel(ylabel_sigma_relative_fid)
-    plt.xticks(range(nparams), param_names_label)
+        assert data.shape[0] == 3, "data must have 3 rows to display the second axis"
 
-    plt.title(title)
-    plt.legend()
-    plt.show()
+        plt.rcParams['axes.axisbelow'] = True
+
+        fig, ax = plt.subplots(figsize=mpl_cfg.mpl_rcParams_dict['figure.figsize'])
+        for i in range(data.shape[0] - 1):
+            ax.bar(bar_centers[i, :], data[i, :], width=bar_width, edgecolor='grey', label=label_list[i])
+
+        # Add some text for labels, title and custom x-axis tick labels, etc.
+        ax.grid()
+        ax.set_ylabel(ylabel_sigma_relative_fid)
+        ax.set_title(title)
+        ax.set_xticks(range(nparams), param_names_label)
+
+        # second axis
+        ax2 = ax.twinx()
+        # ax2.set_ylabel('(GS/GO - 1) $\\times$ 100', color='g')
+        ax2.set_ylabel('% uncertainty increase', color='g')  # for PhD workshop
+        ax2.bar(bar_centers[-1, :], data[-1, :], width=bar_width, edgecolor='grey', label=label_list[-1], color='g')
+        ax2.tick_params(axis='y', labelcolor='g')
+
+        fig.legend(loc="upper right", bbox_to_anchor=(1, 1), bbox_transform=ax.transAxes)
+
+    else:
+        plt.figure(figsize=mpl_cfg.mpl_rcParams_dict['figure.figsize'])
+
+        # Make the plot
+        for i in range(data.shape[0]):
+            plt.bar(bar_centers[i, :], data[i, :], width=bar_width, edgecolor='grey', label=label_list[i])
+
+        # Adding xticks
+        plt.ylabel(ylabel_sigma_relative_fid)
+        plt.xticks(range(nparams), param_names_label)
+
+        plt.grid()
+        plt.title(title)
+        plt.legend()
+        plt.show()
 
 
 # parametri fiduciali

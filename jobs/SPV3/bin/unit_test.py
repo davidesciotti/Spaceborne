@@ -10,7 +10,6 @@ job_path = Path.cwd().parent
 
 sys.path.append(f'{project_path}/lib')
 import my_module as mm
-import cosmo_lib as csmlib
 
 sys.path.append(f'{project_path}/bin')
 import ell_values_running as ell_utils

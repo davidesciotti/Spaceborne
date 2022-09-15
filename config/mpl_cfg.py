@@ -1,1 +1,1 @@
-/Users/davide/Documents/Lavoro/Programmi/common_data/common_config/mpl_cfg.py
+../../common_data/common_config/mpl_cfg.py

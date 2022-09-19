@@ -8,7 +8,8 @@ import array_to_latex as a2l
 import plotly.graph_objects as go
 import plotly.offline as pyo
 import getdist
-from getdist import plots, MCSamples
+from getdist import plots
+from getdist.gaussian_mixtures import GaussianND
 
 project_path_here = Path.cwd().parent.parent.parent
 print(project_path_here)
@@ -140,32 +141,32 @@ def bar_plot(data, title, label_list, bar_width=0.25, nparams=7, param_names_lab
         plt.title(title)
         plt.legend()
         plt.show()
+def triangle_plot(FM_1, FM_2, fiducials, title, param_names_label):
 
+    # should I do this?
+    fiducials = np.where(fiducials == 0., 1, fiducials)  # the fiducial for wa is 0, substitute with 1 to avoid division by zero
+    fiducials = np.where(fiducials == -1, 1, fiducials)  # the fiducial for wa is -1, substitute with 1 to avoid negative values
 
-def triangle_plot(FM, fiducials, param_names_label, seed=10):
-    """ triangle plot using getdist package"""
+    nparams = len(param_names_label)
 
-    matplotlib.rcParams['font.size'] = 10
-    ndim = len(param_names_label)
-    cov = np.linalg.inv(FM)
+    # parameters' covariance matrix
+    FM_inv_GO = np.linalg.inv(FM_1)[:nparams, :nparams]
+    FM_inv_GS = np.linalg.inv(FM_2)[:nparams, :nparams]
 
-    nsamp = 10_000
-    random_state = np.random.default_rng(seed)  # seed random generator
-    samps = random_state.multivariate_normal(fiducials, cov, size=nsamp)
-    plt.matshow(samps[:100, :])
-
-    # A = random_state.random((ndim, ndim))
-    # cov = np.dot(A, A.T)
-    # samps2 = random_state.multivariate_normal([0] * ndim, cov, size=nsamp)
-    names = param_names_label
-    labels = ["x_%s" % i for i in range(ndim)]
-    samples = MCSamples(samples=samps, names=names, labels=labels)
-    # samples2 = MCSamples(samples=samps2, names=names, labels=labels, label='Second set')
-
-    # Triangle plot
+    GO_gaussian = GaussianND(fiducials, FM_inv_GO, names=param_names_label)
+    GS_gaussian = GaussianND(fiducials, FM_inv_GS, names=param_names_label)
     g = plots.get_subplot_plotter()
-    g.triangle_plot([samples], filled=True)
-
+    g.settings.linewidth = 2
+    g.settings.legend_fontsize = 30
+    g.settings.linewidth_contour = 2.5
+    g.settings.axes_fontsize = 27
+    g.settings.axes_labelsize = 30
+    g.settings.subplot_size_ratio = 1
+    g.settingstight_layout = True
+    g.settings.solid_colors = 'tab10'
+    g.triangle_plot([GS_gaussian, GO_gaussian], filled=True, contour_lws=1.4,
+                    legend_labels=['Gauss + SSC', 'Gauss-only'], legend_loc='upper right')
+    plt.suptitle(f'{title}', fontsize='xx-large')
 
 # parametri fiduciali
 fid = np.array((0.32, 0.05, 1, 1, 0.67, 0.96, 0.816, 0.55, 1, 1))

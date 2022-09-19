@@ -7,6 +7,8 @@ import pandas as pd
 import array_to_latex as a2l
 import plotly.graph_objects as go
 import plotly.offline as pyo
+import getdist
+from getdist import plots, MCSamples
 
 project_path_here = Path.cwd().parent.parent.parent
 print(project_path_here)
@@ -44,7 +46,7 @@ def plot(array, style=".-"):
     plt.plot(range(7), array, style, label=name)
 
 
-def bar_plot(uncert_gauss, uncert_SSC, difference):
+def bar_plot_old(uncert_gauss, uncert_SSC, difference):
     labels = ["$\Omega_m$", "$\Omega_b$", "$w_0$", "$w_a$", "$h$", "$n_s$", "$\sigma_8$"]
 
     x = np.arange(len(labels))  # the label locations
@@ -75,7 +77,7 @@ def bar_plot(uncert_gauss, uncert_SSC, difference):
     plt.savefig(fname=f'bar_plot_{probe}.png', dpi=300, figsize=[16, 9])
 
 
-def bar_plot_v2(data, title, label_list, bar_width=0.25, nparams=7, param_names_label=param_names_label,
+def bar_plot(data, title, label_list, bar_width=0.25, nparams=7, param_names_label=param_names_label,
                 second_axis=True):
     """
     data: usually the percent uncertainties, but could also be the percent difference
@@ -138,6 +140,31 @@ def bar_plot_v2(data, title, label_list, bar_width=0.25, nparams=7, param_names_
         plt.title(title)
         plt.legend()
         plt.show()
+
+
+def triangle_plot(FM, fiducials, param_names_label, seed=10):
+    """ triangle plot using getdist package"""
+
+    matplotlib.rcParams['font.size'] = 10
+    ndim = len(param_names_label)
+    cov = np.linalg.inv(FM)
+
+    nsamp = 10_000
+    random_state = np.random.default_rng(seed)  # seed random generator
+    samps = random_state.multivariate_normal(fiducials, cov, size=nsamp)
+    plt.matshow(samps[:100, :])
+
+    # A = random_state.random((ndim, ndim))
+    # cov = np.dot(A, A.T)
+    # samps2 = random_state.multivariate_normal([0] * ndim, cov, size=nsamp)
+    names = param_names_label
+    labels = ["x_%s" % i for i in range(ndim)]
+    samples = MCSamples(samples=samps, names=names, labels=labels)
+    # samples2 = MCSamples(samples=samps2, names=names, labels=labels, label='Second set')
+
+    # Triangle plot
+    g = plots.get_subplot_plotter()
+    g.triangle_plot([samples], filled=True)
 
 
 # parametri fiduciali

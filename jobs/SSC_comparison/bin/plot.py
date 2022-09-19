@@ -7,6 +7,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stats
+from getdist import MCSamples, plots
 from matplotlib.cm import get_cmap
 
 project_path = Path.cwd().parent.parent.parent
@@ -40,8 +41,10 @@ FM_dict = {**FM_dict, **FM_dict_PyCCL}
 
 # ! options
 GO_or_GS = 'GS'
-probe = 'WL'
+probe = 'GC'
 which_comparison = 'GO_vs_GS'  # this is just to set the title of the plot
+which_Rl = 'var'
+which_uncertainty = 'marginal'
 ell_max_WL = 5000
 ell_max_GC = 3000
 nparams = 7
@@ -80,9 +83,8 @@ fid = fid[:nparams]
 param_names_label = param_names_label[:nparams]
 
 keys = [f'FM_{probe}_GO_lmax{probe_lmax}{ell_max}_nbl{nbl}',
-        f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlconst',
-        # f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlvar',
-        # f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_PyCCLKiDS1000',
+        f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rl{which_Rl}',
+        #f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_PyCCLKiDS1000',
         ]
 
 label_list = [f'Gauss-only covmat (GO)',
@@ -95,9 +97,8 @@ label_list = [f'Gauss-only covmat (GO)',
 data = []
 fom = {}
 for i, key in enumerate(keys):
-    uncert = np.asarray(mm.uncertainties_FM(FM_dict[key], nparams=nparams,
-                                            fid=fid[:nparams], which_uncertainty='marginal')[:nparams],
-                        )
+    uncert = np.asarray(mm.uncertainties_FM(FM_dict[key], nparams=nparams, fiducials=fid,
+                                            which_uncertainty=which_uncertainty, normalize=True)[:nparams])
     data.append(uncert)
     fom[key] = mm.compute_FoM(FM_dict[key])
 
@@ -113,11 +114,52 @@ data = np.asarray(data)
 # title = f'{probe}, ' + '$\\ell_{max} = $' + f'{ell_max}'
 title = f'{probe}, ' + '$\\ell_{max} = $' + f'{ell_max}'  # for PhD workshop
 
-plot_utils.bar_plot_v2(data, title, label_list, nparams=nparams, param_names_label=param_names_label, bar_width=0.18,
-                       second_axis=True)
+plot_utils.bar_plot(data, title, label_list, nparams=nparams, param_names_label=param_names_label, bar_width=0.18,
+                    second_axis=True)
+
+########################### getdist plot
+
+# plot_utils.triangle_plot(FM=FM_dict[keys[0]], fiducials=fid, param_names_label=param_names_label)
+
+# should I do this?
+fid = np.where(fid == 0., 1,
+               fid)  # the fiducial for wa is 0, substitute with 1 to avoid division by zero
+fid = np.where(fid == -1, 1,
+               fid)  # the fiducial for wa is -1, substitute with 1 to avoid negative values
+
+
+ndim = len(param_names_label)
+cov = np.linalg.inv(FM_dict[keys[0]])
+cov2 = np.linalg.inv(FM_dict[keys[1]])
+
+from getdist.gaussian_mixtures import GaussianND
+
+gauss = GaussianND(fid, cov)
+gauss2 = GaussianND(fid, cov2)
+g = plots.get_subplot_plotter()
+g.triangle_plot([gauss, gauss2], filled=True)
+
+nsamp = 10_000
+random_state = np.random.default_rng(10)  # seed random generator
+samps = random_state.multivariate_normal(fid, cov, size=nsamp)
+samps2 = random_state.multivariate_normal(fid, cov2, size=nsamp)
+
+# A = random_state.random((ndim, ndim))
+# cov = np.dot(A, A.T)
+# samps2 = random_state.multivariate_normal([0] * ndim, cov, size=nsamp)
+names = param_names_label
+labels = ["x_%s" % i for i in range(ndim)]
+samples = MCSamples(samples=samps, names=names, labels=labels)
+samples2 = MCSamples(samples=samps2, names=names, labels=labels)
+# samples2 = MCSamples(samples=samps2, names=names, labels=labels, label='Second set')
+
+# Triangle plot
+g = plots.get_subplot_plotter()
+g.triangle_plot([samples, samples2], filled=True)
+
 
 plt.savefig(
-    job_path / f'output/plots/{which_comparison}/{probe}_ellmax{ell_max}.png')
+    job_path / f'output/plots/{which_comparison}/{probe}_ellmax{ell_max}_Rl{which_Rl}_{which_uncertainty}.png')
 
 # compute and print FoM
 print('GO FoM:', mm.compute_FoM(FM_dict[f'FM_{probe}_GO_lmax{probe_lmax}{ell_max}_nbl{nbl}']))

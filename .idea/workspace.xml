@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="bc90b328-d3dc-49f6-9263-d66cfee42111" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison/bin/plot.py" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/SSC_comparison/bin/plot.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />

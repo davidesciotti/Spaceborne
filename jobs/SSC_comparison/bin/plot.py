@@ -85,7 +85,7 @@ param_names_label = param_names_label[:nparams]
 
 keys = [f'FM_{probe}_GO_lmax{probe_lmax}{ell_max}_nbl{nbl}',
         f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rl{which_Rl}',
-        #f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_PyCCLKiDS1000',
+        # f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_PyCCLKiDS1000',
         ]
 
 label_list = [f'Gauss-only covmat (GO)',
@@ -130,9 +130,13 @@ fid = np.where(fid == -1, 1, fid)  # the fiducial for wa is -1, substitute with 
 ndim = len(param_names_label)
 assert ndim == nparams, 'ndim should be equal to nparams'
 
-names = param_names_label
-
-
+names = ['$\\Omega_{m,0}$',
+         '$\\Omega_{b,0}$',
+         '$w_0$',
+         '$w_a$',
+         '$h$',
+         '$n_s$',
+         '$\\sigma_8$']
 
 # parameters' covariance matrix
 FM_inv_GO = np.linalg.inv(FM_dict[keys[0]])[:nparams, :nparams]
@@ -141,10 +145,15 @@ FM_inv_GS = np.linalg.inv(FM_dict[keys[1]])[:nparams, :nparams]
 GO_gaussian = GaussianND(fid, FM_inv_GO, names=names)
 GS_gaussian = GaussianND(fid, FM_inv_GS, names=names)
 g = plots.get_subplot_plotter()
-g.settings.linewidth=2
-g.triangle_plot([GS_gaussian, GO_gaussian], filled=True, contour_lws=1.5, legend_labels=['Gauss + SSC', 'Gauss-only'])
-g.add_legend(['Gauss + SSC', 'Gauss-only'], legend_loc='upper right')
-
+g.settings.linewidth = 2
+g.settings.legend_fontsize = 18
+g.settings.linewidth_contour = 2.5
+g.settings.axes_fontsize = 13
+g.settings.axes_labelsize = 17
+# g.settings.subplot_size_ratio = 1
+g.settings.solid_colors = 'tab10'
+g.triangle_plot([GS_gaussian, GO_gaussian], filled=True, contour_lws=1.4, legend_labels=['Gauss + SSC', 'Gauss-only'], ratio=1)
+# g.add_legend(['Gauss + SSC', 'Gauss-only'], legend_loc='upper right')
 
 
 # plt.savefig(

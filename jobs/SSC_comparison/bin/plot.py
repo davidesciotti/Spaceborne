@@ -60,7 +60,7 @@ assert GO_or_GS == 'GS', 'GO_or_GS should be GS, if not what are you comparing?'
 
 if probe == '3x2pt':
     probe_lmax = 'XC'
-    param_names_label = mpl_cfg.general_dict['param_names_label'] + mpl_cfg.general_dict['IA_names_label'] + \
+    param_names_label = mpl_cfg.general_dict['param_names_label_rm'] + mpl_cfg.general_dict['IA_names_label'] + \
                         mpl_cfg.general_dict['bias_names_label']
     fid = np.concatenate((fid_cosmo, fid_IA, fid_bias), axis=0)
 else:
@@ -68,13 +68,13 @@ else:
 
 if probe == 'WL':
     ell_max = ell_max_WL
-    param_names_label = mpl_cfg.general_dict['param_names_label'] + mpl_cfg.general_dict['IA_names_label']
+    param_names_label = mpl_cfg.general_dict['param_names_label_rm'] + mpl_cfg.general_dict['IA_names_label']
     fid = np.concatenate((fid_cosmo, fid_IA), axis=0)
 else:
     ell_max = ell_max_GC
 
 if probe == 'GC':
-    param_names_label = mpl_cfg.general_dict['param_names_label'] + mpl_cfg.general_dict['bias_names_label']
+    param_names_label = mpl_cfg.general_dict['param_names_label_rm'] + mpl_cfg.general_dict['bias_names_label']
     fid = np.concatenate((fid_cosmo, fid_bias), axis=0)
 
 elif probe not in ['WL', 'GC', '3x2pt']:
@@ -130,36 +130,39 @@ fid = np.where(fid == -1, 1, fid)  # the fiducial for wa is -1, substitute with 
 ndim = len(param_names_label)
 assert ndim == nparams, 'ndim should be equal to nparams'
 
-names = ['$\\Omega_{m,0}$',
-         '$\\Omega_{b,0}$',
-         '$w_0$',
-         '$w_a$',
-         '$h$',
-         '$n_s$',
-         '$\\sigma_8$']
+# names = ['$\\Omega_{\\rm{m},0}$',
+#          '$\\Omega_{\\rm{b},0}$',
+#          '$w_0$',
+#          '$w_a$',
+#          '$h$',
+#          '$n_{\\rm{s}}$',
+#          '$\\sigma_8$']
+# names = mpl_cfg.general_dict['param_names_label']
 
 # parameters' covariance matrix
 FM_inv_GO = np.linalg.inv(FM_dict[keys[0]])[:nparams, :nparams]
 FM_inv_GS = np.linalg.inv(FM_dict[keys[1]])[:nparams, :nparams]
 
-GO_gaussian = GaussianND(fid, FM_inv_GO, names=names)
-GS_gaussian = GaussianND(fid, FM_inv_GS, names=names)
+GO_gaussian = GaussianND(fid, FM_inv_GO, names=param_names_label)
+GS_gaussian = GaussianND(fid, FM_inv_GS, names=param_names_label)
 g = plots.get_subplot_plotter()
 g.settings.linewidth = 2
-g.settings.legend_fontsize = 18
+g.settings.legend_fontsize = 30
 g.settings.linewidth_contour = 2.5
-g.settings.axes_fontsize = 13
-g.settings.axes_labelsize = 17
-# g.settings.subplot_size_ratio = 1
+g.settings.axes_fontsize = 27
+g.settings.axes_labelsize = 30
+g.settings.subplot_size_ratio = 1
+g.settingstight_layout = True
 g.settings.solid_colors = 'tab10'
-g.triangle_plot([GS_gaussian, GO_gaussian], filled=True, contour_lws=1.4, legend_labels=['Gauss + SSC', 'Gauss-only'], ratio=1)
-# g.add_legend(['Gauss + SSC', 'Gauss-only'], legend_loc='upper right')
+g.triangle_plot([GS_gaussian, GO_gaussian], filled=True, contour_lws=1.4,
+                legend_labels=['Gauss + SSC', 'Gauss-only'], legend_loc='upper right')
+plt.suptitle('3x2pt, $\ell_{max} = %i$' % ell_max, fontsize='xx-large')
 
-
-# plt.savefig(
-#     job_path / f'output/plots/{which_comparison}/{probe}_ellmax{ell_max}_Rl{which_Rl}_{which_uncertainty}.png')
+plt.savefig(job_path / f'output/plots/{which_comparison}/{probe}_ellmax{ell_max}_Rl{which_Rl}_{which_uncertainty}.png')
 
 # compute and print FoM
 print('GO FoM:', mm.compute_FoM(FM_dict[f'FM_{probe}_GO_lmax{probe_lmax}{ell_max}_nbl{nbl}']))
 print('Rl const FoM:', mm.compute_FoM(FM_dict[f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlconst']))
 print('Rl var FoM:', mm.compute_FoM(FM_dict[f'FM_{probe}_{GO_or_GS}_lmax{probe_lmax}{ell_max}_nbl{nbl}_Rlvar']))
+
+print('*********** done ***********')

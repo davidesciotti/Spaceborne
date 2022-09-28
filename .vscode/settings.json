@@ -1,0 +1,8 @@
+{
+    "python.analysis.extraPaths": [
+        "./lib",
+        "./config",
+        "./jobs/SPV3/config",
+        "./bin"
+    ]
+}

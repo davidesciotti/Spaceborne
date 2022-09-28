@@ -109,8 +109,7 @@ for general_cfg['zbins'] in zbins_SPV3:
         ell_dict = {}
         ell_dict['ell_WL'] = np.copy(ell_WL_nbl32[10 ** ell_WL_nbl32 < ell_max_WL])
         ell_dict['ell_GC'] = np.copy(ell_WL_nbl32[10 ** ell_WL_nbl32 < ell_max_GC])
-        ell_dict['ell_WA'] = np.copy(
-            ell_WL_nbl32[(10 ** ell_WL_nbl32 > ell_max_GC) & (10 ** ell_WL_nbl32 < ell_max_WL)])
+        ell_dict['ell_WA'] = np.copy(ell_WL_nbl32[(10 ** ell_WL_nbl32 > ell_max_GC) & (10 ** ell_WL_nbl32 < ell_max_WL)])
         ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
 
         # set corresponding # of ell bins

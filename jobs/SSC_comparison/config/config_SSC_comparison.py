@@ -21,7 +21,8 @@ general_config = {
     'which_forecast': which_forecast,  # ie choose whether to have IST's or sylvain's deltas
     'cl_folder': cl_folder,
     'use_WA': True,
-    'save_cls': False
+    'save_cls': False,
+    'EP_or_ED': 'EP',
 }
 
 if general_config['ell_max_WL'] == general_config['ell_max_GC']:

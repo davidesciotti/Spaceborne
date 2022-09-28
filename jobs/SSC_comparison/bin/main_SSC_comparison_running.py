@@ -81,7 +81,6 @@ for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (15
     else:
         raise ValueError('which_probe_response must be either constant or variable')
 
-
     # some variables used for I/O naming and to compute Sylvain's deltas
     ell_max_WL = general_cfg['ell_max_WL']
     ell_max_GC = general_cfg['ell_max_GC']
@@ -116,17 +115,22 @@ for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (15
     if covariance_cfg['save_covariance']:
         np.save(f'{job_path}/output/covmat/covmat_GO_WL_lmaxWL{ell_max_WL}_nbl{nbl}_2D.npy', cov_dict['cov_WL_GO_2D'])
         np.save(f'{job_path}/output/covmat/covmat_GO_GC_lmaxGC{ell_max_GC}_nbl{nbl}_2D.npy', cov_dict['cov_GC_GO_2D'])
-        np.save(f'{job_path}/output/covmat/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl}_2D.npy', cov_dict['cov_3x2pt_GO_2D'])
+        np.save(f'{job_path}/output/covmat/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl}_2D.npy',
+                cov_dict['cov_3x2pt_GO_2D'])
         np.save(f'{job_path}/output/covmat/covmat_GO_WA_lmaxWL{ell_max_WL}_nbl{nbl}_2D.npy', cov_dict['cov_WA_GO_2D'])
 
-        np.save(f'{job_path}/output/covmat/covmat_GS_WL_lmaxWL{ell_max_WL}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
-                cov_dict['cov_WL_GS_2D'])
-        np.save(f'{job_path}/output/covmat/covmat_GS_GC_lmaxGC{ell_max_GC}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
-                cov_dict['cov_GC_GS_2D'])
-        np.save(f'{job_path}/output/covmat/covmat_GS_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
-                cov_dict['cov_3x2pt_GS_2D'])
-        np.save(f'{job_path}/output/covmat/covmat_GS_WA_lmaxWL{ell_max_WL}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
-                cov_dict['cov_WA_GS_2D'])
+        np.save(
+            f'{job_path}/output/covmat/covmat_GS_WL_lmaxWL{ell_max_WL}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
+            cov_dict['cov_WL_GS_2D'])
+        np.save(
+            f'{job_path}/output/covmat/covmat_GS_GC_lmaxGC{ell_max_GC}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
+            cov_dict['cov_GC_GS_2D'])
+        np.save(
+            f'{job_path}/output/covmat/covmat_GS_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
+            cov_dict['cov_3x2pt_GS_2D'])
+        np.save(
+            f'{job_path}/output/covmat/covmat_GS_WA_lmaxWL{ell_max_WL}_nbl{nbl}_Rl{which_probe_response_str}_2D.npy',
+            cov_dict['cov_WA_GS_2D'])
 
     if FM_cfg['save_FM']:
         np.savetxt(f"{job_path}/output/FM/FM_WL_GO_lmaxWL{ell_max_WL}_nbl{nbl}.txt", FM_dict['FM_WL_GO'])
@@ -147,9 +151,7 @@ for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (15
         for key in cl_dict_3D.keys():
             np.save(f"{job_path}/output/cl_3D/{key}.npy", cl_dict_3D[f'{key}'])
 
-
-    # test
-
 print('done')
 
+# test
 unit_test.check_FMs_against_oldSSCscript(job_path / f"output/FM", general_cfg, covariance_cfg)

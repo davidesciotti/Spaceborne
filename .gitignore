@@ -21,3 +21,4 @@ jobs/SPV3/input/CovMats
 .DS_Store?
 **/.DS_Store
 
+*.pyc

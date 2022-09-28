@@ -50,10 +50,6 @@ start_time = time.perf_counter()
 # TODO update consistency_checks
 # TODO super check that things work with different # of z bins
 
-# ! FIXME check carefully that you do not obtain correct results for the old input files;
-# ! FIXME then do the same with the last working version of the code
-
-
 ###############################################################################
 #################### PARAMETERS AND SETTINGS DEFINITION #######################
 ###############################################################################

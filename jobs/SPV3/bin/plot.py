@@ -12,12 +12,12 @@ from matplotlib.cm import get_cmap
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 
-sys.path.append(str(project_path / 'lib'))
+sys.path.append(str(project_path.parent / 'common_data/common_lib'))
 import my_module as mm
 sys.path.append(str(project_path / 'bin'))
 import plots_FM_running as plot_utils
 sys.path.append(str(project_path / 'jobs'))
-import SSC_comparison.configs.config_SSC_comparison as cfg
+import SSC_comparison.config.config_SSC_comparison as cfg
 
 matplotlib.use('Qt5Agg')
 
@@ -91,7 +91,7 @@ for probe in ['WL', 'GC']:
 
     title = f'{probe}, ' '$\\ell_{max} = $' f'{ell_max}'
 
-    plot_utils.bar_plot_v2(data, title, label_list, bar_width=0.18)
+    plot_utils.bar_plot(data, title, label_list, bar_width=0.18)
 
     plt.savefig(
         job_path / f'output/plots/const_vs_var_rl/{probe}_ellmax{ell_max}_{GO_or_GS}_Rlconst_vs_Rlvar_vs_PyCCL.png')

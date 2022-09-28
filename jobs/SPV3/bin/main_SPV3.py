@@ -16,7 +16,7 @@ job_name = job_path.parts[-1]
 # general libraries
 sys.path.append(f'{project_path}/lib')
 import my_module as mm
-import cosmo_lib as csmlib
+# import cosmo_lib as csmlib
 
 # general configurations
 sys.path.append(f'{project_path}/config')
@@ -30,7 +30,7 @@ import config_SPV3 as cfg
 sys.path.append(f'{project_path}/bin')
 import ell_values_running as ell_utils
 import Cl_preprocessing_running as cl_utils
-import compute_Sijkl as Sijkl_utils
+# import compute_Sijkl as Sijkl_utils
 import covariance_running as covmat_utils
 import FM_running as FM_utils
 import utils_running as utils
@@ -188,7 +188,8 @@ for general_cfg['zbins'] in zbins_SPV3:
 
         else:
             start_time = time.perf_counter()
-            sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins, EP_or_ED=EP_or_ED)
+            print('xxxxxxxxxxxx de-comment this line')
+            # sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins, EP_or_ED=EP_or_ED)
 
             if Sijkl_cfg['save_Sijkl']:
                 np.save(f'{job_path}/output/sijkl/sijkl_WF{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins:02}_{EP_or_ED}_'

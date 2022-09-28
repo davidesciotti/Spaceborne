@@ -10,7 +10,14 @@ jobs/SSC_comparison_variable_Rl/output/covmat
 jobs/SPV3/output/covmat
 jobs/SPV3/input/covmat
 /Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/CovMats
+jobs/SPV3/input/CovMats
 
 *.fits
+*.pyc
+
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
 **/.DS_Store
-jobs/SPV3/input/CovMats
+

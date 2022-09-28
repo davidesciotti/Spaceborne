@@ -13,11 +13,10 @@ project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 
 sys.path.append(str(project_path / 'lib'))
-sys.path.append(str(project_path / 'bin'))
-sys.path.append(str(project_path / 'jobs'))
-
 import my_module as mm
+sys.path.append(str(project_path / 'bin'))
 import plots_FM_running as plot_utils
+sys.path.append(str(project_path / 'jobs'))
 import SSC_comparison.configs.config_SSC_comparison as cfg
 
 matplotlib.use('Qt5Agg')

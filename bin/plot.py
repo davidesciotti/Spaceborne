@@ -38,7 +38,7 @@ pes_opt = 'opt'
 nparams = 7
 zbins = 10
 which_job = 'SPV3'
-model = 'flat'
+model = 'nonflat'
 which_diff = 'normal'
 specs = f'NonFlat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-EP{zbins}'
 check_old_FM = True
@@ -171,21 +171,45 @@ uncert['ratio_old'] = uncert['GS_old'] / uncert['GO_old']
 uncert['ratio_new'] = uncert['GS_new'] / uncert['GO_new']
 
 uncert_vinc = {
-    'WL_pes': np.asarray([1.998, 1.001, 1.471, 1.069, 1.052, 1.003, 1.610]),
-    'WL_opt': np.asarray([1.574, 1.013, 1.242, 1.035, 1.064, 1.001, 1.280]),
-    'GC_pes': np.asarray([1.002, 1.002, 1.003, 1.003, 1.001, 1.001, 1.001]),
-    'GC_opt': np.asarray([1.069, 1.016, 1.147, 1.096, 1.004, 1.028, 1.226]),
-    '3x2pt_pes': np.asarray([1.442, 1.034, 1.378, 1.207, 1.028, 1.009, 1.273]),
-    '3x2pt_opt': np.asarray([1.369, 1.004, 1.226, 1.205, 1.018, 1.030, 1.242])
+    'flat': {
+        'WL_pes': np.asarray([1.998, 1.001, 1.471, 1.069, 1.052, 1.003, 1.610]),
+        'WL_opt': np.asarray([1.574, 1.013, 1.242, 1.035, 1.064, 1.001, 1.280]),
+        'GC_pes': np.asarray([1.002, 1.002, 1.003, 1.003, 1.001, 1.001, 1.001]),
+        'GC_opt': np.asarray([1.069, 1.016, 1.147, 1.096, 1.004, 1.028, 1.226]),
+        '3x2pt_pes': np.asarray([1.442, 1.034, 1.378, 1.207, 1.028, 1.009, 1.273]),
+        '3x2pt_opt': np.asarray([1.369, 1.004, 1.226, 1.205, 1.018, 1.030, 1.242]),
+    },
+    'nonflat': {
+        'WL_pes': np.asarray([2.561, 1.358, 1.013, 1.940, 1.422, 1.064, 1.021, 1.433]),
+        'WL_opt': np.asarray([2.113, 1.362, 1.004, 1.583, 1.299, 1.109, 1.038, 1.559]),
+        'GC_pes': np.asarray([1.002, 1.001, 1.002, 1.002, 1.003, 1.001, 1.000, 1.001]),
+        'GC_opt': np.asarray([1.013, 1.020, 1.006, 1.153, 1.089, 1.004, 1.039, 1.063]),
+        '3x2pt_pes': np.asarray([1.360, 1.087, 1.043, 1.408, 1.179, 1.021, 1.009, 1.040]),
+        '3x2pt_opt': np.asarray([1.572, 1.206, 1.013, 1.282, 1.191, 1.013, 1.008, 1.156]),
+    },
+    'nonflat_shearbias': {
+        'WL_pes': np.asarray([1.082, 1.049, 1.000, 1.057, 1.084, 1.034, 1.025, 1.003]),
+        'WL_opt': np.asarray([1.110, 1.002, 1.026, 1.022, 1.023, 1.175, 1.129, 1.009]),
+        '3x2pt_pes': np.asarray([1.297, 1.087, 1.060, 1.418, 1.196, 1.021, 1.030, 1.035]),
+        '3x2pt_opt': np.asarray([1.222, 1.136, 1.010, 1.300, 1.206, 1.013, 1.009, 1.164]),
+    }
 }
+
+
+
+
+
 
 # print my and vincenzo's uncertainties and check that they are sufficiently close
 with np.printoptions(precision=3, suppress=True):
     print(f'ratio GS/GO, probe: {probe}')
     print('dav:', uncert["ratio_new"])
-    print('vin:', uncert_vinc[f"{probe}_{pes_opt}"])
+    print('vin:', uncert_vinc[model][f"{probe}_{pes_opt}"])
 
-assert np.allclose(uncert["ratio_new"], uncert_vinc[f"{probe}_{pes_opt}"], atol=0,
+model_here = model
+if not fix_shear_bias:
+    model_here += '_shearbias'
+assert np.allclose(uncert["ratio_new"], uncert_vinc[model][f"{probe}_{pes_opt}"], atol=0,
                    rtol=1e-2), 'my uncertainties differ from vincenzos'
 
 if check_old_FM:

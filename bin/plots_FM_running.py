@@ -28,7 +28,6 @@ ylabel_sigma_relative_fid = mpl_cfg.general_dict['ylabel_sigma_relative_fid']
 markersize = mpl_cfg.mpl_rcParams_dict['lines.markersize']
 
 
-
 ###############################################################################
 ################## CODE TO PLOT THE FISHER CONSTRAINTS ########################
 ###############################################################################
@@ -76,8 +75,8 @@ def bar_plot_old(uncert_gauss, uncert_SSC, difference):
     plt.savefig(fname=f'bar_plot_{probe}.png', dpi=300, figsize=[16, 9])
 
 
-def bar_plot(data, title, label_list, bar_width=0.25, nparams=7, param_names_label=param_names_label,
-                second_axis=True):
+def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_label=param_names_label,
+             second_axis=True):
     """
     data: usually the percent uncertainties, but could also be the percent difference
     """
@@ -142,10 +141,11 @@ def bar_plot(data, title, label_list, bar_width=0.25, nparams=7, param_names_lab
 
 
 def triangle_plot(FM_GO, FM_GS, fiducials, title, param_names_label):
-
     # should I do this?
-    fiducials = np.where(fiducials == 0., 1, fiducials)  # the fiducial for wa is 0, substitute with 1 to avoid division by zero
-    fiducials = np.where(fiducials == -1, 1, fiducials)  # the fiducial for wa is -1, substitute with 1 to avoid negative values
+    fiducials = np.where(fiducials == 0., 1,
+                         fiducials)  # the fiducial for wa is 0, substitute with 1 to avoid division by zero
+    fiducials = np.where(fiducials == -1, 1,
+                         fiducials)  # the fiducial for wa is -1, substitute with 1 to avoid negative values
 
     nparams = len(param_names_label)
 
@@ -168,6 +168,7 @@ def triangle_plot(FM_GO, FM_GS, fiducials, title, param_names_label):
     g.triangle_plot([GS_gaussian, GO_gaussian], filled=True, contour_lws=1.4,
                     legend_labels=['Gauss + SSC', 'Gauss-only'], legend_loc='upper right')
     plt.suptitle(f'{title}', fontsize='xx-large')
+
 
 # parametri fiduciali
 fid = np.array((0.32, 0.05, 1, 1, 0.67, 0.96, 0.816, 0.55, 1, 1))

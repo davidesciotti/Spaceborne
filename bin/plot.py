@@ -30,7 +30,7 @@ markersize = 10
 
 # ! options
 GO_or_GS = 'GS'
-probe = '3x2pt'
+probe = 'WL'
 which_comparison = 'GO_vs_GS'  # this is just to set the title of the plot
 which_Rl = 'var'
 which_uncertainty = 'marginal'
@@ -71,8 +71,8 @@ if probe == '3x2pt':
     probe_lmax = 'XC'
     probe_folder = 'All'
     probename_vinc = probe
-    param_names_label = mpl_cfg.general_dict['param_names_label_rm'] + mpl_cfg.general_dict['IA_names_label'] + \
-                        mpl_cfg.general_dict['bias_names_label']
+    pars_labels_TeX = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['IA_labels_TeX'] + \
+                      mpl_cfg.general_dict['galaxy_bias_labels_TeX']
     fid = np.concatenate((fid_cosmo, fid_IA, fid_bias), axis=0)
 else:
     probe_lmax = probe
@@ -81,13 +81,13 @@ else:
 
 if probe == 'WL':
     ell_max = ell_max_WL
-    param_names_label = mpl_cfg.general_dict['param_names_label_rm'] + mpl_cfg.general_dict['IA_names_label']
+    pars_labels_TeX = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['IA_labels_TeX']
     fid = np.concatenate((fid_cosmo, fid_IA), axis=0)
 else:
     ell_max = ell_max_GC
 
 if probe == 'GC':
-    param_names_label = mpl_cfg.general_dict['param_names_label_rm'] + mpl_cfg.general_dict['bias_names_label']
+    pars_labels_TeX = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['galaxy_bias_labels_TeX']
     fid = np.concatenate((fid_cosmo, fid_bias), axis=0)
 
 # import vincenzo's FM, not in a dictionary because they are all split into different folders
@@ -100,7 +100,10 @@ FM_GO = np.genfromtxt(
 FM_GS = np.genfromtxt(
     project_path.parent / f'common_data/{vinc_FM_folder}/GaussSSC/{probe_folder}/OneSample/fm-{probename_vinc}-{nbl}-wzwaCDM-{specs}.dat')
 
-mm.matshow(FM_GO, log=True, title=f'{probe}, before cuts')
+
+# TODO try with pandas dataframes
+
+
 # remove rows/cols for the redshift center nuisance parameters
 if fix_dz_nuisance:
     FM_GO = FM_GO[:-10, :-10]
@@ -121,10 +124,10 @@ if model == 'flat':
 elif model == 'nonflat':
     nparams += 1
     fid = np.insert(arr=fid, obj=1, values=ISTF_fid.extensions['Om_Lambda0'], axis=0)
-    param_names_label = np.insert(arr=param_names_label, obj=1, values='$\\Omega_{\\rm DE}$', axis=0)
+    pars_labels_TeX = np.insert(arr=pars_labels_TeX, obj=1, values='$\\Omega_{\\rm DE}$', axis=0)
 
 fid = fid[:nparams]
-param_names_label = param_names_label[:nparams]
+pars_labels_TeX = pars_labels_TeX[:nparams]
 
 
 # remove null rows and columns
@@ -133,7 +136,6 @@ idx_GS = mm.find_null_rows_cols_2D(FM_GS)
 assert np.array_equal(idx, idx_GS), 'the null rows/cols indices should be equal for GO and GS'
 FM_GO = mm.remove_null_rows_cols_2D(FM_GO, idx)
 FM_GS = mm.remove_null_rows_cols_2D(FM_GS, idx)
-mm.matshow(FM_GO, log=True)
 
 ########################################################################################################################
 
@@ -161,21 +163,22 @@ if check_old_FM:
         probe_lmax = 'XC'
     FM_GO_test = np.genfromtxt(
         f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/FM/FM_{probe}_GO_lmax{probe_lmax}{ell_max}_nbl30.txt')
+    FM_GS_test = np.genfromtxt(
+        f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/FM/FM_{probe}_GS_lmax{probe_lmax}{ell_max}_nbl30_Rlvar.txt')
 
     uncert = np.asarray(mm.uncertainties_FM(FM_GO_test, nparams=nparams, fiducials=fid,
                                             which_uncertainty=which_uncertainty, normalize=True))
     data.append(uncert)
 
-# ! delete until nparams!!
 # compute percent diff of the cases chosen - careful of the indices!
-# print('careful about this absolute value!')
-# if which_diff == 'normal':
-#     diff_funct = mm.percent_diff
-# else:
-#     diff_funct = mm.percent_diff_mean
-#
-# diff = diff_funct(data[-1], data[-2])
-# data.append(diff)
+print('careful about this absolute value!')
+if which_diff == 'normal':
+    diff_funct = mm.percent_diff
+else:
+    diff_funct = mm.percent_diff_mean
+
+diff = diff_funct(data[-1], data[-2])
+data.append(diff)
 
 data = np.asarray(data)
 
@@ -184,20 +187,22 @@ if probe == '3x2pt':
 else:
     title = 'FM normalized 1-$\\sigma$ parameter constraints, %s - lower is better' % probe  # for PhD workshop
 
-plot_utils.bar_plot(data, title, label_list, nparams=nparams, param_names_label=param_names_label, bar_width=0.18,
+plot_utils.bar_plot(data, title, label_list, nparams=nparams, param_names_label=pars_labels_TeX, bar_width=0.18,
                     second_axis=False)
+
+
 
 assert 1 > 2
 
 if probe == '3x2pt':
-    plot_utils.triangle_plot(FM_GO, FM_GS, fiducials=fid,
-                             title=title, param_names_label=param_names_label)
+    plot_utils.triangle_plot(FM_GO_test, FM_GS_test, fiducials=fid,
+                             title=title, param_names_label=pars_labels_TeX)
 
 plt.savefig(job_path / f'output/plots/{which_comparison}/'
                        f'{probe}_ellmax{ell_max}_Rl{which_Rl}_{which_uncertainty}.png')
 
 # compute and print FoM
 print('GO FoM:', mm.compute_FoM(FM_GO))
-print('Rl var FoM:', mm.compute_FoM(FM_GS))
+print(f'GS Rl_{which_Rl} FoM:', mm.compute_FoM(FM_GS))
 
 print('*********** done ***********')

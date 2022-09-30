@@ -38,13 +38,14 @@ pes_opt = 'opt'
 nparams = 7
 zbins = 10
 which_job = 'SPV3'
-model = 'nonflat'
+model = 'flat'
 which_diff = 'normal'
 specs = f'NonFlat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-EP{zbins}'
 check_old_FM = True
 fix_dz_nuisance = True  # whether to remove the rows/cols for the dz nuisance parameters (ie whether to fix them)
 fix_shear_bias = True  # whether to remove the rows/cols for the shear bias nuisance parameters (ie whether to fix them)
 w0wa_rows = [2, 3]
+bar_plot = False
 # ! end options
 
 job_path = project_path / f'jobs/{which_job}'
@@ -105,7 +106,7 @@ if probe == 'GC':
     pars_labels_TeX = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['galaxy_bias_labels_TeX']
     fid = np.concatenate((fid_cosmo, fid_bias), axis=0)
 
-title = '%s, $\ell_{max} = %i$' % (probe, ell_max)
+title = '%s, $\ell_{\\rm max} = %i$' % (probe, ell_max)
 
 # import vincenzo's FM, not in a dictionary because they are all split into different folders
 vinc_FM_folder = 'vincenzo/SPV3_07_2022/FishMat'
@@ -222,14 +223,16 @@ else:
 for case in cases:
     data.append(uncert[case])
 
-data = np.asarray(data)
-plot_utils.bar_plot(data, title, cases, nparams=nparams, param_names_label=pars_labels_TeX, bar_width=0.12,
-                    second_axis=False)
-assert 1 > 2
+if bar_plot:
+    data = np.asarray(data)
+    plot_utils.bar_plot(data, title, cases, nparams=nparams, param_names_label=pars_labels_TeX, bar_width=0.12,
+                        second_axis=False)
 
 if probe == '3x2pt':
     plot_utils.triangle_plot(FM_GO_old, FM_GS_old, fiducials=fid,
                              title=title, param_names_label=pars_labels_TeX)
+
+assert 1 > 2
 
 plt.savefig(job_path / f'output/plots/{which_comparison}/'
                        f'{probe}_ellmax{ell_max}_Rl{which_Rl}_{which_uncertainty}.png')

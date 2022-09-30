@@ -12,7 +12,6 @@ from getdist import plots
 from getdist.gaussian_mixtures import GaussianND
 
 project_path_here = Path.cwd().parent.parent.parent
-print(project_path_here)
 sys.path.append(f'{project_path_here}/lib')
 import my_module as mm
 
@@ -22,13 +21,12 @@ import mpl_cfg
 
 matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
-param_names_label = mpl_cfg.general_dict['param_names_label']
+param_names_label = mpl_cfg.general_dict['cosmo_labels_TeX']
 ylabel_perc_diff_wrt_mean = mpl_cfg.general_dict['ylabel_perc_diff_wrt_mean']
 ylabel_sigma_relative_fid = mpl_cfg.general_dict['ylabel_sigma_relative_fid']
 # plt.rcParams['axes.axisbelow'] = True
 markersize = mpl_cfg.mpl_rcParams_dict['lines.markersize']
 
-print(ylabel_sigma_relative_fid)
 
 
 ###############################################################################
@@ -141,7 +139,9 @@ def bar_plot(data, title, label_list, bar_width=0.25, nparams=7, param_names_lab
         plt.title(title)
         plt.legend()
         plt.show()
-def triangle_plot(FM_1, FM_2, fiducials, title, param_names_label):
+
+
+def triangle_plot(FM_GO, FM_GS, fiducials, title, param_names_label):
 
     # should I do this?
     fiducials = np.where(fiducials == 0., 1, fiducials)  # the fiducial for wa is 0, substitute with 1 to avoid division by zero
@@ -149,12 +149,13 @@ def triangle_plot(FM_1, FM_2, fiducials, title, param_names_label):
 
     nparams = len(param_names_label)
 
-    # parameters' covariance matrix
-    FM_inv_GO = np.linalg.inv(FM_1)[:nparams, :nparams]
-    FM_inv_GS = np.linalg.inv(FM_2)[:nparams, :nparams]
+    # parameters' covariance matrix - first invert, then slice! Otherwise, you're fixing the nuisance parameters
+    FM_inv_GO = np.linalg.inv(FM_GO)[:nparams, :nparams]
+    FM_inv_GS = np.linalg.inv(FM_GS)[:nparams, :nparams]
 
-    GO_gaussian = GaussianND(fiducials, FM_inv_GO, names=param_names_label)
-    GS_gaussian = GaussianND(fiducials, FM_inv_GS, names=param_names_label)
+    GO_gaussian = GaussianND(mean=fiducials, cov=FM_inv_GO, names=param_names_label)
+    GS_gaussian = GaussianND(mean=fiducials, cov=FM_inv_GS, names=param_names_label)
+    print(GS_gaussian, len(param_names_label), len(fiducials), FM_inv_GO.shape)
     g = plots.get_subplot_plotter()
     g.settings.linewidth = 2
     g.settings.legend_fontsize = 30

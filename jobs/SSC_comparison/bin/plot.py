@@ -59,21 +59,21 @@ assert GO_or_GS == 'GS', 'GO_or_GS should be GS, if not what are you comparing?'
 
 if probe == '3x2pt':
     probe_lmax = 'XC'
-    param_names_label = mpl_cfg.general_dict['param_names_label_rm'] + mpl_cfg.general_dict['IA_names_label'] + \
-                        mpl_cfg.general_dict['bias_names_label']
+    param_names_label = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['IA_labels_TeX'] + \
+                        mpl_cfg.general_dict['galaxy_bias_labels_TeX']
     fid = np.concatenate((fid_cosmo, fid_IA, fid_bias), axis=0)
 else:
     probe_lmax = probe
 
 if probe == 'WL':
     ell_max = ell_max_WL
-    param_names_label = mpl_cfg.general_dict['param_names_label_rm'] + mpl_cfg.general_dict['IA_names_label']
+    param_names_label = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['IA_labels_TeX']
     fid = np.concatenate((fid_cosmo, fid_IA), axis=0)
 else:
     ell_max = ell_max_GC
 
 if probe == 'GC':
-    param_names_label = mpl_cfg.general_dict['param_names_label_rm'] + mpl_cfg.general_dict['bias_names_label']
+    param_names_label = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['galaxy_bias_labels_TeX']
     fid = np.concatenate((fid_cosmo, fid_bias), axis=0)
 
 elif probe not in ['WL', 'GC', '3x2pt']:

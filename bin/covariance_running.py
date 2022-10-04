@@ -121,18 +121,21 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         raise ValueError("which_probe_response must be 'constant' or 'variable'")
 
     # print settings
-    print(f'\ncheck: \nwhich_forecast = {which_forecast} \nind_ordering = {ind_ordering} \nblock_index = {block_index}\n'
-          f'zbins: {zbins} \n'
-          f'nbl_WA: {nbl_WA} nbl_WL: {nbl_WL} nbl_GC:  {nbl_GC}, nbl_3x2pt:  {nbl_3x2pt}\n'
-          f'ell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}\n'
-          f'computing the covariance in blocks? {compute_covariance_in_blocks}\n')
+    print(
+        f'\ncheck: \nwhich_forecast = {which_forecast} \nind_ordering = {ind_ordering} \nblock_index = {block_index}\n'
+        f'zbins: {zbins} \n'
+        f'nbl_WA: {nbl_WA} nbl_WL: {nbl_WL} nbl_GC:  {nbl_GC}, nbl_3x2pt:  {nbl_3x2pt}\n'
+        f'ell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}\n'
+        f'computing the covariance in blocks? {compute_covariance_in_blocks}\n')
 
     # build noise vector
     if general_cfg['EP_or_ED'] == 'EP':
         ng = covariance_cfg['ng']
     elif general_cfg['EP_or_ED'] == 'ED':
         print('lenses or sources? Flagship or Redbook?')
-        ng = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/InputNz/Lenses/Flagship/ngbTab-ED{zbins:02}.dat')[0, :]
+        ng = np.genfromtxt(
+            f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/InputNz/Lenses/Flagship/ngbTab-ED{zbins:02}.dat')[
+             0, :]
         # a couple rough checks
         assert 28. < np.sum(ng) < 29., 'the sum of ng over all bins is not 28.73'
         assert general_cfg['which_forecast'] == 'SPV3', 'data for the ED case is only available for SPV3'
@@ -228,12 +231,11 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         # convert each block to 4D and stack to make the 4D_3x2pt
         # note: I pass ind_copy because the LG-GL check and inversion is performed in the function (otherwise it would be
         # performed twice!)
-        cov_3x2pt_GO_4D_new = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_10D, probe_ordering, nbl_3x2pt, zbins, ind_copy,
-                                                          GL_or_LG)
-
+        cov_3x2pt_GO_4D_new = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_10D, probe_ordering, nbl_3x2pt, zbins,
+                                                          ind_copy, GL_or_LG)
+        # ! careful of passing clean copies of ind!!!
         cov_3x2pt_SS_4D_new = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_SSC_10D, probe_ordering, nbl_3x2pt, zbins,
-                                                          ind_copy_2,
-                                                          GL_or_LG)  # ! careful of passing clean copies of ind!!!
+                                                          ind_copy_2, GL_or_LG)
 
         # check with old result and show the arrays 
         print('check: is the new cov_3x2pt_GO_4D equal to the old one?', np.all(cov_3x2pt_GO_4D_new == cov_3x2pt_GO_4D))

@@ -10,6 +10,7 @@ import plotly.offline as pyo
 import getdist
 from getdist import plots
 from getdist.gaussian_mixtures import GaussianND
+from matplotlib import cm
 
 project_path_here = Path.cwd().parent.parent.parent
 sys.path.append(f'{project_path_here}/lib')
@@ -76,7 +77,7 @@ def bar_plot_old(uncert_gauss, uncert_SSC, difference):
 
 
 def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_label=param_names_label,
-             second_axis=True):
+             second_axis=True, no_second_axis_bars=1):
     """
     data: usually the percent uncertainties, but could also be the percent difference
     """
@@ -96,16 +97,18 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
             else:
                 bar_centers[i, :] = [x + i * bar_width for x in bar_centers[0]]
 
-    plt.grid()
+    # plt.grid()
 
     if second_axis:
 
-        assert data.shape[0] == 3, "data must have 3 rows to display the second axis"
+        colors = cm.Paired(np.linspace(0, 1, no_second_axis_bars + 1))
 
-        plt.rcParams['axes.axisbelow'] = True
+        # assert data.shape[0] == 3, "data must have 3 rows to display the second axis"
+
+        # plt.rcParams['axes.axisbelow'] = True
 
         fig, ax = plt.subplots(figsize=mpl_cfg.mpl_rcParams_dict['figure.figsize'])
-        for i in range(data.shape[0] - 1):
+        for i in range(data.shape[0] - no_second_axis_bars):
             ax.bar(bar_centers[i, :], data[i, :], width=bar_width, edgecolor='grey', label=label_list[i])
 
         # Add some text for labels, title and custom x-axis tick labels, etc.
@@ -117,9 +120,11 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
         # second axis
         ax2 = ax.twinx()
         # ax2.set_ylabel('(GS/GO - 1) $\\times$ 100', color='g')
-        ax2.set_ylabel('% uncertainty increase', color='g')  # for PhD workshop
-        ax2.bar(bar_centers[-1, :], data[-1, :], width=bar_width, edgecolor='grey', label=label_list[-1], color='g')
-        ax2.tick_params(axis='y', labelcolor='g')
+        ax2.set_ylabel('% uncertainty increase')
+        for bar_idx in range(1, no_second_axis_bars + 1):
+            ax2.bar(bar_centers[-bar_idx, :], data[-bar_idx, :], width=bar_width, edgecolor='grey',
+                    label=label_list[-bar_idx], color=colors[bar_idx])
+        ax2.tick_params(axis='y')
 
         fig.legend(loc="upper right", bbox_to_anchor=(1, 1), bbox_transform=ax.transAxes)
 

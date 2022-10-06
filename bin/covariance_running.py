@@ -133,7 +133,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     # print settings
     print(
         f'\ncheck: \nwhich_forecast = {which_forecast} \nind_ordering = {ind_ordering} \nblock_index = {block_index}\n'
-        f'zbins: {zbins} \n'
+        f'zbins: {zbins} {general_cfg["EP_or_ED"]}\n'
         f'nbl_WA: {nbl_WA} nbl_WL: {nbl_WL} nbl_GC:  {nbl_GC}, nbl_3x2pt:  {nbl_3x2pt}\n'
         f'ell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}\n'
         f'computing the covariance in blocks? {compute_covariance_in_blocks}\n')
@@ -271,7 +271,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     cov_WA_GS_4D = cov_WA_GO_4D + cov_WA_SS_4D
     cov_3x2pt_GS_4D = cov_3x2pt_GO_4D + cov_3x2pt_SS_4D
 
-    if covariance_cfg['save_cov_6D']:
+    if covariance_cfg['save_covariance_6D']:
         cov_dict['cov_WL_GO_6D'] = mm.cov_4D_to_6D(cov_WL_GO_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
         cov_dict['cov_GC_GO_6D'] = mm.cov_4D_to_6D(cov_GC_GO_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
         cov_dict['cov_WL_GS_6D'] = mm.cov_4D_to_6D(cov_WL_GS_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
@@ -296,10 +296,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     cov_WA_GS_2D = mm.cov_4D_to_2D(cov_WA_GS_4D, nbl_WA, npairs_auto, block_index=block_index)
     cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, nbl_3x2pt, npairs_tot, block_index=block_index)
 
-    # '2DCLOE', i.e. the 'multi-diagonal', non-square blocks ordering, only for 3x2pt
-    # note: we found out that this is not actually used in CLOE...
-    cov_3x2pt_GS_2DCLOE = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_GS_4D, nbl_3x2pt, zbins)
-    cov_3x2pt_GO_2DCLOE = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_GO_4D, nbl_3x2pt, zbins)
 
     ############################### save in dictionary  ########################
     probe_names = ('WL', 'GC', '3x2pt', 'WA')
@@ -321,8 +317,10 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         cov_dict[f'cov_{probe_name}_GO_2D'] = cov_GO_2D
         cov_dict[f'cov_{probe_name}_GS_2D'] = cov_GS_2D
 
-    # save 2DCLOE (only 3x2pt)
-    cov_dict[f'cov_3x2pt_GO_2DCLOE'] = cov_3x2pt_GO_2DCLOE
-    cov_dict[f'cov_3x2pt_GS_2DCLOE'] = cov_3x2pt_GS_2DCLOE
+    # '2DCLOE', i.e. the 'multi-diagonal', non-square blocks ordering, only for 3x2pt
+    # note: we found out that this is not actually used in CLOE...
+    if covariance_cfg['save_2DCLOE']:
+        cov_dict[f'cov_3x2pt_GO_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_GO_4D, nbl_3x2pt, zbins)
+        cov_dict[f'cov_3x2pt_GS_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_GS_4D, nbl_3x2pt, zbins)
 
     return cov_dict

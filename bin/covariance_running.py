@@ -33,7 +33,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
 
     compute_covariance_in_blocks = covariance_cfg['compute_covariance_in_blocks']
     save_SSC_only_covmats = covariance_cfg['save_SSC_only_covmats']
-    Rl = covariance_cfg['Rl']
     fsky = covariance_cfg['fsky']
     GL_or_LG = covariance_cfg['GL_or_LG']
     ind_ordering = covariance_cfg['ind_ordering']
@@ -57,7 +56,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     ell_WA, nbl_WA = ell_dict['ell_WA'], ell_dict['ell_WA'].shape[0]
     ell_XC, nbl_3x2pt = ell_GC, nbl_GC
 
-    # sanity check
+    cov_dict = {}
+
+    # sanity checks
     if general_cfg['nbl_WL'] is None:
         assert nbl_WL == general_cfg['nbl'], 'WARNING: nbl_WL != general_cfg["nbl"], there is a discrepancy'
 
@@ -94,12 +95,20 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
 
     # load set correct output folder, get number of pairs
     # output_folder = mm.get_output_folder(ind_ordering, which_forecast)
-    npairs, npairs_asimm, npairs_tot = mm.get_pairs(zbins)
+    npairs_auto, npairs_cross, npairs_tot = mm.get_pairs(zbins)
 
     # if C_XC is C_LG, switch the ind.dat ordering for the correct rows
     if GL_or_LG == 'LG':
         print('\nAttention! switching columns in the ind array (for the XC part)')
-        ind[npairs:(npairs + npairs_asimm), [2, 3]] = ind[npairs:(npairs + npairs_asimm), [3, 2]]
+        ind[npairs_auto:(npairs_auto + npairs_cross), [2, 3]] = ind[npairs_auto:(npairs_auto + npairs_cross), [3, 2]]
+
+    # sanity check: the last 2 columns of ind_LL should be equal to the last two of ind_GG
+    assert np.array_equiv(ind[:npairs_auto, 2:], ind[-npairs_auto:, 2:])
+
+    # convenience vectors, used for the cov_4D_to_6D function
+    ind_LL = ind[:npairs_auto, :].copy()
+    ind_GG = ind_LL.copy()
+    ind_XC = ind[npairs_auto:npairs_cross + npairs_auto, :].copy()
 
     # load Cls
     C_LL_3D = cl_dict_3D['C_LL_WLonly_3D']
@@ -108,6 +117,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     C_3x2pt_5D = cl_dict_3D['C_3x2pt_5D']
 
     if which_probe_response == 'constant':
+        Rl = covariance_cfg['Rl']
         R_LL_3D = np.full(C_LL_3D.shape, Rl)
         R_GG_3D = np.full(C_GG_3D.shape, Rl)
         R_WA_3D = np.full(C_WA_3D.shape, Rl)
@@ -147,16 +157,16 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     ################### COMPUTE GAUSS ONLY COVARIANCE #########################
 
     # WL only covariance
-    cov_WL_GO_4D = mm.covariance(nbl=nbl_WL, npairs=npairs, start_index=0, stop_index=npairs,
+    cov_WL_GO_4D = mm.covariance(nbl=nbl_WL, npairs=npairs_auto, start_index=0, stop_index=npairs_auto,
                                  Cij=C_LL_3D, noise=N, l_lin=l_lin_WL,
                                  delta_l=delta_l_WL, fsky=fsky, ind=ind)
     # GC only covariance
-    starting_GC_index = npairs + npairs_asimm
-    cov_GC_GO_4D = mm.covariance(nbl=nbl_GC, npairs=npairs, start_index=starting_GC_index, stop_index=npairs_tot,
+    starting_GC_index = npairs_auto + npairs_cross
+    cov_GC_GO_4D = mm.covariance(nbl=nbl_GC, npairs=npairs_auto, start_index=starting_GC_index, stop_index=npairs_tot,
                                  Cij=C_GG_3D, noise=N, l_lin=l_lin_GC,
                                  delta_l=delta_l_GC, fsky=fsky, ind=ind)
     # WA covariance
-    cov_WA_GO_4D = mm.covariance_WA(nbl_WA, npairs, start_index=0, stop_index=npairs,
+    cov_WA_GO_4D = mm.covariance_WA(nbl_WA, npairs_auto, start_index=0, stop_index=npairs_auto,
                                     Cij=C_WA_3D, noise=N, l_lin=l_lin_WA,
                                     delta_l=delta_l_WA, fsky=fsky, ind=ind, ell_WA=ell_WA)
     # ALL covariance
@@ -168,9 +178,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     ######################## COMPUTE SS COVARIANCE ###############################
 
     start = time.perf_counter()
-    cov_WL_SS_4D = mm.cov_SSC(nbl_WL, npairs, ind, C_LL_3D, Sijkl, fsky, "WL", zbins, R_LL_3D)
-    cov_GC_SS_4D = mm.cov_SSC(nbl_GC, npairs, ind, C_GG_3D, Sijkl, fsky, "GC", zbins, R_GG_3D)
-    cov_WA_SS_4D = mm.cov_SSC(nbl_WA, npairs, ind, C_WA_3D, Sijkl, fsky, "WA", zbins, R_WA_3D)
+    cov_WL_SS_4D = mm.cov_SSC(nbl_WL, npairs_auto, ind, C_LL_3D, Sijkl, fsky, "WL", zbins, R_LL_3D)
+    cov_GC_SS_4D = mm.cov_SSC(nbl_GC, npairs_auto, ind, C_GG_3D, Sijkl, fsky, "GC", zbins, R_GG_3D)
+    cov_WA_SS_4D = mm.cov_SSC(nbl_WA, npairs_auto, ind, C_WA_3D, Sijkl, fsky, "WA", zbins, R_WA_3D)
     cov_3x2pt_SS_4D = mm.cov_SSC_ALL(nbl_3x2pt, npairs_tot, ind, C_3x2pt_5D, Sijkl, fsky, zbins, R_3x2pt_5D)
     print("SS cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
 
@@ -226,7 +236,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         start = time.perf_counter()
         cov_3x2pt_SSC_10D = mm.cov_SSC_3x2pt_10D_dict(nbl_3x2pt, C_3x2pt_5D, Sijkl, fsky, zbins, Rl,
                                                       probe_ordering_tuple)
-        print('cov_3x2pt_SSC_10D computed in', time.perf_counter() - start, 'seconds')
+        print(f'cov_3x2pt_SSC_10D computed in {(time.perf_counter() - start):.2f} seconds')
 
         # convert each block to 4D and stack to make the 4D_3x2pt
         # note: I pass ind_copy because the LG-GL check and inversion is performed in the function (otherwise it would be
@@ -238,9 +248,12 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
                                                           ind_copy_2, GL_or_LG)
 
         # check with old result and show the arrays 
-        print('check: is the new cov_3x2pt_GO_4D equal to the old one?', np.all(cov_3x2pt_GO_4D_new == cov_3x2pt_GO_4D))
+        print('check: is the new cov_3x2pt_GO_4D equal to the old one?',
+              np.array_equal(cov_3x2pt_GO_4D_new, cov_3x2pt_GO_4D))
         print('check: is the new cov_3x2pt_SS_4D equal to the old one?',
-              np.all(cov_3x2pt_SS_4D_new == cov_3x2pt_SS_4D))
+              np.array_equal(cov_3x2pt_SS_4D_new, cov_3x2pt_SS_4D))
+
+        cov_dict['cov_3x2pt_GO_10D'] = cov_3x2pt_GO_10D
 
         # save the 10D covariance as a dict
         # TODO use pandas dataframe
@@ -258,16 +271,29 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     cov_WA_GS_4D = cov_WA_GO_4D + cov_WA_SS_4D
     cov_3x2pt_GS_4D = cov_3x2pt_GO_4D + cov_3x2pt_SS_4D
 
+    if covariance_cfg['save_cov_6D']:
+        cov_dict['cov_WL_GO_6D'] = mm.cov_4D_to_6D(cov_WL_GO_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
+        cov_dict['cov_GC_GO_6D'] = mm.cov_4D_to_6D(cov_GC_GO_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
+        cov_dict['cov_WL_GS_6D'] = mm.cov_4D_to_6D(cov_WL_GS_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
+        cov_dict['cov_GC_GS_6D'] = mm.cov_4D_to_6D(cov_GC_GS_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
+
+        # test that they are equal to the 4D ones
+        assert np.array_equal(cov_WL_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, npairs_auto, ind_LL))
+        assert np.array_equal(cov_GC_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GO_6D'], nbl_GC, npairs_auto, ind_GG))
+        assert np.array_equal(cov_WL_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GS_6D'], nbl_WL, npairs_auto, ind_LL))
+        assert np.array_equal(cov_GC_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GS_6D'], nbl_GC, npairs_auto, ind_GG))
+        print('checks passed')
+
     ############################### 4D to 2D ##################################
     # Here an ordering convention ('block_index') is needed as well
-    cov_WL_GO_2D = mm.cov_4D_to_2D(cov_WL_GO_4D, nbl_WL, npairs, block_index=block_index)
-    cov_GC_GO_2D = mm.cov_4D_to_2D(cov_GC_GO_4D, nbl_GC, npairs, block_index=block_index)
-    cov_WA_GO_2D = mm.cov_4D_to_2D(cov_WA_GO_4D, nbl_WA, npairs, block_index=block_index)
+    cov_WL_GO_2D = mm.cov_4D_to_2D(cov_WL_GO_4D, nbl_WL, npairs_auto, block_index=block_index)
+    cov_GC_GO_2D = mm.cov_4D_to_2D(cov_GC_GO_4D, nbl_GC, npairs_auto, block_index=block_index)
+    cov_WA_GO_2D = mm.cov_4D_to_2D(cov_WA_GO_4D, nbl_WA, npairs_auto, block_index=block_index)
     cov_3x2pt_GO_2D = mm.cov_4D_to_2D(cov_3x2pt_GO_4D, nbl_3x2pt, npairs_tot, block_index=block_index)
 
-    cov_WL_GS_2D = mm.cov_4D_to_2D(cov_WL_GS_4D, nbl_WL, npairs, block_index=block_index)
-    cov_GC_GS_2D = mm.cov_4D_to_2D(cov_GC_GS_4D, nbl_GC, npairs, block_index=block_index)
-    cov_WA_GS_2D = mm.cov_4D_to_2D(cov_WA_GS_4D, nbl_WA, npairs, block_index=block_index)
+    cov_WL_GS_2D = mm.cov_4D_to_2D(cov_WL_GS_4D, nbl_WL, npairs_auto, block_index=block_index)
+    cov_GC_GS_2D = mm.cov_4D_to_2D(cov_GC_GS_4D, nbl_GC, npairs_auto, block_index=block_index)
+    cov_WA_GS_2D = mm.cov_4D_to_2D(cov_WA_GS_4D, nbl_WA, npairs_auto, block_index=block_index)
     cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, nbl_3x2pt, npairs_tot, block_index=block_index)
 
     # '2DCLOE', i.e. the 'multi-diagonal', non-square blocks ordering, only for 3x2pt
@@ -276,7 +302,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     cov_3x2pt_GO_2DCLOE = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_GO_4D, nbl_3x2pt, zbins)
 
     ############################### save in dictionary  ########################
-    cov_dict = {}
     probe_names = ('WL', 'GC', '3x2pt', 'WA')
 
     covs_GO_4D = (cov_WL_GO_4D, cov_GC_GO_4D, cov_3x2pt_GO_4D, cov_WA_GO_4D)
@@ -299,8 +324,5 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     # save 2DCLOE (only 3x2pt)
     cov_dict[f'cov_3x2pt_GO_2DCLOE'] = cov_3x2pt_GO_2DCLOE
     cov_dict[f'cov_3x2pt_GS_2DCLOE'] = cov_3x2pt_GS_2DCLOE
-
-    if compute_covariance_in_blocks:
-        cov_dict['cov_3x2pt_GO_10D'] = cov_3x2pt_GO_10D
 
     return cov_dict

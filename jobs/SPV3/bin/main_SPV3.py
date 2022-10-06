@@ -73,7 +73,7 @@ zbins_SPV3 = (13,)
 
 for general_cfg['zbins'] in zbins_SPV3:
     for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (1500, 750)):
-    # for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000),):
+        # for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000),):
         for (general_cfg['EP_or_ED']) in ('EP', 'ED'):
 
             # utils.consistency_checks(general_cfg, covariance_cfg)
@@ -138,22 +138,29 @@ for general_cfg['zbins'] in zbins_SPV3:
                                                 cls_or_responses='cls', specs=general_cfg['specs'], EP_or_ED=EP_or_ED)
             cl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg['nbl_WL_32'], zbins, ell_max_WL_opt,
                                                 cls_or_responses='cls', specs=general_cfg['specs'], EP_or_ED=EP_or_ED)
-            cl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg['nbl_WL_32'], zbins, ell_max_WL_opt,
-                                                   cls_or_responses='cls', specs=general_cfg['specs'], EP_or_ED=EP_or_ED)
+            cl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg['nbl_WL_32'], zbins,
+                                                   ell_max_WL_opt,
+                                                   cls_or_responses='cls', specs=general_cfg['specs'],
+                                                   EP_or_ED=EP_or_ED)
 
             rl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg['nbl_WL_32'], zbins, ell_max_WL_opt,
-                                                cls_or_responses='responses', specs=general_cfg['specs'], EP_or_ED=EP_or_ED)
+                                                cls_or_responses='responses', specs=general_cfg['specs'],
+                                                EP_or_ED=EP_or_ED)
             rl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_opt, general_cfg['nbl_WL_32'], zbins, ell_max_WL_opt,
-                                                cls_or_responses='responses', specs=general_cfg['specs'], EP_or_ED=EP_or_ED)
+                                                cls_or_responses='responses', specs=general_cfg['specs'],
+                                                EP_or_ED=EP_or_ED)
             rl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg['nbl_WL_32'], zbins, ell_max_WL_opt,
-                                                cls_or_responses='responses', specs=general_cfg['specs'], EP_or_ED=EP_or_ED)
-            rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg['nbl_WL_32'], zbins, ell_max_WL_opt,
+                                                cls_or_responses='responses', specs=general_cfg['specs'],
+                                                EP_or_ED=EP_or_ED)
+            rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg['nbl_WL_32'], zbins,
+                                                   ell_max_WL_opt,
                                                    cls_or_responses='responses', specs=general_cfg['specs'],
                                                    EP_or_ED=EP_or_ED)
 
             if ell_max_WL == ell_max_WL_opt:
                 assert (
-                    np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :])), 'cl_wa_3d should be obtainable from cl_ll_3d!'
+                    np.array_equal(cl_wa_3d,
+                                   cl_ll_3d[nbl_GC:nbl_WL, :, :])), 'cl_wa_3d should be obtainable from cl_ll_3d!'
 
             # cut datavectors and responses in the pessimistic case; be carful of WA, because it does not start from ell_min
             if ell_max_WL == 1500:
@@ -189,8 +196,9 @@ for general_cfg['zbins'] in zbins_SPV3:
                 # sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins, EP_or_ED=EP_or_ED)
 
                 if Sijkl_cfg['save_Sijkl']:
-                    np.save(f'{job_path}/output/sijkl/sijkl_WF{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins:02}_{EP_or_ED}_'
-                            f'hasIA{Sijkl_cfg["has_IA"]}.npy', sijkl)
+                    np.save(
+                        f'{job_path}/output/sijkl/sijkl_WF{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins:02}_{EP_or_ED}_'
+                        f'hasIA{Sijkl_cfg["has_IA"]}.npy', sijkl)
 
             # compute covariance matrix
             cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
@@ -236,8 +244,7 @@ for general_cfg['zbins'] in zbins_SPV3:
                         cov_dict['cov_WL_GO_2D'])
                 np.save(f'{covmat_path}/covmat_GO_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}_zbins{zbins:02}_{EP_or_ED}_2D.npy',
                         cov_dict['cov_GC_GO_2D'])
-                np.save(
-                    f'{covmat_path}/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}_2D.npy',
+                np.save(f'{covmat_path}/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}_2D.npy',
                     cov_dict['cov_3x2pt_GO_2D'])
                 np.save(f'{covmat_path}/covmat_GO_WA_lmaxWL{ell_max_WL}_nbl{nbl_WA}_zbins{zbins:02}_{EP_or_ED}_2D.npy',
                         cov_dict['cov_WA_GO_2D'])
@@ -266,6 +273,15 @@ for general_cfg['zbins'] in zbins_SPV3:
                         np.savetxt(f'{path_vinc_fmt}/{GOGS_folder}/{probe_vinc}/cm-{probe_vinc}-{nbl_WL}'
                                    f'-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.dat',
                                    cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.10e')
+
+            # save 6D for Stefano
+            if covariance_cfg['save_covariance_6D'] and ell_max_WL == 5000:
+                ndim = 6
+                np.save(f'{covmat_path}/covmat_GO_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}_zbins{zbins:02}_{EP_or_ED}_{ndim}D.npy',
+                        cov_dict['cov_WL_GO_{ndim}D'])
+                np.save(f'{covmat_path}/covmat_GO_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}_zbins{zbins:02}_{EP_or_ED}_{ndim}D.npy',
+                        cov_dict['cov_GC_GO_{ndim}D'])
+
 
 assert 1 == 0, 'stop here'
 

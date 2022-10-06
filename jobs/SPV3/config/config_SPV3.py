@@ -45,7 +45,8 @@ covariance_config = {
     'ng': 28.73,  # ! new
     'save_covariance': True,
     'save_covariance_dat': False,  # this is the format used by Vincenzo
-    'save_cov_6D': True,
+    'save_covariance_6D': True,
+    'save_2DCLOE': False  # quite useless, this is not the format used by CLOE
 }
 
 Sijkl_config = {

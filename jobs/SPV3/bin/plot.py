@@ -41,7 +41,7 @@ which_job = 'SPV3'
 model = 'flat'
 which_diff = 'normal'
 specs = f'NonFlat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-EP{zbins}'
-check_old_FM = True
+check_old_FM = False
 fix_dz_nuisance = True  # whether to remove the rows/cols for the dz nuisance parameters (ie whether to fix them)
 fix_shear_bias = True  # whether to remove the rows/cols for the shear bias nuisance parameters (ie whether to fix them)
 w0wa_rows = [2, 3]
@@ -100,7 +100,8 @@ for probe in ['WL', 'GC', '3x2pt']:
 
     if probe == 'WL':
         ell_max = ell_max_WL
-        pars_labels_TeX = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['IA_labels_TeX'] + mpl_cfg.general_dict['shear_bias_labels_TeX']
+        pars_labels_TeX = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['IA_labels_TeX'] + \
+                          mpl_cfg.general_dict['shear_bias_labels_TeX']
         fid = np.concatenate((fid_cosmo, fid_IA), axis=0)
     else:
         ell_max = ell_max_GC
@@ -161,25 +162,26 @@ for probe in ['WL', 'GC', '3x2pt']:
 
     ########################################################################################################################
 
-
     data = []
     fom = {}
     uncert = {}
-    for FM, case in zip([FM_GO_old, FM_GO, FM_GS_old, FM_GS], ('GO_old', 'GO_new', 'GS_old', 'GS_new')):
+    cases = ['GO', 'GS']
+
+    for FM, case in zip([FM_GO, FM_GS], cases):
         uncert[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams, fiducials=fid,
                                                       which_uncertainty=which_uncertainty, normalize=True))
         fom[case] = mm.compute_FoM(FM, w0wa_rows=w0wa_rows)
 
     # set uncertainties to 0 for \Omega_DE in the non-flat case, where Ode was not a free parameter
     if model == 'nonflat':
-        for case in ('GO_old', 'GS_old'):
+        for case in cases:
             uncert[case] = np.insert(arr=uncert[case], obj=1, values=1, axis=0)
             uncert[case] = uncert[case][:nparams]
 
-    uncert['diff_old'] = diff_funct(uncert['GS_old'], uncert['GO_old'])
-    uncert['diff_new'] = diff_funct(uncert['GS_new'], uncert['GO_new'])
-    uncert['ratio_old'] = uncert['GS_old'] / uncert['GO_old']
-    uncert['ratio_new'] = uncert['GS_new'] / uncert['GO_new']
+    # uncert['diff_old'] = diff_funct(uncert['GS_old'], uncert['GO_old'])
+    uncert['diff'] = diff_funct(uncert['GS'], uncert['GO'])
+    # uncert['ratio_old'] = uncert['GS_old'] / uncert['GO_old']
+    # uncert['ratio'] = uncert['GS'] / uncert['GO']
 
     uncert_vinc = {
         'flat': {
@@ -207,21 +209,21 @@ for probe in ['WL', 'GC', '3x2pt']:
     }
 
     # print my and vincenzo's uncertainties and check that they are sufficiently close
-    with np.printoptions(precision=3, suppress=True):
-        print(f'ratio GS/GO, probe: {probe}')
-        print('dav:', uncert["ratio_new"])
-        print('vin:', uncert_vinc[model][f"{probe}_{pes_opt}"])
+    # with np.printoptions(precision=3, suppress=True):
+    # print(f'ratio GS/GO, probe: {probe}')
+    # print('dav:', uncert["ratio"])
+    # print('vin:', uncert_vinc[model][f"{probe}_{pes_opt}"])
 
-    model_here = model
-    if not fix_shear_bias:
-        model_here += '_shearbias'
-    assert np.allclose(uncert["ratio_new"], uncert_vinc[model_here][f"{probe}_{pes_opt}"], atol=0,
-                       rtol=1e-2), 'my uncertainties differ from vincenzos'
+    # model_here = model
+    # if not fix_shear_bias:
+    #     model_here += '_shearbias'
+    # assert np.allclose(uncert["ratio"], uncert_vinc[model_here][f"{probe}_{pes_opt}"], atol=0,
+    #                    rtol=1e-2), 'my uncertainties differ from vincenzos'
 
     if check_old_FM:
         cases = ['GO_old', 'GO_new', 'GS_old', 'GS_new', 'diff_old', 'diff_new']
     else:
-        cases = ['GO_new', 'GS_new', 'diff_new']
+        cases.append('diff')
 
     for case in cases:
         data.append(uncert[case])
@@ -229,7 +231,7 @@ for probe in ['WL', 'GC', '3x2pt']:
     if bar_plot:
         data = np.asarray(data)
         plot_utils.bar_plot(data, title, cases, nparams=nparams, param_names_label=pars_labels_TeX, bar_width=0.12,
-                            second_axis=True, no_second_axis_bars=2)
+                            second_axis=False, no_second_axis_bars=1)
 
     # if probe == '3x2pt':
     #     plot_utils.triangle_plot(FM_GO_old, FM_GS_old, fiducials=fid,
@@ -238,11 +240,8 @@ for probe in ['WL', 'GC', '3x2pt']:
     plt.savefig(job_path / f'output/plots/{which_comparison}/'
                            f'{probe}_ellmax{ell_max}_Rl{which_Rl}_{which_uncertainty}.png')
 
-assert 1 > 2
-
-
-# compute and print FoM
-print('GO FoM:', mm.compute_FoM(FM_GO))
-print(f'GS Rl_{which_Rl} FoM:', mm.compute_FoM(FM_GS))
+    # compute and print FoM
+    print('GO FoM:', mm.compute_FoM(FM_GO))
+    print(f'GS Rl_{which_Rl} FoM:', mm.compute_FoM(FM_GS))
 
 print('*********** done ***********')

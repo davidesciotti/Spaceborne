@@ -42,10 +42,6 @@ mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 start_time = time.perf_counter()
 
-# TODO ind will be different for the different number of z bins ✅
-# TODO finish exploring the cls ✅
-# TODO make sure you changed fsky ✅
-# TODO change sigma_eps2? ✅
 # TODO check that the number of ell bins is the same as in the files
 # TODO double check the delta values
 # TODO update consistency_checks
@@ -277,11 +273,23 @@ for general_cfg['zbins'] in zbins_SPV3:
             # save 6D for Stefano
             if covariance_cfg['save_covariance_6D'] and ell_max_WL == 5000:
                 ndim = 6
-                np.save(f'{covmat_path}/covmat_GO_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}_zbins{zbins:02}_{EP_or_ED}_{ndim}D.npy',
-                        cov_dict['cov_WL_GO_{ndim}D'])
-                np.save(f'{covmat_path}/covmat_GO_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}_zbins{zbins:02}_{EP_or_ED}_{ndim}D.npy',
-                        cov_dict['cov_GC_GO_{ndim}D'])
+                for which_cov in ['GO', 'GS']:
+                    np.save(f'{covmat_path}/covmat_{which_cov}_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}_zbins{zbins:02}_{EP_or_ED}_{ndim}D.npy',
+                            cov_dict[f'cov_WL_{which_cov}_{ndim}D'])
+                    np.save(f'{covmat_path}/covmat_{which_cov}_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}_zbins{zbins:02}_{EP_or_ED}_{ndim}D.npy',
+                            cov_dict[f'cov_GC_{which_cov}_{ndim}D'])
 
+            # check for Stefano
+            print('GHOST CODE BELOW')
+            npairs = 91
+            cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GO_6D'], nbl_WL, npairs, ind[:npairs,:])
+            cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GO_6D'], nbl_GC, npairs, ind[:npairs,:])
+            cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GS_6D'], nbl_WL, npairs, ind[:npairs,:])
+            cov_GC_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GS_6D'], nbl_GC, npairs, ind[:npairs,:])
+            print(np.array_equal(cov_WL_GO_4D, cov_dict[f'cov_WL_GO_4D']))
+            print(np.array_equal(cov_GC_GO_4D, cov_dict[f'cov_GC_GO_4D']))
+            print(np.array_equal(cov_WL_GS_4D, cov_dict[f'cov_WL_GS_4D']))
+            print(np.array_equal(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D']))
 
 assert 1 == 0, 'stop here'
 

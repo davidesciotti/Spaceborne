@@ -200,6 +200,12 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         noise_input_dict['G', 'L'] = N[1, 0, ...]
         noise_input_dict['G', 'G'] = N[1, 1, ...]
 
+        response_input_dict = {}
+        response_input_dict['L', 'L'] = R_3x2pt_5D[:, 0, 0, ...]
+        response_input_dict['L', 'G'] = R_3x2pt_5D[:, 0, 1, ...]
+        response_input_dict['G', 'L'] = R_3x2pt_5D[:, 1, 0, ...]
+        response_input_dict['G', 'G'] = R_3x2pt_5D[:, 1, 1, ...]
+
         # probe ordering
         # the function should be able to work with whatever 
         # ordering of the probes; (TODO check this) this is a check to make sure 
@@ -225,8 +231,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
 
         # compute the 10D covariance only for the blocks which will actually be used (GO and SS)
         start = time.perf_counter()
-        cov_3x2pt_GO_10D = mm.covariance_10D_dict(cl_input_dict, noise_input_dict, nbl_3x2pt, zbins, l_lin_XC,
-                                                  delta_l_XC, fsky, probe_ordering)
+        cov_3x2pt_GO_10D = mm.covariance_G_10D_dict(cl_input_dict, noise_input_dict, nbl_3x2pt, zbins, l_lin_XC,
+                                                    delta_l_XC, fsky, probe_ordering)
         print('cov_3x2pt_GO_10D computed in', time.perf_counter() - start, 'seconds')
 
         # tuple instead of list, otherwise numba complains
@@ -234,9 +240,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         # it inside the cov_SSC_3x2pt_10D_dict function.
         probe_ordering_tuple = tuple(probe_ordering)
         start = time.perf_counter()
-        cov_3x2pt_SSC_10D = mm.cov_SSC_3x2pt_10D_dict(nbl_3x2pt, C_3x2pt_5D, Sijkl, fsky, zbins, Rl,
-                                                      probe_ordering_tuple)
-        print(f'cov_3x2pt_SSC_10D computed in {(time.perf_counter() - start):.2f} seconds')
+        cov_3x2pt_SS_10D = mm.covariance_SS_3x2pt_10D_dict(nbl_3x2pt, C_3x2pt_5D, Sijkl, fsky, zbins, Rl,
+                                                           probe_ordering_tuple)
+        print(f'cov_3x2pt_SS_10D computed in {(time.perf_counter() - start):.2f} seconds')
 
         # convert each block to 4D and stack to make the 4D_3x2pt
         # note: I pass ind_copy because the LG-GL check and inversion is performed in the function (otherwise it would be
@@ -244,14 +250,12 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         cov_3x2pt_GO_4D_new = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_10D, probe_ordering, nbl_3x2pt, zbins,
                                                           ind_copy, GL_or_LG)
         # ! careful of passing clean copies of ind!!!
-        cov_3x2pt_SS_4D_new = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_SSC_10D, probe_ordering, nbl_3x2pt, zbins,
+        cov_3x2pt_SS_4D_new = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_SS_10D, probe_ordering, nbl_3x2pt, zbins,
                                                           ind_copy_2, GL_or_LG)
 
         # check with old result and show the arrays 
-        print('check: is the new cov_3x2pt_GO_4D equal to the old one?',
-              np.array_equal(cov_3x2pt_GO_4D_new, cov_3x2pt_GO_4D))
-        print('check: is the new cov_3x2pt_SS_4D equal to the old one?',
-              np.array_equal(cov_3x2pt_SS_4D_new, cov_3x2pt_SS_4D))
+        print('check: is cov_3x2pt_GO_4D from covariance_10D_dict function == old one?', np.array_equal(cov_3x2pt_GO_4D_new, cov_3x2pt_GO_4D))
+        print('check: is cov_3x2pt_SS_4D from covariance_10D_dict function == old one?', np.array_equal(cov_3x2pt_SS_4D_new, cov_3x2pt_SS_4D))
 
         cov_dict['cov_3x2pt_GO_10D'] = cov_3x2pt_GO_10D
 

@@ -1,3 +1,6 @@
+"""
+module to reproduce vincenzo's plots in the paper, *after* the new specs update
+"""
 import sys
 import time
 from pathlib import Path
@@ -19,14 +22,13 @@ import my_module as mm
 
 start_time = time.perf_counter()
 
-
 def find_nearest(array, value):
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
     return array[idx]
 
+def fig_6_and_7(probe, probe_label, pedix, fmt='%.2f' , fig_number=6):
 
-def fig_6_and_7(probe, probe_label, pedix, fmt='%.2f', fig_number=6):
     params = {'lines.linewidth': 2,
               'font.size': 14,
               'axes.labelsize': 'small',
@@ -43,13 +45,12 @@ def fig_6_and_7(probe, probe_label, pedix, fmt='%.2f', fig_number=6):
     cases = ['Pes', 'Opt']
     linestyle = 'dashed'
     colors = ['tab:blue', 'tab:orange']
-    params_latex = ["$\Omega_{{\\rm m},0}$", "$\Omega_{{\\rm b},0}$", "$w_0$", "$w_a$", "$h$", "$n_{\\rm s}$",
-                    "$\sigma_8$",
+    params_latex = ["$\Omega_{{\\rm m},0}$", "$\Omega_{{\\rm b},0}$", "$w_0$", "$w_a$", "$h$", "$n_{\\rm s}$", "$\sigma_8$",
                     "${\\rm FoM}$"]
     params_plain = ["Om", "Ob", "w0", "wa", "h", "ns", "sigma8", "FoM"]
 
     fig, axs = plt.subplots(2, 4, sharex=True, subplot_kw=dict(box_aspect=0.75),
-                            constrained_layout=False, figsize=(15, 6.5), tight_layout={'pad': 0.7})
+                            constrained_layout=False, figsize=(15, 6.5), tight_layout = {'pad': 0.7})
 
     # number each axs box: 0 for [0, 0], 1 for [0, 1] and so forth
     axs_idx = np.arange(0, 8, 1).reshape((2, 4))
@@ -58,6 +59,7 @@ def fig_6_and_7(probe, probe_label, pedix, fmt='%.2f', fig_number=6):
     for param_idx in range(len(params_latex)):
         # loop over cases and probes
         for case, color in zip(cases, colors):
+
             print(case)
 
             tab = np.genfromtxt(job_path / f'input/vincenzo/replot_vincenzo/GSoverGOvsNbZed{case}{probe}.dat')
@@ -80,18 +82,17 @@ def fig_6_and_7(probe, probe_label, pedix, fmt='%.2f', fig_number=6):
 
     # legend in the bottom:
     # get labels and handles from one of the axis (the first)
-    handles, labels = axs[0, 0].get_legend_handles_labels()
+    handles, labels = axs[0,0].get_legend_handles_labels()
 
     fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.06), ncol=2)
     # fig.subplots_adjust(top=0.1)  # or whatever
 
-    fig.supxlabel('${\\cal N}_%s$' % pedix)
+    fig.supxlabel('${\\cal N}_%s$' %pedix)
     fig.supylabel('$\\sigma_{\\rm GS}(\\theta) \, / \, \\sigma_{\\rm GO}(\\theta)$', x=0.009)
 
     # fig.tight_layout()
 
-    plt.savefig(job_path / f'output/plots/replot_vincenzo/figs/fig_{fig_number}_replot.{pic_format}', dpi=dpi,
-                bbox_inches='tight')
+    plt.savefig(job_path / f'output/plots/replot_vincenzo/figs/fig_{fig_number}_replot.{pic_format}', dpi=dpi, bbox_inches = 'tight')
 
 
 # ! settings definition
@@ -130,7 +131,7 @@ if which_fig == 'fig_5':
     nbl_values = tab[:, 0].astype(int)
 
     fig, axs = plt.subplots(2, 4, sharex=True, subplot_kw=dict(box_aspect=0.75),
-                            constrained_layout=False, figsize=(15, 6.5), tight_layout={'pad': 0.7})
+                            constrained_layout=False, figsize=(15, 6.5), tight_layout = {'pad': 0.7})
 
     # number each axs box: 0 for [0, 0], 1 for [0, 1] and so forth
     axs_idx = np.arange(0, 8, 1).reshape((2, 4))
@@ -153,12 +154,13 @@ if which_fig == 'fig_5':
                                label=f'{probe_label} {case}')
                 axs[i, j].yaxis.set_major_formatter(FormatStrFormatter(f'%.2f'))
 
+
         axs[i, j].grid()
         axs[i, j].set_title(f'{params_latex[param_idx]}', pad=10.0, fontsize=panel_titles_fontsize)
 
     # legend in the bottom:
     # get labels and handles from one of the axis (the first)
-    handles, labels = axs[0, 0].get_legend_handles_labels()
+    handles, labels = axs[0,0].get_legend_handles_labels()
 
     fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.06), ncol=4)
     # fig.subplots_adjust(top=0.1)  # or whatever
@@ -166,7 +168,7 @@ if which_fig == 'fig_5':
     fig.supxlabel('${\\cal N}_{\\ell}$')
     fig.supylabel('$\\sigma_{\\rm GS}(\\theta) \, / \, \\sigma_{\\rm GO}(\\theta)$', x=0.009)
 
-    plt.savefig(job_path / f'output/plots/replot_vincenzo/figs/fig_5_replot.{pic_format}', dpi=dpi, bbox_inches='tight')
+    plt.savefig(job_path / f'output/plots/replot_vincenzo/figs/fig_5_replot.{pic_format}', dpi=dpi, bbox_inches = 'tight')
 
 
 # ! fig. 6 and 7 are very similar: I defined a function
@@ -186,6 +188,7 @@ elif which_fig == 'fig_8':
 
     fig, axs = plt.subplots(2, 3, sharex=True, subplot_kw=dict(box_aspect=0.70), constrained_layout=True)
     # fig, axs = plt.subplots(2, 3, sharex=True)
+
 
     # number each axs box: 0 for [0, 0], 1 for [0, 1] and so forth
     axs_idx = np.arange(0, 6, 1).reshape((2, 3))
@@ -243,6 +246,7 @@ elif which_fig == 'fig_8':
     plt.xscale('log')
     axs.flatten()[-1].legend(loc='lower right', borderaxespad=0.3)
 
+
     plt.savefig(job_path / f'output/plots/replot_vincenzo/figs/fig_8_replot.{pic_format}', dpi=dpi)
 
     """############### "manual interpolation"
@@ -280,6 +284,7 @@ elif which_fig == 'fig_9':
 
     panel_idx = 0
     for case, lim in zip(cases, lims):
+
         tab = np.genfromtxt(job_path / f'input/vincenzo/replot_vincenzo/RatioFoM-3x2pt-{case}-{Nz}.dat')
         tab[:, 0] = 10 ** tab[:, 0]
         tab[:, 1] = 10 ** tab[:, 1]
@@ -293,7 +298,7 @@ elif which_fig == 'fig_9':
         X = epsb_values
         Y = epsm_values
         X, Y = np.meshgrid(X, Y)
-        Z = np.reshape(tab[:, 3], (n_points, n_points)).T  # XXX careful of the tab index!! it's GS/ref
+        Z = np.reshape(tab[:, 3], (n_points, n_points)).T # XXX careful of the tab index!! it's GS/ref
 
         # levels of contour plot (set a high xorder to have line on top of legend)
         CS = axs[panel_idx].contour(X, Y, Z, levels=z_values, cmap='plasma', zorder=6)
@@ -306,11 +311,13 @@ elif which_fig == 'fig_9':
         axs[panel_idx].set_ylim(lim[0], lim[1])
         axs[panel_idx].grid()
 
+
         # legend: from source (see the comment): https://stackoverflow.com/questions/64523051/legend-is-empty-for-contour-plot-is-this-by-design
         h, _ = CS.legend_elements()
         l = ['${\\rm FoM_{GS}} \, / \, {\\rm FoM}_{\\rm ref}}$ = ' + f'{a:.2f}' for a in CS.levels]
         axs[panel_idx].legend(h, l)
 
         panel_idx += 1
+
 
     plt.savefig(job_path / f'output/plots/replot_vincenzo/figs/fig_9_replot.{pic_format}', dpi=dpi)

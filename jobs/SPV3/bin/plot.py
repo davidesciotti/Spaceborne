@@ -8,9 +8,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stats
 from getdist import MCSamples, plots
+from matplotlib import ticker
 from matplotlib.cm import get_cmap
 from getdist.gaussian_mixtures import GaussianND
 import pandas as pd
+from matplotlib.ticker import FormatStrFormatter
+
 project_path = Path.cwd().parent.parent.parent
 
 sys.path.append(str(project_path.parent / 'common_data'))
@@ -76,216 +79,294 @@ if which_diff == 'normal':
 else:
     diff_funct = mm.percent_diff_mean
 
-zbins_subset = (7, 9, 10, 11, 13)
+zbins_subset = np.array((7, 9, 10, 11, 13), dtype=int)
 # zbins_subset = (10,)
-probes = ('WL', )
+probes = ('WL',)
 # initialize dict lists
 for probe in ['WL', '3x2pt']:
     uncert_ratio_dict[probe] = {}
     for zbins in zbins_subset:
-        uncert_ratio_dict[probe][f'zbins{zbins:02}'] = []
+        uncert_ratio_dict[probe][f'zbins{zbins:02}'] = {}
+        for pes_opt in ('opt', 'pes'):
+            uncert_ratio_dict[probe][f'zbins{zbins:02}'][pes_opt] = []
 
 for probe in probes:
     for zbins in zbins_subset:
-        # for EP_or_ED in ['EP', 'ED']:
+        for pes_opt in ('opt', 'pes'):
+            # for EP_or_ED in ['EP', 'ED']:
 
-        nparams = nparams_chosen  # re-initialize at every iteration
+            nparams = nparams_chosen  # re-initialize at every iteration
 
-        specs = f'NonFlat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED}{zbins:02}'
+            specs = f'NonFlat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED}{zbins:02}'
 
-        if pes_opt == 'opt':
-            ell_max_WL = 5000
-            ell_max_GC = 3000
-        else:
-            ell_max_WL = 1500
-            ell_max_GC = 750
+            if pes_opt == 'opt':
+                ell_max_WL = 5000
+                ell_max_GC = 3000
+            else:
+                ell_max_WL = 1500
+                ell_max_GC = 750
 
-        if probe == '3x2pt':
-            probe_lmax = 'XC'
-            probe_folder = 'All'
-            probename_vinc = probe
-            pars_labels_TeX = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['IA_labels_TeX'] + \
-                              mpl_cfg.general_dict['galaxy_bias_labels_TeX']
-            fid = np.concatenate((fid_cosmo, fid_IA, fid_galaxy_bias), axis=0)
-        else:
-            probe_lmax = probe
-            probe_folder = probe + 'O'
-            probename_vinc = probe + 'O'
+            if probe == '3x2pt':
+                probe_lmax = 'XC'
+                probe_folder = 'All'
+                probename_vinc = probe
+                pars_labels_TeX = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['IA_labels_TeX'] + \
+                                  mpl_cfg.general_dict['galaxy_bias_labels_TeX']
+                fid = np.concatenate((fid_cosmo, fid_IA, fid_galaxy_bias), axis=0)
+            else:
+                probe_lmax = probe
+                probe_folder = probe + 'O'
+                probename_vinc = probe + 'O'
 
-        if probe == 'WL':
-            ell_max = ell_max_WL
-            pars_labels_TeX = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['IA_labels_TeX'] + \
-                              mpl_cfg.general_dict['shear_bias_labels_TeX']
-            fid = np.concatenate((fid_cosmo, fid_IA), axis=0)
-        else:
-            ell_max = ell_max_GC
+            if probe == 'WL':
+                ell_max = ell_max_WL
+                pars_labels_TeX = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['IA_labels_TeX'] + \
+                                  mpl_cfg.general_dict['shear_bias_labels_TeX']
+                fid = np.concatenate((fid_cosmo, fid_IA), axis=0)
+            else:
+                ell_max = ell_max_GC
 
-        if probe == 'GC':
-            pars_labels_TeX = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict[
-                'galaxy_bias_labels_TeX']
-            fid = np.concatenate((fid_cosmo, fid_galaxy_bias), axis=0)
+            if probe == 'GC':
+                pars_labels_TeX = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict[
+                    'galaxy_bias_labels_TeX']
+                fid = np.concatenate((fid_cosmo, fid_galaxy_bias), axis=0)
 
-        title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, ell_max, EP_or_ED, zbins)
+            title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, ell_max, EP_or_ED, zbins)
 
-        # import vincenzo's FM, not in a dictionary because they are all split into different folders
-        vinc_FM_folder = 'vincenzo/SPV3_07_2022/FishMat'
+            # TODO try with pandas dataframes
+            # todo non-tex labels
 
-        # TODO pessimistic case
-        # TODO try with pandas dataframes
-        FM_GO = np.genfromtxt(
-            project_path.parent / f'common_data/{vinc_FM_folder}/GaussOnly/{probe_folder}/OneSample'
-                                  f'/fm-{probename_vinc}-{nbl}-wzwaCDM-{specs}.dat')
-        FM_GS = np.genfromtxt(
-            project_path.parent / f'common_data/{vinc_FM_folder}/GaussSSC/{probe_folder}/OneSample'
-                                  f'/fm-{probename_vinc}-{nbl}-wzwaCDM-{specs}.dat')
+            # import vincenzo's FM, not in a dictionary because they are all split into different folders
+            vinc_FM_folder = 'vincenzo/SPV3_07_2022/FishMat'
+            if pes_opt == 'opt':
+                FM_GO = np.genfromtxt(project_path.parent / f'common_data/{vinc_FM_folder}/GaussOnly/{probe_folder}/'
+                                                            f'OneSample/fm-{probename_vinc}-{nbl}-wzwaCDM-{specs}.dat')
+                FM_GS = np.genfromtxt(project_path.parent / f'common_data/{vinc_FM_folder}/GaussSSC/{probe_folder}/'
+                                                            f'OneSample/fm-{probename_vinc}-{nbl}-wzwaCDM-{specs}.dat')
+            elif pes_opt == 'pes':
+                FM_GO = np.genfromtxt(
+                    project_path.parent / f'common_data/{vinc_FM_folder}/GaussOnly/Cuts/SetupId1{zbins:02}1100034/'
+                                          f'fm-{probename_vinc}-{nbl}-wzwaCDM-NonFlat-GR-TB-Pess.dat')
+                FM_GS = np.genfromtxt(
+                    project_path.parent / f'common_data/{vinc_FM_folder}/GaussSSC/Cuts/SetupId1{zbins:02}1100034/'
+                                          f'fm-{probename_vinc}-{nbl}-wzwaCDM-NonFlat-GR-TB-Pess.dat')
 
-        # remove rows/cols for the redshift center nuisance parameters
-        if fix_dz_nuisance:
-            FM_GO = FM_GO[:-zbins, :-zbins]
-            FM_GS = FM_GS[:-zbins, :-zbins]
-
-        if probe != 'GC':
-            if fix_shear_bias:
-                assert fix_dz_nuisance, 'the case with free dz_nuisance is not implemented (you just need to be more careful with the slicing)'
+            # remove rows/cols for the redshift center nuisance parameters
+            if fix_dz_nuisance:
                 FM_GO = FM_GO[:-zbins, :-zbins]
                 FM_GS = FM_GS[:-zbins, :-zbins]
 
-        if model == 'flat':
-            FM_GO = np.delete(FM_GO, obj=1, axis=0)
-            FM_GO = np.delete(FM_GO, obj=1, axis=1)
-            FM_GS = np.delete(FM_GS, obj=1, axis=0)
-            FM_GS = np.delete(FM_GS, obj=1, axis=1)
-        elif model == 'nonflat':
-            w0wa_rows = [3, 4]  # Omega_DE is in position 1, so w0, wa are shifted by 1 position
-            nparams += 1
-            fid = np.insert(arr=fid, obj=1, values=ISTF_fid.extensions['Om_Lambda0'], axis=0)
-            pars_labels_TeX = np.insert(arr=pars_labels_TeX, obj=1, values='$\\Omega_{\\rm DE}$', axis=0)
+            if probe != 'GC':
+                if fix_shear_bias:
+                    assert fix_dz_nuisance, 'the case with free dz_nuisance is not implemented (but it\'s easy; you just need to be more careful with the slicing)'
+                    FM_GO = FM_GO[:-zbins, :-zbins]
+                    FM_GS = FM_GS[:-zbins, :-zbins]
 
-        fid = fid[:nparams]
-        pars_labels_TeX = pars_labels_TeX[:nparams]
+            if model == 'flat':
+                FM_GO = np.delete(FM_GO, obj=1, axis=0)
+                FM_GO = np.delete(FM_GO, obj=1, axis=1)
+                FM_GS = np.delete(FM_GS, obj=1, axis=0)
+                FM_GS = np.delete(FM_GS, obj=1, axis=1)
+            elif model == 'nonflat':
+                w0wa_rows = [3, 4]  # Omega_DE is in position 1, so w0, wa are shifted by 1 position
+                nparams += 1
+                fid = np.insert(arr=fid, obj=1, values=ISTF_fid.extensions['Om_Lambda0'], axis=0)
+                pars_labels_TeX = np.insert(arr=pars_labels_TeX, obj=1, values='$\\Omega_{\\rm DE, 0}$', axis=0)
 
-        # remove null rows and columns
-        idx = mm.find_null_rows_cols_2D(FM_GO)
-        idx_GS = mm.find_null_rows_cols_2D(FM_GS)
-        assert np.array_equal(idx, idx_GS), 'the null rows/cols indices should be equal for GO and GS'
-        FM_GO = mm.remove_null_rows_cols_2D(FM_GO, idx)
-        FM_GS = mm.remove_null_rows_cols_2D(FM_GS, idx)
+            fid = fid[:nparams]
+            pars_labels_TeX = pars_labels_TeX[:nparams]
 
-        ####################################################################################################################
+            # remove null rows and columns
+            idx = mm.find_null_rows_cols_2D(FM_GO)
+            idx_GS = mm.find_null_rows_cols_2D(FM_GS)
+            assert np.array_equal(idx, idx_GS), 'the null rows/cols indices should be equal for GO and GS'
+            FM_GO = mm.remove_null_rows_cols_2D(FM_GO, idx)
+            FM_GS = mm.remove_null_rows_cols_2D(FM_GS, idx)
 
-        # TODO plot FoM ratio vs # of bins (I don't have the ED FMs!)
+            ####################################################################################################################
 
-        # old FMs (before specs updates)
-        if check_old_FM:
-            FM_GO_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/'
-                                      f'SSC_comparison/output/FM/FM_{probe}_GO_lmax{probe_lmax}{ell_max}_nbl30.txt')
-            FM_GS_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/'
-                                      f'SSC_comparison/output/FM/FM_{probe}_GS_lmax{probe_lmax}{ell_max}_nbl30_Rlvar.txt')
-            cases = ('GO_old', 'GO_new', 'GS_old', 'GS_new')
-            FMs = (FM_GO_old, FM_GO, FM_GS_old, FM_GS)
-        else:
-            cases = ('GO', 'GS')
-            FMs = (FM_GO, FM_GS)
+            # TODO plot FoM ratio vs # of bins (I don't have the ED FMs!)
 
-        data = []
-        fom = {}
-        uncert = {}
-        for FM, case in zip(FMs, cases):
-            uncert[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams, fiducials=fid,
-                                                          which_uncertainty=which_uncertainty, normalize=True))
-            fom[case] = mm.compute_FoM(FM, w0wa_rows=w0wa_rows)
+            # old FMs (before specs updates)
+            if check_old_FM:
+                FM_GO_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/'
+                                          f'SSC_comparison/output/FM/FM_{probe}_GO_lmax{probe_lmax}{ell_max}_nbl30.txt')
+                FM_GS_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/'
+                                          f'SSC_comparison/output/FM/FM_{probe}_GS_lmax{probe_lmax}{ell_max}_nbl30_Rlvar.txt')
+                cases = ('GO_old', 'GO_new', 'GS_old', 'GS_new')
+                FMs = (FM_GO_old, FM_GO, FM_GS_old, FM_GS)
+            else:
+                cases = ('GO', 'GS')
+                FMs = (FM_GO, FM_GS)
 
-        # set uncertainties to 0 (or 1? see code) for \Omega_DE in the non-flat case, where Ode was not a free parameter
-        if model == 'nonflat' and check_old_FM:
-            for case in ('GO_old', 'GS_old'):
-                uncert[case] = np.insert(arr=uncert[case], obj=1, values=1, axis=0)
-                uncert[case] = uncert[case][:nparams]
+            data = []
+            fom = {}
+            uncert = {}
+            for FM, case in zip(FMs, cases):
+                uncert[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams, fiducials=fid,
+                                                              which_uncertainty=which_uncertainty, normalize=True))
+                fom[case] = mm.compute_FoM(FM, w0wa_rows=w0wa_rows)
 
-        if check_old_FM:
-            uncert['diff_old'] = diff_funct(uncert['GS_old'], uncert['GO_old'])
-            uncert['diff_new'] = diff_funct(uncert['GS_new'], uncert['GO_new'])
-            uncert['ratio_old'] = uncert['GS_old'] / uncert['GO_old']
-            uncert['ratio_new'] = uncert['GS_new'] / uncert['GO_new']
-        else:
-            uncert['diff'] = diff_funct(uncert['GS'], uncert['GO'])
-            uncert['ratio'] = uncert['GS'] / uncert['GO']
+            # set uncertainties to 0 (or 1? see code) for \Omega_DE in the non-flat case, where Ode was not a free parameter
+            if model == 'nonflat' and check_old_FM:
+                for case in ('GO_old', 'GS_old'):
+                    uncert[case] = np.insert(arr=uncert[case], obj=1, values=1, axis=0)
+                    uncert[case] = uncert[case][:nparams]
 
-        uncert_vinc = {
-            'zbins_EP10': {
-                'flat': {
-                    'WL_pes': np.asarray([1.998, 1.001, 1.471, 1.069, 1.052, 1.003, 1.610]),
-                    'WL_opt': np.asarray([1.574, 1.013, 1.242, 1.035, 1.064, 1.001, 1.280]),
-                    'GC_pes': np.asarray([1.002, 1.002, 1.003, 1.003, 1.001, 1.001, 1.001]),
-                    'GC_opt': np.asarray([1.069, 1.016, 1.147, 1.096, 1.004, 1.028, 1.226]),
-                    '3x2pt_pes': np.asarray([1.442, 1.034, 1.378, 1.207, 1.028, 1.009, 1.273]),
-                    '3x2pt_opt': np.asarray([1.369, 1.004, 1.226, 1.205, 1.018, 1.030, 1.242]),
-                },
-                'nonflat': {
-                    'WL_pes': np.asarray([2.561, 1.358, 1.013, 1.940, 1.422, 1.064, 1.021, 1.433]),
-                    'WL_opt': np.asarray([2.113, 1.362, 1.004, 1.583, 1.299, 1.109, 1.038, 1.559]),
-                    'GC_pes': np.asarray([1.002, 1.001, 1.002, 1.002, 1.003, 1.001, 1.000, 1.001]),
-                    'GC_opt': np.asarray([1.013, 1.020, 1.006, 1.153, 1.089, 1.004, 1.039, 1.063]),
-                    '3x2pt_pes': np.asarray([1.360, 1.087, 1.043, 1.408, 1.179, 1.021, 1.009, 1.040]),
-                    '3x2pt_opt': np.asarray([1.572, 1.206, 1.013, 1.282, 1.191, 1.013, 1.008, 1.156]),
-                },
-                'nonflat_shearbias': {
-                    'WL_pes': np.asarray([1.082, 1.049, 1.000, 1.057, 1.084, 1.034, 1.025, 1.003]),
-                    'WL_opt': np.asarray([1.110, 1.002, 1.026, 1.022, 1.023, 1.175, 1.129, 1.009]),
-                    '3x2pt_pes': np.asarray([1.297, 1.087, 1.060, 1.418, 1.196, 1.021, 1.030, 1.035]),
-                    '3x2pt_opt': np.asarray([1.222, 1.136, 1.010, 1.300, 1.206, 1.013, 1.009, 1.164]),
+            if check_old_FM:
+                uncert['diff_old'] = diff_funct(uncert['GS_old'], uncert['GO_old'])
+                uncert['diff_new'] = diff_funct(uncert['GS_new'], uncert['GO_new'])
+                uncert['ratio_old'] = uncert['GS_old'] / uncert['GO_old']
+                uncert['ratio_new'] = uncert['GS_new'] / uncert['GO_new']
+            else:
+                uncert['diff'] = diff_funct(uncert['GS'], uncert['GO'])
+                uncert['ratio'] = uncert['GS'] / uncert['GO']
+
+            uncert_vinc = {
+                'zbins_EP10': {
+                    'flat': {
+                        'WL_pes': np.asarray([1.998, 1.001, 1.471, 1.069, 1.052, 1.003, 1.610]),
+                        'WL_opt': np.asarray([1.574, 1.013, 1.242, 1.035, 1.064, 1.001, 1.280]),
+                        'GC_pes': np.asarray([1.002, 1.002, 1.003, 1.003, 1.001, 1.001, 1.001]),
+                        'GC_opt': np.asarray([1.069, 1.016, 1.147, 1.096, 1.004, 1.028, 1.226]),
+                        '3x2pt_pes': np.asarray([1.442, 1.034, 1.378, 1.207, 1.028, 1.009, 1.273]),
+                        '3x2pt_opt': np.asarray([1.369, 1.004, 1.226, 1.205, 1.018, 1.030, 1.242]),
+                    },
+                    'nonflat': {
+                        'WL_pes': np.asarray([2.561, 1.358, 1.013, 1.940, 1.422, 1.064, 1.021, 1.433]),
+                        'WL_opt': np.asarray([2.113, 1.362, 1.004, 1.583, 1.299, 1.109, 1.038, 1.559]),
+                        'GC_pes': np.asarray([1.002, 1.001, 1.002, 1.002, 1.003, 1.001, 1.000, 1.001]),
+                        'GC_opt': np.asarray([1.013, 1.020, 1.006, 1.153, 1.089, 1.004, 1.039, 1.063]),
+                        '3x2pt_pes': np.asarray([1.360, 1.087, 1.043, 1.408, 1.179, 1.021, 1.009, 1.040]),
+                        '3x2pt_opt': np.asarray([1.572, 1.206, 1.013, 1.282, 1.191, 1.013, 1.008, 1.156]),
+                    },
+                    'nonflat_shearbias': {
+                        'WL_pes': np.asarray([1.082, 1.049, 1.000, 1.057, 1.084, 1.034, 1.025, 1.003]),
+                        'WL_opt': np.asarray([1.110, 1.002, 1.026, 1.022, 1.023, 1.175, 1.129, 1.009]),
+                        '3x2pt_pes': np.asarray([1.297, 1.087, 1.060, 1.418, 1.196, 1.021, 1.030, 1.035]),
+                        '3x2pt_opt': np.asarray([1.222, 1.136, 1.010, 1.300, 1.206, 1.013, 1.009, 1.164]),
+                    }
                 }
             }
-        }
 
-        # print my and vincenzo's uncertainties and check that they are sufficiently close
-        if zbins == 10 and EP_or_ED == 'EP':
-            with np.printoptions(precision=3, suppress=True):
-                print(f'ratio GS/GO, probe: {probe}')
-                print('dav:', uncert["ratio"])
-                print('vin:', uncert_vinc[f'zbins_{EP_or_ED}{zbins:02}'][model][f"{probe}_{pes_opt}"])
+            # print my and vincenzo's uncertainties and check that they are sufficiently close
+            if zbins == 10 and EP_or_ED == 'EP':
+                with np.printoptions(precision=3, suppress=True):
+                    print(f'ratio GS/GO, probe: {probe}')
+                    print('dav:', uncert["ratio"])
+                    print('vin:', uncert_vinc[f'zbins_{EP_or_ED}{zbins:02}'][model][f"{probe}_{pes_opt}"])
 
-        model_here = model
-        if not fix_shear_bias:
-            model_here += '_shearbias'
-        if zbins == 10 and EP_or_ED == 'EP':
-            # the tables in the paper, from which these uncertainties have been taken, only include the cosmo params (7 or 8)
-            nparams_vinc = uncert_vinc[f'zbins_{EP_or_ED}{zbins:02}'][model_here][f"{probe}_{pes_opt}"].shape[0]
-            assert np.allclose(uncert["ratio"][:nparams_vinc],
-                               uncert_vinc[f'zbins_{EP_or_ED}{zbins:02}'][model_here][f"{probe}_{pes_opt}"], atol=0,
-                               rtol=1e-2), 'my uncertainties differ from vincenzos'
+            model_here = model
+            if not fix_shear_bias:
+                model_here += '_shearbias'
+            if zbins == 10 and EP_or_ED == 'EP':
+                # the tables in the paper, from which these uncertainties have been taken, only include the cosmo params (7 or 8)
+                nparams_vinc = uncert_vinc[f'zbins_{EP_or_ED}{zbins:02}'][model_here][f"{probe}_{pes_opt}"].shape[0]
+                assert np.allclose(uncert["ratio"][:nparams_vinc],
+                                   uncert_vinc[f'zbins_{EP_or_ED}{zbins:02}'][model_here][f"{probe}_{pes_opt}"], atol=0,
+                                   rtol=1e-2), 'my uncertainties differ from vincenzos'
 
-        if check_old_FM:
-            cases = ['GO_old', 'GO_new', 'GS_old', 'GS_new', 'diff_old', 'diff_new']
-        else:
-            cases = ['GO', 'GS', 'diff']
+            if check_old_FM:
+                cases = ['GO_old', 'GO_new', 'GS_old', 'GS_new', 'diff_old', 'diff_new']
+            else:
+                cases = ['GO', 'GS', 'diff']
 
-        for case in cases:
-            data.append(uncert[case])
+            for case in cases:
+                data.append(uncert[case])
 
-        if bar_plot:
-            data = np.asarray(data)
-            plot_utils.bar_plot(data, title, cases, nparams=nparams, param_names_label=pars_labels_TeX,
-                                bar_width=0.12,
-                                second_axis=True, no_second_axis_bars=1)
+            if bar_plot:
+                data = np.asarray(data)
+                plot_utils.bar_plot(data, title, cases, nparams=nparams, param_names_label=pars_labels_TeX,
+                                    bar_width=0.12,
+                                    second_axis=True, no_second_axis_bars=1)
 
-        # if probe == '3x2pt':
-        #     plot_utils.triangle_plot(FM_GO_old, FM_GS_old, fiducials=fid,
-        #                              title=title, param_names_label=pars_labels_TeX)
+            # if probe == '3x2pt':
+            #     plot_utils.triangle_plot(FM_GO_old, FM_GS_old, fiducials=fid,
+            #                              title=title, param_names_label=pars_labels_TeX)
 
-        plt.savefig(job_path / f'output/plots/{which_comparison}/'
-                               f'{probe}_ellmax{ell_max}_zbins{EP_or_ED}{zbins:02}_Rl{which_Rl}_{which_uncertainty}.png')
+            # plt.savefig(job_path / f'output/plots/{which_comparison}/'
+            #                        f'{probe}_ellmax{ell_max}_zbins{EP_or_ED}{zbins:02}_Rl{which_Rl}_{which_uncertainty}.png')
 
-        # store uncertainties in dictionaries to easily retrieve them in the different cases
-        uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'] = uncert['ratio']
+            # store uncertainties in dictionaries to easily retrieve them in the different cases
+            uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][pes_opt] = uncert['ratio']
+            uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][pes_opt] = np.append(uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][pes_opt], fom['GS']/fom['GO'])
 
 
-probe = 'WL'
-param_idx = 0
-uncert_ratio_vs_zbins = [uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][param_idx] for zbins in zbins_subset]
-plt.plot(zbins_subset, uncert_ratio_vs_zbins, '--', marker='o')
+# probe = 'WL'
+# param_idx = 0
+# for pes_opt in ('opt', 'pes'):
+#     uncert_ratio_vs_zbins = [uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][pes_opt][param_idx] for zbins in
+#                              zbins_subset]
+#     plt.plot(zbins_subset, uncert_ratio_vs_zbins, '--', marker='o')
+
+############ plot all of them in 1 figure ########################
+
+params = {'lines.linewidth': 2,
+          'font.size': 14,
+          'axes.labelsize': 'small',
+          'axes.titlesize': 'medium',
+          'xtick.labelsize': 'small',
+          'ytick.labelsize': 'small',
+          'mathtext.fontset': 'stix',
+          'font.family': 'STIXGeneral',
+          }
+plt.rcParams.update(params)
+markersize = 4
+
+
+rows, cols = 3, 3
+fig, axs = plt.subplots(rows, cols, sharex=True, subplot_kw=dict(box_aspect=0.75),
+                        constrained_layout=False, figsize=(15, 6.5), tight_layout={'pad': 0.7})
+
+# number each axs box: 0 for [0, 0], 1 for [0, 1] and so forth
+axs_idx = np.arange(0, rows*cols, 1).reshape((rows, cols))
+colors = ['tab:blue', 'tab:orange']
+linestyle = 'dashed'
+fmt = '%.2f'
+dpi = 500
+pic_format = 'pdf'
+panel_titles_fontsize = 17
+pedix = 'b'
+pars_labels_TeX = np.append(pars_labels_TeX, '$\\rm{FoM}$')
+
+# loop over 7 cosmo params + FoM
+for param_idx in range(len(pars_labels_TeX)):
+    # loop over cases
+    for pes_opt, color in zip(('pes', 'opt'), colors):
+
+        # take i, j and their "counter" (the param index)
+        i, j = np.where(axs_idx == param_idx)[0][0], np.where(axs_idx == param_idx)[1][0]
+
+        # set xticks on int values
+        start, end = axs[i, j].get_xlim()
+        axs[i, j].xaxis.set_ticks(zbins_subset)
+        axs[i, j].xaxis.set_major_formatter(ticker.FormatStrFormatter('%i'))
+
+        # list to plot on the y-axis
+        uncert_ratio_vs_zbins = [uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][pes_opt][param_idx] for zbins in
+                                 zbins_subset]
+
+        axs[i, j].plot(zbins_subset, uncert_ratio_vs_zbins,
+                       ls=linestyle, markersize=markersize, marker='o', color=color,
+                       label=f'{probe} {pes_opt}')
+        axs[i, j].yaxis.set_major_formatter(FormatStrFormatter(f'{fmt}'))
+
+    axs[i, j].grid()
+    axs[i, j].set_title(f'{pars_labels_TeX[param_idx]}', pad=10.0, fontsize=panel_titles_fontsize)
+
+# legend in the bottom:
+# get labels and handles from one of the axis (the first)
+handles, labels = axs[0, 0].get_legend_handles_labels()
+
+fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.06), ncol=2)
+# fig.subplots_adjust(top=0.1)  # or whatever
+
+fig.supxlabel('${\\cal N}_%s$' % pedix)
+fig.supylabel('${\\calR} = \\sigma_{\\rm GS}(x) \, / \, \\sigma_{\\rm G}(x)$', x=0.009)
+
+plt.savefig(job_path / f'output/plots/replot_vincenzo_newspecs/GS_G_ratio_vs_zbins.{pic_format}', dpi=dpi, bbox_inches='tight')
 
 assert 1 > 2
-
 
 # compute and print FoM
 print('GO FoM:', mm.compute_FoM(FM_GO))

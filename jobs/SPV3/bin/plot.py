@@ -289,8 +289,8 @@ for probe in probes:
 
             # store uncertainties in dictionaries to easily retrieve them in the different cases
             uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][pes_opt] = uncert['ratio']
-            uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][pes_opt] = np.append(uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][pes_opt], fom['GS']/fom['GO'])
-
+            uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][pes_opt] = np.append(
+                uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][pes_opt], fom['GS'] / fom['GO'])
 
 # probe = 'WL'
 # param_idx = 0
@@ -313,13 +313,14 @@ params = {'lines.linewidth': 2,
 plt.rcParams.update(params)
 markersize = 4
 
-
 rows, cols = 3, 3
-fig, axs = plt.subplots(rows, cols, sharex=True, subplot_kw=dict(box_aspect=0.75),
-                        constrained_layout=False, figsize=(15, 6.5), tight_layout={'pad': 0.7})
+# fig, axs = plt.subplots(rows, cols, sharex=True, subplot_kw=dict(box_aspect=0.75),
+#                         constrained_layout=False, figsize=(15, 6.5), tight_layout={'pad': 0.7})
+fig, axs = plt.subplots(rows, cols, sharex=True, subplot_kw=dict(box_aspect=0.60),
+                        constrained_layout=False, figsize=(11, 7), tight_layout={'pad': 0.2})
 
 # number each axs box: 0 for [0, 0], 1 for [0, 1] and so forth
-axs_idx = np.arange(0, rows*cols, 1).reshape((rows, cols))
+axs_idx = np.arange(0, rows * cols, 1).reshape((rows, cols))
 colors = ['tab:blue', 'tab:orange']
 linestyle = 'dashed'
 fmt = '%.2f'
@@ -333,7 +334,6 @@ pars_labels_TeX = np.append(pars_labels_TeX, '$\\rm{FoM}$')
 for param_idx in range(len(pars_labels_TeX)):
     # loop over cases
     for pes_opt, color in zip(('pes', 'opt'), colors):
-
         # take i, j and their "counter" (the param index)
         i, j = np.where(axs_idx == param_idx)[0][0], np.where(axs_idx == param_idx)[1][0]
 
@@ -362,9 +362,10 @@ fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.06), ncol
 # fig.subplots_adjust(top=0.1)  # or whatever
 
 fig.supxlabel('${\\cal N}_%s$' % pedix)
-fig.supylabel('${\\calR} = \\sigma_{\\rm GS}(x) \, / \, \\sigma_{\\rm G}(x)$', x=0.009)
+fig.supylabel('${\\calR} = \\sigma_{\\rm GS}(x) \, / \, \\sigma_{\\rm G}(x)$', x=0.1)
 
-plt.savefig(job_path / f'output/plots/replot_vincenzo_newspecs/GS_G_ratio_vs_zbins.{pic_format}', dpi=dpi, bbox_inches='tight')
+plt.savefig(job_path / f'output/plots/replot_vincenzo_newspecs/GS_G_ratio_vs_zbins.{pic_format}', dpi=dpi,
+            bbox_inches='tight')
 
 assert 1 > 2
 

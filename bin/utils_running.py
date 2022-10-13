@@ -5,7 +5,7 @@ perform consistency checks
 """
 
 survey_area_ISTF = 15_000  # deg^2
-survey_area_SPV3 = 14_000  # deg^2, new in 2022
+survey_area_SPV3 = 14_700  # deg^2, new in 2022
 deg2_in_sphere = 41252.96  # deg^2 in a spere
 
 fsky_ISTF = survey_area_ISTF / deg2_in_sphere

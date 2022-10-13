@@ -416,11 +416,12 @@ if plot_fom_vs_zbins:
         plt.gca().yaxis.set_major_formatter('{x:.2f}')  # 2 significant digits on y axis
         plt.gca().yaxis.set_major_locator(ticker.MultipleLocator(tick_spacing))  # set tick step to 0.01
 
-        plt.savefig(job_path / f'output/plots/replot_vincenzo_newspecs/FoM_vs_EP-ED_zbins_{probe}.{pic_format}',
-                    dpi=dpi,
-                    bbox_inches='tight')
+        plt.savefig(
+            job_path / f'output/plots/replot_vincenzo_newspecs/FoM_vs_EPED/FoM_vs_EP-ED_zbins_{probe}.{pic_format}',
+            dpi=dpi, bbox_inches='tight')
 
 if plot_fom_vs_eps_b:
+
     EP10_opt = np.genfromtxt(
         f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/FoMvsPrior/fomvsprior-EP10-Opt.dat')
     EP13_opt = np.genfromtxt(
@@ -443,10 +444,6 @@ if plot_fom_vs_eps_b:
     for start, ls, label in zip(start_idxs, linestyles, linestyle_labels):
         plt.plot(10 ** EP10_opt[start::step, 0], EP10_opt[start::step, -3] * fsky_correction, color='tab:blue', ls=ls)
         plt.plot(10 ** EP10_opt[start::step, 0], EP10_opt[start::step, -2] * fsky_correction, color='tab:orange', ls=ls)
-    plt.xscale('log')
-    plt.grid()
-    plt.xlabel('$\\epsilon_b$')
-    plt.ylabel('${\\rm FoM}$')
 
     dummy_lines = []
     for i in range(len(sigma_m_values)):
@@ -460,6 +457,29 @@ if plot_fom_vs_eps_b:
     color_legend = plt.legend(dummy_colors, color_labels, bbox_to_anchor=[1, 0.8])
     plt.gca().add_artist(color_legend)
     plt.gca().add_artist(linestyles_legend)
+
+    plt.grid()
+    plt.xscale('log')
+    plt.xlabel('$\\epsilon_b (\%)$')
+    plt.ylabel('${\\rm FoM}$')
     plt.show()
+
+    plt.savefig(job_path / f'output/plots/replot_vincenzo_newspecs/FoM_vs_epsb/FoM_vs_epsb.{pic_format}', dpi=dpi,
+                bbox_inches='tight')
+
+    plt.figure()
+    for start, ls, label in zip(start_idxs, linestyles, linestyle_labels):
+        plt.plot(10 ** EP10_opt[start::step, 0], EP10_opt[start::step, -2]/EP10_opt[start::step, -3], color='black', ls=ls, label=label)
+
+    plt.legend()
+    plt.grid()
+    plt.xscale('log')
+    plt.xlabel('$\\epsilon_b (\%)$')
+    plt.ylabel('${\\cal R}({\\rm FoM})$')
+    plt.show()
+
+    plt.savefig(job_path / f'output/plots/replot_vincenzo_newspecs/FoM_vs_epsb/FoMratio_vs_epsb.{pic_format}', dpi=dpi,
+                bbox_inches='tight')
+
 
 print('*********** done ***********')

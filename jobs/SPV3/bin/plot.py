@@ -384,7 +384,6 @@ if plot_ratio_vs_zbins:
 if plot_fom_vs_zbins:
 
     fontsize = 23
-
     params = {'lines.linewidth': 5,
               'font.size': fontsize,
               'axes.labelsize': 'xx-large',
@@ -422,6 +421,19 @@ if plot_fom_vs_zbins:
 
 if plot_fom_vs_eps_b:
 
+    fontsize = 23
+    params = {'lines.linewidth': 4,
+              'font.size': fontsize,
+              'axes.labelsize': 'xx-large',
+              'axes.titlesize': 'xx-large',
+              'xtick.labelsize': 'xx-large',
+              'ytick.labelsize': 'xx-large',
+              'mathtext.fontset': 'stix',
+              'font.family': 'STIXGeneral',
+              }
+    plt.rcParams.update(params)
+    markersize = 14
+
     EP10_opt = np.genfromtxt(
         f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/FoMvsPrior/fomvsprior-EP10-Opt.dat')
     EP13_opt = np.genfromtxt(
@@ -453,8 +465,8 @@ if plot_fom_vs_eps_b:
     for i in range(len(sigma_m_values)):
         dummy_colors.append(plt.plot([], [])[0])
 
-    linestyles_legend = plt.legend(dummy_lines, linestyle_labels)
-    color_legend = plt.legend(dummy_colors, color_labels, bbox_to_anchor=[1, 0.8])
+    linestyles_legend = plt.legend(dummy_lines, linestyle_labels, prop={'size': fontsize})
+    color_legend = plt.legend(dummy_colors, color_labels, bbox_to_anchor=[1, 0.8], prop={'size': fontsize})
     plt.gca().add_artist(color_legend)
     plt.gca().add_artist(linestyles_legend)
 
@@ -469,9 +481,10 @@ if plot_fom_vs_eps_b:
 
     plt.figure()
     for start, ls, label in zip(start_idxs, linestyles, linestyle_labels):
-        plt.plot(10 ** EP10_opt[start::step, 0], EP10_opt[start::step, -2]/EP10_opt[start::step, -3], color='black', ls=ls, label=label)
+        plt.plot(10 ** EP10_opt[start::step, 0], EP10_opt[start::step, -2]/EP10_opt[start::step, -3], color='black',
+                 ls=ls, label=label)
 
-    plt.legend()
+    plt.legend(prop={'size': fontsize})
     plt.grid()
     plt.xscale('log')
     plt.xlabel('$\\epsilon_b (\%)$')

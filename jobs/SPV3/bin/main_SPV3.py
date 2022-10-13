@@ -192,9 +192,8 @@ for general_cfg['zbins'] in zbins_SPV3:
                 # sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins, EP_or_ED=EP_or_ED)
 
                 if Sijkl_cfg['save_Sijkl']:
-                    np.save(
-                        f'{job_path}/output/sijkl/sijkl_WF{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins:02}_{EP_or_ED}_'
-                        f'hasIA{Sijkl_cfg["has_IA"]}.npy', sijkl)
+                    np.save(f'{job_path}/output/sijkl/sijkl_WF{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins:02}_'
+                            f'{EP_or_ED}_hasIA{Sijkl_cfg["has_IA"]}.npy', sijkl)
 
             # compute covariance matrix
             cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,

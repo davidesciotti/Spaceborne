@@ -35,7 +35,7 @@ covariance_config = {
     'ind_ordering': ind_ordering,
     'GL_or_LG': GL_or_LG,
     'save_SSC_only_covmats': False,
-    'compute_covariance_in_blocks': False,
+    'compute_covariance_in_blocks': True,
     'fsky': fsky,  # ! new
     # 'Rl': 4,
     # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2

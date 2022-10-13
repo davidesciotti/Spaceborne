@@ -188,23 +188,23 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         # compute 3x2pt covariance in 10D, potentially with whichever probe ordering
 
         # store the input datavector and noise spectra in a dictionary
-        cl_input_dict = {}
-        cl_input_dict['L', 'L'] = C_3x2pt_5D[:, 0, 0, ...]
-        cl_input_dict['L', 'G'] = C_3x2pt_5D[:, 0, 1, ...]
-        cl_input_dict['G', 'L'] = C_3x2pt_5D[:, 1, 0, ...]
-        cl_input_dict['G', 'G'] = C_3x2pt_5D[:, 1, 1, ...]
+        cl_dict = {}
+        cl_dict['L', 'L'] = C_3x2pt_5D[:, 0, 0, ...]
+        cl_dict['L', 'G'] = C_3x2pt_5D[:, 0, 1, ...]
+        cl_dict['G', 'L'] = C_3x2pt_5D[:, 1, 0, ...]
+        cl_dict['G', 'G'] = C_3x2pt_5D[:, 1, 1, ...]
 
-        noise_input_dict = {}
-        noise_input_dict['L', 'L'] = N[0, 0, ...]
-        noise_input_dict['L', 'G'] = N[0, 1, ...]
-        noise_input_dict['G', 'L'] = N[1, 0, ...]
-        noise_input_dict['G', 'G'] = N[1, 1, ...]
+        noise_dict = {}
+        noise_dict['L', 'L'] = N[0, 0, ...]
+        noise_dict['L', 'G'] = N[0, 1, ...]
+        noise_dict['G', 'L'] = N[1, 0, ...]
+        noise_dict['G', 'G'] = N[1, 1, ...]
 
-        response_input_dict = {}
-        response_input_dict['L', 'L'] = R_3x2pt_5D[:, 0, 0, ...]
-        response_input_dict['L', 'G'] = R_3x2pt_5D[:, 0, 1, ...]
-        response_input_dict['G', 'L'] = R_3x2pt_5D[:, 1, 0, ...]
-        response_input_dict['G', 'G'] = R_3x2pt_5D[:, 1, 1, ...]
+        response_dict = {}
+        response_dict['L', 'L'] = R_3x2pt_5D[:, 0, 0, ...]
+        response_dict['L', 'G'] = R_3x2pt_5D[:, 0, 1, ...]
+        response_dict['G', 'L'] = R_3x2pt_5D[:, 1, 0, ...]
+        response_dict['G', 'G'] = R_3x2pt_5D[:, 1, 1, ...]
 
         # probe ordering
         # the function should be able to work with whatever 
@@ -224,32 +224,32 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         # print as a check
         print('check: datavector probe ordering:\n', probe_ordering)
         print('check: GL_or_LG:', GL_or_LG)
-        print('probe combinations:')
+        print('check: probe combinations:')
         for A, B in probe_ordering:
             for C, D in probe_ordering:
                 print(A, B, C, D)
 
         # compute the 10D covariance only for the blocks which will actually be used (GO and SS)
         start = time.perf_counter()
-        cov_3x2pt_GO_10D = mm.covariance_G_10D_dict(cl_input_dict, noise_input_dict, nbl_3x2pt, zbins, l_lin_XC,
+        cov_3x2pt_GO_10D = mm.covariance_G_10D_dict(cl_dict, noise_dict, nbl_3x2pt, zbins, l_lin_XC,
                                                     delta_l_XC, fsky, probe_ordering)
-        print('cov_3x2pt_GO_10D computed in', time.perf_counter() - start, 'seconds')
+        print(f'cov_3x2pt_GO_10D computed in {(time.perf_counter() - start):.2f} seconds')
 
         # tuple instead of list, otherwise numba complains
         # also, I can't seem to pass a dictionary directly to a numba function... Passing C_3x2pt_5D instead and converting
         # it inside the cov_SSC_3x2pt_10D_dict function.
         probe_ordering_tuple = tuple(probe_ordering)
         start = time.perf_counter()
-        cov_3x2pt_SS_10D = mm.covariance_SS_3x2pt_10D_dict(nbl_3x2pt, C_3x2pt_5D, Sijkl, fsky, zbins, Rl,
+        cov_3x2pt_SS_10D = mm.covariance_SS_3x2pt_10D_dict(nbl_3x2pt, C_3x2pt_5D, Sijkl, fsky, zbins, R_3x2pt_5D,
                                                            probe_ordering_tuple)
         print(f'cov_3x2pt_SS_10D computed in {(time.perf_counter() - start):.2f} seconds')
 
         # convert each block to 4D and stack to make the 4D_3x2pt
         # note: I pass ind_copy because the LG-GL check and inversion is performed in the function (otherwise it would be
         # performed twice!)
+        # ! careful of passing clean copies of ind to both functions!!!
         cov_3x2pt_GO_4D_new = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_10D, probe_ordering, nbl_3x2pt, zbins,
                                                           ind_copy, GL_or_LG)
-        # ! careful of passing clean copies of ind!!!
         cov_3x2pt_SS_4D_new = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_SS_10D, probe_ordering, nbl_3x2pt, zbins,
                                                           ind_copy_2, GL_or_LG)
 

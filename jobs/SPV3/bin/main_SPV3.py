@@ -1,3 +1,4 @@
+import pickle
 import sys
 import time
 from pathlib import Path
@@ -69,7 +70,7 @@ zbins_SPV3 = (13,)
 
 for general_cfg['zbins'] in zbins_SPV3:
     # for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (1500, 750)):
-    for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), ):
+    for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000),):
         for (general_cfg['EP_or_ED']) in ('EP', 'ED'):
 
             # utils.consistency_checks(general_cfg, covariance_cfg)
@@ -239,7 +240,8 @@ for general_cfg['zbins'] in zbins_SPV3:
                         cov_dict['cov_WL_GO_2D'])
                 np.save(f'{covmat_path}/covmat_GO_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}_zbins{zbins:02}_{EP_or_ED}_2D.npy',
                         cov_dict['cov_GC_GO_2D'])
-                np.save(f'{covmat_path}/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}_2D.npy',
+                np.save(
+                    f'{covmat_path}/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}_2D.npy',
                     cov_dict['cov_3x2pt_GO_2D'])
                 np.save(f'{covmat_path}/covmat_GO_WA_lmaxWL{ell_max_WL}_nbl{nbl_WA}_zbins{zbins:02}_{EP_or_ED}_2D.npy',
                         cov_dict['cov_WA_GO_2D'])
@@ -273,31 +275,30 @@ for general_cfg['zbins'] in zbins_SPV3:
             if covariance_cfg['save_covariance_6D'] and ell_max_WL == 5000:
                 ndim = 6
                 for which_cov in ['GO', 'GS']:
-                    np.save(f'{covmat_path}/covmat_{which_cov}_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}_zbins{zbins:02}_{EP_or_ED}_{ndim}D.npy',
-                            cov_dict[f'cov_WL_{which_cov}_{ndim}D'])
-                    np.save(f'{covmat_path}/covmat_{which_cov}_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}_zbins{zbins:02}_{EP_or_ED}_{ndim}D.npy',
-                            cov_dict[f'cov_GC_{which_cov}_{ndim}D'])
-                    sio.savemat(f'{covmat_path}/covmat_{which_cov}_3x2pt_lmaxXC{ell_max_GC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}_10D.mat',
-                            cov_dict[f'cov_3x2pt_{which_cov}_10D'])
+                    np.save(
+                        f'{covmat_path}/covmat_{which_cov}_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}_zbins{zbins:02}_{EP_or_ED}_{ndim}D.npy',
+                        cov_dict[f'cov_WL_{which_cov}_{ndim}D'])
+                    np.save(
+                        f'{covmat_path}/covmat_{which_cov}_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}_zbins{zbins:02}_{EP_or_ED}_{ndim}D.npy',
+                        cov_dict[f'cov_GC_{which_cov}_{ndim}D'])
 
+                    path = f'{covmat_path}/covmat_{which_cov}_3x2pt_lmaxXC{ell_max_GC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}_10D.pickle'
+                    with open(path, 'wb') as handle:
+                        pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle, protocol=pickle.HIGHEST_PROTOCOL)
 
             # check for Stefano
             print('GHOST CODE BELOW')
             npairs = 91
-            cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GO_6D'], nbl_WL, npairs, ind[:npairs,:])
-            cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GO_6D'], nbl_GC, npairs, ind[:npairs,:])
-            cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GS_6D'], nbl_WL, npairs, ind[:npairs,:])
-            cov_GC_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GS_6D'], nbl_GC, npairs, ind[:npairs,:])
+            cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GO_6D'], nbl_WL, npairs, ind[:npairs, :])
+            cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GO_6D'], nbl_GC, npairs, ind[:npairs, :])
+            cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GS_6D'], nbl_WL, npairs, ind[:npairs, :])
+            cov_GC_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GS_6D'], nbl_GC, npairs, ind[:npairs, :])
             print(np.array_equal(cov_WL_GO_4D, cov_dict[f'cov_WL_GO_4D']))
             print(np.array_equal(cov_GC_GO_4D, cov_dict[f'cov_GC_GO_4D']))
             print(np.array_equal(cov_WL_GS_4D, cov_dict[f'cov_WL_GS_4D']))
             print(np.array_equal(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D']))
 
-
-
-
-assert 1 == 0, 'stop here'
-
+"""
 if FM_cfg['save_FM']:
     np.savetxt(f"{job_path}/output/FM/FM_WL_GO_lmaxWL{ell_max_WL}_nbl{nbl_WL}.txt", FM_dict['FM_WL_GO'])
     np.savetxt(f"{job_path}/output/FM/FM_GC_GO_lmaxGC{ell_max_GC}_nbl{nbl_WL}.txt", FM_dict['FM_GC_GO'])
@@ -311,5 +312,5 @@ if FM_cfg['save_FM']:
 
 if FM_cfg['save_FM_as_dict']:
     sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)
-
+"""
 print('done')

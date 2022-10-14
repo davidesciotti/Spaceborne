@@ -69,7 +69,7 @@ zbins_SPV3 = (13,)
 
 for general_cfg['zbins'] in zbins_SPV3:
     # for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (1500, 750)):
-    for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((1500, 750),):
+    for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), ):
         for (general_cfg['EP_or_ED']) in ('EP', 'ED'):
 
             # utils.consistency_checks(general_cfg, covariance_cfg)

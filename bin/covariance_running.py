@@ -228,7 +228,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         probe_ordering[1][1] = GL_or_LG[1]
 
         # print as a check
-        print('check: datavector probe ordering:\n', probe_ordering)
+        print('check: datavector probe ordering:', probe_ordering)
         print('check: GL_or_LG:', GL_or_LG)
         print('check: probe combinations:')
         for A, B in probe_ordering:
@@ -245,10 +245,22 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         # also, I can't seem to pass a dictionary directly to a numba function... Passing C_3x2pt_5D instead and converting
         # it inside the cov_SSC_3x2pt_10D_dict function.
         probe_ordering_tuple = tuple(probe_ordering)
+        # start = time.perf_counter()
+        # cov_3x2pt_SS_10D = mm.covariance_SS_3x2pt_10D_dict(nbl_3x2pt, C_3x2pt_5D, Sijkl, fsky, zbins, R_3x2pt_5D,
+        #                                                    probe_ordering_tuple)
+        # print(f'cov_3x2pt_SS_10D computed in {(time.perf_counter() - start):.2f} seconds')
+
+
         start = time.perf_counter()
-        cov_3x2pt_SS_10D = mm.covariance_SS_3x2pt_10D_dict(nbl_3x2pt, C_3x2pt_5D, Sijkl, fsky, zbins, R_3x2pt_5D,
-                                                           probe_ordering_tuple)
-        print(f'cov_3x2pt_SS_10D computed in {(time.perf_counter() - start):.2f} seconds')
+        Cl_dict = mm.build_3x2pt_dict(C_3x2pt_5D)
+        Rl_dict = mm.build_3x2pt_dict(R_3x2pt_5D)
+        Sijkl_dict = mm.build_Sijkl_dict(Sijkl, zbins)
+        cov_3x2pt_SS_10D = mm.covariance_SS_10D_dict_experim(Cl_dict, Rl_dict, Sijkl_dict, nbl_3x2pt, zbins, fsky, probe_ordering)
+        print(f'cov_3x2pt_SS_10D_v2 computed in {(time.perf_counter() - start):.2f} seconds')
+
+        # for A, B in probe_ordering:
+        #     for C, D in probe_ordering:
+        #         assert(np.array_equal(cov_3x2pt_SS_10D[A, B, C, D], cov_3x2pt_SS_10D_v2[A, B, C, D]))
 
         # sum GO and SS
         cov_3x2pt_GS_10D = {}
@@ -256,7 +268,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
             for C, D in probe_ordering:
                 cov_3x2pt_GS_10D[A, B, C, D] = np.zeros((nbl_3x2pt, nbl_3x2pt, zbins, zbins, zbins, zbins))
 
-        cov_3x2pt_GS_10D = {}
         for A, B in probe_ordering:
             for C, D in probe_ordering:
                 cov_3x2pt_GS_10D[A, B, C, D][...] = cov_3x2pt_GO_10D[A, B, C, D][...] + \

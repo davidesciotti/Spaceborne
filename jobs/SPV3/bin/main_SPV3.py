@@ -68,8 +68,8 @@ else:
 zbins_SPV3 = (13,)
 
 for general_cfg['zbins'] in zbins_SPV3:
-    for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (1500, 750)):
-        # for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000),):
+    # for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (1500, 750)):
+    for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((1500, 750),):
         for (general_cfg['EP_or_ED']) in ('EP', 'ED'):
 
             # utils.consistency_checks(general_cfg, covariance_cfg)
@@ -112,7 +112,6 @@ for general_cfg['zbins'] in zbins_SPV3:
             nbl_3x2pt = nbl_GC
             general_cfg['nbl_WL'] = nbl_WL
 
-            # ! not super sure about these deltas
             delta_dict = {}
             delta_dict['delta_l_WL'] = np.copy(delta_l_WL_nbl32[:nbl_WL])
             delta_dict['delta_l_GC'] = np.copy(delta_l_WL_nbl32[:nbl_GC])
@@ -200,6 +199,7 @@ for general_cfg['zbins'] in zbins_SPV3:
                                                 ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
 
             # compute Fisher Matrix
+            print('I\'m not computing any Fisher Matrix; I still don\'t have the derivatives.')
             # FM_dict = FM_utils.compute_FM(general_config, covariance_cfg, FM_config, ell_dict, cov_dict)
 
             # ! SAVE:
@@ -277,6 +277,9 @@ for general_cfg['zbins'] in zbins_SPV3:
                             cov_dict[f'cov_WL_{which_cov}_{ndim}D'])
                     np.save(f'{covmat_path}/covmat_{which_cov}_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}_zbins{zbins:02}_{EP_or_ED}_{ndim}D.npy',
                             cov_dict[f'cov_GC_{which_cov}_{ndim}D'])
+                    sio.savemat(f'{covmat_path}/covmat_{which_cov}_3x2pt_lmaxXC{ell_max_GC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}_10D.mat',
+                            cov_dict[f'cov_3x2pt_{which_cov}_10D'])
+
 
             # check for Stefano
             print('GHOST CODE BELOW')
@@ -289,6 +292,9 @@ for general_cfg['zbins'] in zbins_SPV3:
             print(np.array_equal(cov_GC_GO_4D, cov_dict[f'cov_GC_GO_4D']))
             print(np.array_equal(cov_WL_GS_4D, cov_dict[f'cov_WL_GS_4D']))
             print(np.array_equal(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D']))
+
+
+
 
 assert 1 == 0, 'stop here'
 

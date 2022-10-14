@@ -184,6 +184,12 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     cov_3x2pt_SS_4D = mm.cov_SSC_ALL(nbl_3x2pt, npairs_tot, ind, C_3x2pt_5D, Sijkl, fsky, zbins, R_3x2pt_5D)
     print("SS cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
 
+    ############################## SUM G + SSC ################################
+    cov_WL_GS_4D = cov_WL_GO_4D + cov_WL_SS_4D
+    cov_GC_GS_4D = cov_GC_GO_4D + cov_GC_SS_4D
+    cov_WA_GS_4D = cov_WA_GO_4D + cov_WA_SS_4D
+    cov_3x2pt_GS_4D = cov_3x2pt_GO_4D + cov_3x2pt_SS_4D
+
     if compute_covariance_in_blocks:
         # compute 3x2pt covariance in 10D, potentially with whichever probe ordering
 
@@ -244,36 +250,47 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
                                                            probe_ordering_tuple)
         print(f'cov_3x2pt_SS_10D computed in {(time.perf_counter() - start):.2f} seconds')
 
+        # sum GO and SS
+        cov_3x2pt_GS_10D = {}
+        for A, B in probe_ordering:
+            for C, D in probe_ordering:
+                cov_3x2pt_GS_10D[A, B, C, D] = np.zeros((nbl_3x2pt, nbl_3x2pt, zbins, zbins, zbins, zbins))
+
+        cov_3x2pt_GS_10D = {}
+        for A, B in probe_ordering:
+            for C, D in probe_ordering:
+                cov_3x2pt_GS_10D[A, B, C, D][...] = cov_3x2pt_GO_10D[A, B, C, D][...] + \
+                                                    cov_3x2pt_SS_10D[A, B, C, D][...]
+
         # convert each block to 4D and stack to make the 4D_3x2pt
         # note: I pass ind_copy because the LG-GL check and inversion is performed in the function (otherwise it would be
         # performed twice!)
         # ! careful of passing clean copies of ind to both functions!!!
         cov_3x2pt_GO_4D_new = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_10D, probe_ordering, nbl_3x2pt, zbins,
-                                                          ind_copy, GL_or_LG)
+                                                          ind.copy(), GL_or_LG)
         cov_3x2pt_SS_4D_new = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_SS_10D, probe_ordering, nbl_3x2pt, zbins,
-                                                          ind_copy_2, GL_or_LG)
+                                                          ind.copy(), GL_or_LG)
+        cov_3x2pt_GS_4D_new = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_10D, probe_ordering, nbl_3x2pt, zbins,
+                                                          ind.copy(), GL_or_LG)
 
         # check with old result and show the arrays 
-        print('check: is cov_3x2pt_GO_4D from covariance_10D_dict function == old one?', np.array_equal(cov_3x2pt_GO_4D_new, cov_3x2pt_GO_4D))
-        print('check: is cov_3x2pt_SS_4D from covariance_10D_dict function == old one?', np.array_equal(cov_3x2pt_SS_4D_new, cov_3x2pt_SS_4D))
+        print('check: is cov_3x2pt_GO_4D from covariance_10D_dict function == old one?',
+              np.array_equal(cov_3x2pt_GO_4D_new, cov_3x2pt_GO_4D))
+        print('check: is cov_3x2pt_SS_4D from covariance_10D_dict function == old one?',
+              np.array_equal(cov_3x2pt_SS_4D_new, cov_3x2pt_SS_4D))
+        print('check: is cov_3x2pt_GS_4D from covariance_10D_dict function == old one?',
+              np.array_equal(cov_3x2pt_GS_4D_new, cov_3x2pt_GS_4D))
 
         cov_dict['cov_3x2pt_GO_10D'] = cov_3x2pt_GO_10D
+        cov_dict['cov_3x2pt_SS_10D'] = cov_3x2pt_SS_10D
+        cov_dict['cov_3x2pt_GS_10D'] = cov_3x2pt_GS_10D
 
-        # save the 10D covariance as a dict
-        # TODO use pandas dataframe
-        # path_santiago = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured/jobs/IST_NL/output/covmat/6D_for_Santiago'
-        # with open(f"{path_santiago}/cov_3x2pt_GO_10D.pkl", "wb") as file:
-        #     pickle.dump(cov_3x2pt_GO_10D, file)
+        # TODO use pandas dataframe?
+
 
     # # TODO implement the other covmats in this module!
     # if use_PyCCL_SS
     # if use_PyCCL_cNG:
-
-    ############################## SUM G + SSC ################################
-    cov_WL_GS_4D = cov_WL_GO_4D + cov_WL_SS_4D
-    cov_GC_GS_4D = cov_GC_GO_4D + cov_GC_SS_4D
-    cov_WA_GS_4D = cov_WA_GO_4D + cov_WA_SS_4D
-    cov_3x2pt_GS_4D = cov_3x2pt_GO_4D + cov_3x2pt_SS_4D
 
     if covariance_cfg['save_covariance_6D']:
         cov_dict['cov_WL_GO_6D'] = mm.cov_4D_to_6D(cov_WL_GO_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
@@ -299,7 +316,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     cov_GC_GS_2D = mm.cov_4D_to_2D(cov_GC_GS_4D, nbl_GC, npairs_auto, block_index=block_index)
     cov_WA_GS_2D = mm.cov_4D_to_2D(cov_WA_GS_4D, nbl_WA, npairs_auto, block_index=block_index)
     cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, nbl_3x2pt, npairs_tot, block_index=block_index)
-
 
     ############################### save in dictionary  ########################
     probe_names = ('WL', 'GC', '3x2pt', 'WA')

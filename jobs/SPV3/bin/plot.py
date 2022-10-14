@@ -241,7 +241,7 @@ for probe in ['WL', 'GC', '3x2pt']:
                            f'{probe}_ellmax{ell_max}_Rl{which_Rl}_{which_uncertainty}.png')
 
     # compute and print FoM
-    print('GO FoM:', mm.compute_FoM(FM_GO))
-    print(f'GS Rl_{which_Rl} FoM:', mm.compute_FoM(FM_GS))
+    print(f'{probe} GO FoM:', mm.compute_FoM(FM_GO))
+    print(f'{probe} GS Rl_{which_Rl} FoM:', mm.compute_FoM(FM_GS))
 
 print('*********** done ***********')

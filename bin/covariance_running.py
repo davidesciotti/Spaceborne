@@ -256,11 +256,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         Rl_dict = mm.build_3x2pt_dict(R_3x2pt_5D)
         Sijkl_dict = mm.build_Sijkl_dict(Sijkl, zbins)
         cov_3x2pt_SS_10D = mm.covariance_SS_10D_dict_experim(Cl_dict, Rl_dict, Sijkl_dict, nbl_3x2pt, zbins, fsky, probe_ordering)
-        print(f'cov_3x2pt_SS_10D_v2 computed in {(time.perf_counter() - start):.2f} seconds')
-
-        # for A, B in probe_ordering:
-        #     for C, D in probe_ordering:
-        #         assert(np.array_equal(cov_3x2pt_SS_10D[A, B, C, D], cov_3x2pt_SS_10D_v2[A, B, C, D]))
+        print(f'cov_3x2pt_SS_10D computed in {(time.perf_counter() - start):.2f} seconds')
 
         # sum GO and SS
         cov_3x2pt_GS_10D = {}

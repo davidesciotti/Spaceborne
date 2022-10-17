@@ -1,6 +1,7 @@
 from pathlib import Path
 import sys
 import numpy as np
+
 project_path = Path.cwd().parent.parent.parent
 
 sys.path.append(f'{project_path}/bin')
@@ -14,7 +15,7 @@ general_config = {
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
     'ell_max_WL': 5000,
     'ell_max_GC': 3000,
-    'zbins': 10,
+    'zbins': (13,),
     'EP_or_ED': 'EP',
     'nProbes': 2,
     # 'nbl_WL': 32,
@@ -34,9 +35,9 @@ covariance_config = {
     'ind_ordering': ind_ordering,
     'GL_or_LG': GL_or_LG,
     'save_SSC_only_covmats': False,
-    'compute_covariance_in_blocks': False,
+    'compute_covariance_in_blocks': True,
     'fsky': fsky,  # ! new
-    'Rl': 4,
+    # 'Rl': 4,
     # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
     'block_index': 'ell',
     'which_probe_response': 'variable',
@@ -44,6 +45,8 @@ covariance_config = {
     'ng': 28.73,  # ! new
     'save_covariance': True,
     'save_covariance_dat': False,  # this is the format used by Vincenzo
+    'save_covariance_6D': True,
+    'save_2DCLOE': False  # quite useless, this is not the format used by CLOE
 }
 
 Sijkl_config = {

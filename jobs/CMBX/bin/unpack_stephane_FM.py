@@ -28,7 +28,7 @@ matplotlib.use('Qt5Agg')
 #         for cosmo_model in ['LCDM', 'w0waCDM']:
 
 case = 'opti'
-CMB_probe = 'CMB'  # CMB or CMBphionly
+CMB_probe = 'CMB'  # == all CMB probes (T, E, phi) or just phi
 CMB_obs = 'planck'  # "planck" or "SO" or "S4"
 mode = 'p'
 cosmo_model = 'w0waCDM'  # w0waCDM or LCDM

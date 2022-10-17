@@ -53,8 +53,8 @@ bar_plot = False
 triangle_plot = False
 plot_ratio_vs_zbins = False
 plot_fom_vs_zbins = False
-plot_fom_vs_eps_b = True
-plot_prior_contours = False
+plot_fom_vs_eps_b = False
+plot_prior_contours = True
 pic_format = 'pdf'
 dpi = 500
 # ! end options
@@ -511,17 +511,13 @@ if plot_prior_contours:
               }
     plt.rcParams.update(params)
 
-    ###################### ! fig. 9 ######################
-
-    lim = [0, 10]
     FoM_ratio_values = np.arange(0.8, 1.1, 0.05)
-    FoM_ratio_values = np.arange(0.74, 0.78, 0.01)
 
     fig, axs = plt.subplots(1, 1, constrained_layout=True, figsize=(15, 7.5))
 
     panel_idx = 0
 
-    EP13_opt = np.genfromtxt(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/FoMvsPrior/fomvsprior-EP13-Opt.dat')
+    EP13_opt = np.genfromtxt(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/FoMvsPrior/fomvsprior-EP10-Opt.dat')
     EP13_opt[:, 0] = 10 ** EP13_opt[:, 0]  # eps_b
     EP13_opt[:, 1] = 10 ** EP13_opt[:, 1]  # sigma_m
 
@@ -529,20 +525,13 @@ if plot_prior_contours:
     epsb_values = np.unique(EP13_opt[:, 0])
     sigmam_values = np.unique(EP13_opt[:, 1])
     n_points = sigmam_values.size
-
-    sigmam_ref = 5e-4 * 100
-    sigmam_ref_idx = np.argmin(np.abs(10 ** EP13_opt[:, 1] - sigmam_ref))
-    FoM_ref = EP13_opt[sigmam_ref_idx, ]
-
-    plt.plot(EP13_opt[:, 1], '.')
-    plt.axhline(y=sigmam_ref, color='k', zorder=2)
+    FoM_ref = 294.8  # from Vincenzo's email - this is for EP10, non-flat
 
     # produce grid and pass Z values
     X = epsb_values
     Y = sigmam_values*1e4
     X, Y = np.meshgrid(X, Y)
-    Z = np.reshape(np.abs(EP13_opt[:, -5] / EP13_opt[:, -6]), (n_points, n_points)).T  # XXX careful of the EP13_opt index!! it's FoM_GS/FoM_ref
-    Z = np.reshape(np.abs(EP13_opt[:, -2] / EP13_opt[:, -3]), (n_points, n_points)).T  # XXX careful of the EP13_opt index!! it's FoM_GS/FoM_ref
+    Z = np.reshape(np.abs(EP13_opt[:, -2] / FoM_ref), (n_points, n_points)).T  # XXX careful of the EP13_opt index!! it's FoM_GS/FoM_ref
     print('min =', Z.min())
     print('max =', Z.max())
 
@@ -550,11 +539,15 @@ if plot_prior_contours:
     CS = axs.contour(X, Y, Z, levels=FoM_ratio_values, cmap='plasma', zorder=6)
 
     # plot adjustments
-    axs.set_aspect('equal', 'box')
     axs.set_xlabel('$\\epsilon_b \, (\%)$')
     axs.set_ylabel('$\\sigma_m \\times 10^4$')
-    axs.set_xlim(lim[0], lim[1])
-    axs.set_ylim(lim[0], lim[1])
+
+    # I want the plot to be square even with different limits on the x and y axes - probably not the smartest way to do it
+    axs.set_xlim(0.5, 3.5)
+    axs.set_ylim(0, 10)
+    x_length = axs.get_xlim()[1] - axs.get_xlim()[0]
+    y_length = axs.get_ylim()[1] - axs.get_ylim()[0]
+    axs.set_aspect(x_length/y_length)
     axs.grid()
 
     # legend: from source (see the comment): https://stackoverflow.com/questions/64523051/legend-is-empty-for-contour-plot-is-this-by-design

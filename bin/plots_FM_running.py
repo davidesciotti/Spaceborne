@@ -10,9 +10,9 @@ import plotly.offline as pyo
 import getdist
 from getdist import plots
 from getdist.gaussian_mixtures import GaussianND
+from matplotlib import cm
 
 project_path_here = Path.cwd().parent.parent.parent
-print(project_path_here)
 sys.path.append(f'{project_path_here}/lib')
 import my_module as mm
 
@@ -22,13 +22,11 @@ import mpl_cfg
 
 matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
-param_names_label = mpl_cfg.general_dict['param_names_label']
+param_names_label = mpl_cfg.general_dict['cosmo_labels_TeX']
 ylabel_perc_diff_wrt_mean = mpl_cfg.general_dict['ylabel_perc_diff_wrt_mean']
 ylabel_sigma_relative_fid = mpl_cfg.general_dict['ylabel_sigma_relative_fid']
 # plt.rcParams['axes.axisbelow'] = True
 markersize = mpl_cfg.mpl_rcParams_dict['lines.markersize']
-
-print(ylabel_sigma_relative_fid)
 
 
 ###############################################################################
@@ -78,11 +76,13 @@ def bar_plot_old(uncert_gauss, uncert_SSC, difference):
     plt.savefig(fname=f'bar_plot_{probe}.png', dpi=300, figsize=[16, 9])
 
 
-def bar_plot(data, title, label_list, bar_width=0.25, nparams=7, param_names_label=param_names_label,
-                second_axis=True):
+def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_label=param_names_label,
+             second_axis=True, no_second_axis_bars=1):
     """
     data: usually the percent uncertainties, but could also be the percent difference
     """
+
+    # colors = cm.Paired(np.linspace(0, 1, data.shape[1]))
 
     # Set position of bar on x-axis
     bar_centers = np.zeros(data.shape)
@@ -93,23 +93,24 @@ def bar_plot(data, title, label_list, bar_width=0.25, nparams=7, param_names_lab
         bar_centers = np.expand_dims(bar_centers, 0)
 
     else:
-        for i in range(data.shape[0]):
-            if i == 0:
-                bar_centers[i, :] = np.arange(data.shape[1]) - bar_width
+        for bar_idx in range(data.shape[0]):
+            if bar_idx == 0:
+                bar_centers[bar_idx, :] = np.arange(data.shape[1]) - bar_width
             else:
-                bar_centers[i, :] = [x + i * bar_width for x in bar_centers[0]]
+                bar_centers[bar_idx, :] = [x + bar_idx * bar_width for x in bar_centers[0]]
 
-    plt.grid()
+    # plt.grid()
 
     if second_axis:
 
-        assert data.shape[0] == 3, "data must have 3 rows to display the second axis"
 
-        plt.rcParams['axes.axisbelow'] = True
+        # assert data.shape[0] == 3, "data must have 3 rows to display the second axis"
+
+        # plt.rcParams['axes.axisbelow'] = True
 
         fig, ax = plt.subplots(figsize=mpl_cfg.mpl_rcParams_dict['figure.figsize'])
-        for i in range(data.shape[0] - 1):
-            ax.bar(bar_centers[i, :], data[i, :], width=bar_width, edgecolor='grey', label=label_list[i])
+        for bar_idx in range(data.shape[0] - no_second_axis_bars):
+            ax.bar(bar_centers[bar_idx, :], data[bar_idx, :], width=bar_width, edgecolor='grey', label=label_list[bar_idx])
 
         # Add some text for labels, title and custom x-axis tick labels, etc.
         ax.grid()
@@ -120,9 +121,11 @@ def bar_plot(data, title, label_list, bar_width=0.25, nparams=7, param_names_lab
         # second axis
         ax2 = ax.twinx()
         # ax2.set_ylabel('(GS/GO - 1) $\\times$ 100', color='g')
-        ax2.set_ylabel('% uncertainty increase', color='g')  # for PhD workshop
-        ax2.bar(bar_centers[-1, :], data[-1, :], width=bar_width, edgecolor='grey', label=label_list[-1], color='g')
-        ax2.tick_params(axis='y', labelcolor='g')
+        ax2.set_ylabel('% uncertainty increase')
+        for bar_idx in range(1, no_second_axis_bars + 1):
+            ax2.bar(bar_centers[-bar_idx, :], data[-bar_idx, :], width=bar_width, edgecolor='grey',
+                    label=label_list[-bar_idx], color='g')
+        ax2.tick_params(axis='y')
 
         fig.legend(loc="upper right", bbox_to_anchor=(1, 1), bbox_transform=ax.transAxes)
 
@@ -130,8 +133,8 @@ def bar_plot(data, title, label_list, bar_width=0.25, nparams=7, param_names_lab
         plt.figure(figsize=mpl_cfg.mpl_rcParams_dict['figure.figsize'])
 
         # Make the plot
-        for i in range(data.shape[0]):
-            plt.bar(bar_centers[i, :], data[i, :], width=bar_width, edgecolor='grey', label=label_list[i])
+        for bar_idx in range(data.shape[0]):
+            plt.bar(bar_centers[bar_idx, :], data[bar_idx, :], width=bar_width, edgecolor='grey', label=label_list[bar_idx])
 
         # Adding xticks
         plt.ylabel(ylabel_sigma_relative_fid)
@@ -141,20 +144,24 @@ def bar_plot(data, title, label_list, bar_width=0.25, nparams=7, param_names_lab
         plt.title(title)
         plt.legend()
         plt.show()
-def triangle_plot(FM_1, FM_2, fiducials, title, param_names_label):
 
+
+def triangle_plot(FM_GO, FM_GS, fiducials, title, param_names_label):
     # should I do this?
-    fiducials = np.where(fiducials == 0., 1, fiducials)  # the fiducial for wa is 0, substitute with 1 to avoid division by zero
-    fiducials = np.where(fiducials == -1, 1, fiducials)  # the fiducial for wa is -1, substitute with 1 to avoid negative values
+    fiducials = np.where(fiducials == 0., 1,
+                         fiducials)  # the fiducial for wa is 0, substitute with 1 to avoid division by zero
+    fiducials = np.where(fiducials == -1, 1,
+                         fiducials)  # the fiducial for wa is -1, substitute with 1 to avoid negative values
 
     nparams = len(param_names_label)
 
-    # parameters' covariance matrix
-    FM_inv_GO = np.linalg.inv(FM_1)[:nparams, :nparams]
-    FM_inv_GS = np.linalg.inv(FM_2)[:nparams, :nparams]
+    # parameters' covariance matrix - first invert, then slice! Otherwise, you're fixing the nuisance parameters
+    FM_inv_GO = np.linalg.inv(FM_GO)[:nparams, :nparams]
+    FM_inv_GS = np.linalg.inv(FM_GS)[:nparams, :nparams]
 
-    GO_gaussian = GaussianND(fiducials, FM_inv_GO, names=param_names_label)
-    GS_gaussian = GaussianND(fiducials, FM_inv_GS, names=param_names_label)
+    GO_gaussian = GaussianND(mean=fiducials, cov=FM_inv_GO, names=param_names_label)
+    GS_gaussian = GaussianND(mean=fiducials, cov=FM_inv_GS, names=param_names_label)
+    print(GS_gaussian, len(param_names_label), len(fiducials), FM_inv_GO.shape)
     g = plots.get_subplot_plotter()
     g.settings.linewidth = 2
     g.settings.legend_fontsize = 30
@@ -167,6 +174,7 @@ def triangle_plot(FM_1, FM_2, fiducials, title, param_names_label):
     g.triangle_plot([GS_gaussian, GO_gaussian], filled=True, contour_lws=1.4,
                     legend_labels=['Gauss + SSC', 'Gauss-only'], legend_loc='upper right')
     plt.suptitle(f'{title}', fontsize='xx-large')
+
 
 # parametri fiduciali
 fid = np.array((0.32, 0.05, 1, 1, 0.67, 0.96, 0.816, 0.55, 1, 1))

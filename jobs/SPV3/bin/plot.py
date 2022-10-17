@@ -54,6 +54,7 @@ triangle_plot = False
 plot_ratio_vs_zbins = False
 plot_fom_vs_zbins = False
 plot_fom_vs_eps_b = True
+plot_prior_contours = False
 pic_format = 'pdf'
 dpi = 500
 # ! end options
@@ -86,7 +87,6 @@ if which_diff == 'normal':
     diff_funct = mm.percent_diff
 else:
     diff_funct = mm.percent_diff_mean
-
 
 zbins_subset = np.array((7, 9, 10, 11, 13), dtype=int)
 # zbins_subset = (10,)
@@ -442,7 +442,7 @@ if plot_fom_vs_eps_b:
         f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/FoMvsPrior/fomvsprior-EP13-Opt.dat')
 
     # find the correct line fot the different sigma_m values, Vincenzo flattens the array
-    sigma_m_values = (5e-4, 50e-4, 500e-4)
+    sigma_m_values = (5e-4, 50e-4, 100e-4)
     start_idxs = [np.argmin(np.abs(10 ** EP10_opt[:, 1] - sigma_m_value)) for sigma_m_value in sigma_m_values]
 
     eps_b_values = np.unique(EP10_opt[:, 0])
@@ -483,7 +483,7 @@ if plot_fom_vs_eps_b:
 
     plt.figure()
     for start, ls, label in zip(start_idxs, linestyles, linestyle_labels):
-        plt.plot(10 ** EP10_opt[start::step, 0], EP10_opt[start::step, -2]/EP10_opt[start::step, -3], color='black',
+        plt.plot(10 ** EP10_opt[start::step, 0], EP10_opt[start::step, -2] / EP10_opt[start::step, -3], color='black',
                  ls=ls, label=label)
 
     plt.legend(prop={'size': fontsize})
@@ -496,173 +496,74 @@ if plot_fom_vs_eps_b:
     plt.savefig(job_path / f'output/plots/replot_vincenzo_newspecs/FoM_vs_epsb/FoMratio_vs_epsb.{pic_format}', dpi=dpi,
                 bbox_inches='tight')
 
-=======
-for probe in ['WL', 'GC', '3x2pt']:
 
-    if pes_opt == 'opt':
-        ell_max_WL = 5000
-        ell_max_GC = 3000
-    else:
-        ell_max_WL = 1500
-        ell_max_GC = 750
+if plot_prior_contours:
 
-    if probe == '3x2pt':
-        probe_lmax = 'XC'
-        probe_folder = 'All'
-        probename_vinc = probe
-        pars_labels_TeX = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['IA_labels_TeX'] + \
-                          mpl_cfg.general_dict['galaxy_bias_labels_TeX']
-        fid = np.concatenate((fid_cosmo, fid_IA, fid_galaxy_bias), axis=0)
-    else:
-        probe_lmax = probe
-        probe_folder = probe + 'O'
-        probename_vinc = probe + 'O'
+    params = {'lines.linewidth': 2,
+              'font.size': 15,
+              'axes.labelsize': 'large',
+              'axes.titlesize': 'large',
+              'xtick.labelsize': 'large',
+              'ytick.labelsize': 'large',
+              'mathtext.fontset': 'stix',
+              'font.family': 'STIXGeneral',
+              # 'figure.figsize': (15, 8)
+              }
+    plt.rcParams.update(params)
 
-    if probe == 'WL':
-        ell_max = ell_max_WL
-        pars_labels_TeX = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['IA_labels_TeX'] + \
-                          mpl_cfg.general_dict['shear_bias_labels_TeX']
-        fid = np.concatenate((fid_cosmo, fid_IA), axis=0)
-    else:
-        ell_max = ell_max_GC
+    ###################### ! fig. 9 ######################
 
-    if probe == 'GC':
-        pars_labels_TeX = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['galaxy_bias_labels_TeX']
-        fid = np.concatenate((fid_cosmo, fid_galaxy_bias), axis=0)
+    lim = [0, 10]
+    FoM_ratio_values = np.arange(0.8, 1.1, 0.05)
+    FoM_ratio_values = np.arange(0.74, 0.78, 0.01)
 
-    title = '%s, $\ell_{\\rm max} = %i$' % (probe, ell_max)
+    fig, axs = plt.subplots(1, 1, constrained_layout=True, figsize=(15, 7.5))
 
-    # import vincenzo's FM, not in a dictionary because they are all split into different folders
-    vinc_FM_folder = 'vincenzo/SPV3_07_2022/FishMat'
+    panel_idx = 0
 
-    # TODO pessimistic case
-    # TODO try with pandas dataframes
-    FM_GO = np.genfromtxt(
-        project_path.parent / f'common_data/{vinc_FM_folder}/GaussOnly/{probe_folder}/OneSample/fm-{probename_vinc}-{nbl}-wzwaCDM-{specs}.dat')
-    FM_GS = np.genfromtxt(
-        project_path.parent / f'common_data/{vinc_FM_folder}/GaussSSC/{probe_folder}/OneSample/fm-{probename_vinc}-{nbl}-wzwaCDM-{specs}.dat')
+    EP13_opt = np.genfromtxt(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/FoMvsPrior/fomvsprior-EP13-Opt.dat')
+    EP13_opt[:, 0] = 10 ** EP13_opt[:, 0]  # eps_b
+    EP13_opt[:, 1] = 10 ** EP13_opt[:, 1]  # sigma_m
 
-    # old FMs (before specs updates)
-    FM_GO_old = np.genfromtxt(
-        f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/FM/FM_{probe}_GO_lmax{probe_lmax}{ell_max}_nbl30.txt')
-    FM_GS_old = np.genfromtxt(
-        f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/FM/FM_{probe}_GS_lmax{probe_lmax}{ell_max}_nbl30_Rlvar.txt')
+    # take the epsilon values
+    epsb_values = np.unique(EP13_opt[:, 0])
+    sigmam_values = np.unique(EP13_opt[:, 1])
+    n_points = sigmam_values.size
 
-    # remove rows/cols for the redshift center nuisance parameters
-    if fix_dz_nuisance:
-        FM_GO = FM_GO[:-10, :-10]
-        FM_GS = FM_GS[:-10, :-10]
+    sigmam_ref = 5e-4 * 100
+    sigmam_ref_idx = np.argmin(np.abs(10 ** EP13_opt[:, 1] - sigmam_ref))
+    FoM_ref = EP13_opt[sigmam_ref_idx, ]
 
-    if probe != 'GC':
-        if fix_shear_bias:
-            assert fix_dz_nuisance, 'the case with free dz_nuisance is not implemented (you just need to be more careful with the slicing)'
-            FM_GO = FM_GO[:-10, :-10]
-            FM_GS = FM_GS[:-10, :-10]
+    plt.plot(EP13_opt[:, 1], '.')
+    plt.axhline(y=sigmam_ref, color='k', zorder=2)
 
-    if model == 'flat':
-        FM_GO = np.delete(FM_GO, obj=1, axis=0)
-        FM_GO = np.delete(FM_GO, obj=1, axis=1)
-        FM_GS = np.delete(FM_GS, obj=1, axis=0)
-        FM_GS = np.delete(FM_GS, obj=1, axis=1)
-    elif model == 'nonflat':
-        w0wa_rows = [3, 4]  # Omega_DE is in position 1
-        nparams += 1
-        fid = np.insert(arr=fid, obj=1, values=ISTF_fid.extensions['Om_Lambda0'], axis=0)
-        pars_labels_TeX = np.insert(arr=pars_labels_TeX, obj=1, values='$\\Omega_{\\rm DE}$', axis=0)
+    # produce grid and pass Z values
+    X = epsb_values
+    Y = sigmam_values*1e4
+    X, Y = np.meshgrid(X, Y)
+    Z = np.reshape(np.abs(EP13_opt[:, -5] / EP13_opt[:, -6]), (n_points, n_points)).T  # XXX careful of the EP13_opt index!! it's FoM_GS/FoM_ref
+    Z = np.reshape(np.abs(EP13_opt[:, -2] / EP13_opt[:, -3]), (n_points, n_points)).T  # XXX careful of the EP13_opt index!! it's FoM_GS/FoM_ref
+    print('min =', Z.min())
+    print('max =', Z.max())
 
-    fid = fid[:nparams]
-    pars_labels_TeX = pars_labels_TeX[:nparams]
+    # levels of contour plot (set a high xorder to have line on top of legend)
+    CS = axs.contour(X, Y, Z, levels=FoM_ratio_values, cmap='plasma', zorder=6)
 
-    # remove null rows and columns
-    idx = mm.find_null_rows_cols_2D(FM_GO)
-    idx_GS = mm.find_null_rows_cols_2D(FM_GS)
-    assert np.array_equal(idx, idx_GS), 'the null rows/cols indices should be equal for GO and GS'
-    FM_GO = mm.remove_null_rows_cols_2D(FM_GO, idx)
-    FM_GS = mm.remove_null_rows_cols_2D(FM_GS, idx)
+    # plot adjustments
+    axs.set_aspect('equal', 'box')
+    axs.set_xlabel('$\\epsilon_b \, (\%)$')
+    axs.set_ylabel('$\\sigma_m \\times 10^4$')
+    axs.set_xlim(lim[0], lim[1])
+    axs.set_ylim(lim[0], lim[1])
+    axs.grid()
 
-    ########################################################################################################################
+    # legend: from source (see the comment): https://stackoverflow.com/questions/64523051/legend-is-empty-for-contour-plot-is-this-by-design
+    handle, _ = CS.legend_elements()
+    label = ['${\\rm FoM_{GS}} \, / \, {\\rm FoM}_{\\rm ref}}$ = ' + f'{a:.2f}' for a in CS.levels]
+    axs.legend(handle, label)
 
-    data = []
-    fom = {}
-    uncert = {}
-    cases = ['GO', 'GS']
 
-    for FM, case in zip([FM_GO, FM_GS], cases):
-        uncert[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams, fiducials=fid,
-                                                      which_uncertainty=which_uncertainty, normalize=True))
-        fom[case] = mm.compute_FoM(FM, w0wa_rows=w0wa_rows)
-
-    # set uncertainties to 0 for \Omega_DE in the non-flat case, where Ode was not a free parameter
-    if model == 'nonflat':
-        for case in cases:
-            uncert[case] = np.insert(arr=uncert[case], obj=1, values=1, axis=0)
-            uncert[case] = uncert[case][:nparams]
-
-    # uncert['diff_old'] = diff_funct(uncert['GS_old'], uncert['GO_old'])
-    uncert['diff'] = diff_funct(uncert['GS'], uncert['GO'])
-    # uncert['ratio_old'] = uncert['GS_old'] / uncert['GO_old']
-    # uncert['ratio'] = uncert['GS'] / uncert['GO']
-
-    uncert_vinc = {
-        'flat': {
-            'WL_pes': np.asarray([1.998, 1.001, 1.471, 1.069, 1.052, 1.003, 1.610]),
-            'WL_opt': np.asarray([1.574, 1.013, 1.242, 1.035, 1.064, 1.001, 1.280]),
-            'GC_pes': np.asarray([1.002, 1.002, 1.003, 1.003, 1.001, 1.001, 1.001]),
-            'GC_opt': np.asarray([1.069, 1.016, 1.147, 1.096, 1.004, 1.028, 1.226]),
-            '3x2pt_pes': np.asarray([1.442, 1.034, 1.378, 1.207, 1.028, 1.009, 1.273]),
-            '3x2pt_opt': np.asarray([1.369, 1.004, 1.226, 1.205, 1.018, 1.030, 1.242]),
-        },
-        'nonflat': {
-            'WL_pes': np.asarray([2.561, 1.358, 1.013, 1.940, 1.422, 1.064, 1.021, 1.433]),
-            'WL_opt': np.asarray([2.113, 1.362, 1.004, 1.583, 1.299, 1.109, 1.038, 1.559]),
-            'GC_pes': np.asarray([1.002, 1.001, 1.002, 1.002, 1.003, 1.001, 1.000, 1.001]),
-            'GC_opt': np.asarray([1.013, 1.020, 1.006, 1.153, 1.089, 1.004, 1.039, 1.063]),
-            '3x2pt_pes': np.asarray([1.360, 1.087, 1.043, 1.408, 1.179, 1.021, 1.009, 1.040]),
-            '3x2pt_opt': np.asarray([1.572, 1.206, 1.013, 1.282, 1.191, 1.013, 1.008, 1.156]),
-        },
-        'nonflat_shearbias': {
-            'WL_pes': np.asarray([1.082, 1.049, 1.000, 1.057, 1.084, 1.034, 1.025, 1.003]),
-            'WL_opt': np.asarray([1.110, 1.002, 1.026, 1.022, 1.023, 1.175, 1.129, 1.009]),
-            '3x2pt_pes': np.asarray([1.297, 1.087, 1.060, 1.418, 1.196, 1.021, 1.030, 1.035]),
-            '3x2pt_opt': np.asarray([1.222, 1.136, 1.010, 1.300, 1.206, 1.013, 1.009, 1.164]),
-        }
-    }
-
-    # print my and vincenzo's uncertainties and check that they are sufficiently close
-    # with np.printoptions(precision=3, suppress=True):
-    # print(f'ratio GS/GO, probe: {probe}')
-    # print('dav:', uncert["ratio"])
-    # print('vin:', uncert_vinc[model][f"{probe}_{pes_opt}"])
-
-    # model_here = model
-    # if not fix_shear_bias:
-    #     model_here += '_shearbias'
-    # assert np.allclose(uncert["ratio"], uncert_vinc[model_here][f"{probe}_{pes_opt}"], atol=0,
-    #                    rtol=1e-2), 'my uncertainties differ from vincenzos'
-
-    if check_old_FM:
-        cases = ['GO_old', 'GO_new', 'GS_old', 'GS_new', 'diff_old', 'diff_new']
-    else:
-        cases.append('diff')
-
-    for case in cases:
-        data.append(uncert[case])
-
-    if bar_plot:
-        data = np.asarray(data)
-        plot_utils.bar_plot(data, title, cases, nparams=nparams, param_names_label=pars_labels_TeX, bar_width=0.12,
-                            second_axis=False, no_second_axis_bars=1)
-
-    # if probe == '3x2pt':
-    #     plot_utils.triangle_plot(FM_GO_old, FM_GS_old, fiducials=fid,
-    #                              title=title, param_names_label=pars_labels_TeX)
-
-    plt.savefig(job_path / f'output/plots/{which_comparison}/'
-                           f'{probe}_ellmax{ell_max}_Rl{which_Rl}_{which_uncertainty}.png')
-
-    # compute and print FoM
-    print(f'{probe} GO FoM:', mm.compute_FoM(FM_GO))
-    print(f'{probe} GS Rl_{which_Rl} FoM:', mm.compute_FoM(FM_GS))
-
+    plt.savefig(job_path / f'output/plots/replot_vincenzo_newspecs/epsb_sigmam_contour.{pic_format}', dpi=dpi,
+                bbox_inches='tight')
 
 print('*********** done ***********')

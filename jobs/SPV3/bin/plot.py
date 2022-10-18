@@ -496,65 +496,66 @@ if plot_fom_vs_eps_b:
     plt.savefig(job_path / f'output/plots/replot_vincenzo_newspecs/FoM_vs_epsb/FoMratio_vs_epsb.{pic_format}', dpi=dpi,
                 bbox_inches='tight')
 
-
 if plot_prior_contours:
-
-    params = {'lines.linewidth': 2,
-              'font.size': 15,
-              'axes.labelsize': 'large',
-              'axes.titlesize': 'large',
-              'xtick.labelsize': 'large',
-              'ytick.labelsize': 'large',
+    fontsize = 20
+    params = {'lines.linewidth': 3,
+              'font.size': fontsize,
+              'axes.labelsize': 'x-large',
+              'axes.titlesize': 'x-large',
+              'xtick.labelsize': 'x-large',
+              'ytick.labelsize': 'x-large',
               'mathtext.fontset': 'stix',
               'font.family': 'STIXGeneral',
-              # 'figure.figsize': (15, 8)
               }
     plt.rcParams.update(params)
+    markersize = 14
 
-    FoM_ratio_values = np.arange(0.8, 1.1, 0.05)
-
-    fig, axs = plt.subplots(1, 1, constrained_layout=True, figsize=(15, 7.5))
-
-    panel_idx = 0
-
-    EP13_opt = np.genfromtxt(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/FoMvsPrior/fomvsprior-EP10-Opt.dat')
-    EP13_opt[:, 0] = 10 ** EP13_opt[:, 0]  # eps_b
-    EP13_opt[:, 1] = 10 ** EP13_opt[:, 1]  # sigma_m
+    FoM_vs_prior = np.genfromtxt(
+        f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/FoMvsPrior/fomvsprior-EP10-Opt.dat')
+    FoM_vs_prior[:, 0] = 10 ** FoM_vs_prior[:, 0]  # eps_b
+    FoM_vs_prior[:, 1] = 10 ** FoM_vs_prior[:, 1]  # sigma_m
 
     # take the epsilon values
-    epsb_values = np.unique(EP13_opt[:, 0])
-    sigmam_values = np.unique(EP13_opt[:, 1])
+    epsb_values = np.unique(FoM_vs_prior[:, 0])
+    sigmam_values = np.unique(FoM_vs_prior[:, 1])
     n_points = sigmam_values.size
     FoM_ref = 294.8  # from Vincenzo's email - this is for EP10, non-flat
+    FoM_ratio_values = np.arange(0.8, 1.1, 0.05)
 
     # produce grid and pass Z values
     X = epsb_values
-    Y = sigmam_values*1e4
+    Y = sigmam_values * 1e4
     X, Y = np.meshgrid(X, Y)
-    Z = np.reshape(np.abs(EP13_opt[:, -2] / FoM_ref), (n_points, n_points)).T  # XXX careful of the EP13_opt index!! it's FoM_GS/FoM_ref
+    Z = np.reshape(np.abs(FoM_vs_prior[:, -2] / FoM_ref),
+                   (n_points, n_points)).T  # XXX careful of the FoM_vs_prior index!! it's FoM_GS/FoM_ref
     print('min =', Z.min())
     print('max =', Z.max())
 
+    fig, axs = plt.subplots(1, 1, constrained_layout=True, figsize=(19, 19))
+
     # levels of contour plot (set a high xorder to have line on top of legend)
-    CS = axs.contour(X, Y, Z, levels=FoM_ratio_values, cmap='plasma', zorder=6)
+    CS = axs.contour(X, Y, Z, levels=FoM_ratio_values, cmap='plasma', zorder=1)
 
     # plot adjustments
     axs.set_xlabel('$\\epsilon_b \, (\%)$')
     axs.set_ylabel('$\\sigma_m \\times 10^4$')
 
     # I want the plot to be square even with different limits on the x and y axes - probably not the smartest way to do it
-    axs.set_xlim(0.5, 3.5)
+    xlim_min, xlim_max = 0.5, 3.5
+    step = 0.5
+    axs.set_xlim(xlim_min, xlim_max)
     axs.set_ylim(0, 10)
     x_length = axs.get_xlim()[1] - axs.get_xlim()[0]
     y_length = axs.get_ylim()[1] - axs.get_ylim()[0]
-    axs.set_aspect(x_length/y_length)
+    axs.set_aspect(x_length / y_length)
+
+    axs.xaxis.set_ticks(np.arange(xlim_min, xlim_max, step))
     axs.grid()
 
     # legend: from source (see the comment): https://stackoverflow.com/questions/64523051/legend-is-empty-for-contour-plot-is-this-by-design
     handle, _ = CS.legend_elements()
     label = ['${\\rm FoM_{GS}} \, / \, {\\rm FoM}_{\\rm ref}}$ = ' + f'{a:.2f}' for a in CS.levels]
-    axs.legend(handle, label)
-
+    axs.legend(handle, label, bbox_to_anchor=[1.01, 1.01], loc='upper right')
 
     plt.savefig(job_path / f'output/plots/replot_vincenzo_newspecs/epsb_sigmam_contour.{pic_format}', dpi=dpi,
                 bbox_inches='tight')

@@ -33,18 +33,17 @@ markersize = 10
 ########################################################################################################################
 
 # ! options
-probe = 'WL'
+zbins_list = np.array((10,), dtype=int)
+probes = ('3x2pt', )
+pes_opt_list = ('pes', )
+EP_or_ED_list = ('EP', )
 which_comparison = 'GO_vs_GS'  # this is just to set the title of the plot
 which_Rl = 'var'
 which_uncertainty = 'marginal'
-pes_opt = 'opt'
 nparams_chosen = 7
-zbins = 10
-EP_or_ED = 'EP'
 which_job = 'SPV3'
-model = 'nonflat'
+model = 'flat'
 which_diff = 'normal'
-specs = f'NonFlat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-EP{zbins}'
 check_old_FM = False
 fix_shear_bias = True  # whether to remove the rows/cols for the shear bias nuisance parameters (ie whether to fix them)
 fix_dz_nuisance = True  # whether to remove the rows/cols for the dz nuisance parameters (ie whether to fix them)
@@ -54,10 +53,13 @@ triangle_plot = False
 plot_ratio_vs_zbins = False
 plot_fom_vs_zbins = False
 plot_fom_vs_eps_b = False
-plot_prior_contours = True
+plot_prior_contours = False
+bar_plot_nuisance = True
 pic_format = 'pdf'
 dpi = 500
 # ! end options
+
+
 
 job_path = project_path / f'jobs/{which_job}'
 uncert_ratio_dict = {}
@@ -74,13 +76,6 @@ fid_IA = np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()])
 fid_galaxy_bias = np.asarray([ISTF_fid.photoz_galaxy_bias[key] for key in ISTF_fid.photoz_galaxy_bias.keys()])
 fid_shear_bias = np.asarray([ISTF_fid.photoz_shear_bias[key] for key in ISTF_fid.photoz_shear_bias.keys()])
 
-assert which_diff in ['normal', 'mean'], 'which_diff should be "normal" or "mean"'
-assert which_uncertainty in ['marginal', 'conditional'], 'which_uncertainty should be "marginal" or "conditional"'
-assert which_Rl in ['const', 'var'], 'which_Rl should be "const" or "var"'
-assert model in ['flat', 'nonflat'], 'model should be "flat" or "nonflat"'
-assert probe in ['WL', 'GC', '3x2pt'], 'probe should be "WL" or "GC" or "3x2pt"'
-assert pes_opt in ['opt', 'pes'], 'pes_opt should be "opt" or "pes"'
-assert which_job == 'SPV3', 'which_job should be "SPV3"'
 
 # compute percent diff of the cases chosen - careful of the indices!
 if which_diff == 'normal':
@@ -88,14 +83,12 @@ if which_diff == 'normal':
 else:
     diff_funct = mm.percent_diff_mean
 
-zbins_subset = np.array((7, 9, 10, 11, 13), dtype=int)
-# zbins_subset = (10,)
-probes = ('WL', '3x2pt')
+
 
 # initialize dict lists
 for probe in probes:
     uncert_ratio_dict[probe] = {}
-    for zbins in zbins_subset:
+    for zbins in zbins_list:
         uncert_ratio_dict[probe][f'zbins{zbins:02}'] = {}
         for EP_or_ED in ('EP', 'ED'):
             uncert_ratio_dict[probe][f'zbins{zbins:02}'][EP_or_ED] = {}
@@ -103,9 +96,32 @@ for probe in probes:
                 uncert_ratio_dict[probe][f'zbins{zbins:02}'][EP_or_ED][pes_opt] = []
 
 for probe in probes:
-    for zbins in zbins_subset:
-        for pes_opt in ('opt', 'pes'):
-            for EP_or_ED in ['EP', 'ED']:
+    for zbins in zbins_list:
+        for pes_opt in pes_opt_list:
+            for EP_or_ED in EP_or_ED_list:
+
+                # some checks
+                assert which_diff in ['normal', 'mean'], 'which_diff should be "normal" or "mean"'
+                assert which_uncertainty in ['marginal','conditional'], 'which_uncertainty should be "marginal" or "conditional"'
+                assert which_Rl in ['const', 'var'], 'which_Rl should be "const" or "var"'
+                assert model in ['flat', 'nonflat'], 'model should be "flat" or "nonflat"'
+                assert probe in ['WL', 'GC', '3x2pt'], 'probe should be "WL" or "GC" or "3x2pt"'
+                assert pes_opt in ['opt', 'pes'], 'pes_opt should be "opt" or "pes"'
+                assert which_job == 'SPV3', 'which_job should be "SPV3"'
+
+
+                if bar_plot_nuisance:  # ! fix this
+                    assert zbins == 10, 'I have not generalized the numbers below, plus, the gal bias fiducials are not defined for zbins != 10'
+                    if fix_shear_bias:
+                        if probe == '3x2pt':
+                            nparams_chosen = 20
+                        else:
+                            nparams_chosen = 10
+                    elif not fix_shear_bias:
+                        if probe == '3x2pt':
+                            nparams_chosen = 30
+                        else:
+                            nparams_chosen = 20
 
                 nparams = nparams_chosen  # re-initialize at every iteration
 
@@ -123,8 +139,9 @@ for probe in probes:
                     probe_folder = 'All'
                     probename_vinc = probe
                     pars_labels_TeX = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['IA_labels_TeX'] + \
-                                      mpl_cfg.general_dict['galaxy_bias_labels_TeX']
-                    fid = np.concatenate((fid_cosmo, fid_IA, fid_galaxy_bias), axis=0)
+                                      mpl_cfg.general_dict['galaxy_bias_labels_TeX'] + mpl_cfg.general_dict[
+                                          'shear_bias_labels_TeX']
+                    fid = np.concatenate((fid_cosmo, fid_IA, fid_galaxy_bias, fid_shear_bias), axis=0)
                 else:
                     probe_lmax = probe
                     probe_folder = probe + 'O'
@@ -134,7 +151,7 @@ for probe in probes:
                     ell_max = ell_max_WL
                     pars_labels_TeX = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['IA_labels_TeX'] + \
                                       mpl_cfg.general_dict['shear_bias_labels_TeX']
-                    fid = np.concatenate((fid_cosmo, fid_IA), axis=0)
+                    fid = np.concatenate((fid_cosmo, fid_IA, fid_shear_bias), axis=0)
                 else:
                     ell_max = ell_max_GC
 
@@ -180,9 +197,11 @@ for probe in probes:
                     FM_GO = np.delete(FM_GO, obj=1, axis=1)
                     FM_GS = np.delete(FM_GS, obj=1, axis=0)
                     FM_GS = np.delete(FM_GS, obj=1, axis=1)
+                    cosmo_params = 7
                 elif model == 'nonflat':
                     w0wa_rows = [3, 4]  # Omega_DE is in position 1, so w0, wa are shifted by 1 position
                     nparams += 1
+                    cosmo_params = 8
                     fid = np.insert(arr=fid, obj=1, values=ISTF_fid.extensions['Om_Lambda0'], axis=0)
                     pars_labels_TeX = np.insert(arr=pars_labels_TeX, obj=1, values='$\\Omega_{\\rm DE, 0}$', axis=0)
 
@@ -258,7 +277,7 @@ for probe in probes:
                             'WL_opt': np.asarray([1.110, 1.002, 1.026, 1.022, 1.023, 1.175, 1.129, 1.009]),
                             '3x2pt_pes': np.asarray([1.297, 1.087, 1.060, 1.418, 1.196, 1.021, 1.030, 1.035]),
                             '3x2pt_opt': np.asarray([1.222, 1.136, 1.010, 1.300, 1.206, 1.013, 1.009, 1.164]),
-                        }
+                        },
                     }
                 }
 
@@ -272,7 +291,7 @@ for probe in probes:
                 model_here = model
                 if not fix_shear_bias:
                     model_here += '_shearbias'
-                if zbins == 10 and EP_or_ED == 'EP':
+                if zbins == 10 and EP_or_ED == 'EP' and model_here != 'flat_shearbias':
                     # the tables in the paper, from which these uncertainties have been taken, only include the cosmo params (7 or 8)
                     nparams_vinc = uncert_vinc[f'zbins_{EP_or_ED}{zbins:02}'][model_here][f"{probe}_{pes_opt}"].shape[0]
                     assert np.allclose(uncert["ratio"][:nparams_vinc],
@@ -297,15 +316,15 @@ for probe in probes:
 if bar_plot:
 
     for probe in probes:
-        for zbins in zbins_subset:
+        for zbins in zbins_list:
             for pes_opt in ('opt', 'pes'):
                 data = np.asarray(data)
                 plot_utils.bar_plot(data, title, cases, nparams=nparams, param_names_label=pars_labels_TeX,
                                     bar_width=0.12,
                                     second_axis=True, no_second_axis_bars=1)
 
-            # plt.savefig(job_path / f'output/plots/{which_comparison}/'
-            #                        f'{probe}_ellmax{ell_max}_zbins{EP_or_ED}{zbins:02}_Rl{which_Rl}_{which_uncertainty}.png')
+            plt.savefig(job_path / f'output/plots/{which_comparison}/'
+                                   f'bar_plot_{probe}_ellmax{ell_max}_zbins{EP_or_ED}{zbins:02}_Rl{which_Rl}_{which_uncertainty}.png')
 
 if probe == '3x2pt' and triangle_plot:
     plot_utils.triangle_plot(FM_GO, FM_GS, fiducials=fid,
@@ -351,15 +370,15 @@ if plot_ratio_vs_zbins:
         for pes_opt in ('pes', 'opt'):
             for probe in ('WL', '3x2pt'):
                 # set xticks on int values
-                axs[i, j].xaxis.set_ticks(zbins_subset)
+                axs[i, j].xaxis.set_ticks(zbins_list)
                 axs[i, j].xaxis.set_major_formatter(ticker.FormatStrFormatter('%i'))
 
                 # list to plot on the y-axis
                 uncert_ratio_vs_zbins = [uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][EP_or_ED][pes_opt][param_idx]
                                          for zbins in
-                                         zbins_subset]
+                                         zbins_list]
 
-                axs[i, j].plot(zbins_subset, uncert_ratio_vs_zbins,
+                axs[i, j].plot(zbins_list, uncert_ratio_vs_zbins,
                                ls=linestyle, markersize=markersize, marker='o', color=colors[color_idx],
                                label=f'{probe} {pes_opt}')
                 axs[i, j].yaxis.set_major_formatter(FormatStrFormatter(f'{fmt}'))
@@ -407,8 +426,8 @@ if plot_fom_vs_zbins:
         for EP_or_ED in ['EP', 'ED']:
             uncert_ratio_vs_zbins = [uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][EP_or_ED][pes_opt][param_idx] for
                                      zbins in
-                                     zbins_subset]
-            plt.plot(zbins_subset, uncert_ratio_vs_zbins, '--', marker='o', label=EP_or_ED, markersize=markersize)
+                                     zbins_list]
+            plt.plot(zbins_list, uncert_ratio_vs_zbins, '--', marker='o', label=EP_or_ED, markersize=markersize)
 
         plt.grid()
         plt.legend(loc='lower right', prop={'size': fontsize})
@@ -559,5 +578,16 @@ if plot_prior_contours:
 
     plt.savefig(job_path / f'output/plots/replot_vincenzo_newspecs/epsb_sigmam_contour.{pic_format}', dpi=dpi,
                 bbox_inches='tight')
+
+if bar_plot_nuisance:
+
+    data = uncert['diff'][cosmo_params:]
+
+    zbins = 10
+    case = 'opt'
+    data = np.asarray(data)
+    plot_utils.bar_plot(data, title, label_list=['% diff'], nparams=nparams - cosmo_params, param_names_label=pars_labels_TeX[cosmo_params:],
+                        bar_width=0.17,
+                        second_axis=False, no_second_axis_bars=0)
 
 print('*********** done ***********')

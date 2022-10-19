@@ -82,6 +82,8 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
     data: usually the percent uncertainties, but could also be the percent difference
     """
 
+    plt.rc('axes', axisbelow=True)  # grid behind the bars
+
     # colors = cm.Paired(np.linspace(0, 1, data.shape[1]))
 
     # Set position of bar on x-axis
@@ -131,6 +133,7 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
 
     else:
         plt.figure(figsize=mpl_cfg.mpl_rcParams_dict['figure.figsize'])
+        plt.grid()
 
         # Make the plot
         for bar_idx in range(data.shape[0]):
@@ -140,7 +143,6 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
         plt.ylabel(ylabel_sigma_relative_fid)
         plt.xticks(range(nparams), param_names_label)
 
-        plt.grid()
         plt.title(title)
         plt.legend()
         plt.show()

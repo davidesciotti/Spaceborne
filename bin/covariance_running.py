@@ -289,18 +289,32 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     # if use_PyCCL_cNG:
 
     if covariance_cfg['save_cov_6D']:
+
         cov_dict['cov_WL_GO_6D'] = mm.cov_4D_to_6D(cov_WL_GO_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
         cov_dict['cov_GC_GO_6D'] = mm.cov_4D_to_6D(cov_GC_GO_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
+        cov_dict['cov_WA_GO_6D'] = mm.cov_4D_to_6D(cov_WA_GO_4D, nbl_WA, zbins, probe='LL', ind=ind_LL)
+
         cov_dict['cov_WL_GS_6D'] = mm.cov_4D_to_6D(cov_WL_GS_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
         cov_dict['cov_GC_GS_6D'] = mm.cov_4D_to_6D(cov_GC_GS_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
+        cov_dict['cov_WA_GS_6D'] = mm.cov_4D_to_6D(cov_WA_GS_4D, nbl_WA, zbins, probe='LL', ind=ind_LL)
+
         cov_dict['cov_WL_SS_6D'] = mm.cov_4D_to_6D(cov_WL_SS_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
         cov_dict['cov_GC_SS_6D'] = mm.cov_4D_to_6D(cov_GC_SS_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
+        cov_dict['cov_WA_SS_6D'] = mm.cov_4D_to_6D(cov_WA_SS_4D, nbl_WA, zbins, probe='LL', ind=ind_LL)
 
         # test that they are equal to the 4D ones
+        print('checks: is cov_4D == mm.cov_6D_to_4D(cov_6D)?')
         assert np.array_equal(cov_WL_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, npairs_auto, ind_LL))
         assert np.array_equal(cov_GC_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GO_6D'], nbl_GC, npairs_auto, ind_GG))
+        assert np.array_equal(cov_WA_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GO_6D'], nbl_WA, npairs_auto, ind_LL))
+
         assert np.array_equal(cov_WL_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GS_6D'], nbl_WL, npairs_auto, ind_LL))
         assert np.array_equal(cov_GC_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GS_6D'], nbl_GC, npairs_auto, ind_GG))
+        assert np.array_equal(cov_WA_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, npairs_auto, ind_LL))
+
+        assert np.array_equal(cov_WL_SS_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_SS_6D'], nbl_WL, npairs_auto, ind_LL))
+        assert np.array_equal(cov_GC_SS_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_SS_6D'], nbl_GC, npairs_auto, ind_GG))
+        assert np.array_equal(cov_WA_SS_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_SS_6D'], nbl_WA, npairs_auto, ind_LL))
         print('checks passed')
 
     ############################### 4D to 2D ##################################

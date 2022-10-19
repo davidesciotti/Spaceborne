@@ -66,28 +66,23 @@ elif which_probe_response == 'variable':
 else:
     raise ValueError('which_probe_response must be either constant or variable')
 
-zbins_SPV3 = (13,)
-
-for general_cfg['zbins'] in zbins_SPV3:
+for zbins in general_cfg['zbins']:
     # for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (1500, 750)):
     for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000),):
         for (general_cfg['EP_or_ED']) in ('EP', 'ED'):
 
             # utils.consistency_checks(general_cfg, covariance_cfg)
 
-            zbins = general_cfg['zbins']
+            # some variables used for I/O naming, just to make things shorter
             EP_or_ED = general_cfg['EP_or_ED']
-
-            ind = np.genfromtxt(f'{project_path}/input/ind_files/variable_zbins/{covariance_cfg["ind_ordering"]}_like/'
-                                f'indici_{covariance_cfg["ind_ordering"]}_like_zbins{zbins}.dat', dtype=int)
-            covariance_cfg['ind'] = ind
-
-            # some variables used for I/O naming
-            ell_max_WL_opt = general_cfg['ell_max_WL_opt']
             ell_max_WL = general_cfg['ell_max_WL']
             ell_max_GC = general_cfg['ell_max_GC']
             ell_max_XC = ell_max_GC
             nbl_WL_32 = general_cfg['nbl_WL_32']
+
+            ind = np.genfromtxt(f'{project_path}/input/ind_files/variable_zbins/{covariance_cfg["ind_ordering"]}_like/'
+                                f'indici_{covariance_cfg["ind_ordering"]}_like_zbins{zbins}.dat', dtype=int)
+            covariance_cfg['ind'] = ind
 
             assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \
                 'ell_max_WL and ell_max_GC must be either (5000, 3000) or (1500, 750)'
@@ -124,37 +119,30 @@ for general_cfg['zbins'] in zbins_SPV3:
             nbl_WA_opt = 3
             nbl_3x2pt_opt = 29
 
-            if ell_max_WL == ell_max_WL_opt:
+            if ell_max_WL == general_cfg['ell_max_WL_opt']:
                 assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
                     'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
 
             # ! import and reshape Cl and Rl
-            cl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg['nbl_WL_32'], zbins, ell_max_WL_opt,
-                                                cls_or_responses='cls', specs=general_cfg['specs'], EP_or_ED=EP_or_ED)
-            cl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_opt, general_cfg['nbl_WL_32'], zbins, ell_max_WL_opt,
-                                                cls_or_responses='cls', specs=general_cfg['specs'], EP_or_ED=EP_or_ED)
-            cl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg['nbl_WL_32'], zbins, ell_max_WL_opt,
-                                                cls_or_responses='cls', specs=general_cfg['specs'], EP_or_ED=EP_or_ED)
-            cl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg['nbl_WL_32'], zbins,
-                                                   ell_max_WL_opt,
-                                                   cls_or_responses='cls', specs=general_cfg['specs'],
-                                                   EP_or_ED=EP_or_ED)
+            cl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
+                                                cls_or_responses='cls', EP_or_ED=EP_or_ED)
+            cl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
+                                                cls_or_responses='cls', EP_or_ED=EP_or_ED)
+            cl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
+                                                cls_or_responses='cls', EP_or_ED=EP_or_ED)
+            cl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
+                                                   cls_or_responses='cls', EP_or_ED=EP_or_ED)
 
-            rl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg['nbl_WL_32'], zbins, ell_max_WL_opt,
-                                                cls_or_responses='responses', specs=general_cfg['specs'],
-                                                EP_or_ED=EP_or_ED)
-            rl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_opt, general_cfg['nbl_WL_32'], zbins, ell_max_WL_opt,
-                                                cls_or_responses='responses', specs=general_cfg['specs'],
-                                                EP_or_ED=EP_or_ED)
-            rl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg['nbl_WL_32'], zbins, ell_max_WL_opt,
-                                                cls_or_responses='responses', specs=general_cfg['specs'],
-                                                EP_or_ED=EP_or_ED)
-            rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg['nbl_WL_32'], zbins,
-                                                   ell_max_WL_opt,
-                                                   cls_or_responses='responses', specs=general_cfg['specs'],
-                                                   EP_or_ED=EP_or_ED)
+            rl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
+                                                cls_or_responses='responses', EP_or_ED=EP_or_ED)
+            rl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
+                                                cls_or_responses='responses', EP_or_ED=EP_or_ED)
+            rl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
+                                                cls_or_responses='responses', EP_or_ED=EP_or_ED)
+            rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
+                                                   cls_or_responses='responses', EP_or_ED=EP_or_ED)
 
-            if ell_max_WL == ell_max_WL_opt:
+            if ell_max_WL == general_cfg['ell_max_WL_opt']:
                 if not np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :]):
                     rtol = 1e-10
                     assert (np.allclose(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :], rtol=rtol, atol=0)), \

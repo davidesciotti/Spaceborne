@@ -221,11 +221,14 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     return cl_dict_3D, Rl_dict_3D
 
 
-def get_spv3_cls_3d(probe: str, nbl: int, nbl_WL_32: int, zbins: int, ell_max_WL, cls_or_responses: str, specs: str,
+def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max_WL, cls_or_responses: str,
                     EP_or_ED: str):
     """This function imports and interpolates the CPV3 cls, which have a different format wrt the usual input files"""
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+    specs = general_cfg['specs']
+    nbl_WL_32 = general_cfg['nbl_WL_32']
+
 
     # default values, changed only for the 3x2pt case
     zpairs = zpairs_auto

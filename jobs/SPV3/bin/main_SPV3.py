@@ -18,7 +18,7 @@ job_name = job_path.parts[-1]
 sys.path.append(f'{project_path}/lib')
 import my_module as mm
 
-# import cosmo_lib as csmlib
+import cosmo_lib as csmlib
 
 # general configurations
 sys.path.append(f'{project_path}/config')
@@ -32,7 +32,7 @@ import config_SPV3 as cfg
 sys.path.append(f'{project_path}/bin')
 import ell_values_running as ell_utils
 import Cl_preprocessing_running as cl_utils
-# import compute_Sijkl as Sijkl_utils
+import compute_Sijkl as Sijkl_utils
 import covariance_running as covmat_utils
 import FM_running as FM_utils
 import utils_running as utils
@@ -128,6 +128,7 @@ for general_cfg['zbins'] in zbins_SPV3:
                 assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
                     'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
 
+            # ! import and reshape Cl and Rl
             cl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg['nbl_WL_32'], zbins, ell_max_WL_opt,
                                                 cls_or_responses='cls', specs=general_cfg['specs'], EP_or_ED=EP_or_ED)
             cl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_opt, general_cfg['nbl_WL_32'], zbins, ell_max_WL_opt,
@@ -153,13 +154,13 @@ for general_cfg['zbins'] in zbins_SPV3:
                                                    cls_or_responses='responses', specs=general_cfg['specs'],
                                                    EP_or_ED=EP_or_ED)
 
-        if ell_max_WL == ell_max_WL_opt:
-            if not np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :]):
-                rtol = 1e-10
-                assert (np.allclose(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :], rtol=rtol, atol=0)), \
-                    'cl_wa_3d should be obtainable from cl_ll_3d!'
-                print(f'cl_wa_3d and cl_ll_3d[nbl_GC:nbl_WL, :, :] are not exactly equal, but have a relative '
-                      f'difference of less than {rtol}')
+            if ell_max_WL == ell_max_WL_opt:
+                if not np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :]):
+                    rtol = 1e-10
+                    assert (np.allclose(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :], rtol=rtol, atol=0)), \
+                        'cl_wa_3d should be obtainable from cl_ll_3d!'
+                    print(f'cl_wa_3d and cl_ll_3d[nbl_GC:nbl_WL, :, :] are not exactly equal, but have a relative '
+                          f'difference of less than {rtol}')
 
             # cut datavectors and responses in the pessimistic case; be carful of WA, because it does not start from ell_min
             if ell_max_WL == 1500:
@@ -185,24 +186,25 @@ for general_cfg['zbins'] in zbins_SPV3:
                 'R_WA_3D': rl_wa_3d,
                 'R_3x2pt_5D': rl_3x2pt_5d}
 
+            # ! compute or load Sijkl
+            sijkl_filename = f'sijkl_WF{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins:02}_{EP_or_ED}_hasIA{Sijkl_cfg["has_IA"]}'
+            if Sijkl_cfg['use_precomputed_sijkl']:
+                sijkl = np.load(f'{job_path}/output/sijkl{Sijkl_cfg["sijkl_folder"]}/{sijkl_filename}.npy')
+            else:
+                sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins, EP_or_ED=EP_or_ED)
+                if Sijkl_cfg['save_Sijkl']:
+                    np.save(f'{job_path}/output/sijkl/{Sijkl_cfg["sijkl_folder"]}/{sijkl_filename}.npy', sijkl)
 
-        sijkl_filename = f'sijkl_WF{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins:02}_{EP_or_ED}_hasIA{Sijkl_cfg["has_IA"]}.npy'
-        if Sijkl_cfg['use_precomputed_sijkl']:
-            sijkl = np.load(f'{job_path}/output/sijkl/{Sijkl_cfg["sijkl_folder"]}/{sijkl_filename}.npy')
-        else:
-            sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins, EP_or_ED=EP_or_ED)
-            if Sijkl_cfg['save_Sijkl']:
-                np.save(f'{job_path}/output/sijkl/{Sijkl_cfg["sijkl_folder"]}/{sijkl_filename}.npy', sijkl)
-
-            # compute covariance matrix
+            # ! compute covariance matrix
             cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                                 ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
 
-            # compute Fisher Matrix
+            # ! compute Fisher Matrix
             print('I\'m not computing any Fisher Matrix; I still don\'t have the derivatives.')
             # FM_dict = FM_utils.compute_FM(general_config, covariance_cfg, FM_config, ell_dict, cov_dict)
 
-            # ! SAVE:
+            # ! save:
+
             # this is just to set the correct probe names
             probe_dav_dict = {
                 'WL': 'LL_WLonly_3D',
@@ -234,17 +236,17 @@ for general_cfg['zbins'] in zbins_SPV3:
                             f'{cl_rl_path}/ResFunTabs/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                             10 ** ell_dict[f'ell_{probe_dav}'])
 
-        if covariance_cfg['save_covariance_2D']:
+            if covariance_cfg['save_covariance_2D']:
 
-            # save all covmats in the optimistic case
-            if ell_max_WL == 5000:
-                for probe, ell_max, nbl in zip(['WL', 'GC', '3x2pt', 'WA'],
-                                               [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL],
-                                               [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]):
-                    for GO_or_GS, Rl_str in zip(['GO', 'GS'], ['', f'_Rl{which_probe_response_str}']):
-                        np.save(f'{covmat_path}/'
-                                f'covmat_{GO_or_GS}_{probe}_lmax{ell_max}_nbl{nbl}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_2D.npy',
-                                cov_dict[f'cov_{probe}_{GO_or_GS}_2D'])
+                # save all covmats in the optimistic case
+                if ell_max_WL == 5000:
+                    for probe, ell_max, nbl in zip(['WL', 'GC', '3x2pt', 'WA'],
+                                                   [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL],
+                                                   [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]):
+                        for GO_or_GS, Rl_str in zip(['GO', 'GS'], ['', f'_Rl{which_probe_response_str}']):
+                            np.save(f'{covmat_path}/'
+                                    f'covmat_{GO_or_GS}_{probe}_lmax{ell_max}_nbl{nbl}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_2D.npy',
+                                    cov_dict[f'cov_{probe}_{GO_or_GS}_2D'])
 
             # in the pessimistic case, save only WA
             elif ell_max_WL == 1500:

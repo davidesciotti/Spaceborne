@@ -55,6 +55,7 @@ Sijkl_config = {
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
     'use_precomputed_sijkl': True,
     'save_Sijkl': False,
+    'sijkl_folder': '',  # or '/BNT'
 }
 
 FM_config = {

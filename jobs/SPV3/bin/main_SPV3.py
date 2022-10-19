@@ -153,10 +153,13 @@ for general_cfg['zbins'] in zbins_SPV3:
                                                    cls_or_responses='responses', specs=general_cfg['specs'],
                                                    EP_or_ED=EP_or_ED)
 
-            if ell_max_WL == ell_max_WL_opt:
-                assert (
-                    np.array_equal(cl_wa_3d,
-                                   cl_ll_3d[nbl_GC:nbl_WL, :, :])), 'cl_wa_3d should be obtainable from cl_ll_3d!'
+        if ell_max_WL == ell_max_WL_opt:
+            if not np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :]):
+                rtol = 1e-10
+                assert (np.allclose(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :], rtol=rtol, atol=0)), \
+                    'cl_wa_3d should be obtainable from cl_ll_3d!'
+                print(f'cl_wa_3d and cl_ll_3d[nbl_GC:nbl_WL, :, :] are not exactly equal, but have a relative '
+                      f'difference of less than {rtol}')
 
             # cut datavectors and responses in the pessimistic case; be carful of WA, because it does not start from ell_min
             if ell_max_WL == 1500:
@@ -182,18 +185,14 @@ for general_cfg['zbins'] in zbins_SPV3:
                 'R_WA_3D': rl_wa_3d,
                 'R_3x2pt_5D': rl_3x2pt_5d}
 
-            if Sijkl_cfg['use_precomputed_sijkl']:
-                sijkl = np.load(f'{job_path}/output/sijkl/sijkl_WF{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins:02}_'
-                                f'{EP_or_ED}_hasIA{Sijkl_cfg["has_IA"]}.npy')
 
-            else:
-                start_time = time.perf_counter()
-                print('xxxxxxxxxxxx de-comment this line')
-                # sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins, EP_or_ED=EP_or_ED)
-
-                if Sijkl_cfg['save_Sijkl']:
-                    np.save(f'{job_path}/output/sijkl/sijkl_WF{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins:02}_'
-                            f'{EP_or_ED}_hasIA{Sijkl_cfg["has_IA"]}.npy', sijkl)
+        sijkl_filename = f'sijkl_WF{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins:02}_{EP_or_ED}_hasIA{Sijkl_cfg["has_IA"]}.npy'
+        if Sijkl_cfg['use_precomputed_sijkl']:
+            sijkl = np.load(f'{job_path}/output/sijkl/{Sijkl_cfg["sijkl_folder"]}/{sijkl_filename}.npy')
+        else:
+            sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins, EP_or_ED=EP_or_ED)
+            if Sijkl_cfg['save_Sijkl']:
+                np.save(f'{job_path}/output/sijkl/{Sijkl_cfg["sijkl_folder"]}/{sijkl_filename}.npy', sijkl)
 
             # compute covariance matrix
             cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
@@ -235,32 +234,25 @@ for general_cfg['zbins'] in zbins_SPV3:
                             f'{cl_rl_path}/ResFunTabs/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                             10 ** ell_dict[f'ell_{probe_dav}'])
 
-            if covariance_cfg['save_covariance'] and ell_max_WL == 5000:
-                np.save(f'{covmat_path}/covmat_GO_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}_zbins{zbins:02}_{EP_or_ED}_2D.npy',
-                        cov_dict['cov_WL_GO_2D'])
-                np.save(f'{covmat_path}/covmat_GO_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}_zbins{zbins:02}_{EP_or_ED}_2D.npy',
-                        cov_dict['cov_GC_GO_2D'])
-                np.save(
-                    f'{covmat_path}/covmat_GO_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}_2D.npy',
-                    cov_dict['cov_3x2pt_GO_2D'])
-                np.save(f'{covmat_path}/covmat_GO_WA_lmaxWL{ell_max_WL}_nbl{nbl_WA}_zbins{zbins:02}_{EP_or_ED}_2D.npy',
-                        cov_dict['cov_WA_GO_2D'])
+        if covariance_cfg['save_covariance_2D']:
 
-                np.save(f'{covmat_path}/covmat_GS_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}'
-                        f'_zbins{zbins:02}_{EP_or_ED}_Rl{which_probe_response_str}_2D.npy', cov_dict['cov_WL_GS_2D'])
-                np.save(f'{covmat_path}/covmat_GS_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}'
-                        f'_zbins{zbins:02}_{EP_or_ED}_Rl{which_probe_response_str}_2D.npy', cov_dict['cov_GC_GS_2D'])
-                np.save(f'{covmat_path}/covmat_GS_3x2pt_lmaxXC{ell_max_XC}_nbl{nbl_3x2pt}'
-                        f'_zbins{zbins:02}_{EP_or_ED}_Rl{which_probe_response_str}_2D.npy', cov_dict['cov_3x2pt_GS_2D'])
-                np.save(f'{covmat_path}/covmat_GS_WA_lmaxWL{ell_max_WL}_nbl{nbl_WA}'
-                        f'_zbins{zbins:02}_{EP_or_ED}_Rl{which_probe_response_str}_2D.npy', cov_dict['cov_WA_GS_2D'])
+            # save all covmats in the optimistic case
+            if ell_max_WL == 5000:
+                for probe, ell_max, nbl in zip(['WL', 'GC', '3x2pt', 'WA'],
+                                               [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL],
+                                               [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]):
+                    for GO_or_GS, Rl_str in zip(['GO', 'GS'], ['', f'_Rl{which_probe_response_str}']):
+                        np.save(f'{covmat_path}/'
+                                f'covmat_{GO_or_GS}_{probe}_lmax{ell_max}_nbl{nbl}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_2D.npy',
+                                cov_dict[f'cov_{probe}_{GO_or_GS}_2D'])
 
-            elif covariance_cfg['save_covariance'] and ell_max_WL == 1500:
-                # in this case, save only WA
-                np.save(f'{covmat_path}/covmat_GO_WA_lmaxWL{ell_max_WL}_nbl{nbl_WA}'
-                        f'_zbins{zbins:02}_{EP_or_ED}_2D.npy', cov_dict['cov_WA_GO_2D'])
-                np.save(f'{covmat_path}/covmat_GS_WA_lmaxWL{ell_max_WL}_nbl{nbl_WA}'
-                        f'_zbins{zbins:02}_{EP_or_ED}_Rl{which_probe_response_str}_2D.npy', cov_dict['cov_WA_GS_2D'])
+            # in the pessimistic case, save only WA
+            elif ell_max_WL == 1500:
+                for GO_or_GS, Rl_str in zip(['GO', 'GS'], ['', f'_Rl{which_probe_response_str}']):
+                    np.save(
+                        f'{covmat_path}/covmat_{GO_or_GS}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_2D.npy',
+                        cov_dict[f'cov_WA_{GO_or_GS}_2D'])
+
 
             if covariance_cfg['save_covariance_dat'] and ell_max_WL == 5000:
                 # save in .dat for Vincenzo, only in the optimistic case
@@ -271,43 +263,43 @@ for general_cfg['zbins'] in zbins_SPV3:
                                    f'-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.dat',
                                    cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.10e')
 
-            # save 6D for Stefano
-            if covariance_cfg['save_covariance_6D'] and ell_max_WL == 5000:
-                ndim = 6
-                for which_cov in ['GO', 'GS']:
-                    np.save(
-                        f'{covmat_path}/covmat_{which_cov}_WL_lmaxWL{ell_max_WL}_nbl{nbl_WL}_zbins{zbins:02}_{EP_or_ED}_{ndim}D.npy',
-                        cov_dict[f'cov_WL_{which_cov}_{ndim}D'])
-                    np.save(
-                        f'{covmat_path}/covmat_{which_cov}_GC_lmaxGC{ell_max_GC}_nbl{nbl_GC}_zbins{zbins:02}_{EP_or_ED}_{ndim}D.npy',
-                        cov_dict[f'cov_GC_{which_cov}_{ndim}D'])
+        # save 6D for Stefano
+        if covariance_cfg['save_covariance_6D'] and ell_max_WL == 5000:
+            for GO_or_GS, Rl_str in zip(['GO', 'GS'], ['', f'_Rl{which_probe_response_str}']):
 
-                    path = f'{covmat_path}/covmat_{which_cov}_3x2pt_lmaxXC{ell_max_GC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}_10D.pickle'
-                    with open(path, 'wb') as handle:
-                        pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle, protocol=pickle.HIGHEST_PROTOCOL)
+                # save WL and GC, which are 6D npy arrays
+                for probe, ell_max, nbl in zip(['WL', 'GC'], [ell_max_WL, ell_max_GC], [nbl_WL, nbl_GC]):
+                    np.save(f'{covmat_path}/'
+                            f'covmat_{GO_or_GS}_{probe}_lmax{ell_max}_nbl{nbl}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_6D.npy',
+                            cov_dict[f'cov_{probe}_{GO_or_GS}_6D'])
 
-            # check for Stefano
-            print('GHOST CODE BELOW')
-            npairs = 91
-            cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GO_6D'], nbl_WL, npairs, ind[:npairs, :])
-            cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GO_6D'], nbl_GC, npairs, ind[:npairs, :])
-            cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GS_6D'], nbl_WL, npairs, ind[:npairs, :])
-            cov_GC_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GS_6D'], nbl_GC, npairs, ind[:npairs, :])
-            print(np.array_equal(cov_WL_GO_4D, cov_dict[f'cov_WL_GO_4D']))
-            print(np.array_equal(cov_GC_GO_4D, cov_dict[f'cov_GC_GO_4D']))
-            print(np.array_equal(cov_WL_GS_4D, cov_dict[f'cov_WL_GS_4D']))
-            print(np.array_equal(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D']))
+                # save 3x2pt, which is a dictionary
+                path = f'{covmat_path}/covmat_{GO_or_GS}_3x2pt_lmax{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_10D.pickle'
+                with open(path, 'wb') as handle:
+                    pickle.dump(cov_dict[f'cov_3x2pt_{GO_or_GS}_10D'], handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+        # check for Stefano
+        print('GHOST CODE BELOW')
+        npairs = 91
+        cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GO_6D'], nbl_WL, npairs, ind[:npairs, :])
+        cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GO_6D'], nbl_GC, npairs, ind[:npairs, :])
+        cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GS_6D'], nbl_WL, npairs, ind[:npairs, :])
+        cov_GC_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GS_6D'], nbl_GC, npairs, ind[:npairs, :])
+        assert (np.array_equal(cov_WL_GO_4D, cov_dict[f'cov_WL_GO_4D']))
+        assert (np.array_equal(cov_GC_GO_4D, cov_dict[f'cov_GC_GO_4D']))
+        assert (np.array_equal(cov_WL_GS_4D, cov_dict[f'cov_WL_GS_4D']))
+        assert (np.array_equal(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D']))
 
 """
 if FM_cfg['save_FM']:
-    np.savetxt(f"{job_path}/output/FM/FM_WL_GO_lmaxWL{ell_max_WL}_nbl{nbl_WL}.txt", FM_dict['FM_WL_GO'])
-    np.savetxt(f"{job_path}/output/FM/FM_GC_GO_lmaxGC{ell_max_GC}_nbl{nbl_WL}.txt", FM_dict['FM_GC_GO'])
-    np.savetxt(f"{job_path}/output/FM/FM_3x2pt_GO_lmaxXC{ell_max_XC}_nbl{nbl_WL}.txt", FM_dict['FM_3x2pt_GO'])
-    np.savetxt(f"{job_path}/output/FM/FM_WL_GS_lmaxWL{ell_max_WL}_nbl{nbl_WL}_Rl{which_probe_response_str}.txt",
+    np.savetxt(f"{job_path}/output/FM/FM_WL_GO_lmax{ell_max_WL}_nbl{nbl_WL}.txt", FM_dict['FM_WL_GO'])
+    np.savetxt(f"{job_path}/output/FM/FM_GC_GO_lmax{ell_max_GC}_nbl{nbl_WL}.txt", FM_dict['FM_GC_GO'])
+    np.savetxt(f"{job_path}/output/FM/FM_3x2pt_GO_lmax{ell_max_XC}_nbl{nbl_WL}.txt", FM_dict['FM_3x2pt_GO'])
+    np.savetxt(f"{job_path}/output/FM/FM_WL_GS_lmax{ell_max_WL}_nbl{nbl_WL}_Rl{which_probe_response_str}.txt",
                FM_dict['FM_WL_GS'])
-    np.savetxt(f"{job_path}/output/FM/FM_GC_GS_lmaxGC{ell_max_GC}_nbl{nbl_WL}_Rl{which_probe_response_str}.txt",
+    np.savetxt(f"{job_path}/output/FM/FM_GC_GS_lmax{ell_max_GC}_nbl{nbl_WL}_Rl{which_probe_response_str}.txt",
                FM_dict['FM_GC_GS'])
-    np.savetxt(f"{job_path}/output/FM/FM_3x2pt_GS_lmaxXC{ell_max_XC}_nbl{nbl_WL}_Rl{which_probe_response_str}.txt",
+    np.savetxt(f"{job_path}/output/FM/FM_3x2pt_GS_lmax{ell_max_XC}_nbl{nbl_WL}_Rl{which_probe_response_str}.txt",
                FM_dict['FM_3x2pt_GS'])
 
 if FM_cfg['save_FM_as_dict']:

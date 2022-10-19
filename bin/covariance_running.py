@@ -237,25 +237,15 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
 
         # compute the 10D covariance only for the blocks which will actually be used (GO and SS)
         start = time.perf_counter()
-        cov_3x2pt_GO_10D = mm.covariance_G_10D_dict(cl_dict, noise_dict, nbl_3x2pt, zbins, l_lin_XC,
-                                                    delta_l_XC, fsky, probe_ordering)
+        cov_3x2pt_GO_10D = mm.cov_G_10D_dict(cl_dict, noise_dict, nbl_3x2pt, zbins, l_lin_XC,
+                                             delta_l_XC, fsky, probe_ordering)
         print(f'cov_3x2pt_GO_10D computed in {(time.perf_counter() - start):.2f} seconds')
-
-        # tuple instead of list, otherwise numba complains
-        # also, I can't seem to pass a dictionary directly to a numba function... Passing C_3x2pt_5D instead and converting
-        # it inside the cov_SSC_3x2pt_10D_dict function.
-        probe_ordering_tuple = tuple(probe_ordering)
-        # start = time.perf_counter()
-        # cov_3x2pt_SS_10D = mm.covariance_SS_3x2pt_10D_dict(nbl_3x2pt, C_3x2pt_5D, Sijkl, fsky, zbins, R_3x2pt_5D,
-        #                                                    probe_ordering_tuple)
-        # print(f'cov_3x2pt_SS_10D computed in {(time.perf_counter() - start):.2f} seconds')
-
 
         start = time.perf_counter()
         Cl_dict = mm.build_3x2pt_dict(C_3x2pt_5D)
         Rl_dict = mm.build_3x2pt_dict(R_3x2pt_5D)
         Sijkl_dict = mm.build_Sijkl_dict(Sijkl, zbins)
-        cov_3x2pt_SS_10D = mm.covariance_SS_10D_dict_experim(Cl_dict, Rl_dict, Sijkl_dict, nbl_3x2pt, zbins, fsky, probe_ordering)
+        cov_3x2pt_SS_10D = mm.cov_SS_10D_dict(Cl_dict, Rl_dict, Sijkl_dict, nbl_3x2pt, zbins, fsky, probe_ordering)
         print(f'cov_3x2pt_SS_10D computed in {(time.perf_counter() - start):.2f} seconds')
 
         # sum GO and SS
@@ -294,7 +284,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
 
         # TODO use pandas dataframe?
 
-
     # # TODO implement the other covmats in this module!
     # if use_PyCCL_SS
     # if use_PyCCL_cNG:
@@ -324,6 +313,11 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     cov_WA_GS_2D = mm.cov_4D_to_2D(cov_WA_GS_4D, nbl_WA, npairs_auto, block_index=block_index)
     cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, nbl_3x2pt, npairs_tot, block_index=block_index)
 
+    cov_WL_SS_2D = mm.cov_4D_to_2D(cov_WL_SS_4D, nbl_WL, npairs_auto, block_index=block_index)
+    cov_GC_SS_2D = mm.cov_4D_to_2D(cov_GC_SS_4D, nbl_GC, npairs_auto, block_index=block_index)
+    cov_WA_SS_2D = mm.cov_4D_to_2D(cov_WA_SS_4D, nbl_WA, npairs_auto, block_index=block_index)
+    cov_3x2pt_SS_2D = mm.cov_4D_to_2D(cov_3x2pt_SS_4D, nbl_3x2pt, npairs_tot, block_index=block_index)
+
     ############################### save in dictionary  ########################
     probe_names = ('WL', 'GC', '3x2pt', 'WA')
 
@@ -332,10 +326,12 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     covs_SS_4D = (cov_WL_SS_4D, cov_GC_SS_4D, cov_3x2pt_SS_4D, cov_WA_SS_4D)
     covs_GO_2D = (cov_WL_GO_2D, cov_GC_GO_2D, cov_3x2pt_GO_2D, cov_WA_GO_2D)
     covs_GS_2D = (cov_WL_GS_2D, cov_GC_GS_2D, cov_3x2pt_GS_2D, cov_WA_GS_2D)
+    covs_SS_2D = (cov_WL_SS_2D, cov_GC_SS_2D, cov_3x2pt_SS_2D, cov_WA_SS_2D)
 
-    for probe_name, cov_GO_4D, cov_GO_2D, cov_GS_4D, cov_GS_2D, cov_SS_4D in zip(probe_names,
-                                                                                 covs_GO_4D, covs_GO_2D,
-                                                                                 covs_GS_4D, covs_GS_2D, covs_SS_4D):
+    for probe_name, cov_GO_4D, cov_GO_2D, cov_GS_4D, cov_GS_2D, cov_SS_4D, cov_SS_2D in zip(probe_names,
+                                                                                            covs_GO_4D, covs_GO_2D,
+                                                                                            covs_GS_4D, covs_GS_2D,
+                                                                                            covs_SS_4D, covs_SS_2D):
         # save 4D
         cov_dict[f'cov_{probe_name}_GO_4D'] = cov_GO_4D
         cov_dict[f'cov_{probe_name}_GS_4D'] = cov_GS_4D
@@ -343,6 +339,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         # save 2D
         cov_dict[f'cov_{probe_name}_GO_2D'] = cov_GO_2D
         cov_dict[f'cov_{probe_name}_GS_2D'] = cov_GS_2D
+        cov_dict[f'cov_{probe_name}_SS_2D'] = cov_SS_2D
 
     # '2DCLOE', i.e. the 'multi-diagonal', non-square blocks ordering, only for 3x2pt
     # note: we found out that this is not actually used in CLOE...

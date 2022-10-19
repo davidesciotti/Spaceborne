@@ -43,9 +43,9 @@ covariance_config = {
     'which_probe_response': 'variable',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': 28.73,  # ! new
-    'save_covariance': True,
+    'save_covariance_2D': False,  # in 2D
+    'save_covariance_6D': True,  # or 10D for the 3x2pt
     'save_covariance_dat': False,  # this is the format used by Vincenzo
-    'save_covariance_6D': True,
     'save_2DCLOE': False  # quite useless, this is not the format used by CLOE
 }
 

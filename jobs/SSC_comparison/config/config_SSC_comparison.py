@@ -47,5 +47,4 @@ FM_config = {
     'nParams': 20,
     'save_FM': False,
     'save_FM_as_dict': False
-
 }

@@ -78,6 +78,11 @@ def load_WF(Sijkl_cfg, zbins, EP_or_ED='EP'):
             wil = np.genfromtxt(f'{WF_path}/vincenzo/SPV3/KernelFun/WiWL-{EP_or_ED}{zbins:02}.dat')
             wig = np.genfromtxt(f'{WF_path}/vincenzo/SPV3/KernelFun/WiGC-{EP_or_ED}{zbins:02}.dat')
 
+        elif input_WF == 'vincenzo_SPV3_FS2':
+            assert WF_normalization == 'IST', 'WF_normalization must be IST for Vincenzo SPV3-FS2 WFs'
+            wil = np.genfromtxt(f'{WF_path}/vincenzo/SPV3_FS2/KernelFun/WiWL-{EP_or_ED}{zbins:02}-FS2.dat')
+            wig = np.genfromtxt(f'{WF_path}/vincenzo/SPV3_FS2/KernelFun/WiGC-{EP_or_ED}{zbins:02}-FS2.dat')
+
         else:
             raise ValueError('input_WF must be either davide, sylvain, marco, vincenzo_SPV3, vincenzo or luca')
 

@@ -34,8 +34,8 @@ markersize = 10
 
 # ! options
 zbins_list = np.array((10,), dtype=int)
-probes = ('3x2pt', )
-pes_opt_list = ('pes', )
+probes = ('WL', )
+pes_opt_list = ('opt', )
 EP_or_ED_list = ('EP', )
 which_comparison = 'GO_vs_GS'  # this is just to set the title of the plot
 which_Rl = 'var'
@@ -48,13 +48,13 @@ check_old_FM = False
 fix_shear_bias = True  # whether to remove the rows/cols for the shear bias nuisance parameters (ie whether to fix them)
 fix_dz_nuisance = True  # whether to remove the rows/cols for the dz nuisance parameters (ie whether to fix them)
 w0wa_rows = [2, 3]
-bar_plot = False
+bar_plot = True
 triangle_plot = False
 plot_ratio_vs_zbins = False
 plot_fom_vs_zbins = False
 plot_fom_vs_eps_b = False
 plot_prior_contours = False
-bar_plot_nuisance = True
+bar_plot_nuisance = False
 pic_format = 'pdf'
 dpi = 500
 # ! end options
@@ -115,13 +115,18 @@ for probe in probes:
                     if fix_shear_bias:
                         if probe == '3x2pt':
                             nparams_chosen = 20
-                        else:
+                        elif probe == 'GC':
+                            nparams_chosen = 17
+                        elif probe == 'WL':
                             nparams_chosen = 10
                     elif not fix_shear_bias:
                         if probe == '3x2pt':
                             nparams_chosen = 30
-                        else:
+                        elif probe == 'GC':
+                            nparams_chosen = 17
+                        elif probe == 'WL':
                             nparams_chosen = 20
+
 
                 nparams = nparams_chosen  # re-initialize at every iteration
 

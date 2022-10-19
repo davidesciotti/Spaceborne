@@ -31,8 +31,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     nProbes = general_cfg['nProbes']
     which_forecast = general_cfg['which_forecast']
 
-    compute_covariance_in_blocks = covariance_cfg['compute_covariance_in_blocks']
-    save_SSC_only_covmats = covariance_cfg['save_SSC_only_covmats']
     fsky = covariance_cfg['fsky']
     GL_or_LG = covariance_cfg['GL_or_LG']
     ind_ordering = covariance_cfg['ind_ordering']
@@ -136,7 +134,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         f'zbins: {zbins} {general_cfg["EP_or_ED"]}\n'
         f'nbl_WA: {nbl_WA} nbl_WL: {nbl_WL} nbl_GC:  {nbl_GC}, nbl_3x2pt:  {nbl_3x2pt}\n'
         f'ell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}\n'
-        f'computing the covariance in blocks? {compute_covariance_in_blocks}\n')
+        f'computing the covariance in blocks? {covariance_cfg["save_cov_6D"]}\n')
 
     # build noise vector
     if general_cfg['EP_or_ED'] == 'EP':
@@ -152,26 +150,27 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     else:
         raise ValueError('EP_or_ED must be "EP" or "ED"')
 
-    N = mm.build_noise(zbins, nProbes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=ng, EP_or_ED=general_cfg['EP_or_ED'])
+    noise = mm.build_noise(zbins, nProbes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=ng,
+                           EP_or_ED=general_cfg['EP_or_ED'])
 
     ################### COMPUTE GAUSS ONLY COVARIANCE #########################
 
     # WL only covariance
     cov_WL_GO_4D = mm.covariance(nbl=nbl_WL, npairs=npairs_auto, start_index=0, stop_index=npairs_auto,
-                                 Cij=C_LL_3D, noise=N, l_lin=l_lin_WL,
+                                 Cij=C_LL_3D, noise=noise, l_lin=l_lin_WL,
                                  delta_l=delta_l_WL, fsky=fsky, ind=ind)
     # GC only covariance
     starting_GC_index = npairs_auto + npairs_cross
     cov_GC_GO_4D = mm.covariance(nbl=nbl_GC, npairs=npairs_auto, start_index=starting_GC_index, stop_index=npairs_tot,
-                                 Cij=C_GG_3D, noise=N, l_lin=l_lin_GC,
+                                 Cij=C_GG_3D, noise=noise, l_lin=l_lin_GC,
                                  delta_l=delta_l_GC, fsky=fsky, ind=ind)
     # WA covariance
     cov_WA_GO_4D = mm.covariance_WA(nbl_WA, npairs_auto, start_index=0, stop_index=npairs_auto,
-                                    Cij=C_WA_3D, noise=N, l_lin=l_lin_WA,
+                                    Cij=C_WA_3D, noise=noise, l_lin=l_lin_WA,
                                     delta_l=delta_l_WA, fsky=fsky, ind=ind, ell_WA=ell_WA)
     # ALL covariance
     cov_3x2pt_GO_4D = mm.covariance_ALL(nbl=nbl_3x2pt, npairs=npairs_tot,
-                                        Cij=C_3x2pt_5D, noise=N, l_lin=l_lin_XC,
+                                        Cij=C_3x2pt_5D, noise=noise, l_lin=l_lin_XC,
                                         delta_l=delta_l_XC, fsky=fsky, ind=ind)
     print("Gauss. cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
 
@@ -190,33 +189,22 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     cov_WA_GS_4D = cov_WA_GO_4D + cov_WA_SS_4D
     cov_3x2pt_GS_4D = cov_3x2pt_GO_4D + cov_3x2pt_SS_4D
 
-    if compute_covariance_in_blocks:
-        # compute 3x2pt covariance in 10D, potentially with whichever probe ordering
+    if covariance_cfg['save_cov_6D']:
+        # compute 3x2pt covariance in 10D, potentially with whichever probe ordering, and the WL, GS and WA cov in 6D
 
         # store the input datavector and noise spectra in a dictionary
-        cl_dict = {}
-        cl_dict['L', 'L'] = C_3x2pt_5D[:, 0, 0, ...]
-        cl_dict['L', 'G'] = C_3x2pt_5D[:, 0, 1, ...]
-        cl_dict['G', 'L'] = C_3x2pt_5D[:, 1, 0, ...]
-        cl_dict['G', 'G'] = C_3x2pt_5D[:, 1, 1, ...]
+        cl_dict = mm.build_3x2pt_dict(C_3x2pt_5D)
+        rl_dict = mm.build_3x2pt_dict(R_3x2pt_5D)
+        noise_dict = mm.build_3x2pt_dict(noise)
+        Sijkl_dict = mm.build_Sijkl_dict(Sijkl, zbins)
 
-        noise_dict = {}
-        noise_dict['L', 'L'] = N[0, 0, ...]
-        noise_dict['L', 'G'] = N[0, 1, ...]
-        noise_dict['G', 'L'] = N[1, 0, ...]
-        noise_dict['G', 'G'] = N[1, 1, ...]
-
-        response_dict = {}
-        response_dict['L', 'L'] = R_3x2pt_5D[:, 0, 0, ...]
-        response_dict['L', 'G'] = R_3x2pt_5D[:, 0, 1, ...]
-        response_dict['G', 'L'] = R_3x2pt_5D[:, 1, 0, ...]
-        response_dict['G', 'G'] = R_3x2pt_5D[:, 1, 1, ...]
 
         # probe ordering
         # the function should be able to work with whatever 
-        # ordering of the probes; (TODO check this) this is a check to make sure 
-        # that XC has the ordering (L, G) or (G, L) specified by GL_or_LG, and it 
-        # only works for the LL, XC, GG) ordering
+        # ordering of the probes; (TODO check this)
+
+        # this is a check to make sure that XC has the ordering (L, G) or (G, L) specified by GL_or_LG, and it
+        # only works for the (LL, XC, GG) ordering
         probe_ordering = [['L', 'L'], [None, None], ['G', 'G']]
 
         # (not the best) check to ensure that the (LL, XC, GG) ordering is respected
@@ -242,10 +230,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         print(f'cov_3x2pt_GO_10D computed in {(time.perf_counter() - start):.2f} seconds')
 
         start = time.perf_counter()
-        Cl_dict = mm.build_3x2pt_dict(C_3x2pt_5D)
-        Rl_dict = mm.build_3x2pt_dict(R_3x2pt_5D)
-        Sijkl_dict = mm.build_Sijkl_dict(Sijkl, zbins)
-        cov_3x2pt_SS_10D = mm.cov_SS_10D_dict(Cl_dict, Rl_dict, Sijkl_dict, nbl_3x2pt, zbins, fsky, probe_ordering)
+        cov_3x2pt_SS_10D = mm.cov_SS_10D_dict(cl_dict, rl_dict, Sijkl_dict, nbl_3x2pt, zbins, fsky, probe_ordering)
         print(f'cov_3x2pt_SS_10D computed in {(time.perf_counter() - start):.2f} seconds')
 
         # sum GO and SS
@@ -284,11 +269,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
 
         # TODO use pandas dataframe?
 
-    # # TODO implement the other covmats in this module!
-    # if use_PyCCL_SS
-    # if use_PyCCL_cNG:
-
-    if covariance_cfg['save_cov_6D']:
+        # # TODO implement the other covmats in this module!
+        # if use_PyCCL_SS
+        # if use_PyCCL_cNG:
 
         cov_dict['cov_WL_GO_6D'] = mm.cov_4D_to_6D(cov_WL_GO_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
         cov_dict['cov_GC_GO_6D'] = mm.cov_4D_to_6D(cov_GC_GO_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)

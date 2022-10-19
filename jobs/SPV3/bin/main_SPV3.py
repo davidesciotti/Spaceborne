@@ -66,7 +66,7 @@ elif which_probe_response == 'variable':
 else:
     raise ValueError('which_probe_response must be either constant or variable')
 
-for zbins in general_cfg['zbins']:
+for general_cfg['zbins'] in general_cfg['zbins_list']:
     # for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (1500, 750)):
     for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000),):
         for (general_cfg['EP_or_ED']) in ('EP', 'ED'):
@@ -74,6 +74,7 @@ for zbins in general_cfg['zbins']:
             # utils.consistency_checks(general_cfg, covariance_cfg)
 
             # some variables used for I/O naming, just to make things shorter
+            zbins = general_cfg['zbins']
             EP_or_ED = general_cfg['EP_or_ED']
             ell_max_WL = general_cfg['ell_max_WL']
             ell_max_GC = general_cfg['ell_max_GC']
@@ -279,7 +280,7 @@ for zbins in general_cfg['zbins']:
 
         # check for Stefano
         print('GHOST CODE BELOW')
-        npairs = 91
+        npairs = (zbins*(zbins+1))//2
         cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GO_6D'], nbl_WL, npairs, ind[:npairs, :])
         cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GO_6D'], nbl_GC, npairs, ind[:npairs, :])
         cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GS_6D'], nbl_WL, npairs, ind[:npairs, :])
@@ -288,6 +289,8 @@ for zbins in general_cfg['zbins']:
         assert (np.array_equal(cov_GC_GO_4D, cov_dict[f'cov_GC_GO_4D']))
         assert (np.array_equal(cov_WL_GS_4D, cov_dict[f'cov_WL_GS_4D']))
         assert (np.array_equal(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D']))
+
+
 
 """
 if FM_cfg['save_FM']:

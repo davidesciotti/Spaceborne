@@ -15,7 +15,8 @@ general_config = {
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
     'ell_max_WL': 5000,
     'ell_max_GC': 3000,
-    'zbins': (13,),
+    'zbins': None,
+    'zbins_list': (10, ),
     'EP_or_ED': 'EP',
     'nProbes': 2,
     # 'nbl_WL': 32,
@@ -44,8 +45,8 @@ covariance_config = {
     'ng': 28.73,  # ! new
     'save_cov_2D': True,
     'save_cov_4D': False,
-    'save_cov_6D': True,  # or 10D for the 3x2pt
-    'save_cov_SS': True,
+    'save_cov_6D': False,  # or 10D for the 3x2pt
+    'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False  # quite useless, this is not the format used by CLOE
 }

@@ -27,7 +27,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     ell_max_WL = general_cfg['ell_max_WL']
     ell_max_GC = general_cfg['ell_max_GC']
     zbins = general_cfg['zbins']
-    cl_folder = general_cfg['cl_folder']
     nProbes = general_cfg['nProbes']
     which_forecast = general_cfg['which_forecast']
 
@@ -38,10 +37,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     ind = covariance_cfg['ind'].copy()
     block_index = covariance_cfg['block_index']
     which_probe_response = covariance_cfg['which_probe_response']
-
-    print('TODO: find a better way to copy the ind file?')
-    ind_copy = ind.copy()
-    ind_copy_2 = ind.copy()
 
     start = time.perf_counter()
 

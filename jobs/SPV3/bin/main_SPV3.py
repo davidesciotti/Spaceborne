@@ -238,7 +238,7 @@ for general_cfg['zbins'] in zbins_SPV3:
                             10 ** ell_dict[f'ell_{probe_dav}'])
 
             for ndim in (2, 4, 6):
-                if covariance_cfg[f'save_covariance_{ndim}D']:
+                if covariance_cfg[f'save_cov_{ndim}D']:
 
                     # save GO, GS or GO, GS and SS
                     which_cov_list = ['GO', 'GS']
@@ -281,7 +281,7 @@ for general_cfg['zbins'] in zbins_SPV3:
                                 cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
 
             # save in .dat for Vincenzo, only in the optimistic case and in 2D
-            if covariance_cfg['save_covariance_dat'] and ell_max_WL == 5000:
+            if covariance_cfg['save_cov_dat'] and ell_max_WL == 5000:
                 path_vinc_fmt = f'{job_path}/output/covmat/vincenzos_format'
                 for probe, probe_vinc in zip(['WL', 'GC', '3x2pt', 'WA'], ['WLO', 'GCO', '3x2pt', 'WLA']):
                     for GOGS_folder, GOGS_filename in zip(['GaussOnly', 'GaussSSC'], ['GO', 'GS']):

@@ -279,8 +279,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
               np.array_equal(cov_3x2pt_GS_4D_new, cov_3x2pt_GS_4D))
 
         cov_dict['cov_3x2pt_GO_10D'] = cov_3x2pt_GO_10D
-        cov_dict['cov_3x2pt_SS_10D'] = cov_3x2pt_SS_10D
         cov_dict['cov_3x2pt_GS_10D'] = cov_3x2pt_GS_10D
+        cov_dict['cov_3x2pt_SS_10D'] = cov_3x2pt_SS_10D
 
         # TODO use pandas dataframe?
 
@@ -288,11 +288,13 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     # if use_PyCCL_SS
     # if use_PyCCL_cNG:
 
-    if covariance_cfg['save_covariance_6D']:
+    if covariance_cfg['save_cov_6D']:
         cov_dict['cov_WL_GO_6D'] = mm.cov_4D_to_6D(cov_WL_GO_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
         cov_dict['cov_GC_GO_6D'] = mm.cov_4D_to_6D(cov_GC_GO_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
         cov_dict['cov_WL_GS_6D'] = mm.cov_4D_to_6D(cov_WL_GS_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
         cov_dict['cov_GC_GS_6D'] = mm.cov_4D_to_6D(cov_GC_GS_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
+        cov_dict['cov_WL_SS_6D'] = mm.cov_4D_to_6D(cov_WL_SS_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
+        cov_dict['cov_GC_SS_6D'] = mm.cov_4D_to_6D(cov_GC_SS_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
 
         # test that they are equal to the 4D ones
         assert np.array_equal(cov_WL_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, npairs_auto, ind_LL))
@@ -324,6 +326,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     covs_GO_4D = (cov_WL_GO_4D, cov_GC_GO_4D, cov_3x2pt_GO_4D, cov_WA_GO_4D)
     covs_GS_4D = (cov_WL_GS_4D, cov_GC_GS_4D, cov_3x2pt_GS_4D, cov_WA_GS_4D)
     covs_SS_4D = (cov_WL_SS_4D, cov_GC_SS_4D, cov_3x2pt_SS_4D, cov_WA_SS_4D)
+
     covs_GO_2D = (cov_WL_GO_2D, cov_GC_GO_2D, cov_3x2pt_GO_2D, cov_WA_GO_2D)
     covs_GS_2D = (cov_WL_GS_2D, cov_GC_GS_2D, cov_3x2pt_GS_2D, cov_WA_GS_2D)
     covs_SS_2D = (cov_WL_SS_2D, cov_GC_SS_2D, cov_3x2pt_SS_2D, cov_WA_SS_2D)

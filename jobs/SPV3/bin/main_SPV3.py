@@ -191,7 +191,8 @@ for general_cfg['zbins'] in zbins_SPV3:
             if Sijkl_cfg['use_precomputed_sijkl']:
                 sijkl = np.load(f'{job_path}/output/sijkl{Sijkl_cfg["sijkl_folder"]}/{sijkl_filename}.npy')
             else:
-                sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins, EP_or_ED=EP_or_ED)
+                sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins,
+                                                  EP_or_ED=EP_or_ED)
                 if Sijkl_cfg['save_Sijkl']:
                     np.save(f'{job_path}/output/sijkl/{Sijkl_cfg["sijkl_folder"]}/{sijkl_filename}.npy', sijkl)
 
@@ -236,49 +237,57 @@ for general_cfg['zbins'] in zbins_SPV3:
                             f'{cl_rl_path}/ResFunTabs/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                             10 ** ell_dict[f'ell_{probe_dav}'])
 
-            if covariance_cfg['save_covariance_2D']:
+            for ndim in (2, 4, 6):
+                if covariance_cfg[f'save_covariance_{ndim}D']:
 
-                # save all covmats in the optimistic case
-                if ell_max_WL == 5000:
-                    for probe, ell_max, nbl in zip(['WL', 'GC', '3x2pt', 'WA'],
-                                                   [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL],
-                                                   [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]):
-                        for GO_or_GS, Rl_str in zip(['GO', 'GS'], ['', f'_Rl{which_probe_response_str}']):
-                            np.save(f'{covmat_path}/'
-                                    f'covmat_{GO_or_GS}_{probe}_lmax{ell_max}_nbl{nbl}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_2D.npy',
-                                    cov_dict[f'cov_{probe}_{GO_or_GS}_2D'])
+                    # save GO, GS or GO, GS and SS
+                    which_cov_list = ['GO', 'GS']
+                    Rl_str_list = ['', f'_Rl{which_probe_response_str}']
+                    if covariance_cfg[f'save_cov_SS']:
+                        which_cov_list.append('SS')
+                        Rl_str_list.append(f'_Rl{which_probe_response_str}')
 
-            # in the pessimistic case, save only WA
-            elif ell_max_WL == 1500:
-                for GO_or_GS, Rl_str in zip(['GO', 'GS'], ['', f'_Rl{which_probe_response_str}']):
-                    np.save(
-                        f'{covmat_path}/covmat_{GO_or_GS}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_2D.npy',
-                        cov_dict[f'cov_WA_{GO_or_GS}_2D'])
+                    # set probes to save; the ndim == 6 is different
+                    probe_list = ['WL', 'GC', '3x2pt', 'WA']
+                    ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
+                    nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
+                    # in this case, 3x2pt is saved in 10D as a dictionary
+                    if ndim == 6:
+                        probe_list = ['WL', 'GC', 'WA']
+                        ellmax_list = [ell_max_WL, ell_max_GC, ell_max_WL]
+                        nbl_list = [nbl_WL, nbl_GC, nbl_WA]
 
+                    # save all covmats in the optimistic case
+                    if ell_max_WL == 5000:
 
+                        for which_cov, Rl_str in zip(which_cov_list, Rl_str_list):
+                            for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
+                                np.save(f'{covmat_path}/'
+                                        f'covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_{ndim}D.npy',
+                                        cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])
+
+                        # in this case, 3x2pt is saved in 10D as a dictionary
+                        if ndim == 6:
+                            filename = f'{covmat_path}/covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_10D.pickle'
+                            with open(filename, 'wb') as handle:
+                                pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle,
+                                            protocol=pickle.HIGHEST_PROTOCOL)
+
+                    # in the pessimistic case, save only WA
+                    elif ell_max_WL == 1500:
+                        for which_cov, Rl_str in zip(['GO', 'GS'], ['', f'_Rl{which_probe_response_str}']):
+                            np.save(
+                                f'{covmat_path}/covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_{ndim}D.npy',
+                                cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
+
+            # save in .dat for Vincenzo, only in the optimistic case and in 2D
             if covariance_cfg['save_covariance_dat'] and ell_max_WL == 5000:
-                # save in .dat for Vincenzo, only in the optimistic case
                 path_vinc_fmt = f'{job_path}/output/covmat/vincenzos_format'
                 for probe, probe_vinc in zip(['WL', 'GC', '3x2pt', 'WA'], ['WLO', 'GCO', '3x2pt', 'WLA']):
                     for GOGS_folder, GOGS_filename in zip(['GaussOnly', 'GaussSSC'], ['GO', 'GS']):
                         np.savetxt(f'{path_vinc_fmt}/{GOGS_folder}/{probe_vinc}/cm-{probe_vinc}-{nbl_WL}'
                                    f'-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.dat',
                                    cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.10e')
-
-        # save 6D for Stefano
-        if covariance_cfg['save_covariance_6D'] and ell_max_WL == 5000:
-            for GO_or_GS, Rl_str in zip(['GO', 'GS'], ['', f'_Rl{which_probe_response_str}']):
-
-                # save WL and GC, which are 6D npy arrays
-                for probe, ell_max, nbl in zip(['WL', 'GC'], [ell_max_WL, ell_max_GC], [nbl_WL, nbl_GC]):
-                    np.save(f'{covmat_path}/'
-                            f'covmat_{GO_or_GS}_{probe}_lmax{ell_max}_nbl{nbl}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_6D.npy',
-                            cov_dict[f'cov_{probe}_{GO_or_GS}_6D'])
-
-                # save 3x2pt, which is a dictionary
-                path = f'{covmat_path}/covmat_{GO_or_GS}_3x2pt_lmax{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_10D.pickle'
-                with open(path, 'wb') as handle:
-                    pickle.dump(cov_dict[f'cov_3x2pt_{GO_or_GS}_10D'], handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         # check for Stefano
         print('GHOST CODE BELOW')

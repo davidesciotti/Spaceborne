@@ -198,7 +198,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         noise_dict = mm.build_3x2pt_dict(noise)
         Sijkl_dict = mm.build_Sijkl_dict(Sijkl, zbins)
 
-
         # probe ordering
         # the function should be able to work with whatever 
         # ordering of the probes; (TODO check this)
@@ -244,7 +243,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
                 cov_3x2pt_GS_10D[A, B, C, D][...] = cov_3x2pt_GO_10D[A, B, C, D][...] + \
                                                     cov_3x2pt_SS_10D[A, B, C, D][...]
 
-        # convert each block to 4D and stack to make the 4D_3x2pt
+        # this is to revert from 10D to 4D, which is trickier for the 3x2pt (each block has to be converted to 4D and
+        # stacked to make the 4D_3x2pt)
+        """
         # note: I pass ind_copy because the LG-GL check and inversion is performed in the function (otherwise it would be
         # performed twice!)
         # ! careful of passing clean copies of ind to both functions!!!
@@ -262,16 +263,17 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
               np.array_equal(cov_3x2pt_SS_4D_new, cov_3x2pt_SS_4D))
         print('check: is cov_3x2pt_GS_4D from covariance_10D_dict function == old one?',
               np.array_equal(cov_3x2pt_GS_4D_new, cov_3x2pt_GS_4D))
-
-        cov_dict['cov_3x2pt_GO_10D'] = cov_3x2pt_GO_10D
-        cov_dict['cov_3x2pt_GS_10D'] = cov_3x2pt_GS_10D
-        cov_dict['cov_3x2pt_SS_10D'] = cov_3x2pt_SS_10D
+        """
 
         # TODO use pandas dataframe?
-
         # # TODO implement the other covmats in this module!
         # if use_PyCCL_SS
         # if use_PyCCL_cNG:
+
+        # save the 6D-10D covs in the dictionary
+        cov_dict['cov_3x2pt_GO_10D'] = cov_3x2pt_GO_10D
+        cov_dict['cov_3x2pt_GS_10D'] = cov_3x2pt_GS_10D
+        cov_dict['cov_3x2pt_SS_10D'] = cov_3x2pt_SS_10D
 
         cov_dict['cov_WL_GO_6D'] = mm.cov_4D_to_6D(cov_WL_GO_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
         cov_dict['cov_GC_GO_6D'] = mm.cov_4D_to_6D(cov_GC_GO_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
@@ -285,18 +287,18 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         cov_dict['cov_GC_SS_6D'] = mm.cov_4D_to_6D(cov_GC_SS_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
         cov_dict['cov_WA_SS_6D'] = mm.cov_4D_to_6D(cov_WA_SS_4D, nbl_WA, zbins, probe='LL', ind=ind_LL)
 
-        # test that they are equal to the 4D ones
+        # test that they are equal to the 4D ones; this is quite slow, so I check only some of the arrays
         print('checks: is cov_4D == mm.cov_6D_to_4D(cov_6D)?')
         assert np.array_equal(cov_WL_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, npairs_auto, ind_LL))
-        assert np.array_equal(cov_GC_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GO_6D'], nbl_GC, npairs_auto, ind_GG))
-        assert np.array_equal(cov_WA_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GO_6D'], nbl_WA, npairs_auto, ind_LL))
+        # assert np.array_equal(cov_GC_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GO_6D'], nbl_GC, npairs_auto, ind_GG))
+        # assert np.array_equal(cov_WA_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GO_6D'], nbl_WA, npairs_auto, ind_LL))
 
-        assert np.array_equal(cov_WL_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GS_6D'], nbl_WL, npairs_auto, ind_LL))
+        # assert np.array_equal(cov_WL_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GS_6D'], nbl_WL, npairs_auto, ind_LL))
         assert np.array_equal(cov_GC_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GS_6D'], nbl_GC, npairs_auto, ind_GG))
-        assert np.array_equal(cov_WA_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, npairs_auto, ind_LL))
+        # assert np.array_equal(cov_WA_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, npairs_auto, ind_LL))
 
-        assert np.array_equal(cov_WL_SS_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_SS_6D'], nbl_WL, npairs_auto, ind_LL))
-        assert np.array_equal(cov_GC_SS_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_SS_6D'], nbl_GC, npairs_auto, ind_GG))
+        # assert np.array_equal(cov_WL_SS_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_SS_6D'], nbl_WL, npairs_auto, ind_LL))
+        # assert np.array_equal(cov_GC_SS_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_SS_6D'], nbl_GC, npairs_auto, ind_GG))
         assert np.array_equal(cov_WA_SS_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_SS_6D'], nbl_WA, npairs_auto, ind_LL))
         print('checks passed')
 
@@ -328,10 +330,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     covs_GS_2D = (cov_WL_GS_2D, cov_GC_GS_2D, cov_3x2pt_GS_2D, cov_WA_GS_2D)
     covs_SS_2D = (cov_WL_SS_2D, cov_GC_SS_2D, cov_3x2pt_SS_2D, cov_WA_SS_2D)
 
-    for probe_name, cov_GO_4D, cov_GO_2D, cov_GS_4D, cov_GS_2D, cov_SS_4D, cov_SS_2D in zip(probe_names,
-                                                                                            covs_GO_4D, covs_GO_2D,
-                                                                                            covs_GS_4D, covs_GS_2D,
-                                                                                            covs_SS_4D, covs_SS_2D):
+    for probe_name, cov_GO_4D, cov_GO_2D, cov_GS_4D, cov_GS_2D, cov_SS_4D, cov_SS_2D \
+            in zip(probe_names, covs_GO_4D, covs_GO_2D, covs_GS_4D, covs_GS_2D, covs_SS_4D, covs_SS_2D):
         # save 4D
         cov_dict[f'cov_{probe_name}_GO_4D'] = cov_GO_4D
         cov_dict[f'cov_{probe_name}_GS_4D'] = cov_GS_4D

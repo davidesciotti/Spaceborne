@@ -43,12 +43,14 @@ covariance_config = {
     'which_probe_response': 'variable',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': 28.73,  # ! new
+    'cl_BNT_transform': True,
     'save_cov_2D': True,
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
-    'save_2DCLOE': False  # quite useless, this is not the format used by CLOE
+    'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
+    'output_folder': '/cl_BNT',
 }
 
 Sijkl_config = {

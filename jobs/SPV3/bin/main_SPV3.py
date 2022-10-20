@@ -143,6 +143,15 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
             rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
                                                    cls_or_responses='responses', EP_or_ED=EP_or_ED)
 
+            if general_cfg['cl_BNT_transform']:
+                print('transform cls with BNT')
+                BNT_matrix = np.genfromtxt(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT/BNT_matrix/BNT_matrix.txt')
+                cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix)
+                cl_gg_3d = cl_utils.cl_BNT_transform(cl_gg_3d, BNT_matrix)
+                cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix)
+                cl_3x2pt_5d = cl_utils.cl_BNT_transform(cl_3x2pt_5d, BNT_matrix)
+                print('do this with the responses too!')
+
             if ell_max_WL == general_cfg['ell_max_WL_opt']:
                 if not np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :]):
                     rtol = 1e-10
@@ -203,7 +212,7 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 '3x2pt': '3x2pt_5D'}
 
             cl_rl_path = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
-            covmat_path = f'{job_path}/output/covmat/zbins{zbins:02}'
+            covmat_path = f'{job_path}/output/covmat{covariance_cfg["output_folder"]}/zbins{zbins:02}'
             if general_cfg['save_cls_3d']:
                 for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
                     np.save(f'{cl_rl_path}/DataVectors/3D_reshaped/{probe_vinc}/'

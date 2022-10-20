@@ -292,3 +292,21 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max
         # but it's not 3d!)
 
     return cl_3d
+
+def cl_BNT_transform(cl_3D, BNT_matrix):
+
+    cl_3D_BNT = np.zeros(cl_3D.shape)
+    if cl_3D.ndim == 3:  # WL, GC
+        for ell_idx in cl_3D.shape[0]:
+            cl_3D_BNT = cl_3D[ell_idx, :, :] @ BNT_matrix @ cl_3D[ell_idx, :, :].T
+
+    elif cl_3D.ndim == 5:  # 3x2pt
+        for ell_idx in cl_3D.shape[0]:
+            for probe_A in cl_3D.shape[1]:
+                for probe_B in cl_3D.shape[2]:
+                    cl_3D_BNT = cl_3D[ell_idx, probe_A, probe_B, :, :] @ BNT_matrix @ cl_3D[ell_idx, probe_A, probe_B, :, :].T
+
+    else:
+        raise ValueError('input Cl array should be 3-dim or 5-dim')
+
+    return cl_3D_BNT

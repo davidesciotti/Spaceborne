@@ -16,17 +16,19 @@ general_config = {
     'ell_max_WL': 5000,
     'ell_max_GC': 3000,
     'zbins': None,
-    'zbins_list': (10, ),
-    'EP_or_ED': 'EP',
+    'zbins_list': (13, ),
+    'EP_or_ED': 'ED',
     'nProbes': 2,
     # 'nbl_WL': 32,
     'nbl_WL_32': 32,
     'which_forecast': which_forecast,
     'cl_folder': cl_folder,
     'use_WA': True,
-    'save_cls_3d': True,
-    'save_rls_3d': True,
+    'save_cls_3d': False,
+    'save_rls_3d': False,
     'specs': 'wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4',
+    'cl_BNT_transform': True,
+    'cl_input_folder': 'BNT/',
 }
 
 if general_config['ell_max_WL'] == general_config['ell_max_GC']:
@@ -35,7 +37,6 @@ if general_config['ell_max_WL'] == general_config['ell_max_GC']:
 covariance_config = {
     'ind_ordering': ind_ordering,
     'GL_or_LG': GL_or_LG,
-    'save_SSC_only_covmats': False,
     'fsky': fsky,  # ! new
     # 'Rl': 4,
     # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
@@ -43,10 +44,9 @@ covariance_config = {
     'which_probe_response': 'variable',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': 28.73,  # ! new
-    'cl_BNT_transform': True,
-    'save_cov_2D': True,
+    'save_cov_2D': False,
     'save_cov_4D': False,
-    'save_cov_6D': False,  # or 10D for the 3x2pt
+    'save_cov_6D': True,  # or 10D for the 3x2pt
     'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
@@ -54,12 +54,12 @@ covariance_config = {
 }
 
 Sijkl_config = {
-    'input_WF': 'vincenzo_SPV3',
+    'input_WF': 'vincenzo_SPV3_FS2',
     'WF_normalization': 'IST',
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
-    'use_precomputed_sijkl': True,
-    'save_Sijkl': False,
-    'sijkl_folder': '',  # or '/BNT'
+    'use_precomputed_sijkl': False,
+    'save_Sijkl': True,
+    'sijkl_folder': '/BNT',  # or '/BNT'
 }
 
 FM_config = {

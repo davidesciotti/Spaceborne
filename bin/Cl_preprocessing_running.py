@@ -229,7 +229,6 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max
     specs = general_cfg['specs']
     nbl_WL_32 = general_cfg['nbl_WL_32']
 
-
     # default values, changed only for the 3x2pt case
     zpairs = zpairs_auto
 
@@ -256,8 +255,18 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max
     else:
         raise ValueError('cls_or_responses must be cls or responses')
 
-    cl_1d = np.genfromtxt(f'{project_path_here}/jobs/SPV3/input/{folder}/{probe_here}/'
-                          f'{name}-{probe_here}-{nbl_WL_32}-{specs}-{EP_or_ED}{zbins:02}.dat')
+    if general_cfg["cl_input_folder"] == 'BNT/':
+        if probe_here == 'WLA':
+            print('there is a bug in vincenzo\'s code, a constant is missing: here I\'m fixing this')
+            cl_1d = np.genfromtxt(f'{project_path_here}/jobs/SPV3/input/{general_cfg["cl_input_folder"]}{folder}/'
+                                  f'{name}-{probe_here}-Opt-{EP_or_ED}{zbins:02}-FS2_correct.dat')
+        else:
+            cl_1d = np.genfromtxt(
+                f'{project_path_here}/jobs/SPV3/input/{general_cfg["cl_input_folder"]}{folder}/'
+                f'{name}-{probe_here}-Opt-{EP_or_ED}{zbins:02}-FS2.dat')
+    else:
+        cl_1d = np.genfromtxt(f'{project_path_here}/jobs/SPV3/input/{general_cfg["cl_input_folder"]}{folder}/{probe_here}/'
+                              f'{name}-{probe_here}-{nbl_WL_32}-{specs}-{EP_or_ED}{zbins:02}.dat')
 
     # this check can only be done for the optimistic case, since these are the only datavectors I have (from which
     # I can obtain the pessimistic ones simply by removing some ell bins)
@@ -293,18 +302,20 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max
 
     return cl_3d
 
-def cl_BNT_transform(cl_3D, BNT_matrix):
 
+def cl_BNT_transform(cl_3D, BNT_matrix):
     cl_3D_BNT = np.zeros(cl_3D.shape)
     if cl_3D.ndim == 3:  # WL, GC
-        for ell_idx in cl_3D.shape[0]:
-            cl_3D_BNT = cl_3D[ell_idx, :, :] @ BNT_matrix @ cl_3D[ell_idx, :, :].T
+        for ell_idx in range(cl_3D.shape[0]):
+            cl_3D_BNT[ell_idx, :, :] = cl_3D[ell_idx, :, :] @ BNT_matrix @ cl_3D[ell_idx, :, :].T
 
     elif cl_3D.ndim == 5:  # 3x2pt
-        for ell_idx in cl_3D.shape[0]:
-            for probe_A in cl_3D.shape[1]:
-                for probe_B in cl_3D.shape[2]:
-                    cl_3D_BNT = cl_3D[ell_idx, probe_A, probe_B, :, :] @ BNT_matrix @ cl_3D[ell_idx, probe_A, probe_B, :, :].T
+        for ell_idx in range(cl_3D.shape[0]):
+            for probe_A in range(cl_3D.shape[1]):
+                for probe_B in range(cl_3D.shape[2]):
+                    cl_3D_BNT[ell_idx, probe_A, probe_B, :, :] = cl_3D[ell_idx, probe_A, probe_B, :, :] @ \
+                                                                 BNT_matrix @ \
+                                                                 cl_3D[ell_idx, probe_A, probe_B, :, :].T
 
     else:
         raise ValueError('input Cl array should be 3-dim or 5-dim')

@@ -69,7 +69,7 @@ else:
 for general_cfg['zbins'] in general_cfg['zbins_list']:
     # for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (1500, 750)):
     for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000),):
-        for (general_cfg['EP_or_ED']) in ('EP', 'ED'):
+        for (general_cfg['EP_or_ED']) in ('ED', ):
 
             # utils.consistency_checks(general_cfg, covariance_cfg)
 

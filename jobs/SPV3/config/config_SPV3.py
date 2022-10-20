@@ -28,7 +28,10 @@ general_config = {
     'save_rls_3d': False,
     'specs': 'wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4',
     'cl_BNT_transform': True,
-    'cl_input_folder': 'BNT/',
+    'cl_input_folder': '/BNT',  # '' or '/BNT'
+    'cl_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/DataVectors',
+    'rl_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/ResFunTabs'
+
 }
 
 if general_config['ell_max_WL'] == general_config['ell_max_GC']:
@@ -57,9 +60,9 @@ Sijkl_config = {
     'input_WF': 'vincenzo_SPV3_FS2',
     'WF_normalization': 'IST',
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
-    'use_precomputed_sijkl': False,
-    'save_Sijkl': True,
-    'sijkl_folder': '/BNT',  # or '/BNT'
+    'use_precomputed_sijkl': True,
+    'save_Sijkl': False,
+    'sijkl_folder': '/BNT',  # '' or '/BNT'
 }
 
 FM_config = {

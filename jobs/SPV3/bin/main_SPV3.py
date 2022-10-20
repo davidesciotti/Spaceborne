@@ -126,31 +126,30 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
 
             # ! import and reshape Cl and Rl
             cl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
-                                                cls_or_responses='cls', EP_or_ED=EP_or_ED)
+                                                cl_or_rl='cl', EP_or_ED=EP_or_ED)
             cl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
-                                                cls_or_responses='cls', EP_or_ED=EP_or_ED)
+                                                cl_or_rl='cl', EP_or_ED=EP_or_ED)
             cl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
-                                                cls_or_responses='cls', EP_or_ED=EP_or_ED)
+                                                cl_or_rl='cl', EP_or_ED=EP_or_ED)
             cl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
-                                                   cls_or_responses='cls', EP_or_ED=EP_or_ED)
+                                                   cl_or_rl='cl', EP_or_ED=EP_or_ED)
 
             rl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
-                                                cls_or_responses='responses', EP_or_ED=EP_or_ED)
+                                                cl_or_rl='rl', EP_or_ED=EP_or_ED)
             rl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
-                                                cls_or_responses='responses', EP_or_ED=EP_or_ED)
+                                                cl_or_rl='rl', EP_or_ED=EP_or_ED)
             rl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
-                                                cls_or_responses='responses', EP_or_ED=EP_or_ED)
+                                                cl_or_rl='rl', EP_or_ED=EP_or_ED)
             rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
-                                                   cls_or_responses='responses', EP_or_ED=EP_or_ED)
+                                                   cl_or_rl='rl', EP_or_ED=EP_or_ED)
 
             if general_cfg['cl_BNT_transform']:
-                print('transform cls with BNT')
                 BNT_matrix = np.genfromtxt(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT/BNT_matrix/BNT_matrix.txt')
                 cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix)
                 cl_gg_3d = cl_utils.cl_BNT_transform(cl_gg_3d, BNT_matrix)
                 cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix)
                 cl_3x2pt_5d = cl_utils.cl_BNT_transform(cl_3x2pt_5d, BNT_matrix)
-                print('do this with the responses too!')
+                print('you shuld BNT transform the responses do this with the responses too!')
 
             if ell_max_WL == general_cfg['ell_max_WL_opt']:
                 if not np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :]):

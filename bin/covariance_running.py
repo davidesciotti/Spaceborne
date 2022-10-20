@@ -261,7 +261,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         """
 
         # TODO use pandas dataframe?
-        # # TODO implement the other covmats in this module!
+        # TODO implement the other covmats in this module!
         # if use_PyCCL_SS
         # if use_PyCCL_cNG:
 
@@ -270,6 +270,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         cov_dict['cov_3x2pt_GS_10D'] = cov_3x2pt_GS_10D
         cov_dict['cov_3x2pt_SS_10D'] = cov_3x2pt_SS_10D
 
+        # TODO this is super slow, either optimize the function or use cov_10D_dict also for the single probes!
         cov_dict['cov_WL_GO_6D'] = mm.cov_4D_to_6D(cov_WL_GO_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
         cov_dict['cov_GC_GO_6D'] = mm.cov_4D_to_6D(cov_GC_GO_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
         cov_dict['cov_WA_GO_6D'] = mm.cov_4D_to_6D(cov_WA_GO_4D, nbl_WA, zbins, probe='LL', ind=ind_LL)
@@ -278,9 +279,13 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         cov_dict['cov_GC_GS_6D'] = mm.cov_4D_to_6D(cov_GC_GS_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
         cov_dict['cov_WA_GS_6D'] = mm.cov_4D_to_6D(cov_WA_GS_4D, nbl_WA, zbins, probe='LL', ind=ind_LL)
 
-        cov_dict['cov_WL_SS_6D'] = mm.cov_4D_to_6D(cov_WL_SS_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
-        cov_dict['cov_GC_SS_6D'] = mm.cov_4D_to_6D(cov_GC_SS_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
-        cov_dict['cov_WA_SS_6D'] = mm.cov_4D_to_6D(cov_WA_SS_4D, nbl_WA, zbins, probe='LL', ind=ind_LL)
+        if covariance_cfg['save_cov_SS']:
+            cov_dict['cov_WL_SS_6D'] = mm.cov_4D_to_6D(cov_WL_SS_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
+            cov_dict['cov_GC_SS_6D'] = mm.cov_4D_to_6D(cov_GC_SS_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
+            cov_dict['cov_WA_SS_6D'] = mm.cov_4D_to_6D(cov_WA_SS_4D, nbl_WA, zbins, probe='LL', ind=ind_LL)
+            assert np.array_equal(cov_WL_SS_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_SS_6D'], nbl_WL, npairs_auto, ind_LL))
+            assert np.array_equal(cov_GC_SS_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_SS_6D'], nbl_GC, npairs_auto, ind_GG))
+            assert np.array_equal(cov_WA_SS_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_SS_6D'], nbl_WA, npairs_auto, ind_LL))
 
         # test that they are equal to the 4D ones; this is quite slow, so I check only some arrays
         print('checks: is cov_4D == mm.cov_6D_to_4D(cov_6D)?')
@@ -292,9 +297,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         assert np.array_equal(cov_GC_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GS_6D'], nbl_GC, npairs_auto, ind_GG))
         # assert np.array_equal(cov_WA_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, npairs_auto, ind_LL))
 
-        # assert np.array_equal(cov_WL_SS_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_SS_6D'], nbl_WL, npairs_auto, ind_LL))
-        # assert np.array_equal(cov_GC_SS_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_SS_6D'], nbl_GC, npairs_auto, ind_GG))
-        assert np.array_equal(cov_WA_SS_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_SS_6D'], nbl_WA, npairs_auto, ind_LL))
         print('checks passed')
 
     ############################### 4D to 2D ##################################

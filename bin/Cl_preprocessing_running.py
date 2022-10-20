@@ -221,18 +221,20 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     return cl_dict_3D, Rl_dict_3D
 
 
-def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max_WL, cls_or_responses: str,
+def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max_WL, cl_or_rl: str,
                     EP_or_ED: str):
     """This function imports and interpolates the CPV3 cls, which have a different format wrt the usual input files"""
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
     specs = general_cfg['specs']
     nbl_WL_32 = general_cfg['nbl_WL_32']
+    cl_input_folder = general_cfg["cl_input_folder"]
 
     # default values, changed only for the 3x2pt case
     zpairs = zpairs_auto
 
     assert ell_max_WL == 5000, 'ell_max_WL must be 5000, only the optimistic datavectors are available'
+    assert cl_input_folder in ['', '/BNT'], 'cl_input_folder must be "/BNT" or ""'
 
     if probe == 'WL':
         probe_here = 'WLO'
@@ -246,27 +248,25 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max
     else:
         raise ValueError('probe must be WL, WA, GC or 3x2pt')
 
-    if cls_or_responses == 'cls':
+    input_folder = general_cfg[f'{cl_or_rl}_input_folder']
+
+    if cl_or_rl == 'cl':
         name = 'dv'
-        folder = 'DataVectors'
-    elif cls_or_responses == 'responses':
+        name = 'dv'
+    elif cl_or_rl == 'responses':
         name = 'rf'
         folder = 'ResFunTabs'
     else:
-        raise ValueError('cls_or_responses must be cls or responses')
+        raise ValueError('cl_or_rl must be "cl" or "rl"')
 
-    if general_cfg["cl_input_folder"] == 'BNT/':
-        if probe_here == 'WLA':
-            print('there is a bug in vincenzo\'s code, a constant is missing: here I\'m fixing this')
-            cl_1d = np.genfromtxt(f'{project_path_here}/jobs/SPV3/input/{general_cfg["cl_input_folder"]}{folder}/'
-                                  f'{name}-{probe_here}-Opt-{EP_or_ED}{zbins:02}-FS2_correct.dat')
-        else:
-            cl_1d = np.genfromtxt(
-                f'{project_path_here}/jobs/SPV3/input/{general_cfg["cl_input_folder"]}{folder}/'
-                f'{name}-{probe_here}-Opt-{EP_or_ED}{zbins:02}-FS2.dat')
+    if 'SPV3_07_2022/BNT' in cl_input_folder:
+        print('flagship!')
+        filename = f'{name}-{probe_here}-Opt-{EP_or_ED}{zbins:02}-FS2.dat'
     else:
-        cl_1d = np.genfromtxt(f'{project_path_here}/jobs/SPV3/input/{general_cfg["cl_input_folder"]}{folder}/{probe_here}/'
-                              f'{name}-{probe_here}-{nbl_WL_32}-{specs}-{EP_or_ED}{zbins:02}.dat')
+        input_folder = f'{input_folder}/{probe_here}/'
+        filename = f'{name}-{probe_here}-{nbl_WL_32}-{specs}-{EP_or_ED}{zbins:02}.dat'
+
+    cl_1d = np.genfromtxt(f'{input_folder}/{filename}')
 
     # this check can only be done for the optimistic case, since these are the only datavectors I have (from which
     # I can obtain the pessimistic ones simply by removing some ell bins)

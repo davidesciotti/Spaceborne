@@ -37,6 +37,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     ind = covariance_cfg['ind'].copy()
     block_index = covariance_cfg['block_index']
     which_probe_response = covariance_cfg['which_probe_response']
+    EP_or_ED = covariance_cfg['EP_or_ED']
 
     start = time.perf_counter()
 
@@ -132,16 +133,12 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         f'computing the covariance in blocks? {covariance_cfg["save_cov_6D"]}\n')
 
     # build noise vector
-    if general_cfg['EP_or_ED'] == 'EP':
-        ng = covariance_cfg['ng']
-    elif general_cfg['EP_or_ED'] == 'ED':
-        print('lenses or sources? Flagship or Redbook?')
-        ng = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/ngbTab-{EP_or_ED}{zbins:02}.dat')[0, :]
-        # a couple rough checks
-        assert 28. < np.sum(ng) < 29., 'the sum of ng over all bins is not between 28 and 29'
-        assert general_cfg['which_forecast'] == 'SPV3', 'data for the ED case is only available for SPV3'
-    else:
-        raise ValueError('EP_or_ED must be "EP" or "ED"')
+
+    print('lenses or sources? Flagship or Redbook?')
+    ng = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/ngbTab-{EP_or_ED}{zbins:02}.dat')[0, :]
+    # a couple rough checks
+    assert 28. < np.sum(ng) < 29., 'the sum of ng over all bins is not between 28 and 29'
+    assert general_cfg['which_forecast'] == 'SPV3', 'data for the ED case is only available for SPV3'
 
     noise = mm.build_noise(zbins, nProbes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=ng,
                            EP_or_ED=general_cfg['EP_or_ED'])

@@ -18,6 +18,9 @@ BNT_transform = False
 if flagship_version == 1:
     assert BNT_transform is False, 'we are applying the BNT only for Flagship_2'
 
+if BNT_transform:
+    assert flagship_version == 2, 'we are applying the BNT only for Flagship_2'
+
 general_config = {
     'ell_min': 10,
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
@@ -32,7 +35,7 @@ general_config = {
     'which_forecast': which_forecast,
     'use_WA': True,
     'save_cls_3d': True,
-    'save_rls_3d': False,
+    'save_rls_3d': True,
     'specs': 'wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4',
     'cl_BNT_transform': BNT_transform,
     'BNT_matrix_path': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT_matrix',
@@ -61,6 +64,7 @@ covariance_config = {
     'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
+    'ng_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/InputNz/Lenses/Flagship',
     'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/covmat',
 }
 

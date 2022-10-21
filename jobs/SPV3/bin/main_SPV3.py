@@ -246,7 +246,7 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
             #                 f'{rl_input_folder}/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
             #                 10 ** ell_dict[f'ell_{probe_dav}'])
 
-            # ! new code
+            # just a dict for the output file names
             clrl_dict = {
                 'cl_inputname': 'dv',
                 'rl_inputname': 'rf',
@@ -258,17 +258,19 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
             for cl_or_rl in ['cl', 'rl']:
                 folder = general_cfg[f'{cl_or_rl}_folder']
                 if general_cfg[f'save_{cl_or_rl}s_3d']:
+
                     for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
+                        # save cl and/or response
                         np.save(f'{folder}/3D_reshaped/{probe_vinc}/'
                                 f'{clrl_dict[f"{cl_or_rl}_inputname"]}-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
                                 clrl_dict[f"{cl_or_rl}_dict_3D"][f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}'])
 
+                        # save ells and deltas
                         if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
                             np.savetxt(f'{folder}/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                                 10 ** ell_dict[f'ell_{probe_dav}'])
                             np.savetxt(f'{folder}/3D_reshaped/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
-                                delta_dict[f'delta_l{probe_dav}'])
-            # ! end new code
+                                delta_dict[f'delta_l_{probe_dav}'])
 
             covmat_path = f'{covariance_cfg["cov_output_folder"]}/zbins{zbins:02}'
             for ndim in (2, 4, 6):

@@ -228,7 +228,7 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
     specs = general_cfg['specs']
     nbl_WL_32 = general_cfg['nbl_WL_32']
-    cl_folder = general_cfg["cl_folder"]
+    input_folder = general_cfg[f'{cl_or_rl}_folder']
 
     # default values, changed only for the 3x2pt case
     zpairs = zpairs_auto
@@ -247,7 +247,6 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max
     else:
         raise ValueError('probe must be WL, WA, GC or 3x2pt')
 
-    input_folder = general_cfg[f'{cl_or_rl}_input_folder']
 
     if cl_or_rl == 'cl':
         name = 'dv'
@@ -256,13 +255,13 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max
     else:
         raise ValueError('cl_or_rl must be "cl" or "rl"')
 
-    if 'SPV3_07_2022/Flagship_1' in cl_folder:
+    if 'SPV3_07_2022/Flagship_1' in input_folder:
         input_folder = f'{input_folder}/{probe_here}'
         filename = f'{name}-{probe_here}-{nbl_WL_32}-{specs}-{EP_or_ED}{zbins:02}.dat'
-    elif 'SPV3_07_2022/Flagship_2' in cl_folder:
+    elif 'SPV3_07_2022/Flagship_2' in input_folder:
         filename = f'{name}-{probe_here}-Opt-{EP_or_ED}{zbins:02}-FS2.dat'
     else:
-        raise ValueError('cl_folder should contain "Flagship_1" or "Flagship_2"')
+        raise ValueError('input_folder should contain "Flagship_1" or "Flagship_2"')
 
 
     cl_1d = np.genfromtxt(f'{input_folder}/{filename}')

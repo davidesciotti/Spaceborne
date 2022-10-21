@@ -197,12 +197,13 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                     np.save(f'{job_path}/output/sijkl/{Sijkl_cfg["sijkl_folder"]}/{sijkl_filename}.npy', sijkl)
 
             # ! compute covariance matrix
-            # cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-            #                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
+            if covariance_cfg['compute_covmat']:
+                cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+                                                    ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
 
             # ! compute Fisher Matrix
-            print('I\'m not computing any Fisher Matrix; I still don\'t have the derivatives.')
-            # FM_dict = FM_utils.compute_FM(general_config, covariance_cfg, FM_config, ell_dict, cov_dict)
+            if FM_cfg['compute_FM']:
+                FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict)
 
             # ! save:
             # this is just to set the correct probe names
@@ -239,16 +240,38 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                             f'{rl_input_folder}/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                             10 ** ell_dict[f'ell_{probe_dav}'])
 
-            assert 1 > 2
+            # ! new code
+            clrl_dict = {
+                'cl_inputname': 'dv',
+                'rl_inputname': 'rf',
+                'cl_dict_3D': cl_dict_3D,
+                'rl_dict_3D': rl_dict_3D,
+                'cl_dict_key': 'C',
+                'rl_dict_key': 'R',
+            }
+            for cl_or_rl in ['cl', 'rl']:
+                input_folder = general_cfg[f'{cl_or_rl}_input_folder']
+                if general_cfg[f'save_{cl_or_rl}s_3d']:
+                    for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
+                        np.save(f'{input_folder}/3D_reshaped/{probe_vinc}/'
+                                f'{clrl_dict[f"{cl_or_rl}_inputname"]}-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
+                                clrl_dict[f"{cl_or_rl}_dict_3D"][f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}'])
+
+                        if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
+                            np.savetxt(
+                                f'{rl_input_folder}/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
+                                10 ** ell_dict[f'ell_{probe_dav}'])
+            # ! end new code
+
             covmat_path = f'{job_path}/output/covmat{covariance_cfg["output_folder"]}/zbins{zbins:02}'
             for ndim in (2, 4, 6):
                 if covariance_cfg[f'save_cov_{ndim}D']:
 
                     # save GO, GS or GO, GS and SS
                     which_cov_list = ['GO', 'GS']
-                    which_cov_list = ['GO']
+                    # which_cov_list = ['GO']
                     Rl_str_list = ['', f'_Rl{which_probe_response_str}']
-                    Rl_str_list = ['', ]
+                    # Rl_str_list = ['', ]
                     if covariance_cfg[f'save_cov_SS']:
                         which_cov_list.append('SS')
                         Rl_str_list.append(f'_Rl{which_probe_response_str}')

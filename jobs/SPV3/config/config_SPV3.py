@@ -28,8 +28,8 @@ general_config = {
     'save_rls_3d': False,
     'specs': 'wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4',
     'cl_BNT_transform': False,
-    'cl_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT/DataVectors',
-    'rl_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT/ResFunTabs'
+    'cl_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_1/DataVectors',
+    'rl_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_1/ResFunTabs'
 
 }
 
@@ -46,6 +46,7 @@ covariance_config = {
     'which_probe_response': 'variable',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': 28.73,  # ! new
+    'compute_covmat': False,
     'save_cov_2D': False,
     'save_cov_4D': False,
     'save_cov_6D': True,  # or 10D for the 3x2pt
@@ -65,6 +66,7 @@ Sijkl_config = {
 }
 
 FM_config = {
+    'compute_FM': False,
     'nParams': 20,
     'save_FM': True,
     'save_FM_as_dict': True

@@ -256,11 +256,14 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max
     else:
         raise ValueError('cl_or_rl must be "cl" or "rl"')
 
-    if 'SPV3_07_2022/BNT' in cl_input_folder:
+    if 'SPV3_07_2022/Flagship_2' in cl_input_folder:
         filename = f'{name}-{probe_here}-Opt-{EP_or_ED}{zbins:02}-FS2.dat'
-    else:
+    elif 'SPV3_07_2022/Flagship_1' in cl_input_folder:
         input_folder = f'{input_folder}/{probe_here}'
         filename = f'{name}-{probe_here}-{nbl_WL_32}-{specs}-{EP_or_ED}{zbins:02}.dat'
+    else:
+        raise ValueError('cl_input_folder should contain "Flagship_1" or "Flagship_2"')
+
 
     cl_1d = np.genfromtxt(f'{input_folder}/{filename}')
 

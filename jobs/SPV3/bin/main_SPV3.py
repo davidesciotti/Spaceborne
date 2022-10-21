@@ -17,7 +17,6 @@ job_name = job_path.parts[-1]
 # general libraries
 sys.path.append(f'{project_path}/lib')
 import my_module as mm
-
 import cosmo_lib as csmlib
 
 # general configurations

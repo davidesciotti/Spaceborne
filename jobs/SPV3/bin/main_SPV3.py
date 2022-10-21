@@ -187,14 +187,19 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 'R_3x2pt_5D': rl_3x2pt_5d}
 
             # ! compute or load Sijkl
-            sijkl_filename = f'sijkl_WF{Sijkl_cfg["input_WF"]}_nz7000_zbins{zbins:02}_{EP_or_ED}_hasIA{Sijkl_cfg["has_IA"]}'
+            # get number of z points in nz
+            wf = np.genfromtxt(f'{Sijkl_cfg["wf_input_folder"]}/WiWL-{EP_or_ED}{zbins:02}-FS2.dat')
+
+            sijkl_folder = Sijkl_cfg['sijkl_folder']
+            sijkl_filename = f'sijkl_WF{Sijkl_cfg["WF_suffix"]}_nz7000_zbins{zbins:02}_{EP_or_ED}_hasIA{Sijkl_cfg["has_IA"]}'
+
             if Sijkl_cfg['use_precomputed_sijkl']:
-                sijkl = np.load(f'{job_path}/output/sijkl{Sijkl_cfg["sijkl_folder"]}/{sijkl_filename}.npy')
+                sijkl = np.load(f'{sijkl_folder}/{sijkl_filename}.npy')
             else:
-                sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins,
-                                                  EP_or_ED=EP_or_ED)
-                if Sijkl_cfg['save_Sijkl']:
-                    np.save(f'{job_path}/output/sijkl/{Sijkl_cfg["sijkl_folder"]}/{sijkl_filename}.npy', sijkl)
+                sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins, EP_or_ED=EP_or_ED)
+
+            if Sijkl_cfg['save_Sijkl']:
+                np.save(f'{sijkl_folder}/{sijkl_filename}.npy', sijkl)
 
             # ! compute covariance matrix
             if covariance_cfg['compute_covmat']:

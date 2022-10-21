@@ -3,6 +3,7 @@ import sys
 import numpy as np
 
 project_path = Path.cwd().parent.parent.parent
+job_path = f'{project_path}/jobs/SPV3'
 
 sys.path.append(f'{project_path}/bin')
 import utils_running as utils
@@ -28,9 +29,8 @@ general_config = {
     'save_rls_3d': False,
     'specs': 'wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4',
     'cl_BNT_transform': False,
-    'cl_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_1/DataVectors',
-    'rl_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_1/ResFunTabs'
-
+    'cl_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_2/DataVectors',
+    'rl_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_2/ResFunTabs',
 }
 
 if general_config['ell_max_WL'] == general_config['ell_max_GC']:
@@ -41,15 +41,14 @@ covariance_config = {
     'GL_or_LG': GL_or_LG,
     'fsky': fsky,  # ! new
     # 'Rl': 4,
-    # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
-    'block_index': 'ell',
+    'block_index': 'ell',  # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
     'which_probe_response': 'variable',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': 28.73,  # ! new
-    'compute_covmat': False,
+    'compute_covmat': True,
     'save_cov_2D': False,
     'save_cov_4D': False,
-    'save_cov_6D': True,  # or 10D for the 3x2pt
+    'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
@@ -57,12 +56,13 @@ covariance_config = {
 }
 
 Sijkl_config = {
-    'input_WF': 'vincenzo_SPV3_FS2',
+    'wf_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_2/KernelFun',
+    'sijkl_folder': f'{job_path}/output/sijkl/Flagship_1',  # this is also an input folder, once the sijkl are computed
+    'WF_suffix': 'nzFS2',
     'WF_normalization': 'IST',
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
-    'use_precomputed_sijkl': True,
-    'save_Sijkl': False,
-    'sijkl_folder': '/BNT',  # '' or '/BNT'
+    'use_precomputed_sijkl': False,
+    'save_Sijkl': True,
 }
 
 FM_config = {

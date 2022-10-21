@@ -38,9 +38,9 @@ import my_module as mm
 # 5) Omega_lambda non rientra nel set di parametri, lo devo includere?
 
 
-def load_WF(Sijkl_cfg, zbins, EP_or_ED='EP'):
+def load_WF(Sijkl_cfg, zbins, EP_or_ED):
 
-    input_WF = Sijkl_cfg['input_WF']
+    wf_input_folder = Sijkl_cfg['wf_input_folder']
     WF_normalization = Sijkl_cfg['WF_normalization']
     has_IA = Sijkl_cfg['has_IA']
 
@@ -49,7 +49,7 @@ def load_WF(Sijkl_cfg, zbins, EP_or_ED='EP'):
 
     WF_path = f'{project_path.parent}/common_data/everyones_WF_from_Gdrive'
 
-    if input_WF == 'luca':
+    if wf_input_folder == 'luca':
 
         wil = np.load(f'{WF_path}/luca/wil_SEYFERT_IA_{WF_normalization}_nz10000.npy')
         wig = np.load(f'{WF_path}/luca/wig_SEYFERT_{WF_normalization}_nz10000.npy')
@@ -57,31 +57,31 @@ def load_WF(Sijkl_cfg, zbins, EP_or_ED='EP'):
 
     else:
 
-        if input_WF == 'davide':
+        if wf_input_folder == 'davide':
             wil = np.genfromtxt(f'{WF_path}/davide/nz10000/wil_dav_IA_{WF_normalization}_nz10000.txt')
             wig = np.genfromtxt(f'{WF_path}/davide/nz10000/wig_dav_{WF_normalization}_nz10000.txt')
 
-        elif input_WF == 'vincenzo':
+        elif wf_input_folder == 'vincenzo':
             wil = np.genfromtxt(f'{WF_path}/vincenzo/wil_vinc_IA_{WF_normalization}_nz8000.txt')
             wig = np.genfromtxt(f'{WF_path}/vincenzo/wig_vinc_{WF_normalization}_nz8000.txt')
 
-        elif input_WF == 'marco':
+        elif wf_input_folder == 'marco':
             wil = np.load(f'{WF_path}/marco/wil_mar_bia2.17_{WF_normalization}_nz10000.npy')
             wig = np.load(f'{WF_path}/marco/wig_mar_{WF_normalization}_nz10000.npy')
 
-        elif input_WF == 'sylvain':
+        elif wf_input_folder == 'sylvain':
             wil = np.genfromtxt(f'{WF_path}/sylvain/new_WF_IA_corrected/wil_sylv_IA_{WF_normalization}_nz7000.txt')
             wig = np.genfromtxt(f'{WF_path}/sylvain/new_WF_IA_corrected/wig_sylv_{WF_normalization}_nz7000.txt')
 
-        elif input_WF == 'vincenzo_SPV3':
-            assert WF_normalization == 'IST', 'WF_normalization must be IST for Vincenzo SPV3 WFs'
-            wil = np.genfromtxt(f'{WF_path}/vincenzo/SPV3/KernelFun/WiWL-{EP_or_ED}{zbins:02}.dat')
-            wig = np.genfromtxt(f'{WF_path}/vincenzo/SPV3/KernelFun/WiGC-{EP_or_ED}{zbins:02}.dat')
+        elif 'SPV3_07_2022/Flagship_1' in wf_input_folder:
+            assert WF_normalization == 'IST', 'WF_normalization must be IST for Vincenzo SPV3_07_2022/Flagship_1 WFs'
+            wil = np.genfromtxt(f'{wf_input_folder}/WiWL-{EP_or_ED}{zbins:02}.dat')
+            wig = np.genfromtxt(f'{wf_input_folder}/WiGC-{EP_or_ED}{zbins:02}.dat')
 
-        elif input_WF == 'vincenzo_SPV3_FS2':
-            assert WF_normalization == 'IST', 'WF_normalization must be IST for Vincenzo SPV3-FS2 WFs'
-            wil = np.genfromtxt(f'{WF_path}/vincenzo/SPV3_FS2/KernelFun/WiWL-{EP_or_ED}{zbins:02}-FS2.dat')
-            wig = np.genfromtxt(f'{WF_path}/vincenzo/SPV3_FS2/KernelFun/WiGC-{EP_or_ED}{zbins:02}-FS2.dat')
+        elif 'SPV3_07_2022/Flagship_2' in wf_input_folder:
+            assert WF_normalization == 'IST', 'WF_normalization must be IST for Vincenzo SPV3_07_2022/Flagship_2 WFs'
+            wil = np.genfromtxt(f'{wf_input_folder}/WiWL-{EP_or_ED}{zbins:02}-FS2.dat')
+            wig = np.genfromtxt(f'{wf_input_folder}/WiGC-{EP_or_ED}{zbins:02}-FS2.dat')
 
         else:
             raise ValueError('input_WF must be either davide, sylvain, marco, vincenzo_SPV3, vincenzo or luca')

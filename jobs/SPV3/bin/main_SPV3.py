@@ -146,8 +146,7 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                                                    cl_or_rl='rl', EP_or_ED=EP_or_ED)
 
             if general_cfg['cl_BNT_transform']:
-                BNT_matrix = np.genfromtxt(
-                    f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT/BNT_matrix/BNT_matrix.txt')
+                BNT_matrix = np.genfromtxt(f'{general_cfg["BNT_matrix_path"]}/{general_cfg["BNT_matrix_filename"]}')
                 cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix)
                 cl_gg_3d = cl_utils.cl_BNT_transform(cl_gg_3d, BNT_matrix)
                 cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix)
@@ -187,19 +186,21 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 'R_3x2pt_5D': rl_3x2pt_5d}
 
             # ! compute or load Sijkl
-            # get number of z points in nz
-            wf = np.genfromtxt(f'{Sijkl_cfg["wf_input_folder"]}/WiWL-{EP_or_ED}{zbins:02}-FS2.dat')
+
+            # get number of z points in nz to name the sijkl file
+            z_arr, _ = Sijkl_utils.load_WF(Sijkl_cfg, zbins, EP_or_ED)
+            nz = z_arr.shape[0]
 
             sijkl_folder = Sijkl_cfg['sijkl_folder']
-            sijkl_filename = f'sijkl_WF{Sijkl_cfg["WF_suffix"]}_nz7000_zbins{zbins:02}_{EP_or_ED}_hasIA{Sijkl_cfg["has_IA"]}'
+            sijkl_filename = f'sijkl_WF{Sijkl_cfg["WF_suffix"]}_nz{nz}_zbins{zbins:02}_{EP_or_ED}_hasIA{Sijkl_cfg["has_IA"]}.npy'
 
             if Sijkl_cfg['use_precomputed_sijkl']:
-                sijkl = np.load(f'{sijkl_folder}/{sijkl_filename}.npy')
+                sijkl = np.load(f'{sijkl_folder}/{sijkl_filename}')
             else:
                 sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins, EP_or_ED=EP_or_ED)
 
-            if Sijkl_cfg['save_Sijkl']:
-                np.save(f'{sijkl_folder}/{sijkl_filename}.npy', sijkl)
+                if Sijkl_cfg['save_Sijkl']:
+                    np.save(f'{sijkl_folder}/{sijkl_filename}', sijkl)
 
             # ! compute covariance matrix
             if covariance_cfg['compute_covmat']:
@@ -218,32 +219,32 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 'WA': 'WA_3D',
                 '3x2pt': '3x2pt_5D'}
 
-            cl_input_folder = general_cfg['cl_input_folder']
-            if general_cfg['save_cls_3d']:
-                for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
-                    np.save(f'{cl_input_folder}/3D_reshaped/{probe_vinc}/'
-                            f'dv-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
-                            cl_dict_3D[f'C_{probe_dav_dict[probe_dav]}'])
-
-                    if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
-                        np.savetxt(
-                            f'{cl_input_folder}/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
-                            10 ** ell_dict[f'ell_{probe_dav}'])
-                        np.savetxt(
-                            f'{cl_input_folder}/3D_reshaped/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
-                            delta_dict[f'delta_l_{probe_dav}'])
-
-            rl_input_folder = general_cfg['rl_input_folder']
-            if general_cfg['save_rls_3d']:
-                for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
-                    np.save(f'{rl_input_folder}/3D_reshaped/{probe_vinc}/'
-                            f'rf-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
-                            rl_dict_3D[f'R_{probe_dav_dict[probe_dav]}'])
-
-                    if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
-                        np.savetxt(
-                            f'{rl_input_folder}/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
-                            10 ** ell_dict[f'ell_{probe_dav}'])
+            # cl_input_folder = general_cfg['cl_input_folder']
+            # if general_cfg['save_cls_3d']:
+            #     for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
+            #         np.save(f'{cl_input_folder}/3D_reshaped/{probe_vinc}/'
+            #                 f'dv-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
+            #                 cl_dict_3D[f'C_{probe_dav_dict[probe_dav]}'])
+            #
+            #         if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
+            #             np.savetxt(
+            #                 f'{cl_input_folder}/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
+            #                 10 ** ell_dict[f'ell_{probe_dav}'])
+            #             np.savetxt(
+            #                 f'{cl_input_folder}/3D_reshaped/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
+            #                 delta_dict[f'delta_l_{probe_dav}'])
+            #
+            # rl_input_folder = general_cfg['rl_input_folder']
+            # if general_cfg['save_rls_3d']:
+            #     for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
+            #         np.save(f'{rl_input_folder}/3D_reshaped/{probe_vinc}/'
+            #                 f'rf-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
+            #                 rl_dict_3D[f'R_{probe_dav_dict[probe_dav]}'])
+            #
+            #         if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
+            #             np.savetxt(
+            #                 f'{rl_input_folder}/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
+            #                 10 ** ell_dict[f'ell_{probe_dav}'])
 
             # ! new code
             clrl_dict = {
@@ -255,20 +256,21 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 'rl_dict_key': 'R',
             }
             for cl_or_rl in ['cl', 'rl']:
-                input_folder = general_cfg[f'{cl_or_rl}_input_folder']
+                folder = general_cfg[f'{cl_or_rl}_folder']
                 if general_cfg[f'save_{cl_or_rl}s_3d']:
                     for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
-                        np.save(f'{input_folder}/3D_reshaped/{probe_vinc}/'
+                        np.save(f'{folder}/3D_reshaped/{probe_vinc}/'
                                 f'{clrl_dict[f"{cl_or_rl}_inputname"]}-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
                                 clrl_dict[f"{cl_or_rl}_dict_3D"][f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}'])
 
                         if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
-                            np.savetxt(
-                                f'{rl_input_folder}/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
+                            np.savetxt(f'{folder}/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                                 10 ** ell_dict[f'ell_{probe_dav}'])
+                            np.savetxt(f'{folder}/3D_reshaped/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
+                                delta_dict[f'delta_l{probe_dav}'])
             # ! end new code
 
-            covmat_path = f'{job_path}/output/covmat{covariance_cfg["output_folder"]}/zbins{zbins:02}'
+            covmat_path = f'{covariance_cfg["cov_output_folder"]}/zbins{zbins:02}'
             for ndim in (2, 4, 6):
                 if covariance_cfg[f'save_cov_{ndim}D']:
 

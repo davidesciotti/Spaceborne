@@ -12,8 +12,8 @@ which_forecast = 'SPV3'
 fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
 # ! choose the flagship version and whether you want to compute the BNT transformed cls
-flagship_version = 1
-BNT_transform = False
+flagship_version = 2
+BNT_transform = True
 
 if flagship_version == 1:
     assert BNT_transform is False, 'we are applying the BNT only for Flagship_2'
@@ -60,7 +60,7 @@ covariance_config = {
     'compute_covmat': True,
     'save_cov_2D': False,
     'save_cov_4D': False,
-    'save_cov_6D': False,  # or 10D for the 3x2pt
+    'save_cov_6D': True,  # or 10D for the 3x2pt
     'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
@@ -84,5 +84,6 @@ FM_config = {
     'nParams': 20,
     'save_FM': True,
     'save_FM_as_dict': True,
+    'derivatives_folder': None,  # TODO: add the derivatives folder
     'FM_output_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/FM',
 }

@@ -272,7 +272,7 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                             np.savetxt(f'{folder}/3D_reshaped/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                                 delta_dict[f'delta_l_{probe_dav}'])
 
-            covmat_path = f'{covariance_cfg["cov_output_folder"]}/zbins{zbins:02}'
+            covmat_path = f'{covariance_cfg["cov_folder"]}/zbins{zbins:02}'
             for ndim in (2, 4, 6):
                 if covariance_cfg[f'save_cov_{ndim}D']:
 
@@ -328,16 +328,17 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                                    cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.10e')
 
         # check for Stefano
-        print('GHOST CODE BELOW')
-        npairs = (zbins * (zbins + 1)) // 2
-        cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GO_6D'], nbl_WL, npairs, ind[:npairs, :])
-        cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GO_6D'], nbl_GC, npairs, ind[:npairs, :])
-        cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GS_6D'], nbl_WL, npairs, ind[:npairs, :])
-        cov_GC_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GS_6D'], nbl_GC, npairs, ind[:npairs, :])
-        assert (np.array_equal(cov_WL_GO_4D, cov_dict[f'cov_WL_GO_4D']))
-        assert (np.array_equal(cov_GC_GO_4D, cov_dict[f'cov_GC_GO_4D']))
-        assert (np.array_equal(cov_WL_GS_4D, cov_dict[f'cov_WL_GS_4D']))
-        assert (np.array_equal(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D']))
+        if covariance_cfg['save_cov_6D']:
+            print('GHOST CODE BELOW')
+            npairs = (zbins * (zbins + 1)) // 2
+            cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GO_6D'], nbl_WL, npairs, ind[:npairs, :])
+            cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GO_6D'], nbl_GC, npairs, ind[:npairs, :])
+            cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GS_6D'], nbl_WL, npairs, ind[:npairs, :])
+            cov_GC_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GS_6D'], nbl_GC, npairs, ind[:npairs, :])
+            assert (np.array_equal(cov_WL_GO_4D, cov_dict[f'cov_WL_GO_4D']))
+            assert (np.array_equal(cov_GC_GO_4D, cov_dict[f'cov_GC_GO_4D']))
+            assert (np.array_equal(cov_WL_GS_4D, cov_dict[f'cov_WL_GS_4D']))
+            assert (np.array_equal(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D']))
 
 """
 if FM_cfg['save_FM']:

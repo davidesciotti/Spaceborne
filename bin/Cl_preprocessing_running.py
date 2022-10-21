@@ -234,7 +234,6 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max
     zpairs = zpairs_auto
 
     assert ell_max_WL == 5000, 'ell_max_WL must be 5000, only the optimistic datavectors are available'
-    assert cl_input_folder in ['', '/BNT'], 'cl_input_folder must be "/BNT" or ""'
 
     if probe == 'WL':
         probe_here = 'WLO'
@@ -252,18 +251,15 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max
 
     if cl_or_rl == 'cl':
         name = 'dv'
-        name = 'dv'
-    elif cl_or_rl == 'responses':
+    elif cl_or_rl == 'rl':
         name = 'rf'
-        folder = 'ResFunTabs'
     else:
         raise ValueError('cl_or_rl must be "cl" or "rl"')
 
     if 'SPV3_07_2022/BNT' in cl_input_folder:
-        print('flagship!')
         filename = f'{name}-{probe_here}-Opt-{EP_or_ED}{zbins:02}-FS2.dat'
     else:
-        input_folder = f'{input_folder}/{probe_here}/'
+        input_folder = f'{input_folder}/{probe_here}'
         filename = f'{name}-{probe_here}-{nbl_WL_32}-{specs}-{EP_or_ED}{zbins:02}.dat'
 
     cl_1d = np.genfromtxt(f'{input_folder}/{filename}')

@@ -24,13 +24,12 @@ general_config = {
     'which_forecast': which_forecast,
     'cl_folder': cl_folder,
     'use_WA': True,
-    'save_cls_3d': False,
+    'save_cls_3d': True,
     'save_rls_3d': False,
     'specs': 'wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4',
-    'cl_BNT_transform': True,
-    'cl_input_folder': '/BNT',  # '' or '/BNT'
-    'cl_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/DataVectors',
-    'rl_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/ResFunTabs'
+    'cl_BNT_transform': False,
+    'cl_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT/DataVectors',
+    'rl_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT/ResFunTabs'
 
 }
 

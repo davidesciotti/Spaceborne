@@ -69,7 +69,7 @@ else:
 for general_cfg['zbins'] in general_cfg['zbins_list']:
     # for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (1500, 750)):
     for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000),):
-        for (general_cfg['EP_or_ED']) in ('ED', ):
+        for (general_cfg['EP_or_ED']) in ('ED',):
 
             # utils.consistency_checks(general_cfg, covariance_cfg)
 
@@ -131,7 +131,8 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                                                 cl_or_rl='cl', EP_or_ED=EP_or_ED)
             cl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
                                                 cl_or_rl='cl', EP_or_ED=EP_or_ED)
-            cl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
+            cl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins,
+                                                   general_cfg['ell_max_WL_opt'],
                                                    cl_or_rl='cl', EP_or_ED=EP_or_ED)
 
             rl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
@@ -140,11 +141,13 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                                                 cl_or_rl='rl', EP_or_ED=EP_or_ED)
             rl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
                                                 cl_or_rl='rl', EP_or_ED=EP_or_ED)
-            rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
+            rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins,
+                                                   general_cfg['ell_max_WL_opt'],
                                                    cl_or_rl='rl', EP_or_ED=EP_or_ED)
 
             if general_cfg['cl_BNT_transform']:
-                BNT_matrix = np.genfromtxt(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT/BNT_matrix/BNT_matrix.txt')
+                BNT_matrix = np.genfromtxt(
+                    f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT/BNT_matrix/BNT_matrix.txt')
                 cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix)
                 cl_gg_3d = cl_utils.cl_BNT_transform(cl_gg_3d, BNT_matrix)
                 cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix)
@@ -194,15 +197,14 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                     np.save(f'{job_path}/output/sijkl/{Sijkl_cfg["sijkl_folder"]}/{sijkl_filename}.npy', sijkl)
 
             # ! compute covariance matrix
-            cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                                ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
+            # cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+            #                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
 
             # ! compute Fisher Matrix
             print('I\'m not computing any Fisher Matrix; I still don\'t have the derivatives.')
             # FM_dict = FM_utils.compute_FM(general_config, covariance_cfg, FM_config, ell_dict, cov_dict)
 
             # ! save:
-
             # this is just to set the correct probe names
             probe_dav_dict = {
                 'WL': 'LL_WLonly_3D',
@@ -210,36 +212,43 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 'WA': 'WA_3D',
                 '3x2pt': '3x2pt_5D'}
 
-            cl_rl_path = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
-            covmat_path = f'{job_path}/output/covmat{covariance_cfg["output_folder"]}/zbins{zbins:02}'
+            cl_input_folder = general_cfg['cl_input_folder']
             if general_cfg['save_cls_3d']:
                 for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
-                    np.save(f'{cl_rl_path}/DataVectors/3D_reshaped/{probe_vinc}/'
+                    np.save(f'{cl_input_folder}/3D_reshaped/{probe_vinc}/'
                             f'dv-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
                             cl_dict_3D[f'C_{probe_dav_dict[probe_dav]}'])
 
                     if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
                         np.savetxt(
-                            f'{cl_rl_path}/DataVectors/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
+                            f'{cl_input_folder}/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                             10 ** ell_dict[f'ell_{probe_dav}'])
+                        np.savetxt(
+                            f'{cl_input_folder}/3D_reshaped/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
+                            delta_dict[f'delta_l_{probe_dav}'])
 
+            rl_input_folder = general_cfg['rl_input_folder']
             if general_cfg['save_rls_3d']:
                 for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
-                    np.save(f'{cl_rl_path}/ResFunTabs/3D_reshaped/{probe_vinc}/'
+                    np.save(f'{rl_input_folder}/3D_reshaped/{probe_vinc}/'
                             f'rf-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
                             rl_dict_3D[f'R_{probe_dav_dict[probe_dav]}'])
 
                     if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
                         np.savetxt(
-                            f'{cl_rl_path}/ResFunTabs/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
+                            f'{rl_input_folder}/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                             10 ** ell_dict[f'ell_{probe_dav}'])
 
+            assert 1 > 2
+            covmat_path = f'{job_path}/output/covmat{covariance_cfg["output_folder"]}/zbins{zbins:02}'
             for ndim in (2, 4, 6):
                 if covariance_cfg[f'save_cov_{ndim}D']:
 
                     # save GO, GS or GO, GS and SS
                     which_cov_list = ['GO', 'GS']
+                    which_cov_list = ['GO']
                     Rl_str_list = ['', f'_Rl{which_probe_response_str}']
+                    Rl_str_list = ['', ]
                     if covariance_cfg[f'save_cov_SS']:
                         which_cov_list.append('SS')
                         Rl_str_list.append(f'_Rl{which_probe_response_str}')
@@ -288,7 +297,7 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
 
         # check for Stefano
         print('GHOST CODE BELOW')
-        npairs = (zbins*(zbins+1))//2
+        npairs = (zbins * (zbins + 1)) // 2
         cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GO_6D'], nbl_WL, npairs, ind[:npairs, :])
         cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GO_6D'], nbl_GC, npairs, ind[:npairs, :])
         cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GS_6D'], nbl_WL, npairs, ind[:npairs, :])
@@ -297,8 +306,6 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
         assert (np.array_equal(cov_GC_GO_4D, cov_dict[f'cov_GC_GO_4D']))
         assert (np.array_equal(cov_WL_GS_4D, cov_dict[f'cov_WL_GS_4D']))
         assert (np.array_equal(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D']))
-
-
 
 """
 if FM_cfg['save_FM']:

@@ -69,7 +69,7 @@ else:
 for general_cfg['zbins'] in general_cfg['zbins_list']:
     # for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (1500, 750)):
     for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000),):
-        for (general_cfg['EP_or_ED']) in ('ED',):
+        for general_cfg['EP_or_ED'] in ('ED',):
 
             # utils.consistency_checks(general_cfg, covariance_cfg)
 
@@ -199,11 +199,14 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
             else:
                 sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins, EP_or_ED=EP_or_ED)
 
+                # the indentation is correct, I don't want to re-save the precomputed sijkl arrays
                 if Sijkl_cfg['save_Sijkl']:
                     np.save(f'{sijkl_folder}/{sijkl_filename}', sijkl)
 
             # ! compute covariance matrix
             if covariance_cfg['compute_covmat']:
+                ng = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/ngbTab-{EP_or_ED}{zbins:02}.dat')[0, :]
+                covariance_cfg['ng'] = ng
                 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
 
@@ -327,32 +330,30 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                                    f'-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.dat',
                                    cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.10e')
 
-        # check for Stefano
-        if covariance_cfg['save_cov_6D']:
-            print('GHOST CODE BELOW')
-            npairs = (zbins * (zbins + 1)) // 2
-            cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GO_6D'], nbl_WL, npairs, ind[:npairs, :])
-            cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GO_6D'], nbl_GC, npairs, ind[:npairs, :])
-            cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GS_6D'], nbl_WL, npairs, ind[:npairs, :])
-            cov_GC_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GS_6D'], nbl_GC, npairs, ind[:npairs, :])
-            assert (np.array_equal(cov_WL_GO_4D, cov_dict[f'cov_WL_GO_4D']))
-            assert (np.array_equal(cov_GC_GO_4D, cov_dict[f'cov_GC_GO_4D']))
-            assert (np.array_equal(cov_WL_GS_4D, cov_dict[f'cov_WL_GS_4D']))
-            assert (np.array_equal(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D']))
+            # check for Stefano
+            if covariance_cfg['save_cov_6D']:
+                print('GHOST CODE BELOW')
+                npairs = (zbins * (zbins + 1)) // 2
+                cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GO_6D'], nbl_WL, npairs, ind[:npairs, :])
+                cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GO_6D'], nbl_GC, npairs, ind[:npairs, :])
+                cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GS_6D'], nbl_WL, npairs, ind[:npairs, :])
+                cov_GC_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GS_6D'], nbl_GC, npairs, ind[:npairs, :])
+                assert (np.array_equal(cov_WL_GO_4D, cov_dict[f'cov_WL_GO_4D']))
+                assert (np.array_equal(cov_GC_GO_4D, cov_dict[f'cov_GC_GO_4D']))
+                assert (np.array_equal(cov_WL_GS_4D, cov_dict[f'cov_WL_GS_4D']))
+                assert (np.array_equal(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D']))
 
-"""
-if FM_cfg['save_FM']:
-    np.savetxt(f"{job_path}/output/FM/FM_WL_GO_lmax{ell_max_WL}_nbl{nbl_WL}.txt", FM_dict['FM_WL_GO'])
-    np.savetxt(f"{job_path}/output/FM/FM_GC_GO_lmax{ell_max_GC}_nbl{nbl_WL}.txt", FM_dict['FM_GC_GO'])
-    np.savetxt(f"{job_path}/output/FM/FM_3x2pt_GO_lmax{ell_max_XC}_nbl{nbl_WL}.txt", FM_dict['FM_3x2pt_GO'])
-    np.savetxt(f"{job_path}/output/FM/FM_WL_GS_lmax{ell_max_WL}_nbl{nbl_WL}_Rl{which_probe_response_str}.txt",
-               FM_dict['FM_WL_GS'])
-    np.savetxt(f"{job_path}/output/FM/FM_GC_GS_lmax{ell_max_GC}_nbl{nbl_WL}_Rl{which_probe_response_str}.txt",
-               FM_dict['FM_GC_GS'])
-    np.savetxt(f"{job_path}/output/FM/FM_3x2pt_GS_lmax{ell_max_XC}_nbl{nbl_WL}_Rl{which_probe_response_str}.txt",
-               FM_dict['FM_3x2pt_GS'])
+            if FM_cfg['save_FM']:
+                probe_list = ['WL', 'GC', '3x2pt', 'WA']
+                ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
+                nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
 
-if FM_cfg['save_FM_as_dict']:
-    sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)
-"""
+                for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
+                    for which_cov in ['GO', 'GS']:
+                        np.savetxt(f'{FM_cfg["FM_output_folder"]}/'
+                                   f'FM_{probe}_{which_cov}_lmax{ell_max}_nbl{nbl}_zbins{zbins:02}_{EP_or_ED}_{Rl_str}.txt', FM_dict[f'FM_{probe}_{which_cov}'])
+
+            if FM_cfg['save_FM_as_dict']:
+                sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)
+
 print('done')

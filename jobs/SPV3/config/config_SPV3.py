@@ -55,8 +55,9 @@ covariance_config = {
     'block_index': 'ell',
     # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
     'which_probe_response': 'variable',
+    'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
+    'ng_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/InputNz/Lenses/Flagship',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
-    'ng': 28.73,  # ! new
     'compute_covmat': True,
     'save_cov_2D': False,
     'save_cov_4D': False,
@@ -64,7 +65,6 @@ covariance_config = {
     'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
-    'ng_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/InputNz/Lenses/Flagship',
     'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/covmat',
 }
 
@@ -75,15 +75,15 @@ Sijkl_config = {
     'WF_suffix': f'FS{flagship_version}',
     'WF_normalization': 'IST',
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
-    'use_precomputed_sijkl': False,
+    'use_precomputed_sijkl': True,
     'save_Sijkl': True,
 }
 
 FM_config = {
     'compute_FM': False,
     'nParams': 20,
-    'save_FM': True,
-    'save_FM_as_dict': True,
+    'save_FM': False,
+    'save_FM_as_dict': False,
     'derivatives_folder': None,  # TODO: add the derivatives folder
     'FM_output_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/FM',
 }

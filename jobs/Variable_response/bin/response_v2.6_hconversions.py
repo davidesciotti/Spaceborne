@@ -231,7 +231,7 @@ c = 299792.458  # km/s
 H0 = h * 100  # km/(s*Mpc)
 
 # get growth only values - DIMENSIONLESS
-G1 = np.genfromtxt(project_path / f'config/common_data/alex_response/Resp_G1_fromsims.dat')
+G1 = np.genfromtxt(project_path / f'input/alex_response/Resp_G1_fromsims.dat')
 
 # take k and z values (the latter from the header)
 # these are all in [h/Mpc]
@@ -268,7 +268,7 @@ save_Pk = False
 # to compute (but not necessarily to use!), and one should of course say which units he's using
 cosmo_par_dict['P_k_max_h/Mpc'] = k_max_classy
 
-# note: 'use_h_units' means whether or not I want everything h units. This means that e.g. if use_h_units is True,
+# note: 'use_h_units' means whether I want everything h units. This means that e.g. if use_h_units is True,
 # what already is in h units should be left untouched, and what is not should be converted. so the scaling is not
 # universal, but depends on which unit is being used for the element in question.
 if use_h_units:
@@ -283,7 +283,7 @@ else:
 # if use_h_units is False:
 #     k_max_G1 *= h
 #     k_fund *= h
-    # now there are in 1/Mpc
+# now there are in 1/Mpc
 
 
 # interpolate G1; attention: the function is G1_funct(z, k), while the array is G1[k, z]
@@ -338,15 +338,11 @@ R1_mm_partial = 1 - 1 / 3 * k_array / Pk * dP_dk
 
 z_idx = 0
 plt.plot(k_array, R1_mm[z_idx, :], '.')
-plt.plot(k_array, G1_tot_funct(z_array, k_array, G1_funct, G1_extrap)[z_idx, :], '.', label = f'{use_h_units}')
+plt.plot(k_array, G1_tot_funct(z_array, k_array, G1_funct, G1_extrap)[z_idx, :], '.', label=f'{use_h_units}')
 plt.axvline(x=k_max_G1, color='k', ls='--', lw=1)
 
 plt.legend()
 plt.grid()
-
-
-
-
 
 # ...and plot it
 if plot_Rmm:

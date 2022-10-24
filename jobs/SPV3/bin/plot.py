@@ -13,6 +13,7 @@ from matplotlib.cm import get_cmap
 from getdist.gaussian_mixtures import GaussianND
 import pandas as pd
 from matplotlib.ticker import FormatStrFormatter, StrMethodFormatter
+from scipy.interpolate import interp2d
 from xarray.plot.utils import legend_elements
 
 project_path = Path.cwd().parent.parent.parent
@@ -457,17 +458,38 @@ if plot_fom_vs_eps_b:
     plt.rcParams.update(params)
     markersize = 14
 
-    EP10_opt = np.genfromtxt(
+    FoM_vs_prior = np.genfromtxt(
         f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/FoMvsPrior/fomvsprior-EP10-Opt.dat')
-    EP13_opt = np.genfromtxt(
-        f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/FoMvsPrior/fomvsprior-EP13-Opt.dat')
+    FoM_vs_prior[:, 0] = 10 ** FoM_vs_prior[:, 0]  # eps_b
+    FoM_vs_prior[:, 1] = 10 ** FoM_vs_prior[:, 1]  # sigma_m
 
     # find the correct line fot the different sigma_m values, Vincenzo flattens the array
-    sigma_m_values = (5e-4, 50e-4, 100e-4)
-    start_idxs = [np.argmin(np.abs(10 ** EP10_opt[:, 1] - sigma_m_value)) for sigma_m_value in sigma_m_values]
+    sigma_m_fixed = (5e-4, 50e-4, 500e-4)
+    sigma_m_fixed = (5e-4, 50e-4, 80e-4)
+    start_idxs = [np.argmin(np.abs(FoM_vs_prior[:, 1] - sigma_m_value)) for sigma_m_value in sigma_m_fixed]
 
-    eps_b_values = np.unique(EP10_opt[:, 0])
-    step = int(np.shape(EP10_opt[:, 0])[0] / np.shape(eps_b_values)[0])  # ratio between total and unique elements
+    eps_b_values = np.unique(FoM_vs_prior[:, 0])
+    sigma_m_values = np.unique(FoM_vs_prior[:, 1])
+    n_points = eps_b_values.size
+
+    if np.any(max(sigma_m_fixed) > FoM_vs_prior[:, 1]):
+        print('extrapolating FoM_vs_eps_b')
+
+        X = eps_b_values
+        Y = sigma_m_values
+        Z = np.reshape(FoM_vs_prior[:, -3], (n_points, n_points)).T
+        FoM_G_extrap = interp2d(x=X, y=Y, z=Z)
+        FoM_G_extrap_array = FoM_G_extrap(x=eps_b_values, y=sigma_m_fixed).T
+
+        Z = np.reshape(FoM_vs_prior[:, -2], (n_points, n_points)).T
+        FoM_GS_extrap = interp2d(x=X, y=Y, z=Z)
+        FoM_GS_extrap_array = FoM_GS_extrap(x=eps_b_values, y=sigma_m_fixed).T
+
+        Z = np.reshape(FoM_vs_prior[:, -1], (n_points, n_points)).T
+        FoM_ratio_extrap = interp2d(x=X, y=Y, z=Z)
+        FoM_ratio_extrap_array = FoM_ratio_extrap(x=eps_b_values, y=sigma_m_fixed).T
+
+    step = int(np.shape(FoM_vs_prior[:, 0])[0] / np.shape(eps_b_values)[0])  # ratio between total and unique elements
     fsky_correction = 14700 / 14000  # survey area has been changed again
 
     linestyles = ('solid', 'dashed', 'dotted')
@@ -477,15 +499,22 @@ if plot_fom_vs_eps_b:
 
     plt.figure()
     for start, ls, label in zip(start_idxs, linestyles, linestyle_labels):
-        plt.plot(10 ** EP10_opt[start::step, 0], EP10_opt[start::step, -3] * fsky_correction, color='tab:blue', ls=ls)
-        plt.plot(10 ** EP10_opt[start::step, 0], EP10_opt[start::step, -2] * fsky_correction, color='tab:orange', ls=ls)
+        plt.plot(FoM_vs_prior[start::step, 0], FoM_vs_prior[start::step, -3] * fsky_correction, color='tab:blue',
+                 ls='-')  # ! change back to ls=ls
+        plt.plot(FoM_vs_prior[start::step, 0], FoM_vs_prior[start::step, -2] * fsky_correction,
+                 color='tab:orange', ls=ls)
+
+    # with extrapolation
+    for start, ls, label in zip(range(3), linestyles, linestyle_labels):
+        plt.plot(eps_b_values, FoM_G_extrap_array[:, start] * fsky_correction, ls=ls, color='g')
+        # plt.plot(eps_b_values, FoM_GS_extrap_array[:, start] * fsky_correction, ls=ls, color='g')
 
     dummy_lines = []
-    for i in range(len(sigma_m_values)):
+    for i in range(len(sigma_m_fixed)):
         dummy_lines.append(plt.plot([], [], c="black", ls=linestyles[i])[0])
 
     dummy_colors = []
-    for i in range(len(sigma_m_values)):
+    for i in range(len(sigma_m_fixed)):
         dummy_colors.append(plt.plot([], [])[0])
 
     linestyles_legend = plt.legend(dummy_lines, linestyle_labels, prop={'size': fontsize})
@@ -504,7 +533,8 @@ if plot_fom_vs_eps_b:
 
     plt.figure()
     for start, ls, label in zip(start_idxs, linestyles, linestyle_labels):
-        plt.plot(10 ** EP10_opt[start::step, 0], EP10_opt[start::step, -2] / EP10_opt[start::step, -3], color='black',
+        plt.plot(FoM_vs_prior[start::step, 0], FoM_vs_prior[start::step, -2] / FoM_vs_prior[start::step, -3],
+                 color='black',
                  ls=ls, label=label)
 
     plt.legend(prop={'size': fontsize})
@@ -597,19 +627,20 @@ if plot_response:
     ED_or_EP = 'EP'
     zbins = 10
     rl_wl = np.load(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/'
-                          f'ResFunTabs/3D_reshaped/WLO/'
-                          f'rf-WLO-32-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{ED_or_EP}{zbins:02}.npy')
+                    f'ResFunTabs/3D_reshaped/WLO/'
+                    f'rf-WLO-32-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{ED_or_EP}{zbins:02}.npy')
     rl_gc = np.load(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/'
-                          f'ResFunTabs/3D_reshaped/GCO/'
-                          f'rf-GCO-32-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{ED_or_EP}{zbins:02}.npy')
+                    f'ResFunTabs/3D_reshaped/GCO/'
+                    f'rf-GCO-32-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{ED_or_EP}{zbins:02}.npy')
     ell_wl = np.genfromtxt(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/'
-                          f'ResFunTabs/3D_reshaped/WLO/ell_WL_ellmaxWL5000.txt')
+                           f'ResFunTabs/3D_reshaped/WLO/ell_WL_ellmaxWL5000.txt')
     ell_gc = np.genfromtxt(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/'
-                          f'ResFunTabs/3D_reshaped/GCO/ell_GC_ellmaxWL5000.txt')
+                           f'ResFunTabs/3D_reshaped/GCO/ell_GC_ellmaxWL5000.txt')
 
     # old ones
     sys.path.append('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/bin')
     import ell_values_running as ell_utils
+
     rl_gc_old = np.load('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/Pk_responses_2D/R_GG_3D.npy')
     ell_gc_old, _ = ell_utils.compute_ells(nbl=30, ell_min=10, ell_max=3000, recipe='ISTF')
 

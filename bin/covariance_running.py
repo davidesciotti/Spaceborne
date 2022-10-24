@@ -177,6 +177,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     cov_3x2pt_GS_4D = cov_3x2pt_GO_4D + cov_3x2pt_SS_4D
 
     if covariance_cfg['save_cov_6D']:
+
         # compute 3x2pt covariance in 10D, potentially with whichever probe ordering, and the WL, GS and WA cov in 6D
 
         # store the input datavector and noise spectra in a dictionary
@@ -279,25 +280,21 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         rl_dict_GG = {('G', 'G'): R_GG_3D}
         rl_dict_WA = {('L', 'L'): R_WA_3D}
 
+        # ! cov_G_6D
         start_time = time.perf_counter()
-        cov_WL_GO_6D = mm.cov_G_10D_dict(cl_dict_LL, noise_dict_3x2pt, nbl_WL, zbins, l_lin_WL,
-                                         delta_l_WL, fsky, probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
-        cov_GC_GO_6D = mm.cov_G_10D_dict(cl_dict_GG, noise_dict_3x2pt, nbl_GC, zbins, l_lin_GC,
-                                         delta_l_GC, fsky, probe_ordering=[['G', 'G'], ])['G', 'G', 'G', 'G']
-        cov_WA_GO_6D = mm.cov_G_10D_dict(cl_dict_WA, noise_dict_3x2pt, nbl_WA, zbins, l_lin_WA,
-                                         delta_l_WA, fsky, probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
+        cov_dict['cov_WL_GO_6D'] = mm.cov_G_10D_dict(cl_dict_LL, noise_dict_3x2pt,
+                                                     nbl_WL, zbins, l_lin_WL, delta_l_WL, fsky,
+                                                     probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
+        cov_dict['cov_GC_GO_6D'] = mm.cov_G_10D_dict(cl_dict_GG, noise_dict_3x2pt,
+                                                     nbl_GC, zbins, l_lin_GC, delta_l_GC, fsky,
+                                                     probe_ordering=[['G', 'G'], ])['G', 'G', 'G', 'G']
+        cov_dict['cov_WA_GO_6D'] = mm.cov_G_10D_dict(cl_dict_WA, noise_dict_3x2pt,
+                                                     nbl_WA, zbins, l_lin_WA, delta_l_WA, fsky,
+                                                     probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
         print(f'cov_GO_6D new computed in {(time.perf_counter() - start_time):.2f} seconds')
 
-        cov_dict['cov_WL_GO_6D'] = cov_WL_GO_6D
-        cov_dict['cov_GC_GO_6D'] = cov_GC_GO_6D
-        cov_dict['cov_WA_GO_6D'] = cov_WA_GO_6D
 
-        if covariance_cfg['save_cov_SS']:
-            cov_dict['cov_WL_SS_6D'] = mm.cov_4D_to_6D(cov_WL_SS_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
-            cov_dict['cov_GC_SS_6D'] = mm.cov_4D_to_6D(cov_GC_SS_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
-            cov_dict['cov_WA_SS_6D'] = mm.cov_4D_to_6D(cov_WA_SS_4D, nbl_WA, zbins, probe='LL', ind=ind_LL)
-
-        # ! SS
+        # ! cov_SS_6D
         start_time = time.perf_counter()
         cov_WL_SS_6D = mm.cov_SS_10D_dict(cl_dict_LL, rl_dict_LL, Sijkl_dict, nbl_WL, zbins, fsky,
                                           probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
@@ -307,16 +304,15 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
                                           probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
         print(f'cov_SS_6D new computed in {(time.perf_counter() - start_time):.2f} seconds')
 
+        if covariance_cfg['save_cov_SS']:
+            cov_dict['cov_WL_SS_6D'] = cov_WL_SS_6D
+            cov_dict['cov_GC_SS_6D'] = cov_GC_SS_6D
+            cov_dict['cov_WA_SS_6D'] = cov_WA_SS_6D
 
-        mm.matshow(cov_WL_SS_6D[0, 0, :, :, 0, 0], log=True)
-        mm.matshow(cov_dict['cov_WL_SS_6D'][0, 0, :, :, 0, 0], log=True)
-        rtol = 1e-7
-        assert np.allclose(cov_WL_SS_6D, cov_dict['cov_WL_SS_6D'], atol=0, rtol=rtol)
-        assert np.allclose(cov_GC_SS_6D, cov_dict['cov_GC_SS_6D'], atol=0, rtol=rtol)
-        assert np.allclose(cov_WA_SS_6D, cov_dict['cov_WA_SS_6D'], atol=0, rtol=rtol)
-
-        assert 1 > 2, 'program terminated'
-        # ! SS - end
+        # ! cov_GS_6D
+        cov_dict['cov_WL_GS_6D'] = cov_dict['cov_WL_GO_6D'] + cov_WL_SS_6D
+        cov_dict['cov_GC_GS_6D'] = cov_dict['cov_GC_GO_6D'] + cov_GC_SS_6D
+        cov_dict['cov_WA_GS_6D'] = cov_dict['cov_WA_GO_6D'] + cov_WA_SS_6D
 
         # test that they are equal to the 4D ones; this is quite slow, so I check only some arrays
         print('checks: is cov_4D == mm.cov_6D_to_4D(cov_6D)?')
@@ -328,7 +324,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         assert np.array_equal(cov_GC_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GS_6D'], nbl_GC, npairs_auto, ind_GG))
         assert np.array_equal(cov_WA_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, npairs_auto, ind_LL))
 
-        print('checks passed')
+
+
+    print('checks passed')
 
     ############################### 4D to 2D ##################################
     # Here an ordering convention ('block_index') is needed as well

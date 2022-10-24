@@ -34,9 +34,9 @@ markersize = 10
 
 # ! options
 zbins_list = np.array((10,), dtype=int)
-probes = ('WL', )
-pes_opt_list = ('opt', )
-EP_or_ED_list = ('EP', )
+probes = ('WL',)
+pes_opt_list = ('opt',)
+EP_or_ED_list = ('EP',)
 which_comparison = 'GO_vs_GS'  # this is just to set the title of the plot
 which_Rl = 'var'
 which_uncertainty = 'marginal'
@@ -52,13 +52,14 @@ bar_plot = True
 triangle_plot = False
 plot_ratio_vs_zbins = False
 plot_fom_vs_zbins = False
-plot_fom_vs_eps_b = False
+plot_fom_vs_eps_b = True
 plot_prior_contours = False
 bar_plot_nuisance = False
+plot_response = False
 pic_format = 'pdf'
 dpi = 500
+flagship_version = 1
 # ! end options
-
 
 
 job_path = project_path / f'jobs/{which_job}'
@@ -76,14 +77,11 @@ fid_IA = np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()])
 fid_galaxy_bias = np.asarray([ISTF_fid.photoz_galaxy_bias[key] for key in ISTF_fid.photoz_galaxy_bias.keys()])
 fid_shear_bias = np.asarray([ISTF_fid.photoz_shear_bias[key] for key in ISTF_fid.photoz_shear_bias.keys()])
 
-
 # compute percent diff of the cases chosen - careful of the indices!
 if which_diff == 'normal':
     diff_funct = mm.percent_diff
 else:
     diff_funct = mm.percent_diff_mean
-
-
 
 # initialize dict lists
 for probe in probes:
@@ -102,13 +100,13 @@ for probe in probes:
 
                 # some checks
                 assert which_diff in ['normal', 'mean'], 'which_diff should be "normal" or "mean"'
-                assert which_uncertainty in ['marginal','conditional'], 'which_uncertainty should be "marginal" or "conditional"'
+                assert which_uncertainty in ['marginal',
+                                             'conditional'], 'which_uncertainty should be "marginal" or "conditional"'
                 assert which_Rl in ['const', 'var'], 'which_Rl should be "const" or "var"'
                 assert model in ['flat', 'nonflat'], 'model should be "flat" or "nonflat"'
                 assert probe in ['WL', 'GC', '3x2pt'], 'probe should be "WL" or "GC" or "3x2pt"'
                 assert pes_opt in ['opt', 'pes'], 'pes_opt should be "opt" or "pes"'
                 assert which_job == 'SPV3', 'which_job should be "SPV3"'
-
 
                 if bar_plot_nuisance:  # ! fix this
                     assert zbins == 10, 'I have not generalized the numbers below, plus, the gal bias fiducials are not defined for zbins != 10'
@@ -126,7 +124,6 @@ for probe in probes:
                             nparams_chosen = 17
                         elif probe == 'WL':
                             nparams_chosen = 20
-
 
                 nparams = nparams_chosen  # re-initialize at every iteration
 
@@ -171,7 +168,7 @@ for probe in probes:
                 # todo non-tex labels
 
                 # import vincenzo's FM, not in a dictionary because they are all split into different folders
-                vinc_FM_folder = 'vincenzo/SPV3_07_2022/FishMat'
+                vinc_FM_folder = f'vincenzo/SPV3_07_2022/Flagship_{flagship_version}/FishMat'
                 if pes_opt == 'opt':
                     FM_GO = np.genfromtxt(
                         project_path.parent / f'common_data/{vinc_FM_folder}/GaussOnly/{probe_folder}/'
@@ -461,9 +458,9 @@ if plot_fom_vs_eps_b:
     markersize = 14
 
     EP10_opt = np.genfromtxt(
-        f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/FoMvsPrior/fomvsprior-EP10-Opt.dat')
+        f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/FoMvsPrior/fomvsprior-EP10-Opt.dat')
     EP13_opt = np.genfromtxt(
-        f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/FoMvsPrior/fomvsprior-EP13-Opt.dat')
+        f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/FoMvsPrior/fomvsprior-EP13-Opt.dat')
 
     # find the correct line fot the different sigma_m values, Vincenzo flattens the array
     sigma_m_values = (5e-4, 50e-4, 100e-4)
@@ -535,7 +532,7 @@ if plot_prior_contours:
     markersize = 14
 
     FoM_vs_prior = np.genfromtxt(
-        f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/FoMvsPrior/fomvsprior-EP10-Opt.dat')
+        f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/FoMvsPrior/fomvsprior-EP10-Opt.dat')
     FoM_vs_prior[:, 0] = 10 ** FoM_vs_prior[:, 0]  # eps_b
     FoM_vs_prior[:, 1] = 10 ** FoM_vs_prior[:, 1]  # sigma_m
 
@@ -585,14 +582,45 @@ if plot_prior_contours:
                 bbox_inches='tight')
 
 if bar_plot_nuisance:
-
     data = uncert['diff'][cosmo_params:]
 
     zbins = 10
     case = 'opt'
     data = np.asarray(data)
-    plot_utils.bar_plot(data, title, label_list=['% diff'], nparams=nparams - cosmo_params, param_names_label=pars_labels_TeX[cosmo_params:],
+    plot_utils.bar_plot(data, title, label_list=['% diff'], nparams=nparams - cosmo_params,
+                        param_names_label=pars_labels_TeX[cosmo_params:],
                         bar_width=0.17,
                         second_axis=False, no_second_axis_bars=0)
+
+if plot_response:
+    plt.figure()
+    ED_or_EP = 'EP'
+    zbins = 10
+    rl_wl = np.load(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/'
+                          f'ResFunTabs/3D_reshaped/WLO/'
+                          f'rf-WLO-32-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{ED_or_EP}{zbins:02}.npy')
+    rl_gc = np.load(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/'
+                          f'ResFunTabs/3D_reshaped/GCO/'
+                          f'rf-GCO-32-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{ED_or_EP}{zbins:02}.npy')
+    ell_wl = np.genfromtxt(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/'
+                          f'ResFunTabs/3D_reshaped/WLO/ell_WL_ellmaxWL5000.txt')
+    ell_gc = np.genfromtxt(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/'
+                          f'ResFunTabs/3D_reshaped/GCO/ell_GC_ellmaxWL5000.txt')
+
+    # old ones
+    sys.path.append('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/bin')
+    import ell_values_running as ell_utils
+    rl_gc_old = np.load('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/Pk_responses_2D/R_GG_3D.npy')
+    ell_gc_old, _ = ell_utils.compute_ells(nbl=30, ell_min=10, ell_max=3000, recipe='ISTF')
+
+    assert rl_wl.shape == (32, 10, 10), 'I want to plot the optimistic case'
+
+    plt.plot(ell_wl, rl_wl[:, 5, 5], '--', marker='o', label='WL')
+    plt.plot(ell_gc, rl_gc[:, 5, 5], '--', marker='o', label='GCph')
+    plt.plot(ell_gc_old, rl_gc_old[:, 5, 5], '--', marker='o', label='GCph old')
+    plt.xscale('log')
+    plt.grid()
+    plt.legend()
+    plt.show()
 
 print('*********** done ***********')

@@ -12,8 +12,8 @@ which_forecast = 'SPV3'
 fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
 # ! choose the flagship version and whether you want to compute the BNT transformed cls
-flagship_version = 1
-BNT_transform = False
+flagship_version = 2
+BNT_transform = True
 
 if flagship_version == 1:
     assert BNT_transform is False, 'we are applying the BNT only for Flagship_2'

@@ -316,15 +316,13 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
 
         # test that they are equal to the 4D ones; this is quite slow, so I check only some arrays
         print('checks: is cov_4D == mm.cov_6D_to_4D(cov_6D)?')
-        assert np.array_equal(cov_WL_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, npairs_auto, ind_LL))
-        assert np.array_equal(cov_GC_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GO_6D'], nbl_GC, npairs_auto, ind_GG))
-        assert np.array_equal(cov_WA_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GO_6D'], nbl_WA, npairs_auto, ind_LL))
+        assert np.allclose(cov_WL_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, npairs_auto, ind_LL), rtol=1e-7, atol=0)
+        assert np.allclose(cov_GC_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GO_6D'], nbl_GC, npairs_auto, ind_GG), rtol=1e-7, atol=0)
+        assert np.allclose(cov_WA_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GO_6D'], nbl_WA, npairs_auto, ind_LL), rtol=1e-7, atol=0)
 
-        assert np.array_equal(cov_WL_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GS_6D'], nbl_WL, npairs_auto, ind_LL))
-        assert np.array_equal(cov_GC_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GS_6D'], nbl_GC, npairs_auto, ind_GG))
-        assert np.array_equal(cov_WA_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, npairs_auto, ind_LL))
-
-
+        assert np.allclose(cov_WL_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GS_6D'], nbl_WL, npairs_auto, ind_LL), rtol=1e-7, atol=0)
+        assert np.allclose(cov_GC_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GS_6D'], nbl_GC, npairs_auto, ind_GG), rtol=1e-7, atol=0)
+        assert np.allclose(cov_WA_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, npairs_auto, ind_LL), rtol=1e-7, atol=0)
 
     print('checks passed')
 

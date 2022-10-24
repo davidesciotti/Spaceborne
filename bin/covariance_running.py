@@ -294,18 +294,21 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
 
         if covariance_cfg['save_cov_SS']:
             cov_dict['cov_WL_SS_6D'] = mm.cov_4D_to_6D(cov_WL_SS_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
-            cov_dict['cov_GC_SS_6D'] = mm.cov_4D_to_6D(cov_GC_SS_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
-            cov_dict['cov_WA_SS_6D'] = mm.cov_4D_to_6D(cov_WA_SS_4D, nbl_WA, zbins, probe='LL', ind=ind_LL)
+            # cov_dict['cov_GC_SS_6D'] = mm.cov_4D_to_6D(cov_GC_SS_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
+            # cov_dict['cov_WA_SS_6D'] = mm.cov_4D_to_6D(cov_WA_SS_4D, nbl_WA, zbins, probe='LL', ind=ind_LL)
 
         # ! SS
         start_time = time.perf_counter()
         cov_WL_SS_6D = mm.cov_SS_10D_dict(cl_dict_LL, rl_dict_LL, Sijkl_dict, nbl_WL, zbins, fsky,
                                           probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
-        cov_GC_SS_6D = mm.cov_SS_10D_dict(cl_dict_GG, rl_dict_GG, Sijkl_dict, nbl_GC, zbins, fsky,
-                                          probe_ordering=[['G', 'G'], ])['G', 'G', 'G', 'G']
-        cov_WA_SS_6D = mm.cov_SS_10D_dict(cl_dict_WA, rl_dict_WA, Sijkl_dict, nbl_WA, zbins, fsky,
-                                          probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
-        print(f'cov_GO_6D new computed in {(time.perf_counter() - start_time):.2f} seconds')
+        # cov_GC_SS_6D = mm.cov_SS_10D_dict(cl_dict_GG, rl_dict_GG, Sijkl_dict, nbl_GC, zbins, fsky,
+        #                                   probe_ordering=[['G', 'G'], ])['G', 'G', 'G', 'G']
+        # cov_WA_SS_6D = mm.cov_SS_10D_dict(cl_dict_WA, rl_dict_WA, Sijkl_dict, nbl_WA, zbins, fsky,
+        #                                   probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
+        print(f'cov_SS_6D new computed in {(time.perf_counter() - start_time):.2f} seconds')
+
+        for ell in range(nbl_WL):
+            print(f'is cl_dict_LL symmetric? ell={ell}', mm.check_symmetric(cl_dict_LL[('L', 'L')][ell, :, :], exact=True))
 
         # * test: if I 4d-reshape it, iS it equal to the old one? YES!
         # ! to delete
@@ -323,6 +326,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         #     print(rtol, np.allclose(cov_WL_SS_6D, cov_dict['cov_WL_SS_6D'], atol=0, rtol=rtol))
         # assert np.array_equal(cov_GC_SS_6D, cov_dict['cov_GC_SS_6D'])
         # assert np.array_equal(cov_WA_SS_6D, cov_dict['cov_WA_SS_6D'])
+
+        assert 1 > 2
         # ! SS - end
 
         # test that they are equal to the 4D ones; this is quite slow, so I check only some arrays

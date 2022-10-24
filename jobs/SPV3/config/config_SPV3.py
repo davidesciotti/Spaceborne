@@ -12,8 +12,8 @@ which_forecast = 'SPV3'
 fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
 # ! choose the flagship version and whether you want to compute the BNT transformed cls
-flagship_version = 2
-BNT_transform = True
+flagship_version = 1
+BNT_transform = False
 
 if flagship_version == 1:
     assert BNT_transform is False, 'we are applying the BNT only for Flagship_2'
@@ -76,7 +76,7 @@ Sijkl_config = {
     'WF_normalization': 'IST',
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
     'use_precomputed_sijkl': True,
-    'save_Sijkl': True,
+    'save_Sijkl': False,
 }
 
 FM_config = {

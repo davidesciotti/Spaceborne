@@ -263,16 +263,34 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         cov_dict['cov_3x2pt_SS_10D'] = cov_3x2pt_SS_10D
 
         # TODO this is super slow, either optimize the function or use cov_10D_dict also for the single probes!
+        start_time = time.perf_counter()
         cov_dict['cov_WL_GO_6D'] = mm.cov_4D_to_6D(cov_WL_GO_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
+        print(f'cov_WL_GO_6D computed in {(time.perf_counter() - start_time):.2f} seconds')
         # cov_dict['cov_GC_GO_6D'] = mm.cov_4D_to_6D(cov_GC_GO_4D, nbl_GC, zbins, probe='GG', ind=ind_GG)
         # cov_dict['cov_WA_GO_6D'] = mm.cov_4D_to_6D(cov_WA_GO_4D, nbl_WA, zbins, probe='LL', ind=ind_LL)
 
         # ! test: the ad hoc funzion (instead of the conversion) should be faster
         cl_dict_WL = {}
         cl_dict_WL['L', 'L'] = C_LL_3D
+        cl_dict_GC = {}
+        cl_dict_GC['G', 'G'] = C_GG_3D
+        cl_dict_WA = {}
+        cl_dict_WA['L', 'L'] = C_WA_3D
+
+        start_time = time.perf_counter()
         cov_WL_GO_6D_test = mm.cov_G_10D_dict(cl_dict_WL, noise_dict, nbl_WL, zbins, l_lin_WL,
-                                              delta_l_WL, fsky, probe_ordering=['L', 'L'])
+                                              delta_l_WL, fsky, probe_ordering=[['L', 'L'], ])
+        print(f'cov_WL_GO_6D_test computed in {(time.perf_counter() - start_time):.2f} seconds')
+
+        # cov_GC_GO_6D_test = mm.cov_G_10D_dict(cl_dict_GC, noise_dict, nbl_GC, zbins, l_lin_GC,
+        #                                       delta_l_GC, fsky, probe_ordering=[['G', 'G'], ])
+        # cov_WA_GO_6D_test = mm.cov_G_10D_dict(cl_dict_WA, noise_dict, nbl_WA, zbins, l_lin_WA,
+        #                                       delta_l_WA, fsky, probe_ordering=[['L', 'L'], ])
+
         assert np.array_equal(cov_WL_GO_6D_test['L', 'L', 'L', 'L'], cov_dict['cov_WL_GO_6D'])
+        # assert np.array_equal(cov_GC_GO_6D_test['G', 'G', 'G', 'G'], cov_dict['cov_GC_GO_6D'])
+        # assert np.array_equal(cov_WA_GO_6D_test['L', 'L', 'L', 'L'], cov_dict['cov_WA_GO_6D'])
+        cov_dict['cov_WL_GO_6D_test'] = cov_WL_GO_6D_test
         # ! end test
 
         # cov_dict['cov_WL_GS_6D'] = mm.cov_4D_to_6D(cov_WL_GS_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)

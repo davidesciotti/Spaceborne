@@ -50,14 +50,8 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
         which_flattening = 'C'
     elif block_index in ['ij', 'sylvain', 'F-style']:
         which_flattening = 'F'
-
-    # # ! delete this
-    # print('DELIBERATELY WRONG, DELETE THIS')
-    # if block_index in ['ell', 'vincenzo', 'C-style']:
-    #     which_flattening = 'F'
-    # elif block_index in ['ij', 'sylvain', 'F-style']:
-    #     which_flattening = 'C'
-    # # ! end delete this
+    else:
+        raise ValueError("block_index should be either 'ell', 'vincenzo', 'C-style', 'ij', 'sylvain' or 'F-style'")
 
     # check to see if ell values are in linear or log scale
     if np.max(ell_WL) > 30:
@@ -75,8 +69,6 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
 
     nParams_bias = 10
     nParams_WL = nParams - nParams_bias
-
-    # output_folder = mm.get_output_folder(ind_ordering, which_forecast)
 
     npairs, npairs_asimm, npairs_tot = mm.get_pairs(zbins)
 
@@ -99,7 +91,6 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
     cov_WA_GO_2D_inv = np.linalg.inv(cov_dict['cov_WA_GO_2D'])
     cov_3x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GO_2D'])
     print(f'GO covmats inverted in {(time.perf_counter() - start1):.2f} s')
-
 
     # invert GS covmats
     start2 = time.perf_counter()
@@ -129,6 +120,11 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
         probe_code_GG = "GG"
         probe_code_XC = "GL"
 
+    else:
+        raise ValueError(
+            "cl_folder should be either 'Cij_thesis', 'Cij_15gen' or 'Cij_14may' - THIS HAS TO BE UPDATED! "
+            "Also, the imports should be defined in the main or in the config.")
+
     # set parameters names for the different probes
     params_names_LL = ["Om", "Ob", "wz", "wa", "h", "ns", "s8", "Aia", "eIA", "bIA"]
     # this if-elif is just because the bias parametrers are called "b" in one case and "bL" in the other
@@ -152,7 +148,6 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
     dC_GConly_interpolated_dict = {}
     dC_3x2pt_interpolated_dict = {}
     dC_WA_interpolated_dict = {}
-
 
     # call the function to interpolate: PAY ATTENTION TO THE PARAMETERS PASSED!
     # WLonly
@@ -288,7 +283,6 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
     FM_WA_GO = mm.compute_FM_2D(nbl_WA, npairs, nParams, cov_WA_GO_2D_inv, D_WA_2D)
     FM_3x2pt_GO = mm.compute_FM_2D(nbl, npairs_tot, nParams, cov_3x2pt_GO_2D_inv, D_3x2pt_2D)
     print(f'GO FM done in {(time.perf_counter() - start3):.2f} s')
-
 
     # COMPUTE FM GS
     start4 = time.perf_counter()

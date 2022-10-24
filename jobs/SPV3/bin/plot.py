@@ -465,7 +465,7 @@ if plot_fom_vs_eps_b:
 
     # find the correct line fot the different sigma_m values, Vincenzo flattens the array
     sigma_m_fixed = (5e-4, 50e-4, 500e-4)
-    sigma_m_fixed = (5e-4, 50e-4, 80e-4)
+    sigma_m_fixed = (5e-4, 50e-4, 500e-4)
     start_idxs = [np.argmin(np.abs(FoM_vs_prior[:, 1] - sigma_m_value)) for sigma_m_value in sigma_m_fixed]
 
     eps_b_values = np.unique(FoM_vs_prior[:, 0])
@@ -494,7 +494,9 @@ if plot_fom_vs_eps_b:
 
     linestyles = ('solid', 'dashed', 'dotted')
     linestyle_labels = (
-        '$\\sigma_m = 5 \\times 10^{−4}$', '$\\sigma_m = 50 \\times 10^{−4}$', '$\\sigma_m = 100 \\times 10^{−4}$')
+        '$\\sigma_m = %i \\times 10^{−4}$' %int(sigma_m_fixed[0]*1e4),
+        '$\\sigma_m = %i \\times 10^{−4}$' %int(sigma_m_fixed[1]*1e4),
+        '$\\sigma_m = %i \\times 10^{−4}$' %int(sigma_m_fixed[2]*1e4))
     color_labels = ('G', 'GS')
 
     plt.figure()
@@ -505,9 +507,12 @@ if plot_fom_vs_eps_b:
                  color='tab:orange', ls=ls)
 
     # with extrapolation
-    for start, ls, label in zip(range(3), linestyles, linestyle_labels):
-        plt.plot(eps_b_values, FoM_G_extrap_array[:, start] * fsky_correction, ls=ls, color='g')
+    for start, start_2, ls, label in zip(range(3), start_idxs, linestyles, linestyle_labels):
+        print(np.array_equal(FoM_G_extrap_array[:, start], FoM_vs_prior[start_2::step, -3]))
+        # plt.plot(eps_b_values, FoM_G_extrap_array[:, start] * fsky_correction, ls=ls, color='g')
+        plt.plot(eps_b_values, FoM_G_extrap_array[:, start]/FoM_vs_prior[start_2::step, -3], ls=ls, color='g')
         # plt.plot(eps_b_values, FoM_GS_extrap_array[:, start] * fsky_correction, ls=ls, color='g')
+
 
     dummy_lines = []
     for i in range(len(sigma_m_fixed)):

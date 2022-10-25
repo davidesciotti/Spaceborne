@@ -263,15 +263,15 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
 
                     for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
                         # save cl and/or response
-                        np.save(f'{folder}/3D_reshaped/{probe_vinc}/'
+                        np.save(f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/'
                                 f'{clrl_dict[f"{cl_or_rl}_inputname"]}-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
                                 clrl_dict[f"{cl_or_rl}_dict_3D"][f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}'])
 
                         # save ells and deltas
                         if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
-                            np.savetxt(f'{folder}/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
+                            np.savetxt(f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                                 10 ** ell_dict[f'ell_{probe_dav}'])
-                            np.savetxt(f'{folder}/3D_reshaped/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
+                            np.savetxt(f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                                 delta_dict[f'delta_l_{probe_dav}'])
 
             covmat_path = f'{covariance_cfg["cov_folder"]}/zbins{zbins:02}'
@@ -280,14 +280,12 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
 
                     # save GO, GS or GO, GS and SS
                     which_cov_list = ['GO', 'GS']
-                    # which_cov_list = ['GO']
                     Rl_str_list = ['', f'_Rl{which_probe_response_str}']
-                    # Rl_str_list = ['', ]
                     if covariance_cfg[f'save_cov_SS']:
                         which_cov_list.append('SS')
                         Rl_str_list.append(f'_Rl{which_probe_response_str}')
 
-                    # set probes to save; the ndim == 6 is different
+                    # set probes to save; the ndim == 6 case is different
                     probe_list = ['WL', 'GC', '3x2pt', 'WA']
                     ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
                     nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
@@ -306,12 +304,12 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                                         f'covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_{ndim}D.npy',
                                         cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])
 
-                        # in this case, 3x2pt is saved in 10D as a dictionary
-                        if ndim == 6:
-                            filename = f'{covmat_path}/covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_10D.pickle'
-                            with open(filename, 'wb') as handle:
-                                pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle,
-                                            protocol=pickle.HIGHEST_PROTOCOL)
+                            # in this case, 3x2pt is saved in 10D as a dictionary
+                            if ndim == 6:
+                                filename = f'{covmat_path}/covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_10D.pickle'
+                                with open(filename, 'wb') as handle:
+                                    pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle,
+                                                protocol=pickle.HIGHEST_PROTOCOL)
 
                     # in the pessimistic case, save only WA
                     elif ell_max_WL == 1500:

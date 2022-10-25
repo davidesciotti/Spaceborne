@@ -247,7 +247,6 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max
     else:
         raise ValueError('probe must be WL, WA, GC or 3x2pt')
 
-
     if cl_or_rl == 'cl':
         name = 'dv'
     elif cl_or_rl == 'rl':
@@ -261,8 +260,7 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max
     elif 'SPV3_07_2022/Flagship_2' in input_folder:
         filename = f'{name}-{probe_here}-Opt-{EP_or_ED}{zbins:02}-FS2.dat'
     else:
-        raise ValueError('input_folder should contain "Flagship_1" or "Flagship_2"')
-
+        raise ValueError('input_folder should contain "SPV3_07_2022/Flagship_1" or "SPV3_07_2022/Flagship_2"')
 
     cl_1d = np.genfromtxt(f'{input_folder}/{filename}')
 

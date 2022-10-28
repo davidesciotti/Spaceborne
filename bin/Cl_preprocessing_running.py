@@ -310,9 +310,9 @@ def cl_BNT_transform(cl_3D, BNT_matrix):
         for ell_idx in range(cl_3D.shape[0]):
             for probe_A in range(cl_3D.shape[1]):
                 for probe_B in range(cl_3D.shape[2]):
-                    cl_3D_BNT[ell_idx, probe_A, probe_B, :, :] = cl_3D[ell_idx, probe_A, probe_B, :, :] @ \
-                                                                 BNT_matrix @ \
-                                                                 cl_3D[ell_idx, probe_A, probe_B, :, :].T
+                    cl_3D_BNT[ell_idx, probe_A, probe_B, :, :] = BNT_matrix @ \
+                                                                 cl_3D[ell_idx, probe_A, probe_B, :, :] @ \
+                                                                 BNT_matrix.T
     else:
         raise ValueError('input Cl array should be 3-dim or 5-dim')
 

@@ -145,6 +145,8 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                                                    cl_or_rl='rl', EP_or_ED=EP_or_ED)
 
             if general_cfg['cl_BNT_transform']:
+                assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
+                assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
                 BNT_matrix = np.genfromtxt(f'{general_cfg["BNT_matrix_path"]}/{general_cfg["BNT_matrix_filename"]}',
                                            delimiter=',')
                 cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix)
@@ -155,7 +157,9 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
 
             if ell_max_WL == general_cfg['ell_max_WL_opt']:
                 if not np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :]):
-                    rtol = 1e-10
+                    rtol = 1e-5
+                    # plt.plot(ell_dict['ell_WL'], cl_ll_3d[:, 0, 0])
+                    # plt.plot(ell_dict['ell_WL'][nbl_GC:nbl_WL], cl_wa_3d[:, 0, 0])
                     assert (np.allclose(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :], rtol=rtol, atol=0)), \
                         'cl_wa_3d should be obtainable from cl_ll_3d!'
                     print(f'cl_wa_3d and cl_ll_3d[nbl_GC:nbl_WL, :, :] are not exactly equal, but have a relative '
@@ -197,7 +201,8 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
             if Sijkl_cfg['use_precomputed_sijkl']:
                 sijkl = np.load(f'{sijkl_folder}/{sijkl_filename}')
             else:
-                sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins, EP_or_ED=EP_or_ED)
+                sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins,
+                                                  EP_or_ED=EP_or_ED)
 
                 # the indentation is correct, I don't want to re-save the precomputed sijkl arrays
                 if Sijkl_cfg['save_Sijkl']:
@@ -266,13 +271,16 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                         # save cl and/or response
                         np.save(f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/'
                                 f'{clrl_dict[f"{cl_or_rl}_inputname"]}-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
-                                clrl_dict[f"{cl_or_rl}_dict_3D"][f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}'])
+                                clrl_dict[f"{cl_or_rl}_dict_3D"][
+                                    f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}'])
 
                         # save ells and deltas
                         if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
-                            np.savetxt(f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
+                            np.savetxt(
+                                f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                                 10 ** ell_dict[f'ell_{probe_dav}'])
-                            np.savetxt(f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
+                            np.savetxt(
+                                f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                                 delta_dict[f'delta_l_{probe_dav}'])
 
             covmat_path = f'{covariance_cfg["cov_folder"]}/zbins{zbins:02}'
@@ -349,7 +357,8 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
                     for which_cov in ['GO', 'GS']:
                         np.savetxt(f'{FM_cfg["FM_output_folder"]}/'
-                                   f'FM_{probe}_{which_cov}_lmax{ell_max}_nbl{nbl}_zbins{zbins:02}_{EP_or_ED}_{Rl_str}.txt', FM_dict[f'FM_{probe}_{which_cov}'])
+                                   f'FM_{probe}_{which_cov}_lmax{ell_max}_nbl{nbl}_zbins{zbins:02}_{EP_or_ED}_{Rl_str}.txt',
+                                   FM_dict[f'FM_{probe}_{which_cov}'])
 
             if FM_cfg['save_FM_as_dict']:
                 sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)

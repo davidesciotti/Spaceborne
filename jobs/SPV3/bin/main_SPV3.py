@@ -145,7 +145,8 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                                                    cl_or_rl='rl', EP_or_ED=EP_or_ED)
 
             if general_cfg['cl_BNT_transform']:
-                BNT_matrix = np.genfromtxt(f'{general_cfg["BNT_matrix_path"]}/{general_cfg["BNT_matrix_filename"]}')
+                BNT_matrix = np.genfromtxt(f'{general_cfg["BNT_matrix_path"]}/{general_cfg["BNT_matrix_filename"]}',
+                                           delimiter=',')
                 cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix)
                 cl_gg_3d = cl_utils.cl_BNT_transform(cl_gg_3d, BNT_matrix)
                 cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix)

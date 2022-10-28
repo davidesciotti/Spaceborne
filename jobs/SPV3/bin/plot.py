@@ -49,7 +49,7 @@ check_old_FM = False
 fix_shear_bias = True  # whether to remove the rows/cols for the shear bias nuisance parameters (ie whether to fix them)
 fix_dz_nuisance = True  # whether to remove the rows/cols for the dz nuisance parameters (ie whether to fix them)
 w0wa_rows = [2, 3]
-bar_plot = True
+bar_plot_cosmo = False
 triangle_plot = False
 plot_ratio_vs_zbins = False
 plot_fom_vs_zbins = False
@@ -316,7 +316,7 @@ for probe in probes:
                 uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][EP_or_ED][pes_opt] = np.append(
                     uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][EP_or_ED][pes_opt], fom['GS'] / fom['GO'])
 
-if bar_plot:
+if bar_plot_cosmo:
 
     for probe in probes:
         for zbins in zbins_list:
@@ -464,7 +464,7 @@ if plot_fom_vs_eps_b:
     FoM_vs_prior[:, 1] = 10 ** FoM_vs_prior[:, 1]  # sigma_m
 
     # find the correct line fot the different sigma_m values, Vincenzo flattens the array
-    sigma_m_fixed = (5e-4, 50e-4, 500e-4)
+    sigma_m_fixed = (5e-4, 50e-4, 100e-4)
     sigma_m_fixed = (5e-4, 50e-4, 500e-4)
     start_idxs = [np.argmin(np.abs(FoM_vs_prior[:, 1] - sigma_m_value)) for sigma_m_value in sigma_m_fixed]
 
@@ -478,15 +478,15 @@ if plot_fom_vs_eps_b:
         X = eps_b_values
         Y = sigma_m_values
         Z = np.reshape(FoM_vs_prior[:, -3], (n_points, n_points)).T
-        FoM_G_extrap = interp2d(x=X, y=Y, z=Z)
+        FoM_G_extrap = interp2d(x=X, y=Y, z=Z, kind='linear', fill_value='extrapolate')
         FoM_G_extrap_array = FoM_G_extrap(x=eps_b_values, y=sigma_m_fixed).T
 
         Z = np.reshape(FoM_vs_prior[:, -2], (n_points, n_points)).T
-        FoM_GS_extrap = interp2d(x=X, y=Y, z=Z)
+        FoM_GS_extrap = interp2d(x=X, y=Y, z=Z, kind='linear', fill_value='extrapolate')
         FoM_GS_extrap_array = FoM_GS_extrap(x=eps_b_values, y=sigma_m_fixed).T
 
         Z = np.reshape(FoM_vs_prior[:, -1], (n_points, n_points)).T
-        FoM_ratio_extrap = interp2d(x=X, y=Y, z=Z)
+        FoM_ratio_extrap = interp2d(x=X, y=Y, z=Z, kind='linear', fill_value='extrapolate')
         FoM_ratio_extrap_array = FoM_ratio_extrap(x=eps_b_values, y=sigma_m_fixed).T
 
     step = int(np.shape(FoM_vs_prior[:, 0])[0] / np.shape(eps_b_values)[0])  # ratio between total and unique elements
@@ -494,25 +494,28 @@ if plot_fom_vs_eps_b:
 
     linestyles = ('solid', 'dashed', 'dotted')
     linestyle_labels = (
-        '$\\sigma_m = %i \\times 10^{−4}$' %int(sigma_m_fixed[0]*1e4),
-        '$\\sigma_m = %i \\times 10^{−4}$' %int(sigma_m_fixed[1]*1e4),
-        '$\\sigma_m = %i \\times 10^{−4}$' %int(sigma_m_fixed[2]*1e4))
+        '$\\sigma_m = %i \\times 10^{−4}$' % int(sigma_m_fixed[0] * 1e4),
+        '$\\sigma_m = %i \\times 10^{−4}$' % int(sigma_m_fixed[1] * 1e4),
+        '$\\sigma_m = %i \\times 10^{−4}$' % int(sigma_m_fixed[2] * 1e4))
     color_labels = ('G', 'GS')
 
+    # without extrapolation
     plt.figure()
     for start, ls, label in zip(start_idxs, linestyles, linestyle_labels):
         plt.plot(FoM_vs_prior[start::step, 0], FoM_vs_prior[start::step, -3] * fsky_correction, color='tab:blue',
                  ls='-')  # ! change back to ls=ls
-        plt.plot(FoM_vs_prior[start::step, 0], FoM_vs_prior[start::step, -2] * fsky_correction,
-                 color='tab:orange', ls=ls)
+        plt.plot(FoM_vs_prior[start::step, 0], FoM_vs_prior[start::step, -2] * fsky_correction, color='tab:orange',
+                 ls=ls)
 
     # with extrapolation
     for start, start_2, ls, label in zip(range(3), start_idxs, linestyles, linestyle_labels):
-        print(np.array_equal(FoM_G_extrap_array[:, start], FoM_vs_prior[start_2::step, -3]))
-        # plt.plot(eps_b_values, FoM_G_extrap_array[:, start] * fsky_correction, ls=ls, color='g')
-        plt.plot(eps_b_values, FoM_G_extrap_array[:, start]/FoM_vs_prior[start_2::step, -3], ls=ls, color='g')
-        # plt.plot(eps_b_values, FoM_GS_extrap_array[:, start] * fsky_correction, ls=ls, color='g')
 
+        print('FoM_vs_prior == FoM_G_extrap_array?',
+              np.array_equal(FoM_G_extrap_array[:, start], FoM_vs_prior[start_2::step, -3]))
+
+        plt.plot(eps_b_values, FoM_G_extrap_array[:, start] * fsky_correction, ls=ls, color='g')
+        # plt.plot(eps_b_values, FoM_G_extrap_array[:, start] / FoM_vs_prior[start_2::step, -3], ls=ls, color='g')
+        # plt.plot(eps_b_values, FoM_GS_extrap_array[:, start] * fsky_correction, ls=ls, color='g')
 
     dummy_lines = []
     for i in range(len(sigma_m_fixed)):
@@ -529,7 +532,7 @@ if plot_fom_vs_eps_b:
 
     plt.grid()
     plt.xscale('log')
-    plt.xlabel('$\\epsilon_b (\%)$')
+    plt.xlabel('$\\epsilon_b (\\%)$')
     plt.ylabel('${\\rm FoM}$')
     plt.show()
 

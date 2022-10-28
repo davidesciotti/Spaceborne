@@ -39,7 +39,7 @@ general_config = {
     'specs': 'wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4',
     'cl_BNT_transform': BNT_transform,
     'BNT_matrix_path': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT_matrix',
-    'BNT_matrix_filename': f'BNT_matrix.txt',
+    'BNT_matrix_filename': f'BNT_matrix_csv_version.txt',
     'cl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/DataVectors',
     'rl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/ResFunTabs',
 }

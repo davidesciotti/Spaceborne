@@ -53,10 +53,10 @@ bar_plot_cosmo = False
 triangle_plot = False
 plot_ratio_vs_zbins = False
 plot_fom_vs_zbins = False
-plot_fom_vs_eps_b = True
+plot_fom_vs_eps_b = False
 plot_prior_contours = False
 bar_plot_nuisance = False
-plot_response = False
+plot_response = True
 pic_format = 'pdf'
 dpi = 500
 flagship_version = 1
@@ -509,7 +509,6 @@ if plot_fom_vs_eps_b:
 
     # with extrapolation
     for start, start_2, ls, label in zip(range(3), start_idxs, linestyles, linestyle_labels):
-
         print('FoM_vs_prior == FoM_G_extrap_array?',
               np.array_equal(FoM_G_extrap_array[:, start], FoM_vs_prior[start_2::step, -3]))
 
@@ -631,35 +630,61 @@ if bar_plot_nuisance:
                         second_axis=False, no_second_axis_bars=0)
 
 if plot_response:
-    plt.figure()
+
+    fontsize = 20
+    params = {'lines.linewidth': 3,
+              'font.size': fontsize,
+              'axes.labelsize': 'x-large',
+              'axes.titlesize': 'x-large',
+              'xtick.labelsize': 'x-large',
+              'ytick.labelsize': 'x-large',
+              'mathtext.fontset': 'stix',
+              'font.family': 'STIXGeneral',
+              }
+    plt.rcParams.update(params)
+    markersize = 14
+
+
     ED_or_EP = 'EP'
     zbins = 10
-    rl_wl = np.load(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/'
-                    f'ResFunTabs/3D_reshaped/WLO/'
-                    f'rf-WLO-32-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{ED_or_EP}{zbins:02}.npy')
-    rl_gc = np.load(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/'
-                    f'ResFunTabs/3D_reshaped/GCO/'
-                    f'rf-GCO-32-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{ED_or_EP}{zbins:02}.npy')
-    ell_wl = np.genfromtxt(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/'
-                           f'ResFunTabs/3D_reshaped/WLO/ell_WL_ellmaxWL5000.txt')
-    ell_gc = np.genfromtxt(f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/'
-                           f'ResFunTabs/3D_reshaped/GCO/ell_GC_ellmaxWL5000.txt')
+    path = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_1/ResFunTabs'
 
-    # old ones
-    sys.path.append('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/bin')
-    import ell_values_running as ell_utils
+    ell_WL = np.genfromtxt(
+        f'{path}/480_ell_points_for_paper_plot/elllist-WLO-{ED_or_EP}{zbins}-HR.dat')
+    ell_GC = np.genfromtxt(
+        f'{path}/480_ell_points_for_paper_plot/elllist-GCO-{ED_or_EP}{zbins}-HR.dat')
+    ell_3x2pt = np.genfromtxt(
+        f'{path}/480_ell_points_for_paper_plot/elllist-3x2pt-{ED_or_EP}{zbins}-HR.dat')
 
-    rl_gc_old = np.load('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/Pk_responses_2D/R_GG_3D.npy')
-    ell_gc_old, _ = ell_utils.compute_ells(nbl=30, ell_min=10, ell_max=3000, recipe='ISTF')
+    rf_WL = np.genfromtxt(
+        f'{path}/480_ell_points_for_paper_plot/rf-WLO-Opt-{ED_or_EP}{zbins}-HR.dat')
+    rf_GC = np.genfromtxt(
+        f'{path}/480_ell_points_for_paper_plot/rf-GCO-Opt-{ED_or_EP}{zbins}-HR.dat')
+    rf_3x2pt = np.genfromtxt(
+        f'{path}/480_ell_points_for_paper_plot/rf-3x2pt-Opt-{ED_or_EP}{zbins}-HR.dat')
 
-    assert rl_wl.shape == (32, 10, 10), 'I want to plot the optimistic case'
+    nbl_WL = ell_WL.shape[0]
+    nbl_GC = ell_GC.shape[0]
 
-    plt.plot(ell_wl, rl_wl[:, 5, 5], '--', marker='o', label='WL')
-    plt.plot(ell_gc, rl_gc[:, 5, 5], '--', marker='o', label='GCph')
-    plt.plot(ell_gc_old, rl_gc_old[:, 5, 5], '--', marker='o', label='GCph old')
+    rf_WL_3d = mm.cl_1D_to_3D(rf_WL, nbl=nbl_WL, zbins=zbins, is_symmetric=True)
+    rf_GC_3d = mm.cl_1D_to_3D(rf_GC, nbl=nbl_GC, zbins=zbins, is_symmetric=True)
+    rf_WL_3d = mm.fill_3D_symmetric_array(rf_WL_3d, nbl_WL, zbins)
+    rf_GC_3d = mm.fill_3D_symmetric_array(rf_GC_3d, nbl_GC, zbins)
+
+    i, j = 4, 4
+
+    plt.figure()
+    plt.plot(ell_WL, rf_WL_3d[:, i, j], ls='-', label='WL')
+    plt.plot(ell_GC, rf_GC_3d[:, i, j], ls='-', label='GCph')
+
     plt.xscale('log')
+    plt.xlabel('$\ell$')
+    plt.ylabel('$R _{%i%i}^{AB}(\ell)$' % (i + 1, j + 1))
     plt.grid()
     plt.legend()
     plt.show()
+
+    plt.savefig(job_path / f'output/plots/replot_vincenzo_newspecs/responses.{pic_format}', dpi=dpi,
+                bbox_inches='tight')
 
 print('*********** done ***********')

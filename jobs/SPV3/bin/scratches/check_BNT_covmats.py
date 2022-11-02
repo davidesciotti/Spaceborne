@@ -33,8 +33,6 @@ def reshape_ste_cm(cov_ste_4D):
                     cov_ste_6D[ell1, ell2, i, j, k, l] = cov_ste_4D[ell1, ell2, p, q]
     return cov_ste_6D
 
-
-
 cov_GS_BNT_ste_6D = reshape_ste_cm(cov_GS_BNT_ste_4D)
 
 # reshape to 4D to have a look

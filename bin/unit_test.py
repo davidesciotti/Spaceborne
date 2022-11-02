@@ -90,3 +90,9 @@ def check_FMs_against_oldSSCscript(FM_new_path, general_config, covariance_confi
                     result_emoji = '❌'
 
                 print(f'is the percent difference between the FM < {tolerance}?, {probe}, {GO_or_GS}, {result_emoji}')
+
+
+def check_covmat(reference_files_folder, ):
+    """check covariance matrix against old results"""
+    # TODO implement this
+    pass

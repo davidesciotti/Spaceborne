@@ -124,25 +124,15 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                     'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
 
             # ! import and reshape Cl and Rl
-            cl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
-                                                cl_or_rl='cl', EP_or_ED=EP_or_ED)
-            cl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
-                                                cl_or_rl='cl', EP_or_ED=EP_or_ED)
-            cl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
-                                                cl_or_rl='cl', EP_or_ED=EP_or_ED)
-            cl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins,
-                                                   general_cfg['ell_max_WL_opt'],
-                                                   cl_or_rl='cl', EP_or_ED=EP_or_ED)
+            cl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg, zbins, cl_or_rl='cl', EP_or_ED=EP_or_ED)
+            cl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_opt, general_cfg, zbins, cl_or_rl='cl', EP_or_ED=EP_or_ED)
+            cl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg, zbins, cl_or_rl='cl', EP_or_ED=EP_or_ED)
+            cl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins, cl_or_rl='cl', EP_or_ED=EP_or_ED)
 
-            rl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
-                                                cl_or_rl='rl', EP_or_ED=EP_or_ED)
-            rl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
-                                                cl_or_rl='rl', EP_or_ED=EP_or_ED)
-            rl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg, zbins, general_cfg['ell_max_WL_opt'],
-                                                cl_or_rl='rl', EP_or_ED=EP_or_ED)
-            rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins,
-                                                   general_cfg['ell_max_WL_opt'],
-                                                   cl_or_rl='rl', EP_or_ED=EP_or_ED)
+            rl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg, zbins, cl_or_rl='rl', EP_or_ED=EP_or_ED)
+            rl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_opt, general_cfg, zbins, cl_or_rl='rl', EP_or_ED=EP_or_ED)
+            rl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg, zbins, cl_or_rl='rl', EP_or_ED=EP_or_ED)
+            rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins, cl_or_rl='rl', EP_or_ED=EP_or_ED)
 
             if general_cfg['cl_BNT_transform']:
                 assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'

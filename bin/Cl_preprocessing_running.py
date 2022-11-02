@@ -221,7 +221,7 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     return cl_dict_3D, Rl_dict_3D
 
 
-def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max_WL, cl_or_rl: str,
+def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, cl_or_rl: str,
                     EP_or_ED: str):
     """This function imports and interpolates the CPV3 cls, which have a different format wrt the usual input files"""
 
@@ -232,8 +232,6 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, ell_max
 
     # default values, changed only for the 3x2pt case
     zpairs = zpairs_auto
-
-    assert ell_max_WL == 5000, 'ell_max_WL must be 5000, only the optimistic datavectors are available'
 
     if probe == 'WL':
         probe_here = 'WLO'

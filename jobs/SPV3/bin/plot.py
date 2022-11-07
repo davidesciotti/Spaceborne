@@ -35,7 +35,7 @@ markersize = 10
 
 # ! options
 zbins_list = np.array((10,), dtype=int)
-probes = ('WL',)
+probes = ('GC',)
 pes_opt_list = ('opt',)
 EP_or_ED_list = ('EP',)
 which_comparison = 'GO_vs_GS'  # this is just to set the title of the plot
@@ -630,7 +630,6 @@ if bar_plot_nuisance:
                         second_axis=False, no_second_axis_bars=0)
 
 if plot_response:
-
     fontsize = 20
     params = {'lines.linewidth': 3,
               'font.size': fontsize,
@@ -643,7 +642,6 @@ if plot_response:
               }
     plt.rcParams.update(params)
     markersize = 14
-
 
     ED_or_EP = 'EP'
     zbins = 10
@@ -660,26 +658,51 @@ if plot_response:
         f'{path}/480_ell_points_for_paper_plot/rf-WLO-Opt-{ED_or_EP}{zbins}-HR.dat')
     rf_GC = np.genfromtxt(
         f'{path}/480_ell_points_for_paper_plot/rf-GCO-Opt-{ED_or_EP}{zbins}-HR.dat')
-    rf_3x2pt = np.genfromtxt(
+    rf_3x2pt_1d = np.genfromtxt(
         f'{path}/480_ell_points_for_paper_plot/rf-3x2pt-Opt-{ED_or_EP}{zbins}-HR.dat')
 
     nbl_WL = ell_WL.shape[0]
     nbl_GC = ell_GC.shape[0]
+    nbl_3x2pt = ell_3x2pt.shape[0]
 
+    # reshape 3x2pt
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+    rf_2d = np.reshape(rf_3x2pt_1d, (nbl_3x2pt, zpairs_3x2pt))
+
+    # split into 3 2d datavectors
+    rf_ll_3x2pt_2d = rf_2d[:, :zpairs_auto]
+    rf_lg_3x2pt_2d = rf_2d[:, zpairs_auto:zpairs_auto + zpairs_cross]  # ! is it really gl? or lg?
+    rf_gg_3x2pt_2d = rf_2d[:, zpairs_auto + zpairs_cross:]
+
+    # reshape them individually - the symmetrization is done within the function
+    rf_ll_3x2pt_3d = mm.Cl_2D_to_3D_symmetric(rf_ll_3x2pt_2d, nbl=nbl_3x2pt, npairs=zpairs_auto, zbins=zbins)
+    rf_lg_3x2pt_3d = mm.Cl_2D_to_3D_asymmetric(rf_lg_3x2pt_2d, nbl=nbl_3x2pt, zbins=zbins)
+    rf_gg_3x2pt_3d = mm.Cl_2D_to_3D_symmetric(rf_gg_3x2pt_2d, nbl=nbl_3x2pt, npairs=zpairs_auto, zbins=zbins)
+
+    # use them to populate the datavector
+    rf_3x2pt = np.zeros((nbl_3x2pt, 2, 2, zbins, zbins))
+    rf_3x2pt[:, 0, 0, :, :] = rf_ll_3x2pt_3d
+    rf_3x2pt[:, 1, 1, :, :] = rf_gg_3x2pt_3d
+    rf_3x2pt[:, 0, 1, :, :] = rf_lg_3x2pt_3d
+    rf_3x2pt[:, 1, 0, :, :] = np.transpose(rf_lg_3x2pt_3d, (0, 2, 1))
+
+    # reshape WL and GC
     rf_WL_3d = mm.cl_1D_to_3D(rf_WL, nbl=nbl_WL, zbins=zbins, is_symmetric=True)
     rf_GC_3d = mm.cl_1D_to_3D(rf_GC, nbl=nbl_GC, zbins=zbins, is_symmetric=True)
     rf_WL_3d = mm.fill_3D_symmetric_array(rf_WL_3d, nbl_WL, zbins)
     rf_GC_3d = mm.fill_3D_symmetric_array(rf_GC_3d, nbl_GC, zbins)
 
+    # central z bin
     i, j = 4, 4
 
     plt.figure()
     plt.plot(ell_WL, rf_WL_3d[:, i, j], ls='-', label='WL')
     plt.plot(ell_GC, rf_GC_3d[:, i, j], ls='-', label='GCph')
+    plt.plot(ell_3x2pt, rf_3x2pt[:, 1, 0, i, j], ls='-', label='XC')  # ! the paper uses R^{gm}, so it's GCph first and WL second
 
     plt.xscale('log')
     plt.xlabel('$\ell$')
-    plt.ylabel('$R _{%i%i}^{AB}(\ell)$' % (i + 1, j + 1))
+    plt.ylabel('$R_{%i%i}^{AB}(\ell)$' % (i + 1, j + 1))
     plt.grid()
     plt.legend()
     plt.show()

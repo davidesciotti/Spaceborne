@@ -127,12 +127,14 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
             cl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg, zbins, cl_or_rl='cl', EP_or_ED=EP_or_ED)
             cl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_opt, general_cfg, zbins, cl_or_rl='cl', EP_or_ED=EP_or_ED)
             cl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg, zbins, cl_or_rl='cl', EP_or_ED=EP_or_ED)
-            cl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins, cl_or_rl='cl', EP_or_ED=EP_or_ED)
+            cl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins, cl_or_rl='cl',
+                                                   EP_or_ED=EP_or_ED)
 
             rl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg, zbins, cl_or_rl='rl', EP_or_ED=EP_or_ED)
             rl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_opt, general_cfg, zbins, cl_or_rl='rl', EP_or_ED=EP_or_ED)
             rl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg, zbins, cl_or_rl='rl', EP_or_ED=EP_or_ED)
-            rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins, cl_or_rl='rl', EP_or_ED=EP_or_ED)
+            rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins, cl_or_rl='rl',
+                                                   EP_or_ED=EP_or_ED)
 
             if general_cfg['cl_BNT_transform']:
                 assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
@@ -217,33 +219,6 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 'WA': 'WA_3D',
                 '3x2pt': '3x2pt_5D'}
 
-            # cl_input_folder = general_cfg['cl_input_folder']
-            # if general_cfg['save_cls_3d']:
-            #     for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
-            #         np.save(f'{cl_input_folder}/3D_reshaped/{probe_vinc}/'
-            #                 f'dv-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
-            #                 cl_dict_3D[f'C_{probe_dav_dict[probe_dav]}'])
-            #
-            #         if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
-            #             np.savetxt(
-            #                 f'{cl_input_folder}/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
-            #                 10 ** ell_dict[f'ell_{probe_dav}'])
-            #             np.savetxt(
-            #                 f'{cl_input_folder}/3D_reshaped/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
-            #                 delta_dict[f'delta_l_{probe_dav}'])
-            #
-            # rl_input_folder = general_cfg['rl_input_folder']
-            # if general_cfg['save_rls_3d']:
-            #     for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
-            #         np.save(f'{rl_input_folder}/3D_reshaped/{probe_vinc}/'
-            #                 f'rf-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
-            #                 rl_dict_3D[f'R_{probe_dav_dict[probe_dav]}'])
-            #
-            #         if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
-            #             np.savetxt(
-            #                 f'{rl_input_folder}/3D_reshaped/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
-            #                 10 ** ell_dict[f'ell_{probe_dav}'])
-
             # just a dict for the output file names
             clrl_dict = {
                 'cl_inputname': 'dv',
@@ -307,8 +282,7 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                             if ndim == 6:
                                 filename = f'{covmat_path}/covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_10D.pickle'
                                 with open(filename, 'wb') as handle:
-                                    pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle,
-                                                protocol=pickle.HIGHEST_PROTOCOL)
+                                    pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
 
                     # in the pessimistic case, save only WA
                     elif ell_max_WL == 1500:

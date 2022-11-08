@@ -56,7 +56,8 @@ plot_fom_vs_zbins = False
 plot_fom_vs_eps_b = False
 plot_prior_contours = False
 bar_plot_nuisance = False
-plot_response = True
+plot_response = False
+plot_ISTF_kernels = True
 pic_format = 'pdf'
 dpi = 500
 flagship_version = 1
@@ -698,7 +699,8 @@ if plot_response:
     plt.figure()
     plt.plot(ell_WL, rf_WL_3d[:, i, j], ls='-', label='WL')
     plt.plot(ell_GC, rf_GC_3d[:, i, j], ls='-', label='GCph')
-    plt.plot(ell_3x2pt, rf_3x2pt[:, 1, 0, i, j], ls='-', label='XC')  # ! the paper uses R^{gm}, so it's GCph first and WL second
+    plt.plot(ell_3x2pt, rf_3x2pt[:, 1, 0, i, j], ls='-',
+             label='XC')  # ! the paper uses R^{gm}, so it's GCph first and WL second
 
     plt.xscale('log')
     plt.xlabel('$\ell$')
@@ -708,6 +710,53 @@ if plot_response:
     plt.show()
 
     plt.savefig(job_path / f'output/plots/replot_vincenzo_newspecs/responses.{pic_format}', dpi=dpi,
+                bbox_inches='tight')
+
+if plot_ISTF_kernels:
+
+    fontsize = 17
+    params = {'lines.linewidth': 3,
+              'font.size': fontsize,
+              'axes.labelsize': 'x-large',
+              'axes.titlesize': 'x-large',
+              'xtick.labelsize': 'large',
+              'ytick.labelsize': 'large',
+              'mathtext.fontset': 'stix',
+              'font.family': 'STIXGeneral',
+              'legend.fontsize': 12.3,
+              }
+    plt.rcParams.update(params)
+
+    wil = np.load(f'{project_path.parent}/cl_v2/output/WF/WFs_v16_eNLA_may22/wil_IA_IST_nz700.npy')
+    wig = np.load(f'{project_path.parent}/cl_v2/output/WF/WFs_v16_eNLA_may22/wig_IST_nz700.npy')
+    z_values = wig[:, 0]
+    wil = wil[:, 1:]
+    wig = wig[:, 1:]
+
+    fig, ax = plt.subplots(1, 2, figsize=(28, 5))
+    for zbin_idx in range(zbins):
+        label = '$%.3f < z < %.3f$' % (
+            ISTF_fid.zbin_edges['z_minus'][zbin_idx], ISTF_fid.zbin_edges['z_plus'][zbin_idx])
+        ax[0].plot(z_values, wil[:, zbin_idx], label=label)
+        ax[1].plot(z_values, wig[:, zbin_idx], label=label)
+
+    ax[0].set_xlim(0, 3)
+    ax[1].set_xlim(0, 3)
+    ax[0].set_xlabel('$z$')
+    ax[1].set_xlabel('$z$')
+    ax[0].set_ylabel('$W^L_i(z) \; [{\\rm Mpc^{-1}}]$')
+    ax[1].set_ylabel('$W^G_i(z) \; [{\\rm Mpc^{-1}}]$')
+    ax[1].ticklabel_format(style='scientific', axis='y')
+    formatter = ticker.ScalarFormatter(useMathText=False)
+    formatter.set_scientific(True)
+    formatter.set_powerlimits((-1, 1))
+    ax[1].yaxis.set_major_formatter(formatter)
+    ax[0].legend(loc='upper right', )
+    ax[1].legend(loc='upper right', )
+    ax[0].grid()
+    ax[1].grid()
+
+    plt.savefig(job_path / f'output/plots/replot_vincenzo_newspecs/ISTF_kernels_nobias.{pic_format}', dpi=dpi,
                 bbox_inches='tight')
 
 print('*********** done ***********')

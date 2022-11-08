@@ -124,6 +124,7 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                     'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
 
             # ! import and reshape Cl and Rl
+            # TODO split these into separate functions: one to import, one to reshape
             cl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg, zbins, cl_or_rl='cl', EP_or_ED=EP_or_ED)
             cl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_opt, general_cfg, zbins, cl_or_rl='cl', EP_or_ED=EP_or_ED)
             cl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg, zbins, cl_or_rl='cl', EP_or_ED=EP_or_ED)

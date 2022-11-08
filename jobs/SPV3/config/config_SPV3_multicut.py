@@ -15,8 +15,7 @@ fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 flagship_version = 2
 BNT_transform = False
 
-if flagship_version == 1:
-    assert BNT_transform is False, 'we are applying the BNT only for Flagship_2'
+assert flagship_version == 2, 'the files for the multicut case are only available for Flagship_2'
 
 if BNT_transform:
     assert flagship_version == 2, 'we are applying the BNT only for Flagship_2'
@@ -26,8 +25,8 @@ general_config = {
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
     'ell_max_WL': 5000,
     'ell_max_GC': 3000,
-    'zbins': None,
-    'zbins_list': (13,),
+    'zbins': 13,
+    'zbins_list': None,
     'EP_or_ED': 'ED',
     'nProbes': 2,
     # 'nbl_WL': 32,
@@ -42,6 +41,14 @@ general_config = {
     'BNT_matrix_filename': f'BNT_matrix_csv_version.txt',
     'cl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/DataVectors',
     'rl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/ResFunTabs',
+    'magcut_lens_list': (230, 235, 240, 245, 250),
+    'magcut_source_list': (245,),
+    'zcut_lens_list': (0, 2),
+    'zcut_source_list': (0, 2),
+    'magcut_source': None,
+    'magcut_lens': None,
+    'zcut_source': None,
+    'zcut_lens': None,
 }
 
 if general_config['ell_max_WL'] == general_config['ell_max_GC']:
@@ -61,7 +68,7 @@ covariance_config = {
     'compute_covmat': True,
     'save_cov_2D': False,
     'save_cov_4D': False,
-    'save_cov_6D': True,  # or 10D for the 3x2pt
+    'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE

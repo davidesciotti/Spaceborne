@@ -1,1 +1,0 @@
-../../common_data/common_config/ISTF_fid_params.py

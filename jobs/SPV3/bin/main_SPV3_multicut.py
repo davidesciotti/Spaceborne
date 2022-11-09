@@ -15,12 +15,12 @@ home_path = Path.home()
 job_name = job_path.parts[-1]
 
 # general libraries
-sys.path.append(f'{project_path}/lib')
+sys.path.append(f'{project_path.parent}/common_data/common_lib')
 import my_module as mm
 import cosmo_lib as csmlib
 
 # general configurations
-sys.path.append(f'{project_path}/config')
+sys.path.append(f'{project_path.parent}/common_data/common_config')
 import mpl_cfg
 
 # job configuration

@@ -40,16 +40,17 @@ pes_opt_list = ('opt',)
 EP_or_ED_list = ('EP',)
 which_comparison = 'GO_vs_GS'  # this is just to set the title of the plot
 which_Rl = 'var'
-which_uncertainty = 'marginal'
 nparams_chosen = 7
 which_job = 'SPV3'
 model = 'flat'
 which_diff = 'normal'
+flagship_version = 1
 check_old_FM = False
+which_uncertainty = 'marginal'
 fix_shear_bias = True  # whether to remove the rows/cols for the shear bias nuisance parameters (ie whether to fix them)
 fix_dz_nuisance = True  # whether to remove the rows/cols for the dz nuisance parameters (ie whether to fix them)
 w0wa_rows = [2, 3]
-bar_plot_cosmo = False
+bar_plot_cosmo = True
 triangle_plot = False
 plot_ratio_vs_zbins = False
 plot_fom_vs_zbins = False
@@ -57,10 +58,9 @@ plot_fom_vs_eps_b = False
 plot_prior_contours = False
 bar_plot_nuisance = False
 plot_response = False
-plot_ISTF_kernels = True
+plot_ISTF_kernels = False
 pic_format = 'pdf'
 dpi = 500
-flagship_version = 1
 # ! end options
 
 
@@ -184,6 +184,8 @@ for probe in probes:
                     FM_GS = np.genfromtxt(
                         project_path.parent / f'common_data/{vinc_FM_folder}/GaussSSC/Cuts/SetupId1{zbins:02}1100034/'
                                               f'fm-{probename_vinc}-{nbl}-wzwaCDM-NonFlat-GR-TB-Pess.dat')
+                else:
+                    raise ValueError('pes_opt should be "opt" or "pes"')
 
                 # remove rows/cols for the redshift center nuisance parameters
                 if fix_dz_nuisance:
@@ -295,7 +297,7 @@ for probe in probes:
                 model_here = model
                 if not fix_shear_bias:
                     model_here += '_shearbias'
-                if zbins == 10 and EP_or_ED == 'EP' and model_here != 'flat_shearbias':
+                if zbins == 10 and EP_or_ED == 'EP' and model_here != 'flat_shearbias' and which_uncertainty == 'marginal':
                     # the tables in the paper, from which these uncertainties have been taken, only include the cosmo params (7 or 8)
                     nparams_vinc = uncert_vinc[f'zbins_{EP_or_ED}{zbins:02}'][model_here][f"{probe}_{pes_opt}"].shape[0]
                     assert np.allclose(uncert["ratio"][:nparams_vinc],

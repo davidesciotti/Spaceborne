@@ -17,6 +17,8 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
     zbins = general_config['zbins']
     cl_folder = general_config['cl_folder']
     rl_folder = general_config['rl_folder']
+    zbins = general_config['zbins']
+    zbin_type = general_config['EP_or_ED']
 
     # import ell values:
     ell_WL = ell_dict['ell_WL']
@@ -49,18 +51,18 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
         C_XC_import[:, 0] = np.log10(C_XC_import[:, 0])
         C_GG_import[:, 0] = np.log10(C_GG_import[:, 0])
 
-    elif 'Cij_14may' in cl_folder:
+    elif '14may' in cl_folder:
         assert covariance_config['GL_or_LG'] == 'GL', 'Cij_14may uses GL'
-        C_LL_import = np.genfromtxt(f'{cl_folder}/CijLL-GR-Flat-eNLA-NA.dat')
-        C_XC_import = np.genfromtxt(f'{cl_folder}/CijGL-GR-Flat-eNLA-NA.dat')
-        C_GG_import = np.genfromtxt(f'{cl_folder}/CijGG-GR-Flat-eNLA-NA.dat')
+        C_LL_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:.02}/CijLL-GR-Flat-eNLA-NA.dat')
+        C_XC_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:.02}/CijGL-GR-Flat-eNLA-NA.dat')
+        C_GG_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:.02}/CijGG-GR-Flat-eNLA-NA.dat')
 
     elif 'Cij_SPV3' in cl_folder:
         assert 1 > 2, 'Cij_SPV3 is not implemented'
         assert covariance_config['GL_or_LG'] == 'GL', 'Cij_SPV3 uses GL'
-        C_LL_import = np.genfromtxt(f'{cl_folder}/CijLL-GR-Flat-eNLA-NA.dat')
-        C_XC_import = np.genfromtxt(f'{cl_folder}/CijGL-GR-Flat-eNLA-NA.dat')
-        C_GG_import = np.genfromtxt(f'{cl_folder}/CijGG-GR-Flat-eNLA-NA.dat')
+        C_LL_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:02}/CijLL-GR-Flat-eNLA-NA.dat')
+        C_XC_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:02}/CijGL-GR-Flat-eNLA-NA.dat')
+        C_GG_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:02}/CijGG-GR-Flat-eNLA-NA.dat')
 
     else:
         raise ValueError('cl_folder must contain the string Cij_15gen, Cij_thesis or Cij_14may')

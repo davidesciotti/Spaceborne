@@ -43,7 +43,7 @@ general_config = {
     'cl_BNT_transform': BNT_transform,
     'BNT_matrix_path': None,
     'BNT_matrix_filename': None,
-    'cl_folder': f'{project_path.parent}/common_data/vincenzo/Cij_14may/CijDers',
+    'cl_folder': f'{project_path.parent}/common_data/vincenzo/14may/CijDers',
     'rl_folder': f'{project_path.parent}/common_data/vincenzo/Pk_responses_2D',
 }
 

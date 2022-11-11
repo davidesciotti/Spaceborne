@@ -16,6 +16,7 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
     nbl = general_config['nbl']
     zbins = general_config['zbins']
     cl_folder = general_config['cl_folder']
+    rl_folder = general_config['rl_folder']
 
     # import ell values:
     ell_WL = ell_dict['ell_WL']
@@ -33,56 +34,41 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
 
     # import Vincenzo's (different versions of) Cls
     # also implements a further consistency check on GL/LG
-    if cl_folder == "Cij_thesis":
+    if 'Cij_thesis' in cl_folder:
         assert covariance_config['GL_or_LG'] == 'LG', 'Cij_thesis uses LG'
-        C_LL_import = np.genfromtxt(
-            project_path_here / 'input/vincenzo/thesis_data/Cij_tesi/CijGG-N4TB-GR-eNLA.dat')
-        C_XC_import = np.genfromtxt(
-            project_path_here / 'input/vincenzo/thesis_data/Cij_tesi/CijDG-N4TB-GR-eNLA.dat')
-        C_GG_import = np.genfromtxt(
-            project_path_here / 'input/vincenzo/thesis_data/Cij_tesi/CijDD-N4TB-GR-eNLA.dat')
+        C_LL_import = np.genfromtxt(f'{cl_folder}/CijGG-N4TB-GR-eNLA.dat')
+        C_XC_import = np.genfromtxt(f'{cl_folder}/CijDG-N4TB-GR-eNLA.dat')
+        C_GG_import = np.genfromtxt(f'{cl_folder}/CijDD-N4TB-GR-eNLA.dat')
 
-    elif cl_folder == "Cij_15gen":  # Cij-NonLin-eNLA_15gen
+    elif 'Cij_15gen' in cl_folder:  # Cij-NonLin-eNLA_15gen
         assert covariance_config['GL_or_LG'] == 'LG', 'Cij_14may uses LG'
-        C_LL_import = np.genfromtxt(
-            project_path_here / 'input/vincenzo/Cij-NonLin-eNLA_15gen/CijLL-LCDM-NonLin-eNLA.dat')
-        C_XC_import = np.genfromtxt(
-            project_path_here / 'input/vincenzo/Cij-NonLin-eNLA_15gen/CijLG-LCDM-NonLin-eNLA.dat')
-        C_GG_import = np.genfromtxt(
-            project_path_here / 'input/vincenzo/Cij-NonLin-eNLA_15gen/CijGG-LCDM-NonLin-eNLA.dat')
+        C_LL_import = np.genfromtxt(f'{cl_folder}/CijLL-LCDM-NonLin-eNLA.dat')
+        C_XC_import = np.genfromtxt(f'{cl_folder}/CijLG-LCDM-NonLin-eNLA.dat')
+        C_GG_import = np.genfromtxt(f'{cl_folder}/CijGG-LCDM-NonLin-eNLA.dat')
         C_LL_import[:, 0] = np.log10(C_LL_import[:, 0])
         C_XC_import[:, 0] = np.log10(C_XC_import[:, 0])
         C_GG_import[:, 0] = np.log10(C_GG_import[:, 0])
 
-    elif cl_folder == "Cij_14may":
+    elif 'Cij_14may' in cl_folder:
         assert covariance_config['GL_or_LG'] == 'GL', 'Cij_14may uses GL'
-        C_LL_import = np.genfromtxt(
-            project_path_here / 'input/vincenzo/14may/CijDers/EP10/CijLL-GR-Flat-eNLA-NA.dat')
-        C_XC_import = np.genfromtxt(
-            project_path_here / 'input/vincenzo/14may/CijDers/EP10/CijGL-GR-Flat-eNLA-NA.dat')
-        C_GG_import = np.genfromtxt(
-            project_path_here / 'input/vincenzo/14may/CijDers/EP10/CijGG-GR-Flat-eNLA-NA.dat')
+        C_LL_import = np.genfromtxt(f'{cl_folder}/CijLL-GR-Flat-eNLA-NA.dat')
+        C_XC_import = np.genfromtxt(f'{cl_folder}/CijGL-GR-Flat-eNLA-NA.dat')
+        C_GG_import = np.genfromtxt(f'{cl_folder}/CijGG-GR-Flat-eNLA-NA.dat')
 
-    elif cl_folder == "Cij_SPV3":
+    elif 'Cij_SPV3' in cl_folder:
         assert 1 > 2, 'Cij_SPV3 is not implemented'
         assert covariance_config['GL_or_LG'] == 'GL', 'Cij_SPV3 uses GL'
-        C_LL_import = np.genfromtxt(
-            project_path_here / 'input/vincenzo/SPV3_07_2022/DataVecTabs/EP10/CijLL-GR-Flat-eNLA-NA.dat')
-        C_XC_import = np.genfromtxt(
-            project_path_here / 'input/vincenzo/SPV3_07_2022/DataVecTabs/EP10/CijGL-GR-Flat-eNLA-NA.dat')
-        C_GG_import = np.genfromtxt(
-            project_path_here / 'input/vincenzo/SPV3_07_2022/DataVecTabs/EP10/CijGG-GR-Flat-eNLA-NA.dat')
+        C_LL_import = np.genfromtxt(f'{cl_folder}/CijLL-GR-Flat-eNLA-NA.dat')
+        C_XC_import = np.genfromtxt(f'{cl_folder}/CijGL-GR-Flat-eNLA-NA.dat')
+        C_GG_import = np.genfromtxt(f'{cl_folder}/CijGG-GR-Flat-eNLA-NA.dat')
 
     else:
-        raise ValueError('cl_folder must be Cij_15gen, Cij_thesis or Cij_14may')
+        raise ValueError('cl_folder must contain the string Cij_15gen, Cij_thesis or Cij_14may')
 
     # import responses
-    R_LL_import = np.genfromtxt(
-        project_path_here / 'input/vincenzo/Pk_responses_2D/rijllcorr-istf-alex.dat')
-    R_GL_import = np.genfromtxt(
-        project_path_here / 'input/vincenzo/Pk_responses_2D/rijglcorr-istf-alex.dat')
-    R_GG_import = np.genfromtxt(
-        project_path_here / 'input/vincenzo/Pk_responses_2D/rijggcorr-istf-alex.dat')
+    R_LL_import = np.genfromtxt(f'{rl_folder}/rijllcorr-istf-alex.dat')
+    R_GL_import = np.genfromtxt(f'{rl_folder}/rijglcorr-istf-alex.dat')
+    R_GG_import = np.genfromtxt(f'{rl_folder}/rijggcorr-istf-alex.dat')
 
     ###########################################################################
     # interpolate Vincenzo's Cls in ell values

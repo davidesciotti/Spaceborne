@@ -39,8 +39,8 @@ import my_module as mm
 
 
 def load_WF(Sijkl_cfg, zbins, EP_or_ED):
-
     wf_input_folder = Sijkl_cfg['wf_input_folder']
+    wf_filename = Sijkl_cfg['wf_input_filename']
     WF_normalization = Sijkl_cfg['WF_normalization']
     has_IA = Sijkl_cfg['has_IA']
 
@@ -83,6 +83,11 @@ def load_WF(Sijkl_cfg, zbins, EP_or_ED):
             wil = np.genfromtxt(f'{wf_input_folder}/WiWL-{EP_or_ED}{zbins:02}-FS2.dat')
             wig = np.genfromtxt(f'{wf_input_folder}/WiGC-{EP_or_ED}{zbins:02}-FS2.dat')
 
+        elif 'SPV3_07_2022/Flagship_2' in wf_input_folder:
+            assert WF_normalization == 'IST', 'WF_normalization must be IST for Vincenzo SPV3_07_2022/Flagship_2 WFs'
+            wil = np.genfromtxt(f'{wf_input_folder}/WiWL-{EP_or_ED}{zbins:02}-FS2.dat')
+            wig = np.genfromtxt(f'{wf_input_folder}/WiGC-{EP_or_ED}{zbins:02}-FS2.dat')
+
         else:
             raise ValueError('input_WF must be either davide, sylvain, marco, vincenzo_SPV3, vincenzo or luca')
 
@@ -112,8 +117,28 @@ def load_WF(Sijkl_cfg, zbins, EP_or_ED):
     return z_arr, windows
 
 
-def compute_Sijkl(cosmo_params_dict, Sijkl_cfg, zbins, EP_or_ED='EP'):
+def preprocess_wf(wf, zbins):
+    """
+    Preprocess the weight functions
+    :param wf: the weight functions
+    :return: the preprocessed weight functions
+    """
+    if wf[0, 0] == 0:
+        print('Warning: the redshift array for the weight functions starts from 0, not accepted by PySSC; '
+              'removing the first row from the array')
+        wf = np.delete(wf, 0, axis=0)
 
+    assert wf.shape[1] == zbins + 1, 'the number of columns in the input weight functions is not zbins + 1 (the first' \
+                                     'column being the redshift array)'
+    z_arr = wf[:, 0]
+    wf = np.delete(wf, 0, axis=1)
+    wf = np.transpose(wf)
+
+    assert wf.shape[1] == zbins, 'the number of weight functions is not correct'
+    return z_arr, wf
+
+
+def compute_Sijkl(cosmo_params_dict, Sijkl_cfg, zbins, EP_or_ED='EP'):
     WF_normalization = Sijkl_cfg['WF_normalization']
 
     if WF_normalization == 'PySSC':
@@ -131,4 +156,3 @@ def compute_Sijkl(cosmo_params_dict, Sijkl_cfg, zbins, EP_or_ED='EP'):
     print(f'Sijkl matrix computed in {time.perf_counter() - start:.2f} s')
 
     return Sijkl_arr
-

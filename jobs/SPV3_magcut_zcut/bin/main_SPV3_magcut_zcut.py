@@ -133,42 +133,32 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
                         'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
 
-                # ! import and reshape Cl and Rl
-                cl_ll_1d = np.genfromtxt(f"{general_cfg['cl_folder']}/{general_cfg['cl_filename'].format('WLO', EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)}")
-                cl_gg_1d = np.genfromtxt(f"{general_cfg['cl_folder']}/{general_cfg['cl_filename'].format('GCO', EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)}")
-                cl_wa_1d = np.genfromtxt(f"{general_cfg['cl_folder']}/{general_cfg['cl_filename'].format('WLA', EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)}")
-                cl_3x2pt_1d = np.genfromtxt(f"{general_cfg['cl_folder']}/{general_cfg['cl_filename'].format('3x2pt', EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)}")
+                # ! import datavectors (cl) and response functions (rl)
+                common_settings = (EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)
+                cl_fld = general_cfg['cl_folder']
+                cl_ll_1d = np.genfromtxt(f"{cl_fld}/{general_cfg['cl_filename'].format('WLO', *common_settings)}")
+                cl_gg_1d = np.genfromtxt(f"{cl_fld}/{general_cfg['cl_filename'].format('GCO', *common_settings)}")
+                cl_wa_1d = np.genfromtxt(f"{cl_fld}/{general_cfg['cl_filename'].format('WLA', *common_settings)}")
+                cl_3x2pt_1d = np.genfromtxt(f"{cl_fld}/{general_cfg['cl_filename'].format('3x2pt', *common_settings)}")
 
-                rl_ll_1d = np.genfromtxt(f"{general_cfg['rl_folder']}/{general_cfg['rl_filename'].format('WLO', EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)}")
-                rl_gg_1d = np.genfromtxt(f"{general_cfg['rl_folder']}/{general_cfg['rl_filename'].format('GCO', EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)}")
-                rl_wa_1d = np.genfromtxt(f"{general_cfg['rl_folder']}/{general_cfg['rl_filename'].format('WLA', EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)}")
-                rl_3x2pt_1d = np.genfromtxt(f"{general_cfg['rl_folder']}/{general_cfg['rl_filename'].format('3x2pt', EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)}")
+                rl_fld = general_cfg['rl_folder']
+                rl_ll_1d = np.genfromtxt(f"{rl_fld}/{general_cfg['rl_filename'].format('WLO', *common_settings)}")
+                rl_gg_1d = np.genfromtxt(f"{rl_fld}/{general_cfg['rl_filename'].format('GCO', *common_settings)}")
+                rl_wa_1d = np.genfromtxt(f"{rl_fld}/{general_cfg['rl_filename'].format('WLA', *common_settings)}")
+                rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{general_cfg['rl_filename'].format('3x2pt', *common_settings)}")
 
-
-
+                # ! reshape to 3 dimensions
                 cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
                 cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
                 cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
                 cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
 
-                cl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg, zbins, cl_or_rl='cl',
-                                                    EP_or_ED=EP_or_ED)
-                cl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_opt, general_cfg, zbins, cl_or_rl='cl',
-                                                    EP_or_ED=EP_or_ED)
-                cl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg, zbins, cl_or_rl='cl',
-                                                    EP_or_ED=EP_or_ED)
-                cl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins, cl_or_rl='cl',
-                                                       EP_or_ED=EP_or_ED)
+                rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
+                rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC_opt, zbins)
+                rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA_opt, zbins)
+                rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
 
-                rl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg, zbins, cl_or_rl='rl',
-                                                    EP_or_ED=EP_or_ED)
-                rl_gg_3d = cl_utils.get_spv3_cls_3d('GC', nbl_GC_opt, general_cfg, zbins, cl_or_rl='rl',
-                                                    EP_or_ED=EP_or_ED)
-                rl_wa_3d = cl_utils.get_spv3_cls_3d('WA', nbl_WA_opt, general_cfg, zbins, cl_or_rl='rl',
-                                                    EP_or_ED=EP_or_ED)
-                rl_3x2pt_5d = cl_utils.get_spv3_cls_3d('3x2pt', nbl_3x2pt_opt, general_cfg, zbins, cl_or_rl='rl',
-                                                       EP_or_ED=EP_or_ED)
-
+                # ! BNT transform if the corresponding flag is set to True
                 if general_cfg['cl_BNT_transform']:
                     assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
                     assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
@@ -180,6 +170,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     cl_3x2pt_5d = cl_utils.cl_BNT_transform(cl_3x2pt_5d, BNT_matrix)
                     print('you shuld BNT transform the responses do this with the responses too!')
 
+                # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
                 if ell_max_WL == general_cfg['ell_max_WL_opt']:
                     if not np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :]):
                         rtol = 1e-5
@@ -202,6 +193,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     rl_wa_3d = rl_ll_3d[nbl_GC:nbl_WL, :, :]
                     rl_3x2pt_5d = rl_3x2pt_5d[:nbl_3x2pt, :, :]
 
+                # store cls and responses in a dictionary
                 cl_dict_3D = {
                     'C_LL_WLonly_3D': cl_ll_3d,
                     'C_GG_3D': cl_gg_3d,
@@ -215,8 +207,12 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     'R_3x2pt_5D': rl_3x2pt_5d}
 
                 # ! compute or load Sijkl
-
                 # get number of z points in nz to name the sijkl file
+                common_settings = (EP_or_ED, zbins, magcut_source, zcut_source)
+                wil = np.genfromtxt(f'{Sijkl_cfg["wf_input_folder"]}/{Sijkl_cfg["wf_input_filename"].format("WiWL", *common_settings)}')
+                # preprocess_wf(wf, zbins)wf_input_folder
+                
+
                 z_arr, _ = Sijkl_utils.load_WF(Sijkl_cfg, zbins, EP_or_ED)
                 nz = z_arr.shape[0]
 

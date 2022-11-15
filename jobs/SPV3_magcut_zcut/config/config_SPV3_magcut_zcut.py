@@ -39,8 +39,8 @@ general_config = {
     'cl_BNT_transform': BNT_transform,
     'BNT_matrix_path': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT_matrix',
     'BNT_matrix_filename': f'BNT_matrix_csv_version.txt',
-    'cl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/DataVectors/magcuts_zcuts',
-    'rl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/ResFunTabs/magcuts_zcuts',
+    'cl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/DataVectors/magcut_zcut',
+    'rl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/ResFunTabs/magcut_zcut',
     'cl_filename': 'dv-{:s}-{:s}{:02d}-ML{:03d}-ZL{:02d}-MS{:03d}-ZS{:02d}.dat',
     'rl_filename': 'rf-{:s}-{:s}{:02d}-ML{:03d}-ZL{:02d}-MS{:03d}-ZS{:02d}.dat',
     'magcut_lens_list': (230, 235, 240, 245, 250),
@@ -80,14 +80,15 @@ covariance_config = {
 }
 
 Sijkl_config = {
-    'wf_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/KernelFun',
+    'wf_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/KernelFun/magcut_zcut',
+    'wf_input_filename': '{:s}-{:s}{:02d}-MS{:03d}-ZS{:02d}.dat',  # e.g. WiGC-ED13-MS240-ZS02.dat
     'sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/sijkl',
     # this is also an input folder, once the sijkl are computed
     'WF_suffix': f'FS{flagship_version}',
     'WF_normalization': 'IST',
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
-    'use_precomputed_sijkl': True,
-    'save_Sijkl': False,
+    'use_precomputed_sijkl': False,
+    'save_Sijkl': True,
 }
 
 FM_config = {

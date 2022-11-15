@@ -1,1 +1,0 @@
-The covariance used to compute the $\chi^2$ is 

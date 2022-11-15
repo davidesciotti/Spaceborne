@@ -8,9 +8,11 @@ jobs/SSC_comparison_updt/output/covmat
 jobs/SSC_comparison_variable_ellmax/output/covmat
 jobs/SSC_comparison_variable_Rl/output/covmat
 jobs/SPV3/output
-jobs/SPV3/input/covmat
-/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/CovMats
-jobs/SPV3/input/CovMats
+jobs/SPV3_magcut_zcut/output
+jobs/ISTF_new/output
+jobs/IST_L/output/covmat
+
+
 
 *.fits
 *.pyc

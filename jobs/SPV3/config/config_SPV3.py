@@ -3,7 +3,7 @@ import sys
 import numpy as np
 
 project_path = Path.cwd().parent.parent.parent
-job_path = f'{project_path}/jobs/SPV3'
+job_path = Path.cwd().parent
 
 sys.path.append(f'{project_path}/bin')
 import utils_running as utils

@@ -79,52 +79,28 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
             ell_max_GC = general_cfg['ell_max_GC']
             ell_max_XC = ell_max_GC
             nbl = general_cfg['nbl']
+            nbl_WL = nbl
+            nbl_GC = nbl
+            nbl_3x2pt = nbl
+            ind_name = covariance_cfg['ind_name']
 
             # load ind and Sijkl
-            ind = np.genfromtxt(
-                f'{project_path.parent}/common_data/ind_files/variable_zbins/{covariance_cfg["ind_ordering"]}_like/'
-                f'indici_{covariance_cfg["ind_ordering"]}_like_zbins{zbins}.dat', dtype=int)
+            ind = np.genfromtxt(f'{project_path.parent}/common_data/ind_files/{ind_name}.dat', dtype=int)
             covariance_cfg['ind'] = ind
+            print('WARNING: I AM USING THE triu_row-wise INDICES ORDERING')
 
-            sijkl = np.load(f"{project_path}/input/Sijkl/Sijkl_WFdavide_nz10000_IA_3may.npy")  # davide, eNLA
-
-            # compute ell and delta ell values
+            # ! compute ell and delta ell values
             ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_cfg)
 
             nbl_WA = ell_dict['ell_WA'].shape[0]
 
+            # ! load, interpolate, reshape cls and responses
             cl_dict_2D, rl_dict_2D = cl_utils.import_and_interpolate_cls(general_cfg, covariance_cfg, ell_dict)
-
-            # reshape them to 3D
             cl_dict_3D, rl_dict_3D = cl_utils.reshape_cls_2D_to_3D(general_cfg, ell_dict, cl_dict_2D, rl_dict_2D)
 
-            # compute covariance matrix
-            cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                                ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
-
-
-            # ! compute or load Sijkl
-            #
-            # # get number of z points in nz to name the sijkl file
-            # z_arr, _ = Sijkl_utils.load_WF(Sijkl_cfg, zbins, EP_or_ED)
-            # nz = z_arr.shape[0]
-            #
-            # sijkl_folder = Sijkl_cfg['sijkl_folder']
-            # sijkl_filename = f'sijkl_WF{Sijkl_cfg["WF_suffix"]}_nz{nz}_zbins{zbins:02}_{EP_or_ED}_hasIA{Sijkl_cfg["has_IA"]}.npy'
-            #
-            # if Sijkl_cfg['use_precomputed_sijkl']:
-            #     sijkl = np.load(f'{sijkl_folder}/{sijkl_filename}')
-            # else:
-            #     sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins,
-            #                                       EP_or_ED=EP_or_ED)
-            #
-            #     # the indentation is correct, I don't want to re-save the precomputed sijkl arrays
-            #     if Sijkl_cfg['save_Sijkl']:
-            #         np.save(f'{sijkl_folder}/{sijkl_filename}', sijkl)
-
             # ! compute covariance matrix
+            sijkl = np.load(f"{project_path}/input/Sijkl/Sijkl_WFdavide_nz10000_IA_3may.npy")  # davide, eNLA
             if covariance_cfg['compute_covmat']:
-
                 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
 
@@ -132,8 +108,6 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
             if FM_cfg['compute_FM']:
                 FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict)
 
-
-            assert 1 > 2
             # ! save:
             # this is just to set the correct probe names
             probe_dav_dict = {
@@ -171,7 +145,7 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                                 f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                                 delta_dict[f'delta_l_{probe_dav}'])
 
-            covmat_path = f'{covariance_cfg["cov_folder"]}/zbins{zbins:02}'
+            covmat_path = f'{covariance_cfg["cov_folder"]}/zbins{zbins:02}/{ind_name}'
             for ndim in (2, 4, 6):
                 if covariance_cfg[f'save_cov_{ndim}D']:
 

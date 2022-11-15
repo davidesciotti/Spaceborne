@@ -3,7 +3,7 @@ import sys
 import numpy as np
 
 project_path = Path.cwd().parent.parent.parent
-job_path = f'{project_path}/jobs/SPV3'
+job_path = Path.cwd().parent
 
 sys.path.append(f'{project_path}/bin')
 import utils_running as utils
@@ -36,9 +36,9 @@ general_config = {
     'nbl_WL': 30,  # useless??
     'nbl_WL_32': 32,
     'which_forecast': which_forecast,
-    'use_WA': True,
-    'save_cls_3d': True,
-    'save_rls_3d': True,
+    'use_WA': False,
+    'save_cls_3d': False,
+    'save_rls_3d': False,
     'specs': None,
     'cl_BNT_transform': BNT_transform,
     'BNT_matrix_path': None,
@@ -52,6 +52,7 @@ if general_config['ell_max_WL'] == general_config['ell_max_GC']:
 
 covariance_config = {
     'ind_ordering': ind_ordering,
+    'ind_name': 'vincenzo',
     'GL_or_LG': GL_or_LG,
     'fsky': fsky,
     # 'Rl': 4,
@@ -62,13 +63,13 @@ covariance_config = {
     'ng_folder': None,
     'sigma_eps2': 0.3 ** 2,
     'compute_covmat': True,
-    'save_cov_2D': False,
+    'save_cov_2D': True,
     'save_cov_4D': False,
-    'save_cov_6D': True,  # or 10D for the 3x2pt
+    'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_SS': True,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
-    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/covmat',
+    'cov_folder': f'{job_path}/output/covmat',
 }
 
 Sijkl_config = {

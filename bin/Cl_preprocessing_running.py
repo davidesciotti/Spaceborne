@@ -53,9 +53,9 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
 
     elif '14may' in cl_folder:
         assert covariance_config['GL_or_LG'] == 'GL', 'Cij_14may uses GL'
-        C_LL_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:.02}/CijLL-GR-Flat-eNLA-NA.dat')
-        C_XC_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:.02}/CijGL-GR-Flat-eNLA-NA.dat')
-        C_GG_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:.02}/CijGG-GR-Flat-eNLA-NA.dat')
+        C_LL_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:02}/CijLL-GR-Flat-eNLA-NA.dat')
+        C_XC_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:02}/CijGL-GR-Flat-eNLA-NA.dat')
+        C_GG_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:02}/CijGG-GR-Flat-eNLA-NA.dat')
 
     elif 'Cij_SPV3' in cl_folder:
         assert 1 > 2, 'Cij_SPV3 is not implemented'

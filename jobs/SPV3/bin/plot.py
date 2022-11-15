@@ -35,7 +35,7 @@ markersize = 10
 
 # ! options
 zbins_list = np.array((10,), dtype=int)
-probes = ('GC',)
+probes = ('3x2pt',)
 pes_opt_list = ('opt',)
 EP_or_ED_list = ('EP',)
 which_comparison = 'GO_vs_GS'  # this is just to set the title of the plot
@@ -234,7 +234,7 @@ for probe in probes:
                     cases = ('GO_old', 'GO_new', 'GS_old', 'GS_new')
                     FMs = (FM_GO_old, FM_GO, FM_GS_old, FM_GS)
                 else:
-                    cases = ('GO', 'GS')
+                    cases = ('G', 'GS')
                     FMs = (FM_GO, FM_GS)
 
                 data = []
@@ -244,6 +244,7 @@ for probe in probes:
                     uncert[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams, fiducials=fid,
                                                                   which_uncertainty=which_uncertainty, normalize=True))
                     fom[case] = mm.compute_FoM(FM, w0wa_rows=w0wa_rows)
+                    print(f'FoM({probe}, {case}): {fom[case]}')
 
                 # set uncertainties to 0 (or 1? see code) for \Omega_DE in the non-flat case, where Ode was not a free parameter
                 if model == 'nonflat' and check_old_FM:
@@ -257,8 +258,8 @@ for probe in probes:
                     uncert['ratio_old'] = uncert['GS_old'] / uncert['GO_old']
                     uncert['ratio_new'] = uncert['GS_new'] / uncert['GO_new']
                 else:
-                    uncert['diff'] = diff_funct(uncert['GS'], uncert['GO'])
-                    uncert['ratio'] = uncert['GS'] / uncert['GO']
+                    uncert['percent_diff'] = diff_funct(uncert['GS'], uncert['G'])
+                    uncert['ratio'] = uncert['GS'] / uncert['G']
 
                 uncert_vinc = {
                     'zbins_EP10': {
@@ -308,7 +309,7 @@ for probe in probes:
                 if check_old_FM:
                     cases = ['GO_old', 'GO_new', 'GS_old', 'GS_new', 'diff_old', 'diff_new']
                 else:
-                    cases = ['GO', 'GS', 'diff']
+                    cases = ['G', 'GS', 'percent_diff']
 
                 for case in cases:
                     data.append(uncert[case])
@@ -317,7 +318,7 @@ for probe in probes:
                 uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][EP_or_ED][pes_opt] = uncert['ratio']
                 # append the FoM values at the end of the array
                 uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][EP_or_ED][pes_opt] = np.append(
-                    uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][EP_or_ED][pes_opt], fom['GS'] / fom['GO'])
+                    uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][EP_or_ED][pes_opt], fom['GS'] / fom['G'])
 
 if bar_plot_cosmo:
 

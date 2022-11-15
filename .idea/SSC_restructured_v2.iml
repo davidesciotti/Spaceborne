@@ -8,6 +8,7 @@
       <sourceFolder url="file://$MODULE_DIR$/jobs/SSC_comparison/config" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/jobs/SSC_comparison_updt/config" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/lib" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/jobs/SPV3_magcut_zcut/config" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/jobs/IST_forecast/output/covmat" />
       <excludeFolder url="file://$MODULE_DIR$/jobs/IST_NL/output/covmat" />
       <excludeFolder url="file://$MODULE_DIR$/jobs/SSC_comparison/input/replot_vincenzo" />

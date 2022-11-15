@@ -211,7 +211,7 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
 
 def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, cl_or_rl: str,
                     EP_or_ED: str):
-    # TODO separate import and reshaping!!
+    print('THIS FUNCTION SHOULD BE DEPRECATED')
     """This function imports and interpolates the CPV3 cls, which have a different format wrt the usual input files"""
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
@@ -251,16 +251,37 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, cl_or_r
 
     cl_1d = np.genfromtxt(f'{input_folder}/{filename}')
 
+    # ! delete below
     # this check can only be done for the optimistic case, since these are the only datavectors I have (from which
     # I can obtain the pessimistic ones simply by removing some ell bins)
     assert zpairs == int(cl_1d.shape[0] / nbl), 'the number of elements in the datavector is incompatible with ' \
                                                 'the number of ell bins for this case/probe'
 
+    cl_3d = cl_SPV3_1D_to_3D(cl_1d, probe, nbl, zbins)
+    return cl_3d
+
+@njit
+def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
+    """This function reshapes the SPV3 cls, which have a different format wrt the usual input files, from 1 to 3
+    dimensions (5 dimensions for the 3x2pt case)"""
+
+    assert probe in ['WL', 'WA', 'GC', '3x2pt'], 'probe must be WL, WA, GC or 3x2pt'
+
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+
+    # the checks on zpairs in the if statements can only be done for the optimistic case, since these are the only
+    # datavectors I have (from which I can obtain the pessimistic ones simply by removing some ell bins)
     if probe != '3x2pt':
+        assert zpairs_auto == int(cl_1d.shape[0] / nbl), 'the number of elements in the datavector is incompatible ' \
+                                                         'with the number of ell bins for this case/probe'
         cl_3d = mm.cl_1D_to_3D(cl_1d, nbl, zbins, is_symmetric=True)
         cl_3d = mm.fill_3D_symmetric_array(cl_3d, nbl, zbins)
+        return cl_3d
 
     else:
+        assert zpairs_3x2pt == int(cl_1d.shape[0] / nbl), 'the number of elements in the datavector is incompatible ' \
+                                                          'with the number of ell bins for this case/probe'
+
         cl_2d = np.reshape(cl_1d, (nbl, zpairs_3x2pt))
 
         # split into 3 2d datavectors
@@ -274,16 +295,13 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, cl_or_r
         cl_gg_3x2pt_3d = mm.Cl_2D_to_3D_symmetric(cl_gg_3x2pt_2d, nbl=nbl, npairs=zpairs_auto, zbins=zbins)
 
         # use them to populate the datavector
-        D_3x2pt = np.zeros((nbl, 2, 2, zbins, zbins))
-        D_3x2pt[:, 0, 0, :, :] = cl_ll_3x2pt_3d
-        D_3x2pt[:, 1, 1, :, :] = cl_gg_3x2pt_3d
-        D_3x2pt[:, 0, 1, :, :] = cl_lg_3x2pt_3d
-        D_3x2pt[:, 1, 0, :, :] = np.transpose(cl_lg_3x2pt_3d, (0, 2, 1))
-
-        return D_3x2pt  # in this case, return the datavector (I could name it "cl_3d" and avoid this return statement,
+        cl_3x2pt = np.zeros((nbl, 2, 2, zbins, zbins))
+        cl_3x2pt[:, 0, 0, :, :] = cl_ll_3x2pt_3d
+        cl_3x2pt[:, 1, 1, :, :] = cl_gg_3x2pt_3d
+        cl_3x2pt[:, 0, 1, :, :] = cl_lg_3x2pt_3d
+        cl_3x2pt[:, 1, 0, :, :] = np.transpose(cl_lg_3x2pt_3d, (0, 2, 1))
+        return cl_3x2pt  # in this case, return the datavector (I could name it "cl_3d" and avoid this return statement,
         # but it's not 3d!)
-
-    return cl_3d
 
 
 def cl_BNT_transform(cl_3D, BNT_matrix):

@@ -25,7 +25,7 @@ import mpl_cfg
 
 # job configuration
 sys.path.append(f'{job_path}/config')
-import config_SPV3_multicut as cfg
+import config_SPV3_magcut_zcut as cfg
 
 # project libraries
 sys.path.append(f'{project_path}/bin')
@@ -86,6 +86,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 magcut_lens = general_cfg['magcut_lens']
                 zcut_source = general_cfg['zcut_source']
                 zcut_lens = general_cfg['zcut_lens']
+                zmax = int(general_cfg['zmax'] * 10)
 
                 ind = np.genfromtxt(
                     f'{project_path}/input/ind_files/variable_zbins/{covariance_cfg["ind_ordering"]}_like/'
@@ -133,18 +134,22 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                         'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
 
                 # ! import and reshape Cl and Rl
-                # TODO split these into separate functions: one to import, one to reshape
-                filenames_dict = {}
-                for probe_vinc in ('WLO', 'GCO', 'WLA', '3x2pt'):
-                    for dv_or_rf in ('dv', 'rf'):
-                        filenames_dict[
-                            f'{dv_or_rf}_{probe_vinc}'] = f'{dv_or_rf}-{probe_vinc}-{EP_or_ED}{zbins:02}-ML{magcut_lens}-ZL{zcut_lens:02}-MS{magcut_source}-ZS{zcut_source:02}.dat'
+                cl_ll_1d = np.genfromtxt(f"{general_cfg['cl_folder']}/{general_cfg['cl_filename'].format('WLO', EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)}")
+                cl_gg_1d = np.genfromtxt(f"{general_cfg['cl_folder']}/{general_cfg['cl_filename'].format('GCO', EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)}")
+                cl_wa_1d = np.genfromtxt(f"{general_cfg['cl_folder']}/{general_cfg['cl_filename'].format('WLA', EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)}")
+                cl_3x2pt_1d = np.genfromtxt(f"{general_cfg['cl_folder']}/{general_cfg['cl_filename'].format('3x2pt', EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)}")
 
-                dv_or_rf = 'dv'
-                cl_ll_1d = np.genfromtxt(f'{general_cfg["cl_folder"]}/{filenames_dict[f"{dv_or_rf}_WLO"]}')
-                cl_gg_1d = np.genfromtxt(f'{general_cfg["cl_folder"]}/{filenames_dict[f"{dv_or_rf}_WLO"]}')
-                cl_ll_1d = np.genfromtxt(f'{general_cfg["cl_folder"]}/{filenames_dict[f"{dv_or_rf}_WLO"]}')
-                cl_ll_1d = np.genfromtxt(f'{general_cfg["cl_folder"]}/{filenames_dict[f"{dv_or_rf}_WLO"]}')
+                rl_ll_1d = np.genfromtxt(f"{general_cfg['rl_folder']}/{general_cfg['rl_filename'].format('WLO', EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)}")
+                rl_gg_1d = np.genfromtxt(f"{general_cfg['rl_folder']}/{general_cfg['rl_filename'].format('GCO', EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)}")
+                rl_wa_1d = np.genfromtxt(f"{general_cfg['rl_folder']}/{general_cfg['rl_filename'].format('WLA', EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)}")
+                rl_3x2pt_1d = np.genfromtxt(f"{general_cfg['rl_folder']}/{general_cfg['rl_filename'].format('3x2pt', EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)}")
+
+
+
+                cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
+                cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
+                cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
+                cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
 
                 cl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_opt, general_cfg, zbins, cl_or_rl='cl',
                                                     EP_or_ED=EP_or_ED)
@@ -230,8 +235,8 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                 # ! compute covariance matrix
                 if covariance_cfg['compute_covmat']:
-                    ng = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/ngbTab-{EP_or_ED}{zbins:02}.dat')[0, :]
-                    covariance_cfg['ng'] = ng
+                    ng_filename = f'{covariance_cfg["ng_filename"].format(EP_or_ED, zbins, zcut_source, zmax, magcut_source)}'
+                    covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[0, :]
                     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
 

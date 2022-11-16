@@ -1,4 +1,5 @@
 import math
+import warnings
 
 pi = math.pi
 
@@ -42,10 +43,10 @@ def load_WF(Sijkl_cfg, zbins, EP_or_ED):
     wf_input_folder = Sijkl_cfg['wf_input_folder']
     wf_filename = Sijkl_cfg['wf_input_filename']
     WF_normalization = Sijkl_cfg['WF_normalization']
-    has_IA = Sijkl_cfg['has_IA']
+    IA_flag = Sijkl_cfg['IA_flag']
 
-    if not has_IA:
-        raise ValueError('has_IA must be True')
+    if not IA_flag:
+        raise ValueError('IA_flag must be True')
 
     WF_path = f'{project_path.parent}/common_data/everyones_WF_from_Gdrive'
 
@@ -115,7 +116,7 @@ def load_WF(Sijkl_cfg, zbins, EP_or_ED):
 
 def preprocess_wf(wf, zbins):
     """
-    Preprocess the weight functions
+    Preprocess the weight functions: removes and returns the first row (the redshift array) and the wf without it
     :param wf: the weight functions
     :return: the preprocessed weight functions
     """
@@ -128,14 +129,13 @@ def preprocess_wf(wf, zbins):
                                      'column being the redshift array)'
     z_arr = wf[:, 0]
     wf = np.delete(wf, 0, axis=1)
-    wf = np.transpose(wf)
 
+    # further check
     assert wf.shape[1] == zbins, 'the number of weight functions is not correct'
     return z_arr, wf
 
 
-def compute_Sijkl(cosmo_params_dict, Sijkl_cfg, zbins, EP_or_ED='EP'):
-    WF_normalization = Sijkl_cfg['WF_normalization']
+def compute_Sijkl(cosmo_params_dict, z_arr, WF, WF_normalization, zbins, EP_or_ED, Sijkl_cfg=None):
 
     if WF_normalization == 'PySSC':
         convention = 0
@@ -144,11 +144,15 @@ def compute_Sijkl(cosmo_params_dict, Sijkl_cfg, zbins, EP_or_ED='EP'):
     else:
         raise ValueError('WF_normalization must be either PySSC or IST')
 
-    z_arr, windows = load_WF(Sijkl_cfg, zbins, EP_or_ED=EP_or_ED)
+    if z_arr is None and WF is None:
+        warnings.warn("Warning: The imports filepath should be specified outside this function/module!", DeprecationWarning)
+        print('in Sijkl_utils: Warning: ensuring backwards compatibility; this part of the function should be changed!')
+        z_arr, windows = load_WF(Sijkl_cfg, zbins, EP_or_ED=EP_or_ED)
 
     start = time.perf_counter()
-    Sijkl_arr = Sijkl(z_arr=z_arr, windows=windows, cosmo_params=cosmo_params_dict, precision=10, tol=1e-3,
+    Sijkl_arr = Sijkl(z_arr=z_arr, windows=WF, cosmo_params=cosmo_params_dict, precision=10, tol=1e-3,
                       convention=convention)
     print(f'Sijkl matrix computed in {time.perf_counter() - start:.2f} s')
 
     return Sijkl_arr
+

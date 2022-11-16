@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 import numpy as np
+# from numba import njit
 
 project_path_here = Path.cwd().parent.parent.parent
 sys.path.append(str(project_path_here.parent / 'common_lib'))
@@ -260,7 +261,7 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, cl_or_r
     cl_3d = cl_SPV3_1D_to_3D(cl_1d, probe, nbl, zbins)
     return cl_3d
 
-@njit
+# @njit
 def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
     """This function reshapes the SPV3 cls, which have a different format wrt the usual input files, from 1 to 3
     dimensions (5 dimensions for the 3x2pt case)"""

@@ -71,7 +71,7 @@ covariance_config = {
 
 Sijkl_config = {
     'wf_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/KernelFun',
-    'sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/sijkl',
+    'Sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/sijkl',
     # this is also an input folder, once the sijkl are computed
     'WF_suffix': f'FS{flagship_version}',
     'WF_normalization': 'IST',

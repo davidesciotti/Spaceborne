@@ -188,7 +188,7 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
             z_arr, _ = Sijkl_utils.load_WF(Sijkl_cfg, zbins, EP_or_ED)
             nz = z_arr.shape[0]
 
-            sijkl_folder = Sijkl_cfg['sijkl_folder']
+            sijkl_folder = Sijkl_cfg['Sijkl_folder']
             sijkl_filename = f'sijkl_WF{Sijkl_cfg["WF_suffix"]}_nz{nz}_zbins{zbins:02}_{EP_or_ED}_hasIA{Sijkl_cfg["has_IA"]}.npy'
 
             if Sijkl_cfg['use_precomputed_sijkl']:

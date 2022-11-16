@@ -213,30 +213,45 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     'R_3x2pt_5D': rl_3x2pt_5d}
 
                 # ! compute or load Sijkl
-                # get number of z points in nz to name the sijkl file
+                # import wf
+                WF_fld = Sijkl_cfg["wf_input_folder"]
+                WF_filename = Sijkl_cfg["wf_input_filename"]
                 common_settings = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
                                    'magcut_source': magcut_source, 'zcut_source': zcut_source}
-                wil = np.genfromtxt(
-                    f'{Sijkl_cfg["wf_input_folder"]}/{Sijkl_cfg["wf_input_filename"].format("WiWL", EP_or_ED, zbins,magcut_source, zcut_source)}')
-                wil = np.genfromtxt(
-                    f'{Sijkl_cfg["wf_input_folder"]}/{Sijkl_cfg["wf_input_filename"].format(which_WF="WiWL", **common_settings)}')
-                # preprocess_wf(wf, zbins)wf_input_folder
 
-                z_arr, _ = Sijkl_utils.load_WF(Sijkl_cfg, zbins, EP_or_ED)
+                wil = np.genfromtxt(f'{WF_fld}/{WF_filename.format(which_WF="WiWL", **common_settings)}')
+                wig = np.genfromtxt(f'{Sijkl_fld}/{WF_filename.format(which_WF="WiGC", **common_settings)}')
+
+                # preprocess (remove redshift column)
+                z_arr, wil = Sijkl_utils.preprocess_wf(wil, zbins)
+                z_arr_2, wig = Sijkl_utils.preprocess_wf(wig, zbins)
+                assert np.array_equal(z_arr, z_arr_2), 'the redshift arrays are different for the GC and WL kernels'
+
+                # transpose and stack, ordering is important here!
+                transp_stacked_wf = np.vstack((wil.T, wig.T))
+
+                # compute or load Sijkl
+                # get number of z points in nz to name the Sijkl file
                 nz = z_arr.shape[0]
 
-                sijkl_folder = Sijkl_cfg['sijkl_folder']
-                sijkl_filename = f'sijkl_WF{Sijkl_cfg["WF_suffix"]}_nz{nz}_zbins{zbins:02}_{EP_or_ED}_hasIA{Sijkl_cfg["has_IA"]}.npy'
+                Sijkl_folder = Sijkl_cfg['Sijkl_folder']
+                Sijkl_filename = Sijkl_cfg['Sijkl_folder'].format(flagship_version=general_cfg['flagship_version'],
+                                                                  nz=nz, EP_or_ED=EP_or_ED, zbins=zbins,
+                                                                  IA_flag=Sijkl_cfg['IA_flag'],
+                                                                  magcut_source=magcut_source, zcut_source=zcut_source)
 
                 if Sijkl_cfg['use_precomputed_sijkl']:
-                    sijkl = np.load(f'{sijkl_folder}/{sijkl_filename}')
+                    Sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
                 else:
-                    sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins,
+                    Sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins,
                                                       EP_or_ED=EP_or_ED)
+                    compute_Sijkl(cosmo_params_dict, Sijkl_cfg, z_arr, WF, WF_normalization, zbins, EP_or_ED)
 
-                    # the indentation is correct, I don't want to re-save the precomputed sijkl arrays
+                    # the indentation is correct, I don't want to re-save the precomputed Sijkl arrays
                     if Sijkl_cfg['save_Sijkl']:
-                        np.save(f'{sijkl_folder}/{sijkl_filename}', sijkl)
+                        np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
+
+                assert 1 > 2
 
                 # ! compute covariance matrix
                 if covariance_cfg['compute_covmat']:
@@ -245,7 +260,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     ng_filename = f'{covariance_cfg["ng_filename"].format(**ng_filename_kwargs)}'
                     covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[0, :]
                     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                                        ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
+                                                        ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
                 # ! compute Fisher Matrix
                 if FM_cfg['compute_FM']:

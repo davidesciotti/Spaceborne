@@ -41,7 +41,6 @@ import my_module as mm
 
 def load_WF(Sijkl_cfg, zbins, EP_or_ED):
     wf_input_folder = Sijkl_cfg['wf_input_folder']
-    wf_filename = Sijkl_cfg['wf_input_filename']
     WF_normalization = Sijkl_cfg['WF_normalization']
     IA_flag = Sijkl_cfg['IA_flag']
 
@@ -121,8 +120,8 @@ def preprocess_wf(wf, zbins):
     :return: the preprocessed weight functions
     """
     if wf[0, 0] == 0:
-        print('Warning: the redshift array for the weight functions starts from 0, not accepted by PySSC; '
-              'removing the first row from the array')
+        warnings.warn('the redshift array for the weight functions starts from 0, not accepted by PySSC; '
+                      'removing the first row from the array', UserWarning)
         wf = np.delete(wf, 0, axis=0)
 
     assert wf.shape[1] == zbins + 1, 'the number of columns in the input weight functions is not zbins + 1 (the first' \
@@ -135,24 +134,22 @@ def preprocess_wf(wf, zbins):
     return z_arr, wf
 
 
-def compute_Sijkl(cosmo_params_dict, z_arr, WF, WF_normalization, zbins, EP_or_ED, Sijkl_cfg=None):
+def compute_Sijkl(cosmo_params_dict, z_arr, windows, windows_normalization, zbins=None, EP_or_ED=None, Sijkl_cfg=None):
 
-    if WF_normalization == 'PySSC':
+    if windows_normalization == 'PySSC':
         convention = 0
-    elif WF_normalization == 'IST':
+    elif windows_normalization == 'IST':
         convention = 1
     else:
-        raise ValueError('WF_normalization must be either PySSC or IST')
+        raise ValueError('windows_normalization must be either PySSC or IST')
 
-    if z_arr is None and WF is None:
-        warnings.warn("Warning: The imports filepath should be specified outside this function/module!", DeprecationWarning)
-        print('in Sijkl_utils: Warning: ensuring backwards compatibility; this part of the function should be changed!')
+    if z_arr is None and windows is None:
+        warnings.warn("the imports filepath should be specified outside this function/module!", DeprecationWarning)
         z_arr, windows = load_WF(Sijkl_cfg, zbins, EP_or_ED=EP_or_ED)
 
     start = time.perf_counter()
-    Sijkl_arr = Sijkl(z_arr=z_arr, windows=WF, cosmo_params=cosmo_params_dict, precision=10, tol=1e-3,
-                      convention=convention)
+    Sijkl_arr = Sijkl(z_arr=z_arr, windows=windows, cosmo_params=cosmo_params_dict, convention=convention,
+                      precision=10, tol=1e-3)
     print(f'Sijkl matrix computed in {time.perf_counter() - start:.2f} s')
 
     return Sijkl_arr
-

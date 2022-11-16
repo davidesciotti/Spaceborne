@@ -220,7 +220,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                                    'magcut_source': magcut_source, 'zcut_source': zcut_source}
 
                 wil = np.genfromtxt(f'{WF_fld}/{WF_filename.format(which_WF="WiWL", **common_settings)}')
-                wig = np.genfromtxt(f'{Sijkl_fld}/{WF_filename.format(which_WF="WiGC", **common_settings)}')
+                wig = np.genfromtxt(f'{WF_fld}/{WF_filename.format(which_WF="WiGC", **common_settings)}')
 
                 # preprocess (remove redshift column)
                 z_arr, wil = Sijkl_utils.preprocess_wf(wil, zbins)
@@ -235,17 +235,17 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 nz = z_arr.shape[0]
 
                 Sijkl_folder = Sijkl_cfg['Sijkl_folder']
-                Sijkl_filename = Sijkl_cfg['Sijkl_folder'].format(flagship_version=general_cfg['flagship_version'],
-                                                                  nz=nz, EP_or_ED=EP_or_ED, zbins=zbins,
-                                                                  IA_flag=Sijkl_cfg['IA_flag'],
-                                                                  magcut_source=magcut_source, zcut_source=zcut_source)
+                Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(flagship_version=general_cfg['flagship_version'],
+                                                                    nz=nz, EP_or_ED=EP_or_ED, zbins=zbins,
+                                                                    IA_flag=Sijkl_cfg['IA_flag'],
+                                                                    magcut_source=magcut_source,
+                                                                    zcut_source=zcut_source)
 
                 if Sijkl_cfg['use_precomputed_sijkl']:
                     Sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
                 else:
-                    Sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins,
-                                                      EP_or_ED=EP_or_ED)
-                    compute_Sijkl(cosmo_params_dict, Sijkl_cfg, z_arr, WF, WF_normalization, zbins, EP_or_ED)
+                    Sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
+                                                      Sijkl_cfg['WF_normalization'])
 
                     # the indentation is correct, I don't want to re-save the precomputed Sijkl arrays
                     if Sijkl_cfg['save_Sijkl']:

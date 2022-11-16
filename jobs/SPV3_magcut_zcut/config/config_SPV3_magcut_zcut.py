@@ -86,7 +86,7 @@ Sijkl_config = {
     # e.g. WiGC-ED13-MS240-ZS02.dat
     # Sijkl_folder is the output folder for the sijkl computation and the input folder, once the sijkl are computed
     'Sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/sijkl',
-    'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:s}'
+    'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:b}'
                       '_MS{magcut_source:02d}-ZS{zcut_source:02d}.npy',
     'WF_normalization': 'IST',
     'IA_flag': True,  # whether to include IA in the WF used to compute Sijkl

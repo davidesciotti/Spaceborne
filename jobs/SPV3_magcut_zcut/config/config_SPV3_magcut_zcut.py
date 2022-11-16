@@ -3,7 +3,7 @@ import sys
 import numpy as np
 
 project_path = Path.cwd().parent.parent.parent
-job_path = f'{project_path}/jobs/SPV3'
+job_path = Path.cwd().parent
 
 sys.path.append(f'{project_path}/bin')
 import utils_running as utils
@@ -35,7 +35,6 @@ general_config = {
     'use_WA': True,
     'save_cls_3d': True,
     'save_rls_3d': True,
-    'specs': 'wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4',
     'cl_BNT_transform': BNT_transform,
     'BNT_matrix_path': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT_matrix',
     'BNT_matrix_filename': f'BNT_matrix_csv_version.txt',
@@ -71,9 +70,9 @@ covariance_config = {
     'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'compute_covmat': True,
-    'save_cov_2D': False,
+    'save_cov_2D': True,
     'save_cov_4D': False,
-    'save_cov_6D': False,  # or 10D for the 3x2pt
+    'save_cov_6D': True,  # or 10D for the 3x2pt
     'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
@@ -86,7 +85,7 @@ Sijkl_config = {
     # e.g. WiGC-ED13-MS240-ZS02.dat
     # Sijkl_folder is the output folder for the sijkl computation and the input folder, once the sijkl are computed
     'Sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/sijkl',
-    'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:b}'
+    'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}'
                       '_MS{magcut_source:02d}-ZS{zcut_source:02d}.npy',
     'WF_normalization': 'IST',
     'IA_flag': True,  # whether to include IA in the WF used to compute Sijkl

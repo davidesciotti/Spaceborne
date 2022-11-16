@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 import pandas as pd
+import warnings
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
@@ -88,9 +89,11 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 zcut_lens = general_cfg['zcut_lens']
                 zmax = int(general_cfg['zmax'] * 10)
 
-                ind = np.genfromtxt(
-                    f'{project_path}/input/ind_files/variable_zbins/{covariance_cfg["ind_ordering"]}_like/'
-                    f'indici_{covariance_cfg["ind_ordering"]}_like_zbins{zbins}.dat', dtype=int)
+                assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
+
+                ind = np.genfromtxt(f'{project_path}/input/ind_files/variable_zbins/'
+                                    f'{covariance_cfg["ind_ordering"]}_like/'
+                                    f'indici_{covariance_cfg["ind_ordering"]}_like_zbins{zbins}.dat', dtype=int)
                 covariance_cfg['ind'] = ind
 
                 assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \
@@ -135,23 +138,23 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                 # ! import datavectors (cl) and response functions (rl)
                 # this is just to make the .format() more compact
-                common_settings = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
-                                   'magcut_lens': magcut_lens, 'zcut_lens': zcut_lens,
-                                   'magcut_source': magcut_source, 'zcut_source': zcut_source}
+                clrl_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
+                              'magcut_lens': magcut_lens, 'zcut_lens': zcut_lens,
+                              'magcut_source': magcut_source, 'zcut_source': zcut_source}
 
                 cl_fld = general_cfg['cl_folder']
                 cl_filename = general_cfg['cl_filename']
-                cl_ll_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLO', **common_settings)}")
-                cl_gg_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='GCO', **common_settings)}")
-                cl_wa_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLA', **common_settings)}")
-                cl_3x2pt_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='3x2pt', **common_settings)}")
+                cl_ll_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLO', **clrl_specs)}")
+                cl_gg_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='GCO', **clrl_specs)}")
+                cl_wa_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLA', **clrl_specs)}")
+                cl_3x2pt_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='3x2pt', **clrl_specs)}")
 
                 rl_fld = general_cfg['rl_folder']
                 rl_filename = general_cfg['rl_filename']
-                rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', **common_settings)}")
-                rl_gg_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='GCO', **common_settings)}")
-                rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **common_settings)}")
-                rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **common_settings)}")
+                rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', **clrl_specs)}")
+                rl_gg_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='GCO', **clrl_specs)}")
+                rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **clrl_specs)}")
+                rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **clrl_specs)}")
 
                 # ! reshape to 3 dimensions
                 cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
@@ -216,11 +219,11 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 # import wf
                 WF_fld = Sijkl_cfg["wf_input_folder"]
                 WF_filename = Sijkl_cfg["wf_input_filename"]
-                common_settings = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
-                                   'magcut_source': magcut_source, 'zcut_source': zcut_source}
+                wf_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
+                            'magcut_source': magcut_source, 'zcut_source': zcut_source}
 
-                wil = np.genfromtxt(f'{WF_fld}/{WF_filename.format(which_WF="WiWL", **common_settings)}')
-                wig = np.genfromtxt(f'{WF_fld}/{WF_filename.format(which_WF="WiGC", **common_settings)}')
+                wil = np.genfromtxt(f'{WF_fld}/{WF_filename.format(which_WF="WiWL", **wf_specs)}')
+                wig = np.genfromtxt(f'{WF_fld}/{WF_filename.format(which_WF="WiGC", **wf_specs)}')
 
                 # preprocess (remove redshift column)
                 z_arr, wil = Sijkl_utils.preprocess_wf(wil, zbins)
@@ -251,14 +254,12 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     if Sijkl_cfg['save_Sijkl']:
                         np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
 
-                assert 1 > 2
-
                 # ! compute covariance matrix
                 if covariance_cfg['compute_covmat']:
-                    ng_filename_kwargs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'zcut_source': zcut_source,
-                                          'zmax': zmax, 'magcut_source': magcut_source}
-                    ng_filename = f'{covariance_cfg["ng_filename"].format(**ng_filename_kwargs)}'
-                    covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[0, :]
+                    ng_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'zcut_source': zcut_source,
+                                'zmax': zmax, 'magcut_source': magcut_source}
+                    ng_filename = f'{covariance_cfg["ng_filename"].format(**ng_specs)}'
+                    covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[:, 1]
                     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
@@ -276,10 +277,10 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                 # just a dict for the output file names
                 clrl_dict = {
-                    'cl_inputname': 'dv',
-                    'rl_inputname': 'rf',
                     'cl_dict_3D': cl_dict_3D,
                     'rl_dict_3D': rl_dict_3D,
+                    'cl_inputname': 'dv',
+                    'rl_inputname': 'rf',
                     'cl_dict_key': 'C',
                     'rl_dict_key': 'R',
                 }
@@ -288,20 +289,22 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     if general_cfg[f'save_{cl_or_rl}s_3d']:
 
                         for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
-                            # save cl and/or response
-                            np.save(f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/'
-                                    f'{clrl_dict[f"{cl_or_rl}_inputname"]}-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
-                                    clrl_dict[f"{cl_or_rl}_dict_3D"][
-                                        f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}'])
+                            # save cl and/or response; not very readable but it works, plus all the cases are in the for loop
+
+                            filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
+                            filename = general_cfg[f'{cl_or_rl}_filename'].format(probe=probe_vinc,
+                                                                                  **clrl_specs).replace(".dat",
+                                                                                                        "_3D.npy")
+                            file = clrl_dict[f"{cl_or_rl}_dict_3D"][
+                                f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}']
+                            np.save(f'{filepath}/{filename}', file)
 
                             # save ells and deltas
                             if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
-                                np.savetxt(
-                                    f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
-                                    10 ** ell_dict[f'ell_{probe_dav}'])
-                                np.savetxt(
-                                    f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
-                                    delta_dict[f'delta_l_{probe_dav}'])
+                                filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
+                                ells_filename = f'ell_{probe_dav}_ellmaxWL{ell_max_WL}'
+                                np.savetxt(f'{filepath}/{ells_filename}.txt', 10 ** ell_dict[f'ell_{probe_dav}'])
+                                np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])
 
                 covmat_path = f'{covariance_cfg["cov_folder"]}/zbins{zbins:02}'
                 for ndim in (2, 4, 6):
@@ -329,25 +332,25 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                             for which_cov, Rl_str in zip(which_cov_list, Rl_str_list):
                                 for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
-                                    np.save(f'{covmat_path}/'
-                                            f'covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_{ndim}D.npy',
+                                    covmat_filename = f'covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}{Rl_str}_{ndim}D.npy'
+                                    np.save(f'{covmat_path}/{covmat_filename}',
                                             cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])
 
                                 # in this case, 3x2pt is saved in 10D as a dictionary
                                 if ndim == 6:
-                                    filename = f'{covmat_path}/covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_10D.pickle'
-                                    with open(filename, 'wb') as handle:
+                                    covmat_filename = f'{covmat_path}/covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_nbl{nbl_3x2pt}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}{Rl_str}_10D.pickle'
+                                    with open(covmat_filename, 'wb') as handle:
                                         pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
 
                         # in the pessimistic case, save only WA
                         elif ell_max_WL == 1500:
                             for which_cov, Rl_str in zip(['GO', 'GS'], ['', f'_Rl{which_probe_response_str}']):
-                                np.save(
-                                    f'{covmat_path}/covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_{ndim}D.npy',
-                                    cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
+                                covmat_filename = f'covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}{Rl_str}_{ndim}D.npy'
+                                np.save(f'{covmat_path}/{covmat_filename}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
 
                 # save in .dat for Vincenzo, only in the optimistic case and in 2D
                 if covariance_cfg['save_cov_dat'] and ell_max_WL == 5000:
+                    assert 1 > 2, 'not implemented yet'
                     path_vinc_fmt = f'{job_path}/output/covmat/vincenzos_format'
                     for probe, probe_vinc in zip(['WL', 'GC', '3x2pt', 'WA'], ['WLO', 'GCO', '3x2pt', 'WLA']):
                         for GOGS_folder, GOGS_filename in zip(['GaussOnly', 'GaussSSC'], ['GO', 'GS']):
@@ -357,7 +360,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                 # check for Stefano
                 if covariance_cfg['save_cov_6D']:
-                    print('GHOST CODE BELOW')
+                    warnings.warn('old checks below, you could probably discard...')
                     npairs = (zbins * (zbins + 1)) // 2
                     cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GO_6D'], nbl_WL, npairs, ind[:npairs, :])
                     cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GO_6D'], nbl_GC, npairs, ind[:npairs, :])
@@ -376,7 +379,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
                         for which_cov in ['GO', 'GS']:
                             np.savetxt(f'{FM_cfg["FM_output_folder"]}/'
-                                       f'FM_{probe}_{which_cov}_lmax{ell_max}_nbl{nbl}_zbins{zbins:02}_{EP_or_ED}_{Rl_str}.txt',
+                                       f'FM_{probe}_{which_cov}_lmax{ell_max}_nbl{nbl}_zbins{EP_or_ED}{zbins:02}{Rl_str}.txt',
                                        FM_dict[f'FM_{probe}_{which_cov}'])
 
                 if FM_cfg['save_FM_as_dict']:

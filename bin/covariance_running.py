@@ -327,20 +327,20 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
 
     ############################### 4D to 2D ##################################
     # Here an ordering convention ('block_index') is needed as well
-    cov_WL_GO_2D = mm.cov_4D_to_2D(cov_WL_GO_4D, nbl_WL, zpairs_auto, block_index=block_index)
-    cov_GC_GO_2D = mm.cov_4D_to_2D(cov_GC_GO_4D, nbl_GC, zpairs_auto, block_index=block_index)
-    cov_WA_GO_2D = mm.cov_4D_to_2D(cov_WA_GO_4D, nbl_WA, zpairs_auto, block_index=block_index)
-    cov_3x2pt_GO_2D = mm.cov_4D_to_2D(cov_3x2pt_GO_4D, nbl_3x2pt, zpairs_3x2pt, block_index=block_index)
+    cov_WL_GO_2D = mm.cov_4D_to_2D(cov_WL_GO_4D, block_index=block_index)
+    cov_GC_GO_2D = mm.cov_4D_to_2D(cov_GC_GO_4D, block_index=block_index)
+    cov_WA_GO_2D = mm.cov_4D_to_2D(cov_WA_GO_4D, block_index=block_index)
+    cov_3x2pt_GO_2D = mm.cov_4D_to_2D(cov_3x2pt_GO_4D, block_index=block_index)
 
-    cov_WL_GS_2D = mm.cov_4D_to_2D(cov_WL_GS_4D, nbl_WL, zpairs_auto, block_index=block_index)
-    cov_GC_GS_2D = mm.cov_4D_to_2D(cov_GC_GS_4D, nbl_GC, zpairs_auto, block_index=block_index)
-    cov_WA_GS_2D = mm.cov_4D_to_2D(cov_WA_GS_4D, nbl_WA, zpairs_auto, block_index=block_index)
-    cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, nbl_3x2pt, zpairs_3x2pt, block_index=block_index)
+    cov_WL_GS_2D = mm.cov_4D_to_2D(cov_WL_GS_4D, block_index=block_index)
+    cov_GC_GS_2D = mm.cov_4D_to_2D(cov_GC_GS_4D, block_index=block_index)
+    cov_WA_GS_2D = mm.cov_4D_to_2D(cov_WA_GS_4D, block_index=block_index)
+    cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, block_index=block_index)
 
-    cov_WL_SS_2D = mm.cov_4D_to_2D(cov_WL_SS_4D, nbl_WL, zpairs_auto, block_index=block_index)
-    cov_GC_SS_2D = mm.cov_4D_to_2D(cov_GC_SS_4D, nbl_GC, zpairs_auto, block_index=block_index)
-    cov_WA_SS_2D = mm.cov_4D_to_2D(cov_WA_SS_4D, nbl_WA, zpairs_auto, block_index=block_index)
-    cov_3x2pt_SS_2D = mm.cov_4D_to_2D(cov_3x2pt_SS_4D, nbl_3x2pt, zpairs_3x2pt, block_index=block_index)
+    cov_WL_SS_2D = mm.cov_4D_to_2D(cov_WL_SS_4D, block_index=block_index)
+    cov_GC_SS_2D = mm.cov_4D_to_2D(cov_GC_SS_4D, block_index=block_index)
+    cov_WA_SS_2D = mm.cov_4D_to_2D(cov_WA_SS_4D, block_index=block_index)
+    cov_3x2pt_SS_2D = mm.cov_4D_to_2D(cov_3x2pt_SS_4D, block_index=block_index)
 
     ############################### save in dictionary  ########################
     probe_names = ('WL', 'GC', '3x2pt', 'WA')

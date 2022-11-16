@@ -135,7 +135,6 @@ def preprocess_wf(wf, zbins):
 
 
 def compute_Sijkl(cosmo_params_dict, z_arr, windows, windows_normalization, zbins=None, EP_or_ED=None, Sijkl_cfg=None):
-
     if windows_normalization == 'PySSC':
         convention = 0
     elif windows_normalization == 'IST':
@@ -147,6 +146,7 @@ def compute_Sijkl(cosmo_params_dict, z_arr, windows, windows_normalization, zbin
         warnings.warn("the imports filepath should be specified outside this function/module!", DeprecationWarning)
         z_arr, windows = load_WF(Sijkl_cfg, zbins, EP_or_ED=EP_or_ED)
 
+    print('Computing the Sijkl matrix...')
     start = time.perf_counter()
     Sijkl_arr = Sijkl(z_arr=z_arr, windows=windows, cosmo_params=cosmo_params_dict, convention=convention,
                       precision=10, tol=1e-3)

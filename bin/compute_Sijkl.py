@@ -83,10 +83,6 @@ def load_WF(Sijkl_cfg, zbins, EP_or_ED):
             wil = np.genfromtxt(f'{wf_input_folder}/WiWL-{EP_or_ED}{zbins:02}-FS2.dat')
             wig = np.genfromtxt(f'{wf_input_folder}/WiGC-{EP_or_ED}{zbins:02}-FS2.dat')
 
-        elif 'SPV3_07_2022/Flagship_2' in wf_input_folder:
-            assert WF_normalization == 'IST', 'WF_normalization must be IST for Vincenzo SPV3_07_2022/Flagship_2 WFs'
-            wil = np.genfromtxt(f'{wf_input_folder}/WiWL-{EP_or_ED}{zbins:02}-FS2.dat')
-            wig = np.genfromtxt(f'{wf_input_folder}/WiGC-{EP_or_ED}{zbins:02}-FS2.dat')
 
         else:
             raise ValueError('input_WF must be either davide, sylvain, marco, vincenzo_SPV3, vincenzo or luca')

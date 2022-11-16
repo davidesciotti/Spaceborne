@@ -134,18 +134,24 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                         'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
 
                 # ! import datavectors (cl) and response functions (rl)
-                common_settings = (EP_or_ED, zbins, magcut_lens, zcut_lens, magcut_source, zcut_source)
+                # this is just to make the .format() more compact
+                common_settings = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
+                                   'magcut_lens': magcut_lens, 'zcut_lens': zcut_lens,
+                                   'magcut_source': magcut_source, 'zcut_source': zcut_source}
+
                 cl_fld = general_cfg['cl_folder']
-                cl_ll_1d = np.genfromtxt(f"{cl_fld}/{general_cfg['cl_filename'].format('WLO', *common_settings)}")
-                cl_gg_1d = np.genfromtxt(f"{cl_fld}/{general_cfg['cl_filename'].format('GCO', *common_settings)}")
-                cl_wa_1d = np.genfromtxt(f"{cl_fld}/{general_cfg['cl_filename'].format('WLA', *common_settings)}")
-                cl_3x2pt_1d = np.genfromtxt(f"{cl_fld}/{general_cfg['cl_filename'].format('3x2pt', *common_settings)}")
+                cl_filename = general_cfg['cl_filename']
+                cl_ll_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLO', **common_settings)}")
+                cl_gg_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='GCO', **common_settings)}")
+                cl_wa_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLA', **common_settings)}")
+                cl_3x2pt_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='3x2pt', **common_settings)}")
 
                 rl_fld = general_cfg['rl_folder']
-                rl_ll_1d = np.genfromtxt(f"{rl_fld}/{general_cfg['rl_filename'].format('WLO', *common_settings)}")
-                rl_gg_1d = np.genfromtxt(f"{rl_fld}/{general_cfg['rl_filename'].format('GCO', *common_settings)}")
-                rl_wa_1d = np.genfromtxt(f"{rl_fld}/{general_cfg['rl_filename'].format('WLA', *common_settings)}")
-                rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{general_cfg['rl_filename'].format('3x2pt', *common_settings)}")
+                rl_filename = general_cfg['rl_filename']
+                rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', **common_settings)}")
+                rl_gg_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='GCO', **common_settings)}")
+                rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **common_settings)}")
+                rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **common_settings)}")
 
                 # ! reshape to 3 dimensions
                 cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
@@ -208,10 +214,13 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                 # ! compute or load Sijkl
                 # get number of z points in nz to name the sijkl file
-                common_settings = (EP_or_ED, zbins, magcut_source, zcut_source)
-                wil = np.genfromtxt(f'{Sijkl_cfg["wf_input_folder"]}/{Sijkl_cfg["wf_input_filename"].format("WiWL", *common_settings)}')
+                common_settings = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
+                                   'magcut_source': magcut_source, 'zcut_source': zcut_source}
+                wil = np.genfromtxt(
+                    f'{Sijkl_cfg["wf_input_folder"]}/{Sijkl_cfg["wf_input_filename"].format("WiWL", EP_or_ED, zbins,magcut_source, zcut_source)}')
+                wil = np.genfromtxt(
+                    f'{Sijkl_cfg["wf_input_folder"]}/{Sijkl_cfg["wf_input_filename"].format(which_WF="WiWL", **common_settings)}')
                 # preprocess_wf(wf, zbins)wf_input_folder
-                
 
                 z_arr, _ = Sijkl_utils.load_WF(Sijkl_cfg, zbins, EP_or_ED)
                 nz = z_arr.shape[0]
@@ -231,7 +240,9 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                 # ! compute covariance matrix
                 if covariance_cfg['compute_covmat']:
-                    ng_filename = f'{covariance_cfg["ng_filename"].format(EP_or_ED, zbins, zcut_source, zmax, magcut_source)}'
+                    ng_filename_kwargs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'zcut_source': zcut_source,
+                                          'zmax': zmax, 'magcut_source': magcut_source}
+                    ng_filename = f'{covariance_cfg["ng_filename"].format(**ng_filename_kwargs)}'
                     covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[0, :]
                     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)

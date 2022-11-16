@@ -41,8 +41,8 @@ general_config = {
     'BNT_matrix_filename': f'BNT_matrix_csv_version.txt',
     'cl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/DataVectors/magcut_zcut',
     'rl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/ResFunTabs/magcut_zcut',
-    'cl_filename': 'dv-{:s}-{:s}{:02d}-ML{:03d}-ZL{:02d}-MS{:03d}-ZS{:02d}.dat',
-    'rl_filename': 'rf-{:s}-{:s}{:02d}-ML{:03d}-ZL{:02d}-MS{:03d}-ZS{:02d}.dat',
+    'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
+    'rl_filename': 'rf-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'magcut_lens_list': (230, 235, 240, 245, 250),
     'magcut_source_list': (245,),
     'zcut_lens_list': (0, 2),
@@ -67,7 +67,7 @@ covariance_config = {
     'which_probe_response': 'variable',
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
     'ng_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/InputNz/magcut_zcut',
-    'ng_filename': 'ngbsTab-{:s}{:02d}-zedMin{:02d}-zedMax{:02d}-mag{:03d}.dat',
+    'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'compute_covmat': True,
     'save_cov_2D': False,
@@ -81,7 +81,8 @@ covariance_config = {
 
 Sijkl_config = {
     'wf_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/KernelFun/magcut_zcut',
-    'wf_input_filename': '{:s}-{:s}{:02d}-MS{:03d}-ZS{:02d}.dat',  # e.g. WiGC-ED13-MS240-ZS02.dat
+    'wf_input_filename': '{which_WF:s}-{EP_or_ED:s}{zbins:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
+    # e.g. WiGC-ED13-MS240-ZS02.dat
     'sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/sijkl',
     # this is also an input folder, once the sijkl are computed
     'WF_suffix': f'FS{flagship_version}',

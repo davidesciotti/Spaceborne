@@ -249,8 +249,6 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
                     Sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
                 else:
-
-                    # now compute (and save) Sijkl
                     Sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
                                                       Sijkl_cfg['WF_normalization'])
                     np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)

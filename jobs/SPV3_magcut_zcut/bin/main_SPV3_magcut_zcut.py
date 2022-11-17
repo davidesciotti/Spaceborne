@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 import pandas as pd
+import os
 import warnings
 
 project_path = Path.cwd().parent.parent.parent
@@ -91,9 +92,11 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                 assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
 
-                ind = np.genfromtxt(f'{project_path}/input/ind_files/variable_zbins/'
-                                    f'{covariance_cfg["ind_ordering"]}_like/'
-                                    f'indici_{covariance_cfg["ind_ordering"]}_like_zbins{zbins}.dat', dtype=int)
+                # import the ind files and store it into the covariance dictionary
+                ind_folder = covariance_cfg['ind_folder']
+                ind_filename = covariance_cfg['ind_filename'].format(ind_ordering=covariance_cfg['ind_ordering'],
+                                                                     zbins=zbins)
+                ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
                 covariance_cfg['ind'] = ind
 
                 assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \
@@ -215,13 +218,11 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     'R_WA_3D': rl_wa_3d,
                     'R_3x2pt_5D': rl_3x2pt_5d}
 
-                # ! compute or load Sijkl
-                # import wf
+                # ! load kernels
                 WF_fld = Sijkl_cfg["wf_input_folder"]
                 WF_filename = Sijkl_cfg["wf_input_filename"]
                 wf_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
                             'magcut_source': magcut_source, 'zcut_source': zcut_source}
-
                 wil = np.genfromtxt(f'{WF_fld}/{WF_filename.format(which_WF="WiWL", **wf_specs)}')
                 wig = np.genfromtxt(f'{WF_fld}/{WF_filename.format(which_WF="WiGC", **wf_specs)}')
 
@@ -233,26 +234,24 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 # transpose and stack, ordering is important here!
                 transp_stacked_wf = np.vstack((wil.T, wig.T))
 
-                # compute or load Sijkl
-                # get number of z points in nz to name the Sijkl file
-                nz = z_arr.shape[0]
-
+                # ! compute or load Sijkl
+                nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
                 Sijkl_folder = Sijkl_cfg['Sijkl_folder']
                 Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(flagship_version=general_cfg['flagship_version'],
                                                                     nz=nz, EP_or_ED=EP_or_ED, zbins=zbins,
                                                                     IA_flag=Sijkl_cfg['IA_flag'],
                                                                     magcut_source=magcut_source,
                                                                     zcut_source=zcut_source)
-
-                if Sijkl_cfg['use_precomputed_sijkl']:
+                # if Sijkl exists, load it; otherwise, compute it and save it
+                if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
+                    print(f'Sijkl matrix already exists in {Sijkl_folder}; loading it')
                     Sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
                 else:
                     Sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
                                                       Sijkl_cfg['WF_normalization'])
+                    np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
 
-                    # the indentation is correct, I don't want to re-save the precomputed Sijkl arrays
-                    if Sijkl_cfg['save_Sijkl']:
-                        np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
+
 
                 # ! compute covariance matrix
                 if covariance_cfg['compute_covmat']:
@@ -332,13 +331,19 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                             for which_cov, Rl_str in zip(which_cov_list, Rl_str_list):
                                 for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
-                                    covmat_filename = f'covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}{Rl_str}_{ndim}D.npy'
+                                    covmat_filename = f'covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_' \
+                                                      f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
+                                                      f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                                      f'ZS{zcut_source:02d}{Rl_str}_{ndim}D.npy'
                                     np.save(f'{covmat_path}/{covmat_filename}',
                                             cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])
 
                                 # in this case, 3x2pt is saved in 10D as a dictionary
                                 if ndim == 6:
-                                    covmat_filename = f'{covmat_path}/covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_nbl{nbl_3x2pt}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}{Rl_str}_10D.pickle'
+                                    covmat_filename = f'{covmat_path}/covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_' \
+                                                      f'nbl{nbl_3x2pt}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
+                                                      f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                                      f'ZS{zcut_source:02d}{Rl_str}_10D.pickle'
                                     with open(covmat_filename, 'wb') as handle:
                                         pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
 
@@ -350,7 +355,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                 # save in .dat for Vincenzo, only in the optimistic case and in 2D
                 if covariance_cfg['save_cov_dat'] and ell_max_WL == 5000:
-                    assert 1 > 2, 'not implemented yet'
+                    raise NotImplementedError('not implemented yet')
                     path_vinc_fmt = f'{job_path}/output/covmat/vincenzos_format'
                     for probe, probe_vinc in zip(['WL', 'GC', '3x2pt', 'WA'], ['WLO', 'GCO', '3x2pt', 'WLA']):
                         for GOGS_folder, GOGS_filename in zip(['GaussOnly', 'GaussSSC'], ['GO', 'GS']):

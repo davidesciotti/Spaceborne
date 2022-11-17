@@ -42,7 +42,8 @@ general_config = {
     'rl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/ResFunTabs/magcut_zcut',
     'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'rl_filename': 'rf-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    'magcut_lens_list': (230, 235, 240, 245, 250),
+    # 'magcut_lens_list': (230, 235, 240, 245, 250),
+    'magcut_lens_list': (240, 245, 250),
     'magcut_source_list': (245,),
     'zcut_lens_list': (0, 2),
     'zcut_source_list': (0, 2),
@@ -58,6 +59,8 @@ if general_config['ell_max_WL'] == general_config['ell_max_GC']:
     general_config['use_WA'] = False
 
 covariance_config = {
+    'ind_folder': f'{project_path.parent}/common_data/ind_files/variable_zbins/{ind_ordering}_like',
+    'ind_filename': 'indices_{ind_ordering:s}_like_zbins{zbins:02d}.dat',
     'ind_ordering': ind_ordering,
     'GL_or_LG': GL_or_LG,
     'fsky': fsky,  # ! new
@@ -70,7 +73,7 @@ covariance_config = {
     'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'compute_covmat': True,
-    'save_cov_2D': True,
+    'save_cov_2D': False,
     'save_cov_4D': False,
     'save_cov_6D': True,  # or 10D for the 3x2pt
     'save_cov_SS': False,
@@ -82,15 +85,13 @@ covariance_config = {
 Sijkl_config = {
     'wf_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/KernelFun/magcut_zcut',
     'wf_input_filename': '{which_WF:s}-{EP_or_ED:s}{zbins:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    # e.g. WiGC-ED13-MS240-ZS02.dat
     # Sijkl_folder is the output folder for the sijkl computation and the input folder, once the sijkl are computed
     'Sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/sijkl',
     'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}'
                       '_MS{magcut_source:02d}-ZS{zcut_source:02d}.npy',
     'WF_normalization': 'IST',
     'IA_flag': True,  # whether to include IA in the WF used to compute Sijkl
-    'use_precomputed_sijkl': False,
-    'save_Sijkl': True,
+    'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
 
 FM_config = {

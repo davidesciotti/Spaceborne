@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import os
 import warnings
+import scipy.sparse as spar
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
@@ -251,8 +252,6 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                                                       Sijkl_cfg['WF_normalization'])
                     np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
 
-
-
                 # ! compute covariance matrix
                 if covariance_cfg['compute_covmat']:
                     ng_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'zcut_source': zcut_source,
@@ -266,7 +265,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 if FM_cfg['compute_FM']:
                     FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict)
 
-                # ! save:
+                # ! save cls and responses:
                 # this is just to set the correct probe names
                 probe_dav_dict = {
                     'WL': 'LL_WLonly_3D',
@@ -284,16 +283,14 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     'rl_dict_key': 'R',
                 }
                 for cl_or_rl in ['cl', 'rl']:
-                    folder = general_cfg[f'{cl_or_rl}_folder']
                     if general_cfg[f'save_{cl_or_rl}s_3d']:
 
                         for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
                             # save cl and/or response; not very readable but it works, plus all the cases are in the for loop
 
                             filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
-                            filename = general_cfg[f'{cl_or_rl}_filename'].format(probe=probe_vinc,
-                                                                                  **clrl_specs).replace(".dat",
-                                                                                                        "_3D.npy")
+                            filename = general_cfg[f'{cl_or_rl}_filename'].format(probe=probe_vinc, **clrl_specs
+                                                                                  ).replace(".dat", "_3D.npy")
                             file = clrl_dict[f"{cl_or_rl}_dict_3D"][
                                 f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}']
                             np.save(f'{filepath}/{filename}', file)
@@ -304,6 +301,16 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                                 ells_filename = f'ell_{probe_dav}_ellmaxWL{ell_max_WL}'
                                 np.savetxt(f'{filepath}/{ells_filename}.txt', 10 ** ell_dict[f'ell_{probe_dav}'])
                                 np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])
+
+                # ! save covariance:
+                if covariance_cfg['cov_file_format'] == 'npy':
+                    save_funct = np.save
+                    extension = 'npy'
+                elif covariance_cfg['cov_file_format'] == 'npz':
+                    save_funct = np.savez_compressed
+                    extension = 'npz'
+                else:
+                    raise ValueError('cov_file_format not recognized: must be "npy" or "npz"')
 
                 covmat_path = f'{covariance_cfg["cov_folder"]}/zbins{zbins:02}'
                 for ndim in (2, 4, 6):
@@ -334,9 +341,10 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                                     covmat_filename = f'covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_' \
                                                       f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
                                                       f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                                      f'ZS{zcut_source:02d}{Rl_str}_{ndim}D.npy'
-                                    np.save(f'{covmat_path}/{covmat_filename}',
-                                            cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])
+                                                      f'ZS{zcut_source:02d}{Rl_str}_{ndim}D.{extension}'
+                                    # save
+                                    save_funct(f'{covmat_path}/{covmat_filename}',
+                                               cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])
 
                                 # in this case, 3x2pt is saved in 10D as a dictionary
                                 if ndim == 6:
@@ -376,6 +384,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     assert np.allclose(cov_WL_GS_4D, cov_dict[f'cov_WL_GS_4D'], rtol=1e-9, atol=0)
                     assert np.allclose(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D'], rtol=1e-9, atol=0)
 
+                # ! save FM
                 if FM_cfg['save_FM']:
                     probe_list = ['WL', 'GC', '3x2pt', 'WA']
                     ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]

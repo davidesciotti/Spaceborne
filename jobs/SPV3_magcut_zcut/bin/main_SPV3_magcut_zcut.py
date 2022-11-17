@@ -219,7 +219,9 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     'R_WA_3D': rl_wa_3d,
                     'R_3x2pt_5D': rl_3x2pt_5d}
 
+                # ! compute or load Sijkl
                 # ! load kernels
+                # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
                 WF_fld = Sijkl_cfg["wf_input_folder"]
                 WF_filename = Sijkl_cfg["wf_input_filename"]
                 wf_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
@@ -235,7 +237,6 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 # transpose and stack, ordering is important here!
                 transp_stacked_wf = np.vstack((wil.T, wig.T))
 
-                # ! compute or load Sijkl
                 nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
                 Sijkl_folder = Sijkl_cfg['Sijkl_folder']
                 Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(flagship_version=general_cfg['flagship_version'],
@@ -245,9 +246,11 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                                                                     zcut_source=zcut_source)
                 # if Sijkl exists, load it; otherwise, compute it and save it
                 if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
-                    print(f'Sijkl matrix already exists in {Sijkl_folder}; loading it')
+                    print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
                     Sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
                 else:
+
+                    # now compute (and save) Sijkl
                     Sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
                                                       Sijkl_cfg['WF_normalization'])
                     np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)

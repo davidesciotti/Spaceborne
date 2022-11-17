@@ -42,8 +42,8 @@ general_config = {
     'rl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/ResFunTabs/magcut_zcut',
     'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'rl_filename': 'rf-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    # 'magcut_lens_list': (230, 235, 240, 245, 250),
-    'magcut_lens_list': (240, 245, 250),
+    'magcut_lens_list': (230, 235, 240, 245, 250),
+    # 'magcut_lens_list': (240, 245, 250),
     'magcut_source_list': (245,),
     'zcut_lens_list': (0, 2),
     'zcut_source_list': (0, 2),
@@ -80,7 +80,8 @@ covariance_config = {
     'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
-    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/covmat',
+    # 'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/covmat',
+    'cov_folder': f'/Volumes/4TB/covmat_cuts',
 }
 
 Sijkl_config = {

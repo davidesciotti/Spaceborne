@@ -270,21 +270,16 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                 # ! save cls and responses:
                 # this is just to set the correct probe names
-                probe_dav_dict = {
-                    'WL': 'LL_WLonly_3D',
-                    'GC': 'GG_3D',
-                    'WA': 'WA_3D',
-                    '3x2pt': '3x2pt_5D'}
+                probe_dav_dict = {'WL': 'LL_WLonly_3D', 'GC': 'GG_3D', 'WA': 'WA_3D', '3x2pt': '3x2pt_5D'}
 
                 # just a dict for the output file names
-                clrl_dict = {
-                    'cl_dict_3D': cl_dict_3D,
-                    'rl_dict_3D': rl_dict_3D,
-                    'cl_inputname': 'dv',
-                    'rl_inputname': 'rf',
-                    'cl_dict_key': 'C',
-                    'rl_dict_key': 'R',
-                }
+                clrl_dict = {'cl_dict_3D': cl_dict_3D,
+                             'rl_dict_3D': rl_dict_3D,
+                             'cl_inputname': 'dv',
+                             'rl_inputname': 'rf',
+                             'cl_dict_key': 'C',
+                             'rl_dict_key': 'R',
+                             }
                 for cl_or_rl in ['cl', 'rl']:
                     if general_cfg[f'save_{cl_or_rl}s_3d']:
 
@@ -300,7 +295,8 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                             # save ells and deltas
                             if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
-                                filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
+                                filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/' \
+                                           f'3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
                                 ells_filename = f'ell_{probe_dav}_ellmaxWL{ell_max_WL}'
                                 np.savetxt(f'{filepath}/{ells_filename}.txt', 10 ** ell_dict[f'ell_{probe_dav}'])
                                 np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])
@@ -361,7 +357,10 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                         # in the pessimistic case, save only WA
                         elif ell_max_WL == 1500:
                             for which_cov, Rl_str in zip(['GO', 'GS'], ['', f'_Rl{which_probe_response_str}']):
-                                covmat_filename = f'covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}{Rl_str}_{ndim}D.npy'
+                                covmat_filename = f'covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_' \
+                                                  f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
+                                                  f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                                  f'ZS{zcut_source:02d}{Rl_str}_{ndim}D.npy'
                                 np.save(f'{covmat_path}/{covmat_filename}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
 
                 # save in .dat for Vincenzo, only in the optimistic case and in 2D

@@ -43,7 +43,6 @@ general_config = {
     'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'rl_filename': 'rf-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'magcut_lens_list': (230, 235, 240, 245, 250),
-    # 'magcut_lens_list': (240, 245, 250),
     'magcut_source_list': (245,),
     'zcut_lens_list': (0, 2),
     'zcut_source_list': (0, 2),

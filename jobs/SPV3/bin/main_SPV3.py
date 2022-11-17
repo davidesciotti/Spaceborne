@@ -360,6 +360,7 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 assert np.allclose(cov_WL_GS_4D, cov_dict[f'cov_WL_GS_4D'], rtol=1e-9, atol=0)
                 assert np.allclose(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D'], rtol=1e-9, atol=0)
 
+            # ! save FM
             if FM_cfg['save_FM']:
                 probe_list = ['WL', 'GC', '3x2pt', 'WA']
                 ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]

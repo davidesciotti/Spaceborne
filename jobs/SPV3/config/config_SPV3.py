@@ -43,12 +43,17 @@ general_config = {
     'BNT_matrix_filename': f'BNT_matrix_csv_version.txt',
     'cl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/DataVectors',
     'rl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/ResFunTabs',
+    'cl_filename': 'dv-{probe_vinc:s}-{nbl_WL_opt:02d}-{specs:s}-{EP_or_ED:s}{zbins:02d}',
+    'rl_filename': 'rf-{probe_vinc:s}-{nbl_WL_opt:02d}-{specs:s}-{EP_or_ED:s}{zbins:02d}',
+    'flagship_version': flagship_version,
 }
 
 if general_config['ell_max_WL'] == general_config['ell_max_GC']:
     general_config['use_WA'] = False
 
 covariance_config = {
+    'ind_folder': f'{project_path.parent}/common_data/ind_files/variable_zbins/{ind_ordering}_like',
+    'ind_filename': 'indices_{ind_ordering:s}_like_zbins{zbins:02d}.dat',
     'ind_ordering': ind_ordering,
     'GL_or_LG': GL_or_LG,
     'fsky': fsky,  # ! new
@@ -58,8 +63,10 @@ covariance_config = {
     'which_probe_response': 'variable',
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
     'ng_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/InputNz/Lenses/Flagship',
+    'ng_filename': 'ngbTab-{EP_or_ED:s}{zbins:02d}.dat',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'compute_covmat': True,
+    'cov_file_format': 'npz',  # or npy
     'save_cov_2D': False,
     'save_cov_4D': False,
     'save_cov_6D': True,  # or 10D for the 3x2pt
@@ -71,13 +78,13 @@ covariance_config = {
 
 Sijkl_config = {
     'wf_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/KernelFun',
+    'wf_input_filename': '{which_WF:s}-{EP_or_ED:s}{zbins:02d}.dat',
     'Sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/sijkl',
-    # this is also an input folder, once the sijkl are computed
+    'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}.npy',
     'WF_suffix': f'FS{flagship_version}',
     'WF_normalization': 'IST',
-    'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
-    'use_precomputed_sijkl': True,
-    'save_Sijkl': False,
+    'IA_flag': True,  # whether to include IA in the WF used to compute Sijkl
+    'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
 
 FM_config = {

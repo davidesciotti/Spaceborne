@@ -1,6 +1,6 @@
 
 jobs/IST_forecast/output/covmat
-jobs/IST_NL/output/covmat
+
 jobs/PyCCL_forecast/output/covmat
 jobs/SSC_CMBX/output/covmat
 jobs/SSC_comparison/output/covmat
@@ -9,8 +9,11 @@ jobs/SSC_comparison_variable_ellmax/output/covmat
 jobs/SSC_comparison_variable_Rl/output/covmat
 jobs/SPV3/output
 jobs/SPV3_magcut_zcut/output
-jobs/ISTF_new/output
-jobs/IST_L/output/covmat
+jobs/ISTF/output
+jobs/ISTL/output/covmat
+jobs/ISTNL/output/covmat
+jobs/IST_forecast_discardmaybe/output
+jobs/ISTF/output/covmat
 
 
 

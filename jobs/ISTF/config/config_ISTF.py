@@ -51,7 +51,11 @@ if general_config['ell_max_WL'] == general_config['ell_max_GC']:
     general_config['use_WA'] = False
 
 covariance_config = {
-    'ind_ordering': ind_ordering,
+    'ind_folder': f'{project_path.parent}/common_data/ind_files/variable_zbins' + '/{triu_tril:s}_{row_col_wise:s}',
+    'ind_filename': 'indices_{triu_tril:s}_{row_col_wise:s}_zbins{zbins:02d}.dat',
+    'ind_ordering': ind_ordering,  # TODO deprecate this
+    'triu_tril': 'triu',
+    'row_col_wise': 'row-wise',
     'ind_name': 'vincenzo',
     'GL_or_LG': GL_or_LG,
     'fsky': fsky,
@@ -66,10 +70,10 @@ covariance_config = {
     'save_cov_2D': True,
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt
-    'save_cov_SS': True,
+    'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
-    'cov_folder': f'{job_path}/output/covmat',
+    'cov_folder': f'{job_path}/output/covmat' + '/zbins{zbins:02d}' + '/{triu_tril:s}_{row_col_wise:s}',
 }
 
 Sijkl_config = {

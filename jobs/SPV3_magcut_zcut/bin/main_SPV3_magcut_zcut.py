@@ -108,9 +108,8 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
 
                 # import the ind files and store it into the covariance dictionary
-                ind_folder = covariance_cfg['ind_folder']
                 ind_filename = covariance_cfg['ind_filename'].format(zbins=zbins)
-                ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
+                ind = np.genfromtxt(f'{covariance_cfg["ind_folder"]}/{ind_filename}', dtype=int)
                 covariance_cfg['ind'] = ind
 
                 assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \
@@ -322,7 +321,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 else:
                     raise ValueError('cov_file_format not recognized: must be "npy" or "npz"')
 
-                covmat_path = f'{covariance_cfg["cov_folder"]}/zbins{zbins:02}'
+                covmat_path = covariance_cfg["cov_folder"].format(zbins=zbins)
                 for ndim in (2, 4, 6):
                     if covariance_cfg[f'save_cov_{ndim}D']:
 

@@ -151,10 +151,8 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
 
                     # save GO, GS or GO, GS and SS
                     which_cov_list = ['GO', 'GS']
-                    Rl_str_list = ['', f'_Rl{which_probe_response_str}']
                     if covariance_cfg[f'save_cov_SS']:
                         which_cov_list.append('SS')
-                        Rl_str_list.append(f'_Rl{which_probe_response_str}')
 
                     # set probes to save; the ndim == 6 case is different
                     probe_list = ['WL', 'GC', '3x2pt', 'WA']
@@ -169,23 +167,23 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                     # save all covmats in the optimistic case
                     if ell_max_WL == 5000:
 
-                        for which_cov, Rl_str in zip(which_cov_list, Rl_str_list):
+                        for which_cov in which_cov_list:
                             for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
                                 np.save(f'{covmat_path}/'
-                                        f'covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_{ndim}D.npy',
+                                        f'covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_zbins{EP_or_ED}{zbins:02}_{ndim}D.npy',
                                         cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])
 
                             # in this case, 3x2pt is saved in 10D as a dictionary
                             if ndim == 6:
-                                filename = f'{covmat_path}/covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_nbl{nbl_3x2pt}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_10D.pickle'
+                                filename = f'{covmat_path}/covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_nbl{nbl_3x2pt}_zbins{EP_or_ED}{zbins:02}_10D.pickle'
                                 with open(filename, 'wb') as handle:
                                     pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
 
                     # in the pessimistic case, save only WA
                     elif ell_max_WL == 1500:
-                        for which_cov, Rl_str in zip(['GO', 'GS'], ['', f'_Rl{which_probe_response_str}']):
+                        for which_cov in which_cov_list:
                             np.save(
-                                f'{covmat_path}/covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_zbins{zbins:02}_{EP_or_ED}{Rl_str}_{ndim}D.npy',
+                                f'{covmat_path}/covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_zbins{EP_or_ED}{zbins:02}_{ndim}D.npy',
                                 cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
 
             # save in .dat for Vincenzo, only in the optimistic case and in 2D
@@ -216,9 +214,9 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
 
                 for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
-                    for which_cov in ['GO', 'GS']:
+                    for which_cov in which_cov_list:
                         np.savetxt(f'{FM_cfg["FM_output_folder"]}/'
-                                   f'FM_{probe}_{which_cov}_lmax{ell_max}_nbl{nbl}_zbins{zbins:02}_{EP_or_ED}_{Rl_str}.txt',
+                                   f'FM_{probe}_{which_cov}_lmax{ell_max}_nbl{nbl}_zbins{EP_or_ED}{zbins:02}.txt',
                                    FM_dict[f'FM_{probe}_{which_cov}'])
 
             if FM_cfg['save_FM_as_dict']:

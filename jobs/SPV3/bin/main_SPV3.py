@@ -131,20 +131,20 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
 
             # ! import datavectors (cl) and response functions (rl)
             # this is just to make the .format() more compact
-            clrl_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins}
+            clrl_specs = {'nbl_WL_opt': nbl_WL_opt, 'specs': general_cfg['specs'], 'EP_or_ED': EP_or_ED, 'zbins': zbins}
             cl_fld = general_cfg['cl_folder']
             cl_filename = general_cfg['cl_filename']
-            cl_ll_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLO', **clrl_specs)}")
-            cl_gg_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='GCO', **clrl_specs)}")
-            cl_wa_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLA', **clrl_specs)}")
-            cl_3x2pt_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='3x2pt', **clrl_specs)}")
+            cl_ll_1d = np.genfromtxt(f"{cl_fld.format(probe='WLO')}/{cl_filename.format(probe='WLO', **clrl_specs)}")
+            cl_gg_1d = np.genfromtxt(f"{cl_fld.format(probe='GCO')}/{cl_filename.format(probe='GCO', **clrl_specs)}")
+            cl_wa_1d = np.genfromtxt(f"{cl_fld.format(probe='WLA')}/{cl_filename.format(probe='WLA', **clrl_specs)}")
+            cl_3x2pt_1d = np.genfromtxt(f"{cl_fld.format(probe='3x2pt')}/{cl_filename.format(probe='3x2pt', **clrl_specs)}")
 
             rl_fld = general_cfg['rl_folder']
             rl_filename = general_cfg['rl_filename']
-            rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', **clrl_specs)}")
-            rl_gg_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='GCO', **clrl_specs)}")
-            rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **clrl_specs)}")
-            rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **clrl_specs)}")
+            rl_ll_1d = np.genfromtxt(f"{rl_fld.format(probe='WLO')}/{rl_filename.format(probe='WLO', **clrl_specs)}")
+            rl_gg_1d = np.genfromtxt(f"{rl_fld.format(probe='GCO')}/{rl_filename.format(probe='GCO', **clrl_specs)}")
+            rl_wa_1d = np.genfromtxt(f"{rl_fld.format(probe='WLA')}/{rl_filename.format(probe='WLA', **clrl_specs)}")
+            rl_3x2pt_1d = np.genfromtxt(f"{rl_fld.format(probe='3x2pt')}/{rl_filename.format(probe='3x2pt', **clrl_specs)}")
 
             # ! reshape to 3 dimensions
             cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)

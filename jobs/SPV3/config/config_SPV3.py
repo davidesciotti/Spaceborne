@@ -12,20 +12,23 @@ which_forecast = 'SPV3'
 fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
 # ! choose the flagship version and whether you want to compute the BNT transformed cls
-flagship_version = 2
+flagship_version = 1
 BNT_transform = False
 
 if flagship_version == 1:
     assert BNT_transform is False, 'we are applying the BNT only for Flagship_2'
+    cl_filename = 'dv-{probe:s}-{nbl_WL_opt:02d}-{specs:s}-{EP_or_ED:s}{zbins:02d}',
+    rl_filename = 'rf-{probe:s}-{nbl_WL_opt:02d}-{specs:s}-{EP_or_ED:s}{zbins:02d}',
 
 if BNT_transform:
     assert flagship_version == 2, 'we are applying the BNT only for Flagship_2'
+    cl_filename = 'dv-{probe:s}-Opt-{specs:s}-{EP_or_ED:s}{zbins:02d}-FS{flagship_version:s}',
+    rl_filename = 'rf-{probe:s}-Opt-{specs:s}-{EP_or_ED:s}{zbins:02d}-FS{flagship_version:s}',
 
 general_config = {
     'ell_min': 10,
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
     'ell_max_WL': 5000,
-
     'ell_max_GC': 3000,
     'zbins': None,
     'zbins_list': (13,),
@@ -41,10 +44,12 @@ general_config = {
     'cl_BNT_transform': BNT_transform,
     'BNT_matrix_path': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT_matrix',
     'BNT_matrix_filename': f'BNT_matrix_csv_version.txt',
-    'cl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/DataVectors',
-    'rl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/ResFunTabs',
-    'cl_filename': 'dv-{probe_vinc:s}-{nbl_WL_opt:02d}-{specs:s}-{EP_or_ED:s}{zbins:02d}',
-    'rl_filename': 'rf-{probe_vinc:s}-{nbl_WL_opt:02d}-{specs:s}-{EP_or_ED:s}{zbins:02d}',
+    'cl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/DataVectors' + '/{probe:s}',
+    'rl_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/ResFunTabs' + '/{probe:s}',
+    'cl_filename': 'dv-{probe:s}-{nbl_WL_opt:02d}-{specs:s}-{EP_or_ED:s}{zbins:02d}.dat',
+    'rl_filename': 'rf-{probe:s}-{nbl_WL_opt:02d}-{specs:s}-{EP_or_ED:s}{zbins:02d}.dat',
+    # 'cl_filename_FS2': 'dv-{probe:s}-Opt-{specs:s}-{EP_or_ED:s}{zbins:02d}-FS{flagship_version:s}.dat',
+    # 'rl_filename_FS2': 'rf-{probe:s}-Opt-{specs:s}-{EP_or_ED:s}{zbins:02d}-FS{flagship_version:s}.dat',
     'flagship_version': flagship_version,
 }
 
@@ -81,7 +86,6 @@ Sijkl_config = {
     'wf_input_filename': '{which_WF:s}-{EP_or_ED:s}{zbins:02d}.dat',
     'Sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/sijkl',
     'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}.npy',
-    'WF_suffix': f'FS{flagship_version}',
     'WF_normalization': 'IST',
     'IA_flag': True,  # whether to include IA in the WF used to compute Sijkl
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists

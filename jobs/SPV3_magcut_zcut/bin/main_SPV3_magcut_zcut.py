@@ -1,3 +1,4 @@
+import bz2
 import pickle
 import sys
 import time
@@ -11,6 +12,7 @@ import pandas as pd
 import os
 import warnings
 import scipy.sparse as spar
+import _pickle as cPickle
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
@@ -44,6 +46,18 @@ matplotlib.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 start_time = time.perf_counter()
+
+
+def save_compressed_pickle(title, data):
+    with bz2.BZ2File(title + '.pbz2', 'wb') as handle:
+        cPickle.dump(data, handle)
+
+
+def load_compressed_pickle(file):
+    data = bz2.BZ2File(file, 'rb')
+    data = cPickle.load(data)
+    return data
+
 
 # TODO check that the number of ell bins is the same as in the files
 # TODO double check the delta values
@@ -95,8 +109,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                 # import the ind files and store it into the covariance dictionary
                 ind_folder = covariance_cfg['ind_folder']
-                ind_filename = covariance_cfg['ind_filename'].format(ind_ordering=covariance_cfg['ind_ordering'],
-                                                                     zbins=zbins)
+                ind_filename = covariance_cfg['ind_filename'].format(zbins=zbins)
                 ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
                 covariance_cfg['ind'] = ind
 
@@ -315,10 +328,9 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                         # save GO, GS or GO, GS and SS
                         which_cov_list = ['GO', 'GS']
-                        Rl_str_list = ['', f'_Rl{which_probe_response_str}']
+                        which_cov_list = ['GS', ]
                         if covariance_cfg[f'save_cov_SS']:
                             which_cov_list.append('SS')
-                            Rl_str_list.append(f'_Rl{which_probe_response_str}')
 
                         # set probes to save; the ndim == 6 case is different
                         probe_list = ['WL', 'GC', '3x2pt', 'WA']
@@ -333,32 +345,33 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                         # save all covmats in the optimistic case
                         if ell_max_WL == 5000:
 
-                            for which_cov, Rl_str in zip(which_cov_list, Rl_str_list):
+                            for which_cov in which_cov_list:
                                 for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
                                     covmat_filename = f'covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_' \
                                                       f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
                                                       f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                                      f'ZS{zcut_source:02d}{Rl_str}_{ndim}D.{extension}'
-                                    # save
+                                                      f'ZS{zcut_source:02d}_{ndim}D.{extension}'
                                     save_funct(f'{covmat_path}/{covmat_filename}',
                                                cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])
 
                                 # in this case, 3x2pt is saved in 10D as a dictionary
                                 if ndim == 6:
-                                    covmat_filename = f'{covmat_path}/covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_' \
+                                    covmat_filename = f'covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_' \
                                                       f'nbl{nbl_3x2pt}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
                                                       f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                                      f'ZS{zcut_source:02d}{Rl_str}_10D.pickle'
-                                    with open(covmat_filename, 'wb') as handle:
+                                                      f'ZS{zcut_source:02d}_10D'
+                                    start = time.perf_counter()
+                                    with open(f'{covmat_path}/{covmat_filename}', 'wb') as handle:
                                         pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
+                                    print(f'covmat 3x2pt {which_cov} saved in {time.perf_counter() - start:.2f} s')
 
                         # in the pessimistic case, save only WA
                         elif ell_max_WL == 1500:
-                            for which_cov, Rl_str in zip(['GO', 'GS'], ['', f'_Rl{which_probe_response_str}']):
+                            for which_cov in which_cov_list:
                                 covmat_filename = f'covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_' \
                                                   f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
                                                   f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                                  f'ZS{zcut_source:02d}{Rl_str}_{ndim}D.npy'
+                                                  f'ZS{zcut_source:02d}_{ndim}D.npy'
                                 np.save(f'{covmat_path}/{covmat_filename}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
 
                 # save in .dat for Vincenzo, only in the optimistic case and in 2D
@@ -391,9 +404,9 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
 
                     for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
-                        for which_cov in ['GO', 'GS']:
+                        for which_cov in which_cov_list:
                             np.savetxt(f'{FM_cfg["FM_output_folder"]}/'
-                                       f'FM_{probe}_{which_cov}_lmax{ell_max}_nbl{nbl}_zbins{EP_or_ED}{zbins:02}{Rl_str}.txt',
+                                       f'FM_{probe}_{which_cov}_lmax{ell_max}_nbl{nbl}_zbins{EP_or_ED}{zbins:02}.txt',
                                        FM_dict[f'FM_{probe}_{which_cov}'])
 
                 if FM_cfg['save_FM_as_dict']:

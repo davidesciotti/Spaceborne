@@ -67,7 +67,7 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
     else:
         nbl_WA = ell_WA.shape[0]
 
-    nParams_bias = 10
+    nParams_bias = zbins
     nParams_WL = nParams - nParams_bias
 
     npairs, npairs_asimm, npairs_tot = mm.get_pairs(zbins)
@@ -126,12 +126,14 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
             "Also, the imports should be defined in the main or in the config.")
 
     # set parameters names for the different probes
-    params_names_LL = ["Om", "Ob", "wz", "wa", "h", "ns", "s8", "Aia", "eIA", "bIA"]
+    paramnames_cosmo = ["Om", "Ob", "wz", "wa", "h", "ns", "s8"]
+    paramnames_IA = ["Aia", "eIA", "bIA"]
+    paramnames_LL = paramnames_cosmo + paramnames_IA
     # this if-elif is just because the bias parametrers are called "b" in one case and "bL" in the other
     if cl_folder in ["Cij_thesis", "Cij_15gen"]:
-        params_names_XC = params_names_LL + ["b01", "b02", "b03", "b04", "b05", "b06", "b07", "b08", "b09", "b10"]
+        params_names_XC = paramnames_LL + ["b01", "b02", "b03", "b04", "b05", "b06", "b07", "b08", "b09", "b10"]
     elif cl_folder == "Cij_14may":
-        params_names_XC = params_names_LL + ["bL01", "bL02", "bL03", "bL04", "bL05", "bL06", "bL07", "bL08",
+        params_names_XC = paramnames_LL + ["bL01", "bL02", "bL03", "bL04", "bL05", "bL06", "bL07", "bL08",
                                              "bL09", "bL10"]
     params_names_GG = params_names_XC
 
@@ -153,7 +155,7 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
     # WLonly
     dC_WLonly_interpolated_dict = mm.interpolator(probe_code=probe_code_LL,
                                                   dC_interpolated_dict=dC_WLonly_interpolated_dict,
-                                                  dC_dict=dC_dict, params_names=params_names_LL, nbl=nbl,
+                                                  dC_dict=dC_dict, params_names=paramnames_LL, nbl=nbl,
                                                   npairs=npairs, ell_values=ell_WL, suffix=suffix)
     # GConly
     dC_GConly_interpolated_dict = mm.interpolator(probe_code=probe_code_GG,
@@ -163,7 +165,7 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
     # LL for 3x2pt
     dC_3x2pt_interpolated_dict = mm.interpolator(probe_code=probe_code_LL,
                                                  dC_interpolated_dict=dC_3x2pt_interpolated_dict,
-                                                 dC_dict=dC_dict, params_names=params_names_LL, nbl=nbl,
+                                                 dC_dict=dC_dict, params_names=paramnames_LL, nbl=nbl,
                                                  npairs=npairs, ell_values=ell_XC, suffix=suffix)
     # XC for 3x2pt
     dC_3x2pt_interpolated_dict = mm.interpolator(probe_code=probe_code_XC,
@@ -177,16 +179,16 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
                                                  npairs=npairs, ell_values=ell_XC, suffix=suffix)
     # LL for WA
     dC_WA_interpolated_dict = mm.interpolator(probe_code=probe_code_LL, dC_interpolated_dict=dC_WA_interpolated_dict,
-                                              dC_dict=dC_dict, params_names=params_names_LL, nbl=nbl_WA,
+                                              dC_dict=dC_dict, params_names=paramnames_LL, nbl=nbl_WA,
                                               npairs=npairs, ell_values=ell_WA, suffix=suffix)
 
     # fill the dC array using the interpolated dictionary
     # WLonly
-    dC_LL_WLonly = mm.fill_dC_array(params_names=params_names_LL,
+    dC_LL_WLonly = mm.fill_dC_array(params_names=paramnames_LL,
                                     dC_interpolated_dict=dC_WLonly_interpolated_dict,
                                     probe_code=probe_code_LL, dC=dC_LL_WLonly, suffix=suffix)
     # LL for 3x2pt
-    dC_LL = mm.fill_dC_array(params_names=params_names_LL,
+    dC_LL = mm.fill_dC_array(params_names=paramnames_LL,
                              dC_interpolated_dict=dC_3x2pt_interpolated_dict,
                              probe_code=probe_code_LL, dC=dC_LL, suffix=suffix)
     # XC for 3x2pt
@@ -198,7 +200,7 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
                              dC_interpolated_dict=dC_3x2pt_interpolated_dict,
                              probe_code=probe_code_GG, dC=dC_GG, suffix=suffix)
     # LL for WA
-    dC_WA = mm.fill_dC_array(params_names=params_names_LL,
+    dC_WA = mm.fill_dC_array(params_names=paramnames_LL,
                              dC_interpolated_dict=dC_WA_interpolated_dict,
                              probe_code=probe_code_LL, dC=dC_WA, suffix=suffix)
 

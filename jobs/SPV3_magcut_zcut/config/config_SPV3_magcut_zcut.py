@@ -63,10 +63,10 @@ covariance_config = {
     'ind_ordering': ind_ordering,  # TODO deprecate this
     'triu_tril': 'triu',
     'row_col_wise': 'row-wise',
+    'block_index': 'ell',
     'GL_or_LG': GL_or_LG,
     'fsky': fsky,  # ! new
     # 'Rl': 4,
-    'block_index': 'ell',
     # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
     'which_probe_response': 'variable',
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
@@ -97,10 +97,13 @@ Sijkl_config = {
 }
 
 FM_config = {
-    'compute_FM': False,
+    'compute_FM': True,
     'nParams': 20,
     'save_FM': False,
     'save_FM_as_dict': False,
-    'derivatives_folder': None,  # TODO: add the derivatives folder
+    'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}',
+    'derivatives_filename': '/BNT_dDVd{param:s}-{probe:s}-{specs:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
+                            'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
+    'params_order': None,
     'FM_output_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/FM',
 }

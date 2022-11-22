@@ -325,10 +325,9 @@ if bar_plot_cosmo:
     for probe in probes:
         for zbins in zbins_list:
             for pes_opt in ('opt', 'pes'):
-                data = np.asarray(data)
                 plot_utils.bar_plot(data, title, cases, nparams=nparams, param_names_label=pars_labels_TeX,
                                     bar_width=0.12,
-                                    second_axis=True, no_second_axis_bars=1)
+                                    second_axis=False, no_second_axis_bars=1)
 
             plt.savefig(job_path / f'output/plots/{which_comparison}/'
                                    f'bar_plot_{probe}_ellmax{ell_max}_zbins{EP_or_ED}{zbins:02}_Rl{which_Rl}_{which_uncertainty}.png')

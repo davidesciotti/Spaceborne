@@ -282,7 +282,6 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
     else:
         assert zpairs_3x2pt == int(cl_1d.shape[0] / nbl), 'the number of elements in the datavector is incompatible ' \
                                                           'with the number of ell bins for this case/probe'
-
         cl_2d = np.reshape(cl_1d, (nbl, zpairs_3x2pt))
 
         # split into 3 2d datavectors

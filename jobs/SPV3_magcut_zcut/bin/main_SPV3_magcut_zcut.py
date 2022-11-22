@@ -284,22 +284,40 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 # ! compute Fisher Matrix
                 if FM_cfg['compute_FM']:
 
+                    # import derivatives and store them in dictionary
                     derivatives_folder = FM_cfg['derivatives_folder'].format(magcut_lens=magcut_lens,
                                                                              zcut_lens=zcut_lens,
                                                                              magcut_source=magcut_source,
                                                                              zcut_source=zcut_source)
                     dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
-                    print(dC_dict_1D.keys())
 
                     # reshape them (no interpolation needed in this case)
                     dC_dict_WL_3D = {}
+                    dC_dict_GC_3D = {}
+                    dC_dict_WA_3D = {}
+                    dC_dict_3x2pt_3D = {}
                     for key in dC_dict_1D.keys():
                         if 'WLO' in key:
-                            print(key)
-                            dC_dict_WL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WL', nbl=nbl_WL,
-                                                                           zbins=zbins)
+                            dC_dict_WL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WL', nbl=nbl_WL, zbins=zbins)
+                        elif 'GCO' in key:
+                            dC_dict_GC_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='GC', nbl=nbl_GC, zbins=zbins)
+                        elif 'WLA' in key:
+                            dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WA', nbl=nbl_WA, zbins=zbins)
+                        elif '3x2pt' in key:
+                            dC_dict_3x2pt_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='3x2pt', nbl=nbl_3x2pt, zbins=zbins)
+                            print(dC_dict_3x2pt_3D[key].shape)
 
-                        FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict)
+
+                    # store the derivatives in a dictionary (of dictionaries)
+                    FM_cfg['reshaped_derivatives'] = {'WL': dC_dict_WL_3D, 'GC': dC_dict_GC_3D, 'WA': dC_dict_WA_3D, '3x2pt': dC_dict_3x2pt_3D}
+
+                    FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict)
+
+
+
+
+
+
 
                 # ! save cls and responses:
                 # this is just to set the correct probe names

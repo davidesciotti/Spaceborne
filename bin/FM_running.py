@@ -7,6 +7,10 @@ project_path_here = Path.cwd().parent.parent.parent
 sys.path.append(str(project_path_here.parent / 'common_lib'))
 import my_module as mm
 
+print('in FM: project_path_here = ', project_path_here)
+sys.path.append(str(project_path_here / 'bin'))
+import Cl_preprocessing_running as cl_utils
+
 script_name = sys.argv[0]
 start = time.perf_counter()
 
@@ -23,20 +27,16 @@ start = time.perf_counter()
 # and taking nParams instead seems to have ho impact on the final result.
 
 
-def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict):
-    # import settings:
-    nbl = general_config['nbl']
-    ell_max_GC = general_config['ell_max_GC']
-    zbins = general_config['zbins']
-    cl_folder = general_config['cl_folder']
-    use_WA = general_config['use_WA']
+def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict):
 
-    GL_or_LG = covariance_config['GL_or_LG']
-    ind = covariance_config['ind']
-    block_index = covariance_config['block_index']
-
-    save_FM = FM_config['save_FM']
-    nParams = FM_config['nParams']
+    # shorten names
+    nbl = general_cfg['nbl']
+    zbins = general_cfg['zbins']
+    use_WA = general_cfg['use_WA']
+    GL_or_LG = covariance_cfg['GL_or_LG']
+    ind = covariance_cfg['ind']
+    block_index = covariance_cfg['block_index']
+    nparams_tot = FM_cfg['nparams_tot']
 
     # import ell values
     ell_WL = ell_dict['ell_WL']
@@ -46,6 +46,7 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
 
     # set the flattening convention for the derivatives vector, based on the setting used to reduce the covariance
     # matrix' dimensions
+    # TODO review this
     if block_index in ['ell', 'vincenzo', 'C-style']:
         which_flattening = 'C'
     elif block_index in ['ij', 'sylvain', 'F-style']:
@@ -68,7 +69,7 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
         nbl_WA = ell_WA.shape[0]
 
     nParams_bias = zbins
-    nParams_WL = nParams - nParams_bias
+    nParams_WL = nparams_tot - nParams_bias
 
     npairs, npairs_asimm, npairs_tot = mm.get_pairs(zbins)
 
@@ -78,11 +79,11 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
 
     ############################################
     # initialize derivatives arrays
-    dC_LL_WLonly = np.zeros((nbl, npairs, nParams))
-    dC_LL = np.zeros((nbl, npairs, nParams))
-    dC_XC = np.zeros((nbl, npairs_asimm, nParams))
-    dC_GG = np.zeros((nbl, npairs, nParams))
-    dC_WA = np.zeros((nbl_WA, npairs, nParams))
+    dC_LL_WLonly = np.zeros((nbl, npairs, nparams_tot))
+    dC_LL = np.zeros((nbl, npairs, nparams_tot))
+    dC_XC = np.zeros((nbl, npairs_asimm, nparams_tot))
+    dC_GG = np.zeros((nbl, npairs, nparams_tot))
+    dC_WA = np.zeros((nbl_WA, npairs, nparams_tot))
 
     # invert GO covmats
     start1 = time.perf_counter()
@@ -100,45 +101,23 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
     cov_3x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GS_2D'])
     print(f'GO covmats inverted in {(time.perf_counter() - start2):.2f} s')
 
-    # import derivatives: set correct naming conventions for each case
-    if cl_folder in ["Cij_thesis", "Cij_15gen"]:
-        print("attention! I'm taking the derivatives from the GCph folder in the 15gen case")
-        if cl_folder == "Cij_thesis":
-            derivatives_folder = project_path_here.parent / "common_data/vincenzo/thesis_data/Cij_derivatives_tesi"
-        elif cl_folder == "Cij_15gen":
-            derivatives_folder = 'C:/Users/dscio/Documents/Lavoro/Programmi/GCph/data/dCij'
-
-        suffix = "N4TB-GR-eNLA"
-        probe_code_LL = "GG"
-        probe_code_GG = "DD"
-        probe_code_XC = "DG"
-
-    elif cl_folder == "Cij_14may":
-        derivatives_folder = project_path_here.parent / f"common_data/vincenzo/14may/CijDers/EP{zbins}"
-        suffix = "GR-Flat-eNLA-NA"
-        probe_code_LL = "LL"
-        probe_code_GG = "GG"
-        probe_code_XC = "GL"
-
-    else:
-        raise ValueError(
-            "cl_folder should be either 'Cij_thesis', 'Cij_15gen' or 'Cij_14may' - THIS HAS TO BE UPDATED! "
-            "Also, the imports should be defined in the main or in the config.")
 
     # set parameters names for the different probes
     paramnames_cosmo = ["Om", "Ob", "wz", "wa", "h", "ns", "s8"]
     paramnames_IA = ["Aia", "eIA", "bIA"]
+    paramnames_galbias = [f'b{zbin_idx:02d}' for zbin_idx in range(zbins)]
     paramnames_LL = paramnames_cosmo + paramnames_IA
-    # this if-elif is just because the bias parametrers are called "b" in one case and "bL" in the other
-    if cl_folder in ["Cij_thesis", "Cij_15gen"]:
-        params_names_XC = paramnames_LL + ["b01", "b02", "b03", "b04", "b05", "b06", "b07", "b08", "b09", "b10"]
-    elif cl_folder == "Cij_14may":
-        params_names_XC = paramnames_LL + ["bL01", "bL02", "bL03", "bL04", "bL05", "bL06", "bL07", "bL08",
-                                             "bL09", "bL10"]
-    params_names_GG = params_names_XC
+    paramnames_XC = paramnames_cosmo + paramnames_IA + paramnames_galbias
+    paramnames_GG = paramnames_cosmo + paramnames_IA + paramnames_galbias  # the IA entries will be null
 
     # import the derivatives in a dictionary
-    dC_dict = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
+    dC_dict_1D = dict(mm.get_kv_pairs(FM_cfg['derivatives_folder'], "dat"))
+
+    # preprocess them (i.e., unpack like with the datevectors)
+    import matplotlib.pyplot as plt
+    a = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_2/Derivatives/BNT_False/ML230ZL02MS245ZS00/dDVdAia-WLO-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-ED13-ML230-ZL02-MS245-ZS00.dat')
+    a = cl_utils.cl_SPV3_1D_to_3D(a, 'WL', 32, 13)
+    plt.plot(ell_WL, a[:, 0, 0])
 
     ######### INTERPOLATION
     # XXXX dC_ALL_interpolated_dict may be initialized everytime, possible source of error
@@ -160,7 +139,7 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
     # GConly
     dC_GConly_interpolated_dict = mm.interpolator(probe_code=probe_code_GG,
                                                   dC_interpolated_dict=dC_GConly_interpolated_dict,
-                                                  dC_dict=dC_dict, params_names=params_names_GG, nbl=nbl,
+                                                  dC_dict=dC_dict, params_names=paramnames_GG, nbl=nbl,
                                                   npairs=npairs, ell_values=ell_XC, suffix=suffix)
     # LL for 3x2pt
     dC_3x2pt_interpolated_dict = mm.interpolator(probe_code=probe_code_LL,
@@ -170,12 +149,12 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
     # XC for 3x2pt
     dC_3x2pt_interpolated_dict = mm.interpolator(probe_code=probe_code_XC,
                                                  dC_interpolated_dict=dC_3x2pt_interpolated_dict,
-                                                 dC_dict=dC_dict, params_names=params_names_XC, nbl=nbl,
+                                                 dC_dict=dC_dict, params_names=paramnames_XC, nbl=nbl,
                                                  npairs=npairs_asimm, ell_values=ell_XC, suffix=suffix)
     # GG for 3x2pt
     dC_3x2pt_interpolated_dict = mm.interpolator(probe_code=probe_code_GG,
                                                  dC_interpolated_dict=dC_3x2pt_interpolated_dict,
-                                                 dC_dict=dC_dict, params_names=params_names_GG, nbl=nbl,
+                                                 dC_dict=dC_dict, params_names=paramnames_GG, nbl=nbl,
                                                  npairs=npairs, ell_values=ell_XC, suffix=suffix)
     # LL for WA
     dC_WA_interpolated_dict = mm.interpolator(probe_code=probe_code_LL, dC_interpolated_dict=dC_WA_interpolated_dict,
@@ -192,11 +171,11 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
                              dC_interpolated_dict=dC_3x2pt_interpolated_dict,
                              probe_code=probe_code_LL, dC=dC_LL, suffix=suffix)
     # XC for 3x2pt
-    dC_XC = mm.fill_dC_array(params_names=params_names_XC,
+    dC_XC = mm.fill_dC_array(params_names=paramnames_XC,
                              dC_interpolated_dict=dC_3x2pt_interpolated_dict,
                              probe_code=probe_code_XC, dC=dC_XC, suffix=suffix)
     # GG for 3x2pt and GConly
-    dC_GG = mm.fill_dC_array(params_names=params_names_GG,
+    dC_GG = mm.fill_dC_array(params_names=paramnames_GG,
                              dC_interpolated_dict=dC_3x2pt_interpolated_dict,
                              probe_code=probe_code_GG, dC=dC_GG, suffix=suffix)
     # LL for WA
@@ -204,45 +183,45 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
                              dC_interpolated_dict=dC_WA_interpolated_dict,
                              probe_code=probe_code_LL, dC=dC_WA, suffix=suffix)
 
-    # ! reshape dC from (nbl, zpairs, nParams) to (nbl, zbins, zbins, nparams) - i.e., go from '2D' to '3D'
+    # ! reshape dC from (nbl, zpairs, nparams_tot) to (nbl, zbins, zbins, nparams) - i.e., go from '2D' to '3D'
     # (+ 1 "excess" dimension). Note that Vincenzo uses np.triu to reduce the dimensions of the cl arrays,
     # but ind_vincenzo to organize the covariance matrix.
 
-    dC_LL_4D = np.zeros((nbl, zbins, zbins, nParams))
-    dC_GG_4D = np.zeros((nbl, zbins, zbins, nParams))
-    dC_LL_WLonly_4D = np.zeros((nbl, zbins, zbins, nParams))
-    dC_WA_4D = np.zeros((nbl_WA, zbins, zbins, nParams))
+    dC_LL_4D = np.zeros((nbl, zbins, zbins, nparams_tot))
+    dC_GG_4D = np.zeros((nbl, zbins, zbins, nparams_tot))
+    dC_LL_WLonly_4D = np.zeros((nbl, zbins, zbins, nparams_tot))
+    dC_WA_4D = np.zeros((nbl_WA, zbins, zbins, nparams_tot))
 
     # fill symmetric
     triu_idx = np.triu_indices(zbins)
     for ell in range(nbl):
-        for alf in range(nParams):
+        for alf in range(nparams_tot):
             for i in range(npairs):
                 dC_LL_4D[ell, triu_idx[0][i], triu_idx[1][i], alf] = dC_LL[ell, i, alf]
                 dC_GG_4D[ell, triu_idx[0][i], triu_idx[1][i], alf] = dC_GG[ell, i, alf]
                 dC_LL_WLonly_4D[ell, triu_idx[0][i], triu_idx[1][i], alf] = dC_LL_WLonly[ell, i, alf]
     # Wadd
     for ell in range(nbl_WA):
-        for alf in range(nParams):
+        for alf in range(nparams_tot):
             for i in range(npairs):
                 dC_WA_4D[ell, triu_idx[0][i], triu_idx[1][i]] = dC_WA[ell, i]
 
     # symmetrize
-    for alf in range(nParams):
+    for alf in range(nparams_tot):
         dC_LL_4D[:, :, :, alf] = mm.fill_3D_symmetric_array(dC_LL_4D[:, :, :, alf], nbl, zbins)
         dC_GG_4D[:, :, :, alf] = mm.fill_3D_symmetric_array(dC_GG_4D[:, :, :, alf], nbl, zbins)
         dC_WA_4D[:, :, :, alf] = mm.fill_3D_symmetric_array(dC_WA_4D[:, :, :, alf], nbl_WA, zbins)
         dC_LL_WLonly_4D[:, :, :, alf] = mm.fill_3D_symmetric_array(dC_LL_WLonly_4D[:, :, :, alf], nbl, zbins)
 
     # fill asymmetric
-    dC_XC_4D = np.reshape(dC_XC, (nbl, zbins, zbins, nParams))
+    dC_XC_4D = np.reshape(dC_XC, (nbl, zbins, zbins, nparams_tot))
 
     # ! flatten following 'ind' ordering
-    dC_LL_3D = np.zeros((nbl, npairs, nParams))
-    dC_GG_3D = np.zeros((nbl, npairs, nParams))
-    dC_XC_3D = np.zeros((nbl, npairs_asimm, nParams))
-    dC_WA_3D = np.zeros((nbl_WA, npairs, nParams))
-    dC_LL_WLonly_3D = np.zeros((nbl, npairs, nParams))
+    dC_LL_3D = np.zeros((nbl, npairs, nparams_tot))
+    dC_GG_3D = np.zeros((nbl, npairs, nparams_tot))
+    dC_XC_3D = np.zeros((nbl, npairs_asimm, nparams_tot))
+    dC_WA_3D = np.zeros((nbl_WA, npairs, nparams_tot))
+    dC_LL_WLonly_3D = np.zeros((nbl, npairs, nparams_tot))
 
     ind_LL = ind[:55, :]
     ind_GG = ind[:55, :]
@@ -250,14 +229,14 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
 
     # collapse the 2 redshift dimensions: (i,j -> ij)
     for ell in range(nbl):
-        for alf in range(nParams):
+        for alf in range(nparams_tot):
             dC_LL_3D[ell, :, alf] = mm.array_2D_to_1D_ind(dC_LL_4D[ell, :, :, alf], npairs, ind_LL)
             dC_GG_3D[ell, :, alf] = mm.array_2D_to_1D_ind(dC_GG_4D[ell, :, :, alf], npairs, ind_GG)
             dC_XC_3D[ell, :, alf] = mm.array_2D_to_1D_ind(dC_XC_4D[ell, :, :, alf], npairs_asimm, ind_XC)
             dC_LL_WLonly_3D[ell, :, alf] = mm.array_2D_to_1D_ind(dC_LL_WLonly_4D[ell, :, :, alf], npairs, ind_LL)
 
     for ell in range(nbl_WA):
-        for alf in range(nParams):
+        for alf in range(nparams_tot):
             dC_WA_3D[ell, :, alf] = mm.array_2D_to_1D_ind(dC_WA_4D[ell, :, :, alf], npairs, ind_LL)
 
     ######################### FILL DATAVECTOR #####################################
@@ -271,27 +250,27 @@ def compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
     # collapse ell and zpair - ATTENTION: np.reshape, like ndarray.flatten, accepts an 'ordering' parameter, which works
     # in the same way
     # not with the old datavector, which was ordered in a different way...
-    D_WA_2D = np.reshape(D_WA_3D, (nbl_WA * npairs, nParams), order=which_flattening)
-    D_WLonly_2D = np.reshape(D_WLonly_3D, (nbl * npairs, nParams), order=which_flattening)
-    D_GConly_2D = np.reshape(D_GConly_3D, (nbl * npairs, nParams), order=which_flattening)
-    D_3x2pt_2D = np.reshape(D_3x2pt_3D, (nbl * npairs_tot, nParams), order=which_flattening)
+    D_WA_2D = np.reshape(D_WA_3D, (nbl_WA * npairs, nparams_tot), order=which_flattening)
+    D_WLonly_2D = np.reshape(D_WLonly_3D, (nbl * npairs, nparams_tot), order=which_flattening)
+    D_GConly_2D = np.reshape(D_GConly_3D, (nbl * npairs, nparams_tot), order=which_flattening)
+    D_3x2pt_2D = np.reshape(D_3x2pt_3D, (nbl * npairs_tot, nparams_tot), order=which_flattening)
 
     ######################### COMPUTE FM #####################################
 
     # COMPUTE FM GO
     start3 = time.perf_counter()
-    FM_WL_GO = mm.compute_FM_2D(nbl, npairs, nParams, cov_WL_GO_2D_inv, D_WLonly_2D)
-    FM_GC_GO = mm.compute_FM_2D(nbl, npairs, nParams, cov_GC_GO_2D_inv, D_GConly_2D)
-    FM_WA_GO = mm.compute_FM_2D(nbl_WA, npairs, nParams, cov_WA_GO_2D_inv, D_WA_2D)
-    FM_3x2pt_GO = mm.compute_FM_2D(nbl, npairs_tot, nParams, cov_3x2pt_GO_2D_inv, D_3x2pt_2D)
+    FM_WL_GO = mm.compute_FM_2D(nbl, npairs, nparams_tot, cov_WL_GO_2D_inv, D_WLonly_2D)
+    FM_GC_GO = mm.compute_FM_2D(nbl, npairs, nparams_tot, cov_GC_GO_2D_inv, D_GConly_2D)
+    FM_WA_GO = mm.compute_FM_2D(nbl_WA, npairs, nparams_tot, cov_WA_GO_2D_inv, D_WA_2D)
+    FM_3x2pt_GO = mm.compute_FM_2D(nbl, npairs_tot, nparams_tot, cov_3x2pt_GO_2D_inv, D_3x2pt_2D)
     print(f'GO FM done in {(time.perf_counter() - start3):.2f} s')
 
     # COMPUTE FM GS
     start4 = time.perf_counter()
-    FM_WL_GS = mm.compute_FM_2D(nbl, npairs, nParams, cov_WL_GS_2D_inv, D_WLonly_2D)
-    FM_GC_GS = mm.compute_FM_2D(nbl, npairs, nParams, cov_GC_GS_2D_inv, D_GConly_2D)
-    FM_WA_GS = mm.compute_FM_2D(nbl_WA, npairs, nParams, cov_WA_GS_2D_inv, D_WA_2D)
-    FM_3x2pt_GS = mm.compute_FM_2D(nbl, npairs_tot, nParams, cov_3x2pt_GS_2D_inv, D_3x2pt_2D)
+    FM_WL_GS = mm.compute_FM_2D(nbl, npairs, nparams_tot, cov_WL_GS_2D_inv, D_WLonly_2D)
+    FM_GC_GS = mm.compute_FM_2D(nbl, npairs, nparams_tot, cov_GC_GS_2D_inv, D_GConly_2D)
+    FM_WA_GS = mm.compute_FM_2D(nbl_WA, npairs, nparams_tot, cov_WA_GS_2D_inv, D_WA_2D)
+    FM_3x2pt_GS = mm.compute_FM_2D(nbl, npairs_tot, nparams_tot, cov_3x2pt_GS_2D_inv, D_3x2pt_2D)
     print(f'GS FM done in {(time.perf_counter() - start4):.2f} s')
 
     # sum WA, this is the actual FM_3x2pt

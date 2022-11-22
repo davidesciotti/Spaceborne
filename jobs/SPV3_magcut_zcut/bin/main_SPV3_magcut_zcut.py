@@ -68,10 +68,10 @@ def load_compressed_pickle(file):
 #################### PARAMETERS AND SETTINGS DEFINITION #######################
 ###############################################################################
 
-general_cfg = cfg.general_config
-covariance_cfg = cfg.covariance_config
-Sijkl_cfg = cfg.Sijkl_config
-FM_cfg = cfg.FM_config
+general_cfg = cfg.general_cfg
+covariance_cfg = cfg.covariance_cfg
+Sijkl_cfg = cfg.Sijkl_cfg
+FM_cfg = cfg.FM_cfg
 
 which_probe_response = covariance_cfg['which_probe_response']
 # set the string, just for the file names
@@ -104,12 +104,19 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 zcut_source = general_cfg['zcut_source']
                 zcut_lens = general_cfg['zcut_lens']
                 zmax = int(general_cfg['zmax'] * 10)
+                triu_tril = covariance_cfg['triu_tril']
+                row_col_wise = covariance_cfg['row_col_wise']
+
 
                 assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
 
                 # import the ind files and store it into the covariance dictionary
-                ind_filename = covariance_cfg['ind_filename'].format(zbins=zbins)
-                ind = np.genfromtxt(f'{covariance_cfg["ind_folder"]}/{ind_filename}', dtype=int)
+                ind_folder = covariance_cfg['ind_folder'].format(triu_tril=triu_tril,
+                                                                     row_col_wise=row_col_wise)
+                ind_filename = covariance_cfg['ind_filename'].format(triu_tril=triu_tril,
+                                                                     row_col_wise=row_col_wise,
+                                                                     zbins=zbins)
+                ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
                 covariance_cfg['ind'] = ind
 
                 assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \

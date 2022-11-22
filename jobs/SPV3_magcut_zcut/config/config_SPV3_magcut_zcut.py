@@ -20,7 +20,7 @@ assert flagship_version == 2, 'the files for the multicut case are only availabl
 if BNT_transform:
     assert flagship_version == 2, 'we are applying the BNT only for Flagship_2'
 
-general_config = {
+general_cfg = {
     'ell_min': 10,
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
     'ell_max_WL': 5000,
@@ -54,10 +54,10 @@ general_config = {
     'flagship_version': flagship_version,
 }
 
-if general_config['ell_max_WL'] == general_config['ell_max_GC']:
-    general_config['use_WA'] = False
+if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
+    general_cfg['use_WA'] = False
 
-covariance_config = {
+covariance_cfg = {
     'ind_folder': f'{project_path.parent}/common_data/ind_files/variable_zbins' + '/{triu_tril:s}_{row_col_wise:s}',
     'ind_filename': 'indices_{triu_tril:s}_{row_col_wise:s}_zbins{zbins:02d}.dat',
     'ind_ordering': ind_ordering,  # TODO deprecate this
@@ -85,7 +85,7 @@ covariance_config = {
     # 'cov_folder': f'/Volumes/4TB/covmat_cuts',
 }
 
-Sijkl_config = {
+Sijkl_cfg = {
     'wf_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/KernelFun/magcut_zcut',
     'wf_input_filename': '{which_WF:s}-{EP_or_ED:s}{zbins:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'Sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/sijkl',
@@ -96,9 +96,9 @@ Sijkl_config = {
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
 
-FM_config = {
+FM_cfg = {
     'compute_FM': True,
-    'nParams': 20,
+    'nparams_tot': 20,  # total (cosmo + nuisance) number of parameters
     'save_FM': False,
     'save_FM_as_dict': False,
     'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}',

@@ -7,10 +7,6 @@ project_path_here = Path.cwd().parent.parent.parent
 sys.path.append(str(project_path_here.parent / 'common_lib'))
 import my_module as mm
 
-print('in FM: project_path_here = ', project_path_here)
-sys.path.append(str(project_path_here / 'bin'))
-import Cl_preprocessing_running as cl_utils
-
 script_name = sys.argv[0]
 start = time.perf_counter()
 
@@ -28,7 +24,6 @@ start = time.perf_counter()
 
 
 def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict):
-
     # shorten names
     nbl = general_cfg['nbl']
     zbins = general_cfg['zbins']
@@ -101,7 +96,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict):
     cov_3x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GS_2D'])
     print(f'GO covmats inverted in {(time.perf_counter() - start2):.2f} s')
 
-
     # set parameters names for the different probes
     paramnames_cosmo = ["Om", "Ob", "wz", "wa", "h", "ns", "s8"]
     paramnames_IA = ["Aia", "eIA", "bIA"]
@@ -112,12 +106,20 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict):
 
     # import the derivatives in a dictionary
     dC_dict_1D = dict(mm.get_kv_pairs(FM_cfg['derivatives_folder'], "dat"))
+    dC_dict_WL_3D = {}
 
-    # preprocess them (i.e., unpack like with the datevectors)
-    import matplotlib.pyplot as plt
-    a = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_2/Derivatives/BNT_False/ML230ZL02MS245ZS00/dDVdAia-WLO-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-ED13-ML230-ZL02-MS245-ZS00.dat')
-    a = cl_utils.cl_SPV3_1D_to_3D(a, 'WL', 32, 13)
-    plt.plot(ell_WL, a[:, 0, 0])
+    # for key in dC_dict_1D.keys():
+    #     if 'WLO' in key:
+    #         print(key)
+    #         dC_dict_WL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe
+    #         'WL', nbl = nbl_WL, zbins)
+    #
+    # # preprocess them (i.e., unpack like with the datevectors)
+    # import matplotlib.pyplot as plt
+    # a = np.genfromtxt(
+    #     '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_2/Derivatives/BNT_False/ML230ZL02MS245ZS00/dDVdAia-WLO-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-ED13-ML230-ZL02-MS245-ZS00.dat')
+    # a = cl_utils.cl_SPV3_1D_to_3D(a, 'WL', 32, 13)
+    # plt.plot(ell_WL, a[:, 0, 0])
 
     ######### INTERPOLATION
     # XXXX dC_ALL_interpolated_dict may be initialized everytime, possible source of error
@@ -157,7 +159,8 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict):
                                                  dC_dict=dC_dict, params_names=paramnames_GG, nbl=nbl,
                                                  npairs=npairs, ell_values=ell_XC, suffix=suffix)
     # LL for WA
-    dC_WA_interpolated_dict = mm.interpolator(probe_code=probe_code_LL, dC_interpolated_dict=dC_WA_interpolated_dict,
+    dC_WA_interpolated_dict = mm.interpolator(probe_code=probe_code_LL,
+                                              dC_interpolated_dict=dC_WA_interpolated_dict,
                                               dC_dict=dC_dict, params_names=paramnames_LL, nbl=nbl_WA,
                                               npairs=npairs, ell_values=ell_WA, suffix=suffix)
 

@@ -107,12 +107,11 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 triu_tril = covariance_cfg['triu_tril']
                 row_col_wise = covariance_cfg['row_col_wise']
 
-
                 assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
 
                 # import the ind files and store it into the covariance dictionary
                 ind_folder = covariance_cfg['ind_folder'].format(triu_tril=triu_tril,
-                                                                     row_col_wise=row_col_wise)
+                                                                 row_col_wise=row_col_wise)
                 ind_filename = covariance_cfg['ind_filename'].format(triu_tril=triu_tril,
                                                                      row_col_wise=row_col_wise,
                                                                      zbins=zbins)
@@ -241,12 +240,13 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 # ! compute or load Sijkl
                 # ! load kernels
                 # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
-                WF_fld = Sijkl_cfg["wf_input_folder"]
-                WF_filename = Sijkl_cfg["wf_input_filename"]
                 wf_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
-                            'magcut_source': magcut_source, 'zcut_source': zcut_source}
-                wil = np.genfromtxt(f'{WF_fld}/{WF_filename.format(which_WF="WiWL", **wf_specs)}')
-                wig = np.genfromtxt(f'{WF_fld}/{WF_filename.format(which_WF="WiGC", **wf_specs)}')
+                            'magcut_source': magcut_source, 'zcut_source': zcut_source,
+                            'magcut_lens': magcut_lens, 'zcut_lens': zcut_lens}
+                WF_folder = Sijkl_cfg["wf_input_folder"].format(**wf_specs)
+                WF_filename = Sijkl_cfg["wf_input_filename"]
+                wil = np.genfromtxt(f'{WF_folder}/{WF_filename.format(which_WF="WiWL", **wf_specs)}')
+                wig = np.genfromtxt(f'{WF_folder}/{WF_filename.format(which_WF="WiGC", **wf_specs)}')
 
                 # preprocess (remove redshift column)
                 z_arr, wil = Sijkl_utils.preprocess_wf(wil, zbins)
@@ -277,13 +277,29 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     ng_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'zcut_source': zcut_source,
                                 'zmax': zmax, 'magcut_source': magcut_source}
                     ng_filename = f'{covariance_cfg["ng_filename"].format(**ng_specs)}'
-                    covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[:, 1]
+                    covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[:, 1]  # ! first column, in this case
                     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
                 # ! compute Fisher Matrix
                 if FM_cfg['compute_FM']:
-                    FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict)
+
+                    derivatives_folder = FM_cfg['derivatives_folder'].format(magcut_lens=magcut_lens,
+                                                                             zcut_lens=zcut_lens,
+                                                                             magcut_source=magcut_source,
+                                                                             zcut_source=zcut_source)
+                    dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
+                    print(dC_dict_1D.keys())
+
+                    # reshape them (no interpolation needed in this case)
+                    dC_dict_WL_3D = {}
+                    for key in dC_dict_1D.keys():
+                        if 'WLO' in key:
+                            print(key)
+                            dC_dict_WL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WL', nbl=nbl_WL,
+                                                                           zbins=zbins)
+
+                        FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict)
 
                 # ! save cls and responses:
                 # this is just to set the correct probe names
@@ -334,7 +350,6 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                         # save GO, GS or GO, GS and SS
                         which_cov_list = ['GO', 'GS']
-                        which_cov_list = ['GS', ]
                         if covariance_cfg[f'save_cov_SS']:
                             which_cov_list.append('SS')
 

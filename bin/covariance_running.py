@@ -27,7 +27,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     ell_max_WL = general_cfg['ell_max_WL']
     ell_max_GC = general_cfg['ell_max_GC']
     zbins = general_cfg['zbins']
-    nProbes = general_cfg['nProbes']
+    n_probes = general_cfg['n_probes']
     which_forecast = general_cfg['which_forecast']
     EP_or_ED = general_cfg['EP_or_ED']
 
@@ -136,7 +136,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     if general_cfg['EP_or_ED'] == 'ED':
         assert general_cfg['which_forecast'] == 'SPV3', 'data for the ED case is only available for SPV3'
 
-    noise = mm.build_noise(zbins, nProbes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=covariance_cfg['ng'],
+    noise = mm.build_noise(zbins, n_probes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=covariance_cfg['ng'],
                            EP_or_ED=general_cfg['EP_or_ED'])
 
     ################### COMPUTE GAUSS ONLY COVARIANCE #########################

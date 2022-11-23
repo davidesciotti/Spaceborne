@@ -28,7 +28,7 @@ general_cfg = {
     'zbins': 13,
     'zbins_list': None,
     'EP_or_ED': 'ED',
-    'nProbes': 2,
+    'n_probes': 2,
     # 'nbl_WL': 32,
     'nbl_WL_32': 32,
     'which_forecast': which_forecast,
@@ -77,7 +77,7 @@ covariance_cfg = {
     'cov_file_format': 'npz',  # or npy
     'save_cov_2D': False,
     'save_cov_4D': False,
-    'save_cov_6D': True,  # or 10D for the 3x2pt
+    'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE

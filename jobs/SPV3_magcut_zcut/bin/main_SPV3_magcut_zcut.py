@@ -59,6 +59,23 @@ def load_compressed_pickle(file):
     return data
 
 
+# todo move this to my_module
+def dC_dict_to_4D_array(param_names, dC_dict_3D, nbl, zbins, is_3x2pt=False, n_probes=2):
+    # param_names should be params_tot in all cases, because when the derivative dows not exist
+    # in dC_dict_3D the output array will remain null
+    if is_3x2pt:
+        dC_4D = np.zeros((nbl, n_probes, n_probes, zbins, zbins, len(param_names)))
+    else:
+        dC_4D = np.zeros((nbl, zbins, zbins, len(param_names)))
+
+    for idx, paramname in enumerate(param_names):
+        for key, value in dC_dict_3D.items():
+            if f'dDVd{paramname}' in key:
+                print(paramname, key)
+                dC_4D[..., idx] = value
+    return dC_4D
+
+
 # TODO check that the number of ell bins is the same as in the files
 # TODO double check the delta values
 # TODO update consistency_checks
@@ -106,6 +123,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 zmax = int(general_cfg['zmax'] * 10)
                 triu_tril = covariance_cfg['triu_tril']
                 row_col_wise = covariance_cfg['row_col_wise']
+                n_probes = general_cfg['n_probes']
 
                 assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
 
@@ -277,11 +295,12 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     ng_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'zcut_source': zcut_source,
                                 'zmax': zmax, 'magcut_source': magcut_source}
                     ng_filename = f'{covariance_cfg["ng_filename"].format(**ng_specs)}'
-                    covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[:, 1]  # ! first column, in this case
+                    covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[:,
+                                           1]  # ! first column, in this case
                     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
-                # ! compute Fisher Matrix
+                # ! compute Fisher matrix
                 if FM_cfg['compute_FM']:
 
                     # import derivatives and store them in dictionary
@@ -292,36 +311,52 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
 
                     # reshape them (no interpolation needed in this case)
-                    dC_dict_WL_3D = {}
-                    dC_dict_GC_3D = {}
+                    dC_dict_LL_3D = {}
+                    dC_dict_GG_3D = {}
                     dC_dict_WA_3D = {}
-                    dC_dict_3x2pt_3D = {}
+                    dC_dict_3x2pt_5D = {}
                     for key in dC_dict_1D.keys():
                         if 'WLO' in key:
-                            dC_dict_WL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WL', nbl=nbl_WL, zbins=zbins)
+                            dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WL', nbl=nbl_WL,
+                                                                           zbins=zbins)
                         elif 'GCO' in key:
-                            dC_dict_GC_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='GC', nbl=nbl_GC, zbins=zbins)
+                            dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='GC', nbl=nbl_GC,
+                                                                           zbins=zbins)
                         elif 'WLA' in key:
-                            dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WA', nbl=nbl_WA, zbins=zbins)
+                            dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WA', nbl=nbl_WA,
+                                                                           zbins=zbins)
                         elif '3x2pt' in key:
-                            dC_dict_3x2pt_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='3x2pt', nbl=nbl_3x2pt, zbins=zbins)
-                            print(dC_dict_3x2pt_3D[key].shape)
+                            dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='3x2pt',
+                                                                              nbl=nbl_3x2pt, zbins=zbins)
 
+                    # now turn the dict. into npy array
+                    paramnames_cosmo = ["Om", "Ob", "wz", "wa", "h", "ns", "s8"]
+                    paramnames_IA = ["Aia", "eIA", "bIA"]
+                    paramnames_galbias = [f'b{zbin_idx:02d}' for zbin_idx in range(zbins)]
+                    paramnames_LL = paramnames_cosmo + paramnames_IA
+                    paramnames_XC = paramnames_cosmo + paramnames_IA + paramnames_galbias
+                    paramnames_GG = paramnames_XC  # the IA entries will be null
+
+                    dC_LL_4D = dC_dict_to_4D_array(paramnames_XC, dC_dict_LL_3D, nbl_WL, zbins)
+                    dC_GG_4D = dC_dict_to_4D_array(paramnames_XC, dC_dict_GG_3D, nbl_GC, zbins)
+                    dC_WA_4D = dC_dict_to_4D_array(paramnames_XC, dC_dict_WA_3D, nbl_WA, zbins)
+                    dC_3x2pt_5D = dC_dict_to_4D_array(paramnames_XC, dC_dict_3x2pt_5D, nbl_3x2pt, zbins, is_3x2pt=True)
 
                     # store the derivatives in a dictionary (of dictionaries)
-                    FM_cfg['reshaped_derivatives'] = {'WL': dC_dict_WL_3D, 'GC': dC_dict_GC_3D, 'WA': dC_dict_WA_3D, '3x2pt': dC_dict_3x2pt_3D}
+                    deriv_dict = {'dC_LL_4D': dC_LL_4D,
+                                  'dC_GG_4D': dC_GG_4D,
+                                  'dC_WA_4D': dC_WA_4D,
+                                  'dC_3x2pt_5D': dC_3x2pt_5D}
+                    # TODO save 3D derivatives to file
 
-                    FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict)
-
-
-
-
-
-
+                    FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
 
                 # ! save cls and responses:
                 # this is just to set the correct probe names
-                probe_dav_dict = {'WL': 'LL_WLonly_3D', 'GC': 'GG_3D', 'WA': 'WA_3D', '3x2pt': '3x2pt_5D'}
+                probe_dav_dict = {'WL': 'LL_WLonly_3D',
+                                  'GC': 'GG_3D',
+                                  'WA': 'WA_3D',
+                                  '3x2pt': '3x2pt_5D'}
 
                 # just a dict for the output file names
                 clrl_dict = {'cl_dict_3D': cl_dict_3D,
@@ -329,8 +364,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                              'cl_inputname': 'dv',
                              'rl_inputname': 'rf',
                              'cl_dict_key': 'C',
-                             'rl_dict_key': 'R',
-                             }
+                             'rl_dict_key': 'R'}
                 for cl_or_rl in ['cl', 'rl']:
                     if general_cfg[f'save_{cl_or_rl}s_3d']:
 

@@ -99,6 +99,7 @@ Sijkl_cfg = {
 FM_cfg = {
     'compute_FM': True,
     'nparams_tot': 20,  # total (cosmo + nuisance) number of parameters
+    'paramnames_XC': None,  # ! for the time being, these are defined in the main and then passed here
     'save_FM': False,
     'save_FM_as_dict': False,
     'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}/' +

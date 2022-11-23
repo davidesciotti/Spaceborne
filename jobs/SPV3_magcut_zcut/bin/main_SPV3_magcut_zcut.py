@@ -336,6 +336,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     paramnames_LL = paramnames_cosmo + paramnames_IA
                     paramnames_XC = paramnames_cosmo + paramnames_IA + paramnames_galbias
                     paramnames_GG = paramnames_XC  # the IA entries will be null
+                    FM_cfg['paramnames_XC'] = paramnames_XC  # save them to pass to FM_utils module
 
                     dC_LL_4D = dC_dict_to_4D_array(paramnames_XC, dC_dict_LL_3D, nbl_WL, zbins)
                     dC_GG_4D = dC_dict_to_4D_array(paramnames_XC, dC_dict_GG_3D, nbl_GC, zbins)

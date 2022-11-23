@@ -41,6 +41,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     ind = covariance_cfg['ind']
     block_index = covariance_cfg['block_index']
     nparams_tot = FM_cfg['nparams_tot']
+    paramnames_XC = FM_cfg['paramnames_XC']
 
     # import ell values
     ell_WL, nbl_WL = ell_dict['ell_WL'], ell_dict['ell_WL'].shape[0]
@@ -86,21 +87,20 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     ############################################
 
     # invert GO covmats
-    warnings.warn('de-comment these lines')
-    # start1 = time.perf_counter()
-    # cov_WL_GO_2D_inv = np.linalg.inv(cov_dict['cov_WL_GO_2D'])
-    # cov_GC_GO_2D_inv = np.linalg.inv(cov_dict['cov_GC_GO_2D'])
-    # cov_WA_GO_2D_inv = np.linalg.inv(cov_dict['cov_WA_GO_2D'])
-    # cov_3x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GO_2D'])
-    # print(f'GO covmats inverted in {(time.perf_counter() - start1):.2f} s')
-    #
-    # # invert GS covmats
-    # start2 = time.perf_counter()
-    # cov_WL_GS_2D_inv = np.linalg.inv(cov_dict['cov_WL_GS_2D'])
-    # cov_GC_GS_2D_inv = np.linalg.inv(cov_dict['cov_GC_GS_2D'])
-    # cov_WA_GS_2D_inv = np.linalg.inv(cov_dict['cov_WA_GS_2D'])
-    # cov_3x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GS_2D'])
-    # print(f'GO covmats inverted in {(time.perf_counter() - start2):.2f} s')
+    start1 = time.perf_counter()
+    cov_WL_GO_2D_inv = np.linalg.inv(cov_dict['cov_WL_GO_2D'])
+    cov_GC_GO_2D_inv = np.linalg.inv(cov_dict['cov_GC_GO_2D'])
+    cov_WA_GO_2D_inv = np.linalg.inv(cov_dict['cov_WA_GO_2D'])
+    cov_3x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GO_2D'])
+    print(f'GO covmats inverted in {(time.perf_counter() - start1):.2f} s')
+
+    # invert GS covmats
+    start2 = time.perf_counter()
+    cov_WL_GS_2D_inv = np.linalg.inv(cov_dict['cov_WL_GS_2D'])
+    cov_GC_GS_2D_inv = np.linalg.inv(cov_dict['cov_GC_GS_2D'])
+    cov_WA_GS_2D_inv = np.linalg.inv(cov_dict['cov_WA_GS_2D'])
+    cov_3x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GS_2D'])
+    print(f'GO covmats inverted in {(time.perf_counter() - start2):.2f} s')
 
     # set parameters names for the different probes
 
@@ -211,6 +211,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_LL_4D = deriv_dict['dC_LL_4D']
     dC_GG_4D = deriv_dict['dC_GG_4D']
     dC_WA_4D = deriv_dict['dC_WA_4D']
+    dC_3x2pt_5D = deriv_dict['dC_3x2pt_5D']
 
     # separate the different 3x2pt contributions
     # ! delicate point, double check
@@ -221,67 +222,54 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     else:
         raise ValueError('GL_or_LG must be "GL" or "LG"')
 
-    dC_LLfor3x2pt_4D = deriv_dict['dC_3x2pt_5D'][:, 0, 0, :, :, :]
-    dC_XCfor3x2pt_4D = deriv_dict['dC_3x2pt_5D'][:, probe_A, probe_B, :, :, :]
-    dC_GGfor3x2pt_4D = deriv_dict['dC_3x2pt_5D'][:, 1, 1, :, :, :]
+    dC_LLfor3x2pt_4D = dC_3x2pt_5D[:, 0, 0, :, :, :]
+    dC_XCfor3x2pt_4D = dC_3x2pt_5D[:, probe_A, probe_B, :, :, :]
+    dC_GGfor3x2pt_4D = dC_3x2pt_5D[:, 1, 1, :, :, :]
 
     assert np.array_equal(dC_GGfor3x2pt_4D, dC_GG_4D), "dC_GGfor3x2pt_4D and dC_GG_4D are not equal"
     assert nbl_3x2pt == nbl_GC, 'nbl_3x2pt and nbl_GC are not equal'
 
+    # flatten z indices, obviously following the ordering given in ind
     # separate the ind for the different probes
     ind_LL = ind[:zpairs_auto, :]
     ind_GG = ind[:zpairs_auto, :]
-    ind_XC = ind[zpairs_auto:zpairs_cross, :]  # ! watch out for the ind switch!!
+    ind_XC = ind[zpairs_auto:zpairs_auto+zpairs_cross, :]  # ! watch out for the ind switch!!
 
-    # flatten z indices, obviously following the ordering given in ind
-    dC_LL_3D_v2 = dC_4D_to_3D(dC_LL_4D, nbl_WL, zpairs_auto, nparams_tot, ind_LL)
-    dC_GG_3D_v2 = dC_4D_to_3D(dC_GG_4D, nbl_GC, zpairs_auto, nparams_tot, ind_GG)
-    dC_WA_3D_v2 = dC_4D_to_3D(dC_WA_4D, nbl_WA, zpairs_auto, nparams_tot, ind_LL)
+    dC_LL_3D = dC_4D_to_3D(dC_LL_4D, nbl_WL, zpairs_auto, nparams_tot, ind_LL)
+    dC_GG_3D = dC_4D_to_3D(dC_GG_4D, nbl_GC, zpairs_auto, nparams_tot, ind_GG)
+    dC_WA_3D = dC_4D_to_3D(dC_WA_4D, nbl_WA, zpairs_auto, nparams_tot, ind_LL)
     dC_LLfor3x2pt_3D = dC_4D_to_3D(dC_LLfor3x2pt_4D, nbl_3x2pt, zpairs_auto, nparams_tot, ind_LL)
     dC_XCfor3x2pt_3D = dC_4D_to_3D(dC_XCfor3x2pt_4D, nbl_3x2pt, zpairs_cross, nparams_tot, ind_XC)
-    dC_GGfor3x2pt_3D = dC_GG_3D_v2.copy()  # the GG component of the 3x2pt is equal to the GConly case (same ell_max)
+    dC_GGfor3x2pt_3D = dC_GG_3D.copy()  # the GG component of the 3x2pt is equal to the GConly case (same ell_max)
 
-    ######################### FILL DATAVECTOR #####################################
-
-    # fill 3D datavector
-    D_WA_3D = dC_WA_3D
-    D_WLonly_3D = dC_LL_WLonly_3D
-    D_GConly_3D = dC_GG_3D
-    D_3x2pt_3D = np.concatenate((dC_LL_3D, dC_XC_3D, dC_GG_3D), axis=1)
-
-    # build the 3x2pt datavector, getting rid of the unnecessary cross-term
-    # ! delicate point, double check
-    if GL_or_LG == 'GL':
-        dC_XC_3D = dC_3x2pt_5D[:, 1, 0, :, :]
-    elif GL_or_LG == 'LG':
-        dC_XC_3D = dC_3x2pt_5D[:, 0, 1, :, :]
-
-    D_3x2pt_3D = np.concatenate((dC_3x2pt_5D[:, 0, 0, :, :], dC_XC_3D, dC_3x2pt_5D[:, 1, 1, :, :]), axis=1)
+    # concatenate the flattened components of the 3x2pt datavector
+    dC_3x2pt_3D = np.concatenate((dC_LLfor3x2pt_3D, dC_XCfor3x2pt_3D, dC_GGfor3x2pt_3D), axis=1)
 
     # collapse ell and zpair - ATTENTION: np.reshape, like ndarray.flatten, accepts an 'ordering' parameter, which works
     # in the same way
     # not with the old datavector, which was ordered in a different way...
-    D_WA_2D = np.reshape(D_WA_3D, (nbl_WA * zpairs_auto, nparams_tot), order=which_flattening)
-    D_WLonly_2D = np.reshape(D_WLonly_3D, (nbl * zpairs_auto, nparams_tot), order=which_flattening)
-    D_GConly_2D = np.reshape(D_GConly_3D, (nbl * zpairs_auto, nparams_tot), order=which_flattening)
-    D_3x2pt_2D = np.reshape(D_3x2pt_3D, (nbl * zpairs_3x2pt, nparams_tot), order=which_flattening)
+    dC_LL_2D = np.reshape(dC_LL_3D, (nbl_WL * zpairs_auto, nparams_tot), order=which_flattening)
+    dC_GG_2D = np.reshape(dC_GG_3D, (nbl_GC * zpairs_auto, nparams_tot), order=which_flattening)
+    dC_WA_2D = np.reshape(dC_WA_3D, (nbl_WA * zpairs_auto, nparams_tot), order=which_flattening)
+    dC_3x2pt_2D = np.reshape(dC_3x2pt_3D, (nbl_3x2pt * zpairs_3x2pt, nparams_tot), order=which_flattening)
+
 
     ######################### COMPUTE FM #####################################
 
     # COMPUTE FM GO
     start3 = time.perf_counter()
-    FM_WL_GO = mm.compute_FM_2D(nbl, zpairs_auto, nparams_tot, cov_WL_GO_2D_inv, D_WLonly_2D)
-    FM_GC_GO = mm.compute_FM_2D(nbl, zpairs_auto, nparams_tot, cov_GC_GO_2D_inv, D_GConly_2D)
-    FM_WA_GO = mm.compute_FM_2D(nbl_WA, zpairs_auto, nparams_tot, cov_WA_GO_2D_inv, D_WA_2D)
-    FM_3x2pt_GO = mm.compute_FM_2D(nbl, zpairs_3x2pt, nparams_tot, cov_3x2pt_GO_2D_inv, D_3x2pt_2D)
+    FM_WL_GO = mm.compute_FM_2D(nbl_WL, zpairs_auto, nparams_tot, cov_WL_GO_2D_inv, dC_LL_2D)
+    FM_GC_GO = mm.compute_FM_2D(nbl_GC, zpairs_auto, nparams_tot, cov_GC_GO_2D_inv, dC_GG_2D)
+    FM_WA_GO = mm.compute_FM_2D(nbl_WA, zpairs_auto, nparams_tot, cov_WA_GO_2D_inv, dC_WA_2D)
+    FM_3x2pt_GO = mm.compute_FM_2D(nbl_3x2pt, zpairs_3x2pt, nparams_tot, cov_3x2pt_GO_2D_inv, dC_3x2pt_2D)
     print(f'GO FM done in {(time.perf_counter() - start3):.2f} s')
 
     # COMPUTE FM GS
     start4 = time.perf_counter()
-    FM_WL_GS = mm.compute_FM_2D(nbl, zpairs_auto, nparams_tot, cov_WL_GS_2D_inv, D_WLonly_2D)
-    FM_GC_GS = mm.compute_FM_2D(nbl, zpairs_auto, nparams_tot, cov_GC_GS_2D_inv, D_GConly_2D)
-    FM_WA_GS = mm.compute_FM_2D(nbl_WA, zpairs_auto, nparams_tot, cov_WA_GS_2D_inv, D_WA_2D)
-    FM_3x2pt_GS = mm.compute_FM_2D(nbl, zpairs_3x2pt, nparams_tot, cov_3x2pt_GS_2D_inv, D_3x2pt_2D)
+    FM_WL_GS = mm.compute_FM_2D(nbl_WL, zpairs_auto, nparams_tot, cov_WL_GS_2D_inv, dC_LL_2D)
+    FM_GC_GS = mm.compute_FM_2D(nbl_GC, zpairs_auto, nparams_tot, cov_GC_GS_2D_inv, dC_GG_2D)
+    FM_WA_GS = mm.compute_FM_2D(nbl_WA, zpairs_auto, nparams_tot, cov_WA_GS_2D_inv, dC_WA_2D)
+    FM_3x2pt_GS = mm.compute_FM_2D(nbl_3x2pt, zpairs_3x2pt, nparams_tot, cov_3x2pt_GS_2D_inv, dC_3x2pt_2D)
     print(f'GS FM done in {(time.perf_counter() - start4):.2f} s')
 
     # sum WA, this is the actual FM_3x2pt
@@ -293,11 +281,14 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     # WL for 3x2pt has no bias
     FM_WL_GO_toSave = FM_WL_GO[:nParams_WL, :nParams_WL]
     FM_WL_GS_toSave = FM_WL_GS[:nParams_WL, :nParams_WL]
+
+    # should I really do this? Or should I just keep the full matrix?
+    IAparams_idx = (paramnames_XC.index('Aia'), paramnames_XC.index('eIA'), paramnames_XC.index('bIA'))
     # GConly has no IA parameters
-    FM_GC_GO_toSave = np.delete(FM_GC_GO, (7, 8, 9), 0)
-    FM_GC_GO_toSave = np.delete(FM_GC_GO_toSave, (7, 8, 9), 1)
-    FM_GC_GS_toSave = np.delete(FM_GC_GS, (7, 8, 9), 0)
-    FM_GC_GS_toSave = np.delete(FM_GC_GS_toSave, (7, 8, 9), 1)
+    FM_GC_GO_toSave = np.delete(FM_GC_GO, IAparams_idx, 0)
+    FM_GC_GO_toSave = np.delete(FM_GC_GO_toSave, IAparams_idx, 1)
+    FM_GC_GS_toSave = np.delete(FM_GC_GS, IAparams_idx, 0)
+    FM_GC_GS_toSave = np.delete(FM_GC_GS_toSave, IAparams_idx, 1)
 
     # save dictionary
     probe_names = ['WL', 'GC', '3x2pt']

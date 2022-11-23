@@ -23,14 +23,12 @@ start = time.perf_counter()
 # since WL has no bias. This would complicate the structure of the datacector 
 # and taking nParams instead seems to have ho impact on the final result.
 
-def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind, is_3x2pt=False, n_probes=2):
+def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
+    print('most likely, I already wrote this function...')
     dC_3D = np.zeros((nbl, zpairs, nparams_tot))
-    if is_3x2pt:
-        dC_3D = np.zeros((nbl, n_probes, n_probes, zpairs, nparams_tot))
-
     for ell in range(nbl):
         for alf in range(nparams_tot):
-            dC_3D[ell, ..., alf] = mm.array_2D_to_1D_ind(dC_4D[ell, ..., alf], zpairs, ind)
+            dC_3D[ell, :, alf] = mm.array_2D_to_1D_ind(dC_4D[ell, :, :, alf], zpairs, ind)
     return dC_3D
 
 
@@ -75,6 +73,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     else:
         nbl_WA = ell_WA.shape[0]
 
+    warnings.warn('nParams_WL needs to be defined as len(paramnames_LL?)')
     nParams_bias = zbins
     nParams_WL = nparams_tot - nParams_bias
 
@@ -208,39 +207,40 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
 
     """
 
+    # load reshaped derivatives, with shape (nbl, zbins, zbins, nparams)
     dC_LL_4D = deriv_dict['dC_LL_4D']
     dC_GG_4D = deriv_dict['dC_GG_4D']
     dC_WA_4D = deriv_dict['dC_WA_4D']
-    dC_3x2pt_5D = deriv_dict['dC_3x2pt_5D']
 
-    # ! flatten following 'ind' ordering
-    # dC_LL_3D = np.zeros((nbl, zpairs_auto, nparams_tot))
-    # dC_GG_3D = np.zeros((nbl, zpairs_auto, nparams_tot))
-    # dC_XC_3D = np.zeros((nbl, zpairs_cross, nparams_tot))
-    dC_WA_3D = np.zeros((nbl_WA, zpairs_auto, nparams_tot))
-    dC_LL_WLonly_3D = np.zeros((nbl_WL, zpairs_auto, nparams_tot))
+    # separate the different 3x2pt contributions
+    # ! delicate point, double check
+    if GL_or_LG == 'GL':
+        probe_A, probe_B = 1, 0
+    elif GL_or_LG == 'LG':
+        probe_A, probe_B = 0, 1
+    else:
+        raise ValueError('GL_or_LG must be "GL" or "LG"')
 
+    dC_LLfor3x2pt_4D = deriv_dict['dC_3x2pt_5D'][:, 0, 0, :, :, :]
+    dC_XCfor3x2pt_4D = deriv_dict['dC_3x2pt_5D'][:, probe_A, probe_B, :, :, :]
+    dC_GGfor3x2pt_4D = deriv_dict['dC_3x2pt_5D'][:, 1, 1, :, :, :]
+
+    assert np.array_equal(dC_GGfor3x2pt_4D, dC_GG_4D), "dC_GGfor3x2pt_4D and dC_GG_4D are not equal"
+    assert nbl_3x2pt == nbl_GC, 'nbl_3x2pt and nbl_GC are not equal'
+
+    # separate the ind for the different probes
     ind_LL = ind[:zpairs_auto, :]
     ind_GG = ind[:zpairs_auto, :]
     ind_XC = ind[zpairs_auto:zpairs_cross, :]  # ! watch out for the ind switch!!
 
-    # collapse the 2 redshift dimensions: (i,j -> ij)
-    for ell in range(nbl_WL):
-        for alf in range(nparams_tot):
-            # dC_LL_3D[ell, :, alf] = mm.array_2D_to_1D_ind(dC_LL_4D[ell, :, :, alf], zpairs_auto, ind_LL)
-            # dC_GG_3D[ell, :, alf] = mm.array_2D_to_1D_ind(dC_GG_4D[ell, :, :, alf], zpairs_auto, ind_GG)
-            # dC_XC_3D[ell, :, alf] = mm.array_2D_to_1D_ind(dC_XC_4D[ell, :, :, alf], zpairs_cross, ind_XC)
-            dC_LL_WLonly_3D[ell, :, alf] = mm.array_2D_to_1D_ind(dC_LL_4D[ell, :, :, alf], zpairs_auto, ind_LL)
-
-    for ell in range(nbl_WA):
-        for alf in range(nparams_tot):
-            dC_WA_3D[ell, :, alf] = mm.array_2D_to_1D_ind(dC_WA_4D[ell, :, :, alf], zpairs_auto, ind_LL)
-
+    # flatten z indices, obviously following the ordering given in ind
     dC_LL_3D_v2 = dC_4D_to_3D(dC_LL_4D, nbl_WL, zpairs_auto, nparams_tot, ind_LL)
-    assert np.array_equal(dC_LL_WLonly_3D, dC_LL_3D_v2)
+    dC_GG_3D_v2 = dC_4D_to_3D(dC_GG_4D, nbl_GC, zpairs_auto, nparams_tot, ind_GG)
+    dC_WA_3D_v2 = dC_4D_to_3D(dC_WA_4D, nbl_WA, zpairs_auto, nparams_tot, ind_LL)
+    dC_LLfor3x2pt_3D = dC_4D_to_3D(dC_LLfor3x2pt_4D, nbl_3x2pt, zpairs_auto, nparams_tot, ind_LL)
+    dC_XCfor3x2pt_3D = dC_4D_to_3D(dC_XCfor3x2pt_4D, nbl_3x2pt, zpairs_cross, nparams_tot, ind_XC)
+    dC_GGfor3x2pt_3D = dC_GG_3D_v2.copy()  # the GG component of the 3x2pt is equal to the GConly case (same ell_max)
 
-
-    assert 1 > 2
     ######################### FILL DATAVECTOR #####################################
 
     # fill 3D datavector

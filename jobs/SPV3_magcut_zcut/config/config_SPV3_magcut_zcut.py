@@ -78,6 +78,7 @@ covariance_cfg = {
     'save_cov_2D': False,
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt
+    'save_cov_GS': True,
     'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
@@ -99,13 +100,15 @@ Sijkl_cfg = {
 FM_cfg = {
     'compute_FM': True,
     'nparams_tot': 20,  # total (cosmo + nuisance) number of parameters
-    'paramnames_XC': None,  # ! for the time being, these are defined in the main and then passed here
-    'save_FM': False,
+    'paramnames_3x2pt': None,  # ! for the time being, these are defined in the main and then passed here
+    'save_FM': True,
     'save_FM_as_dict': False,
     'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}/' +
                           'ML{magcut_lens:03d}ZL{zcut_lens:02d}MS{magcut_source:03d}ZS{zcut_source:02d}',
     'derivatives_filename': '/BNT_dDVd{param:s}-{probe:s}-{specs:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                             'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
+    'FM_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/FM',
+    'FM_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'
+                   'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.txt',
     'params_order': None,
-    'FM_output_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/FM',
 }

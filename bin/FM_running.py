@@ -40,8 +40,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     GL_or_LG = covariance_cfg['GL_or_LG']
     ind = covariance_cfg['ind']
     block_index = covariance_cfg['block_index']
-    nparams_tot = FM_cfg['nparams_tot']
-    paramnames_XC = FM_cfg['paramnames_XC']
+    paramnames_3x2pt = FM_cfg['paramnames_3x2pt']
 
     # import ell values
     ell_WL, nbl_WL = ell_dict['ell_WL'], ell_dict['ell_WL'].shape[0]
@@ -74,9 +73,10 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     else:
         nbl_WA = ell_WA.shape[0]
 
-    warnings.warn('nParams_WL needs to be defined as len(paramnames_LL?)')
-    nParams_bias = zbins
-    nParams_WL = nparams_tot - nParams_bias
+    warnings.warn('nparams_WL needs to be defined as len(paramnames_LL?)')
+    nparams_tot = len(paramnames_3x2pt)
+    nparams_galbias = zbins
+    nparams_WL = nparams_tot - nparams_galbias
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
 
@@ -137,7 +137,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     # XC for 3x2pt
     dC_3x2pt_interpolated_dict = mm.interpolator(probe_code=probe_code_XC,
                                                  dC_interpolated_dict=dC_3x2pt_interpolated_dict,
-                                                 dC_dict=dC_dict, params_names=paramnames_XC, nbl=nbl,
+                                                 dC_dict=dC_dict, params_names=paramnames_3x2pt, nbl=nbl,
                                                  npairs=zpairs_cross, ell_values=ell_XC, suffix=suffix)
     # GG for 3x2pt
     dC_3x2pt_interpolated_dict = mm.interpolator(probe_code=probe_code_GG,
@@ -160,7 +160,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
                              dC_interpolated_dict=dC_3x2pt_interpolated_dict,
                              probe_code=probe_code_LL, dC=dC_LL, suffix=suffix)
     # XC for 3x2pt
-    dC_XC = mm.fill_dC_array(params_names=paramnames_XC,
+    dC_XC = mm.fill_dC_array(params_names=paramnames_3x2pt,
                              dC_interpolated_dict=dC_3x2pt_interpolated_dict,
                              probe_code=probe_code_XC, dC=dC_XC, suffix=suffix)
     # GG for 3x2pt and GConly
@@ -277,23 +277,11 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         FM_3x2pt_GO += FM_WA_GO
         FM_3x2pt_GS += FM_WA_GS
 
-    # delete null rows and columns to avoid having singular matrices
-    # WL for 3x2pt has no bias
-    FM_WL_GO_toSave = FM_WL_GO[:nParams_WL, :nParams_WL]
-    FM_WL_GS_toSave = FM_WL_GS[:nParams_WL, :nParams_WL]
-
-    # should I really do this? Or should I just keep the full matrix?
-    IAparams_idx = (paramnames_XC.index('Aia'), paramnames_XC.index('eIA'), paramnames_XC.index('bIA'))
-    # GConly has no IA parameters
-    FM_GC_GO_toSave = np.delete(FM_GC_GO, IAparams_idx, 0)
-    FM_GC_GO_toSave = np.delete(FM_GC_GO_toSave, IAparams_idx, 1)
-    FM_GC_GS_toSave = np.delete(FM_GC_GS, IAparams_idx, 0)
-    FM_GC_GS_toSave = np.delete(FM_GC_GS_toSave, IAparams_idx, 1)
 
     # save dictionary
-    probe_names = ['WL', 'GC', '3x2pt']
-    FMs_GO = [FM_WL_GO_toSave, FM_GC_GO_toSave, FM_3x2pt_GO]
-    FMs_GS = [FM_WL_GS_toSave, FM_GC_GS_toSave, FM_3x2pt_GS]
+    probe_names = ['WL', 'GC', 'WA', '3x2pt']
+    FMs_GO = [FM_WL_GO_toSave, FM_GC_GO_toSave, FM_WA_GO, FM_3x2pt_GO]
+    FMs_GS = [FM_WL_GS_toSave, FM_GC_GS_toSave, FM_WA_GS, FM_3x2pt_GS]
 
     FM_dict = {}
     for probe_name, FM_GO, FM_GS in zip(probe_names, FMs_GO, FMs_GS):

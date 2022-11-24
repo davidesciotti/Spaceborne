@@ -311,9 +311,11 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     probe_list = ['WL', 'GC', '3x2pt', 'WA']
                     ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
                     nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
+                    zpairs_list = [zpairs_auto, zpairs_auto, zpairs_3x2pt, zpairs_auto]
+
                     cov_folder = covariance_cfg["cov_folder"]
 
-                    for probe, ellmax, nbl in zip(probe_list, ellmax_list, nbl_list):
+                    for probe, ellmax, nbl, zpairs in zip(probe_list, ellmax_list, nbl_list, zpairs_list):
                         for GO_or_GS in GOGS_list:
                             cov_filename = f'BNT_covmat_{GO_or_GS}_{probe}_lmax{ellmax}_nbl{nbl}_' \
                                            f'zbins{EP_or_ED}{zbins:02d}_ML{magcut_lens:03d}_' \
@@ -322,32 +324,12 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                             if os.path.isfile(f'{cov_folder}/{cov_filename}'):
                                 print(f'cov_{probe}_{GO_or_GS} already exists in folder\n{cov_folder}; loading it')
                                 cov_dict[f'cov_{probe}_{GO_or_GS}_6D'] = np.load(f'{cov_folder}/{cov_filename}')
+                                cov_dict[f'cov_{probe}_{GO_or_GS}_4D'] = mm.cov_6D_to_4D(cov_dict[f'cov_{probe}_{GO_or_GS}_6D'],
+                                                                                         nbl, zpairs, ind)
+                                cov_dict[f'cov_{probe}_{GO_or_GS}_2D'] = mm.cov_4D_to_2D(cov_dict[f'cov_{probe}_{GO_or_GS}_4D'],
+                                                                                         'ell')
 
 
-                else:
-                    # load pre-existing cov (in this case, Stefano's), or fill a dummy matrix, which is probably a bad idea
-                    cov_dict = {}
-                    GOGS_list = ['GO', 'GS']
-                    probe_list = ['WL', 'GC', '3x2pt', 'WA']
-                    ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
-                    nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
-                    cov_folder = covariance_cfg["cov_folder"]
-
-                    for probe, ellmax, nbl in zip(probe_list, ellmax_list, nbl_list):
-                        for GO_or_GS in GOGS_list:
-                            cov_filename = f'BNT_covmat_{GO_or_GS}_{probe}_lmax{ellmax}_nbl{nbl}_' \
-                                           f'zbins{EP_or_ED}{zbins:02d}_ML{magcut_lens:03d}_' \
-                                           f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                           f'ZS{zcut_source:02d}_6D.npy'
-                            if os.path.isfile(f'{cov_folder}/{cov_filename}'):
-                                print(f'covariance matrix already exists in folder; loading it')
-                                cov_dict[f'cov_{probe}_{GO_or_GS}_6D'] = np.load(f'{cov_folder}/{cov_filename}')
-                            else:
-                                print(f'covariance matrix does not exists in folder; creating it')
-                                rng = np.random.default_rng()
-                                dummy_cov = rng.random(size=nbl * nbl * zbins * zbins * zbins * zbins).reshape(
-                                    (nbl, nbl, zbins, zbins, zbins, zbins))
-                                cov_dict[f'cov_{probe}_{GO_or_GS}_6D'] = dummy_cov
 
                 # ! compute Fisher matrix
                 if FM_cfg['compute_FM']:

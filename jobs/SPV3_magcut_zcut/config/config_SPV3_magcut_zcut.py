@@ -32,7 +32,7 @@ general_cfg = {
     # 'nbl_WL': 32,
     'nbl_WL_32': 32,
     'which_forecast': which_forecast,
-    'use_WA': True,
+    'use_WA': False,
     'save_cls_3d': True,
     'save_rls_3d': True,
     'cl_BNT_transform': BNT_transform,
@@ -52,6 +52,7 @@ general_cfg = {
     'zcut_source': None,
     'zcut_lens': None,
     'flagship_version': flagship_version,
+    'use_stefano_BNT_ingredients': False,
 }
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:

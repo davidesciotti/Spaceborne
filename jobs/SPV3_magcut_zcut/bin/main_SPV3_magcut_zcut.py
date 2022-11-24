@@ -71,8 +71,11 @@ def dC_dict_to_4D_array(param_names, dC_dict_3D, nbl, zbins, is_3x2pt=False, n_p
     for idx, paramname in enumerate(param_names):
         for key, value in dC_dict_3D.items():
             if f'dDVd{paramname}' in key:
-                print(paramname, key)
                 dC_4D[..., idx] = value
+
+        # a check, if the derivative wrt the param is not in the folder at all
+        if not any(f'dDVd{paramname}' in key for key in dC_dict_3D.keys()):
+            print(f'WARNING: derivative dDVd{paramname} not found in dC_dict_3D')
     return dC_4D
 
 
@@ -124,6 +127,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 triu_tril = covariance_cfg['triu_tril']
                 row_col_wise = covariance_cfg['row_col_wise']
                 n_probes = general_cfg['n_probes']
+                use_stefano_BNT_ingredients = general_cfg['use_stefano_BNT_ingredients']
 
                 # which cases to save: GO, GS or GO, GS and SS
                 cases_tosave = ['GO', ]
@@ -318,27 +322,30 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     cov_folder_stef = f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022' \
                                       f'/Flagship_2/CovMats/BNT_True/produced_by_stefano/magcut_zcut'
 
-                    for probe, ellmax, nbl, zpairs in zip(probe_list, ellmax_list, nbl_list, zpairs_list):
-                        for GO_or_GS in GOGS_list:
-                            cov_filename = f'BNT_covmat_{GO_or_GS}_{probe}_lmax{ellmax}_nbl{nbl}_' \
-                                           f'zbins{EP_or_ED}{zbins:02d}_ML{magcut_lens:03d}_' \
-                                           f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                           f'ZS{zcut_source:02d}_6D.npy'
-                            if os.path.isfile(f'{cov_folder_stef}/{cov_filename}'):
-                                # ! this will give an error, Stefano's covariance is not in 6D but in 3D!
-                                print(f'cov_{probe}_{GO_or_GS} already exists in folder\n{cov_folder_stef}; loading it'
-                                      f'\np.s.: this print should appear for all the files in the folder!')
-                                cov_dict[f'cov_{probe}_{GO_or_GS}_6D'] = np.load(f'{cov_folder_stef}/{cov_filename}')
-                                cov_dict[f'cov_{probe}_{GO_or_GS}_4D'] = mm.cov_6D_to_4D(
-                                    cov_dict[f'cov_{probe}_{GO_or_GS}_6D'], nbl, zpairs, ind[:zpairs, :])
-                                cov_dict[f'cov_{probe}_{GO_or_GS}_2D'] = mm.cov_4D_to_2D(
-                                    cov_dict[f'cov_{probe}_{GO_or_GS}_4D'], 'ell')
+                    if use_stefano_BNT_ingredients:
+                        for probe, ellmax, nbl, zpairs in zip(probe_list, ellmax_list, nbl_list, zpairs_list):
+                            for GO_or_GS in GOGS_list:
+                                cov_filename = f'BNT_covmat_{GO_or_GS}_{probe}_lmax{ellmax}_nbl{nbl}_' \
+                                               f'zbins{EP_or_ED}{zbins:02d}_ML{magcut_lens:03d}_' \
+                                               f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                               f'ZS{zcut_source:02d}_6D.npy'
+                                if os.path.isfile(f'{cov_folder_stef}/{cov_filename}'):
+                                    # ! this will give an error, Stefano's covariance is not in 6D but in 3D!
+                                    print(
+                                        f'cov_{probe}_{GO_or_GS} already exists in folder\n{cov_folder_stef}; loading it'
+                                        f'\np.s.: this print should appear for all the files in the folder!')
+                                    cov_dict[f'cov_{probe}_{GO_or_GS}_6D'] = np.load(
+                                        f'{cov_folder_stef}/{cov_filename}')
+                                    cov_dict[f'cov_{probe}_{GO_or_GS}_4D'] = mm.cov_6D_to_4D(
+                                        cov_dict[f'cov_{probe}_{GO_or_GS}_6D'], nbl, zpairs, ind[:zpairs, :])
+                                    cov_dict[f'cov_{probe}_{GO_or_GS}_2D'] = mm.cov_4D_to_2D(
+                                        cov_dict[f'cov_{probe}_{GO_or_GS}_4D'], 'ell')
 
                 # ! compute Fisher matrix
                 if FM_cfg['compute_FM']:
 
-                    derivetives_folder_stef = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_2/Derivatives/BNT_True'
                     # import derivatives and store them in dictionary
+                    derivetives_folder_stef = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_2/Derivatives/BNT_True'
                     derivatives_folder = FM_cfg['derivatives_folder'].format(magcut_lens=magcut_lens,
                                                                              zcut_lens=zcut_lens,
                                                                              magcut_source=magcut_source,
@@ -352,22 +359,26 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     dC_dict_WA_3D = {}
                     dC_dict_3x2pt_5D = {}
 
-                    for key in dC_dict_BNT_WLO_1D.keys():
-                        if 'WLO' in key:
-                            dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_BNT_WLO_1D[key], probe='WL', nbl=nbl_WL,
-                                                                           zbins=zbins)
-                    for key in dC_dict_1D.keys():
-                        # if 'WLO' in key:
-                        #     dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WL', nbl=nbl_WL,
-                        if 'GCO' in key:
-                            dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='GC', nbl=nbl_GC,
-                                                                           zbins=zbins)
-                        elif 'WLA' in key:
-                            dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WA', nbl=nbl_WA,
-                                                                           zbins=zbins)
-                        elif '3x2pt' in key:
-                            dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='3x2pt',
-                                                                              nbl=nbl_3x2pt, zbins=zbins)
+                    if use_stefano_BNT_ingredients:
+                        for key in dC_dict_BNT_WLO_1D.keys():
+                            if 'WLO' in key:
+                                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_BNT_WLO_1D[key], probe='WL',
+                                                                               nbl=nbl_WL, zbins=zbins)
+
+                    elif not use_stefano_BNT_ingredients:
+                        for key in dC_dict_1D.keys():
+                            if 'WLO' in key:
+                                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WL', nbl=nbl_WL,
+                                                                               zbins=zbins)
+                            if 'GCO' in key:
+                                dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='GC', nbl=nbl_GC,
+                                                                               zbins=zbins)
+                            elif 'WLA' in key:
+                                dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WA', nbl=nbl_WA,
+                                                                               zbins=zbins)
+                            elif '3x2pt' in key:
+                                dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='3x2pt',
+                                                                                  nbl=nbl_3x2pt, zbins=zbins)
 
                     # now turn the dict. into npy array
                     paramnames_cosmo = ["Om", "Ob", "wz", "wa", "h", "ns", "s8"]
@@ -375,9 +386,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     paramnames_galbias = [f'b{zbin_idx:02d}' for zbin_idx in range(zbins)]
                     paramnames_shearbias = [f'b{zbin_idx:02d}' for zbin_idx in range(zbins)]
                     paramnames_dz = [f'b{zbin_idx:02d}' for zbin_idx in range(zbins)]
-                    paramnames_LL = paramnames_cosmo + paramnames_IA
-                    paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias
-                    paramnames_GG = paramnames_3x2pt  # the IA entries will be null
+                    paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias + paramnames_shearbias + paramnames_dz
                     FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
 
                     dC_LL_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_LL_3D, nbl_WL, zbins)

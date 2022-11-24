@@ -307,13 +307,16 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
                     # now overwrite the WL GS entries with Stefano's BNT covmats:
+                    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+
                     GOGS_list = ['GO', 'GS']
                     probe_list = ['WL', 'GC', '3x2pt', 'WA']
                     ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
                     nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
                     zpairs_list = [zpairs_auto, zpairs_auto, zpairs_3x2pt, zpairs_auto]
 
-                    cov_folder = covariance_cfg["cov_folder"]
+                    cov_folder_stef = f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022' \
+                                      f'/Flagship_2/CovMats/BNT_True/produced_by_stefano/magcut_zcut'
 
                     for probe, ellmax, nbl, zpairs in zip(probe_list, ellmax_list, nbl_list, zpairs_list):
                         for GO_or_GS in GOGS_list:
@@ -321,36 +324,43 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                                            f'zbins{EP_or_ED}{zbins:02d}_ML{magcut_lens:03d}_' \
                                            f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
                                            f'ZS{zcut_source:02d}_6D.npy'
-                            if os.path.isfile(f'{cov_folder}/{cov_filename}'):
-                                print(f'cov_{probe}_{GO_or_GS} already exists in folder\n{cov_folder}; loading it')
-                                cov_dict[f'cov_{probe}_{GO_or_GS}_6D'] = np.load(f'{cov_folder}/{cov_filename}')
-                                cov_dict[f'cov_{probe}_{GO_or_GS}_4D'] = mm.cov_6D_to_4D(cov_dict[f'cov_{probe}_{GO_or_GS}_6D'],
-                                                                                         nbl, zpairs, ind)
-                                cov_dict[f'cov_{probe}_{GO_or_GS}_2D'] = mm.cov_4D_to_2D(cov_dict[f'cov_{probe}_{GO_or_GS}_4D'],
-                                                                                         'ell')
-
-
+                            if os.path.isfile(f'{cov_folder_stef}/{cov_filename}'):
+                                # ! this will give an error, Stefano's covariance is not in 6D but in 3D!
+                                print(f'cov_{probe}_{GO_or_GS} already exists in folder\n{cov_folder_stef}; loading it'
+                                      f'\np.s.: this print should appear for all the files in the folder!')
+                                cov_dict[f'cov_{probe}_{GO_or_GS}_6D'] = np.load(f'{cov_folder_stef}/{cov_filename}')
+                                cov_dict[f'cov_{probe}_{GO_or_GS}_4D'] = mm.cov_6D_to_4D(
+                                    cov_dict[f'cov_{probe}_{GO_or_GS}_6D'], nbl, zpairs, ind[:zpairs, :])
+                                cov_dict[f'cov_{probe}_{GO_or_GS}_2D'] = mm.cov_4D_to_2D(
+                                    cov_dict[f'cov_{probe}_{GO_or_GS}_4D'], 'ell')
 
                 # ! compute Fisher matrix
                 if FM_cfg['compute_FM']:
 
+                    derivetives_folder_stef = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_2/Derivatives/BNT_True'
                     # import derivatives and store them in dictionary
                     derivatives_folder = FM_cfg['derivatives_folder'].format(magcut_lens=magcut_lens,
                                                                              zcut_lens=zcut_lens,
                                                                              magcut_source=magcut_source,
                                                                              zcut_source=zcut_source)
                     dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
+                    dC_dict_BNT_WLO_1D = dict(mm.get_kv_pairs(derivetives_folder_stef, "dat"))
 
                     # reshape them (no interpolation needed in this case)
                     dC_dict_LL_3D = {}
                     dC_dict_GG_3D = {}
                     dC_dict_WA_3D = {}
                     dC_dict_3x2pt_5D = {}
-                    for key in dC_dict_1D.keys():
+
+                    for key in dC_dict_BNT_WLO_1D.keys():
                         if 'WLO' in key:
-                            dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WL', nbl=nbl_WL,
+                            dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_BNT_WLO_1D[key], probe='WL', nbl=nbl_WL,
                                                                            zbins=zbins)
-                        elif 'GCO' in key:
+                    for key in dC_dict_1D.keys():
+                        # if 'WLO' in key:
+                        #     dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WL', nbl=nbl_WL,
+                        #                                                    zbins=zbins)
+                        if 'GCO' in key:
                             dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='GC', nbl=nbl_GC,
                                                                            zbins=zbins)
                         elif 'WLA' in key:

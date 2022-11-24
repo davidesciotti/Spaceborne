@@ -99,7 +99,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     cov_GC_GS_2D_inv = np.linalg.inv(cov_dict['cov_GC_GS_2D'])
     cov_WA_GS_2D_inv = np.linalg.inv(cov_dict['cov_WA_GS_2D'])
     cov_3x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GS_2D'])
-    print(f'GO covmats inverted in {(time.perf_counter() - start2):.2f} s')
+    print(f'GS covmats inverted in {(time.perf_counter() - start2):.2f} s')
 
     # set parameters names for the different probes
 

@@ -13,7 +13,7 @@ fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
 # ! choose the flagship version and whether you want to compute the BNT transformed cls
 flagship_version = 2
-BNT_transform = True
+BNT_transform = False
 
 assert flagship_version == 2, 'the files for the multicut case are only available for Flagship_2'
 

@@ -225,7 +225,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     cl_gg_3d = cl_utils.cl_BNT_transform(cl_gg_3d, BNT_matrix)
                     cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix)
                     cl_3x2pt_5d = cl_utils.cl_BNT_transform(cl_3x2pt_5d, BNT_matrix)
-                    print('you shuld BNT transform the responses do this with the responses too!')
+                    print('you shuld BNT-transform the responses too!')
 
                 # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
                 if ell_max_WL == general_cfg['ell_max_WL_opt']:
@@ -264,8 +264,8 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     'R_3x2pt_5D': rl_3x2pt_5d}
 
                 warnings.warn("not the nicest way, this if is ugly")
+
                 if covariance_cfg['compute_covmat']:
-                    # ! compute or load Sijkl
                     # ! load kernels
                     # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
                     WF_folder = Sijkl_cfg["wf_input_folder"].format(**variable_specs)
@@ -281,6 +281,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     # transpose and stack, ordering is important here!
                     transp_stacked_wf = np.vstack((wil.T, wig.T))
 
+                    # ! compute or load Sijkl
                     nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
                     Sijkl_folder = Sijkl_cfg['Sijkl_folder']
                     Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(flagship_version=general_cfg['flagship_version'],
@@ -297,25 +298,19 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                                                           Sijkl_cfg['WF_normalization'])
                         np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
 
-                # ! compute covariance matrix
-                if covariance_cfg['compute_covmat']:
+                    # ! compute covariance matrix
+                    # TODO: if already existing, don't compute it like above
                     ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
-                    # ! first column, in this case 👇
+                    # the ng values are in the second column, for these input files 👇
                     covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[:, 1]
                     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
-                else:
-                    print('sono qui')
-                    cov_folder = covariance_cfg["cov_folder"]
-                    for which_cov in ['GO', 'GS']:
-                        cov_folder = covariance_cfg["cov_folder"]
-                        cov_filename = f'BNT_covmat_{which_cov}_WL_lmax5000_nbl32_zbinsED13_ML{magcut_lens:03d}_' \
-                                          f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                          f'ZS{zcut_source:02d}_2D.npy'
-                        cov_dict[f'cov_WL_{which_cov}_2D'] = np.load(f'{cov_folder}/{cov_filename}')
 
                 # ! compute Fisher matrix
                 if FM_cfg['compute_FM']:
+
+                    if BNT_transform:  # TODO delete this warning once things are working
+                        print('Vincenzos derivatives are anly for BNT_False, otherwise you should use Stafanos files')
 
                     # import derivatives and store them in dictionary
                     derivatives_folder = FM_cfg['derivatives_folder'].format(magcut_lens=magcut_lens,
@@ -343,23 +338,22 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                             dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='3x2pt',
                                                                               nbl=nbl_3x2pt, zbins=zbins)
 
-                    # now turn the dict. into npy array
-                    paramnames_cosmo = ["Om", "Ob", "wz", "wa", "h", "ns", "s8"]
+                    # cosmo and nuisance parameters' names (and ordering!)
+                    paramnames_cosmo = ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"]
                     paramnames_IA = ["Aia", "eIA", "bIA"]
                     paramnames_galbias = [f'b{zbin_idx:02d}' for zbin_idx in range(zbins)]
                     paramnames_shearbias = [f'b{zbin_idx:02d}' for zbin_idx in range(zbins)]
                     paramnames_dz = [f'b{zbin_idx:02d}' for zbin_idx in range(zbins)]
-                    paramnames_LL = paramnames_cosmo + paramnames_IA
-                    paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias
-                    paramnames_GG = paramnames_3x2pt  # the IA entries will be null
+                    paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias + paramnames_shearbias + paramnames_dz
                     FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
 
+                    # turn the dict. into npy array with the ordering given by paramnames_3x2pt
                     dC_LL_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_LL_3D, nbl_WL, zbins)
                     dC_GG_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_GG_3D, nbl_GC, zbins)
                     dC_WA_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_WA_3D, nbl_WA, zbins)
                     dC_3x2pt_5D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_3x2pt_5D, nbl_3x2pt, zbins, is_3x2pt=True)
 
-                    # store the derivatives in a dictionary (of dictionaries)
+                    # store the derivatives arrays in a dictionary
                     deriv_dict = {'dC_LL_4D': dC_LL_4D,
                                   'dC_GG_4D': dC_GG_4D,
                                   'dC_WA_4D': dC_WA_4D,
@@ -367,6 +361,10 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     # TODO save 3D derivatives to file
 
                     FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
+
+########################################################################################################################
+######################################################### SAVE #########################################################
+########################################################################################################################
 
                     # ! save cls and responses:
                     # this is just to set the correct probe names

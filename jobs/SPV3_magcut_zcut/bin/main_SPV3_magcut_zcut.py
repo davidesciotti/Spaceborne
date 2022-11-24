@@ -68,6 +68,9 @@ def dC_dict_to_4D_array(param_names, dC_dict_3D, nbl, zbins, is_3x2pt=False, n_p
     else:
         dC_4D = np.zeros((nbl, zbins, zbins, len(param_names)))
 
+    if not dC_dict_3D:
+        warnings.warn('The input dictionary is empty')
+
     for idx, paramname in enumerate(param_names):
         for key, value in dC_dict_3D.items():
             if f'dDVd{paramname}' in key:
@@ -105,439 +108,500 @@ else:
     # for general_cfg['zbins'] in general_cfg['zbins_list']:
     # for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000),):
     # for general_cfg['EP_or_ED'] in ('ED',):
-for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
-    for general_cfg['magcut_source'] in general_cfg['magcut_source_list']:
-        for general_cfg['zcut_lens'] in general_cfg['zcut_lens_list']:
-            for general_cfg['zcut_source'] in general_cfg['zcut_source_list']:
 
-                # utils.consistency_checks(general_cfg, covariance_cfg)
 
-                # some variables used for I/O naming, just to make things more readable
-                zbins = general_cfg['zbins']
-                EP_or_ED = general_cfg['EP_or_ED']
-                ell_max_WL = general_cfg['ell_max_WL']
-                ell_max_GC = general_cfg['ell_max_GC']
-                ell_max_XC = ell_max_GC
-                nbl_WL_32 = general_cfg['nbl_WL_32']
-                magcut_source = general_cfg['magcut_source']
-                magcut_lens = general_cfg['magcut_lens']
-                zcut_source = general_cfg['zcut_source']
-                zcut_lens = general_cfg['zcut_lens']
-                zmax = int(general_cfg['zmax'] * 10)
-                triu_tril = covariance_cfg['triu_tril']
-                row_col_wise = covariance_cfg['row_col_wise']
-                n_probes = general_cfg['n_probes']
-                use_stefano_BNT_ingredients = general_cfg['use_stefano_BNT_ingredients']
+ML_list = [230, 230, 245, 245]
+ZL_list = [0, 2, 0, 2]
+MS_list = [245, 245, 245, 245]
+ZS_list = [0, 0, 2, 2]
+ML_list = [230, ]
+ZL_list = [0, ]
+MS_list = [245, ]
+ZS_list = [0,]
 
-                # which cases to save: GO, GS or GO, GS and SS
-                cases_tosave = ['GO', ]
-                if covariance_cfg[f'save_cov_GS']:
-                    cases_tosave.append('GS')
-                if covariance_cfg[f'save_cov_SS']:
-                    cases_tosave.append('SS')
+warnings.warn('restore the ML, Zl, ... lists')
+warnings.warn('restore nbl_WL = 32')
 
-                assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
+for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_source'], general_cfg['zcut_source'] in zip(ML_list, ZL_list, MS_list, ZS_list):
 
-                # import the ind files and store it into the covariance dictionary
-                ind_folder = covariance_cfg['ind_folder'].format(triu_tril=triu_tril,
-                                                                 row_col_wise=row_col_wise)
-                ind_filename = covariance_cfg['ind_filename'].format(triu_tril=triu_tril,
-                                                                     row_col_wise=row_col_wise,
-                                                                     zbins=zbins)
-                ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
-                covariance_cfg['ind'] = ind
+# for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
+#     for general_cfg['magcut_source'] in general_cfg['magcut_source_list']:
+#         for general_cfg['zcut_lens'] in general_cfg['zcut_lens_list']:
+#             for general_cfg['zcut_source'] in general_cfg['zcut_source_list']:
 
-                assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \
-                    'ell_max_WL and ell_max_GC must be either (5000, 3000) or (1500, 750)'
+    # utils.consistency_checks(general_cfg, covariance_cfg)
 
-                # compute ell and delta ell values in the reference (optimistic) case
-                ell_WL_nbl32, delta_l_WL_nbl32 = ell_utils.compute_ells(general_cfg['nbl_WL_32'],
-                                                                        general_cfg['ell_min'],
-                                                                        general_cfg['ell_max_WL_opt'], recipe='ISTF')
+    # some variables used for I/O naming, just to make things more readable
+    zbins = general_cfg['zbins']
+    EP_or_ED = general_cfg['EP_or_ED']
+    ell_max_WL = general_cfg['ell_max_WL']
+    ell_max_GC = general_cfg['ell_max_GC']
+    ell_max_XC = ell_max_GC
+    nbl_WL_32 = general_cfg['nbl_WL_32']
+    magcut_source = general_cfg['magcut_source']
+    magcut_lens = general_cfg['magcut_lens']
+    zcut_source = general_cfg['zcut_source']
+    zcut_lens = general_cfg['zcut_lens']
+    zmax = int(general_cfg['zmax'] * 10)
+    triu_tril = covariance_cfg['triu_tril']
+    row_col_wise = covariance_cfg['row_col_wise']
+    n_probes = general_cfg['n_probes']
+    use_stefano_BNT_ingredients = general_cfg['use_stefano_BNT_ingredients']
 
-                ell_WL_nbl32 = np.log10(ell_WL_nbl32)
+    # which cases to save: GO, GS or GO, GS and SS
+    cases_tosave = ['GO', 'GS']
+    if covariance_cfg[f'save_cov_GS']:
+        cases_tosave.append('GS')
+    if covariance_cfg[f'save_cov_SS']:
+        cases_tosave.append('SS')
 
-                # perform the cuts
-                ell_dict = {}
-                ell_dict['ell_WL'] = np.copy(ell_WL_nbl32[10 ** ell_WL_nbl32 < ell_max_WL])
-                ell_dict['ell_GC'] = np.copy(ell_WL_nbl32[10 ** ell_WL_nbl32 < ell_max_GC])
-                ell_dict['ell_WA'] = np.copy(
-                    ell_WL_nbl32[(10 ** ell_WL_nbl32 > ell_max_GC) & (10 ** ell_WL_nbl32 < ell_max_WL)])
-                ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
+    assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
 
-                # set corresponding # of ell bins
-                nbl_WL = ell_dict['ell_WL'].shape[0]
-                nbl_GC = ell_dict['ell_GC'].shape[0]
-                nbl_WA = ell_dict['ell_WA'].shape[0]
-                nbl_3x2pt = nbl_GC
-                general_cfg['nbl_WL'] = nbl_WL
+    # import the ind files and store it into the covariance dictionary
+    ind_folder = covariance_cfg['ind_folder'].format(triu_tril=triu_tril,
+                                                     row_col_wise=row_col_wise)
+    ind_filename = covariance_cfg['ind_filename'].format(triu_tril=triu_tril,
+                                                         row_col_wise=row_col_wise,
+                                                         zbins=zbins)
+    ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
+    covariance_cfg['ind'] = ind
 
-                delta_dict = {}
-                delta_dict['delta_l_WL'] = np.copy(delta_l_WL_nbl32[:nbl_WL])
-                delta_dict['delta_l_GC'] = np.copy(delta_l_WL_nbl32[:nbl_GC])
-                delta_dict['delta_l_WA'] = np.copy(delta_l_WL_nbl32[nbl_GC:])
+    assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \
+        'ell_max_WL and ell_max_GC must be either (5000, 3000) or (1500, 750)'
 
-                # set # of nbl in the opt case, import and reshape, then cut the reshaped datavectors in the pes case
-                nbl_WL_opt = 32
-                nbl_GC_opt = 29
-                nbl_WA_opt = 3
-                nbl_3x2pt_opt = 29
+    # compute ell and delta ell values in the reference (optimistic) case
+    ell_WL_nbl32, delta_l_WL_nbl32 = ell_utils.compute_ells(general_cfg['nbl_WL_32'],
+                                                            general_cfg['ell_min'],
+                                                            general_cfg['ell_max_WL_opt'], recipe='ISTF')
 
-                if ell_max_WL == general_cfg['ell_max_WL_opt']:
-                    assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
-                        'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
+    ell_WL_nbl32 = np.log10(ell_WL_nbl32)
 
-                # ! import datavectors (cl) and response functions (rl)
-                # this is just to make the .format() more compact
-                variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
-                                  'magcut_lens': magcut_lens, 'zcut_lens': zcut_lens,
-                                  'magcut_source': magcut_source, 'zcut_source': zcut_source,
-                                  'zmax': zmax}
+    # perform the cuts
+    ell_dict = {}
+    ell_dict['ell_WL'] = np.copy(ell_WL_nbl32[10 ** ell_WL_nbl32 < ell_max_WL])
+    ell_dict['ell_GC'] = np.copy(ell_WL_nbl32[10 ** ell_WL_nbl32 < ell_max_GC])
+    ell_dict['ell_WA'] = np.copy(
+        ell_WL_nbl32[(10 ** ell_WL_nbl32 > ell_max_GC) & (10 ** ell_WL_nbl32 < ell_max_WL)])
+    ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
 
-                cl_fld = general_cfg['cl_folder']
-                cl_filename = general_cfg['cl_filename']
-                cl_ll_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLO', **variable_specs)}")
-                cl_gg_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='GCO', **variable_specs)}")
-                cl_wa_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLA', **variable_specs)}")
-                cl_3x2pt_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
+    # set corresponding # of ell bins
+    nbl_WL = ell_dict['ell_WL'].shape[0]
+    nbl_GC = ell_dict['ell_GC'].shape[0]
+    nbl_WA = ell_dict['ell_WA'].shape[0]
+    nbl_3x2pt = nbl_GC
+    general_cfg['nbl_WL'] = nbl_WL
 
-                rl_fld = general_cfg['rl_folder']
-                rl_filename = general_cfg['rl_filename']
-                rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', **variable_specs)}")
-                rl_gg_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='GCO', **variable_specs)}")
-                rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **variable_specs)}")
-                rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **variable_specs)}")
+    delta_dict = {}
+    delta_dict['delta_l_WL'] = np.copy(delta_l_WL_nbl32[:nbl_WL])
+    delta_dict['delta_l_GC'] = np.copy(delta_l_WL_nbl32[:nbl_GC])
+    delta_dict['delta_l_WA'] = np.copy(delta_l_WL_nbl32[nbl_GC:])
 
-                # ! reshape to 3 dimensions
-                cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
-                cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
-                cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
-                cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
+    # set # of nbl in the opt case, import and reshape, then cut the reshaped datavectors in the pes case
+    nbl_WL_opt = 32
+    nbl_GC_opt = 29
+    nbl_WA_opt = 3
+    nbl_3x2pt_opt = 29
 
-                rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
-                rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC_opt, zbins)
-                rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA_opt, zbins)
-                rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
+    if ell_max_WL == general_cfg['ell_max_WL_opt']:
+        assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
+            'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
 
-                # ! BNT transform if the corresponding flag is set to True
-                if general_cfg['cl_BNT_transform']:
-                    assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
-                    assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
-                    BNT_matrix = np.genfromtxt(f'{general_cfg["BNT_matrix_path"]}/{general_cfg["BNT_matrix_filename"]}',
-                                               delimiter=',')
-                    cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix)
-                    cl_gg_3d = cl_utils.cl_BNT_transform(cl_gg_3d, BNT_matrix)
-                    cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix)
-                    cl_3x2pt_5d = cl_utils.cl_BNT_transform(cl_3x2pt_5d, BNT_matrix)
-                    print('you shuld BNT transform the responses do this with the responses too!')
+    BNT_matrix_filename = general_cfg["BNT_matrix_filename"].format(**variable_specs)
+    BNT_matrix = np.load(f'{general_cfg["BNT_matrix_path"]}/{BNT_matrix_filename}')
 
-                # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
-                if ell_max_WL == general_cfg['ell_max_WL_opt']:
-                    if not np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :]):
-                        rtol = 1e-5
-                        # plt.plot(ell_dict['ell_WL'], cl_ll_3d[:, 0, 0])
-                        # plt.plot(ell_dict['ell_WL'][nbl_GC:nbl_WL], cl_wa_3d[:, 0, 0])
-                        assert (np.allclose(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :], rtol=rtol, atol=0)), \
-                            'cl_wa_3d should be obtainable from cl_ll_3d!'
-                        print(f'cl_wa_3d and cl_ll_3d[nbl_GC:nbl_WL, :, :] are not exactly equal, but have a relative '
-                              f'difference of less than {rtol}')
+    # ! import datavectors (cl) and response functions (rl)
+    # this is just to make the .format() more compact
+    variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
+                      'magcut_lens': magcut_lens, 'zcut_lens': zcut_lens,
+                      'magcut_source': magcut_source, 'zcut_source': zcut_source,
+                      'zmax': zmax}
 
-                # cut datavectors and responses in the pessimistic case; be carful of WA, because it does not start from ell_min
-                if ell_max_WL == 1500:
-                    cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
-                    cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
-                    cl_wa_3d = cl_ll_3d[nbl_GC:nbl_WL, :, :]
-                    cl_3x2pt_5d = cl_3x2pt_5d[:nbl_3x2pt, :, :]
+    cl_fld = general_cfg['cl_folder']
+    cl_filename = general_cfg['cl_filename']
+    cl_ll_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLO', **variable_specs)}")
+    cl_gg_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='GCO', **variable_specs)}")
+    cl_wa_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLA', **variable_specs)}")
+    cl_3x2pt_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
 
-                    rl_ll_3d = rl_ll_3d[:nbl_WL, :, :]
-                    rl_gg_3d = rl_gg_3d[:nbl_GC, :, :]
-                    rl_wa_3d = rl_ll_3d[nbl_GC:nbl_WL, :, :]
-                    rl_3x2pt_5d = rl_3x2pt_5d[:nbl_3x2pt, :, :]
+    rl_fld = general_cfg['rl_folder']
+    rl_filename = general_cfg['rl_filename']
+    rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', **variable_specs)}")
+    rl_gg_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='GCO', **variable_specs)}")
+    rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **variable_specs)}")
+    rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **variable_specs)}")
 
-                # store cls and responses in a dictionary
-                cl_dict_3D = {
-                    'C_LL_WLonly_3D': cl_ll_3d,
-                    'C_GG_3D': cl_gg_3d,
-                    'C_WA_3D': cl_wa_3d,
-                    'C_3x2pt_5D': cl_3x2pt_5d}
+    # ! reshape to 3 dimensions
+    cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
+    cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
+    cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
+    cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
 
-                rl_dict_3D = {
-                    'R_LL_WLonly_3D': rl_ll_3d,
-                    'R_GG_3D': rl_gg_3d,
-                    'R_WA_3D': rl_wa_3d,
-                    'R_3x2pt_5D': rl_3x2pt_5d}
+    rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
+    rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC_opt, zbins)
+    rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA_opt, zbins)
+    rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
 
-                warnings.warn("not the nicest way, this if is ugly")
-                if covariance_cfg['compute_covmat']:
-                    # ! compute or load Sijkl
-                    # ! load kernels
-                    # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
-                    WF_folder = Sijkl_cfg["wf_input_folder"].format(**variable_specs)
-                    WF_filename = Sijkl_cfg["wf_input_filename"]
-                    wil = np.genfromtxt(f'{WF_folder}/{WF_filename.format(which_WF="WiWL", **variable_specs)}')
-                    wig = np.genfromtxt(f'{WF_folder}/{WF_filename.format(which_WF="WiGC", **variable_specs)}')
+    # ! BNT transform if the corresponding flag is set to True
+    if general_cfg['cl_BNT_transform']:
+        assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
+        assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
 
-                    # preprocess (remove redshift column)
-                    z_arr, wil = Sijkl_utils.preprocess_wf(wil, zbins)
-                    z_arr_2, wig = Sijkl_utils.preprocess_wf(wig, zbins)
-                    assert np.array_equal(z_arr, z_arr_2), 'the redshift arrays are different for the GC and WL kernels'
+        cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix)
+        cl_gg_3d = cl_utils.cl_BNT_transform(cl_gg_3d, BNT_matrix)
+        cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix)
+        cl_3x2pt_5d = cl_utils.cl_BNT_transform(cl_3x2pt_5d, BNT_matrix)
+        print('you shuld BNT-transform the responses too!')
 
-                    # transpose and stack, ordering is important here!
-                    transp_stacked_wf = np.vstack((wil.T, wig.T))
+    # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
+    if ell_max_WL == general_cfg['ell_max_WL_opt']:
+        if not np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :]):
+            rtol = 1e-5
+            # plt.plot(ell_dict['ell_WL'], cl_ll_3d[:, 0, 0])
+            # plt.plot(ell_dict['ell_WL'][nbl_GC:nbl_WL], cl_wa_3d[:, 0, 0])
+            assert (np.allclose(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :], rtol=rtol, atol=0)), \
+                'cl_wa_3d should be obtainable from cl_ll_3d!'
+            print(f'cl_wa_3d and cl_ll_3d[nbl_GC:nbl_WL, :, :] are not exactly equal, but have a relative '
+                  f'difference of less than {rtol}')
 
-                    nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
-                    Sijkl_folder = Sijkl_cfg['Sijkl_folder']
-                    Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(
-                        flagship_version=general_cfg['flagship_version'],
-                        nz=nz, EP_or_ED=EP_or_ED, zbins=zbins,
-                        IA_flag=Sijkl_cfg['IA_flag'],
-                        magcut_source=magcut_source,
-                        zcut_source=zcut_source)
-                    # if Sijkl exists, load it; otherwise, compute it and save it
-                    if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
-                        print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
-                        Sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
-                    else:
-                        Sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
-                                                          Sijkl_cfg['WF_normalization'])
-                        np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
+    # cut datavectors and responses in the pessimistic case; be carful of WA, because it does not start from ell_min
+    if ell_max_WL == 1500:
+        cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
+        cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
+        cl_wa_3d = cl_ll_3d[nbl_GC:nbl_WL, :, :]
+        cl_3x2pt_5d = cl_3x2pt_5d[:nbl_3x2pt, :, :]
 
-                # ! compute covariance matrix
-                if covariance_cfg['compute_covmat']:
-                    ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
-                    # ! first column, in this case 👇
-                    covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[:, 1]
-                    cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                                        ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
+        rl_ll_3d = rl_ll_3d[:nbl_WL, :, :]
+        rl_gg_3d = rl_gg_3d[:nbl_GC, :, :]
+        rl_wa_3d = rl_ll_3d[nbl_GC:nbl_WL, :, :]
+        rl_3x2pt_5d = rl_3x2pt_5d[:nbl_3x2pt, :, :]
 
-                    # now overwrite the WL GS entries with Stefano's BNT covmats:
-                    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+    # store cls and responses in a dictionary
+    cl_dict_3D = {
+        'C_LL_WLonly_3D': cl_ll_3d,
+        'C_GG_3D': cl_gg_3d,
+        'C_WA_3D': cl_wa_3d,
+        'C_3x2pt_5D': cl_3x2pt_5d}
 
-                    GOGS_list = ['GO', 'GS']
-                    probe_list = ['WL', 'GC', '3x2pt', 'WA']
-                    ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
-                    nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
-                    zpairs_list = [zpairs_auto, zpairs_auto, zpairs_3x2pt, zpairs_auto]
+    rl_dict_3D = {
+        'R_LL_WLonly_3D': rl_ll_3d,
+        'R_GG_3D': rl_gg_3d,
+        'R_WA_3D': rl_wa_3d,
+        'R_3x2pt_5D': rl_3x2pt_5d}
 
-                    cov_folder_stef = f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022' \
-                                      f'/Flagship_2/CovMats/BNT_True/produced_by_stefano/magcut_zcut'
+    if covariance_cfg['compute_covmat']:
+        # ! load kernels
+        # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
+        WF_folder = Sijkl_cfg["wf_input_folder"].format(**variable_specs)
+        WF_filename = Sijkl_cfg["wf_input_filename"]
+        wil = np.genfromtxt(f'{WF_folder}/{WF_filename.format(which_WF="WiWL", **variable_specs)}')
+        wig = np.genfromtxt(f'{WF_folder}/{WF_filename.format(which_WF="WiGC", **variable_specs)}')
 
-                    if use_stefano_BNT_ingredients:
-                        for probe, ellmax, nbl, zpairs in zip(probe_list, ellmax_list, nbl_list, zpairs_list):
-                            for GO_or_GS in GOGS_list:
-                                cov_filename = f'BNT_covmat_{GO_or_GS}_{probe}_lmax{ellmax}_nbl{nbl}_' \
-                                               f'zbins{EP_or_ED}{zbins:02d}_ML{magcut_lens:03d}_' \
-                                               f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                               f'ZS{zcut_source:02d}_6D.npy'
-                                if os.path.isfile(f'{cov_folder_stef}/{cov_filename}'):
-                                    # ! this will give an error, Stefano's covariance is not in 6D but in 3D!
-                                    print(
-                                        f'cov_{probe}_{GO_or_GS} already exists in folder\n{cov_folder_stef}; loading it'
-                                        f'\np.s.: this print should appear for all the files in the folder!')
-                                    cov_dict[f'cov_{probe}_{GO_or_GS}_6D'] = np.load(
-                                        f'{cov_folder_stef}/{cov_filename}')
-                                    cov_dict[f'cov_{probe}_{GO_or_GS}_4D'] = mm.cov_6D_to_4D(
-                                        cov_dict[f'cov_{probe}_{GO_or_GS}_6D'], nbl, zpairs, ind[:zpairs, :])
-                                    cov_dict[f'cov_{probe}_{GO_or_GS}_2D'] = mm.cov_4D_to_2D(
-                                        cov_dict[f'cov_{probe}_{GO_or_GS}_4D'], 'ell')
+        # preprocess (remove redshift column)
+        z_arr, wil = Sijkl_utils.preprocess_wf(wil, zbins)
+        z_arr_2, wig = Sijkl_utils.preprocess_wf(wig, zbins)
+        assert np.array_equal(z_arr, z_arr_2), 'the redshift arrays are different for the GC and WL kernels'
 
-                # ! compute Fisher matrix
-                if FM_cfg['compute_FM']:
+        # transpose and stack, ordering is important here!
+        transp_stacked_wf = np.vstack((wil.T, wig.T))
 
-                    # import derivatives and store them in dictionary
-                    derivetives_folder_stef = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_2/Derivatives/BNT_True'
-                    derivatives_folder = FM_cfg['derivatives_folder'].format(magcut_lens=magcut_lens,
-                                                                             zcut_lens=zcut_lens,
-                                                                             magcut_source=magcut_source,
-                                                                             zcut_source=zcut_source)
-                    dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
-                    dC_dict_BNT_WLO_1D = dict(mm.get_kv_pairs(derivetives_folder_stef, "dat"))
+        # ! compute or load Sijkl
+        nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
+        Sijkl_folder = Sijkl_cfg['Sijkl_folder']
+        Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(
+            flagship_version=general_cfg['flagship_version'],
+            nz=nz, EP_or_ED=EP_or_ED, zbins=zbins,
+            IA_flag=Sijkl_cfg['IA_flag'],
+            magcut_source=magcut_source,
+            zcut_source=zcut_source)
+        # if Sijkl exists, load it; otherwise, compute it and save it
+        if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
+            print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
+            Sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
+        else:
+            Sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
+                                              Sijkl_cfg['WF_normalization'])
+            np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
 
-                    # reshape them (no interpolation needed in this case)
-                    dC_dict_LL_3D = {}
-                    dC_dict_GG_3D = {}
-                    dC_dict_WA_3D = {}
-                    dC_dict_3x2pt_5D = {}
+        # ! compute covariance matrix
+        # TODO: if already existing, don't compute it like above
+        ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
+        # the ng values are in the second column, for these input files 👇
+        covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[:, 1]
+        cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+                                            ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
-                    if use_stefano_BNT_ingredients:
-                        for key in dC_dict_BNT_WLO_1D.keys():
-                            if 'WLO' in key:
-                                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_BNT_WLO_1D[key], probe='WL',
-                                                                               nbl=nbl_WL, zbins=zbins)
 
-                    elif not use_stefano_BNT_ingredients:
-                        for key in dC_dict_1D.keys():
-                            if 'WLO' in key:
-                                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WL', nbl=nbl_WL,
-                                                                               zbins=zbins)
-                            if 'GCO' in key:
-                                dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='GC', nbl=nbl_GC,
-                                                                               zbins=zbins)
-                            elif 'WLA' in key:
-                                dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WA', nbl=nbl_WA,
-                                                                               zbins=zbins)
-                            elif '3x2pt' in key:
-                                dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='3x2pt',
-                                                                                  nbl=nbl_3x2pt, zbins=zbins)
+        if use_stefano_BNT_ingredients:
+            # now overwrite the WL GS entries with Stefano's BNT covmats:
+            zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
 
-                    # now turn the dict. into npy array
-                    paramnames_cosmo = ["Om", "Ob", "wz", "wa", "h", "ns", "s8"]
-                    paramnames_IA = ["Aia", "eIA", "bIA"]
-                    paramnames_galbias = [f'bG{zbin_idx:02d}' for zbin_idx in range(zbins+1)]
-                    paramnames_shearbias = [f'm{zbin_idx:02d}' for zbin_idx in range(zbins+1)]
-                    paramnames_dzWL = [f'dzWL{zbin_idx:02d}' for zbin_idx in range(zbins+1)]
-                    paramnames_dzGC = [f'dzGC{zbin_idx:02d}' for zbin_idx in range(zbins+1)]
-                    paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias + paramnames_shearbias + paramnames_dz
-                    FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
+            GOGS_list = ['GO', 'GS']
+            probe_list = ['WL', 'GC', '3x2pt', 'WA']
+            ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
+            nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
+            zpairs_list = [zpairs_auto, zpairs_auto, zpairs_3x2pt, zpairs_auto]
 
-                    dC_LL_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_LL_3D, nbl_WL, zbins)
-                    dC_GG_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_GG_3D, nbl_GC, zbins)
-                    dC_WA_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_WA_3D, nbl_WA, zbins)
-                    dC_3x2pt_5D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_3x2pt_5D, nbl_3x2pt, zbins,
-                                                      is_3x2pt=True)
+            cov_folder_stef = f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022' \
+                              f'/Flagship_2/CovMats/BNT_True/stefano/magcut_zcut'
 
-                    # store the derivatives in a dictionary (of dictionaries)
-                    deriv_dict = {'dC_LL_4D': dC_LL_4D,
-                                  'dC_GG_4D': dC_GG_4D,
-                                  'dC_WA_4D': dC_WA_4D,
-                                  'dC_3x2pt_5D': dC_3x2pt_5D}
-                    # TODO save 3D derivatives to file
+            for probe, ellmax, nbl, zpairs in zip(probe_list, ellmax_list, nbl_list, zpairs_list):
+                for GO_or_GS in GOGS_list:
+                    cov_filename = f'BNT_covmat_{GO_or_GS}_{probe}_LLLL_lmax{ellmax}_nbl{nbl}_' \
+                                   f'zbins{EP_or_ED}{zbins:02d}_ML{magcut_lens:03d}_' \
+                                   f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                   f'ZS{zcut_source:02d}_6D.npy'
+                    # BNT_covmat_GS_3x2pt_LLLL_lmax3000_nbl29_zbinsED13_ML230_ZL00_MS245_ZS00_6D.npy
 
-                    FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
+                    if os.path.isfile(f'{cov_folder_stef}/{cov_filename}'):
+                        # ! this will give an error, Stefano's covariance is not in 6D but in 3D!
+                        print(
+                            f'cov_{probe}_{GO_or_GS} already exists in folder\n{cov_folder_stef}; loading it'
+                            f'\np.s.: this print should appear for all the files in the folder!')
+                        cov_dict[f'cov_{probe}_{GO_or_GS}_6D'] = np.load(
+                            f'{cov_folder_stef}/{cov_filename}')
+                        cov_dict[f'cov_{probe}_{GO_or_GS}_4D'] = mm.cov_6D_to_4D(
+                            cov_dict[f'cov_{probe}_{GO_or_GS}_6D'], nbl, zpairs, ind[:zpairs, :])
+                        cov_dict[f'cov_{probe}_{GO_or_GS}_2D'] = mm.cov_4D_to_2D(
+                            cov_dict[f'cov_{probe}_{GO_or_GS}_4D'], 'ell')
 
-                    # ! save cls and responses:
-                    # this is just to set the correct probe names
-                    probe_dav_dict = {'WL': 'LL_WLonly_3D',
-                                      'GC': 'GG_3D',
-                                      'WA': 'WA_3D',
-                                      '3x2pt': '3x2pt_5D'}
+    # ! compute Fisher matrix
+    if FM_cfg['compute_FM']:
 
-                    # just a dict for the output file names
-                    clrl_dict = {'cl_dict_3D': cl_dict_3D,
-                                 'rl_dict_3D': rl_dict_3D,
-                                 'cl_inputname': 'dv',
-                                 'rl_inputname': 'rf',
-                                 'cl_dict_key': 'C',
-                                 'rl_dict_key': 'R'}
-                    for cl_or_rl in ['cl', 'rl']:
-                        if general_cfg[f'save_{cl_or_rl}s_3d']:
+        # import derivatives and store them in dictionary
+        derivetives_folder_stef = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_2/Derivatives/BNT_True/stefano'
+        derivatives_folder = FM_cfg['derivatives_folder'].format(magcut_lens=magcut_lens,
+                                                                 zcut_lens=zcut_lens,
+                                                                 magcut_source=magcut_source,
+                                                                 zcut_source=zcut_source)
+        dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
 
-                            for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'],
-                                                             ['WL', 'GC', '3x2pt', 'WA']):
-                                # save cl and/or response; not very readable but it works, plus all the cases are in the for loop
+        # check if dictionary is empty
+        if not dC_dict_1D:
+            raise ValueError(f'No derivatives found in folder {derivatives_folder}')
 
-                                filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
-                                filename = general_cfg[f'{cl_or_rl}_filename'].format(probe=probe_vinc, **variable_specs
-                                                                                      ).replace(".dat", "_3D.npy")
-                                file = clrl_dict[f"{cl_or_rl}_dict_3D"][
-                                    f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}']
-                                np.save(f'{filepath}/{filename}', file)
+        # reshape them (no interpolation needed in this case)
+        dC_dict_LL_3D = {}
+        dC_dict_GG_3D = {}
+        dC_dict_WA_3D = {}
+        dC_dict_3x2pt_5D = {}
 
-                                # save ells and deltas
-                                if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
-                                    filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/' \
-                                               f'3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
-                                    ells_filename = f'ell_{probe_dav}_ellmaxWL{ell_max_WL}'
-                                    np.savetxt(f'{filepath}/{ells_filename}.txt', 10 ** ell_dict[f'ell_{probe_dav}'])
-                                    np.savetxt(f'{filepath}/delta_{ells_filename}.txt',
-                                               delta_dict[f'delta_l_{probe_dav}'])
+        if use_stefano_BNT_ingredients:
+            dC_dict_BNT_WLO_1D = dict(mm.get_kv_pairs(derivetives_folder_stef, "dat"))
 
-                # ! save covariance:
-                if covariance_cfg['cov_file_format'] == 'npy':
-                    save_funct = np.save
-                    extension = 'npy'
-                elif covariance_cfg['cov_file_format'] == 'npz':
-                    save_funct = np.savez_compressed
-                    extension = 'npz'
-                else:
-                    raise ValueError('cov_file_format not recognized: must be "npy" or "npz"')
+            if not dC_dict_BNT_WLO_1D:
+                raise ValueError(f'No derivatives found in folder {derivetives_folder_stef}')
 
-                # TODO skip the computation and saving if the file already exists
-                cov_folder = covariance_cfg["cov_folder"].format(zbins=zbins)
-                for ndim in (2, 4, 6):
-                    if covariance_cfg[f'save_cov_{ndim}D']:
+            for key in dC_dict_BNT_WLO_1D.keys():
+                if 'WLO' in key:
+                    dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_BNT_WLO_1D[key], probe='WL',
+                                                                   nbl=nbl_WL, zbins=zbins)
 
-                        # set probes to save; the ndim == 6 case is different
-                        probe_list = ['WL', 'GC', '3x2pt', 'WA']
-                        ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
-                        nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
-                        # in this case, 3x2pt is saved in 10D as a dictionary
-                        if ndim == 6:
-                            probe_list = ['WL', 'GC', 'WA']
-                            ellmax_list = [ell_max_WL, ell_max_GC, ell_max_WL]
-                            nbl_list = [nbl_WL, nbl_GC, nbl_WA]
+        elif not use_stefano_BNT_ingredients:
+            for key in dC_dict_1D.keys():
+                if 'WLO' in key:
+                    dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WL', nbl=nbl_WL,
+                                                                   zbins=zbins)
+                elif 'GCO' in key:
+                    dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='GC', nbl=nbl_GC,
+                                                                   zbins=zbins)
+                elif 'WLA' in key:
+                    dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WA', nbl=nbl_WA,
+                                                                   zbins=zbins)
+                elif '3x2pt' in key:
+                    dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='3x2pt',
+                                                                      nbl=nbl_3x2pt, zbins=zbins)
 
-                        # save all covmats in the optimistic case
-                        if ell_max_WL == 5000:
+        # now turn the dict. into npy array
+        paramnames_cosmo = ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"]
+        paramnames_IA = ["Aia", "eIA", "bIA"]
+        paramnames_galbias = [f'bG{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+        paramnames_shearbias = [f'm{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+        paramnames_dzWL = [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+        paramnames_dzGC = [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+        paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias + paramnames_shearbias + \
+                           paramnames_dzWL + paramnames_dzGC
+        FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
 
-                            for which_cov in cases_tosave:
-                                for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
-                                    cov_filename = f'covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_' \
-                                                   f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
-                                                   f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                                   f'ZS{zcut_source:02d}_{ndim}D.{extension}'
-                                    save_funct(f'{cov_folder}/{cov_filename}',
-                                               cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])  # save in .npy or .npz
+        dC_LL_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_LL_3D, nbl_WL, zbins)
+        dC_GG_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_GG_3D, nbl_GC, zbins)
+        dC_WA_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_WA_3D, nbl_WA, zbins)
+        dC_3x2pt_5D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_3x2pt_5D, nbl_3x2pt, zbins,
+                                          is_3x2pt=True)
 
-                                # in this case, 3x2pt is saved in 10D as a dictionary
-                                if ndim == 6:
-                                    cov_filename = f'covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_' \
-                                                   f'nbl{nbl_3x2pt}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
-                                                   f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                                   f'ZS{zcut_source:02d}_10D'
-                                    start = time.perf_counter()
-                                    with open(f'{cov_folder}/{cov_filename}', 'wb') as handle:
-                                        pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
-                                    print(f'covmat 3x2pt {which_cov} saved in {time.perf_counter() - start:.2f} s')
+        # ! new bit: BNT transform derivatives
+        if FM_cfg['derivatives_BNT_transform']:
+            assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
+            assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
+            warnings.warn('Vincenzos derivatives are anly for BNT_False, otherwise you should use Stefanos files')
 
-                        # in the pessimistic case, save only WA
-                        elif ell_max_WL == 1500:
-                            for which_cov in cases_tosave:
-                                cov_filename = f'covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_' \
-                                               f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
-                                               f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                               f'ZS{zcut_source:02d}_{ndim}D.npy'
-                                np.save(f'{cov_folder}/{cov_filename}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
+            dC_LL_4D_BNT = np.zeros(dC_LL_4D.shape)
+            for alf in range(len(paramnames_3x2pt)):
+                dC_LL_4D_BNT[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_LL_4D[:, :, :, alf], BNT_matrix)
+                dC_GG_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_GG_4D[:, :, :, alf], BNT_matrix)
+                dC_WA_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_WA_4D[:, :, :, alf], BNT_matrix)
+                # dC_3x2pt_5D[:, :, :, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, :, :, :, :, alf],
+                #                                                       BNT_matrix)
 
-                # save in .dat for Vincenzo, only in the optimistic case and in 2D
-                if covariance_cfg['save_cov_dat'] and ell_max_WL == 5000:
-                    raise NotImplementedError('not implemented yet')
-                    path_vinc_fmt = f'{job_path}/output/covmat/vincenzos_format'
-                    for probe, probe_vinc in zip(['WL', 'GC', '3x2pt', 'WA'], ['WLO', 'GCO', '3x2pt', 'WLA']):
-                        for GOGS_folder, GOGS_filename in zip(['GaussOnly', 'GaussSSC'], ['GO', 'GS']):
-                            np.savetxt(f'{path_vinc_fmt}/{GOGS_folder}/{probe_vinc}/cm-{probe_vinc}-{nbl_WL}'
-                                       f'-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.dat',
-                                       cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.10e')
+            # TODO this should not be here nor hardcoded
+            transformed_derivs_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_2/Derivatives/BNT_True/davide'
 
-                # check for Stefano
-                if covariance_cfg['save_cov_6D']:
-                    warnings.warn('old checks below, you could probably discard...')
-                    npairs = (zbins * (zbins + 1)) // 2
-                    cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GO_6D'], nbl_WL, npairs, ind[:npairs, :])
-                    cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GO_6D'], nbl_GC, npairs, ind[:npairs, :])
-                    cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GS_6D'], nbl_WL, npairs, ind[:npairs, :])
-                    cov_GC_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GS_6D'], nbl_GC, npairs, ind[:npairs, :])
-                    assert np.array_equal(cov_WL_GO_4D, cov_dict[f'cov_WL_GO_4D'])
-                    assert np.array_equal(cov_GC_GO_4D, cov_dict[f'cov_GC_GO_4D'])
-                    assert np.allclose(cov_WL_GS_4D, cov_dict[f'cov_WL_GS_4D'], rtol=1e-9, atol=0)
-                    assert np.allclose(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D'], rtol=1e-9, atol=0)
+            readme = 'shape: (ell_bins, z_bins, z_bins, num_parameters); parameters order:' + str(
+                paramnames_3x2pt)
+            with open(f'{transformed_derivs_folder}/README_transformed_derivs.txt', "w") as text_file:
+                text_file.write(readme)
 
-                # ! save FM
-                if FM_cfg['save_FM']:
-                    probe_list = ['WL', 'GC', '3x2pt', 'WA']
-                    ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
-                    nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
-                    header = 'parameters\' ordering:' + str(paramnames_3x2pt)
+            transformed_derivs_filename = f'dDV-WLO-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.npy'
+            np.save(f'{transformed_derivs_folder}/{transformed_derivs_filename}', dC_LL_4D_BNT)
 
+        # ! end new bit: BNT transform derivatives
+
+        # store the derivatives arrays in a dictionary
+        deriv_dict = {'dC_LL_4D': dC_LL_4D,
+                      'dC_GG_4D': dC_GG_4D,
+                      'dC_WA_4D': dC_WA_4D,
+                      'dC_3x2pt_5D': dC_3x2pt_5D}
+        # TODO save 3D derivatives to file
+
+        FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
+
+        ########################################################################################################################
+        ######################################################### SAVE #########################################################
+        ########################################################################################################################
+
+        # ! save cls and responses:
+        # this is just to set the correct probe names
+        probe_dav_dict = {'WL': 'LL_WLonly_3D',
+                          'GC': 'GG_3D',
+                          'WA': 'WA_3D',
+                          '3x2pt': '3x2pt_5D'}
+
+        # just a dict for the output file names
+        clrl_dict = {'cl_dict_3D': cl_dict_3D,
+                     'rl_dict_3D': rl_dict_3D,
+                     'cl_inputname': 'dv',
+                     'rl_inputname': 'rf',
+                     'cl_dict_key': 'C',
+                     'rl_dict_key': 'R'}
+        for cl_or_rl in ['cl', 'rl']:
+            if general_cfg[f'save_{cl_or_rl}s_3d']:
+
+                for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'],
+                                                 ['WL', 'GC', '3x2pt', 'WA']):
+                    # save cl and/or response; not very readable but it works, plus all the cases are in the for loop
+
+                    filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
+                    filename = general_cfg[f'{cl_or_rl}_filename'].format(probe=probe_vinc, **variable_specs
+                                                                          ).replace(".dat", "_3D.npy")
+                    file = clrl_dict[f"{cl_or_rl}_dict_3D"][
+                        f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}']
+                    np.save(f'{filepath}/{filename}', file)
+
+                    # save ells and deltas
+                    if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
+                        filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/' \
+                                   f'3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
+                        ells_filename = f'ell_{probe_dav}_ellmaxWL{ell_max_WL}'
+                        np.savetxt(f'{filepath}/{ells_filename}.txt', 10 ** ell_dict[f'ell_{probe_dav}'])
+                        np.savetxt(f'{filepath}/delta_{ells_filename}.txt',
+                                   delta_dict[f'delta_l_{probe_dav}'])
+
+    # ! save covariance:
+    if covariance_cfg['cov_file_format'] == 'npy':
+        save_funct = np.save
+        extension = 'npy'
+    elif covariance_cfg['cov_file_format'] == 'npz':
+        save_funct = np.savez_compressed
+        extension = 'npz'
+    else:
+        raise ValueError('cov_file_format not recognized: must be "npy" or "npz"')
+
+    # TODO skip the computation and saving if the file already exists
+    cov_folder = covariance_cfg["cov_folder"].format(zbins=zbins)
+    for ndim in (2, 4, 6):
+        if covariance_cfg[f'save_cov_{ndim}D']:
+
+            # set probes to save; the ndim == 6 case is different
+            probe_list = ['WL', 'GC', '3x2pt', 'WA']
+            ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
+            nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
+            # in this case, 3x2pt is saved in 10D as a dictionary
+            if ndim == 6:
+                probe_list = ['WL', 'GC', 'WA']
+                ellmax_list = [ell_max_WL, ell_max_GC, ell_max_WL]
+                nbl_list = [nbl_WL, nbl_GC, nbl_WA]
+
+            # save all covmats in the optimistic case
+            if ell_max_WL == 5000:
+
+                for which_cov in cases_tosave:
                     for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
-                        for which_cov in cases_tosave:
-                            FM_folder = FM_cfg["FM_folder"]
-                            FM_filename = FM_cfg["FM_filename"].format(probe=probe, which_cov=which_cov,
-                                                                       ell_max=ell_max, nbl=nbl,
-                                                                       **variable_specs)
-                            np.savetxt(f'{FM_folder}/{FM_filename}', FM_dict[f'FM_{probe}_{which_cov}'], header=header)
+                        cov_filename = f'covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_' \
+                                       f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
+                                       f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                       f'ZS{zcut_source:02d}_{ndim}D.{extension}'
+                        save_funct(f'{cov_folder}/{cov_filename}',
+                                   cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])  # save in .npy or .npz
 
-                # if FM_cfg['save_FM_as_dict']:
-                #     sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)
+                    # in this case, 3x2pt is saved in 10D as a dictionary
+                    if ndim == 6:
+                        cov_filename = f'covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_' \
+                                       f'nbl{nbl_3x2pt}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
+                                       f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                       f'ZS{zcut_source:02d}_10D'
+                        start = time.perf_counter()
+                        with open(f'{cov_folder}/{cov_filename}', 'wb') as handle:
+                            pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
+                        print(f'covmat 3x2pt {which_cov} saved in {time.perf_counter() - start:.2f} s')
+
+            # in the pessimistic case, save only WA
+            elif ell_max_WL == 1500:
+                for which_cov in cases_tosave:
+                    cov_filename = f'covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_' \
+                                   f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
+                                   f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                   f'ZS{zcut_source:02d}_{ndim}D.npy'
+                    np.save(f'{cov_folder}/{cov_filename}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
+
+    # save in .dat for Vincenzo, only in the optimistic case and in 2D
+    if covariance_cfg['save_cov_dat'] and ell_max_WL == 5000:
+        raise NotImplementedError('not implemented yet')
+        path_vinc_fmt = f'{job_path}/output/covmat/vincenzos_format'
+        for probe, probe_vinc in zip(['WL', 'GC', '3x2pt', 'WA'], ['WLO', 'GCO', '3x2pt', 'WLA']):
+            for GOGS_folder, GOGS_filename in zip(['GaussOnly', 'GaussSSC'], ['GO', 'GS']):
+                np.savetxt(f'{path_vinc_fmt}/{GOGS_folder}/{probe_vinc}/cm-{probe_vinc}-{nbl_WL}'
+                           f'-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.dat',
+                           cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.10e')
+
+    # check for Stefano
+    if covariance_cfg['save_cov_6D']:
+        warnings.warn('old checks below, you could probably discard...')
+        npairs = (zbins * (zbins + 1)) // 2
+        cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GO_6D'], nbl_WL, npairs, ind[:npairs, :])
+        cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GO_6D'], nbl_GC, npairs, ind[:npairs, :])
+        cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GS_6D'], nbl_WL, npairs, ind[:npairs, :])
+        cov_GC_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GS_6D'], nbl_GC, npairs, ind[:npairs, :])
+        assert np.array_equal(cov_WL_GO_4D, cov_dict[f'cov_WL_GO_4D'])
+        assert np.array_equal(cov_GC_GO_4D, cov_dict[f'cov_GC_GO_4D'])
+        assert np.allclose(cov_WL_GS_4D, cov_dict[f'cov_WL_GS_4D'], rtol=1e-9, atol=0)
+        assert np.allclose(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D'], rtol=1e-9, atol=0)
+
+    # ! save FM
+    if FM_cfg['save_FM']:
+        probe_list = ['WL', 'GC', '3x2pt', 'WA']
+        ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
+        nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
+        header = 'parameters\' ordering:' + str(paramnames_3x2pt)
+
+        for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
+            for which_cov in cases_tosave:
+                FM_folder = FM_cfg["FM_folder"]
+                FM_filename = FM_cfg["FM_filename"].format(probe=probe, which_cov=which_cov,
+                                                           ell_max=ell_max, nbl=nbl,
+                                                           **variable_specs)
+                np.savetxt(f'{FM_folder}/{FM_filename}', FM_dict[f'FM_{probe}_{which_cov}'], header=header)
+                print('FM saved')
+
+    # if FM_cfg['save_FM_as_dict']:
+    #     sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)
 
 print('done')

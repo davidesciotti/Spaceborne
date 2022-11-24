@@ -73,7 +73,7 @@ covariance_cfg = {
     'ng_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/InputNz/magcut_zcut',
     'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
-    'compute_covmat': False,
+    'compute_covmat': True,
     'cov_file_format': 'npz',  # or npy
     'save_cov_2D': False,
     'save_cov_4D': False,
@@ -82,9 +82,8 @@ covariance_cfg = {
     'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
-    # 'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/covmat' + '/zbins{zbins:02d}',
-    # 'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/covmat' + '/zbins{zbins:02d}',
-    'cov_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/CovMats/BNT_True/produced_by_stefano/magcut_zcut'
+    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/covmat' + '/zbins{zbins:02d}',
+    # 'cov_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/CovMats/BNT_True/produced_by_stefano/magcut_zcut'
     # 'cov_folder': f'/Volumes/4TB/covmat_cuts',
     #'cov_filename': 'covmat_{GO_or_GS:s}_{probe:s}_lmax{lmax:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}'
     #                '_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:03d}',

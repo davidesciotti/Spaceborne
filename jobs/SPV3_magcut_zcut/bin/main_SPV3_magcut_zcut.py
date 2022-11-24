@@ -283,11 +283,12 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                     nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
                     Sijkl_folder = Sijkl_cfg['Sijkl_folder']
-                    Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(flagship_version=general_cfg['flagship_version'],
-                                                                        nz=nz, EP_or_ED=EP_or_ED, zbins=zbins,
-                                                                        IA_flag=Sijkl_cfg['IA_flag'],
-                                                                        magcut_source=magcut_source,
-                                                                        zcut_source=zcut_source)
+                    Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(
+                        flagship_version=general_cfg['flagship_version'],
+                        nz=nz, EP_or_ED=EP_or_ED, zbins=zbins,
+                        IA_flag=Sijkl_cfg['IA_flag'],
+                        magcut_source=magcut_source,
+                        zcut_source=zcut_source)
                     # if Sijkl exists, load it; otherwise, compute it and save it
                     if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
                         print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
@@ -304,15 +305,49 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[:, 1]
                     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
-                else:
-                    print('sono qui')
+
+                    # now overwrite the WL GS entries with Stefano's BNT covmats:
+                    GOGS_list = ['GO', 'GS']
+                    probe_list = ['WL', 'GC', '3x2pt', 'WA']
+                    ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
+                    nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
                     cov_folder = covariance_cfg["cov_folder"]
-                    for which_cov in ['GO', 'GS']:
-                        cov_folder = covariance_cfg["cov_folder"]
-                        cov_filename = f'BNT_covmat_{which_cov}_WL_lmax5000_nbl32_zbinsED13_ML{magcut_lens:03d}_' \
-                                          f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                          f'ZS{zcut_source:02d}_2D.npy'
-                        cov_dict[f'cov_WL_{which_cov}_2D'] = np.load(f'{cov_folder}/{cov_filename}')
+
+                    for probe, ellmax, nbl in zip(probe_list, ellmax_list, nbl_list):
+                        for GO_or_GS in GOGS_list:
+                            cov_filename = f'BNT_covmat_{GO_or_GS}_{probe}_lmax{ellmax}_nbl{nbl}_' \
+                                           f'zbins{EP_or_ED}{zbins:02d}_ML{magcut_lens:03d}_' \
+                                           f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                           f'ZS{zcut_source:02d}_6D.npy'
+                            if os.path.isfile(f'{cov_folder}/{cov_filename}'):
+                                print(f'cov_{probe}_{GO_or_GS} already exists in folder\n{cov_folder}; loading it')
+                                cov_dict[f'cov_{probe}_{GO_or_GS}_6D'] = np.load(f'{cov_folder}/{cov_filename}')
+
+
+                else:
+                    # load pre-existing cov (in this case, Stefano's), or fill a dummy matrix, which is probably a bad idea
+                    cov_dict = {}
+                    GOGS_list = ['GO', 'GS']
+                    probe_list = ['WL', 'GC', '3x2pt', 'WA']
+                    ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
+                    nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
+                    cov_folder = covariance_cfg["cov_folder"]
+
+                    for probe, ellmax, nbl in zip(probe_list, ellmax_list, nbl_list):
+                        for GO_or_GS in GOGS_list:
+                            cov_filename = f'BNT_covmat_{GO_or_GS}_{probe}_lmax{ellmax}_nbl{nbl}_' \
+                                           f'zbins{EP_or_ED}{zbins:02d}_ML{magcut_lens:03d}_' \
+                                           f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                           f'ZS{zcut_source:02d}_6D.npy'
+                            if os.path.isfile(f'{cov_folder}/{cov_filename}'):
+                                print(f'covariance matrix already exists in folder; loading it')
+                                cov_dict[f'cov_{probe}_{GO_or_GS}_6D'] = np.load(f'{cov_folder}/{cov_filename}')
+                            else:
+                                print(f'covariance matrix does not exists in folder; creating it')
+                                rng = np.random.default_rng()
+                                dummy_cov = rng.random(size=nbl * nbl * zbins * zbins * zbins * zbins).reshape(
+                                    (nbl, nbl, zbins, zbins, zbins, zbins))
+                                cov_dict[f'cov_{probe}_{GO_or_GS}_6D'] = dummy_cov
 
                 # ! compute Fisher matrix
                 if FM_cfg['compute_FM']:
@@ -357,7 +392,8 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     dC_LL_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_LL_3D, nbl_WL, zbins)
                     dC_GG_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_GG_3D, nbl_GC, zbins)
                     dC_WA_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_WA_3D, nbl_WA, zbins)
-                    dC_3x2pt_5D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_3x2pt_5D, nbl_3x2pt, zbins, is_3x2pt=True)
+                    dC_3x2pt_5D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_3x2pt_5D, nbl_3x2pt, zbins,
+                                                      is_3x2pt=True)
 
                     # store the derivatives in a dictionary (of dictionaries)
                     deriv_dict = {'dC_LL_4D': dC_LL_4D,
@@ -385,7 +421,8 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     for cl_or_rl in ['cl', 'rl']:
                         if general_cfg[f'save_{cl_or_rl}s_3d']:
 
-                            for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
+                            for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'],
+                                                             ['WL', 'GC', '3x2pt', 'WA']):
                                 # save cl and/or response; not very readable but it works, plus all the cases are in the for loop
 
                                 filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
@@ -401,7 +438,8 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                                                f'3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
                                     ells_filename = f'ell_{probe_dav}_ellmaxWL{ell_max_WL}'
                                     np.savetxt(f'{filepath}/{ells_filename}.txt', 10 ** ell_dict[f'ell_{probe_dav}'])
-                                    np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])
+                                    np.savetxt(f'{filepath}/delta_{ells_filename}.txt',
+                                               delta_dict[f'delta_l_{probe_dav}'])
 
                 # ! save covariance:
                 if covariance_cfg['cov_file_format'] == 'npy':
@@ -434,18 +472,18 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                             for which_cov in cases_tosave:
                                 for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
                                     cov_filename = f'covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_' \
-                                                      f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
-                                                      f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                                      f'ZS{zcut_source:02d}_{ndim}D.{extension}'
+                                                   f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
+                                                   f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                                   f'ZS{zcut_source:02d}_{ndim}D.{extension}'
                                     save_funct(f'{cov_folder}/{cov_filename}',
                                                cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])  # save in .npy or .npz
 
                                 # in this case, 3x2pt is saved in 10D as a dictionary
                                 if ndim == 6:
                                     cov_filename = f'covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_' \
-                                                      f'nbl{nbl_3x2pt}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
-                                                      f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                                      f'ZS{zcut_source:02d}_10D'
+                                                   f'nbl{nbl_3x2pt}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
+                                                   f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                                   f'ZS{zcut_source:02d}_10D'
                                     start = time.perf_counter()
                                     with open(f'{cov_folder}/{cov_filename}', 'wb') as handle:
                                         pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
@@ -455,9 +493,9 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                         elif ell_max_WL == 1500:
                             for which_cov in cases_tosave:
                                 cov_filename = f'covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_' \
-                                                  f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
-                                                  f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                                  f'ZS{zcut_source:02d}_{ndim}D.npy'
+                                               f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
+                                               f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                               f'ZS{zcut_source:02d}_{ndim}D.npy'
                                 np.save(f'{cov_folder}/{cov_filename}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
 
                 # save in .dat for Vincenzo, only in the optimistic case and in 2D

@@ -359,7 +359,6 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     for key in dC_dict_1D.keys():
                         # if 'WLO' in key:
                         #     dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WL', nbl=nbl_WL,
-                        #                                                    zbins=zbins)
                         if 'GCO' in key:
                             dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='GC', nbl=nbl_GC,
                                                                            zbins=zbins)

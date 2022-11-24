@@ -13,7 +13,7 @@ fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
 # ! choose the flagship version and whether you want to compute the BNT transformed cls
 flagship_version = 2
-BNT_transform = False
+BNT_transform = True
 
 assert flagship_version == 2, 'the files for the multicut case are only available for Flagship_2'
 
@@ -73,17 +73,22 @@ covariance_cfg = {
     'ng_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/InputNz/magcut_zcut',
     'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
-    'compute_covmat': True,
+    'compute_covmat': False,
     'cov_file_format': 'npz',  # or npy
     'save_cov_2D': False,
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt
-    'save_cov_GS': True,
+    'save_cov_GS': False,
     'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
-    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/covmat' + '/zbins{zbins:02d}',
+    # 'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/covmat' + '/zbins{zbins:02d}',
+    # 'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/covmat' + '/zbins{zbins:02d}',
+    'cov_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/CovMats/BNT_True/produced_by_stefano/magcut_zcut'
     # 'cov_folder': f'/Volumes/4TB/covmat_cuts',
+    #'cov_filename': 'covmat_{GO_or_GS:s}_{probe:s}_lmax{lmax:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}'
+    #                '_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:03d}',
+    # TODO add filename!!
 }
 
 Sijkl_cfg = {

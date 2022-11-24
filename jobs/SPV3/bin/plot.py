@@ -111,7 +111,8 @@ for probe in probes:
                 assert which_job == 'SPV3', 'which_job should be "SPV3"'
 
                 if bar_plot_nuisance:  # ! fix this
-                    assert zbins == 10, 'I have not generalized the numbers below, plus, the gal bias fiducials are not defined for zbins != 10'
+                    assert zbins == 10, 'I have not generalized the numbers below, plus, the gal bias fiducials ' \
+                                        'are not defined for zbins != 10'
                     if fix_shear_bias:
                         if probe == '3x2pt':
                             nparams_chosen = 20

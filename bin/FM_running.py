@@ -48,7 +48,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     ell_WA, nbl_WA = ell_dict['ell_WA'], ell_dict['ell_WA'].shape[0]
     ell_XC, nbl_3x2pt = ell_GC, nbl_GC
 
-
     # set the flattening convention for the derivatives vector, based on the setting used to reduce the covariance
     # matrix' dimensions
     # TODO review this
@@ -233,7 +232,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     # separate the ind for the different probes
     ind_LL = ind[:zpairs_auto, :]
     ind_GG = ind[:zpairs_auto, :]
-    ind_XC = ind[zpairs_auto:zpairs_auto+zpairs_cross, :]  # ! watch out for the ind switch!!
+    ind_XC = ind[zpairs_auto:zpairs_auto + zpairs_cross, :]  # ! watch out for the ind switch!!
 
     dC_LL_3D = dC_4D_to_3D(dC_LL_4D, nbl_WL, zpairs_auto, nparams_tot, ind_LL)
     dC_GG_3D = dC_4D_to_3D(dC_GG_4D, nbl_GC, zpairs_auto, nparams_tot, ind_GG)
@@ -252,7 +251,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_GG_2D = np.reshape(dC_GG_3D, (nbl_GC * zpairs_auto, nparams_tot), order=which_flattening)
     dC_WA_2D = np.reshape(dC_WA_3D, (nbl_WA * zpairs_auto, nparams_tot), order=which_flattening)
     dC_3x2pt_2D = np.reshape(dC_3x2pt_3D, (nbl_3x2pt * zpairs_3x2pt, nparams_tot), order=which_flattening)
-
 
     ######################### COMPUTE FM #####################################
 
@@ -277,11 +275,10 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         FM_3x2pt_GO += FM_WA_GO
         FM_3x2pt_GS += FM_WA_GS
 
-
-    # save dictionary
+    # store the matrices in the dictionary
     probe_names = ['WL', 'GC', 'WA', '3x2pt']
-    FMs_GO = [FM_WL_GO_toSave, FM_GC_GO_toSave, FM_WA_GO, FM_3x2pt_GO]
-    FMs_GS = [FM_WL_GS_toSave, FM_GC_GS_toSave, FM_WA_GS, FM_3x2pt_GS]
+    FMs_GO = [FM_WL_GO, FM_GC_GO, FM_WA_GO, FM_3x2pt_GO]
+    FMs_GS = [FM_WL_GS, FM_GC_GS, FM_WA_GS, FM_3x2pt_GS]
 
     FM_dict = {}
     for probe_name, FM_GO, FM_GS in zip(probe_names, FMs_GO, FMs_GS):

@@ -383,9 +383,10 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     # now turn the dict. into npy array
                     paramnames_cosmo = ["Om", "Ob", "wz", "wa", "h", "ns", "s8"]
                     paramnames_IA = ["Aia", "eIA", "bIA"]
-                    paramnames_galbias = [f'b{zbin_idx:02d}' for zbin_idx in range(zbins)]
-                    paramnames_shearbias = [f'b{zbin_idx:02d}' for zbin_idx in range(zbins)]
-                    paramnames_dz = [f'b{zbin_idx:02d}' for zbin_idx in range(zbins)]
+                    paramnames_galbias = [f'bG{zbin_idx:02d}' for zbin_idx in range(zbins+1)]
+                    paramnames_shearbias = [f'm{zbin_idx:02d}' for zbin_idx in range(zbins+1)]
+                    paramnames_dzWL = [f'dzWL{zbin_idx:02d}' for zbin_idx in range(zbins+1)]
+                    paramnames_dzGC = [f'dzGC{zbin_idx:02d}' for zbin_idx in range(zbins+1)]
                     paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias + paramnames_shearbias + paramnames_dz
                     FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
 

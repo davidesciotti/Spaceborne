@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
@@ -82,6 +84,7 @@ C_LL_3D_CLOE_bia0 = mm.cl_2D_to_3D_symmetric(C_LL_2D_CLOE_bia0, 20, 55)
 C_LL_3D_vinc_bia2 = mm.cl_2D_to_3D_symmetric(C_LL_2D_vinc_bia2, 101, 55)
 C_GL_3D_vinc_bia2 = mm.cl_2D_to_3D_asymmetric(C_GL_2D_vinc_bia2, 101, 55)
 C_GL_2D_vinc_bia2_revert = mm.Cl_3D_to_2D_asymmetric(C_GL_3D_vinc_bia2, 101, 100)
+warnings.warn('C_GL_2D_vinc_bia2_revert is reshaped according to ordering=F, is that right? probably yes but check')
 
 i = 90
 diff = mm.percent_diff(C_LL_3D_marco_bia0, C_LL_3D_marco_bia2)

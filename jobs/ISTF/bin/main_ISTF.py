@@ -141,6 +141,7 @@ for covariance_cfg['triu_tril'] in ['triu', 'tril']:
                     }
 
                     # some checks
+                    assert EP_or_ED == 'EP' and zbins == 10, 'ISTF uses 10 equipopulated bins'
                     assert covariance_cfg['GL_or_LG'] == 'GL', 'Cij_14may uses GL, also for the probe responses'
                     assert nbl_GC == nbl_WL, 'for ISTF we are using the same number of ell bins for WL and GC'
 
@@ -155,13 +156,8 @@ for covariance_cfg['triu_tril'] in ['triu', 'tril']:
                     # ! compute ell and delta ell values
                     ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_cfg)
                     nbl_WA = ell_dict['ell_WA'].shape[0]
-                    nbl_WL, nbl_GC = nbl, nbl
                     ell_WL, ell_GC, ell_WA = ell_dict['ell_WL'], ell_dict['ell_GC'], ell_dict['ell_WA']
 
-                    # ! load, interpolate, reshape cls and responses
-                    # cl_dict_2D, rl_dict_2D = cl_utils.import_and_interpolate_cls(general_cfg, covariance_cfg, ell_dict)
-                    # cl_dict_3D, rl_dict_3D = cl_utils.reshape_cls_2D_to_3D(general_cfg, ell_dict, cl_dict_2D,
-                    #                                                        rl_dict_2D)
 
                     # import
                     cl_folder = general_cfg['cl_folder'].format(**variable_specs)
@@ -182,18 +178,38 @@ for covariance_cfg['triu_tril'] in ['triu', 'tril']:
                     cl_dict_2D['cl_GG_2D'] = mm.Cl_interpolator(zpairs_auto, cl_GG_1D, ell_GC, nbl_GC)
                     cl_dict_2D['cl_WA_2D'] = mm.Cl_interpolator(zpairs_auto, cl_LL_1D, ell_WA, nbl_WA)
                     cl_dict_2D['cl_GL_2D'] = mm.Cl_interpolator(zpairs_cross, cl_GL_1D, ell_GC, nbl_GC)
-                    cl_dict_2D['cl_LL_WLonly_2D'] = mm.Cl_interpolator(zpairs_auto, cl_LL_1D, ell_WL, nbl_WL)
+                    cl_dict_2D['cl_LLfor3x2pt_2D'] = mm.Cl_interpolator(zpairs_auto, cl_LL_1D, ell_GC, nbl_GC)
 
                     rl_dict_2D = {}
                     rl_dict_2D['rl_LL_2D'] = mm.Cl_interpolator(zpairs_auto, rl_LL_1D, ell_WL, nbl_WL)
                     rl_dict_2D['rl_GG_2D'] = mm.Cl_interpolator(zpairs_auto, rl_GG_1D, ell_GC, nbl_GC)
                     rl_dict_2D['rl_WA_2D'] = mm.Cl_interpolator(zpairs_auto, rl_LL_1D, ell_WA, nbl_WA)
                     rl_dict_2D['rl_GL_2D'] = mm.Cl_interpolator(zpairs_cross, rl_GL_1D, ell_GC, nbl_GC)
-                    rl_dict_2D['rl_LL_WLonly_2D'] = mm.Cl_interpolator(zpairs_auto, rl_LL_1D, ell_WL, nbl_WL)
+                    rl_dict_2D['rl_LLfor3x2pt_2D'] = mm.Cl_interpolator(zpairs_auto, rl_LL_1D, ell_GC, nbl_GC)
 
                     # reshape to 3D
+                    cl_dict_3D = {}
+                    cl_dict_3D['cl_LL_3D'] = mm.cl_2D_to_3D_symmetric(cl_dict_2D['cl_LL_2D'], nbl_WL, zpairs_auto, zbins)
+                    cl_dict_3D['cl_GG_3D'] = mm.cl_2D_to_3D_symmetric(cl_dict_2D['cl_GG_2D'], nbl_GC, zpairs_auto, zbins)
+                    cl_dict_3D['cl_WA_3D'] = mm.cl_2D_to_3D_symmetric(cl_dict_2D['cl_WA_2D'], nbl_WA, zpairs_auto, zbins)
+                    cl_dict_3D['cl_GL_3D'] = mm.cl_2D_to_3D_asymmetric(cl_dict_2D['cl_GL_2D'], nbl_GC, zbins)
+                    cl_dict_3D['cl_LLfor3x2pt_3D'] = mm.cl_2D_to_3D_symmetric(cl_dict_2D['cl_LLfor3x2pt_2D'], nbl_GC, zpairs_auto, zbins)
 
+                    rl_dict_3D = {}
+                    rl_dict_3D['rl_LL_3D'] = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_LL_2D'], nbl_WL, zpairs_auto, zbins)
+                    rl_dict_3D['rl_GG_3D'] = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_GG_2D'], nbl_GC, zpairs_auto, zbins)
+                    rl_dict_3D['rl_WA_3D'] = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_WA_2D'], nbl_WA, zpairs_auto, zbins)
+                    rl_dict_3D['rl_GL_3D'] = mm.cl_2D_to_3D_asymmetric(rl_dict_2D['rl_GL_2D'], nbl_GC, zbins)
+                    rl_dict_3D['rl_LLfor3x2pt_3D'] = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_LLfor3x2pt_2D'], nbl_GC, zpairs_auto, zbins)
                     # end split import and
+
+
+                    # ! load, interpolate, reshape cls and responses
+                    general_cfg['nbl'] = nbl_WL
+                    general_cfg['cl_folder'] = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/14may/CijDers'
+                    general_cfg['rl_folder'] = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/Pk_responses_2D/EP10'
+                    cl_dict_2D_old, rl_dict_2D_old = cl_utils.import_and_interpolate_cls(general_cfg, covariance_cfg, ell_dict)
+                    cl_dict_3D_old, rl_dict_3D_old = cl_utils.reshape_cls_2D_to_3D(general_cfg, ell_dict, cl_dict_2D, rl_dict_2D)
 
                     assert 1 > 2
                     # ! compute covariance matrix

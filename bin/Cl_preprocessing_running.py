@@ -103,7 +103,7 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     ell_max_GC = general_config['ell_max_GC']
     zbins = general_config['zbins']
     cl_folder = general_config['cl_folder']
-    nProbes = general_config['nProbes']
+    n_probes = general_config['n_probes']
 
     # import ell values:
     ell_WL = ell_dict['ell_WL']
@@ -111,17 +111,17 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     ell_WA = ell_dict['ell_WA']
     ell_XC = ell_GC
 
-    C_LL_2D = cl_dict_2D['C_LL_2D']
-    C_GG_2D = cl_dict_2D['C_GG_2D']
-    C_WA_2D = cl_dict_2D['C_WA_2D']
-    C_XC_2D = cl_dict_2D['C_XC_2D']
-    C_LL_WLonly_2D = cl_dict_2D['C_LL_WLonly_2D']
+    cl_LL_2D = cl_dict_2D['cl_LL_2D']
+    cl_GG_2D = cl_dict_2D['cl_GG_2D']
+    cl_WA_2D = cl_dict_2D['cl_WA_2D']
+    cl_XC_2D = cl_dict_2D['cl_XC_2D']
+    cl_LLfor3x2pt_2D = cl_dict_2D['cl_LLfor3x2pt_2D']
 
-    R_LL_2D = Rl_dict_2D['R_LL_2D']
-    R_GG_2D = Rl_dict_2D['R_GG_2D']
-    R_WA_2D = Rl_dict_2D['R_WA_2D']
-    R_XC_2D = Rl_dict_2D['R_XC_2D']
-    R_LL_WLonly_2D = Rl_dict_2D['R_LL_WLonly_2D']
+    rl_LL_2D = Rl_dict_2D['rl_LL_2D']
+    rl_GG_2D = Rl_dict_2D['rl_GG_2D']
+    rl_WA_2D = Rl_dict_2D['rl_WA_2D']
+    rl_XC_2D = Rl_dict_2D['rl_XC_2D']
+    rl_LLfor3x2pt_2D = Rl_dict_2D['rl_LLfor3x2pt_2D']
 
     # compute n_zpairs
     npairs, npairs_asimm, npairs_tot = mm.get_zpairs(zbins)
@@ -137,35 +137,35 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     C_LL_3D = np.zeros((nbl, zbins, zbins))  # 3D, for the datavector
     C_GG_3D = np.zeros((nbl, zbins, zbins))  # 3D, for GConly
     C_WA_3D = np.zeros((nbl_WA, zbins, zbins))  # 3D, ONLY for the datavector (there's no Wadd_only case)
-    C_3x2pt_5D = np.zeros((nbl, nProbes, nProbes, zbins, zbins))
+    C_3x2pt_5D = np.zeros((nbl, n_probes, n_probes, zbins, zbins))
 
     R_LL_WLonly_3D = np.zeros((nbl, zbins, zbins))
     R_LL_3D = np.zeros((nbl, zbins, zbins))
     R_GG_3D = np.zeros((nbl, zbins, zbins))
     R_WA_3D = np.zeros((nbl_WA, zbins, zbins))
-    R_3x2pt_5D = np.zeros((nbl, nProbes, nProbes, zbins, zbins))
+    R_3x2pt_5D = np.zeros((nbl, n_probes, n_probes, zbins, zbins))
 
     # fill upper triangle: LL, GG, WLonly
     triu_idx = np.triu_indices(zbins)
     for ell in range(nbl):
         for i in range(npairs):
-            C_LL_3D[ell, triu_idx[0][i], triu_idx[1][i]] = C_LL_2D[ell, i]
-            C_GG_3D[ell, triu_idx[0][i], triu_idx[1][i]] = C_GG_2D[ell, i]
-            C_LL_WLonly_3D[ell, triu_idx[0][i], triu_idx[1][i]] = C_LL_WLonly_2D[ell, i]
+            C_LL_3D[ell, triu_idx[0][i], triu_idx[1][i]] = cl_LLfor3x2pt_2D[ell, i]
+            C_GG_3D[ell, triu_idx[0][i], triu_idx[1][i]] = cl_GG_2D[ell, i]
+            C_LL_WLonly_3D[ell, triu_idx[0][i], triu_idx[1][i]] = cl_LL_2D[ell, i]
 
-            R_LL_3D[ell, triu_idx[0][i], triu_idx[1][i]] = R_LL_2D[ell, i]
-            R_GG_3D[ell, triu_idx[0][i], triu_idx[1][i]] = R_GG_2D[ell, i]
-            R_LL_WLonly_3D[ell, triu_idx[0][i], triu_idx[1][i]] = R_LL_WLonly_2D[ell, i]
+            R_LL_3D[ell, triu_idx[0][i], triu_idx[1][i]] = rl_LLfor3x2pt_2D[ell, i]
+            R_GG_3D[ell, triu_idx[0][i], triu_idx[1][i]] = rl_GG_2D[ell, i]
+            R_LL_WLonly_3D[ell, triu_idx[0][i], triu_idx[1][i]] = rl_LL_2D[ell, i]
 
     # Wadd
     for ell in range(nbl_WA):
         for i in range(npairs):
-            C_WA_3D[ell, triu_idx[0][i], triu_idx[1][i]] = C_WA_2D[ell, i]
-            R_WA_3D[ell, triu_idx[0][i], triu_idx[1][i]] = R_WA_2D[ell, i]
+            C_WA_3D[ell, triu_idx[0][i], triu_idx[1][i]] = cl_WA_2D[ell, i]
+            R_WA_3D[ell, triu_idx[0][i], triu_idx[1][i]] = rl_WA_2D[ell, i]
 
     # fill asymmetric
-    C_XC_3D = np.reshape(C_XC_2D, (nbl, zbins, zbins))
-    R_XC_3D = np.reshape(R_XC_2D, (nbl, zbins, zbins))
+    C_XC_3D = np.reshape(cl_XC_2D, (nbl, zbins, zbins))
+    R_XC_3D = np.reshape(rl_XC_2D, (nbl, zbins, zbins))
 
     # symmetrize
     C_LL_WLonly_3D = mm.fill_3D_symmetric_array(C_LL_WLonly_3D, nbl, zbins)
@@ -290,9 +290,9 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
         cl_gg_3x2pt_2d = cl_2d[:, zpairs_auto + zpairs_cross:]
 
         # reshape them individually - the symmetrization is done within the function
-        cl_ll_3x2pt_3d = mm.Cl_2D_to_3D_symmetric(cl_ll_3x2pt_2d, nbl=nbl, npairs=zpairs_auto, zbins=zbins)
-        cl_lg_3x2pt_3d = mm.Cl_2D_to_3D_asymmetric(cl_lg_3x2pt_2d, nbl=nbl, zbins=zbins)
-        cl_gg_3x2pt_3d = mm.Cl_2D_to_3D_symmetric(cl_gg_3x2pt_2d, nbl=nbl, npairs=zpairs_auto, zbins=zbins)
+        cl_ll_3x2pt_3d = mm.cl_2D_to_3D_symmetric(cl_ll_3x2pt_2d, nbl=nbl, npairs=zpairs_auto, zbins=zbins)
+        cl_lg_3x2pt_3d = mm.cl_2D_to_3D_asymmetric(cl_lg_3x2pt_2d, nbl=nbl, zbins=zbins)
+        cl_gg_3x2pt_3d = mm.cl_2D_to_3D_symmetric(cl_gg_3x2pt_2d, nbl=nbl, npairs=zpairs_auto, zbins=zbins)
 
         # use them to populate the datavector
         cl_3x2pt = np.zeros((nbl, 2, 2, zbins, zbins))

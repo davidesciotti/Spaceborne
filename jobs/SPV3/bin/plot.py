@@ -679,9 +679,9 @@ if plot_response:
     rf_gg_3x2pt_2d = rf_2d[:, zpairs_auto + zpairs_cross:]
 
     # reshape them individually - the symmetrization is done within the function
-    rf_ll_3x2pt_3d = mm.Cl_2D_to_3D_symmetric(rf_ll_3x2pt_2d, nbl=nbl_3x2pt, npairs=zpairs_auto, zbins=zbins)
-    rf_lg_3x2pt_3d = mm.Cl_2D_to_3D_asymmetric(rf_lg_3x2pt_2d, nbl=nbl_3x2pt, zbins=zbins)
-    rf_gg_3x2pt_3d = mm.Cl_2D_to_3D_symmetric(rf_gg_3x2pt_2d, nbl=nbl_3x2pt, npairs=zpairs_auto, zbins=zbins)
+    rf_ll_3x2pt_3d = mm.cl_2D_to_3D_symmetric(rf_ll_3x2pt_2d, nbl=nbl_3x2pt, npairs=zpairs_auto, zbins=zbins)
+    rf_lg_3x2pt_3d = mm.cl_2D_to_3D_asymmetric(rf_lg_3x2pt_2d, nbl=nbl_3x2pt, zbins=zbins)
+    rf_gg_3x2pt_3d = mm.cl_2D_to_3D_symmetric(rf_gg_3x2pt_2d, nbl=nbl_3x2pt, npairs=zpairs_auto, zbins=zbins)
 
     # use them to populate the datavector
     rf_3x2pt = np.zeros((nbl_3x2pt, 2, 2, zbins, zbins))

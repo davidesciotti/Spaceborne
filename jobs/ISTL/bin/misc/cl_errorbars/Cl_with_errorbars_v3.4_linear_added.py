@@ -91,7 +91,7 @@ ClWL_2D = np.delete(ClWL_2D, 0, 2)
 # reshape in 3D
 ClWL_3D = np.zeros((NL_flags, nbl, zbins, zbins))
 for NL_flag in range(5):
-    ClWL_3D[NL_flag, ...] = mm.Cl_2D_to_3D_symmetric(ClWL_2D[NL_flag, ...], nbl, n_zpairs, zbins=10)
+    ClWL_3D[NL_flag, ...] = mm.cl_2D_to_3D_symmetric(ClWL_2D[NL_flag, ...], nbl, n_zpairs, zbins=10)
 
 # covmats: import, initialize and reshape
 cov_WL_GO_2D = np.zeros((NL_flags, nbl * n_zpairs, nbl * n_zpairs))

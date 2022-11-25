@@ -212,32 +212,7 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                                                                            nbl_GC, zbins, n_probes)
 
             # ! compute covariance matrix
-            sijkl = np.load(f"{project_path}/input/Sijkl/Sijkl_WFdavide_nz10000_IA_3may.npy")  # davide, eNLA
             if covariance_cfg['compute_covmat']:
-                cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                                    ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
-
-            # ! new
-            if covariance_cfg['compute_covmat']:
-
-                # ! load kernels
-                # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
-                nz = Sijkl_cfg["nz"]
-                wf_folder = Sijkl_cfg["wf_input_folder"].format(nz=nz)
-                wil_filename = Sijkl_cfg["wil_filename"].format(normalization=Sijkl_cfg['wf_normalization'],
-                                                                has_IA=str(Sijkl_cfg['has_IA']), nz=nz, bIA=bIA)
-                wig_filename = Sijkl_cfg["wig_filename"].format(normalization=Sijkl_cfg['wf_normalization'], nz=nz)
-                wil = np.genfromtxt(f'{wf_folder}/{wil_filename}')
-                wig = np.genfromtxt(f'{wf_folder}/{wig_filename}')
-
-                # preprocess (remove redshift column)
-                z_arr, wil = Sijkl_utils.preprocess_wf(wil, zbins)
-                z_arr_2, wig = Sijkl_utils.preprocess_wf(wig, zbins)
-                assert np.array_equal(z_arr, z_arr_2), 'the redshift arrays are different for the GC and WL kernels'
-                assert nz == z_arr.shape[0], 'nz is not the same as the number of redshift points in the kernels'
-
-                # transpose and stack, ordering is important here!
-                transp_stacked_wf = np.vstack((wil.T, wig.T))
 
 
                 # ! compute or load Sijkl
@@ -246,24 +221,153 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(nz=Sijkl_cfg['nz'])
                 if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
                     print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
-                    Sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
+                    sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
                 else:
-                    Sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
+                    # ! load kernels
+                    # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
+                    nz = Sijkl_cfg["nz"]
+                    wf_folder = Sijkl_cfg["wf_input_folder"].format(nz=nz)
+                    wil_filename = Sijkl_cfg["wil_filename"].format(normalization=Sijkl_cfg['wf_normalization'],
+                                                                    has_IA=str(Sijkl_cfg['has_IA']), nz=nz, bIA=bIA)
+                    wig_filename = Sijkl_cfg["wig_filename"].format(normalization=Sijkl_cfg['wf_normalization'], nz=nz)
+                    wil = np.genfromtxt(f'{wf_folder}/{wil_filename}')
+                    wig = np.genfromtxt(f'{wf_folder}/{wig_filename}')
+
+                    # preprocess (remove redshift column)
+                    z_arr, wil = Sijkl_utils.preprocess_wf(wil, zbins)
+                    z_arr_2, wig = Sijkl_utils.preprocess_wf(wig, zbins)
+                    assert np.array_equal(z_arr, z_arr_2), 'the redshift arrays are different for the GC and WL kernels'
+                    assert nz == z_arr.shape[0], 'nz is not the same as the number of redshift points in the kernels'
+
+                    # transpose and stack, ordering is important here!
+                    transp_stacked_wf = np.vstack((wil.T, wig.T))
+                    sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
                                                       Sijkl_cfg['WF_normalization'])
-                    np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
+                    np.save(f'{Sijkl_folder}/{Sijkl_filename}', sijkl)
 
                 # ! compute covariance matrix
-                cov_dict_2 = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                                      ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
+                cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+                                                    ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
 
-            for key in cov_dict.keys():
-                print(key, np.array_equal(cov_dict[key], cov_dict_2[key]))
-            assert 1 > 2
-            # ! end new
 
             # assert 1 > 2
             # ! compute Fisher Matrix
             if FM_cfg['compute_FM']:
+
+                derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
+                dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
+                # check if dictionary is empty
+                if not dC_dict_1D:
+                    raise ValueError(f'No derivatives found in folder {derivatives_folder}')
+
+                paramnames_cosmo = ["Om", "Ob", "wz", "wa", "h", "ns", "s8"]
+                paramnames_IA = ["Aia", "eIA", "bIA"]
+                paramnames_galbias = [f'bL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+                paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias
+                nparams_total = len(paramnames_3x2pt)
+
+                # initialize derivatives arrays
+                dC_LL_WLonly = np.zeros((nbl, zpairs_auto, nparams_total))
+                dC_LL = np.zeros((nbl, zpairs_auto, nparams_total))
+                dC_XC = np.zeros((nbl, zpairs_cross, nparams_total))
+                dC_GG = np.zeros((nbl, zpairs_auto, nparams_total))
+                dC_WA = np.zeros((nbl_WA, zpairs_auto, nparams_total))
+
+                # create dict to store interpolated Cij arrays
+                dC_WLonly_interpolated_dict = {}
+                dC_GConly_interpolated_dict = {}
+                dC_3x2pt_interpolated_dict = {}
+                dC_WA_interpolated_dict = {}
+
+                # call the function to interpolate: PAY ATTENTION TO THE PARAMETERS PASSED!
+                # WLonly
+                dC_WLonly_interpolated_dict = mm.interpolator(probe_code=probe_code_LL,
+                                                              dC_interpolated_dict=dC_WLonly_interpolated_dict,
+                                                              dC_dict=dC_dict_1D, params_names=paramnames_LL, nbl=nbl,
+                                                              zpairs=zpairs_auto, ell_values=ell_WL, suffix=suffix)
+                # GConly
+                dC_GConly_interpolated_dict = mm.interpolator(probe_code=probe_code_GG,
+                                                              dC_interpolated_dict=dC_GConly_interpolated_dict,
+                                                              dC_dict=dC_dict_1D, params_names=paramnames_GG, nbl=nbl,
+                                                              zpairs=zpairs_auto, ell_values=ell_XC, suffix=suffix)
+                # LL for 3x2pt
+                dC_3x2pt_interpolated_dict = mm.interpolator(probe_code=probe_code_LL,
+                                                             dC_interpolated_dict=dC_3x2pt_interpolated_dict,
+                                                             dC_dict=dC_dict_1D, params_names=paramnames_LL, nbl=nbl,
+                                                             zpairs=zpairs_auto, ell_values=ell_XC, suffix=suffix)
+                # XC for 3x2pt
+                dC_3x2pt_interpolated_dict = mm.interpolator(probe_code=probe_code_XC,
+                                                             dC_interpolated_dict=dC_3x2pt_interpolated_dict,
+                                                             dC_dict=dC_dict_1D, params_names=paramnames_3x2pt, nbl=nbl,
+                                                             zpairs=zpairs_cross, ell_values=ell_XC, suffix=suffix)
+                # GG for 3x2pt
+                dC_3x2pt_interpolated_dict = mm.interpolator(probe_code=probe_code_GG,
+                                                             dC_interpolated_dict=dC_3x2pt_interpolated_dict,
+                                                             dC_dict=dC_dict_1D, params_names=paramnames_GG, nbl=nbl,
+                                                             zpairs=zpairs_auto, ell_values=ell_XC, suffix=suffix)
+                # LL for WA
+                dC_WA_interpolated_dict = mm.interpolator(probe_code=probe_code_LL,
+                                                          dC_interpolated_dict=dC_WA_interpolated_dict,
+                                                          dC_dict=dC_dict_1D, params_names=paramnames_LL, nbl=nbl_WA,
+                                                          zpairs=zpairs_auto, ell_values=ell_WA, suffix=suffix)
+
+                # fill the dC array using the interpolated dictionary
+                # WLonly
+                dC_LL_WLonly = mm.fill_dC_array(params_names=paramnames_LL,
+                                                dC_interpolated_dict=dC_WLonly_interpolated_dict,
+                                                probe_code=probe_code_LL, dC=dC_LL_WLonly, suffix=suffix)
+                # LL for 3x2pt
+                dC_LL = mm.fill_dC_array(params_names=paramnames_LL,
+                                         dC_interpolated_dict=dC_3x2pt_interpolated_dict,
+                                         probe_code=probe_code_LL, dC=dC_LL, suffix=suffix)
+                # XC for 3x2pt
+                dC_XC = mm.fill_dC_array(params_names=paramnames_3x2pt,
+                                         dC_interpolated_dict=dC_3x2pt_interpolated_dict,
+                                         probe_code=probe_code_XC, dC=dC_XC, suffix=suffix)
+                # GG for 3x2pt and GConly
+                dC_GG = mm.fill_dC_array(params_names=paramnames_GG,
+                                         dC_interpolated_dict=dC_3x2pt_interpolated_dict,
+                                         probe_code=probe_code_GG, dC=dC_GG, suffix=suffix)
+                # LL for WA
+                dC_WA = mm.fill_dC_array(params_names=paramnames_LL,
+                                         dC_interpolated_dict=dC_WA_interpolated_dict,
+                                         probe_code=probe_code_LL, dC=dC_WA, suffix=suffix)
+
+                # ! reshape dC from (nbl, zpairs, nparams_total) to (nbl, zbins, zbins, nparams) - i.e., go from '2D' to '3D'
+                # (+ 1 "excess" dimension). Note that Vincenzo uses np.triu to reduce the dimensions of the cl arrays,
+                # but ind_vincenzo to organize the covariance matrix.
+
+                dC_LL_4D = np.zeros((nbl, zbins, zbins, nparams_total))
+                dC_GG_4D = np.zeros((nbl, zbins, zbins, nparams_total))
+                dC_LL_WLonly_4D = np.zeros((nbl, zbins, zbins, nparams_total))
+                dC_WA_4D = np.zeros((nbl_WA, zbins, zbins, nparams_total))
+
+                # fill symmetric
+                triu_idx = np.triu_indices(zbins)
+                for ell in range(nbl):
+                    for alf in range(nparams_total):
+                        for i in range(zpairs_auto):
+                            dC_LL_4D[ell, triu_idx[0][i], triu_idx[1][i], alf] = dC_LL[ell, i, alf]
+                            dC_GG_4D[ell, triu_idx[0][i], triu_idx[1][i], alf] = dC_GG[ell, i, alf]
+                            dC_LL_WLonly_4D[ell, triu_idx[0][i], triu_idx[1][i], alf] = dC_LL_WLonly[ell, i, alf]
+                # Wadd
+                for ell in range(nbl_WA):
+                    for alf in range(nparams_total):
+                        for i in range(zpairs_auto):
+                            dC_WA_4D[ell, triu_idx[0][i], triu_idx[1][i]] = dC_WA[ell, i]
+
+                # symmetrize
+                for alf in range(nparams_total):
+                    dC_LL_4D[:, :, :, alf] = mm.fill_3D_symmetric_array(dC_LL_4D[:, :, :, alf], nbl, zbins)
+                    dC_GG_4D[:, :, :, alf] = mm.fill_3D_symmetric_array(dC_GG_4D[:, :, :, alf], nbl, zbins)
+                    dC_WA_4D[:, :, :, alf] = mm.fill_3D_symmetric_array(dC_WA_4D[:, :, :, alf], nbl_WA, zbins)
+                    dC_LL_WLonly_4D[:, :, :, alf] = mm.fill_3D_symmetric_array(dC_LL_WLonly_4D[:, :, :, alf], nbl, zbins)
+
+                # fill asymmetric
+                dC_XC_4D = np.reshape(dC_XC, (nbl, zbins, zbins, nparams_total))
+
+                # ! end new
+
                 FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
 
             # ! save:

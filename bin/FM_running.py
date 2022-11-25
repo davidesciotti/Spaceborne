@@ -32,6 +32,39 @@ def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
     return dC_3D
 
 
+def dC_dict_to_4D_array(param_names, dC_dict_3D, nbl, zbins, obs_name, is_3x2pt=False, n_probes=2):
+    """
+
+    :param param_names: filename of the parameter, e.g. 'Om'; dCldOm = d(C(l))/d(Om)
+    :param dC_dict_3D:
+    :param nbl:
+    :param zbins:
+    :param obs_name: filename of the observable, e.g. 'Cl'; dCldOm = d(C(l))/d(Om)
+    :param is_3x2pt: whether to will the 5D derivatives vector
+    :param n_probes:
+    :return:
+    """
+    # param_names should be params_tot in all cases, because when the derivative dows not exist
+    # in dC_dict_3D the output array will remain null
+    if is_3x2pt:
+        dC_4D = np.zeros((nbl, n_probes, n_probes, zbins, zbins, len(param_names)))
+    else:
+        dC_4D = np.zeros((nbl, zbins, zbins, len(param_names)))
+
+    if not dC_dict_3D:
+        warnings.warn('The input dictionary is empty')
+
+    for idx, param_name in enumerate(param_names):
+        for key, value in dC_dict_3D.items():
+            if f'd{obs_name}d{param_name}' in key:
+                dC_4D[..., idx] = value
+
+        # a check, if the derivative wrt the param is not in the folder at all
+        if not any(f'dDVd{param_name}' in key for key in dC_dict_3D.keys()):
+            print(f'WARNING: derivative dDVd{param_name} not found in dC_dict_3D')
+    return dC_4D
+
+
 def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict):
     # shorten names
     # nbl = general_cfg['nbl']

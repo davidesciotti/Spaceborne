@@ -59,29 +59,6 @@ def load_compressed_pickle(file):
     return data
 
 
-# todo move this to my_module
-def dC_dict_to_4D_array(param_names, dC_dict_3D, nbl, zbins, is_3x2pt=False, n_probes=2):
-    # param_names should be params_tot in all cases, because when the derivative dows not exist
-    # in dC_dict_3D the output array will remain null
-    if is_3x2pt:
-        dC_4D = np.zeros((nbl, n_probes, n_probes, zbins, zbins, len(param_names)))
-    else:
-        dC_4D = np.zeros((nbl, zbins, zbins, len(param_names)))
-
-    if not dC_dict_3D:
-        warnings.warn('The input dictionary is empty')
-
-    for idx, paramname in enumerate(param_names):
-        for key, value in dC_dict_3D.items():
-            if f'dDVd{paramname}' in key:
-                dC_4D[..., idx] = value
-
-        # a check, if the derivative wrt the param is not in the folder at all
-        if not any(f'dDVd{paramname}' in key for key in dC_dict_3D.keys()):
-            print(f'WARNING: derivative dDVd{paramname} not found in dC_dict_3D')
-    return dC_4D
-
-
 # TODO check that the number of ell bins is the same as in the files
 # TODO double check the delta values
 # TODO update consistency_checks
@@ -290,11 +267,12 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     # ! compute or load Sijkl
                     nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
                     Sijkl_folder = Sijkl_cfg['Sijkl_folder']
-                    Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(flagship_version=general_cfg['flagship_version'],
-                                                                        nz=nz, EP_or_ED=EP_or_ED, zbins=zbins,
-                                                                        IA_flag=Sijkl_cfg['IA_flag'],
-                                                                        magcut_source=magcut_source,
-                                                                        zcut_source=zcut_source)
+                    Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(
+                        flagship_version=general_cfg['flagship_version'],
+                        nz=nz, EP_or_ED=EP_or_ED, zbins=zbins,
+                        IA_flag=Sijkl_cfg['IA_flag'],
+                        magcut_source=magcut_source,
+                        zcut_source=zcut_source)
                     # if Sijkl exists, load it; otherwise, compute it and save it
                     if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
                         print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
@@ -314,7 +292,6 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                 # ! compute Fisher matrix
                 if FM_cfg['compute_FM']:
-
 
                     # import derivatives and store them in dictionary
                     derivatives_folder = FM_cfg['derivatives_folder'].format(magcut_lens=magcut_lens,
@@ -354,28 +331,28 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     paramnames_dzWL = [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
                     paramnames_dzGC = [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
                     paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias + paramnames_shearbias + \
-                           paramnames_dzWL + paramnames_dzGC
+                                       paramnames_dzWL + paramnames_dzGC
                     FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
 
                     # turn the dict. into npy array with the ordering given by paramnames_3x2pt
-                    dC_LL_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_LL_3D, nbl_WL, zbins)
-                    dC_GG_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_GG_3D, nbl_GC, zbins)
-                    dC_WA_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_WA_3D, nbl_WA, zbins)
-                    dC_3x2pt_5D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_3x2pt_5D, nbl_3x2pt, zbins, is_3x2pt=True)
+                    dC_LL_4D = FM_utils.dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_LL_3D, nbl_WL, zbins, 'DV')
+                    dC_GG_4D = FM_utils.dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_GG_3D, nbl_GC, zbins, 'DV')
+                    dC_WA_4D = FM_utils.dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_WA_3D, nbl_WA, zbins, 'DV')
+                    dC_3x2pt_5D = FM_utils.dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_3x2pt_5D, nbl_3x2pt, zbins,
+                                                               obs_name='DV', is_3x2pt=True)
 
                     # ! new bit: BNT transform derivatives
                     if FM_cfg['derivatives_BNT_transform']:
                         assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
                         assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
-                        warnings.warn('Vincenzos derivatives are anly for BNT_False, otherwise you should use Stefanos files')
+                        warnings.warn(
+                            'Vincenzos derivatives are anly for BNT_False, otherwise you should use Stefanos files')
 
                         dC_LL_4D_BNT = np.zeros(dC_LL_4D.shape)
                         for alf in range(len(paramnames_3x2pt)):
                             dC_LL_4D_BNT[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_LL_4D[:, :, :, alf], BNT_matrix)
-                            dC_GG_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_GG_4D[:, :, :, alf], BNT_matrix)
                             dC_WA_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_WA_4D[:, :, :, alf], BNT_matrix)
-                            # dC_3x2pt_5D[:, :, :, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, :, :, :, :, alf],
-                            #                                                       BNT_matrix)
+
 
                         # TODO this should not be here nor hardcoded
                         transformed_derivs_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_2/Derivatives/BNT_True/davide'
@@ -399,9 +376,9 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
                     FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
 
-########################################################################################################################
-######################################################### SAVE #########################################################
-########################################################################################################################
+                    ########################################################################################################################
+                    ######################################################### SAVE #########################################################
+                    ########################################################################################################################
 
                     # ! save cls and responses:
                     # this is just to set the correct probe names
@@ -420,7 +397,8 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     for cl_or_rl in ['cl', 'rl']:
                         if general_cfg[f'save_{cl_or_rl}s_3d']:
 
-                            for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
+                            for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'],
+                                                             ['WL', 'GC', '3x2pt', 'WA']):
                                 # save cl and/or response; not very readable but it works, plus all the cases are in the for loop
 
                                 filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
@@ -436,7 +414,8 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                                                f'3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
                                     ells_filename = f'ell_{probe_dav}_ellmaxWL{ell_max_WL}'
                                     np.savetxt(f'{filepath}/{ells_filename}.txt', 10 ** ell_dict[f'ell_{probe_dav}'])
-                                    np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])
+                                    np.savetxt(f'{filepath}/delta_{ells_filename}.txt',
+                                               delta_dict[f'delta_l_{probe_dav}'])
 
                 # ! save covariance:
                 if covariance_cfg['cov_file_format'] == 'npy':
@@ -469,18 +448,18 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                             for which_cov in cases_tosave:
                                 for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
                                     cov_filename = f'covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_' \
-                                                      f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
-                                                      f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                                      f'ZS{zcut_source:02d}_{ndim}D.{extension}'
+                                                   f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
+                                                   f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                                   f'ZS{zcut_source:02d}_{ndim}D.{extension}'
                                     save_funct(f'{cov_folder}/{cov_filename}',
                                                cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])  # save in .npy or .npz
 
                                 # in this case, 3x2pt is saved in 10D as a dictionary
                                 if ndim == 6:
                                     cov_filename = f'covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_' \
-                                                      f'nbl{nbl_3x2pt}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
-                                                      f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                                      f'ZS{zcut_source:02d}_10D'
+                                                   f'nbl{nbl_3x2pt}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
+                                                   f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                                   f'ZS{zcut_source:02d}_10D'
                                     start = time.perf_counter()
                                     with open(f'{cov_folder}/{cov_filename}', 'wb') as handle:
                                         pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
@@ -490,9 +469,9 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                         elif ell_max_WL == 1500:
                             for which_cov in cases_tosave:
                                 cov_filename = f'covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_' \
-                                                  f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
-                                                  f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                                  f'ZS{zcut_source:02d}_{ndim}D.npy'
+                                               f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
+                                               f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                               f'ZS{zcut_source:02d}_{ndim}D.npy'
                                 np.save(f'{cov_folder}/{cov_filename}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
 
                 # save in .dat for Vincenzo, only in the optimistic case and in 2D

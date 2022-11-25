@@ -70,11 +70,12 @@ covariance_cfg = {
 
 Sijkl_cfg = {
     'wf_input_folder': f'{project_path.parent}/common_data/everyones_WF_from_Gdrive/davide/' + 'nz{nz:d}/gen2022',
-    'wil_filename': 'wil_dav{has_IA:s}_{normalization:s}_nz{nz:d}_bia{bIA:.02f}.txt',
+    'wil_filename': 'wil_dav_IA{has_IA:s}_{normalization:s}_nz{nz:d}_bia{bIA:.02f}.txt',
     'wig_filename': 'wig_dav_{normalization:s}_nz{nz:d}.txt',
     'Sijkl_folder': f'{project_path.parent}/common_data/Sijkl',
     'Sijkl_filename': 'Sijkl_WFdavide_nz{nz:d}_IA_3may.npy',
     'wf_normalization': 'IST',
+    'nz': 10_000,
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }

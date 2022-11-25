@@ -222,27 +222,25 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
 
                 # ! load kernels
                 # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
-                wf_folder = Sijkl_cfg["wf_input_folder"]
+                nz = Sijkl_cfg["nz"]
+                wf_folder = Sijkl_cfg["wf_input_folder"].format(nz=nz)
                 wil_filename = Sijkl_cfg["wil_filename"].format(normalization=Sijkl_cfg['wf_normalization'],
-                                                                has_IA=Sijkl_cfg['has_IA'],
-                                                                nz=Sijkl_cfg['nz'], bIA=bIA)
-                wig_filename = Sijkl_cfg["wig_filename"].format(normalization=Sijkl_cfg['wf_normalization'],
-                                                                nz=Sijkl_cfg['nz'])
+                                                                has_IA=str(Sijkl_cfg['has_IA']), nz=nz, bIA=bIA)
+                wig_filename = Sijkl_cfg["wig_filename"].format(normalization=Sijkl_cfg['wf_normalization'], nz=nz)
                 wil = np.genfromtxt(f'{wf_folder}/{wil_filename}')
                 wig = np.genfromtxt(f'{wf_folder}/{wig_filename}')
 
                 # preprocess (remove redshift column)
                 z_arr, wil = Sijkl_utils.preprocess_wf(wil, zbins)
                 z_arr_2, wig = Sijkl_utils.preprocess_wf(wig, zbins)
-                assert np.array_equal(z_arr,
-                                      z_arr_2), 'the redshift arrays are different for the GC and WL kernels'
+                assert np.array_equal(z_arr, z_arr_2), 'the redshift arrays are different for the GC and WL kernels'
+                assert nz == z_arr.shape[0], 'nz is not the same as the number of redshift points in the kernels'
 
                 # transpose and stack, ordering is important here!
                 transp_stacked_wf = np.vstack((wil.T, wig.T))
 
-                # ! compute or load Sijkl
-                nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
 
+                # ! compute or load Sijkl
                 # if Sijkl exists, load it; otherwise, compute it and save it
                 Sijkl_folder = Sijkl_cfg['Sijkl_folder']
                 Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(nz=Sijkl_cfg['nz'])
@@ -255,9 +253,12 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                     np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
 
                 # ! compute covariance matrix
-                cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                                    ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
+                cov_dict_2 = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+                                                      ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
+            for key in cov_dict.keys():
+                print(key, np.array_equal(cov_dict[key], cov_dict_2[key]))
+            assert 1 > 2
             # ! end new
 
             # assert 1 > 2

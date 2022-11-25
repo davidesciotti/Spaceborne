@@ -71,9 +71,8 @@ covariance_cfg = {
 Sijkl_cfg = {
     'wf_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_/KernelFun/magcut_zcut',
     'wf_input_filename': '{which_WF:s}-{EP_or_ED:s}{zbins:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    'Sijkl_folder': f'{job_path}/output/Flagship_/BNT_{BNT_transform}/sijkl',
-    'Sijkl_filename': 'sijkl_WF-FS01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}'
-                      '_MS{magcut_source:02d}-ZS{zcut_source:02d}.npy',
+    'Sijkl_folder': f'{project_path.parent}/common_data/Sijkl',
+    'Sijkl_filename': 'Sijkl_WFdavide_nz10000_IA_3may.npy',
     'WF_normalization': 'IST',
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists

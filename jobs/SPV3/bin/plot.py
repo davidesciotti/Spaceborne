@@ -1,5 +1,6 @@
 import sys
 import time
+import warnings
 from operator import itemgetter
 from pathlib import Path
 
@@ -682,6 +683,7 @@ if plot_response:
     rf_ll_3x2pt_3d = mm.cl_2D_to_3D_symmetric(rf_ll_3x2pt_2d, nbl=nbl_3x2pt, npairs=zpairs_auto, zbins=zbins)
     rf_lg_3x2pt_3d = mm.cl_2D_to_3D_asymmetric(rf_lg_3x2pt_2d, nbl=nbl_3x2pt, zbins=zbins)
     rf_gg_3x2pt_3d = mm.cl_2D_to_3D_symmetric(rf_gg_3x2pt_2d, nbl=nbl_3x2pt, npairs=zpairs_auto, zbins=zbins)
+    warnings.warn('check the order of the 3x2pt response functions, the default is actually F-style!')
 
     # use them to populate the datavector
     rf_3x2pt = np.zeros((nbl_3x2pt, 2, 2, zbins, zbins))

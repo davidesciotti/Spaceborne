@@ -147,7 +147,7 @@ for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (15
         i = 0
         plt.plot(ell_WL_spv3, rl_ll_3d[:, i, i], label='new', c=colors[i])
         plt.plot(ell_dict['ell_WL'], rl_ll_3d_interp[:, i, i], label='interp', c=colors[i])
-        # plt.plot(10**ell_dict['ell_WL'], Rl_dict_3D['R_LL_WLonly_3D'][:, i, i], '--', label='old', c=colors[i])
+        # plt.plot(10**ell_dict['ell_WL'], rl_dict_3D['R_LL_WLonly_3D'][:, i, i], '--', label='old', c=colors[i])
         # plt.plot(ell_LL_my_rl, my_resp[:, i, i], '-.', label='davide', c=colors[i])
         plt.legend()
         plt.show()

@@ -17,7 +17,7 @@ import my_module as mm
 ###############################################################################
 
 
-def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, Rl_dict_3D, Sijkl):
+def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl):
     """
     This code computes the Gaussian-only, SSC-only and Gaussian+SSC
     covariance matrices, for different ordering options
@@ -103,24 +103,24 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
     ind_XC = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
 
     # load Cls
-    C_LL_3D = cl_dict_3D['C_LL_WLonly_3D']
-    C_GG_3D = cl_dict_3D['C_GG_3D']
-    C_WA_3D = cl_dict_3D['C_WA_3D']
-    C_3x2pt_5D = cl_dict_3D['C_3x2pt_5D']
+    cl_LL_3D = cl_dict_3D['cl_LL_3D']
+    cl_GG_3D = cl_dict_3D['cl_GG_3D']
+    cl_WA_3D = cl_dict_3D['cl_WA_3D']
+    cl_3x2pt_5D = cl_dict_3D['cl_3x2pt_5D']
 
-    if which_probe_response == 'constant':
-        Rl = covariance_cfg['Rl']
-        R_LL_3D = np.full(C_LL_3D.shape, Rl)
-        R_GG_3D = np.full(C_GG_3D.shape, Rl)
-        R_WA_3D = np.full(C_WA_3D.shape, Rl)
-        R_3x2pt_5D = np.full(C_3x2pt_5D.shape, Rl)
-    elif which_probe_response == 'variable':
-        R_LL_3D = Rl_dict_3D['R_LL_WLonly_3D']
-        R_GG_3D = Rl_dict_3D['R_GG_3D']
-        R_WA_3D = Rl_dict_3D['R_WA_3D']
-        R_3x2pt_5D = Rl_dict_3D['R_3x2pt_5D']
+    if which_probe_response == 'const':
+        rl_value = covariance_cfg['rl_value']
+        rl_LL_3D = np.full(cl_LL_3D.shape, rl_value)
+        rl_GG_3D = np.full(cl_GG_3D.shape, rl_value)
+        rl_WA_3D = np.full(cl_WA_3D.shape, rl_value)
+        rl_3x2pt_5D = np.full(cl_3x2pt_5D.shape, rl_value)
+    elif which_probe_response == 'var':
+        rl_LL_3D = rl_dict_3D['rl_LL_3D']
+        rl_GG_3D = rl_dict_3D['rl_GG_3D']
+        rl_WA_3D = rl_dict_3D['rl_WA_3D']
+        rl_3x2pt_5D = rl_dict_3D['rl_3x2pt_5D']
     else:
-        raise ValueError("which_probe_response must be 'constant' or 'variable'")
+        raise ValueError("which_probe_response must be 'const' or 'var'")
 
     # print settings
     print(
@@ -143,30 +143,30 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
 
     # WL only covariance
     cov_WL_GO_4D = mm.covariance(nbl=nbl_WL, npairs=zpairs_auto, start_index=0, stop_index=zpairs_auto,
-                                 Cij=C_LL_3D, noise=noise, l_lin=l_lin_WL,
+                                 Cij=cl_LL_3D, noise=noise, l_lin=l_lin_WL,
                                  delta_l=delta_l_WL, fsky=fsky, ind=ind)
     # GC only covariance
     starting_GC_index = zpairs_auto + zpairs_cross
     cov_GC_GO_4D = mm.covariance(nbl=nbl_GC, npairs=zpairs_auto, start_index=starting_GC_index, stop_index=zpairs_3x2pt,
-                                 Cij=C_GG_3D, noise=noise, l_lin=l_lin_GC,
+                                 Cij=cl_GG_3D, noise=noise, l_lin=l_lin_GC,
                                  delta_l=delta_l_GC, fsky=fsky, ind=ind)
     # WA covariance
     cov_WA_GO_4D = mm.covariance_WA(nbl_WA, zpairs_auto, start_index=0, stop_index=zpairs_auto,
-                                    Cij=C_WA_3D, noise=noise, l_lin=l_lin_WA,
+                                    Cij=cl_WA_3D, noise=noise, l_lin=l_lin_WA,
                                     delta_l=delta_l_WA, fsky=fsky, ind=ind, ell_WA=ell_WA)
     # ALL covariance
     cov_3x2pt_GO_4D = mm.covariance_ALL(nbl=nbl_3x2pt, npairs=zpairs_3x2pt,
-                                        Cij=C_3x2pt_5D, noise=noise, l_lin=l_lin_XC,
+                                        Cij=cl_3x2pt_5D, noise=noise, l_lin=l_lin_XC,
                                         delta_l=delta_l_XC, fsky=fsky, ind=ind)
     print("Gauss. cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
 
     ######################## COMPUTE SS COVARIANCE ###############################
 
     start = time.perf_counter()
-    cov_WL_SS_4D = mm.cov_SSC(nbl_WL, zpairs_auto, ind, C_LL_3D, Sijkl, fsky, "WL", zbins, R_LL_3D)
-    cov_GC_SS_4D = mm.cov_SSC(nbl_GC, zpairs_auto, ind, C_GG_3D, Sijkl, fsky, "GC", zbins, R_GG_3D)
-    cov_WA_SS_4D = mm.cov_SSC(nbl_WA, zpairs_auto, ind, C_WA_3D, Sijkl, fsky, "WA", zbins, R_WA_3D)
-    cov_3x2pt_SS_4D = mm.cov_SSC_ALL(nbl_3x2pt, zpairs_3x2pt, ind, C_3x2pt_5D, Sijkl, fsky, zbins, R_3x2pt_5D)
+    cov_WL_SS_4D = mm.cov_SSC(nbl_WL, zpairs_auto, ind, cl_LL_3D, Sijkl, fsky, "WL", zbins, rl_LL_3D)
+    cov_GC_SS_4D = mm.cov_SSC(nbl_GC, zpairs_auto, ind, cl_GG_3D, Sijkl, fsky, "GC", zbins, rl_GG_3D)
+    cov_WA_SS_4D = mm.cov_SSC(nbl_WA, zpairs_auto, ind, cl_WA_3D, Sijkl, fsky, "WA", zbins, rl_WA_3D)
+    cov_3x2pt_SS_4D = mm.cov_SSC_ALL(nbl_3x2pt, zpairs_3x2pt, ind, cl_3x2pt_5D, Sijkl, fsky, zbins, rl_3x2pt_5D)
     print("SS cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
 
     ############################## SUM G + SSC ################################
@@ -180,8 +180,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         # compute 3x2pt covariance in 10D, potentially with whichever probe ordering, and the WL, GS and WA cov in 6D
 
         # store the input datavector and noise spectra in a dictionary
-        cl_dict_3x2pt = mm.build_3x2pt_dict(C_3x2pt_5D)
-        rl_dict_3x2pt = mm.build_3x2pt_dict(R_3x2pt_5D)
+        cl_dict_3x2pt = mm.build_3x2pt_dict(cl_3x2pt_5D)
+        rl_dict_3x2pt = mm.build_3x2pt_dict(rl_3x2pt_5D)
         noise_dict_3x2pt = mm.build_3x2pt_dict(noise)
         Sijkl_dict = mm.build_Sijkl_dict(Sijkl, zbins)
 
@@ -271,13 +271,13 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
         # the cov_G_10D_dict function takes as input a dict, not an array: this is just to create them.
         # note: the only reason why I cannot pass the pre-built cl_dict_3x2pt dictionary is that it contains the probes
         # up to ell_max_XC, so WL (and WA?) will have a different ell_max than WL_only.
-        cl_dict_LL = {('L', 'L'): C_LL_3D}
-        cl_dict_GG = {('G', 'G'): C_GG_3D}
-        cl_dict_WA = {('L', 'L'): C_WA_3D}
+        cl_dict_LL = {('L', 'L'): cl_LL_3D}
+        cl_dict_GG = {('G', 'G'): cl_GG_3D}
+        cl_dict_WA = {('L', 'L'): cl_WA_3D}
 
-        rl_dict_LL = {('L', 'L'): R_LL_3D}
-        rl_dict_GG = {('G', 'G'): R_GG_3D}
-        rl_dict_WA = {('L', 'L'): R_WA_3D}
+        rl_dict_LL = {('L', 'L'): rl_LL_3D}
+        rl_dict_GG = {('G', 'G'): rl_GG_3D}
+        rl_dict_WA = {('L', 'L'): rl_WA_3D}
 
         # ! cov_G_6D
         start_time = time.perf_counter()

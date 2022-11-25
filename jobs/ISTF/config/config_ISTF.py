@@ -47,33 +47,34 @@ covariance_cfg = {
     'ind_ordering': ind_ordering,  # TODO deprecate this
     'triu_tril': 'triu',
     'row_col_wise': 'row-wise',
-    'block_index': 'ell',
     'GL_or_LG': GL_or_LG,
     'fsky': fsky,
-    # 'Rl': 4,
+    'rl_value': None,  # it used to be 4 for a constant probe response, which this is wrong
     'block_index': 'ell',
-    # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
-    'which_probe_response': 'variable',
+    # this is the one used by me and Vincenzo. The blocks in the 2D covmat will be indexed by ell1, ell2
+    'which_probe_response': 'var',
     'ng': 30,
     'ng_folder': None,
+    'ng_filename': None,
     'sigma_eps2': 0.3 ** 2,
     'compute_covmat': True,
     'save_cov_2D': True,
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_GS': False,
-    'save_cov_SS': False,
+    'save_cov_SSC': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
-    'cov_folder': f'{job_path}/output/covmat' + '/zbins{zbins:02d}' + '/{triu_tril:s}_{row_col_wise:s}',
+    'cov_folder': f'{job_path}/output/covmat',
 }
 
 Sijkl_cfg = {
-    'wf_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_/KernelFun/magcut_zcut',
-    'wf_input_filename': '{which_WF:s}-{EP_or_ED:s}{zbins:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
+    'wf_input_folder': f'{project_path.parent}/common_data/everyones_WF_from_Gdrive/davide/' + 'nz{nz:d}/gen2022',
+    'wil_filename': 'wil_dav{has_IA:s}_{normalization:s}_nz{nz:d}_bia{bIA:.02f}.txt',
+    'wig_filename': 'wig_dav_{normalization:s}_nz{nz:d}.txt',
     'Sijkl_folder': f'{project_path.parent}/common_data/Sijkl',
-    'Sijkl_filename': 'Sijkl_WFdavide_nz10000_IA_3may.npy',
-    'WF_normalization': 'IST',
+    'Sijkl_filename': 'Sijkl_WFdavide_nz{nz:d}_IA_3may.npy',
+    'wf_normalization': 'IST',
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }

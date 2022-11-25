@@ -33,7 +33,7 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
     else:
         nbl_WA = ell_WA.shape[0]
 
-    npairs, npairs_asimm, npairs_tot = mm.get_pairs(zbins)
+    npairs, npairs_asimm, npairs_tot = mm.get_zpairs(zbins)
 
     # import Vincenzo's (different versions of) Cls
     # also implements a further consistency check on GL/LG
@@ -124,7 +124,7 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     R_LL_WLonly_2D = Rl_dict_2D['R_LL_WLonly_2D']
 
     # compute n_zpairs
-    npairs, npairs_asimm, npairs_tot = mm.get_pairs(zbins)
+    npairs, npairs_asimm, npairs_tot = mm.get_zpairs(zbins)
 
     # nbl for Wadd
     if np.asanyarray(ell_WA).size == 1:
@@ -215,7 +215,7 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, cl_or_r
     print('THIS FUNCTION SHOULD BE DEPRECATED')
     """This function imports and interpolates the CPV3 cls, which have a different format wrt the usual input files"""
 
-    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
     specs = general_cfg['specs']
     nbl_WL_32 = general_cfg['nbl_WL_32']
     input_folder = general_cfg[f'{cl_or_rl}_folder']
@@ -268,7 +268,7 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
 
     assert probe in ['WL', 'WA', 'GC', '3x2pt'], 'probe must be WL, WA, GC or 3x2pt'
 
-    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
     # the checks on zpairs in the if statements can only be done for the optimistic case, since these are the only
     # datavectors I have (from which I can obtain the pessimistic ones simply by removing some ell bins)

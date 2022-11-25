@@ -98,7 +98,7 @@ Sijkl_cfg = {
     'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}'
                       '_MS{magcut_source:02d}-ZS{zcut_source:02d}.npy',
     'WF_normalization': 'IST',
-    'IA_flag': True,  # whether to include IA in the WF used to compute Sijkl
+    'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
 

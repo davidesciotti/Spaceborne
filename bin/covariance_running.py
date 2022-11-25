@@ -87,7 +87,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, R
 
     # load set correct output folder, get number of pairs
     # output_folder = mm.get_output_folder(ind_ordering, which_forecast)
-    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
     # if C_XC is C_LG, switch the ind.dat ordering for the correct rows
     if GL_or_LG == 'LG':

@@ -90,7 +90,7 @@ def test_cov(probe_vinc, nbl_WL, zbins, plot_cl, plot_cov, plot_hist, check_dat,
 
     print(f'are cov_vin and cov_dav different by less than {rtol}% ? {result_emoji} {additional_info}')
 
-    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
     if plot_hist:
         plt.hist(diff[np.where(np.abs(diff) > rtol)], bins = 50)

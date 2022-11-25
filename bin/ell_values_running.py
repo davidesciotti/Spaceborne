@@ -14,7 +14,11 @@ import my_module as mm
 
 def generate_ell_and_deltas(general_config):
 
-    nbl = general_config['nbl']
+    nbl_WL = general_config['nbl_WL']
+    nbl_GC = general_config['nbl_GC']
+    assert nbl_WL == nbl_GC, 'nbl_WL and nbl_GC must be the same'
+    nbl = nbl_WL
+
     ell_min = general_config['ell_min']
     ell_max_WL = general_config['ell_max_WL']
     ell_max_GC = general_config['ell_max_GC']

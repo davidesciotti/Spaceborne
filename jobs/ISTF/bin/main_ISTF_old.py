@@ -8,10 +8,6 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 import pandas as pd
-import os
-import warnings
-import scipy.sparse as spar
-import _pickle as cPickle
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
@@ -19,17 +15,17 @@ home_path = Path.home()
 job_name = job_path.parts[-1]
 
 # general libraries
-sys.path.append(f'{project_path.parent}/common_data/common_lib')
+sys.path.append(f'{project_path}/lib')
 import my_module as mm
 import cosmo_lib as csmlib
 
 # general configurations
-sys.path.append(f'{project_path.parent}/common_data/common_config')
+sys.path.append(f'{project_path}/config')
 import mpl_cfg
 
 # job configuration
 sys.path.append(f'{job_path}/config')
-import config_ISTF as cfg
+import config_ISTF_old as cfg
 
 # project libraries
 sys.path.append(f'{project_path}/bin')
@@ -46,41 +42,6 @@ mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 start_time = time.perf_counter()
 
-
-def save_compressed_pickle(title, data):
-    with bz2.BZ2File(title + '.pbz2', 'wb') as handle:
-        cPickle.dump(data, handle)
-
-
-def load_compressed_pickle(file):
-    data = bz2.BZ2File(file, 'rb')
-    data = cPickle.load(data)
-    return data
-
-
-# todo move this to my_module
-def dC_dict_to_4D_array(param_names, dC_dict_3D, nbl, zbins, is_3x2pt=False, n_probes=2):
-    # param_names should be params_tot in all cases, because when the derivative dows not exist
-    # in dC_dict_3D the output array will remain null
-    if is_3x2pt:
-        dC_4D = np.zeros((nbl, n_probes, n_probes, zbins, zbins, len(param_names)))
-    else:
-        dC_4D = np.zeros((nbl, zbins, zbins, len(param_names)))
-
-    if not dC_dict_3D:
-        warnings.warn('The input dictionary is empty')
-
-    for idx, paramname in enumerate(param_names):
-        for key, value in dC_dict_3D.items():
-            if f'dDVd{paramname}' in key:
-                dC_4D[..., idx] = value
-
-        # a check, if the derivative wrt the param is not in the folder at all
-        if not any(f'dDVd{paramname}' in key for key in dC_dict_3D.keys()):
-            print(f'WARNING: derivative dDVd{paramname} not found in dC_dict_3D')
-    return dC_4D
-
-
 # TODO check that the number of ell bins is the same as in the files
 # TODO double check the delta values
 # TODO update consistency_checks
@@ -90,10 +51,10 @@ def dC_dict_to_4D_array(param_names, dC_dict_3D, nbl, zbins, is_3x2pt=False, n_p
 #################### PARAMETERS AND SETTINGS DEFINITION #######################
 ###############################################################################
 
-general_cfg = cfg.general_cfg
-covariance_cfg = cfg.covariance_cfg
-Sijkl_cfg = cfg.Sijkl_cfg
-FM_cfg = cfg.FM_cfg
+general_cfg = cfg.general_config
+covariance_cfg = cfg.covariance_config
+Sijkl_cfg = cfg.Sijkl_config
+FM_cfg = cfg.FM_config
 
 which_probe_response = covariance_cfg['which_probe_response']
 # set the string, just for the file names
@@ -113,89 +74,42 @@ for covariance_cfg['triu_tril'] in ['triu', 'tril']:
 
                     # utils.consistency_checks(general_cfg, covariance_cfg)
 
-                    # some variables used for I/O naming, just to make things more readable
+                    # some variables used for I/O naming, just to make things shorter
                     zbins = general_cfg['zbins']
                     EP_or_ED = general_cfg['EP_or_ED']
-                    ell_min = general_cfg['ell_min']
                     ell_max_WL = general_cfg['ell_max_WL']
                     ell_max_GC = general_cfg['ell_max_GC']
                     ell_max_XC = ell_max_GC
-                    triu_tril = covariance_cfg['triu_tril']
-                    row_col_wise = covariance_cfg['row_col_wise']
-                    n_probes = general_cfg['n_probes']
-                    nbl_WL = general_cfg['nbl_WL']
-                    nbl_GC = general_cfg['nbl_GC']
+                    nbl = general_cfg['nbl']
+                    nbl_WL = nbl
+                    nbl_GC = nbl
+                    nbl_3x2pt = nbl
+                    ind_name = covariance_cfg['ind_name']
 
-                    # which cases to save: GO, GS or GO, GS and SS
-                    cases_tosave = ['GO', 'GS']
-                    if covariance_cfg[f'save_cov_GS']:
-                        cases_tosave.append('GS')
-                    if covariance_cfg[f'save_cov_SS']:
-                        cases_tosave.append('SS')
-
-                    variable_specs = {
-                        'zbins': zbins,
-                        'EP_or_ED': EP_or_ED,
-                        'triu_tril': triu_tril,
-                        'row_col_wise': row_col_wise,
-                    }
-
-                    # some checks
-                    assert covariance_cfg['GL_or_LG'] == 'GL', 'Cij_14may uses GL, also for the probe responses'
-                    assert nbl_GC == nbl_WL, 'for ISTF we are using the same number of ell bins for WL and GC'
-
-                    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
-
-                    # import the ind files and store it into the covariance dictionary
-                    ind_folder = covariance_cfg['ind_folder'].format(**variable_specs)
-                    ind_filename = covariance_cfg['ind_filename'].format(**variable_specs)
+                    # load ind and Sijkl
+                    # ind = np.genfromtxt(f'{project_path.parent}/common_data/ind_files/{ind_name}.dat', dtype=int)
+                    # covariance_cfg['ind'] = ind
+                    # print('WARNING: I AM USING THE triu_row-wise INDICES ORDERING')
+                    print(covariance_cfg['triu_tril'], covariance_cfg['row_col_wise'])
+                    ind_folder = covariance_cfg["ind_folder"].format(triu_tril=covariance_cfg['triu_tril'],
+                                                                     row_col_wise=covariance_cfg['row_col_wise'])
+                    print(ind_folder)
+                    ind_filename = covariance_cfg['ind_filename'].format(triu_tril=covariance_cfg['triu_tril'],
+                                                                         row_col_wise=covariance_cfg['row_col_wise'],
+                                                                         zbins=zbins)
                     ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
                     covariance_cfg['ind'] = ind
 
                     # ! compute ell and delta ell values
                     ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_cfg)
+
                     nbl_WA = ell_dict['ell_WA'].shape[0]
-                    nbl_WL, nbl_GC = nbl, nbl
-                    ell_WL, ell_GC, ell_WA = ell_dict['ell_WL'], ell_dict['ell_GC'], ell_dict['ell_WA']
 
                     # ! load, interpolate, reshape cls and responses
-                    # cl_dict_2D, rl_dict_2D = cl_utils.import_and_interpolate_cls(general_cfg, covariance_cfg, ell_dict)
-                    # cl_dict_3D, rl_dict_3D = cl_utils.reshape_cls_2D_to_3D(general_cfg, ell_dict, cl_dict_2D,
-                    #                                                        rl_dict_2D)
+                    cl_dict_2D, rl_dict_2D = cl_utils.import_and_interpolate_cls(general_cfg, covariance_cfg, ell_dict)
+                    cl_dict_3D, rl_dict_3D = cl_utils.reshape_cls_2D_to_3D(general_cfg, ell_dict, cl_dict_2D,
+                                                                           rl_dict_2D)
 
-                    # import
-                    cl_folder = general_cfg['cl_folder'].format(**variable_specs)
-                    cl_filename = general_cfg['cl_filename']
-                    cl_LL_1D = np.genfromtxt(f'{cl_folder}/{cl_filename.format(probe="LL")}')
-                    cl_GL_1D = np.genfromtxt(f'{cl_folder}/{cl_filename.format(probe="GL")}')
-                    cl_GG_1D = np.genfromtxt(f'{cl_folder}/{cl_filename.format(probe="GG")}')
-
-                    rl_folder = general_cfg['rl_folder'].format(**variable_specs)
-                    rl_filename = general_cfg['rl_filename']
-                    rl_LL_1D = np.genfromtxt(f'{rl_folder}/{rl_filename.format(probe="ll")}')
-                    rl_GL_1D = np.genfromtxt(f'{rl_folder}/{rl_filename.format(probe="gl")}')
-                    rl_GG_1D = np.genfromtxt(f'{rl_folder}/{rl_filename.format(probe="ll")}')
-
-                    # interpolate
-                    cl_dict_2D = {}
-                    cl_dict_2D['cl_LL_2D'] = mm.Cl_interpolator(zpairs_auto, cl_LL_1D, ell_WL, nbl_WL)
-                    cl_dict_2D['cl_GG_2D'] = mm.Cl_interpolator(zpairs_auto, cl_GG_1D, ell_GC, nbl_GC)
-                    cl_dict_2D['cl_WA_2D'] = mm.Cl_interpolator(zpairs_auto, cl_LL_1D, ell_WA, nbl_WA)
-                    cl_dict_2D['cl_GL_2D'] = mm.Cl_interpolator(zpairs_cross, cl_GL_1D, ell_GC, nbl_GC)
-                    cl_dict_2D['cl_LL_WLonly_2D'] = mm.Cl_interpolator(zpairs_auto, cl_LL_1D, ell_WL, nbl_WL)
-
-                    rl_dict_2D = {}
-                    rl_dict_2D['rl_LL_2D'] = mm.Cl_interpolator(zpairs_auto, rl_LL_1D, ell_WL, nbl_WL)
-                    rl_dict_2D['rl_GG_2D'] = mm.Cl_interpolator(zpairs_auto, rl_GG_1D, ell_GC, nbl_GC)
-                    rl_dict_2D['rl_WA_2D'] = mm.Cl_interpolator(zpairs_auto, rl_LL_1D, ell_WA, nbl_WA)
-                    rl_dict_2D['rl_GL_2D'] = mm.Cl_interpolator(zpairs_cross, rl_GL_1D, ell_GC, nbl_GC)
-                    rl_dict_2D['rl_LL_WLonly_2D'] = mm.Cl_interpolator(zpairs_auto, rl_LL_1D, ell_WL, nbl_WL)
-
-                    # reshape to 3D
-
-                    # end split import and
-
-                    assert 1 > 2
                     # ! compute covariance matrix
                     sijkl = np.load(f"{project_path}/input/Sijkl/Sijkl_WFdavide_nz10000_IA_3may.npy")  # davide, eNLA
                     if covariance_cfg['compute_covmat']:

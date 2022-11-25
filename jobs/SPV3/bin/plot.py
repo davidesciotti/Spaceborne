@@ -670,7 +670,7 @@ if plot_response:
     nbl_3x2pt = ell_3x2pt.shape[0]
 
     # reshape 3x2pt
-    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
     rf_2d = np.reshape(rf_3x2pt_1d, (nbl_3x2pt, zpairs_3x2pt))
 
     # split into 3 2d datavectors

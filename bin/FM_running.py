@@ -73,7 +73,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         nbl_WA = ell_WA.shape[0]
 
     nparams_tot = len(paramnames_3x2pt)
-    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
     if GL_or_LG == 'LG':
         print('\nAttention! switching columns in the ind array (for the XC part)')

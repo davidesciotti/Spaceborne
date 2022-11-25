@@ -26,7 +26,7 @@ start_time = time.perf_counter()
 zbins = 10
 # ! end settings
 
-zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
 cov_path = f'/Users/davide/Documents/Lavoro/Programmi/likelihood-implementation/data/ExternalBenchmark/Photometric/data'
 cov_WL_2D = np.load(f'{cov_path}/CovMat-ShearShear-Gauss-20Bins.npy')

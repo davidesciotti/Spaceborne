@@ -48,7 +48,7 @@ def import_and_interpolate_cls(general_config, ell_dict):
     if np.asanyarray(ell_WA).size == 1: nbl_WA = 1 # in the case of just one bin it would give error
     else: nbl_WA = ell_WA.shape[0]
     
-    npairs, npairs_asimm, npairs_tot = mm.get_pairs(zbins)
+    npairs, npairs_asimm, npairs_tot = mm.get_zpairs(zbins)
 
     # import Vincenzo's (different versions of) Cls
     if cl_folder == "Cij_thesis":

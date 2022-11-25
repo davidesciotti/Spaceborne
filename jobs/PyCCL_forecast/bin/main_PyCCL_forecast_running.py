@@ -78,7 +78,7 @@ ell_max_WL = general_config['ell_max_WL']
 ell_max_GC = general_config['ell_max_GC']
 ell_max_XC = ell_max_GC
 nbl = general_config['nbl']
-npairs_auto, npairs_cross, npairs_3x2pt = mm.get_pairs(general_config['zbins'])
+npairs_auto, npairs_cross, npairs_3x2pt = mm.get_zpairs(general_config['zbins'])
 
 # which SS-only covariance to use
 whos_SSC = covariance_config['which_SSC']

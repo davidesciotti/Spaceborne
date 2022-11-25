@@ -72,11 +72,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     else:
         nbl_WA = ell_WA.shape[0]
 
-    warnings.warn('nparams_WL needs to be defined as len(paramnames_LL?)')
     nparams_tot = len(paramnames_3x2pt)
-    nparams_galbias = zbins
-    nparams_WL = nparams_tot - nparams_galbias
-
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
 
     if GL_or_LG == 'LG':

@@ -308,7 +308,6 @@ def cl_BNT_transform(cl_3D, BNT_matrix):
     cl_3D_BNT = np.zeros(cl_3D.shape)
     if cl_3D.ndim == 3:  # WL, GC
         for ell_idx in range(cl_3D.shape[0]):
-            # cl_3D_BNT[ell_idx, :, :] = cl_3D[ell_idx, :, :] @ BNT_matrix @ cl_3D[ell_idx, :, :].T
             cl_3D_BNT[ell_idx, :, :] = BNT_matrix @ cl_3D[ell_idx, :, :] @ BNT_matrix.T
 
     elif cl_3D.ndim == 5:  # 3x2pt

@@ -68,11 +68,17 @@ def dC_dict_to_4D_array(param_names, dC_dict_3D, nbl, zbins, is_3x2pt=False, n_p
     else:
         dC_4D = np.zeros((nbl, zbins, zbins, len(param_names)))
 
+    if not dC_dict_3D:
+        warnings.warn('The input dictionary is empty')
+
     for idx, paramname in enumerate(param_names):
         for key, value in dC_dict_3D.items():
             if f'dDVd{paramname}' in key:
-                print(paramname, key)
                 dC_4D[..., idx] = value
+
+        # a check, if the derivative wrt the param is not in the folder at all
+        if not any(f'dDVd{paramname}' in key for key in dC_dict_3D.keys()):
+            print(f'WARNING: derivative dDVd{paramname} not found in dC_dict_3D')
     return dC_4D
 
 
@@ -126,7 +132,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 n_probes = general_cfg['n_probes']
 
                 # which cases to save: GO, GS or GO, GS and SS
-                cases_tosave = ['GO', ]
+                cases_tosave = ['GO', 'GS']
                 if covariance_cfg[f'save_cov_GS']:
                     cases_tosave.append('GS')
                 if covariance_cfg[f'save_cov_SS']:
@@ -183,6 +189,9 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
                         'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
 
+                BNT_matrix_filename = general_cfg["BNT_matrix_filename"].format(**variable_specs)
+                BNT_matrix = np.load(f'{general_cfg["BNT_matrix_path"]}/{BNT_matrix_filename}')
+
                 # ! import datavectors (cl) and response functions (rl)
                 # this is just to make the .format() more compact
                 variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
@@ -219,8 +228,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 if general_cfg['cl_BNT_transform']:
                     assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
                     assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
-                    BNT_matrix = np.genfromtxt(f'{general_cfg["BNT_matrix_path"]}/{general_cfg["BNT_matrix_filename"]}',
-                                               delimiter=',')
+
                     cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix)
                     cl_gg_3d = cl_utils.cl_BNT_transform(cl_gg_3d, BNT_matrix)
                     cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix)
@@ -262,8 +270,6 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     'R_GG_3D': rl_gg_3d,
                     'R_WA_3D': rl_wa_3d,
                     'R_3x2pt_5D': rl_3x2pt_5d}
-
-                warnings.warn("not the nicest way, this if is ugly")
 
                 if covariance_cfg['compute_covmat']:
                     # ! load kernels
@@ -309,8 +315,6 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                 # ! compute Fisher matrix
                 if FM_cfg['compute_FM']:
 
-                    if BNT_transform:  # TODO delete this warning once things are working
-                        print('Vincenzos derivatives are anly for BNT_False, otherwise you should use Stafanos files')
 
                     # import derivatives and store them in dictionary
                     derivatives_folder = FM_cfg['derivatives_folder'].format(magcut_lens=magcut_lens,
@@ -318,6 +322,10 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                                                                              magcut_source=magcut_source,
                                                                              zcut_source=zcut_source)
                     dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
+
+                    # check if dictionary is empty
+                    if not dC_dict_1D:
+                        raise ValueError(f'No derivatives found in folder {derivatives_folder}')
 
                     # reshape them (no interpolation needed in this case)
                     dC_dict_LL_3D = {}
@@ -338,13 +346,15 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                             dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='3x2pt',
                                                                               nbl=nbl_3x2pt, zbins=zbins)
 
-                    # cosmo and nuisance parameters' names (and ordering!)
+                    # now turn the dict. into npy array
                     paramnames_cosmo = ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"]
                     paramnames_IA = ["Aia", "eIA", "bIA"]
-                    paramnames_galbias = [f'b{zbin_idx:02d}' for zbin_idx in range(zbins)]
-                    paramnames_shearbias = [f'b{zbin_idx:02d}' for zbin_idx in range(zbins)]
-                    paramnames_dz = [f'b{zbin_idx:02d}' for zbin_idx in range(zbins)]
-                    paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias + paramnames_shearbias + paramnames_dz
+                    paramnames_galbias = [f'bG{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+                    paramnames_shearbias = [f'm{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+                    paramnames_dzWL = [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+                    paramnames_dzGC = [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+                    paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias + paramnames_shearbias + \
+                           paramnames_dzWL + paramnames_dzGC
                     FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
 
                     # turn the dict. into npy array with the ordering given by paramnames_3x2pt
@@ -352,6 +362,33 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     dC_GG_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_GG_3D, nbl_GC, zbins)
                     dC_WA_4D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_WA_3D, nbl_WA, zbins)
                     dC_3x2pt_5D = dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_3x2pt_5D, nbl_3x2pt, zbins, is_3x2pt=True)
+
+                    # ! new bit: BNT transform derivatives
+                    if FM_cfg['derivatives_BNT_transform']:
+                        assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
+                        assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
+                        warnings.warn('Vincenzos derivatives are anly for BNT_False, otherwise you should use Stefanos files')
+
+                        dC_LL_4D_BNT = np.zeros(dC_LL_4D.shape)
+                        for alf in range(len(paramnames_3x2pt)):
+                            dC_LL_4D_BNT[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_LL_4D[:, :, :, alf], BNT_matrix)
+                            dC_GG_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_GG_4D[:, :, :, alf], BNT_matrix)
+                            dC_WA_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_WA_4D[:, :, :, alf], BNT_matrix)
+                            # dC_3x2pt_5D[:, :, :, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, :, :, :, :, alf],
+                            #                                                       BNT_matrix)
+
+                        # TODO this should not be here nor hardcoded
+                        transformed_derivs_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_2/Derivatives/BNT_True/davide'
+
+                        readme = 'shape: (ell_bins, z_bins, z_bins, num_parameters); parameters order:' + str(
+                            paramnames_3x2pt)
+                        with open(f'{transformed_derivs_folder}/README_transformed_derivs.txt', "w") as text_file:
+                            text_file.write(readme)
+
+                        transformed_derivs_filename = f'dDV-WLO-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.npy'
+                        np.save(f'{transformed_derivs_folder}/{transformed_derivs_filename}', dC_LL_4D_BNT)
+
+                    # ! end new bit: BNT transform derivatives
 
                     # store the derivatives arrays in a dictionary
                     deriv_dict = {'dC_LL_4D': dC_LL_4D,
@@ -495,6 +532,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                                                                        ell_max=ell_max, nbl=nbl,
                                                                        **variable_specs)
                             np.savetxt(f'{FM_folder}/{FM_filename}', FM_dict[f'FM_{probe}_{which_cov}'], header=header)
+                print('FM saved')
 
                 # if FM_cfg['save_FM_as_dict']:
                 #     sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)

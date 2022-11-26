@@ -681,7 +681,7 @@ if plot_response:
 
     # reshape them individually - the symmetrization is done within the function
     rf_ll_3x2pt_3d = mm.cl_2D_to_3D_symmetric(rf_ll_3x2pt_2d, nbl=nbl_3x2pt, zpairs=zpairs_auto, zbins=zbins)
-    rf_lg_3x2pt_3d = mm.cl_2D_to_3D_asymmetric(rf_lg_3x2pt_2d, nbl=nbl_3x2pt, zbins=zbins)
+    rf_lg_3x2pt_3d = mm.cl_2D_to_3D_asymmetric(rf_lg_3x2pt_2d, nbl=nbl_3x2pt, zbins=zbins, order='F')
     rf_gg_3x2pt_3d = mm.cl_2D_to_3D_symmetric(rf_gg_3x2pt_2d, nbl=nbl_3x2pt, zpairs=zpairs_auto, zbins=zbins)
     warnings.warn('check the order of the 3x2pt response functions, the default is actually F-style!')
 

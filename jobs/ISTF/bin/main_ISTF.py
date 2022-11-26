@@ -258,26 +258,31 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias
                 nparams_total = len(paramnames_3x2pt)
 
-                # interpolate and separate into probe-specific dictionaries
-                dC_dict_LL_2D = {}
-                dC_dict_GG_2D = {}
-                dC_dict_GL_2D = {}
-                dC_dict_WA_2D = {}
-                dC_dict_LLfor3x2pt_2D = {}
+                # interpolate and separate into probe-specific dictionaries; then reshape from 2D to 3D
+                dC_dict_LL_2D, dC_dict_LL_3D = {}, {}
+                dC_dict_GG_2D, dC_dict_GG_3D = {}, {}
+                dC_dict_GL_2D, dC_dict_GL_3D = {}, {}
+                dC_dict_WA_2D, dC_dict_WA_3D = {}, {}
+                dC_dict_LLfor3x2pt_2D, dC_dict_LLfor3x2pt_3D = {}, {}
                 for key in dC_dict_2D.keys():
                     if 'LL' in key:
                         dC_dict_LL_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_WL, nbl_WL)
                         dC_dict_WA_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_WA, nbl_WA)
                         dC_dict_LLfor3x2pt_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_GC, nbl_GC)
+                        dC_dict_LL_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_LL_2D[key], nbl_WL, zpairs_auto, zbins)
+                        dC_dict_WA_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_WA_2D[key], nbl_WA, zpairs_auto, zbins)
+                        dC_dict_LLfor3x2pt_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_LL_2D[key], nbl_GC, zpairs_auto, zbins)
                     elif 'GG' in key:
                         dC_dict_GG_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_GC, nbl_GC)
+                        dC_dict_GG_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_GG_2D[key], nbl_GC, zpairs_auto, zbins)
                     elif 'GL' in key:
                         dC_dict_GL_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_cross, ell_GC, nbl_GC)
+                        dC_dict_GL_3D[key] = mm.cl_2D_to_3D_asymmetric(dC_dict_GL_2D[key], nbl_GC, zbins, 'row_major')
 
                 # turn dictionary keys into entries of 4-th array axis
+                dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl, zbins, obs_name='CiLL', is_3x2pt=False, n_probes=2)
 
 
-                dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, obs_name, is_3x2pt=False, n_probes=2)
 
 
                 # initialize derivatives arrays

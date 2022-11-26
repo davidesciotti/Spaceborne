@@ -315,7 +315,6 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                             dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='3x2pt',
                                                                               nbl=nbl_3x2pt, zbins=zbins)
 
-
                     # now turn the dict. into npy array
                     paramnames_cosmo = ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"]
                     paramnames_IA = ["Aia", "eIA", "bIA"]

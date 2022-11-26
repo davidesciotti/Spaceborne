@@ -54,14 +54,18 @@ def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, obs_name, is_3x2pt=
     if not dC_dict_3D:
         warnings.warn('The input dictionary is empty')
 
+    no_derivative_counter = 0
     for idx, param_name in enumerate(param_names):
         for key, value in dC_dict_3D.items():
             if f'd{obs_name}d{param_name}' in key:
                 dC_4D[..., idx] = value
 
         # a check, if the derivative wrt the param is not in the folder at all
-        if not any(f'dDVd{param_name}' in key for key in dC_dict_3D.keys()):
-            print(f'WARNING: derivative dDVd{param_name} not found in dC_dict_3D')
+        if not any(f'd{obs_name}d{param_name}' in key for key in dC_dict_3D.keys()):
+            print(f'Derivative d{obs_name}d{param_name} not found; setting the corresponding entry to zero')
+            no_derivative_counter += 1
+        if no_derivative_counter == len(param_names):
+            warnings.warn('No derivative found for any of the parameters in the input dictionary')
     return dC_4D
 
 

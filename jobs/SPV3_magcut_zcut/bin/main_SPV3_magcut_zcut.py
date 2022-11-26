@@ -73,18 +73,10 @@ covariance_cfg = cfg.covariance_cfg
 Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
-which_probe_response = covariance_cfg['which_probe_response']
-# set the string, just for the file names
-if which_probe_response == 'constant':
-    which_probe_response_str = 'const'
-elif which_probe_response == 'variable':
-    which_probe_response_str = 'var'
-else:
-    raise ValueError('which_probe_response must be either constant or variable')
 
-    # for general_cfg['zbins'] in general_cfg['zbins_list']:
-    # for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000),):
-    # for general_cfg['EP_or_ED'] in ('ED',):
+# for general_cfg['zbins'] in general_cfg['zbins_list']:
+# for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000),):
+# for general_cfg['EP_or_ED'] in ('ED',):
 for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
     for general_cfg['magcut_source'] in general_cfg['magcut_source_list']:
         for general_cfg['zcut_lens'] in general_cfg['zcut_lens_list']:
@@ -323,6 +315,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                             dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='3x2pt',
                                                                               nbl=nbl_3x2pt, zbins=zbins)
 
+
                     # now turn the dict. into npy array
                     paramnames_cosmo = ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"]
                     paramnames_IA = ["Aia", "eIA", "bIA"]
@@ -335,10 +328,10 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
 
                     # turn the dict. into npy array with the ordering given by paramnames_3x2pt
-                    dC_LL_4D = FM_utils.dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_LL_3D, nbl_WL, zbins, 'DV')
-                    dC_GG_4D = FM_utils.dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_GG_3D, nbl_GC, zbins, 'DV')
-                    dC_WA_4D = FM_utils.dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_WA_3D, nbl_WA, zbins, 'DV')
-                    dC_3x2pt_5D = FM_utils.dC_dict_to_4D_array(paramnames_3x2pt, dC_dict_3x2pt_5D, nbl_3x2pt, zbins,
+                    dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl_WL, zbins, 'DV')
+                    dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, paramnames_3x2pt, nbl_GC, zbins, 'DV')
+                    dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, paramnames_3x2pt, nbl_WA, zbins, 'DV')
+                    dC_3x2pt_5D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, paramnames_3x2pt, nbl_3x2pt, zbins,
                                                                obs_name='DV', is_3x2pt=True)
 
                     # ! new bit: BNT transform derivatives

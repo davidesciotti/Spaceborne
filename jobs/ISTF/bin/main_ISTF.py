@@ -164,43 +164,35 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
 
             # interpolate
             cl_dict_2D = {}
-            cl_dict_2D['cl_LL_2D'] = mm.cl_interpolator(zpairs_auto, cl_LL_1D, ell_WL, nbl_WL)
-            cl_dict_2D['cl_GG_2D'] = mm.cl_interpolator(zpairs_auto, cl_GG_1D, ell_GC, nbl_GC)
-            cl_dict_2D['cl_WA_2D'] = mm.cl_interpolator(zpairs_auto, cl_LL_1D, ell_WA, nbl_WA)
-            cl_dict_2D['cl_GL_2D'] = mm.cl_interpolator(zpairs_cross, cl_GL_1D, ell_GC, nbl_GC)
-            cl_dict_2D['cl_LLfor3x2pt_2D'] = mm.cl_interpolator(zpairs_auto, cl_LL_1D, ell_GC, nbl_GC)
+            cl_dict_2D['cl_LL_2D'] = mm.cl_interpolator(cl_LL_1D, zpairs_auto, ell_WL, nbl_WL)
+            cl_dict_2D['cl_GG_2D'] = mm.cl_interpolator(cl_GG_1D, zpairs_auto, ell_GC, nbl_GC)
+            cl_dict_2D['cl_WA_2D'] = mm.cl_interpolator(cl_LL_1D, zpairs_auto, ell_WA, nbl_WA)
+            cl_dict_2D['cl_GL_2D'] = mm.cl_interpolator(cl_GL_1D, zpairs_cross, ell_GC, nbl_GC)
+            cl_dict_2D['cl_LLfor3x2pt_2D'] = mm.cl_interpolator(cl_LL_1D, zpairs_auto, ell_GC, nbl_GC)
 
             rl_dict_2D = {}
-            rl_dict_2D['rl_LL_2D'] = mm.cl_interpolator(zpairs_auto, rl_LL_1D, ell_WL, nbl_WL)
-            rl_dict_2D['rl_GG_2D'] = mm.cl_interpolator(zpairs_auto, rl_GG_1D, ell_GC, nbl_GC)
-            rl_dict_2D['rl_WA_2D'] = mm.cl_interpolator(zpairs_auto, rl_LL_1D, ell_WA, nbl_WA)
-            rl_dict_2D['rl_GL_2D'] = mm.cl_interpolator(zpairs_cross, rl_GL_1D, ell_GC, nbl_GC)
-            rl_dict_2D['rl_LLfor3x2pt_2D'] = mm.cl_interpolator(zpairs_auto, rl_LL_1D, ell_GC, nbl_GC)
+            rl_dict_2D['rl_LL_2D'] = mm.cl_interpolator(rl_LL_1D, zpairs_auto, ell_WL, nbl_WL)
+            rl_dict_2D['rl_GG_2D'] = mm.cl_interpolator(rl_GG_1D, zpairs_auto, ell_GC, nbl_GC)
+            rl_dict_2D['rl_WA_2D'] = mm.cl_interpolator(rl_LL_1D, zpairs_auto, ell_WA, nbl_WA)
+            rl_dict_2D['rl_GL_2D'] = mm.cl_interpolator(rl_GL_1D, zpairs_cross, ell_GC, nbl_GC)
+            rl_dict_2D['rl_LLfor3x2pt_2D'] = mm.cl_interpolator(rl_LL_1D, zpairs_auto, ell_GC, nbl_GC)
 
             # reshape to 3D
             cl_dict_3D = {}
-            cl_dict_3D['cl_LL_3D'] = mm.cl_2D_to_3D_symmetric(cl_dict_2D['cl_LL_2D'], nbl_WL, zpairs_auto,
-                                                              zbins)
-            cl_dict_3D['cl_GG_3D'] = mm.cl_2D_to_3D_symmetric(cl_dict_2D['cl_GG_2D'], nbl_GC, zpairs_auto,
-                                                              zbins)
-            cl_dict_3D['cl_WA_3D'] = mm.cl_2D_to_3D_symmetric(cl_dict_2D['cl_WA_2D'], nbl_WA, zpairs_auto,
-                                                              zbins)
+            cl_dict_3D['cl_LL_3D'] = mm.cl_2D_to_3D_symmetric(cl_dict_2D['cl_LL_2D'], nbl_WL, zpairs_auto, zbins)
+            cl_dict_3D['cl_GG_3D'] = mm.cl_2D_to_3D_symmetric(cl_dict_2D['cl_GG_2D'], nbl_GC, zpairs_auto, zbins)
+            cl_dict_3D['cl_WA_3D'] = mm.cl_2D_to_3D_symmetric(cl_dict_2D['cl_WA_2D'], nbl_WA, zpairs_auto, zbins)
 
             rl_dict_3D = {}
-            rl_dict_3D['rl_LL_3D'] = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_LL_2D'], nbl_WL, zpairs_auto,
-                                                              zbins)
-            rl_dict_3D['rl_GG_3D'] = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_GG_2D'], nbl_GC, zpairs_auto,
-                                                              zbins)
-            rl_dict_3D['rl_WA_3D'] = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_WA_2D'], nbl_WA, zpairs_auto,
-                                                              zbins)
+            rl_dict_3D['rl_LL_3D'] = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_LL_2D'], nbl_WL, zpairs_auto, zbins)
+            rl_dict_3D['rl_GG_3D'] = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_GG_2D'], nbl_GC, zpairs_auto, zbins)
+            rl_dict_3D['rl_WA_3D'] = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_WA_2D'], nbl_WA, zpairs_auto, zbins)
 
             # build 3x2pt 5D datavectors; the Gl and LLfor3x2pt are only needed for this!
             cl_GL_3D = mm.cl_2D_to_3D_asymmetric(cl_dict_2D['cl_GL_2D'], nbl_GC, zbins, order='C')
             rl_GL_3D = mm.cl_2D_to_3D_asymmetric(rl_dict_2D['rl_GL_2D'], nbl_GC, zbins, order='C')
-            cl_LLfor3x2pt_3D = mm.cl_2D_to_3D_symmetric(cl_dict_2D['cl_LLfor3x2pt_2D'], nbl_GC, zpairs_auto,
-                                                        zbins)
-            rl_LLfor3x2pt_3D = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_LLfor3x2pt_2D'], nbl_GC, zpairs_auto,
-                                                        zbins)
+            cl_LLfor3x2pt_3D = mm.cl_2D_to_3D_symmetric(cl_dict_2D['cl_LLfor3x2pt_2D'], nbl_GC, zpairs_auto, zbins)
+            rl_LLfor3x2pt_3D = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_LLfor3x2pt_2D'], nbl_GC, zpairs_auto, zbins)
 
             cl_dict_3D['cl_3x2pt_5D'] = cl_utils.build_3x2pt_datavector_5D(cl_LLfor3x2pt_3D,
                                                                            cl_GL_3D,
@@ -255,9 +247,9 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
             if FM_cfg['compute_FM']:
 
                 derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
-                dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
+                dC_dict_2D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
                 # check if dictionary is empty
-                if not dC_dict_1D:
+                if not dC_dict_2D:
                     raise ValueError(f'No derivatives found in folder {derivatives_folder}')
 
                 paramnames_cosmo = ["Om", "Ob", "wz", "wa", "h", "ns", "s8"]
@@ -265,6 +257,28 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 paramnames_galbias = [f'bL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
                 paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias
                 nparams_total = len(paramnames_3x2pt)
+
+                # interpolate and separate into probe-specific dictionaries
+                dC_dict_LL_2D = {}
+                dC_dict_GG_2D = {}
+                dC_dict_GL_2D = {}
+                dC_dict_WA_2D = {}
+                dC_dict_LLfor3x2pt_2D = {}
+                for key in dC_dict_2D.keys():
+                    if 'LL' in key:
+                        dC_dict_LL_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_WL, nbl_WL)
+                        dC_dict_WA_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_WA, nbl_WA)
+                        dC_dict_LLfor3x2pt_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_GC, nbl_GC)
+                    elif 'GG' in key:
+                        dC_dict_GG_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_GC, nbl_GC)
+                    elif 'GL' in key:
+                        dC_dict_GL_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_cross, ell_GC, nbl_GC)
+
+                # turn dictionary keys into entries of 4-th array axis
+
+
+                dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, obs_name, is_3x2pt=False, n_probes=2)
+
 
                 # initialize derivatives arrays
                 dC_LL_WLonly = np.zeros((nbl, zpairs_auto, nparams_total))

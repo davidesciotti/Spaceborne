@@ -80,18 +80,18 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
     # careful, this part is a bit tricky. Pay attention to the ell_WL,
     # ell_XC arguments in e.g. fLL(ell_XC) vs fLL(ell_WL)
     cl_dict_2D = {}
-    cl_dict_2D['cl_LL_2D'] = mm.cl_interpolator(npairs, cl_LL_import, ell_WL, nbl)
-    cl_dict_2D['cl_GG_2D'] = mm.cl_interpolator(npairs, cl_GG_import, ell_XC, nbl)
-    cl_dict_2D['cl_WA_2D'] = mm.cl_interpolator(npairs, cl_LL_import, ell_WA, nbl_WA)
-    cl_dict_2D['cl_XC_2D'] = mm.cl_interpolator(npairs_asimm, cl_XC_import, ell_XC, nbl)
-    cl_dict_2D['cl_LLfor3x2pt_2D'] = mm.cl_interpolator(npairs, cl_LL_import, ell_XC, nbl)
+    cl_dict_2D['cl_LL_2D'] = mm.cl_interpolator(cl_LL_import, npairs, ell_WL, nbl)
+    cl_dict_2D['cl_GG_2D'] = mm.cl_interpolator(cl_GG_import, npairs, ell_XC, nbl)
+    cl_dict_2D['cl_WA_2D'] = mm.cl_interpolator(cl_LL_import, npairs, ell_WA, nbl_WA)
+    cl_dict_2D['cl_XC_2D'] = mm.cl_interpolator(cl_XC_import, npairs_asimm, ell_XC, nbl)
+    cl_dict_2D['cl_LLfor3x2pt_2D'] = mm.cl_interpolator(cl_LL_import, npairs, ell_XC, nbl)
 
     rl_dict_2D = {}
-    rl_dict_2D['rl_LL_2D'] = mm.cl_interpolator(npairs, R_LL_import, ell_WL, nbl)
-    rl_dict_2D['rl_GG_2D'] = mm.cl_interpolator(npairs, R_GG_import, ell_XC, nbl)
-    rl_dict_2D['rl_WA_2D'] = mm.cl_interpolator(npairs, R_LL_import, ell_WA, nbl_WA)
-    rl_dict_2D['rl_XC_2D'] = mm.cl_interpolator(npairs_asimm, R_GL_import, ell_XC, nbl)
-    rl_dict_2D['rl_LLfor3x2pt_2D'] = mm.cl_interpolator(npairs, R_LL_import, ell_XC, nbl)
+    rl_dict_2D['rl_LL_2D'] = mm.cl_interpolator(R_LL_import, npairs, ell_WL, nbl)
+    rl_dict_2D['rl_GG_2D'] = mm.cl_interpolator(R_GG_import, npairs, ell_XC, nbl)
+    rl_dict_2D['rl_WA_2D'] = mm.cl_interpolator(R_LL_import, npairs, ell_WA, nbl_WA)
+    rl_dict_2D['rl_XC_2D'] = mm.cl_interpolator(R_GL_import, npairs_asimm, ell_XC, nbl)
+    rl_dict_2D['rl_LLfor3x2pt_2D'] = mm.cl_interpolator(R_LL_import, npairs, ell_XC, nbl)
 
     return cl_dict_2D, rl_dict_2D
 
@@ -302,9 +302,9 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
         cl_gg_3x2pt_2d = cl_2d[:, zpairs_auto + zpairs_cross:]
 
         # reshape them individually - the symmetrization is done within the function
-        cl_ll_3x2pt_3d = mm.cl_2D_to_3D_symmetric(cl_ll_3x2pt_2d, nbl=nbl, npairs=zpairs_auto, zbins=zbins)
-        cl_lg_3x2pt_3d = mm.cl_2D_to_3D_asymmetric(cl_lg_3x2pt_2d, nbl=nbl, zbins=zbins)
-        cl_gg_3x2pt_3d = mm.cl_2D_to_3D_symmetric(cl_gg_3x2pt_2d, nbl=nbl, npairs=zpairs_auto, zbins=zbins)
+        cl_ll_3x2pt_3d = mm.cl_2D_to_3D_symmetric(cl_ll_3x2pt_2d, nbl=nbl, zpairs=zpairs_auto, zbins=zbins)
+        cl_lg_3x2pt_3d = mm.cl_2D_to_3D_asymmetric(cl_lg_3x2pt_2d, nbl=nbl, zbins=zbins, order='F')
+        cl_gg_3x2pt_3d = mm.cl_2D_to_3D_symmetric(cl_gg_3x2pt_2d, nbl=nbl, zpairs=zpairs_auto, zbins=zbins)
         warnings.warn('check the order of the 3x2pt response functions, the default is actually F-style!')
 
         # use them to populate the datavector

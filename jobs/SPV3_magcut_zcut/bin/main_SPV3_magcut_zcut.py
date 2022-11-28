@@ -109,7 +109,6 @@ else:
     # for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000),):
     # for general_cfg['EP_or_ED'] in ('ED',):
 
-
 ML_list = [230, 230, 245, 245]
 ZL_list = [0, 2, 0, 2]
 MS_list = [245, 245, 245, 245]
@@ -117,17 +116,18 @@ ZS_list = [0, 0, 2, 2]
 ML_list = [230, ]
 ZL_list = [0, ]
 MS_list = [245, ]
-ZS_list = [0,]
+ZS_list = [0, ]
 
 warnings.warn('restore the ML, Zl, ... lists')
 warnings.warn('restore nbl_WL = 32')
 
-for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_source'], general_cfg['zcut_source'] in zip(ML_list, ZL_list, MS_list, ZS_list):
+for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_source'], general_cfg[
+    'zcut_source'] in zip(ML_list, ZL_list, MS_list, ZS_list):
 
-# for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
-#     for general_cfg['magcut_source'] in general_cfg['magcut_source_list']:
-#         for general_cfg['zcut_lens'] in general_cfg['zcut_lens_list']:
-#             for general_cfg['zcut_source'] in general_cfg['zcut_source_list']:
+    # for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
+    #     for general_cfg['magcut_source'] in general_cfg['magcut_source_list']:
+    #         for general_cfg['zcut_lens'] in general_cfg['zcut_lens_list']:
+    #             for general_cfg['zcut_source'] in general_cfg['zcut_source_list']:
 
     # utils.consistency_checks(general_cfg, covariance_cfg)
 
@@ -206,16 +206,15 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
             'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
 
-    BNT_matrix_filename = general_cfg["BNT_matrix_filename"].format(**variable_specs)
-    BNT_matrix = np.load(f'{general_cfg["BNT_matrix_path"]}/{BNT_matrix_filename}')
-
-    # ! import datavectors (cl) and response functions (rl)
     # this is just to make the .format() more compact
     variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
                       'magcut_lens': magcut_lens, 'zcut_lens': zcut_lens,
                       'magcut_source': magcut_source, 'zcut_source': zcut_source,
                       'zmax': zmax}
+    BNT_matrix_filename = general_cfg["BNT_matrix_filename"].format(**variable_specs)
+    BNT_matrix = np.load(f'{general_cfg["BNT_matrix_path"]}/{BNT_matrix_filename}')
 
+    # ! import datavectors (cl) and response functions (rl)
     cl_fld = general_cfg['cl_folder']
     cl_filename = general_cfg['cl_filename']
     cl_ll_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLO', **variable_specs)}")
@@ -330,35 +329,46 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
-
         if use_stefano_BNT_ingredients:
             # now overwrite the WL GS entries with Stefano's BNT covmats:
-            zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+            zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
-            GOGS_list = ['GO', 'GS']
+            GOGS_list = ['GS', ]  # for the moment, only GS
+            # all probes, once they become available
             probe_list = ['WL', 'GC', '3x2pt', 'WA']
             ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
             nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
             zpairs_list = [zpairs_auto, zpairs_auto, zpairs_3x2pt, zpairs_auto]
+            # for the moment, only 3x2pt
+            probe_list = ['3x2pt', ]
+            ellmax_list = [ell_max_XC, ]
+            nbl_list = [nbl_3x2pt, ]
+            zpairs_list = [zpairs_3x2pt, ]
 
-            cov_folder_stef = f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022' \
-                              f'/Flagship_2/CovMats/BNT_True/stefano/magcut_zcut'
+            cov_BNTstef_folder = covariance_cfg['cov_BNTstef_folder']
 
             for probe, ellmax, nbl, zpairs in zip(probe_list, ellmax_list, nbl_list, zpairs_list):
                 for GO_or_GS in GOGS_list:
-                    cov_filename = f'BNT_covmat_{GO_or_GS}_{probe}_LLLL_lmax{ellmax}_nbl{nbl}_' \
-                                   f'zbins{EP_or_ED}{zbins:02d}_ML{magcut_lens:03d}_' \
-                                   f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                   f'ZS{zcut_source:02d}_6D.npy'
+                    cov_BNTstef_filename = covariance_cfg['cov_BNT_filename_stef'].format(probe=probe,
+                                                                                          GO_or_GS=GO_or_GS,
+                                                                                          block=block,
+                                                                                          ellmax=ellmax,
+                                                                                          nbl=nbl,
+                                                                                          **variable_specs)
+
+                    cov_BNTstef_filename = f'BNT_covmat_{GO_or_GS}_{probe}_LLLL_lmax{ellmax}_nbl{nbl}_' \
+                                           f'zbins{EP_or_ED}{zbins:02d}_ML{magcut_lens:03d}_' \
+                                           f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                           f'ZS{zcut_source:02d}_6D.npy'
                     # BNT_covmat_GS_3x2pt_LLLL_lmax3000_nbl29_zbinsED13_ML230_ZL00_MS245_ZS00_6D.npy
 
-                    if os.path.isfile(f'{cov_folder_stef}/{cov_filename}'):
+                    if os.path.isfile(f'{cov_BNTstef_folder}/{cov_BNTstef_filename}'):
                         # ! this will give an error, Stefano's covariance is not in 6D but in 3D!
                         print(
-                            f'cov_{probe}_{GO_or_GS} already exists in folder\n{cov_folder_stef}; loading it'
+                            f'cov_{probe}_{GO_or_GS} already exists in folder\n{cov_BNTstef_folder}; loading it'
                             f'\np.s.: this print should appear for all the files in the folder!')
                         cov_dict[f'cov_{probe}_{GO_or_GS}_6D'] = np.load(
-                            f'{cov_folder_stef}/{cov_filename}')
+                            f'{cov_BNTstef_folder}/{cov_BNTstef_filename}')
                         cov_dict[f'cov_{probe}_{GO_or_GS}_4D'] = mm.cov_6D_to_4D(
                             cov_dict[f'cov_{probe}_{GO_or_GS}_6D'], nbl, zpairs, ind[:zpairs, :])
                         cov_dict[f'cov_{probe}_{GO_or_GS}_2D'] = mm.cov_4D_to_2D(
@@ -369,10 +379,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
 
         # import derivatives and store them in dictionary
         derivetives_folder_stef = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_2/Derivatives/BNT_True/stefano'
-        derivatives_folder = FM_cfg['derivatives_folder'].format(magcut_lens=magcut_lens,
-                                                                 zcut_lens=zcut_lens,
-                                                                 magcut_source=magcut_source,
-                                                                 zcut_source=zcut_source)
+        derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
         dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
 
         # check if dictionary is empty
@@ -437,10 +444,11 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             dC_LL_4D_BNT = np.zeros(dC_LL_4D.shape)
             for alf in range(len(paramnames_3x2pt)):
                 dC_LL_4D_BNT[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_LL_4D[:, :, :, alf], BNT_matrix)
-                dC_GG_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_GG_4D[:, :, :, alf], BNT_matrix)
                 dC_WA_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_WA_4D[:, :, :, alf], BNT_matrix)
-                # dC_3x2pt_5D[:, :, :, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, :, :, :, :, alf],
-                #                                                       BNT_matrix)
+                dC_3x2pt_5D[:, 0, 0, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, 0, 0, :, :, alf], BNT_matrix)
+                # ! this is almost for sure the wrong way to do it, how do I BNT_transform the cross?
+                dC_3x2pt_5D[:, 1, 0, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, 1, 0, :, :, alf], BNT_matrix)
+                dC_3x2pt_5D[:, 0, 1, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, 0, 1, :, :, alf], BNT_matrix)
 
             # TODO this should not be here nor hardcoded
             transformed_derivs_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_2/Derivatives/BNT_True/davide'
@@ -452,7 +460,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
 
             transformed_derivs_filename = f'dDV-WLO-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.npy'
             np.save(f'{transformed_derivs_folder}/{transformed_derivs_filename}', dC_LL_4D_BNT)
-
         # ! end new bit: BNT transform derivatives
 
         # store the derivatives arrays in a dictionary

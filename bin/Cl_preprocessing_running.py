@@ -1,4 +1,5 @@
 import sys
+import warnings
 from pathlib import Path
 import numpy as np
 # from numba import njit
@@ -33,65 +34,65 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
     else:
         nbl_WA = ell_WA.shape[0]
 
-    npairs, npairs_asimm, npairs_tot = mm.get_pairs(zbins)
+    npairs, npairs_asimm, npairs_tot = mm.get_zpairs(zbins)
 
     # import Vincenzo's (different versions of) Cls
     # also implements a further consistency check on GL/LG
     if 'Cij_thesis' in cl_folder:
         assert covariance_config['GL_or_LG'] == 'LG', 'Cij_thesis uses LG'
-        C_LL_import = np.genfromtxt(f'{cl_folder}/CijGG-N4TB-GR-eNLA.dat')
-        C_XC_import = np.genfromtxt(f'{cl_folder}/CijDG-N4TB-GR-eNLA.dat')
-        C_GG_import = np.genfromtxt(f'{cl_folder}/CijDD-N4TB-GR-eNLA.dat')
+        cl_LL_import = np.genfromtxt(f'{cl_folder}/CijGG-N4TB-GR-eNLA.dat')
+        cl_XC_import = np.genfromtxt(f'{cl_folder}/CijDG-N4TB-GR-eNLA.dat')
+        cl_GG_import = np.genfromtxt(f'{cl_folder}/CijDD-N4TB-GR-eNLA.dat')
 
     elif 'Cij_15gen' in cl_folder:  # Cij-NonLin-eNLA_15gen
         assert covariance_config['GL_or_LG'] == 'LG', 'Cij_14may uses LG'
-        C_LL_import = np.genfromtxt(f'{cl_folder}/CijLL-LCDM-NonLin-eNLA.dat')
-        C_XC_import = np.genfromtxt(f'{cl_folder}/CijLG-LCDM-NonLin-eNLA.dat')
-        C_GG_import = np.genfromtxt(f'{cl_folder}/CijGG-LCDM-NonLin-eNLA.dat')
-        C_LL_import[:, 0] = np.log10(C_LL_import[:, 0])
-        C_XC_import[:, 0] = np.log10(C_XC_import[:, 0])
-        C_GG_import[:, 0] = np.log10(C_GG_import[:, 0])
+        cl_LL_import = np.genfromtxt(f'{cl_folder}/CijLL-LCDM-NonLin-eNLA.dat')
+        cl_XC_import = np.genfromtxt(f'{cl_folder}/CijLG-LCDM-NonLin-eNLA.dat')
+        cl_GG_import = np.genfromtxt(f'{cl_folder}/CijGG-LCDM-NonLin-eNLA.dat')
+        cl_LL_import[:, 0] = np.log10(cl_LL_import[:, 0])
+        cl_XC_import[:, 0] = np.log10(cl_XC_import[:, 0])
+        cl_GG_import[:, 0] = np.log10(cl_GG_import[:, 0])
 
     elif '14may' in cl_folder:
         assert covariance_config['GL_or_LG'] == 'GL', 'Cij_14may uses GL'
-        C_LL_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:02}/CijLL-GR-Flat-eNLA-NA.dat')
-        C_XC_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:02}/CijGL-GR-Flat-eNLA-NA.dat')
-        C_GG_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:02}/CijGG-GR-Flat-eNLA-NA.dat')
+        cl_LL_import = np.genfromtxt(f'{cl_folder.format(EP_or_ED=zbin_type, zbins=zbins)}/CijLL-GR-Flat-eNLA-NA.dat')
+        cl_XC_import = np.genfromtxt(f'{cl_folder.format(EP_or_ED=zbin_type, zbins=zbins)}/CijGL-GR-Flat-eNLA-NA.dat')
+        cl_GG_import = np.genfromtxt(f'{cl_folder.format(EP_or_ED=zbin_type, zbins=zbins)}/CijGG-GR-Flat-eNLA-NA.dat')
 
     elif 'Cij_SPV3' in cl_folder:
         assert 1 > 2, 'Cij_SPV3 is not implemented'
         assert covariance_config['GL_or_LG'] == 'GL', 'Cij_SPV3 uses GL'
-        C_LL_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:02}/CijLL-GR-Flat-eNLA-NA.dat')
-        C_XC_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:02}/CijGL-GR-Flat-eNLA-NA.dat')
-        C_GG_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:02}/CijGG-GR-Flat-eNLA-NA.dat')
+        cl_LL_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:02}/CijLL-GR-Flat-eNLA-NA.dat')
+        cl_XC_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:02}/CijGL-GR-Flat-eNLA-NA.dat')
+        cl_GG_import = np.genfromtxt(f'{cl_folder}/{zbin_type}{zbins:02}/CijGG-GR-Flat-eNLA-NA.dat')
 
     else:
         raise ValueError('cl_folder must contain the string Cij_15gen, Cij_thesis or Cij_14may')
 
     # import responses
-    R_LL_import = np.genfromtxt(f'{rl_folder}/rijllcorr-istf-alex.dat')
-    R_GL_import = np.genfromtxt(f'{rl_folder}/rijglcorr-istf-alex.dat')
-    R_GG_import = np.genfromtxt(f'{rl_folder}/rijggcorr-istf-alex.dat')
+    R_LL_import = np.genfromtxt(f'{rl_folder.format(EP_or_ED=zbin_type, zbins=zbins)}/rijllcorr-istf-alex.dat')
+    R_GL_import = np.genfromtxt(f'{rl_folder.format(EP_or_ED=zbin_type, zbins=zbins)}/rijglcorr-istf-alex.dat')
+    R_GG_import = np.genfromtxt(f'{rl_folder.format(EP_or_ED=zbin_type, zbins=zbins)}/rijggcorr-istf-alex.dat')
 
     ###########################################################################
     # interpolate Vincenzo's Cls in ell values
     # careful, this part is a bit tricky. Pay attention to the ell_WL,
     # ell_XC arguments in e.g. fLL(ell_XC) vs fLL(ell_WL)
     cl_dict_2D = {}
-    cl_dict_2D['C_LL_2D'] = mm.Cl_interpolator(npairs, C_LL_import, ell_XC, nbl)
-    cl_dict_2D['C_GG_2D'] = mm.Cl_interpolator(npairs, C_GG_import, ell_XC, nbl)
-    cl_dict_2D['C_WA_2D'] = mm.Cl_interpolator(npairs, C_LL_import, ell_WA, nbl_WA)
-    cl_dict_2D['C_XC_2D'] = mm.Cl_interpolator(npairs_asimm, C_XC_import, ell_XC, nbl)
-    cl_dict_2D['C_LL_WLonly_2D'] = mm.Cl_interpolator(npairs, C_LL_import, ell_WL, nbl)
+    cl_dict_2D['cl_LL_2D'] = mm.cl_interpolator(cl_LL_import, npairs, ell_WL, nbl)
+    cl_dict_2D['cl_GG_2D'] = mm.cl_interpolator(cl_GG_import, npairs, ell_XC, nbl)
+    cl_dict_2D['cl_WA_2D'] = mm.cl_interpolator(cl_LL_import, npairs, ell_WA, nbl_WA)
+    cl_dict_2D['cl_XC_2D'] = mm.cl_interpolator(cl_XC_import, npairs_asimm, ell_XC, nbl)
+    cl_dict_2D['cl_LLfor3x2pt_2D'] = mm.cl_interpolator(cl_LL_import, npairs, ell_XC, nbl)
 
-    Rl_dict_2D = {}
-    Rl_dict_2D['R_LL_2D'] = mm.Cl_interpolator(npairs, R_LL_import, ell_XC, nbl)
-    Rl_dict_2D['R_GG_2D'] = mm.Cl_interpolator(npairs, R_GG_import, ell_XC, nbl)
-    Rl_dict_2D['R_WA_2D'] = mm.Cl_interpolator(npairs, R_LL_import, ell_WA, nbl_WA)
-    Rl_dict_2D['R_XC_2D'] = mm.Cl_interpolator(npairs_asimm, R_GL_import, ell_XC, nbl)
-    Rl_dict_2D['R_LL_WLonly_2D'] = mm.Cl_interpolator(npairs, R_LL_import, ell_WL, nbl)
+    rl_dict_2D = {}
+    rl_dict_2D['rl_LL_2D'] = mm.cl_interpolator(R_LL_import, npairs, ell_WL, nbl)
+    rl_dict_2D['rl_GG_2D'] = mm.cl_interpolator(R_GG_import, npairs, ell_XC, nbl)
+    rl_dict_2D['rl_WA_2D'] = mm.cl_interpolator(R_LL_import, npairs, ell_WA, nbl_WA)
+    rl_dict_2D['rl_XC_2D'] = mm.cl_interpolator(R_GL_import, npairs_asimm, ell_XC, nbl)
+    rl_dict_2D['rl_LLfor3x2pt_2D'] = mm.cl_interpolator(R_LL_import, npairs, ell_XC, nbl)
 
-    return cl_dict_2D, Rl_dict_2D
+    return cl_dict_2D, rl_dict_2D
 
 
 def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
@@ -103,7 +104,7 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     ell_max_GC = general_config['ell_max_GC']
     zbins = general_config['zbins']
     cl_folder = general_config['cl_folder']
-    nProbes = general_config['nProbes']
+    n_probes = general_config['n_probes']
 
     # import ell values:
     ell_WL = ell_dict['ell_WL']
@@ -111,20 +112,20 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     ell_WA = ell_dict['ell_WA']
     ell_XC = ell_GC
 
-    C_LL_2D = cl_dict_2D['C_LL_2D']
-    C_GG_2D = cl_dict_2D['C_GG_2D']
-    C_WA_2D = cl_dict_2D['C_WA_2D']
-    C_XC_2D = cl_dict_2D['C_XC_2D']
-    C_LL_WLonly_2D = cl_dict_2D['C_LL_WLonly_2D']
+    cl_LL_2D = cl_dict_2D['cl_LL_2D']
+    cl_GG_2D = cl_dict_2D['cl_GG_2D']
+    cl_WA_2D = cl_dict_2D['cl_WA_2D']
+    cl_GL_2D = cl_dict_2D['cl_GL_2D']
+    cl_LLfor3x2pt_2D = cl_dict_2D['cl_LLfor3x2pt_2D']
 
-    R_LL_2D = Rl_dict_2D['R_LL_2D']
-    R_GG_2D = Rl_dict_2D['R_GG_2D']
-    R_WA_2D = Rl_dict_2D['R_WA_2D']
-    R_XC_2D = Rl_dict_2D['R_XC_2D']
-    R_LL_WLonly_2D = Rl_dict_2D['R_LL_WLonly_2D']
+    rl_LL_2D = Rl_dict_2D['rl_LL_2D']
+    rl_GG_2D = Rl_dict_2D['rl_GG_2D']
+    rl_WA_2D = Rl_dict_2D['rl_WA_2D']
+    rl_GL_2D = Rl_dict_2D['rl_GL_2D']
+    rl_LLfor3x2pt_2D = Rl_dict_2D['rl_LLfor3x2pt_2D']
 
     # compute n_zpairs
-    npairs, npairs_asimm, npairs_tot = mm.get_pairs(zbins)
+    npairs, npairs_asimm, npairs_tot = mm.get_zpairs(zbins)
 
     # nbl for Wadd
     if np.asanyarray(ell_WA).size == 1:
@@ -133,81 +134,90 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
         nbl_WA = ell_WA.shape[0]
 
     # initialize cls arrays
-    C_LL_WLonly_3D = np.zeros((nbl, zbins, zbins))  # 3D, for WLonly
-    C_LL_3D = np.zeros((nbl, zbins, zbins))  # 3D, for the datavector
-    C_GG_3D = np.zeros((nbl, zbins, zbins))  # 3D, for GConly
-    C_WA_3D = np.zeros((nbl_WA, zbins, zbins))  # 3D, ONLY for the datavector (there's no Wadd_only case)
-    C_3x2pt_5D = np.zeros((nbl, nProbes, nProbes, zbins, zbins))
+    cl_LL_3D = np.zeros((nbl, zbins, zbins))  # 3D, for WLonly
+    cl_LLfor3x2pt_3D = np.zeros((nbl, zbins, zbins))  # 3D, for the datavector
+    cl_GG_3D = np.zeros((nbl, zbins, zbins))  # 3D, for GConly
+    cl_WA_3D = np.zeros((nbl_WA, zbins, zbins))  # 3D, ONLY for the datavector (there's no Wadd_only case)
+    cl_3x2pt_5D = np.zeros((nbl, n_probes, n_probes, zbins, zbins))
 
-    R_LL_WLonly_3D = np.zeros((nbl, zbins, zbins))
-    R_LL_3D = np.zeros((nbl, zbins, zbins))
-    R_GG_3D = np.zeros((nbl, zbins, zbins))
-    R_WA_3D = np.zeros((nbl_WA, zbins, zbins))
-    R_3x2pt_5D = np.zeros((nbl, nProbes, nProbes, zbins, zbins))
+    rl_LL_3D = np.zeros((nbl, zbins, zbins))
+    rl_LLfor3x2pt_3D = np.zeros((nbl, zbins, zbins))
+    rl_GG_3D = np.zeros((nbl, zbins, zbins))
+    rl_WA_3D = np.zeros((nbl_WA, zbins, zbins))
+    rl_3x2pt_5D = np.zeros((nbl, n_probes, n_probes, zbins, zbins))
 
     # fill upper triangle: LL, GG, WLonly
     triu_idx = np.triu_indices(zbins)
     for ell in range(nbl):
         for i in range(npairs):
-            C_LL_3D[ell, triu_idx[0][i], triu_idx[1][i]] = C_LL_2D[ell, i]
-            C_GG_3D[ell, triu_idx[0][i], triu_idx[1][i]] = C_GG_2D[ell, i]
-            C_LL_WLonly_3D[ell, triu_idx[0][i], triu_idx[1][i]] = C_LL_WLonly_2D[ell, i]
+            cl_LL_3D[ell, triu_idx[0][i], triu_idx[1][i]] = cl_LL_2D[ell, i]
+            cl_GG_3D[ell, triu_idx[0][i], triu_idx[1][i]] = cl_GG_2D[ell, i]
+            cl_LLfor3x2pt_3D[ell, triu_idx[0][i], triu_idx[1][i]] = cl_LLfor3x2pt_2D[ell, i]
 
-            R_LL_3D[ell, triu_idx[0][i], triu_idx[1][i]] = R_LL_2D[ell, i]
-            R_GG_3D[ell, triu_idx[0][i], triu_idx[1][i]] = R_GG_2D[ell, i]
-            R_LL_WLonly_3D[ell, triu_idx[0][i], triu_idx[1][i]] = R_LL_WLonly_2D[ell, i]
+            rl_LL_3D[ell, triu_idx[0][i], triu_idx[1][i]] = rl_LL_2D[ell, i]
+            rl_GG_3D[ell, triu_idx[0][i], triu_idx[1][i]] = rl_GG_2D[ell, i]
+            rl_LLfor3x2pt_3D[ell, triu_idx[0][i], triu_idx[1][i]] = rl_LLfor3x2pt_2D[ell, i]
 
     # Wadd
     for ell in range(nbl_WA):
         for i in range(npairs):
-            C_WA_3D[ell, triu_idx[0][i], triu_idx[1][i]] = C_WA_2D[ell, i]
-            R_WA_3D[ell, triu_idx[0][i], triu_idx[1][i]] = R_WA_2D[ell, i]
+            cl_WA_3D[ell, triu_idx[0][i], triu_idx[1][i]] = cl_WA_2D[ell, i]
+            rl_WA_3D[ell, triu_idx[0][i], triu_idx[1][i]] = rl_WA_2D[ell, i]
 
     # fill asymmetric
-    C_XC_3D = np.reshape(C_XC_2D, (nbl, zbins, zbins))
-    R_XC_3D = np.reshape(R_XC_2D, (nbl, zbins, zbins))
+    cl_XC_3D = np.reshape(cl_GL_2D, (nbl, zbins, zbins))
+    rl_XC_3D = np.reshape(rl_GL_2D, (nbl, zbins, zbins))
 
     # symmetrize
-    C_LL_WLonly_3D = mm.fill_3D_symmetric_array(C_LL_WLonly_3D, nbl, zbins)
-    C_LL_3D = mm.fill_3D_symmetric_array(C_LL_3D, nbl, zbins)
-    C_GG_3D = mm.fill_3D_symmetric_array(C_GG_3D, nbl, zbins)
-    C_WA_3D = mm.fill_3D_symmetric_array(C_WA_3D, nbl_WA, zbins)
+    cl_LL_3D = mm.fill_3D_symmetric_array(cl_LL_3D, nbl, zbins)
+    cl_LLfor3x2pt_3D = mm.fill_3D_symmetric_array(cl_LLfor3x2pt_3D, nbl, zbins)
+    cl_GG_3D = mm.fill_3D_symmetric_array(cl_GG_3D, nbl, zbins)
+    cl_WA_3D = mm.fill_3D_symmetric_array(cl_WA_3D, nbl_WA, zbins)
 
-    R_LL_WLonly_3D = mm.fill_3D_symmetric_array(R_LL_WLonly_3D, nbl, zbins)
-    R_LL_3D = mm.fill_3D_symmetric_array(R_LL_3D, nbl, zbins)
-    R_GG_3D = mm.fill_3D_symmetric_array(R_GG_3D, nbl, zbins)
-    R_WA_3D = mm.fill_3D_symmetric_array(R_WA_3D, nbl_WA, zbins)
+    rl_LL_3D = mm.fill_3D_symmetric_array(rl_LL_3D, nbl, zbins)
+    rl_LLfor3x2pt_3D = mm.fill_3D_symmetric_array(rl_LLfor3x2pt_3D, nbl, zbins)
+    rl_GG_3D = mm.fill_3D_symmetric_array(rl_GG_3D, nbl, zbins)
+    rl_WA_3D = mm.fill_3D_symmetric_array(rl_WA_3D, nbl_WA, zbins)
 
     # fill datavector correctly:
     print('is this way of filling the datavector agnostic to LG, GL???')
     # ! pay attention to LG, GL...
-    C_3x2pt_5D[:, 0, 0, :, :] = C_LL_3D
-    C_3x2pt_5D[:, 1, 1, :, :] = C_GG_3D
-    C_3x2pt_5D[:, 0, 1, :, :] = np.transpose(C_XC_3D, (0, 2, 1))
-    C_3x2pt_5D[:, 1, 0, :, :] = C_XC_3D
+    cl_3x2pt_5D[:, 0, 0, :, :] = cl_LLfor3x2pt_3D
+    cl_3x2pt_5D[:, 1, 1, :, :] = cl_GG_3D
+    cl_3x2pt_5D[:, 0, 1, :, :] = np.transpose(cl_XC_3D, (0, 2, 1))
+    cl_3x2pt_5D[:, 1, 0, :, :] = cl_XC_3D
 
     # ! pay attention to LG, GL...
-    R_3x2pt_5D[:, 0, 0, :, :] = R_LL_3D
-    R_3x2pt_5D[:, 1, 1, :, :] = R_GG_3D
-    R_3x2pt_5D[:, 0, 1, :, :] = np.transpose(R_XC_3D, (0, 2, 1))
-    R_3x2pt_5D[:, 1, 0, :, :] = R_XC_3D
+    rl_3x2pt_5D[:, 0, 0, :, :] = rl_LLfor3x2pt_3D
+    rl_3x2pt_5D[:, 1, 1, :, :] = rl_GG_3D
+    rl_3x2pt_5D[:, 0, 1, :, :] = np.transpose(rl_XC_3D, (0, 2, 1))
+    rl_3x2pt_5D[:, 1, 0, :, :] = rl_XC_3D
 
     # create dict with results:
     cl_dict_3D = {
-        'C_LL_WLonly_3D': C_LL_WLonly_3D,
-        'C_GG_3D': C_GG_3D,
-        'C_WA_3D': C_WA_3D,
-        'C_3x2pt_5D': C_3x2pt_5D}
+        'cl_LL_3D': cl_LL_3D,
+        'cl_GG_3D': cl_GG_3D,
+        'cl_WA_3D': cl_WA_3D,
+        'cl_3x2pt_5D': cl_3x2pt_5D}
 
     Rl_dict_3D = {
-        'R_LL_WLonly_3D': R_LL_WLonly_3D,
-        'R_GG_3D': R_GG_3D,
-        'R_WA_3D': R_WA_3D,
-        'R_3x2pt_5D': R_3x2pt_5D}
+        'rl_LL_3D': rl_LL_3D,
+        'rl_GG_3D': rl_GG_3D,
+        'rl_WA_3D': rl_WA_3D,
+        'rl_3x2pt_5D': rl_3x2pt_5D}
 
     print('Cls and responses reshaped')
 
     return cl_dict_3D, Rl_dict_3D
+
+
+def build_3x2pt_datavector_5D(dv_LLfor3x2pt_3D, dv_GL_3D, dv_GG_3D, nbl, zbins, n_probes):
+    dv_3x2pt_5D = np.zeros((nbl, n_probes, n_probes, zbins, zbins))
+    dv_3x2pt_5D[:, 0, 0, :, :] = dv_LLfor3x2pt_3D
+    dv_3x2pt_5D[:, 1, 0, :, :] = dv_GL_3D
+    dv_3x2pt_5D[:, 0, 1, :, :] = np.transpose(dv_GL_3D, (0, 2, 1))
+    dv_3x2pt_5D[:, 1, 1, :, :] = dv_GG_3D
+    return dv_3x2pt_5D
 
 
 def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, cl_or_rl: str,
@@ -215,7 +225,7 @@ def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, cl_or_r
     print('THIS FUNCTION SHOULD BE DEPRECATED')
     """This function imports and interpolates the CPV3 cls, which have a different format wrt the usual input files"""
 
-    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
     specs = general_cfg['specs']
     nbl_WL_32 = general_cfg['nbl_WL_32']
     input_folder = general_cfg[f'{cl_or_rl}_folder']
@@ -268,7 +278,7 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
 
     assert probe in ['WL', 'WA', 'GC', '3x2pt'], 'probe must be WL, WA, GC or 3x2pt'
 
-    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
     # the checks on zpairs in the if statements can only be done for the optimistic case, since these are the only
     # datavectors I have (from which I can obtain the pessimistic ones simply by removing some ell bins)
@@ -290,9 +300,10 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
         cl_gg_3x2pt_2d = cl_2d[:, zpairs_auto + zpairs_cross:]
 
         # reshape them individually - the symmetrization is done within the function
-        cl_ll_3x2pt_3d = mm.Cl_2D_to_3D_symmetric(cl_ll_3x2pt_2d, nbl=nbl, npairs=zpairs_auto, zbins=zbins)
-        cl_lg_3x2pt_3d = mm.Cl_2D_to_3D_asymmetric(cl_lg_3x2pt_2d, nbl=nbl, zbins=zbins)
-        cl_gg_3x2pt_3d = mm.Cl_2D_to_3D_symmetric(cl_gg_3x2pt_2d, nbl=nbl, npairs=zpairs_auto, zbins=zbins)
+        cl_ll_3x2pt_3d = mm.cl_2D_to_3D_symmetric(cl_ll_3x2pt_2d, nbl=nbl, zpairs=zpairs_auto, zbins=zbins)
+        cl_lg_3x2pt_3d = mm.cl_2D_to_3D_asymmetric(cl_lg_3x2pt_2d, nbl=nbl, zbins=zbins, order='F')
+        cl_gg_3x2pt_3d = mm.cl_2D_to_3D_symmetric(cl_gg_3x2pt_2d, nbl=nbl, zpairs=zpairs_auto, zbins=zbins)
+        warnings.warn('check the order of the 3x2pt response functions, the default is actually F-style!')
 
         # use them to populate the datavector
         cl_3x2pt = np.zeros((nbl, 2, 2, zbins, zbins))

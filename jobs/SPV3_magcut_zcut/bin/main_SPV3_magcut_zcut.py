@@ -352,20 +352,38 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                 'G': 1
             }
 
-            # import blocks in dictionary
-            cov_BNTstef_folder = covariance_cfg['cov_BNTstef_folder']
-            cov_3x2pt_GS_dict = dict(mm.get_kv_pairs_npy(cov_BNTstef_folder))
-            if not cov_3x2pt_dict:
-                raise ValueError('cov_3x2pt_dict is empty')
+            # import 3x2pt blocks in dictionary
+            cov_3x2pt_GS_dict = dict(mm.get_kv_pairs_npy(covariance_cfg['cov_BNTstef_folder'] + '/3x2pt_blocks'))
 
-            zbinsED13_ML245_ZL00_MS245_ZS00
-            # build 3x2pt covariance from Stefano's files
+            # select the ones corresponding to the MS, ML, ZS, ZL values
+            current_specs = f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02}' \
+                            f'_MS{magcut_source:03d}_ZS{zcut_source:02}_6D'
+            cov_3x2pt_GS_dict = {key: value
+                                 for key, value in cov_3x2pt_GS_dict.items() if key.endswith(current_specs)}
+
+            if not cov_3x2pt_GS_dict:
+                raise ValueError('cov_3x2pt_GS_dict is empty')
+
+            # build 3x2pt 4D covariance
             GL_or_LG = covariance_cfg['GL_or_LG']
             probe_ordering = [['L', 'L'], [GL_or_LG[0], GL_or_LG[1]], ['G', 'G']]
 
-            cov_3x2pt_GS_dict_4D = cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_dict, probe_ordering, nbl_GC, zbins, ind.copy(), GL_or_LG)
+            # redefine the keys
+            cov_3x2pt_GS_dict_rightkeys = {}
+            for probe_A, probe_B in probe_ordering:
+                for probe_C, probe_D in probe_ordering:
+                    for key, value in cov_3x2pt_GS_dict.items():
+                        if f'{probe_A}{probe_B}{probe_C}{probe_D}' in key:
+                            # fill the 8 available blocks - all but cov_3x2pt_GGGG, which is not BNT-trasformed
+                            cov_3x2pt_GS_dict_rightkeys[probe_A, probe_B, probe_C, probe_D] = value
+                            cov_3x2pt_GS_dict_rightkeys[probe_C, probe_D, probe_A, probe_B] = value
 
+            warnings.warn('not quite sure about this, Im slicing the 4D covariance...')
+            cov_3x2pt_GS_dict_rightkeys['G', 'G', 'G', 'G'] = cov_dict['cov_3x2pt_GS_4D'][:, :, :-zpairs_auto, :-zpairs_auto]
 
+            # transform to 4D dictionary
+            cov_3x2pt_GS_dict_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_dict, probe_ordering, nbl_GC, zbins,
+                                                               ind.copy(), GL_or_LG)
 
             for probe, ellmax, nbl, zpairs in zip(probe_list, ellmax_list, nbl_list, zpairs_list):
                 for GO_or_GS in GOGS_list:

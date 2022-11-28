@@ -58,7 +58,7 @@ if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
     general_cfg['use_WA'] = False
 
 covariance_cfg = {
-    'ind_folder': f'{project_path.parent}/common_data/ind_files/variable_zbins' + '/{triu_tril:s}_{row_col_wise:s}',
+    'ind_folder': f'{project_path.parent}' + '/common_data/ind_files/{triu_tril:s}_{row_col_wise:s}',
     'ind_filename': 'indices_{triu_tril:s}_{row_col_wise:s}_zbins{zbins:02d}.dat',
     'ind_ordering': ind_ordering,  # TODO deprecate this
     'triu_tril': 'triu',
@@ -73,7 +73,7 @@ covariance_cfg = {
     'ng_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/InputNz/magcut_zcut',
     'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
-    'compute_covmat': False,
+    'compute_covmat': True,
     'cov_file_format': 'npz',  # or npy
     'save_cov_2D': False,
     'save_cov_4D': False,
@@ -95,7 +95,7 @@ Sijkl_cfg = {
     'wf_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/KernelFun/magcut_zcut',
     'wf_input_filename': '{which_WF:s}-{EP_or_ED:s}{zbins:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'Sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/sijkl',
-    'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}'
+    'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{has_IA:}'
                       '_MS{magcut_source:02d}-ZS{zcut_source:02d}.npy',
     'WF_normalization': 'IST',
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl

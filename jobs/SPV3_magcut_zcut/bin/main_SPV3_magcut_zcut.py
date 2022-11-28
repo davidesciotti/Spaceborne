@@ -158,16 +158,16 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
                         'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
 
-                BNT_matrix_filename = general_cfg["BNT_matrix_filename"].format(**variable_specs)
-                BNT_matrix = np.load(f'{general_cfg["BNT_matrix_path"]}/{BNT_matrix_filename}')
-
-                # ! import datavectors (cl) and response functions (rl)
                 # this is just to make the .format() more compact
                 variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
                                   'magcut_lens': magcut_lens, 'zcut_lens': zcut_lens,
                                   'magcut_source': magcut_source, 'zcut_source': zcut_source,
                                   'zmax': zmax}
 
+                BNT_matrix_filename = general_cfg["BNT_matrix_filename"].format(**variable_specs)
+                BNT_matrix = np.load(f'{general_cfg["BNT_matrix_path"]}/{BNT_matrix_filename}')
+
+                # ! import datavectors (cl) and response functions (rl)
                 cl_fld = general_cfg['cl_folder']
                 cl_filename = general_cfg['cl_filename']
                 cl_ll_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLO', **variable_specs)}")
@@ -262,7 +262,7 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
                     Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(
                         flagship_version=general_cfg['flagship_version'],
                         nz=nz, EP_or_ED=EP_or_ED, zbins=zbins,
-                        IA_flag=Sijkl_cfg['IA_flag'],
+                        has_IA=Sijkl_cfg['has_IA'],
                         magcut_source=magcut_source,
                         zcut_source=zcut_source)
                     # if Sijkl exists, load it; otherwise, compute it and save it
@@ -347,9 +347,8 @@ for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
 
 
                         # TODO this should not be here nor hardcoded
-                        transformed_derivs_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_2/Derivatives/BNT_True/davide'
 
-                        readme = 'shape: (ell_bins, z_bins, z_bins, num_parameters); parameters order:' + str(
+                        readme = 'shape: (ell_bins, z_bins, z_bins, num_parameters); \nparameters order:' + str(
                             paramnames_3x2pt)
                         with open(f'{transformed_derivs_folder}/README_transformed_derivs.txt', "w") as text_file:
                             text_file.write(readme)

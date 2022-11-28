@@ -276,16 +276,16 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
 
     # store cls and responses in a dictionary
     cl_dict_3D = {
-        'C_LL_WLonly_3D': cl_ll_3d,
-        'C_GG_3D': cl_gg_3d,
-        'C_WA_3D': cl_wa_3d,
-        'C_3x2pt_5D': cl_3x2pt_5d}
+        'cl_LL_3D': cl_ll_3d,
+        'cl_GG_3D': cl_gg_3d,
+        'cl_WA_3D': cl_wa_3d,
+        'cl_3x2pt_5D': cl_3x2pt_5d}
 
     rl_dict_3D = {
-        'R_LL_WLonly_3D': rl_ll_3d,
-        'R_GG_3D': rl_gg_3d,
-        'R_WA_3D': rl_wa_3d,
-        'R_3x2pt_5D': rl_3x2pt_5d}
+        'rl_LL_3D': rl_ll_3d,
+        'rl_GG_3D': rl_gg_3d,
+        'rl_WA_3D': rl_wa_3d,
+        'rl_3x2pt_5D': rl_3x2pt_5d}
 
     if covariance_cfg['compute_covmat']:
         # ! load kernels
@@ -306,6 +306,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         # ! compute or load Sijkl
         nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
         Sijkl_folder = Sijkl_cfg['Sijkl_folder']
+        warnings.warn('Sijkl_folder is set to BNT_False in all cases, so as not to have to recompute the Sijkl matrix'
+                      'in the BNT_True case - for which I use Stefanos files')
         Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(
             flagship_version=general_cfg['flagship_version'],
             nz=nz, EP_or_ED=EP_or_ED, zbins=zbins,
@@ -345,16 +347,34 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             nbl_list = [nbl_3x2pt, ]
             zpairs_list = [zpairs_3x2pt, ]
 
+            probe_idx = {
+                'L': 0,
+                'G': 1
+            }
+
+            # import blocks in dictionary
             cov_BNTstef_folder = covariance_cfg['cov_BNTstef_folder']
+            cov_3x2pt_GS_dict = dict(mm.get_kv_pairs_npy(cov_BNTstef_folder))
+            if not cov_3x2pt_dict:
+                raise ValueError('cov_3x2pt_dict is empty')
+
+            zbinsED13_ML245_ZL00_MS245_ZS00
+            # build 3x2pt covariance from Stefano's files
+            GL_or_LG = covariance_cfg['GL_or_LG']
+            probe_ordering = [['L', 'L'], [GL_or_LG[0], GL_or_LG[1]], ['G', 'G']]
+
+            cov_3x2pt_GS_dict_4D = cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_dict, probe_ordering, nbl_GC, zbins, ind.copy(), GL_or_LG)
+
+
 
             for probe, ellmax, nbl, zpairs in zip(probe_list, ellmax_list, nbl_list, zpairs_list):
                 for GO_or_GS in GOGS_list:
-                    cov_BNTstef_filename = covariance_cfg['cov_BNT_filename_stef'].format(probe=probe,
-                                                                                          GO_or_GS=GO_or_GS,
-                                                                                          block=block,
-                                                                                          ellmax=ellmax,
-                                                                                          nbl=nbl,
-                                                                                          **variable_specs)
+                    cov_BNTstef_filename = covariance_cfg['cov_BNTstef_filename'].format(probe=probe,
+                                                                                         GO_or_GS=GO_or_GS,
+                                                                                         block=block,
+                                                                                         ellmax=ellmax,
+                                                                                         nbl=nbl,
+                                                                                         **variable_specs)
 
                     cov_BNTstef_filename = f'BNT_covmat_{GO_or_GS}_{probe}_LLLL_lmax{ellmax}_nbl{nbl}_' \
                                            f'zbins{EP_or_ED}{zbins:02d}_ML{magcut_lens:03d}_' \
@@ -378,7 +398,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
     if FM_cfg['compute_FM']:
 
         # import derivatives and store them in dictionary
-        derivetives_folder_stef = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_2/Derivatives/BNT_True/stefano'
         derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
         dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
 
@@ -393,10 +412,11 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         dC_dict_3x2pt_5D = {}
 
         if use_stefano_BNT_ingredients:
-            dC_dict_BNT_WLO_1D = dict(mm.get_kv_pairs(derivetives_folder_stef, "dat"))
+            derivatives_BNTstef_folder = FM_cfg['derivatives_BNTstef_folder']
+            dC_dict_BNT_WLO_1D = dict(mm.get_kv_pairs(derivatives_BNTstef_folder, "dat"))
 
             if not dC_dict_BNT_WLO_1D:
-                raise ValueError(f'No derivatives found in folder {derivetives_folder_stef}')
+                raise ValueError(f'No derivatives found in folder {derivatives_BNTstef_folder}')
 
             for key in dC_dict_BNT_WLO_1D.keys():
                 if 'WLO' in key:

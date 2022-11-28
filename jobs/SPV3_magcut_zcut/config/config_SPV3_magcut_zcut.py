@@ -100,7 +100,7 @@ covariance_cfg = {
 Sijkl_cfg = {
     'wf_input_folder': f'{SPV3_folder}/Flagship_{flagship_version}/KernelFun/magcut_zcut',
     'wf_input_filename': '{which_WF:s}-{EP_or_ED:s}{zbins:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    'Sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/sijkl',
+    'Sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_False/sijkl',
     'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}'
                       '_MS{magcut_source:02d}-ZS{zcut_source:02d}.npy',
     'WF_normalization': 'IST',

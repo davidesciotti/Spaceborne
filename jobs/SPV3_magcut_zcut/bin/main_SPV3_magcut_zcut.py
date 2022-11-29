@@ -378,13 +378,17 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                             cov_3x2pt_GS_dict_rightkeys[probe_A, probe_B, probe_C, probe_D] = value
                             cov_3x2pt_GS_dict_rightkeys[probe_C, probe_D, probe_A, probe_B] = value
 
-            warnings.warn('not quite sure about this, Im slicing the 4D covariance...')
-            cov_3x2pt_GS_dict_rightkeys['G', 'G', 'G', 'G'] = cov_dict['cov_3x2pt_GS_4D'][:, :, :-zpairs_auto, :-zpairs_auto]
+            cov_3x2pt_GS_dict_rightkeys['G', 'G', 'G', 'G'] = cov_dict['cov_3x2pt_GS_10D']['G', 'G', 'G', 'G']
 
-            # transform to 4D dictionary
-            cov_3x2pt_GS_dict_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_dict, probe_ordering, nbl_GC, zbins,
-                                                               ind.copy(), GL_or_LG)
+            # transform to 4D array
+            cov_3x2pt_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_dict_rightkeys, probe_ordering, nbl_GC,
+                                                          zbins, ind.copy(), GL_or_LG)
 
+            # reshape to 2D and overwrite the non-BNT value
+            cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, block_index=covariance_cfg['block_index'])
+            cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_GS_2D
+
+            """
             for probe, ellmax, nbl, zpairs in zip(probe_list, ellmax_list, nbl_list, zpairs_list):
                 for GO_or_GS in GOGS_list:
                     cov_BNTstef_filename = covariance_cfg['cov_BNTstef_filename'].format(probe=probe,
@@ -411,7 +415,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                             cov_dict[f'cov_{probe}_{GO_or_GS}_6D'], nbl, zpairs, ind[:zpairs, :])
                         cov_dict[f'cov_{probe}_{GO_or_GS}_2D'] = mm.cov_4D_to_2D(
                             cov_dict[f'cov_{probe}_{GO_or_GS}_4D'], 'ell')
-
+            """
     # ! compute Fisher matrix
     if FM_cfg['compute_FM']:
 
@@ -430,6 +434,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         dC_dict_3x2pt_5D = {}
 
         if use_stefano_BNT_ingredients:
+            print('E LE DERIVATE PER LA 3X2PT?? >:(')
             derivatives_BNTstef_folder = FM_cfg['derivatives_BNTstef_folder']
             dC_dict_BNT_WLO_1D = dict(mm.get_kv_pairs(derivatives_BNTstef_folder, "dat"))
 
@@ -496,7 +501,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             with open(f'{transformed_derivs_folder}/README_transformed_derivs.txt', "w") as text_file:
                 text_file.write(readme)
 
-            transformed_derivs_filename = f'dDV-WLO-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.npy'
+            transformed_derivs_filename = f'dDV-BNTdav_WLO-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.npy'
             np.save(f'{transformed_derivs_folder}/{transformed_derivs_filename}', dC_LL_4D_BNT)
         # ! end new bit: BNT transform derivatives
 

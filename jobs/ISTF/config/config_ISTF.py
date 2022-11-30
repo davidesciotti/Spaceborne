@@ -51,7 +51,7 @@ if general_config['ell_max_WL'] == general_config['ell_max_GC']:
     general_config['use_WA'] = False
 
 covariance_config = {
-    'ind_folder': f'{project_path.parent}/common_data/ind_files/variable_zbins' + '/{triu_tril:s}_{row_col_wise:s}',
+    'ind_folder': f'{project_path.parent}/common_data/ind_files/' + '{triu_tril:s}_{row_col_wise:s}',
     'ind_filename': 'indices_{triu_tril:s}_{row_col_wise:s}_zbins{zbins:02d}.dat',
     'ind_ordering': ind_ordering,  # TODO deprecate this
     'triu_tril': 'triu',

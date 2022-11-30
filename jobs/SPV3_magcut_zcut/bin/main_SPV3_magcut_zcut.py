@@ -520,7 +520,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
 
         # ! save cls and responses:
         # this is just to set the correct probe names
-        probe_dav_dict = {'WL': 'LL_WLonly_3D',
+        probe_dav_dict = {'WL': 'LL_3D',
                           'GC': 'GG_3D',
                           'WA': 'WA_3D',
                           '3x2pt': '3x2pt_5D'}
@@ -552,8 +552,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                                    f'3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
                         ells_filename = f'ell_{probe_dav}_ellmaxWL{ell_max_WL}'
                         np.savetxt(f'{filepath}/{ells_filename}.txt', 10 ** ell_dict[f'ell_{probe_dav}'])
-                        np.savetxt(f'{filepath}/delta_{ells_filename}.txt',
-                                   delta_dict[f'delta_l_{probe_dav}'])
+                        np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])
 
     # ! save covariance:
     if covariance_cfg['cov_file_format'] == 'npy':

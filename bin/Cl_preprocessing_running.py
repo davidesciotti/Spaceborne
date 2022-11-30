@@ -303,7 +303,8 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
         cl_ll_3x2pt_3d = mm.cl_2D_to_3D_symmetric(cl_ll_3x2pt_2d, nbl=nbl, zpairs=zpairs_auto, zbins=zbins)
         cl_lg_3x2pt_3d = mm.cl_2D_to_3D_asymmetric(cl_lg_3x2pt_2d, nbl=nbl, zbins=zbins, order='F')
         cl_gg_3x2pt_3d = mm.cl_2D_to_3D_symmetric(cl_gg_3x2pt_2d, nbl=nbl, zpairs=zpairs_auto, zbins=zbins)
-        warnings.warn('check the order of the 3x2pt response functions, the default is actually F-style!')
+        warnings.warn('check the order of the 3x2pt response functions, the default is actually F-style! '
+                      'I think you have to switch to C style because its GL, not LG||!!!""!$£"QTDVZ')
 
         # use them to populate the datavector
         cl_3x2pt = np.zeros((nbl, 2, 2, zbins, zbins))

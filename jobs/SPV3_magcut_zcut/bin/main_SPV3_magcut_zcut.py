@@ -331,21 +331,20 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
-        # mm.matshow(cov_dict['cov_3x2pt_GS_2D'], log=True, title='my_3x2pt')
 
         # now overwrite the WL GS entries with Stefano's BNT covmats
         if use_stefano_BNT_ingredients:
 
             # import 3x2pt blocks in dictionary
-            cov_3x2pt_GS_dict = dict(mm.get_kv_pairs_npy(covariance_cfg['cov_BNTstef_folder'] + '/3x2pt_blocks'))
+            cov_3x2pt_GS_BNT_import_dict = dict(mm.get_kv_pairs_npy(covariance_cfg['cov_BNTstef_folder'] + '/3x2pt_blocks'))
 
             # select the ones corresponding to the MS, ML, ZS, ZL values
             current_specs = f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02}' \
                             f'_MS{magcut_source:03d}_ZS{zcut_source:02}_6D'
-            cov_3x2pt_GS_dict = {key: value
-                                 for key, value in cov_3x2pt_GS_dict.items() if key.endswith(current_specs)}
+            cov_3x2pt_GS_BNT_import_dict = {key: value
+                                            for key, value in cov_3x2pt_GS_BNT_import_dict.items() if key.endswith(current_specs)}
 
-            if not cov_3x2pt_GS_dict:
+            if not cov_3x2pt_GS_BNT_import_dict:
                 raise ValueError('cov_3x2pt_GS_dict is empty')
 
             # build 3x2pt 4D covariance
@@ -353,43 +352,88 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             probe_ordering = [['L', 'L'], [GL_or_LG[0], GL_or_LG[1]], ['G', 'G']]
 
             # redefine the keys
-            cov_3x2pt_GS_dict_rightkeys = {}
+            cov_3x2pt_GS_BNT_dict = {}
             for probe_A, probe_B in probe_ordering:
                 for probe_C, probe_D in probe_ordering:
-                    for key, value in cov_3x2pt_GS_dict.items():
+                    for key, value in cov_3x2pt_GS_BNT_import_dict.items():
                         if f'{probe_A}{probe_B}{probe_C}{probe_D}' in key:
-                            print(key)
                             # fill the 8 available blocks - all but cov_3x2pt_GGGG, which is not BNT-trasformed
-                            cov_3x2pt_GS_dict_rightkeys[probe_A, probe_B, probe_C, probe_D] = value
-                            cov_3x2pt_GS_dict_rightkeys[probe_C, probe_D, probe_A, probe_B] = value
+                            cov_3x2pt_GS_BNT_dict[probe_A, probe_B, probe_C, probe_D] = value
+                            cov_3x2pt_GS_BNT_dict[probe_C, probe_D, probe_A, probe_B] = value
+
+            # the GGGG block is not affected by BNT, so we can just copy it from the original covmat
+            cov_3x2pt_GS_BNT_dict['G', 'G', 'G', 'G'] = cov_dict['cov_3x2pt_GS_10D']['G', 'G', 'G', 'G']
 
             # ! checks
-            ell1, ell2 = 0, 1
-            i, j, k, l = 1, 2, 3, 4
-            mm.matshow(cov_dict['cov_3x2pt_GS_10D']['L', 'L', 'L', 'L'].reshape((nbl_3x2pt*zbins*zbins, nbl_3x2pt*zbins*zbins)), log=True, title='my_3x2pt_LLLL')
-            mm.matshow(cov_3x2pt_GS_dict_rightkeys['L', 'L', 'L', 'L'].reshape((nbl_3x2pt*zbins*zbins, nbl_3x2pt*zbins*zbins)), log=True, title='Stef_3x2pt_LLLL')
+            # import single block:
+            cov_GS_LLLL_BNT_6D = np.load('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
+                                         'Flagship_2/CovMats/BNT_True/stefano/magcut_zcut/3x2pt_blocks/'
+                                         f'BNT_covmat_GS_3x2pt_LLLL_lmax3000_nbl29_zbinsED13_'
+                                         f'ML{magcut_lens:03d}_ZL{zcut_lens:02}_'
+                                         f'MS{magcut_source:03}_ZS{zcut_source:02d}_6D.npy')
+
+            cov_GS_WL_BNT_4D = np.load('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
+                                         'Flagship_2/CovMats/BNT_True/stefano/'
+                                         f'BNT_covmat_GS_WL_lmax5000_nbl32_zbins13_ED_Rlvar_6D_stef.npy').transpose((2, 3, 0, 1))
+
+            # reshape everything
+            block_index = 'vincenzo'
+            cov_GS_LLLL_BNT_4D = mm.cov_6D_to_4D(cov_GS_LLLL_BNT_6D, nbl_3x2pt, zpairs_auto, ind[:zpairs_auto, :])
+            cov_GS_LLLL_BNT_2D = mm.cov_4D_to_2D(cov_GS_LLLL_BNT_4D, block_index=block_index)
+
+            cov_GS_LLLL_BNT_import_6D = cov_3x2pt_GS_BNT_dict['L', 'L', 'L', 'L']
+            cov_GS_LLLL_BNT_import_4D = mm.cov_6D_to_4D(cov_GS_LLLL_BNT_import_6D, nbl_3x2pt, zpairs_auto, ind[:zpairs_auto, :])
+            cov_GS_LLLL_BNT_import_2D = mm.cov_4D_to_2D(cov_GS_LLLL_BNT_import_4D, block_index=block_index)
+
+            cov_GS_WL_BNT_2D = mm.cov_4D_to_2D(cov_GS_WL_BNT_4D, block_index=block_index)
+
+            assert np.array_equal(cov_GS_LLLL_BNT_2D, cov_GS_LLLL_BNT_import_2D), 'these 2 should coincide'
+
+            # original (non-BNT) covmat
+            cov_GS_LLLL_6D = cov_dict['cov_3x2pt_GS_10D']['L', 'L', 'L', 'L']
+            cov_GS_LLLL_4D = mm.cov_6D_to_4D(cov_GS_LLLL_6D, nbl_3x2pt, zpairs_auto, ind[:zpairs_auto, :])
+            cov_GS_LLLL_2D = mm.cov_4D_to_2D(cov_GS_LLLL_4D, block_index=block_index)
+
+            mm.matshow(cov_GS_LLLL_2D, log=True, title='cov_GS_LLLL_2D')
+            mm.matshow(cov_GS_LLLL_BNT_2D, log=True, title='cov_GS_LLLL_BNT_2D')
+            mm.matshow(cov_GS_WL_BNT_2D, log=True, title='cov_GS_WL_BNT_2D')
+
+            # cov_GS_WL_BNT_import_6D =
 
             assert 1 > 2
+
+            # ell1, ell2 = 0, 1
+            # i, j, k, l = 1, 2, 3, 4
+            # A, B, C, D = 'L', 'L', 'L', 'L'
+            # mm.matshow(cov_dict['cov_3x2pt_GS_10D'][A, B, C, D].reshape((nbl_3x2pt*zbins*zbins, nbl_3x2pt*zbins*zbins)), log=True, title='my_3x2pt_LLLL')
+            # mm.matshow(cov_3x2pt_GS_BNT_dict[A, B, C, D].reshape((nbl_3x2pt * zbins * zbins, nbl_3x2pt * zbins * zbins)), log=True, title='Stef_3x2pt_LLLL')
+
+
+
+            mm.compare_arrays(cov_GS_LLLL_BNT_2D, cov_3x2pt_GS_BNT_dict['L', 'L', 'L', 'L'])
+
+            assert 1 > 2
+
+
+
+            mm.matshow(cov_GS_LLLL_BNT_6D.reshape((nbl_3x2pt*zbins*zbins, nbl_3x2pt*zbins*zbins)), log=True, title='cov_GS_LLLL_BNT_6D')
+            np.allclose(cov_GS_LLLL_BNT_6D, cov_3x2pt_GS_BNT_dict[A, B, C, D], rtol=1, atol=0)
+
             # reshape one block individually to check that the ordering is correct
             zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
-            cov_LLLL_stef_6D = cov_3x2pt_GS_dict_rightkeys['L', 'L', 'L', 'L']
-            cov_LLLL_stef_4D = mm.cov_6D_to_4D(cov_LLLL_stef_6D, nbl_GC, zpairs_auto, ind[:zpairs_auto, :])
-            cov_LLLL_stef_2D = mm.cov_4D_to_2D(cov_LLLL_stef_4D, block_index='vincenzo')
-            cov_LLLL_dav_2D = cov_dict['cov_3x2pt_GS_2D'][:zpairs_auto*nbl_GC, :zpairs_auto*nbl_GC]
 
-            mm.matshow(cov_LLLL_stef_2D, log=True, title='cov_LLLL_stef_2D')
+            mm.matshow(cov_GS_LLLL_BNT_import_2D, log=True, title='cov_GS_LLLL_BNT_import_2D')
             mm.matshow(cov_LLLL_dav_2D, log=True, title='cov_LLLL_dav_2D')
 
-            print('# of null elements in cov_LLLL_stef_2D:', np.sum(cov_LLLL_stef_2D == 0))
+            print('# of null elements in cov_GS_LLLL_BNT_import_2D:', np.sum(cov_GS_LLLL_BNT_import_2D == 0))
             print('# of null elements in cov_LLLL_dav_2D:', np.sum(cov_LLLL_dav_2D == 0))
             # ! end checks
 
-            cov_3x2pt_GS_dict_rightkeys['G', 'G', 'G', 'G'] = cov_dict['cov_3x2pt_GS_10D']['G', 'G', 'G', 'G']
 
             # transform to 4D array
             # ! I think the error is here!
-            cov_3x2pt_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_dict_rightkeys, probe_ordering, nbl_GC,
+            cov_3x2pt_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_GC,
                                                           zbins, ind.copy(), GL_or_LG)
 
             # reshape to 2D and overwrite the non-BNT value

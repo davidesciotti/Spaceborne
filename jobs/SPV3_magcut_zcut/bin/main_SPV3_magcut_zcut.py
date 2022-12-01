@@ -331,26 +331,10 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
+        # mm.matshow(cov_dict['cov_3x2pt_GS_2D'], log=True, title='my_3x2pt')
+
+        # now overwrite the WL GS entries with Stefano's BNT covmats
         if use_stefano_BNT_ingredients:
-            # now overwrite the WL GS entries with Stefano's BNT covmats:
-            zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
-
-            GOGS_list = ['GS', ]  # for the moment, only GS
-            # all probes, once they become available
-            probe_list = ['WL', 'GC', '3x2pt', 'WA']
-            ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
-            nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
-            zpairs_list = [zpairs_auto, zpairs_auto, zpairs_3x2pt, zpairs_auto]
-            # for the moment, only 3x2pt
-            probe_list = ['3x2pt', ]
-            ellmax_list = [ell_max_XC, ]
-            nbl_list = [nbl_3x2pt, ]
-            zpairs_list = [zpairs_3x2pt, ]
-
-            probe_idx = {
-                'L': 0,
-                'G': 1
-            }
 
             # import 3x2pt blocks in dictionary
             cov_3x2pt_GS_dict = dict(mm.get_kv_pairs_npy(covariance_cfg['cov_BNTstef_folder'] + '/3x2pt_blocks'))
@@ -374,19 +358,47 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                 for probe_C, probe_D in probe_ordering:
                     for key, value in cov_3x2pt_GS_dict.items():
                         if f'{probe_A}{probe_B}{probe_C}{probe_D}' in key:
+                            print(key)
                             # fill the 8 available blocks - all but cov_3x2pt_GGGG, which is not BNT-trasformed
                             cov_3x2pt_GS_dict_rightkeys[probe_A, probe_B, probe_C, probe_D] = value
                             cov_3x2pt_GS_dict_rightkeys[probe_C, probe_D, probe_A, probe_B] = value
 
+            # ! checks
+            ell1, ell2 = 0, 1
+            i, j, k, l = 1, 2, 3, 4
+            mm.matshow(cov_dict['cov_3x2pt_GS_10D']['L', 'L', 'L', 'L'].reshape((nbl_3x2pt*zbins*zbins, nbl_3x2pt*zbins*zbins)), log=True, title='my_3x2pt_LLLL')
+            mm.matshow(cov_3x2pt_GS_dict_rightkeys['L', 'L', 'L', 'L'].reshape((nbl_3x2pt*zbins*zbins, nbl_3x2pt*zbins*zbins)), log=True, title='Stef_3x2pt_LLLL')
+
+            assert 1 > 2
+            # reshape one block individually to check that the ordering is correct
+            zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
+
+            cov_LLLL_stef_6D = cov_3x2pt_GS_dict_rightkeys['L', 'L', 'L', 'L']
+            cov_LLLL_stef_4D = mm.cov_6D_to_4D(cov_LLLL_stef_6D, nbl_GC, zpairs_auto, ind[:zpairs_auto, :])
+            cov_LLLL_stef_2D = mm.cov_4D_to_2D(cov_LLLL_stef_4D, block_index='vincenzo')
+            cov_LLLL_dav_2D = cov_dict['cov_3x2pt_GS_2D'][:zpairs_auto*nbl_GC, :zpairs_auto*nbl_GC]
+
+            mm.matshow(cov_LLLL_stef_2D, log=True, title='cov_LLLL_stef_2D')
+            mm.matshow(cov_LLLL_dav_2D, log=True, title='cov_LLLL_dav_2D')
+
+            print('# of null elements in cov_LLLL_stef_2D:', np.sum(cov_LLLL_stef_2D == 0))
+            print('# of null elements in cov_LLLL_dav_2D:', np.sum(cov_LLLL_dav_2D == 0))
+            # ! end checks
+
             cov_3x2pt_GS_dict_rightkeys['G', 'G', 'G', 'G'] = cov_dict['cov_3x2pt_GS_10D']['G', 'G', 'G', 'G']
 
             # transform to 4D array
+            # ! I think the error is here!
             cov_3x2pt_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_dict_rightkeys, probe_ordering, nbl_GC,
                                                           zbins, ind.copy(), GL_or_LG)
 
             # reshape to 2D and overwrite the non-BNT value
             cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, block_index=covariance_cfg['block_index'])
             cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_GS_2D
+
+            # mm.matshow(cov_3x2pt_GS_2D, log=True, title='BNT_3x2pt')
+
+            assert 1 > 2, 'stop here'
 
             """
             for probe, ellmax, nbl, zpairs in zip(probe_list, ellmax_list, nbl_list, zpairs_list):

@@ -331,18 +331,19 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
-
         # now overwrite the WL GS entries with Stefano's BNT covmats
         if use_stefano_BNT_ingredients:
 
             # import 3x2pt blocks in dictionary
-            cov_3x2pt_GS_BNT_import_dict = dict(mm.get_kv_pairs_npy(covariance_cfg['cov_BNTstef_folder'] + '/3x2pt_blocks'))
+            cov_3x2pt_GS_BNT_import_dict = dict(
+                mm.get_kv_pairs_npy(covariance_cfg['cov_BNTstef_folder'] + '/3x2pt_blocks'))
 
             # select the ones corresponding to the MS, ML, ZS, ZL values
             current_specs = f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02}' \
                             f'_MS{magcut_source:03d}_ZS{zcut_source:02}_6D'
             cov_3x2pt_GS_BNT_import_dict = {key: value
-                                            for key, value in cov_3x2pt_GS_BNT_import_dict.items() if key.endswith(current_specs)}
+                                            for key, value in cov_3x2pt_GS_BNT_import_dict.items() if
+                                            key.endswith(current_specs)}
 
             if not cov_3x2pt_GS_BNT_import_dict:
                 raise ValueError('cov_3x2pt_GS_dict is empty')
@@ -373,21 +374,18 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                                          f'MS{magcut_source:03}_ZS{zcut_source:02d}_6D.npy')
 
             cov_GS_WL_BNT_4D = np.load('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
-                                         'Flagship_2/CovMats/BNT_True/stefano/'
-                                         f'BNT_covmat_GS_WL_lmax5000_nbl32_zbins13_ED_Rlvar_6D_stef.npy').transpose((2, 3, 0, 1))
+                                       'Flagship_2/CovMats/BNT_True/stefano/'
+                                       f'BNT_covmat_GS_WL_lmax5000_nbl32_zbins13_ED_Rlvar_6D_stef.npy').transpose(
+                (2, 3, 0, 1))
 
             # reshape everything
             block_index = 'vincenzo'
+            zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
+
             cov_GS_LLLL_BNT_4D = mm.cov_6D_to_4D(cov_GS_LLLL_BNT_6D, nbl_3x2pt, zpairs_auto, ind[:zpairs_auto, :])
             cov_GS_LLLL_BNT_2D = mm.cov_4D_to_2D(cov_GS_LLLL_BNT_4D, block_index=block_index)
 
-            cov_GS_LLLL_BNT_import_6D = cov_3x2pt_GS_BNT_dict['L', 'L', 'L', 'L']
-            cov_GS_LLLL_BNT_import_4D = mm.cov_6D_to_4D(cov_GS_LLLL_BNT_import_6D, nbl_3x2pt, zpairs_auto, ind[:zpairs_auto, :])
-            cov_GS_LLLL_BNT_import_2D = mm.cov_4D_to_2D(cov_GS_LLLL_BNT_import_4D, block_index=block_index)
-
             cov_GS_WL_BNT_2D = mm.cov_4D_to_2D(cov_GS_WL_BNT_4D, block_index=block_index)
-
-            assert np.array_equal(cov_GS_LLLL_BNT_2D, cov_GS_LLLL_BNT_import_2D), 'these 2 should coincide'
 
             # original (non-BNT) covmat
             cov_GS_LLLL_6D = cov_dict['cov_3x2pt_GS_10D']['L', 'L', 'L', 'L']
@@ -398,38 +396,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             mm.matshow(cov_GS_LLLL_BNT_2D, log=True, title='cov_GS_LLLL_BNT_2D')
             mm.matshow(cov_GS_WL_BNT_2D, log=True, title='cov_GS_WL_BNT_2D')
 
-            # cov_GS_WL_BNT_import_6D =
-
-            assert 1 > 2
-
-            # ell1, ell2 = 0, 1
-            # i, j, k, l = 1, 2, 3, 4
-            # A, B, C, D = 'L', 'L', 'L', 'L'
-            # mm.matshow(cov_dict['cov_3x2pt_GS_10D'][A, B, C, D].reshape((nbl_3x2pt*zbins*zbins, nbl_3x2pt*zbins*zbins)), log=True, title='my_3x2pt_LLLL')
-            # mm.matshow(cov_3x2pt_GS_BNT_dict[A, B, C, D].reshape((nbl_3x2pt * zbins * zbins, nbl_3x2pt * zbins * zbins)), log=True, title='Stef_3x2pt_LLLL')
-
-
-
-            mm.compare_arrays(cov_GS_LLLL_BNT_2D, cov_3x2pt_GS_BNT_dict['L', 'L', 'L', 'L'])
-
-            assert 1 > 2
-
-
-
-            mm.matshow(cov_GS_LLLL_BNT_6D.reshape((nbl_3x2pt*zbins*zbins, nbl_3x2pt*zbins*zbins)), log=True, title='cov_GS_LLLL_BNT_6D')
-            np.allclose(cov_GS_LLLL_BNT_6D, cov_3x2pt_GS_BNT_dict[A, B, C, D], rtol=1, atol=0)
-
-            # reshape one block individually to check that the ordering is correct
-            zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
-
-
-            mm.matshow(cov_GS_LLLL_BNT_import_2D, log=True, title='cov_GS_LLLL_BNT_import_2D')
-            mm.matshow(cov_LLLL_dav_2D, log=True, title='cov_LLLL_dav_2D')
-
-            print('# of null elements in cov_GS_LLLL_BNT_import_2D:', np.sum(cov_GS_LLLL_BNT_import_2D == 0))
-            print('# of null elements in cov_LLLL_dav_2D:', np.sum(cov_LLLL_dav_2D == 0))
+            print('# of null elements in cov_GS_LLLL_2D:', np.sum(cov_GS_LLLL_2D == 0))
+            print('# of null elements in cov_GS_LLLL_BNT_2D:', np.sum(cov_GS_LLLL_BNT_2D == 0))
             # ! end checks
-
 
             # transform to 4D array
             # ! I think the error is here!

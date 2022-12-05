@@ -324,21 +324,21 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
 
         # ! compute covariance matrix
-        # TODO: if already existing, don't compute it like above
+        # TODO: if already existing, don't compute the covmat, like done above for Sijkl
         ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
         # the ng values are in the second column, for these input files 👇
         covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[:, 1]
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
-        # now overwrite the WL GS entries with Stefano's BNT covmats
+        # now overwrite the cov_3x2pt_GS with Stefano's BNT covmats
         if use_stefano_BNT_ingredients:
 
             # import 3x2pt blocks in dictionary
             cov_3x2pt_GS_BNT_import_dict = dict(
                 mm.get_kv_pairs_npy(covariance_cfg['cov_BNTstef_folder'] + '/3x2pt_blocks'))
 
-            # select the ones corresponding to the MS, ML, ZS, ZL values
+            # select only the ones corresponding to the current MS, ML, ZS, ZL values
             current_specs = f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02}' \
                             f'_MS{magcut_source:03d}_ZS{zcut_source:02}_6D'
             cov_3x2pt_GS_BNT_import_dict = {key: value
@@ -372,7 +372,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                                          f'BNT_covmat_GS_3x2pt_LLLL_lmax3000_nbl29_zbinsED13_'
                                          f'ML{magcut_lens:03d}_ZL{zcut_lens:02}_'
                                          f'MS{magcut_source:03}_ZS{zcut_source:02d}_6D.npy')
-
+            # this is the proper WL cov, not the LLLL block
             cov_GS_WL_BNT_4D = np.load('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
                                        'Flagship_2/CovMats/BNT_True/stefano/'
                                        f'BNT_covmat_GS_WL_lmax5000_nbl32_zbins13_ED_Rlvar_6D_stef.npy').transpose(
@@ -401,7 +401,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             # ! end checks
 
             # transform to 4D array
-            # ! I think the error is here!
+            # ! The error may be here, but I don't think so...
             cov_3x2pt_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_GC,
                                                           zbins, ind.copy(), GL_or_LG)
 
@@ -411,36 +411,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
 
             # mm.matshow(cov_3x2pt_GS_2D, log=True, title='BNT_3x2pt')
 
-            assert 1 > 2, 'stop here'
+            # TODO I'm here; now, import the 3x2pt derivatives
 
-            """
-            for probe, ellmax, nbl, zpairs in zip(probe_list, ellmax_list, nbl_list, zpairs_list):
-                for GO_or_GS in GOGS_list:
-                    cov_BNTstef_filename = covariance_cfg['cov_BNTstef_filename'].format(probe=probe,
-                                                                                         GO_or_GS=GO_or_GS,
-                                                                                         block=block,
-                                                                                         ellmax=ellmax,
-                                                                                         nbl=nbl,
-                                                                                         **variable_specs)
-
-                    cov_BNTstef_filename = f'BNT_covmat_{GO_or_GS}_{probe}_LLLL_lmax{ellmax}_nbl{nbl}_' \
-                                           f'zbins{EP_or_ED}{zbins:02d}_ML{magcut_lens:03d}_' \
-                                           f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                           f'ZS{zcut_source:02d}_6D.npy'
-                    # BNT_covmat_GS_3x2pt_LLLL_lmax3000_nbl29_zbinsED13_ML230_ZL00_MS245_ZS00_6D.npy
-
-                    if os.path.isfile(f'{cov_BNTstef_folder}/{cov_BNTstef_filename}'):
-                        # ! this will give an error, Stefano's covariance is not in 6D but in 3D!
-                        print(
-                            f'cov_{probe}_{GO_or_GS} already exists in folder\n{cov_BNTstef_folder}; loading it'
-                            f'\np.s.: this print should appear for all the files in the folder!')
-                        cov_dict[f'cov_{probe}_{GO_or_GS}_6D'] = np.load(
-                            f'{cov_BNTstef_folder}/{cov_BNTstef_filename}')
-                        cov_dict[f'cov_{probe}_{GO_or_GS}_4D'] = mm.cov_6D_to_4D(
-                            cov_dict[f'cov_{probe}_{GO_or_GS}_6D'], nbl, zpairs, ind[:zpairs, :])
-                        cov_dict[f'cov_{probe}_{GO_or_GS}_2D'] = mm.cov_4D_to_2D(
-                            cov_dict[f'cov_{probe}_{GO_or_GS}_4D'], 'ell')
-            """
     # ! compute Fisher matrix
     if FM_cfg['compute_FM']:
 

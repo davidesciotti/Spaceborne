@@ -115,7 +115,9 @@ FM_cfg = {
     'save_FM': True,
     'save_FM_as_dict': False,
     'derivatives_BNT_transform': True,
-    'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}/' +
+    'transformed_derivs_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_True/davide',
+
+                                'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}/' +
                           'ML{magcut_lens:03d}ZL{zcut_lens:02d}MS{magcut_source:03d}ZS{zcut_source:02d}',
     'derivatives_filename': 'BNT_dDVd{param:s}-{probe:s}-{specs:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                             'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',

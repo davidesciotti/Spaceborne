@@ -301,9 +301,9 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
     if probe != '3x2pt':
         cl_3d = mm.cl_1D_to_3D(cl_1d, nbl, zbins, is_symmetric=is_symmetric)
 
-        # if not cross-spectra, symmetrize
+        # if cl is not a cross-spectrum, symmetrize
         if probe != 'XC':
-        cl_3d = mm.fill_3D_symmetric_array(cl_3d, nbl, zbins)
+            cl_3d = mm.fill_3D_symmetric_array(cl_3d, nbl, zbins)
         return cl_3d
 
     elif probe == '3x2pt':

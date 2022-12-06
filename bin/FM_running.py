@@ -24,7 +24,8 @@ start = time.perf_counter()
 # and taking nParams instead seems to have ho impact on the final result.
 
 def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
-    print('most likely, I already wrote this function...')
+    """expand the zpair indices into zi, zj, according to the ind ordering as usual"""
+
     dC_3D = np.zeros((nbl, zpairs, nparams_tot))
     for ell in range(nbl):
         for alf in range(nparams_tot):
@@ -34,7 +35,6 @@ def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
 
 def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, obs_name, is_3x2pt=False, n_probes=2):
     """
-
     :param param_names: filename of the parameter, e.g. 'Om'; dCldOm = d(C(l))/d(Om)
     :param dC_dict_3D:
     :param nbl:

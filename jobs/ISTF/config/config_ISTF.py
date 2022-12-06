@@ -52,7 +52,7 @@ covariance_cfg = {
     'rl_value': None,  # it used to be 4 for a constant probe response, which this is wrong
     'block_index': 'ell',
     # this is the one used by me and Vincenzo. The blocks in the 2D covmat will be indexed by ell1, ell2
-    'which_probe_response': 'var',
+    'which_probe_response': 'variable',
     'ng': 30,
     'ng_folder': None,
     'ng_filename': None,
@@ -89,8 +89,7 @@ FM_cfg = {
     'derivatives_BNT_transform': True,
     'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}',
     'derivatives_filename': 'dCij{probe:s}d{param:s}-GR-Flat-eNLA-NA.dat',
-    'FM_folder': f'{job_path}/output/Flagship_/BNT_{BNT_transform}/FM',
-    'FM_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'
-                   'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.txt',
+    'FM_folder': f'{job_path}/output/FM',
+    'FM_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}.txt',
     'params_order': None,
 }

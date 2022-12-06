@@ -335,8 +335,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         if use_stefano_BNT_ingredients:
 
             # import 3x2pt blocks in dictionary
-            cov_3x2pt_GS_BNT_import_dict = dict(
-                mm.get_kv_pairs_npy(covariance_cfg['cov_BNTstef_folder'] + '/3x2pt_blocks'))
+            cov_BNTstef_folder = covariance_cfg['cov_BNTstef_folder'].format(probe='3x2pt')
+            cov_3x2pt_GS_BNT_import_dict = dict(mm.get_kv_pairs_npy(cov_BNTstef_folder))
 
             # select only the ones corresponding to the current MS, ML, ZS, ZL values
             current_specs = f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02}' \
@@ -416,7 +416,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
     # ! compute Fisher matrix
     if FM_cfg['compute_FM']:
 
-        # import derivatives and store them in dictionary
+        # import derivatives and store them in one big dictionary
         derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
         dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
 
@@ -424,39 +424,50 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         if not dC_dict_1D:
             raise ValueError(f'No derivatives found in folder {derivatives_folder}')
 
-        # reshape them (no interpolation needed in this case)
+        # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
         dC_dict_LL_3D = {}
         dC_dict_GG_3D = {}
         dC_dict_WA_3D = {}
         dC_dict_3x2pt_5D = {}
+        for key in dC_dict_1D.keys():
+            if 'WLO' in key:
+                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WL', nbl=nbl_WL,
+                                                               zbins=zbins)
+            elif 'GCO' in key:
+                dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='GC', nbl=nbl_GC,
+                                                               zbins=zbins)
+            elif 'WLA' in key:
+                dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WA', nbl=nbl_WA,
+                                                               zbins=zbins)
+            elif '3x2pt' in key:
+                dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='3x2pt',
+                                                                  nbl=nbl_3x2pt, zbins=zbins)
 
         if use_stefano_BNT_ingredients:
-            print('E LE DERIVATE PER LA 3X2PT?? >:(')
-            derivatives_BNTstef_folder = FM_cfg['derivatives_BNTstef_folder']
-            dC_dict_BNT_WLO_1D = dict(mm.get_kv_pairs(derivatives_BNTstef_folder, "dat"))
 
-            if not dC_dict_BNT_WLO_1D:
+            # import in one big dictionary
+            derivatives_BNTstef_folder = FM_cfg['derivatives_BNTstef_folder'].format(probe='3x2pt')
+            dC_dict_BNT_3x2pt_1D = dict(mm.get_kv_pairs(derivatives_BNTstef_folder, "dat"))
+
+            if not dC_dict_BNT_3x2pt_1D:
                 raise ValueError(f'No derivatives found in folder {derivatives_BNTstef_folder}')
 
-            for key in dC_dict_BNT_WLO_1D.keys():
-                if 'WLO' in key:
-                    dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_BNT_WLO_1D[key], probe='WL',
-                                                                   nbl=nbl_WL, zbins=zbins)
+            for key in dC_dict_BNT_3x2pt_1D.keys():
+                if '3x2pt_LL_' in key:
+                    dC_dict_BNT_3x2pt_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_BNT_3x2pt_1D[key], probe='WL',
+                                                                         nbl=nbl_3x2pt, zbins=zbins)
+                elif '3x2pt_LG_' in key:
+                    dC_dict_BNT_3x2pt_LG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_BNT_3x2pt_1D[key], probe='GC',
+                                                                         nbl=nbl_3x2pt, zbins=zbins)
 
-        elif not use_stefano_BNT_ingredients:
-            for key in dC_dict_1D.keys():
-                if 'WLO' in key:
-                    dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WL', nbl=nbl_WL,
-                                                                   zbins=zbins)
-                elif 'GCO' in key:
-                    dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='GC', nbl=nbl_GC,
-                                                                   zbins=zbins)
-                elif 'WLA' in key:
-                    dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WA', nbl=nbl_WA,
-                                                                   zbins=zbins)
-                elif '3x2pt' in key:
-                    dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='3x2pt',
-                                                                      nbl=nbl_3x2pt, zbins=zbins)
+            # now finish building the derivatives 5D vector with non-BNT derivetives
+            for key in dC_dict_3x2pt_5D.keys():
+                # TODO I'm here, this will loop will create a proble because the keys are not the same!
+                dC_dict_BNT_3x2pt_5D[key][:, 0, 0, :, :] = dC_dict_BNT_3x2pt_LL_3D[key]
+                dC_dict_BNT_3x2pt_5D[key][:, 0, 1, :, :] = dC_dict_BNT_3x2pt_LG_3D[key]
+                dC_dict_BNT_3x2pt_5D[key][:, 1, 0, :, :] = dC_dict_BNT_3x2pt_LG_3D[key].transpose(0, 2, 1)
+                dC_dict_BNT_3x2pt_5D[key][:, 1, 1, :, :] = dC_dict_3x2pt_5D[key][:, 1, 1, :, :]
+
 
         # now turn the dict. into npy array
         paramnames_cosmo = ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"]

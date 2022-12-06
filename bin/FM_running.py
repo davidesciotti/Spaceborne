@@ -9,7 +9,6 @@ sys.path.append(str(project_path_here.parent / 'common_lib'))
 import my_module as mm
 
 script_name = sys.argv[0]
-start = time.perf_counter()
 
 
 ###############################################################################
@@ -70,6 +69,9 @@ def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, obs_name, is_3x2pt=
 
 
 def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict):
+
+    start = time.perf_counter()
+
     # shorten names
     # nbl = general_cfg['nbl']
     zbins = general_cfg['zbins']

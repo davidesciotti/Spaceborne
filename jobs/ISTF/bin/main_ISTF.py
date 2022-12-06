@@ -26,7 +26,7 @@ import cosmo_lib as csmlib
 # general configurations
 sys.path.append(f'{project_path.parent}/common_data/common_config')
 import mpl_cfg
-import ISTF_fid_params
+import ISTF_fid_params as ISTFfid
 
 # job configuration
 sys.path.append(f'{job_path}/config')
@@ -111,7 +111,7 @@ n_probes = general_cfg['n_probes']
 nbl_WL = general_cfg['nbl_WL']
 nbl_GC = general_cfg['nbl_GC']
 nbl = nbl_WL
-bIA = ISTF_fid_params.IA_free['beta_IA']
+bIA = ISTFfid.IA_free['beta_IA']
 
 # which cases to save: GO, GS or GO, GS and SSC
 cases_tosave = ['GO', ]
@@ -296,6 +296,17 @@ if FM_cfg['compute_FM']:
                   'dC_WA_4D': dC_WA_4D,
                   'dC_3x2pt_5D': dC_3x2pt_5D}
 
+    # finally, define the fiducial values to write them in the FM header file
+    paramnames_cosmo = ["Om", "Ob", "wz", "wa", "h", "ns", "s8"]
+    paramnames_IA = ["Aia", "eIA", "bIA"]
+    paramnames_galbias = [f'bL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+
+    fid_cosmo = [ISTFfid.primary['Om_m0'], ISTFfid.primary['Om_b0'], ISTFfid.primary['w_0'], ISTFfid.primary['w_a'],
+                    ISTFfid.primary['h0'], ISTFfid.primary['n_s'], ISTFfid.primary['sigma_8']]
+    fid_IA = [ISTFfid.IA_free['A_IA'], ISTFfid.IA_free['eta_IA'], ISTFfid.IA_free['beta_IA']]
+    fid_gal_bias = [ISTFfid.photoz_galaxy_bias[f'b{zbin:02d}_photo'] for zbin in range(1, zbins + 1)]
+
+
     FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
 
 # ! save:
@@ -406,17 +417,15 @@ if FM_cfg['save_FM']:
     ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
     nbl_list = [nbl_WL, nbl_GC, nbl_GC, nbl_WA]
     which_cov_list = ['GO', 'GS']
-    header = f'parameters (in order): {paramnames_3x2pt}'
+    header = f"{paramnames_3x2pt}"
     FM_folder = FM_cfg["FM_folder"]
 
 
     for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
         for which_cov in which_cov_list:
-            FM_filename = FM_cfg["FM_filename"].format(probe=probe, which_cov=which_cov,
-                                                       ell_max=ell_max, nbl=nbl, **variable_specs)
-            np.savetxt(f'{FM_folder}/'
-                       f'FM_{probe}_{which_cov}_lmax{ell_max}_nbl{nbl}_zbins{EP_or_ED}{zbins:02}.txt',
-                       FM_dict[f'FM_{probe}_{which_cov}'], header=header)
+            FM_filename = FM_cfg["FM_filename"].format(probe=probe, which_cov=which_cov, ell_max=ell_max, nbl=nbl,
+                                                       **variable_specs)
+            np.savetxt(f'{FM_folder}/{FM_filename}', FM_dict[f'FM_{probe}_{which_cov}'], header=header)
 
 if FM_cfg['save_FM_as_dict']:
     sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)

@@ -15,13 +15,12 @@ BNT_transform = False
 
 general_cfg = {
     'ell_min': 10,
-    'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
     'ell_max_WL': 5000,
     'ell_max_GC': 3000,
-    'zbins': None,
-    'zbins_list': (10,),
+    'zbins': 10,
+    'zbins_list': None,
     'EP_or_ED': 'EP',
-    'zbins_type_list': ('EP', ),
+    'zbins_type_list': ('EP',),
     'n_probes': 2,
     'nbl_WL': 30,
     'nbl_GC': 30,
@@ -93,3 +92,4 @@ FM_cfg = {
     'FM_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}.txt',
     'params_order': None,
 }
+

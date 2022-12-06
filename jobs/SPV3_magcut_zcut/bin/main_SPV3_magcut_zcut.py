@@ -273,12 +273,11 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         Sijkl_folder = Sijkl_cfg['Sijkl_folder']
         warnings.warn('Sijkl_folder is set to BNT_False in all cases, so as not to have to recompute the Sijkl matrix'
                       'in the BNT_True case - for which I use Stefanos files')
-        Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(
-            flagship_version=general_cfg['flagship_version'],
-            nz=nz, EP_or_ED=EP_or_ED, zbins=zbins,
-            IA_flag=Sijkl_cfg['IA_flag'],
-            magcut_source=magcut_source,
-            zcut_source=zcut_source)
+        Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(flagship_version=general_cfg['flagship_version'],
+                                                            nz=nz, EP_or_ED=EP_or_ED, zbins=zbins,
+                                                            IA_flag=Sijkl_cfg['IA_flag'],
+                                                            magcut_source=magcut_source,
+                                                            zcut_source=zcut_source)
         # if Sijkl exists, load it; otherwise, compute it and save it
         if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
             print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
@@ -405,6 +404,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                 dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='3x2pt',
                                                                   nbl=nbl_3x2pt, zbins=zbins)
 
+        # this is just to save a copy of the non-BNT derivatives, to perform tests
+        dC_dict_3x2pt_noBNT_5D = dC_dict_3x2pt_5D.copy()
+
         # in this case, overwrite part of the dictionary entries (the 3x2pt, in particular)
         if use_stefano_BNT_ingredients:
 
@@ -424,8 +426,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             # separate in 4 different dictionaries, reshape and remove the probe-specific suffix in the keys:
             # in this way, referring both to the 3x2pt, dC_dict_3x2pt_BNT_LL_3D and dC_dict_3x2pt_BNT_LG_3D will have
             # the same keys, and the same for the other probes
-            # ! check the reshaping
-            # ! THE ERROR IS IN THE FACT THAT THESE DO NOT HAVE CONSISTENT KEYS, LIKE IN THE 3X2PT CASE FROM VINCENZO
             dC_dict_3x2pt_BNT_LL_3D = {}
             dC_dict_3x2pt_BNT_LG_3D = {}
             for key in dC_dict_3x2pt_BNT_1D.keys():
@@ -436,10 +436,11 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                     dC_dict_3x2pt_BNT_LG_3D[key.replace('_LG_', '')] = cl_utils.cl_SPV3_1D_to_3D(
                         dC_dict_3x2pt_BNT_1D[key], probe='XC', nbl=nbl_3x2pt, zbins=zbins)
 
-            # now finish building the derivatives 5D vector with non-BNT derivetives
-            # TODO I'm here, this will loop will create a proble because the keys are not the same!
-            # TODO rename removing "BNT" from the name?
+            # a check on the keys, they now must be the same
+            assert dC_dict_3x2pt_BNT_LL_3D.keys() == dC_dict_3x2pt_BNT_LG_3D.keys(), \
+                'The keys of the dictionaries are not the same'
 
+            # now finish building the derivatives 5D vector with non-BNT derivetives:
             # instantiate a dict of 5D numpy arrays
             dC_dict_3x2pt_BNT_5D = {}
             allkeys = {key for key in dC_dict_3x2pt_BNT_LL_3D}
@@ -455,6 +456,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                 # are a subset of the keys of dC_dict_3x2pt_5D)
                 dC_dict_3x2pt_BNT_5D[key][:, 1, 1, :, :] = dC_dict_3x2pt_5D[key.lstrip('BNT_')][:, 1, 1, :, :]
 
+            # overwrite the non-BNT derivatives with the BNT ones
+            dC_3x2pt_5D = dC_dict_3x2pt_5D
+
         # declare the set of parameters under study
         paramnames_cosmo = ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"]
         paramnames_IA = ["Aia", "eIA", "bIA"]
@@ -469,16 +473,14 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         paramnames_3x2pt.remove('Ox')
         FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
 
-        # now turn the dict. into npy array
+        # turn the dictionaries of derivatives npy array
         dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl_WL, zbins, 'DV')
         dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, paramnames_3x2pt, nbl_GC, zbins, 'DV')
         dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, paramnames_3x2pt, nbl_WA, zbins, 'DV')
         dC_3x2pt_5D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, paramnames_3x2pt, nbl_3x2pt, zbins, 'DV',
                                                    is_3x2pt=True)
-        dC_3x2pt_BNT_5D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_BNT_5D, paramnames_3x2pt, nbl_3x2pt, zbins, 'DV',
-                                                       is_3x2pt=True)
 
-        # ! new bit: BNT transform derivatives
+        # ! my derivatives BNT transform
         if FM_cfg['derivatives_BNT_transform']:
             assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
             assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
@@ -504,19 +506,21 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             np.save(f'{transformed_derivs_folder}/{transformed_derivs_filename}', dC_LL_4D)
 
             # check against my derivatives
+            probe_A = 0
+            probe_B = 0
             for alf in range(len(paramnames_3x2pt)):
                 plt.figure()
-                plt.plot(10 ** ell_dict['ell_XC'], dC_3x2pt_5D[:, 0, 0, 0, 0, alf], label='my BNT derivs')
-                plt.plot(10 ** ell_dict['ell_XC'], dC_3x2pt_BNT_5D[:, 0, 0, 0, 0, alf], label='Stefanos BNT derivs',
+                plt.plot(10 ** ell_dict['ell_XC'], dC_3x2pt_5D[:, probe_A, probe_B, 0, 0, alf], label='my BNT derivs')
+                plt.plot(10 ** ell_dict['ell_XC'], dC_3x2pt_BNT_5D[:, probe_A, probe_B, 0, 0, alf],
+                         label='Stefanos BNT derivs',
                          ls='--')
                 plt.legend()
-                plt.title(paramnames_3x2pt[alf])
+                plt.title(f'{paramnames_3x2pt[alf]}, probes={probe_A}, {probe_B}')
 
-            print(np.allclose(dC_3x2pt_5D[:, 0, 0, :, :, :], dC_3x2pt_BNT_5D[:, 0, 0, :, :, :], rtol=1e-4, atol=0))
-            print(np.allclose(dC_3x2pt_5D[:, 0, 0, :, :, :], dC_3x2pt_BNT_5D[:, 0, 0, :, :, :], rtol=1e-4, atol=0))
-
-            assert 1 > 2
-
+                print('Am i BNT-transforming the derivatives?')
+                print('is dC_3x2pt_noBNT_5D close to dC_3x2pt_5D for probe combination {probe_A}, {probe_B}?',
+                      np.allclose(dC_3x2pt_noBNT_5D[:, probe_A, probe_B, :, :, :],
+                                  dC_3x2pt_5D[:, probe_A, probe_B, :, :, :], rtol=1e-4, atol=0))
         # ! end new bit: BNT transform derivatives
 
         # store the derivatives arrays in a dictionary

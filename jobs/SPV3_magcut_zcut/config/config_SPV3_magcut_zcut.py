@@ -114,7 +114,7 @@ FM_cfg = {
     'paramnames_3x2pt': None,  # ! for the time being, these are defined in the main and then passed here
     'save_FM': True,
     'save_FM_as_dict': False,
-    'derivatives_BNT_transform': True,
+    'derivatives_BNT_transform': BNT_transform,
     'transformed_derivs_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_True/davide',
 
                                 'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}/' +

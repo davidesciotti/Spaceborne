@@ -278,22 +278,35 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
     """This function reshapes the SPV3 cls, which have a different format wrt the usual input files, from 1 to 3
     dimensions (5 dimensions for the 3x2pt case)"""
 
-    assert probe in ['WL', 'WA', 'GC', '3x2pt'], 'probe must be WL, WA, GC or 3x2pt'
-
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
     # the checks on zpairs in the if statements can only be done for the optimistic case, since these are the only
-    # datavectors I have (from which I can obtain the pessimistic ones simply by removing some ell bins)
-    if probe != '3x2pt':
-        assert zpairs_auto == int(cl_1d.shape[0] / nbl), 'the number of elements in the datavector is incompatible ' \
+    # datavectors I have (from which I can obtain the pessimistic ones simply by removing some ell bins).
+
+    # This case switch is not to repeat the assert below for each case
+    if probe in ['WL', 'WA', 'GC']:
+        zpairs = zpairs_auto
+        is_symmetric = True
+    elif probe == 'XC':
+        zpairs = zpairs_cross
+        is_symmetric = False
+    elif probe == '3x2pt':
+        zpairs = zpairs_3x2pt
+    else:
+        raise ValueError('probe must be WL, WA, XC, GC or 3x2pt')
+
+    assert zpairs == int(cl_1d.shape[0] / nbl), 'the number of elements in the datavector is incompatible ' \
                                                          'with the number of ell bins for this case/probe'
-        cl_3d = mm.cl_1D_to_3D(cl_1d, nbl, zbins, is_symmetric=True)
+
+    if probe != '3x2pt':
+        cl_3d = mm.cl_1D_to_3D(cl_1d, nbl, zbins, is_symmetric=is_symmetric)
+
+        # if not cross-spectra, symmetrize
+        if probe != 'XC':
         cl_3d = mm.fill_3D_symmetric_array(cl_3d, nbl, zbins)
         return cl_3d
 
-    else:
-        assert zpairs_3x2pt == int(cl_1d.shape[0] / nbl), 'the number of elements in the datavector is incompatible ' \
-                                                          'with the number of ell bins for this case/probe'
+    elif probe == '3x2pt':
         cl_2d = np.reshape(cl_1d, (nbl, zpairs_3x2pt))
 
         # split into 3 2d datavectors
@@ -305,7 +318,8 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
         cl_ll_3x2pt_3d = mm.cl_2D_to_3D_symmetric(cl_ll_3x2pt_2d, nbl=nbl, zpairs=zpairs_auto, zbins=zbins)
         cl_lg_3x2pt_3d = mm.cl_2D_to_3D_asymmetric(cl_lg_3x2pt_2d, nbl=nbl, zbins=zbins, order='F')
         cl_gg_3x2pt_3d = mm.cl_2D_to_3D_symmetric(cl_gg_3x2pt_2d, nbl=nbl, zpairs=zpairs_auto, zbins=zbins)
-        warnings.warn('check the order of the 3x2pt response functions, the default is actually F-style!')
+        warnings.warn('check the order of the 3x2pt response functions, the default is actually F-style! '
+                      'I think you have to switch to C style because its GL, not LG||!!!""!$£"QTDVZ')
 
         # use them to populate the datavector
         cl_3x2pt = np.zeros((nbl, 2, 2, zbins, zbins))

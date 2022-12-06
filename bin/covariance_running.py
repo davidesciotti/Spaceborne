@@ -108,19 +108,19 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cl_WA_3D = cl_dict_3D['cl_WA_3D']
     cl_3x2pt_5D = cl_dict_3D['cl_3x2pt_5D']
 
-    if which_probe_response == 'const':
+    if which_probe_response == 'constant':
         rl_value = covariance_cfg['rl_value']
         rl_LL_3D = np.full(cl_LL_3D.shape, rl_value)
         rl_GG_3D = np.full(cl_GG_3D.shape, rl_value)
         rl_WA_3D = np.full(cl_WA_3D.shape, rl_value)
         rl_3x2pt_5D = np.full(cl_3x2pt_5D.shape, rl_value)
-    elif which_probe_response == 'var':
+    elif which_probe_response == 'variable':
         rl_LL_3D = rl_dict_3D['rl_LL_3D']
         rl_GG_3D = rl_dict_3D['rl_GG_3D']
         rl_WA_3D = rl_dict_3D['rl_WA_3D']
         rl_3x2pt_5D = rl_dict_3D['rl_3x2pt_5D']
     else:
-        raise ValueError("which_probe_response must be 'const' or 'var'")
+        raise ValueError("which_probe_response must be 'constant' or 'variable'")
 
     # print settings
     print(

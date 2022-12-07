@@ -30,15 +30,15 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     n_probes = general_cfg['n_probes']
     which_forecast = general_cfg['which_forecast']
     EP_or_ED = general_cfg['EP_or_ED']
+    triu_tril = covariance_cfg['triu_tril']
+    rowcol_major = covariance_cfg['row_col_major']
 
     fsky = covariance_cfg['fsky']
     GL_or_LG = covariance_cfg['GL_or_LG']
-    ind_ordering = covariance_cfg['ind_ordering']
     # ! must copy the array! Otherwise, it gets modified and changed at each call
     ind = covariance_cfg['ind'].copy()
     block_index = covariance_cfg['block_index']
     which_probe_response = covariance_cfg['which_probe_response']
-    print('DEBUG', which_probe_response)
 
     start = time.perf_counter()
 
@@ -125,7 +125,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     # print settings
     print(
-        f'\ncheck: \nwhich_forecast = {which_forecast} \nind_ordering = {ind_ordering} \nblock_index = {block_index}\n'
+        f'\ncheck: \nwhich_forecast = {which_forecast} \nind_ordering = {triu_tril}, {rowcol_major} \nblock_index = {block_index}\n'
         f'zbins: {general_cfg["EP_or_ED"]}{zbins}\n'
         f'nbl_WA: {nbl_WA} nbl_WL: {nbl_WL} nbl_GC:  {nbl_GC}, nbl_3x2pt:  {nbl_3x2pt}\n'
         f'ell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}\n'

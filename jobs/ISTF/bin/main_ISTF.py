@@ -106,7 +106,7 @@ ell_max_WL = general_cfg['ell_max_WL']
 ell_max_GC = general_cfg['ell_max_GC']
 ell_max_XC = ell_max_GC
 triu_tril = covariance_cfg['triu_tril']
-row_col_wise = covariance_cfg['row_col_wise']
+row_col_major = covariance_cfg['row_col_major']
 n_probes = general_cfg['n_probes']
 nbl_WL = general_cfg['nbl_WL']
 nbl_GC = general_cfg['nbl_GC']
@@ -124,7 +124,7 @@ variable_specs = {
     'zbins': zbins,
     'EP_or_ED': EP_or_ED,
     'triu_tril': triu_tril,
-    'row_col_wise': row_col_wise,
+    'row_col_major': row_col_major,
 }
 
 # some checks
@@ -351,7 +351,7 @@ for cl_or_rl in ['cl', 'rl']:
 
 covmat_path = covariance_cfg["cov_folder"].format(zbins=zbins,
                                                   triu_tril=covariance_cfg['triu_tril'],
-                                                  row_col_wise=covariance_cfg['row_col_wise'])
+                                                  row_col_major=covariance_cfg['row_col_major'])
 for ndim in (2, 4, 6):
     if covariance_cfg[f'save_cov_{ndim}D']:
 
@@ -431,6 +431,6 @@ if FM_cfg['save_FM']:
             np.savetxt(f'{FM_folder}/{FM_filename}', FM_dict[f'FM_{probe}_{which_cov}'], header=header)
 
 if FM_cfg['save_FM_as_dict']:
-    mm.save_pickle(f'{job_path}/output/FM/FM_dict_{EP_or_ED}{zbins:02}', FM_dict)
+    mm.save_pickle(f'{job_path}/output/FM/FM_dict_{EP_or_ED}{zbins:02}.pickle', FM_dict)
 
 print('done')

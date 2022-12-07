@@ -70,8 +70,6 @@ def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, obs_name, is_3x2pt=
 
 def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict):
 
-    start = time.perf_counter()
-
     # shorten names
     # nbl = general_cfg['nbl']
     zbins = general_cfg['zbins']
@@ -240,6 +238,8 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_XC_4D = np.reshape(dC_XC, (nbl, zbins, zbins, nparams_tot))
 
     """
+
+    start = time.perf_counter()
 
     # load reshaped derivatives, with shape (nbl, zbins, zbins, nparams)
     dC_LL_4D = deriv_dict['dC_LL_4D']

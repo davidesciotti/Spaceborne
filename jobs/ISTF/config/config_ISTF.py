@@ -5,11 +5,13 @@ import numpy as np
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 
-sys.path.append(f'{project_path}/bin')
-import utils_running as utils
+sys.path.append(f'{project_path}/bin')  # TODO do I need this??
 
 which_forecast = 'IST'
-fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
+
+deg2_in_sphere = 41252.96  # deg^2 in a spere
+survey_area_deg2 = 15469.86  # deg^2
+fsky = survey_area_deg2 / deg2_in_sphere
 
 BNT_transform = False
 
@@ -24,8 +26,8 @@ general_cfg = {
     'n_probes': 2,
     'nbl_WL': 30,
     'nbl_GC': 30,
-    'which_forecast': which_forecast,
-    'use_WA': False,
+    'which_forecast': which_forecast,  # TODO deprecate this
+    'use_WA': True,  # !
     'save_cls_3d': False,
     'save_rls_3d': False,
     'cl_BNT_transform': BNT_transform,
@@ -41,13 +43,13 @@ if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
     general_cfg['use_WA'] = False
 
 covariance_cfg = {
-    'ind_folder': f'{project_path.parent}/common_data/ind_files' + '/{triu_tril:s}_{row_col_wise:s}',
-    'ind_filename': 'indices_{triu_tril:s}_{row_col_wise:s}_zbins{zbins:02d}.dat',
+    'ind_folder': f'{project_path.parent}/common_data/ind_files' + '/{triu_tril:s}_{row_col_major:s}',
+    'ind_filename': 'indices_{triu_tril:s}_{row_col_major:s}_zbins{zbins:02d}.dat',
     # 'ind_ordering': ind_ordering,  # TODO deprecate this
     'triu_tril': 'triu',
-    'row_col_wise': 'row-wise',
+    'row_col_major': 'row-wise',
     'GL_or_LG': 'GL',
-    'fsky': 15_000,
+    'fsky': fsky,
     'rl_value': None,  # it used to be 4 for a constant probe response, which this is wrong
     'block_index': 'ell',
     # this is the one used by me and Vincenzo. The blocks in the 2D covmat will be indexed by ell1, ell2

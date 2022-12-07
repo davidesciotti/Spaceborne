@@ -40,10 +40,10 @@ with PySSC.
 """
 
 # import the configuration dictionaries from config_PyCCL_forecast.py
-general_config = config.general_config
-covariance_config = config.covariance_config
+general_config = config.general_cfg
+covariance_config = config.covariance_cfg
 FM_config = config.FM_cfg
-plot_config = config.plot_config
+plot_config = config.plot_cfg
 
 # plot settings:
 params = plot_config['params']

@@ -27,24 +27,27 @@ elif which_forecast == 'CLOE':
 else:
     raise ValueError('which_forecast must be IST, CLOE or syvain')
 
-general_config = {
+general_cfg = {
     'ell_min': 10,
     'ell_max_WL': 5000,
     'ell_max_GC': 3000,
     'zbins': 10,
-    'nProbes': 2,
     'nbl': 30,  # equal nbl for all probes
-    'nbl_WL': None,  # different nbl for all probes, with nbl_probe computed from the ell cuts and nbl_WL
+    'nbl_WL': 30,  # different nbl for all probes, with nbl_probe computed from the ell cuts and nbl_WL
+    'nbl_GC': 30,
     'which_forecast': which_forecast,  # ie choose whether to have IST's or sylvain's deltas
-    'cl_folder': cl_folder,
+    'cl_folder': '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/14may/CijDers/EP10',
+    'rl_folder': '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/Pk_responses_2D/EP10',
     'use_WA': True,
-    'save_cls': False
+    'save_cls': False,
+    'EP_or_ED': 'EP',
+    'n_probes': 2,
 }
 
-if general_config['ell_max_WL'] == general_config['ell_max_GC']:
-    general_config['use_WA'] = False
+if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
+    general_cfg['use_WA'] = False
 
-covariance_config = {
+covariance_cfg = {
     'ind_ordering': ind_ordering,
     'GL_or_LG': GL_or_LG,
     'save_SSC_only_covmats': False,
@@ -59,13 +62,13 @@ covariance_config = {
     'ng': 30,
 }
 
-FM_config = {
+FM_cfg = {
     'nParams': 20,
     'save_FM': True,
     'save_FM_as_dict': False
 }
 
-plot_config = {
+plot_cfg = {
     'case': 'opt',
     'probe': '3x2pt',
     'GO_or_GS': 'GS',  # Gauss-only or Gauss + SSC

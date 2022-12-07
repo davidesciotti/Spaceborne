@@ -31,7 +31,7 @@ matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 matplotlib.use('Qt5Agg')
 markersize = 10
 
-nbl = cfg.general_config['nbl']
+nbl = cfg.general_cfg['nbl']
 
 # import all outputs from this script
 FM_dict = dict(mm.get_kv_pairs(job_path / 'output/FM', filetype="txt"))

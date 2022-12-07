@@ -99,6 +99,8 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
 def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     # fill the 3D (nbl x zbins x zbins) matrices, or equivalently nbl (zbins x zbins) matrices
 
+    print(general_config)
+
     print('note: this function makes no sense, generalize it to work with responses OR cls')
     nbl = general_config['nbl']
     ell_max_WL = general_config['ell_max_WL']

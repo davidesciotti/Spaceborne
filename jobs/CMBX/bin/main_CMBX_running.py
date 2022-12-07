@@ -41,10 +41,10 @@ start_time = time.perf_counter()
 ###############################################################################
 
 # import the configuration dictionaries from common_config.py
-general_config = cfg.general_config
-covariance_config = cfg.covariance_config
+general_config = cfg.general_cfg
+covariance_config = cfg.covariance_cfg
 FM_config = cfg.FM_cfg
-plot_config = cfg.plot_config
+plot_config = cfg.plot_cfg
 
 # plot settings:
 params = plot_config['params']

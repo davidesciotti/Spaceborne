@@ -51,10 +51,10 @@ start_time = time.perf_counter()
 #################### PARAMETERS AND SETTINGS DEFINITION #######################
 ###############################################################################
 
-general_cfg = cfg.general_config
-covariance_cfg = cfg.covariance_config
+general_cfg = cfg.general_cfg
+covariance_cfg = cfg.covariance_cfg
 Sijkl_cfg = cfg.Sijkl_config
-FM_cfg = cfg.FM_config
+FM_cfg = cfg.FM_cfg
 
 which_probe_response = covariance_cfg['which_probe_response']
 # set the string, just for the file names

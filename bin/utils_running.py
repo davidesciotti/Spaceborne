@@ -64,8 +64,7 @@ def consistency_checks(general_config, covariance_config):
         assert covariance_config['fsky'] == fsky_ISTF, f'{which_forecast} uses fsky = {fsky_ISTF}'
         assert covariance_config['ind_ordering'] == 'vincenzo', f'{which_forecast} used Vincenzos ind ordering'
         assert covariance_config['GL_or_LG'] == 'GL', f'{which_forecast} uses GL'
-        assert covariance_config['Rl'] == 4, 'In the SSC comparison we used Rl=4'
-        assert general_config['cl_folder'] == 'Cij_14may', 'Latest Cls are Cij_14may'
+        assert '14may' in general_config['cl_folder'], 'Latest Cls are Cij_14may'
         assert general_config['nbl'] == 30, f'{which_forecast} uses nbl = 30'
         assert (general_config['ell_max_WL'], general_config['ell_max_GC']) == (5000, 3000) or (3000, 750),\
             'case is neither optimistic nor pessimistic'

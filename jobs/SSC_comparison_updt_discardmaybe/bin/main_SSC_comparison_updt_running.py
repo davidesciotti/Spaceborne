@@ -46,10 +46,10 @@ start_time = time.perf_counter()
 ###############################################################################
 
 # import the configuration dictionaries from config.py
-general_cfg = cfg.general_config
-covariance_cfg = cfg.covariance_config
+general_cfg = cfg.general_cfg
+covariance_cfg = cfg.covariance_cfg
 Sijkl_cfg = cfg.Sijkl_config
-FM_cfg = cfg.FM_config
+FM_cfg = cfg.FM_cfg
 
 # consistency checks:
 # utils.consistency_checks(general_cfg, covariance_cfg)

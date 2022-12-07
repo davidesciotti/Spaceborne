@@ -198,8 +198,8 @@ for probe in probes:
         assert np.array_equal(null_idx_GO, null_idx_GS), 'the null rows/cols indices should be equal for GO and GS'
 
         if null_idx_GO is not None:
-            FM_GO = mm.remove_null_rows_cols_2D(FM_GO, null_idx_GO)
-            FM_GS = mm.remove_null_rows_cols_2D(FM_GS, null_idx_GO)
+            FM_GO = mm.remove_null_rows_cols_array2D(FM_GO, null_idx_GO)
+            FM_GS = mm.remove_null_rows_cols_array2D(FM_GS, null_idx_GO)
             paramnames_3x2pt = np.delete(paramnames_3x2pt, obj=null_idx_GO, axis=0)
             fid = np.delete(fid, obj=null_idx_GO, axis=0)
             assert len(fid) == len(
@@ -243,7 +243,7 @@ for probe in probes:
         for FM, case in zip(FMs, cases):
             uncert[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams, fiducials=fid,
                                                           which_uncertainty=which_uncertainty, normalize=True))
-            fom[case] = mm.compute_FoM(FM, w0wa_rows=w0wa_rows)
+            fom[case] = mm.compute_FoM(FM, w0wa_idxs=w0wa_rows)
             print(f'FoM({probe}, {case}): {fom[case]}')
 
         uncert['percent_diff'] = diff_funct(uncert['GS'], uncert['G'])

@@ -302,12 +302,14 @@ if FM_cfg['compute_FM']:
     paramnames_galbias = [f'bL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
 
     fid_cosmo = [ISTFfid.primary['Om_m0'], ISTFfid.primary['Om_b0'], ISTFfid.primary['w_0'], ISTFfid.primary['w_a'],
-                    ISTFfid.primary['h0'], ISTFfid.primary['n_s'], ISTFfid.primary['sigma_8']]
+                    ISTFfid.primary['h_0'], ISTFfid.primary['n_s'], ISTFfid.primary['sigma_8']]
     fid_IA = [ISTFfid.IA_free['A_IA'], ISTFfid.IA_free['eta_IA'], ISTFfid.IA_free['beta_IA']]
     fid_gal_bias = [ISTFfid.photoz_galaxy_bias[f'b{zbin:02d}_photo'] for zbin in range(1, zbins + 1)]
-
+    fid_3x2pt = fid_cosmo + fid_IA + fid_gal_bias
 
     FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
+    FM_dict['parameters'] = paramnames_3x2pt
+    FM_dict['fiducial_values'] = fid_3x2pt
 
 # ! save:
 # this is just to set the correct probe names
@@ -413,11 +415,12 @@ if covariance_cfg['save_cov_6D']:
     assert np.allclose(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D'], rtol=1e-9, atol=0)
 
 if FM_cfg['save_FM']:
+    # saves as txt file
     probe_list = ['WL', 'GC', '3x2pt', 'WA']
     ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
     nbl_list = [nbl_WL, nbl_GC, nbl_GC, nbl_WA]
     which_cov_list = ['GO', 'GS']
-    header = f"{paramnames_3x2pt}"
+    header = f"parameters: {paramnames_3x2pt} \nfiducials: {fid_3x2pt}"
     FM_folder = FM_cfg["FM_folder"]
 
 
@@ -428,6 +431,6 @@ if FM_cfg['save_FM']:
             np.savetxt(f'{FM_folder}/{FM_filename}', FM_dict[f'FM_{probe}_{which_cov}'], header=header)
 
 if FM_cfg['save_FM_as_dict']:
-    sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)
+    mm.save_pickle(f'{job_path}/output/FM/FM_dict_{EP_or_ED}{zbins:02}', FM_dict)
 
 print('done')

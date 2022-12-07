@@ -220,8 +220,8 @@ for probe in probes:
                 idx = mm.find_null_rows_cols_2D(FM_GO)
                 idx_GS = mm.find_null_rows_cols_2D(FM_GS)
                 assert np.array_equal(idx, idx_GS), 'the null rows/cols indices should be equal for GO and GS'
-                FM_GO = mm.remove_null_rows_cols_2D(FM_GO, idx)
-                FM_GS = mm.remove_null_rows_cols_2D(FM_GS, idx)
+                FM_GO = mm.remove_null_rows_cols_array2D(FM_GO, idx)
+                FM_GS = mm.remove_null_rows_cols_array2D(FM_GS, idx)
 
                 ####################################################################################################################
 
@@ -245,7 +245,7 @@ for probe in probes:
                 for FM, case in zip(FMs, cases):
                     uncert[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams, fiducials=fid,
                                                                   which_uncertainty=which_uncertainty, normalize=True))
-                    fom[case] = mm.compute_FoM(FM, w0wa_rows=w0wa_rows)
+                    fom[case] = mm.compute_FoM(FM, w0wa_idxs=w0wa_rows)
                     print(f'FoM({probe}, {case}): {fom[case]}')
 
                 # set uncertainties to 0 (or 1? see code) for \Omega_DE in the non-flat case, where Ode was not a free parameter

@@ -84,7 +84,7 @@ FM_cfg = {
     'nparams_tot': 20,  # total (cosmo + nuisance) number of parameters
     'paramnames_3x2pt': None,  # ! for the time being, these are defined in the main and then passed here
     'save_FM': True,
-    'save_FM_as_dict': False,
+    'save_FM_as_dict': True,
     'derivatives_BNT_transform': True,
     'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}',
     'derivatives_filename': 'dCij{probe:s}d{param:s}-GR-Flat-eNLA-NA.dat',

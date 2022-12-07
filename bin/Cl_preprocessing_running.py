@@ -96,7 +96,7 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
     return cl_dict_2D, rl_dict_2D
 
 
-def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
+def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, rl_dict_2D):
     # fill the 3D (nbl x zbins x zbins) matrices, or equivalently nbl (zbins x zbins) matrices
 
     print(general_config)
@@ -121,11 +121,11 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     cl_GL_2D = cl_dict_2D['cl_GL_2D']
     cl_LLfor3x2pt_2D = cl_dict_2D['cl_LLfor3x2pt_2D']
 
-    rl_LL_2D = Rl_dict_2D['rl_LL_2D']
-    rl_GG_2D = Rl_dict_2D['rl_GG_2D']
-    rl_WA_2D = Rl_dict_2D['rl_WA_2D']
-    rl_GL_2D = Rl_dict_2D['rl_GL_2D']
-    rl_LLfor3x2pt_2D = Rl_dict_2D['rl_LLfor3x2pt_2D']
+    rl_LL_2D = rl_dict_2D['rl_LL_2D']
+    rl_GG_2D = rl_dict_2D['rl_GG_2D']
+    rl_WA_2D = rl_dict_2D['rl_WA_2D']
+    rl_GL_2D = rl_dict_2D['rl_GL_2D']
+    rl_LLfor3x2pt_2D = rl_dict_2D['rl_LLfor3x2pt_2D']
 
     # compute n_zpairs
     npairs, npairs_asimm, npairs_tot = mm.get_zpairs(zbins)

@@ -38,6 +38,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     ind = covariance_cfg['ind'].copy()
     block_index = covariance_cfg['block_index']
     which_probe_response = covariance_cfg['which_probe_response']
+    print('DEBUG', which_probe_response)
 
     start = time.perf_counter()
 

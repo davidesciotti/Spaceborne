@@ -81,8 +81,7 @@ if which_diff == 'normal':
 else:
     diff_funct = mm.percent_diff_mean
 
-for probe in probes:
-    uncert_ratio_dict[probe] = {}
+uncert_ratio_dict[probe] = {}
 
 # import FM dict and
 FM_dict = mm.load_pickle(f'{project_path}/jobs/ISTF/output/FM/FM_dict_{EP_or_ED}{zbins:02}.pickle')
@@ -91,13 +90,16 @@ _fid = FM_dict['fiducial_values']
 FM_WL_GO = FM_dict['FM_WL_GO']
 FM_WL_GS = FM_dict['FM_WL_GS']
 
+FM_WL_GO_old = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/'
+                             'output/FM/FM_WL_GO_lmaxWL5000_nbl30.txt')
+
 # fix the desired parameters and remove null rows/columns
 FM_WL_GO, params, fid = mm.mask_FM(FM_WL_GO, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
 FM_WL_GS, _, _ = mm.mask_FM(FM_WL_GS, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
 wzwa_idx = [params.index('wz'), params.index('wa')]
 
-FMs = [FM_WL_GO, FM_WL_GS]
-cases = ['G', 'GS', 'percent_diff']
+FMs = [FM_WL_GO, FM_WL_GO_old, FM_WL_GS]
+cases = ['G', 'G_old', 'GS', 'percent_diff']
 probe = 'WL'
 
 # compute uncertainties
@@ -109,7 +111,7 @@ for FM, case in zip(FMs, cases):
     fom[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_idx)
     print(f'FoM({probe}, {case}): {fom[case]}')
 
-uncert_dict['percent_diff'] = diff_funct(uncert_dict['GS'], uncert_dict['G'])
+uncert_dict['percent_diff'] = diff_funct(uncert_dict['G'], uncert_dict['G_old'])
 uncert_dict['ratio'] = uncert_dict['GS'] / uncert_dict['G']
 
 print((uncert_dict['G']/ISTF_fid.forecasts['WL_opt_w0waCDM_flat'] - 1)*100)

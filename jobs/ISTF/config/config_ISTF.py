@@ -43,11 +43,11 @@ if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
 covariance_cfg = {
     'ind_folder': f'{project_path.parent}/common_data/ind_files' + '/{triu_tril:s}_{row_col_wise:s}',
     'ind_filename': 'indices_{triu_tril:s}_{row_col_wise:s}_zbins{zbins:02d}.dat',
-    'ind_ordering': ind_ordering,  # TODO deprecate this
+    # 'ind_ordering': ind_ordering,  # TODO deprecate this
     'triu_tril': 'triu',
     'row_col_wise': 'row-wise',
-    'GL_or_LG': GL_or_LG,
-    'fsky': fsky,
+    'GL_or_LG': 'GL',
+    'fsky': 15_000,
     'rl_value': None,  # it used to be 4 for a constant probe response, which this is wrong
     'block_index': 'ell',
     # this is the one used by me and Vincenzo. The blocks in the 2D covmat will be indexed by ell1, ell2

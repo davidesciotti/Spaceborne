@@ -92,14 +92,15 @@ FM_WL_GS = FM_dict['FM_WL_GS']
 
 FM_WL_GO_old = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/'
                              'output/FM/FM_WL_GO_lmaxWL5000_nbl30.txt')
+FM_WL_GO_old_2 = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/SSCcomp_prove/output/FM/ISTspecs_indVincenzo/Cij_14may/FM_WL_G_lmaxWL5000_nbl30.txt')
 
 # fix the desired parameters and remove null rows/columns
 FM_WL_GO, params, fid = mm.mask_FM(FM_WL_GO, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
 FM_WL_GS, _, _ = mm.mask_FM(FM_WL_GS, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
 wzwa_idx = [params.index('wz'), params.index('wa')]
 
-FMs = [FM_WL_GO, FM_WL_GO_old, FM_WL_GS]
-cases = ['G', 'SSCcomp', 'ISTF', 'percent_diff']
+FMs = [FM_WL_GO, FM_WL_GO_old, FM_WL_GO_old_2]
+cases = ['G', 'FM_WL_GO_old', 'FM_WL_GO_old_2', 'ISTF']
 probe = 'WL'
 
 # compute uncertainties

@@ -28,19 +28,20 @@ sys.path.append(f'{project_path.parent}/common_data/common_config')
 import mpl_cfg
 import ISTF_fid_params as ISTFfid
 
-# job configuration
-sys.path.append(f'{job_path}/config')
-import config_ISTF as cfg
+sys.path.append(f'{project_path}')
+# project modules
+import bin.ell_values_running as ell_utils
+import bin.Cl_preprocessing_running as cl_utils
+import bin.compute_Sijkl as Sijkl_utils
+import bin.covariance_running as covmat_utils
+import bin.FM_running as FM_utils
+import bin.utils_running as utils
 
-# project libraries
-sys.path.append(f'{project_path}/bin')
-import ell_values_running as ell_utils
-import Cl_preprocessing_running as cl_utils
-import compute_Sijkl as Sijkl_utils
-import covariance_running as covmat_utils
-import FM_running as FM_utils
-import utils_running as utils
-import unit_test
+# job configuration and modules
+import jobs.ISTF.config.config_ISTF as cfg
+import jobs.ISTF.bin.unit_test as ut
+
+
 
 matplotlib.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -433,7 +434,7 @@ if FM_cfg['save_FM']:
 if FM_cfg['save_FM_as_dict']:
     mm.save_pickle(f'{job_path}/output/FM/FM_dict_{EP_or_ED}{zbins:02}.pickle', FM_dict)
 
-unit_test.test_cov()
-unit_test.test_FM()
+ut.test_cov()
+ut.test_FM()
 
 print('done')

@@ -26,6 +26,7 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
 def test_cov():
+    """tests that the outputs do not change between the old and the new version"""
     cov_old_dict = dict(mm.get_kv_pairs_npy(f'{job_path}/output/covmat/test_benchmarks'))
     cov_new_dict = dict(mm.get_kv_pairs_npy(f'{job_path}/output/covmat'))
 
@@ -35,6 +36,7 @@ def test_cov():
         assert np.array_equal(cov_old_dict[key], cov_new_dict[key]), f'The covmat {key} is different'
 
 def test_FM():
+    """tests that the outputs do not change between the old and the new version"""
     FM_old_dict = dict(mm.get_kv_pairs_npy(f'{job_path}/output/FM/test_benchmarks'))
     FM_new_dict = dict(mm.get_kv_pairs_npy(f'{job_path}/output/FM'))
 

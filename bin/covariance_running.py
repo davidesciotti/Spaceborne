@@ -29,7 +29,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     ell_max_GC = general_cfg['ell_max_GC']
     zbins = general_cfg['zbins']
     n_probes = general_cfg['n_probes']
-    which_forecast = general_cfg['which_forecast']
     EP_or_ED = general_cfg['EP_or_ED']
     triu_tril = covariance_cfg['triu_tril']
     rowcol_major = covariance_cfg['row_col_major']

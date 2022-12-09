@@ -99,7 +99,7 @@ FM_WL_GS, _, _ = mm.mask_FM(FM_WL_GS, _params, _fid, n_cosmo_params, fix_IA, fix
 wzwa_idx = [params.index('wz'), params.index('wa')]
 
 FMs = [FM_WL_GO, FM_WL_GO_old, FM_WL_GS]
-cases = ['G', 'G_old', 'GS', 'percent_diff']
+cases = ['G', 'SSCcomp', 'ISTF', 'percent_diff']
 probe = 'WL'
 
 # compute uncertainties
@@ -111,11 +111,15 @@ for FM, case in zip(FMs, cases):
     fom[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_idx)
     print(f'FoM({probe}, {case}): {fom[case]}')
 
-uncert_dict['percent_diff'] = diff_funct(uncert_dict['G'], uncert_dict['G_old'])
-uncert_dict['ratio'] = uncert_dict['GS'] / uncert_dict['G']
+uncert_dict['percent_diff'] = diff_funct(uncert_dict['G'], ISTF_fid.forecasts['WL_opt_w0waCDM_flat'])
+# uncert_dict['ratio'] = uncert_dict['GS'] / uncert_dict['G']
+uncert_dict['ISTF'] = ISTF_fid.forecasts['WL_opt_w0waCDM_flat']
 
-print((uncert_dict['G']/ISTF_fid.forecasts['WL_opt_w0waCDM_flat'] - 1)*100)
+np.set_printoptions(precision=2, suppress=True)
+print(uncert_dict['G'])
 print(ISTF_fid.forecasts['WL_opt_w0waCDM_flat'])
+print('percent_diff dav vs ISTF\n', (uncert_dict['G']/ISTF_fid.forecasts['WL_opt_w0waCDM_flat'] - 1)*100)
+
 
 # transform dict. into an array
 uncert_array = []

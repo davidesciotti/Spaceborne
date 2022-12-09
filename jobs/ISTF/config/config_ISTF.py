@@ -10,6 +10,7 @@ sys.path.append(f'{project_path}/bin')  # TODO do I need this??
 which_forecast = 'IST'
 
 deg2_in_sphere = 41252.96  # deg^2 in a spere
+survey_area_deg2 = 15_000  # deg^2
 survey_area_deg2 = 15469.86  # deg^2
 fsky = survey_area_deg2 / deg2_in_sphere
 
@@ -27,7 +28,7 @@ general_cfg = {
     'nbl_WL': 30,
     'nbl_GC': 30,
     'which_forecast': which_forecast,  # TODO deprecate this
-    'use_WA': True,  # !
+    'use_WA': False,  # ! xxx
     'save_cls_3d': False,
     'save_rls_3d': False,
     'cl_BNT_transform': BNT_transform,

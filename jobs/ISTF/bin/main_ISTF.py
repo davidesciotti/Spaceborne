@@ -433,4 +433,7 @@ if FM_cfg['save_FM']:
 if FM_cfg['save_FM_as_dict']:
     mm.save_pickle(f'{job_path}/output/FM/FM_dict_{EP_or_ED}{zbins:02}.pickle', FM_dict)
 
+unit_test.test_cov()
+unit_test.test_FM()
+
 print('done')

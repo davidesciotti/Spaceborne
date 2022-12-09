@@ -1,5 +1,6 @@
 import sys
 import time
+import warnings
 from pathlib import Path
 
 import matplotlib
@@ -125,18 +126,15 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     # print settings
     print(
-        f'\ncheck: \nwhich_forecast = {which_forecast} \nind_ordering = {triu_tril}, {rowcol_major} \nblock_index = {block_index}\n'
+        f'\ncheck: \nind_ordering = {triu_tril}, {rowcol_major} \nblock_index = {block_index}\n'
         f'zbins: {general_cfg["EP_or_ED"]}{zbins}\n'
         f'nbl_WA: {nbl_WA} nbl_WL: {nbl_WL} nbl_GC:  {nbl_GC}, nbl_3x2pt:  {nbl_3x2pt}\n'
         f'ell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}\n'
         f'computing the covariance in blocks? {covariance_cfg["save_cov_6D"]}\n')
 
     # build noise vector
-    print('which folder should I use for ngbTab? lenses or sources? Flagship or Redbook?')
-    # a couple rough checks
-    if general_cfg['EP_or_ED'] == 'ED':
-        assert general_cfg['which_forecast'] == 'SPV3', 'data for the ED case is only available for SPV3'
 
+    warnings.warn('which folder should I use for ngbTab? lenses or sources? Flagship or Redbook?')
     noise = mm.build_noise(zbins, n_probes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=covariance_cfg['ng'],
                            EP_or_ED=general_cfg['EP_or_ED'])
 

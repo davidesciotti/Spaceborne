@@ -241,18 +241,17 @@ if covariance_cfg['compute_covmat']:
 # ! compute Fisher Matrix
 if FM_cfg['compute_FM']:
 
+    paramnames_3x2pt = FM_cfg['paramnames_3x2pt']
+    nparams_total = len(paramnames_3x2pt)
+    obs_name = FM_cfg['obs_name']
+    GL_or_LG = covariance_cfg['GL_or_LG']
+
     derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
     dC_dict_2D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
     # check if dictionary is empty
     if not dC_dict_2D:
         raise ValueError(f'No derivatives found in folder {derivatives_folder}')
 
-    paramnames_cosmo = ["Om", "Ob", "wz", "wa", "h", "ns", "s8"]
-    paramnames_IA = ["Aia", "eIA", "bIA"]
-    paramnames_galbias = [f'bL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
-    paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias
-    nparams_total = len(paramnames_3x2pt)
-    FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt
 
     # interpolate and separate into probe-specific dictionaries; then reshape from 2D to 3D
     dC_dict_LL_2D, dC_dict_LL_3D = {}, {}
@@ -261,7 +260,7 @@ if FM_cfg['compute_FM']:
     dC_dict_WA_2D, dC_dict_WA_3D = {}, {}
     dC_dict_LLfor3x2pt_2D, dC_dict_LLfor3x2pt_3D = {}, {}
     for key in dC_dict_2D.keys():
-        if 'LL' in key:
+        if f'{obs_name}LL' in key:
             dC_dict_LL_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_WL, nbl_WL)
             dC_dict_WA_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_WA, nbl_WA)
             dC_dict_LLfor3x2pt_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_GC, nbl_GC)
@@ -269,20 +268,21 @@ if FM_cfg['compute_FM']:
             dC_dict_WA_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_WA_2D[key], nbl_WA, zpairs_auto, zbins)
             dC_dict_LLfor3x2pt_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_LL_2D[key], nbl_GC, zpairs_auto,
                                                                   zbins)
-        elif 'GG' in key:
+        elif f'{obs_name}GG' in key:
             dC_dict_GG_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_GC, nbl_GC)
             dC_dict_GG_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_GG_2D[key], nbl_GC, zpairs_auto, zbins)
-        elif 'GL' in key:
+        elif f'{obs_name}{GL_or_LG}' in key:
             dC_dict_GL_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_cross, ell_GC, nbl_GC)
             dC_dict_GL_3D[key] = mm.cl_2D_to_3D_asymmetric(dC_dict_GL_2D[key], nbl_GC, zbins, 'row_major')
 
     # turn dictionary keys into entries of 4-th array axis
-    dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl, zbins, obs_name='CijLL')
-    dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, paramnames_3x2pt, nbl_WA, zbins, obs_name='CijLL')
+    # TODO the obs_name must be defined in the config file
+    dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl, zbins, obs_name=f'{obs_name}LL')
+    dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, paramnames_3x2pt, nbl_WA, zbins, obs_name=f'{obs_name}LL')
     dC_LLfor3x2pt_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LLfor3x2pt_3D, paramnames_3x2pt, nbl, zbins,
-                                                    obs_name='CijLL')
-    dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, paramnames_3x2pt, nbl, zbins, obs_name='CijGG')
-    dC_GL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GL_3D, paramnames_3x2pt, nbl, zbins, obs_name='CijGL')
+                                                    obs_name=f'{obs_name}LL')
+    dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, paramnames_3x2pt, nbl, zbins, obs_name=f'{obs_name}GG')
+    dC_GL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GL_3D, paramnames_3x2pt, nbl, zbins, obs_name=f'{obs_name}{GL_or_LG}')
 
     # build 5D array of derivatives for the 3x2pt
     dC_3x2pt_5D = np.zeros((nbl, n_probes, n_probes, zbins, zbins, nparams_total))

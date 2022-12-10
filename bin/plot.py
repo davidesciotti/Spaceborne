@@ -92,15 +92,14 @@ FM_WL_GS = FM_dict['FM_WL_GS']
 
 FM_WL_GO_old = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/'
                              'output/FM/FM_WL_GO_lmaxWL5000_nbl30.txt')
-FM_WL_GO_old_2 = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/SSCcomp_prove/output/FM/ISTspecs_indVincenzo/Cij_14may/FM_WL_G_lmaxWL5000_nbl30.txt')
 
 # fix the desired parameters and remove null rows/columns
 FM_WL_GO, params, fid = mm.mask_FM(FM_WL_GO, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
 FM_WL_GS, _, _ = mm.mask_FM(FM_WL_GS, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
 wzwa_idx = [params.index('wz'), params.index('wa')]
 
-FMs = [FM_WL_GO, FM_WL_GO_old, FM_WL_GO_old_2]
-cases = ['G', 'FM_WL_GO_old', 'FM_WL_GO_old_2', 'ISTF']
+FMs = [FM_WL_GO, FM_WL_GS]
+cases = ['G', 'GS', 'ISTF', 'percent_diff']
 probe = 'WL'
 
 # compute uncertainties
@@ -112,8 +111,8 @@ for FM, case in zip(FMs, cases):
     fom[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_idx)
     print(f'FoM({probe}, {case}): {fom[case]}')
 
-uncert_dict['percent_diff'] = diff_funct(uncert_dict['G'], ISTF_fid.forecasts['WL_opt_w0waCDM_flat'])
-# uncert_dict['ratio'] = uncert_dict['GS'] / uncert_dict['G']
+uncert_dict['percent_diff'] = diff_funct(uncert_dict['GS'], uncert_dict['G'])
+uncert_dict['ratio'] = uncert_dict['GS'] / uncert_dict['G']
 uncert_dict['ISTF'] = ISTF_fid.forecasts['WL_opt_w0waCDM_flat']
 
 np.set_printoptions(precision=2, suppress=True)

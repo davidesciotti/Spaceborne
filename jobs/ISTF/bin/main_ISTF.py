@@ -147,30 +147,30 @@ ell_WL, ell_GC, ell_WA = ell_dict['ell_WL'], ell_dict['ell_GC'], ell_dict['ell_W
 # ! import, interpolate and reshape the power spectra and probe responses
 cl_folder = general_cfg['cl_folder'].format(**variable_specs)
 cl_filename = general_cfg['cl_filename']
-cl_LL_1D = np.genfromtxt(f'{cl_folder}/{cl_filename.format(probe="LL")}')
-cl_GL_1D = np.genfromtxt(f'{cl_folder}/{cl_filename.format(probe="GL")}')
-cl_GG_1D = np.genfromtxt(f'{cl_folder}/{cl_filename.format(probe="GG")}')
+cl_LL_2D = np.genfromtxt(f'{cl_folder}/{cl_filename.format(probe="LL")}')
+cl_GL_2D = np.genfromtxt(f'{cl_folder}/{cl_filename.format(probe="GL")}')
+cl_GG_2D = np.genfromtxt(f'{cl_folder}/{cl_filename.format(probe="GG")}')
 
 rl_folder = general_cfg['rl_folder'].format(**variable_specs)
 rl_filename = general_cfg['rl_filename']
-rl_LL_1D = np.genfromtxt(f'{rl_folder}/{rl_filename.format(probe="ll")}')
-rl_GL_1D = np.genfromtxt(f'{rl_folder}/{rl_filename.format(probe="gl")}')
-rl_GG_1D = np.genfromtxt(f'{rl_folder}/{rl_filename.format(probe="ll")}')
+rl_LL_2D = np.genfromtxt(f'{rl_folder}/{rl_filename.format(probe="ll")}')
+rl_GL_2D = np.genfromtxt(f'{rl_folder}/{rl_filename.format(probe="gl")}')
+rl_GG_2D = np.genfromtxt(f'{rl_folder}/{rl_filename.format(probe="ll")}')
 
 # interpolate
 cl_dict_2D = {}
-cl_dict_2D['cl_LL_2D'] = mm.cl_interpolator(cl_LL_1D, zpairs_auto, ell_WL, nbl_WL)
-cl_dict_2D['cl_GG_2D'] = mm.cl_interpolator(cl_GG_1D, zpairs_auto, ell_GC, nbl_GC)
-cl_dict_2D['cl_WA_2D'] = mm.cl_interpolator(cl_LL_1D, zpairs_auto, ell_WA, nbl_WA)
-cl_dict_2D['cl_GL_2D'] = mm.cl_interpolator(cl_GL_1D, zpairs_cross, ell_GC, nbl_GC)
-cl_dict_2D['cl_LLfor3x2pt_2D'] = mm.cl_interpolator(cl_LL_1D, zpairs_auto, ell_GC, nbl_GC)
+cl_dict_2D['cl_LL_2D'] = mm.cl_interpolator(cl_LL_2D, zpairs_auto, ell_WL, nbl_WL)
+cl_dict_2D['cl_GG_2D'] = mm.cl_interpolator(cl_GG_2D, zpairs_auto, ell_GC, nbl_GC)
+cl_dict_2D['cl_WA_2D'] = mm.cl_interpolator(cl_LL_2D, zpairs_auto, ell_WA, nbl_WA)
+cl_dict_2D['cl_GL_2D'] = mm.cl_interpolator(cl_GL_2D, zpairs_cross, ell_GC, nbl_GC)
+cl_dict_2D['cl_LLfor3x2pt_2D'] = mm.cl_interpolator(cl_LL_2D, zpairs_auto, ell_GC, nbl_GC)
 
 rl_dict_2D = {}
-rl_dict_2D['rl_LL_2D'] = mm.cl_interpolator(rl_LL_1D, zpairs_auto, ell_WL, nbl_WL)
-rl_dict_2D['rl_GG_2D'] = mm.cl_interpolator(rl_GG_1D, zpairs_auto, ell_GC, nbl_GC)
-rl_dict_2D['rl_WA_2D'] = mm.cl_interpolator(rl_LL_1D, zpairs_auto, ell_WA, nbl_WA)
-rl_dict_2D['rl_GL_2D'] = mm.cl_interpolator(rl_GL_1D, zpairs_cross, ell_GC, nbl_GC)
-rl_dict_2D['rl_LLfor3x2pt_2D'] = mm.cl_interpolator(rl_LL_1D, zpairs_auto, ell_GC, nbl_GC)
+rl_dict_2D['rl_LL_2D'] = mm.cl_interpolator(rl_LL_2D, zpairs_auto, ell_WL, nbl_WL)
+rl_dict_2D['rl_GG_2D'] = mm.cl_interpolator(rl_GG_2D, zpairs_auto, ell_GC, nbl_GC)
+rl_dict_2D['rl_WA_2D'] = mm.cl_interpolator(rl_LL_2D, zpairs_auto, ell_WA, nbl_WA)
+rl_dict_2D['rl_GL_2D'] = mm.cl_interpolator(rl_GL_2D, zpairs_cross, ell_GC, nbl_GC)
+rl_dict_2D['rl_LLfor3x2pt_2D'] = mm.cl_interpolator(rl_LL_2D, zpairs_auto, ell_GC, nbl_GC)
 
 # reshape to 3D
 cl_dict_3D = {}

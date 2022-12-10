@@ -20,7 +20,7 @@ general_cfg = {
     'zbins': 10,
     'zbins_list': None,
     'EP_or_ED': 'EP',
-    'zbins_type_list': ('EP',),
+    'zbins_type_list': None,
     'n_probes': 2,
     'nbl_WL': 30,
     'nbl_GC': 30,
@@ -49,7 +49,7 @@ covariance_cfg = {
     'rl_value': None,  # it used to be 4 for a constant probe response, which this is wrong
     'block_index': 'ell',
     # this is the one used by me and Vincenzo. The blocks in the 2D covmat will be indexed by ell1, ell2
-    'which_probe_response': 'variable',
+    'which_probe_response': 'constant',
     'ng': 30,
     'ng_folder': None,
     'ng_filename': None,

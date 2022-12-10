@@ -13,15 +13,6 @@ BNT_transform = False
 # survey_area_deg2 = 15469.86  # deg^2
 # use_WA: False
 
-# Cij_14may:
-# 'cl_folder': f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}',
-# 'cl_filename': 'Cij{probe:s}-GR-Flat-eNLA-NA.dat',
-# 'GL_or_LG': 'GL',
-# 'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}',
-# 'derivatives_filename': 'dCij{probe:s}d{param:s}-GR-Flat-eNLA-NA.dat',
-# paramnames_galbias = [f'bL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
-
-
 general_cfg = {
     'ell_min': 10,
     'ell_max_WL': 5000,
@@ -39,11 +30,9 @@ general_cfg = {
     'cl_BNT_transform': BNT_transform,
     'BNT_matrix_path': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT_matrix',
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
-    # 'cl_folder': f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}',
-    'cl_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_tesi/new_names',
+    'cl_folder': f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}',
     'rl_folder': f'{project_path.parent}/common_data/vincenzo/Pk_responses_2D/' + '{EP_or_ED:s}{zbins:02d}',
-    # 'cl_filename': 'Cij{probe:s}-GR-Flat-eNLA-NA.dat',
-    'cl_filename': 'Cij{probe:s}-N4TB-GR-eNLA.dat',
+    'cl_filename': 'Cij{probe:s}-GR-Flat-eNLA-NA.dat',
     'rl_filename': 'rij{probe:s}corr-istf-alex.dat',
 }
 
@@ -91,7 +80,7 @@ Sijkl_cfg = {
 # define the parameters outside the dictionary, it's more convenient
 paramnames_cosmo = ["Om", "Ob", "wz", "wa", "h", "ns", "s8"]
 paramnames_IA = ["Aia", "eIA", "bIA"]
-paramnames_galbias = [f'b{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
+paramnames_galbias = [f'bL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
 paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias
 nparams_total = len(paramnames_3x2pt)
 
@@ -101,11 +90,10 @@ FM_cfg = {
     'save_FM': True,
     'save_FM_as_dict': True,
     'derivatives_BNT_transform': True,
-    # 'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}',
-    'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_derivatives_tesi/new_names/',
-    # 'derivatives_filename': 'dCij{probe:s}d{param:s}-GR-Flat-eNLA-NA.dat',
+    'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}',
+    'derivatives_filename': 'dCij{probe:s}d{param:s}',
     'derivatives_prefix': 'dCij{probe:s}d',
-    'derivatives_suffix': '-N4TB-GR-eNLA',  # I'd like to use this, but instead:
+    'derivatives_suffix': '-GR-Flat-eNLA-NA',  # I'd like to use this, but instead:
     'FM_folder': f'{job_path}/output/FM',
     'FM_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}.txt',
     'params_order': None,

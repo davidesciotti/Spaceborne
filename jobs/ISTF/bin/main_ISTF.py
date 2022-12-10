@@ -38,7 +38,7 @@ import bin.FM_running as FM_utils
 import bin.utils_running as utils
 
 # job configuration and modules
-import jobs.ISTF.config.config_ISTF as cfg
+import jobs.ISTF.config.config_ISTF_cl14may as cfg
 import jobs.ISTF.bin.unit_test as ut
 
 matplotlib.use('Qt5Agg')

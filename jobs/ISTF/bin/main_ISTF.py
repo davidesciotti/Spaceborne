@@ -1,3 +1,4 @@
+import bz2
 import pickle
 import sys
 import time
@@ -38,7 +39,7 @@ import bin.FM_running as FM_utils
 import bin.utils_running as utils
 
 # job configuration and modules
-import jobs.ISTF.config.config_ISTF_cl14may as cfg
+import jobs.ISTF.config.config_ISTF_cl15gen as cfg
 import jobs.ISTF.bin.unit_test as ut
 
 matplotlib.use('Qt5Agg')
@@ -235,7 +236,6 @@ if covariance_cfg['compute_covmat']:
     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
 
-# assert 1 > 2
 # ! compute Fisher Matrix
 if FM_cfg['compute_FM']:
 

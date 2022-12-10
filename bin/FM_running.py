@@ -32,7 +32,7 @@ def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
     return dC_3D
 
 
-def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, obs_name, is_3x2pt=False, n_probes=2):
+def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, derivatives_prefix, is_3x2pt=False, n_probes=2):
     """
     :param param_names: filename of the parameter, e.g. 'Om'; dCldOm = d(C(l))/d(Om)
     :param dC_dict_3D:
@@ -56,15 +56,15 @@ def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, obs_name, is_3x2pt=
     no_derivative_counter = 0
     for idx, param_name in enumerate(param_names):
         for key, value in dC_dict_3D.items():
-            if f'd{obs_name}d{param_name}' in key:
+            if f'{derivatives_prefix}{param_name}' in key:
                 dC_4D[..., idx] = value
 
         # a check, if the derivative wrt the param is not in the folder at all
-        if not any(f'd{obs_name}d{param_name}' in key for key in dC_dict_3D.keys()):
-            print(f'Derivative d{obs_name}d{param_name} not found; setting the corresponding entry to zero')
+        if not any(f'{derivatives_prefix}{param_name}' in key for key in dC_dict_3D.keys()):
+            print(f'Derivative {derivatives_prefix}{param_name} not found; setting the corresponding entry to zero')
             no_derivative_counter += 1
         if no_derivative_counter == len(param_names):
-            warnings.warn('No derivative found for any of the parameters in the input dictionary')
+            raise ImportError('No derivative found for any of the parameters in the input dictionary')
     return dC_4D
 
 

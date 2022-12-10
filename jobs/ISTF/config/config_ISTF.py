@@ -53,7 +53,6 @@ if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
 covariance_cfg = {
     'ind_folder': f'{project_path.parent}/common_data/ind_files' + '/{triu_tril:s}_{row_col_major:s}',
     'ind_filename': 'indices_{triu_tril:s}_{row_col_major:s}_zbins{zbins:02d}.dat',
-    # 'ind_ordering': ind_ordering,  # TODO deprecate this
     'triu_tril': 'triu',
     'row_col_major': 'row-wise',
     'GL_or_LG': 'GL',
@@ -92,7 +91,7 @@ Sijkl_cfg = {
 # define the parameters outside the dictionary, it's more convenient
 paramnames_cosmo = ["Om", "Ob", "wz", "wa", "h", "ns", "s8"]
 paramnames_IA = ["Aia", "eIA", "bIA"]
-paramnames_galbias = [f'bL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
+paramnames_galbias = [f'b{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
 paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias
 nparams_total = len(paramnames_3x2pt)
 
@@ -105,8 +104,8 @@ FM_cfg = {
     # 'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}',
     'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_derivatives_tesi/new_names/',
     # 'derivatives_filename': 'dCij{probe:s}d{param:s}-GR-Flat-eNLA-NA.dat',
-    'derivatives_filename': 'dCij{probe}d{param:s}-N4TB-GR-eNLA.dat',
-    'obs_name': 'Cij',  # i.e., the name of the observable in the derivatives file in the format d{obs_name}d{param}
+    'derivatives_prefix': 'dCij{probe:s}d',
+    'derivatives_suffix': '-N4TB-GR-eNLA',  # I'd like to use this, but instead:
     'FM_folder': f'{job_path}/output/FM',
     'FM_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}.txt',
     'params_order': None,

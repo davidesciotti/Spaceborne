@@ -41,8 +41,6 @@ import bin.utils_running as utils
 import jobs.ISTF.config.config_ISTF as cfg
 import jobs.ISTF.bin.unit_test as ut
 
-
-
 matplotlib.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
@@ -243,8 +241,10 @@ if FM_cfg['compute_FM']:
 
     paramnames_3x2pt = FM_cfg['paramnames_3x2pt']
     nparams_total = len(paramnames_3x2pt)
-    obs_name = FM_cfg['obs_name']
     GL_or_LG = covariance_cfg['GL_or_LG']
+    # these define the derivatives filenames
+    der_prefix = FM_cfg['derivatives_prefix']
+    derivatives_suffix = FM_cfg['derivatives_suffix']
 
     derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
     dC_dict_2D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
@@ -252,37 +252,47 @@ if FM_cfg['compute_FM']:
     if not dC_dict_2D:
         raise ValueError(f'No derivatives found in folder {derivatives_folder}')
 
-
-    # interpolate and separate into probe-specific dictionaries; then reshape from 2D to 3D
+    # interpolate and separate into probe-specific dictionaries, as
+    # ; then reshape from 2D to 3D
     dC_dict_LL_2D, dC_dict_LL_3D = {}, {}
     dC_dict_GG_2D, dC_dict_GG_3D = {}, {}
     dC_dict_GL_2D, dC_dict_GL_3D = {}, {}
     dC_dict_WA_2D, dC_dict_WA_3D = {}, {}
     dC_dict_LLfor3x2pt_2D, dC_dict_LLfor3x2pt_3D = {}, {}
+
     for key in dC_dict_2D.keys():
-        if f'{obs_name}LL' in key:
-            dC_dict_LL_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_WL, nbl_WL)
-            dC_dict_WA_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_WA, nbl_WA)
-            dC_dict_LLfor3x2pt_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_GC, nbl_GC)
-            dC_dict_LL_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_LL_2D[key], nbl_WL, zpairs_auto, zbins)
-            dC_dict_WA_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_WA_2D[key], nbl_WA, zpairs_auto, zbins)
-            dC_dict_LLfor3x2pt_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_LL_2D[key], nbl_GC, zpairs_auto,
-                                                                  zbins)
-        elif f'{obs_name}GG' in key:
-            dC_dict_GG_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_GC, nbl_GC)
-            dC_dict_GG_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_GG_2D[key], nbl_GC, zpairs_auto, zbins)
-        elif f'{obs_name}{GL_or_LG}' in key:
-            dC_dict_GL_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_cross, ell_GC, nbl_GC)
-            dC_dict_GL_3D[key] = mm.cl_2D_to_3D_asymmetric(dC_dict_GL_2D[key], nbl_GC, zbins, 'row_major')
+        if key.endswith(derivatives_suffix):
+
+            if key.startswith(der_prefix.format(probe='LL')):
+                dC_dict_LL_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_WL, nbl_WL)
+                dC_dict_WA_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_WA, nbl_WA)
+                dC_dict_LLfor3x2pt_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_GC, nbl_GC)
+                dC_dict_LL_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_LL_2D[key], nbl_WL, zpairs_auto, zbins)
+                dC_dict_WA_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_WA_2D[key], nbl_WA, zpairs_auto, zbins)
+                dC_dict_LLfor3x2pt_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_LL_2D[key], nbl_GC, zpairs_auto, zbins)
+
+            elif key.startswith(der_prefix.format(probe='GG')):
+                dC_dict_GG_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_GC, nbl_GC)
+                dC_dict_GG_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_GG_2D[key], nbl_GC, zpairs_auto, zbins)
+
+            elif key.startswith(der_prefix.format(probe=GL_or_LG)):
+                dC_dict_GL_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_cross, ell_GC, nbl_GC)
+                dC_dict_GL_3D[key] = mm.cl_2D_to_3D_asymmetric(dC_dict_GL_2D[key], nbl_GC, zbins, 'row_major')
 
     # turn dictionary keys into entries of 4-th array axis
     # TODO the obs_name must be defined in the config file
-    dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl, zbins, obs_name=f'{obs_name}LL')
-    dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, paramnames_3x2pt, nbl_WA, zbins, obs_name=f'{obs_name}LL')
+    dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl, zbins,
+                                            der_prefix.format(probe='LL'))
+    dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, paramnames_3x2pt, nbl_WA, zbins,
+                                            der_prefix.format(probe='LL'))
     dC_LLfor3x2pt_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LLfor3x2pt_3D, paramnames_3x2pt, nbl, zbins,
-                                                    obs_name=f'{obs_name}LL')
-    dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, paramnames_3x2pt, nbl, zbins, obs_name=f'{obs_name}GG')
-    dC_GL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GL_3D, paramnames_3x2pt, nbl, zbins, obs_name=f'{obs_name}{GL_or_LG}')
+                                                    der_prefix.format(probe='LL'))
+    dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, paramnames_3x2pt, nbl, zbins,
+                                            der_prefix.format(probe='GG'))
+    dC_GL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GL_3D, paramnames_3x2pt, nbl, zbins,
+                                            der_prefix.format(probe=GL_or_LG))
+
+    # assert 1 > 2, 'stop here'
 
     # build 5D array of derivatives for the 3x2pt
     dC_3x2pt_5D = np.zeros((nbl, n_probes, n_probes, zbins, zbins, nparams_total))
@@ -303,7 +313,7 @@ if FM_cfg['compute_FM']:
     paramnames_galbias = [f'bL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
 
     fid_cosmo = [ISTFfid.primary['Om_m0'], ISTFfid.primary['Om_b0'], ISTFfid.primary['w_0'], ISTFfid.primary['w_a'],
-                    ISTFfid.primary['h_0'], ISTFfid.primary['n_s'], ISTFfid.primary['sigma_8']]
+                 ISTFfid.primary['h_0'], ISTFfid.primary['n_s'], ISTFfid.primary['sigma_8']]
     fid_IA = [ISTFfid.IA_free['A_IA'], ISTFfid.IA_free['eta_IA'], ISTFfid.IA_free['beta_IA']]
     fid_gal_bias = [ISTFfid.photoz_galaxy_bias[f'b{zbin:02d}_photo'] for zbin in range(1, zbins + 1)]
     fid_3x2pt = fid_cosmo + fid_IA + fid_gal_bias
@@ -423,7 +433,6 @@ if FM_cfg['save_FM']:
     which_cov_list = ['GO', 'GS']
     header = f"parameters: {paramnames_3x2pt} \nfiducials: {fid_3x2pt}"
     FM_folder = FM_cfg["FM_folder"]
-
 
     for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
         for which_cov in which_cov_list:

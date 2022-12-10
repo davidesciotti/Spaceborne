@@ -4,14 +4,10 @@ import sys
 import time
 from pathlib import Path
 import matplotlib
-import scipy.io as sio
-import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
-import pandas as pd
 import os
 import warnings
-import scipy.sparse as spar
 import _pickle as cPickle
 
 project_path = Path.cwd().parent.parent.parent
@@ -57,29 +53,6 @@ def load_compressed_pickle(file):
     data = bz2.BZ2File(file, 'rb')
     data = cPickle.load(data)
     return data
-
-
-# todo move this to my_module
-def dC_dict_to_4D_array(param_names, dC_dict_3D, nbl, zbins, is_3x2pt=False, n_probes=2):
-    # param_names should be params_tot in all cases, because when the derivative dows not exist
-    # in dC_dict_3D the output array will remain null
-    if is_3x2pt:
-        dC_4D = np.zeros((nbl, n_probes, n_probes, zbins, zbins, len(param_names)))
-    else:
-        dC_4D = np.zeros((nbl, zbins, zbins, len(param_names)))
-
-    if not dC_dict_3D:
-        warnings.warn('The input dictionary is empty')
-
-    for idx, paramname in enumerate(param_names):
-        for key, value in dC_dict_3D.items():
-            if f'dDVd{paramname}' in key:
-                dC_4D[..., idx] = value
-
-        # a check, if the derivative wrt the param is not in the folder at all
-        if not any(f'dDVd{paramname}' in key for key in dC_dict_3D.keys()):
-            print(f'WARNING: derivative dDVd{paramname} not found in dC_dict_3D')
-    return dC_4D
 
 
 # TODO check that the number of ell bins is the same as in the files

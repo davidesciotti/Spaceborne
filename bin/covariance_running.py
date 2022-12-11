@@ -95,13 +95,12 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         print('\nAttention! switching columns in the ind array (for the XC part)')
         ind[zpairs_auto:(zpairs_auto + zpairs_cross), [2, 3]] = ind[zpairs_auto:(zpairs_auto + zpairs_cross), [3, 2]]
 
-    # sanity check: the last 2 columns of ind_LL should be equal to the last two of ind_GG
+    # sanity check: the last 2 columns of ind_auto should be equal to the last two of ind_auto
     assert np.array_equiv(ind[:zpairs_auto, 2:], ind[-zpairs_auto:, 2:])
 
     # convenience vectors, used for the cov_4D_to_6D function
-    ind_LL = ind[:zpairs_auto, :].copy()
-    ind_GG = ind_LL.copy()
-    ind_XC = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
+    ind_auto = ind[:zpairs_auto, :].copy()
+    ind_cross = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
 
     # load Cls
     cl_LL_3D = cl_dict_3D['cl_LL_3D']
@@ -284,7 +283,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         # this is the 1st way to compute cov_6D: simply transform the cov_4D array (note that cov_4D_to_6D does not
         # work for 3x2pt, althought it should be easy to implement). Quite slow for GS or SS matrices.
         # example:
-        # cov_dict['cov_WL_GO_6D'] = mm.cov_4D_to_6D(cov_WL_GO_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
+        # cov_dict['cov_WL_GO_6D'] = mm.cov_4D_to_6D(cov_WL_GO_4D, nbl_WL, zbins, probe='LL', ind=ind_auto)
 
         # the cov_G_10D_dict function takes as input a dict, not an array: this is just to create them.
         # note: the only reason why I cannot pass the pre-built cl_dict_3x2pt dictionary is that it contains the probes
@@ -332,15 +331,15 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
         # test that they are equal to the 4D ones; this is quite slow, so I check only some arrays
         print('check: is cov_4D == mm.cov_6D_to_4D(cov_6D)?')
-        assert np.allclose(cov_WL_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_LL),
+        assert np.allclose(cov_WL_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_auto),
                            rtol=1e-7, atol=0)
-        # assert np.allclose(cov_GC_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GO_6D'], nbl_GC, zpairs_auto, ind_GG), rtol=1e-7, atol=0)
-        # assert np.allclose(cov_WA_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GO_6D'], nbl_WA, zpairs_auto, ind_LL), rtol=1e-7, atol=0)
+        # assert np.allclose(cov_GC_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GO_6D'], nbl_GC, zpairs_auto, ind_auto), rtol=1e-7, atol=0)
+        # assert np.allclose(cov_WA_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GO_6D'], nbl_WA, zpairs_auto, ind_auto), rtol=1e-7, atol=0)
 
-        # assert np.allclose(cov_WL_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GS_6D'], nbl_WL, zpairs_auto, ind_LL), rtol=1e-7, atol=0)
-        assert np.allclose(cov_GC_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GS_6D'], nbl_GC, zpairs_auto, ind_GG),
+        # assert np.allclose(cov_WL_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GS_6D'], nbl_WL, zpairs_auto, ind_auto), rtol=1e-7, atol=0)
+        assert np.allclose(cov_GC_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GS_6D'], nbl_GC, zpairs_auto, ind_auto),
                            rtol=1e-7, atol=0)
-        # assert np.allclose(cov_WA_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, zpairs_auto, ind_LL), rtol=1e-7, atol=0)
+        # assert np.allclose(cov_WA_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, zpairs_auto, ind_auto), rtol=1e-7, atol=0)
 
     print('checks passed')
 

@@ -302,7 +302,7 @@ if FM_cfg['compute_FM']:
 # ! save:
 # this is just to set the correct probe names
 probe_dav_dict = {
-    'WL': 'LL_WLonly_3D',
+    'WL': 'LL_3D',
     'GC': 'GG_3D',
     'WA': 'WA_3D',
     '3x2pt': '3x2pt_5D'}
@@ -320,8 +320,7 @@ for cl_or_rl in ['cl', 'rl']:
     folder = general_cfg[f'{cl_or_rl}_folder']
     if general_cfg[f'save_{cl_or_rl}s_3d']:
 
-        for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'],
-                                         ['WL', 'GC', '3x2pt', 'WA']):
+        for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
             # save cl and/or response
             np.save(f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/'
                     f'{clrl_dict[f"{cl_or_rl}_inputname"]}-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
@@ -337,10 +336,7 @@ for cl_or_rl in ['cl', 'rl']:
                     f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                     delta_dict[f'delta_l_{probe_dav}'])
 
-cov_folder = covariance_cfg["cov_folder"].format(zbins=zbins,
-                                                 triu_tril=covariance_cfg['triu_tril'],
-                                                 row_col_major=covariance_cfg['row_col_major'],
-                                                 SSC_code=covariance_cfg['SSC_code'])
+cov_folder = covariance_cfg["cov_folder"].format(SSC_code=covariance_cfg['SSC_code'])
 for ndim in (2, 4, 6):
     if covariance_cfg[f'save_cov_{ndim}D']:
 
@@ -380,28 +376,6 @@ for ndim in (2, 4, 6):
                 np.save(
                     f'{cov_folder}/covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_zbins{EP_or_ED}{zbins:02}_{ndim}D.npy',
                     cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
-
-# save in .dat for Vincenzo, only in the optimistic case and in 2D
-if covariance_cfg['save_cov_dat'] and ell_max_WL == 5000:
-    path_vinc_fmt = f'{job_path}/output/covmat/vincenzos_format'
-    for probe, probe_vinc in zip(['WL', 'GC', '3x2pt', 'WA'], ['WLO', 'GCO', '3x2pt', 'WLA']):
-        for GOGS_folder, GOGS_filename in zip(['GaussOnly', 'GaussSSC'], ['GO', 'GS']):
-            np.savetxt(f'{path_vinc_fmt}/{GOGS_folder}/{probe_vinc}/cm-{probe_vinc}-{nbl_WL}'
-                       f'-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.dat',
-                       cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.10e')
-
-# check for Stefano
-if covariance_cfg['save_cov_6D']:
-    print('GHOST CODE BELOW')
-    npairs = (zbins * (zbins + 1)) // 2
-    cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GO_6D'], nbl_WL, npairs, ind[:npairs, :])
-    cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GO_6D'], nbl_GC, npairs, ind[:npairs, :])
-    cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GS_6D'], nbl_WL, npairs, ind[:npairs, :])
-    cov_GC_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GS_6D'], nbl_GC, npairs, ind[:npairs, :])
-    assert np.array_equal(cov_WL_GO_4D, cov_dict[f'cov_WL_GO_4D'])
-    assert np.array_equal(cov_GC_GO_4D, cov_dict[f'cov_GC_GO_4D'])
-    assert np.allclose(cov_WL_GS_4D, cov_dict[f'cov_WL_GS_4D'], rtol=1e-9, atol=0)
-    assert np.allclose(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D'], rtol=1e-9, atol=0)
 
 if FM_cfg['save_FM']:
     # saves as txt file

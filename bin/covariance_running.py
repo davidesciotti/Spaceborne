@@ -172,13 +172,16 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         # TODO for now, load the existing files; then, compute the SSC cov properly
         fldr = covariance_cfg["cov_SSC_PyCCL_folder"]
         filename = covariance_cfg["cov_SSC_PyCCL_filename"]
-        cov_SS_PySSC_WL_6D = np.load(f'{fldr}/{filename.format(probe="WL", nbl=nbl_WL, ell_max=ell_max_WL)}')
-        cov_SS_PySSC_GC_6D = np.load(f'{fldr}/{filename.format(probe="GC", nbl=nbl_GC, ell_max=ell_max_GC)}')
-        cov_SS_PySSC_3x2pt_6D = np.load(f'{fldr}/{filename.format(probe="3x2pt", nbl=nbl_GC, ell_max=ell_max_GC)}')
 
-        # reshape to 4D
-        cov_SS_PySSC_WL_4D = mm.cov_6D_to_4D(cov_SS_PySSC_WL_6D, nbl_WL, zpairs_auto, ind=ind[:zpairs_auto, :])
-        cov_SS_PySSC_GC_2D = mm.cov_4D_to_2D(cov_SS_PySSC_WL_4D, block_index='ell')
+        cov_SS_WL_6D = np.load(f'{fldr}/{filename.format(probe="WL", nbl=nbl_WL, ell_max=ell_max_WL)}')
+        cov_SS_GC_6D = np.load(f'{fldr}/{filename.format(probe="GC", nbl=nbl_GC, ell_max=ell_max_GC)}')
+        cov_SS_3x2pt_6D = np.load(f'{fldr}/{filename.format(probe="3x2pt", nbl=nbl_GC, ell_max=ell_max_GC)}')
+
+        # reshape to 4D, then to 2D
+        cov_SS_WL_4D = mm.cov_6D_to_4D(cov_SS_WL_6D, nbl_WL, zpairs_auto, ind=ind[:zpairs_auto, :])
+        cov_SS_GC_4D = mm.cov_6D_to_4D(cov_SS_GC_6D, nbl_GC, zpairs_auto, ind=ind[:zpairs_auto, :])
+        cov_SS_3x2pt_4D = mm.cov_6D_to_4D(cov_SS_WL_6D, nbl_WL, zpairs_auto, ind=ind[:zpairs_auto, :])
+
 
 
     else:

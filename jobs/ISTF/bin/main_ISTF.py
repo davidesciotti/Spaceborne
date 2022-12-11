@@ -3,7 +3,7 @@ import pickle
 import sys
 import time
 from pathlib import Path
-import matplotlib
+import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 import os
@@ -35,10 +35,10 @@ import bin.FM_running as FM_utils
 import bin.utils_running as utils
 
 # job configuration and modules
-import jobs.ISTF.config.config_ISTF_cl15gen as cfg
+import jobs.ISTF.config.config_ISTF_cl14may as cfg
 import jobs.ISTF.bin.unit_test as ut
 
-matplotlib.use('Qt5Agg')
+mpl.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 start_time = time.perf_counter()
@@ -179,10 +179,14 @@ if covariance_cfg['compute_covmat']:
     # if Sijkl exists, load it; otherwise, compute it and save it
     Sijkl_folder = Sijkl_cfg['Sijkl_folder']
     Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(nz=Sijkl_cfg['nz'])
+
     if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
+
         print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
         sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
+
     else:
+
         # ! load kernels
         # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
         nz = Sijkl_cfg["nz"]
@@ -333,9 +337,10 @@ for cl_or_rl in ['cl', 'rl']:
                     f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                     delta_dict[f'delta_l_{probe_dav}'])
 
-covmat_path = covariance_cfg["cov_folder"].format(zbins=zbins,
-                                                  triu_tril=covariance_cfg['triu_tril'],
-                                                  row_col_major=covariance_cfg['row_col_major'])
+cov_folder = covariance_cfg["cov_folder"].format(zbins=zbins,
+                                                 triu_tril=covariance_cfg['triu_tril'],
+                                                 row_col_major=covariance_cfg['row_col_major'],
+                                                 SSC_code=covariance_cfg['SSC_code'])
 for ndim in (2, 4, 6):
     if covariance_cfg[f'save_cov_{ndim}D']:
 
@@ -359,13 +364,13 @@ for ndim in (2, 4, 6):
 
             for which_cov in which_cov_list:
                 for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
-                    np.save(f'{covmat_path}/'
+                    np.save(f'{cov_folder}/'
                             f'covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_zbins{EP_or_ED}{zbins:02}_{ndim}D.npy',
                             cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])
 
                 # in this case, 3x2pt is saved in 10D as a dictionary
                 if ndim == 6:
-                    filename = f'{covmat_path}/covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_nbl{nbl_GC}_zbins{EP_or_ED}{zbins:02}_10D.pickle'
+                    filename = f'{cov_folder}/covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_nbl{nbl_GC}_zbins{EP_or_ED}{zbins:02}_10D.pickle'
                     with open(filename, 'wb') as handle:
                         pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
 
@@ -373,7 +378,7 @@ for ndim in (2, 4, 6):
         elif ell_max_WL == 1500:
             for which_cov in which_cov_list:
                 np.save(
-                    f'{covmat_path}/covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_zbins{EP_or_ED}{zbins:02}_{ndim}D.npy',
+                    f'{cov_folder}/covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_zbins{EP_or_ED}{zbins:02}_{ndim}D.npy',
                     cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
 
 # save in .dat for Vincenzo, only in the optimistic case and in 2D

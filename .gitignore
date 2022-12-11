@@ -27,3 +27,5 @@ jobs/ISTF/output/covmat
 **/.DS_Store
 
 *.pyc
+jobs/ISTF/bin/profile.json
+jobs/ISTF/bin/profile.html

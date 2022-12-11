@@ -32,6 +32,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     EP_or_ED = general_cfg['EP_or_ED']
     triu_tril = covariance_cfg['triu_tril']
     rowcol_major = covariance_cfg['row_col_major']
+    SSC_code = covariance_cfg['SSC_code']
 
     fsky = covariance_cfg['fsky']
     GL_or_LG = covariance_cfg['GL_or_LG']
@@ -41,7 +42,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     which_probe_response = covariance_cfg['which_probe_response']
 
     start = time.perf_counter()
-
 
     # import ell values
     ell_WL, nbl_WL = ell_dict['ell_WL'], ell_dict['ell_WL'].shape[0]
@@ -160,12 +160,29 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     ######################## COMPUTE SS COVARIANCE ###############################
 
-    start = time.perf_counter()
-    cov_WL_SS_4D = mm.cov_SSC(nbl_WL, zpairs_auto, ind, cl_LL_3D, Sijkl, fsky, "WL", zbins, rl_LL_3D)
-    cov_GC_SS_4D = mm.cov_SSC(nbl_GC, zpairs_auto, ind, cl_GG_3D, Sijkl, fsky, "GC", zbins, rl_GG_3D)
-    cov_WA_SS_4D = mm.cov_SSC(nbl_WA, zpairs_auto, ind, cl_WA_3D, Sijkl, fsky, "WA", zbins, rl_WA_3D)
-    cov_3x2pt_SS_4D = mm.cov_SSC_ALL(nbl_3x2pt, zpairs_3x2pt, ind, cl_3x2pt_5D, Sijkl, fsky, zbins, rl_3x2pt_5D)
-    print("SS cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
+    if SSC_code == 'PySSC':
+        start = time.perf_counter()
+        cov_WL_SS_4D = mm.cov_SSC(nbl_WL, zpairs_auto, ind, cl_LL_3D, Sijkl, fsky, "WL", zbins, rl_LL_3D)
+        cov_GC_SS_4D = mm.cov_SSC(nbl_GC, zpairs_auto, ind, cl_GG_3D, Sijkl, fsky, "GC", zbins, rl_GG_3D)
+        cov_WA_SS_4D = mm.cov_SSC(nbl_WA, zpairs_auto, ind, cl_WA_3D, Sijkl, fsky, "WA", zbins, rl_WA_3D)
+        cov_3x2pt_SS_4D = mm.cov_SSC_ALL(nbl_3x2pt, zpairs_3x2pt, ind, cl_3x2pt_5D, Sijkl, fsky, zbins, rl_3x2pt_5D)
+        print("SS cov. matrices computed in %.2f seconds with PySSC" % (time.perf_counter() - start))
+
+    elif SSC_code == 'PyCCL':
+        # TODO for now, load the existing files; then, compute the SSC cov properly
+        fldr = covariance_cfg["cov_SSC_PyCCL_folder"]
+        filename = covariance_cfg["cov_SSC_PyCCL_filename"]
+        cov_SS_PySSC_WL_6D = np.load(f'{fldr}/{filename.format(probe="WL", nbl=nbl_WL, ell_max=ell_max_WL)}')
+        cov_SS_PySSC_GC_6D = np.load(f'{fldr}/{filename.format(probe="GC", nbl=nbl_GC, ell_max=ell_max_GC)}')
+        cov_SS_PySSC_3x2pt_6D = np.load(f'{fldr}/{filename.format(probe="3x2pt", nbl=nbl_GC, ell_max=ell_max_GC)}')
+
+        # reshape to 4D
+        cov_SS_PySSC_WL_4D = mm.cov_6D_to_4D(cov_SS_PySSC_WL_6D, nbl_WL, zpairs_auto, ind=ind[:zpairs_auto, :])
+        cov_SS_PySSC_GC_2D = mm.cov_4D_to_2D(cov_SS_PySSC_WL_4D, block_index='ell')
+
+
+    else:
+        raise ValueError("SSC_code must be 'PySSC' or 'PyCCL'")
 
     ############################## SUM G + SSC ################################
     cov_WL_GS_4D = cov_WL_GO_4D + cov_WL_SS_4D
@@ -290,7 +307,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
                                                      probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
         print(f'cov_GO_6D new computed in {(time.perf_counter() - start_time):.2f} seconds')
 
-
         # ! cov_SS_6D
         start_time = time.perf_counter()
         cov_WL_SS_6D = mm.cov_SS_10D_dict(cl_dict_LL, rl_dict_LL, Sijkl_dict, nbl_WL, zbins, fsky,
@@ -313,12 +329,14 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
         # test that they are equal to the 4D ones; this is quite slow, so I check only some arrays
         print('check: is cov_4D == mm.cov_6D_to_4D(cov_6D)?')
-        assert np.allclose(cov_WL_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_LL), rtol=1e-7, atol=0)
+        assert np.allclose(cov_WL_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_LL),
+                           rtol=1e-7, atol=0)
         # assert np.allclose(cov_GC_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GO_6D'], nbl_GC, zpairs_auto, ind_GG), rtol=1e-7, atol=0)
         # assert np.allclose(cov_WA_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GO_6D'], nbl_WA, zpairs_auto, ind_LL), rtol=1e-7, atol=0)
 
         # assert np.allclose(cov_WL_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GS_6D'], nbl_WL, zpairs_auto, ind_LL), rtol=1e-7, atol=0)
-        assert np.allclose(cov_GC_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GS_6D'], nbl_GC, zpairs_auto, ind_GG), rtol=1e-7, atol=0)
+        assert np.allclose(cov_GC_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GS_6D'], nbl_GC, zpairs_auto, ind_GG),
+                           rtol=1e-7, atol=0)
         # assert np.allclose(cov_WA_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, zpairs_auto, ind_LL), rtol=1e-7, atol=0)
 
     print('checks passed')

@@ -43,13 +43,14 @@ covariance_cfg = {
     'ind_folder': f'{project_path.parent}/common_data/ind_files' + '/{triu_tril:s}_{row_col_major:s}',
     'ind_filename': 'indices_{triu_tril:s}_{row_col_major:s}_zbins{zbins:02d}.dat',
     'triu_tril': 'triu',
-    'row_col_major': 'row-wise',
+    'row_col_major': 'row-major',
     'GL_or_LG': 'GL',
     'fsky': fsky,
     'rl_value': None,  # it used to be 4 for a constant probe response, which this is wrong
     'block_index': 'ell',
     # this is the one used by me and Vincenzo. The blocks in the 2D covmat will be indexed by ell1, ell2
     'which_probe_response': 'variable',
+    'SSC_code': 'PySSC',  # PySSC or PyCCL
     'ng': 30,
     'ng_folder': None,
     'ng_filename': None,
@@ -60,9 +61,11 @@ covariance_cfg = {
     'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_GS': False,
     'save_cov_SSC': False,
-    'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
-    'cov_folder': f'{job_path}/output/covmat',
+    'cov_folder': str(job_path) + '/output/covmat/{SSC_code:s}',
+    'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D.npy',
+    'cov_SSC_PyCCL_folder': f'{project_path.parent}/PyCCL_SSC/output/covmat',
+    'cov_SSC_PySSC_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ellmax:s}_hm_recipeKiDS1000_6D.npy',  # TODO these 2 filenames could be unified...
 }
 
 Sijkl_cfg = {

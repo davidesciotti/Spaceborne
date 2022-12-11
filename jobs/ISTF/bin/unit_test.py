@@ -25,6 +25,7 @@ matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
+
 def test_cov():
     """tests that the outputs do not change between the old and the new version"""
     cov_old_dict = dict(mm.get_kv_pairs_npy(f'{job_path}/output/covmat/test_benchmarks'))
@@ -34,6 +35,8 @@ def test_cov():
 
     for key in cov_old_dict.keys():
         assert np.array_equal(cov_old_dict[key], cov_new_dict[key]), f'The covmat {key} is different'
+    print('test_cov passed successfully ✅')
+
 
 def test_FM():
     """tests that the outputs do not change between the old and the new version"""
@@ -44,3 +47,5 @@ def test_FM():
 
     for key in FM_old_dict.keys():
         assert np.array_equal(FM_old_dict[key], FM_new_dict[key]), f'The FM {key} is different'
+
+    print('test_FM passed successfully ✅')

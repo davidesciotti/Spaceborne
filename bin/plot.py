@@ -91,13 +91,20 @@ _fid = FM_dict['fiducial_values']  # this should not change when passed the seco
 FM_GO = FM_dict[f'FM_{probe}_GO']
 FM_GS = FM_dict[f'FM_{probe}_GS']
 
+FM_GO_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_paper_jan22_backup_works/output/FM/'
+                          f'common_ell_and_deltas/Cij_14may/FM_{probe}_G_lmax{probe}{lmax}_nbl{nbl}.txt')
+FM_GS_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_paper_jan22_backup_works/output/FM/'
+                          f'common_ell_and_deltas/Cij_14may/FM_{probe}_G+SSC_lmax{probe}{lmax}_nbl{nbl}.txt')
+FM_GS_PyCCL = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/PyCCL_forecast/output/'
+                            f'FM/FM_{probe}_GS_lmax{probe}{lmax}_nbl{nbl}_PyCCLKiDS1000.txt')
+
 # fix the desired parameters and remove null rows/columns
 FM_GO, params, fid = mm.mask_FM(FM_GO, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
 FM_GS, _, _ = mm.mask_FM(FM_GS, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
 wzwa_idx = [params.index('wz'), params.index('wa')]
 
-FMs = [FM_GO, FM_GS]
-cases = ['G', 'GS', 'percent_diff']
+FMs = [FM_GO, FM_GO_old, FM_GS, FM_GS_old]
+cases = ['G', 'G_old', 'GS', 'GS_old', 'percent_diff_GS', 'percent_diff_GS_old']
 
 # compute uncertainties
 uncert_dict = {}
@@ -108,7 +115,8 @@ for FM, case in zip(FMs, cases):
     fom[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_idx)
     print(f'FoM({probe}, {case}): {fom[case]}')
 
-uncert_dict['percent_diff'] = diff_funct(uncert_dict['GS'], uncert_dict['G'])
+uncert_dict['percent_diff_GS'] = diff_funct(uncert_dict['GS'], uncert_dict['G'])
+uncert_dict['percent_diff_GS_old'] = diff_funct(uncert_dict['GS_old'], uncert_dict['G_old'])
 uncert_dict['ratio'] = uncert_dict['GS'] / uncert_dict['G']
 
 # check against IST:F (which do not exist for GC alone):

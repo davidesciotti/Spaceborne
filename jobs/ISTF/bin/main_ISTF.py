@@ -269,8 +269,6 @@ if FM_cfg['compute_FM']:
     dC_GL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GL_3D, paramnames_3x2pt, nbl, zbins,
                                             der_prefix.format(probe=GL_or_LG))
 
-    # assert 1 > 2, 'stop here'
-
     # build 5D array of derivatives for the 3x2pt
     dC_3x2pt_5D = np.zeros((nbl, n_probes, n_probes, zbins, zbins, nparams_total))
     dC_3x2pt_5D[:, 0, 0, :, :, :] = dC_LLfor3x2pt_4D

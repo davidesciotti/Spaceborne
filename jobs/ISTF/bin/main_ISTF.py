@@ -35,7 +35,7 @@ import bin.FM_running as FM_utils
 import bin.utils_running as utils
 
 # job configuration and modules
-import jobs.ISTF.config.config_ISTF_cl15gen as cfg
+import jobs.ISTF.config.config_ISTF_cl14may as cfg
 import jobs.ISTF.bin.unit_test as ut
 
 mpl.use('Qt5Agg')
@@ -395,7 +395,6 @@ if FM_cfg['save_FM']:
 if FM_cfg['save_FM_as_dict']:
     mm.save_pickle(f'{FM_folder}/FM_dict_{EP_or_ED}{zbins:02}.pickle', FM_dict)
 
-ut.test_cov(covariance_cfg['SSC_code'])
-ut.test_FM(covariance_cfg['SSC_code'])
+ut.test_cov_FM(covariance_cfg['SSC_code'], 'covmat')
 
 print('done')

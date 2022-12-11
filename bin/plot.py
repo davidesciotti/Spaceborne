@@ -87,7 +87,7 @@ uncert_ratio_dict[probe] = {}
 # import FM dict and
 FM_dict = mm.load_pickle(f'{project_path}/jobs/ISTF/output/FM/{SSC_code}/FM_dict_{EP_or_ED}{zbins:02}.pickle')
 _params = FM_dict['parameters']  # this should not change when passed the second time to the function
-_fid = FM_dict['fiducial_values']
+_fid = FM_dict['fiducial_values']  # this should not change when passed the second time to the function
 FM_GO = FM_dict[f'FM_{probe}_GO']
 FM_GS = FM_dict[f'FM_{probe}_GS']
 
@@ -125,83 +125,4 @@ uncert_array = np.asarray(uncert_array)
 
 title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
 plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases, nparams=nparams_toplot,
-                    param_names_label=params[:nparams_toplot],
-                    bar_width=0.12,
-                    second_axis=False, no_second_axis_bars=0)
-
-# plot
-
-
-assert 1 > 2
-
-for probe in probes:
-
-    lmax = 3000
-    if probe == 'WL':
-        lmax = 5000
-
-    title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, ell_max, EP_or_ED, zbins)
-    title += f'\nML = {magcut_lens / 10}, MS = {magcut_source / 10}, ZL = {zcut_lens / 10}, ZS = {zcut_source / 10:}, zmax = 2.5'
-
-    # TODO try with pandas dataframes
-
-    # print('3', FM_GO.shape)
-    # if model == 'flat':
-    #     FM_GO = np.delete(FM_GO, obj=1, axis=0)
-    #     FM_GO = np.delete(FM_GO, obj=1, axis=1)
-    #     FM_GS = np.delete(FM_GS, obj=1, axis=0)
-    #     FM_GS = np.delete(FM_GS, obj=1, axis=1)
-    #     cosmo_params = 7
-    # elif model == 'nonflat':
-    #     w0wa_rows = [3, 4]  # Omega_DE is in position 1, so w0, wa are shifted by 1 position
-    #     nparams += 1
-    #     cosmo_params = 8
-    #     fid = np.insert(arr=fid, obj=1, values=ISTF_fid.extensions['Om_Lambda0'], axis=0)
-    # pars_labels_TeX = np.insert(arr=pars_labels_TeX, obj=1, values='$\\Omega_{\\rm DE, 0}$', axis=0)
-
-    # fid = fid[:nparams]
-    # pars_labels_TeX = pars_labels_TeX[:nparams]
-
-    ####################################################################################################################
-
-    cases = ('G', 'GS')
-    FMs = (FM_GO, FM_GS)
-
-    data = []
-    fom = {}
-    uncert_dict = {}
-    uncert_ratio_dict[probe][ML][ZL][MS][ZS] = []
-    uncert_G_dict[probe][ML][ZL][MS][ZS] = []
-    uncert_GS_dict[probe][ML][ZL][MS][ZS] = []
-    for FM, case in zip(FMs, cases):
-        uncert_dict[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams, fiducials=fid,
-                                                           which_uncertainty=which_uncertainty, normalize=True))
-        fom[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_rows)
-        print(f'FoM({probe}, {case}): {fom[case]}')
-
-    uncert_dict['percent_diff'] = diff_funct(uncert_dict['GS'], uncert_dict['G'])
-    uncert_dict['ratio'] = uncert_dict['GS'] / uncert_dict['G']
-    cases = ['G', 'GS', 'percent_diff']
-
-    for case in cases:
-        data.append(uncert_dict[case])
-
-    # store uncertainties in dictionaries to easily retrieve them in the different cases
-    uncert_G_dict[probe][ML][ZL][MS][ZS] = uncert_dict['G']
-    uncert_GS_dict[probe][ML][ZL][MS][ZS] = uncert_dict['GS']
-    uncert_ratio_dict[probe][ML][ZL][MS][ZS] = uncert_dict['ratio']
-    # append the FoM values at the end of the array
-    uncert_ratio_dict[probe][ML][ZL][MS][ZS] = np.append(
-        uncert_ratio_dict[probe][ML][ZL][MS][ZS], fom['GS'] / fom['G'])
-
-    for probe in probes:
-        for zbins in zbins_list:
-            for pes_opt in ('opt', 'pes'):
-                data = np.asarray(data)
-                plot_utils.bar_plot(data[:, :nparams_toplot], title, cases, nparams=nparams_toplot,
-                                    param_names_label=paramnames_3x2pt[:nparams_toplot],
-                                    bar_width=0.12,
-                                    second_axis=False, no_second_axis_bars=1)
-
-            # plt.savefig(job_path / f'output/plots/{which_comparison}/'
-            #                        f'bar_plot_{probe}_ellmax{ell_max}_zbins{EP_or_ED}{zbins:02}_Rl{which_Rl}_{which_uncertainty}.png')
+                    param_names_label=params[:nparams_toplot], bar_width=0.12)

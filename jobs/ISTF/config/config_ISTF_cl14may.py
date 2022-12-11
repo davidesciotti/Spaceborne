@@ -50,7 +50,7 @@ covariance_cfg = {
     'block_index': 'ell',
     # this is the one used by me and Vincenzo. The blocks in the 2D covmat will be indexed by ell1, ell2
     'which_probe_response': 'variable',
-    'SSC_code': 'PyCCL',  # PySSC or PyCCL
+    'SSC_code': 'PySSC',  # PySSC or PyCCL
     'ng': 30,
     'ng_folder': None,
     'ng_filename': None,

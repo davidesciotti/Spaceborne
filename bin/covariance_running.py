@@ -167,24 +167,24 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_3x2pt_SS_4D = mm.cov_SSC_ALL(nbl_3x2pt, zpairs_3x2pt, ind, cl_3x2pt_5D, Sijkl, fsky, zbins, rl_3x2pt_5D)
     print("SS cov. matrices computed in %.2f seconds with PySSC" % (time.perf_counter() - start))
 
-    if SSC_code == 'PyCCL':
-
-        # TODO for now, load the existing files; then, compute the SSC cov properly
-        fldr = covariance_cfg["cov_SSC_PyCCL_folder"]
-        filename = covariance_cfg["cov_SSC_PyCCL_filename"]
-
-        cov_WL_SS_6D = np.load(f'{fldr}/{filename.format(probe="WL", nbl=nbl_WL, ell_max=ell_max_WL)}')
-        cov_GC_SS_6D = np.load(f'{fldr}/{filename.format(probe="GC", nbl=nbl_GC, ell_max=ell_max_GC)}')
-        # TODO re-establish the 3x2pt
-        # cov_3x2pt_SS_6D = mm.load_pickle(f'{fldr}/{filename.format(probe="3x2pt", nbl=nbl_GC, ell_max=ell_max_GC)}')
-
-        # reshape to 4D
-        cov_WL_SS_4D = mm.cov_6D_to_4D(cov_WL_SS_6D, nbl_WL, zpairs_auto, ind=ind_auto)
-        cov_GC_SS_4D = mm.cov_6D_to_4D(cov_GC_SS_6D, nbl_GC, zpairs_auto, ind=ind_auto)
-        # cov_3x2pt_SS_4D = mm.cov_6D_to_4D(cov_3x2pt_SS_6D, nbl_GC, zpairs_3x2pt, ind=ind)
-
-    else:
-        raise ValueError("SSC_code must be 'PySSC' or 'PyCCL'")
+    # if SSC_code == 'PyCCL':
+    #
+    #     # TODO for now, load the existing files; then, compute the SSC cov properly
+    #     fldr = covariance_cfg["cov_SSC_PyCCL_folder"]
+    #     filename = covariance_cfg["cov_SSC_PyCCL_filename"]
+    #
+    #     cov_WL_SS_6D = np.load(f'{fldr}/{filename.format(probe="WL", nbl=nbl_WL, ell_max=ell_max_WL)}')
+    #     cov_GC_SS_6D = np.load(f'{fldr}/{filename.format(probe="GC", nbl=nbl_GC, ell_max=ell_max_GC)}')
+    #     # TODO re-establish the 3x2pt
+    #     # cov_3x2pt_SS_6D = mm.load_pickle(f'{fldr}/{filename.format(probe="3x2pt", nbl=nbl_GC, ell_max=ell_max_GC)}')
+    #
+    #     # reshape to 4D
+    #     cov_WL_SS_4D = mm.cov_6D_to_4D(cov_WL_SS_6D, nbl_WL, zpairs_auto, ind=ind_auto)
+    #     cov_GC_SS_4D = mm.cov_6D_to_4D(cov_GC_SS_6D, nbl_GC, zpairs_auto, ind=ind_auto)
+    #     # cov_3x2pt_SS_4D = mm.cov_6D_to_4D(cov_3x2pt_SS_6D, nbl_GC, zpairs_3x2pt, ind=ind)
+    #
+    # else:
+    #     raise ValueError("SSC_code must be 'PySSC' or 'PyCCL'")
 
     ############################## SUM G + SSC ################################
     cov_WL_GS_4D = cov_WL_GO_4D + cov_WL_SS_4D

@@ -149,7 +149,7 @@ def bar_plot_bu(data, title, label_list, bar_width=0.18, nparams=7, param_names_
 
 
 def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_label=param_names_label,
-             second_axis=True, no_second_axis_bars=1):
+             second_axis=False, no_second_axis_bars=0):
     """
     data: usually the percent uncertainties, but could also be the percent difference
     """

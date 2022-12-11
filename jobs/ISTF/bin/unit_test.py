@@ -26,26 +26,14 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
 
-def test_cov(SSC_code):
+def test_cov_FM(SSC_code, to_test):
     """tests that the outputs do not change between the old and the new version"""
-    cov_old_dict = dict(mm.get_kv_pairs_npy(f'{job_path}/output/covmat/test_benchmarks_{SSC_code}'))
-    cov_new_dict = dict(mm.get_kv_pairs_npy(f'{job_path}/output/covmat/{SSC_code}'))
+    old_dict = dict(mm.get_kv_pairs_npy(f'{job_path}/output/{to_test}/test_benchmarks_{SSC_code}'))
+    new_dict = dict(mm.get_kv_pairs_npy(f'{job_path}/output/{to_test}/{SSC_code}'))
 
-    assert cov_old_dict.keys() == cov_new_dict.keys(), 'The number of files or theit names has changed'
+    assert old_dict.keys() == new_dict.keys(), 'The number of files or their names has changed'
 
-    for key in cov_old_dict.keys():
-        assert np.array_equal(cov_old_dict[key], cov_new_dict[key]), f'The covmat {key} is different'
+    for key in old_dict.keys():
+        assert np.array_equal(old_dict[key], new_dict[key]), f'The file {key} is different'
+
     print('test_cov passed successfully ✅')
-
-
-def test_FM(SSC_code):
-    """tests that the outputs do not change between the old and the new version"""
-    FM_old_dict = dict(mm.get_kv_pairs_npy(f'{job_path}/output/FM/test_benchmarks_{SSC_code}'))
-    FM_new_dict = dict(mm.get_kv_pairs_npy(f'{job_path}/output/FM/{SSC_code}'))
-
-    assert FM_old_dict.keys() == FM_new_dict.keys(), 'The number of files or theit names has changed'
-
-    for key in FM_old_dict.keys():
-        assert np.array_equal(FM_old_dict[key], FM_new_dict[key]), f'The FM {key} is different'
-
-    print('test_FM passed successfully ✅')

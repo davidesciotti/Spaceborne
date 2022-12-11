@@ -159,29 +159,29 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     ######################## COMPUTE SS COVARIANCE ###############################
 
-    if SSC_code == 'PySSC':
-        start = time.perf_counter()
-        cov_WL_SS_4D = mm.cov_SSC(nbl_WL, zpairs_auto, ind, cl_LL_3D, Sijkl, fsky, "WL", zbins, rl_LL_3D)
-        cov_GC_SS_4D = mm.cov_SSC(nbl_GC, zpairs_auto, ind, cl_GG_3D, Sijkl, fsky, "GC", zbins, rl_GG_3D)
-        cov_WA_SS_4D = mm.cov_SSC(nbl_WA, zpairs_auto, ind, cl_WA_3D, Sijkl, fsky, "WA", zbins, rl_WA_3D)
-        cov_3x2pt_SS_4D = mm.cov_SSC_ALL(nbl_3x2pt, zpairs_3x2pt, ind, cl_3x2pt_5D, Sijkl, fsky, zbins, rl_3x2pt_5D)
-        print("SS cov. matrices computed in %.2f seconds with PySSC" % (time.perf_counter() - start))
+    # compute the covariance with PySSC anyway, not to have problems with WA
+    start = time.perf_counter()
+    cov_WL_SS_4D = mm.cov_SSC(nbl_WL, zpairs_auto, ind, cl_LL_3D, Sijkl, fsky, "WL", zbins, rl_LL_3D)
+    cov_GC_SS_4D = mm.cov_SSC(nbl_GC, zpairs_auto, ind, cl_GG_3D, Sijkl, fsky, "GC", zbins, rl_GG_3D)
+    cov_WA_SS_4D = mm.cov_SSC(nbl_WA, zpairs_auto, ind, cl_WA_3D, Sijkl, fsky, "WA", zbins, rl_WA_3D)
+    cov_3x2pt_SS_4D = mm.cov_SSC_ALL(nbl_3x2pt, zpairs_3x2pt, ind, cl_3x2pt_5D, Sijkl, fsky, zbins, rl_3x2pt_5D)
+    print("SS cov. matrices computed in %.2f seconds with PySSC" % (time.perf_counter() - start))
 
-    elif SSC_code == 'PyCCL':
+    if SSC_code == 'PyCCL':
+
         # TODO for now, load the existing files; then, compute the SSC cov properly
         fldr = covariance_cfg["cov_SSC_PyCCL_folder"]
         filename = covariance_cfg["cov_SSC_PyCCL_filename"]
 
-        cov_SS_WL_6D = np.load(f'{fldr}/{filename.format(probe="WL", nbl=nbl_WL, ell_max=ell_max_WL)}')
-        cov_SS_GC_6D = np.load(f'{fldr}/{filename.format(probe="GC", nbl=nbl_GC, ell_max=ell_max_GC)}')
-        cov_SS_3x2pt_6D = np.load(f'{fldr}/{filename.format(probe="3x2pt", nbl=nbl_GC, ell_max=ell_max_GC)}')
+        cov_WL_SS_6D = np.load(f'{fldr}/{filename.format(probe="WL", nbl=nbl_WL, ell_max=ell_max_WL)}')
+        cov_GC_SS_6D = np.load(f'{fldr}/{filename.format(probe="GC", nbl=nbl_GC, ell_max=ell_max_GC)}')
+        # TODO re-establish the 3x2pt
+        # cov_3x2pt_SS_6D = mm.load_pickle(f'{fldr}/{filename.format(probe="3x2pt", nbl=nbl_GC, ell_max=ell_max_GC)}')
 
-        # reshape to 4D, then to 2D
-        cov_SS_WL_4D = mm.cov_6D_to_4D(cov_SS_WL_6D, nbl_WL, zpairs_auto, ind=ind[:zpairs_auto, :])
-        cov_SS_GC_4D = mm.cov_6D_to_4D(cov_SS_GC_6D, nbl_GC, zpairs_auto, ind=ind[:zpairs_auto, :])
-        cov_SS_3x2pt_4D = mm.cov_6D_to_4D(cov_SS_WL_6D, nbl_WL, zpairs_auto, ind=ind[:zpairs_auto, :])
-
-
+        # reshape to 4D
+        cov_WL_SS_4D = mm.cov_6D_to_4D(cov_WL_SS_6D, nbl_WL, zpairs_auto, ind=ind_auto)
+        cov_GC_SS_4D = mm.cov_6D_to_4D(cov_GC_SS_6D, nbl_GC, zpairs_auto, ind=ind_auto)
+        # cov_3x2pt_SS_4D = mm.cov_6D_to_4D(cov_3x2pt_SS_6D, nbl_GC, zpairs_3x2pt, ind=ind)
 
     else:
         raise ValueError("SSC_code must be 'PySSC' or 'PyCCL'")

@@ -26,7 +26,7 @@ import plots_FM_running as plot_utils
 import utils_running as utils
 
 # job configuration
-import jobs.PyCCL_forecast.configs.config_PyCCL_forecast as config
+import jobs.PyCCL_forecast.config.config_PyCCL_forecast as config
 
 start_time = time.perf_counter()
 

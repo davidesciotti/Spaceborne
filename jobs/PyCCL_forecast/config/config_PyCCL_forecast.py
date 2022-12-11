@@ -4,7 +4,7 @@ deg2_in_sphere = 41252.96  # deg^2 in a spere
 fsky_IST = survey_area / deg2_in_sphere
 fsky_syvain = 0.375
 
-general_config = {
+general_cfg = {
     'ell_min': 10,
     'ell_max_WL': 5000,
     'ell_max_GC': 3000,
@@ -17,10 +17,10 @@ general_config = {
 }
 
 # Wadd is defined only if ell_max_WL != ell_max_GC
-if general_config['ell_max_WL'] == general_config['ell_max_GC']:
-    general_config['use_WA'] = False
+if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
+    general_cfg['use_WA'] = False
 
-covariance_config = {
+covariance_cfg = {
     'ind_ordering': 'vincenzo',
     'GL_or_LG': 'GL',
     'save_SSC_only_covmats': False,
@@ -39,12 +39,12 @@ covariance_config = {
         'SSC_or_cNG': 'SS'}
 }
 
-FM_config = {
+FM_cfg = {
     'nParams': 20,
     'save_FM': False
 }
 
-plot_config = {
+plot_cfg = {
     'case': 'opt',
     'probe': '3x2pt',
     'GO_or_GS': 'GS',  # Gauss-only or Gauss + SSC

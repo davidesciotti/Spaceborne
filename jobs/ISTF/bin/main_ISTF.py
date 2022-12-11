@@ -35,7 +35,7 @@ import bin.FM_running as FM_utils
 import bin.utils_running as utils
 
 # job configuration and modules
-import jobs.ISTF.config.config_ISTF_cl14may as cfg
+import jobs.ISTF.config.config_ISTF_cl15gen as cfg
 import jobs.ISTF.bin.unit_test as ut
 
 mpl.use('Qt5Agg')
@@ -384,7 +384,7 @@ if FM_cfg['save_FM']:
     nbl_list = [nbl_WL, nbl_GC, nbl_GC, nbl_WA]
     which_cov_list = ['GO', 'GS']
     header = f"parameters: {paramnames_3x2pt} \nfiducials: {fid_3x2pt}"
-    FM_folder = FM_cfg["FM_folder"]
+    FM_folder = FM_cfg["FM_folder"].format(SSC_code=covariance_cfg['SSC_code'])
 
     for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
         for which_cov in which_cov_list:
@@ -393,9 +393,9 @@ if FM_cfg['save_FM']:
             np.savetxt(f'{FM_folder}/{FM_filename}', FM_dict[f'FM_{probe}_{which_cov}'], header=header)
 
 if FM_cfg['save_FM_as_dict']:
-    mm.save_pickle(f'{job_path}/output/FM/FM_dict_{EP_or_ED}{zbins:02}.pickle', FM_dict)
+    mm.save_pickle(f'{FM_folder}/FM_dict_{EP_or_ED}{zbins:02}.pickle', FM_dict)
 
-ut.test_cov()
-ut.test_FM()
+ut.test_cov(covariance_cfg['SSC_code'])
+ut.test_FM(covariance_cfg['SSC_code'])
 
 print('done')

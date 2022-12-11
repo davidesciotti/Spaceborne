@@ -20,7 +20,7 @@ general_cfg = {
     'zbins': 10,
     'zbins_list': None,
     'EP_or_ED': 'EP',
-    'zbins_type_list': None,
+    'zbins_type_list': ('EP',),
     'n_probes': 2,
     'nbl_WL': 30,
     'nbl_GC': 30,
@@ -50,7 +50,7 @@ covariance_cfg = {
     'block_index': 'ell',
     # this is the one used by me and Vincenzo. The blocks in the 2D covmat will be indexed by ell1, ell2
     'which_probe_response': 'variable',
-    'SSC_code': 'PySSC',  # PySSC or PyCCL
+    'SSC_code': 'PyCCL',  # PySSC or PyCCL
     'ng': 30,
     'ng_folder': None,
     'ng_filename': None,
@@ -65,7 +65,7 @@ covariance_cfg = {
     'cov_folder': str(job_path) + '/output/covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D.npy',
     'cov_SSC_PyCCL_folder': f'{project_path.parent}/PyCCL_SSC/output/covmat',
-    'cov_SSC_PySSC_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ellmax:s}_hm_recipeKiDS1000_6D.npy',  # TODO these 2 filenames could be unified...
+    'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_hm_recipeKiDS1000_6D.npy',  # TODO these 2 filenames could be unified...
 }
 
 Sijkl_cfg = {
@@ -94,10 +94,9 @@ FM_cfg = {
     'save_FM_as_dict': True,
     'derivatives_BNT_transform': True,
     'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}',
-    'derivatives_filename': 'dCij{probe:s}d{param:s}',
     'derivatives_prefix': 'dCij{probe:s}d',
     'derivatives_suffix': '-GR-Flat-eNLA-NA',  # I'd like to use this, but instead:
-    'FM_folder': f'{job_path}/output/FM',
+    'FM_folder': str(job_path) + '/output/FM/{SSC_code:s}',
     'FM_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}.txt',
     'params_order': None,
     'paramnames_cosmo': paramnames_cosmo,

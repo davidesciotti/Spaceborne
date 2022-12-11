@@ -30,10 +30,8 @@ general_cfg = {
     'cl_BNT_transform': BNT_transform,
     'BNT_matrix_path': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT_matrix',
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
-    # 'cl_folder': f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}',
     'cl_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_tesi/new_names',
     'rl_folder': f'{project_path.parent}/common_data/vincenzo/Pk_responses_2D/' + '{EP_or_ED:s}{zbins:02d}',
-    # 'cl_filename': 'Cij{probe:s}-GR-Flat-eNLA-NA.dat',
     'cl_filename': 'Cij{probe:s}-N4TB-GR-eNLA.dat',
     'rl_filename': 'rij{probe:s}corr-istf-alex.dat',
 }
@@ -45,13 +43,14 @@ covariance_cfg = {
     'ind_folder': f'{project_path.parent}/common_data/ind_files' + '/{triu_tril:s}_{row_col_major:s}',
     'ind_filename': 'indices_{triu_tril:s}_{row_col_major:s}_zbins{zbins:02d}.dat',
     'triu_tril': 'triu',
-    'row_col_major': 'row-wise',
+    'row_col_major': 'row-major',
     'GL_or_LG': 'GL',
     'fsky': fsky,
-    'rl_value': 4,  # it used to be 4 for a constant probe response, which this is wrong
+    'rl_value': None,  # it used to be 4 for a constant probe response, which this is wrong
     'block_index': 'ell',
     # this is the one used by me and Vincenzo. The blocks in the 2D covmat will be indexed by ell1, ell2
-    'which_probe_response': 'constant',
+    'which_probe_response': 'variable',
+    'SSC_code': 'PyCCL',  # PySSC or PyCCL
     'ng': 30,
     'ng_folder': None,
     'ng_filename': None,
@@ -62,9 +61,11 @@ covariance_cfg = {
     'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_GS': False,
     'save_cov_SSC': False,
-    'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
-    'cov_folder': f'{job_path}/output/covmat',
+    'cov_folder': str(job_path) + '/output/covmat/{SSC_code:s}',
+    'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D.npy',
+    'cov_SSC_PyCCL_folder': f'{project_path.parent}/PyCCL_SSC/output/covmat',
+    'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_hm_recipeKiDS1000_6D.npy',  # TODO these 2 filenames could be unified...
 }
 
 Sijkl_cfg = {
@@ -92,12 +93,10 @@ FM_cfg = {
     'save_FM': True,
     'save_FM_as_dict': True,
     'derivatives_BNT_transform': True,
-    # 'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}',
     'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_derivatives_tesi/new_names/',
-    # 'derivatives_filename': 'dCij{probe:s}d{param:s}-GR-Flat-eNLA-NA.dat',
     'derivatives_prefix': 'dCij{probe:s}d',
     'derivatives_suffix': '-N4TB-GR-eNLA',  # I'd like to use this, but instead:
-    'FM_folder': f'{job_path}/output/FM',
+    'FM_folder': str(job_path) + '/output/FM/{SSC_code:s}',
     'FM_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}.txt',
     'params_order': None,
     'paramnames_cosmo': paramnames_cosmo,

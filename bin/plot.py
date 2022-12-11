@@ -37,7 +37,7 @@ markersize = 10
 # ! options
 zbins = 10
 zbins_list = np.array((zbins,), dtype=int)
-probe = 'WL'
+probe = 'GC'
 pes_opt_list = ('opt',)
 EP_or_ED_list = ('EP',)
 which_comparison = 'GO_vs_GS'  # this is just to set the title of the plot
@@ -65,6 +65,7 @@ n_cosmo_params = 7
 nparams_toplot = n_cosmo_params
 EP_or_ED = 'EP'
 nbl = 30
+SSC_code = 'PySSC'
 # ! end options
 
 uncert_ratio_dict = {}
@@ -84,23 +85,19 @@ else:
 uncert_ratio_dict[probe] = {}
 
 # import FM dict and
-FM_dict = mm.load_pickle(f'{project_path}/jobs/ISTF/output/FM/FM_dict_{EP_or_ED}{zbins:02}.pickle')
+FM_dict = mm.load_pickle(f'{project_path}/jobs/ISTF/output/FM/{SSC_code}/FM_dict_{EP_or_ED}{zbins:02}.pickle')
 _params = FM_dict['parameters']  # this should not change when passed the second time to the function
 _fid = FM_dict['fiducial_values']
-FM_WL_GO = FM_dict['FM_WL_GO']
-FM_WL_GS = FM_dict['FM_WL_GS']
-
-FM_WL_GO_old = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/'
-                             'output/FM/FM_WL_GO_lmaxWL5000_nbl30.txt')
+FM_GO = FM_dict[f'FM_{probe}_GO']
+FM_GS = FM_dict[f'FM_{probe}_GS']
 
 # fix the desired parameters and remove null rows/columns
-FM_WL_GO, params, fid = mm.mask_FM(FM_WL_GO, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
-FM_WL_GS, _, _ = mm.mask_FM(FM_WL_GS, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
+FM_GO, params, fid = mm.mask_FM(FM_GO, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
+FM_GS, _, _ = mm.mask_FM(FM_GS, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
 wzwa_idx = [params.index('wz'), params.index('wa')]
 
-FMs = [FM_WL_GO, FM_WL_GS]
-cases = ['G', 'GS', 'ISTF', 'percent_diff']
-probe = 'WL'
+FMs = [FM_GO, FM_GS]
+cases = ['G', 'GS', 'percent_diff']
 
 # compute uncertainties
 uncert_dict = {}
@@ -113,13 +110,12 @@ for FM, case in zip(FMs, cases):
 
 uncert_dict['percent_diff'] = diff_funct(uncert_dict['GS'], uncert_dict['G'])
 uncert_dict['ratio'] = uncert_dict['GS'] / uncert_dict['G']
-uncert_dict['ISTF'] = ISTF_fid.forecasts['WL_opt_w0waCDM_flat']
 
-np.set_printoptions(precision=2, suppress=True)
-print(uncert_dict['G'])
-print(ISTF_fid.forecasts['WL_opt_w0waCDM_flat'])
-print('percent_diff dav vs ISTF\n', (uncert_dict['G']/ISTF_fid.forecasts['WL_opt_w0waCDM_flat'] - 1)*100)
-
+# check against IST:F (which do not exist for GC alone):
+if probe != 'GC':
+    uncert_dict['ISTF'] = ISTF_fid.forecasts[f'{probe}_opt_w0waCDM_flat']
+    diff = diff_funct(uncert_dict['ISTF'], uncert_dict['G'])
+    assert np.all(np.abs(diff) < 5.0), f'IST:F and G are not consistent!'
 
 # transform dict. into an array
 uncert_array = []

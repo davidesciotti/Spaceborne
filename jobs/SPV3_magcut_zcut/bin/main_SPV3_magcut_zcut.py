@@ -60,6 +60,39 @@ def load_compressed_pickle(file):
     return data
 
 
+def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, variable_specs):
+    # import 3x2pt blocks in dictionary
+    cov_3x2pt_GS_BNT_import_dict = dict(mm.get_kv_pairs_npy(cov_BNTstef_folder))
+
+    # select only the ones corresponding to the current MS, ML, ZS, ZL values
+    current_specs = 'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02}' \
+                    '_MS{magcut_source:03d}_ZS{zcut_source:02}_6D'.format(**variable_specs)
+    cov_3x2pt_GS_BNT_import_dict = {key: value
+                                    for key, value in cov_3x2pt_GS_BNT_import_dict.items() if
+                                    key.endswith(current_specs)}
+
+    if not cov_3x2pt_GS_BNT_import_dict:
+        raise ValueError('cov_3x2pt_GS_dict is empty')
+
+    # build 3x2pt 4D covariance
+    GL_or_LG = covariance_cfg['GL_or_LG']
+    probe_ordering = [['L', 'L'], [GL_or_LG[0], GL_or_LG[1]], ['G', 'G']]
+
+    # redefine the keys
+    cov_3x2pt_GS_BNT_dict = {}
+    for probe_A, probe_B in probe_ordering:
+        for probe_C, probe_D in probe_ordering:
+            for key, value in cov_3x2pt_GS_BNT_import_dict.items():
+                if f'{probe_A}{probe_B}{probe_C}{probe_D}' in key:
+                    # fill the 8 available blocks - all but cov_3x2pt_GGGG, which is not BNT-trasformed
+                    cov_3x2pt_GS_BNT_dict[probe_A, probe_B, probe_C, probe_D] = value
+                    cov_3x2pt_GS_BNT_dict[probe_C, probe_D, probe_A, probe_B] = value
+
+    # the GGGG block is not affected by BNT, so we can just copy it from the original covmat
+    cov_3x2pt_GS_BNT_dict['G', 'G', 'G', 'G'] = cov_dict['cov_3x2pt_GS_10D']['G', 'G', 'G', 'G']
+    return cov_3x2pt_GS_BNT_dict
+
+
 # TODO check that the number of ell bins is the same as in the files
 # TODO double check the delta values
 # TODO update consistency_checks
@@ -300,36 +333,12 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         # now overwrite the cov_3x2pt_GS with Stefano's BNT covmats
         if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
 
-            # import 3x2pt blocks in dictionary
-            cov_BNTstef_folder = covariance_cfg['cov_BNTstef_folder'].format(probe='3x2pt')
-            cov_3x2pt_GS_BNT_import_dict = dict(mm.get_kv_pairs_npy(cov_BNTstef_folder))
+            cov_BNTstef_folder_GO = covariance_cfg['cov_BNTstef_folder'].format('GO', '3x2pt')
+            cov_BNTstef_folder_GS = covariance_cfg['cov_BNTstef_folder'].format('GS', '3x2pt')
+            cov_3x2pt_GS_BNT_GO_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GO, variable_specs)
+            cov_3x2pt_GS_BNT_GS_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GS, variable_specs)
 
-            # select only the ones corresponding to the current MS, ML, ZS, ZL values
-            current_specs = f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02}' \
-                            f'_MS{magcut_source:03d}_ZS{zcut_source:02}_6D'
-            cov_3x2pt_GS_BNT_import_dict = {key: value
-                                            for key, value in cov_3x2pt_GS_BNT_import_dict.items() if
-                                            key.endswith(current_specs)}
 
-            if not cov_3x2pt_GS_BNT_import_dict:
-                raise ValueError('cov_3x2pt_GS_dict is empty')
-
-            # build 3x2pt 4D covariance
-            GL_or_LG = covariance_cfg['GL_or_LG']
-            probe_ordering = [['L', 'L'], [GL_or_LG[0], GL_or_LG[1]], ['G', 'G']]
-
-            # redefine the keys
-            cov_3x2pt_GS_BNT_dict = {}
-            for probe_A, probe_B in probe_ordering:
-                for probe_C, probe_D in probe_ordering:
-                    for key, value in cov_3x2pt_GS_BNT_import_dict.items():
-                        if f'{probe_A}{probe_B}{probe_C}{probe_D}' in key:
-                            # fill the 8 available blocks - all but cov_3x2pt_GGGG, which is not BNT-trasformed
-                            cov_3x2pt_GS_BNT_dict[probe_A, probe_B, probe_C, probe_D] = value
-                            cov_3x2pt_GS_BNT_dict[probe_C, probe_D, probe_A, probe_B] = value
-
-            # the GGGG block is not affected by BNT, so we can just copy it from the original covmat
-            cov_3x2pt_GS_BNT_dict['G', 'G', 'G', 'G'] = cov_dict['cov_3x2pt_GS_10D']['G', 'G', 'G', 'G']
 
             # ! checks
             """
@@ -401,14 +410,13 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         dC_dict_3x2pt_5D = {}
         for key in dC_dict_1D.keys():
             if 'WLO' in key:
-                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WL', nbl=nbl_WL, zbins=zbins)
+                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl=nbl_WL, zbins=zbins)
             elif 'GCO' in key:
-                dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='GC', nbl=nbl_GC, zbins=zbins)
+                dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl=nbl_GC, zbins=zbins)
             elif 'WLA' in key:
-                dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WA', nbl=nbl_WA, zbins=zbins)
+                dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl=nbl_WA, zbins=zbins)
             elif '3x2pt' in key:
-                dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='3x2pt',
-                                                                  nbl=nbl_3x2pt, zbins=zbins)
+                dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl=nbl_3x2pt, zbins=zbins)
 
         # this is just to save a copy of the non-BNT derivatives, to perform tests
         dC_dict_3x2pt_noBNT_5D = dC_dict_3x2pt_5D.copy()

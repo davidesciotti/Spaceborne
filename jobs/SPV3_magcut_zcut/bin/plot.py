@@ -130,10 +130,11 @@ for probe in probes:
         assert len(fid) == len(params), 'the fiducial values list and parameter names should have the same length'
 
         title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
-        title += f'\nML = {magcut_lens / 10}, MS = {magcut_source / 10}, ZL = {zcut_lens / 10}, ZS = {zcut_source / 10:}, zmax = 2.5'
+        title += f'\nML = {magcut_lens / 10}, MS = {magcut_source / 10}, ZL = {zcut_lens / 10}, ' \
+                 f'ZS = {zcut_source / 10:}, zmax = 2.5'
 
-        cases = ('G', 'GS')
         FMs = (FM_GO, FM_GS)
+        cases = ['G', 'GS', 'percent_diff']
 
         data = []
         fom = {}
@@ -149,7 +150,6 @@ for probe in probes:
 
         uncert['percent_diff'] = diff_funct(uncert['GS'], uncert['G'])
         uncert['ratio'] = uncert['GS'] / uncert['G']
-        cases = ['G', 'GS', 'percent_diff']
 
         for case in cases:
             data.append(uncert[case])
@@ -167,7 +167,8 @@ for probe in probes:
                 for pes_opt in ('opt', 'pes'):
                     data = np.asarray(data)
                     plot_utils.bar_plot(data[:, :nparams_toplot], title, cases, nparams=nparams_toplot,
-                                        param_names_label=params[:nparams_toplot], bar_width=0.12, )
+                                        param_names_label=params[:nparams_toplot], bar_width=0.12)
 
                 plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
-                                       f'bar_plot_{probe}_ellmax{lmax}_zbins{EP_or_ED}{zbins:02}_.png')
+                                       f'bar_plot_{probe}_ellmax{lmax}_zbins{EP_or_ED}{zbins:02}'
+                                       f'_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.png')

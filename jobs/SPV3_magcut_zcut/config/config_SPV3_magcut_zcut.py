@@ -88,7 +88,7 @@ covariance_cfg = {
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
     'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}{whos_BNT}' + '/zbins{zbins:02d}',
-    'cov_BNTstef_folder': f'{SPV3_folder}/Flagship_{flagship_version}/CovMats/BNT_True/stefano/magcut_zcut/' + '{probe:s}',
+    'cov_BNTstef_folder': f'{SPV3_folder}/Flagship_{flagship_version}/CovMats/BNT_True/stefano/magcut_zcut/' + '{GO_or_GS:s}/{probe:s}',
     'cov_BNTstef_filename': 'BNT_covmat_{GO_or_GS}_{probe}_{block:s}_lmax{ellmax}_nbl{nbl}_zbins{EP_or_ED:s}{zbins:02d}'
                             '_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_6D.npy'
 

@@ -14,6 +14,7 @@ import warnings
 import scipy.sparse as spar
 import _pickle as cPickle
 
+
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 home_path = Path.home()
@@ -27,6 +28,7 @@ import cosmo_lib as csmlib
 # general configurations
 sys.path.append(f'{project_path.parent}/common_data/common_config')
 import mpl_cfg
+import ISTF_fid_params as ISTF_fid
 
 # job configuration
 sys.path.append(f'{job_path}/config')
@@ -90,9 +92,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     general_cfg['magcut_source'], general_cfg['zcut_source'] in \
         zip(ML_list, ZL_list, MS_list, ZS_list):
 
-    warnings.warn('XXX restore {BNT_transform} in the FM_folder and cov_folder in the config file, and '
-                  'find a better way to choose the correct folder XXX')
-
     # for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
     #     for general_cfg['magcut_source'] in general_cfg['magcut_source_list']:
     #         for general_cfg['zcut_lens'] in general_cfg['zcut_lens_list']:
@@ -115,7 +114,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     triu_tril = covariance_cfg['triu_tril']
     row_col_major = covariance_cfg['row_col_major']
     n_probes = general_cfg['n_probes']
-    use_stefano_BNT_ingredients = general_cfg['use_stefano_BNT_ingredients']
     whos_BNT = general_cfg['whos_BNT']
 
     # which cases to save: GO, GS or GO, GS and SS
@@ -295,9 +293,10 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
         # ! compute covariance matrix
         # TODO: if already existing, don't compute the covmat, like done above for Sijkl
+        ng_folder = covariance_cfg["ng_folder"]
         ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
         # the ng values are in the second column, for these input files 👇
-        covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[:, 1]
+        covariance_cfg['ng'] = np.genfromtxt(f'{ng_folder}/'f'{ng_filename}')[:, 1]
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
@@ -387,7 +386,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, block_index=covariance_cfg['block_index'])
             cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_GS_2D
 
-
     # ! compute Fisher matrix
     if FM_cfg['compute_FM']:
 
@@ -406,14 +404,11 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         dC_dict_3x2pt_5D = {}
         for key in dC_dict_1D.keys():
             if 'WLO' in key:
-                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WL', nbl=nbl_WL,
-                                                               zbins=zbins)
+                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WL', nbl=nbl_WL, zbins=zbins)
             elif 'GCO' in key:
-                dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='GC', nbl=nbl_GC,
-                                                               zbins=zbins)
+                dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='GC', nbl=nbl_GC, zbins=zbins)
             elif 'WLA' in key:
-                dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WA', nbl=nbl_WA,
-                                                               zbins=zbins)
+                dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='WA', nbl=nbl_WA, zbins=zbins)
             elif '3x2pt' in key:
                 dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], probe='3x2pt',
                                                                   nbl=nbl_3x2pt, zbins=zbins)
@@ -485,8 +480,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         paramnames_3x2pt = paramnames_cosmo
         FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
 
-        # fiducial value
-        fid_cosmo = [0.32, 0.68, 0.05, -1.0, 0.0, 0.67, 0.96, 0.816]  # ! Added Ox fiducial value
+        # fiducial values
+        fid_cosmo = [0.32, 0.68, 0.05, -1.0, 0.0, 0.67, 0.96, 0.816]
         # fid_cosmo = np.asarray([ISTF_fid.primary[key] for key in ISTF_fid.primary.keys()])[:7]
         fid_IA = np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()])
         fid_galaxy_bias = np.genfromtxt(f'{ng_folder}/{ng_filename}')[:, 2]
@@ -495,7 +490,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         fid_dzGC = np.zeros((zbins,))
         # fid_3x2pt = np.concatenate((fid_cosmo, fid_IA, fid_galaxy_bias, fid_shear_bias, fid_dzWL, fid_dzGC))
         fid_3x2pt = fid_cosmo
-        assert len(fid_3x2pt) == len(paramnames_3x2pt), 'the fiducial values list and parameter names should have the same length'
+        assert len(fid_3x2pt) == len(
+            paramnames_3x2pt), 'the fiducial values list and parameter names should have the same length'
 
         # turn the dictionaries of derivatives npy array
         dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl_WL, zbins, der_prefix)
@@ -553,8 +549,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                       'dC_WA_4D': dC_WA_4D,
                       'dC_3x2pt_5D': dC_3x2pt_5D}
         # TODO save 3D derivatives to file
-
-
 
         FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
         FM_dict['parameters'] = paramnames_3x2pt
@@ -697,6 +691,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                 print('FM saved')
 
     if FM_cfg['save_FM_as_dict']:
-        mm.save_pickle(f'{FM_folder}/FM_dict_ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.pickle', FM_dict)
+        mm.save_pickle(
+            f'{FM_folder}/FM_dict_ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.pickle',
+            FM_dict)
 
 print('done')

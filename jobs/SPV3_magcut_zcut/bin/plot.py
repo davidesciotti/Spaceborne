@@ -115,6 +115,7 @@ for probe in probes:
 
         FM_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output' \
                   f'/Flagship_{flagship_version}/BNT_{BNT_transform}/{whos_BNT}/FM'
+        FM_dict = mm.load_pickle(FM_path)
         FM_GO_filename = f'FM_{probe}_GO_lmax{lmax}_nbl{nbl}_zbins{EP_or_ED:s}{zbins:02d}' \
                          f'-ML{magcut_lens:d}-ZL{zcut_lens:02d}-MS{magcut_source:d}-ZS{zcut_source:02d}.txt'
         FM_GS_filename = f'FM_{probe}_GS_lmax{lmax}_nbl{nbl}_zbins{EP_or_ED:s}{zbins:02d}' \
@@ -138,17 +139,7 @@ for probe in probes:
         #     paramnames_3x2pt = [param for param in paramnames_3x2pt if "m" not in param]
 
         # fiducial values
-        ng_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/InputNz/magcut_zcut'
-        ng_filename = f'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat'
-
-        fid_cosmo = [0.32, 0.68, 0.05, -1.0, 0.0, 0.67, 0.96, 0.816]  # ! Added Ox fiducial value
-        # fid_cosmo = np.asarray([ISTF_fid.primary[key] for key in ISTF_fid.primary.keys()])[:7]
-        fid_IA = np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()])
-        fid_galaxy_bias = np.genfromtxt(f'{ng_folder}/{ng_filename}')[:, 2]
-        fid_shear_bias = np.zeros((zbins,))
-        fid_dzWL = np.zeros((zbins,))
-        fid_dzGC = np.zeros((zbins,))
-        fid = np.concatenate((fid_cosmo, fid_IA, fid_galaxy_bias, fid_shear_bias, fid_dzWL, fid_dzGC))
+        fid = FM_dict['fiducial_values']
         assert len(fid) == len(paramnames_3x2pt), 'the fiducial values list and parameter names should have the same length'
 
         # cut the fid, paramname and FM arrays/lists according to the parameters we want to fix

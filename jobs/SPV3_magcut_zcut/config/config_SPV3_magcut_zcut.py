@@ -16,6 +16,7 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
 # ! choose the flagship version and whether you want to compute the BNT transformed cls
 flagship_version = 2
 BNT_transform = True
+whos_BNT = '/stefano'  # or "/davide"
 
 assert flagship_version == 2, 'the files for the multicut case are only available for Flagship_2'
 
@@ -38,7 +39,7 @@ general_cfg = {
     'save_cls_3d': False,
     'save_rls_3d': False,
     'BNT_transform': BNT_transform,
-    'whos_BNT': '/stefano',  # or "/davide"
+    'whos_BNT': whos_BNT,
     'BNT_matrix_path': f'{SPV3_folder}/BNT_matrix',
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
     'cl_folder': f'{SPV3_folder}/Flagship_{flagship_version}/DataVectors/magcut_zcut',
@@ -117,7 +118,7 @@ FM_cfg = {
     'save_FM_as_dict': True,
     'transformed_derivs_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}{whos_BNT}',
     'derivatives_BNTstef_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}{whos_BNT}/' + '{probe:s}',
-    'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}/' +
+    'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_False/' +
                           'ML{magcut_lens:03d}ZL{zcut_lens:02d}MS{magcut_source:03d}ZS{zcut_source:02d}',
     'derivatives_filename': 'BNT_dDVd{param:s}-{probe:s}-{specs:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                             'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',

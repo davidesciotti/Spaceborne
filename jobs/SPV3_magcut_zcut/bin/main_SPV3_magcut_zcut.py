@@ -333,65 +333,21 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         # now overwrite the cov_3x2pt_GS with Stefano's BNT covmats
         if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
 
-            # cov_BNTstef_folder_GO = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GO', probe='3x2pt')
+            cov_BNTstef_folder_GO = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GO', probe='3x2pt')
             cov_BNTstef_folder_GS = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GS', probe='3x2pt')
-            # cov_3x2pt_GS_BNT_GO_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GO, variable_specs)
+            cov_3x2pt_GS_BNT_GO_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GO, variable_specs)
             cov_3x2pt_GS_BNT_GS_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GS, variable_specs)
 
-            # ! checks
-            """
-            # import single block:
-            cov_GS_LLLL_BNT_6D = np.load('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
-                                         'Flagship_2/CovMats/BNT_True/stefano/magcut_zcut/3x2pt/'
-                                         f'BNT_covmat_GS_3x2pt_LLLL_lmax3000_nbl29_zbinsED13_'
-                                         f'ML{magcut_lens:03d}_ZL{zcut_lens:02}_'
-                                         f'MS{magcut_source:03}_ZS{zcut_source:02d}_6D.npy')
-
-            # this is the proper WL cov, not the LLLL block
-            cov_GS_WL_BNT_4D = np.load('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
-                                       'Flagship_2/CovMats/BNT_True/stefano/'
-                                       f'BNT_covmat_GS_WL_lmax5000_nbl32_zbins13_ED_Rlvar_6D_stef.npy').transpose(
-                (2, 3, 0, 1))
-
-            # reshape everything
-            block_index = 'vincenzo'
-            zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
-
-            cov_GS_LLLL_BNT_4D = mm.cov_6D_to_4D(cov_GS_LLLL_BNT_6D, nbl_3x2pt, zpairs_auto, ind[:zpairs_auto, :])
-            cov_GS_LLLL_BNT_2D = mm.cov_4D_to_2D(cov_GS_LLLL_BNT_4D, block_index=block_index)
-
-            cov_GS_WL_BNT_2D = mm.cov_4D_to_2D(cov_GS_WL_BNT_4D, block_index=block_index)
-
-            # original (non-BNT) covmat
-            cov_GS_LLLL_6D = cov_dict['cov_3x2pt_GS_10D']['L', 'L', 'L', 'L']
-            cov_GS_LLLL_4D = mm.cov_6D_to_4D(cov_GS_LLLL_6D, nbl_3x2pt, zpairs_auto, ind[:zpairs_auto, :])
-            cov_GS_LLLL_2D = mm.cov_4D_to_2D(cov_GS_LLLL_4D, block_index=block_index)
-
-            mm.matshow(cov_GS_LLLL_2D, log=True, title='cov_GS_LLLL_2D')
-            mm.matshow(cov_GS_LLLL_BNT_2D, log=True, title='cov_GS_LLLL_BNT_2D')
-            mm.matshow(cov_GS_WL_BNT_2D, log=True, title='cov_GS_WL_BNT_2D')
-
-            # check that the covariance is positevely defined
-            np.linalg.cholesky(cov_GS_LLLL_2D)
-            np.linalg.cholesky(cov_GS_LLLL_BNT_2D)
-            np.linalg.cholesky(cov_GS_WL_BNT_2D)
-
-
-            print('# of null elements in cov_GS_LLLL_2D:', np.sum(cov_GS_LLLL_2D == 0))
-            print('# of null elements in cov_GS_LLLL_BNT_2D:', np.sum(cov_GS_LLLL_BNT_2D == 0))
-            """
-            # ! end checks
-
             # transform to 4D array
-            # cov_3x2pt_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_BNT_dict, probe_ordering, nbl_GC,
-            #                                               zbins, ind.copy(), GL_or_LG)
+            cov_3x2pt_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_BNT_dict, probe_ordering, nbl_GC,
+                                                          zbins, ind.copy(), GL_or_LG)
             cov_3x2pt_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_GC,
                                                           zbins, ind.copy(), GL_or_LG)
 
             # reshape to 2D and overwrite the non-BNT value
-            # cov_3x2pt_GO_2D = mm.cov_4D_to_2D(cov_3x2pt_GO_4D, block_index=covariance_cfg['block_index'])
+            cov_3x2pt_GO_2D = mm.cov_4D_to_2D(cov_3x2pt_GO_4D, block_index=covariance_cfg['block_index'])
             cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, block_index=covariance_cfg['block_index'])
-            # cov_dict['cov_3x2pt_GO_2D'] = cov_3x2pt_GO_2D
+            cov_dict['cov_3x2pt_GO_2D'] = cov_3x2pt_GO_2D
             cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_GS_2D
 
     # ! compute Fisher matrix

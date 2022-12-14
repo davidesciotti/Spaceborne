@@ -101,10 +101,11 @@ covariance_cfg = {
 
 Sijkl_cfg = {
     'wf_input_folder': f'{SPV3_folder}/Flagship_{flagship_version}/KernelFun/magcut_zcut',
-    'wf_input_filename': '{which_WF:s}-{EP_or_ED:s}{zbins:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    'Sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_False/sijkl',
+    'wf_WL_input_filename': 'WiWL-{EP_or_ED:s}{zbins:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
+    'wf_GC_input_filename': 'WiGC-{EP_or_ED:s}{zbins:02d}-ML{magcut_source:03d}-ZL{zcut_source:02d}.dat',
+    'Sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/sijkl',
     'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}'
-                      '_MS{magcut_source:02d}-ZS{zcut_source:02d}.npy',
+                      '_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
     'WF_normalization': 'IST',
     'IA_flag': True,  # whether to include IA in the WF used to compute Sijkl
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists

@@ -117,7 +117,7 @@ for probe in probes:
 
         FM_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output' \
                   f'/Flagship_{flagship_version}/BNT_{BNT_transform}/{whos_BNT}/FM'
-        FM_dict = mm.load_pickle(f'{FM_path}/FM_dict_ML{ML}_ZL{ZL}_MS{MS}_ZS{ZS}.pickle')
+        FM_dict = mm.load_pickle(f'{FM_path}/FM_dict_ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}.pickle')
         _params = FM_dict['parameters']  # this should not change when passed the second time to the function
         _fid = FM_dict['fiducial_values']  # this should not change when passed the second time to the function
         FM_GO = FM_dict[f'FM_{probe}_GO']
@@ -129,10 +129,8 @@ for probe in probes:
         wzwa_idx = [params.index('wz'), params.index('wa')]
         assert len(fid) == len(params), 'the fiducial values list and parameter names should have the same length'
 
-
         title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
         title += f'\nML = {magcut_lens / 10}, MS = {magcut_source / 10}, ZL = {zcut_lens / 10}, ZS = {zcut_source / 10:}, zmax = 2.5'
-
 
         cases = ('G', 'GS')
         FMs = (FM_GO, FM_GS)
@@ -169,9 +167,7 @@ for probe in probes:
                 for pes_opt in ('opt', 'pes'):
                     data = np.asarray(data)
                     plot_utils.bar_plot(data[:, :nparams_toplot], title, cases, nparams=nparams_toplot,
-                                        param_names_label=paramnames_3x2pt[:nparams_toplot],
-                                        bar_width=0.12,
-                                        second_axis=False, no_second_axis_bars=1)
+                                        param_names_label=params[:nparams_toplot], bar_width=0.12, )
 
-                # plt.savefig(job_path / f'output/plots/{which_comparison}/'
-                #                        f'bar_plot_{probe}_ellmax{ell_max}_zbins{EP_or_ED}{zbins:02}_Rl{which_Rl}_{which_uncertainty}.png')
+                plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
+                                       f'bar_plot_{probe}_ellmax{lmax}_zbins{EP_or_ED}{zbins:02}_.png')

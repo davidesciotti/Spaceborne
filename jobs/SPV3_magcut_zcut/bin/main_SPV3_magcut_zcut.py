@@ -14,7 +14,6 @@ import warnings
 import scipy.sparse as spar
 import _pickle as cPickle
 
-
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 home_path = Path.home()
@@ -259,10 +258,11 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     if covariance_cfg['compute_covmat']:
         # ! load kernels
         # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
-        WF_folder = Sijkl_cfg["wf_input_folder"].format(**variable_specs)
-        WF_filename = Sijkl_cfg["wf_input_filename"]
-        wil = np.genfromtxt(f'{WF_folder}/{WF_filename.format(which_WF="WiWL", **variable_specs)}')
-        wig = np.genfromtxt(f'{WF_folder}/{WF_filename.format(which_WF="WiGC", **variable_specs)}')
+        wf_folder = Sijkl_cfg["wf_input_folder"].format(**variable_specs)
+        wf_WL_filename = Sijkl_cfg["wf_WL_input_filename"]
+        wf_GC_filename = Sijkl_cfg["wf_GC_input_filename"]
+        wil = np.genfromtxt(f'{wf_folder}/{wf_WL_filename.format(**variable_specs)}')
+        wig = np.genfromtxt(f'{wf_folder}/{wf_GC_filename.format(**variable_specs)}')
 
         # preprocess (remove redshift column)
         z_arr, wil = Sijkl_utils.preprocess_wf(wil, zbins)
@@ -278,10 +278,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         warnings.warn('Sijkl_folder is set to BNT_False in all cases, so as not to have to recompute the Sijkl matrix'
                       'in the BNT_True case - for which I use Stefanos files')
         Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(flagship_version=general_cfg['flagship_version'],
-                                                            nz=nz, EP_or_ED=EP_or_ED, zbins=zbins,
-                                                            IA_flag=Sijkl_cfg['IA_flag'],
-                                                            magcut_source=magcut_source,
-                                                            zcut_source=zcut_source)
+                                                            nz=nz, IA_flag=Sijkl_cfg['IA_flag'], **variable_specs)
         # if Sijkl exists, load it; otherwise, compute it and save it
         if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
             print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
@@ -675,6 +672,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         assert np.allclose(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D'], rtol=1e-9, atol=0)
 
     # ! save FM
+    FM_folder = FM_cfg["FM_folder"]
     if FM_cfg['save_FM']:
         probe_list = ['WL', 'GC', '3x2pt', 'WA']
         ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
@@ -683,7 +681,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
         for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
             for which_cov in cases_tosave:
-                FM_folder = FM_cfg["FM_folder"]
                 FM_filename = FM_cfg["FM_filename"].format(probe=probe, which_cov=which_cov,
                                                            ell_max=ell_max, nbl=nbl,
                                                            **variable_specs)
@@ -691,8 +688,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                 print('FM saved')
 
     if FM_cfg['save_FM_as_dict']:
-        mm.save_pickle(
-            f'{FM_folder}/FM_dict_ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.pickle',
-            FM_dict)
+        mm.save_pickle(f'{FM_folder}/FM_dict_ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
+                       f'MS{magcut_source:03d}-ZS{zcut_source:02d}.pickle', FM_dict)
 
 print('done')

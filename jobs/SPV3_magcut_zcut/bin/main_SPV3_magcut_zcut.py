@@ -76,7 +76,7 @@ FM_cfg = cfg.FM_cfg
 ML_list = [230, 230, 245, 245]
 ZL_list = [0, 2, 0, 2]
 MS_list = [245, 245, 245, 245]
-ZS_list = [0, 0, 2, 2]
+ZS_list = [0, 0, 0, 2]
 
 # ML_list = [230, ]
 # ZL_list = [2, ]
@@ -86,8 +86,12 @@ ZS_list = [0, 0, 2, 2]
 warnings.warn('restore the ML, Zl, ... lists')
 warnings.warn('restore nbl_WL = 32')
 
-for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_source'], general_cfg[
-    'zcut_source'] in zip(ML_list, ZL_list, MS_list, ZS_list):
+for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
+    general_cfg['magcut_source'], general_cfg['zcut_source'] in \
+        zip(ML_list, ZL_list, MS_list, ZS_list):
+
+    warnings.warn('XXX restore {BNT_transform} in the FM_folder and cov_folder in the config file, and '
+                  'find a better way to choose the correct folder XXX')
 
     # for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
     #     for general_cfg['magcut_source'] in general_cfg['magcut_source_list']:
@@ -112,6 +116,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
     row_col_major = covariance_cfg['row_col_major']
     n_probes = general_cfg['n_probes']
     use_stefano_BNT_ingredients = general_cfg['use_stefano_BNT_ingredients']
+    whos_BNT = general_cfg['whos_BNT']
 
     # which cases to save: GO, GS or GO, GS and SS
     cases_tosave = ['GO', 'GS']
@@ -205,8 +210,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
     rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA_opt, zbins)
     rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
 
-    # ! BNT transform if the corresponding flag is set to True
-    if general_cfg['cl_BNT_transform']:
+    # ! my cl and rl BNT transform
+    if general_cfg['BNT_transform'] and whos_BNT == '/davide':
         assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
         assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
 
@@ -297,7 +302,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
         # now overwrite the cov_3x2pt_GS with Stefano's BNT covmats
-        if use_stefano_BNT_ingredients:
+        if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
 
             # import 3x2pt blocks in dictionary
             cov_BNTstef_folder = covariance_cfg['cov_BNTstef_folder'].format(probe='3x2pt')
@@ -417,7 +422,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         dC_dict_3x2pt_noBNT_5D = dC_dict_3x2pt_5D.copy()
 
         # in this case, overwrite part of the dictionary entries (the 3x2pt, in particular)
-        if use_stefano_BNT_ingredients:
+        if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
 
             # import in one big dictionary
             derivatives_BNTstef_folder = FM_cfg['derivatives_BNTstef_folder'].format(probe='3x2pt')
@@ -477,10 +482,20 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         paramnames_dzGC = [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
         # paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias + paramnames_shearbias + \
         #                    paramnames_dzWL + paramnames_dzGC
-        warnings.warn('I have stefanos derivatives only for the flat cosmo parameters!')
         paramnames_3x2pt = paramnames_cosmo
-        paramnames_3x2pt.remove('Ox')
         FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
+
+        # fiducial value
+        fid_cosmo = [0.32, 0.68, 0.05, -1.0, 0.0, 0.67, 0.96, 0.816]  # ! Added Ox fiducial value
+        # fid_cosmo = np.asarray([ISTF_fid.primary[key] for key in ISTF_fid.primary.keys()])[:7]
+        fid_IA = np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()])
+        fid_galaxy_bias = np.genfromtxt(f'{ng_folder}/{ng_filename}')[:, 2]
+        fid_shear_bias = np.zeros((zbins,))
+        fid_dzWL = np.zeros((zbins,))
+        fid_dzGC = np.zeros((zbins,))
+        # fid_3x2pt = np.concatenate((fid_cosmo, fid_IA, fid_galaxy_bias, fid_shear_bias, fid_dzWL, fid_dzGC))
+        fid_3x2pt = fid_cosmo
+        assert len(fid_3x2pt) == len(paramnames_3x2pt), 'the fiducial values list and parameter names should have the same length'
 
         # turn the dictionaries of derivatives npy array
         dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl_WL, zbins, der_prefix)
@@ -490,7 +505,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                                                    is_3x2pt=True)
 
         # ! my derivatives BNT transform
-        if FM_cfg['derivatives_BNT_transform']:
+        if general_config['BNT_transform'] and whos_BNT == '/davide':
             assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
             assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
             warnings.warn('Vincenzos derivatives are only for BNT_False, otherwise you should use Stefanos files')
@@ -539,7 +554,11 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                       'dC_3x2pt_5D': dC_3x2pt_5D}
         # TODO save 3D derivatives to file
 
+
+
         FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
+        FM_dict['parameters'] = paramnames_3x2pt
+        FM_dict['fiducial_values'] = fid_3x2pt
 
         ########################################################################################################################
         ######################################################### SAVE #########################################################
@@ -677,7 +696,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                 np.savetxt(f'{FM_folder}/{FM_filename}', FM_dict[f'FM_{probe}_{which_cov}'], header=header)
                 print('FM saved')
 
-    # if FM_cfg['save_FM_as_dict']:
-    #     sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)
+    if FM_cfg['save_FM_as_dict']:
+        mm.save_pickle(f'{FM_folder}/FM_dict_ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.pickle', FM_dict)
 
 print('done')

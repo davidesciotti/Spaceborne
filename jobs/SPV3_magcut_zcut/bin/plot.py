@@ -66,7 +66,7 @@ magcut_source = 245
 zcut_lens = 0
 zcut_source = 0
 zmax = 25
-
+whos_BNT = 'stefano'
 nparams_toplot = 8
 EP_or_ED = 'ED'
 # ! end options
@@ -113,7 +113,8 @@ for probe in probes:
             lmax = 5000
             nbl = 32
 
-        FM_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output/Flagship_{flagship_version}/BNT_{BNT_transform}/FM'
+        FM_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output' \
+                  f'/Flagship_{flagship_version}/BNT_{BNT_transform}/{whos_BNT}/FM'
         FM_GO_filename = f'FM_{probe}_GO_lmax{lmax}_nbl{nbl}_zbins{EP_or_ED:s}{zbins:02d}' \
                          f'-ML{magcut_lens:d}-ZL{zcut_lens:02d}-MS{magcut_source:d}-ZS{zcut_source:02d}.txt'
         FM_GS_filename = f'FM_{probe}_GS_lmax{lmax}_nbl{nbl}_zbins{EP_or_ED:s}{zbins:02d}' \

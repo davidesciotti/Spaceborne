@@ -501,7 +501,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                                                    is_3x2pt=True)
 
         # ! my derivatives BNT transform
-        if general_config['BNT_transform'] and whos_BNT == '/davide':
+        if general_cfg['BNT_transform'] and whos_BNT == '/davide':
             assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
             assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
             warnings.warn('Vincenzos derivatives are only for BNT_False, otherwise you should use Stefanos files')

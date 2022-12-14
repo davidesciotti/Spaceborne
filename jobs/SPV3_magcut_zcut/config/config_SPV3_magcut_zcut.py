@@ -87,7 +87,7 @@ covariance_cfg = {
     'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
-    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/covmat' + '/zbins{zbins:02d}',
+    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}{whos_BNT}' + '/zbins{zbins:02d}',
     'cov_BNTstef_folder': f'{SPV3_folder}/Flagship_{flagship_version}/CovMats/BNT_True/stefano/magcut_zcut/' + '{probe:s}',
     'cov_BNTstef_filename': 'BNT_covmat_{GO_or_GS}_{probe}_{block:s}_lmax{ellmax}_nbl{nbl}_zbins{EP_or_ED:s}{zbins:02d}'
                             '_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_6D.npy'
@@ -124,7 +124,7 @@ FM_cfg = {
                             'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'derivatives_prefix': 'dDVd',
     # the filename is the same as above
-    'FM_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}{whos_BNT}/FM',
+    'FM_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}{whos_BNT}',
     'FM_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'
                    'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.txt',
     'params_order': None,

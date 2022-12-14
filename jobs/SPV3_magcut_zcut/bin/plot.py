@@ -53,6 +53,7 @@ fix_gal_bias = True  # whether to remove the rows/cols for the shear bias nuisan
 fix_shear_bias = True  # whether to remove the rows/cols for the shear bias nuisance parameters (ie whether to fix them)
 fix_dzWL = True  # whether to remove the rows/cols for the dz nuisance parameters (ie whether to fix them)
 fix_dzGC = True  # whether to remove the rows/cols for the dz nuisance parameters (ie whether to fix them)
+fix_IA = False
 w0wa_rows = [2, 3]
 bar_plot_cosmo = True
 triangle_plot = False
@@ -67,8 +68,9 @@ zcut_lens = 0
 zcut_source = 0
 zmax = 25
 whos_BNT = 'stefano'
-nparams_toplot = 8
 EP_or_ED = 'ED'
+n_cosmo_params = 8
+nparams_toplot = n_cosmo_params
 # ! end options
 
 ML_list = [230, 230, 245, 245]
@@ -115,113 +117,22 @@ for probe in probes:
 
         FM_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output' \
                   f'/Flagship_{flagship_version}/BNT_{BNT_transform}/{whos_BNT}/FM'
-        FM_dict = mm.load_pickle(FM_path)
-        FM_GO_filename = f'FM_{probe}_GO_lmax{lmax}_nbl{nbl}_zbins{EP_or_ED:s}{zbins:02d}' \
-                         f'-ML{magcut_lens:d}-ZL{zcut_lens:02d}-MS{magcut_source:d}-ZS{zcut_source:02d}.txt'
-        FM_GS_filename = f'FM_{probe}_GS_lmax{lmax}_nbl{nbl}_zbins{EP_or_ED:s}{zbins:02d}' \
-                         f'-ML{magcut_lens:d}-ZL{zcut_lens:02d}-MS{magcut_source:d}-ZS{zcut_source:02d}.txt'
+        FM_dict = mm.load_pickle(f'{FM_path}/FM_dict_ML{ML}_ZL{ZL}_MS{MS}_ZS{ZS}.pickle')
+        _params = FM_dict['parameters']  # this should not change when passed the second time to the function
+        _fid = FM_dict['fiducial_values']  # this should not change when passed the second time to the function
+        FM_GO = FM_dict[f'FM_{probe}_GO']
+        FM_GS = FM_dict[f'FM_{probe}_GS']
 
-        FM_GO = np.genfromtxt(f'{FM_path}/{FM_GO_filename}')
-        FM_GS = np.genfromtxt(f'{FM_path}/{FM_GS_filename}')
+        # fix the desired parameters and remove null rows/columns
+        FM_GO, params, fid = mm.mask_FM(FM_GO, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
+        FM_GS, _, _ = mm.mask_FM(FM_GS, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
+        wzwa_idx = [params.index('wz'), params.index('wa')]
+        assert len(fid) == len(params), 'the fiducial values list and parameter names should have the same length'
 
-        # param names
-        paramnames_cosmo = ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"]
-        paramnames_IA = ["Aia", "eIA", "bIA"]
-        paramnames_galbias = [f'bG{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
-        paramnames_shearbias = [f'm{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
-        paramnames_dzWL = [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
-        paramnames_dzGC = [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
-        paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias + paramnames_shearbias + \
-                           paramnames_dzWL + paramnames_dzGC
 
-        # TODO decide which parameters to fix
-        # if fix_shear_bias:
-        #     paramnames_3x2pt = [param for param in paramnames_3x2pt if "m" not in param]
-
-        # fiducial values
-        fid = FM_dict['fiducial_values']
-        assert len(fid) == len(paramnames_3x2pt), 'the fiducial values list and parameter names should have the same length'
-
-        # cut the fid, paramname and FM arrays/lists according to the parameters we want to fix
-        paramnames_galbias_indices = [paramnames_3x2pt.index(param) for param in paramnames_galbias]
-        paramnames_shearbias_indices = [paramnames_3x2pt.index(param) for param in paramnames_shearbias]
-        paramnames_dzWL_indices = [paramnames_3x2pt.index(param) for param in paramnames_dzWL]
-        paramnames_dzGC_indices = [paramnames_3x2pt.index(param) for param in paramnames_dzGC]
-
-        idx_todelete = []
-        if fix_gal_bias:
-            idx_todelete.append(paramnames_galbias_indices)
-        if fix_shear_bias:
-            idx_todelete.append(paramnames_shearbias_indices)
-        if fix_dzWL:
-            idx_todelete.append(paramnames_dzWL_indices)
-        if fix_dzGC:
-            idx_todelete.append(paramnames_dzGC_indices)
-
-        # delete these from everything
-        fid = np.delete(fid, idx_todelete)
-        paramnames_3x2pt = np.delete(paramnames_3x2pt, idx_todelete)
-        FM_GO = np.delete(FM_GO, idx_todelete, axis=0)
-        FM_GO = np.delete(FM_GO, idx_todelete, axis=1)
-        FM_GS = np.delete(FM_GS, idx_todelete, axis=0)
-        FM_GS = np.delete(FM_GS, idx_todelete, axis=1)
-
-        # some checks
-        assert which_diff in ['normal', 'mean'], 'which_diff should be "normal" or "mean"'
-        assert which_uncertainty in ['marginal',
-                                     'conditional'], 'which_uncertainty should be "marginal" or "conditional"'
-        assert which_Rl in ['const', 'var'], 'which_Rl should be "const" or "var"'
-        assert model in ['flat', 'nonflat'], 'model should be "flat" or "nonflat"'
-        assert probe in ['WL', 'GC', '3x2pt'], 'probe should be "WL" or "GC" or "3x2pt"'
-        assert which_job == 'SPV3', 'which_job should be "SPV3"'
-
-        if pes_opt == 'opt':
-            ell_max_WL = 5000
-            ell_max_GC = 3000
-        else:
-            ell_max_WL = 1500
-            ell_max_GC = 750
-
-        ell_max = ell_max_WL
-
-        # remove null rows and columns from FM, and corresponding entries from the fiducial values list and parameter names
-        null_idx_GO = mm.find_null_rows_cols_2D(FM_GO)
-        null_idx_GS = mm.find_null_rows_cols_2D(FM_GS)
-        assert np.array_equal(null_idx_GO, null_idx_GS), 'the null rows/cols indices should be equal for GO and GS'
-
-        if null_idx_GO is not None:
-            FM_GO = mm.remove_null_rows_cols_array2D(FM_GO, null_idx_GO)
-            FM_GS = mm.remove_null_rows_cols_array2D(FM_GS, null_idx_GO)
-            paramnames_3x2pt = np.delete(paramnames_3x2pt, obj=null_idx_GO, axis=0)
-            fid = np.delete(fid, obj=null_idx_GO, axis=0)
-            assert len(fid) == len(
-                paramnames_3x2pt), 'the fiducial values list and parameter names should have the same length'
-
-        nparams = len(fid)
-
-        title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, ell_max, EP_or_ED, zbins)
+        title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
         title += f'\nML = {magcut_lens / 10}, MS = {magcut_source / 10}, ZL = {zcut_lens / 10}, ZS = {zcut_source / 10:}, zmax = 2.5'
 
-        # TODO try with pandas dataframes
-
-        # print('3', FM_GO.shape)
-        # if model == 'flat':
-        #     FM_GO = np.delete(FM_GO, obj=1, axis=0)
-        #     FM_GO = np.delete(FM_GO, obj=1, axis=1)
-        #     FM_GS = np.delete(FM_GS, obj=1, axis=0)
-        #     FM_GS = np.delete(FM_GS, obj=1, axis=1)
-        #     cosmo_params = 7
-        # elif model == 'nonflat':
-        #     w0wa_rows = [3, 4]  # Omega_DE is in position 1, so w0, wa are shifted by 1 position
-        #     nparams += 1
-        #     cosmo_params = 8
-        #     fid = np.insert(arr=fid, obj=1, values=ISTF_fid.extensions['Om_Lambda0'], axis=0)
-        # pars_labels_TeX = np.insert(arr=pars_labels_TeX, obj=1, values='$\\Omega_{\\rm DE, 0}$', axis=0)
-
-        # fid = fid[:nparams]
-        # pars_labels_TeX = pars_labels_TeX[:nparams]
-
-        ####################################################################################################################
 
         cases = ('G', 'GS')
         FMs = (FM_GO, FM_GS)
@@ -233,7 +144,7 @@ for probe in probes:
         uncert_G_dict[probe][ML][ZL][MS][ZS] = []
         uncert_GS_dict[probe][ML][ZL][MS][ZS] = []
         for FM, case in zip(FMs, cases):
-            uncert[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams, fiducials=fid,
+            uncert[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams_toplot, fiducials=fid[:nparams_toplot],
                                                           which_uncertainty=which_uncertainty, normalize=True))
             fom[case] = mm.compute_FoM(FM, w0wa_idxs=w0wa_rows)
             print(f'FoM({probe}, {case}): {fom[case]}')

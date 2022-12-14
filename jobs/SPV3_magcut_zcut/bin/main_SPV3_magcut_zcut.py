@@ -333,12 +333,10 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         # now overwrite the cov_3x2pt_GS with Stefano's BNT covmats
         if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
 
-            cov_BNTstef_folder_GO = covariance_cfg['cov_BNTstef_folder'].format('GO', '3x2pt')
-            cov_BNTstef_folder_GS = covariance_cfg['cov_BNTstef_folder'].format('GS', '3x2pt')
-            cov_3x2pt_GS_BNT_GO_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GO, variable_specs)
+            # cov_BNTstef_folder_GO = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GO', probe='3x2pt')
+            cov_BNTstef_folder_GS = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GS', probe='3x2pt')
+            # cov_3x2pt_GS_BNT_GO_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GO, variable_specs)
             cov_3x2pt_GS_BNT_GS_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GS, variable_specs)
-
-
 
             # ! checks
             """
@@ -385,11 +383,15 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             # ! end checks
 
             # transform to 4D array
+            # cov_3x2pt_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_BNT_dict, probe_ordering, nbl_GC,
+            #                                               zbins, ind.copy(), GL_or_LG)
             cov_3x2pt_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_GC,
                                                           zbins, ind.copy(), GL_or_LG)
 
             # reshape to 2D and overwrite the non-BNT value
+            # cov_3x2pt_GO_2D = mm.cov_4D_to_2D(cov_3x2pt_GO_4D, block_index=covariance_cfg['block_index'])
             cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, block_index=covariance_cfg['block_index'])
+            # cov_dict['cov_3x2pt_GO_2D'] = cov_3x2pt_GO_2D
             cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_GS_2D
 
     # ! compute Fisher matrix

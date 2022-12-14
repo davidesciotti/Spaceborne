@@ -15,8 +15,11 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
 
 # ! choose the flagship version and whether you want to compute the BNT transformed cls
 flagship_version = 2
-BNT_transform = True
+BNT_transform = False
 whos_BNT = '/stefano'  # or "/davide"
+
+if BNT_transform is False:
+    whos_BNT = ''
 
 assert flagship_version == 2, 'the files for the multicut case are only available for Flagship_2'
 
@@ -112,7 +115,7 @@ Sijkl_cfg = {
 }
 
 FM_cfg = {
-    'compute_FM': True,
+    'compute_FM': False,
     'nparams_tot': 20,  # total (cosmo + nuisance) number of parameters
     'paramnames_3x2pt': None,  # ! for the time being, these are defined in the main and then passed here
     'save_FM': False,

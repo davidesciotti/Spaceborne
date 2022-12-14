@@ -658,19 +658,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                            f'-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.dat',
                            cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.10e')
 
-    # check for Stefano
-    if covariance_cfg['save_cov_6D']:
-        warnings.warn('old checks below, you could probably discard...')
-        npairs = (zbins * (zbins + 1)) // 2
-        cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GO_6D'], nbl_WL, npairs, ind[:npairs, :])
-        cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GO_6D'], nbl_GC, npairs, ind[:npairs, :])
-        cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_WL_GS_6D'], nbl_WL, npairs, ind[:npairs, :])
-        cov_GC_GS_4D = mm.cov_6D_to_4D(cov_dict[f'cov_GC_GS_6D'], nbl_GC, npairs, ind[:npairs, :])
-        assert np.array_equal(cov_WL_GO_4D, cov_dict[f'cov_WL_GO_4D'])
-        assert np.array_equal(cov_GC_GO_4D, cov_dict[f'cov_GC_GO_4D'])
-        assert np.allclose(cov_WL_GS_4D, cov_dict[f'cov_WL_GS_4D'], rtol=1e-9, atol=0)
-        assert np.allclose(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D'], rtol=1e-9, atol=0)
-
     # ! save FM
     FM_folder = FM_cfg["FM_folder"]
     if FM_cfg['save_FM']:

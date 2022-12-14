@@ -77,10 +77,11 @@ ML_list = [230, 230, 245, 245]
 ZL_list = [0, 2, 0, 2]
 MS_list = [245, 245, 245, 245]
 ZS_list = [0, 0, 2, 2]
-ML_list = [230, ]
-ZL_list = [0, ]
-MS_list = [245, ]
-ZS_list = [0, ]
+
+# ML_list = [230, ]
+# ZL_list = [2, ]
+# MS_list = [245, ]
+# ZS_list = [0, ]
 
 warnings.warn('restore the ML, Zl, ... lists')
 warnings.warn('restore nbl_WL = 32')
@@ -108,7 +109,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
     zcut_lens = general_cfg['zcut_lens']
     zmax = int(general_cfg['zmax'] * 10)
     triu_tril = covariance_cfg['triu_tril']
-    row_col_wise = covariance_cfg['row_col_wise']
+    row_col_major = covariance_cfg['row_col_major']
     n_probes = general_cfg['n_probes']
     use_stefano_BNT_ingredients = general_cfg['use_stefano_BNT_ingredients']
 
@@ -123,9 +124,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
 
     # import the ind files and store it into the covariance dictionary
     ind_folder = covariance_cfg['ind_folder'].format(triu_tril=triu_tril,
-                                                     row_col_wise=row_col_wise)
+                                                     row_col_major=row_col_major)
     ind_filename = covariance_cfg['ind_filename'].format(triu_tril=triu_tril,
-                                                         row_col_wise=row_col_wise,
+                                                         row_col_major=row_col_major,
                                                          zbins=zbins)
     ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
     covariance_cfg['ind'] = ind
@@ -330,12 +331,14 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             cov_3x2pt_GS_BNT_dict['G', 'G', 'G', 'G'] = cov_dict['cov_3x2pt_GS_10D']['G', 'G', 'G', 'G']
 
             # ! checks
+            """
             # import single block:
             cov_GS_LLLL_BNT_6D = np.load('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
                                          'Flagship_2/CovMats/BNT_True/stefano/magcut_zcut/3x2pt/'
                                          f'BNT_covmat_GS_3x2pt_LLLL_lmax3000_nbl29_zbinsED13_'
                                          f'ML{magcut_lens:03d}_ZL{zcut_lens:02}_'
                                          f'MS{magcut_source:03}_ZS{zcut_source:02d}_6D.npy')
+
             # this is the proper WL cov, not the LLLL block
             cov_GS_WL_BNT_4D = np.load('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
                                        'Flagship_2/CovMats/BNT_True/stefano/'
@@ -360,12 +363,18 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             mm.matshow(cov_GS_LLLL_BNT_2D, log=True, title='cov_GS_LLLL_BNT_2D')
             mm.matshow(cov_GS_WL_BNT_2D, log=True, title='cov_GS_WL_BNT_2D')
 
+            # check that the covariance is positevely defined
+            np.linalg.cholesky(cov_GS_LLLL_2D)
+            np.linalg.cholesky(cov_GS_LLLL_BNT_2D)
+            np.linalg.cholesky(cov_GS_WL_BNT_2D)
+
+
             print('# of null elements in cov_GS_LLLL_2D:', np.sum(cov_GS_LLLL_2D == 0))
             print('# of null elements in cov_GS_LLLL_BNT_2D:', np.sum(cov_GS_LLLL_BNT_2D == 0))
+            """
             # ! end checks
 
             # transform to 4D array
-            # ! The error may be here, but I don't think so...
             cov_3x2pt_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_GC,
                                                           zbins, ind.copy(), GL_or_LG)
 
@@ -373,13 +382,13 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, block_index=covariance_cfg['block_index'])
             cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_GS_2D
 
-            # mm.matshow(cov_3x2pt_GS_2D, log=True, title='3x2pt_BNT')
 
     # ! compute Fisher matrix
     if FM_cfg['compute_FM']:
 
         # import derivatives and store them in one big dictionary
         derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
+        der_prefix = FM_cfg['derivatives_prefix']
         dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
         # check if dictionary is empty
         if not dC_dict_1D:
@@ -440,7 +449,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             assert dC_dict_3x2pt_BNT_LL_3D.keys() == dC_dict_3x2pt_BNT_LG_3D.keys(), \
                 'The keys of the dictionaries are not the same'
 
-            # now finish building the derivatives 5D vector with non-BNT derivetives:
+            # now finish building the derivatives 5D vector with non-BNT derivatives:
             # instantiate a dict of 5D numpy arrays
             dC_dict_3x2pt_BNT_5D = {}
             allkeys = {key for key in dC_dict_3x2pt_BNT_LL_3D}
@@ -474,10 +483,10 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
 
         # turn the dictionaries of derivatives npy array
-        dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl_WL, zbins, 'DV')
-        dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, paramnames_3x2pt, nbl_GC, zbins, 'DV')
-        dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, paramnames_3x2pt, nbl_WA, zbins, 'DV')
-        dC_3x2pt_5D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, paramnames_3x2pt, nbl_3x2pt, zbins, 'DV',
+        dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl_WL, zbins, der_prefix)
+        dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, paramnames_3x2pt, nbl_GC, zbins, der_prefix)
+        dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, paramnames_3x2pt, nbl_WA, zbins, der_prefix)
+        dC_3x2pt_5D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, paramnames_3x2pt, nbl_3x2pt, zbins, der_prefix,
                                                    is_3x2pt=True)
 
         # ! my derivatives BNT transform

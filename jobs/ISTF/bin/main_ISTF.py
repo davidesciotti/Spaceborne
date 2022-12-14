@@ -25,18 +25,19 @@ sys.path.append(f'{project_path.parent}/common_data/common_config')
 import mpl_cfg
 import ISTF_fid_params as ISTFfid
 
-sys.path.append(f'{project_path}')
 # project modules
-import bin.ell_values_running as ell_utils
-import bin.Cl_preprocessing_running as cl_utils
-import bin.compute_Sijkl as Sijkl_utils
-import bin.covariance_running as covmat_utils
-import bin.FM_running as FM_utils
-import bin.utils_running as utils
+sys.path.append(f'{project_path}/bin')
+import ell_values_running as ell_utils
+import Cl_preprocessing_running as cl_utils
+import compute_Sijkl as Sijkl_utils
+import covariance_running as covmat_utils
+import FM_running as FM_utils
+import utils_running as utils
 
 # job configuration and modules
-import jobs.ISTF.config.config_ISTF_cl14may as cfg
-import jobs.ISTF.bin.unit_test as ut
+sys.path.append(f'{project_path}/jobs')
+import ISTF.config.config_ISTF_cl14may as cfg
+import ISTF.bin.unit_test as ut
 
 mpl.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)

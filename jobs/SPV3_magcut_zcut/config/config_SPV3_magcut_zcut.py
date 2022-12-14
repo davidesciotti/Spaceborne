@@ -35,8 +35,8 @@ general_cfg = {
     'nbl_WL_32': 32,
     'which_forecast': which_forecast,
     'use_WA': False,
-    'save_cls_3d': True,
-    'save_rls_3d': True,
+    'save_cls_3d': False,
+    'save_rls_3d': False,
     'cl_BNT_transform': BNT_transform,
     'BNT_matrix_path': f'{SPV3_folder}/BNT_matrix',
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
@@ -61,16 +61,17 @@ if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
     general_cfg['use_WA'] = False
 
 covariance_cfg = {
-    'ind_folder': f'{project_path.parent}/common_data/ind_files' + '/{triu_tril:s}_{row_col_wise:s}',
-    'ind_filename': 'indices_{triu_tril:s}_{row_col_wise:s}_zbins{zbins:02d}.dat',
+    'ind_folder': f'{project_path.parent}/common_data/ind_files' + '/{triu_tril:s}_{row_col_major:s}',
+    'ind_filename': 'indices_{triu_tril:s}_{row_col_major:s}_zbins{zbins:02d}.dat',
     'ind_ordering': ind_ordering,  # TODO deprecate this
     'triu_tril': 'triu',
-    'row_col_wise': 'row-wise',
+    'row_col_major': 'row-major',
     'block_index': 'ell',
     'GL_or_LG': GL_or_LG,
     'fsky': fsky,  # ! new
     # 'Rl': 4,
     # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
+    'SSC_code': 'PySSC',
     'which_probe_response': 'variable',
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
     'ng_folder': f'{SPV3_folder}/Flagship_{flagship_version}/InputNz/magcut_zcut',
@@ -116,12 +117,12 @@ FM_cfg = {
     'save_FM_as_dict': False,
     'derivatives_BNT_transform': BNT_transform,
     'transformed_derivs_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_True/davide',
-
-                                'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}/' +
+    'derivatives_BNTstef_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_True/stefano/' + '{probe:s}',
+    'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}/' +
                           'ML{magcut_lens:03d}ZL{zcut_lens:02d}MS{magcut_source:03d}ZS{zcut_source:02d}',
     'derivatives_filename': 'BNT_dDVd{param:s}-{probe:s}-{specs:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                             'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    'derivatives_BNTstef_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_True/stefano/' + '{probe:s}',
+    'derivatives_prefix': 'dDVd',
     # the filename is the same as above
     'FM_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/FM',
     'FM_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'

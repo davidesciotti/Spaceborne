@@ -1,4 +1,5 @@
 import bz2
+import glob
 import pickle
 import sys
 import time
@@ -60,55 +61,32 @@ def load_compressed_pickle(file):
     return data
 
 
-def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, probe_ordering, variable_specs, GO_or_GS, cov_dict):
+def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, variable_specs, GO_or_GS, cov_dict):
     """transforms dictionary of 3x2pt cov blocks into a dictionary of the usual form (i.e., with the usual keys)"""
 
     # import 3x2pt blocks in dictionary
     cov_3x2pt_BNT_imported_dict = dict(mm.get_kv_pairs_npy(cov_BNTstef_folder))
 
-    # select only the ones corresponding to the current MS, ML, ZS, ZL values
-    specs = 'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02}' \
-            '_MS{magcut_source:03d}_ZS{zcut_source:02}_6D'.format(**variable_specs)
+    # select only the ones corresponding to the current configuration of MS, ML, ZS, ZL values
+    str_start = f'BNT_covmat_{GO_or_GS}_3x2pt_'
+    str_end = '_lmax3000_nbl29_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02}' \
+              '_MS{magcut_source:03d}_ZS{zcut_source:02}_6D'.format(**variable_specs)
     cov_3x2pt_BNT_imported_dict = {key: value
-                                   for key, value in cov_3x2pt_BNT_imported_dict.items() if
-                                   key.endswith(specs)}
+                                   for key, value in cov_3x2pt_BNT_imported_dict.items()
+                                   if key.startswith(str_start) and key.endswith(str_end)}
+    if not cov_3x2pt_BNT_imported_dict:
+        raise ValueError('cov_3x2pt_BNT_imported_dict is empty')
+
+    # clean the keys of the interpolated dictionary, by removing the starting and ending parts of the string
+    # and expanding it into a tuple of chars
+    cov_3x2pt_BNT_imported_dict = {tuple(key.replace(str_start, '').replace(str_end, '')): value
+                                   for key, value in cov_3x2pt_BNT_imported_dict.items()}
+    print(cov_3x2pt_BNT_imported_dict.keys())
 
     if not cov_3x2pt_BNT_imported_dict:
-        raise ValueError('cov_3x2pt_BNT_dict is empty')
+        raise ValueError('cov_3x2pt_BNT_imported_dict is empty')
 
-    # redefine the keys
-    cov_3x2pt_BNT_dict = {}
-    for probe_A, probe_B in probe_ordering:
-        for probe_C, probe_D in probe_ordering:
-            for key, value in cov_3x2pt_BNT_imported_dict.items():
-                if f'{probe_A}{probe_B}{probe_C}{probe_D}' in key:
-                    # fill the 8 available blocks - all but cov_3x2pt_GGGG, which is the noly one not BNT-trasformed
-                    cov_3x2pt_BNT_dict[probe_A, probe_B, probe_C, probe_D] = value
-                # if the probes are not all equal
-
-                if not
-                    cov_3x2pt_BNT_dict[probe_C, probe_D, probe_A, probe_B] = value.transpose((0, 1, 3, 2, 5, 4))  # symmetric block
-
-    # # alternative:
-    # cov_3x2pt_BNT_dict_2 = {}
-    # for probe_A, probe_B in probe_ordering:
-    #     for probe_C, probe_D in probe_ordering:
-    #         for key, value in cov_3x2pt_BNT_imported_dict.items():
-    #             if f'{probe_A}{probe_B}{probe_C}{probe_D}' in key:
-    #                 # fill the 8 available blocks - all but cov_3x2pt_GGGG, which is the noly one not BNT-trasformed
-    #                 cov_3x2pt_BNT_dict_2[probe_A, probe_B, probe_C, probe_D] = cov_3x2pt_BNT_imported_dict[f'']
-    #                 cov_3x2pt_BNT_dict_2[probe_C, probe_D, probe_A, probe_B] = value  # symmetric block
-    #
-    # # check that the two methods give the same result: do they have the same keys?
-    # assert cov_3x2pt_BNT_dict.keys() == cov_3x2pt_BNT_dict_2.keys()
-    #
-    # # check that the two methods give the same result: do they have the same values?
-    # for key, value in cov_3x2pt_BNT_dict.items():
-    #     assert np.array_equal(cov_3x2pt_BNT_dict[key], cov_3x2pt_BNT_dict_2[key])
-
-    # the GGGG block is not affected by BNT, so we can just copy it from the original covmat
-    cov_3x2pt_BNT_dict['G', 'G', 'G', 'G'] = cov_dict[f'cov_3x2pt_{GO_or_GS}_10D']['G', 'G', 'G', 'G']
-    return cov_3x2pt_BNT_dict
+    return cov_3x2pt_BNT_imported_dict
 
 
 # TODO check that the number of ell bins is the same as in the files
@@ -134,6 +112,7 @@ ML_list = [245]
 ZL_list = [0]
 MS_list = [245]
 ZS_list = [0]
+
 warnings.warn('restore the ML, Zl, ... lists')
 warnings.warn('restore nbl_WL = 32, or call it nbl_WL_opt instead of nbl_WL_32...')
 
@@ -360,15 +339,16 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
             # transform to 4D array
             cov_3x2pt_BNT_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_BNT_dict, probe_ordering, nbl_GC,
-                                                          zbins, ind.copy(), GL_or_LG)
+                                                              zbins, ind.copy(), GL_or_LG)
             cov_3x2pt_BNT_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_GC,
-                                                          zbins, ind.copy(), GL_or_LG)
+                                                              zbins, ind.copy(), GL_or_LG)
 
             # reshape to 2D and overwrite the non-BNT value
             cov_3x2pt_BNT_GO_2D = mm.cov_4D_to_2D(cov_3x2pt_BNT_GO_4D, block_index=covariance_cfg['block_index'])
             cov_3x2pt_BNT_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_BNT_GS_4D, block_index=covariance_cfg['block_index'])
 
             # ! XXX debug: check the BNT covariance
+            cov_3x2pt_BNT_GO_2D = mm.symmetrize_2d_array(cov_3x2pt_BNT_GO_2D)
             mm.matshow(cov_3x2pt_BNT_GO_2D, 'cov_3x2pt_GO_BNT_2D', log=True, abs_val=True)
             mm.matshow(cov_dict['cov_3x2pt_GO_2D'], 'cov_3x2pt_GO_2D', log=True, abs_val=True)
 
@@ -383,7 +363,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
             cov_dict['cov_3x2pt_GO_2D'] = cov_3x2pt_BNT_GO_2D
             cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_BNT_GS_2D
-
 
     # ! compute Fisher matrix
     if FM_cfg['compute_FM']:
@@ -479,7 +458,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
         # fiducial values
         fid_cosmo = [0.32, 0.68, 0.05, -1.0, 0.0, 0.67, 0.96, 0.816]
-        # fid_cosmo = np.asarray([ISTF_fid.primary[key] for key in ISTF_fid.primary.keys()])[:7]
         fid_IA = np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()])
         fid_galaxy_bias = np.genfromtxt(f'{ng_folder}/{ng_filename}')[:, 2]
         fid_shear_bias = np.zeros((zbins,))
@@ -529,8 +507,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                 plt.figure()
                 plt.plot(10 ** ell_dict['ell_XC'], dC_3x2pt_5D[:, probe_A, probe_B, 0, 0, alf], label='my BNT derivs')
                 plt.plot(10 ** ell_dict['ell_XC'], dC_3x2pt_BNT_5D[:, probe_A, probe_B, 0, 0, alf],
-                         label='Stefanos BNT derivs',
-                         ls='--')
+                         label='Stefanos BNT derivs', ls='--')
                 plt.legend()
                 plt.title(f'{paramnames_3x2pt[alf]}, probes={probe_A}, {probe_B}')
 
@@ -590,7 +567,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                         ells_filename = f'ell_{probe_dav}_ellmaxWL{ell_max_WL}'
                         np.savetxt(f'{filepath}/{ells_filename}.txt', 10 ** ell_dict[f'ell_{probe_dav}'])
                         np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])
-
 
     # ! save covariance:
     if covariance_cfg['cov_file_format'] == 'npy':

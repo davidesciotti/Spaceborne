@@ -60,7 +60,7 @@ def load_compressed_pickle(file):
     return data
 
 
-def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, variable_specs):
+def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, probe_ordering, variable_specs):
     # import 3x2pt blocks in dictionary
     cov_3x2pt_GS_BNT_import_dict = dict(mm.get_kv_pairs_npy(cov_BNTstef_folder))
 
@@ -75,8 +75,6 @@ def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, variable_specs):
         raise ValueError('cov_3x2pt_GS_dict is empty')
 
     # build 3x2pt 4D covariance
-    GL_or_LG = covariance_cfg['GL_or_LG']
-    probe_ordering = [['L', 'L'], [GL_or_LG[0], GL_or_LG[1]], ['G', 'G']]
 
     # redefine the keys
     cov_3x2pt_GS_BNT_dict = {}
@@ -112,10 +110,10 @@ ZL_list = [0, 2, 0, 2]
 MS_list = [245, 245, 245, 245]
 ZS_list = [0, 0, 0, 2]
 
-# ML_list = [230, ]
-# ZL_list = [2, ]
-# MS_list = [245, ]
-# ZS_list = [0, ]
+ML_list = [230, ]
+ZL_list = [2, ]
+MS_list = [245, ]
+ZS_list = [0, ]
 
 warnings.warn('restore the ML, Zl, ... lists')
 warnings.warn('restore nbl_WL = 32')
@@ -147,6 +145,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     row_col_major = covariance_cfg['row_col_major']
     n_probes = general_cfg['n_probes']
     whos_BNT = general_cfg['whos_BNT']
+    GL_or_LG = covariance_cfg['GL_or_LG']
+    probe_ordering = [['L', 'L'], [GL_or_LG[0], GL_or_LG[1]], ['G', 'G']]
 
     # which cases to save: GO, GS or GO, GS and SS
     cases_tosave = ['GO', 'GS']
@@ -335,8 +335,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
             cov_BNTstef_folder_GO = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GO', probe='3x2pt')
             cov_BNTstef_folder_GS = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GS', probe='3x2pt')
-            cov_3x2pt_GS_BNT_GO_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GO, variable_specs)
-            cov_3x2pt_GS_BNT_GS_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GS, variable_specs)
+            cov_3x2pt_GO_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GO, probe_ordering, variable_specs)
+            cov_3x2pt_GS_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GS, probe_ordering, variable_specs)
 
             # transform to 4D array
             cov_3x2pt_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_BNT_dict, probe_ordering, nbl_GC,
@@ -438,9 +438,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         paramnames_shearbias = [f'm{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
         paramnames_dzWL = [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
         paramnames_dzGC = [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
-        # paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias + paramnames_shearbias + \
-        #                    paramnames_dzWL + paramnames_dzGC
-        paramnames_3x2pt = paramnames_cosmo
+        paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias + paramnames_shearbias + \
+                           paramnames_dzWL + paramnames_dzGC
         FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
 
         # fiducial values
@@ -451,8 +450,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         fid_shear_bias = np.zeros((zbins,))
         fid_dzWL = np.zeros((zbins,))
         fid_dzGC = np.zeros((zbins,))
-        # fid_3x2pt = np.concatenate((fid_cosmo, fid_IA, fid_galaxy_bias, fid_shear_bias, fid_dzWL, fid_dzGC))
-        fid_3x2pt = fid_cosmo
+        fid_3x2pt = np.concatenate((fid_cosmo, fid_IA, fid_galaxy_bias, fid_shear_bias, fid_dzWL, fid_dzGC))
         assert len(fid_3x2pt) == len(
             paramnames_3x2pt), 'the fiducial values list and parameter names should have the same length'
 

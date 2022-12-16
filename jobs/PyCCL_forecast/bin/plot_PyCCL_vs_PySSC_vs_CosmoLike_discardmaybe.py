@@ -99,4 +99,4 @@ ax[1].set_ylabel("% diff wrt mean")
 # plt.title(f"FM forec., {probe}, {case}.")
 
 # save fig
-fig.savefig(f"{path}/output/plots/{name}.pdf")
+# fig.savefig(f"{path}/output/plots/{name}.pdf")

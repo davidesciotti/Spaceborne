@@ -60,35 +60,55 @@ def load_compressed_pickle(file):
     return data
 
 
-def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, probe_ordering, variable_specs):
+def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, probe_ordering, variable_specs, GO_or_GS, cov_dict):
+    """transforms dictionary of 3x2pt cov blocks into a dictionary of the usual form (i.e., with the usual keys)"""
+
     # import 3x2pt blocks in dictionary
-    cov_3x2pt_GS_BNT_import_dict = dict(mm.get_kv_pairs_npy(cov_BNTstef_folder))
+    cov_3x2pt_BNT_imported_dict = dict(mm.get_kv_pairs_npy(cov_BNTstef_folder))
 
     # select only the ones corresponding to the current MS, ML, ZS, ZL values
-    current_specs = 'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02}' \
-                    '_MS{magcut_source:03d}_ZS{zcut_source:02}_6D'.format(**variable_specs)
-    cov_3x2pt_GS_BNT_import_dict = {key: value
-                                    for key, value in cov_3x2pt_GS_BNT_import_dict.items() if
-                                    key.endswith(current_specs)}
+    specs = 'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02}' \
+            '_MS{magcut_source:03d}_ZS{zcut_source:02}_6D'.format(**variable_specs)
+    cov_3x2pt_BNT_imported_dict = {key: value
+                                   for key, value in cov_3x2pt_BNT_imported_dict.items() if
+                                   key.endswith(specs)}
 
-    if not cov_3x2pt_GS_BNT_import_dict:
-        raise ValueError('cov_3x2pt_GS_dict is empty')
-
-    # build 3x2pt 4D covariance
+    if not cov_3x2pt_BNT_imported_dict:
+        raise ValueError('cov_3x2pt_BNT_dict is empty')
 
     # redefine the keys
-    cov_3x2pt_GS_BNT_dict = {}
+    cov_3x2pt_BNT_dict = {}
     for probe_A, probe_B in probe_ordering:
         for probe_C, probe_D in probe_ordering:
-            for key, value in cov_3x2pt_GS_BNT_import_dict.items():
+            for key, value in cov_3x2pt_BNT_imported_dict.items():
                 if f'{probe_A}{probe_B}{probe_C}{probe_D}' in key:
-                    # fill the 8 available blocks - all but cov_3x2pt_GGGG, which is not BNT-trasformed
-                    cov_3x2pt_GS_BNT_dict[probe_A, probe_B, probe_C, probe_D] = value
-                    cov_3x2pt_GS_BNT_dict[probe_C, probe_D, probe_A, probe_B] = value
+                    # fill the 8 available blocks - all but cov_3x2pt_GGGG, which is the noly one not BNT-trasformed
+                    cov_3x2pt_BNT_dict[probe_A, probe_B, probe_C, probe_D] = value
+                # if the probes are not all equal
+
+                if not
+                    cov_3x2pt_BNT_dict[probe_C, probe_D, probe_A, probe_B] = value.transpose((0, 1, 3, 2, 5, 4))  # symmetric block
+
+    # # alternative:
+    # cov_3x2pt_BNT_dict_2 = {}
+    # for probe_A, probe_B in probe_ordering:
+    #     for probe_C, probe_D in probe_ordering:
+    #         for key, value in cov_3x2pt_BNT_imported_dict.items():
+    #             if f'{probe_A}{probe_B}{probe_C}{probe_D}' in key:
+    #                 # fill the 8 available blocks - all but cov_3x2pt_GGGG, which is the noly one not BNT-trasformed
+    #                 cov_3x2pt_BNT_dict_2[probe_A, probe_B, probe_C, probe_D] = cov_3x2pt_BNT_imported_dict[f'']
+    #                 cov_3x2pt_BNT_dict_2[probe_C, probe_D, probe_A, probe_B] = value  # symmetric block
+    #
+    # # check that the two methods give the same result: do they have the same keys?
+    # assert cov_3x2pt_BNT_dict.keys() == cov_3x2pt_BNT_dict_2.keys()
+    #
+    # # check that the two methods give the same result: do they have the same values?
+    # for key, value in cov_3x2pt_BNT_dict.items():
+    #     assert np.array_equal(cov_3x2pt_BNT_dict[key], cov_3x2pt_BNT_dict_2[key])
 
     # the GGGG block is not affected by BNT, so we can just copy it from the original covmat
-    cov_3x2pt_GS_BNT_dict['G', 'G', 'G', 'G'] = cov_dict['cov_3x2pt_GS_10D']['G', 'G', 'G', 'G']
-    return cov_3x2pt_GS_BNT_dict
+    cov_3x2pt_BNT_dict['G', 'G', 'G', 'G'] = cov_dict[f'cov_3x2pt_{GO_or_GS}_10D']['G', 'G', 'G', 'G']
+    return cov_3x2pt_BNT_dict
 
 
 # TODO check that the number of ell bins is the same as in the files
@@ -110,13 +130,12 @@ ZL_list = [0, 2, 0, 2]
 MS_list = [245, 245, 245, 245]
 ZS_list = [0, 0, 0, 2]
 
-ML_list = [230, ]
-ZL_list = [2, ]
-MS_list = [245, ]
-ZS_list = [0, ]
-
+ML_list = [245]
+ZL_list = [0]
+MS_list = [245]
+ZS_list = [0]
 warnings.warn('restore the ML, Zl, ... lists')
-warnings.warn('restore nbl_WL = 32')
+warnings.warn('restore nbl_WL = 32, or call it nbl_WL_opt instead of nbl_WL_32...')
 
 for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     general_cfg['magcut_source'], general_cfg['zcut_source'] in \
@@ -332,23 +351,39 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
         # now overwrite the cov_3x2pt_GS with Stefano's BNT covmats
         if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
-
             cov_BNTstef_folder_GO = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GO', probe='3x2pt')
             cov_BNTstef_folder_GS = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GS', probe='3x2pt')
-            cov_3x2pt_GO_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GO, probe_ordering, variable_specs)
-            cov_3x2pt_GS_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GS, probe_ordering, variable_specs)
+            cov_3x2pt_GO_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GO, probe_ordering,
+                                                                       variable_specs, 'GO', cov_dict)
+            cov_3x2pt_GS_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GS, probe_ordering,
+                                                                       variable_specs, 'GS', cov_dict)
 
             # transform to 4D array
-            cov_3x2pt_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_BNT_dict, probe_ordering, nbl_GC,
+            cov_3x2pt_BNT_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_BNT_dict, probe_ordering, nbl_GC,
                                                           zbins, ind.copy(), GL_or_LG)
-            cov_3x2pt_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_GC,
+            cov_3x2pt_BNT_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_GC,
                                                           zbins, ind.copy(), GL_or_LG)
 
             # reshape to 2D and overwrite the non-BNT value
-            cov_3x2pt_GO_2D = mm.cov_4D_to_2D(cov_3x2pt_GO_4D, block_index=covariance_cfg['block_index'])
-            cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, block_index=covariance_cfg['block_index'])
-            cov_dict['cov_3x2pt_GO_2D'] = cov_3x2pt_GO_2D
-            cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_GS_2D
+            cov_3x2pt_BNT_GO_2D = mm.cov_4D_to_2D(cov_3x2pt_BNT_GO_4D, block_index=covariance_cfg['block_index'])
+            cov_3x2pt_BNT_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_BNT_GS_4D, block_index=covariance_cfg['block_index'])
+
+            # ! XXX debug: check the BNT covariance
+            mm.matshow(cov_3x2pt_BNT_GO_2D, 'cov_3x2pt_GO_BNT_2D', log=True, abs_val=True)
+            mm.matshow(cov_dict['cov_3x2pt_GO_2D'], 'cov_3x2pt_GO_2D', log=True, abs_val=True)
+
+            # check if is symmetric
+            assert np.allclose(cov_3x2pt_BNT_GO_2D, cov_3x2pt_BNT_GO_2D.T, atol=0, rtol=1e-4), \
+                'cov_3x2pt_BNT_GO_2D is not symmetric'
+            assert np.allclose(cov_dict['cov_3x2pt_GO_2D'], cov_dict['cov_3x2pt_GO_2D'].T, atol=0, rtol=1e-4), \
+                'cov_3x2pt_GO_2D is not symmetric'
+
+            assert 1 > 2, 'debugging BNT covariance'
+            # ! XXX end debug: check the BNT covariance
+
+            cov_dict['cov_3x2pt_GO_2D'] = cov_3x2pt_BNT_GO_2D
+            cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_BNT_GS_2D
+
 
     # ! compute Fisher matrix
     if FM_cfg['compute_FM']:
@@ -477,11 +512,12 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                 dC_3x2pt_5D[:, 0, 1, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, 0, 1, :, :, alf], BNT_matrix)
 
             transformed_derivs_folder = FM_cfg['transformed_derivs_folder']
-            transformed_derivs_filename = f'dDV-BNTdav_WLO-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.npy'
+            transformed_derivs_filename = f'dDV-BNTdav_WLO-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-' \
+                                          f'{EP_or_ED}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-' \
+                                          f'MS{magcut_source:03d}-ZS{zcut_source:02d}.npy'
 
             # save BNT-transformed derivatives
-            readme = 'shape: (ell_bins, z_bins, z_bins, num_parameters); parameters order:' + str(
-                paramnames_3x2pt)
+            readme = 'shape: (ell_bins, z_bins, z_bins, num_parameters); parameters order:' + str(paramnames_3x2pt)
             with open(f'{transformed_derivs_folder}/README_transformed_derivs.txt', "w") as text_file:
                 text_file.write(readme)
             np.save(f'{transformed_derivs_folder}/{transformed_derivs_filename}', dC_LL_4D)
@@ -555,6 +591,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                         np.savetxt(f'{filepath}/{ells_filename}.txt', 10 ** ell_dict[f'ell_{probe_dav}'])
                         np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])
 
+
     # ! save covariance:
     if covariance_cfg['cov_file_format'] == 'npy':
         save_funct = np.save
@@ -597,7 +634,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                         cov_filename = f'covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_' \
                                        f'nbl{nbl_3x2pt}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
                                        f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                       f'ZS{zcut_source:02d}_10D'
+                                       f'ZS{zcut_source:02d}_10D.pickle'
                         start = time.perf_counter()
                         with open(f'{cov_folder}/{cov_filename}', 'wb') as handle:
                             pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)

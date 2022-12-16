@@ -305,7 +305,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
                                                      probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
         print(f'cov_GO_6D new computed in {(time.perf_counter() - start_time):.2f} seconds')
 
-        # ! cov_SS_6D
+        # ! cov_SSC_6D
         start_time = time.perf_counter()
         cov_WL_SS_6D = mm.cov_SS_10D_dict(cl_dict_LL, rl_dict_LL, Sijkl_dict, nbl_WL, zbins, fsky,
                                           probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']

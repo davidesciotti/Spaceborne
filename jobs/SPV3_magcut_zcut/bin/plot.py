@@ -54,10 +54,6 @@ plot_prior_contours = False
 bar_plot_nuisance = False
 whos_BNT = 'stefano'
 dpi = 500
-magcut_lens = 230
-magcut_source = 245
-zcut_lens = 0
-zcut_source = 0
 zmax = 25
 EP_or_ED = 'ED'
 n_cosmo_params = 8
@@ -139,26 +135,23 @@ for probe in probes:
         assert len(fid) == len(params), 'the fiducial values list and parameter names should have the same length'
 
         title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
-        title += f'\nML = {magcut_lens / 10}, MS = {magcut_source / 10}, ZL = {zcut_lens / 10}, ' \
-                 f'ZS = {zcut_source / 10:}, zmax = 2.5'
+        title += f'\nML = {ML / 10}, MS = {MS / 10}, ZL = {ZL / 10}, ZS = {ZS / 10:}, zmax = {zmax/10}'
 
         FMs = (FM_GO, FM_BNT_GO)
         cases = ['FM_GO', 'FM_GO_BNT']
+        key_to_compare_A, key_to_compare_B = 'FM_GO', 'FM_GO_BNT'  # which cases to take the percent diff and ratio of
 
         data = []
         fom = {}
         uncert = {}
-        uncert_ratio_dict[probe][ML][ZL][MS][ZS] = []
-        uncert_G_dict[probe][ML][ZL][MS][ZS] = []
-        uncert_GS_dict[probe][ML][ZL][MS][ZS] = []
         for FM, case in zip(FMs, cases):
             uncert[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams_toplot, fiducials=fid[:nparams_toplot],
                                                           which_uncertainty=which_uncertainty, normalize=True))
             fom[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_idx)
             print(f'FoM({probe}, {case}): {fom[case]}')
 
-        uncert['percent_diff'] = diff_funct(uncert['GS'], uncert['G'])
-        uncert['ratio'] = uncert['GS'] / uncert['G']
+        uncert['percent_diff'] = diff_funct(uncert[key_to_compare_B], uncert[key_to_compare_B])
+        uncert['ratio'] = uncert[key_to_compare_B] / uncert[key_to_compare_B]
 
         for case in cases:
             data.append(uncert[case])

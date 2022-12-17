@@ -371,3 +371,16 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_dict[f'cov_3x2pt_GS_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_GS_4D, nbl_3x2pt, zbins)
 
     return cov_dict
+
+
+def build_X_matrix_BNT(BNT_matrix):
+    X = {}
+    delta_kron = np.eye(BNT_matrix.shape)
+    zbins = BNT_matrix.shape[0]
+    for probe_A in ['L', 'G']:
+        for probe_B in ['L', 'G']:
+            for a in range(zbins):
+
+            X[probe_A, probe_B][a, e, b, f] = BNT[a, e] * BNT[b, f]
+            X[probe_A, probe_B][a, e, b, f] = BNT[a, e] * BNT[b, f]
+            X[probe_A, probe_B][a, e, b, f] = BNT[a, e] * BNT[b, f]

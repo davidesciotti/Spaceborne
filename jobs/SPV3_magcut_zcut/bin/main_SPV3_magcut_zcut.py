@@ -5,11 +5,9 @@ import sys
 import time
 from pathlib import Path
 import matplotlib
-import scipy.io as sio
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
-import pandas as pd
 import os
 import warnings
 import scipy.sparse as spar
@@ -61,7 +59,7 @@ def load_compressed_pickle(file):
     return data
 
 
-def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, variable_specs, GO_or_GS, cov_dict):
+def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, probe_ordering, variable_specs, GO_or_GS, cov_dict, nbl_3x2pt):
     """transforms dictionary of 3x2pt cov blocks into a dictionary of the usual form (i.e., with the usual keys)"""
 
     # import 3x2pt blocks in dictionary
@@ -77,16 +75,26 @@ def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, variable_specs, GO_or
     if not cov_3x2pt_BNT_imported_dict:
         raise ValueError('cov_3x2pt_BNT_imported_dict is empty')
 
-    # clean the keys of the interpolated dictionary, by removing the starting and ending parts of the string
-    # and expanding it into a tuple of chars
-    cov_3x2pt_BNT_imported_dict = {tuple(key.replace(str_start, '').replace(str_end, '')): value
-                                   for key, value in cov_3x2pt_BNT_imported_dict.items()}
-    print(cov_3x2pt_BNT_imported_dict.keys())
+    # initialize the keys of the new dictionary to 0
+    zbins = variable_specs['zbins']
+    cov_3x2pt_BNT_dict = {}
+    for probe_A, probe_B in probe_ordering:
+        for probe_C, probe_D in probe_ordering:
+            cov_3x2pt_BNT_dict[probe_A, probe_B, probe_C, probe_D] = np.zeros((nbl_3x2pt, nbl_3x2pt, zbins, zbins, zbins, zbins))
 
-    if not cov_3x2pt_BNT_imported_dict:
-        raise ValueError('cov_3x2pt_BNT_imported_dict is empty')
+    # clean up the keys of the interpolated dictionary, by removing the starting and ending parts of the string
+    # and expanding it into a tuple of chars (the probes)
+    for key in cov_3x2pt_BNT_imported_dict.keys():
+        # key of my dict, different from the key of stefano's dict
+        new_key = tuple(key.replace(str_start, '').replace(str_end, ''))
+        cov_3x2pt_BNT_dict[new_key] = cov_3x2pt_BNT_imported_dict[key]
 
-    return cov_3x2pt_BNT_imported_dict
+    if not cov_3x2pt_BNT_dict:
+        raise ValueError('cov_3x2pt_BNT_dict is empty')
+
+    cov_3x2pt_BNT_dict['G', 'G', 'G', 'G'] = cov_dict[f'cov_3x2pt_{GO_or_GS}_10D']['G', 'G', 'G', 'G']
+
+    return cov_3x2pt_BNT_dict
 
 
 # TODO check that the number of ell bins is the same as in the files
@@ -333,9 +341,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             cov_BNTstef_folder_GO = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GO', probe='3x2pt')
             cov_BNTstef_folder_GS = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GS', probe='3x2pt')
             cov_3x2pt_GO_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GO, probe_ordering,
-                                                                       variable_specs, 'GO', cov_dict)
+                                                                       variable_specs, 'GO', cov_dict, nbl_3x2pt)
             cov_3x2pt_GS_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GS, probe_ordering,
-                                                                       variable_specs, 'GS', cov_dict)
+                                                                       variable_specs, 'GS', cov_dict, nbl_3x2pt)
 
             # transform to 4D array
             cov_3x2pt_BNT_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_BNT_dict, probe_ordering, nbl_GC,
@@ -348,17 +356,25 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             cov_3x2pt_BNT_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_BNT_GS_4D, block_index=covariance_cfg['block_index'])
 
             # ! XXX debug: check the BNT covariance
-            cov_3x2pt_BNT_GO_2D = mm.symmetrize_2d_array(cov_3x2pt_BNT_GO_2D)
-            mm.matshow(cov_3x2pt_BNT_GO_2D, 'cov_3x2pt_GO_BNT_2D', log=True, abs_val=True)
+            # manual symmetrization
+
+
+
+            cov_3x2pt_BNT_GO_2D = mm.symmetrize_2d_array(cov_3x2pt_BNT_GO_2D)  # ! remove matshow in here
+            mm.compare_arrays(cov_3x2pt_BNT_GO_2D, cov_3x2pt_BNT_GO_2D.T, log_diff=True)
+
+            mm.check_symmetric(cov_3x2pt_BNT_GO_2D, exact=False)
+            mm.matshow(cov_3x2pt_BNT_GO_2D, 'cov_3x2pt_BNT_GO_2D', log=True, abs_val=True)
+            mm.matshow(cov_3x2pt_BNT_GO_2D.T, 'cov_3x2pt_BNT_GO_2D.T', log=True, abs_val=True)
             mm.matshow(cov_dict['cov_3x2pt_GO_2D'], 'cov_3x2pt_GO_2D', log=True, abs_val=True)
 
             # check if is symmetric
-            assert np.allclose(cov_3x2pt_BNT_GO_2D, cov_3x2pt_BNT_GO_2D.T, atol=0, rtol=1e-4), \
-                'cov_3x2pt_BNT_GO_2D is not symmetric'
-            assert np.allclose(cov_dict['cov_3x2pt_GO_2D'], cov_dict['cov_3x2pt_GO_2D'].T, atol=0, rtol=1e-4), \
-                'cov_3x2pt_GO_2D is not symmetric'
+            # assert np.allclose(cov_3x2pt_BNT_GO_2D, cov_3x2pt_BNT_GO_2D.T, atol=0, rtol=1e-4), \
+            #     'cov_3x2pt_BNT_GO_2D is not symmetric'
+            # assert np.allclose(cov_dict['cov_3x2pt_GO_2D'], cov_dict['cov_3x2pt_GO_2D'].T, atol=0, rtol=1e-4), \
+            #     'cov_3x2pt_GO_2D is not symmetric'
 
-            assert 1 > 2, 'debugging BNT covariance'
+            # assert 1 > 2, 'debugging BNT covariance'
             # ! XXX end debug: check the BNT covariance
 
             cov_dict['cov_3x2pt_GO_2D'] = cov_3x2pt_BNT_GO_2D
@@ -443,7 +459,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                 dC_dict_3x2pt_BNT_5D[key][:, 1, 1, :, :] = dC_dict_3x2pt_5D[key.lstrip('BNT_')][:, 1, 1, :, :]
 
             # overwrite the non-BNT derivatives with the BNT ones
-            dC_3x2pt_5D = dC_dict_3x2pt_5D
+            # dC_3x2pt_5D = dC_dict_3x2pt_5D
 
         # declare the set of parameters under study
         paramnames_cosmo = ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"]
@@ -611,10 +627,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                                        f'nbl{nbl_3x2pt}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
                                        f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
                                        f'ZS{zcut_source:02d}_10D.pickle'
-                        start = time.perf_counter()
                         with open(f'{cov_folder}/{cov_filename}', 'wb') as handle:
                             pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
-                        print(f'covmat 3x2pt {which_cov} saved in {time.perf_counter() - start:.2f} s')
 
             # in the pessimistic case, save only WA
             elif ell_max_WL == 1500:

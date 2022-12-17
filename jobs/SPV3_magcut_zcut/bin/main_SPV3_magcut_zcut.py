@@ -59,7 +59,8 @@ def load_compressed_pickle(file):
     return data
 
 
-def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, probe_ordering, variable_specs, GO_or_GS, cov_dict, nbl_3x2pt):
+def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, probe_ordering, variable_specs, GO_or_GS, cov_dict,
+                                       nbl_3x2pt):
     """transforms dictionary of 3x2pt cov blocks into a dictionary of the usual form (i.e., with the usual keys)"""
 
     # import 3x2pt blocks in dictionary
@@ -80,7 +81,8 @@ def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, probe_ordering, varia
     cov_3x2pt_BNT_dict = {}
     for probe_A, probe_B in probe_ordering:
         for probe_C, probe_D in probe_ordering:
-            cov_3x2pt_BNT_dict[probe_A, probe_B, probe_C, probe_D] = np.zeros((nbl_3x2pt, nbl_3x2pt, zbins, zbins, zbins, zbins))
+            cov_3x2pt_BNT_dict[probe_A, probe_B, probe_C, probe_D] = np.zeros(
+                (nbl_3x2pt, nbl_3x2pt, zbins, zbins, zbins, zbins))
 
     # clean up the keys of the interpolated dictionary, by removing the starting and ending parts of the string
     # and expanding it into a tuple of chars (the probes)
@@ -338,39 +340,10 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
         if general_cfg['BNT_transform'] and whos_BNT == '/davide':
 
-            X = covmat_utils.build_X_matrix_BNT(BNT_matrix)
-
-            start_time = time.perf_counter()
-            cov = cov_dict['cov_3x2pt_GO_10D']
-            cov_BNT_10D = {}
-            for A in ['L', 'G']:
-                for B in ['L', 'G']:
-                    for C in ['L', 'G']:
-                        for D in ['L', 'G']:
-                            # lm stands for ell1, ell2, which are not mixed by the transformation
-                            cov_BNT_10D[A, B, C, D] = np.einsum('aebf, cgdh, lmefgh -> lmabcd', X[A, B], X[C, D], cov[A, B, C, D])
-            print(f'cov_BNT_10D computed in {time.perf_counter() - start_time:.2f} s')
-
-            i, j = 0, 0
-            mm.matshow(cov_BNT_10D['L', 'L', 'L', 'L'][0, 0, i, j, 0, 0])
-
-            start_time = time.perf_counter()
-            cov_BNT_10D = {}
-            for A in ['L', 'G']:
-                for B in ['L', 'G']:
-                    for C in ['L', 'G']:
-                        for D in ['L', 'G']:
-                            for a in range(zbins):
-                                for b in range(zbins):
-                                    for c in range(zbins):
-                                        for d in range(zbins):
-                                            cov_BNT_10D[A, B, C, D][:, :, a, b, c, d] = \
-                                                X[A, B][a, e, b, f] * X[C, D][c, g, d, h] * cov[A, B, C, D][:, :, e, f, g, h]
-            print(f'cov_BNT_10D computed in {time.perf_counter() - start_time:.2f} s')
+            pass
 
 
 
-            assert 1 > 2
 
 
         # now overwrite the cov_3x2pt_GS with Stefano's BNT covmats
@@ -395,15 +368,13 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             # ! XXX debug: check the BNT covariance
             # manual symmetrization
 
+            # cov_3x2pt_BNT_GO_2D = mm.symmetrize_2d_array(cov_3x2pt_BNT_GO_2D)  # ! remove matshow in here
+            # mm.compare_arrays(cov_3x2pt_BNT_GO_2D, cov_3x2pt_BNT_GO_2D.T, log_diff=True)
 
-
-            cov_3x2pt_BNT_GO_2D = mm.symmetrize_2d_array(cov_3x2pt_BNT_GO_2D)  # ! remove matshow in here
-            mm.compare_arrays(cov_3x2pt_BNT_GO_2D, cov_3x2pt_BNT_GO_2D.T, log_diff=True)
-
-            mm.check_symmetric(cov_3x2pt_BNT_GO_2D, exact=False)
-            mm.matshow(cov_3x2pt_BNT_GO_2D, 'cov_3x2pt_BNT_GO_2D', log=True, abs_val=True)
-            mm.matshow(cov_3x2pt_BNT_GO_2D.T, 'cov_3x2pt_BNT_GO_2D.T', log=True, abs_val=True)
-            mm.matshow(cov_dict['cov_3x2pt_GO_2D'], 'cov_3x2pt_GO_2D', log=True, abs_val=True)
+            # mm.check_symmetric(cov_3x2pt_BNT_GO_2D, exact=False)
+            # mm.matshow(cov_3x2pt_BNT_GO_2D, 'cov_3x2pt_BNT_GO_2D', log=True, abs_val=True)
+            # mm.matshow(cov_3x2pt_BNT_GO_2D.T, 'cov_3x2pt_BNT_GO_2D.T', log=True, abs_val=True)
+            # mm.matshow(cov_dict['cov_3x2pt_GO_2D'], 'cov_3x2pt_GO_2D', log=True, abs_val=True)
 
             # check if is symmetric
             # assert np.allclose(cov_3x2pt_BNT_GO_2D, cov_3x2pt_BNT_GO_2D.T, atol=0, rtol=1e-4), \
@@ -413,6 +384,55 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
             # assert 1 > 2, 'debugging BNT covariance'
             # ! XXX end debug: check the BNT covariance
+
+            # ! new bit: my BNT transform
+            X = covmat_utils.build_X_matrix_BNT(BNT_matrix)
+
+            test_3x2pt_cov_dict = cov_dict['cov_3x2pt_GO_10D']
+
+            # turn dictionary into an array to make einsum faster
+            print('start 3x2pt BNT transform')
+            start_time = time.perf_counter()
+            test_3x2pt_cov_array = np.zeros((2, 2, 2, 2, 29, 29, 13, 13, 13, 13))
+            X_array = np.zeros((2, 2, 13, 13, 13, 13))
+            probe_idx_dict = {
+                'L': 0,
+                'G': 1}
+            for A_str, B_str in probe_ordering:
+                for C_str, D_str in probe_ordering:
+                    A_idx, B_idx, C_idx, D_idx = probe_idx_dict[A_str], probe_idx_dict[B_str], probe_idx_dict[C_str], \
+                                                 probe_idx_dict[D_str]
+                    test_3x2pt_cov_array[A_idx, B_idx, C_idx, D_idx, ...] = test_3x2pt_cov_dict[
+                        A_str, B_str, C_str, D_str]
+                    X_array[A_idx, B_idx, ...] = X[A_str, B_str]
+
+            cov_BNT_10D = np.einsum('XYaebf, ZWcgdh, XYZWlmefgh -> XYZWlmabcd', X_array, X_array, test_3x2pt_cov_array,
+                                    optimize='greedy')
+
+            # re-establish it as a dictionary
+            cov_BNT_10D_dict = {}
+            for A_str, B_str in probe_ordering:
+                for C_str, D_str in probe_ordering:
+                    A_idx, B_idx, C_idx, D_idx = probe_idx_dict[A_str], probe_idx_dict[B_str], probe_idx_dict[C_str], \
+                                                 probe_idx_dict[D_str]
+                    cov_BNT_10D_dict[A_str, B_str, C_str, D_str] = cov_BNT_10D[A_idx, B_idx, C_idx, D_idx, ...]
+            print(f'cov_BNT_10D computed in {time.perf_counter() - start_time:.2f} s with greedy optimizer')
+
+            # without arraying
+            start_time = time.perf_counter()
+            for A, B in probe_ordering:
+                for C, D in probe_ordering:
+                    cov_BNT_10D[A, B, C, D] = np.einsum('aebf, cgdh, LMefgh -> LMabcd', X[A, B], X[C, D],
+                                                        test_3x2pt_cov_dict[A, B, C, D], optimize='greedy')
+            print(f'cov_BNT_10D computed in {time.perf_counter() - start_time:.2f} s with greedy optimizer')
+
+
+
+            for key in cov_BNT_10D_dict:
+                print(key, np.allclose(cov_BNT_10D_dict[key], cov_3x2pt_GO_BNT_dict[key], atol=0, rtol=1e-3))
+
+            assert 1 > 2
+            # ! end new bit: my BNT transform
 
             cov_dict['cov_3x2pt_GO_2D'] = cov_3x2pt_BNT_GO_2D
             cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_BNT_GS_2D
@@ -496,7 +516,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                 dC_dict_3x2pt_BNT_5D[key][:, 1, 1, :, :] = dC_dict_3x2pt_5D[key.lstrip('BNT_')][:, 1, 1, :, :]
 
             # overwrite the non-BNT derivatives with the BNT ones
-            # dC_3x2pt_5D = dC_dict_3x2pt_5D
+            dC_dict_3x2pt_5D = dC_dict_3x2pt_BNT_5D
 
         # declare the set of parameters under study
         paramnames_cosmo = ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"]

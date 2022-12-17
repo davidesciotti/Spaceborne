@@ -123,23 +123,23 @@ for probe in probes:
         _fid = FM_dict['fiducial_values']  # this should not change when passed the second time to the function
         FM_GO = FM_dict[f'FM_{probe}_GO']
         FM_GS = FM_dict[f'FM_{probe}_GS']
-        FM_BNT_GO = FM_BNT_dict[f'FM_{probe}_GO']
-        FM_BNT_GS = FM_BNT_dict[f'FM_{probe}_GS']
+        FM_GO_BNT = FM_BNT_dict[f'FM_{probe}_GO']
+        FM_GS_BNT = FM_BNT_dict[f'FM_{probe}_GS']
 
         # fix the desired parameters and remove null rows/columns
         FM_GO, params, fid = mm.mask_FM(FM_GO, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
         FM_GS, _, _ = mm.mask_FM(FM_GS, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
-        FM_BNT_GO, _, _ = mm.mask_FM(FM_BNT_GO, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
-        FM_BNT_GS, _, _ = mm.mask_FM(FM_BNT_GS, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
+        FM_GO_BNT, _, _ = mm.mask_FM(FM_GO_BNT, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
+        FM_GS_BNT, _, _ = mm.mask_FM(FM_GS_BNT, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
         wzwa_idx = [params.index('wz'), params.index('wa')]
         assert len(fid) == len(params), 'the fiducial values list and parameter names should have the same length'
 
         title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
         title += f'\nML = {ML / 10}, MS = {MS / 10}, ZL = {ZL / 10}, ZS = {ZS / 10:}, zmax = {zmax/10}'
 
-        FMs = (FM_GO, FM_BNT_GO)
-        cases = ['FM_GO', 'FM_GO_BNT']
-        key_to_compare_A, key_to_compare_B = 'FM_GO', 'FM_GO_BNT'  # which cases to take the percent diff and ratio of
+        FMs = (FM_GS, FM_GS_BNT)
+        cases = ['FM_GS', 'FM_GS_BNT', 'percent_diff']
+        key_to_compare_A, key_to_compare_B = 'FM_GS', 'FM_GS_BNT'  # which cases to take the percent diff and ratio of
 
         data = []
         fom = {}

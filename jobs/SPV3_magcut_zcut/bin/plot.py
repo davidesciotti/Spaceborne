@@ -59,6 +59,7 @@ EP_or_ED = 'ED'
 n_cosmo_params = 8
 nparams_toplot = n_cosmo_params
 pic_format = 'pdf'
+GO_or_GS = 'GO'
 # ! end options
 
 
@@ -137,9 +138,15 @@ for probe in probes:
         title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
         title += f'\nML = {ML / 10}, MS = {MS / 10}, ZL = {ZL / 10}, ZS = {ZS / 10:}, zmax = {zmax/10}'
 
-        FMs = (FM_GS, FM_GS_BNT)
-        cases = ['FM_GS', 'FM_GS_BNT', 'percent_diff']
-        key_to_compare_A, key_to_compare_B = 'FM_GS', 'FM_GS_BNT'  # which cases to take the percent diff and ratio of
+        if GO_or_GS == 'GO':
+            FMs = (FM_GO, FM_GO_BNT)
+        elif GO_or_GS == 'GS':
+            FMs = (FM_GS, FM_GS_BNT)
+        else:
+            raise ValueError('GO_or_GS should be either GO or GS')
+
+        cases = [f'FM_{GO_or_GS}', f'FM_{GO_or_GS}_BNT', 'percent_diff']
+        key_to_compare_A, key_to_compare_B = f'FM_{GO_or_GS}', f'FM_{GO_or_GS}_BNT'  # which cases to take the percent diff and ratio of
 
         data = []
         fom = {}
@@ -150,8 +157,8 @@ for probe in probes:
             fom[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_idx)
             print(f'FoM({probe}, {case}): {fom[case]}')
 
-        uncert['percent_diff'] = diff_funct(uncert[key_to_compare_B], uncert[key_to_compare_B])
-        uncert['ratio'] = uncert[key_to_compare_B] / uncert[key_to_compare_B]
+        uncert['percent_diff'] = diff_funct(uncert[key_to_compare_A], uncert[key_to_compare_B])
+        uncert['ratio'] = uncert[key_to_compare_A] / uncert[key_to_compare_B]
 
         for case in cases:
             data.append(uncert[case])

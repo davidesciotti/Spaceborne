@@ -420,13 +420,15 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
             # without arraying
             start_time = time.perf_counter()
-            for A, B in probe_ordering:
-                for C, D in probe_ordering:
-                    cov_BNT_10D[A, B, C, D] = np.einsum('aebf, cgdh, LMefgh -> LMabcd', X[A, B], X[C, D],
-                                                        test_3x2pt_cov_dict[A, B, C, D], optimize='greedy')
+            cov_probe_BNT_10 = {}
+            for probe_A, probe_B in probe_ordering:
+                for probe_C, probe_D in probe_ordering:
+                    cov_probe_BNT_10[probe_A, probe_B, probe_C, probe_D] = np.einsum('aebf, cgdh, LMefgh -> LMabcd',
+                                                                                     X[probe_A, probe_B],
+                                                                                     X[probe_C, probe_D],
+                                                                                     test_3x2pt_cov_dict[probe_A, probe_B, probe_C, probe_D],
+                                                                                     optimize='greedy')
             print(f'cov_BNT_10D computed in {time.perf_counter() - start_time:.2f} s with greedy optimizer')
-
-
 
             for key in cov_BNT_10D_dict:
                 print(key, np.allclose(cov_BNT_10D_dict[key], cov_3x2pt_GO_BNT_dict[key], atol=0, rtol=1e-3))

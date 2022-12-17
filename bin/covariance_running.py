@@ -385,12 +385,12 @@ def build_X_matrix_BNT(BNT_matrix):
     return X
 
 
-
-# def BNT_transform_cov(cov, X, BNT_matrix):
-#     zbins = BNT_matrix.shape[0]
-#     cov_BNT = np.zeros((zbins, zbins, zbins, zbins))
-#     for a in range(zbins):
-#         for b in range(zbins):
-#             for e in range(zbins):
-#                 for f in range(zbins):
-
+def BNT_transform_cov_3x2pt(cov_3x2pt_dict_10D, X_dict, probe_ordering, optimize=True):
+    """TODO do it for single probes"""
+    cov_3x2pt_BNT_dict_10D = {}
+    for probe_A, probe_B in probe_ordering:
+        for probe_C, probe_D in probe_ordering:
+            cov_3x2pt_BNT_dict_10D[probe_A, probe_B, probe_C, probe_D] = \
+                np.einsum('aebf, cgdh, LMefgh -> LMabcd', X_dict[probe_A, probe_B], X_dict[probe_C, probe_D],
+                          cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D], optimize=optimize)
+    return cov_3x2pt_BNT_dict_10D

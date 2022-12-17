@@ -336,8 +336,23 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
+        if general_cfg['BNT_transform'] and whos_BNT == '/davide':
+            start_time = time.perf_counter()
+            X = covmat_utils.build_X_matrix_BNT_einsum(BNT_matrix)
+            print('time to build X matrix with einsum: ', time.perf_counter() - start_time)
+
+            start_time = time.perf_counter()
+            X_2 = covmat_utils.build_X_matrix_BNT(BNT_matrix)
+            print('time to build X matrix: ', time.perf_counter() - start_time)
+
+            for key in X.keys():
+                assert np.allclose(X[key], X_2[key], atol=0, rtol=1e-3), f'X[{key}] is not equal to X_2[{key}]'
+
+            assert 1 > 2
+
+
         # now overwrite the cov_3x2pt_GS with Stefano's BNT covmats
-        if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
+        elif general_cfg['BNT_transform'] and whos_BNT == '/stefano':
             cov_BNTstef_folder_GO = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GO', probe='3x2pt')
             cov_BNTstef_folder_GS = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GS', probe='3x2pt')
             cov_3x2pt_GO_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GO, probe_ordering,

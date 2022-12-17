@@ -5,6 +5,7 @@ from pathlib import Path
 
 import matplotlib
 import numpy as np
+from numba import njit
 
 matplotlib.use('Qt5Agg')
 
@@ -373,14 +374,37 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     return cov_dict
 
 
+@njit
 def build_X_matrix_BNT(BNT_matrix):
     X = {}
     delta_kron = np.eye(BNT_matrix.shape)
     zbins = BNT_matrix.shape[0]
-    for probe_A in ['L', 'G']:
-        for probe_B in ['L', 'G']:
-            for a in range(zbins):
+    for a in range(zbins):
+        for b in range(zbins):
+            for e in range(zbins):
+                for f in range(zbins):
+                    X['L', 'L'][a, e, b, f] = BNT_matrix[a, e] * BNT_matrix[b, f]
+                    X['G', 'G'][a, e, b, f] = delta_kron[a, e] * delta_kron[b, f]
+                    X['G', 'L'][a, e, b, f] = delta_kron[a, e] * BNT_matrix[b, f]
+                    X['L', 'G'][a, e, b, f] = BNT_matrix[a, e] * delta_kron[b, f]  # ! I suppose, not very efficient
+    return X
 
-            X[probe_A, probe_B][a, e, b, f] = BNT[a, e] * BNT[b, f]
-            X[probe_A, probe_B][a, e, b, f] = BNT[a, e] * BNT[b, f]
-            X[probe_A, probe_B][a, e, b, f] = BNT[a, e] * BNT[b, f]
+def build_X_matrix_BNT_einsum(BNT_matrix):
+    X = {}
+    delta_kron = np.eye(BNT_matrix.shape)
+    X['L', 'L'] = np.einsum('ae, bf -> aebf', BNT_matrix, BNT_matrix)
+    X['G', 'G'] = np.einsum('ae, bf -> aebf', delta_kron, delta_kron)
+    X['G', 'L'] = np.einsum('ae, bf -> aebf', delta_kron, BNT_matrix)
+    X['L', 'G'] = np.einsum('ae, bf -> aebf', BNT_matrix, delta_kron)
+    return X
+
+
+
+# def BNT_transform_cov(cov, X, BNT_matrix):
+#     zbins = BNT_matrix.shape[0]
+#     cov_BNT = np.zeros((zbins, zbins, zbins, zbins))
+#     for a in range(zbins):
+#         for b in range(zbins):
+#             for e in range(zbins):
+#                 for f in range(zbins):
+

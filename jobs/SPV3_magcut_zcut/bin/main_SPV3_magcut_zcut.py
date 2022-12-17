@@ -337,16 +337,38 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
         if general_cfg['BNT_transform'] and whos_BNT == '/davide':
-            start_time = time.perf_counter()
-            X = covmat_utils.build_X_matrix_BNT_einsum(BNT_matrix)
-            print('time to build X matrix with einsum: ', time.perf_counter() - start_time)
+
+            X = covmat_utils.build_X_matrix_BNT(BNT_matrix)
 
             start_time = time.perf_counter()
-            X_2 = covmat_utils.build_X_matrix_BNT(BNT_matrix)
-            print('time to build X matrix: ', time.perf_counter() - start_time)
+            cov = cov_dict['cov_3x2pt_GO_10D']
+            cov_BNT_10D = {}
+            for A in ['L', 'G']:
+                for B in ['L', 'G']:
+                    for C in ['L', 'G']:
+                        for D in ['L', 'G']:
+                            # lm stands for ell1, ell2, which are not mixed by the transformation
+                            cov_BNT_10D[A, B, C, D] = np.einsum('aebf, cgdh, lmefgh -> lmabcd', X[A, B], X[C, D], cov[A, B, C, D])
+            print(f'cov_BNT_10D computed in {time.perf_counter() - start_time:.2f} s')
 
-            for key in X.keys():
-                assert np.allclose(X[key], X_2[key], atol=0, rtol=1e-3), f'X[{key}] is not equal to X_2[{key}]'
+            i, j = 0, 0
+            mm.matshow(cov_BNT_10D['L', 'L', 'L', 'L'][0, 0, i, j, 0, 0])
+
+            start_time = time.perf_counter()
+            cov_BNT_10D = {}
+            for A in ['L', 'G']:
+                for B in ['L', 'G']:
+                    for C in ['L', 'G']:
+                        for D in ['L', 'G']:
+                            for a in range(zbins):
+                                for b in range(zbins):
+                                    for c in range(zbins):
+                                        for d in range(zbins):
+                                            cov_BNT_10D[A, B, C, D][:, :, a, b, c, d] = \
+                                                X[A, B][a, e, b, f] * X[C, D][c, g, d, h] * cov[A, B, C, D][:, :, e, f, g, h]
+            print(f'cov_BNT_10D computed in {time.perf_counter() - start_time:.2f} s')
+
+
 
             assert 1 > 2
 

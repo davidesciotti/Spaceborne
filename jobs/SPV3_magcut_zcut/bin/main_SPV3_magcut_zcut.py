@@ -338,30 +338,36 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
-        if general_cfg['BNT_transform'] and whos_BNT == '/davide':
+        if general_cfg['BNT_transform']:
 
-            pass
+            if whos_BNT == '/davide':
 
+                start_time = time.perf_counter()
+                X_dict = covmat_utils.build_X_matrix_BNT(BNT_matrix)
+                cov_3x2pt_GO_BNT_dict = covmat_utils.BNT_transform_cov_3x2pt(
+                    cov_dict['cov_3x2pt_GO_10D'], X_dict, probe_ordering)
+                print('GO cov BNT transform took {:.2f} seconds'.format(time.perf_counter() - start_time))
 
+                start_time = time.perf_counter()
+                cov_3x2pt_GS_BNT_dict = covmat_utils.BNT_transform_cov_3x2pt(
+                    cov_dict['cov_3x2pt_GS_10D'], X_dict, probe_ordering)
+                print('GS cov BNT transform took {:.2f} seconds'.format(time.perf_counter() - start_time))
 
+            elif whos_BNT == '/stefano':
+                cov_BNTstef_folder_GO = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GO', probe='3x2pt')
+                cov_BNTstef_folder_GS = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GS', probe='3x2pt')
+                cov_3x2pt_GO_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GO, probe_ordering,
+                                                                           variable_specs, 'GO', cov_dict, nbl_3x2pt)
+                cov_3x2pt_GS_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GS, probe_ordering,
+                                                                           variable_specs, 'GS', cov_dict, nbl_3x2pt)
 
-
-        # now overwrite the cov_3x2pt_GS with Stefano's BNT covmats
-        elif general_cfg['BNT_transform'] and whos_BNT == '/stefano':
-            cov_BNTstef_folder_GO = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GO', probe='3x2pt')
-            cov_BNTstef_folder_GS = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GS', probe='3x2pt')
-            cov_3x2pt_GO_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GO, probe_ordering,
-                                                                       variable_specs, 'GO', cov_dict, nbl_3x2pt)
-            cov_3x2pt_GS_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GS, probe_ordering,
-                                                                       variable_specs, 'GS', cov_dict, nbl_3x2pt)
-
-            # transform to 4D array
-            cov_3x2pt_BNT_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_BNT_dict, probe_ordering, nbl_GC,
+            # transform from dict of 6D arrays to single 4D array
+            cov_3x2pt_BNT_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_BNT_dict, probe_ordering, nbl_3x2pt,
                                                               zbins, ind.copy(), GL_or_LG)
-            cov_3x2pt_BNT_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_GC,
+            cov_3x2pt_BNT_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_3x2pt,
                                                               zbins, ind.copy(), GL_or_LG)
 
-            # reshape to 2D and overwrite the non-BNT value
+            # reshape to 2D
             cov_3x2pt_BNT_GO_2D = mm.cov_4D_to_2D(cov_3x2pt_BNT_GO_4D, block_index=covariance_cfg['block_index'])
             cov_3x2pt_BNT_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_BNT_GS_4D, block_index=covariance_cfg['block_index'])
 
@@ -385,57 +391,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             # assert 1 > 2, 'debugging BNT covariance'
             # ! XXX end debug: check the BNT covariance
 
-            # ! new bit: my BNT transform
-            X = covmat_utils.build_X_matrix_BNT(BNT_matrix)
-
-            test_3x2pt_cov_dict = cov_dict['cov_3x2pt_GO_10D']
-
-            # turn dictionary into an array to make einsum faster
-            print('start 3x2pt BNT transform')
-            start_time = time.perf_counter()
-            test_3x2pt_cov_array = np.zeros((2, 2, 2, 2, 29, 29, 13, 13, 13, 13))
-            X_array = np.zeros((2, 2, 13, 13, 13, 13))
-            probe_idx_dict = {
-                'L': 0,
-                'G': 1}
-            for A_str, B_str in probe_ordering:
-                for C_str, D_str in probe_ordering:
-                    A_idx, B_idx, C_idx, D_idx = probe_idx_dict[A_str], probe_idx_dict[B_str], probe_idx_dict[C_str], \
-                                                 probe_idx_dict[D_str]
-                    test_3x2pt_cov_array[A_idx, B_idx, C_idx, D_idx, ...] = test_3x2pt_cov_dict[
-                        A_str, B_str, C_str, D_str]
-                    X_array[A_idx, B_idx, ...] = X[A_str, B_str]
-
-            cov_BNT_10D = np.einsum('XYaebf, ZWcgdh, XYZWlmefgh -> XYZWlmabcd', X_array, X_array, test_3x2pt_cov_array,
-                                    optimize='greedy')
-
-            # re-establish it as a dictionary
-            cov_BNT_10D_dict = {}
-            for A_str, B_str in probe_ordering:
-                for C_str, D_str in probe_ordering:
-                    A_idx, B_idx, C_idx, D_idx = probe_idx_dict[A_str], probe_idx_dict[B_str], probe_idx_dict[C_str], \
-                                                 probe_idx_dict[D_str]
-                    cov_BNT_10D_dict[A_str, B_str, C_str, D_str] = cov_BNT_10D[A_idx, B_idx, C_idx, D_idx, ...]
-            print(f'cov_BNT_10D computed in {time.perf_counter() - start_time:.2f} s with greedy optimizer')
-
-            # without arraying
-            start_time = time.perf_counter()
-            cov_probe_BNT_10 = {}
-            for probe_A, probe_B in probe_ordering:
-                for probe_C, probe_D in probe_ordering:
-                    cov_probe_BNT_10[probe_A, probe_B, probe_C, probe_D] = np.einsum('aebf, cgdh, LMefgh -> LMabcd',
-                                                                                     X[probe_A, probe_B],
-                                                                                     X[probe_C, probe_D],
-                                                                                     test_3x2pt_cov_dict[probe_A, probe_B, probe_C, probe_D],
-                                                                                     optimize='greedy')
-            print(f'cov_BNT_10D computed in {time.perf_counter() - start_time:.2f} s with greedy optimizer')
-
-            for key in cov_BNT_10D_dict:
-                print(key, np.allclose(cov_BNT_10D_dict[key], cov_3x2pt_GO_BNT_dict[key], atol=0, rtol=1e-3))
-
-            assert 1 > 2
-            # ! end new bit: my BNT transform
-
+            # overwrite the non-BNT value
             cov_dict['cov_3x2pt_GO_2D'] = cov_3x2pt_BNT_GO_2D
             cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_BNT_GS_2D
 

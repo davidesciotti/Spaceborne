@@ -425,7 +425,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         dC_dict_3x2pt_noBNT_5D = dC_dict_3x2pt_5D.copy()
 
         # in this case, overwrite part of the dictionary entries (the 3x2pt, in particular)
-        if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
+        # if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
+        if general_cfg['BNT_transform']:
+            warnings.warn('restore option to use stefanos files!')
 
             # import in one big dictionary
             derivatives_BNTstef_folder = FM_cfg['derivatives_BNTstef_folder'].format(probe='3x2pt')
@@ -507,6 +509,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
         # ! my derivatives BNT transform
         if general_cfg['BNT_transform'] and whos_BNT == '/davide':
+            warnings.warn('BNT transform for derivatives not implemented for the derivatives in the davide case')
+            """
             assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
             assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
             warnings.warn('Vincenzos derivatives are only for BNT_False, otherwise you should use Stefanos files')
@@ -546,6 +550,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                 print('is dC_3x2pt_noBNT_5D close to dC_3x2pt_5D for probe combination {probe_A}, {probe_B}?',
                       np.allclose(dC_3x2pt_noBNT_5D[:, probe_A, probe_B, :, :, :],
                                   dC_3x2pt_5D[:, probe_A, probe_B, :, :, :], rtol=1e-4, atol=0))
+        """
         # ! end new bit: BNT transform derivatives
 
         # store the derivatives arrays in a dictionary

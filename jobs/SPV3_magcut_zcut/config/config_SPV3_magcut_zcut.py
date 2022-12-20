@@ -16,7 +16,7 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
 # ! choose the flagship version and whether you want to compute the BNT transformed cls
 flagship_version = 2
 BNT_transform = True
-whos_BNT = '/stefano'  # "/stefano "or "/davide"
+whos_BNT = '/davide'  # "/stefano "or "/davide"
 
 if BNT_transform is False:
     whos_BNT = ''
@@ -121,7 +121,7 @@ FM_cfg = {
     'save_FM': False,
     'save_FM_as_dict': True,
     'transformed_derivs_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}{whos_BNT}',
-    'derivatives_BNTstef_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}{whos_BNT}/' + '{probe:s}',
+    'derivatives_BNTstef_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}/stefano/' + '{probe:s}',
     'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_False/' +
                           'ML{magcut_lens:03d}ZL{zcut_lens:02d}MS{magcut_source:03d}ZS{zcut_source:02d}',
     'derivatives_filename': 'BNT_dDVd{param:s}-{probe:s}-{specs:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'

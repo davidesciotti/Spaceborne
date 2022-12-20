@@ -16,7 +16,7 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
 # ! choose the flagship version and whether you want to compute the BNT transformed cls
 flagship_version = 2
 BNT_transform = True
-whos_BNT = '/davide'  # "/stefano "or "/davide"
+whos_BNT = '/stefano'  # "/stefano "or "/davide"
 
 if BNT_transform is False:
     whos_BNT = ''

@@ -63,7 +63,6 @@ def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, probe_ordering, varia
                                        nbl_3x2pt):
     """transforms dictionary of 3x2pt cov blocks into a dictionary of the usual form (i.e., with the usual keys)"""
 
-    # import 3x2pt blocks in dictionary
     cov_3x2pt_BNT_imported_dict = dict(mm.get_kv_pairs_npy(cov_BNTstef_folder))
 
     # select only the ones corresponding to the current configuration of MS, ML, ZS, ZL values
@@ -76,20 +75,26 @@ def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, probe_ordering, varia
     if not cov_3x2pt_BNT_imported_dict:
         raise ValueError('cov_3x2pt_BNT_imported_dict is empty')
 
+    # second cleanup - I could include this in the previous comprehension, but it's more readable this way
+    cov_3x2pt_BNT_imported_dict = {key.replace(str_start, '').replace(str_end, ''): value
+                                   for key, value in cov_3x2pt_BNT_imported_dict.items()}
+
     # initialize the keys of the new dictionary to 0
     zbins = variable_specs['zbins']
     cov_3x2pt_BNT_dict = {}
     for probe_A, probe_B in probe_ordering:
         for probe_C, probe_D in probe_ordering:
-            cov_3x2pt_BNT_dict[probe_A, probe_B, probe_C, probe_D] = np.zeros(
-                (nbl_3x2pt, nbl_3x2pt, zbins, zbins, zbins, zbins))
-
-    # clean up the keys of the interpolated dictionary, by removing the starting and ending parts of the string
-    # and expanding it into a tuple of chars (the probes)
-    for key in cov_3x2pt_BNT_imported_dict.keys():
-        # key of my dict, different from the key of stefano's dict
-        new_key = tuple(key.replace(str_start, '').replace(str_end, ''))
-        cov_3x2pt_BNT_dict[new_key] = cov_3x2pt_BNT_imported_dict[key]
+            try:
+                cov_3x2pt_BNT_dict[probe_A, probe_B, probe_C, probe_D] = cov_3x2pt_BNT_imported_dict[
+                    probe_A + probe_B + probe_C + probe_D]
+            except KeyError:  # if the key is not present, the transposed keys probably are
+                print(probe_A + probe_B + probe_C + probe_D, 'not present in cov_3x2pt_BNT_imported_dict')
+                try:
+                    cov_3x2pt_BNT_dict[probe_A, probe_B, probe_C, probe_D] = cov_3x2pt_BNT_imported_dict[
+                        probe_C + probe_D + probe_A + probe_B].transpose((0, 1, 4, 5, 2, 3))
+                except KeyError:  # the GGGG key is not present (no BNT transform in this case)
+                    cov_3x2pt_BNT_dict[probe_A, probe_B, probe_C, probe_D] = \
+                        np.zeros((nbl_3x2pt, nbl_3x2pt, zbins, zbins, zbins, zbins))
 
     if not cov_3x2pt_BNT_dict:
         raise ValueError('cov_3x2pt_BNT_dict is empty')
@@ -127,7 +132,7 @@ warnings.warn('restore the ML, Zl, ... lists')
 warnings.warn('restore nbl_WL = 32, or call it nbl_WL_opt instead of nbl_WL_32...')
 
 for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
-    general_cfg['magcut_source'], general_cfg['zcut_source'] in \
+        general_cfg['magcut_source'], general_cfg['zcut_source'] in \
         zip(ML_list, ZL_list, MS_list, ZS_list):
 
     # for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
@@ -356,6 +361,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             elif whos_BNT == '/stefano':
                 cov_BNTstef_folder_GO = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GO', probe='3x2pt')
                 cov_BNTstef_folder_GS = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GS', probe='3x2pt')
+
                 cov_3x2pt_GO_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GO, probe_ordering,
                                                                            variable_specs, 'GO', cov_dict, nbl_3x2pt)
                 cov_3x2pt_GS_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GS, probe_ordering,
@@ -375,18 +381,19 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             # manual symmetrization
 
             # cov_3x2pt_BNT_GO_2D = mm.symmetrize_2d_array(cov_3x2pt_BNT_GO_2D)  # ! remove matshow in here
-            # mm.compare_arrays(cov_3x2pt_BNT_GO_2D, cov_3x2pt_BNT_GO_2D.T, log_diff=True)
-
-            # mm.check_symmetric(cov_3x2pt_BNT_GO_2D, exact=False)
-            # mm.matshow(cov_3x2pt_BNT_GO_2D, 'cov_3x2pt_BNT_GO_2D', log=True, abs_val=True)
-            # mm.matshow(cov_3x2pt_BNT_GO_2D.T, 'cov_3x2pt_BNT_GO_2D.T', log=True, abs_val=True)
-            # mm.matshow(cov_dict['cov_3x2pt_GO_2D'], 'cov_3x2pt_GO_2D', log=True, abs_val=True)
+            mm.compare_arrays(cov_3x2pt_BNT_GO_2D, cov_3x2pt_BNT_GO_2D.T, log_diff=True, log_arr=True)
 
             # check if is symmetric
             # assert np.allclose(cov_3x2pt_BNT_GO_2D, cov_3x2pt_BNT_GO_2D.T, atol=0, rtol=1e-4), \
             #     'cov_3x2pt_BNT_GO_2D is not symmetric'
             # assert np.allclose(cov_dict['cov_3x2pt_GO_2D'], cov_dict['cov_3x2pt_GO_2D'].T, atol=0, rtol=1e-4), \
             #     'cov_3x2pt_GO_2D is not symmetric'
+
+            # assert 1 > 2
+
+            mm.matshow(cov_3x2pt_BNT_GO_2D, 'cov_3x2pt_BNT_GO_2D', log=True, abs_val=True)
+            mm.matshow(cov_3x2pt_BNT_GO_2D.T, 'cov_3x2pt_BNT_GO_2D.T', log=True, abs_val=True)
+            mm.matshow(cov_dict['cov_3x2pt_GO_2D'], 'cov_3x2pt_GO_2D', log=True, abs_val=True)
 
             # assert 1 > 2, 'debugging BNT covariance'
             # ! XXX end debug: check the BNT covariance

@@ -9,6 +9,7 @@ BNT_transform = False
 deg2_in_sphere = 41252.96  # deg^2 in a spere
 fsky = survey_area_deg2 / deg2_in_sphere
 cfg_name = 'cl15gen'
+
 # settings for SSC comparison (aka 'sylvain'):
 # survey_area_deg2 = 15469.86  # deg^2
 # use_WA: False
@@ -47,11 +48,11 @@ covariance_cfg = {
     'row_col_major': 'row-major',
     'GL_or_LG': 'GL',
     'fsky': fsky,
-    'rl_value': None,  # it used to be 4 for a constant probe response, which this is wrong
     'block_index': 'ell',
     # this is the one used by me and Vincenzo. The blocks in the 2D covmat will be indexed by ell1, ell2
     'which_probe_response': 'variable',
-    'SSC_code': 'PySSC',  # PySSC or PyCCL
+    'rl_value': None,  # it used to be 4 for a constant probe response, which this is wrong
+    'SSC_code': 'PyCCL',  # PySSC or PyCCL
     'ng': 30,
     'ng_folder': None,
     'ng_filename': None,
@@ -62,7 +63,7 @@ covariance_cfg = {
     'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_GS': False,
     'save_cov_SSC': False,
-    'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
+    'save_2DCLOE': False,
     'cov_folder': str(job_path) + f'/output/{cfg_name}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D.npy',
     'cov_SSC_PyCCL_folder': f'{project_path.parent}/PyCCL_SSC/output/covmat',
@@ -106,5 +107,4 @@ FM_cfg = {
     'paramnames_galbias': paramnames_galbias,
     'paramnames_3x2pt': paramnames_3x2pt,
     'nparams_total': nparams_total,
-
 }

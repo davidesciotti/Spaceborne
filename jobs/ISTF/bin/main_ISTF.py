@@ -35,12 +35,11 @@ import utils_running as utils
 
 # job configuration and modules
 sys.path.append(f'{project_path}/jobs')
-import ISTF.config.config_ISTF_cl15gen as cfg
+import ISTF.config.config_ISTF_cl14may as cfg
 import ISTF.bin.unit_test as ut
 
 mpl.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
-
 start_time = time.perf_counter()
 
 
@@ -118,7 +117,7 @@ rl_folder = general_cfg['rl_folder'].format(**variable_specs)
 rl_filename = general_cfg['rl_filename']
 rl_LL_2D = np.genfromtxt(f'{rl_folder}/{rl_filename.format(probe="ll")}')
 rl_GL_2D = np.genfromtxt(f'{rl_folder}/{rl_filename.format(probe="gl")}')
-rl_GG_2D = np.genfromtxt(f'{rl_folder}/{rl_filename.format(probe="ll")}')
+rl_GG_2D = np.genfromtxt(f'{rl_folder}/{rl_filename.format(probe="gg")}')
 
 # interpolate
 cl_dict_2D = {}
@@ -364,7 +363,7 @@ for ndim in (2, 4, 6):
                     f'{cov_folder}/covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_zbins{EP_or_ED}{zbins:02}_{ndim}D.npy',
                     cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
 
-if FM_cfg['save_FM']:
+if FM_cfg['compute_FM'] and FM_cfg['save_FM']:
     # saves as txt file
     probe_list = ['WL', 'GC', '3x2pt', 'WA']
     ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
@@ -379,9 +378,10 @@ if FM_cfg['save_FM']:
                                                        **variable_specs)
             np.savetxt(f'{FM_folder}/{FM_filename}', FM_dict[f'FM_{probe}_{which_cov}'], header=header)
 
-if FM_cfg['save_FM_as_dict']:
+if FM_cfg['compute_FM'] and FM_cfg['save_FM_as_dict']:
     mm.save_pickle(f'{FM_folder}/FM_dict_{EP_or_ED}{zbins:02}.pickle', FM_dict)
 
-ut.test_cov_FM(covariance_cfg['SSC_code'], 'covmat')
+ut.test_cov_FM(covariance_cfg['SSC_code'], f'{general_cfg["cfg_name"]}/covmat')
+ut.test_cov_FM(covariance_cfg['SSC_code'], f'{general_cfg["cfg_name"]}/FM')
 
 print('done')

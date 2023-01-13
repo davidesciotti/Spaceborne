@@ -8,7 +8,6 @@ import matplotlib as mpl
 import numpy as np
 import os
 import warnings
-import _pickle as cPickle
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent

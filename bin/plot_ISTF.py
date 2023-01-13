@@ -37,14 +37,14 @@ markersize = 10
 # ! options
 zbins = 10
 zbins_list = np.array((zbins,), dtype=int)
-probe = 'WL'
+probe = 'GC'
 pes_opt_list = ('opt',)
 EP_or_ED_list = ('EP',)
 which_comparison = 'GO_vs_GS'  # this is just to set the title of the plot
 which_Rl = 'var'
 nparams_chosen = 7
 model = 'flat'
-which_diff = 'normal'
+which_diff = 'mean'
 flagship_version = 2
 check_old_FM = False
 pes_opt = 'opt'
@@ -67,6 +67,9 @@ EP_or_ED = 'EP'
 nbl = 30
 SSC_code = 'PySSC'
 # ! end options
+
+assert fix_IA is False, 'IA parameters should be left free to vary'
+assert fix_gal_bias is False, 'galaxy bias parameters should be left free to vary'
 
 uncert_ratio_dict = {}
 uncert_G_dict = {}
@@ -91,7 +94,7 @@ uncert_ratio_dict[probe] = {}
 
 # import FM dict
 FM_dict_PySSC = mm.load_pickle(f'{project_path}/jobs/ISTF/output/FM/PySSC/FM_dict_{EP_or_ED}{zbins:02}.pickle')
-_param_names = FM_dict_PySSC['parameters']  # this should not change when passed the second time to the function
+_param_names = FM_dict_PySSC['parameters_names']  # this should not change when passed the second time to the function
 _fiducials = FM_dict_PySSC['fiducial_values']  # this should not change when passed the second time to the function
 FM_PySSC_GO = FM_dict_PySSC[f'FM_{probe}_GO']
 FM_PySSC_GS = FM_dict_PySSC[f'FM_{probe}_GS']
@@ -133,43 +136,44 @@ FM_PySSC_GO, param_names, fiducials = mm.mask_FM(FM_PySSC_GO, _param_names, _fid
 FM_PySSC_GS, _, _ = mm.mask_FM(FM_PySSC_GS, _param_names, _fiducials, n_cosmo_params, fix_IA, fix_gal_bias)
 wzwa_idx = [param_names.index('wz'), param_names.index('wa')]
 
-FM_PyCCL_GO, param_names, fiducials = mm.mask_FM(FM_PyCCL_GO, _param_names, _fiducials, n_cosmo_params, fix_IA, fix_gal_bias)
+FM_PyCCL_GO, _, _ = mm.mask_FM(FM_PyCCL_GO, _param_names, _fiducials, n_cosmo_params, fix_IA, fix_gal_bias)
 FM_PyCCL_GS, _, _ = mm.mask_FM(FM_PyCCL_GS, _param_names, _fiducials, n_cosmo_params, fix_IA, fix_gal_bias)
 
-assert 1 > 2
+# cases should include all the FM, plus percent differences if you want to show them. the ordering is important, it must
+# be the same!
+FMs = [FM_PySSC_GO, FM_PyCCL_GO, FM_PySSC_GS, FM_PyCCL_GS]
+cases_to_compute = ['FM_PySSC_GO', 'FM_PyCCL_GO', 'FM_PySSC_GS', 'FM_PyCCL_GS']
+cases_to_plot = ['FM_PySSC_GO', 'FM_PySSC_GS', 'FM_PyCCL_GS', 'percent_diff_GS']
 
-
-# FMs = [FM_GO, FM_GS, FM_GS_PyCCL]
-# cases = ['G', 'GS', 'GS_PyCCL', 'percent_diff_GS', 'percent_diff_GS_PyCCL']
-FMs = [FM_PySSC_GO, FM_GO_old, FM_PySSC_GS, FM_GS_old, FM_GS_PyCCL]
-cases = ['G', 'G_old', 'GS', 'GS_old', 'GS_PyCCL', 'percent_diff_GS', 'percent_diff_GS_old']
-
-# compute uncertainties
+# compute uncertainties and store them in a dictionary
 uncert_dict = {}
 fom = {}
-for FM, case in zip(FMs, cases):
+for FM, case in zip(FMs, cases_to_compute):
     uncert_dict[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams_toplot, fiducials=fiducials[:nparams_toplot],
                                                        which_uncertainty=which_uncertainty, normalize=True))
     fom[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_idx)
     print(f'FoM({probe}, {case}): {fom[case]}')
 
-uncert_dict['percent_diff_GS'] = diff_funct(uncert_dict['GS'], uncert_dict['G'])
-uncert_dict['percent_diff_GS_old'] = diff_funct(uncert_dict['GS_old'], uncert_dict['G_old'])
-# uncert_dict['percent_diff_GS_PyCCL'] = diff_funct(uncert_dict['GS_PyCCL'], uncert_dict['G'])
-uncert_dict['ratio'] = uncert_dict['GS'] / uncert_dict['G']
+# add the percent differences and/or rations to the dictionary
+uncert_dict['percent_diff_GS'] = diff_funct(uncert_dict['FM_PySSC_GS'], uncert_dict['FM_PyCCL_GO'])
+# uncert_dict['percent_diff_GS'] = diff_funct(uncert_dict['FM_PyCCL_GS'], uncert_dict['FM_PyCCL_GO'])
 
-# check against IST:F (which do not exist for GC alone):
+assert np.array_equal(uncert_dict['FM_PySSC_GO'], uncert_dict['FM_PyCCL_GO']), \
+    'the GO uncertainties must be the same, I am only changing the SSC code!' \
+
+# silent check against IST:F (which do not exist for GC alone):
 if probe != 'GC':
     uncert_dict['ISTF'] = ISTF_fid.forecasts[f'{probe}_opt_w0waCDM_flat']
-    diff = diff_funct(uncert_dict['ISTF'], uncert_dict['G'])
-    assert np.all(np.abs(diff) < 5.0), f'IST:F and G are not consistent!'
+    diff = diff_funct(uncert_dict['ISTF'], uncert_dict['FM_PySSC_GO'])
+    assert np.all(np.abs(diff) < 5.0), f'IST:F and G are not consistent! Remember that you are checking against the ' \
+                                       f'optimistic case'
 
 # transform dict. into an array
 uncert_array = []
-for case in cases:
+for case in cases_to_plot:
     uncert_array.append(uncert_dict[case])
 uncert_array = np.asarray(uncert_array)
 
 title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
-plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases, nparams=nparams_toplot,
+plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                     param_names_label=param_names[:nparams_toplot], bar_width=0.12)

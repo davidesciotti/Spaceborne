@@ -51,7 +51,7 @@ covariance_cfg = {
     'block_index': 'ell',
     # this is the one used by me and Vincenzo. The blocks in the 2D covmat will be indexed by ell1, ell2
     'which_probe_response': 'variable',
-    'SSC_code': 'PyCCL',  # PySSC or PyCCL
+    'SSC_code': 'PySSC',  # PySSC or PyCCL
     'ng': 30,
     'ng_folder': None,
     'ng_filename': None,
@@ -63,7 +63,7 @@ covariance_cfg = {
     'save_cov_GS': False,
     'save_cov_SSC': False,
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
-    'cov_folder': str(job_path) + '/output/covmat/{SSC_code:s}',
+    'cov_folder': str(job_path) + '/output/cl15may/covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D.npy',
     'cov_SSC_PyCCL_folder': f'{project_path.parent}/PyCCL_SSC/output/covmat',
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_hm_recipeKiDS1000_6D.npy',  # TODO these 2 filenames could be unified...
@@ -97,7 +97,7 @@ FM_cfg = {
     'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_derivatives_tesi/new_names/',
     'derivatives_prefix': 'dCij{probe:s}d',
     'derivatives_suffix': '-N4TB-GR-eNLA',  # I'd like to use this, but instead:
-    'FM_folder': str(job_path) + '/output/FM/{SSC_code:s}',
+    'FM_folder': str(job_path) + '/output/cl15may/FM/{SSC_code:s}',
     'FM_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}.txt',
     'params_order': None,
     'paramnames_cosmo': paramnames_cosmo,

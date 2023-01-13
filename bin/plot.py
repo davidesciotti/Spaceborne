@@ -91,7 +91,7 @@ uncert_ratio_dict[probe] = {}
 
 # import FM dict
 FM_dict = mm.load_pickle(f'{project_path}/jobs/ISTF/output/FM/{SSC_code}/FM_dict_{EP_or_ED}{zbins:02}.pickle')
-_params = FM_dict['parameters']  # this should not change when passed the second time to the function
+_params = FM_dict['parameters_names']  # this should not change when passed the second time to the function
 _fid = FM_dict['fiducial_values']  # this should not change when passed the second time to the function
 FM_GO = FM_dict[f'FM_{probe}_GO']
 FM_GS = FM_dict[f'FM_{probe}_GS']

@@ -45,6 +45,7 @@ which_Rl = 'var'
 nparams_chosen = 7
 model = 'flat'
 which_diff = 'mean'
+which_cfg = 'cl14may'
 flagship_version = 2
 check_old_FM = False
 pes_opt = 'opt'
@@ -93,46 +94,21 @@ else:
 uncert_ratio_dict[probe] = {}
 
 # import FM dict
-FM_dict_PySSC = mm.load_pickle(f'{project_path}/jobs/ISTF/output/FM/PySSC/FM_dict_{EP_or_ED}{zbins:02}.pickle')
+FM_dict_PySSC = mm.load_pickle(
+    f'{project_path}/jobs/ISTF/output/{which_cfg}/FM/PySSC/FM_dict_{EP_or_ED}{zbins:02}.pickle')
 _param_names = FM_dict_PySSC['parameters_names']  # this should not change when passed the second time to the function
 _fiducials = FM_dict_PySSC['fiducial_values']  # this should not change when passed the second time to the function
 FM_PySSC_GO = FM_dict_PySSC[f'FM_{probe}_GO']
 FM_PySSC_GS = FM_dict_PySSC[f'FM_{probe}_GS']
 
-FM_PyCCL_dict = mm.load_pickle(f'{project_path}/jobs/ISTF/output/FM/PyCCL/FM_dict_{EP_or_ED}{zbins:02}.pickle')
+FM_PyCCL_dict = mm.load_pickle(
+    f'{project_path}/jobs/ISTF/output/{which_cfg}/FM/PyCCL/FM_dict_{EP_or_ED}{zbins:02}.pickle')
 FM_PyCCL_GO = FM_PyCCL_dict[f'FM_{probe}_GO']
 FM_PyCCL_GS = FM_PyCCL_dict[f'FM_{probe}_GS']
 
-# from SSC_paper_jan22_backup_works
-# FM_GO_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_paper_jan22_backup_works/output/FM/'
-#                           f'common_ell_and_deltas/Cij_14may/FM_{probe}_G_lmax{probe}{lmax}_nbl{nbl}.txt')
-# FM_GS_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_paper_jan22_backup_works/output/FM/'
-#                           f'common_ell_and_deltas/Cij_14may/FM_{probe}_G+SSC_lmax{probe}{lmax}_nbl{nbl}.txt')
-
-# from SSC_restructured_bu_may2022
-# FM_GO_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_bu/jobs/'
-#                           f'SSC_comparison/output/FM/FM_{probe}_GO_lmax{probe}{lmax}_nbl{nbl}.txt')
-# FM_GS_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_bu/jobs/'
-#                           f'SSC_comparison/output/FM/FM_{probe}_GS_lmax{probe}{lmax}_nbl{nbl}.txt')
-
-# from common_data/sylvain/FM/common_ell_and_deltas/latest_downloads/renamed
-# FM_GO_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/common_data/sylvain/FM/common_ell_and_deltas/'
-#                           f'latest_downloads/renamed/FM_{probe}_GO_lmax{probe}{lmax}_nbl{nbl}_ellDavide.txt')
-# FM_GS_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/common_data/sylvain/FM/common_ell_and_deltas/'
-#                           f'latest_downloads/renamed/FM_{probe}_GS_lmax{probe}{lmax}_nbl{nbl}_ellDavide.txt')
-
-# from SSC_restructured_v2/jobs/SSC_comparison/output/FM/
-# FM_GO_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/FM'
-#                           f'/FM_{probe}_GO_lmax{probe}{lmax}_nbl{nbl}.txt')
-# FM_GS_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/FM'
-#                           f'/FM_{probe}_GS_lmax{probe}{lmax}_nbl{nbl}_Rlconst.txt')
-#
-#
-# FM_GS_PyCCL = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/PyCCL_forecast/output/'
-#                             f'FM/FM_{probe}_GS_lmax{probe}{lmax}_nbl{nbl}_PyCCLKiDS1000.txt')
-
 # fix the desired parameters and remove null rows/columns
-FM_PySSC_GO, param_names, fiducials = mm.mask_FM(FM_PySSC_GO, _param_names, _fiducials, n_cosmo_params, fix_IA, fix_gal_bias)
+FM_PySSC_GO, param_names, fiducials = mm.mask_FM(FM_PySSC_GO, _param_names, _fiducials, n_cosmo_params, fix_IA,
+                                                 fix_gal_bias)
 FM_PySSC_GS, _, _ = mm.mask_FM(FM_PySSC_GS, _param_names, _fiducials, n_cosmo_params, fix_IA, fix_gal_bias)
 wzwa_idx = [param_names.index('wz'), param_names.index('wa')]
 
@@ -159,7 +135,7 @@ uncert_dict['percent_diff_GS'] = diff_funct(uncert_dict['FM_PySSC_GS'], uncert_d
 # uncert_dict['percent_diff_GS'] = diff_funct(uncert_dict['FM_PyCCL_GS'], uncert_dict['FM_PyCCL_GO'])
 
 assert np.array_equal(uncert_dict['FM_PySSC_GO'], uncert_dict['FM_PyCCL_GO']), \
-    'the GO uncertainties must be the same, I am only changing the SSC code!' \
+    'the GO uncertainties must be the same, I am only changing the SSC code!'
 
 # silent check against IST:F (which do not exist for GC alone):
 if probe != 'GC':

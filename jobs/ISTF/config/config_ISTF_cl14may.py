@@ -3,17 +3,19 @@ from pathlib import Path
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 
-deg2_in_sphere = 41252.96  # deg^2 in a spere
 survey_area_deg2 = 15_000  # deg^2
-fsky = survey_area_deg2 / deg2_in_sphere
-
 BNT_transform = False
+
+deg2_in_sphere = 41252.96  # deg^2 in a spere
+fsky = survey_area_deg2 / deg2_in_sphere
+cfg_name = 'cl14may'
 
 # settings for SSC comparison (aka 'sylvain'):
 # survey_area_deg2 = 15469.86  # deg^2
 # use_WA: False
 
 general_cfg = {
+    'cfg_name': cfg_name,
     'ell_min': 10,
     'ell_max_WL': 5000,
     'ell_max_GC': 3000,
@@ -62,7 +64,7 @@ covariance_cfg = {
     'save_cov_GS': False,
     'save_cov_SSC': False,
     'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
-    'cov_folder': str(job_path) + '/output/cl14may/covmat/{SSC_code:s}',
+    'cov_folder': str(job_path) + f'/output/{cfg_name}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D.npy',
     'cov_SSC_PyCCL_folder': f'{project_path.parent}/PyCCL_SSC/output/covmat',
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_hm_recipeKiDS1000_6D.npy',  # TODO these 2 filenames could be unified...
@@ -96,7 +98,7 @@ FM_cfg = {
     'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}',
     'derivatives_prefix': 'dCij{probe:s}d',
     'derivatives_suffix': '-GR-Flat-eNLA-NA',  # I'd like to use this, but instead:
-    'FM_folder': str(job_path) + '/output/cl14may/FM/{SSC_code:s}',
+    'FM_folder': str(job_path) + f'/output/{cfg_name}/' + 'FM/{SSC_code:s}',
     'FM_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}.txt',
     'params_order': None,
     'paramnames_cosmo': paramnames_cosmo,

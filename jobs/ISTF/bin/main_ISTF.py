@@ -35,7 +35,7 @@ import utils_running as utils
 
 # job configuration and modules
 sys.path.append(f'{project_path}/jobs')
-import ISTF.config.config_ISTF_cl14may as cfg
+import ISTF.config.config_ISTF_cl15gen as cfg
 import ISTF.bin.unit_test as ut
 
 mpl.use('Qt5Agg')

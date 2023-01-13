@@ -45,7 +45,7 @@ which_Rl = 'var'
 nparams_chosen = 7
 model = 'flat'
 which_diff = 'mean'
-which_cfg = 'cl14may'
+which_cfg = 'cl15gen'
 flagship_version = 2
 check_old_FM = False
 pes_opt = 'opt'
@@ -119,7 +119,7 @@ FM_PyCCL_GS, _, _ = mm.mask_FM(FM_PyCCL_GS, _param_names, _fiducials, n_cosmo_pa
 # be the same!
 FMs = [FM_PySSC_GO, FM_PyCCL_GO, FM_PySSC_GS, FM_PyCCL_GS]
 cases_to_compute = ['FM_PySSC_GO', 'FM_PyCCL_GO', 'FM_PySSC_GS', 'FM_PyCCL_GS']
-cases_to_plot = ['FM_PySSC_GO', 'FM_PySSC_GS', 'FM_PyCCL_GS', 'percent_diff_GS']
+cases_to_plot = ['FM_PySSC_GO', 'FM_PySSC_GS', 'FM_PyCCL_GS', 'abs(percent_diff_GS) wrt mean']
 
 # compute uncertainties and store them in a dictionary
 uncert_dict = {}
@@ -131,7 +131,7 @@ for FM, case in zip(FMs, cases_to_compute):
     print(f'FoM({probe}, {case}): {fom[case]}')
 
 # add the percent differences and/or rations to the dictionary
-uncert_dict['percent_diff_GS'] = diff_funct(uncert_dict['FM_PySSC_GS'], uncert_dict['FM_PyCCL_GO'])
+uncert_dict['abs(percent_diff_GS) wrt mean'] = np.abs(diff_funct(uncert_dict['FM_PyCCL_GS'], uncert_dict['FM_PySSC_GS']))
 # uncert_dict['percent_diff_GS'] = diff_funct(uncert_dict['FM_PyCCL_GS'], uncert_dict['FM_PyCCL_GO'])
 
 assert np.array_equal(uncert_dict['FM_PySSC_GO'], uncert_dict['FM_PyCCL_GO']), \

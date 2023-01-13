@@ -36,24 +36,13 @@ import utils_running as utils
 
 # job configuration and modules
 sys.path.append(f'{project_path}/jobs')
-import ISTF.config.config_ISTF_cl14may as cfg
+import ISTF.config.config_ISTF_cl15gen as cfg
 import ISTF.bin.unit_test as ut
 
 mpl.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 start_time = time.perf_counter()
-
-
-def save_compressed_pickle(title, data):
-    with bz2.BZ2File(title + '.pbz2', 'wb') as handle:
-        cPickle.dump(data, handle)
-
-
-def load_compressed_pickle(file):
-    data = bz2.BZ2File(file, 'rb')
-    data = cPickle.load(data)
-    return data
 
 
 # TODO check that the number of ell bins is the same as in the files
@@ -295,7 +284,7 @@ if FM_cfg['compute_FM']:
     fid_3x2pt = fid_cosmo + fid_IA + fid_gal_bias
 
     FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
-    FM_dict['parameters'] = paramnames_3x2pt
+    FM_dict['parameters_names'] = paramnames_3x2pt
     FM_dict['fiducial_values'] = fid_3x2pt
 
 # ! save:

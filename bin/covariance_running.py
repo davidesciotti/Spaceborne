@@ -158,7 +158,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
                                         delta_l=delta_l_XC, fsky=fsky, ind=ind)
     print("Gauss. cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
 
-    ######################## COMPUTE SS COVARIANCE ###############################
+    ######################## COMPUTE SSC COVARIANCE ###############################
 
     # compute the covariance with PySSC anyway, not to have problems with WA
     start = time.perf_counter()

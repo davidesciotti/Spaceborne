@@ -90,11 +90,15 @@ else:
 uncert_ratio_dict[probe] = {}
 
 # import FM dict
-FM_dict = mm.load_pickle(f'{project_path}/jobs/ISTF/output/FM/{SSC_code}/FM_dict_{EP_or_ED}{zbins:02}.pickle')
-_params = FM_dict['parameters']  # this should not change when passed the second time to the function
-_fid = FM_dict['fiducial_values']  # this should not change when passed the second time to the function
-FM_GO = FM_dict[f'FM_{probe}_GO']
-FM_GS = FM_dict[f'FM_{probe}_GS']
+FM_dict_PySSC = mm.load_pickle(f'{project_path}/jobs/ISTF/output/FM/PySSC/FM_dict_{EP_or_ED}{zbins:02}.pickle')
+_param_names = FM_dict_PySSC['parameters']  # this should not change when passed the second time to the function
+_fiducials = FM_dict_PySSC['fiducial_values']  # this should not change when passed the second time to the function
+FM_PySSC_GO = FM_dict_PySSC[f'FM_{probe}_GO']
+FM_PySSC_GS = FM_dict_PySSC[f'FM_{probe}_GS']
+
+FM_PyCCL_dict = mm.load_pickle(f'{project_path}/jobs/ISTF/output/FM/PyCCL/FM_dict_{EP_or_ED}{zbins:02}.pickle')
+FM_PyCCL_GO = FM_PyCCL_dict[f'FM_{probe}_GO']
+FM_PyCCL_GS = FM_PyCCL_dict[f'FM_{probe}_GS']
 
 # from SSC_paper_jan22_backup_works
 # FM_GO_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_paper_jan22_backup_works/output/FM/'
@@ -115,30 +119,36 @@ FM_GS = FM_dict[f'FM_{probe}_GS']
 #                           f'latest_downloads/renamed/FM_{probe}_GS_lmax{probe}{lmax}_nbl{nbl}_ellDavide.txt')
 
 # from SSC_restructured_v2/jobs/SSC_comparison/output/FM/
-FM_GO_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/FM'
-                          f'/FM_{probe}_GO_lmax{probe}{lmax}_nbl{nbl}.txt')
-FM_GS_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/FM'
-                          f'/FM_{probe}_GS_lmax{probe}{lmax}_nbl{nbl}_Rlconst.txt')
-
-
-FM_GS_PyCCL = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/PyCCL_forecast/output/'
-                            f'FM/FM_{probe}_GS_lmax{probe}{lmax}_nbl{nbl}_PyCCLKiDS1000.txt')
+# FM_GO_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/FM'
+#                           f'/FM_{probe}_GO_lmax{probe}{lmax}_nbl{nbl}.txt')
+# FM_GS_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/FM'
+#                           f'/FM_{probe}_GS_lmax{probe}{lmax}_nbl{nbl}_Rlconst.txt')
+#
+#
+# FM_GS_PyCCL = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/PyCCL_forecast/output/'
+#                             f'FM/FM_{probe}_GS_lmax{probe}{lmax}_nbl{nbl}_PyCCLKiDS1000.txt')
 
 # fix the desired parameters and remove null rows/columns
-FM_GO, params, fid = mm.mask_FM(FM_GO, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
-FM_GS, _, _ = mm.mask_FM(FM_GS, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
-wzwa_idx = [params.index('wz'), params.index('wa')]
+FM_PySSC_GO, param_names, fiducials = mm.mask_FM(FM_PySSC_GO, _param_names, _fiducials, n_cosmo_params, fix_IA, fix_gal_bias)
+FM_PySSC_GS, _, _ = mm.mask_FM(FM_PySSC_GS, _param_names, _fiducials, n_cosmo_params, fix_IA, fix_gal_bias)
+wzwa_idx = [param_names.index('wz'), param_names.index('wa')]
+
+FM_PyCCL_GO, param_names, fiducials = mm.mask_FM(FM_PyCCL_GO, _param_names, _fiducials, n_cosmo_params, fix_IA, fix_gal_bias)
+FM_PyCCL_GS, _, _ = mm.mask_FM(FM_PyCCL_GS, _param_names, _fiducials, n_cosmo_params, fix_IA, fix_gal_bias)
+
+assert 1 > 2
+
 
 # FMs = [FM_GO, FM_GS, FM_GS_PyCCL]
 # cases = ['G', 'GS', 'GS_PyCCL', 'percent_diff_GS', 'percent_diff_GS_PyCCL']
-FMs = [FM_GO, FM_GO_old, FM_GS, FM_GS_old, FM_GS_PyCCL]
+FMs = [FM_PySSC_GO, FM_GO_old, FM_PySSC_GS, FM_GS_old, FM_GS_PyCCL]
 cases = ['G', 'G_old', 'GS', 'GS_old', 'GS_PyCCL', 'percent_diff_GS', 'percent_diff_GS_old']
 
 # compute uncertainties
 uncert_dict = {}
 fom = {}
 for FM, case in zip(FMs, cases):
-    uncert_dict[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams_toplot, fiducials=fid[:nparams_toplot],
+    uncert_dict[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams_toplot, fiducials=fiducials[:nparams_toplot],
                                                        which_uncertainty=which_uncertainty, normalize=True))
     fom[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_idx)
     print(f'FoM({probe}, {case}): {fom[case]}')
@@ -162,4 +172,4 @@ uncert_array = np.asarray(uncert_array)
 
 title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
 plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases, nparams=nparams_toplot,
-                    param_names_label=params[:nparams_toplot], bar_width=0.12)
+                    param_names_label=param_names[:nparams_toplot], bar_width=0.12)

@@ -3,11 +3,12 @@ from pathlib import Path
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 
-deg2_in_sphere = 41252.96  # deg^2 in a spere
 survey_area_deg2 = 15_000  # deg^2
+BNT_transform = False
+
+deg2_in_sphere = 41252.96  # deg^2 in a spere
 fsky = survey_area_deg2 / deg2_in_sphere
 
-BNT_transform = False
 
 # settings for SSC comparison (aka 'sylvain'):
 # survey_area_deg2 = 15469.86  # deg^2

@@ -333,20 +333,28 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
         # but it's not 3d!)
 
 
-def cl_BNT_transform(cl_3D, BNT_matrix):
+def cl_BNT_transform(cl_3D, BNT_matrix, probe_A, probe_B):
+
+    BNT_transform_dict = {
+        'L': BNT_matrix,
+        'G': np.eye(BNT_matrix.shape[0]),
+    }
+
     cl_3D_BNT = np.zeros(cl_3D.shape)
     if cl_3D.ndim == 3:  # WL, GC
         for ell_idx in range(cl_3D.shape[0]):
-            cl_3D_BNT[ell_idx, :, :] = BNT_matrix @ cl_3D[ell_idx, :, :] @ BNT_matrix.T
+            cl_3D_BNT[ell_idx, :, :] = BNT_transform_dict[probe_A] @ cl_3D[ell_idx, :, :] @ BNT_transform_dict[probe_B].T
 
     elif cl_3D.ndim == 5:  # 3x2pt
         for ell_idx in range(cl_3D.shape[0]):
             for probe_A in range(cl_3D.shape[1]):
                 for probe_B in range(cl_3D.shape[2]):
-                    cl_3D_BNT[ell_idx, probe_A, probe_B, :, :] = BNT_matrix @ \
+                    cl_3D_BNT[ell_idx, probe_A, probe_B, :, :] = BNT_transform_dict[probe_A] @ \
                                                                  cl_3D[ell_idx, probe_A, probe_B, :, :] @ \
-                                                                 BNT_matrix.T
+                                                                 BNT_transform_dict[probe_B].T
     else:
         raise ValueError('input Cl array should be 3-dim or 5-dim')
 
     return cl_3D_BNT
+
+

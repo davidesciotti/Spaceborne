@@ -158,6 +158,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     row_col_major = covariance_cfg['row_col_major']
     n_probes = general_cfg['n_probes']
     whos_BNT = general_cfg['whos_BNT']
+    probe_to_BNT_transform = general_cfg['probe_to_BNT_transform']
     GL_or_LG = covariance_cfg['GL_or_LG']
     probe_ordering = [['L', 'L'], [GL_or_LG[0], GL_or_LG[1]], ['G', 'G']]
 
@@ -254,16 +255,20 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
 
     # ! my cl and rl BNT transform
-    if general_cfg['BNT_transform'] and whos_BNT == '/davide':
-        assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
-        assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
+    # ! note: for the constraints I only need to BNT-transform the covariances and the derivatives!
+    # ! either you transform the cls, or the covariances, but not both! This is the reason why the lines below are
+    # ! commented
+    # if general_cfg['BNT_transform'] and whos_BNT == '/davide':
 
-        cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix)
-        cl_gg_3d = cl_utils.cl_BNT_transform(cl_gg_3d, BNT_matrix)
-        cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix)
-        cl_3x2pt_5d = cl_utils.cl_BNT_transform(cl_3x2pt_5d, BNT_matrix)
-        print('you shuld BNT-transform the responses too!')
-        warnings.warn('the BNT transform should not be applied to GCph, so gg and 3x2pt are not correct')
+    # assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
+    # assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
+    #
+    # cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix)
+    # cl_gg_3d = cl_utils.cl_BNT_transform(cl_gg_3d, BNT_matrix)
+    # cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix)
+    # cl_3x2pt_5d = cl_utils.cl_BNT_transform(cl_3x2pt_5d, BNT_matrix)
+    # print('you should BNT-transform the responses too!')
+    # warnings.warn('the BNT transform should not be applied to GCph, so gg and 3x2pt are not correct')
 
     # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
     if ell_max_WL == general_cfg['ell_max_WL_opt']:
@@ -346,17 +351,28 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         if general_cfg['BNT_transform']:
 
             if whos_BNT == '/davide':
-
-                start_time = time.perf_counter()
                 X_dict = covmat_utils.build_X_matrix_BNT(BNT_matrix)
-                cov_3x2pt_GO_BNT_dict = covmat_utils.BNT_transform_cov_3x2pt(
-                    cov_dict['cov_3x2pt_GO_10D'], X_dict, probe_ordering)
-                print('GO cov BNT transform took {:.2f} seconds'.format(time.perf_counter() - start_time))
 
-                start_time = time.perf_counter()
-                cov_3x2pt_GS_BNT_dict = covmat_utils.BNT_transform_cov_3x2pt(
-                    cov_dict['cov_3x2pt_GS_10D'], X_dict, probe_ordering)
-                print('GS cov BNT transform took {:.2f} seconds'.format(time.perf_counter() - start_time))
+                if probe_to_BNT_transform == 'WL':
+                    cov_WL_GO_BNT_dict = covmat_utils.BNT_transform_cov_single_probe(
+                        cov_dict['cov_WL_GO_6D'], X_dict, 'L', 'L')
+
+
+                elif probe_to_BNT_transform == '3x2pt':
+                    start_time = time.perf_counter()
+                    cov_3x2pt_GO_BNT_dict = covmat_utils.BNT_transform_cov_3x2pt(
+                        cov_dict['cov_3x2pt_GO_10D'], X_dict)
+                    print('GO cov BNT transform took {:.2f} seconds'.format(time.perf_counter() - start_time))
+
+                    start_time = time.perf_counter()
+                    cov_3x2pt_GS_BNT_dict = covmat_utils.BNT_transform_cov_3x2pt(
+                        cov_dict['cov_3x2pt_GS_10D'], X_dict)
+                    print('GS cov BNT transform took {:.2f} seconds'.format(time.perf_counter() - start_time))
+
+                else:
+                    raise notImplementedError('davides BNT transform is only implemented for WL and 3x2pt (for '
+                                              '3x2pt is only the covariance')
+
 
             elif whos_BNT == '/stefano':
                 cov_BNTstef_folder_GO = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GO', probe='3x2pt')

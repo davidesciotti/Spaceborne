@@ -16,7 +16,7 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
 # ! choose the flagship version and whether you want to compute the BNT transformed cls
 flagship_version = 2
 BNT_transform = True
-whos_BNT = '/stefano'  # "/stefano "or "/davide"
+whos_BNT = '/davide'  # "/stefano "or "/davide"
 
 if BNT_transform is False:
     whos_BNT = ''
@@ -42,6 +42,7 @@ general_cfg = {
     'save_cls_3d': False,
     'save_rls_3d': False,
     'BNT_transform': BNT_transform,
+    'probe_to_BNT_transform': '3x2pt',
     'whos_BNT': whos_BNT,
     'BNT_matrix_path': f'{SPV3_folder}/BNT_matrix',
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',

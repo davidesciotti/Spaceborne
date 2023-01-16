@@ -382,19 +382,27 @@ def build_X_matrix_BNT(BNT_matrix):
     X['L', 'L'] = np.einsum('ae, bf -> aebf', BNT_matrix, BNT_matrix)
     X['G', 'G'] = np.einsum('ae, bf -> aebf', delta_kron, delta_kron)
     X['G', 'L'] = np.einsum('ae, bf -> aebf', delta_kron, BNT_matrix)
-    X['L', 'G'] = np.einsum('ae, bf -> aebf', BNT_matrix, delta_kron)
+    X['L', 'G'] = np.einsum('ae, bf -> aebf', BNT_matrix, delta_kron)  # ! XXX is this correct?
     return X
 
 
-def BNT_transform_cov_3x2pt(cov_3x2pt_dict_10D, X_dict, probe_ordering, optimize=True):
-    """TODO do it for single probes"""
+def BNT_transform_cov_3x2pt(cov_3x2pt_dict_10D, X_dict, optimize=True):
+    """in np.einsum below, L and M are the ell1, ell2 indices, which are not touched by the BNT transform"""
     cov_3x2pt_BNT_dict_10D = {}
-    for probe_A, probe_B in probe_ordering:
-        for probe_C, probe_D in probe_ordering:
-            cov_3x2pt_BNT_dict_10D[probe_A, probe_B, probe_C, probe_D] = \
-                np.einsum('aebf, cgdh, LMefgh -> LMabcd', X_dict[probe_A, probe_B], X_dict[probe_C, probe_D],
-                          cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D], optimize=optimize)
+
+    for probe_A, probe_B, probe_C, probe_D in cov_3x2pt_dict_10D.keys():
+        cov_3x2pt_BNT_dict_10D[probe_A, probe_B, probe_C, probe_D] = \
+            np.einsum('aebf, cgdh, LMefgh -> LMabcd', X_dict[probe_A, probe_B], X_dict[probe_C, probe_D],
+                      cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D], optimize=optimize)
+
     return cov_3x2pt_BNT_dict_10D
+
+
+def BNT_transform_cov_single_probe(cov_noBNT_6D, X_dict, probe_A, probe_B, optimize=True):
+    """same as above, but only for one probe (i.e., LL or GL: GG is not modified by the BNT)"""
+    cov_BNT_6D = np.einsum('aebf, cgdh, LMefgh -> LMabcd', X_dict[probe_A, probe_B], X_dict[probe_A, probe_B],
+                           cov_noBNT_6D, optimize=optimize)
+    return cov_BNT_6D
 
 
 def save_cov(covariance_cfg, general_cfg, cov_dict, cov_folder):
@@ -436,7 +444,6 @@ def save_cov(covariance_cfg, general_cfg, cov_dict, cov_folder):
 
             # save all covmats in the optimistic case
             if ell_max_WL == 5000:
-
 
                 for which_cov in which_cov_list:
                     for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):

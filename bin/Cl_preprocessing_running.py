@@ -357,4 +357,14 @@ def cl_BNT_transform(cl_3D, BNT_matrix, probe_A, probe_B):
 
     return cl_3D_BNT
 
+def cl_BNT_transform_3x2pt(cl_3x2pt_5D, BNT_matrix):
+    """wrapper function to quickly implement the cl (or derivatives) BNT transform for the 3x2pt datavector"""
+
+    cl_3x2pt_5D_BNT = np.zeros(cl_3x2pt_5D.shape)
+    cl_3x2pt_5D_BNT[:, 0, 0, :, :] = cl_BNT_transform(cl_3x2pt_5D[:, 0, 0, :, :], BNT_matrix, 'L', 'L')
+    cl_3x2pt_5D_BNT[:, 1, 0, :, :] = cl_BNT_transform(cl_3x2pt_5D[:, 1, 0, :, :], BNT_matrix, 'G', 'L')
+    cl_3x2pt_5D_BNT[:, 0, 1, :, :] = cl_BNT_transform(cl_3x2pt_5D[:, 0, 1, :, :], BNT_matrix, 'L', 'G')
+    # GG is unchanged by the BNT transform, it would not be efficient to call the function
+
+    return cl_3x2pt_5D_BNT
 

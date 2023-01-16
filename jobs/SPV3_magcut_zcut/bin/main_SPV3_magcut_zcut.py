@@ -351,11 +351,17 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         if general_cfg['BNT_transform']:
 
             if whos_BNT == '/davide':
+
                 X_dict = covmat_utils.build_X_matrix_BNT(BNT_matrix)
 
                 if probe_to_BNT_transform == 'WL':
-                    cov_WL_GO_BNT_dict = covmat_utils.BNT_transform_cov_single_probe(
+                    cov_WL_GO_BNT = covmat_utils.BNT_transform_cov_single_probe(
                         cov_dict['cov_WL_GO_6D'], X_dict, 'L', 'L')
+
+                    # ! test
+                    cov_GC_GO_BNT = covmat_utils.BNT_transform_cov_single_probe(
+                        cov_dict['cov_GC_GO_6D'], X_dict, 'G', 'G')
+                    assert np.array_equal(cov_dict['cov_GC_GO_6D'], cov_GC_GO_BNT), 'cov_GC_GO_BNT is not equal to cov_GC_GO_6D'
 
 
                 elif probe_to_BNT_transform == '3x2pt':
@@ -450,7 +456,10 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         # in this case, overwrite part of the dictionary entries (the 3x2pt, in particular)
         # if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
         if general_cfg['BNT_transform']:
-            warnings.warn('restore option to use stefanos files!')
+
+
+            warnings.warn('restore option to use stefanos files! guarda riga commentata qui sotto')
+            # if whos_BNT == '/stefano':
 
             # import in one big dictionary
             derivatives_BNTstef_folder = FM_cfg['derivatives_BNTstef_folder'].format(probe='3x2pt')
@@ -530,22 +539,29 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         dC_3x2pt_5D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, paramnames_3x2pt, nbl_3x2pt, zbins, der_prefix,
                                                    is_3x2pt=True)
 
+        # ! test against my BNT transformed derivatives for LL
+        alf = 0
+        plt.plot(ell_dict, dC_LL_4D[:, 0, 0, alf], label='stefano, alf=0')
+
         # ! my derivatives BNT transform
         if general_cfg['BNT_transform'] and whos_BNT == '/davide':
             warnings.warn('BNT transform for derivatives not implemented for the derivatives in the davide case')
-            """
+
             assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
             assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
             warnings.warn('Vincenzos derivatives are only for BNT_False, otherwise you should use Stefanos files')
 
             dC_LL_4D = np.zeros(dC_LL_4D.shape)
             for alf in range(len(paramnames_3x2pt)):
-                dC_LL_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_LL_4D[:, :, :, alf], BNT_matrix)
-                dC_WA_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_WA_4D[:, :, :, alf], BNT_matrix)
-                dC_3x2pt_5D[:, 0, 0, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, 0, 0, :, :, alf], BNT_matrix)
-                warnings.warn('this is almost for sure the wrong way to BNT_transform the cross 👇')
-                dC_3x2pt_5D[:, 1, 0, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, 1, 0, :, :, alf], BNT_matrix)
-                dC_3x2pt_5D[:, 0, 1, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, 0, 1, :, :, alf], BNT_matrix)
+                dC_LL_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_LL_4D[:, :, :, alf], BNT_matrix, 'L', 'L')
+                dC_WA_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_WA_4D[:, :, :, alf], BNT_matrix, 'L', 'L')
+
+                dC_3x2pt_5D[:, :, :, :, :, alf] = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5D[:, :, :, :, :, alf], BNT_matrix)
+
+
+                # dC_3x2pt_5D[:, 0, 0, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, 0, 0, :, :, alf], BNT_matrix, 'L', 'L')
+                # dC_3x2pt_5D[:, 1, 0, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, 1, 0, :, :, alf], BNT_matrix, 'G', 'L')
+                # dC_3x2pt_5D[:, 0, 1, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, 0, 1, :, :, alf], BNT_matrix, 'G', 'G')
 
             transformed_derivs_folder = FM_cfg['transformed_derivs_folder']
             transformed_derivs_filename = f'dDV-BNTdav_WLO-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-' \
@@ -573,7 +589,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                 print('is dC_3x2pt_noBNT_5D close to dC_3x2pt_5D for probe combination {probe_A}, {probe_B}?',
                       np.allclose(dC_3x2pt_noBNT_5D[:, probe_A, probe_B, :, :, :],
                                   dC_3x2pt_5D[:, probe_A, probe_B, :, :, :], rtol=1e-4, atol=0))
-        """
+
+
+        assert 1 > 2, 'stop here'
         # ! end new bit: BNT transform derivatives
 
         # store the derivatives arrays in a dictionary

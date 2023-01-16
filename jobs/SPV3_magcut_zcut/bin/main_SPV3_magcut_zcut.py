@@ -170,6 +170,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         cases_tosave.append('SS')
 
     assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
+    assert general_cfg['use_WA'] == False, 'We do not use Wadd for SPV3 at the moment'
 
     # import the ind files and store it into the covariance dictionary
     ind_folder = covariance_cfg['ind_folder'].format(triu_tril=triu_tril,
@@ -358,11 +359,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                     cov_WL_GO_BNT = covmat_utils.BNT_transform_cov_single_probe(
                         cov_dict['cov_WL_GO_6D'], X_dict, 'L', 'L')
 
-                    # ! test
-                    cov_GC_GO_BNT = covmat_utils.BNT_transform_cov_single_probe(
-                        cov_dict['cov_GC_GO_6D'], X_dict, 'G', 'G')
-                    assert np.array_equal(cov_dict['cov_GC_GO_6D'], cov_GC_GO_BNT), 'cov_GC_GO_BNT is not equal to cov_GC_GO_6D'
-
 
                 elif probe_to_BNT_transform == '3x2pt':
                     start_time = time.perf_counter()
@@ -427,6 +423,28 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     # ! compute Fisher matrix
     if FM_cfg['compute_FM']:
 
+        # declare the set of parameters under study
+        paramnames_cosmo = ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"]
+        paramnames_IA = ["Aia", "eIA", "bIA"]
+        paramnames_galbias = [f'bG{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+        paramnames_shearbias = [f'm{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+        paramnames_dzWL = [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+        paramnames_dzGC = [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+        paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias + paramnames_shearbias + \
+                           paramnames_dzWL + paramnames_dzGC
+        FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
+
+        # fiducial values
+        fid_cosmo = [0.32, 0.68, 0.05, -1.0, 0.0, 0.67, 0.96, 0.816]
+        fid_IA = np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()])
+        fid_galaxy_bias = np.genfromtxt(f'{ng_folder}/{ng_filename}')[:, 2]
+        fid_shear_bias = np.zeros((zbins,))
+        fid_dzWL = np.zeros((zbins,))
+        fid_dzGC = np.zeros((zbins,))
+        fid_3x2pt = np.concatenate((fid_cosmo, fid_IA, fid_galaxy_bias, fid_shear_bias, fid_dzWL, fid_dzGC))
+        assert len(fid_3x2pt) == len(
+            paramnames_3x2pt), 'the fiducial values list and parameter names should have the same length'
+
         # import derivatives and store them in one big dictionary
         derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
         der_prefix = FM_cfg['derivatives_prefix']
@@ -456,7 +474,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         # in this case, overwrite part of the dictionary entries (the 3x2pt, in particular)
         # if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
         if general_cfg['BNT_transform']:
-
 
             warnings.warn('restore option to use stefanos files! guarda riga commentata qui sotto')
             # if whos_BNT == '/stefano':
@@ -510,28 +527,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             # overwrite the non-BNT derivatives with the BNT ones
             dC_dict_3x2pt_5D = dC_dict_3x2pt_BNT_5D
 
-        # declare the set of parameters under study
-        paramnames_cosmo = ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"]
-        paramnames_IA = ["Aia", "eIA", "bIA"]
-        paramnames_galbias = [f'bG{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
-        paramnames_shearbias = [f'm{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
-        paramnames_dzWL = [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
-        paramnames_dzGC = [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
-        paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias + paramnames_shearbias + \
-                           paramnames_dzWL + paramnames_dzGC
-        FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
-
-        # fiducial values
-        fid_cosmo = [0.32, 0.68, 0.05, -1.0, 0.0, 0.67, 0.96, 0.816]
-        fid_IA = np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()])
-        fid_galaxy_bias = np.genfromtxt(f'{ng_folder}/{ng_filename}')[:, 2]
-        fid_shear_bias = np.zeros((zbins,))
-        fid_dzWL = np.zeros((zbins,))
-        fid_dzGC = np.zeros((zbins,))
-        fid_3x2pt = np.concatenate((fid_cosmo, fid_IA, fid_galaxy_bias, fid_shear_bias, fid_dzWL, fid_dzGC))
-        assert len(fid_3x2pt) == len(
-            paramnames_3x2pt), 'the fiducial values list and parameter names should have the same length'
-
         # turn the dictionaries of derivatives npy array
         dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl_WL, zbins, der_prefix)
         dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, paramnames_3x2pt, nbl_GC, zbins, der_prefix)
@@ -542,6 +537,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         # ! test against my BNT transformed derivatives for LL
         alf = 0
         plt.plot(ell_dict, dC_LL_4D[:, 0, 0, alf], label='stefano, alf=0')
+        # ! end test
 
         # ! my derivatives BNT transform
         if general_cfg['BNT_transform'] and whos_BNT == '/davide':
@@ -556,8 +552,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                 dC_LL_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_LL_4D[:, :, :, alf], BNT_matrix, 'L', 'L')
                 dC_WA_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_WA_4D[:, :, :, alf], BNT_matrix, 'L', 'L')
 
-                dC_3x2pt_5D[:, :, :, :, :, alf] = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5D[:, :, :, :, :, alf], BNT_matrix)
-
+                dC_3x2pt_5D[:, :, :, :, :, alf] = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5D[:, :, :, :, :, alf],
+                                                                                  BNT_matrix)
 
                 # dC_3x2pt_5D[:, 0, 0, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, 0, 0, :, :, alf], BNT_matrix, 'L', 'L')
                 # dC_3x2pt_5D[:, 1, 0, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, 1, 0, :, :, alf], BNT_matrix, 'G', 'L')
@@ -567,6 +563,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             transformed_derivs_filename = f'dDV-BNTdav_WLO-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-' \
                                           f'{EP_or_ED}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-' \
                                           f'MS{magcut_source:03d}-ZS{zcut_source:02d}.npy'
+            plt.plot(ell_dict, dC_LL_4D[:, 0, 0, alf], label='stefano, alf=0')
+
+            assert 1 > 2, 'stop here'
 
             # save BNT-transformed derivatives
             readme = 'shape: (ell_bins, z_bins, z_bins, num_parameters); parameters order:' + str(paramnames_3x2pt)
@@ -589,7 +588,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                 print('is dC_3x2pt_noBNT_5D close to dC_3x2pt_5D for probe combination {probe_A}, {probe_B}?',
                       np.allclose(dC_3x2pt_noBNT_5D[:, probe_A, probe_B, :, :, :],
                                   dC_3x2pt_5D[:, probe_A, probe_B, :, :, :], rtol=1e-4, atol=0))
-
 
         assert 1 > 2, 'stop here'
         # ! end new bit: BNT transform derivatives

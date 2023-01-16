@@ -65,7 +65,7 @@ EP_or_ED = general_cfg['EP_or_ED']
 ell_min = general_cfg['ell_min']
 ell_max_WL = general_cfg['ell_max_WL']
 ell_max_GC = general_cfg['ell_max_GC']
-ell_max_XC = ell_max_GC
+ell_max_XC = general_cfg['ell_max_XC']
 triu_tril = covariance_cfg['triu_tril']
 row_col_major = covariance_cfg['row_col_major']
 n_probes = general_cfg['n_probes']
@@ -145,7 +145,7 @@ rl_dict_3D['rl_LL_3D'] = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_LL_2D'], nbl_WL
 rl_dict_3D['rl_GG_3D'] = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_GG_2D'], nbl_GC, zpairs_auto, zbins)
 rl_dict_3D['rl_WA_3D'] = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_WA_2D'], nbl_WA, zpairs_auto, zbins)
 
-# build 3x2pt 5D datavectors; the Gl and LLfor3x2pt are only needed for this!
+# build 3x2pt 5D datavectors; the GL and LLfor3x2pt are only needed for this!
 cl_GL_3D = mm.cl_2D_to_3D_asymmetric(cl_dict_2D['cl_GL_2D'], nbl_GC, zbins, order='C')
 rl_GL_3D = mm.cl_2D_to_3D_asymmetric(rl_dict_2D['rl_GL_2D'], nbl_GC, zbins, order='C')
 cl_LLfor3x2pt_3D = mm.cl_2D_to_3D_symmetric(cl_dict_2D['cl_LLfor3x2pt_2D'], nbl_GC, zpairs_auto, zbins)
@@ -322,6 +322,8 @@ for cl_or_rl in ['cl', 'rl']:
                     f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                     delta_dict[f'delta_l_{probe_dav}'])
 
+# TODO save methods should probably be moved to a function
+"""
 cov_folder = covariance_cfg["cov_folder"].format(SSC_code=covariance_cfg['SSC_code'])
 for ndim in (2, 4, 6):
     if covariance_cfg[f'save_cov_{ndim}D']:
@@ -362,6 +364,10 @@ for ndim in (2, 4, 6):
                 np.save(
                     f'{cov_folder}/covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_zbins{EP_or_ED}{zbins:02}_{ndim}D.npy',
                     cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
+"""
+
+cov_folder = covariance_cfg["cov_folder"].format(SSC_code=covariance_cfg['SSC_code'])
+covmat_utils.save_cov(covariance_cfg, general_cfg, cov_dict, cov_folder)
 
 if FM_cfg['compute_FM'] and FM_cfg['save_FM']:
     # saves as txt file

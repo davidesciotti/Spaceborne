@@ -43,14 +43,13 @@ flagship_version = 2
 check_old_FM = False
 pes_opt = 'opt'
 which_uncertainty = 'marginal'
+fix_IA = False
 fix_gal_bias = False  # whether to remove the rows/cols for the shear bias nuisance parameters (ie whether to fix them)
 fix_shear_bias = False  # whether to remove the rows/cols for the shear bias nuisance parameters (ie whether to fix them)
 fix_dzWL = True  # whether to remove the rows/cols for the dz nuisance parameters (ie whether to fix them)
 fix_dzGC = True  # whether to remove the rows/cols for the dz nuisance parameters (ie whether to fix them)
-fix_IA = False
 bar_plot_cosmo = True
 triangle_plot = False
-plot_prior_contours = False
 bar_plot_nuisance = False
 whos_BNT = 'stefano'
 dpi = 500
@@ -60,6 +59,7 @@ n_cosmo_params = 8
 nparams_toplot = n_cosmo_params
 pic_format = 'pdf'
 GO_or_GS = 'GO'
+plot_fom = True
 # ! end options
 
 
@@ -76,7 +76,6 @@ ZS_list = [0]
 uncert_ratio_dict = {}
 uncert_G_dict = {}
 uncert_GS_dict = {}
-
 
 # compute percent diff of the cases chosen - careful of the indices!
 if which_diff == 'normal':
@@ -114,39 +113,41 @@ for probe in probes:
             lmax = 5000
             nbl = 32
 
-        FM_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output' \
-                  f'/Flagship_{flagship_version}/FM/BNT_False'
+        FM_noBNT_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output' \
+                        f'/Flagship_{flagship_version}/FM/BNT_False'
         FM_BNT_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output' \
-                  f'/Flagship_{flagship_version}/FM/BNT_True/{whos_BNT}'
-        FM_dict = mm.load_pickle(f'{FM_path}/FM_dict_ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}.pickle')
+                      f'/Flagship_{flagship_version}/FM/BNT_True/{whos_BNT}'
+        FM_noBNT_dict = mm.load_pickle(f'{FM_noBNT_path}/FM_dict_ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}.pickle')
         FM_BNT_dict = mm.load_pickle(f'{FM_BNT_path}/FM_dict_ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}.pickle')
-        _params = FM_dict['parameters']  # this should not change when passed the second time to the function
-        _fid = FM_dict['fiducial_values']  # this should not change when passed the second time to the function
-        FM_GO = FM_dict[f'FM_{probe}_GO']
-        FM_GS = FM_dict[f'FM_{probe}_GS']
+        _params = FM_noBNT_dict['parameters']  # this should not change when passed the second time to the function
+        _fid = FM_noBNT_dict['fiducial_values']  # this should not change when passed the second time to the function
+        FM_GO_noBNT = FM_noBNT_dict[f'FM_{probe}_GO']
+        FM_GS_noBNT = FM_noBNT_dict[f'FM_{probe}_GS']
         FM_GO_BNT = FM_BNT_dict[f'FM_{probe}_GO']
         FM_GS_BNT = FM_BNT_dict[f'FM_{probe}_GS']
 
         # fix the desired parameters and remove null rows/columns
-        FM_GO, params, fid = mm.mask_FM(FM_GO, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
-        FM_GS, _, _ = mm.mask_FM(FM_GS, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
+        FM_GO_noBNT, param_names, fid = mm.mask_FM(FM_GO_noBNT, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
+        FM_GS_noBNT, _, _ = mm.mask_FM(FM_GS_noBNT, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
         FM_GO_BNT, _, _ = mm.mask_FM(FM_GO_BNT, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
         FM_GS_BNT, _, _ = mm.mask_FM(FM_GS_BNT, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
-        wzwa_idx = [params.index('wz'), params.index('wa')]
-        assert len(fid) == len(params), 'the fiducial values list and parameter names should have the same length'
+        wzwa_idx = [param_names.index('wz'), param_names.index('wa')]
+        assert len(fid) == len(param_names), 'the fiducial values list and parameter names should have the same length'
 
         title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
-        title += f'\nML = {ML / 10}, MS = {MS / 10}, ZL = {ZL / 10}, ZS = {ZS / 10:}, zmax = {zmax/10}'
+        title += f'\nML = {ML / 10}, MS = {MS / 10}, ZL = {ZL / 10}, ZS = {ZS / 10:}, zmax = {zmax / 10}'
 
         if GO_or_GS == 'GO':
-            FMs = (FM_GO, FM_GO_BNT)
+            FMs = (FM_GO_noBNT, FM_GO_BNT)
         elif GO_or_GS == 'GS':
-            FMs = (FM_GS, FM_GS_BNT)
+            FMs = (FM_GS_noBNT, FM_GS_BNT)
         else:
             raise ValueError('GO_or_GS should be either GO or GS')
 
-        cases = [f'FM_{GO_or_GS}', f'FM_{GO_or_GS}_BNT', 'percent_diff']
-        key_to_compare_A, key_to_compare_B = f'FM_{GO_or_GS}', f'FM_{GO_or_GS}_BNT'  # which cases to take the percent diff and ratio of
+        # cases = [f'FM_{GO_or_GS}', f'FM_{GO_or_GS}_BNT', 'percent_diff/10']
+        cases = [f'noBNT', f'BNT', 'abs(percent_diff)/10']
+        # key_to_compare_A, key_to_compare_B = f'FM_{GO_or_GS}', f'FM_{GO_or_GS}_BNT'  # which cases to take the percent diff and ratio of
+        key_to_compare_A, key_to_compare_B = f'noBNT', f'BNT'  # which cases to take the percent diff and ratio of
 
         data = []
         fom = {}
@@ -157,7 +158,7 @@ for probe in probes:
             fom[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_idx)
             print(f'FoM({probe}, {case}): {fom[case]}')
 
-        uncert['percent_diff'] = diff_funct(uncert[key_to_compare_A], uncert[key_to_compare_B])
+        uncert['abs(percent_diff)/10'] = diff_funct(uncert[key_to_compare_A], uncert[key_to_compare_B]) / 10
         uncert['ratio'] = uncert[key_to_compare_A] / uncert[key_to_compare_B]
 
         for case in cases:
@@ -171,10 +172,18 @@ for probe in probes:
         # uncert_ratio_dict[probe][ML][ZL][MS][ZS] = np.append(
         #     uncert_ratio_dict[probe][ML][ZL][MS][ZS], fom['GS'] / fom['G'])
 
-        data = np.asarray(data)
-        plot_utils.bar_plot(data[:, :nparams_toplot], title, cases, nparams=nparams_toplot,
-                            param_names_label=params[:nparams_toplot], bar_width=0.12)
+        # fom_array = np.array([fom['FM_GO'], fom['FM_GO_BNT'], mm.percent_diff(fom['FM_GO'], fom['FM_GO_BNT'])])/100
+        fom_array = np.array(
+            [fom['noBNT'] / 100, fom['BNT'] / 100, np.abs(mm.percent_diff(fom['noBNT'], fom['BNT'])) / 10])
+        if plot_fom:
+            param_names_label = param_names[:nparams_toplot] + ['FoM/100']
+            nparams_toplot += 1
 
-            # plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
-            #                        f'bar_plot_{probe}_ellmax{lmax}_zbins{EP_or_ED}{zbins:02}'
-            #                        f'_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.png')
+        data = np.asarray(data)
+        data = np.column_stack((data, fom_array))
+        plot_utils.bar_plot(data[:, :nparams_toplot], title, cases, nparams=nparams_toplot,
+                            param_names_label=param_names_label, bar_width=0.15)
+
+        # plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
+        #                        f'bar_plot_{probe}_ellmax{lmax}_zbins{EP_or_ED}{zbins:02}'
+        #                        f'_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.png')

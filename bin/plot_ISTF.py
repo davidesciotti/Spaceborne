@@ -131,7 +131,9 @@ for FM, case in zip(FMs, cases_to_compute):
     print(f'FoM({probe}, {case}): {fom[case]}')
 
 # add the percent differences and/or rations to the dictionary
-uncert_dict['abs(percent_diff_GS) wrt mean'] = np.abs(diff_funct(uncert_dict['FM_PyCCL_GS'], uncert_dict['FM_PySSC_GS']))
+to_compare_A = uncert_dict['FM_PySSC_GS'] - uncert_dict['FM_PySSC_GO']
+to_compare_B = uncert_dict['FM_PyCCL_GS'] - uncert_dict['FM_PyCCL_GO']
+uncert_dict['abs(percent_diff_GS) wrt mean'] = np.abs(diff_funct(to_compare_A, to_compare_B))
 # uncert_dict['percent_diff_GS'] = diff_funct(uncert_dict['FM_PyCCL_GS'], uncert_dict['FM_PyCCL_GO'])
 
 assert np.array_equal(uncert_dict['FM_PySSC_GO'], uncert_dict['FM_PyCCL_GO']), \
@@ -153,3 +155,6 @@ uncert_array = np.asarray(uncert_array)
 title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
 plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                     param_names_label=param_names[:nparams_toplot], bar_width=0.12)
+
+diff_FM = diff_funct(FM_PySSC_GS, FM_PyCCL_GS)
+mm.matshow(diff_FM, title=f'percent difference wrt mean between PySSC and PyCCL FMs {probe}, {EP_or_ED}{zbins:02}')

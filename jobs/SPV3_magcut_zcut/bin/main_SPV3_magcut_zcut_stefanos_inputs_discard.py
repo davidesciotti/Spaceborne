@@ -59,6 +59,51 @@ def load_compressed_pickle(file):
     return data
 
 
+def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, probe_ordering, variable_specs, GO_or_GS, cov_dict,
+                                       nbl_3x2pt):
+    """transforms dictionary of 3x2pt cov blocks into a dictionary of the usual form (i.e., with the usual keys)"""
+
+    cov_3x2pt_BNT_imported_dict = dict(mm.get_kv_pairs_npy(cov_BNTstef_folder))
+
+    # select only the ones corresponding to the current configuration of MS, ML, ZS, ZL values
+    str_start = f'BNT_covmat_{GO_or_GS}_3x2pt_'
+    str_end = '_lmax3000_nbl29_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_ZL{zcut_lens:02}' \
+              '_MS{magcut_source:03d}_ZS{zcut_source:02}_6D'.format(**variable_specs)
+    cov_3x2pt_BNT_imported_dict = {key: value
+                                   for key, value in cov_3x2pt_BNT_imported_dict.items()
+                                   if key.startswith(str_start) and key.endswith(str_end)}
+    if not cov_3x2pt_BNT_imported_dict:
+        raise ValueError('cov_3x2pt_BNT_imported_dict is empty')
+
+    # second cleanup - I could include this in the previous comprehension, but it's more readable this way
+    cov_3x2pt_BNT_imported_dict = {key.replace(str_start, '').replace(str_end, ''): value
+                                   for key, value in cov_3x2pt_BNT_imported_dict.items()}
+
+    # initialize the keys of the new dictionary to 0
+    zbins = variable_specs['zbins']
+    cov_3x2pt_BNT_dict = {}
+    for probe_A, probe_B in probe_ordering:
+        for probe_C, probe_D in probe_ordering:
+            try:
+                cov_3x2pt_BNT_dict[probe_A, probe_B, probe_C, probe_D] = cov_3x2pt_BNT_imported_dict[
+                    probe_A + probe_B + probe_C + probe_D]
+            except KeyError:  # if the key is not present, the transposed keys probably are
+                print(probe_A + probe_B + probe_C + probe_D, 'not present in cov_3x2pt_BNT_imported_dict')
+                try:
+                    cov_3x2pt_BNT_dict[probe_A, probe_B, probe_C, probe_D] = cov_3x2pt_BNT_imported_dict[
+                        probe_C + probe_D + probe_A + probe_B].transpose((0, 1, 4, 5, 2, 3))
+                except KeyError:  # the GGGG key is not present (no BNT transform in this case)
+                    cov_3x2pt_BNT_dict[probe_A, probe_B, probe_C, probe_D] = \
+                        np.zeros((nbl_3x2pt, nbl_3x2pt, zbins, zbins, zbins, zbins))
+
+    if not cov_3x2pt_BNT_dict:
+        raise ValueError('cov_3x2pt_BNT_dict is empty')
+
+    cov_3x2pt_BNT_dict['G', 'G', 'G', 'G'] = cov_dict[f'cov_3x2pt_{GO_or_GS}_10D']['G', 'G', 'G', 'G']
+
+    return cov_3x2pt_BNT_dict
+
+
 # TODO check that the number of ell bins is the same as in the files
 # TODO double check the delta values
 # TODO update consistency_checks
@@ -111,6 +156,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     triu_tril = covariance_cfg['triu_tril']
     row_col_major = covariance_cfg['row_col_major']
     n_probes = general_cfg['n_probes']
+    whos_BNT = general_cfg['whos_BNT']
     GL_or_LG = covariance_cfg['GL_or_LG']
     probe_ordering = [['L', 'L'], [GL_or_LG[0], GL_or_LG[1]], ['G', 'G']]
 
@@ -284,7 +330,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
         Sijkl_folder = Sijkl_cfg['Sijkl_folder']
         warnings.warn('Sijkl_folder is set to BNT_False in all cases, so as not to have to recompute the Sijkl matrix'
-                      'in the BNT_True case')
+                      'in the BNT_True case - for which I use Stefanos files')
         Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(flagship_version=general_cfg['flagship_version'],
                                                             nz=nz, IA_flag=Sijkl_cfg['IA_flag'], **variable_specs)
         # if Sijkl exists, load it; otherwise, compute it and save it
@@ -307,18 +353,43 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
         if general_cfg['cov_BNT_transform']:
             assert general_cfg['cl_BNT_transform'] is False, 'the BNT transform should be applied either to the Cls ' \
-                                                             'or to the covariance'
+                                                              'or to the covariance'
             assert general_cfg['deriv_BNT_transform'], 'you should BNT transform the derivatives as well'
 
-            X_dict = covmat_utils.build_X_matrix_BNT(BNT_matrix)
+            if whos_BNT == '/davide':
 
-            cov_WL_GO_BNT_6D = covmat_utils.cov_BNT_transform(cov_dict['cov_WL_GO_6D'], X_dict, 'L', 'L')
-            cov_WA_GO_BNT_6D = covmat_utils.cov_BNT_transform(cov_dict['cov_WA_GO_6D'], X_dict, 'L', 'L')
-            cov_3x2pt_GO_BNT_dict = covmat_utils.cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GO_10D'], X_dict)
+                X_dict = covmat_utils.build_X_matrix_BNT(BNT_matrix)
 
-            cov_WL_GS_BNT_6D = covmat_utils.cov_BNT_transform(cov_dict['cov_WL_GS_6D'], X_dict, 'L', 'L')
-            cov_WA_GS_BNT_6D = covmat_utils.cov_BNT_transform(cov_dict['cov_WA_GS_6D'], X_dict, 'L', 'L')
-            cov_3x2pt_GS_BNT_dict = covmat_utils.cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GS_10D'], X_dict)
+                cov_WL_GO_BNT_6D = covmat_utils.cov_BNT_transform(cov_dict['cov_WL_GO_6D'], X_dict, 'L', 'L')
+                cov_WA_GO_BNT_6D = covmat_utils.cov_BNT_transform(cov_dict['cov_WA_GO_6D'], X_dict, 'L', 'L')
+                cov_3x2pt_GO_BNT_dict = covmat_utils.cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GO_10D'], X_dict)
+
+                cov_WL_GS_BNT_6D = covmat_utils.cov_BNT_transform(cov_dict['cov_WL_GS_6D'], X_dict, 'L', 'L')
+                cov_WA_GS_BNT_6D = covmat_utils.cov_BNT_transform(cov_dict['cov_WA_GS_6D'], X_dict, 'L', 'L')
+                cov_3x2pt_GS_BNT_dict = covmat_utils.cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GS_10D'], X_dict)
+
+                # reshape to 4D
+                cov_WL_GO_BNT_4D = mm.cov_6D_to_4D(cov_WL_GO_BNT_6D, nbl_WL, zpairs_auto, ind_auto)
+                cov_WL_GS_BNT_4D = mm.cov_6D_to_4D(cov_WL_GS_BNT_6D, nbl_WL, zpairs_auto, ind_auto)
+                cov_WA_GO_BNT_4D = mm.cov_6D_to_4D(cov_WA_GO_BNT_6D, nbl_WA, zpairs_auto, ind_auto)
+                cov_WA_GS_BNT_4D = mm.cov_6D_to_4D(cov_WA_GS_BNT_6D, nbl_WA, zpairs_auto, ind_auto)
+
+                # reshape to 2D
+                cov_WL_GO_BNT_2D = mm.cov_4D_to_2D(cov_WL_GO_BNT_4D, block_index=covariance_cfg['block_index'])
+                cov_WL_GS_BNT_2D = mm.cov_4D_to_2D(cov_WL_GS_BNT_4D, block_index=covariance_cfg['block_index'])
+                cov_WA_GO_BNT_2D = mm.cov_4D_to_2D(cov_WA_GO_BNT_4D, block_index=covariance_cfg['block_index'])
+                cov_WA_GS_BNT_2D = mm.cov_4D_to_2D(cov_WA_GS_BNT_4D, block_index=covariance_cfg['block_index'])
+
+            elif whos_BNT == '/stefano':
+                warnings.warn('deprecate use of stefanos input files')
+
+                cov_BNTstef_folder_GO = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GO', probe='3x2pt')
+                cov_BNTstef_folder_GS = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GS', probe='3x2pt')
+
+                cov_3x2pt_GO_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GO, probe_ordering,
+                                                                           variable_specs, 'GO', cov_dict, nbl_3x2pt)
+                cov_3x2pt_GS_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GS, probe_ordering,
+                                                                           variable_specs, 'GS', cov_dict, nbl_3x2pt)
 
             # transform from dict of 6D arrays to single 4D array
             cov_3x2pt_GO_BNT_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_BNT_dict, probe_ordering, nbl_3x2pt,
@@ -326,17 +397,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             cov_3x2pt_GS_BNT_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_3x2pt,
                                                               zbins, ind.copy(), GL_or_LG)
 
-            # reshape to 4D
-            cov_WL_GO_BNT_4D = mm.cov_6D_to_4D(cov_WL_GO_BNT_6D, nbl_WL, zpairs_auto, ind_auto)
-            cov_WL_GS_BNT_4D = mm.cov_6D_to_4D(cov_WL_GS_BNT_6D, nbl_WL, zpairs_auto, ind_auto)
-            cov_WA_GO_BNT_4D = mm.cov_6D_to_4D(cov_WA_GO_BNT_6D, nbl_WA, zpairs_auto, ind_auto)
-            cov_WA_GS_BNT_4D = mm.cov_6D_to_4D(cov_WA_GS_BNT_6D, nbl_WA, zpairs_auto, ind_auto)
-
             # reshape to 2D
-            cov_WL_GO_BNT_2D = mm.cov_4D_to_2D(cov_WL_GO_BNT_4D, block_index=covariance_cfg['block_index'])
-            cov_WL_GS_BNT_2D = mm.cov_4D_to_2D(cov_WL_GS_BNT_4D, block_index=covariance_cfg['block_index'])
-            cov_WA_GO_BNT_2D = mm.cov_4D_to_2D(cov_WA_GO_BNT_4D, block_index=covariance_cfg['block_index'])
-            cov_WA_GS_BNT_2D = mm.cov_4D_to_2D(cov_WA_GS_BNT_4D, block_index=covariance_cfg['block_index'])
             cov_3x2pt_GO_BNT_2D = mm.cov_4D_to_2D(cov_3x2pt_GO_BNT_4D, block_index=covariance_cfg['block_index'])
             cov_3x2pt_GS_BNT_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_BNT_4D, block_index=covariance_cfg['block_index'])
 
@@ -396,6 +457,60 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             elif '3x2pt' in key:
                 dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl=nbl_3x2pt, zbins=zbins)
 
+        # ! BNT transform stefano
+        # in this case, overwrite part of the dictionary entries (the 3x2pt, in particular)
+        if general_cfg['deriv_BNT_transform'] and whos_BNT == '/stefano':
+            warnings.warn('deprecate use of stefanos input files')
+
+            # import in one big dictionary
+            derivatives_BNTstef_folder = FM_cfg['derivatives_BNTstef_folder'].format(probe='3x2pt')
+            dC_dict_3x2pt_BNT_1D = dict(mm.get_kv_pairs(derivatives_BNTstef_folder, "dat"))
+
+            # select only items witht he correct magnitude and redshift cuts
+            cuts_specs_str = f'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}'
+            dC_dict_3x2pt_BNT_1D = {key: dC_dict_3x2pt_BNT_1D[key] for key in dC_dict_3x2pt_BNT_1D.keys()
+                                    if cuts_specs_str in key}
+
+            # check that the dict is not empty
+            if not dC_dict_3x2pt_BNT_1D:
+                raise ValueError(f'No derivatives found in folder {derivatives_BNTstef_folder}')
+
+            # separate in 4 different dictionaries, reshape and remove the probe-specific suffix in the keys:
+            # in this way, referring both to the 3x2pt, dC_dict_3x2pt_BNT_LL_3D and dC_dict_3x2pt_BNT_LG_3D will have
+            # the same keys, and the same for the other probes
+            dC_dict_3x2pt_BNT_LL_3D = {}
+            dC_dict_3x2pt_BNT_LG_3D = {}
+            for key in dC_dict_3x2pt_BNT_1D.keys():
+                if '3x2pt_LL_' in key:
+                    dC_dict_3x2pt_BNT_LL_3D[key.replace('_LL_', '')] = cl_utils.cl_SPV3_1D_to_3D(
+                        dC_dict_3x2pt_BNT_1D[key], probe='WL', nbl=nbl_3x2pt, zbins=zbins)
+                elif '3x2pt_LG_' in key:
+                    dC_dict_3x2pt_BNT_LG_3D[key.replace('_LG_', '')] = cl_utils.cl_SPV3_1D_to_3D(
+                        dC_dict_3x2pt_BNT_1D[key], probe='XC', nbl=nbl_3x2pt, zbins=zbins)
+
+            # a check on the keys, they now must be the same
+            assert dC_dict_3x2pt_BNT_LL_3D.keys() == dC_dict_3x2pt_BNT_LG_3D.keys(), \
+                'The keys of the dictionaries are not the same'
+
+            # now finish building the derivatives 5D vector with non-BNT derivatives:
+            # instantiate a dict of 5D numpy arrays
+            dC_dict_3x2pt_BNT_5D = {}
+            allkeys = {key for key in dC_dict_3x2pt_BNT_LL_3D}
+            for key in allkeys:
+                dC_dict_3x2pt_BNT_5D[key] = np.zeros((nbl_3x2pt, n_probes, n_probes, zbins, zbins))
+
+            # fill it with the various 3D arrays in the different dictionaries
+            for key in dC_dict_3x2pt_BNT_5D.keys():
+                dC_dict_3x2pt_BNT_5D[key][:, 0, 0, :, :] = dC_dict_3x2pt_BNT_LL_3D[key]
+                dC_dict_3x2pt_BNT_5D[key][:, 0, 1, :, :] = dC_dict_3x2pt_BNT_LG_3D[key]
+                dC_dict_3x2pt_BNT_5D[key][:, 1, 0, :, :] = dC_dict_3x2pt_BNT_LG_3D[key].transpose(0, 2, 1)
+                # for GG, I use Vincenzo's (i.e., non-BNT) derivatives, picking the keys of dC_dict_3x2pt_BNT_5D (which
+                # are a subset of the keys of dC_dict_3x2pt_5D)
+                dC_dict_3x2pt_BNT_5D[key][:, 1, 1, :, :] = dC_dict_3x2pt_5D[key.lstrip('BNT_')][:, 1, 1, :, :]
+
+            # overwrite the non-BNT derivatives with the BNT ones
+            dC_dict_3x2pt_5D = dC_dict_3x2pt_BNT_5D
+
         # turn the dictionaries of derivatives into npy array
         dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl_WL, zbins, der_prefix)
         dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, paramnames_3x2pt, nbl_GC, zbins, der_prefix)
@@ -403,7 +518,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         dC_3x2pt_5D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, paramnames_3x2pt, nbl_3x2pt, zbins, der_prefix,
                                                    is_3x2pt=True)
 
-        if general_cfg['deriv_BNT_transform']:
+        # ! BNT transform derivatives - Davide
+        if general_cfg['deriv_BNT_transform'] and whos_BNT == '/davide':
 
             assert general_cfg['cov_BNT_transform'], 'you should BNT transform the covariance as well'
 
@@ -561,10 +677,10 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         mm.save_pickle(f'{FM_folder}/FM_dict_ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
                        f'MS{magcut_source:03d}-ZS{zcut_source:02d}.pickle', FM_dict)
 
-cov_output_path = f'{job_path}/output/Flagship_{general_cfg["flagship_version"]}/covmat/BNT_{general_cfg["BNT_transform"]}/zbins{zbins}'
+cov_output_path = f'{job_path}/output/Flagship_{general_cfg["flagship_version"]}/covmat/BNT_{general_cfg["BNT_transform"]}{whos_BNT}/zbins{zbins}'
 cov_benchmark_path = cov_output_path + '/benchmarks'
 
-FM_output_path = f'{job_path}/output/Flagship_{general_cfg["flagship_version"]}/FM/BNT_{general_cfg["BNT_transform"]}/zbins{zbins}'
+FM_output_path = f'{job_path}/output/Flagship_{general_cfg["flagship_version"]}/FM/BNT_{general_cfg["BNT_transform"]}{whos_BNT}/zbins{zbins}'
 FM_benchmark_path = FM_output_path + '/benchmarks'
 ut.test_cov_FM(FM_output_path, FM_benchmarks_path)
 

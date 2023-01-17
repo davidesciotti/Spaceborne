@@ -25,6 +25,11 @@ if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
 else:
     BNT_transform = False
 
+whos_BNT = '/davide'  # "/stefano "or "/davide"
+
+if BNT_transform is False:
+    whos_BNT = ''
+
 assert flagship_version == 2, 'the files for the multicut case are only available for Flagship_2'
 
 if BNT_transform:
@@ -48,7 +53,7 @@ general_cfg = {
     'cl_BNT_transform': cl_BNT_transform,
     'cov_BNT_transform': cov_BNT_transform,
     'deriv_BNT_transform': deriv_BNT_transform,
-    'BNT_transform': BNT_transform,
+    'whos_BNT': whos_BNT,
     'BNT_matrix_path': f'{SPV3_folder}/BNT_matrix',
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
     'cl_folder': f'{SPV3_folder}/Flagship_{flagship_version}/DataVectors/magcut_zcut',
@@ -96,7 +101,7 @@ covariance_cfg = {
     'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # outermost loop is on the probes
-    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/zbins{zbins:02d}',
+    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}{whos_BNT}' + '/zbins{zbins:02d}',
     'cov_BNTstef_folder': f'{SPV3_folder}/Flagship_{flagship_version}/CovMats/BNT_True/stefano/magcut_zcut/' + '{GO_or_GS:s}/{probe:s}',
     'cov_BNTstef_filename': 'BNT_covmat_{GO_or_GS}_{probe}_{block:s}_lmax{ellmax}_nbl{nbl}_zbins{EP_or_ED:s}{zbins:02d}'
                             '_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_6D.npy'
@@ -126,7 +131,7 @@ FM_cfg = {
     'paramnames_3x2pt': None,  # ! for the time being, these are defined in the main and then passed here
     'save_FM': False,
     'save_FM_as_dict': True,
-    'transformed_derivs_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}',
+    'transformed_derivs_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}{whos_BNT}',
     'derivatives_BNTstef_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_{BNT_transform}/stefano/' + '{probe:s}',
     'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_False/' +
                           'ML{magcut_lens:03d}ZL{zcut_lens:02d}MS{magcut_source:03d}ZS{zcut_source:02d}',
@@ -134,7 +139,7 @@ FM_cfg = {
                             'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'derivatives_prefix': 'dDVd',
     # the filename is the same as above
-    'FM_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}',
+    'FM_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}{whos_BNT}',
     'FM_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'
                    'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.txt',
     'params_order': None,

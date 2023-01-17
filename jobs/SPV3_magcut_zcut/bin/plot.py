@@ -51,7 +51,6 @@ fix_dzGC = True  # whether to remove the rows/cols for the dz nuisance parameter
 bar_plot_cosmo = True
 triangle_plot = False
 bar_plot_nuisance = False
-whos_BNT = 'davide'
 dpi = 500
 zmax = 25
 EP_or_ED = 'ED'
@@ -115,7 +114,7 @@ for probe in probes:
         FM_noBNT_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output' \
                         f'/Flagship_{flagship_version}/FM/BNT_False'
         FM_BNT_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output' \
-                      f'/Flagship_{flagship_version}/FM/BNT_True/{whos_BNT}'
+                      f'/Flagship_{flagship_version}/FM/BNT_True'
         FM_noBNT_dict = mm.load_pickle(f'{FM_noBNT_path}/FM_dict_ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}.pickle')
         FM_BNT_dict = mm.load_pickle(f'{FM_BNT_path}/FM_dict_ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}.pickle')
         _params = FM_noBNT_dict['parameters']  # this should not change when passed the second time to the function
@@ -134,7 +133,7 @@ for probe in probes:
         assert len(fid) == len(param_names), 'the fiducial values list and parameter names should have the same length'
 
         title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
-        title += f'\nML = {ML / 10}, MS = {MS / 10}, ZL = {ZL / 10}, ZS = {ZS / 10:}, zmax = {zmax / 10}'
+        title += f'\nML = {ML / 10}, MS = {MS / 10}, ZL = {ZL / 10}, ZS = {ZS / 10}, zmax = {zmax / 10}'
 
         if GO_or_GS == 'GO':
             FMs = (FM_GO_noBNT, FM_GO_BNT)

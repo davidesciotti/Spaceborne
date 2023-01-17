@@ -144,6 +144,7 @@ for probe in probes:
 
         # cases = [f'FM_{GO_or_GS}', f'FM_{GO_or_GS}_BNT', 'percent_diff/10']
         cases = [f'noBNT', f'BNT', 'abs(percent_diff)']
+        # cases = [f'noBNT', f'BNT']
         # key_to_compare_A, key_to_compare_B = f'FM_{GO_or_GS}', f'FM_{GO_or_GS}_BNT'  # which cases to take the percent diff and ratio of
         key_to_compare_A, key_to_compare_B = f'noBNT', f'BNT'  # which cases to take the percent diff and ratio of
 
@@ -153,10 +154,10 @@ for probe in probes:
         for FM, case in zip(FMs, cases):
             uncert[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams_toplot, fiducials=fid[:nparams_toplot],
                                                           which_uncertainty=which_uncertainty, normalize=True))
-            fom[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_idx)
+            fom[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_idx)/10
             print(f'FoM({probe}, {case}): {fom[case]}')
 
-        uncert['abs(percent_diff)'] = diff_funct(uncert[key_to_compare_A], uncert[key_to_compare_B])
+        uncert['abs(percent_diff)'] = np.abs(diff_funct(uncert[key_to_compare_A], uncert[key_to_compare_B]))
         uncert['ratio'] = uncert[key_to_compare_A] / uncert[key_to_compare_B]
 
         for case in cases:
@@ -172,8 +173,9 @@ for probe in probes:
 
         # fom_array = np.array([fom['FM_GO'], fom['FM_GO_BNT'], mm.percent_diff(fom['FM_GO'], fom['FM_GO_BNT'])])/100
         fom_array = np.array([fom['noBNT'], fom['BNT'], np.abs(mm.percent_diff(fom['noBNT'], fom['BNT']))])
+        # fom_array = np.array([fom['noBNT'], fom['BNT']])
         if plot_fom:
-            param_names_label = param_names[:nparams_toplot] + ['FoM']
+            param_names_label = param_names[:nparams_toplot] + ['FoM/10']
             nparams_toplot += 1
 
         data = np.asarray(data)

@@ -78,13 +78,12 @@ ZL_list = [0, 2, 0, 2]
 MS_list = [245, 245, 245, 245]
 ZS_list = [0, 0, 0, 2]
 
-ML_list = [245]
-ZL_list = [0]
-MS_list = [245]
-ZS_list = [0]
+# ML_list = [245]
+# ZL_list = [0]
+# MS_list = [245]
+# ZS_list = [0]
 
 warnings.warn('restore the ML, Zl, ... lists')
-warnings.warn('restore nbl_WL = 32, or call it nbl_WL_opt instead of nbl_WL_32...')
 
 for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         general_cfg['magcut_source'], general_cfg['zcut_source'] in \

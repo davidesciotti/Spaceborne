@@ -525,9 +525,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         # ! BNT transform derivatives - Davide
         if general_cfg['BNT_transform'] and whos_BNT == '/davide':
 
-            warnings.warn('BNT transform for derivatives not fully tested in "davide" case')
-            assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
-            assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
+            assert general_cfg['EP_or_ED'] == 'ED', 'BNT matrices only available for ED'
+            assert general_cfg['zbins'] == 13, 'BNT matrices only available for zbins=13'
 
             for alf in range(len(paramnames_3x2pt)):
                 dC_LL_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_LL_4D[:, :, :, alf], BNT_matrix, 'L', 'L')
@@ -560,7 +559,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             mm.matshow(diff[ell_idx, probe_A, probe_B, :, :, alf],
                        title='probe_A={}, probe_B={}, ell_idx={}, alf={}'.format(
                            probe_A, probe_B, ell_idx, alf))
-                           
             """
 
             # TODO finish this, it's defined only for WL...
@@ -683,21 +681,21 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
                     # in this case, 3x2pt is saved in 10D as a dictionary
                     if ndim == 6:
-                        cov_filename = f'covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_' \
+                        cov_3x2pt_filename = f'covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_' \
                                        f'nbl{nbl_3x2pt}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
                                        f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
                                        f'ZS{zcut_source:02d}_10D.pickle'
-                        with open(f'{cov_folder}/{cov_filename}', 'wb') as handle:
+                        with open(f'{cov_folder}/{cov_3x2pt_filename}', 'wb') as handle:
                             pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
 
             # in the pessimistic case, save only WA
             elif ell_max_WL == 1500:
                 for which_cov in cases_tosave:
-                    cov_filename = f'covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_' \
+                    cov_WA_filename = f'covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_' \
                                    f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
                                    f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
                                    f'ZS{zcut_source:02d}_{ndim}D.npy'
-                    np.save(f'{cov_folder}/{cov_filename}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
+                    np.save(f'{cov_folder}/{cov_WA_filename}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
 
     # save in .dat for Vincenzo, only in the optimistic case and in 2D
     if covariance_cfg['save_cov_dat'] and ell_max_WL == 5000:

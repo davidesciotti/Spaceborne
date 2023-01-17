@@ -62,6 +62,11 @@ GO_or_GS = 'GO'
 plot_fom = True
 # ! end options
 
+# compute percent diff of the cases chosen - careful of the indices!
+if which_diff == 'normal':
+    diff_funct = mm.percent_diff
+else:
+    diff_funct = mm.percent_diff_mean
 
 # ML_list = [230, 230, 245, 245]
 # ZL_list = [0, 2, 0, 2]
@@ -76,12 +81,6 @@ ZS_list = [0]
 uncert_ratio_dict = {}
 uncert_G_dict = {}
 uncert_GS_dict = {}
-
-# compute percent diff of the cases chosen - careful of the indices!
-if which_diff == 'normal':
-    diff_funct = mm.percent_diff
-else:
-    diff_funct = mm.percent_diff_mean
 
 # for probe in probes:
 #     uncert_ratio_dict[probe] = {}
@@ -173,10 +172,9 @@ for probe in probes:
         #     uncert_ratio_dict[probe][ML][ZL][MS][ZS], fom['GS'] / fom['G'])
 
         # fom_array = np.array([fom['FM_GO'], fom['FM_GO_BNT'], mm.percent_diff(fom['FM_GO'], fom['FM_GO_BNT'])])/100
-        fom_array = np.array(
-            [fom['noBNT'] / 100, fom['BNT'] / 100, np.abs(mm.percent_diff(fom['noBNT'], fom['BNT']))])
+        fom_array = np.array([fom['noBNT'], fom['BNT'], np.abs(mm.percent_diff(fom['noBNT'], fom['BNT']))])
         if plot_fom:
-            param_names_label = param_names[:nparams_toplot] + ['FoM/100']
+            param_names_label = param_names[:nparams_toplot] + ['FoM']
             nparams_toplot += 1
 
         data = np.asarray(data)

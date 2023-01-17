@@ -78,10 +78,10 @@ ZL_list = [0, 2, 0, 2]
 MS_list = [245, 245, 245, 245]
 ZS_list = [0, 0, 0, 2]
 
-# ML_list = [245]
-# ZL_list = [0]
-# MS_list = [245]
-# ZS_list = [0]
+ML_list = [245]
+ZL_list = [0]
+MS_list = [245]
+ZS_list = [0]
 
 warnings.warn('restore the ML, Zl, ... lists')
 
@@ -94,14 +94,12 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     #         for general_cfg['zcut_lens'] in general_cfg['zcut_lens_list']:
     #             for general_cfg['zcut_source'] in general_cfg['zcut_source_list']:
 
-    # utils.consistency_checks(general_cfg, covariance_cfg)
-
-    # some variables used for I/O naming, just to make things more readable
+    # some convenence variables, just to make things more readable
     zbins = general_cfg['zbins']
     EP_or_ED = general_cfg['EP_or_ED']
     ell_max_WL = general_cfg['ell_max_WL']
     ell_max_GC = general_cfg['ell_max_GC']
-    ell_max_XC = ell_max_GC
+    ell_max_XC = general_cfg['ell_max_XC']
     magcut_source = general_cfg['magcut_source']
     magcut_lens = general_cfg['magcut_lens']
     zcut_source = general_cfg['zcut_source']
@@ -116,7 +114,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     # some checks
     assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
     assert general_cfg['use_WA'] is False, 'We do not use Wadd for SPV3 at the moment'
-
     if general_cfg['BNT_transform']:
         assert general_cfg['EP_or_ED'] == 'ED', 'BNT matrices are only available for ED case'
         assert general_cfg['zbins'] == 13, 'BNT matrices are only available for zbins=13'
@@ -161,7 +158,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         ell_WL_nbl32[(10 ** ell_WL_nbl32 > ell_max_GC) & (10 ** ell_WL_nbl32 < ell_max_WL)])
     ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
 
-    # set corresponding # of ell bins
+    # set corresponding number of ell bins
     nbl_WL = ell_dict['ell_WL'].shape[0]
     nbl_GC = ell_dict['ell_GC'].shape[0]
     nbl_WA = ell_dict['ell_WA'].shape[0]
@@ -188,10 +185,11 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                       'magcut_lens': magcut_lens, 'zcut_lens': zcut_lens,
                       'magcut_source': magcut_source, 'zcut_source': zcut_source,
                       'zmax': zmax}
+
     BNT_matrix_filename = general_cfg["BNT_matrix_filename"].format(**variable_specs)
     BNT_matrix = np.load(f'{general_cfg["BNT_matrix_path"]}/{BNT_matrix_filename}')
 
-    # ! import datavectors (cl) and response functions (rl)
+    # ! import and reshape datavectors (cl) and response functions (rl)
     cl_fld = general_cfg['cl_folder']
     cl_filename = general_cfg['cl_filename']
     cl_ll_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLO', **variable_specs)}")
@@ -206,7 +204,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **variable_specs)}")
     rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **variable_specs)}")
 
-    # ! reshape to 3 dimensions
+    # reshape to 3 dimensions
     cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
     cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
     cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
@@ -228,10 +226,10 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             print(f'cl_wa_3d and cl_ll_3d[nbl_GC:nbl_WL, :, :] are not exactly equal, but have a relative '
                   f'difference of less than {rtol}')
 
+    # ! BNT transform the cls (and responses?)
     if general_cfg['cl_BNT_transform']:
         assert general_cfg['cov_BNT_transform'] is False, 'the BNT transform should be applied either to the Cls ' \
                                                           'or to the covariance'
-
         cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix, 'L', 'L')
         cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix, 'L', 'L')
         cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5d, BNT_matrix)
@@ -263,6 +261,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         'rl_3x2pt_5D': rl_3x2pt_5d}
 
     if covariance_cfg['compute_covmat']:
+
         # ! load kernels
         # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
         wf_folder = Sijkl_cfg["wf_input_folder"].format(**variable_specs)
@@ -272,9 +271,10 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         wig = np.genfromtxt(f'{wf_folder}/{wf_GC_filename.format(**variable_specs)}')
 
         # preprocess (remove redshift column)
-        z_arr, wil = Sijkl_utils.preprocess_wf(wil, zbins)
-        z_arr_2, wig = Sijkl_utils.preprocess_wf(wig, zbins)
-        assert np.array_equal(z_arr, z_arr_2), 'the redshift arrays are different for the GC and WL kernels'
+        z_arr_wil, wil = Sijkl_utils.preprocess_wf(wil, zbins)
+        z_arr_wig, wig = Sijkl_utils.preprocess_wf(wig, zbins)
+        assert np.array_equal(z_arr_wil, z_arr_wig), 'the redshift arrays are different for the GC and WL kernels'
+        z_arr = z_arr_wil
 
         # transpose and stack, ordering is important here!
         transp_stacked_wf = np.vstack((wil.T, wig.T))

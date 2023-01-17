@@ -36,6 +36,7 @@ general_cfg = {
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
     'ell_max_WL': 5000,
     'ell_max_GC': 3000,
+    'ell_max_XC': 3000,
     'zbins': 13,
     'zbins_list': None,
     'EP_or_ED': 'ED',

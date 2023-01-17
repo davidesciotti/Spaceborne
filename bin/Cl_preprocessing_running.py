@@ -314,12 +314,13 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
 
         # split into 3 2d datavectors
         cl_ll_3x2pt_2d = cl_2d[:, :zpairs_auto]
-        cl_lg_3x2pt_2d = cl_2d[:, zpairs_auto:zpairs_auto + zpairs_cross]  # ! is it really gl? or lg?
+        cl_gl_3x2pt_2d = cl_2d[:, zpairs_auto:zpairs_auto + zpairs_cross]  # ! is it really gl? or lg?
         cl_gg_3x2pt_2d = cl_2d[:, zpairs_auto + zpairs_cross:]
 
         # reshape them individually - the symmetrization is done within the function
         cl_ll_3x2pt_3d = mm.cl_2D_to_3D_symmetric(cl_ll_3x2pt_2d, nbl=nbl, zpairs=zpairs_auto, zbins=zbins)
-        cl_lg_3x2pt_3d = mm.cl_2D_to_3D_asymmetric(cl_lg_3x2pt_2d, nbl=nbl, zbins=zbins, order='F')
+        # cl_lg_3x2pt_3d = mm.cl_2D_to_3D_asymmetric(cl_lg_3x2pt_2d, nbl=nbl, zbins=zbins, order='F')
+        cl_gl_3x2pt_3d = mm.cl_2D_to_3D_asymmetric(cl_gl_3x2pt_2d, nbl=nbl, zbins=zbins, order='C')
         cl_gg_3x2pt_3d = mm.cl_2D_to_3D_symmetric(cl_gg_3x2pt_2d, nbl=nbl, zpairs=zpairs_auto, zbins=zbins)
         warnings.warn('check the order of the 3x2pt response functions, the default is actually F-style! '
                       'I think you have to switch to C style because its GL, not LG||!!!""!$£"QTDVZ')
@@ -328,8 +329,8 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
         cl_3x2pt = np.zeros((nbl, 2, 2, zbins, zbins))
         cl_3x2pt[:, 0, 0, :, :] = cl_ll_3x2pt_3d
         cl_3x2pt[:, 1, 1, :, :] = cl_gg_3x2pt_3d
-        cl_3x2pt[:, 0, 1, :, :] = cl_lg_3x2pt_3d
-        cl_3x2pt[:, 1, 0, :, :] = np.transpose(cl_lg_3x2pt_3d, (0, 2, 1))
+        cl_3x2pt[:, 1, 0, :, :] = cl_gl_3x2pt_3d
+        cl_3x2pt[:, 0, 1, :, :] = np.transpose(cl_gl_3x2pt_3d, (0, 2, 1))
         return cl_3x2pt  # in this case, return the datavector (I could name it "cl_3d" and avoid this return statement,
         # but it's not 3d!)
 

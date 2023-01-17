@@ -358,8 +358,8 @@ def cl_BNT_transform_3x2pt(cl_3x2pt_5D, BNT_matrix):
 
     cl_3x2pt_5D_BNT = np.zeros(cl_3x2pt_5D.shape)
     cl_3x2pt_5D_BNT[:, 0, 0, :, :] = cl_BNT_transform(cl_3x2pt_5D[:, 0, 0, :, :], BNT_matrix, 'L', 'L')
-    cl_3x2pt_5D_BNT[:, 1, 0, :, :] = cl_BNT_transform(cl_3x2pt_5D[:, 1, 0, :, :], BNT_matrix, 'G', 'L')
     cl_3x2pt_5D_BNT[:, 0, 1, :, :] = cl_BNT_transform(cl_3x2pt_5D[:, 0, 1, :, :], BNT_matrix, 'L', 'G')
-    # GG is unchanged by the BNT transform, it would not be efficient to call the function
+    cl_3x2pt_5D_BNT[:, 1, 0, :, :] = cl_BNT_transform(cl_3x2pt_5D[:, 1, 0, :, :], BNT_matrix, 'G', 'L')
+    cl_3x2pt_5D_BNT[:, 1, 1, :, :] = cl_3x2pt_5D[:, 1, 1, :, :]  # no need to transform the GG part
 
     return cl_3x2pt_5D_BNT

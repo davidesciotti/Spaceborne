@@ -160,15 +160,20 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     GL_or_LG = covariance_cfg['GL_or_LG']
     probe_ordering = [['L', 'L'], [GL_or_LG[0], GL_or_LG[1]], ['G', 'G']]
 
+    # some checks
+    assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
+    assert general_cfg['use_WA'] is False, 'We do not use Wadd for SPV3 at the moment'
+
+    if general_cfg['BNT_transform']:
+        assert general_cfg['EP_or_ED'] == 'ED', 'BNT matrices are only available for ED case'
+        assert general_cfg['zbins'] == 13, 'BNT matrices are only available for zbins=13'
+
     # which cases to save: GO, GS or GO, GS and SS
     cases_tosave = ['GO', 'GS']
     if covariance_cfg[f'save_cov_GS']:
         cases_tosave.append('GS')
     if covariance_cfg[f'save_cov_SS']:
         cases_tosave.append('SS')
-
-    assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
-    assert general_cfg['use_WA'] == False, 'We do not use Wadd for SPV3 at the moment'
 
     # import the ind files and store it into the covariance dictionary
     ind_folder = covariance_cfg['ind_folder'].format(triu_tril=triu_tril,
@@ -183,7 +188,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
     # convenience vectors
     ind_auto = ind[:zpairs_auto, :].copy()
-    ind_cross = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
+    # ind_cross = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
 
     assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \
         'ell_max_WL and ell_max_GC must be either (5000, 3000) or (1500, 750)'
@@ -259,22 +264,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA_opt, zbins)
     rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
 
-    # ! my cl and rl BNT transform
-    # ! note: for the constraints I only need to BNT-transform the covariances and the derivatives!
-    # ! either you transform the cls, or the covariances, but not both! This is the reason why the lines below are
-    # ! commented
-    # if general_cfg['BNT_transform'] and whos_BNT == '/davide':
-
-    # assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
-    # assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
-    #
-    # cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix)
-    # cl_gg_3d = cl_utils.cl_BNT_transform(cl_gg_3d, BNT_matrix)
-    # cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix)
-    # cl_3x2pt_5d = cl_utils.cl_BNT_transform(cl_3x2pt_5d, BNT_matrix)
-    # print('you should BNT-transform the responses too!')
-    # warnings.warn('the BNT transform should not be applied to GCph, so gg and 3x2pt are not correct')
-
     # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
     if ell_max_WL == general_cfg['ell_max_WL_opt']:
         if not np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :]):
@@ -285,6 +274,15 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                 'cl_wa_3d should be obtainable from cl_ll_3d!'
             print(f'cl_wa_3d and cl_ll_3d[nbl_GC:nbl_WL, :, :] are not exactly equal, but have a relative '
                   f'difference of less than {rtol}')
+
+    if general_cfg['cl_BNT_transform']:
+        assert general_cfg['cov_BNT_transform'] is False, 'the BNT transform should be applied either to the Cls ' \
+                                                          'or to the covariance'
+
+        cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix, 'L', 'L')
+        cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix, 'L', 'L')
+        cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5d, BNT_matrix)
+        warnings.warn('you should probebly BNT-transform the responses too!')
 
     # cut datavectors and responses in the pessimistic case; be carful of WA, because it does not start from ell_min
     if ell_max_WL == 1500:
@@ -353,7 +351,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
-        if general_cfg['BNT_transform']:
+        if general_cfg['cov_BNT_transform']:
 
             if whos_BNT == '/davide':
 
@@ -458,7 +456,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
         # ! BNT transform stefano
         # in this case, overwrite part of the dictionary entries (the 3x2pt, in particular)
-        if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
+        if general_cfg['deriv_BNT_transform'] and whos_BNT == '/stefano':
             warnings.warn('deprecate use of stefanos input files')
 
             # import in one big dictionary
@@ -518,7 +516,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                                                    is_3x2pt=True)
 
         # ! BNT transform derivatives - Davide
-        if general_cfg['BNT_transform'] and whos_BNT == '/davide':
+        if general_cfg['deriv_BNT_transform'] and whos_BNT == '/davide':
 
             assert general_cfg['EP_or_ED'] == 'ED', 'BNT matrices only available for ED'
             assert general_cfg['zbins'] == 13, 'BNT matrices only available for zbins=13'

@@ -13,9 +13,18 @@ fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
 SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
 
-# ! choose the flagship version and whether you want to compute the BNT transformed cls
+# ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
-BNT_transform = True
+
+cl_BNT_transform = False
+cov_BNT_transform = True
+deriv_BNT_transform = True
+
+if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
+    BNT_transform = True
+else:
+    BNT_transform = False
+
 whos_BNT = '/davide'  # "/stefano "or "/davide"
 
 if BNT_transform is False:
@@ -41,8 +50,10 @@ general_cfg = {
     'use_WA': False,
     'save_cls_3d': False,
     'save_rls_3d': False,
+    'cl_BNT_transform': cl_BNT_transform,
+    'cov_BNT_transform': cov_BNT_transform,
+    'deriv_BNT_transform': deriv_BNT_transform,
     'BNT_transform': BNT_transform,
-    'probe_to_BNT_transform': 'WL',
     'whos_BNT': whos_BNT,
     'BNT_matrix_path': f'{SPV3_folder}/BNT_matrix',
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',

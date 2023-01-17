@@ -102,4 +102,4 @@ def test_cov_FM(output_path, benchmarks_path):
     for key in old_dict.keys():
         assert np.array_equal(old_dict[key], new_dict[key]), f'The file {key} is different'
 
-    print('test_cov passed successfully ✅')
+    print('tests passed successfully ✅')

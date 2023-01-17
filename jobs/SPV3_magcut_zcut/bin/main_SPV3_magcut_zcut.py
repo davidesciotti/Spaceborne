@@ -352,6 +352,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
         if general_cfg['cov_BNT_transform']:
+            assert general_cfg['cl_BNT_transform'] is False, 'the BNT transform should be applied either to the Cls ' \
+                                                              'or to the covariance'
+            assert general_cfg['deriv_BNT_transform'], 'you should BNT transform the derivatives as well'
 
             if whos_BNT == '/davide':
 
@@ -518,8 +521,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         # ! BNT transform derivatives - Davide
         if general_cfg['deriv_BNT_transform'] and whos_BNT == '/davide':
 
-            assert general_cfg['EP_or_ED'] == 'ED', 'BNT matrices only available for ED'
-            assert general_cfg['zbins'] == 13, 'BNT matrices only available for zbins=13'
+            assert general_cfg['cov_BNT_transform'], 'you should BNT transform the covariance as well'
 
             for alf in range(len(paramnames_3x2pt)):
                 dC_LL_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_LL_4D[:, :, :, alf], BNT_matrix, 'L', 'L')

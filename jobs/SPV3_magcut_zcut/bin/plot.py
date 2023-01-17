@@ -36,7 +36,7 @@ markersize = 10
 # ! options
 zbins = 13
 zbins_list = np.array((zbins,), dtype=int)
-probes = ('3x2pt', 'WL')
+probes = ('3x2pt', 'WL', 'GC')
 model = 'flat'
 which_diff = 'normal'
 flagship_version = 2
@@ -57,7 +57,7 @@ EP_or_ED = 'ED'
 n_cosmo_params = 8
 nparams_toplot = n_cosmo_params
 pic_format = 'pdf'
-GO_or_GS = 'GO'
+GO_or_GS = 'GS'
 plot_fom = True
 # ! end options
 

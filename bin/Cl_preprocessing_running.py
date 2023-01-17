@@ -298,7 +298,7 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
         raise ValueError('probe must be WL, WA, XC, GC or 3x2pt')
 
     assert zpairs == int(cl_1d.shape[0] / nbl), 'the number of elements in the datavector is incompatible ' \
-                                                         'with the number of ell bins for this case/probe'
+                                                'with the number of ell bins for this case/probe'
 
     if probe != '3x2pt':
         cl_3d = mm.cl_1D_to_3D(cl_1d, nbl, zbins, is_symmetric=is_symmetric)
@@ -335,27 +335,23 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
 
 def cl_BNT_transform(cl_3D, BNT_matrix, probe_A, probe_B):
 
+    assert cl_3D.ndim == 3, 'cl_3D must be 3D'
+    assert BNT_matrix.ndim == 2, 'BNT_matrix must be 2D'
+    assert cl_3D.shape[1] == BNT_matrix.shape[0], 'the number of ell bins in cl_3D and BNT_matrix must be the same'
+
     BNT_transform_dict = {
         'L': BNT_matrix,
         'G': np.eye(BNT_matrix.shape[0]),
     }
 
     cl_3D_BNT = np.zeros(cl_3D.shape)
-    if cl_3D.ndim == 3:  # WL, GC
-        for ell_idx in range(cl_3D.shape[0]):
-            cl_3D_BNT[ell_idx, :, :] = BNT_transform_dict[probe_A] @ cl_3D[ell_idx, :, :] @ BNT_transform_dict[probe_B].T
-
-    elif cl_3D.ndim == 5:  # 3x2pt
-        for ell_idx in range(cl_3D.shape[0]):
-            for probe_A in range(cl_3D.shape[1]):
-                for probe_B in range(cl_3D.shape[2]):
-                    cl_3D_BNT[ell_idx, probe_A, probe_B, :, :] = BNT_transform_dict[probe_A] @ \
-                                                                 cl_3D[ell_idx, probe_A, probe_B, :, :] @ \
-                                                                 BNT_transform_dict[probe_B].T
-    else:
-        raise ValueError('input Cl array should be 3-dim or 5-dim')
+    for ell_idx in range(cl_3D.shape[0]):
+        cl_3D_BNT[ell_idx, :, :] = BNT_transform_dict[probe_A] @ \
+                                   cl_3D[ell_idx, :, :] @ \
+                                   BNT_transform_dict[probe_B].T
 
     return cl_3D_BNT
+
 
 def cl_BNT_transform_3x2pt(cl_3x2pt_5D, BNT_matrix):
     """wrapper function to quickly implement the cl (or derivatives) BNT transform for the 3x2pt datavector"""
@@ -367,4 +363,3 @@ def cl_BNT_transform_3x2pt(cl_3x2pt_5D, BNT_matrix):
     # GG is unchanged by the BNT transform, it would not be efficient to call the function
 
     return cl_3x2pt_5D_BNT
-

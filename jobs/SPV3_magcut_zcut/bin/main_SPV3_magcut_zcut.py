@@ -355,25 +355,15 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
                 X_dict = covmat_utils.build_X_matrix_BNT(BNT_matrix)
 
-                if probe_to_BNT_transform == 'WL':
-                    cov_WL_GO_BNT = covmat_utils.BNT_transform_cov_single_probe(
-                        cov_dict['cov_WL_GO_6D'], X_dict, 'L', 'L')
+                cov_WL_GO_BNT = covmat_utils.BNT_transform_cov_single_probe(cov_dict['cov_WL_GO_6D'], X_dict, 'L', 'L')
+                cov_WA_GO_BNT = covmat_utils.BNT_transform_cov_single_probe(cov_dict['cov_WA_GO_6D'], X_dict, 'L', 'L')
+                cov_3x2pt_GO_BNT_dict = covmat_utils.BNT_transform_cov_3x2pt(cov_dict['cov_3x2pt_GO_10D'], X_dict)
 
+                # TODO do the same for GS covariance matrix (i.e., de comment this)
+                # cov_WL_GS_BNT = covmat_utils.BNT_transform_cov_single_probe(cov_dict['cov_WL_GS_6D'], X_dict, 'L', 'L')
+                # cov_WA_GS_BNT = covmat_utils.BNT_transform_cov_single_probe(cov_dict['cov_WA_GS_6D'], X_dict, 'L', 'L')
+                # cov_3x2pt_GS_BNT_dict = covmat_utils.BNT_transform_cov_3x2pt(cov_dict['cov_3x2pt_GS_10D'], X_dict)
 
-                elif probe_to_BNT_transform == '3x2pt':
-                    start_time = time.perf_counter()
-                    cov_3x2pt_GO_BNT_dict = covmat_utils.BNT_transform_cov_3x2pt(
-                        cov_dict['cov_3x2pt_GO_10D'], X_dict)
-                    print('GO cov BNT transform took {:.2f} seconds'.format(time.perf_counter() - start_time))
-
-                    start_time = time.perf_counter()
-                    cov_3x2pt_GS_BNT_dict = covmat_utils.BNT_transform_cov_3x2pt(
-                        cov_dict['cov_3x2pt_GS_10D'], X_dict)
-                    print('GS cov BNT transform took {:.2f} seconds'.format(time.perf_counter() - start_time))
-
-                else:
-                    raise notImplementedError('davides BNT transform is only implemented for WL and 3x2pt (for '
-                                              '3x2pt is only the covariance')
 
 
             elif whos_BNT == '/stefano':
@@ -388,18 +378,18 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             # transform from dict of 6D arrays to single 4D array
             cov_3x2pt_BNT_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_BNT_dict, probe_ordering, nbl_3x2pt,
                                                               zbins, ind.copy(), GL_or_LG)
-            cov_3x2pt_BNT_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_3x2pt,
-                                                              zbins, ind.copy(), GL_or_LG)
+            # cov_3x2pt_BNT_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_3x2pt,
+            #                                                   zbins, ind.copy(), GL_or_LG)
 
             # reshape to 2D
             cov_3x2pt_BNT_GO_2D = mm.cov_4D_to_2D(cov_3x2pt_BNT_GO_4D, block_index=covariance_cfg['block_index'])
-            cov_3x2pt_BNT_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_BNT_GS_4D, block_index=covariance_cfg['block_index'])
+            # cov_3x2pt_BNT_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_BNT_GS_4D, block_index=covariance_cfg['block_index'])
 
             # ! XXX debug: check the BNT covariance
             # manual symmetrization
 
             # cov_3x2pt_BNT_GO_2D = mm.symmetrize_2d_array(cov_3x2pt_BNT_GO_2D)  # ! remove matshow in here
-            mm.compare_arrays(cov_3x2pt_BNT_GO_2D, cov_3x2pt_BNT_GO_2D.T, log_diff=True, log_arr=True)
+            # mm.compare_arrays(cov_3x2pt_BNT_GO_2D, cov_3x2pt_BNT_GO_2D.T, log_diff=True, log_arr=True)
 
             # check if is symmetric
             # assert np.allclose(cov_3x2pt_BNT_GO_2D, cov_3x2pt_BNT_GO_2D.T, atol=0, rtol=1e-4), \
@@ -409,16 +399,16 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
             # assert 1 > 2
 
-            mm.matshow(cov_3x2pt_BNT_GO_2D, 'cov_3x2pt_BNT_GO_2D', log=True, abs_val=True)
-            mm.matshow(cov_3x2pt_BNT_GO_2D.T, 'cov_3x2pt_BNT_GO_2D.T', log=True, abs_val=True)
-            mm.matshow(cov_dict['cov_3x2pt_GO_2D'], 'cov_3x2pt_GO_2D', log=True, abs_val=True)
+            # mm.matshow(cov_3x2pt_BNT_GO_2D, 'cov_3x2pt_BNT_GO_2D', log=True, abs_val=True)
+            # mm.matshow(cov_3x2pt_BNT_GO_2D.T, 'cov_3x2pt_BNT_GO_2D.T', log=True, abs_val=True)
+            # mm.matshow(cov_dict['cov_3x2pt_GO_2D'], 'cov_3x2pt_GO_2D', log=True, abs_val=True)
 
             # assert 1 > 2, 'debugging BNT covariance'
             # ! XXX end debug: check the BNT covariance
 
             # overwrite the non-BNT value
             cov_dict['cov_3x2pt_GO_2D'] = cov_3x2pt_BNT_GO_2D
-            cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_BNT_GS_2D
+            # cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_BNT_GS_2D
 
     # ! compute Fisher matrix
     if FM_cfg['compute_FM']:
@@ -435,7 +425,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
 
         # fiducial values
-        fid_cosmo = [0.32, 0.68, 0.05, -1.0, 0.0, 0.67, 0.96, 0.816]
+        fid_cosmo = [0.32, 0.68, 0.05, -1.0, 0.0, 0.67, 0.96, 0.816]  # TODO import from ISTfid
         fid_IA = np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()])
         fid_galaxy_bias = np.genfromtxt(f'{ng_folder}/{ng_filename}')[:, 2]
         fid_shear_bias = np.zeros((zbins,))
@@ -472,11 +462,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         dC_dict_3x2pt_noBNT_5D = dC_dict_3x2pt_5D.copy()
 
         # in this case, overwrite part of the dictionary entries (the 3x2pt, in particular)
-        # if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
-        if general_cfg['BNT_transform']:
-
-            warnings.warn('restore option to use stefanos files! guarda riga commentata qui sotto')
-            # if whos_BNT == '/stefano':
+        if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
 
             # import in one big dictionary
             derivatives_BNTstef_folder = FM_cfg['derivatives_BNTstef_folder'].format(probe='3x2pt')
@@ -534,36 +520,52 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         dC_3x2pt_5D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, paramnames_3x2pt, nbl_3x2pt, zbins, der_prefix,
                                                    is_3x2pt=True)
 
-        # ! test against my BNT transformed derivatives for LL
-        alf = 0
-        plt.plot(ell_dict, dC_LL_4D[:, 0, 0, alf], label='stefano, alf=0')
-        # ! end test
+        # ! again, test, to delete
+        if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
+            np.save('/Users/davide/Desktop/BNT_derivatives_validation/dC_3x2pt_BNTstef_5D.npy', dC_3x2pt_5D)
 
         # ! my derivatives BNT transform
         if general_cfg['BNT_transform'] and whos_BNT == '/davide':
-            warnings.warn('BNT transform for derivatives not implemented for the derivatives in the davide case')
 
+            warnings.warn('BNT transform for derivatives not tested in "davide" case')
             assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
             assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
             warnings.warn('Vincenzos derivatives are only for BNT_False, otherwise you should use Stefanos files')
 
-            dC_LL_4D = np.zeros(dC_LL_4D.shape)
+            dC_LL_BNT_4D = np.zeros(dC_LL_4D.shape)
+            dC_WA_BNT_4D = np.zeros(dC_WA_4D.shape)
+            dC_GG_BNT_4D = np.zeros(dC_GG_4D.shape)
+            dC_3x2pt_BNT_5D = np.zeros(dC_3x2pt_5D.shape)
             for alf in range(len(paramnames_3x2pt)):
-                dC_LL_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_LL_4D[:, :, :, alf], BNT_matrix, 'L', 'L')
-                dC_WA_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_WA_4D[:, :, :, alf], BNT_matrix, 'L', 'L')
+                dC_LL_BNT_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_LL_4D[:, :, :, alf], BNT_matrix, 'L', 'L')
+                dC_WA_BNT_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_WA_4D[:, :, :, alf], BNT_matrix, 'L', 'L')
+                dC_3x2pt_BNT_5D[:, :, :, :, :, alf] = cl_utils.cl_BNT_transform_3x2pt(dC_3x2pt_5D[:, :, :, :, :, alf],
+                                                                                      BNT_matrix)
+            dC_GG_BNT_4D = dC_GG_4D
 
-                dC_3x2pt_5D[:, :, :, :, :, alf] = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5D[:, :, :, :, :, alf],
-                                                                                  BNT_matrix)
-
-                # dC_3x2pt_5D[:, 0, 0, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, 0, 0, :, :, alf], BNT_matrix, 'L', 'L')
-                # dC_3x2pt_5D[:, 1, 0, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, 1, 0, :, :, alf], BNT_matrix, 'G', 'L')
-                # dC_3x2pt_5D[:, 0, 1, :, :, alf] = cl_utils.cl_BNT_transform(dC_3x2pt_5D[:, 0, 1, :, :, alf], BNT_matrix, 'G', 'G')
+            plt.figure()
+            probe_A = 0
+            probe_B = 0
+            i = 3
+            j = 4
+            alf = 0
+            plt.plot(10 ** ell_dict['ell_XC'], dC_3x2pt_5D[:, probe_A, probe_B, i, j, alf], label='3x2pt no BNT')
+            plt.plot(10 ** ell_dict['ell_XC'], dC_3x2pt_BNT_5D[:, probe_A, probe_B, i, j, alf],
+                     label='3x2pt davide BNT')
+            plt.plot(10 ** ell_dict['ell_LL'], dC_LL_4D[:, probe_A, probe_B, i, j, alf], label='LL no BNT')
+            plt.plot(10 ** ell_dict['ell_LL'], dC_LL_BNT_4D[:, probe_A, probe_B, i, j, alf], label='LL davide BNT')
+            plt.legend()
+            plt.show()
+            plt.yscale('log')
 
             transformed_derivs_folder = FM_cfg['transformed_derivs_folder']
             transformed_derivs_filename = f'dDV-BNTdav_WLO-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-' \
                                           f'{EP_or_ED}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-' \
                                           f'MS{magcut_source:03d}-ZS{zcut_source:02d}.npy'
-            plt.plot(ell_dict, dC_LL_4D[:, 0, 0, alf], label='stefano, alf=0')
+
+            # ! save for testing against stefano's files
+            np.save('/Users/davide/Desktop/BNT_derivatives_validation/dC_LL_BNTdav_4D.npy', dC_LL_4D)
+            np.save('/Users/davide/Desktop/BNT_derivatives_validation/dC_3x2pt_BNTdav_5D.npy', dC_3x2pt_5D)
 
             assert 1 > 2, 'stop here'
 
@@ -571,7 +573,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             readme = 'shape: (ell_bins, z_bins, z_bins, num_parameters); parameters order:' + str(paramnames_3x2pt)
             with open(f'{transformed_derivs_folder}/README_transformed_derivs.txt', "w") as text_file:
                 text_file.write(readme)
-            np.save(f'{transformed_derivs_folder}/{transformed_derivs_filename}', dC_LL_4D)
+            np.save(f'{transformed_derivs_folder}/{transformed_derivs_filename}',
+                    dC_LL_4D)  # ! what about the other probes?
 
             # check against my derivatives
             probe_A = 0

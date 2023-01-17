@@ -462,67 +462,66 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         dC_dict_3x2pt_noBNT_5D = dC_dict_3x2pt_5D.copy()
 
         # in this case, overwrite part of the dictionary entries (the 3x2pt, in particular)
-        if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
+        # ! BNT transform stefano
+        # if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
+        warnings.warn('restore the if statement above; now I want to check non-BNT, BNTdav and BNTste at the same time')
 
-            # import in one big dictionary
-            derivatives_BNTstef_folder = FM_cfg['derivatives_BNTstef_folder'].format(probe='3x2pt')
-            dC_dict_3x2pt_BNT_1D = dict(mm.get_kv_pairs(derivatives_BNTstef_folder, "dat"))
+        # import in one big dictionary
+        derivatives_BNTstef_folder = FM_cfg['derivatives_BNTstef_folder'].format(probe='3x2pt')
+        dC_dict_3x2pt_BNT_1D = dict(mm.get_kv_pairs(derivatives_BNTstef_folder, "dat"))
 
-            # select only items witht he correct magnitude and redshift cuts
-            cuts_specs_str = f'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}'
-            dC_dict_3x2pt_BNT_1D = {key: dC_dict_3x2pt_BNT_1D[key] for key in dC_dict_3x2pt_BNT_1D.keys()
-                                    if cuts_specs_str in key}
+        # select only items witht he correct magnitude and redshift cuts
+        cuts_specs_str = f'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}'
+        dC_dict_3x2pt_BNT_1D = {key: dC_dict_3x2pt_BNT_1D[key] for key in dC_dict_3x2pt_BNT_1D.keys()
+                                if cuts_specs_str in key}
 
-            # check that the dict is not empty
-            if not dC_dict_3x2pt_BNT_1D:
-                raise ValueError(f'No derivatives found in folder {derivatives_BNTstef_folder}')
+        # check that the dict is not empty
+        if not dC_dict_3x2pt_BNT_1D:
+            raise ValueError(f'No derivatives found in folder {derivatives_BNTstef_folder}')
 
-            # separate in 4 different dictionaries, reshape and remove the probe-specific suffix in the keys:
-            # in this way, referring both to the 3x2pt, dC_dict_3x2pt_BNT_LL_3D and dC_dict_3x2pt_BNT_LG_3D will have
-            # the same keys, and the same for the other probes
-            dC_dict_3x2pt_BNT_LL_3D = {}
-            dC_dict_3x2pt_BNT_LG_3D = {}
-            for key in dC_dict_3x2pt_BNT_1D.keys():
-                if '3x2pt_LL_' in key:
-                    dC_dict_3x2pt_BNT_LL_3D[key.replace('_LL_', '')] = cl_utils.cl_SPV3_1D_to_3D(
-                        dC_dict_3x2pt_BNT_1D[key], probe='WL', nbl=nbl_3x2pt, zbins=zbins)
-                elif '3x2pt_LG_' in key:
-                    dC_dict_3x2pt_BNT_LG_3D[key.replace('_LG_', '')] = cl_utils.cl_SPV3_1D_to_3D(
-                        dC_dict_3x2pt_BNT_1D[key], probe='XC', nbl=nbl_3x2pt, zbins=zbins)
+        # separate in 4 different dictionaries, reshape and remove the probe-specific suffix in the keys:
+        # in this way, referring both to the 3x2pt, dC_dict_3x2pt_BNT_LL_3D and dC_dict_3x2pt_BNT_LG_3D will have
+        # the same keys, and the same for the other probes
+        dC_dict_3x2pt_BNT_LL_3D = {}
+        dC_dict_3x2pt_BNT_LG_3D = {}
+        for key in dC_dict_3x2pt_BNT_1D.keys():
+            if '3x2pt_LL_' in key:
+                dC_dict_3x2pt_BNT_LL_3D[key.replace('_LL_', '')] = cl_utils.cl_SPV3_1D_to_3D(
+                    dC_dict_3x2pt_BNT_1D[key], probe='WL', nbl=nbl_3x2pt, zbins=zbins)
+            elif '3x2pt_LG_' in key:
+                dC_dict_3x2pt_BNT_LG_3D[key.replace('_LG_', '')] = cl_utils.cl_SPV3_1D_to_3D(
+                    dC_dict_3x2pt_BNT_1D[key], probe='XC', nbl=nbl_3x2pt, zbins=zbins)
 
-            # a check on the keys, they now must be the same
-            assert dC_dict_3x2pt_BNT_LL_3D.keys() == dC_dict_3x2pt_BNT_LG_3D.keys(), \
-                'The keys of the dictionaries are not the same'
+        # a check on the keys, they now must be the same
+        assert dC_dict_3x2pt_BNT_LL_3D.keys() == dC_dict_3x2pt_BNT_LG_3D.keys(), \
+            'The keys of the dictionaries are not the same'
 
-            # now finish building the derivatives 5D vector with non-BNT derivatives:
-            # instantiate a dict of 5D numpy arrays
-            dC_dict_3x2pt_BNT_5D = {}
-            allkeys = {key for key in dC_dict_3x2pt_BNT_LL_3D}
-            for key in allkeys:
-                dC_dict_3x2pt_BNT_5D[key] = np.zeros((nbl_3x2pt, n_probes, n_probes, zbins, zbins))
+        # now finish building the derivatives 5D vector with non-BNT derivatives:
+        # instantiate a dict of 5D numpy arrays
+        dC_dict_3x2pt_BNT_5D = {}
+        allkeys = {key for key in dC_dict_3x2pt_BNT_LL_3D}
+        for key in allkeys:
+            dC_dict_3x2pt_BNT_5D[key] = np.zeros((nbl_3x2pt, n_probes, n_probes, zbins, zbins))
 
-            # fill it with the various 3D arrays in the different dictionaries
-            for key in dC_dict_3x2pt_BNT_5D.keys():
-                dC_dict_3x2pt_BNT_5D[key][:, 0, 0, :, :] = dC_dict_3x2pt_BNT_LL_3D[key]
-                dC_dict_3x2pt_BNT_5D[key][:, 0, 1, :, :] = dC_dict_3x2pt_BNT_LG_3D[key]
-                dC_dict_3x2pt_BNT_5D[key][:, 1, 0, :, :] = dC_dict_3x2pt_BNT_LG_3D[key].transpose(0, 2, 1)
-                # for GG, I use Vincenzo's (i.e., non-BNT) derivatives, picking the keys of dC_dict_3x2pt_BNT_5D (which
-                # are a subset of the keys of dC_dict_3x2pt_5D)
-                dC_dict_3x2pt_BNT_5D[key][:, 1, 1, :, :] = dC_dict_3x2pt_5D[key.lstrip('BNT_')][:, 1, 1, :, :]
+        # fill it with the various 3D arrays in the different dictionaries
+        for key in dC_dict_3x2pt_BNT_5D.keys():
+            dC_dict_3x2pt_BNT_5D[key][:, 0, 0, :, :] = dC_dict_3x2pt_BNT_LL_3D[key]
+            dC_dict_3x2pt_BNT_5D[key][:, 0, 1, :, :] = dC_dict_3x2pt_BNT_LG_3D[key]
+            dC_dict_3x2pt_BNT_5D[key][:, 1, 0, :, :] = dC_dict_3x2pt_BNT_LG_3D[key].transpose(0, 2, 1)
+            # for GG, I use Vincenzo's (i.e., non-BNT) derivatives, picking the keys of dC_dict_3x2pt_BNT_5D (which
+            # are a subset of the keys of dC_dict_3x2pt_5D)
+            dC_dict_3x2pt_BNT_5D[key][:, 1, 1, :, :] = dC_dict_3x2pt_5D[key.lstrip('BNT_')][:, 1, 1, :, :]
 
-            # overwrite the non-BNT derivatives with the BNT ones
-            dC_dict_3x2pt_5D = dC_dict_3x2pt_BNT_5D
+        # overwrite the non-BNT derivatives with the BNT ones
+        dC_dict_3x2pt_5D = dC_dict_3x2pt_BNT_5D
 
         # turn the dictionaries of derivatives npy array
         dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl_WL, zbins, der_prefix)
         dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, paramnames_3x2pt, nbl_GC, zbins, der_prefix)
         dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, paramnames_3x2pt, nbl_WA, zbins, der_prefix)
-        dC_3x2pt_5D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, paramnames_3x2pt, nbl_3x2pt, zbins, der_prefix,
+        dC_3x2pt_BNTste_5D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_BNT_5D, paramnames_3x2pt, nbl_3x2pt, zbins, der_prefix,
                                                    is_3x2pt=True)
 
-        # ! again, test, to delete
-        if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
-            np.save('/Users/davide/Desktop/BNT_derivatives_validation/dC_3x2pt_BNTstef_5D.npy', dC_3x2pt_5D)
 
         # ! my derivatives BNT transform
         if general_cfg['BNT_transform'] and whos_BNT == '/davide':

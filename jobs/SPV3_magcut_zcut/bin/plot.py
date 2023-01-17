@@ -36,7 +36,7 @@ markersize = 10
 # ! options
 zbins = 13
 zbins_list = np.array((zbins,), dtype=int)
-probes = ('3x2pt',)
+probes = ('3x2pt', 'WL')
 model = 'flat'
 which_diff = 'normal'
 flagship_version = 2

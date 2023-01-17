@@ -148,7 +148,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     ell_max_WL = general_cfg['ell_max_WL']
     ell_max_GC = general_cfg['ell_max_GC']
     ell_max_XC = ell_max_GC
-    nbl_WL_32 = general_cfg['nbl_WL_32']
     magcut_source = general_cfg['magcut_source']
     magcut_lens = general_cfg['magcut_lens']
     zcut_source = general_cfg['zcut_source']
@@ -181,11 +180,17 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
     covariance_cfg['ind'] = ind
 
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
+
+    # convenience vectors
+    ind_auto = ind[:zpairs_auto, :].copy()
+    ind_cross = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
+
     assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \
         'ell_max_WL and ell_max_GC must be either (5000, 3000) or (1500, 750)'
 
     # compute ell and delta ell values in the reference (optimistic) case
-    ell_WL_nbl32, delta_l_WL_nbl32 = ell_utils.compute_ells(general_cfg['nbl_WL_32'],
+    ell_WL_nbl32, delta_l_WL_nbl32 = ell_utils.compute_ells(general_cfg['nbl_WL_opt'],
                                                             general_cfg['ell_min'],
                                                             general_cfg['ell_max_WL_opt'], recipe='ISTF')
 
@@ -355,59 +360,54 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
                 X_dict = covmat_utils.build_X_matrix_BNT(BNT_matrix)
 
-                cov_WL_GO_BNT = covmat_utils.BNT_transform_cov_single_probe(cov_dict['cov_WL_GO_6D'], X_dict, 'L', 'L')
-                cov_WA_GO_BNT = covmat_utils.BNT_transform_cov_single_probe(cov_dict['cov_WA_GO_6D'], X_dict, 'L', 'L')
-                cov_3x2pt_GO_BNT_dict = covmat_utils.BNT_transform_cov_3x2pt(cov_dict['cov_3x2pt_GO_10D'], X_dict)
+                cov_WL_GO_BNT_6D = covmat_utils.cov_BNT_transform(cov_dict['cov_WL_GO_6D'], X_dict, 'L', 'L')
+                cov_WA_GO_BNT_6D = covmat_utils.cov_BNT_transform(cov_dict['cov_WA_GO_6D'], X_dict, 'L', 'L')
+                cov_3x2pt_GO_BNT_dict = covmat_utils.cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GO_10D'], X_dict)
 
-                # TODO do the same for GS covariance matrix (i.e., de comment this)
-                # cov_WL_GS_BNT = covmat_utils.BNT_transform_cov_single_probe(cov_dict['cov_WL_GS_6D'], X_dict, 'L', 'L')
-                # cov_WA_GS_BNT = covmat_utils.BNT_transform_cov_single_probe(cov_dict['cov_WA_GS_6D'], X_dict, 'L', 'L')
-                # cov_3x2pt_GS_BNT_dict = covmat_utils.BNT_transform_cov_3x2pt(cov_dict['cov_3x2pt_GS_10D'], X_dict)
+                cov_WL_GS_BNT_6D = covmat_utils.cov_BNT_transform(cov_dict['cov_WL_GS_6D'], X_dict, 'L', 'L')
+                cov_WA_GS_BNT_6D = covmat_utils.cov_BNT_transform(cov_dict['cov_WA_GS_6D'], X_dict, 'L', 'L')
+                cov_3x2pt_GS_BNT_dict = covmat_utils.cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GS_10D'], X_dict)
+
+                # reshape to 4D
+                cov_WL_GO_BNT_4D = mm.cov_6D_to_4D(cov_WL_GO_BNT_6D, nbl_WL, zpairs_auto, ind_auto)
+                cov_WL_GS_BNT_4D = mm.cov_6D_to_4D(cov_WL_GS_BNT_6D, nbl_WL, zpairs_auto, ind_auto)
+                cov_WA_GO_BNT_4D = mm.cov_6D_to_4D(cov_WA_GO_BNT_6D, nbl_WA, zpairs_auto, ind_auto)
+                cov_WA_GS_BNT_4D = mm.cov_6D_to_4D(cov_WA_GS_BNT_6D, nbl_WA, zpairs_auto, ind_auto)
+
+                # reshape to 2D
+                cov_WL_GO_BNT_2D = mm.cov_4D_to_2D(cov_WL_GO_BNT_4D, block_index=covariance_cfg['block_index'])
+                cov_WL_GS_BNT_2D = mm.cov_4D_to_2D(cov_WL_GS_BNT_4D, block_index=covariance_cfg['block_index'])
+                cov_WA_GO_BNT_2D = mm.cov_4D_to_2D(cov_WA_GO_BNT_4D, block_index=covariance_cfg['block_index'])
+                cov_WA_GS_BNT_2D = mm.cov_4D_to_2D(cov_WA_GS_BNT_4D, block_index=covariance_cfg['block_index'])
 
             elif whos_BNT == '/stefano':
+                warnings.warn('deprecate use of stefanos input files')
 
                 cov_BNTstef_folder_GO = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GO', probe='3x2pt')
                 cov_BNTstef_folder_GS = covariance_cfg['cov_BNTstef_folder'].format(GO_or_GS='GS', probe='3x2pt')
 
                 cov_3x2pt_GO_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GO, probe_ordering,
                                                                            variable_specs, 'GO', cov_dict, nbl_3x2pt)
-                # cov_3x2pt_GS_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GS, probe_ordering,
-                #                                                               variable_specs, 'GS', cov_dict, nbl_3x2pt)
+                cov_3x2pt_GS_BNT_dict = load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder_GS, probe_ordering,
+                                                                           variable_specs, 'GS', cov_dict, nbl_3x2pt)
 
             # transform from dict of 6D arrays to single 4D array
-            cov_3x2pt_BNT_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_BNT_dict, probe_ordering, nbl_3x2pt,
+            cov_3x2pt_GO_BNT_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_BNT_dict, probe_ordering, nbl_3x2pt,
                                                               zbins, ind.copy(), GL_or_LG)
-            # cov_3x2pt_BNT_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_3x2pt,
-            #                                                   zbins, ind.copy(), GL_or_LG)
+            cov_3x2pt_GS_BNT_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_3x2pt,
+                                                              zbins, ind.copy(), GL_or_LG)
 
             # reshape to 2D
-            cov_3x2pt_BNT_GO_2D = mm.cov_4D_to_2D(cov_3x2pt_BNT_GO_4D, block_index=covariance_cfg['block_index'])
-            # cov_3x2pt_BNT_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_BNT_GS_4D, block_index=covariance_cfg['block_index'])
-
-            # ! XXX debug: check the BNT covariance
-            # manual symmetrization
-
-            # cov_3x2pt_BNT_GO_2D = mm.symmetrize_2d_array(cov_3x2pt_BNT_GO_2D)  # ! remove matshow in here
-            # mm.compare_arrays(cov_3x2pt_BNT_GO_2D, cov_3x2pt_BNT_GO_2D.T, log_diff=True, log_arr=True)
-
-            # check if is symmetric
-            # assert np.allclose(cov_3x2pt_BNT_GO_2D, cov_3x2pt_BNT_GO_2D.T, atol=0, rtol=1e-4), \
-            #     'cov_3x2pt_BNT_GO_2D is not symmetric'
-            # assert np.allclose(cov_dict['cov_3x2pt_GO_2D'], cov_dict['cov_3x2pt_GO_2D'].T, atol=0, rtol=1e-4), \
-            #     'cov_3x2pt_GO_2D is not symmetric'
-
-            # assert 1 > 2
-
-            # mm.matshow(cov_3x2pt_BNT_GO_2D, 'cov_3x2pt_BNT_GO_2D', log=True, abs_val=True)
-            # mm.matshow(cov_3x2pt_BNT_GO_2D.T, 'cov_3x2pt_BNT_GO_2D.T', log=True, abs_val=True)
-            # mm.matshow(cov_dict['cov_3x2pt_GO_2D'], 'cov_3x2pt_GO_2D', log=True, abs_val=True)
-
-            # assert 1 > 2, 'debugging BNT covariance'
-            # ! XXX end debug: check the BNT covariance
+            cov_3x2pt_GO_BNT_2D = mm.cov_4D_to_2D(cov_3x2pt_GO_BNT_4D, block_index=covariance_cfg['block_index'])
+            cov_3x2pt_GS_BNT_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_BNT_4D, block_index=covariance_cfg['block_index'])
 
             # overwrite the non-BNT value
-            cov_dict['cov_3x2pt_GO_2D'] = cov_3x2pt_BNT_GO_2D
-            # cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_BNT_GS_2D
+            cov_dict['cov_WL_GO_2D'] = cov_WL_GO_BNT_2D
+            cov_dict['cov_WL_GS_2D'] = cov_WL_GS_BNT_2D
+            cov_dict['cov_WA_GO_2D'] = cov_WA_GO_BNT_2D
+            cov_dict['cov_WA_GS_2D'] = cov_WA_GS_BNT_2D
+            cov_dict['cov_3x2pt_GO_2D'] = cov_3x2pt_GO_BNT_2D
+            cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_GS_BNT_2D
 
     # ! compute Fisher matrix
     if FM_cfg['compute_FM']:
@@ -464,6 +464,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         # ! BNT transform stefano
         # in this case, overwrite part of the dictionary entries (the 3x2pt, in particular)
         if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
+            warnings.warn('deprecate use of stefanos input files')
 
             # import in one big dictionary
             derivatives_BNTstef_folder = FM_cfg['derivatives_BNTstef_folder'].format(probe='3x2pt')

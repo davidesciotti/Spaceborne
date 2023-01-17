@@ -386,7 +386,7 @@ def build_X_matrix_BNT(BNT_matrix):
     return X
 
 
-def BNT_transform_cov_3x2pt(cov_3x2pt_dict_10D, X_dict, optimize=True):
+def cov_3x2pt_BNT_transform(cov_3x2pt_dict_10D, X_dict, optimize=True):
     """in np.einsum below, L and M are the ell1, ell2 indices, which are not touched by the BNT transform"""
     cov_3x2pt_BNT_dict_10D = {}
 
@@ -398,7 +398,7 @@ def BNT_transform_cov_3x2pt(cov_3x2pt_dict_10D, X_dict, optimize=True):
     return cov_3x2pt_BNT_dict_10D
 
 
-def BNT_transform_cov_single_probe(cov_noBNT_6D, X_dict, probe_A, probe_B, optimize=True):
+def cov_BNT_transform(cov_noBNT_6D, X_dict, probe_A, probe_B, optimize=True):
     """same as above, but only for one probe (i.e., LL or GL: GG is not modified by the BNT)"""
     cov_BNT_6D = np.einsum('aebf, cgdh, LMefgh -> LMabcd', X_dict[probe_A, probe_B], X_dict[probe_A, probe_B],
                            cov_noBNT_6D, optimize=optimize)

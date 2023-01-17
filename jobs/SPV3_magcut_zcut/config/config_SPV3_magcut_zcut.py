@@ -36,7 +36,7 @@ general_cfg = {
     'EP_or_ED': 'ED',
     'n_probes': 2,
     # 'nbl_WL': 32,
-    'nbl_WL_32': 32,
+    'nbl_WL_opt': 32,  # the case with the largest range, i.e. the reference ell binning from which the cuts are applied
     'which_forecast': which_forecast,
     'use_WA': False,
     'save_cls_3d': False,

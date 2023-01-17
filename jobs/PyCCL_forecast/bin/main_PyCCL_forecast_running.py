@@ -26,7 +26,7 @@ import plots_FM_running as plot_utils
 import utils_running as utils
 
 # job configuration
-import jobs.PyCCL_forecast.configs.config_PyCCL_forecast as config
+import jobs.PyCCL_forecast.config.config_PyCCL_forecast as config
 
 start_time = time.perf_counter()
 
@@ -40,10 +40,10 @@ with PySSC.
 """
 
 # import the configuration dictionaries from config_PyCCL_forecast.py
-general_config = config.general_config
-covariance_config = config.covariance_config
+general_config = config.general_cfg
+covariance_config = config.covariance_cfg
 FM_config = config.FM_cfg
-plot_config = config.plot_config
+plot_config = config.plot_cfg
 
 # plot settings:
 params = plot_config['params']
@@ -78,7 +78,7 @@ ell_max_WL = general_config['ell_max_WL']
 ell_max_GC = general_config['ell_max_GC']
 ell_max_XC = ell_max_GC
 nbl = general_config['nbl']
-npairs_auto, npairs_cross, npairs_3x2pt = mm.get_pairs(general_config['zbins'])
+npairs_auto, npairs_cross, npairs_3x2pt = mm.get_zpairs(general_config['zbins'])
 
 # which SS-only covariance to use
 whos_SSC = covariance_config['which_SSC']

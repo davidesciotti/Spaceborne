@@ -9,7 +9,6 @@ sys.path.append(str(project_path_here.parent / 'common_lib'))
 import my_module as mm
 
 script_name = sys.argv[0]
-start = time.perf_counter()
 
 
 ###############################################################################
@@ -24,7 +23,8 @@ start = time.perf_counter()
 # and taking nParams instead seems to have ho impact on the final result.
 
 def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
-    print('most likely, I already wrote this function...')
+    """expand the zpair indices into zi, zj, according to the ind ordering as usual"""
+
     dC_3D = np.zeros((nbl, zpairs, nparams_tot))
     for ell in range(nbl):
         for alf in range(nparams_tot):
@@ -32,9 +32,8 @@ def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
     return dC_3D
 
 
-def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, obs_name, is_3x2pt=False, n_probes=2):
+def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, derivatives_prefix, is_3x2pt=False, n_probes=2):
     """
-
     :param param_names: filename of the parameter, e.g. 'Om'; dCldOm = d(C(l))/d(Om)
     :param dC_dict_3D:
     :param nbl:
@@ -57,19 +56,20 @@ def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, obs_name, is_3x2pt=
     no_derivative_counter = 0
     for idx, param_name in enumerate(param_names):
         for key, value in dC_dict_3D.items():
-            if f'd{obs_name}d{param_name}' in key:
+            if f'{derivatives_prefix}{param_name}' in key:
                 dC_4D[..., idx] = value
 
         # a check, if the derivative wrt the param is not in the folder at all
-        if not any(f'd{obs_name}d{param_name}' in key for key in dC_dict_3D.keys()):
-            print(f'Derivative d{obs_name}d{param_name} not found; setting the corresponding entry to zero')
+        if not any(f'{derivatives_prefix}{param_name}' in key for key in dC_dict_3D.keys()):
+            print(f'Derivative {derivatives_prefix}{param_name} not found; setting the corresponding entry to zero')
             no_derivative_counter += 1
         if no_derivative_counter == len(param_names):
-            warnings.warn('No derivative found for any of the parameters in the input dictionary')
+            raise ImportError('No derivative found for any of the parameters in the input dictionary')
     return dC_4D
 
 
 def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict):
+
     # shorten names
     # nbl = general_cfg['nbl']
     zbins = general_cfg['zbins']
@@ -238,6 +238,8 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_XC_4D = np.reshape(dC_XC, (nbl, zbins, zbins, nparams_tot))
 
     """
+
+    start = time.perf_counter()
 
     # load reshaped derivatives, with shape (nbl, zbins, zbins, nparams)
     dC_LL_4D = deriv_dict['dC_LL_4D']

@@ -3,6 +3,7 @@ import warnings
 from pathlib import Path
 import numpy as np
 
+
 # from numba import njit
 
 project_path_here = Path.cwd().parent.parent.parent
@@ -96,8 +97,10 @@ def import_and_interpolate_cls(general_config, covariance_config, ell_dict):
     return cl_dict_2D, rl_dict_2D
 
 
-def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
+def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, rl_dict_2D):
     # fill the 3D (nbl x zbins x zbins) matrices, or equivalently nbl (zbins x zbins) matrices
+
+    print(general_config)
 
     print('note: this function makes no sense, generalize it to work with responses OR cls')
     nbl = general_config['nbl']
@@ -119,11 +122,11 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, Rl_dict_2D):
     cl_GL_2D = cl_dict_2D['cl_GL_2D']
     cl_LLfor3x2pt_2D = cl_dict_2D['cl_LLfor3x2pt_2D']
 
-    rl_LL_2D = Rl_dict_2D['rl_LL_2D']
-    rl_GG_2D = Rl_dict_2D['rl_GG_2D']
-    rl_WA_2D = Rl_dict_2D['rl_WA_2D']
-    rl_GL_2D = Rl_dict_2D['rl_GL_2D']
-    rl_LLfor3x2pt_2D = Rl_dict_2D['rl_LLfor3x2pt_2D']
+    rl_LL_2D = rl_dict_2D['rl_LL_2D']
+    rl_GG_2D = rl_dict_2D['rl_GG_2D']
+    rl_WA_2D = rl_dict_2D['rl_WA_2D']
+    rl_GL_2D = rl_dict_2D['rl_GL_2D']
+    rl_LLfor3x2pt_2D = rl_dict_2D['rl_LLfor3x2pt_2D']
 
     # compute n_zpairs
     npairs, npairs_asimm, npairs_tot = mm.get_zpairs(zbins)
@@ -301,7 +304,7 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
     if probe != '3x2pt':
         cl_3d = mm.cl_1D_to_3D(cl_1d, nbl, zbins, is_symmetric=is_symmetric)
 
-        # if not cross-spectra, symmetrize
+        # if cl is not a cross-spectrum, symmetrize
         if probe != 'XC':
             cl_3d = mm.fill_3D_symmetric_array(cl_3d, nbl, zbins)
         return cl_3d
@@ -331,20 +334,33 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
         # but it's not 3d!)
 
 
-def cl_BNT_transform(cl_3D, BNT_matrix):
-    cl_3D_BNT = np.zeros(cl_3D.shape)
-    if cl_3D.ndim == 3:  # WL, GC
-        for ell_idx in range(cl_3D.shape[0]):
-            cl_3D_BNT[ell_idx, :, :] = BNT_matrix @ cl_3D[ell_idx, :, :] @ BNT_matrix.T
+def cl_BNT_transform(cl_3D, BNT_matrix, probe_A, probe_B):
 
-    elif cl_3D.ndim == 5:  # 3x2pt
-        for ell_idx in range(cl_3D.shape[0]):
-            for probe_A in range(cl_3D.shape[1]):
-                for probe_B in range(cl_3D.shape[2]):
-                    cl_3D_BNT[ell_idx, probe_A, probe_B, :, :] = BNT_matrix @ \
-                                                                 cl_3D[ell_idx, probe_A, probe_B, :, :] @ \
-                                                                 BNT_matrix.T
-    else:
-        raise ValueError('input Cl array should be 3-dim or 5-dim')
+    assert cl_3D.ndim == 3, 'cl_3D must be 3D'
+    assert BNT_matrix.ndim == 2, 'BNT_matrix must be 2D'
+    assert cl_3D.shape[1] == BNT_matrix.shape[0], 'the number of ell bins in cl_3D and BNT_matrix must be the same'
+
+    BNT_transform_dict = {
+        'L': BNT_matrix,
+        'G': np.eye(BNT_matrix.shape[0]),
+    }
+
+    cl_3D_BNT = np.zeros(cl_3D.shape)
+    for ell_idx in range(cl_3D.shape[0]):
+        cl_3D_BNT[ell_idx, :, :] = BNT_transform_dict[probe_A] @ \
+                                   cl_3D[ell_idx, :, :] @ \
+                                   BNT_transform_dict[probe_B].T
 
     return cl_3D_BNT
+
+
+def cl_BNT_transform_3x2pt(cl_3x2pt_5D, BNT_matrix):
+    """wrapper function to quickly implement the cl (or derivatives) BNT transform for the 3x2pt datavector"""
+
+    cl_3x2pt_5D_BNT = np.zeros(cl_3x2pt_5D.shape)
+    cl_3x2pt_5D_BNT[:, 0, 0, :, :] = cl_BNT_transform(cl_3x2pt_5D[:, 0, 0, :, :], BNT_matrix, 'L', 'L')
+    cl_3x2pt_5D_BNT[:, 0, 1, :, :] = cl_BNT_transform(cl_3x2pt_5D[:, 0, 1, :, :], BNT_matrix, 'L', 'G')
+    cl_3x2pt_5D_BNT[:, 1, 0, :, :] = cl_BNT_transform(cl_3x2pt_5D[:, 1, 0, :, :], BNT_matrix, 'G', 'L')
+    cl_3x2pt_5D_BNT[:, 1, 1, :, :] = cl_3x2pt_5D[:, 1, 1, :, :]  # no need to transform the GG part
+
+    return cl_3x2pt_5D_BNT

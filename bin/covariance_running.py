@@ -1,9 +1,12 @@
 import sys
 import time
+import warnings
 from pathlib import Path
+import pickle
 
 import matplotlib
 import numpy as np
+from numba import njit
 
 matplotlib.use('Qt5Agg')
 
@@ -28,19 +31,19 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     ell_max_GC = general_cfg['ell_max_GC']
     zbins = general_cfg['zbins']
     n_probes = general_cfg['n_probes']
-    which_forecast = general_cfg['which_forecast']
     EP_or_ED = general_cfg['EP_or_ED']
+    triu_tril = covariance_cfg['triu_tril']
+    rowcol_major = covariance_cfg['row_col_major']
+    SSC_code = covariance_cfg['SSC_code']
 
     fsky = covariance_cfg['fsky']
     GL_or_LG = covariance_cfg['GL_or_LG']
-    ind_ordering = covariance_cfg['ind_ordering']
     # ! must copy the array! Otherwise, it gets modified and changed at each call
     ind = covariance_cfg['ind'].copy()
     block_index = covariance_cfg['block_index']
     which_probe_response = covariance_cfg['which_probe_response']
 
     start = time.perf_counter()
-
 
     # import ell values
     ell_WL, nbl_WL = ell_dict['ell_WL'], ell_dict['ell_WL'].shape[0]
@@ -94,13 +97,12 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         print('\nAttention! switching columns in the ind array (for the XC part)')
         ind[zpairs_auto:(zpairs_auto + zpairs_cross), [2, 3]] = ind[zpairs_auto:(zpairs_auto + zpairs_cross), [3, 2]]
 
-    # sanity check: the last 2 columns of ind_LL should be equal to the last two of ind_GG
+    # sanity check: the last 2 columns of ind_auto should be equal to the last two of ind_auto
     assert np.array_equiv(ind[:zpairs_auto, 2:], ind[-zpairs_auto:, 2:])
 
     # convenience vectors, used for the cov_4D_to_6D function
-    ind_LL = ind[:zpairs_auto, :].copy()
-    ind_GG = ind_LL.copy()
-    ind_XC = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
+    ind_auto = ind[:zpairs_auto, :].copy()
+    ind_cross = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
 
     # load Cls
     cl_LL_3D = cl_dict_3D['cl_LL_3D']
@@ -124,18 +126,15 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     # print settings
     print(
-        f'\ncheck: \nwhich_forecast = {which_forecast} \nind_ordering = {ind_ordering} \nblock_index = {block_index}\n'
+        f'\ncheck: \nind_ordering = {triu_tril}, {rowcol_major} \nblock_index = {block_index}\n'
         f'zbins: {general_cfg["EP_or_ED"]}{zbins}\n'
         f'nbl_WA: {nbl_WA} nbl_WL: {nbl_WL} nbl_GC:  {nbl_GC}, nbl_3x2pt:  {nbl_3x2pt}\n'
         f'ell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}\n'
         f'computing the covariance in blocks? {covariance_cfg["save_cov_6D"]}\n')
 
     # build noise vector
-    print('which folder should I use for ngbTab? lenses or sources? Flagship or Redbook?')
-    # a couple rough checks
-    if general_cfg['EP_or_ED'] == 'ED':
-        assert general_cfg['which_forecast'] == 'SPV3', 'data for the ED case is only available for SPV3'
 
+    warnings.warn('which folder should I use for ngbTab? lenses or sources? Flagship or Redbook?')
     noise = mm.build_noise(zbins, n_probes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=covariance_cfg['ng'],
                            EP_or_ED=general_cfg['EP_or_ED'])
 
@@ -160,14 +159,30 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
                                         delta_l=delta_l_XC, fsky=fsky, ind=ind)
     print("Gauss. cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
 
-    ######################## COMPUTE SS COVARIANCE ###############################
+    ######################## COMPUTE SSC COVARIANCE ###############################
 
+    # compute the covariance with PySSC anyway, not to have problems with WA
     start = time.perf_counter()
     cov_WL_SS_4D = mm.cov_SSC(nbl_WL, zpairs_auto, ind, cl_LL_3D, Sijkl, fsky, "WL", zbins, rl_LL_3D)
     cov_GC_SS_4D = mm.cov_SSC(nbl_GC, zpairs_auto, ind, cl_GG_3D, Sijkl, fsky, "GC", zbins, rl_GG_3D)
     cov_WA_SS_4D = mm.cov_SSC(nbl_WA, zpairs_auto, ind, cl_WA_3D, Sijkl, fsky, "WA", zbins, rl_WA_3D)
     cov_3x2pt_SS_4D = mm.cov_SSC_ALL(nbl_3x2pt, zpairs_3x2pt, ind, cl_3x2pt_5D, Sijkl, fsky, zbins, rl_3x2pt_5D)
-    print("SS cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
+    print("SS cov. matrices computed in %.2f seconds with PySSC" % (time.perf_counter() - start))
+
+    if SSC_code == 'PyCCL':
+        # TODO for now, load the existing files; then, compute the SSC cov properly
+        fldr = covariance_cfg["cov_SSC_PyCCL_folder"]
+        filename = covariance_cfg["cov_SSC_PyCCL_filename"]
+
+        cov_WL_SS_6D = np.load(f'{fldr}/{filename.format(probe="WL", nbl=nbl_WL, ell_max=ell_max_WL)}')
+        cov_GC_SS_6D = np.load(f'{fldr}/{filename.format(probe="GC", nbl=nbl_GC, ell_max=ell_max_GC)}')
+        # TODO re-establish the 3x2pt
+        # cov_3x2pt_SS_6D = mm.load_pickle(f'{fldr}/{filename.format(probe="3x2pt", nbl=nbl_GC, ell_max=ell_max_GC)}')
+
+        # reshape to 4D
+        cov_WL_SS_4D = mm.cov_6D_to_4D(cov_WL_SS_6D, nbl_WL, zpairs_auto, ind=ind_auto)
+        cov_GC_SS_4D = mm.cov_6D_to_4D(cov_GC_SS_6D, nbl_GC, zpairs_auto, ind=ind_auto)
+        # cov_3x2pt_SS_4D = mm.cov_6D_to_4D(cov_3x2pt_SS_6D, nbl_GC, zpairs_3x2pt, ind=ind)
 
     ############################## SUM G + SSC ################################
     cov_WL_GS_4D = cov_WL_GO_4D + cov_WL_SS_4D
@@ -266,7 +281,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         # this is the 1st way to compute cov_6D: simply transform the cov_4D array (note that cov_4D_to_6D does not
         # work for 3x2pt, althought it should be easy to implement). Quite slow for GS or SS matrices.
         # example:
-        # cov_dict['cov_WL_GO_6D'] = mm.cov_4D_to_6D(cov_WL_GO_4D, nbl_WL, zbins, probe='LL', ind=ind_LL)
+        # cov_dict['cov_WL_GO_6D'] = mm.cov_4D_to_6D(cov_WL_GO_4D, nbl_WL, zbins, probe='LL', ind=ind_auto)
 
         # the cov_G_10D_dict function takes as input a dict, not an array: this is just to create them.
         # note: the only reason why I cannot pass the pre-built cl_dict_3x2pt dictionary is that it contains the probes
@@ -292,8 +307,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
                                                      probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
         print(f'cov_GO_6D new computed in {(time.perf_counter() - start_time):.2f} seconds')
 
-
-        # ! cov_SS_6D
+        # ! cov_SSC_6D
         start_time = time.perf_counter()
         cov_WL_SS_6D = mm.cov_SS_10D_dict(cl_dict_LL, rl_dict_LL, Sijkl_dict, nbl_WL, zbins, fsky,
                                           probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
@@ -312,18 +326,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_dict['cov_WL_GS_6D'] = cov_dict['cov_WL_GO_6D'] + cov_WL_SS_6D
         cov_dict['cov_GC_GS_6D'] = cov_dict['cov_GC_GO_6D'] + cov_GC_SS_6D
         cov_dict['cov_WA_GS_6D'] = cov_dict['cov_WA_GO_6D'] + cov_WA_SS_6D
-
-        # test that they are equal to the 4D ones; this is quite slow, so I check only some arrays
-        print('check: is cov_4D == mm.cov_6D_to_4D(cov_6D)?')
-        assert np.allclose(cov_WL_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_LL), rtol=1e-7, atol=0)
-        # assert np.allclose(cov_GC_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GO_6D'], nbl_GC, zpairs_auto, ind_GG), rtol=1e-7, atol=0)
-        # assert np.allclose(cov_WA_GO_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GO_6D'], nbl_WA, zpairs_auto, ind_LL), rtol=1e-7, atol=0)
-
-        # assert np.allclose(cov_WL_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WL_GS_6D'], nbl_WL, zpairs_auto, ind_LL), rtol=1e-7, atol=0)
-        assert np.allclose(cov_GC_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_GC_GS_6D'], nbl_GC, zpairs_auto, ind_GG), rtol=1e-7, atol=0)
-        # assert np.allclose(cov_WA_GS_4D, mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, zpairs_auto, ind_LL), rtol=1e-7, atol=0)
-
-    print('checks passed')
 
     ############################### 4D to 2D ##################################
     # Here an ordering convention ('block_index') is needed as well
@@ -371,3 +373,91 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_dict[f'cov_3x2pt_GS_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_GS_4D, nbl_3x2pt, zbins)
 
     return cov_dict
+
+
+def build_X_matrix_BNT(BNT_matrix):
+    """"""
+    X = {}
+    delta_kron = np.eye(BNT_matrix.shape[0])
+    X['L', 'L'] = np.einsum('ae, bf -> aebf', BNT_matrix, BNT_matrix)
+    X['G', 'G'] = np.einsum('ae, bf -> aebf', delta_kron, delta_kron)
+    X['G', 'L'] = np.einsum('ae, bf -> aebf', delta_kron, BNT_matrix)
+    X['L', 'G'] = np.einsum('ae, bf -> aebf', BNT_matrix, delta_kron)  # ! XXX is this correct?
+    return X
+
+
+def cov_3x2pt_BNT_transform(cov_3x2pt_dict_10D, X_dict, optimize=True):
+    """in np.einsum below, L and M are the ell1, ell2 indices, which are not touched by the BNT transform"""
+    cov_3x2pt_BNT_dict_10D = {}
+
+    for probe_A, probe_B, probe_C, probe_D in cov_3x2pt_dict_10D.keys():
+        cov_3x2pt_BNT_dict_10D[probe_A, probe_B, probe_C, probe_D] = \
+            np.einsum('aebf, cgdh, LMefgh -> LMabcd', X_dict[probe_A, probe_B], X_dict[probe_C, probe_D],
+                      cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D], optimize=optimize)
+
+    return cov_3x2pt_BNT_dict_10D
+
+
+def cov_BNT_transform(cov_noBNT_6D, X_dict, probe_A, probe_B, optimize=True):
+    """same as above, but only for one probe (i.e., LL or GL: GG is not modified by the BNT)"""
+    cov_BNT_6D = np.einsum('aebf, cgdh, LMefgh -> LMabcd', X_dict[probe_A, probe_B], X_dict[probe_A, probe_B],
+                           cov_noBNT_6D, optimize=optimize)
+    return cov_BNT_6D
+
+
+def save_cov(covariance_cfg, general_cfg, cov_dict, cov_folder):
+    if covariance_cfg['cov_file_format'] == 'npy':
+        save_funct = np.save
+        extension = 'npy'
+    elif covariance_cfg['cov_file_format'] == 'npz':
+        save_funct = np.savez_compressed
+        extension = 'npz'
+    else:
+        raise ValueError('cov_file_format not recognized: must be "npy" or "npz"')
+
+    ell_max_WL = general_cfg['ell_max_WL']
+    ell_max_GC = general_cfg['ell_max_GC']
+    ell_max_XC = general_cfg['ell_max_XC']
+    nbl_WL = general_cfg['nbl_WL']
+    nbl_GC = general_cfg['nbl_GC']
+    nbl_WA = general_cfg['nbl_WA']
+    EP_or_ED = general_cfg['EP_or_ED']
+    zbins = general_cfg['zbins']
+
+    for ndim in (2, 4, 6):
+        if covariance_cfg[f'save_cov_{ndim}D']:
+
+            # save GO, GS or GO, GS and SSC
+            which_cov_list = ['GO', 'GS']
+            if covariance_cfg[f'save_cov_SSC']:
+                which_cov_list.append('SSC')
+
+            # set probes to save; the ndim == 6 case is different
+            probe_list = ['WL', 'GC', '3x2pt', 'WA']
+            ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
+            nbl_list = [nbl_WL, nbl_GC, nbl_GC, nbl_WA]
+            # in this case, 3x2pt is saved in 10D as a dictionary
+            if ndim == 6:
+                probe_list = ['WL', 'GC', 'WA']
+                ellmax_list = [ell_max_WL, ell_max_GC, ell_max_WL]
+                nbl_list = [nbl_WL, nbl_GC, nbl_WA]
+
+            # save all covmats in the optimistic case
+            if ell_max_WL == 5000:
+
+                for which_cov in which_cov_list:
+                    for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
+                        save_funct(f'{cov_folder}/covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_zbins{EP_or_ED}'
+                                   f'{zbins:02}_{ndim}D.{extension}', cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])
+
+                    # in this case, 3x2pt is saved in 10D as a dictionary
+                    if ndim == 6:
+                        filename = f'{cov_folder}/covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_nbl{nbl_GC}_zbins{EP_or_ED}{zbins:02}_10D.pickle'
+                        with open(filename, 'wb') as handle:
+                            pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
+
+            # in the pessimistic case, save only WA
+            elif ell_max_WL == 1500:
+                for which_cov in which_cov_list:
+                    save_funct(f'{cov_folder}/covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_zbins{EP_or_ED}'
+                               f'{zbins:02}_{ndim}D.{extension}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])

@@ -48,7 +48,7 @@ def import_and_interpolate_cls(general_config, ell_dict):
     if np.asanyarray(ell_WA).size == 1: nbl_WA = 1 # in the case of just one bin it would give error
     else: nbl_WA = ell_WA.shape[0]
     
-    npairs, npairs_asimm, npairs_tot = mm.get_pairs(zbins)
+    npairs, npairs_asimm, npairs_tot = mm.get_zpairs(zbins)
 
     # import Vincenzo's (different versions of) Cls
     if cl_folder == "Cij_thesis":
@@ -79,18 +79,18 @@ def import_and_interpolate_cls(general_config, ell_dict):
     # careful, this part is a bit tricky. Pay attention to the ell_WL,
     # ell_XC arguments in e.g. fLL(ell_XC) vs fLL(ell_WL)
     cl_dict_2D = {}
-    cl_dict_2D['C_LL_2D'] = mm.Cl_interpolator(npairs, C_LL_import, ell_XC, nbl)
-    cl_dict_2D['C_GG_2D'] = mm.Cl_interpolator(npairs, C_GG_import, ell_XC, nbl)
-    cl_dict_2D['C_WA_2D'] = mm.Cl_interpolator(npairs, C_LL_import, ell_WA, nbl_WA)
-    cl_dict_2D['C_XC_2D'] = mm.Cl_interpolator(npairs_asimm, C_XC_import, ell_XC, nbl)
-    cl_dict_2D['C_LL_WLonly_2D'] = mm.Cl_interpolator(npairs, C_LL_import, ell_WL, nbl)
+    cl_dict_2D['C_LL_2D'] = mm.cl_interpolator(C_LL_import, npairs, ell_XC, nbl)
+    cl_dict_2D['C_GG_2D'] = mm.cl_interpolator(C_GG_import, npairs, ell_XC, nbl)
+    cl_dict_2D['C_WA_2D'] = mm.cl_interpolator(C_LL_import, npairs, ell_WA, nbl_WA)
+    cl_dict_2D['C_XC_2D'] = mm.cl_interpolator(C_XC_import, npairs_asimm, ell_XC, nbl)
+    cl_dict_2D['C_LL_WLonly_2D'] = mm.cl_interpolator(C_LL_import, npairs, ell_WL, nbl)
         
     Rl_dict_2D = {}
-    Rl_dict_2D['R_LL_2D'] = mm.Cl_interpolator(npairs, R_LL_import, ell_XC, nbl)
-    Rl_dict_2D['R_GG_2D'] = mm.Cl_interpolator(npairs, R_GG_import, ell_XC, nbl)
-    Rl_dict_2D['R_WA_2D'] = mm.Cl_interpolator(npairs, R_LL_import, ell_WA, nbl_WA)
-    Rl_dict_2D['R_XC_2D'] = mm.Cl_interpolator(npairs_asimm, R_GL_import, ell_XC, nbl)
-    Rl_dict_2D['R_LL_WLonly_2D'] = mm.Cl_interpolator(npairs, R_LL_import, ell_WL, nbl)
+    Rl_dict_2D['R_LL_2D'] = mm.cl_interpolator(R_LL_import, npairs, ell_XC, nbl)
+    Rl_dict_2D['R_GG_2D'] = mm.cl_interpolator(R_GG_import, npairs, ell_XC, nbl)
+    Rl_dict_2D['R_WA_2D'] = mm.cl_interpolator(R_LL_import, npairs, ell_WA, nbl_WA)
+    Rl_dict_2D['R_XC_2D'] = mm.cl_interpolator(R_GL_import, npairs_asimm, ell_XC, nbl)
+    Rl_dict_2D['R_LL_WLonly_2D'] = mm.cl_interpolator(R_LL_import, npairs, ell_WL, nbl)
 
     return cl_dict_2D, Rl_dict_2D
 

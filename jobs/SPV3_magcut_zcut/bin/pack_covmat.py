@@ -26,7 +26,7 @@ start_time = time.perf_counter()
 triu_tril = 'triu'
 row_col_wise = 'row-wise'
 zbins = 13
-zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
 ind = np.genfromtxt(f'{project_path.parent}/common_data/ind_files/variable_zbins/{triu_tril:s}_{row_col_wise:s}/indices_{triu_tril:s}_{row_col_wise:s}_zbins{zbins:02d}.dat', dtype=int)
 

@@ -37,7 +37,7 @@ markersize = 10
 
 ell_max_WL = 1500
 ell_max_GC = 3000
-nbl = cfg.general_config['nbl']
+nbl = cfg.general_cfg['nbl']
 nparams = 7
 
 # import all outputs from this script

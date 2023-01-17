@@ -1,5 +1,6 @@
 import sys
 import time
+import warnings
 from operator import itemgetter
 from pathlib import Path
 
@@ -219,8 +220,8 @@ for probe in probes:
                 idx = mm.find_null_rows_cols_2D(FM_GO)
                 idx_GS = mm.find_null_rows_cols_2D(FM_GS)
                 assert np.array_equal(idx, idx_GS), 'the null rows/cols indices should be equal for GO and GS'
-                FM_GO = mm.remove_null_rows_cols_2D(FM_GO, idx)
-                FM_GS = mm.remove_null_rows_cols_2D(FM_GS, idx)
+                FM_GO = mm.remove_null_rows_cols_array2D(FM_GO, idx)
+                FM_GS = mm.remove_null_rows_cols_array2D(FM_GS, idx)
 
                 ####################################################################################################################
 
@@ -244,7 +245,7 @@ for probe in probes:
                 for FM, case in zip(FMs, cases):
                     uncert[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams, fiducials=fid,
                                                                   which_uncertainty=which_uncertainty, normalize=True))
-                    fom[case] = mm.compute_FoM(FM, w0wa_rows=w0wa_rows)
+                    fom[case] = mm.compute_FoM(FM, w0wa_idxs=w0wa_rows)
                     print(f'FoM({probe}, {case}): {fom[case]}')
 
                 # set uncertainties to 0 (or 1? see code) for \Omega_DE in the non-flat case, where Ode was not a free parameter
@@ -670,7 +671,7 @@ if plot_response:
     nbl_3x2pt = ell_3x2pt.shape[0]
 
     # reshape 3x2pt
-    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_pairs(zbins)
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
     rf_2d = np.reshape(rf_3x2pt_1d, (nbl_3x2pt, zpairs_3x2pt))
 
     # split into 3 2d datavectors
@@ -679,9 +680,10 @@ if plot_response:
     rf_gg_3x2pt_2d = rf_2d[:, zpairs_auto + zpairs_cross:]
 
     # reshape them individually - the symmetrization is done within the function
-    rf_ll_3x2pt_3d = mm.Cl_2D_to_3D_symmetric(rf_ll_3x2pt_2d, nbl=nbl_3x2pt, npairs=zpairs_auto, zbins=zbins)
-    rf_lg_3x2pt_3d = mm.Cl_2D_to_3D_asymmetric(rf_lg_3x2pt_2d, nbl=nbl_3x2pt, zbins=zbins)
-    rf_gg_3x2pt_3d = mm.Cl_2D_to_3D_symmetric(rf_gg_3x2pt_2d, nbl=nbl_3x2pt, npairs=zpairs_auto, zbins=zbins)
+    rf_ll_3x2pt_3d = mm.cl_2D_to_3D_symmetric(rf_ll_3x2pt_2d, nbl=nbl_3x2pt, zpairs=zpairs_auto, zbins=zbins)
+    rf_lg_3x2pt_3d = mm.cl_2D_to_3D_asymmetric(rf_lg_3x2pt_2d, nbl=nbl_3x2pt, zbins=zbins, order='F')
+    rf_gg_3x2pt_3d = mm.cl_2D_to_3D_symmetric(rf_gg_3x2pt_2d, nbl=nbl_3x2pt, zpairs=zpairs_auto, zbins=zbins)
+    warnings.warn('check the order of the 3x2pt response functions, the default is actually F-style!')
 
     # use them to populate the datavector
     rf_3x2pt = np.zeros((nbl_3x2pt, 2, 2, zbins, zbins))

@@ -49,9 +49,9 @@ import my_module as mm
 nbl = 30
 
 uncert_dict = {}
-plot_config = config.plot_config
-general_config = config.general_config
-covariance_config = config.covariance_config
+plot_config = config.plot_cfg
+general_config = config.general_cfg
+covariance_config = config.covariance_cfg
 param_names_label = plot_config['param_names_label']
 
 fig, ax = plt.subplots(2, 1, figsize=(14, 10), sharex='col')

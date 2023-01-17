@@ -528,10 +528,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             assert general_cfg['EP_or_ED'] == 'ED', 'cl_BNT_transform is only available for ED'
             assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
 
-            # dC_LL_BNTdav_4D = np.zeros(dC_LL_4D.shape)
-            # dC_WA_BNTdav_4D = np.zeros(dC_WA_4D.shape)
-            # dC_GG_BNTdav_4D = np.zeros(dC_GG_4D.shape)
-            # dC_3x2pt_BNTdav_5D = np.zeros(dC_3x2pt_5D.shape)
             for alf in range(len(paramnames_3x2pt)):
                 dC_LL_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_LL_4D[:, :, :, alf], BNT_matrix, 'L', 'L')
                 dC_WA_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_WA_4D[:, :, :, alf], BNT_matrix, 'L', 'L')

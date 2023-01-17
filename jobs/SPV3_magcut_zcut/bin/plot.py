@@ -145,7 +145,7 @@ for probe in probes:
             raise ValueError('GO_or_GS should be either GO or GS')
 
         # cases = [f'FM_{GO_or_GS}', f'FM_{GO_or_GS}_BNT', 'percent_diff/10']
-        cases = [f'noBNT', f'BNT', 'abs(percent_diff)/10']
+        cases = [f'noBNT', f'BNT', 'abs(percent_diff)']
         # key_to_compare_A, key_to_compare_B = f'FM_{GO_or_GS}', f'FM_{GO_or_GS}_BNT'  # which cases to take the percent diff and ratio of
         key_to_compare_A, key_to_compare_B = f'noBNT', f'BNT'  # which cases to take the percent diff and ratio of
 
@@ -158,7 +158,7 @@ for probe in probes:
             fom[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_idx)
             print(f'FoM({probe}, {case}): {fom[case]}')
 
-        uncert['abs(percent_diff)/10'] = diff_funct(uncert[key_to_compare_A], uncert[key_to_compare_B]) / 10
+        uncert['abs(percent_diff)'] = diff_funct(uncert[key_to_compare_A], uncert[key_to_compare_B])
         uncert['ratio'] = uncert[key_to_compare_A] / uncert[key_to_compare_B]
 
         for case in cases:
@@ -174,7 +174,7 @@ for probe in probes:
 
         # fom_array = np.array([fom['FM_GO'], fom['FM_GO_BNT'], mm.percent_diff(fom['FM_GO'], fom['FM_GO_BNT'])])/100
         fom_array = np.array(
-            [fom['noBNT'] / 100, fom['BNT'] / 100, np.abs(mm.percent_diff(fom['noBNT'], fom['BNT'])) / 10])
+            [fom['noBNT'] / 100, fom['BNT'] / 100, np.abs(mm.percent_diff(fom['noBNT'], fom['BNT']))])
         if plot_fom:
             param_names_label = param_names[:nparams_toplot] + ['FoM/100']
             nparams_toplot += 1

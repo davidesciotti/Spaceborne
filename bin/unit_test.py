@@ -92,7 +92,14 @@ def check_FMs_against_oldSSCscript(FM_new_path, general_config, covariance_confi
                 print(f'is the percent difference between the FM < {tolerance}?, {probe}, {GO_or_GS}, {result_emoji}')
 
 
-def check_covmat(reference_files_folder, ):
-    """check covariance matrix against old results"""
-    # TODO implement this
-    pass
+def test_cov_FM(output_path, benchmarks_path):
+    """tests that the outputs do not change between the old and the new version"""
+    old_dict = dict(mm.get_kv_pairs_npy(benchmarks_path))
+    new_dict = dict(mm.get_kv_pairs_npy(output_path))
+
+    assert old_dict.keys() == new_dict.keys(), 'The number of files or their names has changed'
+
+    for key in old_dict.keys():
+        assert np.array_equal(old_dict[key], new_dict[key]), f'The file {key} is different'
+
+    print('test_cov passed successfully ✅')

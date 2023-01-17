@@ -40,7 +40,7 @@ import compute_Sijkl as Sijkl_utils
 import covariance_running as covmat_utils
 import FM_running as FM_utils
 import utils_running as utils
-import unit_test
+import unit_test as ut
 
 matplotlib.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -157,7 +157,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     row_col_major = covariance_cfg['row_col_major']
     n_probes = general_cfg['n_probes']
     whos_BNT = general_cfg['whos_BNT']
-    probe_to_BNT_transform = general_cfg['probe_to_BNT_transform']
     GL_or_LG = covariance_cfg['GL_or_LG']
     probe_ordering = [['L', 'L'], [GL_or_LG[0], GL_or_LG[1]], ['G', 'G']]
 
@@ -457,10 +456,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             elif '3x2pt' in key:
                 dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl=nbl_3x2pt, zbins=zbins)
 
-        # this is just to save a copy of the non-BNT derivatives, to perform tests
-        warnings.warn('is this line needed? 👇')
-        dC_dict_3x2pt_noBNT_5D = dC_dict_3x2pt_5D.copy()
-
         # ! BNT transform stefano
         # in this case, overwrite part of the dictionary entries (the 3x2pt, in particular)
         if general_cfg['BNT_transform'] and whos_BNT == '/stefano':
@@ -534,33 +529,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                 dC_3x2pt_5D[:, :, :, :, :, alf] = cl_utils.cl_BNT_transform_3x2pt(dC_3x2pt_5D[:, :, :, :, :, alf],
                                                                                   BNT_matrix)
 
-            """
-            diff = mm.percent_diff_nan(dC_3x2pt_BNTdav_5D, dC_3x2pt_BNTste_5D)
-
-            plt.figure()
-            probe_A = 1
-            probe_B = 0
-            i = 3
-            j = 4
-            alf = 4
-            ell_idx = 6
-            plt.plot(10 ** ell_dict['ell_XC'], dC_3x2pt_5D[:, probe_A, probe_B, i, j, alf], label='no BNT')
-            plt.plot(10 ** ell_dict['ell_XC'], dC_3x2pt_BNTdav_5D[:, probe_A, probe_B, i, j, alf], label='BNTdav',
-                     ls='--')
-            plt.plot(10 ** ell_dict['ell_XC'], dC_3x2pt_BNTste_5D[:, probe_A, probe_B, i, j, alf], label='BNTste')
-            plt.plot(10 ** ell_dict['ell_XC'], diff[:, probe_A, probe_B, i, j, alf], label='diff')
-
-            # plt.plot(10 ** ell_dict['ell_LL'], dC_LL_4D[:, probe_A, probe_B, i, j, alf], label='LL no BNT')
-            # plt.plot(10 ** ell_dict['ell_LL'], dC_LL_BNTdav_4D[:, probe_A, probe_B, i, j, alf], label='LL davide BNT')
-            plt.legend()
-            plt.show()
-            # plt.yscale('log')
-
-            mm.matshow(diff[ell_idx, probe_A, probe_B, :, :, alf],
-                       title='probe_A={}, probe_B={}, ell_idx={}, alf={}'.format(
-                           probe_A, probe_B, ell_idx, alf))
-            """
-
             # TODO finish this, it's defined only for WL...
             transformed_derivs_folder = FM_cfg['transformed_derivs_folder']
             transformed_derivs_filename = f'dDV-BNTdav_WLO-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-' \
@@ -573,24 +541,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                 text_file.write(readme)
 
             np.save(f'{transformed_derivs_folder}/{transformed_derivs_filename}', dC_LL_4D)
-
-            """
-            # check against my derivatives
-            probe_A = 0
-            probe_B = 0
-            for alf in range(len(paramnames_3x2pt)):
-                plt.figure()
-                plt.plot(10 ** ell_dict['ell_XC'], dC_3x2pt_5D[:, probe_A, probe_B, 0, 0, alf], label='my BNT derivs')
-                plt.plot(10 ** ell_dict['ell_XC'], dC_3x2pt_BNTdav_5D[:, probe_A, probe_B, 0, 0, alf],
-                         label='Stefanos BNT derivs', ls='--')
-                plt.legend()
-                plt.title(f'{paramnames_3x2pt[alf]}, probes={probe_A}, {probe_B}')
-
-                print('Am i BNT-transforming the derivatives?')
-                print('is dC_3x2pt_noBNT_5D close to dC_3x2pt_5D for probe combination {probe_A}, {probe_B}?',
-                      np.allclose(dC_3x2pt_noBNT_5D[:, probe_A, probe_B, :, :, :],
-                                  dC_3x2pt_5D[:, probe_A, probe_B, :, :, :], rtol=1e-4, atol=0))
-                """
 
         # store the derivatives arrays in a dictionary
         deriv_dict = {'dC_LL_4D': dC_LL_4D,
@@ -682,9 +632,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                     # in this case, 3x2pt is saved in 10D as a dictionary
                     if ndim == 6:
                         cov_3x2pt_filename = f'covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_' \
-                                       f'nbl{nbl_3x2pt}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
-                                       f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                       f'ZS{zcut_source:02d}_10D.pickle'
+                                             f'nbl{nbl_3x2pt}_zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
+                                             f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                             f'ZS{zcut_source:02d}_10D.pickle'
                         with open(f'{cov_folder}/{cov_3x2pt_filename}', 'wb') as handle:
                             pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
 
@@ -692,9 +642,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             elif ell_max_WL == 1500:
                 for which_cov in cases_tosave:
                     cov_WA_filename = f'covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_' \
-                                   f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
-                                   f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
-                                   f'ZS{zcut_source:02d}_{ndim}D.npy'
+                                      f'zbins{EP_or_ED}{zbins:02}_ML{magcut_lens:03d}_' \
+                                      f'ZL{zcut_lens:02d}_MS{magcut_source:03d}_' \
+                                      f'ZS{zcut_source:02d}_{ndim}D.npy'
                     np.save(f'{cov_folder}/{cov_WA_filename}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
 
     # save in .dat for Vincenzo, only in the optimistic case and in 2D
@@ -726,5 +676,12 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     if FM_cfg['save_FM_as_dict']:
         mm.save_pickle(f'{FM_folder}/FM_dict_ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
                        f'MS{magcut_source:03d}-ZS{zcut_source:02d}.pickle', FM_dict)
+
+cov_output_path = f'{job_path}/output/Flagship_{general_cfg["flagship_version"]}/covmat/BNT_{general_cfg["BNT_transform"]}{whos_BNT}/zbins{zbins}'
+cov_benchmark_path = cov_output_path + '/benchmarks'
+
+FM_output_path = f'{job_path}/output/Flagship_{general_cfg["flagship_version"]}/FM/BNT_{general_cfg["BNT_transform"]}{whos_BNT}/zbins{zbins}'
+FM_benchmark_path = FM_output_path + '/benchmarks'
+ut.test_cov_FM(FM_output_path, FM_benchmarks_path)
 
 print('done')

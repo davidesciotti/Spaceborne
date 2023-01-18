@@ -541,8 +541,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                            cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.10e')
 
     # ! save FM
-    FM_folder = FM_cfg["FM_folder"]
     if FM_cfg['save_FM']:
+        FM_folder = FM_cfg["FM_folder"]
         probe_list = ['WL', 'GC', '3x2pt', 'WA']
         ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
         nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]

@@ -54,10 +54,10 @@ start_time = time.perf_counter()
 #################### PARAMETERS AND SETTINGS DEFINITION #######################
 ###############################################################################
 
-general_cfg = cfg.general_config
-covariance_cfg = cfg.covariance_config
-Sijkl_cfg = cfg.Sijkl_config
-FM_cfg = cfg.FM_config
+general_cfg = cfg.general_cfg
+covariance_cfg = cfg.covariance_cfg
+Sijkl_cfg = cfg.Sijkl_cfg
+FM_cfg = cfg.FM_cfg
 
 which_probe_response = covariance_cfg['which_probe_response']
 # set the string, just for the file names
@@ -82,10 +82,14 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
             ell_max_GC = general_cfg['ell_max_GC']
             ell_max_XC = ell_max_GC
             nbl_WL_32 = general_cfg['nbl_WL_32']
+            triu_tril = covariance_cfg['triu_tril']
+            row_col_major = covariance_cfg['row_col_major']
 
             # import the ind files and store it into the covariance dictionary
-            ind_folder = covariance_cfg['ind_folder']
-            ind_filename = covariance_cfg['ind_filename'].format(ind_ordering=covariance_cfg['ind_ordering'],
+            ind_folder = covariance_cfg['ind_folder'].format(triu_tril=triu_tril,
+                                                             row_col_major=row_col_major)
+            ind_filename = covariance_cfg['ind_filename'].format(triu_tril=triu_tril,
+                                                                 row_col_major=row_col_major,
                                                                  zbins=zbins)
             ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
             covariance_cfg['ind'] = ind
@@ -137,14 +141,16 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
             cl_ll_1d = np.genfromtxt(f"{cl_fld.format(probe='WLO')}/{cl_filename.format(probe='WLO', **clrl_specs)}")
             cl_gg_1d = np.genfromtxt(f"{cl_fld.format(probe='GCO')}/{cl_filename.format(probe='GCO', **clrl_specs)}")
             cl_wa_1d = np.genfromtxt(f"{cl_fld.format(probe='WLA')}/{cl_filename.format(probe='WLA', **clrl_specs)}")
-            cl_3x2pt_1d = np.genfromtxt(f"{cl_fld.format(probe='3x2pt')}/{cl_filename.format(probe='3x2pt', **clrl_specs)}")
+            cl_3x2pt_1d = np.genfromtxt(
+                f"{cl_fld.format(probe='3x2pt')}/{cl_filename.format(probe='3x2pt', **clrl_specs)}")
 
             rl_fld = general_cfg['rl_folder']
             rl_filename = general_cfg['rl_filename']
             rl_ll_1d = np.genfromtxt(f"{rl_fld.format(probe='WLO')}/{rl_filename.format(probe='WLO', **clrl_specs)}")
             rl_gg_1d = np.genfromtxt(f"{rl_fld.format(probe='GCO')}/{rl_filename.format(probe='GCO', **clrl_specs)}")
             rl_wa_1d = np.genfromtxt(f"{rl_fld.format(probe='WLA')}/{rl_filename.format(probe='WLA', **clrl_specs)}")
-            rl_3x2pt_1d = np.genfromtxt(f"{rl_fld.format(probe='3x2pt')}/{rl_filename.format(probe='3x2pt', **clrl_specs)}")
+            rl_3x2pt_1d = np.genfromtxt(
+                f"{rl_fld.format(probe='3x2pt')}/{rl_filename.format(probe='3x2pt', **clrl_specs)}")
 
             # ! reshape to 3 dimensions
             cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
@@ -163,11 +169,10 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 assert general_cfg['zbins'] == 13, 'cl_BNT_transform is only available for zbins=13'
                 BNT_matrix = np.genfromtxt(f'{general_cfg["BNT_matrix_path"]}/{general_cfg["BNT_matrix_filename"]}',
                                            delimiter=',')
-                cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix)
-                cl_gg_3d = cl_utils.cl_BNT_transform(cl_gg_3d, BNT_matrix)
-                cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix)
-                cl_3x2pt_5d = cl_utils.cl_BNT_transform(cl_3x2pt_5d, BNT_matrix)
-                print('you shuld BNT transform the responses do this with the responses too!')
+                cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix, 'L', 'L')
+                cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix, 'L', 'L')
+                cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5d, BNT_matrix)
+                print('you should BNT transform the responses do this with the responses too!')
 
             # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
             if ell_max_WL == general_cfg['ell_max_WL_opt']:
@@ -194,16 +199,16 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
 
             # store cls and responses in a dictionary
             cl_dict_3D = {
-                'C_LL_WLonly_3D': cl_ll_3d,
-                'C_GG_3D': cl_gg_3d,
-                'C_WA_3D': cl_wa_3d,
-                'C_3x2pt_5D': cl_3x2pt_5d}
+                'cl_LL_3D': cl_ll_3d,
+                'cl_GG_3D': cl_gg_3d,
+                'cl_WA_3D': cl_wa_3d,
+                'cl_3x2pt_5D': cl_3x2pt_5d}
 
             rl_dict_3D = {
-                'R_LL_WLonly_3D': rl_ll_3d,
-                'R_GG_3D': rl_gg_3d,
-                'R_WA_3D': rl_wa_3d,
-                'R_3x2pt_5D': rl_3x2pt_5d}
+                'rl_LL_3D': rl_ll_3d,
+                'rl_GG_3D': rl_gg_3d,
+                'rl_WA_3D': rl_wa_3d,
+                'rl_3x2pt_5D': rl_3x2pt_5d}
 
             # ! compute or load Sijkl
             # ! load kernels
@@ -215,9 +220,10 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
             wig = np.genfromtxt(f'{WF_fld}/{WF_filename.format(which_WF="WiGC", **wf_specs)}')
 
             # preprocess (remove redshift column)
-            z_arr, wil = Sijkl_utils.preprocess_wf(wil, zbins)
-            z_arr_2, wig = Sijkl_utils.preprocess_wf(wig, zbins)
-            assert np.array_equal(z_arr, z_arr_2), 'the redshift arrays are different for the GC and WL kernels'
+            z_arr_wil, wil = Sijkl_utils.preprocess_wf(wil, zbins)
+            z_arr_wig, wig = Sijkl_utils.preprocess_wf(wig, zbins)
+            assert np.array_equal(z_arr_wil, z_arr_wig), 'the redshift arrays are different for the GC and WL kernels'
+            z_arr = z_arr_wil
 
             # transpose and stack, ordering is important here!
             transp_stacked_wf = np.vstack((wil.T, wig.T))
@@ -240,7 +246,7 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
             if covariance_cfg['compute_covmat']:
                 ng_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins}
                 ng_filename = f'{covariance_cfg["ng_filename"].format(**ng_specs)}'
-                covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[:, 1]
+                covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[0, :]
                 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
@@ -361,18 +367,20 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 assert np.allclose(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D'], rtol=1e-9, atol=0)
 
             # ! save FM
-            if FM_cfg['save_FM']:
-                probe_list = ['WL', 'GC', '3x2pt', 'WA']
-                ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
-                nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
 
-                for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
-                    for which_cov in ['GO', 'GS']:
-                        np.savetxt(f'{FM_cfg["FM_output_folder"]}/'
-                                   f'FM_{probe}_{which_cov}_lmax{ell_max}_nbl{nbl}_zbins{EP_or_ED}{zbins:02}{Rl_str}.txt',
-                                   FM_dict[f'FM_{probe}_{which_cov}'])
+            save_specs = {
+                'EP_or_ED': EP_or_ED,
+                'zbins': zbins,
 
-            if FM_cfg['save_FM_as_dict']:
-                sio.savemat(job_path / f'output/FM/FM_dict.mat', FM_dict)
+                'ell_max_WL': ell_max_WL,
+                'ell_max_GC': ell_max_GC,
+                'ell_max_XC': ell_max_XC,
+                'nbl_WL': nbl_WL,
+                'nbl_GC': nbl_GC,
+                'nbl_WA': nbl_WA,
+                'nbl_3x2pt': nbl_3x2pt,
+            }
+
+            FM_utils.save_FM(FM_dict, FM_cfg, **save_specs)
 
 print('done')

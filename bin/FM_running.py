@@ -69,7 +69,6 @@ def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, derivatives_prefix,
 
 
 def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict):
-
     # shorten names
     # nbl = general_cfg['nbl']
     zbins = general_cfg['zbins']
@@ -325,3 +324,29 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     return FM_dict
 
     # TODO: create pd dataframe
+
+
+def save_FM(FM_dict, FM_cfg, **save_specs):
+    """saves the FM in .txt and .pickle formats"""
+
+    ell_max_WL = save_specs['ell_max_WL']
+    ell_max_GC = save_specs['ell_max_GC']
+    ell_max_XC = save_specs['ell_max_XC']
+    nbl_WL = save_specs['nbl_WL']
+    nbl_GC = save_specs['nbl_GC']
+    nbl_WA = save_specs['nbl_WA']
+    nbl_3x2pt = save_specs['nbl_3x2pt']
+
+    FM_folder = FM_cfg['FM_folder']
+
+    probe_list = ['WL', 'GC', '3x2pt', 'WA']
+    ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
+    nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
+
+    for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
+        for which_cov in ['GO', 'GS']:
+            FM_filename = FM_cfg['FM_filename'].format(**save_specs)
+            np.savetxt(f'{FM_folder}/{FM_filename}.txt', FM_dict[f'FM_{probe}_{which_cov}'])
+
+    if FM_cfg['save_FM_as_dict']:
+        mm.save_pickle(f'{FM_folder}/FM_dict.pickle', FM_dict)

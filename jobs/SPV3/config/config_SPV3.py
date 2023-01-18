@@ -25,7 +25,7 @@ if BNT_transform:
     cl_filename = 'dv-{probe:s}-Opt-{specs:s}-{EP_or_ED:s}{zbins:02d}-FS{flagship_version:s}',
     rl_filename = 'rf-{probe:s}-Opt-{specs:s}-{EP_or_ED:s}{zbins:02d}-FS{flagship_version:s}',
 
-general_config = {
+general_cfg = {
     'ell_min': 10,
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
     'ell_max_WL': 5000,
@@ -33,7 +33,7 @@ general_config = {
     'zbins': None,
     'zbins_list': (13,),
     'EP_or_ED': 'ED',
-    'nProbes': 2,
+    'n_probes': 2,
     # 'nbl_WL': 32,
     'nbl_WL_32': 32,
     'which_forecast': which_forecast,
@@ -53,18 +53,20 @@ general_config = {
     'flagship_version': flagship_version,
 }
 
-if general_config['ell_max_WL'] == general_config['ell_max_GC']:
-    general_config['use_WA'] = False
+if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
+    general_cfg['use_WA'] = False
 
-covariance_config = {
-    'ind_folder': f'{project_path.parent}/common_data/ind_files/variable_zbins/{ind_ordering}_like',
-    'ind_filename': 'indices_{ind_ordering:s}_like_zbins{zbins:02d}.dat',
-    'ind_ordering': ind_ordering,
+covariance_cfg = {
+    'ind_folder': f'{project_path.parent}/common_data/ind_files' + '/{triu_tril:s}_{row_col_major:s}',
+    'ind_filename': 'indices_{triu_tril:s}_{row_col_major:s}_zbins{zbins:02d}.dat',
+    'triu_tril': 'triu',
+    'row_col_major': 'row-major',
+    'block_index': 'ell',
     'GL_or_LG': GL_or_LG,
     'fsky': fsky,  # ! new
     # 'Rl': 4,
-    'block_index': 'ell',
     # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
+    'SSC_code': 'PySSC',
     'which_probe_response': 'variable',
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
     'ng_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/InputNz/Lenses/Flagship',
@@ -81,7 +83,7 @@ covariance_config = {
     'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/covmat',
 }
 
-Sijkl_config = {
+Sijkl_cfg = {
     'wf_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/KernelFun',
     'wf_input_filename': '{which_WF:s}-{EP_or_ED:s}{zbins:02d}.dat',
     'Sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/sijkl',
@@ -91,11 +93,12 @@ Sijkl_config = {
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
 
-FM_config = {
+FM_cfg = {
     'compute_FM': False,
     'nParams': 20,
     'save_FM': False,
     'save_FM_as_dict': False,
     'derivatives_folder': None,  # TODO: add the derivatives folder
-    'FM_output_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/FM',
+    'FM_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/FM',
+    'FM_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
 }

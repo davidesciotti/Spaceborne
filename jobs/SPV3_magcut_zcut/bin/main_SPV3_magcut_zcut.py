@@ -10,8 +10,9 @@ import os
 import warnings
 import ray
 
-%load_ext autoreload
-%autoreload 2
+# %load_ext autoreload
+# %autoreload 2
+ray.init()
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
@@ -22,7 +23,6 @@ job_name = job_path.parts[-1]
 sys.path.append(f'{project_path.parent}/common_data/common_lib')
 import my_module as mm
 import cosmo_lib as csmlib
-
 
 # general configurations
 sys.path.append(f'{project_path.parent}/common_data/common_config')
@@ -41,6 +41,7 @@ import compute_Sijkl as Sijkl_utils
 import covariance_running as covmat_utils
 import FM_running as FM_utils
 import utils_running as utils
+
 # import unit_test as ut
 
 matplotlib.use('Qt5Agg')
@@ -516,8 +517,16 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                            f'-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.dat',
                            cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.10e')
 
+    variable_specs['ell_max_WL'] = ell_max_WL
+    variable_specs['ell_max_GC'] = ell_max_GC
+    variable_specs['ell_max_XC'] = ell_max_XC
+    variable_specs['nbl_WL'] = nbl_WL
+    variable_specs['nbl_GC'] = nbl_GC
+    variable_specs['nbl_WA'] = nbl_WA
+    variable_specs['nbl_3x2pt'] = nbl_3x2pt
 
     if FM_cfg['save_FM']:
+        # ! TODO finish this
         FM_utils.save_FM(FM_dict, FM_cfg, save_txt=True, save_dict=True, **variable_specs)
 
     #     probe_list = ['WL', 'GC', '3x2pt', 'WA']

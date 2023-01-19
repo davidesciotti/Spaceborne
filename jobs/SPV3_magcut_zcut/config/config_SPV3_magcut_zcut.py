@@ -123,9 +123,9 @@ Sijkl_cfg = {
 
 FM_cfg = {
     'compute_FM': True,
+    'save_FM': True,
     'nparams_tot': 20,  # total (cosmo + nuisance) number of parameters
     'paramnames_3x2pt': None,  # ! for the time being, these are defined in the main and then passed here
-    'save_FM': False,
     'save_FM_as_dict': True,
     'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_False/' +
                           'ML{magcut_lens:03d}ZL{zcut_lens:02d}MS{magcut_source:03d}ZS{zcut_source:02d}',
@@ -136,6 +136,7 @@ FM_cfg = {
     'FM_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'
                    'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}',
-    'FM_dict_filename': 'FM_zbins{EP_or_ED:s}{zbins:02}',
+    'FM_dict_filename': 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'\
+                        'MS{magcut_source:03d}-ZS{zcut_source:02d}',
     'params_order': None,
 }

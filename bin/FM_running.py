@@ -12,8 +12,6 @@ sys.path.append(str(project_path_here.parent / 'common_lib'))
 import my_module as mm
 
 script_name = sys.argv[0]
-ray.init()
-
 
 
 ###############################################################################
@@ -73,6 +71,15 @@ def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, derivatives_prefix,
     return dC_4D
 
 
+def time_consuming_function(a, b=3):
+    a*b
+    time.sleep(1)
+    return 42
+
+np_linalg_inv_ray = ray.remote(np.linalg.inv)
+
+
+
 def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict):
     # shorten names
     # nbl = general_cfg['nbl']
@@ -127,15 +134,13 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     start_time = time.perf_counter()
     cov_WL_GO_2D_inv = np.linalg.inv(cov_dict['cov_WL_GO_2D'])
     cov_GC_GO_2D_inv = np.linalg.inv(cov_dict['cov_GC_GO_2D'])
-    print(f'GO covmats inverted in {(time.perf_counter() - start_time):.2f} s with serial computation')
     cov_WA_GO_2D_inv = np.linalg.inv(cov_dict['cov_WA_GO_2D'])
     cov_3x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GO_2D'])
+    print(f'GO covmats inverted in {(time.perf_counter() - start_time):.2f} s with serial computation')
 
     # ! try to parallelize this:
-    # cov_GO_keys = ['cov_WL_GO_2D', 'cov_GC_GO_2D', 'cov_WA_GO_2D', 'cov_3x2pt_GO_2D']
-    cov_GO_keys = ['cov_WL_GO_2D', 'cov_GC_GO_2D']
-    arguments_list = [cov_dict[key] for key in cov_GO_keys]
-
+    cov_GO_keys = ['cov_WL_GO_2D', 'cov_GC_GO_2D', 'cov_WA_GO_2D', 'cov_3x2pt_GO_2D']
+    covs = [cov_dict[key] for key in cov_GO_keys]
 
     # start1 = time.perf_counter()
     # results = Parallel(n_jobs=2)(delayed(np.linalg.inv)(cov_dict[key]) for key in cov_GO_keys)
@@ -146,13 +151,20 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     #     results = list(pool.map(np.linalg.inv, arguments_list))
     # print(f'GO covmats inverted in {(time.perf_counter() - start1):.2f} s with MPIRE')
 
-
-    np_linalg_inv_ray = ray.remote(np.linalg.inv)
+    # test ray:
     start1 = time.perf_counter()
-    futures = [np_linalg_inv_ray.remote(cov_dict[key]) for key in cov_GO_keys]
+    futures = [ray.remote(time_consuming_function).remote(a) for a in range(10)]
+    print(f'time_consuming_function evaluated 10 times in {(time.perf_counter() - start1):.2f} s with Ray')
+
+    start1 = time.perf_counter()
+    serial = [time_consuming_function(a) for a in range(10)]
+    print(f'time_consuming_function evaluated 10 times in {(time.perf_counter() - start1):.2f} s serial computation')
+
+    start1 = time.perf_counter()
+    futures = [ray.remote(np.linalg.inv).remote(cov) for cov in covs]
     print(f'GO covmats inverted in {(time.perf_counter() - start1):.2f} s with Ray')
     inverted_GO_cov_list = ray.get(futures)
-    print('len(inverted_GO_cov_list)', len(inverted_GO_cov_list))
+
     # # ! end try to parallelize this
 
     # invert GS covmats
@@ -376,12 +388,10 @@ def save_FM(FM_dict, FM_cfg, save_txt=False, save_dict=True, **save_specs):
     if save_txt:
         for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
             for which_cov in ['GO', 'GS']:
-                FM_txt_filename = FM_cfg['FM_txt_filename'].format(**save_specs)
+                FM_txt_filename = FM_cfg['FM_txt_filename'].format(probe=probe, ell_max=ell_max, nbl=nbl,
+                                                                   **save_specs)
                 np.savetxt(f'{FM_folder}/{FM_txt_filename}.txt', FM_dict[f'FM_{probe}_{which_cov}'])
 
     if save_dict:
         FM_dict_filename = FM_cfg['FM_dict_filename'].format(**save_specs)
         mm.save_pickle(f'{FM_folder}/{FM_dict_filename}.pickle', FM_dict)
-        
-        
-ray.shutdown()

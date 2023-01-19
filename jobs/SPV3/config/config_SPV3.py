@@ -11,6 +11,8 @@ import utils_running as utils
 which_forecast = 'SPV3'
 fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
+SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
+
 # ! choose the flagship version and whether you want to compute the BNT transformed cls
 flagship_version = 1
 BNT_transform = False
@@ -30,16 +32,17 @@ general_cfg = {
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
     'ell_max_WL': 5000,
     'ell_max_GC': 3000,
-    'zbins': None,
+    'ell_max_XC': 3000,
+    'zbins': 13,
     'zbins_list': (13,),
     'EP_or_ED': 'ED',
     'n_probes': 2,
     # 'nbl_WL': 32,
-    'nbl_WL_32': 32,
+    'nbl_WL_opt': 32,  # the case with the largest range, i.e. the reference ell binning from which the cuts are applied
     'which_forecast': which_forecast,
     'use_WA': True,
-    'save_cls_3d': True,
-    'save_rls_3d': True,
+    'save_cls_3d': False,
+    'save_rls_3d': False,
     'specs': 'wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4',
     'cl_BNT_transform': BNT_transform,
     'BNT_matrix_path': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT_matrix',
@@ -69,22 +72,24 @@ covariance_cfg = {
     'SSC_code': 'PySSC',
     'which_probe_response': 'variable',
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
-    'ng_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/InputNz/Lenses/Flagship',
+    'ng_folder': f'{SPV3_folder}/Flagship_{flagship_version}/InputNz/Lenses/Flagship',
     'ng_filename': 'ngbTab-{EP_or_ED:s}{zbins:02d}.dat',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'compute_covmat': True,
     'cov_file_format': 'npz',  # or npy
+    'compute_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_2D': False,
     'save_cov_4D': False,
-    'save_cov_6D': True,  # or 10D for the 3x2pt
+    'save_cov_6D': False,  # or 10D for the 3x2pt
+    'save_cov_GS': False,
     'save_cov_SS': False,
     'save_cov_dat': False,  # this is the format used by Vincenzo
-    'save_2DCLOE': False,  # quite useless, this is not the format used by CLOE
+    'save_2DCLOE': False,  # outermost loop is on the probes
     'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/covmat',
 }
 
 Sijkl_cfg = {
-    'wf_input_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_{flagship_version}/KernelFun',
+    'wf_input_folder': f'{SPV3_folder}/Flagship_{flagship_version}/KernelFun',
     'wf_input_filename': '{which_WF:s}-{EP_or_ED:s}{zbins:02d}.dat',
     'Sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/sijkl',
     'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}.npy',
@@ -95,10 +100,16 @@ Sijkl_cfg = {
 
 FM_cfg = {
     'compute_FM': False,
-    'nParams': 20,
+    'nparams_tot': 20,  # total (cosmo + nuisance) number of parameters
+    'paramnames_3x2pt': None,  # ! for the time being, these are defined in the main and then passed here
     'save_FM': False,
-    'save_FM_as_dict': False,
-    'derivatives_folder': None,  # TODO: add the derivatives folder
+    'save_FM_as_dict': True,
+    'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/...',  # ! no derivatives for FS1!!
+    'derivatives_filename': 'BNT_dDVd{param:s}-{probe:s}-{specs:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
+                            'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',  # ! no derivatives for FS1!!
+    'derivatives_prefix': 'dDVd',
+
     'FM_folder': f'{job_path}/output/Flagship_{flagship_version}/BNT_{BNT_transform}/FM',
     'FM_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
+    'params_order': None,
 }

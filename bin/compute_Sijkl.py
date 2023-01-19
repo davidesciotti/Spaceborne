@@ -19,16 +19,13 @@ from pathlib import Path
 # ! don't touch the imports and/or their ordering, otherwise I get a malloc error when compiling
 
 # get project directory
-project_path = Path.cwd().parent.parent.parent
-
-sys.path.append(f'{project_path}/jobs/SPV3/configs')
-import config_SPV3 as cfg
-
-sys.path.append(f'{project_path.parent}/common_data/common_config')
-import ISTF_fid_params as ISTF
-
-sys.path.append(f'{project_path.parent}/common_data/common_lib')
-import my_module as mm
+# project_path = Path.cwd().parent.parent.parent
+# sys.path.append(f'{project_path}/jobs/SPV3/configs')
+# import config_SPV3 as cfg
+# sys.path.append(f'{project_path.parent}/common_data/common_config')
+# import ISTF_fid_params as ISTF
+# sys.path.append(f'{project_path.parent}/common_data/common_lib')
+# import my_module as mm
 
 
 # COSE DA CHIARIRE

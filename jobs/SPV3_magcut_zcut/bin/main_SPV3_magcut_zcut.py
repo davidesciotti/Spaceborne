@@ -1,5 +1,3 @@
-import bz2
-import glob
 import pickle
 import sys
 import time
@@ -10,8 +8,10 @@ import matplotlib as mpl
 import numpy as np
 import os
 import warnings
-import scipy.sparse as spar
-import _pickle as cPickle
+import ray
+
+%load_ext autoreload
+%autoreload 2
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
@@ -22,6 +22,7 @@ job_name = job_path.parts[-1]
 sys.path.append(f'{project_path.parent}/common_data/common_lib')
 import my_module as mm
 import cosmo_lib as csmlib
+
 
 # general configurations
 sys.path.append(f'{project_path.parent}/common_data/common_config')
@@ -40,24 +41,12 @@ import compute_Sijkl as Sijkl_utils
 import covariance_running as covmat_utils
 import FM_running as FM_utils
 import utils_running as utils
-import unit_test as ut
+# import unit_test as ut
 
 matplotlib.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 start_time = time.perf_counter()
-
-
-def save_compressed_pickle(title, data):
-    with bz2.BZ2File(title + '.pbz2', 'wb') as handle:
-        cPickle.dump(data, handle)
-
-
-def load_compressed_pickle(file):
-    data = bz2.BZ2File(file, 'rb')
-    data = cPickle.load(data)
-    return data
-
 
 # TODO check that the number of ell bins is the same as in the files
 # TODO double check the delta values
@@ -412,19 +401,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                 dC_3x2pt_5D[:, :, :, :, :, alf] = cl_utils.cl_BNT_transform_3x2pt(dC_3x2pt_5D[:, :, :, :, :, alf],
                                                                                   BNT_matrix)
 
-            # TODO finish this, it's defined only for WL...
-            transformed_derivs_folder = FM_cfg['transformed_derivs_folder']
-            transformed_derivs_filename = f'dDV-BNTdav_WLO-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-' \
-                                          f'{EP_or_ED}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-' \
-                                          f'MS{magcut_source:03d}-ZS{zcut_source:02d}.npy'
-
-            # save BNT-transformed derivatives
-            readme = 'shape: (ell_bins, z_bins, z_bins, num_parameters); parameters order:' + str(paramnames_3x2pt)
-            with open(f'{transformed_derivs_folder}/README_transformed_derivs.txt', "w") as text_file:
-                text_file.write(readme)
-
-            np.save(f'{transformed_derivs_folder}/{transformed_derivs_filename}', dC_LL_4D)
-
         # store the derivatives arrays in a dictionary
         deriv_dict = {'dC_LL_4D': dC_LL_4D,
                       'dC_WA_4D': dC_WA_4D,
@@ -540,31 +516,35 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                            f'-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.dat',
                            cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.10e')
 
-    # ! save FM
+
     if FM_cfg['save_FM']:
-        FM_folder = FM_cfg["FM_folder"]
-        probe_list = ['WL', 'GC', '3x2pt', 'WA']
-        ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
-        nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
-        header = 'parameters\' ordering:' + str(paramnames_3x2pt)
+        FM_utils.save_FM(FM_dict, FM_cfg, save_txt=True, save_dict=True, **variable_specs)
 
-        for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
-            for which_cov in cases_tosave:
-                FM_filename = FM_cfg["FM_filename"].format(probe=probe, which_cov=which_cov,
-                                                           ell_max=ell_max, nbl=nbl,
-                                                           **variable_specs)
-                np.savetxt(f'{FM_folder}/{FM_filename}', FM_dict[f'FM_{probe}_{which_cov}'], header=header)
-                print('FM saved')
+    #     probe_list = ['WL', 'GC', '3x2pt', 'WA']
+    #     ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
+    #     nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
+    #     header = 'parameters\' ordering:' + str(paramnames_3x2pt)
+    #
+    #     FM_folder = FM_cfg["FM_folder"]
+    #
+    #     for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
+    #         for which_cov in cases_tosave:
+    #             FM_txt_filename = FM_cfg["FM_txt_filename"].format(probe=probe, which_cov=which_cov,
+    #                                                                ell_max=ell_max, nbl=nbl,
+    #                                                                **variable_specs)
+    #             np.savetxt(f'{FM_folder}/{FM_txt_filename}.txt', FM_dict[f'FM_{probe}_{which_cov}'], header=header)
+    #
+    # if FM_cfg['save_FM_as_dict']:
+    #     FM_dict_filename = FM_cfg["FM_dict_filename"].format(**variable_specs)
+    #     mm.save_pickle(f'{FM_folder}/{FM_dict_filename}.pickle', FM_dict)
 
-    if FM_cfg['save_FM_as_dict']:
-        mm.save_pickle(f'{FM_folder}/FM_dict_ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
-                       f'MS{magcut_source:03d}-ZS{zcut_source:02d}.pickle', FM_dict)
+# cov_output_path = f'{job_path}/output/Flagship_{general_cfg["flagship_version"]}/covmat/BNT_{general_cfg["BNT_transform"]}/zbins{zbins}'
+# cov_benchmark_path = cov_output_path + '/benchmarks'
+#
+# FM_output_path = f'{job_path}/output/Flagship_{general_cfg["flagship_version"]}/FM/BNT_{general_cfg["BNT_transform"]}/zbins{zbins}'
+# FM_benchmark_path = FM_output_path + '/benchmarks'
+# ut.test_cov_FM(FM_output_path, FM_benchmarks_path)
 
-cov_output_path = f'{job_path}/output/Flagship_{general_cfg["flagship_version"]}/covmat/BNT_{general_cfg["BNT_transform"]}/zbins{zbins}'
-cov_benchmark_path = cov_output_path + '/benchmarks'
 
-FM_output_path = f'{job_path}/output/Flagship_{general_cfg["flagship_version"]}/FM/BNT_{general_cfg["BNT_transform"]}/zbins{zbins}'
-FM_benchmark_path = FM_output_path + '/benchmarks'
-ut.test_cov_FM(FM_output_path, FM_benchmarks_path)
-
+ray.shutdown()
 print('done')

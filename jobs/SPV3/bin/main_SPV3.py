@@ -3,7 +3,6 @@ import sys
 import time
 from pathlib import Path
 import matplotlib
-import scipy.io as sio
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
@@ -25,6 +24,8 @@ import cosmo_lib as csmlib
 # general configurations
 sys.path.append(f'{project_path.parent}/common_data/common_config')
 import mpl_cfg
+import ISTF_fid_params as ISTF_fid
+
 
 # job configuration
 sys.path.append(f'{job_path}/config')
@@ -38,7 +39,7 @@ import compute_Sijkl as Sijkl_utils
 import covariance_running as covmat_utils
 import FM_running as FM_utils
 import utils_running as utils
-import unit_test
+import unit_test as ut
 
 matplotlib.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -80,8 +81,8 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
             EP_or_ED = general_cfg['EP_or_ED']
             ell_max_WL = general_cfg['ell_max_WL']
             ell_max_GC = general_cfg['ell_max_GC']
-            ell_max_XC = ell_max_GC
-            nbl_WL_32 = general_cfg['nbl_WL_32']
+            ell_max_XC = general_cfg['ell_max_XC']
+            nbl_WL_opt = general_cfg['nbl_WL_opt']
             triu_tril = covariance_cfg['triu_tril']
             row_col_major = covariance_cfg['row_col_major']
 
@@ -94,11 +95,16 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
             ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
             covariance_cfg['ind'] = ind
 
+            ng_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins}
+            ng_folder = covariance_cfg["ng_folder"]
+            ng_filename = f'{covariance_cfg["ng_filename"].format(**ng_specs)}'
+
             assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \
                 'ell_max_WL and ell_max_GC must be either (5000, 3000) or (1500, 750)'
 
             # compute ell and delta ell values in the reference (optimistic) case
-            ell_WL_nbl32, delta_l_WL_nbl32 = ell_utils.compute_ells(general_cfg['nbl_WL_32'], general_cfg['ell_min'],
+            ell_WL_nbl32, delta_l_WL_nbl32 = ell_utils.compute_ells(general_cfg['nbl_WL_opt'],
+                                                                    general_cfg['ell_min'],
                                                                     general_cfg['ell_max_WL_opt'], recipe='ISTF')
 
             ell_WL_nbl32 = np.log10(ell_WL_nbl32)
@@ -111,7 +117,7 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 ell_WL_nbl32[(10 ** ell_WL_nbl32 > ell_max_GC) & (10 ** ell_WL_nbl32 < ell_max_WL)])
             ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
 
-            # set corresponding # of ell bins
+            # set corresponding number of ell bins
             nbl_WL = ell_dict['ell_WL'].shape[0]
             nbl_GC = ell_dict['ell_GC'].shape[0]
             nbl_WA = ell_dict['ell_WA'].shape[0]
@@ -244,27 +250,85 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
 
             # ! compute covariance matrix
             if covariance_cfg['compute_covmat']:
-                ng_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins}
-                ng_filename = f'{covariance_cfg["ng_filename"].format(**ng_specs)}'
-                covariance_cfg['ng'] = np.genfromtxt(f'{covariance_cfg["ng_folder"]}/'f'{ng_filename}')[0, :]
+                covariance_cfg['ng'] = np.genfromtxt(f'{ng_folder}/{ng_filename}')[0, :]
                 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
             # ! compute Fisher Matrix
             if FM_cfg['compute_FM']:
-                FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict)
+
+                # declare the set of parameters under study
+                paramnames_cosmo = ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"]
+                paramnames_IA = ["Aia", "eIA", "bIA"]
+                paramnames_galbias = [f'bG{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+                paramnames_shearbias = [f'm{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+                paramnames_dzWL = [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+                paramnames_dzGC = [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+                paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias + paramnames_shearbias + \
+                                   paramnames_dzWL + paramnames_dzGC
+                FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
+
+                # fiducial values
+                fid_cosmo = [0.32, 0.68, 0.05, -1.0, 0.0, 0.67, 0.96, 0.816]  # TODO import from ISTfid
+                fid_IA = np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()])
+                fid_galaxy_bias = np.genfromtxt(f'{ng_folder}/{ng_filename}')[1, :]
+                fid_shear_bias = np.zeros((zbins,))
+                fid_dzWL = np.zeros((zbins,))
+                fid_dzGC = np.zeros((zbins,))
+                fid_3x2pt = np.concatenate((fid_cosmo, fid_IA, fid_galaxy_bias, fid_shear_bias, fid_dzWL, fid_dzGC))
+                assert len(fid_3x2pt) == len(
+                    paramnames_3x2pt), 'the fiducial values list and parameter names should have the same length'
+
+                # import derivatives and store them in one big dictionary
+                derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
+                der_prefix = FM_cfg['derivatives_prefix']
+                dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
+                # check if dictionary is empty
+                if not dC_dict_1D:
+                    raise ValueError(f'No derivatives found in folder {derivatives_folder}')
+
+                # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
+                dC_dict_LL_3D = {}
+                dC_dict_GG_3D = {}
+                dC_dict_WA_3D = {}
+                dC_dict_3x2pt_5D = {}
+                for key in dC_dict_1D.keys():
+                    if 'WLO' in key:
+                        dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl=nbl_WL, zbins=zbins)
+                    elif 'GCO' in key:
+                        dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl=nbl_GC, zbins=zbins)
+                    elif 'WLA' in key:
+                        dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl=nbl_WA, zbins=zbins)
+                    elif '3x2pt' in key:
+                        dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl=nbl_3x2pt,
+                                                                          zbins=zbins)
+
+                # turn the dictionaries of derivatives into npy array
+                dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl_WL, zbins, der_prefix)
+                dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, paramnames_3x2pt, nbl_GC, zbins, der_prefix)
+                dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, paramnames_3x2pt, nbl_WA, zbins, der_prefix)
+                dC_3x2pt_5D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, paramnames_3x2pt, nbl_3x2pt, zbins,
+                                                           der_prefix,
+                                                           is_3x2pt=True)
+
+                deriv_dict = {'dC_LL_4D': dC_LL_4D,
+                              'dC_WA_4D': dC_WA_4D,
+                              'dC_GG_4D': dC_GG_4D,
+                              'dC_3x2pt_5D': dC_3x2pt_5D}
+
+                FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, deriv_dict)
 
             # ! save cls and responses:
             # this is just to set the correct probe names
-            probe_dav_dict = {'WL': 'LL_WLonly_3D', 'GC': 'GG_3D', 'WA': 'WA_3D', '3x2pt': '3x2pt_5D'}
+            probe_dav_dict = {'WL': 'LL_3D', 'GC': 'GG_3D', 'WA': 'WA_3D', '3x2pt': '3x2pt_5D'}
 
             # just a dict for the output file names
             clrl_dict = {'cl_dict_3D': cl_dict_3D,
                          'rl_dict_3D': rl_dict_3D,
                          'cl_inputname': 'dv',
                          'rl_inputname': 'rf',
-                         'cl_dict_key': 'C',
-                         'rl_dict_key': 'R',
+                         'cl_dict_key': 'cl',
+                         'rl_dict_key': 'rl',
                          }
             for cl_or_rl in ['cl', 'rl']:
                 if general_cfg[f'save_{cl_or_rl}s_3d']:
@@ -272,7 +336,10 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                     for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
                         # save cl and/or response; not very readable but it works, plus all the cases are in the for loop
 
-                        filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
+                        cl_rl_folder = general_cfg[f'{cl_or_rl}_folder']
+                        cl_BNT_transform = general_cfg["cl_BNT_transform"]
+
+                        filepath = f'{cl_rl_folder}/3D_reshaped/BNT_{cl_BNT_transform}/{probe_vinc}'
                         filename = general_cfg[f'{cl_or_rl}_filename'].format(probe=probe_vinc, **clrl_specs
                                                                               ).replace(".dat", "_3D.npy")
                         file = clrl_dict[f"{cl_or_rl}_dict_3D"][
@@ -281,8 +348,8 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
 
                         # save ells and deltas
                         if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
-                            filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/' \
-                                       f'3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
+                            filepath = f'{cl_rl_folder}/' \
+                                       f'3D_reshaped_BNT_{cl_BNT_transform}/{probe_vinc}'
                             ells_filename = f'ell_{probe_dav}_ellmaxWL{ell_max_WL}'
                             np.savetxt(f'{filepath}/{ells_filename}.txt', 10 ** ell_dict[f'ell_{probe_dav}'])
                             np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])
@@ -329,7 +396,7 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                                 save_funct(f'{covmat_path}/{covmat_filename}',
                                            cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])
 
-                            # in this case, 3x2pt is saved in 10D as a dictionary
+                            # in this case, 3x2pt can saved in 10D as a dictionary (a bit too heavy fix this, 1.7 GB...)
                             if ndim == 6:
                                 covmat_filename = f'{covmat_path}/covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_' \
                                                   f'nbl{nbl_3x2pt}_zbins{EP_or_ED}{zbins:02}{Rl_str}_10D.pickle'
@@ -367,7 +434,6 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 assert np.allclose(cov_GC_GS_4D, cov_dict[f'cov_GC_GS_4D'], rtol=1e-9, atol=0)
 
             # ! save FM
-
             save_specs = {
                 'EP_or_ED': EP_or_ED,
                 'zbins': zbins,

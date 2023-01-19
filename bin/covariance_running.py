@@ -190,7 +190,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_WA_GS_4D = cov_WA_GO_4D + cov_WA_SS_4D
     cov_3x2pt_GS_4D = cov_3x2pt_GO_4D + cov_3x2pt_SS_4D
 
-    if covariance_cfg['save_cov_6D']:
+    if covariance_cfg['compute_cov_6D']:
 
         # compute 3x2pt covariance in 10D, potentially with whichever probe ordering, and the WL, GS and WA cov in 6D
 

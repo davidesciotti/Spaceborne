@@ -8,11 +8,9 @@ import matplotlib as mpl
 import numpy as np
 import os
 import warnings
-import ray
 
 # %load_ext autoreload
 # %autoreload 2
-ray.init()
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
@@ -526,7 +524,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     variable_specs['nbl_3x2pt'] = nbl_3x2pt
 
     if FM_cfg['save_FM']:
-        # ! TODO finish this
         FM_utils.save_FM(FM_dict, FM_cfg, save_txt=True, save_dict=True, **variable_specs)
 
     #     probe_list = ['WL', 'GC', '3x2pt', 'WA']
@@ -555,5 +552,4 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 # ut.test_cov_FM(FM_output_path, FM_benchmarks_path)
 
 
-ray.shutdown()
 print('done')

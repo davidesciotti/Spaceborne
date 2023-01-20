@@ -129,8 +129,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         f'\ncheck: \nind_ordering = {triu_tril}, {rowcol_major} \nblock_index = {block_index}\n'
         f'zbins: {general_cfg["EP_or_ED"]}{zbins}\n'
         f'nbl_WA: {nbl_WA} nbl_WL: {nbl_WL} nbl_GC:  {nbl_GC}, nbl_3x2pt:  {nbl_3x2pt}\n'
-        f'ell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}\n'
-        f'computing the covariance in blocks? {covariance_cfg["save_cov_6D"]}\n')
+        f'ell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}\n')
 
     # build noise vector
 

@@ -3,9 +3,6 @@ import time
 import warnings
 from pathlib import Path
 import numpy as np
-import ray
-from joblib import Parallel, delayed
-from mpire import WorkerPool
 
 project_path_here = Path.cwd().parent.parent.parent
 sys.path.append(str(project_path_here.parent / 'common_lib'))
@@ -363,7 +360,7 @@ def save_FM(FM_dict, FM_cfg, save_txt=False, save_dict=True, **save_specs):
     if save_txt:
         for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
             for which_cov in ['GO', 'GS']:
-                FM_txt_filename = FM_cfg['FM_txt_filename'].format(probe=probe, ell_max=ell_max, nbl=nbl,
+                FM_txt_filename = FM_cfg['FM_txt_filename'].format(probe=probe, which_cov=which_cov, ell_max=ell_max, nbl=nbl,
                                                                    **save_specs)
                 np.savetxt(f'{FM_folder}/{FM_txt_filename}.txt', FM_dict[f'FM_{probe}_{which_cov}'])
 

@@ -136,60 +136,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     cov_3x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GS_2D'])
     print(f'GS covmats inverted in {(time.perf_counter() - start_time):.2f} s')
 
-    # ! try to parallelize this:
-
-    # from multiprocessing import Pool
-    #
-    # cov_GO_keys = ['cov_WL_GO_2D', 'cov_GC_GO_2D', 'cov_WA_GO_2D', 'cov_3x2pt_GO_2D']
-    # covs = [cov_dict[key] for key in cov_GO_keys]
-    #
-    # start_time = time.perf_counter()
-    # with Pool() as p:
-    #     cov_GO_2D_inv_list = p.map(invert_matrix, covs)
-    #
-    # cov_WL_GO_2D_inv = cov_GO_2D_inv_list[0]
-    # cov_GC_GO_2D_inv = cov_GO_2D_inv_list[1]
-    # cov_WA_GO_2D_inv = cov_GO_2D_inv_list[2]
-    # cov_3x2pt_GO_2D_inv = cov_GO_2D_inv_list[3]
-    # print(f'GS covmats inverted in {(time.perf_counter() - start_time):.2f} s with multiprocessing')
-
-    # cov_GO_keys = ['cov_WL_GO_2D', 'cov_GC_GO_2D', 'cov_WA_GO_2D', 'cov_3x2pt_GO_2D']
-    # covs = [cov_dict[key] for key in cov_GO_keys]
-    #
-    #
-    # start1 = time.perf_counter()
-    # results = Parallel(n_jobs=-1, verbose=1)(delayed(np.linalg.inv)(cov) for cov in covs)
-    # print(f'GO covmats inverted in {(time.perf_counter() - start1):.2f} s with Joblib')
-
-    # start1 = time.perf_counter()
-    # with WorkerPool() as pool:
-    #     results = list(pool.map(np.linalg.inv, covs))
-    # print(f'GO covmats inverted in {(time.perf_counter() - start1):.2f} s with MPIRE')
-
-    # start1 = time.perf_counter()
-    # cov_GO_keys = ['cov_WL_GO_2D', 'cov_GC_GO_2D', 'cov_WA_GO_2D', 'cov_3x2pt_GO_2D']
-    # covs = [cov_dict[key] for key in cov_GO_keys]
-    # futures = [ray.remote(np.linalg.inv).remote(cov) for cov in covs]
-    # cov_GO_2D_inv_list = ray.get(futures)
-    # cov_WL_GO_2D_inv = cov_GO_2D_inv_list[0]
-    # cov_GC_GO_2D_inv = cov_GO_2D_inv_list[1]
-    # cov_WA_GO_2D_inv = cov_GO_2D_inv_list[2]
-    # cov_3x2pt_GO_2D_inv = cov_GO_2D_inv_list[3]
-    # print(f'GO covmats inverted in {(time.perf_counter() - start1):.2f} s with Ray')
-
-    # start1 = time.perf_counter()
-    # cov_GS_keys = ['cov_WL_GS_2D', 'cov_GC_GS_2D', 'cov_WA_GS_2D', 'cov_3x2pt_GS_2D']
-    # covs = [cov_dict[key] for key in cov_GS_keys]
-    # futures = [ray.remote(np.linalg.inv).remote(cov) for cov in covs]
-    # cov_GS_2D_inv_list = ray.get(futures)
-    # cov_WL_GS_2D_inv = cov_GS_2D_inv_list[0]
-    # cov_GC_GS_2D_inv = cov_GS_2D_inv_list[1]
-    # cov_WA_GS_2D_inv = cov_GS_2D_inv_list[2]
-    # cov_3x2pt_GS_2D_inv = cov_GS_2D_inv_list[3]
-    # print(f'GS covmats inverted in {(time.perf_counter() - start1):.2f} s with Ray')
-
-    # # ! end try to parallelize this
-
     # set parameters names for the different probes
 
     """
@@ -345,65 +291,35 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     ######################### COMPUTE FM #####################################
 
     start3 = time.perf_counter()
-    FM_WL_GO_2 = np.einsum('ia,ik,kb->ab', dC_LL_2D, cov_WL_GO_2D_inv, dC_LL_2D, optimize='optimal')
-    FM_GC_GO_2 = np.einsum('ia,ik,kb->ab', dC_GG_2D, cov_GC_GO_2D_inv, dC_GG_2D, optimize='optimal')
-    FM_WA_GO_2 = np.einsum('ia,ik,kb->ab', dC_WA_2D, cov_WA_GO_2D_inv, dC_WA_2D, optimize='optimal')
-    FM_3x2pt_GO_2 = np.einsum('ia,ik,kb->ab', dC_3x2pt_2D, cov_3x2pt_GO_2D_inv, dC_3x2pt_2D, optimize='optimal')
+    FM_WL_GO = np.einsum('ia,ik,kb->ab', dC_LL_2D, cov_WL_GO_2D_inv, dC_LL_2D, optimize='optimal')
+    FM_GC_GO = np.einsum('ia,ik,kb->ab', dC_GG_2D, cov_GC_GO_2D_inv, dC_GG_2D, optimize='optimal')
+    FM_WA_GO = np.einsum('ia,ik,kb->ab', dC_WA_2D, cov_WA_GO_2D_inv, dC_WA_2D, optimize='optimal')
+    FM_3x2pt_GO = np.einsum('ia,ik,kb->ab', dC_3x2pt_2D, cov_3x2pt_GO_2D_inv, dC_3x2pt_2D, optimize='optimal')
     print(f'GO FM done in {(time.perf_counter() - start3):.2f} s with einsum optimal')
 
     start3 = time.perf_counter()
-    FM_WL_GS_2 = np.einsum('ia,ik,kb->ab', dC_LL_2D, cov_WL_GS_2D_inv, dC_LL_2D, optimize='optimal')
-    FM_GC_GS_2 = np.einsum('ia,ik,kb->ab', dC_GG_2D, cov_GC_GS_2D_inv, dC_GG_2D, optimize='optimal')
-    FM_WA_GS_2 = np.einsum('ia,ik,kb->ab', dC_WA_2D, cov_WA_GS_2D_inv, dC_WA_2D, optimize='optimal')
-    FM_3x2pt_GS_2 = np.einsum('ia,ik,kb->ab', dC_3x2pt_2D, cov_3x2pt_GS_2D_inv, dC_3x2pt_2D, optimize='optimal')
+    FM_WL_GS = np.einsum('ia,ik,kb->ab', dC_LL_2D, cov_WL_GS_2D_inv, dC_LL_2D, optimize='optimal')
+    FM_GC_GS = np.einsum('ia,ik,kb->ab', dC_GG_2D, cov_GC_GS_2D_inv, dC_GG_2D, optimize='optimal')
+    FM_WA_GS = np.einsum('ia,ik,kb->ab', dC_WA_2D, cov_WA_GS_2D_inv, dC_WA_2D, optimize='optimal')
+    FM_3x2pt_GS = np.einsum('ia,ik,kb->ab', dC_3x2pt_2D, cov_3x2pt_GS_2D_inv, dC_3x2pt_2D, optimize='optimal')
     print(f'GO FM done in {(time.perf_counter() - start3):.2f} s with einsum optimal')
 
-    # COMPUTE FM GO
-    start3 = time.perf_counter()
-    FM_WL_GO = mm.compute_FM_2D(nbl_WL, zpairs_auto, nparams_tot, cov_WL_GO_2D_inv, dC_LL_2D)
-    FM_GC_GO = mm.compute_FM_2D(nbl_GC, zpairs_auto, nparams_tot, cov_GC_GO_2D_inv, dC_GG_2D)
-    FM_WA_GO = mm.compute_FM_2D(nbl_WA, zpairs_auto, nparams_tot, cov_WA_GO_2D_inv, dC_WA_2D)
-    FM_3x2pt_GO = mm.compute_FM_2D(nbl_3x2pt, zpairs_3x2pt, nparams_tot, cov_3x2pt_GO_2D_inv, dC_3x2pt_2D)
-    print(f'GO FM done in {(time.perf_counter() - start3):.2f} s')
-
-    # COMPUTE FM GS
-    start4 = time.perf_counter()
-    FM_WL_GS = mm.compute_FM_2D(nbl_WL, zpairs_auto, nparams_tot, cov_WL_GS_2D_inv, dC_LL_2D)
-    FM_GC_GS = mm.compute_FM_2D(nbl_GC, zpairs_auto, nparams_tot, cov_GC_GS_2D_inv, dC_GG_2D)
-    FM_WA_GS = mm.compute_FM_2D(nbl_WA, zpairs_auto, nparams_tot, cov_WA_GS_2D_inv, dC_WA_2D)
-    FM_3x2pt_GS = mm.compute_FM_2D(nbl_3x2pt, zpairs_3x2pt, nparams_tot, cov_3x2pt_GS_2D_inv, dC_3x2pt_2D)
-    print(f'GS FM done in {(time.perf_counter() - start4):.2f} s')
-
-
-    # check if equal
-    assert np.allclose(FM_WL_GO, FM_WL_GO_2, rtol=1e-6, atol=0), 'FM_WL_GO and FM_WL_GO_2 are not equal'
-    assert np.allclose(FM_GC_GO, FM_GC_GO_2, rtol=1e-6, atol=0), 'FM_GC_GO and FM_GC_GO_2 are not equal'
-    assert np.allclose(FM_WA_GO, FM_WA_GO_2, rtol=1e-6, atol=0), 'FM_WA_GO and FM_WA_GO_2 are not equal'
-    assert np.allclose(FM_3x2pt_GO, FM_3x2pt_GO_2, rtol=1e-6, atol=0), 'FM_3x2pt_GO and FM_3x2pt_GO_2 are not equal'
-
-    assert np.allclose(FM_WL_GS, FM_WL_GS_2, rtol=1e-6, atol=0), 'FM_WL_GS and FM_WL_GS_2 are not equal'
-    assert np.allclose(FM_GC_GS, FM_GC_GS_2, rtol=1e-6, atol=0), 'FM_GC_GS and FM_GC_GS_2 are not equal'
-    assert np.allclose(FM_WA_GS, FM_WA_GS_2, rtol=1e-6, atol=0), 'FM_WA_GS and FM_WA_GS_2 are not equal'
-    assert np.allclose(FM_3x2pt_GS, FM_3x2pt_GS_2, rtol=1e-6, atol=0), 'FM_3x2pt_GS and FM_3x2pt_GS_2 are not equal'
-
-    assert 1 > 2, 'success, stop here'
-
-
-    # ! paralleize this
-    nbl_list = [nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt]
-    zpairs_list = [zpairs_auto, zpairs_auto, zpairs_auto, zpairs_3x2pt]
-    nparams_tot_list = [nparams_tot, nparams_tot, nparams_tot, nparams_tot]
-    cov_list = [cov_WL_GO_2D_inv, cov_GC_GO_2D_inv, cov_WA_GO_2D_inv, cov_3x2pt_GO_2D_inv]
-    dC_list = [dC_LL_2D, dC_GG_2D, dC_WA_2D, dC_3x2pt_2D]
-
-    # start1 = time.perf_counter()
-    # results = Parallel(n_jobs=-1, verbose=1)(delayed(mm.compute_FM_2D)(nbl, zpair, nparams_tot, cov, dC) for
-    #                                          nbl, zpair, nparams_tot, cov, dC in
-    #                                          zip(nbl_list, zpairs_list, nparams_tot_list, cov_list, dC_list))
-    # print('len(results) = ', len(results))
-    # print(f'FM GO computed in {(time.perf_counter() - start1):.2f} s with Joblib')
-
-    # ! end paralleize this
+    # old, slow way
+    # # COMPUTE FM GO
+    # start3 = time.perf_counter()
+    # FM_WL_GO = mm.compute_FM_2D(nbl_WL, zpairs_auto, nparams_tot, cov_WL_GO_2D_inv, dC_LL_2D)
+    # FM_GC_GO = mm.compute_FM_2D(nbl_GC, zpairs_auto, nparams_tot, cov_GC_GO_2D_inv, dC_GG_2D)
+    # FM_WA_GO = mm.compute_FM_2D(nbl_WA, zpairs_auto, nparams_tot, cov_WA_GO_2D_inv, dC_WA_2D)
+    # FM_3x2pt_GO = mm.compute_FM_2D(nbl_3x2pt, zpairs_3x2pt, nparams_tot, cov_3x2pt_GO_2D_inv, dC_3x2pt_2D)
+    # print(f'GO FM done in {(time.perf_counter() - start3):.2f} s')
+    #
+    # # COMPUTE FM GS
+    # start4 = time.perf_counter()
+    # FM_WL_GS = mm.compute_FM_2D(nbl_WL, zpairs_auto, nparams_tot, cov_WL_GS_2D_inv, dC_LL_2D)
+    # FM_GC_GS = mm.compute_FM_2D(nbl_GC, zpairs_auto, nparams_tot, cov_GC_GS_2D_inv, dC_GG_2D)
+    # FM_WA_GS = mm.compute_FM_2D(nbl_WA, zpairs_auto, nparams_tot, cov_WA_GS_2D_inv, dC_WA_2D)
+    # FM_3x2pt_GS = mm.compute_FM_2D(nbl_3x2pt, zpairs_3x2pt, nparams_tot, cov_3x2pt_GS_2D_inv, dC_3x2pt_2D)
+    # print(f'GS FM done in {(time.perf_counter() - start4):.2f} s')
 
     # sum WA, this is the actual FM_3x2pt
     if use_WA:

@@ -12,7 +12,7 @@ sys.path.append(f'{project_path.parent}/common_data/common_lib')
 import my_module as mm
 
 sys.path.append(f'{project_path}/bin')
-import ell_values_running as ell_utils
+import ell_values as ell_utils
 
 sys.path.append(f'{project_path.parent}/common_data/common_config')
 import ISTF_fid_params

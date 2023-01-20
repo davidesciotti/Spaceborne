@@ -34,7 +34,7 @@ import mpl_cfg
 import config_variable_response as cfg
 
 # from SSC_restructured_v2
-import ell_values_running as ell_utils
+import ell_values as ell_utils
 
 matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)

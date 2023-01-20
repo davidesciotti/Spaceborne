@@ -26,11 +26,11 @@ import ISTF_fid_params as ISTFfid
 
 # project modules
 sys.path.append(f'{project_path}/bin')
-import ell_values_running as ell_utils
-import Cl_preprocessing_running as cl_utils
+import ell_values as ell_utils
+import cl_preprocessing as cl_utils
 import compute_Sijkl as Sijkl_utils
-import covariance_running as covmat_utils
-import FM_running as FM_utils
+import covariance as covmat_utils
+import fisher_matrix as FM_utils
 import utils_running as utils
 
 # job configuration and modules

@@ -12,7 +12,7 @@ sys.path.append(f'{project_path}/lib')
 import my_module as mm
 
 sys.path.append(f'{project_path}/bin')
-import ell_values_running as ell_utils
+import ell_values as ell_utils
 
 sys.path.append(f'{project_path}/config')
 import ISTF_fid_params

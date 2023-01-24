@@ -403,20 +403,13 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
             assert general_cfg['cov_BNT_transform'], 'you should BNT transform the covariance as well'
 
-            for alf in range(len(paramnames_3x2pt)):
-                dC_LL_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_LL_4D[:, :, :, alf], BNT_matrix, 'L', 'L')
-                dC_WA_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_WA_4D[:, :, :, alf], BNT_matrix, 'L', 'L')
-                dC_3x2pt_6D[:, :, :, :, :, alf] = cl_utils.cl_BNT_transform_3x2pt(dC_3x2pt_6D[:, :, :, :, :, alf],
-                                                                                  BNT_matrix)
+            for param_idx in range(len(paramnames_3x2pt)):
+                dC_LL_4D[:, :, :, param_idx] = cl_utils.cl_BNT_transform(dC_LL_4D[:, :, :, param_idx], BNT_matrix, 'L', 'L')
+                dC_WA_4D[:, :, :, param_idx] = cl_utils.cl_BNT_transform(dC_WA_4D[:, :, :, param_idx], BNT_matrix, 'L', 'L')
+                dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_BNT_transform_3x2pt(dC_3x2pt_6D[:, :, :, :, :, param_idx],
+                                                                                        BNT_matrix)
 
             if general_cfg['ell_cuts']:
-
-                ell_cuts_dict = {
-                    'WL': ell_cuts_LL,
-                    'GC': ell_cuts_GG,
-                    'WA': ell_cuts_WA,
-                    'XC': ell_cuts_XC
-                }
 
                 ell_cuts_fldr = general_cfg['ell_cuts_folder']
                 ell_cuts_filename = general_cfg['ell_cuts_filename']
@@ -424,23 +417,42 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                 ell_cuts_GG = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}')
                 ell_cuts_XC = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')
 
-                for alf in range(len(paramnames_3x2pt)):
-                    dC_LL_4D[:, :, :, alf] = cl_utils.cl_ell_cut(
-                        dC_LL_4D[:, :, :, alf], ell_cuts_LL, ell_dict['ell_WL'])
-                    dC_WA_4D[:, :, :, alf] = cl_utils.cl_ell_cut(
-                        dC_WA_4D[:, :, :, alf], ell_cuts_LL, ell_dict['ell_WA'])
-                    dC_GG_4D[:, :, :, alf] = cl_utils.cl_ell_cut(
-                        dC_GG_4D[:, :, :, alf], ell_cuts_GG, ell_dict['ell_GC'])
-                    dC_3x2pt_6D[:, :, :, :, :, alf] = cl_utils.cl_ell_cut_3x2pt(
-                        dC_3x2pt_6D[:, :, :, :, :, alf], ell_cuts_dict, ell_dict)
+                ell_cuts_dict = {
+                    'WL': ell_cuts_LL,
+                    'GC': ell_cuts_GG,
+                    'XC': ell_cuts_XC
+                }
 
-                    alf = 5
-                    for ell in [0, 5, 10, 15, 20, 25, 30, 31]:
-                        mm.matshow(dC_LL_4D[:, :, :, alf], log=True, title=f'ell={ell}')
+                param_idx_plt = 0
+                zi, zj = 12, 12
+
+                plt.figure()
+                test_dcl = dC_LL_4D[:, :, :, param_idx_plt]
+
+                plt.plot(10**ell_dict['ell_WL'], np.abs(test_dcl[:, zi, zj]), 'o-')
+                plt.axvline(ell_cuts_LL[zi, zj], color='k', linestyle='--')
+
+                cut_test_dcl = cl_utils.cl_ell_cut(test_dcl, ell_cuts_LL, ell_dict['ell_WL'])
+
+                for param_idx in range(len(paramnames_3x2pt)):
+                    dC_LL_4D[:, :, :, param_idx] = cl_utils.cl_ell_cut(
+                        dC_LL_4D[:, :, :, param_idx], ell_cuts_LL, ell_dict['ell_WL'])
+                    dC_WA_4D[:, :, :, param_idx] = cl_utils.cl_ell_cut(
+                        dC_WA_4D[:, :, :, param_idx], ell_cuts_LL, ell_dict['ell_WA'])
+                    dC_GG_4D[:, :, :, param_idx] = cl_utils.cl_ell_cut(
+                        dC_GG_4D[:, :, :, param_idx], ell_cuts_GG, ell_dict['ell_GC'])
+                    dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_ell_cut_3x2pt(
+                        dC_3x2pt_6D[:, :, :, :, :, param_idx], ell_cuts_dict, ell_dict)
+
+                plt.plot(10**ell_dict['ell_WL'], np.abs(cut_test_dcl[:, zi, zj]), 'o-')
+                plt.yscale('log')
+
+                plt.figure()
+                for ell_idx in [0, 5, 10, 15, 20, 25, 30, 31]:
+                    mm.matshow(dC_LL_4D[ell_idx, :, :, param_idx_plt], log=True, title=f'ell_idx={ell_idx}, param_idx={param_idx}')
 
 
-
-                    assert 1 > 2, 'stop here'
+                assert 1 > 2, 'stop here'
 
         # store the derivatives arrays in a dictionary
         deriv_dict = {'dC_LL_4D': dC_LL_4D,

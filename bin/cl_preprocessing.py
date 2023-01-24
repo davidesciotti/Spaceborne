@@ -365,43 +365,44 @@ def cl_BNT_transform_3x2pt(cl_3x2pt_5D, BNT_matrix):
 def cl_ell_cut(cl_3D, ell_cuts_matrix, ell_values):
     """cut (sets to zero) the cl_3D array at the ell values specified in ell_cuts_matrix"""
 
-    if np.all(ell_values) < 20:
-        warnings.warn('the ell values seem to be in log scale: switching to linear scale')
+    if np.all(ell_values) < 30:
         ell_values = 10 ** ell_values
+
+    nbl = cl_3D.shape[0]
+    zbins = cl_3D.shape[1]
 
     assert cl_3D.ndim == 3, 'cl_3D must be 3D'
     assert ell_cuts_matrix.ndim == 2, 'ell_cuts_matrix must be 2D'
     assert cl_3D.shape[1] == cl_3D.shape[2], 'the last two axes\' dimensions do not coincide'
-    zbins = cl_3D.shape[1]
+    assert nbl == ell_values.shape[0], 'the number of ell bins in cl_3D and ell_values must be the same'
     assert zbins == ell_cuts_matrix.shape[0], 'the number of zbins in cl_3D and ell_cuts_matrix axes\' length ' \
                                               'must be the same'
 
-    # cl_3D_ell_cut = cl_3D.copy()
-    # for zi in range(zbins):
-    #     for zj in range(zbins):
-    #
-    #         ell_cut = ell_cuts_matrix[zi, zj]
-    #         if np.any(ell_values) > ell_cut:  # i.e., if you need to do a cut at all
-    #             first_excluded_ell_idx = np.where(ell_values > ell_cut)[0][0]
-    #             print('ell_values', ell_values)
-    #             print('ell_cut', ell_cut)
-    #             print('first_excluded_ell_idx', first_excluded_ell_idx)
-    #             cl_3D_ell_cut[first_excluded_ell_idx:, zi, zj] = 0
-
     cl_3D_ell_cut = cl_3D.copy()
-    try:
-        first_excluded_ell_idxs = np.array(
-            [np.where(ell_values > ell_cut)[0][0] for ell_cut in ell_cuts_matrix.flatten()])
-        first_excluded_ell_idxs = first_excluded_ell_idxs.reshape(ell_cuts_matrix.shape)
+    for zi in range(zbins):
+        for zj in range(zbins):
+            ell_cut = ell_cuts_matrix[zi, zj]
+            if np.any(ell_values > ell_cut):  # i.e., if you need to do a cut at all
+                ell_idxs_tocut = np.where(ell_values > ell_cut)[0]
+                cl_3D_ell_cut[ell_idxs_tocut, zi, zj] = 0
 
-        # for zi and zj, this simply means all the indices (we scan through the whole last 2 axes).
-        # It's a 3D array, because the result needs to be 3D
-        ell_idxs_to_cut = first_excluded_ell_idxs[..., None]
-        zi_idxs = np.arange(zbins)[None, :, None]
-        zj_idxs = np.arange(zbins)[None, None, :]
-        cl_3D_ell_cut[ell_idxs_to_cut, zi_idxs, zj_idxs] = 0
-    except IndexError:
-        warnings.warn("No element in ell_values is larger than any element in ell_cuts_matrix")
+
+    # cl_3D_ell_cut = cl_3D.copy()
+    # try:
+    #     first_excluded_ell_idxs = np.array(
+    #         [np.where(ell_values > ell_cut)[0][0] for ell_cut in ell_cuts_matrix.flatten()])
+    #     first_excluded_ell_idxs = first_excluded_ell_idxs.reshape(ell_cuts_matrix.shape)
+    #     print(first_excluded_ell_idxs)
+    #
+    #     # for zi and zj, this simply means all the indices (we scan through the whole last 2 axes).
+    #     # It's a 3D array, because the result needs to be 3D
+    #     ell_idxs_to_cut = first_excluded_ell_idxs[:, :, None]
+    #     zi_idxs = np.arange(zbins)[None, :, None]
+    #     zj_idxs = np.arange(zbins)[None, None, :]
+    #     cl_3D_ell_cut[ell_idxs_to_cut, zi_idxs, zj_idxs] = 0
+    # except IndexError:
+    #     warnings.warn("No element in ell_values is larger than any element in ell_cuts_matrix")
+
     return cl_3D_ell_cut
 
 
@@ -413,10 +414,10 @@ def cl_ell_cut_3x2pt(cl_3x2pt_5D, ell_cuts_dict, ell_values_dict):
     cl_GLfor3x2pt_3D = cl_3x2pt_5D[:, 1, 0, :, :]
     cl_GGfor3x2pt_3D = cl_3x2pt_5D[:, 1, 1, :, :]
 
-    cl_LLfor3x2pt_3D_ell_cut = cl_ell_cut(cl_LLfor3x2pt_3D, ell_cuts_dict['WL'], ell_values_dict['ell_WL'])
+    cl_LLfor3x2pt_3D_ell_cut = cl_ell_cut(cl_LLfor3x2pt_3D, ell_cuts_dict['WL'], ell_values_dict['ell_XC'])
     cl_LGfor3x2pt_3D_ell_cut = cl_ell_cut(cl_LGfor3x2pt_3D, ell_cuts_dict['XC'], ell_values_dict['ell_XC'])
     cl_GLfor3x2pt_3D_ell_cut = cl_ell_cut(cl_GLfor3x2pt_3D, ell_cuts_dict['XC'], ell_values_dict['ell_XC'])
-    cl_GGfor3x2pt_3D_ell_cut = cl_ell_cut(cl_GGfor3x2pt_3D, ell_cuts_dict['GC'], ell_values_dict['ell_GC'])
+    cl_GGfor3x2pt_3D_ell_cut = cl_ell_cut(cl_GGfor3x2pt_3D, ell_cuts_dict['GC'], ell_values_dict['ell_XC'])
 
     cl_3x2pt_5D_ell_cut = np.zeros(cl_3x2pt_5D.shape)
     cl_3x2pt_5D_ell_cut[:, 0, 0, :, :] = cl_LLfor3x2pt_3D_ell_cut

@@ -37,7 +37,7 @@ markersize = 10
 # ! options
 zbins = 10
 zbins_list = np.array((zbins,), dtype=int)
-probe = 'WL'
+probe = 'GC'
 pes_opt_list = ('opt',)
 EP_or_ED_list = ('EP',)
 which_comparison = 'GO_vs_GS'  # this is just to set the title of the plot

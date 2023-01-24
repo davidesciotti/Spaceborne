@@ -46,6 +46,10 @@ general_cfg = {
     'use_WA': False,
     'save_cls_3d': False,
     'save_rls_3d': False,
+    'ell_cuts': True,
+    'ell_cuts_folder': f'{SPV3_folder}/ell_cuts',
+    'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
+                         'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'cl_BNT_transform': cl_BNT_transform,
     'cov_BNT_transform': cov_BNT_transform,
     'deriv_BNT_transform': deriv_BNT_transform,
@@ -87,7 +91,7 @@ covariance_cfg = {
     'ng_folder': f'{SPV3_folder}/Flagship_{flagship_version}/InputNz/magcut_zcut',
     'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
-    'compute_covmat': True,
+    'compute_covmat': False,
     'cov_file_format': 'npz',  # or npy
     'compute_cov_6D': True,  # or 10D for the 3x2pt
     'save_cov_2D': False,
@@ -135,8 +139,8 @@ FM_cfg = {
     # the filename is the same as above
     'FM_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'
-                   'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}',
-    'FM_dict_filename': 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'\
+                       'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}',
+    'FM_dict_filename': 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-' \
                         'MS{magcut_source:03d}-ZS{zcut_source:02d}',
     'params_order': None,
 }

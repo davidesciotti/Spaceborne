@@ -8,6 +8,7 @@ import matplotlib as mpl
 import numpy as np
 import os
 import warnings
+import gc
 
 # %load_ext autoreload
 # %autoreload 2
@@ -122,9 +123,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
     covariance_cfg['ind'] = ind
 
-    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
-
     # convenience vectors
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
     ind_auto = ind[:zpairs_auto, :].copy()
     # ind_cross = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
 
@@ -173,6 +173,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                       'magcut_lens': magcut_lens, 'zcut_lens': zcut_lens,
                       'magcut_source': magcut_source, 'zcut_source': zcut_source,
                       'zmax': zmax}
+
+    ng_folder = covariance_cfg["ng_folder"]
+    ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
 
     BNT_matrix_filename = general_cfg["BNT_matrix_filename"].format(**variable_specs)
     BNT_matrix = np.load(f'{general_cfg["BNT_matrix_path"]}/{BNT_matrix_filename}')
@@ -285,8 +288,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
         # ! compute covariance matrix
         # TODO: if already existing, don't compute the covmat, like done above for Sijkl
-        ng_folder = covariance_cfg["ng_folder"]
-        ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
         # the ng values are in the second column, for these input files 👇
         covariance_cfg['ng'] = np.genfromtxt(f'{ng_folder}/'f'{ng_filename}')[:, 1]
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
@@ -307,17 +308,17 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             cov_WA_GS_BNT_6D = covmat_utils.cov_BNT_transform(cov_dict['cov_WA_GS_6D'], X_dict, 'L', 'L')
             cov_3x2pt_GS_BNT_dict = covmat_utils.cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GS_10D'], X_dict)
 
-            # transform from dict of 6D arrays to single 4D array
-            cov_3x2pt_GO_BNT_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_BNT_dict, probe_ordering, nbl_3x2pt,
-                                                              zbins, ind.copy(), GL_or_LG)
-            cov_3x2pt_GS_BNT_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_3x2pt,
-                                                              zbins, ind.copy(), GL_or_LG)
-
             # reshape to 4D
             cov_WL_GO_BNT_4D = mm.cov_6D_to_4D(cov_WL_GO_BNT_6D, nbl_WL, zpairs_auto, ind_auto)
             cov_WL_GS_BNT_4D = mm.cov_6D_to_4D(cov_WL_GS_BNT_6D, nbl_WL, zpairs_auto, ind_auto)
             cov_WA_GO_BNT_4D = mm.cov_6D_to_4D(cov_WA_GO_BNT_6D, nbl_WA, zpairs_auto, ind_auto)
             cov_WA_GS_BNT_4D = mm.cov_6D_to_4D(cov_WA_GS_BNT_6D, nbl_WA, zpairs_auto, ind_auto)
+
+            # for 3x2pt, transform from dict of 6D arrays to single 4D array
+            cov_3x2pt_GO_BNT_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_BNT_dict, probe_ordering, nbl_3x2pt,
+                                                              zbins, ind.copy(), GL_or_LG)
+            cov_3x2pt_GS_BNT_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_3x2pt,
+                                                              zbins, ind.copy(), GL_or_LG)
 
             # reshape to 2D
             cov_WL_GO_BNT_2D = mm.cov_4D_to_2D(cov_WL_GO_BNT_4D, block_index=covariance_cfg['block_index'])
@@ -334,6 +335,11 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             cov_dict['cov_WA_GS_2D'] = cov_WA_GS_BNT_2D
             cov_dict['cov_3x2pt_GO_2D'] = cov_3x2pt_GO_BNT_2D
             cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_GS_BNT_2D
+
+            # free up memory
+            del cov_WL_GO_BNT_2D, cov_WL_GS_BNT_2D, cov_WA_GO_BNT_2D, cov_WA_GS_BNT_2D, cov_3x2pt_GO_BNT_2D, cov_3x2pt_GS_BNT_2D
+            del cov_WL_GO_BNT_4D, cov_WL_GS_BNT_4D, cov_WA_GO_BNT_4D, cov_WA_GS_BNT_4D, cov_3x2pt_GO_BNT_4D, cov_3x2pt_GS_BNT_4D
+            gc.collect()
 
     # ! compute Fisher matrix
     if FM_cfg['compute_FM']:
@@ -387,8 +393,11 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl_WL, zbins, der_prefix)
         dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, paramnames_3x2pt, nbl_GC, zbins, der_prefix)
         dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, paramnames_3x2pt, nbl_WA, zbins, der_prefix)
-        dC_3x2pt_5D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, paramnames_3x2pt, nbl_3x2pt, zbins, der_prefix,
+        dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, paramnames_3x2pt, nbl_3x2pt, zbins, der_prefix,
                                                    is_3x2pt=True)
+
+        # free memory
+        del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
 
         if general_cfg['deriv_BNT_transform']:
 
@@ -397,14 +406,47 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             for alf in range(len(paramnames_3x2pt)):
                 dC_LL_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_LL_4D[:, :, :, alf], BNT_matrix, 'L', 'L')
                 dC_WA_4D[:, :, :, alf] = cl_utils.cl_BNT_transform(dC_WA_4D[:, :, :, alf], BNT_matrix, 'L', 'L')
-                dC_3x2pt_5D[:, :, :, :, :, alf] = cl_utils.cl_BNT_transform_3x2pt(dC_3x2pt_5D[:, :, :, :, :, alf],
+                dC_3x2pt_6D[:, :, :, :, :, alf] = cl_utils.cl_BNT_transform_3x2pt(dC_3x2pt_6D[:, :, :, :, :, alf],
                                                                                   BNT_matrix)
+
+            if general_cfg['ell_cuts']:
+
+                ell_cuts_dict = {
+                    'WL': ell_cuts_LL,
+                    'GC': ell_cuts_GG,
+                    'WA': ell_cuts_WA,
+                    'XC': ell_cuts_XC
+                }
+
+                ell_cuts_fldr = general_cfg['ell_cuts_folder']
+                ell_cuts_filename = general_cfg['ell_cuts_filename']
+                ell_cuts_LL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}')
+                ell_cuts_GG = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}')
+                ell_cuts_XC = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')
+
+                for alf in range(len(paramnames_3x2pt)):
+                    dC_LL_4D[:, :, :, alf] = cl_utils.cl_ell_cut(
+                        dC_LL_4D[:, :, :, alf], ell_cuts_LL, ell_dict['ell_WL'])
+                    dC_WA_4D[:, :, :, alf] = cl_utils.cl_ell_cut(
+                        dC_WA_4D[:, :, :, alf], ell_cuts_LL, ell_dict['ell_WA'])
+                    dC_GG_4D[:, :, :, alf] = cl_utils.cl_ell_cut(
+                        dC_GG_4D[:, :, :, alf], ell_cuts_GG, ell_dict['ell_GC'])
+                    dC_3x2pt_6D[:, :, :, :, :, alf] = cl_utils.cl_ell_cut_3x2pt(
+                        dC_3x2pt_6D[:, :, :, :, :, alf], ell_cuts_dict, ell_dict)
+
+                    alf = 5
+                    for ell in [0, 5, 10, 15, 20, 25, 30, 31]:
+                        mm.matshow(dC_LL_4D[:, :, :, alf], log=True, title=f'ell={ell}')
+
+
+
+                    assert 1 > 2, 'stop here'
 
         # store the derivatives arrays in a dictionary
         deriv_dict = {'dC_LL_4D': dC_LL_4D,
                       'dC_WA_4D': dC_WA_4D,
                       'dC_GG_4D': dC_GG_4D,
-                      'dC_3x2pt_5D': dC_3x2pt_5D}
+                      'dC_3x2pt_5D': dC_3x2pt_6D}
 
         FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
         FM_dict['parameters'] = paramnames_3x2pt

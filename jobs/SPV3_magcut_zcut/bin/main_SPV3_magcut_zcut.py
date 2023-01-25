@@ -77,7 +77,7 @@ ZL_list = [0]
 MS_list = [245]
 ZS_list = [0]
 
-for kmax_1_over_Mpc in general_cfg['kmax_list_1/Mpc']:
+for kmax_h_over_Mpc in general_cfg['kmax_list_h_over_Mpc']:
     for general_cfg['ell_cuts'] in (True, False):
         for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                 general_cfg['magcut_source'], general_cfg['zcut_source'] in \
@@ -179,7 +179,8 @@ for kmax_1_over_Mpc in general_cfg['kmax_list_1/Mpc']:
             variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_lens, 'zcut_lens': zcut_lens,
                               'magcut_source': magcut_source, 'zcut_source': zcut_source, 'zmax': zmax,
                               'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_XC': ell_max_XC,
-                              'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt}
+                              'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
+                              'kmax_h_over_Mpc': kmax_h_over_Mpc}
 
             ng_folder = covariance_cfg["ng_folder"]
             ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
@@ -226,8 +227,9 @@ for kmax_1_over_Mpc in general_cfg['kmax_list_1/Mpc']:
 
             # ! BNT transform the cls (and responses?)
             if general_cfg['cl_BNT_transform']:
-                assert general_cfg['cov_BNT_transform'] is False, 'the BNT transform should be applied either to the Cls ' \
-                                                                  'or to the covariance'
+                assert general_cfg[
+                           'cov_BNT_transform'] is False, 'the BNT transform should be applied either to the Cls ' \
+                                                          'or to the covariance'
                 cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix, 'L', 'L')
                 cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix, 'L', 'L')
                 cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5d, BNT_matrix)
@@ -271,7 +273,8 @@ for kmax_1_over_Mpc in general_cfg['kmax_list_1/Mpc']:
                 # preprocess (remove redshift column)
                 z_arr_wil, wil = Sijkl_utils.preprocess_wf(wil, zbins)
                 z_arr_wig, wig = Sijkl_utils.preprocess_wf(wig, zbins)
-                assert np.array_equal(z_arr_wil, z_arr_wig), 'the redshift arrays are different for the GC and WL kernels'
+                assert np.array_equal(z_arr_wil,
+                                      z_arr_wig), 'the redshift arrays are different for the GC and WL kernels'
                 z_arr = z_arr_wil
 
                 # transpose and stack, ordering is important here!
@@ -284,7 +287,8 @@ for kmax_1_over_Mpc in general_cfg['kmax_list_1/Mpc']:
                     'Sijkl_folder is set to BNT_False in all cases, so as not to have to recompute the Sijkl matrix'
                     'in the BNT_True case')
                 Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(flagship_version=general_cfg['flagship_version'],
-                                                                    nz=nz, IA_flag=Sijkl_cfg['IA_flag'], **variable_specs)
+                                                                    nz=nz, IA_flag=Sijkl_cfg['IA_flag'],
+                                                                    **variable_specs)
                 # if Sijkl exists, load it; otherwise, compute it and save it
                 if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
                     print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
@@ -334,8 +338,10 @@ for kmax_1_over_Mpc in general_cfg['kmax_list_1/Mpc']:
                     cov_WL_GS_BNT_2D = mm.cov_4D_to_2D(cov_WL_GS_BNT_4D, block_index=covariance_cfg['block_index'])
                     cov_WA_GO_BNT_2D = mm.cov_4D_to_2D(cov_WA_GO_BNT_4D, block_index=covariance_cfg['block_index'])
                     cov_WA_GS_BNT_2D = mm.cov_4D_to_2D(cov_WA_GS_BNT_4D, block_index=covariance_cfg['block_index'])
-                    cov_3x2pt_GO_BNT_2D = mm.cov_4D_to_2D(cov_3x2pt_GO_BNT_4D, block_index=covariance_cfg['block_index'])
-                    cov_3x2pt_GS_BNT_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_BNT_4D, block_index=covariance_cfg['block_index'])
+                    cov_3x2pt_GO_BNT_2D = mm.cov_4D_to_2D(cov_3x2pt_GO_BNT_4D,
+                                                          block_index=covariance_cfg['block_index'])
+                    cov_3x2pt_GS_BNT_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_BNT_4D,
+                                                          block_index=covariance_cfg['block_index'])
 
                     # overwrite the non-BNT value
                     cov_dict['cov_WL_GO_2D'] = cov_WL_GO_BNT_2D
@@ -351,32 +357,46 @@ for kmax_1_over_Mpc in general_cfg['kmax_list_1/Mpc']:
                     gc.collect()
 
                     covmat_utils.save_cov(general_cfg, covariance_cfg, cov_dict, **variable_specs)
-                    print('Covariance matrices saved')
 
             # ! compute Fisher matrix
             if FM_cfg['compute_FM']:
 
                 # declare the set of parameters under study
-                paramnames_cosmo = ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"]
-                paramnames_IA = ["Aia", "eIA", "bIA"]
-                paramnames_galbias = [f'bG{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
-                paramnames_shearbias = [f'm{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
-                paramnames_dzWL = [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
-                paramnames_dzGC = [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
-                paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias + paramnames_shearbias + \
-                                   paramnames_dzWL + paramnames_dzGC
-                FM_cfg['paramnames_3x2pt'] = paramnames_3x2pt  # save them to pass to FM_utils module
+                param_names_dict = {
+                    'param_names_cosmo': ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"],
+                    'param_names_IA': ["Aia", "eIA", "bIA"],
+                    'param_names_galbias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
+                    'param_names_shearbias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
+                    'param_names_dzWL': [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
+                    'param_names_dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+                }
+                param_names_3x2pt = param_names_dict['param_names_cosmo'] + \
+                                    param_names_dict['param_names_IA'] + \
+                                    param_names_dict['param_names_galbias'] + \
+                                    param_names_dict['param_names_shearbias'] + \
+                                    param_names_dict['param_names_dzWL'] + \
+                                    param_names_dict['param_names_dzGC']
+                param_names_dict['param_names_3x2pt'] = param_names_3x2pt
+
+                FM_cfg['param_names_3x2pt'] = param_names_dict[
+                    'param_names_3x2pt']  # save them to pass to FM_utils module
 
                 # fiducial values
-                fid_cosmo = [0.32, 0.68, 0.05, -1.0, 0.0, 0.67, 0.96, 0.816]  # TODO import from ISTfid
-                fid_IA = np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()])
-                fid_galaxy_bias = np.genfromtxt(f'{ng_folder}/{ng_filename}')[:, 2]
-                fid_shear_bias = np.zeros((zbins,))
-                fid_dzWL = np.zeros((zbins,))
-                fid_dzGC = np.zeros((zbins,))
-                fid_3x2pt = np.concatenate((fid_cosmo, fid_IA, fid_galaxy_bias, fid_shear_bias, fid_dzWL, fid_dzGC))
-                assert len(fid_3x2pt) == len(
-                    paramnames_3x2pt), 'the fiducial values list and parameter names should have the same length'
+                fiducials_dict = {
+                    'fid_cosmo': [0.32, 0.68, 0.05, -1.0, 0.0, 0.67, 0.96, 0.816],  # TODO import from ISTfid
+                    'fid_IA': np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()]),
+                    'fid_galaxy_bias': np.genfromtxt(f'{ng_folder}/{ng_filename}')[:, 2],
+                    'fid_shear_bias': np.zeros((zbins,)),
+                    'fid_dzWL': np.zeros((zbins,)),
+                    'fid_dzGC': np.zeros((zbins,)),
+                }
+                # this needs to be done outside the dictionary creation
+                fiducials_dict['fid_3x2pt'] = np.concatenate(
+                    (fiducials_dict['fid_cosmo'], fiducials_dict['fid_IA'], fiducials_dict['fid_galaxy_bias'],
+                     fiducials_dict['fid_shear_bias'], fiducials_dict['fid_dzWL'], fiducials_dict['fid_dzGC']))
+
+                assert len(fiducials_dict['fid_3x2pt']) == len(
+                    param_names_3x2pt), 'the fiducial values list and parameter names should have the same length'
 
                 # import derivatives and store them in one big dictionary
                 derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
@@ -403,10 +423,11 @@ for kmax_1_over_Mpc in general_cfg['kmax_list_1/Mpc']:
                                                                           zbins=zbins)
 
                 # turn the dictionaries of derivatives into npy array
-                dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl_WL, zbins, der_prefix)
-                dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, paramnames_3x2pt, nbl_GC, zbins, der_prefix)
-                dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, paramnames_3x2pt, nbl_WA, zbins, der_prefix)
-                dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, paramnames_3x2pt, nbl_3x2pt, zbins, der_prefix,
+                dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
+                dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
+                dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
+                dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
+                                                           der_prefix,
                                                            is_3x2pt=True)
 
                 # free memory
@@ -416,7 +437,7 @@ for kmax_1_over_Mpc in general_cfg['kmax_list_1/Mpc']:
 
                     assert general_cfg['cov_BNT_transform'], 'you should BNT transform the covariance as well'
 
-                    for param_idx in range(len(paramnames_3x2pt)):
+                    for param_idx in range(len(param_names_3x2pt)):
                         dC_LL_4D[:, :, :, param_idx] = cl_utils.cl_BNT_transform(
                             dC_LL_4D[:, :, :, param_idx], BNT_matrix, 'L', 'L')
                         dC_WA_4D[:, :, :, param_idx] = cl_utils.cl_BNT_transform(
@@ -438,9 +459,9 @@ for kmax_1_over_Mpc in general_cfg['kmax_list_1/Mpc']:
                             f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')
 
                         # ! linearly rescale ell cuts
-                        kmax_ref_h_over_Mpc = general_cfg['kmax_ref_h/Mpc']  # h/Mpc; the one with which the above ell cuts were computed
-                        kmax_h_over_Mpc = kmax_1_over_Mpc*ISTF_fid.primary['h_0']
-                        variable_specs['kmax_h/Mpc'] = kmax_h_over_Mpc
+                        kmax_ref_h_over_Mpc = general_cfg[
+                            'kmax_ref_h_over_Mpc']  # h_over_Mpc; the one with which the above ell cuts were computed
+                        variable_specs['kmax_h_over_Mpc'] = kmax_h_over_Mpc
 
                         ell_cuts_LL *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
                         ell_cuts_GG *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
@@ -452,7 +473,7 @@ for kmax_1_over_Mpc in general_cfg['kmax_list_1/Mpc']:
                             'XC': ell_cuts_XC}
 
                         func = cl_utils.cl_ell_cut  # just to abbreviate the name to fit in one line
-                        for param_idx in range(len(paramnames_3x2pt)):
+                        for param_idx in range(len(param_names_3x2pt)):
                             dC_LL_4D[:, :, :, param_idx] = func(dC_LL_4D[:, :, :, param_idx], ell_cuts_LL,
                                                                 ell_dict['ell_WL'])
                             dC_WA_4D[:, :, :, param_idx] = func(dC_WA_4D[:, :, :, param_idx], ell_cuts_LL,
@@ -469,8 +490,8 @@ for kmax_1_over_Mpc in general_cfg['kmax_list_1/Mpc']:
                               'dC_3x2pt_5D': dC_3x2pt_6D}
 
                 FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
-                FM_dict['parameters'] = paramnames_3x2pt
-                FM_dict['fiducial_values'] = fid_3x2pt
+                FM_dict['param_names_dict'] = param_names_dict
+                FM_dict['fiducial_values_dict'] = fiducials_dict
 
                 # ! save Fisher matrix
                 FM_utils.save_FM(FM_dict, FM_cfg, general_cfg, save_txt=FM_cfg['save_FM_txt'],

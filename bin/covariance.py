@@ -479,6 +479,8 @@ def save_cov(general_cfg, covariance_cfg, cov_dict, **variable_specs):
                                                                             ell_max=ell_max_WL, nbl=nbl_WA, ndim=ndim,
                                                                             extension=extension, **variable_specs)
                     np.save(f'{cov_folder}/{cov_WA_filename}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
+            print('Covariance matrices saved')
+
 
     # save in .dat for Vincenzo, only in the optimistic case and in 2D
     if covariance_cfg['save_cov_dat'] and ell_max_WL == 5000:
@@ -489,3 +491,5 @@ def save_cov(general_cfg, covariance_cfg, cov_dict, **variable_specs):
                                                                                        **variable_specs)
                 np.savetxt(f'{cov_folder_vincenzo}/{GOGS_folder}/{cov_filename_vincenzo}',
                            cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.9e')
+        print('Covariance matrices saved')
+

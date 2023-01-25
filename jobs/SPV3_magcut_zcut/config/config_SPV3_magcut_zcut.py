@@ -50,8 +50,9 @@ general_cfg = {
     'ell_cuts_folder': f'{SPV3_folder}/ell_cuts',
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                          'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    'kmax_ref_h/Mpc': 1.0,
-    'kmax_list_1/Mpc': (0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 4.00, 5.00, 10.00),  # 1/Mpc;
+    'kmax_ref_h_over_Mpc': 1.0,
+    # 'kmax_list_1_over_Mpc': np.array((0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 4.00, 5.00, 10.00)),
+    'kmax_list_h_over_Mpc': np.array([0.1675, 0.335, 0.5025, 0.67, 0.8375, 1.005, 1.1725, 1.34, 2.01, 2.68, 3.35, 6.7]),
     'cl_BNT_transform': cl_BNT_transform,
     'cov_BNT_transform': cov_BNT_transform,
     'deriv_BNT_transform': deriv_BNT_transform,
@@ -138,8 +139,9 @@ FM_cfg = {
     # the filename is the same as above
     'FM_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}/ell_cuts_' + '{ell_cuts:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'
-                       'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}_kmax_h/Mpc{kmax_hMpc:03f}',
+                       'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}'
+                       '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
     'FM_dict_filename': 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
-                        'MS{magcut_source:03d}-ZS{zcut_source:02d}_kmax_h/Mpc{kmax_hMpc:03f}',
+                        'MS{magcut_source:03d}-ZS{zcut_source:02d}_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
     'params_order': None,
 }

@@ -26,6 +26,7 @@ import plots_FM_running as plot_utils
 sys.path.append(str(project_path / 'jobs/SPV3_magcut_zcut/config'))
 import config_SPV3_magcut_zcut as cfg
 
+
 # plot config
 matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 matplotlib.use('Qt5Agg')
@@ -43,11 +44,6 @@ flagship_version = 2
 check_old_FM = False
 pes_opt = 'opt'
 which_uncertainty = 'marginal'
-fix_IA = False
-fix_gal_bias = False  # whether to remove the rows/cols for the shear bias nuisance parameters (ie whether to fix them)
-fix_shear_bias = False  # whether to remove the rows/cols for the shear bias nuisance parameters (ie whether to fix them)
-fix_dzWL = True  # whether to remove the rows/cols for the dz nuisance parameters (ie whether to fix them)
-fix_dzGC = True  # whether to remove the rows/cols for the dz nuisance parameters (ie whether to fix them)
 bar_plot_cosmo = True
 triangle_plot = False
 bar_plot_nuisance = False
@@ -57,6 +53,13 @@ EP_or_ED = 'ED'
 n_cosmo_params = 8
 pic_format = 'pdf'
 plot_fom = True
+params_tofix_dict = {
+    'IA': False,
+    'gal_bias': False,
+    'shear_bias': True,
+    'dzWL': True,
+    'dzGC': True,
+}
 # ! end options
 
 # compute percent diff of the cases chosen - careful of the indices!
@@ -124,23 +127,33 @@ for probe in probes:
         FM_Ellcuts_dict = mm.load_pickle(f'{FM_Ellcuts_path}/{FM_filename}')
         FM_noEllcuts_dict = mm.load_pickle(f'{FM_noEllcuts_path}/{FM_filename}')
 
-        # these should not change when passed the second time to the function
-        _params = FM_noEllcuts_dict['parameters']
-        _fid = FM_noEllcuts_dict['fiducial_values']
+        # parameter names
+        param_names_dict = FM_noEllcuts_dict['param_names_dict']
+        fiducials_dict = FM_noEllcuts_dict['fiducials_dict']
 
+        assert param_names_dict == FM_Ellcuts_dict[
+            'param_names_dict'], 'param_names_dict not equal for Ellcuts and noEllcuts'
+        assert fiducials_dict == FM_Ellcuts_dict['fiducials_dict'], 'fiducials_dict not equal for Ellcuts and noEllcuts'
+
+        # rename for convenience
         FM_GO_Ellcuts = FM_Ellcuts_dict[f'FM_{probe}_GO']
         FM_GS_Ellcuts = FM_Ellcuts_dict[f'FM_{probe}_GS']
         FM_GO_noEllcuts = FM_noEllcuts_dict[f'FM_{probe}_GO']
         FM_GS_noEllcuts = FM_noEllcuts_dict[f'FM_{probe}_GS']
 
         # fix the desired parameters and remove null rows/columns
-        FM_GO_noEllcuts, param_names, fid = mm.mask_FM(FM_GO_noEllcuts, _params, _fid, n_cosmo_params, fix_IA,
-                                                       fix_gal_bias)
-        FM_GS_noEllcuts, _, _ = mm.mask_FM(FM_GS_noEllcuts, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
-        FM_GO_Ellcuts, _, _ = mm.mask_FM(FM_GO_Ellcuts, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
-        FM_GS_Ellcuts, _, _ = mm.mask_FM(FM_GS_Ellcuts, _params, _fid, n_cosmo_params, fix_IA, fix_gal_bias)
-        wzwa_idx = [param_names.index('wz'), param_names.index('wa')]
-        assert len(fid) == len(param_names), 'the fiducial values list and parameter names should have the same length'
+        FM_GO_noEllcuts, param_names_list, fiducials_list = mm.mask_FM(FM_GO_noEllcuts, param_names_dict,
+                                                                       fiducials_dict, params_tofix_dict,
+                                                                       remove_null_rows_cols=True)
+        FM_GS_noEllcuts, _, _ = mm.mask_FM(FM_GS_noEllcuts, _all_param_names, _all_fiducials, n_cosmo_params, fix_IA,
+                                           fix_gal_bias)
+        FM_GO_Ellcuts, _, _ = mm.mask_FM(FM_GO_Ellcuts, _all_param_names, _all_fiducials, n_cosmo_params, fix_IA,
+                                         fix_gal_bias)
+        FM_GS_Ellcuts, _, _ = mm.mask_FM(FM_GS_Ellcuts, _all_param_names, _all_fiducials, n_cosmo_params, fix_IA,
+                                         fix_gal_bias)
+        wzwa_idx = [param_names_list.index('wz'), param_names_list.index('wa')]
+        assert len(fiducials_list) == len(
+            param_names_list), 'the fiducial values list and parameter names should have the same length'
 
         FMs = [FM_GO_noEllcuts, FM_GS_noEllcuts, FM_GO_Ellcuts, FM_GS_Ellcuts]
 
@@ -153,8 +166,9 @@ for probe in probes:
         fom = {}
         uncert = {}
         for FM, case in zip(FMs, cases):
-            uncert[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams_toplot, fiducials=fid[:nparams_toplot],
-                                                          which_uncertainty=which_uncertainty, normalize=True))
+            uncert[case] = np.asarray(
+                mm.uncertainties_FM(FM, nparams=nparams_toplot, fiducials=fiducials_list[:nparams_toplot],
+                                    which_uncertainty=which_uncertainty, normalize=True))
             fom[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_idx) / 10
             print(f'FoM({probe}, {case}): {fom[case]}')
 
@@ -173,7 +187,7 @@ for probe in probes:
         #     uncert_ratio_dict[probe][ML][ZL][MS][ZS], fom['GS'] / fom['G'])
 
         data = np.asarray(data)
-        param_names_label = param_names[:nparams_toplot]
+        param_names_label = param_names_list[:nparams_toplot]
 
         if plot_fom:
             fom_array = np.array([fom[key_to_compare_A], fom[key_to_compare_B],
@@ -191,3 +205,6 @@ for probe in probes:
         # plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
         #                        f'bar_plot_{probe}_ellmax{lmax}_zbins{EP_or_ED}{zbins:02}'
         #                        f'_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.png')
+
+# probe = '3x2pt'
+# for kmax_h_over_Mpc in cfg.general_cfg['kmax_list_h/Mpc']:

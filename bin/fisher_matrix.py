@@ -85,7 +85,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     GL_or_LG = covariance_cfg['GL_or_LG']
     ind = covariance_cfg['ind']
     block_index = covariance_cfg['block_index']
-    paramnames_3x2pt = FM_cfg['paramnames_3x2pt']
+    param_names_3x2pt = FM_cfg['param_names_3x2pt']
 
     # import ell values
     ell_WL, nbl_WL = ell_dict['ell_WL'], ell_dict['ell_WL'].shape[0]
@@ -117,7 +117,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     else:
         nbl_WA = ell_WA.shape[0]
 
-    nparams_tot = len(paramnames_3x2pt)
+    nparams_tot = len(param_names_3x2pt)
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
     if GL_or_LG == 'LG':
@@ -192,7 +192,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     # XC for 3x2pt
     dC_3x2pt_interpolated_dict = mm.interpolator(probe_code=probe_code_XC,
                                                  dC_interpolated_dict=dC_3x2pt_interpolated_dict,
-                                                 dC_dict=dC_dict, params_names=paramnames_3x2pt, nbl=nbl,
+                                                 dC_dict=dC_dict, params_names=param_names_3x2pt, nbl=nbl,
                                                  npairs=zpairs_cross, ell_values=ell_XC, suffix=suffix)
     # GG for 3x2pt
     dC_3x2pt_interpolated_dict = mm.interpolator(probe_code=probe_code_GG,
@@ -215,7 +215,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
                              dC_interpolated_dict=dC_3x2pt_interpolated_dict,
                              probe_code=probe_code_LL, dC=dC_LL, suffix=suffix)
     # XC for 3x2pt
-    dC_XC = mm.fill_dC_array(params_names=paramnames_3x2pt,
+    dC_XC = mm.fill_dC_array(params_names=param_names_3x2pt,
                              dC_interpolated_dict=dC_3x2pt_interpolated_dict,
                              probe_code=probe_code_XC, dC=dC_XC, suffix=suffix)
     # GG for 3x2pt and GConly

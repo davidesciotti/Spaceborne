@@ -55,10 +55,10 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     # sanity checks
     if general_cfg['nbl_WL'] is None:
-        assert nbl_WL == general_cfg['nbl'], 'WARNING: nbl_WL != general_cfg["nbl"], there is a discrepancy'
+        assert nbl_WL == general_cfg['nbl'], 'nbl_WL != general_cfg["nbl"], there is a discrepancy'
 
     if general_cfg['nbl_WL'] is not None:
-        assert nbl_WL == general_cfg['nbl_WL'], 'WARNING: nbl_WL != general_cfg["nbl_WL"], there is a discrepancy'
+        assert nbl_WL == general_cfg['nbl_WL'], 'nbl_WL != general_cfg["nbl_WL"], there is a discrepancy'
 
     if nbl_WL == nbl_GC == nbl_3x2pt:
         print('all probes (but WAdd) have the same number of ell bins')
@@ -129,7 +129,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         f'\ncheck: \nind_ordering = {triu_tril}, {rowcol_major} \nblock_index = {block_index}\n'
         f'zbins: {general_cfg["EP_or_ED"]}{zbins}\n'
         f'nbl_WA: {nbl_WA} nbl_WL: {nbl_WL} nbl_GC:  {nbl_GC}, nbl_3x2pt:  {nbl_3x2pt}\n'
-        f'ell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}\n')
+        f'ell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}\nGL_or_LG: {GL_or_LG}\n')
 
     # build noise vector
 
@@ -217,7 +217,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
         # print as a check
         print('check: datavector probe ordering:', probe_ordering)
-        print('check: GL_or_LG:', GL_or_LG)
         print('check: probe combinations:')
         for A, B in probe_ordering:
             for C, D in probe_ordering:
@@ -406,13 +405,13 @@ def cov_BNT_transform(cov_noBNT_6D, X_dict, probe_A, probe_B, optimize=True):
 
 def save_cov(general_cfg, covariance_cfg, cov_dict, **variable_specs):
 
-    ell_max_WL = general_cfg['ell_max_WL']
-    ell_max_GC = general_cfg['ell_max_GC']
-    ell_max_XC = general_cfg['ell_max_XC']
-    nbl_WL = general_cfg['nbl_WL']
-    nbl_GC = general_cfg['nbl_GC']
-    nbl_3x2pt = general_cfg['nbl_3x2pt']
-    nbl_WA = general_cfg['nbl_WA']
+    ell_max_WL = variable_specs['ell_max_WL']
+    ell_max_GC = variable_specs['ell_max_GC']
+    ell_max_XC = variable_specs['ell_max_XC']
+    nbl_WL = variable_specs['nbl_WL']
+    nbl_GC = variable_specs['nbl_GC']
+    nbl_3x2pt = variable_specs['nbl_3x2pt']
+    nbl_WA = variable_specs['nbl_WA']
 
     # which cases to save: GO, GS or GO, GS and SS
     cases_tosave = ['GO', 'GS']
@@ -487,7 +486,6 @@ def save_cov(general_cfg, covariance_cfg, cov_dict, **variable_specs):
             for GOGS_folder, GOGS_filename in zip(['GaussOnly', 'GaussSSC'], ['GO', 'GS']):
                 cov_filename_vincenzo = covariance_cfg['cov_filename_vincenzo'].format(probe_vinc=probe_vinc,
                                                                                        GOGS_filename=GOGS_filename,
-                                                                                       nbl_WL=nbl_WL,
                                                                                        **variable_specs)
                 np.savetxt(f'{cov_folder_vincenzo}/{GOGS_folder}/{cov_filename_vincenzo}',
                            cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.9e')

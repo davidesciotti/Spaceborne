@@ -134,14 +134,14 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     cov_GC_GO_2D_inv = np.linalg.inv(cov_dict['cov_GC_GO_2D'])
     cov_WA_GO_2D_inv = np.linalg.inv(cov_dict['cov_WA_GO_2D'])
     cov_3x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GO_2D'])
-    print(f'GO covmats inverted in {(time.perf_counter() - start_time):.2f} s')
+    print(f'GO covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
 
     # start_time = time.perf_counter()
     # cov_WL_GO_2D_inv_2 = invert_matrix_LU(cov_dict['cov_WL_GO_2D'])
     # cov_GC_GO_2D_inv_2 = invert_matrix_LU(cov_dict['cov_GC_GO_2D'])
     # cov_WA_GO_2D_inv_2 = invert_matrix_LU(cov_dict['cov_WA_GO_2D'])
     # cov_3x2pt_GO_2D_inv_2 = invert_matrix_LU(cov_dict['cov_3x2pt_GO_2D'])
-    # print(f'GO covmats inverted in {(time.perf_counter() - start_time):.2f} s with scipy sparse')
+    # print(f'GO covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s with scipy sparse')
     #
     # # assert if close
     # assert np.allclose(cov_WL_GO_2D_inv, cov_WL_GO_2D_inv_2, atol=0, rtol=1e-4)
@@ -155,7 +155,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     cov_GC_GS_2D_inv = np.linalg.inv(cov_dict['cov_GC_GS_2D'])
     cov_WA_GS_2D_inv = np.linalg.inv(cov_dict['cov_WA_GS_2D'])
     cov_3x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GS_2D'])
-    print(f'GS covmats inverted in {(time.perf_counter() - start_time):.2f} s')
+    print(f'GS covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
 
     # set parameters names for the different probes
 
@@ -364,7 +364,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     # TODO: create pd dataframe
 
 
-def save_FM(FM_dict, FM_cfg, save_txt=False, save_dict=True, **save_specs):
+def save_FM(FM_dict, FM_cfg, general_cfg, save_txt=False, save_dict=True, **save_specs):
     """saves the FM in .txt and .pickle formats"""
 
     ell_max_WL = save_specs['ell_max_WL']
@@ -375,7 +375,7 @@ def save_FM(FM_dict, FM_cfg, save_txt=False, save_dict=True, **save_specs):
     nbl_WA = save_specs['nbl_WA']
     nbl_3x2pt = save_specs['nbl_3x2pt']
 
-    FM_folder = FM_cfg['FM_folder']
+    FM_folder = FM_cfg['FM_folder'].format(ell_cuts=str(general_cfg['ell_cuts']), **save_specs)
 
     probe_list = ['WL', 'GC', '3x2pt', 'WA']
     ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]

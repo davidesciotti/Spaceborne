@@ -3,6 +3,8 @@ import time
 import warnings
 from pathlib import Path
 import numpy as np
+import scipy
+
 
 project_path_here = Path.cwd().parent.parent.parent
 sys.path.append(str(project_path_here.parent / 'common_lib'))
@@ -68,6 +70,14 @@ def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, derivatives_prefix,
     return dC_4D
 
 
+def invert_matrix_LU(covariance_matrix):
+    # Perform LU decomposition
+    P, L, U = scipy.linalg.lu(covariance_matrix)
+    # Invert the matrix using the decomposition
+    return np.linalg.inv(L) @ np.linalg.inv(U) @ P
+
+
+
 def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict):
     # shorten names
     zbins = general_cfg['zbins']
@@ -119,11 +129,25 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     # invert GO covmats
     print('Starting covariance matrix inversion...')
     start_time = time.perf_counter()
+    # TODO try to use scipy.sparse.linalg.inv
     cov_WL_GO_2D_inv = np.linalg.inv(cov_dict['cov_WL_GO_2D'])
     cov_GC_GO_2D_inv = np.linalg.inv(cov_dict['cov_GC_GO_2D'])
     cov_WA_GO_2D_inv = np.linalg.inv(cov_dict['cov_WA_GO_2D'])
     cov_3x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GO_2D'])
     print(f'GO covmats inverted in {(time.perf_counter() - start_time):.2f} s')
+
+    # start_time = time.perf_counter()
+    # cov_WL_GO_2D_inv_2 = invert_matrix_LU(cov_dict['cov_WL_GO_2D'])
+    # cov_GC_GO_2D_inv_2 = invert_matrix_LU(cov_dict['cov_GC_GO_2D'])
+    # cov_WA_GO_2D_inv_2 = invert_matrix_LU(cov_dict['cov_WA_GO_2D'])
+    # cov_3x2pt_GO_2D_inv_2 = invert_matrix_LU(cov_dict['cov_3x2pt_GO_2D'])
+    # print(f'GO covmats inverted in {(time.perf_counter() - start_time):.2f} s with scipy sparse')
+    #
+    # # assert if close
+    # assert np.allclose(cov_WL_GO_2D_inv, cov_WL_GO_2D_inv_2, atol=0, rtol=1e-4)
+    # assert np.allclose(cov_GC_GO_2D_inv, cov_GC_GO_2D_inv_2, atol=0, rtol=1e-4)
+    # assert np.allclose(cov_WA_GO_2D_inv, cov_WA_GO_2D_inv_2, atol=0, rtol=1e-4)
+    # assert np.allclose(cov_3x2pt_GO_2D_inv, cov_3x2pt_GO_2D_inv_2, atol=0, rtol=1e-4)
 
     # invert GS covmats
     start_time = time.perf_counter()
@@ -360,10 +384,15 @@ def save_FM(FM_dict, FM_cfg, save_txt=False, save_dict=True, **save_specs):
     if save_txt:
         for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
             for which_cov in ['GO', 'GS']:
-                FM_txt_filename = FM_cfg['FM_txt_filename'].format(probe=probe, which_cov=which_cov, ell_max=ell_max, nbl=nbl,
+                FM_txt_filename = FM_cfg['FM_txt_filename'].format(probe=probe, which_cov=which_cov, ell_max=ell_max,
+                                                                   nbl=nbl,
                                                                    **save_specs)
                 np.savetxt(f'{FM_folder}/{FM_txt_filename}.txt', FM_dict[f'FM_{probe}_{which_cov}'])
 
     if save_dict:
         FM_dict_filename = FM_cfg['FM_dict_filename'].format(**save_specs)
         mm.save_pickle(f'{FM_folder}/{FM_dict_filename}.pickle', FM_dict)
+
+    else:
+        print('No FM saved')
+        pass

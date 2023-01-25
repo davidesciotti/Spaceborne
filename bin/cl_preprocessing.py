@@ -386,24 +386,41 @@ def cl_ell_cut(cl_3D, ell_cuts_matrix, ell_values):
                 ell_idxs_tocut = np.where(ell_values > ell_cut)[0]
                 cl_3D_ell_cut[ell_idxs_tocut, zi, zj] = 0
 
+    return cl_3D_ell_cut
 
-    # cl_3D_ell_cut = cl_3D.copy()
-    # try:
-    #     first_excluded_ell_idxs = np.array(
-    #         [np.where(ell_values > ell_cut)[0][0] for ell_cut in ell_cuts_matrix.flatten()])
-    #     first_excluded_ell_idxs = first_excluded_ell_idxs.reshape(ell_cuts_matrix.shape)
-    #     print(first_excluded_ell_idxs)
-    #
-    #     # for zi and zj, this simply means all the indices (we scan through the whole last 2 axes).
-    #     # It's a 3D array, because the result needs to be 3D
-    #     ell_idxs_to_cut = first_excluded_ell_idxs[:, :, None]
-    #     zi_idxs = np.arange(zbins)[None, :, None]
-    #     zj_idxs = np.arange(zbins)[None, None, :]
-    #     cl_3D_ell_cut[ell_idxs_to_cut, zi_idxs, zj_idxs] = 0
-    # except IndexError:
-    #     warnings.warn("No element in ell_values is larger than any element in ell_cuts_matrix")
+
+def cl_ell_cut_v2(cl_3D, ell_cuts_matrix, ell_values):
+    """cut (sets to zero) the cl_3D array at the ell values specified in ell_cuts_matrix.
+    Smarter version, without for loops"""
+
+    if np.all(ell_values) < 30:
+        ell_values = 10 ** ell_values
+
+    nbl = cl_3D.shape[0]
+    zbins = cl_3D.shape[1]
+
+    assert cl_3D.ndim == 3, 'cl_3D must be 3D'
+    assert ell_cuts_matrix.ndim == 2, 'ell_cuts_matrix must be 2D'
+    assert cl_3D.shape[1] == cl_3D.shape[2], 'the last two axes\' dimensions do not coincide'
+    assert nbl == ell_values.shape[0], 'the number of ell bins in cl_3D and ell_values must be the same'
+    assert zbins == ell_cuts_matrix.shape[0], 'the number of zbins in cl_3D and ell_cuts_matrix axes\' length ' \
+                                              'must be the same'
+
+    # Create a 3D mask of the same shape as cl_3D where the
+    # elements that should be cut are marked as True
+    ell_cuts_matrix_3D = np.expand_dims(ell_cuts_matrix, 0)
+    mask = (ell_values[:, None, None] > ell_cuts_matrix_3D)
+
+    # Use the mask to set the corresponding elements of cl_3D to zero
+    cl_3D_ell_cut = np.where(mask, 0, cl_3D)
 
     return cl_3D_ell_cut
+
+
+
+
+
+
 
 
 def cl_ell_cut_3x2pt(cl_3x2pt_5D, ell_cuts_dict, ell_values_dict):

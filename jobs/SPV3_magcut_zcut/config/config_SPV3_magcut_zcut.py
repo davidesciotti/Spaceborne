@@ -50,6 +50,7 @@ general_cfg = {
     'ell_cuts_folder': f'{SPV3_folder}/ell_cuts',
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                          'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
+    'kmax_list': np.linspace(0.1, 10, 10),  # h/Mpc; this is the reference value, which needs to be changed
     'cl_BNT_transform': cl_BNT_transform,
     'cov_BNT_transform': cov_BNT_transform,
     'deriv_BNT_transform': deriv_BNT_transform,
@@ -91,26 +92,22 @@ covariance_cfg = {
     'ng_folder': f'{SPV3_folder}/Flagship_{flagship_version}/InputNz/magcut_zcut',
     'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
-    'compute_covmat': False,
-    'cov_file_format': 'npz',  # or npy
+    'compute_covmat': True,
     'compute_cov_6D': True,  # or 10D for the 3x2pt
+    'cov_file_format': 'npz',  # or npy
     'save_cov_2D': False,
     'save_cov_4D': False,
-    'save_cov_6D': False,  # or 10D for the 3x2pt
+    'save_cov_6D': True,  # or 10D for the 3x2pt
     'save_cov_GS': False,
     'save_cov_SS': False,
-    'save_cov_dat': False,  # this is the format used by Vincenzo
     'save_2DCLOE': False,  # outermost loop is on the probes
-    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/zbins{zbins:02d}',
-    'cov_BNTstef_folder': f'{SPV3_folder}/Flagship_{flagship_version}/CovMats/BNT_True/stefano/magcut_zcut/' + '{GO_or_GS:s}/{probe:s}',
-    'cov_BNTstef_filename': 'BNT_covmat_{GO_or_GS}_{probe}_{block:s}_lmax{ellmax}_nbl{nbl}_zbins{EP_or_ED:s}{zbins:02d}'
-                            '_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_6D.npy'
-
-    # 'cov_folder': f'{SPV3_folder}/Flagship_{flagship_version}/CovMats/BNT_True/produced_by_stefano/magcut_zcut'
-    # 'cov_folder': f'/Volumes/4TB/covmat_cuts',
-    # 'cov_filename': 'covmat_{GO_or_GS:s}_{probe:s}_lmax{lmax:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}'
-    #                '_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:03d}',
-    # TODO add cov_filename!!
+    'save_cov_dat': True,  # this is the format used by Vincenzo
+    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{ell_cuts:s}/zbins{EP_or_ED:s}{zbins:02d}',
+    'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_'
+                    'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_'
+                    'MS{magcut_source:03d}_ZS{zcut_source:02d}_{ndim:d}D.{extension:s}',
+    'cov_filename_vincenzo': 'cm-{probe_vinc:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
+                             'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
 }
 
 Sijkl_cfg = {
@@ -127,7 +124,8 @@ Sijkl_cfg = {
 
 FM_cfg = {
     'compute_FM': True,
-    'save_FM': True,
+    'save_FM_txt': True,
+    'save_FM_dict': True,
     'nparams_tot': 20,  # total (cosmo + nuisance) number of parameters
     'paramnames_3x2pt': None,  # ! for the time being, these are defined in the main and then passed here
     'save_FM_as_dict': True,
@@ -140,7 +138,7 @@ FM_cfg = {
     'FM_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'
                        'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}',
-    'FM_dict_filename': 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-' \
+    'FM_dict_filename': 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
                         'MS{magcut_source:03d}-ZS{zcut_source:02d}',
     'params_order': None,
 }

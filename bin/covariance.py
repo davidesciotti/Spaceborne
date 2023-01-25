@@ -304,7 +304,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_dict['cov_WA_GO_6D'] = mm.cov_G_10D_dict(cl_dict_WA, noise_dict_3x2pt,
                                                      nbl_WA, zbins, l_lin_WA, delta_l_WA, fsky,
                                                      probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
-        print(f'cov_GO_6D new computed in {(time.perf_counter() - start_time):.2f} seconds')
+        print(f'cov_GO_6D computed in {(time.perf_counter() - start_time):.2f} seconds')
 
         # ! cov_SSC_6D
         start_time = time.perf_counter()
@@ -314,7 +314,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
                                           probe_ordering=[['G', 'G'], ])['G', 'G', 'G', 'G']
         cov_WA_SS_6D = mm.cov_SS_10D_dict(cl_dict_WA, rl_dict_WA, Sijkl_dict, nbl_WA, zbins, fsky,
                                           probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
-        print(f'cov_SS_6D new computed in {(time.perf_counter() - start_time):.2f} seconds')
+        print(f'cov_SS_6D computed in {(time.perf_counter() - start_time):.2f} seconds')
 
         if covariance_cfg['save_cov_SS']:
             cov_dict['cov_WL_SS_6D'] = cov_WL_SS_6D
@@ -404,7 +404,24 @@ def cov_BNT_transform(cov_noBNT_6D, X_dict, probe_A, probe_B, optimize=True):
     return cov_BNT_6D
 
 
-def save_cov(covariance_cfg, general_cfg, cov_dict, cov_folder):
+def save_cov(general_cfg, covariance_cfg, cov_dict, **variable_specs):
+
+    ell_max_WL = general_cfg['ell_max_WL']
+    ell_max_GC = general_cfg['ell_max_GC']
+    ell_max_XC = general_cfg['ell_max_XC']
+    nbl_WL = general_cfg['nbl_WL']
+    nbl_GC = general_cfg['nbl_GC']
+    nbl_3x2pt = general_cfg['nbl_3x2pt']
+    nbl_WA = general_cfg['nbl_WA']
+
+    # which cases to save: GO, GS or GO, GS and SS
+    cases_tosave = ['GO', 'GS']
+    if covariance_cfg[f'save_cov_GS']:
+        cases_tosave.append('GS')
+    if covariance_cfg[f'save_cov_SS']:
+        cases_tosave.append('SS')
+
+    # which file format to use
     if covariance_cfg['cov_file_format'] == 'npy':
         save_funct = np.save
         extension = 'npy'
@@ -414,49 +431,63 @@ def save_cov(covariance_cfg, general_cfg, cov_dict, cov_folder):
     else:
         raise ValueError('cov_file_format not recognized: must be "npy" or "npz"')
 
-    ell_max_WL = general_cfg['ell_max_WL']
-    ell_max_GC = general_cfg['ell_max_GC']
-    ell_max_XC = general_cfg['ell_max_XC']
-    nbl_WL = general_cfg['nbl_WL']
-    nbl_GC = general_cfg['nbl_GC']
-    nbl_WA = general_cfg['nbl_WA']
-    EP_or_ED = general_cfg['EP_or_ED']
-    zbins = general_cfg['zbins']
+    # TODO skip the computation and saving if the file already exists
+    cov_folder = covariance_cfg["cov_folder"].format(ell_cuts=str(general_cfg['ell_cuts']), **variable_specs)
+    cov_folder_vincenzo = cov_folder + '/for_vincenzo'
 
     for ndim in (2, 4, 6):
+
         if covariance_cfg[f'save_cov_{ndim}D']:
 
-            # save GO, GS or GO, GS and SSC
-            which_cov_list = ['GO', 'GS']
-            if covariance_cfg[f'save_cov_SSC']:
-                which_cov_list.append('SSC')
+            # TODO skip the computation and saving if the file already exists
+            cov_folder = covariance_cfg["cov_folder"].format(ell_cuts=str(general_cfg['ell_cuts']), **variable_specs)
+            cov_folder_vincenzo = cov_folder + '/for_vincenzo'
 
             # set probes to save; the ndim == 6 case is different
             probe_list = ['WL', 'GC', '3x2pt', 'WA']
             ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
-            nbl_list = [nbl_WL, nbl_GC, nbl_GC, nbl_WA]
+            nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
             # in this case, 3x2pt is saved in 10D as a dictionary
             if ndim == 6:
                 probe_list = ['WL', 'GC', 'WA']
                 ellmax_list = [ell_max_WL, ell_max_GC, ell_max_WL]
                 nbl_list = [nbl_WL, nbl_GC, nbl_WA]
 
-            # save all covmats in the optimistic case
-            if ell_max_WL == 5000:
+            for which_cov in cases_tosave:
 
-                for which_cov in which_cov_list:
+                # save all covmats in the optimistic case
+                if ell_max_WL == 5000:
                     for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
-                        save_funct(f'{cov_folder}/covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_zbins{EP_or_ED}'
-                                   f'{zbins:02}_{ndim}D.{extension}', cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])
+                        cov_filename = covariance_cfg['cov_filename'].format(which_cov=which_cov, probe=probe,
+                                                                             ell_max=ell_max, nbl=nbl, ndim=ndim,
+                                                                             extension=extension, **variable_specs)
+                        save_funct(f'{cov_folder}/{cov_filename}',
+                                   cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])  # save in .npy or .npz
 
                     # in this case, 3x2pt is saved in 10D as a dictionary
+                    # TODO these pickle files are too heavy, probably it's best to revert to npz
                     if ndim == 6:
-                        filename = f'{cov_folder}/covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_nbl{nbl_GC}_zbins{EP_or_ED}{zbins:02}_10D.pickle'
-                        with open(filename, 'wb') as handle:
+                        cov_3x2pt_filename = covariance_cfg['cov_filename'].format(which_cov=which_cov, probe='3x2pt',
+                                                                                   ell_max=ell_max_XC, nbl=nbl_3x2pt,
+                                                                                   ndim=10,
+                                                                                   extension='pickle', **variable_specs)
+                        with open(f'{cov_folder}/{cov_3x2pt_filename}', 'wb') as handle:
                             pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
 
-            # in the pessimistic case, save only WA
-            elif ell_max_WL == 1500:
-                for which_cov in which_cov_list:
-                    save_funct(f'{cov_folder}/covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_zbins{EP_or_ED}'
-                               f'{zbins:02}_{ndim}D.{extension}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
+                # in the pessimistic case, save only WA
+                elif ell_max_WL == 1500:
+                    cov_WA_filename = covariance_cfg['cov_filename'].format(which_cov=which_cov, probe='WA',
+                                                                            ell_max=ell_max_WL, nbl=nbl_WA, ndim=ndim,
+                                                                            extension=extension, **variable_specs)
+                    np.save(f'{cov_folder}/{cov_WA_filename}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
+
+    # save in .dat for Vincenzo, only in the optimistic case and in 2D
+    if covariance_cfg['save_cov_dat'] and ell_max_WL == 5000:
+        for probe, probe_vinc in zip(['WL', 'GC', '3x2pt', 'WA'], ['WLO', 'GCO', '3x2pt', 'WLA']):
+            for GOGS_folder, GOGS_filename in zip(['GaussOnly', 'GaussSSC'], ['GO', 'GS']):
+                cov_filename_vincenzo = covariance_cfg['cov_filename_vincenzo'].format(probe_vinc=probe_vinc,
+                                                                                       GOGS_filename=GOGS_filename,
+                                                                                       nbl_WL=nbl_WL,
+                                                                                       **variable_specs)
+                np.savetxt(f'{cov_folder_vincenzo}/{GOGS_folder}/{cov_filename_vincenzo}',
+                           cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.9e')

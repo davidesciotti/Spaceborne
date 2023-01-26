@@ -14,6 +14,7 @@ from getdist.gaussian_mixtures import GaussianND
 import pandas as pd
 
 project_path = Path.cwd().parent.parent.parent
+job_path = Path.cwd().parent
 
 sys.path.append(str(project_path.parent / 'common_data'))
 import common_lib.my_module as mm
@@ -26,7 +27,6 @@ import plots_FM_running as plot_utils
 sys.path.append(str(project_path / 'jobs/SPV3_magcut_zcut/config'))
 import config_SPV3_magcut_zcut as cfg
 
-
 # plot config
 matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 matplotlib.use('Qt5Agg')
@@ -37,7 +37,7 @@ markersize = 10
 # ! options
 zbins = 13
 zbins_list = np.array((zbins,), dtype=int)
-probes = ('3x2pt', 'WL', 'GC')
+probes = ('3x2pt',)
 model = 'flat'
 which_diff = 'normal'
 flagship_version = 2
@@ -52,11 +52,14 @@ zmax = 25
 EP_or_ED = 'ED'
 n_cosmo_params = 8
 pic_format = 'pdf'
-plot_fom = True
+plot_fom = False
+divide_fom_by_10 = False
+shear_bias_priors = True
 params_tofix_dict = {
+    'cosmo': False,
     'IA': False,
-    'gal_bias': False,
-    'shear_bias': True,
+    'galbias': False,
+    'shearbias': False,
     'dzWL': True,
     'dzGC': True,
 }
@@ -78,14 +81,14 @@ ZL_list = [0, 2]
 MS_list = [245, 245]
 ZS_list = [0, 2]
 
-ML_list = [245]
-ZL_list = [0]
-MS_list = [245]
-ZS_list = [0]
+# ML_list = [245]
+# ZL_list = [0]
+# MS_list = [245]
+# ZS_list = [0]
 
-uncert_ratio_dict = {}
-uncert_G_dict = {}
-uncert_GS_dict = {}
+# uncert_ratio_dict = {}
+# uncert_G_dict = {}
+# uncert_GS_dict = {}
 
 # for probe in probes:
 #     uncert_ratio_dict[probe] = {}
@@ -108,103 +111,215 @@ uncert_GS_dict = {}
 #                     uncert_G_dict[probe][ML][ZL][MS][ZS] = []
 #                     uncert_GS_dict[probe][ML][ZL][MS][ZS] = []
 
+# create pd dataframe
+fom_df = pd.DataFrame()
+
 for probe in probes:
     for ML, ZL, MS, ZS in zip(ML_list, ZL_list, MS_list, ZS_list):
+        for kmax_h_over_Mpc in cfg.general_cfg['kmax_list_h_over_Mpc']:
 
-        nparams_toplot = n_cosmo_params
+            assert params_tofix_dict['cosmo'] is False and params_tofix_dict['IA'] is False and \
+                   params_tofix_dict['galbias'] is False and params_tofix_dict['shearbias'] is False and \
+                   params_tofix_dict['dzWL'] is True and params_tofix_dict['dzGC'] is True, \
+                'the other cases are not implemented yet'
 
-        lmax = 3000
-        nbl = 29
-        if probe == 'WL':
-            lmax = 5000
-            nbl = 32
+            # these have to be initialized at every iteration
+            cases = []
+            nparams_toplot = n_cosmo_params
 
-        FM_Ellcuts_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output' \
-                          f'/Flagship_{flagship_version}/FM/BNT_True/ell_cuts_True'
-        FM_noEllcuts_path = FM_Ellcuts_path.replace('ell_cuts_True', 'ell_cuts_False')
-        FM_filename = f'FM_zbins{EP_or_ED}{zbins:02d}-ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}.pickle'
+            lmax = 3000
+            nbl = 29
+            if probe == 'WL':
+                lmax = 5000
+                nbl = 32
 
-        FM_Ellcuts_dict = mm.load_pickle(f'{FM_Ellcuts_path}/{FM_filename}')
-        FM_noEllcuts_dict = mm.load_pickle(f'{FM_noEllcuts_path}/{FM_filename}')
+            FM_Ellcuts_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output' \
+                              f'/Flagship_{flagship_version}/FM/BNT_True/ell_cuts_True'
+            FM_noEllcuts_path = FM_Ellcuts_path.replace('ell_cuts_True', 'ell_cuts_False')
+            FM_filename = f'FM_zbins{EP_or_ED}{zbins:02d}-ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}' \
+                          f'_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}.pickle'
 
-        # parameter names
-        param_names_dict = FM_noEllcuts_dict['param_names_dict']
-        fiducials_dict = FM_noEllcuts_dict['fiducials_dict']
+            FM_Ellcuts_dict = mm.load_pickle(f'{FM_Ellcuts_path}/{FM_filename}')
+            FM_noEllcuts_dict = mm.load_pickle(f'{FM_noEllcuts_path}/{FM_filename}')
 
-        assert param_names_dict == FM_Ellcuts_dict[
-            'param_names_dict'], 'param_names_dict not equal for Ellcuts and noEllcuts'
-        assert fiducials_dict == FM_Ellcuts_dict['fiducials_dict'], 'fiducials_dict not equal for Ellcuts and noEllcuts'
+            # remove 'param_names_' from the keys
+            FM_noEllcuts_dict['param_names_dict'] = {key.replace('param_names_', ''): value for key, value in
+                                                     FM_noEllcuts_dict['param_names_dict'].items()}
+            FM_Ellcuts_dict['param_names_dict'] = {key.replace('param_names_', ''): value for key, value in
+                                                   FM_Ellcuts_dict['param_names_dict'].items()}
+            FM_noEllcuts_dict['fiducial_values_dict'] = {key.replace('fid_', ''): value for key, value in
+                                                         FM_noEllcuts_dict['fiducial_values_dict'].items()}
+            FM_Ellcuts_dict['fiducial_values_dict'] = {key.replace('fid_', ''): value for key, value in
+                                                       FM_Ellcuts_dict['fiducial_values_dict'].items()}
 
-        # rename for convenience
-        FM_GO_Ellcuts = FM_Ellcuts_dict[f'FM_{probe}_GO']
-        FM_GS_Ellcuts = FM_Ellcuts_dict[f'FM_{probe}_GS']
-        FM_GO_noEllcuts = FM_noEllcuts_dict[f'FM_{probe}_GO']
-        FM_GS_noEllcuts = FM_noEllcuts_dict[f'FM_{probe}_GS']
+            # remove 3X2pt key from the dict
+            if '3x2pt' in FM_noEllcuts_dict['param_names_dict'].keys():
+                FM_noEllcuts_dict['param_names_dict'].pop('3x2pt')
+                FM_noEllcuts_dict['fiducial_values_dict'].pop('3x2pt')
 
-        # fix the desired parameters and remove null rows/columns
-        FM_GO_noEllcuts, param_names_list, fiducials_list = mm.mask_FM(FM_GO_noEllcuts, param_names_dict,
-                                                                       fiducials_dict, params_tofix_dict,
-                                                                       remove_null_rows_cols=True)
-        FM_GS_noEllcuts, _, _ = mm.mask_FM(FM_GS_noEllcuts, _all_param_names, _all_fiducials, n_cosmo_params, fix_IA,
-                                           fix_gal_bias)
-        FM_GO_Ellcuts, _, _ = mm.mask_FM(FM_GO_Ellcuts, _all_param_names, _all_fiducials, n_cosmo_params, fix_IA,
-                                         fix_gal_bias)
-        FM_GS_Ellcuts, _, _ = mm.mask_FM(FM_GS_Ellcuts, _all_param_names, _all_fiducials, n_cosmo_params, fix_IA,
-                                         fix_gal_bias)
-        wzwa_idx = [param_names_list.index('wz'), param_names_list.index('wa')]
-        assert len(fiducials_list) == len(
-            param_names_list), 'the fiducial values list and parameter names should have the same length'
+            if '3x2pt' in FM_Ellcuts_dict['param_names_dict'].keys():
+                FM_Ellcuts_dict['param_names_dict'].pop('3x2pt')
+                FM_Ellcuts_dict['fiducial_values_dict'].pop('3x2pt')
 
-        FMs = [FM_GO_noEllcuts, FM_GS_noEllcuts, FM_GO_Ellcuts, FM_GS_Ellcuts]
+            # parameter names
+            param_names_dict = FM_noEllcuts_dict['param_names_dict']
+            fiducial_values_dict = FM_noEllcuts_dict['fiducial_values_dict']
 
-        # cases = ['FM_GO_noEllcuts', 'FM_GS_noEllcuts', 'FM_GO_Ellcuts', 'FM_GS_Ellcuts', 'abs(percent_diff)']
-        cases = ['FM_GO_noEllcuts', 'FM_GO_Ellcuts', 'abs(percent_diff)']
-        # cases = ['FM_GO_noEllcuts', 'FM_GS_noEllcuts', 'abs(percent_diff)']
-        key_to_compare_A, key_to_compare_B = cases[1], cases[0]  # which cases to take the percent diff and ratio of
+            assert param_names_dict == FM_Ellcuts_dict['param_names_dict'], \
+                'param_names_dict not equal for Ellcuts and noEllcuts'
+            for key in fiducial_values_dict.keys():
+                assert np.all(fiducial_values_dict[key] == FM_Ellcuts_dict['fiducial_values_dict'][key]), \
+                    'fiducial_values_dict not equal for Ellcuts and noEllcuts'
 
-        data = []
-        fom = {}
-        uncert = {}
-        for FM, case in zip(FMs, cases):
-            uncert[case] = np.asarray(
-                mm.uncertainties_FM(FM, nparams=nparams_toplot, fiducials=fiducials_list[:nparams_toplot],
-                                    which_uncertainty=which_uncertainty, normalize=True))
-            fom[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_idx) / 10
-            print(f'FoM({probe}, {case}): {fom[case]}')
+            # rename for convenience
+            FM_GO_Ellcuts = FM_Ellcuts_dict[f'FM_{probe}_GO']
+            FM_GS_Ellcuts = FM_Ellcuts_dict[f'FM_{probe}_GS']
+            FM_GO_noEllcuts = FM_noEllcuts_dict[f'FM_{probe}_GO']
+            FM_GS_noEllcuts = FM_noEllcuts_dict[f'FM_{probe}_GS']
 
-        uncert['abs(percent_diff)'] = np.abs(diff_funct(uncert[key_to_compare_A], uncert[key_to_compare_B]))
-        uncert['ratio'] = uncert[key_to_compare_A] / uncert[key_to_compare_B]
+            # fix the desired parameters and remove null rows/columns
+            FM_GO_noEllcuts, param_names_list, fiducials_list = mm.mask_FM(FM_GO_noEllcuts, param_names_dict,
+                                                                           fiducial_values_dict, params_tofix_dict)
+            FM_GS_noEllcuts, _, _ = mm.mask_FM(FM_GS_noEllcuts, param_names_dict, fiducial_values_dict,
+                                               params_tofix_dict)
+            FM_GO_Ellcuts, _, _ = mm.mask_FM(FM_GO_Ellcuts, param_names_dict, fiducial_values_dict, params_tofix_dict)
+            FM_GS_Ellcuts, _, _ = mm.mask_FM(FM_GS_Ellcuts, param_names_dict, fiducial_values_dict, params_tofix_dict)
 
-        for case in cases:
-            data.append(uncert[case])
+            wzwa_idx = [param_names_list.index('wz'), param_names_list.index('wa')]
 
-        # # store uncertainties in dictionaries to easily retrieve them in the different cases
-        # uncert_G_dict[probe][ML][ZL][MS][ZS] = uncert['G']
-        # uncert_GS_dict[probe][ML][ZL][MS][ZS] = uncert['GS']
-        # uncert_ratio_dict[probe][ML][ZL][MS][ZS] = uncert['ratio']
-        # # append the FoM values at the end of the array
-        # uncert_ratio_dict[probe][ML][ZL][MS][ZS] = np.append(
-        #     uncert_ratio_dict[probe][ML][ZL][MS][ZS], fom['GS'] / fom['G'])
 
-        data = np.asarray(data)
-        param_names_label = param_names_list[:nparams_toplot]
+            assert FM_GO_noEllcuts.shape[0] == len(param_names_list) == len(fiducials_list), \
+                'the number of rows should be equal to the number of parameters and fiducials'
 
-        if plot_fom:
-            fom_array = np.array([fom[key_to_compare_A], fom[key_to_compare_B],
-                                  np.abs(mm.percent_diff(fom[key_to_compare_A], fom[key_to_compare_B]))])
-            param_names_label += ['FoM/10']
-            nparams_toplot += 1
-            data = np.column_stack((data, fom_array))
 
-        title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
-        title += f'\nML = {ML / 10}, MS = {MS / 10}, ZL = {ZL / 10}, ZS = {ZS / 10}, zmax = {zmax / 10}'
+            FMs = [FM_GO_noEllcuts, FM_GO_Ellcuts, FM_GS_noEllcuts, FM_GS_Ellcuts]
+            cases = ['FM_GO_noEllcuts', 'FM_GO_Ellcuts', 'FM_GS_noEllcuts', 'FM_GS_Ellcuts']
+            cases += ['abs(percent_diff)']
 
-        plot_utils.bar_plot(data[:, :nparams_toplot], title, cases, nparams=nparams_toplot,
-                            param_names_label=param_names_label, bar_width=0.15)
+            # ! priors on shear bias
+            if shear_bias_priors:
+                shear_bias_1st_idx = param_names_list.index('m01')
+                shear_bias_last_idx = param_names_list.index(f'm{zbins:02}')
+                prior = np.zeros(FM_GO_Ellcuts.shape)
+                for i in range(shear_bias_1st_idx, shear_bias_last_idx + 1):
+                    prior[i, i] = (5e-4)**-2
+                FMs = [FM + prior for FM in FMs]
 
-        # plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
-        #                        f'bar_plot_{probe}_ellmax{lmax}_zbins{EP_or_ED}{zbins:02}'
-        #                        f'_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.png')
+            key_to_compare_A, key_to_compare_B = cases[0], cases[1]  # which cases to take the percent diff and ratio of
 
-# probe = '3x2pt'
-# for kmax_h_over_Mpc in cfg.general_cfg['kmax_list_h/Mpc']:
+            data = []
+            fom_dict = {}
+            uncert_dict = {}
+            for FM, case in zip(FMs, cases):
+                uncert_dict[case] = np.asarray(
+                    mm.uncertainties_FM(FM, nparams=nparams_toplot, fiducials=fiducials_list[:nparams_toplot],
+                                        which_uncertainty=which_uncertainty, normalize=True))
+                fom_dict[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_idx)
+                print(f'FoM({probe}, {case}): {fom_dict[case]}')
+
+            uncert_dict['abs(percent_diff)'] = np.abs(
+                diff_funct(uncert_dict[key_to_compare_A], uncert_dict[key_to_compare_B]))
+            uncert_dict['ratio'] = uncert_dict[key_to_compare_A] / uncert_dict[key_to_compare_B]
+
+            for case in cases:
+                data.append(uncert_dict[case])
+
+            # # store uncertainties in dictionaries to easily retrieve them in the different cases
+            # uncert_G_dict[probe][ML][ZL][MS][ZS] = uncert_dict['G']
+            # uncert_GS_dict[probe][ML][ZL][MS][ZS] = uncert_dict['GS']
+            # uncert_ratio_dict[probe][ML][ZL][MS][ZS] = uncert_dict['ratio']
+            # # append the FoM values at the end of the array
+            # uncert_ratio_dict[probe][ML][ZL][MS][ZS] = np.append(
+            #     uncert_ratio_dict[probe][ML][ZL][MS][ZS], fom_dict['GS'] / fom_dict['G'])
+
+            data = np.asarray(data)
+            param_names_label = param_names_list[:nparams_toplot]
+
+            if plot_fom:
+                fom_array = np.array([fom_dict[key_to_compare_A], fom_dict[key_to_compare_B],
+                                      np.abs(mm.percent_diff(fom_dict[key_to_compare_A], fom_dict[key_to_compare_B]))])
+
+                if divide_fom_by_10:
+                    fom_array[0] /= 10
+                    fom_array[1] /= 10
+                    param_names_label += ['FoM/10']
+                else:
+                    param_names_label += ['FoM']
+
+                nparams_toplot += 1
+                data = np.column_stack((data, fom_array))
+
+            print('kmax, fom_dict[key_to_compare_B]:', kmax_h_over_Mpc, fom_dict[key_to_compare_B])
+
+            fom_list = [probe, ML, ZL, MS, ZS, kmax_h_over_Mpc, fom_dict[cases[0]], fom_dict[cases[1]],
+                        fom_dict[cases[2]], fom_dict[cases[3]]]
+            fom_df = fom_df.append(pd.DataFrame([fom_list], columns=['probe', 'ML', 'ZL', 'MS', 'ZS', 'kmax_h_over_Mpc',
+                                                                     'FM_GO_noEllcuts',
+                                                                     'FM_GO_Ellcuts',
+                                                                     'FM_GS_noEllcuts',
+                                                                     'FM_GS_Ellcuts']), ignore_index=True)
+
+            title = '%s, $\\ k_{\\rm max}[h/Mpc] = %.2f$, zbins %s%i$' % (probe, kmax_h_over_Mpc, EP_or_ED, zbins)
+            title += f'\nML = {ML / 10}, MS = {MS / 10}, ZL = {ZL / 10}, ZS = {ZS / 10}, zmax = {zmax / 10}'
+
+            # plot_utils.bar_plot(data[:, :nparams_toplot], title, cases, nparams=nparams_toplot,
+            #                     param_names_label=param_names_label, bar_width=0.15)
+
+            # plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
+            #                        f'bar_plot_{probe}_ellmax{lmax}_zbins{EP_or_ED}{zbins:02}'
+            #                        f'_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.png')
+
+
+fom_df_zmin00 = fom_df.loc[fom_df['ZL'] == 0]
+fom_df_zmin02 = fom_df.loc[fom_df['ZL'] == 2]
+title = '%s (no GCsp), zbins %s%i, BNT transform ' \
+        f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0, zmax = {zmax / 10}' \
+        '\nprior on $\\sigma(m) = 5 \\times 10^{-4}$' \
+        '\n ${\\rm dzWL, dzGCph}$ fixed' % (probe, EP_or_ED, zbins)
+plt.figure(figsize=(12, 10))
+plt.title(title)
+plt.plot(fom_df_zmin00['kmax_h_over_Mpc'] / 0.67, fom_df_zmin00['FM_GO_Ellcuts'], label='FoM G', marker='o', c='tab:blue')
+plt.plot(fom_df_zmin00['kmax_h_over_Mpc'] / 0.67, fom_df_zmin00['FM_GS_Ellcuts'], label='FoM GS', marker='o', c='tab:orange')
+plt.axhline(fom_df_zmin00['FM_GO_noEllcuts'][0], label='FoM G, $\\ell_{\\rm max} = 3000 \\; \\forall z_i, z_j$', ls='--', color='tab:blue')
+plt.axhline(fom_df_zmin00['FM_GS_noEllcuts'][0], label='FoM GS, $\\ell_{\\rm max} = 3000 \\; \\forall z_i, z_j$', ls='--', color='tab:orange')
+plt.xlabel("$k_{\\rm max}[1/Mpc]$")
+plt.ylabel("FoM")
+plt.ylim(0, 460)
+plt.legend()
+plt.grid()
+plt.show()
+plt.tight_layout()
+
+plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
+                       f'FoM_vs_kmax_{probe}_zbins{EP_or_ED}{zbins:02}'
+                       f'ML{ML:03d}_MS{MS:03d}_zmin0.png')
+
+
+
+title = '%s (no GCsp), zbins %s%i, BNT transform ' \
+        f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0.2, zmax = {zmax / 10}' \
+        '\nprior on $\\sigma(m) = 5 \\times 10^{-4}$' \
+        '\n ${\\rm dzWL, dzGCph}$ fixed' % (probe, EP_or_ED, zbins)
+plt.figure(figsize=(12, 10))
+plt.title(title)
+plt.plot(fom_df_zmin02['kmax_h_over_Mpc'] / 0.67, fom_df_zmin02['FM_GO_Ellcuts'], label='FoM G', marker='o', ls='-', c='tab:blue')
+plt.plot(fom_df_zmin02['kmax_h_over_Mpc'] / 0.67, fom_df_zmin02['FM_GS_Ellcuts'], label='FoM GS', marker='o', ls='-', c='tab:orange')
+plt.axhline(fom_df_zmin02['FM_GO_noEllcuts'][12], label='FoM G, $\\ell_{\\rm max} = 3000 \\; \\forall z_i, z_j$', ls='--', color='tab:blue')
+plt.axhline(fom_df_zmin02['FM_GS_noEllcuts'][12], label='FoM GS, $\\ell_{\\rm max} = 3000 \\; \\forall z_i, z_j$', ls='--', color='tab:orange')
+
+plt.xlabel("$k_{\\rm max}[1/Mpc]$")
+plt.ylabel("FoM")
+plt.ylim(0, 340)
+plt.legend()
+plt.grid()
+plt.show()
+plt.tight_layout()
+plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
+                       f'FoM_vs_kmax_{probe}_zbins{EP_or_ED}{zbins:02}'
+                       f'ML{ML:03d}_MS{MS:03d}_zmin0.2.png')
+
+
+# vincenzo's cuts
+
+
+

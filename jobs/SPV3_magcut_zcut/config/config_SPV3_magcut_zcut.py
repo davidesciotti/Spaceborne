@@ -129,7 +129,7 @@ FM_cfg = {
     'save_FM_txt': True,
     'save_FM_dict': True,
     'nparams_tot': 20,  # total (cosmo + nuisance) number of parameters
-    'paramnames_3x2pt': None,  # ! for the time being, these are defined in the main and then passed here
+    'param_names_3x2pt': None,  # ! for the time being, these are defined in the main and then passed here
     'save_FM_as_dict': True,
     'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_False/' +
                           'ML{magcut_lens:03d}ZL{zcut_lens:02d}MS{magcut_source:03d}ZS{zcut_source:02d}',

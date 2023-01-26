@@ -35,14 +35,12 @@ markersize = 10
 ########################################################################################################################
 
 # ! options
+h = h
 zbins = 13
-zbins_list = np.array((zbins,), dtype=int)
 probes = ('3x2pt',)
-model = 'flat'
+model = 'nonflat'
 which_diff = 'normal'
 flagship_version = 2
-check_old_FM = False
-pes_opt = 'opt'
 which_uncertainty = 'marginal'
 bar_plot_cosmo = True
 triangle_plot = False
@@ -50,7 +48,7 @@ bar_plot_nuisance = False
 dpi = 500
 zmax = 25
 EP_or_ED = 'ED'
-n_cosmo_params = 8
+n_cosmo_params = 7
 pic_format = 'pdf'
 plot_fom = False
 divide_fom_by_10 = False
@@ -71,6 +69,9 @@ if which_diff == 'normal':
 else:
     diff_funct = mm.percent_diff_mean
 
+if model == 'nonflat':
+    n_cosmo_params += 1
+
 # ML_list = [230, 230, 245, 245]
 # ZL_list = [0, 2, 0, 2]
 # MS_list = [245, 245, 245, 245]
@@ -86,36 +87,12 @@ ZS_list = [0, 2]
 # MS_list = [245]
 # ZS_list = [0]
 
-# uncert_ratio_dict = {}
-# uncert_G_dict = {}
-# uncert_GS_dict = {}
-
-# for probe in probes:
-#     uncert_ratio_dict[probe] = {}
-#     uncert_G_dict[probe] = {}
-#     uncert_GS_dict[probe] = {}
-#     for ML in ML_list:
-#         uncert_ratio_dict[probe][ML] = {}
-#         uncert_G_dict[probe][ML] = {}
-#         uncert_GS_dict[probe][ML] = {}
-#         for ZL in ZL_list:
-#             uncert_ratio_dict[probe][ML][ZL] = {}
-#             uncert_G_dict[probe][ML][ZL] = {}
-#             uncert_GS_dict[probe][ML][ZL] = {}
-#             for MS in MS_list:
-#                 uncert_ratio_dict[probe][ML][ZL][MS] = {}
-#                 uncert_G_dict[probe][ML][ZL][MS] = {}
-#                 uncert_GS_dict[probe][ML][ZL][MS] = {}
-#                 for ZS in ZS_list:
-#                     uncert_ratio_dict[probe][ML][ZL][MS][ZS] = []
-#                     uncert_G_dict[probe][ML][ZL][MS][ZS] = []
-#                     uncert_GS_dict[probe][ML][ZL][MS][ZS] = []
-
 # create pd dataframe
 fom_df = pd.DataFrame()
 
 for probe in probes:
     for ML, ZL, MS, ZS in zip(ML_list, ZL_list, MS_list, ZS_list):
+        k_counter = 0
         for kmax_h_over_Mpc in cfg.general_cfg['kmax_list_h_over_Mpc']:
 
             assert params_tofix_dict['cosmo'] is False and params_tofix_dict['IA'] is False and \
@@ -138,9 +115,18 @@ for probe in probes:
             FM_noEllcuts_path = FM_Ellcuts_path.replace('ell_cuts_True', 'ell_cuts_False')
             FM_filename = f'FM_zbins{EP_or_ED}{zbins:02d}-ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}' \
                           f'_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}.pickle'
-
             FM_Ellcuts_dict = mm.load_pickle(f'{FM_Ellcuts_path}/{FM_filename}')
             FM_noEllcuts_dict = mm.load_pickle(f'{FM_noEllcuts_path}/{FM_filename}')
+
+            kmax_1_over_Mpc_filename = np.array((25, 50, 75, 100, 125, 150, 175, 200, 300, 400, 500, 1000), dtype=int)
+            FM_GS_kcuts_vinc = np.genfromtxt(
+                '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022'
+                '/Flagship_2/TestKappaMax/'
+                f'fm-3x2pt-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-ED13-'
+                f'kM{kmax_1_over_Mpc_filename[k_counter]:03d}.dat')
+
+            # brutal cut of last 13 dz params
+            FM_GS_kcuts_vinc = FM_GS_kcuts_vinc[:-zbins, :-zbins]
 
             # remove 'param_names_' from the keys
             FM_noEllcuts_dict['param_names_dict'] = {key.replace('param_names_', ''): value for key, value in
@@ -187,14 +173,12 @@ for probe in probes:
 
             wzwa_idx = [param_names_list.index('wz'), param_names_list.index('wa')]
 
-
             assert FM_GO_noEllcuts.shape[0] == len(param_names_list) == len(fiducials_list), \
                 'the number of rows should be equal to the number of parameters and fiducials'
 
-
-            FMs = [FM_GO_noEllcuts, FM_GO_Ellcuts, FM_GS_noEllcuts, FM_GS_Ellcuts]
-            cases = ['FM_GO_noEllcuts', 'FM_GO_Ellcuts', 'FM_GS_noEllcuts', 'FM_GS_Ellcuts']
-            cases += ['abs(percent_diff)']
+            FMs = [FM_GO_noEllcuts, FM_GO_Ellcuts, FM_GS_noEllcuts, FM_GS_Ellcuts, FM_GS_kcuts_vinc]
+            cases = ['FM_GO_noEllcuts', 'FM_GO_Ellcuts', 'FM_GS_noEllcuts', 'FM_GS_Ellcuts', 'FM_GS_kcuts_vinc']
+            # cases += ['abs(percent_diff)']
 
             # ! priors on shear bias
             if shear_bias_priors:
@@ -202,7 +186,7 @@ for probe in probes:
                 shear_bias_last_idx = param_names_list.index(f'm{zbins:02}')
                 prior = np.zeros(FM_GO_Ellcuts.shape)
                 for i in range(shear_bias_1st_idx, shear_bias_last_idx + 1):
-                    prior[i, i] = (5e-4)**-2
+                    prior[i, i] = 5e-4 ** -2
                 FMs = [FM + prior for FM in FMs]
 
             key_to_compare_A, key_to_compare_B = cases[0], cases[1]  # which cases to take the percent diff and ratio of
@@ -251,13 +235,17 @@ for probe in probes:
 
             print('kmax, fom_dict[key_to_compare_B]:', kmax_h_over_Mpc, fom_dict[key_to_compare_B])
 
-            fom_list = [probe, ML, ZL, MS, ZS, kmax_h_over_Mpc, fom_dict[cases[0]], fom_dict[cases[1]],
-                        fom_dict[cases[2]], fom_dict[cases[3]]]
-            fom_df = fom_df.append(pd.DataFrame([fom_list], columns=['probe', 'ML', 'ZL', 'MS', 'ZS', 'kmax_h_over_Mpc',
-                                                                     'FM_GO_noEllcuts',
-                                                                     'FM_GO_Ellcuts',
-                                                                     'FM_GS_noEllcuts',
-                                                                     'FM_GS_Ellcuts']), ignore_index=True)
+            fom_list = [probe, ML, ZL, MS, ZS, kmax_h_over_Mpc, kmax_h_over_Mpc / h, fom_dict[cases[0]],
+                        fom_dict[cases[1]],
+                        fom_dict[cases[2]], fom_dict[cases[3]], fom_dict[cases[4]]]
+            fom_df = fom_df.append(
+                pd.DataFrame([fom_list], columns=['probe', 'ML', 'ZL', 'MS', 'ZS',
+                                                  'kmax_h_over_Mpc', 'kmax_1_over_Mpc',
+                                                  'FM_GO_noEllcuts',
+                                                  'FM_GO_Ellcuts',
+                                                  'FM_GS_noEllcuts',
+                                                  'FM_GS_Ellcuts',
+                                                  'FM_GS_kcuts_vinc']), ignore_index=True)
 
             title = '%s, $\\ k_{\\rm max}[h/Mpc] = %.2f$, zbins %s%i$' % (probe, kmax_h_over_Mpc, EP_or_ED, zbins)
             title += f'\nML = {ML / 10}, MS = {MS / 10}, ZL = {ZL / 10}, ZS = {ZS / 10}, zmax = {zmax / 10}'
@@ -268,33 +256,37 @@ for probe in probes:
             # plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
             #                        f'bar_plot_{probe}_ellmax{lmax}_zbins{EP_or_ED}{zbins:02}'
             #                        f'_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.png')
-
+            k_counter += 1
 
 fom_df_zmin00 = fom_df.loc[fom_df['ZL'] == 0]
 fom_df_zmin02 = fom_df.loc[fom_df['ZL'] == 2]
-title = '%s (no GCsp), zbins %s%i, BNT transform ' \
+
+title = '%s (no GCsp), zbins %s%i, BNT transform' \
         f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0, zmax = {zmax / 10}' \
         '\nprior on $\\sigma(m) = 5 \\times 10^{-4}$' \
         '\n ${\\rm dzWL, dzGCph}$ fixed' % (probe, EP_or_ED, zbins)
-plt.figure(figsize=(12, 10))
-plt.title(title)
-plt.plot(fom_df_zmin00['kmax_h_over_Mpc'] / 0.67, fom_df_zmin00['FM_GO_Ellcuts'], label='FoM G', marker='o', c='tab:blue')
-plt.plot(fom_df_zmin00['kmax_h_over_Mpc'] / 0.67, fom_df_zmin00['FM_GS_Ellcuts'], label='FoM GS', marker='o', c='tab:orange')
-plt.axhline(fom_df_zmin00['FM_GO_noEllcuts'][0], label='FoM G, $\\ell_{\\rm max} = 3000 \\; \\forall z_i, z_j$', ls='--', color='tab:blue')
-plt.axhline(fom_df_zmin00['FM_GS_noEllcuts'][0], label='FoM GS, $\\ell_{\\rm max} = 3000 \\; \\forall z_i, z_j$', ls='--', color='tab:orange')
-plt.xlabel("$k_{\\rm max}[1/Mpc]$")
-plt.ylabel("FoM")
-plt.ylim(0, 460)
-plt.legend()
-plt.grid()
-plt.show()
-plt.tight_layout()
-
-plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
-                       f'FoM_vs_kmax_{probe}_zbins{EP_or_ED}{zbins:02}'
-                       f'ML{ML:03d}_MS{MS:03d}_zmin0.png')
 
 
+def plot_from_dataframe(fom_df, key_1, key_2, key_3, key_4, title, constant_fom_idx, save):
+
+    ellmax3000_TeX = '$\\ell_{\\rm max} = 3000 \\; \\forall z_i, z_j$'
+    plt.figure(figsize=(12, 10))
+    plt.title(title)
+    plt.plot(fom_df['kmax_1_over_Mpc'], fom_df[key_1], label='FoM G', marker='o', c='tab:blue')
+    plt.plot(fom_df['kmax_1_over_Mpc'], fom_df[key_2], label='FoM GS', marker='o', c='tab:orange')
+    plt.axhline(fom_df[key_3][constant_fom_idx], label=f'FoM G, {ellmax3000_TeX}', ls='--', color='tab:blue')
+    plt.axhline(fom_df[key_4][constant_fom_idx], label=f'FoM GS, {ellmax3000_TeX}', ls='--', color='tab:orange')
+    plt.xlabel("$k_{\\rm max}[1/Mpc]$")
+    plt.ylabel("FoM")
+    plt.legend()
+    plt.grid()
+    plt.show()
+    plt.tight_layout()
+
+    if save:
+        plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
+                               f'FoM_vs_kmax_{probe}_zbins{EP_or_ED}{zbins:02}'
+                               f'ML{ML:03d}_MS{MS:03d}_zmin0.png')
 
 title = '%s (no GCsp), zbins %s%i, BNT transform ' \
         f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0.2, zmax = {zmax / 10}' \
@@ -302,10 +294,14 @@ title = '%s (no GCsp), zbins %s%i, BNT transform ' \
         '\n ${\\rm dzWL, dzGCph}$ fixed' % (probe, EP_or_ED, zbins)
 plt.figure(figsize=(12, 10))
 plt.title(title)
-plt.plot(fom_df_zmin02['kmax_h_over_Mpc'] / 0.67, fom_df_zmin02['FM_GO_Ellcuts'], label='FoM G', marker='o', ls='-', c='tab:blue')
-plt.plot(fom_df_zmin02['kmax_h_over_Mpc'] / 0.67, fom_df_zmin02['FM_GS_Ellcuts'], label='FoM GS', marker='o', ls='-', c='tab:orange')
-plt.axhline(fom_df_zmin02['FM_GO_noEllcuts'][12], label='FoM G, $\\ell_{\\rm max} = 3000 \\; \\forall z_i, z_j$', ls='--', color='tab:blue')
-plt.axhline(fom_df_zmin02['FM_GS_noEllcuts'][12], label='FoM GS, $\\ell_{\\rm max} = 3000 \\; \\forall z_i, z_j$', ls='--', color='tab:orange')
+plt.plot(fom_df_zmin02['kmax_h_over_Mpc'] / h, fom_df_zmin02['FM_GO_Ellcuts'], label='FoM G', marker='o', ls='-',
+         c='tab:blue')
+plt.plot(fom_df_zmin02['kmax_h_over_Mpc'] / h, fom_df_zmin02['FM_GS_Ellcuts'], label='FoM GS', marker='o', ls='-',
+         c='tab:orange')
+plt.axhline(fom_df_zmin02['FM_GO_noEllcuts'][12], label='FoM G, $\\ell_{\\rm max} = 3000 \\; \\forall z_i, z_j$',
+            ls='--', color='tab:blue')
+plt.axhline(fom_df_zmin02['FM_GS_noEllcuts'][12], label='FoM GS, $\\ell_{\\rm max} = 3000 \\; \\forall z_i, z_j$',
+            ls='--', color='tab:orange')
 
 plt.xlabel("$k_{\\rm max}[1/Mpc]$")
 plt.ylabel("FoM")
@@ -318,8 +314,24 @@ plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
                        f'FoM_vs_kmax_{probe}_zbins{EP_or_ED}{zbins:02}'
                        f'ML{ML:03d}_MS{MS:03d}_zmin0.2.png')
 
-
 # vincenzo's cuts
+title = '%s (no GCsp), zbins %s%i, BNT transform ' \
+        f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0, zmax = {zmax / 10}' \
+        '\nprior on $\\sigma(m) = 5 \\times 10^{-4}$' \
+        '\n ${\\rm dzWL, dzGCph}$ fixed' % (probe, EP_or_ED, zbins)
+plt.figure(figsize=(12, 10))
+plt.title(title)
+plt.plot(fom_df_zmin00['kmax_h_over_Mpc'] / h, fom_df_zmin00['FM_GS_Ellcuts'], label='FoM GS, BNT cuts', marker='o',
+         c='tab:blue')
+plt.plot(fom_df_zmin00['kmax_h_over_Mpc'] / h, fom_df_zmin00['FM_GS_kcuts_vinc'], label='FoM GS, k cuts', marker='o',
+         c='tab:orange')
+plt.xlabel("$k_{\\rm max}[1/Mpc]$")
+plt.ylabel("FoM")
+plt.legend()
+plt.grid()
+plt.show()
+plt.tight_layout()
 
-
-
+plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
+                       f'FoM_vs_kmax_{probe}_zbins{EP_or_ED}{zbins:02}'
+                       f'ML{ML:03d}_MS{MS:03d}_zmin0_kcuts_vincenzo.png')

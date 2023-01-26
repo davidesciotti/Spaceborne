@@ -35,7 +35,7 @@ markersize = 10
 ########################################################################################################################
 
 # ! options
-h = h
+h = 0.67
 zbins = 13
 probes = ('3x2pt',)
 model = 'nonflat'
@@ -261,21 +261,16 @@ for probe in probes:
 fom_df_zmin00 = fom_df.loc[fom_df['ZL'] == 0]
 fom_df_zmin02 = fom_df.loc[fom_df['ZL'] == 2]
 
-title = '%s (no GCsp), zbins %s%i, BNT transform' \
-        f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0, zmax = {zmax / 10}' \
-        '\nprior on $\\sigma(m) = 5 \\times 10^{-4}$' \
-        '\n ${\\rm dzWL, dzGCph}$ fixed' % (probe, EP_or_ED, zbins)
 
-
-def plot_from_dataframe(fom_df, key_1, key_2, key_3, key_4, title, constant_fom_idx, save):
-
+def plot_from_dataframe(fom_df, key_1, key_2, key_3, key_4, constant_fom_idx, plot_hlines, title, save, filemane_suffix):
     ellmax3000_TeX = '$\\ell_{\\rm max} = 3000 \\; \\forall z_i, z_j$'
     plt.figure(figsize=(12, 10))
     plt.title(title)
     plt.plot(fom_df['kmax_1_over_Mpc'], fom_df[key_1], label='FoM G', marker='o', c='tab:blue')
     plt.plot(fom_df['kmax_1_over_Mpc'], fom_df[key_2], label='FoM GS', marker='o', c='tab:orange')
-    plt.axhline(fom_df[key_3][constant_fom_idx], label=f'FoM G, {ellmax3000_TeX}', ls='--', color='tab:blue')
-    plt.axhline(fom_df[key_4][constant_fom_idx], label=f'FoM GS, {ellmax3000_TeX}', ls='--', color='tab:orange')
+    if plot_hlines:
+        plt.axhline(fom_df[key_3][constant_fom_idx], label=f'FoM G, {ellmax3000_TeX}', ls='--', color='tab:blue')
+        plt.axhline(fom_df[key_4][constant_fom_idx], label=f'FoM GS, {ellmax3000_TeX}', ls='--', color='tab:orange')
     plt.xlabel("$k_{\\rm max}[1/Mpc]$")
     plt.ylabel("FoM")
     plt.legend()
@@ -286,52 +281,31 @@ def plot_from_dataframe(fom_df, key_1, key_2, key_3, key_4, title, constant_fom_
     if save:
         plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
                                f'FoM_vs_kmax_{probe}_zbins{EP_or_ED}{zbins:02}'
-                               f'ML{ML:03d}_MS{MS:03d}_zmin0.png')
+                               f'ML{ML:03d}_MS{MS:03d}_{filemane_suffix}.png')
+
+
+title = '%s (no GCsp), zbins %s%i, BNT transform' \
+        f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0, zmax = {zmax / 10}' \
+        '\nprior on $\\sigma(m) = 5 \\times 10^{-4}$' \
+        '\n ${\\rm dzWL, dzGCph}$ fixed' % (probe, EP_or_ED, zbins)
+
+plot_from_dataframe(fom_df.loc[fom_df['ZL'] == 0], 'FM_GO_Ellcuts', 'FM_GS_Ellcuts',
+                    'FM_GO_noEllcuts', 'FM_GS_noEllcuts', 0, True, title, True, 'zmin00')
+
 
 title = '%s (no GCsp), zbins %s%i, BNT transform ' \
         f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0.2, zmax = {zmax / 10}' \
         '\nprior on $\\sigma(m) = 5 \\times 10^{-4}$' \
         '\n ${\\rm dzWL, dzGCph}$ fixed' % (probe, EP_or_ED, zbins)
-plt.figure(figsize=(12, 10))
-plt.title(title)
-plt.plot(fom_df_zmin02['kmax_h_over_Mpc'] / h, fom_df_zmin02['FM_GO_Ellcuts'], label='FoM G', marker='o', ls='-',
-         c='tab:blue')
-plt.plot(fom_df_zmin02['kmax_h_over_Mpc'] / h, fom_df_zmin02['FM_GS_Ellcuts'], label='FoM GS', marker='o', ls='-',
-         c='tab:orange')
-plt.axhline(fom_df_zmin02['FM_GO_noEllcuts'][12], label='FoM G, $\\ell_{\\rm max} = 3000 \\; \\forall z_i, z_j$',
-            ls='--', color='tab:blue')
-plt.axhline(fom_df_zmin02['FM_GS_noEllcuts'][12], label='FoM GS, $\\ell_{\\rm max} = 3000 \\; \\forall z_i, z_j$',
-            ls='--', color='tab:orange')
+plot_from_dataframe(fom_df.loc[fom_df['ZL'] == 2], 'FM_GO_Ellcuts', 'FM_GS_Ellcuts',
+                    'FM_GO_noEllcuts', 'FM_GS_noEllcuts', 12, True, title, True, 'zmin02')
 
-plt.xlabel("$k_{\\rm max}[1/Mpc]$")
-plt.ylabel("FoM")
-plt.ylim(0, 340)
-plt.legend()
-plt.grid()
-plt.show()
-plt.tight_layout()
-plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
-                       f'FoM_vs_kmax_{probe}_zbins{EP_or_ED}{zbins:02}'
-                       f'ML{ML:03d}_MS{MS:03d}_zmin0.2.png')
 
-# vincenzo's cuts
 title = '%s (no GCsp), zbins %s%i, BNT transform ' \
         f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0, zmax = {zmax / 10}' \
         '\nprior on $\\sigma(m) = 5 \\times 10^{-4}$' \
         '\n ${\\rm dzWL, dzGCph}$ fixed' % (probe, EP_or_ED, zbins)
-plt.figure(figsize=(12, 10))
-plt.title(title)
-plt.plot(fom_df_zmin00['kmax_h_over_Mpc'] / h, fom_df_zmin00['FM_GS_Ellcuts'], label='FoM GS, BNT cuts', marker='o',
-         c='tab:blue')
-plt.plot(fom_df_zmin00['kmax_h_over_Mpc'] / h, fom_df_zmin00['FM_GS_kcuts_vinc'], label='FoM GS, k cuts', marker='o',
-         c='tab:orange')
-plt.xlabel("$k_{\\rm max}[1/Mpc]$")
-plt.ylabel("FoM")
-plt.legend()
-plt.grid()
-plt.show()
-plt.tight_layout()
+plot_from_dataframe(fom_df.loc[fom_df['ZL'] == 0], 'FM_GS_Ellcuts', 'FM_GS_kcuts_vinc',
+                    'FM_GO_noEllcuts', 'FM_GS_noEllcuts', 12, False, title, True, 'zmin00_vincenzos_kcuts')
 
-plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
-                       f'FoM_vs_kmax_{probe}_zbins{EP_or_ED}{zbins:02}'
-                       f'ML{ML:03d}_MS{MS:03d}_zmin0_kcuts_vincenzo.png')
+

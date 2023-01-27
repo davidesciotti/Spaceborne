@@ -87,7 +87,6 @@ ZS_list = [0, 2]
 # MS_list = [245]
 # ZS_list = [0]
 
-# create pd dataframe
 fom_df = pd.DataFrame()
 
 for probe in probes:
@@ -208,14 +207,6 @@ for probe in probes:
             for case in cases:
                 data.append(uncert_dict[case])
 
-            # # store uncertainties in dictionaries to easily retrieve them in the different cases
-            # uncert_G_dict[probe][ML][ZL][MS][ZS] = uncert_dict['G']
-            # uncert_GS_dict[probe][ML][ZL][MS][ZS] = uncert_dict['GS']
-            # uncert_ratio_dict[probe][ML][ZL][MS][ZS] = uncert_dict['ratio']
-            # # append the FoM values at the end of the array
-            # uncert_ratio_dict[probe][ML][ZL][MS][ZS] = np.append(
-            #     uncert_ratio_dict[probe][ML][ZL][MS][ZS], fom_dict['GS'] / fom_dict['G'])
-
             data = np.asarray(data)
             param_names_label = param_names_list[:nparams_toplot]
 
@@ -262,7 +253,8 @@ fom_df_zmin00 = fom_df.loc[fom_df['ZL'] == 0]
 fom_df_zmin02 = fom_df.loc[fom_df['ZL'] == 2]
 
 
-def plot_from_dataframe(fom_df, key_1, key_2, key_3, key_4, constant_fom_idx, plot_hlines, title, save, filemane_suffix):
+def plot_from_dataframe(fom_df, key_1, key_2, key_3, key_4, constant_fom_idx, plot_hlines, title, save,
+                        filemane_suffix):
     ellmax3000_TeX = '$\\ell_{\\rm max} = 3000 \\; \\forall z_i, z_j$'
     plt.figure(figsize=(12, 10))
     plt.title(title)
@@ -292,7 +284,6 @@ title = '%s (no GCsp), zbins %s%i, BNT transform' \
 plot_from_dataframe(fom_df.loc[fom_df['ZL'] == 0], 'FM_GO_Ellcuts', 'FM_GS_Ellcuts',
                     'FM_GO_noEllcuts', 'FM_GS_noEllcuts', 0, True, title, True, 'zmin00')
 
-
 title = '%s (no GCsp), zbins %s%i, BNT transform ' \
         f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0.2, zmax = {zmax / 10}' \
         '\nprior on $\\sigma(m) = 5 \\times 10^{-4}$' \
@@ -300,12 +291,9 @@ title = '%s (no GCsp), zbins %s%i, BNT transform ' \
 plot_from_dataframe(fom_df.loc[fom_df['ZL'] == 2], 'FM_GO_Ellcuts', 'FM_GS_Ellcuts',
                     'FM_GO_noEllcuts', 'FM_GS_noEllcuts', 12, True, title, True, 'zmin02')
 
-
 title = '%s (no GCsp), zbins %s%i, BNT transform ' \
         f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0, zmax = {zmax / 10}' \
         '\nprior on $\\sigma(m) = 5 \\times 10^{-4}$' \
         '\n ${\\rm dzWL, dzGCph}$ fixed' % (probe, EP_or_ED, zbins)
 plot_from_dataframe(fom_df.loc[fom_df['ZL'] == 0], 'FM_GS_Ellcuts', 'FM_GS_kcuts_vinc',
                     'FM_GO_noEllcuts', 'FM_GS_noEllcuts', 12, False, title, True, 'zmin00_vincenzos_kcuts')
-
-

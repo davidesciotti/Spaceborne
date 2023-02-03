@@ -13,7 +13,7 @@ import my_module as mm
 
 
 def generate_ell_and_deltas(general_config):
-
+    """I think this function is not used anymore. I'm keeping it for now, but"""
     nbl_WL = general_config['nbl_WL']
     nbl_GC = general_config['nbl_GC']
     assert nbl_WL == nbl_GC, 'nbl_WL and nbl_GC must be the same'
@@ -85,51 +85,44 @@ def generate_ell_and_deltas(general_config):
     return ell_dict, delta_dict
 
 
+def compute_ells(nbl: int, ell_min: int, ell_max: int, recipe, output_ell_bin_edges: bool = False):
+    """Compute the ell values and the bin widths for a given recipe.
 
+    Parameters
+    ----------
+    nbl : int
+        Number of ell bins.
+    ell_min : int
+        Minimum ell value.
+    ell_max : int
+        Maximum ell value.
+    recipe : str
+        Recipe to use. Must be either "ISTF" or "ISTNL".
+    output_ell_bin_edges : bool, optional
+        If True, also return the ell bin edges, by default False
 
-def compute_ells(nbl: int, ell_min: int, ell_max: int, recipe):
-    """
-    doesn't output a dictionary (i.e., is single-probe), which is also cleaner
+    Returns
+    -------
+    ells : np.ndarray
+        Central ell values.
+    deltas : np.ndarray
+        Bin widths
+    ell_bin_edges : np.ndarray, optional
+        ell bin edges. Returned only if output_ell_bin_edges is True.
     """
     if recipe == 'ISTF':
-        ell_bins = np.logspace(np.log10(ell_min), np.log10(ell_max), nbl + 1)
-        ells = (ell_bins[1:] + ell_bins[:-1]) / 2
-        deltas = np.diff(ell_bins)
+        ell_bin_edges = np.logspace(np.log10(ell_min), np.log10(ell_max), nbl + 1)
+        ells = (ell_bin_edges[1:] + ell_bin_edges[:-1]) / 2
+        deltas = np.diff(ell_bin_edges)
     elif recipe == 'ISTNL':
-        ell_bins = np.linspace(np.log(ell_min), np.log(ell_max), nbl + 1)
-        ells = (ell_bins[:-1] + ell_bins[1:]) / 2.
+        ell_bin_edges = np.linspace(np.log(ell_min), np.log(ell_max), nbl + 1)
+        ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.
         ells = np.exp(ells)
-        deltas = np.diff(np.exp(ell_bins))
+        deltas = np.diff(np.exp(ell_bin_edges))
     else:
         raise ValueError('recipe must be either "ISTF" or "ISTNL"')
 
-    return ells, deltas
-
-# save as text file
-# probes = ['WL', 'GC', 'WA']
-# ell_maxes = [ell_max_WL, ell_max_GC, ell_max_WA] # XXX probe ordering must be the same as above!!
-
-# for probe, ell_max in zip(probes, ell_maxes):
-#     np.savetxt(path / f"output/ell_values/ell_{probe}_ellMax{probe}{ell_max}_nbl{nbl}.txt", ell_dict[f'ell_{probe}'])
-#     np.savetxt(path / f"output/ell_values/delta_l_{probe}_ellMax{probe}{ell_max}_nbl{nbl}.txt", delta_dict[f'delta_l_{probe}'])
-
-
-
-# old functions:
-def ISTNL_ells_old(general_config):
-    # TODO unify these 2 functions
-    """
-    compute ell values as the centers of nbl+1 lin spaced bins, slightly different from the above recipe
-    (different ells, same deltas)
-    """
-    nbl = general_config['nbl']
-    ell_min = general_config['ell_min']
-    ell_max = general_config['ell_max']
-
-    ell_bins = np.linspace(np.log(ell_min), np.log(ell_max), nbl + 1)
-    ells = (ell_bins[:-1] + ell_bins[1:]) / 2.
-    ells = np.exp(ells)
-
-    deltas = np.diff(np.exp(ell_bins))
+    if output_ell_bin_edges:
+        return ells, deltas, ell_bin_edges
 
     return ells, deltas

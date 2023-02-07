@@ -31,13 +31,10 @@ import cl_preprocessing as cl_utils
 import compute_Sijkl as Sijkl_utils
 import covariance as covmat_utils
 import fisher_matrix as FM_utils
-import utils_running as utils
 
 # job configuration and modules
 sys.path.append(f'{project_path}/jobs')
-import ISTF.config.config_ISTF_cl15gen as cfg
-
-# import ISTF.bin.unit_test as ut
+import BNT_for_ISTL.config.config_BNT_for_ISTL as cfg
 
 mpl.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -76,10 +73,10 @@ bIA = ISTFfid.IA_free['beta_IA']
 
 # which cases to save: GO, GS or GO, GS and SSC
 cases_tosave = ['GO', ]
-if covariance_cfg[f'save_cov_GS']:
+if covariance_cfg['save_cov_GS']:
     cases_tosave.append('GS')
-if covariance_cfg[f'save_cov_SSC']:
-    cases_tosave.append('SSC')
+if covariance_cfg['save_cov_SS']:
+    cases_tosave.append('SS')
 
 variable_specs = {
     'zbins': zbins,
@@ -101,64 +98,39 @@ ind_filename = covariance_cfg['ind_filename'].format(**variable_specs)
 ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
 covariance_cfg['ind'] = ind
 
-# ! compute ell and delta ell values
-ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_cfg)
-nbl_WA = ell_dict['ell_WA'].shape[0]
-ell_WL, ell_GC, ell_WA = ell_dict['ell_WL'], ell_dict['ell_GC'], ell_dict['ell_WA']
+# ! import CLOE's ells, delta_ell and cls
+data_path = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/BNT_for_ISTL/data'
+cl_LL_3d = np.load(f'{data_path}/Cls_zNLA_ShearShear_new.npy')
+cl_GL_3d = np.load(f'{data_path}/Cls_zNLA_PosShear_new.npy')
+cl_GG_3d = np.load(f'{data_path}/Cls_zNLA_PosPos_new.npy')
+cl_3x2pt_5D = cl_utils.build_3x2pt_datavector_5D(cl_LL_3d, cl_GL_3d, cl_GG_3d, nbl_GC, zbins, n_probes)
 
-# ! import, interpolate and reshape the power spectra and probe responses
-cl_folder = general_cfg['cl_folder'].format(**variable_specs)
-cl_filename = general_cfg['cl_filename']
-cl_LL_2D = np.genfromtxt(f'{cl_folder}/{cl_filename.format(probe="LL")}')
-cl_GL_2D = np.genfromtxt(f'{cl_folder}/{cl_filename.format(probe="GL")}')
-cl_GG_2D = np.genfromtxt(f'{cl_folder}/{cl_filename.format(probe="GG")}')
+# the ell values are all the same!
+ells = np.load(f'{data_path}/ells.npy')
+ell_bin_edges = np.load(f'{data_path}/ell_bin_edges.npy')
+delta_ell = np.diff(ell_bin_edges)
 
-rl_folder = general_cfg['rl_folder'].format(**variable_specs)
-rl_filename = general_cfg['rl_filename']
-rl_LL_2D = np.genfromtxt(f'{rl_folder}/{rl_filename.format(probe="ll")}')
-rl_GL_2D = np.genfromtxt(f'{rl_folder}/{rl_filename.format(probe="gl")}')
-rl_GG_2D = np.genfromtxt(f'{rl_folder}/{rl_filename.format(probe="gg")}')
+ell_dict = {
+    'ell_WL': ells,
+    'ell_GC': ells,
+    'ell_WA': ells,
+}
 
-# interpolate
-cl_dict_2D = {}
-cl_dict_2D['cl_LL_2D'] = mm.cl_interpolator(cl_LL_2D, zpairs_auto, ell_WL, nbl_WL)
-cl_dict_2D['cl_GG_2D'] = mm.cl_interpolator(cl_GG_2D, zpairs_auto, ell_GC, nbl_GC)
-cl_dict_2D['cl_WA_2D'] = mm.cl_interpolator(cl_LL_2D, zpairs_auto, ell_WA, nbl_WA)
-cl_dict_2D['cl_GL_2D'] = mm.cl_interpolator(cl_GL_2D, zpairs_cross, ell_GC, nbl_GC)
-cl_dict_2D['cl_LLfor3x2pt_2D'] = mm.cl_interpolator(cl_LL_2D, zpairs_auto, ell_GC, nbl_GC)
+delta_dict = {
+    'delta_l_WL': delta_ell,
+    'delta_l_GC': delta_ell,
+    'delta_l_WA': delta_ell,
+}
 
-rl_dict_2D = {}
-rl_dict_2D['rl_LL_2D'] = mm.cl_interpolator(rl_LL_2D, zpairs_auto, ell_WL, nbl_WL)
-rl_dict_2D['rl_GG_2D'] = mm.cl_interpolator(rl_GG_2D, zpairs_auto, ell_GC, nbl_GC)
-rl_dict_2D['rl_WA_2D'] = mm.cl_interpolator(rl_LL_2D, zpairs_auto, ell_WA, nbl_WA)
-rl_dict_2D['rl_GL_2D'] = mm.cl_interpolator(rl_GL_2D, zpairs_cross, ell_GC, nbl_GC)
-rl_dict_2D['rl_LLfor3x2pt_2D'] = mm.cl_interpolator(rl_LL_2D, zpairs_auto, ell_GC, nbl_GC)
-
-# reshape to 3D
-cl_dict_3D = {}
-cl_dict_3D['cl_LL_3D'] = mm.cl_2D_to_3D_symmetric(cl_dict_2D['cl_LL_2D'], nbl_WL, zpairs_auto, zbins)
-cl_dict_3D['cl_GG_3D'] = mm.cl_2D_to_3D_symmetric(cl_dict_2D['cl_GG_2D'], nbl_GC, zpairs_auto, zbins)
-cl_dict_3D['cl_WA_3D'] = mm.cl_2D_to_3D_symmetric(cl_dict_2D['cl_WA_2D'], nbl_WA, zpairs_auto, zbins)
+cl_dict_3D = {
+    'cl_LL_3D': cl_LL_3d,
+    'cl_GL_3D': cl_GL_3d,
+    'cl_GG_3D': cl_GG_3d,
+    'cl_WA_3D': cl_LL_3d,  # ! not used
+    'cl_3x2pt_5D': cl_3x2pt_5D,
+}
 
 rl_dict_3D = {}
-rl_dict_3D['rl_LL_3D'] = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_LL_2D'], nbl_WL, zpairs_auto, zbins)
-rl_dict_3D['rl_GG_3D'] = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_GG_2D'], nbl_GC, zpairs_auto, zbins)
-rl_dict_3D['rl_WA_3D'] = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_WA_2D'], nbl_WA, zpairs_auto, zbins)
-
-# build 3x2pt 5D datavectors; the GL and LLfor3x2pt are only needed for this!
-cl_GL_3D = mm.cl_2D_to_3D_asymmetric(cl_dict_2D['cl_GL_2D'], nbl_GC, zbins, order='C')
-rl_GL_3D = mm.cl_2D_to_3D_asymmetric(rl_dict_2D['rl_GL_2D'], nbl_GC, zbins, order='C')
-cl_LLfor3x2pt_3D = mm.cl_2D_to_3D_symmetric(cl_dict_2D['cl_LLfor3x2pt_2D'], nbl_GC, zpairs_auto, zbins)
-rl_LLfor3x2pt_3D = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_LLfor3x2pt_2D'], nbl_GC, zpairs_auto, zbins)
-
-cl_dict_3D['cl_3x2pt_5D'] = cl_utils.build_3x2pt_datavector_5D(cl_LLfor3x2pt_3D,
-                                                               cl_GL_3D,
-                                                               cl_dict_3D['cl_GG_3D'],
-                                                               nbl_GC, zbins, n_probes)
-rl_dict_3D['rl_3x2pt_5D'] = cl_utils.build_3x2pt_datavector_5D(rl_LLfor3x2pt_3D,
-                                                               rl_GL_3D,
-                                                               rl_dict_3D['rl_GG_3D'],
-                                                               nbl_GC, zbins, n_probes)
 
 # ! compute covariance matrix
 if covariance_cfg['compute_covmat']:
@@ -200,6 +172,26 @@ if covariance_cfg['compute_covmat']:
     # ! compute covariance matrix
     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
+
+# check
+cov_3x2pt_GO_2DCLOE = cov_dict['cov_3x2pt_GO_2DCLOE']
+mm.matshow(cov_3x2pt_GO_2DCLOE, title='cov_3x2pt_GO_2DCLOE', log=True)
+
+# ell = 12
+# mm.matshow(cl_LL_3d[ell, :, :], title='cl_LL_3d', log=True, abs_val=True)
+
+cov_3x2pt_GO_2DCLOE_test = np.load('/Users/davide/Documents/Lavoro/Programmi/likelihood-implementation/data/'
+                                   'ExternalBenchmark/Photometric/data/CovMat-3x2pt-Gauss-20Bins-probe_ell_zpair.npy')
+
+diff = mm.percent_diff(cov_3x2pt_GO_2DCLOE, cov_3x2pt_GO_2DCLOE_test)
+mm.matshow(np.abs(diff), title='diff', log=False, abs_val=False, threshold=10)
+
+
+mm.compare_arrays(cov_3x2pt_GO_2DCLOE, cov_3x2pt_GO_2DCLOE_test,
+                  name_A='cov_3x2pt_GO_2DCLOE', name_B='cov_3x2pt_GO_2DCLOE_test', plot_diff=True, log_diff=True,
+                  plot_array=True, log_array=True)
+
+assert 1 > 2, 'stop here'
 
 # ! compute Fisher Matrix
 if FM_cfg['compute_FM']:

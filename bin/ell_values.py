@@ -13,7 +13,7 @@ import my_module as mm
 
 
 def generate_ell_and_deltas(general_config):
-    """I think this function is not used anymore. I'm keeping it for now, but"""
+    """old function, but useful to compute ell and delta_ell for Wadd!"""
     nbl_WL = general_config['nbl_WL']
     nbl_GC = general_config['nbl_GC']
     assert nbl_WL == nbl_GC, 'nbl_WL and nbl_GC must be the same'

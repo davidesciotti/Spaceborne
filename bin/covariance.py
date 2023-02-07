@@ -20,7 +20,7 @@ import my_module as mm
 ###############################################################################
 
 
-def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl):
+def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix=None):
     """
     This code computes the Gaussian-only, SSC-only and Gaussian+SSC
     covariance matrices, for different ordering options
@@ -324,6 +324,19 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_dict['cov_WL_GS_6D'] = cov_dict['cov_WL_GO_6D'] + cov_WL_SS_6D
         cov_dict['cov_GC_GS_6D'] = cov_dict['cov_GC_GO_6D'] + cov_GC_SS_6D
         cov_dict['cov_WA_GS_6D'] = cov_dict['cov_WA_GO_6D'] + cov_WA_SS_6D
+
+        # ! BNT transform
+        if covariance_cfg['cov_BNT_transform']:
+
+            X_dict = build_X_matrix_BNT(BNT_matrix)
+
+            cov_dict['cov_WL_GO_6D'] = cov_BNT_transform(cov_dict['cov_WL_GO_6D'], X_dict, 'L', 'L')
+            cov_dict['cov_WA_GO_6D'] = cov_BNT_transform(cov_dict['cov_WA_GO_6D'], X_dict, 'L', 'L')
+            cov_dict['cov_3x2pt_GO_10D'] = cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GO_10D'], X_dict)
+
+            cov_dict['cov_WL_GS_6D'] = cov_BNT_transform(cov_dict['cov_WL_GS_6D'], X_dict, 'L', 'L')
+            cov_dict['cov_WA_GS_6D'] = cov_BNT_transform(cov_dict['cov_WA_GS_6D'], X_dict, 'L', 'L')
+            cov_dict['cov_3x2pt_GS_10D'] = cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GS_10D'], X_dict)
 
     ############################### 4D to 2D ##################################
     # Here an ordering convention ('block_index') is needed as well

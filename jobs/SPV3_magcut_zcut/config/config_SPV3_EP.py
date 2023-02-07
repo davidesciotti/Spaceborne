@@ -12,8 +12,8 @@ which_forecast = 'SPV3'
 fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
 SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
+specs = 'idMag0-idRSD0-idFS0-idSysWL3-idSysGC4'
 
-# ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
 
 cl_BNT_transform = False
@@ -54,19 +54,17 @@ general_cfg = {
     # 'kmax_list_1_over_Mpc': np.array((0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 4.00, 5.00, 10.00)),
     'kmax_list_h_over_Mpc': np.array([0.1675, 0.335, 0.5025, 0.67, 0.8375, 1.005, 1.1725, 1.34, 2.01, 2.68, 3.35, 6.7]),
     'cl_BNT_transform': cl_BNT_transform,
-    'cov_BNT_transform': cov_BNT_transform,
-    'deriv_BNT_transform': deriv_BNT_transform,
     'BNT_transform': BNT_transform,
     'BNT_matrix_path': f'{SPV3_folder}/BNT_matrix',
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
-    'cl_folder': f'{SPV3_folder}/Flagship_{flagship_version}/DataVectors/magcut_zcut',
-    'rl_folder': f'{SPV3_folder}/Flagship_{flagship_version}/ResFunTabs/magcut_zcut',
-    'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
+    'cl_folder': f'{SPV3_folder}/Flagship_{flagship_version}/DataVectors/magcut_zcut_False',
+    'rl_folder': f'{SPV3_folder}/Flagship_{flagship_version}/ResFunTabs/magcut_zcut_True',
+    'cl_filename': 'dv-{probe:s}-wzwaCDM-GR-TB-' + specs + '-{EP_or_ED:s}{zbins:02d}.dat',
     'rl_filename': 'rf-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    'magcut_lens_list': (230, 235, 240, 245, 250),
+    'magcut_lens_list': (245,),
     'magcut_source_list': (245,),
-    'zcut_lens_list': (0, 2),
-    'zcut_source_list': (0, 2),
+    'zcut_lens_list': (0,),
+    'zcut_source_list': (0,),
     'zmax': 2.5,
     'magcut_source': None,
     'magcut_lens': None,
@@ -94,6 +92,7 @@ covariance_cfg = {
     'ng_folder': f'{SPV3_folder}/Flagship_{flagship_version}/InputNz/magcut_zcut',
     'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
+    'cov_BNT_transform': cov_BNT_transform,
     'compute_covmat': True,
     'compute_cov_6D': True,  # or 10D for the 3x2pt
     'cov_file_format': 'npz',  # or npy
@@ -136,6 +135,7 @@ FM_cfg = {
     'derivatives_filename': 'BNT_dDVd{param:s}-{probe:s}-{specs:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                             'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'derivatives_prefix': 'dDVd',
+    'deriv_BNT_transform': deriv_BNT_transform,
     # the filename is the same as above
     'FM_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}/ell_cuts_' + '{ell_cuts:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'

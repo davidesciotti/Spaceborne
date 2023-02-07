@@ -30,7 +30,7 @@ import ISTF_fid_params as ISTF_fid
 
 # job configuration
 sys.path.append(f'{job_path}/config')
-import config_SPV3_magcut_zcut as cfg
+import config_SPV3_EP as cfg
 
 # project libraries
 sys.path.append(f'{project_path}/bin')
@@ -62,20 +62,10 @@ covariance_cfg = cfg.covariance_cfg
 Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
-# ML_list = [230, 230, 245, 245]
-# ZL_list = [0, 2, 0, 2]
-# MS_list = [245, 245, 245, 245]
-# ZS_list = [0, 0, 0, 2]
-
-ML_list = [245, 245]
-ZL_list = [0, 2]
-MS_list = [245, 245]
-ZS_list = [0, 2]
-
-ML_list = [245]
-ZL_list = [0]
-MS_list = [245]
-ZS_list = [0]
+ML_list = general_cfg['magcut_lens_list']
+ZL_list = general_cfg['zcut_lens_list']
+MS_list = general_cfg['magcut_source_list']
+ZS_list = general_cfg['zcut_source_list']
 
 for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         general_cfg['magcut_source'], general_cfg['zcut_source'] in \
@@ -266,8 +256,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         # preprocess (remove redshift column)
         z_arr_wil, wil = Sijkl_utils.preprocess_wf(wil, zbins)
         z_arr_wig, wig = Sijkl_utils.preprocess_wf(wig, zbins)
-        assert np.array_equal(z_arr_wil,
-                              z_arr_wig), 'the redshift arrays are different for the GC and WL kernels'
+        assert np.array_equal(z_arr_wil, z_arr_wig), 'the redshift arrays are different for the GC and WL kernels'
         z_arr = z_arr_wil
 
         # transpose and stack, ordering is important here!
@@ -276,12 +265,11 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         # ! compute or load Sijkl
         nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
         Sijkl_folder = Sijkl_cfg['Sijkl_folder']
-        warnings.warn(
-            'Sijkl_folder is set to BNT_False in all cases, so as not to have to recompute the Sijkl matrix'
-            'in the BNT_True case')
+        warnings.warn('Sijkl_folder is set to BNT_False in all cases, so as not to have to recompute the Sijkl matrix'
+                      'in the BNT_True case')
         Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(flagship_version=general_cfg['flagship_version'],
-                                                            nz=nz, IA_flag=Sijkl_cfg['IA_flag'],
-                                                            **variable_specs)
+                                                            nz=nz, IA_flag=Sijkl_cfg['IA_flag'], **variable_specs)
+
         # if Sijkl exists, load it; otherwise, compute it and save it
         if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
             print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
@@ -299,9 +287,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 
         if general_cfg['cov_BNT_transform']:
-            assert general_cfg[
-                       'cl_BNT_transform'] is False, 'the BNT transform should be applied either to the Cls ' \
-                                                     'or to the covariance'
+            assert general_cfg['cl_BNT_transform'] is False, 'the BNT transform should be applied either to the Cls ' \
+                                                             'or to the covariance'
             assert general_cfg['deriv_BNT_transform'], 'you should BNT transform the derivatives as well'
 
             X_dict = covmat_utils.build_X_matrix_BNT(BNT_matrix)

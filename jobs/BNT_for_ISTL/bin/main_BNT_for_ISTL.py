@@ -175,21 +175,21 @@ if covariance_cfg['compute_covmat']:
 
 # check
 cov_3x2pt_GO_2DCLOE = cov_dict['cov_3x2pt_GO_2DCLOE']
-mm.matshow(cov_3x2pt_GO_2DCLOE, title='cov_3x2pt_GO_2DCLOE', log=True)
-
-# ell = 12
-# mm.matshow(cl_LL_3d[ell, :, :], title='cl_LL_3d', log=True, abs_val=True)
-
 cov_3x2pt_GO_2DCLOE_test = np.load('/Users/davide/Documents/Lavoro/Programmi/likelihood-implementation/data/'
                                    'ExternalBenchmark/Photometric/data/CovMat-3x2pt-Gauss-20Bins-probe_ell_zpair.npy')
 
 diff = mm.percent_diff(cov_3x2pt_GO_2DCLOE, cov_3x2pt_GO_2DCLOE_test)
 mm.matshow(np.abs(diff), title='diff', log=False, abs_val=False, threshold=10)
 
-
 mm.compare_arrays(cov_3x2pt_GO_2DCLOE, cov_3x2pt_GO_2DCLOE_test,
                   name_A='cov_3x2pt_GO_2DCLOE', name_B='cov_3x2pt_GO_2DCLOE_test', plot_diff=True, log_diff=True,
                   plot_array=True, log_array=True)
+
+# ! ok but not perfect there is still a (small) number of outliers; maybe check:
+# ! also, why do I have to recompute the covariance?
+# - cls (undo the modifications to simulate_data to have the triu elements, then unpack...)
+# - deltas
+# - ell values?
 
 assert 1 > 2, 'stop here'
 

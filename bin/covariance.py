@@ -162,6 +162,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     # compute the covariance with PySSC anyway, not to have problems with WA
     start = time.perf_counter()
+    # TODO the 4d computation should not be repeated ic compute_cov_6d is True!
     cov_WL_SS_4D = mm.cov_SSC(nbl_WL, zpairs_auto, ind, cl_LL_3D, Sijkl, fsky, "WL", zbins, rl_LL_3D)
     cov_GC_SS_4D = mm.cov_SSC(nbl_GC, zpairs_auto, ind, cl_GG_3D, Sijkl, fsky, "GC", zbins, rl_GG_3D)
     cov_WA_SS_4D = mm.cov_SSC(nbl_WA, zpairs_auto, ind, cl_WA_3D, Sijkl, fsky, "WA", zbins, rl_WA_3D)
@@ -327,9 +328,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
         # ! BNT transform
         if covariance_cfg['cov_BNT_transform']:
+            print('BNT-transforming the covariance matrix...')
 
             X_dict = build_X_matrix_BNT(BNT_matrix)
-
             cov_dict['cov_WL_GO_6D'] = cov_BNT_transform(cov_dict['cov_WL_GO_6D'], X_dict, 'L', 'L')
             cov_dict['cov_WA_GO_6D'] = cov_BNT_transform(cov_dict['cov_WA_GO_6D'], X_dict, 'L', 'L')
             cov_dict['cov_3x2pt_GO_10D'] = cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GO_10D'], X_dict)
@@ -337,6 +338,16 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_dict['cov_WL_GS_6D'] = cov_BNT_transform(cov_dict['cov_WL_GS_6D'], X_dict, 'L', 'L')
             cov_dict['cov_WA_GS_6D'] = cov_BNT_transform(cov_dict['cov_WA_GS_6D'], X_dict, 'L', 'L')
             cov_dict['cov_3x2pt_GS_10D'] = cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GS_10D'], X_dict)
+
+            cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_auto)
+            cov_WA_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WA_GO_6D'], nbl_WA, zpairs_auto, ind_auto)
+            cov_3x2pt_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_dict['cov_3x2pt_GO_10D'], probe_ordering, nbl_GC, zbins,
+                                                          ind.copy(), GL_or_LG)
+
+            cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GS_6D'], nbl_WL, zpairs_auto, ind_auto)
+            cov_WA_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, zpairs_auto, ind_auto)
+            cov_3x2pt_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_dict['cov_3x2pt_GS_10D'], probe_ordering, nbl_GC, zbins,
+                                                          ind.copy(), GL_or_LG)
 
     ############################### 4D to 2D ##################################
     # Here an ordering convention ('block_index') is needed as well
@@ -417,7 +428,6 @@ def cov_BNT_transform(cov_noBNT_6D, X_dict, probe_A, probe_B, optimize=True):
 
 
 def save_cov(general_cfg, covariance_cfg, cov_dict, **variable_specs):
-
     ell_max_WL = variable_specs['ell_max_WL']
     ell_max_GC = variable_specs['ell_max_GC']
     ell_max_XC = variable_specs['ell_max_XC']
@@ -494,7 +504,6 @@ def save_cov(general_cfg, covariance_cfg, cov_dict, **variable_specs):
                     np.save(f'{cov_folder}/{cov_WA_filename}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
             print('Covariance matrices saved')
 
-
     # save in .dat for Vincenzo, only in the optimistic case and in 2D
     if covariance_cfg['save_cov_dat'] and ell_max_WL == 5000:
         for probe, probe_vinc in zip(['WL', 'GC', '3x2pt', 'WA'], ['WLO', 'GCO', '3x2pt', 'WLA']):
@@ -505,4 +514,3 @@ def save_cov(general_cfg, covariance_cfg, cov_dict, **variable_specs):
                 np.savetxt(f'{cov_folder_vincenzo}/{GOGS_folder}/{cov_filename_vincenzo}',
                            cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.9e')
         print('Covariance matrices saved')
-

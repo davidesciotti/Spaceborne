@@ -30,7 +30,7 @@ import ISTF_fid_params as ISTF_fid
 
 # job configuration
 sys.path.append(f'{job_path}/config')
-import config_SPV3_EP as cfg
+import config_SPV3_magcut_zcut as cfg
 
 # project libraries
 sys.path.append(f'{project_path}/bin')
@@ -104,6 +104,12 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
     if general_cfg['ell_cuts']:
         assert general_cfg['BNT_transform'], \
             'ell_cuts should only be implemented with the BNT_transform set to True'
+
+    if covariance_cfg['cov_BNT_transform']:
+        assert general_cfg['cl_BNT_transform'] is False, 'the BNT transform should be applied either to the Cls ' \
+                                                         'or to the covariance'
+        assert FM_cfg['deriv_BNT_transform'], 'you should BNT transform the derivatives as well'
+
 
     # which cases to save: GO, GS or GO, GS and SS
     cases_tosave = ['GO', 'GS']
@@ -284,59 +290,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         # the ng values are in the second column, for these input files 👇
         covariance_cfg['ng'] = np.genfromtxt(f'{ng_folder}/'f'{ng_filename}')[:, 1]
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                            ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
+                                            ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix)
 
-        if general_cfg['cov_BNT_transform']:
-            assert general_cfg['cl_BNT_transform'] is False, 'the BNT transform should be applied either to the Cls ' \
-                                                             'or to the covariance'
-            assert general_cfg['deriv_BNT_transform'], 'you should BNT transform the derivatives as well'
-
-            X_dict = covmat_utils.build_X_matrix_BNT(BNT_matrix)
-
-            cov_WL_GO_BNT_6D = covmat_utils.cov_BNT_transform(cov_dict['cov_WL_GO_6D'], X_dict, 'L', 'L')
-            cov_WA_GO_BNT_6D = covmat_utils.cov_BNT_transform(cov_dict['cov_WA_GO_6D'], X_dict, 'L', 'L')
-            cov_3x2pt_GO_BNT_dict = covmat_utils.cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GO_10D'], X_dict)
-
-            cov_WL_GS_BNT_6D = covmat_utils.cov_BNT_transform(cov_dict['cov_WL_GS_6D'], X_dict, 'L', 'L')
-            cov_WA_GS_BNT_6D = covmat_utils.cov_BNT_transform(cov_dict['cov_WA_GS_6D'], X_dict, 'L', 'L')
-            cov_3x2pt_GS_BNT_dict = covmat_utils.cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GS_10D'], X_dict)
-
-            # reshape to 4D
-            cov_WL_GO_BNT_4D = mm.cov_6D_to_4D(cov_WL_GO_BNT_6D, nbl_WL, zpairs_auto, ind_auto)
-            cov_WL_GS_BNT_4D = mm.cov_6D_to_4D(cov_WL_GS_BNT_6D, nbl_WL, zpairs_auto, ind_auto)
-            cov_WA_GO_BNT_4D = mm.cov_6D_to_4D(cov_WA_GO_BNT_6D, nbl_WA, zpairs_auto, ind_auto)
-            cov_WA_GS_BNT_4D = mm.cov_6D_to_4D(cov_WA_GS_BNT_6D, nbl_WA, zpairs_auto, ind_auto)
-
-            # for 3x2pt, transform from dict of 6D arrays to single 4D array
-            cov_3x2pt_GO_BNT_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_BNT_dict, probe_ordering, nbl_3x2pt,
-                                                              zbins, ind.copy(), GL_or_LG)
-            cov_3x2pt_GS_BNT_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_BNT_dict, probe_ordering, nbl_3x2pt,
-                                                              zbins, ind.copy(), GL_or_LG)
-
-            # reshape to 2D
-            cov_WL_GO_BNT_2D = mm.cov_4D_to_2D(cov_WL_GO_BNT_4D, block_index=covariance_cfg['block_index'])
-            cov_WL_GS_BNT_2D = mm.cov_4D_to_2D(cov_WL_GS_BNT_4D, block_index=covariance_cfg['block_index'])
-            cov_WA_GO_BNT_2D = mm.cov_4D_to_2D(cov_WA_GO_BNT_4D, block_index=covariance_cfg['block_index'])
-            cov_WA_GS_BNT_2D = mm.cov_4D_to_2D(cov_WA_GS_BNT_4D, block_index=covariance_cfg['block_index'])
-            cov_3x2pt_GO_BNT_2D = mm.cov_4D_to_2D(cov_3x2pt_GO_BNT_4D,
-                                                  block_index=covariance_cfg['block_index'])
-            cov_3x2pt_GS_BNT_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_BNT_4D,
-                                                  block_index=covariance_cfg['block_index'])
-
-            # overwrite the non-BNT value
-            cov_dict['cov_WL_GO_2D'] = cov_WL_GO_BNT_2D
-            cov_dict['cov_WL_GS_2D'] = cov_WL_GS_BNT_2D
-            cov_dict['cov_WA_GO_2D'] = cov_WA_GO_BNT_2D
-            cov_dict['cov_WA_GS_2D'] = cov_WA_GS_BNT_2D
-            cov_dict['cov_3x2pt_GO_2D'] = cov_3x2pt_GO_BNT_2D
-            cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_GS_BNT_2D
-
-            # free up memory
-            del cov_WL_GO_BNT_2D, cov_WL_GS_BNT_2D, cov_WA_GO_BNT_2D, cov_WA_GS_BNT_2D, cov_3x2pt_GO_BNT_2D, cov_3x2pt_GS_BNT_2D
-            del cov_WL_GO_BNT_4D, cov_WL_GS_BNT_4D, cov_WA_GO_BNT_4D, cov_WA_GS_BNT_4D, cov_3x2pt_GO_BNT_4D, cov_3x2pt_GS_BNT_4D
-            gc.collect()
-
-            covmat_utils.save_cov(general_cfg, covariance_cfg, cov_dict, **variable_specs)
+        covmat_utils.save_cov(general_cfg, covariance_cfg, cov_dict, **variable_specs)
 
     # ! compute Fisher matrix
     if FM_cfg['compute_FM']:

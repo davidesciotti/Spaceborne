@@ -105,6 +105,8 @@ cl_GL_3d = np.load(f'{data_path}/Cls_zNLA_PosShear_new.npy')
 cl_GG_3d = np.load(f'{data_path}/Cls_zNLA_PosPos_new.npy')
 cl_3x2pt_5D = cl_utils.build_3x2pt_datavector_5D(cl_LL_3d, cl_GL_3d, cl_GG_3d, nbl_GC, zbins, n_probes)
 
+bnt_matrix = np.genfromtxt(f'{data_path}/BNT_CLOE_fiducial.txt')
+
 # the ell values are all the same!
 ells = np.load(f'{data_path}/ells.npy')
 ell_bin_edges = np.load(f'{data_path}/ell_bin_edges.npy')
@@ -170,19 +172,29 @@ if covariance_cfg['compute_covmat']:
         np.save(f'{Sijkl_folder}/{Sijkl_filename}', sijkl)
 
     # ! compute covariance matrix
-    cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                        ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
+    covariance_cfg['cov_BNT_transform'] = True
+    cov_dict_bnt = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+                                            ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl, BNT_matrix=bnt_matrix)
+
+    covariance_cfg['cov_BNT_transform'] = False
+    cov_dict_no_bnt = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+                                               ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
 
 # check
-cov_3x2pt_GO_2DCLOE = cov_dict['cov_3x2pt_GO_2DCLOE']
+cov_3x2pt_GO_bnt_2DCLOE = cov_dict_bnt['cov_3x2pt_GO_2DCLOE']
+cov_3x2pt_GO_no_bnt_2DCLOE = cov_dict_no_bnt['cov_3x2pt_GO_2DCLOE']
+
+print('are the two covariance matrices equal?', np.array_equal(cov_3x2pt_GO_bnt_2DCLOE, cov_3x2pt_GO_no_bnt_2DCLOE))
+
+warnings.warn('you have to be in branch #870 for this import to work')
 cov_3x2pt_GO_2DCLOE_test = np.load('/Users/davide/Documents/Lavoro/Programmi/likelihood-implementation/data/'
                                    'ExternalBenchmark/Photometric/data/CovMat-3x2pt-Gauss-20Bins-probe_ell_zpair.npy')
 
-diff = mm.percent_diff(cov_3x2pt_GO_2DCLOE, cov_3x2pt_GO_2DCLOE_test)
-mm.matshow(np.abs(diff), title='diff', log=False, abs_val=False, threshold=10)
+diff = mm.percent_diff(cov_3x2pt_GO_bnt_2DCLOE, cov_3x2pt_GO_no_bnt_2DCLOE)
+mm.matshow(np.abs(diff), title='diff', log=False, abs_val=False)
 
-mm.compare_arrays(cov_3x2pt_GO_2DCLOE, cov_3x2pt_GO_2DCLOE_test,
-                  name_A='cov_3x2pt_GO_2DCLOE', name_B='cov_3x2pt_GO_2DCLOE_test', plot_diff=True, log_diff=True,
+mm.compare_arrays(cov_3x2pt_GO_bnt_2DCLOE, cov_3x2pt_GO_no_bnt_2DCLOE,
+                  name_A='cov_3x2pt_GO_bnt_2DCLOE', name_B='cov_3x2pt_GO_no_bnt_2DCLOE', plot_diff=True, log_diff=True,
                   plot_array=True, log_array=True)
 
 # ! ok but not perfect there is still a (small) number of outliers; maybe check:

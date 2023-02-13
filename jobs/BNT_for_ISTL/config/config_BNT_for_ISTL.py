@@ -4,7 +4,7 @@ project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 
 survey_area_deg2 = 15_000  # deg^2
-BNT_transform = False
+cov_BNT_transform = True
 
 deg2_in_sphere = 41252.96  # deg^2 in a spere
 fsky = survey_area_deg2 / deg2_in_sphere
@@ -30,7 +30,7 @@ general_cfg = {
     'use_WA': False,
     'save_cls_3d': False,
     'save_rls_3d': False,
-    'cl_BNT_transform': BNT_transform,
+    'cl_BNT_transform': False,
     'BNT_matrix_path': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT_matrix',
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
     'cl_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_tesi/new_names',
@@ -54,6 +54,7 @@ covariance_cfg = {
     'which_probe_response': 'constant',
     'rl_value': 4,  # it used to be 4 for a constant probe response, which this is wrong
     'SSC_code': 'PySSC',  # PySSC or PyCCL
+    'cov_BNT_transform': cov_BNT_transform,
     'ng': 30,
     'ng_folder': None,
     'ng_filename': None,

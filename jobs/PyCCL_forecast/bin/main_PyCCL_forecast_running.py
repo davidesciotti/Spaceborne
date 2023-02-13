@@ -36,7 +36,7 @@ start_time = time.perf_counter()
 
 """
 Aim: produce sylvain-like forecasts using PyCCL's SSC covariace, in order to compare the results against the ones obtained
-with PySSC. 
+with PySSC.
 """
 
 # import the configuration dictionaries from config_PyCCL_forecast.py

@@ -344,6 +344,9 @@ plt.axvline(x=k_max_G1, color='k', ls='--', lw=1)
 plt.legend()
 plt.grid()
 
+np.save('/Users/davide/Desktop/pyccl_responses/alex_responses/R1_mm.npy', R1_mm)
+np.save('/Users/davide/Desktop/pyccl_responses/alex_responses/k_array.npy', k_array)
+
 # ...and plot it
 if plot_Rmm:
     # reproduce Alex's plot

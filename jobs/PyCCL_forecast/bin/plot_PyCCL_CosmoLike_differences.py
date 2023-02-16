@@ -63,10 +63,10 @@ hm_recipe = 'KiDS1000'
 GS_or_GScNG = 'GS'
 FM_to_compare = []
 
-FM_dict = dict(mm.get_kv_pairs(job_path / 'output/FM', filetype="txt"))
+FM_dict = dict(mm.get_kv_pairs(job_path / 'output/FM', extension="txt"))
 
 if whos_SSC == 'PySSC':
-    FM_dict_SSCcomp = dict(mm.get_kv_pairs(job_path.parent / 'SSC_comparison/output/FM', filetype="txt"))
+    FM_dict_SSCcomp = dict(mm.get_kv_pairs(job_path.parent / 'SSC_comparison/output/FM', extension="txt"))
 
 for key in FM_dict.keys():
     uncert_dict[key] = mm.uncertainties_FM(FM_dict[key])

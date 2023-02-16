@@ -30,7 +30,7 @@ zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
 ind = np.genfromtxt(f'{project_path.parent}/common_data/ind_files/variable_zbins/{triu_tril:s}_{row_col_wise:s}/indices_{triu_tril:s}_{row_col_wise:s}_zbins{zbins:02d}.dat', dtype=int)
 
-cov_BNT_stef_6D_dict = dict(mm.get_kv_pairs_npy(
+cov_BNT_stef_6D_dict = dict(mm.get_kv_pairs(
     f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_2/CovMats/BNT_True/produced_by_stefano/magcut_zcut'))
 
 cov_BNT_stef_4D_dict = {}

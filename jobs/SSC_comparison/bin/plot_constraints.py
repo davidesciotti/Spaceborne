@@ -42,8 +42,10 @@ covariance_config = config.covariance_config
 FM_config = config.FM_cfg
 plot_config = config.plot_config
 
-FM_dict = dict(mm.get_kv_pairs(job_path / 'output/FM', filetype="txt"))
-FM_dict_PyCCL = dict(mm.get_kv_pairs('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured/jobs/PyCCL_forecast/output/FM', filetype="txt"))
+FM_dict = dict(mm.get_kv_pairs(job_path / 'output/FM', extension="txt"))
+FM_dict_PyCCL = dict(
+    mm.get_kv_pairs('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured/jobs/PyCCL_forecast/output/FM',
+                    extension="txt"))
 
 params = plot_config['params']
 markersize = 7

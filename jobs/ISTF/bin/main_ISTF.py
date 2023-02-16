@@ -93,6 +93,7 @@ assert nbl_GC == nbl_WL, 'for ISTF we are using the same number of ell bins for 
 zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
 # import the ind files and store it into the covariance dictionary
+# TODO better call the mm function, more elegant (no need to import files...)
 ind_folder = covariance_cfg['ind_folder'].format(**variable_specs)
 ind_filename = covariance_cfg['ind_filename'].format(**variable_specs)
 ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
@@ -365,7 +366,7 @@ for ndim in (2, 4, 6):
 
 # in this case, the following specs are not variable.
 # Nonetheless, we pass them as kwargs to the function, which is more general
-variable_specs = general_cfg | {'nbl_WA': nbl_WA, 'which_cov': covariance_cfg['']}
+variable_specs = general_cfg | {'nbl_WA': nbl_WA}
 
 cov_folder = covariance_cfg["cov_folder"].format(SSC_code=covariance_cfg['SSC_code'])
 covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
@@ -392,7 +393,7 @@ FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, save_txt=FM_cfg['save_FM_txt'], sav
 # if FM_cfg['compute_FM'] and FM_cfg['save_FM_dict']:
 #     mm.save_pickle(f'{FM_folder}/FM_dict_{EP_or_ED}{zbins:02}.pickle', FM_dict)
 
-ut.test_cov_FM(cov_folder, f'{cov_folder}/test_benchmarks_{covariance_cfg["SSC_code"]}/')
-ut.test_cov_FM(fm_folder, f'{fm_folder}/test_benchmarks_{covariance_cfg["SSC_code"]}/')
+ut.test_cov_FM(cov_folder, f'{cov_folder}/test_benchmarks_{covariance_cfg["SSC_code"]}', extension=covariance_cfg['cov_file_format'])
+ut.test_cov_FM(fm_folder, f'{fm_folder}/test_benchmarks_{covariance_cfg["SSC_code"]}', extension=covariance_cfg['cov_file_format'])
 
 print('done')

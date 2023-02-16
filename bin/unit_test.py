@@ -49,8 +49,8 @@ def check_FMs_against_oldSSCscript(FM_new_path, general_config, covariance_confi
     else:
         raise ValueError('general_config["which_forecast"] must be either "sylvain", "IST" or "CLOE"')
 
-    FM_d_old = dict(mm.get_kv_pairs(path_import, filetype="txt"))
-    FM_d_new = dict(mm.get_kv_pairs(FM_new_path, filetype="txt"))
+    FM_d_old = dict(mm.get_kv_pairs(path_import, extension="txt"))
+    FM_d_new = dict(mm.get_kv_pairs(FM_new_path, extension="txt"))
 
     # TODO plot forecasts to get an idea of the difference: do not just compare the FMs
 
@@ -92,14 +92,21 @@ def check_FMs_against_oldSSCscript(FM_new_path, general_config, covariance_confi
                 print(f'is the percent difference between the FM < {tolerance}?, {probe}, {GO_or_GS}, {result_emoji}')
 
 
-def test_cov_FM(output_path, benchmarks_path):
+def test_cov_FM(output_path, benchmarks_path, extension):
     """tests that the outputs do not change between the old and the new version"""
-    old_dict = dict(mm.get_kv_pairs_npy(benchmarks_path))
-    new_dict = dict(mm.get_kv_pairs_npy(output_path))
+    old_dict = dict(mm.get_kv_pairs(benchmarks_path), extension=extension)
+    new_dict = dict(mm.get_kv_pairs(output_path), extension=extension)
+
+    print('old_dict.keys()', old_dict.keys())
+    print('new_dict.keys()', new_dict.keys())
+
+    # check if the dictionary is empty
+    assert len(old_dict) > 0, 'No files in the benchmarks path'
+    assert len(new_dict) > 0, 'No files in the output path'
 
     assert old_dict.keys() == new_dict.keys(), 'The number of files or their names has changed'
 
     for key in old_dict.keys():
         assert np.array_equal(old_dict[key], new_dict[key]), f'The file {key} is different'
 
-    print('tests passed successfully ✅')
+    print('tests passed successfully: the outputs are the same as the benchmarks ✅')

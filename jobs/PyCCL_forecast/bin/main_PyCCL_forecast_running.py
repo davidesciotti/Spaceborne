@@ -222,7 +222,7 @@ elif general_config['which_forecast'] == 'CLOE':
 else:
     raise ValueError('which_forecast must be either sylvain, ISTF or CLOE')
 
-FM_d_old = dict(mm.get_kv_pairs(path_import, filetype="txt"))
+FM_d_old = dict(mm.get_kv_pairs(path_import, extension="txt"))
 tolerance = 0.0001
 
 # plot forecasts to get an idea of the difference: do not just compare the FMs

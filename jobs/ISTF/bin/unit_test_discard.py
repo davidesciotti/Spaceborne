@@ -28,8 +28,8 @@ start_time = time.perf_counter()
 
 def test_cov_FM(SSC_code, to_test):
     """tests that the outputs do not change between the old and the new version"""
-    old_dict = dict(mm.get_kv_pairs_npy(f'{job_path}/output/{to_test}/test_benchmarks_{SSC_code}'))
-    new_dict = dict(mm.get_kv_pairs_npy(f'{job_path}/output/{to_test}/{SSC_code}'))
+    old_dict = dict(mm.get_kv_pairs(f'{job_path}/output/{to_test}/test_benchmarks_{SSC_code}'))
+    new_dict = dict(mm.get_kv_pairs(f'{job_path}/output/{to_test}/{SSC_code}'))
 
     assert old_dict.keys() == new_dict.keys(), 'The number of files or their names has changed'
 

@@ -56,7 +56,8 @@ ind = ind = mm.get_ind_file(path, 'vincenzo', 'sylvain')
 
 
 # import all files in dict
-cov_R_dict = dict(mm.get_kv_pairs('/Users/davide/Documents/Lavoro/Programmi/SSC_paper_jan22/data/robin/lmax5000_noextrap', 'txt') )   
+cov_R_dict = dict(
+    mm.get_kv_pairs('/Users/davide/Documents/Lavoro/Programmi/SSC_paper_jan22/data/robin/lmax5000_noextrap', 'txt'))
 # select only the cov_ss_shear_..._shear... strings
 mystr = 'cov_ss_shear_z'
 shear_keys_list = []

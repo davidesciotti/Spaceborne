@@ -63,7 +63,7 @@ def load_build_3x2pt_BNT_cov_dict_stef(cov_BNTstef_folder, probe_ordering, varia
                                        nbl_3x2pt):
     """transforms dictionary of 3x2pt cov blocks into a dictionary of the usual form (i.e., with the usual keys)"""
 
-    cov_3x2pt_BNT_imported_dict = dict(mm.get_kv_pairs_npy(cov_BNTstef_folder))
+    cov_3x2pt_BNT_imported_dict = dict(mm.get_kv_pairs(cov_BNTstef_folder))
 
     # select only the ones corresponding to the current configuration of MS, ML, ZS, ZL values
     str_start = f'BNT_covmat_{GO_or_GS}_3x2pt_'

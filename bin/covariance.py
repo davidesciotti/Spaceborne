@@ -429,7 +429,6 @@ def cov_BNT_transform(cov_noBNT_6D, X_dict, probe_A, probe_B, optimize=True):
 
 
 def save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs):
-
     # TODO skip the computation and saving if the file already exists
 
     ell_max_WL = variable_specs['ell_max_WL']
@@ -460,7 +459,6 @@ def save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs):
     for ndim in (2, 4, 6):
 
         if covariance_cfg[f'save_cov_{ndim}D']:
-
 
             # set probes to save; the ndim == 6 case is different
             probe_list = ['WL', 'GC', '3x2pt', 'WA']

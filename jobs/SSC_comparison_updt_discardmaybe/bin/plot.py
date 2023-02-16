@@ -41,8 +41,8 @@ nbl = cfg.general_cfg['nbl']
 nparams = 7
 
 # import all outputs from this script
-FM_dict = dict(mm.get_kv_pairs(job_path / 'output/FM', filetype="txt"))
-FM_dict_PyCCL = dict(mm.get_kv_pairs(job_path.parent / 'PyCCL_forecast/output/FM', filetype="txt"))
+FM_dict = dict(mm.get_kv_pairs(job_path / 'output/FM', extension="txt"))
+FM_dict_PyCCL = dict(mm.get_kv_pairs(job_path.parent / 'PyCCL_forecast/output/FM', extension="txt"))
 FM_dict = {**FM_dict, **FM_dict_PyCCL}
 
 fom = {}

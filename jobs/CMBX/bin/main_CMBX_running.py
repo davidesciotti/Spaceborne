@@ -129,7 +129,7 @@ elif general_config['which_forecast'] == 'IST':
 elif general_config['which_forecast'] == 'CLOE':
     path_import = '/Users/davide/Documents/Lavoro/Programmi/SSCcomp_prove/output/FM/ISTspecs_indVincenzo/Cij_14may'
 
-FM_d_old = dict(mm.get_kv_pairs(path_import, filetype="txt"))
+FM_d_old = dict(mm.get_kv_pairs(path_import, extension="txt"))
 tolerance = 0.0001
 
 # plot forecasts to get an idea of the difference: do not just compare the FMs

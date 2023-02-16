@@ -111,7 +111,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cl_3x2pt_5D = cl_dict_3D['cl_3x2pt_5D']
 
     if which_probe_response == 'constant':
-        rl_value = covariance_cfg['rl_value']
+        rl_value = covariance_cfg['response_const_value']
         rl_LL_3D = np.full(cl_LL_3D.shape, rl_value)
         rl_GG_3D = np.full(cl_GG_3D.shape, rl_value)
         rl_WA_3D = np.full(cl_WA_3D.shape, rl_value)
@@ -444,7 +444,7 @@ def save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs):
     cases_tosave = ['GO', 'GS']
     if covariance_cfg[f'save_cov_GS']:
         cases_tosave.append('GS')
-    if covariance_cfg[f'save_cov_SS']:
+    if covariance_cfg[f'save_cov_SSC']:
         cases_tosave.append('SS')
 
     # which file format to use

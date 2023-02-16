@@ -436,8 +436,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             FM_dict['fiducial_values_dict'] = fiducials_dict
 
             # ! save Fisher matrix
-            FM_utils.save_FM(FM_dict, FM_cfg, general_cfg, save_txt=FM_cfg['save_FM_txt'],
-                             save_dict=FM_cfg['save_FM_dict'],
+            FM_utils.save_FM(None, FM_dict, FM_cfg, save_txt=FM_cfg['save_FM_txt'], save_dict=FM_cfg['save_FM_dict'],
                              **variable_specs)
 
     ####################################################################################################################

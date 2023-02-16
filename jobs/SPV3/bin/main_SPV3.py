@@ -447,6 +447,6 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                 'nbl_3x2pt': nbl_3x2pt,
             }
 
-            FM_utils.save_FM(FM_dict, FM_cfg, **save_specs)
+            FM_utils.save_FM(None, FM_dict, FM_cfg, **save_specs)
 
 print('done')

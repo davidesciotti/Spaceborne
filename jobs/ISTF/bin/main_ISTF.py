@@ -1,5 +1,3 @@
-import bz2
-import pickle
 import sys
 import time
 from pathlib import Path
@@ -367,36 +365,34 @@ for ndim in (2, 4, 6):
 
 # in this case, the following specs are not variable.
 # Nonetheless, we pass them as kwargs to the function, which is more general
-variable_specs = {}
-variable_specs['ell_max_WL'] = general_cfg['ell_max_WL']
-variable_specs['ell_max_GC'] = general_cfg['ell_max_GC']
-variable_specs['ell_max_XC'] = general_cfg['ell_max_XC']
-variable_specs['nbl_WL'] = general_cfg['nbl_WL']
-variable_specs['nbl_GC'] = general_cfg['nbl_GC']
-variable_specs['nbl_3x2pt'] = general_cfg['nbl_3x2pt']
-variable_specs['nbl_WA'] = general_cfg['nbl_WA']
+variable_specs = general_cfg | {'nbl_WA': nbl_WA, 'which_cov': covariance_cfg['']}
+
 cov_folder = covariance_cfg["cov_folder"].format(SSC_code=covariance_cfg['SSC_code'])
 covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
 
-FM_folder = FM_cfg["FM_folder"].format(SSC_code=covariance_cfg['SSC_code'])
-if FM_cfg['compute_FM'] and FM_cfg['save_FM_txt']:
-    # saves as txt file
-    probe_list = ['WL', 'GC', '3x2pt', 'WA']
-    ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
-    nbl_list = [nbl_WL, nbl_GC, nbl_GC, nbl_WA]
-    which_cov_list = ['GO', 'GS']
-    header = f"parameters: {paramnames_3x2pt} \nfiducials: {fid_3x2pt}"
+fm_folder = FM_cfg["FM_folder"].format(SSC_code=covariance_cfg['SSC_code'])
+FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, save_txt=FM_cfg['save_FM_txt'], save_dict=FM_cfg['save_FM_dict'],
+                 **variable_specs)
 
-    for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
-        for which_cov in which_cov_list:
-            FM_filename = FM_cfg["FM_filename"].format(probe=probe, which_cov=which_cov, ell_max=ell_max, nbl=nbl,
-                                                       **variable_specs)
-            np.savetxt(f'{FM_folder}/{FM_filename}', FM_dict[f'FM_{probe}_{which_cov}'], header=header)
 
-if FM_cfg['compute_FM'] and FM_cfg['save_FM_dict']:
-    mm.save_pickle(f'{FM_folder}/FM_dict_{EP_or_ED}{zbins:02}.pickle', FM_dict)
+# if FM_cfg['compute_FM'] and FM_cfg['save_FM_txt']:
+#     # saves as txt file
+#     probe_list = ['WL', 'GC', '3x2pt', 'WA']
+#     ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
+#     nbl_list = [nbl_WL, nbl_GC, nbl_GC, nbl_WA]
+#     which_cov_list = ['GO', 'GS']
+#     header = f"parameters: {paramnames_3x2pt} \nfiducials: {fid_3x2pt}"
+#
+#     for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
+#         for which_cov in which_cov_list:
+#             FM_filename = FM_cfg["FM_filename"].format(probe=probe, which_cov=which_cov, ell_max=ell_max, nbl=nbl,
+#                                                        **variable_specs)
+#             np.savetxt(f'{FM_folder}/{FM_filename}', FM_dict[f'FM_{probe}_{which_cov}'], header=header)
+#
+# if FM_cfg['compute_FM'] and FM_cfg['save_FM_dict']:
+#     mm.save_pickle(f'{FM_folder}/FM_dict_{EP_or_ED}{zbins:02}.pickle', FM_dict)
 
 ut.test_cov_FM(cov_folder, f'{cov_folder}/test_benchmarks_{covariance_cfg["SSC_code"]}/')
-ut.test_cov_FM(FM_folder, f'{FM_folder}/test_benchmarks_{covariance_cfg["SSC_code"]}/')
+ut.test_cov_FM(fm_folder, f'{fm_folder}/test_benchmarks_{covariance_cfg["SSC_code"]}/')
 
 print('done')

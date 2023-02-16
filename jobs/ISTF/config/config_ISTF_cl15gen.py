@@ -65,7 +65,6 @@ covariance_cfg = {
     'fsky': fsky,
     'block_index': 'ell',
     # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
-    'SSC_code': 'PySSC',
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which this is wrong
     'SSC_code': 'PySSC',  # PySSC or PyCCL
@@ -83,9 +82,10 @@ covariance_cfg = {
     'save_cov_GS': False,
     'save_cov_SSC': False,
     'save_2DCLOE': False,
-    'cov_file_format': 'npy',
+    'cov_file_format': 'npz',
+    'save_cov_dat': False,
     'cov_folder': str(job_path) + f'/output/{cfg_name}/' + 'covmat/{SSC_code:s}',
-    'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D.npy',
+    'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
     'cov_SSC_PyCCL_folder': f'{project_path.parent}/PyCCL_SSC/output/covmat',
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_hm_recipeKiDS1000_6D.npy',
     # TODO these 2 filenames could be unified...
@@ -121,6 +121,7 @@ FM_cfg = {
     'derivatives_suffix': '-N4TB-GR-eNLA',  # I'd like to use this, but instead:
     'FM_folder': str(job_path) + f'/output/{cfg_name}/' + 'FM/{SSC_code:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}.txt',
+    'FM_dict_filename': 'FM_zbins{EP_or_ED:s}{zbins:02}.pickle',
     'derivatives_BNT_transform': deriv_BNT_transform,
     'params_order': None,
     'paramnames_cosmo': paramnames_cosmo,

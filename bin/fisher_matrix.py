@@ -363,8 +363,10 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     # TODO: create pd dataframe
 
 
-def save_FM(FM_dict, FM_cfg, general_cfg, save_txt=False, save_dict=True, **save_specs):
-    """saves the FM in .txt and .pickle formats"""
+def save_FM(fm_folder, FM_dict, FM_cfg, save_txt=False, save_dict=True, **save_specs):
+    """saves the FM in .txt and .pickle formats
+    :param fm_folder:
+    """
 
     ell_max_WL = save_specs['ell_max_WL']
     ell_max_GC = save_specs['ell_max_GC']
@@ -374,8 +376,6 @@ def save_FM(FM_dict, FM_cfg, general_cfg, save_txt=False, save_dict=True, **save
     nbl_WA = save_specs['nbl_WA']
     nbl_3x2pt = save_specs['nbl_3x2pt']
 
-    FM_folder = FM_cfg['FM_folder'].format(ell_cuts=str(general_cfg['ell_cuts']), **save_specs)
-
     probe_list = ['WL', 'GC', '3x2pt', 'WA']
     ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
     nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
@@ -384,14 +384,13 @@ def save_FM(FM_dict, FM_cfg, general_cfg, save_txt=False, save_dict=True, **save
         for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
             for which_cov in ['GO', 'GS']:
                 FM_txt_filename = FM_cfg['FM_txt_filename'].format(probe=probe, which_cov=which_cov, ell_max=ell_max,
-                                                                   nbl=nbl,
-                                                                   **save_specs)
-                np.savetxt(f'{FM_folder}/{FM_txt_filename}.txt', FM_dict[f'FM_{probe}_{which_cov}'])
+                                                                   nbl=nbl, **save_specs)
+                np.savetxt(f'{fm_folder}/{FM_txt_filename}.txt', FM_dict[f'FM_{probe}_{which_cov}'])
 
     if save_dict:
         FM_dict_filename = FM_cfg['FM_dict_filename'].format(**save_specs)
-        mm.save_pickle(f'{FM_folder}/{FM_dict_filename}.pickle', FM_dict)
+        mm.save_pickle(f'{fm_folder}/{FM_dict_filename}.pickle', FM_dict)
 
     else:
-        print('No FM saved')
+        print('No Fisher matrix saved')
         pass

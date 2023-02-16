@@ -85,7 +85,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     GL_or_LG = covariance_cfg['GL_or_LG']
     ind = covariance_cfg['ind']
     block_index = covariance_cfg['block_index']
-    param_names_3x2pt = FM_cfg['param_names_3x2pt']
+    nparams_tot = FM_cfg['nparams_tot']
 
     # import ell values
     ell_WL, nbl_WL = ell_dict['ell_WL'], ell_dict['ell_WL'].shape[0]
@@ -117,7 +117,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     else:
         nbl_WA = ell_WA.shape[0]
 
-    nparams_tot = len(param_names_3x2pt)
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
     if GL_or_LG == 'LG':
@@ -325,7 +324,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     FM_3x2pt_GS = np.einsum('ia,ik,kb->ab', dC_3x2pt_2D, cov_3x2pt_GS_2D_inv, dC_3x2pt_2D, optimize='optimal')
     print(f'GO FM done in {(time.perf_counter() - start3):.2f} s')
 
-    # old, slow way
+    # old way, slooooow
     # # COMPUTE FM GO
     # start3 = time.perf_counter()
     # FM_WL_GO = mm.compute_FM_2D(nbl_WL, zpairs_auto, nparams_tot, cov_WL_GO_2D_inv, dC_LL_2D)

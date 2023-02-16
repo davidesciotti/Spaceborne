@@ -292,7 +292,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix)
 
-        covmat_utils.save_cov(general_cfg, covariance_cfg, cov_dict, **variable_specs)
+        # save covariance matrix
+        cov_folder = covariance_cfg['covmat_folder'].format(**variable_specs)
+        covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
 
     # ! compute Fisher matrix
     if FM_cfg['compute_FM']:

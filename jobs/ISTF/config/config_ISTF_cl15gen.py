@@ -39,6 +39,7 @@ general_cfg = {
     'n_probes': 2,
     'nbl_WL': 30,
     'nbl_GC': 30,
+    'nbl_3x2pt': 30,
     'use_WA': True,  # ! xxx
     'save_cls_3d': False,
     'save_rls_3d': False,
@@ -114,6 +115,7 @@ FM_cfg = {
     'save_FM_txt': True,
     'save_FM_dict': True,
     'nparams_tot': 20,  # total (cosmo + nuisance) number of parameters
+    'param_names_3x2pt': None,  # ! for the time being, these are defined in the main and then passed here
     'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_derivatives_tesi/new_names/',
     'derivatives_prefix': 'dCij{probe:s}d',
     'derivatives_suffix': '-N4TB-GR-eNLA',  # I'd like to use this, but instead:

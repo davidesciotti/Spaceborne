@@ -371,7 +371,7 @@ for ndim in (2, 4, 6):
 """
 
 cov_folder = covariance_cfg["cov_folder"].format(SSC_code=covariance_cfg['SSC_code'])
-covmat_utils.save_cov(covariance_cfg, general_cfg, cov_dict, cov_folder)
+covmat_utils.save_cov(None, general_cfg, cov_dict)
 
 if FM_cfg['compute_FM'] and FM_cfg['save_FM']:
     # saves as txt file

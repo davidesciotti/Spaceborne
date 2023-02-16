@@ -428,7 +428,9 @@ def cov_BNT_transform(cov_noBNT_6D, X_dict, probe_A, probe_B, optimize=True):
     return cov_BNT_6D
 
 
-def save_cov(general_cfg, covariance_cfg, cov_dict, **variable_specs):
+def save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs):
+
+    # TODO skip the computation and saving if the file already exists
 
     ell_max_WL = variable_specs['ell_max_WL']
     ell_max_GC = variable_specs['ell_max_GC']
@@ -455,17 +457,10 @@ def save_cov(general_cfg, covariance_cfg, cov_dict, **variable_specs):
     else:
         raise ValueError('cov_file_format not recognized: must be "npy" or "npz"')
 
-    # TODO skip the computation and saving if the file already exists
-    cov_folder = covariance_cfg["cov_folder"].format(ell_cuts=str(general_cfg['ell_cuts']), **variable_specs)
-    cov_folder_vincenzo = cov_folder + '/for_vincenzo'
-
     for ndim in (2, 4, 6):
 
         if covariance_cfg[f'save_cov_{ndim}D']:
 
-            # TODO skip the computation and saving if the file already exists
-            cov_folder = covariance_cfg["cov_folder"].format(ell_cuts=str(general_cfg['ell_cuts']), **variable_specs)
-            cov_folder_vincenzo = cov_folder + '/for_vincenzo'
 
             # set probes to save; the ndim == 6 case is different
             probe_list = ['WL', 'GC', '3x2pt', 'WA']

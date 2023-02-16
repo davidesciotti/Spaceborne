@@ -316,7 +316,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
                                           probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
         print(f'cov_SS_6D computed in {(time.perf_counter() - start_time):.2f} seconds')
 
-        if covariance_cfg['save_cov_SS']:
+        if covariance_cfg['save_cov_SSC']:
             cov_dict['cov_WL_SS_6D'] = cov_WL_SS_6D
             cov_dict['cov_GC_SS_6D'] = cov_GC_SS_6D
             cov_dict['cov_WA_SS_6D'] = cov_WA_SS_6D
@@ -339,6 +339,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_dict['cov_WA_GS_6D'] = cov_BNT_transform(cov_dict['cov_WA_GS_6D'], X_dict, 'L', 'L')
             cov_dict['cov_3x2pt_GS_10D'] = cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GS_10D'], X_dict)
 
+            # if not converted in 4D, only the 6D covs will be overwritten by the BNT-transofrmed version!
             cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_auto)
             cov_WA_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WA_GO_6D'], nbl_WA, zpairs_auto, ind_auto)
             cov_3x2pt_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_dict['cov_3x2pt_GO_10D'], probe_ordering, nbl_GC, zbins,
@@ -428,6 +429,7 @@ def cov_BNT_transform(cov_noBNT_6D, X_dict, probe_A, probe_B, optimize=True):
 
 
 def save_cov(general_cfg, covariance_cfg, cov_dict, **variable_specs):
+
     ell_max_WL = variable_specs['ell_max_WL']
     ell_max_GC = variable_specs['ell_max_GC']
     ell_max_XC = variable_specs['ell_max_XC']

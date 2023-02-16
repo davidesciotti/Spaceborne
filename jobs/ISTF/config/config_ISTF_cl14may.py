@@ -58,6 +58,7 @@ covariance_cfg = {
     'ng_filename': None,
     'sigma_eps2': 0.3 ** 2,
     'compute_covmat': True,
+    'compute_cov_6D': True,
     'save_cov_2D': True,
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt

@@ -1,14 +1,26 @@
 from pathlib import Path
+import sys
+import numpy as np
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 
-survey_area_deg2 = 15_000  # deg^2
-BNT_transform = False
+sys.path.append(f'{project_path}/bin')
+import utils_running as utils
 
-deg2_in_sphere = 41252.96  # deg^2 in a spere
-fsky = survey_area_deg2 / deg2_in_sphere
 cfg_name = 'cl15gen'
+which_forecast = 'ISTF'
+fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
+
+cl_BNT_transform = False
+cov_BNT_transform = False
+deriv_BNT_transform = False
+
+if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
+    BNT_transform = True
+else:
+    BNT_transform = False
+
 
 # settings for SSC comparison (aka 'sylvain'):
 # survey_area_deg2 = 15469.86  # deg^2
@@ -30,7 +42,8 @@ general_cfg = {
     'use_WA': True,  # ! xxx
     'save_cls_3d': False,
     'save_rls_3d': False,
-    'cl_BNT_transform': BNT_transform,
+    'cl_BNT_transform': cl_BNT_transform,
+    'BNT_transform': BNT_transform,
     'BNT_matrix_path': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT_matrix',
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
     'cl_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_tesi/new_names',
@@ -50,15 +63,19 @@ covariance_cfg = {
     'GL_or_LG': 'GL',
     'fsky': fsky,
     'block_index': 'ell',
-    # this is the one used by me and Vincenzo. The blocks in the 2D covmat will be indexed by ell1, ell2
+    # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
+    'SSC_code': 'PySSC',
     'which_probe_response': 'variable',
-    'rl_value': None,  # it used to be 4 for a constant probe response, which this is wrong
+    'response_const_value': None,  # it used to be 4 for a constant probe response, which this is wrong
     'SSC_code': 'PySSC',  # PySSC or PyCCL
     'ng': 30,
     'ng_folder': None,
     'ng_filename': None,
     'sigma_eps2': 0.3 ** 2,
+
+    'cov_BNT_transform': cov_BNT_transform,
     'compute_covmat': True,
+    'compute_cov_6D': True,
     'save_cov_2D': True,
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt
@@ -75,8 +92,8 @@ covariance_cfg = {
 
 Sijkl_cfg = {
     'wf_input_folder': f'{project_path.parent}/common_data/everyones_WF_from_Gdrive/davide/' + 'nz{nz:d}/gen2022',
-    'wil_filename': 'wil_dav_IA{has_IA:s}_{normalization:s}_nz{nz:d}_bia{bIA:.02f}.txt',
-    'wig_filename': 'wig_dav_{normalization:s}_nz{nz:d}.txt',
+    'wf_WL_input_filename': 'wil_dav_IA{has_IA:s}_{normalization:s}_nz{nz:d}_bia{bIA:.02f}.txt',
+    'wf_GC_input_filename': 'wig_dav_{normalization:s}_nz{nz:d}.txt',
     'Sijkl_folder': f'{project_path.parent}/common_data/Sijkl',
     'Sijkl_filename': 'Sijkl_WFdavide_nz{nz:d}_IA_3may.npy',
     'wf_normalization': 'IST',
@@ -94,15 +111,15 @@ nparams_total = len(paramnames_3x2pt)
 
 FM_cfg = {
     'compute_FM': True,
+    'save_FM_txt': True,
+    'save_FM_dict': True,
     'nparams_tot': 20,  # total (cosmo + nuisance) number of parameters
-    'save_FM': True,
-    'save_FM_as_dict': True,
-    'derivatives_BNT_transform': True,
     'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_derivatives_tesi/new_names/',
     'derivatives_prefix': 'dCij{probe:s}d',
     'derivatives_suffix': '-N4TB-GR-eNLA',  # I'd like to use this, but instead:
     'FM_folder': str(job_path) + f'/output/{cfg_name}/' + 'FM/{SSC_code:s}',
-    'FM_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}.txt',
+    'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}.txt',
+    'derivatives_BNT_transform': deriv_BNT_transform,
     'params_order': None,
     'paramnames_cosmo': paramnames_cosmo,
     'paramnames_IA': paramnames_IA,

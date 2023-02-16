@@ -32,12 +32,11 @@ import compute_Sijkl as Sijkl_utils
 import covariance as covmat_utils
 import fisher_matrix as FM_utils
 import utils_running as utils
+import unit_test as ut
 
 # job configuration and modules
 sys.path.append(f'{project_path}/jobs')
 import ISTF.config.config_ISTF_cl15gen as cfg
-
-# import ISTF.bin.unit_test as ut
 
 mpl.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)

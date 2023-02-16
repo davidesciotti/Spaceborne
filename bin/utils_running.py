@@ -16,7 +16,7 @@ fsky_SPV3 = survey_area_SPV3 / deg2_in_sphere
 
 def get_specs(which_forecast):
 
-    if which_forecast == 'IST':
+    if which_forecast == 'ISTF':
         fsky = fsky_ISTF
         GL_or_LG = 'GL'
         ind_ordering = 'vincenzo'
@@ -47,7 +47,7 @@ def get_specs(which_forecast):
         cl_folder = 'SPV3'
 
     else:
-        raise ValueError('which_forecast must be IST, sylvain, CLOE, SPV3 or SSCcomp_updt')
+        raise ValueError('which_forecast must be ISTF, sylvain, CLOE, SPV3 or SSCcomp_updt')
 
     return fsky, GL_or_LG, ind_ordering, cl_folder
 
@@ -60,7 +60,7 @@ def consistency_checks(general_config, covariance_config):
 
     which_forecast = general_config['which_forecast']
 
-    if which_forecast == 'IST':
+    if which_forecast == 'ISTF':
         assert covariance_config['fsky'] == fsky_ISTF, f'{which_forecast} uses fsky = {fsky_ISTF}'
         assert covariance_config['ind_ordering'] == 'vincenzo', f'{which_forecast} used Vincenzos ind ordering'
         assert covariance_config['GL_or_LG'] == 'GL', f'{which_forecast} uses GL'

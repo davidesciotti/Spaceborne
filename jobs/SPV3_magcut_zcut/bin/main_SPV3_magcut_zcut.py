@@ -66,8 +66,7 @@ ZL_list = general_cfg['zcut_lens_list']
 MS_list = general_cfg['magcut_source_list']
 ZS_list = general_cfg['zcut_source_list']
 
-for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
-        general_cfg['magcut_source'], general_cfg['zcut_source'] in \
+for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_source'], general_cfg['zcut_source'] in \
         zip(ML_list, ZL_list, MS_list, ZS_list):
 
     # without zip, i.e. for all the possible combinations (aka, a nightmare)
@@ -154,6 +153,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                   'delta_l_WA': np.copy(delta_l_WL_nbl32[nbl_GC:])}
 
     # set # of nbl in the opt case, import and reshape, then cut the reshaped datavectors in the pes case
+    # TODO this should not be hardcoded! if so, it should go in the config file...
     nbl_WL_opt = 32
     nbl_GC_opt = 29
     nbl_WA_opt = 3
@@ -269,8 +269,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         # ! compute or load Sijkl
         nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
         Sijkl_folder = Sijkl_cfg['Sijkl_folder']
-        warnings.warn('Sijkl_folder is set to BNT_False in all cases, so as not to have to recompute the Sijkl matrix '
-                      'in the BNT_True case')
+        assert general_cfg['cl_BNT_transform'] is False, 'for SSC, at the moment the BNT transform should not be ' \
+                                                         'applied to the cls, but to the covariance matrix (how should' \
+                                                         'we deal with the responses in the former case?)'
         Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(flagship_version=general_cfg['flagship_version'],
                                                             nz=nz, IA_flag=Sijkl_cfg['has_IA'], **variable_specs)
 
@@ -334,7 +335,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         FM_cfg['fiducials_dict'] = fiducials_dict
         FM_cfg['param_names_3x2pt'] = param_names_3x2pt
 
-        # TODO the for loop over kmax can go inside the fisher, no need to recompute or reinvert the derivatives!
+        # TODO the for loop over kmax can go inside the fisher, no need to recompute or reinvert the covmats!
         for kmax_h_over_Mpc in general_cfg['kmax_list_h_over_Mpc']:
 
             variable_specs['kmax_h_over_Mpc'] = kmax_h_over_Mpc

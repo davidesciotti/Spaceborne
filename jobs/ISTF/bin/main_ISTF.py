@@ -104,6 +104,10 @@ ind_filename = covariance_cfg['ind_filename'].format(**variable_specs)
 ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
 covariance_cfg['ind'] = ind
 
+ind = mm.build_full_ind(covariance_cfg['triu_tril'], covariance_cfg['row_col_major'], zbins)
+covariance_cfg['ind'] = ind
+
+
 # ! compute ell and delta ell values
 ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_cfg)
 nbl_WA = ell_dict['ell_WA'].shape[0]
@@ -278,9 +282,6 @@ if FM_cfg['compute_FM']:
     FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
     FM_dict['param_names_dict'] = param_names_dict
     FM_dict['fiducial_values_dict'] = fiducials_dict
-
-    del cov_dict
-    gc.collect()
 
 # ! save cls and responses:
 """

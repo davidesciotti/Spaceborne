@@ -71,7 +71,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         general_cfg['magcut_source'], general_cfg['zcut_source'] in \
         zip(ML_list, ZL_list, MS_list, ZS_list):
 
-    # without zip, i.e. for all the possible combinations (aka, a nightmare of possible combinations)
+    # without zip, i.e. for all the possible combinations (aka, a nightmare)
     # for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
     #     for general_cfg['magcut_source'] in general_cfg['magcut_source_list']:
     #         for general_cfg['zcut_lens'] in general_cfg['zcut_lens_list']:

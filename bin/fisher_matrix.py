@@ -271,7 +271,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_WA_4D = deriv_dict['dC_WA_4D']
     dC_3x2pt_6D = deriv_dict['dC_3x2pt_6D']
 
-    if FM_cfg['deriv_BNT_transform']:
+    if FM_cfg['derivatives_BNT_transform']:
 
         assert covariance_cfg['cov_BNT_transform'], 'you should BNT transform the covariance as well'
         assert BNT_matrix is not None, 'you should provide a BNT matrix'

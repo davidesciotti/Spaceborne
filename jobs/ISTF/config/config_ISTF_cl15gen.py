@@ -67,7 +67,6 @@ covariance_cfg = {
     'GL_or_LG': 'GL',
     'fsky': fsky,
     'block_index': 'ell',
-    # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which this is wrong
     'SSC_code': 'PySSC',  # PySSC or PyCCL
@@ -133,18 +132,17 @@ FM_cfg = {
 
     'param_names_dict': param_names_dict,
     'fiducials_dict': fiducials_dict,
-
     'nparams_tot': nparams_tot,  # total (cosmo + nuisance) number of parameters
     'param_names_3x2pt': param_names_3x2pt,  # ! for the time being, these are defined in the main and then passed here
-
-    'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_derivatives_tesi/new_names/',
-    'derivatives_prefix': 'dCij{probe:s}d',
-    'derivatives_suffix': '-N4TB-GR-eNLA',  # I'd like to use this, but instead:
-    'derivatives_BNT_transform': deriv_BNT_transform,
 
     'save_FM_txt': True,
     'save_FM_dict': True,
     'FM_folder': str(job_path) + f'/output/{cfg_name}/' + 'FM/{SSC_code:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
     'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}',
+
+    'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_derivatives_tesi/new_names/',
+    'derivatives_prefix': 'dCij{probe:s}d',
+    'derivatives_suffix': '-N4TB-GR-eNLA',  # I'd like to use this, but instead:
+    'derivatives_BNT_transform': deriv_BNT_transform,
 }

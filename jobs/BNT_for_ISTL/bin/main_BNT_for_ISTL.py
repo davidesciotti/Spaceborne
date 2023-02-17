@@ -391,7 +391,7 @@ if FM_cfg['compute_FM'] and FM_cfg['save_FM']:
 if FM_cfg['compute_FM'] and FM_cfg['save_FM_as_dict']:
     mm.save_pickle(f'{FM_folder}/FM_dict_{EP_or_ED}{zbins:02}.pickle', FM_dict)
 
-ut.test_cov_FM(covariance_cfg['SSC_code'], f'{general_cfg["cfg_name"]}/covmat')
-ut.test_cov_FM(covariance_cfg['SSC_code'], f'{general_cfg["cfg_name"]}/FM')
+ut.test_cov_FM(covariance_cfg['SSC_code'], f'{general_cfg["cfg_name"]}/covmat', )
+ut.test_cov_FM(covariance_cfg['SSC_code'], f'{general_cfg["cfg_name"]}/FM', )
 
 print('done')

@@ -92,7 +92,7 @@ def check_FMs_against_oldSSCscript(FM_new_path, general_config, covariance_confi
                 print(f'is the percent difference between the FM < {tolerance}?, {probe}, {GO_or_GS}, {result_emoji}')
 
 
-def test_cov_FM(output_path, benchmarks_path, extension, load_function):
+def test_cov_FM(output_path, benchmarks_path, extension):
     """tests that the outputs do not change between the old and the new version"""
     old_dict = dict(mm.get_kv_pairs(benchmarks_path, extension))
     new_dict = dict(mm.get_kv_pairs(output_path, extension))
@@ -105,9 +105,15 @@ def test_cov_FM(output_path, benchmarks_path, extension, load_function):
 
     if extension == 'npz':
         for key in old_dict.keys():
-            assert np.array_equal(old_dict[key]['arr_0'], new_dict[key]['arr_0']), f'The file {key} is different ❌'
+            try:
+                np.array_equal(old_dict[key]['arr_0'], new_dict[key]['arr_0'])
+            except AssertionError:
+                f'The file {benchmarks_path}/{key}.{extension} is different ❌'
     else:
         for key in old_dict.keys():
-            assert np.array_equal(old_dict[key], new_dict[key]), f'The file {key} is different ❌'
+            try:
+                np.array_equal(old_dict[key], new_dict[key])
+            except AssertionError:
+                f'The file {benchmarks_path}/{key}.{extension} is different ❌'
 
     print('tests passed successfully: the outputs are the same as the benchmarks ✅')

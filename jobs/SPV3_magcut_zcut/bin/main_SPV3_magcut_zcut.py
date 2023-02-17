@@ -393,8 +393,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
     # ! unit test: check that the outputs have not changed
     cov_benchmark_folder = f'{cov_folder}/benchmarks'
     fm_benchmark_folder = f'{fm_folder}/benchmarks'
-    ut.test_cov_FM(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'], np.load)
-    ut.test_cov_FM(fm_folder, fm_benchmark_folder, 'txt', np.genfromtxt)
+    ut.test_cov_FM(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
+    ut.test_cov_FM(fm_folder, fm_benchmark_folder, 'txt')
 
 """
     # ! save cls and responses:

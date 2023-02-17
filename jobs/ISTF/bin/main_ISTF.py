@@ -32,7 +32,6 @@ import cl_preprocessing as cl_utils
 import compute_Sijkl as Sijkl_utils
 import covariance as covmat_utils
 import fisher_matrix as FM_utils
-import utils_running as utils
 import unit_test as ut
 
 # job configuration and modules
@@ -98,15 +97,14 @@ assert general_cfg['BNT_transform'] is False, 'BNT_transform is not implemented 
 zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
 # import the ind files and store it into the covariance dictionary
-# TODO better call the mm function, more elegant (no need to import files...)
-ind_folder = covariance_cfg['ind_folder'].format(**variable_specs)
-ind_filename = covariance_cfg['ind_filename'].format(**variable_specs)
-ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
-covariance_cfg['ind'] = ind
+# TODO delete these lines
+# ind_folder = covariance_cfg['ind_folder'].format(**variable_specs)
+# ind_filename = covariance_cfg['ind_filename'].format(**variable_specs)
+# ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
+# covariance_cfg['ind'] = ind
 
 ind = mm.build_full_ind(covariance_cfg['triu_tril'], covariance_cfg['row_col_major'], zbins)
 covariance_cfg['ind'] = ind
-
 
 # ! compute ell and delta ell values
 ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_cfg)
@@ -338,8 +336,8 @@ FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, save_txt=FM_cfg['save_FM_txt'], sav
 # ! test:
 cov_benchmark_folder = f'{cov_folder}/benchmarks'
 fm_benchmark_folder = f'{fm_folder}/benchmarks'
-ut.test_cov_FM(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'], np.load)
-ut.test_cov_FM(fm_folder, fm_benchmark_folder, 'txt', np.genfromtxt)
+ut.test_cov_FM(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
+ut.test_cov_FM(fm_folder, fm_benchmark_folder, 'txt')
 
 # ! plot:
 nparams_toplot = 7

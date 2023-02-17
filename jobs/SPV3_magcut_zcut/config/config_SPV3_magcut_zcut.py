@@ -8,6 +8,9 @@ job_path = Path.cwd().parent
 sys.path.append(f'{project_path}/bin')
 import utils_running as utils
 
+sys.path.append(f'{project_path.parent}/common_data/common_config')
+import ISTF_fid_params as ISTFfid
+
 which_forecast = 'SPV3'
 fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
@@ -45,7 +48,7 @@ general_cfg = {
     'use_WA': False,
     'save_cls_3d': False,
     'save_rls_3d': False,
-    'ell_cuts': False,
+    'ell_cuts': True,
     'ell_cuts_folder': f'{SPV3_folder}/ell_cuts',
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                          'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
@@ -63,7 +66,7 @@ general_cfg = {
     'magcut_lens_list': (245,),
     'magcut_source_list': (245,),
     'zcut_lens_list': (0,),
-    'zcut_source_list': (0, ),
+    'zcut_source_list': (0,),
     'zmax': 2.5,
     'magcut_source': None,
     'magcut_lens': None,
@@ -96,7 +99,7 @@ covariance_cfg = {
     'compute_covmat': True,
     'compute_cov_6D': True,  # or 10D for the 3x2pt
     'cov_file_format': 'npz',  # or npy
-    'save_cov_2D': False,
+    'save_cov_2D': True,
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_GS': False,
@@ -124,12 +127,28 @@ Sijkl_cfg = {
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
 
+# declare the set of parameters under study
+zbins = general_cfg['zbins']
+param_names_dict = {
+    'cosmo': ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"],
+    'IA': ["Aia", "eIA", "bIA"],
+    'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
+    'shear_bias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
+    'dzWL': [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
+    'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+}
+param_names_3x2pt = param_names_dict['cosmo'] + param_names_dict['IA'] + param_names_dict['galaxy_bias'] + \
+                    param_names_dict['shear_bias'] + param_names_dict['dzWL'] + param_names_dict['dzGC']
+
 FM_cfg = {
     'compute_FM': True,
     'save_FM_txt': True,
     'save_FM_dict': True,
-    'nparams_tot': 20,  # total (cosmo + nuisance) number of parameters
-    'param_names_3x2pt': None,  # ! for the time being, these are defined in the main and then passed here
+
+    'param_names_dict': param_names_dict,
+    'fiducials_dict': None,  # this needs to be set in the main, since it depends on the n_gal file
+    'param_names_3x2pt': param_names_3x2pt,
+    'nparams_tot': len(param_names_3x2pt),  # total (cosmo + nuisance) number of parameters
     'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_False/' +
                           'ML{magcut_lens:03d}ZL{zcut_lens:02d}MS{magcut_source:03d}ZS{zcut_source:02d}',
     'derivatives_filename': 'BNT_dDVd{param:s}-{probe:s}-{specs:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
@@ -139,8 +158,8 @@ FM_cfg = {
     'fm_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}' + '/ell_cuts_{ell_cuts:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'
                        'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}',
-                       # '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
+    # '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
     'FM_dict_filename': 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
                         'MS{magcut_source:03d}-ZS{zcut_source:02d}',
-                        # '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
+    # '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
 }

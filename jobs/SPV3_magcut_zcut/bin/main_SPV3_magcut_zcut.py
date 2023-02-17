@@ -68,6 +68,7 @@ ZS_list = general_cfg['zcut_source_list']
 
 for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_source'], general_cfg['zcut_source'] in \
         zip(ML_list, ZL_list, MS_list, ZS_list):
+    # for general_cfg['ell_cuts'] in (True, False):
 
     # without zip, i.e. for all the possible combinations (aka, a nightmare)
     # for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
@@ -294,50 +295,36 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
     # ! compute Fisher matrix
     if FM_cfg['compute_FM']:
 
-        # declare the set of parameters under study
-        param_names_dict = {
-            'cosmo': ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"],
-            'IA': ["Aia", "eIA", "bIA"],
-            'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
-            'shear_bias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
-            'dzWL': [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
-            'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
-        }
-        param_names_3x2pt = param_names_dict['cosmo'] + param_names_dict['IA'] + param_names_dict['galaxy_bias'] + \
-                            param_names_dict['shear_bias'] + param_names_dict['dzWL'] + param_names_dict['dzGC']
-
-        # fiducial values
+        # set the fiducial values in a dictionary and a list
         fiducials_dict = {
             'cosmo': [ISTF_fid.primary['Om_m0'], ISTF_fid.extensions['Om_Lambda0'], ISTF_fid.primary['Om_b0'],
                       ISTF_fid.primary['w_0'], ISTF_fid.primary['w_a'],
                       ISTF_fid.primary['h_0'], ISTF_fid.primary['n_s'], ISTF_fid.primary['sigma_8']],
             'IA': np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()]),
-            'galaxy_bias': np.genfromtxt(f'{ng_folder}/{ng_filename}')[:, 2],
+            'galaxy_bias': np.genfromtxt(f'{ng_folder}/{ng_filename}')[:, 2],  # it needs to be set in the main!
             'shear_bias': np.zeros((zbins,)),
             'dzWL': np.zeros((zbins,)),
             'dzGC': np.zeros((zbins,)),
         }
-        # this needs to be done outside the dictionary creation
+
         fiducials_3x2pt = np.concatenate(
             (fiducials_dict['cosmo'], fiducials_dict['IA'], fiducials_dict['galaxy_bias'],
              fiducials_dict['shear_bias'], fiducials_dict['dzWL'], fiducials_dict['dzGC']))
 
-        assert len(fiducials_3x2pt) == len(
-            param_names_3x2pt), 'the fiducial values list and parameter names should have the same length'
+        # set parameters' names, as a dict and as a list
+        param_names_dict = FM_cfg['param_names_dict']
+        param_names_3x2pt = FM_cfg['param_names_3x2pt']
 
-        # save them to pass to FM_utils module
-        # TODO the first 2 are not used
-        FM_cfg['param_names_dict'] = param_names_dict
-        FM_cfg['fiducials_dict'] = fiducials_dict
-        FM_cfg['param_names_3x2pt'] = param_names_3x2pt
+        assert len(fiducials_3x2pt) == len(param_names_3x2pt), \
+            'the fiducial values list and parameter names should have the same length'
 
         # TODO the for loop over kmax can go inside the fisher, no need to recompute or reinvert the covmats!
         # ! I think this for loop should start lower!
         # for kmax_h_over_Mpc in general_cfg['kmax_list_h_over_Mpc']:
         #     variable_specs['kmax_h_over_Mpc'] = kmax_h_over_Mpc
 
-        # ! derivatives
-        # import derivatives and store them in one big dictionary
+        # ! preprocess derivatives
+        # import and store them in one big dictionary
         derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
         der_prefix = FM_cfg['derivatives_prefix']
         dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat", np.genfromtxt))
@@ -367,7 +354,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
                                                    der_prefix, is_3x2pt=True)
 
-        # free memory
+        # free up memory
         del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
         gc.collect()
 
@@ -400,11 +387,11 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']))
         FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'], **variable_specs)
 
-# ! unit test: check that the outputs have not changed
-cov_benchmark_folder = f'{Path(cov_folder).parent}/benchmarks'
-fm_benchmark_folder = f'{Path(fm_folder).parent}/benchmarks'
-ut.test_cov_FM(cov_folder, cov_benchmark_folder, 'npz', np.load)
-ut.test_cov_FM(fm_folder, fm_benchmark_folder, 'txt', np.genfromtxt)
+    # ! unit test: check that the outputs have not changed
+    cov_benchmark_folder = f'{cov_folder}/benchmarks'
+    fm_benchmark_folder = f'{fm_folder}/benchmarks'
+    ut.test_cov_FM(cov_folder, cov_benchmark_folder, 'npz', np.load)
+    ut.test_cov_FM(fm_folder, fm_benchmark_folder, 'txt', np.genfromtxt)
 
 """
     # ! save cls and responses:

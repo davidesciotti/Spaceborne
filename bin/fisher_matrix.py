@@ -369,8 +369,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_3x2pt_3D = np.concatenate((dC_LLfor3x2pt_3D, dC_XCfor3x2pt_3D, dC_GGfor3x2pt_3D), axis=1)
 
     # collapse ell and zpair - ATTENTION: np.reshape, like ndarray.flatten, accepts an 'ordering' parameter, which works
-    # in the same way
-    # not with the old datavector, which was ordered in a different way...
+    # in the same way not with the old datavector, which was ordered in a different way...
     dC_LL_2D = np.reshape(dC_LL_3D, (nbl_WL * zpairs_auto, nparams_tot), order=which_flattening)
     dC_GG_2D = np.reshape(dC_GG_3D, (nbl_GC * zpairs_auto, nparams_tot), order=which_flattening)
     dC_WA_2D = np.reshape(dC_WA_3D, (nbl_WA * zpairs_auto, nparams_tot), order=which_flattening)
@@ -392,22 +391,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     FM_3x2pt_GS = np.einsum('ia,ik,kb->ab', dC_3x2pt_2D, cov_3x2pt_GS_2D_inv, dC_3x2pt_2D, optimize='optimal')
     print(f'GO FM done in {(time.perf_counter() - start3):.2f} s')
 
-    # old way, slooooow
-    # # COMPUTE FM GO
-    # start3 = time.perf_counter()
-    # FM_WL_GO = mm.compute_FM_2D(nbl_WL, zpairs_auto, nparams_tot, cov_WL_GO_2D_inv, dC_LL_2D)
-    # FM_GC_GO = mm.compute_FM_2D(nbl_GC, zpairs_auto, nparams_tot, cov_GC_GO_2D_inv, dC_GG_2D)
-    # FM_WA_GO = mm.compute_FM_2D(nbl_WA, zpairs_auto, nparams_tot, cov_WA_GO_2D_inv, dC_WA_2D)
-    # FM_3x2pt_GO = mm.compute_FM_2D(nbl_3x2pt, zpairs_3x2pt, nparams_tot, cov_3x2pt_GO_2D_inv, dC_3x2pt_2D)
-    # print(f'GO FM done in {(time.perf_counter() - start3):.2f} s')
-    #
-    # # COMPUTE FM GS
-    # start4 = time.perf_counter()
-    # FM_WL_GS = mm.compute_FM_2D(nbl_WL, zpairs_auto, nparams_tot, cov_WL_GS_2D_inv, dC_LL_2D)
-    # FM_GC_GS = mm.compute_FM_2D(nbl_GC, zpairs_auto, nparams_tot, cov_GC_GS_2D_inv, dC_GG_2D)
-    # FM_WA_GS = mm.compute_FM_2D(nbl_WA, zpairs_auto, nparams_tot, cov_WA_GS_2D_inv, dC_WA_2D)
-    # FM_3x2pt_GS = mm.compute_FM_2D(nbl_3x2pt, zpairs_3x2pt, nparams_tot, cov_3x2pt_GS_2D_inv, dC_3x2pt_2D)
-    # print(f'GS FM done in {(time.perf_counter() - start4):.2f} s')
 
     # sum WA, this is the actual FM_3x2pt
     if use_WA:
@@ -462,3 +445,18 @@ def save_FM(fm_folder, FM_dict, FM_cfg, save_txt=False, save_dict=True, **save_s
     else:
         print('No Fisher matrix saved')
         pass
+
+
+# old way to compute the FM, slow
+# # COMPUTE FM GO
+# FM_WL_GO = mm.compute_FM_2D(nbl_WL, zpairs_auto, nparams_tot, cov_WL_GO_2D_inv, dC_LL_2D)
+# FM_GC_GO = mm.compute_FM_2D(nbl_GC, zpairs_auto, nparams_tot, cov_GC_GO_2D_inv, dC_GG_2D)
+# FM_WA_GO = mm.compute_FM_2D(nbl_WA, zpairs_auto, nparams_tot, cov_WA_GO_2D_inv, dC_WA_2D)
+# FM_3x2pt_GO = mm.compute_FM_2D(nbl_3x2pt, zpairs_3x2pt, nparams_tot, cov_3x2pt_GO_2D_inv, dC_3x2pt_2D)
+#
+# # COMPUTE FM GS
+# FM_WL_GS = mm.compute_FM_2D(nbl_WL, zpairs_auto, nparams_tot, cov_WL_GS_2D_inv, dC_LL_2D)
+# FM_GC_GS = mm.compute_FM_2D(nbl_GC, zpairs_auto, nparams_tot, cov_GC_GS_2D_inv, dC_GG_2D)
+# FM_WA_GS = mm.compute_FM_2D(nbl_WA, zpairs_auto, nparams_tot, cov_WA_GS_2D_inv, dC_WA_2D)
+# FM_3x2pt_GS = mm.compute_FM_2D(nbl_3x2pt, zpairs_3x2pt, nparams_tot, cov_3x2pt_GS_2D_inv, dC_3x2pt_2D)
+

@@ -17,8 +17,8 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = True
-deriv_BNT_transform = True
+cov_BNT_transform = False
+deriv_BNT_transform = False
 
 if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
     BNT_transform = True
@@ -45,7 +45,7 @@ general_cfg = {
     'use_WA': False,
     'save_cls_3d': False,
     'save_rls_3d': False,
-    'ell_cuts': True,
+    'ell_cuts': False,
     'ell_cuts_folder': f'{SPV3_folder}/ell_cuts',
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                          'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
@@ -80,8 +80,6 @@ covariance_cfg = {
     'ind_filename': 'indices_{triu_tril:s}_{row_col_major:s}_zbins{zbins:02d}.dat',
     'triu_tril': 'triu',
     'row_col_major': 'row-major',
-    'GL_or_LG': 'GL',
-    'fsky': fsky,
     'block_index': 'ell',
     'GL_or_LG': GL_or_LG,
     'fsky': fsky,  # ! new
@@ -105,7 +103,7 @@ covariance_cfg = {
     'save_cov_SSC': False,
     'save_2DCLOE': False,  # outermost loop is on the probes
     'save_cov_dat': False,  # this is the format used by Vincenzo
-    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{ell_cuts:s}/zbins{EP_or_ED:s}{zbins:02d}',
+    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{ell_cuts:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_'
                     'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_'
                     'MS{magcut_source:03d}_ZS{zcut_source:02d}_{ndim:d}D.{extension:s}',
@@ -139,7 +137,7 @@ FM_cfg = {
     'derivatives_prefix': 'dDVd',
     'deriv_BNT_transform': deriv_BNT_transform,
     # the filename is the same as above
-    'FM_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}/ell_cuts_' + '{ell_cuts:s}',
+    'fm_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}' + '/ell_cuts_{ell_cuts:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'
                        'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}'
                        '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',

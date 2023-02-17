@@ -381,13 +381,16 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     for probe_name, cov_GO_4D, cov_GO_2D, cov_GS_4D, cov_GS_2D, cov_SS_4D, cov_SS_2D \
             in zip(probe_names, covs_GO_4D, covs_GO_2D, covs_GS_4D, covs_GS_2D, covs_SS_4D, covs_SS_2D):
         # save 4D
-        cov_dict[f'cov_{probe_name}_GO_4D'] = cov_GO_4D
-        cov_dict[f'cov_{probe_name}_GS_4D'] = cov_GS_4D
-        cov_dict[f'cov_{probe_name}_SS_4D'] = cov_SS_4D
+        # cov_dict[f'cov_{probe_name}_GO_4D'] = cov_GO_4D
+        # cov_dict[f'cov_{probe_name}_GS_4D'] = cov_GS_4D
+        if covariance_cfg['save_cov_SSC']:
+            cov_dict[f'cov_{probe_name}_SS_4D'] = cov_SS_4D
+
         # save 2D
         cov_dict[f'cov_{probe_name}_GO_2D'] = cov_GO_2D
         cov_dict[f'cov_{probe_name}_GS_2D'] = cov_GS_2D
-        cov_dict[f'cov_{probe_name}_SS_2D'] = cov_SS_2D
+        if covariance_cfg['save_cov_SSC']:
+            cov_dict[f'cov_{probe_name}_SS_2D'] = cov_SS_2D
 
     # '2DCLOE', i.e. the 'multi-diagonal', non-square blocks ordering, only for 3x2pt
     # note: we found out that this is not actually used in CLOE...
@@ -399,13 +402,17 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
 
 def build_X_matrix_BNT(BNT_matrix):
-    """"""
+    """
+    Builds the X matrix for the BNT transform, according to eq.
+    :param BNT_matrix:
+    :return:
+    """
     X = {}
     delta_kron = np.eye(BNT_matrix.shape[0])
     X['L', 'L'] = np.einsum('ae, bf -> aebf', BNT_matrix, BNT_matrix)
     X['G', 'G'] = np.einsum('ae, bf -> aebf', delta_kron, delta_kron)
     X['G', 'L'] = np.einsum('ae, bf -> aebf', delta_kron, BNT_matrix)
-    X['L', 'G'] = np.einsum('ae, bf -> aebf', BNT_matrix, delta_kron)  # ! XXX is this correct?
+    X['L', 'G'] = np.einsum('ae, bf -> aebf', BNT_matrix, delta_kron)
     return X
 
 

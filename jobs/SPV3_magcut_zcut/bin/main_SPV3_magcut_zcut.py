@@ -40,8 +40,7 @@ import compute_Sijkl as Sijkl_utils
 import covariance as covmat_utils
 import fisher_matrix as FM_utils
 import utils_running as utils
-
-# import unit_test as ut
+import unit_test as ut
 
 matplotlib.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -292,7 +291,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix)
 
         # save covariance matrix
-        cov_folder = covariance_cfg['covmat_folder'].format(**variable_specs)
+        cov_folder = covariance_cfg['cov_folder'].format(ell_cuts=str(general_cfg['ell_cuts']), **variable_specs)
         covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
 
     # ! compute Fisher matrix
@@ -302,13 +301,13 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         param_names_dict = {
             'cosmo': ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"],
             'IA': ["Aia", "eIA", "bIA"],
-            'galbias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
-            'shearbias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
+            'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
+            'shear_bias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
             'dzWL': [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
             'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
         }
-        param_names_3x2pt = param_names_dict['cosmo'] + param_names_dict['IA'] + param_names_dict['galbias'] + \
-                            param_names_dict['shearbias'] + param_names_dict['dzWL'] + param_names_dict['dzGC']
+        param_names_3x2pt = param_names_dict['cosmo'] + param_names_dict['IA'] + param_names_dict['galaxy_bias'] + \
+                            param_names_dict['shear_bias'] + param_names_dict['dzWL'] + param_names_dict['dzGC']
 
         # fiducial values
         fiducials_dict = {
@@ -344,7 +343,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             # import derivatives and store them in one big dictionary
             derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
             der_prefix = FM_cfg['derivatives_prefix']
-            dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
+            dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat", np.genfromtxt))
             # check if dictionary is empty
             if not dC_dict_1D:
                 raise ValueError(f'No derivatives found in folder {derivatives_folder}')
@@ -356,29 +355,28 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             dC_dict_3x2pt_5D = {}
             for key in dC_dict_1D.keys():
                 if 'WLO' in key:
-                    dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl=nbl_WL, zbins=zbins)
+                    dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
                 elif 'GCO' in key:
-                    dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl=nbl_GC, zbins=zbins)
+                    dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
                 elif 'WLA' in key:
-                    dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl=nbl_WA, zbins=zbins)
+                    dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
                 elif '3x2pt' in key:
-                    dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl=nbl_3x2pt,
-                                                                      zbins=zbins)
+                    dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt, zbins)
 
             # turn the dictionaries of derivatives into npy array
             dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
             dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
             dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
             dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
-                                                       der_prefix,
-                                                       is_3x2pt=True)
+                                                       der_prefix, is_3x2pt=True)
 
             # free memory
             del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
+            gc.collect()
 
-            if general_cfg['deriv_BNT_transform']:
+            if FM_cfg['deriv_BNT_transform']:
 
-                assert general_cfg['cov_BNT_transform'], 'you should BNT transform the covariance as well'
+                assert covariance_cfg['cov_BNT_transform'], 'you should BNT transform the covariance as well'
 
                 for param_idx in range(len(param_names_3x2pt)):
                     dC_LL_4D[:, :, :, param_idx] = cl_utils.cl_BNT_transform(
@@ -390,7 +388,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
                 if general_cfg['ell_cuts']:
 
-                    print('Performing the ell cuts')
+                    print('Performing the ell cuts...')
 
                     ell_cuts_fldr = general_cfg['ell_cuts_folder']
                     ell_cuts_filename = general_cfg['ell_cuts_filename']
@@ -437,12 +435,17 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             FM_dict['fiducial_values_dict'] = fiducials_dict
 
             # ! save Fisher matrix
-            FM_utils.save_FM(None, FM_dict, FM_cfg, save_txt=FM_cfg['save_FM_txt'], save_dict=FM_cfg['save_FM_dict'],
+            fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']))
+            FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'],
                              **variable_specs)
 
-    ####################################################################################################################
-    ######################################################### SAVE #####################################################
-    ####################################################################################################################
+# ! unit test: check that the outputs have not changed
+cov_benchmark_folder = f'{Path(cov_folder).parent}/benchmarks'
+fm_benchmark_folder = f'{Path(fm_folder).parent}/benchmarks'
+ut.test_cov_FM(cov_folder, cov_benchmark_folder, 'npz', np.load)
+ut.test_cov_FM(fm_folder, fm_benchmark_folder, 'txt', np.genfromtxt)
+
+
 """
     # ! save cls and responses:
     # TODO this should go inside a function too
@@ -481,12 +484,5 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                     np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])
 
 """
-# cov_output_path = f'{job_path}/output/Flagship_{general_cfg["flagship_version"]}/covmat/BNT_{general_cfg["BNT_transform"]}/zbins{zbins}'
-# cov_benchmark_path = cov_output_path + '/benchmarks'
-#
-# FM_output_path = f'{job_path}/output/Flagship_{general_cfg["flagship_version"]}/FM/BNT_{general_cfg["BNT_transform"]}/zbins{zbins}'
-# FM_benchmark_path = FM_output_path + '/benchmarks'
-# ut.test_cov_FM(FM_output_path, FM_benchmarks_path)
-
 
 print('done')

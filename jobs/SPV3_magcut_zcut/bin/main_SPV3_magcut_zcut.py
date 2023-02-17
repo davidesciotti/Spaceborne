@@ -375,55 +375,41 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
             gc.collect()
 
-            if FM_cfg['deriv_BNT_transform']:
 
-                assert covariance_cfg['cov_BNT_transform'], 'you should BNT transform the covariance as well'
+            if general_cfg['ell_cuts']:
 
+                print('Performing the ell cuts...')
+
+                ell_cuts_fldr = general_cfg['ell_cuts_folder']
+                ell_cuts_filename = general_cfg['ell_cuts_filename']
+                ell_cuts_LL = np.genfromtxt(
+                    f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}')
+                ell_cuts_GG = np.genfromtxt(
+                    f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}')
+                ell_cuts_XC = np.genfromtxt(
+                    f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')
+
+                # ! linearly rescale ell cuts
+                # h_over_Mpc; the one with which the above ell cuts were computed
+                kmax_ref_h_over_Mpc = general_cfg['kmax_ref_h_over_Mpc']
+                variable_specs['kmax_h_over_Mpc'] = kmax_h_over_Mpc
+
+                ell_cuts_LL *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
+                ell_cuts_GG *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
+                ell_cuts_XC *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
+
+                ell_cuts_dict = {
+                    'WL': ell_cuts_LL,
+                    'GC': ell_cuts_GG,
+                    'XC': ell_cuts_XC}
+
+                cl_cut = cl_utils.cl_ell_cut  # just to abbreviate the name to fit in one line
                 for param_idx in range(len(param_names_3x2pt)):
-                    dC_LL_4D[:, :, :, param_idx] = cl_utils.cl_BNT_transform(
-                        dC_LL_4D[:, :, :, param_idx], BNT_matrix, 'L', 'L')
-                    dC_WA_4D[:, :, :, param_idx] = cl_utils.cl_BNT_transform(
-                        dC_WA_4D[:, :, :, param_idx], BNT_matrix, 'L', 'L')
-                    dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_BNT_transform_3x2pt(
-                        dC_3x2pt_6D[:, :, :, :, :, param_idx], BNT_matrix)
-
-                if general_cfg['ell_cuts']:
-
-                    print('Performing the ell cuts...')
-
-                    ell_cuts_fldr = general_cfg['ell_cuts_folder']
-                    ell_cuts_filename = general_cfg['ell_cuts_filename']
-                    ell_cuts_LL = np.genfromtxt(
-                        f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}')
-                    ell_cuts_GG = np.genfromtxt(
-                        f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}')
-                    ell_cuts_XC = np.genfromtxt(
-                        f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')
-
-                    # ! linearly rescale ell cuts
-                    # h_over_Mpc; the one with which the above ell cuts were computed
-                    kmax_ref_h_over_Mpc = general_cfg['kmax_ref_h_over_Mpc']
-                    variable_specs['kmax_h_over_Mpc'] = kmax_h_over_Mpc
-
-                    ell_cuts_LL *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
-                    ell_cuts_GG *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
-                    ell_cuts_XC *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
-
-                    ell_cuts_dict = {
-                        'WL': ell_cuts_LL,
-                        'GC': ell_cuts_GG,
-                        'XC': ell_cuts_XC}
-
-                    func = cl_utils.cl_ell_cut  # just to abbreviate the name to fit in one line
-                    for param_idx in range(len(param_names_3x2pt)):
-                        dC_LL_4D[:, :, :, param_idx] = func(dC_LL_4D[:, :, :, param_idx], ell_cuts_LL,
-                                                            ell_dict['ell_WL'])
-                        dC_WA_4D[:, :, :, param_idx] = func(dC_WA_4D[:, :, :, param_idx], ell_cuts_LL,
-                                                            ell_dict['ell_WA'])
-                        dC_GG_4D[:, :, :, param_idx] = func(dC_GG_4D[:, :, :, param_idx], ell_cuts_GG,
-                                                            ell_dict['ell_GC'])
-                        dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_ell_cut_3x2pt(
-                            dC_3x2pt_6D[:, :, :, :, :, param_idx], ell_cuts_dict, ell_dict)
+                    dC_LL_4D[:, :, :, param_idx] = cl_cut(dC_LL_4D[:, :, :, param_idx], ell_cuts_LL, ell_dict['ell_WL'])
+                    dC_WA_4D[:, :, :, param_idx] = cl_cut(dC_WA_4D[:, :, :, param_idx], ell_cuts_LL, ell_dict['ell_WA'])
+                    dC_GG_4D[:, :, :, param_idx] = cl_cut(dC_GG_4D[:, :, :, param_idx], ell_cuts_GG, ell_dict['ell_GC'])
+                    dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_ell_cut_3x2pt(
+                        dC_3x2pt_6D[:, :, :, :, :, param_idx], ell_cuts_dict, ell_dict)
 
             # store the derivatives arrays in a dictionary
             deriv_dict = {'dC_LL_4D': dC_LL_4D,

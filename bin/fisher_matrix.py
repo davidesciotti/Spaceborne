@@ -10,6 +10,8 @@ project_path_here = Path.cwd().parent.parent.parent
 sys.path.append(str(project_path_here.parent / 'common_lib'))
 import my_module as mm
 
+import cl_preprocessing as cl_utils
+
 script_name = sys.argv[0]
 
 
@@ -78,7 +80,7 @@ def invert_matrix_LU(covariance_matrix):
 
 
 
-def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict):
+def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict, BNT_matrix=None):
     # shorten names
     zbins = general_cfg['zbins']
     use_WA = general_cfg['use_WA']
@@ -86,6 +88,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     ind = covariance_cfg['ind']
     block_index = covariance_cfg['block_index']
     nparams_tot = FM_cfg['nparams_tot']
+    param_names_3x2pt = FM_cfg['param_names_3x2pt']
 
     # import ell values
     ell_WL, nbl_WL = ell_dict['ell_WL'], ell_dict['ell_WL'].shape[0]
@@ -267,7 +270,18 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_LL_4D = deriv_dict['dC_LL_4D']
     dC_GG_4D = deriv_dict['dC_GG_4D']
     dC_WA_4D = deriv_dict['dC_WA_4D']
-    dC_3x2pt_5D = deriv_dict['dC_3x2pt_5D']
+    dC_3x2pt_6D = deriv_dict['dC_3x2pt_6D']
+
+    if FM_cfg['deriv_BNT_transform']:
+
+        assert covariance_cfg['cov_BNT_transform'], 'you should BNT transform the covariance as well'
+        assert BNT_matrix is not None, 'you should provide a BNT matrix'
+
+        for param_idx in range(len(param_names_3x2pt)):
+            dC_LL_4D[:, :, :, param_idx] = cl_utils.cl_BNT_transform(dC_LL_4D[:, :, :, param_idx], BNT_matrix, 'L', 'L')
+            dC_WA_4D[:, :, :, param_idx] = cl_utils.cl_BNT_transform(dC_WA_4D[:, :, :, param_idx], BNT_matrix, 'L', 'L')
+            dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_BNT_transform_3x2pt(
+                dC_3x2pt_6D[:, :, :, :, :, param_idx], BNT_matrix)
 
     # separate the different 3x2pt contributions
     # ! delicate point, double check
@@ -278,9 +292,9 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     else:
         raise ValueError('GL_or_LG must be "GL" or "LG"')
 
-    dC_LLfor3x2pt_4D = dC_3x2pt_5D[:, 0, 0, :, :, :]
-    dC_XCfor3x2pt_4D = dC_3x2pt_5D[:, probe_A, probe_B, :, :, :]
-    dC_GGfor3x2pt_4D = dC_3x2pt_5D[:, 1, 1, :, :, :]
+    dC_LLfor3x2pt_4D = dC_3x2pt_6D[:, 0, 0, :, :, :]
+    dC_XCfor3x2pt_4D = dC_3x2pt_6D[:, probe_A, probe_B, :, :, :]
+    dC_GGfor3x2pt_4D = dC_3x2pt_6D[:, 1, 1, :, :, :]
 
     assert np.array_equal(dC_GGfor3x2pt_4D, dC_GG_4D), "dC_GGfor3x2pt_4D and dC_GG_4D are not equal"
     assert nbl_3x2pt == nbl_GC, 'nbl_3x2pt and nbl_GC are not equal'

@@ -143,5 +143,4 @@ FM_cfg = {
                        '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
     'FM_dict_filename': 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
                         'MS{magcut_source:03d}-ZS{zcut_source:02d}_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
-    'params_order': None,
 }

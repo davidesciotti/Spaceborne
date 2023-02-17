@@ -95,14 +95,14 @@ uncert_ratio_dict[probe] = {}
 
 # import FM dict
 FM_dict_PySSC = mm.load_pickle(
-    f'{project_path}/jobs/ISTF/output/{which_cfg}/FM/PySSC/FM_dict_{EP_or_ED}{zbins:02}.pickle')
+    f'{project_path}/jobs/ISTF/output/{which_cfg}/FM/PySSC/FM_dict_zbins{EP_or_ED}{zbins:02}.pickle')
 _param_names = FM_dict_PySSC['parameters_names']  # this should not change when passed the second time to the function
 _fiducials = FM_dict_PySSC['fiducial_values']  # this should not change when passed the second time to the function
 FM_PySSC_GO = FM_dict_PySSC[f'FM_{probe}_GO']
 FM_PySSC_GS = FM_dict_PySSC[f'FM_{probe}_GS']
 
 FM_PyCCL_dict = mm.load_pickle(
-    f'{project_path}/jobs/ISTF/output/{which_cfg}/FM/PyCCL/FM_dict_{EP_or_ED}{zbins:02}.pickle')
+    f'{project_path}/jobs/ISTF/output/{which_cfg}/FM/PyCCL/FM_dict_zbins{EP_or_ED}{zbins:02}.pickle')
 FM_PyCCL_GO = FM_PyCCL_dict[f'FM_{probe}_GO']
 FM_PyCCL_GS = FM_PyCCL_dict[f'FM_{probe}_GS']
 

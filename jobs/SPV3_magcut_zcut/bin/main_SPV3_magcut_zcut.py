@@ -110,12 +110,11 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
                                                          'or to the covariance'
         assert FM_cfg['deriv_BNT_transform'], 'you should BNT transform the derivatives as well'
 
-
     # which cases to save: GO, GS or GO, GS and SS
     cases_tosave = ['GO', 'GS']
     if covariance_cfg[f'save_cov_GS']:
         cases_tosave.append('GS')
-    if covariance_cfg[f'save_cov_SS']:
+    if covariance_cfg[f'save_cov_SSC']:
         cases_tosave.append('SS')
 
     # import the ind files and store it into the covariance dictionary
@@ -271,10 +270,10 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
         # ! compute or load Sijkl
         nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
         Sijkl_folder = Sijkl_cfg['Sijkl_folder']
-        warnings.warn('Sijkl_folder is set to BNT_False in all cases, so as not to have to recompute the Sijkl matrix'
+        warnings.warn('Sijkl_folder is set to BNT_False in all cases, so as not to have to recompute the Sijkl matrix '
                       'in the BNT_True case')
         Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(flagship_version=general_cfg['flagship_version'],
-                                                            nz=nz, IA_flag=Sijkl_cfg['IA_flag'], **variable_specs)
+                                                            nz=nz, IA_flag=Sijkl_cfg['has_IA'], **variable_specs)
 
         # if Sijkl exists, load it; otherwise, compute it and save it
         if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
@@ -282,7 +281,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
             Sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
         else:
             Sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
-                                              Sijkl_cfg['WF_normalization'])
+                                              Sijkl_cfg['wf_normalization'])
             np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
 
         # ! compute covariance matrix
@@ -313,7 +312,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], \
 
         # fiducial values
         fiducials_dict = {
-            'cosmo': [0.32, 0.68, 0.05, -1.0, 0.0, 0.67, 0.96, 0.816],  # TODO import from ISTfid
+            'cosmo': [ISTF_fid.primary['Om_m0'], ISTF_fid.extensions['Om_Lambda0'], ISTF_fid.primary['Om_b0'],
+                      ISTF_fid.primary['w_0'], ISTF_fid.primary['w_a'],
+                      ISTF_fid.primary['h_0'], ISTF_fid.primary['n_s'], ISTF_fid.primary['sigma_8']],
             'IA': np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()]),
             'galaxy_bias': np.genfromtxt(f'{ng_folder}/{ng_filename}')[:, 2],
             'shear_bias': np.zeros((zbins,)),

@@ -8,6 +8,9 @@ job_path = Path.cwd().parent
 sys.path.append(f'{project_path}/bin')
 import utils_running as utils
 
+sys.path.append(f'{project_path.parent}/common_data/common_config')
+import ISTF_fid_params as ISTFfid
+
 cfg_name = 'cl15gen'
 which_forecast = 'ISTF'
 fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
@@ -21,10 +24,10 @@ if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
 else:
     BNT_transform = False
 
-
 # settings for SSC comparison (aka 'sylvain'):
 # survey_area_deg2 = 15469.86  # deg^2
 # use_WA: False
+# + different deltas...
 
 general_cfg = {
     'cfg_name': cfg_name,
@@ -103,30 +106,45 @@ Sijkl_cfg = {
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
 
-# define the parameters outside the dictionary, it's more convenient
-paramnames_cosmo = ["Om", "Ob", "wz", "wa", "h", "ns", "s8"]
-paramnames_IA = ["Aia", "eIA", "bIA"]
-paramnames_galbias = [f'b{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
-paramnames_3x2pt = paramnames_cosmo + paramnames_IA + paramnames_galbias
-nparams_total = len(paramnames_3x2pt)
+# dictionaries of cosmological parameters' names and values
+param_names_dict = {
+    'cosmo': ["Om", "Ob", "wz", "wa", "h", "ns", "s8"],
+    'IA': ["Aia", "eIA", "bIA"],
+    'galaxy_bias': [f'b{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
+}
+# fiducial values
+fiducials_dict = {
+    'cosmo': [ISTFfid.primary['Om_m0'], ISTFfid.primary['Om_b0'], ISTFfid.primary['w_0'], ISTFfid.primary['w_a'],
+              ISTFfid.primary['h_0'], ISTFfid.primary['n_s'], ISTFfid.primary['sigma_8']],
+    'IA': [ISTFfid.IA_free['A_IA'], ISTFfid.IA_free['eta_IA'], ISTFfid.IA_free['beta_IA']],
+    'galaxy_bias': [ISTFfid.photoz_galaxy_bias[f'b{zbin:02d}_photo'] for zbin in range(1, general_cfg['zbins'] + 1)],
+}
+
+
+param_names_3x2pt = param_names_dict['cosmo'] + param_names_dict['IA'] + param_names_dict['galaxy_bias']
+# this needs to be done outside the dictionary creation
+fiducials_3x2pt = np.concatenate((fiducials_dict['cosmo'], fiducials_dict['IA'], fiducials_dict['galaxy_bias']))
+assert len(param_names_3x2pt) == len(fiducials_3x2pt), "the fiducial values list and parameter names should have the " \
+                                                       "same length"
+nparams_tot = len(param_names_3x2pt)
 
 FM_cfg = {
     'compute_FM': True,
-    'save_FM_txt': True,
-    'save_FM_dict': True,
-    'nparams_tot': 20,  # total (cosmo + nuisance) number of parameters
-    'param_names_3x2pt': None,  # ! for the time being, these are defined in the main and then passed here
+
+    'param_names_dict': param_names_dict,
+    'fiducials_dict': fiducials_dict,
+
+    'nparams_tot': nparams_tot,  # total (cosmo + nuisance) number of parameters
+    'param_names_3x2pt': param_names_3x2pt,  # ! for the time being, these are defined in the main and then passed here
+
     'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_derivatives_tesi/new_names/',
     'derivatives_prefix': 'dCij{probe:s}d',
     'derivatives_suffix': '-N4TB-GR-eNLA',  # I'd like to use this, but instead:
-    'FM_folder': str(job_path) + f'/output/{cfg_name}/' + 'FM/{SSC_code:s}',
-    'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}.txt',
-    'FM_dict_filename': 'FM_zbins{EP_or_ED:s}{zbins:02}.pickle',
     'derivatives_BNT_transform': deriv_BNT_transform,
-    'params_order': None,
-    'paramnames_cosmo': paramnames_cosmo,
-    'paramnames_IA': paramnames_IA,
-    'paramnames_galbias': paramnames_galbias,
-    'paramnames_3x2pt': paramnames_3x2pt,
-    'nparams_total': nparams_total,
+
+    'save_FM_txt': True,
+    'save_FM_dict': True,
+    'FM_folder': str(job_path) + f'/output/{cfg_name}/' + 'FM/{SSC_code:s}',
+    'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
+    'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}',
 }

@@ -1,3 +1,4 @@
+import gc
 import sys
 import time
 from pathlib import Path
@@ -6,6 +7,8 @@ import matplotlib as mpl
 import numpy as np
 import os
 import warnings
+
+import pandas as pd
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
@@ -202,15 +205,17 @@ if covariance_cfg['compute_covmat']:
 # ! compute Fisher Matrix
 if FM_cfg['compute_FM']:
 
-    paramnames_3x2pt = FM_cfg['paramnames_3x2pt']
-    nparams_total = len(paramnames_3x2pt)
     GL_or_LG = covariance_cfg['GL_or_LG']
+    fiducials_dict = FM_cfg['fiducials_dict']
+    param_names_dict = FM_cfg['param_names_dict']
+    param_names_3x2pt = FM_cfg['param_names_3x2pt']
+    nparams_tot = FM_cfg['nparams_tot']
     # these define the derivatives filenames
     der_prefix = FM_cfg['derivatives_prefix']
     derivatives_suffix = FM_cfg['derivatives_suffix']
 
     derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
-    dC_dict_2D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
+    dC_dict_2D = dict(mm.get_kv_pairs(derivatives_folder, "dat", np.genfromtxt))
     # check if dictionary is empty
     if not dC_dict_2D:
         raise ValueError(f'No derivatives found in folder {derivatives_folder}')
@@ -244,19 +249,19 @@ if FM_cfg['compute_FM']:
 
     # turn dictionary keys into entries of 4-th array axis
     # TODO the obs_name must be defined in the config file
-    dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, paramnames_3x2pt, nbl, zbins,
+    dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl, zbins,
                                             der_prefix.format(probe='LL'))
-    dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, paramnames_3x2pt, nbl_WA, zbins,
+    dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins,
                                             der_prefix.format(probe='LL'))
-    dC_LLfor3x2pt_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LLfor3x2pt_3D, paramnames_3x2pt, nbl, zbins,
+    dC_LLfor3x2pt_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LLfor3x2pt_3D, param_names_3x2pt, nbl, zbins,
                                                     der_prefix.format(probe='LL'))
-    dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, paramnames_3x2pt, nbl, zbins,
+    dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl, zbins,
                                             der_prefix.format(probe='GG'))
-    dC_GL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GL_3D, paramnames_3x2pt, nbl, zbins,
+    dC_GL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GL_3D, param_names_3x2pt, nbl, zbins,
                                             der_prefix.format(probe=GL_or_LG))
 
     # build 5D array of derivatives for the 3x2pt
-    dC_3x2pt_5D = np.zeros((nbl, n_probes, n_probes, zbins, zbins, nparams_total))
+    dC_3x2pt_5D = np.zeros((nbl, n_probes, n_probes, zbins, zbins, nparams_tot))
     dC_3x2pt_5D[:, 0, 0, :, :, :] = dC_LLfor3x2pt_4D
     dC_3x2pt_5D[:, 0, 1, :, :, :] = dC_GL_4D.transpose(0, 2, 1, 3)
     dC_3x2pt_5D[:, 1, 0, :, :, :] = dC_GL_4D
@@ -268,20 +273,9 @@ if FM_cfg['compute_FM']:
                   'dC_WA_4D': dC_WA_4D,
                   'dC_3x2pt_5D': dC_3x2pt_5D}
 
-    # finally, define the fiducial values to write them in the FM header file
-    paramnames_cosmo = ["Om", "Ob", "wz", "wa", "h", "ns", "s8"]
-    paramnames_IA = ["Aia", "eIA", "bIA"]
-    paramnames_galbias = [f'bL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
-
-    fid_cosmo = [ISTFfid.primary['Om_m0'], ISTFfid.primary['Om_b0'], ISTFfid.primary['w_0'], ISTFfid.primary['w_a'],
-                 ISTFfid.primary['h_0'], ISTFfid.primary['n_s'], ISTFfid.primary['sigma_8']]
-    fid_IA = [ISTFfid.IA_free['A_IA'], ISTFfid.IA_free['eta_IA'], ISTFfid.IA_free['beta_IA']]
-    fid_gal_bias = [ISTFfid.photoz_galaxy_bias[f'b{zbin:02d}_photo'] for zbin in range(1, zbins + 1)]
-    fid_3x2pt = fid_cosmo + fid_IA + fid_gal_bias
-
     FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
-    FM_dict['parameters_names'] = paramnames_3x2pt
-    FM_dict['fiducial_values'] = fid_3x2pt
+    FM_dict['param_names_dict'] = param_names_dict
+    FM_dict['fiducial_values_dict'] = fiducials_dict
 
 # ! save:
 # this is just to set the correct probe names
@@ -320,50 +314,6 @@ for cl_or_rl in ['cl', 'rl']:
                     f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                     delta_dict[f'delta_l_{probe_dav}'])
 
-# TODO save methods should probably be moved to a function
-"""
-cov_folder = covariance_cfg["cov_folder"].format(SSC_code=covariance_cfg['SSC_code'])
-for ndim in (2, 4, 6):
-    if covariance_cfg[f'save_cov_{ndim}D']:
-
-        # save GO, GS or GO, GS and SSC
-        which_cov_list = ['GO', 'GS']
-        if covariance_cfg[f'save_cov_SSC']:
-            which_cov_list.append('SSC')
-
-        # set probes to save; the ndim == 6 case is different
-        probe_list = ['WL', 'GC', '3x2pt', 'WA']
-        ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
-        nbl_list = [nbl_WL, nbl_GC, nbl_GC, nbl_WA]
-        # in this case, 3x2pt is saved in 10D as a dictionary
-        if ndim == 6:
-            probe_list = ['WL', 'GC', 'WA']
-            ellmax_list = [ell_max_WL, ell_max_GC, ell_max_WL]
-            nbl_list = [nbl_WL, nbl_GC, nbl_WA]
-
-        # save all covmats in the optimistic case
-        if ell_max_WL == 5000:
-
-            for which_cov in which_cov_list:
-                for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
-                    np.save(f'{cov_folder}/'
-                            f'covmat_{which_cov}_{probe}_lmax{ell_max}_nbl{nbl}_zbins{EP_or_ED}{zbins:02}_{ndim}D.npy',
-                            cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])
-
-                # in this case, 3x2pt is saved in 10D as a dictionary
-                if ndim == 6:
-                    filename = f'{cov_folder}/covmat_{which_cov}_3x2pt_lmax{ell_max_XC}_nbl{nbl_GC}_zbins{EP_or_ED}{zbins:02}_10D.pickle'
-                    with open(filename, 'wb') as handle:
-                        pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
-
-        # in the pessimistic case, save only WA
-        elif ell_max_WL == 1500:
-            for which_cov in which_cov_list:
-                np.save(
-                    f'{cov_folder}/covmat_{which_cov}_WA_lmax{ell_max_WL}_nbl{nbl_WA}_zbins{EP_or_ED}{zbins:02}_{ndim}D.npy',
-                    cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
-"""
-
 # in this case, the following specs are not variable.
 # Nonetheless, we pass them as kwargs to the function, which is more general
 variable_specs = general_cfg | {'nbl_WA': nbl_WA}
@@ -371,29 +321,85 @@ variable_specs = general_cfg | {'nbl_WA': nbl_WA}
 cov_folder = covariance_cfg["cov_folder"].format(SSC_code=covariance_cfg['SSC_code'])
 covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
 
+del cov_dict
+gc.collect()
+
 fm_folder = FM_cfg["FM_folder"].format(SSC_code=covariance_cfg['SSC_code'])
 FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, save_txt=FM_cfg['save_FM_txt'], save_dict=FM_cfg['save_FM_dict'],
                  **variable_specs)
 
+# ! test:
+ut.test_cov_FM(cov_folder, f'{Path(cov_folder).parent}/test_benchmarks_{covariance_cfg["SSC_code"]}',
+               extension=covariance_cfg['cov_file_format'], load_function=np.load)
+ut.test_cov_FM(fm_folder, f'{Path(fm_folder).parent}/test_benchmarks_{covariance_cfg["SSC_code"]}',
+               extension='txt', load_function=np.genfromtxt)
 
-# if FM_cfg['compute_FM'] and FM_cfg['save_FM_txt']:
-#     # saves as txt file
-#     probe_list = ['WL', 'GC', '3x2pt', 'WA']
-#     ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
-#     nbl_list = [nbl_WL, nbl_GC, nbl_GC, nbl_WA]
-#     which_cov_list = ['GO', 'GS']
-#     header = f"parameters: {paramnames_3x2pt} \nfiducials: {fid_3x2pt}"
-#
-#     for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
-#         for which_cov in which_cov_list:
-#             FM_filename = FM_cfg["FM_filename"].format(probe=probe, which_cov=which_cov, ell_max=ell_max, nbl=nbl,
-#                                                        **variable_specs)
-#             np.savetxt(f'{FM_folder}/{FM_filename}', FM_dict[f'FM_{probe}_{which_cov}'], header=header)
-#
-# if FM_cfg['compute_FM'] and FM_cfg['save_FM_dict']:
-#     mm.save_pickle(f'{FM_folder}/FM_dict_{EP_or_ED}{zbins:02}.pickle', FM_dict)
+# ! plot:
+nparams_toplot = 7
+uncert_dict = {}
+masked_FM_dict = {}
+for key in list(FM_dict.keys()):
 
-ut.test_cov_FM(cov_folder, f'{cov_folder}/test_benchmarks_{covariance_cfg["SSC_code"]}', extension=covariance_cfg['cov_file_format'])
-ut.test_cov_FM(fm_folder, f'{fm_folder}/test_benchmarks_{covariance_cfg["SSC_code"]}', extension=covariance_cfg['cov_file_format'])
+    print(key)
+
+    if key not in ['param_names_dict', 'fiducial_values_dict']:
+        masked_FM_dict[key], param_names_list, fiducials_list = mm.mask_FM(FM_dict[key], FM_dict['param_names_dict'],
+                                                                           FM_dict['fiducial_values_dict'],
+                                                                           params_tofix_dict={})
+
+        nparams = len(param_names_list)
+
+        assert nparams == len(fiducials_list), f'number of parameters in the Fisher Matrix ({nparams}) '
+
+        uncert_dict[key] = mm.uncertainties_FM(masked_FM_dict[key], nparams=masked_FM_dict[key].shape[0],
+                                               fiducials=fiducials_list,
+                                               which_uncertainty='marginal', normalize=True)[:nparams_toplot]
+
+FM_3x2pt_GO, param_names_list, fiducials_list = mm.mask_FM(FM_dict['FM_3x2pt_GO'], FM_dict['param_names_dict'],
+                                                           FM_dict['fiducial_values_dict'],
+                                                           params_tofix_dict={})
+
+FM_test = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
+                        '/SSC_comparison/output/FM/FM_3x2pt_GO_lmaxXC3000_nbl30.txt')
+uncert_FM_test = mm.uncertainties_FM(FM_test, FM_test.shape[0], fiducials=fiducials_list, which_uncertainty='marginal', normalize=True)[:nparams_toplot]
+###############
+# # add the percent differences and/or rations to the dictionary
+# to_compare_A = uncert_dict['FM_PySSC_GS'] - uncert_dict['FM_PySSC_GO']
+# to_compare_B = uncert_dict['FM_PyCCL_GS'] - uncert_dict['FM_PyCCL_GO']
+# uncert_dict['abs(percent_diff_GS) wrt mean'] = np.abs(diff_funct(to_compare_A, to_compare_B))
+# # uncert_dict['percent_diff_GS'] = diff_funct(uncert_dict['FM_PyCCL_GS'], uncert_dict['FM_PyCCL_GO'])
+#
+# assert np.array_equal(uncert_dict['FM_PySSC_GO'], uncert_dict['FM_PyCCL_GO']), \
+#     'the GO uncertainties must be the same, I am only changing the SSC code!'
+#
+# silent check against IST:F (which do not exist for GC alone):
+for probe in ['WL', '3x2pt']:
+    uncert_dict['ISTF'] = ISTFfid.forecasts[f'{probe}_opt_w0waCDM_flat']
+    try:
+        assert np.allclose(uncert_dict['ISTF'], uncert_dict[f'FM_{probe}_GO'][:nparams_toplot], atol=0, rtol=5e-2)
+    except AssertionError:
+        f'IST:F and G are not consistent for probe {probe}! Remember that you are checking against the optimistic case'
+        np.set_printoptions(precision=3)
+        print('ISTF:\t', uncert_dict['ISTF'])
+        print('Dark:\t', uncert_dict[f'FM_{probe}_GO'][:nparams_toplot])
+
+print('ISTF and Gaussian contr are consistent!')
+
+df = pd.DataFrame(uncert_dict)
+
+# # transform dict. into an array
+cases_to_plot = ('FM_3x2pt_GO',)
+uncert_array = []
+for case in cases_to_plot:
+    uncert_array.append(uncert_dict[case])
+uncert_array = np.asarray(uncert_array)
+
+lmax = 3000
+title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
+plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
+                    param_names_label=param_names_list[:nparams_toplot], bar_width=0.12)
+#
+# diff_FM = diff_funct(FM_PySSC_GS, FM_PyCCL_GS)
+# mm.matshow(diff_FM, title=f'percent difference wrt mean between PySSC and PyCCL FMs {probe}, {EP_or_ED}{zbins:02}')
 
 print('done')

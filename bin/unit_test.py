@@ -92,21 +92,18 @@ def check_FMs_against_oldSSCscript(FM_new_path, general_config, covariance_confi
                 print(f'is the percent difference between the FM < {tolerance}?, {probe}, {GO_or_GS}, {result_emoji}')
 
 
-def test_cov_FM(output_path, benchmarks_path, extension):
+def test_cov_FM(output_path, benchmarks_path, extension, load_function):
     """tests that the outputs do not change between the old and the new version"""
-    old_dict = dict(mm.get_kv_pairs(benchmarks_path), extension=extension)
-    new_dict = dict(mm.get_kv_pairs(output_path), extension=extension)
+    old_dict = dict(mm.get_kv_pairs(benchmarks_path, extension, load_function))
+    new_dict = dict(mm.get_kv_pairs(output_path, extension, load_function))
 
-    print('old_dict.keys()', old_dict.keys())
-    print('new_dict.keys()', new_dict.keys())
+    # check if the dictionaries are empty
+    assert len(old_dict) > 0, 'No files in the benchmarks path ❌'
+    assert len(new_dict) > 0, 'No files in the output path ❌'
 
-    # check if the dictionary is empty
-    assert len(old_dict) > 0, 'No files in the benchmarks path'
-    assert len(new_dict) > 0, 'No files in the output path'
-
-    assert old_dict.keys() == new_dict.keys(), 'The number of files or their names has changed'
+    assert old_dict.keys() == new_dict.keys(), 'The number of files or their names has changed ❌'
 
     for key in old_dict.keys():
-        assert np.array_equal(old_dict[key], new_dict[key]), f'The file {key} is different'
+        assert np.array_equal(old_dict[key], new_dict[key]), f'The file {key} is different ❌'
 
     print('tests passed successfully: the outputs are the same as the benchmarks ✅')

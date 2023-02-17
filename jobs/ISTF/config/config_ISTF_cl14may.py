@@ -108,5 +108,5 @@ FM_cfg = {
     'paramnames_IA': paramnames_IA,
     'paramnames_galbias': paramnames_galbias,
     'paramnames_3x2pt': paramnames_3x2pt,
-    'nparams_total': nparams_total,
+    'nparams_tot': nparams_total,
 }

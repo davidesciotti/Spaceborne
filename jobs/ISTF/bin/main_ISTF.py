@@ -383,12 +383,10 @@ for probe in ['WL', '3x2pt']:
         print('ISTF:\t', uncert_dict['ISTF'])
         print('Dark:\t', uncert_dict[f'FM_{probe}_GO'][:nparams_toplot])
 
-print('ISTF and Gaussian contr are consistent!')
-
 df = pd.DataFrame(uncert_dict)
 
 # # transform dict. into an array
-cases_to_plot = ('FM_3x2pt_GO',)
+cases_to_plot = ('FM_3x2pt_GO', )
 uncert_array = []
 for case in cases_to_plot:
     uncert_array.append(uncert_dict[case])

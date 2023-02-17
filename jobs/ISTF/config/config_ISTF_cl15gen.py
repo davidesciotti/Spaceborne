@@ -46,6 +46,7 @@ general_cfg = {
     'use_WA': True,  # ! xxx
     'save_cls_3d': False,
     'save_rls_3d': False,
+    'ell_cuts': False,
     'cl_BNT_transform': cl_BNT_transform,
     'BNT_transform': BNT_transform,
     'BNT_matrix_path': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT_matrix',

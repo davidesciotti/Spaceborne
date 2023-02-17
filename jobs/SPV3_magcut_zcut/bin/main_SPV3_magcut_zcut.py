@@ -327,7 +327,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         # import and store them in one big dictionary
         derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
         der_prefix = FM_cfg['derivatives_prefix']
-        dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat", np.genfromtxt))
+        dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
         # check if dictionary is empty
         if not dC_dict_1D:
             raise ValueError(f'No derivatives found in folder {derivatives_folder}')
@@ -386,6 +386,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
 
         fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']))
         FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'], **variable_specs)
+
+        del cov_dict
+        gc.collect()
 
     # ! unit test: check that the outputs have not changed
     cov_benchmark_folder = f'{cov_folder}/benchmarks'

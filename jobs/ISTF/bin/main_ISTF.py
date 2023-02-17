@@ -92,6 +92,8 @@ variable_specs = {
 assert EP_or_ED == 'EP' and zbins == 10, 'ISTF uses 10 equipopulated bins'
 assert covariance_cfg['GL_or_LG'] == 'GL', 'Cij_14may uses GL, also for the probe responses'
 assert nbl_GC == nbl_WL, 'for ISTF we are using the same number of ell bins for WL and GC'
+assert general_cfg['ell_cuts'] is False, 'ell_cuts is not implemented for ISTF'
+assert general_cfg['BNT_transform'] is False, 'BNT_transform is not implemented for ISTF'
 
 zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
@@ -215,7 +217,7 @@ if FM_cfg['compute_FM']:
     derivatives_suffix = FM_cfg['derivatives_suffix']
 
     derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
-    dC_dict_2D = dict(mm.get_kv_pairs(derivatives_folder, "dat", np.genfromtxt))
+    dC_dict_2D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
     # check if dictionary is empty
     if not dC_dict_2D:
         raise ValueError(f'No derivatives found in folder {derivatives_folder}')
@@ -277,6 +279,9 @@ if FM_cfg['compute_FM']:
     FM_dict['param_names_dict'] = param_names_dict
     FM_dict['fiducial_values_dict'] = fiducials_dict
 
+    del cov_dict
+    gc.collect()
+
 # ! save cls and responses:
 """
 # this is just to set the correct probe names
@@ -330,10 +335,10 @@ FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, save_txt=FM_cfg['save_FM_txt'], sav
                  **variable_specs)
 
 # ! test:
-ut.test_cov_FM(cov_folder, f'{Path(cov_folder).parent}/test_benchmarks_{covariance_cfg["SSC_code"]}',
-               extension=covariance_cfg['cov_file_format'], load_function=np.load)
-ut.test_cov_FM(fm_folder, f'{Path(fm_folder).parent}/test_benchmarks_{covariance_cfg["SSC_code"]}',
-               extension='txt', load_function=np.genfromtxt)
+cov_benchmark_folder = f'{cov_folder}/benchmarks'
+fm_benchmark_folder = f'{fm_folder}/benchmarks'
+ut.test_cov_FM(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'], np.load)
+ut.test_cov_FM(fm_folder, fm_benchmark_folder, 'txt', np.genfromtxt)
 
 # ! plot:
 nparams_toplot = 7
@@ -362,7 +367,8 @@ FM_3x2pt_GO, param_names_list, fiducials_list = mm.mask_FM(FM_dict['FM_3x2pt_GO'
 
 FM_test = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
                         '/SSC_comparison/output/FM/FM_3x2pt_GO_lmaxXC3000_nbl30.txt')
-uncert_FM_test = mm.uncertainties_FM(FM_test, FM_test.shape[0], fiducials=fiducials_list, which_uncertainty='marginal', normalize=True)[:nparams_toplot]
+uncert_FM_test = mm.uncertainties_FM(FM_test, FM_test.shape[0], fiducials=fiducials_list, which_uncertainty='marginal',
+                                     normalize=True)[:nparams_toplot]
 ###############
 # # add the percent differences and/or rations to the dictionary
 # to_compare_A = uncert_dict['FM_PySSC_GS'] - uncert_dict['FM_PySSC_GO']
@@ -387,16 +393,16 @@ for probe in ['WL', '3x2pt']:
 df = pd.DataFrame(uncert_dict)
 
 # # transform dict. into an array
-cases_to_plot = ('FM_3x2pt_GO', )
+cases_to_plot = ('FM_3x2pt_GO',)
 uncert_array = []
 for case in cases_to_plot:
     uncert_array.append(uncert_dict[case])
 uncert_array = np.asarray(uncert_array)
 
-lmax = 3000
-title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
-plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
-                    param_names_label=param_names_list[:nparams_toplot], bar_width=0.12)
+# lmax = 3000
+# title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
+# plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
+#                     param_names_label=param_names_list[:nparams_toplot], bar_width=0.12)
 #
 # diff_FM = diff_funct(FM_PySSC_GS, FM_PyCCL_GS)
 # mm.matshow(diff_FM, title=f'percent difference wrt mean between PySSC and PyCCL FMs {probe}, {EP_or_ED}{zbins:02}')

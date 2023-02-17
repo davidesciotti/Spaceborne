@@ -94,8 +94,8 @@ def check_FMs_against_oldSSCscript(FM_new_path, general_config, covariance_confi
 
 def test_cov_FM(output_path, benchmarks_path, extension, load_function):
     """tests that the outputs do not change between the old and the new version"""
-    old_dict = dict(mm.get_kv_pairs(benchmarks_path, extension, load_function))
-    new_dict = dict(mm.get_kv_pairs(output_path, extension, load_function))
+    old_dict = dict(mm.get_kv_pairs(benchmarks_path, extension))
+    new_dict = dict(mm.get_kv_pairs(output_path, extension))
 
     # check if the dictionaries are empty
     assert len(old_dict) > 0, 'No files in the benchmarks path ❌'
@@ -105,6 +105,7 @@ def test_cov_FM(output_path, benchmarks_path, extension, load_function):
 
     if extension == 'npz':
         for key in old_dict.keys():
+            print(old_dict[key]['arr_0'])
             assert np.array_equal(old_dict[key]['arr_0'], new_dict[key]['arr_0']), f'The file {key} is different ❌'
     else:
         for key in old_dict.keys():

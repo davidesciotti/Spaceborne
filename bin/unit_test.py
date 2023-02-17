@@ -103,7 +103,11 @@ def test_cov_FM(output_path, benchmarks_path, extension, load_function):
 
     assert old_dict.keys() == new_dict.keys(), 'The number of files or their names has changed ❌'
 
-    for key in old_dict.keys():
-        assert np.array_equal(old_dict[key], new_dict[key]), f'The file {key} is different ❌'
+    if extension == 'npz':
+        for key in old_dict.keys():
+            assert np.array_equal(old_dict[key]['arr_0'], new_dict[key]['arr_0']), f'The file {key} is different ❌'
+    else:
+        for key in old_dict.keys():
+            assert np.array_equal(old_dict[key], new_dict[key]), f'The file {key} is different ❌'
 
     print('tests passed successfully: the outputs are the same as the benchmarks ✅')

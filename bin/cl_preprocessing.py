@@ -391,7 +391,7 @@ def cl_ell_cut(cl_3D, ell_cuts_matrix, ell_values):
 
 def cl_ell_cut_v2(cl_3D, ell_cuts_matrix, ell_values):
     """cut (sets to zero) the cl_3D array at the ell values specified in ell_cuts_matrix.
-    Smarter version, without for loops"""
+    Smarter version, without for loops - only marginally faster"""
 
     if np.all(ell_values) < 30:
         ell_values = 10 ** ell_values

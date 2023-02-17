@@ -484,8 +484,8 @@ def save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs):
                     for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
                         cov_filename = covariance_cfg['cov_filename'].format(which_cov=which_cov, probe=probe,
                                                                              ell_max=ell_max, nbl=nbl, ndim=ndim,
-                                                                             extension=extension, **variable_specs)
-                        save_funct(f'{cov_folder}/{cov_filename}',
+                                                                             **variable_specs)
+                        save_funct(f'{cov_folder}/{cov_filename}.{extension}',
                                    cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])  # save in .npy or .npz
 
                     # in this case, 3x2pt is saved in 10D as a dictionary
@@ -493,17 +493,16 @@ def save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs):
                     if ndim == 6:
                         cov_3x2pt_filename = covariance_cfg['cov_filename'].format(which_cov=which_cov, probe='3x2pt',
                                                                                    ell_max=ell_max_XC, nbl=nbl_3x2pt,
-                                                                                   ndim=10,
-                                                                                   extension='pickle', **variable_specs)
-                        with open(f'{cov_folder}/{cov_3x2pt_filename}', 'wb') as handle:
+                                                                                   ndim=10, **variable_specs)
+                        with open(f'{cov_folder}/{cov_3x2pt_filename}.pickle', 'wb') as handle:
                             pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
 
                 # in the pessimistic case, save only WA
                 elif ell_max_WL == 1500:
                     cov_WA_filename = covariance_cfg['cov_filename'].format(which_cov=which_cov, probe='WA',
                                                                             ell_max=ell_max_WL, nbl=nbl_WA, ndim=ndim,
-                                                                            extension=extension, **variable_specs)
-                    np.save(f'{cov_folder}/{cov_WA_filename}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
+                                                                            **variable_specs)
+                    np.save(f'{cov_folder}/{cov_WA_filename}.{extension}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
             print('Covariance matrices saved')
 
     # save in .dat for Vincenzo, only in the optimistic case and in 2D

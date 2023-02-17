@@ -261,23 +261,24 @@ if FM_cfg['compute_FM']:
                                             der_prefix.format(probe=GL_or_LG))
 
     # build 5D array of derivatives for the 3x2pt
-    dC_3x2pt_5D = np.zeros((nbl, n_probes, n_probes, zbins, zbins, nparams_tot))
-    dC_3x2pt_5D[:, 0, 0, :, :, :] = dC_LLfor3x2pt_4D
-    dC_3x2pt_5D[:, 0, 1, :, :, :] = dC_GL_4D.transpose(0, 2, 1, 3)
-    dC_3x2pt_5D[:, 1, 0, :, :, :] = dC_GL_4D
-    dC_3x2pt_5D[:, 1, 1, :, :, :] = dC_GG_4D
+    dC_3x2pt_6D = np.zeros((nbl, n_probes, n_probes, zbins, zbins, nparams_tot))
+    dC_3x2pt_6D[:, 0, 0, :, :, :] = dC_LLfor3x2pt_4D
+    dC_3x2pt_6D[:, 0, 1, :, :, :] = dC_GL_4D.transpose(0, 2, 1, 3)
+    dC_3x2pt_6D[:, 1, 0, :, :, :] = dC_GL_4D
+    dC_3x2pt_6D[:, 1, 1, :, :, :] = dC_GG_4D
 
     # store the arrays of derivatives in a dictionary to pass to the Fisher Matrix function
     deriv_dict = {'dC_LL_4D': dC_LL_4D,
                   'dC_GG_4D': dC_GG_4D,
                   'dC_WA_4D': dC_WA_4D,
-                  'dC_3x2pt_5D': dC_3x2pt_5D}
+                  'dC_3x2pt_6D': dC_3x2pt_6D}
 
     FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
     FM_dict['param_names_dict'] = param_names_dict
     FM_dict['fiducial_values_dict'] = fiducials_dict
 
-# ! save:
+# ! save cls and responses:
+"""
 # this is just to set the correct probe names
 probe_dav_dict = {
     'WL': 'LL_3D',
@@ -313,7 +314,7 @@ for cl_or_rl in ['cl', 'rl']:
                 np.savetxt(
                     f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
                     delta_dict[f'delta_l_{probe_dav}'])
-
+"""
 # in this case, the following specs are not variable.
 # Nonetheless, we pass them as kwargs to the function, which is more general
 variable_specs = general_cfg | {'nbl_WA': nbl_WA}

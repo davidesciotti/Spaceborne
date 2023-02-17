@@ -136,11 +136,11 @@ FM_cfg = {
                             'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'derivatives_prefix': 'dDVd',
     'deriv_BNT_transform': deriv_BNT_transform,
-    # the filename is the same as above
     'fm_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}' + '/ell_cuts_{ell_cuts:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'
-                       'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}'
-                       '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
+                       'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}',
+                       # '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
     'FM_dict_filename': 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
-                        'MS{magcut_source:03d}-ZS{zcut_source:02d}_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
+                        'MS{magcut_source:03d}-ZS{zcut_source:02d}',
+                        # '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
 }

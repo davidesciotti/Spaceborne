@@ -5,7 +5,6 @@ from pathlib import Path
 import numpy as np
 import scipy
 
-
 project_path_here = Path.cwd().parent.parent.parent
 sys.path.append(str(project_path_here.parent / 'common_lib'))
 import my_module as mm
@@ -79,8 +78,8 @@ def invert_matrix_LU(covariance_matrix):
     return np.linalg.inv(L) @ np.linalg.inv(U) @ P
 
 
-
-def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict, BNT_matrix=None):
+def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict, BNT_matrix=None,
+               ell_cuts_dict=None):
     # shorten names
     zbins = general_cfg['zbins']
     use_WA = general_cfg['use_WA']
@@ -282,6 +281,61 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
             dC_WA_4D[:, :, :, param_idx] = cl_utils.cl_BNT_transform(dC_WA_4D[:, :, :, param_idx], BNT_matrix, 'L', 'L')
             dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_BNT_transform_3x2pt(
                 dC_3x2pt_6D[:, :, :, :, :, param_idx], BNT_matrix)
+
+    if general_cfg['ell_cuts']:
+
+        assert ell_cuts_dict is not None, 'you should provide ell cuts'
+
+        print('Performing the ell cuts...')
+
+        ell_cuts_LL = ell_cuts_dict['ell_cuts_LL']
+        ell_cuts_GG = ell_cuts_dict['ell_cuts_GG']
+        ell_cuts_XC = ell_cuts_dict['ell_cuts_XC']
+
+        # ! linearly rescale ell cuts
+        # TODO: restore cuts as a function of kmax; I would like to avoid a mega for loop...
+        # h_over_Mpc; the one with which the above ell cuts were computed
+        # kmax_ref_h_over_Mpc = general_cfg['kmax_ref_h_over_Mpc']
+        # kmax_h_over_Mpc = ell_cuts_dict['kmax_h_over_Mpc']
+        #
+        # ell_cuts_LL *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
+        # ell_cuts_GG *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
+        # ell_cuts_XC *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
+
+        ell_cuts_probes_dict = {
+            'WL': ell_cuts_LL,
+            'GC': ell_cuts_GG,
+            'XC': ell_cuts_XC}
+
+        start_time = time.perf_counter()
+        cl_cut = cl_utils.cl_ell_cut  # just to abbreviate the name to fit in one line
+        for param_idx in range(len(param_names_3x2pt)):
+            dC_LL_4D[:, :, :, param_idx] = cl_cut(dC_LL_4D[:, :, :, param_idx], ell_cuts_LL, ell_dict['ell_WL'])
+            dC_WA_4D[:, :, :, param_idx] = cl_cut(dC_WA_4D[:, :, :, param_idx], ell_cuts_LL, ell_dict['ell_WA'])
+            dC_GG_4D[:, :, :, param_idx] = cl_cut(dC_GG_4D[:, :, :, param_idx], ell_cuts_GG, ell_dict['ell_GC'])
+            dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_ell_cut_3x2pt(
+                dC_3x2pt_6D[:, :, :, :, :, param_idx], ell_cuts_probes_dict, ell_dict)
+        print('Ell cuts done in {:.2f} seconds'.format(time.perf_counter() - start_time))
+
+        # check that the 2 methods give consistent output
+        dC_LL_4D_2 = np.zeros(dC_LL_4D.shape)
+        dC_WA_4D_2 = np.zeros(dC_WA_4D.shape)
+        dC_GG_4D_2 = np.zeros(dC_GG_4D.shape)
+        dC_3x2pt_6D_2 = np.zeros(dC_3x2pt_6D.shape)
+        start_time = time.perf_counter()
+        cl_cut = cl_utils.cl_ell_cut_v2  # just to abbreviate the name to fit in one line
+        for param_idx in range(len(param_names_3x2pt)):
+            dC_LL_4D_2[:, :, :, param_idx] = cl_cut(dC_LL_4D[:, :, :, param_idx], ell_cuts_LL, ell_dict['ell_WL'])
+            dC_WA_4D_2[:, :, :, param_idx] = cl_cut(dC_WA_4D[:, :, :, param_idx], ell_cuts_LL, ell_dict['ell_WA'])
+            dC_GG_4D_2[:, :, :, param_idx] = cl_cut(dC_GG_4D[:, :, :, param_idx], ell_cuts_GG, ell_dict['ell_GC'])
+            dC_3x2pt_6D_2[:, :, :, :, :, param_idx] = cl_utils.cl_ell_cut_3x2pt(
+                dC_3x2pt_6D[:, :, :, :, :, param_idx], ell_cuts_probes_dict, ell_dict)
+        print('Ell cuts done in {:.2f} seconds'.format(time.perf_counter() - start_time))
+
+        assert np.array_equal(dC_LL_4D, dC_LL_4D_2), 'ell cuts are not consistent'
+        assert np.array_equal(dC_WA_4D, dC_WA_4D_2), 'ell cuts are not consistent'
+        assert np.array_equal(dC_GG_4D, dC_GG_4D_2), 'ell cuts are not consistent'
+        assert np.array_equal(dC_3x2pt_6D, dC_3x2pt_6D_2), 'ell cuts are not consistent'
 
     # separate the different 3x2pt contributions
     # ! delicate point, double check

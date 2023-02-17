@@ -99,10 +99,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         assert general_cfg['EP_or_ED'] == 'ED', 'BNT matrices are only available for ED case'
         assert general_cfg['zbins'] == 13, 'BNT matrices are only available for zbins=13'
 
-    if general_cfg['ell_cuts']:
-        assert general_cfg['BNT_transform'], \
-            'ell_cuts should only be implemented with the BNT_transform set to True'
-
     if covariance_cfg['cov_BNT_transform']:
         assert general_cfg['cl_BNT_transform'] is False, 'the BNT transform should be applied either to the Cls ' \
                                                          'or to the covariance'
@@ -336,102 +332,79 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         FM_cfg['param_names_3x2pt'] = param_names_3x2pt
 
         # TODO the for loop over kmax can go inside the fisher, no need to recompute or reinvert the covmats!
-        for kmax_h_over_Mpc in general_cfg['kmax_list_h_over_Mpc']:
+        # ! I think this for loop should start lower!
+        # for kmax_h_over_Mpc in general_cfg['kmax_list_h_over_Mpc']:
+        #     variable_specs['kmax_h_over_Mpc'] = kmax_h_over_Mpc
 
-            variable_specs['kmax_h_over_Mpc'] = kmax_h_over_Mpc
+        # ! derivatives
+        # import derivatives and store them in one big dictionary
+        derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
+        der_prefix = FM_cfg['derivatives_prefix']
+        dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat", np.genfromtxt))
+        # check if dictionary is empty
+        if not dC_dict_1D:
+            raise ValueError(f'No derivatives found in folder {derivatives_folder}')
 
-            # ! derivatives
-            # import derivatives and store them in one big dictionary
-            derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
-            der_prefix = FM_cfg['derivatives_prefix']
-            dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat", np.genfromtxt))
-            # check if dictionary is empty
-            if not dC_dict_1D:
-                raise ValueError(f'No derivatives found in folder {derivatives_folder}')
+        # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
+        dC_dict_LL_3D = {}
+        dC_dict_GG_3D = {}
+        dC_dict_WA_3D = {}
+        dC_dict_3x2pt_5D = {}
+        for key in dC_dict_1D.keys():
+            if 'WLO' in key:
+                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
+            elif 'GCO' in key:
+                dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
+            elif 'WLA' in key:
+                dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
+            elif '3x2pt' in key:
+                dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt, zbins)
 
-            # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
-            dC_dict_LL_3D = {}
-            dC_dict_GG_3D = {}
-            dC_dict_WA_3D = {}
-            dC_dict_3x2pt_5D = {}
-            for key in dC_dict_1D.keys():
-                if 'WLO' in key:
-                    dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
-                elif 'GCO' in key:
-                    dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
-                elif 'WLA' in key:
-                    dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
-                elif '3x2pt' in key:
-                    dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt, zbins)
+        # turn the dictionaries of derivatives into npy array
+        dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
+        dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
+        dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
+        dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
+                                                   der_prefix, is_3x2pt=True)
 
-            # turn the dictionaries of derivatives into npy array
-            dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
-            dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
-            dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
-            dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
-                                                       der_prefix, is_3x2pt=True)
+        # free memory
+        del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
+        gc.collect()
 
-            # free memory
-            del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
-            gc.collect()
+        # store the derivatives arrays in a dictionary
+        deriv_dict = {'dC_LL_4D': dC_LL_4D,
+                      'dC_WA_4D': dC_WA_4D,
+                      'dC_GG_4D': dC_GG_4D,
+                      'dC_3x2pt_6D': dC_3x2pt_6D}
 
+        # load the files with the ell cuts to pass them to FM_utils.compute_FM
+        if general_cfg['ell_cuts']:
+            ell_cuts_fldr = general_cfg['ell_cuts_folder']
+            ell_cuts_filename = general_cfg['ell_cuts_filename']
+            ell_cuts_dict = {}
+            ell_cuts_dict['ell_cuts_LL'] = np.genfromtxt(
+                f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}')
+            ell_cuts_dict['ell_cuts_GG'] = np.genfromtxt(
+                f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}')
+            ell_cuts_dict['ell_cuts_XC'] = np.genfromtxt(
+                f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')
+        else:
+            ell_cuts_dict = None
 
-            if general_cfg['ell_cuts']:
+        # ! compute and save fisher matrix
+        FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict, BNT_matrix,
+                                      ell_cuts_dict)
+        FM_dict['param_names_dict'] = param_names_dict
+        FM_dict['fiducial_values_dict'] = fiducials_dict
 
-                print('Performing the ell cuts...')
-
-                ell_cuts_fldr = general_cfg['ell_cuts_folder']
-                ell_cuts_filename = general_cfg['ell_cuts_filename']
-                ell_cuts_LL = np.genfromtxt(
-                    f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}')
-                ell_cuts_GG = np.genfromtxt(
-                    f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}')
-                ell_cuts_XC = np.genfromtxt(
-                    f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')
-
-                # ! linearly rescale ell cuts
-                # h_over_Mpc; the one with which the above ell cuts were computed
-                kmax_ref_h_over_Mpc = general_cfg['kmax_ref_h_over_Mpc']
-                variable_specs['kmax_h_over_Mpc'] = kmax_h_over_Mpc
-
-                ell_cuts_LL *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
-                ell_cuts_GG *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
-                ell_cuts_XC *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
-
-                ell_cuts_dict = {
-                    'WL': ell_cuts_LL,
-                    'GC': ell_cuts_GG,
-                    'XC': ell_cuts_XC}
-
-                cl_cut = cl_utils.cl_ell_cut  # just to abbreviate the name to fit in one line
-                for param_idx in range(len(param_names_3x2pt)):
-                    dC_LL_4D[:, :, :, param_idx] = cl_cut(dC_LL_4D[:, :, :, param_idx], ell_cuts_LL, ell_dict['ell_WL'])
-                    dC_WA_4D[:, :, :, param_idx] = cl_cut(dC_WA_4D[:, :, :, param_idx], ell_cuts_LL, ell_dict['ell_WA'])
-                    dC_GG_4D[:, :, :, param_idx] = cl_cut(dC_GG_4D[:, :, :, param_idx], ell_cuts_GG, ell_dict['ell_GC'])
-                    dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_ell_cut_3x2pt(
-                        dC_3x2pt_6D[:, :, :, :, :, param_idx], ell_cuts_dict, ell_dict)
-
-            # store the derivatives arrays in a dictionary
-            deriv_dict = {'dC_LL_4D': dC_LL_4D,
-                          'dC_WA_4D': dC_WA_4D,
-                          'dC_GG_4D': dC_GG_4D,
-                          'dC_3x2pt_5D': dC_3x2pt_6D}
-
-            FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
-            FM_dict['param_names_dict'] = param_names_dict
-            FM_dict['fiducial_values_dict'] = fiducials_dict
-
-            # ! save Fisher matrix
-            fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']))
-            FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'],
-                             **variable_specs)
+        fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']))
+        FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'], **variable_specs)
 
 # ! unit test: check that the outputs have not changed
 cov_benchmark_folder = f'{Path(cov_folder).parent}/benchmarks'
 fm_benchmark_folder = f'{Path(fm_folder).parent}/benchmarks'
 ut.test_cov_FM(cov_folder, cov_benchmark_folder, 'npz', np.load)
 ut.test_cov_FM(fm_folder, fm_benchmark_folder, 'txt', np.genfromtxt)
-
 
 """
     # ! save cls and responses:

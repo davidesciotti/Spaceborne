@@ -52,7 +52,7 @@ covariance_cfg = {
     'block_index': 'ell',
     # this is the one used by me and Vincenzo. The blocks in the 2D covmat will be indexed by ell1, ell2
     'which_probe_response': 'constant',
-    'rl_value': 4,  # it used to be 4 for a constant probe response, which this is wrong
+    'response_const_value': 4,  # it used to be 4 for a constant probe response, which this is wrong
     'SSC_code': 'PySSC',  # PySSC or PyCCL
     'cov_BNT_transform': cov_BNT_transform,
     'ng': 30,
@@ -65,7 +65,7 @@ covariance_cfg = {
     'save_cov_4D': False,
     'save_cov_6D': True,  # or 10D for the 3x2pt
     'save_cov_GS': False,
-    'save_cov_SS': False,
+    'save_cov_SSC': False,
     'save_2DCLOE': True,
     'cov_file_format': 'npy',
     'cov_folder': str(job_path) + f'/output/{cfg_name}/' + 'covmat/{SSC_code:s}',

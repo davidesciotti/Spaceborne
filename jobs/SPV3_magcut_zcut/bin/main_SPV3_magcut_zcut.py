@@ -103,7 +103,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
     if covariance_cfg['cov_BNT_transform']:
         assert general_cfg['cl_BNT_transform'] is False, 'the BNT transform should be applied either to the Cls ' \
                                                          'or to the covariance'
-        assert FM_cfg['deriv_BNT_transform'], 'you should BNT transform the derivatives as well'
+        assert FM_cfg['derivatives_BNT_transform'], 'you should BNT transform the derivatives as well'
 
     # which cases to save: GO, GS or GO, GS and SS
     cases_tosave = ['GO', 'GS']
@@ -319,7 +319,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             'the fiducial values list and parameter names should have the same length'
 
         # TODO the for loop over kmax can go inside the fisher, no need to recompute or reinvert the covmats!
-        # ! I think this for loop should start lower!
         # for kmax_h_over_Mpc in general_cfg['kmax_list_h_over_Mpc']:
         #     variable_specs['kmax_h_over_Mpc'] = kmax_h_over_Mpc
 
@@ -368,13 +367,13 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         if general_cfg['ell_cuts']:
             ell_cuts_fldr = general_cfg['ell_cuts_folder']
             ell_cuts_filename = general_cfg['ell_cuts_filename']
-            ell_cuts_dict = {}
-            ell_cuts_dict['ell_cuts_LL'] = np.genfromtxt(
-                f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}')
-            ell_cuts_dict['ell_cuts_GG'] = np.genfromtxt(
-                f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}')
-            ell_cuts_dict['ell_cuts_XC'] = np.genfromtxt(
-                f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')
+            ell_cuts_dict = {
+                'ell_cuts_LL': np.genfromtxt(
+                    f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}'),
+                'ell_cuts_GG': np.genfromtxt(
+                    f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}'),
+                'ell_cuts_XC': np.genfromtxt(
+                    f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')}
         else:
             ell_cuts_dict = None
 

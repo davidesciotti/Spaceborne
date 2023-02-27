@@ -29,3 +29,4 @@ jobs/ISTF/output/covmat
 *.pyc
 jobs/ISTF/bin/profile.json
 jobs/ISTF/bin/profile.html
+jobs/BNT_for_ISTL/output/CovMat-3x2pt-Gauss-20Bins.npy

@@ -93,6 +93,7 @@ def check_FMs_against_oldSSCscript(FM_new_path, general_config, covariance_confi
 
 
 def test_cov_FM(output_path, benchmarks_path, extension):
+
     """tests that the outputs do not change between the old and the new version"""
     old_dict = dict(mm.get_kv_pairs(benchmarks_path, extension))
     new_dict = dict(mm.get_kv_pairs(output_path, extension))

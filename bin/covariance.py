@@ -330,12 +330,11 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             print('BNT-transforming the covariance matrix...')
 
             X_dict = build_X_matrix_BNT(BNT_matrix)
-            cov_dict['cov_WL_GO_6D'] = cov_BNT_transform(cov_dict['cov_WL_GO_6D'], X_dict, 'L', 'L')
-            cov_dict['cov_WA_GO_6D'] = cov_BNT_transform(cov_dict['cov_WA_GO_6D'], X_dict, 'L', 'L')
+            cov_dict['cov_WL_GO_6D'] = cov_BNT_transform(cov_dict['cov_WL_GO_6D'], X_dict, 'L', 'L', 'L', 'L')
+            cov_dict['cov_WA_GO_6D'] = cov_BNT_transform(cov_dict['cov_WA_GO_6D'], X_dict, 'L', 'L', 'L', 'L')
             cov_dict['cov_3x2pt_GO_10D'] = cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GO_10D'], X_dict)
-
-            cov_dict['cov_WL_GS_6D'] = cov_BNT_transform(cov_dict['cov_WL_GS_6D'], X_dict, 'L', 'L')
-            cov_dict['cov_WA_GS_6D'] = cov_BNT_transform(cov_dict['cov_WA_GS_6D'], X_dict, 'L', 'L')
+            cov_dict['cov_WL_GS_6D'] = cov_BNT_transform(cov_dict['cov_WL_GS_6D'], X_dict, 'L', 'L', 'L', 'L')
+            cov_dict['cov_WA_GS_6D'] = cov_BNT_transform(cov_dict['cov_WA_GS_6D'], X_dict, 'L', 'L', 'L', 'L')
             cov_dict['cov_3x2pt_GS_10D'] = cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GS_10D'], X_dict)
 
             # if not converted in 4D, only the 6D covs will be overwritten by the BNT-transofrmed version!
@@ -415,23 +414,25 @@ def build_X_matrix_BNT(BNT_matrix):
     return X
 
 
+def cov_BNT_transform(cov_noBNT_6D, X_dict, probe_A, probe_B, probe_C, probe_D, optimize=True):
+    """same as above, but only for one probe (i.e., LL or GL: GG is not modified by the BNT)"""
+    # todo it's nicer if you sandwitch the covariance, maybe?
+    cov_BNT_6D = np.einsum('aebf, cgdh, LMefgh -> LMabcd', X_dict[probe_A, probe_B], X_dict[probe_C, probe_D],
+                           cov_noBNT_6D, optimize=optimize)
+    return cov_BNT_6D
+
+
 def cov_3x2pt_BNT_transform(cov_3x2pt_dict_10D, X_dict, optimize=True):
     """in np.einsum below, L and M are the ell1, ell2 indices, which are not touched by the BNT transform"""
+
     cov_3x2pt_BNT_dict_10D = {}
 
     for probe_A, probe_B, probe_C, probe_D in cov_3x2pt_dict_10D.keys():
         cov_3x2pt_BNT_dict_10D[probe_A, probe_B, probe_C, probe_D] = \
-            np.einsum('aebf, cgdh, LMefgh -> LMabcd', X_dict[probe_A, probe_B], X_dict[probe_C, probe_D],
-                      cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D], optimize=optimize)
+            cov_BNT_transform(cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D], X_dict,
+                              probe_A, probe_B, probe_C, probe_D, optimize=optimize)
 
     return cov_3x2pt_BNT_dict_10D
-
-
-def cov_BNT_transform(cov_noBNT_6D, X_dict, probe_A, probe_B, optimize=True):
-    """same as above, but only for one probe (i.e., LL or GL: GG is not modified by the BNT)"""
-    cov_BNT_6D = np.einsum('aebf, cgdh, LMefgh -> LMabcd', X_dict[probe_A, probe_B], X_dict[probe_A, probe_B],
-                           cov_noBNT_6D, optimize=optimize)
-    return cov_BNT_6D
 
 
 def save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs):

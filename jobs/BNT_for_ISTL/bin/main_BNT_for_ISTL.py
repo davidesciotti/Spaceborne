@@ -98,23 +98,59 @@ ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
 covariance_cfg['ind'] = ind
 
 # ! import CLOE's ells, delta_ell and cls
-data_path = '/Users/davide/Desktop/874-BNT-cls/from_870_DEMO-BNT'
+old_data_path = f'{job_path}/data/874-BNT-cls/from_870_DEMO-BNT'
+data_path = f'{job_path}/data'
+cl_branch_870_path = '/Users/davide/Documents/Lavoro/Programmi/likelihood-implementation/data/ExternalBenchmark/' \
+                     'Photometric/data'
 
-cl_LL_3d = np.load(f'{data_path}/cC_LL_arr.npy')
-cl_GL_3d = np.load(f'{data_path}/cC_GL_arr.npy').transpose(0, 2, 1)  # ! check against cij14may to make sure it's GL
-cl_GG_3d = np.load(f'{data_path}/cC_GG_arr.npy')
+# different approach: save the cls as it's done in simulate_data.py, then unpack them
+cl_LL_2d = np.genfromtxt(f'{data_path}/Cls_zNLA_ShearShear_new.dat')
+cl_GL_2d = np.genfromtxt(f'{data_path}/Cls_zNLA_PosShear_new.dat')
+cl_GG_2d = np.genfromtxt(f'{data_path}/Cls_zNLA_PosPos_new.dat')
+
+# cl_LL_2d = np.genfromtxt(f'{cl_branch_870_path}/Cls_zNLA_ShearShear.dat')
+# cl_GL_2d = np.genfromtxt(f'{cl_branch_870_path}/Cls_zNLA_PosShear.dat')
+# cl_GG_2d = np.genfromtxt(f'{cl_branch_870_path}/Cls_zNLA_PosPos.dat')
+
+assert np.all(cl_LL_2d[:, 0] == cl_GL_2d[:, 0]), 'ell values are not the same for all the cls'
+assert np.all(cl_LL_2d[:, 0] == cl_GG_2d[:, 0]), 'ell values are not the same for all the cls'
+
+ells = cl_LL_2d[:, 0]
+
+# remove ell column
+cl_LL_2d = cl_LL_2d[:, 1:]
+cl_GL_2d = cl_GL_2d[:, 1:]
+cl_GG_2d = cl_GG_2d[:, 1:]
+
+nbl = len(ells)
+
+# reshape
+cl_LL_3d = mm.cl_2D_to_3D_symmetric(cl_LL_2d, nbl, zpairs_auto, zbins)
+cl_GL_3d = mm.cl_2D_to_3D_asymmetric(cl_GL_2d, nbl, zbins, 'row-major')
+cl_GG_3d = mm.cl_2D_to_3D_symmetric(cl_GG_2d, nbl, zpairs_auto, zbins)
+
+# cl_LL_3d = np.load(f'{old_data_path}/cC_LL_arr.npy')
+# cl_GL_3d = np.load(f'{old_data_path}/cC_GL_arr.npy').transpose(0, 2, 1)  # ! check against cij14may to make sure it's GL
+# cl_GG_3d = np.load(f'{old_data_path}/cC_GG_arr.npy')
 # if bnt_transform:
-#     cl_LL_3d = np.load(f'{data_path}/cC_LL_BNT.npy')
-#     cl_GL_3d = np.load(f'{data_path}/cC_GL_BNT.npy')
-#     cl_GG_3d = np.load(f'{data_path}/cC_GG_BNT.npy')
+#     cl_LL_3d = np.load(f'{old_data_path}/cC_LL_BNT.npy')
+#     cl_GL_3d = np.load(f'{old_data_path}/cC_GL_BNT.npy')
+#     cl_GG_3d = np.load(f'{old_data_path}/cC_GG_BNT.npy')
 
-bnt_matrix = np.load(f'{data_path}/mat_BNT.npy')
+# ! check that the cls are the same
+# relative difference is 1e-12...
+# np.testing.assert_array_equal(cl_LL_3d, cl_LL_3d_new)
+# np.testing.assert_array_equal(cl_GL_3d, cl_GL_3d_new)
+# np.testing.assert_array_equal(cl_GG_3d, cl_GG_3d_new)
+
+
+bnt_matrix = np.load(f'{old_data_path}/mat_BNT.npy')
 
 cl_3x2pt_5D = cl_utils.build_3x2pt_datavector_5D(cl_LL_3d, cl_GL_3d, cl_GG_3d, nbl_GC, zbins, n_probes)
 
 # the ell values are all the same!
-ells = np.load(f'{data_path}/ell_values.npy')
-delta_ells = np.load(f'{data_path}/delta_ells.npy')
+ells = np.load(f'{old_data_path}/ell_values.npy')
+delta_ells = np.load(f'{old_data_path}/delta_ells.npy')
 
 ell_dict = {
     'ell_WL': ells,
@@ -142,8 +178,8 @@ rl_dict_3D = {}
 
 # ! compute or load Sijkl
 # if Sijkl exists, load it; otherwise, compute it and save it
-Sijkl_folder = Sijkl_cfg['Sijkl_folder']
-Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(nz=Sijkl_cfg['nz'])
+# Sijkl_folder = Sijkl_cfg['Sijkl_folder']
+# Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(nz=Sijkl_cfg['nz'])
 
 # if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
 #
@@ -179,18 +215,18 @@ sijkl = np.random.rand(2 * zbins, 2 * zbins, 2 * zbins, 2 * zbins)
 
 # ! compute covariance matrix
 covariance_cfg['cov_BNT_transform'] = True
-cov_dict_BNT = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                        ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl, BNT_matrix=bnt_matrix)
+cov_dict_BNT_True = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl, BNT_matrix=bnt_matrix)
 
 covariance_cfg['cov_BNT_transform'] = False
-cov_dict_noBNT = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                          ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
+cov_dict_BNT_False = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+                                              ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
 
 # check
-cov_3x2pt_GO_BNT_2DCLOE = cov_dict_BNT['cov_3x2pt_GO_2DCLOE']
-cov_3x2pt_GO_noBNT_2DCLOE = cov_dict_noBNT['cov_3x2pt_GO_2DCLOE']
+cov_3x2pt_GO_BNT_True = cov_dict_BNT_True['cov_3x2pt_GO_2DCLOE']
+cov_3x2pt_GO_BNT_False = cov_dict_BNT_False['cov_3x2pt_GO_2DCLOE']
 
-del cov_dict_BNT, cov_dict_noBNT
+del cov_dict_BNT_True, cov_dict_BNT_False
 gc.collect()
 
 # TODO: check that the gaussian covariance agrees with the file in the repo
@@ -198,33 +234,34 @@ gc.collect()
 if bnt_transform:
     # cov_3x2pt_GO_2DCLOE_bnt = ...
     raise NotImplementedError('I still have to output the BNT-transformed cov by CLOE')
-    # print('are the two covariance matrices equal?', np.array_equal(cov_3x2pt_GO_BNT_2DCLOE, cov_3x2pt_GO_2DCLOE_benchmark))
+    # print('are the two covariance matrices equal?', np.array_equal(cov_3x2pt_GO_BNT_True_2DCLOE, cov_3x2pt_GO_2DCLOE_benchmark))
 
 else:
     warnings.warn('you have to be in branch #870 for this import to work')
-    cov_3x2pt_GO_2DCLOE_noBNT_benchmark = np.load(
+    cov_3x2pt_GO_BNT_False_benchmark = np.load(
         '/Users/davide/Documents/Lavoro/Programmi/likelihood-implementation/data/'
         'ExternalBenchmark/Photometric/data/'
         'CovMat-3x2pt-Gauss-20Bins-probe_ell_zpair.npy')
 
     try:
         print('are the two covariance matrices equal?',
-              np.testing.assert_allclose(cov_3x2pt_GO_noBNT_2DCLOE, cov_3x2pt_GO_2DCLOE_noBNT_benchmark, atol=0, rtol=1e-3))
+              np.testing.assert_allclose(cov_3x2pt_GO_BNT_False, cov_3x2pt_GO_BNT_False_benchmark, atol=0,
+                                         rtol=1e-3))
     except AssertionError:
         print('covariance matrices are not close')
 
-    mm.compare_arrays(cov_3x2pt_GO_noBNT_2DCLOE, cov_3x2pt_GO_2DCLOE_noBNT_benchmark,
+    mm.compare_arrays(cov_3x2pt_GO_BNT_False, cov_3x2pt_GO_BNT_False_benchmark,
                       plot_array=True, log_array=True,
-                      plot_diff=True, log_diff=True)
+                      plot_diff=True, log_diff=False, plot_diff_threshold=10)
 
-    # diff = mm.percent_diff(cov_3x2pt_GO_BNT_2DCLOE[-1100:, -1100:], cov_3x2pt_GO_2DCLOE_benchmark[-1100:, -1100:])
+    # diff = mm.percent_diff(cov_3x2pt_GO_BNT_True[-1100:, -1100:], cov_3x2pt_GO_benchmark[-1100:, -1100:])
     # mm.matshow(diff, log=False, abs_val=True, title='WL diff')
 
-# diff = mm.percent_diff(cov_3x2pt_GO_BNT_2DCLOE, cov_3x2pt_GO_noBNT_2DCLOE)
+# diff = mm.percent_diff(cov_3x2pt_GO_BNT_True, cov_3x2pt_GO_BNT_False)
 # mm.matshow(np.abs(diff), title='diff', log=False, abs_val=False)
 #
-# mm.compare_arrays(cov_3x2pt_GO_BNT_2DCLOE, cov_3x2pt_GO_noBNT_2DCLOE,
-#                   name_A='cov_3x2pt_GO_BNT_2DCLOE', name_B='cov_3x2pt_GO_noBNT_2DCLOE', plot_diff=True, log_diff=True,
+# mm.compare_arrays(cov_3x2pt_GO_BNT_True, cov_3x2pt_GO_BNT_False,
+#                   name_A='cov_3x2pt_GO_BNT_True', name_B='cov_3x2pt_GO_BNT_False', plot_diff=True, log_diff=True,
 #                   plot_array=True, log_array=True)
 
 # ! ok but not perfect there is still a (small) number of outliers; maybe check:
@@ -233,6 +270,6 @@ else:
 # - deltas
 # - ell values?
 
-np.save(f'{job_path}/output/CovMat-3x2pt-Gauss-BNT-20Bins.npy', cov_3x2pt_GO_BNT_2DCLOE)
+# np.save(f'{job_path}/output/CovMat-3x2pt-Gauss-BNT-20Bins.npy', cov_3x2pt_GO_BNT_True)
 
 print('done')

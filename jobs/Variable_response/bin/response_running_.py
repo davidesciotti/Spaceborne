@@ -267,7 +267,7 @@ elif whos_PS == 'CLASS':
     k_array = np.logspace(np.log10(k_min), np.log10(k_max), k_num)  # this is in h/Mpc. The calculate_power function
     # takes care of the corerct h_units when computing Pk, but only returns Pk, so k_array has to be made consistent
     # by hand
-    Pk = csmlib.calculate_power(cosmo=cosmo_classy, z_array=z_array, k_array=k_array, use_h_units=use_h_units,
+    Pk = csmlib.calculate_power(k=k_array, z=z_array, cosmo_classy=cosmo_classy, use_h_units=use_h_units,
                                 Pk_kind=Pk_kind)
 
 elif whos_PS == 'CLASS_clustertlkt':
@@ -287,8 +287,7 @@ if save_Pk:
 
 def Pk_wrap(k_ell, z, cosmo_classy=cosmo_classy, use_h_units=use_h_units, Pk_kind='nonlinear', argument_type='scalar'):
     """just a wrapper function to set some args to default values"""
-    return csmlib.calculate_power(cosmo_classy, z, k_ell, use_h_units=use_h_units,
-                                  Pk_kind=Pk_kind, argument_type=argument_type)
+    return csmlib.calculate_power(k_ell, z, cosmo_classy, use_h_units=use_h_units, Pk_kind=Pk_kind)
 
 
 def kl_wrap(ell, z, use_h_units=use_h_units):

@@ -253,7 +253,7 @@ if FM_cfg['compute_FM']:
 
             elif key.startswith(der_prefix.format(probe=GL_or_LG)):
                 dC_dict_GL_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_cross, ell_GC, nbl_GC)
-                dC_dict_GL_3D[key] = mm.cl_2D_to_3D_asymmetric(dC_dict_GL_2D[key], nbl_GC, zbins, 'row_major')
+                dC_dict_GL_3D[key] = mm.cl_2D_to_3D_asymmetric(dC_dict_GL_2D[key], nbl_GC, zbins, 'row-major')
 
     # turn dictionary keys into entries of 4-th array axis
     # TODO the obs_name must be defined in the config file

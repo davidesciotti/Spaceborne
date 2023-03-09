@@ -15,15 +15,12 @@ cfg_name = 'cl15gen'
 # use_WA: False
 
 general_cfg = {
-    'cfg_name': cfg_name,
     'ell_min': 10,
     'ell_max_WL': 5000,
     'ell_max_GC': 5000,
     'ell_max_XC': 5000,
     'zbins': 10,
-    'zbins_list': None,
     'EP_or_ED': 'EP',
-    'zbins_type_list': ('EP',),
     'n_probes': 2,
     'nbl_WL': 20,
     'nbl_GC': 20,
@@ -31,12 +28,6 @@ general_cfg = {
     'save_cls_3d': False,
     'save_rls_3d': False,
     'cl_BNT_transform': False,
-    'BNT_matrix_path': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT_matrix',
-    'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
-    'cl_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_tesi/new_names',
-    'rl_folder': f'{project_path.parent}/common_data/vincenzo/Pk_responses_2D/' + '{EP_or_ED:s}{zbins:02d}',
-    'cl_filename': 'Cij{probe:s}-N4TB-GR-eNLA.dat',
-    'rl_filename': 'rij{probe:s}corr-istf-alex.dat',
 }
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:

@@ -41,10 +41,48 @@ mpl.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
+
 # TODO check that the number of ell bins is the same as in the files
 # TODO double check the delta values
 # TODO update consistency_checks
 # TODO super check that things work with different # of z bins
+
+
+def check_against_cl_15gen_func():
+    if not check_against_cl_15gen:
+        return
+
+    cl_15gen_path = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/Cij-NonLin-eNLA_15gen'
+    cl_LL_2D_vinc = np.genfromtxt(f'{cl_15gen_path}/CijLL-LCDM-NonLin-eNLA.dat')
+    cl_LG_2D_vinc = np.genfromtxt(f'{cl_15gen_path}/CijLG-LCDM-NonLin-eNLA.dat')
+    cl_GG_2D_vinc = np.genfromtxt(f'{cl_15gen_path}/CijGG-LCDM-NonLin-eNLA.dat')
+
+    ell_vinc = cl_LL_2D_vinc[:, 0]
+    cl_LL_2D_vinc = cl_LL_2D_vinc[:, 1:]
+    cl_LG_2D_vinc = cl_LG_2D_vinc[:, 1:]
+    cl_GG_2D_vinc = cl_GG_2D_vinc[:, 1:]
+
+    cl_LL_3D_vinc = mm.cl_2D_to_3D_symmetric(cl_LL_2D_vinc, len(ell_vinc), zpairs_auto, zbins)
+    cl_GL_3D_vinc = mm.cl_2D_to_3D_asymmetric(cl_LG_2D_vinc, len(ell_vinc), zbins, order='C').transpose(0, 2, 1)
+    cl_GG_3D_vinc = mm.cl_2D_to_3D_symmetric(cl_GG_2D_vinc, len(ell_vinc), zpairs_auto, zbins)
+
+    plt.figure()
+    for zi in range(zbins - 1):
+        plt.plot(ell_vinc, np.abs(cl_GL_3D_vinc[:, zi, zi + 1]), c=colors[zi])
+        plt.plot(ells, np.abs(cl_GL_3d_BNT_DEMO[:, zi, zi + 1]), c=colors[zi], ls='--')
+
+
+def compare_diagonal_cls(cl_3d_A, cl_3d_B):
+    plt.figure()
+    for zi in range(zbins):
+        plt.plot(ells, np.abs(cl_3d_A)[:, zi, zi], label=f'({zi}, {zi})', c=colors[zi], alpha=0.6)
+        plt.plot(ells, np.abs(cl_3d_B)[:, zi, zi], c=colors[zi], ls='--')
+
+    plt.legend()
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.show()
+
 
 ###############################################################################
 #################### PARAMETERS AND SETTINGS DEFINITION #######################
@@ -60,93 +98,116 @@ FM_cfg = cfg.FM_cfg
 # some variables used for I/O naming, just to make things more readable
 zbins = general_cfg['zbins']
 EP_or_ED = general_cfg['EP_or_ED']
-ell_min = general_cfg['ell_min']
-ell_max_WL = general_cfg['ell_max_WL']
-ell_max_GC = general_cfg['ell_max_GC']
-ell_max_XC = general_cfg['ell_max_XC']
 triu_tril = covariance_cfg['triu_tril']
 row_col_major = covariance_cfg['row_col_major']
-n_probes = general_cfg['n_probes']
-nbl_WL = general_cfg['nbl_WL']
-nbl_GC = general_cfg['nbl_GC']
-nbl = nbl_WL
-bIA = ISTFfid.IA_free['beta_IA']
-
-variable_specs = {
-    'zbins': zbins,
-    'EP_or_ED': EP_or_ED,
-    'triu_tril': triu_tril,
-    'row_col_major': row_col_major,
-}
 
 # ! other options
 bnt_transform = False
-covariance_cfg['compute_covmat'] = True
+check_against_cl_15gen = False
+plot_BNT_vs_nonBNT_cls = False  # this is a "successful" check: the plot looks the same as in the BNT-demo
 # ! end other options
 
 # some checks
 assert EP_or_ED == 'EP' and zbins == 10, 'ISTF uses 10 equipopulated bins'
 assert covariance_cfg['GL_or_LG'] == 'GL', 'Cij_14may uses GL, also for the probe responses'
-assert nbl_GC == nbl_WL, 'for ISTF we are using the same number of ell bins for WL and GC'
 
 zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
-# import the ind files and store it into the covariance dictionary
-ind_folder = covariance_cfg['ind_folder'].format(**variable_specs)
-ind_filename = covariance_cfg['ind_filename'].format(**variable_specs)
-ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
+# build ind files and store it into the covariance dictionary
+ind = mm.build_full_ind(triu_tril, row_col_major, zbins)
 covariance_cfg['ind'] = ind
+
+cmap = plt.get_cmap('rainbow')
+colors = [cmap(i) for i in np.linspace(0, 1, zbins)]
 
 # ! import CLOE's ells, delta_ell and cls
 old_data_path = f'{job_path}/data/874-BNT-cls/from_870_DEMO-BNT'
+from_DEMO_870_path = f'{job_path}/data/from_BNT_DEMO_870'
 data_path = f'{job_path}/data'
 cl_branch_870_path = '/Users/davide/Documents/Lavoro/Programmi/likelihood-implementation/data/ExternalBenchmark/' \
                      'Photometric/data'
 
-# different approach: save the cls as it's done in simulate_data.py, then unpack them
-cl_LL_2d = np.genfromtxt(f'{data_path}/Cls_zNLA_ShearShear_new.dat')
-cl_GL_2d = np.genfromtxt(f'{data_path}/Cls_zNLA_PosShear_new.dat')
-cl_GG_2d = np.genfromtxt(f'{data_path}/Cls_zNLA_PosPos_new.dat')
+# save the cls as it's done in simulate_data.py, then unpack them
+# cl_LL_2d_bench = np.genfromtxt(f'{data_path}/Cls_zNLA_ShearShear_new.dat')
+# cl_GL_2d_bench = np.genfromtxt(f'{data_path}/Cls_zNLA_PosShear_new.dat')
+# cl_GG_2d_bench = np.genfromtxt(f'{data_path}/Cls_zNLA_PosPos_new.dat')
+#
+# # get the cls directly from the benchmarks folder in the repo
+# cl_LL_2d_bench = np.genfromtxt(f'{cl_branch_870_path}/Cls_zNLA_ShearShear.dat')
+# cl_GL_2d_bench = np.genfromtxt(f'{cl_branch_870_path}/Cls_zNLA_PosShear.dat')
+# cl_GG_2d_bench = np.genfromtxt(f'{cl_branch_870_path}/Cls_zNLA_PosPos.dat')
+#
+# assert np.all(cl_LL_2d_bench[:, 0] == cl_GL_2d_bench[:, 0]), 'ell values are not the same for all the cls'
+# assert np.all(cl_LL_2d_bench[:, 0] == cl_GG_2d_bench[:, 0]), 'ell values are not the same for all the cls'
+#
+# ells = cl_LL_2d_bench[:, 0]
+# nbl = len(ells)
+#
+# # remove ell column
+# cl_LL_2d_bench = cl_LL_2d_bench[:, 1:]
+# cl_GL_2d_bench = cl_GL_2d_bench[:, 1:]
+# cl_GG_2d_bench = cl_GG_2d_bench[:, 1:]
 
-# cl_LL_2d = np.genfromtxt(f'{cl_branch_870_path}/Cls_zNLA_ShearShear.dat')
-# cl_GL_2d = np.genfromtxt(f'{cl_branch_870_path}/Cls_zNLA_PosShear.dat')
-# cl_GG_2d = np.genfromtxt(f'{cl_branch_870_path}/Cls_zNLA_PosPos.dat')
-
-assert np.all(cl_LL_2d[:, 0] == cl_GL_2d[:, 0]), 'ell values are not the same for all the cls'
-assert np.all(cl_LL_2d[:, 0] == cl_GG_2d[:, 0]), 'ell values are not the same for all the cls'
-
-ells = cl_LL_2d[:, 0]
-
-# remove ell column
-cl_LL_2d = cl_LL_2d[:, 1:]
-cl_GL_2d = cl_GL_2d[:, 1:]
-cl_GG_2d = cl_GG_2d[:, 1:]
-
-nbl = len(ells)
 
 # reshape
-cl_LL_3d = mm.cl_2D_to_3D_symmetric(cl_LL_2d, nbl, zpairs_auto, zbins)
-cl_GL_3d = mm.cl_2D_to_3D_asymmetric(cl_GL_2d, nbl, zbins, 'row-major')
-cl_GG_3d = mm.cl_2D_to_3D_symmetric(cl_GG_2d, nbl, zpairs_auto, zbins)
+# cl_LL_3d_bench = mm.cl_2D_to_3D_symmetric(cl_LL_2d_bench, nbl, zpairs_auto, zbins)
+# cl_GL_3d_bench = mm.cl_2D_to_3D_asymmetric(cl_GL_2d_bench, nbl, zbins, 'row-major')
+# cl_GG_3d_bench = mm.cl_2D_to_3D_symmetric(cl_GG_2d_bench, nbl, zpairs_auto, zbins)
 
-# cl_LL_3d = np.load(f'{old_data_path}/cC_LL_arr.npy')
-# cl_GL_3d = np.load(f'{old_data_path}/cC_GL_arr.npy').transpose(0, 2, 1)  # ! check against cij14may to make sure it's GL
-# cl_GG_3d = np.load(f'{old_data_path}/cC_GG_arr.npy')
-# if bnt_transform:
-#     cl_LL_3d = np.load(f'{old_data_path}/cC_LL_BNT.npy')
-#     cl_GL_3d = np.load(f'{old_data_path}/cC_GL_BNT.npy')
-#     cl_GG_3d = np.load(f'{old_data_path}/cC_GG_BNT.npy')
+# ! get the cls from the 870 BNT DEMO; these are already in 3D
+cl_LL_3d = np.load(f'{from_DEMO_870_path}/cC_LL_arr.npy')
+cl_GL_3d = np.load(f'{from_DEMO_870_path}/cC_GL_arr.npy').transpose(0, 2, 1)
+cl_GG_3d = np.load(f'{from_DEMO_870_path}/cC_GG_arr.npy')
 
-# ! check that the cls are the same
-# relative difference is 1e-12...
-# np.testing.assert_array_equal(cl_LL_3d, cl_LL_3d_new)
-# np.testing.assert_array_equal(cl_GL_3d, cl_GL_3d_new)
-# np.testing.assert_array_equal(cl_GG_3d, cl_GG_3d_new)
+# note that this name is quite verbose, the BNT-ized cls must come from the BNT demo!
+cl_LL_BNT_3d = np.load(f'{from_DEMO_870_path}/cC_LL_BNT.npy')
+cl_GL_BNT_3d = np.load(f'{from_DEMO_870_path}/cC_GL_BNT.npy')
+cl_GG_BNT_3d = np.load(f'{from_DEMO_870_path}/cC_GG_BNT.npy')
+
+# ! check that the cls are the same (they are not, by a small amount)
+# try:
+#     np.testing.assert_array_equal(cl_LL_3d_bench, cl_LL_3d, verbose=False)
+#     np.testing.assert_array_equal(cl_GL_3d_bench, cl_GL_3d_BNT_DEMO, verbose=False)
+#     np.testing.assert_array_equal(cl_GG_3d_bench, cl_GG_3d_BNT_DEMO, verbose=False)
+# except AssertionError as e:
+#     print(e)
+
+# TODO check that the cov with these cls is the same as the bnt-transformed covariance
+# choose which cls to use, whether the benchmarks or the BNT-DEMO ones (they are slightly different)
+# cl_LL_3d = cl_LL_3d_BNT_DEMO
+# cl_GL_3d = cl_GL_3d_BNT_DEMO
+# cl_GG_3d = cl_GG_3d_BNT_DEMO
+
+# ! check GL against the cls from Vincenzo (very bad agreement...)
+check_against_cl_15gen_func()
+
+# ! build BNT covariance by transforming the Gaussian one
+bnt_matrix = np.genfromtxt(f'{from_DEMO_870_path}/BNT_matrix.txt')
+
+cl_LL_BNT_3d_dark = cl_utils.cl_BNT_transform(cl_LL_3d, bnt_matrix, 'L', 'L')
+cl_GL_BNT_3d_dark = cl_utils.cl_BNT_transform(cl_GL_3d, bnt_matrix, 'G', 'L')
+cl_GG_BNT_3d_dark = cl_utils.cl_BNT_transform(cl_GG_3d, bnt_matrix, 'G', 'G')
+
+# compare_diagonal_cls(cl_LL_BNT_3d_dark, cl_LL_BNT_3d_BNT_DEMO)
+# compare_diagonal_cls(cl_GL_BNT_3d_dark, cl_GL_BNT_3d_BNT_DEMO)
+# compare_diagonal_cls(cl_LL_BNT_3d_dark, cl_LL_BNT_3d_BNT_DEMO)
+
+np.testing.assert_array_equal(cl_GL_BNT_3d_dark, cl_GL_BNT_3d_BNT_DEMO, verbose=False)
+
+plt.figure()
+diff = mm.percent_diff(cl_GL_BNT_3d_dark, cl_GL_BNT_3d_BNT_DEMO)
+for zi in range(zbins):
+    plt.plot(ells, diff[:, zi, zi])
+
+ell_idx = 0
+mm.matshow(diff[ell_idx, :, :])
+# mm.compare_arrays(cl_GL_BNT_3d_dark, cl_GL_BNT_3d_BNT_DEMO)
 
 
-bnt_matrix = np.load(f'{old_data_path}/mat_BNT.npy')
+assert 1 > 2
 
-cl_3x2pt_5D = cl_utils.build_3x2pt_datavector_5D(cl_LL_3d, cl_GL_3d, cl_GG_3d, nbl_GC, zbins, n_probes)
+cl_3x2pt_5D = cl_utils.build_3x2pt_datavector_5D(cl_LL_3d, cl_GL_3d, cl_GG_3d, nbl, zbins)
+cl_3x2pt_BNT_5D_BNT_DEMO = cl_utils.build_3x2pt_datavector_5D(cl_LL_BNT_3d, cl_GL_BNT_3d, cl_GG_BNT_3d, nbl, zbins)
 
 # the ell values are all the same!
 ells = np.load(f'{old_data_path}/ell_values.npy')
@@ -172,48 +233,21 @@ cl_dict_3D = {
     'cl_3x2pt_5D': cl_3x2pt_5D,
 }
 
+cl_BNT_dict_3D = {
+    'cl_LL_3D': cl_LL_BNT_3d_BNT_DEMO,
+    'cl_GL_3D': cl_GL_BNT_3d_BNT_DEMO,
+    'cl_GG_3D': cl_GG_BNT_3d_BNT_DEMO,
+    'cl_WA_3D': cl_LL_BNT_3d_BNT_DEMO,  # ! not used
+    'cl_3x2pt_5D': cl_3x2pt_BNT_5D_BNT_DEMO,
+}
+
 rl_dict_3D = {}
 
 # ! compute covariance matrix
-
-# ! compute or load Sijkl
-# if Sijkl exists, load it; otherwise, compute it and save it
-# Sijkl_folder = Sijkl_cfg['Sijkl_folder']
-# Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(nz=Sijkl_cfg['nz'])
-
-# if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
-#
-#     print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
-#     sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
-
-# else:
-#
-#     # ! load kernels
-#     # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
-#     nz = Sijkl_cfg["nz"]
-#     wf_folder = Sijkl_cfg["wf_input_folder"].format(nz=nz)
-#     wil_filename = Sijkl_cfg["wil_filename"].format(normalization=Sijkl_cfg['wf_normalization'],
-#                                                     has_IA=str(Sijkl_cfg['has_IA']), nz=nz, bIA=bIA)
-#     wig_filename = Sijkl_cfg["wig_filename"].format(normalization=Sijkl_cfg['wf_normalization'], nz=nz)
-#     wil = np.genfromtxt(f'{wf_folder}/{wil_filename}')
-#     wig = np.genfromtxt(f'{wf_folder}/{wig_filename}')
-#
-#     # preprocess (remove redshift column)
-#     z_arr, wil = Sijkl_utils.preprocess_wf(wil, zbins)
-#     z_arr_2, wig = Sijkl_utils.preprocess_wf(wig, zbins)
-#     assert np.array_equal(z_arr, z_arr_2), 'the redshift arrays are different for the GC and WL kernels'
-#     assert nz == z_arr.shape[0], 'nz is not the same as the number of redshift points in the kernels'
-#
-#     # transpose and stack, ordering is important here!
-#     transp_stacked_wf = np.vstack((wil.T, wig.T))
-#     sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
-#                                       Sijkl_cfg['WF_normalization'])
-#     np.save(f'{Sijkl_folder}/{Sijkl_filename}', sijkl)
-
 # dummy sijkl matrix, I am not computing covSSC...
 sijkl = np.random.rand(2 * zbins, 2 * zbins, 2 * zbins, 2 * zbins)
 
-# ! compute covariance matrix
+# ! compute covariance matrix with and without BNT
 covariance_cfg['cov_BNT_transform'] = True
 cov_dict_BNT_True = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                              ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl, BNT_matrix=bnt_matrix)
@@ -222,15 +256,27 @@ covariance_cfg['cov_BNT_transform'] = False
 cov_dict_BNT_False = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                               ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
 
-# check
+# this is the BNT-covariance computed with the BNT-transformed cls:
+covariance_cfg['cov_BNT_transform'] = False
+cov_dict_BNT_True_with_cls = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+                                                      ell_dict, delta_dict, cl_BNT_dict_3D, rl_dict_3D, sijkl)
+
 cov_3x2pt_GO_BNT_True = cov_dict_BNT_True['cov_3x2pt_GO_2DCLOE']
 cov_3x2pt_GO_BNT_False = cov_dict_BNT_False['cov_3x2pt_GO_2DCLOE']
+cov_3x2pt_GO_BNT_True_with_cls = cov_dict_BNT_True_with_cls['cov_3x2pt_GO_2DCLOE']
 
-del cov_dict_BNT_True, cov_dict_BNT_False
+del cov_dict_BNT_True, cov_dict_BNT_False, cov_dict_BNT_True_with_cls
 gc.collect()
 
-# TODO: check that the gaussian covariance agrees with the file in the repo
+# ! check that the BNT-transformed covariance is the same as the one computed with the BNT-transformed cls
+mm.compare_arrays(cov_3x2pt_GO_BNT_True, cov_3x2pt_GO_BNT_True_with_cls,
+                  'cov_3x2pt_GO_BNT_True', 'cov_3x2pt_GO_BNT_True_with_cls', plot_array=True,
+                  log_array=True, log_diff=False,
+                  plot_diff=True)
 
+assert 1 > 2
+
+# ! check that the Gaussian covariance matrix are the same
 if bnt_transform:
     # cov_3x2pt_GO_2DCLOE_bnt = ...
     raise NotImplementedError('I still have to output the BNT-transformed cov by CLOE')
@@ -270,6 +316,6 @@ else:
 # - deltas
 # - ell values?
 
-# np.save(f'{job_path}/output/CovMat-3x2pt-Gauss-BNT-20Bins.npy', cov_3x2pt_GO_BNT_True)
+np.save(f'{job_path}/output/CovMat-3x2pt-Gauss-BNT-20Bins.npy', cov_3x2pt_GO_BNT_True)
 
 print('done')

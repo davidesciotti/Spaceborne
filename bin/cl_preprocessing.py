@@ -214,7 +214,7 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, rl_dict_2D):
     return cl_dict_3D, Rl_dict_3D
 
 
-def build_3x2pt_datavector_5D(dv_LLfor3x2pt_3D, dv_GL_3D, dv_GG_3D, nbl, zbins, n_probes):
+def build_3x2pt_datavector_5D(dv_LLfor3x2pt_3D, dv_GL_3D, dv_GG_3D, nbl, zbins, n_probes=2):
     dv_3x2pt_5D = np.zeros((nbl, n_probes, n_probes, zbins, zbins))
     dv_3x2pt_5D[:, 0, 0, :, :] = dv_LLfor3x2pt_3D
     dv_3x2pt_5D[:, 1, 0, :, :] = dv_GL_3D

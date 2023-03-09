@@ -4,7 +4,6 @@ project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 
 survey_area_deg2 = 15_000  # deg^2
-cov_BNT_transform = True
 
 deg2_in_sphere = 41252.96  # deg^2 in a spere
 fsky = survey_area_deg2 / deg2_in_sphere
@@ -16,9 +15,9 @@ cfg_name = 'cl15gen'
 
 general_cfg = {
     'ell_min': 10,
-    'ell_max_WL': 5000,
-    'ell_max_GC': 5000,
-    'ell_max_XC': 5000,
+    'ell_max_WL': 4000,
+    'ell_max_GC': 4000,
+    'ell_max_XC': 4000,
     'zbins': 10,
     'EP_or_ED': 'EP',
     'n_probes': 2,
@@ -45,7 +44,7 @@ covariance_cfg = {
     'which_probe_response': 'constant',
     'response_const_value': 4,  # it used to be 4 for a constant probe response, which this is wrong
     'SSC_code': 'PySSC',  # PySSC or PyCCL
-    'cov_BNT_transform': cov_BNT_transform,
+    'cov_BNT_transform': None,
     'ng': 30,
     'ng_folder': None,
     'ng_filename': None,
@@ -54,7 +53,7 @@ covariance_cfg = {
     'compute_cov_6D': True,
     'save_cov_2D': True,
     'save_cov_4D': False,
-    'save_cov_6D': True,  # or 10D for the 3x2pt
+    'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_GS': False,
     'save_cov_SSC': False,
     'save_2DCLOE': True,

@@ -225,14 +225,14 @@ mm.compare_arrays(cov_3x2pt_GO_BNT_True, cov_3x2pt_GO_BNT_True_with_cls,
 mm.compare_arrays(cov_3x2pt_GO_BNT_False, cov_3x2pt_GO_BNT_False_benchmark,
                   'cov_3x2pt_GO_BNT_False', 'cov_3x2pt_GO_BNT_False_benchmark',
                   plot_array=True, log_array=True,
-                  plot_diff=True, log_diff=True, plot_diff_threshold=10)
+                  plot_diff=True, log_diff=True, plot_diff_threshold=20)
 
 assert 1 > 2
 
 
 
-    # diff = mm.percent_diff(cov_3x2pt_GO_BNT_True[-1100:, -1100:], cov_3x2pt_GO_benchmark[-1100:, -1100:])
-    # mm.matshow(diff, log=False, abs_val=True, title='WL diff')
+# diff = mm.percent_diff(cov_3x2pt_GO_BNT_True[-1100:, -1100:], cov_3x2pt_GO_benchmark[-1100:, -1100:])
+# mm.matshow(diff, log=False, abs_val=True, title='WL diff')
 
 # diff = mm.percent_diff(cov_3x2pt_GO_BNT_True, cov_3x2pt_GO_BNT_False)
 # mm.matshow(np.abs(diff), title='diff', log=False, abs_val=False)

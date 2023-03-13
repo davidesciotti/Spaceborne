@@ -57,6 +57,42 @@ covariance_cfg = cfg.covariance_cfg
 Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
+
+def ell_cuts_cl(general_cfg, ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d):
+    if not general_cfg['ell_cuts']:
+        return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
+
+    print('Performing the ell cuts...')
+
+    ell_cuts_fldr = general_cfg['ell_cuts_folder']
+    ell_cuts_filename = general_cfg['ell_cuts_filename']
+    ell_cuts_LL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}')
+    ell_cuts_GG = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}')
+    ell_cuts_XC = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')
+
+    # ! linearly rescale ell cuts
+    # TODO: restore cuts as a function of kmax; I would like to avoid a mega for loop...
+    # h_over_Mpc; the one with which the above ell cuts were computed
+    # kmax_ref_h_over_Mpc = general_cfg['kmax_ref_h_over_Mpc']
+    # kmax_h_over_Mpc = ell_cuts_dict['kmax_h_over_Mpc']
+    #
+    # ell_cuts_LL *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
+    # ell_cuts_GG *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
+    # ell_cuts_XC *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
+
+    ell_cuts_probes_dict = {
+        'WL': ell_cuts_LL,
+        'GC': ell_cuts_GG,
+        'XC': ell_cuts_XC}
+
+    cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_cuts_LL, ell_dict['ell_WL'])
+    cl_wa_3d = cl_utils.cl_ell_cut(cl_wa_3d, ell_cuts_LL, ell_dict['ell_WA'])
+    cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_cuts_GG, ell_dict['ell_GC'])
+    cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_probes_dict, ell_dict)
+
+    return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
+
+
 ML_list = general_cfg['magcut_lens_list']
 ZL_list = general_cfg['zcut_lens_list']
 MS_list = general_cfg['magcut_source_list']
@@ -214,6 +250,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
 
     # ! cut datavectors and responses in the pessimistic case; be carful of WA, because it does not start from ell_min
     if ell_max_WL == 1500:
+        warnings.warn('you are cutting the datavectors and responses in the pessimistic case, but is this compatible '
+                      'with the redshift-dependent ell cuts?')
+        assert 1 > 2, 'you should check this'
         cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
         cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
         cl_wa_3d = cl_ll_3d[nbl_GC:nbl_WL, :, :]
@@ -223,6 +262,12 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         rl_gg_3d = rl_gg_3d[:nbl_GC, :, :]
         rl_wa_3d = rl_ll_3d[nbl_GC:nbl_WL, :, :]
         rl_3x2pt_5d = rl_3x2pt_5d[:nbl_3x2pt, :, :]
+
+    # ! ell cuts
+    cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = ell_cuts_cl(
+        general_cfg, ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d)
+
+    # ! XXX i'm here
 
     # store cls and responses in a dictionary
     cl_dict_3D = {
@@ -355,20 +400,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                       'dC_WA_4D': dC_WA_4D,
                       'dC_GG_4D': dC_GG_4D,
                       'dC_3x2pt_6D': dC_3x2pt_6D}
-
-        # load the files with the ell cuts to pass them to FM_utils.compute_FM
-        if general_cfg['ell_cuts']:
-            ell_cuts_fldr = general_cfg['ell_cuts_folder']
-            ell_cuts_filename = general_cfg['ell_cuts_filename']
-            ell_cuts_dict = {
-                'ell_cuts_LL': np.genfromtxt(
-                    f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}'),
-                'ell_cuts_GG': np.genfromtxt(
-                    f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}'),
-                'ell_cuts_XC': np.genfromtxt(
-                    f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')}
-        else:
-            ell_cuts_dict = None
 
         # ! compute and save fisher matrix
         FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict, BNT_matrix)

@@ -153,11 +153,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         ell_WA = np.log10(ell_WA)
         ell_XC = ell_GC
 
-    # nbl for Wadd: in the case of just one bin it would give error
-    if ell_WA.size == 1:
-        nbl_WA = 1
-    else:
-        nbl_WA = ell_WA.shape[0]
+    nbl_WA = ell_WA.shape[0]
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
@@ -281,8 +277,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     print("FMs computed in %.2f seconds" % (time.perf_counter() - start))
 
     return FM_dict
-
-    # TODO: create pd dataframe
 
 
 def save_FM(fm_folder, FM_dict, FM_cfg, save_txt=False, save_dict=True, **save_specs):

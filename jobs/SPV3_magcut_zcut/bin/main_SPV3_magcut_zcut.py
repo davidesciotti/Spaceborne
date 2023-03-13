@@ -371,8 +371,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             ell_cuts_dict = None
 
         # ! compute and save fisher matrix
-        FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict, BNT_matrix,
-                                      ell_cuts_dict)
+        FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict, BNT_matrix)
         FM_dict['param_names_dict'] = param_names_dict
         FM_dict['fiducial_values_dict'] = fiducials_dict
 

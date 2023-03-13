@@ -104,7 +104,7 @@ for general_cfg['ell_max_WL'], general_cfg['ell_max_GC'] in (5000, 3000), (1500,
     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, rl_dict_3D,
                                         Sijkl)
     # compute Fisher Matrix
-    FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict)
+    FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, )
     # plot forecasts
     # plt.figure()
     # for plot_config['GO_or_GS'] in ['GO', 'GS']:

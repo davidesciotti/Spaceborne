@@ -177,6 +177,19 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     cov_3x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GO_2D'])
     print(f'GO covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
 
+    # start_time = time.perf_counter()
+    # cov_WL_GO_2D_inv_2 = invert_matrix_LU(cov_dict['cov_WL_GO_2D'])
+    # cov_GC_GO_2D_inv_2 = invert_matrix_LU(cov_dict['cov_GC_GO_2D'])
+    # cov_WA_GO_2D_inv_2 = invert_matrix_LU(cov_dict['cov_WA_GO_2D'])
+    # cov_3x2pt_GO_2D_inv_2 = invert_matrix_LU(cov_dict['cov_3x2pt_GO_2D'])
+    # print(f'GO covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s with scipy sparse')
+    #
+    # # assert if close
+    # assert np.allclose(cov_WL_GO_2D_inv, cov_WL_GO_2D_inv_2, atol=0, rtol=1e-4)
+    # assert np.allclose(cov_GC_GO_2D_inv, cov_GC_GO_2D_inv_2, atol=0, rtol=1e-4)
+    # assert np.allclose(cov_WA_GO_2D_inv, cov_WA_GO_2D_inv_2, atol=0, rtol=1e-4)
+    # assert np.allclose(cov_3x2pt_GO_2D_inv, cov_3x2pt_GO_2D_inv_2, atol=0, rtol=1e-4)
+
     # invert GS covmats
     start_time = time.perf_counter()
     cov_WL_GS_2D_inv = np.linalg.inv(cov_dict['cov_WL_GS_2D'])
@@ -184,6 +197,111 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     cov_WA_GS_2D_inv = np.linalg.inv(cov_dict['cov_WA_GS_2D'])
     cov_3x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GS_2D'])
     print(f'GS covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
+
+    # set parameters names for the different probes
+
+    """
+    # initialize derivatives arrays
+    dC_LL_WLonly = np.zeros((nbl, zpairs_auto, nparams_tot))
+    dC_LL = np.zeros((nbl, zpairs_auto, nparams_tot))
+    dC_XC = np.zeros((nbl, zpairs_cross, nparams_tot))
+    dC_GG = np.zeros((nbl, zpairs_auto, nparams_tot))
+    dC_WA = np.zeros((nbl_WA, zpairs_auto, nparams_tot))
+
+    # create dict to store interpolated Cij arrays
+    dC_WLonly_interpolated_dict = {}
+    dC_GConly_interpolated_dict = {}
+    dC_3x2pt_interpolated_dict = {}
+    dC_WA_interpolated_dict = {}
+
+    # call the function to interpolate: PAY ATTENTION TO THE PARAMETERS PASSED!
+    # WLonly
+    dC_WLonly_interpolated_dict = mm.interpolator(probe_code=probe_code_LL,
+                                                  dC_interpolated_dict=dC_WLonly_interpolated_dict,
+                                                  dC_dict=dC_dict, params_names=paramnames_LL, nbl=nbl,
+                                                  npairs=zpairs_auto, ell_values=ell_WL, suffix=suffix)
+    # GConly
+    dC_GConly_interpolated_dict = mm.interpolator(probe_code=probe_code_GG,
+                                                  dC_interpolated_dict=dC_GConly_interpolated_dict,
+                                                  dC_dict=dC_dict, params_names=paramnames_GG, nbl=nbl,
+                                                  npairs=zpairs_auto, ell_values=ell_XC, suffix=suffix)
+    # LL for 3x2pt
+    dC_3x2pt_interpolated_dict = mm.interpolator(probe_code=probe_code_LL,
+                                                 dC_interpolated_dict=dC_3x2pt_interpolated_dict,
+                                                 dC_dict=dC_dict, params_names=paramnames_LL, nbl=nbl,
+                                                 npairs=zpairs_auto, ell_values=ell_XC, suffix=suffix)
+    # XC for 3x2pt
+    dC_3x2pt_interpolated_dict = mm.interpolator(probe_code=probe_code_XC,
+                                                 dC_interpolated_dict=dC_3x2pt_interpolated_dict,
+                                                 dC_dict=dC_dict, params_names=param_names_3x2pt, nbl=nbl,
+                                                 npairs=zpairs_cross, ell_values=ell_XC, suffix=suffix)
+    # GG for 3x2pt
+    dC_3x2pt_interpolated_dict = mm.interpolator(probe_code=probe_code_GG,
+                                                 dC_interpolated_dict=dC_3x2pt_interpolated_dict,
+                                                 dC_dict=dC_dict, params_names=paramnames_GG, nbl=nbl,
+                                                 npairs=zpairs_auto, ell_values=ell_XC, suffix=suffix)
+    # LL for WA
+    dC_WA_interpolated_dict = mm.interpolator(probe_code=probe_code_LL,
+                                              dC_interpolated_dict=dC_WA_interpolated_dict,
+                                              dC_dict=dC_dict, params_names=paramnames_LL, nbl=nbl_WA,
+                                              npairs=zpairs_auto, ell_values=ell_WA, suffix=suffix)
+
+    # fill the dC array using the interpolated dictionary
+    # WLonly
+    dC_LL_WLonly = mm.fill_dC_array(params_names=paramnames_LL,
+                                    dC_interpolated_dict=dC_WLonly_interpolated_dict,
+                                    probe_code=probe_code_LL, dC=dC_LL_WLonly, suffix=suffix)
+    # LL for 3x2pt
+    dC_LL = mm.fill_dC_array(params_names=paramnames_LL,
+                             dC_interpolated_dict=dC_3x2pt_interpolated_dict,
+                             probe_code=probe_code_LL, dC=dC_LL, suffix=suffix)
+    # XC for 3x2pt
+    dC_XC = mm.fill_dC_array(params_names=param_names_3x2pt,
+                             dC_interpolated_dict=dC_3x2pt_interpolated_dict,
+                             probe_code=probe_code_XC, dC=dC_XC, suffix=suffix)
+    # GG for 3x2pt and GConly
+    dC_GG = mm.fill_dC_array(params_names=paramnames_GG,
+                             dC_interpolated_dict=dC_3x2pt_interpolated_dict,
+                             probe_code=probe_code_GG, dC=dC_GG, suffix=suffix)
+    # LL for WA
+    dC_WA = mm.fill_dC_array(params_names=paramnames_LL,
+                             dC_interpolated_dict=dC_WA_interpolated_dict,
+                             probe_code=probe_code_LL, dC=dC_WA, suffix=suffix)
+
+    # ! reshape dC from (nbl, zpairs, nparams_tot) to (nbl, zbins, zbins, nparams) - i.e., go from '2D' to '3D'
+    # (+ 1 "excess" dimension). Note that Vincenzo uses np.triu to reduce the dimensions of the cl arrays,
+    # but ind_vincenzo to organize the covariance matrix.
+
+    dC_LL_4D = np.zeros((nbl, zbins, zbins, nparams_tot))
+    dC_GG_4D = np.zeros((nbl, zbins, zbins, nparams_tot))
+    dC_LL_WLonly_4D = np.zeros((nbl, zbins, zbins, nparams_tot))
+    dC_WA_4D = np.zeros((nbl_WA, zbins, zbins, nparams_tot))
+
+    # fill symmetric
+    triu_idx = np.triu_indices(zbins)
+    for ell in range(nbl):
+        for alf in range(nparams_tot):
+            for i in range(zpairs_auto):
+                dC_LL_4D[ell, triu_idx[0][i], triu_idx[1][i], alf] = dC_LL[ell, i, alf]
+                dC_GG_4D[ell, triu_idx[0][i], triu_idx[1][i], alf] = dC_GG[ell, i, alf]
+                dC_LL_WLonly_4D[ell, triu_idx[0][i], triu_idx[1][i], alf] = dC_LL_WLonly[ell, i, alf]
+    # Wadd
+    for ell in range(nbl_WA):
+        for alf in range(nparams_tot):
+            for i in range(zpairs_auto):
+                dC_WA_4D[ell, triu_idx[0][i], triu_idx[1][i]] = dC_WA[ell, i]
+
+    # symmetrize
+    for alf in range(nparams_tot):
+        dC_LL_4D[:, :, :, alf] = mm.fill_3D_symmetric_array(dC_LL_4D[:, :, :, alf], nbl, zbins)
+        dC_GG_4D[:, :, :, alf] = mm.fill_3D_symmetric_array(dC_GG_4D[:, :, :, alf], nbl, zbins)
+        dC_WA_4D[:, :, :, alf] = mm.fill_3D_symmetric_array(dC_WA_4D[:, :, :, alf], nbl_WA, zbins)
+        dC_LL_WLonly_4D[:, :, :, alf] = mm.fill_3D_symmetric_array(dC_LL_WLonly_4D[:, :, :, alf], nbl, zbins)
+
+    # fill asymmetric
+    dC_XC_4D = np.reshape(dC_XC, (nbl, zbins, zbins, nparams_tot))
+
+    """
 
     start = time.perf_counter()
 
@@ -205,9 +323,9 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
                 dC_3x2pt_6D[:, :, :, :, :, param_idx], BNT_matrix)
 
     # ! ell-cut the derivatives (THIS IS WRONG!)
-    # dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D = ell_cuts_derivatives(general_cfg, FM_cfg, ell_dict,
-    #                                                                  dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D,
-    #                                                                  ell_cuts_dict=None)
+    dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D = ell_cuts_derivatives(general_cfg, FM_cfg, ell_dict,
+                                                                     dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D,
+                                                                     ell_cuts_dict)
 
     # separate the different 3x2pt contributions
     # ! delicate point, double check

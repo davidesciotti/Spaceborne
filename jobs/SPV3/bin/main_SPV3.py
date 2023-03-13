@@ -316,7 +316,7 @@ for general_cfg['zbins'] in general_cfg['zbins_list']:
                               'dC_GG_4D': dC_GG_4D,
                               'dC_3x2pt_5D': dC_3x2pt_5D}
 
-                FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, deriv_dict)
+                FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, deriv_dict, )
 
             # ! save cls and responses:
             # this is just to set the correct probe names

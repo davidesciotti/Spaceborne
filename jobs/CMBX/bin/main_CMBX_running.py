@@ -91,7 +91,7 @@ cl_dict_3D, rl_dict_3D = Cl_utils.reshape_cls_2D_to_3D(general_config, ell_dict,
 # compute covariance matrix
 cov_dict = covmat_utils.compute_cov(general_config, covariance_config, ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl)
 # compute Fisher Matrix
-FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
+FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict, )
 # plot forecasts
 # plt.figure()
 # for plot_config['GO_or_GS'] in ['GO', 'GS']:

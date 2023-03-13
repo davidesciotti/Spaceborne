@@ -118,7 +118,7 @@ for covariance_cfg['triu_tril'] in ['triu', 'tril']:
 
                     # ! compute Fisher Matrix
                     if FM_cfg['compute_FM']:
-                        FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict)
+                        FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, )
 
                     # ! save:
                     # this is just to set the correct probe names

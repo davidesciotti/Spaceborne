@@ -176,7 +176,7 @@ elif whos_SSC == 'PySSC':
     GS_or_GScNG = 'GS'
 
 # compute and save Fisher Matrix
-FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict)
+FM_dict = FM_utils.compute_FM(general_config, covariance_config, FM_config, ell_dict, cov_dict, )
 
 np.savetxt(
     job_path / f"output/FM/FM_{probe_tested}_{GS_or_GScNG}_lmax{probe_tested}{ell_max}_nbl{nbl}_{whos_SSC}{hm_recipe}.txt",

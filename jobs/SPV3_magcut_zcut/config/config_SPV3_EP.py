@@ -83,15 +83,17 @@ covariance_cfg = {
     'row_col_major': 'row-major',
     'block_index': 'ell',
     'GL_or_LG': GL_or_LG,
-    'fsky': fsky,  # ! new
-    # 'Rl': 4,
-    # this is the one used by me, Vincenzo and CLOE. The blocks in the 2D covmat will be indexed by ell1, ell2
+
     'SSC_code': 'PySSC',
     'which_probe_response': 'variable',
+    'response_const_value': None,  # it used to be 4 for a constant probe response, which is quite wrong
+
+    'fsky': fsky,  # ! new
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
-    'ng_folder': f'{SPV3_folder}/Flagship_{flagship_version}/InputNz/magcut_zcut',
+    'ng_folder': f'{SPV3_folder}/Flagship_{flagship_version}/InputNz',
     'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
+
     'cov_BNT_transform': cov_BNT_transform,
     'compute_covmat': True,
     'compute_cov_6D': True,  # or 10D for the 3x2pt
@@ -115,6 +117,10 @@ Sijkl_cfg = {
     'wf_input_folder': f'{SPV3_folder}/Flagship_{flagship_version}/KernelFun/magcut_zcut',
     'wf_WL_input_filename': 'WiWL-{EP_or_ED:s}{zbins:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'wf_GC_input_filename': 'WiGC-{EP_or_ED:s}{zbins:02d}-ML{magcut_source:03d}-ZL{zcut_source:02d}.dat',
+    'wf_normalization': 'IST',
+    'nz': None,  # ! is this used?
+    'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
+
     'Sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/sijkl',
     'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}'
                       '_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
@@ -123,21 +129,36 @@ Sijkl_cfg = {
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
 
+# declare the set of parameters under study
+zbins = general_cfg['zbins']
+param_names_dict = {
+    'cosmo': ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"],
+    'IA': ["Aia", "eIA", "bIA"],
+    'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
+    'shear_bias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
+    'dzWL': [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
+    'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+}
+param_names_3x2pt = param_names_dict['cosmo'] + param_names_dict['IA'] + param_names_dict['galaxy_bias'] + \
+                    param_names_dict['shear_bias'] + param_names_dict['dzWL'] + param_names_dict['dzGC']
+
 FM_cfg = {
     'compute_FM': True,
     'save_FM_txt': True,
     'save_FM_dict': True,
-    'nparams_tot': 20,  # total (cosmo + nuisance) number of parameters
-    'param_names_3x2pt': None,  # ! for the time being, these are defined in the main and then passed here
-    'save_FM_as_dict': True,
+
+    'param_names_dict': param_names_dict,
+    'fiducials_dict': None,  # this needs to be set in the main, since it depends on the n_gal file
+    'param_names_3x2pt': param_names_3x2pt,
+    'nparams_tot': len(param_names_3x2pt),  # total (cosmo + nuisance) number of parameters
     'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_False/' +
                           'ML{magcut_lens:03d}ZL{zcut_lens:02d}MS{magcut_source:03d}ZS{zcut_source:02d}',
     'derivatives_filename': 'BNT_dDVd{param:s}-{probe:s}-{specs:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                             'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'derivatives_prefix': 'dDVd',
-    'deriv_BNT_transform': deriv_BNT_transform,
+    'derivatives_BNT_transform': deriv_BNT_transform,
     # the filename is the same as above
-    'FM_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}/ell_cuts_' + '{ell_cuts:s}',
+    'fm_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}/ell_cuts_' + '{ell_cuts:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'
                        'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}'
                        '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',

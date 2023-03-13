@@ -215,7 +215,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5d, BNT_matrix)
         warnings.warn('you should probebly BNT-transform the responses too!')
 
-    # cut datavectors and responses in the pessimistic case; be carful of WA, because it does not start from ell_min
+    # ! cut datavectors and responses in the pessimistic case; be carful of WA, because it does not start from ell_min
     if ell_max_WL == 1500:
         cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
         cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]

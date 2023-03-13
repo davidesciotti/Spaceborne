@@ -109,9 +109,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         cases_tosave.append('SS')
 
     # import the ind files and store it into the covariance dictionary
-    ind_folder = covariance_cfg['ind_folder'].format(triu_tril=triu_tril, row_col_major=row_col_major)
-    ind_filename = covariance_cfg['ind_filename'].format(triu_tril=triu_tril, row_col_major=row_col_major, zbins=zbins)
-    ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
     ind = mm.build_full_ind(triu_tril, row_col_major, zbins)
     covariance_cfg['ind'] = ind
 
@@ -297,7 +294,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                       ISTF_fid.primary['w_0'], ISTF_fid.primary['w_a'],
                       ISTF_fid.primary['h_0'], ISTF_fid.primary['n_s'], ISTF_fid.primary['sigma_8']],
             'IA': np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()]),
-            'galaxy_bias': np.genfromtxt(f'{ng_folder}/{ng_filename}')[:, 2],  # it needs to be set in the main!
+            'galaxy_bias': np.genfromtxt(f'{ng_folder}/{ng_filename}')[:, 2],  # ! it needs to be set in the main!
             'shear_bias': np.zeros((zbins,)),
             'dzWL': np.zeros((zbins,)),
             'dzGC': np.zeros((zbins,)),

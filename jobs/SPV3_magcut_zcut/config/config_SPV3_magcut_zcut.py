@@ -79,8 +79,8 @@ if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
     general_cfg['use_WA'] = False
 
 covariance_cfg = {
-    'ind_folder': f'{project_path.parent}/common_data/ind_files' + '/{triu_tril:s}_{row_col_major:s}',
-    'ind_filename': 'indices_{triu_tril:s}_{row_col_major:s}_zbins{zbins:02d}.dat',
+
+    # ordering-related stuff
     'triu_tril': 'triu',
     'row_col_major': 'row-major',
     'block_index': 'ell',

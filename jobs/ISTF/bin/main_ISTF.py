@@ -164,10 +164,6 @@ rl_dict_3D['rl_3x2pt_5D'] = cl_utils.build_3x2pt_datavector_5D(rl_LLfor3x2pt_3D,
                                                                rl_GL_3D,
                                                                rl_dict_3D['rl_GG_3D'],
                                                                nbl_GC, zbins, n_probes)
-# for cl_pyccl validation
-mm.save_pickle(f'/Users/davide/Documents/Lavoro/Programmi/cl_v2/data/validation/cl_dict_3D.pickle', cl_dict_3D)
-mm.save_pickle(f'/Users/davide/Documents/Lavoro/Programmi/cl_v2/data/validation/ell_dict.pickle', ell_dict)
-mm.save_pickle(f'/Users/davide/Documents/Lavoro/Programmi/cl_v2/data/validation/delta_dict.pickle', delta_dict)
 
 # ! compute covariance matrix
 if covariance_cfg['compute_covmat']:

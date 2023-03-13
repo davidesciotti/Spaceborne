@@ -15,9 +15,9 @@ cfg_name = 'cl15gen'
 
 general_cfg = {
     'ell_min': 10,
-    'ell_max_WL': 4000,
-    'ell_max_GC': 4000,
-    'ell_max_XC': 4000,
+    'ell_max_WL': 5000,
+    'ell_max_GC': 5000,
+    'ell_max_XC': 5000,
     'zbins': 10,
     'EP_or_ED': 'EP',
     'n_probes': 2,

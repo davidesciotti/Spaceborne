@@ -1,13 +1,10 @@
-import bz2
 import gc
-import pickle
 import sys
 import time
 from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
-import os
 import warnings
 
 project_path = Path.cwd().parent.parent.parent
@@ -42,11 +39,7 @@ mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
 
-# TODO check that the number of ell bins is the same as in the files
-# TODO double check the delta values
-# TODO update consistency_checks
-# TODO super check that things work with different # of z bins
-
+# ======================================================================================================================
 
 def check_against_cl_15gen_func():
     if not check_against_cl_15gen:
@@ -135,6 +128,12 @@ cl_GG_BNT_3d = np.load(f'{from_DEMO_870_path}/cC_GG_BNT.npy')
 # ! check GL against the cls from Vincenzo (very bad agreement...)
 check_against_cl_15gen_func()
 
+# this is how the deltas are computed
+# ell_bins = np.linspace(np.log(10.0), np.log(5000.0), 21)
+# delta_ells = np.diff(np.exp(ell_bins))
+# ells = (ell_bins[:-1] + ell_bins[1:]) / 2.0
+# ells = np.exp(ells)
+
 ells = np.load(f'{from_DEMO_870_path}/ell_values.npy')
 delta_ells = np.load(f'{from_DEMO_870_path}/delta_ells.npy')
 nbl = len(ells)
@@ -211,25 +210,22 @@ cov_3x2pt_GO_BNT_False_benchmark = np.load(
     'ExternalBenchmark/Photometric/data/'
     'CovMat-3x2pt-Gauss-20Bins-probe_ell_zpair.npy')
 
-
 del cov_dict_BNT_True, cov_dict_BNT_False, cov_dict_BNT_True_with_cls
 gc.collect()
-
-# ! check that the BNT-transformed covariance is the same as the one computed with the BNT-transformed cls
-mm.compare_arrays(cov_3x2pt_GO_BNT_True, cov_3x2pt_GO_BNT_True_with_cls,
-                  'cov_3x2pt_GO_BNT_True', 'cov_3x2pt_GO_BNT_True_with_cls',
-                  plot_array=True, log_array=True,
-                  plot_diff=True, log_diff=True, plot_diff_threshold=10)
 
 # ! check that the Gaussian covariance matrices are the same
 mm.compare_arrays(cov_3x2pt_GO_BNT_False, cov_3x2pt_GO_BNT_False_benchmark,
                   'cov_3x2pt_GO_BNT_False', 'cov_3x2pt_GO_BNT_False_benchmark',
                   plot_array=True, log_array=True,
-                  plot_diff=True, log_diff=True, plot_diff_threshold=20)
+                  plot_diff=True, log_diff=False, plot_diff_threshold=5)
+
+# ! check that the BNT-transformed covariance is the same as the one computed with the BNT-transformed cls
+mm.compare_arrays(cov_3x2pt_GO_BNT_True, cov_3x2pt_GO_BNT_True_with_cls,
+                  'cov_3x2pt_GO_BNT_True', 'cov_3x2pt_GO_BNT_True_with_cls',
+                  plot_array=True, log_array=True,
+                  plot_diff=True, log_diff=True, plot_diff_threshold=5)
 
 assert 1 > 2
-
-
 
 # diff = mm.percent_diff(cov_3x2pt_GO_BNT_True[-1100:, -1100:], cov_3x2pt_GO_benchmark[-1100:, -1100:])
 # mm.matshow(diff, log=False, abs_val=True, title='WL diff')
@@ -247,6 +243,6 @@ assert 1 > 2
 # - deltas
 # - ell values?
 
-np.save(f'{job_path}/output/CovMat-3x2pt-Gauss-BNT-20Bins.npy', cov_3x2pt_GO_BNT_True)
+# np.save(f'{job_path}/output/CovMat-3x2pt-Gauss-BNT-20Bins.npy', cov_3x2pt_GO_BNT_True)
 
 print('done')

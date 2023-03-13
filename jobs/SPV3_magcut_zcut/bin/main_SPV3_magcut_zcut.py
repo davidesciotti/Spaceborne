@@ -1,9 +1,7 @@
-import pickle
 import sys
 import time
 from pathlib import Path
 import matplotlib
-import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 import os
@@ -39,8 +37,6 @@ import cl_preprocessing as cl_utils
 import compute_Sijkl as Sijkl_utils
 import covariance as covmat_utils
 import fisher_matrix as FM_utils
-import utils_running as utils
-import unit_test as ut
 
 matplotlib.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -116,6 +112,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
     ind_folder = covariance_cfg['ind_folder'].format(triu_tril=triu_tril, row_col_major=row_col_major)
     ind_filename = covariance_cfg['ind_filename'].format(triu_tril=triu_tril, row_col_major=row_col_major, zbins=zbins)
     ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
+    ind = mm.build_full_ind(triu_tril, row_col_major, zbins)
     covariance_cfg['ind'] = ind
 
     # convenience vectors
@@ -211,9 +208,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
 
     # ! BNT transform the cls (and responses?)
     if general_cfg['cl_BNT_transform']:
-        assert general_cfg[
-                   'cov_BNT_transform'] is False, 'the BNT transform should be applied either to the Cls ' \
-                                                  'or to the covariance'
+        assert general_cfg['cov_BNT_transform'] is False, \
+            'the BNT transform should be applied either to the Cls or to the covariance'
         cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix, 'L', 'L')
         cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix, 'L', 'L')
         cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5d, BNT_matrix)
@@ -392,8 +388,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
     # ! unit test: check that the outputs have not changed
     cov_benchmark_folder = f'{cov_folder}/benchmarks'
     fm_benchmark_folder = f'{fm_folder}/benchmarks'
-    # ut.test_cov_FM(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
-    # ut.test_cov_FM(fm_folder, fm_benchmark_folder, 'txt')
     mm.test_folder_content_old(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
     mm.test_folder_content_old(fm_folder, fm_benchmark_folder, 'txt')
 

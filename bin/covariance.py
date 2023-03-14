@@ -335,7 +335,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_GO_3x2pt_10D_dict_es = mm.cov_10D_array_to_dict(cov_GO_3x2pt_10D_arr_es)
         """
         # ! end cov_einsum. Now you might as well just use this, but it's kind of a big update
-
         # ! cov_SSC_6D
         start_time = time.perf_counter()
         cov_WL_SS_6D = mm.cov_SS_10D_dict(cl_dict_LL, rl_dict_LL, Sijkl_dict, nbl_WL, zbins, fsky,

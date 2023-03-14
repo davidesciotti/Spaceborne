@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 import sys
 import numpy as np
@@ -13,6 +14,8 @@ fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
 SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
 specs = 'idMag0-idRSD0-idFS0-idSysWL3-idSysGC4'
+
+warnings.warn('this file hould not be used')
 
 flagship_version = 2
 

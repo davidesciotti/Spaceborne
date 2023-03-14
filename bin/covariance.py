@@ -224,25 +224,25 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
         # compute the 10D covariance only for the blocks which will actually be used (GO and SS)
         start = time.perf_counter()
-        cov_3x2pt_GO_10D = mm.cov_G_10D_dict(cl_dict_3x2pt, noise_dict_3x2pt, nbl_3x2pt, zbins, l_lin_XC,
-                                             delta_l_XC, fsky, probe_ordering)
-        print(f'cov_3x2pt_GO_10D computed in {(time.perf_counter() - start):.2f} seconds')
+        cov_3x2pt_GO_10D_dict = mm.cov_G_10D_dict(cl_dict_3x2pt, noise_dict_3x2pt, nbl_3x2pt, zbins, l_lin_XC,
+                                                  delta_l_XC, fsky, probe_ordering)
+        print(f'cov_3x2pt_GO_10D_dict computed in {(time.perf_counter() - start):.2f} seconds')
 
         start = time.perf_counter()
-        cov_3x2pt_SS_10D = mm.cov_SS_10D_dict(cl_dict_3x2pt, rl_dict_3x2pt, Sijkl_dict, nbl_3x2pt, zbins, fsky,
-                                              probe_ordering)
-        print(f'cov_3x2pt_SS_10D computed in {(time.perf_counter() - start):.2f} seconds')
+        cov_3x2pt_SS_10D_dict = mm.cov_SS_10D_dict(cl_dict_3x2pt, rl_dict_3x2pt, Sijkl_dict, nbl_3x2pt, zbins, fsky,
+                                                   probe_ordering)
+        print(f'cov_3x2pt_SS_10D_dict computed in {(time.perf_counter() - start):.2f} seconds')
 
         # sum GO and SS
-        cov_3x2pt_GS_10D = {}
+        cov_3x2pt_GS_10D_dict = {}
         for A, B in probe_ordering:
             for C, D in probe_ordering:
-                cov_3x2pt_GS_10D[A, B, C, D] = np.zeros((nbl_3x2pt, nbl_3x2pt, zbins, zbins, zbins, zbins))
+                cov_3x2pt_GS_10D_dict[A, B, C, D] = np.zeros((nbl_3x2pt, nbl_3x2pt, zbins, zbins, zbins, zbins))
 
         for A, B in probe_ordering:
             for C, D in probe_ordering:
-                cov_3x2pt_GS_10D[A, B, C, D][...] = cov_3x2pt_GO_10D[A, B, C, D][...] + \
-                                                    cov_3x2pt_SS_10D[A, B, C, D][...]
+                cov_3x2pt_GS_10D_dict[A, B, C, D][...] = cov_3x2pt_GO_10D_dict[A, B, C, D][...] + \
+                                                         cov_3x2pt_SS_10D_dict[A, B, C, D][...]
 
         # this is to revert from 10D to 4D, which is trickier for the 3x2pt (each block has to be converted to 4D and
         # stacked to make the 4D_3x2pt)
@@ -250,11 +250,11 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         # note: I pass ind_copy because the LG-GL check and inversion is performed in the function (otherwise it would be
         # performed twice!)
         # ! careful of passing clean copies of ind to both functions!!!
-        cov_3x2pt_GO_4D_new = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_10D, probe_ordering, nbl_3x2pt, zbins,
+        cov_3x2pt_GO_4D_new = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GO_10D_dict, probe_ordering, nbl_3x2pt, zbins,
                                                           ind.copy(), GL_or_LG)
-        cov_3x2pt_SS_4D_new = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_SS_10D, probe_ordering, nbl_3x2pt, zbins,
+        cov_3x2pt_SS_4D_new = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_SS_10D_dict, probe_ordering, nbl_3x2pt, zbins,
                                                           ind.copy(), GL_or_LG)
-        cov_3x2pt_GS_4D_new = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_10D, probe_ordering, nbl_3x2pt, zbins,
+        cov_3x2pt_GS_4D_new = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_GS_10D_dict, probe_ordering, nbl_3x2pt, zbins,
                                                           ind.copy(), GL_or_LG)
 
         # check with old result and show the arrays 
@@ -272,9 +272,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         # if use_PyCCL_cNG:
 
         # save the 6D-10D covs in the dictionary
-        cov_dict['cov_3x2pt_GO_10D'] = cov_3x2pt_GO_10D
-        cov_dict['cov_3x2pt_GS_10D'] = cov_3x2pt_GS_10D
-        cov_dict['cov_3x2pt_SS_10D'] = cov_3x2pt_SS_10D
+        cov_dict['cov_3x2pt_GO_10D_dict'] = cov_3x2pt_GO_10D_dict
+        cov_dict['cov_3x2pt_GS_10D_dict'] = cov_3x2pt_GS_10D_dict
+        cov_dict['cov_3x2pt_SS_10D_dict'] = cov_3x2pt_SS_10D_dict
 
         # this is the 1st way to compute cov_6D: simply transform the cov_4D array (note that cov_4D_to_6D does not
         # work for 3x2pt, althought it should be easy to implement). Quite slow for GS or SS matrices.
@@ -306,15 +306,17 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         print(f'cov_GO_6D computed in {(time.perf_counter() - start_time):.2f} seconds')
 
         # ! NEW BIT: compute the Gaussian covariance with einsum
-        """        
-        print('TESTING NEW FEATURE')
+        """
         noise_LL_5d = np.zeros((1, 1, nbl_WL, zbins, zbins))  # ! nbl changes from probe to probe!
+        noise_WA_5d = np.zeros((1, 1, nbl_WA, zbins, zbins))
         noise_GG_5d = np.zeros((1, 1, nbl_GC, zbins, zbins))
         noise_3x2pt_5d = np.zeros((2, 2, nbl_GC, zbins, zbins))
-        cl_3x2pt_5d = np.zeros((2, 2, nbl_GC, zbins, zbins))
+        cl_3x2pt_5d = cl_3x2pt_5D.transpose(1, 2, 0, 3, 4)
 
         for ell_idx in range(nbl_WL):
             noise_LL_5d[0, 0, ell_idx, :, :] = noise_dict_3x2pt['L', 'L']
+        for ell_idx in range(nbl_WA):
+            noise_WA_5d[0, 0, ell_idx, :, :] = noise_dict_3x2pt['L', 'L']
         for ell_idx in range(nbl_GC):
             noise_GG_5d[0, 0, ell_idx, :, :] = noise_dict_3x2pt['G', 'G']
             noise_3x2pt_5d[0, 0, ell_idx, :, :] = noise_dict_3x2pt['L', 'L']
@@ -323,48 +325,16 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             noise_3x2pt_5d[1, 1, ell_idx, :, :] = noise_dict_3x2pt['G', 'G']
 
         cl_LL_5d = cl_LL_3D[np.newaxis, np.newaxis, ...]
+        cl_WA_5d = cl_WA_3D[np.newaxis, np.newaxis, ...]
         cl_GG_5d = cl_GG_3D[np.newaxis, np.newaxis, ...]
-        cl_3x2pt_5d = cl_3x2pt_5D.transpose(1, 2, 0, 3, 4)
 
-        start_time = time.perf_counter()
-        cov_GO_WL_6D_einsum = mm.covariance_einsum(cl_LL_5d, noise_LL_5d, fsky, l_lin_WL, delta_l_WL)[0, 0, 0, 0, ...]
-        cov_GO_GC_6D_einsum = mm.covariance_einsum(cl_GG_5d, noise_GG_5d, fsky, l_lin_GC, delta_l_GC)[0, 0, 0, 0, ...]
-        cov_GO_3x2pt_10D_einsum = mm.covariance_einsum(cl_3x2pt_5d, noise_3x2pt_5d, fsky, l_lin_GC, delta_l_GC)
-        print(f'cov_G_10d_einsum computed in {(time.perf_counter() - start_time):.2f} seconds')
-
-        print('cov_GO_3x2pt_10D_einsum.shape', cov_GO_3x2pt_10D_einsum.shape)
-        print('cov_dict[\'cov_3x2pt_GO_10D\'].shape', cov_dict['cov_3x2pt_GO_10D'].shape)
-
-        cov_3x2pt_GO_10D_arr = np.zeros(cov_GO_3x2pt_10D_einsum.shape)
-        cov_3x2pt_GO_10D_arr[0, 0, 0, 0, ...] = cov_dict['cov_3x2pt_GO_10D']['L', 'L', 'L', 'L', ...]
-        cov_3x2pt_GO_10D_arr[0, 0, 0, 0, ...] = cov_dict['cov_3x2pt_GO_10D']['L', 'L', 'L', 'L', ...]
-        cov_3x2pt_GO_10D_arr[0, 0, 0, 0, ...] = cov_dict['cov_3x2pt_GO_10D']['L', 'L', 'L', 'L', ...]
-        cov_3x2pt_GO_10D_arr[0, 0, 0, 0, ...] = cov_dict['cov_3x2pt_GO_10D']['L', 'L', 'L', 'L', ...]
-
-
-        np.testing.assert_allclose(cov_GO_WL_6D_einsum, cov_dict['cov_WL_GO_6D'], rtol=1e-9, atol=0)
-        np.testing.assert_allclose(cov_GO_GC_6D_einsum, cov_dict['cov_GC_GO_6D'], rtol=1e-9, atol=0)
-        np.testing.assert_allclose(cov_GO_3x2pt_10D_einsum, cov_dict['cov_3x2pt_GO_10D'], rtol=1e-9, atol=0)
+        cov_GO_WL_6D_es = mm.covariance_einsum(cl_LL_5d, noise_LL_5d, fsky, l_lin_WL, delta_l_WL)[0, 0, 0, 0, ...]
+        cov_GO_WA_6D_es = mm.covariance_einsum(cl_WA_5d, noise_WA_5d, fsky, l_lin_WA, delta_l_WA)[0, 0, 0, 0, ...]
+        cov_GO_GC_6D_es = mm.covariance_einsum(cl_GG_5d, noise_GG_5d, fsky, l_lin_GC, delta_l_GC)[0, 0, 0, 0, ...]
+        cov_GO_3x2pt_10D_arr_es = mm.covariance_einsum(cl_3x2pt_5d, noise_3x2pt_5d, fsky, l_lin_GC, delta_l_GC)
+        cov_GO_3x2pt_10D_dict_es = mm.cov_10D_array_to_dict(cov_GO_3x2pt_10D_arr_es)
         """
-        # diff = mm.percent_diff_nan(cov_GO_WL_6D_einsum, cov_dict['cov_WL_GO_6D'])
-        # print('max diff = ', np.max(np.abs(diff)))
-        # mm.compare_arrays(cov_GO_WL_6D_einsum, cov_dict['cov_WL_GO_6D'])
-        #
-        # cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_auto)
-        # cov_WL_GO_4D_einsum = mm.cov_6D_to_4D(cov_GO_WL_6D_einsum, nbl_WL, zpairs_auto, ind_auto)
-        #
-        # # check 2d, it's easier
-        # cov_WL_GO_2D = mm.cov_4D_to_2D(cov_WL_GO_4D, block_index=block_index)
-        # cov_WL_GO_2D_einsum = mm.cov_4D_to_2D(cov_WL_GO_4D_einsum, block_index=block_index)
-        #
-        # mm.compare_arrays(cov_WL_GO_2D, cov_WL_GO_2D_einsum,
-        #                   'regular', 'einsum',
-        #                   plot_diff=True, plot_array=True,
-        #                   log_array=True, log_diff=False,
-        #                   abs_val=False, plot_diff_threshold=None)
-
-        # ! end testing new feature
-        # assert 1 > 2
+        # ! end cov_einsum. Now you might as well just use this, but it's kind of a big update
 
         # ! cov_SSC_6D
         start_time = time.perf_counter()
@@ -393,21 +363,23 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             X_dict = build_X_matrix_BNT(BNT_matrix)
             cov_dict['cov_WL_GO_6D'] = cov_BNT_transform(cov_dict['cov_WL_GO_6D'], X_dict, 'L', 'L', 'L', 'L')
             cov_dict['cov_WA_GO_6D'] = cov_BNT_transform(cov_dict['cov_WA_GO_6D'], X_dict, 'L', 'L', 'L', 'L')
-            cov_dict['cov_3x2pt_GO_10D'] = cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GO_10D'], X_dict)
+            cov_dict['cov_3x2pt_GO_10D_dict'] = cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GO_10D_dict'], X_dict)
 
             cov_dict['cov_WL_GS_6D'] = cov_BNT_transform(cov_dict['cov_WL_GS_6D'], X_dict, 'L', 'L', 'L', 'L')
             cov_dict['cov_WA_GS_6D'] = cov_BNT_transform(cov_dict['cov_WA_GS_6D'], X_dict, 'L', 'L', 'L', 'L')
-            cov_dict['cov_3x2pt_GS_10D'] = cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GS_10D'], X_dict)
+            cov_dict['cov_3x2pt_GS_10D_dict'] = cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GS_10D_dict'], X_dict)
 
             # if not converted in 4D, only the 6D covs will be overwritten by the BNT-transofrmed version!
             cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_auto)
             cov_WA_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WA_GO_6D'], nbl_WA, zpairs_auto, ind_auto)
-            cov_3x2pt_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_dict['cov_3x2pt_GO_10D'], probe_ordering, nbl_GC, zbins,
+            cov_3x2pt_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_dict['cov_3x2pt_GO_10D_dict'], probe_ordering, nbl_GC,
+                                                          zbins,
                                                           ind.copy(), GL_or_LG)
 
             cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GS_6D'], nbl_WL, zpairs_auto, ind_auto)
             cov_WA_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, zpairs_auto, ind_auto)
-            cov_3x2pt_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_dict['cov_3x2pt_GS_10D'], probe_ordering, nbl_GC, zbins,
+            cov_3x2pt_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_dict['cov_3x2pt_GS_10D_dict'], probe_ordering, nbl_GC,
+                                                          zbins,
                                                           ind.copy(), GL_or_LG)
 
     ############################### 4D to 2D ##################################

@@ -426,8 +426,8 @@ def cl_ell_cut_3x2pt(cl_3x2pt_5D, ell_cuts_probe_dict, ell_values_dict):
     cl_GGfor3x2pt_3D = cl_3x2pt_5D[:, 1, 1, :, :]
 
     cl_LLfor3x2pt_3D_ell_cut = cl_ell_cut(cl_LLfor3x2pt_3D, ell_cuts_probe_dict['WL'], ell_values_dict['ell_XC'])
-    cl_LGfor3x2pt_3D_ell_cut = cl_ell_cut(cl_LGfor3x2pt_3D, ell_cuts_probe_dict['XC'], ell_values_dict['ell_XC'])
-    cl_GLfor3x2pt_3D_ell_cut = cl_ell_cut(cl_GLfor3x2pt_3D, ell_cuts_probe_dict['XC'], ell_values_dict['ell_XC'])
+    cl_LGfor3x2pt_3D_ell_cut = cl_ell_cut(cl_LGfor3x2pt_3D, ell_cuts_probe_dict['LG'], ell_values_dict['ell_XC'])
+    cl_GLfor3x2pt_3D_ell_cut = cl_ell_cut(cl_GLfor3x2pt_3D, ell_cuts_probe_dict['GL'], ell_values_dict['ell_XC'])
     cl_GGfor3x2pt_3D_ell_cut = cl_ell_cut(cl_GGfor3x2pt_3D, ell_cuts_probe_dict['GC'], ell_values_dict['ell_XC'])
 
     cl_3x2pt_5D_ell_cut = np.zeros(cl_3x2pt_5D.shape)

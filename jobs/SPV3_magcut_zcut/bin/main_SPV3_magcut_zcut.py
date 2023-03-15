@@ -58,7 +58,8 @@ Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
 
-def ell_cuts_cl(general_cfg, ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d):
+def cl_ell_cut_wrap(general_cfg, ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d):
+    """Wrapper for the ell cuts. Avoids the 'if general_cfg['ell_cuts']' in the main loop (aka, we use extraction)"""
 
     if not general_cfg['ell_cuts']:
         return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
@@ -69,7 +70,9 @@ def ell_cuts_cl(general_cfg, ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
     ell_cuts_filename = general_cfg['ell_cuts_filename']
     ell_cuts_LL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}')
     ell_cuts_GG = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}')
-    ell_cuts_XC = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')
+    warnings.warn('I am not sure this is for GL, the filename is "XC"')
+    ell_cuts_GL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')
+    ell_cuts_LG = ell_cuts_GL.T
 
     # ! linearly rescale ell cuts
     # TODO: restore cuts as a function of kmax; I would like to avoid a mega for loop...
@@ -84,7 +87,8 @@ def ell_cuts_cl(general_cfg, ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
     ell_cuts_probes_dict = {
         'WL': ell_cuts_LL,
         'GC': ell_cuts_GG,
-        'XC': ell_cuts_XC}
+        'GL': ell_cuts_GL,
+        'LG': ell_cuts_LG}
 
     cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_cuts_LL, ell_dict['ell_WL'])
     cl_wa_3d = cl_utils.cl_ell_cut(cl_wa_3d, ell_cuts_LL, ell_dict['ell_WA'])
@@ -265,7 +269,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         rl_3x2pt_5d = rl_3x2pt_5d[:nbl_3x2pt, :, :]
 
     # ! ell cuts
-    cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = ell_cuts_cl(
+    cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
         general_cfg, ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d)
 
     # ! XXX i'm here

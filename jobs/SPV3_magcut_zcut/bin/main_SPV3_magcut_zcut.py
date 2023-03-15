@@ -104,7 +104,6 @@ ZL_list = general_cfg['zcut_lens_list']
 MS_list = general_cfg['magcut_source_list']
 ZS_list = general_cfg['zcut_source_list']
 
-
 for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_source'], general_cfg['zcut_source'] in \
         zip(ML_list, ZL_list, MS_list, ZS_list):
     # TODO implement this for loop!
@@ -338,8 +337,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         cov_folder = covariance_cfg['cov_folder'].format(ell_cuts=str(general_cfg['ell_cuts']), **variable_specs)
         covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
 
-    assert 1 > 2, 'stop here'
+    mm.matshow(cov_dict['cov_WL_GO_2D'], log=True)
 
+    assert 1 > 2, 'stop here'
 
     # ! compute Fisher matrix
     if FM_cfg['compute_FM']:

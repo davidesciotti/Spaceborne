@@ -3,6 +3,7 @@ import time
 from pathlib import Path
 import matplotlib
 import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import warnings
@@ -58,7 +59,7 @@ Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
 
-def cl_ell_cut_wrap(general_cfg, ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d):
+def cl_ell_cut_wrap(general_cfg, ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc=None):
     """Wrapper for the ell cuts. Avoids the 'if general_cfg['ell_cuts']' in the main loop (aka, we use extraction)"""
 
     if not general_cfg['ell_cuts']:
@@ -70,19 +71,16 @@ def cl_ell_cut_wrap(general_cfg, ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2p
     ell_cuts_filename = general_cfg['ell_cuts_filename']
     ell_cuts_LL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}')
     ell_cuts_GG = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}')
-    warnings.warn('I am not sure this is for GL, the filename is "XC"')
+    warnings.warn('I am not sure this ell_cut file is for GL, the filename is "XC"')
     ell_cuts_GL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')
     ell_cuts_LG = ell_cuts_GL.T
 
     # ! linearly rescale ell cuts
-    # TODO: restore cuts as a function of kmax; I would like to avoid a mega for loop...
-    # h_over_Mpc; the one with which the above ell cuts were computed
-    # kmax_ref_h_over_Mpc = general_cfg['kmax_ref_h_over_Mpc']
-    # kmax_h_over_Mpc = ell_cuts_dict['kmax_h_over_Mpc']
-    #
+    # TODO restore this
     # ell_cuts_LL *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
     # ell_cuts_GG *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
-    # ell_cuts_XC *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
+    # ell_cuts_GL *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
+    # ell_cuts_LG *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
 
     ell_cuts_probes_dict = {
         'WL': ell_cuts_LL,
@@ -98,13 +96,19 @@ def cl_ell_cut_wrap(general_cfg, ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2p
     return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
 
 
+# ======================================================================================================================
+
+
 ML_list = general_cfg['magcut_lens_list']
 ZL_list = general_cfg['zcut_lens_list']
 MS_list = general_cfg['magcut_source_list']
 ZS_list = general_cfg['zcut_source_list']
 
+
 for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_source'], general_cfg['zcut_source'] in \
         zip(ML_list, ZL_list, MS_list, ZS_list):
+    # TODO implement this for loop!
+    # for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
     # for general_cfg['ell_cuts'] in (True, False):
 
     # without zip, i.e. for all the possible combinations (aka, a nightmare)
@@ -129,6 +133,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
     n_probes = general_cfg['n_probes']
     GL_or_LG = covariance_cfg['GL_or_LG']
     probe_ordering = [['L', 'L'], [GL_or_LG[0], GL_or_LG[1]], ['G', 'G']]
+    kmax_ref_h_over_Mpc = general_cfg['kmax_ref_h_over_Mpc']
 
     # some checks
     assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
@@ -149,7 +154,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
     if covariance_cfg[f'save_cov_SSC']:
         cases_tosave.append('SS')
 
-    # import the ind files and store it into the covariance dictionary
+    # build the ind array and store it into the covariance dictionary
     ind = mm.build_full_ind(triu_tril, row_col_major, zbins)
     covariance_cfg['ind'] = ind
 
@@ -268,11 +273,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         rl_wa_3d = rl_ll_3d[nbl_GC:nbl_WL, :, :]
         rl_3x2pt_5d = rl_3x2pt_5d[:nbl_3x2pt, :, :]
 
-    # ! ell cuts
+    # ! cl ell cuts
     cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
         general_cfg, ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d)
-
-    # ! XXX i'm here
 
     # store cls and responses in a dictionary
     cl_dict_3D = {
@@ -334,6 +337,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         # save covariance matrix
         cov_folder = covariance_cfg['cov_folder'].format(ell_cuts=str(general_cfg['ell_cuts']), **variable_specs)
         covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
+
+    assert 1 > 2, 'stop here'
+
 
     # ! compute Fisher matrix
     if FM_cfg['compute_FM']:

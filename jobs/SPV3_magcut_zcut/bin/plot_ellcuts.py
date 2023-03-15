@@ -109,11 +109,13 @@ for probe in probes:
                 lmax = 5000
                 nbl = 32
 
-            FM_Ellcuts_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output' \
-                              f'/Flagship_{flagship_version}/FM/BNT_True/ell_cuts_True'
+            FM_Ellcuts_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
+                              f'output/Flagship_{flagship_version}/FM/BNT_True/ell_cuts_True'
             FM_noEllcuts_path = FM_Ellcuts_path.replace('ell_cuts_True', 'ell_cuts_False')
+
             FM_filename = f'FM_zbins{EP_or_ED}{zbins:02d}-ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}' \
                           f'_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}.pickle'
+
             FM_Ellcuts_dict = mm.load_pickle(f'{FM_Ellcuts_path}/{FM_filename}')
             FM_noEllcuts_dict = mm.load_pickle(f'{FM_noEllcuts_path}/{FM_filename}')
 

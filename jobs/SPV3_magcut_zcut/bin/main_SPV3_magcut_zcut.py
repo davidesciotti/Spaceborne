@@ -59,6 +59,7 @@ FM_cfg = cfg.FM_cfg
 
 
 def ell_cuts_cl(general_cfg, ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d):
+
     if not general_cfg['ell_cuts']:
         return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
 

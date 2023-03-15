@@ -328,13 +328,14 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cl_WA_5d = cl_WA_3D[np.newaxis, np.newaxis, ...]
         cl_GG_5d = cl_GG_3D[np.newaxis, np.newaxis, ...]
 
-        cov_GO_WL_6D_es = mm.covariance_einsum(cl_LL_5d, noise_LL_5d, fsky, l_lin_WL, delta_l_WL)[0, 0, 0, 0, ...]
-        cov_GO_WA_6D_es = mm.covariance_einsum(cl_WA_5d, noise_WA_5d, fsky, l_lin_WA, delta_l_WA)[0, 0, 0, 0, ...]
-        cov_GO_GC_6D_es = mm.covariance_einsum(cl_GG_5d, noise_GG_5d, fsky, l_lin_GC, delta_l_GC)[0, 0, 0, 0, ...]
-        cov_GO_3x2pt_10D_arr_es = mm.covariance_einsum(cl_3x2pt_5d, noise_3x2pt_5d, fsky, l_lin_GC, delta_l_GC)
-        cov_GO_3x2pt_10D_dict_es = mm.cov_10D_array_to_dict(cov_GO_3x2pt_10D_arr_es)
+        cov_dict['cov_GO_WL_6D'] = mm.covariance_einsum(cl_LL_5d, noise_LL_5d, fsky, l_lin_WL, delta_l_WL)[0, 0, 0, 0, ...]
+        cov_dict['cov_GO_WA_6D'] = mm.covariance_einsum(cl_WA_5d, noise_WA_5d, fsky, l_lin_WA, delta_l_WA)[0, 0, 0, 0, ...]
+        cov_dict['cov_GO_GC_6D'] = mm.covariance_einsum(cl_GG_5d, noise_GG_5d, fsky, l_lin_GC, delta_l_GC)[0, 0, 0, 0, ...]
+        cov_3x2pt_GO_10D_arr = mm.covariance_einsum(cl_3x2pt_5d, noise_3x2pt_5d, fsky, l_lin_GC, delta_l_GC)
+        cov_dict['cov_3x2pt_GO_10D_dict'] = mm.cov_10D_array_to_dict(cov_3x2pt_GO_10D_arr)
         """
         # ! end cov_einsum. Now you might as well just use this, but it's kind of a big update
+
         # ! cov_SSC_6D
         start_time = time.perf_counter()
         cov_WL_SS_6D = mm.cov_SS_10D_dict(cl_dict_LL, rl_dict_LL, Sijkl_dict, nbl_WL, zbins, fsky,
@@ -411,11 +412,12 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     for probe_name, cov_GO_4D, cov_GO_2D, cov_GS_4D, cov_GS_2D, cov_SS_4D, cov_SS_2D \
             in zip(probe_names, covs_GO_4D, covs_GO_2D, covs_GS_4D, covs_GS_2D, covs_SS_4D, covs_SS_2D):
+
         # save 4D
         # cov_dict[f'cov_{probe_name}_GO_4D'] = cov_GO_4D
         # cov_dict[f'cov_{probe_name}_GS_4D'] = cov_GS_4D
-        if covariance_cfg['save_cov_SSC']:
-            cov_dict[f'cov_{probe_name}_SS_4D'] = cov_SS_4D
+        # if covariance_cfg['save_cov_SSC']:
+        #     cov_dict[f'cov_{probe_name}_SS_4D'] = cov_SS_4D
 
         # save 2D
         cov_dict[f'cov_{probe_name}_GO_2D'] = cov_GO_2D

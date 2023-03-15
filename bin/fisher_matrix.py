@@ -257,7 +257,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     FM_GC_GS = np.einsum('ia,ik,kb->ab', dC_GG_2D, cov_GC_GS_2D_inv, dC_GG_2D, optimize='optimal')
     FM_WA_GS = np.einsum('ia,ik,kb->ab', dC_WA_2D, cov_WA_GS_2D_inv, dC_WA_2D, optimize='optimal')
     FM_3x2pt_GS = np.einsum('ia,ik,kb->ab', dC_3x2pt_2D, cov_3x2pt_GS_2D_inv, dC_3x2pt_2D, optimize='optimal')
-    print(f'GO FM done in {(time.perf_counter() - start3):.2f} s')
+    print(f'GS FM done in {(time.perf_counter() - start3):.2f} s')
 
     # sum WA, this is the actual FM_3x2pt
     if use_WA:

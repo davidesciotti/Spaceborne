@@ -376,8 +376,10 @@ def get_ell_cuts_indices(ell_values, ell_cuts_2d_array, zbins):
     return ell_idxs_tocut
 
 
-def cl_ell_cut(cl_3D, ell_cuts_matrix, ell_values, output_ell_idx_to_cut=False):
+def cl_ell_cut(cl_3D, ell_cuts_matrix, ell_values):
     """cut (sets to zero) the cl_3D array at the ell values specified in ell_cuts_matrix"""
+
+    # TODO call get_ell_cuts_indices function here not to repeat code
 
     if np.all(ell_values) < 30:
         ell_values = 10 ** ell_values
@@ -399,9 +401,6 @@ def cl_ell_cut(cl_3D, ell_cuts_matrix, ell_values, output_ell_idx_to_cut=False):
             if np.any(ell_values > ell_cut):  # i.e., if you need to do a cut at all
                 ell_idxs_tocut = np.where(ell_values > ell_cut)[0]
                 cl_3D_ell_cut[ell_idxs_tocut, zi, zj] = 0
-
-    if output_ell_idx_to_cut:
-        return (cl_3D_ell_cut, output_ell_idx_to_cut)
 
     return cl_3D_ell_cut
 

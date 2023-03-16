@@ -363,7 +363,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                           'cov_ell_cl_cuts_WL', 'cov_ell_cov_cuts_WL',
                           plot_array=True, log_array=True)
 
-        assert 1 > 2
+        mm.matshow(cov_dict['cov_3x2pt_GO_2D'], log=True)
 
         # ! compute Fisher matrix
         if FM_cfg['compute_FM']:

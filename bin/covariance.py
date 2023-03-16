@@ -371,21 +371,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_dict['cov_WA_GS_6D'] = cov_BNT_transform(cov_dict['cov_WA_GS_6D'], X_dict, 'L', 'L', 'L', 'L')
             cov_dict['cov_3x2pt_GS_10D_dict'] = cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GS_10D_dict'], X_dict)
 
-            # if not converted in 4D, only the 6D covs will be overwritten by the BNT-transofrmed version!
-            cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_auto)
-            cov_WA_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WA_GO_6D'], nbl_WA, zpairs_auto, ind_auto)
-            cov_3x2pt_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_dict['cov_3x2pt_GO_10D_dict'], probe_ordering, nbl_GC,
-                                                          zbins,
-                                                          ind.copy(), GL_or_LG)
-
-            cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GS_6D'], nbl_WL, zpairs_auto, ind_auto)
-            cov_WA_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, zpairs_auto, ind_auto)
-            cov_3x2pt_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_dict['cov_3x2pt_GS_10D_dict'], probe_ordering, nbl_GC,
-                                                          zbins,
-                                                          ind.copy(), GL_or_LG)
-
         if covariance_cfg['cov_ell_cuts']:
 
+            print('ePerforming ell cuts on covariance matrix')
             # ! get the ell indices which will be set to 0 for each zi, zj
             ell_cuts_dict = ell_dict['ell_cuts_dict']
             ell_cuts_idxs_LL = cl_preprocessing.get_ell_cuts_indices(l_lin_WL, ell_cuts_dict['WL'], zbins)
@@ -393,10 +381,12 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             ell_cuts_idxs_GG = cl_preprocessing.get_ell_cuts_indices(l_lin_GC, ell_cuts_dict['GC'], zbins)
             ell_cuts_idxs_GL = cl_preprocessing.get_ell_cuts_indices(l_lin_GC, ell_cuts_dict['GL'], zbins)
 
+            # ! perform the cuts: single-probe
             cov_dict['cov_WL_GO_6D'] = cov_ell_cut(cov_dict['cov_WL_GO_6D'], ell_cuts_idxs_LL, ell_cuts_idxs_LL, zbins)
             cov_dict['cov_WA_GO_6D'] = cov_ell_cut(cov_dict['cov_WA_GO_6D'], ell_cuts_idxs_WA, ell_cuts_idxs_WA, zbins)
             cov_dict['cov_GC_GO_6D'] = cov_ell_cut(cov_dict['cov_GC_GO_6D'], ell_cuts_idxs_GG, ell_cuts_idxs_GG, zbins)
 
+            # ! perform the cuts: 3x2pt (define a dictionary of ell_cuts_idxs to be able to use a loop)
             ell_cuts_idxs_dict = {
                 ('L', 'L'): ell_cuts_idxs_LL,
                 ('G', 'L'): ell_cuts_idxs_GL,
@@ -404,21 +394,22 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             }
             for A, B in probe_ordering:
                 for C, D in probe_ordering:
-                    print(A, B, C, D)
                     cov_dict['cov_3x2pt_GO_10D_dict'][A, B, C, D] = cov_ell_cut(
                         cov_dict['cov_3x2pt_GO_10D_dict'][A, B, C, D],
                         ell_cuts_idxs_dict[A, B], ell_cuts_idxs_dict[C, D], zbins)
 
-            cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_auto)
-            cov_WL_GO_2D = mm.cov_4D_to_2D(cov_WL_GO_4D, block_index=block_index)
-            mm.matshow(cov_WL_GO_2D, title='cov_WL_GO_2D after cov cuts', log=True)
+        # if not converted in 4D, only the 6D covs will be overwritten by the BNT-transofrmed version!
+        cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_auto)
+        cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_GC_GO_6D'], nbl_GC, zpairs_auto, ind_auto)
+        cov_WA_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WA_GO_6D'], nbl_WA, zpairs_auto, ind_auto)
+        cov_3x2pt_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_dict['cov_3x2pt_GO_10D_dict'], probe_ordering, nbl_GC,
+                                                      zbins, ind.copy(), GL_or_LG)
 
-            np.save('/Users/davide/Desktop/temp/cov_WL_GO_2D_after_cov_cuts.npy', cov_WL_GO_2D)
-
-
-
-
-            assert 1 > 2
+        cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GS_6D'], nbl_WL, zpairs_auto, ind_auto)
+        cov_GC_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_GC_GS_6D'], nbl_GC, zpairs_auto, ind_auto)
+        cov_WA_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, zpairs_auto, ind_auto)
+        cov_3x2pt_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_dict['cov_3x2pt_GS_10D_dict'], probe_ordering, nbl_GC,
+                                                      zbins, ind.copy(), GL_or_LG)
 
     ############################### 4D to 2D ##################################
     # Here an ordering convention ('block_index') is needed as well
@@ -510,7 +501,6 @@ def cov_3x2pt_BNT_transform(cov_3x2pt_dict_10D, X_dict, optimize=True):
 
 # @njit
 def cov_ell_cut(cov_6d, ell_cuts_idxs_AB, ell_cuts_idxs_CD, zbins):
-
     # TODO pythonize this
     for zi in range(zbins):
         for zj in range(zbins):

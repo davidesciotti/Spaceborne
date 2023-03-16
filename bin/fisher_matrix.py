@@ -81,21 +81,15 @@ def invert_matrix_LU(covariance_matrix):
 def ell_cuts_derivatives(general_cfg, FM_cfg, ell_dict, dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D):
     warnings.warn('This function is useless, the cut must be implemented at the level of the datavector')
 
-    if not general_cfg['deriv_ell_cuts']:
+    if not FM_cfg['deriv_ell_cuts']:
         return dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D
 
     print('Performing the ell cuts on the derivatives...')
 
-    ell_cuts_LL = ell_dict['ell_cuts_dict']['ell_cuts_LL']
-    ell_cuts_GG = ell_dict['ell_cuts_dict']['ell_cuts_GG']
-    ell_cuts_XC = ell_dict['ell_cuts_dict']['ell_cuts_XC']
+    ell_cuts_dict = ell_dict['ell_cuts_dict']
+    ell_cuts_LL = ell_cuts_dict['LL']
+    ell_cuts_GG = ell_cuts_dict['GG']
     param_names_3x2pt = FM_cfg['param_names_3x2pt']
-
-    # TODO unnecessary!
-    ell_cuts_probes_dict = {
-        'WL': ell_cuts_LL,
-        'GC': ell_cuts_GG,
-        'XC': ell_cuts_XC}
 
     cl_cut = cl_utils.cl_ell_cut  # just to abbreviate the name to fit in one line
     for param_idx in range(len(param_names_3x2pt)):
@@ -103,7 +97,7 @@ def ell_cuts_derivatives(general_cfg, FM_cfg, ell_dict, dC_LL_4D, dC_WA_4D, dC_G
         dC_WA_4D[:, :, :, param_idx] = cl_cut(dC_WA_4D[:, :, :, param_idx], ell_cuts_LL, ell_dict['ell_WA'])
         dC_GG_4D[:, :, :, param_idx] = cl_cut(dC_GG_4D[:, :, :, param_idx], ell_cuts_GG, ell_dict['ell_GC'])
         dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_ell_cut_3x2pt(
-            dC_3x2pt_6D[:, :, :, :, :, param_idx], ell_cuts_probes_dict, ell_dict)
+            dC_3x2pt_6D[:, :, :, :, :, param_idx], ell_cuts_dict, ell_dict)
 
     return dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D
 
@@ -155,13 +149,16 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     if cov_dict['cov_WA_GO_2D'].shape == (0, 0):
         warnings.warn('cov_WA_GO_2D is empty, setting use_WA to False and the covariance matrix to the identity')
         general_cfg['use_WA'] = False
-        cov_dict['cov_WA_GO_2D'] = np.eye((nbl_WA * zpairs_auto, nbl_WA * zpairs_auto))
+        cov_dict['cov_WA_GO_2D'] = np.eye(nbl_WA * zpairs_auto)
 
+    mm.matshow(cov_dict['cov_WL_GO_2D'], 'cov_WL_GO_2D pre', log=True)
     if covariance_cfg['cov_ell_cuts']:
         cov_dict['cov_WL_GO_2D'] = mm.remove_null_rows_cols_2D_copilot(cov_dict['cov_WL_GO_2D'])
         cov_dict['cov_GC_GO_2D'] = mm.remove_null_rows_cols_2D_copilot(cov_dict['cov_GC_GO_2D'])
         cov_dict['cov_WA_GO_2D'] = mm.remove_null_rows_cols_2D_copilot(cov_dict['cov_WA_GO_2D'])
         cov_dict['cov_3x2pt_GO_2D'] = mm.remove_null_rows_cols_2D_copilot(cov_dict['cov_3x2pt_GO_2D'])
+
+    mm.matshow(cov_dict['cov_WL_GO_2D'], 'cov_WL_GO_2D post', log=True)
 
     # invert GO covmats
     print('Starting covariance matrix inversion...')
@@ -200,7 +197,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
             dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_BNT_transform_3x2pt(
                 dC_3x2pt_6D[:, :, :, :, :, param_idx], BNT_matrix)
 
-    # ! ell-cut the derivatives (THIS IS WRONG!)
+    # ! ell-cut the derivatives
     dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D = ell_cuts_derivatives(general_cfg, FM_cfg, ell_dict,
                                                                      dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D)
 

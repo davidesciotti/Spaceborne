@@ -78,8 +78,8 @@ def load_ell_cuts(kmax_h_over_Mpc=None):
     ell_cuts_LG *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
 
     ell_cuts_dict = {
-        'WL': ell_cuts_LL,
-        'GC': ell_cuts_GG,
+        'LL': ell_cuts_LL,
+        'GG': ell_cuts_GG,
         'GL': ell_cuts_GL,
         'LG': ell_cuts_LG}
 
@@ -178,6 +178,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         ell_WL_nbl32 = np.log10(ell_WL_nbl32)
 
         # perform the cuts
+        # TODO take the 10**!!!!
         ell_dict = {
             'ell_WL': np.copy(ell_WL_nbl32[10 ** ell_WL_nbl32 < ell_max_WL]),
             'ell_GC': np.copy(ell_WL_nbl32[10 ** ell_WL_nbl32 < ell_max_GC]),
@@ -285,10 +286,23 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
             ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc=None)
 
+
         # this is to pass the ll cuts to the covariance module
         warnings.warn('restore kmax_h_over_Mpc in the next line')
         ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc=None)
         ell_dict['ell_cuts_dict'] = ell_cuts_dict
+
+        # ! try vincenzo's method for cl_ell_cuts
+        idx_to_delete = []
+        count = 0
+        for ell_idx, ell_val in enumerate(10**ell_dict['ell_WL']):
+            for zi in range(zbins):
+                for zj in range(zi, zbins):
+                    count += 1
+                    if ell_val > ell_cuts_dict['LL'][zi, zj]:
+                        # cl_ll_3d[ell_idx, zi, zj] = 0  # no need to cut the datavector in this approach,
+                        # only the derivatives
+                        idx_to_delete.append(count)
 
         # store cls and responses in a dictionary
         cl_dict_3D = {
@@ -356,15 +370,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             mm.test_folder_content_old(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
 
         mm.matshow(cov_dict['cov_WL_GO_2D'], log=True)
-        if general_cfg['cl_ell_cuts']:
-            np.save('/Users/davide/Desktop/temp/cov_WL_GO_2D_after_cl_cuts.npy', cov_dict['cov_WL_GO_2D'])
-
-        cov_ell_cl_cuts_WL = np.load('/Users/davide/Desktop/temp/cov_WL_GO_2D_after_cl_cuts.npy')
-        cov_ell_cov_cuts_WL = np.load('/Users/davide/Desktop/temp/cov_WL_GO_2D_after_cov_cuts.npy')
-
-        mm.compare_arrays(cov_ell_cl_cuts_WL, cov_ell_cov_cuts_WL,
-                          'cov_ell_cl_cuts_WL', 'cov_ell_cov_cuts_WL',
-                          plot_array=True, log_array=True)
+        cov_dict['cov_WL_GO_2D'] = mm.remove_null_rows_cols_array2D(cov_dict['cov_WL_GO_2D'], idx_to_delete)
 
         mm.matshow(cov_dict['cov_3x2pt_GO_2D'], log=True)
 
@@ -425,12 +431,29 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
                                                        der_prefix, is_3x2pt=True)
 
-            ell_cut_idxs = cl_utils.get_ell_cuts_indices(ell_values, ell_cuts_2d_array, zbins)
+            # # * check rows cols against covmat
+            # I am working here before moving function to FM_utils. remove this lines!!
+            # dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D = FM_utils.ell_cuts_derivatives(general_cfg, FM_cfg, ell_dict,
+            #                                                                  dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D)
+            #
+            # # make them 2d, then 1d to find idxs to remove to match shape with covmat
+            # for param_idx in range(len(param_names_3x2pt)):
+            #     dC_LL_3D[:, :, param_idx] = Cl_3D_to_2D_symmetric(dC_LL_4D[:, :, :, param_idx], nbl_WL, zpairs_auto, zbins)
+            #     dC_WA_3D[:, :, param_idx] = Cl_3D_to_2D_symmetric(dC_WA_4D[:, :, :, param_idx], nbl_WA, zpairs_auto, zbins)
+            #     dC_GG_3D[:, :, param_idx] = Cl_3D_to_2D_symmetric(dC_GG_4D[:, :, :, param_idx], nbl_GC, zpairs_auto, zbins)
+            #
+            #
+            # # ell_cut_idxs = cl_utils.get_ell_cuts_indices(ell_values, ell_cuts_2d_array, zbins)
+            #
+            # mm.matshow(cov_dict['cov_WL_GO_2D'], log=True)
+
+            # # assert 1 > 2
+
             zi, zj = 0, 0
             param = 0
             plt.figure()
             for zi in range(zbins):
-                plt.plot(10**ell_dict['ell_WL'], dC_LL_4D[:, zi, zi, param], label='pre cuts')
+                plt.plot(10 ** ell_dict['ell_WL'], dC_LL_4D[:, zi, zi, param], label='pre cuts')
             plt.legend()
 
             # free up memory
@@ -450,7 +473,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             FM_dict['fiducial_values_dict'] = fiducials_dict
 
             for zi in range(zbins):
-                plt.plot(10**ell_dict['ell_WL'], dC_LL_4D[:, zi, zi, param], label='post cuts')
+                plt.plot(10 ** ell_dict['ell_WL'], dC_LL_4D[:, zi, zi, param], label='post cuts')
             plt.legend()
 
             # TODO check that the null rows/cols in the covmat are equal to the ones in the derivatives (and/or data) vector
@@ -459,7 +482,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             # TODO check the cut in the derivatives
             # TODO reorder all these cutting functions...
             # TODO loop over kmax_list
-
 
             fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']))
             FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'],

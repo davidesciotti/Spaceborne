@@ -433,7 +433,7 @@ def cl_ell_cut_v2(cl_3D, ell_cuts_matrix, ell_values):
     return cl_3D_ell_cut
 
 
-def cl_ell_cut_3x2pt(cl_3x2pt_5D, ell_cuts_probe_dict, ell_values_dict):
+def cl_ell_cut_3x2pt(cl_3x2pt_5D, ell_cuts_dict, ell_values_dict):
     """wrapper function to quickly implement the cl (or derivatives) ell cut for the 3x2pt datavector"""
 
     cl_LLfor3x2pt_3D = cl_3x2pt_5D[:, 0, 0, :, :]
@@ -441,10 +441,10 @@ def cl_ell_cut_3x2pt(cl_3x2pt_5D, ell_cuts_probe_dict, ell_values_dict):
     cl_GLfor3x2pt_3D = cl_3x2pt_5D[:, 1, 0, :, :]
     cl_GGfor3x2pt_3D = cl_3x2pt_5D[:, 1, 1, :, :]
 
-    cl_LLfor3x2pt_3D_ell_cut = cl_ell_cut(cl_LLfor3x2pt_3D, ell_cuts_probe_dict['WL'], ell_values_dict['ell_XC'])
-    cl_LGfor3x2pt_3D_ell_cut = cl_ell_cut(cl_LGfor3x2pt_3D, ell_cuts_probe_dict['LG'], ell_values_dict['ell_XC'])
-    cl_GLfor3x2pt_3D_ell_cut = cl_ell_cut(cl_GLfor3x2pt_3D, ell_cuts_probe_dict['GL'], ell_values_dict['ell_XC'])
-    cl_GGfor3x2pt_3D_ell_cut = cl_ell_cut(cl_GGfor3x2pt_3D, ell_cuts_probe_dict['GC'], ell_values_dict['ell_XC'])
+    cl_LLfor3x2pt_3D_ell_cut = cl_ell_cut(cl_LLfor3x2pt_3D, ell_cuts_dict['LL'], ell_values_dict['ell_XC'])
+    cl_LGfor3x2pt_3D_ell_cut = cl_ell_cut(cl_LGfor3x2pt_3D, ell_cuts_dict['LG'], ell_values_dict['ell_XC'])
+    cl_GLfor3x2pt_3D_ell_cut = cl_ell_cut(cl_GLfor3x2pt_3D, ell_cuts_dict['GL'], ell_values_dict['ell_XC'])
+    cl_GGfor3x2pt_3D_ell_cut = cl_ell_cut(cl_GGfor3x2pt_3D, ell_cuts_dict['GG'], ell_values_dict['ell_XC'])
 
     cl_3x2pt_5D_ell_cut = np.zeros(cl_3x2pt_5D.shape)
     cl_3x2pt_5D_ell_cut[:, 0, 0, :, :] = cl_LLfor3x2pt_3D_ell_cut

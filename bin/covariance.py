@@ -6,7 +6,7 @@ import pickle
 
 import matplotlib
 import numpy as np
-from numba import njit
+from numba import njit, prange
 
 import cl_preprocessing
 
@@ -499,7 +499,7 @@ def cov_3x2pt_BNT_transform(cov_3x2pt_dict_10D, X_dict, optimize=True):
     return cov_3x2pt_BNT_dict_10D
 
 
-@njit
+# @njit
 def cov_ell_cut(cov_6d, ell_cuts_idxs_AB, ell_cuts_idxs_CD, zbins):
     # TODO pythonize this
     for zi in range(zbins):
@@ -519,6 +519,19 @@ def cov_ell_cut(cov_6d, ell_cuts_idxs_AB, ell_cuts_idxs_CD, zbins):
     #     covariance_matrix[ell1, ell2, zi, zj, zk, zl] = 0
 
     return cov_6d
+
+# @njit(parallel=True)
+# def cov_ell_cut(cov_6d, ell_cuts_idxs_AB, ell_cuts_idxs_CD, zbins):
+#     for zi in prange(zbins):
+#         for zj in prange(zbins):
+#             for zk in prange(zbins):
+#                 for zl in prange(zbins):
+#                     for ell1 in ell_cuts_idxs_AB[zi, zj]:
+#                         for ell2 in ell_cuts_idxs_CD[zk, zl]:
+#                             if ell1 < cov_6d.shape[0] and ell2 < cov_6d.shape[1]:
+#                                 cov_6d[ell1, ell2, zi, zj, zk, zl] = 0
+#
+#     return cov_6d
 
 
 def save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs):

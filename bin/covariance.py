@@ -8,6 +8,8 @@ import matplotlib
 import numpy as np
 from numba import njit
 
+import cl_preprocessing
+
 matplotlib.use('Qt5Agg')
 
 project_path_here = Path.cwd().parent.parent.parent
@@ -381,6 +383,11 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_3x2pt_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_dict['cov_3x2pt_GS_10D_dict'], probe_ordering, nbl_GC,
                                                           zbins,
                                                           ind.copy(), GL_or_LG)
+
+        if general_cfg['cov_ell_cuts']:
+            # ! get the ell indices which will be set to 0 for each zi, zj:
+            ell_cuts_idxs_LL = cl_preprocessing.get_ell_cuts_indices(l_lin_WL, ell_cuts_LL, zbins)
+
 
     ############################### 4D to 2D ##################################
     # Here an ordering convention ('block_index') is needed as well

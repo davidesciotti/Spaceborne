@@ -108,7 +108,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         zip(ML_list, ZL_list, MS_list, ZS_list):
     # TODO implement this for loop!
     for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
-    # for general_cfg['ell_cuts'] in (True, False):
+        # for general_cfg['ell_cuts'] in (True, False):
 
         # without zip, i.e. for all the possible combinations (aka, a nightmare)
         # for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
@@ -260,8 +260,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
 
         # ! cut datavectors and responses in the pessimistic case; be carful of WA, because it does not start from ell_min
         if ell_max_WL == 1500:
-            warnings.warn('you are cutting the datavectors and responses in the pessimistic case, but is this compatible '
-                          'with the redshift-dependent ell cuts?')
+            warnings.warn(
+                'you are cutting the datavectors and responses in the pessimistic case, but is this compatible '
+                'with the redshift-dependent ell cuts?')
             assert 1 > 2, 'you should check this'
             cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
             cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
@@ -276,6 +277,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         # ! cl ell cuts (*after* BNT!!)
         cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
             general_cfg, ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc)
+        assert 1 > 2
 
         # store cls and responses in a dictionary
         cl_dict_3D = {
@@ -412,12 +414,14 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                           'dC_3x2pt_6D': dC_3x2pt_6D}
 
             # ! compute and save fisher matrix
-            FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict, BNT_matrix)
+            FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict,
+                                          BNT_matrix)
             FM_dict['param_names_dict'] = param_names_dict
             FM_dict['fiducial_values_dict'] = fiducials_dict
 
             fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']))
-            FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'], **variable_specs)
+            FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'],
+                             **variable_specs)
 
             del cov_dict
             gc.collect()

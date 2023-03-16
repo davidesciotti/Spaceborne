@@ -152,6 +152,17 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
 
     ############################################
 
+    if cov_dict['cov_WA_GO_2D'].shape == (0, 0):
+        warnings.warn('cov_WA_GO_2D is empty, setting use_WA to False and the covariance matrix to the identity')
+        general_cfg['use_WA'] = False
+        cov_dict['cov_WA_GO_2D'] = np.eye((nbl_WA * zpairs_auto, nbl_WA * zpairs_auto))
+
+    if covariance_cfg['cov_ell_cuts']:
+        cov_dict['cov_WL_GO_2D'] = mm.remove_null_rows_cols_2D_copilot(cov_dict['cov_WL_GO_2D'])
+        cov_dict['cov_GC_GO_2D'] = mm.remove_null_rows_cols_2D_copilot(cov_dict['cov_GC_GO_2D'])
+        cov_dict['cov_WA_GO_2D'] = mm.remove_null_rows_cols_2D_copilot(cov_dict['cov_WA_GO_2D'])
+        cov_dict['cov_3x2pt_GO_2D'] = mm.remove_null_rows_cols_2D_copilot(cov_dict['cov_3x2pt_GO_2D'])
+
     # invert GO covmats
     print('Starting covariance matrix inversion...')
     start_time = time.perf_counter()

@@ -347,10 +347,13 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                                 ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix)
 
-            # save covariance matrix
+            # save covariance matrix and test against benchmarks
             cov_folder = covariance_cfg['cov_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
                                                              **variable_specs)
             covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
+
+            cov_benchmark_folder = f'{cov_folder}/benchmarks'
+            mm.test_folder_content_old(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
 
         mm.matshow(cov_dict['cov_WL_GO_2D'], log=True)
         if general_cfg['cl_ell_cuts']:
@@ -422,6 +425,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
                                                        der_prefix, is_3x2pt=True)
 
+            ell_cut_idxs = cl_utils.get_ell_cuts_indices(ell_values, ell_cuts_2d_array, zbins)
             zi, zj = 0, 0
             param = 0
             plt.figure()
@@ -454,6 +458,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             # TODO invert by nulling the elements of the noise vector with the right indices, then compute covmat in this way and compare the results
             # TODO check the cut in the derivatives
             # TODO reorder all these cutting functions...
+            # TODO loop over kmax_list
 
 
             fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']))
@@ -464,9 +469,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             gc.collect()
 
         # ! unit test: check that the outputs have not changed
-        cov_benchmark_folder = f'{cov_folder}/benchmarks'
         fm_benchmark_folder = f'{fm_folder}/benchmarks'
-        mm.test_folder_content_old(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
         mm.test_folder_content_old(fm_folder, fm_benchmark_folder, 'txt')
 
     """

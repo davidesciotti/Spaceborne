@@ -499,7 +499,7 @@ def cov_3x2pt_BNT_transform(cov_3x2pt_dict_10D, X_dict, optimize=True):
     return cov_3x2pt_BNT_dict_10D
 
 
-# @njit
+@njit
 def cov_ell_cut(cov_6d, ell_cuts_idxs_AB, ell_cuts_idxs_CD, zbins):
     # TODO pythonize this
     for zi in range(zbins):

@@ -373,6 +373,7 @@ def get_ell_cuts_indices(ell_values, ell_cuts_2d_array, zbins):
 
     return ell_idxs_tocut
 
+
 def cl_ell_cut(cl_3D, ell_cuts_matrix, ell_values, output_ell_idx_to_cut=False):
     """cut (sets to zero) the cl_3D array at the ell values specified in ell_cuts_matrix"""
 

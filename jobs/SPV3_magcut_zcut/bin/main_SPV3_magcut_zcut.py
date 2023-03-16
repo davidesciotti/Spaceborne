@@ -59,15 +59,13 @@ Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
 
-def cl_ell_cut_wrap(general_cfg, ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc=None):
-    """Wrapper for the ell cuts. Avoids the 'if general_cfg['ell_cuts']' in the main loop (aka, we use extraction)"""
-
+def load_ell_cuts(kmax_h_over_Mpc=None):
     if not general_cfg['ell_cuts']:
-        return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
+        return None
 
-    print('Performing the ell cuts...')
+    if kmax_h_over_Mpc is None:
+        kmax_h_over_Mpc = general_cfg['kmax_h_over_Mpc_ref']
 
-    # TODO this import should be done in the main
     ell_cuts_fldr = general_cfg['ell_cuts_folder']
     ell_cuts_filename = general_cfg['ell_cuts_filename']
     ell_cuts_LL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}')
@@ -82,16 +80,29 @@ def cl_ell_cut_wrap(general_cfg, ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2p
     ell_cuts_GL *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
     ell_cuts_LG *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
 
-    ell_cuts_probes_dict = {
+    ell_cuts_dict = {
         'WL': ell_cuts_LL,
         'GC': ell_cuts_GG,
         'GL': ell_cuts_GL,
         'LG': ell_cuts_LG}
 
-    cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_cuts_LL, ell_dict['ell_WL'])
-    cl_wa_3d = cl_utils.cl_ell_cut(cl_wa_3d, ell_cuts_LL, ell_dict['ell_WA'])
-    cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_cuts_GG, ell_dict['ell_GC'])
-    cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_probes_dict, ell_dict)
+    return ell_cuts_dict
+
+
+def cl_ell_cut_wrap(ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc=None):
+    """Wrapper for the ell cuts. Avoids the 'if general_cfg['ell_cuts']' in the main loop (aka, we use extraction)"""
+
+    if not general_cfg['ell_cuts']:
+        return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
+
+    print('Performing the ell cuts...')
+
+    ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc=kmax_h_over_Mpc)
+
+    cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_cuts_dict['WL'], ell_dict['ell_WL'])
+    cl_wa_3d = cl_utils.cl_ell_cut(cl_wa_3d, ell_cuts_dict['WL'], ell_dict['ell_WA'])
+    cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_cuts_dict['GC'], ell_dict['ell_GC'])
+    cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict)
 
     return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
 
@@ -276,8 +287,11 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
 
         # ! cl ell cuts (*after* BNT!!)
         cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
-            general_cfg, ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc)
-        assert 1 > 2
+            ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc=None)
+
+        # this is to pass the ll cuts to the covariance module
+        ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc=kmax_h_over_Mpc)
+        ell_dict['ell_cuts_dict'] = ell_cuts_dict
 
         # store cls and responses in a dictionary
         cl_dict_3D = {
@@ -429,8 +443,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         # ! unit test: check that the outputs have not changed
         cov_benchmark_folder = f'{cov_folder}/benchmarks'
         fm_benchmark_folder = f'{fm_folder}/benchmarks'
-        # mm.test_folder_content_old(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
-        # mm.test_folder_content_old(fm_folder, fm_benchmark_folder, 'txt')
+        mm.test_folder_content_old(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
+        mm.test_folder_content_old(fm_folder, fm_benchmark_folder, 'txt')
 
     """
     # ! save cls and responses:

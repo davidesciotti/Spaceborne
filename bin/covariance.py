@@ -385,8 +385,14 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
                                                           ind.copy(), GL_or_LG)
 
         if general_cfg['cov_ell_cuts']:
-            # ! get the ell indices which will be set to 0 for each zi, zj:
-            ell_cuts_idxs_LL = cl_preprocessing.get_ell_cuts_indices(l_lin_WL, ell_cuts_LL, zbins)
+
+            # ! get the ell indices which will be set to 0 for each zi, zj
+            ell_cuts_dict = ell_dict['ell_cuts_dict']
+            ell_cuts_idxs_LL = cl_preprocessing.get_ell_cuts_indices(l_lin_WL, ell_cuts_dict['WL'], zbins)
+
+            print('ell_cuts_idxs_LL', ell_cuts_idxs_LL.shape, ell_cuts_idxs_LL)
+
+            assert 1 > 2
 
 
     ############################### 4D to 2D ##################################

@@ -362,7 +362,7 @@ def cl_BNT_transform_3x2pt(cl_3x2pt_5D, BNT_matrix):
     return cl_3x2pt_5D_BNT
 
 
-def cl_ell_cut(cl_3D, ell_cuts_matrix, ell_values):
+def cl_ell_cut(cl_3D, ell_cuts_matrix, ell_values, output_ell_idx_to_cut=False):
     """cut (sets to zero) the cl_3D array at the ell values specified in ell_cuts_matrix"""
 
     if np.all(ell_values) < 30:
@@ -385,6 +385,9 @@ def cl_ell_cut(cl_3D, ell_cuts_matrix, ell_values):
             if np.any(ell_values > ell_cut):  # i.e., if you need to do a cut at all
                 ell_idxs_tocut = np.where(ell_values > ell_cut)[0]
                 cl_3D_ell_cut[ell_idxs_tocut, zi, zj] = 0
+
+    if output_ell_idx_to_cut:
+        return (cl_3D_ell_cut, output_ell_idx_to_cut)
 
     return cl_3D_ell_cut
 

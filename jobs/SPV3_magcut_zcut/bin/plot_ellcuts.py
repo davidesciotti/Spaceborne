@@ -77,22 +77,22 @@ if model == 'nonflat':
 # MS_list = [245, 245, 245, 245]
 # ZS_list = [0, 0, 0, 2]
 
-ML_list = [245, 245]
-ZL_list = [0, 2]
-MS_list = [245, 245]
-ZS_list = [0, 2]
+# ML_list = [245, 245]
+# ZL_list = [0, 2]
+# MS_list = [245, 245]
+# ZS_list = [0, 2]
 
-# ML_list = [245]
-# ZL_list = [0]
-# MS_list = [245]
-# ZS_list = [0]
+ML_list = [245]
+ZL_list = [0]
+MS_list = [245]
+ZS_list = [0]
 
 fom_df = pd.DataFrame()
 
 for probe in probes:
     for ML, ZL, MS, ZS in zip(ML_list, ZL_list, MS_list, ZS_list):
         k_counter = 0
-        for kmax_h_over_Mpc in cfg.general_cfg['kmax_list_h_over_Mpc']:
+        for kmax_h_over_Mpc in cfg.general_cfg['kmax_h_over_Mpc_list']:
 
             assert params_tofix_dict['cosmo'] is False and params_tofix_dict['IA'] is False and \
                    params_tofix_dict['galbias'] is False and params_tofix_dict['shearbias'] is False and \
@@ -113,7 +113,7 @@ for probe in probes:
                               f'output/Flagship_{flagship_version}/FM/BNT_True/ell_cuts_True'
             FM_noEllcuts_path = FM_Ellcuts_path.replace('ell_cuts_True', 'ell_cuts_False')
 
-            FM_filename = f'FM_zbins{EP_or_ED}{zbins:02d}-ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}' \
+            FM_filename = f'FM_zbins{EP_or_ED}{zbins:02d}-ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}.pickle' \
                           f'_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}.pickle'
 
             FM_Ellcuts_dict = mm.load_pickle(f'{FM_Ellcuts_path}/{FM_filename}')

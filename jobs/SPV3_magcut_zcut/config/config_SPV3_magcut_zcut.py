@@ -23,8 +23,8 @@ cl_BNT_transform = False
 cov_BNT_transform = False
 deriv_BNT_transform = False
 
-cl_ell_cuts = True
-cov_ell_cuts = False
+cl_ell_cuts = False
+cov_ell_cuts = True
 deriv_ell_cuts = True
 
 

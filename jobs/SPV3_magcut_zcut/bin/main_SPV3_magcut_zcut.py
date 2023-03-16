@@ -116,7 +116,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         zip(ML_list, ZL_list, MS_list, ZS_list):
     # TODO implement this for loop!
     for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
-        # for general_cfg['cov_ell_cuts'] in (True, False):
 
         # without zip, i.e. for all the possible combinations (aka, a nightmare)
         # for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
@@ -354,7 +353,15 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
 
         mm.matshow(cov_dict['cov_WL_GO_2D'], log=True)
-        np.save('/Users/davide/Desktop/temp/cov_WL_GO_2D_after_cl_cuts.npy', cov_dict['cov_WL_GO_2D'])
+        if general_cfg['cl_ell_cuts']:
+            np.save('/Users/davide/Desktop/temp/cov_WL_GO_2D_after_cl_cuts.npy', cov_dict['cov_WL_GO_2D'])
+
+        cov_ell_cl_cuts_WL = np.load('/Users/davide/Desktop/temp/cov_WL_GO_2D_after_cl_cuts.npy')
+        cov_ell_cov_cuts_WL = np.load('/Users/davide/Desktop/temp/cov_WL_GO_2D_after_cov_cuts.npy')
+
+        mm.compare_arrays(cov_ell_cl_cuts_WL, cov_ell_cov_cuts_WL,
+                          'cov_ell_cl_cuts_WL', 'cov_ell_cov_cuts_WL',
+                          plot_array=True, log_array=True)
 
         assert 1 > 2
 

@@ -373,7 +373,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
         if covariance_cfg['cov_ell_cuts']:
 
-            print('ePerforming ell cuts on covariance matrix')
+            print('Performing ell cuts on covariance matrix...')
             # ! get the ell indices which will be set to 0 for each zi, zj
             ell_cuts_dict = ell_dict['ell_cuts_dict']
             ell_cuts_idxs_LL = cl_preprocessing.get_ell_cuts_indices(l_lin_WL, ell_cuts_dict['WL'], zbins)
@@ -510,6 +510,13 @@ def cov_ell_cut(cov_6d, ell_cuts_idxs_AB, ell_cuts_idxs_CD, zbins):
                         for ell2 in ell_cuts_idxs_CD[zk, zl]:
                             if ell1 < cov_6d.shape[0] and ell2 < cov_6d.shape[1]:
                                 cov_6d[ell1, ell2, zi, zj, zk, zl] = 0
+
+    # pythonic version?
+    # ell_idxs_tocut = np.array(ell_cuts_idxs_LL)  # convert list of lists to numpy array
+    # idx_pairs = itertools.product(range(zbins), repeat=4)
+    # ell_pairs = [(ell1, ell2) for ell1, ell2 in zip(*np.where(ell_idxs_tocut))]
+    # for (zi, zj, zk, zl), (ell1, ell2) in zip(idx_pairs, ell_pairs):
+    #     covariance_matrix[ell1, ell2, zi, zj, zk, zl] = 0
 
     return cov_6d
 

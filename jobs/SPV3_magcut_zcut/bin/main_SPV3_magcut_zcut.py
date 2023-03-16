@@ -391,10 +391,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             assert len(fiducials_3x2pt) == len(param_names_3x2pt), \
                 'the fiducial values list and parameter names should have the same length'
 
-            # TODO the for loop over kmax can go inside the fisher, no need to recompute or reinvert the covmats!
-            # for kmax_h_over_Mpc in general_cfg['kmax_list_h_over_Mpc']:
-            #     variable_specs['kmax_h_over_Mpc'] = kmax_h_over_Mpc
-
             # ! preprocess derivatives
             # import and store them in one big dictionary
             derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
@@ -419,12 +415,19 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                 elif '3x2pt' in key:
                     dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt, zbins)
 
-            # turn the dictionaries of derivatives into npy array
+            # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
             dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
             dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
             dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
             dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
                                                        der_prefix, is_3x2pt=True)
+
+            zi, zj = 0, 0
+            param = 0
+            plt.figure()
+            for zi in range(zbins):
+                plt.plot(10**ell_dict['ell_WL'], dC_LL_4D[:, zi, zi, param], label='pre cuts')
+            plt.legend()
 
             # free up memory
             del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
@@ -441,6 +444,17 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                                           BNT_matrix)
             FM_dict['param_names_dict'] = param_names_dict
             FM_dict['fiducial_values_dict'] = fiducials_dict
+
+            for zi in range(zbins):
+                plt.plot(10**ell_dict['ell_WL'], dC_LL_4D[:, zi, zi, param], label='post cuts')
+            plt.legend()
+
+            # TODO check that the null rows/cols in the covmat are equal to the ones in the derivatives (and/or data) vector
+            # TODO cut null rows columns, otherwise singular matrix
+            # TODO invert by nulling the elements of the noise vector with the right indices, then compute covmat in this way and compare the results
+            # TODO check the cut in the derivatives
+            # TODO reorder all these cutting functions...
+
 
             fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']))
             FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'],

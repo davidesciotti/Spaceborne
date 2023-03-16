@@ -78,35 +78,25 @@ def invert_matrix_LU(covariance_matrix):
     return np.linalg.inv(L) @ np.linalg.inv(U) @ P
 
 
-def ell_cuts_derivatives(general_cfg, FM_cfg, ell_dict, dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D, ell_cuts_dict):
+def ell_cuts_derivatives(general_cfg, FM_cfg, ell_dict, dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D):
     warnings.warn('This function is useless, the cut must be implemented at the level of the datavector')
 
-    if not general_cfg['ell_cuts']:
+    if not general_cfg['deriv_ell_cuts']:
         return dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D
 
-    print('Performing the ell cuts...')
+    print('Performing the ell cuts on the derivatives...')
 
-    ell_cuts_LL = ell_cuts_dict['ell_cuts_LL']
-    ell_cuts_GG = ell_cuts_dict['ell_cuts_GG']
-    ell_cuts_XC = ell_cuts_dict['ell_cuts_XC']
+    ell_cuts_LL = ell_dict['ell_cuts_dict']['ell_cuts_LL']
+    ell_cuts_GG = ell_dict['ell_cuts_dict']['ell_cuts_GG']
+    ell_cuts_XC = ell_dict['ell_cuts_dict']['ell_cuts_XC']
     param_names_3x2pt = FM_cfg['param_names_3x2pt']
 
-    # ! linearly rescale ell cuts
-    # TODO: restore cuts as a function of kmax; I would like to avoid a mega for loop...
-    # h_over_Mpc; the one with which the above ell cuts were computed
-    # kmax_ref_h_over_Mpc = general_cfg['kmax_ref_h_over_Mpc']
-    # kmax_h_over_Mpc = ell_cuts_dict['kmax_h_over_Mpc']
-    #
-    # ell_cuts_LL *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
-    # ell_cuts_GG *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
-    # ell_cuts_XC *= kmax_h_over_Mpc / kmax_ref_h_over_Mpc
-
+    # TODO unnecessary!
     ell_cuts_probes_dict = {
         'WL': ell_cuts_LL,
         'GC': ell_cuts_GG,
         'XC': ell_cuts_XC}
 
-    start_time = time.perf_counter()
     cl_cut = cl_utils.cl_ell_cut  # just to abbreviate the name to fit in one line
     for param_idx in range(len(param_names_3x2pt)):
         dC_LL_4D[:, :, :, param_idx] = cl_cut(dC_LL_4D[:, :, :, param_idx], ell_cuts_LL, ell_dict['ell_WL'])
@@ -114,7 +104,6 @@ def ell_cuts_derivatives(general_cfg, FM_cfg, ell_dict, dC_LL_4D, dC_WA_4D, dC_G
         dC_GG_4D[:, :, :, param_idx] = cl_cut(dC_GG_4D[:, :, :, param_idx], ell_cuts_GG, ell_dict['ell_GC'])
         dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_ell_cut_3x2pt(
             dC_3x2pt_6D[:, :, :, :, :, param_idx], ell_cuts_probes_dict, ell_dict)
-    print('Ell cuts done in {:.2f} seconds'.format(time.perf_counter() - start_time))
 
     return dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D
 
@@ -201,9 +190,8 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
                 dC_3x2pt_6D[:, :, :, :, :, param_idx], BNT_matrix)
 
     # ! ell-cut the derivatives (THIS IS WRONG!)
-    # dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D = ell_cuts_derivatives(general_cfg, FM_cfg, ell_dict,
-    #                                                                  dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D,
-    #                                                                  ell_cuts_dict=None)
+    dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D = ell_cuts_derivatives(general_cfg, FM_cfg, ell_dict,
+                                                                     dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D)
 
     # separate the different 3x2pt contributions
     # ! delicate point, double check

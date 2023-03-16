@@ -394,8 +394,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             ell_cuts_idxs_GL = cl_preprocessing.get_ell_cuts_indices(l_lin_GC, ell_cuts_dict['GL'], zbins)
 
             cov_dict['cov_WL_GO_6D'] = cov_ell_cut(cov_dict['cov_WL_GO_6D'], ell_cuts_idxs_LL, ell_cuts_idxs_LL, zbins)
-            # cov_dict['cov_WA_GO_6D'] = cov_ell_cut(cov_dict['cov_WA_GO_6D'], ell_cuts_idxs_WA, ell_cuts_idxs_WA, zbins)
-            # cov_dict['cov_GC_GO_6D'] = cov_ell_cut(cov_dict['cov_GC_GO_6D'], ell_cuts_idxs_GG, ell_cuts_idxs_GG, zbins)
+            cov_dict['cov_WA_GO_6D'] = cov_ell_cut(cov_dict['cov_WA_GO_6D'], ell_cuts_idxs_WA, ell_cuts_idxs_WA, zbins)
+            cov_dict['cov_GC_GO_6D'] = cov_ell_cut(cov_dict['cov_GC_GO_6D'], ell_cuts_idxs_GG, ell_cuts_idxs_GG, zbins)
 
             ell_cuts_idxs_dict = {
                 ('L', 'L'): ell_cuts_idxs_LL,
@@ -404,30 +404,10 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             }
             for A, B in probe_ordering:
                 for C, D in probe_ordering:
+                    print(A, B, C, D)
                     cov_dict['cov_3x2pt_GO_10D_dict'][A, B, C, D] = cov_ell_cut(
                         cov_dict['cov_3x2pt_GO_10D_dict'][A, B, C, D],
                         ell_cuts_idxs_dict[A, B], ell_cuts_idxs_dict[C, D], zbins)
-
-            # # remove ell_cuts_idxs_LL from cov_WL_GO_6D
-            # for zi in range(zbins):
-            #     for zj in range(zbins):
-            #         for zk in range(zbins):
-            #             for zl in range(zbins):
-            #
-            #                 for ell1 in ell_cuts_idxs_LL[zi, zj]:
-            #                     for ell2 in ell_cuts_idxs_LL[zk, zl]:
-            #                         cov_dict['cov_WL_GO_6D'][ell1, ell2, zi, zj, zk, zl] = 0
-            #
-            #                 for ell1 in ell_cuts_idxs_WA[zi, zj]:
-            #                     for ell2 in ell_cuts_idxs_WA[zk, zl]:
-            #                         cov_dict['cov_WA_GO_6D'][ell1, ell2, zi, zj, zk, zl] = 0
-            #
-            #                 for ell1 in ell_cuts_idxs_GG[zi, zj]:
-            #                     for ell2 in ell_cuts_idxs_GG[zk, zl]:
-            #                         cov_dict['cov_GC_GO_6D'][ell1, ell2, zi, zj, zk, zl] = 0
-            #                 for ell1 in ell_cuts_idxs_GG[zi, zj]:
-            #                     for ell2 in ell_cuts_idxs_GG[zk, zl]:
-            #                         cov_dict['cov_GC_GO_6D'][ell1, ell2, zi, zj, zk, zl] = 0
 
             cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_auto)
             cov_WL_GO_2D = mm.cov_4D_to_2D(cov_WL_GO_4D, block_index=block_index)
@@ -435,13 +415,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
             np.save('/Users/davide/Desktop/temp/cov_WL_GO_2D_after_cov_cuts.npy', cov_WL_GO_2D)
 
-            print('ell_cuts_idxs_LL', ell_cuts_idxs_LL.shape, ell_cuts_idxs_LL)
 
-            # check if symmetric
-            assert np.allclose(cov_WL_GO_2D, cov_WL_GO_2D.T, rtol=1e-05, atol=0)
 
-            # check if positive definite
-            _ = np.linalg.cholesky(cov_WL_GO_2D)
 
             assert 1 > 2
 
@@ -543,7 +518,8 @@ def cov_ell_cut(cov_6d, ell_cuts_idxs_AB, ell_cuts_idxs_CD, zbins):
                 for zl in range(zbins):
                     for ell1 in ell_cuts_idxs_AB[zi, zj]:
                         for ell2 in ell_cuts_idxs_CD[zk, zl]:
-                            cov_6d[ell1, ell2, zi, zj, zk, zl] = 0
+                            if ell1 < cov_6d.shape[0] and ell2 < cov_6d.shape[1]:
+                                cov_6d[ell1, ell2, zi, zj, zk, zl] = 0
 
     return cov_6d
 

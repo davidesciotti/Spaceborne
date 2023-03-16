@@ -370,6 +370,8 @@ def get_ell_cuts_indices(ell_values, ell_cuts_2d_array, zbins):
             ell_cut = ell_cuts_2d_array[zi, zj]
             if np.any(ell_values > ell_cut):  # i.e., if you need to do a cut at all
                 ell_idxs_tocut[zi, zj] = np.where(ell_values > ell_cut)[0]
+            else:
+                ell_idxs_tocut[zi, zj] = np.array([])
 
     return ell_idxs_tocut
 

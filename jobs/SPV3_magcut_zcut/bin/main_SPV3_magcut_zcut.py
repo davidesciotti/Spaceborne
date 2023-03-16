@@ -87,7 +87,7 @@ def load_ell_cuts(kmax_h_over_Mpc=None):
 
 
 def cl_ell_cut_wrap(ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc=None):
-    """Wrapper for the ell cuts. Avoids the 'if general_cfg['cl_ell_cuts']' in the main loop (aka, we use extraction)"""
+    """Wrapper for the ell cuts. Avoids the 'if general_cfg['cl_ell_cuts']' in the main loop (i.e., we use extraction)"""
 
     if not general_cfg['cl_ell_cuts']:
         return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d

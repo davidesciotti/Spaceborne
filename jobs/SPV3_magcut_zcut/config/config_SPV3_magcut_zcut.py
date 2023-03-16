@@ -20,13 +20,24 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = True
-deriv_BNT_transform = True
+cov_BNT_transform = False
+deriv_BNT_transform = False
+
+cl_ell_cuts = True
+cov_ell_cuts = False
+deriv_ell_cuts = True
+
+
 
 if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
     BNT_transform = True
 else:
     BNT_transform = False
+
+if cl_ell_cuts or cov_ell_cuts or deriv_ell_cuts:
+    ell_cuts = True
+else:
+    ell_cuts = False
 
 assert flagship_version == 2, 'the files for the multicut case are only available for Flagship_2'
 
@@ -48,17 +59,21 @@ general_cfg = {
     'use_WA': False,
     'save_cls_3d': False,
     'save_rls_3d': False,
-    'ell_cuts': True,
+
+    'ell_cuts': ell_cuts,
+    'cl_ell_cuts': cl_ell_cuts,
     'ell_cuts_folder': f'{SPV3_folder}/ell_cuts',
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                          'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'kmax_h_over_Mpc_ref': 1.0,
     # 'kmax_list_1_over_Mpc': np.array((0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 4.00, 5.00, 10.00)),
     'kmax_h_over_Mpc_list': np.array([0.1675, 0.335, 0.5025, 0.67, 0.8375, 1.005, 1.1725, 1.34, 2.01, 2.68, 3.35, 6.7]),
-    'cl_BNT_transform': cl_BNT_transform,
-    'BNT_transform': BNT_transform,
+
     'BNT_matrix_path': f'{SPV3_folder}/BNT_matrix',
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
+    'BNT_transform': BNT_transform,  # ! to be deprecated?
+    'cl_BNT_transform': cl_BNT_transform,
+
     'cl_folder': f'{SPV3_folder}/Flagship_{flagship_version}/DataVectors/magcut_zcut_True',
     'rl_folder': f'{SPV3_folder}/Flagship_{flagship_version}/ResFunTabs/magcut_zcut_True',
     'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
@@ -97,6 +112,8 @@ covariance_cfg = {
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
 
     'cov_BNT_transform': cov_BNT_transform,
+    'cov_ell_cuts': cov_ell_cuts,
+
     'compute_covmat': True,
     'compute_cov_6D': True,  # or 10D for the 3x2pt
     'cov_file_format': 'npz',  # or npy

@@ -60,9 +60,6 @@ FM_cfg = cfg.FM_cfg
 
 
 def load_ell_cuts(kmax_h_over_Mpc=None):
-    if not general_cfg['ell_cuts']:
-        return None
-
     if kmax_h_over_Mpc is None:
         kmax_h_over_Mpc = general_cfg['kmax_h_over_Mpc_ref']
 
@@ -90,9 +87,9 @@ def load_ell_cuts(kmax_h_over_Mpc=None):
 
 
 def cl_ell_cut_wrap(ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc=None):
-    """Wrapper for the ell cuts. Avoids the 'if general_cfg['ell_cuts']' in the main loop (aka, we use extraction)"""
+    """Wrapper for the ell cuts. Avoids the 'if general_cfg['cl_ell_cuts']' in the main loop (aka, we use extraction)"""
 
-    if not general_cfg['ell_cuts']:
+    if not general_cfg['cl_ell_cuts']:
         return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
 
     print('Performing the ell cuts...')
@@ -119,7 +116,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         zip(ML_list, ZL_list, MS_list, ZS_list):
     # TODO implement this for loop!
     for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
-        # for general_cfg['ell_cuts'] in (True, False):
+        # for general_cfg['cov_ell_cuts'] in (True, False):
 
         # without zip, i.e. for all the possible combinations (aka, a nightmare)
         # for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:
@@ -290,7 +287,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc=None)
 
         # this is to pass the ll cuts to the covariance module
-        ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc=kmax_h_over_Mpc)
+        warnings.warn('restore kmax_h_over_Mpc in the next line')
+        ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc=None)
         ell_dict['ell_cuts_dict'] = ell_cuts_dict
 
         # store cls and responses in a dictionary
@@ -351,10 +349,14 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                                                 ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix)
 
             # save covariance matrix
-            cov_folder = covariance_cfg['cov_folder'].format(ell_cuts=str(general_cfg['ell_cuts']), **variable_specs)
+            cov_folder = covariance_cfg['cov_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
+                                                             **variable_specs)
             covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
 
         mm.matshow(cov_dict['cov_WL_GO_2D'], log=True)
+        np.save('/Users/davide/Desktop/temp/cov_WL_GO_2D_after_cl_cuts.npy', cov_dict['cov_WL_GO_2D'])
+
+        assert 1 > 2
 
         # ! compute Fisher matrix
         if FM_cfg['compute_FM']:

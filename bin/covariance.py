@@ -384,16 +384,36 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
                                                           zbins,
                                                           ind.copy(), GL_or_LG)
 
-        if general_cfg['cov_ell_cuts']:
+        if covariance_cfg['cov_ell_cuts']:
+
+            cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_auto)
+            cov_WL_GO_2D = mm.cov_4D_to_2D(cov_WL_GO_4D, block_index=block_index)
+            mm.matshow(cov_WL_GO_2D, title='cov_WL_GO_2D before cuts', log=True)
 
             # ! get the ell indices which will be set to 0 for each zi, zj
             ell_cuts_dict = ell_dict['ell_cuts_dict']
             ell_cuts_idxs_LL = cl_preprocessing.get_ell_cuts_indices(l_lin_WL, ell_cuts_dict['WL'], zbins)
 
+            # remove ell_cuts_idxs_LL from cov_WL_GO_6D
+            for zi in range(zbins):
+                for zj in range(zbins):
+                    cov_dict['cov_WL_GO_6D'][
+                    ell_cuts_idxs_LL[zi, zj], :, zi, zj, :, :] = 0
+
+            for zk in range(zbins):
+                for zl in range(zbins):
+                    cov_dict['cov_WL_GO_6D'][
+                    :, ell_cuts_idxs_LL[zk, zl], :, :, zk, zl] = 0
+
+            cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_auto)
+            cov_WL_GO_2D = mm.cov_4D_to_2D(cov_WL_GO_4D, block_index=block_index)
+            mm.matshow(cov_WL_GO_2D, title='cov_WL_GO_2D after cuts', log=True)
+
+            np.save('/Users/davide/Desktop/temp/cov_WL_GO_2D_after_cuts.npy', cov_WL_GO_2D)
+
             print('ell_cuts_idxs_LL', ell_cuts_idxs_LL.shape, ell_cuts_idxs_LL)
 
             assert 1 > 2
-
 
     ############################### 4D to 2D ##################################
     # Here an ordering convention ('block_index') is needed as well

@@ -279,8 +279,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     # plt.plot(dC_3x2pt_2D[:, 0], label='dC_3x2pt_2D_cut_2')
     ######################### COMPUTE FM #####################################
 
-    pdb.set_trace()
-
     start = time.perf_counter()
     FM_WL_GO = np.einsum('ia,ik,kb->ab', dC_LL_2D, cov_WL_GO_2D_inv, dC_LL_2D, optimize='optimal')
     FM_GC_GO = np.einsum('ia,ik,kb->ab', dC_GG_2D, cov_GC_GO_2D_inv, dC_GG_2D, optimize='optimal')

@@ -53,6 +53,7 @@ start_time = time.perf_counter()
 # TODO careful! the 3x2pt has ell_XC for all probes, see get_idxs_3x2pt function
 # TODO recompute Sijkl to be safe
 # TODO ell values in linear scale!!!
+# TODO redefine the last delta value
 
 
 ###############################################################################
@@ -141,9 +142,9 @@ def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum):
 
 
 def get_idxs_to_delete_3x2pt(ell_dict):
-    idxs_to_delete_LL = get_idxs_to_delete(10 ** ell_dict['ell_XC'], ell_dict['ell_cuts_dict']['LL'], True)
-    idxs_to_delete_GL = get_idxs_to_delete(10 ** ell_dict['ell_XC'], ell_dict['ell_cuts_dict']['GL'], False)
-    idxs_to_delete_GG = get_idxs_to_delete(10 ** ell_dict['ell_XC'], ell_dict['ell_cuts_dict']['GG'], True)
+    idxs_to_delete_LL = get_idxs_to_delete(ell_dict['ell_XC'], ell_dict['ell_cuts_dict']['LL'], True)
+    idxs_to_delete_GL = get_idxs_to_delete(ell_dict['ell_XC'], ell_dict['ell_cuts_dict']['GL'], False)
+    idxs_to_delete_GG = get_idxs_to_delete(ell_dict['ell_XC'], ell_dict['ell_cuts_dict']['GG'], True)
     idxs_to_delete_3x2pt = idxs_to_delete_LL + idxs_to_delete_GL + idxs_to_delete_GG
     return idxs_to_delete_3x2pt
 
@@ -219,26 +220,30 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         # compute ell and delta ell values in the reference (optimistic) case
         ell_WL_nbl32, delta_l_WL_nbl32 = ell_utils.compute_ells(general_cfg['nbl_WL_opt'], general_cfg['ell_min'],
                                                                 general_cfg['ell_max_WL_opt'], recipe='ISTF')
-        ell_WL_nbl32 = np.log10(ell_WL_nbl32)
 
         # perform the cuts
-        # TODO take the 10**!!!!
         ell_dict = {
-            'ell_WL': np.copy(ell_WL_nbl32[10 ** ell_WL_nbl32 < ell_max_WL]),
-            'ell_GC': np.copy(ell_WL_nbl32[10 ** ell_WL_nbl32 < ell_max_GC]),
-            'ell_WA': np.copy(ell_WL_nbl32[(10 ** ell_WL_nbl32 > ell_max_GC) & (10 ** ell_WL_nbl32 < ell_max_WL)])}
+            'ell_WL': np.copy(ell_WL_nbl32[ell_WL_nbl32 < ell_max_WL]),
+            'ell_GC': np.copy(ell_WL_nbl32[ell_WL_nbl32 < ell_max_GC]),
+            'ell_WA': np.copy(ell_WL_nbl32[(ell_WL_nbl32 > ell_max_GC) & (ell_WL_nbl32 < ell_max_WL)])}
         ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
 
         # set corresponding number of ell bins
-        nbl_WL = ell_dict['ell_WL'].shape[0]
-        nbl_GC = ell_dict['ell_GC'].shape[0]
-        nbl_WA = ell_dict['ell_WA'].shape[0]
+        nbl_WL = len(ell_dict['ell_WL'])
+        nbl_GC = len(ell_dict['ell_GC'])
+        nbl_WA = len(ell_dict['ell_WA'])
         nbl_3x2pt = nbl_GC
         general_cfg['nbl_WL'] = nbl_WL
 
         delta_dict = {'delta_l_WL': np.copy(delta_l_WL_nbl32[:nbl_WL]),
                       'delta_l_GC': np.copy(delta_l_WL_nbl32[:nbl_GC]),
                       'delta_l_WA': np.copy(delta_l_WL_nbl32[nbl_GC:])}
+
+        # ell_WL_nbl32, delta_l_WL_nbl32 = ell_utils.compute_ells(general_cfg['nbl_WL_opt'], general_cfg['ell_min'],
+        #                                                         general_cfg['ell_max_WL_opt'], recipe='ISTF')
+        
+
+        assert 1 > 2
 
         # set # of nbl in the opt case, import and reshape, then cut the reshaped datavectors in the pes case
         # TODO this should not be hardcoded! if so, it should go in the config file...
@@ -326,10 +331,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             rl_wa_3d = rl_ll_3d[nbl_GC:nbl_WL, :, :]
             rl_3x2pt_5d = rl_3x2pt_5d[:nbl_3x2pt, :, :]
 
-        # ! 3d cl ell cuts (*after* BNT!!)
-        cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
-            ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc=None)
-
         # this is to pass the ll cuts to the covariance module
         warnings.warn('restore kmax_h_over_Mpc in the next line')
         ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc=None)
@@ -337,13 +338,17 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
 
         # ! try vincenzo's method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
         ell_dict['idxs_to_delete_dict'] = {
-            'LL': get_idxs_to_delete(10 ** ell_dict['ell_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True),
-            'GG': get_idxs_to_delete(10 ** ell_dict['ell_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True),
-            'WA': get_idxs_to_delete(10 ** ell_dict['ell_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True),
-            'GL': get_idxs_to_delete(10 ** ell_dict['ell_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False),
-            'LG': get_idxs_to_delete(10 ** ell_dict['ell_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
+            'LL': get_idxs_to_delete(ell_dict['ell_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True),
+            'GG': get_idxs_to_delete(ell_dict['ell_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True),
+            'WA': get_idxs_to_delete(ell_dict['ell_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True),
+            'GL': get_idxs_to_delete(ell_dict['ell_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False),
+            'LG': get_idxs_to_delete(ell_dict['ell_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
             '3x2pt': get_idxs_to_delete_3x2pt(ell_dict)
         }
+
+        # ! 3d cl ell cuts (*after* BNT!!)
+        cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
+            ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc=None)
 
         # TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance and derivatives level)
 
@@ -405,7 +410,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                                                 ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix)
 
             # save covariance matrix and test against benchmarks
-            cov_folder = covariance_cfg['cov_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
+            cov_folder = covariance_cfg['cov_folder'].format(ell_cuts=str(covariance_cfg['cov_ell_cuts']),
                                                              **variable_specs)
             covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
 
@@ -530,7 +535,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                     filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/' \
                                f'3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
                     ells_filename = f'ell_{probe_dav}_ellmaxWL{ell_max_WL}'
-                    np.savetxt(f'{filepath}/{ells_filename}.txt', 10 ** ell_dict[f'ell_{probe_dav}'])
+                    np.savetxt(f'{filepath}/{ells_filename}.txt', ell_dict[f'ell_{probe_dav}'])
                     np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])
 
     """

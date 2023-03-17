@@ -130,7 +130,7 @@ covariance_cfg = {
     'save_cov_SSC': False,
     'save_2DCLOE': False,  # outermost loop is on the probes
     'save_cov_dat': False,  # this is the format used by Vincenzo
-    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{ell_cuts:s}',
+    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/cov_ell_cuts_{cov_ell_cuts:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_'
                     'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_'
                     'MS{magcut_source:03d}_ZS{zcut_source:02d}_{ndim:d}D',

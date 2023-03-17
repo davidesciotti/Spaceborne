@@ -104,6 +104,41 @@ def cl_ell_cut_wrap(ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_
     return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
 
 
+def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum):
+    if is_auto_spectrum:
+        idxs_to_delete = []
+        count = 0
+        for ell_idx, ell_val in enumerate(ell_values):
+            for zi in range(zbins):
+                for zj in range(zi, zbins):
+                    if ell_val > ell_cuts[zi, zj]:
+                        idxs_to_delete.append(count)
+                    count += 1
+
+    elif not is_auto_spectrum:
+        idxs_to_delete = []
+        count = 0
+        for ell_idx, ell_val in enumerate(ell_values):
+            for zi in range(zbins):
+                for zj in range(zbins):
+                    if ell_val > ell_cuts[zi, zj]:
+                        idxs_to_delete.append(count)
+                    count += 1
+
+    else:
+        raise ValueError('is_auto_spectrum must be True or False')
+
+    return idxs_to_delete
+
+
+def get_idxs_to_delete_3x2pt(ell_dict):
+    idxs_to_delete_LL = get_idxs_to_delete(10 ** ell_dict['ell_XC'], ell_dict['ell_cuts_dict']['LL'], True)
+    idxs_to_delete_GL = get_idxs_to_delete(10 ** ell_dict['ell_XC'], ell_dict['ell_cuts_dict']['GL'], False)
+    idxs_to_delete_GG = get_idxs_to_delete(10 ** ell_dict['ell_XC'], ell_dict['ell_cuts_dict']['GG'], True)
+    idxs_to_delete_3x2pt = idxs_to_delete_LL + idxs_to_delete_GL + idxs_to_delete_GG
+    return idxs_to_delete_3x2pt
+
+
 # ======================================================================================================================
 
 
@@ -286,23 +321,19 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
             ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc=None)
 
-
         # this is to pass the ll cuts to the covariance module
         warnings.warn('restore kmax_h_over_Mpc in the next line')
         ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc=None)
         ell_dict['ell_cuts_dict'] = ell_cuts_dict
 
         # ! try vincenzo's method for cl_ell_cuts
-        idx_to_delete = []
-        count = 0
-        for ell_idx, ell_val in enumerate(10**ell_dict['ell_WL']):
-            for zi in range(zbins):
-                for zj in range(zi, zbins):
-                    count += 1
-                    if ell_val > ell_cuts_dict['LL'][zi, zj]:
-                        # cl_ll_3d[ell_idx, zi, zj] = 0  # no need to cut the datavector in this approach,
-                        # only the derivatives
-                        idx_to_delete.append(count)
+        ell_dict['idx_to_delete'] = {
+            'LL': get_idxs_to_delete(10 ** ell_dict['ell_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True),
+            'GG': get_idxs_to_delete(10 ** ell_dict['ell_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True),
+            'WA': get_idxs_to_delete(10 ** ell_dict['ell_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True),
+            'GL': get_idxs_to_delete(10 ** ell_dict['ell_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False),
+            'LG': get_idxs_to_delete(10 ** ell_dict['ell_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
+        }
 
         # store cls and responses in a dictionary
         cl_dict_3D = {
@@ -369,10 +400,19 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             cov_benchmark_folder = f'{cov_folder}/benchmarks'
             mm.test_folder_content_old(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
 
-        mm.matshow(cov_dict['cov_WL_GO_2D'], log=True)
-        cov_dict['cov_WL_GO_2D'] = mm.remove_null_rows_cols_array2D(cov_dict['cov_WL_GO_2D'], idx_to_delete)
+        mm.matshow(cov_dict['cov_WL_GO_2D'], 'cov_WL_GO_2D', log=True)
 
-        mm.matshow(cov_dict['cov_3x2pt_GO_2D'], log=True)
+        cov_dict['cov_WL_GO_2D'] = mm.remove_null_rows_cols_array2D(cov_dict['cov_WL_GO_2D'],
+                                                                    ell_dict['idx_to_delete']['LL'])
+        cov_dict['cov_GC_GO_2D'] = mm.remove_null_rows_cols_array2D(cov_dict['cov_GC_GO_2D'],
+                                                                    ell_dict['idx_to_delete']['GG'])
+        cov_dict['cov_WA_GO_2D'] = mm.remove_null_rows_cols_array2D(cov_dict['cov_WA_GO_2D'],
+                                                                    ell_dict['idx_to_delete']['LL'])
+        cov_dict['cov_3x2pt_GO_2D'] = mm.remove_null_rows_cols_array2D(cov_dict['cov_3x2pt_GO_2D'],
+                                                                       ell_dict['idx_to_delete']['3x2pt'])
+
+        # TODO do the same for flattened derivatives, and you're good to go
+        mm.matshow(cov_dict['cov_WL_GO_2D'], 'cov_WL_GO_2D', log=True)
 
         # ! compute Fisher matrix
         if FM_cfg['compute_FM']:
@@ -482,6 +522,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             # TODO check the cut in the derivatives
             # TODO reorder all these cutting functions...
             # TODO loop over kmax_list
+            # TODO careful! the 3x2pt has ell_XC for all probes, see get_idxs_3x2pt function
 
             fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']))
             FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'],

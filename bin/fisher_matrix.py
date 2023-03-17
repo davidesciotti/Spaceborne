@@ -119,6 +119,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     ell_GC, nbl_GC = ell_dict['ell_GC'], ell_dict['ell_GC'].shape[0]
     ell_WA, nbl_WA = ell_dict['ell_WA'], ell_dict['ell_WA'].shape[0]
     ell_XC, nbl_3x2pt = ell_GC, nbl_GC
+    nbl_WA = ell_WA.shape[0]
 
     # set the flattening convention for the derivatives vector, based on the setting used to reduce the covariance
     # matrix' dimensions
@@ -130,15 +131,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     else:
         raise ValueError("block_index should be either 'ell', 'vincenzo', 'C-style', 'ij', 'sylvain' or 'F-style'")
 
-    # check to see if ell values are in linear or log scale
-    if np.max(ell_WL) > 30:
-        print('switching to log scale for the ell values')
-        ell_WL = np.log10(ell_WL)
-        ell_GC = np.log10(ell_GC)
-        ell_WA = np.log10(ell_WA)
-        ell_XC = ell_GC
 
-    nbl_WA = ell_WA.shape[0]
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
@@ -256,10 +249,10 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_WA_2D_cut_1 = np.load('/Users/davide/Desktop/temp/dC_WA_2D.npy')
     dC_3x2pt_2D_cut_1 = np.load('/Users/davide/Desktop/temp/dC_3x2pt_2D.npy')
 
-    # np.testing.assert_array_equal(dC_LL_2D_cut_1, dC_LL_2D_cut_2)
-    # np.testing.assert_array_equal(dC_GG_2D_cut_1, dC_GG_2D_cut_2)
-    # np.testing.assert_array_equal(dC_WA_2D_cut_1, dC_WA_2D_cut_2)
-    # np.testing.assert_array_equal(dC_3x2pt_2D_cut_1, dC_3x2pt_2D_cut_2)
+    np.testing.assert_array_equal(dC_LL_2D_cut_1, dC_LL_2D)
+    np.testing.assert_array_equal(dC_GG_2D_cut_1, dC_GG_2D)
+    np.testing.assert_array_equal(dC_WA_2D_cut_1, dC_WA_2D)
+    np.testing.assert_allclose(dC_3x2pt_2D_cut_1, dC_3x2pt_2D, rtol=1e-7, atol=0)
 
     plt.figure()
     plt.plot(dC_LL_2D_cut_1[:, 0], label='dC_LL_2D_cut_1')
@@ -277,7 +270,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     plt.plot(dC_3x2pt_2D_cut_1[:, 0], label='dC_3x2pt_2D_cut_1')
     plt.plot(dC_3x2pt_2D[:, 0], label='dC_3x2pt_2D_cut_2', ls='--')
 
-    pdb.set_trace()
+    assert 1 > 2
     ######################### COMPUTE FM #####################################
 
     start = time.perf_counter()

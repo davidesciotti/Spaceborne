@@ -373,30 +373,30 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
         if covariance_cfg['cov_ell_cuts']:
 
-            print('Performing ell cuts on covariance matrix...')
-            # ! get the ell indices which will be set to 0 for each zi, zj
-            ell_cuts_dict = ell_dict['ell_cuts_dict']
-            ell_cuts_idxs_LL = cl_preprocessing.get_ell_cuts_indices(l_lin_WL, ell_cuts_dict['WL'], zbins)
-            ell_cuts_idxs_WA = cl_preprocessing.get_ell_cuts_indices(l_lin_WA, ell_cuts_dict['WL'], zbins)
-            ell_cuts_idxs_GG = cl_preprocessing.get_ell_cuts_indices(l_lin_GC, ell_cuts_dict['GC'], zbins)
-            ell_cuts_idxs_GL = cl_preprocessing.get_ell_cuts_indices(l_lin_GC, ell_cuts_dict['GL'], zbins)
-
-            # ! perform the cuts: single-probe
-            cov_dict['cov_WL_GO_6D'] = cov_ell_cut(cov_dict['cov_WL_GO_6D'], ell_cuts_idxs_LL, ell_cuts_idxs_LL, zbins)
-            cov_dict['cov_WA_GO_6D'] = cov_ell_cut(cov_dict['cov_WA_GO_6D'], ell_cuts_idxs_WA, ell_cuts_idxs_WA, zbins)
-            cov_dict['cov_GC_GO_6D'] = cov_ell_cut(cov_dict['cov_GC_GO_6D'], ell_cuts_idxs_GG, ell_cuts_idxs_GG, zbins)
-
-            # ! perform the cuts: 3x2pt (define a dictionary of ell_cuts_idxs to be able to use a loop)
-            ell_cuts_idxs_dict = {
-                ('L', 'L'): ell_cuts_idxs_LL,
-                ('G', 'L'): ell_cuts_idxs_GL,
-                ('G', 'G'): ell_cuts_idxs_GG,
-            }
-            for A, B in probe_ordering:
-                for C, D in probe_ordering:
-                    cov_dict['cov_3x2pt_GO_10D_dict'][A, B, C, D] = cov_ell_cut(
-                        cov_dict['cov_3x2pt_GO_10D_dict'][A, B, C, D],
-                        ell_cuts_idxs_dict[A, B], ell_cuts_idxs_dict[C, D], zbins)
+            # print('Performing ell cuts on covariance matrix...')
+            # # ! get the ell indices which will be set to 0 for each zi, zj
+            # ell_cuts_dict = ell_dict['ell_cuts_dict']
+            # ell_cuts_idxs_LL = cl_preprocessing.get_ell_cuts_indices(l_lin_WL, ell_cuts_dict['WL'], zbins)
+            # ell_cuts_idxs_WA = cl_preprocessing.get_ell_cuts_indices(l_lin_WA, ell_cuts_dict['WL'], zbins)
+            # ell_cuts_idxs_GG = cl_preprocessing.get_ell_cuts_indices(l_lin_GC, ell_cuts_dict['GC'], zbins)
+            # ell_cuts_idxs_GL = cl_preprocessing.get_ell_cuts_indices(l_lin_GC, ell_cuts_dict['GL'], zbins)
+            #
+            # # ! perform the cuts: single-probe
+            # cov_dict['cov_WL_GO_6D'] = cov_ell_cut(cov_dict['cov_WL_GO_6D'], ell_cuts_idxs_LL, ell_cuts_idxs_LL, zbins)
+            # cov_dict['cov_WA_GO_6D'] = cov_ell_cut(cov_dict['cov_WA_GO_6D'], ell_cuts_idxs_WA, ell_cuts_idxs_WA, zbins)
+            # cov_dict['cov_GC_GO_6D'] = cov_ell_cut(cov_dict['cov_GC_GO_6D'], ell_cuts_idxs_GG, ell_cuts_idxs_GG, zbins)
+            #
+            # # ! perform the cuts: 3x2pt (define a dictionary of ell_cuts_idxs to be able to use a loop)
+            # ell_cuts_idxs_dict = {
+            #     ('L', 'L'): ell_cuts_idxs_LL,
+            #     ('G', 'L'): ell_cuts_idxs_GL,
+            #     ('G', 'G'): ell_cuts_idxs_GG,
+            # }
+            # for A, B in probe_ordering:
+            #     for C, D in probe_ordering:
+            #         cov_dict['cov_3x2pt_GO_10D_dict'][A, B, C, D] = cov_ell_cut(
+            #             cov_dict['cov_3x2pt_GO_10D_dict'][A, B, C, D],
+            #             ell_cuts_idxs_dict[A, B], ell_cuts_idxs_dict[C, D], zbins)
 
         # if not converted in 4D, only the 6D covs will be overwritten by the BNT-transofrmed version!
         cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_auto)
@@ -427,6 +427,13 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_GC_SS_2D = mm.cov_4D_to_2D(cov_GC_SS_4D, block_index=block_index)
     cov_WA_SS_2D = mm.cov_4D_to_2D(cov_WA_SS_4D, block_index=block_index)
     cov_3x2pt_SS_2D = mm.cov_4D_to_2D(cov_3x2pt_SS_4D, block_index=block_index)
+
+    if covariance_cfg['cov_ell_cuts']:
+        # perform the cuts on the 2D covs (way faster!)
+        cov_WL_GO_2D = mm.remove_rows_cols_array2D(cov_WL_GO_2D, ell_dict['idxs_to_delete_dict']['LL'])
+        cov_GC_GO_2D = mm.remove_rows_cols_array2D(cov_GC_GO_2D, ell_dict['idxs_to_delete_dict']['GG'])
+        cov_WA_GO_2D = mm.remove_rows_cols_array2D(cov_WA_GO_2D, ell_dict['idxs_to_delete_dict']['WA'])
+        cov_3x2pt_GO_2D = mm.remove_rows_cols_array2D(cov_3x2pt_GO_2D, ell_dict['idxs_to_delete_dict']['3x2pt'])
 
     ############################### save in dictionary  ########################
     probe_names = ('WL', 'GC', '3x2pt', 'WA')
@@ -519,6 +526,7 @@ def cov_ell_cut(cov_6d, ell_cuts_idxs_AB, ell_cuts_idxs_CD, zbins):
     #     covariance_matrix[ell1, ell2, zi, zj, zk, zl] = 0
 
     return cov_6d
+
 
 # @njit(parallel=True)
 # def cov_ell_cut(cov_6d, ell_cuts_idxs_AB, ell_cuts_idxs_CD, zbins):

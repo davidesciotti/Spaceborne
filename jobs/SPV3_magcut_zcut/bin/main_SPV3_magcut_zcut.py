@@ -327,12 +327,13 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         ell_dict['ell_cuts_dict'] = ell_cuts_dict
 
         # ! try vincenzo's method for cl_ell_cuts
-        ell_dict['idx_to_delete'] = {
+        ell_dict['idxs_to_delete_dict'] = {
             'LL': get_idxs_to_delete(10 ** ell_dict['ell_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True),
             'GG': get_idxs_to_delete(10 ** ell_dict['ell_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True),
             'WA': get_idxs_to_delete(10 ** ell_dict['ell_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True),
             'GL': get_idxs_to_delete(10 ** ell_dict['ell_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False),
             'LG': get_idxs_to_delete(10 ** ell_dict['ell_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
+            '3x2pt': get_idxs_to_delete_3x2pt(ell_dict, )
         }
 
         # store cls and responses in a dictionary
@@ -400,19 +401,11 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             cov_benchmark_folder = f'{cov_folder}/benchmarks'
             mm.test_folder_content_old(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
 
-        mm.matshow(cov_dict['cov_WL_GO_2D'], 'cov_WL_GO_2D', log=True)
-
-        cov_dict['cov_WL_GO_2D'] = mm.remove_null_rows_cols_array2D(cov_dict['cov_WL_GO_2D'],
-                                                                    ell_dict['idx_to_delete']['LL'])
-        cov_dict['cov_GC_GO_2D'] = mm.remove_null_rows_cols_array2D(cov_dict['cov_GC_GO_2D'],
-                                                                    ell_dict['idx_to_delete']['GG'])
-        cov_dict['cov_WA_GO_2D'] = mm.remove_null_rows_cols_array2D(cov_dict['cov_WA_GO_2D'],
-                                                                    ell_dict['idx_to_delete']['LL'])
-        cov_dict['cov_3x2pt_GO_2D'] = mm.remove_null_rows_cols_array2D(cov_dict['cov_3x2pt_GO_2D'],
-                                                                       ell_dict['idx_to_delete']['3x2pt'])
+        # ! remove ell bins outside the ell cuts
+        # TODO put this into the covariance module
 
         # TODO do the same for flattened derivatives, and you're good to go
-        mm.matshow(cov_dict['cov_WL_GO_2D'], 'cov_WL_GO_2D', log=True)
+        assert 1 > 2, 'stop here'
 
         # ! compute Fisher matrix
         if FM_cfg['compute_FM']:

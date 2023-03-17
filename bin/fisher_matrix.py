@@ -198,8 +198,10 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
                 dC_3x2pt_6D[:, :, :, :, :, param_idx], BNT_matrix)
 
     # ! ell-cut the derivatives
-    dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D = ell_cuts_derivatives(general_cfg, FM_cfg, ell_dict,
-                                                                     dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D)
+    dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D = ell_cuts_derivatives(general_cfg, FM_cfg,
+                                                                     ell_dict,
+                                                                     dC_LL_4D, dC_WA_4D,
+                                                                     dC_GG_4D, dC_3x2pt_6D)
 
     # separate the different 3x2pt contributions
     # ! delicate point, double check
@@ -238,6 +240,19 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_GG_2D = np.reshape(dC_GG_3D, (nbl_GC * zpairs_auto, nparams_tot), order=which_flattening)
     dC_WA_2D = np.reshape(dC_WA_3D, (nbl_WA * zpairs_auto, nparams_tot), order=which_flattening)
     dC_3x2pt_2D = np.reshape(dC_3x2pt_3D, (nbl_3x2pt * zpairs_3x2pt, nparams_tot), order=which_flattening)
+
+    np.save('/Users/davide/Desktop/temp/dC_LL_2D.npy', dC_LL_2D)
+    np.save('/Users/davide/Desktop/temp/dC_GG_2D.npy', dC_GG_2D)
+    np.save('/Users/davide/Desktop/temp/dC_WA_2D.npy', dC_WA_2D)
+    np.save('/Users/davide/Desktop/temp/dC_3x2pt_2D.npy', dC_3x2pt_2D)
+
+    assert 1 > 2
+
+    # ! cut the *flattened* derivatives vector
+    dC_LL_2D_cut_2 = np.delete(dC_LL_2D, ell_dict['idxs_to_delete_dict']['LL'], axis=0)
+    dC_GG_2D_cut_2 = np.delete(dC_GG_2D, ell_dict['idxs_to_delete_dict']['GG'], axis=0)
+    dC_WA_2D_cut_2 = np.delete(dC_WA_2D, ell_dict['idxs_to_delete_dict']['WA'], axis=0)
+    dC_3x2pt_2D_cut_2 = np.delete(dC_3x2pt_2D, ell_dict['idxs_to_delete_dict']['3x2pt'], axis=0)
 
     ######################### COMPUTE FM #####################################
 

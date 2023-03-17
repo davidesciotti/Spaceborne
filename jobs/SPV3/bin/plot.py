@@ -220,8 +220,8 @@ for probe in probes:
                 idx = mm.find_null_rows_cols_2D(FM_GO)
                 idx_GS = mm.find_null_rows_cols_2D(FM_GS)
                 assert np.array_equal(idx, idx_GS), 'the null rows/cols indices should be equal for GO and GS'
-                FM_GO = mm.remove_null_rows_cols_array2D(FM_GO, idx)
-                FM_GS = mm.remove_null_rows_cols_array2D(FM_GS, idx)
+                FM_GO = mm.remove_rows_cols_array2D(FM_GO, idx)
+                FM_GS = mm.remove_rows_cols_array2D(FM_GS, idx)
 
                 ####################################################################################################################
 

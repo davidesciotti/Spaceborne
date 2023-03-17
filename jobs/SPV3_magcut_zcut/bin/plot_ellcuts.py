@@ -180,6 +180,8 @@ for probe in probes:
 
             FMs = [FM_GO_noEllcuts, FM_GO_Ellcuts, FM_GS_noEllcuts, FM_GS_Ellcuts, FM_GS_kcuts_vinc]
             cases = ['FM_GO_noEllcuts', 'FM_GO_Ellcuts', 'FM_GS_noEllcuts', 'FM_GS_Ellcuts', 'FM_GS_kcuts_vinc']
+            FMs = [FM_GO_noEllcuts, FM_GO_Ellcuts, FM_GS_noEllcuts, FM_GS_Ellcuts]
+            cases = ['FM_GO_noEllcuts', 'FM_GO_Ellcuts', 'FM_GS_noEllcuts', 'FM_GS_Ellcuts']
             # cases += ['abs(percent_diff)']
 
             # ! priors on shear bias
@@ -189,6 +191,7 @@ for probe in probes:
                 prior = np.zeros(FM_GO_Ellcuts.shape)
                 for i in range(shear_bias_1st_idx, shear_bias_last_idx + 1):
                     prior[i, i] = 5e-4 ** -2
+
                 FMs = [FM + prior for FM in FMs]
 
             key_to_compare_A, key_to_compare_B = cases[0], cases[1]  # which cases to take the percent diff and ratio of
@@ -231,7 +234,8 @@ for probe in probes:
 
             fom_list = [probe, ML, ZL, MS, ZS, kmax_h_over_Mpc, kmax_h_over_Mpc / h, fom_dict[cases[0]],
                         fom_dict[cases[1]],
-                        fom_dict[cases[2]], fom_dict[cases[3]], fom_dict[cases[4]]]
+                        fom_dict[cases[2]], fom_dict[cases[3]],]
+                        # fom_dict[cases[4]]]
             fom_df = fom_df.append(
                 pd.DataFrame([fom_list], columns=['probe', 'ML', 'ZL', 'MS', 'ZS',
                                                   'kmax_h_over_Mpc', 'kmax_1_over_Mpc',
@@ -239,7 +243,8 @@ for probe in probes:
                                                   'FM_GO_Ellcuts',
                                                   'FM_GS_noEllcuts',
                                                   'FM_GS_Ellcuts',
-                                                  'FM_GS_kcuts_vinc']), ignore_index=True)
+                                                  # 'FM_GS_kcuts_vinc']), ignore_index=True)
+                                                  ]), ignore_index=True)
 
             title = '%s, $\\ k_{\\rm max}[h/Mpc] = %.2f$, zbins %s%i$' % (probe, kmax_h_over_Mpc, EP_or_ED, zbins)
             title += f'\nML = {ML / 10}, MS = {MS / 10}, ZL = {ZL / 10}, ZS = {ZS / 10}, zmax = {zmax / 10}'

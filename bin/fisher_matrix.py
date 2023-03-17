@@ -158,24 +158,20 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     print('Starting covariance matrix inversion...')
     start_time = time.perf_counter()
     # TODO try to use scipy.sparse.linalg.inv
-    cov_WL_GO_2D_inv = np.linalg.inv(cov_dict['cov_WL_GO_2D'])
-    cov_GC_GO_2D_inv = np.linalg.inv(cov_dict['cov_GC_GO_2D'])
-    cov_WA_GO_2D_inv = np.linalg.inv(cov_dict['cov_WA_GO_2D'])
-    cov_3x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GO_2D'])
-    print(f'GO covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
-
-    # invert GS covmats
-    start_time = time.perf_counter()
-    cov_WL_GS_2D_inv = np.linalg.inv(cov_dict['cov_WL_GS_2D'])
-    cov_GC_GS_2D_inv = np.linalg.inv(cov_dict['cov_GC_GS_2D'])
-    cov_WA_GS_2D_inv = np.linalg.inv(cov_dict['cov_WA_GS_2D'])
-    cov_3x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GS_2D'])
+    # cov_WL_GO_2D_inv = np.linalg.inv(cov_dict['cov_WL_GO_2D'])
+    # cov_GC_GO_2D_inv = np.linalg.inv(cov_dict['cov_GC_GO_2D'])
+    # cov_WA_GO_2D_inv = np.linalg.inv(cov_dict['cov_WA_GO_2D'])
+    # cov_3x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GO_2D'])
+    # print(f'GO covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
+    #
+    # # invert GS covmats
+    # start_time = time.perf_counter()
+    # cov_WL_GS_2D_inv = np.linalg.inv(cov_dict['cov_WL_GS_2D'])
+    # cov_GC_GS_2D_inv = np.linalg.inv(cov_dict['cov_GC_GS_2D'])
+    # cov_WA_GS_2D_inv = np.linalg.inv(cov_dict['cov_WA_GS_2D'])
+    # cov_3x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GS_2D'])
     print(f'GS covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
 
-    print('cov_WL_GS_2D_inv.shape', cov_WL_GS_2D_inv.shape)
-    print('cov_dict["cov_WL_GS_2D"].shape', cov_dict['cov_WL_GS_2D'].shape)
-
-    start = time.perf_counter()
 
     # load reshaped derivatives, with shape (nbl, zbins, zbins, nparams)
     dC_LL_4D = deriv_dict['dC_LL_4D']
@@ -241,42 +237,47 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
 
     # ! cut the *flattened* derivatives vector
     if FM_cfg['deriv_ell_cuts']:
-        # dC_LL_2D[ell_dict['idxs_to_delete_dict']['LL'], :] = 0
-        # dC_GG_2D[ell_dict['idxs_to_delete_dict']['GG'], :] = 0
-        # dC_WA_2D[ell_dict['idxs_to_delete_dict']['WA'], :] = 0
-        # dC_3x2pt_2D[ell_dict['idxs_to_delete_dict']['3x2pt'], :] = 0
+        dC_LL_2D[ell_dict['idxs_to_delete_dict']['LL'], :] = 0
+        dC_GG_2D[ell_dict['idxs_to_delete_dict']['GG'], :] = 0
+        dC_WA_2D[ell_dict['idxs_to_delete_dict']['WA'], :] = 0
+        dC_3x2pt_2D[ell_dict['idxs_to_delete_dict']['3x2pt'], :] = 0
 
-        dC_LL_2D = np.delete(dC_LL_2D, ell_dict['idxs_to_delete_dict']['LL'], axis=0)
-        dC_GG_2D = np.delete(dC_GG_2D, ell_dict['idxs_to_delete_dict']['GG'], axis=0)
-        dC_WA_2D = np.delete(dC_WA_2D, ell_dict['idxs_to_delete_dict']['WA'], axis=0)
-        dC_3x2pt_2D = np.delete(dC_3x2pt_2D, ell_dict['idxs_to_delete_dict']['3x2pt'], axis=0)
+        # dC_LL_2D = np.delete(dC_LL_2D, ell_dict['idxs_to_delete_dict']['LL'], axis=0)
+        # dC_GG_2D = np.delete(dC_GG_2D, ell_dict['idxs_to_delete_dict']['GG'], axis=0)
+        # dC_WA_2D = np.delete(dC_WA_2D, ell_dict['idxs_to_delete_dict']['WA'], axis=0)
+        # dC_3x2pt_2D = np.delete(dC_3x2pt_2D, ell_dict['idxs_to_delete_dict']['3x2pt'], axis=0)
 
     # if the ell cuts removed all WA bins (which is in fact the case)
     if dC_WA_2D.shape[0] == 0:
         dC_WA_2D = np.ones((nbl_WA * zpairs_auto, nparams_tot))
 
-    # dC_LL_2D_cut_1 = np.load('/Users/davide/Desktop/temp/dC_LL_2D.npy')
-    # dC_GG_2D_cut_1 = np.load('/Users/davide/Desktop/temp/dC_GG_2D.npy')
-    # dC_WA_2D_cut_1 = np.load('/Users/davide/Desktop/temp/dC_WA_2D.npy')
-    # dC_3x2pt_2D_cut_1 = np.load('/Users/davide/Desktop/temp/dC_3x2pt_2D.npy')
+    dC_LL_2D_cut_1 = np.load('/Users/davide/Desktop/temp/dC_LL_2D.npy')
+    dC_GG_2D_cut_1 = np.load('/Users/davide/Desktop/temp/dC_GG_2D.npy')
+    dC_WA_2D_cut_1 = np.load('/Users/davide/Desktop/temp/dC_WA_2D.npy')
+    dC_3x2pt_2D_cut_1 = np.load('/Users/davide/Desktop/temp/dC_3x2pt_2D.npy')
 
     # np.testing.assert_array_equal(dC_LL_2D_cut_1, dC_LL_2D_cut_2)
     # np.testing.assert_array_equal(dC_GG_2D_cut_1, dC_GG_2D_cut_2)
     # np.testing.assert_array_equal(dC_WA_2D_cut_1, dC_WA_2D_cut_2)
     # np.testing.assert_array_equal(dC_3x2pt_2D_cut_1, dC_3x2pt_2D_cut_2)
 
-    # plt.figure()
-    # plt.plot(dC_LL_2D_cut_1[:, 0], label='dC_LL_2D_cut_1')
-    # plt.plot(dC_LL_2D[:, 0], label='dC_LL_2D_cut_2')
-    # plt.figure()
-    # plt.plot(dC_GG_2D_cut_1[:, 0], label='dC_GG_2D_cut_1')
-    # plt.plot(dC_GG_2D[:, 0], label='dC_GG_2D_cut_2')
-    # plt.figure()
-    # plt.plot(dC_WA_2D_cut_1[:, 0], label='dC_WA_2D_cut_1')
-    # plt.plot(dC_WA_2D[:, 0], label='dC_WA_2D_cut_2')
-    # plt.figure()
-    # plt.plot(dC_3x2pt_2D_cut_1[:, 0], label='dC_3x2pt_2D_cut_1')
-    # plt.plot(dC_3x2pt_2D[:, 0], label='dC_3x2pt_2D_cut_2')
+    plt.figure()
+    plt.plot(dC_LL_2D_cut_1[:, 0], label='dC_LL_2D_cut_1')
+    plt.plot(dC_LL_2D[:, 0], label='dC_LL_2D_cut_2', ls='--')
+
+    plt.figure()
+    plt.plot(dC_GG_2D_cut_1[:, 0], label='dC_GG_2D_cut_1')
+    plt.plot(dC_GG_2D[:, 0], label='dC_GG_2D_cut_2', ls='--')
+
+    plt.figure()
+    plt.plot(dC_WA_2D_cut_1[:, 0], label='dC_WA_2D_cut_1')
+    plt.plot(dC_WA_2D[:, 0], label='dC_WA_2D_cut_2', ls='--')
+
+    plt.figure()
+    plt.plot(dC_3x2pt_2D_cut_1[:, 0], label='dC_3x2pt_2D_cut_1')
+    plt.plot(dC_3x2pt_2D[:, 0], label='dC_3x2pt_2D_cut_2', ls='--')
+
+    pdb.set_trace()
     ######################### COMPUTE FM #####################################
 
     start = time.perf_counter()

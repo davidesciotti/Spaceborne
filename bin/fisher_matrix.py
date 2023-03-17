@@ -4,6 +4,7 @@ import warnings
 from pathlib import Path
 import numpy as np
 import scipy
+import pdb
 from matplotlib import pyplot as plt
 
 project_path_here = Path.cwd().parent.parent.parent
@@ -151,15 +152,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         warnings.warn('cov_WA_GO_2D is empty, setting use_WA to False and the covariance matrix to the identity')
         general_cfg['use_WA'] = False
         cov_dict['cov_WA_GO_2D'] = np.eye(nbl_WA * zpairs_auto)
-
-    mm.matshow(cov_dict['cov_WL_GO_2D'], 'cov_WL_GO_2D pre', log=True)
-    if covariance_cfg['cov_ell_cuts']:
-        cov_dict['cov_WL_GO_2D'] = mm.remove_null_rows_cols_2D_copilot(cov_dict['cov_WL_GO_2D'])
-        cov_dict['cov_GC_GO_2D'] = mm.remove_null_rows_cols_2D_copilot(cov_dict['cov_GC_GO_2D'])
-        cov_dict['cov_WA_GO_2D'] = mm.remove_null_rows_cols_2D_copilot(cov_dict['cov_WA_GO_2D'])
-        cov_dict['cov_3x2pt_GO_2D'] = mm.remove_null_rows_cols_2D_copilot(cov_dict['cov_3x2pt_GO_2D'])
-
-    mm.matshow(cov_dict['cov_WL_GO_2D'], 'cov_WL_GO_2D post', log=True)
+        cov_dict['cov_WA_GS_2D'] = np.eye(nbl_WA * zpairs_auto)
 
     # invert GO covmats
     print('Starting covariance matrix inversion...')
@@ -178,6 +171,9 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     cov_WA_GS_2D_inv = np.linalg.inv(cov_dict['cov_WA_GS_2D'])
     cov_3x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GS_2D'])
     print(f'GS covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
+
+    print('cov_WL_GS_2D_inv.shape', cov_WL_GS_2D_inv.shape)
+    print('cov_dict["cov_WL_GS_2D"].shape', cov_dict['cov_WL_GS_2D'].shape)
 
     start = time.perf_counter()
 
@@ -282,6 +278,8 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     # plt.plot(dC_3x2pt_2D_cut_1[:, 0], label='dC_3x2pt_2D_cut_1')
     # plt.plot(dC_3x2pt_2D[:, 0], label='dC_3x2pt_2D_cut_2')
     ######################### COMPUTE FM #####################################
+
+    pdb.set_trace()
 
     start = time.perf_counter()
     FM_WL_GO = np.einsum('ia,ik,kb->ab', dC_LL_2D, cov_WL_GO_2D_inv, dC_LL_2D, optimize='optimal')

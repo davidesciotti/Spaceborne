@@ -317,24 +317,26 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             rl_wa_3d = rl_ll_3d[nbl_GC:nbl_WL, :, :]
             rl_3x2pt_5d = rl_3x2pt_5d[:nbl_3x2pt, :, :]
 
-        # ! cl ell cuts (*after* BNT!!)
+        # ! 3d cl ell cuts (*after* BNT!!)
         cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
             ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc=None)
 
         # this is to pass the ll cuts to the covariance module
         warnings.warn('restore kmax_h_over_Mpc in the next line')
         ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc=None)
-        ell_dict['ell_cuts_dict'] = ell_cuts_dict
+        ell_dict['ell_cuts_dict'] = ell_cuts_dict  # rename for better readability
 
-        # ! try vincenzo's method for cl_ell_cuts
+        # ! try vincenzo's method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
         ell_dict['idxs_to_delete_dict'] = {
             'LL': get_idxs_to_delete(10 ** ell_dict['ell_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True),
             'GG': get_idxs_to_delete(10 ** ell_dict['ell_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True),
             'WA': get_idxs_to_delete(10 ** ell_dict['ell_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True),
             'GL': get_idxs_to_delete(10 ** ell_dict['ell_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False),
             'LG': get_idxs_to_delete(10 ** ell_dict['ell_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
-            '3x2pt': get_idxs_to_delete_3x2pt(ell_dict, )
+            '3x2pt': get_idxs_to_delete_3x2pt(ell_dict)
         }
+
+        # TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance and derivatives level)
 
         # store cls and responses in a dictionary
         cl_dict_3D = {
@@ -400,12 +402,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
 
             cov_benchmark_folder = f'{cov_folder}/benchmarks'
             mm.test_folder_content_old(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
-
-        # ! remove ell bins outside the ell cuts
-        # TODO put this into the covariance module
-
-        # TODO do the same for flattened derivatives, and you're good to go
-        assert 1 > 2, 'stop here'
 
         # ! compute Fisher matrix
         if FM_cfg['compute_FM']:

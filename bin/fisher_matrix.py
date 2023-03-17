@@ -4,6 +4,7 @@ import warnings
 from pathlib import Path
 import numpy as np
 import scipy
+from matplotlib import pyplot as plt
 
 project_path_here = Path.cwd().parent.parent.parent
 sys.path.append(str(project_path_here.parent / 'common_lib'))
@@ -161,22 +162,22 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     mm.matshow(cov_dict['cov_WL_GO_2D'], 'cov_WL_GO_2D post', log=True)
 
     # invert GO covmats
-    print('Starting covariance matrix inversion...')
-    start_time = time.perf_counter()
-    # TODO try to use scipy.sparse.linalg.inv
-    cov_WL_GO_2D_inv = np.linalg.inv(cov_dict['cov_WL_GO_2D'])
-    cov_GC_GO_2D_inv = np.linalg.inv(cov_dict['cov_GC_GO_2D'])
-    cov_WA_GO_2D_inv = np.linalg.inv(cov_dict['cov_WA_GO_2D'])
-    cov_3x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GO_2D'])
-    print(f'GO covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
-
-    # invert GS covmats
-    start_time = time.perf_counter()
-    cov_WL_GS_2D_inv = np.linalg.inv(cov_dict['cov_WL_GS_2D'])
-    cov_GC_GS_2D_inv = np.linalg.inv(cov_dict['cov_GC_GS_2D'])
-    cov_WA_GS_2D_inv = np.linalg.inv(cov_dict['cov_WA_GS_2D'])
-    cov_3x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GS_2D'])
-    print(f'GS covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
+    # print('Starting covariance matrix inversion...')
+    # start_time = time.perf_counter()
+    # # TODO try to use scipy.sparse.linalg.inv
+    # cov_WL_GO_2D_inv = np.linalg.inv(cov_dict['cov_WL_GO_2D'])
+    # cov_GC_GO_2D_inv = np.linalg.inv(cov_dict['cov_GC_GO_2D'])
+    # cov_WA_GO_2D_inv = np.linalg.inv(cov_dict['cov_WA_GO_2D'])
+    # cov_3x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GO_2D'])
+    # print(f'GO covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
+    #
+    # # invert GS covmats
+    # start_time = time.perf_counter()
+    # cov_WL_GS_2D_inv = np.linalg.inv(cov_dict['cov_WL_GS_2D'])
+    # cov_GC_GS_2D_inv = np.linalg.inv(cov_dict['cov_GC_GS_2D'])
+    # cov_WA_GS_2D_inv = np.linalg.inv(cov_dict['cov_WA_GS_2D'])
+    # cov_3x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GS_2D'])
+    # print(f'GS covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
 
     start = time.perf_counter()
 
@@ -241,12 +242,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_WA_2D = np.reshape(dC_WA_3D, (nbl_WA * zpairs_auto, nparams_tot), order=which_flattening)
     dC_3x2pt_2D = np.reshape(dC_3x2pt_3D, (nbl_3x2pt * zpairs_3x2pt, nparams_tot), order=which_flattening)
 
-    np.save('/Users/davide/Desktop/temp/dC_LL_2D.npy', dC_LL_2D)
-    np.save('/Users/davide/Desktop/temp/dC_GG_2D.npy', dC_GG_2D)
-    np.save('/Users/davide/Desktop/temp/dC_WA_2D.npy', dC_WA_2D)
-    np.save('/Users/davide/Desktop/temp/dC_3x2pt_2D.npy', dC_3x2pt_2D)
-
-    assert 1 > 2
 
     # ! cut the *flattened* derivatives vector
     dC_LL_2D_cut_2 = np.delete(dC_LL_2D, ell_dict['idxs_to_delete_dict']['LL'], axis=0)
@@ -254,6 +249,20 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_WA_2D_cut_2 = np.delete(dC_WA_2D, ell_dict['idxs_to_delete_dict']['WA'], axis=0)
     dC_3x2pt_2D_cut_2 = np.delete(dC_3x2pt_2D, ell_dict['idxs_to_delete_dict']['3x2pt'], axis=0)
 
+    dC_LL_2D_cut_1 = np.load('/Users/davide/Desktop/temp/dC_LL_2D.npy')
+    dC_GG_2D_cut_1 = np.load('/Users/davide/Desktop/temp/dC_GG_2D.npy')
+    dC_WA_2D_cut_1 = np.load('/Users/davide/Desktop/temp/dC_WA_2D.npy')
+    dC_3x2pt_2D_cut_1 = np.load('/Users/davide/Desktop/temp/dC_3x2pt_2D.npy')
+
+    np.testing.assert_array_equal(dC_LL_2D_cut_1, dC_LL_2D_cut_2)
+    np.testing.assert_array_equal(dC_GG_2D_cut_1, dC_GG_2D_cut_2)
+    np.testing.assert_array_equal(dC_WA_2D_cut_1, dC_WA_2D_cut_2)
+    np.testing.assert_array_equal(dC_3x2pt_2D_cut_1, dC_3x2pt_2D_cut_2)
+
+    plt.plot(10**ell_dict['ell_WL'], dC_LL_2D_cut_1[:, 0], label='dC_LL_2D_cut_1')
+    plt.plot(10**ell_dict['ell_WL'], dC_LL_2D_cut_2[:, 0], label='dC_LL_2D_cut_2')
+
+    assert 1 > 2
     ######################### COMPUTE FM #####################################
 
     start3 = time.perf_counter()

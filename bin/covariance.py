@@ -371,7 +371,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_dict['cov_WA_GS_6D'] = cov_BNT_transform(cov_dict['cov_WA_GS_6D'], X_dict, 'L', 'L', 'L', 'L')
             cov_dict['cov_3x2pt_GS_10D_dict'] = cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GS_10D_dict'], X_dict)
 
-        if covariance_cfg['cov_ell_cuts']:
+        # if covariance_cfg['cov_ell_cuts']:
 
             # print('Performing ell cuts on covariance matrix...')
             # # ! get the ell indices which will be set to 0 for each zi, zj

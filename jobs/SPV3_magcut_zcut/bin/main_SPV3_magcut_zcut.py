@@ -9,9 +9,6 @@ import os
 import warnings
 import gc
 
-# %load_ext autoreload
-# %autoreload 2
-
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 home_path = Path.home()
@@ -512,6 +509,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             # TODO reorder all these cutting functions...
             # TODO loop over kmax_list
             # TODO careful! the 3x2pt has ell_XC for all probes, see get_idxs_3x2pt function
+            # TODO recompute Sijkl to be safe
 
             fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']))
             FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'],

@@ -39,6 +39,14 @@ if cl_ell_cuts or cov_ell_cuts or deriv_ell_cuts:
 else:
     ell_cuts = False
 
+if cl_ell_cuts:
+    assert cov_ell_cuts == False, 'if you want to apply ell cuts to the cls, you cannot apply them to the cov'
+    assert deriv_ell_cuts, 'if you want to apply ell cuts to the cls, you hould also apply them to the derivatives'
+
+if cov_ell_cuts:
+    assert cl_ell_cuts == False, 'if you want to apply ell cuts to the cov, you cannot apply them to the cls'
+    assert deriv_ell_cuts, 'if you want to apply ell cuts to the cov, you hould also apply them to the derivatives'
+
 assert flagship_version == 2, 'the files for the multicut case are only available for Flagship_2'
 
 if BNT_transform:

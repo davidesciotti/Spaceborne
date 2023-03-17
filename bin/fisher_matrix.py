@@ -255,6 +255,10 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         dC_WA_2D = np.delete(dC_WA_2D, ell_dict['idxs_to_delete_dict']['WA'], axis=0)
         dC_3x2pt_2D = np.delete(dC_3x2pt_2D, ell_dict['idxs_to_delete_dict']['3x2pt'], axis=0)
 
+    # if the ell cuts removed all WA bins (which is in fact the case)
+    if dC_WA_2D.shape[0] == 0:
+        dC_WA_2D = np.ones((nbl_WA * zpairs_auto, nparams_tot))
+
     # dC_LL_2D_cut_1 = np.load('/Users/davide/Desktop/temp/dC_LL_2D.npy')
     # dC_GG_2D_cut_1 = np.load('/Users/davide/Desktop/temp/dC_GG_2D.npy')
     # dC_WA_2D_cut_1 = np.load('/Users/davide/Desktop/temp/dC_WA_2D.npy')
@@ -277,7 +281,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     # plt.figure()
     # plt.plot(dC_3x2pt_2D_cut_1[:, 0], label='dC_3x2pt_2D_cut_1')
     # plt.plot(dC_3x2pt_2D[:, 0], label='dC_3x2pt_2D_cut_2')
-
     ######################### COMPUTE FM #####################################
 
     start = time.perf_counter()

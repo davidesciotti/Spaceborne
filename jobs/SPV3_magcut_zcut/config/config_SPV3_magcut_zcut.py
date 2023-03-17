@@ -24,10 +24,8 @@ cov_BNT_transform = False
 deriv_BNT_transform = False
 
 cl_ell_cuts = False
-cov_ell_cuts = False
+cov_ell_cuts = True
 deriv_ell_cuts = True
-
-
 
 if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
     BNT_transform = True

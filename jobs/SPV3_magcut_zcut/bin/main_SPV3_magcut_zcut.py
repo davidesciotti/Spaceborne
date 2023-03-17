@@ -240,6 +240,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         'ell_WA': np.copy(ell_WL_nbl32[(ell_WL_nbl32 > ell_max_GC) & (ell_WL_nbl32 < ell_max_WL)])}
     ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
 
+    assert np.all(ell_values < 30) is False, 'ell values must *not* be in log space'
+
     # set corresponding number of ell bins
     nbl_WL = len(ell_dict['ell_WL'])
     nbl_GC = len(ell_dict['ell_GC'])
@@ -250,11 +252,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
     delta_dict = {'delta_l_WL': np.copy(delta_l_WL_nbl32[:nbl_WL]),
                   'delta_l_GC': np.copy(delta_l_WL_nbl32[:nbl_GC]),
                   'delta_l_WA': np.copy(delta_l_WL_nbl32[nbl_GC:])}
-
-    # ell_WL_nbl32, delta_l_WL_nbl32, ell_edges = ell_utils.compute_ells(general_cfg['nbl_WL_opt'],
-    #                                                                    general_cfg['ell_min'],
-    #                                                                    general_cfg['ell_max_WL_opt'], recipe='ISTF',
-    #                                                                    output_ell_bin_edges=True)
 
     # set # of nbl in the opt case, import and reshape, then cut the reshaped datavectors in the pes case
     # TODO this should not be hardcoded! if so, it should go in the config file...

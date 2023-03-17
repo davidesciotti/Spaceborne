@@ -191,7 +191,6 @@ for probe in probes:
                 prior = np.zeros(FM_GO_Ellcuts.shape)
                 for i in range(shear_bias_1st_idx, shear_bias_last_idx + 1):
                     prior[i, i] = 5e-4 ** -2
-
                 FMs = [FM + prior for FM in FMs]
 
             key_to_compare_A, key_to_compare_B = cases[0], cases[1]  # which cases to take the percent diff and ratio of

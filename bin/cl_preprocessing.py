@@ -381,9 +381,6 @@ def cl_ell_cut(cl_3D, ell_cuts_matrix, ell_values):
 
     # TODO call get_ell_cuts_indices function here not to repeat code
 
-    if np.all(ell_values) < 30:
-        ell_values = 10 ** ell_values
-
     nbl = cl_3D.shape[0]
     zbins = cl_3D.shape[1]
 
@@ -408,9 +405,6 @@ def cl_ell_cut(cl_3D, ell_cuts_matrix, ell_values):
 def cl_ell_cut_v2(cl_3D, ell_cuts_matrix, ell_values):
     """cut (sets to zero) the cl_3D array at the ell values specified in ell_cuts_matrix.
     Smarter version, without for loops - only marginally faster"""
-
-    if np.all(ell_values) < 30:
-        ell_values = 10 ** ell_values
 
     nbl = cl_3D.shape[0]
     zbins = cl_3D.shape[1]

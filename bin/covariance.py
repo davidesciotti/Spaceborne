@@ -308,7 +308,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         print(f'cov_GO_6D computed in {(time.perf_counter() - start_time):.2f} seconds')
 
         # ! NEW BIT: compute the Gaussian covariance with einsum
-
+        """
         noise_LL_5d = np.zeros((1, 1, nbl_WL, zbins, zbins))  # ! nbl changes from probe to probe!
         noise_WA_5d = np.zeros((1, 1, nbl_WA, zbins, zbins))
         noise_GG_5d = np.zeros((1, 1, nbl_GC, zbins, zbins))
@@ -335,7 +335,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_dict['cov_GO_GC_6D'] = mm.covariance_einsum(cl_GG_5d, noise_GG_5d, fsky, l_lin_GC, delta_l_GC)[0, 0, 0, 0, ...]
         cov_3x2pt_GO_10D_arr = mm.covariance_einsum(cl_3x2pt_5d, noise_3x2pt_5d, fsky, l_lin_GC, delta_l_GC)
         cov_dict['cov_3x2pt_GO_10D_dict'] = mm.cov_10D_array_to_dict(cov_3x2pt_GO_10D_arr)
-        
+        """
         # ! end cov_einsum. Now you might as well just use this, but it's kind of a big update
 
         # ! cov_SSC_6D

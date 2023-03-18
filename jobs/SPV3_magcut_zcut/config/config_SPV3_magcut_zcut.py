@@ -74,6 +74,7 @@ general_cfg = {
     'nbl_3x2pt_opt': 29,
 
     'ell_cuts': ell_cuts,
+    'center_or_min': 'center',
     'cl_ell_cuts': cl_ell_cuts,
     'ell_cuts_folder': f'{SPV3_folder}/ell_cuts',
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
@@ -197,7 +198,8 @@ FM_cfg = {
     'derivatives_BNT_transform': deriv_BNT_transform,
     'deriv_ell_cuts': deriv_ell_cuts,
 
-    'fm_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}' + '/ell_cuts_{ell_cuts:s}',
+    'fm_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}' +
+                 '/ell_cuts_{ell_cuts:s}_ell_{center_or_min:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'
                        'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}'
                        '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',

@@ -53,6 +53,7 @@ start_time = time.perf_counter()
 # TODO check what happens for ell_cuts_LG (instead of GL) = ell_cuts_XC file
 # TODO cut if ell > ell_edge_lower (!!)
 # TODO activate BNT transform (!!)
+# TODO cut à la Vincenzo
 
 
 ###############################################################################
@@ -222,6 +223,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         magcut_lens = general_cfg['magcut_lens']
         zcut_source = general_cfg['zcut_source']
         zcut_lens = general_cfg['zcut_lens']
+        center_or_min = general_cfg['center_or_min']
         zmax = int(general_cfg['zmax'] * 10)
         triu_tril = covariance_cfg['triu_tril']
         row_col_major = covariance_cfg['row_col_major']
@@ -267,23 +269,20 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                                                                                     recipe='ISTF',
                                                                                     output_ell_bin_edges=True)
 
-        # perform the cuts
-        ell_dict = {
-            'ell_WL': np.copy(ell_WL_nbl32[ell_WL_nbl32 < ell_max_WL]),
-            'ell_GC': np.copy(ell_WL_nbl32[ell_WL_nbl32 < ell_max_GC]),
-            'ell_WA': np.copy(ell_WL_nbl32[(ell_WL_nbl32 > ell_max_GC) & (ell_WL_nbl32 < ell_max_WL)])}
+        # perform the cuts (not the redshift-dependent ones!) on the ell centers and edges
+        ell_dict = {}
+        ell_dict['ell_WL'] = np.copy(ell_WL_nbl32[ell_WL_nbl32 < ell_max_WL])
+        ell_dict['ell_GC'] = np.copy(ell_WL_nbl32[ell_WL_nbl32 < ell_max_GC])
+        ell_dict['ell_WA'] = np.copy(ell_WL_nbl32[(ell_WL_nbl32 > ell_max_GC) & (ell_WL_nbl32 < ell_max_WL)])
         ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
         ell_dict['ell_3x2pt'] = np.copy(ell_dict['ell_XC'])
 
-        ell_dict = {
-            'ell_edges_WL': np.copy(ell_edges_WL_nbl32[ell_edges_WL_nbl32 < ell_max_WL]),
-            'ell_edges_GC': np.copy(ell_edges_WL_nbl32[ell_edges_WL_nbl32 < ell_max_GC]),
-            'ell_edges_WA': np.copy(
-                ell_edges_WL_nbl32[(ell_edges_WL_nbl32 > ell_max_GC) & (ell_edges_WL_nbl32 < ell_max_WL)])}
+        ell_dict['ell_edges_WL'] = np.copy(ell_edges_WL_nbl32[ell_edges_WL_nbl32 < ell_max_WL])
+        ell_dict['ell_edges_GC'] = np.copy(ell_edges_WL_nbl32[ell_edges_WL_nbl32 < ell_max_GC])
+        ell_dict['ell_edges_WA'] = np.copy(
+            ell_edges_WL_nbl32[(ell_edges_WL_nbl32 > ell_max_GC) & (ell_edges_WL_nbl32 < ell_max_WL)])
         ell_dict['ell_edges_XC'] = np.copy(ell_dict['ell_edges_GC'])
         ell_dict['ell_edges_3x2pt'] = np.copy(ell_dict['ell_edges_XC'])
-
-        assert 1 > 2
 
         for key in ell_dict.keys():
             assert np.max(ell_dict[key]) > 15, 'ell values must *not* be in log space'
@@ -320,7 +319,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                           'magcut_source': magcut_source, 'zcut_source': zcut_source, 'zmax': zmax,
                           'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_XC': ell_max_XC,
                           'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
-                          'kmax_h_over_Mpc': kmax_h_over_Mpc}
+                          'kmax_h_over_Mpc': kmax_h_over_Mpc, center_or_min: center_or_min}
 
         ng_folder = covariance_cfg["ng_folder"]
         ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
@@ -396,13 +395,20 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         ell_dict['ell_cuts_dict'] = ell_cuts_dict  # rename for better readability
 
         # ! try vincenzo's method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
+        if general_cfg['center_or_min'] == 'center':
+            prefix = 'ell'
+        elif general_cfg['center_or_min'] == 'min':
+            prefix = 'ell_edges'
+        else:
+            raise ValueError('general_cfg["center_or_min"] should be either "center" or "min"')
+
         ell_dict['idxs_to_delete_dict'] = {
-            'LL': get_idxs_to_delete(ell_dict['ell_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True),
-            'GG': get_idxs_to_delete(ell_dict['ell_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True),
-            'WA': get_idxs_to_delete(ell_dict['ell_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True),
-            'GL': get_idxs_to_delete(ell_dict['ell_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False),
-            'LG': get_idxs_to_delete(ell_dict['ell_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
-            '3x2pt': get_idxs_to_delete_3x2pt(ell_dict['ell_3x2pt'], ell_cuts_dict)
+            'LL': get_idxs_to_delete(ell_dict[f'{prefix}_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True),
+            'GG': get_idxs_to_delete(ell_dict[f'{prefix}_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True),
+            'WA': get_idxs_to_delete(ell_dict[f'{prefix}_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True),
+            'GL': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False),
+            'LG': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
+            '3x2pt': get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict)
         }
 
         # ! 3d cl ell cuts (*after* BNT!!)
@@ -571,7 +577,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         FM_dict['param_names_dict'] = param_names_dict
         FM_dict['fiducial_values_dict'] = fiducials_dict
 
-        fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']))
+        fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
+                                               center_or_min=general_cfg['center_or_min'])
+
         FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'],
                          **variable_specs)
 
@@ -581,43 +589,43 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         # ! unit test: check that the outputs have not changed
         if general_cfg['test_against_benchmarks']:
             fm_benchmark_folder = f'{fm_folder}/benchmarks'
-            mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
+        mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
 
-"""
-# ! save cls and responses:
-# TODO this should go inside a function too
-# this is just to set the correct probe names
-probe_dav_dict = {'WL': 'LL_3D',
-                  'GC': 'GG_3D',
-                  'WA': 'WA_3D',
-                  '3x2pt': '3x2pt_5D'}
-
-# just a dict for the output file names
-clrl_dict = {'cl_dict_3D': cl_dict_3D,
-             'rl_dict_3D': rl_dict_3D,
-             'cl_inputname': 'dv',
-             'rl_inputname': 'rf',
-             'cl_dict_key': 'C',
-             'rl_dict_key': 'R'}
-for cl_or_rl in ['cl', 'rl']:
-    if general_cfg[f'save_{cl_or_rl}s_3d']:
-
-        for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
-            # save cl and/or response; not very readable but it works, plus all the cases are in the for loop
-
-            filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
-            filename = general_cfg[f'{cl_or_rl}_filename'].format(
-                probe=probe_vinc, **variable_specs).replace(".dat", "_3D.npy")
-            file = clrl_dict[f"{cl_or_rl}_dict_3D"][
-                f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}']
-            np.save(f'{filepath}/{filename}', file)
-
-            # save ells and deltas
-            if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
-                filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/' \
-                           f'3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
-                ells_filename = f'ell_{probe_dav}_ellmaxWL{ell_max_WL}'
-                np.savetxt(f'{filepath}/{ells_filename}.txt', ell_dict[f'ell_{probe_dav}'])
-                np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])
-
-"""
+        """
+        # ! save cls and responses:
+        # TODO this should go inside a function too
+        # this is just to set the correct probe names
+        probe_dav_dict = {'WL': 'LL_3D',
+                          'GC': 'GG_3D',
+                          'WA': 'WA_3D',
+                          '3x2pt': '3x2pt_5D'}
+        
+        # just a dict for the output file names
+        clrl_dict = {'cl_dict_3D': cl_dict_3D,
+                     'rl_dict_3D': rl_dict_3D,
+                     'cl_inputname': 'dv',
+                     'rl_inputname': 'rf',
+                     'cl_dict_key': 'C',
+                     'rl_dict_key': 'R'}
+        for cl_or_rl in ['cl', 'rl']:
+            if general_cfg[f'save_{cl_or_rl}s_3d']:
+        
+                for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
+                    # save cl and/or response; not very readable but it works, plus all the cases are in the for loop
+        
+                    filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
+                    filename = general_cfg[f'{cl_or_rl}_filename'].format(
+                        probe=probe_vinc, **variable_specs).replace(".dat", "_3D.npy")
+                    file = clrl_dict[f"{cl_or_rl}_dict_3D"][
+                        f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}']
+                    np.save(f'{filepath}/{filename}', file)
+        
+                    # save ells and deltas
+                    if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
+                        filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/' \
+                                   f'3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
+                        ells_filename = f'ell_{probe_dav}_ellmaxWL{ell_max_WL}'
+                        np.savetxt(f'{filepath}/{ells_filename}.txt', ell_dict[f'ell_{probe_dav}'])
+                        np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])
+        
+        """

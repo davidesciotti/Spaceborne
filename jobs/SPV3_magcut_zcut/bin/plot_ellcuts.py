@@ -240,7 +240,7 @@ for ML, ZL, MS, ZS in zip(ML_list, ZL_list, MS_list, ZS_list):
         # the for loop simply choosing the entries of the df you want.
         fom_list = [probe, ML, ZL, MS, ZS, kmax_h_over_Mpc, kmax_h_over_Mpc * h,
                     fom_dict[cases[0]], fom_dict[cases[1]],
-                    fom_dict[cases[2]], fom_dict[cases[3]], fom_dict[cases[4]]]
+                    fom_dict[cases[2]], fom_dict[cases[3]]]
 
         fom_df = fom_df.append(pd.DataFrame([fom_list],
                                             columns=['probe', 'ML', 'ZL', 'MS', 'ZS',
@@ -248,8 +248,7 @@ for ML, ZL, MS, ZS in zip(ML_list, ZL_list, MS_list, ZS_list):
                                                      'FM_GO_noEllcuts',
                                                      'FM_GO_Ellcuts',
                                                      'FM_GS_noEllcuts',
-                                                     'FM_GS_Ellcuts',
-                                                     'FM_GS_kcuts_vinc']), ignore_index=True)
+                                                     'FM_GS_Ellcuts']), ignore_index=True)
 
         # title = '%s, $\\ k_{\\rm max}[h/Mpc] = %.2f$, zbins %s%i$' % (probe, kmax_h_over_Mpc, EP_or_ED, zbins)
         # title += f'\nML = {ML / 10}, MS = {MS / 10}, ZL = {ZL / 10}, ZS = {ZS / 10}, zmax = {zmax / 10}'
@@ -276,6 +275,12 @@ plot_from_dataframe(fom_df=fom_df_zmin00,
                     key_3='FM_GO_noEllcuts', key_4='FM_GS_noEllcuts',
                     constant_fom_idx=0, plot_hlines=True, title=title,
                     save=True, filename_suffix='zmin00')
+
+# GO vs GS as a function of the ell cut
+plt.figure()
+plt.plot(fom_df['kmax_h_over_Mpc'], (fom_df['FM_GS_Ellcuts']/fom_df['FM_GO_Ellcuts'] - 1)*100)
+plt.xlabel("$k_{\\rm max}[1/Mpc]$")
+plt.ylabel("FM_GS/FM_GO - 1 [%]")
 
 # title = '%s (no GCsp), zbins %s%i, BNT {BNT_transform}' \
 #         f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0.2, zmax = {zmax / 10}' \

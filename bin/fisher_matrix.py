@@ -16,6 +16,35 @@ import cl_preprocessing as cl_utils
 script_name = sys.argv[0]
 
 
+def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum):
+    """ ell_values can be the bin center or the bin lower edge; Francis suggests the second option is better"""
+    warnings.warn('delete this function from here')
+    zbins = 13
+    if is_auto_spectrum:
+        idxs_to_delete = []
+        count = 0
+        for ell_idx, ell_val in enumerate(ell_values):
+            for zi in range(zbins):
+                for zj in range(zi, zbins):
+                    if ell_val > ell_cuts[zi, zj]:
+                        idxs_to_delete.append(count)
+                    count += 1
+
+    elif not is_auto_spectrum:
+        idxs_to_delete = []
+        count = 0
+        for ell_idx, ell_val in enumerate(ell_values):
+            for zi in range(zbins):
+                for zj in range(zbins):
+                    if ell_val > ell_cuts[zi, zj]:
+                        idxs_to_delete.append(count)
+                    count += 1
+    else:
+        raise ValueError('is_auto_spectrum must be True or False')
+
+    return idxs_to_delete
+
+
 ###############################################################################
 ################## CODE TO COMPUTE THE FISHER MATRIX ##########################
 ###############################################################################
@@ -99,7 +128,7 @@ def ell_cuts_derivatives(FM_cfg, ell_dict, dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2p
         dC_WA_4D[:, :, :, param_idx] = cl_cut(dC_WA_4D[:, :, :, param_idx], ell_cuts_LL, ell_dict['ell_WA'])
         dC_GG_4D[:, :, :, param_idx] = cl_cut(dC_GG_4D[:, :, :, param_idx], ell_cuts_GG, ell_dict['ell_GC'])
         dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_ell_cut_3x2pt(
-            dC_3x2pt_6D[:, :, :, :, :, param_idx], ell_cuts_dict, ell_dict)
+            dC_3x2pt_6D[:, :, :, :, :, param_idx], ell_cuts_dict, ell_dict['ell_3x2pt'])
 
     return dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D
 
@@ -137,9 +166,9 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         print('\nAttention! switching columns in the ind array (for the XC part)')
         ind[zpairs_auto:(zpairs_auto + zpairs_cross), [2, 3]] = ind[zpairs_auto:(zpairs_auto + zpairs_cross), [3, 2]]
 
-    #===================================================================================================================
+    # ===================================================================================================================
     # import and invert covariance matrices
-    #===================================================================================================================
+    # ===================================================================================================================
 
     if cov_dict['cov_WA_GO_2D'].shape == (0, 0):
         warnings.warn('cov_WA_GO_2D is empty, setting use_WA to False and the covariance matrix to the identity')
@@ -171,6 +200,31 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_WA_4D = deriv_dict['dC_WA_4D']
     dC_3x2pt_6D = deriv_dict['dC_3x2pt_6D']
 
+    dC_LLfor3x2pt_2D = np.zeros((nbl_3x2pt * zpairs_auto, nparams_tot))
+    dC_GLfor3x2pt_2D = np.zeros((nbl_3x2pt * zpairs_cross, nparams_tot))
+    dC_GGfor3x2pt_2D = np.zeros((nbl_3x2pt * zpairs_auto, nparams_tot))
+    count = 0
+    for ell_idx, ell_val in enumerate(ell_dict['ell_3x2pt']):
+        for zi in range(zbins):
+            for zj in range(zi, zbins):
+                dC_LLfor3x2pt_2D[count, :] = dC_3x2pt_6D[ell_idx, 0, 0, zi, zj, :]
+                dC_GGfor3x2pt_2D[count, :] = dC_3x2pt_6D[ell_idx, 1, 1, zi, zj, :]
+                count += 1
+
+    count = 0
+    for ell_idx, ell_val in enumerate(ell_dict['ell_3x2pt']):
+        for zi in range(zbins):
+            for zj in range(zi, zbins):
+                dC_GLfor3x2pt_2D[count, :] = dC_3x2pt_6D[ell_idx, 1, 0, zi, zj, :]
+                count += 1
+
+    dC_3x2pt_2D = np.vstack((dC_LLfor3x2pt_2D, dC_GLfor3x2pt_2D, dC_GGfor3x2pt_2D))
+    # dC_3x2pt_2D_v2 = np.concatenate((dC_LLfor3x2pt_2D, dC_GLfor3x2pt_2D, dC_GGfor3x2pt_2D), axis=1)
+    # assert np.array_equal(dC_3x2pt_2D, dC_3x2pt_2D_v2), 'something is wrong with the 3x2pt derivatives'
+
+    plt.figure()
+    plt.plot(dC_3x2pt_2D[:, 0], label='dC_3x2pt_2D_flattened by hand')
+
     if FM_cfg['derivatives_BNT_transform']:
 
         assert covariance_cfg['cov_BNT_transform'], 'you should BNT transform the covariance as well'
@@ -187,6 +241,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_LL_4D_v1, dC_WA_4D_v1, dC_GG_4D_v1, dC_3x2pt_6D_v1 = ell_cuts_derivatives(FM_cfg, ell_dict,
                                                                                  dC_LL_4D, dC_WA_4D,
                                                                                  dC_GG_4D, dC_3x2pt_6D)
+    # dC_LL_4D_v1, dC_WA_4D_v1, dC_GG_4D_v1, dC_3x2pt_6D_v1 = dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D
 
     # separate the different 3x2pt contributions
     # ! delicate point, double check
@@ -226,6 +281,38 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_XCfor3x2pt_3D_v1 = dC_4D_to_3D(dC_XCfor3x2pt_4D_v1, nbl_3x2pt, zpairs_cross, nparams_tot, ind_cross)
     dC_GGfor3x2pt_3D_v1 = dC_4D_to_3D(dC_GGfor3x2pt_4D_v1, nbl_3x2pt, zpairs_auto, nparams_tot, ind_auto)
 
+    # ! Test: flatten, remove ell idxs, make 2d again
+
+    # flatten
+    # ! incorrect, I am not only taking the triu elements in this way!!
+    dC_LLfor3x2pt_2D = np.reshape(dC_LLfor3x2pt_3D, (nbl_3x2pt * zpairs_auto, nparams_tot))
+    dC_XCfor3x2pt_2D = np.reshape(dC_XCfor3x2pt_3D, (nbl_3x2pt * zpairs_cross, nparams_tot))
+    dC_GGfor3x2pt_2D = np.reshape(dC_GGfor3x2pt_3D, (nbl_3x2pt * zpairs_auto, nparams_tot))
+
+
+    dC_LLfor3x2pt_2D = mm.cl_1D_to_3D
+    dC_LLfor3x2pt_2D = np.reshape(dC_LLfor3x2pt_3D, (nbl_3x2pt * zpairs_auto, nparams_tot))
+    dC_XCfor3x2pt_2D = np.reshape(dC_XCfor3x2pt_3D, (nbl_3x2pt * zpairs_cross, nparams_tot))
+    dC_GGfor3x2pt_2D = np.reshape(dC_GGfor3x2pt_3D, (nbl_3x2pt * zpairs_auto, nparams_tot))
+
+    # get idxs to delete  for each component
+    idxs_to_delete_LLfor3x2pt = get_idxs_to_delete(ell_dict['ell_3x2pt'], ell_dict['ell_cuts_dict']['LL'], True)
+    idxs_to_delete_GLfor3x2pt = get_idxs_to_delete(ell_dict['ell_3x2pt'], ell_dict['ell_cuts_dict']['GL'], False)
+    idxs_to_delete_GGfor3x2pt = get_idxs_to_delete(ell_dict['ell_3x2pt'], ell_dict['ell_cuts_dict']['GG'], True)
+
+    # delete (for the moment set to zero, to plot them)
+    dC_LLfor3x2pt_2D[idxs_to_delete_LLfor3x2pt, :] = 0
+    dC_XCfor3x2pt_2D[idxs_to_delete_GLfor3x2pt, :] = 0
+    dC_GGfor3x2pt_2D[idxs_to_delete_GGfor3x2pt, :] = 0
+
+    pdb.set_trace()
+    # make 3d again
+    for param_idx in range(nparams_tot):
+        dC_LLfor3x2pt_3D[:, :, param_idx] = mm.cl_2D_to_3D_symmetric(dC_LLfor3x2pt_2D[:, param_idx], nbl_3x2pt, zpairs_auto, zbins)
+        dC_XCfor3x2pt_3D[:, :, param_idx] = mm.cl_2D_to_3D_symmetric(dC_XCfor3x2pt_2D[:, param_idx], nbl_3x2pt, zpairs_cross, zbins)
+        dC_GGfor3x2pt_3D[:, :, param_idx] = mm.cl_2D_to_3D_symmetric(dC_GGfor3x2pt_2D[:, param_idx], nbl_3x2pt, zpairs_auto, zbins)
+
+
     # concatenate the flattened components of the 3x2pt datavector
     dC_3x2pt_3D = np.concatenate((dC_LLfor3x2pt_3D, dC_XCfor3x2pt_3D, dC_GGfor3x2pt_3D), axis=1)
     dC_3x2pt_3D_v1 = np.concatenate((dC_LLfor3x2pt_3D_v1, dC_XCfor3x2pt_3D_v1, dC_GGfor3x2pt_3D_v1), axis=1)
@@ -246,7 +333,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         dC_LL_2D[ell_dict['idxs_to_delete_dict']['LL'], :] = 0
         dC_GG_2D[ell_dict['idxs_to_delete_dict']['GG'], :] = 0
         dC_WA_2D[ell_dict['idxs_to_delete_dict']['WA'], :] = 0
-        dC_3x2pt_2D[ell_dict['idxs_to_delete_dict']['3x2pt'], :] = 0
 
         # dC_LL_2D = np.delete(dC_LL_2D, ell_dict['idxs_to_delete_dict']['LL'], axis=0)
         # dC_GG_2D = np.delete(dC_GG_2D, ell_dict['idxs_to_delete_dict']['GG'], axis=0)
@@ -262,25 +348,28 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     # np.testing.assert_array_equal(dC_WA_2D_cut_1, dC_WA_2D)
     # np.testing.assert_allclose(dC_3x2pt_2D_cut_1, dC_3x2pt_2D, rtol=1e-7, atol=0)
 
-    plt.figure()
-    plt.plot(dC_LL_2D_v1[:, 0], label='dC_LL_2D_v1')
-    plt.plot(dC_LL_2D[:, 0], label='dC_LL_2D_cut_2', ls='--')
+    plt.plot(dC_3x2pt_2D_v1[:, 0], label='dC_3x2pt_2D_v1: ell_cuts 3d', ls='--')
+    plt.plot(dC_3x2pt_2D[:, 0], label='dC_3x2pt_2D ell_cuts 1d', ls='--')
+    for idx in ell_dict['idxs_to_delete_dict']['3x2pt']:
+        plt.axvline(x=idx, c='k', alpha=0.2)
     plt.legend()
 
-    plt.figure()
-    plt.plot(dC_GG_2D_v1[:, 0], label='dC_GG_2D_v1')
-    plt.plot(dC_GG_2D[:, 0], label='dC_GG_2D_cut_2', ls='--')
-    plt.legend()
-
-    plt.figure()
-    plt.plot(dC_WA_2D_v1[:, 0], label='dC_WA_2D_v1')
-    plt.plot(dC_WA_2D[:, 0], label='dC_WA_2D_cut_2', ls='--')
-    plt.legend()
-
-    plt.figure()
-    plt.plot(dC_3x2pt_2D_v1[:, 0], label='dC_3x2pt_2D_v1')
-    plt.plot(dC_3x2pt_2D[:, 0], label='dC_3x2pt_2D_cut_2', ls='--')
-    plt.legend()
+    # plt.figure()
+    # plt.plot(dC_GG_2D_v1[:, 0], label='dC_GG_2D_v1')
+    # plt.plot(dC_GG_2D[:, 0], label='dC_GG_2D_cut_2', ls='--')
+    # plt.legend()
+    #
+    # plt.figure()
+    # plt.plot(dC_WA_2D_v1[:, 0], label='dC_WA_2D_v1')
+    # plt.plot(dC_WA_2D[:, 0], label='dC_WA_2D_cut_2', ls='--')
+    # plt.legend()
+    #
+    # plt.figure()
+    # plt.plot(dC_3x2pt_2D_v1[:, 0], label='dC_3x2pt_2D_v1')
+    # plt.plot(dC_3x2pt_2D[:, 0], label='dC_3x2pt_2D_cut_2', ls='--')
+    # for idx in ell_dict['idxs_to_delete_dict']['3x2pt']:
+    #     plt.axvline(x=idx, c='k', alpha=0.2)
+    # plt.legend()
 
     # pdb.set_trace()
     assert 1 > 2

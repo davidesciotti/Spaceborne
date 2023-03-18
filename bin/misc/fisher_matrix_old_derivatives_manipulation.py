@@ -113,7 +113,7 @@ def ell_cuts_derivatives(general_cfg, FM_cfg, ell_dict, dC_LL_4D, dC_WA_4D, dC_G
         dC_WA_4D[:, :, :, param_idx] = cl_cut(dC_WA_4D[:, :, :, param_idx], ell_cuts_LL, ell_dict['ell_WA'])
         dC_GG_4D[:, :, :, param_idx] = cl_cut(dC_GG_4D[:, :, :, param_idx], ell_cuts_GG, ell_dict['ell_GC'])
         dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_ell_cut_3x2pt(
-            dC_3x2pt_6D[:, :, :, :, :, param_idx], ell_cuts_probes_dict, ell_dict)
+            dC_3x2pt_6D[:, :, :, :, :, param_idx], ell_cuts_probes_dict, ell_dict['ell_3x2pt'])
     print('Ell cuts done in {:.2f} seconds'.format(time.perf_counter() - start_time))
 
     return dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D

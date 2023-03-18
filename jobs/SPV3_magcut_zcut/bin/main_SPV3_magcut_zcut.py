@@ -111,7 +111,7 @@ def cl_ell_cut_wrap(ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_
     cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_cuts_dict['WL'], ell_dict['ell_WL'])
     cl_wa_3d = cl_utils.cl_ell_cut(cl_wa_3d, ell_cuts_dict['WL'], ell_dict['ell_WA'])
     cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_cuts_dict['GC'], ell_dict['ell_GC'])
-    cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict)
+    cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt'])
 
     return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
 
@@ -144,10 +144,41 @@ def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum):
     return idxs_to_delete
 
 
-def get_idxs_to_delete_3x2pt(ell_dict):
-    idxs_to_delete_LL = get_idxs_to_delete(ell_dict['ell_XC'], ell_dict['ell_cuts_dict']['LL'], True)
-    idxs_to_delete_GL = get_idxs_to_delete(ell_dict['ell_XC'], ell_dict['ell_cuts_dict']['GL'], False)
-    idxs_to_delete_GG = get_idxs_to_delete(ell_dict['ell_XC'], ell_dict['ell_cuts_dict']['GG'], True)
+def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict):
+    """this tries to implement the indexing for the flattening ell_probe_zpair"""
+
+    idxs_to_delete_3x2pt = []
+    count = 0
+    for ell_idx, ell_val in enumerate(ell_values_3x2pt):
+        for zi in range(zbins):
+            for zj in range(zi, zbins):
+                if ell_val > ell_cuts_dict['LL'][zi, zj]:
+                    idxs_to_delete_3x2pt.append(count)
+                count += 1
+        for zi in range(zbins):
+            for zj in range(zbins):
+                if ell_val > ell_cuts_dict['GL'][zi, zj]:
+                    idxs_to_delete_3x2pt.append(count)
+                count += 1
+        for zi in range(zbins):
+            for zj in range(zi, zbins):
+                if ell_val > ell_cuts_dict['GG'][zi, zj]:
+                    idxs_to_delete_3x2pt.append(count)
+                count += 1
+
+    # check if the array is monotonically increasing
+    assert np.all(np.diff(idxs_to_delete_3x2pt) > 0)
+
+    return list(idxs_to_delete_3x2pt)
+
+
+def get_idxs_to_delete_3x2pt_v0(ell_dict):
+    """this implements the indexing for the flattening probe_ell_zpair"""
+
+    # ! XXX this is wrong. concatenation must be done *before* flattening...
+    idxs_to_delete_LL = get_idxs_to_delete(ell_dict['ell_3x2pt'], ell_dict['ell_cuts_dict']['LL'], True)
+    idxs_to_delete_GL = get_idxs_to_delete(ell_dict['ell_3x2pt'], ell_dict['ell_cuts_dict']['GL'], False)
+    idxs_to_delete_GG = get_idxs_to_delete(ell_dict['ell_3x2pt'], ell_dict['ell_cuts_dict']['GG'], True)
 
     # when concatenating, we need to add the offset from the stacking of the 3 datavectors
     idxs_to_delete_3x2pt = np.concatenate((
@@ -239,8 +270,10 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         'ell_GC': np.copy(ell_WL_nbl32[ell_WL_nbl32 < ell_max_GC]),
         'ell_WA': np.copy(ell_WL_nbl32[(ell_WL_nbl32 > ell_max_GC) & (ell_WL_nbl32 < ell_max_WL)])}
     ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
+    ell_dict['ell_3x2pt'] = np.copy(ell_dict['ell_XC'])
 
-    assert np.all(ell_values < 30) is False, 'ell values must *not* be in log space'
+    for key in ell_dict.keys():
+        assert np.max(ell_dict[key]) > 15, 'ell values must *not* be in log space'
 
     # set corresponding number of ell bins
     nbl_WL = len(ell_dict['ell_WL'])
@@ -351,7 +384,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         'WA': get_idxs_to_delete(ell_dict['ell_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True),
         'GL': get_idxs_to_delete(ell_dict['ell_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False),
         'LG': get_idxs_to_delete(ell_dict['ell_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
-        '3x2pt': get_idxs_to_delete_3x2pt(ell_dict)
+        '3x2pt': get_idxs_to_delete_3x2pt(ell_dict['ell_3x2pt'], ell_cuts_dict)
     }
 
     # ! 3d cl ell cuts (*after* BNT!!)
@@ -428,6 +461,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
     # ! compute Fisher matrix
     if FM_cfg['compute_FM']:
 
+        start_time = time.perf_counter()
         # set the fiducial values in a dictionary and a list
         fiducials_dict = {
             'cosmo': [ISTF_fid.primary['Om_m0'], ISTF_fid.extensions['Om_Lambda0'], ISTF_fid.primary['Om_b0'],
@@ -481,6 +515,10 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
         dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
                                                    der_prefix, is_3x2pt=True)
+
+        print('derivatives reshaped in 4D arrays in {:.2f} seconds'.format(time.perf_counter() - start_time))
+        # TODO save these so they can simply be imported!
+        # mm.save_pickle(, dC_LL_4D)
 
         # free up memory
         del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D

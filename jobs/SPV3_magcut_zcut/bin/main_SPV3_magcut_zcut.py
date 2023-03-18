@@ -47,14 +47,12 @@ start_time = time.perf_counter()
 # TODO update consistency_checks
 # TODO super check that things work with different # of z bins
 
-# TODO invert by nulling the elements of the noise vector with the right indices, then compute covmat in this way and compare the results
-# TODO check the cut in the derivatives
 # TODO reorder all these cutting functions...
-# TODO loop over kmax_list
-# TODO careful! the 3x2pt has ell_XC for all probes, see get_idxs_3x2pt function
 # TODO recompute Sijkl to be safe
-# TODO ell values in linear scale!!!
 # TODO redefine the last delta value
+# TODO check what happens for ell_cuts_LG (instead of GL) = ell_cuts_XC file
+# TODO cut if ell > ell_edge_lower (!!)
+# TODO activate BNT transform (!!)
 
 
 ###############################################################################
@@ -110,9 +108,9 @@ def cl_ell_cut_wrap(ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_
 
     ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc)
 
-    cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_cuts_dict['WL'], ell_dict['ell_WL'])
-    cl_wa_3d = cl_utils.cl_ell_cut(cl_wa_3d, ell_cuts_dict['WL'], ell_dict['ell_WA'])
-    cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_cuts_dict['GC'], ell_dict['ell_GC'])
+    cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_dict['ell_WL'], ell_cuts_dict['WL'])
+    cl_wa_3d = cl_utils.cl_ell_cut(cl_wa_3d, ell_dict['ell_WA'], ell_cuts_dict['WL'])
+    cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_dict['ell_GC'], ell_cuts_dict['GC'])
     cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt'])
 
     return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
@@ -263,8 +261,11 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             'ell_max_WL and ell_max_GC must be either (5000, 3000) or (1500, 750)'
 
         # compute ell and delta ell values in the reference (optimistic) case
-        ell_WL_nbl32, delta_l_WL_nbl32 = ell_utils.compute_ells(general_cfg['nbl_WL_opt'], general_cfg['ell_min'],
-                                                                general_cfg['ell_max_WL_opt'], recipe='ISTF')
+        ell_WL_nbl32, delta_l_WL_nbl32, ell_edges_WL_nbl32 = ell_utils.compute_ells(general_cfg['nbl_WL_opt'],
+                                                                                    general_cfg['ell_min'],
+                                                                                    general_cfg['ell_max_WL_opt'],
+                                                                                    recipe='ISTF',
+                                                                                    output_ell_bin_edges=True)
 
         # perform the cuts
         ell_dict = {
@@ -273,6 +274,16 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             'ell_WA': np.copy(ell_WL_nbl32[(ell_WL_nbl32 > ell_max_GC) & (ell_WL_nbl32 < ell_max_WL)])}
         ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
         ell_dict['ell_3x2pt'] = np.copy(ell_dict['ell_XC'])
+
+        ell_dict = {
+            'ell_edges_WL': np.copy(ell_edges_WL_nbl32[ell_edges_WL_nbl32 < ell_max_WL]),
+            'ell_edges_GC': np.copy(ell_edges_WL_nbl32[ell_edges_WL_nbl32 < ell_max_GC]),
+            'ell_edges_WA': np.copy(
+                ell_edges_WL_nbl32[(ell_edges_WL_nbl32 > ell_max_GC) & (ell_edges_WL_nbl32 < ell_max_WL)])}
+        ell_dict['ell_edges_XC'] = np.copy(ell_dict['ell_edges_GC'])
+        ell_dict['ell_edges_3x2pt'] = np.copy(ell_dict['ell_edges_XC'])
+
+        assert 1 > 2
 
         for key in ell_dict.keys():
             assert np.max(ell_dict[key]) > 15, 'ell values must *not* be in log space'
@@ -466,108 +477,111 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                 mm.test_folder_content(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
 
         # ! compute Fisher matrix
-        if FM_cfg['compute_FM']:
+        if not FM_cfg['compute_FM']:
+            # this guard is just to avoid indenting the whole code below
+            raise KeyboardInterrupt('skipping FM computation, the script will exit now')
 
-            start_time = time.perf_counter()
-            # set the fiducial values in a dictionary and a list
-            fiducials_dict = {
-                'cosmo': [ISTF_fid.primary['Om_m0'], ISTF_fid.extensions['Om_Lambda0'], ISTF_fid.primary['Om_b0'],
-                          ISTF_fid.primary['w_0'], ISTF_fid.primary['w_a'],
-                          ISTF_fid.primary['h_0'], ISTF_fid.primary['n_s'], ISTF_fid.primary['sigma_8']],
-                'IA': np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()]),
-                'galaxy_bias': np.genfromtxt(f'{ng_folder}/{ng_filename}')[:, 2],  # ! it needs to be set in the main!
-                'shear_bias': np.zeros((zbins,)),
-                'dzWL': np.zeros((zbins,)),
-                'dzGC': np.zeros((zbins,)),
-            }
+        start_time = time.perf_counter()
+        # set the fiducial values in a dictionary and a list
+        fiducials_dict = {
+            'cosmo': [ISTF_fid.primary['Om_m0'], ISTF_fid.extensions['Om_Lambda0'], ISTF_fid.primary['Om_b0'],
+                      ISTF_fid.primary['w_0'], ISTF_fid.primary['w_a'],
+                      ISTF_fid.primary['h_0'], ISTF_fid.primary['n_s'], ISTF_fid.primary['sigma_8']],
+            'IA': np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()]),
+            'galaxy_bias': np.genfromtxt(f'{ng_folder}/{ng_filename}')[:, 2],  # ! it needs to be set in the main!
+            'shear_bias': np.zeros((zbins,)),
+            'dzWL': np.zeros((zbins,)),
+            'dzGC': np.zeros((zbins,)),
+        }
 
-            fiducials_3x2pt = np.concatenate(
-                (fiducials_dict['cosmo'], fiducials_dict['IA'], fiducials_dict['galaxy_bias'],
-                 fiducials_dict['shear_bias'], fiducials_dict['dzWL'], fiducials_dict['dzGC']))
+        fiducials_3x2pt = np.concatenate(
+            (fiducials_dict['cosmo'], fiducials_dict['IA'], fiducials_dict['galaxy_bias'],
+             fiducials_dict['shear_bias'], fiducials_dict['dzWL'], fiducials_dict['dzGC']))
 
-            # set parameters' names, as a dict and as a list
-            param_names_dict = FM_cfg['param_names_dict']
-            param_names_3x2pt = FM_cfg['param_names_3x2pt']
+        # set parameters' names, as a dict and as a list
+        param_names_dict = FM_cfg['param_names_dict']
+        param_names_3x2pt = FM_cfg['param_names_3x2pt']
 
-            assert len(fiducials_3x2pt) == len(param_names_3x2pt), \
-                'the fiducial values list and parameter names should have the same length'
+        assert len(fiducials_3x2pt) == len(param_names_3x2pt), \
+            'the fiducial values list and parameter names should have the same length'
 
-            # ! preprocess derivatives
+        # ! preprocess derivatives (or load the alreay preprocessed ones)
+        # import and store them in one big dictionary
+        derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
 
-            # import and store them in one big dictionary
-            derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
+        if FM_cfg['load_preprocess_derivatives']:
+            dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_np_arrays/dC_LL_4D.npy')
+            dC_GG_4D = np.load(f'{derivatives_folder}/reshaped_into_np_arrays/dC_GG_4D.npy')
+            dC_WA_4D = np.load(f'{derivatives_folder}/reshaped_into_np_arrays/dC_WA_4D.npy')
+            dC_3x2pt_6D = np.load(f'{derivatives_folder}/reshaped_into_np_arrays/dC_3x2pt_6D.npy')
 
-            if FM_cfg['load_preprocess_derivatives']:
-                dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_np_arrays/dC_LL_4D.npy')
-                dC_GG_4D = np.load(f'{derivatives_folder}/reshaped_into_np_arrays/dC_GG_4D.npy')
-                dC_WA_4D = np.load(f'{derivatives_folder}/reshaped_into_np_arrays/dC_WA_4D.npy')
-                dC_3x2pt_6D = np.load(f'{derivatives_folder}/reshaped_into_np_arrays/dC_3x2pt_6D.npy')
+        elif not FM_cfg['load_preprocess_derivatives']:
+            der_prefix = FM_cfg['derivatives_prefix']
+            dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
+            # check if dictionary is empty
+            if not dC_dict_1D:
+                raise ValueError(f'No derivatives found in folder {derivatives_folder}')
 
-            elif not FM_cfg['load_preprocess_derivatives']:
-                der_prefix = FM_cfg['derivatives_prefix']
-                dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
-                # check if dictionary is empty
-                if not dC_dict_1D:
-                    raise ValueError(f'No derivatives found in folder {derivatives_folder}')
+            # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
+            dC_dict_LL_3D = {}
+            dC_dict_GG_3D = {}
+            dC_dict_WA_3D = {}
+            dC_dict_3x2pt_5D = {}
+            for key in dC_dict_1D.keys():
+                if 'WLO' in key:
+                    dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
+                elif 'GCO' in key:
+                    dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
+                elif 'WLA' in key:
+                    dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
+                elif '3x2pt' in key:
+                    dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt, zbins)
 
-                # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
-                dC_dict_LL_3D = {}
-                dC_dict_GG_3D = {}
-                dC_dict_WA_3D = {}
-                dC_dict_3x2pt_5D = {}
-                for key in dC_dict_1D.keys():
-                    if 'WLO' in key:
-                        dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
-                    elif 'GCO' in key:
-                        dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
-                    elif 'WLA' in key:
-                        dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
-                    elif '3x2pt' in key:
-                        dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt, zbins)
-
-                # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
-                dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
-                dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
-                dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
-                dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
-                                                           der_prefix, is_3x2pt=True)
-
-                print('derivatives reshaped in 4D arrays in {:.2f} seconds'.format(time.perf_counter() - start_time))
-                # TODO save these so they can simply be imported!
-                np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_LL_4D.npy', dC_LL_4D)
-                np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_GG_4D.npy', dC_GG_4D)
-                np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_WA_4D.npy', dC_WA_4D)
-                np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_3x2pt_6D.npy', dC_3x2pt_6D)
-            else:
-                raise ValueError('"load_preprocess_derivatives" can only be True or False')
+            # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
+            dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
+            dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
+            dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
+            dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
+                                                       der_prefix, is_3x2pt=True)
 
             # free up memory
             del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
             gc.collect()
 
-            # store the derivatives arrays in a dictionary
-            deriv_dict = {'dC_LL_4D': dC_LL_4D,
-                          'dC_WA_4D': dC_WA_4D,
-                          'dC_GG_4D': dC_GG_4D,
-                          'dC_3x2pt_6D': dC_3x2pt_6D}
+            print('derivatives reshaped in 4D arrays in {:.2f} seconds'.format(time.perf_counter() - start_time))
 
-            # ! compute and save fisher matrix
-            FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict,
-                                          BNT_matrix)
-            FM_dict['param_names_dict'] = param_names_dict
-            FM_dict['fiducial_values_dict'] = fiducials_dict
+            # save these so they can simply be imported!
+            np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_LL_4D.npy', dC_LL_4D)
+            np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_GG_4D.npy', dC_GG_4D)
+            np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_WA_4D.npy', dC_WA_4D)
+            np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_3x2pt_6D.npy', dC_3x2pt_6D)
 
-            fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']))
-            FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'],
-                             **variable_specs)
+        else:
+            raise ValueError('"load_preprocess_derivatives" can only be True or False')
 
-            del cov_dict
-            gc.collect()
+        # store the derivatives arrays in a dictionary
+        deriv_dict = {'dC_LL_4D': dC_LL_4D,
+                      'dC_WA_4D': dC_WA_4D,
+                      'dC_GG_4D': dC_GG_4D,
+                      'dC_3x2pt_6D': dC_3x2pt_6D}
 
-            # ! unit test: check that the outputs have not changed
-            if general_cfg['test_against_benchmarks']:
-                fm_benchmark_folder = f'{fm_folder}/benchmarks'
-                mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
+        # ! compute and save fisher matrix
+        FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict,
+                                      BNT_matrix)
+        FM_dict['param_names_dict'] = param_names_dict
+        FM_dict['fiducial_values_dict'] = fiducials_dict
+
+        fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']))
+        FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'],
+                         **variable_specs)
+
+        del cov_dict
+        gc.collect()
+
+        # ! unit test: check that the outputs have not changed
+        if general_cfg['test_against_benchmarks']:
+            fm_benchmark_folder = f'{fm_folder}/benchmarks'
+            mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
 
 """
 # ! save cls and responses:
@@ -607,5 +621,3 @@ for cl_or_rl in ['cl', 'rl']:
                 np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])
 
 """
-
-print('done')

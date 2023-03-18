@@ -187,7 +187,7 @@ FM_cfg = {
     'param_names_3x2pt': param_names_3x2pt,
     'nparams_tot': len(param_names_3x2pt),  # total (cosmo + nuisance) number of parameters
 
-    'load_preprocess_derivatives': False,
+    'load_preprocess_derivatives': True,
     'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_False/' +
                           'ML{magcut_lens:03d}ZL{zcut_lens:02d}MS{magcut_source:03d}ZS{zcut_source:02d}',
     'derivatives_filename': 'BNT_dDVd{param:s}-{probe:s}-{specs:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'

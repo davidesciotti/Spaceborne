@@ -114,12 +114,12 @@ for ML, ZL, MS, ZS in zip(ML_list, ZL_list, MS_list, ZS_list):
                           f'output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}/ell_cuts_True'
         FM_noEllcuts_path = FM_Ellcuts_path.replace('ell_cuts_True', 'ell_cuts_False')
 
-        # FM_filename = f'FM_zbins{EP_or_ED}{zbins:02d}-ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}' \
-        #               f'_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}.pickle'
-        FM_filename = f'FM_zbins{EP_or_ED}{zbins:02d}-ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}.pickle'
+        FM_ellcuts_filename = f'FM_zbins{EP_or_ED}{zbins:02d}-ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}' \
+                      f'_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}.pickle'
+        FM_noellcuts_filename = f'FM_zbins{EP_or_ED}{zbins:02d}-ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}.pickle'
 
-        FM_Ellcuts_dict = mm.load_pickle(f'{FM_Ellcuts_path}/{FM_filename}')
-        FM_noEllcuts_dict = mm.load_pickle(f'{FM_noEllcuts_path}/{FM_filename}')
+        FM_Ellcuts_dict = mm.load_pickle(f'{FM_Ellcuts_path}/{FM_ellcuts_filename}')
+        FM_noEllcuts_dict = mm.load_pickle(f'{FM_noEllcuts_path}/{FM_noellcuts_filename}')
 
         FM_GS_kcuts_vinc = np.genfromtxt(
             '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022'
@@ -130,24 +130,31 @@ for ML, ZL, MS, ZS in zip(ML_list, ZL_list, MS_list, ZS_list):
         # brutal cut of last 13 dz params
         FM_GS_kcuts_vinc = FM_GS_kcuts_vinc[:-zbins, :-zbins]
 
-        # remove 'param_names_' from the keys
-        FM_noEllcuts_dict['param_names_dict'] = {key.replace('param_names_', ''): value for key, value in
-                                                 FM_noEllcuts_dict['param_names_dict'].items()}
-        FM_Ellcuts_dict['param_names_dict'] = {key.replace('param_names_', ''): value for key, value in
-                                               FM_Ellcuts_dict['param_names_dict'].items()}
-        FM_noEllcuts_dict['fiducial_values_dict'] = {key.replace('fid_', ''): value for key, value in
-                                                     FM_noEllcuts_dict['fiducial_values_dict'].items()}
-        FM_Ellcuts_dict['fiducial_values_dict'] = {key.replace('fid_', ''): value for key, value in
-                                                   FM_Ellcuts_dict['fiducial_values_dict'].items()}
+        temp1 = FM_Ellcuts_dict
+        temp2 = FM_noEllcuts_dict
+
+        # # remove 'param_names_' from the keys
+        # FM_noEllcuts_dict['param_names_dict'] = {key.replace('param_names_', ''): value for key, value in
+        #                                          FM_noEllcuts_dict['param_names_dict'].items()}
+        # FM_Ellcuts_dict['param_names_dict'] = {key.replace('param_names_', ''): value for key, value in
+        #                                        FM_Ellcuts_dict['param_names_dict'].items()}
+        # FM_noEllcuts_dict['fiducial_values_dict'] = {key.replace('fid_', ''): value for key, value in
+        #                                              FM_noEllcuts_dict['fiducial_values_dict'].items()}
+        # FM_Ellcuts_dict['fiducial_values_dict'] = {key.replace('fid_', ''): value for key, value in
+        #                                            FM_Ellcuts_dict['fiducial_values_dict'].items()}
 
         # remove 3X2pt key from the dict
-        if '3x2pt' in FM_noEllcuts_dict['param_names_dict'].keys():
-            FM_noEllcuts_dict['param_names_dict'].pop('3x2pt')
-            FM_noEllcuts_dict['fiducial_values_dict'].pop('3x2pt')
+        # if '3x2pt' in FM_noEllcuts_dict['param_names_dict'].keys():
+        #     FM_noEllcuts_dict['param_names_dict'].pop('3x2pt')
+        #     FM_noEllcuts_dict['fiducial_values_dict'].pop('3x2pt')
+        #
+        # if '3x2pt' in FM_Ellcuts_dict['param_names_dict'].keys():
+        #     print('hello!')
+        #     FM_Ellcuts_dict['param_names_dict'].pop('3x2pt')
+        #     FM_Ellcuts_dict['fiducial_values_dict'].pop('3x2pt')
 
-        if '3x2pt' in FM_Ellcuts_dict['param_names_dict'].keys():
-            FM_Ellcuts_dict['param_names_dict'].pop('3x2pt')
-            FM_Ellcuts_dict['fiducial_values_dict'].pop('3x2pt')
+        assert temp2 == FM_noEllcuts_dict
+        assert temp1 == FM_Ellcuts_dict
 
         # parameter names
         param_names_dict = FM_noEllcuts_dict['param_names_dict']
@@ -229,7 +236,7 @@ for ML, ZL, MS, ZS in zip(ML_list, ZL_list, MS_list, ZS_list):
 
         print('kmax, fom_dict[key_to_compare_B]:', kmax_h_over_Mpc, fom_dict[key_to_compare_B])
 
-        fom_list = [probe, ML, ZL, MS, ZS, kmax_h_over_Mpc, kmax_h_over_Mpc / h, fom_dict[cases[0]],
+        fom_list = [probe, ML, ZL, MS, ZS, kmax_h_over_Mpc, kmax_h_over_Mpc* h, fom_dict[cases[0]],
                     fom_dict[cases[1]],
                     fom_dict[cases[2]], fom_dict[cases[3]], fom_dict[cases[4]]]
         fom_df = fom_df.append(
@@ -279,7 +286,7 @@ def plot_from_dataframe(fom_df, key_1, key_2, key_3, key_4, constant_fom_idx, pl
                                f'ML{ML:03d}_MS{MS:03d}_{filename_suffix}.png')
 
 
-title = '%s (no GCsp), zbins %s%i, BNT transform' \
+title = '%s (no GCsp), zbins %s%i, BNT {BNT_transform}' \
         f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0, zmax = {zmax / 10}' \
         '\nprior on $\\sigma(m) = 5 \\times 10^{-4}$' \
         '\n ${\\rm dzWL, dzGCph}$ fixed' % (probe, EP_or_ED, zbins)
@@ -290,7 +297,7 @@ plot_from_dataframe(fom_df=fom_df.loc[fom_df['ZL'] == 0],
                     constant_fom_idx=0, plot_hlines=True, title=title,
                     save=True, filename_suffix='zmin00')
 
-title = '%s (no GCsp), zbins %s%i, BNT transform ' \
+title = '%s (no GCsp), zbins %s%i, BNT {BNT_transform} ' \
         f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0.2, zmax = {zmax / 10}' \
         '\nprior on $\\sigma(m) = 5 \\times 10^{-4}$' \
         '\n ${\\rm dzWL, dzGCph}$ fixed' % (probe, EP_or_ED, zbins)
@@ -298,9 +305,9 @@ plot_from_dataframe(fom_df=fom_df.loc[fom_df['ZL'] == 2],
                     key_1='FM_GO_Ellcuts', key_2='FM_GS_Ellcuts',
                     key_3='FM_GO_noEllcuts', key_4='FM_GS_noEllcuts',
                     constant_fom_idx=12, plot_hlines=True,
-                    title=title, save=True, filename_suffix='zmin02')
+                    title=title, save=True, filename_suffixf='zmin02')
 
-title = '%s (no GCsp), zbins %s%i, BNT transform ' \
+title = '%s (no GCsp), zbins %s%i, BNT {BNT_transform} ' \
         f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0, zmax = {zmax / 10}' \
         '\nprior on $\\sigma(m) = 5 \\times 10^{-4}$' \
         '\n ${\\rm dzWL, dzGCph}$ fixed' % (probe, EP_or_ED, zbins)

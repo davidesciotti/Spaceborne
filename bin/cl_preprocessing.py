@@ -376,7 +376,7 @@ def get_ell_cuts_indices(ell_values, ell_cuts_2d_array, zbins):
     return ell_idxs_tocut
 
 
-def cl_ell_cut(cl_3D, ell_cuts_matrix, ell_values):
+def cl_ell_cut(cl_3D, ell_values, ell_cuts_matrix):
     """cut (sets to zero) the cl_3D array at the ell values specified in ell_cuts_matrix"""
 
     # TODO call get_ell_cuts_indices function here not to repeat code
@@ -402,7 +402,7 @@ def cl_ell_cut(cl_3D, ell_cuts_matrix, ell_values):
     return cl_3D_ell_cut
 
 
-def cl_ell_cut_v2(cl_3D, ell_cuts_matrix, ell_values):
+def cl_ell_cut_v2(cl_3D, ell_values, ell_cuts_matrix):
     """cut (sets to zero) the cl_3D array at the ell values specified in ell_cuts_matrix.
     Smarter version, without for loops - only marginally faster"""
 
@@ -435,10 +435,10 @@ def cl_ell_cut_3x2pt(cl_3x2pt_5D, ell_cuts_dict, ell_values_3x2pt):
     cl_GLfor3x2pt_3D = cl_3x2pt_5D[:, 1, 0, :, :]
     cl_GGfor3x2pt_3D = cl_3x2pt_5D[:, 1, 1, :, :]
 
-    cl_LLfor3x2pt_3D_ell_cut = cl_ell_cut(cl_LLfor3x2pt_3D, ell_cuts_dict['LL'], ell_values_3x2pt)
-    cl_LGfor3x2pt_3D_ell_cut = cl_ell_cut(cl_LGfor3x2pt_3D, ell_cuts_dict['LG'], ell_values_3x2pt)
-    cl_GLfor3x2pt_3D_ell_cut = cl_ell_cut(cl_GLfor3x2pt_3D, ell_cuts_dict['GL'], ell_values_3x2pt)
-    cl_GGfor3x2pt_3D_ell_cut = cl_ell_cut(cl_GGfor3x2pt_3D, ell_cuts_dict['GG'], ell_values_3x2pt)
+    cl_LLfor3x2pt_3D_ell_cut = cl_ell_cut(cl_LLfor3x2pt_3D, ell_values_3x2pt, ell_cuts_dict['LL'])
+    cl_LGfor3x2pt_3D_ell_cut = cl_ell_cut(cl_LGfor3x2pt_3D, ell_values_3x2pt, ell_cuts_dict['LG'])
+    cl_GLfor3x2pt_3D_ell_cut = cl_ell_cut(cl_GLfor3x2pt_3D, ell_values_3x2pt, ell_cuts_dict['GL'])
+    cl_GGfor3x2pt_3D_ell_cut = cl_ell_cut(cl_GGfor3x2pt_3D, ell_values_3x2pt, ell_cuts_dict['GG'])
 
     cl_3x2pt_5D_ell_cut = np.zeros(cl_3x2pt_5D.shape)
     cl_3x2pt_5D_ell_cut[:, 0, 0, :, :] = cl_LLfor3x2pt_3D_ell_cut

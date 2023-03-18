@@ -74,6 +74,8 @@ def load_ell_cuts(kmax_h_over_Mpc=None):
 
     ell_cuts_fldr = general_cfg['ell_cuts_folder']
     ell_cuts_filename = general_cfg['ell_cuts_filename']
+    kmax_h_over_Mpc_ref = general_cfg['kmax_h_over_Mpc_ref']
+
     ell_cuts_LL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}')
     ell_cuts_GG = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}')
     warnings.warn('I am not sure this ell_cut file is for GL, the filename is "XC"')
@@ -193,6 +195,8 @@ def get_idxs_to_delete_3x2pt_v0(ell_values_3x2pt, ell_cuts_dict):
 
 
 # ======================================================================================================================
+# ======================================================================================================================
+# ======================================================================================================================
 
 
 ML_list = general_cfg['magcut_lens_list']
@@ -202,7 +206,6 @@ ZS_list = general_cfg['zcut_source_list']
 
 for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_source'], general_cfg['zcut_source'] in \
         zip(ML_list, ZL_list, MS_list, ZS_list):
-    # TODO re-implement this for loop!
     for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
 
         # without zip, i.e. for all the possible combinations (aka, a nightmare)
@@ -286,11 +289,13 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                       'delta_l_WA': np.copy(delta_l_WL_nbl32[nbl_GC:])}
 
         # set # of nbl in the opt case, import and reshape, then cut the reshaped datavectors in the pes case
-        # TODO this should not be hardcoded! if so, it should go in the config file...
-        nbl_WL_opt = 32
-        nbl_GC_opt = 29
-        nbl_WA_opt = 3
-        nbl_3x2pt_opt = 29
+        assert (ell_max_WL_opt, ell_max_WL, ell_max_GC, ell_max_XC) == (5000, 5000, 3000, 3000), \
+            'the number of bins defined in the config file is compatible with these ell_max values'
+
+        nbl_WL_opt = general_cfg['nbl_WL_opt']
+        nbl_GC_opt = general_cfg['nbl_GC_opt']
+        nbl_WA_opt = general_cfg['nbl_WA_opt']
+        nbl_3x2pt_opt = general_cfg['nbl_3x2pt_opt']
 
         if ell_max_WL == general_cfg['ell_max_WL_opt']:
             assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
@@ -300,7 +305,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_lens, 'zcut_lens': zcut_lens,
                           'magcut_source': magcut_source, 'zcut_source': zcut_source, 'zmax': zmax,
                           'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_XC': ell_max_XC,
-                          'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt}
+                          'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
+                          'kmax_h_over_Mpc': kmax_h_over_Mpc}
 
         ng_folder = covariance_cfg["ng_folder"]
         ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
@@ -389,7 +395,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
             ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc=kmax_h_over_Mpc)
         # TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance and derivatives level)
-
 
         # store cls and responses in a dictionary
         cl_dict_3D = {

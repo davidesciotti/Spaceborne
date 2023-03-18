@@ -60,13 +60,20 @@ general_cfg = {
     'zbins_list': None,
     'EP_or_ED': 'ED',
     'n_probes': 2,
-    'nbl_WL_opt': 32,  # the case with the largest range, i.e. the reference ell binning from which the cuts are applied
     'which_forecast': which_forecast,
     'use_WA': False,
     'save_cls_3d': False,
     'save_rls_3d': False,
 
-    'ell_cuts': ell_cuts,
+    # the case with the largest range is nbl_WL_opt.. This is the reference ell binning from which the cuts are applied;
+    # in principle, the other binning should be consistent with this one and should not be hardcoded, as long as
+    # lmax=5000, 3000 holds
+    'nbl_WL_opt': 32,
+    'nbl_GC_opt': 29,
+    'nbl_WA_opt': 3,
+    'nbl_3x2pt_opt': 29,
+
+'ell_cuts': ell_cuts,
     'cl_ell_cuts': cl_ell_cuts,
     'ell_cuts_folder': f'{SPV3_folder}/ell_cuts',
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
@@ -178,7 +185,7 @@ FM_cfg = {
     'param_names_3x2pt': param_names_3x2pt,
     'nparams_tot': len(param_names_3x2pt),  # total (cosmo + nuisance) number of parameters
 
-    'load_preprocess_derivatives': True,
+    'load_preprocess_derivatives': False,
     'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_False/' +
                           'ML{magcut_lens:03d}ZL{zcut_lens:02d}MS{magcut_source:03d}ZS{zcut_source:02d}',
     'derivatives_filename': 'BNT_dDVd{param:s}-{probe:s}-{specs:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'

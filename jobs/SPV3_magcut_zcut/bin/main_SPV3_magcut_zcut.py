@@ -67,7 +67,7 @@ Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
 
-def load_ell_cuts(kmax_h_over_Mpc=None):
+def load_ell_cuts(kmax_h_over_Mpc):
     """loads ell_cut valeus, rescales them and load into a dictionary"""
     if kmax_h_over_Mpc is None:
         kmax_h_over_Mpc = general_cfg['kmax_h_over_Mpc_ref']
@@ -97,7 +97,7 @@ def load_ell_cuts(kmax_h_over_Mpc=None):
     return ell_cuts_dict
 
 
-def cl_ell_cut_wrap(ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc=None):
+def cl_ell_cut_wrap(ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc):
     """Wrapper for the ell cuts. Avoids the 'if general_cfg['cl_ell_cuts']' in the main loop
     (i.e., we use extraction)"""
 
@@ -108,7 +108,7 @@ def cl_ell_cut_wrap(ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_
 
     print('Performing the cl ell cuts...')
 
-    ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc=kmax_h_over_Mpc)
+    ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc)
 
     cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_cuts_dict['WL'], ell_dict['ell_WL'])
     cl_wa_3d = cl_utils.cl_ell_cut(cl_wa_3d, ell_cuts_dict['WL'], ell_dict['ell_WA'])
@@ -289,7 +289,10 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                       'delta_l_WA': np.copy(delta_l_WL_nbl32[nbl_GC:])}
 
         # set # of nbl in the opt case, import and reshape, then cut the reshaped datavectors in the pes case
-        assert (ell_max_WL_opt, ell_max_WL, ell_max_GC, ell_max_XC) == (5000, 5000, 3000, 3000), \
+        assert (general_cfg['ell_max_WL_opt'],
+                general_cfg['ell_max_WL'],
+                general_cfg['ell_max_GC'],
+                general_cfg['ell_max_XC']) == (5000, 5000, 3000, 3000), \
             'the number of bins defined in the config file is compatible with these ell_max values'
 
         nbl_WL_opt = general_cfg['nbl_WL_opt']
@@ -378,7 +381,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             rl_3x2pt_5d = rl_3x2pt_5d[:nbl_3x2pt, :, :]
 
         # this is to pass the ll cuts to the covariance module
-        ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc=kmax_h_over_Mpc)
+        ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc)
         ell_dict['ell_cuts_dict'] = ell_cuts_dict  # rename for better readability
 
         # ! try vincenzo's method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
@@ -393,7 +396,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
 
         # ! 3d cl ell cuts (*after* BNT!!)
         cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
-            ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc=kmax_h_over_Mpc)
+            ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc)
         # TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance and derivatives level)
 
         # store cls and responses in a dictionary

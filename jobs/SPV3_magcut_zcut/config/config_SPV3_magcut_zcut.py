@@ -73,14 +73,16 @@ general_cfg = {
     'nbl_WA_opt': 3,
     'nbl_3x2pt_opt': 29,
 
-'ell_cuts': ell_cuts,
+    'ell_cuts': ell_cuts,
     'cl_ell_cuts': cl_ell_cuts,
     'ell_cuts_folder': f'{SPV3_folder}/ell_cuts',
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                          'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'kmax_h_over_Mpc_ref': 1.0,
     # 'kmax_list_1_over_Mpc': np.array((0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 4.00, 5.00, 10.00)),
-    'kmax_h_over_Mpc_list': np.array([0.1675, 0.335, 0.5025, 0.67, 0.8375, 1.005, 1.1725, 1.34, 2.01, 2.68, 3.35, 6.7]),
+    'kmax_h_over_Mpc_list': np.array([0.37313433, 0.74626866, 1.11940299, 1.49253731, 1.86567164,
+                                      2.23880597, 2.6119403, 2.98507463, 4.47761194, 5.97014925,
+                                      7.46268657, 14.92537313]),
 
     'BNT_matrix_path': f'{SPV3_folder}/BNT_matrix',
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',

@@ -110,7 +110,8 @@ def invert_matrix_LU(covariance_matrix):
 
 
 def ell_cuts_derivatives(FM_cfg, ell_dict, dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D):
-    warnings.warn('This function is useless, the cut must be implemented at the level of the datavector')
+    raise Exception('this function works, but you need to cut the covariance matrix using the corresponsing indices, '
+                    'ie using the "1-dimensional cutting" approach by Vincenzo')
 
     if not FM_cfg['deriv_ell_cuts']:
         return dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D
@@ -236,12 +237,10 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
             dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_BNT_transform_3x2pt(
                 dC_3x2pt_6D[:, :, :, :, :, param_idx], BNT_matrix)
 
-    # ! ell-cut the derivatives
-    # warnings.warn('restore this, or substitute it with the 1d version')
+    # ! ell-cut the derivatives in 3d
     # dC_LL_4D_v1, dC_WA_4D_v1, dC_GG_4D_v1, dC_3x2pt_6D_v1 = ell_cuts_derivatives(FM_cfg, ell_dict,
     #                                                                              dC_LL_4D, dC_WA_4D,
     #                                                                              dC_GG_4D, dC_3x2pt_6D)
-    # dC_LL_4D_v1, dC_WA_4D_v1, dC_GG_4D_v1, dC_3x2pt_6D_v1 = dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D
 
     # separate the different 3x2pt contributions
     # ! delicate point, double check
@@ -255,9 +254,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_LLfor3x2pt_4D = dC_3x2pt_6D[:, 0, 0, :, :, :]
     dC_XCfor3x2pt_4D = dC_3x2pt_6D[:, probe_A, probe_B, :, :, :]
     dC_GGfor3x2pt_4D = dC_3x2pt_6D[:, 1, 1, :, :, :]
-    # dC_LLfor3x2pt_4D_v1 = dC_3x2pt_6D_v1[:, 0, 0, :, :, :]
-    # dC_XCfor3x2pt_4D_v1 = dC_3x2pt_6D_v1[:, probe_A, probe_B, :, :, :]
-    # dC_GGfor3x2pt_4D_v1 = dC_3x2pt_6D_v1[:, 1, 1, :, :, :]
 
     assert np.array_equal(dC_GGfor3x2pt_4D, dC_GG_4D), "dC_GGfor3x2pt_4D and dC_GG_4D are not equal"
     assert nbl_3x2pt == nbl_GC, 'nbl_3x2pt and nbl_GC are not equal'
@@ -273,48 +269,9 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_LLfor3x2pt_3D = dC_4D_to_3D(dC_LLfor3x2pt_4D, nbl_3x2pt, zpairs_auto, nparams_tot, ind_auto)
     dC_XCfor3x2pt_3D = dC_4D_to_3D(dC_XCfor3x2pt_4D, nbl_3x2pt, zpairs_cross, nparams_tot, ind_cross)
     dC_GGfor3x2pt_3D = dC_4D_to_3D(dC_GGfor3x2pt_4D, nbl_3x2pt, zpairs_auto, nparams_tot, ind_auto)
-    # dC_LL_3D_v1 = dC_4D_to_3D(dC_LL_4D_v1, nbl_WL, zpairs_auto, nparams_tot, ind_auto)
-    # dC_GG_3D_v1 = dC_4D_to_3D(dC_GG_4D_v1, nbl_GC, zpairs_auto, nparams_tot, ind_auto)
-    # dC_WA_3D_v1 = dC_4D_to_3D(dC_WA_4D_v1, nbl_WA, zpairs_auto, nparams_tot, ind_auto)
-    # dC_LLfor3x2pt_3D_v1 = dC_4D_to_3D(dC_LLfor3x2pt_4D_v1, nbl_3x2pt, zpairs_auto, nparams_tot, ind_auto)
-    # dC_XCfor3x2pt_3D_v1 = dC_4D_to_3D(dC_XCfor3x2pt_4D_v1, nbl_3x2pt, zpairs_cross, nparams_tot, ind_cross)
-    # dC_GGfor3x2pt_3D_v1 = dC_4D_to_3D(dC_GGfor3x2pt_4D_v1, nbl_3x2pt, zpairs_auto, nparams_tot, ind_auto)
-
-    # ! Test: flatten, remove ell idxs, make 2d again
-
-    # # flatten
-    # # ! incorrect, I am not only taking the triu elements in this way!!
-    # dC_LLfor3x2pt_2D = np.reshape(dC_LLfor3x2pt_3D, (nbl_3x2pt * zpairs_auto, nparams_tot))
-    # dC_XCfor3x2pt_2D = np.reshape(dC_XCfor3x2pt_3D, (nbl_3x2pt * zpairs_cross, nparams_tot))
-    # dC_GGfor3x2pt_2D = np.reshape(dC_GGfor3x2pt_3D, (nbl_3x2pt * zpairs_auto, nparams_tot))
-    #
-    #
-    # dC_LLfor3x2pt_2D = mm.cl_1D_to_3D
-    # dC_LLfor3x2pt_2D = np.reshape(dC_LLfor3x2pt_3D, (nbl_3x2pt * zpairs_auto, nparams_tot))
-    # dC_XCfor3x2pt_2D = np.reshape(dC_XCfor3x2pt_3D, (nbl_3x2pt * zpairs_cross, nparams_tot))
-    # dC_GGfor3x2pt_2D = np.reshape(dC_GGfor3x2pt_3D, (nbl_3x2pt * zpairs_auto, nparams_tot))
-    #
-    # # get idxs to delete  for each component
-    # idxs_to_delete_LLfor3x2pt = get_idxs_to_delete(ell_dict['ell_3x2pt'], ell_dict['ell_cuts_dict']['LL'], True)
-    # idxs_to_delete_GLfor3x2pt = get_idxs_to_delete(ell_dict['ell_3x2pt'], ell_dict['ell_cuts_dict']['GL'], False)
-    # idxs_to_delete_GGfor3x2pt = get_idxs_to_delete(ell_dict['ell_3x2pt'], ell_dict['ell_cuts_dict']['GG'], True)
-    #
-    # # delete (for the moment set to zero, to plot them)
-    # dC_LLfor3x2pt_2D[idxs_to_delete_LLfor3x2pt, :] = 0
-    # dC_XCfor3x2pt_2D[idxs_to_delete_GLfor3x2pt, :] = 0
-    # dC_GGfor3x2pt_2D[idxs_to_delete_GGfor3x2pt, :] = 0
-    #
-    # pdb.set_trace()
-    # # make 3d again
-    # for param_idx in range(nparams_tot):
-    #     dC_LLfor3x2pt_3D[:, :, param_idx] = mm.cl_2D_to_3D_symmetric(dC_LLfor3x2pt_2D[:, param_idx], nbl_3x2pt, zpairs_auto, zbins)
-    #     dC_XCfor3x2pt_3D[:, :, param_idx] = mm.cl_2D_to_3D_symmetric(dC_XCfor3x2pt_2D[:, param_idx], nbl_3x2pt, zpairs_cross, zbins)
-    #     dC_GGfor3x2pt_3D[:, :, param_idx] = mm.cl_2D_to_3D_symmetric(dC_GGfor3x2pt_2D[:, param_idx], nbl_3x2pt, zpairs_auto, zbins)
-
 
     # concatenate the flattened components of the 3x2pt datavector
     dC_3x2pt_3D = np.concatenate((dC_LLfor3x2pt_3D, dC_XCfor3x2pt_3D, dC_GGfor3x2pt_3D), axis=1)
-    # dC_3x2pt_3D_v1 = np.concatenate((dC_LLfor3x2pt_3D_v1, dC_XCfor3x2pt_3D_v1, dC_GGfor3x2pt_3D_v1), axis=1)
 
     # collapse ell and zpair - ATTENTION: np.reshape, like ndarray.flatten, accepts an 'ordering' parameter, which works
     # in the same way not with the old datavector, which was ordered in a different way...
@@ -322,17 +279,9 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_GG_2D = np.reshape(dC_GG_3D, (nbl_GC * zpairs_auto, nparams_tot), order=which_flattening)
     dC_WA_2D = np.reshape(dC_WA_3D, (nbl_WA * zpairs_auto, nparams_tot), order=which_flattening)
     dC_3x2pt_2D = np.reshape(dC_3x2pt_3D, (nbl_3x2pt * zpairs_3x2pt, nparams_tot), order=which_flattening)
-    # dC_LL_2D_v1 = np.reshape(dC_LL_3D_v1, (nbl_WL * zpairs_auto, nparams_tot), order=which_flattening)
-    # dC_GG_2D_v1 = np.reshape(dC_GG_3D_v1, (nbl_GC * zpairs_auto, nparams_tot), order=which_flattening)
-    # dC_WA_2D_v1 = np.reshape(dC_WA_3D_v1, (nbl_WA * zpairs_auto, nparams_tot), order=which_flattening)
-    # dC_3x2pt_2D_v1 = np.reshape(dC_3x2pt_3D_v1, (nbl_3x2pt * zpairs_3x2pt, nparams_tot), order=which_flattening)
 
     # ! cut the *flattened* derivatives vector
     if FM_cfg['deriv_ell_cuts']:
-        # dC_LL_2D[ell_dict['idxs_to_delete_dict']['LL'], :] = 0
-        # dC_GG_2D[ell_dict['idxs_to_delete_dict']['GG'], :] = 0
-        # dC_WA_2D[ell_dict['idxs_to_delete_dict']['WA'], :] = 0
-
         dC_LL_2D = np.delete(dC_LL_2D, ell_dict['idxs_to_delete_dict']['LL'], axis=0)
         dC_GG_2D = np.delete(dC_GG_2D, ell_dict['idxs_to_delete_dict']['GG'], axis=0)
         dC_WA_2D = np.delete(dC_WA_2D, ell_dict['idxs_to_delete_dict']['WA'], axis=0)
@@ -342,36 +291,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     if dC_WA_2D.shape[0] == 0:
         dC_WA_2D = np.ones((nbl_WA * zpairs_auto, nparams_tot))
 
-    # np.testing.assert_array_equal(dC_LL_2D_cut_1, dC_LL_2D)
-    # np.testing.assert_array_equal(dC_GG_2D_cut_1, dC_GG_2D)
-    # np.testing.assert_array_equal(dC_WA_2D_cut_1, dC_WA_2D)
-    # np.testing.assert_allclose(dC_3x2pt_2D_cut_1, dC_3x2pt_2D, rtol=1e-7, atol=0)
-
-    # plt.plot(dC_3x2pt_2D_v1[:, 0], label='dC_3x2pt_2D_v1: ell_cuts 3d', ls='--')
-    # plt.plot(dC_3x2pt_2D[:, 0], label='dC_3x2pt_2D ell_cuts 1d', ls='--')
-    # for idx in ell_dict['idxs_to_delete_dict']['3x2pt']:
-    #     plt.axvline(x=idx, c='k', alpha=0.2)
-    # plt.legend()
-
-    # plt.figure()
-    # plt.plot(dC_GG_2D_v1[:, 0], label='dC_GG_2D_v1')
-    # plt.plot(dC_GG_2D[:, 0], label='dC_GG_2D_cut_2', ls='--')
-    # plt.legend()
-    #
-    # plt.figure()
-    # plt.plot(dC_WA_2D_v1[:, 0], label='dC_WA_2D_v1')
-    # plt.plot(dC_WA_2D[:, 0], label='dC_WA_2D_cut_2', ls='--')
-    # plt.legend()
-    #
-    # plt.figure()
-    # plt.plot(dC_3x2pt_2D_v1[:, 0], label='dC_3x2pt_2D_v1')
-    # plt.plot(dC_3x2pt_2D[:, 0], label='dC_3x2pt_2D_cut_2', ls='--')
-    # for idx in ell_dict['idxs_to_delete_dict']['3x2pt']:
-    #     plt.axvline(x=idx, c='k', alpha=0.2)
-    # plt.legend()
-
-    # pdb.set_trace()
-    # assert 1 > 2
     ######################### COMPUTE FM #####################################
 
     start = time.perf_counter()

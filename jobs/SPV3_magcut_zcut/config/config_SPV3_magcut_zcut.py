@@ -131,8 +131,9 @@ covariance_cfg = {
     'save_2DCLOE': False,  # outermost loop is on the probes
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/cov_ell_cuts_{cov_ell_cuts:s}',
+    # note: I am not saving the covmats for all different values of kmax_h_over_Mpc, so the name remains the same
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_'
-                    'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_'
+                    'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}'
                     'MS{magcut_source:03d}_ZS{zcut_source:02d}_{ndim:d}D',
     'cov_filename_vincenzo': 'cm-{probe_vinc:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
@@ -174,6 +175,8 @@ FM_cfg = {
     'fiducials_dict': None,  # this needs to be set in the main, since it depends on the n_gal file
     'param_names_3x2pt': param_names_3x2pt,
     'nparams_tot': len(param_names_3x2pt),  # total (cosmo + nuisance) number of parameters
+
+    'load_preprocess_derivatives': True,
     'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_False/' +
                           'ML{magcut_lens:03d}ZL{zcut_lens:02d}MS{magcut_source:03d}ZS{zcut_source:02d}',
     'derivatives_filename': 'BNT_dDVd{param:s}-{probe:s}-{specs:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
@@ -185,9 +188,9 @@ FM_cfg = {
 
     'fm_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}' + '/ell_cuts_{ell_cuts:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'
-                       'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}',
-    # '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
+                       'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}'
+                       '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
     'FM_dict_filename': 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
-                        'MS{magcut_source:03d}-ZS{zcut_source:02d}',
-    # '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
+                        'MS{magcut_source:03d}-ZS{zcut_source:02d}'
+                        '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
 }

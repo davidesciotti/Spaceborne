@@ -172,13 +172,13 @@ def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict):
     return list(idxs_to_delete_3x2pt)
 
 
-def get_idxs_to_delete_3x2pt_v0(ell_dict):
+def get_idxs_to_delete_3x2pt_v0(ell_values_3x2pt, ell_cuts_dict):
     """this implements the indexing for the flattening probe_ell_zpair"""
-
-    # ! XXX this is wrong. concatenation must be done *before* flattening...
-    idxs_to_delete_LL = get_idxs_to_delete(ell_dict['ell_3x2pt'], ell_dict['ell_cuts_dict']['LL'], True)
-    idxs_to_delete_GL = get_idxs_to_delete(ell_dict['ell_3x2pt'], ell_dict['ell_cuts_dict']['GL'], False)
-    idxs_to_delete_GG = get_idxs_to_delete(ell_dict['ell_3x2pt'], ell_dict['ell_cuts_dict']['GG'], True)
+    raise Exception('Concatenation must be done *before* flattening, this function is not compatible with the '
+                    '"ell-block ordering of the covariance matrix"')
+    idxs_to_delete_LL = get_idxs_to_delete(ell_values_3x2pt, ell_cuts_dict['LL'], True)
+    idxs_to_delete_GL = get_idxs_to_delete(ell_values_3x2pt, ell_cuts_dict['GL'], False)
+    idxs_to_delete_GG = get_idxs_to_delete(ell_values_3x2pt, ell_cuts_dict['GG'], True)
 
     # when concatenating, we need to add the offset from the stacking of the 3 datavectors
     idxs_to_delete_3x2pt = np.concatenate((
@@ -484,39 +484,53 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                 'the fiducial values list and parameter names should have the same length'
 
             # ! preprocess derivatives
+
             # import and store them in one big dictionary
             derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
-            der_prefix = FM_cfg['derivatives_prefix']
-            dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
-            # check if dictionary is empty
-            if not dC_dict_1D:
-                raise ValueError(f'No derivatives found in folder {derivatives_folder}')
 
-            # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
-            dC_dict_LL_3D = {}
-            dC_dict_GG_3D = {}
-            dC_dict_WA_3D = {}
-            dC_dict_3x2pt_5D = {}
-            for key in dC_dict_1D.keys():
-                if 'WLO' in key:
-                    dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
-                elif 'GCO' in key:
-                    dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
-                elif 'WLA' in key:
-                    dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
-                elif '3x2pt' in key:
-                    dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt, zbins)
+            if FM_cfg['load_preprocess_derivatives']:
+                dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_np_arrays/dC_LL_4D.npy')
+                dC_GG_4D = np.load(f'{derivatives_folder}/reshaped_into_np_arrays/dC_GG_4D.npy')
+                dC_WA_4D = np.load(f'{derivatives_folder}/reshaped_into_np_arrays/dC_WA_4D.npy')
+                dC_3x2pt_6D = np.load(f'{derivatives_folder}/reshaped_into_np_arrays/dC_3x2pt_6D.npy')
 
-            # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
-            dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
-            dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
-            dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
-            dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
-                                                       der_prefix, is_3x2pt=True)
+            elif not FM_cfg['load_preprocess_derivatives']:
+                der_prefix = FM_cfg['derivatives_prefix']
+                dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
+                # check if dictionary is empty
+                if not dC_dict_1D:
+                    raise ValueError(f'No derivatives found in folder {derivatives_folder}')
 
-            print('derivatives reshaped in 4D arrays in {:.2f} seconds'.format(time.perf_counter() - start_time))
-            # TODO save these so they can simply be imported!
-            # mm.save_pickle(, dC_LL_4D)
+                # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
+                dC_dict_LL_3D = {}
+                dC_dict_GG_3D = {}
+                dC_dict_WA_3D = {}
+                dC_dict_3x2pt_5D = {}
+                for key in dC_dict_1D.keys():
+                    if 'WLO' in key:
+                        dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
+                    elif 'GCO' in key:
+                        dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
+                    elif 'WLA' in key:
+                        dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
+                    elif '3x2pt' in key:
+                        dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt, zbins)
+
+                # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
+                dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
+                dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
+                dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
+                dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
+                                                           der_prefix, is_3x2pt=True)
+
+                print('derivatives reshaped in 4D arrays in {:.2f} seconds'.format(time.perf_counter() - start_time))
+                # TODO save these so they can simply be imported!
+                np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_LL_4D.npy', dC_LL_4D)
+                np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_GG_4D.npy', dC_GG_4D)
+                np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_WA_4D.npy', dC_WA_4D)
+                np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_3x2pt_6D.npy', dC_3x2pt_6D)
+            else:
+                raise ValueError('"load_preprocess_derivatives" can only be True or False')
 
             # free up memory
             del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D

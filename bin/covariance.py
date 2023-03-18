@@ -549,6 +549,8 @@ def cov_ell_cut(cov_6d, ell_cuts_idxs_AB, ell_cuts_idxs_CD, zbins):
 
 def save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs):
     # TODO skip the computation and saving if the file already exists
+    if not covariance_cfg['save_cov']:
+        return
 
     ell_max_WL = variable_specs['ell_max_WL']
     ell_max_GC = variable_specs['ell_max_GC']

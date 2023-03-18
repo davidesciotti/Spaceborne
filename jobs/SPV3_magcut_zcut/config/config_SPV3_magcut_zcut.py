@@ -94,6 +94,8 @@ general_cfg = {
     'zcut_source': None,
     'zcut_lens': None,
     'flagship_version': flagship_version,
+
+    'test_against_benchmarks': False,
 }
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
@@ -123,6 +125,7 @@ covariance_cfg = {
     'compute_covmat': True,
     'compute_cov_6D': True,  # or 10D for the 3x2pt
     'cov_file_format': 'npz',  # or npy
+    'save_cov': False,
     'save_cov_2D': True,
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt
@@ -131,10 +134,9 @@ covariance_cfg = {
     'save_2DCLOE': False,  # outermost loop is on the probes
     'save_cov_dat': False,  # this is the format used by Vincenzo
     'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/cov_ell_cuts_{cov_ell_cuts:s}',
-    # note: I am not saving the covmats for all different values of kmax_h_over_Mpc, so the name remains the same
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_'
-                    'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}'
-                    'MS{magcut_source:03d}_ZS{zcut_source:02d}_{ndim:d}D',
+                    'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}'
+                    '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}_{ndim:d}D',
     'cov_filename_vincenzo': 'cm-{probe_vinc:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
 }

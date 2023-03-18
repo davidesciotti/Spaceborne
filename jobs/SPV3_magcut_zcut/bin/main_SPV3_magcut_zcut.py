@@ -453,8 +453,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                                                              **variable_specs)
             covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
 
-            cov_benchmark_folder = f'{cov_folder}/benchmarks'
-            mm.test_folder_content(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
+            if general_cfg['test_against_benchmarks']:
+                cov_benchmark_folder = f'{cov_folder}/benchmarks'
+                mm.test_folder_content(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
 
         # ! compute Fisher matrix
         if FM_cfg['compute_FM']:
@@ -556,8 +557,9 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             gc.collect()
 
             # ! unit test: check that the outputs have not changed
-            fm_benchmark_folder = f'{fm_folder}/benchmarks'
-            mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
+            if general_cfg['test_against_benchmarks']:
+                fm_benchmark_folder = f'{fm_folder}/benchmarks'
+                mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
 
 """
 # ! save cls and responses:

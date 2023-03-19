@@ -126,6 +126,8 @@ fom_df = pd.DataFrame()
 for ML, ZL, MS, ZS in zip(ML_list, ZL_list, MS_list, ZS_list):
     k_max_counter = 0
     for kmax_h_over_Mpc in cfg.general_cfg['kmax_h_over_Mpc_list']:
+        # for which_cuts in ['Francis', 'Vincenzo']:
+        #     for BNT_transform in (True, False):
 
         assert params_tofix_dict['cosmo'] is False and params_tofix_dict['IA'] is False and \
                params_tofix_dict['galbias'] is False and params_tofix_dict['shearbias'] is False and \
@@ -142,6 +144,8 @@ for ML, ZL, MS, ZS in zip(ML_list, ZL_list, MS_list, ZS_list):
             lmax = 5000
             nbl = 32
 
+        FM_Ellcuts_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
+                          f'output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}/ell_cuts_True{ell_cuts_subfolder}'
         FM_Ellcuts_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
                           f'output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}/ell_cuts_True{ell_cuts_subfolder}'
         FM_noEllcuts_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
@@ -285,11 +289,31 @@ plot_from_dataframe(fom_df=fom_df_zmin00,
                     constant_fom_idx=0, plot_hlines=True, title=title,
                     save=True, filename_suffix='zmin00')
 
+ellmax3000_TeX = '$\\ell_{\\rm max} = 3000 \\; \\forall z_i, z_j$'
+plt.figure(figsize=(12, 10))
+plt.title(title)
+plt.plot(fom_df['kmax_1_over_Mpc'], fom_df[FM_GO_Ellcuts], label='FoM G', marker='o', c='tab:blue')
+plt.plot(fom_df['kmax_1_over_Mpc'], fom_df[key_2], label='FoM GS', marker='o', c='tab:orange')
+plt.axhline(fom_df[key_3][constant_fom_idx], label=f'FoM G, {ellmax3000_TeX}', ls='--', color='tab:blue')
+plt.axhline(fom_df[key_4][constant_fom_idx], label=f'FoM GS, {ellmax3000_TeX}', ls='--', color='tab:orange')
+plt.xlabel("$k_{\\rm max}[1/Mpc]$")
+plt.ylabel("FoM")
+plt.legend()
+plt.grid()
+plt.show()
+plt.tight_layout()
+
+if save:
+    plt.savefig(job_path / f'output/Flagship_{flagship_version}/plots/'
+                           f'FoM_vs_kmax_{probe}_zbins{EP_or_ED}{zbins:02}'
+                           f'ML{ML:03d}_MS{MS:03d}_{filename_suffix}.png')
+
 # GO vs GS as a function of the ell cut
 # plt.figure()
 # plt.plot(fom_df['kmax_h_over_Mpc'], (fom_df['FM_GS_Ellcuts']/fom_df['FM_GO_Ellcuts'] - 1)*100)
 # plt.xlabel("$k_{\\rm max}[1/Mpc]$")
 # plt.ylabel("FM_GS/FM_GO - 1 [%]")
+
 
 # title = '%s (no GCsp), zbins %s%i, BNT {BNT_transform}' \
 #         f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0.2, zmax = {zmax / 10}' \

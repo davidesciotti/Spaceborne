@@ -74,7 +74,7 @@ general_cfg = {
     'nbl_3x2pt_opt': 29,
 
     'ell_cuts': ell_cuts,
-    'which_cuts': 'Vincenzo',
+    'which_cuts': 'Francis',
     'center_or_min': 'min',  # cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
     'cl_ell_cuts': cl_ell_cuts,
     'ell_cuts_folder': f'{SPV3_folder}/ell_cuts',

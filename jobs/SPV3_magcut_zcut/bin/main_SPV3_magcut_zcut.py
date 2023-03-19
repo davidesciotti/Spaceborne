@@ -18,7 +18,7 @@ job_name = job_path.parts[-1]
 # general libraries
 sys.path.append(f'{project_path.parent}/common_data/common_lib')
 import my_module as mm
-import cosmo_lib as csmlib
+import cosmo_lib as cosmo_lib
 
 # general configurations
 sys.path.append(f'{project_path.parent}/common_data/common_config')
@@ -71,27 +71,51 @@ def load_ell_cuts(kmax_h_over_Mpc):
     if kmax_h_over_Mpc is None:
         kmax_h_over_Mpc = general_cfg['kmax_h_over_Mpc_ref']
 
-    ell_cuts_fldr = general_cfg['ell_cuts_folder']
-    ell_cuts_filename = general_cfg['ell_cuts_filename']
-    kmax_h_over_Mpc_ref = general_cfg['kmax_h_over_Mpc_ref']
+    if general_cfg['which_cuts'] == 'Francis':
 
-    ell_cuts_LL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}')
-    ell_cuts_GG = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}')
-    warnings.warn('I am not sure this ell_cut file is for GL, the filename is "XC"')
-    ell_cuts_GL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')
-    ell_cuts_LG = ell_cuts_GL.T
+        ell_cuts_fldr = general_cfg['ell_cuts_folder']
+        ell_cuts_filename = general_cfg['ell_cuts_filename']
+        kmax_h_over_Mpc_ref = general_cfg['kmax_h_over_Mpc_ref']
 
-    # ! linearly rescale ell cuts
-    ell_cuts_LL *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
-    ell_cuts_GG *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
-    ell_cuts_GL *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
-    ell_cuts_LG *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
+        ell_cuts_LL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}')
+        ell_cuts_GG = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}')
+        warnings.warn('I am not sure this ell_cut file is for GL, the filename is "XC"')
+        ell_cuts_GL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')
+        ell_cuts_LG = ell_cuts_GL.T
 
-    ell_cuts_dict = {
-        'LL': ell_cuts_LL,
-        'GG': ell_cuts_GG,
-        'GL': ell_cuts_GL,
-        'LG': ell_cuts_LG}
+        # ! linearly rescale ell cuts
+        ell_cuts_LL *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
+        ell_cuts_GG *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
+        ell_cuts_GL *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
+        ell_cuts_LG *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
+
+        ell_cuts_dict = {
+            'LL': ell_cuts_LL,
+            'GG': ell_cuts_GG,
+            'GL': ell_cuts_GL,
+            'LG': ell_cuts_LG}
+
+    elif general_cfg['which_cuts'] == 'Vincenzo':
+
+        h = 0.67
+        ell_cuts_array = np.zeros((zbins, zbins))
+        for zi, zval_i in enumerate(z_center_values):
+            for zj, zval_j in enumerate(z_center_values):
+                r_of_zi = cosmo_lib.astropy_comoving_distance(zval_i, use_h_units=False)
+                r_of_zj = cosmo_lib.astropy_comoving_distance(zval_j, use_h_units=False)
+                kmax_1_over_Mpc = kmax_h_over_Mpc * h
+                ell_cut_i = kmax_1_over_Mpc * r_of_zi - 1 / 2
+                ell_cut_j = kmax_1_over_Mpc * r_of_zj - 1 / 2
+                ell_cuts_array[zi, zj] = np.min((ell_cut_i, ell_cut_j))
+
+        ell_cuts_dict = {
+            'LL': ell_cuts_array,
+            'GG': ell_cuts_array,
+            'GL': ell_cuts_array,
+            'LG': ell_cuts_array}
+
+    else:
+        raise Exception('which_cuts must be either "Francis" or "Vincenzo"')
 
     return ell_cuts_dict
 
@@ -107,7 +131,6 @@ def cl_ell_cut_wrap(ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_
 
     print('Performing the cl ell cuts...')
 
-    ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc)
 
     cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_dict['ell_WL'], ell_cuts_dict['WL'])
     cl_wa_3d = cl_utils.cl_ell_cut(cl_wa_3d, ell_dict['ell_WA'], ell_cuts_dict['WL'])
@@ -324,6 +347,8 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
 
         ng_folder = covariance_cfg["ng_folder"]
         ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
+        covariance_cfg['ng'] = np.genfromtxt(f'{ng_folder}/'f'{ng_filename}')[:, 1]
+        z_center_values = np.genfromtxt(f'{ng_folder}/'f'{ng_filename}')[:, 0]
 
         BNT_matrix_filename = general_cfg["BNT_matrix_filename"].format(**variable_specs)
         BNT_matrix = np.load(f'{general_cfg["BNT_matrix_path"]}/{BNT_matrix_filename}')
@@ -470,7 +495,6 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
             # ! compute covariance matrix
             # TODO: if already existing, don't compute the covmat, like done above for Sijkl
             # the ng values are in the second column, for these input files 👇
-            covariance_cfg['ng'] = np.genfromtxt(f'{ng_folder}/'f'{ng_filename}')[:, 1]
             cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                                 ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix)
 
@@ -578,6 +602,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         FM_dict['fiducial_values_dict'] = fiducials_dict
 
         fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
+                                               which_cuts=general_cfg['which_cuts'],
                                                center_or_min=general_cfg['center_or_min'])
 
         FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'],

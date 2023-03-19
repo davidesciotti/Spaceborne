@@ -108,7 +108,8 @@ if model == 'nonflat':
 # ML_list = [230, 230, 245, 245]
 # ZL_list = [0, 2, 0, 2]
 # MS_list = [245, 245, 245, 245]
-# ZS_list = [0, 0, 0, 2]
+# ZS_list = [0, 0, 0, 2]  # it think this is wrong
+# ZS_list = [0, 2, 0, 2]
 
 # ML_list = [245, 245]
 # ZL_list = [0, 2]
@@ -144,7 +145,7 @@ for ML, ZL, MS, ZS in zip(ML_list, ZL_list, MS_list, ZS_list):
         FM_Ellcuts_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
                           f'output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}/ell_cuts_True{ell_cuts_subfolder}'
         FM_noEllcuts_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
-                          f'output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}/ell_cuts_False'
+                            f'output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}/ell_cuts_False'
 
         FM_ellcuts_filename = f'FM_zbins{EP_or_ED}{zbins:02d}-ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}' \
                               f'_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}.pickle'
@@ -273,10 +274,10 @@ fom_df_zmin02 = fom_df.loc[fom_df['ZL'] == 2]
 
 ML = 245
 MS = 245
-title = '%s (no GCsp), zbins %s%i, BNT {BNT_transform}' \
+title = f'{probe} (no GCsp), zbins {EP_or_ED}{zbins}, BNT {BNT_transform}' \
         f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0, zmax = {zmax / 10}' \
         '\nprior on $\\sigma(m) = 5 \\times 10^{-4}$' \
-        '\n ${\\rm dzWL, dzGCph}$ fixed' % (probe, EP_or_ED, zbins)
+        '\n ${\\rm dzWL, dzGCph}$ fixed'
 
 plot_from_dataframe(fom_df=fom_df_zmin00,
                     key_1='FM_GO_Ellcuts', key_2='FM_GS_Ellcuts',
@@ -285,10 +286,10 @@ plot_from_dataframe(fom_df=fom_df_zmin00,
                     save=True, filename_suffix='zmin00')
 
 # GO vs GS as a function of the ell cut
-plt.figure()
-plt.plot(fom_df['kmax_h_over_Mpc'], (fom_df['FM_GS_Ellcuts']/fom_df['FM_GO_Ellcuts'] - 1)*100)
-plt.xlabel("$k_{\\rm max}[1/Mpc]$")
-plt.ylabel("FM_GS/FM_GO - 1 [%]")
+# plt.figure()
+# plt.plot(fom_df['kmax_h_over_Mpc'], (fom_df['FM_GS_Ellcuts']/fom_df['FM_GO_Ellcuts'] - 1)*100)
+# plt.xlabel("$k_{\\rm max}[1/Mpc]$")
+# plt.ylabel("FM_GS/FM_GO - 1 [%]")
 
 # title = '%s (no GCsp), zbins %s%i, BNT {BNT_transform}' \
 #         f'\nML = {ML / 10}, MS = {MS / 10}, zmin = 0.2, zmax = {zmax / 10}' \

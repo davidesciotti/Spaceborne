@@ -20,8 +20,8 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = False
-deriv_BNT_transform = False
+cov_BNT_transform = True
+deriv_BNT_transform = True
 
 cl_ell_cuts = False
 cov_ell_cuts = True
@@ -74,7 +74,7 @@ general_cfg = {
     'nbl_3x2pt_opt': 29,
 
     'ell_cuts': ell_cuts,
-    'center_or_min': 'center',
+    'center_or_min': 'center',  # cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
     'cl_ell_cuts': cl_ell_cuts,
     'ell_cuts_folder': f'{SPV3_folder}/ell_cuts',
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
@@ -134,8 +134,9 @@ covariance_cfg = {
 
     'compute_covmat': True,
     'compute_cov_6D': True,  # or 10D for the 3x2pt
-    'cov_file_format': 'npz',  # or npy
+
     'save_cov': False,
+    'cov_file_format': 'npz',  # or npy
     'save_cov_2D': True,
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt
@@ -143,6 +144,8 @@ covariance_cfg = {
     'save_cov_SSC': False,
     'save_2DCLOE': False,  # outermost loop is on the probes
     'save_cov_dat': False,  # this is the format used by Vincenzo
+
+    # ! no folders for ell_cut_center or min
     'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/cov_ell_cuts_{cov_ell_cuts:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_'
                     'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}'
@@ -178,6 +181,9 @@ param_names_dict = {
 param_names_3x2pt = param_names_dict['cosmo'] + param_names_dict['IA'] + param_names_dict['galaxy_bias'] + \
                     param_names_dict['shear_bias'] + param_names_dict['dzWL'] + param_names_dict['dzGC']
 
+ell_cuts_subfolder = f'/ell_{general_cfg["center_or_min"]}'
+if not general_cfg['center_or_min']:
+    ell_cuts_subfolder = ''
 FM_cfg = {
     'compute_FM': True,
     'save_FM_txt': True,
@@ -199,7 +205,7 @@ FM_cfg = {
     'deriv_ell_cuts': deriv_ell_cuts,
 
     'fm_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}' +
-                 '/ell_cuts_{ell_cuts:s}_ell_{center_or_min:s}',
+                 '/ell_cuts_{ell_cuts:s}' + ell_cuts_subfolder,
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'
                        'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}'
                        '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',

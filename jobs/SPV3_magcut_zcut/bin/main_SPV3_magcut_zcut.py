@@ -277,12 +277,13 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
         ell_dict['ell_3x2pt'] = np.copy(ell_dict['ell_XC'])
 
-        ell_dict['ell_edges_WL'] = np.copy(ell_edges_WL_nbl32[ell_edges_WL_nbl32 < ell_max_WL])
-        ell_dict['ell_edges_GC'] = np.copy(ell_edges_WL_nbl32[ell_edges_WL_nbl32 < ell_max_GC])
+        # store edges *except last one for dimensional consistency* in the ell_dict
+        ell_dict['ell_edges_WL'] = np.copy(ell_edges_WL_nbl32[ell_edges_WL_nbl32 < ell_max_WL])[:-1]
+        ell_dict['ell_edges_GC'] = np.copy(ell_edges_WL_nbl32[ell_edges_WL_nbl32 < ell_max_GC])[:-1]
         ell_dict['ell_edges_WA'] = np.copy(
-            ell_edges_WL_nbl32[(ell_edges_WL_nbl32 > ell_max_GC) & (ell_edges_WL_nbl32 < ell_max_WL)])
-        ell_dict['ell_edges_XC'] = np.copy(ell_dict['ell_edges_GC'])
-        ell_dict['ell_edges_3x2pt'] = np.copy(ell_dict['ell_edges_XC'])
+            ell_edges_WL_nbl32[(ell_edges_WL_nbl32 > ell_max_GC) & (ell_edges_WL_nbl32 < ell_max_WL)])[:-1]
+        ell_dict['ell_edges_XC'] = np.copy(ell_dict['ell_edges_GC'])[:-1]
+        ell_dict['ell_edges_3x2pt'] = np.copy(ell_dict['ell_edges_XC'])[:-1]
 
         for key in ell_dict.keys():
             assert np.max(ell_dict[key]) > 15, 'ell values must *not* be in log space'
@@ -572,8 +573,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                       'dC_3x2pt_6D': dC_3x2pt_6D}
 
         # ! compute and save fisher matrix
-        FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict,
-                                      BNT_matrix)
+        FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict, BNT_matrix)
         FM_dict['param_names_dict'] = param_names_dict
         FM_dict['fiducial_values_dict'] = fiducials_dict
 
@@ -589,43 +589,45 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
         # ! unit test: check that the outputs have not changed
         if general_cfg['test_against_benchmarks']:
             fm_benchmark_folder = f'{fm_folder}/benchmarks'
-        mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
+            mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
 
-        """
-        # ! save cls and responses:
-        # TODO this should go inside a function too
-        # this is just to set the correct probe names
-        probe_dav_dict = {'WL': 'LL_3D',
-                          'GC': 'GG_3D',
-                          'WA': 'WA_3D',
-                          '3x2pt': '3x2pt_5D'}
-        
-        # just a dict for the output file names
-        clrl_dict = {'cl_dict_3D': cl_dict_3D,
-                     'rl_dict_3D': rl_dict_3D,
-                     'cl_inputname': 'dv',
-                     'rl_inputname': 'rf',
-                     'cl_dict_key': 'C',
-                     'rl_dict_key': 'R'}
-        for cl_or_rl in ['cl', 'rl']:
-            if general_cfg[f'save_{cl_or_rl}s_3d']:
-        
-                for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
-                    # save cl and/or response; not very readable but it works, plus all the cases are in the for loop
-        
-                    filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
-                    filename = general_cfg[f'{cl_or_rl}_filename'].format(
-                        probe=probe_vinc, **variable_specs).replace(".dat", "_3D.npy")
-                    file = clrl_dict[f"{cl_or_rl}_dict_3D"][
-                        f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}']
-                    np.save(f'{filepath}/{filename}', file)
-        
-                    # save ells and deltas
-                    if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
-                        filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/' \
-                                   f'3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
-                        ells_filename = f'ell_{probe_dav}_ellmaxWL{ell_max_WL}'
-                        np.savetxt(f'{filepath}/{ells_filename}.txt', ell_dict[f'ell_{probe_dav}'])
-                        np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])
-        
-        """
+print('Script end')
+
+"""
+# ! save cls and responses:
+# TODO this should go inside a function too
+# this is just to set the correct probe names
+probe_dav_dict = {'WL': 'LL_3D',
+                  'GC': 'GG_3D',
+                  'WA': 'WA_3D',
+                  '3x2pt': '3x2pt_5D'}
+
+# just a dict for the output file names
+clrl_dict = {'cl_dict_3D': cl_dict_3D,
+             'rl_dict_3D': rl_dict_3D,
+             'cl_inputname': 'dv',
+             'rl_inputname': 'rf',
+             'cl_dict_key': 'C',
+             'rl_dict_key': 'R'}
+for cl_or_rl in ['cl', 'rl']:
+    if general_cfg[f'save_{cl_or_rl}s_3d']:
+
+        for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
+            # save cl and/or response; not very readable but it works, plus all the cases are in the for loop
+
+            filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
+            filename = general_cfg[f'{cl_or_rl}_filename'].format(
+                probe=probe_vinc, **variable_specs).replace(".dat", "_3D.npy")
+            file = clrl_dict[f"{cl_or_rl}_dict_3D"][
+                f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}']
+            np.save(f'{filepath}/{filename}', file)
+
+            # save ells and deltas
+            if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
+                filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/' \
+                           f'3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
+                ells_filename = f'ell_{probe_dav}_ellmaxWL{ell_max_WL}'
+                np.savetxt(f'{filepath}/{ells_filename}.txt', ell_dict[f'ell_{probe_dav}'])
+                np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])
+
+"""

@@ -85,9 +85,16 @@ params_tofix_dict = {
     'dzWL': True,
     'dzGC': True,
 }
-BNT_transform = False
+BNT_transform = True
+ell_cuts = True
+center_or_min = 'center'
+
 kmax_1_over_Mpc_filename = np.array((25, 50, 75, 100, 125, 150, 175, 200, 300, 400, 500, 1000), dtype=int)
 # ! end options
+
+ell_cuts_subfolder = f'/ell_{center_or_min}'
+if not ell_cuts:
+    ell_cuts_subfolder = ''
 
 # compute percent diff of the cases chosen - careful of the indices!
 if which_diff == 'normal':
@@ -135,8 +142,9 @@ for ML, ZL, MS, ZS in zip(ML_list, ZL_list, MS_list, ZS_list):
             nbl = 32
 
         FM_Ellcuts_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
-                          f'output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}/ell_cuts_True'
-        FM_noEllcuts_path = FM_Ellcuts_path.replace('ell_cuts_True', 'ell_cuts_False')
+                          f'output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}/ell_cuts_True{ell_cuts_subfolder}'
+        FM_noEllcuts_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
+                          f'output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}/ell_cuts_False'
 
         FM_ellcuts_filename = f'FM_zbins{EP_or_ED}{zbins:02d}-ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}' \
                               f'_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}.pickle'

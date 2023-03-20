@@ -72,7 +72,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     # ell values in linear scale:
     if ell_WL.max() < 15:  # very rudimental check of whether they're in lin or log scale
-        print('looks like the ell values are already in linear scale')
+        print('looks like the ell values are in log scale. Switching to linear scale.')
         l_lin_WL = 10 ** ell_WL
         l_lin_GC = 10 ** ell_GC
         l_lin_WA = 10 ** ell_WA

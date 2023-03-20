@@ -104,7 +104,7 @@ covariance_cfg = {
     'compute_covmat': True,
     'compute_cov_6D': True,
 
-    'save_cov': False,
+    'save_cov': True,
     'cov_file_format': 'npz',  # or npy
     'save_cov_dat': False,  # this is the format used by Vincenzo
 

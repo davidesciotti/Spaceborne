@@ -87,8 +87,6 @@ if covariance_cfg[f'save_cov_GS']:
 if covariance_cfg[f'save_cov_SSC']:
     cases_tosave.append('SSC')
 
-
-
 # some checks
 assert EP_or_ED == 'EP' and zbins == 10, 'ISTF uses 10 equipopulated bins'
 assert covariance_cfg['GL_or_LG'] == 'GL', 'Cij_14may uses GL, also for the probe responses'
@@ -118,9 +116,15 @@ variable_specs = {
     'EP_or_ED': EP_or_ED,
     'triu_tril': triu_tril,
     'row_col_major': row_col_major,
-    'nbl_WA': nbl_WA,
-}
 
+    'ell_max_WL': general_cfg['ell_max_WL'],
+    'ell_max_GC': general_cfg['ell_max_GC'],
+    'ell_max_XC': general_cfg['ell_max_XC'],
+    'nbl_WL': general_cfg['nbl_WL'],
+    'nbl_GC': general_cfg['nbl_GC'],
+    'nbl_WA': nbl_WA,
+    'nbl_3x2pt': general_cfg['nbl_3x2pt'],
+}
 
 # ! import, interpolate and reshape the power spectra and probe responses
 cl_folder = general_cfg['cl_folder'].format(**variable_specs)
@@ -220,91 +224,90 @@ if covariance_cfg['compute_covmat']:
     cov_folder = covariance_cfg["cov_folder"].format(SSC_code=covariance_cfg['SSC_code'], **variable_specs)
     covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
 
-    del cov_dict
-    gc.collect()
-
     if general_cfg['test_against_benchmarks']:
         cov_benchmark_folder = f'{cov_folder}/benchmarks'
         mm.test_folder_content(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
 
 # ! compute Fisher Matrix
-if FM_cfg['compute_FM']:
+if not FM_cfg['compute_FM']:
+    raise KeyboardInterrupt('Fisher matrix computation is set to False; exiting')
 
-    derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
-    dC_dict_2D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
-    # check if dictionary is empty
-    if not dC_dict_2D:
-        raise ValueError(f'No derivatives found in folder {derivatives_folder}')
+derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
+dC_dict_2D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
+# check if dictionary is empty
+if not dC_dict_2D:
+    raise ValueError(f'No derivatives found in folder {derivatives_folder}')
 
-    # interpolate and separate into probe-specific dictionaries, as
-    # ; then reshape from 2D to 3D
-    dC_dict_LL_2D, dC_dict_LL_3D = {}, {}
-    dC_dict_GG_2D, dC_dict_GG_3D = {}, {}
-    dC_dict_GL_2D, dC_dict_GL_3D = {}, {}
-    dC_dict_WA_2D, dC_dict_WA_3D = {}, {}
-    dC_dict_LLfor3x2pt_2D, dC_dict_LLfor3x2pt_3D = {}, {}
+# interpolate and separate into probe-specific dictionaries, as
+# ; then reshape from 2D to 3D
+dC_dict_LL_2D, dC_dict_LL_3D = {}, {}
+dC_dict_GG_2D, dC_dict_GG_3D = {}, {}
+dC_dict_GL_2D, dC_dict_GL_3D = {}, {}
+dC_dict_WA_2D, dC_dict_WA_3D = {}, {}
+dC_dict_LLfor3x2pt_2D, dC_dict_LLfor3x2pt_3D = {}, {}
 
-    for key in dC_dict_2D.keys():
-        if key.endswith(derivatives_suffix):
+for key in dC_dict_2D.keys():
+    if key.endswith(derivatives_suffix):
 
-            if key.startswith(der_prefix.format(probe='LL')):
-                dC_dict_LL_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_WL, nbl_WL)
-                dC_dict_WA_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_WA, nbl_WA)
-                dC_dict_LLfor3x2pt_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_GC, nbl_GC)
-                dC_dict_LL_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_LL_2D[key], nbl_WL, zpairs_auto, zbins)
-                dC_dict_WA_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_WA_2D[key], nbl_WA, zpairs_auto, zbins)
-                dC_dict_LLfor3x2pt_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_LL_2D[key], nbl_GC, zpairs_auto, zbins)
+        if key.startswith(der_prefix.format(probe='LL')):
+            dC_dict_LL_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_WL, nbl_WL)
+            dC_dict_WA_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_WA, nbl_WA)
+            dC_dict_LLfor3x2pt_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_GC, nbl_GC)
+            dC_dict_LL_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_LL_2D[key], nbl_WL, zpairs_auto, zbins)
+            dC_dict_WA_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_WA_2D[key], nbl_WA, zpairs_auto, zbins)
+            dC_dict_LLfor3x2pt_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_LL_2D[key], nbl_GC, zpairs_auto, zbins)
 
-            elif key.startswith(der_prefix.format(probe='GG')):
-                dC_dict_GG_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_GC, nbl_GC)
-                dC_dict_GG_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_GG_2D[key], nbl_GC, zpairs_auto, zbins)
+        elif key.startswith(der_prefix.format(probe='GG')):
+            dC_dict_GG_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_GC, nbl_GC)
+            dC_dict_GG_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_GG_2D[key], nbl_GC, zpairs_auto, zbins)
 
-            elif key.startswith(der_prefix.format(probe=GL_or_LG)):
-                dC_dict_GL_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_cross, ell_GC, nbl_GC)
-                dC_dict_GL_3D[key] = mm.cl_2D_to_3D_asymmetric(dC_dict_GL_2D[key], nbl_GC, zbins, 'row-major')
+        elif key.startswith(der_prefix.format(probe=GL_or_LG)):
+            dC_dict_GL_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_cross, ell_GC, nbl_GC)
+            dC_dict_GL_3D[key] = mm.cl_2D_to_3D_asymmetric(dC_dict_GL_2D[key], nbl_GC, zbins, 'row-major')
 
-    # turn dictionary keys into entries of 4-th array axis
-    # TODO the obs_name must be defined in the config file
-    dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl, zbins,
-                                            der_prefix.format(probe='LL'))
-    dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins,
-                                            der_prefix.format(probe='LL'))
-    dC_LLfor3x2pt_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LLfor3x2pt_3D, param_names_3x2pt, nbl, zbins,
-                                                    der_prefix.format(probe='LL'))
-    dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl, zbins,
-                                            der_prefix.format(probe='GG'))
-    dC_GL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GL_3D, param_names_3x2pt, nbl, zbins,
-                                            der_prefix.format(probe=GL_or_LG))
+# turn dictionary keys into entries of 4-th array axis
+# TODO the obs_name must be defined in the config file
+dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl, zbins,
+                                        der_prefix.format(probe='LL'))
+dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins,
+                                        der_prefix.format(probe='LL'))
+dC_LLfor3x2pt_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LLfor3x2pt_3D, param_names_3x2pt, nbl, zbins,
+                                                der_prefix.format(probe='LL'))
+dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl, zbins,
+                                        der_prefix.format(probe='GG'))
+dC_GL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GL_3D, param_names_3x2pt, nbl, zbins,
+                                        der_prefix.format(probe=GL_or_LG))
 
-    # build 5D array of derivatives for the 3x2pt
-    dC_3x2pt_6D = np.zeros((nbl, n_probes, n_probes, zbins, zbins, nparams_tot))
-    dC_3x2pt_6D[:, 0, 0, :, :, :] = dC_LLfor3x2pt_4D
-    dC_3x2pt_6D[:, 0, 1, :, :, :] = dC_GL_4D.transpose(0, 2, 1, 3)
-    dC_3x2pt_6D[:, 1, 0, :, :, :] = dC_GL_4D
-    dC_3x2pt_6D[:, 1, 1, :, :, :] = dC_GG_4D
+# build 5D array of derivatives for the 3x2pt
+dC_3x2pt_6D = np.zeros((nbl, n_probes, n_probes, zbins, zbins, nparams_tot))
+dC_3x2pt_6D[:, 0, 0, :, :, :] = dC_LLfor3x2pt_4D
+dC_3x2pt_6D[:, 0, 1, :, :, :] = dC_GL_4D.transpose(0, 2, 1, 3)
+dC_3x2pt_6D[:, 1, 0, :, :, :] = dC_GL_4D
+dC_3x2pt_6D[:, 1, 1, :, :, :] = dC_GG_4D
 
-    # store the arrays of derivatives in a dictionary to pass to the Fisher Matrix function
-    deriv_dict = {'dC_LL_4D': dC_LL_4D,
-                  'dC_GG_4D': dC_GG_4D,
-                  'dC_WA_4D': dC_WA_4D,
-                  'dC_3x2pt_6D': dC_3x2pt_6D}
+# store the arrays of derivatives in a dictionary to pass to the Fisher Matrix function
+deriv_dict = {'dC_LL_4D': dC_LL_4D,
+              'dC_GG_4D': dC_GG_4D,
+              'dC_WA_4D': dC_WA_4D,
+              'dC_3x2pt_6D': dC_3x2pt_6D}
 
-    FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
-    FM_dict['param_names_dict'] = param_names_dict
-    FM_dict['fiducial_values_dict'] = fiducials_dict
+FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
+FM_dict['param_names_dict'] = param_names_dict
+FM_dict['fiducial_values_dict'] = fiducials_dict
 
-    # ! save and test
-    fm_folder = FM_cfg["FM_folder"].format(SSC_code=covariance_cfg['SSC_code'])
-    FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, save_txt=FM_cfg['save_FM_txt'], save_dict=FM_cfg['save_FM_dict'],
-                     **variable_specs)
+# free memory, cov_dict is HUGE
+del cov_dict
+gc.collect()
 
-    # ! unit test: check that the outputs have not changed
-    if general_cfg['test_against_benchmarks']:
-        fm_benchmark_folder = f'{fm_folder}/benchmarks'
-        mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
+# ! save and test
+fm_folder = FM_cfg["fm_folder"].format(SSC_code=covariance_cfg['SSC_code'])
+FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, save_txt=FM_cfg['save_FM_txt'], save_dict=FM_cfg['save_FM_dict'],
+                 **variable_specs)
 
-
-
+# ! unit test: check that the outputs have not changed
+if general_cfg['test_against_benchmarks']:
+    fm_benchmark_folder = f'{fm_folder}/benchmarks'
+    mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
 
 # ! plot:
 nparams_toplot = 7
@@ -374,8 +377,6 @@ uncert_array = np.asarray(uncert_array)
 # mm.matshow(diff_FM, title=f'percent difference wrt mean between PySSC and PyCCL FMs {probe}, {EP_or_ED}{zbins:02}')
 
 print('done')
-
-
 
 # ! save cls and responses: THIS MUST BE MOVED TO A DIFFERENT FUNCTION!
 """

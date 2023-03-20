@@ -14,7 +14,7 @@ from matplotlib.cm import get_cmap
 from getdist.gaussian_mixtures import GaussianND
 import pandas as pd
 
-project_path = Path.cwd().parent
+project_path = Path.cwd().parent.parent.parent
 
 sys.path.append(str(project_path.parent / 'common_data'))
 import common_lib.my_module as mm
@@ -37,7 +37,7 @@ markersize = 10
 # ! options
 zbins = 10
 zbins_list = np.array((zbins,), dtype=int)
-probe = 'GC'
+probe = 'WL'
 pes_opt_list = ('opt',)
 EP_or_ED_list = ('EP',)
 which_comparison = 'GO_vs_GS'  # this is just to set the title of the plot
@@ -50,11 +50,11 @@ flagship_version = 2
 check_old_FM = False
 pes_opt = 'opt'
 which_uncertainty = 'marginal'
-fix_IA = False  # whether to remove the rows/cols for the IA nuisance parameters (ie whether to fix them)
-fix_gal_bias = False  # whether to remove the rows/cols for the shear bias nuisance parameters (ie whether to fix them)
-fix_shear_bias = True  # whether to remove the rows/cols for the shear bias nuisance parameters (ie whether to fix them)
-fix_dzWL = True  # whether to remove the rows/cols for the dz nuisance parameters (ie whether to fix them)
-fix_dzGC = True  # whether to remove the rows/cols for the dz nuisance parameters (ie whether to fix them)
+# whether to remove the rows/cols for the given nuisance parameters (ie whether to fix them)
+params_tofix_dict = {
+    'IA': False,
+    'gal_bias': False,
+}
 bar_plot_cosmo = True
 triangle_plot = False
 plot_prior_contours = False
@@ -69,8 +69,8 @@ nbl = 30
 SSC_code = 'PySSC'
 # ! end options
 
-assert fix_IA is False, 'IA parameters should be left free to vary'
-assert fix_gal_bias is False, 'galaxy bias parameters should be left free to vary'
+assert params_tofix_dict['IA'] is False, 'IA parameters should be left free to vary'
+assert params_tofix_dict['gal_bias'] is False, 'galaxy bias parameters should be left free to vary'
 
 uncert_ratio_dict = {}
 uncert_G_dict = {}
@@ -93,27 +93,34 @@ else:
 
 uncert_ratio_dict[probe] = {}
 
+fom_df = pd.DataFrame()
 # import FM dict
 FM_dict_PySSC = mm.load_pickle(
     f'{project_path}/jobs/ISTF/output/{which_cfg}/FM/PySSC/FM_dict_zbins{EP_or_ED}{zbins:02}.pickle')
-_param_names = FM_dict_PySSC['parameters_names']  # this should not change when passed the second time to the function
-_fiducials = FM_dict_PySSC['fiducial_values']  # this should not change when passed the second time to the function
-FM_PySSC_GO = FM_dict_PySSC[f'FM_{probe}_GO']
-FM_PySSC_GS = FM_dict_PySSC[f'FM_{probe}_GS']
-
 FM_PyCCL_dict = mm.load_pickle(
     f'{project_path}/jobs/ISTF/output/{which_cfg}/FM/PyCCL/FM_dict_zbins{EP_or_ED}{zbins:02}.pickle')
+
+param_names_dict = FM_dict_PySSC['param_names_dict']
+fiducial_values_dict = FM_dict_PySSC['fiducial_values_dict']
+
+# shorten names
+FM_PySSC_GO = FM_dict_PySSC[f'FM_{probe}_GO']
+FM_PySSC_GS = FM_dict_PySSC[f'FM_{probe}_GS']
 FM_PyCCL_GO = FM_PyCCL_dict[f'FM_{probe}_GO']
 FM_PyCCL_GS = FM_PyCCL_dict[f'FM_{probe}_GS']
 
 # fix the desired parameters and remove null rows/columns
-FM_PySSC_GO, param_names, fiducials = mm.mask_FM(FM_PySSC_GO, _param_names, _fiducials, n_cosmo_params, fix_IA,
-                                                 fix_gal_bias)
-FM_PySSC_GS, _, _ = mm.mask_FM(FM_PySSC_GS, _param_names, _fiducials, n_cosmo_params, fix_IA, fix_gal_bias)
-wzwa_idx = [param_names.index('wz'), param_names.index('wa')]
+FM_PySSC_GO, param_names, fiducials = mm.mask_FM(FM_PySSC_GO, param_names_dict, fiducial_values_dict, params_tofix_dict,
+                                                 remove_null_rows_cols=True)
+FM_PySSC_GS, _, _ = mm.mask_FM(FM_PySSC_GS, param_names_dict, fiducial_values_dict, params_tofix_dict,
+                               remove_null_rows_cols=True)
 
-FM_PyCCL_GO, _, _ = mm.mask_FM(FM_PyCCL_GO, _param_names, _fiducials, n_cosmo_params, fix_IA, fix_gal_bias)
-FM_PyCCL_GS, _, _ = mm.mask_FM(FM_PyCCL_GS, _param_names, _fiducials, n_cosmo_params, fix_IA, fix_gal_bias)
+FM_PyCCL_GO, _, _ = mm.mask_FM(FM_PyCCL_GO, param_names_dict, fiducial_values_dict, params_tofix_dict,
+                               remove_null_rows_cols=True)
+FM_PyCCL_GS, _, _ = mm.mask_FM(FM_PyCCL_GS, param_names_dict, fiducial_values_dict, params_tofix_dict,
+                               remove_null_rows_cols=True)
+
+wzwa_idx = [param_names.index('wz'), param_names.index('wa')]
 
 # cases should include all the FM, plus percent differences if you want to show them. the ordering is important, it must
 # be the same!
@@ -123,12 +130,12 @@ cases_to_plot = ['FM_PySSC_GO', 'FM_PySSC_GS', 'FM_PyCCL_GS', 'abs(percent_diff_
 
 # compute uncertainties and store them in a dictionary
 uncert_dict = {}
-fom = {}
+fom_dict = {}
 for FM, case in zip(FMs, cases_to_compute):
     uncert_dict[case] = np.asarray(mm.uncertainties_FM(FM, nparams=nparams_toplot, fiducials=fiducials[:nparams_toplot],
                                                        which_uncertainty=which_uncertainty, normalize=True))
-    fom[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_idx)
-    print(f'FoM({probe}, {case}): {fom[case]}')
+    fom_dict[case] = mm.compute_FoM(FM, w0wa_idxs=wzwa_idx)
+    print(f'FoM({probe}, {case}): {fom_dict[case]}')
 
 # add the percent differences and/or rations to the dictionary
 to_compare_A = uncert_dict['FM_PySSC_GS'] - uncert_dict['FM_PySSC_GO']
@@ -156,5 +163,25 @@ title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbin
 plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                     param_names_label=param_names[:nparams_toplot], bar_width=0.12)
 
-diff_FM = diff_funct(FM_PySSC_GS, FM_PyCCL_GS)
-mm.matshow(diff_FM, title=f'percent difference wrt mean between PySSC and PyCCL FMs {probe}, {EP_or_ED}{zbins:02}')
+mm.matshow(FM_PySSC_GS, 'FM_PySSC_GS')
+mm.matshow(FM_PyCCL_GS, 'FM_PyCCL_GS')
+mm.matshow(mm.percent_diff(FM_PyCCL_GS, FM_PySSC_GS), 'diff')
+
+# create list with the quantites you want to keep track of, and add it as row of the df. You will plot outside
+# the for loop simply choosing the entries of the df you want.
+# fom_list = [probe, SSC_code, BNT_transform,
+#             fom_dict[cases[0]], fom_dict[cases[1]],
+#             fom_dict[cases[2]], fom_dict[cases[3]]]
+#
+# fom_df = fom_df.append(pd.DataFrame([fom_list],
+#                                     columns=['probe', 'ML', 'ZL', 'MS', 'ZS',
+#                                              'kmax_h_over_Mpc', 'kmax_1_over_Mpc', 'BNT',
+#                                              'which_cuts',
+#                                              'center_or_min',
+#                                              'FM_GO_noEllcuts',
+#                                              'FM_GO_Ellcuts',
+#                                              'FM_GS_noEllcuts',
+#                                              'FM_GS_Ellcuts']), ignore_index=True)
+#
+# diff_FM = diff_funct(FM_PySSC_GS, FM_PyCCL_GS)
+# mm.matshow(diff_FM, title=f'percent difference wrt mean between PySSC and PyCCL FMs {probe}, {EP_or_ED}{zbins:02}')

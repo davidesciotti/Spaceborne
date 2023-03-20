@@ -74,7 +74,7 @@ general_cfg = {
     'cl_filename': 'Cij{probe:s}-N4TB-GR-eNLA.dat',
     'rl_filename': 'rij{probe:s}corr-istf-alex.dat',
 
-    'test_against_benchmarks': True,
+    'test_against_benchmarks': False,
 }
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
@@ -88,7 +88,7 @@ covariance_cfg = {
     'block_index': 'ell',
     'GL_or_LG': 'GL',
 
-    'SSC_code': 'PySSC',  # PySSC or PyCCL
+    'SSC_code': 'PyCCL',  # PySSC or PyCCL
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which this is wrong
 
@@ -166,8 +166,9 @@ FM_cfg = {
     'save_FM_txt': True,
     'save_FM_dict': True,
 
-    'load_preprocess_derivatives': True,  # to be implemented in the main
-    'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_derivatives_tesi/new_names/',
+    'load_preprocess_derivatives': False,  # to be implemented in the main
+    # ! old thesis derivatives for these files, not da best
+    'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_derivatives_tesi/new_names',
     'derivatives_prefix': 'dCij{probe:s}d',
     'derivatives_suffix': '-N4TB-GR-eNLA',  # I'd like to use this, but instead:
 

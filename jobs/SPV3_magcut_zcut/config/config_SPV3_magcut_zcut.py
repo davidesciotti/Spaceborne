@@ -138,13 +138,14 @@ covariance_cfg = {
 
     'save_cov': False,
     'cov_file_format': 'npz',  # or npy
+    'save_cov_dat': False,  # this is the format used by Vincenzo
+
     'save_cov_2D': True,
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_GS': False,
     'save_cov_SSC': False,
     'save_2DCLOE': False,  # outermost loop is on the probes
-    'save_cov_dat': False,  # this is the format used by Vincenzo
 
     # ! no folders for ell_cut_center or min
     'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/cov_ell_cuts_{cov_ell_cuts:s}',
@@ -170,17 +171,18 @@ Sijkl_cfg = {
 }
 
 # declare the set of parameters under study
-zbins = general_cfg['zbins']
 param_names_dict = {
     'cosmo': ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"],
     'IA': ["Aia", "eIA", "bIA"],
-    'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
-    'shear_bias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
-    'dzWL': [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)],
-    'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, zbins + 1)]
+    'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
+    'shear_bias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
+    'dzWL': [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
+    'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
 }
 param_names_3x2pt = param_names_dict['cosmo'] + param_names_dict['IA'] + param_names_dict['galaxy_bias'] + \
                     param_names_dict['shear_bias'] + param_names_dict['dzWL'] + param_names_dict['dzGC']
+
+# I cannot define the fiducial values here because I need to import the files for the galaxy bias
 
 ell_cuts_subfolder = f'/ell_{general_cfg["center_or_min"]}'
 if not general_cfg['center_or_min']:
@@ -189,13 +191,14 @@ if not general_cfg['center_or_min']:
 
 FM_cfg = {
     'compute_FM': True,
-    'save_FM_txt': True,
-    'save_FM_dict': True,
 
     'param_names_dict': param_names_dict,
     'fiducials_dict': None,  # this needs to be set in the main, since it depends on the n_gal file
     'param_names_3x2pt': param_names_3x2pt,
     'nparams_tot': len(param_names_3x2pt),  # total (cosmo + nuisance) number of parameters
+
+    'save_FM_txt': True,
+    'save_FM_dict': True,
 
     'load_preprocess_derivatives': True,
     'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_False/' +

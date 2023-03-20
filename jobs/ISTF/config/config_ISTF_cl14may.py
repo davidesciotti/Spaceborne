@@ -15,6 +15,7 @@ cfg_name = 'cl14may'
 which_forecast = 'ISTF'
 fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
+
 cl_BNT_transform = False
 cov_BNT_transform = False
 deriv_BNT_transform = False
@@ -75,6 +76,8 @@ covariance_cfg = {
     'ng_folder': None,
     'ng_filename': None,
     'sigma_eps2': 0.3 ** 2,
+
+    'cov_ell_cuts': cov_ell_cuts,
 
     'cov_BNT_transform': cov_BNT_transform,
     'compute_covmat': True,

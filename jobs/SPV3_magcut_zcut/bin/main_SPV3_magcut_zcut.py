@@ -39,7 +39,6 @@ import fisher_matrix as FM_utils
 
 matplotlib.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
-
 start_time = time.perf_counter()
 
 # TODO check that the number of ell bins is the same as in the files
@@ -255,8 +254,7 @@ for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_so
                 triu_tril = covariance_cfg['triu_tril']
                 row_col_major = covariance_cfg['row_col_major']
                 n_probes = general_cfg['n_probes']
-                GL_or_LG = covariance_cfg['GL_or_LG']
-                probe_ordering = [['L', 'L'], [GL_or_LG[0], GL_or_LG[1]], ['G', 'G']]
+
 
                 # some checks
                 assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'

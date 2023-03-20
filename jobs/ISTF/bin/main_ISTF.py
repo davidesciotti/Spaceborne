@@ -18,12 +18,12 @@ job_name = job_path.parts[-1]
 # general libraries
 sys.path.append(f'{project_path.parent}/common_data/common_lib')
 import my_module as mm
-import cosmo_lib as csmlib
+import cosmo_lib as cosmo_lib
 
 # general configurations
 sys.path.append(f'{project_path.parent}/common_data/common_config')
 import mpl_cfg
-import ISTF_fid_params as ISTFfid
+import ISTF_fid_params as ISTF_fid
 
 # project modules
 sys.path.append(f'{project_path}/bin')
@@ -32,7 +32,6 @@ import cl_preprocessing as cl_utils
 import compute_Sijkl as Sijkl_utils
 import covariance as covmat_utils
 import fisher_matrix as FM_utils
-import unit_test as ut
 
 # job configuration and modules
 sys.path.append(f'{project_path}/jobs')
@@ -71,7 +70,15 @@ n_probes = general_cfg['n_probes']
 nbl_WL = general_cfg['nbl_WL']
 nbl_GC = general_cfg['nbl_GC']
 nbl = nbl_WL
-bIA = ISTFfid.IA_free['beta_IA']
+bIA = ISTF_fid.IA_free['beta_IA']
+GL_or_LG = covariance_cfg['GL_or_LG']
+fiducials_dict = FM_cfg['fiducials_dict']
+param_names_dict = FM_cfg['param_names_dict']
+param_names_3x2pt = FM_cfg['param_names_3x2pt']
+nparams_tot = FM_cfg['nparams_tot']
+# these define the derivatives filenames
+der_prefix = FM_cfg['derivatives_prefix']
+derivatives_suffix = FM_cfg['derivatives_suffix']
 
 # which cases to save: GO, GS or GO, GS and SSC
 cases_tosave = ['GO', ]
@@ -80,12 +87,7 @@ if covariance_cfg[f'save_cov_GS']:
 if covariance_cfg[f'save_cov_SSC']:
     cases_tosave.append('SSC')
 
-variable_specs = {
-    'zbins': zbins,
-    'EP_or_ED': EP_or_ED,
-    'triu_tril': triu_tril,
-    'row_col_major': row_col_major,
-}
+
 
 # some checks
 assert EP_or_ED == 'EP' and zbins == 10, 'ISTF uses 10 equipopulated bins'
@@ -110,6 +112,15 @@ covariance_cfg['ind'] = ind
 ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_cfg)
 nbl_WA = ell_dict['ell_WA'].shape[0]
 ell_WL, ell_GC, ell_WA = ell_dict['ell_WL'], ell_dict['ell_GC'], ell_dict['ell_WA']
+
+variable_specs = {
+    'zbins': zbins,
+    'EP_or_ED': EP_or_ED,
+    'triu_tril': triu_tril,
+    'row_col_major': row_col_major,
+    'nbl_WA': nbl_WA,
+}
+
 
 # ! import, interpolate and reshape the power spectra and probe responses
 cl_folder = general_cfg['cl_folder'].format(**variable_specs)
@@ -198,25 +209,26 @@ if covariance_cfg['compute_covmat']:
 
         # transpose and stack, ordering is important here!
         transp_stacked_wf = np.vstack((wil.T, wig.T))
-        sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
+        sijkl = Sijkl_utils.compute_Sijkl(cosmo_lib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
                                           Sijkl_cfg['WF_normalization'])
         np.save(f'{Sijkl_folder}/{Sijkl_filename}', sijkl)
 
     # ! compute covariance matrix
     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
+    # ! save and test against benchmarks
+    cov_folder = covariance_cfg["cov_folder"].format(SSC_code=covariance_cfg['SSC_code'], **variable_specs)
+    covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
+
+    del cov_dict
+    gc.collect()
+
+    if general_cfg['test_against_benchmarks']:
+        cov_benchmark_folder = f'{cov_folder}/benchmarks'
+        mm.test_folder_content(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
 
 # ! compute Fisher Matrix
 if FM_cfg['compute_FM']:
-
-    GL_or_LG = covariance_cfg['GL_or_LG']
-    fiducials_dict = FM_cfg['fiducials_dict']
-    param_names_dict = FM_cfg['param_names_dict']
-    param_names_3x2pt = FM_cfg['param_names_3x2pt']
-    nparams_tot = FM_cfg['nparams_tot']
-    # these define the derivatives filenames
-    der_prefix = FM_cfg['derivatives_prefix']
-    derivatives_suffix = FM_cfg['derivatives_suffix']
 
     derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
     dC_dict_2D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
@@ -281,63 +293,18 @@ if FM_cfg['compute_FM']:
     FM_dict['param_names_dict'] = param_names_dict
     FM_dict['fiducial_values_dict'] = fiducials_dict
 
-# ! save cls and responses:
-"""
-# this is just to set the correct probe names
-probe_dav_dict = {
-    'WL': 'LL_3D',
-    'GC': 'GG_3D',
-    'WA': 'WA_3D',
-    '3x2pt': '3x2pt_5D'}
+    # ! save and test
+    fm_folder = FM_cfg["FM_folder"].format(SSC_code=covariance_cfg['SSC_code'])
+    FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, save_txt=FM_cfg['save_FM_txt'], save_dict=FM_cfg['save_FM_dict'],
+                     **variable_specs)
 
-# just a dict for the output file names
-clrl_dict = {
-    'cl_inputname': 'dv',
-    'rl_inputname': 'rf',
-    'cl_dict_3D': cl_dict_3D,
-    'rl_dict_3D': rl_dict_3D,
-    'cl_dict_key': 'C',
-    'rl_dict_key': 'R',
-}
-for cl_or_rl in ['cl', 'rl']:
-    folder = general_cfg[f'{cl_or_rl}_folder']
-    if general_cfg[f'save_{cl_or_rl}s_3d']:
+    # ! unit test: check that the outputs have not changed
+    if general_cfg['test_against_benchmarks']:
+        fm_benchmark_folder = f'{fm_folder}/benchmarks'
+        mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
 
-        for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
-            # save cl and/or response
-            np.save(f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/'
-                    f'{clrl_dict[f"{cl_or_rl}_inputname"]}-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
-                    clrl_dict[f"{cl_or_rl}_dict_3D"][
-                        f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}'])
 
-            # save ells and deltas
-            if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
-                np.savetxt(
-                    f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
-                    10 ** ell_dict[f'ell_{probe_dav}'])
-                np.savetxt(
-                    f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
-                    delta_dict[f'delta_l_{probe_dav}'])
-"""
-# in this case, the following specs are not variable.
-# Nonetheless, we pass them as kwargs to the function, which is more general
-variable_specs = general_cfg | {'nbl_WA': nbl_WA}
 
-cov_folder = covariance_cfg["cov_folder"].format(SSC_code=covariance_cfg['SSC_code'])
-covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
-
-del cov_dict
-gc.collect()
-
-fm_folder = FM_cfg["FM_folder"].format(SSC_code=covariance_cfg['SSC_code'])
-FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, save_txt=FM_cfg['save_FM_txt'], save_dict=FM_cfg['save_FM_dict'],
-                 **variable_specs)
-
-# ! test:
-cov_benchmark_folder = f'{cov_folder}/benchmarks'
-fm_benchmark_folder = f'{fm_folder}/benchmarks'
-ut.test_cov_FM(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
-ut.test_cov_FM(fm_folder, fm_benchmark_folder, 'txt')
 
 # ! plot:
 nparams_toplot = 7
@@ -380,7 +347,7 @@ uncert_FM_test = mm.uncertainties_FM(FM_test, FM_test.shape[0], fiducials=fiduci
 #
 # silent check against IST:F (which do not exist for GC alone):
 for probe in ['WL', '3x2pt']:
-    uncert_dict['ISTF'] = ISTFfid.forecasts[f'{probe}_opt_w0waCDM_flat']
+    uncert_dict['ISTF'] = ISTF_fid.forecasts[f'{probe}_opt_w0waCDM_flat']
     try:
         assert np.allclose(uncert_dict['ISTF'], uncert_dict[f'FM_{probe}_GO'][:nparams_toplot], atol=0, rtol=5e-2)
     except AssertionError:
@@ -407,3 +374,44 @@ uncert_array = np.asarray(uncert_array)
 # mm.matshow(diff_FM, title=f'percent difference wrt mean between PySSC and PyCCL FMs {probe}, {EP_or_ED}{zbins:02}')
 
 print('done')
+
+
+
+# ! save cls and responses: THIS MUST BE MOVED TO A DIFFERENT FUNCTION!
+"""
+# this is just to set the correct probe names
+probe_dav_dict = {
+    'WL': 'LL_3D',
+    'GC': 'GG_3D',
+    'WA': 'WA_3D',
+    '3x2pt': '3x2pt_5D'}
+
+# just a dict for the output file names
+clrl_dict = {
+    'cl_inputname': 'dv',
+    'rl_inputname': 'rf',
+    'cl_dict_3D': cl_dict_3D,
+    'rl_dict_3D': rl_dict_3D,
+    'cl_dict_key': 'C',
+    'rl_dict_key': 'R',
+}
+for cl_or_rl in ['cl', 'rl']:
+    folder = general_cfg[f'{cl_or_rl}_folder']
+    if general_cfg[f'save_{cl_or_rl}s_3d']:
+
+        for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
+            # save cl and/or response
+            np.save(f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/'
+                    f'{clrl_dict[f"{cl_or_rl}_inputname"]}-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
+                    clrl_dict[f"{cl_or_rl}_dict_3D"][
+                        f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}'])
+
+            # save ells and deltas
+            if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
+                np.savetxt(
+                    f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
+                    10 ** ell_dict[f'ell_{probe_dav}'])
+                np.savetxt(
+                    f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
+                    delta_dict[f'delta_l_{probe_dav}'])
+"""

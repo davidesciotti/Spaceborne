@@ -443,6 +443,7 @@ plt.plot(fom_df_False_Vincenzo_center['kmax_h_over_Mpc'], fom_df_False_Vincenzo_
 
 
 
+plt.axhline(fom_df['FM_GO_noEllcuts'][0], label=f'FoM G, {ellmax3000_TeX}', ls='--', color='k')
 plt.xlabel("$k_{\\rm max}[h/Mpc]$")
 plt.ylabel("FoM")
 plt.title(title)

@@ -229,8 +229,10 @@ ZS_list = general_cfg['zcut_source_list']
 for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_source'], general_cfg['zcut_source'] in \
         zip(ML_list, ZL_list, MS_list, ZS_list):
     for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
-        for general_cfg['which_cuts'] in ['Francis', 'Vincenzo']:
-            for general_cfg['center_or_min'] in ['center', 'min']:
+        # for general_cfg['which_cuts'] in ['Francis', 'Vincenzo']:
+        #     for general_cfg['center_or_min'] in ['center', 'min']:
+        for general_cfg['which_cuts'] in ['Vincenzo', ]:
+            for general_cfg['center_or_min'] in ['min',]:
 
                 # without zip, i.e. for all the possible combinations (aka, a nightmare)
                 # for general_cfg['magcut_lens'] in general_cfg['magcut_lens_list']:

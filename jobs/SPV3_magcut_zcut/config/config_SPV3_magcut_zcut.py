@@ -20,8 +20,8 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = False
-deriv_BNT_transform = False
+cov_BNT_transform = True
+deriv_BNT_transform = True
 
 cl_ell_cuts = False
 cov_ell_cuts = True
@@ -74,17 +74,17 @@ general_cfg = {
     'nbl_3x2pt_opt': 29,
 
     'ell_cuts': ell_cuts,
-    'which_cuts': 'Francis',
+    'which_cuts': 'Vincenzo',
     'center_or_min': 'min',  # cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
     'cl_ell_cuts': cl_ell_cuts,
     'ell_cuts_folder': f'{SPV3_folder}/ell_cuts',
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                          'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'kmax_h_over_Mpc_ref': 1.0,
-    # 'kmax_list_1_over_Mpc': np.array((0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 4.00, 5.00, 10.00)),
+    # 'kmax_list_1_over_Mpc': np.array((0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00)),
     'kmax_h_over_Mpc_list': np.array([0.37313433, 0.74626866, 1.11940299, 1.49253731, 1.86567164,
-                                      2.23880597, 2.6119403, 2.98507463, 4.47761194, 5.97014925,
-                                      7.46268657, 14.92537313]),
+                                      2.23880597, 2.6119403, 2.98507463, 4.47761194,
+                                      7.46268657]),
 
     'BNT_matrix_path': f'{SPV3_folder}/BNT_matrix',
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',

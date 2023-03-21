@@ -139,10 +139,8 @@ for FM, case in zip(FMs, cases_to_compute):
     print(f'FoM({probe}, {case}): {fom_dict[case]}')
 
 # add the percent differences and/or rations to the dictionary
-to_compare_A = uncert_dict['FM_PySSC_GS'] - uncert_dict['FM_GO']
-to_compare_B = uncert_dict['FM_PyCCL_GS'] - uncert_dict['FM_GO']
-# to_compare_A = uncert_dict['FM_PySSC_GS']
-# to_compare_B = uncert_dict['FM_PyCCL_GS']
+to_compare_A = uncert_dict['FM_PySSC_GS']
+to_compare_B = uncert_dict['FM_PyCCL_GS']
 uncert_dict['abs(percent_diff_GS) wrt mean'] = np.abs(diff_funct(to_compare_A, to_compare_B))
 # uncert_dict['percent_diff_GS'] = diff_funct(uncert_dict['FM_PyCCL_GS'], uncert_dict['FM_GO'])
 
@@ -167,11 +165,11 @@ plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, npar
 mm.matshow(FM_PySSC_GS, 'FM_PySSC_GS')
 mm.matshow(FM_PyCCL_GS, 'FM_PyCCL_GS')
 
+# matshow with values on top
 array_to_show = np.abs(mm.percent_diff_mean(FM_PyCCL_GS, FM_PySSC_GS))
-mm.matshow(array_to_show, 'perc diff wrt mean, PyCCL vs PySSC', log=True)
+mm.matshow(array_to_show, 'perc diff wrt mean, FM PyCCL vs PySSC', log=True)
 # Get the Axes object of the plot
 ax = plt.gca()
-
 # Loop over the array and add the numbers as annotations
 for i in range(array_to_show.shape[0]):
     for j in range(array_to_show.shape[1]):

@@ -59,7 +59,7 @@ general_cfg = {
     'nbl_WL': 30,
     'nbl_GC': 30,
     'nbl_3x2pt': 30,
-    'use_WA': True,  # ! xxx
+    'use_WA': False,  # ! xxx
     'save_cls_3d': False,
     'save_rls_3d': False,
 
@@ -102,7 +102,7 @@ covariance_cfg = {
     'cov_ell_cuts': cov_ell_cuts,
 
     'compute_covmat': True,
-    'compute_cov_6D': True,
+    'compute_cov_6D': False,
 
     'save_cov': True,
     'cov_file_format': 'npz',  # or npy

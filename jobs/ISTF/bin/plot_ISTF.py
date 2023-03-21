@@ -88,34 +88,35 @@ if probe == 'GC':
 # compute percent diff of the cases chosen - careful of the indices!
 if which_diff == 'normal':
     diff_funct = mm.percent_diff
-else:
+elif which_diff == 'mean':
     diff_funct = mm.percent_diff_mean
 
 uncert_ratio_dict[probe] = {}
 
 fom_df = pd.DataFrame()
 # import FM dict
-FM_dict_PySSC = mm.load_pickle(
+FM_PySSC_dict = mm.load_pickle(
     f'{project_path}/jobs/ISTF/output/{which_cfg}/FM/PySSC/FM_dict_zbins{EP_or_ED}{zbins:02}.pickle')
 FM_PyCCL_dict = mm.load_pickle(
     f'{project_path}/jobs/ISTF/output/{which_cfg}/FM/PyCCL/FM_dict_zbins{EP_or_ED}{zbins:02}.pickle')
 
-param_names_dict = FM_dict_PySSC['param_names_dict']
-fiducial_values_dict = FM_dict_PySSC['fiducial_values_dict']
+param_names_dict = FM_PySSC_dict['param_names_dict']
+fiducial_values_dict = FM_PySSC_dict['fiducial_values_dict']
 
 # shorten names
-FM_PySSC_GO = FM_dict_PySSC[f'FM_{probe}_GO']
-FM_PySSC_GS = FM_dict_PySSC[f'FM_{probe}_GS']
+FM_PySSC_GO = FM_PySSC_dict[f'FM_{probe}_GO']
+FM_PySSC_GS = FM_PySSC_dict[f'FM_{probe}_GS']
 FM_PyCCL_GO = FM_PyCCL_dict[f'FM_{probe}_GO']
 FM_PyCCL_GS = FM_PyCCL_dict[f'FM_{probe}_GS']
 
+assert np.all(FM_PySSC_GO == FM_PyCCL_GO), 'FM_PySSC_GO and FM_PyCCL_GO should be the same'
+FM_GO = FM_PySSC_GO
+
+
 # fix the desired parameters and remove null rows/columns
-FM_PySSC_GO, param_names, fiducials = mm.mask_FM(FM_PySSC_GO, param_names_dict, fiducial_values_dict, params_tofix_dict,
+FM_GO, param_names, fiducials = mm.mask_FM(FM_GO, param_names_dict, fiducial_values_dict, params_tofix_dict,
                                                  remove_null_rows_cols=True)
 FM_PySSC_GS, _, _ = mm.mask_FM(FM_PySSC_GS, param_names_dict, fiducial_values_dict, params_tofix_dict,
-                               remove_null_rows_cols=True)
-
-FM_PyCCL_GO, _, _ = mm.mask_FM(FM_PyCCL_GO, param_names_dict, fiducial_values_dict, params_tofix_dict,
                                remove_null_rows_cols=True)
 FM_PyCCL_GS, _, _ = mm.mask_FM(FM_PyCCL_GS, param_names_dict, fiducial_values_dict, params_tofix_dict,
                                remove_null_rows_cols=True)
@@ -124,9 +125,9 @@ wzwa_idx = [param_names.index('wz'), param_names.index('wa')]
 
 # cases should include all the FM, plus percent differences if you want to show them. the ordering is important, it must
 # be the same!
-FMs = [FM_PySSC_GO, FM_PyCCL_GO, FM_PySSC_GS, FM_PyCCL_GS]
-cases_to_compute = ['FM_PySSC_GO', 'FM_PyCCL_GO', 'FM_PySSC_GS', 'FM_PyCCL_GS']
-cases_to_plot = ['FM_PySSC_GO', 'FM_PySSC_GS', 'FM_PyCCL_GS', 'abs(percent_diff_GS) wrt mean']
+FMs = [FM_GO, FM_PySSC_GS, FM_PyCCL_GS]
+cases_to_compute = ['FM_GO', 'FM_PySSC_GS', 'FM_PyCCL_GS']
+cases_to_plot = ['FM_GO', 'FM_PySSC_GS', 'FM_PyCCL_GS', 'abs(percent_diff_GS) wrt mean']
 
 # compute uncertainties and store them in a dictionary
 uncert_dict = {}
@@ -138,18 +139,18 @@ for FM, case in zip(FMs, cases_to_compute):
     print(f'FoM({probe}, {case}): {fom_dict[case]}')
 
 # add the percent differences and/or rations to the dictionary
-to_compare_A = uncert_dict['FM_PySSC_GS'] - uncert_dict['FM_PySSC_GO']
-to_compare_B = uncert_dict['FM_PyCCL_GS'] - uncert_dict['FM_PyCCL_GO']
+to_compare_A = uncert_dict['FM_PySSC_GS'] - uncert_dict['FM_GO']
+to_compare_B = uncert_dict['FM_PyCCL_GS'] - uncert_dict['FM_GO']
+# to_compare_A = uncert_dict['FM_PySSC_GS']
+# to_compare_B = uncert_dict['FM_PyCCL_GS']
 uncert_dict['abs(percent_diff_GS) wrt mean'] = np.abs(diff_funct(to_compare_A, to_compare_B))
-# uncert_dict['percent_diff_GS'] = diff_funct(uncert_dict['FM_PyCCL_GS'], uncert_dict['FM_PyCCL_GO'])
+# uncert_dict['percent_diff_GS'] = diff_funct(uncert_dict['FM_PyCCL_GS'], uncert_dict['FM_GO'])
 
-assert np.array_equal(uncert_dict['FM_PySSC_GO'], uncert_dict['FM_PyCCL_GO']), \
-    'the GO uncertainties must be the same, I am only changing the SSC code!'
 
 # silent check against IST:F (which do not exist for GC alone):
 if probe != 'GC':
     uncert_dict['ISTF'] = ISTF_fid.forecasts[f'{probe}_opt_w0waCDM_flat']
-    diff = diff_funct(uncert_dict['ISTF'], uncert_dict['FM_PySSC_GO'])
+    diff = diff_funct(uncert_dict['ISTF'], uncert_dict['FM_GO'])
     assert np.all(np.abs(diff) < 5.0), f'IST:F and G are not consistent! Remember that you are checking against the ' \
                                        f'optimistic case'
 
@@ -165,7 +166,16 @@ plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, npar
 
 mm.matshow(FM_PySSC_GS, 'FM_PySSC_GS')
 mm.matshow(FM_PyCCL_GS, 'FM_PyCCL_GS')
-mm.matshow(mm.percent_diff(FM_PyCCL_GS, FM_PySSC_GS), 'diff')
+
+array_to_show = np.abs(mm.percent_diff_mean(FM_PyCCL_GS, FM_PySSC_GS))
+mm.matshow(array_to_show, 'perc diff wrt mean, PyCCL vs PySSC', log=True)
+# Get the Axes object of the plot
+ax = plt.gca()
+
+# Loop over the array and add the numbers as annotations
+for i in range(array_to_show.shape[0]):
+    for j in range(array_to_show.shape[1]):
+        ax.annotate('{:.0f}'.format(array_to_show[i, j]), xy=(j, i), ha='center', va='center')
 
 # create list with the quantites you want to keep track of, and add it as row of the df. You will plot outside
 # the for loop simply choosing the entries of the df you want.

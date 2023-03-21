@@ -171,6 +171,10 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     print("SS cov. matrices computed in %.2f seconds with PySSC" % (time.perf_counter() - start))
 
     if SSC_code == 'PyCCL':
+        print('Computing GS with PyCCL SSC covariance')
+        assert covariance_cfg['compute_cov_6D'] is False, 'compute_cov_6D must be False when using, because cov_GS_4D' \
+                                                          ' gets overwritten below. Fix this.'
+
         # TODO for now, load the existing files; then, compute the SSC cov properly
         fldr = covariance_cfg["cov_SSC_PyCCL_folder"]
         filename = covariance_cfg["cov_SSC_PyCCL_filename"]

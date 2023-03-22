@@ -12,6 +12,8 @@ from getdist import MCSamples, plots
 from matplotlib import ticker
 from matplotlib.cm import get_cmap
 from getdist.gaussian_mixtures import GaussianND
+from getdist.gaussian_mixtures import GaussianND
+from getdist import plots, MCSamples
 import pandas as pd
 
 project_path = Path.cwd().parent.parent.parent
@@ -37,7 +39,7 @@ markersize = 10
 # ! options
 zbins = 10
 zbins_list = np.array((zbins,), dtype=int)
-probe = 'GC'
+probe = 'WL'
 pes_opt_list = ('opt',)
 EP_or_ED_list = ('EP',)
 which_comparison = 'GO_vs_GS'  # this is just to set the title of the plot
@@ -45,7 +47,7 @@ which_Rl = 'var'
 nparams_chosen = 7
 model = 'flat'
 which_diff = 'mean'
-which_cfg = 'cl15gen'
+which_cfg = 'cl14may'
 flagship_version = 2
 check_old_FM = False
 pes_opt = 'opt'
@@ -112,10 +114,9 @@ FM_PyCCL_GS = FM_PyCCL_dict[f'FM_{probe}_GS']
 assert np.all(FM_PySSC_GO == FM_PyCCL_GO), 'FM_PySSC_GO and FM_PyCCL_GO should be the same'
 FM_GO = FM_PySSC_GO
 
-
 # fix the desired parameters and remove null rows/columns
 FM_GO, param_names, fiducials = mm.mask_FM(FM_GO, param_names_dict, fiducial_values_dict, params_tofix_dict,
-                                                 remove_null_rows_cols=True)
+                                           remove_null_rows_cols=True)
 FM_PySSC_GS, _, _ = mm.mask_FM(FM_PySSC_GS, param_names_dict, fiducial_values_dict, params_tofix_dict,
                                remove_null_rows_cols=True)
 FM_PyCCL_GS, _, _ = mm.mask_FM(FM_PyCCL_GS, param_names_dict, fiducial_values_dict, params_tofix_dict,
@@ -174,6 +175,8 @@ ax = plt.gca()
 for i in range(array_to_show.shape[0]):
     for j in range(array_to_show.shape[1]):
         ax.annotate('{:.0f}'.format(array_to_show[i, j]), xy=(j, i), ha='center', va='center')
+plt.xticks(range(array_to_show.shape[0]), param_names)
+plt.yticks(range(array_to_show.shape[0]), param_names)
 
 # create list with the quantites you want to keep track of, and add it as row of the df. You will plot outside
 # the for loop simply choosing the entries of the df you want.
@@ -193,3 +196,14 @@ for i in range(array_to_show.shape[0]):
 #
 # diff_FM = diff_funct(FM_PySSC_GS, FM_PyCCL_GS)
 # mm.matshow(diff_FM, title=f'percent difference wrt mean between PySSC and PyCCL FMs {probe}, {EP_or_ED}{zbins:02}')
+
+
+# PyCCL_param_cov = np.linalg.inv(FM_PyCCL_GS)
+# PySSC_param_cov = np.linalg.inv(FM_PySSC_GS)
+# mean = fiducials
+# names = param_names
+# labels = param_names
+# gauss_pyssc = GaussianND(mean, PySSC_param_cov, names=names, labels=labels, label='PySSC')
+# gauss_pyccl = GaussianND(mean, PyCCL_param_cov, names=names, labels=labels, label='PyCCL')
+# g = plots.get_subplot_plotter()
+# g.triangle_plot([gauss_pyssc, gauss_pyccl], filled=True)

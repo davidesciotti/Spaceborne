@@ -63,6 +63,8 @@ general_cfg = {
     'save_cls_3d': False,
     'save_rls_3d': False,
 
+    'test_against_benchmarks': False,
+
     'ell_cuts': ell_cuts,
 
     'cl_BNT_transform': cl_BNT_transform,
@@ -86,7 +88,7 @@ covariance_cfg = {
     'block_index': 'ell',
     'GL_or_LG': 'GL',
 
-    'SSC_code': 'PySSC',  # PySSC or PyCCL
+    'SSC_code': 'PyCCL',  # PySSC or PyCCL
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which this is wrong
 
@@ -110,8 +112,8 @@ covariance_cfg = {
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_GS': False,
-    'save_cov_SSC': False,
-    'save_2DCLOE': False,  # outermost loop is on the probes
+    'save_cov_SSC': True,
+    'save_2DCLOE': True,  # outermost loop is on the probes
 
     'cov_folder': str(job_path) + f'/output/{cfg_name}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D.npy',
@@ -137,14 +139,14 @@ Sijkl_cfg = {
 param_names_dict = {
     'cosmo': ["Om", "Ob", "wz", "wa", "h", "ns", "s8"],
     'IA': ["Aia", "eIA", "bIA"],
-    'galaxy_bias': [f'b{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
+    'galaxy_bias': [f'bL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
 }
 # fiducial values
 fiducials_dict = {
     'cosmo': [ISTFfid.primary['Om_m0'], ISTFfid.primary['Om_b0'], ISTFfid.primary['w_0'], ISTFfid.primary['w_a'],
               ISTFfid.primary['h_0'], ISTFfid.primary['n_s'], ISTFfid.primary['sigma_8']],
     'IA': [ISTFfid.IA_free['A_IA'], ISTFfid.IA_free['eta_IA'], ISTFfid.IA_free['beta_IA']],
-    'galaxy_bias': [ISTFfid.photoz_galaxy_bias[f'bL{zbin:02d}_photo'] for zbin in range(1, general_cfg['zbins'] + 1)],
+    'galaxy_bias': [ISTFfid.photoz_galaxy_bias[f'b{zbin:02d}_photo'] for zbin in range(1, general_cfg['zbins'] + 1)],
 }
 
 
@@ -166,7 +168,7 @@ FM_cfg = {
     'save_FM_txt': True,
     'save_FM_dict': True,
 
-    'load_preprocess_derivatives': False,  # to be implemented in the main
+    'load_preprocess_derivatives': False,
     'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}',
     'derivatives_prefix': 'dCij{probe:s}d',
     'derivatives_suffix': '-GR-Flat-eNLA-NA',  # I'd like to use this, but instead:

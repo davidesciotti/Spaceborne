@@ -113,7 +113,7 @@ covariance_cfg = {
     'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_GS': False,
     'save_cov_SSC': False,
-    'save_2DCLOE': False,  # outermost loop is on the probes
+    'save_2DCLOE': True,  # outermost loop is on the probes
 
     'cov_folder': f'{job_path}/output/{cfg_name}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
@@ -166,7 +166,7 @@ FM_cfg = {
     'save_FM_txt': True,
     'save_FM_dict': True,
 
-    'load_preprocess_derivatives': False,  # to be implemented in the main
+    'load_preprocess_derivatives': False,
     # ! old thesis derivatives for these files, not da best
     'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_derivatives_tesi/new_names',
     'derivatives_prefix': 'dCij{probe:s}d',

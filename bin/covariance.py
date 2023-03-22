@@ -170,6 +170,11 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_3x2pt_SS_4D = mm.cov_SSC_ALL(nbl_3x2pt, zpairs_3x2pt, ind, cl_3x2pt_5D, Sijkl, fsky, zbins, rl_3x2pt_5D)
     print("SS cov. matrices computed in %.2f seconds with PySSC" % (time.perf_counter() - start))
 
+    cov_WL_SS_4D_pyssc = np.copy(cov_WL_SS_4D)
+    cov_GC_SS_4D_pyssc = np.copy(cov_GC_SS_4D)
+    cov_WL_SS_2D_pyssc = mm.cov_4D_to_2D(cov_WL_SS_4D_pyssc, block_index=block_index)
+    cov_GC_SS_2D_pyssc = mm.cov_4D_to_2D(cov_GC_SS_4D_pyssc, block_index=block_index)
+
     if SSC_code == 'PyCCL':
         print('Computing GS with PyCCL SSC covariance')
         assert covariance_cfg['compute_cov_6D'] is False, 'compute_cov_6D must be False when using, because cov_GS_4D' \
@@ -188,6 +193,19 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_WL_SS_4D = mm.cov_6D_to_4D(cov_WL_SS_6D, nbl_WL, zpairs_auto, ind=ind_auto)
         cov_GC_SS_4D = mm.cov_6D_to_4D(cov_GC_SS_6D, nbl_GC, zpairs_auto, ind=ind_auto)
         # cov_3x2pt_SS_4D = mm.cov_6D_to_4D(cov_3x2pt_SS_6D, nbl_GC, zpairs_3x2pt, ind=ind)
+
+        # reshape to 2D, just to plot
+        warnings.warn('remove this!')
+        cov_WL_SS_2D = mm.cov_4D_to_2D(cov_WL_SS_4D, block_index=block_index)
+        cov_GC_SS_2D = mm.cov_4D_to_2D(cov_GC_SS_4D, block_index=block_index)
+
+        # mm.matshow(mm.cov2corr(cov_WL_SS_2D_pyssc), title='corr_WL_SS_2D_pyssc', log=False)
+        # mm.matshow(mm.cov2corr(cov_WL_SS_2D), title='corr_WL_SS_2D_pyccl', log=False)
+        # mm.matshow(cov_GC_SS_2D_pyssc, title='cov_GC_SS_2D_pyssc', log=True)
+        # mm.matshow(cov_GC_SS_2D, title='cov_GC_SS_2D_pyccl', log=True)
+        # mm.matshow(cov_GC_SS_2D_pyssc, title='cov_GC_SS_2D_pyssc', log=True)
+
+        # assert 1 > 2
 
     ############################## SUM G + SSC ################################
     cov_WL_GS_4D = cov_WL_GO_4D + cov_WL_SS_4D
@@ -474,6 +492,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     # note: we found out that this is not actually used in CLOE...
     if covariance_cfg['save_2DCLOE']:
         cov_dict[f'cov_3x2pt_GO_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_GO_4D, nbl_3x2pt, zbins)
+        cov_dict[f'cov_3x2pt_SS_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SS_4D, nbl_3x2pt, zbins)
         cov_dict[f'cov_3x2pt_GS_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_GS_4D, nbl_3x2pt, zbins)
 
     return cov_dict

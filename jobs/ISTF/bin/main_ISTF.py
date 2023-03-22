@@ -35,7 +35,7 @@ import fisher_matrix as FM_utils
 
 # job configuration and modules
 sys.path.append(f'{project_path}/jobs')
-import ISTF.config.config_ISTF_cl15gen as cfg
+import ISTF.config.config_ISTF_cl14may as cfg
 
 mpl.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)

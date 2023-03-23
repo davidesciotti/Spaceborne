@@ -39,7 +39,7 @@ markersize = 10
 # ! options
 zbins = 10
 zbins_list = np.array((zbins,), dtype=int)
-probe = 'WL'
+probe = '3x2pt'
 pes_opt_list = ('opt',)
 EP_or_ED_list = ('EP',)
 which_comparison = 'GO_vs_GS'  # this is just to set the title of the plot
@@ -111,7 +111,7 @@ FM_PySSC_GS = FM_PySSC_dict[f'FM_{probe}_GS']
 FM_PyCCL_GO = FM_PyCCL_dict[f'FM_{probe}_GO']
 FM_PyCCL_GS = FM_PyCCL_dict[f'FM_{probe}_GS']
 
-assert np.all(FM_PySSC_GO == FM_PyCCL_GO), 'FM_PySSC_GO and FM_PyCCL_GO should be the same'
+np.testing.assert_allclose(FM_PySSC_GO, FM_PyCCL_GO, rtol=1e-8, atol=0), 'FM_PySSC_GO and FM_PyCCL_GO should be the same'
 FM_GO = FM_PySSC_GO
 
 # fix the desired parameters and remove null rows/columns

@@ -59,7 +59,7 @@ general_cfg = {
     'nbl_WL': 30,
     'nbl_GC': 30,
     'nbl_3x2pt': 30,
-    'use_WA': False,  # ! xxx
+    'use_WA': True,  # ! xxx
     'save_cls_3d': False,
     'save_rls_3d': False,
 
@@ -118,7 +118,7 @@ covariance_cfg = {
     'cov_folder': str(job_path) + f'/output/{cfg_name}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D.npy',
     'cov_SSC_PyCCL_folder': f'{project_path.parent}/PyCCL_SSC/output/covmat',
-    'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_hm_recipeKiDS1000_6D.npy',  # TODO these 2 filenames could be unified...
+    'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_hm_recipeKrause2017_6D.npy',  # TODO these 2 filenames could be unified...
     # TODO these 2 filenames could be unified...
 }
 

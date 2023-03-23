@@ -1,3 +1,4 @@
+import pdb
 import sys
 import time
 import warnings
@@ -43,6 +44,18 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     ind = covariance_cfg['ind'].copy()
     block_index = covariance_cfg['block_index']
     which_probe_response = covariance_cfg['which_probe_response']
+
+    # this is a check to make sure that XC has the ordering (L, G) or (G, L) specified by GL_or_LG, and it
+    # only works for the (LL, XC, GG) ordering
+    probe_ordering = [['L', 'L'], [None, None], ['G', 'G']]
+
+    # (not the best) check to ensure that the (LL, XC, GG) ordering is respected
+    assert probe_ordering[0] == ['L', 'L'], 'the XC probe should be in position 1 (not 0) of the datavector'
+    assert probe_ordering[2] == ['G', 'G'], 'the XC probe should be in position 1 (not 0) of the datavector'
+
+    # this overwrites the 1st axis, the one describing XC
+    probe_ordering[1][0] = GL_or_LG[0]
+    probe_ordering[1][1] = GL_or_LG[1]
 
     start = time.perf_counter()
 
@@ -187,25 +200,25 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_WL_SS_6D = np.load(f'{fldr}/{filename.format(probe="WL", nbl=nbl_WL, ell_max=ell_max_WL)}')
         cov_GC_SS_6D = np.load(f'{fldr}/{filename.format(probe="GC", nbl=nbl_GC, ell_max=ell_max_GC)}')
         # TODO re-establish the 3x2pt
+        cov_3x2pt_SS_10D_arr = np.load(f'{fldr}/{filename.format(probe="3x2pt", nbl=nbl_GC, ell_max=ell_max_GC)}')
+        cov_3x2pt_SS_10D_dict = {
+            ('L', 'L', 'L', 'L'): cov_3x2pt_SS_10D_arr[0, 0, 0, 0],
+            ('L', 'L', 'G', 'L'): cov_3x2pt_SS_10D_arr[0, 0, 1, 0],
+            ('L', 'L', 'G', 'G'): cov_3x2pt_SS_10D_arr[0, 0, 1, 1],
+            ('G', 'L', 'L', 'L'): cov_3x2pt_SS_10D_arr[1, 0, 0, 0],
+            ('G', 'L', 'G', 'L'): cov_3x2pt_SS_10D_arr[1, 0, 1, 0],
+            ('G', 'L', 'G', 'G'): cov_3x2pt_SS_10D_arr[1, 0, 1, 1],
+            ('G', 'G', 'L', 'L'): cov_3x2pt_SS_10D_arr[1, 1, 0, 0],
+            ('G', 'G', 'G', 'L'): cov_3x2pt_SS_10D_arr[1, 1, 1, 0],
+            ('G', 'G', 'G', 'G'): cov_3x2pt_SS_10D_arr[1, 1, 1, 1],
+        }
         # cov_3x2pt_SS_6D = mm.load_pickle(f'{fldr}/{filename.format(probe="3x2pt", nbl=nbl_GC, ell_max=ell_max_GC)}')
 
         # reshape to 4D
         cov_WL_SS_4D = mm.cov_6D_to_4D(cov_WL_SS_6D, nbl_WL, zpairs_auto, ind=ind_auto)
         cov_GC_SS_4D = mm.cov_6D_to_4D(cov_GC_SS_6D, nbl_GC, zpairs_auto, ind=ind_auto)
-        # cov_3x2pt_SS_4D = mm.cov_6D_to_4D(cov_3x2pt_SS_6D, nbl_GC, zpairs_3x2pt, ind=ind)
-
-        # reshape to 2D, just to plot
-        warnings.warn('remove this!')
-        cov_WL_SS_2D = mm.cov_4D_to_2D(cov_WL_SS_4D, block_index=block_index)
-        cov_GC_SS_2D = mm.cov_4D_to_2D(cov_GC_SS_4D, block_index=block_index)
-
-        # mm.matshow(mm.cov2corr(cov_WL_SS_2D_pyssc), title='corr_WL_SS_2D_pyssc', log=False)
-        # mm.matshow(mm.cov2corr(cov_WL_SS_2D), title='corr_WL_SS_2D_pyccl', log=False)
-        # mm.matshow(cov_GC_SS_2D_pyssc, title='cov_GC_SS_2D_pyssc', log=True)
-        # mm.matshow(cov_GC_SS_2D, title='cov_GC_SS_2D_pyccl', log=True)
-        # mm.matshow(cov_GC_SS_2D_pyssc, title='cov_GC_SS_2D_pyssc', log=True)
-
-        # assert 1 > 2
+        cov_3x2pt_SS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_SS_10D_dict, probe_ordering, nbl_GC,
+                                                      zbins, ind.copy(), GL_or_LG)
 
     ############################## SUM G + SSC ################################
     cov_WL_GS_4D = cov_WL_GO_4D + cov_WL_SS_4D
@@ -226,18 +239,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         # probe ordering
         # the function should be able to work with whatever 
         # ordering of the probes; (TODO check this)
-
-        # this is a check to make sure that XC has the ordering (L, G) or (G, L) specified by GL_or_LG, and it
-        # only works for the (LL, XC, GG) ordering
-        probe_ordering = [['L', 'L'], [None, None], ['G', 'G']]
-
-        # (not the best) check to ensure that the (LL, XC, GG) ordering is respected
-        assert probe_ordering[0] == ['L', 'L'], 'the XC probe should be in position 1 (not 0) of the datavector'
-        assert probe_ordering[2] == ['G', 'G'], 'the XC probe should be in position 1 (not 0) of the datavector'
-
-        # this overwrites the 1st axis, the one describing XC
-        probe_ordering[1][0] = GL_or_LG[0]
-        probe_ordering[1][1] = GL_or_LG[1]
 
         # print as a check
         print('check: datavector probe ordering:', probe_ordering)

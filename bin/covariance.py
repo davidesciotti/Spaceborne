@@ -199,8 +199,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
         cov_WL_SS_6D = np.load(f'{fldr}/{filename.format(probe="WL", nbl=nbl_WL, ell_max=ell_max_WL)}')
         cov_GC_SS_6D = np.load(f'{fldr}/{filename.format(probe="GC", nbl=nbl_GC, ell_max=ell_max_GC)}')
-        # TODO re-establish the 3x2pt
         cov_3x2pt_SS_10D_arr = np.load(f'{fldr}/{filename.format(probe="3x2pt", nbl=nbl_GC, ell_max=ell_max_GC)}')
+        # ! transform into a dict to be able to reshape to 4D, this is a very ugly way to do it
         cov_3x2pt_SS_10D_dict = {
             ('L', 'L', 'L', 'L'): cov_3x2pt_SS_10D_arr[0, 0, 0, 0],
             ('L', 'L', 'G', 'L'): cov_3x2pt_SS_10D_arr[0, 0, 1, 0],
@@ -516,7 +516,7 @@ def build_X_matrix_BNT(BNT_matrix):
 
 def cov_BNT_transform(cov_noBNT_6D, X_dict, probe_A, probe_B, probe_C, probe_D, optimize=True):
     """same as above, but only for one probe (i.e., LL or GL: GG is not modified by the BNT)"""
-    # todo it's nicer if you sandwitch the covariance, maybe?
+    # todo it's nicer if you sandwitch the covariance, maybe? That is, X cov X instead of X X cov
     cov_BNT_6D = np.einsum('aebf, cgdh, LMefgh -> LMabcd', X_dict[probe_A, probe_B], X_dict[probe_C, probe_D],
                            cov_noBNT_6D, optimize=optimize)
     return cov_BNT_6D

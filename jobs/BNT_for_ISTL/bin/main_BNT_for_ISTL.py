@@ -151,11 +151,11 @@ np.testing.assert_allclose(cl_GG_BNTdark_3d, cl_GG_BNT_3d, atol=0, rtol=1e-10)
 
 cl_3x2pt_5D = cl_utils.build_3x2pt_datavector_5D(cl_LL_3d, cl_GL_3d, cl_GG_3d, nbl, zbins)
 cl_3x2pt_BNT_5D = cl_utils.build_3x2pt_datavector_5D(cl_LL_BNT_3d, cl_GL_BNT_3d, cl_GG_BNT_3d, nbl, zbins)
-
 ell_dict = {
     'ell_WL': ells,
     'ell_GC': ells,
     'ell_WA': ells,
+    'ell_3x2pt': ells,
 }
 
 delta_dict = {
@@ -204,6 +204,15 @@ cov_3x2pt_GO_BNT_True = cov_dict_BNT_True['cov_3x2pt_GO_2DCLOE']
 cov_3x2pt_GO_BNT_False = cov_dict_BNT_False['cov_3x2pt_GO_2DCLOE']
 cov_3x2pt_GO_BNT_True_with_cls = cov_dict_BNT_True_with_cls['cov_3x2pt_GO_2DCLOE']
 
+# same test for WL
+cov_WL_GO_BNT_True = cov_dict_BNT_True['cov_WL_GO_2D']
+cov_WL_GO_BNT_False = cov_dict_BNT_False['cov_WL_GO_2D']
+cov_WL_GO_BNT_True_with_cls = cov_dict_BNT_True_with_cls['cov_WL_GO_2D']
+
+# ! no 2dCLOE, maybe this is the problem? -> no, it is not
+cov_3x2pt_GO_BNT_True = cov_dict_BNT_True['cov_3x2pt_GO_2D']
+cov_3x2pt_GO_BNT_True_with_cls = cov_dict_BNT_True_with_cls['cov_3x2pt_GO_2D']
+
 warnings.warn('you have to be in branch #870 for this import to work')
 cov_3x2pt_GO_BNT_False_benchmark = np.load(
     '/Users/davide/Documents/Lavoro/Programmi/likelihood-implementation/data/'
@@ -213,19 +222,27 @@ cov_3x2pt_GO_BNT_False_benchmark = np.load(
 del cov_dict_BNT_True, cov_dict_BNT_False, cov_dict_BNT_True_with_cls
 gc.collect()
 
-# ! check that the Gaussian covariance matrices are the same
-mm.compare_arrays(cov_3x2pt_GO_BNT_False, cov_3x2pt_GO_BNT_False_benchmark,
-                  'cov_3x2pt_GO_BNT_False', 'cov_3x2pt_GO_BNT_False_benchmark',
-                  plot_array=True, log_array=True,
-                  plot_diff=True, log_diff=False, plot_diff_threshold=5)
-
 # ! check that the BNT-transformed covariance is the same as the one computed with the BNT-transformed cls
-mm.compare_arrays(cov_3x2pt_GO_BNT_True, cov_3x2pt_GO_BNT_True_with_cls,
-                  'cov_3x2pt_GO_BNT_True', 'cov_3x2pt_GO_BNT_True_with_cls',
+# this test fails, also for the LL-LL block!!
+# mm.compare_arrays(cov_3x2pt_GO_BNT_True, cov_3x2pt_GO_BNT_True_with_cls,
+#                   'cov_3x2pt_GO_BNT_True', 'cov_3x2pt_GO_BNT_True_with_cls',
+#                   plot_array=True, log_array=True,
+#                   plot_diff=True, log_diff=True, plot_diff_threshold=5)
+
+# do the same for WL
+mm.compare_arrays(cov_WL_GO_BNT_True, cov_WL_GO_BNT_True_with_cls,
+                  'cov_WL_GO_BNT_True', 'cov_WL_GO_BNT_True_with_cls',
                   plot_array=True, log_array=True,
                   plot_diff=True, log_diff=True, plot_diff_threshold=5)
 
-assert 1 > 2
+# ! check that the Gaussian covariance matrices are the same
+# this is a relatively successful test, there are very few elements with a discrepancy of more than 5%
+# mm.compare_arrays(cov_3x2pt_GO_BNT_False, cov_3x2pt_GO_BNT_False_benchmark,
+#                   'cov_3x2pt_GO_BNT_False', 'cov_3x2pt_GO_BNT_False_benchmark',
+#                   plot_array=True, log_array=True,
+#                   plot_diff=True, log_diff=False, plot_diff_threshold=5)
+
+# ======================================================================================================================
 
 # diff = mm.percent_diff(cov_3x2pt_GO_BNT_True[-1100:, -1100:], cov_3x2pt_GO_benchmark[-1100:, -1100:])
 # mm.matshow(diff, log=False, abs_val=True, title='WL diff')

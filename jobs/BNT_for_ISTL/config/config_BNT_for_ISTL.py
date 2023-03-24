@@ -13,6 +13,32 @@ cfg_name = 'cl15gen'
 # survey_area_deg2 = 15469.86  # deg^2
 # use_WA: False
 
+cl_BNT_transform = False
+cov_BNT_transform = True
+deriv_BNT_transform = True
+
+cl_ell_cuts = False
+cov_ell_cuts = False
+deriv_ell_cuts = False
+
+if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
+    BNT_transform = True
+else:
+    BNT_transform = False
+
+if cl_ell_cuts or cov_ell_cuts or deriv_ell_cuts:
+    ell_cuts = True
+else:
+    ell_cuts = False
+
+if cl_ell_cuts:
+    assert cov_ell_cuts is False, 'if you want to apply ell cuts to the cls, you cannot apply them to the cov'
+    assert deriv_ell_cuts, 'if you want to apply ell cuts to the cls, you hould also apply them to the derivatives'
+
+if cov_ell_cuts:
+    assert cl_ell_cuts == False, 'if you want to apply ell cuts to the cov, you cannot apply them to the cls'
+    assert deriv_ell_cuts, 'if you want to apply ell cuts to the cov, you hould also apply them to the derivatives'
+
 general_cfg = {
     'ell_min': 10,
     'ell_max_WL': 5000,
@@ -26,7 +52,8 @@ general_cfg = {
     'use_WA': False,
     'save_cls_3d': False,
     'save_rls_3d': False,
-    'cl_BNT_transform': False,
+    'cl_BNT_transform': cl_BNT_transform,
+    'cl_ell_cuts': cl_ell_cuts,
 }
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
@@ -44,10 +71,12 @@ covariance_cfg = {
     'which_probe_response': 'constant',
     'response_const_value': 4,  # it used to be 4 for a constant probe response, which this is wrong
     'SSC_code': 'PySSC',  # PySSC or PyCCL
-    'cov_BNT_transform': None,
+    'cov_BNT_transform': cov_BNT_transform,
     'ng': 30,
     'ng_folder': None,
     'ng_filename': None,
+
+    'cov_ell_cuts': cov_ell_cuts,
     'sigma_eps2': 0.3 ** 2,
     'compute_covmat': True,
     'compute_cov_6D': True,
@@ -63,6 +92,8 @@ covariance_cfg = {
     'cov_SSC_PyCCL_folder': f'{project_path.parent}/PyCCL_SSC/output/covmat',
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_hm_recipeKiDS1000_6D.npy',
     # TODO these 2 filenames could be unified...
+
+    'test_against_benchmarks': False,
 }
 
 Sijkl_cfg = {
@@ -86,10 +117,12 @@ nparams_total = len(paramnames_3x2pt)
 
 FM_cfg = {
     'compute_FM': True,
-    'nparams_tot': 20,  # total (cosmo + nuisance) number of parameters
+    'nparams_tot': len(paramnames_3x2pt),  # total (cosmo + nuisance) number of parameters
     'save_FM': True,
     'save_FM_as_dict': True,
-    'derivatives_BNT_transform': True,
+    'derivatives_BNT_transform': deriv_BNT_transform,
+    'deriv_ell_cuts': deriv_ell_cuts,
+
     'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_derivatives_tesi/new_names/',
     'derivatives_prefix': 'dCij{probe:s}d',
     'derivatives_suffix': '-N4TB-GR-eNLA',  # I'd like to use this, but instead:
@@ -100,5 +133,4 @@ FM_cfg = {
     'paramnames_IA': paramnames_IA,
     'paramnames_galbias': paramnames_galbias,
     'paramnames_3x2pt': paramnames_3x2pt,
-    'nparams_tot': nparams_total,
 }

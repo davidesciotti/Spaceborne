@@ -313,7 +313,7 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
 
         # split into 3 2d datavectors
         cl_ll_3x2pt_2d = cl_2d[:, :zpairs_auto]
-        cl_gl_3x2pt_2d = cl_2d[:, zpairs_auto:zpairs_auto + zpairs_cross]  # ! is it really gl? or lg?
+        cl_gl_3x2pt_2d = cl_2d[:, zpairs_auto:zpairs_auto + zpairs_cross]
         cl_gg_3x2pt_2d = cl_2d[:, zpairs_auto + zpairs_cross:]
 
         # reshape them individually - the symmetrization is done within the function

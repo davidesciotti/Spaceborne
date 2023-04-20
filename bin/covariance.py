@@ -151,6 +151,11 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     noise = mm.build_noise(zbins, n_probes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=covariance_cfg['ng'],
                            EP_or_ED=general_cfg['EP_or_ED'])
 
+    if general_cfg['cl_BNT_transform']:
+        print('BNT-transforming the noise spectra...')
+        assert False, 'finish this part of the code!'
+
+
     ################### COMPUTE GAUSS ONLY COVARIANCE #########################
 
     # WL only covariance

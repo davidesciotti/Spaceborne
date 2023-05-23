@@ -31,3 +31,5 @@ jobs/BNT_for_ISTL/output
 jobs/ISTF/bin/profile.json
 jobs/ISTF/bin/profile.html
 jobs/BNT_for_ISTL/output/CovMat-3x2pt-Gauss-20Bins.npy
+*.xml
+*.xml

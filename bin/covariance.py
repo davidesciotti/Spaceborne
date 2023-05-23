@@ -7,6 +7,7 @@ import pickle
 
 import matplotlib
 import numpy as np
+from matplotlib import pyplot as plt
 from numba import njit, prange
 
 import cl_preprocessing
@@ -16,6 +17,10 @@ matplotlib.use('Qt5Agg')
 project_path_here = Path.cwd().parent.parent.parent
 sys.path.append(str(project_path_here.parent / 'common_lib'))
 import my_module as mm
+import cosmo_lib
+
+sys.path.append(str(project_path_here.parent / 'cl_v2'))
+import wf_cl_lib
 
 
 ###############################################################################
@@ -63,7 +68,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     ell_WL, nbl_WL = ell_dict['ell_WL'], ell_dict['ell_WL'].shape[0]
     ell_GC, nbl_GC = ell_dict['ell_GC'], ell_dict['ell_GC'].shape[0]
     ell_WA, nbl_WA = ell_dict['ell_WA'], ell_dict['ell_WA'].shape[0]
-    ell_XC, nbl_3x2pt = ell_GC, nbl_GC
+    ell_3x2pt, nbl_3x2pt = ell_GC, nbl_GC
 
     cov_dict = {}
 
@@ -100,7 +105,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     delta_l_WL = delta_dict['delta_l_WL']
     delta_l_GC = delta_dict['delta_l_GC']
     delta_l_WA = delta_dict['delta_l_WA']
-    delta_l_XC = delta_l_GC
+    delta_l_3x2pt = delta_l_GC
 
     # load set correct output folder, get number of pairs
     # output_folder = mm.get_output_folder(ind_ordering, which_forecast)
@@ -146,36 +151,67 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         f'ell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}\nGL_or_LG: {GL_or_LG}\n')
 
     # build noise vector
-
     warnings.warn('which folder should I use for ngbTab? lenses or sources? Flagship or Redbook?')
-    noise = mm.build_noise(zbins, n_probes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=covariance_cfg['ng'],
-                           EP_or_ED=general_cfg['EP_or_ED'])
+    noise_3x2pt_4D = mm.build_noise(zbins, n_probes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=covariance_cfg['ng'],
+                                    EP_or_ED=general_cfg['EP_or_ED'])
 
     if general_cfg['cl_BNT_transform']:
-        print('BNT-transforming the noise spectra...')
+        # print('BNT-transforming the noise spectra...')
+        # noise_LL_BNT_3D = cl_preprocessing.cl_BNT_transform(noise_LL_5D[0, 0, ...], BNT_matrix, 'L', 'L')
+        # cl_3x2pt_BNT_5D = cl_preprocessing.cl_BNT_transform_3x2pt(cl_3x2pt_5D, BNT_matrix)
+        # noise_3x2pt_BNT_5D = cl_preprocessing.cl_BNT_transform_3x2pt(noise_3x2pt_5D, BNT_matrix)
         assert False, 'finish this part of the code!'
-
 
     ################### COMPUTE GAUSS ONLY COVARIANCE #########################
 
     # WL only covariance
     cov_WL_GO_4D = mm.covariance(nbl=nbl_WL, npairs=zpairs_auto, start_index=0, stop_index=zpairs_auto,
-                                 Cij=cl_LL_3D, noise=noise, l_lin=l_lin_WL,
+                                 Cij=cl_LL_3D, noise=noise_3x2pt_4D, l_lin=l_lin_WL,
                                  delta_l=delta_l_WL, fsky=fsky, ind=ind)
     # GC only covariance
     starting_GC_index = zpairs_auto + zpairs_cross
     cov_GC_GO_4D = mm.covariance(nbl=nbl_GC, npairs=zpairs_auto, start_index=starting_GC_index, stop_index=zpairs_3x2pt,
-                                 Cij=cl_GG_3D, noise=noise, l_lin=l_lin_GC,
+                                 Cij=cl_GG_3D, noise=noise_3x2pt_4D, l_lin=l_lin_GC,
                                  delta_l=delta_l_GC, fsky=fsky, ind=ind)
     # WA covariance
     cov_WA_GO_4D = mm.covariance_WA(nbl_WA, zpairs_auto, start_index=0, stop_index=zpairs_auto,
-                                    Cij=cl_WA_3D, noise=noise, l_lin=l_lin_WA,
+                                    Cij=cl_WA_3D, noise=noise_3x2pt_4D, l_lin=l_lin_WA,
                                     delta_l=delta_l_WA, fsky=fsky, ind=ind, ell_WA=ell_WA)
     # ALL covariance
     cov_3x2pt_GO_4D = mm.covariance_ALL(nbl=nbl_3x2pt, npairs=zpairs_3x2pt,
-                                        Cij=cl_3x2pt_5D, noise=noise, l_lin=l_lin_XC,
-                                        delta_l=delta_l_XC, fsky=fsky, ind=ind)
+                                        Cij=cl_3x2pt_5D, noise=noise_3x2pt_4D, l_lin=l_lin_XC,
+                                        delta_l=delta_l_3x2pt, fsky=fsky, ind=ind)
     print("Gauss. cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
+
+    # create dummy ell axis, the array is just repeated along it
+    nbl_max = np.max((nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA))
+    noise_5D = np.zeros((n_probes, n_probes, nbl_max, zbins, zbins))
+    for probe_A in (0, 1):
+        for probe_B in (0, 1):
+            for ell_idx in range(nbl_WL):
+                noise_5D[probe_A, probe_B, ell_idx, :, :] = noise_3x2pt_4D[probe_A, probe_B, ...]
+
+    # 5d versions of auto.probe data and spectra
+    cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]
+    cl_GG_5D = cl_GG_3D[np.newaxis, np.newaxis, ...]
+    cl_WA_5D = cl_WA_3D[np.newaxis, np.newaxis, ...]
+
+    # remember, the ell axis is a dummy one for the noise, is just needs to be of the same length as the corresponding cl one
+    noise_LL_5D = noise_5D[0, 0, :nbl_WL, :, :][np.newaxis, np.newaxis, ...]
+    noise_GG_5D = noise_5D[1, 1, :nbl_GC, :, :][np.newaxis, np.newaxis, ...]
+    noise_WA_5D = noise_5D[0, 0, :nbl_WA, :, :][np.newaxis, np.newaxis, ...]
+    noise_3x2pt_5D = noise_5D[:, :, :nbl_3x2pt, :, :][np.newaxis, np.newaxis, ...]
+
+    cov_WL_GO_6D_v2 = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_WL, delta_l_WL)[0, 0, 0, 0, ...]
+    cov_GC_GO_6D_v2 = mm.covariance_einsum(cl_GG_5D, noise_GG_5D, fsky, ell_GC, delta_l_GC)[0, 0, 0, 0, ...]
+    cov_WA_GO_6D_v2 = mm.covariance_einsum(cl_LL_5D, noise_WA_5D, fsky, ell_WA, delta_l_WA)[0, 0, 0, 0, ...]
+    cov_WL_GO_10D_v2 = mm.covariance_einsum(cl_3x2pt_5D, noise_3x2pt_5D, fsky, ell_3x2pt, delta_l_3x2pt)
+
+    cov_WL_GO_4D_v2 = mm.cov_6D_to_4D(cov_WL_GO_6D_v2, nbl_WL, zpairs_auto, ind_auto)
+
+    np.testing.assert_allclose(cov_WL_GO_4D, cov_WL_GO_4D_v2, atol=0, rtol=1e-10)
+
+    assert False, 'stop here'
 
     ######################## COMPUTE SSC COVARIANCE ###############################
 
@@ -238,7 +274,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         # store the input datavector and noise spectra in a dictionary
         cl_dict_3x2pt = mm.build_3x2pt_dict(cl_3x2pt_5D)
         rl_dict_3x2pt = mm.build_3x2pt_dict(rl_3x2pt_5D)
-        noise_dict_3x2pt = mm.build_3x2pt_dict(noise)
+        noise_dict_3x2pt = mm.build_3x2pt_dict(noise_3x2pt_4D)
         Sijkl_dict = mm.build_Sijkl_dict(Sijkl, zbins)
 
         # probe ordering
@@ -255,7 +291,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         # compute the 10D covariance only for the blocks which will actually be used (GO and SS)
         start = time.perf_counter()
         cov_3x2pt_GO_10D_dict = mm.cov_G_10D_dict(cl_dict_3x2pt, noise_dict_3x2pt, nbl_3x2pt, zbins, l_lin_XC,
-                                                  delta_l_XC, fsky, probe_ordering)
+                                                  delta_l_3x2pt, fsky, probe_ordering)
         print(f'cov_3x2pt_GO_10D_dict computed in {(time.perf_counter() - start):.2f} seconds')
 
         start = time.perf_counter()
@@ -560,6 +596,48 @@ def cov_ell_cut(cov_6d, ell_cuts_idxs_AB, ell_cuts_idxs_CD, zbins):
     #     covariance_matrix[ell1, ell2, zi, zj, zk, zl] = 0
 
     return cov_6d
+
+
+def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr):
+    if zbins != 10:
+        raise NotImplementedError('Only 10 zbins are currently supported, because the analytical n(z) is the ISTF one'
+                                  '(i.e., with IST:F edges)')
+
+    if n_of_z_arr is None:
+        z_grid = np.linspace(1e-5, 3, 1000)
+        n_of_z_arr = np.array([wf_cl_lib.niz_unnormalized_simps(z_grid, zbin_idx) for zbin_idx in range(zbins)])
+        n_of_z_arr = np.array(
+            [wf_cl_lib.normalize_niz_simps(n_of_z_arr[zbin_idx], z_grid) for zbin_idx in range(zbins)])
+    elif (n_of_z_arr is None) ^ (zgrid_n_of_z is None):
+        raise ValueError('Either both n_of_z_arr and zgrid_n_of_z must be None, or both must be not None')
+    else:
+        assert n_of_z_arr.shape[0] == len(zgrid_n_of_z), 'n_of_z must have zgrid_n_of_z rows (and zbins columns)'
+        z_grid = zgrid_n_of_z
+
+    chi = cosmo_lib.ccl_comoving_distance(z_grid, use_h_units=False)
+
+    for i in range(zbins):
+        plt.plot(z_grid, n_of_z_arr[i])
+    plt.show()
+
+    A_list = np.zeros(zbins)
+    B_list = np.zeros(zbins)
+    for zbin_idx in range(zbins):
+        n_of_z = n_of_z_arr[zbin_idx]
+        A_list[zbin_idx] = np.simps(n_of_z, z_grid)
+        B_list[zbin_idx] = np.simps(n_of_z / chi, z_grid)
+
+    bnt_matrix = np.eye(zbins)
+    bnt_matrix[1, 0] = -1.
+    for i in range(2, zbins):
+        mat = np.array([[A_list[i - 1], A_list[i - 2]],
+                        [B_list[i - 1], B_list[i - 2]]])
+        A = -1. * np.array([A_list[i], B_list[i]])
+        soln = np.dot(np.linalg.inv(mat), A)
+        bnt_matrix[i, i - 1] = soln[0]
+        bnt_matrix[i, i - 2] = soln[1]
+
+    return bnt_matrix
 
 
 # @njit(parallel=True)

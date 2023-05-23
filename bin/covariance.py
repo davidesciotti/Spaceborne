@@ -52,15 +52,11 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     # this is a check to make sure that XC has the ordering (L, G) or (G, L) specified by GL_or_LG, and it
     # only works for the (LL, XC, GG) ordering
-    probe_ordering = [['L', 'L'], [None, None], ['G', 'G']]
+    probe_ordering = [['L', 'L'], [GL_or_LG[0], GL_or_LG[1]], ['G', 'G']]
 
     # (not the best) check to ensure that the (LL, XC, GG) ordering is respected
     assert probe_ordering[0] == ['L', 'L'], 'the XC probe should be in position 1 (not 0) of the datavector'
     assert probe_ordering[2] == ['G', 'G'], 'the XC probe should be in position 1 (not 0) of the datavector'
-
-    # this overwrites the 1st axis, the one describing XC
-    probe_ordering[1][0] = GL_or_LG[0]
-    probe_ordering[1][1] = GL_or_LG[1]
 
     start = time.perf_counter()
 
@@ -90,16 +86,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     # ell values in linear scale:
     if ell_WL.max() < 15:  # very rudimental check of whether they're in lin or log scale
-        print('looks like the ell values are in log scale. Switching to linear scale.')
-        l_lin_WL = 10 ** ell_WL
-        l_lin_GC = 10 ** ell_GC
-        l_lin_WA = 10 ** ell_WA
-        l_lin_XC = l_lin_GC
-    else:
-        l_lin_WL = ell_WL
-        l_lin_GC = ell_GC
-        l_lin_WA = ell_WA
-        l_lin_XC = l_lin_GC
+        raise ValueError('looks like the ell values are in log scale. You should use linear scale instead.')
 
     # load deltas
     delta_l_WL = delta_dict['delta_l_WL']
@@ -166,20 +153,20 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     # WL only covariance
     cov_WL_GO_4D = mm.covariance(nbl=nbl_WL, npairs=zpairs_auto, start_index=0, stop_index=zpairs_auto,
-                                 Cij=cl_LL_3D, noise=noise_3x2pt_4D, l_lin=l_lin_WL,
+                                 Cij=cl_LL_3D, noise=noise_3x2pt_4D, l_lin=ell_WL,
                                  delta_l=delta_l_WL, fsky=fsky, ind=ind)
     # GC only covariance
     starting_GC_index = zpairs_auto + zpairs_cross
     cov_GC_GO_4D = mm.covariance(nbl=nbl_GC, npairs=zpairs_auto, start_index=starting_GC_index, stop_index=zpairs_3x2pt,
-                                 Cij=cl_GG_3D, noise=noise_3x2pt_4D, l_lin=l_lin_GC,
+                                 Cij=cl_GG_3D, noise=noise_3x2pt_4D, l_lin=ell_GC,
                                  delta_l=delta_l_GC, fsky=fsky, ind=ind)
     # WA covariance
     cov_WA_GO_4D = mm.covariance_WA(nbl_WA, zpairs_auto, start_index=0, stop_index=zpairs_auto,
-                                    Cij=cl_WA_3D, noise=noise_3x2pt_4D, l_lin=l_lin_WA,
+                                    Cij=cl_WA_3D, noise=noise_3x2pt_4D, l_lin=ell_WA,
                                     delta_l=delta_l_WA, fsky=fsky, ind=ind, ell_WA=ell_WA)
     # ALL covariance
     cov_3x2pt_GO_4D = mm.covariance_ALL(nbl=nbl_3x2pt, npairs=zpairs_3x2pt,
-                                        Cij=cl_3x2pt_5D, noise=noise_3x2pt_4D, l_lin=l_lin_XC,
+                                        Cij=cl_3x2pt_5D, noise=noise_3x2pt_4D, l_lin=ell_3x2pt,
                                         delta_l=delta_l_3x2pt, fsky=fsky, ind=ind)
     print("Gauss. cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
 
@@ -200,24 +187,29 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     noise_LL_5D = noise_5D[0, 0, :nbl_WL, :, :][np.newaxis, np.newaxis, ...]
     noise_GG_5D = noise_5D[1, 1, :nbl_GC, :, :][np.newaxis, np.newaxis, ...]
     noise_WA_5D = noise_5D[0, 0, :nbl_WA, :, :][np.newaxis, np.newaxis, ...]
-    noise_3x2pt_5D = noise_5D[:, :, :nbl_3x2pt, :, :][np.newaxis, np.newaxis, ...]
+    noise_3x2pt_5D = noise_5D[:, :, :nbl_3x2pt, :, :]
 
     cov_WL_GO_6D_v2 = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_WL, delta_l_WL)[0, 0, 0, 0, ...]
     cov_GC_GO_6D_v2 = mm.covariance_einsum(cl_GG_5D, noise_GG_5D, fsky, ell_GC, delta_l_GC)[0, 0, 0, 0, ...]
     cov_WA_GO_6D_v2 = mm.covariance_einsum(cl_WA_5D, noise_WA_5D, fsky, ell_WA, delta_l_WA)[0, 0, 0, 0, ...]
-    cov_WL_GO_10D_v2 = mm.covariance_einsum(cl_3x2pt_5D, noise_3x2pt_5D, fsky, ell_3x2pt, delta_l_3x2pt)
+    cov_3x2pt_GO_10D_v2 = mm.covariance_einsum(cl_3x2pt_5D, noise_3x2pt_5D, fsky, ell_3x2pt, delta_l_3x2pt)
+    cov_3x2pt_dict_10D_v2 = mm.cov_10D_array_to_dict(cov_3x2pt_GO_10D_v2, probe_ordering)
 
     cov_WL_GO_4D_v2 = mm.cov_6D_to_4D(cov_WL_GO_6D_v2, nbl_WL, zpairs_auto, ind_auto)
     cov_GC_GO_4D_v2 = mm.cov_6D_to_4D(cov_GC_GO_6D_v2, nbl_GC, zpairs_auto, ind_auto)
     cov_WA_GO_4D_v2 = mm.cov_6D_to_4D(cov_WA_GO_6D_v2, nbl_WA, zpairs_auto, ind_auto)
-    cov_3x2pt_GO_4D_v2 = mm.cov_3x2pt_10D_to_4D(cov_WL_GO_10D_v2, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
+    cov_3x2pt_GO_4D_a = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GO_10D_v2, probe_ordering, nbl_3x2pt, zbins, ind.copy(),
+                                               GL_or_LG)
+    cov_3x2pt_GO_4D_b = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_dict_10D_v2, probe_ordering, nbl_3x2pt, zbins, ind.copy(),
+                                               GL_or_LG)
+
+    np.testing.assert_allclose(cov_3x2pt_GO_4D_a, cov_3x2pt_GO_4D_b, atol=0, rtol=1e-10)
 
     np.testing.assert_allclose(cov_WL_GO_4D, cov_WL_GO_4D_v2, atol=0, rtol=1e-10)
     np.testing.assert_allclose(cov_GC_GO_4D, cov_GC_GO_4D_v2, atol=0, rtol=1e-10)
     np.testing.assert_allclose(cov_WA_GO_4D, cov_WA_GO_4D_v2, atol=0, rtol=1e-10)
-    np.testing.assert_allclose(cov_3x2pt_GO_4D, cov_3x2pt_GO_4D_v2, atol=0, rtol=1e-10)
-
-    assert False, 'stop here'
+    np.testing.assert_allclose(cov_3x2pt_GO_4D, cov_3x2pt_GO_4D_a, atol=0, rtol=1e-8)
+    np.testing.assert_allclose(cov_3x2pt_GO_4D, cov_3x2pt_GO_4D_b, atol=0, rtol=1e-8)
 
     ######################## COMPUTE SSC COVARIANCE ###############################
 
@@ -266,6 +258,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_GC_SS_4D = mm.cov_6D_to_4D(cov_GC_SS_6D, nbl_GC, zpairs_auto, ind=ind_auto)
         cov_3x2pt_SS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SS_10D_dict, probe_ordering, nbl_GC, zbins, ind.copy(),
                                                  GL_or_LG)
+        cov_3x2pt_SS_4D_v2 = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SS_10D_arr, probe_ordering, nbl_GC, zbins, ind.copy(),
+                                                 GL_or_LG)
+        assert np.array_equal(cov_3x2pt_SS_4D, cov_3x2pt_SS_4D_v2), 'cov_3x2pt_SS_4D and cov_3x2pt_SS_4D_v2 are not equal'
 
     ############################## SUM G + SSC ################################
     cov_WL_GS_4D = cov_WL_GO_4D + cov_WL_SS_4D
@@ -296,7 +291,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
         # compute the 10D covariance only for the blocks which will actually be used (GO and SS)
         start = time.perf_counter()
-        cov_3x2pt_GO_10D_dict = mm.cov_G_10D_dict(cl_dict_3x2pt, noise_dict_3x2pt, nbl_3x2pt, zbins, l_lin_XC,
+        cov_3x2pt_GO_10D_dict = mm.cov_G_10D_dict(cl_dict_3x2pt, noise_dict_3x2pt, nbl_3x2pt, zbins, ell_3x2pt,
                                                   delta_l_3x2pt, fsky, probe_ordering)
         print(f'cov_3x2pt_GO_10D_dict computed in {(time.perf_counter() - start):.2f} seconds')
 
@@ -338,7 +333,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
               np.array_equal(cov_3x2pt_GS_4D_new, cov_3x2pt_GS_4D))
         """
 
-        # TODO use pandas dataframe?
         # TODO implement the other covmats in this module!
         # if use_PyCCL_SS
         # if use_PyCCL_cNG:
@@ -347,6 +341,26 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_dict['cov_3x2pt_GO_10D_dict'] = cov_3x2pt_GO_10D_dict
         cov_dict['cov_3x2pt_GS_10D_dict'] = cov_3x2pt_GS_10D_dict
         cov_dict['cov_3x2pt_SS_10D_dict'] = cov_3x2pt_SS_10D_dict
+
+        # check if values are the same
+        for key in cov_3x2pt_GO_10D_dict.keys():
+            print(key)
+            np.testing.assert_allclose(cov_3x2pt_dict_10D_v2[key], cov_3x2pt_GO_10D_dict[key], rtol=1e-7, atol=0)
+
+        cov_3x2pt_GO_4D_v2 = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_dict_10D_v2, probe_ordering, nbl_3x2pt, zbins, ind.copy(),
+                                                    GL_or_LG)
+        cov_3x2pt_GO_4D_v3 = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GO_10D_v2, probe_ordering, nbl_3x2pt, zbins, ind.copy(),
+                                                    GL_or_LG)
+
+        cov_3x2pt_GO_4D_alt = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GO_10D_dict, probe_ordering, nbl_3x2pt, zbins,
+                                                     ind.copy(),
+                                                     GL_or_LG)
+        np.testing.assert_allclose(cov_3x2pt_GO_4D_v2, cov_3x2pt_GO_4D_alt, rtol=1e-7, atol=0)
+        np.testing.assert_allclose(cov_3x2pt_GO_4D_v2, cov_3x2pt_GO_4D, rtol=1e-7, atol=0)
+        np.testing.assert_allclose(cov_3x2pt_GO_4D_v3, cov_3x2pt_GO_4D, rtol=1e-7, atol=0)
+
+        # pdb.set_trace()
+        assert False, 'stop here'
 
         # this is the 1st way to compute cov_6D: simply transform the cov_4D array (note that cov_4D_to_6D does not
         # work for 3x2pt, althought it should be easy to implement). Quite slow for GS or SS matrices.

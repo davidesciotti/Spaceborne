@@ -251,9 +251,9 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     else:
         raise ValueError('GL_or_LG must be "GL" or "LG"')
 
-    dC_LLfor3x2pt_4D = dC_3x2pt_6D[:, 0, 0, :, :, :]
-    dC_XCfor3x2pt_4D = dC_3x2pt_6D[:, probe_A, probe_B, :, :, :]
-    dC_GGfor3x2pt_4D = dC_3x2pt_6D[:, 1, 1, :, :, :]
+    dC_LLfor3x2pt_4D = dC_3x2pt_6D[0, 0, :, :, :, :]
+    dC_XCfor3x2pt_4D = dC_3x2pt_6D[probe_A, probe_B, :, :, :, :]
+    dC_GGfor3x2pt_4D = dC_3x2pt_6D[1, 1, :, :, :, :]
 
     assert np.array_equal(dC_GGfor3x2pt_4D, dC_GG_4D), "dC_GGfor3x2pt_4D and dC_GG_4D are not equal"
     assert nbl_3x2pt == nbl_GC, 'nbl_3x2pt and nbl_GC are not equal'

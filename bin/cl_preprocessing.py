@@ -141,13 +141,13 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, rl_dict_2D):
     cl_LLfor3x2pt_3D = np.zeros((nbl, zbins, zbins))  # 3D, for the datavector
     cl_GG_3D = np.zeros((nbl, zbins, zbins))  # 3D, for GConly
     cl_WA_3D = np.zeros((nbl_WA, zbins, zbins))  # 3D, ONLY for the datavector (there's no Wadd_only case)
-    cl_3x2pt_5D = np.zeros((nbl, n_probes, n_probes, zbins, zbins))
+    cl_3x2pt_5D = np.zeros((n_probes, n_probes, nbl, zbins, zbins))
 
     rl_LL_3D = np.zeros((nbl, zbins, zbins))
     rl_LLfor3x2pt_3D = np.zeros((nbl, zbins, zbins))
     rl_GG_3D = np.zeros((nbl, zbins, zbins))
     rl_WA_3D = np.zeros((nbl_WA, zbins, zbins))
-    rl_3x2pt_5D = np.zeros((nbl, n_probes, n_probes, zbins, zbins))
+    rl_3x2pt_5D = np.zeros((n_probes, n_probes, nbl, zbins, zbins))
 
     # fill upper triangle: LL, GG, WLonly
     triu_idx = np.triu_indices(zbins)
@@ -185,16 +185,16 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, rl_dict_2D):
     # fill datavector correctly:
     print('is this way of filling the datavector agnostic to LG, GL???')
     # ! pay attention to LG, GL...
-    cl_3x2pt_5D[:, 0, 0, :, :] = cl_LLfor3x2pt_3D
-    cl_3x2pt_5D[:, 1, 1, :, :] = cl_GG_3D
-    cl_3x2pt_5D[:, 0, 1, :, :] = np.transpose(cl_XC_3D, (0, 2, 1))
-    cl_3x2pt_5D[:, 1, 0, :, :] = cl_XC_3D
+    cl_3x2pt_5D[0, 0, :, :, :] = cl_LLfor3x2pt_3D
+    cl_3x2pt_5D[1, 1, :, :, :] = cl_GG_3D
+    cl_3x2pt_5D[0, 1, :, :, :] = np.transpose(cl_XC_3D, (0, 2, 1))
+    cl_3x2pt_5D[1, 0, :, :, :] = cl_XC_3D
 
     # ! pay attention to LG, GL...
-    rl_3x2pt_5D[:, 0, 0, :, :] = rl_LLfor3x2pt_3D
-    rl_3x2pt_5D[:, 1, 1, :, :] = rl_GG_3D
-    rl_3x2pt_5D[:, 0, 1, :, :] = np.transpose(rl_XC_3D, (0, 2, 1))
-    rl_3x2pt_5D[:, 1, 0, :, :] = rl_XC_3D
+    rl_3x2pt_5D[0, 0, :, :, :] = rl_LLfor3x2pt_3D
+    rl_3x2pt_5D[1, 1, :, :, :] = rl_GG_3D
+    rl_3x2pt_5D[0, 1, :, :, :] = np.transpose(rl_XC_3D, (0, 2, 1))
+    rl_3x2pt_5D[1, 0, :, :, :] = rl_XC_3D
 
     # create dict with results:
     cl_dict_3D = {
@@ -215,11 +215,11 @@ def reshape_cls_2D_to_3D(general_config, ell_dict, cl_dict_2D, rl_dict_2D):
 
 
 def build_3x2pt_datavector_5D(dv_LLfor3x2pt_3D, dv_GL_3D, dv_GG_3D, nbl, zbins, n_probes=2):
-    dv_3x2pt_5D = np.zeros((nbl, n_probes, n_probes, zbins, zbins))
-    dv_3x2pt_5D[:, 0, 0, :, :] = dv_LLfor3x2pt_3D
-    dv_3x2pt_5D[:, 1, 0, :, :] = dv_GL_3D
-    dv_3x2pt_5D[:, 0, 1, :, :] = np.transpose(dv_GL_3D, (0, 2, 1))
-    dv_3x2pt_5D[:, 1, 1, :, :] = dv_GG_3D
+    dv_3x2pt_5D = np.zeros((n_probes, n_probes, nbl, zbins, zbins))
+    dv_3x2pt_5D[0, 0, :, :, :] = dv_LLfor3x2pt_3D
+    dv_3x2pt_5D[1, 0, :, :, :] = dv_GL_3D
+    dv_3x2pt_5D[0, 1, :, :, :] = np.transpose(dv_GL_3D, (0, 2, 1))
+    dv_3x2pt_5D[1, 1, :, :, :] = dv_GG_3D
     return dv_3x2pt_5D
 
 
@@ -322,11 +322,11 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
         cl_gg_3x2pt_3d = mm.cl_2D_to_3D_symmetric(cl_gg_3x2pt_2d, nbl=nbl, zpairs=zpairs_auto, zbins=zbins)
 
         # use them to populate the datavector
-        cl_3x2pt = np.zeros((nbl, 2, 2, zbins, zbins))
-        cl_3x2pt[:, 0, 0, :, :] = cl_ll_3x2pt_3d
-        cl_3x2pt[:, 1, 1, :, :] = cl_gg_3x2pt_3d
-        cl_3x2pt[:, 1, 0, :, :] = cl_gl_3x2pt_3d
-        cl_3x2pt[:, 0, 1, :, :] = np.transpose(cl_gl_3x2pt_3d, (0, 2, 1))
+        cl_3x2pt = np.zeros((2, 2, nbl, zbins, zbins))
+        cl_3x2pt[0, 0, :, :, :] = cl_ll_3x2pt_3d
+        cl_3x2pt[1, 1, :, :, :] = cl_gg_3x2pt_3d
+        cl_3x2pt[1, 0, :, :, :] = cl_gl_3x2pt_3d
+        cl_3x2pt[0, 1, :, :, :] = np.transpose(cl_gl_3x2pt_3d, (0, 2, 1))
         return cl_3x2pt  # in this case, return the datavector (I could name it "cl_3d" and avoid this return statement,
         # but it's not 3d!)
 
@@ -354,10 +354,10 @@ def cl_BNT_transform_3x2pt(cl_3x2pt_5D, BNT_matrix):
     """wrapper function to quickly implement the cl (or derivatives) BNT transform for the 3x2pt datavector"""
 
     cl_3x2pt_5D_BNT = np.zeros(cl_3x2pt_5D.shape)
-    cl_3x2pt_5D_BNT[:, 0, 0, :, :] = cl_BNT_transform(cl_3x2pt_5D[:, 0, 0, :, :], BNT_matrix, 'L', 'L')
-    cl_3x2pt_5D_BNT[:, 0, 1, :, :] = cl_BNT_transform(cl_3x2pt_5D[:, 0, 1, :, :], BNT_matrix, 'L', 'G')
-    cl_3x2pt_5D_BNT[:, 1, 0, :, :] = cl_BNT_transform(cl_3x2pt_5D[:, 1, 0, :, :], BNT_matrix, 'G', 'L')
-    cl_3x2pt_5D_BNT[:, 1, 1, :, :] = cl_3x2pt_5D[:, 1, 1, :, :]  # no need to transform the GG part
+    cl_3x2pt_5D_BNT[0, 0, :, :, :] = cl_BNT_transform(cl_3x2pt_5D[0, 0, :, :, :], BNT_matrix, 'L', 'L')
+    cl_3x2pt_5D_BNT[0, 1, :, :, :] = cl_BNT_transform(cl_3x2pt_5D[0, 1, :, :, :], BNT_matrix, 'L', 'G')
+    cl_3x2pt_5D_BNT[1, 0, :, :, :] = cl_BNT_transform(cl_3x2pt_5D[1, 0, :, :, :], BNT_matrix, 'G', 'L')
+    cl_3x2pt_5D_BNT[1, 1, :, :, :] = cl_3x2pt_5D[1, 1, :, :, :]  # no need to transform the GG part
 
     return cl_3x2pt_5D_BNT
 
@@ -430,10 +430,10 @@ def cl_ell_cut_v2(cl_3D, ell_values, ell_cuts_matrix):
 def cl_ell_cut_3x2pt(cl_3x2pt_5D, ell_cuts_dict, ell_values_3x2pt):
     """wrapper function to quickly implement the cl (or derivatives) ell cut for the 3x2pt datavector"""
 
-    cl_LLfor3x2pt_3D = cl_3x2pt_5D[:, 0, 0, :, :]
-    cl_LGfor3x2pt_3D = cl_3x2pt_5D[:, 0, 1, :, :]
-    cl_GLfor3x2pt_3D = cl_3x2pt_5D[:, 1, 0, :, :]
-    cl_GGfor3x2pt_3D = cl_3x2pt_5D[:, 1, 1, :, :]
+    cl_LLfor3x2pt_3D = cl_3x2pt_5D[0, 0, :, :, :]
+    cl_LGfor3x2pt_3D = cl_3x2pt_5D[0, 1, :, :, :]
+    cl_GLfor3x2pt_3D = cl_3x2pt_5D[1, 0, :, :, :]
+    cl_GGfor3x2pt_3D = cl_3x2pt_5D[1, 1, :, :, :]
 
     cl_LLfor3x2pt_3D_ell_cut = cl_ell_cut(cl_LLfor3x2pt_3D, ell_values_3x2pt, ell_cuts_dict['LL'])
     cl_LGfor3x2pt_3D_ell_cut = cl_ell_cut(cl_LGfor3x2pt_3D, ell_values_3x2pt, ell_cuts_dict['LG'])
@@ -441,9 +441,9 @@ def cl_ell_cut_3x2pt(cl_3x2pt_5D, ell_cuts_dict, ell_values_3x2pt):
     cl_GGfor3x2pt_3D_ell_cut = cl_ell_cut(cl_GGfor3x2pt_3D, ell_values_3x2pt, ell_cuts_dict['GG'])
 
     cl_3x2pt_5D_ell_cut = np.zeros(cl_3x2pt_5D.shape)
-    cl_3x2pt_5D_ell_cut[:, 0, 0, :, :] = cl_LLfor3x2pt_3D_ell_cut
-    cl_3x2pt_5D_ell_cut[:, 0, 1, :, :] = cl_LGfor3x2pt_3D_ell_cut
-    cl_3x2pt_5D_ell_cut[:, 1, 0, :, :] = cl_GLfor3x2pt_3D_ell_cut
-    cl_3x2pt_5D_ell_cut[:, 1, 1, :, :] = cl_GGfor3x2pt_3D_ell_cut
+    cl_3x2pt_5D_ell_cut[0, 0, :, :, :] = cl_LLfor3x2pt_3D_ell_cut
+    cl_3x2pt_5D_ell_cut[0, 1, :, :, :] = cl_LGfor3x2pt_3D_ell_cut
+    cl_3x2pt_5D_ell_cut[1, 0, :, :, :] = cl_GLfor3x2pt_3D_ell_cut
+    cl_3x2pt_5D_ell_cut[1, 1, :, :, :] = cl_GGfor3x2pt_3D_ell_cut
 
     return cl_3x2pt_5D_ell_cut

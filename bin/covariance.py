@@ -204,12 +204,18 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     cov_WL_GO_6D_v2 = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_WL, delta_l_WL)[0, 0, 0, 0, ...]
     cov_GC_GO_6D_v2 = mm.covariance_einsum(cl_GG_5D, noise_GG_5D, fsky, ell_GC, delta_l_GC)[0, 0, 0, 0, ...]
-    cov_WA_GO_6D_v2 = mm.covariance_einsum(cl_LL_5D, noise_WA_5D, fsky, ell_WA, delta_l_WA)[0, 0, 0, 0, ...]
+    cov_WA_GO_6D_v2 = mm.covariance_einsum(cl_WA_5D, noise_WA_5D, fsky, ell_WA, delta_l_WA)[0, 0, 0, 0, ...]
     cov_WL_GO_10D_v2 = mm.covariance_einsum(cl_3x2pt_5D, noise_3x2pt_5D, fsky, ell_3x2pt, delta_l_3x2pt)
 
     cov_WL_GO_4D_v2 = mm.cov_6D_to_4D(cov_WL_GO_6D_v2, nbl_WL, zpairs_auto, ind_auto)
+    cov_GC_GO_4D_v2 = mm.cov_6D_to_4D(cov_GC_GO_6D_v2, nbl_GC, zpairs_auto, ind_auto)
+    cov_WA_GO_4D_v2 = mm.cov_6D_to_4D(cov_WA_GO_6D_v2, nbl_WA, zpairs_auto, ind_auto)
+    cov_3x2pt_GO_4D_v2 = mm.cov_3x2pt_10D_to_4D(cov_WL_GO_10D_v2, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
 
     np.testing.assert_allclose(cov_WL_GO_4D, cov_WL_GO_4D_v2, atol=0, rtol=1e-10)
+    np.testing.assert_allclose(cov_GC_GO_4D, cov_GC_GO_4D_v2, atol=0, rtol=1e-10)
+    np.testing.assert_allclose(cov_WA_GO_4D, cov_WA_GO_4D_v2, atol=0, rtol=1e-10)
+    np.testing.assert_allclose(cov_3x2pt_GO_4D, cov_3x2pt_GO_4D_v2, atol=0, rtol=1e-10)
 
     assert False, 'stop here'
 
@@ -258,8 +264,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         # reshape to 4D
         cov_WL_SS_4D = mm.cov_6D_to_4D(cov_WL_SS_6D, nbl_WL, zpairs_auto, ind=ind_auto)
         cov_GC_SS_4D = mm.cov_6D_to_4D(cov_GC_SS_6D, nbl_GC, zpairs_auto, ind=ind_auto)
-        cov_3x2pt_SS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_3x2pt_SS_10D_dict, probe_ordering, nbl_GC,
-                                                      zbins, ind.copy(), GL_or_LG)
+        cov_3x2pt_SS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SS_10D_dict, probe_ordering, nbl_GC, zbins, ind.copy(),
+                                                 GL_or_LG)
 
     ############################## SUM G + SSC ################################
     cov_WL_GS_4D = cov_WL_GO_4D + cov_WL_SS_4D
@@ -466,14 +472,14 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_auto)
         cov_GC_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_GC_GO_6D'], nbl_GC, zpairs_auto, ind_auto)
         cov_WA_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WA_GO_6D'], nbl_WA, zpairs_auto, ind_auto)
-        cov_3x2pt_GO_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_dict['cov_3x2pt_GO_10D_dict'], probe_ordering, nbl_GC,
-                                                      zbins, ind.copy(), GL_or_LG)
+        cov_3x2pt_GO_4D = mm.cov_3x2pt_10D_to_4D(cov_dict['cov_3x2pt_GO_10D_dict'], probe_ordering, nbl_GC, zbins,
+                                                 ind.copy(), GL_or_LG)
 
         cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GS_6D'], nbl_WL, zpairs_auto, ind_auto)
         cov_GC_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_GC_GS_6D'], nbl_GC, zpairs_auto, ind_auto)
         cov_WA_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, zpairs_auto, ind_auto)
-        cov_3x2pt_GS_4D = mm.cov_3x2pt_dict_10D_to_4D(cov_dict['cov_3x2pt_GS_10D_dict'], probe_ordering, nbl_GC,
-                                                      zbins, ind.copy(), GL_or_LG)
+        cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_dict['cov_3x2pt_GS_10D_dict'], probe_ordering, nbl_GC, zbins,
+                                                 ind.copy(), GL_or_LG)
 
     ############################### 4D to 2D ##################################
     # Here an ordering convention ('block_index') is needed as well

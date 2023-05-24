@@ -342,11 +342,22 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
 
             ng_folder = covariance_cfg["ng_folder"]
             ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
+            nofz_filename = f'{covariance_cfg["nofz_filename"].format(**variable_specs)}'
             covariance_cfg['ng'] = np.genfromtxt(f'{ng_folder}/'f'{ng_filename}')[:, 1]
             z_center_values = np.genfromtxt(f'{ng_folder}/'f'{ng_filename}')[:, 0]
 
+            n_of_z = np.genfromtxt(f'{ng_folder}/'f'{nofz_filename}')
+            zgrid_n_of_z = n_of_z[:, 0]
+            n_of_z = n_of_z[:, 1:]
+
             BNT_matrix_filename = general_cfg["BNT_matrix_filename"].format(**variable_specs)
             BNT_matrix = np.load(f'{general_cfg["BNT_matrix_path"]}/{BNT_matrix_filename}')
+
+            my_BNT = covmat_utils.compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z, plot_nz=True)
+
+            mm.compare_arrays(BNT_matrix, my_BNT, 'benc', 'my_BNT', plot_array=True, plot_diff=True)
+            assert False, 'stop here for my_BNT_matrix checks'
+
 
             # ! import and reshape datavectors (cl) and response functions (rl)
             cl_fld = general_cfg['cl_folder']

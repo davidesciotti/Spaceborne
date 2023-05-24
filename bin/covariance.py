@@ -1,3 +1,4 @@
+import gc
 import pdb
 import sys
 import time
@@ -9,6 +10,7 @@ import matplotlib
 import numpy as np
 from matplotlib import pyplot as plt
 from numba import njit, prange
+from scipy.integrate import simps
 
 import cl_preprocessing
 
@@ -19,7 +21,7 @@ sys.path.append(str(project_path_here.parent / 'common_lib'))
 import my_module as mm
 import cosmo_lib
 
-sys.path.append(str(project_path_here.parent / 'cl_v2'))
+sys.path.append(str(project_path_here.parent / 'cl_v2/bin'))
 import wf_cl_lib
 
 
@@ -160,18 +162,19 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     noise_3x2pt_5D = noise_5D[:, :, :nbl_3x2pt, :, :]
 
     if general_cfg['cl_BNT_transform']:
-        # print('BNT-transforming the noise spectra...')
-        # noise_LL_BNT_3D = cl_preprocessing.cl_BNT_transform(noise_LL_5D[0, 0, ...], BNT_matrix, 'L', 'L')
-        # cl_3x2pt_BNT_5D = cl_preprocessing.cl_BNT_transform_3x2pt(cl_3x2pt_5D, BNT_matrix)
-        # noise_3x2pt_BNT_5D = cl_preprocessing.cl_BNT_transform_3x2pt(noise_3x2pt_5D, BNT_matrix)
-        assert False, 'finish this part of the code!'
+        print('BNT-transforming the noise spectra...')
+        assert False, 'finish this part of the code! I simply have to transform the noise spectra as well.' \
+                      'Maybe this is also a good place to transform the cls?'
+        noise_LL_5D = cl_preprocessing.cl_BNT_transform(noise_LL_5D[0, 0, ...], BNT_matrix, 'L', 'L')[None, None, ...]
+        cl_3x2pt_BNT_5D = cl_preprocessing.cl_BNT_transform_3x2pt(cl_3x2pt_5D, BNT_matrix)
+        noise_3x2pt_BNT_5D = cl_preprocessing.cl_BNT_transform_3x2pt(noise_3x2pt_5D, BNT_matrix)
 
     start = time.perf_counter()
-    # 5d versions of auto-probe spectra
     cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]
     cl_GG_5D = cl_GG_3D[np.newaxis, np.newaxis, ...]
     cl_WA_5D = cl_WA_3D[np.newaxis, np.newaxis, ...]
 
+    # 5d versions of auto-probe spectra
     cov_WL_GO_6D = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_WL, delta_l_WL)[0, 0, 0, 0, ...]
     cov_GC_GO_6D = mm.covariance_einsum(cl_GG_5D, noise_GG_5D, fsky, ell_GC, delta_l_GC)[0, 0, 0, 0, ...]
     cov_WA_GO_6D = mm.covariance_einsum(cl_WA_5D, noise_WA_5D, fsky, ell_WA, delta_l_WA)[0, 0, 0, 0, ...]
@@ -183,13 +186,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_WA_GO_4D = mm.cov_6D_to_4D(cov_WA_GO_6D, nbl_WA, zpairs_auto, ind_auto)
     cov_3x2pt_GO_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GO_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
 
-    cov_WL_GO_4D_v2 = mm.cov_6D_to_4D(cov_WL_GO_6D, nbl_WL, zpairs_auto, ind_auto, optimize=True)
-    cov_GC_GO_4D_v2 = mm.cov_6D_to_4D(cov_GC_GO_6D, nbl_GC, zpairs_auto, ind_auto, optimize=True)
-    cov_WA_GO_4D_v2 = mm.cov_6D_to_4D(cov_WA_GO_6D, nbl_WA, zpairs_auto, ind_auto, optimize=True)
-
-    assert np.array_equal(cov_WL_GO_4D, cov_WL_GO_4D_v2), 'cov_WL_GO_4D_v2 is not equal to cov_WL_GO_4D'
-    assert np.array_equal(cov_GC_GO_4D, cov_GC_GO_4D_v2), 'cov_GC_GO_4D_v2 is not equal to cov_GC_GO_4D'
-    assert np.array_equal(cov_WA_GO_4D, cov_WA_GO_4D_v2), 'cov_WA_GO_4D_v2 is not equal to cov_WA_GO_4D'
+    del cov_WL_GO_6D, cov_GC_GO_6D, cov_WA_GO_6D, cov_3x2pt_GO_10D
+    gc.collect()
 
     ######################## COMPUTE SSC COVARIANCE ###############################
 
@@ -355,7 +353,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
                                                      probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
         print(f'cov_GO_6D computed in {(time.perf_counter() - start_time):.2f} seconds')
 
-
         # ! cov_SSC_6D
         start_time = time.perf_counter()
         cov_WL_SS_6D = mm.cov_SS_10D_dict(cl_dict_LL, rl_dict_LL, Sijkl_dict, nbl_WL, zbins, fsky,
@@ -511,7 +508,6 @@ def build_X_matrix_BNT(BNT_matrix):
 
 def cov_BNT_transform(cov_noBNT_6D, X_dict, probe_A, probe_B, probe_C, probe_D, optimize=True):
     """same as above, but only for one probe (i.e., LL or GL: GG is not modified by the BNT)"""
-    # todo it's nicer if you sandwitch the covariance, maybe? That is, X cov X instead of X X cov
     cov_BNT_6D = np.einsum('aebf, cgdh, LMefgh -> LMabcd', X_dict[probe_A, probe_B], X_dict[probe_C, probe_D],
                            cov_noBNT_6D, optimize=optimize)
     return cov_BNT_6D
@@ -552,12 +548,19 @@ def cov_ell_cut(cov_6d, ell_cuts_idxs_AB, ell_cuts_idxs_CD, zbins):
     return cov_6d
 
 
-def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr):
-    if zbins != 10:
-        raise NotImplementedError('Only 10 zbins are currently supported, because the analytical n(z) is the ISTF one'
-                                  '(i.e., with IST:F edges)')
+def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr, plot_nz=True):
+    """
+    Computes the BNT matrix. Shamelessly stolen from Santiago's implementation in CLOE
+    :param zbins:
+    :param zgrid_n_of_z:
+    :param n_of_z_arr:
+    :param plot_nz:
+    :return: BNT matrix, of shape (zbins x zbins)
+    """
 
     if n_of_z_arr is None:
+        assert zbins == 10, 'Only 10 zbins are currently supported, because the analytical n(z) is the ISTF one' \
+                            '(i.e., with IST:F edges)'
         z_grid = np.linspace(1e-5, 3, 1000)
         n_of_z_arr = np.array([wf_cl_lib.niz_unnormalized_simps(z_grid, zbin_idx) for zbin_idx in range(zbins)])
         n_of_z_arr = np.array(
@@ -565,21 +568,32 @@ def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr):
     elif (n_of_z_arr is None) ^ (zgrid_n_of_z is None):
         raise ValueError('Either both n_of_z_arr and zgrid_n_of_z must be None, or both must be not None')
     else:
-        assert n_of_z_arr.shape[0] == len(zgrid_n_of_z), 'n_of_z must have zgrid_n_of_z rows (and zbins columns)'
+        assert n_of_z_arr.shape[0] == len(zgrid_n_of_z), 'n_of_z must have zgrid_n_of_z rows'
+        assert n_of_z_arr.shape[1] == zbins, 'n_of_z must have zbins columns'
         z_grid = zgrid_n_of_z
+        if z_grid[0] == 0:
+            warnings.warn('z_grid starts at 0, which gives a null comoving distance. '
+                          'Removing the first element from the grid')
+            z_grid = z_grid[1:]
+            n_of_z_arr = n_of_z_arr[1:, :]
 
+    warnings.warn('I am assuming an IST:F fiducial cosmology to compute the comoving distance')
     chi = cosmo_lib.ccl_comoving_distance(z_grid, use_h_units=False)
 
-    for i in range(zbins):
-        plt.plot(z_grid, n_of_z_arr[i])
-    plt.show()
+    if plot_nz:
+        plt.figure()
+        for zi in range(zbins):
+            plt.plot(z_grid, n_of_z_arr[:, zi], label=f'zbin {zi}')
+        plt.title('n(z) used for BNT computation')
+        plt.grid()
+        plt.legend()
 
     A_list = np.zeros(zbins)
     B_list = np.zeros(zbins)
     for zbin_idx in range(zbins):
-        n_of_z = n_of_z_arr[zbin_idx]
-        A_list[zbin_idx] = np.simps(n_of_z, z_grid)
-        B_list[zbin_idx] = np.simps(n_of_z / chi, z_grid)
+        n_of_z = n_of_z_arr[:, zbin_idx]
+        A_list[zbin_idx] = simps(n_of_z, z_grid)
+        B_list[zbin_idx] = simps(n_of_z / chi, z_grid)
 
     bnt_matrix = np.eye(zbins)
     bnt_matrix[1, 0] = -1.

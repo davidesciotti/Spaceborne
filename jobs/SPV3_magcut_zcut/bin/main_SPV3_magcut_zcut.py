@@ -541,10 +541,10 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
             derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
 
             if FM_cfg['load_preprocess_derivatives']:
-                dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_np_arrays/dC_LL_4D.npy')
-                dC_GG_4D = np.load(f'{derivatives_folder}/reshaped_into_np_arrays/dC_GG_4D.npy')
-                dC_WA_4D = np.load(f'{derivatives_folder}/reshaped_into_np_arrays/dC_WA_4D.npy')
-                dC_3x2pt_6D = np.load(f'{derivatives_folder}/reshaped_into_np_arrays/dC_3x2pt_6D.npy')
+                dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_LL_4D.npy')
+                dC_GG_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_GG_4D.npy')
+                dC_WA_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_WA_4D.npy')
+                dC_3x2pt_6D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_3x2pt_6D.npy')
 
             elif not FM_cfg['load_preprocess_derivatives']:
                 der_prefix = FM_cfg['derivatives_prefix']

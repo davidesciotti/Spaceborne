@@ -189,7 +189,6 @@ ell_cuts_subfolder = f'/ell_{general_cfg["center_or_min"]}'
 if not general_cfg['center_or_min']:
     ell_cuts_subfolder = ''
 
-
 FM_cfg = {
     'compute_FM': True,
 

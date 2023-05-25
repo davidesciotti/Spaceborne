@@ -5,12 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="bc90b328-d3dc-49f6-9263-d66cfee42111" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/ISTL/misc/notebooks/covariance_ordering_ISTL_wiki/covariance_ordering/covariance_ordering_notebook/covariance_ordering.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/ISTL/misc/notebooks/covariance_ordering_ISTL_wiki/covariance_ordering/covariance_ordering_notebook/covariance_ordering.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../common_data/common_lib/cosmo_lib.py" beforeDir="false" afterPath="$PROJECT_DIR$/../common_data/common_lib/cosmo_lib.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../common_data/common_lib/my_module.py" beforeDir="false" afterPath="$PROJECT_DIR$/../common_data/common_lib/my_module.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../cosmicfish_reloaded/notebooks/my_Example_plotter.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/../cosmicfish_reloaded/notebooks/my_Example_plotter.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../cosmicfish_reloaded/notebooks/my_External_Fisher_Allprobes-Euclid-w0waCDM.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/../cosmicfish_reloaded/notebooks/my_External_Fisher_Allprobes-Euclid-w0waCDM.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../cosmicfish_reloaded/cosmicfishpie/analysis/fisher_plotting.py" beforeDir="false" afterPath="$PROJECT_DIR$/../cosmicfish_reloaded/cosmicfishpie/analysis/fisher_plotting.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -35,16 +32,16 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;ell__cuts&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/dscio/Documents/Lavoro/Programmi/common_data&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "git-widget-placeholder": "swap__3x2pt__axes",
+    "last_opened_file_path": "C:/Users/dscio/Documents/Lavoro/Programmi/common_data",
+    "settings.editor.selected.configurable": "preferences.keymap"
   }
-}</component>
+}]]></component>
   <component name="PyConsoleOptionsProvider">
     <option name="myPythonConsoleState">
       <console-settings custom-start-script="import sys; print('Python %s on %s' % (sys.version, sys.platform))&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;%load_ext autoreload&#10;%autoreload 2" module-name="SSC_restructured_v2" is-module-sdk="true">

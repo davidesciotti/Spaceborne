@@ -96,6 +96,7 @@ _fid = FM_dict['fiducial_values']  # this should not change when passed the seco
 FM_GO = FM_dict[f'FM_{probe}_GO']
 FM_GS = FM_dict[f'FM_{probe}_GS']
 
+
 # from SSC_paper_jan22_backup_works
 # FM_GO_old = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/SSC_paper_jan22_backup_works/output/FM/'
 #                           f'common_ell_and_deltas/Cij_14may/FM_{probe}_G_lmax{probe}{lmax}_nbl{nbl}.txt')

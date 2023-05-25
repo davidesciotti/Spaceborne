@@ -350,14 +350,11 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
             zgrid_n_of_z = n_of_z[:, 0]
             n_of_z = n_of_z[:, 1:]
 
-            BNT_matrix_filename = general_cfg["BNT_matrix_filename"].format(**variable_specs)
-            BNT_matrix = np.load(f'{general_cfg["BNT_matrix_path"]}/{BNT_matrix_filename}')
+            # BNT_matrix_filename = general_cfg["BNT_matrix_filename"].format(**variable_specs)
+            # BNT_matrix = np.load(f'{general_cfg["BNT_matrix_path"]}/{BNT_matrix_filename}')
 
-            my_BNT = covmat_utils.compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z, plot_nz=True)
-
-            mm.compare_arrays(BNT_matrix, my_BNT, 'benc', 'my_BNT', plot_array=True, plot_diff=True)
-            assert False, 'stop here for my_BNT_matrix checks'
-
+            print('Computing BNT matrix...')
+            BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z, plot_nz=False)
 
             # ! import and reshape datavectors (cl) and response functions (rl)
             cl_fld = general_cfg['cl_folder']

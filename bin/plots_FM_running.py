@@ -147,7 +147,7 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
     else:
 
         plt.figure(figsize=mpl_cfg.mpl_rcParams_dict['figure.figsize'])
-        # plt.grid()
+        plt.grid(alpha = 0.5)
 
         # Make the plot
         for bar_idx in range(no_cases):
@@ -159,7 +159,7 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
         # Adding xticks
         plt.ylabel(ylabel_perc_diff_wrt_mean)
         plt.xticks(range(nparams), param_names_label)
-        plt.yticks(np.arange(0, 8, 2.5))
+        plt.yticks(np.arange(0, 8, 1.5))
 
         plt.title(title)
         plt.legend()

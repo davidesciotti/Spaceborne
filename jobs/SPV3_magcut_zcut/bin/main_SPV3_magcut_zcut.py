@@ -475,6 +475,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                     'the redshift arrays are different for the GC and WL kernels'
                 z_arr = z_arr_wil
 
+
                 # transpose and stack, ordering is important here!
                 assert wil.shape == wig.shape, 'the GC and WL kernels have different shapes'
                 assert wil.shape == (z_arr.shape[0], zbins), 'the kernels have the wrong shape'
@@ -624,6 +625,8 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
             if general_cfg['test_against_benchmarks']:
                 fm_benchmark_folder = f'{fm_folder}/benchmarks'
                 mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
+
+
 
 print('Script end')
 

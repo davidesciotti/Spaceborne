@@ -16,6 +16,7 @@ import json
 from PySSC import Sijkl
 from pathlib import Path
 
+
 # ! don't touch the imports and/or their ordering, otherwise I get a malloc error when compiling
 
 # get project directory
@@ -142,6 +143,9 @@ def compute_Sijkl(cosmo_params_dict, z_arr, windows, windows_normalization, zbin
     if z_arr is None and windows is None:
         warnings.warn("the imports filepath should be specified outside this function/module!", DeprecationWarning)
         z_arr, windows = load_WF(Sijkl_cfg, zbins, EP_or_ED=EP_or_ED)
+
+    assert len(z_arr) > 5000, 'the kernels have to be sampled in a sufficiently high number of z points' \
+                              'for PySSC to work properly'
 
     print('Computing the Sijkl matrix...')
     start = time.perf_counter()

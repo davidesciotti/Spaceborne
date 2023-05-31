@@ -54,13 +54,11 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     # this is a check to make sure that XC has the ordering (L, G) or (G, L) specified by GL_or_LG, and it
     # only works for the (LL, XC, GG) ordering
-    probe_ordering = [['L', 'L'], [GL_or_LG[0], GL_or_LG[1]], ['G', 'G']]
+    probe_ordering = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
 
     # (not the best) check to ensure that the (LL, XC, GG) ordering is respected
-    assert probe_ordering[0] == ['L', 'L'], 'the XC probe should be in position 1 (not 0) of the datavector'
-    assert probe_ordering[2] == ['G', 'G'], 'the XC probe should be in position 1 (not 0) of the datavector'
-
-    start = time.perf_counter()
+    assert probe_ordering[0] == ('L', 'L'), 'the XC probe should be in position 1 (not 0) of the datavector'
+    assert probe_ordering[2] == ('G', 'G'), 'the XC probe should be in position 1 (not 0) of the datavector'
 
     # import ell values
     ell_WL, nbl_WL = ell_dict['ell_WL'], ell_dict['ell_WL'].shape[0]
@@ -186,6 +184,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_WA_GO_4D = mm.cov_6D_to_4D(cov_WA_GO_6D, nbl_WA, zpairs_auto, ind_auto)
     cov_3x2pt_GO_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GO_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
 
+    # delete the 6D matrices to free memory
     del cov_WL_GO_6D, cov_GC_GO_6D, cov_WA_GO_6D, cov_3x2pt_GO_10D
     gc.collect()
 
@@ -207,15 +206,15 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     if SSC_code == 'PyCCL':
         print('Computing GS with PyCCL SSC covariance')
-        assert covariance_cfg['compute_cov_6D'] is False, 'compute_cov_6D must be False when using, because cov_GS_4D' \
-                                                          ' gets overwritten below. Fix this.'
+        # assert covariance_cfg['compute_cov_6D'] is False, 'compute_cov_6D must be False when using, because cov_GS_4D' \
+        #                                                   ' gets overwritten below. Fix this.'
 
         # TODO for now, load the existing files; then, compute the SSC cov properly
         fldr = covariance_cfg["cov_SSC_PyCCL_folder"]
         filename = covariance_cfg["cov_SSC_PyCCL_filename"]
 
-        cov_WL_SS_6D = np.load(f'{fldr}/{filename.format(probe="WL", nbl=nbl_WL, ell_max=ell_max_WL)}')
-        cov_GC_SS_6D = np.load(f'{fldr}/{filename.format(probe="GC", nbl=nbl_GC, ell_max=ell_max_GC)}')
+        cov_WL_SS_6D = np.load(f'{fldr}/{filename.format(probe="LL", nbl=nbl_WL, ell_max=ell_max_WL)}')
+        cov_GC_SS_6D = np.load(f'{fldr}/{filename.format(probe="GG", nbl=nbl_GC, ell_max=ell_max_GC)}')
         cov_3x2pt_SS_10D_arr = np.load(f'{fldr}/{filename.format(probe="3x2pt", nbl=nbl_GC, ell_max=ell_max_GC)}')
         # ! transform into a dict to be able to reshape to 4D, this is a very ugly way to do it
         cov_3x2pt_SS_10D_dict = {
@@ -243,6 +242,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
                                                     GL_or_LG)
         assert np.array_equal(cov_3x2pt_SS_4D,
                               cov_3x2pt_SS_4D_v2), 'cov_3x2pt_SS_4D and cov_3x2pt_SS_4D_v2 are not equal'
+
+        pdb.set_trace()
 
     ############################## SUM G + SSC ################################
     cov_WL_GS_4D = cov_WL_GO_4D + cov_WL_SS_4D

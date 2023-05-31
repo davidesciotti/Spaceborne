@@ -42,7 +42,7 @@ if cl_ell_cuts:
     assert deriv_ell_cuts, 'if you want to apply ell cuts to the cls, you hould also apply them to the derivatives'
 
 if cov_ell_cuts:
-    assert cl_ell_cuts == False, 'if you want to apply ell cuts to the cov, you cannot apply them to the cls'
+    assert cl_ell_cuts is False, 'if you want to apply ell cuts to the cov, you cannot apply them to the cls'
     assert deriv_ell_cuts, 'if you want to apply ell cuts to the cov, you hould also apply them to the derivatives'
 
 assert flagship_version == 2, 'the files for the multicut case are only available for Flagship_2'
@@ -123,6 +123,8 @@ covariance_cfg = {
     'SSC_code': 'PySSC',
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which is quite wrong
+    'cov_SSC_PyCCL_folder': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/after_script_update',
+    'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:s}_ellmax{ell_max:d}_HMrecipeKrause2017_6D.npy',
 
     'fsky': fsky,  # ! new
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files

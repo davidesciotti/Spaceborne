@@ -14,7 +14,7 @@ import ISTF_fid_params as ISTFfid
 which_forecast = 'SPV3'
 fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
-SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
+SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -90,20 +90,20 @@ general_cfg = {
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
     'BNT_transform': BNT_transform,  # ! to be deprecated?
     'cl_BNT_transform': cl_BNT_transform,
-
-    'cl_folder': f'{SPV3_folder}/Flagship_{flagship_version}/DataVectors/magcut_zcut_True',
+/dv-3x2pt-EP05-ML245-MS245-idIA2-idB3-idM3-idR1.dat
+    'cl_folder': f'{SPV3_folder}/OutputFiles/DataVectors/Noiseless/All/HMCode2020',
     'rl_folder': f'{SPV3_folder}/Flagship_{flagship_version}/ResFunTabs/magcut_zcut_True',
     'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'rl_filename': 'rf-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    'magcut_lens_list': (245,),
-    'magcut_source_list': (245,),
-    'zcut_lens_list': (0,),
-    'zcut_source_list': (0,),
+    # 'magcut_lens_list': (245,),
+    # 'magcut_source_list': (245,),
+    # 'zcut_lens_list': (2,),
+    # 'zcut_source_list': (2,),
     'zmax': 2.5,
     'magcut_source': 245,
     'magcut_lens': 245,
-    'zcut_source': 0,
-    'zcut_lens': 0,
+    'zcut_source': 2,
+    'zcut_lens': 2,
     'flagship_version': flagship_version,
 
     'test_against_benchmarks': False,
@@ -126,12 +126,17 @@ covariance_cfg = {
     'cov_SSC_PyCCL_folder': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/after_script_update',
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:s}_ellmax{ell_max:d}_HMrecipeKrause2017_6D.npy',
 
+    # n_gal, sigma_eps, fsky, all entering the covariance matrix
     'fsky': fsky,  # ! new
-    'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
-    'ng_folder': f'{SPV3_folder}/Flagship_{flagship_version}/InputNz',
-    'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
-    'nofz_filename': 'nzTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
+    'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
+    'ng_folder': f'{SPV3_folder}/InputFiles/InputNz/NzPar',
+    'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
+
+    # sources (and lenses) redshift distributions
+    'nofz_folder': f'{SPV3_folder}/InputFiles/InputNz/NzFid',
+    'nofz_filename': 'nzTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
+    'plot_nz_tocheck': True,
 
     'cov_BNT_transform': cov_BNT_transform,
     'cov_ell_cuts': cov_ell_cuts,

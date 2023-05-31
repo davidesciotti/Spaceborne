@@ -214,15 +214,26 @@ def get_idxs_to_delete_3x2pt_v0(ell_values_3x2pt, ell_cuts_dict):
     return list(idxs_to_delete_3x2pt)
 
 
+def plot_nz_tocheck_func():
+    if not covariance_cfg['plot_nz_tocheck']:
+        return
+    plt.figure()
+    for zi in range(zbins):
+        plt.plot(zgrid_n_of_z, n_of_z[:, zi], label=f'zbin {zi}')
+    plt.legend()
+    plt.xlabel('z')
+    plt.ylabel('n(z)')
+
+
 # ======================================================================================================================
 # ======================================================================================================================
 # ======================================================================================================================
 
 
-ML_list = general_cfg['magcut_lens_list']
-ZL_list = general_cfg['zcut_lens_list']
-MS_list = general_cfg['magcut_source_list']
-ZS_list = general_cfg['zcut_source_list']
+# ML_list = general_cfg['magcut_lens_list']
+# ZL_list = general_cfg['zcut_lens_list']
+# MS_list = general_cfg['magcut_source_list']
+# ZS_list = general_cfg['zcut_source_list']
 
 # for general_cfg['magcut_lens'], general_cfg['zcut_lens'], general_cfg['magcut_source'], general_cfg['zcut_source'] in \
 #         zip(ML_list, ZL_list, MS_list, ZS_list):
@@ -342,13 +353,20 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
 
             ng_folder = covariance_cfg["ng_folder"]
             ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
-            nofz_filename = f'{covariance_cfg["nofz_filename"].format(**variable_specs)}'
             covariance_cfg['ng'] = np.genfromtxt(f'{ng_folder}/'f'{ng_filename}')[:, 1]
             z_center_values = np.genfromtxt(f'{ng_folder}/'f'{ng_filename}')[:, 0]
 
-            n_of_z = np.genfromtxt(f'{ng_folder}/'f'{nofz_filename}')
+            nofz_folder = covariance_cfg["nofz_folder"]
+            nofz_filename = f'{covariance_cfg["nofz_filename"].format(**variable_specs)}'
+            n_of_z = np.genfromtxt(f'{nofz_folder}/'f'{nofz_filename}')
             zgrid_n_of_z = n_of_z[:, 0]
             n_of_z = n_of_z[:, 1:]
+
+            # some check on the input nz files
+            assert np.all(covariance_cfg['ng'] < 5), 'ng values are likely < 5 *per bin*; this is just a rough check'
+            assert np.all(covariance_cfg['ng'] > 0), 'ng values must be positive'
+            assert np.all(z_center_values > 0), 'z_center values must be positive'
+            assert np.all(z_center_values < 3.5), 'z_center values are likely < 3.5; this is just a rough check'
 
             # BNT_matrix_filename = general_cfg["BNT_matrix_filename"].format(**variable_specs)
             # BNT_matrix = np.load(f'{general_cfg["BNT_matrix_path"]}/{BNT_matrix_filename}')

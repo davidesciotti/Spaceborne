@@ -12,7 +12,7 @@ sys.path.append(f'{project_path.parent}/common_data/common_config')
 import ISTF_fid_params as ISTFfid
 
 which_forecast = 'SPV3'
-fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
+fsky, GL_or_LG, ind_ordering, _ = utils.get_specs(which_forecast)
 
 SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
 
@@ -90,15 +90,19 @@ general_cfg = {
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
     'BNT_transform': BNT_transform,  # ! to be deprecated?
     'cl_BNT_transform': cl_BNT_transform,
-/dv-3x2pt-EP05-ML245-MS245-idIA2-idB3-idM3-idR1.dat
-    'cl_folder': f'{SPV3_folder}/OutputFiles/DataVectors/Noiseless/All/HMCode2020',
-    'rl_folder': f'{SPV3_folder}/Flagship_{flagship_version}/ResFunTabs/magcut_zcut_True',
-    'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
+
+    'idIA': 2,
+    'idB': 3,
+    'idM': 3,
+    'idR': 1,
+
+    'which_pk': 'HMCode2020',
+    'cl_folder': f'{SPV3_folder}' + '/OutputFiles/DataVectors/Noiseless/{probe:s}/{which_pk:s}',
+    'rl_folder': f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
+                 f'Flagship_2/ResFunTabs/magcut_zcut_True',
+    'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
     'rl_filename': 'rf-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    # 'magcut_lens_list': (245,),
-    # 'magcut_source_list': (245,),
-    # 'zcut_lens_list': (2,),
-    # 'zcut_source_list': (2,),
+
     'zmax': 2.5,
     'magcut_source': 245,
     'magcut_lens': 245,
@@ -165,7 +169,7 @@ covariance_cfg = {
 }
 
 Sijkl_cfg = {
-    'wf_input_folder': f'{SPV3_folder}/Flagship_{flagship_version}/KernelFun/magcut_zcut',
+    'wf_input_folder': f'{SPV3_folder}/InputFiles/InputRSD/WiRSDFid',
     'wf_WL_input_filename': 'WiWL-{EP_or_ED:s}{zbins:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'wf_GC_input_filename': 'WiGC-{EP_or_ED:s}{zbins:02d}-ML{magcut_source:03d}-ZL{zcut_source:02d}.dat',
     'wf_normalization': 'IST',

@@ -349,7 +349,9 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                               'magcut_source': magcut_source, 'zcut_source': zcut_source, 'zmax': zmax,
                               'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_XC': ell_max_XC,
                               'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
-                              'kmax_h_over_Mpc': kmax_h_over_Mpc, center_or_min: center_or_min}
+                              'kmax_h_over_Mpc': kmax_h_over_Mpc, center_or_min: center_or_min,
+                              'idIA': 2, 'idB': 3, 'idM': 3, 'idR': 1,
+                              }
 
             ng_folder = covariance_cfg["ng_folder"]
             ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
@@ -377,11 +379,17 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
             # ! import and reshape datavectors (cl) and response functions (rl)
             cl_fld = general_cfg['cl_folder']
             cl_filename = general_cfg['cl_filename']
-            cl_ll_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLO', **variable_specs)}")
-            cl_gg_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='GCO', **variable_specs)}")
-            cl_wa_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLA', **variable_specs)}")
-            cl_3x2pt_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
+            which_pk = general_cfg['which_pk']
+            cl_ll_1d = np.genfromtxt(
+                f"{cl_fld.format(probe='WLO', which_pk=which_pk)}/{cl_filename.format(probe='WLO', **variable_specs)}")
+            cl_gg_1d = np.genfromtxt(
+                f"{cl_fld.format(probe='GCO', which_pk=which_pk)}/{cl_filename.format(probe='GCO', **variable_specs)}")
+            cl_wa_1d = np.genfromtxt(
+                f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', **variable_specs)}")
+            cl_3x2pt_1d = np.genfromtxt(
+                f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
 
+            warnings.warn('the responses are old')
             rl_fld = general_cfg['rl_folder']
             rl_filename = general_cfg['rl_filename']
             rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', **variable_specs)}")

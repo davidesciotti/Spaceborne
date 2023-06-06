@@ -111,12 +111,12 @@ def consistency_checks(general_config, covariance_config):
         assert covariance_config['GL_or_LG'] == 'GL', f'{which_forecast} uses GL'
         assert covariance_config['fsky'] == fsky_ISTF, f'{which_forecast} uses fsky = {fsky_ISTF}'
         assert covariance_config['ng'] == 28.73, f'{which_forecast} uses ng = 28.73'
-        assert covariance_config['sigma_eps2'] == (0.3) ** 2
+        assert covariance_config['sigma_eps2'] == 0.3 ** 2
         assert covariance_config['block_index'] == 'ell'
         assert covariance_config['which_probe_response'] == 'variable'
         assert general_config['EP_or_ED'] == 'EP', f'{which_forecast} uses equipopulated bins'
         assert general_config['cl_folder'] == 'SPV3', f'{which_forecast} uses SPV3 cls'
-        assert general_config['nbl'] == 30, f'{which_forecast} uses nbl = 20'
+        assert general_config['nbl'] == 30, f'{which_forecast} uses nbl = 30'
         assert general_config['ell_max_GC'] == 3000 or 750, f'{which_forecast} uses ell_max_GC = 3000 or 750'
         assert general_config['use_WA'] is True, f'{which_forecast} uses Wadd'
 
@@ -125,7 +125,7 @@ def consistency_checks(general_config, covariance_config):
         assert covariance_config['GL_or_LG'] == 'GL', f'{which_forecast} uses GL'
         assert covariance_config['fsky'] == fsky_ISTF, f'{which_forecast} uses fsky = {fsky_ISTF}'
         assert covariance_config['ng'] == 28.73, f'{which_forecast} uses ng = 28.73'
-        assert covariance_config['sigma_eps2'] == (0.3) ** 2
+        assert covariance_config['sigma_eps2'] == 0.3 ** 2
         assert covariance_config['block_index'] == 'ell'
         assert covariance_config['which_probe_response'] == 'variable'
         assert general_config['EP_or_ED'] == 'ED', f'{which_forecast} uses equidistant bins'

@@ -200,6 +200,13 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_GG_4D = deriv_dict['dC_GG_4D']
     dC_WA_4D = deriv_dict['dC_WA_4D']
     dC_3x2pt_6D = deriv_dict['dC_3x2pt_6D']
+
+    assert dC_LL_4D.shape == (nbl_WL, zbins, zbins, nparams_tot), f'dC_LL_4D has incorrect shape: {dC_LL_4D.shape}'
+    assert dC_GG_4D.shape == (nbl_GC, zbins, zbins, nparams_tot), f'dC_GG_4D has incorrect shape: {dC_GG_4D.shape}'
+    assert dC_WA_4D.shape == (nbl_WA, zbins, zbins, nparams_tot), f'dC_WA_4D has incorrect shape: {dC_WA_4D.shape}'
+    assert dC_3x2pt_6D.shape == (2, 2, nbl_3x2pt, zbins, zbins, nparams_tot), \
+        f'dC_3x2pt_6D has incorrect shape: {dC_3x2pt_6D.shape}'
+
     #
     # dC_LLfor3x2pt_2D = np.zeros((nbl_3x2pt * zpairs_auto, nparams_tot))
     # dC_GLfor3x2pt_2D = np.zeros((nbl_3x2pt * zpairs_cross, nparams_tot))

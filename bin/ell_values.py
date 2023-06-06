@@ -61,12 +61,6 @@ def generate_ell_and_deltas(general_config):
     ell_WL = logarithm_WL
     ell_GC = logarithm_GC
 
-    # ell values in linear scale:
-    l_lin_WL = 10 ** ell_WL
-    l_lin_GC = 10 ** ell_GC
-    l_lin_WA = 10 ** ell_WA
-    l_lin_XC = l_lin_GC
-
     if use_WA and np.any(l_centr_WL == ell_max_GC):
         # check in the unlikely case that one element of l_centr_WL is == ell_max_GC. Anyway, the recipe
         # says (l_centr_WL > ell_max_GC, NOT >=).
@@ -74,9 +68,9 @@ def generate_ell_and_deltas(general_config):
         the elements >, but you may want to double check what to do in this case')
 
     # save the values
-    ell_dict['ell_WL'] = ell_WL
-    ell_dict['ell_GC'] = ell_GC
-    ell_dict['ell_WA'] = ell_WA
+    ell_dict['ell_WL'] = 10 ** ell_WL
+    ell_dict['ell_GC'] = 10 ** ell_GC
+    ell_dict['ell_WA'] = 10 ** ell_WA
 
     delta_dict['delta_l_WL'] = delta_l_WL
     delta_dict['delta_l_GC'] = delta_l_GC

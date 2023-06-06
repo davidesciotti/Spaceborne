@@ -55,7 +55,7 @@ covariance_cfg = cfg.covariance_cfg
 Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
-# utils.consistency_checks(general_cfg, covariance_cfg)
+utils.consistency_checks(general_cfg, covariance_cfg)
 
 # some variables used for I/O naming, just to make things more readable
 zbins = general_cfg['zbins']
@@ -289,11 +289,11 @@ else:
                                             der_prefix.format(probe=GL_or_LG))
 
     # build 5D array of derivatives for the 3x2pt
-    dC_3x2pt_6D = np.zeros((nbl, n_probes, n_probes, zbins, zbins, nparams_tot))
-    dC_3x2pt_6D[:, 0, 0, :, :, :] = dC_LLfor3x2pt_4D
-    dC_3x2pt_6D[:, 0, 1, :, :, :] = dC_GL_4D.transpose(0, 2, 1, 3)
-    dC_3x2pt_6D[:, 1, 0, :, :, :] = dC_GL_4D
-    dC_3x2pt_6D[:, 1, 1, :, :, :] = dC_GG_4D
+    dC_3x2pt_6D = np.zeros((n_probes, n_probes, nbl, zbins, zbins, nparams_tot))
+    dC_3x2pt_6D[0, 0, :, :, :, :] = dC_LLfor3x2pt_4D
+    dC_3x2pt_6D[0, 1, :, :, :, :] = dC_GL_4D.transpose(0, 2, 1, 3)
+    dC_3x2pt_6D[1, 0, :, :, :, :] = dC_GL_4D
+    dC_3x2pt_6D[1, 1, :, :, :, :] = dC_GG_4D
 
     np.save(f'{derivatives_folder}/reshaped_into_4d_arrays', dC_LL_4D)
     np.save(f'{derivatives_folder}/reshaped_into_4d_arrays', dC_GG_4D)
@@ -363,7 +363,7 @@ uncert_FM_test = mm.uncertainties_FM(FM_test, FM_test.shape[0], fiducials=fiduci
 # assert np.array_equal(uncert_dict['FM_PySSC_GO'], uncert_dict['FM_PyCCL_GO']), \
 #     'the GO uncertainties must be the same, I am only changing the SSC code!'
 #
-# silent check against IST:F (which do not exist for GC alone):
+# silent check against IST:F (which does not exist for GC alone):
 for probe in ['WL', '3x2pt']:
     uncert_dict['ISTF'] = ISTF_fid.forecasts[f'{probe}_opt_w0waCDM_flat']
     try:

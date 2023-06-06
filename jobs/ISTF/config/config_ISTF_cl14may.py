@@ -38,13 +38,32 @@ if cl_ell_cuts:
     assert deriv_ell_cuts, 'if you want to apply ell cuts to the cls, you hould also apply them to the derivatives'
 
 if cov_ell_cuts:
-    assert cl_ell_cuts == False, 'if you want to apply ell cuts to the cov, you cannot apply them to the cls'
+    assert cl_ell_cuts is False, 'if you want to apply ell cuts to the cov, you cannot apply them to the cls'
     assert deriv_ell_cuts, 'if you want to apply ell cuts to the cov, you hould also apply them to the derivatives'
 
-# settings for SSC comparison (aka 'sylvain'):
-# survey_area_deg2 = 15469.86  # deg^2
-# use_WA: False
-# + different deltas...
+
+if cfg_name == 'cl14may':
+    cl_folder = f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}'
+    cl_filename = 'Cij{probe:s}-GR-Flat-eNLA-NA.dat'
+    gal_bias_names_list = [f'bL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
+    derivatives_folder = f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}'
+    derivatives_suffix = '-GR-Flat-eNLA-NA'
+elif cfg_name == 'cl15gen':
+    cl_folder = f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_tesi/new_names'
+    cl_filename = 'Cij{probe:s}-N4TB-GR-eNLA.dat'
+    gal_bias_names_list = [f'b{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
+    derivatives_folder = f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_derivatives_tesi/new_names'
+    derivatives_suffix = '-N4TB-GR-eNLA'
+elif cfg_name == 'SSC_comparison_updated':
+    # settings for SSC comparison (aka 'sylvain'):
+    # survey_area_deg2 = 15469.86  # deg^2
+    # use_WA: False
+    # + different deltas...
+    fsky = fsky_ISTF
+    GL_or_LG = 'GL'
+    ind_ordering = 'triu'
+    cl_folder = 'SPV3'
+
 
 general_cfg = {
     'cfg_name': cfg_name,
@@ -63,18 +82,18 @@ general_cfg = {
     'save_cls_3d': False,
     'save_rls_3d': False,
 
-    'test_against_benchmarks': False,
-
     'ell_cuts': ell_cuts,
 
     'cl_BNT_transform': cl_BNT_transform,
     'BNT_transform': BNT_transform,
     'BNT_matrix_path': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT_matrix',
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
-    'cl_folder': f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}',
+    'cl_folder': cl_folder,
     'rl_folder': f'{project_path.parent}/common_data/vincenzo/Pk_responses_2D/' + '{EP_or_ED:s}{zbins:02d}',
-    'cl_filename': 'Cij{probe:s}-GR-Flat-eNLA-NA.dat',
+    'cl_filename': cl_filename,
     'rl_filename': 'rij{probe:s}corr-istf-alex.dat',
+
+    'test_against_benchmarks': False,
 }
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
@@ -88,7 +107,7 @@ covariance_cfg = {
     'block_index': 'ell',
     'GL_or_LG': 'GL',
 
-    'SSC_code': 'PyCCL',  # PySSC or PyCCL
+    'SSC_code': 'PySSC',  # PySSC or PyCCL
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which this is wrong
 
@@ -112,13 +131,13 @@ covariance_cfg = {
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_GS': False,
-    'save_cov_SSC': True,
+    'save_cov_SSC': False,
     'save_2DCLOE': True,  # outermost loop is on the probes
 
-    'cov_folder': str(job_path) + f'/output/{cfg_name}/' + 'covmat/{SSC_code:s}',
-    'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D.npy',
+    'cov_folder': f'{job_path}/output/{cfg_name}/' + 'covmat/{SSC_code:s}',
+    'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
     'cov_SSC_PyCCL_folder': f'{project_path.parent}/PyCCL_SSC/output/covmat',
-    'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_hm_recipeKrause2017_6D.npy',  # TODO these 2 filenames could be unified...
+    'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_HMrecipeKrause2017_6D.npy',
     # TODO these 2 filenames could be unified...
 }
 
@@ -139,7 +158,7 @@ Sijkl_cfg = {
 param_names_dict = {
     'cosmo': ["Om", "Ob", "wz", "wa", "h", "ns", "s8"],
     'IA': ["Aia", "eIA", "bIA"],
-    'galaxy_bias': [f'bL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
+    'galaxy_bias': gal_bias_names_list,
 }
 # fiducial values
 fiducials_dict = {
@@ -149,13 +168,11 @@ fiducials_dict = {
     'galaxy_bias': [ISTFfid.photoz_galaxy_bias[f'b{zbin:02d}_photo'] for zbin in range(1, general_cfg['zbins'] + 1)],
 }
 
-
 param_names_3x2pt = param_names_dict['cosmo'] + param_names_dict['IA'] + param_names_dict['galaxy_bias']
 # this needs to be done outside the dictionary creation
 fiducials_3x2pt = np.concatenate((fiducials_dict['cosmo'], fiducials_dict['IA'], fiducials_dict['galaxy_bias']))
 assert len(param_names_3x2pt) == len(fiducials_3x2pt), "the fiducial values list and parameter names should have the " \
                                                        "same length"
-nparams_tot = len(param_names_3x2pt)
 
 FM_cfg = {
     'compute_FM': True,
@@ -169,9 +186,9 @@ FM_cfg = {
     'save_FM_dict': True,
 
     'load_preprocess_derivatives': False,
-    'derivatives_folder': f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}',
+    'derivatives_folder': derivatives_folder,
     'derivatives_prefix': 'dCij{probe:s}d',
-    'derivatives_suffix': '-GR-Flat-eNLA-NA',  # I'd like to use this, but instead:
+    'derivatives_suffix': derivatives_suffix,
 
     'derivatives_BNT_transform': deriv_BNT_transform,
     'deriv_ell_cuts': deriv_ell_cuts,
@@ -179,5 +196,4 @@ FM_cfg = {
     'fm_folder': str(job_path) + f'/output/{cfg_name}/' + 'FM/{SSC_code:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
     'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}',
-
 }

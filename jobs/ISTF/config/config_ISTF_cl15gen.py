@@ -38,7 +38,7 @@ if cl_ell_cuts:
     assert deriv_ell_cuts, 'if you want to apply ell cuts to the cls, you hould also apply them to the derivatives'
 
 if cov_ell_cuts:
-    assert cl_ell_cuts == False, 'if you want to apply ell cuts to the cov, you cannot apply them to the cls'
+    assert cl_ell_cuts is False, 'if you want to apply ell cuts to the cov, you cannot apply them to the cls'
     assert deriv_ell_cuts, 'if you want to apply ell cuts to the cov, you hould also apply them to the derivatives'
 
 # settings for SSC comparison (aka 'sylvain'):
@@ -59,7 +59,7 @@ general_cfg = {
     'nbl_WL': 30,
     'nbl_GC': 30,
     'nbl_3x2pt': 30,
-    'use_WA': False,  # ! xxx
+    'use_WA': True,  # ! xxx
     'save_cls_3d': False,
     'save_rls_3d': False,
 
@@ -88,7 +88,7 @@ covariance_cfg = {
     'block_index': 'ell',
     'GL_or_LG': 'GL',
 
-    'SSC_code': 'PyCCL',  # PySSC or PyCCL
+    'SSC_code': 'PySSC',  # PySSC or PyCCL
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which this is wrong
 
@@ -118,7 +118,7 @@ covariance_cfg = {
     'cov_folder': f'{job_path}/output/{cfg_name}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
     'cov_SSC_PyCCL_folder': f'{project_path.parent}/PyCCL_SSC/output/covmat',
-    'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_hm_recipeKiDS1000_6D.npy',
+    'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_HMrecipeKrause2017_6D.npy',
     # TODO these 2 filenames could be unified...
 }
 

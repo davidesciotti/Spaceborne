@@ -95,14 +95,6 @@ assert general_cfg['ell_cuts'] is False, 'ell_cuts is not implemented for ISTF'
 assert general_cfg['BNT_transform'] is False, 'BNT_transform is not implemented for ISTF'
 
 zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
-
-# import the ind files and store it into the covariance dictionary
-# TODO delete these lines
-# ind_folder = covariance_cfg['ind_folder'].format(**variable_specs)
-# ind_filename = covariance_cfg['ind_filename'].format(**variable_specs)
-# ind = np.genfromtxt(f'{ind_folder}/{ind_filename}', dtype=int)
-# covariance_cfg['ind'] = ind
-
 ind = mm.build_full_ind(covariance_cfg['triu_tril'], covariance_cfg['row_col_major'], zbins)
 covariance_cfg['ind'] = ind
 
@@ -115,7 +107,6 @@ if covariance_cfg['use_sylvains_deltas']:
     delta_dict['delta_l_WL'] = mm.delta_l_Sylvain(nbl_WL, ell_dict['ell_WL'])
     delta_dict['delta_l_GC'] = mm.delta_l_Sylvain(nbl_GC, ell_dict['ell_GC'])
     delta_dict['delta_l_WA'] = mm.delta_l_Sylvain(nbl_WA, ell_dict['ell_WA'])
-
 
 variable_specs = {
     'zbins': zbins,
@@ -186,52 +177,53 @@ rl_dict_3D['rl_3x2pt_5D'] = cl_utils.build_3x2pt_datavector_5D(rl_LLfor3x2pt_3D,
                                                                nbl_GC, zbins, n_probes)
 
 # ! compute covariance matrix
-if covariance_cfg['compute_covmat']:
+if not covariance_cfg['compute_covmat']:
+    raise KeyboardInterrupt('Fisher matrix computation is set to False; exiting')
 
-    # ! compute or load Sijkl
-    # if Sijkl exists, load it; otherwise, compute it and save it
-    Sijkl_folder = Sijkl_cfg['Sijkl_folder']
-    Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(nz=Sijkl_cfg['nz'])
 
-    if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
+# ! compute or load Sijkl
+# if Sijkl exists, load it; otherwise, compute it and save it
+Sijkl_folder = Sijkl_cfg['Sijkl_folder']
+Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(nz=Sijkl_cfg['nz'])
 
-        print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
-        sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
+if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
 
-    else:
+    print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
+    sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
 
-        # ! load kernels
-        # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
-        nz = Sijkl_cfg["nz"]
-        wf_folder = Sijkl_cfg["wf_input_folder"].format(nz=nz)
-        wil_filename = Sijkl_cfg["wil_filename"].format(normalization=Sijkl_cfg['wf_normalization'],
-                                                        has_IA=str(Sijkl_cfg['has_IA']), nz=nz, bIA=bIA)
-        wig_filename = Sijkl_cfg["wig_filename"].format(normalization=Sijkl_cfg['wf_normalization'], nz=nz)
-        wil = np.genfromtxt(f'{wf_folder}/{wil_filename}')
-        wig = np.genfromtxt(f'{wf_folder}/{wig_filename}')
+else:
 
-        # preprocess (remove redshift column)
-        z_arr, wil = Sijkl_utils.preprocess_wf(wil, zbins)
-        z_arr_2, wig = Sijkl_utils.preprocess_wf(wig, zbins)
-        assert np.array_equal(z_arr, z_arr_2), 'the redshift arrays are different for the GC and WL kernels'
-        assert nz == z_arr.shape[0], 'nz is not the same as the number of redshift points in the kernels'
+    # ! load kernels
+    # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
+    nz = Sijkl_cfg["nz"]
+    wf_folder = Sijkl_cfg["wf_input_folder"].format(nz=nz)
+    wil_filename = Sijkl_cfg["wil_filename"].format(normalization=Sijkl_cfg['wf_normalization'],
+                                                    has_IA=str(Sijkl_cfg['has_IA']), nz=nz, bIA=bIA)
+    wig_filename = Sijkl_cfg["wig_filename"].format(normalization=Sijkl_cfg['wf_normalization'], nz=nz)
+    wil = np.genfromtxt(f'{wf_folder}/{wil_filename}')
+    wig = np.genfromtxt(f'{wf_folder}/{wig_filename}')
 
-        # transpose and stack, ordering is important here!
-        transp_stacked_wf = np.vstack((wil.T, wig.T))
-        sijkl = Sijkl_utils.compute_Sijkl(cosmo_lib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
-                                          Sijkl_cfg['WF_normalization'])
-        np.save(f'{Sijkl_folder}/{Sijkl_filename}', sijkl)
+    # preprocess (remove redshift column)
+    z_arr, wil = Sijkl_utils.preprocess_wf(wil, zbins)
+    z_arr_2, wig = Sijkl_utils.preprocess_wf(wig, zbins)
+    assert np.array_equal(z_arr, z_arr_2), 'the redshift arrays are different for the GC and WL kernels'
+    assert nz == z_arr.shape[0], 'nz is not the same as the number of redshift points in the kernels'
 
-    # ! compute covariance matrix
-    cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                        ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
-    # ! save and test against benchmarks
-    cov_folder = covariance_cfg["cov_folder"].format(SSC_code=covariance_cfg['SSC_code'], **variable_specs)
-    covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
+    # transpose and stack, ordering is important here!
+    transp_stacked_wf = np.vstack((wil.T, wig.T))
+    sijkl = Sijkl_utils.compute_Sijkl(cosmo_lib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
+                                      Sijkl_cfg['WF_normalization'])
+    np.save(f'{Sijkl_folder}/{Sijkl_filename}', sijkl)
 
-    if general_cfg['test_against_benchmarks']:
-        cov_benchmark_folder = f'{cov_folder}/benchmarks'
-        mm.test_folder_content(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
+# ! compute covariance matrix
+cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+                                    ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
+# ! save and test against benchmarks
+cov_folder = covariance_cfg["cov_folder"].format(SSC_code=covariance_cfg['SSC_code'], **variable_specs)
+covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
+
+if general_cfg['test_against_benchmarks']:
+    mm.test_folder_content(cov_folder, cov_folder + 'benchmarks', covariance_cfg['cov_file_format'])
 
 # ! compute Fisher Matrix
 if not FM_cfg['compute_FM']:
@@ -396,6 +388,8 @@ uncert_array = np.asarray(uncert_array)
 # diff_FM = diff_funct(FM_PySSC_GS, FM_PyCCL_GS)
 # mm.matshow(diff_FM, title=f'percent difference wrt mean between PySSC and PyCCL FMs {probe}, {EP_or_ED}{zbins:02}')
 
+if FM_cfg['test_folder_content']:
+    mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')
 print('done')
 
 # ! save cls and responses: THIS MUST BE MOVED TO A DIFFERENT FUNCTION!

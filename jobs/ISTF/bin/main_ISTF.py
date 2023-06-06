@@ -45,7 +45,6 @@ start_time = time.perf_counter()
 # TODO check that the number of ell bins is the same as in the files
 # TODO double check the delta values
 # TODO update consistency_checks
-# TODO super check that things work with different # of z bins
 
 ###############################################################################
 #################### PARAMETERS AND SETTINGS DEFINITION #######################
@@ -112,12 +111,17 @@ ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_cfg)
 nbl_WA = ell_dict['ell_WA'].shape[0]
 ell_WL, ell_GC, ell_WA = ell_dict['ell_WL'], ell_dict['ell_GC'], ell_dict['ell_WA']
 
+if covariance_cfg['use_sylvains_deltas']:
+    delta_dict['delta_l_WL'] = mm.delta_l_Sylvain(nbl_WL, ell_dict['ell_WL'])
+    delta_dict['delta_l_GC'] = mm.delta_l_Sylvain(nbl_GC, ell_dict['ell_GC'])
+    delta_dict['delta_l_WA'] = mm.delta_l_Sylvain(nbl_WA, ell_dict['ell_WA'])
+
+
 variable_specs = {
     'zbins': zbins,
     'EP_or_ED': EP_or_ED,
     'triu_tril': triu_tril,
     'row_col_major': row_col_major,
-
     'ell_max_WL': general_cfg['ell_max_WL'],
     'ell_max_GC': general_cfg['ell_max_GC'],
     'ell_max_XC': general_cfg['ell_max_XC'],

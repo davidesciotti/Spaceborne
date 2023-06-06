@@ -13,9 +13,7 @@ fsky_sylvain = 0.375
 fsky_SPV3 = survey_area_SPV3 / deg2_in_sphere
 
 
-
 def get_specs(which_forecast):
-
     if which_forecast == 'ISTF':
         fsky = fsky_ISTF
         GL_or_LG = 'GL'
@@ -62,21 +60,22 @@ def consistency_checks(general_config, covariance_config):
 
     if which_forecast == 'ISTF':
         assert covariance_config['fsky'] == fsky_ISTF, f'{which_forecast} uses fsky = {fsky_ISTF}'
-        assert covariance_config['ind_ordering'] == 'vincenzo', f'{which_forecast} used Vincenzos ind ordering'
+        assert covariance_config['triu_tril'] == 'triu', f'{which_forecast} used Vincenzos ind ordering'
         assert covariance_config['GL_or_LG'] == 'GL', f'{which_forecast} uses GL'
         assert '14may' in general_config['cl_folder'], 'Latest Cls are Cij_14may'
-        assert general_config['nbl'] == 30, f'{which_forecast} uses nbl = 30'
-        assert (general_config['ell_max_WL'], general_config['ell_max_GC']) == (5000, 3000) or (3000, 750),\
+        assert general_config['nbl_WL'] == 30, f'{which_forecast} uses nbl_WL = 30'
+        assert (general_config['ell_max_WL'], general_config['ell_max_GC']) == (5000, 3000) or (3000, 750), \
             'case is neither optimistic nor pessimistic'
         assert general_config['use_WA'] is True, f'{which_forecast} uses Wadd'
 
     elif which_forecast == 'sylvain':
         assert covariance_config['fsky'] == fsky_sylvain, f'For SSCcomp we used fsky = {fsky_sylvain}'
-        assert covariance_config['ind_ordering'] == 'vincenzo', 'For SSCcomp we used Vincenzos ind ordering'
+        assert covariance_config['triu_tril'] == 'triu', 'For SSCcomp we used Vincenzos ind ordering'
         assert covariance_config['GL_or_LG'] == 'GL', 'For SSCcomp we used GL'
         assert covariance_config['Rl'] == 4, 'For SSCcomp we used Rl=4'
+        assert covariance_config['use_sylvains_deltas'] == True, 'You should probably use Sylvain\'s deltas'
         # assert general_config['cl_folder'] == 'common_ell_and_deltas', 'XXX check For SSCcomp we used Cij_14may Cls'
-        assert general_config['nbl'] == 30, 'For SSCcomp we used nbl = 30'
+        assert general_config['nbl_WL'] == 30, 'For SSCcomp we used nbl_WL = 30'
 
         # this is just for the optimistic! in the pessimistic case we used general_config['ell_max_GC'] = 750
         # assert general_config['ell_max_GC'] == 3000, 'For SSCcomp we used ell_max_GC = 3000'
@@ -84,17 +83,18 @@ def consistency_checks(general_config, covariance_config):
 
     elif which_forecast == 'IST_NL':
         assert covariance_config['fsky'] == fsky_ISTF, f'{which_forecast} uses fsky = {fsky_ISTF}'
-        assert covariance_config['ind_ordering'] == 'triu', f'{which_forecast} uses CLOEs ind ordering, which is triu row-major'
+        assert covariance_config[
+                   'triu_tril'] == 'triu', f'{which_forecast} uses CLOEs ind ordering, which is triu row-major'
         assert covariance_config['GL_or_LG'] == 'GL', f'{which_forecast} uses GL'
         assert covariance_config['Rl'] == 4, f'{which_forecast} uses Rl = 4'
         assert general_config['ell_max_WL'] == 5000, f'{which_forecast} uses ell_max_WL = 5000'
         assert general_config['ell_max_GC'] == 5000, f'{which_forecast} uses ell_max_GC = 5000'
         assert general_config['cl_folder'] == 'Cl_CLOE', 'XXX check not quite sure about this cl_folder thing...'
         assert general_config['use_WA'] is False, f'{which_forecast} does not use Wadd'
-        assert general_config['nbl'] == 20, f'{which_forecast} uses nbl = 20'
+        assert general_config['nbl_WL'] == 20, f'{which_forecast} uses nbl_WL = 20'
 
     elif which_forecast == 'SPV3':
-        assert covariance_config['ind_ordering'] == 'triu', f'{which_forecast} used triu ind ordering'
+        assert covariance_config['triu_tril'] == 'triu', f'{which_forecast} used triu ind ordering'
         assert covariance_config['GL_or_LG'] == 'GL', f'{which_forecast} uses GL'
         assert covariance_config['fsky'] == fsky_SPV3, f'SPV3 uses fsky = {fsky_SPV3}'
         assert covariance_config['ng'] == 28.73, f'{which_forecast} uses ng = 28.73'
@@ -107,7 +107,7 @@ def consistency_checks(general_config, covariance_config):
         assert general_config['use_WA'] is True, f'{which_forecast} uses Wadd'
 
     elif which_forecast == 'SSCcomp_updt':
-        assert covariance_config['ind_ordering'] == 'triu', f'{which_forecast} used triu ind ordering'
+        assert covariance_config['triu_tril'] == 'triu', f'{which_forecast} used triu ind ordering'
         assert covariance_config['GL_or_LG'] == 'GL', f'{which_forecast} uses GL'
         assert covariance_config['fsky'] == fsky_ISTF, f'{which_forecast} uses fsky = {fsky_ISTF}'
         assert covariance_config['ng'] == 28.73, f'{which_forecast} uses ng = 28.73'
@@ -116,12 +116,12 @@ def consistency_checks(general_config, covariance_config):
         assert covariance_config['which_probe_response'] == 'variable'
         assert general_config['EP_or_ED'] == 'EP', f'{which_forecast} uses equipopulated bins'
         assert general_config['cl_folder'] == 'SPV3', f'{which_forecast} uses SPV3 cls'
-        assert general_config['nbl'] == 30, f'{which_forecast} uses nbl = 30'
+        assert general_config['nbl_WL'] == 30, f'{which_forecast} uses nbl_WL = 30'
         assert general_config['ell_max_GC'] == 3000 or 750, f'{which_forecast} uses ell_max_GC = 3000 or 750'
         assert general_config['use_WA'] is True, f'{which_forecast} uses Wadd'
 
     elif which_forecast == 'SPV3':
-        assert covariance_config['ind_ordering'] == 'triu', f'{which_forecast} used triu ind ordering'
+        assert covariance_config['triu_tril'] == 'triu', f'{which_forecast} used triu ind ordering'
         assert covariance_config['GL_or_LG'] == 'GL', f'{which_forecast} uses GL'
         assert covariance_config['fsky'] == fsky_ISTF, f'{which_forecast} uses fsky = {fsky_ISTF}'
         assert covariance_config['ng'] == 28.73, f'{which_forecast} uses ng = 28.73'
@@ -129,9 +129,8 @@ def consistency_checks(general_config, covariance_config):
         assert covariance_config['block_index'] == 'ell'
         assert covariance_config['which_probe_response'] == 'variable'
         assert general_config['EP_or_ED'] == 'ED', f'{which_forecast} uses equidistant bins'
-        assert general_config['zbins_list'] == (13, ), f'{which_forecast} uses 13 zbins'
+        assert general_config['zbins_list'] == (13,), f'{which_forecast} uses 13 zbins'
         assert general_config['cl_folder'] == 'SPV3', f'{which_forecast} uses SPV3 cls'
-        assert general_config['nbl'] == 30, f'{which_forecast} uses nbl = 20'
+        assert general_config['nbl_WL'] == 30, f'{which_forecast} uses nbl_WL = 20'
         assert general_config['ell_max_GC'] == 3000 or 750, f'{which_forecast} uses ell_max_GC = 3000 or 750'
         assert general_config['use_WA'] is True, f'{which_forecast} uses Wadd'
-

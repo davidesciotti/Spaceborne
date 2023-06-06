@@ -11,7 +11,7 @@ import check_specs as utils
 sys.path.append(f'{project_path.parent}/common_data/common_config')
 import ISTF_fid_params as ISTFfid
 
-cfg_name = 'cl14may'
+which_input_files = 'cl14may'  # which input files to use
 which_forecast = 'ISTF'
 fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
@@ -41,32 +41,31 @@ if cov_ell_cuts:
     assert cl_ell_cuts is False, 'if you want to apply ell cuts to the cov, you cannot apply them to the cls'
     assert deriv_ell_cuts, 'if you want to apply ell cuts to the cov, you hould also apply them to the derivatives'
 
-
-if cfg_name == 'cl14may':
+use_sylvains_deltas = False
+use_WA = True
+if which_input_files == 'cl14may':
     cl_folder = f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}'
     cl_filename = 'Cij{probe:s}-GR-Flat-eNLA-NA.dat'
-    gal_bias_names_list = [f'bL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
+    gal_bias_prefix = 'bL'
     derivatives_folder = f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}'
     derivatives_suffix = '-GR-Flat-eNLA-NA'
-elif cfg_name == 'cl15gen':
+elif which_input_files == 'cl15gen':
     cl_folder = f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_tesi/new_names'
     cl_filename = 'Cij{probe:s}-N4TB-GR-eNLA.dat'
-    gal_bias_names_list = [f'b{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
+    gal_bias_prefix = 'b'
     derivatives_folder = f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_derivatives_tesi/new_names'
     derivatives_suffix = '-N4TB-GR-eNLA'
-elif cfg_name == 'SSC_comparison_updated':
+elif which_input_files == 'SSC_comparison_updated':
     # settings for SSC comparison (aka 'sylvain'):
     # survey_area_deg2 = 15469.86  # deg^2
-    # use_WA: False
-    # + different deltas...
-    fsky = fsky_ISTF
+    use_WA: False
+    use_sylvains_deltas = True
     GL_or_LG = 'GL'
-    ind_ordering = 'triu'
+    triu_tril = 'triu'
     cl_folder = 'SPV3'
 
-
 general_cfg = {
-    'cfg_name': cfg_name,
+    'which_input_files': which_input_files,
     'which_forecast': which_forecast,
 
     'ell_min': 10,
@@ -80,7 +79,7 @@ general_cfg = {
     'nbl_WL': 30,
     'nbl_GC': 30,
     'nbl_3x2pt': 30,
-    'use_WA': True,  # ! xxx
+    'use_WA': use_WA,  # ! xxx
     'save_cls_3d': False,
     'save_rls_3d': False,
 
@@ -118,6 +117,7 @@ covariance_cfg = {
     'ng_folder': None,
     'ng_filename': None,
     'sigma_eps2': 0.3 ** 2,
+    'use_sylvains_deltas': use_sylvains_deltas,
 
     'cov_BNT_transform': cov_BNT_transform,
     'cov_ell_cuts': cov_ell_cuts,
@@ -136,7 +136,7 @@ covariance_cfg = {
     'save_cov_SSC': False,
     'save_2DCLOE': True,  # outermost loop is on the probes
 
-    'cov_folder': f'{job_path}/output/{cfg_name}/' + 'covmat/{SSC_code:s}',
+    'cov_folder': f'{job_path}/output/{which_input_files}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
     'cov_SSC_PyCCL_folder': f'{project_path.parent}/PyCCL_SSC/output/covmat',
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_HMrecipeKrause2017_6D.npy',
@@ -160,7 +160,7 @@ Sijkl_cfg = {
 param_names_dict = {
     'cosmo': ["Om", "Ob", "wz", "wa", "h", "ns", "s8"],
     'IA': ["Aia", "eIA", "bIA"],
-    'galaxy_bias': gal_bias_names_list,
+    'galaxy_bias': [f'{gal_bias_prefix}{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
 }
 # fiducial values
 fiducials_dict = {
@@ -195,7 +195,7 @@ FM_cfg = {
     'derivatives_BNT_transform': deriv_BNT_transform,
     'deriv_ell_cuts': deriv_ell_cuts,
 
-    'fm_folder': str(job_path) + f'/output/{cfg_name}/' + 'FM/{SSC_code:s}',
+    'fm_folder': str(job_path) + f'/output/{which_input_files}/' + 'FM/{SSC_code:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
     'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}',
 }

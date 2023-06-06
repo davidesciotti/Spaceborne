@@ -32,10 +32,11 @@ import cl_preprocessing as cl_utils
 import compute_Sijkl as Sijkl_utils
 import covariance as covmat_utils
 import fisher_matrix as FM_utils
+import check_specs
 
 # job configuration and modules
 sys.path.append(f'{project_path}/jobs')
-import ISTF.config.config_ISTF_cl14may as cfg
+import ISTF.config.config_ISTF as cfg
 
 mpl.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -55,7 +56,7 @@ covariance_cfg = cfg.covariance_cfg
 Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
-utils.consistency_checks(general_cfg, covariance_cfg)
+check_specs.consistency_checks(general_cfg, covariance_cfg)
 
 # some variables used for I/O naming, just to make things more readable
 zbins = general_cfg['zbins']

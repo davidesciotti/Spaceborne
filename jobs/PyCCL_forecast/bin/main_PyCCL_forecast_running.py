@@ -23,7 +23,7 @@ import cl_preprocessing as Cl_utils
 import covariance as covmat_utils
 import fisher_matrix as FM_utils
 import plots_FM_running as plot_utils
-import utils_running as utils
+import check_specs as utils
 
 # job configuration
 import jobs.PyCCL_forecast.config.config_PyCCL_forecast as config

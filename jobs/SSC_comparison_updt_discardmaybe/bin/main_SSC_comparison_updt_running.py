@@ -33,7 +33,7 @@ import cl_preprocessing as cl_utils
 import compute_Sijkl as Sijkl_utils
 import covariance as covmat_utils
 import fisher_matrix as FM_utils
-import utils_running as utils
+import check_specs as utils
 import unit_test
 
 matplotlib.use('Qt5Agg')

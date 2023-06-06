@@ -4,7 +4,7 @@ import numpy as np
 project_path = Path.cwd().parent.parent.parent
 
 sys.path.append(f'{project_path}/bin')
-import utils_running as utils
+import check_specs as utils
 
 which_forecast = 'SPV3'
 fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)

@@ -6,7 +6,7 @@ project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 
 sys.path.append(f'{project_path}/bin')
-import utils_running as utils
+import check_specs as utils
 
 sys.path.append(f'{project_path.parent}/common_data/common_config')
 import ISTF_fid_params as ISTFfid
@@ -67,6 +67,8 @@ elif cfg_name == 'SSC_comparison_updated':
 
 general_cfg = {
     'cfg_name': cfg_name,
+    'which_forecast': which_forecast,
+
     'ell_min': 10,
     'ell_max_WL': 5000,
     'ell_max_GC': 3000,

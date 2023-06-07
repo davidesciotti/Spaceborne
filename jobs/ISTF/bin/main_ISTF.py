@@ -344,10 +344,17 @@ for key in list(FM_dict.keys()):
 FM_3x2pt_GO, param_names_list, fiducials_list = mm.mask_FM(FM_dict['FM_3x2pt_GO'], FM_dict['param_names_dict'],
                                                            FM_dict['fiducial_values_dict'],
                                                            params_tofix_dict={})
+FM_3x2pt_GS, _, _ = mm.mask_FM(FM_dict['FM_3x2pt_GS'], FM_dict['param_names_dict'],
+                                                           FM_dict['fiducial_values_dict'],
+                                                           params_tofix_dict={})
 
-FM_test = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
+FM_test_GO = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
                         '/SSC_comparison/output/FM/FM_3x2pt_GO_lmaxXC3000_nbl30.txt')
-uncert_FM_test = mm.uncertainties_FM(FM_test, FM_test.shape[0], fiducials=fiducials_list, which_uncertainty='marginal',
+FM_test_GS = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
+                        '/SSC_comparison/output/FM/FM_3x2pt_GS_lmaxXC3000_nbl30.txt')
+uncert_FM_GO_test = mm.uncertainties_FM(FM_test_GO, FM_test_GO.shape[0], fiducials=fiducials_list, which_uncertainty='marginal',
+                                     normalize=True)[:nparams_toplot]
+uncert_FM_GS_test = mm.uncertainties_FM(FM_test_GS, FM_test_GS.shape[0], fiducials=fiducials_list, which_uncertainty='marginal',
                                      normalize=True)[:nparams_toplot]
 ###############
 # # add the percent differences and/or rations to the dictionary
@@ -369,6 +376,7 @@ for probe in ['WL', '3x2pt']:
         np.set_printoptions(precision=3)
         print('ISTF:\t', uncert_dict['ISTF'])
         print('Dark:\t', uncert_dict[f'FM_{probe}_GO'][:nparams_toplot])
+        print('Dark GS:\t', uncert_dict[f'FM_{probe}_GS'][:nparams_toplot])
 
 df = pd.DataFrame(uncert_dict)
 
@@ -387,7 +395,7 @@ uncert_array = np.asarray(uncert_array)
 # diff_FM = diff_funct(FM_PySSC_GS, FM_PyCCL_GS)
 # mm.matshow(diff_FM, title=f'percent difference wrt mean between PySSC and PyCCL FMs {probe}, {EP_or_ED}{zbins:02}')
 
-if FM_cfg['test_folder_content']:
+if FM_cfg['test_against_benchmarks']:
     mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')
 print('done')
 

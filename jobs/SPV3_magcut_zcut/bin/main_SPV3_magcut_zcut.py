@@ -229,13 +229,17 @@ def plot_nz_tocheck_func():
 # ======================================================================================================================
 # ======================================================================================================================
 
-
+# TODO restore the for loops
+# TODO iterate over the different pks
+# TODO ell_cuts
+# TODO BNT
+# TODO SSC
 
 # for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
     # for general_cfg['which_cuts'] in ['Francis', 'Vincenzo']:
     #     for general_cfg['center_or_min'] in ['center', 'min']:
 
-warnings.warn('restore the for loops!')
+warnings.warn('TODO restore the for loops!')
 general_cfg['which_cuts'] = 'Vincenzo'
 general_cfg['center_or_min'] = 'min'
 kmax_h_over_Mpc = general_cfg['kmax_h_over_Mpc_list'][5]
@@ -250,11 +254,13 @@ magcut_source = general_cfg['magcut_source']
 magcut_lens = general_cfg['magcut_lens']
 zcut_source = general_cfg['zcut_source']
 zcut_lens = general_cfg['zcut_lens']
+flat_or_nonflat = general_cfg['flat_or_nonflat']
 center_or_min = general_cfg['center_or_min']
 zmax = int(general_cfg['zmax'] * 10)
 triu_tril = covariance_cfg['triu_tril']
 row_col_major = covariance_cfg['row_col_major']
 n_probes = general_cfg['n_probes']
+which_pk = general_cfg['which_pk']
 
 # some checks
 assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
@@ -344,7 +350,7 @@ variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_le
                   'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_XC': ell_max_XC,
                   'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
                   'kmax_h_over_Mpc': kmax_h_over_Mpc, center_or_min: center_or_min,
-                  'idIA': 2, 'idB': 3, 'idM': 3, 'idR': 1,
+                  'idIA': 2, 'idB': 3, 'idM': 3, 'idR': 1, 'flat_or_nonflat': flat_or_nonflat, 'which_pk': which_pk,
                   }
 
 ng_folder = covariance_cfg["ng_folder"]
@@ -373,7 +379,6 @@ BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z, plot_n
 # ! import and reshape datavectors (cl) and response functions (rl)
 cl_fld = general_cfg['cl_folder']
 cl_filename = general_cfg['cl_filename']
-which_pk = general_cfg['which_pk']
 cl_ll_1d = np.genfromtxt(
     f"{cl_fld.format(probe='WLO', which_pk=which_pk)}/{cl_filename.format(probe='WLO', **variable_specs)}")
 cl_gg_1d = np.genfromtxt(

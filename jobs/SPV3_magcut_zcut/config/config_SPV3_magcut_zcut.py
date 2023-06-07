@@ -65,6 +65,8 @@ general_cfg = {
     'save_cls_3d': False,
     'save_rls_3d': False,
 
+    'flat_or_nonflat': 'flat',
+
     # the case with the largest range is nbl_WL_opt.. This is the reference ell binning from which the cuts are applied;
     # in principle, the other binning should be consistent with this one and should not be hardcoded, as long as
     # lmax=5000, 3000 holds
@@ -205,6 +207,7 @@ if not general_cfg['center_or_min']:
 
 FM_txt_filename = covariance_cfg['cov_filename'].replace('covmat_', 'FM_')
 FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_{which_cov:s}_{probe:s}', 'FM_')
+deriv_filename = covariance_cfg['cov_filename'].replace('covmat_', 'dDVd')
 FM_cfg = {
     'compute_FM': True,
 
@@ -216,11 +219,9 @@ FM_cfg = {
     'save_FM_txt': True,
     'save_FM_dict': True,
 
-    'load_preprocess_derivatives': True,
-    'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_False/' +
-                          'ML{magcut_lens:03d}ZL{zcut_lens:02d}MS{magcut_source:03d}ZS{zcut_source:02d}',
-    'derivatives_filename': 'BNT_dDVd{param:s}-{probe:s}-{specs:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
-                            'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
+    'load_preprocess_derivatives': False,
+    'derivatives_folder': SPV3_folder + '/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}',
+    'derivatives_filename': deriv_filename,
     'derivatives_prefix': 'dDVd',
 
     'derivatives_BNT_transform': deriv_BNT_transform,

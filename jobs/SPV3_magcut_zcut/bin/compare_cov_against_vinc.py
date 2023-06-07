@@ -24,6 +24,8 @@ probe = 'WL'
 GO_or_GS = 'GO'
 ML = 245
 MS = 245
+ZL = 2
+ZS = 2
 which_pk = 'HMCode2020'
 EP_or_ED = 'EP'
 zbins = 13
@@ -38,18 +40,18 @@ probe_dict = {
     '3x2pt': '3x2pt'
 }
 
+dav_path = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output/' \
+           'Flagship_2/covmat/BNT_False/cov_ell_cuts_False'
+vinc_path = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/' \
+            'OutputFiles/CovMats/GaussOnly'
 for probe in ('WL', 'GC', '3x2pt'):
-    dav_path = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output/' \
-               'Flagship_2/covmat/BNT_False/cov_ell_cuts_False'
-    vinc_path = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/CovMats/GaussOnly'
-    cov_dav = np.load(f'{dav_path}/covmat_{GO_or_GS}_{probe}_zbins{EP_or_ED}{zbins}'
-                      f'_ML{ML}_ZL02_MS{MS}_ZS02_idIA{idIA}_idB{idB}_idM{idM}_idR{idR}_kmax_h_over_Mpc2.239_2D.npz')[
-        'arr_0']
+    cov_dav = \
+        np.load(f'{dav_path}/covmat_{GO_or_GS}_{probe}_zbins{EP_or_ED}{zbins}_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_'
+                f'idIA{idIA}_idB{idB}_idM{idM}_idR{idR}_kmaxhoverMpc2.239_2D.npz')['arr_0']
     cov_vinc = np.genfromtxt(
-        f'{vinc_path}/{probe_dict[probe]}/{which_pk}/cm-WLO-{EP_or_ED}{zbins}-ML{ML}-MS{MS}-idIA2-idB3-idM3-idR1.dat')
+        f'{vinc_path}/{probe_dict[probe]}/{which_pk}/'
+        f'cm-{probe_dict[probe]}-{EP_or_ED}{zbins}-ML{ML}-MS{MS}-idIA2-idB3-idM3-idR1.dat')
 
     np.testing.assert_allclose(cov_dav, cov_vinc, rtol=1e-5, atol=0)
 
     print(f'{probe}, test passed')
-
-'/covmat_GO_WL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_kmaxhoverMpc2.239_2D.npz'

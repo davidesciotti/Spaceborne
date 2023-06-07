@@ -80,7 +80,7 @@ def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, derivatives_prefix,
     # param_names should be params_tot in all cases, because when the derivative dows not exist
     # in dC_dict_3D the output array will remain null
     if is_3x2pt:
-        dC_4D = np.zeros((nbl, n_probes, n_probes, zbins, zbins, len(param_names)))
+        dC_4D = np.zeros((n_probes, n_probes, nbl, zbins, zbins, len(param_names)))
     else:
         dC_4D = np.zeros((nbl, zbins, zbins, len(param_names)))
 

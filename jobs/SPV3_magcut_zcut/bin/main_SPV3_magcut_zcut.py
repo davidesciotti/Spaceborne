@@ -649,13 +649,11 @@ fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
 FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'],
                  **variable_specs)
 
+if FM_cfg['test_against_benchmarks']:
+    mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')
+
 del cov_dict
 gc.collect()
-
-# ! unit test: check that the outputs have not changed
-if general_cfg['test_against_benchmarks']:
-    fm_benchmark_folder = f'{fm_folder}/benchmarks'
-    mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
 
 print('Script end')
 

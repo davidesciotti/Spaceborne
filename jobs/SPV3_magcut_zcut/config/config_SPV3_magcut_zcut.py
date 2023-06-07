@@ -147,9 +147,9 @@ covariance_cfg = {
 
     'compute_covmat': True,
     'compute_SSC': False,
-    'compute_cov_6D': True,  # ! to be deprecated!
+    'compute_cov_6D': False,  # ! to be deprecated!
 
-    'save_cov': False,
+    'save_cov': True,
     'cov_file_format': 'npz',  # or npy
     'save_cov_dat': False,  # this is the format used by Vincenzo
 
@@ -162,9 +162,10 @@ covariance_cfg = {
 
     # ! no folders for ell_cut_center or min
     'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/cov_ell_cuts_{cov_ell_cuts:s}',
-    'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_'
-                    'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}'
-                    '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}_{ndim:d}D',
+    'cov_filename': 'covmat_{which_cov:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_'
+                    'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_'
+                    '-idIA{idIA:1d}-idB{idB:1d}-idM{idM:1d}-idR{idR:1d}'
+                    '_kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D',
     'cov_filename_vincenzo': 'cm-{probe_vinc:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
 }
@@ -201,6 +202,9 @@ ell_cuts_subfolder = f'/ell_{general_cfg["center_or_min"]}'
 if not general_cfg['center_or_min']:
     ell_cuts_subfolder = ''
 
+
+FM_txt_filename = covariance_cfg['cov_filename'].replace('covmat_', 'FM_')
+FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_{which_cov:s}_{probe:s}', 'FM_')
 FM_cfg = {
     'compute_FM': True,
 
@@ -224,10 +228,9 @@ FM_cfg = {
 
     'fm_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}' +
                  '/ell_cuts_{ell_cuts:s}/{which_cuts:s}' + ell_cuts_subfolder,
-    'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'
-                       'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}'
-                       '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
-    'FM_dict_filename': 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
-                        'MS{magcut_source:03d}-ZS{zcut_source:02d}'
-                        '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
+    'FM_txt_filename': FM_txt_filename,
+    'FM_dict_filename': FM_dict_filename,
+        # 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
+        #                 'MS{magcut_source:03d}-ZS{zcut_source:02d}'
+        #                 '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
 }

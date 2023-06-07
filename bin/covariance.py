@@ -229,6 +229,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_3x2pt_GO_10D = mm.cov_10D_dict_to_array(cov_3x2pt_GO_10D_dict, nbl_3x2pt, zbins, n_probes=2)
         cov_3x2pt_GS_10D = mm.cov_10D_dict_to_array(cov_3x2pt_GS_10D_dict, nbl_3x2pt, zbins, n_probes=2)
 
+    # ! 6d cov ell cuts, deprecated
     # if covariance_cfg['cov_ell_cuts']:
     #     assert False, 'Cov ell cuts in 6D are deprecated'
     #     print('Performing ell cuts on covariance matrix...')
@@ -259,23 +260,18 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     #             cov_3x2pt_GO_10D_dict[A, B, C, D] = cov_ell_cut(cov_3x2pt_GO_10D_dict[A, B, C, D], ell_cuts_idxs_dict[A, B], ell_cuts_idxs_dict[C, D], zbins)
     #             cov_3x2pt_GS_10D_dict[A, B, C, D] = cov_ell_cut(cov_3x2pt_GS_10D_dict[A, B, C, D], ell_cuts_idxs_dict[A, B], ell_cuts_idxs_dict[C, D], zbins)
 
-    # convert to 4D
-
-    # transform everything in 4D
+    # ! transform everything in 4D
+    start = time.perf_counter()
     cov_WL_GO_4D = mm.cov_6D_to_4D(cov_WL_GO_6D, nbl_WL, zpairs_auto, ind_auto)
     cov_GC_GO_4D = mm.cov_6D_to_4D(cov_GC_GO_6D, nbl_GC, zpairs_auto, ind_auto)
     cov_WA_GO_4D = mm.cov_6D_to_4D(cov_WA_GO_6D, nbl_WA, zpairs_auto, ind_auto)
     cov_3x2pt_GO_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GO_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
 
-    cov_WL_SS_4D = mm.cov_6D_to_4D(cov_WL_SS_6D, nbl_WL, zpairs_auto, ind_auto)
-    cov_GC_SS_4D = mm.cov_6D_to_4D(cov_GC_SS_6D, nbl_GC, zpairs_auto, ind_auto)
-    cov_WA_SS_4D = mm.cov_6D_to_4D(cov_WA_SS_6D, nbl_WA, zpairs_auto, ind_auto)
-    cov_3x2pt_SS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
-
     cov_WL_GS_4D = mm.cov_6D_to_4D(cov_WL_GS_6D, nbl_WL, zpairs_auto, ind_auto)
     cov_GC_GS_4D = mm.cov_6D_to_4D(cov_GC_GS_6D, nbl_GC, zpairs_auto, ind_auto)
     cov_WA_GS_4D = mm.cov_6D_to_4D(cov_WA_GS_6D, nbl_WA, zpairs_auto, ind_auto)
     cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
+    print('covariance matrices transformed to 4D in {:.2f} seconds'.format(time.perf_counter() - start))
 
     # TODO finish this PYCCL stuff
     # cov_WL_SS_4D_pyssc = np.copy(cov_WL_SS_4D)
@@ -499,23 +495,18 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_dict['cov_3x2pt_GS_10D_dict'], probe_ordering, nbl_GC, zbins,
                                                  ind.copy(), GL_or_LG)
 
-    ############################### 4D to 2D ##################################
-    # Here an ordering convention ('block_index') is needed as well
+    # ! transform everything in 2D
+    start = time.perf_counter()
     cov_WL_GO_2D = mm.cov_4D_to_2D(cov_WL_GO_4D, block_index=block_index)
     cov_GC_GO_2D = mm.cov_4D_to_2D(cov_GC_GO_4D, block_index=block_index)
     cov_WA_GO_2D = mm.cov_4D_to_2D(cov_WA_GO_4D, block_index=block_index)
     cov_3x2pt_GO_2D = mm.cov_4D_to_2D(cov_3x2pt_GO_4D, block_index=block_index)
 
-    cov_WL_SS_2D = mm.cov_4D_to_2D(cov_WL_SS_4D, block_index=block_index)
-    cov_GC_SS_2D = mm.cov_4D_to_2D(cov_GC_SS_4D, block_index=block_index)
-    cov_WA_SS_2D = mm.cov_4D_to_2D(cov_WA_SS_4D, block_index=block_index)
-    cov_3x2pt_SS_2D = mm.cov_4D_to_2D(cov_3x2pt_SS_4D, block_index=block_index)
-
     cov_WL_GS_2D = mm.cov_4D_to_2D(cov_WL_GS_4D, block_index=block_index)
     cov_GC_GS_2D = mm.cov_4D_to_2D(cov_GC_GS_4D, block_index=block_index)
     cov_WA_GS_2D = mm.cov_4D_to_2D(cov_WA_GS_4D, block_index=block_index)
     cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, block_index=block_index)
-
+    print('covariance matrices transformed to 2D in {:.2f} seconds'.format(time.perf_counter() - start))
 
     if covariance_cfg['cov_ell_cuts']:
         # perform the cuts on the 2D covs (way faster!)
@@ -534,26 +525,39 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     covs_GO_4D = (cov_WL_GO_4D, cov_GC_GO_4D, cov_3x2pt_GO_4D, cov_WA_GO_4D)
     covs_GS_4D = (cov_WL_GS_4D, cov_GC_GS_4D, cov_3x2pt_GS_4D, cov_WA_GS_4D)
-    covs_SS_4D = (cov_WL_SS_4D, cov_GC_SS_4D, cov_3x2pt_SS_4D, cov_WA_SS_4D)
 
     covs_GO_2D = (cov_WL_GO_2D, cov_GC_GO_2D, cov_3x2pt_GO_2D, cov_WA_GO_2D)
     covs_GS_2D = (cov_WL_GS_2D, cov_GC_GS_2D, cov_3x2pt_GS_2D, cov_WA_GS_2D)
-    covs_SS_2D = (cov_WL_SS_2D, cov_GC_SS_2D, cov_3x2pt_SS_2D, cov_WA_SS_2D)
 
-    for probe_name, cov_GO_4D, cov_GO_2D, cov_GS_4D, cov_GS_2D, cov_SS_4D, cov_SS_2D \
-            in zip(probe_names, covs_GO_4D, covs_GO_2D, covs_GS_4D, covs_GS_2D, covs_SS_4D, covs_SS_2D):
+    if covariance_cfg['save_cov_SSC']:
+        cov_WL_SS_4D = mm.cov_6D_to_4D(cov_WL_SS_6D, nbl_WL, zpairs_auto, ind_auto)
+        cov_GC_SS_4D = mm.cov_6D_to_4D(cov_GC_SS_6D, nbl_GC, zpairs_auto, ind_auto)
+        cov_WA_SS_4D = mm.cov_6D_to_4D(cov_WA_SS_6D, nbl_WA, zpairs_auto, ind_auto)
+        cov_3x2pt_SS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(),
+                                                 GL_or_LG)
 
+        cov_WL_SS_2D = mm.cov_4D_to_2D(cov_WL_SS_4D, block_index=block_index)
+        cov_GC_SS_2D = mm.cov_4D_to_2D(cov_GC_SS_4D, block_index=block_index)
+        cov_WA_SS_2D = mm.cov_4D_to_2D(cov_WA_SS_4D, block_index=block_index)
+        cov_3x2pt_SS_2D = mm.cov_4D_to_2D(cov_3x2pt_SS_4D, block_index=block_index)
+
+        covs_SS_4D = (cov_WL_SS_4D, cov_GC_SS_4D, cov_3x2pt_SS_4D, cov_WA_SS_4D)
+        covs_SS_2D = (cov_WL_SS_2D, cov_GC_SS_2D, cov_3x2pt_SS_2D, cov_WA_SS_2D)
+
+        for probe_name, cov_SS_2D in zip(probe_names, covs_SS_2D):
+            cov_dict[f'cov_{probe_name}_SS_2D'] = cov_SS_2D
+            #     cov_dict[f'cov_{probe_name}_SS_4D'] = cov_SS_4D
+
+    for probe_name, cov_GO_4D, cov_GO_2D, cov_GS_4D, cov_GS_2D \
+            in zip(probe_names, covs_GO_4D, covs_GO_2D, covs_GS_4D, covs_GS_2D):
         # save 4D
         # cov_dict[f'cov_{probe_name}_GO_4D'] = cov_GO_4D
         # cov_dict[f'cov_{probe_name}_GS_4D'] = cov_GS_4D
         # if covariance_cfg['save_cov_SSC']:
-        #     cov_dict[f'cov_{probe_name}_SS_4D'] = cov_SS_4D
 
         # save 2D
         cov_dict[f'cov_{probe_name}_GO_2D'] = cov_GO_2D
         cov_dict[f'cov_{probe_name}_GS_2D'] = cov_GS_2D
-        if covariance_cfg['save_cov_SSC']:
-            cov_dict[f'cov_{probe_name}_SS_2D'] = cov_SS_2D
 
     # '2DCLOE', i.e. the 'multi-diagonal', non-square blocks ordering, only for 3x2pt
     # note: we found out that this is not actually used in CLOE...

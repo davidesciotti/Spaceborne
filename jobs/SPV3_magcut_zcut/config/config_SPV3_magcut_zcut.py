@@ -20,12 +20,12 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/LiFEforS
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = True
-deriv_BNT_transform = True
+cov_BNT_transform = False
+deriv_BNT_transform = False
 
 cl_ell_cuts = False
-cov_ell_cuts = True
-deriv_ell_cuts = True
+cov_ell_cuts = False
+deriv_ell_cuts = False
 
 if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
     BNT_transform = True
@@ -146,7 +146,8 @@ covariance_cfg = {
     'cov_ell_cuts': cov_ell_cuts,
 
     'compute_covmat': True,
-    'compute_cov_6D': True,  # or 10D for the 3x2pt
+    'compute_SSC': False,
+    'compute_cov_6D': True,  # ! to be deprecated!
 
     'save_cov': False,
     'cov_file_format': 'npz',  # or npy

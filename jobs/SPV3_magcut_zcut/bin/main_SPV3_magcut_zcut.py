@@ -485,7 +485,8 @@ rl_dict_3D = {
     'rl_WA_3D': rl_wa_3d,
     'rl_3x2pt_5D': rl_3x2pt_5d}
 
-if covariance_cfg['compute_covmat']:
+
+if covariance_cfg['compute_SSC']:
 
     # ! load kernels
     # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
@@ -527,20 +528,24 @@ if covariance_cfg['compute_covmat']:
                                           Sijkl_cfg['wf_normalization'])
         np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
 
-    # ! compute covariance matrix
-    # TODO: if already existing, don't compute the covmat, like done above for Sijkl
-    # the ng values are in the second column, for these input files 👇
-    cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                        ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix)
+else:
+    warnings.warn('Sijkl is not computed, but set to identity')
+    Sijkl = np.ones((n_probes*zbins, n_probes*zbins, n_probes*zbins, n_probes*zbins))
 
-    # save covariance matrix and test against benchmarks
-    cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
-                                                     **variable_specs)
-    covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
+# ! compute covariance matrix
+# the ng values are in the second column, for these input files 👇
+# TODO: if already existing, don't compute the covmat, like done above for Sijkl
+cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+                                    ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix)
 
-    if general_cfg['test_against_benchmarks']:
-        cov_benchmark_folder = f'{cov_folder}/benchmarks'
-        mm.test_folder_content(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
+# save covariance matrix and test against benchmarks
+cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
+                                                 **variable_specs)
+covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
+
+if general_cfg['test_against_benchmarks']:
+    cov_benchmark_folder = f'{cov_folder}/benchmarks'
+    mm.test_folder_content(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
 
 # ! compute Fisher matrix
 if not FM_cfg['compute_FM']:

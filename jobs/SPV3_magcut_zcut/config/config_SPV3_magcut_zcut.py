@@ -164,8 +164,8 @@ covariance_cfg = {
     'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/cov_ell_cuts_{cov_ell_cuts:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_'
                     'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_'
-                    '-idIA{idIA:1d}-idB{idB:1d}-idM{idM:1d}-idR{idR:1d}'
-                    '_kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D',
+                    'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_'
+                    'kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D',
     'cov_filename_vincenzo': 'cm-{probe_vinc:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
 }

@@ -201,7 +201,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_GC_SS_6D = mm.covariance_SSC_einsum(cl_GG_5D, rl_GG_5d, s_GGGG_ijkl, fsky)[0, 0, 0, 0, ...]
     cov_WA_SS_6D = mm.covariance_SSC_einsum(cl_WA_5D, rl_WA_5d, s_LLLL_ijkl, fsky)[0, 0, 0, 0, ...]
     cov_3x2pt_SS_10D = mm.covariance_SSC_einsum(cl_3x2pt_5D, rl_3x2pt_5D, s_ABCD_ijkl, fsky)
-    print("SS cov. matrices computed in %.2f seconds with PySSC" % (time.perf_counter() - start))
+    print("SS cov. matrices computed in %.2f s with PySSC" % (time.perf_counter() - start))
 
     # sum GO and SS in 6D (or 10D), not in 4D (it's the same)
     cov_WL_GS_6D = cov_WL_GO_6D + cov_WL_SS_6D
@@ -271,7 +271,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_GC_GS_4D = mm.cov_6D_to_4D(cov_GC_GS_6D, nbl_GC, zpairs_auto, ind_auto)
     cov_WA_GS_4D = mm.cov_6D_to_4D(cov_WA_GS_6D, nbl_WA, zpairs_auto, ind_auto)
     cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
-    print('covariance matrices transformed to 4D in {:.2f} seconds'.format(time.perf_counter() - start))
+    print('covariance matrices reshaped 6D -> 4D in {:.2f} s'.format(time.perf_counter() - start))
 
     # TODO finish this PYCCL stuff
     # cov_WL_SS_4D_pyssc = np.copy(cov_WL_SS_4D)
@@ -344,12 +344,12 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         start = time.perf_counter()
         cov_3x2pt_GO_10D_dict = mm.cov_G_10D_dict(cl_dict_3x2pt, noise_dict_3x2pt, nbl_3x2pt, zbins, ell_3x2pt,
                                                   delta_l_3x2pt, fsky, probe_ordering)
-        print(f'cov_3x2pt_GO_10D_dict computed in {(time.perf_counter() - start):.2f} seconds')
+        print(f'cov_3x2pt_GO_10D_dict computed in {(time.perf_counter() - start):.2f} s')
 
         start = time.perf_counter()
         cov_3x2pt_SS_10D_dict = mm.cov_SS_10D_dict(cl_dict_3x2pt, rl_dict_3x2pt, Sijkl_dict, nbl_3x2pt, zbins, fsky,
                                                    probe_ordering)
-        print(f'cov_3x2pt_SS_10D_dict computed in {(time.perf_counter() - start):.2f} seconds')
+        print(f'cov_3x2pt_SS_10D_dict computed in {(time.perf_counter() - start):.2f} s')
 
         # sum GO and SS
         cov_3x2pt_GS_10D_dict = {}
@@ -420,7 +420,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_dict['cov_WA_GO_6D'] = mm.cov_G_10D_dict(cl_dict_WA, noise_dict_3x2pt,
                                                      nbl_WA, zbins, ell_WA, delta_l_WA, fsky,
                                                      probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
-        print(f'cov_GO_6D computed in {(time.perf_counter() - start_time):.2f} seconds')
+        print(f'cov_GO_6D computed in {(time.perf_counter() - start_time):.2f} s')
 
         # ! cov_SSC_6D
         start_time = time.perf_counter()
@@ -430,7 +430,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
                                           probe_ordering=[['G', 'G'], ])['G', 'G', 'G', 'G']
         cov_WA_SS_6D = mm.cov_SS_10D_dict(cl_dict_WA, rl_dict_WA, Sijkl_dict, nbl_WA, zbins, fsky,
                                           probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
-        print(f'cov_SS_6D computed in {(time.perf_counter() - start_time):.2f} seconds')
+        print(f'cov_SS_6D computed in {(time.perf_counter() - start_time):.2f} s')
 
         if covariance_cfg['save_cov_SSC']:
             cov_dict['cov_WL_SS_6D'] = cov_WL_SS_6D
@@ -506,7 +506,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_GC_GS_2D = mm.cov_4D_to_2D(cov_GC_GS_4D, block_index=block_index)
     cov_WA_GS_2D = mm.cov_4D_to_2D(cov_WA_GS_4D, block_index=block_index)
     cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, block_index=block_index)
-    print('covariance matrices transformed to 2D in {:.2f} seconds'.format(time.perf_counter() - start))
+    print('covariance matrices reshaped 4D -> 2D in {:.2f} s'.format(time.perf_counter() - start))
 
     if covariance_cfg['cov_ell_cuts']:
         # perform the cuts on the 2D covs (way faster!)

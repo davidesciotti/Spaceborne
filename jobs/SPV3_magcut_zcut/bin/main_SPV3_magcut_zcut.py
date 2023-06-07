@@ -259,9 +259,6 @@ n_probes = general_cfg['n_probes']
 # some checks
 assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
 assert general_cfg['use_WA'] is False, 'We do not use Wadd for SPV3 at the moment'
-if general_cfg['BNT_transform']:
-    assert general_cfg['EP_or_ED'] == 'ED', 'BNT matrices are only available for ED case'
-    assert general_cfg['zbins'] == 13, 'BNT matrices are only available for zbins=13'
 
 if covariance_cfg['cov_BNT_transform']:
     assert general_cfg[

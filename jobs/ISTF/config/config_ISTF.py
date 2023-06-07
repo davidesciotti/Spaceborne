@@ -134,7 +134,7 @@ covariance_cfg = {
     'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_GS': False,
     'save_cov_SSC': False,
-    'save_2DCLOE': True,  # outermost loop is on the probes
+    'save_2DCLOE': False,  # outermost loop is on the probes
 
     'cov_folder': f'{job_path}/output/{which_input_files}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',

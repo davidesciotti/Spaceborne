@@ -184,37 +184,14 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
 
     # invert GO covmats
     print('Starting covariance matrix inversion...')
+    start_glob = time.perf_counter()
     start_time = time.perf_counter()
     # TODO try to use scipy.sparse.linalg.inv
     cov_WL_GO_2D_inv = np.linalg.inv(cov_dict['cov_WL_GO_2D'])
     cov_GC_GO_2D_inv = np.linalg.inv(cov_dict['cov_GC_GO_2D'])
     cov_WA_GO_2D_inv = np.linalg.inv(cov_dict['cov_WA_GO_2D'])
-    # cov_3x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GO_2D'])
+    cov_3x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GO_2D'])
     print(f'GO covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
-
-    # ! test parallelization (again)
-    start_time = time.perf_counter()
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        inv_futures = [
-            executor.submit(invert_covariance, cov_dict['cov_WL_GO_2D']),
-            executor.submit(invert_covariance, cov_dict['cov_GC_GO_2D']),
-            executor.submit(invert_covariance, cov_dict['cov_WA_GO_2D']),
-            # executor.submit(invert_covariance, cov_dict['cov_3x2pt_GO_2D'])
-        ]
-
-    cov_WL_GO_2D_inv_v2 = inv_futures[0].result()
-    cov_GC_GO_2D_inv_v2 = inv_futures[1].result()
-    cov_WA_GO_2D_inv_v2 = inv_futures[2].result()
-    # cov_3x2pt_GO_2D_inv = inv_futures[3].result()
-
-    np.testing.assert_allclose(cov_WL_GO_2D_inv, cov_WL_GO_2D_inv_v2, rtol=1e-5, atol=0)
-    np.testing.assert_allclose(cov_GC_GO_2D_inv, cov_GC_GO_2D_inv_v2, rtol=1e-5, atol=0)
-    np.testing.assert_allclose(cov_WA_GO_2D_inv, cov_WA_GO_2D_inv_v2, rtol=1e-5, atol=0)
-
-    print(f'GO covariance matrices inverted in parallel in {(time.perf_counter() - start_time):.2f} s')
-    # ! end test parallelization (again)
-
-    pdb.set_trace()
 
     # invert GS covmats
     start_time = time.perf_counter()

@@ -171,6 +171,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]
     cl_GG_5D = cl_GG_3D[np.newaxis, np.newaxis, ...]
     cl_WA_5D = cl_WA_3D[np.newaxis, np.newaxis, ...]
+    rl_LL_5d = rl_LL_3D[np.newaxis, np.newaxis, ...]
+    rl_GG_5d = rl_GG_3D[np.newaxis, np.newaxis, ...]
+    rl_WA_5d = rl_WA_3D[np.newaxis, np.newaxis, ...]
 
     # 5d versions of auto-probe spectra
     cov_WL_GO_6D = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_WL, delta_l_WL)[0, 0, 0, 0, ...]
@@ -198,6 +201,50 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_WA_SS_4D = mm.cov_SSC(nbl_WA, zpairs_auto, ind, cl_WA_3D, Sijkl, fsky, "WA", zbins, rl_WA_3D)
     cov_3x2pt_SS_4D = mm.cov_SSC_ALL(nbl_3x2pt, zpairs_3x2pt, ind, cl_3x2pt_5D, Sijkl, fsky, zbins, rl_3x2pt_5D)
     print("SS cov. matrices computed in %.2f seconds with PySSC" % (time.perf_counter() - start))
+
+    # ! do the same with einsum
+    s_ABCD_ijkl = mm.expand_dims_sijkl(Sijkl, zbins)
+    s_LLLL_ijkl = s_ABCD_ijkl[0, 0, 0, 0, ...][np.newaxis, np.newaxis, np.newaxis, np.newaxis, ...]
+    s_GGGG_ijkl = s_ABCD_ijkl[1, 1, 1, 1, ...][np.newaxis, np.newaxis, np.newaxis, np.newaxis, ...]
+    cov_WL_SS_6D = mm.covariance_SSC_einsum(cl_LL_5D, rl_LL_5d, s_LLLL_ijkl, fsky)[0, 0, 0, 0, ...]
+    cov_GC_SS_6D = mm.covariance_SSC_einsum(cl_GG_5D, rl_GG_5d, s_GGGG_ijkl, fsky)[0, 0, 0, 0, ...]
+    cov_WA_SS_6D = mm.covariance_SSC_einsum(cl_WA_5D, rl_WA_5d, s_LLLL_ijkl, fsky)[0, 0, 0, 0, ...]
+    cov_3x2pt_SS_10D = mm.covariance_SSC_einsum(cl_3x2pt_5D, rl_3x2pt_5D, s_ABCD_ijkl, fsky)
+
+    cov_WL_SS_4D_v2 = mm.cov_6D_to_4D(cov_WL_SS_6D, nbl_WL, zpairs_auto, ind_auto)
+    cov_GC_SS_4D_v2 = mm.cov_6D_to_4D(cov_GC_SS_6D, nbl_GC, zpairs_auto, ind_auto)
+    cov_WA_SS_4D_v2 = mm.cov_6D_to_4D(cov_WA_SS_6D, nbl_WA, zpairs_auto, ind_auto)
+    cov_3x2pt_SS_4D_v2 = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(),
+                                                GL_or_LG)
+
+    cov_WL_SS_2D = mm.cov_4D_to_2D(cov_WL_SS_4D, block_index=block_index)
+    cov_GC_SS_2D = mm.cov_4D_to_2D(cov_GC_SS_4D, block_index=block_index)
+    cov_WA_SS_2D = mm.cov_4D_to_2D(cov_WA_SS_4D, block_index=block_index)
+    cov_3x2pt_SS_2D = mm.cov_4D_to_2D(cov_3x2pt_SS_4D, block_index=block_index)
+
+    cov_WL_SS_2D_v2 = mm.cov_4D_to_2D(cov_WL_SS_4D_v2, block_index=block_index)
+    cov_GC_SS_2D_v2 = mm.cov_4D_to_2D(cov_GC_SS_4D_v2, block_index=block_index)
+    cov_WA_SS_2D_v2 = mm.cov_4D_to_2D(cov_WA_SS_4D_v2, block_index=block_index)
+    cov_3x2pt_SS_2D_v2 = mm.cov_4D_to_2D(cov_3x2pt_SS_4D_v2, block_index=block_index)
+
+    mm.compare_arrays(cov_WL_SS_2D_v2, cov_WL_SS_2D, 'cov_WL_SS_2D_v2', 'cov_WL_SS_2D', plot_diff=True, plot_array=True,
+                      log_array=True)
+    mm.compare_arrays(cov_GC_SS_2D_v2, cov_GC_SS_2D, 'cov_GC_SS_2D_v2', 'cov_GC_SS_2D', plot_diff=True, plot_array=True,
+                      log_array=True)
+    mm.compare_arrays(cov_WA_SS_2D_v2, cov_WA_SS_2D, 'cov_WA_SS_2D_v2', 'cov_WA_SS_2D', plot_diff=True, plot_array=True,
+                      log_array=True)
+    mm.compare_arrays(cov_3x2pt_SS_2D_v2, cov_3x2pt_SS_2D, 'cov_3x2pt_SS_2D_v2', 'cov_3x2pt_SS_2D', plot_diff=True,
+                      plot_array=True, log_array=True)
+
+    np.testing.assert_allclose(cov_WL_SS_4D, cov_WL_SS_4D_v2, atol=0, rtol=1e-5)
+    np.testing.assert_allclose(cov_GC_SS_4D, cov_GC_SS_4D_v2, atol=0, rtol=1e-5)
+    np.testing.assert_allclose(cov_WA_SS_4D, cov_WA_SS_4D_v2, atol=0, rtol=1e-5)
+    np.testing.assert_allclose(cov_3x2pt_SS_4D, cov_3x2pt_SS_4D_v2, atol=0, rtol=1e-5)
+    # assert False, "STOP HERE, cov_3x2pt_SS_10D_v2 is wrong"
+    # pdb.set_trace()
+
+
+    # ! end do the same with einsum
 
     cov_WL_SS_4D_pyssc = np.copy(cov_WL_SS_4D)
     cov_GC_SS_4D_pyssc = np.copy(cov_GC_SS_4D)
@@ -426,6 +473,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_WA_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, zpairs_auto, ind_auto)
         cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_dict['cov_3x2pt_GS_10D_dict'], probe_ordering, nbl_GC, zbins,
                                                  ind.copy(), GL_or_LG)
+
 
     ############################### 4D to 2D ##################################
     # Here an ordering convention ('block_index') is needed as well

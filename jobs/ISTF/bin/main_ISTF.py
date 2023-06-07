@@ -221,9 +221,8 @@ cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
 # ! save and test against benchmarks
 cov_folder = covariance_cfg["cov_folder"].format(SSC_code=covariance_cfg['SSC_code'], **variable_specs)
 covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
-
 if general_cfg['test_against_benchmarks']:
-    mm.test_folder_content(cov_folder, cov_folder + 'benchmarks', covariance_cfg['cov_file_format'])
+    mm.test_folder_content(cov_folder, cov_folder + '/benchmarks', covariance_cfg['cov_file_format'])
 
 # ! compute Fisher Matrix
 if not FM_cfg['compute_FM']:

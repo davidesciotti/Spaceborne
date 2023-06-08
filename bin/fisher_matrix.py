@@ -194,12 +194,19 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     print(f'GO covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
 
     # invert GS covmats
-    start_time = time.perf_counter()
-    cov_WL_GS_2D_inv = np.linalg.inv(cov_dict['cov_WL_GS_2D'])
-    cov_GC_GS_2D_inv = np.linalg.inv(cov_dict['cov_GC_GS_2D'])
-    cov_WA_GS_2D_inv = np.linalg.inv(cov_dict['cov_WA_GS_2D'])
-    cov_3x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GS_2D'])
-    print(f'GS covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
+    if covariance_cfg['compute_SSC']:
+        start_time = time.perf_counter()
+        cov_WL_GS_2D_inv = np.linalg.inv(cov_dict['cov_WL_GS_2D'])
+        cov_GC_GS_2D_inv = np.linalg.inv(cov_dict['cov_GC_GS_2D'])
+        cov_WA_GS_2D_inv = np.linalg.inv(cov_dict['cov_WA_GS_2D'])
+        cov_3x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GS_2D'])
+        print(f'GS covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
+    else:
+        cov_WL_GS_2D_inv = np.eye(cov_dict['cov_WL_GO_2D'].shape[0])
+        cov_GC_GS_2D_inv = np.eye(cov_dict['cov_GC_GO_2D'].shape[0])
+        cov_WA_GS_2D_inv = np.eye(cov_dict['cov_WA_GO_2D'].shape[0])
+        cov_3x2pt_GS_2D_inv = np.eye(cov_dict['cov_3x2pt_GO_2D'].shape[0])
+        warnings.warn('Not computing GS constraints, setting the inverse covmats to identity')
 
     # load reshaped derivatives, with shape (nbl, zbins, zbins, nparams)
     dC_LL_4D = deriv_dict['dC_LL_4D']
@@ -331,9 +338,13 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     FMs_GS = [FM_WL_GS, FM_GC_GS, FM_WA_GS, FM_3x2pt_GS]
 
     FM_dict = {}
-    for probe_name, FM_GO, FM_GS in zip(probe_names, FMs_GO, FMs_GS):
-        FM_dict[f'FM_{probe_name}_GO'] = FM_GO
-        FM_dict[f'FM_{probe_name}_GS'] = FM_GS
+    if covariance_cfg['compute_SSC']:
+        for probe_name, FM_GO, FM_GS in zip(probe_names, FMs_GO, FMs_GS):
+            FM_dict[f'FM_{probe_name}_GO'] = FM_GO
+            FM_dict[f'FM_{probe_name}_GS'] = FM_GS
+    else:
+        for probe_name, FM_GO in zip(probe_names, FMs_GO):
+            FM_dict[f'FM_{probe_name}_GO'] = FM_GO
 
     print("FMs computed in %.2f seconds" % (time.perf_counter() - start))
 

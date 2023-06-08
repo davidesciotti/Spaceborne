@@ -489,11 +489,18 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_3x2pt_GO_4D = mm.cov_3x2pt_10D_to_4D(cov_dict['cov_3x2pt_GO_10D_dict'], probe_ordering, nbl_GC, zbins,
                                                  ind.copy(), GL_or_LG)
 
-        cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GS_6D'], nbl_WL, zpairs_auto, ind_auto)
-        cov_GC_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_GC_GS_6D'], nbl_GC, zpairs_auto, ind_auto)
-        cov_WA_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, zpairs_auto, ind_auto)
-        cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_dict['cov_3x2pt_GS_10D_dict'], probe_ordering, nbl_GC, zbins,
-                                                 ind.copy(), GL_or_LG)
+        if covariance_cfg['compute_SSC']:
+            cov_WL_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GS_6D'], nbl_WL, zpairs_auto, ind_auto)
+            cov_GC_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_GC_GS_6D'], nbl_GC, zpairs_auto, ind_auto)
+            cov_WA_GS_4D = mm.cov_6D_to_4D(cov_dict['cov_WA_GS_6D'], nbl_WA, zpairs_auto, ind_auto)
+            cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_dict['cov_3x2pt_GS_10D_dict'], probe_ordering, nbl_GC, zbins,
+                                                     ind.copy(), GL_or_LG)
+        else:
+            warnings.warn('SSC not computed, setting SSC covariances to identity...')
+            cov_WL_GS_4D = np.eye(cov_WL_GO_4D.shape)
+            cov_GC_GS_4D = np.eye(cov_GC_GO_4D.shape)
+            cov_WA_GS_4D = np.eye(cov_WA_GO_4D.shape)
+            cov_3x2pt_GS_4D = np.eye(cov_3x2pt_GO_4D.shape)
 
     # ! transform everything in 2D
     start = time.perf_counter()

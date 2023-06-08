@@ -193,7 +193,7 @@ param_names_dict = {
     'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, 5)],
     'magnification_bias': [f'bM{zbin_idx:02d}' for zbin_idx in range(1, 5)],
     'shear_bias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
-    'dzWL': [f'zWL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
+    'dzWL': [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
     # 'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
 }
 param_names_3x2pt = list(np.concatenate([param_names_dict[key] for key in param_names_dict.keys()]))

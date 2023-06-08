@@ -581,6 +581,9 @@ fiducials_3x2pt = list(np.concatenate([fiducials_dict[key] for key in fiducials_
 param_names_dict = FM_cfg['param_names_dict']
 param_names_3x2pt = FM_cfg['param_names_3x2pt']
 
+assert param_names_dict.keys() == fiducials_dict.keys(), \
+    'the parameter names and fiducial values dictionaries should have the same keys'
+
 assert len(fiducials_3x2pt) == len(param_names_3x2pt), \
     'the fiducial values list and parameter names should have the same length'
 
@@ -590,10 +593,11 @@ start_time = time.perf_counter()
 derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
 
 # check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
+der_prefix = FM_cfg['derivatives_prefix']
 filenames = mm.get_filenames_in_folder(derivatives_folder)
-filenames = [filename for filename in filenames if filename.startswith(FM_cfg['derivatives_prefix'])]
+filenames = [filename for filename in filenames if filename.startswith(der_prefix)]
 trimmed_filenames = [filename.split('-', 1)[0].strip() for filename in filenames]
-trimmed_filenames = [trimmed_filename.strip(FM_cfg['derivatives_prefix']) for trimmed_filename in trimmed_filenames]
+trimmed_filenames = [trimmed_filename[len(der_prefix):] if trimmed_filename.startswith(der_prefix) else trimmed_filename for trimmed_filename in trimmed_filenames]
 vinc_param_names = list(set(trimmed_filenames))
 vinc_param_names.sort()
 

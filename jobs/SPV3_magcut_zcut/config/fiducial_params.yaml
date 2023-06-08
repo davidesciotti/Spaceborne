@@ -1,0 +1,15 @@
+# should I do this? maybe a function in the main should take care of creating this
+# file, since it changes based on the number of bins or other settings
+
+OmegaM:
+OmegaDE:
+OmegaB:
+wz:
+wa:
+h:
+ns:
+sigma8:
+logT_AGN:
+Aia:
+etaIA:
+betaIA:

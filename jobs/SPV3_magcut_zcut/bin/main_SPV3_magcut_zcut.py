@@ -41,6 +41,7 @@ matplotlib.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
+
 # TODO check that the number of ell bins is the same as in the files
 # TODO double check the delta values
 # TODO update consistency_checks
@@ -58,12 +59,6 @@ start_time = time.perf_counter()
 ###############################################################################
 #################### PARAMETERS AND SETTINGS DEFINITION #######################
 ###############################################################################
-
-general_cfg = cfg.general_cfg
-covariance_cfg = cfg.covariance_cfg
-Sijkl_cfg = cfg.Sijkl_cfg
-FM_cfg = cfg.FM_cfg
-
 
 def load_ell_cuts(kmax_h_over_Mpc):
     """loads ell_cut valeus, rescales them and load into a dictionary"""
@@ -235,9 +230,15 @@ def plot_nz_tocheck_func():
 # TODO BNT
 # TODO SSC
 
+
+general_cfg = cfg.general_cfg
+covariance_cfg = cfg.covariance_cfg
+Sijkl_cfg = cfg.Sijkl_cfg
+FM_cfg = cfg.FM_cfg
+
 # for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
-    # for general_cfg['which_cuts'] in ['Francis', 'Vincenzo']:
-    #     for general_cfg['center_or_min'] in ['center', 'min']:
+# for general_cfg['which_cuts'] in ['Francis', 'Vincenzo']:
+#     for general_cfg['center_or_min'] in ['center', 'min']:
 
 warnings.warn('TODO restore the for loops!')
 general_cfg['which_cuts'] = 'Vincenzo'
@@ -355,8 +356,11 @@ variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_le
 
 ng_folder = covariance_cfg["ng_folder"]
 ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
-covariance_cfg['ng'] = np.genfromtxt(f'{ng_folder}/'f'{ng_filename}')[:, 1]
-z_center_values = np.genfromtxt(f'{ng_folder}/'f'{ng_filename}')[:, 0]
+ngtab = np.genfromtxt(f'{ng_folder}/'f'{ng_filename}')
+z_center_values = ngtab[:, 0]
+covariance_cfg['ng'] = ngtab[:, 1]
+dzWL_fiducial = ngtab[:, 4]
+dzGC_fiducial = ngtab[:, 4]
 
 nofz_folder = covariance_cfg["nofz_folder"]
 nofz_filename = f'{covariance_cfg["nofz_filename"].format(**variable_specs)}'
@@ -368,7 +372,7 @@ n_of_z = n_of_z[:, 1:]
 assert np.all(covariance_cfg['ng'] < 5), 'ng values are likely < 5 *per bin*; this is just a rough check'
 assert np.all(covariance_cfg['ng'] > 0), 'ng values must be positive'
 assert np.all(z_center_values > 0), 'z_center values must be positive'
-assert np.all(z_center_values < 3.5), 'z_center values are likely < 3.5; this is just a rough check'
+assert np.all(z_center_values < 3), 'z_center values are likely < 3; this is just a rough check'
 
 # BNT_matrix_filename = general_cfg["BNT_matrix_filename"].format(**variable_specs)
 # BNT_matrix = np.load(f'{general_cfg["BNT_matrix_path"]}/{BNT_matrix_filename}')
@@ -388,15 +392,13 @@ cl_wa_1d = np.genfromtxt(
 cl_3x2pt_1d = np.genfromtxt(
     f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
 
-warnings.warn('the responses are old')
 rl_fld = general_cfg['rl_folder']
 rl_filename = general_cfg['rl_filename']
 # rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', **variable_specs)}")
 # rl_gg_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='GCO', **variable_specs)}")
 # rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **variable_specs)}")
 # rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **variable_specs)}")
-
-warnings.warn("using mock responses, replace this")
+warnings.warn("using mock responses, FIX THIS")
 rl_ll_1d = np.ones_like(cl_ll_1d)
 rl_gg_1d = np.ones_like(cl_gg_1d)
 rl_wa_1d = np.ones_like(cl_wa_1d)
@@ -490,7 +492,6 @@ rl_dict_3D = {
     'rl_WA_3D': rl_wa_3d,
     'rl_3x2pt_5D': rl_3x2pt_5d}
 
-
 if covariance_cfg['compute_SSC']:
 
     # ! load kernels
@@ -535,7 +536,7 @@ if covariance_cfg['compute_SSC']:
 
 else:
     warnings.warn('Sijkl is not computed, but set to identity')
-    Sijkl = np.ones((n_probes*zbins, n_probes*zbins, n_probes*zbins, n_probes*zbins))
+    Sijkl = np.ones((n_probes * zbins, n_probes * zbins, n_probes * zbins, n_probes * zbins))
 
 # ! compute covariance matrix
 # the ng values are in the second column, for these input files 👇
@@ -557,22 +558,24 @@ if not FM_cfg['compute_FM']:
     # this guard is just to avoid indenting the whole code below
     raise KeyboardInterrupt('skipping FM computation, the script will exit now')
 
-start_time = time.perf_counter()
 # set the fiducial values in a dictionary and a list
+bias_fiducials = np.genfromtxt(f'{ng_folder}/gal_mag_fiducial_polynomial_fit.dat')
+bias_fiducials_rows = np.where(bias_fiducials[:, 0] == general_cfg['magcut_source'] / 10)[
+    0]  # take the correct magnitude limit
+galaxy_bias_fit_fiducials = bias_fiducials[bias_fiducials_rows, 1]
+magnification_bias_fit_fiducials = bias_fiducials[bias_fiducials_rows, 2]
 fiducials_dict = {
-    'cosmo': [ISTF_fid.primary['Om_m0'], ISTF_fid.extensions['Om_Lambda0'], ISTF_fid.primary['Om_b0'],
+    'cosmo': [ISTF_fid.primary['Om_m0'], ISTF_fid.primary['Om_b0'],
               ISTF_fid.primary['w_0'], ISTF_fid.primary['w_a'],
               ISTF_fid.primary['h_0'], ISTF_fid.primary['n_s'], ISTF_fid.primary['sigma_8']],
-    'IA': np.asarray([ISTF_fid.IA_free[key] for key in ISTF_fid.IA_free.keys()]),
-    'galaxy_bias': np.genfromtxt(f'{ng_folder}/{ng_filename}')[:, 2],  # ! it needs to be set in the main!
+    'IA': np.asarray([0.16, 1.66]),
+    'galaxy_bias': galaxy_bias_fit_fiducials,
+    'magnification_bias': magnification_bias_fit_fiducials,
     'shear_bias': np.zeros((zbins,)),
-    'dzWL': np.zeros((zbins,)),
-    'dzGC': np.zeros((zbins,)),
+    'dzWL': dzWL_fiducial,  # for the time being, equal to the GC ones
 }
 
-fiducials_3x2pt = np.concatenate(
-    (fiducials_dict['cosmo'], fiducials_dict['IA'], fiducials_dict['galaxy_bias'],
-     fiducials_dict['shear_bias'], fiducials_dict['dzWL'], fiducials_dict['dzGC']))
+fiducials_3x2pt = list(np.concatenate([fiducials_dict[key] for key in fiducials_dict.keys()]))
 
 # set parameters' names, as a dict and as a list
 param_names_dict = FM_cfg['param_names_dict']
@@ -583,7 +586,27 @@ assert len(fiducials_3x2pt) == len(param_names_3x2pt), \
 
 # ! preprocess derivatives (or load the alreay preprocessed ones)
 # import and store them in one big dictionary
+start_time = time.perf_counter()
 derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
+
+# check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
+filenames = mm.get_filenames_in_folder(derivatives_folder)
+filenames = [filename for filename in filenames if filename.startswith(FM_cfg['derivatives_prefix'])]
+trimmed_filenames = [filename.split('-', 1)[0].strip() for filename in filenames]
+trimmed_filenames = [trimmed_filename.strip(FM_cfg['derivatives_prefix']) for trimmed_filename in trimmed_filenames]
+vinc_param_names = list(set(trimmed_filenames))
+vinc_param_names.sort()
+
+my_sorted_param_names = param_names_3x2pt.copy()
+my_sorted_param_names.sort()
+
+param_names_not_in_my_list = [vinc_param_name for vinc_param_name in vinc_param_names if
+                              vinc_param_name not in my_sorted_param_names]
+param_names_not_in_vinc_list = [my_sorted_param_name for my_sorted_param_name in my_sorted_param_names if
+                                my_sorted_param_name not in vinc_param_names]
+assert np.all(vinc_param_names == my_sorted_param_names), \
+    f'params present in input folder but not in the cfg file, {param_names_not_in_my_list}' \
+    f'params present in cfg file but not in the input folder, {param_names_not_in_vinc_list}'
 
 if FM_cfg['load_preprocess_derivatives']:
     dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_LL_4D.npy')

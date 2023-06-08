@@ -33,6 +33,8 @@ idIA = 2
 idB = 3
 idM = 3
 idR = 1
+test_cov = False
+test_fm = True
 
 probe_dict = {
     'WL': 'WLO',
@@ -40,18 +42,37 @@ probe_dict = {
     '3x2pt': '3x2pt'
 }
 
-dav_path = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output/' \
-           'Flagship_2/covmat/BNT_False/cov_ell_cuts_False'
-vinc_path = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/' \
-            'OutputFiles/CovMats/GaussOnly'
+cov_dav_path = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output/' \
+               'Flagship_2/covmat/BNT_False/cov_ell_cuts_False'
+cov_vinc_path = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/' \
+                'OutputFiles/CovMats/GaussOnly'
+fm_dav_path = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output/' \
+              'Flagship_2/FM/BNT_False/ell_cuts_False'
+fm_vinc_path = cov_vinc_path.replace('CovMats', 'FishMat') + '/Flat'
+'/fm-3x2pt-EP10-ML245-MS245-idIA2-idB3-idM3-idR1.dat'
 for probe in ('WL', 'GC', '3x2pt'):
-    cov_dav = \
-        np.load(f'{dav_path}/covmat_{GO_or_GS}_{probe}_zbins{EP_or_ED}{zbins}_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_'
-                f'idIA{idIA}_idB{idB}_idM{idM}_idR{idR}_kmaxhoverMpc2.239_2D.npz')['arr_0']
-    cov_vinc = np.genfromtxt(
-        f'{vinc_path}/{probe_dict[probe]}/{which_pk}/'
-        f'cm-{probe_dict[probe]}-{EP_or_ED}{zbins}-ML{ML}-MS{MS}-idIA2-idB3-idM3-idR1.dat')
+    if test_cov:
+        cov_dav = np.load(f'{cov_dav_path}/covmat_{GO_or_GS}_{probe}_zbins{EP_or_ED}{zbins}'
+                          f'_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_idIA{idIA}_idB{idB}_idM{idM}_idR{idR}'
+                          f'_kmaxhoverMpc2.239_2D.npz')['arr_0']
+        cov_vinc = np.genfromtxt(f'{cov_vinc_path}/{probe_dict[probe]}/{which_pk}/'
+                                 f'cm-{probe_dict[probe]}-{EP_or_ED}{zbins}-ML{ML}-MS{MS}-idIA2-idB3-idM3-idR1.dat')
 
-    np.testing.assert_allclose(cov_dav, cov_vinc, rtol=1e-5, atol=0)
+        np.testing.assert_allclose(cov_dav, cov_vinc, rtol=1e-5, atol=0)
 
-    print(f'{probe}, test passed')
+        print(f'cov {probe}, test passed')
+
+    elif test_fm:
+        fm_dav = np.genfromtxt(f'{fm_dav_path}/FM_{GO_or_GS}_{probe}_zbins{EP_or_ED}{zbins}_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_'
+                         f'idIA{idIA}_idB{idB}_idM{idM}_idR{idR}_kmaxhoverMpc2.239.txt')
+        fm_vinc = np.genfromtxt(f'{fm_vinc_path}/{probe_dict[probe]}/{which_pk}/'
+                                f'fm-{probe_dict[probe]}-{EP_or_ED}{zbins}-ML{ML}-MS{MS}-idIA2-idB3-idM3-idR1.dat')
+
+        fm_dav = mm.remove_null_rows_cols_2D_copilot(fm_dav)
+
+        np.testing.assert_allclose(fm_dav, fm_vinc, rtol=1e-5, atol=0)
+
+        mm.compare_arrays(fm_dav, fm_vinc, 'dav', 'vinc', plot_array=True, plot_diff=True)
+
+        print(f'FM {probe}, test passed')
+

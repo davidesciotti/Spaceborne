@@ -188,15 +188,16 @@ Sijkl_cfg = {
 
 # declare the set of parameters under study
 param_names_dict = {
-    'cosmo': ["Om", "Ox", "Ob", "wz", "wa", "h", "ns", "s8"],
-    'IA': ["Aia", "eIA", "bIA"],
-    'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
+    'cosmo': ["Om", "Ob", "wz", "wa", "h", "ns", "s8"],
+    'IA': ["Aia", "eIA"],
+    'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, 5)],
+    'magnification_bias': [f'bM{zbin_idx:02d}' for zbin_idx in range(1, 5)],
     'shear_bias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
-    'dzWL': [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
-    'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
+    'dzWL': [f'zWL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
+    # 'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
 }
-param_names_3x2pt = param_names_dict['cosmo'] + param_names_dict['IA'] + param_names_dict['galaxy_bias'] + \
-                    param_names_dict['shear_bias'] + param_names_dict['dzWL'] + param_names_dict['dzGC']
+param_names_3x2pt = list(np.concatenate([param_names_dict[key] for key in param_names_dict.keys()]))
+
 
 # I cannot define the fiducial values here because I need to import the files for the galaxy bias
 

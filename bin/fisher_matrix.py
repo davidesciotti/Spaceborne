@@ -208,6 +208,8 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         cov_3x2pt_GS_2D_inv = np.eye(cov_dict['cov_3x2pt_GO_2D'].shape[0])
         warnings.warn('Not computing GS constraints, setting the inverse covmats to identity')
 
+
+
     # load reshaped derivatives, with shape (nbl, zbins, zbins, nparams)
     dC_LL_4D = deriv_dict['dC_LL_4D']
     dC_GG_4D = deriv_dict['dC_GG_4D']
@@ -351,7 +353,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     return FM_dict
 
 
-def save_FM(fm_folder, FM_dict, FM_cfg, save_txt=False, save_dict=True, **save_specs):
+def save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=False, save_dict=True, **save_specs):
     """saves the FM in .txt and .pickle formats
     :param fm_folder:
     """
@@ -370,7 +372,7 @@ def save_FM(fm_folder, FM_dict, FM_cfg, save_txt=False, save_dict=True, **save_s
 
     if save_txt:
         for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
-            for which_cov in ['GO', 'GS']:
+            for which_cov in cases_tosave:
                 FM_txt_filename = FM_cfg['FM_txt_filename'].format(probe=probe, which_cov=which_cov, ell_max=ell_max,
                                                                    nbl=nbl, **save_specs)
                 np.savetxt(f'{fm_folder}/{FM_txt_filename}.txt', FM_dict[f'FM_{probe}_{which_cov}'])

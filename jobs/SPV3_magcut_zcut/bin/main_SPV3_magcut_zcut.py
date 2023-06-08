@@ -274,8 +274,8 @@ if covariance_cfg['cov_BNT_transform']:
     assert FM_cfg['derivatives_BNT_transform'], 'you should BNT transform the derivatives as well'
 
 # which cases to save: GO, GS or GO, GS and SS
-cases_tosave = ['GO', 'GS']
-if covariance_cfg[f'save_cov_GS']:
+cases_tosave = ['GO', ]
+if covariance_cfg[f'compute_SSC']:
     cases_tosave.append('GS')
 if covariance_cfg[f'save_cov_SSC']:
     cases_tosave.append('SS')
@@ -597,7 +597,8 @@ der_prefix = FM_cfg['derivatives_prefix']
 filenames = mm.get_filenames_in_folder(derivatives_folder)
 filenames = [filename for filename in filenames if filename.startswith(der_prefix)]
 trimmed_filenames = [filename.split('-', 1)[0].strip() for filename in filenames]
-trimmed_filenames = [trimmed_filename[len(der_prefix):] if trimmed_filename.startswith(der_prefix) else trimmed_filename for trimmed_filename in trimmed_filenames]
+trimmed_filenames = [trimmed_filename[len(der_prefix):] if trimmed_filename.startswith(der_prefix) else trimmed_filename
+                     for trimmed_filename in trimmed_filenames]
 vinc_param_names = list(set(trimmed_filenames))
 vinc_param_names.sort()
 
@@ -678,7 +679,7 @@ fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
                                        which_cuts=general_cfg['which_cuts'],
                                        center_or_min=general_cfg['center_or_min'])
 
-FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'],
+FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'],
                  **variable_specs)
 
 if FM_cfg['test_against_benchmarks']:

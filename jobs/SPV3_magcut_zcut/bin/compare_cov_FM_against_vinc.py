@@ -56,7 +56,8 @@ for probe in ('WL', 'GC', '3x2pt'):
                           f'_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_idIA{idIA}_idB{idB}_idM{idM}_idR{idR}'
                           f'_kmaxhoverMpc2.239_2D.npz')['arr_0']
         cov_vinc = np.genfromtxt(f'{cov_vinc_path}/{probe_dict[probe]}/{which_pk}/'
-                                 f'cm-{probe_dict[probe]}-{EP_or_ED}{zbins}-ML{ML}-MS{MS}-idIA2-idB3-idM3-idR1.dat')
+                                 f'cm-{probe_dict[probe]}-{EP_or_ED}{zbins}'
+                                 f'-ML{ML}-MS{MS}-idIA{idIA}-idB{idB}-idM{idM}-idR{idR}.dat')
 
         np.testing.assert_allclose(cov_dav, cov_vinc, rtol=1e-5, atol=0)
 
@@ -66,9 +67,17 @@ for probe in ('WL', 'GC', '3x2pt'):
         fm_dav = np.genfromtxt(f'{fm_dav_path}/FM_{GO_or_GS}_{probe}_zbins{EP_or_ED}{zbins}_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_'
                          f'idIA{idIA}_idB{idB}_idM{idM}_idR{idR}_kmaxhoverMpc2.239.txt')
         fm_vinc = np.genfromtxt(f'{fm_vinc_path}/{probe_dict[probe]}/{which_pk}/'
-                                f'fm-{probe_dict[probe]}-{EP_or_ED}{zbins}-ML{ML}-MS{MS}-idIA2-idB3-idM3-idR1.dat')
+                                f'fm-{probe_dict[probe]}-{EP_or_ED}{zbins}'
+                                f'-ML{ML}-MS{MS}-idIA{idIA}-idB{idB}-idM{idM}-idR{idR}.dat')
 
         fm_dav = mm.remove_null_rows_cols_2D_copilot(fm_dav)
+        fm_vinc = mm.remove_null_rows_cols_2D_copilot(fm_vinc)
+        print(f'fm_dav shape: {fm_dav.shape}')
+        print(f'fm_vinc shape: {fm_vinc.shape}')
+
+        mm.matshow(fm_dav, 'dav', log=True)
+        mm.matshow(fm_vinc, 'vinc', log=True)
+        mm.compare_arrays(fm_dav, fm_vinc, 'dav', 'vinc', plot_array=True, plot_diff=True, log_diff=True)
 
         np.testing.assert_allclose(fm_dav, fm_vinc, rtol=1e-5, atol=0)
 

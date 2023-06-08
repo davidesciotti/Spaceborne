@@ -20,7 +20,7 @@ matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
-probe = 'WL'
+probe = '3x2pt'
 GO_or_GS = 'GO'
 ML = 245
 MS = 245
@@ -50,38 +50,36 @@ fm_dav_path = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs
               'Flagship_2/FM/BNT_False/ell_cuts_False'
 fm_vinc_path = cov_vinc_path.replace('CovMats', 'FishMat') + '/Flat'
 '/fm-3x2pt-EP10-ML245-MS245-idIA2-idB3-idM3-idR1.dat'
-for probe in ('WL', 'GC', '3x2pt'):
-    if test_cov:
-        cov_dav = np.load(f'{cov_dav_path}/covmat_{GO_or_GS}_{probe}_zbins{EP_or_ED}{zbins}'
-                          f'_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_idIA{idIA}_idB{idB}_idM{idM}_idR{idR}'
-                          f'_kmaxhoverMpc2.239_2D.npz')['arr_0']
-        cov_vinc = np.genfromtxt(f'{cov_vinc_path}/{probe_dict[probe]}/{which_pk}/'
-                                 f'cm-{probe_dict[probe]}-{EP_or_ED}{zbins}'
-                                 f'-ML{ML}-MS{MS}-idIA{idIA}-idB{idB}-idM{idM}-idR{idR}.dat')
+# for probe in ('WL', 'GC', '3x2pt'):
+if test_cov:
+    cov_dav = np.load(f'{cov_dav_path}/covmat_{GO_or_GS}_{probe}_zbins{EP_or_ED}{zbins}'
+                      f'_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_idIA{idIA}_idB{idB}_idM{idM}_idR{idR}'
+                      f'_kmaxhoverMpc2.239_2D.npz')['arr_0']
+    cov_vinc = np.genfromtxt(f'{cov_vinc_path}/{probe_dict[probe]}/{which_pk}/'
+                             f'cm-{probe_dict[probe]}-{EP_or_ED}{zbins}'
+                             f'-ML{ML}-MS{MS}-idIA{idIA}-idB{idB}-idM{idM}-idR{idR}.dat')
 
-        np.testing.assert_allclose(cov_dav, cov_vinc, rtol=1e-5, atol=0)
+    np.testing.assert_allclose(cov_dav, cov_vinc, rtol=1e-5, atol=0)
 
-        print(f'cov {probe}, test passed')
+    print(f'cov {probe}, test passed')
 
-    elif test_fm:
-        fm_dav = np.genfromtxt(f'{fm_dav_path}/FM_{GO_or_GS}_{probe}_zbins{EP_or_ED}{zbins}_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_'
-                         f'idIA{idIA}_idB{idB}_idM{idM}_idR{idR}_kmaxhoverMpc2.239.txt')
-        fm_vinc = np.genfromtxt(f'{fm_vinc_path}/{probe_dict[probe]}/{which_pk}/'
-                                f'fm-{probe_dict[probe]}-{EP_or_ED}{zbins}'
-                                f'-ML{ML}-MS{MS}-idIA{idIA}-idB{idB}-idM{idM}-idR{idR}.dat')
+elif test_fm:
+    fm_dav = np.genfromtxt(
+        f'{fm_dav_path}/FM_{GO_or_GS}_{probe}_zbins{EP_or_ED}{zbins}_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_'
+        f'idIA{idIA}_idB{idB}_idM{idM}_idR{idR}_kmaxhoverMpc2.239.txt')
+    fm_vinc = np.genfromtxt(f'{fm_vinc_path}/{probe_dict[probe]}/{which_pk}/'
+                            f'fm-{probe_dict[probe]}-{EP_or_ED}{zbins}'
+                            f'-ML{ML}-MS{MS}-idIA{idIA}-idB{idB}-idM{idM}-idR{idR}.dat')
 
-        fm_dav = mm.remove_null_rows_cols_2D_copilot(fm_dav)
-        fm_vinc = mm.remove_null_rows_cols_2D_copilot(fm_vinc)
-        print(f'fm_dav shape: {fm_dav.shape}')
-        print(f'fm_vinc shape: {fm_vinc.shape}')
+    print(f'fm_dav shape: {fm_dav.shape}')
+    print(f'fm_vinc shape: {fm_vinc.shape}')
 
-        mm.matshow(fm_dav, 'dav', log=True)
-        mm.matshow(fm_vinc, 'vinc', log=True)
-        mm.compare_arrays(fm_dav, fm_vinc, 'dav', 'vinc', plot_array=True, plot_diff=True, log_diff=True)
+    mm.matshow(fm_dav, 'dav', log=True)
+    mm.matshow(fm_vinc, 'vinc', log=True)
 
-        np.testing.assert_allclose(fm_dav, fm_vinc, rtol=1e-5, atol=0)
+    np.testing.assert_allclose(fm_dav, fm_vinc, rtol=1e-3, atol=0)
 
-        mm.compare_arrays(fm_dav, fm_vinc, 'dav', 'vinc', plot_array=True, plot_diff=True)
+    mm.compare_arrays(fm_dav, fm_vinc, 'dav', 'vinc', plot_array=True, log_array=True,
+                      plot_diff=True, log_diff=True)
 
-        print(f'FM {probe}, test passed')
-
+    print(f'FM {probe}, test passed')

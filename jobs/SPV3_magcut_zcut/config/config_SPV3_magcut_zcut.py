@@ -186,16 +186,16 @@ Sijkl_cfg = {
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
 
-# declare the set of parameters under study
 param_names_dict = {
-    'cosmo': ["Om", "Ob", "wz", "wa", "h", "ns", "s8"],
+    'cosmo': ["Om", "Ob", "wz", "wa", "h", "ns", "s8", 'logT_AGN'],
     'IA': ["Aia", "eIA"],
-    'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, 5)],
-    'magnification_bias': [f'bM{zbin_idx:02d}' for zbin_idx in range(1, 5)],
     'shear_bias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
     'dzWL': [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
+    'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, 5)],
+    'magnification_bias': [f'bM{zbin_idx:02d}' for zbin_idx in range(1, 5)],
     # 'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
 }
+# declare the set of parameters under study
 param_names_3x2pt = list(np.concatenate([param_names_dict[key] for key in param_names_dict.keys()]))
 
 

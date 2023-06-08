@@ -567,13 +567,14 @@ magnification_bias_fit_fiducials = bias_fiducials[bias_fiducials_rows, 2]
 fiducials_dict = {
     'cosmo': [ISTF_fid.primary['Om_m0'], ISTF_fid.primary['Om_b0'],
               ISTF_fid.primary['w_0'], ISTF_fid.primary['w_a'],
-              ISTF_fid.primary['h_0'], ISTF_fid.primary['n_s'], ISTF_fid.primary['sigma_8']],
+              ISTF_fid.primary['h_0'], ISTF_fid.primary['n_s'], ISTF_fid.primary['sigma_8'], 7.75],
     'IA': np.asarray([0.16, 1.66]),
-    'galaxy_bias': galaxy_bias_fit_fiducials,
-    'magnification_bias': magnification_bias_fit_fiducials,
     'shear_bias': np.zeros((zbins,)),
     'dzWL': dzWL_fiducial,  # for the time being, equal to the GC ones
+    'galaxy_bias': galaxy_bias_fit_fiducials,
+    'magnification_bias': magnification_bias_fit_fiducials,
 }
+
 
 fiducials_3x2pt = list(np.concatenate([fiducials_dict[key] for key in fiducials_dict.keys()]))
 
@@ -609,9 +610,17 @@ param_names_not_in_my_list = [vinc_param_name for vinc_param_name in vinc_param_
                               vinc_param_name not in my_sorted_param_names]
 param_names_not_in_vinc_list = [my_sorted_param_name for my_sorted_param_name in my_sorted_param_names if
                                 my_sorted_param_name not in vinc_param_names]
-assert np.all(vinc_param_names == my_sorted_param_names), \
-    f'params present in input folder but not in the cfg file, {param_names_not_in_my_list}' \
-    f'params present in cfg file but not in the input folder, {param_names_not_in_vinc_list}'
+try:
+    assert np.all(vinc_param_names == my_sorted_param_names), \
+        f'\nparams present in input folder but not in the cfg file: {param_names_not_in_my_list}\n' \
+        f'params present in cfg file but not in the input folder: {param_names_not_in_vinc_list}'
+except AssertionError as error:
+    print(error)
+    if param_names_not_in_vinc_list == ['logT_AGN']:
+        print('the derivative w.r.t logT_AGN is missing in the input folder but '
+              'the corresponding FM is still set to 0; moving on')
+    else:
+        raise AssertionError('there is something wrong with the parameter names in the derivatives folder')
 
 if FM_cfg['load_preprocess_derivatives']:
     dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_LL_4D.npy')

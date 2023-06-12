@@ -500,7 +500,7 @@ if covariance_cfg['compute_SSC']:
     wf_WL_filename = Sijkl_cfg["wf_WL_input_filename"]
     wf_GC_filename = Sijkl_cfg["wf_GC_input_filename"]
     wil = np.genfromtxt(f'{wf_folder}/{wf_WL_filename.format(**variable_specs)}')
-    wig = np.genfromtxt(f'{wf_folder}/{wf_GC_filename.format(**variable_specs)}')
+    wig = np.genfromtxt(f'{wf_folder}/{wf_GC_filename.format(**variable_specs)}') 
 
     # preprocess (remove redshift column)
     z_arr_wil, wil = Sijkl_utils.preprocess_wf(wil, zbins)

@@ -27,7 +27,7 @@ MS = 245
 ZL = 2
 ZS = 2
 which_pk = 'HMCode2020'
-EP_or_ED = 'ED'
+EP_or_ED = 'EP'
 zbins = 13
 idIA = 2
 idB = 3
@@ -54,7 +54,7 @@ for probe in ('WL', 'GC', '3x2pt'):
 
     if test_cov:
         cov_dav = np.load(f'{cov_dav_path}/covmat_{GO_or_GS}_{probe}_zbins{EP_or_ED}{zbins}'
-                          f'_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_idIA{idIA}_idB{idB}_idM{idM}_idR{idR}_2D.npz')['arr_0']
+                          f'_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_idIA{idIA}_idB{idB}_idM{idM}_idR{idR}_pk{which_pk}2D.npz')['arr_0']
         cov_vinc = np.genfromtxt(f'{cov_vinc_path}/{probe_dict[probe]}/{which_pk}/'
                                  f'cm-{probe_dict[probe]}-{EP_or_ED}{zbins}'
                                  f'-ML{ML}-MS{MS}-idIA{idIA}-idB{idB}-idM{idM}-idR{idR}.dat')

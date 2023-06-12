@@ -574,9 +574,7 @@ fiducials_dict = {
     'galaxy_bias': galaxy_bias_fit_fiducials,
     'magnification_bias': magnification_bias_fit_fiducials,
 }
-
-
-fiducials_3x2pt = list(np.concatenate([fiducials_dict[key] for key in fiducials_dict.keys()]))
+fiducials_values_3x2pt = list(np.concatenate([fiducials_dict[key] for key in fiducials_dict.keys()]))
 
 # set parameters' names, as a dict and as a list
 param_names_dict = FM_cfg['param_names_dict']
@@ -585,7 +583,7 @@ param_names_3x2pt = FM_cfg['param_names_3x2pt']
 assert param_names_dict.keys() == fiducials_dict.keys(), \
     'the parameter names and fiducial values dictionaries should have the same keys'
 
-assert len(fiducials_3x2pt) == len(param_names_3x2pt), \
+assert len(fiducials_values_3x2pt) == len(param_names_3x2pt), \
     'the fiducial values list and parameter names should have the same length'
 
 # ! preprocess derivatives (or load the alreay preprocessed ones)

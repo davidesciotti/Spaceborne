@@ -55,8 +55,8 @@ fm_vinc_path = cov_vinc_path.replace('CovMats', 'FishMat') + '/Flat'
 for probe in ('WL', 'GC', '3x2pt'):
 
     cov_dav_filename = f'covmat_{GO_or_GS}_{probe}_zbins{EP_or_ED}{zbins}' \
-                       f'_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_idIA{idIA}_idB{idB}_idM{idM}_idR{idR}_pk{which_pk}2D.npz'
-    fm_dav_txt_filename = cov_dav_filename.replace('covmat', 'FM').replace('npz', 'txt').replace('2D', '')
+                       f'_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_idIA{idIA}_idB{idB}_idM{idM}_idR{idR}_pk{which_pk}_2D.npz'
+    fm_dav_txt_filename = cov_dav_filename.replace('covmat', 'FM').replace('npz', 'txt').replace('_2D', '')
 
     if test_cov:
         cov_dav = np.load(f'{cov_dav_path}/{cov_dav_filename}')['arr_0']
@@ -66,7 +66,7 @@ for probe in ('WL', 'GC', '3x2pt'):
 
         np.testing.assert_allclose(cov_dav, cov_vinc, rtol=1e-5, atol=0)
 
-        print(f'cov {probe}, test passed')
+        print(f'cov {probe}, test passed ✅')
 
     if test_fm:
         fm_dav = np.genfromtxt(f'{fm_dav_path}/{fm_dav_txt_filename}')
@@ -74,8 +74,8 @@ for probe in ('WL', 'GC', '3x2pt'):
                                 f'fm-{probe_dict[probe]}-{EP_or_ED}{zbins}'
                                 f'-ML{ML}-MS{MS}-idIA{idIA}-idB{idB}-idM{idM}-idR{idR}.dat')
 
-        # mm.compare_arrays(fm_dav, fm_vinc, 'dav', 'vinc', plot_array=True, log_array=True,
-        #                   plot_diff=True, log_diff=True)
+        mm.compare_arrays(fm_dav, fm_vinc, 'dav', 'vinc', plot_array=True, log_array=True,
+                          plot_diff=True, log_diff=False)
 
         np.testing.assert_allclose(fm_dav, fm_vinc, rtol=1e-3, atol=0)
 

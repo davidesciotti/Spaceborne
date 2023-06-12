@@ -199,16 +199,15 @@ param_names_dict = {
 # declare the set of parameters under study
 param_names_3x2pt = list(np.concatenate([param_names_dict[key] for key in param_names_dict.keys()]))
 
-
 # I cannot define the fiducial values here because I need to import the files for the galaxy bias
 
 ell_cuts_subfolder = f'{general_cfg["which_cuts"]}/ell_{general_cfg["center_or_min"]}'
 if not ell_cuts:
     ell_cuts_subfolder = ''
 
-
 FM_txt_filename = covariance_cfg['cov_filename'].replace('covmat_', 'FM_').replace('_{ndim:d}D', '')
-FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_{which_cov:s}_{probe:s}', 'FM_').replace('_{ndim:d}D', '')
+FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_{which_cov:s}_{probe:s}', 'FM_').replace('_{ndim:d}D',
+                                                                                                           '')
 deriv_filename = covariance_cfg['cov_filename'].replace('covmat_', 'dDVd')
 FM_cfg = {
     'compute_FM': True,
@@ -235,7 +234,7 @@ FM_cfg = {
     'FM_dict_filename': FM_dict_filename,
 
     'test_against_benchmarks': False,
-        # 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
-        #                 'MS{magcut_source:03d}-ZS{zcut_source:02d}'
-        #                 '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
+    # 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
+    #                 'MS{magcut_source:03d}-ZS{zcut_source:02d}'
+    #                 '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
 }

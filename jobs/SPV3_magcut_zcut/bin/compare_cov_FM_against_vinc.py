@@ -27,7 +27,7 @@ MS = 245
 ZL = 2
 ZS = 2
 which_pk = 'HMCode2020'
-EP_or_ED = 'EP'
+EP_or_ED = 'ED'
 zbins = 13
 idIA = 2
 idB = 3
@@ -50,11 +50,16 @@ fm_dav_path = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs
               'Flagship_2/FM/BNT_False/ell_cuts_False'
 fm_vinc_path = cov_vinc_path.replace('CovMats', 'FishMat') + '/Flat'
 
+# TODO check FM dict
+
 for probe in ('WL', 'GC', '3x2pt'):
 
+    cov_dav_filename = f'covmat_{GO_or_GS}_{probe}_zbins{EP_or_ED}{zbins}' \
+                       f'_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_idIA{idIA}_idB{idB}_idM{idM}_idR{idR}_pk{which_pk}2D.npz'
+    fm_dav_txt_filename = cov_dav_filename.replace('covmat', 'FM').replace('npz', 'txt')
+
     if test_cov:
-        cov_dav = np.load(f'{cov_dav_path}/covmat_{GO_or_GS}_{probe}_zbins{EP_or_ED}{zbins}'
-                          f'_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_idIA{idIA}_idB{idB}_idM{idM}_idR{idR}_pk{which_pk}2D.npz')['arr_0']
+        cov_dav = np.load(f'{cov_dav_path}/{cov_dav_filename}')['arr_0']
         cov_vinc = np.genfromtxt(f'{cov_vinc_path}/{probe_dict[probe]}/{which_pk}/'
                                  f'cm-{probe_dict[probe]}-{EP_or_ED}{zbins}'
                                  f'-ML{ML}-MS{MS}-idIA{idIA}-idB{idB}-idM{idM}-idR{idR}.dat')
@@ -64,17 +69,14 @@ for probe in ('WL', 'GC', '3x2pt'):
         print(f'cov {probe}, test passed')
 
     if test_fm:
-        fm_dav = np.genfromtxt(
-            f'{fm_dav_path}/FM_{GO_or_GS}_{probe}_zbins{EP_or_ED}{zbins}_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_'
-            f'idIA{idIA}_idB{idB}_idM{idM}_idR{idR}_kmaxhoverMpc2.239.txt')
+        fm_dav = np.genfromtxt(f'{fm_dav_path}/{fm_dav_txt_filename}')
         fm_vinc = np.genfromtxt(f'{fm_vinc_path}/{probe_dict[probe]}/{which_pk}/'
                                 f'fm-{probe_dict[probe]}-{EP_or_ED}{zbins}'
                                 f'-ML{ML}-MS{MS}-idIA{idIA}-idB{idB}-idM{idM}-idR{idR}.dat')
 
-        mm.compare_arrays(fm_dav, fm_vinc, 'dav', 'vinc', plot_array=True, log_array=True,
-                          plot_diff=True, log_diff=True)
+        # mm.compare_arrays(fm_dav, fm_vinc, 'dav', 'vinc', plot_array=True, log_array=True,
+        #                   plot_diff=True, log_diff=True)
 
         np.testing.assert_allclose(fm_dav, fm_vinc, rtol=1e-3, atol=0)
-
 
         print(f'FM {probe}, test passed ✅')

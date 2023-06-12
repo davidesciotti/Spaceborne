@@ -27,7 +27,7 @@ MS = 245
 ZL = 2
 ZS = 2
 which_pk = 'HMCode2020'
-EP_or_ED = 'ED'
+EP_or_ED = 'EP'
 zbins = 13
 idIA = 2
 idB = 3
@@ -56,7 +56,7 @@ for probe in ('WL', 'GC', '3x2pt'):
 
     cov_dav_filename = f'covmat_{GO_or_GS}_{probe}_zbins{EP_or_ED}{zbins}' \
                        f'_ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_idIA{idIA}_idB{idB}_idM{idM}_idR{idR}_pk{which_pk}2D.npz'
-    fm_dav_txt_filename = cov_dav_filename.replace('covmat', 'FM').replace('npz', 'txt')
+    fm_dav_txt_filename = cov_dav_filename.replace('covmat', 'FM').replace('npz', 'txt').replace('2D', '')
 
     if test_cov:
         cov_dav = np.load(f'{cov_dav_path}/{cov_dav_filename}')['arr_0']

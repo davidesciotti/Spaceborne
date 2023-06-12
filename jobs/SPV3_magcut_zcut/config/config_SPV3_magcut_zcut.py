@@ -206,7 +206,7 @@ if not ell_cuts:
     ell_cuts_subfolder = ''
 
 FM_txt_filename = covariance_cfg['cov_filename'].replace('covmat_', 'FM_').replace('_{ndim:d}D', '')
-FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_{which_cov:s}_{probe:s}', 'FM_').replace('_{ndim:d}D',
+FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_{which_cov:s}_{probe:s}_', 'FM_').replace('_{ndim:d}D',
                                                                                                            '')
 deriv_filename = covariance_cfg['cov_filename'].replace('covmat_', 'dDVd')
 FM_cfg = {

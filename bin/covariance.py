@@ -214,6 +214,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         print('BNT-transforming the covariance matrix...')
 
         # turn to dict for the BNT function
+        cov_3x2pt_GO_10D_dict = mm.cov_10D_array_to_dict(cov_3x2pt_GO_10D, probe_ordering)
         cov_3x2pt_GS_10D_dict = mm.cov_10D_array_to_dict(cov_3x2pt_GS_10D, probe_ordering)
 
         X_dict = build_X_matrix_BNT(BNT_matrix)

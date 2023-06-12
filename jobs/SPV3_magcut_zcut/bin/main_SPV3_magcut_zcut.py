@@ -595,17 +595,25 @@ derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
 
 # check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
 der_prefix = FM_cfg['derivatives_prefix']
-filenames = mm.get_filenames_in_folder(derivatives_folder)
-filenames = [filename for filename in filenames if filename.startswith(der_prefix)]
-trimmed_filenames = [filename.split('-', 1)[0].strip() for filename in filenames]
-trimmed_filenames = [trimmed_filename[len(der_prefix):] if trimmed_filename.startswith(der_prefix) else trimmed_filename
-                     for trimmed_filename in trimmed_filenames]
-vinc_param_names = list(set(trimmed_filenames))
+vinc_filenames = mm.get_filenames_in_folder(derivatives_folder)
+vinc_filenames = [vinc_filename for vinc_filename in vinc_filenames if vinc_filename.startswith(der_prefix)]
+
+# perform some checks on the filenames before trimming them
+for vinc_filename in vinc_filenames:
+    assert f'{EP_or_ED}{zbins}' in vinc_filename, f'{EP_or_ED}{zbins} not in filename {vinc_filename}'
+    assert f'ML{ML}' in vinc_filename, f'ML{ML} not in filename {vinc_filename}'
+    assert f'MS{MS}' in vinc_filename, f'MS{MS} not in filename {vinc_filename}'
+
+vinc_trimmed_filenames = [vinc_filename.split('-', 1)[0].strip() for vinc_filename in vinc_filenames]
+vinc_trimmed_filenames = [vinc_trimmed_filename[len(der_prefix):] if vinc_trimmed_filename.startswith(der_prefix) else vinc_trimmed_filename
+                     for vinc_trimmed_filename in vinc_trimmed_filenames]
+vinc_param_names = list(set(vinc_trimmed_filenames))
 vinc_param_names.sort()
 
 my_sorted_param_names = param_names_3x2pt.copy()
 my_sorted_param_names.sort()
 
+# check whether the 2 lists match and print the elements that are in one list but not in the other
 param_names_not_in_my_list = [vinc_param_name for vinc_param_name in vinc_param_names if
                               vinc_param_name not in my_sorted_param_names]
 param_names_not_in_vinc_list = [my_sorted_param_name for my_sorted_param_name in my_sorted_param_names if

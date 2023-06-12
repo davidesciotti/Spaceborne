@@ -20,8 +20,8 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/LiFEforS
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = True
-deriv_BNT_transform = True
+cov_BNT_transform = False
+deriv_BNT_transform = False
 
 cl_ell_cuts = False
 cov_ell_cuts = False
@@ -166,11 +166,12 @@ covariance_cfg = {
     'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/cov_ell_cuts_{cov_ell_cuts:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_'
                     'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_'
-                    'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_'
-                    'kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D',
+                    'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D',
     'cov_filename_vincenzo': 'cm-{probe_vinc:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
 }
+if ell_cuts:
+    covariance_cfg['cov_filename'].replace('_{ndim:d}D', 'kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D')
 
 Sijkl_cfg = {
     'wf_input_folder': f'{SPV3_folder}/InputFiles/InputRSD/WiRSDFid',

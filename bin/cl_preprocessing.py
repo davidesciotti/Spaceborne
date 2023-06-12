@@ -225,8 +225,8 @@ def build_3x2pt_datavector_5D(dv_LLfor3x2pt_3D, dv_GL_3D, dv_GG_3D, nbl, zbins, 
 
 def get_spv3_cls_3d(probe: str, nbl: int, general_cfg: dict, zbins: int, cl_or_rl: str,
                     EP_or_ED: str):
-    print('THIS FUNCTION SHOULD BE DEPRECATED')
-    """This function imports and interpolates the CPV3 cls, which have a different format wrt the usual input files"""
+    warnings.warn('THIS FUNCTION SHOULD BE DEPRECATED')
+    """This function imports and interpolates the SPV3 cls, which have a different format than the usual input files"""
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
     specs = general_cfg['specs']

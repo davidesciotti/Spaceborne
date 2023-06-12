@@ -45,7 +45,7 @@ def load_WF(Sijkl_cfg, zbins, EP_or_ED):
     if not IA_flag:
         raise ValueError('IA_flag must be True')
 
-    WF_path = f'{project_path.parent}/common_data/everyones_WF_from_Gdrive'
+    WF_path = f'../../common_data/everyones_WF_from_Gdrive'
 
     if wf_input_folder == 'luca':
 

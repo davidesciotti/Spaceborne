@@ -9,7 +9,7 @@ import check_specs as utils
 which_forecast = 'SPV3'
 fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
-general_config = {
+general_cfg = {
     'ell_min': 10,
     'ell_max_WL': 5000,
     'ell_max_GC': 3000,
@@ -25,10 +25,10 @@ general_config = {
     'specs': 'wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4',
 }
 
-if general_config['ell_max_WL'] == general_config['ell_max_GC']:
-    general_config['use_WA'] = False
+if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
+    general_cfg['use_WA'] = False
 
-covariance_config = {
+covariance_cfg = {
     'ind_ordering': ind_ordering,
     'GL_or_LG': GL_or_LG,
     'save_SSC_only_covmats': False,
@@ -43,17 +43,19 @@ covariance_config = {
     'ng': 28.73,  # ! new
 }
 
-Sijkl_config = {
+Sijkl_cfg = {
     'input_WF': 'vincenzo_SPV3',
     'WF_normalization': 'IST',
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
-    'use_precomputed_sijkl': True,
+    'use_precomputed_sijkl': False,
     'save_Sijkl': False,
+    'IA_flag': True,
+    'wf_input_folder': '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo'
+                          '/SPV3_07_2022/Flagship_1/KernelFun',
 }
 
-FM_config = {
+FM_cfg = {
     'nParams': 20,
     'save_FM': False,
     'save_FM_as_dict': False
-
 }

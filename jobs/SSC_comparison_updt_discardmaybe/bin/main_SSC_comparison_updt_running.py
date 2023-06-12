@@ -1,5 +1,6 @@
 import sys
 import time
+import warnings
 from pathlib import Path
 import matplotlib
 import scipy.io as sio
@@ -7,6 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 import pandas as pd
+from scipy.interpolate import interp1d
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
@@ -14,7 +16,7 @@ home_path = Path.home()
 job_name = job_path.parts[-1]
 
 # general libraries
-sys.path.append(f'{project_path}/lib')
+sys.path.append(f'../../common_lib_and_config/common_lib')
 import my_module as mm
 import cosmo_lib as csmlib
 
@@ -48,7 +50,7 @@ start_time = time.perf_counter()
 # import the configuration dictionaries from config.py
 general_cfg = cfg.general_cfg
 covariance_cfg = cfg.covariance_cfg
-Sijkl_cfg = cfg.Sijkl_config
+Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
 # consistency checks:
@@ -57,9 +59,7 @@ FM_cfg = cfg.FM_cfg
 # load inputs (job-specific)
 zbins = general_cfg['zbins']
 
-ind = np.genfromtxt(
-    f'{project_path}/input/ind_files/variable_zbins/{covariance_cfg["ind_ordering"]}_like/indici_{covariance_cfg["ind_ordering"]}_like_zbins{zbins}.dat',
-    dtype=int)
+ind = mm.build_full_ind(covariance_cfg["ind_ordering"], 'row-major', zbins)
 covariance_cfg['ind'] = ind
 
 if Sijkl_cfg['use_precomputed_sijkl']:
@@ -68,7 +68,11 @@ if Sijkl_cfg['use_precomputed_sijkl']:
 
 else:
     start_time = time.perf_counter()
-    sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, Sijkl_cfg, zbins=zbins)
+    warnings.warn('Sijkl computation MISSING')
+    sijkl = np.eye((zbins*2, zbins*2, zbins*2, zbins*2))
+    # sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr=None, windows=None,
+    #                                   windows_normalization='IST', zbins=zbins,
+    #                                   EP_or_ED=general_cfg['EP_or_ED'], Sijkl_cfg=Sijkl_cfg)
     print(f'zbins {zbins}: Sijkl computation took {time.perf_counter() - start_time:.2} seconds')
 
     if Sijkl_cfg['save_Sijkl']:
@@ -161,8 +165,6 @@ for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (15
     # compute Fisher Matrix
     FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, )
 
-    assert 1 > 2
-
     # save:
     if covariance_cfg['save_covariance']:
         np.save(f'{job_path}/output/covmat/covmat_GO_WL_lmaxWL{ell_max_WL}_nbl{nbl}_2D.npy', cov_dict['cov_WL_GO_2D'])
@@ -204,6 +206,7 @@ for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (15
             np.save(f"{job_path}/output/cl_3D/{key}.npy", cl_dict_3D[f'{key}'])
 
     # test
+assert 1 > 2
 
 print('done')
 

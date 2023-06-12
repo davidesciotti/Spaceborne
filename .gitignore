@@ -1,6 +1,4 @@
-
 jobs/IST_forecast/output/covmat
-
 jobs/PyCCL_forecast/output/covmat
 jobs/SSC_CMBX/output/covmat
 jobs/SSC_comparison/output/covmat
@@ -17,7 +15,6 @@ jobs/ISTF/output/covmat
 jobs/BNT_for_ISTL/output
 
 
-
 *.fits
 *.pyc
 
@@ -26,12 +23,6 @@ jobs/BNT_for_ISTL/output
 .DS_Store
 .DS_Store?
 **/.DS_Store
-
-*.pyc
-jobs/ISTF/bin/profile.json
-jobs/ISTF/bin/profile.html
-jobs/BNT_for_ISTL/output/CovMat-3x2pt-Gauss-20Bins.npy
-*.xml
 *.xml
 *.iml
 *.iml

@@ -58,7 +58,7 @@ general_cfg = {
     'ell_max_XC': 3000,
     'zbins': 13,
     'zbins_list': None,
-    'EP_or_ED': 'EP',
+    'EP_or_ED': 'ED',
     'n_probes': 2,
     'which_forecast': which_forecast,
     'use_WA': False,

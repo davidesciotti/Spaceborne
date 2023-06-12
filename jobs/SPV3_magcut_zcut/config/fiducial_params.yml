@@ -12,7 +12,7 @@ sigma8:
 logT_AGN: 7.75
 Aia: 0.16
 etaIA: 1.66
-beta_IA: 0.0  # not varied in the analysis!
+#beta_IA: 0.0  # not varied in the analysis!
 
 # shear bias
 # dzWL

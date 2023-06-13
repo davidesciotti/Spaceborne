@@ -1,6 +1,7 @@
 from pathlib import Path
 import sys
 import numpy as np
+
 project_path = Path.cwd().parent.parent.parent
 
 sys.path.append(f'{project_path}/bin')
@@ -16,13 +17,16 @@ general_cfg = {
     'zbins': 10,
     'EP_or_ED': 'EP',
     'nProbes': 2,
-    'nbl': 30,
-    'nbl_WL': None,  # it's equal for all the other probes
+    'nbl': 32,
+    'nbl_WL': 32,
+    'nbl_GC': 29,
+    # 'nbl_WL': None,  # it's equal for all the other probes
     'which_forecast': which_forecast,
     'cl_folder': cl_folder,
     'use_WA': True,
     'save_cls': False,
     'specs': 'wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4',
+    'new_responses': False,
 }
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
@@ -51,7 +55,7 @@ Sijkl_cfg = {
     'save_Sijkl': False,
     'IA_flag': True,
     'wf_input_folder': '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo'
-                          '/SPV3_07_2022/Flagship_1/KernelFun',
+                       '/SPV3_07_2022/Flagship_1/KernelFun',
 }
 
 FM_cfg = {

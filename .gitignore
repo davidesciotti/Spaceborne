@@ -13,6 +13,7 @@ jobs/ISTNL/output/covmat
 jobs/IST_forecast_discardmaybe/output
 jobs/ISTF/output/covmat
 jobs/BNT_for_ISTL/output
+jobs/SSC_paper_final/output/covmat
 
 
 *.fits

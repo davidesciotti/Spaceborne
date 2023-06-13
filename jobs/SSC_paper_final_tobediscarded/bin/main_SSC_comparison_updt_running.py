@@ -69,7 +69,7 @@ if Sijkl_cfg['use_precomputed_sijkl']:
 else:
     start_time = time.perf_counter()
     warnings.warn('Sijkl computation MISSING')
-    sijkl = np.eye((zbins*2, zbins*2, zbins*2, zbins*2))
+    sijkl = np.eye(zbins*2)
     # sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr=None, windows=None,
     #                                   windows_normalization='IST', zbins=zbins,
     #                                   EP_or_ED=general_cfg['EP_or_ED'], Sijkl_cfg=Sijkl_cfg)
@@ -101,7 +101,8 @@ for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (15
     ell_max_GC = general_cfg['ell_max_GC']
     ell_max_XC = ell_max_GC
     nbl = general_cfg['nbl']
-
+    general_cfg['nbl_WL'] = nbl
+    general_cfg['nbl_GC'] = nbl
     # compute ell and delta ell values
     ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_cfg)
     nbl_WA = ell_dict['ell_WA'].shape[0]
@@ -111,7 +112,7 @@ for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (15
     # reshape them to 3D
     cl_dict_3D, Rl_dict_3D = cl_utils.reshape_cls_2D_to_3D(general_cfg, ell_dict, cl_dict_2D, Rl_dict_2D)
 
-    if new_responses:
+    if general_cfg['new_responses']:
         # take the ell values for the interpolation and the number of ell bins
         nbl_WL_spv3 = 32
         ell_WL_spv3, _ = ell_utils.compute_ells(nbl_WL_spv3, general_cfg['ell_min'],
@@ -126,6 +127,8 @@ for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (15
         nbl_GC_spv3 = ell_dict_spv3['ell_GC'].shape[0]
         nbl_WA_spv3 = ell_dict_spv3['ell_WA'].shape[0]
         nbl_3x2pt_spv3 = nbl_GC_spv3
+        general_cfg['nbl_WL'] = nbl_WL_spv3
+        general_cfg['nbl_GC'] = nbl_GC_spv3
 
         rl_ll_3d = cl_utils.get_spv3_cls_3d('WL', nbl_WL_spv3, general_cfg['zbins'], ell_max_WL=ell_max_WL,
                                             cls_or_responses='responses')

@@ -14,10 +14,10 @@ import ISTF_fid_params as ISTFfid
 which_forecast = 'SPV3'
 fsky, GL_or_LG, ind_ordering, _ = utils.get_specs(which_forecast)
 
-SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
+SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_1_restored'
 
 # ! choose the flagship version and whether you want to use the BNT transform
-flagship_version = 2
+flagship_version = 1
 
 cl_BNT_transform = False
 cov_BNT_transform = False
@@ -56,14 +56,14 @@ general_cfg = {
     'ell_max_WL': 5000,
     'ell_max_GC': 3000,
     'ell_max_XC': 3000,
-    'zbins': 13,
+    'zbins': 10,
     'zbins_list': None,
     'EP_or_ED': 'EP',
     'n_probes': 2,
     'which_forecast': which_forecast,
     'use_WA': False,
-    'save_cls_3d': False,
-    'save_rls_3d': False,
+    'save_cls_3d': True,
+    'save_rls_3d': True,
 
     'flat_or_nonflat': 'flat',
 
@@ -99,17 +99,11 @@ general_cfg = {
     'idR': 1,
 
     'which_pk': 'HMCode2020',
-    'cl_folder': f'{SPV3_folder}' + '/OutputFiles/DataVectors/Noiseless/{probe:s}/{which_pk:s}',
-    'rl_folder': f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
-                 f'Flagship_2/ResFunTabs/magcut_zcut_True',
-    'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
-    'rl_filename': 'rf-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
+    'cl_folder': f'{SPV3_folder}' + f'/DataVectors/Noiseless/{probe:s}' + f'/FS{flagship_version}',
+    'rl_folder': f'{SPV3_folder}' + f'/ResFunTabs/FS{flagship_version}' + '/{probe:s}',
+    'cl_filename': 'dv-{probe:s}-{nbl:d}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED:s}{zbins:02d}.dat',
+    'rl_filename': 'rf-{probe:s}-{nbl:d}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED:s}{zbins:02d}.dat',
 
-    'zmax': 2.5,
-    'magcut_source': 245,
-    'magcut_lens': 245,
-    'zcut_source': 2,
-    'zcut_lens': 2,
     'flagship_version': flagship_version,
 
     'test_against_benchmarks': False,
@@ -136,20 +130,19 @@ covariance_cfg = {
     'fsky': fsky,  # ! new
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
-    'ng_folder': f'{SPV3_folder}/InputFiles/InputNz/NzPar',
-    'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
+    'ng_folder': f'{SPV3_folder}/InputNz/Lenses/Flagship',
+    'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}.dat',
 
     # sources (and lenses) redshift distributions
-    'nofz_folder': f'{SPV3_folder}/InputFiles/InputNz/NzFid',
-    'nofz_filename': 'nzTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
+    'nofz_folder': f'{SPV3_folder}/InputNz/Lenses/Flagship',
+    'nofz_filename': 'niTab-{EP_or_ED:s}{zbins:02d}.dat',
     'plot_nz_tocheck': True,
 
     'cov_BNT_transform': cov_BNT_transform,
     'cov_ell_cuts': cov_ell_cuts,
 
     'compute_covmat': True,
-    'compute_SSC': False,
-    'compute_cov_6D': False,  # ! to be deprecated!
+    'compute_SSC': True,
 
     'save_cov': True,
     'cov_file_format': 'npz',  # or npy
@@ -163,10 +156,8 @@ covariance_cfg = {
     'save_2DCLOE': False,  # outermost loop is on the probes
 
     # ! no folders for ell_cut_center or min
-    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/cov_ell_cuts_{cov_ell_cuts:s}',
-    'cov_filename': 'covmat_{which_cov:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_'
-                    'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_'
-                    'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D',
+    'cov_folder': f'{job_path}/output/covmat',
+    'cov_filename': 'covmat_{which_cov:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
     'cov_filename_vincenzo': 'cm-{probe_vinc:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
 }
@@ -174,18 +165,18 @@ if ell_cuts:
     covariance_cfg['cov_filename'].replace('_{ndim:d}D', 'kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D')
 
 Sijkl_cfg = {
-    'wf_input_folder': f'{SPV3_folder}/InputFiles/InputRSD/notyetuploaded',
-    'wf_WL_input_filename': 'WiWL-{EP_or_ED:s}{zbins:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    'wf_GC_input_filename': 'WiGC-{EP_or_ED:s}{zbins:02d}-ML{magcut_source:03d}-ZL{zcut_source:02d}.dat',
+    'wf_input_folder': f'{SPV3_folder}/Windows/FS1',
+    'wf_WL_input_filename': 'WiGamma-{EP_or_ED:s}{zbins:02d}.dat',
+    'wf_GC_input_filename': 'WiGC-{EP_or_ED:s}{zbins:02d}.dat',
     'wf_normalization': 'IST',
     'nz': None,  # ! is this used?
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
 
-    'Sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/sijkl',
-    'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}'
-                      '_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
+    'Sijkl_folder': f'{job_path}/output/sijkl',
+    'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}.npy',
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
+
 
 param_names_dict = {
     'cosmo': ["Om", "Ob", "wz", "wa", "h", "ns", "s8", 'logT_AGN'],
@@ -206,8 +197,9 @@ if not ell_cuts:
     ell_cuts_subfolder = ''
 
 FM_txt_filename = covariance_cfg['cov_filename'].replace('covmat_', 'FM_').replace('_{ndim:d}D', '')
-FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_{which_cov:s}_{probe:s}_', 'FM_').replace('_{ndim:d}D',
-                                                                                                           '')
+FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_{which_cov:s}_{probe:s}_', 'FM_').replace(
+    '_{ndim:d}D',
+    '')
 deriv_filename = covariance_cfg['cov_filename'].replace('covmat_', 'dDVd')
 FM_cfg = {
     'compute_FM': True,

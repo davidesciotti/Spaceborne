@@ -45,8 +45,6 @@ if cov_ell_cuts:
     assert cl_ell_cuts is False, 'if you want to apply ell cuts to the cov, you cannot apply them to the cls'
     assert deriv_ell_cuts, 'if you want to apply ell cuts to the cov, you hould also apply them to the derivatives'
 
-assert flagship_version == 2, 'the files for the multicut case are only available for Flagship_2'
-
 if BNT_transform:
     assert flagship_version == 2, 'we are applying the BNT only for Flagship_2'
 
@@ -99,7 +97,7 @@ general_cfg = {
     'idR': 1,
 
     'which_pk': 'HMCode2020',
-    'cl_folder': f'{SPV3_folder}' + f'/DataVectors/Noiseless/{probe:s}' + f'/FS{flagship_version}',
+    'cl_folder': f'{SPV3_folder}' + '/DataVectors/Noiseless/{probe:s}' + f'/FS{flagship_version}',
     'rl_folder': f'{SPV3_folder}' + f'/ResFunTabs/FS{flagship_version}' + '/{probe:s}',
     'cl_filename': 'dv-{probe:s}-{nbl:d}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED:s}{zbins:02d}.dat',
     'rl_filename': 'rf-{probe:s}-{nbl:d}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED:s}{zbins:02d}.dat',
@@ -176,7 +174,6 @@ Sijkl_cfg = {
     'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}.npy',
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
-
 
 param_names_dict = {
     'cosmo': ["Om", "Ob", "wz", "wa", "h", "ns", "s8", 'logT_AGN'],

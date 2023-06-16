@@ -78,13 +78,12 @@ def bar_plot_old(uncert_gauss, uncert_SSC, difference):
     plt.savefig(fname=f'bar_plot_{probe}.png', dpi=300, figsize=[16, 9])
 
 
-def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_label=param_names_label,
-             second_axis=False, no_second_axis_bars=0, superimpose_bars=True):
+def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_label=None,
+             second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=None,
+             include_fom=False):
     """
     data: usually the percent uncertainties, but could also be the percent difference
     """
-
-    plt.rc('axes', axisbelow=True)  # grid behind the bars
 
     no_cases = data.shape[0]
     no_params = data.shape[1]
@@ -93,7 +92,6 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
     marker_colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
     markers = markers[:no_cases]
     marker_colors = marker_colors[:no_cases]
-
     # colors = cm.Paired(np.linspace(0, 1, data.shape[1]))
 
     # Set position of bar on x-axis
@@ -114,13 +112,17 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
         bar_centers = bar_centers[None, :]
         bar_centers = np.repeat(bar_centers, no_cases, axis=0)
 
-    # plt.grid()
+    if param_names_label is None:
+        param_names_label = mpl_cfg.general_dict['cosmo_labels_TeX']
+        if include_fom:
+            param_names_label = mpl_cfg.general_dict['cosmo_labels_TeX'] + ['FoM']
+
+    if ylabel is None:
+        ylabel = ylabel_sigma_relative_fid
 
     if second_axis:
 
         # assert no_cases == 3, "data must have 3 rows to display the second axis"
-
-        # plt.rcParams['axes.axisbelow'] = True
 
         fig, ax = plt.subplots(figsize=mpl_cfg.mpl_rcParams_dict['figure.figsize'])
         for bar_idx in range(no_cases - no_second_axis_bars):
@@ -128,7 +130,6 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
                    label=label_list[bar_idx])
 
         # Add some text for labels, title and custom x-axis tick labels, etc.
-        ax.grid()
         ax.set_ylabel(ylabel_sigma_relative_fid)
         ax.set_title(title)
         ax.set_xticks(range(nparams), param_names_label)
@@ -146,21 +147,20 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
 
     else:
 
+
         plt.figure(figsize=mpl_cfg.mpl_rcParams_dict['figure.figsize'])
-        plt.grid(alpha = 0.5)
 
         # Make the plot
         for bar_idx in range(no_cases):
-            plt.bar(bar_centers[bar_idx, :], data[bar_idx, :], width=bar_width, edgecolor='grey',
-                    color='grey', alpha=0.5)
-            plt.scatter(bar_centers[bar_idx, :], data[bar_idx, :], color=marker_colors[bar_idx],
-                        marker=markers[bar_idx], label=label_list[bar_idx])
+            plt.bar(bar_centers[bar_idx, :], data[bar_idx, :], width=bar_width, edgecolor='grey', alpha=1,
+                    label=label_list[bar_idx])
+            if show_markers:
+                plt.scatter(bar_centers[bar_idx, :], data[bar_idx, :], color=marker_colors[bar_idx],
+                            marker=markers[bar_idx], label=label_list[bar_idx])
 
         # Adding xticks
-        plt.ylabel(ylabel_perc_diff_wrt_mean)
+        plt.ylabel(ylabel)
         plt.xticks(range(nparams), param_names_label)
-        plt.yticks(np.arange(0, 8, 1.5))
-
         plt.title(title)
         plt.legend()
         plt.show()

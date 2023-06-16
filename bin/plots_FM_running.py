@@ -80,7 +80,7 @@ def bar_plot_old(uncert_gauss, uncert_SSC, difference):
 
 def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_label=None,
              second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=None,
-             include_fom=False):
+             include_fom=False, figsize=None):
     """
     data: usually the percent uncertainties, but could also be the percent difference
     """
@@ -120,11 +120,14 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
     if ylabel is None:
         ylabel = ylabel_sigma_relative_fid
 
+    if figsize is None:
+        figsize = mpl_cfg.mpl_rcParams_dict['figure.figsize']
+
     if second_axis:
 
         # assert no_cases == 3, "data must have 3 rows to display the second axis"
 
-        fig, ax = plt.subplots(figsize=mpl_cfg.mpl_rcParams_dict['figure.figsize'])
+        fig, ax = plt.subplots(figsize=figsize)
         for bar_idx in range(no_cases - no_second_axis_bars):
             ax.bar(bar_centers[bar_idx, :], data[bar_idx, :], width=bar_width, edgecolor='grey',
                    label=label_list[bar_idx])
@@ -148,7 +151,7 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
     else:
 
 
-        plt.figure(figsize=mpl_cfg.mpl_rcParams_dict['figure.figsize'])
+        plt.figure(figsize=figsize)
 
         # Make the plot
         for bar_idx in range(no_cases):

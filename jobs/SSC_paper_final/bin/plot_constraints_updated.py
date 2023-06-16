@@ -57,7 +57,6 @@ for go_or_gs in ['GO', 'GS']:
 
         assert len(fiducials_dict) == fm.shape[0] == fm.shape[1], 'Wrong shape of FM matrix!'
 
-
         # fix some of the parameters (i.e., which columns to remove)
         if fix_curvature:
             print('fixing curvature')
@@ -120,37 +119,6 @@ for probe_vinc in probes_vinc:
     new_df_row['FoM'] = mm.percent_diff(fom_go, fom_gs)
 
     fm_uncert_df = pd.concat([fm_uncert_df, new_df_row], ignore_index=True)
-#
-# diff_df = pd.DataFrame(diff, columns=['diff', ] + [param_name for param_name in fiducials_dict_trimmed.keys()][
-#                                                   :params_tokeep])
-# fm_uncert_df = pd.concat([fm_uncert_df, diff_df], ignore_index=True)
-
-# ratio_columns = df_columns_names[2:]
-# ratios = pd.DataFrame()
-# for col in ratio_columns:
-#     ratios[col] = fm_uncert_df.apply(lambda row: row[col] / fm_uncert_df.loc[
-#         (fm_uncert_df['probe'] == row['probe']) & (fm_uncert_df['go_or_gs'] == 'GO'), col].values[0], axis=1)
-
-# for each probe take the numerical values, divide the GS by the GO and append the result in a new row
-# df_ratio = pd.DataFrame()
-# numerical_columns = fm_uncert_df.select_dtypes(include=np.number).columns
-# for col in numerical_columns:
-#     go_values = fm_uncert_df.loc[fm_uncert_df['go_or_gs'] == 'GO', col]
-#     gs_values = fm_uncert_df.loc[fm_uncert_df['go_or_gs'] == 'GS', col]
-#     df_ratio['go_or_gs' == 'diff'][col] = (gs_values.values / go_values.values - 1) * 100
-#     df_ratio['go_or_gs'][col] = 'perc_diff'
-# df_ratio['probe'][col] = df.loc[df['probe']].values[0]
-
-
-# perc_diff = mm.percent_diff(uncert_gs[numeric_columns], uncert_go[numeric_columns])
-#
-# # Add 'probe' and 'go_or_gs' columns to the ratio DataFrame
-# perc_diff[['probe', 'go_or_gs']] = uncert_go[['probe', 'go_or_gs']]
-#
-# # Reorder the columns to match the original DataFrame
-# perc_diff = perc_diff[uncert_go.columns]
-#
-# perc_diff = mm.percent_diff(uncert_gs, uncert_go)
 
 ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'
 data = fm_uncert_df[fm_uncert_df['go_or_gs'] == 'perc_diff'].select_dtypes(include=np.number).values
@@ -161,6 +129,6 @@ if include_fom:
     params_tokeep += 1
 plot_utils.bar_plot(data, title, label_list, bar_width=0.2, nparams=params_tokeep, param_names_label=None,
                     second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
-                    include_fom=include_fom)
+                    include_fom=include_fom, figsize=(10, 8))
 
 plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GOGS_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)

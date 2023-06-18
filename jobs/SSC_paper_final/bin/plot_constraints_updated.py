@@ -43,87 +43,100 @@ probes_vinc = ('WLO', 'GCO', '3x2pt')
 
 fm_uncert_df = pd.DataFrame()
 for go_or_gs in ['GO', 'GS']:
-    for probe_vinc in probes_vinc:
+    for fix_shear_bias in [True, False]:
+        for probe_vinc in probes_vinc:
 
-        names_params_to_fix = []
+            names_params_to_fix = []
 
-        fm_path = f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_1_restored/' \
-                  f'FishMat_restored/{go_or_gs_folder_dict[go_or_gs]}/{probe_vinc}/FS1NoCuts'
-        fm_dict = dict(mm.get_kv_pairs(f'{fm_path}', extension="dat"))
-        fm_name = f'fm-{probe_vinc}-{nbl_WL_opt}-wzwaCDM-NonFlat-GR-TB-' \
-                  f'{specs_str}-{ep_or_ed}{zbins}'
+            fm_path = f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_1_restored/' \
+                      f'FishMat_restored/{go_or_gs_folder_dict[go_or_gs]}/{probe_vinc}/FS1NoCuts'
+            fm_dict = dict(mm.get_kv_pairs(f'{fm_path}', extension="dat"))
+            fm_name = f'fm-{probe_vinc}-{nbl_WL_opt}-wzwaCDM-NonFlat-GR-TB-' \
+                      f'{specs_str}-{ep_or_ed}{zbins}'
 
-        fm = fm_dict[fm_name]
+            fm = fm_dict[fm_name]
 
-        assert len(fiducials_dict) == fm.shape[0] == fm.shape[1], 'Wrong shape of FM matrix!'
+            assert len(fiducials_dict) == fm.shape[0] == fm.shape[1], 'Wrong shape of FM matrix!'
 
-        # fix some of the parameters (i.e., which columns to remove)
-        if fix_curvature:
-            print('fixing curvature')
-            names_params_to_fix += ['Om_Lambda0']
-        else:
-            params_to_fix = 8
+            # fix some of the parameters (i.e., which columns to remove)
+            if fix_curvature:
+                print('fixing curvature')
+                names_params_to_fix += ['Om_Lambda0']
+            else:
+                params_to_fix = 8
 
-        if probe_vinc == 'WLO':
-            print('fixing shear bias parameters')
-            names_params_to_fix += [f'm{zi + 1}_photo' for zi in range(zbins)]
+            if fix_shear_bias:
+                print('fixing shear bias parameters')
+                names_params_to_fix += [f'm{zi + 1}_photo' for zi in range(zbins)]
 
-        if fix_galaxy_bias:
-            print('fixing galaxy bias parameters')
-            names_params_to_fix += [f'b{(zi + 1):02d}_photo' for zi in range(zbins)]
+            if fix_galaxy_bias:
+                print('fixing galaxy bias parameters')
+                names_params_to_fix += [f'b{(zi + 1):02d}_photo' for zi in range(zbins)]
 
-        if fix_dz:
-            print('fixing dz parameters')
-            names_params_to_fix += [f'dz{zi + 1}_photo' for zi in range(zbins)]
+            if fix_dz:
+                print('fixing dz parameters')
+                names_params_to_fix += [f'dz{zi + 1}_photo' for zi in range(zbins)]
 
-        fm, fiducials_dict_trimmed = mm.mask_fm_v2(fm, fiducials_dict, names_params_to_fix, remove_null_rows_cols=True)
-        uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict_trimmed, which_uncertainty='marginal', normalize=True,
-                                           percent_units=True)[:params_tokeep]
+            fm, fiducials_dict_trimmed = mm.mask_fm_v2(fm, fiducials_dict, names_params_to_fix,
+                                                       remove_null_rows_cols=True)
+            uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict_trimmed, which_uncertainty='marginal', normalize=True,
+                                               percent_units=True)[:params_tokeep]
 
-        param_names = list(fiducials_dict_trimmed.keys())
-        param_values = list(fiducials_dict_trimmed.values())
+            param_names = list(fiducials_dict_trimmed.keys())
+            param_values = list(fiducials_dict_trimmed.values())
 
-        w0wa_idxs = param_names.index('w_0'), param_names.index('w_a')
-        fom = mm.compute_FoM(fm, w0wa_idxs)
+            w0wa_idxs = param_names.index('w_0'), param_names.index('w_a')
+            fom = mm.compute_FoM(fm, w0wa_idxs)
 
-        string_columns = ['probe', 'go_or_gs']
-        df_columns_names = string_columns + [param_name for param_name in fiducials_dict_trimmed.keys()][
-                                            :params_tokeep] + ['FoM']
+            string_columns = ['probe', 'go_or_gs', 'fix_shear_bias']
+            df_columns_names = string_columns + [param_name for param_name in fiducials_dict_trimmed.keys()][
+                                                :params_tokeep] + ['FoM']
 
-        # this is a list of lists just to have a 'row list' instead of a 'column list',
-        # I still haven't figured out the problem...
-        df_columns_values = [[probe_vinc, go_or_gs] + uncert_fm.tolist() + [fom]]
+            # this is a list of lists just to have a 'row list' instead of a 'column list',
+            # I still haven't figured out the problem...
+            df_columns_values = [[probe_vinc, go_or_gs, fix_shear_bias] + uncert_fm.tolist() + [fom]]
 
-        # assert False
-        assert len(df_columns_names) == len(df_columns_values[0]), 'Wrong number of columns!'
+            # assert False
+            assert len(df_columns_names) == len(df_columns_values[0]), 'Wrong number of columns!'
 
-        fm_uncert_df_to_concat = pd.DataFrame(df_columns_values, columns=df_columns_names)
-        fm_uncert_df = pd.concat([fm_uncert_df, fm_uncert_df_to_concat], ignore_index=True)
-
-# assert False
+            fm_uncert_df_to_concat = pd.DataFrame(df_columns_values, columns=df_columns_names)
+            fm_uncert_df = pd.concat([fm_uncert_df, fm_uncert_df_to_concat], ignore_index=True)
 
 # compute percent differences between GO and GS
 for probe_vinc in probes_vinc:
-    uncert_go = fm_uncert_df[(fm_uncert_df['go_or_gs'] == 'GO') & (fm_uncert_df['probe'] == probe_vinc)].select_dtypes(
-        include=np.number).values[0]
-    uncert_gs = fm_uncert_df[(fm_uncert_df['go_or_gs'] == 'GS') & (fm_uncert_df['probe'] == probe_vinc)].select_dtypes(
-        include=np.number).values[0]
-    diff = mm.percent_diff(uncert_gs, uncert_go)
-    df_columns_values = [[probe_vinc, 'perc_diff'] + diff.tolist()]
+    for fix_shear_bias in [True, False]:
+        uncert_go = fm_uncert_df[(fm_uncert_df['go_or_gs'] == 'GO') &
+                                 (fm_uncert_df['probe'] == probe_vinc) &
+                                 (fm_uncert_df['fix_shear_bias'] == fix_shear_bias)].select_dtypes(
+            include=np.number).values[0]
+        uncert_gs = fm_uncert_df[(fm_uncert_df['go_or_gs'] == 'GS') &
+                                 (fm_uncert_df['probe'] == probe_vinc) &
+                                 (fm_uncert_df['fix_shear_bias'] == fix_shear_bias)].select_dtypes(
+            include=np.number).values[0]
 
-    new_df_row = pd.DataFrame(df_columns_values, columns=df_columns_names)
+        diff = mm.percent_diff(uncert_gs, uncert_go)
+        df_columns_values = [[probe_vinc, 'perc_diff', fix_shear_bias] + diff.tolist()]
 
-    # the FoM is instead GO/GS-1
-    fom_go = fm_uncert_df[(fm_uncert_df['go_or_gs'] == 'GO') & (fm_uncert_df['probe'] == probe_vinc)]['FoM'].values[0]
-    fom_gs = fm_uncert_df[(fm_uncert_df['go_or_gs'] == 'GS') & (fm_uncert_df['probe'] == probe_vinc)]['FoM'].values[0]
-    new_df_row['FoM'] = mm.percent_diff(fom_go, fom_gs)
+        new_df_row = pd.DataFrame(df_columns_values, columns=df_columns_names)
 
-    fm_uncert_df = pd.concat([fm_uncert_df, new_df_row], ignore_index=True)
+        # the FoM is instead GO/GS-1
+        fom_go = fm_uncert_df[(fm_uncert_df['go_or_gs'] == 'GO') & (fm_uncert_df['probe'] == probe_vinc)]['FoM'].values[
+            0]
+        fom_gs = fm_uncert_df[(fm_uncert_df['go_or_gs'] == 'GS') & (fm_uncert_df['probe'] == probe_vinc)]['FoM'].values[
+            0]
+        new_df_row['FoM'] = mm.percent_diff(fom_go, fom_gs)
+
+        fm_uncert_df = pd.concat([fm_uncert_df, new_df_row], ignore_index=True)
 
 ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'
-data = fm_uncert_df[fm_uncert_df['go_or_gs'] == 'perc_diff'].select_dtypes(include=np.number).values
+# data = fm_uncert_df[fm_uncert_df['go_or_gs'] == 'perc_diff'].select_dtypes(include=np.number).values  # all 3 probes
+# label_list = ('WL', 'GCph', r'$3\times 2$pt')
+
+data = fm_uncert_df[(fm_uncert_df['go_or_gs'] == 'perc_diff') &
+                    (fm_uncert_df['probe'] == 'WLO')
+                    ].select_dtypes(include=np.number).values  # shear bias
+label_list = ('shear bias fixed', 'shear bias free')
 title = None
-label_list = ('WL', 'GCph', r'$3\times 2$pt')
 
 if include_fom:
     params_tokeep += 1

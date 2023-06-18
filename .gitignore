@@ -27,3 +27,4 @@ jobs/SSC_paper_final/output/covmat
 *.xml
 *.iml
 *.iml
+/.vscode/

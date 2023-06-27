@@ -34,9 +34,7 @@ fid_shear_bias_prior = 1e-4
 shear_bias_priors = [.5e-4, 5e-4, 50e-4]
 shear_bias_prior = .5e-4
 galaxy_bias_perc_priors = [0.001, 1, 1000]  # = sigma_b / b, with sigma_b the prior and b the fiducial value
-add_shear_bias_prior = True
-add_galaxy_bias_prior = True
-string_columns = ['probe', 'go_or_gs', 'fix_shear_bias', 'add_shear_bias_prior', 'shear_bias_prior',
+string_columns = ['probe', 'go_or_gs', 'fix_shear_bias', 'fix_galaxy_bias', 'shear_bias_prior',
                   'galaxy_bias_perc_prior']
 probe_vinc_toplot = 'GCO'
 # ! options
@@ -47,7 +45,7 @@ go_or_gs_folder_dict = {
     'GS': 'GaussSSC',
 }
 probes_vinc = ('WLO', 'GCO', '3x2pt')
-probes_vinc = ('WLO',)
+# probes_vinc = ('WLO',)
 
 fm_uncert_df = pd.DataFrame()
 for go_or_gs in ['GO', 'GS']:
@@ -77,10 +75,13 @@ for go_or_gs in ['GO', 'GS']:
                 if fix_shear_bias:
                     print('fixing shear bias parameters')
                     names_params_to_fix += [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
+                    # in this way 👇there is no need for a 'add_shear_bias_prior' (or similar) boolean flag
+                    shear_bias_prior = None
 
                 if fix_galaxy_bias:
                     print('fixing galaxy bias parameters')
                     names_params_to_fix += [f'b{(zi + 1):02d}_photo' for zi in range(zbins)]
+                    galaxy_bias_perc_prior = None
 
                 if fix_dz:
                     print('fixing dz parameters')
@@ -92,13 +93,13 @@ for go_or_gs in ['GO', 'GS']:
                 param_names = list(fiducials_dict.keys())
 
                 # add prior on shear bias
-                if add_shear_bias_prior and not fix_shear_bias and probe_vinc != 'GCO':
+                if shear_bias_prior != None and probe_vinc != 'GCO':
                     shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
                     shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
                     fm = mm.add_prior_to_fm(fm, fiducials_dict, shear_bias_param_names, shear_bias_prior_values)
 
                 # add prior on galaxy bias
-                if add_galaxy_bias_prior and not fix_galaxy_bias and probe_vinc != 'WLO':
+                if galaxy_bias_perc_prior != None and probe_vinc != 'WLO':
                     galaxy_bias_param_names = [f'b{(zi + 1):02d}_photo' for zi in range(zbins)]
 
                     # go from sigma_b / b_fid to sigma_b
@@ -123,8 +124,8 @@ for go_or_gs in ['GO', 'GS']:
 
                 # this is a list of lists just to have a 'row list' instead of a 'column list',
                 # I still haven't figured out the problem...
-                df_columns_values = [[probe_vinc, go_or_gs, fix_shear_bias,
-                                      add_shear_bias_prior, shear_bias_prior, galaxy_bias_perc_prior] +
+                df_columns_values = [[probe_vinc, go_or_gs, fix_shear_bias, fix_galaxy_bias,
+                                      shear_bias_prior, galaxy_bias_perc_prior] +
                                      uncert_fm.tolist() + [fom]]
 
                 # assert False
@@ -146,18 +147,26 @@ fm_uncert_df = pd.concat([fm_uncert_df, perc_diff_df], axis=0, ignore_index=True
 
 ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'
 
-# shorten the dataframe to only one probe and one type of uncertainty (perc_diff)
-fm_uncert_df_toplot = fm_uncert_df[(fm_uncert_df['go_or_gs'] == 'GO') &
-                                   (fm_uncert_df['probe'] == probe_vinc_toplot) &
-                                   (fm_uncert_df['fix_shear_bias'] == False)
-                                   ]
+# shorten the dataframe name
+go_or_gs = 'GO'
+fm_uncert_df_toplot_prior = fm_uncert_df[(fm_uncert_df['go_or_gs'] == go_or_gs) &
+                                         (fm_uncert_df['probe'] == probe_vinc_toplot) &
+                                         (fm_uncert_df['fix_galaxy_bias'] == False)
+                                         ]
+fm_uncert_df_toplot_fixed = fm_uncert_df[(fm_uncert_df['go_or_gs'] == go_or_gs) &
+                                         (fm_uncert_df['probe'] == probe_vinc_toplot) &
+                                         (fm_uncert_df['fix_galaxy_bias'] == True)]
+# in this case the wors of this df should be equal, check it:
+assert ((fm_uncert_df_toplot_fixed.iloc[1:, len(string_columns):] == fm_uncert_df_toplot_fixed.iloc[0,
+                                                                     len(string_columns):]).all(
+    axis=1).all()), 'the constraints should be equal for the fixed nuisance df!'
+
+fm_uncert_df_toplot = pd.concat([fm_uncert_df_toplot_prior, fm_uncert_df_toplot_fixed.head(1)], axis=0,
+                                ignore_index=True)
 
 data = fm_uncert_df_toplot.iloc[:, len(string_columns):].values
-label_list = [f'fix_shear_bias={fix_shear_bias}; shear_bias_prior={shear_bias:02f}' for fix_shear_bias, shear_bias in
-              zip(fm_uncert_df_toplot['fix_shear_bias'].values,
-                  fm_uncert_df_toplot['shear_bias_prior'].values)]
-label_list = [f'galaxy_bias_perc_prior={galaxy_bias_perc_prior:02f}' for galaxy_bias_perc_prior in
-              fm_uncert_df_toplot['galaxy_bias_perc_prior'].values]
+label_list = list(fm_uncert_df_toplot['galaxy_bias_perc_prior'].values)
+label_list = ['None' if value is None else value for value in label_list]
 title = None
 
 if include_fom:

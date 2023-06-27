@@ -40,7 +40,6 @@ def fig_6_and_7(probe, probe_label, pedix, fmt='%.2f', fig_number=6):
     markersize = 4
 
     # plot 1: GS/GO vs nbl
-    cases = ['Pes', 'Opt']
     linestyle = 'dashed'
     colors = ['tab:blue', 'tab:orange']
     params_latex = ["$\Omega_{{\\rm m},0}$", "$\Omega_{{\\rm b},0}$", "$w_0$", "$w_a$", "$h$", "$n_{\\rm s}$",
@@ -60,7 +59,7 @@ def fig_6_and_7(probe, probe_label, pedix, fmt='%.2f', fig_number=6):
         for case, color in zip(cases, colors):
             print(case)
 
-            tab = np.genfromtxt(job_path / f'input/vincenzo/replot_vincenzo/GSoverGOvsNbZed{case}{probe}.dat')
+            tab = np.genfromtxt(job_path / f'input/replot_vincenzo/GSoverGOvsNbZed{case}{probe}.dat')
             NbZed = tab[:, 0].astype(int)
 
             # take i, j and their "counter" (the param index)
@@ -90,15 +89,18 @@ def fig_6_and_7(probe, probe_label, pedix, fmt='%.2f', fig_number=6):
 
     # fig.tight_layout()
 
-    plt.savefig(job_path / f'output/plots/replot_vincenzo/figs/fig_{fig_number}_replot.{pic_format}', dpi=dpi,
+    plt.savefig(job_path / f'{output_plots_fldr}/fig_{fig_number}_replot.{pic_format}', dpi=dpi,
                 bbox_inches='tight')
 
 
 # ! settings definition
-which_fig = 'fig_9'
+which_fig = None
 dpi = 500
 pic_format = 'pdf'
 panel_titles_fontsize = 17
+cases = ['Pes', 'Opt']
+output_plots_fldr = 'output/plots/replot_vincenzo/figs_june2023'
+zbins = 10
 # ! settings definition
 
 if which_fig == 'fig_5':
@@ -126,7 +128,7 @@ if which_fig == 'fig_5':
     params_plain = ["Om", "Ob", "w0", "wa", "h", "ns", "sigma8", "FoM"]
 
     # import a random parameter's values, just to set nbl_values
-    tab = np.genfromtxt(job_path / f'input/vincenzo/replot_vincenzo/GSoverGOvsNbEllOptWLO.dat')
+    tab = np.genfromtxt(job_path / f'input/replot_vincenzo/GSoverGOvsNbEllOptWLO.dat')
     nbl_values = tab[:, 0].astype(int)
 
     fig, axs = plt.subplots(2, 4, sharex=True, subplot_kw=dict(box_aspect=0.75),
@@ -140,7 +142,7 @@ if which_fig == 'fig_5':
         # loop over cases and probes
         for case, ls in zip(cases, linestyles):
             for probe, probe_label, color in zip(probes, probe_labels, colors):
-                tab = np.genfromtxt(job_path / f'input/vincenzo/replot_vincenzo/GSoverGOvsNbEll{case}{probe}.dat')
+                tab = np.genfromtxt(job_path / f'input/replot_vincenzo/GSoverGOvsNbEll{case}{probe}.dat')
                 # take i, j and their "counter" (the param index)
                 i, j = np.where(axs_idx == param_idx)[0][0], np.where(axs_idx == param_idx)[1][0]
 
@@ -166,7 +168,7 @@ if which_fig == 'fig_5':
     fig.supxlabel('${\\cal N}_{\\ell}$')
     fig.supylabel('$\\sigma_{\\rm GS}(\\theta) \, / \, \\sigma_{\\rm GO}(\\theta)$', x=0.009)
 
-    plt.savefig(job_path / f'output/plots/replot_vincenzo/figs/fig_5_replot.{pic_format}', dpi=dpi, bbox_inches='tight')
+    plt.savefig(job_path / f'{output_plots_fldr}/fig_5_replot.{pic_format}', dpi=dpi, bbox_inches='tight')
 
 
 # ! fig. 6 and 7 are very similar: I defined a function
@@ -180,9 +182,12 @@ elif which_fig == 'fig_7':
 
 elif which_fig == 'fig_8':
 
+    """ I am no longer including this plot in the paper. Reproducing now the reference zbins=10 case, to correct the
+     R(FoM) in the text (sigma_m = 500* 10**-4 is inconsistent with 100*10**-4 used elsewhere)"""
+
     plt.rcParams['figure.figsize'] = (13, 6)
 
-    Nz_values = [10, 12, 14]
+    zbins_values = [10, 12, 14]
 
     fig, axs = plt.subplots(2, 3, sharex=True, subplot_kw=dict(box_aspect=0.70), constrained_layout=True)
     # fig, axs = plt.subplots(2, 3, sharex=True)
@@ -190,14 +195,12 @@ elif which_fig == 'fig_8':
     # number each axs box: 0 for [0, 0], 1 for [0, 1] and so forth
     axs_idx = np.arange(0, 6, 1).reshape((2, 3))
 
-    cases = ['Pes', 'Opt']
-
     # loop over the different panels
     panel_idx = 0  # panel identifier
     for case in cases:
-        for Nz in Nz_values:
+        for zbins in zbins_values:
 
-            tab = np.genfromtxt(job_path / f'input/vincenzo/replot_vincenzo/RatioFoM-3x2pt-{case}-{Nz}.dat')
+            tab = np.genfromtxt(job_path / f'input/replot_vincenzo/RatioFoM-3x2pt-{case}-{zbins}.dat')
 
             # switch to linear scale
             tab[:, 0] = 10 ** tab[:, 0]
@@ -210,7 +213,7 @@ elif which_fig == 'fig_8':
 
             # XXX TODO understand the transpose better, but it works!
             # create a table from the 2nd column, which is a 1D vector.
-            FoM_ratio_table = np.reshape(tab[:, 4], (n_points, n_points)).T
+            FoM_ratio_table = np.reshape(tab[:, 3], (n_points, n_points)).T
             # interpolate: pass x, y, f(x, y) (the latter must be a table, see above)
             f = interpolate.interp2d(epsb_values, epsm_values, FoM_ratio_table, kind='linear')
             # take the desired values
@@ -243,7 +246,7 @@ elif which_fig == 'fig_8':
     plt.xscale('log')
     axs.flatten()[-1].legend(loc='lower right', borderaxespad=0.3)
 
-    plt.savefig(job_path / f'output/plots/replot_vincenzo/figs/fig_8_replot.{pic_format}', dpi=dpi)
+    plt.savefig(job_path / f'{output_plots_fldr}/fig_8_replot.{pic_format}', dpi=dpi)
 
     """############### "manual interpolation"
     # take the rows where eps_m (1st column) == [0.1, 1, 10, 100].
@@ -272,15 +275,15 @@ elif which_fig == 'fig_9':
 
     ###################### ! fig. 9 ######################
 
-    Nz = 13
     lims = [[1, 8], [1, 15]]
     z_values = np.arange(0.8, 1.1, 0.05)
 
     fig, axs = plt.subplots(1, 2, constrained_layout=True, figsize=(15, 7.5))
 
     panel_idx = 0
-    for case, lim in zip(cases, lims):
-        tab = np.genfromtxt(job_path / f'input/vincenzo/replot_vincenzo/RatioFoM-3x2pt-{case}-{Nz}.dat')
+    # for case, lim in zip(cases, lims):
+    for case in cases:
+        tab = np.genfromtxt(job_path / f'input/replot_vincenzo/RatioFoM-3x2pt-{case}-{zbins}.dat')
         tab[:, 0] = 10 ** tab[:, 0]
         tab[:, 1] = 10 ** tab[:, 1]
 
@@ -293,7 +296,8 @@ elif which_fig == 'fig_9':
         X = epsb_values
         Y = epsm_values
         X, Y = np.meshgrid(X, Y)
-        Z = np.reshape(tab[:, 3], (n_points, n_points)).T  # XXX careful of the tab index!! it's GS/ref
+        # Z = np.reshape(tab[:, 3], (n_points, n_points)).T  # XXX careful of the tab index!! it's GS/ref
+        Z = np.reshape(tab[:, 3], (n_points, n_points))
 
         # levels of contour plot (set a high xorder to have line on top of legend)
         CS = axs[panel_idx].contour(X, Y, Z, levels=z_values, cmap='plasma', zorder=6)
@@ -302,8 +306,8 @@ elif which_fig == 'fig_9':
         axs[panel_idx].set_aspect('equal', 'box')
         axs[panel_idx].set_xlabel('$\\epsilon_b \, (\%)$')
         axs[panel_idx].set_ylabel('$\\epsilon_m \, (\%)$')
-        axs[panel_idx].set_xlim(lim[0], lim[1])
-        axs[panel_idx].set_ylim(lim[0], lim[1])
+        # axs[panel_idx].set_xlim(lim[0], lim[1])
+        # axs[panel_idx].set_ylim(lim[0], lim[1])
         axs[panel_idx].grid()
 
         # legend: from source (see the comment): https://stackoverflow.com/questions/64523051/legend-is-empty-for-contour-plot-is-this-by-design
@@ -313,4 +317,56 @@ elif which_fig == 'fig_9':
 
         panel_idx += 1
 
-    plt.savefig(job_path / f'output/plots/replot_vincenzo/figs/fig_9_replot.{pic_format}', dpi=dpi)
+    plt.savefig(job_path / f'{output_plots_fldr}/fig_9_replot.{pic_format}', dpi=dpi)
+
+"""Questa è quella per un modello non flat senza prior sul
+galaxy bias ma con un prior di 5x10^{-4} sullo shear bias. In questo caso la FoM(ref) vale 294.8 per il caso con 10 bin optimistic. I vari contour plot
+li ottieni interpolando FoM_{GS}(eps_b, sigma_m) e vedendo dove si verifica la condizione FoM_{GS} = f x FoM(ref) con f che varia come
+"""
+
+np.set_printoptions(precision=2)
+fom_ref = 294.8
+tab = np.genfromtxt('/Users/davide/Downloads/fomvsprior-EP10-Opt.dat')
+# get the values of Eq. FoM_GS/FoM_ref = {... for different eps_b and sigma_m
+tab[:, 0] = 10 ** tab[:, 0]
+tab[:, 1] = 10 ** tab[:, 1]
+
+# take the epsilon values
+epsb_values = np.unique(tab[:, 0])
+sigmam_values = np.unique(tab[:, 1])
+n_points = sigmam_values.size
+
+# take the desired values (percent?)
+eps_b_triplet = (0.1, 1, 10)
+sigma_m_triplet = (0.5e-4, 5e-4, 50e-4)
+# tests, delete
+sigma_m_triplet = (0.5e-4, 5e-4, 50e-4, 51e-4)
+# sigma_m_triplet = (0.5e-4,)
+
+fom_gs_over_ref_flat = tab[:, -2]/fom_ref
+
+
+# with interp2d
+fom_gs_over_ref = np.reshape(fom_gs_over_ref_flat, (n_points, n_points)).T
+f = interpolate.interp2d(epsb_values, sigmam_values, fom_gs_over_ref, kind='linear', bounds_error=True)
+print('interp2d:\n', f(eps_b_triplet, sigma_m_triplet).T)
+
+# with RegularGridInterpolator
+fom_gs_over_ref = np.reshape(fom_gs_over_ref_flat, (n_points, n_points))
+f = interpolate.RegularGridInterpolator((epsb_values, sigmam_values), fom_gs_over_ref, method='linear')
+eps_b_xx, sigma_m_yy = np.meshgrid(eps_b_triplet, sigma_m_triplet)
+print('RegularGridInterpolator:\n', f((eps_b_xx, sigma_m_yy)).T)
+
+# this is the plot in the paper; I am not fully convinced by the transposition, though
+fom_gs_over_ref = np.reshape(fom_gs_over_ref_flat, (n_points, n_points))
+eps_b_xx, sigma_m_yy = np.meshgrid(epsb_values, sigmam_values)
+fom_gs_over_ref_levels = np.arange(0.8, 1.1, 0.05)
+CS = plt.contour(eps_b_xx, sigma_m_yy, fom_gs_over_ref, levels=fom_gs_over_ref_levels, cmap='plasma', zorder=6)
+h, _ = CS.legend_elements()
+l = ['${\\rm FoM_{GS}} \, / \, {\\rm FoM}_{\\rm ref}}$ = ' + f'{a:.2f}' for a in CS.levels]
+plt.legend(h, l)
+plt.ylabel('$\\sigma_m \, (\%)$')
+plt.xlabel('$\\epsilon_b \, (\%)$')
+
+
+

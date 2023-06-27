@@ -29,9 +29,11 @@ zbins = 10
 params_tokeep = 7
 fix_curvature = True
 fix_galaxy_bias = False
-fix_shear_bias = True
+fix_shear_bias = False
 fix_dz = True
 include_fom = True
+shear_bias_prior = 1e-4
+add_shear_bias_prior = True
 # ! options
 
 
@@ -43,7 +45,7 @@ probes_vinc = ('WLO', 'GCO', '3x2pt')
 
 fm_uncert_df = pd.DataFrame()
 for go_or_gs in ['GO', 'GS']:
-    for fix_shear_bias in [True, False]:
+    for fix_shear_bias in [False, True]:
         for probe_vinc in probes_vinc:
 
             names_params_to_fix = []
@@ -67,7 +69,7 @@ for go_or_gs in ['GO', 'GS']:
 
             if fix_shear_bias:
                 print('fixing shear bias parameters')
-                names_params_to_fix += [f'm{zi + 1}_photo' for zi in range(zbins)]
+                names_params_to_fix += [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
 
             if fix_galaxy_bias:
                 print('fixing galaxy bias parameters')
@@ -75,7 +77,7 @@ for go_or_gs in ['GO', 'GS']:
 
             if fix_dz:
                 print('fixing dz parameters')
-                names_params_to_fix += [f'dz{zi + 1}_photo' for zi in range(zbins)]
+                names_params_to_fix += [f'dz{(zi + 1):02d}_photo' for zi in range(zbins)]
 
             fm, fiducials_dict_trimmed = mm.mask_fm_v2(fm, fiducials_dict, names_params_to_fix,
                                                        remove_null_rows_cols=True)
@@ -86,6 +88,14 @@ for go_or_gs in ['GO', 'GS']:
             param_values = list(fiducials_dict_trimmed.values())
 
             w0wa_idxs = param_names.index('w_0'), param_names.index('w_a')
+
+            # add prior on shear bias
+            if add_shear_bias_prior and not fix_shear_bias:
+                shear_bias_idxs = [param_names.index(f'm{(zi + 1):02d}_photo') for zi in range(zbins)]
+                fm_prior_shear_bias = np.zeros(fm.shape)
+                fm_prior_shear_bias[shear_bias_idxs, shear_bias_idxs] = 1 / shear_bias_prior
+                fm += fm_prior_shear_bias
+
             fom = mm.compute_FoM(fm, w0wa_idxs)
 
             string_columns = ['probe', 'go_or_gs', 'fix_shear_bias']

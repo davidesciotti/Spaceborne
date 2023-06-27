@@ -24,7 +24,7 @@ specs_str = 'idMag0-idRSD0-idFS0-idSysWL3-idSysGC4'
 nbl_WL_opt = 32
 ep_or_ed = 'EP'
 zbins = 10
-params_tokeep = 7
+num_params_tokeep = 7
 fix_curvature = True
 fix_galaxy_bias = False
 fix_shear_bias = False
@@ -38,6 +38,7 @@ add_shear_bias_prior = True
 add_galaxy_bias_prior = True
 string_columns = ['probe', 'go_or_gs', 'fix_shear_bias', 'add_shear_bias_prior', 'shear_bias_prior',
                   'galaxy_bias_perc_prior']
+probe_vinc_toplot = 'GCO'
 # ! options
 
 
@@ -46,7 +47,7 @@ go_or_gs_folder_dict = {
     'GS': 'GaussSSC',
 }
 probes_vinc = ('WLO', 'GCO', '3x2pt')
-probes_vinc = ('WLO' ,)
+probes_vinc = ('WLO',)
 
 fm_uncert_df = pd.DataFrame()
 for go_or_gs in ['GO', 'GS']:
@@ -90,44 +91,35 @@ for go_or_gs in ['GO', 'GS']:
 
                 param_names = list(fiducials_dict.keys())
 
-
-                shear_bias_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
-                prior_param_values = [shear_bias_prior] * zbins
-
-
-
                 # add prior on shear bias
                 if add_shear_bias_prior and not fix_shear_bias and probe_vinc != 'GCO':
-
                     shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
-                    shear_bias_param_values = np.array([shear_bias_prior] * zbins)
-                    fm = mm.add_prior_to_fm(fm, fiducials_dict, shear_bias_param_names, prior_param_values)
+                    shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
+                    fm = mm.add_prior_to_fm(fm, fiducials_dict, shear_bias_param_names, shear_bias_prior_values)
 
-
+                # add prior on galaxy bias
                 if add_galaxy_bias_prior and not fix_galaxy_bias and probe_vinc != 'WLO':
+                    galaxy_bias_param_names = [f'b{(zi + 1):02d}_photo' for zi in range(zbins)]
+
                     # go from sigma_b / b_fid to sigma_b
-                    galaxy_bias_idxs = [param_names.index(f'b{(zi + 1):02d}_photo') for zi in range(zbins)]
+                    galaxy_bias_idxs = [param_names.index(galaxy_bias_param_name)
+                                        for galaxy_bias_param_name in galaxy_bias_param_names]
+                    # ! update the fiducial values to FS1!!!!
+
                     galaxy_bias_fid_values = np.array(list(fiducials_dict.values()))[galaxy_bias_idxs]
-                    galaxy_bias_prior = galaxy_bias_perc_prior * galaxy_bias_fid_values
-
-                    shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
-                    shear_bias_param_values = np.array([shear_bias_prior] * zbins)
-                    fm = mm.add_prior_to_fm(fm, fiducials_dict, shear_bias_param_names, prior_param_values)
-
-                    fm_prior_galaxy_bias = np.zeros(fm.shape)
-                    fm_prior_galaxy_bias[galaxy_bias_idxs, galaxy_bias_idxs] = 1 / galaxy_bias_prior
-                    fm += fm_prior_galaxy_bias
+                    galaxy_bias_prior_values = galaxy_bias_perc_prior * galaxy_bias_fid_values
+                    fm = mm.add_prior_to_fm(fm, fiducials_dict, galaxy_bias_param_names, galaxy_bias_prior_values)
 
                 uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal',
                                                    normalize=True,
-                                                   percent_units=True)[:params_tokeep]
+                                                   percent_units=True)[:num_params_tokeep]
 
-                # add the FoM
+                # compute the FoM
                 w0wa_idxs = param_names.index('w_0'), param_names.index('w_a')
                 fom = mm.compute_FoM(fm, w0wa_idxs)
 
                 df_columns_names = string_columns + [param_name for param_name in fiducials_dict.keys()][
-                                                    :params_tokeep] + ['FoM']
+                                                    :num_params_tokeep] + ['FoM']
 
                 # this is a list of lists just to have a 'row list' instead of a 'column list',
                 # I still haven't figured out the problem...
@@ -156,7 +148,7 @@ ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'
 
 # shorten the dataframe to only one probe and one type of uncertainty (perc_diff)
 fm_uncert_df_toplot = fm_uncert_df[(fm_uncert_df['go_or_gs'] == 'GO') &
-                                   (fm_uncert_df['probe'] == 'GCO') &
+                                   (fm_uncert_df['probe'] == probe_vinc_toplot) &
                                    (fm_uncert_df['fix_shear_bias'] == False)
                                    ]
 
@@ -169,8 +161,8 @@ label_list = [f'galaxy_bias_perc_prior={galaxy_bias_perc_prior:02f}' for galaxy_
 title = None
 
 if include_fom:
-    params_tokeep += 1
-plot_utils.bar_plot(data, title, label_list, bar_width=0.2, nparams=params_tokeep, param_names_label=None,
+    num_params_tokeep += 1
+plot_utils.bar_plot(data, title, label_list, bar_width=0.2, nparams=num_params_tokeep, param_names_label=None,
                     second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
                     include_fom=include_fom, figsize=(10, 8))
 

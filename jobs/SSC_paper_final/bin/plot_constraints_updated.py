@@ -1,4 +1,6 @@
 import sys
+import warnings
+
 import numpy as np
 import pandas as pd
 import yaml
@@ -16,10 +18,6 @@ import my_module as mm
 
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 mpl.use('Qt5Agg')
-
-with open('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/'
-          'fiducial_params_dict_for_FM.yml') as f:
-    fiducials_dict = yaml.safe_load(f)
 
 # ! options
 specs_str = 'idMag0-idRSD0-idFS0-idSysWL3-idSysGC4'
@@ -48,7 +46,7 @@ go_or_gs_folder_dict = {
     'GS': 'GaussSSC',
 }
 probes_vinc = ('WLO', 'GCO', '3x2pt')
-probes_vinc = ('WLO', 'GCO',)
+probes_vinc = ('WLO' ,)
 
 fm_uncert_df = pd.DataFrame()
 for go_or_gs in ['GO', 'GS']:
@@ -61,11 +59,12 @@ for go_or_gs in ['GO', 'GS']:
 
                 fm_path = f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_1_restored/' \
                           f'FishMat_restored/{go_or_gs_folder_dict[go_or_gs]}/{probe_vinc}/FS1NoCuts'
-                fm_dict = dict(mm.get_kv_pairs(f'{fm_path}', extension="dat"))
-                fm_name = f'fm-{probe_vinc}-{nbl_WL_opt}-wzwaCDM-NonFlat-GR-TB-' \
-                          f'{specs_str}-{ep_or_ed}{zbins}'
+                fm_name = f'fm-{probe_vinc}-{nbl_WL_opt}-wzwaCDM-NonFlat-GR-TB-{specs_str}-{ep_or_ed}{zbins}'
+                fm = np.genfromtxt(f'{fm_path}/{fm_name}.dat')
 
-                fm = fm_dict[fm_name]
+                with open('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/'
+                          'fiducial_params_dict_for_FM.yml') as f:
+                    fiducials_dict = yaml.safe_load(f)
 
                 assert len(fiducials_dict) == fm.shape[0] == fm.shape[1], 'Wrong shape of FM matrix!'
 
@@ -73,8 +72,6 @@ for go_or_gs in ['GO', 'GS']:
                 if fix_curvature:
                     print('fixing curvature')
                     names_params_to_fix += ['Om_Lambda0']
-                else:
-                    params_to_fix = 8
 
                 if fix_shear_bias:
                     print('fixing shear bias parameters')
@@ -88,28 +85,40 @@ for go_or_gs in ['GO', 'GS']:
                     print('fixing dz parameters')
                     names_params_to_fix += [f'dz{(zi + 1):02d}_photo' for zi in range(zbins)]
 
-                fm, fiducials_dict_trimmed = mm.mask_fm_v2(fm, fiducials_dict, names_params_to_fix,
-                                                           remove_null_rows_cols=True)
+                fm, fiducials_dict = mm.mask_fm_v2(fm, fiducials_dict, names_params_to_fix,
+                                                   remove_null_rows_cols=True)
 
-                param_names = list(fiducials_dict_trimmed.keys())
+                param_names = list(fiducials_dict.keys())
+
+
+                shear_bias_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
+                prior_param_values = [shear_bias_prior] * zbins
+
+
 
                 # add prior on shear bias
                 if add_shear_bias_prior and not fix_shear_bias and probe_vinc != 'GCO':
-                    shear_bias_idxs = [param_names.index(f'm{(zi + 1):02d}_photo') for zi in range(zbins)]
-                    fm_prior_shear_bias = np.zeros(fm.shape)
-                    fm_prior_shear_bias[shear_bias_idxs, shear_bias_idxs] = 1 / shear_bias_prior
-                    fm += fm_prior_shear_bias
+
+                    shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
+                    shear_bias_param_values = np.array([shear_bias_prior] * zbins)
+                    fm = mm.add_prior_to_fm(fm, fiducials_dict, shear_bias_param_names, prior_param_values)
+
+
                 if add_galaxy_bias_prior and not fix_galaxy_bias and probe_vinc != 'WLO':
                     # go from sigma_b / b_fid to sigma_b
                     galaxy_bias_idxs = [param_names.index(f'b{(zi + 1):02d}_photo') for zi in range(zbins)]
-                    galaxy_bias_fid_values = np.array(list(fiducials_dict_trimmed.values()))[galaxy_bias_idxs]
+                    galaxy_bias_fid_values = np.array(list(fiducials_dict.values()))[galaxy_bias_idxs]
                     galaxy_bias_prior = galaxy_bias_perc_prior * galaxy_bias_fid_values
+
+                    shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
+                    shear_bias_param_values = np.array([shear_bias_prior] * zbins)
+                    fm = mm.add_prior_to_fm(fm, fiducials_dict, shear_bias_param_names, prior_param_values)
 
                     fm_prior_galaxy_bias = np.zeros(fm.shape)
                     fm_prior_galaxy_bias[galaxy_bias_idxs, galaxy_bias_idxs] = 1 / galaxy_bias_prior
                     fm += fm_prior_galaxy_bias
 
-                uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict_trimmed, which_uncertainty='marginal',
+                uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal',
                                                    normalize=True,
                                                    percent_units=True)[:params_tokeep]
 
@@ -117,7 +126,7 @@ for go_or_gs in ['GO', 'GS']:
                 w0wa_idxs = param_names.index('w_0'), param_names.index('w_a')
                 fom = mm.compute_FoM(fm, w0wa_idxs)
 
-                df_columns_names = string_columns + [param_name for param_name in fiducials_dict_trimmed.keys()][
+                df_columns_names = string_columns + [param_name for param_name in fiducials_dict.keys()][
                                                     :params_tokeep] + ['FoM']
 
                 # this is a list of lists just to have a 'row list' instead of a 'column list',

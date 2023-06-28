@@ -20,6 +20,10 @@ import my_module as mm
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 mpl.use('Qt5Agg')
 
+
+
+
+
 # ! options
 specs_str = 'idMag0-idRSD0-idFS0-idSysWL3-idSysGC4'
 nbl_WL_opt = 32
@@ -32,14 +36,13 @@ fix_shear_bias = False
 fix_dz = True
 include_fom = False
 fid_shear_bias_prior = 1e-4
-shear_bias_priors = [.5e-4, 5e-4, 50e-4]
-shear_bias_prior = .5e-4
+shear_bias_prior = None
 galaxy_bias_perc_prior = None
 string_columns = ['probe', 'go_or_gs', 'fix_shear_bias', 'fix_galaxy_bias', 'shear_bias_prior',
                   'galaxy_bias_perc_prior']
 probe_vinc_toplot = '3x2pt'
-go_or_gs_toplot = 'GS'
-triangle_plot = True
+go_or_gs_toplot = 'perc_diff'
+triangle_plot = False
 # ! options
 
 
@@ -112,24 +115,22 @@ for go_or_gs in ['GO', 'GS']:
             galaxy_bias_prior_values = galaxy_bias_perc_prior * galaxy_bias_fid_values
             fm = mm.add_prior_to_fm(fm, fiducials_dict, galaxy_bias_param_names, galaxy_bias_prior_values)
 
-
         # ! triangle plot
         if triangle_plot:
-            if probe_vinc == '3x2pt' and go_or_gs == 'GS':
+            if probe_vinc == '3x2pt' and go_or_gs == 'GS' and fix_shear_bias == False:
+                # decide params to show in the triangle plot
                 cosmo_param_names = list(fiducials_dict.keys())[:num_params_tokeep]
                 shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
                 params_tot_list = cosmo_param_names + shear_bias_param_names
 
-                means = [fiducials_dict[param] for param in params_tot_list]
-                cov = np.linalg.inv(fm)[:len(params_tot_list), :len(params_tot_list)]
+                trimmed_fid_dict = {param: fiducials_dict[param] for param in params_tot_list}
 
-                c = ChainConsumer()
-                c.add_covariance(means, cov, parameters=params_tot_list, name="Cov")
-                c.add_marker(means, parameters=params_tot_list, name="fiducial", marker_style=".", marker_size=50, color="r")
-                c.configure(usetex=False, serif=True)
-                fig = c.plotter.plot()
+                # get the covariance matrix (careful on how you cut the FM!!)
+                fm_idxs_tokeep = [list(fiducials_dict.keys()).index(param) for param in params_tot_list]
+                cov = np.linalg.inv(fm)[fm_idxs_tokeep, :][:, fm_idxs_tokeep]
 
-                assert False
+                plot_utils.contour_plot_chainconsumer(cov, trimmed_fid_dict)
+
 
         # ! compute uncertainties from fm
         uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal',
@@ -144,7 +145,7 @@ for go_or_gs in ['GO', 'GS']:
                                             :num_params_tokeep] + ['FoM']
 
         # this is a list of lists just to have a 'row list' instead of a 'column list',
-        # I still haven't figured out the problem...
+        # I still haven't figured out the problem, but in this way it works
         df_columns_values = [[probe_vinc, go_or_gs, fix_shear_bias, fix_galaxy_bias,
                               shear_bias_prior, galaxy_bias_perc_prior] +
                              uncert_fm.tolist() + [fom]]
@@ -172,6 +173,7 @@ fm_uncert_df_toplot = fm_uncert_df[(fm_uncert_df['go_or_gs'] == go_or_gs_toplot)
                                    (fm_uncert_df['probe'] == probe_vinc_toplot) &
                                    (fm_uncert_df['fix_galaxy_bias'] == False)
                                    ]
+# this was to show the case with fixed nuisance parameters, you can discard it
 # fm_uncert_df_toplot_fixed = fm_uncert_df[(fm_uncert_df['go_or_gs'] == go_or_gs_toplot) &
 #                                          (fm_uncert_df['probe'] == probe_vinc_toplot) &
 #                                          (fm_uncert_df['fix_galaxy_bias'] == True)]
@@ -197,4 +199,3 @@ plot_utils.bar_plot(data, title, label_list, bar_width=0.2, nparams=num_params_t
                     include_fom=include_fom, figsize=(10, 8))
 
 # plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GOGS_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)
-

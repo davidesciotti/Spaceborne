@@ -10,6 +10,7 @@ import array_to_latex as a2l
 import plotly.graph_objects as go
 import plotly.offline as pyo
 import getdist
+from chainconsumer import ChainConsumer
 from getdist import plots
 from getdist.gaussian_mixtures import GaussianND
 from matplotlib import cm
@@ -198,6 +199,35 @@ def triangle_plot(FM_GO, FM_GS, fiducials, title, param_names_label):
                     legend_labels=['Gauss + SSC', 'Gauss-only'], legend_loc='upper right')
     plt.suptitle(f'{title}', fontsize='xx-large')
 
+
+def contour_plot_chainconsumer(cov, trimmed_fid_dict):
+    """
+    example usage:
+                # decide params to show in the triangle plot
+                cosmo_param_names = list(fiducials_dict.keys())[:num_params_tokeep]
+                shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
+                params_tot_list = cosmo_param_names + shear_bias_param_names
+
+                trimmed_fid_dict = {param: fiducials_dict[param] for param in params_tot_list}
+
+                # get the covariance matrix (careful on how you cut the FM!!)
+                fm_idxs_tokeep = [list(fiducials_dict.keys()).index(param) for param in params_tot_list]
+                cov = np.linalg.inv(fm)[fm_idxs_tokeep, :][:, fm_idxs_tokeep]
+
+                plot_utils.contour_plot_chainconsumer(cov, trimmed_fid_dict)
+    :param cov:
+    :param trimmed_fid_dict:
+    :return:
+    """
+    param_names = list(trimmed_fid_dict.keys())
+    param_means = list(trimmed_fid_dict.values())
+
+    c = ChainConsumer()
+    c.add_covariance(param_means, cov, parameters=param_names, name="Cov")
+    c.add_marker(param_means, parameters=param_names, name="fiducial", marker_style=".", marker_size=50, color="r")
+    c.configure(usetex=False, serif=True)
+    fig = c.plotter.plot()
+    return fig
 
 # parametri fiduciali
 fid = np.array((0.32, 0.05, 1, 1, 0.67, 0.96, 0.816, 0.55, 1, 1))

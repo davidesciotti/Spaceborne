@@ -6,6 +6,7 @@ import pandas as pd
 import yaml
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from chainconsumer import ChainConsumer
 
 sys.path.append('../../bin/plot_FM_running')
 import plots_FM_running as plot_utils
@@ -27,7 +28,7 @@ zbins = 10
 num_params_tokeep = 7
 fix_curvature = True
 fix_galaxy_bias = False
-fix_shear_bias = True
+fix_shear_bias = False
 fix_dz = True
 include_fom = False
 fid_shear_bias_prior = 1e-4
@@ -38,6 +39,7 @@ string_columns = ['probe', 'go_or_gs', 'fix_shear_bias', 'fix_galaxy_bias', 'she
                   'galaxy_bias_perc_prior']
 probe_vinc_toplot = '3x2pt'
 go_or_gs_toplot = 'GS'
+triangle_plot = True
 # ! options
 
 
@@ -110,6 +112,26 @@ for go_or_gs in ['GO', 'GS']:
             galaxy_bias_prior_values = galaxy_bias_perc_prior * galaxy_bias_fid_values
             fm = mm.add_prior_to_fm(fm, fiducials_dict, galaxy_bias_param_names, galaxy_bias_prior_values)
 
+
+        # ! triangle plot
+        if triangle_plot:
+            if probe_vinc == '3x2pt' and go_or_gs == 'GS':
+                cosmo_param_names = list(fiducials_dict.keys())[:num_params_tokeep]
+                shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
+                params_tot_list = cosmo_param_names + shear_bias_param_names
+
+                means = [fiducials_dict[param] for param in params_tot_list]
+                cov = np.linalg.inv(fm)[:len(params_tot_list), :len(params_tot_list)]
+
+                c = ChainConsumer()
+                c.add_covariance(means, cov, parameters=params_tot_list, name="Cov")
+                c.add_marker(means, parameters=params_tot_list, name="fiducial", marker_style=".", marker_size=50, color="r")
+                c.configure(usetex=False, serif=True)
+                fig = c.plotter.plot()
+
+                assert False
+
+        # ! compute uncertainties from fm
         uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal',
                                            normalize=True,
                                            percent_units=True)[:num_params_tokeep]
@@ -147,9 +169,9 @@ ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'
 
 # shorten the dataframe name
 fm_uncert_df_toplot = fm_uncert_df[(fm_uncert_df['go_or_gs'] == go_or_gs_toplot) &
-                                         (fm_uncert_df['probe'] == probe_vinc_toplot) &
-                                         (fm_uncert_df['fix_galaxy_bias'] == False)
-                                         ]
+                                   (fm_uncert_df['probe'] == probe_vinc_toplot) &
+                                   (fm_uncert_df['fix_galaxy_bias'] == False)
+                                   ]
 # fm_uncert_df_toplot_fixed = fm_uncert_df[(fm_uncert_df['go_or_gs'] == go_or_gs_toplot) &
 #                                          (fm_uncert_df['probe'] == probe_vinc_toplot) &
 #                                          (fm_uncert_df['fix_galaxy_bias'] == True)]
@@ -169,8 +191,10 @@ title = None
 if include_fom:
     num_params_tokeep += 1
 data = data[:, :num_params_tokeep]
+
 plot_utils.bar_plot(data, title, label_list, bar_width=0.2, nparams=num_params_tokeep, param_names_label=None,
                     second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
                     include_fom=include_fom, figsize=(10, 8))
 
 # plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GOGS_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)
+

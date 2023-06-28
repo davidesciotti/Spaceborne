@@ -8,6 +8,7 @@ import matplotlib
 from matplotlib.ticker import FormatStrFormatter
 from scipy import interpolate
 import numpy as np
+from pynverse import inversefunc
 
 matplotlib.use('Qt5Agg')
 
@@ -296,8 +297,7 @@ elif which_fig == 'fig_9':
         X = epsb_values
         Y = epsm_values
         X, Y = np.meshgrid(X, Y)
-        # Z = np.reshape(tab[:, 3], (n_points, n_points)).T  # XXX careful of the tab index!! it's GS/ref
-        Z = np.reshape(tab[:, 3], (n_points, n_points))
+        Z = np.reshape(tab[:, 3], (n_points, n_points)).T  # XXX careful of the tab index!! it's GS/ref
 
         # levels of contour plot (set a high xorder to have line on top of legend)
         CS = axs[panel_idx].contour(X, Y, Z, levels=z_values, cmap='plasma', zorder=6)
@@ -338,13 +338,9 @@ n_points = sigmam_values.size
 
 # take the desired values (percent?)
 eps_b_triplet = (0.1, 1, 10)
-sigma_m_triplet = (0.5e-4, 5e-4, 50e-4)
-# tests, delete
-sigma_m_triplet = (0.5e-4, 5e-4, 50e-4, 51e-4)
-# sigma_m_triplet = (0.5e-4,)
+sigma_m_triplet = (0.5e-4, 5e-4, 100e-4)
 
-fom_gs_over_ref_flat = tab[:, -2]/fom_ref
-
+fom_gs_over_ref_flat = tab[:, -2] / fom_ref
 
 # with interp2d
 fom_gs_over_ref = np.reshape(fom_gs_over_ref_flat, (n_points, n_points)).T
@@ -361,12 +357,20 @@ print('RegularGridInterpolator:\n', f((eps_b_xx, sigma_m_yy)).T)
 fom_gs_over_ref = np.reshape(fom_gs_over_ref_flat, (n_points, n_points))
 eps_b_xx, sigma_m_yy = np.meshgrid(epsb_values, sigmam_values)
 fom_gs_over_ref_levels = np.arange(0.8, 1.1, 0.05)
-CS = plt.contour(eps_b_xx, sigma_m_yy, fom_gs_over_ref, levels=fom_gs_over_ref_levels, cmap='plasma', zorder=6)
-h, _ = CS.legend_elements()
-l = ['${\\rm FoM_{GS}} \, / \, {\\rm FoM}_{\\rm ref}}$ = ' + f'{a:.2f}' for a in CS.levels]
+contour_plot = plt.contour(eps_b_xx, sigma_m_yy, fom_gs_over_ref.T, levels=fom_gs_over_ref_levels, cmap='plasma',
+                           zorder=6)
+h, _ = contour_plot.legend_elements()
+l = ['${\\rm FoM_{GS}} \, / \, {\\rm FoM_{ref}}$ = ' + f'{a:.2f}' for a in contour_plot.levels]
 plt.legend(h, l)
 plt.ylabel('$\\sigma_m \, (\%)$')
 plt.xlabel('$\\epsilon_b \, (\%)$')
+plt.xlim(0.5, 3)
 
-
-
+#  ! redo eps_b = {... table
+for sigma_m_tofix in sigma_m_triplet:
+    z_values = (0.8, 0.9, 1)
+    # this is a function of eps_b only, because pyinverse works in 1d
+    f_fixed_sigmam = lambda epsb: f((epsb, sigma_m_tofix))
+    # without specifying the domani it gives interpolation issues
+    eps_b_vals = inversefunc(f_fixed_sigmam, y_values=z_values, domain=[epsb_values.min(), epsb_values.max()])
+    print(f'eps_b_vals for sigma_m = {sigma_m_tofix}: {eps_b_vals}')

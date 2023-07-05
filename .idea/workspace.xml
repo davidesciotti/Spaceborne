@@ -5,86 +5,22 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="bc90b328-d3dc-49f6-9263-d66cfee42111" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/jobs/SSC_paper_final/bin/main_SSCpaper_final.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jobs/SSC_paper_final/config/config_SSCpaper_final.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SPV3_magcut_zcut/config/config_SPV3_magcut_zcut.py" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/SPV3_magcut_zcut/config/config_SPV3_magcut_zcut.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/main_SSC_comparison_updt_running.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/misc/plot_R(x)_Table1_paper.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/misc/replot_vincenzo.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/plot.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/plot_constraints.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/variable_response/.ipynb_checkpoints/response_from_sims-checkpoint.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/variable_response/davide/Pnl.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/variable_response/davide/camb_pk_demo.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/variable_response/davide/dlogPk_dlogk.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/variable_response/davide/k_dav.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/variable_response/davide/response.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/variable_response/davide/response_v2.1.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/variable_response/davide/response_v2.2_Pk_solved.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/variable_response/davide/response_v2.3_bu.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/variable_response/davide/response_v2.4_functions.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/variable_response/davide/response_v2.5_works.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/variable_response/davide/response_v2.6_hconversions.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/variable_response/davide/response_v2.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/variable_response/davide/z_dav.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/variable_response/sylvain/.ipynb_checkpoints/response_from_sims-checkpoint.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/variable_response/sylvain/response_from_sims.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/bin/variable_response/sylvain/response_from_sims_original.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/config/config_SSC_comparison_updt.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/GSoverGOvsNbEllOptAll.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/GSoverGOvsNbEllOptGCO.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/GSoverGOvsNbEllOptWLO.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/GSoverGOvsNbEllPesAll.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/GSoverGOvsNbEllPesGCO.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/GSoverGOvsNbEllPesWLO.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/GSoverGOvsNbZedOptAll.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/GSoverGOvsNbZedOptGCO.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/GSoverGOvsNbZedOptWLO.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/GSoverGOvsNbZedPesAll.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/GSoverGOvsNbZedPesGCO.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/GSoverGOvsNbZedPesWLO.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/RatioFoM-3x2pt-Opt-10.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/RatioFoM-3x2pt-Opt-11.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/RatioFoM-3x2pt-Opt-12.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/RatioFoM-3x2pt-Opt-13.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/RatioFoM-3x2pt-Opt-14.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/RatioFoM-3x2pt-Opt-15.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/RatioFoM-3x2pt-Pes-10.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/RatioFoM-3x2pt-Pes-11.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/RatioFoM-3x2pt-Pes-12.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/RatioFoM-3x2pt-Pes-13.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/RatioFoM-3x2pt-Pes-14.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/RatioFoM-3x2pt-Pes-15.dat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/input/replot_vincenzo/ReadMeTables.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/Pk/Pk_kind=nonlinear_hunits=False.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/Pk/Pk_kind=nonlinear_hunits=True.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/Pk/k_array_hunits=False.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/Pk/k_array_hunits=True.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/Pk/z_array.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/cl_3D/C_GG_3D.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/cl_3D/C_LL_WLonly_3D.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/cl_3D/C_WA_3D.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/cl_3D/D_3x2pt.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/plots/const_vs_var_rl/3x2pt_ellmax3000_GS_Rlconst_vs_Rlvar.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/plots/const_vs_var_rl/3x2pt_ellmax3000_GS_Rlconst_vs_Rlvar_vs_PyCCL.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/plots/const_vs_var_rl/3x2pt_ellmax750_GS_Rlconst_vs_Rlvar_vs_PyCCL.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/plots/const_vs_var_rl/GC_ellmax3000_GS_Rlconst_vs_Rlvar.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/plots/const_vs_var_rl/GC_ellmax3000_GS_Rlconst_vs_Rlvar_vs_PyCCL.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/plots/const_vs_var_rl/WL_ellmax5000_GS_Rlconst_vs_Rlvar.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/plots/const_vs_var_rl/WL_ellmax5000_GS_Rlconst_vs_Rlvar_vs_PyCCL.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/plots/dav_vs_sylv_WL.pdf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/plots/replot_vincenzo/figs/fig_5_replot.pdf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/plots/replot_vincenzo/figs/fig_6_replot.pdf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/plots/replot_vincenzo/figs/fig_7_replot.pdf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/plots/replot_vincenzo/figs/fig_8_replot.pdf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/SSC_comparison_updt_discardmaybe/output/plots/replot_vincenzo/figs/fig_9_replot.pdf" beforeDir="false" />
+      <change afterPath="$PROJECT_DIR$/jobs/SSC_paper_final/bin/plot_paper_constriants_updated_nb.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_paper_final/bin/plot_constraints_updated.py" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/SSC_paper_final/bin/plot_constraints_updated.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Jupyter Notebook" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">

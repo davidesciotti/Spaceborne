@@ -1,3 +1,4 @@
+import pdb
 import sys
 import warnings
 
@@ -28,21 +29,22 @@ zbins = 10
 num_params_tokeep = 7
 fix_curvature = True
 fix_gal_bias = False
-fix_shear_bias = False  # this has to be an outer loop if you also want to vary the shear bias prior itself
+fix_shear_bias = True  # this has to be an outer loop if you also want to vary the shear bias prior itself
 fix_dz = True
 include_fom = True
 fid_shear_bias_prior = 1e-4
 shear_bias_prior = None
 gal_bias_perc_prior = None
 shear_bias_priors = [1e-7, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e1, 1e2, 1e4, None]
-gal_bias_perc_priors = [1e-7, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e1, 1e2, 1e4, None]
+gal_bias_perc_priors = shear_bias_priors
 string_columns = ['probe', 'go_or_gs', 'fix_shear_bias', 'fix_gal_bias',
                   'shear_bias_prior', 'gal_bias_perc_prior']
-probe_vinc_toplot = '3x2pt'
-go_or_gs_toplot = 'perc_diff'
 triangle_plot = False
 # ! options
 
+# TODO understand nan instead of None in the fm_uncert_df
+# TODO maybe there is a bettewr way to handle the prior values in relation to the fix flag
+# TODO superimpose bars
 
 go_or_gs_folder_dict = {
     'GO': 'GaussOnly',
@@ -53,12 +55,11 @@ probes_vinc = ('WLO', 'GCO', '3x2pt')
 fm_uncert_df = pd.DataFrame()
 for go_or_gs in ['GO', 'GS']:
     for probe_vinc in probes_vinc:
+        print(f'****** {probe_vinc}, {go_or_gs} ******')
         for fix_shear_bias in [True, False]:
             for fix_gal_bias in [True, False]:
                 for shear_bias_prior in shear_bias_priors:
                     for gal_bias_perc_prior in gal_bias_perc_priors:
-
-                        print(f'****** {probe_vinc}, {go_or_gs} ******')
 
                         names_params_to_fix = []
 
@@ -75,22 +76,24 @@ for go_or_gs in ['GO', 'GS']:
 
                         # fix some of the parameters (i.e., which columns to remove)
                         if fix_curvature:
-                            print('fixing curvature')
+                            # print('fixing curvature')
                             names_params_to_fix += ['Om_Lambda0']
+                        else:
+                            num_params_tokeep += 1
 
                         if fix_shear_bias:
-                            print('fixing shear bias parameters')
+                            # print('fixing shear bias parameters')
                             names_params_to_fix += [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
                             # in this way 👇there is no need for a 'add_shear_bias_prior' (or similar) boolean flag
                             shear_bias_prior = None
 
                         if fix_gal_bias:
-                            print('fixing galaxy bias parameters')
+                            # print('fixing galaxy bias parameters')
                             names_params_to_fix += [f'b{(zi + 1):02d}_photo' for zi in range(zbins)]
                             gal_bias_perc_prior = None
 
                         if fix_dz:
-                            print('fixing dz parameters')
+                            # print('fixing dz parameters')
                             names_params_to_fix += [f'dz{(zi + 1):02d}_photo' for zi in range(zbins)]
 
                         fm, fiducials_dict = mm.mask_fm_v2(fm, fiducials_dict, names_params_to_fix,
@@ -98,14 +101,13 @@ for go_or_gs in ['GO', 'GS']:
 
                         param_names = list(fiducials_dict.keys())
 
-                        # add prior on shear bias
-                        if shear_bias_prior != None and probe_vinc != 'GCO':
+                        # ! add prior on shear and/or gal bias
+                        if shear_bias_prior != None and probe_vinc in ['WLO', '3x2pt']:
                             shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
                             shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
                             fm = mm.add_prior_to_fm(fm, fiducials_dict, shear_bias_param_names, shear_bias_prior_values)
 
-                        # add prior on galaxy bias
-                        if gal_bias_perc_prior != None and probe_vinc != 'WLO':
+                        if gal_bias_perc_prior != None and probe_vinc in ['GCO', '3x2pt']:
                             gal_bias_param_names = [f'b{(zi + 1):02d}_photo' for zi in range(zbins)]
 
                             # go from sigma_b / b_fid to sigma_b
@@ -155,27 +157,41 @@ for go_or_gs in ['GO', 'GS']:
 
                         fm_uncert_df_to_concat = pd.DataFrame(df_columns_values, columns=df_columns_names)
                         fm_uncert_df = pd.concat([fm_uncert_df, fm_uncert_df_to_concat], ignore_index=True)
+                        fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
 
-# try again the percent diff thing
+# ! percent difference
 df_gs = fm_uncert_df[fm_uncert_df["go_or_gs"] == "GS"]
 df_go = fm_uncert_df[fm_uncert_df["go_or_gs"] == "GO"]
 arr_gs = df_gs.iloc[:, len(string_columns):].select_dtypes('number').values
 arr_go = df_go.iloc[:, len(string_columns):].select_dtypes('number').values
 perc_diff_df = df_gs
-perc_diff_df.iloc[:, len(string_columns):] = (arr_gs / arr_go - 1) * 100
+perc_diff_df.iloc[:, len(string_columns):] = mm.percent_diff(arr_gs, arr_go)
 perc_diff_df['go_or_gs'] = 'perc_diff'
-perc_diff_df.iloc[:, -1] = (arr_go[:, -1] / arr_gs[:, -1] - 1) * 100
+perc_diff_df.iloc[:, -1] = mm.percent_diff(arr_go[:, -1], arr_gs[:, -1])
 fm_uncert_df = pd.concat([fm_uncert_df, perc_diff_df], axis=0, ignore_index=True)
+fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
 
-ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'
-
-# shorten the dataframe name
-fm_uncert_df_toplot = fm_uncert_df[(fm_uncert_df['go_or_gs'] == go_or_gs_toplot) &
-                                   (fm_uncert_df['probe'] == probe_vinc_toplot) &
-                                   (fm_uncert_df['fix_gal_bias'] == False)
+# select cases to show in bar plot
+probe_vinc_toplot = 'GCO'
+go_or_gs_toplot = 'perc_diff'
+fm_uncert_df_toplot = fm_uncert_df[(fm_uncert_df['probe'] == probe_vinc_toplot) &
+                                   (fm_uncert_df['fix_gal_bias'] == False) &
+                                   (fm_uncert_df['fix_shear_bias'] == True) &
+                                   (fm_uncert_df['shear_bias_prior'].isna()) &
+                                   (fm_uncert_df['gal_bias_perc_prior'].isna())
                                    ]
+uncert_go = fm_uncert_df_toplot[fm_uncert_df_toplot['go_or_gs'] == 'GO'].iloc[:, len(string_columns):].values[0, :]
+uncert_gs = fm_uncert_df_toplot[fm_uncert_df_toplot['go_or_gs'] == 'GS'].iloc[:, len(string_columns):].values[0, :]
+uncert_perc_diff = fm_uncert_df_toplot[fm_uncert_df_toplot['go_or_gs'] == 'perc_diff'].iloc[:, len(string_columns):].values[0, :]
 
-data = fm_uncert_df_toplot.iloc[:, len(string_columns):].values
+# check the values in the paper tables
+# table_1_values = list(fm_uncert_df_toplot.iloc[0, len(string_columns):].values)
+# for table_1_value in table_1_values:
+#     table_1_value = table_1_value/100 + 1
+#     print(f'{table_1_value:.3f}')
+
+
+data = fm_uncert_df_toplot.iloc[:2, len(string_columns):].values
 label_list = list(fm_uncert_df_toplot['probe'].values)
 label_list = ['None' if value is None else value for value in label_list]
 title = None
@@ -184,32 +200,35 @@ if include_fom:
     num_params_tokeep += 1
 data = data[:, :num_params_tokeep]
 
-# plot_utils.bar_plot(data, title, label_list, bar_width=0.2, nparams=num_params_tokeep, param_names_label=None,
-#                     second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
-#                     include_fom=include_fom, figsize=(10, 8))
+ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'
+plot_utils.bar_plot(data, title, label_list, bar_width=0.2, nparams=num_params_tokeep, param_names_label=None,
+                    second_axis=False, no_second_axis_bars=0, superimpose_bars=True, show_markers=False, ylabel=ylabel,
+                    include_fom=include_fom, figsize=(10, 8))
 
 # plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GOGS_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)
 
+assert False, 'stop here to check which fiducials I used for the galaxy bias'
+
 # ! study FoM vs priors on shear and gal. bias
-probe = '3x2pt'
-param_toplot = 'FoM'
-other_nuisance_value = 1e-2  # for WLO and GCO this has no impact, of course
-nuisance_name = 'shear_bias'
+probe = 'GCO'
+param_toplot = 'w_a'
+other_nuisance_value = 1e-4  # for WLO and GCO this has no impact, of course
+nuisance_name = 'gal_bias'
 
 # horrible cases selector
 if probe == 'GCO':
     nuisance_name = 'gal_bias'
     nuisance_prior_name = 'gal_bias_perc_prior'
     other_nuisance_name = 'shear_bias_prior'
-    xlabel = f'{nuisance_name} prior'
+    xlabel = nuisance_prior_name
 
 elif probe == 'WLO':
     nuisance_name = 'shear_bias'
     nuisance_prior_name = 'shear_bias_prior'
     other_nuisance_name = 'gal_bias_perc_prior'
-    xlabel = f'{nuisance_name} prior'
-elif probe == '3x2pt':
+    xlabel = nuisance_prior_name
 
+elif probe == '3x2pt':
     if nuisance_name == 'gal_bias':
         nuisance_prior_name = 'gal_bias_perc_prior'
         other_nuisance_name = 'shear_bias_prior'
@@ -243,6 +262,7 @@ param_toplot_perc_diff = fm_uncert_df.loc[(fm_uncert_df['probe'] == probe) &
                                           (fm_uncert_df[other_nuisance_name] == other_nuisance_value)
                                           ][param_toplot].values
 
+# these below are all horizontal lines
 param_toplot_fix_nuisance_go = fm_uncert_df.loc[(fm_uncert_df['probe'] == probe) &
                                                 (fm_uncert_df['go_or_gs'] == 'GO') &
                                                 (fm_uncert_df[f'fix_{nuisance_name}'] == True) &

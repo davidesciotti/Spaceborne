@@ -4,7 +4,6 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/SSC_restructured_v2.iml" filepath="$PROJECT_DIR$/.idea/SSC_restructured_v2.iml" />
       <module fileurl="file://$PROJECT_DIR$/../common_data/.idea/common_data.iml" filepath="$PROJECT_DIR$/../common_data/.idea/common_data.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../cosmicfish_reloaded/.idea/cosmicfish_reloaded.iml" filepath="$PROJECT_DIR$/../cosmicfish_reloaded/.idea/cosmicfish_reloaded.iml" />
     </modules>
   </component>
 </project>

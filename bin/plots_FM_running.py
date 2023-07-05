@@ -16,10 +16,10 @@ from getdist.gaussian_mixtures import GaussianND
 from matplotlib import cm
 
 project_path_here = Path.cwd().parent.parent.parent
-sys.path.append(f'{project_path_here}/lib')
+sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_lib')
 import my_module as mm
 
-sys.path.append(f'{project_path_here}/config')
+sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_cfg')
 # import ISTF_fid_params
 import mpl_cfg
 
@@ -93,6 +93,9 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
     marker_colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
     markers = markers[:no_cases]
     marker_colors = marker_colors[:no_cases]
+    alpha = 1
+    zorders = np.arange(no_cases)  # this is because I want to revert this in the case of superimposed bars
+
     # colors = cm.Paired(np.linspace(0, 1, data.shape[1]))
 
     # Set position of bar on x-axis
@@ -108,10 +111,14 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
                 bar_centers[bar_idx, :] = np.arange(no_params) - bar_width
             else:
                 bar_centers[bar_idx, :] = [x + bar_idx * bar_width for x in bar_centers[0]]
+
+    # in this case, I simply define the bar centers to be the same
     elif data.ndim != 1 and superimpose_bars:
+        zorders = zorders[::-1]
         bar_centers = np.arange(no_params)
         bar_centers = bar_centers[None, :]
         bar_centers = np.repeat(bar_centers, no_cases, axis=0)
+        print(zorders)
 
     if param_names_label is None:
         param_names_label = mpl_cfg.general_dict['cosmo_labels_TeX']
@@ -126,7 +133,8 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
 
     if second_axis:
 
-        # assert no_cases == 3, "data must have 3 rows to display the second axis"
+        # this check is quite obsolete...
+        assert no_cases == 3, "data must have 3 rows to display the second axis"
 
         fig, ax = plt.subplots(figsize=figsize)
         for bar_idx in range(no_cases - no_second_axis_bars):
@@ -144,30 +152,26 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
         ax2.set_ylabel('% uncertainty increase')
         for bar_idx in range(1, no_second_axis_bars + 1):
             ax2.bar(bar_centers[-bar_idx, :], data[-bar_idx, :], width=bar_width, edgecolor='grey',
-                    label=label_list[-bar_idx], color='g')
+                    label=label_list[-bar_idx], color='g', alpha=alpha, zorder=zorders[bar_idx])
         ax2.tick_params(axis='y')
 
         fig.legend(loc="upper right", bbox_to_anchor=(1, 1), bbox_transform=ax.transAxes)
+        return
 
-    else:
+    # elif not second_axis:
+    plt.figure(figsize=figsize)
+    for bar_idx in range(no_cases):
+        plt.bar(bar_centers[bar_idx, :], data[bar_idx, :], width=bar_width, edgecolor='grey', alpha=alpha,
+                label=label_list[bar_idx], zorder=zorders[bar_idx])
+        if show_markers:
+            plt.scatter(bar_centers[bar_idx, :], data[bar_idx, :], color=marker_colors[bar_idx],
+                        marker=markers[bar_idx], label=label_list[bar_idx], zorder=zorders[bar_idx])
 
-
-        plt.figure(figsize=figsize)
-
-        # Make the plot
-        for bar_idx in range(no_cases):
-            plt.bar(bar_centers[bar_idx, :], data[bar_idx, :], width=bar_width, edgecolor='grey', alpha=1,
-                    label=label_list[bar_idx])
-            if show_markers:
-                plt.scatter(bar_centers[bar_idx, :], data[bar_idx, :], color=marker_colors[bar_idx],
-                            marker=markers[bar_idx], label=label_list[bar_idx])
-
-        # Adding xticks
-        plt.ylabel(ylabel)
-        plt.xticks(range(nparams), param_names_label)
-        plt.title(title)
-        plt.legend()
-        plt.show()
+    plt.ylabel(ylabel)
+    plt.xticks(range(nparams), param_names_label)
+    plt.title(title)
+    plt.legend()
+    plt.show()
 
 
 def triangle_plot(FM_GO, FM_GS, fiducials, title, param_names_label):
@@ -228,6 +232,7 @@ def contour_plot_chainconsumer(cov, trimmed_fid_dict):
     c.configure(usetex=False, serif=True)
     fig = c.plotter.plot()
     return fig
+
 
 # parametri fiduciali
 fid = np.array((0.32, 0.05, 1, 1, 0.67, 0.96, 0.816, 0.55, 1, 1))

@@ -20,12 +20,12 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/LiFEforS
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = True
-deriv_BNT_transform = True
+cov_BNT_transform = False
+deriv_BNT_transform = False
 
 cl_ell_cuts = False
-cov_ell_cuts = False
-deriv_ell_cuts = False
+cov_ell_cuts = True
+deriv_ell_cuts = True
 
 if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
     BNT_transform = True
@@ -151,7 +151,7 @@ covariance_cfg = {
     'compute_SSC': False,
     'compute_cov_6D': False,  # ! to be deprecated!
 
-    'save_cov': True,
+    'save_cov': False,
     'cov_file_format': 'npz',  # or npy
     'save_cov_dat': False,  # this is the format used by Vincenzo
 
@@ -229,7 +229,7 @@ FM_cfg = {
     'deriv_ell_cuts': deriv_ell_cuts,
 
     'fm_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}' +
-                 '/ell_cuts_{ell_cuts:s}' + ell_cuts_subfolder,
+                 '/ell_cuts_{ell_cuts:s}' + f'/{ell_cuts_subfolder}',
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,
 

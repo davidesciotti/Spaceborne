@@ -1,0 +1,61 @@
+# should I do this? maybe a function in the main should take care of creating this
+# file, since it changes based on the number of bins or other settings
+
+Om: 0.318592238
+ODE: 0.68140775651
+Ob: 0.05001413
+wz: -1.0
+wa: 0.0
+h: 0.6737
+ns: 0.966
+s8: 0.816
+logT_AGN: 7.75
+Aia: 0.16
+eIA: 1.66
+#bIA: 0.0  # not varied in the analysis!
+m01: 0.0
+m02: 0.0
+m03: 0.0
+m04: 0.0
+m05: 0.0
+m06: 0.0
+m07: 0.0
+m08: 0.0
+m09: 0.0
+m10: 0.0
+m11: 0.0
+m12: 0.0
+m13: 0.0
+dzWL01: -0.025749
+dzWL02: 0.022716
+dzWL03: -0.026032
+dzWL04: 0.012594
+dzWL05: 0.019285
+dzWL06: 0.008326
+dzWL07: 0.038207
+dzWL08: 0.002732
+dzWL09: 0.034066
+dzWL10: 0.049479
+dzWL11: 0.06649
+dzWL12: 0.000815
+dzWL13: 0.04907
+bG01: 1.33291
+bG02: -0.72414
+bG03: 1.0183
+bG04: -0.14913
+bM01: -1.50685
+bM02: 1.35034
+bM03: 0.08321
+bM04: 0.04279
+
+
+# after cosmo, in this order:
+# shear bias
+# dzWL
+# galaxy bias
+# magnification bias
+# dzGC
+
+
+
+

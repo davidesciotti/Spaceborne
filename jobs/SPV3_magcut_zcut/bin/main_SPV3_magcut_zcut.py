@@ -599,8 +599,8 @@ vinc_filenames = [vinc_filename for vinc_filename in vinc_filenames if vinc_file
 # perform some checks on the filenames before trimming them
 for vinc_filename in vinc_filenames:
     assert f'{EP_or_ED}{zbins}' in vinc_filename, f'{EP_or_ED}{zbins} not in filename {vinc_filename}'
-    assert f'ML{ML}' in vinc_filename, f'ML{ML} not in filename {vinc_filename}'
-    assert f'MS{MS}' in vinc_filename, f'MS{MS} not in filename {vinc_filename}'
+    assert f'ML{magcut_lens}' in vinc_filename, f'ML{magcut_lens} not in filename {vinc_filename}'
+    assert f'MS{magcut_source}' in vinc_filename, f'MS{magcut_source} not in filename {vinc_filename}'
 
 vinc_trimmed_filenames = [vinc_filename.split('-', 1)[0].strip() for vinc_filename in vinc_filenames]
 vinc_trimmed_filenames = [vinc_trimmed_filename[len(der_prefix):] if vinc_trimmed_filename.startswith(der_prefix) else vinc_trimmed_filename
@@ -724,12 +724,12 @@ clrl_dict = {'cl_dict_3D': cl_dict_3D,
 for cl_or_rl in ['cl', 'rl']:
     if general_cfg[f'save_{cl_or_rl}s_3d']:
 
-        for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
+        for probe, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
             # save cl and/or response; not very readable but it works, plus all the cases are in the for loop
 
-            filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
+            filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe}'
             filename = general_cfg[f'{cl_or_rl}_filename'].format(
-                probe=probe_vinc, **variable_specs).replace(".dat", "_3D.npy")
+                probe=probe, **variable_specs).replace(".dat", "_3D.npy")
             file = clrl_dict[f"{cl_or_rl}_dict_3D"][
                 f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}']
             np.save(f'{filepath}/{filename}', file)
@@ -737,7 +737,7 @@ for cl_or_rl in ['cl', 'rl']:
             # save ells and deltas
             if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
                 filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/' \
-                           f'3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
+                           f'3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe}'
                 ells_filename = f'ell_{probe_dav}_ellmaxWL{ell_max_WL}'
                 np.savetxt(f'{filepath}/{ells_filename}.txt', ell_dict[f'ell_{probe_dav}'])
                 np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])

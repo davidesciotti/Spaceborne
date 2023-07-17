@@ -22,149 +22,148 @@ mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 mpl.use('Qt5Agg')
 
 # ! options
-specs_str = 'idMag0-idRSD0-idFS0-idSysWL3-idSysGC4'
-nbl_WL_opt = 32
-ep_or_ed = 'EP'
-zbins = 10
+specs_str = 'idIA2_idB3_idM3_idR1'
+EP_or_ED = 'EP'
+zbins = 13
 num_params_tokeep = 7
 fix_curvature = True
 fix_gal_bias = False
-fix_shear_bias = True  # this has to be an outer loop if you also want to vary the shear bias prior itself
+fix_shear_bias = False  # this has to be an outer loop if you also want to vary the shear bias prior itself
 fix_dz = True
 include_fom = True
 fid_shear_bias_prior = 1e-4
-shear_bias_prior = None
+shear_bias_prior = fid_shear_bias_prior
 gal_bias_perc_prior = None
-shear_bias_priors = [1e-7, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e1, 1e2, 1e4, None]
-gal_bias_perc_priors = shear_bias_priors
-string_columns = ['probe', 'go_or_gs', 'fix_shear_bias', 'fix_gal_bias',
-                  'shear_bias_prior', 'gal_bias_perc_prior']
+string_columns = ['probe', 'go_or_gs', 'BNT_transform', 'ell_cuts']
 triangle_plot = False
-use_Wadd = True  # the difference is extremely small
+use_Wadd = False  # the difference is extremely small
+which_pk = 'HMCode2020'
+ML = 245
+MS = 245
+ZL = 2
+ZS = 2
+probes = ('WL', 'GC', '3x2pt')
+
 # ! options
+
 
 # TODO understand nan instead of None in the fm_uncert_df
 # TODO maybe there is a bettewr way to handle the prior values in relation to the fix flag
 # TODO superimpose bars
 
-go_or_gs_folder_dict = {
-    'GO': 'GaussOnly',
-    'GS': 'GaussSSC',
-}
-probes_vinc = ('WLO', 'GCO', '3x2pt')
-probes_vinc = ('3x2pt',)
+fm_dict = mm.load_pickle('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCode2020.pickle')
+
 
 fm_uncert_df = pd.DataFrame()
 for go_or_gs in ['GO', 'GS']:
-    for probe_vinc in probes_vinc:
-        print(f'****** {probe_vinc}, {go_or_gs} ******')
-        for fix_shear_bias in [True, False]:
-            for fix_gal_bias in [True, False]:
-                for shear_bias_prior in shear_bias_priors:
-                    for gal_bias_perc_prior in gal_bias_perc_priors:
+    for probe in probes:
+        for BNT_transform in [False, True]:
+            for ell_cuts in [False, ]:
 
-                        names_params_to_fix = []
+                names_params_to_fix = []
 
-                        fm_path = f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_1_restored/' \
-                                  f'FishMat_restored/{go_or_gs_folder_dict[go_or_gs]}/{probe_vinc}/FS1NoCuts'
-                        fm_name = f'fm-{probe_vinc}-{nbl_WL_opt}-wzwaCDM-NonFlat-GR-TB-{specs_str}-{ep_or_ed}{zbins}'
-                        fm = np.genfromtxt(f'{fm_path}/{fm_name}.dat')
+                fm_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
+                          f'output/Flagship_2/FM/BNT_{BNT_transform}/ell_cuts_{ell_cuts}'
+                fm_name = f'FM_{go_or_gs}_{probe}_zbins{EP_or_ED}{zbins}_' \
+                          f'ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_{specs_str}_pk{which_pk}.txt'
+                fm = np.genfromtxt(f'{fm_path}/{fm_name}')
 
-                        if probe_vinc == '3x2pt' and use_Wadd:
-                            fm_wa = np.genfromtxt(
-                                f'{fm_path.replace("3x2pt", "WLA")}/{fm_name.replace("3x2pt", "WLA")}.dat')
-                            fm += fm_wa
+                if probe == '3x2pt' and use_Wadd:
+                    fm_wa = np.genfromtxt(
+                        f'{fm_path.replace("3x2pt", "WA")}/{fm_name.replace("3x2pt", "WA")}')
+                    fm += fm_wa
 
-                        with open('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/'
-                                  'fiducial_params_dict_for_FM.yml') as f:
-                            fiducials_dict = yaml.safe_load(f)
+                with open('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/'
+                          'fiducial_params_dict_for_FM.yml') as f:
+                    fiducials_dict = yaml.safe_load(f)
 
-                        assert len(fiducials_dict) == fm.shape[0] == fm.shape[1], 'Wrong shape of FM matrix!'
+                assert fm.shape[0] == fm.shape[1], 'FM matrix is not square!'
+                assert len(fiducials_dict) == fm.shape[0], 'FM matrix and fiducial parameters length do not match!'
 
-                        # fix some of the parameters (i.e., which columns to remove)
-                        if fix_curvature:
-                            # print('fixing curvature')
-                            names_params_to_fix += ['Om_Lambda0']
-                        else:
-                            num_params_tokeep += 1
+                # fix some of the parameters (i.e., which columns to remove)
+                if fix_curvature:
+                    # print('fixing curvature')
+                    names_params_to_fix += ['Om_Lambda0']
+                else:
+                    num_params_tokeep += 1
 
-                        if fix_shear_bias:
-                            # print('fixing shear bias parameters')
-                            names_params_to_fix += [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
-                            # in this way 👇there is no need for a 'add_shear_bias_prior' (or similar) boolean flag
-                            shear_bias_prior = None
+                if fix_shear_bias:
+                    # print('fixing shear bias parameters')
+                    names_params_to_fix += [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
+                    # in this way 👇there is no need for a 'add_shear_bias_prior' (or similar) boolean flag
+                    shear_bias_prior = None
 
-                        if fix_gal_bias:
-                            # print('fixing galaxy bias parameters')
-                            names_params_to_fix += [f'b{(zi + 1):02d}_photo' for zi in range(zbins)]
-                            gal_bias_perc_prior = None
+                if fix_gal_bias:
+                    # print('fixing galaxy bias parameters')
+                    names_params_to_fix += [f'b{(zi + 1):02d}_photo' for zi in range(zbins)]
+                    gal_bias_perc_prior = None
 
-                        if fix_dz:
-                            # print('fixing dz parameters')
-                            names_params_to_fix += [f'dz{(zi + 1):02d}_photo' for zi in range(zbins)]
+                if fix_dz:
+                    # print('fixing dz parameters')
+                    names_params_to_fix += [f'dz{(zi + 1):02d}_photo' for zi in range(zbins)]
 
-                        fm, fiducials_dict = mm.mask_fm_v2(fm, fiducials_dict, names_params_to_fix,
-                                                           remove_null_rows_cols=True)
+                fm, fiducials_dict = mm.mask_fm_v2(fm, fiducials_dict, names_params_to_fix,
+                                                   remove_null_rows_cols=True)
 
-                        param_names = list(fiducials_dict.keys())
+                param_names = list(fiducials_dict.keys())
 
-                        # ! add prior on shear and/or gal bias
-                        if shear_bias_prior != None and probe_vinc in ['WLO', '3x2pt']:
-                            shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
-                            shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
-                            fm = mm.add_prior_to_fm(fm, fiducials_dict, shear_bias_param_names, shear_bias_prior_values)
+                # ! add prior on shear and/or gal bias
+                if shear_bias_prior != None and probe in ['WLO', '3x2pt']:
+                    shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
+                    shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
+                    fm = mm.add_prior_to_fm(fm, fiducials_dict, shear_bias_param_names, shear_bias_prior_values)
 
-                        if gal_bias_perc_prior != None and probe_vinc in ['GCO', '3x2pt']:
-                            gal_bias_param_names = [f'b{(zi + 1):02d}_photo' for zi in range(zbins)]
+                if gal_bias_perc_prior != None and probe in ['GCO', '3x2pt']:
+                    gal_bias_param_names = [f'b{(zi + 1):02d}_photo' for zi in range(zbins)]
 
-                            # go from sigma_b / b_fid to sigma_b
-                            gal_bias_idxs = [param_names.index(gal_bias_param_name)
-                                             for gal_bias_param_name in gal_bias_param_names]
+                    # go from sigma_b / b_fid to sigma_b
+                    gal_bias_idxs = [param_names.index(gal_bias_param_name)
+                                     for gal_bias_param_name in gal_bias_param_names]
 
-                            warnings.warn('update the fiducial values to FS1!!!!')
-                            gal_bias_fid_values = np.array(list(fiducials_dict.values()))[gal_bias_idxs]
-                            gal_bias_prior_values = gal_bias_perc_prior * gal_bias_fid_values / 100
-                            fm = mm.add_prior_to_fm(fm, fiducials_dict, gal_bias_param_names, gal_bias_prior_values)
+                    warnings.warn('update the fiducial values to FS1!!!!')
+                    gal_bias_fid_values = np.array(list(fiducials_dict.values()))[gal_bias_idxs]
+                    gal_bias_prior_values = gal_bias_perc_prior * gal_bias_fid_values / 100
+                    fm = mm.add_prior_to_fm(fm, fiducials_dict, gal_bias_param_names, gal_bias_prior_values)
 
-                        # ! triangle plot
-                        if triangle_plot:
-                            if probe_vinc == '3x2pt' and go_or_gs == 'GS' and fix_shear_bias == False:
-                                # decide params to show in the triangle plot
-                                cosmo_param_names = list(fiducials_dict.keys())[:num_params_tokeep]
-                                shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
-                                params_tot_list = cosmo_param_names + shear_bias_param_names
+                # ! triangle plot
+                if triangle_plot:
+                    if probe == '3x2pt' and go_or_gs == 'GS' and fix_shear_bias == False:
+                        # decide params to show in the triangle plot
+                        cosmo_param_names = list(fiducials_dict.keys())[:num_params_tokeep]
+                        shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
+                        params_tot_list = cosmo_param_names + shear_bias_param_names
 
-                                trimmed_fid_dict = {param: fiducials_dict[param] for param in params_tot_list}
+                        trimmed_fid_dict = {param: fiducials_dict[param] for param in params_tot_list}
 
-                                # get the covariance matrix (careful on how you cut the FM!!)
-                                fm_idxs_tokeep = [list(fiducials_dict.keys()).index(param) for param in params_tot_list]
-                                cov = np.linalg.inv(fm)[fm_idxs_tokeep, :][:, fm_idxs_tokeep]
+                        # get the covariance matrix (careful on how you cut the FM!!)
+                        fm_idxs_tokeep = [list(fiducials_dict.keys()).index(param) for param in params_tot_list]
+                        cov = np.linalg.inv(fm)[fm_idxs_tokeep, :][:, fm_idxs_tokeep]
 
-                                plot_utils.contour_plot_chainconsumer(cov, trimmed_fid_dict)
+                        plot_utils.contour_plot_chainconsumer(cov, trimmed_fid_dict)
 
-                        # ! compute uncertainties from fm
-                        uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal',
-                                                           normalize=True,
-                                                           percent_units=True)[:num_params_tokeep]
+                # ! compute uncertainties from fm
+                uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal',
+                                                   normalize=True,
+                                                   percent_units=True)[:num_params_tokeep]
 
-                        # compute the FoM
-                        w0wa_idxs = param_names.index('w_0'), param_names.index('w_a')
-                        fom = mm.compute_FoM(fm, w0wa_idxs)
+                # compute the FoM
+                w0wa_idxs = param_names.index('w_0'), param_names.index('w_a')
+                fom = mm.compute_FoM(fm, w0wa_idxs)
 
-                        df_columns_names = string_columns + [param_name for param_name in fiducials_dict.keys()][
-                                                            :num_params_tokeep] + ['FoM']
+                df_columns_names = string_columns + [param_name for param_name in fiducials_dict.keys()][
+                                                    :num_params_tokeep] + ['FoM']
 
-                        # this is a list of lists just to have a 'row list' instead of a 'column list',
-                        # I still haven't figured out the problem, but in this way it works
-                        df_columns_values = [[probe_vinc, go_or_gs, fix_shear_bias, fix_gal_bias,
-                                              shear_bias_prior, gal_bias_perc_prior] +
-                                             uncert_fm.tolist() + [fom]]
+                # this is a list of lists just to have a 'row list' instead of a 'column list',
+                # I still haven't figured out the problem, but in this way it works
+                df_columns_values = [[probe, go_or_gs, fix_shear_bias, fix_gal_bias,
+                                      shear_bias_prior, gal_bias_perc_prior] +
+                                     uncert_fm.tolist() + [fom]]
 
-                        assert len(df_columns_names) == len(df_columns_values[0]), 'Wrong number of columns!'
+                assert len(df_columns_names) == len(df_columns_values[0]), 'Wrong number of columns!'
 
-                        fm_uncert_df_to_concat = pd.DataFrame(df_columns_values, columns=df_columns_names)
-                        fm_uncert_df = pd.concat([fm_uncert_df, fm_uncert_df_to_concat], ignore_index=True)
-                        fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
+                fm_uncert_df_to_concat = pd.DataFrame(df_columns_values, columns=df_columns_names)
+                fm_uncert_df = pd.concat([fm_uncert_df, fm_uncert_df_to_concat], ignore_index=True)
+                fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
 
 # ! percent difference
 df_gs = fm_uncert_df[fm_uncert_df["go_or_gs"] == "GS"]

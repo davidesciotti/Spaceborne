@@ -81,7 +81,7 @@ def bar_plot_old(uncert_gauss, uncert_SSC, difference):
 
 def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_label=None,
              second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=None,
-             include_fom=False, figsize=None):
+             include_fom=False, figsize=None, grey_bars=False, alpha=1):
     """
     data: usually the percent uncertainties, but could also be the percent difference
     """
@@ -93,8 +93,8 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
     marker_colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
     markers = markers[:no_cases]
     marker_colors = marker_colors[:no_cases]
-    alpha = 1
-    zorders = np.arange(no_cases)  # this is because I want to revert this in the case of superimposed bars
+    # zorders = np.arange(no_cases)  # this is because I want to revert this in the case of superimposed bars
+    zorders = np.arange(1, no_cases + 1)  # this is because I want to revert this in the case of superimposed bars
 
     # colors = cm.Paired(np.linspace(0, 1, data.shape[1]))
 
@@ -131,12 +131,20 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
     if figsize is None:
         figsize = mpl_cfg.mpl_rcParams_dict['figure.figsize']
 
+    if grey_bars:
+        bar_color = ['grey' for _ in range(no_cases)]
+    else:
+        bar_color = None
+
     if second_axis:
 
         # this check is quite obsolete...
         assert no_cases == 3, "data must have 3 rows to display the second axis"
 
         fig, ax = plt.subplots(figsize=figsize)
+        ax.grid()
+        ax.set_axisbelow(True)
+
         for bar_idx in range(no_cases - no_second_axis_bars):
             ax.bar(bar_centers[bar_idx, :], data[bar_idx, :], width=bar_width, edgecolor='grey',
                    label=label_list[bar_idx])
@@ -160,9 +168,13 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
 
     # elif not second_axis:
     plt.figure(figsize=figsize)
+    plt.grid(zorder=0)
+    plt.rcParams['axes.axisbelow'] = True
+
     for bar_idx in range(no_cases):
+        label=label_list[bar_idx] if not superimpose_bars else None
         plt.bar(bar_centers[bar_idx, :], data[bar_idx, :], width=bar_width, edgecolor='grey', alpha=alpha,
-                label=label_list[bar_idx], zorder=zorders[bar_idx])
+                label=label, zorder=zorders[bar_idx], color=bar_color)
         if show_markers:
             plt.scatter(bar_centers[bar_idx, :], data[bar_idx, :], color=marker_colors[bar_idx],
                         marker=markers[bar_idx], label=label_list[bar_idx], zorder=zorders[bar_idx])
@@ -172,6 +184,8 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
     plt.title(title)
     plt.legend()
     plt.show()
+
+    # pdb.set_trace()
 
 
 def triangle_plot(FM_GO, FM_GS, fiducials, title, param_names_label):

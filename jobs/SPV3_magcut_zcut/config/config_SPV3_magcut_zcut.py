@@ -20,8 +20,8 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/LiFEforS
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = False
-deriv_BNT_transform = False
+cov_BNT_transform = True
+deriv_BNT_transform = True
 
 cl_ell_cuts = False
 cov_ell_cuts = True
@@ -77,9 +77,9 @@ general_cfg = {
 
     'ell_cuts': ell_cuts,
     'which_cuts': 'Vincenzo',
-    'center_or_min': 'min',  # cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
+    # 'center_or_min': None,  # cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
     'cl_ell_cuts': cl_ell_cuts,
-    'ell_cuts_folder': f'{SPV3_folder}/ell_cuts',
+    'ell_cuts_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/ell_cuts',
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                          'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'kmax_h_over_Mpc_ref': 1.0,
@@ -99,6 +99,7 @@ general_cfg = {
     'idR': 1,
 
     'which_pk': 'HMCode2020',
+    'which_pk_list': ('HMCode2020', 'Bacco', 'EE2', 'TakaBird'),
     'cl_folder': f'{SPV3_folder}' + '/OutputFiles/DataVectors/Noiseless/{probe:s}/{which_pk:s}',
     'rl_folder': f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
                  f'Flagship_2/ResFunTabs/magcut_zcut_True',
@@ -171,7 +172,7 @@ covariance_cfg = {
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
 }
 if ell_cuts:
-    covariance_cfg['cov_filename'].replace('_{ndim:d}D', 'kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D')
+    covariance_cfg['cov_filename'] = covariance_cfg['cov_filename'].replace('_{ndim:d}D', 'kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D')
 
 Sijkl_cfg = {
     'wf_input_folder': f'{SPV3_folder}/InputFiles/InputRSD/notyetuploaded',
@@ -201,9 +202,7 @@ param_names_3x2pt = list(np.concatenate([param_names_dict[key] for key in param_
 
 # I cannot define the fiducial values here because I need to import the files for the galaxy bias
 
-ell_cuts_subfolder = f'{general_cfg["which_cuts"]}/ell_{general_cfg["center_or_min"]}'
-if not ell_cuts:
-    ell_cuts_subfolder = ''
+
 
 FM_txt_filename = covariance_cfg['cov_filename'].replace('covmat_', 'FM_').replace('_{ndim:d}D', '')
 FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_{which_cov:s}_{probe:s}_', 'FM_').replace('_{ndim:d}D',
@@ -229,7 +228,7 @@ FM_cfg = {
     'deriv_ell_cuts': deriv_ell_cuts,
 
     'fm_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}' +
-                 '/ell_cuts_{ell_cuts:s}' + f'/{ell_cuts_subfolder}',
+                 '/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}',
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,
 

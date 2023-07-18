@@ -96,7 +96,7 @@ def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, derivatives_prefix,
 
         # a check, if the derivative wrt the param is not in the folder at all
         if not any(f'{derivatives_prefix}{param_name}' in key for key in dC_dict_3D.keys()):
-            print(f'Derivative {derivatives_prefix}{param_name} not found; setting the corresponding entry to zero')
+            print(f'Derivative {derivatives_prefix}{param_name} not found; setting the corresponding FM entry to zero')
             no_derivative_counter += 1
         if no_derivative_counter == len(param_names):
             raise ImportError('No derivative found for any of the parameters in the input dictionary')

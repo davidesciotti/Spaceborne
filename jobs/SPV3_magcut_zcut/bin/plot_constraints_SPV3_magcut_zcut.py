@@ -37,7 +37,7 @@ fix_gal_bias = False
 fix_shear_bias = False  # this has to be an outer loop if you also want to vary the shear bias prior itself
 fix_dz = True
 include_fom = True
-fid_shear_bias_prior = 1e-4
+fid_shear_bias_prior = 5e-4
 shear_bias_prior = fid_shear_bias_prior
 gal_bias_perc_prior = None
 string_columns = ['probe', 'go_or_gs', 'BNT_transform', 'ell_cuts', 'which_cuts', 'center_or_min', 'kmax_h_over_Mpc',
@@ -113,12 +113,11 @@ for go_or_gs in ['GO', ]:
                             # with open('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/'
                             #           'fiducial_params_dict_for_FM.yml') as f:
                             #     fiducials_dict = yaml.safe_load(f)
-                            fiducials_dict = fm_dict[
-                                'fiducials_dict_flattened']  # TODO probably better with a yaml file...
+                            fiducials_dict = fm_dict['fiducials_dict_flattened']  # TODO probably better a yaml file...
 
                             assert fm.shape[0] == fm.shape[1], 'FM matrix is not square!'
-                            assert len(fiducials_dict) == fm.shape[
-                                0], 'FM matrix and fiducial parameters length do not match!'
+                            assert len(fiducials_dict) == fm.shape[0], 'FM matrix and fiducial parameters ' \
+                                                                       'length do not match!'
 
                             # fix some of the parameters (i.e., which columns to remove)
                             # if fix_curvature:

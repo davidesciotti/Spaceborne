@@ -246,7 +246,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
     for general_cfg['which_cuts'] in ['Vincenzo', ]:
         for general_cfg['center_or_min'] in ['center', 'min']:
             for general_cfg['which_pk'] in general_cfg['which_pk_list']:
-            # for general_cfg['which_pk'] in ['HMCode2020', ]:
+                # for general_cfg['which_pk'] in ['HMCode2020', ]:
 
                 warnings.warn('restore loop over which_pk')
 

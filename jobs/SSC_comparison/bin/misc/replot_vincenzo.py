@@ -95,7 +95,7 @@ def fig_6_and_7(probe, probe_label, pedix, fmt='%.2f', fig_number=6):
 
 
 # ! settings definition
-which_fig = None
+which_fig = 'fig_9'
 dpi = 500
 pic_format = 'pdf'
 panel_titles_fontsize = 17
@@ -276,46 +276,49 @@ elif which_fig == 'fig_9':
 
     ###################### ! fig. 9 ######################
 
-    lims = [[1, 8], [1, 15]]
+    lims_sigmam = [0.1, 10]
+    lims_epsb = [0.5, 3.5]
     z_values = np.arange(0.8, 1.1, 0.05)
 
-    fig, axs = plt.subplots(1, 2, constrained_layout=True, figsize=(15, 7.5))
+    fig, axs = plt.subplots(1, 1, constrained_layout=True, figsize=(7.5, 7.5))
+    case = 'Opt'
 
     panel_idx = 0
     # for case, lim in zip(cases, lims):
-    for case in cases:
-        tab = np.genfromtxt(job_path / f'input/replot_vincenzo/RatioFoM-3x2pt-{case}-{zbins}.dat')
-        tab[:, 0] = 10 ** tab[:, 0]
-        tab[:, 1] = 10 ** tab[:, 1]
+    # for case in cases:
 
-        # take the epsilon values
-        epsb_values = np.unique(tab[:, 0])
-        epsm_values = np.unique(tab[:, 1])
-        n_points = epsm_values.size
+    tab = np.genfromtxt(job_path / f'input/replot_vincenzo/RatioFoM-3x2pt-{case}-{zbins}.dat')
+    tab[:, 0] = 10 ** tab[:, 0]
+    tab[:, 1] = 10 ** tab[:, 1]
 
-        # produce grid and pass Z values
-        X = epsb_values
-        Y = epsm_values
-        X, Y = np.meshgrid(X, Y)
-        Z = np.reshape(tab[:, 3], (n_points, n_points)).T  # XXX careful of the tab index!! it's GS/ref
+    # take the epsilon values
+    epsb_values = np.unique(tab[:, 0])
+    epsm_values = np.unique(tab[:, 1])
+    n_points = epsm_values.size
 
-        # levels of contour plot (set a high xorder to have line on top of legend)
-        CS = axs[panel_idx].contour(X, Y, Z, levels=z_values, cmap='plasma', zorder=6)
+    # produce grid and pass Z values
+    X = epsb_values
+    Y = epsm_values
+    X, Y = np.meshgrid(X, Y)
+    Z = np.reshape(tab[:, 3], (n_points, n_points)).T  # XXX careful of the tab index!! it's GS/ref
 
-        # plot adjustments
-        axs[panel_idx].set_aspect('equal', 'box')
-        axs[panel_idx].set_xlabel('$\\epsilon_b \, (\%)$')
-        axs[panel_idx].set_ylabel('$\\epsilon_m \, (\%)$')
-        # axs[panel_idx].set_xlim(lim[0], lim[1])
-        # axs[panel_idx].set_ylim(lim[0], lim[1])
-        axs[panel_idx].grid()
+    # levels of contour plot (set a high xorder to have line on top of legend)
+    CS = axs.contour(X, Y, Z, levels=z_values, cmap='plasma', zorder=6)
 
-        # legend: from source (see the comment): https://stackoverflow.com/questions/64523051/legend-is-empty-for-contour-plot-is-this-by-design
-        h, _ = CS.legend_elements()
-        l = ['${\\rm FoM_{GS}} \, / \, {\\rm FoM}_{\\rm ref}}$ = ' + f'{a:.2f}' for a in CS.levels]
-        axs[panel_idx].legend(h, l)
+    # plot adjustments
+    axs.set_xlabel('$\\epsilon_b \, (\%)$')
+    axs.set_ylabel('$\\sigma_m \, \\times 10^{4}$')
+    # axs.set_xlim(lims_epsb[0], lims_epsb[1])
+    # axs.set_ylim(lims_sigmam[0], lims_sigmam[1])
+    # axs.set_aspect('equal', 'box')
+    axs.grid()
 
-        panel_idx += 1
+    # legend: from source (see the comment): https://stackoverflow.com/questions/64523051/legend-is-empty-for-contour-plot-is-this-by-design
+    h, _ = CS.legend_elements()
+    l = ['${\\rm FoM_{GS}} \, / \, {\\rm FoM}_{\\rm ref}}$ = ' + f'{a:.2f}' for a in CS.levels]
+    axs.legend(h, l)
+
+    panel_idx += 1
 
     plt.savefig(job_path / f'{output_plots_fldr}/fig_9_replot.{pic_format}', dpi=dpi)
 

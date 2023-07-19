@@ -56,7 +56,7 @@ triangle_plot = False
 plot_ratio_vs_zbins = False
 plot_fom_vs_zbins = False
 plot_fom_vs_eps_b = False
-plot_prior_contours = False
+plot_prior_contours = True
 bar_plot_nuisance = False
 plot_response = False
 plot_ISTF_kernels = False
@@ -323,6 +323,7 @@ for probe in probes:
                     uncert_ratio_dict[f'{probe}'][f'zbins{zbins:02}'][EP_or_ED][pes_opt], fom['GS'] / fom['G'])
 
 if bar_plot_cosmo:
+    data = np.array(data)
 
     for probe in probes:
         for zbins in zbins_list:

@@ -14,8 +14,8 @@ import numpy as np
 
 matplotlib.use('Qt5Agg')
 
-project_path = Path.cwd().parent.parent.parent.parent
-job_path = Path.cwd().parent.parent
+project_path = Path.cwd().parent.parent.parent
+job_path = Path.cwd().parent
 
 sys.path.append(str(project_path / 'lib'))
 import my_module as mm
@@ -276,7 +276,8 @@ elif which_fig == 'fig_9':
 
     ###################### ! fig. 9 ######################
 
-    Nz = 13
+    Nz = 10
+    cases = ['Pes', 'Opt']
     lims = [[1, 8], [1, 15]]
     z_values = np.arange(0.8, 1.1, 0.05)
 

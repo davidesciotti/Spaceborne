@@ -447,7 +447,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                     cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, BNT_matrix, 'L', 'L')
                     cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, BNT_matrix, 'L', 'L')
                     cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5d, BNT_matrix)
-                    warnings.warn('you should probebly BNT-transform the responses too!')
+                    warnings.warn('you should probably BNT-transform the responses too!')
 
                 # ! cut datavectors and responses in the pessimistic case; be carful of WA, because it does not start from ell_min
                 if ell_max_WL == 1500:

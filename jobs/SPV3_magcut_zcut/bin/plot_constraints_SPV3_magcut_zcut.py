@@ -40,8 +40,8 @@ include_fom = True
 fid_shear_bias_prior = 5e-4
 shear_bias_prior = fid_shear_bias_prior
 gal_bias_perc_prior = None
-string_columns = ['probe', 'go_or_gs', 'BNT_transform', 'ell_cuts', 'which_cuts', 'center_or_min', 'kmax_h_over_Mpc',
-                  'whose_FM']
+string_columns = ['probe', 'go_or_gs', 'whose_FM', 'BNT_transform', 'ell_cuts', 'which_cuts', 'center_or_min', 'kmax_h_over_Mpc',
+                  ]
 triangle_plot = False
 use_Wadd = False  # the difference is extremely small
 which_pk = 'HMCode2020'
@@ -106,6 +106,7 @@ for go_or_gs in ['GO', ]:
                                 fm = np.genfromtxt(f'{fm_path}/{fm_name}')
 
                             if probe == '3x2pt' and use_Wadd:
+                                assert False, 'import of Wadd not implemented for Vincenzos FM yet'
                                 fm_wa = np.genfromtxt(
                                     f'{fm_path.replace("3x2pt", "WA")}/{fm_name.replace("3x2pt", "WA")}')
                                 fm += fm_wa
@@ -196,8 +197,8 @@ for go_or_gs in ['GO', ]:
                             # this is a list of lists just to have a 'row list' instead of a 'column list',
                             # I still haven't figured out the problem, but in this way it works
                             df_columns_values = [
-                                [probe, go_or_gs, BNT_transform, ell_cuts, which_cuts, center_or_min, kmax_h_over_Mpc,
-                                 whose_FM] +
+                                [probe, go_or_gs, whose_FM, BNT_transform, ell_cuts, which_cuts, center_or_min, kmax_h_over_Mpc,
+                                 ] +
                                 uncert_fm.tolist() + [fom]]
 
                             assert len(df_columns_names) == len(df_columns_values[0]), 'Wrong number of columns!'
@@ -207,14 +208,16 @@ for go_or_gs in ['GO', ]:
                             fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
 
 # ! percent difference between two cases (usually, GO and GS)
-key_to_compare = 'BNT_transform'
-value_A = True
-value_B = False
+key_to_compare = 'whose_FM'
+value_A = 'davide'
+value_B = 'vincenzo'
 param_toplot = 'FoM'
 probe_toplot = '3x2pt'
-whose_FM = 'davide'
+
 center_or_min = 'center'
 ell_cuts = True
+BNT_transform = False
+go_or_gs = 'GO'
 
 df_A = fm_uncert_df[fm_uncert_df[key_to_compare] == value_A]
 df_B = fm_uncert_df[fm_uncert_df[key_to_compare] == value_B]
@@ -228,9 +231,14 @@ fm_uncert_df = pd.concat([fm_uncert_df, perc_diff_df], axis=0, ignore_index=True
 fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
 
 # select cases to show in bar plot
-fm_uncert_df_toplot = fm_uncert_df[(fm_uncert_df['probe'] == probe_toplot) &
-                                   (fm_uncert_df['go_or_gs'] == 'GO') &
-                                   (fm_uncert_df['whose_FM'] == whose_FM) &
+# fm_uncert_df_toplot = fm_uncert_df[(fm_uncert_df['probe'] == probe_toplot) &
+#                                    (fm_uncert_df['go_or_gs'] == 'GO') &
+#                                    (fm_uncert_df['whose_FM'] == whose_FM) &
+#                                    (fm_uncert_df['center_or_min'] == center_or_min) &
+#                                    (fm_uncert_df['ell_cuts'] == ell_cuts)
+#                                    ]
+fm_uncert_df_toplot = fm_uncert_df[(fm_uncert_df['BNT_transform'] == BNT_transform) &
+                                   (fm_uncert_df['go_or_gs'] == go_or_gs) &
                                    (fm_uncert_df['center_or_min'] == center_or_min) &
                                    (fm_uncert_df['ell_cuts'] == ell_cuts)
                                    ]

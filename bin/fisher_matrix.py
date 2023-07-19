@@ -250,7 +250,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
 
     if FM_cfg['derivatives_BNT_transform']:
 
-        assert covariance_cfg['cov_BNT_transform'], 'you should BNT transform the covariance as well'
+        # assert covariance_cfg['cov_BNT_transform'], 'you should BNT transform the covariance as well'
         assert BNT_matrix is not None, 'you should provide a BNT matrix'
 
         for param_idx in range(len(param_names_3x2pt)):

@@ -30,7 +30,7 @@ import wf_cl_lib
 ###############################################################################
 
 
-def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix=None):
+def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix):
     """
     This code computes the Gaussian-only, SSC-only and Gaussian+SSC
     covariance matrices, for different ordering options
@@ -160,11 +160,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     if general_cfg['cl_BNT_transform']:
         print('BNT-transforming the noise spectra...')
-        assert False, 'finish this part of the code! I simply have to transform the noise spectra as well.' \
-                      'Maybe this is also a good place to transform the cls?'
         noise_LL_5D = cl_preprocessing.cl_BNT_transform(noise_LL_5D[0, 0, ...], BNT_matrix, 'L', 'L')[None, None, ...]
-        cl_3x2pt_BNT_5D = cl_preprocessing.cl_BNT_transform_3x2pt(cl_3x2pt_5D, BNT_matrix)
-        noise_3x2pt_BNT_5D = cl_preprocessing.cl_BNT_transform_3x2pt(noise_3x2pt_5D, BNT_matrix)
+        noise_WA_5D = cl_preprocessing.cl_BNT_transform(noise_WA_5D[0, 0, ...], BNT_matrix, 'L', 'L')[None, None, ...]
+        noise_3x2pt_5D = cl_preprocessing.cl_BNT_transform_3x2pt(noise_3x2pt_5D, BNT_matrix)
 
     start = time.perf_counter()
     cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]

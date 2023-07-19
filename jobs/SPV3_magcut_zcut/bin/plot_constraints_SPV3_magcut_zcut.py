@@ -72,7 +72,7 @@ fm_uncert_df = pd.DataFrame()
 for go_or_gs in ['GO', ]:
     for probe in probes:
         for BNT_transform in [True, False]:
-            for ell_cuts in [True, ]:
+            for ell_cuts in [True, False]:
                 for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                     for whose_FM in whose_FM_list:
                         for center_or_min in ['center', 'min']:
@@ -83,13 +83,19 @@ for go_or_gs in ['GO', ]:
 
                             if whose_FM == 'davide':
                                 fm_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
-                                          f'output/Flagship_2/FM/BNT_{BNT_transform}/ell_cuts_{ell_cuts}/{which_cuts}/ell_{center_or_min}'
+                                          f'output/Flagship_2/FM/BNT_{BNT_transform}/ell_cuts_{ell_cuts}'
                                 fm_name = f'FM_{go_or_gs}_{probe}_zbins{EP_or_ED}{zbins}_' \
-                                          f'ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_{specs_str}_pk{which_pk}kmaxhoverMpc{kmax_h_over_Mpc:.03f}.pickle'
+                                          f'ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_{specs_str}_pk{which_pk}.pickle'
+
+                                if ell_cuts:
+                                    fm_path += f'/{which_cuts}/ell_{center_or_min}'
+                                    fm_name = fm_name.replace(f'.pickle', f'kmaxhoverMpc{kmax_h_over_Mpc:.03f}.pickle')
+
                                 fm_pickle_name = fm_name.replace('.txt', '.pickle').replace(f'_{go_or_gs}_{probe}', '')
                                 fm_dict = mm.load_pickle(f'{fm_path}/{fm_pickle_name}')
 
                                 fm = fm_dict[f'FM_{probe}_{go_or_gs}']
+
                             elif whose_FM == 'vincenzo':
 
                                 fm_path = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/' \
@@ -208,7 +214,8 @@ value_B = False
 param_toplot = 'FoM'
 probe_toplot = '3x2pt'
 whose_FM = 'davide'
-center_or_min = 'min'
+center_or_min = 'center'
+ell_cuts = True
 
 df_A = fm_uncert_df[fm_uncert_df[key_to_compare] == value_A]
 df_B = fm_uncert_df[fm_uncert_df[key_to_compare] == value_B]
@@ -225,7 +232,8 @@ fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
 fm_uncert_df_toplot = fm_uncert_df[(fm_uncert_df['probe'] == probe_toplot) &
                                    (fm_uncert_df['go_or_gs'] == 'GO') &
                                    (fm_uncert_df['whose_FM'] == whose_FM) &
-                                   (fm_uncert_df['center_or_min'] == center_or_min)
+                                   (fm_uncert_df['center_or_min'] == center_or_min) &
+                                   (fm_uncert_df['ell_cuts'] == ell_cuts)
                                    ]
 uncert_A = fm_uncert_df_toplot[fm_uncert_df_toplot[key_to_compare] == value_A][param_toplot].values
 uncert_B = fm_uncert_df_toplot[fm_uncert_df_toplot[key_to_compare] == value_B][param_toplot].values
@@ -241,7 +249,7 @@ plt.xlabel(r'$k_{\rm max}$ [h/Mpc]')
 plt.ylabel(param_toplot)
 plt.legend()
 
-assert False
+assert False, 'stop here'
 
 data = fm_uncert_df_toplot.iloc[:3, len(string_columns):].values
 label_list = list(fm_uncert_df_toplot['probe'].values)

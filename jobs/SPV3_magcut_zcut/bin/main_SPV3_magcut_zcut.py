@@ -61,7 +61,7 @@ start_time = time.perf_counter()
 ###############################################################################
 
 def load_ell_cuts(kmax_h_over_Mpc):
-    """loads ell_cut valeus, rescales them and load into a dictionary"""
+    """loads ell_cut values, rescales them and load into a dictionary"""
     if kmax_h_over_Mpc is None:
         kmax_h_over_Mpc = general_cfg['kmax_h_over_Mpc_ref']
 
@@ -123,13 +123,14 @@ def cl_ell_cut_wrap(ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_
     if not general_cfg['cl_ell_cuts']:
         return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
 
-    raise Exception('I decided to implement the cuts in 1dim, this function should not be used')
+    warnings.warn('restore this?')
+    # raise Exception('I decided to implement the cuts in 1dim, this function should not be used')
 
     print('Performing the cl ell cuts...')
 
-    cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_dict['ell_WL'], ell_cuts_dict['WL'])
-    cl_wa_3d = cl_utils.cl_ell_cut(cl_wa_3d, ell_dict['ell_WA'], ell_cuts_dict['WL'])
-    cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_dict['ell_GC'], ell_cuts_dict['GC'])
+    cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_dict['ell_WL'], ell_cuts_dict['LL'])
+    cl_wa_3d = cl_utils.cl_ell_cut(cl_wa_3d, ell_dict['ell_WA'], ell_cuts_dict['LL'])
+    cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_dict['ell_GC'], ell_cuts_dict['GG'])
     cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt'])
 
     return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
@@ -304,7 +305,8 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                 # compute ell and delta ell values in the reference (optimistic) case
                 ell_WL_nbl32, delta_l_WL_nbl32, ell_edges_WL_nbl32 = ell_utils.compute_ells(general_cfg['nbl_WL_opt'],
                                                                                             general_cfg['ell_min'],
-                                                                                            general_cfg['ell_max_WL_opt'],
+                                                                                            general_cfg[
+                                                                                                'ell_max_WL_opt'],
                                                                                             recipe='ISTF',
                                                                                             output_ell_bin_edges=True)
 
@@ -355,7 +357,8 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                         'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
 
                 # this is just to make the .format() more compact
-                variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_lens, 'zcut_lens': zcut_lens,
+                variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_lens,
+                                  'zcut_lens': zcut_lens,
                                   'magcut_source': magcut_source, 'zcut_source': zcut_source, 'zmax': zmax,
                                   'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_XC': ell_max_XC,
                                   'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
@@ -379,13 +382,15 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                 n_of_z = n_of_z[:, 1:]
 
                 # some check on the input nz files
-                assert np.all(covariance_cfg['ng'] < 5), 'ng values are likely < 5 *per bin*; this is just a rough check'
+                assert np.all(
+                    covariance_cfg['ng'] < 5), 'ng values are likely < 5 *per bin*; this is just a rough check'
                 assert np.all(covariance_cfg['ng'] > 0), 'ng values must be positive'
                 assert np.all(z_center_values > 0), 'z_center values must be positive'
                 assert np.all(z_center_values < 3), 'z_center values are likely < 3; this is just a rough check'
 
-                print('Computing BNT matrix...')
-                BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z, plot_nz=True)
+                start_time = time.perf_counter()
+                BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z, plot_nz=False)
+                print(f'BNT_matrix computed in {time.perf_counter() - start_time:.2f} seconds')
 
                 # ! import and reshape datavectors (cl) and response functions (rl)
                 cl_fld = general_cfg['cl_folder']
@@ -449,7 +454,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                     warnings.warn(
                         'you are cutting the datavectors and responses in the pessimistic case, but is this compatible '
                         'with the redshift-dependent ell cuts?')
-                    assert 1 > 2, 'you should check this'
+                    assert False, 'you should check this'
                     cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
                     cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
                     cl_wa_3d = cl_ll_3d[nbl_GC:nbl_WL, :, :]
@@ -480,8 +485,6 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                     'LG': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
                     '3x2pt': get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict)
                 }
-
-                # assert False, 'check ell_dict'
 
                 # ! 3d cl ell cuts (*after* BNT!!)
                 cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
@@ -530,9 +533,10 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                                'cl_BNT_transform'] is False, 'for SSC, at the moment the BNT transform should not be ' \
                                                              'applied to the cls, but to the covariance matrix (how ' \
                                                              'should we deal with the responses in the former case?)'
-                    Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(flagship_version=general_cfg['flagship_version'],
-                                                                        nz=nz, IA_flag=Sijkl_cfg['has_IA'],
-                                                                        **variable_specs)
+                    Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(
+                        flagship_version=general_cfg['flagship_version'],
+                        nz=nz, IA_flag=Sijkl_cfg['has_IA'],
+                        **variable_specs)
 
                     # if Sijkl exists, load it; otherwise, compute it and save it
                     if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
@@ -606,7 +610,8 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                 # check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
                 der_prefix = FM_cfg['derivatives_prefix']
                 vinc_filenames = mm.get_filenames_in_folder(derivatives_folder)
-                vinc_filenames = [vinc_filename for vinc_filename in vinc_filenames if vinc_filename.startswith(der_prefix)]
+                vinc_filenames = [vinc_filename for vinc_filename in vinc_filenames if
+                                  vinc_filename.startswith(der_prefix)]
 
                 # perform some checks on the filenames before trimming them
                 for vinc_filename in vinc_filenames:
@@ -628,7 +633,8 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                 # check whether the 2 lists match and print the elements that are in one list but not in the other
                 param_names_not_in_my_list = [vinc_param_name for vinc_param_name in vinc_param_names if
                                               vinc_param_name not in my_sorted_param_names]
-                param_names_not_in_vinc_list = [my_sorted_param_name for my_sorted_param_name in my_sorted_param_names if
+                param_names_not_in_vinc_list = [my_sorted_param_name for my_sorted_param_name in my_sorted_param_names
+                                                if
                                                 my_sorted_param_name not in vinc_param_names]
                 try:
                     assert np.all(vinc_param_names == my_sorted_param_names), \
@@ -640,7 +646,8 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                         print('the derivative w.r.t logT_AGN is missing in the input folder but '
                               'the corresponding FM is still set to 0; moving on')
                     else:
-                        raise AssertionError('there is something wrong with the parameter names in the derivatives folder')
+                        raise AssertionError(
+                            'there is something wrong with the parameter names in the derivatives folder')
 
                 if FM_cfg['load_preprocess_derivatives']:
                     dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_LL_4D.npy')
@@ -668,7 +675,8 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                         elif 'WLA' in key:
                             dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
                         elif '3x2pt' in key:
-                            dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt, zbins)
+                            dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt,
+                                                                              zbins)
 
                     # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
                     dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
@@ -681,7 +689,8 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                     del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
                     gc.collect()
 
-                    print('derivatives reshaped in 4D arrays in {:.2f} seconds'.format(time.perf_counter() - start_time))
+                    print(
+                        'derivatives reshaped in 4D arrays in {:.2f} seconds'.format(time.perf_counter() - start_time))
 
                     # save these so they can simply be imported!
                     np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_LL_4D.npy', dC_LL_4D)
@@ -703,13 +712,17 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                                               BNT_matrix)
                 FM_dict['param_names_dict'] = param_names_dict
                 FM_dict['fiducial_values_dict'] = fiducials_dict
-                FM_dict['fiducials_dict_flattened'] = fiducials_dict_flattened  # TODO probably better with a yaml file...
+                FM_dict[
+                    'fiducials_dict_flattened'] = fiducials_dict_flattened  # TODO probably better with a yaml file...
 
                 fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
                                                        which_cuts=general_cfg['which_cuts'],
                                                        center_or_min=general_cfg['center_or_min'])
+                if not general_cfg['ell_cuts']:
+                    fm_folder = fm_folder.replace(f'/{which_cuts}/ell_{center_or_min}', '')
 
-                FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'],
+                FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, FM_cfg['save_FM_txt'],
+                                 FM_cfg['save_FM_dict'],
                                  **variable_specs)
 
                 if FM_cfg['test_against_benchmarks']:

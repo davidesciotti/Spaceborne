@@ -20,8 +20,8 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/LiFEforS
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = True
-deriv_BNT_transform = True
+cov_BNT_transform = False
+deriv_BNT_transform = False
 
 cl_ell_cuts = False
 cov_ell_cuts = True
@@ -86,7 +86,8 @@ general_cfg = {
     # 'kmax_list_1_over_Mpc': np.array((0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00)),
     'kmax_h_over_Mpc_list': np.array([0.37313433, 0.74626866, 1.11940299, 1.49253731, 1.86567164,
                                       2.23880597, 2.6119403, 2.98507463, 4.47761194,
-                                      7.46268657]),
+                                      7.46268657]),  # , 14.92537313]),
+
 
     'BNT_matrix_path': f'{SPV3_folder}/BNT_matrix',
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
@@ -172,7 +173,8 @@ covariance_cfg = {
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
 }
 if ell_cuts:
-    covariance_cfg['cov_filename'] = covariance_cfg['cov_filename'].replace('_{ndim:d}D', 'kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D')
+    covariance_cfg['cov_filename'] = covariance_cfg['cov_filename'].replace('_{ndim:d}D',
+                                                                            'kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D')
 
 Sijkl_cfg = {
     'wf_input_folder': f'{SPV3_folder}/InputFiles/InputRSD/notyetuploaded',
@@ -203,10 +205,10 @@ param_names_3x2pt = list(np.concatenate([param_names_dict[key] for key in param_
 # I cannot define the fiducial values here because I need to import the files for the galaxy bias
 
 
-
 FM_txt_filename = covariance_cfg['cov_filename'].replace('covmat_', 'FM_').replace('_{ndim:d}D', '')
-FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_{which_cov:s}_{probe:s}_', 'FM_').replace('_{ndim:d}D',
-                                                                                                           '')
+FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_{which_cov:s}_{probe:s}_', 'FM_').replace(
+    '_{ndim:d}D',
+    '')
 deriv_filename = covariance_cfg['cov_filename'].replace('covmat_', 'dDVd')
 FM_cfg = {
     'compute_FM': True,

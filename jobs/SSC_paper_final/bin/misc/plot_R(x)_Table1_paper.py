@@ -14,7 +14,6 @@ colors = ['tab:blue', 'tab:orange', 'tab:green']
 # WL, Pessismistic WL, Optimistic
 WL_Pes = (np.asarray((2.95, 1.01, 1.80, 1.34, 1.10, 1.04, 2.22, 0.48)) - 1)*100
 WL_Opt = (np.asarray((2.81, 1.00, 1.61, 1.18, 1.10, 1.00, 2.17, 0.41)) - 1)*100
-
 # GCph, Pessismistic GCph, Optimistic
 GCph_Pes = (np.asarray((1.01, 1.01, 1.02, 1.03, 1.00, 1.01, 1.00, 0.96)) - 1)*100
 GCph_Opt = (np.asarray((1.04, 1.03, 1.12, 1.15, 1.00, 1.03, 1.04, 0.87)) - 1)*100
@@ -33,5 +32,5 @@ plt.ylabel('$(\\sigma_{GS}/\\sigma_{GO} - 1) \\times 100$')
 
 plt.grid()
 plt.legend()
-plt.tight_layout()
+# plt.tight_layout()
 

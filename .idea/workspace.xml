@@ -5,9 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="bc90b328-d3dc-49f6-9263-d66cfee42111" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/jobs/SSC_paper_final/bin/plot_paper_constriants_updated_nb.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_paper_final/bin/check_paper_bal_bias_fiducials.py" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/SSC_paper_final/bin/check_paper_gal_bias_fiducials.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/SSC_paper_final/bin/misc/plot_R(x)_Table1_paper.py" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/SSC_paper_final/bin/misc/plot_R(x)_Table1_paper.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/jobs/SSC_paper_final/bin/plot_constraints_updated.py" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/SSC_paper_final/bin/plot_constraints_updated.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />

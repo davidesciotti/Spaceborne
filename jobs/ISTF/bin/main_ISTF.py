@@ -32,6 +32,7 @@ import cl_preprocessing as cl_utils
 import compute_Sijkl as Sijkl_utils
 import covariance as covmat_utils
 import fisher_matrix as FM_utils
+import plots_FM_running as plot_utils
 import check_specs
 
 # job configuration and modules
@@ -180,7 +181,6 @@ rl_dict_3D['rl_3x2pt_5D'] = cl_utils.build_3x2pt_datavector_5D(rl_LLfor3x2pt_3D,
 if not covariance_cfg['compute_covmat']:
     raise KeyboardInterrupt('Fisher matrix computation is set to False; exiting')
 
-
 # ! compute or load Sijkl
 # if Sijkl exists, load it; otherwise, compute it and save it
 Sijkl_folder = Sijkl_cfg['Sijkl_folder']
@@ -217,7 +217,7 @@ else:
 
 # ! compute covariance matrix
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                    ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl)
+                                    ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl, BNT_matrix=None)
 # ! save and test against benchmarks
 cov_folder = covariance_cfg["cov_folder"].format(SSC_code=covariance_cfg['SSC_code'], **variable_specs)
 covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
@@ -312,7 +312,8 @@ gc.collect()
 
 # ! save and test
 fm_folder = FM_cfg["fm_folder"].format(SSC_code=covariance_cfg['SSC_code'])
-FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, save_txt=FM_cfg['save_FM_txt'], save_dict=FM_cfg['save_FM_dict'],
+FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=FM_cfg['save_FM_txt'],
+                 save_dict=FM_cfg['save_FM_dict'],
                  **variable_specs)
 
 # ! unit test: check that the outputs have not changed
@@ -325,9 +326,6 @@ nparams_toplot = 7
 uncert_dict = {}
 masked_FM_dict = {}
 for key in list(FM_dict.keys()):
-
-    print(key)
-
     if key not in ['param_names_dict', 'fiducial_values_dict']:
         masked_FM_dict[key], param_names_list, fiducials_list = mm.mask_FM(FM_dict[key], FM_dict['param_names_dict'],
                                                                            FM_dict['fiducial_values_dict'],
@@ -341,31 +339,29 @@ for key in list(FM_dict.keys()):
                                                fiducials=fiducials_list,
                                                which_uncertainty='marginal', normalize=True)[:nparams_toplot]
 
-FM_3x2pt_GO, param_names_list, fiducials_list = mm.mask_FM(FM_dict['FM_3x2pt_GO'], FM_dict['param_names_dict'],
-                                                           FM_dict['fiducial_values_dict'],
-                                                           params_tofix_dict={})
-FM_3x2pt_GS, _, _ = mm.mask_FM(FM_dict['FM_3x2pt_GS'], FM_dict['param_names_dict'],
-                                                           FM_dict['fiducial_values_dict'],
-                                                           params_tofix_dict={})
-
-FM_test_GO = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
-                        '/SSC_comparison/output/FM/FM_3x2pt_GO_lmaxXC3000_nbl30.txt')
-FM_test_GS = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
-                        '/SSC_comparison/output/FM/FM_3x2pt_GS_lmaxXC3000_nbl30.txt')
-uncert_FM_GO_test = mm.uncertainties_FM(FM_test_GO, FM_test_GO.shape[0], fiducials=fiducials_list, which_uncertainty='marginal',
-                                     normalize=True)[:nparams_toplot]
-uncert_FM_GS_test = mm.uncertainties_FM(FM_test_GS, FM_test_GS.shape[0], fiducials=fiducials_list, which_uncertainty='marginal',
-                                     normalize=True)[:nparams_toplot]
+FM_test_GO = np.genfromtxt(
+    '/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
+    '/SSC_comparison/output/FM/FM_3x2pt_GO_lmaxXC3000_nbl30.txt')
+FM_test_GS = np.genfromtxt(
+    '/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
+    '/SSC_comparison/output/FM/FM_3x2pt_GS_lmaxXC3000_nbl30.txt')
+uncert_FM_GO_test = mm.uncertainties_FM(FM_test_GO, FM_test_GO.shape[0], fiducials=fiducials_list,
+                                        which_uncertainty='marginal',
+                                        normalize=True)[:nparams_toplot]
+uncert_FM_GS_test = mm.uncertainties_FM(FM_test_GS, FM_test_GS.shape[0], fiducials=fiducials_list,
+                                        which_uncertainty='marginal',
+                                        normalize=True)[:nparams_toplot]
 ###############
-# # add the percent differences and/or rations to the dictionary
-# to_compare_A = uncert_dict['FM_PySSC_GS'] - uncert_dict['FM_PySSC_GO']
-# to_compare_B = uncert_dict['FM_PyCCL_GS'] - uncert_dict['FM_PyCCL_GO']
-# uncert_dict['abs(percent_diff_GS) wrt mean'] = np.abs(diff_funct(to_compare_A, to_compare_B))
-# # uncert_dict['percent_diff_GS'] = diff_funct(uncert_dict['FM_PyCCL_GS'], uncert_dict['FM_PyCCL_GO'])
-#
-# assert np.array_equal(uncert_dict['FM_PySSC_GO'], uncert_dict['FM_PyCCL_GO']), \
-#     'the GO uncertainties must be the same, I am only changing the SSC code!'
-#
+# add the percent differences and/or ratios to the dictionary
+to_compare_A = 'FM_WL_GS'
+to_compare_B = 'FM_WL_GO'
+uncert_dict['perc_diff'] = mm.percent_diff(uncert_dict[to_compare_A], uncert_dict[to_compare_B])
+
+if 'FM_PySSC_GO' in uncert_dict.keys() and 'FM_PyCCL_GO' in uncert_dict.keys():
+    # just a check, to be performed only if I am actually using PyCCL as well
+    assert np.array_equal(uncert_dict['FM_PySSC_GO'], uncert_dict['FM_PyCCL_GO']), \
+        'the GO uncertainties must be the same, I am only changing the SSC code!'
+
 # silent check against IST:F (which does not exist for GC alone):
 for probe in ['WL', '3x2pt']:
     uncert_dict['ISTF'] = ISTF_fid.forecasts[f'{probe}_opt_w0waCDM_flat']
@@ -373,27 +369,24 @@ for probe in ['WL', '3x2pt']:
         assert np.allclose(uncert_dict['ISTF'], uncert_dict[f'FM_{probe}_GO'][:nparams_toplot], atol=0, rtol=5e-2)
     except AssertionError:
         f'IST:F and G are not consistent for probe {probe}! Remember that you are checking against the optimistic case'
-        np.set_printoptions(precision=3)
-        print('ISTF:\t', uncert_dict['ISTF'])
-        print('Dark:\t', uncert_dict[f'FM_{probe}_GO'][:nparams_toplot])
+        np.set_printoptions(precision=2)
+        print('ISTF GO:\t', uncert_dict['ISTF'])
+        print('Dark GO:\t', uncert_dict[f'FM_{probe}_GO'][:nparams_toplot])
         print('Dark GS:\t', uncert_dict[f'FM_{probe}_GS'][:nparams_toplot])
 
 df = pd.DataFrame(uncert_dict)
 
 # # transform dict. into an array
-cases_to_plot = ('FM_3x2pt_GO',)
+cases_to_plot = (to_compare_A, to_compare_B, 'perc_diff')
 uncert_array = []
 for case in cases_to_plot:
     uncert_array.append(uncert_dict[case])
 uncert_array = np.asarray(uncert_array)
 
-# lmax = 3000
-# title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
-# plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
-#                     param_names_label=param_names_list[:nparams_toplot], bar_width=0.12)
-#
-# diff_FM = diff_funct(FM_PySSC_GS, FM_PyCCL_GS)
-# mm.matshow(diff_FM, title=f'percent difference wrt mean between PySSC and PyCCL FMs {probe}, {EP_or_ED}{zbins:02}')
+lmax = 3000
+title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
+plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
+                    param_names_label=param_names_list[:nparams_toplot], bar_width=0.12)
 
 if FM_cfg['test_against_benchmarks']:
     mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')

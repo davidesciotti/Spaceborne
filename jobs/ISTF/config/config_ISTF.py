@@ -123,6 +123,7 @@ covariance_cfg = {
     'cov_ell_cuts': cov_ell_cuts,
 
     'compute_covmat': True,
+    'compute_SSC': True,
     'compute_cov_6D': False,
 
     'save_cov': True,

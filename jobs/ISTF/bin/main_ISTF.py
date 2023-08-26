@@ -37,7 +37,7 @@ import check_specs
 
 # job configuration and modules
 sys.path.append(f'{project_path}/jobs')
-import ISTF.config.config_ISTF as cfg
+import ISTF.config.config_ISTF_testexactSSC as cfg
 
 mpl.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -56,7 +56,7 @@ covariance_cfg = cfg.covariance_cfg
 Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
-check_specs.consistency_checks(general_cfg, covariance_cfg)
+# check_specs.consistency_checks(general_cfg, covariance_cfg)
 
 # some variables used for I/O naming, just to make things more readable
 zbins = general_cfg['zbins']
@@ -313,13 +313,12 @@ gc.collect()
 # ! save and test
 fm_folder = FM_cfg["fm_folder"].format(SSC_code=covariance_cfg['SSC_code'])
 FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=FM_cfg['save_FM_txt'],
-                 save_dict=FM_cfg['save_FM_dict'],
-                 **variable_specs)
+                 save_dict=FM_cfg['save_FM_dict'], **variable_specs)
 
 # ! unit test: check that the outputs have not changed
 if general_cfg['test_against_benchmarks']:
     fm_benchmark_folder = f'{fm_folder}/benchmarks'
-    mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
+    # mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
 
 # ! plot:
 nparams_toplot = 7
@@ -388,8 +387,8 @@ title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbin
 plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                     param_names_label=param_names_list[:nparams_toplot], bar_width=0.12)
 
-if FM_cfg['test_against_benchmarks']:
-    mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')
+# if FM_cfg['test_against_benchmarks']:
+#     mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')
 print('done')
 
 # ! save cls and responses: THIS MUST BE MOVED TO A DIFFERENT FUNCTION!

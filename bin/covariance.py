@@ -205,7 +205,16 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_WL_SS_6D = np.load(f'/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/'
                                f'cov_SSC_LLLL_6D_zbins{zbins}_ellbins{nbl_WL}'
                                f'_julia_conventionPySSC.npy')
-        cov_WL_SS_6D = np.load(f'/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/after_script_update/cov_PyCCL_SSC_LL_nbl20_ellmax3000_HMrecipeKrause2017_6D.npy')
+        # cov_WL_SS_6D = np.load(f'/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/'
+        #                        f'cov_SSC_LLLL_6D_zbins{zbins}_ellbins{nbl_WL}'
+        #                        f'_julia_conventionEuclid.npy')
+
+        # ! ccl
+        # path_ccl = '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/'
+        # if nbl_WL == 20:
+        #     path_ccl += 'after_script_update'
+        #
+        # cov_WL_SS_6D = np.load(f'{path_ccl}/cov_PyCCL_SSC_LL_nbl{nbl_WL}_ellmax{ell_max_WL}_HMrecipeKrause2017_6D.npy')
 
 
     # sum GO and SS in 6D (or 10D), not in 4D (it's the same)
@@ -437,7 +446,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_WA_SS_6D = mm.cov_SS_10D_dict(cl_dict_WA, rl_dict_WA, Sijkl_dict, nbl_WA, zbins, fsky,
                                           probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
         print(f'cov_SS_6D computed in {(time.perf_counter() - start_time):.2f} s')
-
 
         if covariance_cfg['save_cov_SSC']:
             cov_dict['cov_WL_SS_6D'] = cov_WL_SS_6D

@@ -13,6 +13,7 @@ from numba import njit, prange
 from scipy.integrate import simps
 
 import cl_preprocessing
+import pyccl_cov
 
 matplotlib.use('Qt5Agg')
 
@@ -201,6 +202,12 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     print("SS cov. matrices computed in %.2f s with PySSC" % (time.perf_counter() - start))
 
     if covariance_cfg['test_exact_SSC']:
+
+        # compute the covariance with pyccl:
+        cov_WL_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl('LL', 'SSC', ell_WL,
+                                                           z_grid_nofz=None, n_of_z=None, general_cfg=general_cfg,
+                                                           covariance_cfg=covariance_cfg)
+
         warnings.warn('Computing GS with exact SSC covariance by dadde\'s code')
         cov_WL_SS_6D = np.load(f'/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/'
                                f'cov_SSC_LLLL_6D_zbins{zbins}_ellbins{nbl_WL}'

@@ -142,7 +142,18 @@ covariance_cfg = {
     'cov_SSC_PyCCL_folder': f'{project_path.parent}/PyCCL_SSC/output/covmat',
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_HMrecipeKrause2017_6D',
     # TODO these 2 filenames could be unified...
+
+    'pyccl_cfg': {
+        'hm_recipe': 'Krause2017',
+        'z_grid_min': 0.001,
+        'z_grid_max': 3,
+        'z_grid_steps': 1000,
+        'n_samples_wf': 1000,
+        'get_3xtpt_cov_in_4D': True,
+        'bias_model': 'step-wise',
+    }
 }
+
 
 Sijkl_cfg = {
     'wf_input_folder': f'{project_path.parent}/common_data/everyones_WF_from_Gdrive/davide/' + 'nz{nz:d}/gen2022',

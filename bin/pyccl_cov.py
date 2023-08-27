@@ -29,7 +29,6 @@ sys.path.append(f'../../common_lib_and_cfg/common_config')
 import ISTF_fid_params as ISTF_fid
 import mpl_cfg
 
-
 sys.path.append(f'../../cl_v2/bin')
 import wf_cl_lib
 
@@ -191,215 +190,182 @@ def compute_3x2pt_PyCCL(ng_function, cosmo, kernel_dict, ell, tkka, f_sky, integ
 # * fanstastic collection of notebooks: https://github.com/LSSTDESC/CCLX
 
 
-def compute_cov_ng_with_pyccl(probe, general_cfg, covariance_cfg):
-# ! settings
-with open('../../exact_SSC/config/cfg_exactSSC_ISTF.yml') as f:
-    cfg = yaml.safe_load(f)
+def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z, general_cfg, covariance_cfg):
+    f_sky = general_cfg['fsky']
+    zbins = general_cfg['zbins']
+    ind = covariance_cfg['ind']
+    GL_or_LG = covariance_cfg['GL_or_LG']
+    nbl = len(ell_grid)
 
-probes = cfg['probes']
-which_NGs = cfg['which_NGs']
-save_covs = cfg['save_covs']
-hm_recipe = 'Krause2017'
-GL_or_LG = cfg['GL_or_LG']
-ell_min = cfg['ell_min']
-ell_max = cfg['ell_max']
-nbl = cfg['nbl']
-zbins = cfg['zbins']
-triu_tril = cfg['triu_tril']
-row_col_major = cfg['row_col_major']
-# use_ray = cfg['use_ray']  # TODO finish this!
-z_grid = np.linspace(cfg['z_min_sigma2'], cfg['z_max_sigma2'], cfg['z_steps_sigma2'])
-f_sky = general_cfg['fsky']
-n_samples_wf = cfg['n_samples_wf']
-get_3xtpt_cov_in_4D = cfg['get_3xtpt_cov_in_4D']
-bias_model = cfg['bias_model']
-# ! settings
+    pyccl_cfg = covariance_cfg['pyccl_cfg']
+    hm_recipe = pyccl_cfg['hm_recipe']
+    z_grid = np.linspace(pyccl_cfg['z_grid_z_min'], pyccl_cfg['z_grid_z_max'], pyccl_cfg['z_grid_steps'])
+    n_samples_wf = pyccl_cfg['n_samples_wf']
+    get_3xtpt_cov_in_4D = pyccl_cfg['get_3xtpt_cov_in_4D']
+    bias_model = pyccl_cfg['bias_model']
+    # ! settings
 
-# ======================================================================================================================
-# ======================================================================================================================
-# ======================================================================================================================
+    assert probe in ['LL', 'GG', '3x2pt'], 'probe must be either LL, GG, or 3x2pt'
+    assert which_ng_cov in ['SSC', 'cNG'], 'which_ng_cov must be either SSC or cNG'
+    assert n_of_z.shape == (len(z_grid_nofz), zbins), 'n_of_z must be a 2D array with shape (len(z_grid_nofz), zbins)'
 
-# TODO plot kernels and cls to check that they make sense
+    # TODO plot kernels and cls to check that they make sense
 
-# get number of redshift pairs
-zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
-ind = mm.build_full_ind(triu_tril, row_col_major, zbins)
-ind_auto = ind[:zpairs_auto, :]
-ind_cross = ind[zpairs_auto:zpairs_auto + zpairs_cross, :]
+    # get number of redshift pairs
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
+    ind_auto = ind[:zpairs_auto, :]
+    ind_cross = ind[zpairs_auto:zpairs_auto + zpairs_cross, :]
 
-assert GL_or_LG == 'GL', 'you should update ind_cross (used in ind_dict) for GL, but we work with GL...'
+    assert GL_or_LG == 'GL', 'you should update ind_cross (used in ind_dict) for GL, but we work with GL...'
 
-# ! compute cls, just as a test
-ell_grid, _ = ell_utils.compute_ells(nbl, ell_min, ell_max, ell_grid_recipe)
-np.savetxt(f'{project_path}/output/ell_values/ell_values_nbl{nbl}.txt', ell_grid)
+    # ! compute cls, just as a test
 
-# Create new Cosmology object with a given set of parameters. This keeps track of previously-computed cosmological
-# functions
-cosmo_ccl = wf_cl_lib.instantiate_ISTFfid_PyCCL_cosmo_obj()
+    # Create new Cosmology object with a given set of parameters. This keeps track of previously-computed cosmological
+    # functions
+    # TODO this should be generalized to any set of cosmo params
+    cosmo_ccl = wf_cl_lib.instantiate_ISTFfid_PyCCL_cosmo_obj()
 
-# source redshift distribution, default ISTF values for bin edges & analytical prescription for the moment
-niz_unnormalized_arr = np.asarray(
-    [wf_cl_lib.niz_unnormalized_analytical(z_grid, zbin_idx) for zbin_idx in range(zbins)])
-niz_normalized_arr = wf_cl_lib.normalize_niz_simps(niz_unnormalized_arr, z_grid).T
-n_of_z = niz_normalized_arr
+    # TODO input n(z)
+    # source redshift distribution, default ISTF values for bin edges & analytical prescription for the moment
 
-# galaxy bias
-galaxy_bias_2d_array = wf_cl_lib.build_galaxy_bias_2d_arr(bias_values=None, z_values=None, zbins=zbins,
-                                                          z_grid=z_grid, bias_model=bias_model,
-                                                          plot_bias=False)
+    if z_grid_nofz is None and n_of_z is None:
+        print('using default ISTF analytical n(z) values')
+        niz_unnormalized_arr = np.asarray(
+            [wf_cl_lib.niz_unnormalized_analytical(z_grid, zbin_idx) for zbin_idx in range(zbins)])
+        niz_normalized_arr = wf_cl_lib.normalize_niz_simps(niz_unnormalized_arr, z_grid).T
+        n_of_z = niz_normalized_arr
 
-# IA bias
-ia_bias_1d_array = wf_cl_lib.build_IA_bias_1d_arr(z_grid, input_lumin_ratio=None, cosmo=cosmo_ccl,
-                                                  A_IA=None, eta_IA=None, beta_IA=None, C_IA=None, growth_factor=None,
-                                                  Omega_m=None)
+    # galaxy bias
+    galaxy_bias_2d_array = wf_cl_lib.build_galaxy_bias_2d_arr(bias_values=None, z_values=None, zbins=zbins,
+                                                              z_grid=z_grid, bias_model=bias_model,
+                                                              plot_bias=False)
 
-# # ! compute tracer objects
-wf_lensing = [ccl.tracers.WeakLensingTracer(cosmo_ccl, dndz=(z_grid, n_of_z[:, zbin_idx]),
-                                            ia_bias=(z_grid, ia_bias_1d_array), use_A_ia=False, n_samples=n_samples_wf)
-              for zbin_idx in range(zbins)]
+    # IA bias
+    ia_bias_1d_array = wf_cl_lib.build_IA_bias_1d_arr(z_grid, input_lumin_ratio=None, cosmo=cosmo_ccl,
+                                                      A_IA=None, eta_IA=None, beta_IA=None, C_IA=None,
+                                                      growth_factor=None,
+                                                      Omega_m=None)
 
-wf_galaxy = [ccl.tracers.NumberCountsTracer(cosmo_ccl, has_rsd=False, dndz=(z_grid, n_of_z[:, zbin_idx]),
-                                            bias=(z_grid, galaxy_bias_2d_array[:, zbin_idx]),
-                                            mag_bias=None, n_samples=n_samples_wf)
-             for zbin_idx in range(zbins)]
+    # # ! compute tracer objects
+    wf_lensing = [ccl.tracers.WeakLensingTracer(cosmo_ccl, dndz=(z_grid, n_of_z[:, zbin_idx]),
+                                                ia_bias=(z_grid, ia_bias_1d_array), use_A_ia=False,
+                                                n_samples=n_samples_wf)
+                  for zbin_idx in range(zbins)]
 
-# the cls are not needed, but just in case:
-# cl_LL_3D = wf_cl_lib.cl_PyCCL(wf_lensing, wf_lensing, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
-# cl_GL_3D = wf_cl_lib.cl_PyCCL(wf_galaxy, wf_lensing, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
-# cl_GG_3D = wf_cl_lib.cl_PyCCL(wf_galaxy, wf_galaxy, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
+    wf_galaxy = [ccl.tracers.NumberCountsTracer(cosmo_ccl, has_rsd=False, dndz=(z_grid, n_of_z[:, zbin_idx]),
+                                                bias=(z_grid, galaxy_bias_2d_array[:, zbin_idx]),
+                                                mag_bias=None, n_samples=n_samples_wf)
+                 for zbin_idx in range(zbins)]
 
+    fig, axs = plt.subplots(1, 2, layout='constrained', figsize=(10, 4))
+    plt.title('Tracer objects')
+    wf_lensing_arr = wf_cl_lib.ccl_tracer_obj_to_arr(z_grid, wf_lensing, cosmo_ccl)
 
-# notebook for mass_relations: https://github.com/LSSTDESC/CCLX/blob/master/Halo-mass-function-example.ipynb
-# Cl notebook: https://github.com/LSSTDESC/CCL/blob/v2.0.1/examples/3x2demo.ipynb
+    # TODO finish plotting this
 
-tkka = initialize_trispectrum()
+    # the cls are not needed, but just in case:
+    # cl_LL_3D = wf_cl_lib.cl_PyCCL(wf_lensing, wf_lensing, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
+    # cl_GL_3D = wf_cl_lib.cl_PyCCL(wf_galaxy, wf_lensing, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
+    # cl_GG_3D = wf_cl_lib.cl_PyCCL(wf_galaxy, wf_galaxy, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
 
-# covariance ordering stuff
-probe_ordering = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
-probe_ordering = (('G', 'L'),)
+    # notebook for mass_relations: https://github.com/LSSTDESC/CCLX/blob/master/Halo-mass-function-example.ipynb
+    # Cl notebook: https://github.com/LSSTDESC/CCL/blob/v2.0.1/examples/3x2demo.ipynb
 
-# convenience dictionaries
-ind_dict = {
-    'LL': ind_auto,
-    'GG': ind_auto,
-    'GL': ind_cross
-}
+    tkka = initialize_trispectrum()
 
-probe_idx_dict = {
-    'L': 0,
-    'G': 1
-}
+    # covariance ordering stuff
+    probe_ordering = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
 
-kernel_dict = {
-    'L': wf_lensing,
-    'G': wf_galaxy
-}
-
-# integration_method_dict = {
-#     'LL': {
-#         'SSC': 'spline',
-#         'cNG': 'spline',
-#     },
-#     'GG': {
-#         'SSC': 'qag_quad',
-#         'cNG': 'qag_quad',
-#     },
-#     '3x2pt': {
-#         'SSC': 'qag_quad',
-#         'cNG': 'spline',
-#     }
-# }
-
-integration_method_dict = {
-    'LL': {
-        'SSC': 'qag_quad',
-        'cNG': 'qag_quad',
-    },
-    'GG': {
-        'SSC': 'qag_quad',
-        'cNG': 'qag_quad',
-    },
-    '3x2pt': {
-        'SSC': 'qag_quad',
-        'cNG': 'qag_quad',
+    # convenience dictionaries
+    ind_dict = {
+        'LL': ind_auto,
+        'GL': ind_cross,
+        'GG': ind_auto,
     }
-}
 
-for probe in probes:
-    for which_NG in which_NGs:
+    kernel_dict = {
+        'L': wf_lensing,
+        'G': wf_galaxy
+    }
 
-        assert probe in ['LL', 'GG', '3x2pt'], 'probe must be either LL, GG, or 3x2pt'
-        assert which_NG in ['SSC', 'cNG'], 'which_NG must be either SSC or cNG'
-        assert ell_grid_recipe in ['ISTF', 'ISTNL'], 'ell_grid_recipe must be either ISTF or ISTNL'
+    # integration_method_dict = {
+    #     'LL': {
+    #         'SSC': 'spline',
+    #         'cNG': 'spline',
+    #     },
+    #     'GG': {
+    #         'SSC': 'qag_quad',
+    #         'cNG': 'qag_quad',
+    #     },
+    #     '3x2pt': {
+    #         'SSC': 'qag_quad',
+    #         'cNG': 'spline',
+    #     }
+    # }
 
-        if ell_grid_recipe == 'ISTNL' and nbl != 20:
-            print('Warning: ISTNL uses 20 ell bins')
+    integration_method_dict = {
+        'LL': {
+            'SSC': 'qag_quad',
+            'cNG': 'qag_quad',
+        },
+        'GG': {
+            'SSC': 'qag_quad',
+            'cNG': 'qag_quad',
+        },
+        '3x2pt': {
+            'SSC': 'qag_quad',
+            'cNG': 'qag_quad',
+        }
+    }
 
-        if probe == 'LL':
-            kernel = wf_lensing
-        elif probe == 'GG':
-            kernel = wf_galaxy
+    # just a check on the settings
+    print(f'\n****************** settings ****************'
+          f'\nprobe = {probe}\nwhich_ng_cov = {which_ng_cov}'
+          f'\nintegration_method = {integration_method_dict[probe][which_ng_cov]}'
+          f'\nnbl = {nbl}\nhm_recipe = {hm_recipe}')
 
-        # just a check on the settings
-        print(f'\n****************** settings ****************'
-              f'\nprobe = {probe}\nwhich_NG = {which_NG}'
-              f'\nintegration_method = {integration_method_dict[probe][which_NG]}'
-              f'\nwhich_ells = {ell_grid_recipe}\nnbl = {nbl}\nhm_recipe = {hm_recipe}')
+    # ! note that the ordering is such that out[i2, i1] = Cov(ell2[i2], ell[i1]). Transpose 1st 2 dimensions??
+    # * ok: the check that the matrix symmetric in ell1, ell2 is below
+    # print(f'check: is cov_SSC_{probe}[ell1, ell2, ...] == cov_SSC_{probe}[ell2, ell1, ...]?', np.allclose(cov_6D, np.transpose(cov_6D, (1, 0, 2, 3, 4, 5)), rtol=1e-7, atol=0))
 
-        # ! note that the ordering is such that out[i2, i1] = Cov(ell2[i2], ell[i1]). Transpose 1st 2 dimensions??
-        # * ok: the check that the matrix symmetric in ell1, ell2 is below
-        # print(f'check: is cov_SSC_{probe}[ell1, ell2, ...] == cov_SSC_{probe}[ell2, ell1, ...]?', np.allclose(cov_6D, np.transpose(cov_6D, (1, 0, 2, 3, 4, 5)), rtol=1e-7, atol=0))
+    # ! =============================================== compute covs ===============================================
 
-        # ! =============================================== compute covs ===============================================
+    if which_ng_cov == 'SSC':
+        ng_function = compute_cov_SSC_ccl
+    elif which_ng_cov == 'cNG':
+        ng_function = compute_cov_cNG_ccl
+    else:
+        raise ValueError('which_ng_cov must be either SSC or cNG')
 
-        if which_NG == 'SSC':
-            ng_function = compute_cov_SSC_ccl
-        elif which_NG == 'cNG':
-            ng_function = compute_cov_cNG_ccl
-        else:
-            raise ValueError('which_NG must be either SSC or cNG')
+    if probe in ['LL', 'GG']:
 
-        if probe in ['LL', 'GG']:
-            assert probe[0] == probe[1], 'probe must be either LL or GG'
+        kernel_A = kernel_dict[probe[0]]
+        kernel_B = kernel_dict[probe[1]]
+        kernel_C = kernel_dict[probe[0]]
+        kernel_D = kernel_dict[probe[1]]
+        ind_AB = ind_dict[probe[0] + probe[1]]
+        ind_CD = ind_dict[probe[0] + probe[1]]
 
-            kernel_A = kernel_dict[probe[0]]
-            kernel_B = kernel_dict[probe[1]]
-            kernel_C = kernel_dict[probe[0]]
-            kernel_D = kernel_dict[probe[1]]
-            ind_AB = ind_dict[probe[0] + probe[1]]
-            ind_CD = ind_dict[probe[0] + probe[1]]
+        cov_ng_4D = ng_function(cosmo_ccl,
+                                kernel_A=kernel_A,
+                                kernel_B=kernel_B,
+                                kernel_C=kernel_C,
+                                kernel_D=kernel_D,
+                                ell=ell_grid, tkka=tkka, f_sky=f_sky,
+                                ind_AB=ind_AB, ind_CD=ind_CD,
+                                integration_method=integration_method_dict[probe][which_ng_cov])
 
-            cov_ng_4D = ng_function(cosmo_ccl,
-                                    kernel_A=kernel_A,
-                                    kernel_B=kernel_B,
-                                    kernel_C=kernel_C,
-                                    kernel_D=kernel_D,
-                                    ell=ell_grid, tkka=tkka, f_sky=f_sky,
-                                    ind_AB=ind_AB, ind_CD=ind_CD,
-                                    integration_method=integration_method_dict[probe][which_NG])
+    elif probe == '3x2pt':
+        # TODO remove this if statement and use the same code for all probes
+        cov_ng_4D = compute_3x2pt_PyCCL(ng_function=ng_function, cosmo=cosmo_ccl,
+                                        kernel_dict=kernel_dict,
+                                        ell=ell_grid, tkka=tkka, f_sky=f_sky,
+                                        probe_ordering=probe_ordering,
+                                        ind_dict=ind_dict,
+                                        output_4D_array=get_3xtpt_cov_in_4D,
+                                        integration_method=integration_method_dict[probe][which_ng_cov])
 
-        elif probe == '3x2pt':
-            # TODO remove this if statement and use the same code for all probes
-            cov_ng_4D = compute_3x2pt_PyCCL(ng_function=ng_function, cosmo=cosmo_ccl,
-                                            kernel_dict=kernel_dict,
-                                            ell=ell_grid, tkka=tkka, f_sky=f_sky,
-                                            probe_ordering=probe_ordering,
-                                            ind_dict=ind_dict,
-                                            output_4D_array=True,
-                                            integration_method=integration_method_dict[probe][which_NG])
+    else:
+        raise ValueError('probe must be either LL, GG, or 3x2pt')
 
-            cov_ng_2D = mm.cov_4D_to_2D(cov_ng_4D)
-
-        else:
-            raise ValueError('probe must be either LL, GG, or 3x2pt')
-
-        if save_covs:
-            output_folder = f'{project_path}/output/covmat/after_script_update'
-            filename = f'cov_PyCCL_{which_NG}_{probe}_nbl{nbl}_ellmax{ell_max}_HMrecipe{hm_recipe}'
-
-            np.savez_compressed(f'{output_folder}/{filename}_4D.npz', cov_ng_4D)
-            cov_6D = mm.cov_4D_to_6D(cov_ng_4D, nbl, zbins, 'LL', ind)
-
-            # mm.test_folder_content(output_folder, output_folder + 'benchmarks', 'npy', verbose=False, rtol=1e-10)
-
-print('done')
+    return cov_ng_4D

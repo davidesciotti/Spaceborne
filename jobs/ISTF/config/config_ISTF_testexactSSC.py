@@ -108,8 +108,7 @@ covariance_cfg = {
     'block_index': 'ell',
     'GL_or_LG': 'GL',
 
-    'SSC_code': 'PySSC',  # PySSC or PyCCL
-    'test_exact_SSC': True,
+    'SSC_code': 'PySSC',  # PySSC or PyCCL or exactSSC
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which this is wrong
 
@@ -152,6 +151,7 @@ covariance_cfg = {
         'n_samples_wf': 1000,
         'get_3xtpt_cov_in_4D': True,
         'bias_model': 'step-wise',
+        'use_HOD_for_GCph': False,
     }
 }
 

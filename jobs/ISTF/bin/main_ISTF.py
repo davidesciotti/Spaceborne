@@ -356,7 +356,7 @@ uncert_FM_GS_test = mm.uncertainties_FM(FM_test_GS, FM_test_GS.shape[0], fiducia
                                         normalize=True)[:nparams_toplot]
 ###############
 # add the percent differences and/or ratios to the dictionary
-probe = 'WL'
+probe = 'GC'
 lmax = ell_max_WL
 to_compare_A = f'FM_{probe}_GS'
 to_compare_B = f'FM_{probe}_GO'
@@ -368,7 +368,7 @@ if 'FM_PySSC_GO' in uncert_dict.keys() and 'FM_PyCCL_GO' in uncert_dict.keys():
         'the GO uncertainties must be the same, I am only changing the SSC code!'
 
 # silent check against IST:F (which does not exist for GC alone):
-for which_probe in ['WL', '3x2pt']:
+for which_probe in ['WL', 'GC', '3x2pt']:
     uncert_dict['ISTF'] = ISTF_fid.forecasts[f'{which_probe}_opt_w0waCDM_flat']
     try:
         assert np.allclose(uncert_dict['ISTF'], uncert_dict[f'FM_{which_probe}_GO'][:nparams_toplot], atol=0, rtol=5e-2)

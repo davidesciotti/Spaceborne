@@ -201,24 +201,24 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_3x2pt_SS_10D = mm.covariance_SSC_einsum(cl_3x2pt_5D, rl_3x2pt_5D, s_ABCD_ijkl, fsky)
     print("SS cov. matrices computed in %.2f s with PySSC" % (time.perf_counter() - start))
 
-    if covariance_cfg['test_exact_SSC']:
+    if covariance_cfg['SSC_code'] == 'PyCCL':
 
-        # compute the covariance with pyccl:
+        print('computing SSC covariance with PyCCL')
+
         warnings.warn('input nofz for ccl, or better the kernels!')
-        cov_WL_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl('LL', 'SSC', ell_WL,
+        # cov_WL_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl('LL', 'SSC', ell_WL,
+        #                                                    z_grid_nofz=None, n_of_z=None, general_cfg=general_cfg,
+        #                                                    covariance_cfg=covariance_cfg)
+        # cov_3x2pt_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl('3x2pt', 'SSC', ell_3x2pt,
+        #                                                    z_grid_nofz=None, n_of_z=None, general_cfg=general_cfg,
+        #                                                    covariance_cfg=covariance_cfg)
+        cov_GC_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl('GG', 'SSC', ell_GC,
                                                            z_grid_nofz=None, n_of_z=None, general_cfg=general_cfg,
                                                            covariance_cfg=covariance_cfg)
-        cov_WL_SS_6D = mm.cov_4D_to_6D(cov_WL_SS_4D, nbl_WL, zbins, 'LL', ind_auto)
 
-        # warnings.warn('Computing GS with exact SSC covariance by dadde\'s code')
+        # cov_WL_SS_6D = mm.cov_4D_to_6D(cov_WL_SS_4D, nbl_WL, zbins, 'LL', ind_auto)
+        cov_GC_SS_6D = mm.cov_4D_to_6D(cov_GC_SS_4D, nbl_GC, zbins, 'GG', ind_auto)
 
-        # cov_WL_SS_6D = np.load(f'/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/'
-        #                        f'cov_SSC_LLLL_6D_zbins{zbins}_ellbins{nbl_WL}'
-        #                        f'_julia_conventionPySSC.npy')
-
-        # cov_WL_SS_6D = np.load(f'/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/'
-        #                        f'cov_SSC_LLLL_6D_zbins{zbins}_ellbins{nbl_WL}'
-        #                        f'_julia_conventionEuclid.npy')
 
         # ! ccl
         # path_ccl = '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/'
@@ -227,6 +227,17 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         #
         # cov_WL_SS_6D = np.load(f'{path_ccl}/cov_PyCCL_SSC_LL_nbl{nbl_WL}_ellmax{ell_max_WL}_HMrecipeKrause2017_6D.npy')
 
+    elif covariance_cfg['SSC_code'] == 'exactSSC':
+        print('computing SSC covariance with exactSSC...')
+        cl_integral_convention = covariance_cfg['cl_integral_convention']
+        cov_WL_SS_6D = np.load(f'/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/'
+                               f'cov_SSC_LLLL_6D_zbins{zbins}_ellbins{nbl_WL}'
+                               f'_julia_convention{cl_integral_convention}.npy')
+
+    else:
+        raise ValueError('SSC_code must be PySSC or PyCCL or exactSSC')
+
+    print('SSC covariance computed with %s' % covariance_cfg['SSC_code'])
 
     # sum GO and SS in 6D (or 10D), not in 4D (it's the same)
     cov_WL_GS_6D = cov_WL_GO_6D + cov_WL_SS_6D

@@ -304,10 +304,12 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
 
     # compare pyccl kernels with the importwd ones (used by PySSC):
     wf_lensing_arr = wf_cl_lib.wil_PyCCL(z_grid, 'with_IA', cosmo=cosmo_ccl, dndz=(z_grid, n_of_z),
-                                         ia_bias=None, return_PyCCL_object=False, n_samples=1000)
+                                         ia_bias=(z_grid, ia_bias_1d_array), return_PyCCL_object=False,
+                                         n_samples=n_samples_wf)
     wf_galaxy_arr = wf_cl_lib.wig_PyCCL(z_grid, 'with_galaxy_bias', gal_bias_2d_array=galaxy_bias_2d_array,
                                         bias_model='step-wise',
-                                        cosmo=cosmo_ccl, return_PyCCL_object=False, dndz=(z_grid, n_of_z))
+                                        cosmo=cosmo_ccl, return_PyCCL_object=False, dndz=(z_grid, n_of_z),
+                                        n_samples=n_samples_wf)
 
     wf_lensing_import = general_cfg['wf_WL']
     wf_galaxy_import = general_cfg['wf_GC']

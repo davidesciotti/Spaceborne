@@ -146,6 +146,7 @@ covariance_cfg = {
     # TODO these 2 filenames could be unified...
 
     'pyccl_cfg': {
+        'probe': 'GG',
         'hm_recipe': 'Krause2017',
         'z_grid_min': 0.001,
         'z_grid_max': 3,

@@ -206,21 +206,29 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         print('computing SSC covariance with PyCCL')
         warnings.warn('input nofz for ccl, or better the kernels!')
 
-        # cov_WL_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl('LL', 'SSC', ell_WL,
-        #                                                    z_grid_nofz=None, n_of_z=None, general_cfg=general_cfg,
-        #                                                    covariance_cfg=covariance_cfg)
-        cov_3x2pt_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl('3x2pt', 'SSC', ell_3x2pt,
-                                                           z_grid_nofz=None, n_of_z=None, general_cfg=general_cfg,
-                                                           covariance_cfg=covariance_cfg)
-        # cov_GC_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl('GG', 'SSC', ell_GC,
-        #                                                    z_grid_nofz=None, n_of_z=None, general_cfg=general_cfg,
-        #                                                    covariance_cfg=covariance_cfg)
+        if covariance_cfg['pyccl_cfg']['probe'] == 'LL':
+            ell_grid = ell_WL
+        elif covariance_cfg['pyccl_cfg']['probe'] == 'GG':
+            ell_grid = ell_GC
+        elif covariance_cfg['pyccl_cfg']['probe'] == '3x2pt':
+            ell_grid = ell_3x2pt
+        else:
+            raise ValueError('pyccl_cfg["probe"] must be LL or GG or 3x2pt')
 
-        # cov_WL_SS_6D = mm.cov_4D_to_6D(cov_WL_SS_4D, nbl_WL, zbins, 'LL', ind_auto)
-        # cov_GC_SS_6D = mm.cov_4D_to_6D(cov_GC_SS_4D, nbl_GC, zbins, 'GG', ind_auto)
+            cov_PyCCL_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl(covariance_cfg['pyccl_cfg']['probe'], 'SSC', ell_grid,
+                                                               z_grid_nofz=None, n_of_z=None, general_cfg=general_cfg,
+                                                               covariance_cfg=covariance_cfg)
+
+        if covariance_cfg['pyccl_cfg']['probe'] == 'LL':
+            cov_WL_SS_6D = mm.cov_4D_to_6D(cov_PyCCL_SS_4D, nbl_WL, zbins, 'LL', ind_auto)
+        elif covariance_cfg['pyccl_cfg']['probe'] == 'GG':
+            cov_GC_SS_6D = mm.cov_4D_to_6D(cov_PyCCL_SS_4D, nbl_GC, zbins, 'GG', ind_auto)
+        elif covariance_cfg['pyccl_cfg']['probe'] == '3x2pt':
+            raise ValueError('3x2pt not implemented yet')
 
 
-        # ! ccl
+
+        # import from file
         # path_ccl = '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/'
         # if nbl_WL == 20:
         #     path_ccl += 'after_script_update'

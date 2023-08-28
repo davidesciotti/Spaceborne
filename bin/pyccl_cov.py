@@ -199,6 +199,7 @@ def compute_3x2pt_PyCCL(cosmo, kernel_dict, ell, tkka_dict, f_sky, integration_m
     cov_ng_3x2pt_dict_8D = {}
     for A, B in probe_ordering:
         for C, D in probe_ordering:
+            # TODO optimize this by computing only the upper triangle, then understand the symmetry
             print('3x2pt: working on probe combination ', A, B, C, D)
             cov_ng_3x2pt_dict_8D[A, B, C, D] = compute_ng_cov_ccl(cosmo=cosmo,
                                                                   kernel_A=kernel_dict[A],
@@ -293,6 +294,12 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
                                                 bias=(z_grid, galaxy_bias_2d_array[:, zbin_idx]),
                                                 mag_bias=None, n_samples=n_samples_wf)
                  for zbin_idx in range(zbins)]
+
+    # try to create a tracer object with a tabulated kernel
+    # kernel =
+    ccl.tracers.add_tracer(cosmo_ccl, *, kernel=None, transfer_ka=None, transfer_k=None, transfer_a=None, der_bessel=0, der_angles=0,
+               is_logt=False, extrap_order_lok=0, extrap_order_hik=2)
+
 
     # fig, axs = plt.subplots(1, 2, layout='constrained', figsize=(10, 4))
     # plt.title('Tracer objects')

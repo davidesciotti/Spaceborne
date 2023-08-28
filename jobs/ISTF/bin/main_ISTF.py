@@ -322,7 +322,7 @@ FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=FM_cfg['save
 # ! unit test: check that the outputs have not changed
 if general_cfg['test_against_benchmarks']:
     fm_benchmark_folder = f'{fm_folder}/benchmarks'
-    # mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
+    mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
 
 # ! plot:
 nparams_toplot = 7

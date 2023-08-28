@@ -154,7 +154,7 @@ covariance_cfg = {
         'n_samples_wf': 1000,
         'get_3xtpt_cov_in_4D': True,
         'bias_model': 'step-wise',
-        'use_HOD_for_GCph': False,
+        'use_HOD_for_GCph': True,
     }
 }
 

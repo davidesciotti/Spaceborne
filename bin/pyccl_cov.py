@@ -343,10 +343,6 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
     plt.show()
     plt.tight_layout()
 
-    assert False
-
-    # TODO finish plotting this
-
     # the cls are not needed, but just in case:
     # cl_LL_3D = wf_cl_lib.cl_PyCCL(wf_lensing, wf_lensing, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
     # cl_GL_3D = wf_cl_lib.cl_PyCCL(wf_galaxy, wf_lensing, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
@@ -359,7 +355,7 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
         probe_ordering = (('G', 'G'),)
     elif probe == '3x2pt':
         probe_ordering = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
-        # probe_ordering = (('G', 'L'), ) for testing 3x2pt GLGL, which seems a problematic case.
+        probe_ordering = (('G', 'L'), ) # for testing 3x2pt GLGL, which seems a problematic case.
 
     # convenience dictionaries
     ind_dict = {

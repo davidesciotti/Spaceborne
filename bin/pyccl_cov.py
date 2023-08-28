@@ -4,16 +4,18 @@ import sys
 import time
 import warnings
 from pathlib import Path
-
+import ipdb
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pyccl as ccl
 import yaml
 from joblib import Parallel, delayed
+from matplotlib import cm
 from scipy.special import erf
 import ray
 from tqdm import tqdm
+from matplotlib.lines import Line2D
 
 ray.shutdown()
 ray.init()
@@ -300,10 +302,46 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
     # ccl.tracers.add_tracer(cosmo_ccl, *, kernel=None, transfer_ka=None, transfer_k=None, transfer_a=None, der_bessel=0, der_angles=0,
     #            is_logt=False, extrap_order_lok=0, extrap_order_hik=2)
 
+    # compare pyccl kernels with the importwd ones (used by PySSC):
+    wf_lensing_arr = wf_cl_lib.wil_PyCCL(z_grid, 'with_IA', cosmo=cosmo_ccl, dndz=(z_grid, n_of_z),
+                                         ia_bias=None, return_PyCCL_object=False, n_samples=1000)
+    wf_galaxy_arr = wf_cl_lib.wig_PyCCL(z_grid, 'with_galaxy_bias', gal_bias_2d_array=galaxy_bias_2d_array,
+                                        bias_model='step-wise',
+                                        cosmo=cosmo_ccl, return_PyCCL_object=False, dndz=(z_grid, n_of_z))
 
-    # fig, axs = plt.subplots(1, 2, layout='constrained', figsize=(10, 4))
-    # plt.title('Tracer objects')
-    wf_lensing_arr = wf_cl_lib.ccl_tracer_obj_to_arr(z_grid, wf_lensing, cosmo_ccl)
+    wf_lensing_import = general_cfg['wf_WL']
+    wf_galaxy_import = general_cfg['wf_GC']
+    z_grid_wf_import = general_cfg['z_grid_wf']
+
+    colors = cm.rainbow(np.linspace(0, 1, zbins))
+
+    # plot them in 2 subplots
+    fig, ax = plt.subplots(1, 2, figsize=(15, 6), constrained_layout=True)
+    for zi in range(zbins):
+        ax[0].plot(z_grid, wf_lensing_arr[:, zi], ls="-", c=colors[zi], alpha=0.7)
+        ax[1].plot(z_grid, wf_galaxy_arr[:, zi], ls="-", c=colors[zi], alpha=0.7)
+        ax[0].plot(z_grid_wf_import, wf_lensing_import[:, zi], ls="--", c=colors[zi], alpha=0.7)
+        ax[1].plot(z_grid_wf_import, wf_galaxy_import[:, zi], ls="--", c=colors[zi], alpha=0.7)
+    # set labels
+    ax[0].set_title('lensing kernel')
+    ax[1].set_title('galaxy kernel')
+    ax[0].set_xlabel('z')
+    ax[1].set_xlabel('z')
+    ax[0].set_ylabel('wil')
+    ax[1].set_ylabel('wig')
+    # se legend to linestyles
+    # Create custom legend
+    custom_lines = [Line2D([0], [0], ls='-'),
+                    Line2D([0], [0], ls='--')]
+    ax[0].legend(custom_lines, ['pyccl'])
+    ax[0].legend(custom_lines, ['import'])
+
+    ax[1].legend(custom_lines, ['pyccl'])
+    ax[1].legend(custom_lines, ['import'])
+    plt.show()
+    plt.tight_layout()
+
+    assert False
 
     # TODO finish plotting this
 
@@ -351,7 +389,8 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
                                        kernel_B=kernel_B,
                                        kernel_C=kernel_C,
                                        kernel_D=kernel_D,
-                                       ell=ell_grid, tkka=tkka_dict[probe[0], probe[1], probe[0], probe[1]], f_sky=f_sky,
+                                       ell=ell_grid, tkka=tkka_dict[probe[0], probe[1], probe[0], probe[1]],
+                                       f_sky=f_sky,
                                        ind_AB=ind_AB,
                                        ind_CD=ind_CD,
                                        which_ng_cov=which_ng_cov,

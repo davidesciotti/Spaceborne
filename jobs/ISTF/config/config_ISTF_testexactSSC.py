@@ -108,7 +108,7 @@ covariance_cfg = {
     'block_index': 'ell',
     'GL_or_LG': 'GL',
 
-    'SSC_code': 'PySSC',  # PySSC or PyCCL or exactSSC
+    'SSC_code': 'PyCCL',  # PySSC or PyCCL or exactSSC
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which this is wrong
 

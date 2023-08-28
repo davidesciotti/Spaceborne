@@ -200,6 +200,7 @@ z_arr_2, wig = Sijkl_utils.preprocess_wf(wig, zbins)
 assert np.array_equal(z_arr, z_arr_2), 'the redshift arrays are different for the GC and WL kernels'
 assert nz == z_arr.shape[0], 'nz is not the same as the number of redshift points in the kernels'
 
+# store them to be passed to pyccl_cov for comparison (or import)
 general_cfg['wf_WL'] = wil
 general_cfg['wf_GC'] = wig
 general_cfg['z_grid_wf'] = z_arr
@@ -359,7 +360,7 @@ uncert_FM_GS_test = mm.uncertainties_FM(FM_test_GS, FM_test_GS.shape[0], fiducia
                                         normalize=True)[:nparams_toplot]
 ###############
 # add the percent differences and/or ratios to the dictionary
-probe = 'GC'
+probe = 'WL'
 lmax = ell_max_WL
 to_compare_A = f'FM_{probe}_GS'
 to_compare_B = f'FM_{probe}_GO'

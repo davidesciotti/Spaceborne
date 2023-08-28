@@ -226,6 +226,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         elif covariance_cfg['pyccl_cfg']['probe'] == '3x2pt':
             raise ValueError('3x2pt not implemented yet')
 
+
         # import from file
         # path_ccl = '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/'
         # if nbl_WL == 20:

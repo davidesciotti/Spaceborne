@@ -297,8 +297,8 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
 
     # try to create a tracer object with a tabulated kernel
     # kernel =
-    ccl.tracers.add_tracer(cosmo_ccl, *, kernel=None, transfer_ka=None, transfer_k=None, transfer_a=None, der_bessel=0, der_angles=0,
-               is_logt=False, extrap_order_lok=0, extrap_order_hik=2)
+    # ccl.tracers.add_tracer(cosmo_ccl, *, kernel=None, transfer_ka=None, transfer_k=None, transfer_a=None, der_bessel=0, der_angles=0,
+    #            is_logt=False, extrap_order_lok=0, extrap_order_hik=2)
 
 
     # fig, axs = plt.subplots(1, 2, layout='constrained', figsize=(10, 4))
@@ -312,13 +312,12 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
     # cl_GL_3D = wf_cl_lib.cl_PyCCL(wf_galaxy, wf_lensing, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
     # cl_GG_3D = wf_cl_lib.cl_PyCCL(wf_galaxy, wf_galaxy, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
 
-    # covariance ordering stuff
+    # covariance ordering stuff, also used to compute the trispectrum
     if probe == 'LL':
         probe_ordering = (('L', 'L'),)
     elif probe == 'GG':
         probe_ordering = (('G', 'G'),)
     elif probe == '3x2pt':
-
         probe_ordering = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
         # probe_ordering = (('G', 'L'), ) for testing 3x2pt GLGL, which seems a problematic case.
 

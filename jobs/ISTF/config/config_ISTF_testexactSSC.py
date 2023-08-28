@@ -127,7 +127,6 @@ covariance_cfg = {
     'compute_cov_6D': False,
 
     'save_cov': True,
-    'cases_tosave': ['GO', 'GS'],
     'cov_file_format': 'npz',  # or npy
     'save_cov_dat': False,  # this is the format used by Vincenzo
 
@@ -135,7 +134,8 @@ covariance_cfg = {
     'save_cov_2D': True,
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt
-    'save_cov_GS': False,
+    'save_cov_GO': True,
+    'save_cov_GS': True,
     'save_cov_SSC': False,
     'save_2DCLOE': False,  # outermost loop is on the probes
 

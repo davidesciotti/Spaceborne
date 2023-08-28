@@ -294,8 +294,8 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
                                                 mag_bias=None, n_samples=n_samples_wf)
                  for zbin_idx in range(zbins)]
 
-    fig, axs = plt.subplots(1, 2, layout='constrained', figsize=(10, 4))
-    plt.title('Tracer objects')
+    # fig, axs = plt.subplots(1, 2, layout='constrained', figsize=(10, 4))
+    # plt.title('Tracer objects')
     wf_lensing_arr = wf_cl_lib.ccl_tracer_obj_to_arr(z_grid, wf_lensing, cosmo_ccl)
 
     # TODO finish plotting this
@@ -306,8 +306,14 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
     # cl_GG_3D = wf_cl_lib.cl_PyCCL(wf_galaxy, wf_galaxy, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
 
     # covariance ordering stuff
-    probe_ordering = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
-    probe_ordering = (('G', 'L'), )
+    if probe == 'LL':
+        probe_ordering = (('L', 'L'),)
+    elif probe == 'GG':
+        probe_ordering = (('G', 'G'),)
+    elif probe == '3x2pt':
+
+        probe_ordering = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
+        # probe_ordering = (('G', 'L'), ) for testing 3x2pt GLGL, which seems a problematic case.
 
     # convenience dictionaries
     ind_dict = {

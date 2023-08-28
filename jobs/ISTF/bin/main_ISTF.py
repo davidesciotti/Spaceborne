@@ -393,8 +393,8 @@ title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbin
 plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                     param_names_label=param_names_list[:nparams_toplot], bar_width=0.12)
 
-# if FM_cfg['test_against_benchmarks']:
-#     mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')
+if FM_cfg['test_against_benchmarks']:
+    mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')
 print('done')
 
 # ! save cls and responses: THIS MUST BE MOVED TO A DIFFERENT FUNCTION!

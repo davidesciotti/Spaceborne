@@ -215,9 +215,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         else:
             raise ValueError('pyccl_cfg["probe"] must be LL or GG or 3x2pt')
 
-            cov_PyCCL_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl(covariance_cfg['pyccl_cfg']['probe'], 'SSC', ell_grid,
-                                                               z_grid_nofz=None, n_of_z=None, general_cfg=general_cfg,
-                                                               covariance_cfg=covariance_cfg)
+        cov_PyCCL_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl(covariance_cfg['pyccl_cfg']['probe'], 'SSC', ell_grid,
+                                                              z_grid_nofz=None, n_of_z=None, general_cfg=general_cfg,
+                                                              covariance_cfg=covariance_cfg)
 
         if covariance_cfg['pyccl_cfg']['probe'] == 'LL':
             cov_WL_SS_6D = mm.cov_4D_to_6D(cov_PyCCL_SS_4D, nbl_WL, zbins, 'LL', ind_auto)
@@ -225,8 +225,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_GC_SS_6D = mm.cov_4D_to_6D(cov_PyCCL_SS_4D, nbl_GC, zbins, 'GG', ind_auto)
         elif covariance_cfg['pyccl_cfg']['probe'] == '3x2pt':
             raise ValueError('3x2pt not implemented yet')
-
-
 
         # import from file
         # path_ccl = '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/'

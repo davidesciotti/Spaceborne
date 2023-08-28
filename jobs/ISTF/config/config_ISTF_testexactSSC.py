@@ -108,7 +108,7 @@ covariance_cfg = {
     'block_index': 'ell',
     'GL_or_LG': 'GL',
 
-    'SSC_code': 'PySSC',  # PySSC or PyCCL or exactSSC
+    'SSC_code': 'PyCCL',  # PySSC or PyCCL or exactSSC
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which this is wrong
 
@@ -127,9 +127,11 @@ covariance_cfg = {
     'compute_cov_6D': False,
 
     'save_cov': True,
+    'cases_tosave': ['GO', 'GS'],
     'cov_file_format': 'npz',  # or npy
     'save_cov_dat': False,  # this is the format used by Vincenzo
 
+    # in cov_dict
     'save_cov_2D': True,
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt

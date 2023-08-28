@@ -204,20 +204,20 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     if covariance_cfg['SSC_code'] == 'PyCCL':
 
         print('computing SSC covariance with PyCCL')
-
         warnings.warn('input nofz for ccl, or better the kernels!')
+
         # cov_WL_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl('LL', 'SSC', ell_WL,
         #                                                    z_grid_nofz=None, n_of_z=None, general_cfg=general_cfg,
         #                                                    covariance_cfg=covariance_cfg)
-        # cov_3x2pt_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl('3x2pt', 'SSC', ell_3x2pt,
-        #                                                    z_grid_nofz=None, n_of_z=None, general_cfg=general_cfg,
-        #                                                    covariance_cfg=covariance_cfg)
-        cov_GC_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl('GG', 'SSC', ell_GC,
+        cov_3x2pt_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl('3x2pt', 'SSC', ell_3x2pt,
                                                            z_grid_nofz=None, n_of_z=None, general_cfg=general_cfg,
                                                            covariance_cfg=covariance_cfg)
+        # cov_GC_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl('GG', 'SSC', ell_GC,
+        #                                                    z_grid_nofz=None, n_of_z=None, general_cfg=general_cfg,
+        #                                                    covariance_cfg=covariance_cfg)
 
         # cov_WL_SS_6D = mm.cov_4D_to_6D(cov_WL_SS_4D, nbl_WL, zbins, 'LL', ind_auto)
-        cov_GC_SS_6D = mm.cov_4D_to_6D(cov_GC_SS_4D, nbl_GC, zbins, 'GG', ind_auto)
+        # cov_GC_SS_6D = mm.cov_4D_to_6D(cov_GC_SS_4D, nbl_GC, zbins, 'GG', ind_auto)
 
 
         # ! ccl
@@ -234,7 +234,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
                                f'cov_SSC_LLLL_6D_zbins{zbins}_ellbins{nbl_WL}'
                                f'_julia_convention{cl_integral_convention}.npy')
 
-    else:
+    elif not covariance_cfg['SSC_code'] in ('PySSC', 'PyCCL', 'exactSSC'):
         raise ValueError('SSC_code must be PySSC or PyCCL or exactSSC')
 
     print('SSC covariance computed with %s' % covariance_cfg['SSC_code'])
@@ -316,7 +316,10 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     # cov_WL_SS_2D_pyssc = mm.cov_4D_to_2D(cov_WL_SS_4D_pyssc, block_index=block_index)
     # cov_GC_SS_2D_pyssc = mm.cov_4D_to_2D(cov_GC_SS_4D_pyssc, block_index=block_index)
 
+    """
+    The code below is to import old pyccl ss cov files. Test it, then delete or better integrate it in the code
     if SSC_code == 'PyCCL':
+        
         print('Computing GS with PyCCL SSC covariance')
         # assert covariance_cfg['compute_cov_6D'] is False, 'compute_cov_6D must be False when using, because cov_GS_4D' \
         #                                                   ' gets overwritten below. Fix this.'
@@ -354,7 +357,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
                                                     GL_or_LG)
         assert np.array_equal(cov_3x2pt_SS_4D,
                               cov_3x2pt_SS_4D_v2), 'cov_3x2pt_SS_4D and cov_3x2pt_SS_4D_v2 are not equal'
-
+    """
     if covariance_cfg['compute_cov_6D']:
         assert False, 'now I compute the covariance in 6D (with einsum) in all cases!'
 

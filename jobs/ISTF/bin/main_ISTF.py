@@ -80,9 +80,9 @@ nparams_tot = FM_cfg['nparams_tot']
 # these define the derivatives filenames
 der_prefix = FM_cfg['derivatives_prefix']
 derivatives_suffix = FM_cfg['derivatives_suffix']
+cases_tosave = covariance_cfg['cases_tosave']
 
 # which cases to save: GO, GS or GO, GS and SSC
-cases_tosave = ['GO', ]
 if covariance_cfg[f'save_cov_GS']:
     cases_tosave.append('GS')
 if covariance_cfg[f'save_cov_SSC']:

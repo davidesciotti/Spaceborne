@@ -224,8 +224,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         elif covariance_cfg['pyccl_cfg']['probe'] == 'GG':
             cov_GC_SS_6D = mm.cov_4D_to_6D(cov_PyCCL_SS_4D, nbl_GC, zbins, 'GG', ind_auto)
         elif covariance_cfg['pyccl_cfg']['probe'] == '3x2pt':
-            raise ValueError('3x2pt not implemented yet')
-
+            cov_3x2pt_SS_4D = cov_PyCCL_SS_4D
 
         # import from file
         # path_ccl = '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/'
@@ -318,6 +317,10 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     print('covariance matrices reshaped (6D -> 4D) in {:.2f} s'.format(time.perf_counter() - start))
 
     # TODO finish this PYCCL stuff
+    if covariance_cfg['SSC_code'] == 'PyCCL' and covariance_cfg['pyccl_cfg']['probe'] == '3x2pt':
+        warnings.warn('the 3x2pt case is a bit cumbersome because i dont have a 4d -> 6D function for the 3x2pt cov')
+        cov_3x2pt_GS_4D = cov_3x2pt_GO_4D + cov_3x2pt_SS_4D
+
     # cov_WL_SS_4D_pyssc = np.copy(cov_WL_SS_4D)
     # cov_GC_SS_4D_pyssc = np.copy(cov_GC_SS_4D)
     # cov_WL_SS_2D_pyssc = mm.cov_4D_to_2D(cov_WL_SS_4D_pyssc, block_index=block_index)
@@ -755,7 +758,7 @@ def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr, plot_nz=True):
 #     return cov_6d
 
 
-def save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs):
+def save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs):
     # TODO skip the computation and saving if the file already exists
     if not covariance_cfg['save_cov']:
         return
@@ -767,13 +770,6 @@ def save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs):
     nbl_GC = variable_specs['nbl_GC']
     nbl_3x2pt = variable_specs['nbl_3x2pt']
     nbl_WA = variable_specs['nbl_WA']
-
-    # which cases to save: GO, GS or GO, GS and SS
-    cases_tosave = ['GO', 'GS']
-    if covariance_cfg[f'save_cov_GS']:
-        cases_tosave.append('GS')
-    if covariance_cfg[f'save_cov_SSC']:
-        cases_tosave.append('SS')
 
     # which file format to use
     if covariance_cfg['cov_file_format'] == 'npy':
@@ -801,31 +797,23 @@ def save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs):
 
             for which_cov in cases_tosave:
 
-                # save all covmats in the optimistic case
-                if ell_max_WL == 5000:
-                    for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
-                        cov_filename = covariance_cfg['cov_filename'].format(which_cov=which_cov, probe=probe,
-                                                                             ell_max=ell_max, nbl=nbl, ndim=ndim,
-                                                                             **variable_specs)
-                        save_funct(f'{cov_folder}/{cov_filename}.{extension}',
-                                   cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])  # save in .npy or .npz
+                for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
+                    cov_filename = covariance_cfg['cov_filename'].format(which_cov=which_cov, probe=probe,
+                                                                         ell_max=ell_max, nbl=nbl, ndim=ndim,
+                                                                         **variable_specs)
+                    save_funct(f'{cov_folder}/{cov_filename}.{extension}',
+                               cov_dict[f'cov_{probe}_{which_cov}_{ndim}D'])  # save in .npy or .npz
 
-                    # in this case, 3x2pt is saved in 10D as a dictionary
-                    # TODO these pickle files are too heavy, probably it's best to revert to npz
-                    if ndim == 6:
-                        cov_3x2pt_filename = covariance_cfg['cov_filename'].format(which_cov=which_cov, probe='3x2pt',
-                                                                                   ell_max=ell_max_XC, nbl=nbl_3x2pt,
-                                                                                   ndim=10, **variable_specs)
-                        with open(f'{cov_folder}/{cov_3x2pt_filename}.pickle', 'wb') as handle:
-                            pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
+                # in this case, 3x2pt is saved in 10D as a dictionary
+                # TODO these pickle files are too heavy, probably it's best to revert to npz
+                if ndim == 6:
+                    cov_3x2pt_filename = covariance_cfg['cov_filename'].format(which_cov=which_cov, probe='3x2pt',
+                                                                               ell_max=ell_max_XC, nbl=nbl_3x2pt,
+                                                                               ndim=10, **variable_specs)
+                    with open(f'{cov_folder}/{cov_3x2pt_filename}.pickle', 'wb') as handle:
+                        pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)
 
-                # in the pessimistic case, save only WA
-                elif ell_max_WL == 1500:
-                    cov_WA_filename = covariance_cfg['cov_filename'].format(which_cov=which_cov, probe='WA',
-                                                                            ell_max=ell_max_WL, nbl=nbl_WA, ndim=ndim,
-                                                                            **variable_specs)
-                    np.save(f'{cov_folder}/{cov_WA_filename}.{extension}', cov_dict[f'cov_WA_{which_cov}_{ndim}D'])
-            print('Covariance matrices saved')
+            print(f'Covariance matrices saved in {covariance_cfg["cov_file_format"]}')
 
     # save in .dat for Vincenzo, only in the optimistic case and in 2D
     if covariance_cfg['save_cov_dat'] and ell_max_WL == 5000:

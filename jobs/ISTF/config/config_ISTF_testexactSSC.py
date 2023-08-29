@@ -108,7 +108,6 @@ covariance_cfg = {
     'block_index': 'ell',
     'GL_or_LG': 'GL',
 
-    'SSC_code': 'PyCCL',  # PySSC or PyCCL or exactSSC
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which this is wrong
 
@@ -136,7 +135,7 @@ covariance_cfg = {
     'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_GO': True,
     'save_cov_GS': True,
-    'save_cov_SSC': False,
+    'save_cov_SSC': True,
     'save_2DCLOE': False,  # outermost loop is on the probes
 
     'cov_folder': f'{job_path}/output/{which_input_files}/' + 'covmat/{SSC_code:s}',
@@ -145,16 +144,18 @@ covariance_cfg = {
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_HMrecipeKrause2017_6D',
     # TODO these 2 filenames could be unified...
 
+    'SSC_code': 'PySSC',  # PySSC or PyCCL or exactSSC
     'pyccl_cfg': {
-        'probe': 'GG',
+        'probe': 'LL',
+        'optimize_cov_loop': False,  # loop only on zpairs, producing a 4D covariance matrix
         'hm_recipe': 'Krause2017',
         'z_grid_min': 0.001,
         'z_grid_max': 3,
         'z_grid_steps': 1000,
         'n_samples_wf': 1000,
-        'get_3xtpt_cov_in_4D': True,
+        'get_3x2pt_cov_in_4D': True,
         'bias_model': 'step-wise',
-        'use_HOD_for_GCph': True,
+        'use_HOD_for_GCph': False,
     }
 }
 

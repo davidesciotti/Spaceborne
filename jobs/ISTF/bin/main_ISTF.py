@@ -81,7 +81,6 @@ nparams_tot = FM_cfg['nparams_tot']
 der_prefix = FM_cfg['derivatives_prefix']
 derivatives_suffix = FM_cfg['derivatives_suffix']
 
-
 # which cases to save: GO, GS or GO, GS and SSC
 cases_tosave = []  #
 if covariance_cfg[f'save_cov_GO']:
@@ -89,7 +88,7 @@ if covariance_cfg[f'save_cov_GO']:
 if covariance_cfg[f'save_cov_GS']:
     cases_tosave.append('GS')
 if covariance_cfg[f'save_cov_SSC']:
-    cases_tosave.append('SSC')
+    cases_tosave.append('SS')
 
 # some checks
 assert EP_or_ED == 'EP' and zbins == 10, 'ISTF uses 10 equipopulated bins'
@@ -228,7 +227,7 @@ cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl, BNT_matrix=None)
 # ! save and test against benchmarks
 cov_folder = covariance_cfg["cov_folder"].format(SSC_code=covariance_cfg['SSC_code'], **variable_specs)
-covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
+covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 if general_cfg['test_against_benchmarks']:
     mm.test_folder_content(cov_folder, cov_folder + '/benchmarks', covariance_cfg['cov_file_format'])
 

@@ -9,12 +9,9 @@ job_path = Path.cwd().parent
 sys.path.append(f'{project_path}/bin')
 import check_specs as utils
 
-sys.path.append(f'{project_path.parent}/common_data/common_config')
-import ISTF_fid_params as ISTFfid
-
-with open('../../common_lib_and_cfg/common_config/ISTF_fiducial_params_for_FM.yml') as f:
-    ficualial_pars_dict = yaml.load(f, Loader=yaml.FullLoader)
-
+with open(
+        '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/ISTF_fiducial_params_for_FM.yml') as f:
+    fiducial_pars_dict = yaml.load(f, Loader=yaml.FullLoader)
 
 which_input_files = 'cl14may'  # which input files to use
 which_forecast = 'ISTF'
@@ -70,7 +67,7 @@ elif which_input_files == 'SSC_comparison_updated':
     cl_folder = 'SPV3'
 
 general_cfg = {
-    'ficualial_pars_dict': ficualial_pars_dict,
+    'fiducial_pars_dict': fiducial_pars_dict,
     'which_input_files': which_input_files,
     'which_forecast': which_forecast,
 
@@ -191,10 +188,11 @@ param_names_dict = {
 }
 # fiducial values
 fiducials_dict = {
-    'cosmo': [ISTFfid.primary['Om_m0'], ISTFfid.primary['Om_b0'], ISTFfid.primary['w_0'], ISTFfid.primary['w_a'],
-              ISTFfid.primary['h_0'], ISTFfid.primary['n_s'], ISTFfid.primary['sigma_8']],
-    'IA': [ISTFfid.IA_free['A_IA'], ISTFfid.IA_free['eta_IA'], ISTFfid.IA_free['beta_IA']],
-    'galaxy_bias': [ISTFfid.photoz_galaxy_bias[f'b{zbin:02d}_photo'] for zbin in range(1, general_cfg['zbins'] + 1)],
+    'cosmo': [fiducial_pars_dict['Om_m0'], fiducial_pars_dict['Om_b0'], fiducial_pars_dict['w_0'],
+              fiducial_pars_dict['w_a'],
+              fiducial_pars_dict['h_0'], fiducial_pars_dict['n_s'], fiducial_pars_dict['sigma_8']],
+    'IA': [fiducial_pars_dict['A_IA'], fiducial_pars_dict['eta_IA'], fiducial_pars_dict['beta_IA']],
+    'galaxy_bias': [fiducial_pars_dict[f'b{zbin:02d}_photo'] for zbin in range(1, general_cfg['zbins'] + 1)],
 }
 
 param_names_3x2pt = param_names_dict['cosmo'] + param_names_dict['IA'] + param_names_dict['galaxy_bias']

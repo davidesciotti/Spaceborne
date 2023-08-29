@@ -1,6 +1,7 @@
 from pathlib import Path
 import sys
 import numpy as np
+import yaml
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
@@ -10,6 +11,10 @@ import check_specs as utils
 
 sys.path.append(f'{project_path.parent}/common_data/common_config')
 import ISTF_fid_params as ISTFfid
+
+with open('../../common_lib_and_cfg/common_config/ISTF_fiducial_params_for_FM.yml') as f:
+    ficualial_pars_dict = yaml.load(f, Loader=yaml.FullLoader)
+
 
 which_input_files = 'cl14may'  # which input files to use
 which_forecast = 'ISTF'
@@ -65,6 +70,7 @@ elif which_input_files == 'SSC_comparison_updated':
     cl_folder = 'SPV3'
 
 general_cfg = {
+    'ficualial_pars_dict': ficualial_pars_dict,
     'which_input_files': which_input_files,
     'which_forecast': which_forecast,
 
@@ -144,10 +150,11 @@ covariance_cfg = {
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_HMrecipeKrause2017_6D',
     # TODO these 2 filenames could be unified...
 
-    'SSC_code': 'exactSSC',  # PySSC or PyCCL or exactSSC
-    'pyccl_cfg': {
-        'probe': 'LL',
+    'SSC_code': 'PyCCL',  # PySSC or PyCCL or exactSSC
+    'PyCCL_cfg': {
+        'probe': '3x2pt',
         'load_precomputed_cov': False,
+        'use_HOD_for_GCph': True,
         'hm_recipe': 'Krause2017',
         'z_grid_min': 0.001,
         'z_grid_max': 3,
@@ -155,12 +162,11 @@ covariance_cfg = {
         'n_samples_wf': 1000,
         'get_3x2pt_cov_in_4D': True,
         'bias_model': 'step-wise',
-        'use_HOD_for_GCph': False,
     },
 
     'exactSSC_cfg': {
-        'probe': 'LL',
-        'cl_integral_convention': 'Euclid',  # yet to be implemented
+        'probe': 'GG',
+        'cl_integral_convention': 'PySSC',  # yet to be implemented
     }
 }
 

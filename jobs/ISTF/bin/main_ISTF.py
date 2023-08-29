@@ -360,7 +360,7 @@ uncert_FM_GS_test = mm.uncertainties_FM(FM_test_GS, FM_test_GS.shape[0], fiducia
 ###############
 # add the percent differences and/or ratios to the dictionary
 
-probe = 'WL'
+probe = 'GC'
 lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_XC']
 to_compare_A = f'FM_{probe}_GS'
 to_compare_B = f'FM_{probe}_GO'

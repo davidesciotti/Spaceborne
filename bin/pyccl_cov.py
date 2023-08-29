@@ -68,11 +68,11 @@ def initialize_trispectrum(cosmo_ccl, hm_recipe, probe_ordering, use_HOD_for_GCp
     # mass definition
     if hm_recipe == 'KiDS1000':  # arXiv:2007.01844
         c_m = 'Duffy08'
-        mass_def = ccl.halos.MassDef200c(c_m=c_m)  # ! testing 200c
+        mass_def = ccl.halos.MassDef200m(c_m=c_m)  # ! testing 200c
         c_M_relation = ccl.halos.concentration.ConcentrationDuffy08(mdef=mass_def)
     elif hm_recipe == 'Krause2017':  # arXiv:1601.05779
         c_m = 'Bhattacharya13'  # see paper, after Eq. 1
-        mass_def = ccl.halos.MassDef200c(c_m=c_m)  # ! testing 200c
+        mass_def = ccl.halos.MassDef200m(c_m=c_m)  # ! testing 200c
         c_M_relation = ccl.halos.concentration.ConcentrationBhattacharya13(mdef=mass_def)  # above Eq. 12
     else:
         raise ValueError('Wrong choice of hm_recipe: it must be either "KiDS1000" or "Krause2017".')
@@ -237,7 +237,7 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
     GL_or_LG = covariance_cfg['GL_or_LG']
     nbl = len(ell_grid)
 
-    pyccl_cfg = covariance_cfg['pyccl_cfg']
+    pyccl_cfg = covariance_cfg['PyCCL_cfg']
     hm_recipe = pyccl_cfg['hm_recipe']
     z_grid = np.linspace(pyccl_cfg['z_grid_min'], pyccl_cfg['z_grid_max'], pyccl_cfg['z_grid_steps'])
     n_samples_wf = pyccl_cfg['n_samples_wf']

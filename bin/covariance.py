@@ -202,46 +202,48 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_3x2pt_SS_10D = mm.covariance_SSC_einsum(cl_3x2pt_5D, rl_3x2pt_5D, s_ABCD_ijkl, fsky)
     print("SS cov. matrices computed in %.2f s with PySSC" % (time.perf_counter() - start))
 
+    # these are needed by PyCCL and exactSSC:
+    if covariance_cfg['SSC_code'] != 'PySSC':
+
+        probe_ssc_code = covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['probe']
+        if probe_ssc_code == 'LL':
+            ell_grid = ell_WL
+            ell_max = ell_max_WL
+        elif probe_ssc_code == 'GG':
+            ell_grid = ell_GC
+            ell_max = ell_max_GC
+        elif probe_ssc_code == '3x2pt':
+            ell_grid = ell_3x2pt
+            ell_max = ell_max_3x2pt
+        else:
+            raise ValueError(f'probe_ssc_code must be LL or GG or 3x2pt')
+        nbl_ssc_code = len(ell_grid)
+
     if covariance_cfg['SSC_code'] == 'PyCCL':
 
         print('computing SSC covariance with PyCCL')
         warnings.warn('input nofz for ccl, or better the kernels!')
 
-        probe = covariance_cfg['pyccl_cfg']['probe']
 
-        if probe == 'LL':
-            ell_grid = ell_WL
-            ell_max = ell_max_WL
-        elif probe == 'GG':
-            ell_grid = ell_GC
-            ell_max = ell_max_GC
-        elif probe == '3x2pt':
-            ell_grid = ell_3x2pt
-            ell_max = ell_max_3x2pt
-        else:
-            raise ValueError('pyccl_cfg["probe"] must be LL or GG or 3x2pt')
-
-        nbl = len(ell_grid)
-
-        if covariance_cfg['pyccl_cfg']['load_precomputed_cov']:
+        if covariance_cfg['PyCCL_cfg']['load_precomputed_cov']:
             path_ccl = '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat'
-            if nbl_WL == 20:
+            if nbl_ssc_code == 20:
                 path_ccl += '/after_script_update'
 
-            cov_PyCCL_SS_4D = np.load(f'{path_ccl}/cov_PyCCL_SSC_{probe}_nbl{nbl}_ellmax{ell_max}'
-                                      f'_HMrecipe{covariance_cfg["pyccl_cfg"]["hm_recipe"]}_4D.npz')['arr_0']
+            cov_PyCCL_SS_4D = np.load(f'{path_ccl}/cov_PyCCL_SSC_{probe_ssc_code}_nbl{nbl_ssc_code}_ellmax{ell_max}'
+                                      f'_HMrecipe{covariance_cfg["PyCCL_cfg"]["hm_recipe"]}_4D.npz')['arr_0']
 
         else:
-            cov_PyCCL_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl(probe, 'SSC', ell_grid,
+            cov_PyCCL_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl(probe_ssc_code, 'SSC', ell_grid,
                                                                   z_grid_nofz=None, n_of_z=None,
                                                                   general_cfg=general_cfg,
                                                                   covariance_cfg=covariance_cfg)
 
-        if probe == 'LL':
+        if probe_ssc_code == 'LL':
             cov_WL_SS_6D = mm.cov_4D_to_6D(cov_PyCCL_SS_4D, nbl_WL, zbins, 'LL', ind_auto)
-        elif probe == 'GG':
+        elif probe_ssc_code == 'GG':
             cov_GC_SS_6D = mm.cov_4D_to_6D(cov_PyCCL_SS_4D, nbl_GC, zbins, 'GG', ind_auto)
-        elif probe == '3x2pt':
+        elif probe_ssc_code == '3x2pt':
             cov_3x2pt_SS_4D = cov_PyCCL_SS_4D
 
     elif covariance_cfg['SSC_code'] == 'exactSSC':
@@ -249,15 +251,19 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         print('computing SSC covariance with exactSSC...')
 
         probe = covariance_cfg['exactSSC_cfg']['probe']
+        cl_integral_convention = covariance_cfg['exactSSC_cfg']['cl_integral_convention']
         probe_str = {
             'LL': 'LLLL',
             'GG': 'GGGG',
         }
 
         # assert covariance_cfg['exactSSC_cfg']['probe'] == 'LL', 'exactSSC only implemented for LL'
-        cl_integral_convention = covariance_cfg['exactSSC_cfg']['cl_integral_convention']
-        cov_exactSSC_SS_6D = np.load(f'/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/'
-                                     f'cov_SSC_{probe_str["probe"]}_6D_zbins{zbins}_ellbins{nbl_WL}_julia_convention{cl_integral_convention}.npy')
+        if probe_ssc_code == 'LL':
+            cov_exactSSC_SS_6D = np.load(f'/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/'
+                                         f'cov_SSC_{probe_str[probe]}_6D_zbins{zbins}_ellbins{nbl_WL}_julia_convention{cl_integral_convention}.npy')
+        elif probe_ssc_code == 'GG':
+            cov_exactSSC_SS_6D = np.load(f'/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/old_julia_outputs/'
+                                         f'cov_SSC_{probe_str[probe]}_6D_zbins{zbins}_ellbins{nbl_WL}_julia.npy')
         cov_exactSSC_SS_6D *= 1 / fsky
 
         if probe == 'LL':
@@ -342,7 +348,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     print('covariance matrices reshaped (6D -> 4D) in {:.2f} s'.format(time.perf_counter() - start))
 
     # TODO finish this PYCCL stuff
-    if covariance_cfg['SSC_code'] == 'PyCCL' and covariance_cfg['pyccl_cfg']['probe'] == '3x2pt':
+    if covariance_cfg['SSC_code'] == 'PyCCL' and covariance_cfg['PyCCL_cfg']['probe'] == '3x2pt':
+        assert False, 'this is not finished yet'
         warnings.warn('the 3x2pt case is a bit cumbersome because i dont have a 4d -> 6D function for the 3x2pt cov')
         cov_3x2pt_GS_4D = cov_3x2pt_GO_4D + cov_3x2pt_SS_4D
 

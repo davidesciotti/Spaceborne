@@ -179,6 +179,15 @@ rl_dict_3D['rl_3x2pt_5D'] = cl_utils.build_3x2pt_datavector_5D(rl_LLfor3x2pt_3D,
                                                                rl_dict_3D['rl_GG_3D'],
                                                                nbl_GC, zbins, n_probes)
 
+new = np.load(
+    '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/ISTF/output/cl14may/covmat/PySSC/covmat_GS_WL_lmax5000_nbl30_zbinsEP10_2D.npz')[
+    'arr_0']
+bench = np.load(
+    '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/ISTF/output/cl14may/covmat/PySSC/benchmarks/covmat_GS_WL_lmax5000_nbl30_zbinsEP10_2D.npz')[
+    'arr_0']
+mm.compare_arrays(new, bench, name_A='new', name_B='bench', plot_diff=True, plot_array=True,
+                  log_array=True, log_diff=True, abs_val=False, plot_diff_threshold=None, white_where_zero=True)
+
 # ! compute covariance matrix
 if not covariance_cfg['compute_covmat']:
     raise KeyboardInterrupt('Fisher matrix computation is set to False; exiting')
@@ -359,14 +368,14 @@ uncert_FM_GS_test = mm.uncertainties_FM(FM_test_GS, FM_test_GS.shape[0], fiducia
                                         normalize=True)[:nparams_toplot]
 ###############
 # add the percent differences and/or ratios to the dictionary
-probe = 'WL'
-lmax = ell_max_WL
+probe = 'GC'
+lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_XC']
 to_compare_A = f'FM_{probe}_GS'
 to_compare_B = f'FM_{probe}_GO'
 uncert_dict['perc_diff'] = mm.percent_diff(uncert_dict[to_compare_A], uncert_dict[to_compare_B])
 
+# just a check, to be performed only if I am actually using PyCCL as well
 if 'FM_PySSC_GO' in uncert_dict.keys() and 'FM_PyCCL_GO' in uncert_dict.keys():
-    # just a check, to be performed only if I am actually using PyCCL as well
     assert np.array_equal(uncert_dict['FM_PySSC_GO'], uncert_dict['FM_PyCCL_GO']), \
         'the GO uncertainties must be the same, I am only changing the SSC code!'
 
@@ -376,7 +385,8 @@ for which_probe in ['WL', 'GC', '3x2pt']:
     try:
         assert np.allclose(uncert_dict['ISTF'], uncert_dict[f'FM_{which_probe}_GO'][:nparams_toplot], atol=0, rtol=5e-2)
     except AssertionError:
-        f'IST:F and G are not consistent for probe {which_probe}! Remember that you are checking against the optimistic case'
+        print(f'IST:F and GO are not consistent for probe {which_probe}! '
+              f'Remember that you are checking against the optimistic case')
         np.set_printoptions(precision=2)
         print('probe:', which_probe)
         print('ISTF GO:\t', uncert_dict['ISTF'])
@@ -392,7 +402,7 @@ for case in cases_to_plot:
     uncert_array.append(uncert_dict[case])
 uncert_array = np.asarray(uncert_array)
 
-title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
+title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i, %s' % (probe, lmax, EP_or_ED, zbins, covariance_cfg['SSC_code'])
 plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                     param_names_label=param_names_list[:nparams_toplot], bar_width=0.12)
 

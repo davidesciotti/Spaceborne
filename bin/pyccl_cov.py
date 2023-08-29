@@ -170,61 +170,67 @@ def compute_ng_cov_ccl(cosmo, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka,
 
     start_time = time.perf_counter()
 
+    # switch between the two functions, which are identical except for the sigma2_B argument
     func_map = {
         'SSC': 'angular_cl_cov_SSC',
         'cNG': 'angular_cl_cov_cNG'
     }
-
     if which_ng_cov not in func_map:
         raise ValueError("Invalid value for which_ng_cov. Must be 'SSC' or 'cNG'.")
-
     func_to_call = getattr(ccl.covariances, func_map[which_ng_cov])
-
     sigma2_B_arg = {'sigma2_B': None} if which_ng_cov == 'SSC' else {}
 
-    cov_ng_4D = Parallel(n_jobs=-1, backend='threading')(
-        delayed(func_to_call)(cosmo,
-                              cltracer1=kernel_A[ind_AB[ij, -2]],
-                              cltracer2=kernel_B[ind_AB[ij, -1]],
-                              ell=ell,
-                              tkka=tkka,
-                              fsky=f_sky,
-                              cltracer3=kernel_C[ind_CD[kl, -2]],
-                              cltracer4=kernel_D[ind_CD[kl, -1]],
-                              ell2=None,
-                              integration_method=integration_method,
-                              **sigma2_B_arg)
-        for kl in tqdm(range(zpairs_CD))
-        for ij in range(zpairs_AB)
-    )
+    if optimize_cov_loop:
+        cov_ng_4D = Parallel(n_jobs=-1, backend='threading')(
+            delayed(func_to_call)(cosmo,
+                                  cltracer1=kernel_A[ind_AB[ij, -2]],
+                                  cltracer2=kernel_B[ind_AB[ij, -1]],
+                                  ell=ell,
+                                  tkka=tkka,
+                                  fsky=f_sky,
+                                  cltracer3=kernel_C[ind_CD[kl, -2]],
+                                  cltracer4=kernel_D[ind_CD[kl, -1]],
+                                  ell2=None,
+                                  integration_method=integration_method,
+                                  **sigma2_B_arg)
+            for kl in tqdm(range(zpairs_CD))
+            for ij in range(zpairs_AB)
+        )
+        cov_ng_4D = np.array(cov_ng_4D).transpose(1, 2, 0).reshape(nbl, nbl, zpairs_AB, zpairs_CD)
 
-    cov_ng_6D = Parallel(n_jobs=-1, backend='threading')(
-        delayed(ccl.covariances.angular_cl_cov_SSC)(cosmo,
-                                                    cltracer1=kernel_A[zi],
-                                                    cltracer2=kernel_B[zj],
-                                                    ell=ell, tkka=tkka,
-                                                    sigma2_B=None, fsky=f_sky,
-                                                    cltracer3=kernel_C[zk],
-                                                    cltracer4=kernel_D[zl],
-                                                    ell2=None,
-                                                    integration_method=integration_method)
-        for zi in tqdm(range(zbins))
-        for zj in range(zbins)
-        for zk in range(zbins)
-        for zl in range(zbins))
+    else:
+        cov_ng_6D = Parallel(n_jobs=-1, backend='threading')(
+            delayed(ccl.covariances.angular_cl_cov_SSC)(cosmo,
+                                                        cltracer1=kernel_A[zi],
+                                                        cltracer2=kernel_B[zj],
+                                                        ell=ell, tkka=tkka,
+                                                        sigma2_B=None, fsky=f_sky,
+                                                        cltracer3=kernel_C[zk],
+                                                        cltracer4=kernel_D[zl],
+                                                        ell2=None,
+                                                        integration_method=integration_method)
+            for zi in tqdm(range(zbins))
+            for zj in range(zbins)
+            for zk in range(zbins)
+            for zl in range(zbins))
+        cov_ng_6D = np.array(cov_ng_6D).transpose(1, 2, 0).reshape(nbl, nbl, zbins, zbins, zbins, zbins)
 
-    cov_ng_4D = np.array(cov_ng_4D).transpose(1, 2, 0).reshape(nbl, nbl, zpairs_AB, zpairs_CD)
     print(f'{which_ng_cov} computed with pyccl in {(time.perf_counter() - start_time):.2} seconds')
 
+    # np.save(
+    #     f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/ISTF/output/cl14may/covmat/PyCCL/cov_SSC_LLLL_4D.npy',
+    #     cov_ng_4D)
+    # np.save(
+    #     f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/ISTF/output/cl14may/covmat/PyCCL/cov_SSC_LLLL_6D.npy',
+    #     cov_ng_6D)
+    # breakpoint()
+    #
     # test that indeed they are equal
     cov_ng_4D_to_6D = mm.cov_4D_to_6D(cov_ng_4D, len(ell), zbins, 'LL', ind_AB)
     np.testing.assert_allclose(cov_ng_4D_to_6D, cov_ng_6D, rtol=1e-5, atol=0)
 
     cov_ng_6D_to_4D = mm.cov_6D_to_4D(cov_ng_6D, len(ell), zpairs_AB, ind_AB)
     np.testing.assert_allclose(cov_ng_6D_to_4D, cov_ng_4D, rtol=1e-5, atol=0)
-
-    breakpoint()
-
 
     return cov_ng_4D
 
@@ -377,7 +383,6 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
     ax[1].legend(custom_lines, ['pyccl'])
     ax[1].legend(custom_lines, ['import'])
     plt.show()
-    plt.tight_layout()
 
     # the cls are not needed, but just in case:
     # cl_LL_3D = wf_cl_lib.cl_PyCCL(wf_lensing, wf_lensing, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)

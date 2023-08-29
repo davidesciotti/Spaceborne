@@ -370,6 +370,10 @@ def save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=False, save_dict=
     ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
     nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
 
+    # there is no SSC-only Fisher!
+    if 'SS' in cases_tosave:
+        cases_tosave.remove('SS')
+
     if save_txt:
         for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
             for which_cov in cases_tosave:

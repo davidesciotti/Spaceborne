@@ -144,10 +144,11 @@ covariance_cfg = {
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_HMrecipeKrause2017_6D',
     # TODO these 2 filenames could be unified...
 
-    'SSC_code': 'PySSC',  # PySSC or PyCCL or exactSSC
+    'SSC_code': 'PyCCL',  # PySSC or PyCCL or exactSSC
     'pyccl_cfg': {
-        'probe': 'LL',
-        'optimize_cov_loop': False,  # loop only on zpairs, producing a 4D covariance matrix
+        'probe': 'GG',
+        'optimize_cov_loop': True,  # loop only on zpairs, producing a 4D covariance matrix
+        'load_precomputed_cov': False,
         'hm_recipe': 'Krause2017',
         'z_grid_min': 0.001,
         'z_grid_max': 3,

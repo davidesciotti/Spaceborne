@@ -14,6 +14,7 @@ from scipy.integrate import simps
 
 import cl_preprocessing
 import pyccl_cov
+import sigma2_SSC
 
 matplotlib.use('Qt5Agg')
 
@@ -29,6 +30,28 @@ import wf_cl_lib
 ###############################################################################
 ################ CODE TO COMPUTE THE G AND SSC COVMATS ########################
 ###############################################################################
+
+
+def ssc_with_exactSSC(general_cfg, covariance_cfg):
+    print('computing SSC covariance with exactSSC...')
+
+    probe = covariance_cfg['exactSSC_cfg']['probe']
+    zbins = general_cfg['zbins']
+    nbl_WL = general_cfg['nbl_WL']
+    nbl_GC = general_cfg['nbl_GC']
+    nbl_3x2pt = general_cfg['nbl_3x2pt']
+
+    cl_integral_convention = covariance_cfg['exactSSC_cfg']['cl_integral_convention']
+
+    # just a test, for now
+    sigma2 = sigma2_SSC.compute_sigma2(covariance_cfg['exact_SSC_cfg'], general_cfg['fiducial_pars_dict'])
+
+    cov_exactSSC_SS_6D = np.load(f'/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia'
+                                 f'cov_SSC_{probe}{probe}_6D_zbins{zbins}_ellbins{nbl_WL}_julia_convention{cl_integral_convention}.npy')
+
+    cov_exactSSC_SS_6D *= 1 / covariance_cfg['fsky']
+
+    return cov_exactSSC_SS_6D
 
 
 def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix):
@@ -219,11 +242,19 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             raise ValueError(f'probe_ssc_code must be LL or GG or 3x2pt')
         nbl_ssc_code = len(ell_grid)
 
+    if covariance_cfg['SSC_code'] == 'exactSSC':
+
+        cov_exactSSC_SS_6D = ssc_with_exactSSC(general_cfg, covariance_cfg)
+
+        if probe_ssc_code == 'LL':
+            cov_WL_SS_6D = cov_exactSSC_SS_6D
+        elif probe_ssc_code == 'GG':
+            cov_GC_SS_6D = cov_exactSSC_SS_6D
+
     if covariance_cfg['SSC_code'] == 'PyCCL':
 
         print('computing SSC covariance with PyCCL')
         warnings.warn('input nofz for ccl, or better the kernels!')
-
 
         if covariance_cfg['PyCCL_cfg']['load_precomputed_cov']:
             path_ccl = '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat'
@@ -246,30 +277,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         elif probe_ssc_code == '3x2pt':
             cov_3x2pt_SS_4D = cov_PyCCL_SS_4D
 
-    elif covariance_cfg['SSC_code'] == 'exactSSC':
-
-        print('computing SSC covariance with exactSSC...')
-
-        probe = covariance_cfg['exactSSC_cfg']['probe']
-        cl_integral_convention = covariance_cfg['exactSSC_cfg']['cl_integral_convention']
-        probe_str = {
-            'LL': 'LLLL',
-            'GG': 'GGGG',
-        }
-
-        # assert covariance_cfg['exactSSC_cfg']['probe'] == 'LL', 'exactSSC only implemented for LL'
-        if probe_ssc_code == 'LL':
-            cov_exactSSC_SS_6D = np.load(f'/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/'
-                                         f'cov_SSC_{probe_str[probe]}_6D_zbins{zbins}_ellbins{nbl_WL}_julia_convention{cl_integral_convention}.npy')
-        elif probe_ssc_code == 'GG':
-            cov_exactSSC_SS_6D = np.load(f'/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/old_julia_outputs/'
-                                         f'cov_SSC_{probe_str[probe]}_6D_zbins{zbins}_ellbins{nbl_WL}_julia.npy')
-        cov_exactSSC_SS_6D *= 1 / fsky
-
-        if probe == 'LL':
-            cov_WL_SS_6D = cov_exactSSC_SS_6D
-        elif probe == 'GG':
-            cov_GC_SS_6D = cov_exactSSC_SS_6D
 
     elif not covariance_cfg['SSC_code'] in ('PySSC', 'PyCCL', 'exactSSC'):
         raise ValueError('SSC_code must be PySSC or PyCCL or exactSSC')

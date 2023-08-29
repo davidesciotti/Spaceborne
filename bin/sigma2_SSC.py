@@ -136,6 +136,7 @@ def plot_sigma2(sigma2_arr, z_grid_sigma2):
 
 
 def compute_sigma2(sigma2_cfg, ficualial_pars_dict):
+
     # instantiate cosmo_ccl
     cosmo_ccl = csmlib.istantiate_cosmo_ccl_obj(ficualial_pars_dict)
 

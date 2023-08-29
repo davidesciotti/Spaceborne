@@ -12,6 +12,7 @@ import check_specs as utils
 with open(
         '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/ISTF_fiducial_params_for_FM.yml') as f:
     fiducial_pars_dict = yaml.load(f, Loader=yaml.FullLoader)
+fiducial_pars_dict_for_fm = fiducial_pars_dict['FM_ordered_params']  # necessary for FM handling
 
 which_input_files = 'cl14may'  # which input files to use
 which_forecast = 'ISTF'
@@ -67,7 +68,7 @@ elif which_input_files == 'SSC_comparison_updated':
     cl_folder = 'SPV3'
 
 general_cfg = {
-    'fiducial_pars_dict': fiducial_pars_dict,
+    'fiducial_pars_dict_for_fm': fiducial_pars_dict_for_fm,
     'which_input_files': which_input_files,
     'which_forecast': which_forecast,
 
@@ -164,6 +165,14 @@ covariance_cfg = {
     'exactSSC_cfg': {
         'probe': 'GG',
         'cl_integral_convention': 'PySSC',  # yet to be implemented
+
+        # settings for sigma2
+        'z_min_sigma2': 0.001,
+        'z_max_sigma2': 3,
+        'z_steps_sigma2': 3000,
+        'log10_k_min_sigma2': -4,
+        'log10_k_max_sigma2': 1,
+        'k_steps_sigma2': 20_000,
     }
 }
 
@@ -188,11 +197,12 @@ param_names_dict = {
 }
 # fiducial values
 fiducials_dict = {
-    'cosmo': [fiducial_pars_dict['Om_m0'], fiducial_pars_dict['Om_b0'], fiducial_pars_dict['w_0'],
-              fiducial_pars_dict['w_a'],
-              fiducial_pars_dict['h_0'], fiducial_pars_dict['n_s'], fiducial_pars_dict['sigma_8']],
-    'IA': [fiducial_pars_dict['A_IA'], fiducial_pars_dict['eta_IA'], fiducial_pars_dict['beta_IA']],
-    'galaxy_bias': [fiducial_pars_dict[f'b{zbin:02d}_photo'] for zbin in range(1, general_cfg['zbins'] + 1)],
+    'cosmo': [fiducial_pars_dict_for_fm['Om_m0'], fiducial_pars_dict_for_fm['Om_b0'], fiducial_pars_dict_for_fm['w_0'],
+              fiducial_pars_dict_for_fm['w_a'],
+              fiducial_pars_dict_for_fm['h_0'], fiducial_pars_dict_for_fm['n_s'], fiducial_pars_dict_for_fm['sigma_8']],
+    'IA': [fiducial_pars_dict_for_fm['A_IA'], fiducial_pars_dict_for_fm['eta_IA'],
+           fiducial_pars_dict_for_fm['beta_IA']],
+    'galaxy_bias': [fiducial_pars_dict_for_fm[f'b{zbin:02d}_photo'] for zbin in range(1, general_cfg['zbins'] + 1)],
 }
 
 param_names_3x2pt = param_names_dict['cosmo'] + param_names_dict['IA'] + param_names_dict['galaxy_bias']

@@ -71,10 +71,12 @@ def generate_ell_and_deltas(general_config):
     ell_dict['ell_WL'] = 10 ** ell_WL
     ell_dict['ell_GC'] = 10 ** ell_GC
     ell_dict['ell_WA'] = 10 ** ell_WA
+    ell_dict['ell_3x2pt'] = 10 ** ell_GC
 
     delta_dict['delta_l_WL'] = delta_l_WL
     delta_dict['delta_l_GC'] = delta_l_GC
     delta_dict['delta_l_WA'] = delta_l_WA
+    delta_dict['delta_l_3x2pt'] = delta_l_GC
 
     return ell_dict, delta_dict
 

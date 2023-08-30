@@ -136,7 +136,7 @@ def plot_sigma2(sigma2_arr, z_grid_sigma2):
 
 
 def compute_sigma2(sigma2_cfg, ficualial_pars_dict):
-
+    print(f'computing sigma^2(z_1, z_2) for SSC...')
     # instantiate cosmo_ccl
     cosmo_ccl = csmlib.istantiate_cosmo_ccl_obj(ficualial_pars_dict)
 
@@ -148,8 +148,8 @@ def compute_sigma2(sigma2_cfg, ficualial_pars_dict):
     start_time = time.perf_counter()
     sigma2_func_remote = ray.remote(sigma2_func)
     remote_calls = []
-    for z1 in z_grid_sigma2:
-        for z2 in tqdm(z_grid_sigma2):
+    for z1 in tqdm(z_grid_sigma2):
+        for z2 in z_grid_sigma2:
             remote_calls.append(sigma2_func_remote.remote(z1, z2, k_grid_sigma2, cosmo_ccl))
     # Get the results from the remote function calls
     sigma2_arr = ray.get(remote_calls)
@@ -162,7 +162,20 @@ def compute_sigma2(sigma2_cfg, ficualial_pars_dict):
     sigma2_arr = np.array(sigma2_arr).reshape((len(z_grid_sigma2), len(z_grid_sigma2)))
     print(f'sigma2 computed in: {(time.perf_counter() - start_time):.2f} s')
 
-    return sigma2_arr
+    return sigma2_arr, z_grid_sigma2
+
+
+def interpolate_sigma2_arr(sigma2_arr, z_grid_original, z_grid_new):
+    """ Interpolate sigma2_arr from z_grid_original to z_grid_new. This is needed because the covmat is computed
+    in a different z_grid than the one used to compute sigma2."""
+
+    # TODO test this!
+
+    sigma2_interp_func = RegularGridInterpolator((z_grid_original, z_grid_original), sigma2_arr, method='linear')
+
+    z_grid_new_xx, z_grid_new_yy = np.meshgrid(z_grid_new, z_grid_new)
+    sigma2_arr_interpolated = sigma2_interp_func((z_grid_new_xx, z_grid_new_yy)).T
+    return sigma2_arr_interpolated
 
 # TODO compute sigma_b with PyCCL for a rought comparison
 # fsky = csmlib.deg2_to_fsky(cfg['sky_area_deg2'])

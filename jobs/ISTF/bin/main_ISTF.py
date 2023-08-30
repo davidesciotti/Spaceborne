@@ -77,7 +77,6 @@ fiducials_dict = FM_cfg['fiducials_dict']
 param_names_dict = FM_cfg['param_names_dict']
 param_names_3x2pt = FM_cfg['param_names_3x2pt']
 nparams_tot = FM_cfg['nparams_tot']
-# these define the derivatives filenames
 der_prefix = FM_cfg['derivatives_prefix']
 derivatives_suffix = FM_cfg['derivatives_suffix']
 
@@ -100,6 +99,9 @@ assert general_cfg['BNT_transform'] is False, 'BNT_transform is not implemented 
 zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 ind = mm.build_full_ind(covariance_cfg['triu_tril'], covariance_cfg['row_col_major'], zbins)
 covariance_cfg['ind'] = ind
+
+covariance_cfg['probe_ordering'] = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
+
 
 # ! compute ell and delta ell values
 ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_cfg)
@@ -331,6 +333,7 @@ if general_cfg['test_against_benchmarks']:
 nparams_toplot = 7
 uncert_dict = {}
 masked_FM_dict = {}
+fom = {}
 for key in list(FM_dict.keys()):
     if key not in ['param_names_dict', 'fiducial_values_dict']:
         masked_FM_dict[key], param_names_list, fiducials_list = mm.mask_FM(FM_dict[key], FM_dict['param_names_dict'],
@@ -344,6 +347,8 @@ for key in list(FM_dict.keys()):
         uncert_dict[key] = mm.uncertainties_FM(masked_FM_dict[key], nparams=masked_FM_dict[key].shape[0],
                                                fiducials=fiducials_list,
                                                which_uncertainty='marginal', normalize=True)[:nparams_toplot]
+        fom[key] = mm.compute_FoM(masked_FM_dict[key], w0wa_idxs=(2, 3))
+
 
 FM_test_GO = np.genfromtxt(
     '/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
@@ -360,7 +365,8 @@ uncert_FM_GS_test = mm.uncertainties_FM(FM_test_GS, FM_test_GS.shape[0], fiducia
 ###############
 # add the percent differences and/or ratios to the dictionary
 
-probe = 'GC'
+probe = '3x2pt'
+include_fom = True
 lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_XC']
 to_compare_A = f'FM_{probe}_GS'
 to_compare_B = f'FM_{probe}_GO'
@@ -393,10 +399,14 @@ for case in cases_to_plot:
     uncert_array.append(uncert_dict[case])
 uncert_array = np.asarray(uncert_array)
 
+ssc_code_probe = covariance_cfg[f'{covariance_cfg["SSC_code"]}_cfg']['probe'] if covariance_cfg["SSC_code"] in ['PyCCL', 'exactSSC'] else ''
 title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i, %s %s' % (probe, lmax, EP_or_ED, zbins, covariance_cfg['SSC_code'],
-                                                            covariance_cfg[f'{covariance_cfg["SSC_code"]}_cfg']['probe'])
+                                                            ssc_code_probe)
+if include_fom:
+    nparams_toplot += 1
 plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
-                    param_names_label=param_names_list[:nparams_toplot], bar_width=0.12)
+                    param_names_label=param_names_list[:nparams_toplot-1] + ['FoM'], bar_width=0.12)
+
 
 if FM_cfg['test_against_benchmarks']:
     mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')

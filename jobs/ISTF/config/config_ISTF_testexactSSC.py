@@ -10,7 +10,7 @@ sys.path.append(f'{project_path}/bin')
 import check_specs as utils
 
 with open(
-        '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/ISTF_fiducial_params_for_FM.yml') as f:
+        '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/ISTF_fiducial_params_full.yml') as f:
     fiducial_pars_dict = yaml.load(f, Loader=yaml.FullLoader)
 fiducial_pars_dict_for_fm = fiducial_pars_dict['FM_ordered_params']  # necessary for FM handling
 
@@ -68,7 +68,7 @@ elif which_input_files == 'SSC_comparison_updated':
     cl_folder = 'SPV3'
 
 general_cfg = {
-    'fiducial_pars_dict_for_fm': fiducial_pars_dict_for_fm,
+    'fiducial_pars_dict': fiducial_pars_dict,
     'which_input_files': which_input_files,
     'which_forecast': which_forecast,
 
@@ -111,6 +111,7 @@ covariance_cfg = {
     'row_col_major': 'row-major',
     'block_index': 'ell',
     'GL_or_LG': 'GL',
+    'probe_orderinng': None,  # this is set in the main
 
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which this is wrong
@@ -148,9 +149,10 @@ covariance_cfg = {
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_HMrecipeKrause2017_6D',
     # TODO these 2 filenames could be unified...
 
-    'SSC_code': 'PyCCL',  # PySSC or PyCCL or exactSSC
+    'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or exactSSC
+
     'PyCCL_cfg': {
-        'probe': '3x2pt',
+        'probe': 'GG',
         'load_precomputed_cov': False,
         'use_HOD_for_GCph': True,
         'hm_recipe': 'Krause2017',
@@ -167,6 +169,8 @@ covariance_cfg = {
         'cl_integral_convention': 'PySSC',  # yet to be implemented
 
         # settings for sigma2
+        'k_txt_label': '1overMpc',
+        'use_precomputed_sigma2': True,  # still need to understand exactly where to call/save this
         'z_min_sigma2': 0.001,
         'z_max_sigma2': 3,
         'z_steps_sigma2': 3000,

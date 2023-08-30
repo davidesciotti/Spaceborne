@@ -25,7 +25,7 @@ project_path = Path.cwd().parent
 
 sys.path.append(f'../../common_lib_and_cfg/common_lib')
 import my_module as mm
-import cosmo_lib
+import cosmo_lib as csmlib
 
 sys.path.append(f'../../common_lib_and_cfg/common_config')
 import ISTF_fid_params as ISTF_fid
@@ -56,50 +56,26 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 # 🐛 bug fixed?: p_of_k_a=None instead of Pk
 
 
-def initialize_trispectrum(cosmo_ccl, hm_recipe, probe_ordering, use_HOD_for_GCph):
-    # ! =============================================== halo model =========================================================
-    # TODO we're not sure about the values of Delta and rho_type
-    # mass_def = ccl.halos.massdef.MassDef(Delta='vir', rho_type='matter', c_m_relation=name)
-    # from https://ccl.readthedocs.io/en/latest/api/pyccl.halos.massdef.html?highlight=.halos.massdef.MassDef#pyccl.halos.massdef.MassDef200c
+def initialize_trispectrum(cosmo_ccl, probe_ordering, pyccl_cfg, p_of_k_a):
 
-    # about the mass definition, the paper says:
-    # "Throughout this paper we define halo properties using the over density ∆ = 200 ¯ρ, with ¯ρ the mean matter density"
+    use_hod_for_gg = pyccl_cfg['use_HOD_for_GCph']
+    z_grid_tkka = np.linspace(pyccl_cfg['z_grid_min'], pyccl_cfg['z_grid_max'], pyccl_cfg['z_grid_steps'])
+    a_grid_increasing_for_ttka = csmlib.z_to_a(z_grid_tkka)[::-1]
+
     halomod_start_time = time.perf_counter()
-    # mass definition
-    if hm_recipe == 'KiDS1000':  # arXiv:2007.01844
-        c_m = 'Duffy08'
-        mass_def = ccl.halos.MassDef200m(c_m=c_m)  # ! testing 200c
-        c_M_relation = ccl.halos.concentration.ConcentrationDuffy08(mdef=mass_def)
-    elif hm_recipe == 'Krause2017':  # arXiv:1601.05779
-        c_m = 'Bhattacharya13'  # see paper, after Eq. 1
-        mass_def = ccl.halos.MassDef200m(c_m=c_m)  # ! testing 200c
-        c_M_relation = ccl.halos.concentration.ConcentrationBhattacharya13(mdef=mass_def)  # above Eq. 12
-    else:
-        raise ValueError('Wrong choice of hm_recipe: it must be either "KiDS1000" or "Krause2017".')
+    mass_def = ccl.halos.MassDef200m()
+    c_M_relation = ccl.halos.ConcentrationDuffy08(mass_def)
+    hmf = ccl.halos.MassFuncTinker10(cosmo_ccl, mass_def=mass_def)
+    hbf = ccl.halos.HaloBiasTinker10(cosmo_ccl, mass_def=mass_def)
+    hmc = ccl.halos.HMCalculator(cosmo_ccl, hmf, hbf, mass_def)
+    halo_profile_nfw = ccl.halos.HaloProfileNFW(c_M_relation, fourier_analytic=True)
+    halo_profile_hod = ccl.halos.HaloProfileHOD(c_M_relation=c_M_relation)
 
-    halo_mass_func = ccl.halos.hmfunc.MassFuncTinker10(cosmo_ccl, mass_def=mass_def, mass_def_strict=True)
-    halo_bias_func = ccl.halos.hbias.HaloBiasTinker10(cosmo_ccl, mass_def=mass_def, mass_def_strict=True)
-    hm_calculator = ccl.halos.halo_model.HMCalculator(cosmo_ccl, massfunc=halo_mass_func, hbias=halo_bias_func,
-                                                      mass_def=mass_def)
-    halo_profile_nfw = ccl.halos.profiles.HaloProfileNFW(c_M_relation=c_M_relation)
-    halo_profile_hod = ccl.halos.profiles.HaloProfileHOD(c_M_relation=c_M_relation)
 
-    # old, not a dict
-    # tkka = ccl.halos.halo_model.halomod_Tk3D_SSC(cosmo_ccl, hm_calculator,
-    #                                              prof1=halo_profile_nfw,
-    #                                              prof2=None,
-    #                                              prof3=None,
-    #                                              prof4=None,
-    #                                              prof12_2pt=None,
-    #                                              prof34_2pt=None,
-    #                                              normprof1=True, normprof2=True,
-    #                                              normprof3=True, normprof4=True,
-    #                                              p_of_k_a=None, lk_arr=None, a_arr=None, extrap_order_lok=1,
-    #                                              extrap_order_hik=1, use_log=False)
     # TODO a_arr as in latest version
     # TODO pk from input files
 
-    if use_HOD_for_GCph:
+    if use_hod_for_gg:
         # This is the correct way to initialize the trispectrum, but the code does not run.
         # Asked David Alonso about this.
         halo_profile_dict = {
@@ -108,18 +84,10 @@ def initialize_trispectrum(cosmo_ccl, hm_recipe, probe_ordering, use_HOD_for_GCp
         }
 
         prof_2pt_dict = {
+            # see again https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
             ('L', 'L'): ccl.halos.Profile2pt(),
             ('G', 'L'): ccl.halos.Profile2pt(),
-            # see again https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
             ('G', 'G'): ccl.halos.Profile2ptHOD(),
-        }
-
-        warnings.warn('hybrid approach, prof_2pt_dict is none for now, doesnt seem to be the problem...')
-        # xxx im here check passing a_arr to tkka
-        prof_2pt_dict = {
-            ('L', 'L'): None,
-            ('G', 'L'): None,
-            ('G', 'G'): None,
         }
 
     else:
@@ -141,7 +109,7 @@ def initialize_trispectrum(cosmo_ccl, hm_recipe, probe_ordering, use_HOD_for_GCp
     for A, B in probe_ordering:
         for C, D in probe_ordering:
             print(f'Computing tkka for {A}{B}{C}{D}')
-            tkka_dict[A, B, C, D] = ccl.halos.halomod_Tk3D_SSC(cosmo=cosmo_ccl, hmc=hm_calculator,
+            tkka_dict[A, B, C, D] = ccl.halos.halomod_Tk3D_SSC(cosmo=cosmo_ccl, hmc=hmc,
                                                                prof1=halo_profile_dict[A],
                                                                prof2=halo_profile_dict[B],
                                                                prof3=halo_profile_dict[C],
@@ -151,8 +119,8 @@ def initialize_trispectrum(cosmo_ccl, hm_recipe, probe_ordering, use_HOD_for_GCp
                                                                normprof1=True, normprof2=True,
                                                                normprof3=True, normprof4=True,
                                                                # lk_arr=None, a_arr=a_grid_increasing_for_ttka,
-                                                               lk_arr=None, a_arr=None,
-                                                               p_of_k_a=None)
+                                                               lk_arr=None, a_arr=a_grid_increasing_for_ttka,
+                                                               p_of_k_a=p_of_k_a)
 
     # assert False, 'should I use HaloProfileHOD for number counts???'  # TODO
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
@@ -243,7 +211,6 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
     n_samples_wf = pyccl_cfg['n_samples_wf']
     get_3x2pt_cov_in_4D = pyccl_cfg['get_3x2pt_cov_in_4D']
     bias_model = pyccl_cfg['bias_model']
-    use_HOD_for_GCph = pyccl_cfg['use_HOD_for_GCph']
     # ! settings
 
     # just a check on the settings
@@ -363,6 +330,8 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
     elif probe == '3x2pt':
         probe_ordering = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
         # probe_ordering = (('G', 'L'), ) # for testing 3x2pt GLGL, which seems a problematic case.
+    else:
+        raise ValueError('probe must be either LL, GG, or 3x2pt')
 
     # convenience dictionaries
     ind_dict = {
@@ -378,7 +347,7 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
 
     # ! =============================================== compute covs ===============================================
 
-    tkka_dict = initialize_trispectrum(cosmo_ccl, hm_recipe, probe_ordering, use_HOD_for_GCph)
+    tkka_dict = initialize_trispectrum(cosmo_ccl, probe_ordering, pyccl_cfg, p_of_k_a=None)
 
     if probe in ['LL', 'GG']:
 

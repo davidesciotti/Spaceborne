@@ -140,7 +140,7 @@ covariance_cfg = {
     'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_GO': True,
     'save_cov_GS': True,
-    'save_cov_SSC': True,
+    'save_cov_SSC': False,
     'save_2DCLOE': False,  # outermost loop is on the probes
 
     'cov_folder': f'{job_path}/output/{which_input_files}/' + 'covmat/{SSC_code:s}',
@@ -149,7 +149,7 @@ covariance_cfg = {
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_HMrecipeKrause2017_6D',
     # TODO these 2 filenames could be unified...
 
-    'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or exactSSC
+    'SSC_code': 'PySSC',  # ! PySSC or PyCCL or exactSSC
 
     'PyCCL_cfg': {
         'probe': '3x2pt',
@@ -243,7 +243,7 @@ FM_cfg = {
     'deriv_ell_cuts': deriv_ell_cuts,
 
     'fm_folder': str(job_path) + f'/output/{which_input_files}/' + 'FM/{SSC_code:s}',
-    'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
+    'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmin{ell_min:d}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
     'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}',
 
     'test_against_benchmarks': False,

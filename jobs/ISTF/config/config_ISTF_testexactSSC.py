@@ -177,7 +177,7 @@ covariance_cfg = {
 
         # settings for sigma2
         'cl_integral_convention': 'PySSC',  # or Euclid, but gives same results as it should!!! TODO remove this
-        'k_txt_label': '1overMpc',
+        'k_txt_label': 'hoverMpc',
         'use_precomputed_sigma2': True,  # still need to understand exactly where to call/save this
         'z_min_sigma2': 0.001,
         'z_max_sigma2': 3,

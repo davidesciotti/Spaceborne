@@ -152,23 +152,31 @@ covariance_cfg = {
     'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or exactSSC
 
     'PyCCL_cfg': {
-        'probe': 'GG',
-        'load_precomputed_cov': False,
-        'use_HOD_for_GCph': True,
-        'hm_recipe': 'Krause2017',
+        'probe': '3x2pt',
+        'load_precomputed_cov': True,
+        'path': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF',
+        'get_3x2pt_cov_in_4D': False,
+        'save_cov': True,
+        'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
+
+        # z_grid min and max should probably coincide. play around with steps to find the minimum number
+        'z_grid_tkka_min': 0.001,
+        'z_grid_tkka_max': 3,
+        'z_grid_tkka_steps': 500,
         'z_grid_min': 0.001,
         'z_grid_max': 3,
         'z_grid_steps': 1000,
         'n_samples_wf': 1000,
-        'get_3x2pt_cov_in_4D': True,
         'bias_model': 'step-wise',
     },
 
     'exactSSC_cfg': {
-        'probe': 'GG',
-        'cl_integral_convention': 'PySSC',  # yet to be implemented
+        'probe': '3x2pt',
+        # in this case it is only possible to load precomputed arraya, I have to compute the integral with Julia
+        'path': '/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia/',
 
         # settings for sigma2
+        'cl_integral_convention': 'PySSC',  # or Euclid, but gives same results as it should!!! TODO remove this
         'k_txt_label': '1overMpc',
         'use_precomputed_sigma2': True,  # still need to understand exactly where to call/save this
         'z_min_sigma2': 0.001,

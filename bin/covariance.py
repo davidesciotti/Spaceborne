@@ -63,6 +63,7 @@ def ssc_with_exactSSC_4D(general_cfg, covariance_cfg):
     z_steps_sigma2 = covariance_cfg['exactSSC_cfg']['z_steps_sigma2']
     k_txt_label = covariance_cfg['exactSSC_cfg']['k_txt_label']
     cl_integral_convention = covariance_cfg['exactSSC_cfg']['cl_integral_convention']
+    path = covariance_cfg['exactSSC_cfg']['path']
 
     general_suffix = f'nbl{nbl}_ellmax{ell_max}_zbins{zbins}_' \
                      f'zsteps{z_steps_sigma2}_k{k_txt_label}_convention{cl_integral_convention}'
@@ -78,8 +79,7 @@ def ssc_with_exactSSC_4D(general_cfg, covariance_cfg):
 
     # single-probe case
     if probe in ('LL', 'GG'):
-        cov_exactSSC_SS_4D = np.load(f'/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia/'
-                                     f'cov_SSC_{probe}{probe}_4D_nbl{nbl}_ellmax{ell_max}_zbins{zbins}_'
+        cov_exactSSC_SS_4D = np.load(f'{path}/cov_SSC_{probe}{probe}_4D_nbl{nbl}_ellmax{ell_max}_zbins{zbins}_'
                                      f'zsteps{z_steps_sigma2}_k{k_txt_label}_convention{cl_integral_convention}.npy')
     # populate 3x2pt dictionary
     elif probe == '3x2pt':
@@ -87,8 +87,7 @@ def ssc_with_exactSSC_4D(general_cfg, covariance_cfg):
         for probe_A, probe_B in probe_ordering:
             for probe_C, probe_D in probe_ordering:
                 cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D] = \
-                    np.load(f'/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia/'
-                            f'cov_SSC_{probe_A}{probe_B}{probe_C}{probe_D}_4D_{general_suffix}.npy')
+                    np.load(f'{path}/cov_SSC_{probe_A}{probe_B}{probe_C}{probe_D}_4D_{general_suffix}.npy')
 
         cov_exactSSC_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_exactSSC_3x2pt_dict_8D, probe_ordering)
 
@@ -108,22 +107,45 @@ def ssc_with_pyccl_4D(general_cfg, covariance_cfg, ell_dict):
     probe = covariance_cfg['PyCCL_cfg']['probe']
     zbins = general_cfg['zbins']
     ell_max, nbl = get_ellmax_nbl(probe, general_cfg)
-    # breakpoint()
     ell_grid = ell_dict['ell_' + probe_names_dict[probe]]
+    path_ccl = covariance_cfg['PyCCL_cfg']['path']
+    probe_ordering = covariance_cfg['probe_ordering']
+    use_hod_for_gcph = covariance_cfg['PyCCL_cfg']['use_HOD_for_GCph']
+
+    general_suffix = f'nbl{nbl}_ellmax{ell_max}_zbins{zbins}_'
+    cov_8D_dict_filename = f'cov_PyCCL_SSC_{probe}_{general_suffix}' \
+                           f'_8D_dict_useHOD{use_hod_for_gcph}.pickle'
 
     if covariance_cfg['PyCCL_cfg']['load_precomputed_cov']:
-        path_ccl = '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat'
-        if nbl == 20:
-            path_ccl += '/after_script_update'
 
-        cov_PyCCL_SS_4D = np.load(f'{path_ccl}/cov_PyCCL_SSC_{probe}_nbl{nbl}_ellmax{ell_max}'
-                                  f'_HMrecipe{covariance_cfg["PyCCL_cfg"]["hm_recipe"]}_4D.npz')['arr_0']
+        # all the covs of interest are in the 3x2pt picke file
+        cov_8D_dict_filename = cov_8D_dict_filename.replace(probe, '3x2pt')
+        cov_PyCCL_dict_8D = mm.load_pickle(f'{path_ccl}/{cov_8D_dict_filename}')
+
+        if probe in ('LL', 'GG'):
+            cov_PyCCL_SS_4D = cov_PyCCL_dict_8D[probe[0], probe[1], probe[0], probe[1]]
+        else:
+            cov_PyCCL_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_PyCCL_dict_8D, probe_ordering)
+
+        # old, only for LL and GG
+        # cov_PyCCL_SS_4D = np.load(f'{path_ccl}/cov_PyCCL_SSC_{probe}_{general_suffix}_4D.npz')['arr_0']
 
     else:
         cov_PyCCL_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl(probe, 'SSC', ell_grid,
                                                               z_grid_nofz=None, n_of_z=None,
                                                               general_cfg=general_cfg,
                                                               covariance_cfg=covariance_cfg)
+        if covariance_cfg['PyCCL_cfg']['save_cov']:
+
+            # not the best way, dict vs 4d array as output...
+            if probe == '3x2pt' and not covariance_cfg['PyCCL_cfg']['get_3x2pt_cov_in_4D']:
+                # in this case, save the whole dictionary, then revert to 4d array as output
+                cov_8D_dict = cov_PyCCL_SS_4D
+                mm.save_pickle(f'{path_ccl}/{cov_8D_dict_filename}', cov_PyCCL_SS_4D)
+                cov_PyCCL_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_PyCCL_SS_4D, probe_ordering)
+
+            else:
+                np.savez_compressed(f'{path_ccl}/cov_PyCCL_SSC_{probe}_{general_suffix}_4D.npz', cov_PyCCL_SS_4D)
 
     return cov_PyCCL_SS_4D
 
@@ -404,7 +426,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
     print('covariance matrices reshaped (6D -> 4D) in {:.2f} s'.format(time.perf_counter() - start))
 
-    # TODO finish this PYCCL stuff
+    # ! plug the 4D covariances into the pipeline
     if SSC_code in ('PyCCL', 'exactSSC'):
 
         print(f'adding SSC cov from {SSC_code} directly in 4D. This creates some problems with the BNT, TODO')

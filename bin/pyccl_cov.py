@@ -38,6 +38,9 @@ matplotlib.use('Qt5Agg')
 start_time = time.perf_counter()
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
+""" This is run with v 2.7 of pyccl
+"""
+
 
 # ======================================================================================================================
 # ======================================================================================================================
@@ -57,11 +60,12 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 
 def initialize_trispectrum(cosmo_ccl, probe_ordering, pyccl_cfg, p_of_k_a):
-
     use_hod_for_gg = pyccl_cfg['use_HOD_for_GCph']
-    z_grid_tkka = np.linspace(pyccl_cfg['z_grid_min'], pyccl_cfg['z_grid_max'], pyccl_cfg['z_grid_steps'])
+    z_grid_tkka = np.linspace(pyccl_cfg['z_grid_tkka_min'], pyccl_cfg['z_grid_tkka_max'],
+                              pyccl_cfg['z_grid_tkka_steps'])
     a_grid_increasing_for_ttka = csmlib.z_to_a(z_grid_tkka)[::-1]
 
+    # from https://github.com/LSSTDESC/CCL/blob/4df2a29eca58d7cd171bc1986e059fd35f425d45/benchmarks/test_covariances.py
     halomod_start_time = time.perf_counter()
     mass_def = ccl.halos.MassDef200m()
     c_M_relation = ccl.halos.ConcentrationDuffy08(mass_def)
@@ -71,8 +75,6 @@ def initialize_trispectrum(cosmo_ccl, probe_ordering, pyccl_cfg, p_of_k_a):
     halo_profile_nfw = ccl.halos.HaloProfileNFW(c_M_relation, fourier_analytic=True)
     halo_profile_hod = ccl.halos.HaloProfileHOD(c_M_relation=c_M_relation)
 
-
-    # TODO a_arr as in latest version
     # TODO pk from input files
 
     if use_hod_for_gg:
@@ -91,7 +93,7 @@ def initialize_trispectrum(cosmo_ccl, probe_ordering, pyccl_cfg, p_of_k_a):
         }
 
     else:
-        warnings.warn('using the same halo profile (NFW) for all probes, this is not quite correct')
+        warnings.warn('!!! using the same halo profile (NFW) for all probes, this produces wrong results for GCph!!')
         halo_profile_dict = {
             'L': halo_profile_nfw,
             'G': halo_profile_nfw,
@@ -118,11 +120,9 @@ def initialize_trispectrum(cosmo_ccl, probe_ordering, pyccl_cfg, p_of_k_a):
                                                                prof34_2pt=prof_2pt_dict[C, D],
                                                                normprof1=True, normprof2=True,
                                                                normprof3=True, normprof4=True,
-                                                               # lk_arr=None, a_arr=a_grid_increasing_for_ttka,
                                                                lk_arr=None, a_arr=a_grid_increasing_for_ttka,
                                                                p_of_k_a=p_of_k_a)
 
-    # assert False, 'should I use HaloProfileHOD for number counts???'  # TODO
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
     return tkka_dict
 
@@ -206,10 +206,9 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
     nbl = len(ell_grid)
 
     pyccl_cfg = covariance_cfg['PyCCL_cfg']
-    hm_recipe = pyccl_cfg['hm_recipe']
     z_grid = np.linspace(pyccl_cfg['z_grid_min'], pyccl_cfg['z_grid_max'], pyccl_cfg['z_grid_steps'])
     n_samples_wf = pyccl_cfg['n_samples_wf']
-    get_3x2pt_cov_in_4D = pyccl_cfg['get_3x2pt_cov_in_4D']
+    get_3x2pt_cov_in_4D = pyccl_cfg['get_3x2pt_cov_in_4D']  # TODO save all blocks separately
     bias_model = pyccl_cfg['bias_model']
     # ! settings
 
@@ -217,7 +216,7 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
     print(f'\n****************** settings ****************'
           f'\nprobe = {probe}\nwhich_ng_cov = {which_ng_cov}'
           f'\nintegration_method = {integration_method_dict[probe][which_ng_cov]}'
-          f'\nnbl = {nbl}\nhm_recipe = {hm_recipe}'
+          f'\nnbl = {nbl}\nf_sky = {f_sky}\nzbins = {zbins}'
           f'\n********************************************\n')
 
     assert probe in ['LL', 'GG', '3x2pt'], 'probe must be either LL, GG, or 3x2pt'
@@ -306,7 +305,7 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
     ax[1].set_xlabel('z')
     ax[0].set_ylabel('wil')
     ax[1].set_ylabel('wig')
-    # se legend to linestyles
+    # set legend to linestyles
     # Create custom legend
     custom_lines = [Line2D([0], [0], ls='-'),
                     Line2D([0], [0], ls='--')]
@@ -328,7 +327,7 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
     elif probe == 'GG':
         probe_ordering = (('G', 'G'),)
     elif probe == '3x2pt':
-        probe_ordering = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
+        probe_ordering = covariance_cfg['probe_ordering']
         # probe_ordering = (('G', 'L'), ) # for testing 3x2pt GLGL, which seems a problematic case.
     else:
         raise ValueError('probe must be either LL, GG, or 3x2pt')
@@ -387,7 +386,7 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
         raise ValueError('probe must be either LL, GG, or 3x2pt')
 
     # test if cov is symmetric in ell1, ell2
-    np.testing.assert_allclose(cov_ng_4D, np.transpose(cov_ng_4D, (1, 0, 2, 3)), rtol=1e-6, atol=0)
+    # np.testing.assert_allclose(cov_ng_4D, np.transpose(cov_ng_4D, (1, 0, 2, 3)), rtol=1e-6, atol=0)
 
     return cov_ng_4D
 

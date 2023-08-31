@@ -102,7 +102,6 @@ covariance_cfg['ind'] = ind
 
 covariance_cfg['probe_ordering'] = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
 
-
 # ! compute ell and delta ell values
 ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_cfg)
 nbl_WA = ell_dict['ell_WA'].shape[0]
@@ -324,16 +323,22 @@ fm_folder = FM_cfg["fm_folder"].format(SSC_code=covariance_cfg['SSC_code'])
 FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=FM_cfg['save_FM_txt'],
                  save_dict=FM_cfg['save_FM_dict'], **variable_specs)
 
-# ! unit test: check that the outputs have not changed
-if general_cfg['test_against_benchmarks']:
-    fm_benchmark_folder = f'{fm_folder}/benchmarks'
-    mm.test_folder_content(fm_folder, fm_benchmark_folder, 'txt')
+if FM_cfg['test_against_benchmarks']:
+    mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')
 
-# ! plot:
+################################################ ! plot ############################################################
+
+# plot settings
 nparams_toplot = 7
+probe = covariance_cfg[f'{covariance_cfg["SSC_code"]}_cfg']['probe']
+probe = 'WL' if probe == 'LL' else probe
+probe = 'GC' if probe == 'GG' else probe
+include_fom = True
+divide_fom_by_10 = True
+
 uncert_dict = {}
+fom_dict = {}
 masked_FM_dict = {}
-fom = {}
 for key in list(FM_dict.keys()):
     if key not in ['param_names_dict', 'fiducial_values_dict']:
         masked_FM_dict[key], param_names_list, fiducials_list = mm.mask_FM(FM_dict[key], FM_dict['param_names_dict'],
@@ -347,30 +352,13 @@ for key in list(FM_dict.keys()):
         uncert_dict[key] = mm.uncertainties_FM(masked_FM_dict[key], nparams=masked_FM_dict[key].shape[0],
                                                fiducials=fiducials_list,
                                                which_uncertainty='marginal', normalize=True)[:nparams_toplot]
-        fom[key] = mm.compute_FoM(masked_FM_dict[key], w0wa_idxs=(2, 3))
+        fom_dict[key] = mm.compute_FoM(masked_FM_dict[key], w0wa_idxs=(2, 3))
 
-
-FM_test_GO = np.genfromtxt(
-    '/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
-    '/SSC_comparison/output/FM/FM_3x2pt_GO_lmaxXC3000_nbl30.txt')
-FM_test_GS = np.genfromtxt(
-    '/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
-    '/SSC_comparison/output/FM/FM_3x2pt_GS_lmaxXC3000_nbl30.txt')
-uncert_FM_GO_test = mm.uncertainties_FM(FM_test_GO, FM_test_GO.shape[0], fiducials=fiducials_list,
-                                        which_uncertainty='marginal',
-                                        normalize=True)[:nparams_toplot]
-uncert_FM_GS_test = mm.uncertainties_FM(FM_test_GS, FM_test_GS.shape[0], fiducials=fiducials_list,
-                                        which_uncertainty='marginal',
-                                        normalize=True)[:nparams_toplot]
-###############
-# add the percent differences and/or ratios to the dictionary
-
-probe = '3x2pt'
-include_fom = True
-lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_XC']
 to_compare_A = f'FM_{probe}_GS'
 to_compare_B = f'FM_{probe}_GO'
 uncert_dict['perc_diff'] = mm.percent_diff(uncert_dict[to_compare_A], uncert_dict[to_compare_B])
+fom_dict['perc_diff'] = np.abs(mm.percent_diff(fom_dict[to_compare_A], fom_dict[to_compare_B]))
+
 # just a check, to be performed only if I am actually using PyCCL as well
 if 'FM_PySSC_GO' in uncert_dict.keys() and 'FM_PyCCL_GO' in uncert_dict.keys():
     assert np.array_equal(uncert_dict['FM_PySSC_GO'], uncert_dict['FM_PyCCL_GO']), \
@@ -390,27 +378,56 @@ for which_probe in ['WL', 'GC', '3x2pt']:
         print('Dark GO:\t', uncert_dict[f'FM_{which_probe}_GO'][:nparams_toplot])
         print('Dark GS:\t', uncert_dict[f'FM_{which_probe}_GS'][:nparams_toplot])
 
-df = pd.DataFrame(uncert_dict)
+df = pd.DataFrame(uncert_dict)  # you should switch to using this...
 
-# # transform dict. into an array
+# # transform dict. into an array and add the fom
 cases_to_plot = (to_compare_B, to_compare_A, 'perc_diff')
-uncert_array = []
+uncert_array, fom_array = [], []
 for case in cases_to_plot:
     uncert_array.append(uncert_dict[case])
+    fom_array.append(fom_dict[case])
 uncert_array = np.asarray(uncert_array)
+fom_array = np.asarray(fom_array)
 
-ssc_code_probe = covariance_cfg[f'{covariance_cfg["SSC_code"]}_cfg']['probe'] if covariance_cfg["SSC_code"] in ['PyCCL', 'exactSSC'] else ''
-title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i, %s %s' % (probe, lmax, EP_or_ED, zbins, covariance_cfg['SSC_code'],
-                                                            ssc_code_probe)
+if divide_fom_by_10:
+    fom_array[0] /= 10
+    fom_array[1] /= 10
+uncert_array = np.hstack((uncert_array, fom_array.reshape(-1, 1)))
+
+# label and title stuff
+fom_label = 'FoM/10\nperc_diff' if divide_fom_by_10 else 'FoM'
+param_names_label = param_names_list[:nparams_toplot] + [fom_label] if include_fom else param_names_list[
+                                                                                            :nparams_toplot]
+
+lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_XC']
+ssc_code_probe = covariance_cfg[f'{covariance_cfg["SSC_code"]}_cfg']['probe'] \
+    if covariance_cfg["SSC_code"] in ['PyCCL', 'exactSSC'] else ''
+use_hod_for_gc = 'use_HOD' + str(covariance_cfg["PyCCL_cfg"]["use_HOD_for_GCph"]) if covariance_cfg[
+                                                                                         "SSC_code"] == 'PyCCL' else ''
+title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i, %s %s %s' % (probe, lmax, EP_or_ED, zbins, covariance_cfg['SSC_code'],
+                                                               ssc_code_probe, use_hod_for_gc)
+# bar plot
 if include_fom:
     nparams_toplot += 1
 plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
-                    param_names_label=param_names_list[:nparams_toplot-1] + ['FoM'], bar_width=0.12)
+                    param_names_label=param_names_label, bar_width=0.12)
 
-
-if FM_cfg['test_against_benchmarks']:
-    mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')
 print('done')
+
+# veeeeery old FMs, to test ISTF-like forecasts I guess...
+# FM_test_GO = np.genfromtxt(
+#     '/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
+#     '/SSC_comparison/output/FM/FM_3x2pt_GO_lmaxXC3000_nbl30.txt')
+# FM_test_GS = np.genfromtxt(
+#     '/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
+#     '/SSC_comparison/output/FM/FM_3x2pt_GS_lmaxXC3000_nbl30.txt')
+# uncert_FM_GO_test = mm.uncertainties_FM(FM_test_GO, FM_test_GO.shape[0], fiducials=fiducials_list,
+#                                         which_uncertainty='marginal',
+#                                         normalize=True)[:nparams_toplot]
+# uncert_FM_GS_test = mm.uncertainties_FM(FM_test_GS, FM_test_GS.shape[0], fiducials=fiducials_list,
+#                                         which_uncertainty='marginal',
+#                                         normalize=True)[:nparams_toplot]
+
 
 # ! save cls and responses: THIS MUST BE MOVED TO A DIFFERENT FUNCTION!
 """

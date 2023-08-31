@@ -185,7 +185,6 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
     plt.legend()
     plt.show()
 
-    # pdb.set_trace()
 
 
 def triangle_plot(FM_GO, FM_GS, fiducials, title, param_names_label):

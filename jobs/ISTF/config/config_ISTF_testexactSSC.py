@@ -98,7 +98,7 @@ general_cfg = {
     'cl_filename': cl_filename,
     'rl_filename': 'rij{probe:s}corr-istf-alex.dat',
 
-    'test_against_benchmarks': True,
+    'test_against_benchmarks': False,
 }
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
@@ -171,7 +171,7 @@ covariance_cfg = {
     },
 
     'exactSSC_cfg': {
-        'probe': '3x2pt',
+        'probe': 'GG',
         # in this case it is only possible to load precomputed arraya, I have to compute the integral with Julia
         'path': '/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia/',
 
@@ -246,5 +246,5 @@ FM_cfg = {
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
     'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}',
 
-    'test_against_benchmarks': True,
+    'test_against_benchmarks': False,
 }

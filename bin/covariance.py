@@ -112,7 +112,7 @@ def ssc_with_pyccl_4D(general_cfg, covariance_cfg, ell_dict):
     probe_ordering = covariance_cfg['probe_ordering']
     use_hod_for_gcph = covariance_cfg['PyCCL_cfg']['use_HOD_for_GCph']
 
-    general_suffix = f'nbl{nbl}_ellmax{ell_max}_zbins{zbins}_'
+    general_suffix = f'nbl{nbl}_ellmax{ell_max}_zbins{zbins}'
     cov_8D_dict_filename = f'cov_PyCCL_SSC_{probe}_{general_suffix}' \
                            f'_8D_dict_useHOD{use_hod_for_gcph}.pickle'
 

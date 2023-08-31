@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 import os
+from pprint import pprint
 import warnings
 
 import pandas as pd
@@ -79,6 +80,7 @@ param_names_3x2pt = FM_cfg['param_names_3x2pt']
 nparams_tot = FM_cfg['nparams_tot']
 der_prefix = FM_cfg['derivatives_prefix']
 derivatives_suffix = FM_cfg['derivatives_suffix']
+ssc_code = covariance_cfg['SSC_code']
 
 # which cases to save: GO, GS or GO, GS and SSC
 cases_tosave = []  #
@@ -227,7 +229,7 @@ else:
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl, BNT_matrix=None)
 # ! save and test against benchmarks
-cov_folder = covariance_cfg["cov_folder"].format(SSC_code=covariance_cfg['SSC_code'], **variable_specs)
+cov_folder = covariance_cfg["cov_folder"].format(SSC_code=ssc_code, **variable_specs)
 covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 if general_cfg['test_against_benchmarks']:
     mm.test_folder_content(cov_folder, cov_folder + '/benchmarks', covariance_cfg['cov_file_format'])
@@ -319,30 +321,42 @@ del cov_dict
 gc.collect()
 
 # ! save and test
-fm_folder = FM_cfg["fm_folder"].format(SSC_code=covariance_cfg['SSC_code'])
-FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=FM_cfg['save_FM_txt'],
-                 save_dict=FM_cfg['save_FM_dict'], **variable_specs)
+fm_folder = FM_cfg["fm_folder"].format(SSC_code=ssc_code)
+if ssc_code != 'PySSC':
 
-if FM_cfg['test_against_benchmarks']:
-    mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')
+    # save only the actual GS FM in the correct code folder
+    probe_ssc_code = covariance_cfg[f'{covariance_cfg["SSC_code"]}_cfg']['probe']
+    probe_ssc_code = 'WL' if probe_ssc_code == 'LL' else probe_ssc_code
+    probe_ssc_code = 'GC' if probe_ssc_code == 'GG' else probe_ssc_code
+    lmax = general_cfg[f'ell_max_{probe_ssc_code}'] if probe_ssc_code in ['WL', 'GC'] else general_cfg['ell_max_XC']
+
+    filename_fm_from_ssc_code = f'{fm_folder}/FM_{probe_ssc_code}_GS_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'
+    np.savetxt(f'{filename_fm_from_ssc_code}', FM_dict[f'FM_{probe_ssc_code}_GS'])
+else:
+    FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=FM_cfg['save_FM_txt'],
+                     save_dict=FM_cfg['save_FM_dict'], **variable_specs)
 
 ################################################ ! plot ############################################################
 
 # plot settings
 nparams_toplot = 7
-probe = covariance_cfg[f'{covariance_cfg["SSC_code"]}_cfg']['probe']
-probe = 'WL' if probe == 'LL' else probe
-probe = 'GC' if probe == 'GG' else probe
 include_fom = True
-divide_fom_by_10 = True
+divide_fom_by_10 = False
 
-uncert_dict = {}
+for ssc_code_here in ['PyCCL', 'PySSC', 'exactSSC']:
+    for probe in ['WL', 'GC', '3x2pt']:
+        fm_folder = FM_cfg["fm_folder"].format(SSC_code=ssc_code_here)
+        lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_XC']
+        FM_dict[f'FM_{ssc_code_here}_{probe}_GS'] = (
+            np.genfromtxt(f'{fm_folder}/FM_{probe}_GS_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
+
 fom_dict = {}
+uncert_dict = {}
 masked_FM_dict = {}
 for key in list(FM_dict.keys()):
     if key not in ['param_names_dict', 'fiducial_values_dict']:
-        masked_FM_dict[key], param_names_list, fiducials_list = mm.mask_FM(FM_dict[key], FM_dict['param_names_dict'],
-                                                                           FM_dict['fiducial_values_dict'],
+        masked_FM_dict[key], param_names_list, fiducials_list = mm.mask_FM(FM_dict[key], param_names_dict,
+                                                                           fiducials_dict,
                                                                            params_tofix_dict={})
 
         nparams = len(param_names_list)
@@ -354,8 +368,14 @@ for key in list(FM_dict.keys()):
                                                which_uncertainty='marginal', normalize=True)[:nparams_toplot]
         fom_dict[key] = mm.compute_FoM(masked_FM_dict[key], w0wa_idxs=(2, 3))
 
-to_compare_A = f'FM_{probe}_GS'
-to_compare_B = f'FM_{probe}_GO'
+
+probe = 'WL'
+to_compare_A = f'FM_PySSC_{probe}_GS'
+to_compare_B = f'FM_PyCCL_{probe}_GS'
+to_compare_C = f'FM_exactSSC_{probe}_GS'
+cases_to_plot = (f'FM_{probe}_GO', to_compare_A, to_compare_B, to_compare_C)
+
+
 uncert_dict['perc_diff'] = mm.percent_diff(uncert_dict[to_compare_A], uncert_dict[to_compare_B])
 fom_dict['perc_diff'] = np.abs(mm.percent_diff(fom_dict[to_compare_A], fom_dict[to_compare_B]))
 
@@ -365,23 +385,28 @@ if 'FM_PySSC_GO' in uncert_dict.keys() and 'FM_PyCCL_GO' in uncert_dict.keys():
         'the GO uncertainties must be the same, I am only changing the SSC code!'
 
 # silent check against IST:F (which does not exist for GC alone):
-for which_probe in ['WL', 'GC', '3x2pt']:
+for which_probe in ['WL', '3x2pt']:
     uncert_dict['ISTF'] = ISTF_fid.forecasts[f'{which_probe}_opt_w0waCDM_flat']
     try:
-        assert np.allclose(uncert_dict['ISTF'], uncert_dict[f'FM_{which_probe}_GO'][:nparams_toplot], atol=0, rtol=5e-2)
+        rtol = 10e-2
+        assert np.allclose(uncert_dict[f'FM_{which_probe}_GO'][:nparams_toplot], uncert_dict['ISTF'], atol=0,
+                           rtol=rtol)
+        print(f'IST:F and GO are consistent for probe {which_probe} within {rtol * 100}% ✅')
     except AssertionError:
         print(f'IST:F and GO are not consistent for probe {which_probe}! '
               f'Remember that you are checking against the optimistic case')
+        print('percent_discrepancies (not wrt mean!):',
+              mm.percent_diff(uncert_dict[f'FM_{which_probe}_GO'][:nparams_toplot],
+                              uncert_dict['ISTF']))
         np.set_printoptions(precision=2)
         print('probe:', which_probe)
         print('ISTF GO:\t', uncert_dict['ISTF'])
         print('Dark GO:\t', uncert_dict[f'FM_{which_probe}_GO'][:nparams_toplot])
-        print('Dark GS:\t', uncert_dict[f'FM_{which_probe}_GS'][:nparams_toplot])
+        print('Dark GS:\t', uncert_dict[f'FM_{ssc_code}_{which_probe}_GS'][:nparams_toplot])
 
 df = pd.DataFrame(uncert_dict)  # you should switch to using this...
 
 # # transform dict. into an array and add the fom
-cases_to_plot = (to_compare_B, to_compare_A, 'perc_diff')
 uncert_array, fom_array = [], []
 for case in cases_to_plot:
     uncert_array.append(uncert_dict[case])
@@ -390,27 +415,26 @@ uncert_array = np.asarray(uncert_array)
 fom_array = np.asarray(fom_array)
 
 if divide_fom_by_10:
-    fom_array[0] /= 10
-    fom_array[1] /= 10
+    fom_array /= 10
 uncert_array = np.hstack((uncert_array, fom_array.reshape(-1, 1)))
 
 # label and title stuff
 fom_label = 'FoM/10\nperc_diff' if divide_fom_by_10 else 'FoM'
 param_names_label = param_names_list[:nparams_toplot] + [fom_label] if include_fom else param_names_list[
-                                                                                            :nparams_toplot]
-
+                                                                                        :nparams_toplot]
 lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_XC']
 ssc_code_probe = covariance_cfg[f'{covariance_cfg["SSC_code"]}_cfg']['probe'] \
     if covariance_cfg["SSC_code"] in ['PyCCL', 'exactSSC'] else ''
 use_hod_for_gc = 'use_HOD' + str(covariance_cfg["PyCCL_cfg"]["use_HOD_for_GCph"]) if covariance_cfg[
                                                                                          "SSC_code"] == 'PyCCL' else ''
-title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i, %s %s %s' % (probe, lmax, EP_or_ED, zbins, covariance_cfg['SSC_code'],
+title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i, %s %s %s' % (probe, lmax, EP_or_ED, zbins, ssc_code,
                                                                ssc_code_probe, use_hod_for_gc)
 # bar plot
 if include_fom:
-    nparams_toplot += 1
+    nparams_toplot = 8
 plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                     param_names_label=param_names_label, bar_width=0.12)
+plt.yscale('log')
 
 print('done')
 

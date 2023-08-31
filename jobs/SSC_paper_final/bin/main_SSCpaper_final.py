@@ -27,7 +27,7 @@ import ISTF_fid_params as ISTF_fid
 
 # job configuration
 sys.path.append(f'{job_path}/config')
-import config_SPV3_magcut_zcut as cfg
+import config_SSCpaper_final as cfg
 
 # project libraries
 sys.path.append(f'{project_path}/bin')

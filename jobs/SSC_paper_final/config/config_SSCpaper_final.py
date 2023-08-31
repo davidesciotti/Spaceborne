@@ -63,6 +63,11 @@ general_cfg = {
     'save_cls_3d': True,
     'save_rls_3d': True,
 
+    'magcut_source': 245,
+    'magcut_lens': 245,
+    'zcut_source:': 0,
+    'zcut_lens:': 0,
+
     'flat_or_nonflat': 'flat',
 
     # the case with the largest range is nbl_WL_opt.. This is the reference ell binning from which the cuts are applied;

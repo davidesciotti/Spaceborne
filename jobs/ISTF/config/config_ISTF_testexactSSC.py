@@ -153,11 +153,11 @@ covariance_cfg = {
 
     'PyCCL_cfg': {
         'probe': '3x2pt',
-        'load_precomputed_cov': True,
-        'path': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF',
         'get_3x2pt_cov_in_4D': False,
+        'path': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF',
+        'load_precomputed_cov': False,
         'save_cov': True,
-        'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
+        'use_HOD_for_GCph': False,  # ! this must be True, incorrect results for GCph!!
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         'z_grid_tkka_min': 0.001,
@@ -177,7 +177,7 @@ covariance_cfg = {
 
         # settings for sigma2
         'cl_integral_convention': 'PySSC',  # or Euclid, but gives same results as it should!!! TODO remove this
-        'k_txt_label': 'hoverMpc',
+        'k_txt_label': '1overMpc',
         'use_precomputed_sigma2': True,  # still need to understand exactly where to call/save this
         'z_min_sigma2': 0.001,
         'z_max_sigma2': 3,

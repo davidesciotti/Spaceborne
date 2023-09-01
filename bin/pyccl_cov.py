@@ -66,6 +66,7 @@ def initialize_trispectrum(cosmo_ccl, probe_ordering, pyccl_cfg, p_of_k_a):
     a_grid_increasing_for_ttka = csmlib.z_to_a(z_grid_tkka)[::-1]
 
     # from https://github.com/LSSTDESC/CCL/blob/4df2a29eca58d7cd171bc1986e059fd35f425d45/benchmarks/test_covariances.py
+    # see also https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/tools/covariance_NG.py#L282
     halomod_start_time = time.perf_counter()
     mass_def = ccl.halos.MassDef200m()
     c_M_relation = ccl.halos.ConcentrationDuffy08(mass_def)

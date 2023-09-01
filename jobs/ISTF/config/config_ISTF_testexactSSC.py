@@ -243,7 +243,7 @@ FM_cfg = {
     'deriv_ell_cuts': deriv_ell_cuts,
 
     'fm_folder': str(job_path) + f'/output/{which_input_files}/' + 'FM/{SSC_code:s}',
-    'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmin{ell_min:d}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
+    'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
     'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}',
 
     'test_against_benchmarks': False,

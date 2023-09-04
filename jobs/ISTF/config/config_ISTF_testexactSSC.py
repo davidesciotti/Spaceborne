@@ -149,7 +149,7 @@ covariance_cfg = {
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_HMrecipeKrause2017_6D',
     # TODO these 2 filenames could be unified...
 
-    'SSC_code': 'PySSC',  # ! PySSC or PyCCL or exactSSC
+    'SSC_code': 'exactSSC',  # ! PySSC or PyCCL or exactSSC
 
     'PyCCL_cfg': {
         'probe': '3x2pt',
@@ -157,7 +157,7 @@ covariance_cfg = {
         'path': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF',
         'load_precomputed_cov': False,
         'save_cov': True,
-        'use_HOD_for_GCph': False,  # ! this must be True, incorrect results for GCph!!
+        'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         'z_grid_tkka_min': 0.001,
@@ -198,7 +198,8 @@ Sijkl_cfg = {
 
     'Sijkl_folder': f'{project_path.parent}/common_data/Sijkl',
     'Sijkl_filename': 'Sijkl_WFdavide_nz{nz:d}_IA_3may.npy',
-    'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
+    'load_precomputed_sijkl': False,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
+    'save_sijkl': False,  # save the computed Sijkl in Sijkl_folder
 }
 
 # dictionaries of cosmological parameters' names and values

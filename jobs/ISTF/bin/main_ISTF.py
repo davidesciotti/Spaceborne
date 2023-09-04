@@ -214,18 +214,18 @@ general_cfg['z_grid_wf'] = z_arr
 Sijkl_folder = Sijkl_cfg['Sijkl_folder']
 Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(nz=Sijkl_cfg['nz'])
 
-if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
+if Sijkl_cfg['load_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
 
     print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
     sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
 
 else:
-
     # transpose and stack, ordering is important here!
     transp_stacked_wf = np.vstack((wil.T, wig.T))
     sijkl = Sijkl_utils.compute_Sijkl(cosmo_lib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
                                       Sijkl_cfg['WF_normalization'])
-    np.save(f'{Sijkl_folder}/{Sijkl_filename}', sijkl)
+    if Sijkl_cfg['save_sijkl']:
+        np.save(f'{Sijkl_folder}/{Sijkl_filename}', sijkl)
 
 # ! compute covariance matrix
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,

@@ -57,8 +57,6 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 # https://ccl.readthedocs.io/en/latest/api/pyccl.halos.halo_model.html?highlight=halomod_Tk3D_SSC#pyccl.halos.halo_model.halomod_Tk3D_SSC)
 # 🐛 bug fixed: normprof shoud be True
 # 🐛 bug fixed?: p_of_k_a=None instead of Pk
-
-
 def initialize_trispectrum(cosmo_ccl, probe_ordering, pyccl_cfg, p_of_k_a):
     use_hod_for_gg = pyccl_cfg['use_HOD_for_GCph']
     z_grid_tkka = np.linspace(pyccl_cfg['z_grid_tkka_min'], pyccl_cfg['z_grid_tkka_max'],

@@ -1,34 +1,23 @@
-import pdb
+import logging
 import sys
 import time
-import warnings
-from functools import partial
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import yaml
-from joblib import Parallel, delayed
-import concurrent.futures
-from numba import njit
-from scipy.integrate import quad, quad_vec, simps
+from scipy.integrate import simps
 from scipy.interpolate import RegularGridInterpolator
 from scipy.special import spherical_jn
 import ray
 import pyccl as ccl
 from tqdm import tqdm
+import PySSC
 
-sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_data/common_lib')
+sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_lib')
 import my_module as mm
 import cosmo_lib as csmlib
 
-sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_data/common_config')
+sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config')
 import mpl_cfg
-
-sys.path.append(f'/')
-import wf_cl_lib
-
-sys.path.append(f'/')
-import ell_values as ell_utils
 
 matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -71,7 +60,7 @@ ray.init()
 
 def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl):
     """ Computes the integral in k. The rest is in another function, to vectorize the call to the growth_factor.
-    Note that the 1/Omega_S^2 factors are missing in this function!! This is consistent withthe definitio given in
+    Note that the 1/Omega_S^2 factors are missing in this function!! This is consistent with the definitio given in
     mine and Fabien's paper."""
 
     # compute the comoving distance at the given redshifts
@@ -176,6 +165,45 @@ def interpolate_sigma2_arr(sigma2_arr, z_grid_original, z_grid_new):
     z_grid_new_xx, z_grid_new_yy = np.meshgrid(z_grid_new, z_grid_new)
     sigma2_arr_interpolated = sigma2_interp_func((z_grid_new_xx, z_grid_new_yy)).T
     return sigma2_arr_interpolated
+
+
+logging.basicConfig(level=logging.INFO)
+
+def sigma2_pyssc(z_arr, classy_cosmo_params):
+    """ Compute sigma2 with PySSC. This is just for comparison, it is not used in the code."""
+    if classy_cosmo_params is None:
+        logging.info('Using default classy cosmo params from cosmo_lib')
+        classy_cosmo_params = csmlib.cosmo_par_dict_classy
+    if z_arr is None:
+        # ! 1e-3 as zmin gives errors in classy, probably need to increse pk_max
+        z_arr = np.linspace(1e-2, 3, 300)
+    return PySSC.sigma2_fullsky(z_arr, cosmo_params=classy_cosmo_params, cosmo_Class=None)
+
+
+
+sigma2_pyssc_arr = sigma2_pyssc(z_arr_pyssc, None)
+
+
+
+
+def compare_sigma2_sb_vs_pyssc(z_arr_pyssc, sigma2_pyssc_arr, z_1_idx=100):
+    
+    path = '/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/integrand_arrays/sigma2'
+    sigma2_sb = np.load(f'{path}/sigma2_zsteps3000_simps.npy')
+    z_arr_sb = np.load(f'{path}/z_grid_sigma2_zsteps3000.npy')
+
+    sigma2_sb_interp = RegularGridInterpolator((z_arr_sb, z_arr_sb), sigma2_sb, method='linear')
+    z_arr_xx, z_arr_yy = np.meshgrid(z_arr_pyssc, z_arr_pyssc)
+    sigma2_sb = sigma2_sb_interp((z_arr_xx, z_arr_yy)).T
+
+    plt.figure()
+    plt.plot(z_arr_pyssc, sigma2_pyssc_arr[z_1_idx, :], label='PySSC', marker='.')
+    plt.plot(z_arr_pyssc, sigma2_sb[z_1_idx, :], label='Spaceborne', ls='--', marker='.')
+    plt.axvline(z_arr_pyssc[z_1_idx], color='k', ls='--', label='$z_1$')
+    plt.xlim(0, 2.5)
+    plt.xlabel('$z_2$')
+    plt.ylabel('$\sigma^2(z_1, z_2)$')
+    plt.legend()
 
 # TODO compute sigma_b with PyCCL for a rought comparison
 # fsky = csmlib.deg2_to_fsky(cfg['sky_area_deg2'])

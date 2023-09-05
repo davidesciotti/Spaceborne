@@ -167,8 +167,6 @@ def interpolate_sigma2_arr(sigma2_arr, z_grid_original, z_grid_new):
     return sigma2_arr_interpolated
 
 
-logging.basicConfig(level=logging.INFO)
-
 def sigma2_pyssc(z_arr, classy_cosmo_params):
     """ Compute sigma2 with PySSC. This is just for comparison, it is not used in the code."""
     if classy_cosmo_params is None:
@@ -180,14 +178,7 @@ def sigma2_pyssc(z_arr, classy_cosmo_params):
     return PySSC.sigma2_fullsky(z_arr, cosmo_params=classy_cosmo_params, cosmo_Class=None)
 
 
-
-sigma2_pyssc_arr = sigma2_pyssc(z_arr_pyssc, None)
-
-
-
-
 def compare_sigma2_sb_vs_pyssc(z_arr_pyssc, sigma2_pyssc_arr, z_1_idx=100):
-    
     path = '/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/integrand_arrays/sigma2'
     sigma2_sb = np.load(f'{path}/sigma2_zsteps3000_simps.npy')
     z_arr_sb = np.load(f'{path}/z_grid_sigma2_zsteps3000.npy')

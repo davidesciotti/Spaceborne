@@ -198,8 +198,9 @@ Sijkl_cfg = {
 
     'Sijkl_folder': f'{project_path.parent}/common_data/Sijkl',
     'Sijkl_filename': 'Sijkl_WFdavide_nz{nz:d}_IA_3may.npy',
-    'load_precomputed_sijkl': False,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
+    'load_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
     'save_sijkl': False,  # save the computed Sijkl in Sijkl_folder
+    # TODO update to new version of pyssc, check if this the agreement
 }
 
 # dictionaries of cosmological parameters' names and values

@@ -149,7 +149,7 @@ def compute_Sijkl(cosmo_params_dict, z_arr, windows, windows_normalization, zbin
 
     print('Computing the Sijkl matrix...')
     start = time.perf_counter()
-    Sijkl_arr = Sijkl(z_arr=z_arr, windows=windows, cosmo_params=cosmo_params_dict, convention=convention,
+    Sijkl_arr = Sijkl(z_arr=z_arr, kernels=windows, cosmo_params=cosmo_params_dict, convention=convention,
                       precision=10, tol=1e-3)
     print(f'Sijkl matrix computed in {time.perf_counter() - start:.2f} s')
 

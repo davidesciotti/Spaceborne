@@ -223,7 +223,7 @@ else:
     # transpose and stack, ordering is important here!
     transp_stacked_wf = np.vstack((wil.T, wig.T))
     sijkl = Sijkl_utils.compute_Sijkl(cosmo_lib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
-                                      Sijkl_cfg['WF_normalization'])
+                                      Sijkl_cfg['wf_normalization'])
     if Sijkl_cfg['save_sijkl']:
         np.save(f'{Sijkl_folder}/{Sijkl_filename}', sijkl)
 

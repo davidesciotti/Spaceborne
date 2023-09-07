@@ -35,7 +35,7 @@ idM = 3
 idR = 1
 test_cov = True
 test_fm = True
-is_flat_str = 'Flat'
+flat_or_nonflat = 'Flat'
 
 probe_dict = {
     'WL': 'WLO',
@@ -48,8 +48,8 @@ cov_dav_path = f'{path_dav}/covmat/BNT_False/ell_cuts_False'
 cov_vinc_path = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/' \
                 f'OutputFiles/CovMats/GaussOnly'
 
-fm_dav_path = cov_dav_path.replace('covmat', 'FM') + '/Flat'
-fm_vinc_path = cov_vinc_path.replace('CovMats', 'FishMat') + '/Flat'
+fm_dav_path = cov_dav_path.replace('covmat', 'FM') + f'/{flat_or_nonflat}'
+fm_vinc_path = cov_vinc_path.replace('CovMats', 'FishMat') + f'/{flat_or_nonflat}'
 
 # TODO check FM dict
 

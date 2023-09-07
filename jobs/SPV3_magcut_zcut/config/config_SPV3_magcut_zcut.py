@@ -82,7 +82,7 @@ general_cfg = {
     'ell_cuts_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/ell_cuts',
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                          'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    'kmax_h_over_Mpc_ref': 1.0,
+    'kmax_h_over_Mpc_ref': 1.0,  # this is used when ell_cuts is False, also...?
     # 'kmax_list_1_over_Mpc': np.array((0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00)),
     'kmax_h_over_Mpc_list': np.array([0.37313433, 0.74626866, 1.11940299, 1.49253731, 1.86567164,
                                       2.23880597, 2.6119403, 2.98507463, 4.47761194,

@@ -147,17 +147,17 @@ for ML, ZL, MS, ZS in zip(ML_list, ZL_list, MS_list, ZS_list):
                         lmax = 5000
                         nbl = 32
 
-                    FM_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
+                    fm_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
                               f'output/Flagship_{flagship_version}/FM'
-                    FM_Ellcuts_path = f'{FM_path}/BNT_{BNT_transform}/ell_cuts_True/{which_cuts}/{center_or_min}'
-                    FM_noEllcuts_path = f'{FM_path}/BNT_{BNT_transform}/ell_cuts_False'
+                    fm_ellcuts_path = f'{fm_path}/BNT_{BNT_transform}/ell_cuts_True/{which_cuts}/{center_or_min}'
+                    fm_no_ellcuts_path = f'{fm_path}/BNT_{BNT_transform}/ell_cuts_False'
 
-                    FM_ellcuts_filename = f'FM_zbins{EP_or_ED}{zbins:02d}-ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}' \
+                    fm_ellcuts_filename = f'FM_zbins{EP_or_ED}{zbins:02d}-ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}' \
                                           f'_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}.pickle'
-                    FM_noellcuts_filename = f'FM_zbins{EP_or_ED}{zbins:02d}-ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}.pickle'
+                    fm_no_ellcuts_filename = f'FM_zbins{EP_or_ED}{zbins:02d}-ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}.pickle'
 
-                    FM_Ellcuts_dict = mm.load_pickle(f'{FM_Ellcuts_path}/{FM_ellcuts_filename}')
-                    FM_noEllcuts_dict = mm.load_pickle(f'{FM_noEllcuts_path}/{FM_noellcuts_filename}')
+                    fm_ellcuts_dict = mm.load_pickle(f'{fm_ellcuts_path}/{fm_ellcuts_filename}')
+                    fm_no_ellcuts_dict = mm.load_pickle(f'{fm_no_ellcuts_path}/{fm_no_ellcuts_filename}')
 
                     # this is just as a reference; the values roughly match.
                     # FM_GS_kcuts_vinc = np.genfromtxt(
@@ -169,20 +169,20 @@ for ML, ZL, MS, ZS in zip(ML_list, ZL_list, MS_list, ZS_list):
                     # FM_GS_kcuts_vinc = FM_GS_kcuts_vinc[:-zbins, :-zbins]
 
                     # parameter names
-                    param_names_dict = FM_noEllcuts_dict['param_names_dict']
-                    fiducial_values_dict = FM_noEllcuts_dict['fiducial_values_dict']
+                    param_names_dict = fm_no_ellcuts_dict['param_names_dict']
+                    fiducial_values_dict = fm_no_ellcuts_dict['fiducial_values_dict']
 
-                    assert param_names_dict == FM_Ellcuts_dict['param_names_dict'], \
+                    assert param_names_dict == fm_ellcuts_dict['param_names_dict'], \
                         'param_names_dict not equal for Ellcuts and noEllcuts'
                     for key in fiducial_values_dict.keys():
-                        assert np.all(fiducial_values_dict[key] == FM_Ellcuts_dict['fiducial_values_dict'][key]), \
+                        assert np.all(fiducial_values_dict[key] == fm_ellcuts_dict['fiducial_values_dict'][key]), \
                             'fiducial_values_dict not equal for Ellcuts and noEllcuts'
 
                     # rename for convenience
-                    FM_GO_Ellcuts = FM_Ellcuts_dict[f'FM_{probe}_GO']
-                    FM_GS_Ellcuts = FM_Ellcuts_dict[f'FM_{probe}_GS']
-                    FM_GO_noEllcuts = FM_noEllcuts_dict[f'FM_{probe}_GO']
-                    FM_GS_noEllcuts = FM_noEllcuts_dict[f'FM_{probe}_GS']
+                    FM_GO_Ellcuts = fm_ellcuts_dict[f'FM_{probe}_GO']
+                    FM_GS_Ellcuts = fm_ellcuts_dict[f'FM_{probe}_GS']
+                    FM_GO_noEllcuts = fm_no_ellcuts_dict[f'FM_{probe}_GO']
+                    FM_GS_noEllcuts = fm_no_ellcuts_dict[f'FM_{probe}_GS']
 
                     # fix the desired parameters and remove null rows/columns
                     FM_GO_noEllcuts, param_names_list, fiducials_list = mm.mask_FM(FM_GO_noEllcuts, param_names_dict,

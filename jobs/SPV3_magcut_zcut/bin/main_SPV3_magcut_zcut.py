@@ -80,6 +80,7 @@ def load_ell_cuts(kmax_h_over_Mpc):
         ell_cuts_LG = ell_cuts_GL.T
 
         # ! linearly rescale ell cuts
+        warnings.warn('is this the issue with the BNT? kmax_h_over_Mpc_ref is 1, I think...')
         ell_cuts_LL *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
         ell_cuts_GG *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
         ell_cuts_GL *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
@@ -242,7 +243,6 @@ covariance_cfg = cfg.covariance_cfg
 Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
-kmax_h_over_Mpc = general_cfg['kmax_h_over_Mpc_ref']
 # for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
 #     for general_cfg['which_cuts'] in ['Vincenzo', ]:
 #         for general_cfg['center_or_min'] in ['center', 'min']:
@@ -279,6 +279,7 @@ h = 0.67  # TODO this should be read from the input file
 # some checks
 assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
 assert general_cfg['use_WA'] is False, 'We do not use Wadd for SPV3 at the moment'
+assert general_cfg['flat_or_nonflat'] == 'Flat', 'We do not use non-flat cosmologies for SPV3 at the moment, if I recall correclty'
 
 if covariance_cfg['cov_BNT_transform']:
     assert general_cfg['cl_BNT_transform'] is False, \
@@ -304,6 +305,7 @@ covariance_cfg['probe_ordering'] = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G'
 
 if not general_cfg['ell_cuts']:
     general_cfg['ell_cuts_subfolder'] = ''
+    kmax_h_over_Mpc = general_cfg['kmax_h_over_Mpc_ref']
 else:
     general_cfg['ell_cuts_subfolder'] = f'{general_cfg["which_cuts"]}/ell_{general_cfg["center_or_min"]}'
 
@@ -721,7 +723,7 @@ fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
                                        which_cuts=general_cfg['which_cuts'],
                                        center_or_min=general_cfg['center_or_min'])
 if not general_cfg['ell_cuts']:
-    fm_folder = fm_folder.replace(f'/{which_cuts}/ell_{center_or_min}', '')
+    fm_folder = fm_folder.replace(f'/{general_cfg["which_cuts"]}/ell_{center_or_min}', '')
 
 FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, FM_cfg['save_FM_txt'],
                  FM_cfg['save_FM_dict'],

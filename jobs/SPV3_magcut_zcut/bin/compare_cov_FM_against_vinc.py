@@ -33,8 +33,9 @@ idIA = 2
 idB = 3
 idM = 3
 idR = 1
-test_cov = False
+test_cov = True
 test_fm = True
+is_flat_str = 'Flat'
 
 probe_dict = {
     'WL': 'WLO',
@@ -42,12 +43,12 @@ probe_dict = {
     '3x2pt': '3x2pt'
 }
 
-cov_dav_path = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output/' \
-               'Flagship_2/covmat/BNT_False/cov_ell_cuts_False'
+path_dav = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output/Flagship_2'
+cov_dav_path = f'{path_dav}/covmat/BNT_False/ell_cuts_False'
 cov_vinc_path = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/' \
-                'OutputFiles/CovMats/GaussOnly'
-fm_dav_path = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output/' \
-              'Flagship_2/FM/BNT_False/ell_cuts_False'
+                f'OutputFiles/CovMats/GaussOnly'
+
+fm_dav_path = cov_dav_path.replace('covmat', 'FM') + '/Flat'
 fm_vinc_path = cov_vinc_path.replace('CovMats', 'FishMat') + '/Flat'
 
 # TODO check FM dict

@@ -12,7 +12,7 @@ sys.path.append(f'{project_path.parent}/common_data/common_config')
 import ISTF_fid_params as ISTFfid
 
 which_forecast = 'SPV3'
-fsky, GL_or_LG, ind_ordering, _ = utils.get_specs(which_forecast)
+fsky, GL_or_LG, _, _ = utils.get_specs(which_forecast)
 
 SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
 
@@ -24,8 +24,8 @@ cov_BNT_transform = False
 deriv_BNT_transform = False
 
 cl_ell_cuts = False
-cov_ell_cuts = True
-deriv_ell_cuts = True
+cov_ell_cuts = False
+deriv_ell_cuts = False
 
 if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
     BNT_transform = True
@@ -65,7 +65,7 @@ general_cfg = {
     'save_cls_3d': False,
     'save_rls_3d': False,
 
-    'flat_or_nonflat': 'flat',
+    'flat_or_nonflat': 'Flat', # Flat or NonFlat
 
     # the case with the largest range is nbl_WL_opt.. This is the reference ell binning from which the cuts are applied;
     # in principle, the other binning should be consistent with this one and should not be hardcoded, as long as
@@ -77,7 +77,7 @@ general_cfg = {
 
     'ell_cuts': ell_cuts,
     'which_cuts': 'Vincenzo',
-    # 'center_or_min': None,  # cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
+    'center_or_min': 'min',  # cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
     'cl_ell_cuts': cl_ell_cuts,
     'ell_cuts_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/ell_cuts',
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
@@ -165,7 +165,7 @@ covariance_cfg = {
     'save_2DCLOE': False,  # outermost loop is on the probes
 
     # ! no folders for ell_cut_center or min
-    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/cov_ell_cuts_{cov_ell_cuts:s}',
+    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{cov_ell_cuts:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_'
                     'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_'
                     'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D',

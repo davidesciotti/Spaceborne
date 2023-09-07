@@ -23,9 +23,6 @@ matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
-ray.shutdown()
-ray.init()
-
 
 # TODO maybe re-check that the various cosmo_ccl objects are equivalent...
 # TODO play around with the k_grid_sigma2 and z_grid_sigma2
@@ -99,7 +96,6 @@ def plot_sigma2(sigma2_arr, z_grid_sigma2):
     plt.rcParams.update({'font.size': font_size})
     plt.rcParams["legend.fontsize"] = font_size
 
-    z_steps_sigma2 = len(z_grid_sigma2)
 
     plt.figure()
     pad = 0.4  # I don't want to plot sigma at the edges of the grid, it's too noisy
@@ -108,7 +104,7 @@ def plot_sigma2(sigma2_arr, z_grid_sigma2):
         z_1 = z_grid_sigma2[z1_idx]
 
         plt.plot(z_grid_sigma2, sigma2_arr[z1_idx, :], label=f'$z_1=%.2f$ ' % z_1)
-        # plt.axvline(z_1, color='k', ls='--', label='$z_1$')
+        plt.axvline(z_1, color='k', ls='--', label='$z_1$')
     plt.xlabel('$z_2$')
     plt.ylabel('$\sigma^2(z_1, z_2)$')  # sigma2 is dimensionless!
     plt.legend()
@@ -117,17 +113,15 @@ def plot_sigma2(sigma2_arr, z_grid_sigma2):
     font_size = 18
     plt.rcParams.update({'font.size': font_size})
     plt.rcParams["legend.fontsize"] = font_size
-
     mm.matshow(sigma2_arr, log=True, abs_val=True, title='$\sigma^2(z_1, z_2)$')
 
+    # z_steps_sigma2 = len(z_grid_sigma2)
     # plt.savefig(f'../output/plots/sigma2_spikes_zsteps{z_steps_sigma2}.pdf', dpi=500, bbox_inches='tight')
     # plt.savefig(f'../output/plots/sigma2_matshow_zsteps{z_steps_sigma2}.pdf', dpi=500, bbox_inches='tight')
 
 
-def compute_sigma2(sigma2_cfg, ficualial_pars_dict):
+def compute_sigma2(sigma2_cfg, cosmo_ccl):
     print(f'computing sigma^2(z_1, z_2) for SSC...')
-    # instantiate cosmo_ccl
-    cosmo_ccl = csmlib.istantiate_cosmo_ccl_obj(ficualial_pars_dict)
 
     z_grid_sigma2 = np.linspace(sigma2_cfg['z_min_sigma2'], sigma2_cfg['z_max_sigma2'], sigma2_cfg['z_steps_sigma2'])
     k_grid_sigma2 = np.logspace(sigma2_cfg['log10_k_min_sigma2'], sigma2_cfg['log10_k_max_sigma2'],

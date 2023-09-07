@@ -111,7 +111,7 @@ covariance_cfg = {
     'row_col_major': 'row-major',
     'block_index': 'ell',
     'GL_or_LG': 'GL',
-    'probe_orderinng': None,  # this is set in the main
+    'probe_ordering': None,  # this is set in the main
 
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which this is wrong

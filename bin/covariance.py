@@ -21,7 +21,7 @@ matplotlib.use('Qt5Agg')
 project_path_here = Path.cwd().parent.parent.parent
 sys.path.append(str(project_path_here.parent / 'common_lib'))
 import my_module as mm
-import cosmo_lib
+import cosmo_lib as csmlib
 
 sys.path.append(str(project_path_here.parent / 'cl_v2/bin'))
 import wf_cl_lib
@@ -70,8 +70,8 @@ def ssc_with_exactSSC_4D(general_cfg, covariance_cfg):
 
     if not covariance_cfg['exactSSC_cfg']['use_precomputed_sigma2']:
         # this part should be finished, what should I do with the array? save it?
-        sigma2, z_grid_sigma2 = sigma2_SSC.compute_sigma2(covariance_cfg['exactSSC_cfg'],
-                                                          general_cfg['fiducial_pars_dict'])
+        cosmo_ccl = csmlib.istantiate_cosmo_ccl_obj(general_cfg['fiducial_pars_dict'])
+        sigma2, z_grid_sigma2 = sigma2_SSC.compute_sigma2(covariance_cfg['exactSSC_cfg'], cosmo_ccl)
 
         z_steps_sigma2 = len(z_grid_sigma2)
         np.savez_compressed(f'/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/integrand_arrays/sigma2/'
@@ -856,7 +856,7 @@ def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr, plot_nz=True):
             n_of_z_arr = n_of_z_arr[1:, :]
 
     warnings.warn('I am assuming an IST:F fiducial cosmology to compute the comoving distance')
-    chi = cosmo_lib.ccl_comoving_distance(z_grid, use_h_units=False)
+    chi = csmlib.ccl_comoving_distance(z_grid, use_h_units=False)
 
     if plot_nz:
         plt.figure()

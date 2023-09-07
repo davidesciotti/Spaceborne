@@ -265,6 +265,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                 zmax = int(general_cfg['zmax'] * 10)
                 triu_tril = covariance_cfg['triu_tril']
                 row_col_major = covariance_cfg['row_col_major']
+                GL_or_LG = covariance_cfg['GL_or_LG']
                 n_probes = general_cfg['n_probes']
                 which_pk = general_cfg['which_pk']
                 idIA = general_cfg['idIA']
@@ -297,6 +298,8 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                 ind = mm.build_full_ind(triu_tril, row_col_major, zbins)
                 covariance_cfg['ind'] = ind
                 zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
+
+                covariance_cfg['probe_ordering'] = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
 
                 general_cfg['ell_cuts_subfolder'] = f'{general_cfg["which_cuts"]}/ell_{general_cfg["center_or_min"]}'
                 if not general_cfg['ell_cuts']:
@@ -560,7 +563,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                 # save covariance matrix and test against benchmarks
                 cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
                                                                  **variable_specs)
-                covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
+                covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
                 if general_cfg['test_against_benchmarks']:
                     cov_benchmark_folder = f'{cov_folder}/benchmarks'

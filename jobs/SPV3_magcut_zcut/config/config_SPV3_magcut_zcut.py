@@ -114,7 +114,7 @@ general_cfg = {
     'zcut_lens': 2,
     'flagship_version': flagship_version,
 
-    'test_against_benchmarks': False,
+    'test_against_benchmarks': True,
 }
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:

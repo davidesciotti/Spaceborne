@@ -4,6 +4,7 @@ import time
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+from joblib import delayed, Parallel
 from scipy.integrate import simps
 from scipy.interpolate import RegularGridInterpolator
 from scipy.special import spherical_jn
@@ -120,30 +121,38 @@ def plot_sigma2(sigma2_arr, z_grid_sigma2):
     # plt.savefig(f'../output/plots/sigma2_matshow_zsteps{z_steps_sigma2}.pdf', dpi=500, bbox_inches='tight')
 
 
-def compute_sigma2(sigma2_cfg, cosmo_ccl):
+def compute_sigma2(sigma2_cfg, cosmo_ccl, parallel=True):
     print(f'computing sigma^2(z_1, z_2) for SSC...')
 
     z_grid_sigma2 = np.linspace(sigma2_cfg['z_min_sigma2'], sigma2_cfg['z_max_sigma2'], sigma2_cfg['z_steps_sigma2'])
     k_grid_sigma2 = np.logspace(sigma2_cfg['log10_k_min_sigma2'], sigma2_cfg['log10_k_max_sigma2'],
                                 sigma2_cfg['k_steps_sigma2'])
 
-    # ! parallelize with ray
-    start_time = time.perf_counter()
-    sigma2_func_remote = ray.remote(sigma2_func)
-    remote_calls = []
-    for z1 in tqdm(z_grid_sigma2):
-        for z2 in z_grid_sigma2:
-            remote_calls.append(sigma2_func_remote.remote(z1, z2, k_grid_sigma2, cosmo_ccl))
-    # Get the results from the remote function calls
-    sigma2_arr = ray.get(remote_calls)
+    if parallel:
+        # ! parallelize with ray
+        start_time = time.perf_counter()
+        sigma2_func_remote = ray.remote(sigma2_func)
+        remote_calls = []
+        for z1 in tqdm(z_grid_sigma2):
+            for z2 in z_grid_sigma2:
+                remote_calls.append(sigma2_func_remote.remote(z1, z2, k_grid_sigma2, cosmo_ccl))
+        # Get the results from the remote function calls
+        sigma2_arr = ray.get(remote_calls)
 
-    # with joblib (doesn't seem to work anymore, I still don't know why)
-    # sigma2_arr = Parallel(n_jobs=-1, backend='threading')(delayed(sigma2_func)(
-    #     z1, z2, k_grid_sigma2, cosmo_ccl) for z1 in tqdm(z_grid_sigma2) for z2 in z_grid_sigma2)
+        # with joblib (doesn't seem to work anymore, I still don't know why)
+        # sigma2_arr = Parallel(n_jobs=-1, backend='threading')(delayed(sigma2_func)(
+        #     z1, z2, k_grid_sigma2, cosmo_ccl) for z1 in tqdm(z_grid_sigma2) for z2 in z_grid_sigma2)
 
-    # reshape result
-    sigma2_arr = np.array(sigma2_arr).reshape((len(z_grid_sigma2), len(z_grid_sigma2)))
-    print(f'sigma2 computed in: {(time.perf_counter() - start_time):.2f} s')
+        # reshape result
+        sigma2_arr = np.array(sigma2_arr).reshape((len(z_grid_sigma2), len(z_grid_sigma2)))
+        print(f'sigma2 computed in: {(time.perf_counter() - start_time):.2f} s')
+
+    else:
+        # ! serial version
+        sigma2_arr = np.zeros((len(z_grid_sigma2), len(z_grid_sigma2)))
+        for z1_idx, z1 in enumerate(tqdm(z_grid_sigma2)):
+            for z2_idx, z2 in enumerate(z_grid_sigma2):
+                sigma2_arr[z1_idx, z2_idx] = sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl)
 
     return sigma2_arr, z_grid_sigma2
 

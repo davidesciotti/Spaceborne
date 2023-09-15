@@ -339,6 +339,8 @@ nbl_GC = len(ell_dict['ell_GC'])
 nbl_WA = len(ell_dict['ell_WA'])
 nbl_3x2pt = nbl_GC
 general_cfg['nbl_WL'] = nbl_WL
+general_cfg['nbl_GC'] = nbl_GC
+general_cfg['nbl_3x2pt'] = nbl_3x2pt
 
 delta_dict = {'delta_l_WL': np.copy(delta_l_WL_nbl32[:nbl_WL]),
               'delta_l_GC': np.copy(delta_l_WL_nbl32[:nbl_GC]),
@@ -508,7 +510,7 @@ rl_dict_3D = {
     'rl_WA_3D': rl_wa_3d,
     'rl_3x2pt_5D': rl_3x2pt_5d}
 
-if covariance_cfg['compute_SSC']:
+if covariance_cfg['compute_SSC'] and covariance_cfg['SSC_code'] == 'PySSC':
 
     # ! load kernels
     # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...

@@ -57,23 +57,21 @@ start_time = time.perf_counter()
 # - growth_factor
 
 
+
+
 def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, use_fftlog=False):
-    # Compute the comoving distance at the given redshifts
+    # Compute the comoving distance and growth factors at the given redshifts
     a1 = 1 / (1 + z1)
     a2 = 1 / (1 + z2)
-
-    # In Mpc
     r1 = ccl.comoving_radial_distance(cosmo_ccl, a1)
     r2 = ccl.comoving_radial_distance(cosmo_ccl, a2)
-
-    # Compute the growth factors at the given redshifts
     growth_factor_z1 = ccl.growth_factor(cosmo_ccl, a1)
     growth_factor_z2 = ccl.growth_factor(cosmo_ccl, a2)
 
     # Define the integrand function
     def integrand(k):
         return k ** 2 * ccl.linear_matter_power(cosmo_ccl, k=k, a=1.0) * \
-            spherical_jn(0, k * r1) * spherical_jn(0, k * r2)
+               spherical_jn(0, k * r1) * spherical_jn(0, k * r2)
 
     if use_fftlog:
         # FFTLog settings
@@ -87,14 +85,15 @@ def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, use_fftlog=False):
         ar = pyfftlog.fftl(ak, xsave)
 
         # Compute the integral result using Simpson's rule
-        r_values = np.exp(np.log(kr) + np.arange(N) * dlogk)  # Corresponding r values
+        r_values = np.exp(np.log(kr) + np.arange(N) * dlogk)
         integral_result = simps(ar, r_values)
     else:
         # Use Simpson's rule for the integral
         integral_result = simps(integrand(k_grid_sigma2), k_grid_sigma2)
 
-    # Note: FFTLog requires logarithmically spaced k_grid. Ensure that k_grid_sigma2 is logarithmically spaced if you are using FFTLog.
     return 1 / (2 * np.pi ** 2) * growth_factor_z1 * growth_factor_z2 * integral_result
+
+# Note: FFTLog requires logarithmically spaced k_grid. Ensure that k_grid_sigma2 is logarithmically spaced if you are using FFTLog.
 
 
 
@@ -203,7 +202,7 @@ def compute_sigma2(sigma2_cfg, cosmo_ccl, parallel=True):
 def batch_sigma2_func(batch, k_grid_sigma2, cosmo_ccl, use_fftlog):
     results = []
     for z1, z2 in batch:
-        result = sigma2_func_fftlog_test(z1, z2, k_grid_sigma2, cosmo_ccl, use_fftlog)
+        result = sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, use_fftlog)
         results.append(result)
     return results
 

@@ -12,7 +12,6 @@ import ray
 import pyccl as ccl
 from tqdm import tqdm
 import PySSC
-import pyfftlog
 
 sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_lib')
 import my_module as mm
@@ -57,48 +56,7 @@ start_time = time.perf_counter()
 # - growth_factor
 
 
-
-
-def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, use_fftlog=False):
-    # Compute the comoving distance and growth factors at the given redshifts
-    a1 = 1 / (1 + z1)
-    a2 = 1 / (1 + z2)
-    r1 = ccl.comoving_radial_distance(cosmo_ccl, a1)
-    r2 = ccl.comoving_radial_distance(cosmo_ccl, a2)
-    growth_factor_z1 = ccl.growth_factor(cosmo_ccl, a1)
-    growth_factor_z2 = ccl.growth_factor(cosmo_ccl, a2)
-
-    # Define the integrand function
-    def integrand(k):
-        return k ** 2 * ccl.linear_matter_power(cosmo_ccl, k=k, a=1.0) * \
-               spherical_jn(0, k * r1) * spherical_jn(0, k * r2)
-
-    if use_fftlog:
-        # FFTLog settings
-        N = len(k_grid_sigma2)
-        dlogk = np.log(k_grid_sigma2[-1] / k_grid_sigma2[0]) / N
-        logk_min = np.log(k_grid_sigma2[0])
-
-        # Compute Fourier transform using FFTLog
-        kr, xsave = pyfftlog.fhti(N, dlogk, logk_min, 0, 1)
-        ak = integrand(np.exp(logk_min + np.arange(N) * dlogk))
-        ar = pyfftlog.fftl(ak, xsave)
-
-        # Compute the integral result using Simpson's rule
-        r_values = np.exp(np.log(kr) + np.arange(N) * dlogk)
-        integral_result = simps(ar, r_values)
-    else:
-        # Use Simpson's rule for the integral
-        integral_result = simps(integrand(k_grid_sigma2), k_grid_sigma2)
-
-    return 1 / (2 * np.pi ** 2) * growth_factor_z1 * growth_factor_z2 * integral_result
-
-# Note: FFTLog requires logarithmically spaced k_grid. Ensure that k_grid_sigma2 is logarithmically spaced if you are using FFTLog.
-
-
-
-
-def sigma2_func_old_bench(z1, z2, k_grid_sigma2, cosmo_ccl):
+def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl):
     """ Computes the integral in k. The rest is in another function, to vectorize the call to the growth_factor.
     Note that the 1/Omega_S^2 factors are missing in this function!! This is consistent with the definitio given in
     mine and Fabien's paper."""
@@ -199,15 +157,15 @@ def compute_sigma2(sigma2_cfg, cosmo_ccl, parallel=True):
 
 
 # @ray.remote
-def batch_sigma2_func(batch, k_grid_sigma2, cosmo_ccl, use_fftlog):
+def batch_sigma2_func(batch, k_grid_sigma2, cosmo_ccl, ):
     results = []
     for z1, z2 in batch:
-        result = sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, use_fftlog)
+        result = sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, )
         results.append(result)
     return results
 
 
-def compute_sigma2_batched_ray(sigma2_cfg, cosmo_ccl, batch_size=10, parallel=True, use_fftlog=False):
+def compute_sigma2_batched(sigma2_cfg, cosmo_ccl, batch_size=10, parallel=True, parallel_code='joblib'):
     print(f'computing sigma^2(z_1, z_2) for SSC...')
 
     z_grid_sigma2 = np.linspace(sigma2_cfg['z_min_sigma2'], sigma2_cfg['z_max_sigma2'], sigma2_cfg['z_steps_sigma2'])
@@ -215,21 +173,30 @@ def compute_sigma2_batched_ray(sigma2_cfg, cosmo_ccl, batch_size=10, parallel=Tr
                                 sigma2_cfg['k_steps_sigma2'])
 
     if parallel:
+        start_time = time.perf_counter()
+
         # Create a list of all pairs (z1, z2)
         all_pairs = [(z1, z2) for z1 in z_grid_sigma2 for z2 in z_grid_sigma2]
 
         # Split all_pairs into smaller chunks (batches)
         batches = [all_pairs[i:i + batch_size] for i in range(0, len(all_pairs), batch_size)]
 
-        # Parallelize with ray
-        batch_sigma2_func_remote = ray.remote(batch_sigma2_func)
-        start_time = time.perf_counter()
-        remote_calls = [batch_sigma2_func_remote.remote(batch, k_grid_sigma2, cosmo_ccl, use_fftlog) for batch in tqdm(batches)]
+        if parallel_code == 'ray':
+            batch_sigma2_func_remote = ray.remote(batch_sigma2_func)
+            remote_calls = [batch_sigma2_func_remote.remote(batch, k_grid_sigma2, cosmo_ccl) for batch in
+                            tqdm(batches)]
 
-        # Get the results from the remote function calls
-        start_time_remote = time.perf_counter()
-        results = ray.get(remote_calls)
-        print(f'remote calls gathered in: {(time.perf_counter() - start_time_remote):.2f} s')
+            # Get the results from the remote function calls
+            start_time_remote = time.perf_counter()
+            results = ray.get(remote_calls)
+            print(f'remote calls gathered in: {(time.perf_counter() - start_time_remote):.2f} s')
+
+        elif parallel_code == 'joblib':
+            results = Parallel(n_jobs=-1, backend='threading')(
+                delayed(batch_sigma2_func)(batch, k_grid_sigma2, cosmo_ccl) for batch in tqdm(batches))
+        else:
+            raise ValueError('parallel_code must be either "ray" or "joblib"')
+
         sigma2_arr = np.concatenate(results)
 
         # Reshape result
@@ -241,34 +208,9 @@ def compute_sigma2_batched_ray(sigma2_cfg, cosmo_ccl, batch_size=10, parallel=Tr
         sigma2_arr = np.zeros((len(z_grid_sigma2), len(z_grid_sigma2)))
         for z1_idx, z1 in enumerate(tqdm(z_grid_sigma2)):
             for z2_idx, z2 in enumerate(z_grid_sigma2):
-                sigma2_arr[z1_idx, z2_idx] = sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, use_fftlog)
+                sigma2_arr[z1_idx, z2_idx] = sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl)
 
     return sigma2_arr, z_grid_sigma2
-
-
-def compute_sigma2_batched_joblib(sigma2_cfg, cosmo_ccl, batch_size=30, parallel=True):
-    print(f'computing sigma^2(z_1, z_2) for SSC...')
-
-    z_grid_sigma2 = np.linspace(sigma2_cfg['z_min_sigma2'], sigma2_cfg['z_max_sigma2'], sigma2_cfg['z_steps_sigma2'])
-    k_grid_sigma2 = np.logspace(sigma2_cfg['log10_k_min_sigma2'], sigma2_cfg['log10_k_max_sigma2'],
-                                sigma2_cfg['k_steps_sigma2'])
-
-    if parallel:
-        # Create a list of all pairs (z1, z2)
-        all_pairs = [(z1, z2) for z1 in z_grid_sigma2 for z2 in z_grid_sigma2]
-
-        # Split all_pairs into smaller chunks (batches)
-        batches = [all_pairs[i:i + batch_size] for i in range(0, len(all_pairs), batch_size)]
-
-        # Parallelize with joblib
-        start_time = time.perf_counter()
-        results = Parallel(n_jobs=-1, backend='threading')(
-            delayed(batch_sigma2_func)(batch, k_grid_sigma2, cosmo_ccl) for batch in tqdm(batches))
-
-        # Concatenate and reshape results
-        sigma2_arr = np.concatenate(results)
-        sigma2_arr = np.array(sigma2_arr).reshape((len(z_grid_sigma2), len(z_grid_sigma2)))
-        print(f'sigma2 computed in: {(time.perf_counter() - start_time):.2f} s')
 
 
 def interpolate_sigma2_arr(sigma2_arr, z_grid_original, z_grid_new):

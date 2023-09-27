@@ -86,8 +86,19 @@ def ssc_with_exactSSC_4D(general_cfg, covariance_cfg):
         cov_exactSSC_3x2pt_dict_8D = {}
         for probe_A, probe_B in probe_ordering:
             for probe_C, probe_D in probe_ordering:
-                cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D] = \
-                    np.load(f'{path}/cov_SSC_{probe_A}{probe_B}{probe_C}{probe_D}_4D_{general_suffix}.npy')
+
+                try:
+                    cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D] = \
+                        np.load(f'{path}/cov_SSC_{probe_A}{probe_B}{probe_C}{probe_D}_4D_{general_suffix}.npy')
+                except FileNotFoundError:
+                    # for 3x2pt, I have the files with 32 bins, ie with lmax = 5000.
+                    general_suffix_nbl29 = general_suffix.replace('nbl29', 'nbl32')
+                    general_suffix_nbl29 = general_suffix_nbl29.replace('ellmax3000', 'ellmax5000')
+
+                    # cut the covariance to 29 bins
+                    cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D] = \
+                        np.load(f'{path}/cov_SSC_{probe_A}{probe_B}{probe_C}{probe_D}_'
+                                f'4D_{general_suffix_nbl29}.npy')[:nbl, :nbl, :, :]
 
         cov_exactSSC_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_exactSSC_3x2pt_dict_8D, probe_ordering)
 

@@ -53,7 +53,7 @@ if BNT_transform:
 general_cfg = {
     'ell_min': 10,
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
-    'ell_max_WL': 5000,  # ! changed this from 5000! anyway, we are only interested in the 3x2pt...
+    'ell_max_WL': 5000,
     'ell_max_GC': 3000,
     'ell_max_XC': 3000,
     'zbins': 13,
@@ -172,7 +172,7 @@ covariance_cfg = {
     'SSC_code': 'exactSSC',
 
     'exactSSC_cfg': {
-        'probe': 'GG',
+        'probe': '3x2pt',
         # in this case it is only possible to load precomputed arraya, I have to compute the integral with Julia
         'path': '/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia',
 
@@ -182,7 +182,7 @@ covariance_cfg = {
         'use_precomputed_sigma2': True,  # still need to understand exactly where to call/save this
         'z_min_sigma2': 0.001,
         'z_max_sigma2': 3,
-        'z_steps_sigma2': 3000,
+        'z_steps_sigma2': 2899,
         'log10_k_min_sigma2': -4,
         'log10_k_max_sigma2': 1,
         'k_steps_sigma2': 20_000,
@@ -251,7 +251,7 @@ FM_cfg = {
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,
 
-    'test_against_benchmarks': False,
+    'test_against_benchmarks': True,
     # 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
     #                 'MS{magcut_source:03d}-ZS{zcut_source:02d}'
     #                 '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',

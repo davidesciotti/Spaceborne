@@ -172,7 +172,7 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
     plt.rcParams['axes.axisbelow'] = True
 
     for bar_idx in range(no_cases):
-        label=label_list[bar_idx] if not superimpose_bars else None
+        label = label_list[bar_idx] if not superimpose_bars else None
         plt.bar(bar_centers[bar_idx, :], data[bar_idx, :], width=bar_width, edgecolor='grey', alpha=alpha,
                 label=label, zorder=zorders[bar_idx], color=bar_color)
         if show_markers:
@@ -184,7 +184,6 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
     plt.title(title)
     plt.legend()
     plt.show()
-
 
 
 def triangle_plot(FM_GO, FM_GS, fiducials, title, param_names_label):

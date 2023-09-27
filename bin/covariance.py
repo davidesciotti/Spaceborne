@@ -30,11 +30,7 @@ import wf_cl_lib
 ################ CODE TO COMPUTE THE G AND SSC COVMATS ########################
 ###############################################################################
 
-probe_names_dict = {
-    'LL': 'WL',
-    'GG': 'GC',
-    '3x2pt': '3x2pt',
-}
+probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt', }
 
 
 def get_ellmax_nbl(probe, general_cfg):
@@ -88,17 +84,17 @@ def ssc_with_exactSSC_4D(general_cfg, covariance_cfg):
             for probe_C, probe_D in probe_ordering:
 
                 try:
-                    cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D] = \
-                        np.load(f'{path}/cov_SSC_{probe_A}{probe_B}{probe_C}{probe_D}_4D_{general_suffix}.npy')
+                    cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D] = np.load(
+                        f'{path}/cov_SSC_{probe_A}{probe_B}{probe_C}{probe_D}_4D_{general_suffix}.npy')
                 except FileNotFoundError:
                     # for 3x2pt, I have the files with 32 bins, ie with lmax = 5000.
                     general_suffix_nbl29 = general_suffix.replace('nbl29', 'nbl32')
                     general_suffix_nbl29 = general_suffix_nbl29.replace('ellmax3000', 'ellmax5000')
 
                     # cut the covariance to 29 bins
-                    cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D] = \
-                        np.load(f'{path}/cov_SSC_{probe_A}{probe_B}{probe_C}{probe_D}_'
-                                f'4D_{general_suffix_nbl29}.npy')[:nbl, :nbl, :, :]
+                    cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D] = np.load(
+                        f'{path}/cov_SSC_{probe_A}{probe_B}{probe_C}{probe_D}_'
+                        f'4D_{general_suffix_nbl29}.npy')[:nbl, :nbl, :, :]
 
         cov_exactSSC_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_exactSSC_3x2pt_dict_8D, probe_ordering)
 
@@ -138,14 +134,11 @@ def ssc_with_pyccl_4D(general_cfg, covariance_cfg, ell_dict):
         else:
             cov_PyCCL_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_PyCCL_dict_8D, probe_ordering)
 
-        # old, only for LL and GG
-        # cov_PyCCL_SS_4D = np.load(f'{path_ccl}/cov_PyCCL_SSC_{probe}_{general_suffix}_4D.npz')['arr_0']
+        # old, only for LL and GG  # cov_PyCCL_SS_4D = np.load(f'{path_ccl}/cov_PyCCL_SSC_{probe}_{general_suffix}_4D.npz')['arr_0']
 
     else:
-        cov_PyCCL_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl(probe, 'SSC', ell_grid,
-                                                              z_grid_nofz=None, n_of_z=None,
-                                                              general_cfg=general_cfg,
-                                                              covariance_cfg=covariance_cfg)
+        cov_PyCCL_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl(probe, 'SSC', ell_grid, z_grid_nofz=None, n_of_z=None,
+                                                              general_cfg=general_cfg, covariance_cfg=covariance_cfg)
         if covariance_cfg['PyCCL_cfg']['save_cov']:
 
             # not the best way, dict vs 4d array as output...
@@ -353,9 +346,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     if SSC_code == 'PyCCL':
         cov_PyCCL_SS_4D = ssc_with_pyccl_4D(general_cfg, covariance_cfg, ell_dict)
 
-
-
-
     elif SSC_code not in ('PySSC', 'PyCCL', 'exactSSC'):
         raise ValueError('covariance_cfg["SSC_code"] must be PySSC or PyCCL or exactSSC')
 
@@ -437,7 +427,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
     print('covariance matrices reshaped (6D -> 4D) in {:.2f} s'.format(time.perf_counter() - start))
 
-    # ! plug the 4D covariances into the pipeline
+    # ! ========================= plug the 4D covariances into the pipeline ============================================
     if SSC_code in ('PyCCL', 'exactSSC'):
 
         print(f'adding SSC cov from {SSC_code} directly in 4D. This creates some problems with the BNT, TODO')
@@ -448,27 +438,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_SS_4D = cov_exactSSC_SS_4D
         else:
             raise ValueError('SSC_code must be PyCCL or exactSSC')
-
-        # plot the 2D version of the SSC by the other SSC codes
-        cov_SS_2D = mm.cov_4D_to_2D(cov_SS_4D, block_index='ell', optimize=True)
-
-        # and by PySSC:
-        if probe_ssc_code == 'LL':
-            cov_PySSC_SS_4D = mm.cov_6D_to_4D(cov_WL_SS_6D, nbl_WL, zpairs_auto, ind_auto)
-        elif probe_ssc_code == 'GG':
-            cov_PySSC_SS_4D = mm.cov_6D_to_4D(cov_GC_SS_6D, nbl_GC, zpairs_auto, ind_auto)
-        elif probe_ssc_code == '3x2pt':
-            cov_PySSC_SS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(),
-                                                     GL_or_LG)
-        else:
-            raise ValueError(f'probe_ssc_code must be LL or GG or 3x2pt')
-
-        cov_PySSC_SS_2D = mm.cov_4D_to_2D(cov_PySSC_SS_4D, block_index='ell', optimize=True)
-
-        mm.compare_arrays(cov_SS_2D, cov_PySSC_SS_2D,
-                          f'cov_SS_{SSC_code}_{probe_ssc_code}_SS_2D', f'cov_PySSC_{probe_ssc_code}_SS_2D',
-                          plot_diff=False, plot_array=True, log_array=True, log_diff=False,
-                          abs_val=True, plot_diff_threshold=None, white_where_zero=False)
 
         # breakpoint()
         if probe_ssc_code == 'LL':
@@ -613,25 +582,28 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
         # ! cov_G_6D
         start_time = time.perf_counter()
-        cov_dict['cov_WL_GO_6D'] = mm.cov_G_10D_dict(cl_dict_LL, noise_dict_3x2pt,
-                                                     nbl_WL, zbins, ell_WL, delta_l_WL, fsky,
-                                                     probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
-        cov_dict['cov_GC_GO_6D'] = mm.cov_G_10D_dict(cl_dict_GG, noise_dict_3x2pt,
-                                                     nbl_GC, zbins, ell_GC, delta_l_GC, fsky,
-                                                     probe_ordering=[['G', 'G'], ])['G', 'G', 'G', 'G']
-        cov_dict['cov_WA_GO_6D'] = mm.cov_G_10D_dict(cl_dict_WA, noise_dict_3x2pt,
-                                                     nbl_WA, zbins, ell_WA, delta_l_WA, fsky,
-                                                     probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
+        cov_dict['cov_WL_GO_6D'] = \
+            mm.cov_G_10D_dict(cl_dict_LL, noise_dict_3x2pt, nbl_WL, zbins, ell_WL, delta_l_WL, fsky,
+                              probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
+        cov_dict['cov_GC_GO_6D'] = \
+            mm.cov_G_10D_dict(cl_dict_GG, noise_dict_3x2pt, nbl_GC, zbins, ell_GC, delta_l_GC, fsky,
+                              probe_ordering=[['G', 'G'], ])['G', 'G', 'G', 'G']
+        cov_dict['cov_WA_GO_6D'] = \
+            mm.cov_G_10D_dict(cl_dict_WA, noise_dict_3x2pt, nbl_WA, zbins, ell_WA, delta_l_WA, fsky,
+                              probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
         print(f'cov_GO_6D computed in {(time.perf_counter() - start_time):.2f} s')
 
         # ! cov_SSC_6D
         start_time = time.perf_counter()
-        cov_WL_SS_6D = mm.cov_SS_10D_dict(cl_dict_LL, rl_dict_LL, Sijkl_dict, nbl_WL, zbins, fsky,
-                                          probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
-        cov_GC_SS_6D = mm.cov_SS_10D_dict(cl_dict_GG, rl_dict_GG, Sijkl_dict, nbl_GC, zbins, fsky,
-                                          probe_ordering=[['G', 'G'], ])['G', 'G', 'G', 'G']
-        cov_WA_SS_6D = mm.cov_SS_10D_dict(cl_dict_WA, rl_dict_WA, Sijkl_dict, nbl_WA, zbins, fsky,
-                                          probe_ordering=[['L', 'L'], ])['L', 'L', 'L', 'L']
+        cov_WL_SS_6D = \
+            mm.cov_SS_10D_dict(cl_dict_LL, rl_dict_LL, Sijkl_dict, nbl_WL, zbins, fsky, probe_ordering=[['L', 'L'], ])[
+                'L', 'L', 'L', 'L']
+        cov_GC_SS_6D = \
+            mm.cov_SS_10D_dict(cl_dict_GG, rl_dict_GG, Sijkl_dict, nbl_GC, zbins, fsky, probe_ordering=[['G', 'G'], ])[
+                'G', 'G', 'G', 'G']
+        cov_WA_SS_6D = \
+            mm.cov_SS_10D_dict(cl_dict_WA, rl_dict_WA, Sijkl_dict, nbl_WA, zbins, fsky, probe_ordering=[['L', 'L'], ])[
+                'L', 'L', 'L', 'L']
         print(f'cov_SS_6D computed in {(time.perf_counter() - start_time):.2f} s')
 
         if covariance_cfg['save_cov_SSC']:
@@ -756,11 +728,10 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         covs_SS_2D = (cov_WL_SS_2D, cov_GC_SS_2D, cov_3x2pt_SS_2D, cov_WA_SS_2D)
 
         for probe_name, cov_SS_2D in zip(probe_names, covs_SS_2D):
-            cov_dict[f'cov_{probe_name}_SS_2D'] = cov_SS_2D
-            #     cov_dict[f'cov_{probe_name}_SS_4D'] = cov_SS_4D
+            cov_dict[f'cov_{probe_name}_SS_2D'] = cov_SS_2D  # cov_dict[f'cov_{probe_name}_SS_4D'] = cov_SS_4D
 
-    for probe_name, cov_GO_4D, cov_GO_2D, cov_GS_4D, cov_GS_2D \
-            in zip(probe_names, covs_GO_4D, covs_GO_2D, covs_GS_4D, covs_GS_2D):
+    for probe_name, cov_GO_4D, cov_GO_2D, cov_GS_4D, cov_GS_2D in zip(probe_names, covs_GO_4D, covs_GO_2D, covs_GS_4D,
+                                                                      covs_GS_2D):
         # save 4D
         # cov_dict[f'cov_{probe_name}_GO_4D'] = cov_GO_4D
         # cov_dict[f'cov_{probe_name}_GS_4D'] = cov_GS_4D
@@ -808,9 +779,9 @@ def cov_3x2pt_BNT_transform(cov_3x2pt_dict_10D, X_dict, optimize=True):
     cov_3x2pt_BNT_dict_10D = {}
 
     for probe_A, probe_B, probe_C, probe_D in cov_3x2pt_dict_10D.keys():
-        cov_3x2pt_BNT_dict_10D[probe_A, probe_B, probe_C, probe_D] = \
-            cov_BNT_transform(cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D], X_dict,
-                              probe_A, probe_B, probe_C, probe_D, optimize=optimize)
+        cov_3x2pt_BNT_dict_10D[probe_A, probe_B, probe_C, probe_D] = cov_BNT_transform(
+            cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D], X_dict, probe_A, probe_B, probe_C, probe_D,
+            optimize=optimize)
 
     return cov_3x2pt_BNT_dict_10D
 
@@ -887,8 +858,7 @@ def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr, plot_nz=True):
     bnt_matrix = np.eye(zbins)
     bnt_matrix[1, 0] = -1.
     for i in range(2, zbins):
-        mat = np.array([[A_list[i - 1], A_list[i - 2]],
-                        [B_list[i - 1], B_list[i - 2]]])
+        mat = np.array([[A_list[i - 1], A_list[i - 2]], [B_list[i - 1], B_list[i - 2]]])
         A = -1. * np.array([A_list[i], B_list[i]])
         soln = np.dot(np.linalg.inv(mat), A)
         bnt_matrix[i, i - 1] = soln[0]

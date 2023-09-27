@@ -345,7 +345,7 @@ if general_cfg['test_against_benchmarks']:
 
 # plot settings
 nparams_toplot = 7
-include_fom = True
+include_fom = False
 divide_fom_by_10 = False
 
 for ssc_code_here in ['PyCCL', 'PySSC', 'exactSSC']:
@@ -354,7 +354,6 @@ for ssc_code_here in ['PyCCL', 'PySSC', 'exactSSC']:
         lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_XC']
         FM_dict[f'FM_{ssc_code_here}_{probe}_GS'] = (
             np.genfromtxt(f'{fm_folder}/FM_{probe}_GS_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
-
 
 fom_dict = {}
 uncert_dict = {}
@@ -374,22 +373,22 @@ for key in list(FM_dict.keys()):
                                                which_uncertainty='marginal', normalize=True)[:nparams_toplot]
         fom_dict[key] = mm.compute_FoM(masked_FM_dict[key], w0wa_idxs=(2, 3))
 
-
-
 for probe in ['WL', 'GC', '3x2pt']:
+
     nparams_toplot = 7
-    to_compare_A = f'FM_PySSC_{probe}_GS'
-    to_compare_B = f'FM_PyCCL_{probe}_GS'
-    to_compare_C = f'FM_exactSSC_{probe}_GS'
-    cases_to_plot = (f'FM_{probe}_GO', to_compare_A, to_compare_B, to_compare_C)
+    pyssc_fm = f'FM_PySSC_{probe}_GS'
+    pyccl_fm = f'FM_PyCCL_{probe}_GS'
+    exactssc_fm = f'FM_exactSSC_{probe}_GS'
 
-    uncert_dict['perc_diff'] = mm.percent_diff(uncert_dict[to_compare_A], uncert_dict[to_compare_B])
-    fom_dict['perc_diff'] = np.abs(mm.percent_diff(fom_dict[to_compare_A], fom_dict[to_compare_B]))
+    uncert_dict['perc_diff_PySSC'] = mm.percent_diff(uncert_dict[pyssc_fm], uncert_dict[f'FM_{probe}_GO'])
+    uncert_dict['perc_diff_PyCCL'] = mm.percent_diff(uncert_dict[pyccl_fm], uncert_dict[f'FM_{probe}_GO'])
+    uncert_dict['perc_diff_exactSSC'] = mm.percent_diff(uncert_dict[exactssc_fm], uncert_dict[f'FM_{probe}_GO'])
+    fom_dict['perc_diff_PySSC'] = np.abs(mm.percent_diff(fom_dict[pyssc_fm], fom_dict[f'FM_{probe}_GO']))
+    fom_dict['perc_diff_PyCCL'] = np.abs(mm.percent_diff(fom_dict[pyccl_fm], fom_dict[f'FM_{probe}_GO']))
+    fom_dict['perc_diff_exactSSC'] = np.abs(mm.percent_diff(fom_dict[exactssc_fm], fom_dict[f'FM_{probe}_GO']))
 
-    # just a check, to be performed only if I am actually using PyCCL as well
-    if 'FM_PySSC_GO' in uncert_dict.keys() and 'FM_PyCCL_GO' in uncert_dict.keys():
-        assert np.array_equal(uncert_dict['FM_PySSC_GO'], uncert_dict['FM_PyCCL_GO']), \
-            'the GO uncertainties must be the same, I am only changing the SSC code!'
+    cases_to_plot = (f'FM_{probe}_GO', pyssc_fm, pyccl_fm, exactssc_fm,
+                     'perc_diff_PySSC', 'perc_diff_PyCCL', 'perc_diff_exactSSC')
 
     # silent check against IST:F (which does not exist for GC alone):
     for which_probe in ['WL', '3x2pt']:
@@ -440,7 +439,7 @@ for probe in ['WL', 'GC', '3x2pt']:
         nparams_toplot = 8
     plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                         param_names_label=param_names_label, bar_width=0.12)
-    plt.yscale('log')
+    # plt.yscale('log')
 
 print('done')
 

@@ -1,18 +1,14 @@
 import sys
 import time
-from pathlib import Path
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-project_path = Path.cwd().parent.parent.parent
-job_path = Path.cwd().parent
-
-sys.path.append(f'{project_path.parent}/common_lib_and_cfg/common_lib')
+sys.path.append('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_lib')
 import my_module as mm
-import cosmo_lib as csmlib
+import cosmo_lib
 
-sys.path.append(f'{project_path.parent}/common_lib_and_cfg/common_config')
+sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config')
 import ISTF_fid_params as ISTFfid
 import mpl_cfg
 
@@ -21,19 +17,58 @@ import wf_cl_lib
 
 matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
-start_time = time.perf_counter()
 
-cosmology = cl_cases_df.loc[condition]['cosmology'].values[0]
+cfg = mm.read_yaml('../cfg/cfg_pyccl_pipeline.yml')
+fiducial_pars_dict_nested = mm.read_yaml(
+    '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/ISTF_fiducial_params.yml')
+fiducial_pars_dict = mm.flatten_dict(fiducial_pars_dict_nested)
+
+zbins = cfg['zbins']
+ell_min = cfg['ell_min']
+ell_max = cfg['ell_max']
+nbl = cfg['nbl']
+
+cosmo_ccl = cosmo_lib.instantiate_cosmo_ccl_obj(fiducial_pars_dict)
+n_of_z = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/CLOE_validation/data/n_of_z/nzTabISTF.dat')
+z_grid_nz = n_of_z[:, 0]
+n_of_z = n_of_z[:, 1:]
+dndz = (z_grid_nz, n_of_z)
+
+# TODO ellmax 5000 for WL
+ell_LL = np.logspace(np.log10(ell_min), np.log10(ell_max), nbl + 1)
+ell_GL = np.logspace(np.log10(ell_min), np.log10(ell_max), nbl + 1)
+ell_GG = np.logspace(np.log10(ell_min), np.log10(ell_max), nbl + 1)
+
+list_params_to_vary = list(fiducial_pars_dict_nested['FM_ordered_params'].keys())
+list_params_to_vary.remove('Om_Lambda0')
+
+dz_param_list = [f'dz{zi:02d}_photo' for zi in range(1, zbins + 1)]
+mag_param_list = [f'm{zi:02d}_photo' for zi in range(1, zbins + 1)]
+elements_to_remove = ['Om_Lambda0'] + dz_param_list + mag_param_list
+list_params_to_vary = [x for x in list_params_to_vary if x not in elements_to_remove]
+
+cl_LL, cl_GL, cl_GG, dcl_LL, dcl_GL, dcl_GG = wf_cl_lib.cls_and_derivatives(
+    fiducial_pars_dict, list_params_to_vary, zbins, dndz, ell_LL, ell_GG,
+    'step-wise', pk=None, use_only_flat_models=True)
+
+# ells = np.logspace(np.log10(ell_min), np.log10(ell_max), nbl + 1)
+# cl_LL_3d = wf_cl_lib.cl_PyCCL(wl_kernel, wl_kernel, ells, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
+# cl_GL_3d = wf_cl_lib.cl_PyCCL(gc_kernel, wl_kernel, ells, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
+# cl_GG_3d = wf_cl_lib.cl_PyCCL(gc_kernel, gc_kernel, ells, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
+
+# for zi in range(zbins):
+#     plt.plot(ells, cl_GG_3d[:, zi, zi], label=f'zbin {zi}')
+
+assert False, 'stop here'
+
 recipe = cl_cases_df[condition]['n(z)'].values[0]
 bias_model = cl_cases_df[condition]['bias'].values[0]
 ia_model = cl_cases_df[condition]['IA'].values[0]
-zbins = cl_cases_df[condition]['zbins'].values[0]
+zbins = cfg['zbins']
+
 print('****************************************************')
 print(f'computing cls for case_id Id {case_id}:\ncosmology {cosmology}, '
       f'recipe {recipe}, bias_model {bias_model}, ia_model {ia_model}')
-
-cfg = mm.read_yaml('../cfg/pyccl_pipeline_cfg.yml')
-
 
 # colormap
 cmap = matplotlib.cm.get_cmap("rainbow")
@@ -43,24 +78,22 @@ zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 
 if case_id == 'C08':
     warnings.warn('C08: z grid arrives only to 3, redefining z_grid_all; this is probably not ideal...')
-    n_of_z = np.genfromtxt(project_path / f'data/n_of_z/nzTab{recipe}.dat')
-    z_grid_nz = n_of_z[:, 0]
-    z_grid_all = z_grid_nz[1:]
-
-
+n_of_z = np.genfromtxt(project_path / f'data/n_of_z/nzTab{recipe}.dat')
+z_grid_nz = n_of_z[:, 0]
+z_grid_all = z_grid_nz[1:]
 
 if use_same_z_grid:
     # save z and k grid
     np.savetxt(f'{project_path}/output/intermediate_quantities/{case_id}/z_grid_CLOE.dat', z_grid_all,
                header='z (redshift)')
-    np.savetxt(f'{project_path}/output/intermediate_quantities/{case_id}/k_grid_pk_CLOE.dat',
-               np.log10(k_grid_pk),
-               header='k [1/Mpc]')
+np.savetxt(f'{project_path}/output/intermediate_quantities/{case_id}/k_grid_pk_CLOE.dat',
+           np.log10(k_grid_pk),
+           header='k [1/Mpc]')
 
-    # interpolate the power spectrum to the same z grid used for the other quantities
-    pk_2d_func = interp1d(z_grid_pk, pk_2d, axis=0, kind='cubic')
-    pk_2d = pk_2d_func(z_grid_all)
-    z_grid_pk = z_grid_all
+# interpolate the power spectrum to the same z grid used for the other quantities
+pk_2d_func = interp1d(z_grid_pk, pk_2d, axis=0, kind='cubic')
+pk_2d = pk_2d_func(z_grid_all)
+z_grid_pk = z_grid_all
 
 # add the parameters needed by PyCCL to the dataframe
 cosmo_params_df['omnuh2'] = m_nu / neutrino_mass_fac * g_factor ** 0.75
@@ -115,28 +148,25 @@ eta_ia = intrinsic_alignment_df.loc[condition]['eta_IA'].values[0]
 beta_ia = intrinsic_alignment_df.loc[condition]['beta_IA'].values[0]
 
 # ! shift n(z) for SPV3
-if recipe == 'SPV3':
+# not-very-pythonic implementation: create an interpolator for each bin
+_n_of_z_func = interp1d(z_grid_nz, n_of_z[:, zbin_idx], kind='linear')
 
-    for zbin_idx in range(zbins):
-        # not-very-pythonic implementation: create an interpolator for each bin
-        _n_of_z_func = interp1d(z_grid_nz, n_of_z[:, zbin_idx], kind='linear')
-
-        z_grid_nz_shifted = z_grid_nz - z_shifts[zbin_idx]
-        z_grid_nz_shifted = np.clip(z_grid_nz_shifted, 0, 3)  # where < 0, set to 0; where > 3, set to 3
-        n_of_z[:, zbin_idx] = _n_of_z_func(z_grid_nz_shifted)
+z_grid_nz_shifted = z_grid_nz - z_shifts[zbin_idx]
+z_grid_nz_shifted = np.clip(z_grid_nz_shifted, 0, 3)  # where < 0, set to 0; where > 3, set to 3
+n_of_z[:, zbin_idx] = _n_of_z_func(z_grid_nz_shifted)
 
 if use_same_z_grid:
     # re-interpolate the input z-dependent quantities on the same z grid (as opposed to their own z grid)
 
     # L(z)
     lumin_ratio_func = interp1d(z_grid_lumin_ratio, lumin_ratio, kind='linear')
-    lumin_ratio = lumin_ratio_func(z_grid_all)
-    z_grid_lumin_ratio = z_grid_all
+lumin_ratio = lumin_ratio_func(z_grid_all)
+z_grid_lumin_ratio = z_grid_all
 
-    # n(z)
-    n_of_z_func = interp1d(z_grid_nz, n_of_z, kind='linear', axis=0)
-    n_of_z = n_of_z_func(z_grid_all)
-    z_grid_nz = z_grid_all
+# n(z)
+n_of_z_func = interp1d(z_grid_nz, n_of_z, kind='linear', axis=0)
+n_of_z = n_of_z_func(z_grid_all)
+z_grid_nz = z_grid_all
 
 # load growth factor and/or compute it on the same z grid as the luminosity ratio
 if which_growth_factor == 'PyCCL':
@@ -144,17 +174,16 @@ if which_growth_factor == 'PyCCL':
 elif which_growth_factor == 'CLOE':
     # load growth factor from CLOE
     growth_factor = np.genfromtxt(f'{project_path}/data/growth_factor/Dz_id{cosmology}_NLflag2_zpoints4000.txt')
-    z_grid_growth_factor = growth_factor[:, 0]
-    growth_factor = growth_factor[:, 1]
+z_grid_growth_factor = growth_factor[:, 0]
+growth_factor = growth_factor[:, 1]
 
-    # interpolate on the same z grid as the luminosity ratio
-    growth_factor_func = interp1d(z_grid_growth_factor, growth_factor, kind='linear')
-    # removing the last element, max growth factor is at z=3.99 intead of 4
-    z_grid_lumin_ratio = z_grid_lumin_ratio[:-1]
-    lumin_ratio = lumin_ratio[:-1]  # removing the last element
-    growth_factor = growth_factor_func(z_grid_lumin_ratio)
-else:
-    raise ValueError('which_growth_factor must be either "PyCCL" or "CLOE"')
+# interpolate on the same z grid as the luminosity ratio
+growth_factor_func = interp1d(z_grid_growth_factor, growth_factor, kind='linear')
+# removing the last element, max growth factor is at z=3.99 intead of 4
+z_grid_lumin_ratio = z_grid_lumin_ratio[:-1]
+lumin_ratio = lumin_ratio[:-1]  # removing the last element
+growth_factor = growth_factor_func(z_grid_lumin_ratio)
+raise ValueError('which_growth_factor must be either "PyCCL" or "CLOE"')
 
 # ! IA bias
 ia_bias = wf_cl_lib.build_IA_bias_1d_arr(z_grid_out=z_grid_lumin_ratio, input_z_grid_lumin_ratio=z_grid_lumin_ratio,

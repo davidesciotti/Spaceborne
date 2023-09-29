@@ -4,11 +4,9 @@ import numpy as np
 import sys
 import matplotlib.pyplot as plt
 
-sys.path.append('/')
-import wf_cl_lib
-
-sys.path.append('/')
-import cosmo_lib
+sys.path.append('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_lib')
+import common_lib.cosmo_lib as cosmo_lib
+import common_lib.wf_cl_lib as wf_cl_lib
 
 Nz_bins = 10
 z_grid = np.linspace(1e-5, 3, 1000)
@@ -20,7 +18,6 @@ n_i_list = [wf_cl_lib.normalize_niz_simps(n_i_list[zbin_idx], z_grid) for zbin_i
 for i in range(Nz_bins):
     plt.plot(z_grid, n_i_list[i])
 plt.show()
-
 
 A_list = np.zeros((Nz_bins))
 B_list = np.zeros((Nz_bins))
@@ -38,6 +35,5 @@ for i in range(2, Nz_bins):
     soln = np.dot(np.linalg.inv(mat), A)
     BNT_matrix[i, i - 1] = soln[0]
     BNT_matrix[i, i - 2] = soln[1]
-
 
 plt.matshow(BNT_matrix)

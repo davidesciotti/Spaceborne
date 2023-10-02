@@ -17,17 +17,14 @@ job_name = job_path.parts[-1]
 
 # general libraries
 sys.path.append(f'{project_path.parent}/common_lib_and_cfg/common_lib')
-import my_module as mm
-import cosmo_lib as cosmo_lib
-
-# general configurations
-sys.path.append(f'{project_path.parent}/common_lib_and_cfg/common_config')
-import mpl_cfg
-import ISTF_fid_params as ISTF_fid
+import common_lib.my_module as mm
+import common_lib.cosmo_lib as cosmo_lib
+import common_cfg.mpl_cfg as mpl_cfg
+import common_cfg.ISTF_fid_params as ISTF_fid
 
 # job configuration
 sys.path.append(f'{job_path}/config')
-import config_SPV3_magcut_zcut as cfg
+import config_SPV3_magcut_zcut_ED_BNTdbg as cfg
 
 # project libraries
 sys.path.append(f'{project_path}/bin')
@@ -246,9 +243,6 @@ FM_cfg = cfg.FM_cfg
 # for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
 #     for general_cfg['which_cuts'] in ['Vincenzo', ]:
 #         for general_cfg['center_or_min'] in ['center', 'min']:
-#             for general_cfg['which_pk'] in general_cfg['which_pk_list']:
-# for general_cfg['which_pk'] in ['HMCode2020', ]:
-# warnings.warn('restore loop over which_pk')
 
 
 # some convenence variables, just to make things more readable
@@ -268,7 +262,6 @@ triu_tril = covariance_cfg['triu_tril']
 row_col_major = covariance_cfg['row_col_major']
 GL_or_LG = covariance_cfg['GL_or_LG']
 n_probes = general_cfg['n_probes']
-which_pk = general_cfg['which_pk']
 idIA = general_cfg['idIA']
 idB = general_cfg['idB']
 idM = general_cfg['idM']
@@ -279,7 +272,8 @@ h = 0.67  # TODO this should be read from the input file
 # some checks
 assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
 assert general_cfg['use_WA'] is False, 'We do not use Wadd for SPV3 at the moment'
-assert general_cfg['flat_or_nonflat'] == 'Flat', 'We do not use non-flat cosmologies for SPV3 at the moment, if I recall correclty'
+assert general_cfg[
+           'flat_or_nonflat'] == 'Flat', 'We do not use non-flat cosmologies for SPV3 at the moment, if I recall correclty'
 
 if covariance_cfg['cov_BNT_transform']:
     assert general_cfg['cl_BNT_transform'] is False, \
@@ -370,7 +364,6 @@ variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_le
                   'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
                   'kmax_h_over_Mpc': kmax_h_over_Mpc, center_or_min: center_or_min,
                   'idIA': idIA, 'idB': idB, 'idM': idM, 'idR': idR, 'flat_or_nonflat': flat_or_nonflat,
-                  'which_pk': which_pk,
                   }
 
 ng_folder = covariance_cfg["ng_folder"]
@@ -401,14 +394,10 @@ print(f'BNT_matrix computed in {time.perf_counter() - start_time:.2f} seconds')
 # ! import and reshape datavectors (cl) and response functions (rl)
 cl_fld = general_cfg['cl_folder']
 cl_filename = general_cfg['cl_filename']
-cl_ll_1d = np.genfromtxt(
-    f"{cl_fld.format(probe='WLO', which_pk=which_pk)}/{cl_filename.format(probe='WLO', **variable_specs)}")
-cl_gg_1d = np.genfromtxt(
-    f"{cl_fld.format(probe='GCO', which_pk=which_pk)}/{cl_filename.format(probe='GCO', **variable_specs)}")
-cl_wa_1d = np.genfromtxt(
-    f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', **variable_specs)}")
-cl_3x2pt_1d = np.genfromtxt(
-    f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
+cl_ll_1d = np.genfromtxt(f"{cl_fld.format(probe='WLO')}/{cl_filename.format(probe='WLO', **variable_specs)}")
+cl_gg_1d = np.genfromtxt(f"{cl_fld.format(probe='GCO')}/{cl_filename.format(probe='GCO', **variable_specs)}")
+cl_wa_1d = np.genfromtxt(f"{cl_fld.format(probe='WLA')}/{cl_filename.format(probe='WLA', **variable_specs)}")
+cl_3x2pt_1d = np.genfromtxt(f"{cl_fld.format(probe='3x2pt')}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
 
 rl_fld = general_cfg['rl_folder']
 rl_filename = general_cfg['rl_filename']

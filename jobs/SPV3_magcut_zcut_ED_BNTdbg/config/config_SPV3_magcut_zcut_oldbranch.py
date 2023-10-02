@@ -6,13 +6,13 @@ project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 
 sys.path.append(f'{project_path}/bin')
-import check_specs as utils
+import utils_running as utils
 
 sys.path.append(f'{project_path.parent}/common_lib_and_cfg')
 import common_cfg.ISTF_fid_params as ISTFfid
 
 which_forecast = 'SPV3'
-fsky, GL_or_LG, _, _ = utils.get_specs(which_forecast)
+fsky, GL_or_LG, ind_ordering, cl_folder = utils.get_specs(which_forecast)
 
 SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
 
@@ -20,8 +20,8 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = False
-deriv_BNT_transform = False
+cov_BNT_transform = True
+deriv_BNT_transform = True
 
 cl_ell_cuts = False
 cov_ell_cuts = False
@@ -42,7 +42,7 @@ if cl_ell_cuts:
     assert deriv_ell_cuts, 'if you want to apply ell cuts to the cls, you hould also apply them to the derivatives'
 
 if cov_ell_cuts:
-    assert cl_ell_cuts is False, 'if you want to apply ell cuts to the cov, you cannot apply them to the cls'
+    assert cl_ell_cuts == False, 'if you want to apply ell cuts to the cov, you cannot apply them to the cls'
     assert deriv_ell_cuts, 'if you want to apply ell cuts to the cov, you hould also apply them to the derivatives'
 
 assert flagship_version == 2, 'the files for the multicut case are only available for Flagship_2'
@@ -65,8 +65,6 @@ general_cfg = {
     'save_cls_3d': False,
     'save_rls_3d': False,
 
-    'flat_or_nonflat': 'Flat',
-
     # the case with the largest range is nbl_WL_opt.. This is the reference ell binning from which the cuts are applied;
     # in principle, the other binning should be consistent with this one and should not be hardcoded, as long as
     # lmax=5000, 3000 holds
@@ -86,8 +84,10 @@ general_cfg = {
     # 'kmax_list_1_over_Mpc': np.array((0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00)),
     'kmax_h_over_Mpc_list': np.array([0.37313433, 0.74626866, 1.11940299, 1.49253731, 1.86567164,
                                       2.23880597, 2.6119403, 2.98507463, 4.47761194,
-                                      7.46268657]),  # , 14.92537313]),
+                                      7.46268657]),
 
+    'BNT_matrix_path': f'{SPV3_folder}/BNT_matrix',
+    'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
     'BNT_transform': BNT_transform,  # ! to be deprecated?
     'cl_BNT_transform': cl_BNT_transform,
 
@@ -95,12 +95,6 @@ general_cfg = {
     'rl_folder': f'{SPV3_folder}/Flagship_{flagship_version}/ResFunTabs/magcut_zcut_True',
     'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'rl_filename': 'rf-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-
-    'idIA': 2,
-    'idB': 3,
-    'idM': 3,
-    'idR': 1,
-
     'magcut_lens_list': (245,),
     'magcut_source_list': (245,),
     'zcut_lens_list': (0,),
@@ -126,29 +120,21 @@ covariance_cfg = {
     'block_index': 'ell',
     'GL_or_LG': GL_or_LG,
 
+    'SSC_code': 'PySSC',
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which is quite wrong
-    'cov_SSC_PyCCL_folder': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/after_script_update',
-    'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:s}_ellmax{ell_max:d}_HMrecipeKrause2017_6D.npy',
 
-    # n_gal, sigma_eps, fsky, all entering the covariance matrix
     'fsky': fsky,  # ! new
-    'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
     'ng_folder': f'{SPV3_folder}/Flagship_{flagship_version}/InputNz',
     'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
-
-    # sources (and lenses) redshift distributions
-    'nofz_folder': f'{SPV3_folder}/Flagship_{flagship_version}/InputNz',
-    'nofz_filename': 'nzTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
-    'plot_nz_tocheck': True,
+    'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
 
     'cov_BNT_transform': cov_BNT_transform,
     'cov_ell_cuts': cov_ell_cuts,
 
     'compute_covmat': True,
-    'compute_SSC': False,
-    'compute_cov_6D': False,  # ! to be deprecated!
+    'compute_cov_6D': True,  # or 10D for the 3x2pt
 
     'save_cov': False,
     'cov_file_format': 'npz',  # or npy
@@ -168,32 +154,10 @@ covariance_cfg = {
                     '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}_{ndim:d}D',
     'cov_filename_vincenzo': 'cm-{probe_vinc:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    'SSC_code': 'PySSC',
-
-    'exactSSC_cfg': {
-        'probe': '3x2pt',
-        # in this case it is only possible to load precomputed arraya, I have to compute the integral with Julia
-        'path': '/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia',
-
-        # settings for sigma2
-        'cl_integral_convention': 'PySSC',  # or Euclid, but gives same results as it should!!! TODO remove this
-        'k_txt_label': '1overMpc',
-        'use_precomputed_sigma2': True,  # still need to understand exactly where to call/save this
-        'z_min_sigma2': 0.001,
-        'z_max_sigma2': 3,
-        'z_steps_sigma2': 2899,
-        'log10_k_min_sigma2': -4,
-        'log10_k_max_sigma2': 1,
-        'k_steps_sigma2': 20_000,
-    }
 }
 
-if ell_cuts:
-    covariance_cfg['cov_filename'] = covariance_cfg['cov_filename'].replace('_{ndim:d}D',
-                                                                            'kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D')
-
 Sijkl_cfg = {
-    'wf_input_folder': f'{SPV3_folder}/InputFiles/InputRSD/notyetuploaded',
+    'wf_input_folder': f'{SPV3_folder}/Flagship_{flagship_version}/KernelFun/magcut_zcut',
     'wf_WL_input_filename': 'WiWL-{EP_or_ED:s}{zbins:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'wf_GC_input_filename': 'WiGC-{EP_or_ED:s}{zbins:02d}-ML{magcut_source:03d}-ZL{zcut_source:02d}.dat',
     'wf_normalization': 'IST',
@@ -221,11 +185,6 @@ param_names_3x2pt = param_names_dict['cosmo'] + param_names_dict['IA'] + param_n
 # I cannot define the fiducial values here because I need to import the files for the galaxy bias
 
 
-FM_txt_filename = covariance_cfg['cov_filename'].replace('covmat_', 'FM_').replace('_{ndim:d}D', '')
-FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_{which_cov:s}_{probe:s}_', 'FM_').replace(
-    '_{ndim:d}D',
-    '')
-deriv_filename = covariance_cfg['cov_filename'].replace('covmat_', 'dDVd')
 FM_cfg = {
     'compute_FM': True,
 
@@ -237,7 +196,7 @@ FM_cfg = {
     'save_FM_txt': True,
     'save_FM_dict': True,
 
-    'load_preprocess_derivatives': False,
+    'load_preprocess_derivatives': True,
     'derivatives_folder': f'{SPV3_folder}/Flagship_{flagship_version}/Derivatives/BNT_False/' +
                           'ML{magcut_lens:03d}ZL{zcut_lens:02d}MS{magcut_source:03d}ZS{zcut_source:02d}',
     'derivatives_filename': 'BNT_dDVd{param:s}-{probe:s}-{specs:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
@@ -249,11 +208,10 @@ FM_cfg = {
 
     'fm_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}' +
                  '/ell_cuts_{ell_cuts:s}/{ell_cuts_subfolder:s}',
-    'FM_txt_filename': FM_txt_filename,
-    'FM_dict_filename': FM_dict_filename,
-
-    'test_against_benchmarks': True,
-    # 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
-    #                 'MS{magcut_source:03d}-ZS{zcut_source:02d}'
-    #                 '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
+    'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}-'
+                       'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}'
+                       '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
+    'FM_dict_filename': 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
+                        'MS{magcut_source:03d}-ZS{zcut_source:02d}'
+                        '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
 }

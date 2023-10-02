@@ -22,7 +22,7 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 cfg = mm.read_yaml('../cfg/cfg_pyccl_pipeline.yml')
 fiducial_pars_dict_nested = mm.read_yaml(
-    '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/ISTF_fiducial_params.yml')
+    '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_cfg/ISTF_fiducial_params.yml')
 fiducial_pars_dict = mm.flatten_dict(fiducial_pars_dict_nested)
 
 zbins = cfg['zbins']
@@ -55,8 +55,8 @@ mag_param_list = [f'm{zi:02d}_photo' for zi in range(1, zbins + 1)]
 elements_to_remove = ['Om_Lambda0'] + dz_param_list + mag_param_list
 list_params_to_vary = [param for param in list_params_to_vary if param not in elements_to_remove]
 
-# list_params_to_vary = ['w_a']  # as a test
-list_params_to_vary.remove('w_a')  # as a test
+list_params_to_vary = ['w_a']  # as a test
+# list_params_to_vary.remove('w_a')  # as a test
 
 cl_LL, cl_GL, cl_GG, dcl_LL, dcl_GL, dcl_GG = wf_cl_lib.cls_and_derivatives(
     fiducial_pars_dict, list_params_to_vary, zbins, dndz, ell_LL, ell_GL, ell_GG,

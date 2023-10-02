@@ -50,7 +50,7 @@ ML = 245
 MS = 245
 ZL = 0
 ZS = 0
-probes = ('WL', 'GC', '3x2pt')
+probes = ('3x2pt',)
 which_cuts = 'Vincenzo'
 center_or_min = 'min'
 h = 0.67  # 0.6774?
@@ -72,7 +72,7 @@ fm_uncert_df = pd.DataFrame()
 for go_or_gs in ['GO', ]:
     for probe in probes:
         for BNT_transform in [False, ]:
-            for ell_cuts in [False, ]:
+            for ell_cuts in [True, ]:
                 for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                     for whose_FM in ['davide', 'vincenzo']:
                         for center_or_min in ['min']:
@@ -86,7 +86,8 @@ for go_or_gs in ['GO', ]:
 
                                 if ell_cuts:
                                     fm_path += f'/{which_cuts}/ell_{center_or_min}'
-                                    fm_name = fm_name.replace(f'.pickle', f'kmaxhoverMpc{kmax_h_over_Mpc:.03f}.pickle')
+                                    fm_name = fm_name.replace(f'.pickle',
+                                                              f'_kmaxhoverMpc{kmax_h_over_Mpc:.06f}kmaxhoverMpc{kmax_h_over_Mpc:.03f}.pickle')
 
                                 fm_pickle_name = fm_name.replace('.txt', '.pickle').replace(f'_{go_or_gs}_{probe}', '')
                                 fm_dict = mm.load_pickle(f'{fm_path}/{fm_pickle_name}')
@@ -100,8 +101,10 @@ for go_or_gs in ['GO', ]:
                                 if ell_cuts:
                                     fm_path = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/' \
                                               'Flagship_2/TestKappaMax'
-                                    fm_name = f'fm-{probe_vinc_dict[probe]}-{EP_or_ED}{zbins}-ML{ML}-MS{MS}-{specs_str.replace("_", "-")}' \
-                                              f'-kM{kmax_1_over_Mpc:03d}.dat'
+                                    fm_name = (
+                                        f'fm-{probe_vinc_dict[probe]}-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-'
+                                        f'{EP_or_ED}{zbins}-kM{kmax_1_over_Mpc:03d}.dat')
+
                                 else:
                                     fm_path = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/' \
                                               'Flagship_2/FishMat'
@@ -120,6 +123,7 @@ for go_or_gs in ['GO', ]:
                                     f'{fm_path.replace("3x2pt", "WA")}/{fm_name.replace("3x2pt", "WA")}')
                                 fm += fm_wa
 
+                            mm.matshow(fm, log=True, title=whose_FM)
                             # with open('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/'
                             #           'fiducial_params_dict_for_FM.yml') as f:
                             #     fiducials_dict = yaml.safe_load(f)

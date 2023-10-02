@@ -20,8 +20,8 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022'
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = False
-deriv_BNT_transform = False
+cov_BNT_transform = True
+deriv_BNT_transform = True
 
 cl_ell_cuts = False
 cov_ell_cuts = False
@@ -82,6 +82,7 @@ general_cfg = {
     'ell_cuts_folder': f'{SPV3_folder}/ell_cuts',
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                          'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
+    'ell_cuts_subfolder': '',
     'kmax_h_over_Mpc_ref': 1.0,
     # 'kmax_list_1_over_Mpc': np.array((0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00)),
     'kmax_h_over_Mpc_list': np.array([0.37313433, 0.74626866, 1.11940299, 1.49253731, 1.86567164,
@@ -165,7 +166,7 @@ covariance_cfg = {
     'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/cov_ell_cuts_{cov_ell_cuts:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_'
                     'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}'
-                    '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}_{ndim:d}D',
+                    '_kmaxhoverMpc{kmax_h_over_Mpc:03f}_{ndim:d}D',
     'cov_filename_vincenzo': 'cm-{probe_vinc:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'SSC_code': 'PySSC',
@@ -222,9 +223,9 @@ param_names_3x2pt = param_names_dict['cosmo'] + param_names_dict['IA'] + param_n
 
 
 FM_txt_filename = covariance_cfg['cov_filename'].replace('covmat_', 'FM_').replace('_{ndim:d}D', '')
-FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_{which_cov:s}_{probe:s}_', 'FM_').replace(
-    '_{ndim:d}D',
-    '')
+FM_dict_filename = covariance_cfg['cov_filename'].replace(
+    'covmat_{which_cov:s}_{probe:s}_', 'FM_').replace(
+    '_{ndim:d}D','').replace('_lmax{ell_max:d}', '').replace('_nbl{nbl:d}', '')
 deriv_filename = covariance_cfg['cov_filename'].replace('covmat_', 'dDVd')
 FM_cfg = {
     'compute_FM': True,
@@ -252,7 +253,7 @@ FM_cfg = {
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,
 
-    'test_against_benchmarks': True,
+    'test_against_benchmarks': False,
     # 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
     #                 'MS{magcut_source:03d}-ZS{zcut_source:02d}'
     #                 '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',

@@ -10,7 +10,7 @@ sys.path.append(f'{project_path}/bin')
 import check_specs as utils
 
 with open(
-        '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/ISTF_fiducial_params.yml') as f:
+        '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_cfg/ISTF_fiducial_params.yml') as f:
     fiducial_pars_dict = yaml.load(f, Loader=yaml.FullLoader)
 fiducial_pars_dict_for_fm = fiducial_pars_dict['FM_ordered_params']  # necessary for FM handling
 
@@ -103,7 +103,7 @@ general_cfg = {
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
     general_cfg['use_WA'] = False
-x
+
 covariance_cfg = {
     # 'ind_folder': f'{project_path.parent}/common_data/ind_files' + '/{triu_tril:s}_{row_col_major:s}',
     # 'ind_filename': 'indices_{triu_tril:s}_{row_col_major:s}_zbins{zbins:02d}.dat',
@@ -214,7 +214,7 @@ param_names_dict = {
 fiducials_dict = {
     'cosmo': [fiducial_pars_dict_for_fm['Om_m0'], fiducial_pars_dict_for_fm['Om_b0'], fiducial_pars_dict_for_fm['w_0'],
               fiducial_pars_dict_for_fm['w_a'],
-              fiducial_pars_dict_for_fm['h_0'], fiducial_pars_dict_for_fm['n_s'], fiducial_pars_dict_for_fm['sigma_8']],
+              fiducial_pars_dict_for_fm['h'], fiducial_pars_dict_for_fm['n_s'], fiducial_pars_dict_for_fm['sigma_8']],
     'IA': [fiducial_pars_dict_for_fm['A_IA'], fiducial_pars_dict_for_fm['eta_IA'],
            fiducial_pars_dict_for_fm['beta_IA']],
     'galaxy_bias': [fiducial_pars_dict_for_fm[f'b{zbin:02d}_photo'] for zbin in range(1, general_cfg['zbins'] + 1)],

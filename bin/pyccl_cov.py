@@ -23,16 +23,12 @@ ray.init()
 # get project directory adn import useful modules
 project_path = Path.cwd().parent
 
-sys.path.append(f'../../common_lib_and_cfg/common_lib')
-import my_module as mm
-import cosmo_lib as csmlib
-
-sys.path.append(f'../../common_lib_and_cfg/common_config')
-import ISTF_fid_params as ISTF_fid
-import mpl_cfg
-
-sys.path.append(f'../../cl_v2/bin')
-import wf_cl_lib
+sys.path.append(f'../../common_lib_and_cfg')
+import common_lib.my_module as mm
+import common_lib.cosmo_lib as cosmo_lib
+import common_lib.wf_cl_lib as wf_cl_lib
+import common_cfg.mpl_cfg as mpl_cfg
+import common_cfg.ISTF_fid_params as ISTF_fid
 
 matplotlib.use('Qt5Agg')
 start_time = time.perf_counter()
@@ -61,7 +57,7 @@ def initialize_trispectrum(cosmo_ccl, probe_ordering, pyccl_cfg, p_of_k_a):
     use_hod_for_gg = pyccl_cfg['use_HOD_for_GCph']
     z_grid_tkka = np.linspace(pyccl_cfg['z_grid_tkka_min'], pyccl_cfg['z_grid_tkka_max'],
                               pyccl_cfg['z_grid_tkka_steps'])
-    a_grid_increasing_for_ttka = csmlib.z_to_a(z_grid_tkka)[::-1]
+    a_grid_increasing_for_ttka = cosmo_lib.z_to_a(z_grid_tkka)[::-1]
 
     # from https://github.com/LSSTDESC/CCL/blob/4df2a29eca58d7cd171bc1986e059fd35f425d45/benchmarks/test_covariances.py
     # see also https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/tools/covariance_NG.py#L282
@@ -276,10 +272,15 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
     #            is_logt=False, extrap_order_lok=0, extrap_order_hik=2)
 
     # compare pyccl kernels with the importwd ones (used by PySSC):
+    warnings.warn('THIS MODULE NEEDS TO IMPORT A COSMOLOGY DICT, E.G. HERE THE IA VALUES ARE THE DEFAULT ONES')
     wf_lensing_arr = wf_cl_lib.wil_PyCCL(z_grid, 'with_IA', cosmo=cosmo_ccl, dndz=(z_grid, n_of_z),
-                                         ia_bias=(z_grid, ia_bias_1d_array), return_PyCCL_object=False,
+                                         ia_bias=(z_grid, ia_bias_1d_array),
+                                         A_IA=None, eta_IA=None, beta_IA=None, C_IA=None,
+                                         growth_factor=None,
+                                         return_PyCCL_object=False,
                                          n_samples=n_samples_wf)
     wf_galaxy_arr = wf_cl_lib.wig_PyCCL(z_grid, 'with_galaxy_bias', gal_bias_2d_array=galaxy_bias_2d_array,
+                                        fiducial_params=None,
                                         bias_model='step-wise',
                                         cosmo=cosmo_ccl, return_PyCCL_object=False, dndz=(z_grid, n_of_z),
                                         n_samples=n_samples_wf)

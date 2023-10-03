@@ -17,8 +17,10 @@ sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/co
 import my_module as mm
 import cosmo_lib as csmlib
 
-sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config')
+sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_cfg')
 import mpl_cfg
+
+
 
 matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)

@@ -18,17 +18,14 @@ home_path = Path.home()
 job_name = job_path.parts[-1]
 
 # general libraries
-sys.path.append(f'{project_path.parent}/common_data/common_lib')
-import my_module as mm
-import cosmo_lib as cosmo_lib
-
-# general configurations
-sys.path.append(f'{project_path.parent}/common_data/common_config')
-import mpl_cfg
-import ISTF_fid_params as ISTF_fid
+sys.path.append(f'../../../../common_lib_and_cfg')
+import common_lib.my_module as mm
+import common_lib.cosmo_lib as cosmo_lib
+import common_cfg.mpl_cfg as mpl_cfg
+import common_cfg.ISTF_fid_params as ISTF_fid
 
 # project modules
-sys.path.append(f'{project_path}/bin')
+sys.path.append(f'../../../bin')
 import ell_values as ell_utils
 import cl_preprocessing as cl_utils
 import compute_Sijkl as Sijkl_utils
@@ -38,8 +35,8 @@ import plots_FM_running as plot_utils
 import check_specs
 
 # job configuration and modules
-sys.path.append(f'{project_path}/jobs')
-import ISTF.config.config_ISTF_testexactSSC as cfg
+sys.path.append(f'../config')
+import config_ISTF_testexactSSC as cfg
 
 mpl.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)

@@ -155,10 +155,18 @@ def ssc_with_pyccl_4D(general_cfg, covariance_cfg, ell_dict):
     if covariance_cfg['PyCCL_cfg']['compute_cng']:
         warnings.warn('computing cNG with PyCCL. This is then added to SSC in a rudimental way; the code has to be '
                       'improved')
-        cov_PyCCL_cng_4D = pyccl_cov.compute_cov_ng_with_pyccl(probe, 'cNG', ell_grid, z_grid_nofz=None,
-                                                               n_of_z=None,
-                                                               general_cfg=general_cfg,
-                                                               covariance_cfg=covariance_cfg)
+
+        warnings.warn('SKIPPING COMPUTATION OF CNG FOR THE MOMENT, restore the lines below')
+        # cov_PyCCL_cng_8D_dict = pyccl_cov.compute_cov_ng_with_pyccl(probe, 'cNG', ell_grid, z_grid_nofz=None,
+        #                                                        n_of_z=None,
+        #                                                        general_cfg=general_cfg,
+        #                                                        covariance_cfg=covariance_cfg)
+        # mm.save_pickle(f'{path_ccl}/{cov_8D_dict_filename.replace("SSC", "cNG")}', cov_PyCCL_cng_8D_dict)
+
+
+        cov_PyCCL_cng_8D_dict = mm.load_pickle(f'{path_ccl}/{cov_8D_dict_filename.replace("SSC", "cNG")}')
+        cov_PyCCL_cng_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_PyCCL_cng_8D_dict, probe_ordering)
+
         cov_PyCCL_SS_4D += cov_PyCCL_cng_4D
 
     return cov_PyCCL_SS_4D
@@ -566,8 +574,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         """
 
         # TODO implement the other covmats in this module!
-        # if use_PyCCL_SS
-        # if use_PyCCL_cNG:
 
         # save the 6D-10D covs in the dictionary
         cov_dict['cov_3x2pt_GO_10D_dict'] = cov_3x2pt_GO_10D_dict
@@ -712,7 +718,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_WA_GS_2D = mm.remove_rows_cols_array2D(cov_WA_GS_2D, ell_dict['idxs_to_delete_dict']['WA'])
         cov_3x2pt_GS_2D = mm.remove_rows_cols_array2D(cov_3x2pt_GS_2D, ell_dict['idxs_to_delete_dict']['3x2pt'])
 
-    ############################### save in dictionary  ########################
+    ############################### save in dictionary ########################
     probe_names = ('WL', 'GC', '3x2pt', 'WA')
 
     covs_GO_4D = (cov_WL_GO_4D, cov_GC_GO_4D, cov_3x2pt_GO_4D, cov_WA_GO_4D)

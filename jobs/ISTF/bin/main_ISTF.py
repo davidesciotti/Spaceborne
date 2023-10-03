@@ -220,7 +220,7 @@ else:
     # transpose and stack, ordering is important here!
     transp_stacked_wf = np.vstack((wil.T, wig.T))
     sijkl = Sijkl_utils.compute_Sijkl(cosmo_lib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
-                                      Sijkl_cfg['wf_normalization'])
+                                      Sijkl_cfg['wf_normalization'], zbins, EP_or_ED, Sijkl_cfg)
     if Sijkl_cfg['save_sijkl']:
         np.save(f'{Sijkl_folder}/{Sijkl_filename}', sijkl)
 
@@ -384,8 +384,8 @@ for probe in ['WL', 'GC', '3x2pt']:
     fom_dict['perc_diff_PyCCL'] = np.abs(mm.percent_diff(fom_dict[pyccl_fm], fom_dict[f'FM_{probe}_GO']))
     fom_dict['perc_diff_exactSSC'] = np.abs(mm.percent_diff(fom_dict[exactssc_fm], fom_dict[f'FM_{probe}_GO']))
 
-    cases_to_plot = (f'FM_{probe}_GO', pyssc_fm, pyccl_fm, exactssc_fm,
-                     'perc_diff_PySSC', 'perc_diff_PyCCL', 'perc_diff_exactSSC')
+    cases_to_plot = [f'FM_{probe}_GO', pyssc_fm, pyccl_fm, exactssc_fm,
+                     'perc_diff_PySSC', 'perc_diff_PyCCL', 'perc_diff_exactSSC']
 
     # silent check against IST:F (which does not exist for GC alone):
     for which_probe in ['WL', '3x2pt']:
@@ -430,8 +430,13 @@ for probe in ['WL', 'GC', '3x2pt']:
         if covariance_cfg["SSC_code"] in ['PyCCL', 'exactSSC'] else ''
     use_hod_for_gc = 'use_HOD' + str(covariance_cfg["PyCCL_cfg"]["use_HOD_for_GCph"]) if covariance_cfg[
                                                                                              "SSC_code"] == 'PyCCL' else ''
-    title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i, %s' % (probe, lmax, EP_or_ED, zbins, use_hod_for_gc)
-    # bar plot
+
+    # clean the labels
+    # Clean the labels using list comprehension
+    cases_to_plot = [case.replace('FM_', '') if case.startswith('FM_') else case for case in cases_to_plot]
+    cases_to_plot = [case.replace('3x2pt_', '') if '3x2pt_' in case else case for case in cases_to_plot]
+
+    title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i %s' % (probe, lmax, EP_or_ED, zbins, use_hod_for_gc)
     if include_fom:
         nparams_toplot = 8
     plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,

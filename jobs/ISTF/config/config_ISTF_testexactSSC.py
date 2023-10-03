@@ -156,7 +156,7 @@ covariance_cfg = {
         'get_3x2pt_cov_in_4D': False,
         'path': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF',
         'load_precomputed_cov': True,
-        'save_cov': True,
+        'save_cov': False,
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
         'compute_cng': True,
 
@@ -193,7 +193,7 @@ Sijkl_cfg = {
     'wf_input_folder': f'{project_path.parent}/common_data/everyones_WF_from_Gdrive/davide/' + 'nz{nz:d}/gen2022',
     'wf_WL_input_filename': 'wil_dav_IA{has_IA:s}_{normalization:s}_nz{nz:d}_bia{bIA:.02f}.txt',
     'wf_GC_input_filename': 'wig_dav_{normalization:s}_nz{nz:d}.txt',
-    'wf_normalization': 'IST',
+    'wf_normalization': 'IST',   # 'PySSC' or 'IST'
     'nz': 10_000,
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
 

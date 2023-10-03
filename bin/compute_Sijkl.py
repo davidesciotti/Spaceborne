@@ -145,12 +145,12 @@ def compute_Sijkl(cosmo_params_dict, z_arr, windows, windows_normalization, zbin
         z_arr, windows = load_WF(Sijkl_cfg, zbins, EP_or_ED=EP_or_ED)
 
     assert len(z_arr) > 5000, 'the kernels have to be sampled in a sufficiently high number of z points' \
-                              'for PySSC to work properly'
+                              'for PySSC to work properly. This is quite a rough check.'
 
     print('Computing the Sijkl matrix...')
     start = time.perf_counter()
     Sijkl_arr = Sijkl(z_arr=z_arr, kernels=windows, cosmo_params=cosmo_params_dict, convention=convention,
-                      precision=10, tol=1e-3)
+                      precision=12, tol=1e-3)
     print(f'Sijkl matrix computed in {time.perf_counter() - start:.2f} s')
 
     return Sijkl_arr

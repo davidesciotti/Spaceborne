@@ -161,7 +161,7 @@ def compute_ng_cov_ccl(cosmo, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka,
     # this is to move ell1, ell2 to the first axes and unpack the result in two separate dimensions
     cov_ng_4D = np.array(cov_ng_4D).transpose(1, 2, 0).reshape(nbl, nbl, zpairs_AB, zpairs_CD)
 
-    print(f'{which_ng_cov} computed with pyccl in {(time.perf_counter() - start_time):.2} seconds')
+    print(f'{which_ng_cov} computed with pyccl in {(time.perf_counter() - start_time)/60:.2} min')
 
     return cov_ng_4D
 

@@ -139,6 +139,7 @@ def ssc_with_pyccl_4D(general_cfg, covariance_cfg, ell_dict):
     else:
         cov_PyCCL_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl(probe, 'SSC', ell_grid, z_grid_nofz=None, n_of_z=None,
                                                               general_cfg=general_cfg, covariance_cfg=covariance_cfg)
+
         if covariance_cfg['PyCCL_cfg']['save_cov']:
 
             # not the best way, dict vs 4d array as output...
@@ -150,6 +151,15 @@ def ssc_with_pyccl_4D(general_cfg, covariance_cfg, ell_dict):
 
             else:
                 np.savez_compressed(f'{path_ccl}/cov_PyCCL_SSC_{probe}_{general_suffix}_4D.npz', cov_PyCCL_SS_4D)
+
+    if covariance_cfg['PyCCL_cfg']['compute_cng']:
+        warnings.warn('computing cNG with PyCCL. This is then added to SSC in a rudimental way; the code has to be '
+                      'improved')
+        cov_PyCCL_cng_4D = pyccl_cov.compute_cov_ng_with_pyccl(probe, 'cNG', ell_grid, z_grid_nofz=None,
+                                                               n_of_z=None,
+                                                               general_cfg=general_cfg,
+                                                               covariance_cfg=covariance_cfg)
+        cov_PyCCL_SS_4D += cov_PyCCL_cng_4D
 
     return cov_PyCCL_SS_4D
 

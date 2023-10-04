@@ -220,7 +220,7 @@ else:
     # transpose and stack, ordering is important here!
     transp_stacked_wf = np.vstack((wil.T, wig.T))
     sijkl = Sijkl_utils.compute_Sijkl(cosmo_lib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
-                                      Sijkl_cfg['wf_normalization'], zbins, EP_or_ED, Sijkl_cfg)
+                                      Sijkl_cfg['wf_normalization'], zbins, EP_or_ED, Sijkl_cfg, precision=10, tol=1e-3)
     if Sijkl_cfg['save_sijkl']:
         np.save(f'{Sijkl_folder}/{Sijkl_filename}', sijkl)
 
@@ -331,6 +331,10 @@ if ssc_code != 'PySSC':
     lmax = general_cfg[f'ell_max_{probe_ssc_code}'] if probe_ssc_code in ['WL', 'GC'] else general_cfg['ell_max_XC']
 
     filename_fm_from_ssc_code = f'{fm_folder}/FM_{probe_ssc_code}_GS_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'
+
+    if covariance_cfg['SSC_code'] == 'PyCCL' and covariance_cfg['PyCCL_cfg']['compute_cng'] is True:
+        filename_fm_from_ssc_code = filename_fm_from_ssc_code.replace('GS', 'GSC')
+
     np.savetxt(f'{filename_fm_from_ssc_code}', FM_dict[f'FM_{probe_ssc_code}_GS'])
 else:
     FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=FM_cfg['save_FM_txt'],
@@ -351,6 +355,9 @@ for ssc_code_here in ['PyCCL', 'PySSC', 'exactSSC']:
         lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_XC']
         FM_dict[f'FM_{ssc_code_here}_{probe}_GS'] = (
             np.genfromtxt(f'{fm_folder}/FM_{probe}_GS_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
+
+FM_dict[f'FM_PyCCL_3x2pt_GSC'] = np.genfromtxt(
+    f'{FM_cfg["fm_folder"].format(SSC_code="PyCCL")}/FM_3x2pt_GSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt')
 
 fom_dict = {}
 uncert_dict = {}
@@ -380,12 +387,15 @@ for probe in ['WL', 'GC', '3x2pt']:
     uncert_dict['perc_diff_PySSC'] = mm.percent_diff(uncert_dict[pyssc_fm], uncert_dict[f'FM_{probe}_GO'])
     uncert_dict['perc_diff_PyCCL'] = mm.percent_diff(uncert_dict[pyccl_fm], uncert_dict[f'FM_{probe}_GO'])
     uncert_dict['perc_diff_exactSSC'] = mm.percent_diff(uncert_dict[exactssc_fm], uncert_dict[f'FM_{probe}_GO'])
+    uncert_dict['perc_diff_CNG'] = mm.percent_diff(uncert_dict['FM_PyCCL_3x2pt_GS'], uncert_dict['FM_PyCCL_3x2pt_GSC'])
+    uncert_dict['perc_diff_PyCCL_exactSSC_GS'] = mm.percent_diff_mean(uncert_dict[pyccl_fm], uncert_dict[exactssc_fm])
     fom_dict['perc_diff_PySSC'] = np.abs(mm.percent_diff(fom_dict[pyssc_fm], fom_dict[f'FM_{probe}_GO']))
     fom_dict['perc_diff_PyCCL'] = np.abs(mm.percent_diff(fom_dict[pyccl_fm], fom_dict[f'FM_{probe}_GO']))
     fom_dict['perc_diff_exactSSC'] = np.abs(mm.percent_diff(fom_dict[exactssc_fm], fom_dict[f'FM_{probe}_GO']))
+    fom_dict['perc_diff_PyCCL_exactSSC_GS'] = np.abs(mm.percent_diff_mean(fom_dict[pyccl_fm], fom_dict[exactssc_fm]))
 
     cases_to_plot = [f'FM_{probe}_GO', pyssc_fm, pyccl_fm, exactssc_fm,
-                     'perc_diff_PySSC', 'perc_diff_PyCCL', 'perc_diff_exactSSC']
+                     'perc_diff_PySSC', 'perc_diff_PyCCL', 'perc_diff_exactSSC', 'perc_diff_PyCCL_exactSSC_GS']
 
     # silent check against IST:F (which does not exist for GC alone):
     for which_probe in ['WL', '3x2pt']:
@@ -399,8 +409,7 @@ for probe in ['WL', 'GC', '3x2pt']:
             print(f'IST:F and GO are not consistent for probe {which_probe}! '
                   f'Remember that you are checking against the optimistic case')
             print('percent_discrepancies (not wrt mean!):',
-                  mm.percent_diff(uncert_dict[f'FM_{which_probe}_GO'][:nparams_toplot],
-                                  uncert_dict['ISTF']))
+                  mm.percent_diff(uncert_dict[f'FM_{which_probe}_GO'][:nparams_toplot], uncert_dict['ISTF']))
             np.set_printoptions(precision=2)
             print('probe:', which_probe)
             print('ISTF GO:\t', uncert_dict['ISTF'])
@@ -442,6 +451,9 @@ for probe in ['WL', 'GC', '3x2pt']:
     plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                         param_names_label=param_names_label, bar_width=0.12)
     # plt.yscale('log')
+
+    plt.savefig(f'/Users/davide/Documents/Science 🛰/Talks/2023_10_04 - ISTNL meeting Barcelona/{probe}.pdf', dpi=500,
+                bbox_inches='tight')
 
 print('done')
 

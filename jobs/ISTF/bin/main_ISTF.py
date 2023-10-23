@@ -10,6 +10,8 @@ from pprint import pprint
 import warnings
 
 import pandas as pd
+from chainconsumer import ChainConsumer
+from getdist.gaussian_mixtures import GaussianND
 from matplotlib import cm
 
 project_path = Path.cwd().parent.parent.parent
@@ -454,6 +456,29 @@ for probe in ['WL', 'GC', '3x2pt']:
 
     plt.savefig(f'/Users/davide/Documents/Science 🛰/Talks/2023_10_04 - ISTNL meeting Barcelona/{probe}.pdf', dpi=500,
                 bbox_inches='tight')
+
+# ! new - triangle plot
+
+
+fm_wl = mm.remove_null_rows_cols_2D_copilot(FM_dict['FM_WL_GO'])
+fm_gc = mm.remove_null_rows_cols_2D_copilot(FM_dict['FM_GC_GO'])
+
+cov_wl_go = np.linalg.inv(fm_wl)[:7, :7]
+cov_gc_go = np.linalg.inv(fm_gc)[:7, :7]
+cov_3x2pt_go = np.linalg.inv(FM_dict['FM_3x2pt_GO'])[:7, :7]
+fiducials_list = fiducials_list[:7]
+
+param_names_label = ["$\Omega_{{\\rm m},0}$", "$\Omega_{{\\rm b},0}$", "$w_0$", "$w_a$", "$h$", "$n_{\\rm s}$",
+                         "$\sigma_8$"]
+
+c = ChainConsumer()
+c.add_covariance(fiducials_list, cov_wl_go, parameters=param_names_label, name="WL")
+c.add_covariance(fiducials_list, cov_gc_go, parameters=param_names_label, name="GCph", color='orange')
+c.add_covariance(fiducials_list, cov_3x2pt_go, parameters=param_names_label, name="3x2pt", color='green')
+c.add_marker(fiducials_list, parameters=param_names_label, name="fiducial", marker_style=".", marker_size=20, color="r")
+c.configure(usetex=True, serif=True, label_font_size=15, tick_font_size=10)
+fig = c.plotter.plot()
+plt.savefig(f'/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/triangle_ISTF_GO.pdf', dpi=500, bbox_inches='tight')
 
 print('done')
 

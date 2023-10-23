@@ -9,6 +9,7 @@ import os
 import warnings
 import gc
 import pdb
+from matplotlib import cm
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
@@ -264,7 +265,7 @@ n_probes = general_cfg['n_probes']
 which_pk = general_cfg['which_pk']
 
 # some checks
-assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
+# assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
 assert general_cfg['use_WA'] is False, 'We do not use Wadd for SPV3 at the moment'
 
 if covariance_cfg['cov_BNT_transform']:
@@ -351,6 +352,59 @@ variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
                   'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
                   }
 
+# ! import and reshape datavectors (cl) and response functions (rl)
+cl_fld = general_cfg['cl_folder']
+cl_filename = general_cfg['cl_filename']
+cl_ll_1d = np.genfromtxt(
+    f"{cl_fld.format(probe='WLO', which_pk=which_pk)}/{cl_filename.format(probe='WLO', nbl=nbl_WL, **variable_specs)}")
+cl_gg_1d = np.genfromtxt(
+    f"{cl_fld.format(probe='GCO', which_pk=which_pk)}/{cl_filename.format(probe='GCO', nbl=nbl_WL, **variable_specs)}")
+cl_wa_1d = np.genfromtxt(
+    f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', nbl=nbl_WL, **variable_specs)}")
+cl_3x2pt_1d = np.genfromtxt(
+    f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', nbl=nbl_WL, **variable_specs)}")
+
+
+
+# reshape to 3 dimensions
+cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
+cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
+cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
+cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
+
+# decrease font of the xticks
+plt.rcParams.update({'xtick.labelsize': 19})
+plt.rcParams.update({'ytick.labelsize': 19})
+# decrease font of the x label
+plt.rcParams.update({'axes.labelsize': 21})
+# decrease font of the title
+plt.rcParams.update({'axes.titlesize': 21})
+
+fig, axs = plt.subplots(1, 3, figsize=(20, 7))
+colors = cm.rainbow(np.linspace(0, 1, zbins))
+for zi in range(zbins):
+    zj = zi
+    axs[0].loglog(ell_dict['ell_GC'], cl_3x2pt_5d[0, 0, :, zi, zj], label='$z_{\\rm bin}$ %d' %(zi+1), c=colors[zi])
+    axs[1].loglog(ell_dict['ell_GC'], cl_3x2pt_5d[1, 0, :, zi, zj], c=colors[zi])
+    axs[2].loglog(ell_dict['ell_GC'], cl_3x2pt_5d[1, 1, :, zi, zj], c=colors[zi])
+
+axs[0].set_title('WL')
+axs[1].set_title('XC')
+axs[2].set_title('GCph')
+axs[0].set_ylabel('$C^{AB}_{ij}(\ell)$')
+axs[0].set_xlabel('$\ell$')
+axs[1].set_xlabel('$\ell$')
+axs[2].set_xlabel('$\ell$')
+fig.legend(loc='right')
+plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/cls.pdf', dpi=500, bbox_inches='tight')
+
+
+
+
+assert False, 'stop here and undo the latest changes with git, they were just to produce the cls plot'
+
+
+
 ng_folder = covariance_cfg["ng_folder"]
 ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
 ngtab = np.genfromtxt(f'{ng_folder}/'f'{ng_filename}')
@@ -377,30 +431,13 @@ assert np.all(z_center_values < 3), 'z_center values are likely < 3; this is jus
 print('Computing BNT matrix...')
 BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z, plot_nz=False)
 
-# ! import and reshape datavectors (cl) and response functions (rl)
-cl_fld = general_cfg['cl_folder']
-cl_filename = general_cfg['cl_filename']
-cl_ll_1d = np.genfromtxt(
-    f"{cl_fld.format(probe='WLO', which_pk=which_pk)}/{cl_filename.format(probe='WLO', **variable_specs)}")
-cl_gg_1d = np.genfromtxt(
-    f"{cl_fld.format(probe='GCO', which_pk=which_pk)}/{cl_filename.format(probe='GCO', **variable_specs)}")
-cl_wa_1d = np.genfromtxt(
-    f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', **variable_specs)}")
-cl_3x2pt_1d = np.genfromtxt(
-    f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
-
 rl_fld = general_cfg['rl_folder']
 rl_filename = general_cfg['rl_filename']
-rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', **variable_specs)}")
-rl_gg_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='GCO', **variable_specs)}")
-rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **variable_specs)}")
-rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **variable_specs)}")
+rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', nbl=nbl_WL, **variable_specs)}")
+rl_gg_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='GCO', nbl=nbl_WL, **variable_specs)}")
+rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', nbl=nbl_WL, **variable_specs)}")
+rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', nbl=nbl_WL, **variable_specs)}")
 
-# reshape to 3 dimensions
-cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
-cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
-cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
-cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
 
 rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
 rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC_opt, zbins)

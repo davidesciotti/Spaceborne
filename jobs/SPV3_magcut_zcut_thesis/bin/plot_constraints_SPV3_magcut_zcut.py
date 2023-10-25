@@ -29,6 +29,7 @@ FM_cfg = cfg.FM_cfg
 
 # ! options
 specs_str = 'idIA2_idB3_idM3_idR1'
+fm_root_path = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM'
 EP_or_ED = 'EP'
 zbins = 13
 num_params_tokeep = 7
@@ -40,11 +41,12 @@ include_fom = True
 fid_shear_bias_prior = 5e-4
 shear_bias_prior = fid_shear_bias_prior
 gal_bias_perc_prior = None
-string_columns = ['probe', 'go_or_gs', 'whose_FM', 'BNT_transform', 'ell_cuts', 'which_cuts', 'center_or_min', 'kmax_h_over_Mpc'
+string_columns = ['probe', 'go_or_gs', 'whose_FM', 'BNT_transform', 'ell_cuts', 'which_cuts', 'center_or_min',
+                  'kmax_h_over_Mpc'
                   ]
 triangle_plot = False
 use_Wadd = False  # the difference is extremely small
-which_pk = 'HMCode2020'
+which_pk = 'HMCodebar'
 ML = 245
 MS = 245
 ZL = 2
@@ -52,7 +54,7 @@ ZS = 2
 probes = ('WL', 'GC', '3x2pt')
 which_cuts = 'Vincenzo'
 center_or_min = 'min'
-h = 0.67  # 0.6774?
+h = 0.6737  # 0.6774?
 whose_FM_list = ('davide',)
 # ! options
 
@@ -72,7 +74,7 @@ fm_uncert_df = pd.DataFrame()
 for go_or_gs in ['GO', ]:
     for probe in probes:
         for BNT_transform in [False, True]:
-            for ell_cuts in [False, True]:
+            for ell_cuts in [False,]:
                 for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                     for whose_FM in whose_FM_list:
                         for center_or_min in ['min']:
@@ -80,8 +82,7 @@ for go_or_gs in ['GO', ]:
                             names_params_to_fix = []
 
                             if whose_FM == 'davide':
-                                fm_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
-                                          f'output/Flagship_2/FM/BNT_{BNT_transform}/ell_cuts_{ell_cuts}'
+                                fm_path = f'{fm_root_path}/BNT_{BNT_transform}/ell_cuts_{ell_cuts}'
                                 fm_name = f'FM_{go_or_gs}_{probe}_zbins{EP_or_ED}{zbins}_' \
                                           f'ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_{specs_str}_pk{which_pk}.pickle'
 

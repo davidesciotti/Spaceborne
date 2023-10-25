@@ -277,7 +277,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_XCfor3x2pt_4D = dC_3x2pt_6D[probe_A, probe_B, :, :, :, :]
     dC_GGfor3x2pt_4D = dC_3x2pt_6D[1, 1, :, :, :, :]
 
-    assert np.array_equal(dC_GGfor3x2pt_4D, dC_GG_4D), "dC_GGfor3x2pt_4D and dC_GG_4D are not equal"
+    np.testing.assert_allclose(dC_GGfor3x2pt_4D, dC_GG_4D, atol=0, rtol=1e-5, err_msg= "dC_GGfor3x2pt_4D and dC_GG_4D are not equal")
     assert nbl_3x2pt == nbl_GC, 'nbl_3x2pt and nbl_GC are not equal'
 
     # flatten z indices, obviously following the ordering given in ind

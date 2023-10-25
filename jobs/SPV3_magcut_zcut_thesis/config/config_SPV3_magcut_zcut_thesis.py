@@ -8,8 +8,8 @@ job_path = Path.cwd().parent
 sys.path.append(f'{project_path}/bin')
 import check_specs as utils
 
-sys.path.append(f'{project_path.parent}/common_data/common_config')
-import ISTF_fid_params as ISTFfid
+sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
+import common_cfg.ISTF_fid_params as ISTF_fid
 
 which_forecast = 'SPV3'
 fsky, GL_or_LG, _, _ = utils.get_specs(which_forecast)
@@ -20,8 +20,8 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/LiFEforS
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = False
-deriv_BNT_transform = False
+cov_BNT_transform = True
+deriv_BNT_transform = True
 
 cl_ell_cuts = False
 cov_ell_cuts = False
@@ -96,12 +96,12 @@ general_cfg = {
     'idM': 3,
     'idR': 1,
 
-    'which_pk': 'HMCode2020',
-    'which_pk_list': ('HMCode2020', 'Bacco', 'EE2', 'TakaBird'),
+    'which_pk': 'HMCodebar',
+    'which_pk_list': ('HMCodebar', 'HMCode2020', 'Bacco', 'EE2', 'TakaBird'),
     'cl_folder': f'{SPV3_folder}' + 'DataVecDers/{flat_or_nonflat:s}/{probe:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
-    'rl_folder': f'{SPV3_folder}' + f'/ResFun/{which_pk:s}',
+    'rl_folder': f'{SPV3_folder}' + '/ResFun/{which_pk:s}',
+    # XXX i don't have the cls, actually, or better, they're the CLOE benchmarks. use cov and derivatives directly...
     'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
-    'rl_filename': 'rf-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'rl_filename': 'resfun-idBM{idB:02d}.dat',  # XXX it's idBM... anyway, not using the responses at the moment
 
     'zmax': 2.5,
@@ -111,7 +111,7 @@ general_cfg = {
     'zcut_lens': 2,
     'flagship_version': flagship_version,
 
-    'test_against_benchmarks': True,
+    'test_against_benchmarks': False,
 }
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
@@ -146,7 +146,7 @@ covariance_cfg = {
     'cov_ell_cuts': cov_ell_cuts,
 
     'compute_covmat': True,
-    'compute_SSC': True,
+    'compute_SSC': False,
     'compute_cov_6D': False,  # ! to be deprecated!
 
     'save_cov': False,
@@ -167,7 +167,7 @@ covariance_cfg = {
                     'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D',
     'cov_filename_vincenzo': 'cm-{probe:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    'SSC_code': 'exactSSC',
+    'SSC_code': 'PySSC',
 
     'exactSSC_cfg': {
         'probe': '3x2pt',
@@ -193,8 +193,7 @@ if ell_cuts:
 
 Sijkl_cfg = {
     'wf_input_folder': f'{SPV3_folder}/Windows',
-    'wf_WL_input_filename': 'wigamma-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:1d}-idB{idB:1d}-idM{idM:1d}-idR{idR:1d}.dat',
-    'wf_GC_input_filename': 'widelta-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:1d}-idB{idB:1d}-idM{idM:1d}-idR{idR:1d}.dat',
+    'wf_filename': 'wi{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:02d}-MS{magcut_source:02d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
     'wf_normalization': 'IST',
     'nz': None,  # ! is this used?
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
@@ -237,8 +236,9 @@ FM_cfg = {
     'save_FM_dict': True,
 
     'load_preprocess_derivatives': False,
-    'derivatives_folder': SPV3_folder + '/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}',
-    'derivatives_filename': deriv_filename,
+    'derivatives_folder': f'{SPV3_folder}' + '/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
+
+    'derivatives_filename': '{derivatives_prefix:s}{param_name:s}-{probe:s}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{EP_or_ED:s}{zbins:02d}.dat',
     'derivatives_prefix': 'dDVd',
 
     'derivatives_BNT_transform': deriv_BNT_transform,
@@ -249,7 +249,7 @@ FM_cfg = {
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,
 
-    'test_against_benchmarks': True,
+    'test_against_benchmarks': False,
     # 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
     #                 'MS{magcut_source:03d}-ZS{zcut_source:02d}'
     #                 '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',

@@ -9,7 +9,10 @@ import numpy as np
 import os
 import warnings
 import gc
-import pdb
+import matplotlib.gridspec as gridspec
+import pyccl as ccl
+import yaml
+from scipy.integrate import simps
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
@@ -20,7 +23,7 @@ sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
 import common_lib.my_module as mm
 import common_lib.cosmo_lib as csmlib
 import common_lib.wf_cl_lib as wf_cl_lib
-import common_cfg.ISTF_fid_params as ISTFfid
+import common_cfg.ISTF_fid_params as ISTF_fid
 import common_cfg.mpl_cfg as mpl_cfg
 
 matplotlib.use('Qt5Agg')
@@ -29,7 +32,7 @@ start_time = time.perf_counter()
 
 # job configuration
 sys.path.append(f'{job_path}/config')
-import config_SPV3_magcut_zcut as cfg
+import config_SPV3_magcut_zcut_thesis as cfg
 
 # project libraries
 sys.path.append(f'{project_path}/bin')
@@ -103,8 +106,8 @@ def load_ell_cuts(kmax_h_over_Mpc, z_values):
         ell_cuts_array = np.zeros((zbins, zbins))
         for zi, zval_i in enumerate(z_values):
             for zj, zval_j in enumerate(z_values):
-                r_of_zi = cosmo_lib.astropy_comoving_distance(zval_i, use_h_units=False)
-                r_of_zj = cosmo_lib.astropy_comoving_distance(zval_j, use_h_units=False)
+                r_of_zi = csmlib.astropy_comoving_distance(zval_i, use_h_units=False)
+                r_of_zj = csmlib.astropy_comoving_distance(zval_j, use_h_units=False)
                 ell_cut_i = kmax_1_over_Mpc * r_of_zi - 1 / 2
                 ell_cut_j = kmax_1_over_Mpc * r_of_zj - 1 / 2
                 ell_cuts_array[zi, zj] = np.min((ell_cut_i, ell_cut_j))
@@ -254,6 +257,10 @@ FM_cfg = cfg.FM_cfg
 # for general_cfg['which_pk'] in ['HMCode2020', ]:
 # warnings.warn('restore loop over which_pk')
 
+with open(
+        '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_cfg/SPV3_fiducial_params_magcut245_zbins13.yml') as f:
+    ficualial_pars_dict = yaml.safe_load(f)
+flattened_fiducial_pars_dict = mm.flatten_dict(ficualial_pars_dict)
 
 # some convenence variables, just to make things more readable
 zbins = general_cfg['zbins']
@@ -278,7 +285,9 @@ idB = general_cfg['idB']
 idM = general_cfg['idM']
 idR = general_cfg['idR']
 
-h = 0.67  # TODO this should be read from the input file
+h = flattened_fiducial_pars_dict['h']
+
+colors = cm.rainbow(np.linspace(0, 1, zbins))
 
 # some checks
 assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
@@ -293,6 +302,9 @@ if covariance_cfg['cov_BNT_transform']:
 
 assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \
     'ell_max_WL and ell_max_GC must be either (5000, 3000) or (1500, 750)'
+
+assert magcut_lens == 245, 'magcut_lens must be 245: the yaml file with the fiducial params is for magcut 245'
+assert magcut_source == 245, 'magcut_source must be 245: the yaml file with the fiducial params is for magcut 245'
 
 # which cases to save: GO, GS or GO, GS and SS
 cases_tosave = ['GO', ]
@@ -378,17 +390,17 @@ variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_le
                   'which_pk': which_pk,
                   }
 
-ng_folder = covariance_cfg["ng_folder"]
-ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
-ngtab = np.genfromtxt(f'{ng_folder}/'f'{ng_filename}')
+ngtab = np.genfromtxt(
+    '/Users/davide/Documents/Lavoro/Programmi/likelihood-mcmc-generator/input_files/SPV3/nuiTabSPV3.dat')
 z_center_values = ngtab[:, 0]
 covariance_cfg['ng'] = ngtab[:, 1]
 dzWL_fiducial = ngtab[:, 4]
 dzGC_fiducial = ngtab[:, 4]
 
-nofz_folder = covariance_cfg["nofz_folder"]
-nofz_filename = f'{covariance_cfg["nofz_filename"].format(**variable_specs)}'
-n_of_z = np.genfromtxt(f'{nofz_folder}/'f'{nofz_filename}')
+# nofz_folder = covariance_cfg["nofz_folder"]
+# nofz_filename = f'{covariance_cfg["nofz_filename"].format(**variable_specs)}'
+n_of_z = np.genfromtxt(
+    '/Users/davide/Documents/Lavoro/Programmi/likelihood-mcmc-generator/input_files/SPV3/nzTabSPV3.dat')
 zgrid_n_of_z = n_of_z[:, 0]
 n_of_z = n_of_z[:, 1:]
 
@@ -400,20 +412,20 @@ assert np.all(z_center_values > 0), 'z_center values must be positive'
 assert np.all(z_center_values < 3), 'z_center values are likely < 3; this is just a rough check'
 
 start_time = time.perf_counter()
-BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z, plot_nz=True)
+BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z, plot_nz=False)
 print(f'BNT_matrix computed in {time.perf_counter() - start_time:.2f} seconds')
 
 # ! import and reshape datavectors (cl) and response functions (rl)
-cl_fld = general_cfg['cl_folder']
-cl_filename = general_cfg['cl_filename']
-cl_ll_1d = np.genfromtxt(
-    f"{cl_fld.format(probe='WLO', which_pk=which_pk)}/{cl_filename.format(probe='WLO', **variable_specs)}")
-cl_gg_1d = np.genfromtxt(
-    f"{cl_fld.format(probe='GCO', which_pk=which_pk)}/{cl_filename.format(probe='GCO', **variable_specs)}")
-cl_wa_1d = np.genfromtxt(
-    f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', **variable_specs)}")
-cl_3x2pt_1d = np.genfromtxt(
-    f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
+# cl_fld = general_cfg['cl_folder']
+# cl_filename = general_cfg['cl_filename']
+# cl_ll_1d = np.genfromtxt(
+#     f"{cl_fld.format(probe='WLO', which_pk=which_pk)}/{cl_filename.format(probe='WLO', **variable_specs)}")
+# cl_gg_1d = np.genfromtxt(
+#     f"{cl_fld.format(probe='GCO', which_pk=which_pk)}/{cl_filename.format(probe='GCO', **variable_specs)}")
+# cl_wa_1d = np.genfromtxt(
+#     f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', **variable_specs)}")
+# cl_3x2pt_1d = np.genfromtxt(
+#     f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
 
 rl_fld = general_cfg['rl_folder']
 rl_filename = general_cfg['rl_filename']
@@ -422,21 +434,37 @@ rl_filename = general_cfg['rl_filename']
 # rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **variable_specs)}")
 # rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **variable_specs)}")
 warnings.warn("using mock responses, FIX THIS")
-rl_ll_1d = np.ones_like(cl_ll_1d)
-rl_gg_1d = np.ones_like(cl_gg_1d)
-rl_wa_1d = np.ones_like(cl_wa_1d)
-rl_3x2pt_1d = np.ones_like(cl_3x2pt_1d)
+# rl_ll_1d = np.ones_like(cl_ll_1d)
+# rl_gg_1d = np.ones_like(cl_gg_1d)
+# rl_wa_1d = np.ones_like(cl_wa_1d)
+# rl_3x2pt_1d = np.ones_like(cl_3x2pt_1d)
+
 
 # reshape to 3 dimensions
-cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
-cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
-cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
-cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
+# cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
+# cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
+# cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
+# cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
 
-rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
-rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC_opt, zbins)
-rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA_opt, zbins)
-rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
+warnings.warn('HARDCODED PATH FOR 3D CLS')
+cl_ll_3d = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_ShearShear_C00.npy')
+cl_gl_3d = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_PosShear_C00.npy')[:nbl_3x2pt, ...]
+cl_gg_3d = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_PosPos_C00.npy')[:nbl_3x2pt, ...]
+cl_wa_3d = cl_ll_3d[nbl_3x2pt:, :, :]
+warnings.warn('cl_wa_3d is just an array of ones!!')
+cl_3x2pt_5d = cl_utils.build_3x2pt_datavector_5D(cl_ll_3d[:nbl_3x2pt, ...], cl_gl_3d, cl_gg_3d, nbl_3x2pt, zbins,
+                                                 n_probes=2)
+
+# rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
+# rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC_opt, zbins)
+# rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA_opt, zbins)
+# rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
+rl_ll_3d = np.ones((nbl_WL, zbins, zbins))
+rl_gl_3d = np.ones((nbl_3x2pt, zbins, zbins))
+rl_gg_3d = np.ones((nbl_3x2pt, zbins, zbins))
+rl_wa_3d = np.ones((nbl_WA, zbins, zbins))
+rl_3x2pt_5d = cl_utils.build_3x2pt_datavector_5D(rl_ll_3d[:nbl_3x2pt, ...], rl_gl_3d, rl_gg_3d, nbl_3x2pt, zbins,
+                                                 n_probes=2)
 
 # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
 if ell_max_WL == general_cfg['ell_max_WL_opt']:
@@ -517,30 +545,67 @@ rl_dict_3D = {
 
 # ! load kernels
 # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
-wf_folder = Sijkl_cfg["wf_input_folder"].format(**variable_specs)
-wf_WL_filename = Sijkl_cfg["wf_WL_input_filename"]
-wf_GC_filename = Sijkl_cfg["wf_GC_input_filename"]
-wil = np.genfromtxt(f'{wf_folder}/{wf_WL_filename.format(**variable_specs)}')
-wig = np.genfromtxt(f'{wf_folder}/{wf_GC_filename.format(**variable_specs)}')
+# wf_folder = Sijkl_cfg["wf_input_folder"].format(**variable_specs)
+# wf_WL_filename = Sijkl_cfg["wf_WL_input_filename"]
+# wf_GC_filename = Sijkl_cfg["wf_GC_input_filename"]
+# wil = np.genfromtxt(f'{wf_folder}/{wf_WL_filename.format(**variable_specs)}')
+# wig = np.genfromtxt(f'{wf_folder}/{wf_GC_filename.format(**variable_specs)}')
+#
+# # preprocess (remove redshift column)
+# z_arr_wil, wil = Sijkl_utils.preprocess_wf(wil, zbins)
+# z_arr_wig, wig = Sijkl_utils.preprocess_wf(wig, zbins)
+# assert np.array_equal(z_arr_wil, z_arr_wig), \
+#     'the redshift arrays are different for the GC and WL kernels'
+# z_arr = z_arr_wil
+#
+# # transpose and stack, ordering is important here!
+# assert wil.shape == wig.shape, 'the GC and WL kernels have different shapes'
+# assert wil.shape == (z_arr.shape[0], zbins), 'the kernels have the wrong shape'
 
-# preprocess (remove redshift column)
-z_arr_wil, wil = Sijkl_utils.preprocess_wf(wil, zbins)
-z_arr_wig, wig = Sijkl_utils.preprocess_wf(wig, zbins)
-assert np.array_equal(z_arr_wil, z_arr_wig), \
-    'the redshift arrays are different for the GC and WL kernels'
-z_arr = z_arr_wil
 
-# transpose and stack, ordering is important here!
-assert wil.shape == wig.shape, 'the GC and WL kernels have different shapes'
-assert wil.shape == (z_arr.shape[0], zbins), 'the kernels have the wrong shape'
+# ! new kernels, including mag bias and IA
+wf_folder = Sijkl_cfg['wf_input_folder']
+wf_delta = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="delta", **variable_specs)}')
+wf_gamma = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="gamma", **variable_specs)}')
+wf_ia = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="ia", **variable_specs)}')
+wf_mu = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="mu", **variable_specs)}')
 
-import pyccl as ccl
-from scipy.integrate import simps
+z_grid_kernels = wf_delta[:, 0]
+wf_delta = wf_delta[:, 1:]
+wf_gamma = wf_gamma[:, 1:]
+wf_ia = wf_ia[:, 1:]
+wf_mu = wf_mu[:, 1:]
 
-sys.path.append('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_lib')
-import wf_cl_lib
+# construct lensing kernel - I need to add IA
+ficualial_pars_dict_ccl_keys = {}
+ficualial_pars_dict_ccl_keys['Om_m0'] = flattened_fiducial_pars_dict['Om']
+ficualial_pars_dict_ccl_keys['Om_b0'] = flattened_fiducial_pars_dict['Ob']
+ficualial_pars_dict_ccl_keys['Om_Lambda0'] = flattened_fiducial_pars_dict['ODE']
+ficualial_pars_dict_ccl_keys['w_0'] = flattened_fiducial_pars_dict['wz']
+ficualial_pars_dict_ccl_keys['w_a'] = flattened_fiducial_pars_dict['wa']
+ficualial_pars_dict_ccl_keys['h'] = flattened_fiducial_pars_dict['h']
+ficualial_pars_dict_ccl_keys['n_s'] = flattened_fiducial_pars_dict['ns']
+ficualial_pars_dict_ccl_keys['sigma_8'] = flattened_fiducial_pars_dict['s8']
+ficualial_pars_dict_ccl_keys['m_nu'] = flattened_fiducial_pars_dict['m_nu']
+ficualial_pars_dict_ccl_keys['N_eff'] = flattened_fiducial_pars_dict['N_eff']
 
-colors = cm.rainbow(np.linspace(0, 1, zbins))
+cosmo_ccl = csmlib.instantiate_cosmo_ccl_obj(ficualial_pars_dict_ccl_keys)
+
+# construct lensing kernel
+ia_bias = wf_cl_lib.build_IA_bias_1d_arr(z_grid_kernels, input_z_grid_lumin_ratio=None, input_lumin_ratio=None,
+                                         cosmo=cosmo_ccl,
+                                         A_IA=flattened_fiducial_pars_dict['Aia'],
+                                         eta_IA=flattened_fiducial_pars_dict['eIA'],
+                                         beta_IA=flattened_fiducial_pars_dict['bIA'], C_IA=None,
+                                         growth_factor=None, Omega_m=flattened_fiducial_pars_dict['Om'],
+                                         output_F_IA_of_z=False)
+wf_lensing = wf_gamma + ia_bias[:, None] * wf_ia
+
+
+wigamma_old = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputSSC/Windows/wigamma-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.dat')
+
+
+# ! XXX RESTORE THIS PART TO PRODUCE PLOT FOR THE THESIS
 
 dndz = (zgrid_n_of_z, n_of_z)
 cosmo = wf_cl_lib.instantiate_ISTFfid_PyCCL_cosmo_obj()
@@ -553,7 +618,14 @@ a_arr = 1 / (1 + zgrid_n_of_z)
 chi = ccl.comoving_radial_distance(cosmo, a_arr)
 wil_ccl = np.asarray([wil_ccl_obj[zbin_idx].get_kernel(chi) for zbin_idx in range(zbins)])[:, 0, :].T
 
-wil_bnt = BNT_matrix @ wil.T
+plt.figure()
+for zi in range(zbins):
+    plt.plot(zgrid_n_of_z, wil_ccl[:, zi], ls='-', label=f'zbin {zi}', c=colors[zi], alpha=0.6)
+    plt.plot(z_grid_kernels, wf_gamma[:, zi], ls='--', label=f'zbin {zi}', c=colors[zi], alpha=0.6)
+    plt.plot(wigamma_old[:, 0], wigamma_old[:, zi+1], ls=':', label=f'zbin {zi}', c=colors[zi], alpha=0.6)
+assert False
+
+
 wil_ccl_bnt = BNT_matrix @ wil_ccl.T
 wil_ccl_bnt = wil_ccl_bnt.T
 
@@ -574,8 +646,6 @@ plt.ylabel('w(z)')
 
 ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means)
 ell_cuts_dict_bnt = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_bnt)
-
-import matplotlib.gridspec as gridspec
 
 # Get the global min and max values for the color scale
 vmin = min(ell_cuts_dict['LL'].min(), ell_cuts_dict_bnt['LL'].min())
@@ -600,12 +670,15 @@ ax1.set_title('BNT', fontsize=18)
 
 # Add a shared colorbar on the right
 cbar = fig.colorbar(cax0, cax=cbar_ax)
-cbar.set_label('Power Spectrum', location='top')
+cbar.set_label('$\\ell^{\\rm max}_{ij}$')
 
 plt.tight_layout()
 plt.show()
 
-assert False, 'stop here to test different ell cuts'
+for zi in range(zbins):
+    plt.plot(z_grid_kernels, wf_lensing[:, zi], label=f'zbin {zi}')
+
+assert False
 
 if covariance_cfg['compute_SSC'] and covariance_cfg['SSC_code'] == 'PySSC':
 
@@ -646,6 +719,18 @@ cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg
                                                  **variable_specs)
 covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
+if general_cfg['BNT_transform'] is False:
+    # load benchmark voc and check that it matches the one computed here
+    cov_cloe_bench_2d = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/CovMat-3x2pt-Gauss-32Bins.npy')
+    cov_bench_2ddav = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2d, 32, zbins, 'ell', 'ell')  # reshape it in dav format
+
+    # ell cut, 29 bins instead of 32
+    n_cov_elements = cov_dict['cov_3x2pt_GO_2D'].shape[0]
+    cov_bench_2ddav_lmax3000 = cov_bench_2ddav[:n_cov_elements, :n_cov_elements]
+
+    # compare
+    np.testing.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_lmax3000, atol=0, rtol=1e-5)
+
 if general_cfg['test_against_benchmarks']:
     cov_benchmark_folder = f'{cov_folder}/benchmarks'
     mm.test_folder_content(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
@@ -656,7 +741,8 @@ if not FM_cfg['compute_FM']:
     raise KeyboardInterrupt('skipping FM computation, the script will exit now')
 
 # set the fiducial values in a dictionary and a list
-bias_fiducials = np.genfromtxt(f'{ng_folder}/gal_mag_fiducial_polynomial_fit.dat')
+bias_fiducials = np.genfromtxt(
+    f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputNz/NzPar/gal_mag_fiducial_polynomial_fit.dat')
 bias_fiducials_rows = np.where(bias_fiducials[:, 0] == general_cfg['magcut_source'] / 10)[
     0]  # take the correct magnitude limit
 galaxy_bias_fit_fiducials = bias_fiducials[bias_fiducials_rows, 1]
@@ -714,12 +800,16 @@ vinc_param_names.sort()
 my_sorted_param_names = param_names_3x2pt.copy()
 my_sorted_param_names.sort()
 
+for dzgc_param_name in [f'dzGC{zi:02d}' for zi in range(1, zbins + 1)]:
+    vinc_param_names.remove(dzgc_param_name)
+
 # check whether the 2 lists match and print the elements that are in one list but not in the other
 param_names_not_in_my_list = [vinc_param_name for vinc_param_name in vinc_param_names if
                               vinc_param_name not in my_sorted_param_names]
 param_names_not_in_vinc_list = [my_sorted_param_name for my_sorted_param_name in my_sorted_param_names
                                 if
                                 my_sorted_param_name not in vinc_param_names]
+
 try:
     assert np.all(vinc_param_names == my_sorted_param_names), \
         f'\nparams present in input folder but not in the cfg file: {param_names_not_in_my_list}\n' \
@@ -752,20 +842,22 @@ elif not FM_cfg['load_preprocess_derivatives']:
     dC_dict_WA_3D = {}
     dC_dict_3x2pt_5D = {}
     for key in dC_dict_1D.keys():
-        if 'WLO' in key:
-            dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
-        elif 'GCO' in key:
-            dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
-        elif 'WLA' in key:
-            dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
-        elif '3x2pt' in key:
-            dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt,
-                                                              zbins)
+        if not key.startswith('dDVddzGC'):
+            if 'WLO' in key:
+                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
+            elif 'GCO' in key:
+                dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
+            # elif 'WLA' in key:
+            #     dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
+            elif '3x2pt' in key:
+                dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt,
+                                                                  zbins)
 
     # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
     dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
     dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
-    dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
+    # dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
+    dC_WA_4D = np.ones((nbl_WA, zbins, zbins, dC_LL_4D.shape[-1]))
     dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
                                                der_prefix, is_3x2pt=True)
 
@@ -791,7 +883,7 @@ deriv_dict = {'dC_LL_4D': dC_LL_4D,
               'dC_GG_4D': dC_GG_4D,
               'dC_3x2pt_6D': dC_3x2pt_6D}
 
-# ! compute and save fisher matrix\
+# ! compute and save fisher matrix
 FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict,
                               BNT_matrix)
 FM_dict['param_names_dict'] = param_names_dict

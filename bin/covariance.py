@@ -868,8 +868,8 @@ def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr, plot_nz=True):
     B_list = np.zeros(zbins)
     for zbin_idx in range(zbins):
         n_of_z = n_of_z_arr[:, zbin_idx]
-        A_list[zbin_idx] = simps(n_of_z, z_grid)
-        B_list[zbin_idx] = simps(n_of_z / chi, z_grid)
+        A_list[zbin_idx] = simps(y=n_of_z, x=z_grid)
+        B_list[zbin_idx] = simps(y=n_of_z / chi, x=z_grid)
 
     bnt_matrix = np.eye(zbins)
     bnt_matrix[1, 0] = -1.

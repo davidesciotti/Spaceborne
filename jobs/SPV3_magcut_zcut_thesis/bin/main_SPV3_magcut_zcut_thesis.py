@@ -16,15 +16,16 @@ job_path = Path.cwd().parent
 home_path = Path.home()
 job_name = job_path.parts[-1]
 
-# general libraries
-sys.path.append(f'{project_path.parent}/common_lib_and_cfg/common_lib')
-import my_module as mm
-import cosmo_lib as cosmo_lib
+sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
+import common_lib.my_module as mm
+import common_lib.cosmo_lib as csmlib
+import common_lib.wf_cl_lib as wf_cl_lib
+import common_cfg.ISTF_fid_params as ISTFfid
+import common_cfg.mpl_cfg as mpl_cfg
 
-# general configurations
-sys.path.append(f'{project_path.parent}/common_lib_and_cfg/common_config')
-import mpl_cfg
-import ISTF_fid_params as ISTF_fid
+matplotlib.use('Qt5Agg')
+plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
+start_time = time.perf_counter()
 
 # job configuration
 sys.path.append(f'{job_path}/config')
@@ -573,8 +574,6 @@ plt.ylabel('w(z)')
 
 ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means)
 ell_cuts_dict_bnt = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_bnt)
-
-
 
 import matplotlib.gridspec as gridspec
 

@@ -14,7 +14,7 @@ import ISTF_fid_params as ISTFfid
 which_forecast = 'SPV3'
 fsky, GL_or_LG, _, _ = utils.get_specs(which_forecast)
 
-SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
+SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/Thesis_10_2023'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -88,8 +88,6 @@ general_cfg = {
                                       2.23880597, 2.6119403, 2.98507463, 4.47761194,
                                       7.46268657]),  # , 14.92537313]),
 
-    'BNT_matrix_path': f'{SPV3_folder}/BNT_matrix',
-    'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
     'BNT_transform': BNT_transform,  # ! to be deprecated?
     'cl_BNT_transform': cl_BNT_transform,
 
@@ -100,11 +98,11 @@ general_cfg = {
 
     'which_pk': 'HMCode2020',
     'which_pk_list': ('HMCode2020', 'Bacco', 'EE2', 'TakaBird'),
-    'cl_folder': f'{SPV3_folder}' + '/OutputFiles/DataVectors/Noiseless/{probe:s}/{which_pk:s}',
-    'rl_folder': f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
-                 f'Flagship_2/ResFunTabs/magcut_zcut_True',
+    'cl_folder': f'{SPV3_folder}' + 'DataVecDers/{flat_or_nonflat:s}/{probe:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
+    'rl_folder': f'{SPV3_folder}' + f'/ResFun/{which_pk:s}',
     'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
     'rl_filename': 'rf-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
+    'rl_filename': 'resfun-idBM{idB:02d}.dat',  # XXX it's idBM... anyway, not using the responses at the moment
 
     'zmax': 2.5,
     'magcut_source': 245,
@@ -194,7 +192,7 @@ if ell_cuts:
                                                                             'kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D')
 
 Sijkl_cfg = {
-    'wf_input_folder': f'{SPV3_folder}/InputFiles/InputSSC/Windows',
+    'wf_input_folder': f'{SPV3_folder}/Windows',
     'wf_WL_input_filename': 'wigamma-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:1d}-idB{idB:1d}-idM{idM:1d}-idR{idR:1d}.dat',
     'wf_GC_input_filename': 'widelta-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:1d}-idB{idB:1d}-idM{idM:1d}-idR{idR:1d}.dat',
     'wf_normalization': 'IST',

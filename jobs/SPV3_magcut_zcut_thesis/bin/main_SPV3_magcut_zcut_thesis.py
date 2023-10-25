@@ -8,11 +8,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import warnings
+import matplotlib.lines as mlines
 import gc
 import matplotlib.gridspec as gridspec
 import pyccl as ccl
 import yaml
 from scipy.integrate import simps
+from scipy.interpolate import interp1d
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
@@ -284,6 +286,7 @@ idIA = general_cfg['idIA']
 idB = general_cfg['idB']
 idM = general_cfg['idM']
 idR = general_cfg['idR']
+idBM = general_cfg['idBM']
 
 h = flattened_fiducial_pars_dict['h']
 
@@ -386,23 +389,41 @@ variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_le
                   'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_XC': ell_max_XC,
                   'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
                   'kmax_h_over_Mpc': kmax_h_over_Mpc, center_or_min: center_or_min,
-                  'idIA': idIA, 'idB': idB, 'idM': idM, 'idR': idR, 'flat_or_nonflat': flat_or_nonflat,
+                  'idIA': idIA, 'idB': idB, 'idM': idM, 'idR': idR, 'idBM': idBM, 'flat_or_nonflat': flat_or_nonflat,
                   'which_pk': which_pk,
                   }
 
-ngtab = np.genfromtxt(
-    '/Users/davide/Documents/Lavoro/Programmi/likelihood-mcmc-generator/input_files/SPV3/nuiTabSPV3.dat')
-z_center_values = ngtab[:, 0]
-covariance_cfg['ng'] = ngtab[:, 1]
-dzWL_fiducial = ngtab[:, 4]
-dzGC_fiducial = ngtab[:, 4]
+# import nuisance, to get fiducials and to shift the distribution
+nuisance_tab = np.genfromtxt(f'{covariance_cfg["nuisance_folder"]}/{covariance_cfg["nuisance_filename"]}')
+z_center_values = nuisance_tab[:, 0]
+covariance_cfg['ng'] = nuisance_tab[:, 1]
+dzWL_fiducial = nuisance_tab[:, 4]
+dzGC_fiducial = nuisance_tab[:, 4]
 
-# nofz_folder = covariance_cfg["nofz_folder"]
-# nofz_filename = f'{covariance_cfg["nofz_filename"].format(**variable_specs)}'
-n_of_z = np.genfromtxt(
-    '/Users/davide/Documents/Lavoro/Programmi/likelihood-mcmc-generator/input_files/SPV3/nzTabSPV3.dat')
-zgrid_n_of_z = n_of_z[:, 0]
+# just a check, to be sure that the nuisance file is the same one defined in the yaml file
+dz_shifts_names = [f'dzWL{zi:02d}' for zi in range(1, zbins + 1)]
+dz_shifts = np.array([flattened_fiducial_pars_dict[dz_shifts_names[zi]] for zi in range(zbins)])
+np.testing.assert_array_equal(dz_shifts, dzWL_fiducial,
+                              err_msg='dzWL shifts do not match with the ones from tha yml file')
+np.testing.assert_array_equal(dzWL_fiducial, dzGC_fiducial, err_msg='dzWL and dzGC shifts do not match')
+
+# import n(z)
+nofz_folder = covariance_cfg["nofz_folder"]
+nofz_filename = covariance_cfg["nofz_filename"]
+n_of_z = np.genfromtxt(f'{nofz_folder}/{nofz_filename}')
+zgrid_nz = n_of_z[:, 0]
 n_of_z = n_of_z[:, 1:]
+
+# and shift it
+n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z, dz_shifts, normalize=False, plot_nz=False)
+
+# normalize n(z)
+for zi in range(zbins):
+    n_of_z[:, zi] /= simps(n_of_z[:, zi], zgrid_nz)
+
+n_of_z_norm = wf_cl_lib.shift_nz(zgrid_nz, n_of_z, dz_shifts, normalize=True, plot_nz=False)
+
+np.testing.assert_array_equal(n_of_z_norm, n_of_z)
 
 # some check on the input nz files
 assert np.all(
@@ -411,9 +432,7 @@ assert np.all(covariance_cfg['ng'] > 0), 'ng values must be positive'
 assert np.all(z_center_values > 0), 'z_center values must be positive'
 assert np.all(z_center_values < 3), 'z_center values are likely < 3; this is just a rough check'
 
-start_time = time.perf_counter()
-BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z, plot_nz=False)
-print(f'BNT_matrix computed in {time.perf_counter() - start_time:.2f} seconds')
+BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, plot_nz=False)
 
 # ! import and reshape datavectors (cl) and response functions (rl)
 # cl_fld = general_cfg['cl_folder']
@@ -427,18 +446,19 @@ print(f'BNT_matrix computed in {time.perf_counter() - start_time:.2f} seconds')
 # cl_3x2pt_1d = np.genfromtxt(
 #     f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
 
-rl_fld = general_cfg['rl_folder']
-rl_filename = general_cfg['rl_filename']
+# rl_fld = general_cfg['rl_folder'].format(which_pk=which_pk)
+# rl_filename = general_cfg['rl_filename'].format()
 # rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', **variable_specs)}")
 # rl_gg_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='GCO', **variable_specs)}")
 # rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **variable_specs)}")
 # rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **variable_specs)}")
-warnings.warn("using mock responses, FIX THIS")
+assert covariance_cfg['compute_SSC'] is False, 'I am using mock responses; if you want to compute the SSC, you need to ' \
+                                               'import the responses as well (see ssc_integrands_SPV3.py) for how to do it'
+warnings.warn("using mock responses")
 # rl_ll_1d = np.ones_like(cl_ll_1d)
 # rl_gg_1d = np.ones_like(cl_gg_1d)
 # rl_wa_1d = np.ones_like(cl_wa_1d)
 # rl_3x2pt_1d = np.ones_like(cl_3x2pt_1d)
-
 
 # reshape to 3 dimensions
 # cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
@@ -544,23 +564,6 @@ rl_dict_3D = {
     'rl_3x2pt_5D': rl_3x2pt_5d}
 
 # ! load kernels
-# TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
-# wf_folder = Sijkl_cfg["wf_input_folder"].format(**variable_specs)
-# wf_WL_filename = Sijkl_cfg["wf_WL_input_filename"]
-# wf_GC_filename = Sijkl_cfg["wf_GC_input_filename"]
-# wil = np.genfromtxt(f'{wf_folder}/{wf_WL_filename.format(**variable_specs)}')
-# wig = np.genfromtxt(f'{wf_folder}/{wf_GC_filename.format(**variable_specs)}')
-#
-# # preprocess (remove redshift column)
-# z_arr_wil, wil = Sijkl_utils.preprocess_wf(wil, zbins)
-# z_arr_wig, wig = Sijkl_utils.preprocess_wf(wig, zbins)
-# assert np.array_equal(z_arr_wil, z_arr_wig), \
-#     'the redshift arrays are different for the GC and WL kernels'
-# z_arr = z_arr_wil
-#
-# # transpose and stack, ordering is important here!
-# assert wil.shape == wig.shape, 'the GC and WL kernels have different shapes'
-# assert wil.shape == (z_arr.shape[0], zbins), 'the kernels have the wrong shape'
 
 
 # ! new kernels, including mag bias and IA
@@ -601,52 +604,67 @@ ia_bias = wf_cl_lib.build_IA_bias_1d_arr(z_grid_kernels, input_z_grid_lumin_rati
                                          output_F_IA_of_z=False)
 wf_lensing = wf_gamma + ia_bias[:, None] * wf_ia
 
-
-wigamma_old = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputSSC/Windows/wigamma-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.dat')
-
+wigamma_old = np.genfromtxt(
+    '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputSSC/Windows/wigamma-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.dat')
 
 # ! XXX RESTORE THIS PART TO PRODUCE PLOT FOR THE THESIS
 
-dndz = (zgrid_n_of_z, n_of_z)
+dndz = (zgrid_nz, n_of_z)
 cosmo = wf_cl_lib.instantiate_ISTFfid_PyCCL_cosmo_obj()
 wil_ccl_obj = [ccl.tracers.WeakLensingTracer(cosmo, dndz=(dndz[0], dndz[1][:, zbin_idx]), ia_bias=None, use_A_ia=False,
-                                             n_samples=len(zgrid_n_of_z)) for zbin_idx in range(zbins)]
+                                             n_samples=len(zgrid_nz)) for zbin_idx in range(zbins)]
 
 # get the radial kernels
 # comoving distance of z
-a_arr = 1 / (1 + zgrid_n_of_z)
+a_arr = 1 / (1 + zgrid_nz)
 chi = ccl.comoving_radial_distance(cosmo, a_arr)
 wil_ccl = np.asarray([wil_ccl_obj[zbin_idx].get_kernel(chi) for zbin_idx in range(zbins)])[:, 0, :].T
 
 plt.figure()
 for zi in range(zbins):
-    plt.plot(zgrid_n_of_z, wil_ccl[:, zi], ls='-', label=f'zbin {zi}', c=colors[zi], alpha=0.6)
+    plt.plot(zgrid_nz, wil_ccl[:, zi], ls='-', label=f'zbin {zi}', c=colors[zi], alpha=0.6)
     plt.plot(z_grid_kernels, wf_gamma[:, zi], ls='--', label=f'zbin {zi}', c=colors[zi], alpha=0.6)
-    plt.plot(wigamma_old[:, 0], wigamma_old[:, zi+1], ls=':', label=f'zbin {zi}', c=colors[zi], alpha=0.6)
-assert False
-
+    plt.plot(wigamma_old[:, 0], wigamma_old[:, zi + 1], ls=':', label=f'zbin {zi}', c=colors[zi], alpha=0.6)
 
 wil_ccl_bnt = BNT_matrix @ wil_ccl.T
 wil_ccl_bnt = wil_ccl_bnt.T
 
-z_means = simps(wil_ccl * zgrid_n_of_z[:, None], axis=0) / simps(wil_ccl, axis=0)
-z_means_bnt = simps(wil_ccl_bnt * zgrid_n_of_z[:, None], axis=0) / simps(wil_ccl_bnt, axis=0)
+z_means = simps(wil_ccl * zgrid_nz[:, None], axis=0) / simps(wil_ccl, axis=0)
+z_means_bnt = simps(wil_ccl_bnt * zgrid_nz[:, None], axis=0) / simps(wil_ccl_bnt, axis=0)
 
+# this plot will go in the thesis
 plt.figure()
 for zi in range(zbins):
-    plt.plot(zgrid_n_of_z, wil_ccl[:, zi], ls='--', label=f'zbin {zi}', c=colors[zi])
-    plt.plot(zgrid_n_of_z, wil_ccl_bnt[:, zi], ls='-', c=colors[zi])
+    plt.plot(zgrid_nz, wil_ccl[:, zi], ls='-', label='$z_{%d}$' % (zi + 1), c=colors[zi], zorder=0)
+    plt.plot(zgrid_nz, wil_ccl_bnt[:, zi], ls='--', c=colors[zi], zorder=0)
     if zi in [2, 10]:
-        plt.axvline(z_means[zi], ls='--', c=colors[zi], ymin=0, lw=2)
-        plt.axvline(z_means_bnt[zi], ls='-', c=colors[zi], ymin=0, lw=2)
+        plt.axvline(z_means[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
+        plt.axvline(z_means_bnt[zi], ls='--', c=colors[zi], ymin=0, lw=2, zorder=1)
 
-plt.legend()
+# plt.legend(loc='upper right', fontsize=15)
 plt.xlabel('$z$')
-plt.ylabel('w(z)')
+plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
+
+# Create first legend from the labels in the plot commands
+legend1 = plt.legend(loc='right', fontsize=15)
+# Create custom lines for the second legend
+line_standard = mlines.Line2D([], [], color='black', linestyle='-', label='Standard')
+line_bnt = mlines.Line2D([], [], color='black', linestyle='--', label='BNT')
+# Create second legend
+legend2 = plt.legend(handles=[line_standard, line_bnt], loc='upper right', fontsize=15)
+# Add the first legend back
+plt.gca().add_artist(legend1)
+plt.xlabel('$z$')
+plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
+
+plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/std_and_bnt_gamma_kernel.pdf', dpi=500,
+            bbox_inches='tight')
+# end thesis plot
 
 ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means)
 ell_cuts_dict_bnt = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_bnt)
 
+# ! matshow ell cuts with and wo BNT - another thesis plot
 # Get the global min and max values for the color scale
 vmin = min(ell_cuts_dict['LL'].min(), ell_cuts_dict_bnt['LL'].min())
 vmax = max(ell_cuts_dict['LL'].max(), ell_cuts_dict_bnt['LL'].max())
@@ -660,13 +678,23 @@ ax0 = plt.subplot(gs[0])
 ax1 = plt.subplot(gs[1])
 cbar_ax = plt.subplot(gs[2])
 
+ticks = np.arange(1, zbins + 1)
+# Set x and y ticks for both subplots
+for ax in [ax0, ax1]:
+    ax.set_xticks(np.arange(zbins))
+    ax.set_yticks(np.arange(zbins))
+    ax.set_xticklabels(ticks)
+    ax.set_yticklabels(ticks)
+    ax.set_xlabel('$z_{\\rm bin}$')
+    ax.set_ylabel('$z_{\\rm bin}$')
+
 # Display the matrices with the shared color scale
 cax0 = ax0.matshow(ell_cuts_dict['LL'], vmin=vmin, vmax=vmax)
 cax1 = ax1.matshow(ell_cuts_dict_bnt['LL'], vmin=vmin, vmax=vmax)
 
 # Add titles to the plots
-ax0.set_title('Standard', fontsize=18)
-ax1.set_title('BNT', fontsize=18)
+ax0.set_title('Standard', fontsize=20)
+ax1.set_title('BNT', fontsize=20)
 
 # Add a shared colorbar on the right
 cbar = fig.colorbar(cax0, cax=cbar_ax)
@@ -677,6 +705,8 @@ plt.show()
 
 for zi in range(zbins):
     plt.plot(z_grid_kernels, wf_lensing[:, zi], label=f'zbin {zi}')
+plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/z_dependent_ell_cuts.pdf', dpi=300,
+            bbox_inches='tight')
 
 assert False
 

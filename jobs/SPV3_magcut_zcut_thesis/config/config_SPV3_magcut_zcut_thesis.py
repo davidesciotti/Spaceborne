@@ -95,6 +95,7 @@ general_cfg = {
     'idB': 3,
     'idM': 3,
     'idR': 1,
+    'idBM': 1,  # XXX what is this?
 
     'which_pk': 'HMCodebar',
     'which_pk_list': ('HMCodebar', 'HMCode2020', 'Bacco', 'EE2', 'TakaBird'),
@@ -102,7 +103,7 @@ general_cfg = {
     'rl_folder': f'{SPV3_folder}' + '/ResFun/{which_pk:s}',
     # XXX i don't have the cls, actually, or better, they're the CLOE benchmarks. use cov and derivatives directly...
     'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
-    'rl_filename': 'resfun-idBM{idB:02d}.dat',  # XXX it's idBM... anyway, not using the responses at the moment
+    'rl_filename': 'resfun-idBM{idBM:02d}.dat',  # XXX it's idBM... anyway, not using the responses at the moment
 
     'zmax': 2.5,
     'magcut_source': 245,
@@ -138,8 +139,12 @@ covariance_cfg = {
     'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
 
     # sources (and lenses) redshift distributions
-    'nofz_folder': f'{SPV3_folder}/InputFiles/InputNz/NzFid',
-    'nofz_filename': 'nzTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
+    'nofz_folder': f'/Users/davide/Documents/Lavoro/Programmi/likelihood-mcmc-generator/input_files/SPV3',
+    'nofz_filename': 'nzTabSPV3.dat',
+
+    'nuisance_folder': f'/Users/davide/Documents/Lavoro/Programmi/likelihood-mcmc-generator/input_files/SPV3',
+    'nuisance_filename': 'nuiTabSPV3.dat',
+
     'plot_nz_tocheck': True,
 
     'cov_BNT_transform': cov_BNT_transform,

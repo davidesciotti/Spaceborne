@@ -226,15 +226,59 @@ def get_idxs_to_delete_3x2pt_v0(ell_values_3x2pt, ell_cuts_dict):
     return list(idxs_to_delete_3x2pt)
 
 
-def plot_nz_tocheck_func():
+def plot_nz_tocheck_func(zgrid_nz, n_of_z):
     if not covariance_cfg['plot_nz_tocheck']:
         return
     plt.figure()
     for zi in range(zbins):
-        plt.plot(zgrid_n_of_z, n_of_z[:, zi], label=f'zbin {zi}')
+        plt.plot(zgrid_nz, n_of_z[:, zi], label=f'zbin {zi}')
     plt.legend()
     plt.xlabel('z')
     plt.ylabel('n(z)')
+
+
+def plot_ell_cuts_for_thesis(ell_cuts_dict, ell_cuts_dict_bnt):
+    # ! matshow ell cuts with and wo BNT - another thesis plot
+    # Get the global min and max values for the color scale
+    vmin = min(ell_cuts_dict['LL'].min(), ell_cuts_dict_bnt['LL'].min())
+    vmax = max(ell_cuts_dict['LL'].max(), ell_cuts_dict_bnt['LL'].max())
+
+    # Create a gridspec layout
+    fig = plt.figure(figsize=(12, 5))
+    gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 0.05])
+
+    # Create axes based on the gridspec layout
+    ax0 = plt.subplot(gs[0])
+    ax1 = plt.subplot(gs[1])
+    cbar_ax = plt.subplot(gs[2])
+
+    ticks = np.arange(1, zbins + 1)
+    # Set x and y ticks for both subplots
+    for ax in [ax0, ax1]:
+        ax.set_xticks(np.arange(zbins))
+        ax.set_yticks(np.arange(zbins))
+        ax.set_xticklabels(ticks)
+        ax.set_yticklabels(ticks)
+        ax.set_xlabel('$z_{\\rm bin}$')
+        ax.set_ylabel('$z_{\\rm bin}$')
+
+    # Display the matrices with the shared color scale
+    cax0 = ax0.matshow(ell_cuts_dict['LL'], vmin=vmin, vmax=vmax)
+    cax1 = ax1.matshow(ell_cuts_dict_bnt['LL'], vmin=vmin, vmax=vmax)
+
+    # Add titles to the plots
+    ax0.set_title('Standard', fontsize=20)
+    ax1.set_title(f'BNT, {interpolation_kind}', fontsize=20)
+
+    # Add a shared colorbar on the right
+    cbar = fig.colorbar(cax0, cax=cbar_ax)
+    cbar.set_label('$\\ell^{\\rm max}_{ij}$')
+
+    plt.tight_layout()
+    plt.show()
+
+    plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/z_dependent_ell_cuts.pdf', dpi=300,
+                bbox_inches='tight')
 
 
 # ======================================================================================================================
@@ -441,189 +485,154 @@ n_of_z_original = n_of_z
 # TODO IA seems a bit low, even with bia = 2.17...
 # * tried cutting extremes of z range, not the problem
 
-# ! FS1
-# n_of_z = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_1_restored/InputNz/Lenses/Flagship/niTab-EP13.dat')
-# zgrid_nz = n_of_z[:, 0]
-# n_of_z = n_of_z[:, 1:]
 
-interpolation_kind = 'cubic'
-gaussian_smoothing = False
+interpolation_kind = 'linear'
+gaussian_smoothing = False  # does not seem to have a large effect...
 sigma_gaussian_filter = 2
 shift_dz = True
+compute_bnt_with_shifted_nz = False  # ! let's test this
 use_ia = True
+use_fs1 = False
+
+if use_fs1:
+    n_of_z = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
+                           f'Flagship_1_restored/InputNz/Lenses/Flagship/niTab-{EP_or_ED}{zbins:02d}.dat')
+    zgrid_nz = n_of_z[:, 0]
+    n_of_z = n_of_z[:, 1:]
 
 # ! apply a Gaussian filter
 if gaussian_smoothing:
-    n_of_z_gauss = gaussian_filter1d(n_of_z, sigma_gaussian_filter, axis=0)
-    plt.figure()
-    for zi in range(zbins):
-        plt.plot(zgrid_nz, n_of_z[:, zi], label=f'zbin {zi}', c=colors[zi], ls='-')
-        plt.plot(zgrid_nz, n_of_z_gauss[:, zi], c=colors[zi], ls='--')
-    plt.title(f'sigma = {sigma_gaussian_filter}')
+    n_of_z = gaussian_filter1d(n_of_z, sigma_gaussian_filter, axis=0)
+    # plt.figure()
+    # for zi in range(zbins):
+    #     plt.plot(zgrid_nz, n_of_z[:, zi], label=f'zbin {zi}', c=colors[zi], ls='-')
+    #     plt.plot(zgrid_nz, n_of_z[:, zi], c=colors[zi], ls='--')
+    # plt.title(f'sigma = {sigma_gaussian_filter}')
 
+n_of_z_bnt = n_of_z
 
-# for interpolation_kind in ['linear', 'nearest', 'nearest-up', 'zero', 'slinear', 'quadratic', 'cubic', 'previous',
-#                            'next']:
-for interpolation_kind in ['linear', ]:
+# ! shift it (plus, re-normalize it after the shift)
+if shift_dz:
+    n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z, dz_shifts, normalize=False, plot_nz=False,
+                                interpolation_kind=interpolation_kind)
 
-    # ! shift it (plus, re-normalize it after the shift)
-    if shift_dz:
-        n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z, dz_shifts, normalize=False, plot_nz=False,
-                                    interpolation_kind=interpolation_kind)
+if compute_bnt_with_shifted_nz:
+    n_of_z_bnt = n_of_z
 
-    BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z_original, plot_nz=False)
+BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z_bnt, plot_nz=False)
 
-    # ! load new kernels, including mag bias and IA
-    wf_folder = Sijkl_cfg['wf_input_folder']
-    wf_delta = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="delta", **variable_specs)}')
-    wf_gamma = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="gamma", **variable_specs)}')
-    wf_ia = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="ia", **variable_specs)}')
-    wf_mu = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="mu", **variable_specs)}')
+# ! load new kernels, including mag bias and IA
+wf_folder = Sijkl_cfg['wf_input_folder']
+wf_delta = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="delta", **variable_specs)}')
+wf_gamma = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="gamma", **variable_specs)}')
+wf_ia = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="ia", **variable_specs)}')
+wf_mu = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="mu", **variable_specs)}')
 
-    z_grid_kernels = wf_delta[:, 0]
-    wf_delta = wf_delta[:, 1:]
-    wf_gamma = wf_gamma[:, 1:]
-    wf_ia = wf_ia[:, 1:]
-    wf_mu = wf_mu[:, 1:]
+z_grid_kernels = wf_delta[:, 0]
+wf_delta = wf_delta[:, 1:]
+wf_gamma = wf_gamma[:, 1:]
+wf_ia = wf_ia[:, 1:]
+wf_mu = wf_mu[:, 1:]
 
-    # construct lensing kernel
-    ia_bias = wf_cl_lib.build_IA_bias_1d_arr(z_grid_kernels, input_z_grid_lumin_ratio=None, input_lumin_ratio=None,
-                                             cosmo=cosmo_ccl,
-                                             A_IA=flattened_fiducial_pars_dict['Aia'],
-                                             eta_IA=flattened_fiducial_pars_dict['eIA'],
-                                             beta_IA=flattened_fiducial_pars_dict['bIA'],
-                                             C_IA=None,
-                                             growth_factor=None,
-                                             output_F_IA_of_z=False)
-    wf_lensing = wf_gamma + ia_bias[:, None] * wf_ia
+# construct lensing kernel
+ia_bias = wf_cl_lib.build_IA_bias_1d_arr(z_grid_kernels, input_z_grid_lumin_ratio=None, input_lumin_ratio=None,
+                                         cosmo=cosmo_ccl,
+                                         A_IA=flattened_fiducial_pars_dict['Aia'],
+                                         eta_IA=flattened_fiducial_pars_dict['eIA'],
+                                         beta_IA=flattened_fiducial_pars_dict['bIA'],
+                                         C_IA=None,
+                                         growth_factor=None,
+                                         output_F_IA_of_z=False)
+wf_lensing = wf_gamma + ia_bias[:, None] * wf_ia
 
-    # ! XXX RESTORE THIS PART TO PRODUCE PLOT FOR THE THESIS
-    dndz = (zgrid_nz, n_of_z)
+# ! XXX RESTORE THIS PART TO PRODUCE PLOT FOR THE THESIS
+dndz = (zgrid_nz, n_of_z)
 
-    # Define the keyword arguments as a dictionary
-    ia_bias_2d = (z_grid_kernels, ia_bias)
-    kwargs = {
-        'cosmo': cosmo_ccl,
-        'dndz': dndz,
-        'ia_bias': None,
-        'A_IA': flattened_fiducial_pars_dict['Aia'],
-        'eta_IA': flattened_fiducial_pars_dict['eIA'],
-        'beta_IA': flattened_fiducial_pars_dict['bIA'],
-        'C_IA': None,
-        'growth_factor': None,
-        'return_PyCCL_object': True,
-        'n_samples': len(zgrid_nz)
-    }
+# Define the keyword arguments as a dictionary
+ia_bias_2d = (z_grid_kernels, ia_bias)
+kwargs = {
+    'cosmo': cosmo_ccl,
+    'dndz': dndz,
+    'ia_bias': None,
+    'A_IA': flattened_fiducial_pars_dict['Aia'],
+    'eta_IA': flattened_fiducial_pars_dict['eIA'],
+    'beta_IA': flattened_fiducial_pars_dict['bIA'],
+    'C_IA': None,
+    'growth_factor': None,
+    'return_PyCCL_object': True,
+    'n_samples': len(zgrid_nz)
+}
 
-    # Use * to unpack positional arguments and ** to unpack keyword arguments
-    wf_lensing_ccl_obj = wf_cl_lib.wil_PyCCL(zgrid_nz, 'without_IA', **kwargs)
-    wf_lensing_ccl = wf_cl_lib.wil_PyCCL(zgrid_nz, 'with_IA', **{**kwargs, 'return_PyCCL_object': False})
-    wf_gamma_ccl = wf_cl_lib.wil_PyCCL(zgrid_nz, 'without_IA', **{**kwargs, 'return_PyCCL_object': False})
-    wf_ia_ccl = wf_cl_lib.wil_PyCCL(zgrid_nz, 'IA_only', **{**kwargs, 'return_PyCCL_object': False})
+# Use * to unpack positional arguments and ** to unpack keyword arguments
+wf_lensing_ccl_obj = wf_cl_lib.wil_PyCCL(zgrid_nz, 'without_IA', **kwargs)
+wf_lensing_ccl = wf_cl_lib.wil_PyCCL(zgrid_nz, 'with_IA', **{**kwargs, 'return_PyCCL_object': False})
+wf_gamma_ccl = wf_cl_lib.wil_PyCCL(zgrid_nz, 'without_IA', **{**kwargs, 'return_PyCCL_object': False})
+wf_ia_ccl = wf_cl_lib.wil_PyCCL(zgrid_nz, 'IA_only', **{**kwargs, 'return_PyCCL_object': False})
 
-    # BNT-transform
-    wf_gamma_ccl_bnt = (BNT_matrix @ wf_gamma_ccl.T).T
-    wf_gamma_bnt = (BNT_matrix @ wf_gamma.T).T
+# BNT-transform
+wf_gamma_ccl_bnt = (BNT_matrix @ wf_gamma_ccl.T).T
+wf_gamma_bnt = (BNT_matrix @ wf_gamma.T).T
 
-    wf_lensing_ccl_bnt = (BNT_matrix @ wf_lensing_ccl.T).T
-    wf_lensing_bnt = (BNT_matrix @ wf_lensing.T).T
+wf_lensing_ccl_bnt = (BNT_matrix @ wf_lensing_ccl.T).T
+wf_lensing_bnt = (BNT_matrix @ wf_lensing.T).T
 
-    # compute z means
-    if use_ia:
-        wf_ccl = wf_lensing_ccl
-        wf_ccl_bnt = wf_lensing_ccl_bnt
-        wf_vin = wf_lensing
-        wf_vin_bnt = wf_lensing_bnt
-    else:
-        wf_ccl = wf_gamma_ccl
-        wf_ccl_bnt = wf_gamma_ccl_bnt
-        wf_vin = wf_gamma
-        wf_vin_bnt = wf_gamma_bnt
+# compute z means
+if use_ia:
+    wf_ccl = wf_lensing_ccl
+    wf_ccl_bnt = wf_lensing_ccl_bnt
+    wf_vin = wf_lensing
+    wf_vin_bnt = wf_lensing_bnt
+else:
+    wf_ccl = wf_gamma_ccl
+    wf_ccl_bnt = wf_gamma_ccl_bnt
+    wf_vin = wf_gamma
+    wf_vin_bnt = wf_gamma_bnt
 
-    z_means = wf_cl_lib.get_z_means(zgrid_nz, wf_ccl)
-    z_means_bnt = wf_cl_lib.get_z_means(zgrid_nz, wf_ccl_bnt)
+z_means = wf_cl_lib.get_z_means(zgrid_nz, wf_ccl)
+z_means_bnt = wf_cl_lib.get_z_means(zgrid_nz, wf_ccl_bnt)
 
-    # this plot will go in the thesis
-    plt.figure()
-    for zi in range(zbins):
-        # if zi in [2, 10]:
-        #     plt.axvline(z_means[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
-        #     plt.axvline(z_means_bnt[zi], ls='--', c=colors[zi], ymin=0, lw=2, zorder=1)
-        # plt.axvline(z_center_values[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
+# this plot will go in the thesis
+plt.figure()
+for zi in range(zbins):
+    # if zi in [2, 10]:
+    #     plt.axvline(z_means[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
+    #     plt.axvline(z_means_bnt[zi], ls='--', c=colors[zi], ymin=0, lw=2, zorder=1)
+    # plt.axvline(z_center_values[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
 
-        plt.plot(zgrid_nz, wf_ccl[:, zi], ls='-', c=colors[zi], alpha=0.6)
-        plt.plot(zgrid_nz, wf_ccl_bnt[:, zi], ls='-', c=colors[zi], alpha=0.6)
+    plt.plot(zgrid_nz, wf_ccl[:, zi], ls='-', c=colors[zi], alpha=0.6)
+    plt.plot(zgrid_nz, wf_ccl_bnt[:, zi], ls='-', c=colors[zi], alpha=0.6)
 
-        plt.plot(z_grid_kernels, wf_vin[:, zi], ls=':', label='$z_{%d}$' % (zi + 1), c=colors[zi], alpha=0.6)
-        plt.plot(z_grid_kernels, wf_vin_bnt[:, zi], ls=':', c=colors[zi], alpha=0.6)
+    plt.plot(z_grid_kernels, wf_vin[:, zi], ls=':', label='$z_{%d}$' % (zi + 1), c=colors[zi], alpha=0.6)
+    plt.plot(z_grid_kernels, wf_vin_bnt[:, zi], ls=':', c=colors[zi], alpha=0.6)
 
-    # plt.legend(loc='upper right', fontsize=15)
-    plt.title(f'interpolation_kind {interpolation_kind}, use_ia {use_ia}, sigma_gauss {sigma_gaussian_filter}\n'
-              f'shift_dz {shift_dz}')
-    plt.xlabel('$z$')
-    plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
+# plt.legend(loc='upper right', fontsize=15)
+plt.title(f'interpolation_kind {interpolation_kind}, use_ia {use_ia}, sigma_gauss {sigma_gaussian_filter}\n'
+          f'shift_dz {shift_dz}')
+plt.xlabel('$z$')
+plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
 
-    # Create first legend from the labels in the plot commands
-    legend1 = plt.legend(loc='right', fontsize=15)
-    # Create custom lines for the second legend
-    line_standard = mlines.Line2D([], [], color='black', linestyle='-', label='Standard')
-    line_bnt = mlines.Line2D([], [], color='black', linestyle='--', label='BNT')
-    # Create second legend
-    legend2 = plt.legend(handles=[line_standard, line_bnt], loc='upper right', fontsize=15)
-    # Add the first legend back
-    plt.gca().add_artist(legend1)
-    plt.xlabel('$z$')
-    plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
+# Create first legend from the labels in the plot commands
+legend1 = plt.legend(loc='right', fontsize=15)
+# Create custom lines for the second legend
+line_standard = mlines.Line2D([], [], color='black', linestyle='-', label='Davide')
+line_bnt = mlines.Line2D([], [], color='black', linestyle=':', label='Vincenzo')
+# Create second legend
+legend2 = plt.legend(handles=[line_standard, line_bnt], loc='upper right', fontsize=15)
+# Add the first legend back
+plt.gca().add_artist(legend1)
+plt.xlabel('$z$')
+plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
 
-    plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/std_and_bnt_gamma_kernel.pdf', dpi=500,
-                bbox_inches='tight')
-    # end thesis plot
+plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/std_and_bnt_gamma_kernel.pdf', dpi=500,
+            bbox_inches='tight')
+# end thesis plot
 
-    ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means)
-    ell_cuts_dict_bnt = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_bnt)
+ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means)
+ell_cuts_dict_bnt = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_bnt)
 
-    # ! matshow ell cuts with and wo BNT - another thesis plot
-    # Get the global min and max values for the color scale
-    vmin = min(ell_cuts_dict['LL'].min(), ell_cuts_dict_bnt['LL'].min())
-    vmax = max(ell_cuts_dict['LL'].max(), ell_cuts_dict_bnt['LL'].max())
+plot_ell_cuts_for_thesis(ell_cuts_dict, ell_cuts_dict_bnt)
 
-    # Create a gridspec layout
-    fig = plt.figure(figsize=(12, 5))
-    gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 0.05])
-
-    # Create axes based on the gridspec layout
-    ax0 = plt.subplot(gs[0])
-    ax1 = plt.subplot(gs[1])
-    cbar_ax = plt.subplot(gs[2])
-
-    ticks = np.arange(1, zbins + 1)
-    # Set x and y ticks for both subplots
-    for ax in [ax0, ax1]:
-        ax.set_xticks(np.arange(zbins))
-        ax.set_yticks(np.arange(zbins))
-        ax.set_xticklabels(ticks)
-        ax.set_yticklabels(ticks)
-        ax.set_xlabel('$z_{\\rm bin}$')
-        ax.set_ylabel('$z_{\\rm bin}$')
-
-    # Display the matrices with the shared color scale
-    cax0 = ax0.matshow(ell_cuts_dict['LL'], vmin=vmin, vmax=vmax)
-    cax1 = ax1.matshow(ell_cuts_dict_bnt['LL'], vmin=vmin, vmax=vmax)
-
-    # Add titles to the plots
-    ax0.set_title('Standard', fontsize=20)
-    ax1.set_title(f'BNT, {interpolation_kind}', fontsize=20)
-
-    # Add a shared colorbar on the right
-    cbar = fig.colorbar(cax0, cax=cbar_ax)
-    cbar.set_label('$\\ell^{\\rm max}_{ij}$')
-
-    plt.tight_layout()
-    plt.show()
-
-    plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/z_dependent_ell_cuts.pdf', dpi=300,
-                bbox_inches='tight')
-
+assert False
 
 # ! import and reshape datavectors (cl) and response functions (rl)
 # cl_fld = general_cfg['cl_folder']

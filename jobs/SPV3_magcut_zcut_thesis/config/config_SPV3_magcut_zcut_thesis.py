@@ -249,8 +249,8 @@ FM_cfg = {
     'derivatives_BNT_transform': deriv_BNT_transform,
     'deriv_ell_cuts': deriv_ell_cuts,
 
-    'fm_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}' +
-                 '/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}',
+    'fm_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/' +
+                 'BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}',
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,
 

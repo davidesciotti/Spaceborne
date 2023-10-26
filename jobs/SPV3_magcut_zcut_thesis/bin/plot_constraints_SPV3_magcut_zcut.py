@@ -77,7 +77,7 @@ for go_or_gs in ['GO', ]:
             for ell_cuts in [False, True]:
                 for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
                     for whose_FM in whose_FM_list:
-                        for center_or_min in ['center', ]:
+                        for center_or_min in ['center', 'min']:
 
                             names_params_to_fix = []
 

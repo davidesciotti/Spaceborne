@@ -14,6 +14,7 @@ import matplotlib.gridspec as gridspec
 import yaml
 from scipy.ndimage import gaussian_filter1d
 import pprint
+
 pp = pprint.PrettyPrinter(indent=4)
 
 project_path = Path.cwd().parent.parent.parent
@@ -266,6 +267,7 @@ def plot_ell_cuts_for_thesis(ell_cuts_dict, ell_cuts_dict_bnt, key='LL'):
     # Add titles to the plots
     ax0.set_title('Standard', fontsize=20)
     ax1.set_title(f'BNT, {interpolation_kind}', fontsize=20)
+    fig.suptitle(f'kmax = {kmax_h_over_Mpc} h/Mpc', fontsize=20)
 
     # Add a shared colorbar on the right
     cbar = fig.colorbar(cax0, cax=cbar_ax)
@@ -296,7 +298,7 @@ warnings.warn('FIGURE OUT THE CUTS FOR THE GL CASE!!!')
 
 # general_cfg['kmax_h_over_Mpc_list'] = general_cfg['kmax_h_over_Mpc_list']
 for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
-    for general_cfg['center_or_min'] in ['min', 'center']:
+    for general_cfg['center_or_min'] in ['min', ]:
         # for general_cfg['which_pk'] in general_cfg['which_pk_list']:
 
         with open(
@@ -328,7 +330,6 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
         idR = general_cfg['idR']
         idBM = general_cfg['idBM']
         BNT_transform = general_cfg['BNT_transform']
-
         h = flat_fid_pars_dict['h']
 
         # construct lensing kernel - I need to add IA
@@ -366,7 +367,6 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
 
         assert magcut_lens == 245, 'magcut_lens must be 245: the yaml file with the fiducial params is for magcut 245'
         assert magcut_source == 245, 'magcut_source must be 245: the yaml file with the fiducial params is for magcut 245'
-
 
         # which cases to save: GO, GS or GO, GS and SS
         cases_tosave = ['GO', ]
@@ -447,14 +447,12 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
                           'magcut_source': magcut_source, 'zcut_source': zcut_source, 'zmax': zmax,
                           'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_XC': ell_max_XC,
                           'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
-                          'kmax_h_over_Mpc': kmax_h_over_Mpc, center_or_min: center_or_min,
+                          'kmax_h_over_Mpc': kmax_h_over_Mpc, 'center_or_min': center_or_min,
                           'idIA': idIA, 'idB': idB, 'idM': idM, 'idR': idR, 'idBM': idBM,
                           'flat_or_nonflat': flat_or_nonflat,
                           'which_pk': which_pk, 'BNT_transform': BNT_transform,
                           }
-
         pp.pprint(variable_specs)
-
 
         # import nuisance, to get fiducials and to shift the distribution
         nuisance_tab = np.genfromtxt(f'{covariance_cfg["nuisance_folder"]}/{covariance_cfg["nuisance_filename"]}')
@@ -472,8 +470,8 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
         # just a check, to be sure that the nuisance file is the same one defined in the yaml file
         dz_shifts_names = [f'dzWL{zi:02d}' for zi in range(1, zbins + 1)]
         dz_shifts = np.array([flat_fid_pars_dict[dz_shifts_names[zi]] for zi in range(zbins)])
-        np.testing.assert_array_equal(dz_shifts, dzWL_fiducial,
-                                      err_msg='dzWL shifts do not match with the ones from tha yml file')
+        np.testing.assert_array_equal(dz_shifts, dzWL_fiducial, err_msg='dzWL shifts do not match with '
+                                                                        'the ones from tha yml file')
         np.testing.assert_array_equal(dzWL_fiducial, dzGC_fiducial, err_msg='dzWL and dzGC shifts do not match')
 
         # ! import n(z), for the BNT and the scale cuts
@@ -488,6 +486,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
         gaussian_smoothing = False  # does not seem to have a large effect...
         sigma_gaussian_filter = 2
         shift_dz = True
+        normalize_shifted_nz = True
         compute_bnt_with_shifted_nz = False  # ! let's test this
         use_ia = True
         use_fs1 = False
@@ -513,7 +512,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
 
         # ! shift it (plus, re-normalize it after the shift)
         if shift_dz:
-            n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z, dz_shifts, normalize=False, plot_nz=False,
+            n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z, dz_shifts, normalize=normalize_shifted_nz, plot_nz=False,
                                         interpolation_kind=interpolation_kind)
 
         if compute_bnt_with_shifted_nz:
@@ -535,7 +534,8 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
         wf_mu_vin = wf_mu_vin[:, 1:]
 
         # ! my kernels
-        ia_bias_vin = wf_cl_lib.build_IA_bias_1d_arr(zgrid_wf_vin, input_z_grid_lumin_ratio=None, input_lumin_ratio=None,
+        ia_bias_vin = wf_cl_lib.build_IA_bias_1d_arr(zgrid_wf_vin, input_z_grid_lumin_ratio=None,
+                                                     input_lumin_ratio=None,
                                                      cosmo=cosmo_ccl,
                                                      A_IA=flat_fid_pars_dict['Aia'],
                                                      eta_IA=flat_fid_pars_dict['eIA'],
@@ -588,6 +588,14 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
         z_means = wf_cl_lib.get_z_means(zgrid_nz, wf_ccl)
         z_means_bnt = wf_cl_lib.get_z_means(zgrid_nz, wf_ccl_bnt)
 
+        # check that the z means are close (within 5%)
+        z_means_2 = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_vin)
+        z_means_bnt_2 = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_vin_bnt)
+        np.testing.assert_allclose(z_means, z_means_2, rtol=1e-2, atol=0,
+                                   err_msg='z means computed w/ my vs vincenzo kernels don\'t match')
+        np.testing.assert_allclose(z_means_bnt, z_means_bnt_2, rtol=5e-2, atol=0,
+                                   err_msg='z means bnt computed w/ my vs vincenzo kernels don\'t match')
+
         # this plot will go in the thesis
         plt.figure()
         for zi in range(zbins):
@@ -620,21 +628,21 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
         plt.xlabel('$z$')
         plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
 
-        plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/std_and_bnt_gamma_kernel.pdf', dpi=500,
+        plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/std_and_bnt_gamma_kernel.pdf',
+                    dpi=500,
                     bbox_inches='tight')
         # end thesis plot
 
-        # this is to produce the thesis plot
-        # ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means)
-        # ell_cuts_dict_bnt = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_bnt)
-        # plot_ell_cuts_for_thesis(ell_cuts_dict, ell_cuts_dict_bnt)
+        # this is to produce the plot and check that the BNT cuts are better
+        ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means)
+        ell_cuts_dict_bnt = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_bnt)
+        plot_ell_cuts_for_thesis(ell_cuts_dict, ell_cuts_dict_bnt)
 
         if BNT_transform:
             z_means = z_means_bnt
 
         ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means)
         ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the covariance module
-        mm.matshow(ell_cuts_dict['LL'], title=f'BNT transform {BNT_transform}\nkmax_h_over_Mpc{kmax_h_over_Mpc:.2f}')
 
         # ! import and reshape datavectors (cl) and response functions (rl)
         # cl_fld = general_cfg['cl_folder']
@@ -672,13 +680,16 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
         warnings.warn(
             'HARDCODED PATH FOR 3D CLS; you will need to use them without d shift onve vincenzo passes them to you')
         cl_ll_3d = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_ShearShear_C00.npy')
-        cl_gl_3d = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_PosShear_C00.npy')[:nbl_3x2pt,
+        cl_gl_3d = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_PosShear_C00.npy')[
+                   :nbl_3x2pt,
                    ...]
-        cl_gg_3d = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_PosPos_C00.npy')[:nbl_3x2pt,
+        cl_gg_3d = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_PosPos_C00.npy')[
+                   :nbl_3x2pt,
                    ...]
         cl_wa_3d = cl_ll_3d[nbl_3x2pt:, :, :]
         warnings.warn('cl_wa_3d is just an array of ones!!')
-        cl_3x2pt_5d = cl_utils.build_3x2pt_datavector_5D(cl_ll_3d[:nbl_3x2pt, ...], cl_gl_3d, cl_gg_3d, nbl_3x2pt, zbins,
+        cl_3x2pt_5d = cl_utils.build_3x2pt_datavector_5D(cl_ll_3d[:nbl_3x2pt, ...], cl_gl_3d, cl_gg_3d, nbl_3x2pt,
+                                                         zbins,
                                                          n_probes=2)
 
         # rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
@@ -689,7 +700,8 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
         rl_gl_3d = np.ones((nbl_3x2pt, zbins, zbins))
         rl_gg_3d = np.ones((nbl_3x2pt, zbins, zbins))
         rl_wa_3d = np.ones((nbl_WA, zbins, zbins))
-        rl_3x2pt_5d = cl_utils.build_3x2pt_datavector_5D(rl_ll_3d[:nbl_3x2pt, ...], rl_gl_3d, rl_gg_3d, nbl_3x2pt, zbins,
+        rl_3x2pt_5d = cl_utils.build_3x2pt_datavector_5D(rl_ll_3d[:nbl_3x2pt, ...], rl_gl_3d, rl_gg_3d, nbl_3x2pt,
+                                                         zbins,
                                                          n_probes=2)
 
         # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
@@ -982,11 +994,11 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
                                       BNT_matrix)
         FM_dict['param_names_dict'] = param_names_dict
         FM_dict['fiducial_values_dict'] = fiducials_dict
-        FM_dict[
-            'fiducials_dict_flattened'] = fiducials_dict_flattened  # TODO probably better with a yaml file...
+        FM_dict['fiducials_dict_flattened'] = fiducials_dict_flattened  # TODO probably better with a yaml file...
 
         fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
                                                which_cuts=general_cfg['which_cuts'],
+                                               BNT_transform=str(BNT_transform),
                                                center_or_min=general_cfg['center_or_min'])
         if not general_cfg['ell_cuts']:
             fm_folder = fm_folder.replace(f'/{general_cfg["which_cuts"]}/ell_{center_or_min}', '')
@@ -1001,4 +1013,4 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
         del cov_dict
         gc.collect()
 
-print('Finished in {:.2f} seconds'.format(time.perf_counter() - script_start_time))
+print('Finished in {:.2f} minutes'.format((time.perf_counter() - script_start_time) / 60))

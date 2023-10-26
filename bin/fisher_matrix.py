@@ -253,6 +253,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         # assert covariance_cfg['cov_BNT_transform'], 'you should BNT transform the covariance as well'
         assert BNT_matrix is not None, 'you should provide a BNT matrix'
 
+        print('BNT-transforming the derivatives..')
         for param_idx in range(len(param_names_3x2pt)):
             dC_LL_4D[:, :, :, param_idx] = cl_utils.cl_BNT_transform(dC_LL_4D[:, :, :, param_idx], BNT_matrix, 'L', 'L')
             dC_WA_4D[:, :, :, param_idx] = cl_utils.cl_BNT_transform(dC_WA_4D[:, :, :, param_idx], BNT_matrix, 'L', 'L')

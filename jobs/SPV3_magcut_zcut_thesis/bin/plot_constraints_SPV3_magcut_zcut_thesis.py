@@ -26,7 +26,8 @@ FM_cfg = cfg.FM_cfg
 
 # ! options
 specs_str = 'idIA2_idB3_idM3_idR1'
-fm_root_path = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM'
+fm_root_path = ('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/'
+                'jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM')
 EP_or_ED = 'EP'
 zbins = 13
 num_params_tokeep = 7
@@ -50,7 +51,6 @@ ZL = 2
 ZS = 2
 probes = ('WL', 'GC', '3x2pt')
 which_cuts = 'Vincenzo'
-h = 0.6737
 whose_FM_list = ('davide',)
 # ! options
 
@@ -68,13 +68,14 @@ assert fix_curvature, 'I am studying only flat models'
 assert 'Flagship_2' in fm_root_path, 'The input files used in this job for flagship version 2!'
 assert which_cuts == 'Vincenzo', ('to begin with, use only Vincenzo/standard cuts. '
                                   'For the thesis, probably use just these')
+assert not use_Wadd, 'import of Wadd not implemented yet'
 
 fm_uncert_df = pd.DataFrame()
 for go_or_gs in ['GO', ]:
     for probe in probes:
         for BNT_transform in [False, True]:
             for ell_cuts in [False, True]:
-                for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
+                for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][::3]:
                     for whose_FM in whose_FM_list:
                         for center_or_min in ['center', 'min']:
 
@@ -115,6 +116,7 @@ for go_or_gs in ['GO', ]:
                             #           'fiducial_params_dict_for_FM.yml') as f:
                             #     fiducials_dict = yaml.safe_load(f)
                             fiducials_dict = fm_dict['fiducials_dict_flattened']  # TODO probably better a yaml file...
+                            h = fiducials_dict['h']
 
                             assert fm.shape[0] == fm.shape[1], 'FM matrix is not square!'
                             assert len(fiducials_dict) == fm.shape[0], 'FM matrix and fiducial parameters ' \
@@ -130,7 +132,7 @@ for go_or_gs in ['GO', ]:
                             if fix_shear_bias:
                                 # print('fixing shear bias parameters')
                                 names_params_to_fix += [f'm{(zi + 1):02d}' for zi in range(zbins)]
-                                # in this way 👇there is no need for a 'add_shear_bias_prior' (or similar) boolean flag
+                                # in this way, 👇there is no need for a 'add_shear_bias_prior' (or similar) boolean flag
                                 shear_bias_prior = None
 
                             if fix_gal_bias:
@@ -244,9 +246,9 @@ uncert_perc_diff = fm_uncert_df_toplot[fm_uncert_df_toplot[key_to_compare] == 'p
 plt.figure()
 title = f'{probe_toplot}, {key_to_compare}={value_A} vs {value_B}'
 plt.title(f'{title}')
-plt.plot(general_cfg['kmax_h_over_Mpc_list'][:9:2], uncert_A, label=f'{key_to_compare}={value_A}', marker='o')
-plt.plot(general_cfg['kmax_h_over_Mpc_list'][:9:2], uncert_B, label=f'{key_to_compare}={value_B}', marker='o')
-plt.plot(general_cfg['kmax_h_over_Mpc_list'][:9:2], uncert_perc_diff, label='perc diff', marker='.')
+plt.plot(general_cfg['kmax_h_over_Mpc_list'][::3], uncert_A, label=f'{key_to_compare}={value_A}', marker='o')
+plt.plot(general_cfg['kmax_h_over_Mpc_list'][::3], uncert_B, label=f'{key_to_compare}={value_B}', marker='o')
+plt.plot(general_cfg['kmax_h_over_Mpc_list'][::3], uncert_perc_diff, label='perc diff', marker='.')
 plt.xscale('log')
 plt.xlabel(r'$k_{\rm max}$ [h/Mpc]')
 plt.ylabel(param_toplot)

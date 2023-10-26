@@ -64,9 +64,11 @@ import fisher_matrix as FM_utils
 #################### PARAMETERS AND SETTINGS DEFINITION #######################
 ###############################################################################
 
-def load_ell_cuts(kmax_h_over_Mpc, z_values):
+def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b):
     """loads ell_cut values, rescales them and load into a dictionary.
-    z_values: redshifts at which to compute the ell_max for a fiven Limber wavenumber"""
+    z_values_a: redshifts at which to compute the ell_max for a fiven Limber wavenumber, for probe A
+    z_values_b: redshifts at which to compute the ell_max for a fiven Limber wavenumber, for probe B
+    """
     if kmax_h_over_Mpc is None:
         kmax_h_over_Mpc = general_cfg['kmax_h_over_Mpc_ref']
 
@@ -105,8 +107,8 @@ def load_ell_cuts(kmax_h_over_Mpc, z_values):
         kmax_1_over_Mpc = kmax_h_over_Mpc * h
 
         ell_cuts_array = np.zeros((zbins, zbins))
-        for zi, zval_i in enumerate(z_values):
-            for zj, zval_j in enumerate(z_values):
+        for zi, zval_i in enumerate(z_values_a):
+            for zj, zval_j in enumerate(z_values_b):
                 r_of_zi = csmlib.astropy_comoving_distance(zval_i, use_h_units=False)
                 r_of_zj = csmlib.astropy_comoving_distance(zval_j, use_h_units=False)
                 ell_cut_i = kmax_1_over_Mpc * r_of_zi - 1 / 2
@@ -294,8 +296,9 @@ print("\033[94m TODO include mag bias in galaxy kernels? \033[0m")
 warnings.warn('FIGURE OUT THE CUTS FOR THE GL CASE!!!')
 
 # general_cfg['kmax_h_over_Mpc_list'] = general_cfg['kmax_h_over_Mpc_list']
-for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
-    for general_cfg['center_or_min'] in ['min', ]:
+for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
+    # I think that center is more accurate, it's where I compute the cl
+    for general_cfg['center_or_min'] in ['center', 'min']:
         # for general_cfg['which_pk'] in general_cfg['which_pk_list']:
 
         with open(
@@ -645,20 +648,10 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
             z_means_ll = z_means_ll_bnt
 
         ell_cuts_dict = {}
-        ell_cuts_dict['LL'] = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_ll)
-        ell_cuts_dict['GG'] = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_gg)
-
-        # TODO note: for the cross case I am not sure what to do. I am filling the upper vs lower diagonal with the 2 possible cuts...
-        # other option: take the most conservative cuts
-        ell_cuts_dict['GL'] = np.zeros_like(ell_cuts_dict['LL'])
-        for zi in range(zbins):
-            for zj in range(zbins):
-                if zi >= zj:
-                    ell_cuts_dict['GL'][zi, zj] = ell_cuts_dict['GG'][zi, zj]
-                else:
-                    ell_cuts_dict['GL'][zi, zj] = ell_cuts_dict['LL'][zi, zj]
-
-        ell_cuts_dict['LG'] = ell_cuts_dict['GL'].T
+        ell_cuts_dict['LL'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_ll, z_values_b=z_means_ll)
+        ell_cuts_dict['GG'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_gg, z_values_b=z_means_gg)
+        ell_cuts_dict['GL'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_gg, z_values_b=z_means_ll)
+        ell_cuts_dict['LG'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_ll, z_values_b=z_means_gg)
 
         ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the covariance module
 
@@ -776,9 +769,6 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
             'LG': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
             '3x2pt': get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict)
         }
-
-        print(f'zzzzzzzz, BNT {BNT_transform}', len(ell_dict['idxs_to_delete_dict']['LL']))
-        break
 
         # ! 3d cl ell cuts (*after* BNT!!)
         cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
@@ -939,12 +929,12 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
 
         try:
             assert np.all(vinc_param_names == my_sorted_param_names), \
-                f'\nparams present in input folder but not in the cfg file: {param_names_not_in_my_list}\n' \
-                f'params present in cfg file but not in the input folder: {param_names_not_in_vinc_list}'
+                f'Params present in input folder but not in the cfg file: {param_names_not_in_my_list}\n' \
+                f'Params present in cfg file but not in the input folder: {param_names_not_in_vinc_list}'
         except AssertionError as error:
             print(error)
             if param_names_not_in_vinc_list == ['logT_AGN']:
-                print('the derivative w.r.t logT_AGN is missing in the input folder but '
+                print('The derivative w.r.t logT_AGN is missing in the input folder but '
                       'the corresponding FM is still set to 0; moving on')
             else:
                 raise AssertionError(
@@ -1034,4 +1024,5 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
         del cov_dict
         gc.collect()
 
+mm.say()
 print('Finished in {:.2f} minutes'.format((time.perf_counter() - script_start_time) / 60))

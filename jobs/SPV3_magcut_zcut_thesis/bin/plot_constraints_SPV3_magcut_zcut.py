@@ -50,7 +50,6 @@ ZL = 2
 ZS = 2
 probes = ('WL', 'GC', '3x2pt')
 which_cuts = 'Vincenzo'
-center_or_min = 'center'
 h = 0.6737
 whose_FM_list = ('davide',)
 # ! options
@@ -216,7 +215,7 @@ value_B = False
 param_toplot = 'FoM'
 # param_toplot = cosmo_param_names
 probe_toplot = '3x2pt'
-center_or_min = 'center'
+center_or_min = 'min'
 ell_cuts = True
 
 # add percent difference to the dataframe

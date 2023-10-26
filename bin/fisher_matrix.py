@@ -208,8 +208,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         cov_3x2pt_GS_2D_inv = np.eye(cov_dict['cov_3x2pt_GO_2D'].shape[0])
         warnings.warn('Not computing GS constraints, setting the inverse covmats to identity')
 
-
-
     # load reshaped derivatives, with shape (nbl, zbins, zbins, nparams)
     dC_LL_4D = deriv_dict['dC_LL_4D']
     dC_GG_4D = deriv_dict['dC_GG_4D']
@@ -278,7 +276,8 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_XCfor3x2pt_4D = dC_3x2pt_6D[probe_A, probe_B, :, :, :, :]
     dC_GGfor3x2pt_4D = dC_3x2pt_6D[1, 1, :, :, :, :]
 
-    np.testing.assert_allclose(dC_GGfor3x2pt_4D, dC_GG_4D, atol=0, rtol=1e-5, err_msg= "dC_GGfor3x2pt_4D and dC_GG_4D are not equal")
+    np.testing.assert_allclose(dC_GGfor3x2pt_4D, dC_GG_4D, atol=0, rtol=1e-5,
+                               err_msg="dC_GGfor3x2pt_4D and dC_GG_4D are not equal")
     assert nbl_3x2pt == nbl_GC, 'nbl_3x2pt and nbl_GC are not equal'
 
     # flatten z indices, obviously following the ordering given in ind
@@ -305,6 +304,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
 
     # ! cut the *flattened* derivatives vector
     if FM_cfg['deriv_ell_cuts']:
+        print('Performing the ell cuts on the derivatives...')
         dC_LL_2D = np.delete(dC_LL_2D, ell_dict['idxs_to_delete_dict']['LL'], axis=0)
         dC_GG_2D = np.delete(dC_GG_2D, ell_dict['idxs_to_delete_dict']['GG'], axis=0)
         dC_WA_2D = np.delete(dC_WA_2D, ell_dict['idxs_to_delete_dict']['WA'], axis=0)

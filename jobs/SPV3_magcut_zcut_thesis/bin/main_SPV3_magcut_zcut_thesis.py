@@ -293,7 +293,7 @@ FM_cfg = cfg.FM_cfg
 print("\033[94m TODO restore loop over which_pk \033[0m")
 print("\033[94m TODO restore full loop over kmax_h_over_Mpc_list \033[0m")
 print("\033[94m TODO restore loop over ell_center, ell_min \033[0m")
-print("\033[94m TODO use vincenzo wf for zmean for ell cuts? \033[0m")
+print("\033[94m TODO include mag bias in galaxy kernels? \033[0m")
 warnings.warn('FIGURE OUT THE CUTS FOR THE GL CASE!!!')
 
 # general_cfg['kmax_h_over_Mpc_list'] = general_cfg['kmax_h_over_Mpc_list']
@@ -544,10 +544,11 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
                                                      growth_factor=None,
                                                      output_F_IA_of_z=False)
         wf_lensing_vin = wf_gamma_vin + ia_bias_vin[:, None] * wf_ia_vin
+        wf_galaxy_vin = wf_delta_vin  # + wf_mu_vin  # TODO in theory, I should BNT-tansform wf_mu...
 
         dndz = (zgrid_nz, n_of_z)
         # Define the keyword arguments as a dictionary
-        kwargs = {
+        wil_ccl_kwargs = {
             'cosmo': cosmo_ccl,
             'dndz': dndz,
             'ia_bias': None,
@@ -559,14 +560,32 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
             'return_PyCCL_object': True,
             'n_samples': len(zgrid_nz)
         }
+        wig_ccl_kwargs = {
+            'gal_bias_2d_array': np.ones((len(zgrid_nz), zbins)),
+            'fiducial_params': flat_fid_pars_dict,
+            'bias_model': 'step-wise',
+            'cosmo': cosmo_ccl,
+            'return_PyCCL_object': True,
+            'dndz': dndz,
+            'n_samples': len(zgrid_nz)
+        }
 
         # Use * to unpack positional arguments and ** to unpack keyword arguments
-        wf_lensing_ccl_obj = wf_cl_lib.wil_PyCCL(zgrid_nz, 'without_IA', **kwargs)
-        wf_lensing_ccl = wf_cl_lib.wil_PyCCL(zgrid_nz, 'with_IA', **{**kwargs, 'return_PyCCL_object': False})
-        wf_gamma_ccl = wf_cl_lib.wil_PyCCL(zgrid_nz, 'without_IA', **{**kwargs, 'return_PyCCL_object': False})
-        wf_ia_ccl = wf_cl_lib.wil_PyCCL(zgrid_nz, 'IA_only', **{**kwargs, 'return_PyCCL_object': False})
+        wf_lensing_ccl_obj = wf_cl_lib.wil_PyCCL(zgrid_nz, 'without_IA', **wil_ccl_kwargs)
+        wf_lensing_ccl = wf_cl_lib.wil_PyCCL(zgrid_nz, 'with_IA', **{**wil_ccl_kwargs, 'return_PyCCL_object': False})
+        wf_gamma_ccl = wf_cl_lib.wil_PyCCL(zgrid_nz, 'without_IA', **{**wil_ccl_kwargs, 'return_PyCCL_object': False})
+        wf_ia_ccl = wf_cl_lib.wil_PyCCL(zgrid_nz, 'IA_only', **{**wil_ccl_kwargs, 'return_PyCCL_object': False})
 
-        # BNT-transform
+        wf_galaxy_ccl_obj = wf_cl_lib.wig_PyCCL(zgrid_nz, 'without_galaxy_bias', **wig_ccl_kwargs)
+        wf_galaxy_ccl = wf_cl_lib.wig_PyCCL(zgrid_nz, 'without_galaxy_bias',
+                                            **{**wig_ccl_kwargs, 'return_PyCCL_object': False})
+
+        plt.figure()
+        for zi in range(zbins):
+            plt.plot(zgrid_wf_vin, wf_galaxy_vin[:, zi], ls='-', alpha=0.6)
+            plt.plot(zgrid_nz, wf_galaxy_ccl[:, zi], ls='--', alpha=0.6)
+
+        # BNT-transform the lensing kernels
         wf_gamma_ccl_bnt = (BNT_matrix @ wf_gamma_ccl.T).T
         wf_gamma_vin_bnt = (BNT_matrix @ wf_gamma_vin.T).T
 
@@ -575,73 +594,64 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
 
         # compute z means
         if use_ia:
-            wf_ccl = wf_lensing_ccl
-            wf_ccl_bnt = wf_lensing_ccl_bnt
-            wf_vin = wf_lensing_vin
-            wf_vin_bnt = wf_lensing_vin_bnt
+            wf_ll_ccl = wf_lensing_ccl
+            wf_ll_ccl_bnt = wf_lensing_ccl_bnt
+            wf_ll_vin = wf_lensing_vin
+            wf_ll_vin_bnt = wf_lensing_vin_bnt
         else:
-            wf_ccl = wf_gamma_ccl
-            wf_ccl_bnt = wf_gamma_ccl_bnt
-            wf_vin = wf_gamma_vin
-            wf_vin_bnt = wf_gamma_vin_bnt
+            wf_ll_ccl = wf_gamma_ccl
+            wf_ll_ccl_bnt = wf_gamma_ccl_bnt
+            wf_ll_vin = wf_gamma_vin
+            wf_ll_vin_bnt = wf_gamma_vin_bnt
 
-        z_means = wf_cl_lib.get_z_means(zgrid_nz, wf_ccl)
-        z_means_bnt = wf_cl_lib.get_z_means(zgrid_nz, wf_ccl_bnt)
+        z_means_ll = wf_cl_lib.get_z_means(zgrid_nz, wf_ll_ccl)
+        z_means_gg = wf_cl_lib.get_z_means(zgrid_nz, wf_galaxy_ccl)
+        z_means_ll_bnt = wf_cl_lib.get_z_means(zgrid_nz, wf_ll_ccl_bnt)
+        z_means_gg_bnt = wf_cl_lib.get_z_means(zgrid_nz, wf_galaxy_ccl_bnt)
 
         # check that the z means are close (within 5%)
-        z_means_2 = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_vin)
-        z_means_bnt_2 = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_vin_bnt)
-        np.testing.assert_allclose(z_means, z_means_2, rtol=1e-2, atol=0,
+        z_means_ll_vin = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_ll_vin)
+        z_means_ll_vin_bnt = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_ll_vin_bnt)
+        np.testing.assert_allclose(z_means_ll, z_means_ll_vin, rtol=1e-2, atol=0,
                                    err_msg='z means computed w/ my vs vincenzo kernels don\'t match')
-        np.testing.assert_allclose(z_means_bnt, z_means_bnt_2, rtol=5e-2, atol=0,
+        np.testing.assert_allclose(z_means_ll_bnt, z_means_ll_vin_bnt, rtol=5e-2, atol=0,
                                    err_msg='z means bnt computed w/ my vs vincenzo kernels don\'t match')
 
-        # this plot will go in the thesis
         plt.figure()
         for zi in range(zbins):
             # if zi in [2, 10]:
-            #     plt.axvline(z_means[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
-            #     plt.axvline(z_means_bnt[zi], ls='--', c=colors[zi], ymin=0, lw=2, zorder=1)
+            #     plt.axvline(z_means_ll[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
+            #     plt.axvline(z_means_ll_bnt[zi], ls='--', c=colors[zi], ymin=0, lw=2, zorder=1)
             # plt.axvline(z_center_values[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
 
-            plt.plot(zgrid_nz, wf_ccl[:, zi], ls='-', c=colors[zi], alpha=0.6)
-            plt.plot(zgrid_nz, wf_ccl_bnt[:, zi], ls='-', c=colors[zi], alpha=0.6)
+            plt.plot(zgrid_nz, wf_ll_ccl[:, zi], ls='-', c=colors[zi], alpha=0.6)
+            plt.plot(zgrid_nz, wf_ll_ccl_bnt[:, zi], ls='-', c=colors[zi], alpha=0.6)
 
-            plt.plot(zgrid_wf_vin, wf_vin[:, zi], ls=':', label='$z_{%d}$' % (zi + 1), c=colors[zi], alpha=0.6)
-            plt.plot(zgrid_wf_vin, wf_vin_bnt[:, zi], ls=':', c=colors[zi], alpha=0.6)
+            plt.plot(zgrid_wf_vin, wf_ll_vin[:, zi], ls=':', label='$z_{%d}$' % (zi + 1), c=colors[zi], alpha=0.6)
+            plt.plot(zgrid_wf_vin, wf_ll_vin_bnt[:, zi], ls=':', c=colors[zi], alpha=0.6)
 
-        # plt.legend(loc='upper right', fontsize=15)
         plt.title(f'interpolation_kind {interpolation_kind}, use_ia {use_ia}, sigma_gauss {sigma_gaussian_filter}\n'
                   f'shift_dz {shift_dz}')
         plt.xlabel('$z$')
         plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
 
-        # Create first legend from the labels in the plot commands
-        legend1 = plt.legend(loc='right', fontsize=15)
-        # Create custom lines for the second legend
-        line_standard = mlines.Line2D([], [], color='black', linestyle='-', label='Davide')
-        line_bnt = mlines.Line2D([], [], color='black', linestyle=':', label='Vincenzo')
-        # Create second legend
-        legend2 = plt.legend(handles=[line_standard, line_bnt], loc='upper right', fontsize=15)
-        # Add the first legend back
-        plt.gca().add_artist(legend1)
-        plt.xlabel('$z$')
-        plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
+        ls_dict = {'-': 'Davide', ':': 'Vincenzo'}
+        mm.add_ls_legend(ls_dict)
 
         plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/std_and_bnt_gamma_kernel.pdf',
                     dpi=500,
                     bbox_inches='tight')
-        # end thesis plot
 
         # this is to produce the plot and check that the BNT cuts are better
-        ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means)
-        ell_cuts_dict_bnt = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_bnt)
-        plot_ell_cuts_for_thesis(ell_cuts_dict, ell_cuts_dict_bnt)
+        ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_ll)
+        ell_cuts_dict_bnt = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_ll_bnt)
+        # plot_ell_cuts_for_thesis(ell_cuts_dict, ell_cuts_dict_bnt)
+        # mm.matshow(ell_cuts_dict_bnt['LL'] / ell_cuts_dict['LL'], title=f'BNT/noBNT, kmax={kmax_h_over_Mpc} h/Mpc')
 
         if BNT_transform:
-            z_means = z_means_bnt
+            z_means_ll = z_means_ll_bnt
 
-        ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means)
+        ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_ll)
         ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the covariance module
 
         # ! import and reshape datavectors (cl) and response functions (rl)
@@ -758,6 +768,9 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
             'LG': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
             '3x2pt': get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict)
         }
+
+        print(f'zzzzzzzz, BNT {BNT_transform}', len(ell_dict['idxs_to_delete_dict']['LL']))
+        break
 
         # ! 3d cl ell cuts (*after* BNT!!)
         cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(

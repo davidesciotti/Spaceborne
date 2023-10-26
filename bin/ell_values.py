@@ -1,10 +1,4 @@
 import numpy as np
-import sys
-from pathlib import Path
-
-project_path_here = Path.cwd().parent.parent.parent
-sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
-import common_lib.my_module as mm
 
 
 ###############################################################################

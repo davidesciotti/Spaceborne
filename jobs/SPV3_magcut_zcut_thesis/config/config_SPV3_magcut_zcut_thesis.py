@@ -20,12 +20,12 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/LiFEforS
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = True
-deriv_BNT_transform = True
+cov_BNT_transform = False
+deriv_BNT_transform = False
 
 cl_ell_cuts = False
-cov_ell_cuts = False
-deriv_ell_cuts = False
+cov_ell_cuts = True
+deriv_ell_cuts = True
 
 if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
     BNT_transform = True
@@ -77,16 +77,16 @@ general_cfg = {
 
     'ell_cuts': ell_cuts,
     'which_cuts': 'Vincenzo',
-    'center_or_min': 'min',  # cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
+    'center_or_min': 'center',  # cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
     'cl_ell_cuts': cl_ell_cuts,
     'ell_cuts_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/ell_cuts',
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                          'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'kmax_h_over_Mpc_ref': 1.0,  # this is used when ell_cuts is False, also...?
     # 'kmax_list_1_over_Mpc': np.array((0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00)),
-    'kmax_h_over_Mpc_list': np.array([0.37313433, 0.74626866, 1.11940299, 1.49253731, 1.86567164,
-                                      2.23880597, 2.6119403, 2.98507463, 4.47761194,
-                                      7.46268657]),  # , 14.92537313]),
+    'kmax_h_over_Mpc_list': np.array([0.37108505, 0.74217011, 1.11325516, 1.48434021, 1.85542526,
+                                      2.22651032, 2.59759537, 2.96868042, 4.45302063, 7.42170105,
+                                      14.84340211]),  # I am using h = 0.6737 to convert, which is the correct value
 
     'BNT_transform': BNT_transform,  # ! to be deprecated?
     'cl_BNT_transform': cl_BNT_transform,

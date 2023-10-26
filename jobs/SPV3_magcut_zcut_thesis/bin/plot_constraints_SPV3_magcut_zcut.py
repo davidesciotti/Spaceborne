@@ -19,7 +19,7 @@ sys.path.append('../../../common_lib_and_cfg/common_lib')
 import my_module as mm
 
 sys.path.append('../config')
-import config_SPV3_magcut_zcut as cfg
+import config_SPV3_magcut_zcut_thesis as cfg
 
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 mpl.use('Qt5Agg')
@@ -68,7 +68,7 @@ probe_vinc_dict = {
 # TODO maybe there is a bettewr way to handle the prior values in relation to the fix flag
 # TODO superimpose bars
 
-assert fix_curvature, 'Im studyin only flat models'
+assert fix_curvature, 'I am studying only flat models'
 
 fm_uncert_df = pd.DataFrame()
 for go_or_gs in ['GO', ]:

@@ -30,7 +30,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 
 matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
-start_time = time.perf_counter()
+script_start_time = time.perf_counter()
 
 # job configuration
 sys.path.append(f'{job_path}/config')
@@ -43,10 +43,6 @@ import cl_preprocessing as cl_utils
 import compute_Sijkl as Sijkl_utils
 import covariance as covmat_utils
 import fisher_matrix as FM_utils
-
-matplotlib.use('Qt5Agg')
-mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
-start_time = time.perf_counter()
 
 
 # TODO check that the number of ell bins is the same as in the files
@@ -331,6 +327,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
     idM = general_cfg['idM']
     idR = general_cfg['idR']
     idBM = general_cfg['idBM']
+    BNT_transform = general_cfg['BNT_transform']
 
     h = flat_fid_pars_dict['h']
 
@@ -453,17 +450,10 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
                       'kmax_h_over_Mpc': kmax_h_over_Mpc, center_or_min: center_or_min,
                       'idIA': idIA, 'idB': idB, 'idM': idM, 'idR': idR, 'idBM': idBM,
                       'flat_or_nonflat': flat_or_nonflat,
-                      'which_pk': which_pk,
+                      'which_pk': which_pk, 'BNT_transform': BNT_transform,
                       }
 
     pp.pprint(variable_specs)
-
-    # print settings
-    print(f'\nSettings: \nind_ordering = {triu_tril}, {row_col_major} \nblock_index = {covariance_cfg["block_index"]}\n'
-          f'zbins: {general_cfg["EP_or_ED"]}{zbins}\n'
-          f'nbl_WA: {nbl_WA} nbl_WL: {nbl_WL} nbl_GC:  {nbl_GC}, nbl_3x2pt:  {nbl_3x2pt}\n'
-          f'ell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}\nGL_or_LG: {GL_or_LG}\n'
-          f'kmax_h_over_Mpc = {kmax_h_over_Mpc} \nBNT_transform = {general_cfg["BNT_transform"]}')
 
 
     # import nuisance, to get fiducials and to shift the distribution
@@ -639,12 +629,12 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
     # ell_cuts_dict_bnt = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_bnt)
     # plot_ell_cuts_for_thesis(ell_cuts_dict, ell_cuts_dict_bnt)
 
-    if general_cfg['BNT_transform']:
+    if BNT_transform:
         z_means = z_means_bnt
 
     ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means)
     ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the covariance module
-    mm.matshow(ell_cuts_dict['LL'], title=f'BNT transform {general_cfg["BNT_transform"]}')
+    mm.matshow(ell_cuts_dict['LL'], title=f'BNT transform {BNT_transform}')
 
     # ! import and reshape datavectors (cl) and response functions (rl)
     # cl_fld = general_cfg['cl_folder']
@@ -1011,4 +1001,4 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
     del cov_dict
     gc.collect()
 
-print('Script end')
+print('Finished in {:.2f} seconds'.format(time.perf_counter() - script_start_time))

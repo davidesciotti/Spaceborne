@@ -1,11 +1,9 @@
 import sys
 import warnings
-from pathlib import Path
 import numpy as np
 
 
-project_path_here = Path.cwd().parent.parent.parent
-sys.path.append(str(project_path_here.parent / 'common_lib_and_cfg'))
+sys.path.append('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
 import common_lib.my_module as mm
 
 

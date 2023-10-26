@@ -1,4 +1,3 @@
-import pdb
 import sys
 import warnings
 
@@ -12,11 +11,9 @@ from chainconsumer import ChainConsumer
 sys.path.append('../../bin/plot_FM_running')
 import plots_FM_running as plot_utils
 
-sys.path.append('../../../common_lib_and_cfg/common_cfg')
-import mpl_cfg
-
-sys.path.append('../../../common_lib_and_cfg/common_lib')
-import my_module as mm
+sys.path.append('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
+import common_lib.my_module as mm
+import common_cfg.mpl_cfg as mpl_cfg
 
 sys.path.append('../config')
 import config_SPV3_magcut_zcut_thesis as cfg
@@ -53,8 +50,8 @@ ZL = 2
 ZS = 2
 probes = ('WL', 'GC', '3x2pt')
 which_cuts = 'Vincenzo'
-center_or_min = 'min'
-h = 0.6737  # 0.6774?
+center_or_min = 'center'
+h = 0.6737
 whose_FM_list = ('davide',)
 # ! options
 
@@ -69,15 +66,18 @@ probe_vinc_dict = {
 # TODO superimpose bars
 
 assert fix_curvature, 'I am studying only flat models'
+assert 'Flagship_2' in fm_root_path, 'The input files used in this job for flagship version 2!'
+assert which_cuts == 'Vincenzo', ('to begin with, use only Vincenzo/standard cuts. '
+                                  'For the thesis, probably use just these')
 
 fm_uncert_df = pd.DataFrame()
 for go_or_gs in ['GO', ]:
     for probe in probes:
         for BNT_transform in [False, True]:
-            for ell_cuts in [False,]:
-                for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
+            for ell_cuts in [False, True]:
+                for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
                     for whose_FM in whose_FM_list:
-                        for center_or_min in ['min']:
+                        for center_or_min in ['center', ]:
 
                             names_params_to_fix = []
 
@@ -215,8 +215,8 @@ value_B = False
 
 param_toplot = 'FoM'
 # param_toplot = cosmo_param_names
-probe_toplot = 'GC'
-center_or_min = 'min'
+probe_toplot = '3x2pt'
+center_or_min = 'center'
 ell_cuts = True
 
 # add percent difference to the dataframe
@@ -245,9 +245,9 @@ uncert_perc_diff = fm_uncert_df_toplot[fm_uncert_df_toplot[key_to_compare] == 'p
 plt.figure()
 title = f'{probe_toplot}, {key_to_compare}={value_A} vs {value_B}'
 plt.title(f'{title}')
-plt.plot(general_cfg['kmax_h_over_Mpc_list'], uncert_A, label=f'{key_to_compare}={value_A}', marker='o')
-plt.plot(general_cfg['kmax_h_over_Mpc_list'], uncert_B, label=f'{key_to_compare}={value_B}', marker='o')
-plt.plot(general_cfg['kmax_h_over_Mpc_list'], uncert_perc_diff, label='perc diff', marker='.')
+plt.plot(general_cfg['kmax_h_over_Mpc_list'][:9:2], uncert_A, label=f'{key_to_compare}={value_A}', marker='o')
+plt.plot(general_cfg['kmax_h_over_Mpc_list'][:9:2], uncert_B, label=f'{key_to_compare}={value_B}', marker='o')
+plt.plot(general_cfg['kmax_h_over_Mpc_list'][:9:2], uncert_perc_diff, label='perc diff', marker='.')
 plt.xscale('log')
 plt.xlabel(r'$k_{\rm max}$ [h/Mpc]')
 plt.ylabel(param_toplot)

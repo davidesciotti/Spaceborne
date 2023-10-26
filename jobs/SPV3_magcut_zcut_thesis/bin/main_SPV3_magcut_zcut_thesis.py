@@ -113,6 +113,7 @@ def load_ell_cuts(kmax_h_over_Mpc, z_values):
                 ell_cut_j = kmax_1_over_Mpc * r_of_zj - 1 / 2
                 ell_cuts_array[zi, zj] = np.min((ell_cut_i, ell_cut_j))
 
+        warnings.warn('the ell cuts are the same for all probes, so no need to define a dictionary!!')
         ell_cuts_dict = {
             'LL': ell_cuts_array,
             'GG': ell_cuts_array,
@@ -279,9 +280,9 @@ def plot_ell_cuts_for_thesis(ell_cuts_dict, ell_cuts_dict_bnt, key='LL'):
                 bbox_inches='tight')
 
 
-# ======================================================================================================================
-# ======================================================================================================================
-# ======================================================================================================================
+# * ====================================================================================================================
+# * ====================================================================================================================
+# * ====================================================================================================================
 
 
 general_cfg = cfg.general_cfg
@@ -292,6 +293,8 @@ FM_cfg = cfg.FM_cfg
 print("\033[94m TODO restore loop over which_pk \033[0m")
 print("\033[94m TODO restore full loop over kmax_h_over_Mpc_list \033[0m")
 print("\033[94m TODO restore loop over ell_center, ell_min \033[0m")
+print("\033[94m TODO use vincenzo wf for zmean for ell cuts? \033[0m")
+warnings.warn('FIGURE OUT THE CUTS FOR THE GL CASE!!!')
 
 # general_cfg['kmax_h_over_Mpc_list'] = general_cfg['kmax_h_over_Mpc_list']
 for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
@@ -470,7 +473,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
                                   err_msg='dzWL shifts do not match with the ones from tha yml file')
     np.testing.assert_array_equal(dzWL_fiducial, dzGC_fiducial, err_msg='dzWL and dzGC shifts do not match')
 
-    # import n(z)
+    # ! import n(z), for the BNT and the scale cuts
     nofz_folder = covariance_cfg["nofz_folder"]
     nofz_filename = covariance_cfg["nofz_filename"]
     n_of_z = np.genfromtxt(f'{nofz_folder}/{nofz_filename}')
@@ -478,17 +481,14 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
     n_of_z = n_of_z[:, 1:]
     n_of_z_original = n_of_z
 
-    # TODO analytical n(z)? difficult with 13 bins...
-    # TODO IA seems a bit low, even with bia = 2.17...
-    # * tried cutting extremes of z range, not the problem
-
     interpolation_kind = 'linear'
-    gaussian_smoothing = True  # does not seem to have a large effect...
-    sigma_gaussian_filter = 20
+    gaussian_smoothing = False  # does not seem to have a large effect...
+    sigma_gaussian_filter = 2
     shift_dz = True
     compute_bnt_with_shifted_nz = False  # ! let's test this
     use_ia = True
     use_fs1 = False
+    whose_wf = 'vincenzo'  # TODO 'vincenzo' or 'davide'. whose wf you want to use to compute the z mean for the ell cuts
 
     if use_fs1:
         n_of_z = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
@@ -498,6 +498,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
 
     # ! apply a Gaussian filter
     if gaussian_smoothing:
+        print(f'Applying a Gaussian filter of sigma = {sigma_gaussian_filter} to the n(z)')
         n_of_z = gaussian_filter1d(n_of_z, sigma_gaussian_filter, axis=0)
         # plt.figure()
         # for zi in range(zbins):
@@ -517,35 +518,32 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
 
     BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z_bnt, plot_nz=False)
 
-    # ! load new kernels, including mag bias and IA
+    # ! load vincenzo's kernels, including mag bias and IA
     wf_folder = Sijkl_cfg['wf_input_folder']
-    wf_delta = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="delta", **variable_specs)}')
-    wf_gamma = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="gamma", **variable_specs)}')
-    wf_ia = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="ia", **variable_specs)}')
-    wf_mu = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="mu", **variable_specs)}')
+    wf_delta_vin = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="delta", **variable_specs)}')
+    wf_gamma_vin = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="gamma", **variable_specs)}')
+    wf_ia_vin = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="ia", **variable_specs)}')
+    wf_mu_vin = np.genfromtxt(f'{wf_folder}/{Sijkl_cfg["wf_filename"].format(probe="mu", **variable_specs)}')
 
-    z_grid_kernels = wf_delta[:, 0]
-    wf_delta = wf_delta[:, 1:]
-    wf_gamma = wf_gamma[:, 1:]
-    wf_ia = wf_ia[:, 1:]
-    wf_mu = wf_mu[:, 1:]
+    zgrid_wf_vin = wf_delta_vin[:, 0]
+    wf_delta_vin = wf_delta_vin[:, 1:]
+    wf_gamma_vin = wf_gamma_vin[:, 1:]
+    wf_ia_vin = wf_ia_vin[:, 1:]
+    wf_mu_vin = wf_mu_vin[:, 1:]
 
-    # construct lensing kernel
-    ia_bias = wf_cl_lib.build_IA_bias_1d_arr(z_grid_kernels, input_z_grid_lumin_ratio=None, input_lumin_ratio=None,
-                                             cosmo=cosmo_ccl,
-                                             A_IA=flat_fid_pars_dict['Aia'],
-                                             eta_IA=flat_fid_pars_dict['eIA'],
-                                             beta_IA=flat_fid_pars_dict['bIA'],
-                                             C_IA=None,
-                                             growth_factor=None,
-                                             output_F_IA_of_z=False)
-    wf_lensing = wf_gamma + ia_bias[:, None] * wf_ia
+    # ! my kernels
+    ia_bias_vin = wf_cl_lib.build_IA_bias_1d_arr(zgrid_wf_vin, input_z_grid_lumin_ratio=None, input_lumin_ratio=None,
+                                                 cosmo=cosmo_ccl,
+                                                 A_IA=flat_fid_pars_dict['Aia'],
+                                                 eta_IA=flat_fid_pars_dict['eIA'],
+                                                 beta_IA=flat_fid_pars_dict['bIA'],
+                                                 C_IA=None,
+                                                 growth_factor=None,
+                                                 output_F_IA_of_z=False)
+    wf_lensing_vin = wf_gamma_vin + ia_bias_vin[:, None] * wf_ia_vin
 
-    # ! XXX RESTORE THIS PART TO PRODUCE PLOT FOR THE THESIS
     dndz = (zgrid_nz, n_of_z)
-
     # Define the keyword arguments as a dictionary
-    ia_bias_2d = (z_grid_kernels, ia_bias)
     kwargs = {
         'cosmo': cosmo_ccl,
         'dndz': dndz,
@@ -567,22 +565,22 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
 
     # BNT-transform
     wf_gamma_ccl_bnt = (BNT_matrix @ wf_gamma_ccl.T).T
-    wf_gamma_bnt = (BNT_matrix @ wf_gamma.T).T
+    wf_gamma_vin_bnt = (BNT_matrix @ wf_gamma_vin.T).T
 
     wf_lensing_ccl_bnt = (BNT_matrix @ wf_lensing_ccl.T).T
-    wf_lensing_bnt = (BNT_matrix @ wf_lensing.T).T
+    wf_lensing_vin_bnt = (BNT_matrix @ wf_lensing_vin.T).T
 
     # compute z means
     if use_ia:
         wf_ccl = wf_lensing_ccl
         wf_ccl_bnt = wf_lensing_ccl_bnt
-        wf_vin = wf_lensing
-        wf_vin_bnt = wf_lensing_bnt
+        wf_vin = wf_lensing_vin
+        wf_vin_bnt = wf_lensing_vin_bnt
     else:
         wf_ccl = wf_gamma_ccl
         wf_ccl_bnt = wf_gamma_ccl_bnt
-        wf_vin = wf_gamma
-        wf_vin_bnt = wf_gamma_bnt
+        wf_vin = wf_gamma_vin
+        wf_vin_bnt = wf_gamma_vin_bnt
 
     z_means = wf_cl_lib.get_z_means(zgrid_nz, wf_ccl)
     z_means_bnt = wf_cl_lib.get_z_means(zgrid_nz, wf_ccl_bnt)
@@ -598,8 +596,8 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
         plt.plot(zgrid_nz, wf_ccl[:, zi], ls='-', c=colors[zi], alpha=0.6)
         plt.plot(zgrid_nz, wf_ccl_bnt[:, zi], ls='-', c=colors[zi], alpha=0.6)
 
-        plt.plot(z_grid_kernels, wf_vin[:, zi], ls=':', label='$z_{%d}$' % (zi + 1), c=colors[zi], alpha=0.6)
-        plt.plot(z_grid_kernels, wf_vin_bnt[:, zi], ls=':', c=colors[zi], alpha=0.6)
+        plt.plot(zgrid_wf_vin, wf_vin[:, zi], ls=':', label='$z_{%d}$' % (zi + 1), c=colors[zi], alpha=0.6)
+        plt.plot(zgrid_wf_vin, wf_vin_bnt[:, zi], ls=':', c=colors[zi], alpha=0.6)
 
     # plt.legend(loc='upper right', fontsize=15)
     plt.title(f'interpolation_kind {interpolation_kind}, use_ia {use_ia}, sigma_gauss {sigma_gaussian_filter}\n'
@@ -623,10 +621,16 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
                 bbox_inches='tight')
     # end thesis plot
 
-    ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means)
-    ell_cuts_dict_bnt = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_bnt)
+    # this is to produce the thesis plot
+    # ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means)
+    # ell_cuts_dict_bnt = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_bnt)
+    # plot_ell_cuts_for_thesis(ell_cuts_dict, ell_cuts_dict_bnt)
 
-    plot_ell_cuts_for_thesis(ell_cuts_dict, ell_cuts_dict_bnt)
+    if general_cfg['BNT_transform']:
+        z_means = z_means_bnt
+
+    ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means)
+    ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the covariance module
 
     # ! import and reshape datavectors (cl) and response functions (rl)
     # cl_fld = general_cfg['cl_folder']
@@ -661,7 +665,8 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
     # cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
     # cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
 
-    warnings.warn('HARDCODED PATH FOR 3D CLS')
+    warnings.warn(
+        'HARDCODED PATH FOR 3D CLS; you will need to use them without d shift onve vincenzo passes them to you')
     cl_ll_3d = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_ShearShear_C00.npy')
     cl_gl_3d = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_PosShear_C00.npy')[:nbl_3x2pt,
                ...]
@@ -720,10 +725,6 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
         rl_gg_3d = rl_gg_3d[:nbl_GC, :, :]
         rl_wa_3d = rl_ll_3d[nbl_GC:nbl_WL, :, :]
         rl_3x2pt_5d = rl_3x2pt_5d[:nbl_3x2pt, :, :]
-
-    # this is to pass the ll cuts to the covariance module
-    ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_center_values)
-    ell_dict['ell_cuts_dict'] = ell_cuts_dict  # rename for better readability
 
     # ! Vincenzo's method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
     if general_cfg['center_or_min'] == 'center':
@@ -829,11 +830,18 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
         0]  # take the correct magnitude limit
     galaxy_bias_fit_fiducials = bias_fiducials[bias_fiducials_rows, 1]
     magnification_bias_fit_fiducials = bias_fiducials[bias_fiducials_rows, 2]
+
     fiducials_dict = {
-        'cosmo': [ISTF_fid.primary['Om_m0'], ISTF_fid.primary['Om_b0'],
-                  ISTF_fid.primary['w_0'], ISTF_fid.primary['w_a'],
-                  ISTF_fid.primary['h_0'], ISTF_fid.primary['n_s'], ISTF_fid.primary['sigma_8'], 7.75],
-        'IA': np.asarray([0.16, 1.66]),
+        'cosmo': [flat_fid_pars_dict['Om'],
+                  flat_fid_pars_dict['Ob'],
+                  flat_fid_pars_dict['wz'],
+                  flat_fid_pars_dict['wa'],
+                  flat_fid_pars_dict['h'],
+                  flat_fid_pars_dict['ns'],
+                  flat_fid_pars_dict['s8'],
+                  7.75],
+        'IA': np.asarray([flat_fid_pars_dict['Aia'],
+                          flat_fid_pars_dict['eIA']]),
         'shear_bias': np.zeros((zbins,)),
         'dzWL': dzWL_fiducial,  # for the time being, equal to the GC ones
         'galaxy_bias': galaxy_bias_fit_fiducials,

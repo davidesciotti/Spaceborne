@@ -20,8 +20,8 @@ SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/LiFEforS
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = False
-deriv_BNT_transform = False
+cov_BNT_transform = True
+deriv_BNT_transform = True
 
 cl_ell_cuts = False
 cov_ell_cuts = True

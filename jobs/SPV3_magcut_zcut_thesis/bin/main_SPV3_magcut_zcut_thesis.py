@@ -13,6 +13,8 @@ import gc
 import matplotlib.gridspec as gridspec
 import yaml
 from scipy.ndimage import gaussian_filter1d
+import pprint
+pp = pprint.PrettyPrinter(indent=4)
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
@@ -368,6 +370,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
     assert magcut_lens == 245, 'magcut_lens must be 245: the yaml file with the fiducial params is for magcut 245'
     assert magcut_source == 245, 'magcut_source must be 245: the yaml file with the fiducial params is for magcut 245'
 
+
     # which cases to save: GO, GS or GO, GS and SS
     cases_tosave = ['GO', ]
     if covariance_cfg[f'compute_SSC']:
@@ -452,6 +455,16 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
                       'flat_or_nonflat': flat_or_nonflat,
                       'which_pk': which_pk,
                       }
+
+    pp.pprint(variable_specs)
+
+    # print settings
+    print(f'\nSettings: \nind_ordering = {triu_tril}, {row_col_major} \nblock_index = {covariance_cfg["block_index"]}\n'
+          f'zbins: {general_cfg["EP_or_ED"]}{zbins}\n'
+          f'nbl_WA: {nbl_WA} nbl_WL: {nbl_WL} nbl_GC:  {nbl_GC}, nbl_3x2pt:  {nbl_3x2pt}\n'
+          f'ell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}\nGL_or_LG: {GL_or_LG}\n'
+          f'kmax_h_over_Mpc = {kmax_h_over_Mpc} \nBNT_transform = {general_cfg["BNT_transform"]}')
+
 
     # import nuisance, to get fiducials and to shift the distribution
     nuisance_tab = np.genfromtxt(f'{covariance_cfg["nuisance_folder"]}/{covariance_cfg["nuisance_filename"]}')
@@ -631,6 +644,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
 
     ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means)
     ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the covariance module
+    mm.matshow(ell_cuts_dict['LL'], title=f'BNT transform {general_cfg["BNT_transform"]}')
 
     # ! import and reshape datavectors (cl) and response functions (rl)
     # cl_fld = general_cfg['cl_folder']
@@ -801,11 +815,11 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
     covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
     if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False:
-        # load benchmark voc and check that it matches the one computed here
+        # load benchmark cov and check that it matches the one computed here
         cov_cloe_bench_2d = np.load(
             f'/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/CovMat-3x2pt-Gauss-{nbl_WL_opt}Bins.npy')
-        cov_bench_2ddav = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2d, nbl_WL_opt, zbins, 'ell',
-                                                'ell')  # reshape it in dav format
+        # reshape it in dav format
+        cov_bench_2ddav = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2d, nbl_WL_opt, zbins, 'ell', 'ell')
 
         # ell cut, 29 bins instead of 32
         n_cov_elements = cov_dict['cov_3x2pt_GO_2D'].shape[0]

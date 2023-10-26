@@ -291,6 +291,21 @@ idBM = general_cfg['idBM']
 
 h = flattened_fiducial_pars_dict['h']
 
+# construct lensing kernel - I need to add IA
+ficualial_pars_dict_ccl_keys = {}
+ficualial_pars_dict_ccl_keys['Om_m0'] = flattened_fiducial_pars_dict['Om']
+ficualial_pars_dict_ccl_keys['Om_b0'] = flattened_fiducial_pars_dict['Ob']
+ficualial_pars_dict_ccl_keys['Om_Lambda0'] = flattened_fiducial_pars_dict['ODE']
+ficualial_pars_dict_ccl_keys['w_0'] = flattened_fiducial_pars_dict['wz']
+ficualial_pars_dict_ccl_keys['w_a'] = flattened_fiducial_pars_dict['wa']
+ficualial_pars_dict_ccl_keys['h'] = flattened_fiducial_pars_dict['h']
+ficualial_pars_dict_ccl_keys['n_s'] = flattened_fiducial_pars_dict['ns']
+ficualial_pars_dict_ccl_keys['sigma_8'] = flattened_fiducial_pars_dict['s8']
+ficualial_pars_dict_ccl_keys['m_nu'] = flattened_fiducial_pars_dict['m_nu']
+ficualial_pars_dict_ccl_keys['N_eff'] = flattened_fiducial_pars_dict['N_eff']
+
+cosmo_ccl = csmlib.instantiate_cosmo_ccl_obj(ficualial_pars_dict_ccl_keys)
+
 colors = cm.rainbow(np.linspace(0, 1, zbins))
 
 # some checks
@@ -420,38 +435,43 @@ nofz_filename = covariance_cfg["nofz_filename"]
 n_of_z = np.genfromtxt(f'{nofz_folder}/{nofz_filename}')
 zgrid_nz = n_of_z[:, 0]
 n_of_z = n_of_z[:, 1:]
+n_of_z_original = n_of_z
 
 # TODO analytical n(z)? difficult with 13 bins...
 # TODO IA seems a bit low, even with bia = 2.17...
 # * tried cutting extremes of z range, not the problem
 
-# FS1
+# ! FS1
 # n_of_z = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_1_restored/InputNz/Lenses/Flagship/niTab-EP13.dat')
 # zgrid_nz = n_of_z[:, 0]
 # n_of_z = n_of_z[:, 1:]
 
-# apply a Gaussian filter
+interpolation_kind = 'cubic'
+gaussian_smoothing = False
+sigma_gaussian_filter = 2
+shift_dz = True
+use_ia = True
+
+# ! apply a Gaussian filter
+if gaussian_smoothing:
+    n_of_z_gauss = gaussian_filter1d(n_of_z, sigma_gaussian_filter, axis=0)
+    plt.figure()
+    for zi in range(zbins):
+        plt.plot(zgrid_nz, n_of_z[:, zi], label=f'zbin {zi}', c=colors[zi], ls='-')
+        plt.plot(zgrid_nz, n_of_z_gauss[:, zi], c=colors[zi], ls='--')
+    plt.title(f'sigma = {sigma_gaussian_filter}')
 
 
-# n_of_z_gauss = np.zeros_like(n_of_z)
-# for zi in range(zbins):
-n_of_z_gauss = gaussian_filter1d(n_of_z, 2, axis=0)
+# for interpolation_kind in ['linear', 'nearest', 'nearest-up', 'zero', 'slinear', 'quadratic', 'cubic', 'previous',
+#                            'next']:
+for interpolation_kind in ['linear', ]:
 
-plt.figure()
-for zi in range(zbins):
-    plt.plot(zgrid_nz, n_of_z[:, zi], label=f'zbin {zi}', c=colors[zi], ls='-')
-    plt.plot(zgrid_nz, n_of_z_gauss[:, zi], label=f'zbin {zi} gauss', c=colors[zi], ls='--')
+    # ! shift it (plus, re-normalize it after the shift)
+    if shift_dz:
+        n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z, dz_shifts, normalize=False, plot_nz=False,
+                                    interpolation_kind=interpolation_kind)
 
-# assert False
-# and shift it (plus, re-normalize it after the shift)
-for interpolation_kind in ['linear', 'nearest', 'nearest-up', 'zero', 'slinear', 'quadratic', 'cubic', 'previous',
-                           'next']:
-    # for interpolation_kind in ['slinear',]:
-
-    n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z, dz_shifts, normalize=False, plot_nz=False,
-                                interpolation_kind=interpolation_kind)
-
-    BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, plot_nz=False)
+    BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z_original, plot_nz=False)
 
     # ! load new kernels, including mag bias and IA
     wf_folder = Sijkl_cfg['wf_input_folder']
@@ -465,21 +485,6 @@ for interpolation_kind in ['linear', 'nearest', 'nearest-up', 'zero', 'slinear',
     wf_gamma = wf_gamma[:, 1:]
     wf_ia = wf_ia[:, 1:]
     wf_mu = wf_mu[:, 1:]
-
-    # construct lensing kernel - I need to add IA
-    ficualial_pars_dict_ccl_keys = {}
-    ficualial_pars_dict_ccl_keys['Om_m0'] = flattened_fiducial_pars_dict['Om']
-    ficualial_pars_dict_ccl_keys['Om_b0'] = flattened_fiducial_pars_dict['Ob']
-    ficualial_pars_dict_ccl_keys['Om_Lambda0'] = flattened_fiducial_pars_dict['ODE']
-    ficualial_pars_dict_ccl_keys['w_0'] = flattened_fiducial_pars_dict['wz']
-    ficualial_pars_dict_ccl_keys['w_a'] = flattened_fiducial_pars_dict['wa']
-    ficualial_pars_dict_ccl_keys['h'] = flattened_fiducial_pars_dict['h']
-    ficualial_pars_dict_ccl_keys['n_s'] = flattened_fiducial_pars_dict['ns']
-    ficualial_pars_dict_ccl_keys['sigma_8'] = flattened_fiducial_pars_dict['s8']
-    ficualial_pars_dict_ccl_keys['m_nu'] = flattened_fiducial_pars_dict['m_nu']
-    ficualial_pars_dict_ccl_keys['N_eff'] = flattened_fiducial_pars_dict['N_eff']
-
-    cosmo_ccl = csmlib.instantiate_cosmo_ccl_obj(ficualial_pars_dict_ccl_keys)
 
     # construct lensing kernel
     ia_bias = wf_cl_lib.build_IA_bias_1d_arr(z_grid_kernels, input_z_grid_lumin_ratio=None, input_lumin_ratio=None,
@@ -516,41 +521,45 @@ for interpolation_kind in ['linear', 'nearest', 'nearest-up', 'zero', 'slinear',
     wf_gamma_ccl = wf_cl_lib.wil_PyCCL(zgrid_nz, 'without_IA', **{**kwargs, 'return_PyCCL_object': False})
     wf_ia_ccl = wf_cl_lib.wil_PyCCL(zgrid_nz, 'IA_only', **{**kwargs, 'return_PyCCL_object': False})
 
-
-
-
     # BNT-transform
-    # wf_gamma_ccl_bnt = (BNT_matrix @ wf_gamma_ccl.T).T
-    # wf_gamma_bnt = (BNT_matrix @ wf_gamma.T).T
+    wf_gamma_ccl_bnt = (BNT_matrix @ wf_gamma_ccl.T).T
+    wf_gamma_bnt = (BNT_matrix @ wf_gamma.T).T
 
     wf_lensing_ccl_bnt = (BNT_matrix @ wf_lensing_ccl.T).T
     wf_lensing_bnt = (BNT_matrix @ wf_lensing.T).T
 
     # compute z means
-    z_means = simps(wf_lensing_ccl * zgrid_nz[:, None], axis=0) / simps(wf_lensing_ccl, axis=0)
-    z_means_bnt = simps(wf_lensing_ccl_bnt * zgrid_nz[:, None], axis=0) / simps(wf_lensing_ccl_bnt, axis=0)
+    if use_ia:
+        wf_ccl = wf_lensing_ccl
+        wf_ccl_bnt = wf_lensing_ccl_bnt
+        wf_vin = wf_lensing
+        wf_vin_bnt = wf_lensing_bnt
+    else:
+        wf_ccl = wf_gamma_ccl
+        wf_ccl_bnt = wf_gamma_ccl_bnt
+        wf_vin = wf_gamma
+        wf_vin_bnt = wf_gamma_bnt
+
+    z_means = wf_cl_lib.get_z_means(zgrid_nz, wf_ccl)
+    z_means_bnt = wf_cl_lib.get_z_means(zgrid_nz, wf_ccl_bnt)
 
     # this plot will go in the thesis
     plt.figure()
     for zi in range(zbins):
-        if zi in [2, 10]:
-            plt.axvline(z_means[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
-            plt.axvline(z_means_bnt[zi], ls='--', c=colors[zi], ymin=0, lw=2, zorder=1)
-
+        # if zi in [2, 10]:
+        #     plt.axvline(z_means[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
+        #     plt.axvline(z_means_bnt[zi], ls='--', c=colors[zi], ymin=0, lw=2, zorder=1)
         # plt.axvline(z_center_values[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
-        # these 2 without n shift give clean result
-        # gamma
-        # plt.plot(zgrid_nz, wf_gamma_ccl[:, zi], ls='-', label='$gamma, z_{%d}$' % (zi + 1), c=colors[zi], zorder=0)
-        # plt.plot(zgrid_nz, wf_gamma_ccl_bnt[:, zi], ls='--', c=colors[zi], alpha=0.6)
-        # plt.plot(z_grid_kernels, wf_gamma_bnt[:, zi], ls='-', c=colors[zi], alpha=0.6)
 
-        # lensing
-        plt.plot(z_grid_kernels, wf_lensing[:, zi], ls=':', label='$lensing, z_{%d}$' % (zi + 1), c=colors[zi], zorder=0)
-        plt.plot(zgrid_nz, wf_lensing_ccl[:, zi], ls='-', label='$lensing, z_{%d}$' % (zi + 1), c=colors[zi], zorder=0)
-        # plt.plot(zgrid_nz, wf_lensing_ccl_bnt[:, zi], ls='--', c=colors[zi], alpha=0.6)
-        # plt.plot(z_grid_kernels, wf_lensing_bnt[:, zi], ls='-', c=colors[zi], alpha=0.6)
+        plt.plot(zgrid_nz, wf_ccl[:, zi], ls='-', c=colors[zi], alpha=0.6)
+        plt.plot(zgrid_nz, wf_ccl_bnt[:, zi], ls='-', c=colors[zi], alpha=0.6)
+
+        plt.plot(z_grid_kernels, wf_vin[:, zi], ls=':', label='$z_{%d}$' % (zi + 1), c=colors[zi], alpha=0.6)
+        plt.plot(z_grid_kernels, wf_vin_bnt[:, zi], ls=':', c=colors[zi], alpha=0.6)
 
     # plt.legend(loc='upper right', fontsize=15)
+    plt.title(f'interpolation_kind {interpolation_kind}, use_ia {use_ia}, sigma_gauss {sigma_gaussian_filter}\n'
+              f'shift_dz {shift_dz}')
     plt.xlabel('$z$')
     plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
 
@@ -615,7 +624,6 @@ for interpolation_kind in ['linear', 'nearest', 'nearest-up', 'zero', 'slinear',
     plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/z_dependent_ell_cuts.pdf', dpi=300,
                 bbox_inches='tight')
 
-assert False
 
 # ! import and reshape datavectors (cl) and response functions (rl)
 # cl_fld = general_cfg['cl_folder']

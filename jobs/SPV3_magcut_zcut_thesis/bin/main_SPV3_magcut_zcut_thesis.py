@@ -72,6 +72,7 @@ def load_ell_cuts(kmax_h_over_Mpc, z_values):
 
     if general_cfg['which_cuts'] == 'Francis':
 
+        raise Exception('I want the output to be an array, see the Vincenzo case. probebly best to split these 2 funcs')
         assert general_cfg['EP_or_ED'] == 'ED', 'Francis cuts are only available for the ED case'
 
         ell_cuts_fldr = general_cfg['ell_cuts_folder']
@@ -113,11 +114,7 @@ def load_ell_cuts(kmax_h_over_Mpc, z_values):
                 ell_cuts_array[zi, zj] = np.min((ell_cut_i, ell_cut_j))
 
         warnings.warn('the ell cuts are the same for all probes, so no need to define a dictionary!!')
-        ell_cuts_dict = {
-            'LL': ell_cuts_array,
-            'GG': ell_cuts_array,
-            'GL': ell_cuts_array,
-            'LG': ell_cuts_array}
+        return ell_cuts_array
 
     else:
         raise Exception('which_cuts must be either "Francis" or "Vincenzo"')
@@ -580,11 +577,6 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
         wf_galaxy_ccl = wf_cl_lib.wig_PyCCL(zgrid_nz, 'without_galaxy_bias',
                                             **{**wig_ccl_kwargs, 'return_PyCCL_object': False})
 
-        plt.figure()
-        for zi in range(zbins):
-            plt.plot(zgrid_wf_vin, wf_galaxy_vin[:, zi], ls='-', alpha=0.6)
-            plt.plot(zgrid_nz, wf_galaxy_ccl[:, zi], ls='--', alpha=0.6)
-
         # BNT-transform the lensing kernels
         wf_gamma_ccl_bnt = (BNT_matrix @ wf_gamma_ccl.T).T
         wf_gamma_vin_bnt = (BNT_matrix @ wf_gamma_vin.T).T
@@ -607,14 +599,16 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
         z_means_ll = wf_cl_lib.get_z_means(zgrid_nz, wf_ll_ccl)
         z_means_gg = wf_cl_lib.get_z_means(zgrid_nz, wf_galaxy_ccl)
         z_means_ll_bnt = wf_cl_lib.get_z_means(zgrid_nz, wf_ll_ccl_bnt)
-        z_means_gg_bnt = wf_cl_lib.get_z_means(zgrid_nz, wf_galaxy_ccl_bnt)
 
         # check that the z means are close (within 5%)
         z_means_ll_vin = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_ll_vin)
+        z_means_gg_vin = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_galaxy_vin)
         z_means_ll_vin_bnt = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_ll_vin_bnt)
         np.testing.assert_allclose(z_means_ll, z_means_ll_vin, rtol=1e-2, atol=0,
                                    err_msg='z means computed w/ my vs vincenzo kernels don\'t match')
         np.testing.assert_allclose(z_means_ll_bnt, z_means_ll_vin_bnt, rtol=5e-2, atol=0,
+                                   err_msg='z means bnt computed w/ my vs vincenzo kernels don\'t match')
+        np.testing.assert_allclose(z_means_gg, z_means_gg_vin, rtol=5e-2, atol=0,
                                    err_msg='z means bnt computed w/ my vs vincenzo kernels don\'t match')
 
         plt.figure()
@@ -644,14 +638,28 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:9:2]:
 
         # this is to produce the plot and check that the BNT cuts are better
         ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_ll)
-        ell_cuts_dict_bnt = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_ll_bnt)
         # plot_ell_cuts_for_thesis(ell_cuts_dict, ell_cuts_dict_bnt)
         # mm.matshow(ell_cuts_dict_bnt['LL'] / ell_cuts_dict['LL'], title=f'BNT/noBNT, kmax={kmax_h_over_Mpc} h/Mpc')
 
         if BNT_transform:
             z_means_ll = z_means_ll_bnt
 
-        ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_ll)
+        ell_cuts_dict = {}
+        ell_cuts_dict['LL'] = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_ll)
+        ell_cuts_dict['GG'] = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_gg)
+
+        # TODO note: for the cross case I am not sure what to do. I am filling the upper vs lower diagonal with the 2 possible cuts...
+        # other option: take the most conservative cuts
+        ell_cuts_dict['GL'] = np.zeros_like(ell_cuts_dict['LL'])
+        for zi in range(zbins):
+            for zj in range(zbins):
+                if zi >= zj:
+                    ell_cuts_dict['GL'][zi, zj] = ell_cuts_dict['GG'][zi, zj]
+                else:
+                    ell_cuts_dict['GL'][zi, zj] = ell_cuts_dict['LL'][zi, zj]
+
+        ell_cuts_dict['LG'] = ell_cuts_dict['GL'].T
+
         ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the covariance module
 
         # ! import and reshape datavectors (cl) and response functions (rl)

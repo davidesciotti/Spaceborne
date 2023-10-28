@@ -32,7 +32,7 @@ mpl.use('Qt5Agg')
 general_cfg = cfg.general_cfg
 FM_cfg = cfg.FM_cfg
 h_over_mpc_tex = mpl_cfg.h_over_mpc_tex
-k_max_tex = mpl_cfg.k_max_tex
+kmax_tex = mpl_cfg.kmax_tex
 cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
 # ! options
@@ -44,7 +44,7 @@ zbins = 13
 num_params_tokeep = 7
 fix_curvature = True
 fix_gal_bias = False
-fix_shear_bias = False  # this has to be an outer loop if you also want to vary the shear bias prior itself
+fix_shear_bias = True  # this has to be an outer loop if you also want to vary the shear bias prior itself
 fix_dz = True
 include_fom = True
 fid_shear_bias_prior = 5e-4
@@ -99,6 +99,9 @@ for go_or_gs in go_or_gs_list:
                     for whose_FM in whose_FM_list:
                         for center_or_min in center_or_min_list:
 
+                            if BNT_transform is False:
+                                ell_cuts = False
+
                             names_params_to_fix = []
 
                             if whose_FM == 'davide':
@@ -108,7 +111,7 @@ for go_or_gs in go_or_gs_list:
 
                                 if ell_cuts:
                                     fm_path += f'/{which_cuts}/ell_{center_or_min}'
-                                    fm_name = fm_name.replace(f'.pickle', f'kmaxhoverMpc{kmax_h_over_Mpc:.03f}.pickle')
+                                    fm_name = fm_name.replace(f'.pickle', f'_kmaxhoverMpc{kmax_h_over_Mpc:.03f}.pickle')
 
                                 fm_pickle_name = fm_name.replace('.txt', '.pickle').replace(f'_{go_or_gs}_{probe}', '')
                                 fm_dict = mm.load_pickle(f'{fm_path}/{fm_pickle_name}')
@@ -284,11 +287,11 @@ plt.figure()
 plt.plot(kmax_h_over_Mpc_list, uncert_A, label=f'{key_to_compare} = {value_A}', marker='o')
 plt.plot(kmax_h_over_Mpc_list, uncert_B, label=f'{key_to_compare} = {value_B}', marker='o')
 plt.plot(kmax_h_over_Mpc_list, uncert_perc_diff, label='% diff', marker='o')
-plt.axvline(kmax_a_fom_400, label=f'{k_max_tex} = {kmax_a_fom_400:.02f} {h_over_mpc_tex}', c='tab:blue', ls='--')
-plt.axvline(kmax_b_fom_400, label=f'{k_max_tex} = {kmax_b_fom_400:.02f} {h_over_mpc_tex}', c='tab:orange', ls='--')
+plt.axvline(kmax_a_fom_400, label=f'{kmax_tex} = {kmax_a_fom_400:.02f} {h_over_mpc_tex}', c='tab:blue', ls='--')
+plt.axvline(kmax_b_fom_400, label=f'{kmax_tex} = {kmax_b_fom_400:.02f} {h_over_mpc_tex}', c='tab:orange', ls='--')
 plt.axhline(fom_noellcuts, label='$\\ell_{\\rm max} = 5000$', c='k', ls=':')
 plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', c='k', ls='-', alpha=0.3)
-plt.xlabel(f'{k_max_tex} [{h_over_mpc_tex}]')
+plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
 plt.ylabel(param_toplot)
 plt.title(f'{title_plot}')
 plt.legend()
@@ -309,34 +312,16 @@ cosmo_params_df = fm_uncert_df[
     (fm_uncert_df['center_or_min'] == center_or_min)
     ]
 
-fig = plt.figure()
-gs = gridspec.GridSpec(2, 1, height_ratios=[1, 1], hspace=0.05)  # Adjust hspace as needed
-ax0 = plt.subplot(gs[0])
-ax1 = plt.subplot(gs[1], sharex=ax0)
-
+plt.figure()
 for i, cosmo_param in enumerate(cosmo_param_names):
-    ax0.plot(kmax_h_over_Mpc_list, cosmo_params_df[cosmo_param].values, label=f'{cosmo_params_tex[i]}', marker='o')
-    ax1.plot(kmax_h_over_Mpc_list, cosmo_params_df[cosmo_param].values, label=f'{cosmo_params_tex[i]}', marker='o')
-ax0.axvline(kmax_a_fom_400, label=f'{k_max_tex} = {kmax_a_fom_400:.02f} {h_over_mpc_tex}', c='k', ls='--')
-ax1.axvline(kmax_a_fom_400, c='k', ls='--')
+    plt.plot(kmax_h_over_Mpc_list, cosmo_params_df[cosmo_param].values, label=f'{cosmo_params_tex[i]}', marker='o')
+plt.axvline(kmax_a_fom_400, label=f'{kmax_tex} = {kmax_a_fom_400:.02f} {h_over_mpc_tex}', c='k', ls='--')
 
-# Set axis limits
-ax0.set_ylim([11, 21])
-ax1.set_ylim([0, 8])
-
-# Hide the spines between ax0 and ax1
-ax0.spines['bottom'].set_visible(True)
-ax1.spines['top'].set_visible(True)
-ax0.xaxis.tick_top()
-ax0.tick_params(labeltop=False)  # Remove tick labels at the top
-ax1.xaxis.tick_bottom()
-
-# Label axes and add title
-ax1.set_xlabel(f'{k_max_tex} [{h_over_mpc_tex}]')
-fig.text(0.04, 0.5, 'relative uncertainty [%]', va='center', rotation='vertical', fontsize=30)
-ax0.legend()
+plt.ylabel('relative uncertainty [%]')
+plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
+plt.legend()
 plt.show()
-fig.title(f'{title_plot}')
+plt.title(f'{title_plot}')
 
 plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/cosmo_params_vs_k_cuts.pdf',
             bbox_inches='tight',

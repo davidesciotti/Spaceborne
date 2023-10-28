@@ -240,7 +240,7 @@ def plot_ell_cuts_for_thesis(ell_cuts_a, ell_cuts_b, label_a, label_b, kmax_h_ov
     vmax = max(ell_cuts_a.max(), ell_cuts_b.max())
 
     # Create a gridspec layout
-    fig = plt.figure(figsize=(12, 5))
+    fig = plt.figure(figsize=(9, 5))
     gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 0.05])
 
     # Create axes based on the gridspec layout
@@ -253,23 +253,24 @@ def plot_ell_cuts_for_thesis(ell_cuts_a, ell_cuts_b, label_a, label_b, kmax_h_ov
     for ax in [ax0, ax1]:
         ax.set_xticks(np.arange(zbins))
         ax.set_yticks(np.arange(zbins))
-        ax.set_xticklabels(ticks)
-        ax.set_yticklabels(ticks)
-        ax.set_xlabel('$z_{\\rm bin}$')
-        ax.set_ylabel('$z_{\\rm bin}$')
+        ax.set_xticklabels(ticks, fontsize=15)
+        ax.set_yticklabels(ticks, fontsize=15)
+        ax.set_xlabel('$z_{\\rm bin}$', fontsize=15)
+        ax.set_ylabel('$z_{\\rm bin}$', fontsize=15)
 
     # Display the matrices with the shared color scale
     cax0 = ax0.matshow(ell_cuts_a, vmin=vmin, vmax=vmax)
     cax1 = ax1.matshow(ell_cuts_b, vmin=vmin, vmax=vmax)
 
     # Add titles to the plots
-    ax0.set_title(label_a, fontsize=20)
-    ax1.set_title(label_b, fontsize=20)
-    fig.suptitle(f'{mpl_cfg.kmax_tex} = {kmax_h_over_Mpc} {mpl_cfg.h_over_mpc_tex}', fontsize=20)
+    ax0.set_title(label_a, fontsize=18)
+    ax1.set_title(label_b, fontsize=18)
+    fig.suptitle(f'{mpl_cfg.kmax_tex} = {kmax_h_over_Mpc:.2f} {mpl_cfg.h_over_mpc_tex}', fontsize=18,  y=0.85)
 
     # Add a shared colorbar on the right
     cbar = fig.colorbar(cax0, cax=cbar_ax)
-    cbar.set_label('$\\ell^{\\rm max}_{ij}$')
+    cbar.set_label('$\\ell^{\\rm max}_{ij}$', fontsize=15, loc='center', )
+    cbar.ax.tick_params(labelsize=15)
 
     plt.tight_layout()
     plt.show()
@@ -295,7 +296,7 @@ warnings.warn('FIGURE OUT THE CUTS FOR THE GL CASE!!!')
 # I think that center is more accurate, it's where I compute the cl
 for general_cfg['center_or_min'] in ['center', 'min']:
     # general_cfg['kmax_h_over_Mpc_list'] = general_cfg['kmax_h_over_Mpc_list']
-    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][6:8]:
+    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         # for general_cfg['which_pk'] in general_cfg['which_pk_list']:
 
         with open(
@@ -353,6 +354,8 @@ for general_cfg['center_or_min'] in ['center', 'min']:
                    'flat_or_nonflat'] == 'Flat', 'We do not use non-flat cosmologies for SPV3 at the moment, if I recall correclty'
         assert general_cfg['which_cuts'] == 'Vincenzo', ('to begin with, use only Vincenzo/standard cuts. '
                                                          'For the thesis, probably use just these')
+        if general_cfg['ell_cuts']:
+            assert BNT_transform, 'you should BNT transform if you want to apply ell cuts'
 
         if covariance_cfg['cov_BNT_transform']:
             assert general_cfg['cl_BNT_transform'] is False, \
@@ -414,6 +417,7 @@ for general_cfg['center_or_min'] in ['center', 'min']:
         nbl_GC = len(ell_dict['ell_GC'])
         nbl_WA = len(ell_dict['ell_WA'])
         nbl_3x2pt = nbl_GC
+        # ! the main should not change the cfg...
         general_cfg['nbl_WL'] = nbl_WL
         general_cfg['nbl_GC'] = nbl_GC
         general_cfg['nbl_3x2pt'] = nbl_3x2pt
@@ -664,10 +668,9 @@ for general_cfg['center_or_min'] in ['center', 'min']:
 
         # ! plot ell cuts matrix for thesis, for "reference" kmax (corresponding to FoM 400 for ell_cuts_center)
         if kmax_h_over_Mpc == kmax_fom_400_ellcenter and center_or_min == 'center':
-            mm.matshow(ell_cuts_dict['LL'], title=f'{mpl_cfg.kmax_tex} = {kmax_h_over_Mpc:.3f} h/Mpc')
+            plot_ell_cuts_for_thesis(ell_cuts_dict['LL'], ell_cuts_dict['GL'], 'LL', 'GL', kmax_h_over_Mpc)
             plt.savefig(f'/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/'
-                        f'z_dependent_ell_cuts_kmax{kmax_h_over_Mpc:02d}.pdf', dpi=500, bbox_inches='tight')
-            assert False, 'stop here'
+                        f'z_dependent_ell_cuts_kmax{kmax_h_over_Mpc:02f}.pdf', dpi=500, bbox_inches='tight')
 
         # mm.plot_bnt_matrix(BNT_matrix, zbins)
         # plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/bnt_matrix_fs2.pdf',

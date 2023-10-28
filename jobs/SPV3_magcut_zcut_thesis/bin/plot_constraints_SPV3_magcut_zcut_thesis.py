@@ -283,18 +283,14 @@ title_plot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}'
 kmax_a_fom_400 = mm.find_inverse_from_array(kmax_h_over_Mpc_list, uncert_A, fom_redbook)
 kmax_b_fom_400 = mm.find_inverse_from_array(kmax_h_over_Mpc_list, uncert_B, fom_redbook)
 
-
-
 plt.figure()
 plt.plot(kmax_h_over_Mpc_list, uncert_A, label=f'{key_to_compare} = {value_A}', marker='o')
 plt.plot(kmax_h_over_Mpc_list, uncert_B, label=f'{key_to_compare} = {value_B}', marker='o')
 plt.plot(kmax_h_over_Mpc_list, uncert_perc_diff, label='% diff', marker='o')
-plt.axvline(kmax_a_fom_400, label=f'FoM = {fom_redbook}, {k_max_tex} = {kmax_a_fom_400:.02f}{h_over_mpc_tex}',
-            color='tab:blue', linestyle='--')
-plt.axvline(kmax_b_fom_400, label=f'FoM = {fom_redbook}, {k_max_tex} = {kmax_b_fom_400:.02f}{h_over_mpc_tex}',
-            color='tab:orange', linestyle='--')
-plt.axhline(fom_noellcuts, label='$\\ell_{\\rm max} = 5000$', color='k', linestyle=':')
-plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', color='k', linestyle='-', alpha=0.3)
+plt.axvline(kmax_a_fom_400, label=f'{k_max_tex} = {kmax_a_fom_400:.02f} {h_over_mpc_tex}', c='tab:blue', ls='--')
+plt.axvline(kmax_b_fom_400, label=f'{k_max_tex} = {kmax_b_fom_400:.02f} {h_over_mpc_tex}', c='tab:orange', ls='--')
+plt.axhline(fom_noellcuts, label='$\\ell_{\\rm max} = 5000$', c='k', ls=':')
+plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', c='k', ls='-', alpha=0.3)
 plt.xlabel(f'{k_max_tex} [{h_over_mpc_tex}]')
 plt.ylabel(param_toplot)
 plt.title(f'{title_plot}')
@@ -304,7 +300,7 @@ plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/FoM
             dpi=500)
 
 # ! same plot with the cosmo params
-colors = cm.rainbow(np.linspace(0, 1, len(cosmo_param_names)))
+cs = cm.rainbow(np.linspace(0, 1, len(cosmo_param_names)))
 center_or_min = 'center'
 # choose what to plot
 cosmo_params_df = fm_uncert_df[
@@ -316,22 +312,60 @@ cosmo_params_df = fm_uncert_df[
     (fm_uncert_df['center_or_min'] == center_or_min)
     ]
 
-
 plt.figure()
 for i, cosmo_param in enumerate(cosmo_param_names):
     plt.plot(kmax_h_over_Mpc_list, cosmo_params_df[cosmo_param].values, label=f'{cosmo_params_tex[i]}', marker='o')
-    # plt.plot(kmax_h_over_Mpc_list, uncert_B, label=f'{key_to_compare} = {value_B}', marker='o')
-    # plt.plot(kmax_h_over_Mpc_list, uncert_perc_diff, label='% diff', marker='o')
-    # plt.axvline(kmax_bnt_fom_400, label=f'FoM = {fom_redbook}, {k_max_tex} = {kmax_bnt_fom_400:.02f}{h_over_mpc_tex}',
-    #             color='tab:blue', linestyle='--')
-    plt.axvline(kmax_w0_redbook, label=f'kmax_w0_redbook = {w0_uncert_redbook} = {kmax_std_fom_400:.02f}{h_over_mpc_tex}',
-                color='tab:orange', linestyle='--')
-    # plt.axhline(fom_noellcuts, label='$\\ell_{\\rm max} = 5000$', color='k', linestyle=':')
-    # plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', color='k', linestyle='-', alpha=0.3)
+plt.axvline(kmax_a_fom_400, label=f'{k_max_tex} = {kmax_a_fom_400:.02f} {h_over_mpc_tex}', c='k', ls='--')
 plt.xlabel(f'{k_max_tex} [{h_over_mpc_tex}]')
-plt.ylabel(param_toplot)
+plt.ylabel('relative uncertainty [%]')
 plt.title(f'{title_plot}')
 plt.legend()
+
+
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+
+# Create a figure and a 2x1 grid of subplots
+fig = plt.figure()
+gs = gridspec.GridSpec(2, 1, height_ratios=[1, 1], hspace=0.05)  # Adjust hspace as needed
+
+# Create the subplots
+ax0 = plt.subplot(gs[0])
+ax1 = plt.subplot(gs[1], sharex=ax0)
+
+# Plot data on both subplots
+for i, cosmo_param in enumerate(cosmo_param_names):
+    ax0.plot(kmax_h_over_Mpc_list, cosmo_params_df[cosmo_param].values, label=f'{cosmo_params_tex[i]}', marker='o')
+    ax1.plot(kmax_h_over_Mpc_list, cosmo_params_df[cosmo_param].values, label=f'{cosmo_params_tex[i]}', marker='o')
+
+# Add vertical line to both subplots
+ax0.axvline(kmax_a_fom_400, label=f'{k_max_tex} = {kmax_a_fom_400:.02f} {h_over_mpc_tex}', c='k', ls='--')
+ax1.axvline(kmax_a_fom_400, c='k', ls='--')
+
+# Set axis limits
+ax0.set_ylim([11, 21])
+ax1.set_ylim([0, 8])
+
+# Hide the spines between ax0 and ax1
+ax0.spines['bottom'].set_visible(True)
+ax1.spines['top'].set_visible(True)
+ax0.xaxis.tick_top()
+ax0.tick_params(labeltop=False)  # Remove tick labels at the top
+ax1.xaxis.tick_bottom()
+
+# Label axes and add title
+ax1.set_xlabel(f'{k_max_tex} [{h_over_mpc_tex}]')
+fig.text(0.04, 0.5, 'relative uncertainty [%]', va='center', rotation='vertical', fontsize=30)
+
+ax0.set_title(f'{title_plot}')
+
+# Add legend only to the first subplot
+ax0.legend()
+
+# Show the plot
+plt.show()
+
+
 #
 # # ! same with
 # fm_uncert_df_toplot = fm_uncert_df[

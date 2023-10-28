@@ -7,6 +7,8 @@ import yaml
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from chainconsumer import ChainConsumer
+from scipy.interpolate import interp1d
+from pynverse import inversefunc
 
 sys.path.append('../../bin/plot_FM_running')
 import plots_FM_running as plot_utils
@@ -52,6 +54,14 @@ ZS = 2
 probes = ('WL', 'GC', '3x2pt')
 which_cuts = 'Vincenzo'
 whose_FM_list = ('davide',)
+
+go_or_gs_list = ['GO']
+BNT_transform_list = [True, False]
+# BNT_transform_list = [True, ]
+# center_or_min_list = ['center', 'min']
+center_or_min_list = ['center']
+kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list'][:-1]
+ell_cuts_list = [True, False]
 # ! options
 
 probe_vinc_dict = {
@@ -71,13 +81,13 @@ assert which_cuts == 'Vincenzo', ('to begin with, use only Vincenzo/standard cut
 assert not use_Wadd, 'import of Wadd not implemented yet'
 
 fm_uncert_df = pd.DataFrame()
-for go_or_gs in ['GO', ]:
+for go_or_gs in go_or_gs_list:
     for probe in probes:
-        for BNT_transform in [False, True]:
-            for ell_cuts in [False, True]:
-                for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][::3]:
+        for BNT_transform in BNT_transform_list:
+            for ell_cuts in ell_cuts_list:
+                for kmax_h_over_Mpc in kmax_h_over_Mpc_list:
                     for whose_FM in whose_FM_list:
-                        for center_or_min in ['center', 'min']:
+                        for center_or_min in center_or_min_list:
 
                             names_params_to_fix = []
 
@@ -209,18 +219,18 @@ for go_or_gs in ['GO', ]:
                             fm_uncert_df = pd.concat([fm_uncert_df, fm_uncert_df_to_concat], ignore_index=True)
                             fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
 
-# ! percent difference between two cases (usually, GO and GS)
+# * plot options - these cannot be above the loop, otherwise equally named variables will be overwritten at each loop
 key_to_compare = 'BNT_transform'
 value_A = True
 value_B = False
 
 param_toplot = 'FoM'
-# param_toplot = cosmo_param_names
 probe_toplot = '3x2pt'
-center_or_min = 'min'
+center_or_min = 'center'
 ell_cuts = True
+kmax_h_over_Mpc_plt = kmax_h_over_Mpc_list[0]
 
-# add percent difference to the dataframe
+# ! percent difference between two cases (usually, GO and GS)
 df_A = fm_uncert_df[fm_uncert_df[key_to_compare] == value_A]
 df_B = fm_uncert_df[fm_uncert_df[key_to_compare] == value_B]
 arr_A = df_A.iloc[:, len(string_columns):].select_dtypes('number').values
@@ -232,6 +242,7 @@ perc_diff_df['FoM'] = np.abs(perc_diff_df['FoM'])
 fm_uncert_df = pd.concat([fm_uncert_df, perc_diff_df], axis=0, ignore_index=True)
 fm_uncert_df = fm_uncert_df.drop_duplicates()  # drop duplicates from df
 
+# choose what to plot
 fm_uncert_df_toplot = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['go_or_gs'] == 'GO') &
@@ -243,19 +254,42 @@ uncert_A = fm_uncert_df_toplot[fm_uncert_df_toplot[key_to_compare] == value_A][p
 uncert_B = fm_uncert_df_toplot[fm_uncert_df_toplot[key_to_compare] == value_B][param_toplot].values
 uncert_perc_diff = fm_uncert_df_toplot[fm_uncert_df_toplot[key_to_compare] == 'perc_diff'][param_toplot].values
 
+
+
+title_barplot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}\nkmax = {kmax_h_over_Mpc_plt:.03f}'
+title_plot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}'
+
+fom_bnt_vs_kmax = interp1d(kmax_h_over_Mpc_list, uncert_A, kind='linear')
+fom_std_vs_kmax = interp1d(kmax_h_over_Mpc_list, uncert_B, kind='linear')
+# invert equation, find kmax for a given FoM
+kmax_bnt_fom_400 = inversefunc(fom_bnt_vs_kmax, y_values=400, domain=(kmax_h_over_Mpc_list[0], kmax_h_over_Mpc_list[-1]))
+kmax_std_fom_400 = inversefunc(fom_std_vs_kmax, y_values=400, domain=(kmax_h_over_Mpc_list[0], kmax_h_over_Mpc_list[-1]))
+
 plt.figure()
-title = f'{probe_toplot}, {key_to_compare}={value_A} vs {value_B}'
-plt.title(f'{title}')
-plt.plot(general_cfg['kmax_h_over_Mpc_list'][::3], uncert_A, label=f'{key_to_compare}={value_A}', marker='o')
-plt.plot(general_cfg['kmax_h_over_Mpc_list'][::3], uncert_B, label=f'{key_to_compare}={value_B}', marker='o')
-plt.plot(general_cfg['kmax_h_over_Mpc_list'][::3], uncert_perc_diff, label='perc diff', marker='.')
-plt.xscale('log')
+plt.plot(kmax_h_over_Mpc_list, uncert_A, label=f'{key_to_compare}={value_A}', marker='o')
+plt.plot(kmax_h_over_Mpc_list, uncert_B, label=f'{key_to_compare}={value_B}', marker='o')
+plt.plot(kmax_h_over_Mpc_list, uncert_perc_diff, label='perc diff', marker='o')
+plt.axvline(kmax_bnt_fom_400, label=f'FoM = 400, kmax = {kmax_bnt_fom_400:.03f}', color='tab:blue', linestyle='--')
+plt.axvline(kmax_std_fom_400, label=f'FoM = 400, kmax = {kmax_std_fom_400:.03f}', color='tab:orange', linestyle='--')
+plt.axhline(400, color='k', linestyle=':')
+# plt.xscale('log')
 plt.xlabel(r'$k_{\rm max}$ [h/Mpc]')
 plt.ylabel(param_toplot)
+plt.title(f'{title_plot}')
 plt.legend()
 
-data = fm_uncert_df_toplot.iloc[:3, len(string_columns):].values
-label_list = list(fm_uncert_df_toplot['probe'].values)
+
+fm_uncert_df_toplot = fm_uncert_df[
+    (fm_uncert_df['probe'] == probe_toplot) &
+    (fm_uncert_df['go_or_gs'] == 'GO') &
+    (fm_uncert_df['whose_FM'] == 'davide') &
+    (fm_uncert_df['ell_cuts'] == ell_cuts) &
+    (fm_uncert_df['center_or_min'] == center_or_min) &
+    (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_plt)  # compare bnt
+    ]
+
+data = fm_uncert_df_toplot.iloc[:, len(string_columns):].values
+label_list = list(fm_uncert_df_toplot['BNT_transform'].values)
 label_list = ['None' if value is None else value for value in label_list]
 
 include_fom = False
@@ -263,8 +297,9 @@ if include_fom:
     num_params_tokeep += 1
 data = data[:, :num_params_tokeep]
 
-ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'
-plot_utils.bar_plot(data, title, label_list, bar_width=0.2, nparams=num_params_tokeep, param_names_label=None,
+# ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'
+ylabel = f'relative uncertainty [%]'
+plot_utils.bar_plot(data, title_barplot, label_list, bar_width=0.2, nparams=num_params_tokeep, param_names_label=None,
                     second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
                     include_fom=include_fom, figsize=(10, 8))
 

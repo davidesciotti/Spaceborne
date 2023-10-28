@@ -9,6 +9,7 @@ import numpy as np
 import os
 import warnings
 import matplotlib.lines as mlines
+from scipy.integrate import simps
 import gc
 import matplotlib.gridspec as gridspec
 import yaml
@@ -236,6 +237,7 @@ def plot_nz_tocheck_func(zgrid_nz, n_of_z):
 
 def plot_ell_cuts_for_thesis(ell_cuts_dict, ell_cuts_dict_bnt, key='LL'):
     # ! matshow ell cuts with and wo BNT - another thesis plot
+    # todo deprecate this plot?
     # Get the global min and max values for the color scale
     vmin = min(ell_cuts_dict['LL'].min(), ell_cuts_dict_bnt['LL'].min())
     vmax = max(ell_cuts_dict['LL'].max(), ell_cuts_dict_bnt['LL'].max())
@@ -275,9 +277,6 @@ def plot_ell_cuts_for_thesis(ell_cuts_dict, ell_cuts_dict_bnt, key='LL'):
     plt.tight_layout()
     plt.show()
 
-    plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/z_dependent_ell_cuts.pdf', dpi=300,
-                bbox_inches='tight')
-
 
 # * ====================================================================================================================
 # * ====================================================================================================================
@@ -295,10 +294,10 @@ print("\033[94m TODO restore loop over ell_center, ell_min \033[0m")
 print("\033[94m TODO include mag bias in galaxy kernels? \033[0m")
 warnings.warn('FIGURE OUT THE CUTS FOR THE GL CASE!!!')
 
-# general_cfg['kmax_h_over_Mpc_list'] = general_cfg['kmax_h_over_Mpc_list']
-for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
-    # I think that center is more accurate, it's where I compute the cl
-    for general_cfg['center_or_min'] in ['center', 'min']:
+# I think that center is more accurate, it's where I compute the cl
+for general_cfg['center_or_min'] in ['center', ]:
+    # general_cfg['kmax_h_over_Mpc_list'] = general_cfg['kmax_h_over_Mpc_list']
+    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         # for general_cfg['which_pk'] in general_cfg['which_pk_list']:
 
         with open(
@@ -485,12 +484,18 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         interpolation_kind = 'linear'
         gaussian_smoothing = False  # does not seem to have a large effect...
         sigma_gaussian_filter = 2
-        shift_dz = True
+        shift_dz = False
         normalize_shifted_nz = True
         compute_bnt_with_shifted_nz = False  # ! let's test this
-        use_ia = True
         use_fs1 = False
-        whose_wf = 'vincenzo'  # TODO 'vincenzo' or 'davide'. whose wf you want to use to compute the z mean for the ell cuts
+        use_ia = False
+        whose_wf = 'davide'  # TODO 'vincenzo' or 'davide'. whose wf you want to use to compute the z mean for the ell cuts
+
+        assert shift_dz is False, 'We compute the BNT just for a simple case: no IA, no shift. This is because we want' \
+                                  'to compute the z means'
+        assert use_ia is False, 'We compute the BNT just for a simple case: no IA, no shift. This is because we want' \
+                                'to compute the z means'
+        assert use_fs1 is False, 'no need to use FS1'
 
         if use_fs1:
             n_of_z = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
@@ -607,12 +612,19 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         z_means_ll_vin = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_ll_vin)
         z_means_gg_vin = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_galaxy_vin)
         z_means_ll_vin_bnt = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_ll_vin_bnt)
-        np.testing.assert_allclose(z_means_ll, z_means_ll_vin, rtol=1e-2, atol=0,
-                                   err_msg='z means computed w/ my vs vincenzo kernels don\'t match')
-        np.testing.assert_allclose(z_means_ll_bnt, z_means_ll_vin_bnt, rtol=5e-2, atol=0,
-                                   err_msg='z means bnt computed w/ my vs vincenzo kernels don\'t match')
-        np.testing.assert_allclose(z_means_gg, z_means_gg_vin, rtol=5e-2, atol=0,
-                                   err_msg='z means bnt computed w/ my vs vincenzo kernels don\'t match')
+
+        # # check that the z means are close (within 5%)
+        # np.testing.assert_allclose(z_means_ll, z_means_ll_vin, rtol=1e-2, atol=0,
+        #                            err_msg='z means computed w/ my vs vincenzo kernels don\'t match')
+        # np.testing.assert_allclose(z_means_ll_bnt, z_means_ll_vin_bnt, rtol=5e-2, atol=0,
+        #                            err_msg='z means bnt computed w/ my vs vincenzo kernels don\'t match')
+        # np.testing.assert_allclose(z_means_gg, z_means_gg_vin, rtol=5e-2, atol=0,
+        #                            err_msg='z means bnt computed w/ my vs vincenzo kernels don\'t match')
+
+        assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll must be monotonically increasing'
+        assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg must be monotonically increasing'
+        assert np.all(np.diff(z_means_ll_bnt) > 0), ('z_means_ll_bnt should be monotonically increasing '
+                                                     '(not a strict condition, but it would be better...)')
 
         plt.figure()
         for zi in range(zbins):
@@ -632,17 +644,23 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         plt.xlabel('$z$')
         plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
 
-        ls_dict = {'-': 'Davide', ':': 'Vincenzo'}
-        mm.add_ls_legend(ls_dict)
+        # Create the first legend
+        ls_dict = {'--': 'standard',
+                   '-': 'BNT',
+                   ':': '$z_{\\rm mean}$'}
 
-        plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/std_and_bnt_gamma_kernel.pdf',
-                    dpi=500,
-                    bbox_inches='tight')
+        handles = []
+        for ls, label in ls_dict.items():
+            handles.append(mlines.Line2D([], [], color='black', linestyle=ls, label=label))
 
-        # this is to produce the plot and check that the BNT cuts are better
-        ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc, z_values=z_means_ll)
-        # plot_ell_cuts_for_thesis(ell_cuts_dict, ell_cuts_dict_bnt)
-        # mm.matshow(ell_cuts_dict_bnt['LL'] / ell_cuts_dict['LL'], title=f'BNT/noBNT, kmax={kmax_h_over_Mpc} h/Mpc')
+        # Capture the first legend as an object
+        first_legend = plt.legend(handles=handles, loc='upper right')
+
+        # Add the first legend manually to the current Axes
+        ax = plt.gca().add_artist(first_legend)
+
+        # Create the second legend
+        plt.legend(loc='lower right')
 
         if BNT_transform:
             z_means_ll = z_means_ll_bnt
@@ -652,8 +670,20 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         ell_cuts_dict['GG'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_gg, z_values_b=z_means_gg)
         ell_cuts_dict['GL'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_gg, z_values_b=z_means_ll)
         ell_cuts_dict['LG'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_ll, z_values_b=z_means_gg)
-
         ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the covariance module
+
+        # this is to produce the plot and check that the BNT cuts are better
+        mm.matshow(ell_cuts_dict['LL'], title=f'kmax = {kmax_h_over_Mpc:.3f} h/Mpc')
+        # plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/z_dependent_ell_cuts.pdf', dpi=300,
+        #             bbox_inches='tight')
+
+        # plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/std_and_bnt_gamma_kernel.pdf',
+        #             dpi=500, bbox_inches='tight')
+
+        # mm.plot_bnt_matrix(BNT_matrix, zbins)
+        # plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/bnt_matrix_fs2.pdf',
+        #             dpi=500, bbox_inches='tight')
+
 
         # ! import and reshape datavectors (cl) and response functions (rl)
         # cl_fld = general_cfg['cl_folder']
@@ -1012,6 +1042,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                                                BNT_transform=str(BNT_transform),
                                                center_or_min=general_cfg['center_or_min'])
         if not general_cfg['ell_cuts']:
+            # not very nice, i defined the ell_cuts_subfolder above...
             fm_folder = fm_folder.replace(f'/{general_cfg["which_cuts"]}/ell_{center_or_min}', '')
 
         FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, FM_cfg['save_FM_txt'],

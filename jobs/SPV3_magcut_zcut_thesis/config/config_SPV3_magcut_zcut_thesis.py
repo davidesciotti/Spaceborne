@@ -83,10 +83,11 @@ general_cfg = {
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                          'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'kmax_h_over_Mpc_ref': 1.0,  # this is used when ell_cuts is False, also...?
-    # 'kmax_list_1_over_Mpc': np.array((0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00)),
+    # 'kmax_list_1_over_Mpc': np.array((0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, #10.00)),
     'kmax_h_over_Mpc_list': np.array([0.37108505, 0.74217011, 1.11325516, 1.48434021, 1.85542526,
-                                      2.22651032, 2.59759537, 2.96868042, 4.45302063, 7.42170105,
-                                      14.84340211]),  # I am using h = 0.6737 to convert, which is the correct value
+                                      2.22651032, 2.59759537, 2.96868042, 4.45302063, 7.42170105,]),
+                                      #14.84340211]),  # I am using h = 0.6737 to convert, which is the correct value
+                                      # 14 is above the lmax = 5000 cut, 7.4 is enough
 
     'BNT_transform': BNT_transform,  # ! to be deprecated?
     'cl_BNT_transform': cl_BNT_transform,

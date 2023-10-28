@@ -235,12 +235,12 @@ def plot_nz_tocheck_func(zgrid_nz, n_of_z):
     plt.ylabel('n(z)')
 
 
-def plot_ell_cuts_for_thesis(ell_cuts_dict, ell_cuts_dict_bnt, key='LL'):
+def plot_ell_cuts_for_thesis(ell_cuts_a, ell_cuts_b, label_a, label_b, kmax_h_over_Mpc):
     # ! matshow ell cuts with and wo BNT - another thesis plot
     # todo deprecate this plot?
     # Get the global min and max values for the color scale
-    vmin = min(ell_cuts_dict['LL'].min(), ell_cuts_dict_bnt['LL'].min())
-    vmax = max(ell_cuts_dict['LL'].max(), ell_cuts_dict_bnt['LL'].max())
+    vmin = min(ell_cuts_a.min(), ell_cuts_b.min())
+    vmax = max(ell_cuts_a.max(), ell_cuts_b.max())
 
     # Create a gridspec layout
     fig = plt.figure(figsize=(12, 5))
@@ -262,13 +262,13 @@ def plot_ell_cuts_for_thesis(ell_cuts_dict, ell_cuts_dict_bnt, key='LL'):
         ax.set_ylabel('$z_{\\rm bin}$')
 
     # Display the matrices with the shared color scale
-    cax0 = ax0.matshow(ell_cuts_dict['LL'], vmin=vmin, vmax=vmax)
-    cax1 = ax1.matshow(ell_cuts_dict_bnt['LL'], vmin=vmin, vmax=vmax)
+    cax0 = ax0.matshow(ell_cuts_a, vmin=vmin, vmax=vmax)
+    cax1 = ax1.matshow(ell_cuts_b, vmin=vmin, vmax=vmax)
 
     # Add titles to the plots
-    ax0.set_title('Standard', fontsize=20)
-    ax1.set_title(f'BNT, {interpolation_kind}', fontsize=20)
-    fig.suptitle(f'kmax = {kmax_h_over_Mpc} h/Mpc', fontsize=20)
+    ax0.set_title(label_a, fontsize=20)
+    ax1.set_title(label_b, fontsize=20)
+    fig.suptitle(f'{mpl_cfg.kmax_tex} = {kmax_h_over_Mpc} {mpl_cfg.h_over_mpc_tex}', fontsize=20)
 
     # Add a shared colorbar on the right
     cbar = fig.colorbar(cax0, cax=cbar_ax)
@@ -297,7 +297,7 @@ warnings.warn('FIGURE OUT THE CUTS FOR THE GL CASE!!!')
 # I think that center is more accurate, it's where I compute the cl
 for general_cfg['center_or_min'] in ['center', 'min']:
     # general_cfg['kmax_h_over_Mpc_list'] = general_cfg['kmax_h_over_Mpc_list']
-    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
+    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][6]:
         # for general_cfg['which_pk'] in general_cfg['which_pk_list']:
 
         with open(
@@ -626,6 +626,7 @@ for general_cfg['center_or_min'] in ['center', 'min']:
         assert np.all(np.diff(z_means_ll_bnt) > 0), ('z_means_ll_bnt should be monotonically increasing '
                                                      '(not a strict condition, but it would be better...)')
 
+        # ! plot std and BNT kernels
         plt.figure()
         for zi in range(zbins):
             # if zi in [2, 10]:
@@ -652,38 +653,26 @@ for general_cfg['center_or_min'] in ['center', 'min']:
         handles = []
         for ls, label in ls_dict.items():
             handles.append(mlines.Line2D([], [], color='black', linestyle=ls, label=label))
-
-        # Capture the first legend as an object
         first_legend = plt.legend(handles=handles, loc='upper right')
-
-        # Add the first legend manually to the current Axes
         ax = plt.gca().add_artist(first_legend)
-
-        # Create the second legend
         plt.legend(loc='lower right')
 
-        if BNT_transform:
-            z_means_ll = z_means_ll_bnt
-
         ell_cuts_dict = {}
-        ell_cuts_dict['LL'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_ll, z_values_b=z_means_ll)
+        ell_cuts_dict['LL'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_ll_bnt, z_values_b=z_means_ll_bnt)
         ell_cuts_dict['GG'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_gg, z_values_b=z_means_gg)
-        ell_cuts_dict['GL'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_gg, z_values_b=z_means_ll)
-        ell_cuts_dict['LG'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_ll, z_values_b=z_means_gg)
+        ell_cuts_dict['GL'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_gg, z_values_b=z_means_ll_bnt)
+        ell_cuts_dict['LG'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_ll_bnt, z_values_b=z_means_gg)
         ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the covariance module
 
-        # this is to produce the plot and check that the BNT cuts are better
-        mm.matshow(ell_cuts_dict['LL'], title=f'kmax = {kmax_h_over_Mpc:.3f} h/Mpc')
-        # plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/z_dependent_ell_cuts.pdf', dpi=300,
-        #             bbox_inches='tight')
-
-        # plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/std_and_bnt_gamma_kernel.pdf',
-        #             dpi=500, bbox_inches='tight')
+        # ! plot ell cuts matrix for thesis, for "reference" kmax (corresponding to FoM 400 for ell_cuts_center)
+        if kmax_h_over_Mpc == 2.15443469 and center_or_min == 'center':
+            mm.matshow(ell_cuts_dict['LL'], title=f'kmax = {kmax_h_over_Mpc:.3f} h/Mpc')
+            plt.savefig(f'/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/'
+                        f'z_dependent_ell_cuts_kmax{kmax_h_over_Mpc:02d}.pdf', dpi=500, bbox_inches='tight')
 
         # mm.plot_bnt_matrix(BNT_matrix, zbins)
         # plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/bnt_matrix_fs2.pdf',
         #             dpi=500, bbox_inches='tight')
-
 
         # ! import and reshape datavectors (cl) and response functions (rl)
         # cl_fld = general_cfg['cl_folder']

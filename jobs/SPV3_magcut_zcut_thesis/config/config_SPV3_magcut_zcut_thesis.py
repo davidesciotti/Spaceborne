@@ -84,8 +84,8 @@ general_cfg = {
                          'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'kmax_h_over_Mpc_ref': 1.0,  # this is used when ell_cuts is False, also...?
     # 'kmax_list_1_over_Mpc': np.array((0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, #10.00)),
-    'kmax_h_over_Mpc_list': np.array([0.37108505, 0.74217011, 1.11325516, 1.48434021, 1.85542526,
-                                      2.22651032, 2.59759537, 2.96868042, 4.45302063, 7.42170105, 14.84340211]),
+    # 'kmax_h_over_Mpc_list': np.array([0.37108505, 0.74217011, 1.11325516, 1.48434021, 1.85542526,
+    #                                   2.22651032, 2.59759537, 2.96868042, 4.45302063, 7.42170105, 14.84340211]),
     'kmax_h_over_Mpc_list': np.array([0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368,
                                       1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.]),
 
@@ -195,7 +195,7 @@ covariance_cfg = {
 
 if ell_cuts:
     covariance_cfg['cov_filename'] = covariance_cfg['cov_filename'].replace('_{ndim:d}D',
-                                                                            'kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D')
+                                                                            '_kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D')
 
 Sijkl_cfg = {
     'wf_input_folder': f'{SPV3_folder}/Windows',
@@ -256,7 +256,4 @@ FM_cfg = {
     'FM_dict_filename': FM_dict_filename,
 
     'test_against_benchmarks': False,
-    # 'FM_zbins{EP_or_ED:s}{zbins:02}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-'
-    #                 'MS{magcut_source:03d}-ZS{zcut_source:02d}'
-    #                 '_kmax_h_over_Mpc{kmax_h_over_Mpc:03f}',
 }

@@ -32,6 +32,8 @@ mpl.use('Qt5Agg')
 
 general_cfg = cfg.general_cfg
 FM_cfg = cfg.FM_cfg
+h_over_mpc_tex = mpl_cfg.h_over_mpc_tex
+k_max_tex = mpl_cfg.k_max_tex
 
 # ! options
 specs_str = 'idIA2_idB3_idM3_idR1'
@@ -54,6 +56,7 @@ string_columns = ['probe', 'go_or_gs', 'whose_FM', 'BNT_transform', 'ell_cuts', 
 triangle_plot = False
 use_Wadd = False  # the difference is extremely small
 which_pk = 'HMCodebar'
+fom_redbook = 400
 ML = 245
 MS = 245
 ZL = 2
@@ -64,9 +67,7 @@ whose_FM_list = ('davide',)
 
 go_or_gs_list = ['GO']
 BNT_transform_list = [True, False]
-# BNT_transform_list = [True, ]
-# center_or_min_list = ['center', 'min']
-center_or_min_list = ['center']
+center_or_min_list = ['center', 'min']
 kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list']
 ell_cuts_list = [True, False]
 # ! options
@@ -228,12 +229,12 @@ for go_or_gs in go_or_gs_list:
 
 # * plot options - these cannot be above the loop, otherwise equally named variables will be overwritten at each loop
 key_to_compare = 'center_or_min'
-value_A = True
-value_B = False
+value_A = 'center'
+value_B = 'min'
 
 param_toplot = 'FoM'
 probe_toplot = '3x2pt'
-center_or_min = 'center'
+BNT_transform = True
 ell_cuts = True
 kmax_h_over_Mpc_plt = kmax_h_over_Mpc_list[0]
 
@@ -254,14 +255,14 @@ fm_uncert_df_toplot = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['go_or_gs'] == 'GO') &
     (fm_uncert_df['whose_FM'] == 'davide') &
-    (fm_uncert_df['ell_cuts'] == ell_cuts) &
-    (fm_uncert_df['center_or_min'] == center_or_min)
+    (fm_uncert_df['BNT_transform'] == BNT_transform) &
+    (fm_uncert_df['ell_cuts'] == ell_cuts)
     ]
 uncert_A = fm_uncert_df_toplot[fm_uncert_df_toplot[key_to_compare] == value_A][param_toplot].values
 uncert_B = fm_uncert_df_toplot[fm_uncert_df_toplot[key_to_compare] == value_B][param_toplot].values
 uncert_perc_diff = fm_uncert_df_toplot[fm_uncert_df_toplot[key_to_compare] == 'perc_diff'][param_toplot].values
 
-
+# add FoM for no ell cuts case
 fom_noellcuts = fm_uncert_df[
     (fm_uncert_df['BNT_transform'] == False) &
     (fm_uncert_df['probe'] == probe_toplot) &
@@ -276,24 +277,23 @@ fom_noellcuts = fm_uncert_df[
 title_barplot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}\nkmax = {kmax_h_over_Mpc_plt:.03f}'
 title_plot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}'
 
+# find kmax for a given FoM (400)
 fom_bnt_vs_kmax = interp1d(kmax_h_over_Mpc_list, uncert_A, kind='linear')
 fom_std_vs_kmax = interp1d(kmax_h_over_Mpc_list, uncert_B, kind='linear')
-# invert equation, find kmax for a given FoM
-kmax_bnt_fom_400 = inversefunc(fom_bnt_vs_kmax, y_values=400,
+kmax_bnt_fom_400 = inversefunc(fom_bnt_vs_kmax, y_values=fom_redbook,
                                domain=(kmax_h_over_Mpc_list[0], kmax_h_over_Mpc_list[-1]))
-kmax_std_fom_400 = inversefunc(fom_std_vs_kmax, y_values=400,
+kmax_std_fom_400 = inversefunc(fom_std_vs_kmax, y_values=fom_redbook,
                                domain=(kmax_h_over_Mpc_list[0], kmax_h_over_Mpc_list[-1]))
 
 plt.figure()
-plt.plot(kmax_h_over_Mpc_list, uncert_A, label=f'{key_to_compare}={value_A}', marker='o')
-plt.plot(kmax_h_over_Mpc_list, uncert_B, label=f'{key_to_compare}={value_B}', marker='o')
-plt.plot(kmax_h_over_Mpc_list, uncert_perc_diff, label='perc diff', marker='o')
-plt.axvline(kmax_bnt_fom_400, label=f'FoM = 400, kmax = {kmax_bnt_fom_400:.02f}' '$h\,{\\rm Mpc}^{-1}$', color='tab:blue', linestyle='--')
-plt.axvline(kmax_std_fom_400, label=f'FoM = 400, kmax = {kmax_std_fom_400:.02f}' '$h\,{\\rm Mpc}^{-1}$', color='tab:orange', linestyle='--')
+plt.plot(kmax_h_over_Mpc_list, uncert_A, label=f'{key_to_compare} = {value_A}', marker='o')
+plt.plot(kmax_h_over_Mpc_list, uncert_B, label=f'{key_to_compare} = {value_B}', marker='o')
+plt.plot(kmax_h_over_Mpc_list, uncert_perc_diff, label='% diff', marker='o')
+plt.axvline(kmax_bnt_fom_400, label=f'FoM = {fom_redbook}, {k_max_tex} = {kmax_bnt_fom_400:.02f}{h_over_mpc_tex}' , color='tab:blue', linestyle='--')
+plt.axvline(kmax_std_fom_400, label=f'FoM = {fom_redbook}, {k_max_tex} = {kmax_std_fom_400:.02f}{h_over_mpc_tex}' , color='tab:orange', linestyle='--')
 plt.axhline(fom_noellcuts, label='$\\ell_{\\rm max} = 5000$', color='k', linestyle=':')
-plt.axhline(400, label='FoM = 400', color='k', linestyle='-', alpha=0.3)
-# plt.xscale('log')
-plt.xlabel(r'$k_{\rm max}$ [h/Mpc]')
+plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', color='k', linestyle='-', alpha=0.3)
+plt.xlabel(f'{k_max_tex} [{h_over_mpc_tex}]')
 plt.ylabel(param_toplot)
 plt.title(f'{title_plot}')
 plt.legend()

@@ -7,9 +7,8 @@ import pandas as pd
 import yaml
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 from chainconsumer import ChainConsumer
-from scipy.interpolate import interp1d
-from pynverse import inversefunc
 
 # Display all columns
 pd.set_option('display.max_columns', None)
@@ -50,7 +49,7 @@ fix_dz = True
 include_fom = True
 fid_shear_bias_prior = 5e-4
 shear_bias_prior = fid_shear_bias_prior
-gal_bias_perc_prior = None
+gal_bias_perc_prior = None  # ! not quite sure this works properly...
 string_columns = ['probe', 'go_or_gs', 'whose_FM', 'BNT_transform', 'ell_cuts', 'which_cuts', 'center_or_min',
                   'kmax_h_over_Mpc'
                   ]
@@ -253,7 +252,7 @@ perc_diff_df['FoM'] = np.abs(perc_diff_df['FoM'])
 fm_uncert_df = pd.concat([fm_uncert_df, perc_diff_df], axis=0, ignore_index=True)
 fm_uncert_df = fm_uncert_df.drop_duplicates()  # drop duplicates from df
 
-# choose what to plot
+# ! plot FoM vs kmax
 fm_uncert_df_toplot = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['go_or_gs'] == 'GO') &
@@ -276,13 +275,11 @@ fom_noellcuts = fm_uncert_df[
     (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_plt)
     ]['FoM'].values[0]
 
-title_barplot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}\nkmax = {kmax_h_over_Mpc_plt:.03f}'
-title_plot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}'
-
 # find kmax for a given FoM (400)
 kmax_a_fom_400 = mm.find_inverse_from_array(kmax_h_over_Mpc_list, uncert_A, fom_redbook)
 kmax_b_fom_400 = mm.find_inverse_from_array(kmax_h_over_Mpc_list, uncert_B, fom_redbook)
 
+title_plot = f'{probe_toplot}'
 plt.figure()
 plt.plot(kmax_h_over_Mpc_list, uncert_A, label=f'{key_to_compare} = {value_A}', marker='o')
 plt.plot(kmax_h_over_Mpc_list, uncert_B, label=f'{key_to_compare} = {value_B}', marker='o')
@@ -299,7 +296,7 @@ plt.legend()
 plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/FoM_vs_k_cuts.pdf', bbox_inches='tight',
             dpi=500)
 
-# ! same plot with the cosmo params
+# ! plot cosmo pars vs kmax
 cs = cm.rainbow(np.linspace(0, 1, len(cosmo_param_names)))
 center_or_min = 'center'
 # choose what to plot
@@ -312,33 +309,14 @@ cosmo_params_df = fm_uncert_df[
     (fm_uncert_df['center_or_min'] == center_or_min)
     ]
 
-plt.figure()
-for i, cosmo_param in enumerate(cosmo_param_names):
-    plt.plot(kmax_h_over_Mpc_list, cosmo_params_df[cosmo_param].values, label=f'{cosmo_params_tex[i]}', marker='o')
-plt.axvline(kmax_a_fom_400, label=f'{k_max_tex} = {kmax_a_fom_400:.02f} {h_over_mpc_tex}', c='k', ls='--')
-plt.xlabel(f'{k_max_tex} [{h_over_mpc_tex}]')
-plt.ylabel('relative uncertainty [%]')
-plt.title(f'{title_plot}')
-plt.legend()
-
-
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-
-# Create a figure and a 2x1 grid of subplots
 fig = plt.figure()
 gs = gridspec.GridSpec(2, 1, height_ratios=[1, 1], hspace=0.05)  # Adjust hspace as needed
-
-# Create the subplots
 ax0 = plt.subplot(gs[0])
 ax1 = plt.subplot(gs[1], sharex=ax0)
 
-# Plot data on both subplots
 for i, cosmo_param in enumerate(cosmo_param_names):
     ax0.plot(kmax_h_over_Mpc_list, cosmo_params_df[cosmo_param].values, label=f'{cosmo_params_tex[i]}', marker='o')
     ax1.plot(kmax_h_over_Mpc_list, cosmo_params_df[cosmo_param].values, label=f'{cosmo_params_tex[i]}', marker='o')
-
-# Add vertical line to both subplots
 ax0.axvline(kmax_a_fom_400, label=f'{k_max_tex} = {kmax_a_fom_400:.02f} {h_over_mpc_tex}', c='k', ls='--')
 ax1.axvline(kmax_a_fom_400, c='k', ls='--')
 
@@ -356,18 +334,16 @@ ax1.xaxis.tick_bottom()
 # Label axes and add title
 ax1.set_xlabel(f'{k_max_tex} [{h_over_mpc_tex}]')
 fig.text(0.04, 0.5, 'relative uncertainty [%]', va='center', rotation='vertical', fontsize=30)
-
-ax0.set_title(f'{title_plot}')
-
-# Add legend only to the first subplot
 ax0.legend()
-
-# Show the plot
 plt.show()
+fig.title(f'{title_plot}')
 
+plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/cosmo_params_vs_k_cuts.pdf',
+            bbox_inches='tight',
+            dpi=500)
 
-#
-# # ! same with
+# # ! bar plot, quite useless
+# title_barplot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}\nkmax = {kmax_h_over_Mpc_plt:.03f}'
 # fm_uncert_df_toplot = fm_uncert_df[
 #     (fm_uncert_df['probe'] == probe_toplot) &
 #     (fm_uncert_df['go_or_gs'] == 'GO') &

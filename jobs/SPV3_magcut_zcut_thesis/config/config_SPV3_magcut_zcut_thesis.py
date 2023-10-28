@@ -85,9 +85,9 @@ general_cfg = {
     'kmax_h_over_Mpc_ref': 1.0,  # this is used when ell_cuts is False, also...?
     # 'kmax_list_1_over_Mpc': np.array((0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, #10.00)),
     'kmax_h_over_Mpc_list': np.array([0.37108505, 0.74217011, 1.11325516, 1.48434021, 1.85542526,
-                                      2.22651032, 2.59759537, 2.96868042, 4.45302063, 7.42170105,]),
-                                      #14.84340211]),  # I am using h = 0.6737 to convert, which is the correct value
-                                      # 14 is above the lmax = 5000 cut, 7.4 is enough
+                                      2.22651032, 2.59759537, 2.96868042, 4.45302063, 7.42170105, 14.84340211]),
+    'kmax_h_over_Mpc_list': np.array([0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368,
+                                      1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.]),
 
     'BNT_transform': BNT_transform,  # ! to be deprecated?
     'cl_BNT_transform': cl_BNT_transform,

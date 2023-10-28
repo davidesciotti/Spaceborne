@@ -1,5 +1,6 @@
 import sys
 import warnings
+import matplotlib.cm as cm
 
 import numpy as np
 import pandas as pd
@@ -15,7 +16,6 @@ pd.set_option('display.max_columns', None)
 
 # Disable text wrapping within cells
 pd.set_option('display.expand_frame_repr', False)
-
 
 sys.path.append('../../bin/plot_FM_running')
 import plots_FM_running as plot_utils
@@ -34,6 +34,7 @@ general_cfg = cfg.general_cfg
 FM_cfg = cfg.FM_cfg
 h_over_mpc_tex = mpl_cfg.h_over_mpc_tex
 k_max_tex = mpl_cfg.k_max_tex
+cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
 # ! options
 specs_str = 'idIA2_idB3_idM3_idR1'
@@ -57,6 +58,8 @@ triangle_plot = False
 use_Wadd = False  # the difference is extremely small
 which_pk = 'HMCodebar'
 fom_redbook = 400
+w0_uncert_redbook = 2  # percent
+wa_uncert_redbook = 10  # percent
 ML = 245
 MS = 245
 ZL = 2
@@ -270,27 +273,26 @@ fom_noellcuts = fm_uncert_df[
     (fm_uncert_df['whose_FM'] == 'davide') &
     (fm_uncert_df['ell_cuts'] == False) &
     (fm_uncert_df['center_or_min'] == center_or_min) &
-    (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_plt)  # compare bnt
+    (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_plt)
     ]['FoM'].values[0]
-
 
 title_barplot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}\nkmax = {kmax_h_over_Mpc_plt:.03f}'
 title_plot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}'
 
 # find kmax for a given FoM (400)
-fom_bnt_vs_kmax = interp1d(kmax_h_over_Mpc_list, uncert_A, kind='linear')
-fom_std_vs_kmax = interp1d(kmax_h_over_Mpc_list, uncert_B, kind='linear')
-kmax_bnt_fom_400 = inversefunc(fom_bnt_vs_kmax, y_values=fom_redbook,
-                               domain=(kmax_h_over_Mpc_list[0], kmax_h_over_Mpc_list[-1]))
-kmax_std_fom_400 = inversefunc(fom_std_vs_kmax, y_values=fom_redbook,
-                               domain=(kmax_h_over_Mpc_list[0], kmax_h_over_Mpc_list[-1]))
+kmax_a_fom_400 = mm.find_inverse_from_array(kmax_h_over_Mpc_list, uncert_A, fom_redbook)
+kmax_b_fom_400 = mm.find_inverse_from_array(kmax_h_over_Mpc_list, uncert_B, fom_redbook)
+
+
 
 plt.figure()
 plt.plot(kmax_h_over_Mpc_list, uncert_A, label=f'{key_to_compare} = {value_A}', marker='o')
 plt.plot(kmax_h_over_Mpc_list, uncert_B, label=f'{key_to_compare} = {value_B}', marker='o')
 plt.plot(kmax_h_over_Mpc_list, uncert_perc_diff, label='% diff', marker='o')
-plt.axvline(kmax_bnt_fom_400, label=f'FoM = {fom_redbook}, {k_max_tex} = {kmax_bnt_fom_400:.02f}{h_over_mpc_tex}' , color='tab:blue', linestyle='--')
-plt.axvline(kmax_std_fom_400, label=f'FoM = {fom_redbook}, {k_max_tex} = {kmax_std_fom_400:.02f}{h_over_mpc_tex}' , color='tab:orange', linestyle='--')
+plt.axvline(kmax_a_fom_400, label=f'FoM = {fom_redbook}, {k_max_tex} = {kmax_a_fom_400:.02f}{h_over_mpc_tex}',
+            color='tab:blue', linestyle='--')
+plt.axvline(kmax_b_fom_400, label=f'FoM = {fom_redbook}, {k_max_tex} = {kmax_b_fom_400:.02f}{h_over_mpc_tex}',
+            color='tab:orange', linestyle='--')
 plt.axhline(fom_noellcuts, label='$\\ell_{\\rm max} = 5000$', color='k', linestyle=':')
 plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', color='k', linestyle='-', alpha=0.3)
 plt.xlabel(f'{k_max_tex} [{h_over_mpc_tex}]')
@@ -298,31 +300,66 @@ plt.ylabel(param_toplot)
 plt.title(f'{title_plot}')
 plt.legend()
 
-fm_uncert_df_toplot = fm_uncert_df[
+plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/FoM_vs_k_cuts.pdf', bbox_inches='tight',
+            dpi=500)
+
+# ! same plot with the cosmo params
+colors = cm.rainbow(np.linspace(0, 1, len(cosmo_param_names)))
+center_or_min = 'center'
+# choose what to plot
+cosmo_params_df = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['go_or_gs'] == 'GO') &
     (fm_uncert_df['whose_FM'] == 'davide') &
+    (fm_uncert_df['BNT_transform'] == BNT_transform) &
     (fm_uncert_df['ell_cuts'] == ell_cuts) &
-    (fm_uncert_df['center_or_min'] == center_or_min) &
-    (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_plt)  # compare bnt
+    (fm_uncert_df['center_or_min'] == center_or_min)
     ]
 
-data = fm_uncert_df_toplot.iloc[:, len(string_columns):].values
-label_list = list(fm_uncert_df_toplot['BNT_transform'].values)
-label_list = ['None' if value is None else value for value in label_list]
 
-include_fom = False
-if include_fom:
-    num_params_tokeep += 1
-data = data[:, :num_params_tokeep]
-
-# ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'
-ylabel = f'relative uncertainty [%]'
-plot_utils.bar_plot(data, title_barplot, label_list, bar_width=0.2, nparams=num_params_tokeep, param_names_label=None,
-                    second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
-                    include_fom=include_fom, figsize=(10, 8))
-
-# plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GOGS_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)
-
+plt.figure()
+for i, cosmo_param in enumerate(cosmo_param_names):
+    plt.plot(kmax_h_over_Mpc_list, cosmo_params_df[cosmo_param].values, label=f'{cosmo_params_tex[i]}', marker='o')
+    # plt.plot(kmax_h_over_Mpc_list, uncert_B, label=f'{key_to_compare} = {value_B}', marker='o')
+    # plt.plot(kmax_h_over_Mpc_list, uncert_perc_diff, label='% diff', marker='o')
+    # plt.axvline(kmax_bnt_fom_400, label=f'FoM = {fom_redbook}, {k_max_tex} = {kmax_bnt_fom_400:.02f}{h_over_mpc_tex}',
+    #             color='tab:blue', linestyle='--')
+    plt.axvline(kmax_w0_redbook, label=f'kmax_w0_redbook = {w0_uncert_redbook} = {kmax_std_fom_400:.02f}{h_over_mpc_tex}',
+                color='tab:orange', linestyle='--')
+    # plt.axhline(fom_noellcuts, label='$\\ell_{\\rm max} = 5000$', color='k', linestyle=':')
+    # plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', color='k', linestyle='-', alpha=0.3)
+plt.xlabel(f'{k_max_tex} [{h_over_mpc_tex}]')
+plt.ylabel(param_toplot)
+plt.title(f'{title_plot}')
+plt.legend()
+#
+# # ! same with
+# fm_uncert_df_toplot = fm_uncert_df[
+#     (fm_uncert_df['probe'] == probe_toplot) &
+#     (fm_uncert_df['go_or_gs'] == 'GO') &
+#     (fm_uncert_df['whose_FM'] == 'davide') &
+#     (fm_uncert_df['ell_cuts'] == ell_cuts) &
+#     (fm_uncert_df['center_or_min'] == center_or_min) &
+#     (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_plt)  # compare bnt
+#     ]
+#
+# data = fm_uncert_df_toplot.iloc[:, len(string_columns):].values
+# label_list = list(fm_uncert_df_toplot['BNT_transform'].values)
+# label_list = ['None' if value is None else value for value in label_list]
+#
+# include_fom = False
+# if include_fom:
+#     num_params_tokeep += 1
+# data = data[:, :num_params_tokeep]
+#
+#
+#
+# # ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'
+# # ylabel = f'relative uncertainty [%]'
+# # plot_utils.bar_plot(data, title_barplot, label_list, bar_width=0.2, nparams=num_params_tokeep, param_names_label=None,
+# #                     second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
+# #                     include_fom=include_fom, figsize=(10, 8))
+# # plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GOGS_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)
+#
 
 print('done')

@@ -295,7 +295,7 @@ print("\033[94m TODO include mag bias in galaxy kernels? \033[0m")
 warnings.warn('FIGURE OUT THE CUTS FOR THE GL CASE!!!')
 
 # I think that center is more accurate, it's where I compute the cl
-for general_cfg['center_or_min'] in ['center', ]:
+for general_cfg['center_or_min'] in ['center', 'min']:
     # general_cfg['kmax_h_over_Mpc_list'] = general_cfg['kmax_h_over_Mpc_list']
     for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         # for general_cfg['which_pk'] in general_cfg['which_pk_list']:

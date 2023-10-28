@@ -10,6 +10,13 @@ from chainconsumer import ChainConsumer
 from scipy.interpolate import interp1d
 from pynverse import inversefunc
 
+# Display all columns
+pd.set_option('display.max_columns', None)
+
+# Disable text wrapping within cells
+pd.set_option('display.expand_frame_repr', False)
+
+
 sys.path.append('../../bin/plot_FM_running')
 import plots_FM_running as plot_utils
 
@@ -60,7 +67,7 @@ BNT_transform_list = [True, False]
 # BNT_transform_list = [True, ]
 # center_or_min_list = ['center', 'min']
 center_or_min_list = ['center']
-kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list'][:-1]
+kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list']
 ell_cuts_list = [True, False]
 # ! options
 
@@ -220,7 +227,7 @@ for go_or_gs in go_or_gs_list:
                             fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
 
 # * plot options - these cannot be above the loop, otherwise equally named variables will be overwritten at each loop
-key_to_compare = 'BNT_transform'
+key_to_compare = 'center_or_min'
 value_A = True
 value_B = False
 
@@ -255,6 +262,16 @@ uncert_B = fm_uncert_df_toplot[fm_uncert_df_toplot[key_to_compare] == value_B][p
 uncert_perc_diff = fm_uncert_df_toplot[fm_uncert_df_toplot[key_to_compare] == 'perc_diff'][param_toplot].values
 
 
+fom_noellcuts = fm_uncert_df[
+    (fm_uncert_df['BNT_transform'] == False) &
+    (fm_uncert_df['probe'] == probe_toplot) &
+    (fm_uncert_df['go_or_gs'] == 'GO') &
+    (fm_uncert_df['whose_FM'] == 'davide') &
+    (fm_uncert_df['ell_cuts'] == False) &
+    (fm_uncert_df['center_or_min'] == center_or_min) &
+    (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_plt)  # compare bnt
+    ]['FoM'].values[0]
+
 
 title_barplot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}\nkmax = {kmax_h_over_Mpc_plt:.03f}'
 title_plot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}'
@@ -262,22 +279,24 @@ title_plot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}'
 fom_bnt_vs_kmax = interp1d(kmax_h_over_Mpc_list, uncert_A, kind='linear')
 fom_std_vs_kmax = interp1d(kmax_h_over_Mpc_list, uncert_B, kind='linear')
 # invert equation, find kmax for a given FoM
-kmax_bnt_fom_400 = inversefunc(fom_bnt_vs_kmax, y_values=400, domain=(kmax_h_over_Mpc_list[0], kmax_h_over_Mpc_list[-1]))
-kmax_std_fom_400 = inversefunc(fom_std_vs_kmax, y_values=400, domain=(kmax_h_over_Mpc_list[0], kmax_h_over_Mpc_list[-1]))
+kmax_bnt_fom_400 = inversefunc(fom_bnt_vs_kmax, y_values=400,
+                               domain=(kmax_h_over_Mpc_list[0], kmax_h_over_Mpc_list[-1]))
+kmax_std_fom_400 = inversefunc(fom_std_vs_kmax, y_values=400,
+                               domain=(kmax_h_over_Mpc_list[0], kmax_h_over_Mpc_list[-1]))
 
 plt.figure()
 plt.plot(kmax_h_over_Mpc_list, uncert_A, label=f'{key_to_compare}={value_A}', marker='o')
 plt.plot(kmax_h_over_Mpc_list, uncert_B, label=f'{key_to_compare}={value_B}', marker='o')
 plt.plot(kmax_h_over_Mpc_list, uncert_perc_diff, label='perc diff', marker='o')
-plt.axvline(kmax_bnt_fom_400, label=f'FoM = 400, kmax = {kmax_bnt_fom_400:.03f}', color='tab:blue', linestyle='--')
-plt.axvline(kmax_std_fom_400, label=f'FoM = 400, kmax = {kmax_std_fom_400:.03f}', color='tab:orange', linestyle='--')
-plt.axhline(400, color='k', linestyle=':')
+plt.axvline(kmax_bnt_fom_400, label=f'FoM = 400, kmax = {kmax_bnt_fom_400:.02f}' '$h\,{\\rm Mpc}^{-1}$', color='tab:blue', linestyle='--')
+plt.axvline(kmax_std_fom_400, label=f'FoM = 400, kmax = {kmax_std_fom_400:.02f}' '$h\,{\\rm Mpc}^{-1}$', color='tab:orange', linestyle='--')
+plt.axhline(fom_noellcuts, label='$\\ell_{\\rm max} = 5000$', color='k', linestyle=':')
+plt.axhline(400, label='FoM = 400', color='k', linestyle='-', alpha=0.3)
 # plt.xscale('log')
 plt.xlabel(r'$k_{\rm max}$ [h/Mpc]')
 plt.ylabel(param_toplot)
 plt.title(f'{title_plot}')
 plt.legend()
-
 
 fm_uncert_df_toplot = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &

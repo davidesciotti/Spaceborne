@@ -2,14 +2,12 @@ import sys
 import time
 from pathlib import Path
 import matplotlib
-import matplotlib as mpl
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 import warnings
 import matplotlib.lines as mlines
-from scipy.integrate import simps
 import gc
 import matplotlib.gridspec as gridspec
 import yaml
@@ -27,12 +25,7 @@ sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
 import common_lib.my_module as mm
 import common_lib.cosmo_lib as csmlib
 import common_lib.wf_cl_lib as wf_cl_lib
-import common_cfg.ISTF_fid_params as ISTF_fid
 import common_cfg.mpl_cfg as mpl_cfg
-
-matplotlib.use('Qt5Agg')
-plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
-script_start_time = time.perf_counter()
 
 # job configuration
 sys.path.append(f'{job_path}/config')
@@ -45,6 +38,10 @@ import cl_preprocessing as cl_utils
 import compute_Sijkl as Sijkl_utils
 import covariance as covmat_utils
 import fisher_matrix as FM_utils
+
+matplotlib.use('Qt5Agg')
+plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
+script_start_time = time.perf_counter()
 
 
 # TODO check that the number of ell bins is the same as in the files
@@ -287,6 +284,7 @@ general_cfg = cfg.general_cfg
 covariance_cfg = cfg.covariance_cfg
 Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
+kmax_fom_400_ellcenter = 2.15443469
 
 print("\033[94m TODO restore loop over which_pk \033[0m")
 print("\033[94m TODO restore full loop over kmax_h_over_Mpc_list \033[0m")
@@ -297,7 +295,7 @@ warnings.warn('FIGURE OUT THE CUTS FOR THE GL CASE!!!')
 # I think that center is more accurate, it's where I compute the cl
 for general_cfg['center_or_min'] in ['center', 'min']:
     # general_cfg['kmax_h_over_Mpc_list'] = general_cfg['kmax_h_over_Mpc_list']
-    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][6]:
+    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][6:8]:
         # for general_cfg['which_pk'] in general_cfg['which_pk_list']:
 
         with open(
@@ -665,10 +663,11 @@ for general_cfg['center_or_min'] in ['center', 'min']:
         ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the covariance module
 
         # ! plot ell cuts matrix for thesis, for "reference" kmax (corresponding to FoM 400 for ell_cuts_center)
-        if kmax_h_over_Mpc == 2.15443469 and center_or_min == 'center':
-            mm.matshow(ell_cuts_dict['LL'], title=f'kmax = {kmax_h_over_Mpc:.3f} h/Mpc')
+        if kmax_h_over_Mpc == kmax_fom_400_ellcenter and center_or_min == 'center':
+            mm.matshow(ell_cuts_dict['LL'], title=f'{mpl_cfg.kmax_tex} = {kmax_h_over_Mpc:.3f} h/Mpc')
             plt.savefig(f'/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/'
                         f'z_dependent_ell_cuts_kmax{kmax_h_over_Mpc:02d}.pdf', dpi=500, bbox_inches='tight')
+            assert False, 'stop here'
 
         # mm.plot_bnt_matrix(BNT_matrix, zbins)
         # plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/bnt_matrix_fs2.pdf',

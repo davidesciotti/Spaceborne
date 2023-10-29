@@ -846,7 +846,7 @@ for general_cfg['center_or_min'] in ['center', ]:
             # TODO: if already existing, don't compute the covmat, like done above for Sijkl
             cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                                 ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix)
-            mm.matshow(cov_dict['cov_3x2pt_GS_2D'])
+            mm.matshow(cov_dict['cov_3x2pt_GS_2D'], log=True)
 
 
 

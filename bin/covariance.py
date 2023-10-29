@@ -376,8 +376,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     start_time = time.perf_counter()
     if SSC_code == 'exactSSC':
-        assert covariance_cfg[
-            'cov_BNT_transform'], 'BNT transform must be True for exactSSC, at the moment (becuse I return the dict_10d)'
+        assert covariance_cfg['cov_BNT_transform'], 'BNT transform must be True for exactSSC, at the moment (becuse I return the dict_10d)'
         warnings.warn('the name of this function should be changed...')
         cov_exactSSC_SS_dict_10D = ssc_with_exactSSC_4D(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d')
         cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_exactSSC_SS_dict_10D, nbl_3x2pt, zbins, n_probes)
@@ -389,7 +388,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     elif SSC_code not in ('PySSC', 'PyCCL', 'exactSSC'):
         raise ValueError('covariance_cfg["SSC_code"] must be PySSC or PyCCL or exactSSC')
 
-    print('SSC covariance computed with {SSC_code} in %.2f seconds' % (time.perf_counter() - start_time))
+    print('SSC covariance computed with {SSC_code} in {}')
 
     # sum GO and SS in 6D (or 10D), not in 4D (it's the same)
     cov_WL_GS_6D = cov_WL_GO_6D + cov_WL_SS_6D
@@ -510,7 +509,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         Sijkl_dict = mm.build_Sijkl_dict(Sijkl, zbins)
 
         # probe ordering
-        # the function should be able to work with whatever 
+        # the function should be able to work with whatever
         # ordering of the probes; (TODO check this)
 
         # print as a check

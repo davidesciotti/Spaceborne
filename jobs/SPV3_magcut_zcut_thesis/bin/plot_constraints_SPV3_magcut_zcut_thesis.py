@@ -50,12 +50,13 @@ include_fom = True
 fid_shear_bias_prior = 5e-4
 shear_bias_prior = fid_shear_bias_prior
 gal_bias_perc_prior = None  # ! not quite sure this works properly...
-string_columns = ['probe', 'go_or_gs', 'whose_FM', 'BNT_transform', 'ell_cuts', 'which_cuts', 'center_or_min',
+string_columns = ['probe', 'go_or_gs', 'whose_FM', 'which_pk', 'BNT_transform', 'ell_cuts', 'which_cuts',
+                  'center_or_min',
                   'kmax_h_over_Mpc'
                   ]
 triangle_plot = False
 use_Wadd = False  # the difference is extremely small
-which_pk = 'HMCodebar'
+pk_ref = 'HMCodebar'
 fom_redbook = 400
 w0_uncert_redbook = 2  # percent
 wa_uncert_redbook = 10  # percent
@@ -68,10 +69,11 @@ which_cuts = 'Vincenzo'
 whose_FM_list = ('davide',)
 
 go_or_gs_list = ['GO']
-BNT_transform_list = [True, False]
-center_or_min_list = ['center', 'min']
+BNT_transform_list = [False, True]
+center_or_min_list = ['center']
 kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list']
-ell_cuts_list = [True, False]
+ell_cuts_list = [False, True]
+which_pk_list = general_cfg['which_pk_list']
 # ! options
 
 probe_vinc_dict = {
@@ -94,143 +96,154 @@ fm_uncert_df = pd.DataFrame()
 for go_or_gs in go_or_gs_list:
     for probe in probes:
         for BNT_transform in BNT_transform_list:
-            for ell_cuts in ell_cuts_list:
-                for kmax_h_over_Mpc in kmax_h_over_Mpc_list:
-                    for whose_FM in whose_FM_list:
-                        for center_or_min in center_or_min_list:
+            for which_pk in which_pk_list:
+                for ell_cuts in ell_cuts_list:
+                    for kmax_h_over_Mpc in kmax_h_over_Mpc_list:
+                        for whose_FM in whose_FM_list:
+                            for center_or_min in center_or_min_list:
 
-                            if BNT_transform is False:
-                                ell_cuts = False
+                                if BNT_transform is False:
+                                    ell_cuts = False
+                                # ! this needs to be switched off if you want to test whether BNT matches std implementation
+                                elif BNT_transform is True:
+                                    ell_cuts = True
 
-                            names_params_to_fix = []
+                                names_params_to_fix = []
 
-                            if whose_FM == 'davide':
-                                fm_path = f'{fm_root_path}/BNT_{BNT_transform}/ell_cuts_{ell_cuts}'
-                                fm_name = f'FM_{go_or_gs}_{probe}_zbins{EP_or_ED}{zbins}_' \
-                                          f'ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_{specs_str}_pk{which_pk}.pickle'
+                                if whose_FM == 'davide':
+                                    fm_path = f'{fm_root_path}/BNT_{BNT_transform}/ell_cuts_{ell_cuts}'
+                                    fm_name = f'FM_{go_or_gs}_{probe}_zbins{EP_or_ED}{zbins}_' \
+                                              f'ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_{specs_str}_pk{which_pk}.pickle'
 
-                                if ell_cuts:
-                                    fm_path += f'/{which_cuts}/ell_{center_or_min}'
-                                    fm_name = fm_name.replace(f'.pickle', f'_kmaxhoverMpc{kmax_h_over_Mpc:.03f}.pickle')
+                                    if ell_cuts:
+                                        fm_path += f'/{which_cuts}/ell_{center_or_min}'
+                                        fm_name = fm_name.replace(f'.pickle',
+                                                                  f'_kmaxhoverMpc{kmax_h_over_Mpc:.03f}.pickle')
 
-                                fm_pickle_name = fm_name.replace('.txt', '.pickle').replace(f'_{go_or_gs}_{probe}', '')
-                                fm_dict = mm.load_pickle(f'{fm_path}/{fm_pickle_name}')
+                                    fm_pickle_name = fm_name.replace('.txt', '.pickle').replace(f'_{go_or_gs}_{probe}',
+                                                                                                '')
+                                    fm_dict = mm.load_pickle(f'{fm_path}/{fm_pickle_name}')
 
-                                fm = fm_dict[f'FM_{probe}_{go_or_gs}']
+                                    fm = fm_dict[f'FM_{probe}_{go_or_gs}']
 
-                            elif whose_FM == 'vincenzo':
+                                elif whose_FM == 'vincenzo':
 
-                                kmax_1_over_Mpc = int(np.round(kmax_h_over_Mpc * h * 100))  # for vincenzo's file names
+                                    kmax_1_over_Mpc = int(
+                                        np.round(kmax_h_over_Mpc * h * 100))  # for vincenzo's file names
 
-                                fm_path = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/' \
-                                          f'LiFEforSPV3/OutputFiles/FishMat/GaussOnly/Flat/' \
-                                          f'{probe_vinc_dict[probe]}/{which_pk}/TestKappaMax'
-                                fm_name = f'fm-{probe_vinc_dict[probe]}-{EP_or_ED}{zbins}-ML{ML}-MS{MS}-{specs_str.replace("_", "-")}' \
-                                          f'-kM{kmax_1_over_Mpc:03d}.dat'
-                                fm = np.genfromtxt(f'{fm_path}/{fm_name}')
+                                    fm_path = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/' \
+                                              f'LiFEforSPV3/OutputFiles/FishMat/GaussOnly/Flat/' \
+                                              f'{probe_vinc_dict[probe]}/{which_pk}/TestKappaMax'
+                                    fm_name = f'fm-{probe_vinc_dict[probe]}-{EP_or_ED}{zbins}-ML{ML}-MS{MS}-{specs_str.replace("_", "-")}' \
+                                              f'-kM{kmax_1_over_Mpc:03d}.dat'
+                                    fm = np.genfromtxt(f'{fm_path}/{fm_name}')
 
-                            if probe == '3x2pt' and use_Wadd:
-                                assert False, 'import of Wadd not implemented for Vincenzos FM yet'
-                                fm_wa = np.genfromtxt(
-                                    f'{fm_path.replace("3x2pt", "WA")}/{fm_name.replace("3x2pt", "WA")}')
-                                fm += fm_wa
+                                if probe == '3x2pt' and use_Wadd:
+                                    assert False, 'import of Wadd not implemented for Vincenzos FM yet'
+                                    fm_wa = np.genfromtxt(
+                                        f'{fm_path.replace("3x2pt", "WA")}/{fm_name.replace("3x2pt", "WA")}')
+                                    fm += fm_wa
 
-                            # with open('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/'
-                            #           'fiducial_params_dict_for_FM.yml') as f:
-                            #     fiducials_dict = yaml.safe_load(f)
-                            fiducials_dict = fm_dict['fiducials_dict_flattened']  # TODO probably better a yaml file...
-                            h = fiducials_dict['h']
+                                # with open('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/'
+                                #           'fiducial_params_dict_for_FM.yml') as f:
+                                #     fiducials_dict = yaml.safe_load(f)
+                                fiducials_dict = fm_dict[
+                                    'fiducials_dict_flattened']  # TODO probably better a yaml file...
+                                h = fiducials_dict['h']
 
-                            assert fm.shape[0] == fm.shape[1], 'FM matrix is not square!'
-                            assert len(fiducials_dict) == fm.shape[0], 'FM matrix and fiducial parameters ' \
-                                                                       'length do not match!'
+                                assert fm.shape[0] == fm.shape[1], 'FM matrix is not square!'
+                                assert len(fiducials_dict) == fm.shape[0], 'FM matrix and fiducial parameters ' \
+                                                                           'length do not match!'
 
-                            # fix some of the parameters (i.e., which columns to remove)
-                            # if fix_curvature:
-                            # print('fixing curvature')
-                            # names_params_to_fix += ['ODE']
-                            # else:
-                            #     num_params_tokeep += 1
+                                # fix some of the parameters (i.e., which columns to remove)
+                                # if fix_curvature:
+                                # print('fixing curvature')
+                                # names_params_to_fix += ['ODE']
+                                # else:
+                                #     num_params_tokeep += 1
 
-                            if fix_shear_bias:
-                                # print('fixing shear bias parameters')
-                                names_params_to_fix += [f'm{(zi + 1):02d}' for zi in range(zbins)]
-                                # in this way, 👇there is no need for a 'add_shear_bias_prior' (or similar) boolean flag
-                                shear_bias_prior = None
+                                if fix_shear_bias:
+                                    # print('fixing shear bias parameters')
+                                    names_params_to_fix += [f'm{(zi + 1):02d}' for zi in range(zbins)]
+                                    # in this way, 👇there is no need for a 'add_shear_bias_prior' (or similar) boolean flag
+                                    shear_bias_prior = None
 
-                            if fix_gal_bias:
-                                # print('fixing galaxy bias parameters')
-                                names_params_to_fix += [f'bG{(zi + 1):02d}' for zi in range(zbins)]
-                                gal_bias_perc_prior = None
+                                if fix_gal_bias:
+                                    # print('fixing galaxy bias parameters')
+                                    names_params_to_fix += [f'bG{(zi + 1):02d}' for zi in range(zbins)]
+                                    gal_bias_perc_prior = None
 
-                            if fix_dz:
-                                # print('fixing dz parameters')
-                                names_params_to_fix += [f'dzWL{(zi + 1):02d}' for zi in range(zbins)]
+                                if fix_dz:
+                                    # print('fixing dz parameters')
+                                    names_params_to_fix += [f'dzWL{(zi + 1):02d}' for zi in range(zbins)]
 
-                            fm, fiducials_dict = mm.mask_fm_v2(fm, fiducials_dict, names_params_to_fix,
-                                                               remove_null_rows_cols=True)
+                                fm, fiducials_dict = mm.mask_fm_v2(fm, fiducials_dict, names_params_to_fix,
+                                                                   remove_null_rows_cols=True)
 
-                            param_names = list(fiducials_dict.keys())
-                            cosmo_param_names = list(fiducials_dict.keys())[:num_params_tokeep]
+                                param_names = list(fiducials_dict.keys())
+                                cosmo_param_names = list(fiducials_dict.keys())[:num_params_tokeep]
 
-                            # ! add prior on shear and/or gal bias
-                            if shear_bias_prior != None and probe in ['WL', '3x2pt']:
-                                shear_bias_param_names = [f'm{(zi + 1):02d}' for zi in range(zbins)]
-                                shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
-                                fm = mm.add_prior_to_fm(fm, fiducials_dict, shear_bias_param_names,
-                                                        shear_bias_prior_values)
+                                # ! add prior on shear and/or gal bias
+                                if shear_bias_prior != None and probe in ['WL', '3x2pt']:
+                                    shear_bias_param_names = [f'm{(zi + 1):02d}' for zi in range(zbins)]
+                                    shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
+                                    fm = mm.add_prior_to_fm(fm, fiducials_dict, shear_bias_param_names,
+                                                            shear_bias_prior_values)
 
-                            if gal_bias_perc_prior != None and probe in ['GC', '3x2pt']:
-                                gal_bias_param_names = [f'bG{(zi + 1):02d}' for zi in range(zbins)]
+                                if gal_bias_perc_prior != None and probe in ['GC', '3x2pt']:
+                                    gal_bias_param_names = [f'bG{(zi + 1):02d}' for zi in range(zbins)]
 
-                                # go from sigma_b / b_fid to sigma_b
-                                gal_bias_idxs = [param_names.index(gal_bias_param_name)
-                                                 for gal_bias_param_name in gal_bias_param_names]
+                                    # go from sigma_b / b_fid to sigma_b
+                                    gal_bias_idxs = [param_names.index(gal_bias_param_name)
+                                                     for gal_bias_param_name in gal_bias_param_names]
 
-                                gal_bias_fid_values = np.array(list(fiducials_dict.values()))[gal_bias_idxs]
-                                gal_bias_prior_values = gal_bias_perc_prior * gal_bias_fid_values / 100
-                                fm = mm.add_prior_to_fm(fm, fiducials_dict, gal_bias_param_names, gal_bias_prior_values)
+                                    gal_bias_fid_values = np.array(list(fiducials_dict.values()))[gal_bias_idxs]
+                                    gal_bias_prior_values = gal_bias_perc_prior * gal_bias_fid_values / 100
+                                    fm = mm.add_prior_to_fm(fm, fiducials_dict, gal_bias_param_names,
+                                                            gal_bias_prior_values)
 
-                            # ! triangle plot
-                            if triangle_plot:
-                                if probe == '3x2pt' and go_or_gs == 'GS' and fix_shear_bias == False:
-                                    # decide params to show in the triangle plot
-                                    shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
-                                    params_tot_list = cosmo_param_names + shear_bias_param_names
+                                # ! triangle plot
+                                if triangle_plot:
+                                    if probe == '3x2pt' and go_or_gs == 'GS' and fix_shear_bias == False:
+                                        # decide params to show in the triangle plot
+                                        shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
+                                        params_tot_list = cosmo_param_names + shear_bias_param_names
 
-                                    trimmed_fid_dict = {param: fiducials_dict[param] for param in params_tot_list}
+                                        trimmed_fid_dict = {param: fiducials_dict[param] for param in params_tot_list}
 
-                                    # get the covariance matrix (careful on how you cut the FM!!)
-                                    fm_idxs_tokeep = [list(fiducials_dict.keys()).index(param) for param in
-                                                      params_tot_list]
-                                    cov = np.linalg.inv(fm)[fm_idxs_tokeep, :][:, fm_idxs_tokeep]
+                                        # get the covariance matrix (careful on how you cut the FM!!)
+                                        fm_idxs_tokeep = [list(fiducials_dict.keys()).index(param) for param in
+                                                          params_tot_list]
+                                        cov = np.linalg.inv(fm)[fm_idxs_tokeep, :][:, fm_idxs_tokeep]
 
-                                    plot_utils.contour_plot_chainconsumer(cov, trimmed_fid_dict)
+                                        plot_utils.contour_plot_chainconsumer(cov, trimmed_fid_dict)
 
-                            # ! compute uncertainties from fm
-                            uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal',
-                                                               normalize=True,
-                                                               percent_units=True)[:num_params_tokeep]
+                                # ! compute uncertainties from fm
+                                uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal',
+                                                                   normalize=True,
+                                                                   percent_units=True)[:num_params_tokeep]
 
-                            # compute the FoM
-                            w0wa_idxs = param_names.index('wz'), param_names.index('wa')
-                            fom = mm.compute_FoM(fm, w0wa_idxs)
+                                # compute the FoM
+                                w0wa_idxs = param_names.index('wz'), param_names.index('wa')
+                                fom = mm.compute_FoM(fm, w0wa_idxs)
 
-                            df_columns_names = string_columns + [param_name for param_name in fiducials_dict.keys()][
-                                                                :num_params_tokeep] + ['FoM']
+                                df_columns_names = string_columns + [param_name for param_name in
+                                                                     fiducials_dict.keys()][
+                                                                    :num_params_tokeep] + ['FoM']
 
-                            # this is a list of lists just to have a 'row list' instead of a 'column list',
-                            # I still haven't figured out the problem, but in this way it works
-                            df_columns_values = [
-                                [probe, go_or_gs, whose_FM, BNT_transform, ell_cuts, which_cuts, center_or_min,
-                                 kmax_h_over_Mpc] +
-                                uncert_fm.tolist() + [fom]]
+                                # this is a list of lists just to have a 'row list' instead of a 'column list',
+                                # I still haven't figured out the problem, but in this way it works
+                                df_columns_values = [
+                                    [probe, go_or_gs, whose_FM, which_pk, BNT_transform, ell_cuts, which_cuts,
+                                     center_or_min,
+                                     kmax_h_over_Mpc] +
+                                    uncert_fm.tolist() + [fom]]
 
-                            assert len(df_columns_names) == len(df_columns_values[0]), 'Wrong number of columns!'
+                                assert len(df_columns_names) == len(df_columns_values[0]), 'Wrong number of columns!'
 
-                            fm_uncert_df_to_concat = pd.DataFrame(df_columns_values, columns=df_columns_names)
-                            fm_uncert_df = pd.concat([fm_uncert_df, fm_uncert_df_to_concat], ignore_index=True)
-                            fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
+                                fm_uncert_df_to_concat = pd.DataFrame(df_columns_values, columns=df_columns_names)
+                                fm_uncert_df = pd.concat([fm_uncert_df, fm_uncert_df_to_concat], ignore_index=True)
+                                fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
 
 # * plot options - these cannot be above the loop, otherwise equally named variables will be overwritten at each loop
 key_to_compare = 'center_or_min'
@@ -284,23 +297,22 @@ kmax_b_fom_400 = mm.find_inverse_from_array(kmax_h_over_Mpc_list, uncert_B, fom_
 
 title_plot = f'{probe_toplot}'
 plt.figure()
-plt.plot(kmax_h_over_Mpc_list, uncert_A, label=f'{key_to_compare} = {value_A}', marker='o')
-plt.plot(kmax_h_over_Mpc_list, uncert_B, label=f'{key_to_compare} = {value_B}', marker='o')
+plt.plot(kmax_h_over_Mpc_list, uncert_A, label=f'{value_A}', marker='o')
+plt.plot(kmax_h_over_Mpc_list, uncert_B, label=f'{value_B}', marker='o')
 plt.plot(kmax_h_over_Mpc_list, uncert_perc_diff, label='% diff', marker='o')
 plt.axvline(kmax_a_fom_400, label=f'{kmax_tex} = {kmax_a_fom_400:.02f} {h_over_mpc_tex}', c='tab:blue', ls='--')
 plt.axvline(kmax_b_fom_400, label=f'{kmax_tex} = {kmax_b_fom_400:.02f} {h_over_mpc_tex}', c='tab:orange', ls='--')
-plt.axhline(fom_noellcuts, label='$\\ell_{\\rm max} = 5000$', c='k', ls=':')
+plt.axhline(fom_noellcuts, label='$\\ell_{\\rm max, opt}^{\\rm EC20} = 3000$', c='k', ls=':')
 plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', c='k', ls='-', alpha=0.3)
 plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
 plt.ylabel(param_toplot)
 plt.title(f'{title_plot}')
 plt.legend()
 
-plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/FoM_vs_k_cuts.pdf', bbox_inches='tight',
-            dpi=500)
+# plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/FoM_vs_k_cuts.pdf', bbox_inches='tight',
+#             dpi=500)
 
 # ! plot cosmo pars vs kmax
-cs = cm.rainbow(np.linspace(0, 1, len(cosmo_param_names)))
 center_or_min = 'center'
 # choose what to plot
 cosmo_params_df = fm_uncert_df[
@@ -309,7 +321,8 @@ cosmo_params_df = fm_uncert_df[
     (fm_uncert_df['whose_FM'] == 'davide') &
     (fm_uncert_df['BNT_transform'] == BNT_transform) &
     (fm_uncert_df['ell_cuts'] == ell_cuts) &
-    (fm_uncert_df['center_or_min'] == center_or_min)
+    (fm_uncert_df['center_or_min'] == center_or_min) &
+    (fm_uncert_df['which_pk'] == pk_ref)
     ]
 
 plt.figure()
@@ -323,9 +336,35 @@ plt.legend()
 plt.show()
 plt.title(f'{title_plot}')
 
-plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/cosmo_params_vs_k_cuts.pdf',
-            bbox_inches='tight',
-            dpi=500)
+# ! plot different pks
+
+center_or_min = 'center'
+param_toplot = 'FoM'
+# choose what to plot
+cosmo_params_df = fm_uncert_df[
+    (fm_uncert_df['probe'] == probe_toplot) &
+    (fm_uncert_df['go_or_gs'] == 'GO') &
+    (fm_uncert_df['whose_FM'] == 'davide') &
+    (fm_uncert_df['BNT_transform'] == BNT_transform) &
+    (fm_uncert_df['ell_cuts'] == ell_cuts) &
+    (fm_uncert_df['center_or_min'] == center_or_min)
+    ]
+
+plt.figure()
+for i, which_pk in enumerate(which_pk_list):
+    plt.plot(kmax_h_over_Mpc_list, cosmo_params_df[cosmo_params_df['which_pk'] == which_pk][param_toplot].values,
+             label=f'{which_pk}', marker='o')
+plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', c='k', ls='--', alpha=0.5)
+
+plt.ylabel('relative uncertainty [%]')
+plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
+plt.legend()
+plt.show()
+plt.title(f'{title_plot}')
+
+# plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/cosmo_params_vs_k_cuts.pdf',
+#             bbox_inches='tight',
+#             dpi=500)
 
 # # ! bar plot, quite useless
 # title_barplot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}\nkmax = {kmax_h_over_Mpc_plt:.03f}'

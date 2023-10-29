@@ -287,17 +287,10 @@ Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 kmax_fom_400_ellcenter = 2.15443469
 
-print("\033[94m TODO restore loop over which_pk \033[0m")
-print("\033[94m TODO restore full loop over kmax_h_over_Mpc_list \033[0m")
-print("\033[94m TODO restore loop over ell_center, ell_min \033[0m")
-print("\033[94m TODO include mag bias in galaxy kernels? \033[0m")
-warnings.warn('FIGURE OUT THE CUTS FOR THE GL CASE!!!')
-
 # I think that center is more accurate, it's where I compute the cl
 for general_cfg['center_or_min'] in ['center', ]:
-    # general_cfg['kmax_h_over_Mpc_list'] = general_cfg['kmax_h_over_Mpc_list']
-    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:-1]:
-        for general_cfg['which_pk'] in general_cfg['which_pk_list'][1:]:
+    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
+        for general_cfg['which_pk'] in general_cfg['which_pk_list']:
 
             with open(
                     '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_cfg/SPV3_fiducial_params_magcut245_zbins13.yml') as f:
@@ -633,35 +626,35 @@ for general_cfg['center_or_min'] in ['center', ]:
                                                          '(not a strict condition, but it would be better...)')
 
             # ! plot std and BNT kernels
-            plt.figure()
-            for zi in range(zbins):
-                # if zi in [2, 10]:
-                #     plt.axvline(z_means_ll[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
-                #     plt.axvline(z_means_ll_bnt[zi], ls='--', c=colors[zi], ymin=0, lw=2, zorder=1)
-                # plt.axvline(z_center_values[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
+            # plt.figure()
+            # for zi in range(zbins):
+            #     # if zi in [2, 10]:
+            #     #     plt.axvline(z_means_ll[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
+            #     #     plt.axvline(z_means_ll_bnt[zi], ls='--', c=colors[zi], ymin=0, lw=2, zorder=1)
+            #     # plt.axvline(z_center_values[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
+            #
+            #     plt.plot(zgrid_nz, wf_ll_ccl[:, zi], ls='-', c=colors[zi], alpha=0.6)
+            #     plt.plot(zgrid_nz, wf_ll_ccl_bnt[:, zi], ls='-', c=colors[zi], alpha=0.6)
+            #
+            #     plt.plot(zgrid_wf_vin, wf_ll_vin[:, zi], ls=':', label='$z_{%d}$' % (zi + 1), c=colors[zi], alpha=0.6)
+            #     plt.plot(zgrid_wf_vin, wf_ll_vin_bnt[:, zi], ls=':', c=colors[zi], alpha=0.6)
+            #
+            # plt.title(f'interpolation_kind {interpolation_kind}, use_ia {use_ia}, sigma_gauss {sigma_gaussian_filter}\n'
+            #           f'shift_dz {shift_dz}')
+            # plt.xlabel('$z$')
+            # plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
+            #
+            # # Create the first legend
+            # ls_dict = {'--': 'standard',
+            #            '-': 'BNT',
+            #            ':': '$z_{\\rm mean}$'}
 
-                plt.plot(zgrid_nz, wf_ll_ccl[:, zi], ls='-', c=colors[zi], alpha=0.6)
-                plt.plot(zgrid_nz, wf_ll_ccl_bnt[:, zi], ls='-', c=colors[zi], alpha=0.6)
-
-                plt.plot(zgrid_wf_vin, wf_ll_vin[:, zi], ls=':', label='$z_{%d}$' % (zi + 1), c=colors[zi], alpha=0.6)
-                plt.plot(zgrid_wf_vin, wf_ll_vin_bnt[:, zi], ls=':', c=colors[zi], alpha=0.6)
-
-            plt.title(f'interpolation_kind {interpolation_kind}, use_ia {use_ia}, sigma_gauss {sigma_gaussian_filter}\n'
-                      f'shift_dz {shift_dz}')
-            plt.xlabel('$z$')
-            plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
-
-            # Create the first legend
-            ls_dict = {'--': 'standard',
-                       '-': 'BNT',
-                       ':': '$z_{\\rm mean}$'}
-
-            handles = []
-            for ls, label in ls_dict.items():
-                handles.append(mlines.Line2D([], [], color='black', linestyle=ls, label=label))
-            first_legend = plt.legend(handles=handles, loc='upper right')
-            ax = plt.gca().add_artist(first_legend)
-            plt.legend(loc='lower right')
+            # handles = []
+            # for ls, label in ls_dict.items():
+            #     handles.append(mlines.Line2D([], [], color='black', linestyle=ls, label=label))
+            # first_legend = plt.legend(handles=handles, loc='upper right')
+            # ax = plt.gca().add_artist(first_legend)
+            # plt.legend(loc='lower right')
 
             ell_cuts_dict = {}
             ell_cuts_dict['LL'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_ll_bnt, z_values_b=z_means_ll_bnt)
@@ -932,8 +925,6 @@ for general_cfg['center_or_min'] in ['center', ]:
                                   [f'ML{magcut_lens}', f'MS{magcut_source}', f'{EP_or_ED}{zbins}'])]
             vinc_filenames = [filename.replace('.dat', '') for filename in vinc_filenames]
 
-
-
             vinc_trimmed_filenames = [vinc_filename.split('-', 1)[0].strip() for vinc_filename in vinc_filenames]
             vinc_trimmed_filenames = [
                 vinc_trimmed_filename[len(der_prefix):] if vinc_trimmed_filename.startswith(
@@ -988,8 +979,8 @@ for general_cfg['center_or_min'] in ['center', ]:
                 dC_dict_GG_3D = {}
                 dC_dict_WA_3D = {}
                 dC_dict_3x2pt_5D = {}
-                # for key in dC_dict_1D.keys():
-                for key in vinc_filenames: # ! testing this
+                # for key in dC_dict_1D.keys():   # ! it was like this
+                for key in vinc_filenames:  # ! testing this
                     if not key.startswith('dDVddzGC'):
                         if 'WLO' in key:
                             dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)

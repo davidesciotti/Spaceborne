@@ -49,12 +49,14 @@ def get_ellmax_nbl(probe, general_cfg):
 
 
 def ssc_with_exactSSC_4D(general_cfg, covariance_cfg):
+    # this actually just imports the precomputed ssc. It can also compute deltab, quite useless at the moment
     print('computing SSC covariance with exactSSC...')
 
     probe = covariance_cfg['exactSSC_cfg']['probe']
     zbins = general_cfg['zbins']
     ell_max, nbl = get_ellmax_nbl(probe, general_cfg)
     probe_ordering = covariance_cfg['probe_ordering']
+    ind_dict = covariance_cfg['ind_dict']
 
     z_steps_sigma2 = covariance_cfg['exactSSC_cfg']['z_steps_sigma2']
     k_txt_label = covariance_cfg['exactSSC_cfg']['k_txt_label']
@@ -80,6 +82,7 @@ def ssc_with_exactSSC_4D(general_cfg, covariance_cfg):
     # populate 3x2pt dictionary
     elif probe == '3x2pt':
         cov_exactSSC_3x2pt_dict_8D = {}
+        cov_exactSSC_3x2pt_dict_10D = {}
         for probe_A, probe_B in probe_ordering:
             for probe_C, probe_D in probe_ordering:
 
@@ -96,7 +99,17 @@ def ssc_with_exactSSC_4D(general_cfg, covariance_cfg):
                         f'{path}/cov_SSC_{probe_A}{probe_B}{probe_C}{probe_D}_'
                         f'4D_{general_suffix_nbl29}.npy')[:nbl, :nbl, :, :]
 
+                    cov_exactSSC_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
+                        cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
+                        nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
+
+        # convert to 4d directly
         cov_exactSSC_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_exactSSC_3x2pt_dict_8D, probe_ordering)
+
+        # convert to 6d, for the BNT transform
+        assert False, 'finish this!!'
+        breakpoint()
+
 
     else:
         raise ValueError('probe must be LL or GG or 3x2pt')
@@ -162,7 +175,6 @@ def ssc_with_pyccl_4D(general_cfg, covariance_cfg, ell_dict):
         #                                                        general_cfg=general_cfg,
         #                                                        covariance_cfg=covariance_cfg)
         # mm.save_pickle(f'{path_ccl}/{cov_8D_dict_filename.replace("SSC", "cNG")}', cov_PyCCL_cng_8D_dict)
-
 
         cov_PyCCL_cng_8D_dict = mm.load_pickle(f'{path_ccl}/{cov_8D_dict_filename.replace("SSC", "cNG")}')
         cov_PyCCL_cng_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_PyCCL_cng_8D_dict, probe_ordering)
@@ -249,6 +261,10 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     # convenience vectors, used for the cov_4D_to_6D function
     ind_auto = ind[:zpairs_auto, :].copy()
     ind_cross = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
+    ind_dict = {('L', 'L'): ind_auto,
+                ('G', 'L'): ind_cross,
+                ('G', 'G'): ind_auto}
+    covariance_cfg['ind_dict'] = ind_dict
 
     # load Cls
     cl_LL_3D = cl_dict_3D['cl_LL_3D']

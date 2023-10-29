@@ -674,16 +674,16 @@ for general_cfg['center_or_min'] in ['center', ]:
             #             dpi=500, bbox_inches='tight')
 
             # ! import and reshape datavectors (cl) and response functions (rl)
-            # cl_fld = general_cfg['cl_folder']
-            # cl_filename = general_cfg['cl_filename']
-            # cl_ll_1d = np.genfromtxt(
-            #     f"{cl_fld.format(probe='WLO', which_pk=which_pk)}/{cl_filename.format(probe='WLO', **variable_specs)}")
-            # cl_gg_1d = np.genfromtxt(
-            #     f"{cl_fld.format(probe='GCO', which_pk=which_pk)}/{cl_filename.format(probe='GCO', **variable_specs)}")
-            # cl_wa_1d = np.genfromtxt(
-            #     f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', **variable_specs)}")
-            # cl_3x2pt_1d = np.genfromtxt(
-            #     f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
+            cl_fld = general_cfg['cl_folder']
+            cl_filename = general_cfg['cl_filename']
+            cl_ll_1d = np.genfromtxt(
+                f"{cl_fld.format(probe='WLO', which_pk=which_pk)}/{cl_filename.format(probe='WLO', **variable_specs)}")
+            cl_gg_1d = np.genfromtxt(
+                f"{cl_fld.format(probe='GCO', which_pk=which_pk)}/{cl_filename.format(probe='GCO', **variable_specs)}")
+            cl_wa_1d = np.genfromtxt(
+                f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', **variable_specs)}")
+            cl_3x2pt_1d = np.genfromtxt(
+                f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
 
             # rl_fld = general_cfg['rl_folder'].format(which_pk=which_pk)
             # rl_filename = general_cfg['rl_filename'].format()
@@ -702,25 +702,28 @@ for general_cfg['center_or_min'] in ['center', ]:
             # rl_3x2pt_1d = np.ones_like(cl_3x2pt_1d)
 
             # reshape to 3 dimensions
-            # cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
-            # cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
-            # cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
-            # cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
+            cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
+            cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
+            cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
+            cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
 
             warnings.warn(
                 'HARDCODED PATH FOR 3D CLS; you will need to use them without d shift onve vincenzo passes them to you')
-            cl_ll_3d = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_ShearShear_C00.npy')
-            cl_gl_3d = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_PosShear_C00.npy')[
+            cl_ll_3d_test = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_ShearShear_C00.npy')
+            cl_gl_3d_test = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_PosShear_C00.npy')[
                        :nbl_3x2pt,
                        ...]
-            cl_gg_3d = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_PosPos_C00.npy')[
+            cl_gg_3d_test = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_PosPos_C00.npy')[
                        :nbl_3x2pt,
                        ...]
-            cl_wa_3d = cl_ll_3d[nbl_3x2pt:, :, :]
-            warnings.warn('cl_wa_3d is just an array of ones!!')
-            cl_3x2pt_5d = cl_utils.build_3x2pt_datavector_5D(cl_ll_3d[:nbl_3x2pt, ...], cl_gl_3d, cl_gg_3d, nbl_3x2pt,
+            cl_wa_3d_test = cl_ll_3d_test[nbl_3x2pt:, :, :]
+            warnings.warn('cl_wa_3d_test is just an array of ones!!')
+            cl_3x2pt_5d_test = cl_utils.build_3x2pt_datavector_5D(cl_ll_3d[:nbl_3x2pt, ...], cl_gl_3d, cl_gg_3d, nbl_3x2pt,
                                                              zbins,
                                                              n_probes=2)
+
+
+            assert False, 'checking datavectors'
 
             # rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
             # rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC_opt, zbins)

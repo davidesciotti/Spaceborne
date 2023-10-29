@@ -14,7 +14,7 @@ import common_cfg.ISTF_fid_params as ISTF_fid
 which_forecast = 'SPV3'
 fsky, GL_or_LG, _, _ = utils.get_specs(which_forecast)
 
-SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/Thesis_10_2023'
+SPV3_folder = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/Thesis_10_2023'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -100,7 +100,9 @@ general_cfg = {
 
     'which_pk': 'HMCodebar',
     'which_pk_list': ('HMCodebar', 'HMCode2020', 'Bacco', 'EE2', 'TakaBird'),
-    'cl_folder': f'{SPV3_folder}' + 'DataVecDers/{flat_or_nonflat:s}/{probe:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
+    'cl_folder': '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/'
+                 'DataVectors/Noiseless/{which_pk:s}',
+    # 'cl_folder': f'{SPV3_folder}' + 'DataVecDers/{flat_or_nonflat:s}/{probe:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
     'rl_folder': f'{SPV3_folder}' + '/ResFun/{which_pk:s}',
     # XXX i don't have the cls, actually, or better, they're the CLOE benchmarks. use cov and derivatives directly...
     'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',

@@ -452,50 +452,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     #     elif probe_ssc_code == '3x2pt':
     #         cov_3x2pt_GS_4D = cov_3x2pt_GO_4D + cov_SS_4D
 
-    """
-    The code below is to import old pyccl ss cov files. Test it, then delete or better integrate it in the code
-    if SSC_code == 'PyCCL':
-        
-        print('Computing GS with PyCCL SSC covariance')
-        # assert covariance_cfg['compute_cov_6D'] is False, 'compute_cov_6D must be False when using, because cov_GS_4D' \
-        #                                                   ' gets overwritten below. Fix this.'
-
-        # TODO for now, load the existing files; then, compute the SSC cov properly
-        fldr = covariance_cfg["cov_SSC_PyCCL_folder"]
-        filename = covariance_cfg["cov_SSC_PyCCL_filename"]
-
-        cov_WL_SS_6D = np.load(f'{fldr}/{filename.format(probe="LL", nbl=nbl_WL, ell_max=ell_max_WL)}')
-        cov_GC_SS_6D = np.load(f'{fldr}/{filename.format(probe="GG", nbl=nbl_GC, ell_max=ell_max_GC)}')
-        cov_3x2pt_SS_10D_arr = np.load(f'{fldr}/{filename.format(probe="3x2pt", nbl=nbl_GC, ell_max=ell_max_GC)}')
-        # ! transform into a dict to be able to reshape to 4D, this is a very ugly way to do it
-        cov_3x2pt_SS_10D_dict = {
-            ('L', 'L', 'L', 'L'): cov_3x2pt_SS_10D_arr[0, 0, 0, 0],
-            ('L', 'L', 'G', 'L'): cov_3x2pt_SS_10D_arr[0, 0, 1, 0],
-            ('L', 'L', 'G', 'G'): cov_3x2pt_SS_10D_arr[0, 0, 1, 1],
-            ('G', 'L', 'L', 'L'): cov_3x2pt_SS_10D_arr[1, 0, 0, 0],
-            ('G', 'L', 'G', 'L'): cov_3x2pt_SS_10D_arr[1, 0, 1, 0],
-            ('G', 'L', 'G', 'G'): cov_3x2pt_SS_10D_arr[1, 0, 1, 1],
-            ('G', 'G', 'L', 'L'): cov_3x2pt_SS_10D_arr[1, 1, 0, 0],
-            ('G', 'G', 'G', 'L'): cov_3x2pt_SS_10D_arr[1, 1, 1, 0],
-            ('G', 'G', 'G', 'G'): cov_3x2pt_SS_10D_arr[1, 1, 1, 1],
-        }
-        # cov_3x2pt_SS_6D = mm.load_pickle(f'{fldr}/{filename.format(probe="3x2pt", nbl=nbl_GC, ell_max=ell_max_GC)}')
-
-        # reshape to 4D
-        cov_WL_SS_4D = mm.cov_6D_to_4D(cov_WL_SS_6D, nbl_WL, zpairs_auto, ind=ind_auto)
-        cov_GC_SS_4D = mm.cov_6D_to_4D(cov_GC_SS_6D, nbl_GC, zpairs_auto, ind=ind_auto)
-        cov_3x2pt_SS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SS_10D_dict, probe_ordering, nbl_GC, zbins, ind.copy(),
-                                                 GL_or_LG)
-
-        # ! better way, to be tested:
-        # if it works, delete the v2 and give as input the array (you can delete this ugly dict creation)
-        cov_3x2pt_SS_4D_v2 = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SS_10D_arr, probe_ordering, nbl_GC, zbins, ind.copy(),
-                                                    GL_or_LG)
-        assert np.array_equal(cov_3x2pt_SS_4D,
-                              cov_3x2pt_SS_4D_v2), 'cov_3x2pt_SS_4D and cov_3x2pt_SS_4D_v2 are not equal'
-    """
-    
-
     # ! transform everything in 2D
     start = time.perf_counter()
     cov_WL_GO_2D = mm.cov_4D_to_2D(cov_WL_GO_4D, block_index=block_index)

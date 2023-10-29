@@ -374,8 +374,10 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             raise ValueError(f'probe_ssc_code must be LL or GG or 3x2pt')
         nbl_ssc_code = len(ell_grid)
 
+    start_time = time.perf_counter()
     if SSC_code == 'exactSSC':
-        assert covariance_cfg['cov_BNT_transform'], 'BNT transform must be True for exactSSC, at the moment (becuse I return the dict_10d)'
+        assert covariance_cfg[
+            'cov_BNT_transform'], 'BNT transform must be True for exactSSC, at the moment (becuse I return the dict_10d)'
         warnings.warn('the name of this function should be changed...')
         cov_exactSSC_SS_dict_10D = ssc_with_exactSSC_4D(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d')
         cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_exactSSC_SS_dict_10D, nbl_3x2pt, zbins, n_probes)
@@ -387,7 +389,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     elif SSC_code not in ('PySSC', 'PyCCL', 'exactSSC'):
         raise ValueError('covariance_cfg["SSC_code"] must be PySSC or PyCCL or exactSSC')
 
-    print('SSC covariance computed with %s' % SSC_code)
+    print('SSC covariance computed with {SSC_code} in %.2f seconds' % (time.perf_counter() - start_time))
 
     # sum GO and SS in 6D (or 10D), not in 4D (it's the same)
     cov_WL_GS_6D = cov_WL_GO_6D + cov_WL_SS_6D
@@ -420,37 +422,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         # revert to 10D arrays
         cov_3x2pt_GO_10D = mm.cov_10D_dict_to_array(cov_3x2pt_GO_10D_dict, nbl_3x2pt, zbins, n_probes=2)
         cov_3x2pt_GS_10D = mm.cov_10D_dict_to_array(cov_3x2pt_GS_10D_dict, nbl_3x2pt, zbins, n_probes=2)
-
-    # ! 6d cov ell cuts, deprecated
-    # if covariance_cfg['cov_ell_cuts']:
-    #     assert False, 'Cov ell cuts in 6D are deprecated'
-    #     print('Performing ell cuts on covariance matrix...')
-    #     # ! get the ell indices which will be set to 0 for each zi, zj
-    #     ell_cuts_dict = ell_dict['ell_cuts_dict']
-    #     ell_cuts_idxs_LL = cl_preprocessing.get_ell_cuts_indices(ell_WL, ell_cuts_dict['WL'], zbins)
-    #     ell_cuts_idxs_WA = cl_preprocessing.get_ell_cuts_indices(ell_WA, ell_cuts_dict['WL'], zbins)
-    #     ell_cuts_idxs_GG = cl_preprocessing.get_ell_cuts_indices(ell_GC, ell_cuts_dict['GC'], zbins)
-    #     ell_cuts_idxs_GL = cl_preprocessing.get_ell_cuts_indices(ell_GC, ell_cuts_dict['GL'], zbins)
-    #
-    #     # ! perform the cuts: single-probe
-    #     cov_WL_GO_6D = cov_ell_cut(cov_WL_GO_6D, ell_cuts_idxs_LL, ell_cuts_idxs_LL, zbins)
-    #     cov_GC_GO_6D = cov_ell_cut(cov_GC_GO_6D, ell_cuts_idxs_GG, ell_cuts_idxs_GG, zbins)
-    #     cov_WA_GO_6D = cov_ell_cut(cov_WA_GO_6D, ell_cuts_idxs_WA, ell_cuts_idxs_WA, zbins)
-    #
-    #     cov_WL_GS_6D = cov_ell_cut(cov_WL_GS_6D, ell_cuts_idxs_LL, ell_cuts_idxs_LL, zbins)
-    #     cov_GC_GS_6D = cov_ell_cut(cov_GC_GS_6D, ell_cuts_idxs_GG, ell_cuts_idxs_GG, zbins)
-    #     cov_WA_GS_6D = cov_ell_cut(cov_WA_GS_6D, ell_cuts_idxs_WA, ell_cuts_idxs_WA, zbins)
-    #
-    #     # ! perform the cuts: 3x2pt (define a dictionary of ell_cuts_idxs to be able to use a loop)
-    #     ell_cuts_idxs_dict = {
-    #         ('L', 'L'): ell_cuts_idxs_LL,
-    #         ('G', 'L'): ell_cuts_idxs_GL,
-    #         ('G', 'G'): ell_cuts_idxs_GG,
-    #     }
-    #     for A, B in probe_ordering:
-    #         for C, D in probe_ordering:
-    #             cov_3x2pt_GO_10D_dict[A, B, C, D] = cov_ell_cut(cov_3x2pt_GO_10D_dict[A, B, C, D], ell_cuts_idxs_dict[A, B], ell_cuts_idxs_dict[C, D], zbins)
-    #             cov_3x2pt_GS_10D_dict[A, B, C, D] = cov_ell_cut(cov_3x2pt_GS_10D_dict[A, B, C, D], ell_cuts_idxs_dict[A, B], ell_cuts_idxs_dict[C, D], zbins)
 
     # ! transform everything in 4D
     start = time.perf_counter()

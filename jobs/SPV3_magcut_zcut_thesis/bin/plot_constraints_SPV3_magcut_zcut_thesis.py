@@ -78,7 +78,7 @@ kmax_1_over_Mpc_vinc_str_list = ['025', '050', '075', '100', '125', '150', '175'
 kmax_1_over_Mpc_vinc_list = [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00, 15.00, 20.00]
 
 ell_cuts_list = [False, True]
-which_pk_list = general_cfg['which_pk_list'][1:]
+which_pk_list = general_cfg['which_pk_list']
 # ! options
 
 probe_vinc_dict = {

@@ -877,7 +877,8 @@ for general_cfg['center_or_min'] in ['center', ]:
 
             # set the fiducial values in a dictionary and a list
             bias_fiducials = np.genfromtxt(
-                f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputNz/NzPar/gal_mag_fiducial_polynomial_fit.dat')
+                f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/'
+                f'InputFiles/InputNz/NzPar/gal_mag_fiducial_polynomial_fit.dat')
             bias_fiducials_rows = np.where(bias_fiducials[:, 0] == general_cfg['magcut_source'] / 10)[
                 0]  # take the correct magnitude limit
             galaxy_bias_fit_fiducials = bias_fiducials[bias_fiducials_rows, 1]

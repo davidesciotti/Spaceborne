@@ -276,6 +276,38 @@ def plot_ell_cuts_for_thesis(ell_cuts_a, ell_cuts_b, label_a, label_b, kmax_h_ov
     plt.show()
 
 
+def plot_kernels_for_thesis():
+    plt.figure()
+    for zi in range(zbins):
+        # if zi in [2, 10]:
+        #     plt.axvline(z_means_ll[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
+        #     plt.axvline(z_means_ll_bnt[zi], ls='--', c=colors[zi], ymin=0, lw=2, zorder=1)
+        # plt.axvline(z_center_values[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
+
+        plt.plot(zgrid_nz, wf_ll_ccl[:, zi], ls='-', c=colors[zi], alpha=0.6)
+        plt.plot(zgrid_nz, wf_ll_ccl_bnt[:, zi], ls='-', c=colors[zi], alpha=0.6)
+
+        plt.plot(zgrid_wf_vin, wf_ll_vin[:, zi], ls=':', label='$z_{%d}$' % (zi + 1), c=colors[zi], alpha=0.6)
+        plt.plot(zgrid_wf_vin, wf_ll_vin_bnt[:, zi], ls=':', c=colors[zi], alpha=0.6)
+
+    plt.title(f'interpolation_kind {interpolation_kind}, use_ia {use_ia}, sigma_gauss {sigma_gaussian_filter}\n'
+              f'shift_dz {shift_dz}')
+    plt.xlabel('$z$')
+    plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
+
+    # Create the first legend
+    ls_dict = {'--': 'standard',
+               '-': 'BNT',
+               ':': '$z_{\\rm mean}$'}
+
+    handles = []
+    for ls, label in ls_dict.items():
+        handles.append(mlines.Line2D([], [], color='black', linestyle=ls, label=label))
+    first_legend = plt.legend(handles=handles, loc='upper right')
+    ax = plt.gca().add_artist(first_legend)
+    plt.legend(loc='lower right')
+
+
 # * ====================================================================================================================
 # * ====================================================================================================================
 # * ====================================================================================================================
@@ -612,6 +644,8 @@ for general_cfg['center_or_min'] in ['center', ]:
             z_means_gg_vin = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_galaxy_vin)
             z_means_ll_vin_bnt = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_ll_vin_bnt)
 
+            # plot_kernels_for_thesis()
+
             # # check that the z means are close (within 5%)
             # np.testing.assert_allclose(z_means_ll, z_means_ll_vin, rtol=1e-2, atol=0,
             #                            err_msg='z means computed w/ my vs vincenzo kernels don\'t match')
@@ -624,37 +658,6 @@ for general_cfg['center_or_min'] in ['center', ]:
             assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg must be monotonically increasing'
             assert np.all(np.diff(z_means_ll_bnt) > 0), ('z_means_ll_bnt should be monotonically increasing '
                                                          '(not a strict condition, but it would be better...)')
-
-            # ! plot std and BNT kernels
-            # plt.figure()
-            # for zi in range(zbins):
-            #     # if zi in [2, 10]:
-            #     #     plt.axvline(z_means_ll[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
-            #     #     plt.axvline(z_means_ll_bnt[zi], ls='--', c=colors[zi], ymin=0, lw=2, zorder=1)
-            #     # plt.axvline(z_center_values[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
-            #
-            #     plt.plot(zgrid_nz, wf_ll_ccl[:, zi], ls='-', c=colors[zi], alpha=0.6)
-            #     plt.plot(zgrid_nz, wf_ll_ccl_bnt[:, zi], ls='-', c=colors[zi], alpha=0.6)
-            #
-            #     plt.plot(zgrid_wf_vin, wf_ll_vin[:, zi], ls=':', label='$z_{%d}$' % (zi + 1), c=colors[zi], alpha=0.6)
-            #     plt.plot(zgrid_wf_vin, wf_ll_vin_bnt[:, zi], ls=':', c=colors[zi], alpha=0.6)
-            #
-            # plt.title(f'interpolation_kind {interpolation_kind}, use_ia {use_ia}, sigma_gauss {sigma_gaussian_filter}\n'
-            #           f'shift_dz {shift_dz}')
-            # plt.xlabel('$z$')
-            # plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
-            #
-            # # Create the first legend
-            # ls_dict = {'--': 'standard',
-            #            '-': 'BNT',
-            #            ':': '$z_{\\rm mean}$'}
-
-            # handles = []
-            # for ls, label in ls_dict.items():
-            #     handles.append(mlines.Line2D([], [], color='black', linestyle=ls, label=label))
-            # first_legend = plt.legend(handles=handles, loc='upper right')
-            # ax = plt.gca().add_artist(first_legend)
-            # plt.legend(loc='lower right')
 
             ell_cuts_dict = {}
             ell_cuts_dict['LL'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_ll_bnt, z_values_b=z_means_ll_bnt)
@@ -692,6 +695,28 @@ for general_cfg['center_or_min'] in ['center', ]:
                 cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
                 cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
 
+                # ! import responses, not used at the moment (not using PySSC)
+                # rl_fld = general_cfg['rl_folder'].format(which_pk=which_pk)
+                # rl_filename = general_cfg['rl_filename'].format()
+                # rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', **variable_specs)}")
+                # rl_gg_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='GCO', **variable_specs)}")
+                # rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **variable_specs)}")
+                # rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **variable_specs)}")
+                if covariance_cfg[f'SSC_code'] == 'PySSC':
+                    assert covariance_cfg['compute_SSC'] is False, \
+                        'I am using mock responses; if you want to compute the SSC, you need to ' \
+                        'import the responses as well (see ssc_integrands_SPV3.py) for how to do it. moreover, ' \
+                        'pyssc w/ magbias is not yet ready'
+                rl_ll_1d = np.ones_like(cl_ll_1d)
+                rl_gg_1d = np.ones_like(cl_gg_1d)
+                rl_wa_1d = np.ones_like(cl_wa_1d)
+                rl_3x2pt_1d = np.ones_like(cl_3x2pt_1d)
+
+                rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
+                rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC_opt, zbins)
+                rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA_opt, zbins)
+                rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
+
             else:
                 print(f'Pk is {which_pk}; no LiFE datavectors in this case, using CLOE benchmarks (directly in 3d)...')
                 cloe_bench_path = '/Users/davide/Documents/Lavoro/Programmi/my_cloe_data'
@@ -701,28 +726,19 @@ for general_cfg['center_or_min'] in ['center', ]:
                 cl_wa_3d = cl_ll_3d[nbl_3x2pt:, :, :]
                 cl_3x2pt_5d = cl_utils.build_3x2pt_datavector_5D(cl_ll_3d[:nbl_3x2pt, ...], cl_gl_3d,
                                                                  cl_gg_3d, nbl_3x2pt, zbins, n_probes=2)
+                # this repetition is not very nice, but no time right now
+                if covariance_cfg[f'SSC_code'] == 'PySSC':
+                    assert covariance_cfg['compute_SSC'] is False, \
+                        'I am using mock responses; if you want to compute the SSC, you need to ' \
+                        'import the responses as well (see ssc_integrands_SPV3.py) for how to do it. moreover, ' \
+                        'pyssc w/ magbias is not yet ready'
+                rl_ll_3d = np.ones_like(cl_ll_3d)
+                rl_gl_3d = np.ones_like(cl_gl_3d)
+                rl_gg_3d = np.ones_like(cl_gg_3d)
+                rl_wa_3d = np.ones_like(cl_wa_3d)
+                rl_3x2pt_5d = np.ones_like(cl_3x2pt_5d)
 
-            # ! import responses, not used at the moment (not using PySSC)
-            # rl_fld = general_cfg['rl_folder'].format(which_pk=which_pk)
-            # rl_filename = general_cfg['rl_filename'].format()
-            # rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', **variable_specs)}")
-            # rl_gg_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='GCO', **variable_specs)}")
-            # rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **variable_specs)}")
-            # rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **variable_specs)}")
-            if covariance_cfg[f'SSC_code'] == 'PySSC':
-                assert covariance_cfg['compute_SSC'] is False, \
-                    'I am using mock responses; if you want to compute the SSC, you need to ' \
-                    'import the responses as well (see ssc_integrands_SPV3.py) for how to do it. moreover, ' \
-                    'pyssc w/ magbias is not yet ready'
-            rl_ll_1d = np.ones_like(cl_ll_1d)
-            rl_gg_1d = np.ones_like(cl_gg_1d)
-            rl_wa_1d = np.ones_like(cl_wa_1d)
-            rl_3x2pt_1d = np.ones_like(cl_3x2pt_1d)
 
-            rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
-            rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC_opt, zbins)
-            rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA_opt, zbins)
-            rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
 
             # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
             if ell_max_WL == general_cfg['ell_max_WL_opt']:
@@ -836,8 +852,8 @@ for general_cfg['center_or_min'] in ['center', ]:
                                                              **variable_specs)
             covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
-            if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False:
-                # load benchmark cov and check that it matches the one computed here
+            if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False and which_pk == 'HMCodebar':
+                # load benchmark cov and check that it matches the one computed here; I am not actually using it
                 cov_cloe_bench_2d = np.load(
                     f'/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/CovMat-3x2pt-Gauss-{nbl_WL_opt}Bins.npy')
                 # reshape it in dav format

@@ -44,7 +44,7 @@ zbins = 13
 num_params_tokeep = 7
 fix_curvature = True
 fix_gal_bias = False
-fix_shear_bias = True  # this has to be an outer loop if you also want to vary the shear bias prior itself
+fix_shear_bias = False  # this has to be an outer loop if you also want to vary the shear bias prior itself
 fix_dz = True
 include_fom = True
 fid_shear_bias_prior = 5e-4
@@ -67,11 +67,12 @@ ZS = 2
 probes = ('WL', 'GC', '3x2pt')
 which_cuts = 'Vincenzo'
 whose_FM_list = ('davide',)
+kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
 
 go_or_gs_list = ['GO']
 BNT_transform_list = [False, True]
 center_or_min_list = ['center']
-kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list']
+kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list'][:-1]
 ell_cuts_list = [False, True]
 which_pk_list = general_cfg['which_pk_list']
 # ! options
@@ -246,66 +247,61 @@ for go_or_gs in go_or_gs_list:
                                 fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
 
 # * plot options - these cannot be above the loop, otherwise equally named variables will be overwritten at each loop
-key_to_compare = 'center_or_min'
-value_A = 'center'
-value_B = 'min'
-
-param_toplot = 'FoM'
-probe_toplot = '3x2pt'
-BNT_transform = True
-ell_cuts = True
-kmax_h_over_Mpc_plt = kmax_h_over_Mpc_list[0]
-
 # ! percent difference between two cases (usually, GO and GS)
-df_A = fm_uncert_df[fm_uncert_df[key_to_compare] == value_A]
-df_B = fm_uncert_df[fm_uncert_df[key_to_compare] == value_B]
-arr_A = df_A.iloc[:, len(string_columns):].select_dtypes('number').values
-arr_B = df_B.iloc[:, len(string_columns):].select_dtypes('number').values
-perc_diff_df = df_A.copy()
-perc_diff_df.iloc[:, len(string_columns):] = mm.percent_diff(arr_B, arr_A)  # ! the reference is GO!!
-perc_diff_df[key_to_compare] = 'perc_diff'
-perc_diff_df['FoM'] = np.abs(perc_diff_df['FoM'])
-fm_uncert_df = pd.concat([fm_uncert_df, perc_diff_df], axis=0, ignore_index=True)
-fm_uncert_df = fm_uncert_df.drop_duplicates()  # drop duplicates from df
+# key_to_compare = 'center_or_min'
+# value_A = 'center'
+# value_B = 'min'
+# df_A = fm_uncert_df[fm_uncert_df[key_to_compare] == value_A]
+# df_B = fm_uncert_df[fm_uncert_df[key_to_compare] == value_B]
+# arr_A = df_A.iloc[:, len(string_columns):].select_dtypes('number').values
+# arr_B = df_B.iloc[:, len(string_columns):].select_dtypes('number').values
+# perc_diff_df = df_A.copy()
+# perc_diff_df.iloc[:, len(string_columns):] = mm.percent_diff(arr_B, arr_A)  # ! the reference is GO!!
+# perc_diff_df[key_to_compare] = 'perc_diff'
+# perc_diff_df['FoM'] = np.abs(perc_diff_df['FoM'])
+# fm_uncert_df = pd.concat([fm_uncert_df, perc_diff_df], axis=0, ignore_index=True)
+# fm_uncert_df = fm_uncert_df.drop_duplicates()  # drop duplicates from df
+
+center_or_min_plt = 'center'
+which_cuts_plt = 'Vincenzo'
 
 # ! plot FoM vs kmax
-fm_uncert_df_toplot = fm_uncert_df[
+probe_toplot = '3x2pt'
+fom_values = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['go_or_gs'] == 'GO') &
     (fm_uncert_df['whose_FM'] == 'davide') &
-    (fm_uncert_df['BNT_transform'] == BNT_transform) &
-    (fm_uncert_df['ell_cuts'] == ell_cuts)
-    ]
-uncert_A = fm_uncert_df_toplot[fm_uncert_df_toplot[key_to_compare] == value_A][param_toplot].values
-uncert_B = fm_uncert_df_toplot[fm_uncert_df_toplot[key_to_compare] == value_B][param_toplot].values
-uncert_perc_diff = fm_uncert_df_toplot[fm_uncert_df_toplot[key_to_compare] == 'perc_diff'][param_toplot].values
+    (fm_uncert_df['which_pk'] == pk_ref) &
+    (fm_uncert_df['BNT_transform'] == True) &
+    (fm_uncert_df['ell_cuts'] == True) &
+    (fm_uncert_df['which_cuts'] == which_cuts_plt) &
+    (fm_uncert_df['center_or_min'] == center_or_min_plt)
+    ]['FoM'].values
 
 # add FoM for no ell cuts case
 fom_noellcuts = fm_uncert_df[
-    (fm_uncert_df['BNT_transform'] == False) &
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['go_or_gs'] == 'GO') &
     (fm_uncert_df['whose_FM'] == 'davide') &
+    (fm_uncert_df['which_pk'] == pk_ref) &
+    (fm_uncert_df['BNT_transform'] == False) &
     (fm_uncert_df['ell_cuts'] == False) &
-    (fm_uncert_df['center_or_min'] == center_or_min) &
+    (fm_uncert_df['which_cuts'] == which_cuts_plt) &
+    (fm_uncert_df['center_or_min'] == center_or_min_plt) &
     (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_plt)
     ]['FoM'].values[0]
 
 # find kmax for a given FoM (400)
-kmax_a_fom_400 = mm.find_inverse_from_array(kmax_h_over_Mpc_list, uncert_A, fom_redbook)
-kmax_b_fom_400 = mm.find_inverse_from_array(kmax_h_over_Mpc_list, uncert_B, fom_redbook)
+kmax_fom_400 = mm.find_inverse_from_array(kmax_h_over_Mpc_list, fom_values, fom_redbook)
 
 title_plot = f'{probe_toplot}'
 plt.figure()
-plt.plot(kmax_h_over_Mpc_list, uncert_A, label=f'{value_A}', marker='o')
-plt.plot(kmax_h_over_Mpc_list, uncert_B, label=f'{value_B}', marker='o')
-plt.plot(kmax_h_over_Mpc_list, uncert_perc_diff, label='% diff', marker='o')
-plt.axvline(kmax_a_fom_400, label=f'{kmax_tex} = {kmax_a_fom_400:.02f} {h_over_mpc_tex}', c='tab:blue', ls='--')
-plt.axvline(kmax_b_fom_400, label=f'{kmax_tex} = {kmax_b_fom_400:.02f} {h_over_mpc_tex}', c='tab:orange', ls='--')
+plt.plot(kmax_h_over_Mpc_list, fom_values, label=f'FoM', marker='o')
+plt.axvline(kmax_fom_400, label=f'{kmax_tex} = {kmax_fom_400:.02f} {h_over_mpc_tex}', c='tab:blue', ls='--')
 plt.axhline(fom_noellcuts, label='$\\ell_{\\rm max, opt}^{\\rm EC20} = 3000$', c='k', ls=':')
 plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', c='k', ls='-', alpha=0.3)
 plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
-plt.ylabel(param_toplot)
+plt.ylabel('FoM')
 plt.title(f'{title_plot}')
 plt.legend()
 
@@ -328,7 +324,7 @@ cosmo_params_df = fm_uncert_df[
 plt.figure()
 for i, cosmo_param in enumerate(cosmo_param_names):
     plt.plot(kmax_h_over_Mpc_list, cosmo_params_df[cosmo_param].values, label=f'{cosmo_params_tex[i]}', marker='o')
-plt.axvline(kmax_a_fom_400, label=f'{kmax_tex} = {kmax_a_fom_400:.02f} {h_over_mpc_tex}', c='k', ls='--')
+plt.axvline(kmax_fom_400, label=f'{kmax_tex} = {kmax_fom_400:.02f} {h_over_mpc_tex}', c='k', ls='--')
 
 plt.ylabel('relative uncertainty [%]')
 plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
@@ -337,7 +333,6 @@ plt.show()
 plt.title(f'{title_plot}')
 
 # ! plot different pks
-
 center_or_min = 'center'
 param_toplot = 'FoM'
 # choose what to plot

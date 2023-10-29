@@ -459,6 +459,25 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_GC_GS_4D = mm.cov_6D_to_4D(cov_GC_GS_6D, nbl_GC, zpairs_auto, ind_auto)
     cov_WA_GS_4D = mm.cov_6D_to_4D(cov_WA_GS_6D, nbl_WA, zpairs_auto, ind_auto)
     cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
+
+    cov_WL_GS_4D_v2 = mm.cov_6D_to_4D_2(cov_WL_GS_6D, nbl_WL, zpairs_auto, ind_auto)
+    cov_GC_GS_4D_v2 = mm.cov_6D_to_4D_2(cov_GC_GS_6D, nbl_GC, zpairs_auto, ind_auto)
+    cov_WA_GS_4D_v2 = mm.cov_6D_to_4D_2(cov_WA_GS_6D, nbl_WA, zpairs_auto, ind_auto)
+
+    cov_WL_GS_4D_v3 = mm.cov_6D_to_4D_3(cov_WL_GS_6D, nbl_WL, zpairs_auto, ind_auto)
+    cov_GC_GS_4D_v3 = mm.cov_6D_to_4D_3(cov_GC_GS_6D, nbl_GC, zpairs_auto, ind_auto)
+    cov_WA_GS_4D_v3 = mm.cov_6D_to_4D_3(cov_WA_GS_6D, nbl_WA, zpairs_auto, ind_auto)
+
+    np.testing.assert_array_equal(cov_WL_GS_4D, cov_WL_GS_4D_v2)
+    np.testing.assert_array_equal(cov_GC_GS_4D, cov_GC_GS_4D_v2)
+    np.testing.assert_array_equal(cov_WA_GS_4D, cov_WA_GS_4D_v2)
+
+    np.testing.assert_array_equal(cov_WL_GS_4D, cov_WL_GS_4D_v3)
+    np.testing.assert_array_equal(cov_GC_GS_4D, cov_GC_GS_4D_v3)
+    np.testing.assert_array_equal(cov_WA_GS_4D, cov_WA_GS_4D_v3)
+
+    mm.matshow(cov_3x2pt_GS_4D[1, 2, ...], log=True, title='cov_3x2pt_GS_4D')
+    assert False, 'checking cov_6D_to_4D'
     print('covariance matrices reshaped (6D -> 4D) in {:.2f} s'.format(time.perf_counter() - start))
 
     # ! ========================= plug the 4D covariances into the pipeline ============================================

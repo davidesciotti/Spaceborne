@@ -335,10 +335,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_3x2pt_GO_10D = mm.covariance_einsum(cl_3x2pt_5D, noise_3x2pt_5D, fsky, ell_3x2pt, delta_l_3x2pt)
     print("Gauss. cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
 
-    # # delete the 6D matrices to free memory
-    # del cov_WL_GO_6D, cov_GC_GO_6D, cov_WA_GO_6D, cov_3x2pt_GO_10D
-    # gc.collect()
-
     ######################## COMPUTE SSC COVARIANCE ###############################
 
     # compute the covariance with PySSC anyway, not to have problems with WA
@@ -376,7 +372,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     start_time = time.perf_counter()
     if SSC_code == 'exactSSC':
-        assert covariance_cfg['cov_BNT_transform'], 'BNT transform must be True for exactSSC, at the moment (becuse I return the dict_10d)'
+        assert covariance_cfg[
+            'cov_BNT_transform'], 'BNT transform must be True for exactSSC, at the moment (becuse I return the dict_10d)'
         warnings.warn('the name of this function should be changed...')
         cov_exactSSC_SS_dict_10D = ssc_with_exactSSC_4D(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d')
         cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_exactSSC_SS_dict_10D, nbl_3x2pt, zbins, n_probes)
@@ -634,33 +631,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_dict['cov_WL_GS_6D'] = cov_BNT_transform(cov_dict['cov_WL_GS_6D'], X_dict, 'L', 'L', 'L', 'L')
             cov_dict['cov_WA_GS_6D'] = cov_BNT_transform(cov_dict['cov_WA_GS_6D'], X_dict, 'L', 'L', 'L', 'L')
             cov_dict['cov_3x2pt_GS_10D_dict'] = cov_3x2pt_BNT_transform(cov_dict['cov_3x2pt_GS_10D_dict'], X_dict)
-
-        # if covariance_cfg['cov_ell_cuts']:
-
-        # print('Performing ell cuts on covariance matrix...')
-        # # ! get the ell indices which will be set to 0 for each zi, zj
-        # ell_cuts_dict = ell_dict['ell_cuts_dict']
-        # ell_cuts_idxs_LL = cl_preprocessing.get_ell_cuts_indices(l_lin_WL, ell_cuts_dict['WL'], zbins)
-        # ell_cuts_idxs_WA = cl_preprocessing.get_ell_cuts_indices(l_lin_WA, ell_cuts_dict['WL'], zbins)
-        # ell_cuts_idxs_GG = cl_preprocessing.get_ell_cuts_indices(l_lin_GC, ell_cuts_dict['GC'], zbins)
-        # ell_cuts_idxs_GL = cl_preprocessing.get_ell_cuts_indices(l_lin_GC, ell_cuts_dict['GL'], zbins)
-        #
-        # # ! perform the cuts: single-probe
-        # cov_dict['cov_WL_GO_6D'] = cov_ell_cut(cov_dict['cov_WL_GO_6D'], ell_cuts_idxs_LL, ell_cuts_idxs_LL, zbins)
-        # cov_dict['cov_WA_GO_6D'] = cov_ell_cut(cov_dict['cov_WA_GO_6D'], ell_cuts_idxs_WA, ell_cuts_idxs_WA, zbins)
-        # cov_dict['cov_GC_GO_6D'] = cov_ell_cut(cov_dict['cov_GC_GO_6D'], ell_cuts_idxs_GG, ell_cuts_idxs_GG, zbins)
-        #
-        # # ! perform the cuts: 3x2pt (define a dictionary of ell_cuts_idxs to be able to use a loop)
-        # ell_cuts_idxs_dict = {
-        #     ('L', 'L'): ell_cuts_idxs_LL,
-        #     ('G', 'L'): ell_cuts_idxs_GL,
-        #     ('G', 'G'): ell_cuts_idxs_GG,
-        # }
-        # for A, B in probe_ordering:
-        #     for C, D in probe_ordering:
-        #         cov_dict['cov_3x2pt_GO_10D_dict'][A, B, C, D] = cov_ell_cut(
-        #             cov_dict['cov_3x2pt_GO_10D_dict'][A, B, C, D],
-        #             ell_cuts_idxs_dict[A, B], ell_cuts_idxs_dict[C, D], zbins)
 
         # if not converted in 4D, only the 6D covs will be overwritten by the BNT-transofrmed version!
         cov_WL_GO_4D = mm.cov_6D_to_4D(cov_dict['cov_WL_GO_6D'], nbl_WL, zpairs_auto, ind_auto)

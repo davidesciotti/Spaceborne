@@ -506,7 +506,7 @@ for general_cfg['center_or_min'] in ['center', ]:
                 # for zi in range(zbins):
                 #     plt.plot(zgrid_nz, n_of_z[:, zi], label=f'zbin {zi}', c=colors[zi], ls='-')
                 #     plt.plot(zgrid_nz, n_of_z[:, zi], c=colors[zi], ls='--')
-                # plt.title(f'sigma = {sigma_gaussian_filter}')
+                # plt.title(f'Gaussian filter w/ sigma = {sigma_gaussian_filter}')
 
             n_of_z_bnt = n_of_z
 

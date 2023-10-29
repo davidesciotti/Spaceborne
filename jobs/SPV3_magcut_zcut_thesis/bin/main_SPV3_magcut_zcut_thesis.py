@@ -322,7 +322,7 @@ kmax_fom_400_ellcenter = 2.15443469
 # I think that center is more accurate, it's where I compute the cl
 for general_cfg['center_or_min'] in ['center', ]:
     for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:-1]:
-        for general_cfg['which_pk'] in general_cfg['which_pk_list']:
+        # for general_cfg['which_pk'] in general_cfg['which_pk_list']:
 
             with open(
                     '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_cfg/SPV3_fiducial_params_magcut245_zbins13.yml') as f:
@@ -846,6 +846,9 @@ for general_cfg['center_or_min'] in ['center', ]:
             # TODO: if already existing, don't compute the covmat, like done above for Sijkl
             cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                                 ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix)
+            mm.matshow(cov_dict['cov_3x2pt_GS_2D'])
+
+
 
             # save covariance matrix and test against benchmarks
             cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),

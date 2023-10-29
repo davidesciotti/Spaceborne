@@ -48,9 +48,10 @@ def get_ellmax_nbl(probe, general_cfg):
     return ell_max, nbl
 
 
-def ssc_with_exactSSC_4D(general_cfg, covariance_cfg):
+def ssc_with_exactSSC_4D(general_cfg, covariance_cfg, return_format_3x2pt):
     # this actually just imports the precomputed ssc. It can also compute deltab, quite useless at the moment
     print('computing SSC covariance with exactSSC...')
+    warnings.warn('I am dividing by fsky in the import here below (8d dict), should be correct but be careful...')
 
     probe = covariance_cfg['exactSSC_cfg']['probe']
     zbins = general_cfg['zbins']
@@ -97,27 +98,26 @@ def ssc_with_exactSSC_4D(general_cfg, covariance_cfg):
                     # cut the covariance to 29 bins
                     cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D] = np.load(
                         f'{path}/cov_SSC_{probe_A}{probe_B}{probe_C}{probe_D}_'
-                        f'4D_{general_suffix_nbl29}.npy')[:nbl, :nbl, :, :]
+                        f'4D_{general_suffix_nbl29}.npy')[:nbl, :nbl, :, :] / covariance_cfg['fsky']
 
                     cov_exactSSC_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
                         cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
                         nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
 
-        # convert to 4d directly
-        cov_exactSSC_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_exactSSC_3x2pt_dict_8D, probe_ordering)
-
-        # convert to 6d, for the BNT transform
-        assert False, 'finish this!!'
-        breakpoint()
-
+        assert probe == '3x2pt', ('probe must be 3x2pt at the moment, messing around with return dimension for BNT. to '
+                                  'be implemented better later')
+        if return_format_3x2pt == 'dict_8d':
+            return cov_exactSSC_3x2pt_dict_8D
+        elif return_format_3x2pt == 'dict_10d':
+            return cov_exactSSC_3x2pt_dict_10D
+        elif return_format_3x2pt == '4d_array':
+            cov_exactSSC_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_exactSSC_3x2pt_dict_8D, probe_ordering)
+            return cov_exactSSC_SS_4D
+        else:
+            raise ValueError('return_format_3x2pt must be "dict_8d" or "dict_10d" or 4d_array')
 
     else:
         raise ValueError('probe must be LL or GG or 3x2pt')
-
-    warnings.warn('cov SSC from Julia is *NOT* divided by fsky! Doing it now here')
-    cov_exactSSC_SS_4D *= 1 / covariance_cfg['fsky']
-
-    return cov_exactSSC_SS_4D
 
 
 def ssc_with_pyccl_4D(general_cfg, covariance_cfg, ell_dict):
@@ -375,9 +375,13 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         nbl_ssc_code = len(ell_grid)
 
     if SSC_code == 'exactSSC':
-        cov_exactSSC_SS_4D = ssc_with_exactSSC_4D(general_cfg, covariance_cfg)
+        assert covariance_cfg['cov_BNT_transform'], 'BNT transform must be True for exactSSC, at the moment (becuse I return the dict_10d)'
+        warnings.warn('the name of this function should be changed...')
+        cov_exactSSC_SS_dict_10D = ssc_with_exactSSC_4D(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d')
+        cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_exactSSC_SS_dict_10D, nbl_3x2pt, zbins, n_probes)
 
     if SSC_code == 'PyCCL':
+        assert False, 'right now the pipeline is not ready for PyCCL, is whould be inserted as a 10d array as above.'
         cov_PyCCL_SS_4D = ssc_with_pyccl_4D(general_cfg, covariance_cfg, ell_dict)
 
     elif SSC_code not in ('PySSC', 'PyCCL', 'exactSSC'):
@@ -395,7 +399,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     if covariance_cfg['cov_BNT_transform']:
         print('BNT-transforming the covariance matrix...')
 
-        if SSC_code in ('PyCCL', 'exactSSC'):
+        if SSC_code == 'PyCCL':
             raise NotImplementedError(
                 'BNT transform not implemented for PyCCL and exactSSC, because the SS array is given in 4D.'
                 'The solution is a bit cumbersome for the 3x2pt case, (no cov_4D_to_6D direct method) but can be done quite easily.')
@@ -462,24 +466,24 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     print('covariance matrices reshaped (6D -> 4D) in {:.2f} s'.format(time.perf_counter() - start))
 
     # ! ========================= plug the 4D covariances into the pipeline ============================================
-    if SSC_code in ('PyCCL', 'exactSSC'):
-
-        print(f'adding SSC cov from {SSC_code} directly in 4D. This creates some problems with the BNT, TODO')
-
-        if SSC_code == 'PyCCL':
-            cov_SS_4D = cov_PyCCL_SS_4D
-        elif SSC_code == 'exactSSC':
-            cov_SS_4D = cov_exactSSC_SS_4D
-        else:
-            raise ValueError('SSC_code must be PyCCL or exactSSC')
-
-        # breakpoint()
-        if probe_ssc_code == 'LL':
-            cov_WL_GS_4D = cov_WL_GO_4D + cov_SS_4D
-        elif probe_ssc_code == 'GG':
-            cov_GC_GS_4D = cov_GC_GO_4D + cov_SS_4D
-        elif probe_ssc_code == '3x2pt':
-            cov_3x2pt_GS_4D = cov_3x2pt_GO_4D + cov_SS_4D
+    # ! i commented this because now I'm plugging exactSSC as a 10d dict (10 array, to be precise)
+    # if SSC_code in ('PyCCL', 'exactSSC'):
+    #
+    #     print(f'adding SSC cov from {SSC_code} directly in 4D. This creates some problems with the BNT, TODO')
+    #
+    #     if SSC_code == 'PyCCL':
+    #         cov_SS_4D = cov_PyCCL_SS_4D
+    #     elif SSC_code == 'exactSSC':
+    #         cov_SS_4D = cov_exactSSC_SS_4D
+    #     else:
+    #         raise ValueError('SSC_code must be PyCCL or exactSSC')
+    #
+    #     if probe_ssc_code == 'LL':
+    #         cov_WL_GS_4D = cov_WL_GO_4D + cov_SS_4D
+    #     elif probe_ssc_code == 'GG':
+    #         cov_GC_GS_4D = cov_GC_GO_4D + cov_SS_4D
+    #     elif probe_ssc_code == '3x2pt':
+    #         cov_3x2pt_GS_4D = cov_3x2pt_GO_4D + cov_SS_4D
 
     """
     The code below is to import old pyccl ss cov files. Test it, then delete or better integrate it in the code

@@ -96,10 +96,11 @@ general_cfg = {
     'idB': 3,
     'idM': 3,
     'idR': 1,
-    'idBM': 1,  # XXX what is this?
+    'idBM': 1,  # XXX ! what is this?
 
     'which_pk': 'HMCodebar',
     'which_pk_list': ('HMCodebar', 'HMCode2020', 'Bacco', 'EE2', 'TakaBird'),
+    'which_pk_list': ('HMCode2020', 'Bacco', 'EE2', 'TakaBird'),  # ! not in the old input files...
     'cl_folder': '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/'
                  'DataVectors/Noiseless/{which_pk:s}',
     # 'cl_folder': f'{SPV3_folder}' + 'DataVecDers/{flat_or_nonflat:s}/{probe:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',

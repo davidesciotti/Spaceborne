@@ -289,7 +289,7 @@ kmax_fom_400_ellcenter = 2.15443469
 
 # I think that center is more accurate, it's where I compute the cl
 for general_cfg['center_or_min'] in ['center', ]:
-    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
+    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:-1]:
         for general_cfg['which_pk'] in general_cfg['which_pk_list']:
 
             with open(
@@ -674,17 +674,35 @@ for general_cfg['center_or_min'] in ['center', ]:
             #             dpi=500, bbox_inches='tight')
 
             # ! import and reshape datavectors (cl) and response functions (rl)
-            cl_fld = general_cfg['cl_folder']
-            cl_filename = general_cfg['cl_filename']
-            cl_ll_1d = np.genfromtxt(
-                f"{cl_fld.format(probe='WLO', which_pk=which_pk)}/{cl_filename.format(probe='WLO', **variable_specs)}")
-            cl_gg_1d = np.genfromtxt(
-                f"{cl_fld.format(probe='GCO', which_pk=which_pk)}/{cl_filename.format(probe='GCO', **variable_specs)}")
-            cl_wa_1d = np.genfromtxt(
-                f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', **variable_specs)}")
-            cl_3x2pt_1d = np.genfromtxt(
-                f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
+            if which_pk != 'HMCodebar':
+                cl_fld = general_cfg['cl_folder']
+                cl_filename = general_cfg['cl_filename']
+                cl_ll_1d = np.genfromtxt(
+                    f"{cl_fld.format(probe='WLO', which_pk=which_pk)}/{cl_filename.format(probe='WLO', **variable_specs)}")
+                cl_gg_1d = np.genfromtxt(
+                    f"{cl_fld.format(probe='GCO', which_pk=which_pk)}/{cl_filename.format(probe='GCO', **variable_specs)}")
+                cl_wa_1d = np.genfromtxt(
+                    f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', **variable_specs)}")
+                cl_3x2pt_1d = np.genfromtxt(
+                    f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
 
+                # ! reshape to 3d
+                cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
+                cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
+                cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
+                cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
+
+            else:
+                print(f'Pk is {which_pk}; no LiFE datavectors in this case, using CLOE benchmarks (directly in 3d)...')
+                cloe_bench_path = '/Users/davide/Documents/Lavoro/Programmi/my_cloe_data'
+                cl_ll_3d = np.load(f'{cloe_bench_path}/Cls_zNLA3D_ShearShear_C00.npy')
+                cl_gl_3d = np.load(f'{cloe_bench_path}/Cls_zNLA3D_PosShear_C00.npy')[:nbl_3x2pt, :, :]
+                cl_gg_3d = np.load(f'{cloe_bench_path}/Cls_zNLA3D_PosPos_C00.npy')[:nbl_3x2pt, :, :]
+                cl_wa_3d = cl_ll_3d[nbl_3x2pt:, :, :]
+                cl_3x2pt_5d = cl_utils.build_3x2pt_datavector_5D(cl_ll_3d[:nbl_3x2pt, ...], cl_gl_3d,
+                                                                 cl_gg_3d, nbl_3x2pt, zbins, n_probes=2)
+
+            # ! import responses, not used at the moment (not using PySSC)
             # rl_fld = general_cfg['rl_folder'].format(which_pk=which_pk)
             # rl_filename = general_cfg['rl_filename'].format()
             # rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', **variable_specs)}")
@@ -692,50 +710,19 @@ for general_cfg['center_or_min'] in ['center', ]:
             # rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **variable_specs)}")
             # rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **variable_specs)}")
             if covariance_cfg[f'SSC_code'] == 'PySSC':
-                assert covariance_cfg[
-                           'compute_SSC'] is False, 'I am using mock responses; if you want to compute the SSC, you need to ' \
-                                                    'import the responses as well (see ssc_integrands_SPV3.py) for how to do it'
-            warnings.warn("using mock responses")
-            # rl_ll_1d = np.ones_like(cl_ll_1d)
-            # rl_gg_1d = np.ones_like(cl_gg_1d)
-            # rl_wa_1d = np.ones_like(cl_wa_1d)
-            # rl_3x2pt_1d = np.ones_like(cl_3x2pt_1d)
+                assert covariance_cfg['compute_SSC'] is False, \
+                    'I am using mock responses; if you want to compute the SSC, you need to ' \
+                    'import the responses as well (see ssc_integrands_SPV3.py) for how to do it. moreover, ' \
+                    'pyssc w/ magbias is not yet ready'
+            rl_ll_1d = np.ones_like(cl_ll_1d)
+            rl_gg_1d = np.ones_like(cl_gg_1d)
+            rl_wa_1d = np.ones_like(cl_wa_1d)
+            rl_3x2pt_1d = np.ones_like(cl_3x2pt_1d)
 
-            # reshape to 3 dimensions
-            cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
-            cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
-            cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
-            cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
-
-            warnings.warn(
-                'HARDCODED PATH FOR 3D CLS; you will need to use them without d shift onve vincenzo passes them to you')
-            cl_ll_3d_test = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_ShearShear_C00.npy')
-            cl_gl_3d_test = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_PosShear_C00.npy')[
-                       :nbl_3x2pt,
-                       ...]
-            cl_gg_3d_test = np.load('/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/Cls_zNLA3D_PosPos_C00.npy')[
-                       :nbl_3x2pt,
-                       ...]
-            cl_wa_3d_test = cl_ll_3d_test[nbl_3x2pt:, :, :]
-            warnings.warn('cl_wa_3d_test is just an array of ones!!')
-            cl_3x2pt_5d_test = cl_utils.build_3x2pt_datavector_5D(cl_ll_3d[:nbl_3x2pt, ...], cl_gl_3d, cl_gg_3d, nbl_3x2pt,
-                                                             zbins,
-                                                             n_probes=2)
-
-
-            assert False, 'checking datavectors'
-
-            # rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
-            # rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC_opt, zbins)
-            # rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA_opt, zbins)
-            # rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
-            rl_ll_3d = np.ones((nbl_WL, zbins, zbins))
-            rl_gl_3d = np.ones((nbl_3x2pt, zbins, zbins))
-            rl_gg_3d = np.ones((nbl_3x2pt, zbins, zbins))
-            rl_wa_3d = np.ones((nbl_WA, zbins, zbins))
-            rl_3x2pt_5d = cl_utils.build_3x2pt_datavector_5D(rl_ll_3d[:nbl_3x2pt, ...], rl_gl_3d, rl_gg_3d, nbl_3x2pt,
-                                                             zbins,
-                                                             n_probes=2)
+            rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
+            rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC_opt, zbins)
+            rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA_opt, zbins)
+            rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
 
             # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
             if ell_max_WL == general_cfg['ell_max_WL_opt']:

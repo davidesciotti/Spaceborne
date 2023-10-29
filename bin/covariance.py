@@ -372,8 +372,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     start_time = time.perf_counter()
     if SSC_code == 'exactSSC':
-        assert covariance_cfg[
-            'cov_BNT_transform'], 'BNT transform must be True for exactSSC, at the moment (becuse I return the dict_10d)'
         warnings.warn('the name of this function should be changed...')
         cov_exactSSC_SS_dict_10D = ssc_with_exactSSC_4D(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d')
         cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_exactSSC_SS_dict_10D, nbl_3x2pt, zbins, n_probes)

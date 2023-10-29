@@ -99,7 +99,7 @@ general_cfg = {
     'idBM': 1,  # XXX ! what is this?
 
     'which_pk': 'HMCodebar',
-    'which_pk_list': ('HMCodebar', 'HMCode2020', 'Bacco', 'EE2', 'TakaBird'),
+    'which_pk_list': ('HMCodebar', 'TakaBird', 'HMCode2020', 'Bacco', 'EE2'),
     'cl_folder': '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/'
                  'DataVectors/Noiseless/{which_pk:s}',
     # 'cl_folder': f'{SPV3_folder}' + 'DataVecDers/{flat_or_nonflat:s}/{probe:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
@@ -244,7 +244,9 @@ FM_cfg = {
     'save_FM_dict': True,
 
     'load_preprocess_derivatives': False,
-    'derivatives_folder': f'{SPV3_folder}' + '/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
+    # 'derivatives_folder': f'{SPV3_folder}' + '/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
+    'derivatives_folder': '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/'
+                          'DataVecDers/{flat_or_nonflat:s}/{which_pk:s}',
 
     'derivatives_filename': '{derivatives_prefix:s}{param_name:s}-{probe:s}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{EP_or_ED:s}{zbins:02d}.dat',
     'derivatives_prefix': 'dDVd',

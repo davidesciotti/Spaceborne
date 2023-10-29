@@ -66,15 +66,19 @@ ZL = 2
 ZS = 2
 probes = ('WL', 'GC', '3x2pt')
 which_cuts = 'Vincenzo'
-whose_FM_list = ('davide',)
+whose_FM_list = ('davide', 'vincenzo')
 kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
 
 go_or_gs_list = ['GO']
 BNT_transform_list = [False, True]
 center_or_min_list = ['center']
 kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list'][:-1]
+kmax_1_over_Mpc_vinc_str_list = ['025', '050', '075', '100', '125', '150', '175', '200', '300',
+                                 '500', '1000', '1500', '2000']
+kmax_1_over_Mpc_vinc_list = [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00, 15.00, 20.00]
+
 ell_cuts_list = [False, True]
-which_pk_list = general_cfg['which_pk_list']
+which_pk_list = general_cfg['which_pk_list'][1:]
 # ! options
 
 probe_vinc_dict = {
@@ -99,7 +103,7 @@ for go_or_gs in go_or_gs_list:
         for BNT_transform in BNT_transform_list:
             for which_pk in which_pk_list:
                 for ell_cuts in ell_cuts_list:
-                    for kmax_h_over_Mpc in kmax_h_over_Mpc_list:
+                    for kmax_counter, kmax_h_over_Mpc in enumerate(kmax_h_over_Mpc_list):
                         for whose_FM in whose_FM_list:
                             for center_or_min in center_or_min_list:
 
@@ -129,14 +133,15 @@ for go_or_gs in go_or_gs_list:
 
                                 elif whose_FM == 'vincenzo':
 
-                                    kmax_1_over_Mpc = int(
-                                        np.round(kmax_h_over_Mpc * h * 100))  # for vincenzo's file names
+                                    # for vincenzo's file names - now I'm using a different grid
+                                    # kmax_1_over_Mpc = int(np.round(kmax_h_over_Mpc * h * 100))
+
+                                    kmax_1_over_Mpc = kmax_1_over_Mpc_vinc_str_list[kmax_counter]
 
                                     fm_path = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/' \
-                                              f'LiFEforSPV3/OutputFiles/FishMat/GaussOnly/Flat/' \
-                                              f'{probe_vinc_dict[probe]}/{which_pk}/TestKappaMax'
+                                              f'LiFEforSPV3/OutputFiles/FishMat/GaussOnly/Flat/{which_pk}/TestKappaMax'
                                     fm_name = f'fm-{probe_vinc_dict[probe]}-{EP_or_ED}{zbins}-ML{ML}-MS{MS}-{specs_str.replace("_", "-")}' \
-                                              f'-kM{kmax_1_over_Mpc:03d}.dat'
+                                              f'-kM{kmax_1_over_Mpc}.dat'
                                     fm = np.genfromtxt(f'{fm_path}/{fm_name}')
 
                                 if probe == '3x2pt' and use_Wadd:
@@ -264,6 +269,8 @@ for go_or_gs in go_or_gs_list:
 
 center_or_min_plt = 'center'
 which_cuts_plt = 'Vincenzo'
+pk_ref = 'HMCode2020'
+warnings.warn('restore pk_ref to hmcodebar')
 
 # ! plot FoM vs kmax
 probe_toplot = '3x2pt'
@@ -311,7 +318,7 @@ plt.legend()
 # ! plot cosmo pars vs kmax
 center_or_min = 'center'
 # choose what to plot
-cosmo_params_df = fm_uncert_df[
+cosmo_params_df_dav = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['go_or_gs'] == 'GO') &
     (fm_uncert_df['whose_FM'] == 'davide') &
@@ -323,7 +330,7 @@ cosmo_params_df = fm_uncert_df[
 
 plt.figure()
 for i, cosmo_param in enumerate(cosmo_param_names):
-    plt.plot(kmax_h_over_Mpc_list, cosmo_params_df[cosmo_param].values, label=f'{cosmo_params_tex[i]}', marker='o')
+    plt.plot(kmax_h_over_Mpc_list, cosmo_params_df_dav[cosmo_param].values, label=f'{cosmo_params_tex[i]}', marker='o')
 plt.axvline(kmax_fom_400, label=f'{kmax_tex} = {kmax_fom_400:.02f} {h_over_mpc_tex}', c='k', ls='--')
 
 plt.ylabel('relative uncertainty [%]')
@@ -336,7 +343,7 @@ plt.title(f'{title_plot}')
 center_or_min = 'center'
 param_toplot = 'FoM'
 # choose what to plot
-cosmo_params_df = fm_uncert_df[
+cosmo_params_df_dav = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['go_or_gs'] == 'GO') &
     (fm_uncert_df['whose_FM'] == 'davide') &
@@ -345,11 +352,90 @@ cosmo_params_df = fm_uncert_df[
     (fm_uncert_df['center_or_min'] == center_or_min)
     ]
 
+cosmo_params_df_vin = fm_uncert_df[
+    (fm_uncert_df['probe'] == probe_toplot) &
+    (fm_uncert_df['go_or_gs'] == 'GO') &
+    (fm_uncert_df['whose_FM'] == 'vincenzo') &
+    (fm_uncert_df['BNT_transform'] == BNT_transform) &
+    (fm_uncert_df['ell_cuts'] == ell_cuts) &
+    (fm_uncert_df['center_or_min'] == center_or_min)
+    ]
+
+# mean FoM between different pks, for each kmax
+mean_fom_vs_kmax = cosmo_params_df_dav.groupby('kmax_h_over_Mpc')[param_toplot].mean().values
+stdev_fom_vs_kmax = cosmo_params_df_dav.groupby('kmax_h_over_Mpc')[param_toplot].std().values
+perc_deviation_vs_fom = stdev_fom_vs_kmax / mean_fom_vs_kmax * 100
+
+mean_fom_vs_kmax_excl_takabird = \
+    cosmo_params_df_dav.loc[cosmo_params_df_dav['which_pk'] != 'TakaBird'].groupby('kmax_h_over_Mpc')[
+        param_toplot].mean().values
+stdev_fom_vs_kmax_excl_takabird = \
+    cosmo_params_df_dav.loc[cosmo_params_df_dav['which_pk'] != 'TakaBird'].groupby('kmax_h_over_Mpc')[
+        param_toplot].std().values
+perc_deviation_vs_fom_excl_takabird = stdev_fom_vs_kmax_excl_takabird / mean_fom_vs_kmax_excl_takabird * 100
+grouped = cosmo_params_df_dav.groupby('kmax_h_over_Mpc')[param_toplot]
+cv = (grouped.std() / grouped.mean())
+
+# copy cosmo_params_df_dav
+cosmo_params_df_dav_copy = cosmo_params_df_dav.copy()
+# compute percent diff with respect to the mean FoM
+# end compute dispersion
+
+
+colors = cm.rainbow(np.linspace(0, 1, len(which_pk_list)))
 plt.figure()
 for i, which_pk in enumerate(which_pk_list):
-    plt.plot(kmax_h_over_Mpc_list, cosmo_params_df[cosmo_params_df['which_pk'] == which_pk][param_toplot].values,
-             label=f'{which_pk}', marker='o')
+    fom_vs_kmax_dav = cosmo_params_df_dav[cosmo_params_df_dav['which_pk'] == which_pk][param_toplot].values
+    fom_vs_kmax_vin = cosmo_params_df_vin[cosmo_params_df_vin['which_pk'] == which_pk][param_toplot].values
+
+    plt.plot(kmax_h_over_Mpc_list, fom_vs_kmax_dav, label=f'{which_pk}', marker='o', c=colors[i])
+    plt.plot(kmax_1_over_Mpc_vinc_list[:9], fom_vs_kmax_vin, label=f'{which_pk}', marker='o', c=colors[i], ls='--')
+
+# plt.errorbar(kmax_h_over_Mpc_list, mean_fom_vs_kmax, yerr=stdev_fom_vs_kmax, label=f'mean \pm stdev',
+#              marker='o', c='k', ls=':', lw=1)
 plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', c='k', ls='--', alpha=0.5)
+
+plt.ylabel('relative uncertainty [%]')
+plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
+plt.legend()
+plt.show()
+plt.title(f'{title_plot}')
+
+
+# ! plot different pks no ell cuts
+center_or_min = 'center'
+# choose what to plot
+cosmo_params_df_dav = fm_uncert_df[
+    (fm_uncert_df['probe'] == probe_toplot) &
+    (fm_uncert_df['go_or_gs'] == 'GO') &
+    (fm_uncert_df['whose_FM'] == 'davide') &
+    (fm_uncert_df['BNT_transform'] == False) &
+    (fm_uncert_df['ell_cuts'] == False) &
+    (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_list[-1]) &
+    (fm_uncert_df['center_or_min'] == center_or_min)
+    ]
+
+cosmo_params_df_vin = fm_uncert_df[
+    (fm_uncert_df['probe'] == probe_toplot) &
+    (fm_uncert_df['go_or_gs'] == 'GO') &
+    (fm_uncert_df['whose_FM'] == 'vincenzo') &
+    (fm_uncert_df['BNT_transform'] == False) &
+    (fm_uncert_df['ell_cuts'] == False) &
+    (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_list[-1]) &
+    (fm_uncert_df['center_or_min'] == center_or_min)
+    ]
+
+colors = cm.rainbow(np.linspace(0, 1, len(which_pk_list)))
+plt.figure()
+for i, which_pk in enumerate(which_pk_list):
+    uncert_dav = cosmo_params_df_dav[cosmo_params_df_dav['which_pk'] == which_pk].iloc[:, len(string_columns):].values[
+        0]
+    uncert_vin = cosmo_params_df_vin[cosmo_params_df_vin['which_pk'] == which_pk].iloc[:, len(string_columns):].values[
+        0]
+    perc_diff = mm.percent_diff(uncert_dav, uncert_vin)
+    plt.plot(range(8), uncert_dav, label=f'{which_pk}', marker='o', c=colors[i])
+    plt.plot(range(8), uncert_vin, label=f'{which_pk}', marker='o', c=colors[i], ls='--')
+    # plt.plot(range(8), perc_diff, label=f'{which_pk}', marker='o', c=colors[i], ls='--')
 
 plt.ylabel('relative uncertainty [%]')
 plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')

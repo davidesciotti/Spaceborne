@@ -78,8 +78,8 @@ kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list'][:-1]
 # kmax_1_over_Mpc_vinc_list = [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00, 15.00, 20.00]
 
 ell_cuts_list = [False, True]
-fix_shear_bias_list = [False, True]
-fix_dz_list = [False, True]
+fix_dz_list = [True, False]
+fix_shear_bias_list = [True, False]
 which_pk_list = general_cfg['which_pk_list']
 center_or_min_plt = 'center'
 which_cuts_plt = 'Vincenzo'
@@ -112,8 +112,10 @@ for probe in tqdm(probes):
                     for kmax_counter, kmax_h_over_Mpc in enumerate(kmax_h_over_Mpc_list):
                         for whose_FM in whose_FM_list:
                             for center_or_min in center_or_min_list:
-                                for fix_shear_bias in fix_shear_bias_list:
-                                    for fix_dz in fix_dz_list:
+                                for fix_dz in fix_dz_list:
+                                    for fix_shear_bias in fix_shear_bias_list:
+
+                                        shear_bias_prior = fid_shear_bias_prior
 
                                         if BNT_transform is False:
                                             ell_cuts = False

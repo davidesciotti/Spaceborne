@@ -9,6 +9,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from chainconsumer import ChainConsumer
+from tqdm import tqdm
 
 # Display all columns
 pd.set_option('display.max_columns', None)
@@ -44,16 +45,14 @@ zbins = 13
 num_params_tokeep = 7
 fix_curvature = True
 fix_gal_bias = False
-fix_shear_bias = False  # this has to be an outer loop if you also want to vary the shear bias prior itself
 fix_dz = True
+fix_shear_bias = False  # this has to be an outer loop if you also want to vary the shear bias prior itself
 include_fom = True
 fid_shear_bias_prior = 5e-4
 shear_bias_prior = fid_shear_bias_prior
 gal_bias_perc_prior = None  # ! not quite sure this works properly...
 string_columns = ['probe', 'go_or_gs', 'whose_FM', 'which_pk', 'BNT_transform', 'ell_cuts', 'which_cuts',
-                  'center_or_min',
-                  'kmax_h_over_Mpc'
-                  ]
+                  'center_or_min', 'fix_dz', 'fix_shear_bias', 'kmax_h_over_Mpc']
 triangle_plot = False
 use_Wadd = False  # the difference is extremely small
 pk_ref = 'HMCodebar'
@@ -79,9 +78,12 @@ kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list'][:-1]
 # kmax_1_over_Mpc_vinc_list = [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00, 15.00, 20.00]
 
 ell_cuts_list = [False, True]
+fix_shear_bias_list = [False, True]
+fix_dz_list = [False, True]
 which_pk_list = general_cfg['which_pk_list']
 center_or_min_plt = 'center'
 which_cuts_plt = 'Vincenzo'
+save_plots = False
 
 # ! options
 
@@ -102,16 +104,16 @@ assert which_cuts == 'Vincenzo', ('to begin with, use only Vincenzo/standard cut
 assert not use_Wadd, 'import of Wadd not implemented yet'
 
 fm_uncert_df = pd.DataFrame()
-for probe in probes:
-    for fix_shear_bias in [False, True]:
-        for fix_dz in [False, True]:
-            for BNT_transform in BNT_transform_list:
-                for go_or_gs in go_or_gs_list:
-                    for which_pk in which_pk_list:
-                        for ell_cuts in ell_cuts_list:
-                            for kmax_counter, kmax_h_over_Mpc in enumerate(kmax_h_over_Mpc_list):
-                                for whose_FM in whose_FM_list:
-                                    for center_or_min in center_or_min_list:
+for probe in tqdm(probes):
+    for BNT_transform in BNT_transform_list:
+        for go_or_gs in go_or_gs_list:
+            for which_pk in which_pk_list:
+                for ell_cuts in ell_cuts_list:
+                    for kmax_counter, kmax_h_over_Mpc in enumerate(kmax_h_over_Mpc_list):
+                        for whose_FM in whose_FM_list:
+                            for center_or_min in center_or_min_list:
+                                for fix_shear_bias in fix_shear_bias_list:
+                                    for fix_dz in fix_dz_list:
 
                                         if BNT_transform is False:
                                             ell_cuts = False
@@ -134,8 +136,9 @@ for probe in probes:
                                                 fm_name = fm_name.replace(f'.pickle',
                                                                           f'_kmaxhoverMpc{kmax_h_over_Mpc:.03f}.pickle')
 
-                                            fm_pickle_name = fm_name.replace('.txt', '.pickle').replace(f'_{go_or_gs}_{probe}',
-                                                                                                        '')
+                                            fm_pickle_name = fm_name.replace('.txt', '.pickle').replace(
+                                                f'_{go_or_gs}_{probe}',
+                                                '')
                                             fm_dict = mm.load_pickle(f'{fm_path}/{fm_pickle_name}')
 
                                             fm = fm_dict[f'FM_{probe}_{go_or_gs}']
@@ -221,10 +224,12 @@ for probe in probes:
                                         if triangle_plot:
                                             if probe == '3x2pt' and go_or_gs == 'GS' and fix_shear_bias == False:
                                                 # decide params to show in the triangle plot
-                                                shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
+                                                shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in
+                                                                          range(zbins)]
                                                 params_tot_list = cosmo_param_names + shear_bias_param_names
 
-                                                trimmed_fid_dict = {param: fiducials_dict[param] for param in params_tot_list}
+                                                trimmed_fid_dict = {param: fiducials_dict[param] for param in
+                                                                    params_tot_list}
 
                                                 # get the covariance matrix (careful on how you cut the FM!!)
                                                 fm_idxs_tokeep = [list(fiducials_dict.keys()).index(param) for param in
@@ -234,7 +239,8 @@ for probe in probes:
                                                 plot_utils.contour_plot_chainconsumer(cov, trimmed_fid_dict)
 
                                         # ! compute uncertainties from fm
-                                        uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal',
+                                        uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict,
+                                                                           which_uncertainty='marginal',
                                                                            normalize=True,
                                                                            percent_units=True)[:num_params_tokeep]
 
@@ -250,19 +256,21 @@ for probe in probes:
                                         # I still haven't figured out the problem, but in this way it works
                                         df_columns_values = [
                                             [probe, go_or_gs, whose_FM, which_pk, BNT_transform, ell_cuts, which_cuts,
-                                             center_or_min,
-                                             kmax_h_over_Mpc] +
+                                             center_or_min, fix_dz, fix_shear_bias, kmax_h_over_Mpc] +
                                             uncert_fm.tolist() + [fom]]
 
-                                        assert len(df_columns_names) == len(df_columns_values[0]), 'Wrong number of columns!'
+                                        assert len(df_columns_names) == len(
+                                            df_columns_values[0]), 'Wrong number of columns!'
 
-                                        fm_uncert_df_to_concat = pd.DataFrame(df_columns_values, columns=df_columns_names)
-                                        fm_uncert_df = pd.concat([fm_uncert_df, fm_uncert_df_to_concat], ignore_index=True)
+                                        fm_uncert_df_to_concat = pd.DataFrame(df_columns_values,
+                                                                              columns=df_columns_names)
+                                        fm_uncert_df = pd.concat([fm_uncert_df, fm_uncert_df_to_concat],
+                                                                 ignore_index=True)
                                         fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
 
 # ! plot FoM pk_ref vs kmax
 probe_toplot = '3x2pt'
-fom_values = fm_uncert_df[
+reduced_df = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['go_or_gs'] == 'GO') &
     (fm_uncert_df['whose_FM'] == 'davide') &
@@ -271,7 +279,20 @@ fom_values = fm_uncert_df[
     (fm_uncert_df['ell_cuts'] == True) &
     (fm_uncert_df['which_cuts'] == which_cuts_plt) &
     (fm_uncert_df['center_or_min'] == center_or_min_plt)
-    ]['FoM'].values
+    ]
+fom_dz_false_sb_false = reduced_df[(reduced_df['fix_dz'] == False) &
+                                   (reduced_df['fix_shear_bias'] == False)
+                                   ]['FoM'].values
+fom_dz_true_sb_false = reduced_df[(reduced_df['fix_dz'] == True) &
+                                  (reduced_df['fix_shear_bias'] == False)
+                                  ]['FoM'].values
+fom_dz_false_sb_true = reduced_df[(reduced_df['fix_dz'] == False) &
+                                  (reduced_df['fix_shear_bias'] == True)
+                                  ]['FoM'].values
+fom_dz_true_sb_true = reduced_df[(reduced_df['fix_dz'] == True) &
+                                 (reduced_df['fix_shear_bias'] == True)
+                                 ]['FoM'].values
+fom_ref = fom_dz_true_sb_false
 
 # add FoM for no ell cuts case
 fom_noellcuts = fm_uncert_df[
@@ -281,17 +302,22 @@ fom_noellcuts = fm_uncert_df[
     (fm_uncert_df['which_pk'] == pk_ref) &
     (fm_uncert_df['BNT_transform'] == False) &
     (fm_uncert_df['ell_cuts'] == False) &
+    (fm_uncert_df['fix_dz'] == True) &
+    (fm_uncert_df['fix_shear_bias'] == False) &
     (fm_uncert_df['which_cuts'] == which_cuts_plt) &
     (fm_uncert_df['center_or_min'] == center_or_min_plt) &
     (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_plt)
     ]['FoM'].values[0]
 
 # find kmax for a given FoM (400)
-kmax_fom_400 = mm.find_inverse_from_array(kmax_h_over_Mpc_list, fom_values, fom_redbook)
+kmax_fom_400 = mm.find_inverse_from_array(kmax_h_over_Mpc_list, fom_ref, fom_redbook)
 
 title_plot = '3$\\times$2pt' if probe_toplot == '3x2pt' else None
 plt.figure()
-plt.plot(kmax_h_over_Mpc_list, fom_values, label=f'FoM', marker='o')
+plt.plot(kmax_h_over_Mpc_list, fom_dz_false_sb_false, label=f'fom_dz_false_sb_false', marker='o')
+plt.plot(kmax_h_over_Mpc_list, fom_dz_true_sb_false, label=f'fom_dz_true_sb_false (ref)', marker='o')
+plt.plot(kmax_h_over_Mpc_list, fom_dz_false_sb_true, label=f'fom_dz_false_sb_true', marker='o')
+plt.plot(kmax_h_over_Mpc_list, fom_dz_true_sb_true, label=f'fom_dz_true_sb_true', marker='o')
 plt.axvline(kmax_fom_400, label=f'{kmax_tex} = {kmax_fom_400:.02f} {h_over_mpc_tex}', c='tab:blue', ls='--')
 plt.axhline(fom_noellcuts, label='$\\ell_{\\rm max, opt}^{\\rm EC20} = 3000$', c='k', ls=':')
 plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', c='k', ls='-', alpha=0.3)
@@ -299,8 +325,11 @@ plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
 plt.ylabel('3$\\times$2pt FoM')
 plt.legend()
 
-plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/fom_hmcodebar_vs_kmax.pdf',
-            bbox_inches='tight', dpi=500)
+assert False, 'stop here for the moment'
+
+if save_plots:
+    plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/fom_hmcodebar_vs_kmax.pdf',
+                bbox_inches='tight', dpi=500)
 
 # ! plot cosmo pars vs kmax
 center_or_min = 'center'
@@ -325,9 +354,10 @@ plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
 plt.legend()
 plt.show()
 
-plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/cosmo_params_vs_kmax.pdf',
-            bbox_inches='tight',
-            dpi=500)
+if save_plots:
+    plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/cosmo_params_vs_kmax.pdf',
+                bbox_inches='tight',
+                dpi=500)
 
 # ! plot different pks
 center_or_min = 'center'
@@ -380,9 +410,10 @@ plt.legend()
 plt.show()
 # plt.title(f'{title_plot}')
 
-plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/fom_vs_kmax_vs_pk.pdf',
-            bbox_inches='tight',
-            dpi=500)
+if save_plots:
+    plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/fom_vs_kmax_vs_pk.pdf',
+                bbox_inches='tight',
+                dpi=500)
 
 # ! plot FoM pk_ref go gs vs kmax
 probe_toplot = 'WL'

@@ -20,12 +20,12 @@ SPV3_folder = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = True
-deriv_BNT_transform = True
+cov_BNT_transform = False
+deriv_BNT_transform = False
 
 cl_ell_cuts = False
-cov_ell_cuts = True
-deriv_ell_cuts = True
+cov_ell_cuts = False
+deriv_ell_cuts = False
 
 if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
     BNT_transform = True
@@ -177,6 +177,26 @@ covariance_cfg = {
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'SSC_code': 'exactSSC',
 
+    'PyCCL_cfg': {
+        'probe': '3x2pt',
+        'get_3x2pt_cov_in_4D': False,
+        'path': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF',
+        'load_precomputed_cov': True,
+        'save_cov': False,
+        'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
+        'compute_cng': False,
+
+        # z_grid min and max should probably coincide. play around with steps to find the minimum number
+        'z_grid_tkka_min': 0.001,
+        'z_grid_tkka_max': 3,
+        'z_grid_tkka_steps': 500,
+        'z_grid_min': 0.001,
+        'z_grid_max': 3,
+        'z_grid_steps': 1000,
+        'n_samples_wf': 1000,
+        'bias_model': 'step-wise',
+    },
+
     'exactSSC_cfg': {
         'probe': '3x2pt',
         # in this case it is only possible to load precomputed arraya, I have to compute the integral with Julia
@@ -193,6 +213,7 @@ covariance_cfg = {
         'log10_k_max_sigma2': 1,
         'k_steps_sigma2': 20_000,
     }
+
 }
 
 if ell_cuts:

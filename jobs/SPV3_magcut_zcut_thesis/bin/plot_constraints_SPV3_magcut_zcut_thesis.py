@@ -446,15 +446,14 @@ if save_plots:
 
 # ! plot FoM pk_ref go gs vs kmax
 probe_toplot = 'WL'
-param_toplot = 'Om'
-ell_cuts = True
-BNT_transform = True
+ell_cuts = False
+BNT_transform = False
 go_gs_df = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['whose_FM'] == 'davide') &
     (fm_uncert_df['which_pk'] == pk_ref) &
     (fm_uncert_df['fix_dz'] == True) &
-    (fm_uncert_df['fix_shear_bias'] == False) &
+    (fm_uncert_df['fix_shear_bias'] == True) &
     (fm_uncert_df['BNT_transform'] == BNT_transform) &
     (fm_uncert_df['ell_cuts'] == ell_cuts) &
     (fm_uncert_df['which_cuts'] == which_cuts_plt) &
@@ -480,8 +479,10 @@ perc_diff_df = go_gs_df[go_gs_df['go_or_gs'] == 'perc_diff'].iloc[:, len(string_
 plt.figure()
 for param in cosmo_param_names:
     plt.plot(kmax_h_over_Mpc_list, perc_diff_df[param].values, label=f'% diff {param}', marker='o')
+plt.ylabel(f'perc_diff {probe_toplot}')
+plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
 plt.legend()
-assert False, 'testing ssc, the plot below has not yet been adapted'
+plt.show()
 
 # find kmax for a given FoM (400)
 kmax_fom_400 = mm.find_inverse_from_array(kmax_h_over_Mpc_list, fom_values, fom_redbook)
@@ -496,34 +497,34 @@ plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
 plt.ylabel('3$\\times$2pt FoM')
 plt.legend()
 
-# # ! bar plot, quite useless
-# title_barplot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}\nkmax = {kmax_h_over_Mpc_plt:.03f}'
-# fm_uncert_df_toplot = fm_uncert_df[
-#     (fm_uncert_df['probe'] == probe_toplot) &
-#     (fm_uncert_df['go_or_gs'] == 'GO') &
-#     (fm_uncert_df['whose_FM'] == 'davide') &
-#     (fm_uncert_df['ell_cuts'] == ell_cuts) &
-#     (fm_uncert_df['center_or_min'] == center_or_min) &
-#     (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_plt)  # compare bnt
-#     ]
-#
-# data = fm_uncert_df_toplot.iloc[:, len(string_columns):].values
-# label_list = list(fm_uncert_df_toplot['BNT_transform'].values)
-# label_list = ['None' if value is None else value for value in label_list]
-#
-# include_fom = False
-# if include_fom:
-#     num_params_tokeep += 1
-# data = data[:, :num_params_tokeep]
-#
-#
-#
-# # ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'
-# # ylabel = f'relative uncertainty [%]'
-# # plot_utils.bar_plot(data, title_barplot, label_list, bar_width=0.2, nparams=num_params_tokeep, param_names_label=None,
-# #                     second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
-# #                     include_fom=include_fom, figsize=(10, 8))
-# # plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GOGS_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)
-#
+# ! bar plot, quite useless
+title_barplot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}\nkmax = {kmax_h_over_Mpc_plt:.03f}'
+fm_uncert_df_toplot = fm_uncert_df[
+    (fm_uncert_df['probe'] == probe_toplot) &
+    (fm_uncert_df['go_or_gs'] == 'GO') &
+    (fm_uncert_df['whose_FM'] == 'davide') &
+    (fm_uncert_df['ell_cuts'] == ell_cuts) &
+    (fm_uncert_df['center_or_min'] == center_or_min) &
+    (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_plt)  # compare bnt
+    ]
+
+data = fm_uncert_df_toplot.iloc[:, len(string_columns):].values
+label_list = list(fm_uncert_df_toplot['BNT_transform'].values)
+label_list = ['None' if value is None else value for value in label_list]
+
+include_fom = False
+if include_fom:
+    num_params_tokeep += 1
+data = data[:, :num_params_tokeep]
+
+
+
+# ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'
+# ylabel = f'relative uncertainty [%]'
+# plot_utils.bar_plot(data, title_barplot, label_list, bar_width=0.2, nparams=num_params_tokeep, param_names_label=None,
+#                     second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
+#                     include_fom=include_fom, figsize=(10, 8))
+# plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GOGS_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)
+
 
 print('done')

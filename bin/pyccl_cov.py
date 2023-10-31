@@ -161,7 +161,7 @@ def compute_ng_cov_ccl(cosmo, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka,
     # this is to move ell1, ell2 to the first axes and unpack the result in two separate dimensions
     cov_ng_4D = np.array(cov_ng_4D).transpose(1, 2, 0).reshape(nbl, nbl, zpairs_AB, zpairs_CD)
 
-    print(f'{which_ng_cov} computed with pyccl in {(time.perf_counter() - start_time)/60:.2} min')
+    print(f'{which_ng_cov} computed with pyccl in {(time.perf_counter() - start_time) / 60:.2} min')
 
     return cov_ng_4D
 
@@ -192,9 +192,11 @@ def compute_3x2pt_PyCCL(cosmo, kernel_dict, ell, tkka_dict, f_sky, integration_m
     return cov_ng_3x2pt_dict_8D
 
 
-def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z, general_cfg, covariance_cfg):
+def compute_cov_ng_with_pyccl(flat_fid_pars_dict, probe, which_ng_cov, ell_grid, general_cfg,
+                              covariance_cfg):
     # ! settings
     zbins = general_cfg['zbins']
+    nz_tuple = general_cfg['nz_tuple']
     f_sky = covariance_cfg['fsky']
     ind = covariance_cfg['ind']
     GL_or_LG = covariance_cfg['GL_or_LG']
@@ -230,60 +232,115 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
     # Create new Cosmology object with a given set of parameters. This keeps track of previously-computed cosmological
     # functions
     # TODO this should be generalized to any set of cosmo params
-    cosmo_ccl = wf_cl_lib.instantiate_ISTFfid_PyCCL_cosmo_obj()
+    cosmo_ccl = wf_cl_lib.instantiate_cosmo_ccl_obj(flat_fid_pars_dict)
 
     # TODO input n(z)
     # source redshift distribution, default ISTF values for bin edges & analytical prescription for the moment
 
-    if z_grid_nofz is None and n_of_z is None:
+    if nz_tuple is None:
         print('using default ISTF analytical n(z) values')
         niz_unnormalized_arr = np.asarray(
             [wf_cl_lib.niz_unnormalized_analytical(z_grid, zbin_idx) for zbin_idx in range(zbins)])
         niz_normalized_arr = wf_cl_lib.normalize_niz_simps(niz_unnormalized_arr, z_grid).T
-        n_of_z = niz_normalized_arr
+        nz_tuple = niz_normalized_arr
 
-    assert n_of_z.shape == (len(z_grid), zbins), 'n_of_z must be a 2D array with shape (len(z_grid_nofz), zbins)'
+    assert nz_tuple.shape == (len(z_grid), zbins), 'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
 
-    # galaxy bias
-    galaxy_bias_2d_array = wf_cl_lib.build_galaxy_bias_2d_arr(bias_values=None, z_values=None, zbins=zbins,
-                                                              z_grid=z_grid, bias_model=bias_model,
+    # new kernel stuff
+    zgrid_nz = nz_tuple[0]
+
+    # ! my kernels
+    ia_bias = wf_cl_lib.build_IA_bias_1d_arr(zgrid_nz, input_z_grid_lumin_ratio=None,
+                                             input_lumin_ratio=None,
+                                             cosmo=cosmo_ccl,
+                                             A_IA=flat_fid_pars_dict['Aia'],
+                                             eta_IA=flat_fid_pars_dict['eIA'],
+                                             beta_IA=flat_fid_pars_dict['bIA'],
+                                             C_IA=None,
+                                             growth_factor=None,
+                                             output_F_IA_of_z=False)
+
+    warnings.warn('Im not sure the bias is step-wise...')
+    maglim = general_cfg['magcut_source'] / 10
+    bias_values = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, maglim=maglim)
+    galaxy_bias_2d_array = wf_cl_lib.build_galaxy_bias_2d_arr(bias_values=bias_values, z_values=zgrid_nz, zbins=zbins,
+                                                              z_grid=z_grid, bias_model='step-wise',
                                                               plot_bias=False)
 
-    # IA bias
-    ia_bias_1d_array = wf_cl_lib.build_IA_bias_1d_arr(z_grid, input_lumin_ratio=None, cosmo=cosmo_ccl,
-                                                      A_IA=None, eta_IA=None, beta_IA=None, C_IA=None,
-                                                      growth_factor=None,
-                                                      Omega_m=None)
+    # Define the keyword arguments as a dictionary
+    wil_ccl_kwargs = {
+        'cosmo': cosmo_ccl,
+        'dndz': nz_tuple,
+        'ia_bias': ia_bias,
+        'A_IA': flat_fid_pars_dict['Aia'],
+        'eta_IA': flat_fid_pars_dict['eIA'],
+        'beta_IA': flat_fid_pars_dict['bIA'],
+        'C_IA': None,
+        'growth_factor': None,
+        'return_PyCCL_object': True,
+        'n_samples': len(zgrid_nz)
+    }
+    wig_ccl_kwargs = {
+        'gal_bias_2d_array': np.ones((len(zgrid_nz), zbins)),
+        'fiducial_params': flat_fid_pars_dict,
+        'bias_model': 'step-wise',
+        'cosmo': cosmo_ccl,
+        'return_PyCCL_object': True,
+        'dndz': nz_tuple,
+        'n_samples': len(zgrid_nz)
+    }
 
-    # # ! compute tracer objects
-    wf_lensing = [ccl.tracers.WeakLensingTracer(cosmo_ccl, dndz=(z_grid, n_of_z[:, zbin_idx]),
-                                                ia_bias=(z_grid, ia_bias_1d_array), use_A_ia=False,
-                                                n_samples=n_samples_wf)
-                  for zbin_idx in range(zbins)]
+    # Use * to unpack positional arguments and ** to unpack keyword arguments
+    wf_lensing_obj = wf_cl_lib.wil_PyCCL(zgrid_nz, 'with_IA', **wil_ccl_kwargs)
+    wf_lensing_arr = wf_cl_lib.wil_PyCCL(zgrid_nz, 'with_IA',
+                                             **{**wil_ccl_kwargs, 'return_PyCCL_object': False})
 
-    wf_galaxy = [ccl.tracers.NumberCountsTracer(cosmo_ccl, has_rsd=False, dndz=(z_grid, n_of_z[:, zbin_idx]),
-                                                bias=(z_grid, galaxy_bias_2d_array[:, zbin_idx]),
-                                                mag_bias=None, n_samples=n_samples_wf)
-                 for zbin_idx in range(zbins)]
+    wf_galaxy_obj = wf_cl_lib.wig_PyCCL(zgrid_nz, 'with_galaxy_bias', **wig_ccl_kwargs)
+    wf_galaxy_arr = wf_cl_lib.wig_PyCCL(zgrid_nz, 'with_galaxy_bias',
+                                            **{**wig_ccl_kwargs, 'return_PyCCL_object': False})
 
-    # try to create a tracer object with a tabulated kernel
-    # kernel =
-    # ccl.tracers.add_tracer(cosmo_ccl, *, kernel=None, transfer_ka=None, transfer_k=None, transfer_a=None, der_bessel=0, der_angles=0,
-    #            is_logt=False, extrap_order_lok=0, extrap_order_hik=2)
-
-    # compare pyccl kernels with the importwd ones (used by PySSC):
-    warnings.warn('THIS MODULE NEEDS TO IMPORT A COSMOLOGY DICT, E.G. HERE THE IA VALUES ARE THE DEFAULT ONES')
-    wf_lensing_arr = wf_cl_lib.wil_PyCCL(z_grid, 'with_IA', cosmo=cosmo_ccl, dndz=(z_grid, n_of_z),
-                                         ia_bias=(z_grid, ia_bias_1d_array),
-                                         A_IA=None, eta_IA=None, beta_IA=None, C_IA=None,
-                                         growth_factor=None,
-                                         return_PyCCL_object=False,
-                                         n_samples=n_samples_wf)
-    wf_galaxy_arr = wf_cl_lib.wig_PyCCL(z_grid, 'with_galaxy_bias', gal_bias_2d_array=galaxy_bias_2d_array,
-                                        fiducial_params=None,
-                                        bias_model='step-wise',
-                                        cosmo=cosmo_ccl, return_PyCCL_object=False, dndz=(z_grid, n_of_z),
-                                        n_samples=n_samples_wf)
+    # end of new kernel stuff
+    #
+    # # galaxy bias
+    # galaxy_bias_2d_array = wf_cl_lib.build_galaxy_bias_2d_arr(bias_values=None, z_values=None, zbins=zbins,
+    #                                                           z_grid=z_grid, bias_model=bias_model,
+    #                                                           plot_bias=False)
+    #
+    # # IA bias
+    # ia_bias_1d_array = wf_cl_lib.build_IA_bias_1d_arr(z_grid, input_lumin_ratio=None, cosmo=cosmo_ccl,
+    #                                                   A_IA=None, eta_IA=None, beta_IA=None, C_IA=None,
+    #                                                   growth_factor=None,
+    #                                                   Omega_m=None)
+    #
+    # # # ! compute tracer objects
+    # wf_lensing = [ccl.tracers.WeakLensingTracer(cosmo_ccl, dndz=(z_grid, n_of_z[:, zbin_idx]),
+    #                                             ia_bias=(z_grid, ia_bias_1d_array), use_A_ia=False,
+    #                                             n_samples=n_samples_wf)
+    #               for zbin_idx in range(zbins)]
+    #
+    # wf_galaxy = [ccl.tracers.NumberCountsTracer(cosmo_ccl, has_rsd=False, dndz=(z_grid, n_of_z[:, zbin_idx]),
+    #                                             bias=(z_grid, galaxy_bias_2d_array[:, zbin_idx]),
+    #                                             mag_bias=None, n_samples=n_samples_wf)
+    #              for zbin_idx in range(zbins)]
+    #
+    # # try to create a tracer object with a tabulated kernel
+    # # kernel =
+    # # ccl.tracers.add_tracer(cosmo_ccl, *, kernel=None, transfer_ka=None, transfer_k=None, transfer_a=None, der_bessel=0, der_angles=0,
+    # #            is_logt=False, extrap_order_lok=0, extrap_order_hik=2)
+    #
+    # # compare pyccl kernels with the importwd ones (used by PySSC):
+    # warnings.warn('THIS MODULE NEEDS TO IMPORT A COSMOLOGY DICT, E.G. HERE THE IA VALUES ARE THE DEFAULT ONES')
+    # wf_lensing_arr = wf_cl_lib.wil_PyCCL(z_grid, 'with_IA', cosmo=cosmo_ccl, dndz=(z_grid, n_of_z),
+    #                                      ia_bias=(z_grid, ia_bias_1d_array),
+    #                                      A_IA=None, eta_IA=None, beta_IA=None, C_IA=None,
+    #                                      growth_factor=None,
+    #                                      return_PyCCL_object=False,
+    #                                      n_samples=n_samples_wf)
+    # wf_galaxy_arr = wf_cl_lib.wig_PyCCL(z_grid, 'with_galaxy_bias', gal_bias_2d_array=galaxy_bias_2d_array,
+    #                                     fiducial_params=None,
+    #                                     bias_model='step-wise',
+    #                                     cosmo=cosmo_ccl, return_PyCCL_object=False, dndz=(z_grid, n_of_z),
+    #                                     n_samples=n_samples_wf)
 
     wf_lensing_import = general_cfg['wf_WL']
     wf_galaxy_import = general_cfg['wf_GC']
@@ -316,6 +373,8 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
     ax[1].legend(custom_lines, ['import'])
     plt.show()
 
+    assert False, 'stop here to check the new kernel implementation with ccl'
+
     # the cls are not needed, but just in case:
     # cl_LL_3D = wf_cl_lib.cl_PyCCL(wf_lensing, wf_lensing, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
     # cl_GL_3D = wf_cl_lib.cl_PyCCL(wf_galaxy, wf_lensing, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
@@ -340,8 +399,8 @@ def compute_cov_ng_with_pyccl(probe, which_ng_cov, ell_grid, z_grid_nofz, n_of_z
     }
 
     kernel_dict = {
-        'L': wf_lensing,
-        'G': wf_galaxy
+        'L': wf_lensing_obj,
+        'G': wf_galaxy_obj
     }
 
     # ! =============================================== compute covs ===============================================

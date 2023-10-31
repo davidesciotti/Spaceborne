@@ -323,7 +323,7 @@ kmax_fom_400_ellcenter = 2.15443469
 
 # I think that center is more accurate, it's where I compute the cl
 for general_cfg['center_or_min'] in ['center', ]:
-    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][6:-1]:
+    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:-1]:
         # for general_cfg['which_pk'] in general_cfg['which_pk_list']:
 
         with open(
@@ -582,11 +582,11 @@ for general_cfg['center_or_min'] in ['center', ]:
         wf_lensing_vin = wf_gamma_vin + ia_bias_vin[:, None] * wf_ia_vin
         wf_galaxy_vin = wf_delta_vin  # + wf_mu_vin  # TODO in theory, I should BNT-tansform wf_mu...
 
-        dndz = (zgrid_nz, n_of_z)
+        nz_tuple = (zgrid_nz, n_of_z)
         # Define the keyword arguments as a dictionary
         wil_ccl_kwargs = {
             'cosmo': cosmo_ccl,
-            'dndz': dndz,
+            'dndz': nz_tuple,
             'ia_bias': None,
             'A_IA': flat_fid_pars_dict['Aia'],
             'eta_IA': flat_fid_pars_dict['eIA'],
@@ -602,43 +602,49 @@ for general_cfg['center_or_min'] in ['center', ]:
             'bias_model': 'step-wise',
             'cosmo': cosmo_ccl,
             'return_PyCCL_object': True,
-            'dndz': dndz,
+            'dndz': nz_tuple,
             'n_samples': len(zgrid_nz)
         }
 
         # Use * to unpack positional arguments and ** to unpack keyword arguments
         wf_lensing_ccl_obj = wf_cl_lib.wil_PyCCL(zgrid_nz, 'without_IA', **wil_ccl_kwargs)
-        wf_lensing_ccl = wf_cl_lib.wil_PyCCL(zgrid_nz, 'with_IA',
-                                             **{**wil_ccl_kwargs, 'return_PyCCL_object': False})
-        wf_gamma_ccl = wf_cl_lib.wil_PyCCL(zgrid_nz, 'without_IA',
-                                           **{**wil_ccl_kwargs, 'return_PyCCL_object': False})
-        wf_ia_ccl = wf_cl_lib.wil_PyCCL(zgrid_nz, 'IA_only', **{**wil_ccl_kwargs, 'return_PyCCL_object': False})
+        wf_lensing_ccl_arr = wf_cl_lib.wil_PyCCL(zgrid_nz, 'with_IA',
+                                                 **{**wil_ccl_kwargs, 'return_PyCCL_object': False})
+        wf_gamma_ccl_arr = wf_cl_lib.wil_PyCCL(zgrid_nz, 'without_IA',
+                                               **{**wil_ccl_kwargs, 'return_PyCCL_object': False})
+        wf_ia_ccl_arr = wf_cl_lib.wil_PyCCL(zgrid_nz, 'IA_only', **{**wil_ccl_kwargs, 'return_PyCCL_object': False})
 
         wf_galaxy_ccl_obj = wf_cl_lib.wig_PyCCL(zgrid_nz, 'without_galaxy_bias', **wig_ccl_kwargs)
-        wf_galaxy_ccl = wf_cl_lib.wig_PyCCL(zgrid_nz, 'without_galaxy_bias',
-                                            **{**wig_ccl_kwargs, 'return_PyCCL_object': False})
+        wf_galaxy_ccl_arr = wf_cl_lib.wig_PyCCL(zgrid_nz, 'without_galaxy_bias',
+                                                **{**wig_ccl_kwargs, 'return_PyCCL_object': False})
+
+        # this is to check against ccl in pyccl_cov
+        general_cfg['wf_WL'] = wf_lensing_ccl_arr
+        general_cfg['wf_GC'] = wf_galaxy_ccl_arr
+        general_cfg['z_grid_wf'] = zgrid_nz
+        general_cfg['nz_tuple'] = nz_tuple
 
         # BNT-transform the lensing kernels
-        wf_gamma_ccl_bnt = (BNT_matrix @ wf_gamma_ccl.T).T
+        wf_gamma_ccl_bnt = (BNT_matrix @ wf_gamma_ccl_arr.T).T
         wf_gamma_vin_bnt = (BNT_matrix @ wf_gamma_vin.T).T
 
-        wf_lensing_ccl_bnt = (BNT_matrix @ wf_lensing_ccl.T).T
+        wf_lensing_ccl_bnt = (BNT_matrix @ wf_lensing_ccl_arr.T).T
         wf_lensing_vin_bnt = (BNT_matrix @ wf_lensing_vin.T).T
 
         # compute z means
         if use_ia:
-            wf_ll_ccl = wf_lensing_ccl
+            wf_ll_ccl = wf_lensing_ccl_arr
             wf_ll_ccl_bnt = wf_lensing_ccl_bnt
             wf_ll_vin = wf_lensing_vin
             wf_ll_vin_bnt = wf_lensing_vin_bnt
         else:
-            wf_ll_ccl = wf_gamma_ccl
+            wf_ll_ccl = wf_gamma_ccl_arr
             wf_ll_ccl_bnt = wf_gamma_ccl_bnt
             wf_ll_vin = wf_gamma_vin
             wf_ll_vin_bnt = wf_gamma_vin_bnt
 
         z_means_ll = wf_cl_lib.get_z_means(zgrid_nz, wf_ll_ccl)
-        z_means_gg = wf_cl_lib.get_z_means(zgrid_nz, wf_galaxy_ccl)
+        z_means_gg = wf_cl_lib.get_z_means(zgrid_nz, wf_galaxy_ccl_arr)
         z_means_ll_bnt = wf_cl_lib.get_z_means(zgrid_nz, wf_ll_ccl_bnt)
 
         # check that the z means are close (within 5%)
@@ -675,11 +681,9 @@ for general_cfg['center_or_min'] in ['center', ]:
             plt.savefig(f'/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/'
                         f'z_dependent_ell_cuts_kmax{kmax_h_over_Mpc:02f}.pdf', dpi=500, bbox_inches='tight')
 
-        assert False, 'stop here'
-
-        # mm.plot_bnt_matrix(BNT_matrix, zbins)
-        # plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/bnt_matrix_fs2.pdf',
-        #             dpi=500, bbox_inches='tight')
+        mm.plot_bnt_matrix(BNT_matrix, zbins)
+        plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/bnt_matrix_fs2.pdf',
+                    dpi=500, bbox_inches='tight')
 
         # ! import and reshape datavectors (cl) and response functions (rl)
         if which_pk != 'HMCodebar':
@@ -868,6 +872,20 @@ for general_cfg['center_or_min'] in ['center', ]:
 
             # compare
             np.testing.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_lmax3000, atol=0, rtol=1e-5)
+
+        if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False and which_pk == 'HMCodebar':
+            # load benchmark cov and check that it matches the one computed here; I am not actually using it
+            cov_cloe_bench_2d = np.load(
+                f'/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.npy')
+            # reshape it in dav format
+            cov_bench_2ddav = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2d, nbl_WL_opt, zbins, 'ell', 'ell')
+
+            # ell cut, 29 bins instead of 32
+            n_cov_elements = cov_dict['cov_3x2pt_GS_2D'].shape[0]
+            cov_bench_2ddav_lmax3000 = cov_bench_2ddav[:n_cov_elements, :n_cov_elements]
+
+            # compare
+            np.testing.assert_allclose(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_lmax3000, atol=0, rtol=1e-5)
 
         if general_cfg['test_against_benchmarks']:
             cov_benchmark_folder = f'{cov_folder}/benchmarks'

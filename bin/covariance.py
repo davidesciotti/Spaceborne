@@ -48,7 +48,7 @@ def get_ellmax_nbl(probe, general_cfg):
     return ell_max, nbl
 
 
-def ssc_with_exactSSC_4D(general_cfg, covariance_cfg, return_format_3x2pt):
+def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
     # this actually just imports the precomputed ssc. It can also compute deltab, quite useless at the moment
     print('computing SSC covariance with exactSSC...')
     warnings.warn('I am dividing by fsky in the import here below (8d dict), should be correct but be careful...')
@@ -150,7 +150,8 @@ def ssc_with_pyccl_4D(general_cfg, covariance_cfg, ell_dict):
         # old, only for LL and GG  # cov_PyCCL_SS_4D = np.load(f'{path_ccl}/cov_PyCCL_SSC_{probe}_{general_suffix}_4D.npz')['arr_0']
 
     else:
-        cov_PyCCL_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl(probe, 'SSC', ell_grid, z_grid_nofz=None, n_of_z=None,
+        cov_PyCCL_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl(probe, 'SSC', ell_grid, z_grid_nofz=None,
+                                                              n_of_z_tuple=general_cfg['nofz_tuple'],
                                                               general_cfg=general_cfg, covariance_cfg=covariance_cfg)
 
         if covariance_cfg['PyCCL_cfg']['save_cov']:
@@ -373,7 +374,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     start_time = time.perf_counter()
     if SSC_code == 'exactSSC':
         warnings.warn('the name of this function should be changed...')
-        cov_exactSSC_SS_dict_10D = ssc_with_exactSSC_4D(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d')
+        cov_exactSSC_SS_dict_10D = ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d')
         cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_exactSSC_SS_dict_10D, nbl_3x2pt, zbins, n_probes)
 
     if SSC_code == 'PyCCL':
@@ -383,7 +384,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     elif SSC_code not in ('PySSC', 'PyCCL', 'exactSSC'):
         raise ValueError('covariance_cfg["SSC_code"] must be PySSC or PyCCL or exactSSC')
 
-    print('SSC covariance computed with {SSC_code} in {}')
+    print(f'SSC covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} seconds')
 
     # sum GO and SS in 6D (or 10D), not in 4D (it's the same)
     cov_WL_GS_6D = cov_WL_GO_6D + cov_WL_SS_6D

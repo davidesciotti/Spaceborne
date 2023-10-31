@@ -329,16 +329,19 @@ plt.plot(kmax_h_over_Mpc_list, fom_dz_false_sb_false, label=f'{dz_tex} free, {sb
 plt.plot(kmax_h_over_Mpc_list, fom_dz_true_sb_false, label=f'{dz_tex} fixed, {sb_tex} free (ref)', marker='o')
 plt.plot(kmax_h_over_Mpc_list, fom_dz_false_sb_true, label=f'{dz_tex} free, {sb_tex} fixed', marker='o')
 plt.plot(kmax_h_over_Mpc_list, fom_dz_true_sb_true, label=f'{dz_tex} fixed, {sb_tex} fixed', marker='o')
-plt.axvline(kmax_fom400_dz_false_sb_false, label=f'{kmax_star_tex} = {kmax_fom400_dz_false_sb_false:.02f} {h_over_mpc_tex}', c='tab:blue', ls='--')
-plt.axvline(kmax_fom400_dz_true_sb_false, label=f'{kmax_star_tex} = {kmax_fom400_dz_true_sb_false:.02f} {h_over_mpc_tex}', c='tab:orange', ls='--')
-plt.axvline(kmax_fom400_dz_false_sb_true, label=f'{kmax_star_tex} = {kmax_fom400_dz_false_sb_true:.02f} {h_over_mpc_tex}', c='tab:green', ls='--')
-plt.axvline(kmax_fom400_dz_true_sb_true, label=f'{kmax_star_tex} = {kmax_fom400_dz_true_sb_true:.02f} {h_over_mpc_tex}', c='tab:red', ls='--')
+plt.axvline(kmax_fom400_dz_false_sb_false,
+            label=f'{kmax_star_tex} = {kmax_fom400_dz_false_sb_false:.02f} {h_over_mpc_tex}', c='tab:blue', ls='--')
+plt.axvline(kmax_fom400_dz_true_sb_false,
+            label=f'{kmax_star_tex} = {kmax_fom400_dz_true_sb_false:.02f} {h_over_mpc_tex}', c='tab:orange', ls='--')
+plt.axvline(kmax_fom400_dz_false_sb_true,
+            label=f'{kmax_star_tex} = {kmax_fom400_dz_false_sb_true:.02f} {h_over_mpc_tex}', c='tab:green', ls='--')
+plt.axvline(kmax_fom400_dz_true_sb_true, label=f'{kmax_star_tex} = {kmax_fom400_dz_true_sb_true:.02f} {h_over_mpc_tex}',
+            c='tab:red', ls='--')
 plt.axhline(fom_noellcuts, label='$\\ell_{\\rm max, opt}^{\\rm EC20} = 3000$', c='k', ls=':')
 plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', c='k', ls='-', alpha=0.3)
 plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
 plt.ylabel('3$\\times$2pt FoM')
 plt.legend()
-
 
 if save_plots:
     plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/fom_hmcodebar_vs_kmax.pdf',
@@ -379,7 +382,7 @@ center_or_min = 'center'
 param_toplot = 'FoM'
 # choose what to plot
 cosmo_params_df_dav = fm_uncert_df[
-    (fm_uncert_df['probe'] == probe_toplot) &
+    (fm_uncert_df['probe'] == '3x2pt') &
     (fm_uncert_df['go_or_gs'] == 'GO') &
     (fm_uncert_df['whose_FM'] == 'davide') &
     (fm_uncert_df['fix_dz'] == True) &
@@ -407,10 +410,13 @@ kmax_perc_deviation_notb = mm.find_inverse_from_array(kmax_h_over_Mpc_list, perc
                                                       target_perc_dispersion)
 
 kmax_fom400_tb = mm.find_inverse_from_array(kmax_h_over_Mpc_list,
-                                            cosmo_params_df_dav[cosmo_params_df_dav['which_pk'] == 'TakaBird']['FoM'].values,
-                                            fom_redbook)
+                                            cosmo_params_df_dav[cosmo_params_df_dav['which_pk'] == 'TakaBird'][
+                                                'FoM'].values, fom_redbook)
+fom_kmax082_notb = mm.find_inverse_from_array(mean_fom_vs_kmax_notb, kmax_h_over_Mpc_list, kmax_perc_deviation_notb)
+
 print(f'kmax_fom400_tb = {kmax_fom400_tb:.2f} {h_over_mpc_tex} for lmax = 3000. P. Taylor finds 0.7!!; make sure youre '
       f'fixing shear bias and dz for a fair comparison')
+print(f'FoM = {fom_kmax082_notb:.2f} for kmax = {kmax_perc_deviation_notb:.2f} {h_over_mpc_tex} and no TakaBird.')
 
 colors = cm.rainbow(np.linspace(0, 1, len(which_pk_list)))
 plt.figure()

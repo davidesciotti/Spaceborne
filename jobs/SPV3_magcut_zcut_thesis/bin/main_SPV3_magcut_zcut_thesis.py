@@ -11,6 +11,7 @@ import matplotlib.lines as mlines
 import gc
 import matplotlib.gridspec as gridspec
 import yaml
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.ndimage import gaussian_filter1d
 import pprint
 
@@ -232,25 +233,24 @@ def plot_nz_tocheck_func(zgrid_nz, n_of_z):
     plt.ylabel('n(z)')
 
 
-def plot_ell_cuts_for_thesis(ell_cuts_a, ell_cuts_b, label_a, label_b, kmax_h_over_Mpc):
-    # ! matshow ell cuts with and wo BNT - another thesis plot
-    # todo deprecate this plot?
+def plot_ell_cuts_for_thesis(ell_cuts_a, ell_cuts_b, ell_cuts_c, label_a, label_b, label_c, kmax_h_over_Mpc):
     # Get the global min and max values for the color scale
-    vmin = min(ell_cuts_a.min(), ell_cuts_b.min())
-    vmax = max(ell_cuts_a.max(), ell_cuts_b.max())
+    vmin = min(ell_cuts_a.min(), ell_cuts_b.min(), ell_cuts_c.min())
+    vmax = max(ell_cuts_a.max(), ell_cuts_b.max(), ell_cuts_c.min())
 
     # Create a gridspec layout
-    fig = plt.figure(figsize=(9, 5))
-    gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 0.05])
+    fig = plt.figure(figsize=(10, 5))
+    gs = gridspec.GridSpec(1, 4, width_ratios=[1, 1, 1, 0.12])
 
     # Create axes based on the gridspec layout
     ax0 = plt.subplot(gs[0])
     ax1 = plt.subplot(gs[1])
-    cbar_ax = plt.subplot(gs[2])
+    ax2 = plt.subplot(gs[2])
+    cbar_ax = plt.subplot(gs[3])
 
     ticks = np.arange(1, zbins + 1)
     # Set x and y ticks for both subplots
-    for ax in [ax0, ax1]:
+    for ax in [ax0, ax1, ax2]:
         ax.set_xticks(np.arange(zbins))
         ax.set_yticks(np.arange(zbins))
         ax.set_xticklabels(ticks, fontsize=15)
@@ -261,10 +261,12 @@ def plot_ell_cuts_for_thesis(ell_cuts_a, ell_cuts_b, label_a, label_b, kmax_h_ov
     # Display the matrices with the shared color scale
     cax0 = ax0.matshow(ell_cuts_a, vmin=vmin, vmax=vmax)
     cax1 = ax1.matshow(ell_cuts_b, vmin=vmin, vmax=vmax)
+    cax2 = ax2.matshow(ell_cuts_c, vmin=vmin, vmax=vmax)
 
     # Add titles to the plots
     ax0.set_title(label_a, fontsize=18)
     ax1.set_title(label_b, fontsize=18)
+    ax2.set_title(label_c, fontsize=18)
     fig.suptitle(f'{mpl_cfg.kmax_tex} = {kmax_h_over_Mpc:.2f} {mpl_cfg.h_over_mpc_tex}', fontsize=18, y=0.85)
 
     # Add a shared colorbar on the right
@@ -321,7 +323,7 @@ kmax_fom_400_ellcenter = 2.15443469
 
 # I think that center is more accurate, it's where I compute the cl
 for general_cfg['center_or_min'] in ['center', ]:
-    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:-1]:
+    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][6:-1]:
         # for general_cfg['which_pk'] in general_cfg['which_pk_list']:
 
         with open(
@@ -668,9 +670,12 @@ for general_cfg['center_or_min'] in ['center', ]:
 
         # ! plot ell cuts matrix for thesis, for "reference" kmax (corresponding to FoM 400 for ell_cuts_center)
         if kmax_h_over_Mpc == kmax_fom_400_ellcenter and center_or_min == 'center':
-            plot_ell_cuts_for_thesis(ell_cuts_dict['LL'], ell_cuts_dict['GL'], 'LL', 'GL', kmax_h_over_Mpc)
+            plot_ell_cuts_for_thesis(ell_cuts_dict['LL'], ell_cuts_dict['GL'], ell_cuts_dict['GG'],
+                                     'LL', 'GL', 'GL', kmax_h_over_Mpc)
             plt.savefig(f'/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/'
                         f'z_dependent_ell_cuts_kmax{kmax_h_over_Mpc:02f}.pdf', dpi=500, bbox_inches='tight')
+
+        assert False, 'stop here'
 
         # mm.plot_bnt_matrix(BNT_matrix, zbins)
         # plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/bnt_matrix_fs2.pdf',

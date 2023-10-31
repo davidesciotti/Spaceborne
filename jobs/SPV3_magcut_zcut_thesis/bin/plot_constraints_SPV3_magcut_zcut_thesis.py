@@ -34,6 +34,7 @@ general_cfg = cfg.general_cfg
 FM_cfg = cfg.FM_cfg
 h_over_mpc_tex = mpl_cfg.h_over_mpc_tex
 kmax_tex = mpl_cfg.kmax_tex
+kmax_star_tex = mpl_cfg.kmax_star_tex
 cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
 # ! options
@@ -57,7 +58,7 @@ triangle_plot = False
 use_Wadd = False  # the difference is extremely small
 pk_ref = 'HMCodebar'
 fom_redbook = 400
-target_perc_dispersion = 15  # percent
+target_perc_dispersion = 10  # percent
 w0_uncert_redbook = 2  # percent
 wa_uncert_redbook = 10  # percent
 ML = 245
@@ -83,7 +84,7 @@ fix_shear_bias_list = [True, False]
 which_pk_list = general_cfg['which_pk_list']
 center_or_min_plt = 'center'
 which_cuts_plt = 'Vincenzo'
-save_plots = False
+save_plots = True
 
 # ! options
 
@@ -270,6 +271,7 @@ for probe in tqdm(probes):
                                                                  ignore_index=True)
                                         fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
 
+# ! ============================================================ PLOTS ============================================================
 # ! plot FoM pk_ref vs kmax
 probe_toplot = '3x2pt'
 reduced_df = fm_uncert_df[
@@ -294,7 +296,6 @@ fom_dz_false_sb_true = reduced_df[(reduced_df['fix_dz'] == False) &
 fom_dz_true_sb_true = reduced_df[(reduced_df['fix_dz'] == True) &
                                  (reduced_df['fix_shear_bias'] == True)
                                  ]['FoM'].values
-fom_ref = fom_dz_true_sb_false
 
 # add FoM for no ell cuts case
 fom_noellcuts = fm_uncert_df[
@@ -312,22 +313,32 @@ fom_noellcuts = fm_uncert_df[
     ]['FoM'].values[0]
 
 # find kmax for a given FoM (400)
-kmax_fom_400 = mm.find_inverse_from_array(kmax_h_over_Mpc_list, fom_ref, fom_redbook)
+kmax_fom400_dz_false_sb_false = mm.find_inverse_from_array(kmax_h_over_Mpc_list, fom_dz_false_sb_false, fom_redbook)
+kmax_fom400_dz_true_sb_false = mm.find_inverse_from_array(kmax_h_over_Mpc_list, fom_dz_true_sb_false, fom_redbook)
+kmax_fom400_dz_false_sb_true = mm.find_inverse_from_array(kmax_h_over_Mpc_list, fom_dz_false_sb_true, fom_redbook)
+kmax_fom400_dz_true_sb_true = mm.find_inverse_from_array(kmax_h_over_Mpc_list, fom_dz_true_sb_true, fom_redbook)
 
+fom_ref = fom_dz_true_sb_false
+kmax_fom400_ref = kmax_fom400_dz_true_sb_false
+
+dz_tex = '$\\Delta z_i$'
+sb_tex = '$m_i$'
 title_plot = '3$\\times$2pt' if probe_toplot == '3x2pt' else None
 plt.figure()
-plt.plot(kmax_h_over_Mpc_list, fom_dz_false_sb_false, label=f'fom_dz_false_sb_false', marker='o')
-plt.plot(kmax_h_over_Mpc_list, fom_dz_true_sb_false, label=f'fom_dz_true_sb_false (ref)', marker='o')
-plt.plot(kmax_h_over_Mpc_list, fom_dz_false_sb_true, label=f'fom_dz_false_sb_true', marker='o')
-plt.plot(kmax_h_over_Mpc_list, fom_dz_true_sb_true, label=f'fom_dz_true_sb_true', marker='o')
-plt.axvline(kmax_fom_400, label=f'{kmax_tex} = {kmax_fom_400:.02f} {h_over_mpc_tex}', c='tab:blue', ls='--')
+plt.plot(kmax_h_over_Mpc_list, fom_dz_false_sb_false, label=f'{dz_tex} free, {sb_tex} free', marker='o')
+plt.plot(kmax_h_over_Mpc_list, fom_dz_true_sb_false, label=f'{dz_tex} fixed, {sb_tex} free (ref)', marker='o')
+plt.plot(kmax_h_over_Mpc_list, fom_dz_false_sb_true, label=f'{dz_tex} free, {sb_tex} fixed', marker='o')
+plt.plot(kmax_h_over_Mpc_list, fom_dz_true_sb_true, label=f'{dz_tex} fixed, {sb_tex} fixed', marker='o')
+plt.axvline(kmax_fom400_dz_false_sb_false, label=f'{kmax_star_tex} = {kmax_fom400_dz_false_sb_false:.02f} {h_over_mpc_tex}', c='tab:blue', ls='--')
+plt.axvline(kmax_fom400_dz_true_sb_false, label=f'{kmax_star_tex} = {kmax_fom400_dz_true_sb_false:.02f} {h_over_mpc_tex}', c='tab:orange', ls='--')
+plt.axvline(kmax_fom400_dz_false_sb_true, label=f'{kmax_star_tex} = {kmax_fom400_dz_false_sb_true:.02f} {h_over_mpc_tex}', c='tab:green', ls='--')
+plt.axvline(kmax_fom400_dz_true_sb_true, label=f'{kmax_star_tex} = {kmax_fom400_dz_true_sb_true:.02f} {h_over_mpc_tex}', c='tab:red', ls='--')
 plt.axhline(fom_noellcuts, label='$\\ell_{\\rm max, opt}^{\\rm EC20} = 3000$', c='k', ls=':')
 plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', c='k', ls='-', alpha=0.3)
 plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
 plt.ylabel('3$\\times$2pt FoM')
 plt.legend()
 
-assert False, 'stop here for the moment'
 
 if save_plots:
     plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/fom_hmcodebar_vs_kmax.pdf',
@@ -342,6 +353,8 @@ cosmo_params_df_dav = fm_uncert_df[
     (fm_uncert_df['whose_FM'] == 'davide') &
     (fm_uncert_df['BNT_transform'] == BNT_transform) &
     (fm_uncert_df['ell_cuts'] == ell_cuts) &
+    (fm_uncert_df['fix_dz'] == True) &
+    (fm_uncert_df['fix_shear_bias'] == False) &
     (fm_uncert_df['center_or_min'] == center_or_min) &
     (fm_uncert_df['which_pk'] == pk_ref)
     ]
@@ -349,7 +362,7 @@ cosmo_params_df_dav = fm_uncert_df[
 plt.figure()
 for i, cosmo_param in enumerate(cosmo_param_names):
     plt.plot(kmax_h_over_Mpc_list, cosmo_params_df_dav[cosmo_param].values, label=f'{cosmo_params_tex[i]}', marker='o')
-plt.axvline(kmax_fom_400, label=f'{kmax_tex} = {kmax_fom_400:.02f} {h_over_mpc_tex}', c='k', ls='--')
+plt.axvline(kmax_fom400_ref, label=f'{kmax_star_tex} = {kmax_fom400_ref:.02f} {h_over_mpc_tex}', c='k', ls='--')
 
 plt.ylabel('relative uncertainty [%]')
 plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
@@ -369,6 +382,8 @@ cosmo_params_df_dav = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['go_or_gs'] == 'GO') &
     (fm_uncert_df['whose_FM'] == 'davide') &
+    (fm_uncert_df['fix_dz'] == True) &
+    (fm_uncert_df['fix_shear_bias'] == False) &
     (fm_uncert_df['BNT_transform'] == BNT_transform) &
     (fm_uncert_df['ell_cuts'] == ell_cuts) &
     (fm_uncert_df['center_or_min'] == center_or_min)
@@ -391,6 +406,12 @@ kmax_perc_deviation = mm.find_inverse_from_array(kmax_h_over_Mpc_list, perc_devi
 kmax_perc_deviation_notb = mm.find_inverse_from_array(kmax_h_over_Mpc_list, perc_deviation_vs_kmax_notb,
                                                       target_perc_dispersion)
 
+kmax_fom400_tb = mm.find_inverse_from_array(kmax_h_over_Mpc_list,
+                                            cosmo_params_df_dav[cosmo_params_df_dav['which_pk'] == 'TakaBird']['FoM'].values,
+                                            fom_redbook)
+print(f'kmax_fom400_tb = {kmax_fom400_tb:.2f} {h_over_mpc_tex} for lmax = 3000. P. Taylor finds 0.7!!; make sure youre '
+      f'fixing shear bias and dz for a fair comparison')
+
 colors = cm.rainbow(np.linspace(0, 1, len(which_pk_list)))
 plt.figure()
 for i, which_pk in enumerate(which_pk_list):
@@ -398,11 +419,11 @@ for i, which_pk in enumerate(which_pk_list):
     plt.plot(kmax_h_over_Mpc_list, fom_vs_kmax_dav, label=f'{which_pk}', marker='o', c=colors[i])
 plt.errorbar(kmax_h_over_Mpc_list, mean_fom_vs_kmax, yerr=stdev_fom_vs_kmax, label='$\\mu \\pm \\sigma$',
              marker='.', c='k', ls=':', lw=2)
-plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', c='k', ls='--', alpha=0.5)
-plt.axvline(kmax_perc_deviation, label=f'{kmax_tex} = {kmax_perc_deviation:.2f} {h_over_mpc_tex}', c='tab:blue',
+plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', c='k', ls='-', alpha=0.3)
+plt.axvline(kmax_perc_deviation, label=f'{kmax_star_tex} = {kmax_perc_deviation:.2f} {h_over_mpc_tex}', c=colors[1],
             ls='--', alpha=0.5)
-plt.axvline(kmax_perc_deviation_notb, label=f'{kmax_tex} = {kmax_perc_deviation_notb:.2f} {h_over_mpc_tex}',
-            c='tab:orange',
+plt.axvline(kmax_perc_deviation_notb, label=f'{kmax_star_tex} = {kmax_perc_deviation_notb:.2f} {h_over_mpc_tex}',
+            c='tab:green',
             ls='--', alpha=0.5)
 
 plt.ylabel('3$\\times$2pt FoM')
@@ -426,6 +447,8 @@ go_gs_df = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['whose_FM'] == 'davide') &
     (fm_uncert_df['which_pk'] == pk_ref) &
+    (fm_uncert_df['fix_dz'] == True) &
+    (fm_uncert_df['fix_shear_bias'] == False) &
     (fm_uncert_df['BNT_transform'] == BNT_transform) &
     (fm_uncert_df['ell_cuts'] == ell_cuts) &
     (fm_uncert_df['which_cuts'] == which_cuts_plt) &
@@ -460,7 +483,7 @@ kmax_fom_400 = mm.find_inverse_from_array(kmax_h_over_Mpc_list, fom_values, fom_
 title_plot = '3$\\times$2pt' if probe_toplot == '3x2pt' else None
 plt.figure()
 plt.plot(kmax_h_over_Mpc_list, fom_values, label=f'FoM', marker='o')
-plt.axvline(kmax_fom_400, label=f'{kmax_tex} = {kmax_fom_400:.02f} {h_over_mpc_tex}', c='tab:blue', ls='--')
+plt.axvline(kmax_fom_400, label=f'{kmax_star_tex} = {kmax_fom_400:.02f} {h_over_mpc_tex}', c='tab:blue', ls='--')
 plt.axhline(fom_noellcuts, label='$\\ell_{\\rm max, opt}^{\\rm EC20} = 3000$', c='k', ls=':')
 plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', c='k', ls='-', alpha=0.3)
 plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')

@@ -175,13 +175,13 @@ covariance_cfg = {
                     'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D',
     'cov_filename_vincenzo': 'cm-{probe:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    'SSC_code': 'exactSSC',
+    'SSC_code': 'PyCCL',
 
     'PyCCL_cfg': {
         'probe': '3x2pt',
         'get_3x2pt_cov_in_4D': False,
         'path': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF',
-        'load_precomputed_cov': True,
+        'load_precomputed_cov': False,
         'save_cov': False,
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
         'compute_cng': False,

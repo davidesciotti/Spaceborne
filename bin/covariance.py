@@ -120,7 +120,7 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
         raise ValueError('probe must be LL or GG or 3x2pt')
 
 
-def ssc_with_pyccl_4D(general_cfg, covariance_cfg, ell_dict):
+def ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict):
     print('computing SSC covariance with PyCCL')
     warnings.warn('input nofz for ccl, or better the kernels!')
 
@@ -150,10 +150,14 @@ def ssc_with_pyccl_4D(general_cfg, covariance_cfg, ell_dict):
         # old, only for LL and GG  # cov_PyCCL_SS_4D = np.load(f'{path_ccl}/cov_PyCCL_SSC_{probe}_{general_suffix}_4D.npz')['arr_0']
 
     else:
-        cov_PyCCL_SS_4D = pyccl_cov.compute_cov_ng_with_pyccl(probe, 'SSC', ell_grid, z_grid_nofz=None,
-                                                              n_of_z_tuple=general_cfg['nofz_tuple'],
-                                                              general_cfg=general_cfg, covariance_cfg=covariance_cfg)
 
+        # Map the keys
+        fid_dict_ccl = csmlib.map_keys(general_cfg['flat_fid_pars_dict'], csmlib.key_mapping)
+
+        cov_PyCCL_SS_8D_dict = pyccl_cov.compute_cov_ng_with_pyccl(fid_dict_ccl, probe,
+                                                              'SSC', ell_grid, general_cfg, covariance_cfg)
+        # save picke
+        mm.save_pickle(f'/Users/davide/Desktop/cov_3x2pt_ccl_test.pickle', cov_PyCCL_SS_8D_dict)
         if covariance_cfg['PyCCL_cfg']['save_cov']:
 
             # not the best way, dict vs 4d array as output...
@@ -378,8 +382,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_exactSSC_SS_dict_10D, nbl_3x2pt, zbins, n_probes)
 
     if SSC_code == 'PyCCL':
-        assert False, 'right now the pipeline is not ready for PyCCL, is whould be inserted as a 10d array as above.'
-        cov_PyCCL_SS_4D = ssc_with_pyccl_4D(general_cfg, covariance_cfg, ell_dict)
+        cov_PyCCL_SS_4D = ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict)
+        assert False, 'need to cheeeecckkkk the output'
 
     elif SSC_code not in ('PySSC', 'PyCCL', 'exactSSC'):
         raise ValueError('covariance_cfg["SSC_code"] must be PySSC or PyCCL or exactSSC')

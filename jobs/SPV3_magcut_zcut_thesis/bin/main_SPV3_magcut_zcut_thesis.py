@@ -330,6 +330,7 @@ for general_cfg['center_or_min'] in ['center', ]:
                 '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_cfg/SPV3_fiducial_params_magcut245_zbins13.yml') as f:
             ficualial_pars_dict = yaml.safe_load(f)
         flat_fid_pars_dict = mm.flatten_dict(ficualial_pars_dict)
+        general_cfg['flat_fid_pars_dict'] = flat_fid_pars_dict
 
         # some convenence variables, just to make things more readable
         zbins = general_cfg['zbins']
@@ -580,7 +581,7 @@ for general_cfg['center_or_min'] in ['center', ]:
                                                      growth_factor=None,
                                                      output_F_IA_of_z=False)
         wf_lensing_vin = wf_gamma_vin + ia_bias_vin[:, None] * wf_ia_vin
-        wf_galaxy_vin = wf_delta_vin  # + wf_mu_vin  # TODO in theory, I should BNT-tansform wf_mu...
+        wf_galaxy_vin = wf_delta_vin + wf_mu_vin  # TODO in theory, I should BNT-tansform wf_mu...
 
         nz_tuple = (zgrid_nz, n_of_z)
         # Define the keyword arguments as a dictionary
@@ -619,9 +620,9 @@ for general_cfg['center_or_min'] in ['center', ]:
                                                 **{**wig_ccl_kwargs, 'return_PyCCL_object': False})
 
         # this is to check against ccl in pyccl_cov
-        general_cfg['wf_WL'] = wf_lensing_ccl_arr
-        general_cfg['wf_GC'] = wf_galaxy_ccl_arr
-        general_cfg['z_grid_wf'] = zgrid_nz
+        general_cfg['wf_WL'] = wf_lensing_vin
+        general_cfg['wf_GC'] = wf_galaxy_vin
+        general_cfg['z_grid_wf'] = zgrid_wf_vin
         general_cfg['nz_tuple'] = nz_tuple
 
         # BNT-transform the lensing kernels
@@ -854,7 +855,7 @@ for general_cfg['center_or_min'] in ['center', ]:
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix)
 
-        # save covariance matrix and test against benchmarks
+        # save covariance m atrix and test against benchmarks
         cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
                                                          **variable_specs)
         covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
@@ -873,7 +874,8 @@ for general_cfg['center_or_min'] in ['center', ]:
             # compare
             np.testing.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_lmax3000, atol=0, rtol=1e-5)
 
-        if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False and which_pk == 'HMCodebar':
+        if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False and which_pk == 'HMCodebar'\
+                and general_cfg['SSC_code'] == 'exactSSC':
             # load benchmark cov and check that it matches the one computed here; I am not actually using it
             cov_cloe_bench_2d = np.load(
                 f'/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.npy')

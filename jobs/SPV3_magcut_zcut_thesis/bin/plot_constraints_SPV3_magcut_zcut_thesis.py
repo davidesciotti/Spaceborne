@@ -446,6 +446,11 @@ if save_plots:
 
 # ! plot FoM pk_ref go gs vs kmax
 probe_toplot = 'WL'
+
+if probe_toplot != '3x2pt':
+    assert False, ('the ssc from spaceborne is only available for 3x2pt, not for WL or GC. Cut the 3x2pt '
+                   'appropriately if you '
+                   'want the other probes...')
 ell_cuts = False
 BNT_transform = False
 go_gs_df = fm_uncert_df[

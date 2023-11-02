@@ -328,8 +328,8 @@ for general_cfg['center_or_min'] in ['center', ]:
 
         with open(
                 '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_cfg/SPV3_fiducial_params_magcut245_zbins13.yml') as f:
-            ficualial_pars_dict = yaml.safe_load(f)
-        flat_fid_pars_dict = mm.flatten_dict(ficualial_pars_dict)
+            fid_pars_dict = yaml.safe_load(f)
+        flat_fid_pars_dict = mm.flatten_dict(fid_pars_dict)
         general_cfg['flat_fid_pars_dict'] = flat_fid_pars_dict
 
         # some convenence variables, just to make things more readable
@@ -357,23 +357,13 @@ for general_cfg['center_or_min'] in ['center', ]:
         idBM = general_cfg['idBM']
         BNT_transform = general_cfg['BNT_transform']
         h = flat_fid_pars_dict['h']
-
-        # construct lensing kernel - I need to add IA
-        ficualial_pars_dict_ccl_keys = {}
-        ficualial_pars_dict_ccl_keys['Om_m0'] = flat_fid_pars_dict['Om']
-        ficualial_pars_dict_ccl_keys['Om_b0'] = flat_fid_pars_dict['Ob']
-        ficualial_pars_dict_ccl_keys['Om_Lambda0'] = flat_fid_pars_dict['ODE']
-        ficualial_pars_dict_ccl_keys['w_0'] = flat_fid_pars_dict['wz']
-        ficualial_pars_dict_ccl_keys['w_a'] = flat_fid_pars_dict['wa']
-        ficualial_pars_dict_ccl_keys['h'] = flat_fid_pars_dict['h']
-        ficualial_pars_dict_ccl_keys['n_s'] = flat_fid_pars_dict['ns']
-        ficualial_pars_dict_ccl_keys['sigma_8'] = flat_fid_pars_dict['s8']
-        ficualial_pars_dict_ccl_keys['m_nu'] = flat_fid_pars_dict['m_nu']
-        ficualial_pars_dict_ccl_keys['N_eff'] = flat_fid_pars_dict['N_eff']
-
-        cosmo_ccl = csmlib.instantiate_cosmo_ccl_obj(ficualial_pars_dict_ccl_keys)
-
+        general_cfg['fid_pars_dict'] = fid_pars_dict
         colors = cm.rainbow(np.linspace(0, 1, zbins))
+
+        cosmo_dict_ccl = csmlib.map_keys(mm.flatten_dict(fid_pars_dict), csmlib.key_mapping)
+        cosmo_ccl = csmlib.instantiate_cosmo_ccl_obj(cosmo_dict_ccl,
+                                                     fid_pars_dict['other_params']['extra_parameters'])
+
 
         # some checks
         assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
@@ -874,7 +864,7 @@ for general_cfg['center_or_min'] in ['center', ]:
             # compare
             np.testing.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_lmax3000, atol=0, rtol=1e-5)
 
-        if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False and which_pk == 'HMCodebar'\
+        if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False and which_pk == 'HMCodebar' \
                 and covariance_cfg['SSC_code'] == 'exactSSC':
             # load benchmark cov and check that it matches the one computed here; I am not actually using it
             cov_cloe_bench_2d = np.load(

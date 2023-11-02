@@ -69,7 +69,9 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
 
     if not covariance_cfg['exactSSC_cfg']['use_precomputed_sigma2']:
         # this part should be finished, what should I do with the array? save it?
-        cosmo_ccl = csmlib.istantiate_cosmo_ccl_obj(general_cfg['fiducial_pars_dict'])
+        cosmo_ccl = csmlib.istantiate_cosmo_ccl_obj(general_cfg['fid_pars_dict'],
+                                                    general_cfg['fid_pars_dict']['other_params']['extra_parameters'])
+
         sigma2, z_grid_sigma2 = sigma2_SSC.compute_sigma2(covariance_cfg['exactSSC_cfg'], cosmo_ccl)
 
         z_steps_sigma2 = len(z_grid_sigma2)
@@ -165,13 +167,8 @@ def ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict):
 
     else:
 
-        # Map the keys
-        fid_dict_ccl = csmlib.map_keys(general_cfg['flat_fid_pars_dict'], csmlib.key_mapping)
-
-        cov_PyCCL_SS_8D_dict = pyccl_cov.compute_cov_ng_with_pyccl(fid_dict_ccl, probe,
+        cov_PyCCL_SS_8D_dict = pyccl_cov.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], probe,
                                                                    'SSC', ell_grid, general_cfg, covariance_cfg)
-        # save picke
-        mm.save_pickle(f'/Users/davide/Desktop/cov_3x2pt_ccl_test.pickle', cov_PyCCL_SS_8D_dict)
         if covariance_cfg['PyCCL_cfg']['save_cov']:
 
             # not the best way, dict vs 4d array as output...

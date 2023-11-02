@@ -209,7 +209,7 @@ def compute_3x2pt_PyCCL(cosmo, kernel_dict, ell, tkka_dict, f_sky, integration_m
     return cov_ng_3x2pt_dict_8D
 
 
-def compute_cov_ng_with_pyccl(flat_fid_pars_dict, probe, which_ng_cov, ell_grid, general_cfg,
+def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid, general_cfg,
                               covariance_cfg):
     # ! settings
     zbins = general_cfg['zbins']
@@ -248,9 +248,9 @@ def compute_cov_ng_with_pyccl(flat_fid_pars_dict, probe, which_ng_cov, ell_grid,
 
     # Create new Cosmology object with a given set of parameters. This keeps track of previously-computed cosmological
     # functions
-    # TODO this should be generalized to any set of cosmo params
-    extra_parameters = covariance_cfg['PyCCL_cfg']['extra_parameters']
-    cosmo_ccl = cosmo_lib.instantiate_cosmo_ccl_obj(flat_fid_pars_dict, extra_parameters)
+    cosmo_dict_ccl = cosmo_lib.map_keys(mm.flatten_dict(general_cfg['fid_pars_dict']), cosmo_lib.key_mapping)
+    cosmo_ccl = cosmo_lib.instantiate_cosmo_ccl_obj(cosmo_dict_ccl,
+                                                    fiducial_pars_dict['other_params']['extra_parameters'])
 
     # TODO input n(z)
     # source redshift distribution, default ISTF values for bin edges & analytical prescription for the moment

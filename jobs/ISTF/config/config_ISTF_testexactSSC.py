@@ -68,7 +68,7 @@ elif which_input_files == 'SSC_comparison_updated':
     cl_folder = 'SPV3'
 
 general_cfg = {
-    'fiducial_pars_dict': fiducial_pars_dict,
+    'fid_pars_dict': fiducial_pars_dict,
     'which_input_files': which_input_files,
     'which_forecast': which_forecast,
 

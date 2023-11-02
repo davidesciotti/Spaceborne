@@ -227,11 +227,11 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     # ! settings
 
     # just a check on the settings
-    print(f'\n****************** settings ****************'
+    print(f'\n****************** ccl settings ****************'
           f'\nprobe = {probe}\nwhich_ng_cov = {which_ng_cov}'
           f'\nintegration_method = {integration_method_dict[probe][which_ng_cov]}'
           f'\nnbl = {nbl}\nf_sky = {f_sky}\nzbins = {zbins}'
-          f'\n********************************************\n')
+          f'\n************************************************\n')
 
     assert probe in ['LL', 'GG', '3x2pt'], 'probe must be either LL, GG, or 3x2pt'
     assert which_ng_cov in ['SSC', 'cNG'], 'which_ng_cov must be either SSC or cNG'
@@ -248,13 +248,12 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     # Create new Cosmology object with a given set of parameters. This keeps track of previously-computed cosmological
     # functions
-    cosmo_dict_ccl = cosmo_lib.map_keys(mm.flatten_dict(general_cfg['fid_pars_dict']), cosmo_lib.key_mapping)
+    flat_fid_pars_dict = mm.flatten_dict(fiducial_pars_dict)
+    cosmo_dict_ccl = cosmo_lib.map_keys(flat_fid_pars_dict, cosmo_lib.key_mapping)
     cosmo_ccl = cosmo_lib.instantiate_cosmo_ccl_obj(cosmo_dict_ccl,
                                                     fiducial_pars_dict['other_params']['extra_parameters'])
 
-    # TODO input n(z)
     # source redshift distribution, default ISTF values for bin edges & analytical prescription for the moment
-
     if nz_tuple is None:
         print('using default ISTF analytical n(z) values')
         niz_unnormalized_arr = np.asarray(

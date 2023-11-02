@@ -364,7 +364,6 @@ for general_cfg['center_or_min'] in ['center', ]:
         cosmo_ccl = csmlib.instantiate_cosmo_ccl_obj(cosmo_dict_ccl,
                                                      fid_pars_dict['other_params']['extra_parameters'])
 
-
         # some checks
         assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
         assert general_cfg['use_WA'] is False, 'We do not use Wadd for SPV3 at the moment'
@@ -666,15 +665,15 @@ for general_cfg['center_or_min'] in ['center', ]:
         ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the covariance module
 
         # ! plot ell cuts matrix for thesis, for "reference" kmax (corresponding to FoM 400 for ell_cuts_center)
-        if kmax_h_over_Mpc == kmax_fom_400_ellcenter and center_or_min == 'center':
-            plot_ell_cuts_for_thesis(ell_cuts_dict['LL'], ell_cuts_dict['GL'], ell_cuts_dict['GG'],
-                                     'LL', 'GL', 'GL', kmax_h_over_Mpc)
-            plt.savefig(f'/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/'
-                        f'z_dependent_ell_cuts_kmax{kmax_h_over_Mpc:02f}.pdf', dpi=500, bbox_inches='tight')
+        # if kmax_h_over_Mpc == kmax_fom_400_ellcenter and center_or_min == 'center':
+        #     plot_ell_cuts_for_thesis(ell_cuts_dict['LL'], ell_cuts_dict['GL'], ell_cuts_dict['GG'],
+        #                              'LL', 'GL', 'GL', kmax_h_over_Mpc)
+        #     plt.savefig(f'/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/'
+        #                 f'z_dependent_ell_cuts_kmax{kmax_h_over_Mpc:02f}.pdf', dpi=500, bbox_inches='tight')
 
-        mm.plot_bnt_matrix(BNT_matrix, zbins)
-        plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/bnt_matrix_fs2.pdf',
-                    dpi=500, bbox_inches='tight')
+        # mm.plot_bnt_matrix(BNT_matrix, zbins)
+        # plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/bnt_matrix_fs2.pdf',
+        #             dpi=500, bbox_inches='tight')
 
         # ! import and reshape datavectors (cl) and response functions (rl)
         if which_pk != 'HMCodebar':

@@ -37,7 +37,6 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 """ This is run with v 2.7 of pyccl
 """
 
-
 # ======================================================================================================================
 # ======================================================================================================================
 # ======================================================================================================================
@@ -49,6 +48,7 @@ independent_probe_combinations = (('L', 'L', 'L', 'L'),
                                   ('G', 'L', 'G', 'L'),
                                   ('G', 'L', 'G', 'G'),
                                   ('G', 'G', 'G', 'G'))
+
 
 # fanstastic collection of notebooks: https://github.com/LSSTDESC/CCLX
 # notebook for mass_relations: https://github.com/LSSTDESC/CCLX/blob/master/Halo-mass-function-example.ipynb
@@ -79,6 +79,8 @@ def initialize_trispectrum(cosmo_ccl, probe_ordering, pyccl_cfg, p_of_k_a):
     halo_profile_hod = ccl.halos.HaloProfileHOD(c_M_relation=c_M_relation)
 
     # TODO pk from input files
+    assert use_hod_for_gg, ('you need to use HOD for GG to get correct results for GCph! I previously got an error, '
+                            'should be fixed now')
 
     if use_hod_for_gg:
         # This is the correct way to initialize the trispectrum, but the code does not run.
@@ -247,7 +249,8 @@ def compute_cov_ng_with_pyccl(flat_fid_pars_dict, probe, which_ng_cov, ell_grid,
     # Create new Cosmology object with a given set of parameters. This keeps track of previously-computed cosmological
     # functions
     # TODO this should be generalized to any set of cosmo params
-    cosmo_ccl = cosmo_lib.instantiate_cosmo_ccl_obj(flat_fid_pars_dict)
+    extra_parameters = covariance_cfg['PyCCL_cfg']['extra_parameters']
+    cosmo_ccl = cosmo_lib.instantiate_cosmo_ccl_obj(flat_fid_pars_dict, extra_parameters)
 
     # TODO input n(z)
     # source redshift distribution, default ISTF values for bin edges & analytical prescription for the moment

@@ -323,7 +323,7 @@ kmax_fom_400_ellcenter = 2.15443469
 
 # I think that center is more accurate, it's where I compute the cl
 for general_cfg['center_or_min'] in ['center', ]:
-    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list'][:-1]:
+    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         # for general_cfg['which_pk'] in general_cfg['which_pk_list']:
 
         with open(
@@ -875,7 +875,7 @@ for general_cfg['center_or_min'] in ['center', ]:
             np.testing.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_lmax3000, atol=0, rtol=1e-5)
 
         if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False and which_pk == 'HMCodebar'\
-                and general_cfg['SSC_code'] == 'exactSSC':
+                and covariance_cfg['SSC_code'] == 'exactSSC':
             # load benchmark cov and check that it matches the one computed here; I am not actually using it
             cov_cloe_bench_2d = np.load(
                 f'/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.npy')

@@ -73,7 +73,7 @@ kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are i
 go_or_gs_list = ['GO', 'GS']
 BNT_transform_list = [False, True]
 center_or_min_list = ['center']
-kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list'][:-1]
+kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list']
 # kmax_1_over_Mpc_vinc_str_list = ['025', '050', '075', '100', '125', '150', '175', '200', '300',
 #                                  '500', '1000', '1500', '2000']
 # kmax_1_over_Mpc_vinc_list = [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00, 15.00, 20.00]
@@ -84,8 +84,7 @@ fix_shear_bias_list = [True, False]
 which_pk_list = general_cfg['which_pk_list']
 center_or_min_plt = 'center'
 which_cuts_plt = 'Vincenzo'
-save_plots = True
-
+save_plots = False
 # ! options
 
 probe_vinc_dict = {
@@ -445,14 +444,15 @@ if save_plots:
                 dpi=500)
 
 # ! plot FoM pk_ref go gs vs kmax
-probe_toplot = 'WL'
+probe_toplot = '3x2pt'
+params_toplot = [*cosmo_param_names, 'FoM']
 
 if probe_toplot != '3x2pt':
     assert False, ('the ssc from spaceborne is only available for 3x2pt, not for WL or GC. Cut the 3x2pt '
                    'appropriately if you '
                    'want the other probes...')
-ell_cuts = False
-BNT_transform = False
+ell_cuts = True
+BNT_transform = True
 go_gs_df = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['whose_FM'] == 'davide') &
@@ -475,14 +475,12 @@ arr_B = df_B.iloc[:, len(string_columns):].select_dtypes('number').values
 perc_diff_df = df_A.copy()
 perc_diff_df.iloc[:, len(string_columns):] = mm.percent_diff(arr_B, arr_A)  # ! the reference is GO!!
 perc_diff_df[key_to_compare] = 'perc_diff'
-perc_diff_df['FoM'] = np.abs(perc_diff_df['FoM'])
+perc_diff_df['FoM'] = -perc_diff_df['FoM']  # ! abs? minus??
 go_gs_df = pd.concat([go_gs_df, perc_diff_df], axis=0, ignore_index=True)
 go_gs_df = go_gs_df.drop_duplicates()  # drop duplicates from df
 
-perc_diff_df = go_gs_df[go_gs_df['go_or_gs'] == 'perc_diff'].iloc[:, len(string_columns):]
-
 plt.figure()
-for param in cosmo_param_names:
+for param in params_toplot:
     plt.plot(kmax_h_over_Mpc_list, perc_diff_df[param].values, label=f'% diff {param}', marker='o')
 plt.ylabel(f'perc_diff {probe_toplot}')
 plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
@@ -502,26 +500,25 @@ plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
 plt.ylabel('3$\\times$2pt FoM')
 plt.legend()
 
-# ! bar plot, quite useless
-title_barplot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}\nkmax = {kmax_h_over_Mpc_plt:.03f}'
-fm_uncert_df_toplot = fm_uncert_df[
-    (fm_uncert_df['probe'] == probe_toplot) &
-    (fm_uncert_df['go_or_gs'] == 'GO') &
-    (fm_uncert_df['whose_FM'] == 'davide') &
-    (fm_uncert_df['ell_cuts'] == ell_cuts) &
-    (fm_uncert_df['center_or_min'] == center_or_min) &
-    (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_plt)  # compare bnt
-    ]
-
-data = fm_uncert_df_toplot.iloc[:, len(string_columns):].values
-label_list = list(fm_uncert_df_toplot['BNT_transform'].values)
-label_list = ['None' if value is None else value for value in label_list]
-
-include_fom = False
-if include_fom:
-    num_params_tokeep += 1
-data = data[:, :num_params_tokeep]
-
+# # ! bar plot, quite useless
+# title_barplot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}\nkmax = {kmax_h_over_Mpc_plt:.03f}'
+# fm_uncert_df_toplot = fm_uncert_df[
+#     (fm_uncert_df['probe'] == probe_toplot) &
+#     (fm_uncert_df['go_or_gs'] == 'GO') &
+#     (fm_uncert_df['whose_FM'] == 'davide') &
+#     (fm_uncert_df['ell_cuts'] == ell_cuts) &
+#     (fm_uncert_df['center_or_min'] == center_or_min) &
+#     (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_plt)  # compare bnt
+#     ]
+#
+# data = fm_uncert_df_toplot.iloc[:, len(string_columns):].values
+# label_list = list(fm_uncert_df_toplot['BNT_transform'].values)
+# label_list = ['None' if value is None else value for value in label_list]
+#
+# include_fom = False
+# if include_fom:
+#     num_params_tokeep += 1
+# data = data[:, :num_params_tokeep]
 
 
 # ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'

@@ -20,12 +20,12 @@ SPV3_folder = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = False
-deriv_BNT_transform = False
+cov_BNT_transform = True
+deriv_BNT_transform = True
 
 cl_ell_cuts = False
-cov_ell_cuts = False
-deriv_ell_cuts = False
+cov_ell_cuts = True
+deriv_ell_cuts = True
 
 if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
     BNT_transform = True
@@ -180,8 +180,8 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',
         'get_3x2pt_cov_in_4D': False,
-        'path': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF',
-        'load_precomputed_cov': False,
+        'path': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF_NOTTRUE',
+        'load_precomputed_cov': True,
         'save_cov': False,
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
         'compute_cng': False,
@@ -195,6 +195,8 @@ covariance_cfg = {
         'z_grid_steps': 1000,
         'n_samples_wf': 1000,
         'bias_model': 'step-wise',
+        'extra_parameters': {"camb": {"halofit_version": "mead2020_feedback",
+                                      "HMCode_logT_AGN": 7.75}},  # maybe better to include this in the yaml file...
     },
 
     'exactSSC_cfg': {

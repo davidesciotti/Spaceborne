@@ -131,6 +131,7 @@ def ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict):
     path_ccl = covariance_cfg['PyCCL_cfg']['path']
     probe_ordering = covariance_cfg['probe_ordering']
     use_hod_for_gcph = covariance_cfg['PyCCL_cfg']['use_HOD_for_GCph']
+    ind_dict = covariance_cfg['ind_dict']
 
     general_suffix = f'nbl{nbl}_ellmax{ell_max}_zbins{zbins}'
     cov_8D_dict_filename = f'cov_PyCCL_SSC_{probe}_{general_suffix}' \
@@ -140,12 +141,25 @@ def ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict):
 
         # all the covs of interest are in the 3x2pt picke file
         cov_8D_dict_filename = cov_8D_dict_filename.replace(probe, '3x2pt')
-        cov_PyCCL_dict_8D = mm.load_pickle(f'{path_ccl}/{cov_8D_dict_filename}')
+        # cov_PyCCL_dict_8D = mm.load_pickle(f'{path_ccl}/{cov_8D_dict_filename}')
 
         if probe in ('LL', 'GG'):
             cov_PyCCL_SS_4D = cov_PyCCL_dict_8D[probe[0], probe[1], probe[0], probe[1]]
         else:
-            cov_PyCCL_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_PyCCL_dict_8D, probe_ordering)
+            path = '/Users/davide/Desktop/pyccl_cov_spv3_test'
+            # cov_PyCCL_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_PyCCL_dict_8D, probe_ordering)
+            cov_ccl_3x2pt_dict_8D = {}
+            cov_ccl_3x2pt_dict_10D = {}
+            for probe_A, probe_B in probe_ordering:
+                for probe_C, probe_D in probe_ordering:
+                    cov_ccl_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D] = np.load(
+                        f'{path}/cov_ssc_3x2pt_dict_8D_{probe_A}{probe_B}{probe_C}{probe_D}.npy')
+                    cov_ccl_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
+                        cov_ccl_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
+                        nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
+                    print(f'ssc block {probe_A}{probe_B}{probe_C}{probe_D} loaded')
+
+            return cov_ccl_3x2pt_dict_10D
 
         # old, only for LL and GG  # cov_PyCCL_SS_4D = np.load(f'{path_ccl}/cov_PyCCL_SSC_{probe}_{general_suffix}_4D.npz')['arr_0']
 
@@ -155,7 +169,7 @@ def ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict):
         fid_dict_ccl = csmlib.map_keys(general_cfg['flat_fid_pars_dict'], csmlib.key_mapping)
 
         cov_PyCCL_SS_8D_dict = pyccl_cov.compute_cov_ng_with_pyccl(fid_dict_ccl, probe,
-                                                              'SSC', ell_grid, general_cfg, covariance_cfg)
+                                                                   'SSC', ell_grid, general_cfg, covariance_cfg)
         # save picke
         mm.save_pickle(f'/Users/davide/Desktop/cov_3x2pt_ccl_test.pickle', cov_PyCCL_SS_8D_dict)
         if covariance_cfg['PyCCL_cfg']['save_cov']:
@@ -381,9 +395,10 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_exactSSC_SS_dict_10D = ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d')
         cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_exactSSC_SS_dict_10D, nbl_3x2pt, zbins, n_probes)
 
-    if SSC_code == 'PyCCL':
-        cov_PyCCL_SS_4D = ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict)
-        assert False, 'need to cheeeecckkkk the output'
+    elif SSC_code == 'PyCCL':
+        cov_ccl_3x2pt_dict_10D = ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict)
+        cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_ccl_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
+
 
     elif SSC_code not in ('PySSC', 'PyCCL', 'exactSSC'):
         raise ValueError('covariance_cfg["SSC_code"] must be PySSC or PyCCL or exactSSC')
@@ -399,11 +414,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     # ! BNT transform
     if covariance_cfg['cov_BNT_transform']:
         print('BNT-transforming the covariance matrix...')
-
-        if SSC_code == 'PyCCL':
-            raise NotImplementedError(
-                'BNT transform not implemented for PyCCL and exactSSC, because the SS array is given in 4D.'
-                'The solution is a bit cumbersome for the 3x2pt case, (no cov_4D_to_6D direct method) but can be done quite easily.')
 
         # turn to dict for the BNT function
         cov_3x2pt_GO_10D_dict = mm.cov_10D_array_to_dict(cov_3x2pt_GO_10D, probe_ordering)

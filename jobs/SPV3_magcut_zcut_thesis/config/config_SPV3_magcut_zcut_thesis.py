@@ -20,12 +20,12 @@ SPV3_folder = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = False
-deriv_BNT_transform = False
+cov_BNT_transform = True
+deriv_BNT_transform = True
 
 cl_ell_cuts = False
-cov_ell_cuts = False
-deriv_ell_cuts = False
+cov_ell_cuts = True
+deriv_ell_cuts = True
 
 if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
     BNT_transform = True
@@ -101,6 +101,7 @@ general_cfg = {
 
     'which_pk': 'HMCodebar',
     'which_pk_list': ('HMCodebar', 'TakaBird', 'HMCode2020', 'Bacco', 'EE2'),
+    'which_pk_list': ('HMCodebar', ),
     'cl_folder': '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/'
                  'DataVectors/Noiseless/{which_pk:s}',
     # 'cl_folder': f'{SPV3_folder}' + 'DataVecDers/{flat_or_nonflat:s}/{probe:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',

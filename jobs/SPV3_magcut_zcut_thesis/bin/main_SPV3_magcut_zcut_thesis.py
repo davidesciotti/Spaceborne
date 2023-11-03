@@ -876,6 +876,13 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
             # compare
             np.testing.assert_allclose(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_lmax3000, atol=0, rtol=1e-5)
 
+        if general_cfg['BNT_transform'] is True and general_cfg['ell_cuts'] is True and which_pk == 'HMCodebar' \
+                and covariance_cfg['SSC_code'] == 'PyCCL':
+            cond_number = np.linalg.cond(cov_dict['cov_3x2pt_GS_2D'])
+            precision = cond_number*2.22e-16
+            print(f'kmax = {kmax_h_over_Mpc}, precision in the inversion of GS covariance = '
+                  f'{precision:.2e}, cond number = {cond_number:.2e}')
+
         if general_cfg['test_against_benchmarks']:
             cov_benchmark_folder = f'{cov_folder}/benchmarks'
             mm.test_folder_content(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])

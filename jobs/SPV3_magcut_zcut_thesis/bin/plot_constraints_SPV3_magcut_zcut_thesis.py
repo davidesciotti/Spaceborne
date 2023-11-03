@@ -74,7 +74,7 @@ kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are i
 go_or_gs_list = ['GO', 'GS']
 BNT_transform_list = [False, True]
 center_or_min_list = ['center']
-kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list'][:-1]
+kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list']
 # kmax_1_over_Mpc_vinc_str_list = ['025', '050', '075', '100', '125', '150', '175', '200', '300',
 #                                  '500', '1000', '1500', '2000']
 # kmax_1_over_Mpc_vinc_list = [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00, 15.00, 20.00]
@@ -299,9 +299,6 @@ df_false = fm_uncert_df[(fm_uncert_df['ell_cuts'] == False) &
 diff = (df_true / df_false - 1) * 100
 mm.matshow(diff, log=True, title=f'difference between ell_cuts True, kmax = {kmax_h_over_Mpc_list[-1]:.2f} and False')
 
-# Assuming the rows match perfectly between df_true and df_false,
-# we perform the division operation
-result = df_false.select_dtypes(include=['float64', 'int64']).div(df_true.select_dtypes(include=['float64', 'int64']))
 
 # ! plot FoM pk_ref vs kmax
 probe_toplot = '3x2pt'
@@ -436,8 +433,8 @@ mean_fom_vs_kmax_notb = reduced_unc_df_notb.mean().values
 stdev_fom_vs_kmax_notb = reduced_unc_df_notb.std().values
 perc_deviation_vs_kmax_notb = stdev_fom_vs_kmax_notb / mean_fom_vs_kmax_notb * 100
 
-kmax_perc_deviation = mm.find_inverse_from_array(kmax_h_over_Mpc_list, perc_deviation_vs_kmax, target_perc_dispersion)
 # ! cutting the values above which the trend is no longer monothonic
+kmax_perc_deviation = mm.find_inverse_from_array(kmax_h_over_Mpc_list[:6], perc_deviation_vs_kmax[:6], target_perc_dispersion)
 kmax_perc_deviation_notb = mm.find_inverse_from_array(kmax_h_over_Mpc_list[:6], perc_deviation_vs_kmax_notb[:6],
                                                       target_perc_dispersion)
 
@@ -498,8 +495,8 @@ if probe_toplot != '3x2pt':
     assert False, ('the ssc from spaceborne is only available for 3x2pt, not for WL or GC. Cut the 3x2pt '
                    'appropriately if you '
                    'want the other probes...')
-ell_cuts = True
-BNT_transform = True
+ell_cuts = False
+BNT_transform = False
 go_gs_df = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['whose_FM'] == 'davide') &
@@ -524,7 +521,7 @@ perc_diff_df.iloc[:, len(string_columns):] = mm.percent_diff(arr_B, arr_A)  # ! 
 perc_diff_df[key_to_compare] = 'perc_diff'
 perc_diff_df['FoM'] = -perc_diff_df['FoM']  # ! abs? minus??
 go_gs_df = pd.concat([go_gs_df, perc_diff_df], axis=0, ignore_index=True)
-go_gs_df = go_gs_df.drop_duplicates()  # drop duplicates from df
+go_gs_df = go_gs_df.drop_duplicates()
 
 cosmo_params_tex_plusfom = cosmo_params_tex + ['FoM']
 plt.figure()

@@ -51,6 +51,7 @@ if BNT_transform:
     assert flagship_version == 2, 'we are applying the BNT only for Flagship_2'
 
 general_cfg = {
+    'fid_yaml_path': '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_cfg/SPV3_fiducial_params_magcut245_zbins13.yml',
     'ell_min': 10,
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
     'ell_max_WL': 5000,
@@ -181,7 +182,7 @@ covariance_cfg = {
         'probe': '3x2pt',
         'get_3x2pt_cov_in_4D': False,
         'path': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF_NOTTRUE',
-        'load_precomputed_cov': False,
+        'load_precomputed_cov': True,
         'save_cov': False,
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
         'compute_cng': False,

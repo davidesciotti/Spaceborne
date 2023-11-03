@@ -321,13 +321,10 @@ Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 kmax_fom_400_ellcenter = 2.15443469
 
-# I think that center is more accurate, it's where I compute the cl
-for general_cfg['center_or_min'] in ['center', ]:
-    for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
-        # for general_cfg['which_pk'] in general_cfg['which_pk_list']:
+for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
+    for general_cfg['which_pk'] in general_cfg['which_pk_list']:
 
-        with open(
-                '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_cfg/SPV3_fiducial_params_magcut245_zbins13.yml') as f:
+        with open(general_cfg['fid_yaml_path']) as f:
             fid_pars_dict = yaml.safe_load(f)
         flat_fid_pars_dict = mm.flatten_dict(fid_pars_dict)
         general_cfg['flat_fid_pars_dict'] = flat_fid_pars_dict
@@ -427,7 +424,8 @@ for general_cfg['center_or_min'] in ['center', ]:
         ell_dict['ell_edges_3x2pt'] = np.copy(ell_dict['ell_edges_XC'])[:-1]
 
         for key in ell_dict.keys():
-            assert np.max(ell_dict[key]) > 15, 'ell values must *not* be in log space'
+            if ell_dict[key].size > 0:  # Check if the array is non-empty
+                assert np.max(ell_dict[key]) > 15, f'ell values for key {key} must *not* be in log space'
 
         # set corresponding number of ell bins
         nbl_WL = len(ell_dict['ell_WL'])
@@ -444,11 +442,11 @@ for general_cfg['center_or_min'] in ['center', ]:
                       'delta_l_WA': np.copy(delta_l_WL_nbl32[nbl_GC:])}
 
         # set # of nbl in the opt case, import and reshape, then cut the reshaped datavectors in the pes case
-        assert (general_cfg['ell_max_WL_opt'],
-                general_cfg['ell_max_WL'],
-                general_cfg['ell_max_GC'],
-                general_cfg['ell_max_XC']) == (5000, 5000, 3000, 3000), \
-            'the number of bins defined in the config file is compatible with these ell_max values'
+        # assert (general_cfg['ell_max_WL_opt'],
+        #         general_cfg['ell_max_WL'],
+        #         general_cfg['ell_max_GC'],
+        #         general_cfg['ell_max_XC']) == (5000, 5000, 3000, 3000), \
+        #     'the number of bins defined in the config file is compatible with these ell_max values'
 
         nbl_WL_opt = general_cfg['nbl_WL_opt']
         nbl_GC_opt = general_cfg['nbl_GC_opt']

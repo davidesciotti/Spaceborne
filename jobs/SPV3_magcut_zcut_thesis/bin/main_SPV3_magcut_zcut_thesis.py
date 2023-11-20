@@ -569,7 +569,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
 
         # IA bias array, to get wf lensing from Vincenzo's inputs
         ia_bias_vin = wf_cl_lib.build_ia_bias_1d_arr(zgrid_wf_vin, cosmo_ccl=cosmo_ccl,
-                                                     fid_pars_dict=flat_fid_pars_dict,
+                                                     flat_fid_pars_dict=flat_fid_pars_dict,
                                                      input_z_grid_lumin_ratio=None,
                                                      input_lumin_ratio=None,
                                                      output_F_IA_of_z=False)

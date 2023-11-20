@@ -282,5 +282,5 @@ FM_cfg = {
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,
 
-    'test_against_benchmarks': False,
+    'test_against_benchmarks': True,
 }

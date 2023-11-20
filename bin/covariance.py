@@ -148,18 +148,22 @@ def ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict):
         if probe in ('LL', 'GG'):
             cov_PyCCL_SS_4D = cov_PyCCL_dict_8D[probe[0], probe[1], probe[0], probe[1]]
         else:
+
+            # load SSC blocks in 8D and store them into a dictionary
             path = '/Users/davide/Desktop/pyccl_cov_spv3_test'
-            # cov_PyCCL_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_PyCCL_dict_8D, probe_ordering)
-            cov_ccl_3x2pt_dict_8D = {}
+            cov_ssc_filename = 'cov_ssc_3x2pt_dict_8D_{probe_A:s}{probe_B:s}{probe_C:s}{probe_D:s}'
+            cov_ccl_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path, cov_ssc_filename, probe_ordering)
+
+            # reshape the blocks from 4D to 6D, as needed by the BNT
             cov_ccl_3x2pt_dict_10D = {}
             for probe_A, probe_B in probe_ordering:
                 for probe_C, probe_D in probe_ordering:
-                    cov_ccl_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D] = np.load(
-                        f'{path}/cov_ssc_3x2pt_dict_8D_{probe_A}{probe_B}{probe_C}{probe_D}.npy')
                     cov_ccl_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
                         cov_ccl_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
                         nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
-                    print(f'ssc block {probe_A}{probe_B}{probe_C}{probe_D} loaded')
+
+            # reshape to 4D (not used, again, because of BNT)
+            # cov_PyCCL_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_PyCCL_dict_8D, probe_ordering)
 
             return cov_ccl_3x2pt_dict_10D
 

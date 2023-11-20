@@ -594,7 +594,7 @@ def cov_ell_cut(cov_6d, ell_cuts_idxs_AB, ell_cuts_idxs_CD, zbins):
     return cov_6d
 
 
-def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr, plot_nz=True):
+def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr, cosmo_ccl, plot_nz=True):
     """
     Computes the BNT matrix. Shamelessly stolen from Santiago's implementation in CLOE
     :param zbins:
@@ -623,9 +623,7 @@ def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr, plot_nz=True):
             z_grid = z_grid[1:]
             n_of_z_arr = n_of_z_arr[1:, :]
 
-    warnings.warn('I am assuming an IST:F fiducial cosmology to compute the comoving distance. This is more or less '
-                  'alright for BNT, we neglect its cosmology-dependence')
-    chi = csmlib.ccl_comoving_distance(z_grid, use_h_units=False)
+    chi = csmlib.ccl_comoving_distance(z_grid, use_h_units=False, cosmo_ccl=cosmo_ccl)
 
     if plot_nz:
         plt.figure()

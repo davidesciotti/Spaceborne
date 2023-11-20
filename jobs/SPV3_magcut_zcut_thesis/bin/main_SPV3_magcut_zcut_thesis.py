@@ -108,8 +108,8 @@ def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b):
         ell_cuts_array = np.zeros((zbins, zbins))
         for zi, zval_i in enumerate(z_values_a):
             for zj, zval_j in enumerate(z_values_b):
-                r_of_zi = csmlib.astropy_comoving_distance(zval_i, use_h_units=False)
-                r_of_zj = csmlib.astropy_comoving_distance(zval_j, use_h_units=False)
+                r_of_zi = csmlib.ccl_comoving_distance(zval_i, use_h_units=False, cosmo_ccl=cosmo_ccl)
+                r_of_zj = csmlib.ccl_comoving_distance(zval_j, use_h_units=False, cosmo_ccl=cosmo_ccl)
                 ell_cut_i = kmax_1_over_Mpc * r_of_zi - 1 / 2
                 ell_cut_j = kmax_1_over_Mpc * r_of_zj - 1 / 2
                 ell_cuts_array[zi, zj] = np.min((ell_cut_i, ell_cut_j))
@@ -284,7 +284,7 @@ def plot_kernels_for_thesis():
         # if zi in [2, 10]:
         #     plt.axvline(z_means_ll[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
         #     plt.axvline(z_means_ll_bnt[zi], ls='--', c=colors[zi], ymin=0, lw=2, zorder=1)
-        # plt.axvline(z_center_values[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
+        # plt.axvline(z_means[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
 
         plt.plot(zgrid_nz, wf_ll_ccl[:, zi], ls='-', c=colors[zi], alpha=0.6)
         plt.plot(zgrid_nz, wf_ll_ccl_bnt[:, zi], ls='-', c=colors[zi], alpha=0.6)
@@ -357,9 +357,9 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         general_cfg['fid_pars_dict'] = fid_pars_dict
         colors = cm.rainbow(np.linspace(0, 1, zbins))
 
-        cosmo_dict_ccl = csmlib.map_keys(mm.flatten_dict(fid_pars_dict), csmlib.key_mapping)
+        cosmo_dict_ccl = csmlib.map_keys(mm.flatten_dict(fid_pars_dict), key_mapping=None)
         cosmo_ccl = csmlib.instantiate_cosmo_ccl_obj(cosmo_dict_ccl,
-                                                     fid_pars_dict['other_params']['extra_parameters'])
+                                                     fid_pars_dict['other_params']['camb_extra_parameters'])
 
         # some checks
         assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
@@ -472,16 +472,26 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
 
         # import nuisance, to get fiducials and to shift the distribution
         nuisance_tab = np.genfromtxt(f'{covariance_cfg["nuisance_folder"]}/{covariance_cfg["nuisance_filename"]}')
-        z_center_values = nuisance_tab[:, 0]
+        z_means = nuisance_tab[:,
+                  0]  # this is not exactly equal to the result of wf_cl_lib.get_z_mean, Isaac computed the
         covariance_cfg['ng'] = nuisance_tab[:, 1]
         dzWL_fiducial = nuisance_tab[:, 4]
         dzGC_fiducial = nuisance_tab[:, 4]
 
+        # get galaxy and magnification bias fiducials
+        bias_fiducials = np.genfromtxt(
+            f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/'
+            f'InputFiles/InputNz/NzPar/gal_mag_fiducial_polynomial_fit.dat')
+        bias_fiducials_rows = np.where(bias_fiducials[:, 0] == general_cfg['magcut_source'] / 10)[
+            0]  # take the correct magnitude limit
+        galaxy_bias_fit_fiducials = bias_fiducials[bias_fiducials_rows, 1]
+        magnification_bias_fit_fiducials = bias_fiducials[bias_fiducials_rows, 2]
+
         # some check on the input nuisance values
         assert np.all(covariance_cfg['ng'] < 5), 'ng values are likely < 5 *per bin*; this is just a rough check'
         assert np.all(covariance_cfg['ng'] > 0), 'ng values must be positive'
-        assert np.all(z_center_values > 0), 'z_center values must be positive'
-        assert np.all(z_center_values < 3), 'z_center values are likely < 3; this is just a rough check'
+        assert np.all(z_means > 0), 'z_center values must be positive'
+        assert np.all(z_means < 3), 'z_center values are likely < 3; this is just a rough check'
 
         # just a check, to be sure that the nuisance file is the same one defined in the yaml file
         dz_shifts_names = [f'dzWL{zi:02d}' for zi in range(1, zbins + 1)]
@@ -540,7 +550,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         if compute_bnt_with_shifted_nz:
             n_of_z_bnt = n_of_z
 
-        BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z_bnt, plot_nz=False)
+        BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z_bnt, cosmo_ccl=cosmo_ccl, plot_nz=False)
 
         # ! load vincenzo's kernels, including mag bias and IA
         wf_folder = Sijkl_cfg['wf_input_folder']
@@ -557,54 +567,59 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         wf_ia_vin = wf_ia_vin[:, 1:]
         wf_mu_vin = wf_mu_vin[:, 1:]
 
-        # ! my kernels
-        ia_bias_vin = wf_cl_lib.build_IA_bias_1d_arr(zgrid_wf_vin, input_z_grid_lumin_ratio=None,
+        # IA bias array, to get wf lensing from Vincenzo's inputs
+        ia_bias_vin = wf_cl_lib.build_ia_bias_1d_arr(zgrid_wf_vin, cosmo_ccl=cosmo_ccl,
+                                                     fid_pars_dict=flat_fid_pars_dict,
+                                                     input_z_grid_lumin_ratio=None,
                                                      input_lumin_ratio=None,
-                                                     cosmo=cosmo_ccl,
-                                                     A_IA=flat_fid_pars_dict['Aia'],
-                                                     eta_IA=flat_fid_pars_dict['eIA'],
-                                                     beta_IA=flat_fid_pars_dict['bIA'],
-                                                     C_IA=None,
-                                                     growth_factor=None,
                                                      output_F_IA_of_z=False)
+
         wf_lensing_vin = wf_gamma_vin + ia_bias_vin[:, None] * wf_ia_vin
         wf_galaxy_vin = wf_delta_vin + wf_mu_vin  # TODO in theory, I should BNT-tansform wf_mu...
 
+        # ! my kernels
         nz_tuple = (zgrid_nz, n_of_z)
-        # Define the keyword arguments as a dictionary
-        wil_ccl_kwargs = {
-            'cosmo': cosmo_ccl,
-            'dndz': nz_tuple,
-            'ia_bias': None,
-            'A_IA': flat_fid_pars_dict['Aia'],
-            'eta_IA': flat_fid_pars_dict['eIA'],
-            'beta_IA': flat_fid_pars_dict['bIA'],
-            'C_IA': None,
-            'growth_factor': None,
-            'return_PyCCL_object': True,
-            'n_samples': len(zgrid_nz)
-        }
-        wig_ccl_kwargs = {
-            'gal_bias_2d_array': np.ones((len(zgrid_nz), zbins)),
-            'fiducial_params': flat_fid_pars_dict,
-            'bias_model': 'step-wise',
-            'cosmo': cosmo_ccl,
-            'return_PyCCL_object': True,
-            'dndz': nz_tuple,
-            'n_samples': len(zgrid_nz)
-        }
+        gal_bias_vs_zmean = wf_cl_lib.b_of_z_fs2_fit(z_means, general_cfg['magcut_source'] / 10,
+                                                     galaxy_bias_fit_fiducials)
+        gal_bias_2d_arr = wf_cl_lib.build_galaxy_bias_2d_arr(gal_bias_vs_zmean, z_means, z_edges=None,
+                                                             zbins=zbins, z_grid=zgrid_nz,
+                                                             bias_model=general_cfg['bias_model'],
+                                                             plot_bias=True)
+        gal_bias_tuple = (zgrid_nz, gal_bias_2d_arr)
 
-        # Use * to unpack positional arguments and ** to unpack keyword arguments
-        wf_lensing_ccl_obj = wf_cl_lib.wil_PyCCL(zgrid_nz, 'without_IA', **wil_ccl_kwargs)
-        wf_lensing_ccl_arr = wf_cl_lib.wil_PyCCL(zgrid_nz, 'with_IA',
-                                                 **{**wil_ccl_kwargs, 'return_PyCCL_object': False})
-        wf_gamma_ccl_arr = wf_cl_lib.wil_PyCCL(zgrid_nz, 'without_IA',
-                                               **{**wil_ccl_kwargs, 'return_PyCCL_object': False})
-        wf_ia_ccl_arr = wf_cl_lib.wil_PyCCL(zgrid_nz, 'IA_only', **{**wil_ccl_kwargs, 'return_PyCCL_object': False})
+        wf_lensing_ccl_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'without_IA', flat_fid_pars_dict, cosmo_ccl,
+                                         nz_tuple,
+                                         ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                         return_ccl_obj=True, n_samples=len(zgrid_nz))
+        wf_lensing_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl,
+                                         nz_tuple,
+                                         ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                         return_ccl_obj=False, n_samples=len(zgrid_nz))
+        wf_gamma_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'without_IA', flat_fid_pars_dict, cosmo_ccl,
+                                         nz_tuple,
+                                         ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                         return_ccl_obj=False, n_samples=len(zgrid_nz))
+        wf_ia_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'IA_only', flat_fid_pars_dict, cosmo_ccl,
+                                         nz_tuple,
+                                         ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                         return_ccl_obj=False, n_samples=len(zgrid_nz))
 
-        wf_galaxy_ccl_obj = wf_cl_lib.wig_PyCCL(zgrid_nz, 'without_galaxy_bias', **wig_ccl_kwargs)
-        wf_galaxy_ccl_arr = wf_cl_lib.wig_PyCCL(zgrid_nz, 'without_galaxy_bias',
-                                                **{**wig_ccl_kwargs, 'return_PyCCL_object': False})
+        wf_galaxy_ccl_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'without_galaxy_bias', flat_fid_pars_dict, cosmo_ccl,
+                                         nz_tuple,
+                                         ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                         return_ccl_obj=True, n_samples=len(zgrid_nz))
+        wf_galaxy_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'without_galaxy_bias', flat_fid_pars_dict, cosmo_ccl,
+                                         nz_tuple,
+                                         ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                         return_ccl_obj=False, n_samples=len(zgrid_nz))
+
+
+
+        plt.figure()
+        for zi in range(zbins):
+            plt.plot(zgrid_nz, wf_lensing_ccl_arr[:, zi], label=f'zbin {zi}')
+        plt.legend()
+
 
         # this is to check against ccl in pyccl_cov
         general_cfg['wf_WL'] = wf_lensing_vin
@@ -879,7 +894,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         if general_cfg['BNT_transform'] is True and general_cfg['ell_cuts'] is True and which_pk == 'HMCodebar' \
                 and covariance_cfg['SSC_code'] == 'PyCCL':
             cond_number = np.linalg.cond(cov_dict['cov_3x2pt_GS_2D'])
-            precision = cond_number*2.22e-16
+            precision = cond_number * 2.22e-16
             print(f'kmax = {kmax_h_over_Mpc}, precision in the inversion of GS covariance = '
                   f'{precision:.2e}, cond number = {cond_number:.2e}')
 
@@ -891,15 +906,6 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         if not FM_cfg['compute_FM']:
             # this guard is just to avoid indenting the whole code below
             raise KeyboardInterrupt('skipping FM computation, the script will exit now')
-
-        # set the fiducial values in a dictionary and a list
-        bias_fiducials = np.genfromtxt(
-            f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/'
-            f'InputFiles/InputNz/NzPar/gal_mag_fiducial_polynomial_fit.dat')
-        bias_fiducials_rows = np.where(bias_fiducials[:, 0] == general_cfg['magcut_source'] / 10)[
-            0]  # take the correct magnitude limit
-        galaxy_bias_fit_fiducials = bias_fiducials[bias_fiducials_rows, 1]
-        magnification_bias_fit_fiducials = bias_fiducials[bias_fiducials_rows, 2]
 
         fiducials_dict = {
             'cosmo': [flat_fid_pars_dict['Om'],

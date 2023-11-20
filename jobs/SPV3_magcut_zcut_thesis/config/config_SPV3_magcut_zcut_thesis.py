@@ -101,7 +101,6 @@ general_cfg = {
 
     'which_pk': 'HMCodebar',
     'which_pk_list': ('HMCodebar', 'TakaBird', 'HMCode2020', 'Bacco', 'EE2'),
-    'which_pk_list': ('HMCodebar', ),
     'cl_folder': '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/'
                  'DataVectors/Noiseless/{which_pk:s}',
     # 'cl_folder': f'{SPV3_folder}' + 'DataVecDers/{flat_or_nonflat:s}/{probe:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
@@ -116,6 +115,7 @@ general_cfg = {
     'zcut_source': 2,
     'zcut_lens': 2,
     'flagship_version': flagship_version,
+    'bias_model': 'constant',
 
     'test_against_benchmarks': False,
 }

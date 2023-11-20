@@ -110,10 +110,6 @@ def invert_matrix_LU(covariance_matrix):
     return np.linalg.inv(L) @ np.linalg.inv(U) @ P
 
 
-def invert_covariance(covariance):
-    return np.linalg.inv(covariance)
-
-
 def ell_cuts_derivatives(FM_cfg, ell_dict, dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D):
     raise Exception('this function works, but you need to cut the covariance matrix using the corresponsing indices, '
                     'ie using the "1-dimensional cutting" approach by Vincenzo')

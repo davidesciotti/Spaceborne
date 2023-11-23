@@ -84,6 +84,33 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
                                      f'zsteps{z_steps_sigma2}_k{k_txt_label}_convention{cl_integral_convention}.npy')
     # populate 3x2pt dictionary
     elif probe == '3x2pt':
+
+        general_suffix = general_suffix.replace('nbl29', 'nbl32')
+        general_suffix = general_suffix.replace('ellmax3000', 'ellmax5000')
+
+        cov_exactSSC_3x2pt_dict_8D_v1 = mm.load_cov_from_probe_blocks(
+            path, 'cov_SSC_{probe_A:s}{probe_B:s}{probe_C:s}{probe_D:s}_4D_' + general_suffix, probe_ordering)
+        cov_exactSSC_3x2pt_dict_8D_v2 = mm.load_cov_from_probe_blocks(
+            path, 'cov_SSC_{probe_A:s}{probe_B:s}{probe_C:s}{probe_D:s}_4D_' + general_suffix, probe_ordering)
+
+        for key in cov_exactSSC_3x2pt_dict_8D_v1.keys():
+            cov_exactSSC_3x2pt_dict_8D_v1[key] /= covariance_cfg['fsky']
+
+
+        cov_exactSSC_SS_4D_v1 = mm.cov_3x2pt_8D_dict_to_4D(cov_exactSSC_3x2pt_dict_8D_v1, probe_ordering)
+        cov_exactSSC_SS_4D_v2 = mm.cov_3x2pt_8D_dict_to_4D(cov_exactSSC_3x2pt_dict_8D_v2, probe_ordering)
+        cov_exactSSC_SS_4D_v2 /= covariance_cfg['fsky']
+
+        cov_exactSSC_SS_2D_v1 = mm.cov_4D_to_2D(cov_exactSSC_SS_4D_v1)
+        cov_exactSSC_SS_2D_v2 = mm.cov_4D_to_2D(cov_exactSSC_SS_4D_v2)
+
+        mm.compare_arrays(cov_exactSSC_SS_2D_v1, cov_exactSSC_SS_2D_v2)
+
+        # breakpoint()
+        np.testing.assert_allclose(cov_exactSSC_SS_4D_v1, cov_exactSSC_SS_4D_v2, rtol=1e-5, atol=0)
+
+        assert False, 'stop here'
+
         cov_exactSSC_3x2pt_dict_8D = {}
         cov_exactSSC_3x2pt_dict_10D = {}
         for probe_A, probe_B in probe_ordering:

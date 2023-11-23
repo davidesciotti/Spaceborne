@@ -20,12 +20,12 @@ SPV3_folder = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = True
-deriv_BNT_transform = True
+cov_BNT_transform = False
+deriv_BNT_transform = False
 
 cl_ell_cuts = False
-cov_ell_cuts = True
-deriv_ell_cuts = True
+cov_ell_cuts = False
+deriv_ell_cuts = False
 
 if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
     BNT_transform = True
@@ -177,7 +177,7 @@ covariance_cfg = {
                     'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D',
     'cov_filename_vincenzo': 'cm-{probe:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    'SSC_code': 'PyCCL',
+    'SSC_code': 'exactSSC',
 
     'PyCCL_cfg': {
         'probe': '3x2pt',

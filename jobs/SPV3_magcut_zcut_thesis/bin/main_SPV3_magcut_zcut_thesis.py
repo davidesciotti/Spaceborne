@@ -44,6 +44,9 @@ matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 script_start_time = time.perf_counter()
 
+from os import environ
+environ['OMP_NUM_THREADS'] = '4'
+
 
 # TODO check that the number of ell bins is the same as in the files
 # TODO double check the delta values
@@ -55,8 +58,6 @@ script_start_time = time.perf_counter()
 # TODO redefine the last delta value
 # TODO check what happens for ell_cuts_LG (instead of GL) = ell_cuts_XC file
 # TODO cut if ell > ell_edge_lower (!!)
-# TODO activate BNT transform (!!)
-# TODO cut à la Vincenzo
 
 
 ###############################################################################
@@ -588,38 +589,35 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         gal_bias_tuple = (zgrid_nz, gal_bias_2d_arr)
 
         wf_lensing_ccl_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'without_IA', flat_fid_pars_dict, cosmo_ccl,
-                                         nz_tuple,
-                                         ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
-                                         return_ccl_obj=True, n_samples=len(zgrid_nz))
+                                              nz_tuple,
+                                              ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                              return_ccl_obj=True, n_samples=len(zgrid_nz))
         wf_lensing_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl,
-                                         nz_tuple,
-                                         ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
-                                         return_ccl_obj=False, n_samples=len(zgrid_nz))
+                                              nz_tuple,
+                                              ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                              return_ccl_obj=False, n_samples=len(zgrid_nz))
         wf_gamma_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'without_IA', flat_fid_pars_dict, cosmo_ccl,
-                                         nz_tuple,
-                                         ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
-                                         return_ccl_obj=False, n_samples=len(zgrid_nz))
+                                            nz_tuple,
+                                            ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                            return_ccl_obj=False, n_samples=len(zgrid_nz))
         wf_ia_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'IA_only', flat_fid_pars_dict, cosmo_ccl,
                                          nz_tuple,
                                          ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
                                          return_ccl_obj=False, n_samples=len(zgrid_nz))
 
         wf_galaxy_ccl_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'without_galaxy_bias', flat_fid_pars_dict, cosmo_ccl,
-                                         nz_tuple,
-                                         ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
-                                         return_ccl_obj=True, n_samples=len(zgrid_nz))
+                                             nz_tuple,
+                                             ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                             return_ccl_obj=True, n_samples=len(zgrid_nz))
         wf_galaxy_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'without_galaxy_bias', flat_fid_pars_dict, cosmo_ccl,
-                                         nz_tuple,
-                                         ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
-                                         return_ccl_obj=False, n_samples=len(zgrid_nz))
-
-
+                                             nz_tuple,
+                                             ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                             return_ccl_obj=False, n_samples=len(zgrid_nz))
 
         plt.figure()
         for zi in range(zbins):
             plt.plot(zgrid_nz, wf_lensing_ccl_arr[:, zi], label=f'zbin {zi}')
         plt.legend()
-
 
         # this is to check against ccl in pyccl_cov
         general_cfg['wf_WL'] = wf_lensing_vin

@@ -146,6 +146,7 @@ covariance_cfg = {
     # sources (and lenses) redshift distributions
     'nofz_folder': f'/Users/davide/Documents/Lavoro/Programmi/likelihood-mcmc-generator/input_files/SPV3',
     'nofz_filename': 'nzTabSPV3.dat',
+    'shift_nz': True,
 
     'nuisance_folder': f'/Users/davide/Documents/Lavoro/Programmi/likelihood-mcmc-generator/input_files/SPV3',
     'nuisance_filename': 'nuiTabSPV3.dat',

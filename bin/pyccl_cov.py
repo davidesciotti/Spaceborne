@@ -272,6 +272,14 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     mag_bias_1d = wf_cl_lib.magbias_of_z_fs2_fit(zgrid_nz, maglim=maglim)
     mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), zbins, axis=0).T
     mag_bias_tuple = (zgrid_nz, mag_bias_2d)
+    mag_bias_tuple = None
+
+    if covariance_cfg['shift_nz']:
+        warnings.warn('assuming that the shift is in the WL bins')
+        dz_shifts = np.array([flat_fid_pars_dict[f'dzWL{zi:02d}'] for zi in range(1, zbins+1 )])
+        n_of_z = wf_cl_lib.shift_nz(zgrid_nz, nz_tuple[1], dz_shifts, normalize=True, plot_nz=False,
+                                    interpolation_kind='linear')
+        nz_tuple = (zgrid_nz, n_of_z)
 
     wf_lensing_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
                                       ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
@@ -282,9 +290,23 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     wf_galaxy_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'with_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
                                      ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
                                      mag_bias_tuple=mag_bias_tuple, return_ccl_obj=True, n_samples=1000)
-    wf_galaxy_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'with_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
+    wf_galaxy_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'without_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
                                      ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
                                      mag_bias_tuple=mag_bias_tuple, return_ccl_obj=False, n_samples=1000)
+
+    breakpoint()
+
+    a_arr = cosmo_lib.z_to_a(z_grid)
+    comoving_distance = ccl.comoving_radial_distance(cosmo_ccl, a_arr)
+    wf_galaxy_arr = np.asarray([wf_galaxy_obj[zbin_idx].get_kernel(comoving_distance) for zbin_idx in range(zbins)])
+
+    if which_wf == 'with_galaxy_bias':
+        result = wf_galaxy_arr[:, 0, :] * gal_bias_tuple[1].T
+        return result.T
+    elif which_wf == 'without_galaxy_bias':
+        return wf_galaxy_arr[:, 0, :].T
+    elif which_wf == 'galaxy_bias_only':
+        return gal_bias_tuple[1]
 
     #
     # # # ! compute tracer objects

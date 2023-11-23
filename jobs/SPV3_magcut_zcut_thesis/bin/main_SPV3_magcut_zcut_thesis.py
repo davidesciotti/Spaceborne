@@ -622,6 +622,8 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         # this is to check against ccl in pyccl_cov
         general_cfg['wf_WL'] = wf_lensing_vin
         general_cfg['wf_GC'] = wf_galaxy_vin
+        general_cfg['wf_delta'] = wf_delta_vin
+        general_cfg['wf_mu'] = wf_mu_vin
         general_cfg['z_grid_wf'] = zgrid_wf_vin
         general_cfg['nz_tuple'] = nz_tuple
 
@@ -654,7 +656,6 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         z_means_ll_vin_bnt = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_ll_vin_bnt)
 
         # plot_kernels_for_thesis()
-
         # # check that the z means are close (within 5%)
         # np.testing.assert_allclose(z_means_ll, z_means_ll_vin, rtol=1e-2, atol=0,
         #                            err_msg='z means computed w/ my vs vincenzo kernels don\'t match')

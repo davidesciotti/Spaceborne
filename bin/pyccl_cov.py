@@ -269,14 +269,14 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     gal_bias_tuple = (zgrid_nz, gal_bias_2d)
 
     # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
-    mag_bias_1d = wf_cl_lib.magbias_of_z_fs2_fit(zgrid_nz, maglim=maglim)
+    warnings.warn('the magnification bias must still be implemented, ccl uses s(z) and we have bM(z)...')
+    mag_bias_1d = 2 / 5 * (1 - wf_cl_lib.magbias_of_z_fs2_fit(zgrid_nz, maglim=maglim))
     mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), zbins, axis=0).T
     mag_bias_tuple = (zgrid_nz, mag_bias_2d)
-    mag_bias_tuple = None
 
     if covariance_cfg['shift_nz']:
         warnings.warn('assuming that the shift is in the WL bins')
-        dz_shifts = np.array([flat_fid_pars_dict[f'dzWL{zi:02d}'] for zi in range(1, zbins+1 )])
+        dz_shifts = np.array([flat_fid_pars_dict[f'dzWL{zi:02d}'] for zi in range(1, zbins + 1)])
         n_of_z = wf_cl_lib.shift_nz(zgrid_nz, nz_tuple[1], dz_shifts, normalize=True, plot_nz=False,
                                     interpolation_kind='linear')
         nz_tuple = (zgrid_nz, n_of_z)
@@ -294,53 +294,31 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
                                      ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
                                      mag_bias_tuple=mag_bias_tuple, return_ccl_obj=False, n_samples=1000)
 
-    breakpoint()
+    wf_mu_arr = -2 * np.array([ccl.tracers.get_lensing_kernel(cosmo_ccl, (nz_tuple[0], nz_tuple[1][:, zi]),
+                                                              mag_bias=(mag_bias_tuple[0], mag_bias_tuple[1][:, zi]),
+                                                              n_chi=1000)
+                               for zi in range(zbins)])
 
-    a_arr = cosmo_lib.z_to_a(z_grid)
-    comoving_distance = ccl.comoving_radial_distance(cosmo_ccl, a_arr)
-    wf_galaxy_arr = np.asarray([wf_galaxy_obj[zbin_idx].get_kernel(comoving_distance) for zbin_idx in range(zbins)])
+    # breakpoint()
+    wf_galaxy_arr += wf_mu_arr[:, 1, :].T  # TODO test for the mag bias array.
+    # TODO does the galaxy kernel object have the magnification bias? the get_gernel method only returns delta, I think...
 
-    if which_wf == 'with_galaxy_bias':
-        result = wf_galaxy_arr[:, 0, :] * gal_bias_tuple[1].T
-        return result.T
-    elif which_wf == 'without_galaxy_bias':
-        return wf_galaxy_arr[:, 0, :].T
-    elif which_wf == 'galaxy_bias_only':
-        return gal_bias_tuple[1]
-
+    # a_arr = cosmo_lib.z_to_a(z_grid)
+    # comoving_distance = ccl.comoving_radial_distance(cosmo_ccl, a_arr)
+    # wf_galaxy_arr = np.asarray([wf_galaxy_obj[zi].get_kernel(comoving_distance) for zi in range(zbins)])
     #
-    # # # ! compute tracer objects
-    # wf_lensing = [ccl.tracers.WeakLensingTracer(cosmo_ccl, dndz=(z_grid, n_of_z[:, zbin_idx]),
-    #                                             ia_bias=(z_grid, ia_bias_1d_array), use_A_ia=False,
-    #                                             n_samples=n_samples_wf)
-    #               for zbin_idx in range(zbins)]
-    #
-    # wf_galaxy = [ccl.tracers.NumberCountsTracer(cosmo_ccl, has_rsd=False, dndz=(z_grid, n_of_z[:, zbin_idx]),
-    #                                             bias=(z_grid, galaxy_bias_2d_array[:, zbin_idx]),
-    #                                             mag_bias=None, n_samples=n_samples_wf)
-    #              for zbin_idx in range(zbins)]
-    #
-    # # try to create a tracer object with a tabulated kernel
-    # # kernel =
-    # # ccl.tracers.add_tracer(cosmo_ccl, *, kernel=None, transfer_ka=None, transfer_k=None, transfer_a=None, der_bessel=0, der_angles=0,
-    # #            is_logt=False, extrap_order_lok=0, extrap_order_hik=2)
-    #
-    # # compare pyccl kernels with the importwd ones (used by PySSC):
-    # warnings.warn('THIS MODULE NEEDS TO IMPORT A COSMOLOGY DICT, E.G. HERE THE IA VALUES ARE THE DEFAULT ONES')
-    # wf_lensing_arr = wf_cl_lib.wil_PyCCL(z_grid, 'with_IA', cosmo=cosmo_ccl, dndz=(z_grid, n_of_z),
-    #                                      ia_bias=(z_grid, ia_bias_1d_array),
-    #                                      A_IA=None, eta_IA=None, beta_IA=None, C_IA=None,
-    #                                      growth_factor=None,
-    #                                      return_PyCCL_object=False,
-    #                                      n_samples=n_samples_wf)
-    # wf_galaxy_arr = wf_cl_lib.wig_PyCCL(z_grid, 'with_galaxy_bias', gal_bias_2d_array=galaxy_bias_2d_array,
-    #                                     fiducial_params=None,
-    #                                     bias_model='step-wise',
-    #                                     cosmo=cosmo_ccl, return_PyCCL_object=False, dndz=(z_grid, n_of_z),
-    #                                     n_samples=n_samples_wf)
+    # if which_wf == 'with_galaxy_bias':
+    #     result = wf_galaxy_arr[:, 0, :] * gal_bias_tuple[1].T
+    #     return result.T
+    # elif which_wf == 'without_galaxy_bias':
+    #     return wf_galaxy_arr[:, 0, :].T
+    # elif which_wf == 'galaxy_bias_only':
+    #     return gal_bias_tuple[1]
 
     wf_lensing_import = general_cfg['wf_WL']
     wf_galaxy_import = general_cfg['wf_GC']
+    wf_delta_import = general_cfg['wf_delta']
+    wf_mu_import = general_cfg['wf_mu']
     z_grid_wf_import = general_cfg['z_grid_wf']
 
     colors = cm.rainbow(np.linspace(0, 1, zbins))
@@ -348,28 +326,30 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     # plot them in 2 subplots
     fig, ax = plt.subplots(1, 2, figsize=(15, 6), constrained_layout=True)
     for zi in range(zbins):
-        ax[0].plot(z_grid, wf_lensing_arr[:, zi], ls="-", c=colors[zi], alpha=0.7)
-        ax[1].plot(z_grid, wf_galaxy_arr[:, zi], ls="-", c=colors[zi], alpha=0.7)
-        ax[0].plot(z_grid_wf_import, wf_lensing_import[:, zi], ls="--", c=colors[zi], alpha=0.7)
-        ax[1].plot(z_grid_wf_import, wf_galaxy_import[:, zi], ls="--", c=colors[zi], alpha=0.7)
+        ax[0].plot(z_grid, wf_lensing_arr[:, zi], ls="-", c=colors[zi], alpha=0.7,
+                   label='lensing ccl' if zi == 0 else None)
+        ax[1].plot(z_grid, wf_galaxy_arr[:, zi], ls="-", c=colors[zi], alpha=0.7,
+                   label='galaxy ccl' if zi == 0 else None)
+        ax[0].plot(z_grid_wf_import, wf_lensing_import[:, zi], ls="--", c=colors[zi], alpha=0.7,
+                   label='lensing vinc' if zi == 0 else None)
+        ax[1].plot(z_grid_wf_import, wf_galaxy_import[:, zi], ls="--", c=colors[zi], alpha=0.7,
+                   label='galaxy vinc' if zi == 0 else None)
+        ax[1].plot(z_grid_wf_import, wf_delta_import[:, zi], ls=":", c=colors[zi], alpha=0.7,
+                   label='delta vinc' if zi == 0 else None)
+        ax[1].plot(z_grid_wf_import, wf_mu_import[:, zi], ls="-.", c=colors[zi], alpha=0.7,
+                   label='mu vinc' if zi == 0 else None)
     # set labels
     ax[0].set_title('lensing kernel')
     ax[1].set_title('galaxy kernel')
-    ax[0].set_xlabel('z')
-    ax[1].set_xlabel('z')
+    ax[0].set_xlabel('$z$')
+    ax[1].set_xlabel('$z$')
     ax[0].set_ylabel('wil')
     ax[1].set_ylabel('wig')
-    # set legend to linestyles
-    # Create custom legend
-    custom_lines = [Line2D([0], [0], ls='-'),
-                    Line2D([0], [0], ls='--')]
-    ax[0].legend(custom_lines, ['pyccl'])
-    ax[0].legend(custom_lines, ['import'])
-
-    ax[1].legend(custom_lines, ['pyccl'])
-    ax[1].legend(custom_lines, ['import'])
+    ax[0].legend()
+    ax[1].legend()
     plt.show()
 
+    assert False, 'stop here'
     breakpoint()
 
     # the cls are not needed, but just in case:

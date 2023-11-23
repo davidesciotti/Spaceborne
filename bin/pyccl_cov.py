@@ -37,17 +37,10 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 """ This is run with v 2.7 of pyccl
 """
 
-# ======================================================================================================================
-# ======================================================================================================================
-# ======================================================================================================================
 
-# todo move this some cfg...
-independent_probe_combinations = (('L', 'L', 'L', 'L'),
-                                  ('L', 'L', 'G', 'L'),
-                                  ('L', 'L', 'G', 'G'),
-                                  ('G', 'L', 'G', 'L'),
-                                  ('G', 'L', 'G', 'G'),
-                                  ('G', 'G', 'G', 'G'))
+# ======================================================================================================================
+# ======================================================================================================================
+# ======================================================================================================================
 
 
 # fanstastic collection of notebooks: https://github.com/LSSTDESC/CCLX
@@ -179,10 +172,11 @@ def compute_ng_cov_ccl(cosmo, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka,
 def compute_3x2pt_PyCCL(cosmo, kernel_dict, ell, tkka_dict, f_sky, integration_method,
                         probe_ordering, ind_dict, which_ng_cov, output_4D_array):
     cov_ng_3x2pt_dict_8D = {}
-    for A, B in probe_ordering:
-        for C, D in probe_ordering:
 
-            if (A, B, C, D) in independent_probe_combinations:
+    for row, (A, B) in enumerate(probe_ordering):
+        for col, (C, D) in enumerate(probe_ordering):
+            if col >= row:
+
                 print('3x2pt: working on probe combination ', A, B, C, D)
                 cov_ng_3x2pt_dict_8D[A, B, C, D] = compute_ng_cov_ccl(cosmo=cosmo,
                                                                       kernel_A=kernel_dict[A],
@@ -196,12 +190,14 @@ def compute_3x2pt_PyCCL(cosmo, kernel_dict, ell, tkka_dict, f_sky, integration_m
                                                                       which_ng_cov=which_ng_cov,
                                                                       integration_method=integration_method,
                                                                       )
+
+                # save only the upper triangle blocks
+                np.save(f'/Users/davide/Desktop/pyccl_cov_spv3_test/cov_ssc_3x2pt_dict_8D_{A}{B}{C}{D}.npy',
+                        cov_ng_3x2pt_dict_8D[A, B, C, D])
+
             else:
                 print('3x2pt: skipping probe combination ', A, B, C, D)
                 cov_ng_3x2pt_dict_8D[A, B, C, D] = cov_ng_3x2pt_dict_8D[C, D, A, B].transpose(1, 0, 3, 2)
-
-            np.save(f'/Users/davide/Desktop/pyccl_cov_spv3_test/cov_ssc_3x2pt_dict_8D_{A}{B}{C}{D}.npy',
-                    cov_ng_3x2pt_dict_8D[A, B, C, D])
 
     if output_4D_array:
         return mm.cov_3x2pt_8D_dict_to_4D(cov_ng_3x2pt_dict_8D, probe_ordering)
@@ -249,17 +245,9 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     # Create new Cosmology object with a given set of parameters. This keeps track of previously-computed cosmological
     # functions
     flat_fid_pars_dict = mm.flatten_dict(fiducial_pars_dict)
-    cosmo_dict_ccl = cosmo_lib.map_keys(flat_fid_pars_dict, cosmo_lib.key_mapping)
+    cosmo_dict_ccl = cosmo_lib.map_keys(flat_fid_pars_dict, key_mapping=None)
     cosmo_ccl = cosmo_lib.instantiate_cosmo_ccl_obj(cosmo_dict_ccl,
-                                                    fiducial_pars_dict['other_params']['extra_parameters'])
-
-    # source redshift distribution, default ISTF values for bin edges & analytical prescription for the moment
-    if nz_tuple is None:
-        print('using default ISTF analytical n(z) values')
-        niz_unnormalized_arr = np.asarray(
-            [wf_cl_lib.niz_unnormalized_analytical(z_grid, zbin_idx) for zbin_idx in range(zbins)])
-        niz_normalized_arr = wf_cl_lib.normalize_niz_simps(niz_unnormalized_arr, z_grid).T
-        nz_tuple = niz_normalized_arr
+                                                    fiducial_pars_dict['other_params']['camb_extra_parameters'])
 
     assert isinstance(nz_tuple, tuple), 'nz_tuple must be a tuple'
     assert nz_tuple[0].shape == z_grid.shape, 'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
@@ -268,67 +256,36 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     # new kernel stuff
     zgrid_nz = nz_tuple[0]
 
-    # ! my kernels
-    ia_bias = wf_cl_lib.build_IA_bias_1d_arr(zgrid_nz, input_z_grid_lumin_ratio=None,
-                                             input_lumin_ratio=None,
-                                             cosmo=cosmo_ccl,
-                                             A_IA=flat_fid_pars_dict['Aia'],
-                                             eta_IA=flat_fid_pars_dict['eIA'],
-                                             beta_IA=flat_fid_pars_dict['bIA'],
-                                             C_IA=None,
-                                             growth_factor=None,
-                                             output_F_IA_of_z=False)
-    ia_bias = (zgrid_nz, ia_bias)
+    # ! ccl kernels
+    ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(zgrid_nz, cosmo_ccl=cosmo_ccl, flat_fid_pars_dict=flat_fid_pars_dict,
+                                                input_z_grid_lumin_ratio=None,
+                                                input_lumin_ratio=None, output_F_IA_of_z=False)
+    ia_bias_tuple = (zgrid_nz, ia_bias_1d)
 
-    warnings.warn('Im not sure the bias is step-wise...')
     maglim = general_cfg['magcut_source'] / 10
-    bias_values = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, maglim=maglim)
-    galaxy_bias_2d_array = np.repeat(bias_values.reshape(1, -1), zbins, axis=0).T
+    gal_bias_1d = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, maglim=maglim)
+    # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
+    gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), zbins, axis=0).T
+    gal_bias_tuple = (zgrid_nz, gal_bias_2d)
 
-    # Define the keyword arguments as a dictionary
-    wil_ccl_kwargs = {
-        'cosmo': cosmo_ccl,
-        'dndz': nz_tuple,
-        'ia_bias': ia_bias,
-        'A_IA': flat_fid_pars_dict['Aia'],
-        'eta_IA': flat_fid_pars_dict['eIA'],
-        'beta_IA': flat_fid_pars_dict['bIA'],
-        'C_IA': None,
-        'growth_factor': None,
-        'return_PyCCL_object': True,
-        'n_samples': len(zgrid_nz)
-    }
-    wig_ccl_kwargs = {
-        'gal_bias_2d_array': galaxy_bias_2d_array,
-        'fiducial_params': flat_fid_pars_dict,
-        'bias_model': 'step-wise',
-        'cosmo': cosmo_ccl,
-        'return_PyCCL_object': True,
-        'dndz': nz_tuple,
-        'n_samples': len(zgrid_nz)
-    }
+    # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
+    mag_bias_1d = wf_cl_lib.magbias_of_z_fs2_fit(zgrid_nz, maglim=maglim)
+    mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), zbins, axis=0).T
+    mag_bias_tuple = (zgrid_nz, mag_bias_2d)
 
-    # Use * to unpack positional arguments and ** to unpack keyword arguments
-    wf_lensing_obj = wf_cl_lib.wil_PyCCL(zgrid_nz, 'with_IA', **wil_ccl_kwargs)
-    wf_lensing_arr = wf_cl_lib.wil_PyCCL(zgrid_nz, 'with_IA',
-                                         **{**wil_ccl_kwargs, 'return_PyCCL_object': False})
+    wf_lensing_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
+                                      ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
+                                      mag_bias_tuple=mag_bias_tuple, return_ccl_obj=True, n_samples=1000)
+    wf_lensing_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
+                                      ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
+                                      mag_bias_tuple=mag_bias_tuple, return_ccl_obj=False, n_samples=1000)
+    wf_galaxy_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'with_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
+                                     ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
+                                     mag_bias_tuple=mag_bias_tuple, return_ccl_obj=True, n_samples=1000)
+    wf_galaxy_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'with_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
+                                     ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
+                                     mag_bias_tuple=mag_bias_tuple, return_ccl_obj=False, n_samples=1000)
 
-    wf_galaxy_obj = wf_cl_lib.wig_PyCCL(zgrid_nz, 'with_galaxy_bias', **wig_ccl_kwargs)
-    wf_galaxy_arr = wf_cl_lib.wig_PyCCL(zgrid_nz, 'with_galaxy_bias',
-                                        **{**wig_ccl_kwargs, 'return_PyCCL_object': False})
-
-    # end of new kernel stuff
-    #
-    # # galaxy bias
-    # galaxy_bias_2d_array = wf_cl_lib.build_galaxy_bias_2d_arr(bias_values=None, z_values=None, zbins=zbins,
-    #                                                           z_grid=z_grid, bias_model=bias_model,
-    #                                                           plot_bias=False)
-    #
-    # # IA bias
-    # ia_bias_1d_array = wf_cl_lib.build_IA_bias_1d_arr(z_grid, input_lumin_ratio=None, cosmo=cosmo_ccl,
-    #                                                   A_IA=None, eta_IA=None, beta_IA=None, C_IA=None,
-    #                                                   growth_factor=None,
-    #                                                   Omega_m=None)
     #
     # # # ! compute tracer objects
     # wf_lensing = [ccl.tracers.WeakLensingTracer(cosmo_ccl, dndz=(z_grid, n_of_z[:, zbin_idx]),
@@ -390,6 +347,8 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     ax[1].legend(custom_lines, ['pyccl'])
     ax[1].legend(custom_lines, ['import'])
     plt.show()
+
+    breakpoint()
 
     # the cls are not needed, but just in case:
     # cl_LL_3D = wf_cl_lib.cl_PyCCL(wf_lensing, wf_lensing, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)

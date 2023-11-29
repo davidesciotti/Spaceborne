@@ -291,10 +291,8 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     wf_galaxy_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'with_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
                                      ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
                                      mag_bias_tuple=mag_bias_tuple, return_ccl_obj=True, n_samples=1000)
-    # wf_galaxy_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'without_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
-    #                                  ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
-    #                                  mag_bias_tuple=mag_bias_tuple, return_ccl_obj=False, n_samples=1000)
 
+    # ! manually construct galaxy = delta + magnification radial kernel
     a_arr = cosmo_lib.z_to_a(z_grid)
     comoving_distance = ccl.comoving_radial_distance(cosmo_ccl, a_arr)
     wf_galaxy_tot_arr = np.asarray([wf_galaxy_obj[zbin_idx].get_kernel(comoving_distance) for zbin_idx in range(zbins)])
@@ -302,29 +300,15 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     wf_mu_arr = wf_galaxy_tot_arr[:, 1, :].T
     wf_galaxy_arr = wf_delta_arr + wf_mu_arr
 
-    wf_mu_arr_2 = -2 * np.array([ccl.tracers.get_lensing_kernel(cosmo_ccl, (nz_tuple[0], nz_tuple[1][:, zi]),
-                                                              mag_bias=(mag_bias_tuple[0], mag_bias_tuple[1][:, zi]),
-                                                              n_chi=1000)
-                               for zi in range(zbins)])
-    wf_mu_arr_2 = wf_mu_arr_2[:, 1, :].T
+    # alternative way to get the magnification kernel
+    wf_mu_tot_alt_arr = -2 * np.array([ccl.tracers.get_lensing_kernel(cosmo_ccl, (nz_tuple[0], nz_tuple[1][:, zi]),
+                                                                      mag_bias=(
+                                                                          mag_bias_tuple[0], mag_bias_tuple[1][:, zi]),
+                                                                      n_chi=1000)
+                                       for zi in range(zbins)])
+    wf_mu_alt_arr = wf_mu_tot_alt_arr[:, 1, :].T
 
-
-    # breakpoint()
-    # wf_galaxy_arr += wf_mu_arr[:, 1, :].T  # TODO test for the mag bias array.
-    # TODO does the galaxy kernel object have the magnification bias? the get_gernel method only returns delta, I think...
-
-    # a_arr = cosmo_lib.z_to_a(z_grid)
-    # comoving_distance = ccl.comoving_radial_distance(cosmo_ccl, a_arr)
-    # wf_galaxy_arr = np.asarray([wf_galaxy_obj[zi].get_kernel(comoving_distance) for zi in range(zbins)])
-    #
-    # if which_wf == 'with_galaxy_bias':
-    #     result = wf_galaxy_arr[:, 0, :] * gal_bias_tuple[1].T
-    #     return result.T
-    # elif which_wf == 'without_galaxy_bias':
-    #     return wf_galaxy_arr[:, 0, :].T
-    # elif which_wf == 'galaxy_bias_only':
-    #     return gal_bias_tuple[1]
-
+    # ! import Vincenzo's kernels and compare
     wf_lensing_import = general_cfg['wf_WL']
     wf_galaxy_import = general_cfg['wf_GC']
     wf_delta_import = general_cfg['wf_delta']
@@ -332,38 +316,19 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     z_grid_wf_import = general_cfg['z_grid_wf']
 
     colors = cm.rainbow(np.linspace(0, 1, zbins))
-
-
-    plt.figure()
-    for zi in range(zbins):
-        # plt.plot(z_grid_wf_import, wf_galaxy_import[:, zi], ls="--", alpha=0.7, label='galaxy vinc' if zi == 0 else None)
-        # plt.plot(z_grid_wf_import, wf_delta_import[:, zi], ls=":", alpha=0.7, label='delta vinc' if zi == 0 else None)
-        plt.plot(z_grid_wf_import, wf_mu_import[:, zi], ls="-.", alpha=0.7, label='mu vinc' if zi == 0 else None)
-        plt.plot(z_grid, wf_mu_arr[:, zi], ls="-.", alpha=0.7, label='mu 1' if zi == 0 else None)
-        plt.plot(z_grid, wf_mu_arr_2[:, zi], ls="-.", alpha=0.7, label='mu 2' if zi == 0 else None)
-        # plt.plot(z_grid, wf_galaxy_arr[:, zi], ls="-", alpha=0.7, label='galaxy ccl' if zi == 0 else None)
-
-
-
-
-    # plot them in 2 subplots
     fig, ax = plt.subplots(1, 2, figsize=(15, 6), constrained_layout=True)
     for zi in range(zbins):
-        ax[0].plot(z_grid, wf_lensing_arr[:, zi], ls="-", c=colors[zi], alpha=0.7,
+        ax[0].plot(z_grid, wf_lensing_arr[:, zi], ls="-", c=colors[zi], alpha=0.6,
                    label='lensing ccl' if zi == 0 else None)
-        ax[1].plot(z_grid, wf_galaxy_arr[:, zi], ls="-", c=colors[zi], alpha=0.7,
+        ax[1].plot(z_grid, wf_galaxy_arr[:, zi], ls="-", c=colors[zi], alpha=0.6,
                    label='galaxy ccl' if zi == 0 else None)
-        ax[0].plot(z_grid_wf_import, wf_lensing_import[:, zi], ls="--", c=colors[zi], alpha=0.7,
+        ax[0].plot(z_grid_wf_import, wf_lensing_import[:, zi], ls="--", c=colors[zi], alpha=0.6,
                    label='lensing vinc' if zi == 0 else None)
-        ax[1].plot(z_grid_wf_import, wf_galaxy_import[:, zi], ls="--", c=colors[zi], alpha=0.7,
+        ax[1].plot(z_grid_wf_import, wf_galaxy_import[:, zi], ls="--", c=colors[zi], alpha=0.6,
                    label='galaxy vinc' if zi == 0 else None)
-        ax[1].plot(z_grid_wf_import, wf_delta_import[:, zi], ls=":", c=colors[zi], alpha=0.7,
-                   label='delta vinc' if zi == 0 else None)
-        ax[1].plot(z_grid_wf_import, wf_mu_import[:, zi], ls="-.", c=colors[zi], alpha=0.7,
-                   label='mu vinc' if zi == 0 else None)
     # set labels
     ax[0].set_title('lensing kernel')
-    ax[1].set_title('galaxy kernel')
+    ax[1].set_title('galaxy kernel\nno gal bias!')
     ax[0].set_xlabel('$z$')
     ax[1].set_xlabel('$z$')
     ax[0].set_ylabel('wil')
@@ -371,9 +336,6 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     ax[0].legend()
     ax[1].legend()
     plt.show()
-
-    # breakpoint()
-    assert False, 'stop here to test magnification bias'
 
     # the cls are not needed, but just in case:
     # cl_LL_3D = wf_cl_lib.cl_PyCCL(wf_lensing, wf_lensing, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)

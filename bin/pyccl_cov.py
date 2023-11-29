@@ -266,11 +266,12 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     gal_bias_1d = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, maglim=maglim)
     # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
     gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), zbins, axis=0).T
+    gal_bias_2d = np.ones_like(gal_bias_2d)
     gal_bias_tuple = (zgrid_nz, gal_bias_2d)
 
     # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
     warnings.warn('the magnification bias must still be implemented, ccl uses s(z) and we have bM(z)...')
-    mag_bias_1d = 2 / 5 * (1 - wf_cl_lib.magbias_of_z_fs2_fit(zgrid_nz, maglim=maglim))
+    mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(zgrid_nz, maglim=maglim, poly_fit_values=None)
     mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), zbins, axis=0).T
     mag_bias_tuple = (zgrid_nz, mag_bias_2d)
 
@@ -290,17 +291,26 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     wf_galaxy_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'with_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
                                      ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
                                      mag_bias_tuple=mag_bias_tuple, return_ccl_obj=True, n_samples=1000)
-    wf_galaxy_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'without_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
-                                     ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
-                                     mag_bias_tuple=mag_bias_tuple, return_ccl_obj=False, n_samples=1000)
+    # wf_galaxy_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'without_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
+    #                                  ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
+    #                                  mag_bias_tuple=mag_bias_tuple, return_ccl_obj=False, n_samples=1000)
 
-    wf_mu_arr = -2 * np.array([ccl.tracers.get_lensing_kernel(cosmo_ccl, (nz_tuple[0], nz_tuple[1][:, zi]),
+    a_arr = cosmo_lib.z_to_a(z_grid)
+    comoving_distance = ccl.comoving_radial_distance(cosmo_ccl, a_arr)
+    wf_galaxy_tot_arr = np.asarray([wf_galaxy_obj[zbin_idx].get_kernel(comoving_distance) for zbin_idx in range(zbins)])
+    wf_delta_arr = wf_galaxy_tot_arr[:, 0, :].T
+    wf_mu_arr = wf_galaxy_tot_arr[:, 1, :].T
+    wf_galaxy_arr = wf_delta_arr + wf_mu_arr
+
+    wf_mu_arr_2 = -2 * np.array([ccl.tracers.get_lensing_kernel(cosmo_ccl, (nz_tuple[0], nz_tuple[1][:, zi]),
                                                               mag_bias=(mag_bias_tuple[0], mag_bias_tuple[1][:, zi]),
                                                               n_chi=1000)
                                for zi in range(zbins)])
+    wf_mu_arr_2 = wf_mu_arr_2[:, 1, :].T
+
 
     # breakpoint()
-    wf_galaxy_arr += wf_mu_arr[:, 1, :].T  # TODO test for the mag bias array.
+    # wf_galaxy_arr += wf_mu_arr[:, 1, :].T  # TODO test for the mag bias array.
     # TODO does the galaxy kernel object have the magnification bias? the get_gernel method only returns delta, I think...
 
     # a_arr = cosmo_lib.z_to_a(z_grid)
@@ -322,6 +332,19 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     z_grid_wf_import = general_cfg['z_grid_wf']
 
     colors = cm.rainbow(np.linspace(0, 1, zbins))
+
+
+    plt.figure()
+    for zi in range(zbins):
+        # plt.plot(z_grid_wf_import, wf_galaxy_import[:, zi], ls="--", alpha=0.7, label='galaxy vinc' if zi == 0 else None)
+        # plt.plot(z_grid_wf_import, wf_delta_import[:, zi], ls=":", alpha=0.7, label='delta vinc' if zi == 0 else None)
+        plt.plot(z_grid_wf_import, wf_mu_import[:, zi], ls="-.", alpha=0.7, label='mu vinc' if zi == 0 else None)
+        plt.plot(z_grid, wf_mu_arr[:, zi], ls="-.", alpha=0.7, label='mu 1' if zi == 0 else None)
+        plt.plot(z_grid, wf_mu_arr_2[:, zi], ls="-.", alpha=0.7, label='mu 2' if zi == 0 else None)
+        # plt.plot(z_grid, wf_galaxy_arr[:, zi], ls="-", alpha=0.7, label='galaxy ccl' if zi == 0 else None)
+
+
+
 
     # plot them in 2 subplots
     fig, ax = plt.subplots(1, 2, figsize=(15, 6), constrained_layout=True)
@@ -349,8 +372,8 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     ax[1].legend()
     plt.show()
 
-    assert False, 'stop here'
-    breakpoint()
+    # breakpoint()
+    assert False, 'stop here to test magnification bias'
 
     # the cls are not needed, but just in case:
     # cl_LL_3D = wf_cl_lib.cl_PyCCL(wf_lensing, wf_lensing, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)

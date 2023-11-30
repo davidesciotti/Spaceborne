@@ -336,11 +336,15 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     FMs_GO = [FM_WL_GO, FM_GC_GO, FM_WA_GO, FM_3x2pt_GO]
     FMs_GS = [FM_WL_GS, FM_GC_GS, FM_WA_GS, FM_3x2pt_GS]
 
+    which_ng_cov_dict = {'cNG': 'cNG',
+                         'SSC': 'S'}
+    which_ng_cov_suffix = which_ng_cov_dict[covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov']]
+
     FM_dict = {}
     if covariance_cfg['compute_SSC']:
         for probe_name, FM_GO, FM_GS in zip(probe_names, FMs_GO, FMs_GS):
             FM_dict[f'FM_{probe_name}_GO'] = FM_GO
-            FM_dict[f'FM_{probe_name}_GS'] = FM_GS
+            FM_dict[f'FM_{probe_name}_G{which_ng_cov_suffix}'] = FM_GS
     else:
         for probe_name, FM_GO in zip(probe_names, FMs_GO):
             FM_dict[f'FM_{probe_name}_GO'] = FM_GO

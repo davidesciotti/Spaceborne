@@ -387,7 +387,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         # which cases to save: GO, GS or GO, GS and SS
         cases_tosave = ['GO', ]
         if covariance_cfg[f'compute_SSC']:
-            cases_tosave.append('GS')
+            cases_tosave.append('G' + covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'])
         if covariance_cfg[f'save_cov_SSC']:
             cases_tosave.append('SS')
 

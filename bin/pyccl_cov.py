@@ -82,7 +82,6 @@ def initialize_trispectrum(cosmo_ccl, probe_ordering, pyccl_cfg, p_of_k_a):
             'L': halo_profile_nfw,
             'G': halo_profile_hod,
         }
-
         prof_2pt_dict = {
             # see again https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
             ('L', 'L'): ccl.halos.Profile2pt(),
@@ -96,7 +95,6 @@ def initialize_trispectrum(cosmo_ccl, probe_ordering, pyccl_cfg, p_of_k_a):
             'L': halo_profile_nfw,
             'G': halo_profile_nfw,
         }
-
         prof_2pt_dict = {
             ('L', 'L'): None,
             ('G', 'L'): None,
@@ -106,20 +104,21 @@ def initialize_trispectrum(cosmo_ccl, probe_ordering, pyccl_cfg, p_of_k_a):
     # store the trispectrum for the various probes in a dictionary
     tkka_dict = {}
 
-    for A, B in probe_ordering:
-        for C, D in probe_ordering:
-            print(f'Computing tkka for {A}{B}{C}{D}')
-            tkka_dict[A, B, C, D] = ccl.halos.halomod_Tk3D_SSC(cosmo=cosmo_ccl, hmc=hmc,
-                                                               prof1=halo_profile_dict[A],
-                                                               prof2=halo_profile_dict[B],
-                                                               prof3=halo_profile_dict[C],
-                                                               prof4=halo_profile_dict[D],
-                                                               prof12_2pt=prof_2pt_dict[A, B],
-                                                               prof34_2pt=prof_2pt_dict[C, D],
-                                                               normprof1=True, normprof2=True,
-                                                               normprof3=True, normprof4=True,
-                                                               lk_arr=None, a_arr=a_grid_increasing_for_ttka,
-                                                               p_of_k_a=p_of_k_a)
+    for row, (A, B) in enumerate(probe_ordering):
+        for col, (C, D) in enumerate(probe_ordering):
+            if col >= row:
+                print(f'Computing tkka for {A}{B}{C}{D}')
+                tkka_dict[A, B, C, D] = ccl.halos.halomod_Tk3D_SSC(cosmo=cosmo_ccl, hmc=hmc,
+                                                                   prof1=halo_profile_dict[A],
+                                                                   prof2=halo_profile_dict[B],
+                                                                   prof3=halo_profile_dict[C],
+                                                                   prof4=halo_profile_dict[D],
+                                                                   prof12_2pt=prof_2pt_dict[A, B],
+                                                                   prof34_2pt=prof_2pt_dict[C, D],
+                                                                   normprof1=True, normprof2=True,
+                                                                   normprof3=True, normprof4=True,
+                                                                   lk_arr=None, a_arr=a_grid_increasing_for_ttka,
+                                                                   p_of_k_a=p_of_k_a)
 
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
     return tkka_dict
@@ -173,31 +172,35 @@ def compute_3x2pt_PyCCL(cosmo, kernel_dict, ell, tkka_dict, f_sky, integration_m
                         probe_ordering, ind_dict, which_ng_cov, output_4D_array):
     cov_ng_3x2pt_dict_8D = {}
 
-    for row, (A, B) in enumerate(probe_ordering):
-        for col, (C, D) in enumerate(probe_ordering):
+    for row, (probe_a, probe_b) in enumerate(probe_ordering):
+        for col, (probe_c, probe_d) in enumerate(probe_ordering):
             if col >= row:
 
-                print('3x2pt: working on probe combination ', A, B, C, D)
-                cov_ng_3x2pt_dict_8D[A, B, C, D] = compute_ng_cov_ccl(cosmo=cosmo,
-                                                                      kernel_A=kernel_dict[A],
-                                                                      kernel_B=kernel_dict[B],
-                                                                      kernel_C=kernel_dict[C],
-                                                                      kernel_D=kernel_dict[D],
-                                                                      ell=ell, tkka=tkka_dict[A, B, C, D],
-                                                                      f_sky=f_sky,
-                                                                      ind_AB=ind_dict[A + B],
-                                                                      ind_CD=ind_dict[C + D],
-                                                                      which_ng_cov=which_ng_cov,
-                                                                      integration_method=integration_method,
-                                                                      )
+                print('3x2pt: working on probe combination ', probe_a, probe_b, probe_c, probe_d)
+                cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
+                    compute_ng_cov_ccl(cosmo=cosmo,
+                                       kernel_A=kernel_dict[probe_a],
+                                       kernel_B=kernel_dict[probe_b],
+                                       kernel_C=kernel_dict[probe_c],
+                                       kernel_D=kernel_dict[probe_d],
+                                       ell=ell,
+                                       tkka=tkka_dict[probe_a, probe_b, probe_c, probe_d],
+                                       f_sky=f_sky,
+                                       ind_AB=ind_dict[probe_a + probe_b],
+                                       ind_CD=ind_dict[probe_c + probe_d],
+                                       which_ng_cov=which_ng_cov,
+                                       integration_method=integration_method,
+                                       ))
 
                 # save only the upper triangle blocks
-                np.save(f'/Users/davide/Desktop/pyccl_cov_spv3_test/cov_ssc_3x2pt_dict_8D_{A}{B}{C}{D}.npy',
-                        cov_ng_3x2pt_dict_8D[A, B, C, D])
+                np.save(
+                    f'/Users/davide/Desktop/pyccl_cov_spv3_test/cov_{which_ng_cov}_3x2pt_dict_8D_{probe_a}{probe_b}{probe_c}{probe_d}.npy',
+                    cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d])
 
             else:
-                print('3x2pt: skipping probe combination ', A, B, C, D)
-                cov_ng_3x2pt_dict_8D[A, B, C, D] = cov_ng_3x2pt_dict_8D[C, D, A, B].transpose(1, 0, 3, 2)
+                print('3x2pt: skipping probe combination ', probe_a, probe_b, probe_c, probe_d)
+                cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
+                    cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b].transpose(1, 0, 3, 2))
 
     if output_4D_array:
         return mm.cov_3x2pt_8D_dict_to_4D(cov_ng_3x2pt_dict_8D, probe_ordering)
@@ -233,14 +236,10 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     assert which_ng_cov in ['SSC', 'cNG'], 'which_ng_cov must be either SSC or cNG'
     assert GL_or_LG == 'GL', 'you should update ind_cross (used in ind_dict) for GL, but we work with GL...'
 
-    # TODO plot kernels and cls to check that they make sense
-
     # get number of redshift pairs
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
     ind_auto = ind[:zpairs_auto, :]
     ind_cross = ind[zpairs_auto:zpairs_auto + zpairs_cross, :]
-
-    # ! compute cls, just as a test
 
     # Create new Cosmology object with a given set of parameters. This keeps track of previously-computed cosmological
     # functions
@@ -315,7 +314,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     z_grid_wf_import = general_cfg['z_grid_wf']
 
     colors = cm.rainbow(np.linspace(0, 1, zbins))
-    fig, ax = plt.subplots(1, 2, figsize=(15, 6), constrained_layout=True)
+    fig, ax = plt.subplots(1, 2, figsize=(16, 6), constrained_layout=True)
     for zi in range(zbins):
         ax[0].plot(z_grid, wf_lensing_arr[:, zi], ls="-", c=colors[zi], alpha=0.6,
                    label='lensing ccl' if zi == 0 else None)
@@ -340,21 +339,36 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     cl_ll_3d = wf_cl_lib.cl_PyCCL(wf_lensing_obj, wf_lensing_obj, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
     cl_gl_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_lensing_obj, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
     cl_gg_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_galaxy_obj, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
-
     cl_ll_3d_vinc = general_cfg['cl_ll_3d']
     cl_gl_3d_vinc = general_cfg['cl_gl_3d']
     cl_gg_3d_vinc = general_cfg['cl_gg_3d']
 
-    for cl_dav, cl_vinc in zip([cl_ll_3d, cl_gl_3d, cl_gg_3d], [cl_ll_3d_vinc, cl_gl_3d_vinc, cl_gg_3d_vinc]):
-        plt.figure()
-        for zi in range(zbins):
-            zj = zi
-            plt.plot(ell_grid, cl_vinc[:29, zi, zj], ls="-", c=colors[zi], alpha=0.6,
-                     label='vinc' if zi == 0 else None)
-            plt.plot(ell_grid, cl_dav[:, zi, zj], ls="--", c=colors[zi], alpha=0.6,
-                     label='dav' if zi == 0 else None)
-
-    assert False, 'stop here to check cls, just to be leziosi'
+    fig, ax = plt.subplots(1, 3, figsize=(15, 6), constrained_layout=True)
+    for zi in range(zbins):
+        zj = zi
+        ax[0].loglog(ell_grid, cl_ll_3d[:, zi, zj], ls="-", c=colors[zi], alpha=0.6,
+                     label='ll' if zi == 0 else None)
+        ax[0].loglog(ell_grid, cl_ll_3d_vinc[:29, zi, zj], ls="--", c=colors[zi], alpha=0.6,
+                     label='ll vinc' if zi == 0 else None)
+        ax[1].loglog(ell_grid, cl_gl_3d[:, zi, zj], ls="-", c=colors[zi], alpha=0.6,
+                     label='gl' if zi == 0 else None)
+        ax[1].loglog(ell_grid, cl_gl_3d_vinc[:29, zi, zj], ls="--", c=colors[zi], alpha=0.6,
+                     label='gl vinc' if zi == 0 else None)
+        ax[2].loglog(ell_grid, cl_gg_3d[:, zi, zj], ls="-", c=colors[zi], alpha=0.6,
+                     label='gg' if zi == 0 else None)
+        ax[2].loglog(ell_grid, cl_gg_3d_vinc[:29, zi, zj], ls="--", c=colors[zi], alpha=0.6,
+                     label='gg vinc' if zi == 0 else None)
+    # set labels
+    ax[0].set_xlabel('$\\ell$')
+    ax[1].set_xlabel('$\\ell$')
+    ax[2].set_xlabel('$\\ell$')
+    ax[0].set_ylabel('cl_ll')
+    ax[1].set_ylabel('cl_gl')
+    ax[2].set_ylabel('cl_gg')
+    ax[0].legend()
+    ax[1].legend()
+    ax[2].legend()
+    plt.show()
 
     # covariance ordering stuff, also used to compute the trispectrum
     if probe == 'LL':
@@ -363,7 +377,8 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         probe_ordering = (('G', 'G'),)
     elif probe == '3x2pt':
         probe_ordering = covariance_cfg['probe_ordering']
-        # probe_ordering = (('G', 'L'), ) # for testing 3x2pt GLGL, which seems a problematic case.
+        warnings.warn('TESTING ONLY GLGL TO DEBUG 3X2PT cNG')
+        probe_ordering = (('G', 'L'),)  # for testing 3x2pt GLGL, which seems a problematic case.
     else:
         raise ValueError('probe must be either LL, GG, or 3x2pt')
 
@@ -453,6 +468,6 @@ integration_method_dict = {
     },
     '3x2pt': {
         'SSC': 'qag_quad',
-        'cNG': 'qag_quad',
+        'cNG': 'spline',
     }
 }

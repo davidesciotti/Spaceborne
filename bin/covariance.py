@@ -96,7 +96,6 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
         for key in cov_exactSSC_3x2pt_dict_8D_v1.keys():
             cov_exactSSC_3x2pt_dict_8D_v1[key] /= covariance_cfg['fsky']
 
-
         cov_exactSSC_SS_4D_v1 = mm.cov_3x2pt_8D_dict_to_4D(cov_exactSSC_3x2pt_dict_8D_v1, probe_ordering)
         cov_exactSSC_SS_4D_v2 = mm.cov_3x2pt_8D_dict_to_4D(cov_exactSSC_3x2pt_dict_8D_v2, probe_ordering)
         cov_exactSSC_SS_4D_v2 /= covariance_cfg['fsky']
@@ -199,7 +198,8 @@ def ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict):
     else:
 
         cov_PyCCL_SS_8D_dict = pyccl_cov.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], probe,
-                                                                   'SSC', ell_grid, general_cfg, covariance_cfg)
+                                                                   'cNG', ell_grid,
+                                                                   general_cfg, covariance_cfg)
         if covariance_cfg['PyCCL_cfg']['save_cov']:
 
             # not the best way, dict vs 4d array as output...
@@ -217,11 +217,10 @@ def ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict):
                       'improved')
 
         warnings.warn('SKIPPING COMPUTATION OF CNG FOR THE MOMENT, restore the lines below')
-        # cov_PyCCL_cng_8D_dict = pyccl_cov.compute_cov_ng_with_pyccl(probe, 'cNG', ell_grid, z_grid_nofz=None,
-        #                                                        n_of_z=None,
-        #                                                        general_cfg=general_cfg,
-        #                                                        covariance_cfg=covariance_cfg)
-        # mm.save_pickle(f'{path_ccl}/{cov_8D_dict_filename.replace("SSC", "cNG")}', cov_PyCCL_cng_8D_dict)
+        cov_PyCCL_cng_8D_dict = pyccl_cov.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], probe,
+                                                                    'cNG', ell_grid,
+                                                                    general_cfg, covariance_cfg)
+        mm.save_pickle(f'{path_ccl}/{cov_8D_dict_filename.replace("SSC", "cNG")}', cov_PyCCL_cng_8D_dict)
 
         cov_PyCCL_cng_8D_dict = mm.load_pickle(f'{path_ccl}/{cov_8D_dict_filename.replace("SSC", "cNG")}')
         cov_PyCCL_cng_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_PyCCL_cng_8D_dict, probe_ordering)

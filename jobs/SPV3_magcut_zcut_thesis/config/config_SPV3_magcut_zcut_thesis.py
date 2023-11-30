@@ -183,11 +183,12 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',
         'get_3x2pt_cov_in_4D': False,
-        'path': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF_NOTTRUE',
+        'path': '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut_thesis'
+                '/output/Flagship_2/covmat/PyCCL',
         'load_precomputed_cov': False,
-        'save_cov': False,
+        'save_cov': True,
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
-        'compute_cng': False,
+        'compute_cng': True,
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         'z_grid_tkka_min': 0.001,

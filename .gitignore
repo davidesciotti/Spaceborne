@@ -16,6 +16,7 @@ jobs/IST_forecast_discardmaybe/output
 jobs/ISTF/output/covmat
 jobs/BNT_for_ISTL/output
 jobs/SSC_paper_final/output/covmat
+jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/covmat
 
 
 *.fits

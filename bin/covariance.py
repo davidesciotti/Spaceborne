@@ -150,7 +150,6 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
 
 def ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict):
     print('computing SSC covariance with PyCCL')
-    warnings.warn('input nofz for ccl, or better the kernels!')
 
     probe = covariance_cfg['PyCCL_cfg']['probe']
     zbins = general_cfg['zbins']
@@ -161,73 +160,29 @@ def ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict):
     use_hod_for_gcph = covariance_cfg['PyCCL_cfg']['use_HOD_for_GCph']
     ind_dict = covariance_cfg['ind_dict']
 
-    general_suffix = f'nbl{nbl}_ellmax{ell_max}_zbins{zbins}'
-    cov_8D_dict_filename = f'cov_PyCCL_SSC_{probe}_{general_suffix}' \
-                           f'_8D_dict_useHOD{use_hod_for_gcph}.pickle'
-
     if covariance_cfg['PyCCL_cfg']['load_precomputed_cov']:
 
-        # all the covs of interest are in the 3x2pt picke file
-        cov_8D_dict_filename = cov_8D_dict_filename.replace(probe, '3x2pt')
-        # cov_PyCCL_dict_8D = mm.load_pickle(f'{path_ccl}/{cov_8D_dict_filename}')
-
-        if probe in ('LL', 'GG'):
-            cov_PyCCL_SS_4D = cov_PyCCL_dict_8D[probe[0], probe[1], probe[0], probe[1]]
-        else:
-
-            # load SSC blocks in 8D and store them into a dictionary
-            path = '/Users/davide/Desktop/pyccl_cov_spv3_test'
-            cov_ssc_filename = 'cov_ssc_3x2pt_dict_8D_{probe_A:s}{probe_B:s}{probe_C:s}{probe_D:s}'
-            cov_ccl_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path, cov_ssc_filename, probe_ordering)
-
-            # reshape the blocks from 4D to 6D, as needed by the BNT
-            cov_ccl_3x2pt_dict_10D = {}
-            for probe_A, probe_B in probe_ordering:
-                for probe_C, probe_D in probe_ordering:
-                    cov_ccl_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
-                        cov_ccl_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
-                        nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
-
-            # reshape to 4D (not used, again, because of BNT)
-            # cov_PyCCL_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_PyCCL_dict_8D, probe_ordering)
-
-            return cov_ccl_3x2pt_dict_10D
-
-        # old, only for LL and GG  # cov_PyCCL_SS_4D = np.load(f'{path_ccl}/cov_PyCCL_SSC_{probe}_{general_suffix}_4D.npz')['arr_0']
+        # load SSC blocks in 4D and store them into a dictionary
+        cov_path = covariance_cfg['PyCCL_cfg']['cov_path']
+        cov_filename = covariance_cfg['PyCCL_cfg']['cov_filename'].format(which_ng_cov=which_ng_cov)
+        cov_ccl_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path, cov_filename, probe_ordering)
 
     else:
-
-        cov_PyCCL_SS_8D_dict = pyccl_cov.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], probe,
-                                                                   'cNG', ell_grid,
-                                                                   general_cfg, covariance_cfg)
-        if covariance_cfg['PyCCL_cfg']['save_cov']:
-
-            # not the best way, dict vs 4d array as output...
-            if probe == '3x2pt' and not covariance_cfg['PyCCL_cfg']['get_3x2pt_cov_in_4D']:
-                # in this case, save the whole dictionary, then revert to 4d array as output
-                cov_8D_dict = cov_PyCCL_SS_4D
-                mm.save_pickle(f'{path_ccl}/{cov_8D_dict_filename}', cov_PyCCL_SS_4D)
-                cov_PyCCL_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_PyCCL_SS_4D, probe_ordering)
-
-            else:
-                np.savez_compressed(f'{path_ccl}/cov_PyCCL_SSC_{probe}_{general_suffix}_4D.npz', cov_PyCCL_SS_4D)
-
-    if covariance_cfg['PyCCL_cfg']['compute_cng']:
-        warnings.warn('computing cNG with PyCCL. This is then added to SSC in a rudimental way; the code has to be '
-                      'improved')
-
-        warnings.warn('SKIPPING COMPUTATION OF CNG FOR THE MOMENT, restore the lines below')
-        cov_PyCCL_cng_8D_dict = pyccl_cov.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], probe,
-                                                                    'cNG', ell_grid,
+        cov_ccl_3x2pt_dict_8D = pyccl_cov.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], probe,
+                                                                    covariance_cfg['PyCCL_cfg']['which_ng_cov'],
+                                                                    ell_grid,
                                                                     general_cfg, covariance_cfg)
-        mm.save_pickle(f'{path_ccl}/{cov_8D_dict_filename.replace("SSC", "cNG")}', cov_PyCCL_cng_8D_dict)
 
-        cov_PyCCL_cng_8D_dict = mm.load_pickle(f'{path_ccl}/{cov_8D_dict_filename.replace("SSC", "cNG")}')
-        cov_PyCCL_cng_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_PyCCL_cng_8D_dict, probe_ordering)
+    # reshape the blocks from 4D to 6D, as needed by the BNT
+    cov_ccl_3x2pt_dict_10D = {}
+    for probe_A, probe_B in probe_ordering:
+        for probe_C, probe_D in probe_ordering:
+            cov_ccl_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
+                cov_ccl_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
+                nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
 
-        cov_PyCCL_SS_4D += cov_PyCCL_cng_4D
+    return cov_ccl_3x2pt_dict_10D
 
-    return cov_PyCCL_SS_4D
 
 
 def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix):

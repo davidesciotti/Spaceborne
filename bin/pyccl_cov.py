@@ -193,9 +193,13 @@ def compute_3x2pt_PyCCL(cosmo, kernel_dict, ell, tkka_dict, f_sky, integration_m
                                        ))
 
                 # save only the upper triangle blocks
-                np.save(
-                    f'/Users/davide/Desktop/pyccl_cov_spv3_test/cov_{which_ng_cov}_3x2pt_dict_8D_{probe_a}{probe_b}{probe_c}{probe_d}.npy',
-                    cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d])
+                if covariance_cfg['PyCCL_cfg']['save_cov']:
+                    cov_path = covariance_cfg['PyCCL_cfg']['cov_path']
+                    cov_filename = covariance_cfg['PyCCL_cfg']['cov_filename'].format(which_ng_cov=which_ng_cov,
+                                                                                      probe_a=probe_a, probe_b=probe_b,
+                                                                                      probe_c=probe_c, probe_d=probe_d)
+                    np.savez_compressed(
+                        f'{cov_path}/{cov_filename}', cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d])
 
             else:
                 print('3x2pt: skipping probe combination ', probe_a, probe_b, probe_c, probe_d)

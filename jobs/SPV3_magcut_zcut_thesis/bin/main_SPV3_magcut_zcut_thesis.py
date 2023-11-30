@@ -45,6 +45,7 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 script_start_time = time.perf_counter()
 
 from os import environ
+
 environ['OMP_NUM_THREADS'] = '4'
 NUMPY_PRECISION = 2.22e-16
 
@@ -513,7 +514,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         interpolation_kind = 'linear'
         gaussian_smoothing = False  # does not seem to have a large effect...
         sigma_gaussian_filter = 2
-        shift_dz = False
+        shift_dz = False  # ! are vincenzo's kernels shifted??
         normalize_shifted_nz = True
         compute_bnt_with_shifted_nz = False  # ! let's test this
         use_fs1 = False
@@ -581,12 +582,9 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
 
         # ! my kernels
         nz_tuple = (zgrid_nz, n_of_z)
-        gal_bias_vs_zmean = wf_cl_lib.b_of_z_fs2_fit(z_means, general_cfg['magcut_source'] / 10,
-                                                     galaxy_bias_fit_fiducials)
-        gal_bias_2d_arr = wf_cl_lib.build_galaxy_bias_2d_arr(gal_bias_vs_zmean, z_means, z_edges=None,
-                                                             zbins=zbins, z_grid=zgrid_nz,
-                                                             bias_model=general_cfg['bias_model'],
-                                                             plot_bias=True)
+        gal_bias_1d_arr = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, general_cfg['magcut_source'] / 10,
+                                                   galaxy_bias_fit_fiducials)
+        gal_bias_2d_arr = np.repeat(gal_bias_1d_arr.reshape(1, -1), zbins, axis=0).T
         gal_bias_tuple = (zgrid_nz, gal_bias_2d_arr)
 
         wf_lensing_ccl_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'without_IA', flat_fid_pars_dict, cosmo_ccl,
@@ -615,11 +613,6 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                                              ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
                                              return_ccl_obj=False, n_samples=len(zgrid_nz))
 
-        plt.figure()
-        for zi in range(zbins):
-            plt.plot(zgrid_nz, wf_lensing_ccl_arr[:, zi], label=f'zbin {zi}')
-        plt.legend()
-
         # this is to check against ccl in pyccl_cov
         general_cfg['wf_WL'] = wf_lensing_vin
         general_cfg['wf_GC'] = wf_galaxy_vin
@@ -627,6 +620,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         general_cfg['wf_mu'] = wf_mu_vin
         general_cfg['z_grid_wf'] = zgrid_wf_vin
         general_cfg['nz_tuple'] = nz_tuple
+
 
         # BNT-transform the lensing kernels
         wf_gamma_ccl_bnt = (BNT_matrix @ wf_gamma_ccl_arr.T).T
@@ -822,6 +816,11 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
             'rl_GG_3D': rl_gg_3d,
             'rl_WA_3D': rl_wa_3d,
             'rl_3x2pt_5D': rl_3x2pt_5d}
+
+        # this is again to test against ccl cls
+        general_cfg['cl_ll_3d'] = cl_ll_3d
+        general_cfg['cl_gl_3d'] = cl_gl_3d
+        general_cfg['cl_gg_3d'] = cl_gg_3d
 
         if covariance_cfg['compute_SSC'] and covariance_cfg['SSC_code'] == 'PySSC':
 

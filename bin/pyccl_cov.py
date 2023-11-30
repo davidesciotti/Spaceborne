@@ -266,7 +266,6 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     gal_bias_1d = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, maglim=maglim)
     # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
     gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), zbins, axis=0).T
-    gal_bias_2d = np.ones_like(gal_bias_2d)
     gal_bias_tuple = (zgrid_nz, gal_bias_2d)
 
     # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
@@ -338,9 +337,24 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     plt.show()
 
     # the cls are not needed, but just in case:
-    # cl_LL_3D = wf_cl_lib.cl_PyCCL(wf_lensing, wf_lensing, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
-    # cl_GL_3D = wf_cl_lib.cl_PyCCL(wf_galaxy, wf_lensing, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
-    # cl_GG_3D = wf_cl_lib.cl_PyCCL(wf_galaxy, wf_galaxy, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
+    cl_ll_3d = wf_cl_lib.cl_PyCCL(wf_lensing_obj, wf_lensing_obj, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
+    cl_gl_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_lensing_obj, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
+    cl_gg_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_galaxy_obj, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
+
+    cl_ll_3d_vinc = general_cfg['cl_ll_3d']
+    cl_gl_3d_vinc = general_cfg['cl_gl_3d']
+    cl_gg_3d_vinc = general_cfg['cl_gg_3d']
+
+    for cl_dav, cl_vinc in zip([cl_ll_3d, cl_gl_3d, cl_gg_3d], [cl_ll_3d_vinc, cl_gl_3d_vinc, cl_gg_3d_vinc]):
+        plt.figure()
+        for zi in range(zbins):
+            zj = zi
+            plt.plot(ell_grid, cl_vinc[:29, zi, zj], ls="-", c=colors[zi], alpha=0.6,
+                     label='vinc' if zi == 0 else None)
+            plt.plot(ell_grid, cl_dav[:, zi, zj], ls="--", c=colors[zi], alpha=0.6,
+                     label='dav' if zi == 0 else None)
+
+    assert False, 'stop here to check cls, just to be leziosi'
 
     # covariance ordering stuff, also used to compute the trispectrum
     if probe == 'LL':

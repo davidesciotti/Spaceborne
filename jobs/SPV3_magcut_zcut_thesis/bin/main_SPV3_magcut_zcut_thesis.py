@@ -53,7 +53,6 @@ NUMPY_PRECISION = 2.22e-16
 # TODO check that the number of ell bins is the same as in the files
 # TODO double check the delta values
 # TODO update consistency_checks
-# TODO super check that things work with different # of z bins
 
 # TODO reorder all these cutting functions...
 # TODO recompute Sijkl to be safe
@@ -445,11 +444,11 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                       'delta_l_WA': np.copy(delta_l_WL_nbl32[nbl_GC:])}
 
         # set # of nbl in the opt case, import and reshape, then cut the reshaped datavectors in the pes case
-        # assert (general_cfg['ell_max_WL_opt'],
-        #         general_cfg['ell_max_WL'],
-        #         general_cfg['ell_max_GC'],
-        #         general_cfg['ell_max_XC']) == (5000, 5000, 3000, 3000), \
-        #     'the number of bins defined in the config file is compatible with these ell_max values'
+        assert (general_cfg['ell_max_WL_opt'],
+                general_cfg['ell_max_WL'],
+                general_cfg['ell_max_GC'],
+                general_cfg['ell_max_XC']) == (5000, 5000, 3000, 3000), \
+            'the number of bins defined in the config file is compatible with these ell_max values'
 
         nbl_WL_opt = general_cfg['nbl_WL_opt']
         nbl_GC_opt = general_cfg['nbl_GC_opt']
@@ -475,8 +474,8 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
 
         # import nuisance, to get fiducials and to shift the distribution
         nuisance_tab = np.genfromtxt(f'{covariance_cfg["nuisance_folder"]}/{covariance_cfg["nuisance_filename"]}')
-        z_means = nuisance_tab[:,
-                  0]  # this is not exactly equal to the result of wf_cl_lib.get_z_mean, Isaac computed the
+        # this is not exactly equal to the result of wf_cl_lib.get_z_mean...
+        z_means = nuisance_tab[:,0]
         covariance_cfg['ng'] = nuisance_tab[:, 1]
         dzWL_fiducial = nuisance_tab[:, 4]
         dzGC_fiducial = nuisance_tab[:, 4]
@@ -514,7 +513,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         interpolation_kind = 'linear'
         gaussian_smoothing = False  # does not seem to have a large effect...
         sigma_gaussian_filter = 2
-        shift_dz = False  # ! are vincenzo's kernels shifted??
+        shift_dz = False  # ! are vincenzo's kernels shifted?? it looks like they are not
         normalize_shifted_nz = True
         compute_bnt_with_shifted_nz = False  # ! let's test this
         use_fs1 = False
@@ -620,7 +619,6 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
         general_cfg['wf_mu'] = wf_mu_vin
         general_cfg['z_grid_wf'] = zgrid_wf_vin
         general_cfg['nz_tuple'] = nz_tuple
-
 
         # BNT-transform the lensing kernels
         wf_gamma_ccl_bnt = (BNT_matrix @ wf_gamma_ccl_arr.T).T
@@ -1067,8 +1065,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
             fm_folder = fm_folder.replace(f'/{general_cfg["which_cuts"]}/ell_{center_or_min}', '')
 
         FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, FM_cfg['save_FM_txt'],
-                         FM_cfg['save_FM_dict'],
-                         **variable_specs)
+                         FM_cfg['save_FM_dict'], **variable_specs)
 
         if FM_cfg['test_against_benchmarks']:
             mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')

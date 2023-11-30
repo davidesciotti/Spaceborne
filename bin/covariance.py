@@ -153,23 +153,31 @@ def ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict):
 
     probe = covariance_cfg['PyCCL_cfg']['probe']
     zbins = general_cfg['zbins']
-    ell_max, nbl = get_ellmax_nbl(probe, general_cfg)
+    _, nbl = get_ellmax_nbl(probe, general_cfg)
     ell_grid = ell_dict['ell_' + probe_names_dict[probe]]
-    path_ccl = covariance_cfg['PyCCL_cfg']['path']
     probe_ordering = covariance_cfg['probe_ordering']
-    use_hod_for_gcph = covariance_cfg['PyCCL_cfg']['use_HOD_for_GCph']
     ind_dict = covariance_cfg['ind_dict']
+    which_ng_cov = covariance_cfg['PyCCL_cfg']['which_ng_cov']
+
+    if probe != '3x2pt':
+        raise NotImplementedError('This function is not yet implemented for LL or GG; take only a '
+                                  'specific block of the 3x2pt covariance')
 
     if covariance_cfg['PyCCL_cfg']['load_precomputed_cov']:
 
         # load SSC blocks in 4D and store them into a dictionary
         cov_path = covariance_cfg['PyCCL_cfg']['cov_path']
-        cov_filename = covariance_cfg['PyCCL_cfg']['cov_filename'].format(which_ng_cov=which_ng_cov)
-        cov_ccl_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path, cov_filename, probe_ordering)
+        cov_filename = covariance_cfg['PyCCL_cfg']['cov_filename'].format(which_ng_cov=which_ng_cov,
+                                                                          probe_a='{probe_a:s}',
+                                                                          probe_b='{probe_b:s}',
+                                                                          probe_c='{probe_c:s}',
+                                                                          probe_d='{probe_d:s}')
+
+        cov_ccl_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(cov_path, cov_filename, probe_ordering)
 
     else:
         cov_ccl_3x2pt_dict_8D = pyccl_cov.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], probe,
-                                                                    covariance_cfg['PyCCL_cfg']['which_ng_cov'],
+                                                                    which_ng_cov,
                                                                     ell_grid,
                                                                     general_cfg, covariance_cfg)
 
@@ -182,7 +190,6 @@ def ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict):
                 nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
 
     return cov_ccl_3x2pt_dict_10D
-
 
 
 def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix):
@@ -296,7 +303,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     # ! ======================================= COMPUTE GAUSS ONLY COVARIANCE =======================================
 
     # build noise vector
-    warnings.warn('which folder should I use for ngbTab? lenses or sources? Flagship or Redbook?')
     noise_3x2pt_4D = mm.build_noise(zbins, n_probes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=covariance_cfg['ng'],
                                     EP_or_ED=general_cfg['EP_or_ED'])
 
@@ -385,7 +391,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     elif SSC_code not in ('PySSC', 'PyCCL', 'exactSSC'):
         raise ValueError('covariance_cfg["SSC_code"] must be PySSC or PyCCL or exactSSC')
 
-    print(f'SSC covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} seconds')
+    print(f'{covariance_cfg[SSC_code + "_cfg"]["which_ng_cov"]} covariance computed with {SSC_code} in '
+          f'{(time.perf_counter() - start_time):.2f} s')
 
     # sum GO and SS in 6D (or 10D), not in 4D (it's the same)
     cov_WL_GS_6D = cov_WL_GO_6D + cov_WL_SS_6D

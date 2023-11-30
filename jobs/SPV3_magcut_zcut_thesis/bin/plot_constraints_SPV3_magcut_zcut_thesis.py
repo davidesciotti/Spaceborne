@@ -39,7 +39,7 @@ cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
 # ! options
 specs_str = 'idIA2_idB3_idM3_idR1'
-fm_root_path = ('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/'
+fm_root_path = ('/Users/davide/Documents/Lavoro/Programmi/Spaceborne/'
                 'jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM')
 EP_or_ED = 'EP'
 zbins = 13

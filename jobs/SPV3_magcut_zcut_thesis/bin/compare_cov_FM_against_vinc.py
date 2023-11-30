@@ -43,7 +43,7 @@ probe_dict = {
     '3x2pt': '3x2pt'
 }
 
-path_dav = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output/Flagship_2'
+path_dav = '/Users/davide/Documents/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut/output/Flagship_2'
 cov_dav_path = f'{path_dav}/covmat/BNT_False/ell_cuts_False'
 cov_vinc_path = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/' \
                 f'OutputFiles/CovMats/GaussOnly'

@@ -183,14 +183,13 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',
         'get_3x2pt_cov_in_4D': False,
-        'load_precomputed_cov': False,
-        'cov_path': '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut_thesis'
+        'load_precomputed_cov': True,
+        'cov_path': '/Users/davide/Documents/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
                 '/output/Flagship_2/covmat/PyCCL',
-        'cov_filename': 'cov_{which_ng_cov:s}_3x2pt_dict_8D_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}.npz',
-        'save_cov': True,
+        'cov_filename': 'cov_{which_ng_cov:s}_3x2pt_4D_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}.npz',
+        'save_cov': False,
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
         'which_ng_cov': 'cNG',  # 'cNG' or 'SSC'. whether to compute one or the other
-        'compute_cng': True,  # whether to add the cNG term to the SSC one ! TODO this is not a clean way
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         'z_grid_tkka_min': 0.001,

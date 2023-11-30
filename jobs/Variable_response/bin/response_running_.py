@@ -19,7 +19,7 @@ job_path = Path.cwd().parent
 
 sys.path.append(str(project_path.parent / 'common_data/common_lib'))
 sys.path.append(str(project_path.parent / 'common_data/common_config'))
-sys.path.append(str(project_path.parent / 'SSC_restructured_v2/bin'))
+sys.path.append(str(project_path.parent / 'Spaceborne/bin'))
 sys.path.append(str(job_path / 'config'))
 
 # general libraries
@@ -33,7 +33,6 @@ import mpl_cfg
 # job-specific congiguration
 import config_variable_response as cfg
 
-# from SSC_restructured_v2
 import ell_values as ell_utils
 
 matplotlib.use('Qt5Agg')

@@ -147,7 +147,7 @@ for ML, ZL, MS, ZS in zip(ML_list, ZL_list, MS_list, ZS_list):
                         lmax = 5000
                         nbl = 32
 
-                    fm_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
+                    fm_path = f'/Users/davide/Documents/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut/' \
                               f'output/Flagship_{flagship_version}/FM'
                     fm_ellcuts_path = f'{fm_path}/BNT_{BNT_transform}/ell_cuts_True/{which_cuts}/{center_or_min}'
                     fm_no_ellcuts_path = f'{fm_path}/BNT_{BNT_transform}/ell_cuts_False'

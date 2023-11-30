@@ -1,0 +1,39 @@
+name: cloe
+channels:
+  - conda-forge
+dependencies:
+  # Default Python version for CLOE
+  - python=3.9
+  - pip==23.1.2
+  # Standard 3rd-party Python packages (from conda-forge)
+  - astropy==5.3
+  - glob
+  - sys
+  - time
+  - copy
+  - numba
+  - jupyter==1.0.0
+  - matplotlib==3.7.1
+  - mpi4py==3.1.4
+  - numpy==1.23.5
+  - scipy==1.10.1
+  - seaborn==0.12.2
+  - tensorflow==2.11.1
+  # Unit testing and documentation dependencies (from conda-forge)
+  - numpydoc==1.5.0
+  - pytest==7.3.2
+  - pytest-cov==4.1.0
+  - pytest-pycodestyle==2.3.1
+  - sphinx==6.2.1
+  - sphinx-rtd-theme==1.2.2
+  # Domain-specific 3rd-party Python packages (from conda-forge)
+  # Additional non-Python dependencies
+  - camb==1.5.0
+  - gsl==2.7
+  - pip:
+    # Domain-specific 3rd-party Python package (from PyPI)
+    - cobaya==3.3.1
+    - classy #Uncomment this line to include CLASS in the cloe environment
+    - pyccl==2.7.0
+    # Unit testing and documentation dependencies (from PyPI)
+    - pytest-pydocstyle==2.3.2

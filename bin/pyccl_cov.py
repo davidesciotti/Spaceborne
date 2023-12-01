@@ -169,8 +169,10 @@ def compute_ng_cov_ccl(cosmo, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka,
 
 
 def compute_3x2pt_PyCCL(cosmo, kernel_dict, ell, tkka_dict, f_sky, integration_method,
-                        probe_ordering, ind_dict, which_ng_cov, output_4D_array):
+                        probe_ordering, ind_dict, covariance_cfg, output_4D_array):
     cov_ng_3x2pt_dict_8D = {}
+
+    which_ng_cov = covariance_cfg['PyCCL_cfg']['which_ng_cov']
 
     for row, (probe_a, probe_b) in enumerate(probe_ordering):
         for col, (probe_c, probe_d) in enumerate(probe_ordering):
@@ -432,7 +434,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
                                         probe_ordering=probe_ordering,
                                         ind_dict=ind_dict,
                                         output_4D_array=get_3x2pt_cov_in_4D,
-                                        which_ng_cov=which_ng_cov,
+                                        covariance_cfg=covariance_cfg,
                                         integration_method=integration_method_dict[probe][which_ng_cov],
                                         )
 

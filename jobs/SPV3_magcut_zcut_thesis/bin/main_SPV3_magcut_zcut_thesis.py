@@ -1049,6 +1049,7 @@ for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
                       'dC_GG_4D': dC_GG_4D,
                       'dC_3x2pt_6D': dC_3x2pt_6D}
 
+
         # ! compute and save fisher matrix
         FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict,
                                       BNT_matrix)

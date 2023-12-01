@@ -71,18 +71,18 @@ which_cuts = 'Vincenzo'
 whose_FM_list = ('davide',)
 kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
 
-go_or_gs_list = ['GO', 'GS']
-BNT_transform_list = [False, True]
+go_or_gs_list = ['GO', 'GcNG']
+BNT_transform_list = [False,]
 center_or_min_list = ['center']
 kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list']
 # kmax_1_over_Mpc_vinc_str_list = ['025', '050', '075', '100', '125', '150', '175', '200', '300',
 #                                  '500', '1000', '1500', '2000']
 # kmax_1_over_Mpc_vinc_list = [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00, 15.00, 20.00]
 
-ell_cuts_list = [False, True]
+ell_cuts_list = [False, ]
 fix_dz_list = [True, False]
 fix_shear_bias_list = [True, False]
-which_pk_list = general_cfg['which_pk_list']
+which_pk_list = (general_cfg['which_pk_list'][0], )
 center_or_min_plt = 'center'
 which_cuts_plt = 'Vincenzo'
 save_plots = False
@@ -511,7 +511,7 @@ go_gs_df = fm_uncert_df[
 
 key_to_compare = 'go_or_gs'
 value_A = 'GO'
-value_B = 'GS'
+value_B = 'GcNG'
 df_A = go_gs_df[go_gs_df[key_to_compare] == value_A]
 df_B = go_gs_df[go_gs_df[key_to_compare] == value_B]
 arr_A = df_A.iloc[:, len(string_columns):].select_dtypes('number').values
@@ -547,31 +547,37 @@ plt.show()
 # plt.legend()
 
 # # ! bar plot, quite useless
-# title_barplot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}\nkmax = {kmax_h_over_Mpc_plt:.03f}'
-# fm_uncert_df_toplot = fm_uncert_df[
-#     (fm_uncert_df['probe'] == probe_toplot) &
-#     (fm_uncert_df['go_or_gs'] == 'GO') &
-#     (fm_uncert_df['whose_FM'] == 'davide') &
-#     (fm_uncert_df['ell_cuts'] == ell_cuts) &
-#     (fm_uncert_df['center_or_min'] == center_or_min) &
-#     (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_plt)  # compare bnt
-#     ]
-#
-# data = fm_uncert_df_toplot.iloc[:, len(string_columns):].values
-# label_list = list(fm_uncert_df_toplot['BNT_transform'].values)
-# label_list = ['None' if value is None else value for value in label_list]
-#
-# include_fom = False
-# if include_fom:
-#     num_params_tokeep += 1
-# data = data[:, :num_params_tokeep]
+probe_toplot = '3x2pt'
+ell_cuts = False
+BNT_transform = False
+title_barplot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}\nkmax = {kmax_h_over_Mpc_plt:.03f}'
+fm_uncert_df_toplot = fm_uncert_df[
+    (fm_uncert_df['probe'] == probe_toplot) &
+    (fm_uncert_df['whose_FM'] == 'davide') &
+    (fm_uncert_df['which_pk'] == pk_ref) &
+    (fm_uncert_df['fix_dz'] == True) &
+    (fm_uncert_df['fix_shear_bias'] == True) &
+    (fm_uncert_df['BNT_transform'] == BNT_transform) &
+    (fm_uncert_df['ell_cuts'] == ell_cuts) &
+    (fm_uncert_df['which_cuts'] == which_cuts_plt) &
+    (fm_uncert_df['center_or_min'] == center_or_min_plt)
+    ]
+
+data = fm_uncert_df_toplot.iloc[:, len(string_columns):].values
+label_list = list(fm_uncert_df_toplot['BNT_transform'].values)
+label_list = ['None' if value is None else value for value in label_list]
+
+include_fom = False
+if include_fom:
+    num_params_tokeep += 1
+data = data[:, :num_params_tokeep]
 
 
-# ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'
-# ylabel = f'relative uncertainty [%]'
-# plot_utils.bar_plot(data, title_barplot, label_list, bar_width=0.2, nparams=num_params_tokeep, param_names_label=None,
-#                     second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
-#                     include_fom=include_fom, figsize=(10, 8))
+ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'
+ylabel = f'relative uncertainty [%]'
+plot_utils.bar_plot(data, title_barplot, label_list, bar_width=0.2, nparams=num_params_tokeep, param_names_label=None,
+                    second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
+                    include_fom=include_fom, figsize=(10, 8))
 # plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GOGS_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)
 
 

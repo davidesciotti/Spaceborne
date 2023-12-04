@@ -178,18 +178,19 @@ covariance_cfg = {
                     'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D',
     'cov_filename_vincenzo': 'cm-{probe:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    'SSC_code': 'PyCCL',
+    'SSC_code': 'PyCCL',  # 'PyCCL' or 'exactSSC'
 
     'PyCCL_cfg': {
-        'probe': '3x2pt',
-        'get_3x2pt_cov_in_4D': False,
+        'probe': '3x2pt',  # TODO deprecate this?
+        'which_ng_cov': 'cNG',  # 'cNG' or 'SSC'. whether to compute one or the other
+
+        'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
         'load_precomputed_cov': False,
         'cov_path': '/Users/davide/Documents/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
-                '/output/Flagship_2/covmat/PyCCL',
-        'cov_filename': 'cov_{which_ng_cov:s}_3x2pt_4D_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}.npz',
+                    '/output/Flagship_2/covmat/PyCCL',
+        'cov_filename': 'cov_{which_ng_cov:s}_pyccl_4D_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}.npz',
         'save_cov': True,
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
-        'which_ng_cov': 'SSC',  # 'cNG' or 'SSC'. whether to compute one or the other
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         'z_grid_tkka_min': 0.001,
@@ -204,8 +205,13 @@ covariance_cfg = {
 
     'exactSSC_cfg': {
         'probe': '3x2pt',
+        'which_ng_cov': 'SSC',  # only 'SSC' available in this case
+
         # in this case it is only possible to load precomputed arraya, I have to compute the integral with Julia
         'cov_path': '/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia',
+        'cov_filename': 'cov_{which_ng_cov:s}_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
+                        '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'
+                        '_convention{cl_integral_convention:s}.npy',
 
         # settings for sigma2
         'cl_integral_convention': 'PySSC',  # or Euclid, but gives same results as it should!!! TODO remove this

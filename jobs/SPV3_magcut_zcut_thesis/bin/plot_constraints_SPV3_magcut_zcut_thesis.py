@@ -17,7 +17,7 @@ pd.set_option('display.max_columns', None)
 # Disable text wrapping within cells
 pd.set_option('display.expand_frame_repr', False)
 
-sys.path.append('../../bin/plot_FM_running')
+sys.path.append('../../../bin')
 import plots_FM_running as plot_utils
 
 sys.path.append('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
@@ -72,7 +72,7 @@ whose_FM_list = ('davide',)
 kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
 
 go_or_gs_list = ['GO', 'GcNG']
-BNT_transform_list = [False,]
+BNT_transform_list = [False, ]
 center_or_min_list = ['center']
 kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list']
 # kmax_1_over_Mpc_vinc_str_list = ['025', '050', '075', '100', '125', '150', '175', '200', '300',
@@ -82,7 +82,7 @@ kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list']
 ell_cuts_list = [False, ]
 fix_dz_list = [True, False]
 fix_shear_bias_list = [True, False]
-which_pk_list = (general_cfg['which_pk_list'][0], )
+which_pk_list = (general_cfg['which_pk_list'][0],)
 center_or_min_plt = 'center'
 which_cuts_plt = 'Vincenzo'
 save_plots = False
@@ -283,6 +283,38 @@ for BNT_transform in BNT_transform_list:
 
 # ! ============================================================ PLOTS ============================================================
 
+
+# # ! bar plot
+probe_toplot = '3x2pt'
+fm_uncert_df_toplot = fm_uncert_df[
+    (fm_uncert_df['probe'] == probe_toplot) &
+    (fm_uncert_df['whose_FM'] == 'davide') &
+    (fm_uncert_df['which_pk'] == pk_ref) &
+    (fm_uncert_df['fix_dz'] == True) &
+    (fm_uncert_df['fix_shear_bias'] == False) &
+    (fm_uncert_df['BNT_transform'] == False) &
+    (fm_uncert_df['ell_cuts'] == False) &
+    (fm_uncert_df['kmax_h_over_Mpc'] == 0.1) &
+    (fm_uncert_df['which_cuts'] == which_cuts_plt) &
+    (fm_uncert_df['center_or_min'] == center_or_min_plt)
+    ]
+
+data = fm_uncert_df_toplot.iloc[:, len(string_columns):].values
+label_list = list(fm_uncert_df_toplot['go_or_gs'].values)
+label_list = ['None' if value is None else value for value in label_list]
+
+include_fom = False
+if include_fom:
+    num_params_tokeep += 1
+data = data[:, :num_params_tokeep]
+
+ylabel = f'relative uncertainty [%]'
+plot_utils.bar_plot(data, 'G + cNG', label_list, bar_width=0.2, nparams=num_params_tokeep, param_names_label=None,
+                    second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
+                    include_fom=include_fom, figsize=(10, 8))
+# plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GOGS_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)
+
+
 mm.plot_correlation_matrix(correlation_dict['HMCode2020'] / correlation_dict['TakaBird'], cosmo_params_tex,
                            title='HMCodebar/TakaBird')
 if save_plots:
@@ -298,7 +330,6 @@ df_false = fm_uncert_df[(fm_uncert_df['ell_cuts'] == False) &
            len(string_columns):].values
 diff = (df_true / df_false - 1) * 100
 mm.matshow(diff, log=True, title=f'difference between ell_cuts True, kmax = {kmax_h_over_Mpc_list[-1]:.2f} and False')
-
 
 # ! plot FoM pk_ref vs kmax
 probe_toplot = '3x2pt'
@@ -434,7 +465,8 @@ stdev_fom_vs_kmax_notb = reduced_unc_df_notb.std().values
 perc_deviation_vs_kmax_notb = stdev_fom_vs_kmax_notb / mean_fom_vs_kmax_notb * 100
 
 # ! cutting the values above which the trend is no longer monothonic
-kmax_perc_deviation = mm.find_inverse_from_array(kmax_h_over_Mpc_list[:6], perc_deviation_vs_kmax[:6], target_perc_dispersion)
+kmax_perc_deviation = mm.find_inverse_from_array(kmax_h_over_Mpc_list[:6], perc_deviation_vs_kmax[:6],
+                                                 target_perc_dispersion)
 kmax_perc_deviation_notb = mm.find_inverse_from_array(kmax_h_over_Mpc_list[:6], perc_deviation_vs_kmax_notb[:6],
                                                       target_perc_dispersion)
 
@@ -545,40 +577,6 @@ plt.show()
 # plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
 # plt.ylabel('3$\\times$2pt FoM')
 # plt.legend()
-
-# # ! bar plot, quite useless
-probe_toplot = '3x2pt'
-ell_cuts = False
-BNT_transform = False
-title_barplot = f'{probe_toplot}, {key_to_compare}: {value_A} vs {value_B}\nkmax = {kmax_h_over_Mpc_plt:.03f}'
-fm_uncert_df_toplot = fm_uncert_df[
-    (fm_uncert_df['probe'] == probe_toplot) &
-    (fm_uncert_df['whose_FM'] == 'davide') &
-    (fm_uncert_df['which_pk'] == pk_ref) &
-    (fm_uncert_df['fix_dz'] == True) &
-    (fm_uncert_df['fix_shear_bias'] == True) &
-    (fm_uncert_df['BNT_transform'] == BNT_transform) &
-    (fm_uncert_df['ell_cuts'] == ell_cuts) &
-    (fm_uncert_df['which_cuts'] == which_cuts_plt) &
-    (fm_uncert_df['center_or_min'] == center_or_min_plt)
-    ]
-
-data = fm_uncert_df_toplot.iloc[:, len(string_columns):].values
-label_list = list(fm_uncert_df_toplot['BNT_transform'].values)
-label_list = ['None' if value is None else value for value in label_list]
-
-include_fom = False
-if include_fom:
-    num_params_tokeep += 1
-data = data[:, :num_params_tokeep]
-
-
-ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'
-ylabel = f'relative uncertainty [%]'
-plot_utils.bar_plot(data, title_barplot, label_list, bar_width=0.2, nparams=num_params_tokeep, param_names_label=None,
-                    second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
-                    include_fom=include_fom, figsize=(10, 8))
-# plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GOGS_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)
 
 
 print('done')

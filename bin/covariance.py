@@ -62,7 +62,13 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
     z_steps_sigma2 = covariance_cfg['exactSSC_cfg']['z_steps_sigma2']
     k_txt_label = covariance_cfg['exactSSC_cfg']['k_txt_label']
     cl_integral_convention = covariance_cfg['exactSSC_cfg']['cl_integral_convention']
-    path = covariance_cfg['exactSSC_cfg']['path']
+    cov_path = covariance_cfg['exactSSC_cfg']['cov_path']
+    cov_filename = covariance_cfg['exactSSC_cfg']['cov_filename']
+    cov_filename = cov_filename.format()
+
+    'cov_{which_ng_cov:s}_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'\
+                        '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'\
+                        '_convention{cl_integral_convention:s}.npy'
 
     general_suffix = f'nbl{nbl}_ellmax{ell_max}_zbins{zbins}_' \
                      f'zsteps{z_steps_sigma2}_k{k_txt_label}_convention{cl_integral_convention}'
@@ -80,7 +86,7 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
 
     # single-probe case
     if probe in ('LL', 'GG'):
-        cov_exactSSC_SS_4D = np.load(f'{path}/cov_SSC_{probe}{probe}_4D_nbl{nbl}_ellmax{ell_max}_zbins{zbins}_'
+        cov_exactSSC_SS_4D = np.load(f'{cov_path}/cov_SSC_{probe}{probe}_4D_nbl{nbl}_ellmax{ell_max}_zbins{zbins}_'
                                      f'zsteps{z_steps_sigma2}_k{k_txt_label}_convention{cl_integral_convention}.npy')
     # populate 3x2pt dictionary
     elif probe == '3x2pt':
@@ -89,9 +95,9 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
         general_suffix = general_suffix.replace('ellmax3000', 'ellmax5000')
 
         cov_exactSSC_3x2pt_dict_8D_v1 = mm.load_cov_from_probe_blocks(
-            path, 'cov_SSC_{probe_A:s}{probe_B:s}{probe_C:s}{probe_D:s}_4D_' + general_suffix, probe_ordering)
+            cov_path, 'cov_SSC_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_' + general_suffix, probe_ordering)
         cov_exactSSC_3x2pt_dict_8D_v2 = mm.load_cov_from_probe_blocks(
-            path, 'cov_SSC_{probe_A:s}{probe_B:s}{probe_C:s}{probe_D:s}_4D_' + general_suffix, probe_ordering)
+            cov_path, 'cov_SSC_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_' + general_suffix, probe_ordering)
 
         for key in cov_exactSSC_3x2pt_dict_8D_v1.keys():
             cov_exactSSC_3x2pt_dict_8D_v1[key] /= covariance_cfg['fsky']
@@ -417,21 +423,22 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_WA_GS_6D = cov_BNT_transform(cov_WA_GS_6D, X_dict, 'L', 'L', 'L', 'L')
         cov_3x2pt_GS_10D_dict = cov_3x2pt_BNT_transform(cov_3x2pt_GS_10D_dict, X_dict)
 
+        # TODO this is not needed since cov_3x2pt_10D_to_4D can also accept a dict in input, delete lines below
         # revert to 10D arrays
-        cov_3x2pt_GO_10D = mm.cov_10D_dict_to_array(cov_3x2pt_GO_10D_dict, nbl_3x2pt, zbins, n_probes=2)
-        cov_3x2pt_GS_10D = mm.cov_10D_dict_to_array(cov_3x2pt_GS_10D_dict, nbl_3x2pt, zbins, n_probes=2)
+        # cov_3x2pt_GO_10D = mm.cov_10D_dict_to_array(cov_3x2pt_GO_10D_dict, nbl_3x2pt, zbins, n_probes=2)
+        # cov_3x2pt_GS_10D = mm.cov_10D_dict_to_array(cov_3x2pt_GS_10D_dict, nbl_3x2pt, zbins, n_probes=2)
 
     # ! transform everything in 4D
     start = time.perf_counter()
     cov_WL_GO_4D = mm.cov_6D_to_4D(cov_WL_GO_6D, nbl_WL, zpairs_auto, ind_auto)
     cov_GC_GO_4D = mm.cov_6D_to_4D(cov_GC_GO_6D, nbl_GC, zpairs_auto, ind_auto)
     cov_WA_GO_4D = mm.cov_6D_to_4D(cov_WA_GO_6D, nbl_WA, zpairs_auto, ind_auto)
-    cov_3x2pt_GO_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GO_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
+    cov_3x2pt_GO_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GO_10D_dict, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
 
     cov_WL_GS_4D = mm.cov_6D_to_4D(cov_WL_GS_6D, nbl_WL, zpairs_auto, ind_auto)
     cov_GC_GS_4D = mm.cov_6D_to_4D(cov_GC_GS_6D, nbl_GC, zpairs_auto, ind_auto)
     cov_WA_GS_4D = mm.cov_6D_to_4D(cov_WA_GS_6D, nbl_WA, zpairs_auto, ind_auto)
-    cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
+    cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GS_10D_dict, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
     print('covariance matrices reshaped (6D -> 4D) in {:.2f} s'.format(time.perf_counter() - start))
 
     # ! ========================= plug the 4D covariances into the pipeline ============================================

@@ -1,4 +1,4 @@
-name: cloe
+name: spaceborne
 channels:
   - conda-forge
 dependencies:

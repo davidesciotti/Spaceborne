@@ -54,7 +54,7 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 # https://ccl.readthedocs.io/en/latest/api/pyccl.halos.halo_model.html?highlight=halomod_Tk3D_SSC#pyccl.halos.halo_model.halomod_Tk3D_SSC)
 # 🐛 bug fixed: normprof shoud be True
 # 🐛 bug fixed?: p_of_k_a=None instead of Pk
-def initialize_trispectrum(cosmo_ccl, probe_ordering, pyccl_cfg, p_of_k_a):
+def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p_of_k_a):
     use_hod_for_gg = pyccl_cfg['use_HOD_for_GCph']
     z_grid_tkka = np.linspace(pyccl_cfg['z_grid_tkka_min'], pyccl_cfg['z_grid_tkka_max'],
                               pyccl_cfg['z_grid_tkka_steps'])
@@ -104,21 +104,36 @@ def initialize_trispectrum(cosmo_ccl, probe_ordering, pyccl_cfg, p_of_k_a):
     # store the trispectrum for the various probes in a dictionary
     tkka_dict = {}
 
+    if which_ng_cov == 'SSC':
+        tkka_func = ccl.halos.halomod_Tk3D_SSC
+        p_of_k_a_arg = {'p_of_k_a': p_of_k_a}
+
+    elif which_ng_cov == 'cNG':
+        tkka_func = ccl.halos.halomod_Tk3D_1h
+        p_of_k_a_arg = {}
+    else:
+        raise ValueError(f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
+
     for row, (A, B) in enumerate(probe_ordering):
         for col, (C, D) in enumerate(probe_ordering):
             if col >= row:
-                print(f'Computing tkka for {A}{B}{C}{D}')
-                tkka_dict[A, B, C, D] = ccl.halos.halomod_Tk3D_SSC(cosmo=cosmo_ccl, hmc=hmc,
-                                                                   prof1=halo_profile_dict[A],
-                                                                   prof2=halo_profile_dict[B],
-                                                                   prof3=halo_profile_dict[C],
-                                                                   prof4=halo_profile_dict[D],
-                                                                   prof12_2pt=prof_2pt_dict[A, B],
-                                                                   prof34_2pt=prof_2pt_dict[C, D],
-                                                                   normprof1=True, normprof2=True,
-                                                                   normprof3=True, normprof4=True,
-                                                                   lk_arr=None, a_arr=a_grid_increasing_for_ttka,
-                                                                   p_of_k_a=p_of_k_a)
+                print(f'Computing trispectrum for {which_ng_cov}, probe combination {A}{B}{C}{D}')
+                tkka_dict[A, B, C, D] = tkka_func(cosmo=cosmo_ccl, hmc=hmc,
+                                                  prof1=halo_profile_dict[A],
+                                                  prof2=halo_profile_dict[B],
+                                                  prof3=halo_profile_dict[C],
+                                                  prof4=halo_profile_dict[D],
+                                                  prof12_2pt=prof_2pt_dict[A, B],
+                                                  prof34_2pt=prof_2pt_dict[C, D],
+                                                  normprof1=True, normprof2=True,
+                                                  normprof3=True, normprof4=True,
+                                                  lk_arr=None, a_arr=a_grid_increasing_for_ttka,
+                                                  **p_of_k_a_arg)
+
+    # TODO pass lk_arr?
+    # TODO do they interpolate existing tracer arrays?
+    # TODO spline for SSC...
+    # TODO update to halomod_Tk3D_cNG with pyccl v3.0.0
 
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
     return tkka_dict
@@ -402,7 +417,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     # ! =============================================== compute covs ===============================================
 
-    tkka_dict = initialize_trispectrum(cosmo_ccl, probe_ordering, pyccl_cfg, p_of_k_a=None)
+    tkka_dict = initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p_of_k_a=None)
 
     if probe in ['LL', 'GG']:
 

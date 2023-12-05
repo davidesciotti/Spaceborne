@@ -432,7 +432,7 @@ for key in ell_dict.keys():
     if ell_dict[key].size > 0:  # Check if the array is non-empty
         assert np.max(ell_dict[key]) > 15, f'ell values for key {key} must *not* be in log space'
 
-# set corresponding number of ell bins
+# set the corresponding number of ell bins
 nbl_WL = len(ell_dict['ell_WL'])
 nbl_GC = len(ell_dict['ell_GC'])
 nbl_WA = len(ell_dict['ell_WA'])
@@ -519,7 +519,6 @@ sigma_gaussian_filter = 2
 shift_dz = False  # ! are vincenzo's kernels shifted?? it looks like they are not
 normalize_shifted_nz = True
 compute_bnt_with_shifted_nz = False  # ! let's test this
-use_fs1 = False
 use_ia = False
 whose_wf = 'davide'  # TODO 'vincenzo' or 'davide'. whose wf you want to use to compute the z mean for the ell cuts
 
@@ -527,13 +526,7 @@ assert shift_dz is False, 'We compute the BNT just for a simple case: no IA, no 
                           'to compute the z means'
 assert use_ia is False, 'We compute the BNT just for a simple case: no IA, no shift. This is because we want' \
                         'to compute the z means'
-assert use_fs1 is False, 'no need to use FS1'
 
-if use_fs1:
-    n_of_z = np.genfromtxt('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
-                           f'Flagship_1_restored/InputNz/Lenses/Flagship/niTab-{EP_or_ED}{zbins:02d}.dat')
-    zgrid_nz = n_of_z[:, 0]
-    n_of_z = n_of_z[:, 1:]
 
 # ! apply a Gaussian filter
 if gaussian_smoothing:

@@ -212,8 +212,7 @@ def compute_ng_cov_3x2pt(cosmo, kernel_dict, ell, tkka_dict, f_sky, integration_
                 # save only the upper triangle blocks
                 if covariance_cfg['PyCCL_cfg']['save_cov']:
                     cov_path = covariance_cfg['PyCCL_cfg']['cov_path']
-                    cov_filename = covariance_cfg['PyCCL_cfg']['cov_filename'].format(which_ng_cov=which_ng_cov,
-                                                                                      probe_a=probe_a, probe_b=probe_b,
+                    cov_filename = covariance_cfg['PyCCL_cfg']['cov_filename'].format(probe_a=probe_a, probe_b=probe_b,
                                                                                       probe_c=probe_c, probe_d=probe_d)
                     np.savez_compressed(
                         f'{cov_path}/{cov_filename}', cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d])

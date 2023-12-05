@@ -154,7 +154,7 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
         raise ValueError('probe must be LL or GG or 3x2pt')
 
 
-def ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict):
+def ssc_with_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict):
     print('computing SSC covariance with PyCCL')
 
     probe = covariance_cfg['PyCCL_cfg']['probe']
@@ -163,16 +163,15 @@ def ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict):
     ell_grid = ell_dict['ell_' + probe_names_dict[probe]]
     probe_ordering = covariance_cfg['probe_ordering']
     ind_dict = covariance_cfg['ind_dict']
-    which_ng_cov = covariance_cfg['PyCCL_cfg']['which_ng_cov']
 
     if probe != '3x2pt':
         raise NotImplementedError('This function is not yet implemented for LL or GG; take only a '
                                   'specific block of the 3x2pt covariance')
 
-    # TODO pre-format the covariance filename
+    # pre-format covariance filename and store it in the covariance_cfg dictionary
     warnings.warn('ell_max is for 3x2pt only, fix this')
     covariance_cfg['PyCCL_cfg']['cov_filename'] = covariance_cfg['PyCCL_cfg']['cov_filename'].format(
-        which_ng_cov='{which_ng_cov:s}', probe_a='{probe_a:s}', probe_b='{probe_b:s}',
+        which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
         probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl, lmax=general_cfg['ell_max_GC'],
         EP_or_ED=general_cfg['EP_or_ED'],
         zbins=zbins)
@@ -393,8 +392,10 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_exactSSC_SS_dict_10D, nbl_3x2pt, zbins, n_probes)
 
     elif SSC_code == 'PyCCL':
-        cov_ccl_3x2pt_dict_10D = ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict)
-        cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_ccl_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
+        cov_3x2pt_SS_10D = np.zeros((n_probes, n_probes, n_probes, n_probes, nbl_3x2pt, nbl_3x2pt, zbins, zbins, zbins, zbins))
+        for which_ng_cov in covariance_cfg['PyCCL_cfg']['which_ng_cov_list']:
+            cov_ccl_3x2pt_dict_10D = ssc_with_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict)
+            cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_ccl_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
 
 
     elif SSC_code not in ('PySSC', 'PyCCL', 'exactSSC'):
@@ -426,23 +427,23 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_WA_GS_6D = cov_BNT_transform(cov_WA_GS_6D, X_dict, 'L', 'L', 'L', 'L')
         cov_3x2pt_GS_10D_dict = cov_3x2pt_BNT_transform(cov_3x2pt_GS_10D_dict, X_dict)
 
-        # TODO this is not needed since cov_3x2pt_10D_to_4D can also accept a dict in input, delete lines below
-        # revert to 10D arrays
-        # cov_3x2pt_GO_10D = mm.cov_10D_dict_to_array(cov_3x2pt_GO_10D_dict, nbl_3x2pt, zbins, n_probes=2)
-        # cov_3x2pt_GS_10D = mm.cov_10D_dict_to_array(cov_3x2pt_GS_10D_dict, nbl_3x2pt, zbins, n_probes=2)
+        # revert to 10D arrays - this is not strictly necessary since cov_3x2pt_10D_to_4D accepts both a dictionary and
+        # an array as input, but it's done to keep the variable names consistent
+        cov_3x2pt_GO_10D = mm.cov_10D_dict_to_array(cov_3x2pt_GO_10D_dict, nbl_3x2pt, zbins, n_probes=2)
+        cov_3x2pt_GS_10D = mm.cov_10D_dict_to_array(cov_3x2pt_GS_10D_dict, nbl_3x2pt, zbins, n_probes=2)
 
     # ! transform everything in 4D
     start = time.perf_counter()
     cov_WL_GO_4D = mm.cov_6D_to_4D(cov_WL_GO_6D, nbl_WL, zpairs_auto, ind_auto)
     cov_GC_GO_4D = mm.cov_6D_to_4D(cov_GC_GO_6D, nbl_GC, zpairs_auto, ind_auto)
     cov_WA_GO_4D = mm.cov_6D_to_4D(cov_WA_GO_6D, nbl_WA, zpairs_auto, ind_auto)
-    cov_3x2pt_GO_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GO_10D_dict, probe_ordering, nbl_3x2pt, zbins, ind.copy(),
+    cov_3x2pt_GO_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GO_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(),
                                              GL_or_LG)
 
     cov_WL_GS_4D = mm.cov_6D_to_4D(cov_WL_GS_6D, nbl_WL, zpairs_auto, ind_auto)
     cov_GC_GS_4D = mm.cov_6D_to_4D(cov_GC_GS_6D, nbl_GC, zpairs_auto, ind_auto)
     cov_WA_GS_4D = mm.cov_6D_to_4D(cov_WA_GS_6D, nbl_WA, zpairs_auto, ind_auto)
-    cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GS_10D_dict, probe_ordering, nbl_3x2pt, zbins, ind.copy(),
+    cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(),
                                              GL_or_LG)
     print('covariance matrices reshaped (6D -> 4D) in {:.2f} s'.format(time.perf_counter() - start))
 

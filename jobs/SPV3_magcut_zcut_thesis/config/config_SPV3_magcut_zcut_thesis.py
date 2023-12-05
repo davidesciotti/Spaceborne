@@ -146,12 +146,14 @@ covariance_cfg = {
     # sources (and lenses) redshift distributions
     'nofz_folder': f'/Users/davide/Documents/Lavoro/Programmi/likelihood-mcmc-generator/input_files/SPV3',
     'nofz_filename': 'nzTabSPV3.dat',
-    'shift_nz': True,
+
+    'shift_nz': False,  # ! are vincenzo's kernels shifted?? it looks like they are not
+    'shift_nz_interpolation_kind': 'linear',
     'normalize_shifted_nz': True,
-    'nz_gaussian_smoothing': False,
+    'nz_gaussian_smoothing': False,  # does not seem to have a large effect...
     'nz_gaussian_smoothing_sigma': 2,
-    'compute_bnt_with_shifted_nz': False,
-    'include_ia_in_bnt_zcuts': False,
+    'compute_bnt_with_shifted_nz': False,  # ! let's test this
+    'include_ia_in_bnt_kernel_for_zcuts': False,
 
     'nuisance_folder': f'/Users/davide/Documents/Lavoro/Programmi/likelihood-mcmc-generator/input_files/SPV3',
     'nuisance_filename': 'nuiTabSPV3.dat',

@@ -366,24 +366,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_3x2pt_SS_10D = mm.covariance_SSC_einsum(cl_3x2pt_5D, rl_3x2pt_5D, s_ABCD_ijkl, fsky)
     print("SS cov. matrices computed in %.2f s with PySSC" % (time.perf_counter() - start))
 
-    # these are needed by PyCCL and exactSSC:
-    if SSC_code != 'PySSC':
-
-        probe_ssc_code = covariance_cfg[SSC_code + '_cfg']['probe']
-
-        if probe_ssc_code == 'LL':
-            ell_grid = ell_WL
-            ell_max = ell_max_WL
-        elif probe_ssc_code == 'GG':
-            ell_grid = ell_GC
-            ell_max = ell_max_GC
-        elif probe_ssc_code == '3x2pt':
-            ell_grid = ell_3x2pt
-            ell_max = ell_max_3x2pt
-        else:
-            raise ValueError(f'probe_ssc_code must be LL or GG or 3x2pt')
-        nbl_ssc_code = len(ell_grid)
-
     start_time = time.perf_counter()
     if SSC_code == 'exactSSC':
         warnings.warn('the name of this function should be changed...')
@@ -394,9 +376,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
 
     elif SSC_code == 'PyCCL':
-        cov_3x2pt_SS_10D = np.zeros(
-            (n_probes, n_probes, n_probes, n_probes, nbl_3x2pt, nbl_3x2pt, zbins, zbins, zbins, zbins))
-        for which_ng_cov in covariance_cfg['PyCCL_cfg']['which_ng_cov_list']:
+        cov_3x2pt_SS_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
+                                     nbl_3x2pt, nbl_3x2pt, zbins, zbins, zbins, zbins))
+        for which_ng_cov in covariance_cfg['PyCCL_cfg']['which_ng_cov']:
             cov_ng_ccl_3x2pt_10D_dict = get_cov_ng_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict)
             cov_3x2pt_SS_10D += mm.cov_10D_dict_to_array(cov_ng_ccl_3x2pt_10D_dict, nbl_3x2pt, zbins, n_probes)
             print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')

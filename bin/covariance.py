@@ -66,9 +66,9 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
     cov_filename = covariance_cfg['exactSSC_cfg']['cov_filename']
     cov_filename = cov_filename.format()
 
-    'cov_{which_ng_cov:s}_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'\
-                        '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'\
-                        '_convention{cl_integral_convention:s}.npy'
+    'cov_{which_ng_cov:s}_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}' \
+    '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}' \
+    '_convention{cl_integral_convention:s}.npy'
 
     general_suffix = f'nbl{nbl}_ellmax{ell_max}_zbins{zbins}_' \
                      f'zsteps{z_steps_sigma2}_k{k_txt_label}_convention{cl_integral_convention}'
@@ -169,16 +169,19 @@ def ssc_with_pyccl(general_cfg, covariance_cfg, ell_dict):
         raise NotImplementedError('This function is not yet implemented for LL or GG; take only a '
                                   'specific block of the 3x2pt covariance')
 
+    # TODO pre-format the covariance filename
+    warnings.warn('ell_max is for 3x2pt only, fix this')
+    covariance_cfg['PyCCL_cfg']['cov_filename'] = covariance_cfg['PyCCL_cfg']['cov_filename'].format(
+        which_ng_cov='{which_ng_cov:s}', probe_a='{probe_a:s}', probe_b='{probe_b:s}',
+        probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl, lmax=general_cfg['ell_max_GC'],
+        EP_or_ED=general_cfg['EP_or_ED'],
+        zbins=zbins)
+
     if covariance_cfg['PyCCL_cfg']['load_precomputed_cov']:
 
         # load SSC blocks in 4D and store them into a dictionary
         cov_path = covariance_cfg['PyCCL_cfg']['cov_path']
-        cov_filename = covariance_cfg['PyCCL_cfg']['cov_filename'].format(which_ng_cov=which_ng_cov,
-                                                                          probe_a='{probe_a:s}',
-                                                                          probe_b='{probe_b:s}',
-                                                                          probe_c='{probe_c:s}',
-                                                                          probe_d='{probe_d:s}')
-
+        cov_filename = covariance_cfg['PyCCL_cfg']['cov_filename']
         cov_ccl_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(cov_path, cov_filename, probe_ordering)
 
     else:
@@ -433,12 +436,14 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_WL_GO_4D = mm.cov_6D_to_4D(cov_WL_GO_6D, nbl_WL, zpairs_auto, ind_auto)
     cov_GC_GO_4D = mm.cov_6D_to_4D(cov_GC_GO_6D, nbl_GC, zpairs_auto, ind_auto)
     cov_WA_GO_4D = mm.cov_6D_to_4D(cov_WA_GO_6D, nbl_WA, zpairs_auto, ind_auto)
-    cov_3x2pt_GO_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GO_10D_dict, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
+    cov_3x2pt_GO_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GO_10D_dict, probe_ordering, nbl_3x2pt, zbins, ind.copy(),
+                                             GL_or_LG)
 
     cov_WL_GS_4D = mm.cov_6D_to_4D(cov_WL_GS_6D, nbl_WL, zpairs_auto, ind_auto)
     cov_GC_GS_4D = mm.cov_6D_to_4D(cov_GC_GS_6D, nbl_GC, zpairs_auto, ind_auto)
     cov_WA_GS_4D = mm.cov_6D_to_4D(cov_WA_GS_6D, nbl_WA, zpairs_auto, ind_auto)
-    cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GS_10D_dict, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
+    cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GS_10D_dict, probe_ordering, nbl_3x2pt, zbins, ind.copy(),
+                                             GL_or_LG)
     print('covariance matrices reshaped (6D -> 4D) in {:.2f} s'.format(time.perf_counter() - start))
 
     # ! ========================= plug the 4D covariances into the pipeline ============================================

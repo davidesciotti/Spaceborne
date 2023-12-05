@@ -54,11 +54,11 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 # https://ccl.readthedocs.io/en/latest/api/pyccl.halos.halo_model.html?highlight=halomod_Tk3D_SSC#pyccl.halos.halo_model.halomod_Tk3D_SSC)
 # 🐛 bug fixed: normprof shoud be True
 # 🐛 bug fixed?: p_of_k_a=None instead of Pk
-def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p_of_k_a):
+def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p_of_k_a, which_pk):
     use_hod_for_gg = pyccl_cfg['use_HOD_for_GCph']
     z_grid_tkka = np.linspace(pyccl_cfg['z_grid_tkka_min'], pyccl_cfg['z_grid_tkka_max'],
                               pyccl_cfg['z_grid_tkka_steps'])
-    a_grid_increasing_for_ttka = cosmo_lib.z_to_a(z_grid_tkka)[::-1]
+    a_grid_increasing_for_ttka = cosmo_lib.z_to_a(z_grid_tkka)[::-1][::2]
 
     # from https://github.com/LSSTDESC/CCL/blob/4df2a29eca58d7cd171bc1986e059fd35f425d45/benchmarks/test_covariances.py
     # see also https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/tools/covariance_NG.py#L282
@@ -130,12 +130,16 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p
                                                   lk_arr=None, a_arr=a_grid_increasing_for_ttka,
                                                   **p_of_k_a_arg)
 
+    print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
+    if pyccl_cfg['save_trispectrum']:
+        trispectrum_filename = pyccl_cfg['trispectrum_filename'].format(which_ng_cov=which_ng_cov, which_pk=which_pk)
+        mm.save_pickle(trispectrum_filename, tkka_dict)
+
     # TODO pass lk_arr?
     # TODO do they interpolate existing tracer arrays?
     # TODO spline for SSC...
     # TODO update to halomod_Tk3D_cNG with pyccl v3.0.0
 
-    print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
     return tkka_dict
 
 
@@ -144,12 +148,8 @@ def compute_ng_cov_ccl(cosmo, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka,
     zpairs_AB = ind_AB.shape[0]
     zpairs_CD = ind_CD.shape[0]
     nbl = len(ell)
-    zbins = len(kernel_A)
-
-    # TODO switch off the integration method and see if it crashes
 
     start_time = time.perf_counter()
-
     # switch between the two functions, which are identical except for the sigma2_B argument
     func_map = {
         'SSC': 'angular_cl_cov_SSC',
@@ -183,8 +183,8 @@ def compute_ng_cov_ccl(cosmo, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka,
     return cov_ng_4D
 
 
-def compute_3x2pt_PyCCL(cosmo, kernel_dict, ell, tkka_dict, f_sky, integration_method,
-                        probe_ordering, ind_dict, covariance_cfg, output_4D_array):
+def compute_ng_cov_3x2pt(cosmo, kernel_dict, ell, tkka_dict, f_sky, integration_method,
+                         probe_ordering, ind_dict, covariance_cfg, output_4D_array):
     cov_ng_3x2pt_dict_8D = {}
 
     which_ng_cov = covariance_cfg['PyCCL_cfg']['which_ng_cov']
@@ -416,8 +416,9 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     }
 
     # ! =============================================== compute covs ===============================================
-
-    tkka_dict = initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p_of_k_a=None)
+    which_pk = fiducial_pars_dict['other_params']['camb_extra_parameters']['camb']['halofit_version']
+    tkka_dict = initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p_of_k_a=None,
+                                       which_pk=which_pk)
 
     if probe in ['LL', 'GG']:
 
@@ -443,15 +444,15 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     elif probe == '3x2pt':
         # TODO remove this if statement and use the same code for all probes
-        cov_ng_4D = compute_3x2pt_PyCCL(cosmo=cosmo_ccl,
-                                        kernel_dict=kernel_dict,
-                                        ell=ell_grid, tkka_dict=tkka_dict, f_sky=f_sky,
-                                        probe_ordering=probe_ordering,
-                                        ind_dict=ind_dict,
-                                        output_4D_array=get_3x2pt_cov_in_4D,
-                                        covariance_cfg=covariance_cfg,
-                                        integration_method=integration_method_dict[probe][which_ng_cov],
-                                        )
+        cov_ng_4D = compute_ng_cov_3x2pt(cosmo=cosmo_ccl,
+                                         kernel_dict=kernel_dict,
+                                         ell=ell_grid, tkka_dict=tkka_dict, f_sky=f_sky,
+                                         probe_ordering=probe_ordering,
+                                         ind_dict=ind_dict,
+                                         output_4D_array=get_3x2pt_cov_in_4D,
+                                         covariance_cfg=covariance_cfg,
+                                         integration_method=integration_method_dict[probe][which_ng_cov],
+                                         )
 
     else:
         raise ValueError('probe must be either LL, GG, or 3x2pt')

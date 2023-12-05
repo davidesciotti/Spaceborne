@@ -188,8 +188,14 @@ covariance_cfg = {
         'load_precomputed_cov': False,
         'cov_path': '/Users/davide/Documents/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
                     '/output/Flagship_2/covmat/PyCCL',
-        'cov_filename': 'cov_{which_ng_cov:s}_pyccl_4D_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}.npz',
+        # 'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
+        #                 'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',
+        'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npz',
+        'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
+
         'save_cov': True,
+        'save_trispectrum': True,
+
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
@@ -200,7 +206,7 @@ covariance_cfg = {
         'z_grid_max': 3,
         'z_grid_steps': 1000,
         'n_samples_wf': 1000,
-        'bias_model': 'step-wise',
+        'bias_model': 'polynomial',  # TODO this is not used at the momen (for SPV3)
     },
 
     'exactSSC_cfg': {
@@ -209,7 +215,7 @@ covariance_cfg = {
 
         # in this case it is only possible to load precomputed arraya, I have to compute the integral with Julia
         'cov_path': '/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia',
-        'cov_filename': 'cov_{which_ng_cov:s}_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
+        'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
                         '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'
                         '_convention{cl_integral_convention:s}.npy',
 

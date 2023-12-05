@@ -644,6 +644,7 @@ z_means_gg_vin = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_galaxy_vin)
 z_means_ll_vin_bnt = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_ll_vin_bnt)
 
 # plot_kernels_for_thesis()
+
 # # check that the z means are close (within 5%)
 # np.testing.assert_allclose(z_means_ll, z_means_ll_vin, rtol=1e-2, atol=0,
 #                            err_msg='z means computed w/ my vs vincenzo kernels don\'t match')

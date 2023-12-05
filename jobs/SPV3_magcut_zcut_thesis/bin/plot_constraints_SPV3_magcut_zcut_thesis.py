@@ -95,7 +95,7 @@ which_cuts = 'Vincenzo'
 whose_FM_list = ('davide',)
 kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
 
-cov_ng_list = ['G', 'GSSC']
+which_cov_term_list = ['G', 'GSSCcNG']
 BNT_transform_list = [False, ]
 center_or_min_list = ['center']
 kmax_h_over_Mpc_list = (general_cfg['kmax_h_over_Mpc_list'][0],)
@@ -133,7 +133,7 @@ assert not use_Wadd, 'import of Wadd not implemented yet'
 fm_uncert_df = pd.DataFrame()
 
 for BNT_transform in BNT_transform_list:
-    for which_cov_term in cov_ng_list:
+    for which_cov_term in which_cov_term_list:
         for which_pk in which_pk_list:
             for ell_cuts in ell_cuts_list:
                 for kmax_counter, kmax_h_over_Mpc in enumerate(kmax_h_over_Mpc_list):
@@ -159,7 +159,6 @@ for BNT_transform in BNT_transform_list:
                                         fm_path = f'{fm_root_path}/BNT_{BNT_transform}/ell_cuts_{ell_cuts}'
                                         fm_pickle_name = f'FM_zbins{EP_or_ED}{zbins}_' \
                                                          f'ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_{specs_str}_pk{which_pk}.pickle'
-                                        print(fm_pickle_name)
 
                                         if ell_cuts:
                                             fm_path += f'/{which_cuts}/ell_{center_or_min}'
@@ -323,7 +322,8 @@ fm_uncert_df_toplot = fm_uncert_df[
     (fm_uncert_df['center_or_min'] == center_or_min_plt)
     ]
 
-fm_uncert_df_toplot = compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G', 'GSSC')
+fm_uncert_df_toplot = compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', which_cov_term_list[0],
+                                      which_cov_term_list[1])
 
 data = fm_uncert_df_toplot.iloc[:, len(string_columns):].values
 label_list = list(fm_uncert_df_toplot['which_cov_term'].values)
@@ -334,7 +334,7 @@ if include_fom:
 data = data[:, :num_params_tokeep]
 
 ylabel = f'relative uncertainty [%]'
-plot_utils.bar_plot(data, '3x2pt, G + SSC', label_list, bar_width=0.2, nparams=num_params_tokeep,
+plot_utils.bar_plot(data, f'3x2pt, {which_cov_term_list[1]}', label_list, bar_width=0.2, nparams=num_params_tokeep,
                     param_names_label=None,
                     second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
                     include_fom=include_fom, figsize=(10, 8))
@@ -567,7 +567,7 @@ go_gs_df = fm_uncert_df[
     (fm_uncert_df['center_or_min'] == center_or_min_plt)
     ]
 
-go_gs_df = compare_df_keys(go_gs_df, 'which_cov_term', 'G', 'GSSC')
+go_gs_df = compare_df_keys(go_gs_df, 'which_cov_term', which_cov_term_list[0], which_cov_term_list[1])
 
 cosmo_params_tex_plusfom = cosmo_params_tex + ['FoM']
 plt.figure()

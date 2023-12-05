@@ -30,6 +30,30 @@ import config_SPV3_magcut_zcut_thesis as cfg
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 mpl.use('Qt5Agg')
 
+
+def compare_df_keys(dataframe, key_to_compare, value_a, value_b):
+    """
+    This function compares two rows of a dataframe and returns a new row with the percentage difference between the two
+    :param dataframe:
+    :param key_to_compare:
+    :param value_a:
+    :param value_b:
+    :return:
+    """
+    df_A = dataframe[dataframe[key_to_compare] == value_a]
+    df_B = dataframe[dataframe[key_to_compare] == value_b]
+    arr_A = df_A.iloc[:, len(string_columns):].select_dtypes('number').values
+    arr_B = df_B.iloc[:, len(string_columns):].select_dtypes('number').values
+    perc_diff_df = df_A.copy()
+    # ! the reference is G, this might change to G + SSC + cNG
+    perc_diff_df.iloc[:, len(string_columns):] = mm.percent_diff(arr_B, arr_A)
+    perc_diff_df[key_to_compare] = 'perc_diff'
+    perc_diff_df['FoM'] = -perc_diff_df['FoM']  # ! abs? minus??
+    dataframe = pd.concat([dataframe, perc_diff_df], axis=0, ignore_index=True)
+    dataframe = dataframe.drop_duplicates()
+    return dataframe
+
+
 general_cfg = cfg.general_cfg
 FM_cfg = cfg.FM_cfg
 h_over_mpc_tex = mpl_cfg.h_over_mpc_tex
@@ -74,7 +98,7 @@ kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are i
 go_or_gs_list = ['GO', 'GS']
 BNT_transform_list = [False, ]
 center_or_min_list = ['center']
-kmax_h_over_Mpc_list = (general_cfg['kmax_h_over_Mpc_list'][0], )
+kmax_h_over_Mpc_list = (general_cfg['kmax_h_over_Mpc_list'][0],)
 # kmax_1_over_Mpc_vinc_str_list = ['025', '050', '075', '100', '125', '150', '175', '200', '300',
 #                                  '500', '1000', '1500', '2000']
 # kmax_1_over_Mpc_vinc_list = [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00, 15.00, 20.00]
@@ -134,13 +158,13 @@ for BNT_transform in BNT_transform_list:
                                     if whose_FM == 'davide':
                                         fm_path = f'{fm_root_path}/BNT_{BNT_transform}/ell_cuts_{ell_cuts}'
                                         fm_pickle_name = f'FM_zbins{EP_or_ED}{zbins}_' \
-                                                  f'ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_{specs_str}_pk{which_pk}.pickle'
+                                                         f'ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_{specs_str}_pk{which_pk}.pickle'
                                         print(fm_pickle_name)
 
                                         if ell_cuts:
                                             fm_path += f'/{which_cuts}/ell_{center_or_min}'
                                             fm_pickle_name = fm_pickle_name.replace(f'.pickle',
-                                                                      f'_kmaxhoverMpc{kmax_h_over_Mpc:.03f}.pickle')
+                                                                                    f'_kmaxhoverMpc{kmax_h_over_Mpc:.03f}.pickle')
 
                                         fm_dict = mm.load_pickle(f'{fm_path}/{fm_pickle_name}')
 
@@ -299,19 +323,7 @@ fm_uncert_df_toplot = fm_uncert_df[
     (fm_uncert_df['center_or_min'] == center_or_min_plt)
     ]
 
-key_to_compare = 'go_or_gs'
-value_A = 'GO'
-value_B = 'GS'
-df_A = fm_uncert_df_toplot[fm_uncert_df_toplot[key_to_compare] == value_A]
-df_B = fm_uncert_df_toplot[fm_uncert_df_toplot[key_to_compare] == value_B]
-arr_A = df_A.iloc[:, len(string_columns):].select_dtypes('number').values
-arr_B = df_B.iloc[:, len(string_columns):].select_dtypes('number').values
-perc_diff_df = df_A.copy()
-perc_diff_df.iloc[:, len(string_columns):] = mm.percent_diff(arr_B, arr_A)  # ! the reference is GO!!
-perc_diff_df[key_to_compare] = 'perc_diff'
-perc_diff_df['FoM'] = -perc_diff_df['FoM']  # ! abs? minus??
-fm_uncert_df_toplot = pd.concat([fm_uncert_df_toplot, perc_diff_df], axis=0, ignore_index=True)
-fm_uncert_df_toplot = fm_uncert_df_toplot.drop_duplicates()
+fm_uncert_df_toplot = compare_df_keys(fm_uncert_df_toplot, 'go_or_gs', 'GO', 'GS')
 
 data = fm_uncert_df_toplot.iloc[:, len(string_columns):].values
 label_list = list(fm_uncert_df_toplot['go_or_gs'].values)
@@ -322,7 +334,8 @@ if include_fom:
 data = data[:, :num_params_tokeep]
 
 ylabel = f'relative uncertainty [%]'
-plot_utils.bar_plot(data, '3x2pt, G + SSC', label_list, bar_width=0.2, nparams=num_params_tokeep, param_names_label=None,
+plot_utils.bar_plot(data, '3x2pt, G + SSC', label_list, bar_width=0.2, nparams=num_params_tokeep,
+                    param_names_label=None,
                     second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
                     include_fom=include_fom, figsize=(10, 8))
 # plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GOGS_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)
@@ -554,19 +567,7 @@ go_gs_df = fm_uncert_df[
     (fm_uncert_df['center_or_min'] == center_or_min_plt)
     ]
 
-key_to_compare = 'go_or_gs'
-value_A = 'GO'
-value_B = 'GS'
-df_A = go_gs_df[go_gs_df[key_to_compare] == value_A]
-df_B = go_gs_df[go_gs_df[key_to_compare] == value_B]
-arr_A = df_A.iloc[:, len(string_columns):].select_dtypes('number').values
-arr_B = df_B.iloc[:, len(string_columns):].select_dtypes('number').values
-perc_diff_df = df_A.copy()
-perc_diff_df.iloc[:, len(string_columns):] = mm.percent_diff(arr_B, arr_A)  # ! the reference is GO!!
-perc_diff_df[key_to_compare] = 'perc_diff'
-perc_diff_df['FoM'] = -perc_diff_df['FoM']  # ! abs? minus??
-go_gs_df = pd.concat([go_gs_df, perc_diff_df], axis=0, ignore_index=True)
-go_gs_df = go_gs_df.drop_duplicates()
+go_gs_df = compare_df_keys(go_gs_df, 'go_or_gs', 'GO', 'GS')
 
 cosmo_params_tex_plusfom = cosmo_params_tex + ['FoM']
 plt.figure()

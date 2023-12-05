@@ -201,7 +201,7 @@ covariance_cfg = {
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         'z_grid_tkka_min': 0.001,
         'z_grid_tkka_max': 3,
-        'z_grid_tkka_steps': 500,
+        'z_grid_tkka_steps': 200,
         'z_grid_min': 0.001,
         'z_grid_max': 3,
         'z_grid_steps': 1000,
@@ -213,7 +213,7 @@ covariance_cfg = {
         'probe': '3x2pt',
         'which_ng_cov': 'SSC',  # only 'SSC' available in this case
 
-        # in this case it is only possible to load precomputed arraya, I have to compute the integral with Julia
+        # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
         'cov_path': '/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia',
         'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
                         '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'

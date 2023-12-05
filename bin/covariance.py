@@ -154,12 +154,12 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
         raise ValueError('probe must be LL or GG or 3x2pt')
 
 
-def ssc_with_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict):
-    print('computing SSC covariance with PyCCL')
+def get_cov_ng_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict):
+    print(f'computing {which_ng_cov} covariance with PyCCL')
 
     probe = covariance_cfg['PyCCL_cfg']['probe']
     zbins = general_cfg['zbins']
-    _, nbl = get_ellmax_nbl(probe, general_cfg)
+    ellmax, nbl = get_ellmax_nbl(probe, general_cfg)
     ell_grid = ell_dict['ell_' + probe_names_dict[probe]]
     probe_ordering = covariance_cfg['probe_ordering']
     ind_dict = covariance_cfg['ind_dict']
@@ -169,10 +169,9 @@ def ssc_with_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict):
                                   'specific block of the 3x2pt covariance')
 
     # pre-format covariance filename and store it in the covariance_cfg dictionary
-    warnings.warn('ell_max is for 3x2pt only, fix this')
     covariance_cfg['PyCCL_cfg']['cov_filename'] = covariance_cfg['PyCCL_cfg']['cov_filename'].format(
         which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
-        probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl, lmax=general_cfg['ell_max_GC'],
+        probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl, lmax=ellmax,
         EP_or_ED=general_cfg['EP_or_ED'],
         zbins=zbins)
 
@@ -391,18 +390,20 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_exactSSC_SS_dict_10D = ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d')
         cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_exactSSC_SS_dict_10D, nbl_3x2pt, zbins, n_probes)
 
-    elif SSC_code == 'PyCCL':
-        cov_3x2pt_SS_10D = np.zeros((n_probes, n_probes, n_probes, n_probes, nbl_3x2pt, nbl_3x2pt, zbins, zbins, zbins, zbins))
-        for which_ng_cov in covariance_cfg['PyCCL_cfg']['which_ng_cov_list']:
-            cov_ccl_3x2pt_dict_10D = ssc_with_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict)
-            cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_ccl_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
+        which_ng_cov = covariance_cfg[SSC_code + '_cfg']['which_ng_cov']
+        print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
 
+    elif SSC_code == 'PyCCL':
+        cov_3x2pt_SS_10D = np.zeros(
+            (n_probes, n_probes, n_probes, n_probes, nbl_3x2pt, nbl_3x2pt, zbins, zbins, zbins, zbins))
+        for which_ng_cov in covariance_cfg['PyCCL_cfg']['which_ng_cov_list']:
+            cov_ng_ccl_3x2pt_10D_dict = get_cov_ng_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict)
+            cov_3x2pt_SS_10D += mm.cov_10D_dict_to_array(cov_ng_ccl_3x2pt_10D_dict, nbl_3x2pt, zbins, n_probes)
+            print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
 
     elif SSC_code not in ('PySSC', 'PyCCL', 'exactSSC'):
         raise ValueError('covariance_cfg["SSC_code"] must be PySSC or PyCCL or exactSSC')
 
-    print(f'{covariance_cfg[SSC_code + "_cfg"]["which_ng_cov"]} covariance computed with {SSC_code} in '
-          f'{(time.perf_counter() - start_time):.2f} s')
 
     # sum GO and SS in 6D (or 10D), not in 4D (it's the same)
     cov_WL_GS_6D = cov_WL_GO_6D + cov_WL_SS_6D

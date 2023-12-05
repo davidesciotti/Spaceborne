@@ -76,7 +76,7 @@ include_fom = True
 fid_shear_bias_prior = 5e-4
 shear_bias_prior = fid_shear_bias_prior
 gal_bias_perc_prior = None  # ! not quite sure this works properly...
-string_columns = ['probe', 'go_or_gs', 'whose_FM', 'which_pk', 'BNT_transform', 'ell_cuts', 'which_cuts',
+string_columns = ['probe', 'which_cov_term', 'whose_FM', 'which_pk', 'BNT_transform', 'ell_cuts', 'which_cuts',
                   'center_or_min', 'fix_dz', 'fix_shear_bias', 'foc', 'kmax_h_over_Mpc']
 triangle_plot = False
 use_Wadd = False  # the difference is extremely small
@@ -95,7 +95,7 @@ which_cuts = 'Vincenzo'
 whose_FM_list = ('davide',)
 kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
 
-go_or_gs_list = ['GO', 'GS']
+cov_ng_list = ['G', 'GSSC']
 BNT_transform_list = [False, ]
 center_or_min_list = ['center']
 kmax_h_over_Mpc_list = (general_cfg['kmax_h_over_Mpc_list'][0],)
@@ -133,7 +133,7 @@ assert not use_Wadd, 'import of Wadd not implemented yet'
 fm_uncert_df = pd.DataFrame()
 
 for BNT_transform in BNT_transform_list:
-    for go_or_gs in go_or_gs_list:
+    for which_cov_term in cov_ng_list:
         for which_pk in which_pk_list:
             for ell_cuts in ell_cuts_list:
                 for kmax_counter, kmax_h_over_Mpc in enumerate(kmax_h_over_Mpc_list):
@@ -150,8 +150,8 @@ for BNT_transform in BNT_transform_list:
                                     elif BNT_transform is True:
                                         ell_cuts = True
 
-                                    if go_or_gs == 'GS':
-                                        which_pk = 'HMCodebar'  # GS is only availane in this case
+                                    if which_cov_term == 'GSSC':
+                                        which_pk = 'HMCodebar'  # GSSC is only availane in this case
 
                                     names_params_to_fix = []
 
@@ -168,7 +168,7 @@ for BNT_transform in BNT_transform_list:
 
                                         fm_dict = mm.load_pickle(f'{fm_path}/{fm_pickle_name}')
 
-                                        fm = fm_dict[f'FM_{probe}_{go_or_gs}']
+                                        fm = fm_dict[f'FM_{probe}_{which_cov_term}']
 
                                     elif whose_FM == 'vincenzo':
 
@@ -249,7 +249,7 @@ for BNT_transform in BNT_transform_list:
 
                                     # ! triangle plot
                                     if triangle_plot:
-                                        if probe == '3x2pt' and go_or_gs == 'GS' and fix_shear_bias == False:
+                                        if probe == '3x2pt' and which_cov_term == 'GSSC' and fix_shear_bias == False:
                                             # decide params to show in the triangle plot
                                             shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in
                                                                       range(zbins)]
@@ -278,7 +278,7 @@ for BNT_transform in BNT_transform_list:
                                     # ! this piece of code is for the foc of the different cases
                                     correlation = mm.correlation_from_covariance(np.linalg.inv(fm))[:7, :7]
                                     foc = mm.figure_of_correlation(correlation)
-                                    if plor_corr_matrix and go_or_gs == 'GO' and BNT_transform is False and \
+                                    if plor_corr_matrix and which_cov_term == 'G' and BNT_transform is False and \
                                             ell_cuts is False and fix_dz is True and fix_shear_bias is False and \
                                             kmax_h_over_Mpc == kmax_h_over_Mpc_list[-1] and which_pk:
                                         correlation_dict[which_pk] = correlation
@@ -290,7 +290,7 @@ for BNT_transform in BNT_transform_list:
                                     # this is a list of lists just to have a 'row list' instead of a 'column list',
                                     # I still haven't figured out the problem, but in this way it works
                                     df_columns_values = [
-                                        [probe, go_or_gs, whose_FM, which_pk, BNT_transform, ell_cuts, which_cuts,
+                                        [probe, which_cov_term, whose_FM, which_pk, BNT_transform, ell_cuts, which_cuts,
                                          center_or_min, fix_dz, fix_shear_bias, foc, kmax_h_over_Mpc] +
                                         uncert_fm.tolist() + [fom]]
 
@@ -323,10 +323,10 @@ fm_uncert_df_toplot = fm_uncert_df[
     (fm_uncert_df['center_or_min'] == center_or_min_plt)
     ]
 
-fm_uncert_df_toplot = compare_df_keys(fm_uncert_df_toplot, 'go_or_gs', 'GO', 'GS')
+fm_uncert_df_toplot = compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G', 'GSSC')
 
 data = fm_uncert_df_toplot.iloc[:, len(string_columns):].values
-label_list = list(fm_uncert_df_toplot['go_or_gs'].values)
+label_list = list(fm_uncert_df_toplot['which_cov_term'].values)
 label_list = ['None' if value is None else value for value in label_list]
 
 if include_fom:
@@ -338,7 +338,7 @@ plot_utils.bar_plot(data, '3x2pt, G + SSC', label_list, bar_width=0.2, nparams=n
                     param_names_label=None,
                     second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
                     include_fom=include_fom, figsize=(10, 8))
-# plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GOGS_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)
+# plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GGSSC_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)
 
 
 mm.plot_correlation_matrix(correlation_dict['HMCode2020'] / correlation_dict['TakaBird'], cosmo_params_tex,
@@ -361,7 +361,7 @@ mm.matshow(diff, log=True, title=f'difference between ell_cuts True, kmax = {kma
 probe_toplot = '3x2pt'
 reduced_df = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
-    (fm_uncert_df['go_or_gs'] == 'GO') &
+    (fm_uncert_df['which_cov_term'] == 'G') &
     (fm_uncert_df['whose_FM'] == 'davide') &
     (fm_uncert_df['which_pk'] == pk_ref) &
     (fm_uncert_df['BNT_transform'] == True) &
@@ -385,7 +385,7 @@ fom_dz_true_sb_true = reduced_df[(reduced_df['fix_dz'] == True) &
 # add FoM for no ell cuts case
 fom_noellcuts = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
-    (fm_uncert_df['go_or_gs'] == 'GO') &
+    (fm_uncert_df['which_cov_term'] == 'G') &
     (fm_uncert_df['whose_FM'] == 'davide') &
     (fm_uncert_df['which_pk'] == pk_ref) &
     (fm_uncert_df['BNT_transform'] == False) &
@@ -437,7 +437,7 @@ center_or_min = 'center'
 # choose what to plot
 cosmo_params_df_dav = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
-    (fm_uncert_df['go_or_gs'] == 'GO') &
+    (fm_uncert_df['which_cov_term'] == 'G') &
     (fm_uncert_df['whose_FM'] == 'davide') &
     (fm_uncert_df['BNT_transform'] == BNT_transform) &
     (fm_uncert_df['ell_cuts'] == ell_cuts) &
@@ -468,7 +468,7 @@ param_toplot = 'FoM'
 # choose what to plot
 cosmo_params_df_dav = fm_uncert_df[
     (fm_uncert_df['probe'] == '3x2pt') &
-    (fm_uncert_df['go_or_gs'] == 'GO') &
+    (fm_uncert_df['which_cov_term'] == 'G') &
     (fm_uncert_df['whose_FM'] == 'davide') &
     (fm_uncert_df['fix_dz'] == True) &
     (fm_uncert_df['fix_shear_bias'] == False) &
@@ -567,12 +567,12 @@ go_gs_df = fm_uncert_df[
     (fm_uncert_df['center_or_min'] == center_or_min_plt)
     ]
 
-go_gs_df = compare_df_keys(go_gs_df, 'go_or_gs', 'GO', 'GS')
+go_gs_df = compare_df_keys(go_gs_df, 'which_cov_term', 'G', 'GSSC')
 
 cosmo_params_tex_plusfom = cosmo_params_tex + ['FoM']
 plt.figure()
 for i, param in enumerate(params_toplot):
-    plt.plot(kmax_h_over_Mpc_list, go_gs_df[go_gs_df['go_or_gs'] == 'perc_diff'][param].values,
+    plt.plot(kmax_h_over_Mpc_list, go_gs_df[go_gs_df['which_cov_term'] == 'perc_diff'][param].values,
              label=f'{cosmo_params_tex_plusfom[i]}', marker='o')
 plt.ylabel(f'perc_diff {probe_toplot}')
 plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')

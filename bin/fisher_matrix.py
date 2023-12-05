@@ -341,7 +341,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     FM_dict = {}
     if covariance_cfg['compute_SSC']:
         for probe_name, FM_GO, FM_GS in zip(probe_names, FMs_GO, FMs_GS):
-            FM_dict[f'FM_{probe_name}_GO'] = FM_GO
+            FM_dict[f'FM_{probe_name}_G'] = FM_GO
             FM_dict[f'FM_{probe_name}_G{which_ng_cov_suffix}'] = FM_GS
     else:
         for probe_name, FM_GO in zip(probe_names, FMs_GO):
@@ -369,16 +369,18 @@ def save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=False, save_dict=
     ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
     nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
 
-    # there is no SSC-only Fisher!
-    if 'SS' in cases_tosave:
-        cases_tosave.remove('SS')
 
-    if save_txt:
-        for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
-            for which_cov in cases_tosave:
-                FM_txt_filename = FM_cfg['FM_txt_filename'].format(probe=probe, which_cov=which_cov, ell_max=ell_max,
-                                                                   nbl=nbl, **save_specs)
-                np.savetxt(f'{fm_folder}/{FM_txt_filename}.txt', FM_dict[f'FM_{probe}_{which_cov}'])
+    # TODO deprecate cases_tosave
+    # TODO deprecate this, do I really need to save the different FM in txt format?
+    # if save_txt:
+    #     # there is no SSC-only Fisher!
+    #     if 'SS' in cases_tosave:
+    #         cases_tosave.remove('SS')
+    #     for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
+    #         for which_cov in cases_tosave:
+    #             FM_txt_filename = FM_cfg['FM_txt_filename'].format(probe=probe, which_cov=which_cov, ell_max=ell_max,
+    #                                                                nbl=nbl, **save_specs)
+    #             np.savetxt(f'{fm_folder}/{FM_txt_filename}.txt', FM_dict[f'FM_{probe}_{which_cov}'])
 
     if save_dict:
         FM_dict_filename = FM_cfg['FM_dict_filename'].format(**save_specs)
@@ -388,7 +390,7 @@ def save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=False, save_dict=
         print('No Fisher matrix saved')
         pass
 
-# old way to compute the FM, slow
+# old way to compute the FM, slow - legacy code
 # # COMPUTE FM GO
 # FM_WL_GO = mm.compute_FM_2D(nbl_WL, zpairs_auto, nparams_tot, cov_WL_GO_2D_inv, dC_LL_2D)
 # FM_GC_GO = mm.compute_FM_2D(nbl_GC, zpairs_auto, nparams_tot, cov_GC_GO_2D_inv, dC_GG_2D)

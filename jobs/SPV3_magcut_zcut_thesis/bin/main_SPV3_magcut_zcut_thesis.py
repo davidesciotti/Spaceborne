@@ -294,8 +294,9 @@ def plot_kernels_for_thesis():
         plt.plot(zgrid_wf_vin, wf_ll_vin[:, zi], ls=':', label='$z_{%d}$' % (zi + 1), c=colors[zi], alpha=0.6)
         plt.plot(zgrid_wf_vin, wf_ll_vin_bnt[:, zi], ls=':', c=colors[zi], alpha=0.6)
 
-    plt.title(f'interpolation_kind {interpolation_kind}, use_ia {use_ia}, sigma_gauss {sigma_gaussian_filter}\n'
-              f'shift_dz {shift_dz}')
+    plt.title(f'interpolation_kind {interpolation_kind}, use_ia {covariance_cfg["include_ia_in_bnt_zcuts"]}, '
+              f'sigma_gauss {covariance_cfg["nz_gaussian_smoothing_sigma"]}\n'
+              f'shift_dz {covariance_cfg["shift_nz"]}')
     plt.xlabel('$z$')
     plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
 
@@ -383,7 +384,6 @@ assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \
 
 assert magcut_lens == 245, 'magcut_lens must be 245: the yaml file with the fiducial params is for magcut 245'
 assert magcut_source == 245, 'magcut_source must be 245: the yaml file with the fiducial params is for magcut 245'
-
 
 warnings.warn('find a better way to treat with the various ng covariances')
 # which cases to save: GO, GS or GO, GS and SS
@@ -478,7 +478,7 @@ pp.pprint(variable_specs)
 # import nuisance, to get fiducials and to shift the distribution
 nuisance_tab = np.genfromtxt(f'{covariance_cfg["nuisance_folder"]}/{covariance_cfg["nuisance_filename"]}')
 # this is not exactly equal to the result of wf_cl_lib.get_z_mean...
-z_means = nuisance_tab[:,0]
+z_means = nuisance_tab[:, 0]
 covariance_cfg['ng'] = nuisance_tab[:, 1]
 dzWL_fiducial = nuisance_tab[:, 4]
 dzGC_fiducial = nuisance_tab[:, 4]
@@ -513,23 +513,20 @@ zgrid_nz = n_of_z[:, 0]
 n_of_z = n_of_z[:, 1:]
 n_of_z_original = n_of_z
 
+warnings.warn('move all of these to the config file')
 interpolation_kind = 'linear'
-gaussian_smoothing = False  # does not seem to have a large effect...
-sigma_gaussian_filter = 2
-shift_dz = False  # ! are vincenzo's kernels shifted?? it looks like they are not
-normalize_shifted_nz = True
-compute_bnt_with_shifted_nz = False  # ! let's test this
-use_ia = False
 whose_wf = 'davide'  # TODO 'vincenzo' or 'davide'. whose wf you want to use to compute the z mean for the ell cuts
 
-assert shift_dz is False, 'We compute the BNT just for a simple case: no IA, no shift. This is because we want' \
-                          'to compute the z means'
-assert use_ia is False, 'We compute the BNT just for a simple case: no IA, no shift. This is because we want' \
-                        'to compute the z means'
-
+assert covariance_cfg[
+           'compute_bnt_with_shifted_nz'] is False, 'We compute the BNT just for a simple case: no IA, no shift. This is because we want' \
+                                                    'to compute the z means'
+assert covariance_cfg[
+           'include_ia_in_bnt_zcuts'] is False, 'We compute the BNT just for a simple case: no IA, no shift. This is because we want' \
+                                                'to compute the z means'
 
 # ! apply a Gaussian filter
-if gaussian_smoothing:
+if covariance_cfg['nz_gaussian_smoothing']:
+    sigma_gaussian_filter = covariance_cfg['nz_gaussian_smoothing_sigma']
     print(f'Applying a Gaussian filter of sigma = {sigma_gaussian_filter} to the n(z)')
     n_of_z = gaussian_filter1d(n_of_z, sigma_gaussian_filter, axis=0)
     # plt.figure()
@@ -541,11 +538,13 @@ if gaussian_smoothing:
 n_of_z_bnt = n_of_z
 
 # ! shift it (plus, re-normalize it after the shift)
-if shift_dz:
-    n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z, dz_shifts, normalize=normalize_shifted_nz, plot_nz=False,
+# ! are vincenzo's kernels shifted?? it looks like they are not...
+if covariance_cfg['shift_nz']:
+    n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z, dz_shifts, normalize=covariance_cfg['normalize_shifted_nz'],
+                                plot_nz=False,
                                 interpolation_kind=interpolation_kind)
 
-if compute_bnt_with_shifted_nz:
+if covariance_cfg['compute_bnt_with_shifted_nz']:
     n_of_z_bnt = n_of_z
 
 BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z_bnt, cosmo_ccl=cosmo_ccl, plot_nz=False)
@@ -624,7 +623,7 @@ wf_lensing_ccl_bnt = (BNT_matrix @ wf_lensing_ccl_arr.T).T
 wf_lensing_vin_bnt = (BNT_matrix @ wf_lensing_vin.T).T
 
 # compute z means
-if use_ia:
+if covariance_cfg['include_ia_in_bnt_zcuts']:
     wf_ll_ccl = wf_lensing_ccl_arr
     wf_ll_ccl_bnt = wf_lensing_ccl_bnt
     wf_ll_vin = wf_lensing_vin
@@ -1044,7 +1043,6 @@ deriv_dict = {'dC_LL_4D': dC_LL_4D,
               'dC_WA_4D': dC_WA_4D,
               'dC_GG_4D': dC_GG_4D,
               'dC_3x2pt_6D': dC_3x2pt_6D}
-
 
 # ! compute and save fisher matrix
 FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict,

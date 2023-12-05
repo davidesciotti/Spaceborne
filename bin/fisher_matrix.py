@@ -359,14 +359,14 @@ def save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=False, save_dict=
 
     ell_max_WL = save_specs['ell_max_WL']
     ell_max_GC = save_specs['ell_max_GC']
-    ell_max_XC = save_specs['ell_max_XC']
+    ell_max_3x2pt = save_specs['ell_max_3x2pt']
     nbl_WL = save_specs['nbl_WL']
     nbl_GC = save_specs['nbl_GC']
     nbl_WA = save_specs['nbl_WA']
     nbl_3x2pt = save_specs['nbl_3x2pt']
 
     probe_list = ['WL', 'GC', '3x2pt', 'WA']
-    ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
+    ellmax_list = [ell_max_WL, ell_max_GC, ell_max_3x2pt, ell_max_WL]
     nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
 
 

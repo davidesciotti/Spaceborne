@@ -41,7 +41,7 @@ def get_ellmax_nbl(probe, general_cfg):
         ell_max = general_cfg['ell_max_GC']
         nbl = general_cfg['nbl_GC']
     elif probe == '3x2pt':
-        ell_max = general_cfg['ell_max_XC']
+        ell_max = general_cfg['ell_max_3x2pt']
         nbl = general_cfg['nbl_3x2pt']
     else:
         raise ValueError('probe must be LL or GG or 3x2pt')
@@ -210,7 +210,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     # import settings:
     ell_max_WL = general_cfg['ell_max_WL']
     ell_max_GC = general_cfg['ell_max_GC']
-    ell_max_3x2pt = general_cfg['ell_max_XC']
+    ell_max_3x2pt = general_cfg['ell_max_3x2pt']
     zbins = general_cfg['zbins']
     n_probes = general_cfg['n_probes']
     triu_tril = covariance_cfg['triu_tril']
@@ -662,7 +662,7 @@ def save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_spec
 
     ell_max_WL = variable_specs['ell_max_WL']
     ell_max_GC = variable_specs['ell_max_GC']
-    ell_max_XC = variable_specs['ell_max_XC']
+    ell_max_3x2pt = variable_specs['ell_max_3x2pt']
     nbl_WL = variable_specs['nbl_WL']
     nbl_GC = variable_specs['nbl_GC']
     nbl_3x2pt = variable_specs['nbl_3x2pt']
@@ -684,7 +684,7 @@ def save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_spec
 
             # set probes to save; the ndim == 6 case is different
             probe_list = ['WL', 'GC', '3x2pt', 'WA']
-            ellmax_list = [ell_max_WL, ell_max_GC, ell_max_XC, ell_max_WL]
+            ellmax_list = [ell_max_WL, ell_max_GC, ell_max_3x2pt, ell_max_WL]
             nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
             # in this case, 3x2pt is saved in 10D as a dictionary
             if ndim == 6:
@@ -705,7 +705,7 @@ def save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_spec
                 # TODO these pickle files are too heavy, probably it's best to revert to npz
                 if ndim == 6:
                     cov_3x2pt_filename = covariance_cfg['cov_filename'].format(which_cov=which_cov, probe='3x2pt',
-                                                                               ell_max=ell_max_XC, nbl=nbl_3x2pt,
+                                                                               ell_max=ell_max_3x2pt, nbl=nbl_3x2pt,
                                                                                ndim=10, **variable_specs)
                     with open(f'{cov_folder}/{cov_3x2pt_filename}.pickle', 'wb') as handle:
                         pickle.dump(cov_dict[f'cov_3x2pt_{which_cov}_10D'], handle)

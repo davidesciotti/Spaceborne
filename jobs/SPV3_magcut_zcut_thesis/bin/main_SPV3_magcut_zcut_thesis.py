@@ -336,7 +336,7 @@ zbins = general_cfg['zbins']
 EP_or_ED = general_cfg['EP_or_ED']
 ell_max_WL = general_cfg['ell_max_WL']
 ell_max_GC = general_cfg['ell_max_GC']
-ell_max_XC = general_cfg['ell_max_XC']
+ell_max_3x2pt = general_cfg['ell_max_3x2pt']
 magcut_source = general_cfg['magcut_source']
 magcut_lens = general_cfg['magcut_lens']
 zcut_source = general_cfg['zcut_source']
@@ -450,7 +450,7 @@ delta_dict = {'delta_l_WL': np.copy(delta_l_WL_nbl32[:nbl_WL]),
 assert (general_cfg['ell_max_WL_opt'],
         general_cfg['ell_max_WL'],
         general_cfg['ell_max_GC'],
-        general_cfg['ell_max_XC']) == (5000, 5000, 3000, 3000), \
+        general_cfg['ell_max_3x2pt']) == (5000, 5000, 3000, 3000), \
     'the number of bins defined in the config file is compatible with these ell_max values'
 
 nbl_WL_opt = general_cfg['nbl_WL_opt']
@@ -466,7 +466,7 @@ if ell_max_WL == general_cfg['ell_max_WL_opt']:
 variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_lens,
                   'zcut_lens': zcut_lens,
                   'magcut_source': magcut_source, 'zcut_source': zcut_source, 'zmax': zmax,
-                  'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_XC': ell_max_XC,
+                  'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_3x2pt': ell_max_3x2pt,
                   'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
                   'kmax_h_over_Mpc': kmax_h_over_Mpc, 'center_or_min': center_or_min,
                   'idIA': idIA, 'idB': idB, 'idM': idM, 'idR': idR, 'idBM': idBM,

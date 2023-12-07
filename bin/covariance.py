@@ -16,15 +16,10 @@ import cl_preprocessing
 import pyccl_cov
 import sigma2_SSC
 
-matplotlib.use('Qt5Agg')
-
-project_path_here = Path.cwd().parent.parent.parent
-sys.path.append(str(project_path_here.parent / 'common_lib'))
-import my_module as mm
-import cosmo_lib as csmlib
-
-sys.path.append(str(project_path_here.parent / 'cl_v2/bin'))
-import wf_cl_lib
+sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
+import common_lib.my_module as mm
+import common_lib.cosmo_lib as csmlib
+import common_lib.wf_cl_lib as wf_cl_lib
 
 ###############################################################################
 ################ CODE TO COMPUTE THE G AND SSC COVMATS ########################

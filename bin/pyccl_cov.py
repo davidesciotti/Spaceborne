@@ -116,7 +116,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p
     for row, (A, B) in enumerate(probe_ordering):
         for col, (C, D) in enumerate(probe_ordering):
             if col >= row:
-                print(f'Computing trispectrum for {which_ng_cov}, probe combination {A}{B}{C}{D}')
+                print(f'Computing trispectrum for {which_ng_cov}, npoints = {a_grid_increasing_for_ttka.size}, probe combination {A}{B}{C}{D}')
                 tkka_dict[A, B, C, D] = tkka_func(cosmo=cosmo_ccl, hmc=hmc,
                                                   prof=halo_profile_dict[A],
                                                   prof2=halo_profile_dict[B],
@@ -286,7 +286,6 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     gal_bias_tuple = (zgrid_nz, gal_bias_2d)
 
     # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
-    warnings.warn('the magnification bias must still be implemented, ccl uses s(z) and we have bM(z)...')
     mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(zgrid_nz, maglim=maglim, poly_fit_values=None)
     mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), zbins, axis=0).T
     mag_bias_tuple = (zgrid_nz, mag_bias_2d)

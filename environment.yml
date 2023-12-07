@@ -17,6 +17,7 @@ dependencies:
   - joblib
   - numba
   - pyyaml
+  - camb
   - pip:
     - chainconsumer 
     - getdist
@@ -24,5 +25,6 @@ dependencies:
     - array_to_latex
     - pynverse
     #- classy
-    - camb
     - ray
+    - PyQt5
+    - PySide2

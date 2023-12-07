@@ -8,8 +8,7 @@ import time
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import pyccl as ccl
-import type_enforced
+# import pyccl as ccl
 import yaml
 from joblib import Parallel, delayed
 from matplotlib import cm
@@ -874,7 +873,6 @@ def wf_lensing_ccl(z_grid, which_wf, cosmo, fid_pars_dict, dndz=None,
 #     return csmlib.k_limber(ell, z, use_h_units=use_h_units)
 
 
-@type_enforced.Enforcer
 def K_ij(z, wf_A, wf_B, i: int, j: int):
     return wf_A(z, j) * wf_B(z, i) / (csmlib.E(z) * csmlib.r(z) ** 2)
 
@@ -883,14 +881,12 @@ def cl_partial_integrand(z, wf_A, wf_B, i: int, j: int, ell):
     return K_ij(z, wf_A, wf_B, i, j) * pk_nonlin_wrap(kl_wrap(ell, z), z)
 
 
-@type_enforced.Enforcer
 def cl_partial_integral(wf_A, wf_B, i: int, j: int, zbin: int, ell):
     result = c / H0 * quad(cl_partial_integrand, z_minus[zbin], z_plus[zbin], args=(wf_A, wf_B, i, j, ell))[0]
     return result
 
 
 # summing the partial integrals
-@type_enforced.Enforcer
 def sum_cl_partial_integral(wf_A, wf_B, i: int, j: int, ell):
     print('THIS BIAS IS WRONG; MOREOVER, AM I NOT INCLUDING IT IN THE KERNELS?')
     warnings.warn('in this version the bias is not included in the kernels')

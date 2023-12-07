@@ -9,9 +9,9 @@ from scipy.integrate import simps
 from scipy.interpolate import RegularGridInterpolator
 from scipy.special import spherical_jn
 import ray
-import pyccl as ccl
+# import pyccl as ccl
 from tqdm import tqdm
-import PySSC
+# import PySSC
 
 from . import my_module as mm
 from . import cosmo_lib as csmlib

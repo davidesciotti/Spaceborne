@@ -63,13 +63,15 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p
     # from https://github.com/LSSTDESC/CCL/blob/4df2a29eca58d7cd171bc1986e059fd35f425d45/benchmarks/test_covariances.py
     # see also https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/tools/covariance_NG.py#L282
     halomod_start_time = time.perf_counter()
-    mass_def = ccl.halos.MassDef200m()
-    c_M_relation = ccl.halos.ConcentrationDuffy08(mass_def)
-    hmf = ccl.halos.MassFuncTinker10(cosmo_ccl, mass_def=mass_def)
-    hbf = ccl.halos.HaloBiasTinker10(cosmo_ccl, mass_def=mass_def)
-    hmc = ccl.halos.HMCalculator(cosmo_ccl, hmf, hbf, mass_def)
-    halo_profile_nfw = ccl.halos.HaloProfileNFW(c_M_relation, fourier_analytic=True)
-    halo_profile_hod = ccl.halos.HaloProfileHOD(c_M_relation=c_M_relation)
+
+    # breakpoint()
+    mass_def = ccl.halos.MassDef200m
+    c_M_relation = ccl.halos.ConcentrationDuffy08(mass_def=mass_def)
+    hmf = ccl.halos.MassFuncTinker10(mass_def=mass_def)
+    hbf = ccl.halos.HaloBiasTinker10(mass_def=mass_def)
+    hmc = ccl.halos.HMCalculator(mass_function=hmf, halo_bias=hbf, mass_def=mass_def)
+    halo_profile_nfw = ccl.halos.HaloProfileNFW(mass_def=mass_def, concentration=c_M_relation)
+    halo_profile_hod = ccl.halos.HaloProfileHOD(mass_def=mass_def, concentration=c_M_relation)
 
     # TODO pk from input files
     assert use_hod_for_gg, ('you need to use HOD for GG to get correct results for GCph! I previously got an error, '

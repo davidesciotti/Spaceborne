@@ -528,7 +528,7 @@ warnings.warn('test shift_nz!!')
 assert compute_bnt_with_shifted_nz is False, 'We compute the BNT just for a simple case: no IA, no shift. This is because we want' \
                           'to compute the z means'
 assert include_ia_in_bnt_kernel_for_zcuts is False, 'We compute the BNT just for a simple case: no IA, no shift. This is because we want' \
-                                                    'to compute the z means'
+                                                    ' to compute the z means'
 
 # ! apply a Gaussian filter
 if nz_gaussian_smoothing:

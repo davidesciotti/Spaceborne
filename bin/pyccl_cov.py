@@ -106,11 +106,8 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p
 
     if which_ng_cov == 'SSC':
         tkka_func = ccl.halos.halomod_Tk3D_SSC
-        p_of_k_a_arg = {'p_of_k_a': p_of_k_a}
-
     elif which_ng_cov == 'cNG':
-        tkka_func = ccl.halos.halomod_Tk3D_1h
-        p_of_k_a_arg = {}
+        tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
     else:
         raise ValueError(f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
 
@@ -119,16 +116,17 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p
             if col >= row:
                 print(f'Computing trispectrum for {which_ng_cov}, probe combination {A}{B}{C}{D}')
                 tkka_dict[A, B, C, D] = tkka_func(cosmo=cosmo_ccl, hmc=hmc,
-                                                  prof1=halo_profile_dict[A],
+                                                  prof=halo_profile_dict[A],
                                                   prof2=halo_profile_dict[B],
                                                   prof3=halo_profile_dict[C],
                                                   prof4=halo_profile_dict[D],
                                                   prof12_2pt=prof_2pt_dict[A, B],
-                                                  prof34_2pt=prof_2pt_dict[C, D],
-                                                  normprof1=True, normprof2=True,
-                                                  normprof3=True, normprof4=True,
-                                                  lk_arr=None, a_arr=a_grid_increasing_for_ttka,
-                                                  **p_of_k_a_arg)
+                                                  prof13_2pt=prof_2pt_dict[A, B],
+                                                  prof14_2pt=prof_2pt_dict[C, D],
+                                                  prof24_2pt=prof_2pt_dict[C, D],
+                                                  prof34_2pt=None, p_of_k_a=None, lk_arr=None,
+                                                  a_arr=a_grid_increasing_for_ttka,
+                                                  extrap_order_lok=1, extrap_order_hik=1, use_log=False)
 
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
     if pyccl_cfg['save_trispectrum']:
@@ -317,11 +315,11 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     wf_galaxy_arr = wf_delta_arr + wf_mu_arr
 
     # alternative way to get the magnification kernel
-    wf_mu_tot_alt_arr = -2 * np.array([ccl.tracers.get_lensing_kernel(cosmo_ccl, (nz_tuple[0], nz_tuple[1][:, zi]),
-                                                                      mag_bias=(
-                                                                          mag_bias_tuple[0], mag_bias_tuple[1][:, zi]),
-                                                                      n_chi=1000)
-                                       for zi in range(zbins)])
+    wf_mu_tot_alt_arr = -2 * np.array(
+        [ccl.tracers.get_lensing_kernel(cosmo=cosmo_ccl, dndz=(nz_tuple[0], nz_tuple[1][:, zi]),
+                                        mag_bias=(mag_bias_tuple[0], mag_bias_tuple[1][:, zi]),
+                                        n_chi=1000)
+         for zi in range(zbins)])
     wf_mu_alt_arr = wf_mu_tot_alt_arr[:, 1, :].T
 
     # ! import Vincenzo's kernels and compare
@@ -354,9 +352,10 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     plt.show()
 
     # the cls are not needed, but just in case:
-    cl_ll_3d = wf_cl_lib.cl_PyCCL(wf_lensing_obj, wf_lensing_obj, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
-    cl_gl_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_lensing_obj, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
-    cl_gg_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_galaxy_obj, ell_grid, zbins, p_of_k_a=None, cosmo=cosmo_ccl)
+    p_of_k_a = 'delta_matter:delta_matter'
+    cl_ll_3d = wf_cl_lib.cl_PyCCL(wf_lensing_obj, wf_lensing_obj, ell_grid, zbins, p_of_k_a=p_of_k_a, cosmo=cosmo_ccl, limber_integration_method='spline')
+    cl_gl_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_lensing_obj, ell_grid, zbins, p_of_k_a=p_of_k_a, cosmo=cosmo_ccl, limber_integration_method='spline')
+    cl_gg_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_galaxy_obj, ell_grid, zbins, p_of_k_a=p_of_k_a, cosmo=cosmo_ccl, limber_integration_method='spline')
     cl_ll_3d_vinc = general_cfg['cl_ll_3d']
     cl_gl_3d_vinc = general_cfg['cl_gl_3d']
     cl_gg_3d_vinc = general_cfg['cl_gg_3d']

@@ -383,6 +383,7 @@ def save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=False, save_dict=
     #             np.savetxt(f'{fm_folder}/{FM_txt_filename}.txt', FM_dict[f'FM_{probe}_{which_cov}'])
 
     if save_dict:
+        warnings.warn('TODO add the type of ng cov to this filename!')
         FM_dict_filename = FM_cfg['FM_dict_filename'].format(**save_specs)
         mm.save_pickle(f'{fm_folder}/{FM_dict_filename}.pickle', FM_dict)
 

@@ -143,8 +143,8 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p
     return tkka_dict
 
 
-def compute_ng_cov_ccl(cosmo, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka, f_sky,
-                       ind_AB, ind_CD, which_ng_cov, integration_method='spline'):
+def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka, f_sky,
+                       ind_AB, ind_CD, integration_method='spline'):
     zpairs_AB = ind_AB.shape[0]
     zpairs_CD = ind_CD.shape[0]
     nbl = len(ell)
@@ -155,7 +155,7 @@ def compute_ng_cov_ccl(cosmo, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka,
         'SSC': 'angular_cl_cov_SSC',
         'cNG': 'angular_cl_cov_cNG'
     }
-    if which_ng_cov not in func_map:
+    if which_ng_cov not in func_map.keys():
         raise ValueError("Invalid value for which_ng_cov. Must be 'SSC' or 'cNG'.")
     func_to_call = getattr(ccl.covariances, func_map[which_ng_cov])
     sigma2_B_arg = {'sigma2_B': None} if which_ng_cov == 'SSC' else {}
@@ -183,11 +183,9 @@ def compute_ng_cov_ccl(cosmo, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka,
     return cov_ng_4D
 
 
-def compute_ng_cov_3x2pt(cosmo, kernel_dict, ell, tkka_dict, f_sky, integration_method,
+def compute_ng_cov_3x2pt(cosmo, which_ng_cov, kernel_dict, ell, tkka_dict, f_sky, integration_method,
                          probe_ordering, ind_dict, covariance_cfg, output_4D_array):
     cov_ng_3x2pt_dict_8D = {}
-
-    which_ng_cov = covariance_cfg['PyCCL_cfg']['which_ng_cov']
 
     for row, (probe_a, probe_b) in enumerate(probe_ordering):
         for col, (probe_c, probe_d) in enumerate(probe_ordering):
@@ -429,6 +427,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         ind_CD = ind_dict[probe[0] + probe[1]]
 
         cov_ng_4D = compute_ng_cov_ccl(cosmo=cosmo_ccl,
+                                       which_ng_cov=which_ng_cov,
                                        kernel_A=kernel_A,
                                        kernel_B=kernel_B,
                                        kernel_C=kernel_C,
@@ -437,13 +436,13 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
                                        f_sky=f_sky,
                                        ind_AB=ind_AB,
                                        ind_CD=ind_CD,
-                                       which_ng_cov=which_ng_cov,
                                        integration_method=integration_method_dict[probe][which_ng_cov],
                                        )
 
     elif probe == '3x2pt':
         # TODO remove this if statement and use the same code for all probes
         cov_ng_4D = compute_ng_cov_3x2pt(cosmo=cosmo_ccl,
+                                         which_ng_cov=which_ng_cov,
                                          kernel_dict=kernel_dict,
                                          ell=ell_grid, tkka_dict=tkka_dict, f_sky=f_sky,
                                          probe_ordering=probe_ordering,
@@ -488,7 +487,7 @@ integration_method_dict = {
         'cNG': 'qag_quad',
     },
     '3x2pt': {
-        'SSC': 'qag_quad',
+        'SSC': 'spline',
         'cNG': 'spline',
     }
 }

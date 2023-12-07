@@ -355,6 +355,7 @@ idB = general_cfg['idB']
 idM = general_cfg['idM']
 idR = general_cfg['idR']
 idBM = general_cfg['idBM']
+which_ng_cov_suffix = 'G' + ''.join(covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'])
 BNT_transform = general_cfg['BNT_transform']
 shift_nz_interpolation_kind = covariance_cfg['shift_nz_interpolation_kind']
 nz_gaussian_smoothing = covariance_cfg['nz_gaussian_smoothing']  # does not seem to have a large effect...
@@ -479,6 +480,7 @@ variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_le
                   'idIA': idIA, 'idB': idB, 'idM': idM, 'idR': idR, 'idBM': idBM,
                   'flat_or_nonflat': flat_or_nonflat,
                   'which_pk': which_pk, 'BNT_transform': BNT_transform,
+                  'which_ng_cov': which_ng_cov_suffix,
                   }
 pp.pprint(variable_specs)
 
@@ -522,7 +524,8 @@ n_of_z_original = n_of_z
 
 whose_wf = 'davide'  # TODO 'vincenzo' or 'davide'. whose wf you want to use to compute the z mean for the ell cuts
 
-assert shift_nz is False, 'We compute the BNT just for a simple case: no IA, no shift. This is because we want' \
+warnings.warn('test shift_nz!!')
+assert compute_bnt_with_shifted_nz is False, 'We compute the BNT just for a simple case: no IA, no shift. This is because we want' \
                           'to compute the z means'
 assert include_ia_in_bnt_kernel_for_zcuts is False, 'We compute the BNT just for a simple case: no IA, no shift. This is because we want' \
                                                     'to compute the z means'
@@ -544,7 +547,7 @@ if shift_nz:
     n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z, dz_shifts, normalize=normalize_shifted_nz, plot_nz=False,
                                 interpolation_kind=shift_nz_interpolation_kind)
 
-if covariance_cfg['compute_bnt_with_shifted_nz']:
+if compute_bnt_with_shifted_nz:
     n_of_z_bnt = n_of_z
 
 BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z_bnt, cosmo_ccl=cosmo_ccl, plot_nz=False)

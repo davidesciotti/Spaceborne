@@ -95,7 +95,8 @@ which_cuts = 'Vincenzo'
 whose_FM_list = ('davide',)
 kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
 
-which_cov_term_list = ['G', 'GSSCcNG']
+which_cov_term_list = ['G', 'GSSC']
+which_ng_cov = which_cov_term_list[1]
 BNT_transform_list = [False, ]
 center_or_min_list = ['center']
 kmax_h_over_Mpc_list = (general_cfg['kmax_h_over_Mpc_list'][0],)
@@ -157,7 +158,7 @@ for BNT_transform in BNT_transform_list:
 
                                     if whose_FM == 'davide':
                                         fm_path = f'{fm_root_path}/BNT_{BNT_transform}/ell_cuts_{ell_cuts}'
-                                        fm_pickle_name = f'FM_zbins{EP_or_ED}{zbins}_' \
+                                        fm_pickle_name = f'FM_{which_ng_cov}_zbins{EP_or_ED}{zbins}_' \
                                                          f'ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_{specs_str}_pk{which_pk}.pickle'
 
                                         if ell_cuts:

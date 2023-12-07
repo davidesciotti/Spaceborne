@@ -190,25 +190,25 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',  # TODO deprecate this?
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
-        'which_ng_cov': ('SSC', 'cNG'),
+        'which_ng_cov': ('cNG',),
 
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
-        'load_precomputed_cov': True,
+        'load_precomputed_cov': False,
         'cov_path': '/Users/davide/Documents/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
                     '/output/Flagship_2/covmat/PyCCL',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
 
-        'save_cov': True,
-        'save_trispectrum': True,
+        'save_cov': False,
+        'save_trispectrum': False,
 
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         'z_grid_tkka_min': 0.001,
         'z_grid_tkka_max': 3,
-        'z_grid_tkka_steps': 200,
+        'z_grid_tkka_steps': 500,
         'z_grid_min': 0.001,
         'z_grid_max': 3,
         'z_grid_steps': 1000,
@@ -273,9 +273,10 @@ param_names_3x2pt = list(np.concatenate([param_names_dict[key] for key in param_
 
 
 FM_txt_filename = covariance_cfg['cov_filename'].replace('covmat_', 'FM_').replace('_{ndim:d}D', '')
-FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_{which_cov:s}_{probe:s}_', 'FM_').replace(
-    '_{ndim:d}D',
-    '')
+FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_', 'FM_')
+FM_dict_filename = FM_dict_filename.replace('_{ndim:d}D', '')
+FM_dict_filename = FM_dict_filename.replace('_{probe:s}', '')
+FM_dict_filename = FM_dict_filename.replace('_{which_cov:s}', '_{which_ng_cov:s}')
 deriv_filename = covariance_cfg['cov_filename'].replace('covmat_', 'dDVd')
 FM_cfg = {
     'compute_FM': True,

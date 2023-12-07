@@ -7,7 +7,7 @@ import numpy as np
 from astropy.cosmology import w0waCDM
 # from classy import Class
 from numba import njit
-# import pyccl as ccl
+import pyccl as ccl
 from scipy.integrate import simps
 from . import my_module as mm
 import common_cfg.ISTF_fid_params as ISTF

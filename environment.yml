@@ -18,6 +18,7 @@ dependencies:
   - numba
   - pyyaml
   - camb
+  - cmake
   - pip:
     - chainconsumer 
     - getdist
@@ -28,3 +29,12 @@ dependencies:
     - ray
     - PyQt5
     - PySide2
+    #- pyccl
+
+# To install the master version of pyccl:
+# $ conda activate spaceborne
+# $ git clone https://github.com/LSSTDESC/CCL.git
+# $ cd CCL    
+# $ pip install .
+# $ cd .. 
+# $ rm -r CCL

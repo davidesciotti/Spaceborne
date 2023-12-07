@@ -368,7 +368,7 @@ cosmo_ccl = csmlib.instantiate_cosmo_ccl_obj(cosmo_dict_ccl,
 assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
 assert general_cfg['use_WA'] is False, 'We do not use Wadd for SPV3 at the moment'
 assert general_cfg[
-           'flat_or_nonflat'] == 'Flat', 'We do not use non-flat cosmologies for SPV3 at the moment, if I recall correclty'
+    'flat_or_nonflat'] == 'Flat', 'We do not use non-flat cosmologies for SPV3 at the moment, if I recall correclty'
 assert general_cfg['which_cuts'] == 'Vincenzo', ('to begin with, use only Vincenzo/standard cuts. '
                                                  'For the thesis, probably use just these')
 if general_cfg['ell_cuts']:
@@ -518,7 +518,7 @@ whose_wf = 'davide'  # TODO 'vincenzo' or 'davide'. whose wf you want to use to 
 
 warnings.warn('test shift_nz!!')
 assert compute_bnt_with_shifted_nz is False, 'We compute the BNT just for a simple case: no IA, no shift. This is because we want' \
-                          'to compute the z means'
+    'to compute the z means'
 assert include_ia_in_bnt_kernel_for_zcuts is False, 'We compute the BNT just for a simple case: no IA, no shift. This is because we want' \
                                                     ' to compute the z means'
 
@@ -818,9 +818,9 @@ if covariance_cfg['compute_SSC'] and covariance_cfg['SSC_code'] == 'PySSC':
     nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
     Sijkl_folder = Sijkl_cfg['Sijkl_folder']
     assert general_cfg[
-               'cl_BNT_transform'] is False, 'for SSC, at the moment the BNT transform should not be ' \
-                                             'applied to the cls, but to the covariance matrix (how ' \
-                                             'should we deal with the responses in the former case?)'
+        'cl_BNT_transform'] is False, 'for SSC, at the moment the BNT transform should not be ' \
+        'applied to the cls, but to the covariance matrix (how ' \
+        'should we deal with the responses in the former case?)'
     Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(
         flagship_version=general_cfg['flagship_version'],
         nz=nz, IA_flag=Sijkl_cfg['has_IA'],

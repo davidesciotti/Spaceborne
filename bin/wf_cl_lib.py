@@ -34,8 +34,6 @@ from . import cosmo_lib as csmlib
 sys.path.append(f'{project_path}/config')
 import config_wlcl as cfg
 
-sys.path.append(f'{project_path_parent}/Spaceborne/bin')
-import ell_values
 
 # update plot pars
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -82,15 +80,12 @@ warnings.warn('these global variables should be deleted...')
 warnings.warn('RECHECK Ox0 in cosmolib')
 
 
-####################################### function definition
-
-
 @njit
 def pph(z_p, z):
     first_addendum = (1 - f_out) / (np.sqrt(2 * np.pi) * sigma_in * (1 + z)) * \
-                     np.exp(-0.5 * ((z - c_in * z_p - z_in) / (sigma_in * (1 + z))) ** 2)
+        np.exp(-0.5 * ((z - c_in * z_p - z_in) / (sigma_in * (1 + z))) ** 2)
     second_addendum = f_out / (np.sqrt(2 * np.pi) * sigma_out * (1 + z)) * \
-                      np.exp(-0.5 * ((z - c_out * z_p - z_out) / (sigma_out * (1 + z))) ** 2)
+        np.exp(-0.5 * ((z - c_out * z_p - z_out) / (sigma_out * (1 + z))) ** 2)
     return first_addendum + second_addendum
 
 
@@ -136,7 +131,7 @@ def n_i_old(z, i):
 
 def n_i(z, i):
     """with quad. normalized"""
-    integrand = lambda z_p, z: n_of_z(z) * pph(z_p, z)
+    def integrand(z_p, z): return n_of_z(z) * pph(z_p, z)
     numerator = quad(integrand, z_minus[i], z_plus[i], args=z)[0]
     denominator = dblquad(integrand, z_min, z_max, z_minus[i], z_plus[i])[0]
     return numerator / denominator
@@ -249,7 +244,7 @@ def niz_unnormalized_analytical(z, zbin_idx, z_edges=z_edges):
     addendum_4 = erf((z - z_in - c_in * z_edges[zbin_idx + 1]) / (sqrt2 * (1 + z) * sigma_in))
 
     result = n_of_z(z) / (2 * c_out * c_in) * \
-             (c_in * f_out * (addendum_1 - addendum_2) + c_out * (1 - f_out) * (addendum_3 - addendum_4))
+        (c_in * f_out * (addendum_1 - addendum_2) + c_out * (1 - f_out) * (addendum_3 - addendum_4))
     return result
 
 
@@ -291,7 +286,7 @@ def wil_noIA_IST(z, wil_tilde_array):
     return ((3 / 2) * (H0 / c) * Om0 * (1 + z) * csmlib.r_tilde(z) * wil_tilde_array.T).T
 
 
-########################################################### IA
+# IA
 # @njit
 def W_IA(z_grid):
     warnings.warn("what about the normalization?")
@@ -696,7 +691,8 @@ def wf_ccl(z_grid, probe, which_wf, flat_fid_pars_dict, cosmo_ccl, dndz_tuple, i
             assert mag_bias_tuple[0].shape[0] == len(z_grid), 'mag_bias_tuple[0] must have shape len(z_grid)'
             assert mag_bias_tuple[1].shape == (
                 len(z_grid), zbins), 'mag_bias_tuple[1] must have shape (len(z_grid), zbins)'
-            mag_bias = lambda zbin_idx: (mag_bias_tuple[0], mag_bias_tuple[1][:, zbin_idx])
+
+            def mag_bias(zbin_idx): return (mag_bias_tuple[0], mag_bias_tuple[1][:, zbin_idx])
         else:
             mag_bias = None
 
@@ -1258,7 +1254,7 @@ def cl_parallel_helper_new(param_to_vary, variation_idx, varied_fiducials, fiduc
 
         cosmo_ccl = csmlib.instantiate_cosmo_ccl_obj(varied_fiducials, extra_parameters)
         assert (varied_fiducials[
-                    'Om_m0'] / cosmo_ccl.cosmo.params.Omega_m - 1) < 1e-7, 'Om_m0 is not the same as the one in the fiducial model'
+            'Om_m0'] / cosmo_ccl.cosmo.params.Omega_m - 1) < 1e-7, 'Om_m0 is not the same as the one in the fiducial model'
 
         wl_kernel = wf_lensing_ccl(z_grid, 'with_IA', cosmo=cosmo_ccl, dndz=dndz,
                                    ia_bias=None, A_IA=varied_fiducials['A_IA'],
@@ -1401,7 +1397,7 @@ def cl_parallel_helper(param_to_vary, variation_idx, varied_fiducials, cl_LL, cl
 
     # warnings.warn('there seems to be a small discrepancy here...')
     assert (varied_fiducials[
-                'Om_m0'] / cosmo_ccl.cosmo.params.Omega_m - 1) < 1e-7, 'Om_m0 is not the same as the one in the fiducial model'
+        'Om_m0'] / cosmo_ccl.cosmo.params.Omega_m - 1) < 1e-7, 'Om_m0 is not the same as the one in the fiducial model'
 
     wl_kernel = wf_lensing_ccl(z_grid, 'with_IA', cosmo=cosmo_ccl, dndz=dndz,
                                ia_bias=None, A_IA=varied_fiducials['A_IA'],

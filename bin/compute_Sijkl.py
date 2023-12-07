@@ -1,21 +1,14 @@
 import math
 import warnings
-
-pi = math.pi
-
 import numpy as np
 import scipy.integrate as integrate
 from scipy.interpolate import interp1d
-import matplotlib
 from classy import Class
 import matplotlib.pyplot as plt
-from pathlib import Path
 import time
-import sys
-import json
 from PySSC import Sijkl
-from pathlib import Path
 
+pi = math.pi
 
 # ! don't touch the imports and/or their ordering, otherwise I get a malloc error when compiling
 

@@ -8,9 +8,6 @@ job_path = Path.cwd().parent
 sys.path.append(f'{project_path}/bin')
 import check_specs as utils
 
-sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
-import common_cfg.ISTF_fid_params as ISTF_fid
-
 which_forecast = 'SPV3'
 fsky, GL_or_LG, _, _ = utils.get_specs(which_forecast)
 

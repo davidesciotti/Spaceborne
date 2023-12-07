@@ -1,20 +1,12 @@
-import sys
 import time
 import warnings
-from pathlib import Path
 import numpy as np
-import concurrent.futures
 import scipy
-import pdb
 from matplotlib import pyplot as plt
+from . import my_module as mm
+from . import cl_preprocessing as cl_utils
 
-project_path_here = Path.cwd().parent.parent.parent
-sys.path.append(str(project_path_here.parent / 'common_lib'))
-import my_module as mm
 
-import cl_preprocessing as cl_utils
-
-script_name = sys.argv[0]
 
 
 # def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum):

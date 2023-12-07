@@ -28,8 +28,8 @@ project_path_parent = '/Users/davide/Documents/Lavoro/Programmi'
 sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
 import common_cfg.ISTF_fid_params as ISTF
 import common_cfg.mpl_cfg as mpl_cfg
-import common_lib.my_module as mm
-import common_lib.cosmo_lib as csmlib
+from . import my_module as mm
+from . import cosmo_lib as csmlib
 
 # config files
 sys.path.append(f'{project_path}/config')

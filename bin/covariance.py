@@ -1,25 +1,18 @@
-import gc
-import pdb
-import sys
 import time
 import warnings
-from pathlib import Path
 import pickle
 
 import matplotlib
 import numpy as np
 from matplotlib import pyplot as plt
-from numba import njit, prange
 from scipy.integrate import simps
 
-import cl_preprocessing
-import pyccl_cov
-import sigma2_SSC
-
-sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
-import common_lib.my_module as mm
-import common_lib.cosmo_lib as csmlib
-import common_lib.wf_cl_lib as wf_cl_lib
+from . import cl_preprocessing
+from . import pyccl_cov
+from . import sigma2_SSC
+from . import my_module as mm
+from . import cosmo_lib as csmlib
+from . import wf_cl_lib as wf_cl_lib
 
 ###############################################################################
 ################ CODE TO COMPUTE THE G AND SSC COVMATS ########################

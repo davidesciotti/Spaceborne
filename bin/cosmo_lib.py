@@ -1,9 +1,7 @@
-import sys
 import time
 import warnings
 from copy import deepcopy
 from glob import glob
-
 import camb
 import numpy as np
 from astropy.cosmology import w0waCDM
@@ -11,11 +9,9 @@ from classy import Class
 from numba import njit
 import pyccl as ccl
 from scipy.integrate import simps
-
-# using absolute imports, otherwise I cannot call the script from different projects
-sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
 import common_cfg.ISTF_fid_params as ISTF
-import common_lib.my_module as mm
+from . import my_module as mm
+
 
 # TODO create function to compute pk from CAMB, hoping it accepts a vectorized k or z
 # TODO check that the modifications to calculate_power don't break anything, I switched the order

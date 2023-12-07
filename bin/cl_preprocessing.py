@@ -1,10 +1,6 @@
-import sys
 import warnings
 import numpy as np
-
-
-sys.path.append('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
-import common_lib.my_module as mm
+from . import my_module as mm
 
 
 def import_and_interpolate_cls(general_config, covariance_config, ell_dict):

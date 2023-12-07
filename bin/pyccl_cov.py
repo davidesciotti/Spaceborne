@@ -20,21 +20,16 @@ from matplotlib.lines import Line2D
 ray.shutdown()
 ray.init()
 
-# get project directory adn import useful modules
-project_path = Path.cwd().parent
-
-sys.path.append(f'../../common_lib_and_cfg')
-import common_lib.my_module as mm
-import common_lib.cosmo_lib as cosmo_lib
-import common_lib.wf_cl_lib as wf_cl_lib
+from . import my_module as mm
+from . import cosmo_lib as cosmo_lib
+from . import wf_cl_lib as wf_cl_lib
 import common_cfg.mpl_cfg as mpl_cfg
-import common_cfg.ISTF_fid_params as ISTF_fid
 
 matplotlib.use('Qt5Agg')
 start_time = time.perf_counter()
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
-""" This is run with v 2.7 of pyccl
+""" This is run with v 3.0.1 of pyccl
 """
 
 

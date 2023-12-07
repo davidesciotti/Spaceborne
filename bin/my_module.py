@@ -19,8 +19,7 @@ import os
 import inspect
 from tqdm import tqdm
 
-sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
-import common_cfg.ISTF_fid_params as ISTF_fid
+# from ..common_cfg import ISTF_fid_params as ISTF_fid
 
 
 ###############################################################################
@@ -850,6 +849,7 @@ def uncertainties_FM(FM, nparams, fiducials=None, which_uncertainty='marginal', 
         assert fiducials.shape[0] == nparams, 'the fiducial must have the same length as the number of parameters'
 
         if fiducials is None:
+            assert False, 'you should definetly provide fiducial values!'
             print('No fiducial values provided, using the ISTF values (for flat w0waCDM cosmology and no extensions)')
             fiducials = np.asarray(list(ISTF_fid.primary.values())[:7])
 

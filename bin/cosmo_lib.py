@@ -9,8 +9,8 @@ from classy import Class
 from numba import njit
 import pyccl as ccl
 from scipy.integrate import simps
-import common_cfg.ISTF_fid_params as ISTF
 from . import my_module as mm
+import common_cfg.ISTF_fid_params as ISTF
 
 
 # TODO create function to compute pk from CAMB, hoping it accepts a vectorized k or z

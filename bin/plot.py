@@ -14,18 +14,13 @@ from matplotlib.cm import get_cmap
 from getdist.gaussian_mixtures import GaussianND
 import pandas as pd
 
-project_path = Path.cwd().parent
+import common_cfg.mpl_cfg as mpl_cfg
+import common_cfg.ISTF_fid_params as ISTF_fid
 
-sys.path.append(str(project_path.parent / 'common_data'))
-import common_lib.my_module as mm
-import common_config.mpl_cfg as mpl_cfg
-import common_config.ISTF_fid_params as ISTF_fid
+from . import my_module as mm
+from . import plots_FM_running as plot_utils
 
-sys.path.append(str(project_path / 'bin'))
-import plots_FM_running as plot_utils
 
-sys.path.append(str(project_path / 'jobs/SPV3_magcut_zcut/config'))
-import config_SPV3_magcut_zcut as cfg
 
 # plot config
 matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)

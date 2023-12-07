@@ -13,17 +13,10 @@ import pyccl as ccl
 from tqdm import tqdm
 import PySSC
 
-sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_lib')
-import my_module as mm
-import cosmo_lib as csmlib
-
-sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_cfg')
-import mpl_cfg
-
-
+from . import my_module as mm
+from . import cosmo_lib as csmlib
 
 matplotlib.use('Qt5Agg')
-plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
 

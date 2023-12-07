@@ -187,10 +187,10 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',  # TODO deprecate this?
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
-        'which_ng_cov': ('cNG',),
+        'which_ng_cov': ('SSC',),
 
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
-        'load_precomputed_cov': False,
+        'load_precomputed_cov': True,
         'cov_path': '/Users/davide/Documents/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
                     '/output/Flagship_2/covmat/PyCCL',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'

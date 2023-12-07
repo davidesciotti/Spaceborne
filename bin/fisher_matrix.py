@@ -7,8 +7,6 @@ from . import my_module as mm
 from . import cl_preprocessing as cl_utils
 
 
-
-
 # def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum):
 #     """ ell_values can be the bin center or the bin lower edge; Francis suggests the second option is better"""
 #     warnings.warn('delete this function from here')

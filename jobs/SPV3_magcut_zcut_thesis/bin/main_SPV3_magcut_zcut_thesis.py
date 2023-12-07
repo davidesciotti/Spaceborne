@@ -2,6 +2,7 @@ import sys
 import time
 from pathlib import Path
 import matplotlib
+from os import environ
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,40 +15,28 @@ import yaml
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.ndimage import gaussian_filter1d
 import pprint
-
 pp = pprint.PrettyPrinter(indent=4)
 
 project_path = Path.cwd().parent.parent.parent
-job_path = Path.cwd().parent
-home_path = Path.home()
-job_name = job_path.parts[-1]
 
-sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
-# import common_lib.my_module as mm
-# import common_lib.cosmo_lib as csmlib
-# import common_lib.wf_cl_lib as wf_cl_lib
-# import common_cfg.mpl_cfg as mpl_cfg
+# project modules
+sys.path.append(f'{project_path}')
+import bin.ell_values as ell_utils
+import bin.cl_preprocessing as cl_utils
+import bin.compute_Sijkl as Sijkl_utils
+import bin.covariance as covmat_utils
+import bin.fisher_matrix as FM_utils
+import bin.my_module as mm
+import bin.cosmo_lib as csmlib
+import bin.wf_cl_lib as wf_cl_lib
+import common_cfg.mpl_cfg as mpl_cfg
 
-# job configuration
-sys.path.append(f'{job_path}/config')
-import config_SPV3_magcut_zcut_thesis as cfg
-
-# project libraries
-sys.path.append(f'{project_path}/bin')
-import ell_values as ell_utils
-import cl_preprocessing as cl_utils
-import compute_Sijkl as Sijkl_utils
-import covariance as covmat_utils
-import fisher_matrix as FM_utils
-import my_module as mm
-import cosmo_lib as csmlib
-import wf_cl_lib as wf_cl_lib
+# job config
+import jobs.SPV3_magcut_zcut_thesis.config.config_SPV3_magcut_zcut_thesis as cfg
 
 matplotlib.use('Qt5Agg')
-# plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
+plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 script_start_time = time.perf_counter()
-
-from os import environ
 
 environ['OMP_NUM_THREADS'] = '4'
 NUMPY_PRECISION = 2.22e-16

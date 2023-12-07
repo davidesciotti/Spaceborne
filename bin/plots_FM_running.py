@@ -1,5 +1,3 @@
-import pdb
-
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
@@ -18,6 +16,7 @@ from matplotlib import cm
 project_path_here = Path.cwd().parent.parent.parent
 sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_lib')
 import my_module as mm
+
 
 sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_cfg')
 # import ISTF_fid_params

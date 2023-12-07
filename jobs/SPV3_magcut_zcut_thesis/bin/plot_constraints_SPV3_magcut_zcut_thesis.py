@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from chainconsumer import ChainConsumer
 from tqdm import tqdm
+%matplotlib qt
 
 # Display all columns
 pd.set_option('display.max_columns', None)
@@ -18,10 +19,9 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.expand_frame_repr', False)
 
 sys.path.append('../../../bin')
-import plots_FM_running as plot_utils
+import bin.plots_FM_running as plot_utils
 
-sys.path.append('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
-import common_lib.my_module as mm
+import bin.my_module as mm
 import common_cfg.mpl_cfg as mpl_cfg
 
 sys.path.append('../config')

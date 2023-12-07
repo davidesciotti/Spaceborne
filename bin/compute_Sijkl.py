@@ -3,10 +3,10 @@ import warnings
 import numpy as np
 import scipy.integrate as integrate
 from scipy.interpolate import interp1d
-from classy import Class
+# from classy import Class
 import matplotlib.pyplot as plt
 import time
-from PySSC import Sijkl
+# from PySSC import Sijkl
 
 pi = math.pi
 

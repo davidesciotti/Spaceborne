@@ -194,7 +194,7 @@ covariance_cfg = {
         #             '/output/Flagship_2/covmat/PyCCL',
         'cov_path': '/Users/davide/Downloads/PyCCL',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
-                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_akgrids.npz',
+                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_densegrids.npz',
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
 
         'save_cov': False,
@@ -298,8 +298,8 @@ FM_cfg = {
 
     'fm_folder': f'{PROJ_ROOT}/output/Flagship_{flagship_version}/FM/' +
                  'BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}',
-    'FM_txt_filename': FM_txt_filename,
-    'FM_dict_filename': FM_dict_filename,
+    'FM_txt_filename': FM_txt_filename + '_densegrids',
+    'FM_dict_filename': FM_dict_filename + '_densegrids',
 
     'test_against_benchmarks': True,
 }

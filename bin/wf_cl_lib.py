@@ -8,7 +8,7 @@ import time
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-# import pyccl as ccl
+import pyccl as ccl
 import yaml
 from joblib import Parallel, delayed
 from matplotlib import cm

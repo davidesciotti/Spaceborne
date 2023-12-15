@@ -42,8 +42,8 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
     warnings.warn('I am dividing by fsky in the import here below (8d dict), should be correct but be careful...')
     warnings.warn('TODO CHECK FSKY AND FIX COV FILENAME STUFF')
 
-
     probe = covariance_cfg['exactSSC_cfg']['probe']
+    which_ng_cov = covariance_cfg['exactSSC_cfg']['which_ng_cov']
     zbins = general_cfg['zbins']
     ell_max, nbl = get_ellmax_nbl(probe, general_cfg)
     probe_ordering = covariance_cfg['probe_ordering']
@@ -54,14 +54,16 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
     cl_integral_convention = covariance_cfg['exactSSC_cfg']['cl_integral_convention']
     cov_path = covariance_cfg['exactSSC_cfg']['cov_path']
     cov_filename = covariance_cfg['exactSSC_cfg']['cov_filename']
-    cov_filename = cov_filename.format()
-
-    'cov_{which_ng_cov:s}_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}' \
-    '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}' \
-    '_convention{cl_integral_convention:s}.npy'
-
-    general_suffix = f'nbl{nbl}_ellmax{ell_max}_zbins{zbins}_' \
-                     f'zsteps{z_steps_sigma2}_k{k_txt_label}_convention{cl_integral_convention}'
+    cov_filename = cov_filename.format(which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
+                                       probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl, lmax=ell_max,
+                                       EP_or_ED=general_cfg['EP_or_ED'],
+                                       zbins=zbins, z_steps_sigma2=z_steps_sigma2, k_txt_label=k_txt_label,
+                                       cl_integral_convention=cl_integral_convention)
+    
+    assert which_ng_cov == 'SSC', 'no cNG term has been computed with Spaceborne!'
+    
+    # general_suffix = f'nbl{nbl}_ellmax{ell_max}_zbins{zbins}_' \
+                    #  f'zsteps{z_steps_sigma2}_k{k_txt_label}_convention{cl_integral_convention}'
 
     if not covariance_cfg['exactSSC_cfg']['use_precomputed_sigma2']:
         # this part should be finished, what should I do with the array? save it?
@@ -81,30 +83,31 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
     # populate 3x2pt dictionary
     elif probe == '3x2pt':
 
-        general_suffix = general_suffix.replace('nbl29', 'nbl32')
-        general_suffix = general_suffix.replace('ellmax3000', 'ellmax5000')
+        cov_filename = cov_filename.replace('nbl29', 'nbl32')
+        cov_filename = cov_filename.replace('ellmax3000', 'ellmax5000')
 
         cov_exactSSC_3x2pt_dict_8D_v1 = mm.load_cov_from_probe_blocks(
-            cov_path, 'cov_SSC_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_' + general_suffix, probe_ordering)
+            cov_path, cov_filename, probe_ordering)
         cov_exactSSC_3x2pt_dict_8D_v2 = mm.load_cov_from_probe_blocks(
-            cov_path, 'cov_SSC_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_' + general_suffix, probe_ordering)
+            cov_path, cov_filename, probe_ordering)
 
+        # v1: divide the different blocks by fsky
         for key in cov_exactSSC_3x2pt_dict_8D_v1.keys():
             cov_exactSSC_3x2pt_dict_8D_v1[key] /= covariance_cfg['fsky']
+            print(key, cov_exactSSC_3x2pt_dict_8D_v1[key].shape)
 
         cov_exactSSC_SS_4D_v1 = mm.cov_3x2pt_8D_dict_to_4D(cov_exactSSC_3x2pt_dict_8D_v1, probe_ordering)
         cov_exactSSC_SS_4D_v2 = mm.cov_3x2pt_8D_dict_to_4D(cov_exactSSC_3x2pt_dict_8D_v2, probe_ordering)
-        cov_exactSSC_SS_4D_v2 /= covariance_cfg['fsky']
+        cov_exactSSC_SS_4D_v2 /= covariance_cfg['fsky']  # v2: divide the 4D array by fsky
 
         cov_exactSSC_SS_2D_v1 = mm.cov_4D_to_2D(cov_exactSSC_SS_4D_v1)
         cov_exactSSC_SS_2D_v2 = mm.cov_4D_to_2D(cov_exactSSC_SS_4D_v2)
 
         mm.compare_arrays(cov_exactSSC_SS_2D_v1, cov_exactSSC_SS_2D_v2)
 
-        # breakpoint()
+        breakpoint()
         np.testing.assert_allclose(cov_exactSSC_SS_4D_v1, cov_exactSSC_SS_4D_v2, rtol=1e-5, atol=0)
 
-        assert False, 'stop here'
 
         cov_exactSSC_3x2pt_dict_8D = {}
         cov_exactSSC_3x2pt_dict_10D = {}

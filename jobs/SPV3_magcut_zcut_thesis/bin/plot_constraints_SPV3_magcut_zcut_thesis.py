@@ -12,23 +12,24 @@ from chainconsumer import ChainConsumer
 from tqdm import tqdm
 %matplotlib qt
 
-# Display all columns
-pd.set_option('display.max_columns', None)
+ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+SB_ROOT = f'{ROOT}/Spaceborne'
 
-# Disable text wrapping within cells
-pd.set_option('display.expand_frame_repr', False)
 
-sys.path.append('../../../bin')
+sys.path.append(SB_ROOT)
 import bin.plots_FM_running as plot_utils
-
 import bin.my_module as mm
 import common_cfg.mpl_cfg as mpl_cfg
 
-sys.path.append('../config')
-import config_SPV3_magcut_zcut_thesis as cfg
+sys.path.append(f'{SB_ROOT}/jobs/config')
+import jobs.SPV3_magcut_zcut_thesis.config.config_SPV3_magcut_zcut_thesis as cfg
 
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 mpl.use('Qt5Agg')
+# Display all columns
+pd.set_option('display.max_columns', None)
+# Disable text wrapping within cells
+pd.set_option('display.expand_frame_repr', False)
 
 
 def compare_df_keys(dataframe, key_to_compare, value_a, value_b):
@@ -65,6 +66,9 @@ cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 specs_str = 'idIA2_idB3_idM3_idR1'
 fm_root_path = ('/Users/davide/Documents/Lavoro/Programmi/Spaceborne/'
                 'jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM')
+fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}'
+fm_pickle_name_raw = 'FM_{which_ng_cov:s}_zbins{EP_or_ED:s}{zbins:02d}_' \
+                    'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}.pickle'
 EP_or_ED = 'EP'
 zbins = 13
 num_params_tokeep = 7
@@ -157,10 +161,13 @@ for BNT_transform in BNT_transform_list:
                                     names_params_to_fix = []
 
                                     if whose_FM == 'davide':
-                                        fm_path = f'{fm_root_path}/BNT_{BNT_transform}/ell_cuts_{ell_cuts}'
-                                        fm_pickle_name = f'FM_{which_ng_cov}_zbins{EP_or_ED}{zbins}_' \
-                                                         f'ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_{specs_str}_pk{which_pk}.pickle'
-
+                                        fm_path = fm_path_raw.format(BNT_transform=BNT_transform, ell_cuts=ell_cuts)
+                                        fm_pickle_name = fm_pickle_name_raw.format(which_ng_cov=which_ng_cov,
+                                                                                    EP_or_ED=EP_or_ED,
+                                                                                    zbins=zbins,
+                                                                                    ML=ML, ZL=ZL, MS=MS, ZS=ZS,
+                                                                                    specs_str=specs_str,
+                                                                                    which_pk=which_pk)
                                         if ell_cuts:
                                             fm_path += f'/{which_cuts}/ell_{center_or_min}'
                                             fm_pickle_name = fm_pickle_name.replace(f'.pickle',

@@ -1,17 +1,16 @@
 from pathlib import Path
-import sys
 import numpy as np
 
-project_path = Path.cwd().parent.parent.parent
-job_path = Path.cwd().parent
 
-sys.path.append(f'{project_path}/bin')
-import check_specs as utils
 
 which_forecast = 'SPV3'
-fsky, GL_or_LG, _, _ = utils.get_specs(which_forecast)
+fsky = 0.3563380664078408
+GL_or_LG = 'GL'
 
-SPV3_folder = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/Thesis_10_2023'
+ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+PROJ_ROOT = f'{ROOT}/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
+
+SPV3_folder = f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/Thesis_10_2023'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -48,7 +47,7 @@ if BNT_transform:
     assert flagship_version == 2, 'we are applying the BNT only for Flagship_2'
 
 general_cfg = {
-    'fid_yaml_path': '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_cfg/SPV3_fiducial_params_magcut245_zbins13.yml',
+    'fid_yaml_path': f'{ROOT}/common_lib_and_cfg/common_cfg/SPV3_fiducial_params_magcut245_zbins13.yml',
     'ell_min': 10,
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
     'ell_max_WL': 5000,
@@ -77,7 +76,7 @@ general_cfg = {
     'which_cuts': 'Vincenzo',
     'center_or_min': 'center',  # cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
     'cl_ell_cuts': cl_ell_cuts,
-    'ell_cuts_folder': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/ell_cuts',
+    'ell_cuts_folder': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/ell_cuts',
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
                          'ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
     'kmax_h_over_Mpc_ref': 1.0,  # this is used when ell_cuts is False, also...?
@@ -98,7 +97,7 @@ general_cfg = {
 
     'which_pk': 'HMCodebar',
     'which_pk_list': ('HMCodebar', 'TakaBird', 'HMCode2020', 'Bacco', 'EE2'),
-    'cl_folder': '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/'
+    'cl_folder': ROOT + '/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/'
                  'DataVectors/Noiseless/{which_pk:s}',
     # 'cl_folder': f'{SPV3_folder}' + 'DataVecDers/{flat_or_nonflat:s}/{probe:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
     'rl_folder': f'{SPV3_folder}' + '/ResFun/{which_pk:s}',
@@ -130,7 +129,7 @@ covariance_cfg = {
 
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which is quite wrong
-    'cov_SSC_PyCCL_folder': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/after_script_update',
+    'cov_SSC_PyCCL_folder': f'{ROOT}/PyCCL_SSC/output/covmat/after_script_update',
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_{which_cov_ng:s}_{probe:s}_nbl{nbl:s}_ellmax{ell_max:d}_HMrecipeKrause2017_6D.npy',
 
     # n_gal, sigma_eps, fsky, all entering the covariance matrix
@@ -141,10 +140,10 @@ covariance_cfg = {
     'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
 
     # sources (and lenses) redshift distributions
-    'nofz_folder': f'/Users/davide/Documents/Lavoro/Programmi/likelihood-mcmc-generator/input_files/SPV3',
+    'nofz_folder': f'{ROOT}/likelihood-mcmc-generator/input_files/SPV3',
     'nofz_filename': 'nzTabSPV3.dat',
 
-    'shift_nz': False,  # ! are vincenzo's kernels shifted?? it looks like they are not
+    'shift_nz': True,  # ! are vincenzo's kernels shifted?? it looks like they are not
     'shift_nz_interpolation_kind': 'linear',
     'normalize_shifted_nz': True,
     'nz_gaussian_smoothing': False,  # does not seem to have a large effect...
@@ -152,7 +151,7 @@ covariance_cfg = {
     'compute_bnt_with_shifted_nz': False,  # ! let's test this
     'include_ia_in_bnt_kernel_for_zcuts': False,
 
-    'nuisance_folder': f'/Users/davide/Documents/Lavoro/Programmi/likelihood-mcmc-generator/input_files/SPV3',
+    'nuisance_folder': f'{ROOT}/likelihood-mcmc-generator/input_files/SPV3',
     'nuisance_filename': 'nuiTabSPV3.dat',
 
     'plot_nz_tocheck': True,
@@ -176,8 +175,8 @@ covariance_cfg = {
     'save_2DCLOE': False,  # outermost loop is on the probes
 
     # ! no folders for ell_cut_center or min
-    'cov_folder': f'{job_path}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{cov_ell_cuts:s}',
-    'cov_filename': 'covmat_{which_cov:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_'
+    'cov_folder': f'{PROJ_ROOT}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{cov_ell_cuts:s}',
+    'cov_filename': 'covmat_{which_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_'
                     'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_'
                     'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D',
     'cov_filename_vincenzo': 'cm-{probe:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
@@ -191,10 +190,11 @@ covariance_cfg = {
 
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
         'load_precomputed_cov': True,
-        'cov_path': '/Users/davide/Documents/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
-                    '/output/Flagship_2/covmat/PyCCL',
+        # 'cov_path': f'{ROOT}/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
+        #             '/output/Flagship_2/covmat/PyCCL',
+        'cov_path': '/Users/davide/Downloads/PyCCL',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
-                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',
+                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_akgrids.npz',
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
 
         'save_cov': False,
@@ -205,7 +205,7 @@ covariance_cfg = {
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         'z_grid_tkka_min': 0.001,
         'z_grid_tkka_max': 3,
-        'z_grid_tkka_steps': 150,
+        'z_grid_tkka_steps': 500,
         'z_grid_min': 0.001,
         'z_grid_max': 3,
         'z_grid_steps': 1000,
@@ -218,7 +218,7 @@ covariance_cfg = {
         'which_ng_cov': 'SSC',  # only 'SSC' available in this case
 
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
-        'cov_path': '/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia',
+        'cov_path': f'{ROOT}/exact_SSC/output/SSC_matrix/julia',
         'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
                         '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'
                         '_convention{cl_integral_convention:s}.npy',
@@ -248,7 +248,7 @@ Sijkl_cfg = {
     'nz': None,  # ! is this used?
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
 
-    'Sijkl_folder': f'{job_path}/output/Flagship_{flagship_version}/sijkl',
+    'Sijkl_folder': f'{PROJ_ROOT}/output/Flagship_{flagship_version}/sijkl',
     'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}'
                       '_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
@@ -288,8 +288,7 @@ FM_cfg = {
 
     'load_preprocess_derivatives': False,
     # 'derivatives_folder': f'{SPV3_folder}' + '/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
-    'derivatives_folder': '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/'
-                          'DataVecDers/{flat_or_nonflat:s}/{which_pk:s}',
+    'derivatives_folder': ROOT + '/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}',
 
     'derivatives_filename': '{derivatives_prefix:s}{param_name:s}-{probe:s}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{EP_or_ED:s}{zbins:02d}.dat',
     'derivatives_prefix': 'dDVd',
@@ -297,7 +296,7 @@ FM_cfg = {
     'derivatives_BNT_transform': deriv_BNT_transform,
     'deriv_ell_cuts': deriv_ell_cuts,
 
-    'fm_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/' +
+    'fm_folder': f'{PROJ_ROOT}/output/Flagship_{flagship_version}/FM/' +
                  'BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}',
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,

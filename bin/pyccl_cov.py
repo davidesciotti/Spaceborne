@@ -3,16 +3,14 @@ import warnings
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-# import pyccl as ccl
-import yaml
+import pyccl as ccl
 from joblib import Parallel, delayed
 from matplotlib import cm
-from scipy.special import erf
 import ray
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 
-ray.shutdown()
-ray.init()
+# ray.shutdown()
+# ray.init()
 
 from . import my_module as mm
 from . import cosmo_lib as cosmo_lib
@@ -77,6 +75,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p
             # see again https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
             ('L', 'L'): ccl.halos.Profile2pt(),
             ('G', 'L'): ccl.halos.Profile2pt(),
+            ('L', 'G'): ccl.halos.Profile2pt(),
             ('G', 'G'): ccl.halos.Profile2ptHOD(),
         }
 
@@ -95,29 +94,38 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p
     # store the trispectrum for the various probes in a dictionary
     tkka_dict = {}
 
-    if which_ng_cov == 'SSC':
-        tkka_func = ccl.halos.halomod_Tk3D_SSC
-    elif which_ng_cov == 'cNG':
-        tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
-    else:
-        raise ValueError(f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
-
-    for row, (A, B) in enumerate(probe_ordering):
+    for row, (A, B) in tqdm(enumerate(probe_ordering)):
         for col, (C, D) in enumerate(probe_ordering):
             if col >= row:
-                print(f'Computing trispectrum for {which_ng_cov}, npoints = {a_grid_increasing_for_ttka.size}, probe combination {A}{B}{C}{D}')
-                tkka_dict[A, B, C, D] = tkka_func(cosmo=cosmo_ccl, hmc=hmc,
+                print(f'Computing trispectrum for {which_ng_cov}, '
+                      f'npoints = {a_grid_increasing_for_ttka.size}, probe combination {A}{B}{C}{D}')
+
+                # not very nice to put this if-else in the for loop, but A, B, C, D are referenced only here
+                if which_ng_cov == 'SSC':
+                    tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
+                    prof_2pt_args = {}
+                elif which_ng_cov == 'cNG':
+                    tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
+                    prof_2pt_args = {
+                        'prof13_2pt': prof_2pt_dict[A, C],
+                        'prof14_2pt': prof_2pt_dict[A, D],
+                        'prof24_2pt': prof_2pt_dict[B, D]
+                    }
+                else:
+                    raise ValueError(f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
+
+                tkka_dict[A, B, C, D] = tkka_func(cosmo=cosmo_ccl,
+                                                  hmc=hmc,
                                                   prof=halo_profile_dict[A],
                                                   prof2=halo_profile_dict[B],
                                                   prof3=halo_profile_dict[C],
                                                   prof4=halo_profile_dict[D],
                                                   prof12_2pt=prof_2pt_dict[A, B],
-                                                  prof13_2pt=prof_2pt_dict[A, B],
-                                                  prof14_2pt=prof_2pt_dict[C, D],
-                                                  prof24_2pt=prof_2pt_dict[C, D],
-                                                  prof34_2pt=None, p_of_k_a=None, lk_arr=None,
+                                                  prof34_2pt=prof_2pt_dict[C, D],
+                                                  p_of_k_a=None, lk_arr=None,
                                                   a_arr=a_grid_increasing_for_ttka,
-                                                  extrap_order_lok=1, extrap_order_hik=1, use_log=False)
+                                                  extrap_order_lok=1, extrap_order_hik=1, use_log=False,
+                                                  **prof_2pt_args)
 
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
     if pyccl_cfg['save_trispectrum']:
@@ -140,34 +148,34 @@ def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel
 
     start_time = time.perf_counter()
     # switch between the two functions, which are identical except for the sigma2_B argument
-    func_map = {
-        'SSC': 'angular_cl_cov_SSC',
-        'cNG': 'angular_cl_cov_cNG'
-    }
-    if which_ng_cov not in func_map.keys():
+    if which_ng_cov == 'SSC':
+        ng_cov_func = ccl.covariances.angular_cl_cov_SSC
+        sigma2_B_arg = {'sigma2_B': None}
+    elif which_ng_cov == 'cNG':
+        ng_cov_func = ccl.covariances.angular_cl_cov_cNG
+        sigma2_B_arg = {}
+    else:
         raise ValueError("Invalid value for which_ng_cov. Must be 'SSC' or 'cNG'.")
-    func_to_call = getattr(ccl.covariances, func_map[which_ng_cov])
-    sigma2_B_arg = {'sigma2_B': None} if which_ng_cov == 'SSC' else {}
 
     cov_ng_4D = Parallel(n_jobs=-1, backend='threading')(
-        delayed(func_to_call)(cosmo,
-                              cltracer1=kernel_A[ind_AB[ij, -2]],
-                              cltracer2=kernel_B[ind_AB[ij, -1]],
-                              ell=ell,
-                              tkka=tkka,
-                              fsky=f_sky,
-                              cltracer3=kernel_C[ind_CD[kl, -2]],
-                              cltracer4=kernel_D[ind_CD[kl, -1]],
-                              ell2=None,
-                              integration_method=integration_method,
-                              **sigma2_B_arg)
+        delayed(ng_cov_func)(cosmo,
+                             tracer1=kernel_A[ind_AB[ij, -2]],
+                             tracer2=kernel_B[ind_AB[ij, -1]],
+                             ell=ell,
+                             t_of_kk_a=tkka,
+                             fsky=f_sky,
+                             tracer3=kernel_C[ind_CD[kl, -2]],
+                             tracer4=kernel_D[ind_CD[kl, -1]],
+                             ell2=None,
+                             integration_method=integration_method,
+                             **sigma2_B_arg)
         for ij in tqdm(range(zpairs_AB))
         for kl in range(zpairs_CD)
     )
     # this is to move ell1, ell2 to the first axes and unpack the result in two separate dimensions
     cov_ng_4D = np.array(cov_ng_4D).transpose(1, 2, 0).reshape(nbl, nbl, zpairs_AB, zpairs_CD)
 
-    print(f'{which_ng_cov} computed with pyccl in {(time.perf_counter() - start_time) / 60:.2} min')
+    print(f'{which_ng_cov} computed with pyccl in {(time.perf_counter() - start_time) / 60:.0f} min')
 
     return cov_ng_4D
 
@@ -279,13 +287,6 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), zbins, axis=0).T
     mag_bias_tuple = (zgrid_nz, mag_bias_2d)
 
-    if covariance_cfg['shift_nz']:
-        warnings.warn('assuming that the shift is in the WL bins')
-        dz_shifts = np.array([flat_fid_pars_dict[f'dzWL{zi:02d}'] for zi in range(1, zbins + 1)])
-        n_of_z = wf_cl_lib.shift_nz(zgrid_nz, nz_tuple[1], dz_shifts, normalize=True, plot_nz=False,
-                                    interpolation_kind='linear')
-        nz_tuple = (zgrid_nz, n_of_z)
-
     wf_lensing_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
                                       ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
                                       mag_bias_tuple=mag_bias_tuple, return_ccl_obj=True, n_samples=1000)
@@ -343,9 +344,12 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     # the cls are not needed, but just in case:
     p_of_k_a = 'delta_matter:delta_matter'
-    cl_ll_3d = wf_cl_lib.cl_PyCCL(wf_lensing_obj, wf_lensing_obj, ell_grid, zbins, p_of_k_a=p_of_k_a, cosmo=cosmo_ccl, limber_integration_method='spline')
-    cl_gl_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_lensing_obj, ell_grid, zbins, p_of_k_a=p_of_k_a, cosmo=cosmo_ccl, limber_integration_method='spline')
-    cl_gg_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_galaxy_obj, ell_grid, zbins, p_of_k_a=p_of_k_a, cosmo=cosmo_ccl, limber_integration_method='spline')
+    cl_ll_3d = wf_cl_lib.cl_PyCCL(wf_lensing_obj, wf_lensing_obj, ell_grid, zbins,
+                                  p_of_k_a=p_of_k_a, cosmo=cosmo_ccl, limber_integration_method='spline')
+    cl_gl_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_lensing_obj, ell_grid, zbins,
+                                  p_of_k_a=p_of_k_a, cosmo=cosmo_ccl, limber_integration_method='spline')
+    cl_gg_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_galaxy_obj, ell_grid, zbins,
+                                  p_of_k_a=p_of_k_a, cosmo=cosmo_ccl, limber_integration_method='spline')
     cl_ll_3d_vinc = general_cfg['cl_ll_3d']
     cl_gl_3d_vinc = general_cfg['cl_gl_3d']
     cl_gg_3d_vinc = general_cfg['cl_gg_3d']
@@ -383,9 +387,9 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     elif probe == 'GG':
         probe_ordering = (('G', 'G'),)
     elif probe == '3x2pt':
-        # probe_ordering = covariance_cfg['probe_ordering']
-        warnings.warn('TESTING ONLY GLGL TO DEBUG 3X2PT cNG')
-        probe_ordering = (('G', 'L'),)  # for testing 3x2pt GLGL, which seems a problematic case.
+        probe_ordering = covariance_cfg['probe_ordering']
+        # warnings.warn('TESTING ONLY GLGL TO DEBUG 3X2PT cNG')
+        # probe_ordering = (('G', 'L'),)  # for testing 3x2pt GLGL, which seems a problematic case.
     else:
         raise ValueError('probe must be either LL, GG, or 3x2pt')
 

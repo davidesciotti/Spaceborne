@@ -16,9 +16,10 @@ dependencies:
   - ipywidgets
   - joblib
   - numba
-  - pyyaml
   - camb
   - cmake
+  - pyqt
+  - ipympl
   - pip:
     - chainconsumer 
     - getdist
@@ -29,6 +30,7 @@ dependencies:
     - ray
     - PyQt5
     - PySide2
+    - fast-pt
     #- pyccl
 
 # To install the master version of pyccl:

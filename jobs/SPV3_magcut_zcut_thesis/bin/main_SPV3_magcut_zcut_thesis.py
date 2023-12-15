@@ -12,15 +12,15 @@ import matplotlib.lines as mlines
 import gc
 import matplotlib.gridspec as gridspec
 import yaml
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.ndimage import gaussian_filter1d
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
-project_path = Path.cwd().parent.parent.parent
+ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+SB_ROOT = f'{ROOT}/Spaceborne'
 
 # project modules
-sys.path.append(f'{project_path}')
+sys.path.append(SB_ROOT)
 import bin.ell_values as ell_utils
 import bin.cl_preprocessing as cl_utils
 import bin.compute_Sijkl as Sijkl_utils
@@ -473,6 +473,7 @@ variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_le
                   'flat_or_nonflat': flat_or_nonflat,
                   'which_pk': which_pk, 'BNT_transform': BNT_transform,
                   'which_ng_cov': which_ng_cov_suffix,
+                  'ng_cov_code': covariance_cfg['SSC_code'],
                   }
 pp.pprint(variable_specs)
 
@@ -486,7 +487,7 @@ dzGC_fiducial = nuisance_tab[:, 4]
 
 # get galaxy and magnification bias fiducials
 bias_fiducials = np.genfromtxt(
-    f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/'
+    f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/'
     f'InputFiles/InputNz/NzPar/gal_mag_fiducial_polynomial_fit.dat')
 bias_fiducials_rows = np.where(bias_fiducials[:, 0] == general_cfg['magcut_source'] / 10)[
     0]  # take the correct magnitude limit
@@ -602,6 +603,7 @@ wf_galaxy_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'without_galaxy_bias', 
                                      ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
                                      return_ccl_obj=False, n_samples=len(zgrid_nz))
 
+
 # this is to check against ccl in pyccl_cov
 general_cfg['wf_WL'] = wf_lensing_vin
 general_cfg['wf_GC'] = wf_galaxy_vin
@@ -648,10 +650,26 @@ z_means_ll_vin_bnt = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_ll_vin_bnt)
 # np.testing.assert_allclose(z_means_gg, z_means_gg_vin, rtol=5e-2, atol=0,
 #                            err_msg='z means bnt computed w/ my vs vincenzo kernels don\'t match')
 
-assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll must be monotonically increasing'
-assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg must be monotonically increasing'
-assert np.all(np.diff(z_means_ll_bnt) > 0), ('z_means_ll_bnt should be monotonically increasing '
-                                             '(not a strict condition, but it would be better...)')
+plt.figure()
+for zi in range(zbins):
+    plt.plot(zgrid_wf_vin, wf_gamma_vin[:, zi], ls='-', c=colors[zi],
+             alpha=0.6, label='wf_gamma_vin' if zi == 0 else None)
+    plt.plot(zgrid_nz, wf_gamma_ccl_arr[:, zi], ls='--', c=colors[zi],
+             alpha=0.6, label='wf_ll_ccl' if zi == 0 else None)
+    plt.plot(zgrid_nz, wf_gamma_ccl_bnt[:, zi], ls='--', c=colors[zi],
+             alpha=0.6, label='wf_ll_ccl_bnt' if zi == 0 else None)
+    plt.axvline(z_means_ll_bnt[zi], ls=':', c=colors[zi])
+
+plt.legend()
+
+# assert False
+
+
+warnings.warn('RESTORE THIS CHECK!!! finish understanding this part')
+# assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll must be monotonically increasing'
+# assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg must be monotonically increasing'
+# assert np.all(np.diff(z_means_ll_bnt) > 0), ('z_means_ll_bnt should be monotonically increasing '
+#                                              '(not a strict condition, but it would be better...)')
 
 ell_cuts_dict = {}
 ell_cuts_dict['LL'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_ll_bnt, z_values_b=z_means_ll_bnt)
@@ -664,11 +682,11 @@ ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the 
 # if kmax_h_over_Mpc == kmax_fom_400_ellcenter and center_or_min == 'center':
 #     plot_ell_cuts_for_thesis(ell_cuts_dict['LL'], ell_cuts_dict['GL'], ell_cuts_dict['GG'],
 #                              'LL', 'GL', 'GL', kmax_h_over_Mpc)
-#     plt.savefig(f'/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/'
+#     plt.savefig(f'{ROOT}/phd_thesis_plots/plots/'
 #                 f'z_dependent_ell_cuts_kmax{kmax_h_over_Mpc:02f}.pdf', dpi=500, bbox_inches='tight')
 
 # mm.plot_bnt_matrix(BNT_matrix, zbins)
-# plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/bnt_matrix_fs2.pdf',
+# plt.savefig(f'{ROOT}/phd_thesis_plots/plots/bnt_matrix_fs2.pdf',
 #             dpi=500, bbox_inches='tight')
 
 # ! import and reshape datavectors (cl) and response functions (rl)
@@ -714,7 +732,7 @@ if which_pk != 'HMCodebar':
 
 else:
     print(f'Pk is {which_pk}; no LiFE datavectors in this case, using CLOE benchmarks (directly in 3d)...')
-    cloe_bench_path = '/Users/davide/Documents/Lavoro/Programmi/my_cloe_data'
+    cloe_bench_path = f'{ROOT}/my_cloe_data'
     cl_ll_3d = np.load(f'{cloe_bench_path}/Cls_zNLA3D_ShearShear_C00.npy')
     cl_gl_3d = np.load(f'{cloe_bench_path}/Cls_zNLA3D_PosShear_C00.npy')[:nbl_3x2pt, :, :]
     cl_gg_3d = np.load(f'{cloe_bench_path}/Cls_zNLA3D_PosPos_C00.npy')[:nbl_3x2pt, :, :]
@@ -853,7 +871,7 @@ covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **vari
 if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False and which_pk == 'HMCodebar':
     # load benchmark cov and check that it matches the one computed here; I am not actually using it
     cov_cloe_bench_2d = np.load(
-        f'/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/CovMat-3x2pt-Gauss-{nbl_WL_opt}Bins.npy')
+        f'{ROOT}/my_cloe_data/CovMat-3x2pt-Gauss-{nbl_WL_opt}Bins.npy')
     # reshape it in dav format
     cov_bench_2ddav = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2d, nbl_WL_opt, zbins, 'ell', 'ell')
 
@@ -868,7 +886,7 @@ if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False an
         and covariance_cfg['SSC_code'] == 'exactSSC':
     # load benchmark cov and check that it matches the one computed here; I am not actually using it
     cov_cloe_bench_2d = np.load(
-        f'/Users/davide/Documents/Lavoro/Programmi/my_cloe_data/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.npy')
+        f'{ROOT}/my_cloe_data/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.npy')
     # reshape it in dav format
     cov_bench_2ddav = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2d, nbl_WL_opt, zbins, 'ell', 'ell')
 

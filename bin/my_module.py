@@ -25,6 +25,14 @@ from tqdm import tqdm
 ###############################################################################
 
 
+def can_be_pickled(obj):
+    try:
+        pickle.dumps(obj)
+        return True
+    except (pickle.PicklingError, TypeError):
+        return False
+
+
 def load_cov_from_probe_blocks(path, filename, probe_ordering):
     """
     Load the covariance matrix from the probe blocks in 4D. The blocks are stored in a dictionary with keys

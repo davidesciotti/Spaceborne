@@ -1,4 +1,3 @@
-import pdb
 import sys
 import warnings
 
@@ -9,17 +8,14 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from chainconsumer import ChainConsumer
 
-sys.path.append('../../bin/plot_FM_running')
-import plots_FM_running as plot_utils
+sys.path.append('/Users/davide/Documents/Lavoro/Programmi/Spaceborne')
+import bin.plots_FM_running as plot_utils
+import bin.my_module as mm
+import common_cfg.mpl_cfg as mpl_cfg
 
-sys.path.append('../../../common_lib_and_cfg/common_config')
-import mpl_cfg
-
-sys.path.append('../../../common_lib_and_cfg/common_lib')
-import my_module as mm
 
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
-mpl.use('Qt5Agg')
+# mpl.use('qt')
 
 # ! options
 specs_str = 'idMag0-idRSD0-idFS0-idSysWL3-idSysGC4'
@@ -35,7 +31,7 @@ include_fom = True
 fid_shear_bias_prior = 1e-4
 shear_bias_prior = None
 gal_bias_perc_prior = None
-shear_bias_priors = [1e-7, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e1, 1e2, 1e4, None]
+shear_bias_priors = [None, ]
 gal_bias_perc_priors = shear_bias_priors
 string_columns = ['probe', 'go_or_gs', 'fix_shear_bias', 'fix_gal_bias',
                   'shear_bias_prior', 'gal_bias_perc_prior']
@@ -81,10 +77,9 @@ for go_or_gs in ['GO', 'GS']:
                                 f'{fm_path.replace("3x2pt", "WLA")}/{fm_name.replace("3x2pt", "WLA")}.dat')
                             fm += fm_wa
 
-                        with open('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/'
-                                  'fiducial_params_dict_for_FM.yml') as f:
-                            fiducials_dict = yaml.safe_load(f)
-
+                        with open('/Users/davide/Documents/Lavoro/Programmi/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
+                            fiducials_dict = yaml.safe_load(f)['FM_ordered_params']
+                            
                         assert len(fiducials_dict) == fm.shape[0] == fm.shape[1], 'Wrong shape of FM matrix!'
 
                         # fix some of the parameters (i.e., which columns to remove)
@@ -128,14 +123,22 @@ for go_or_gs in ['GO', 'GS']:
                             gal_bias_fid_values = np.array(list(fiducials_dict.values()))[gal_bias_idxs]
                             gal_bias_prior_values = gal_bias_perc_prior * gal_bias_fid_values / 100
                             fm = mm.add_prior_to_fm(fm, fiducials_dict, gal_bias_param_names, gal_bias_prior_values)
-
+                            
+                        
+                        plt.matshow(fm[:num_params_tokeep, :num_params_tokeep])
+                        plt.xticks(range(num_params_tokeep), mpl_cfg.general_dict['cosmo_labels_TeX'])
+                        plt.yticks(range(num_params_tokeep), mpl_cfg.general_dict['cosmo_labels_TeX'])
+                        plt.colorbar()
+                        plt.title('WL FM')
+                        plt.savefig('/Users/davide/Documents/Science 🛰/Talks/2023_12_22 - Defense/img/FM_WL.pdf', dpi=300, bbox_inches='tight')
+                        
                         # ! triangle plot
-                        if triangle_plot:
+                        if triangle_plot and fix_shear_bias==True and fix_gal_bias==False:
                             # decide params to show in the triangle plot
                             cosmo_param_names = list(fiducials_dict.keys())[:num_params_tokeep]
-                            params_tot_list = cosmo_param_names + shear_bias_param_names
+                            # params_tot_list = cosmo_param_names + shear_bias_param_names
                             # params_tot_list = cosmo_param_names + gal_bias_param_names
-                            # params_tot_list = cosmo_param_names
+                            params_tot_list = cosmo_param_names
 
                             trimmed_fid_dict = {param: fiducials_dict[param] for param in params_tot_list}
 

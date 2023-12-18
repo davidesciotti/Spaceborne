@@ -1,5 +1,6 @@
 import time
 import warnings
+import joblib
 import numpy as np
 import scipy
 from matplotlib import pyplot as plt
@@ -44,7 +45,7 @@ from . import cl_preprocessing as cl_utils
 ###########################################
 
 # XXX attention! the dC_LL matrix should have (nParams - 10) as dimension,
-# since WL has no bias. This would complicate the structure of the datacector 
+# since WL has no bias. This would complicate the structure of the datacector
 # and taking nParams instead seems to have ho impact on the final result.
 
 def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
@@ -169,10 +170,9 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         cov_dict['cov_WA_GS_2D'] = np.eye(nbl_WA * zpairs_auto)
 
     # invert GO covmats
-    print('Starting covariance matrix inversion...')
-    start_glob = time.perf_counter()
-    start_time = time.perf_counter()
     # TODO try to use scipy.sparse.linalg.inv
+    print('Starting covariance matrix inversion...')
+    start_time = time.perf_counter()
     cov_WL_GO_2D_inv = np.linalg.inv(cov_dict['cov_WL_GO_2D'])
     cov_GC_GO_2D_inv = np.linalg.inv(cov_dict['cov_GC_GO_2D'])
     cov_WA_GO_2D_inv = np.linalg.inv(cov_dict['cov_WA_GO_2D'])
@@ -358,7 +358,6 @@ def save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=False, save_dict=
     probe_list = ['WL', 'GC', '3x2pt', 'WA']
     ellmax_list = [ell_max_WL, ell_max_GC, ell_max_3x2pt, ell_max_WL]
     nbl_list = [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]
-
 
     # TODO deprecate cases_tosave
     # TODO deprecate this, do I really need to save the different FM in txt format?

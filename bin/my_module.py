@@ -25,6 +25,29 @@ from tqdm import tqdm
 ###############################################################################
 
 
+def contour_FoM_calculator(sample, param1, param2, sigma_level=1):
+    """ Santiago's function to compute the FoM from getDist samples.
+    add()sample is a getDist sample object, you need as well the shapely package to compute polygons. The function returns the 1sigma FoM, but in principle you could compute 2-, or 3-sigma "FoMs"
+    """
+    from shapely.geometry import Polygon
+    contour_coords = {}
+    density = sample.get2DDensityGridData(j=param1, j2=param2, num_plot_contours=3)
+    contour_levels = density.contours
+    contours = plt.contour(density.x, density.y, density.P, sorted(contour_levels));
+    for ii, contour in enumerate(contours.collections):
+        paths = contour.get_paths()
+        for path in paths:
+            xy = path.vertices
+            x = xy[:,0]
+            y = xy[:,1]
+            contour_coords[ii] = list(zip(x, y))
+    sigma_lvls = {3:0, 2:1, 1:2}
+    poly = Polygon(contour_coords[sigma_lvls[sigma_level]])  # 0:3sigma, 1:2sigma, 2:1sigma
+    area = poly.area
+    FoM_area = (2.3*np.pi)/area
+    return FoM_area, density
+
+
 def can_be_pickled(obj):
     try:
         pickle.dumps(obj)
@@ -2717,12 +2740,14 @@ def my_exit():
 
 def pk_vinc_file_to_2d_npy(path, plot_pk_z0):
     # e.g. path = '/Users/davide/Documents/Lavoro/Programmi/CAMB_pk_baryons/output/Omega_M/PddVsZedLogK-Omega_M_3.040e-01.dat'
-    warnings.warn('double-check the units and whether k is in log scale in the input file')
+    warnings.warn('double-check the units in the header and whether k is in log scale in the input file (this function assumes it is))')
+    warnings.warn('the output ordering is [k, z], not the other way around!')
+    
 
     pkfile = np.genfromtxt(path)
     z_array = np.unique(pkfile[:, 0])
     k_array = 10 ** np.unique(pkfile[:, 1])
-    pk_2D = pkfile[:, 2].reshape(len(z_array), len(k_array))
+    pk_2D = pkfile[:, 2].reshape(len(z_array), len(k_array)).T
 
     if plot_pk_z0:
         plt.plot(k_array, pk_2D[0, :])

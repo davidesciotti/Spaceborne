@@ -62,13 +62,22 @@ kmax_tex = mpl_cfg.kmax_tex
 kmax_star_tex = mpl_cfg.kmax_star_tex
 cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
+
+fm_dict_a = mm.load_pickle('/Users/davide/Documents/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodebar_CSSTgrids.pickle')
+fm_dict_b = mm.load_pickle('/Users/davide/Documents/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodebar_defaultgrids.pickle')
+
+for key in fm_dict_a.keys():
+    if key not in ['param_names_dict', 'fiducial_values_dict', 'fiducials_dict_flattened']:
+        print(key)
+        print(np.allclose(fm_dict_a[key], fm_dict_b[key], rtol=1e-4, atol=0))
+
 # ! options
 specs_str = 'idIA2_idB3_idM3_idR1'
 fm_root_path = ('/Users/davide/Documents/Lavoro/Programmi/Spaceborne/'
                 'jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM')
 fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}'
 fm_pickle_name_raw = 'FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_' \
-                    'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}_akgrids.pickle'
+                    'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}_defaultgrids.pickle'
 EP_or_ED = 'EP'
 zbins = 13
 num_params_tokeep = 7

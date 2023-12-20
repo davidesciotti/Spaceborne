@@ -59,11 +59,11 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
                                        EP_or_ED=general_cfg['EP_or_ED'],
                                        zbins=zbins, z_steps_sigma2=z_steps_sigma2, k_txt_label=k_txt_label,
                                        cl_integral_convention=cl_integral_convention)
-    
+
     assert which_ng_cov == 'SSC', 'no cNG term has been computed with Spaceborne!'
-    
+
     # general_suffix = f'nbl{nbl}_ellmax{ell_max}_zbins{zbins}_' \
-                    #  f'zsteps{z_steps_sigma2}_k{k_txt_label}_convention{cl_integral_convention}'
+    #  f'zsteps{z_steps_sigma2}_k{k_txt_label}_convention{cl_integral_convention}'
 
     if not covariance_cfg['exactSSC_cfg']['use_precomputed_sigma2']:
         # this part should be finished, what should I do with the array? save it?
@@ -83,56 +83,34 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
     # populate 3x2pt dictionary
     elif probe == '3x2pt':
 
+        warnings.warn('I am hardcoding the number of bins here, should be fixed')
         cov_filename = cov_filename.replace('nbl29', 'nbl32')
         cov_filename = cov_filename.replace('ellmax3000', 'ellmax5000')
 
-        cov_exactSSC_3x2pt_dict_8D_v1 = mm.load_cov_from_probe_blocks(
-            cov_path, cov_filename, probe_ordering)
-        cov_exactSSC_3x2pt_dict_8D_v2 = mm.load_cov_from_probe_blocks(
+        cov_exactSSC_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
             cov_path, cov_filename, probe_ordering)
 
-        # v1: divide the different blocks by fsky
-        for key in cov_exactSSC_3x2pt_dict_8D_v1.keys():
-            cov_exactSSC_3x2pt_dict_8D_v1[key] /= covariance_cfg['fsky']
-            print(key, cov_exactSSC_3x2pt_dict_8D_v1[key].shape)
+        # divide the different blocks by fsky
+        for key in cov_exactSSC_3x2pt_dict_8D.keys():
+            cov_exactSSC_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
 
-        cov_exactSSC_SS_4D_v1 = mm.cov_3x2pt_8D_dict_to_4D(cov_exactSSC_3x2pt_dict_8D_v1, probe_ordering)
-        cov_exactSSC_SS_4D_v2 = mm.cov_3x2pt_8D_dict_to_4D(cov_exactSSC_3x2pt_dict_8D_v2, probe_ordering)
-        cov_exactSSC_SS_4D_v2 /= covariance_cfg['fsky']  # v2: divide the 4D array by fsky
-
-        cov_exactSSC_SS_2D_v1 = mm.cov_4D_to_2D(cov_exactSSC_SS_4D_v1)
-        cov_exactSSC_SS_2D_v2 = mm.cov_4D_to_2D(cov_exactSSC_SS_4D_v2)
-
-        mm.compare_arrays(cov_exactSSC_SS_2D_v1, cov_exactSSC_SS_2D_v2)
-
-        breakpoint()
-        np.testing.assert_allclose(cov_exactSSC_SS_4D_v1, cov_exactSSC_SS_4D_v2, rtol=1e-5, atol=0)
-
-
-        cov_exactSSC_3x2pt_dict_8D = {}
+        # reshape the blocks from 4D to 6D, as needed by the BNT
         cov_exactSSC_3x2pt_dict_10D = {}
         for probe_A, probe_B in probe_ordering:
             for probe_C, probe_D in probe_ordering:
+                cov_exactSSC_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
+                    cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
+                    nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
+                
+                # ! cut to the correct number of ell bins
+                cov_exactSSC_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = cov_exactSSC_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D][:nbl, :nbl, :, :, :, :]
 
-                try:
-                    cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D] = np.load(
-                        f'{path}/cov_SSC_{probe_A}{probe_B}{probe_C}{probe_D}_4D_{general_suffix}.npy')
-                except FileNotFoundError:
-                    # for 3x2pt, I have the files with 32 bins, ie with lmax = 5000.
-                    general_suffix_nbl29 = general_suffix.replace('nbl29', 'nbl32')
-                    general_suffix_nbl29 = general_suffix_nbl29.replace('ellmax3000', 'ellmax5000')
-
-                    # cut the covariance to 29 bins
-                    cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D] = np.load(
-                        f'{path}/cov_SSC_{probe_A}{probe_B}{probe_C}{probe_D}_'
-                        f'4D_{general_suffix_nbl29}.npy')[:nbl, :nbl, :, :] / covariance_cfg['fsky']
-
-                    cov_exactSSC_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
-                        cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
-                        nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
 
         assert probe == '3x2pt', ('probe must be 3x2pt at the moment, messing around with return dimension for BNT. to '
                                   'be implemented better later')
+        assert return_format_3x2pt == 'dict_10d', ('return format must be dict_10d moment, messing around with '
+                                                  'dimension for BNT. to be implemented better later')
+
         if return_format_3x2pt == 'dict_8d':
             return cov_exactSSC_3x2pt_dict_8D
         elif return_format_3x2pt == 'dict_10d':

@@ -1,4 +1,5 @@
 import bz2
+from copy import deepcopy
 import json
 import sys
 import warnings
@@ -79,8 +80,8 @@ def load_cov_from_probe_blocks(path, filename, probe_ordering):
                         probe_a, probe_b, probe_c, probe_d]['arr_0']
 
             else:  # Lower triangle, set using symmetry
-                cov_ssc_dict_8D[probe_a, probe_b, probe_c, probe_d] = cov_ssc_dict_8D[
-                    probe_c, probe_d, probe_a, probe_b].transpose(1, 0, 3, 2)
+                cov_ssc_dict_8D[probe_a, probe_b, probe_c, probe_d] = deepcopy(cov_ssc_dict_8D[
+                    probe_c, probe_d, probe_a, probe_b].transpose(1, 0, 3, 2))
 
     for key in cov_ssc_dict_8D.keys():
         assert cov_ssc_dict_8D[key].ndim == 4, (f'covariance matrix {key} has ndim={cov_ssc_dict_8D[key].ndim} instead '

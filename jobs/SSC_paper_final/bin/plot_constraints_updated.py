@@ -35,7 +35,7 @@ shear_bias_priors = [None, ]
 gal_bias_perc_priors = shear_bias_priors
 string_columns = ['probe', 'go_or_gs', 'fix_shear_bias', 'fix_gal_bias',
                   'shear_bias_prior', 'gal_bias_perc_prior']
-triangle_plot = True
+triangle_plot = False
 use_Wadd = True  # the difference is extremely small
 
 # these CAN BE used for fixing them or adding priors
@@ -54,7 +54,6 @@ go_or_gs_folder_dict = {
     'GS': 'GaussSSC',
 }
 probes_vinc = ('WLO', 'GCO', '3x2pt')
-probes_vinc = ('WLO',)
 
 fm_uncert_df = pd.DataFrame()
 for go_or_gs in ['GO', 'GS']:
@@ -66,6 +65,8 @@ for go_or_gs in ['GO', 'GS']:
                     for gal_bias_perc_prior in gal_bias_perc_priors:
 
                         names_params_to_fix = []
+                        num_params_tokeep = 7
+                        
 
                         fm_path = f'/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_1_restored/' \
                                   f'FishMat_restored/{go_or_gs_folder_dict[go_or_gs]}/{probe_vinc}/FS1NoCuts'
@@ -124,13 +125,13 @@ for go_or_gs in ['GO', 'GS']:
                             gal_bias_prior_values = gal_bias_perc_prior * gal_bias_fid_values / 100
                             fm = mm.add_prior_to_fm(fm, fiducials_dict, gal_bias_param_names, gal_bias_prior_values)
                             
-                        
-                        plt.matshow(fm[:num_params_tokeep, :num_params_tokeep])
-                        plt.xticks(range(num_params_tokeep), mpl_cfg.general_dict['cosmo_labels_TeX'])
-                        plt.yticks(range(num_params_tokeep), mpl_cfg.general_dict['cosmo_labels_TeX'])
-                        plt.colorbar()
-                        plt.title('WL FM')
-                        plt.savefig('/Users/davide/Documents/Science 🛰/Talks/2023_12_22 - Defense/img/FM_WL.pdf', dpi=300, bbox_inches='tight')
+                        # plot FM for defense presentation
+                        # plt.matshow(fm[:num_params_tokeep, :num_params_tokeep])
+                        # plt.xticks(range(num_params_tokeep), mpl_cfg.general_dict['cosmo_labels_TeX'])
+                        # plt.yticks(range(num_params_tokeep), mpl_cfg.general_dict['cosmo_labels_TeX'])
+                        # plt.colorbar()
+                        # plt.title('WL FM')
+                        # plt.savefig('/Users/davide/Documents/Science 🛰/Talks/2023_12_22 - Defense/img/FM_WL.pdf', dpi=300, bbox_inches='tight')
                         
                         # ! triangle plot
                         if triangle_plot and fix_shear_bias==True and fix_gal_bias==False:
@@ -147,7 +148,6 @@ for go_or_gs in ['GO', 'GS']:
                             cov = np.linalg.inv(fm)[fm_idxs_tokeep, :][:, fm_idxs_tokeep]
 
                             plot_utils.contour_plot_chainconsumer(cov, trimmed_fid_dict)
-                            assert False, 'stop here for now'
 
                         # ! compute uncertainties from fm
                         uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal',
@@ -191,13 +191,15 @@ probe_vinc_toplot = '3x2pt'
 go_or_gs_toplot = 'perc_diff'
 fm_uncert_df_toplot = fm_uncert_df[(fm_uncert_df['probe'] == probe_vinc_toplot) &
                                    (fm_uncert_df['fix_gal_bias'] == False) &
-                                   (fm_uncert_df['fix_shear_bias'] == True) &
                                    (fm_uncert_df['shear_bias_prior'].isna()) &
                                    (fm_uncert_df['gal_bias_perc_prior'].isna())
                                    ]
 uncert_go = fm_uncert_df_toplot[fm_uncert_df_toplot['go_or_gs'] == 'GO'].iloc[:, len(string_columns):].values[0, :]
 uncert_gs = fm_uncert_df_toplot[fm_uncert_df_toplot['go_or_gs'] == 'GS'].iloc[:, len(string_columns):].values[0, :]
-uncert_perc_diff = fm_uncert_df_toplot[fm_uncert_df_toplot['go_or_gs'] == 'perc_diff'].iloc[:,
+uncert_perc_diff_df = fm_uncert_df_toplot[fm_uncert_df_toplot['go_or_gs'] == 'GO']
+uncert_perc_diff_fix_shear_bias = uncert_perc_diff_df[uncert_perc_diff_df['fix_shear_bias'] == True].iloc[:,
+                   len(string_columns):].values[0, :]
+uncert_perc_diff_free_shear_bias = uncert_perc_diff_df[uncert_perc_diff_df['fix_shear_bias'] == False].iloc[:,
                    len(string_columns):].values[0, :]
 
 # check the values in the paper tables
@@ -207,22 +209,35 @@ uncert_perc_diff = fm_uncert_df_toplot[fm_uncert_df_toplot['go_or_gs'] == 'perc_
 #     print(f'{table_1_value:.3f}')
 
 
-data = fm_uncert_df_toplot.iloc[:3, len(string_columns):].values
+data = uncert_perc_diff_df.iloc[:3, len(string_columns):].values
 label_list = list(fm_uncert_df_toplot['probe'].values)
 label_list = ['None' if value is None else value for value in label_list]
-title = None
+title = probe_vinc_toplot
 
 if include_fom:
     num_params_tokeep += 1
 data = data[:, :num_params_tokeep]
 
+warnings.warn('flipping rows to show the fix shear bias case first')
+data = np.flip(data, axis=0)
+label_list = ['Shear bias fixed', 'Shear bias free']
+
+
+# data = np.delete(data, [1, 3, 4, 5], axis=1)
+# num_params_tokeep = 4
+# param_names_label = ['$\\Omega_{{\\rm m},0}$',
+#  '$w_0$',
+#  '$\\sigma_8$', 'FoM']
+
+param_names_label = None
 ylabel = r'$(\sigma_{\rm GS}/\sigma_{\rm G} - 1) \times 100$ [%]'
-plot_utils.bar_plot(data, title, label_list, bar_width=0.2, nparams=num_params_tokeep, param_names_label=None,
+ylabel = r'relative uncertainty, G [%]'
+plot_utils.bar_plot(data, title, label_list, bar_width=0.2, nparams=num_params_tokeep,
+                    param_names_label=param_names_label,
                     second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
                     include_fom=include_fom, figsize=(10, 8))
 
-# plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GOGS_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)
-
+# plt.savefig('/Users/davide/Documents/Science 🛰/Talks/2023_12_22 - Defense/img/WL_shear_bias_free_fixed.pdf', dpi=300, bbox_inches='tight')
 assert False, 'stop here to check which fiducials I used for the galaxy bias'
 
 # ! study FoM vs priors on shear and gal. bias

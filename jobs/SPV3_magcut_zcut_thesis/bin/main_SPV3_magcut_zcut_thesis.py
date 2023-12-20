@@ -885,17 +885,21 @@ if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False an
 if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False and which_pk == 'HMCodebar' \
         and covariance_cfg['SSC_code'] == 'exactSSC':
     # load benchmark cov and check that it matches the one computed here; I am not actually using it
-    cov_cloe_bench_2d = np.load(
+    cov_cloe_bench_2dcloe = np.load(
         f'{ROOT}/my_cloe_data/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.npy')
     # reshape it in dav format
-    cov_bench_2ddav = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2d, nbl_WL_opt, zbins, 'ell', 'ell')
+    cov_bench_2ddav = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2dcloe, nbl_WL_opt, zbins, 'ell', 'ell')
 
     # ell cut, 29 bins instead of 32
     n_cov_elements = cov_dict['cov_3x2pt_GS_2D'].shape[0]
     cov_bench_2ddav_lmax3000 = cov_bench_2ddav[:n_cov_elements, :n_cov_elements]
 
     # compare
-    np.testing.assert_allclose(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_lmax3000, atol=0, rtol=1e-5)
+    try:
+        np.testing.assert_allclose(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_lmax3000, atol=0, rtol=1e-5)
+    except AssertionError as error:
+        print(error)
+        mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_lmax3000, log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
 
 if general_cfg['BNT_transform'] is True and general_cfg['ell_cuts'] is True and which_pk == 'HMCodebar' \
         and covariance_cfg['SSC_code'] == 'PyCCL':

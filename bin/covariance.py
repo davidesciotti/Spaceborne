@@ -90,9 +90,13 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
         cov_exactSSC_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
             cov_path, cov_filename, probe_ordering)
 
-        # divide the different blocks by fsky
+    
         for key in cov_exactSSC_3x2pt_dict_8D.keys():
+            # ! divide the different blocks by fsky
             cov_exactSSC_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
+            
+            # ! cut to the correct number of ell bins
+            cov_exactSSC_3x2pt_dict_8D[key] = cov_exactSSC_3x2pt_dict_8D[key][:nbl, :nbl, :, :]
 
         # reshape the blocks from 4D to 6D, as needed by the BNT
         cov_exactSSC_3x2pt_dict_10D = {}
@@ -102,8 +106,7 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
                     cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
                     nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
                 
-                # ! cut to the correct number of ell bins
-                cov_exactSSC_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = cov_exactSSC_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D][:nbl, :nbl, :, :, :, :]
+
 
 
         assert probe == '3x2pt', ('probe must be 3x2pt at the moment, messing around with return dimension for BNT. to '

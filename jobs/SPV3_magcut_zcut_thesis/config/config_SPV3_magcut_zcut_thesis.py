@@ -178,15 +178,16 @@ covariance_cfg = {
     'cov_folder': f'{PROJ_ROOT}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{cov_ell_cuts:s}',
     'cov_filename': 'covmat_{which_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_'
                     'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_'
-                    'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D',
+                    'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D{which_grids:s}',
     'cov_filename_vincenzo': 'cm-{probe:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
-    'SSC_code': 'exactSSC',  # 'PyCCL' or 'exactSSC'
+    'SSC_code': 'PyCCL',  # 'PyCCL' or 'exactSSC'
 
     'PyCCL_cfg': {
         'probe': '3x2pt',  # TODO deprecate this?
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
         'which_ng_cov': ('SSC',),
+        'which_grids': '_densegrids',
 
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
         'load_precomputed_cov': True,
@@ -194,7 +195,7 @@ covariance_cfg = {
         #             '/output/Flagship_2/covmat/PyCCL',
         'cov_path': '/Users/davide/Downloads/PyCCL',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
-                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_defaultgrids.npz',
+                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
 
         'save_cov': False,
@@ -216,6 +217,8 @@ covariance_cfg = {
     'exactSSC_cfg': {
         'probe': '3x2pt',
         'which_ng_cov': 'SSC',  # only 'SSC' available in this case
+        'which_grids': '',
+        
 
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
         'cov_path': f'{ROOT}/exact_SSC/output/SSC_matrix/julia',
@@ -298,8 +301,8 @@ FM_cfg = {
 
     'fm_folder': f'{PROJ_ROOT}/output/Flagship_{flagship_version}/FM/' +
                  'BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}',
-    'FM_txt_filename': FM_txt_filename + '_defaultgrids',
-    'FM_dict_filename': FM_dict_filename + '_defaultgrids',
+    'FM_txt_filename': FM_txt_filename,
+    'FM_dict_filename': FM_dict_filename,
 
     'test_against_benchmarks': True,
 }

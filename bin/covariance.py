@@ -133,6 +133,7 @@ def get_cov_ng_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict):
     ell_grid = ell_dict['ell_' + probe_names_dict[probe]]
     probe_ordering = covariance_cfg['probe_ordering']
     ind_dict = covariance_cfg['ind_dict']
+    which_grids = covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_grids']
 
     if probe != '3x2pt':
         raise NotImplementedError('This function is not yet implemented for LL or GG; take only a '
@@ -143,7 +144,7 @@ def get_cov_ng_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict):
         which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
         probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl, lmax=ellmax,
         EP_or_ED=general_cfg['EP_or_ED'],
-        zbins=zbins)
+        zbins=zbins, which_grids=which_grids)
 
     if covariance_cfg['PyCCL_cfg']['load_precomputed_cov']:
 

@@ -957,7 +957,6 @@ my_sorted_param_names.sort()
 for dzgc_param_name in [f'dzGC{zi:02d}' for zi in range(1, zbins + 1)]:
     if dzgc_param_name in vinc_param_names:  # ! added this if statement, not very elegant
         vinc_param_names.remove(dzgc_param_name)
-# remove the '.dat
 
 # check whether the 2 lists match and print the elements that are in one list but not in the other
 param_names_not_in_my_list = [vinc_param_name for vinc_param_name in vinc_param_names if
@@ -992,22 +991,22 @@ elif not FM_cfg['load_preprocess_derivatives']:
     dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
     # check if dictionary is empty
     if not dC_dict_1D:
-        raise ValueError(f'No derivatives found in folder {derivatives_folder}')
+        raise ValueError(f'No derivatives found in folder {derivatives_folder}')    
 
     # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
     dC_dict_LL_3D = {}
     dC_dict_GG_3D = {}
     dC_dict_WA_3D = {}
     dC_dict_3x2pt_5D = {}
-    # for key in dC_dict_1D.keys():   # ! it was like this
-    for key in vinc_filenames:  # ! testing this
+    
+    for key in vinc_filenames:  # loop over these, I already selected ML, MS and so on
         if not key.startswith('dDVddzGC'):
             if 'WLO' in key:
                 dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
             elif 'GCO' in key:
                 dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
-            # elif 'WLA' in key:
-            #     dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
+            elif 'WLA' in key:
+                dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
             elif '3x2pt' in key:
                 dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt,
                                                                   zbins)
@@ -1015,8 +1014,8 @@ elif not FM_cfg['load_preprocess_derivatives']:
     # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
     dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
     dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
-    # dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
-    dC_WA_4D = np.ones((nbl_WA, zbins, zbins, dC_LL_4D.shape[-1]))
+    dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
+    dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
     dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
                                                der_prefix, is_3x2pt=True)
 
@@ -1034,7 +1033,7 @@ elif not FM_cfg['load_preprocess_derivatives']:
     np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_3x2pt_6D.npy', dC_3x2pt_6D)
 
 else:
-    raise ValueError('"load_preprocess_derivatives" can only be True or False')
+    raise ValueError('"load_preprocess_derivatives" must be True or False')
 
 # store the derivatives arrays in a dictionary
 deriv_dict = {'dC_LL_4D': dC_LL_4D,
@@ -1055,8 +1054,11 @@ if not general_cfg['ell_cuts']:
     # not very nice, i defined the ell_cuts_subfolder above...
     fm_folder = fm_folder.replace(f'/{general_cfg["which_cuts"]}/ell_{center_or_min}', '')
 
-FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, FM_cfg['save_FM_txt'],
-                 FM_cfg['save_FM_dict'], **variable_specs)
+if FM_cfg['save_FM_dict']:
+    FM_dict_filename = FM_cfg['FM_dict_filename'].format(**variable_specs)
+    if covariance_cfg['']
+    mm.save_pickle(f'{fm_folder}/{FM_dict_filename}.pickle', FM_dict)
+
 
 if FM_cfg['test_against_benchmarks']:
     mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')

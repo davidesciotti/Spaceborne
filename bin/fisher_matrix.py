@@ -346,6 +346,7 @@ def save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=False, save_dict=
     """saves the FM in .txt and .pickle formats
     :param fm_folder:
     """
+    raise DeprecationWarning('this function is too convoluted, no need to save individual txt files? maybe it makes sense for git...')
 
     ell_max_WL = save_specs['ell_max_WL']
     ell_max_GC = save_specs['ell_max_GC']
@@ -372,7 +373,6 @@ def save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=False, save_dict=
     #             np.savetxt(f'{fm_folder}/{FM_txt_filename}.txt', FM_dict[f'FM_{probe}_{which_cov}'])
 
     if save_dict:
-        warnings.warn('TODO add the type of ng cov to this filename!')
         FM_dict_filename = FM_cfg['FM_dict_filename'].format(**save_specs)
         mm.save_pickle(f'{fm_folder}/{FM_dict_filename}.pickle', FM_dict)
 

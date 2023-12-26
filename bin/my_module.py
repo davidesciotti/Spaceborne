@@ -19,11 +19,37 @@ import itertools
 import os
 import inspect
 from tqdm import tqdm
+import pandas as pd
 
 # from ..common_cfg import ISTF_fid_params as ISTF_fid
 
 
 ###############################################################################
+
+
+
+def compare_df_keys(dataframe, key_to_compare, value_a, value_b, num_string_colums):
+    """
+    This function compares two rows of a dataframe and returns a new row with the percentage difference between the two
+    :param dataframe:
+    :param key_to_compare:
+    :param value_a:
+    :param value_b:
+    :param num_string_colums: number of columns containing only strings or various options, such as whether to fix a certain prior or not...
+    :return:
+    """
+    df_A = dataframe[dataframe[key_to_compare] == value_a]
+    df_B = dataframe[dataframe[key_to_compare] == value_b]
+    arr_A = df_A.iloc[:, num_string_colums:].select_dtypes('number').values
+    arr_B = df_B.iloc[:, num_string_colums:].select_dtypes('number').values
+    perc_diff_df = df_A.copy()
+    # ! the reference is G, this might change to G + SSC + cNG
+    perc_diff_df.iloc[:, num_string_colums:] = percent_diff(arr_B, arr_A)
+    perc_diff_df[key_to_compare] = 'perc_diff'
+    perc_diff_df['FoM'] = -perc_diff_df['FoM']  # ! abs? minus??
+    dataframe = pd.concat([dataframe, perc_diff_df], axis=0, ignore_index=True)
+    dataframe = dataframe.drop_duplicates()
+    return dataframe
 
 
 def contour_FoM_calculator(sample, param1, param2, sigma_level=1):
@@ -67,6 +93,8 @@ def load_cov_from_probe_blocks(path, filename, probe_ordering):
     {probe_B}, {probe_C}, {probe_D} which will be replaced with the actual probe names.
     :param probe_ordering: Probe ordering tuple
     :return:
+    
+    BEWARE OF USING deepcopy, otherwise the different blocks become correlated
     """
     cov_ssc_dict_8D = {}
     for row, (probe_a, probe_b) in enumerate(probe_ordering):

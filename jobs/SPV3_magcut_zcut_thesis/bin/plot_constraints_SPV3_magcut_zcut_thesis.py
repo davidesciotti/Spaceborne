@@ -32,44 +32,12 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.expand_frame_repr', False)
 
 
-def compare_df_keys(dataframe, key_to_compare, value_a, value_b):
-    """
-    This function compares two rows of a dataframe and returns a new row with the percentage difference between the two
-    :param dataframe:
-    :param key_to_compare:
-    :param value_a:
-    :param value_b:
-    :return:
-    """
-    df_A = dataframe[dataframe[key_to_compare] == value_a]
-    df_B = dataframe[dataframe[key_to_compare] == value_b]
-    arr_A = df_A.iloc[:, len(string_columns):].select_dtypes('number').values
-    arr_B = df_B.iloc[:, len(string_columns):].select_dtypes('number').values
-    perc_diff_df = df_A.copy()
-    # ! the reference is G, this might change to G + SSC + cNG
-    perc_diff_df.iloc[:, len(string_columns):] = mm.percent_diff(arr_B, arr_A)
-    perc_diff_df[key_to_compare] = 'perc_diff'
-    perc_diff_df['FoM'] = -perc_diff_df['FoM']  # ! abs? minus??
-    dataframe = pd.concat([dataframe, perc_diff_df], axis=0, ignore_index=True)
-    dataframe = dataframe.drop_duplicates()
-    return dataframe
-
-
 general_cfg = cfg.general_cfg
-FM_cfg = cfg.FM_cfg
 h_over_mpc_tex = mpl_cfg.h_over_mpc_tex
 kmax_tex = mpl_cfg.kmax_tex
 kmax_star_tex = mpl_cfg.kmax_star_tex
 cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
-
-fm_dict_a = mm.load_pickle('/Users/davide/Documents/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodebar_CSSTgrids.pickle')
-fm_dict_b = mm.load_pickle('/Users/davide/Documents/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodebar_defaultgrids.pickle')
-
-for key in fm_dict_a.keys():
-    if key not in ['param_names_dict', 'fiducial_values_dict', 'fiducials_dict_flattened']:
-        print(key)
-        print(np.allclose(fm_dict_a[key], fm_dict_b[key], rtol=1e-4, atol=0))
 
 # ! options
 specs_str = 'idIA2_idB3_idM3_idR1'
@@ -77,7 +45,7 @@ fm_root_path = ('/Users/davide/Documents/Lavoro/Programmi/Spaceborne/'
                 'jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM')
 fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}'
 fm_pickle_name_raw = 'FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_' \
-                    'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}_defaultgrids.pickle'
+                    'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}{which_grids:s}.pickle'
 EP_or_ED = 'EP'
 zbins = 13
 num_params_tokeep = 7
@@ -109,24 +77,24 @@ whose_FM_list = ('davide',)
 kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
 
 which_cov_term_list = ['G', 'GSSC']
-ng_cov_code = 'PyCCL'
+ng_cov_code = 'exactSSC'  # exactSSC or PyCCL
+which_grids = '_CSSTgrids'  # '_defaultgrids' or '_CSSTgrids' or '_densegrids' or grids used for k and a arrays in pyccl
 which_ng_cov = which_cov_term_list[1]
 BNT_transform_list = [False, ]
 center_or_min_list = ['center']
 kmax_h_over_Mpc_list = (general_cfg['kmax_h_over_Mpc_list'][0],)
-# kmax_1_over_Mpc_vinc_str_list = ['025', '050', '075', '100', '125', '150', '175', '200', '300',
-#                                  '500', '1000', '1500', '2000']
+kmax_1_over_Mpc_vinc_str_list = ['025', '050', '075', '100', '125', '150', '175', '200', '300',
+                                 '500', '1000', '1500', '2000']
 # kmax_1_over_Mpc_vinc_list = [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00, 15.00, 20.00]
 
 ell_cuts_list = [False, ]
 fix_dz_list = [True, False]
 fix_shear_bias_list = [True, False]
-which_pk_list = (general_cfg['which_pk_list'][0],)
+which_pk_list = (general_cfg['which_pk_list'][0], )
 center_or_min_plt = 'center'
 which_cuts_plt = 'Vincenzo'
 save_plots = False
 plor_corr_matrix = True
-correlation_dict = {}
 # ! options
 
 probe_vinc_dict = {
@@ -134,6 +102,21 @@ probe_vinc_dict = {
     'GC': 'GCO',
     '3x2pt': '3x2pt',
 }
+num_string_columns = len(string_columns)
+fm_uncert_df = pd.DataFrame()
+correlation_dict = {}
+
+if ng_cov_code == 'exactSSC':
+    which_grids = ''
+
+# quick check: between PyCCL SSC FMs computed with different grids
+fm_dict_a = mm.load_pickle('/Users/davide/Documents/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodebar_CSSTgrids.pickle')
+fm_dict_b = mm.load_pickle('/Users/davide/Documents/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodebar_densegrids.pickle')
+
+for key in fm_dict_a.keys():
+    if key not in ['param_names_dict', 'fiducial_values_dict', 'fiducials_dict_flattened']:
+        print('CSSTgrids == densegrids?', key, np.allclose(fm_dict_a[key], fm_dict_b[key], rtol=1e-3, atol=0))
+
 
 # TODO understand nan instead of None in the fm_uncert_df
 # TODO maybe there is a bettewr way to handle the prior values in relation to the fix flag
@@ -145,7 +128,6 @@ assert which_cuts == 'Vincenzo', ('to begin with, use only Vincenzo/standard cut
                                   'For the thesis, probably use just these')
 assert not use_Wadd, 'import of Wadd not implemented yet'
 
-fm_uncert_df = pd.DataFrame()
 
 for BNT_transform in BNT_transform_list:
     for which_cov_term in which_cov_term_list:
@@ -167,6 +149,7 @@ for BNT_transform in BNT_transform_list:
 
                                     if which_cov_term == 'GSSC':
                                         which_pk = 'HMCodebar'  # GSSC is only availane in this case
+                                    
 
                                     names_params_to_fix = []
 
@@ -178,7 +161,8 @@ for BNT_transform in BNT_transform_list:
                                                                                     ML=ML, ZL=ZL, MS=MS, ZS=ZS,
                                                                                     specs_str=specs_str,
                                                                                     which_pk=which_pk,
-                                                                                    ng_cov_code=ng_cov_code)
+                                                                                    ng_cov_code=ng_cov_code,
+                                                                                    which_grids=which_grids)
                                         if ell_cuts:
                                             fm_path += f'/{which_cuts}/ell_{center_or_min}'
                                             fm_pickle_name = fm_pickle_name.replace(f'.pickle',
@@ -211,7 +195,7 @@ for BNT_transform in BNT_transform_list:
                                     # with open('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/'
                                     #           'fiducial_params_dict_for_FM.yml') as f:
                                     #     fiducials_dict = yaml.safe_load(f)
-                                    fiducials_dict = fm_dict['fiducials_dict_flattened']
+                                    fiducials_dict = fm_dict['fiducial_values_dict']
                                     h = fiducials_dict['h']
 
                                     assert fm.shape[0] == fm.shape[1], 'FM matrix is not square!'
@@ -294,12 +278,12 @@ for BNT_transform in BNT_transform_list:
                                     fom = mm.compute_FoM(fm, w0wa_idxs)
 
                                     # ! this piece of code is for the foc of the different cases
-                                    correlation = mm.correlation_from_covariance(np.linalg.inv(fm))[:7, :7]
-                                    foc = mm.figure_of_correlation(correlation)
+                                    corr_mat = mm.correlation_from_covariance(np.linalg.inv(fm))[:num_params_tokeep, :num_params_tokeep]
+                                    foc = mm.figure_of_correlation(corr_mat)
                                     if plor_corr_matrix and which_cov_term == 'G' and BNT_transform is False and \
                                             ell_cuts is False and fix_dz is True and fix_shear_bias is False and \
                                             kmax_h_over_Mpc == kmax_h_over_Mpc_list[-1] and which_pk:
-                                        correlation_dict[which_pk] = correlation
+                                        correlation_dict[which_pk] = corr_mat
 
                                     df_columns_names = string_columns + [param_name for param_name in
                                                                          fiducials_dict.keys()][
@@ -341,10 +325,10 @@ fm_uncert_df_toplot = fm_uncert_df[
     (fm_uncert_df['center_or_min'] == center_or_min_plt)
     ]
 
-fm_uncert_df_toplot = compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', which_cov_term_list[0],
-                                      which_cov_term_list[1])
+fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', which_cov_term_list[0],
+                                      which_cov_term_list[1], num_string_columns)
 
-data = fm_uncert_df_toplot.iloc[:, len(string_columns):].values
+data = fm_uncert_df_toplot.iloc[:, num_string_columns:].values
 label_list = list(fm_uncert_df_toplot['which_cov_term'].values)
 label_list = ['None' if value is None else value for value in label_list]
 
@@ -360,8 +344,10 @@ plot_utils.bar_plot(data, f'3x2pt, {which_cov_term_list[1]}', label_list, bar_wi
 # plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GGSSC_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)
 
 
-mm.plot_correlation_matrix(correlation_dict['HMCode2020'] / correlation_dict['TakaBird'], cosmo_params_tex,
-                           title='HMCodebar/TakaBird')
+
+assert False, 'checking SSC btw pyccl and exactSSC'
+# mm.plot_correlation_matrix(correlation_dict['HMCode2020'] / correlation_dict['TakaBird'], cosmo_params_tex,
+                        #    title='HMCodebar/TakaBird')
 if save_plots:
     plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/correlation_matrix.pdf',
                 bbox_inches='tight', dpi=500)
@@ -369,10 +355,10 @@ if save_plots:
 # ! check difference between ell_cuts True and False
 df_true = fm_uncert_df[(fm_uncert_df['ell_cuts'] == True) &
                        (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_list[-1])].iloc[:,
-          len(string_columns):].values
+          num_string_columns:].values
 df_false = fm_uncert_df[(fm_uncert_df['ell_cuts'] == False) &
                         (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_list[-1])].iloc[:,
-           len(string_columns):].values
+           num_string_columns:].values
 diff = (df_true / df_false - 1) * 100
 mm.matshow(diff, log=True, title=f'difference between ell_cuts True, kmax = {kmax_h_over_Mpc_list[-1]:.2f} and False')
 
@@ -586,7 +572,7 @@ go_gs_df = fm_uncert_df[
     (fm_uncert_df['center_or_min'] == center_or_min_plt)
     ]
 
-go_gs_df = compare_df_keys(go_gs_df, 'which_cov_term', which_cov_term_list[0], which_cov_term_list[1])
+go_gs_df = mm.compare_df_keys(go_gs_df, 'which_cov_term', which_cov_term_list[0], which_cov_term_list[1], num_string_columns)
 
 cosmo_params_tex_plusfom = cosmo_params_tex + ['FoM']
 plt.figure()

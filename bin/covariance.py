@@ -39,8 +39,6 @@ def get_ellmax_nbl(probe, general_cfg):
 def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
     # this actually just imports the precomputed ssc. It can also compute deltab, quite useless at the moment
     print('computing SSC covariance with exactSSC...')
-    warnings.warn('I am dividing by fsky in the import here below (8d dict), should be correct but be careful...')
-    warnings.warn('TODO CHECK FSKY AND FIX COV FILENAME STUFF')
 
     probe = covariance_cfg['exactSSC_cfg']['probe']
     which_ng_cov = covariance_cfg['exactSSC_cfg']['which_ng_cov']
@@ -106,8 +104,6 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
                     cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
                     nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
                 
-
-
 
         assert probe == '3x2pt', ('probe must be 3x2pt at the moment, messing around with return dimension for BNT. to '
                                   'be implemented better later')

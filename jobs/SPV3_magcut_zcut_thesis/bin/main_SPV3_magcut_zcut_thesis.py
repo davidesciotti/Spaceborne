@@ -916,43 +916,13 @@ if general_cfg['test_against_benchmarks']:
 if not FM_cfg['compute_FM']:
     # this guard is just to avoid indenting the whole code below
     raise KeyboardInterrupt('skipping FM computation, the script will exit now')
+    
 
-fiducials_dict = {
-    'cosmo': [flat_fid_pars_dict['Om'],
-              flat_fid_pars_dict['Ob'],
-              flat_fid_pars_dict['wz'],
-              flat_fid_pars_dict['wa'],
-              flat_fid_pars_dict['h'],
-              flat_fid_pars_dict['ns'],
-              flat_fid_pars_dict['s8'],
-              7.75],
-    'IA': np.asarray([flat_fid_pars_dict['Aia'],
-                      flat_fid_pars_dict['eIA']]),
-    'shear_bias': np.zeros((zbins,)),
-    'dzWL': dzWL_fiducial,  # for the time being, equal to the GC ones
-    'galaxy_bias': galaxy_bias_fit_fiducials,
-    'magnification_bias': magnification_bias_fit_fiducials,
-}
-fiducials_values_3x2pt = list(np.concatenate([fiducials_dict[key] for key in fiducials_dict.keys()]))
-
-# set parameters' names, as a dict and as a list
-param_names_dict = FM_cfg['param_names_dict']
-param_names_3x2pt = FM_cfg['param_names_3x2pt']
-
-assert param_names_dict.keys() == fiducials_dict.keys(), \
-    'the parameter names and fiducial values dictionaries should have the same keys'
-
-assert len(fiducials_values_3x2pt) == len(param_names_3x2pt), \
-    'the fiducial values list and parameter names should have the same length'
-
-fiducials_dict_flattened = {param_names_3x2pt[i]: fiducials_values_3x2pt[i] for i in
-                            range(len(param_names_3x2pt))}
-
-# ! preprocess derivatives (or load the alreay preprocessed ones)
-# import and store them in one big dictionary
+# import and store derivative in one big dictionary
 start_time = time.perf_counter()
 derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
 
+# ! get vincenzo's derivatives' parameters, to check that they match with the yaml file
 # check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
 der_prefix = FM_cfg['derivatives_prefix']
 vinc_filenames = mm.get_filenames_in_folder(derivatives_folder)
@@ -973,6 +943,14 @@ vinc_trimmed_filenames = [
 vinc_param_names = list(set(vinc_trimmed_filenames))
 vinc_param_names.sort()
 
+# ! get fiducials names and values from the yaml file
+# remove ODE if I'm studying only flat models
+if flat_or_nonflat == 'Flat':
+    fid_pars_dict['FM_ordered_params'].pop('ODE')
+fm_fid_dict = fid_pars_dict['FM_ordered_params']
+param_names_3x2pt = list(fm_fid_dict.keys())
+
+# sort them to compare with vincenzo's param names
 my_sorted_param_names = param_names_3x2pt.copy()
 my_sorted_param_names.sort()
 
@@ -1001,7 +979,9 @@ except AssertionError as error:
         raise AssertionError(
             'there is something wrong with the parameter names in the derivatives folder')
 
-if FM_cfg['load_preprocess_derivatives']:  # ??? and all the ML, MS??
+# ! preprocess derivatives (or load the alreay preprocessed ones)
+if FM_cfg['load_preprocess_derivatives']:
+    warnings.warn('loading preprocessed derivatives is faster but a bit more dangerous, make sure all the specs are taken into account')
     dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_LL_4D.npy')
     dC_GG_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_GG_4D.npy')
     dC_WA_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_WA_4D.npy')
@@ -1065,9 +1045,7 @@ deriv_dict = {'dC_LL_4D': dC_LL_4D,
 # ! compute and save fisher matrix
 FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict,
                               BNT_matrix)
-FM_dict['param_names_dict'] = param_names_dict
-FM_dict['fiducial_values_dict'] = fiducials_dict
-FM_dict['fiducials_dict_flattened'] = fiducials_dict_flattened  # TODO probably better with a yaml file...
+FM_dict['fiducial_values_dict'] = fm_fid_dict  # ordered fiducial parameters entering the FM
 
 fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
                                        which_cuts=general_cfg['which_cuts'],

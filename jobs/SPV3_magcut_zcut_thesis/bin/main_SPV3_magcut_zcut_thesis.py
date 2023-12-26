@@ -474,6 +474,7 @@ variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_le
                   'which_pk': which_pk, 'BNT_transform': BNT_transform,
                   'which_ng_cov': which_ng_cov_suffix,
                   'ng_cov_code': covariance_cfg['SSC_code'],
+                  'which_grids': covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_grids']
                   }
 pp.pprint(variable_specs)
 
@@ -1005,8 +1006,8 @@ elif not FM_cfg['load_preprocess_derivatives']:
                 dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
             elif 'GCO' in key:
                 dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
-            elif 'WLA' in key:
-                dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
+            # elif 'WLA' in key:
+                # dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
             elif '3x2pt' in key:
                 dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt,
                                                                   zbins)
@@ -1014,8 +1015,8 @@ elif not FM_cfg['load_preprocess_derivatives']:
     # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
     dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
     dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
-    dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
-    dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
+    # dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
+    dC_WA_4D = np.ones((nbl_WA, zbins, zbins, dC_LL_4D.shape[-1]))
     dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
                                                der_prefix, is_3x2pt=True)
 
@@ -1056,7 +1057,6 @@ if not general_cfg['ell_cuts']:
 
 if FM_cfg['save_FM_dict']:
     FM_dict_filename = FM_cfg['FM_dict_filename'].format(**variable_specs)
-    if covariance_cfg['']
     mm.save_pickle(f'{fm_folder}/{FM_dict_filename}.pickle', FM_dict)
 
 

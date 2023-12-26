@@ -71,14 +71,13 @@ MS = 245
 ZL = 2
 ZS = 2
 probes = ('WL', 'GC', '3x2pt')
-probe = '3x2pt'
 which_cuts = 'Vincenzo'
 whose_FM_list = ('davide',)
 kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
 
 which_cov_term_list = ['G', 'GSSC']
 ng_cov_code = 'exactSSC'  # exactSSC or PyCCL
-which_grids = '_CSSTgrids'  # '_defaultgrids' or '_CSSTgrids' or '_densegrids' or grids used for k and a arrays in pyccl
+which_grids = '_densegrids'  # '_defaultgrids' or '_CSSTgrids' or '_densegrids' or grids used for k and a arrays in pyccl
 which_ng_cov = which_cov_term_list[1]
 BNT_transform_list = [False, ]
 center_or_min_list = ['center']
@@ -129,6 +128,7 @@ assert which_cuts == 'Vincenzo', ('to begin with, use only Vincenzo/standard cut
 assert not use_Wadd, 'import of Wadd not implemented yet'
 
 
+for probe in probes:
 for BNT_transform in BNT_transform_list:
     for which_cov_term in which_cov_term_list:
         for which_pk in which_pk_list:
@@ -309,7 +309,7 @@ for BNT_transform in BNT_transform_list:
 
 
 # # ! bar plot
-probe_toplot = '3x2pt'
+probe_toplot = 'WL'
 include_fom = False
 
 fm_uncert_df_toplot = fm_uncert_df[
@@ -337,7 +337,7 @@ if include_fom:
 data = data[:, :num_params_tokeep]
 
 ylabel = f'relative uncertainty [%]'
-plot_utils.bar_plot(data, f'3x2pt, {which_cov_term_list[1]}', label_list, bar_width=0.2, nparams=num_params_tokeep,
+plot_utils.bar_plot(data, f'{probe_toplot}, {which_cov_term_list[1]}, {ng_cov_code}', label_list, bar_width=0.2, nparams=num_params_tokeep,
                     param_names_label=None,
                     second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
                     include_fom=include_fom, figsize=(10, 8))

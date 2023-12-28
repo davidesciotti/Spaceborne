@@ -49,7 +49,6 @@ if BNT_transform:
 general_cfg = {
     'fid_yaml_path': f'{ROOT}/common_lib_and_cfg/common_cfg/SPV3_fiducial_params_magcut245_zbins13.yml',
     'ell_min': 10,
-    'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
     'ell_max_WL': 5000,
     'ell_max_GC': 3000,
     'ell_max_3x2pt': 3000,
@@ -67,7 +66,9 @@ general_cfg = {
     # the case with the largest range is nbl_WL_opt.. This is the reference ell binning from which the cuts are applied;
     # in principle, the other binning should be consistent with this one and should not be hardcoded, as long as
     # lmax=5000, 3000 holds
-    'nbl_WL_opt': 32,
+    'nbl_WL_opt': 32,  # this is the value from which the various bin cuts are applied, do not change it
+    'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied, do not change it
+    
     'nbl_GC_opt': 29,
     'nbl_WA_opt': 3,
     'nbl_3x2pt_opt': 29,

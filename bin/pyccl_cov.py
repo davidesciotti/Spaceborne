@@ -6,11 +6,8 @@ import numpy as np
 import pyccl as ccl
 from joblib import Parallel, delayed
 from matplotlib import cm
-import ray
 from tqdm.notebook import tqdm
 
-# ray.shutdown()
-# ray.init()
 
 from . import my_module as mm
 from . import cosmo_lib as cosmo_lib

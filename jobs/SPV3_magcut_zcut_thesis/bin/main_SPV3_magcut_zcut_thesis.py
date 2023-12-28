@@ -357,6 +357,10 @@ normalize_shifted_nz = covariance_cfg['normalize_shifted_nz']
 compute_bnt_with_shifted_nz = covariance_cfg['compute_bnt_with_shifted_nz']  # ! let's test this
 include_ia_in_bnt_kernel_for_zcuts = covariance_cfg['include_ia_in_bnt_kernel_for_zcuts']
 h = flat_fid_pars_dict['h']
+nbl_WL_opt = general_cfg['nbl_WL_opt']  # these 4 only needed because vincenzo's files for GG and 3x2pt are with nbl=29
+nbl_GC_opt = general_cfg['nbl_GC_opt']
+nbl_WA_opt = general_cfg['nbl_WA_opt']
+nbl_3x2pt_opt = general_cfg['nbl_3x2pt_opt']
 general_cfg['fid_pars_dict'] = fid_pars_dict
 colors = cm.rainbow(np.linspace(0, 1, zbins))
 
@@ -408,25 +412,28 @@ else:
     general_cfg['ell_cuts_subfolder'] = f'{general_cfg["which_cuts"]}/ell_{general_cfg["center_or_min"]}'
 
 # compute ell and delta ell values in the reference (optimistic) case
-ell_WL_nbl32, delta_l_WL_nbl32, ell_edges_WL_nbl32 = (
+assert general_cfg['nbl_WL_opt'] == 32, 'this is used as the reference binning, from which the cuts are made'
+assert general_cfg['ell_max_WL_opt'] == 5000, 'this is used as the reference binning, from which the cuts are made'
+ell_ref_nbl32, delta_l_ref_nbl32, ell_edges_ref_nbl32 = (
     ell_utils.compute_ells(general_cfg['nbl_WL_opt'], general_cfg['ell_min'], general_cfg['ell_max_WL_opt'],
                            recipe='ISTF', output_ell_bin_edges=True))
 
 # perform the cuts (not the redshift-dependent ones!) on the ell centers and edges
 ell_dict = {}
-ell_dict['ell_WL'] = np.copy(ell_WL_nbl32[ell_WL_nbl32 < ell_max_WL])
-ell_dict['ell_GC'] = np.copy(ell_WL_nbl32[ell_WL_nbl32 < ell_max_GC])
-ell_dict['ell_WA'] = np.copy(ell_WL_nbl32[(ell_WL_nbl32 > ell_max_GC) & (ell_WL_nbl32 < ell_max_WL)])
-ell_dict['ell_XC'] = np.copy(ell_dict['ell_GC'])
-ell_dict['ell_3x2pt'] = np.copy(ell_dict['ell_XC'])
+ell_dict['ell_WL'] = np.copy(ell_ref_nbl32[ell_ref_nbl32 < ell_max_WL])
+ell_dict['ell_GC'] = np.copy(ell_ref_nbl32[ell_ref_nbl32 < ell_max_GC])
+ell_dict['ell_3x2pt'] = np.copy(ell_ref_nbl32[ell_ref_nbl32 < ell_max_3x2pt])
+ell_dict['ell_WA'] = np.copy(ell_ref_nbl32[(ell_ref_nbl32 > ell_max_GC) & (ell_ref_nbl32 < ell_max_WL)])
+ell_dict['ell_XC'] = np.copy(ell_dict['ell_3x2pt'])
 
 # store edges *except last one for dimensional consistency* in the ell_dict
-ell_dict['ell_edges_WL'] = np.copy(ell_edges_WL_nbl32[ell_edges_WL_nbl32 < ell_max_WL])[:-1]
-ell_dict['ell_edges_GC'] = np.copy(ell_edges_WL_nbl32[ell_edges_WL_nbl32 < ell_max_GC])[:-1]
+ell_dict['ell_edges_WL'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell_max_WL])[:-1]
+ell_dict['ell_edges_GC'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell_max_GC])[:-1]
+ell_dict['ell_edges_3x2pt'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell_max_3x2pt])[:-1]
+ell_dict['ell_edges_XC'] = np.copy(ell_dict['ell_edges_3x2pt'])
 ell_dict['ell_edges_WA'] = np.copy(
-    ell_edges_WL_nbl32[(ell_edges_WL_nbl32 > ell_max_GC) & (ell_edges_WL_nbl32 < ell_max_WL)])[:-1]
-ell_dict['ell_edges_XC'] = np.copy(ell_dict['ell_edges_GC'])[:-1]
-ell_dict['ell_edges_3x2pt'] = np.copy(ell_dict['ell_edges_XC'])[:-1]
+    ell_edges_ref_nbl32[(ell_edges_ref_nbl32 > ell_max_GC) & (ell_edges_ref_nbl32 < ell_max_WL)])[:-1]
+
 
 for key in ell_dict.keys():
     if ell_dict[key].size > 0:  # Check if the array is non-empty
@@ -442,9 +449,9 @@ general_cfg['nbl_WL'] = nbl_WL
 general_cfg['nbl_GC'] = nbl_GC
 general_cfg['nbl_3x2pt'] = nbl_3x2pt
 
-delta_dict = {'delta_l_WL': np.copy(delta_l_WL_nbl32[:nbl_WL]),
-              'delta_l_GC': np.copy(delta_l_WL_nbl32[:nbl_GC]),
-              'delta_l_WA': np.copy(delta_l_WL_nbl32[nbl_GC:])}
+delta_dict = {'delta_l_WL': np.copy(delta_l_ref_nbl32[:nbl_WL]),
+              'delta_l_GC': np.copy(delta_l_ref_nbl32[:nbl_GC]),
+              'delta_l_WA': np.copy(delta_l_ref_nbl32[nbl_GC:])}
 
 # set # of nbl in the opt case, import and reshape, then cut the reshaped datavectors in the pes case
 assert (general_cfg['ell_max_WL_opt'],
@@ -453,10 +460,7 @@ assert (general_cfg['ell_max_WL_opt'],
         general_cfg['ell_max_3x2pt']) == (5000, 5000, 3000, 3000), \
     'the number of bins defined in the config file is compatible with these ell_max values'
 
-nbl_WL_opt = general_cfg['nbl_WL_opt']
-nbl_GC_opt = general_cfg['nbl_GC_opt']
-nbl_WA_opt = general_cfg['nbl_WA_opt']
-nbl_3x2pt_opt = general_cfg['nbl_3x2pt_opt']
+
 
 if ell_max_WL == general_cfg['ell_max_WL_opt']:
     assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
@@ -734,6 +738,7 @@ if which_pk != 'HMCodebar':
 else:
     print(f'Pk is {which_pk}; no LiFE datavectors in this case, using CLOE benchmarks (directly in 3d)...')
     cloe_bench_path = f'{ROOT}/my_cloe_data'
+    warnings.warn('TODO fix number of bins here for correct WL handling in the lmax=3000 case')
     cl_ll_3d = np.load(f'{cloe_bench_path}/Cls_zNLA3D_ShearShear_C00.npy')
     cl_gl_3d = np.load(f'{cloe_bench_path}/Cls_zNLA3D_PosShear_C00.npy')[:nbl_3x2pt, :, :]
     cl_gg_3d = np.load(f'{cloe_bench_path}/Cls_zNLA3D_PosPos_C00.npy')[:nbl_3x2pt, :, :]
@@ -753,7 +758,7 @@ else:
     rl_3x2pt_5d = np.ones_like(cl_3x2pt_5d)
 
 # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
-if ell_max_WL == general_cfg['ell_max_WL_opt']:
+if ell_max_WL == general_cfg['ell_max_WL_opt'] and general_cfg['use_WA']:
     if not np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :]):
         rtol = 1e-5
         # plt.plot(ell_dict['ell_WL'], cl_ll_3d[:, 0, 0])
@@ -832,7 +837,7 @@ general_cfg['cl_gg_3d'] = cl_gg_3d
 
 if covariance_cfg['compute_SSC'] and covariance_cfg['SSC_code'] == 'PySSC':
 
-    transp_stacked_wf = np.vstack((wil.T, wig.T))
+    transp_stacked_wf = np.vstack((wf_lensing_vin.T, wf_galaxy_vin.T))
     # ! compute or load Sijkl
     nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
     Sijkl_folder = Sijkl_cfg['Sijkl_folder']

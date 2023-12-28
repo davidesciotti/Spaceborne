@@ -36,7 +36,7 @@ def get_ellmax_nbl(probe, general_cfg):
     return ell_max, nbl
 
 
-def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
+def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt, probe):
     # this actually just imports the precomputed ssc. It can also compute deltab, quite useless at the moment
     print('computing SSC covariance with exactSSC...')
 
@@ -74,17 +74,23 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt):
         np.savez_compressed(f'/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/integrand_arrays/sigma2/'
                             f'sigma2_zsteps{z_steps_sigma2}.npz')
 
-    # single-probe case
     if probe in ('LL', 'GG'):
-        cov_exactSSC_SS_4D = np.load(f'{cov_path}/cov_SSC_{probe}{probe}_4D_nbl{nbl}_ellmax{ell_max}_zbins{zbins}_'
-                                     f'zsteps{z_steps_sigma2}_k{k_txt_label}_convention{cl_integral_convention}.npy')
-    # populate 3x2pt dictionary
+        # in this case, load a single block of the 4D covariance, the reshape and return it
+        probe_a, probe_b, probe_c, probe_d = probe[0], probe[1], probe[0], probe[1]
+        cov_filename = cov_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)
+        cov_exactSSC_SS_4D = np.load(f'{cov_path}/{cov_filename}')
+        
+        cov_exactSSC_SS_6D = mm.cov_4D_to_6D_blocks(cov_exactSSC_SS_4D, nbl, zbins, 
+                                                    ind_dict[probe_a, probe_b], ind_dict[probe_c, probe_d])/covariance_cfg['fsky']
+        return cov_exactSSC_SS_6D
+    
     elif probe == '3x2pt':
 
         warnings.warn('I am hardcoding the number of bins here, should be fixed')
         cov_filename = cov_filename.replace('nbl29', 'nbl32')
         cov_filename = cov_filename.replace('ellmax3000', 'ellmax5000')
 
+        # populate 3x2pt dictionary
         cov_exactSSC_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
             cov_path, cov_filename, probe_ordering)
 
@@ -340,9 +346,13 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     start_time = time.perf_counter()
     if SSC_code == 'exactSSC':
         warnings.warn('the name of this function (ssc_with_exactSSC) should be changed...')
-        cov_exactSSC_SS_dict_10D = ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d')
+        cov_exactSSC_SS_dict_10D = ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d', probe='3x2pt')
         cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_exactSSC_SS_dict_10D, nbl_3x2pt, zbins, n_probes)
 
+        cov_WL_SS_6D = ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d', probe='LL')
+        cov_GC_SS_6D = ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d', probe='GG')
+        
+        
         which_ng_cov = covariance_cfg[SSC_code + '_cfg']['which_ng_cov']
         print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
 
@@ -352,12 +362,19 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         for which_ng_cov in covariance_cfg['PyCCL_cfg']['which_ng_cov']:
             cov_ng_ccl_3x2pt_10D_dict = get_cov_ng_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict)
             cov_3x2pt_SS_10D += mm.cov_10D_dict_to_array(cov_ng_ccl_3x2pt_10D_dict, nbl_3x2pt, zbins, n_probes)
+            
+            if ell_max_WL == ell_max_3x2pt:
+                # I whould stil finish implementing this...
+                cov_WL_SS_6D = cov_3x2pt_SS_10D[0, 0, 0, 0, ...]
+            cov_GC_SS_6D = cov_3x2pt_SS_10D[1, 1, 1, 1, ...]
             print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
 
     elif SSC_code not in ('PySSC', 'PyCCL', 'exactSSC'):
         raise ValueError('covariance_cfg["SSC_code"] must be PySSC or PyCCL or exactSSC')
 
     # sum GO and SS in 6D (or 10D), not in 4D (it's the same)
+    breakpoint()
+    print(type(cov_WL_GO_6D), type(cov_WL_SS_6D))
     cov_WL_GS_6D = cov_WL_GO_6D + cov_WL_SS_6D
     cov_GC_GS_6D = cov_GC_GO_6D + cov_GC_SS_6D
     cov_WA_GS_6D = cov_WA_GO_6D + cov_WA_SS_6D

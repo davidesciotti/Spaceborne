@@ -9,7 +9,6 @@ GL_or_LG = 'GL'
 
 ROOT = '/Users/davide/Documents/Lavoro/Programmi'
 PROJ_ROOT = f'{ROOT}/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
-
 SPV3_folder = f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/Thesis_10_2023'
 
 # ! choose the flagship version and whether you want to use the BNT transform

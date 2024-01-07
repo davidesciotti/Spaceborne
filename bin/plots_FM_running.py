@@ -13,14 +13,18 @@ from getdist import plots
 from getdist.gaussian_mixtures import GaussianND
 from matplotlib import cm
 
-project_path_here = Path.cwd().parent.parent.parent
-sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_lib')
+
+ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+
+sys.path.append(f'{ROOT}/Spaceborne/bin')
 import my_module as mm
 
+sys.path.append(f'{ROOT}/Spaceborne/common_cfg')
+# import ISTF_fid_params as ISTF
+import mpl_cfg as mpl_cfg
 
-sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_cfg')
-# import ISTF_fid_params
-import mpl_cfg
+
+
 
 matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 

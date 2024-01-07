@@ -4,10 +4,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
-import common_lib.my_module as mm
-import common_lib.cosmo_lib as csmlib
-import common_lib.wf_cl_lib as wf_cl_lib
+sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/Spaceborne')
+import bin.my_module as mm
+import bin.cosmo_lib as csmlib
+import bin.wf_cl_lib as wf_cl_lib
 import common_cfg.ISTF_fid_params as ISTFfid
 import common_cfg.mpl_cfg as mpl_cfg
 

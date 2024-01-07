@@ -10,7 +10,7 @@ sys.path.append(f'{project_path}/bin')
 import check_specs as utils
 
 with open(
-        '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/ISTF_fiducial_params.yml') as f:
+        '/Users/davide/Documents/Lavoro/Programmi/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
     fiducial_pars_dict = yaml.load(f, Loader=yaml.FullLoader)
 fiducial_pars_dict_for_fm = fiducial_pars_dict['FM_ordered_params']  # necessary for FM handling
 

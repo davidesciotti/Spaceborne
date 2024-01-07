@@ -5,7 +5,7 @@ import sys
 import matplotlib.pyplot as plt
 
 ROOT = '/Users/davide/Documents/Lavoro/Programmi'
-sys.path.append(f'{ROOT}/common_lib_and_cfg/common_lib')
+sys.path.append(f'{ROOT}/Spaceborne/bin')
 import cosmo_lib as cosmo_lib
 import wf_cl_lib as wf_cl_lib
 

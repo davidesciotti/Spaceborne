@@ -16,27 +16,23 @@ job_path = Path.cwd().parent
 home_path = Path.home()
 job_name = job_path.parts[-1]
 
-# general libraries
-sys.path.append(f'{project_path.parent}/common_lib_and_cfg/common_lib')
-import my_module as mm
-import cosmo_lib as cosmo_lib
+ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+sys.path.append(f'{ROOT}/Spaceborne')
+import bin.my_module as mm
+import bin.cosmo_lib as csmlib
+import bin.ell_values as ell_utils
+import bin.cl_preprocessing as cl_utils
+import bin.compute_Sijkl as Sijkl_utils
+import bin.covariance as covmat_utils
+import bin.fisher_matrix as FM_utils
+import common_cfg.ISTF_fid_params as ISTFfid
+import common_cfg.mpl_cfg as mpl_cfg
 
-# general configurations
-sys.path.append(f'{project_path.parent}/common_lib_and_cfg/common_config')
-import mpl_cfg
-import ISTF_fid_params as ISTF_fid
 
 # job configuration
 sys.path.append(f'{job_path}/config')
 import config_SSCpaper_final as cfg
 
-# project libraries
-sys.path.append(f'{project_path}/bin')
-import ell_values as ell_utils
-import cl_preprocessing as cl_utils
-import compute_Sijkl as Sijkl_utils
-import covariance as covmat_utils
-import fisher_matrix as FM_utils
 
 matplotlib.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -270,8 +266,8 @@ assert general_cfg['use_WA'] is False, 'We do not use Wadd for SPV3 at the momen
 
 if covariance_cfg['cov_BNT_transform']:
     assert general_cfg[
-               'cl_BNT_transform'] is False, 'the BNT transform should be applied either to the Cls ' \
-                                             'or to the covariance'
+        'cl_BNT_transform'] is False, 'the BNT transform should be applied either to the Cls ' \
+        'or to the covariance'
     assert FM_cfg['derivatives_BNT_transform'], 'you should BNT transform the derivatives as well'
 
 # which cases to save: GO, GS or GO, GS and SS
@@ -365,7 +361,6 @@ cl_3x2pt_1d = np.genfromtxt(
     f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', nbl=nbl_WL, **variable_specs)}")
 
 
-
 # reshape to 3 dimensions
 cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
 cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
@@ -384,7 +379,7 @@ fig, axs = plt.subplots(1, 3, figsize=(20, 7))
 colors = cm.rainbow(np.linspace(0, 1, zbins))
 for zi in range(zbins):
     zj = zi
-    axs[0].loglog(ell_dict['ell_GC'], cl_3x2pt_5d[0, 0, :, zi, zj], label='$z_{\\rm bin}$ %d' %(zi+1), c=colors[zi])
+    axs[0].loglog(ell_dict['ell_GC'], cl_3x2pt_5d[0, 0, :, zi, zj], label='$z_{\\rm bin}$ %d' % (zi + 1), c=colors[zi])
     axs[1].loglog(ell_dict['ell_GC'], cl_3x2pt_5d[1, 0, :, zi, zj], c=colors[zi])
     axs[2].loglog(ell_dict['ell_GC'], cl_3x2pt_5d[1, 1, :, zi, zj], c=colors[zi])
 
@@ -399,10 +394,7 @@ fig.legend(loc='right')
 plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/cls.pdf', dpi=500, bbox_inches='tight')
 
 
-
-
 assert False, 'stop here and undo the latest changes with git, they were just to produce the cls plot'
-
 
 
 ng_folder = covariance_cfg["ng_folder"]
@@ -547,9 +539,9 @@ if covariance_cfg['compute_SSC']:
     nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
     Sijkl_folder = Sijkl_cfg['Sijkl_folder']
     assert general_cfg[
-               'cl_BNT_transform'] is False, 'for SSC, at the moment the BNT transform should not be ' \
-                                             'applied to the cls, but to the covariance matrix (how ' \
-                                             'should we deal with the responses in the former case?)'
+        'cl_BNT_transform'] is False, 'for SSC, at the moment the BNT transform should not be ' \
+        'applied to the cls, but to the covariance matrix (how ' \
+        'should we deal with the responses in the former case?)'
     Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(flagship_version=general_cfg['flagship_version'],
                                                         nz=nz, IA_flag=Sijkl_cfg['has_IA'],
                                                         **variable_specs)
@@ -633,7 +625,7 @@ for vinc_filename in vinc_filenames:
 
 vinc_trimmed_filenames = [vinc_filename.split('-', 1)[0].strip() for vinc_filename in vinc_filenames]
 vinc_trimmed_filenames = [vinc_trimmed_filename[len(der_prefix):] if vinc_trimmed_filename.startswith(der_prefix) else vinc_trimmed_filename
-                     for vinc_trimmed_filename in vinc_trimmed_filenames]
+                          for vinc_trimmed_filename in vinc_trimmed_filenames]
 vinc_param_names = list(set(vinc_trimmed_filenames))
 vinc_param_names.sort()
 

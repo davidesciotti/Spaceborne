@@ -192,7 +192,7 @@ for probe in probes:
                                             fm += fm_wa
 
                                         # TODO probably better a yaml file, like below
-                                        # with open('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_config/'
+                                        # with open('/Users/davide/Documents/Lavoro/Programmi/Spaceborne/common_cfg/'
                                         #           'fiducial_params_dict_for_FM.yml') as f:
                                         #     fiducials_dict = yaml.safe_load(f)
                                         fiducials_dict = fm_dict['fiducial_values_dict']

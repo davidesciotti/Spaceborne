@@ -3,9 +3,11 @@ Some general configurations for matplotlib
 """
 import sys
 
-sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
+ROOT = '/Users/davide/Documents/Lavoro/Programmi'
 
-import common_lib.my_module as mm
+sys.path.append(f'{ROOT}/Spaceborne/bin')
+import my_module as mm
+
 
 mpl_rcParams_dict = {'lines.linewidth': 3.5,
                      'font.size': 20,

@@ -27,11 +27,9 @@ sys.path.append(f'{ROOT}/Spaceborne/bin')
 import my_module as mm
 import cosmo_lib as csmlib
 
-
-# general configurations
-sys.path.append(f'{ROOT}/common_lib_and_cfg')
-import common_cfg.ISTF_fid_params as ISTF
-import common_cfg.mpl_cfg as mpl_cfg
+sys.path.append(f'{ROOT}/Spaceborne/common_cfg')
+import ISTF_fid_params as ISTF
+import mpl_cfg as mpl_cfg
 
 
 # update plot pars
@@ -44,7 +42,7 @@ matplotlib.use('Qt5Agg')
 
 
 fiducial_pars_dict_nested = mm.read_yaml(
-    f'{ROOT}/common_lib_and_cfg/common_cfg/ISTF_fiducial_params.yml')
+    f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yml')
 fiducial_pars_dict = mm.flatten_dict(fiducial_pars_dict_nested)
 
 c = 299792.458  # km/s

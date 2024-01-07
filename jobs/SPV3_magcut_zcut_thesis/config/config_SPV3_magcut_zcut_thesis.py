@@ -47,7 +47,7 @@ if BNT_transform:
     assert flagship_version == 2, 'we are applying the BNT only for Flagship_2'
 
 general_cfg = {
-    'fid_yaml_path': f'{ROOT}/common_lib_and_cfg/common_cfg/SPV3_fiducial_params_magcut245_zbins13.yml',
+    'fid_yaml_path': f'{ROOT}/Spaceborne/common_cfg/SPV3_fiducial_params_magcut245_zbins13.yml',
     'ell_min': 10,
     'ell_max_WL': 5000,
     'ell_max_GC': 3000,

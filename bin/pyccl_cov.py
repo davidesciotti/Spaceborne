@@ -4,18 +4,20 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pyccl as ccl
+import sys
 from joblib import Parallel, delayed
 from matplotlib import cm
 from tqdm.notebook import tqdm
 
 ROOT = '/Users/davide/Documents/Lavoro/Programmi'
-sys.path.append(f'{ROOT}/common_lib_and_cfg')
-import common_lib.cosmo_lib as cosmo_lib
-import common_lib.wf_cl_lib as wf_cl_lib
-import common_cfg.mpl_cfg as mpl_cfg
 
 sys.path.append(f'{ROOT}/Spaceborne/bin')
 import my_module as mm
+import cosmo_lib as cosmo_lib
+import wf_cl_lib as wf_cl_lib
+
+sys.path.append(f'{ROOT}/Spaceborne/common_cfg')
+import common_cfg.mpl_cfg as mpl_cfg
 
 matplotlib.use('Qt5Agg')
 start_time = time.perf_counter()

@@ -76,7 +76,7 @@ whose_FM_list = ('davide',)
 kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
 
 which_cov_term_list = ['G', 'GSSC']
-ng_cov_code = 'PyCCL'  # exactSSC or PyCCL
+ng_cov_code = 'exactSSC'  # exactSSC or PyCCL
 which_grids = '_densegrids'  # '_defaultgrids' or '_CSSTgrids' or '_densegrids' or grids used for k and a arrays in pyccl
 which_ng_cov = which_cov_term_list[1]
 BNT_transform_list = [False, ]
@@ -309,7 +309,7 @@ for probe in probes:
 
 
 # # ! bar plot
-probe_toplot = '3x2pt'
+probe_toplot = 'WL'
 include_fom = False
 
 fm_uncert_df_toplot = fm_uncert_df[

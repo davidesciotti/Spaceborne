@@ -17,22 +17,21 @@ from scipy.integrate import quad, quad_vec, simpson, dblquad, simps
 from scipy.interpolate import interp1d, interp2d
 from scipy.special import erf
 from functools import partial
+import sys
 from tqdm import tqdm
 
-# project_path = Path.cwd().parent
-project_path = '/Users/davide/Documents/Lavoro/Programmi/cl_v2'
-project_path_parent = '/Users/davide/Documents/Lavoro/Programmi'
+
+ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+
+sys.path.append(f'{ROOT}/Spaceborne/bin')
+import my_module as mm
+import cosmo_lib as csmlib
+
 
 # general configurations
-sys.path.append(f'/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg')
+sys.path.append(f'{ROOT}/common_lib_and_cfg')
 import common_cfg.ISTF_fid_params as ISTF
 import common_cfg.mpl_cfg as mpl_cfg
-from . import my_module as mm
-from . import cosmo_lib as csmlib
-
-# config files
-sys.path.append(f'{project_path}/config')
-import config_wlcl as cfg
 
 
 # update plot pars
@@ -45,36 +44,35 @@ matplotlib.use('Qt5Agg')
 
 
 fiducial_pars_dict_nested = mm.read_yaml(
-    '/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_cfg/ISTF_fiducial_params.yml')
+    f'{ROOT}/common_lib_and_cfg/common_cfg/ISTF_fiducial_params.yml')
 fiducial_pars_dict = mm.flatten_dict(fiducial_pars_dict_nested)
 
-c = ISTF.constants['c']
+c = 299792.458  # km/s
 
-gamma = ISTF.extensions['gamma']
+# gamma = ISTF.extensions['gamma']
 
 z_edges = ISTF.photoz_bins['all_zbin_edges']
-z_median = ISTF.photoz_bins['z_median']
-zbins = ISTF.photoz_bins['zbins']
-z_minus = ISTF.photoz_bins['z_minus']
-z_plus = ISTF.photoz_bins['z_plus']
+# z_median = ISTF.photoz_bins['z_median']
+# zbins = ISTF.photoz_bins['zbins']
+# z_minus = ISTF.photoz_bins['z_minus']
+# z_plus = ISTF.photoz_bins['z_plus']
 
-z_0 = z_median / np.sqrt(2)
-z_min = z_edges[0]
-z_max = cfg.z_max
-sqrt2 = np.sqrt(2)
+# z_0 = z_median / np.sqrt(2)
+# z_min = z_edges[0]
+# z_max = cfg.z_max
+# sqrt2 = np.sqrt(2)
 
-f_out = ISTF.photoz_pdf['f_out']
-c_in, z_in, sigma_in = ISTF.photoz_pdf['c_b'], ISTF.photoz_pdf['z_b'], ISTF.photoz_pdf['sigma_b']
-c_out, z_out, sigma_out = ISTF.photoz_pdf['c_o'], ISTF.photoz_pdf['z_o'], ISTF.photoz_pdf['sigma_o']
+# f_out = ISTF.photoz_pdf['f_out']
+# c_in, z_in, sigma_in = ISTF.photoz_pdf['c_b'], ISTF.photoz_pdf['z_b'], ISTF.photoz_pdf['sigma_b']
+# c_out, z_out, sigma_out = ISTF.photoz_pdf['c_o'], ISTF.photoz_pdf['z_o'], ISTF.photoz_pdf['sigma_o']
 
-simps_z_step_size = 1e-4
+# simps_z_step_size = 1e-4
 
-n_bar = np.genfromtxt(f"{project_path}/output/n_bar.txt")
-n_gal = ISTF.other_survey_specs['n_gal']
+# n_gal = ISTF.other_survey_specs['n_gal']
 
-z_max_cl = cfg.z_max_cl
-z_grid = np.linspace(z_min, z_max_cl, cfg.zsteps_cl)
-# use_h_units = cfg.use_h_units
+# z_max_cl = cfg.z_max_cl
+# z_grid = np.linspace(z_min, z_max_cl, cfg.zsteps_cl)
+# # use_h_units = cfg.use_h_units
 
 warnings.warn('these global variables should be deleted...')
 warnings.warn('RECHECK Ox0 in cosmolib')
@@ -97,20 +95,22 @@ def n_of_z(z):
 ################################## niz_unnorm_quad(z) ##############################################
 
 
-# ! load or compute niz_unnorm_quad(z)
-# TODO re-compute and check niz_unnorm_quad(z), maybe compute it with scipy.special.erf
-if cfg.load_external_niz:
-    niz_import = np.genfromtxt(f'{cfg.niz_path}/{cfg.niz_filename}')
-    # store and remove the redshift values, ie the 1st column
-    z_values_from_nz = niz_import[:, 0]
-    niz_import = niz_import[:, 1:]
+# # ! load or compute niz_unnorm_quad(z)
+# # TODO re-compute and check niz_unnorm_quad(z), maybe compute it with scipy.special.erf
+# if cfg.load_external_niz:
+#     n_bar = np.genfromtxt(f"{ROOT}/cl_v2/output/n_bar.txt")
+    
+#     niz_import = np.genfromtxt(f'{cfg.niz_path}/{cfg.niz_filename}')
+#     # store and remove the redshift values, ie the 1st column
+#     z_values_from_nz = niz_import[:, 0]
+#     niz_import = niz_import[:, 1:]
 
-    assert niz_import.shape[1] == zbins, "niz_import.shape[1] should be == zbins"
+#     assert niz_import.shape[1] == zbins, "niz_import.shape[1] should be == zbins"
 
-    # normalization array
-    n_bar = simps(niz_import, z_values_from_nz, axis=0)
-    if not np.allclose(n_bar, np.ones(zbins), rtol=0.01, atol=0):
-        print('It looks like the input niz_unnorm_quad(z) are not normalized (they differ from 1 by more than 1%)')
+#     # normalization array
+#     n_bar = simps(niz_import, z_values_from_nz, axis=0)
+#     if not np.allclose(n_bar, np.ones(zbins), rtol=0.01, atol=0):
+#         print('It looks like the input niz_unnorm_quad(z) are not normalized (they differ from 1 by more than 1%)')
 
 
 def n_i_old(z, i):
@@ -171,20 +171,22 @@ def niz_unnormalized_simps(z_grid, zbin_idx, pph=pph, zp_points=500):
     return niz_unnorm_integral
 
 
-# alternative: equispaced grid with z_edges added (does *not* work well, needs a lot of samples!!)
-zp_grid = np.linspace(z_min, z_max, 4000)
-zp_grid = np.concatenate((z_edges, zp_grid))
-zp_grid = np.unique(zp_grid)
-zp_grid = np.sort(zp_grid)
-# indices of z_edges in zp_grid:
-z_edges_idxs = np.array([np.where(zp_grid == z_edges[i])[0][0] for i in range(z_edges.shape[0])])
-
 
 def niz_unnormalized_simps_fullgrid(z_grid, zbin_idx, pph=pph):
     """numerator of Eq. (112) of ISTF, with simpson integration and "global" grid"""
     warnings.warn('this function needs very high number of samples;'
                   ' the zp_bin_grid sampling should perform better')
     assert type(zbin_idx) == int, 'zbin_idx must be an integer'
+    
+    # alternative: equispaced grid with z_edges added (does *not* work well, needs a lot of samples!!)
+    zp_grid = np.linspace(z_min, z_max, 4000)
+    zp_grid = np.concatenate((z_edges, zp_grid))
+    zp_grid = np.unique(zp_grid)
+    zp_grid = np.sort(zp_grid)
+    
+    # indices of z_edges in zp_grid:
+    z_edges_idxs = np.array([np.where(zp_grid == z_edges[i])[0][0] for i in range(z_edges.shape[0])])
+
     z_minus = z_edges_idxs[zbin_idx]
     z_plus = z_edges_idxs[zbin_idx + 1]
     niz_unnorm_integrand = np.array([pph(zp_grid[z_minus:z_plus], z) for z in z_grid])
@@ -535,7 +537,7 @@ def build_ia_bias_1d_arr(z_grid_out, cosmo_ccl, flat_fid_pars_dict, input_z_grid
 
     if input_lumin_ratio is None and input_z_grid_lumin_ratio is None:
         # in this case, take the defaults
-        lumin_ratio_file = np.genfromtxt(f"/Users/davide/Documents/Lavoro/Programmi/common_data/"
+        lumin_ratio_file = np.genfromtxt(f"{ROOT}/common_data/"
                                          f"luminosity_ratio/scaledmeanlum-E2Sa.dat")
         input_z_grid_lumin_ratio = lumin_ratio_file[:, 0]
         input_lumin_ratio = lumin_ratio_file[:, 1]

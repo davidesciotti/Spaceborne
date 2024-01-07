@@ -1,6 +1,10 @@
 import warnings
 import numpy as np
-from . import my_module as mm
+import sys
+
+ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+sys.path.append(f'{ROOT}/Spaceborne/bin')
+import my_module as mm
 
 
 def import_and_interpolate_cls(general_config, covariance_config, ell_dict):

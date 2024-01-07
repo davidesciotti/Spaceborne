@@ -4,9 +4,10 @@ import numpy as np
 import sys
 import matplotlib.pyplot as plt
 
-sys.path.append('/Users/davide/Documents/Lavoro/Programmi/common_lib_and_cfg/common_lib')
-import common_lib.cosmo_lib as cosmo_lib
-import common_lib.wf_cl_lib as wf_cl_lib
+ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+sys.path.append(f'{ROOT}/common_lib_and_cfg/common_lib')
+import cosmo_lib as cosmo_lib
+import wf_cl_lib as wf_cl_lib
 
 Nz_bins = 10
 z_grid = np.linspace(1e-5, 3, 1000)

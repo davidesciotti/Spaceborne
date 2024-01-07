@@ -9,8 +9,11 @@ from astropy.cosmology import w0waCDM
 from numba import njit
 import pyccl as ccl
 from scipy.integrate import simps
-from . import my_module as mm
-import common_cfg.ISTF_fid_params as ISTF
+import sys
+
+ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+sys.path.append(f'{ROOT}/Spaceborne/bin')
+import my_module as mm
 
 
 # TODO create function to compute pk from CAMB, hoping it accepts a vectorized k or z
@@ -18,7 +21,7 @@ import common_cfg.ISTF_fid_params as ISTF
 #  of the arguments z and k in the output numpy array
 
 
-c = ISTF.constants['c']
+c = 299792.458  # km/s
 
 
 # ! example of how to instantiate a cosmo_astropy object
@@ -291,7 +294,7 @@ def calculate_power(k, z, cosmo_classy, use_h_units=True, Pk_kind='nonlinear'):
     return k / k_scale, pk * Pk_scale
 
 
-def get_external_Pk(whos_Pk='vincenzo', Pk_kind='nonlinear', use_h_units=True):
+def get_external_Pk(h, whos_Pk='vincenzo', Pk_kind='nonlinear', use_h_units=True):
     if whos_Pk == 'vincenzo':
         z_column = 1
         k_column = 0  # in [1/Mpc]

@@ -1,18 +1,21 @@
 import time
 import warnings
 import pickle
+import sys
 
 import matplotlib
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.integrate import simps
 
-from . import cl_preprocessing
-from . import pyccl_cov
-from . import sigma2_SSC
-from . import my_module as mm
-from . import cosmo_lib as csmlib
-from . import wf_cl_lib as wf_cl_lib
+ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+sys.path.append(f'{ROOT}/Spaceborne/bin')
+import cl_preprocessing
+import pyccl_cov
+import sigma2_SSC
+import my_module as mm
+import cosmo_lib as csmlib
+import wf_cl_lib as wf_cl_lib
 
 ###############################################################################
 ################ CODE TO COMPUTE THE G AND SSC COVMATS ########################
@@ -40,7 +43,6 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt, probe):
     # this actually just imports the precomputed ssc. It can also compute deltab, quite useless at the moment
     print('computing SSC covariance with exactSSC...')
 
-    probe = covariance_cfg['exactSSC_cfg']['probe']
     which_ng_cov = covariance_cfg['exactSSC_cfg']['which_ng_cov']
     zbins = general_cfg['zbins']
     ell_max, nbl = get_ellmax_nbl(probe, general_cfg)
@@ -57,6 +59,10 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt, probe):
                                        EP_or_ED=general_cfg['EP_or_ED'],
                                        zbins=zbins, z_steps_sigma2=z_steps_sigma2, k_txt_label=k_txt_label,
                                        cl_integral_convention=cl_integral_convention)
+
+    warnings.warn('I am hardcoding the number of bins here, should be fixed')
+    cov_filename = cov_filename.replace('nbl29', 'nbl32')
+    cov_filename = cov_filename.replace('ellmax3000', 'ellmax5000')
 
     assert which_ng_cov == 'SSC', 'no cNG term has been computed with Spaceborne!'
 
@@ -78,27 +84,22 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt, probe):
         # in this case, load a single block of the 4D covariance, the reshape and return it
         probe_a, probe_b, probe_c, probe_d = probe[0], probe[1], probe[0], probe[1]
         cov_filename = cov_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)
-        cov_exactSSC_SS_4D = np.load(f'{cov_path}/{cov_filename}')
-        
-        cov_exactSSC_SS_6D = mm.cov_4D_to_6D_blocks(cov_exactSSC_SS_4D, nbl, zbins, 
-                                                    ind_dict[probe_a, probe_b], ind_dict[probe_c, probe_d])/covariance_cfg['fsky']
-        return cov_exactSSC_SS_6D
-    
-    elif probe == '3x2pt':
+        cov_exactSSC_SS_4D = np.load(f'{cov_path}/{cov_filename}')[:nbl, :nbl, :, :]
 
-        warnings.warn('I am hardcoding the number of bins here, should be fixed')
-        cov_filename = cov_filename.replace('nbl29', 'nbl32')
-        cov_filename = cov_filename.replace('ellmax3000', 'ellmax5000')
+        cov_exactSSC_SS_6D = mm.cov_4D_to_6D(cov_exactSSC_SS_4D, nbl, zbins, probe, ind_dict[probe_a, probe_b])/covariance_cfg['fsky']
+        
+        return cov_exactSSC_SS_6D
+
+    elif probe == '3x2pt':
 
         # populate 3x2pt dictionary
         cov_exactSSC_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
             cov_path, cov_filename, probe_ordering)
 
-    
         for key in cov_exactSSC_3x2pt_dict_8D.keys():
             # ! divide the different blocks by fsky
             cov_exactSSC_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
-            
+
             # ! cut to the correct number of ell bins
             cov_exactSSC_3x2pt_dict_8D[key] = cov_exactSSC_3x2pt_dict_8D[key][:nbl, :nbl, :, :]
 
@@ -109,12 +110,11 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt, probe):
                 cov_exactSSC_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
                     cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
                     nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
-                
 
         assert probe == '3x2pt', ('probe must be 3x2pt at the moment, messing around with return dimension for BNT. to '
                                   'be implemented better later')
         assert return_format_3x2pt == 'dict_10d', ('return format must be dict_10d moment, messing around with '
-                                                  'dimension for BNT. to be implemented better later')
+                                                   'dimension for BNT. to be implemented better later')
 
         if return_format_3x2pt == 'dict_8d':
             return cov_exactSSC_3x2pt_dict_8D
@@ -346,13 +346,13 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     start_time = time.perf_counter()
     if SSC_code == 'exactSSC':
         warnings.warn('the name of this function (ssc_with_exactSSC) should be changed...')
-        cov_exactSSC_SS_dict_10D = ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d', probe='3x2pt')
+        cov_exactSSC_SS_dict_10D = ssc_with_exactSSC(
+            general_cfg, covariance_cfg, return_format_3x2pt='dict_10d', probe='3x2pt')
         cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_exactSSC_SS_dict_10D, nbl_3x2pt, zbins, n_probes)
 
         cov_WL_SS_6D = ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d', probe='LL')
         cov_GC_SS_6D = ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d', probe='GG')
-        
-        
+
         which_ng_cov = covariance_cfg[SSC_code + '_cfg']['which_ng_cov']
         print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
 
@@ -362,7 +362,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         for which_ng_cov in covariance_cfg['PyCCL_cfg']['which_ng_cov']:
             cov_ng_ccl_3x2pt_10D_dict = get_cov_ng_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict)
             cov_3x2pt_SS_10D += mm.cov_10D_dict_to_array(cov_ng_ccl_3x2pt_10D_dict, nbl_3x2pt, zbins, n_probes)
-            
+
             if ell_max_WL == ell_max_3x2pt:
                 # I whould stil finish implementing this...
                 cov_WL_SS_6D = cov_3x2pt_SS_10D[0, 0, 0, 0, ...]
@@ -373,8 +373,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         raise ValueError('covariance_cfg["SSC_code"] must be PySSC or PyCCL or exactSSC')
 
     # sum GO and SS in 6D (or 10D), not in 4D (it's the same)
-    breakpoint()
-    print(type(cov_WL_GO_6D), type(cov_WL_SS_6D))
     cov_WL_GS_6D = cov_WL_GO_6D + cov_WL_SS_6D
     cov_GC_GS_6D = cov_GC_GO_6D + cov_GC_SS_6D
     cov_WA_GS_6D = cov_WA_GO_6D + cov_WA_SS_6D

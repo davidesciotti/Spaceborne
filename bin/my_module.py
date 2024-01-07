@@ -2779,7 +2779,7 @@ def pk_vinc_file_to_2d_npy(path, plot_pk_z0):
     pk_2D = pkfile[:, 2].reshape(len(z_array), len(k_array)).T
 
     if plot_pk_z0:
-        plt.plot(k_array, pk_2D[0, :])
+        plt.plot(k_array, pk_2D[:, 0])
         plt.xscale('log')
         plt.yscale('log')
         plt.xlabel('k [1/Mpc]')

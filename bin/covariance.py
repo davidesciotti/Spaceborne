@@ -41,7 +41,7 @@ def get_ellmax_nbl(probe, general_cfg):
 
 def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt, probe):
     # this actually just imports the precomputed ssc. It can also compute deltab, quite useless at the moment
-    print('computing SSC covariance with exactSSC...')
+    print(f'computing SSC covariance with exactSSC, probe = {probe}')
 
     which_ng_cov = covariance_cfg['exactSSC_cfg']['which_ng_cov']
     zbins = general_cfg['zbins']
@@ -60,9 +60,9 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt, probe):
                                        zbins=zbins, z_steps_sigma2=z_steps_sigma2, k_txt_label=k_txt_label,
                                        cl_integral_convention=cl_integral_convention)
 
-    warnings.warn('I am hardcoding the number of bins here, should be fixed')
-    cov_filename = cov_filename.replace('nbl29', 'nbl32')
-    cov_filename = cov_filename.replace('ellmax3000', 'ellmax5000')
+    # warnings.warn('I am hardcoding the number of bins here, should be fixed')
+    # cov_filename = cov_filename.replace('nbl29', 'nbl32')
+    # cov_filename = cov_filename.replace('ellmax3000', 'ellmax5000')
 
     assert which_ng_cov == 'SSC', 'no cNG term has been computed with Spaceborne!'
 
@@ -85,7 +85,6 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt, probe):
         probe_a, probe_b, probe_c, probe_d = probe[0], probe[1], probe[0], probe[1]
         cov_filename = cov_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)
         cov_exactSSC_SS_4D = np.load(f'{cov_path}/{cov_filename}')[:nbl, :nbl, :, :]
-
         cov_exactSSC_SS_6D = mm.cov_4D_to_6D(cov_exactSSC_SS_4D, nbl, zbins, probe, ind_dict[probe_a, probe_b])/covariance_cfg['fsky']
         
         return cov_exactSSC_SS_6D
@@ -131,6 +130,7 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt, probe):
 
 
 def get_cov_ng_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict):
+    # TODO add probe like in exactSSC function...?
     print(f'computing {which_ng_cov} covariance with PyCCL')
 
     probe = covariance_cfg['PyCCL_cfg']['probe']
@@ -366,6 +366,10 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             if ell_max_WL == ell_max_3x2pt:
                 # I whould stil finish implementing this...
                 cov_WL_SS_6D = cov_3x2pt_SS_10D[0, 0, 0, 0, ...]
+            else:
+                raise NotImplementedError('WL cannot be given by simply cutting the 3x2pt case, finish implementing this')
+            
+            assert ell_max_GC == ell_max_3x2pt, 'I obtain GC cov by cutting the 3x2pt, but the ellmax values are different...'
             cov_GC_SS_6D = cov_3x2pt_SS_10D[1, 1, 1, 1, ...]
             print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
 

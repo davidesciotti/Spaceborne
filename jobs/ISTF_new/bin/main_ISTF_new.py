@@ -1,45 +1,33 @@
 import gc
 import sys
 import time
-from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 import os
 from pprint import pprint
 import warnings
-
 import pandas as pd
 from matplotlib import cm
 
-project_path = Path.cwd().parent.parent.parent
-job_path = Path.cwd().parent
-home_path = Path.home()
-job_name = job_path.parts[-1]
 
-# general libraries
-sys.path.append(f'{project_path.parent}/common_data/common_lib')
-import my_module as mm
-import cosmo_lib as cosmo_lib
-
-# general configurations
-sys.path.append(f'{project_path.parent}/common_data/common_config')
-import mpl_cfg
-import ISTF_fid_params as ISTF_fid
+ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+SB_ROOT = f'{ROOT}/Spaceborne'
 
 # project modules
-sys.path.append(f'{project_path}/bin')
-import ell_values as ell_utils
-import cl_preprocessing as cl_utils
-import compute_Sijkl as Sijkl_utils
-import covariance as covmat_utils
-import fisher_matrix as FM_utils
-import plots_FM_running as plot_utils
-import check_specs
+sys.path.append(SB_ROOT)
+import bin.my_module as mm
+import bin.ell_values as ell_utils
+import bin.cl_preprocessing as cl_utils
+import bin.compute_Sijkl as Sijkl_utils
+import bin.covariance as covmat_utils
+import bin.fisher_matrix as FM_utils
+import bin.plots_FM_running as plot_utils
+import common_cfg.mpl_cfg as mpl_cfg
+import common_cfg.ISTF_fid_params as ISTF_fid
 
 # job configuration and modules
-sys.path.append(f'{project_path}/jobs')
-import ISTF.config.config_ISTF_testexactSSC as cfg
+from jobs.ISTF_new.config import config_ISTF_testexactSSC as cfg
 
 mpl.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -375,7 +363,6 @@ for key in list(FM_dict.keys()):
         fom_dict[key] = mm.compute_FoM(masked_FM_dict[key], w0wa_idxs=(2, 3))
 
 
-
 for probe in ['WL', 'GC', '3x2pt']:
     nparams_toplot = 7
     to_compare_A = f'FM_PySSC_{probe}_GS'
@@ -428,12 +415,12 @@ for probe in ['WL', 'GC', '3x2pt']:
     # label and title stuff
     fom_label = 'FoM/10\nperc_diff' if divide_fom_by_10 else 'FoM'
     param_names_label = param_names_list[:nparams_toplot] + [fom_label] if include_fom else param_names_list[
-                                                                                            :nparams_toplot]
+        :nparams_toplot]
     lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_XC']
     ssc_code_probe = covariance_cfg[f'{covariance_cfg["SSC_code"]}_cfg']['probe'] \
         if covariance_cfg["SSC_code"] in ['PyCCL', 'exactSSC'] else ''
     use_hod_for_gc = 'use_HOD' + str(covariance_cfg["PyCCL_cfg"]["use_HOD_for_GCph"]) if covariance_cfg[
-                                                                                             "SSC_code"] == 'PyCCL' else ''
+        "SSC_code"] == 'PyCCL' else ''
     title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i, %s' % (probe, lmax, EP_or_ED, zbins, use_hod_for_gc)
     # bar plot
     if include_fom:

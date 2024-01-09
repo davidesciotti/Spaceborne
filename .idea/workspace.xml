@@ -3,8 +3,8 @@
   <component name="ChangeListManager">
     <list default="true" id="4999ebe4-e1f3-438f-872b-870c4b171baa" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/bin/covariance.py" beforeDir="false" afterPath="$PROJECT_DIR$/bin/covariance.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/ISTF_new/bin/main_ISTF.py" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/ISTF_new/bin/main_ISTF.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/jobs/ISTF_new/config/config_ISTF_testexactSSC.py" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/ISTF_new/config/config_ISTF_testexactSSC.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/ISTF/bin/main_ISTF_new.py" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/ISTF/bin/main_ISTF_new.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/ISTF/config/config_ISTF_testexactSSC_new.py" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/ISTF/config/config_ISTF_testexactSSC_new.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -14,9 +14,9 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 6
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 6
+}</component>
   <component name="ProjectId" id="2aiaksjUYEKwBBsH3WBfLioZYNU" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -27,6 +27,11 @@
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "git-widget-placeholder": "pyccl__v3"
+  },
+  "keyToStringList": {
+    "com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File": [
+      "Python"
+    ]
   }
 }]]></component>
   <component name="SharedIndexes">

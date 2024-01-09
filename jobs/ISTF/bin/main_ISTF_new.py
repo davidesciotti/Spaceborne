@@ -396,7 +396,7 @@ for probe in ['WL', 'GC', '3x2pt']:
                   mm.percent_diff(uncert_dict[f'FM_{which_probe}_G'][:nparams_toplot],
                                   uncert_dict['ISTF']))
             np.set_printoptions(precision=2)
-            print('probe:', which_probe)
+            print('\nprobe:', which_probe)
             print('ISTF GO:\t', uncert_dict['ISTF'])
             print('Spaceborne GO:\t', uncert_dict[f'FM_{which_probe}_G'][:nparams_toplot])
             print('Spaceborne GS:\t', uncert_dict[f'FM_{ssc_code}_{which_probe}_GSSC'][:nparams_toplot])

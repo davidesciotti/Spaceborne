@@ -85,6 +85,7 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt, probe):
         probe_a, probe_b, probe_c, probe_d = probe[0], probe[1], probe[0], probe[1]
         cov_filename = cov_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)
         cov_exactSSC_SS_4D = np.load(f'{cov_path}/{cov_filename}')[:nbl, :nbl, :, :]
+
         cov_exactSSC_SS_6D = mm.cov_4D_to_6D(cov_exactSSC_SS_4D, nbl, zbins, probe, ind_dict[probe_a, probe_b])/covariance_cfg['fsky']
         
         return cov_exactSSC_SS_6D
@@ -363,13 +364,13 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_ng_ccl_3x2pt_10D_dict = get_cov_ng_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict)
             cov_3x2pt_SS_10D += mm.cov_10D_dict_to_array(cov_ng_ccl_3x2pt_10D_dict, nbl_3x2pt, zbins, n_probes)
 
+            # TODO this should be implemented a bit better, and homogenized with the exact_SSC case. In general, it would be ideal to use the approach below so as to have the function work only for the 3x2pt case
             if ell_max_WL == ell_max_3x2pt:
-                # I whould stil finish implementing this...
                 cov_WL_SS_6D = cov_3x2pt_SS_10D[0, 0, 0, 0, ...]
             else:
                 raise NotImplementedError('WL cannot be given by simply cutting the 3x2pt case, finish implementing this')
             
-            assert ell_max_GC == ell_max_3x2pt, 'I obtain GC cov by cutting the 3x2pt, but the ellmax values are different...'
+            assert ell_max_GC == ell_max_3x2pt, 'I obtain GC cov by cutting the 3x2pt, but the ellmax values are'
             cov_GC_SS_6D = cov_3x2pt_SS_10D[1, 1, 1, 1, ...]
             print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
 

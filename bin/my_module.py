@@ -997,10 +997,10 @@ def matshow(array, title="title", log=False, abs_val=False, threshold=None):
     plt.show()
 
 
-# load txt or dat files in dictionary
 def get_kv_pairs(path_import, extension='npy'):
     """
-    to use it, wrap it in "dict(), e.g.:
+    Load txt or dat files in dictionary.
+    To use it, wrap it in "dict(), e.g.:
         loaded_dict = dict(get_kv_pairs(path_import, filetype="dat"))
     """
     if extension == 'npy' or extension == 'npz':

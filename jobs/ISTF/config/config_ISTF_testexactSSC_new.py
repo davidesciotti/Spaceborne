@@ -158,13 +158,15 @@ covariance_cfg = {
     'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or exactSSC
 
     'PyCCL_cfg': {
-        'probe': '3x2pt',
+        'probe': '3x2pt',  # TODO deprecate this? probably still useful if I want to compute instead of loading...
+        'which_ng_cov': ('SSC',),
+        'which_grids': '',
         'get_3x2pt_cov_in_4D': False,
         'cov_path': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',
 
-        'load_precomputed_cov': False,
+        'load_precomputed_cov': True,
         'save_cov': False,
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 

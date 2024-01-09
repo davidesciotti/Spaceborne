@@ -1,7 +1,4 @@
-from pathlib import Path
 import numpy as np
-
-
 
 which_forecast = 'SPV3'
 fsky = 0.3563380664078408

@@ -1,13 +1,12 @@
 from pathlib import Path
-import sys
 import numpy as np
 import yaml
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
+ROOT = '/Users/davide/Documents/Lavoro/Programmi'
 
-sys.path.append(f'{project_path}/bin')
-import check_specs as utils
+
 
 with open(
         '/Users/davide/Documents/Lavoro/Programmi/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
@@ -68,6 +67,8 @@ elif which_input_files == 'SSC_comparison_updated':
     cl_folder = 'SPV3'
 
 general_cfg = {
+    'fid_yaml_path': f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yml',
+
     'fiducial_pars_dict': fiducial_pars_dict,
     'which_input_files': which_input_files,
     'which_forecast': which_forecast,
@@ -76,6 +77,7 @@ general_cfg = {
     'ell_max_WL': 3000,
     'ell_max_GC': 3000,
     'ell_max_XC': 3000,
+    'ell_max_3x2pt': 3000,
     'zbins': 10,
     'zbins_list': None,
     'EP_or_ED': 'EP',
@@ -130,16 +132,16 @@ covariance_cfg = {
     'compute_SSC': True,
     'compute_cov_6D': False,
 
-    'save_cov': True,
+    'save_cov': False,
     'cov_file_format': 'npz',  # or npy
     'save_cov_dat': False,  # this is the format used by Vincenzo
 
     # in cov_dict
-    'save_cov_2D': True,
+    'save_cov_2D': False,
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt
-    'save_cov_GO': True,
-    'save_cov_GS': True,
+    'save_cov_GO': False,
+    'save_cov_GS': False,
     'save_cov_SSC': False,
     'save_2DCLOE': False,  # outermost loop is on the probes
 
@@ -154,9 +156,12 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',
         'get_3x2pt_cov_in_4D': False,
-        'path': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF',
+        'cov_path': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF',
+        'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
+                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',
+
         'load_precomputed_cov': False,
-        'save_cov': True,
+        'save_cov': False,
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
@@ -172,8 +177,12 @@ covariance_cfg = {
 
     'exactSSC_cfg': {
         'probe': 'GG',
-        # in this case it is only possible to load precomputed arraya, I have to compute the integral with Julia
-        'path': '/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia/',
+        'which_ng_cov': 'SSC',
+        # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
+        'cov_path': '/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia/',
+        'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
+                        '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'
+                        '_convention{cl_integral_convention:s}.npy',
 
         # settings for sigma2
         'cl_integral_convention': 'PySSC',  # or Euclid, but gives same results as it should!!! TODO remove this
@@ -213,7 +222,7 @@ param_names_dict = {
 fiducials_dict = {
     'cosmo': [fiducial_pars_dict_for_fm['Om_m0'], fiducial_pars_dict_for_fm['Om_b0'], fiducial_pars_dict_for_fm['w_0'],
               fiducial_pars_dict_for_fm['w_a'],
-              fiducial_pars_dict_for_fm['h_0'], fiducial_pars_dict_for_fm['n_s'], fiducial_pars_dict_for_fm['sigma_8']],
+              fiducial_pars_dict_for_fm['h'], fiducial_pars_dict_for_fm['n_s'], fiducial_pars_dict_for_fm['sigma_8']],
     'IA': [fiducial_pars_dict_for_fm['A_IA'], fiducial_pars_dict_for_fm['eta_IA'],
            fiducial_pars_dict_for_fm['beta_IA']],
     'galaxy_bias': [fiducial_pars_dict_for_fm[f'b{zbin:02d}_photo'] for zbin in range(1, general_cfg['zbins'] + 1)],
@@ -233,8 +242,8 @@ FM_cfg = {
     'nparams_tot': len(param_names_3x2pt),  # total (cosmo + nuisance) number of parameters
     'param_names_3x2pt': param_names_3x2pt,  # ! for the time being, these are defined in the main and then passed here
 
-    'save_FM_txt': True,
-    'save_FM_dict': True,
+    'save_FM_txt': False,
+    'save_FM_dict': False,
 
     'load_preprocess_derivatives': False,
     'derivatives_folder': derivatives_folder,

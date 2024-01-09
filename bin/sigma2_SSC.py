@@ -13,8 +13,13 @@ import ray
 from tqdm import tqdm
 # import PySSC
 
-from . import my_module as mm
-from . import cosmo_lib as csmlib
+ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+SB_ROOT = f'{ROOT}/Spaceborne'
+
+# project modules
+sys.path.append(SB_ROOT)
+import bin.my_module as mm
+import bin.cosmo_lib as csmlib
 
 matplotlib.use('Qt5Agg')
 start_time = time.perf_counter()

@@ -26,7 +26,11 @@ import pandas as pd
 
 ###############################################################################
 
-
+def block_diag(array_3d):
+    """
+    Useful for visualizing nbl, zbins, zbins arrays at a glance
+    """
+    return scipy.linalg.block_diag(*[array_3d[ell, :, :] for ell in range(nbl)])
 
 def compare_df_keys(dataframe, key_to_compare, value_a, value_b, num_string_colums):
     """

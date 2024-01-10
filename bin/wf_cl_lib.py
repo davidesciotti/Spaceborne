@@ -444,6 +444,8 @@ def stepwise_bias(z, gal_bias_vs_zmean, z_edges):
     """
 
     assert np.all(np.diff(z_edges) > 0), 'z_edges must be sorted in ascending order'
+    z_minus = z_edges[:-1]
+    z_plus = z_edges[1:]
 
     # Edge cases for z outside the defined bins
     if z < z_minus[0]:
@@ -468,11 +470,13 @@ def build_galaxy_bias_2d_arr(gal_bias_vs_zmean, zmeans, z_edges, zbins, z_grid, 
     :param z_grid: the redshift grid on which the bias is evaluated. In general, it does need to be very fine.
     :param bias_model: 'unbiased', 'linint', 'constant' or 'step-wise'.
     :param plot_bias: whether to plot the bias values for the different redshift bins.
-    :return: gal_bias_vs_zmean: array of shape (len(z_grid), zbins) containing the bias values for each redshift bin.
+    :return: gal_bias_2d_arr: array of shape (len(z_grid), zbins) containing the bias values for each redshift bin.
     """
 
-    assert len(gal_bias_vs_zmean) == zbins, 'gal_bias_vs_zmean must be an array of length zbins'
-    assert len(zmeans) == zbins, 'zmeans must be an array of length zbins'
+    if bias_model != 'unbiased':
+        # this check can skipped in the unbiased case
+        assert len(gal_bias_vs_zmean) == zbins, 'gal_bias_vs_zmean must be an array of length zbins'
+        assert len(zmeans) == zbins, 'zmeans must be an array of length zbins'
 
     if bias_model == 'unbiased':
         gal_bias_2d_arr = np.ones((len(z_grid), zbins))

@@ -526,10 +526,16 @@ def build_ia_bias_1d_arr(z_grid_out, cosmo_ccl, flat_fid_pars_dict, input_z_grid
     :return:
     """
 
-    A_IA = flat_fid_pars_dict['Aia']
-    eta_IA = flat_fid_pars_dict['eIA']
-    beta_IA = flat_fid_pars_dict['bIA']
-    C_IA = flat_fid_pars_dict['CIA']
+    try:
+        A_IA = flat_fid_pars_dict['Aia']
+        eta_IA = flat_fid_pars_dict['eIA']
+        beta_IA = flat_fid_pars_dict['bIA']
+        C_IA = flat_fid_pars_dict['CIA']
+    except KeyError:
+        A_IA = flat_fid_pars_dict['A_IA']
+        eta_IA = flat_fid_pars_dict['eta_IA']
+        beta_IA = flat_fid_pars_dict['beta_IA']
+        C_IA = flat_fid_pars_dict['C_IA']
 
     growth_factor = ccl.growth_factor(cosmo_ccl, a=1 / (1 + z_grid_out))
 

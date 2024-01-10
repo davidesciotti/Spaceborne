@@ -166,6 +166,7 @@ covariance_cfg = {
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',
 
+
         'load_precomputed_cov': True,
         'save_cov': False,
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!

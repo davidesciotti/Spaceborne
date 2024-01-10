@@ -381,26 +381,6 @@ for probe in ['WL', 'GC', '3x2pt']:
         assert np.array_equal(uncert_dict['FM_PySSC_G'], uncert_dict['FM_PyCCL_G']), \
             'the GO uncertainties must be the same, I am only changing the SSC code!'
 
-    # silent check against IST:F (which does not exist for GC alone):
-    for which_probe in ['WL', '3x2pt']:
-        uncert_dict['ISTF'] = ISTF_fid.forecasts[f'{which_probe}_opt_w0waCDM_flat']
-        try:
-            rtol = 10e-2
-            assert np.allclose(uncert_dict[f'FM_{which_probe}_G'][:nparams_toplot], uncert_dict['ISTF'], atol=0,
-                               rtol=rtol)
-            print(f'IST:F and GO are consistent for probe {which_probe} within {rtol * 100}% ✅')
-        except AssertionError:
-            print(f'IST:F and GO are not consistent for probe {which_probe}! '
-                  f'Remember that you are checking against the optimistic case ❌')
-            print('percent_discrepancies (not wrt mean!):',
-                  mm.percent_diff(uncert_dict[f'FM_{which_probe}_G'][:nparams_toplot],
-                                  uncert_dict['ISTF']))
-            np.set_printoptions(precision=2)
-            print('\nprobe:', which_probe)
-            print('ISTF GO:\t', uncert_dict['ISTF'])
-            print('Spaceborne GO:\t', uncert_dict[f'FM_{which_probe}_G'][:nparams_toplot])
-            print('Spaceborne GS:\t', uncert_dict[f'FM_{ssc_code}_{which_probe}_GSSC'][:nparams_toplot])
-
     df = pd.DataFrame(uncert_dict)  # you should switch to using this...
 
     # # transform dict. into an array and add the fom
@@ -429,6 +409,29 @@ for probe in ['WL', 'GC', '3x2pt']:
     plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                         param_names_label=param_names_label, bar_width=0.12)
     plt.yscale('log')
+
+
+# silent check against IST:F (which does not exist for GC alone):
+for which_probe in ['WL', '3x2pt']:
+    np.set_printoptions(precision=2)
+    print('\nprobe:', which_probe)
+    uncert_dict['ISTF'] = ISTF_fid.forecasts[f'{which_probe}_opt_w0waCDM_flat']
+    try:
+        rtol = 10e-2
+        assert np.allclose(uncert_dict[f'FM_{which_probe}_G'][:nparams_toplot], uncert_dict['ISTF'], atol=0,
+                            rtol=rtol)
+        print(f'IST:F and GO are consistent for probe {which_probe} within {rtol * 100}% ✅')
+    except AssertionError:
+        print(f'IST:F and GO are not consistent for probe {which_probe} within {rtol * 100}% ❌')
+        print(f'(remember that you are checking against the optimistic case')
+        print('ISTF GO:\t', uncert_dict['ISTF'])
+        print('Spaceborne GO:\t', uncert_dict[f'FM_{which_probe}_G'][:nparams_toplot])
+        print('percent_discrepancies (*not wrt mean!*):\n',
+                mm.percent_diff(uncert_dict[f'FM_{which_probe}_G'][:nparams_toplot],
+                                uncert_dict['ISTF']))
+        
+        print('Spaceborne GS:\t', uncert_dict[f'FM_{ssc_code}_{which_probe}_GSSC'][:nparams_toplot])
+
 
 print('done')
 

@@ -18,8 +18,8 @@ matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
-output = '/Users/davide/Documents/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/covmat/PyCCL'
-benchmark = '/Users/davide/Downloads/PyCCL'
-extension = 'npz'
+output = '/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/ISTF/new_test/d2ClAB_dVddeltab'
+benchmark = '/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/ISTF/d2ClAB_dVddeltab'
+extension = 'npy'
 
-mm.test_folder_content(output, benchmark, extension, verbose=True, rtol=1e-7)
+mm.test_folder_content(output, benchmark, extension, verbose=True, rtol=1e-3)

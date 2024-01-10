@@ -7,7 +7,7 @@ jobs/SSC_comparison_variable_ellmax/output/covmat
 jobs/SSC_comparison_variable_Rl/output/covmat
 jobs/SPV3/output
 jobs/SPV3_magcut_zcut/output/Flagship_2/covmat
-jobs/ISTF/output
+jobs/ISTF/output/cl14may/covmat
 jobs/ISTF_new/output/cl14may
 jobs/ISTF_new/output/cl15gen
 jobs/ISTL/output/covmat

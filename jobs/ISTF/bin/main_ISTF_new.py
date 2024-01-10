@@ -312,31 +312,30 @@ del cov_dict
 gc.collect()
 
 # ! save and test
-fm_folder = FM_cfg["fm_folder"].format(SSC_code=ssc_code)
-if ssc_code != 'PySSC':
+fm_folder_gssc = FM_cfg["fm_folder"].format(SSC_code=ssc_code)
+fm_folder_g = FM_cfg["fm_folder"].format(SSC_code=ssc_code).replace(ssc_code, 'Gauss')
 
-    # save only the actual GS FM in the correct code folder
-    for probe in ('WL', 'GC', '3x2pt'):
-        lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_XC']
-        filename_fm_from_ssc_code = f'{fm_folder}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'
-        np.savetxt(f'{filename_fm_from_ssc_code}', FM_dict[f'FM_{probe}_GSSC'])
+for probe in ('WL', 'GC', '3x2pt'):
+    lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_3x2pt']
+    filename_fm_g = f'{fm_folder_g}/FM_{probe}_G_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'
+    filename_fm_from_ssc_code = f'{fm_folder_gssc}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'
+
+    np.savetxt(f'{filename_fm_g}', FM_dict[f'FM_{probe}_G'])
+    np.savetxt(f'{filename_fm_from_ssc_code}', FM_dict[f'FM_{probe}_GSSC'])
 
     # probe_ssc_code = covariance_cfg[f'{covariance_cfg["SSC_code"]}_cfg']['probe']
     # probe_ssc_code = 'WL' if probe_ssc_code == 'LL' else probe_ssc_code
     # probe_ssc_code = 'GC' if probe_ssc_code == 'GG' else probe_ssc_code
 
-else:
-    FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=FM_cfg['save_FM_txt'],
-                     save_dict=FM_cfg['save_FM_dict'], **variable_specs)
-
 if general_cfg['test_against_benchmarks']:
-    mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', FM_cfg['FM_file_format'])
+    mm.test_folder_content(fm_folder_g, fm_folder_g + '/benchmarks', FM_cfg['FM_file_format'])
+    mm.test_folder_content(fm_folder_gssc, fm_folder_gssc + '/benchmarks', FM_cfg['FM_file_format'])
 
 ################################################ ! plot ############################################################
 
 # plot settings
 nparams_toplot = 7
-include_fom = True
+include_fom = False
 divide_fom_by_10 = False
 
 for ssc_code_here in ['PyCCL', 'PySSC', 'exactSSC']:
@@ -408,7 +407,7 @@ for probe in ['WL', 'GC', '3x2pt']:
         nparams_toplot = 8
     plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                         param_names_label=param_names_label, bar_width=0.12)
-    plt.yscale('log')
+    # plt.yscale('log')
 
 
 # silent check against IST:F (which does not exist for GC alone):

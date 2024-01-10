@@ -155,7 +155,11 @@ covariance_cfg = {
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_HMrecipeKrause2017_6D',
     # TODO these 2 filenames could be unified...
 
-    'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or exactSSC
+    'SSC_code': 'PySSC',  # ! PySSC or PyCCL or exactSSC
+    
+    'PySSC_cfg': {
+        'which_ng_cov': 'SSC',
+    },
 
     'PyCCL_cfg': {
         'probe': '3x2pt',  # TODO deprecate this? probably still useful if I want to compute instead of loading...

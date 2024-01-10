@@ -419,17 +419,17 @@ for which_probe in ['WL', '3x2pt']:
     try:
         rtol = 10e-2
         assert np.allclose(uncert_dict[f'FM_{which_probe}_G'][:nparams_toplot], uncert_dict['ISTF'], atol=0,
-                            rtol=rtol)
+                           rtol=rtol)
         print(f'IST:F and GO are consistent for probe {which_probe} within {rtol * 100}% ✅')
     except AssertionError:
         print(f'IST:F and GO are not consistent for probe {which_probe} within {rtol * 100}% ❌')
-        print(f'(remember that you are checking against the optimistic case')
+        print('(remember that you are checking against the optimistic case')
         print('ISTF GO:\t', uncert_dict['ISTF'])
         print('Spaceborne GO:\t', uncert_dict[f'FM_{which_probe}_G'][:nparams_toplot])
         print('percent_discrepancies (*not wrt mean!*):\n',
-                mm.percent_diff(uncert_dict[f'FM_{which_probe}_G'][:nparams_toplot],
-                                uncert_dict['ISTF']))
-        
+              mm.percent_diff(uncert_dict[f'FM_{which_probe}_G'][:nparams_toplot],
+                              uncert_dict['ISTF']))
+
         print('Spaceborne GS:\t', uncert_dict[f'FM_{ssc_code}_{which_probe}_GSSC'][:nparams_toplot])
 
 

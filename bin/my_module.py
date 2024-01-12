@@ -592,7 +592,7 @@ def get_var_name(var):
     return [var_name for var_name, var_val in callers_local_vars if var_val is var]
 
 
-def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True, log_array=True, log_diff=False,
+def compare_arrays_v0(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True, log_array=True, log_diff=False,
                    abs_val=False, plot_diff_threshold=None, white_where_zero=True):
     if plot_diff or plot_array:
         assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
@@ -656,7 +656,7 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
         print('A and B are equal ✅')
         return
 
-    for rtol in [1e-5, 1e-4, 1e-3, 1e-2, 5e-2, 1e-1]:  # these are NOT percent units, see print below
+    for rtol in [1e-5, 1e-3, 1e-2, 5e-2, 1e-1]:  # these are NOT percent units, see print below
         if np.allclose(A, B, rtol=rtol, atol=0):
             print(f'A and B are close within relative tolerance of {rtol * 100}%) ✅')
             return
@@ -671,6 +671,70 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
                       f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
                       f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
     print(f'Are A and B different by less than {higher_rtol}%? {result_emoji} {additional_info}')
+
+
+def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True, log_array=True, log_diff=False,
+                             abs_val=False, plot_diff_threshold=None, white_where_zero=True):
+    if plot_diff or plot_array:
+        assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
+
+    if plot_diff:
+        diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=log_diff, abs_val=abs_val)
+        
+        if plot_diff_threshold is not None:
+            # take the log of the threshold if using the log of the precent difference
+            if log_diff:
+                plot_diff_threshold = np.log10(plot_diff_threshold)
+
+            diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, np.abs(diff_AB))
+
+        fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
+        im = ax[0].matshow(diff_AB)
+        ax[0].set_title(f'(A/B - 1) * 100')
+        fig.colorbar(im, ax=ax[0])
+
+        im = ax[1].matshow(diff_AB)
+        ax[1].set_title(f'(A/B - 1) * 100')
+        fig.colorbar(im, ax=ax[1])
+
+        fig.suptitle(f'log={log_diff}, abs={abs_val}')
+        plt.show()
+
+    if plot_array:
+        A_toplot, B_toplot = A, B
+
+        if abs_val:
+            A_toplot, B_toplot = np.abs(A), np.abs(B)
+        if log_array:
+            A_toplot, B_toplot = np.log10(A), np.log10(B)
+
+        fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
+        im = ax[0].matshow(A_toplot)
+        ax[0].set_title(f'{name_A}')
+        fig.colorbar(im, ax=ax[0])
+
+        im = ax[1].matshow(B_toplot)
+        ax[1].set_title(f'{name_B}')
+        fig.colorbar(im, ax=ax[1])
+        fig.suptitle(f'log={log_array}, abs={abs_val}')
+        plt.show()
+
+    if np.array_equal(A, B):
+        print('A and B are equal ✅')
+    else:
+        for rtol in [1e-5, 1e-3, 1e-2, 5e-2, 1e-1]:  # these are NOT percent units
+            if np.allclose(A, B, rtol=rtol, atol=0):
+                print(f'A and B are close within relative tolerance of {rtol * 100}%) ✅')
+                return
+
+        diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=True)
+        higher_rtol = plot_diff_threshold or 5.0
+        result_emoji = '❌'
+        no_outliers = np.sum(diff_AB > higher_rtol)
+        additional_info = f'\nMax discrepancy: {np.max(diff_AB):.2f}%;' \
+                          f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
+                          f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
+        print(f'Are A and B different by less than {higher_rtol}%? {result_emoji} {additional_info}')
 
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):

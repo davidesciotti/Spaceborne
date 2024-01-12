@@ -109,8 +109,6 @@ general_cfg = {
     'zcut_lens': 2,
     'flagship_version': flagship_version,
     'bias_model': 'constant',
-
-    'test_against_benchmarks': False,
 }
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
@@ -133,12 +131,19 @@ covariance_cfg = {
     'fsky': fsky,  # ! new
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
-    'ng_folder': f'{SPV3_folder}/InputFiles/InputNz/NzPar',
-    'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
+    
+    'nofz_folder': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputNz/NzFid',
+    'nuisance_folder': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputNz/NzPar',
+    'nofz_filename': 'nzTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
+    'nuisance_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
+    
 
     # sources (and lenses) redshift distributions
-    'nofz_folder': f'{ROOT}/likelihood-mcmc-generator/input_files/SPV3',
-    'nofz_filename': 'nzTabSPV3.dat',
+    # 'nofz_folder': f'{ROOT}/likelihood-mcmc-generator/input_files/SPV3',
+    # 'nuisance_folder': f'{ROOT}/likelihood-mcmc-generator/input_files/SPV3',
+    # 'nofz_filename': 'nzTabSPV3.dat',
+    # 'nuisance_filename': 'nuiTabSPV3.dat',
+    
 
     'shift_nz': True,  # ! are vincenzo's kernels shifted?? it looks like they are not
     'shift_nz_interpolation_kind': 'linear',
@@ -148,8 +153,6 @@ covariance_cfg = {
     'compute_bnt_with_shifted_nz': False,  # ! let's test this
     'include_ia_in_bnt_kernel_for_zcuts': False,
 
-    'nuisance_folder': f'{ROOT}/likelihood-mcmc-generator/input_files/SPV3',
-    'nuisance_filename': 'nuiTabSPV3.dat',
 
     'plot_nz_tocheck': True,
 
@@ -170,6 +173,10 @@ covariance_cfg = {
     'save_cov_GS': False,
     'save_cov_SSC': False,
     'save_2DCLOE': False,  # outermost loop is on the probes
+    
+    'test_against_benchmarks': False,
+    'test_against_CLOE_benchmarks': False,
+    'test_against_vincenzo': True,
 
     # ! no folders for ell_cut_center or min
     'cov_folder': f'{PROJ_ROOT}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{cov_ell_cuts:s}',

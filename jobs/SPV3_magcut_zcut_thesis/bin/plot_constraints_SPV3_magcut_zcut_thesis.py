@@ -61,7 +61,7 @@ string_columns = ['probe', 'which_cov_term', 'whose_FM', 'which_pk', 'BNT_transf
                   'center_or_min', 'fix_dz', 'fix_shear_bias', 'foc', 'kmax_h_over_Mpc']
 triangle_plot = False
 use_Wadd = False  # the difference is extremely small
-pk_ref = 'HMCodebar'
+pk_ref = 'HMCodeBar'
 fom_redbook = 400
 target_perc_dispersion = 10  # percent
 w0_uncert_redbook = 2  # percent
@@ -109,8 +109,8 @@ if ng_cov_code == 'exactSSC':
     which_grids = ''
 
 # quick check: between PyCCL SSC FMs computed with different grids
-fm_dict_a = mm.load_pickle('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodebar_CSSTgrids.pickle')
-fm_dict_b = mm.load_pickle('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodebar_densegrids.pickle')
+fm_dict_a = mm.load_pickle('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_CSSTgrids.pickle')
+fm_dict_b = mm.load_pickle('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_densegrids.pickle')
 
 for key in fm_dict_a.keys():
     if key not in ['param_names_dict', 'fiducial_values_dict', 'fiducials_dict_flattened']:
@@ -148,7 +148,7 @@ for probe in probes:
                                             ell_cuts = True
 
                                         if which_cov_term == 'GSSC':
-                                            which_pk = 'HMCodebar'  # GSSC is only availane in this case
+                                            which_pk = 'HMCodeBar'  # GSSC is only availane in this case
                                         
 
                                         names_params_to_fix = []
@@ -347,7 +347,7 @@ plot_utils.bar_plot(data, f'{probe_toplot}, {which_cov_term_list[1]}, {ng_cov_co
 
 assert False, 'checking SSC btw pyccl and exactSSC'
 # mm.plot_correlation_matrix(correlation_dict['HMCode2020'] / correlation_dict['TakaBird'], cosmo_params_tex,
-                        #    title='HMCodebar/TakaBird')
+                        #    title='HMCodeBar/TakaBird')
 if save_plots:
     plt.savefig('/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/correlation_matrix.pdf',
                 bbox_inches='tight', dpi=500)

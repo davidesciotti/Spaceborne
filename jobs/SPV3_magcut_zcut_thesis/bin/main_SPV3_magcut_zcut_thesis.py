@@ -695,7 +695,7 @@ ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the 
 #             dpi=500, bbox_inches='tight')
 
 # ! import and reshape datavectors (cl) and response functions (rl)
-if which_pk != 'HMCodebar':
+if which_pk != 'HMCodeBar':
     cl_fld = general_cfg['cl_folder']
     cl_filename = general_cfg['cl_filename']
     cl_ll_1d = np.genfromtxt(
@@ -874,7 +874,7 @@ cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg
                                                  **variable_specs)
 covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
-if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False and which_pk == 'HMCodebar':
+if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False and which_pk == 'HMCodeBar':
     # load benchmark cov and check that it matches the one computed here; I am not actually using it
     cov_cloe_bench_2d = np.load(
         f'{ROOT}/my_cloe_data/CovMat-3x2pt-Gauss-{nbl_WL_opt}Bins.npy')
@@ -888,7 +888,7 @@ if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False an
     # compare
     np.testing.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_lmax3000, atol=0, rtol=1e-5)
 
-if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False and which_pk == 'HMCodebar' \
+if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False and which_pk == 'HMCodeBar' \
         and covariance_cfg['SSC_code'] == 'exactSSC':
     # load benchmark cov and check that it matches the one computed here; I am not actually using it
     cov_cloe_bench_2dcloe = np.load(
@@ -907,7 +907,7 @@ if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False an
         print(error)
         mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_lmax3000, log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
 
-if general_cfg['BNT_transform'] is True and general_cfg['ell_cuts'] is True and which_pk == 'HMCodebar' \
+if general_cfg['BNT_transform'] is True and general_cfg['ell_cuts'] is True and which_pk == 'HMCodeBar' \
         and covariance_cfg['SSC_code'] == 'PyCCL':
     cond_number = np.linalg.cond(cov_dict['cov_3x2pt_GS_2D'])
     precision = cond_number * NUMPY_PRECISION

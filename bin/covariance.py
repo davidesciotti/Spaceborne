@@ -39,7 +39,7 @@ def get_ellmax_nbl(probe, general_cfg):
     return ell_max, nbl
 
 
-def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt, probe):
+def get_cov_ssc_exactssc(general_cfg, covariance_cfg, return_format_3x2pt, probe):
     # this actually just imports the precomputed ssc. It can also compute deltab, quite useless at the moment
     print(f'computing SSC covariance with exactSSC, probe = {probe}')
 
@@ -60,9 +60,9 @@ def ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt, probe):
                                        zbins=zbins, z_steps_sigma2=z_steps_sigma2, k_txt_label=k_txt_label,
                                        cl_integral_convention=cl_integral_convention)
 
-    # warnings.warn('I am hardcoding the number of bins here, should be fixed')
-    # cov_filename = cov_filename.replace('nbl29', 'nbl32')
-    # cov_filename = cov_filename.replace('ellmax3000', 'ellmax5000')
+    warnings.warn('I am hardcoding the number of bins here, should be fixed')
+    cov_filename = cov_filename.replace('nbl29', 'nbl32')
+    cov_filename = cov_filename.replace('ellmax3000', 'ellmax5000')
 
     assert which_ng_cov == 'SSC', 'no cNG term has been computed with Spaceborne!'
 
@@ -346,13 +346,12 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     start_time = time.perf_counter()
     if SSC_code == 'exactSSC':
-        warnings.warn('the name of this function (ssc_with_exactSSC) should be changed...')
-        cov_exactSSC_SS_dict_10D = ssc_with_exactSSC(
+        cov_exactSSC_SS_dict_10D = get_cov_ssc_exactssc(
             general_cfg, covariance_cfg, return_format_3x2pt='dict_10d', probe='3x2pt')
         cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_exactSSC_SS_dict_10D, nbl_3x2pt, zbins, n_probes)
 
-        cov_WL_SS_6D = ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d', probe='LL')
-        cov_GC_SS_6D = ssc_with_exactSSC(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d', probe='GG')
+        cov_WL_SS_6D = get_cov_ssc_exactssc(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d', probe='LL')
+        cov_GC_SS_6D = get_cov_ssc_exactssc(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d', probe='GG')
 
         which_ng_cov = covariance_cfg[SSC_code + '_cfg']['which_ng_cov']
         print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')

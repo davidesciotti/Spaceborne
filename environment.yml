@@ -40,3 +40,15 @@ dependencies:
 # $ pip install .
 # $ cd .. 
 # $ rm -r CCL
+
+# or (to be tested)
+# pip install pyccl==3.0.1.dev100+g80576258f
+
+# In case of issues, try
+# $ sudo apt install gfortran
+# $ sudo apt-get install cmake
+# $ sudo apt-get install build-essential
+# $ sudo apt-get install autoconf
+# $ sudo apt-get install bison
+# $ sudo apt-get install swig
+

@@ -5,8 +5,6 @@ import sys
 from pathlib import Path
 import pandas as pd
 import array_to_latex as a2l
-import plotly.graph_objects as go
-import plotly.offline as pyo
 import getdist
 from chainconsumer import ChainConsumer
 from getdist import plots

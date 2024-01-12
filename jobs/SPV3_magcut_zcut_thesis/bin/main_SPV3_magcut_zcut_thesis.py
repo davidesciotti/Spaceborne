@@ -34,12 +34,13 @@ import common_cfg.mpl_cfg as mpl_cfg
 # job config
 import jobs.SPV3_magcut_zcut_thesis.config.config_SPV3_magcut_zcut_thesis as cfg
 
-matplotlib.use('Qt5Agg')
+matplotlib.use('TkAgg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 script_start_time = time.perf_counter()
 
-environ['OMP_NUM_THREADS'] = '4'
-NUMPY_PRECISION = 2.22e-16
+environ['OMP_NUM_THREADS'] = '8'
+NUMPY_PRECISION = np.finfo(float).eps
+
 
 
 # TODO check that the number of ell bins is the same as in the files
@@ -461,7 +462,6 @@ assert (general_cfg['ell_max_WL_opt'],
     'the number of bins defined in the config file is compatible with these ell_max values'
 
 
-
 if ell_max_WL == general_cfg['ell_max_WL_opt']:
     assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
         'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
@@ -874,38 +874,36 @@ cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg
                                                  **variable_specs)
 covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
-if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False and which_pk == 'HMCodeBar':
-    # load benchmark cov and check that it matches the one computed here; I am not actually using it
-    cov_cloe_bench_2d = np.load(
-        f'{ROOT}/my_cloe_data/CovMat-3x2pt-Gauss-{nbl_WL_opt}Bins.npy')
-    # reshape it in dav format
-    cov_bench_2ddav = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2d, nbl_WL_opt, zbins, 'ell', 'ell')
-
-    # ell cut, 29 bins instead of 32
-    n_cov_elements = cov_dict['cov_3x2pt_GO_2D'].shape[0]
-    cov_bench_2ddav_lmax3000 = cov_bench_2ddav[:n_cov_elements, :n_cov_elements]
-
-    # compare
-    np.testing.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_lmax3000, atol=0, rtol=1e-5)
-
 if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False and which_pk == 'HMCodeBar' \
         and covariance_cfg['SSC_code'] == 'exactSSC':
+
     # load benchmark cov and check that it matches the one computed here; I am not actually using it
-    cov_cloe_bench_2dcloe = np.load(
-        f'{ROOT}/my_cloe_data/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.npy')
+    cov_cloe_bench_2d_G = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-Gauss-{nbl_WL_opt}Bins.npy')
+    cov_cloe_bench_2dcloe_GSSC = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.npy')
+
     # reshape it in dav format
-    cov_bench_2ddav = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2dcloe, nbl_WL_opt, zbins, 'ell', 'ell')
+    cov_bench_2ddav_G = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2d_G, nbl_WL_opt, zbins, 'ell', 'ell')
+    cov_bench_2ddav_GSSC = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2dcloe_GSSC, nbl_WL_opt, zbins, 'ell', 'ell')
 
     # ell cut, 29 bins instead of 32
-    n_cov_elements = cov_dict['cov_3x2pt_GS_2D'].shape[0]
-    cov_bench_2ddav_lmax3000 = cov_bench_2ddav[:n_cov_elements, :n_cov_elements]
+    assert cov_dict['cov_3x2pt_GO_2D'].shape == cov_dict['cov_3x2pt_GS_2D'].shape, \
+        'cov_3x2pt_GO_2D and cov_3x2pt_GS_2D should have the same shape'
+    n_cov_elements = cov_dict['cov_3x2pt_GO_2D'].shape[0]
+    cov_bench_2ddav_G_lmax3000 = cov_bench_2ddav_G[:n_cov_elements, :n_cov_elements]
+    cov_bench_2ddav_GSSC_lmax3000 = cov_bench_2ddav_GSSC[:n_cov_elements, :n_cov_elements]
 
     # compare
     try:
-        np.testing.assert_allclose(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_lmax3000, atol=0, rtol=1e-5)
+        np.testing.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_G_lmax3000, atol=0, rtol=1e-5)
+        np.testing.assert_allclose(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_GSSC_lmax3000, atol=0, rtol=1e-5)
     except AssertionError as error:
+        print('covariance matrix does not match with CLOE benchmark')
         print(error)
-        mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_lmax3000, log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+        mm.compare_arrays(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_G_lmax3000,
+                          log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+        mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_GSSC_lmax3000,
+                          log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+
 
 if general_cfg['BNT_transform'] is True and general_cfg['ell_cuts'] is True and which_pk == 'HMCodeBar' \
         and covariance_cfg['SSC_code'] == 'PyCCL':
@@ -917,12 +915,16 @@ if general_cfg['BNT_transform'] is True and general_cfg['ell_cuts'] is True and 
 if general_cfg['test_against_benchmarks']:
     cov_benchmark_folder = f'{cov_folder}/benchmarks'
     mm.test_folder_content(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
+    
+if general_cfg['test_against_vincenzo']:
+    cov_vinc_filename = covariance_cfg['cov_vinc_filename'].format(**variable_specs)
+    cov_vinc = np.genfromtxt(f'{covariance_cfg["cov_vinc_folder"]}/{cov_vinc_filename}')
 
 # ! compute Fisher matrix
 if not FM_cfg['compute_FM']:
     # this guard is just to avoid indenting the whole code below
     raise KeyboardInterrupt('skipping FM computation, the script will exit now')
-    
+
 
 # import and store derivative in one big dictionary
 start_time = time.perf_counter()
@@ -951,10 +953,12 @@ vinc_param_names.sort()
 
 # ! get fiducials names and values from the yaml file
 # remove ODE if I'm studying only flat models
-if flat_or_nonflat == 'Flat':
+if flat_or_nonflat == 'Flat' and 'ODE' in fid_pars_dict['FM_ordered_params']:
     fid_pars_dict['FM_ordered_params'].pop('ODE')
 fm_fid_dict = fid_pars_dict['FM_ordered_params']
 param_names_3x2pt = list(fm_fid_dict.keys())
+FM_cfg['param_names_3x2pt'] = param_names_3x2pt
+FM_cfg['nparams_tot'] = len(param_names_3x2pt)
 
 # sort them to compare with vincenzo's param names
 my_sorted_param_names = param_names_3x2pt.copy()
@@ -977,8 +981,8 @@ try:
         f'Params present in cfg file but not in the input folder: {param_names_not_in_vinc_list}'
 except AssertionError as error:
     print(error)
-    if param_names_not_in_vinc_list == ['logT_AGN']:
-        print('The derivative w.r.t logT_AGN is missing in the input folder but '
+    if param_names_not_in_vinc_list == ['logT']:
+        print('The derivative w.r.t logT is missing in the input folder but '
               'the corresponding FM is still set to 0; moving on')
     else:
         raise AssertionError(
@@ -986,7 +990,8 @@ except AssertionError as error:
 
 # ! preprocess derivatives (or load the alreay preprocessed ones)
 if FM_cfg['load_preprocess_derivatives']:
-    warnings.warn('loading preprocessed derivatives is faster but a bit more dangerous, make sure all the specs are taken into account')
+    warnings.warn(
+        'loading preprocessed derivatives is faster but a bit more dangerous, make sure all the specs are taken into account')
     dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_LL_4D.npy')
     dC_GG_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_GG_4D.npy')
     dC_WA_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_WA_4D.npy')
@@ -997,14 +1002,14 @@ elif not FM_cfg['load_preprocess_derivatives']:
     dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
     # check if dictionary is empty
     if not dC_dict_1D:
-        raise ValueError(f'No derivatives found in folder {derivatives_folder}')    
+        raise ValueError(f'No derivatives found in folder {derivatives_folder}')
 
     # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
     dC_dict_LL_3D = {}
     dC_dict_GG_3D = {}
     dC_dict_WA_3D = {}
     dC_dict_3x2pt_5D = {}
-    
+
     for key in vinc_filenames:  # loop over these, I already selected ML, MS and so on
         if not key.startswith('dDVddzGC'):
             if 'WLO' in key:
@@ -1022,8 +1027,8 @@ elif not FM_cfg['load_preprocess_derivatives']:
     dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
     # dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
     dC_WA_4D = np.ones((nbl_WA, zbins, zbins, dC_LL_4D.shape[-1]))
-    dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
-                                               der_prefix, is_3x2pt=True)
+    dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(
+        dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins, der_prefix, is_3x2pt=True)
 
     # free up memory
     del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
@@ -1071,5 +1076,4 @@ if FM_cfg['test_against_benchmarks']:
 del cov_dict
 gc.collect()
 
-mm.say()
 print('Finished in {:.2f} minutes'.format((time.perf_counter() - script_start_time) / 60))

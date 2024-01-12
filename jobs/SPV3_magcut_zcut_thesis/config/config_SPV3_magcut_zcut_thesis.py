@@ -64,7 +64,7 @@ general_cfg = {
     # lmax=5000, 3000 holds
     'nbl_WL_opt': 32,  # this is the value from which the various bin cuts are applied, do not change it
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied, do not change it
-    
+
     'nbl_GC_opt': 29,
     'nbl_WA_opt': 3,
     'nbl_3x2pt_opt': 29,
@@ -95,7 +95,7 @@ general_cfg = {
     'which_pk': 'HMCodeBar',
     'which_pk_list': ('HMCodeBar', 'TakaBird', 'HMCode2020', 'Bacco', 'EE2'),
     'cl_folder': ROOT + '/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/'
-                 'DataVectors/Noiseless/{which_pk:s}',
+    'DataVectors/Noiseless/{which_pk:s}',
     # 'cl_folder': f'{SPV3_folder}' + 'DataVecDers/{flat_or_nonflat:s}/{probe:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
     'rl_folder': f'{SPV3_folder}' + '/ResFun/{which_pk:s}',
     # XXX i don't have the cls, actually, or better, they're the CLOE benchmarks. use cov and derivatives directly...
@@ -176,8 +176,9 @@ covariance_cfg = {
     'cov_filename': 'covmat_{which_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_'
                     'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_'
                     'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D{which_grids:s}',
-    'cov_filename_vincenzo': 'cm-{probe:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
-                             'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
+    'cov_vinc_folder': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/CovMats/GaussOnly/Full',
+    'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
+                         'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
     'SSC_code': 'exactSSC',  # 'PyCCL' or 'exactSSC'
 
     'PyCCL_cfg': {
@@ -215,7 +216,7 @@ covariance_cfg = {
         'probe': '3x2pt',
         'which_ng_cov': 'SSC',  # only 'SSC' available in this case
         'which_grids': '',
-        
+
 
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
         'cov_path': f'{ROOT}/exact_SSC/output/SSC_matrix/julia',
@@ -254,17 +255,17 @@ Sijkl_cfg = {
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
 
-param_names_dict = {
-    'cosmo': ["Om", "Ob", "wz", "wa", "h", "ns", "s8", 'logT_AGN'],
-    'IA': ["Aia", "eIA"],
-    'shear_bias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
-    'dzWL': [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
-    'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, 5)],
-    'magnification_bias': [f'bM{zbin_idx:02d}' for zbin_idx in range(1, 5)],
-    # 'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
-}
-# declare the set of parameters under study
-param_names_3x2pt = list(np.concatenate([param_names_dict[key] for key in param_names_dict.keys()]))
+# param_names_dict = {
+#     'cosmo': ["Om", "Ob", "wz", "wa", "h", "ns", "s8", 'logT_AGN'],
+#     'IA': ["Aia", "eIA"],
+#     'shear_bias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
+#     'dzWL': [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
+#     'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, 5)],
+#     'magnification_bias': [f'bM{zbin_idx:02d}' for zbin_idx in range(1, 5)],
+#     # 'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
+# }
+# # declare the set of parameters under study
+# param_names_3x2pt = list(np.concatenate([param_names_dict[key] for key in param_names_dict.keys()]))
 
 # I cannot define the fiducial values here because I need to import the files for the galaxy bias
 
@@ -278,17 +279,17 @@ deriv_filename = covariance_cfg['cov_filename'].replace('covmat_', 'dDVd')
 FM_cfg = {
     'compute_FM': True,
 
-    'param_names_dict': param_names_dict,
-    'fiducials_dict': None,  # this needs to be set in the main, since it depends on the n_gal file
-    'param_names_3x2pt': param_names_3x2pt,
-    'nparams_tot': len(param_names_3x2pt),  # total (cosmo + nuisance) number of parameters
+    # 'param_names_dict': param_names_dict,
+    # 'fiducials_dict': None,  # this needs to be set in the main, since it depends on the n_gal file
+    # 'param_names_3x2pt': param_names_3x2pt,
+    # 'nparams_tot': len(param_names_3x2pt),  # total (cosmo + nuisance) number of parameters
 
     'save_FM_txt': True,
     'save_FM_dict': True,
 
     'load_preprocess_derivatives': False,
     # 'derivatives_folder': f'{SPV3_folder}' + '/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
-    'derivatives_folder': ROOT + '/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}',
+    'derivatives_folder': ROOT + '/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
 
     'derivatives_filename': '{derivatives_prefix:s}{param_name:s}-{probe:s}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{EP_or_ED:s}{zbins:02d}.dat',
     'derivatives_prefix': 'dDVd',

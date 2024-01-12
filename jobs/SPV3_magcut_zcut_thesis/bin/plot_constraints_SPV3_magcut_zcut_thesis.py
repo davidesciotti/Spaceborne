@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from chainconsumer import ChainConsumer
 from tqdm import tqdm
-%matplotlib qt
 
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 SB_ROOT = f'{ROOT}/Spaceborne'

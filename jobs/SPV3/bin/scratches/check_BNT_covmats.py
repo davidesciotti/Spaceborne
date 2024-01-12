@@ -3,15 +3,15 @@ import sys
 
 from numba import njit
 
-sys.path.append("/Users/davide/Documents/Lavoro/Programmi/common_data/common_lib")
+sys.path.append("/home/davide/Documenti/Lavoro/Programmi/common_data/common_lib")
 import my_module as mm
 import matplotlib.pyplot as plt
 import matplotlib
 
 matplotlib.use('Qt5Agg')
 
-cov_GS_BNT_ste_4D = np.load('/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_2/CovMats/BNT_True/BNT_covmat_GS_WL_lmax5000_nbl32_zbins13_ED_Rlvar_6D_stef.npy')
-cov_GS_BNT_dav_6D = np.load('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3/output/Flagship_2/BNT_True/covmat/zbins13/covmat_GS_WL_lmax5000_nbl32_zbins13_ED_Rlvar_6D.npy')
+cov_GS_BNT_ste_4D = np.load('/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_2/CovMats/BNT_True/BNT_covmat_GS_WL_lmax5000_nbl32_zbins13_ED_Rlvar_6D_stef.npy')
+cov_GS_BNT_dav_6D = np.load('/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3/output/Flagship_2/BNT_True/covmat/zbins13/covmat_GS_WL_lmax5000_nbl32_zbins13_ED_Rlvar_6D.npy')
 zbins = 13
 nbl = 32
 

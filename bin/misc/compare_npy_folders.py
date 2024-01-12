@@ -13,7 +13,7 @@ This script compares all the npy files in 2 folders
 
 # change to the desired folder containing the npy files
 new = dict(
-    mm.get_kv_pairs('/Users/davide/Documents/Lavoro/Programmi/SSC_restructured/jobs/IST_NL/output/covmat/new_settings'))
+    mm.get_kv_pairs('/home/davide/Documenti/Lavoro/Programmi/SSC_restructured/jobs/IST_NL/output/covmat/new_settings'))
 old = dict(mm.get_kv_pairs('/jobs/IST_NL/output/covmat'))
 
 for key in new.keys():

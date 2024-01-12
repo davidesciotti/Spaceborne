@@ -10,7 +10,7 @@ sys.path.append(f'{project_path}/bin')
 import check_specs as utils
 
 with open(
-        '/Users/davide/Documents/Lavoro/Programmi/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
+        '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
     fiducial_pars_dict = yaml.load(f, Loader=yaml.FullLoader)
 fiducial_pars_dict_for_fm = fiducial_pars_dict['FM_ordered_params']  # necessary for FM handling
 
@@ -154,7 +154,7 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',
         'get_3x2pt_cov_in_4D': False,
-        'path': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF',
+        'path': '/home/davide/Documenti/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF',
         'load_precomputed_cov': True,
         'save_cov': False,
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
@@ -174,7 +174,7 @@ covariance_cfg = {
     'exactSSC_cfg': {
         'probe': 'GG',
         # in this case it is only possible to load precomputed arraya, I have to compute the integral with Julia
-        'path': '/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia/',
+        'path': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia/',
 
         # settings for sigma2
         'cl_integral_convention': 'PySSC',  # or Euclid, but gives same results as it should!!! TODO remove this

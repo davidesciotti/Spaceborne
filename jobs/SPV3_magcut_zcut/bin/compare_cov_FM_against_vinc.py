@@ -43,9 +43,9 @@ probe_dict = {
     '3x2pt': '3x2pt'
 }
 
-path_dav = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output/Flagship_2'
+path_dav = '/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output/Flagship_2'
 cov_dav_path = f'{path_dav}/covmat/BNT_False/ell_cuts_False'
-cov_vinc_path = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/' \
+cov_vinc_path = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/' \
                 f'OutputFiles/CovMats/GaussOnly'
 
 fm_dav_path = cov_dav_path.replace('covmat', 'FM') + f'/{flat_or_nonflat}'

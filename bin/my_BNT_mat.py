@@ -4,7 +4,7 @@ import numpy as np
 import sys
 import matplotlib.pyplot as plt
 
-ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 sys.path.append(f'{ROOT}/Spaceborne/bin')
 import cosmo_lib as cosmo_lib
 import wf_cl_lib as wf_cl_lib

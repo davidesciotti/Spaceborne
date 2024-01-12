@@ -2772,7 +2772,7 @@ def my_exit():
 
 
 def pk_vinc_file_to_2d_npy(path, plot_pk_z0):
-    # e.g. path = '/Users/davide/Documents/Lavoro/Programmi/CAMB_pk_baryons/output/Omega_M/PddVsZedLogK-Omega_M_3.040e-01.dat'
+    # e.g. path = '/home/davide/Documenti/Lavoro/Programmi/CAMB_pk_baryons/output/Omega_M/PddVsZedLogK-Omega_M_3.040e-01.dat'
     warnings.warn('double-check the units in the header and whether k is in log scale in the input file (this function assumes it is))')
     warnings.warn('the output ordering is [k, z], not the other way around!')
     

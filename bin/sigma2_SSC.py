@@ -13,7 +13,7 @@ import ray
 from tqdm import tqdm
 # import PySSC
 
-ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 SB_ROOT = f'{ROOT}/Spaceborne'
 
 # project modules
@@ -238,7 +238,7 @@ def sigma2_pyssc(z_arr, classy_cosmo_params):
 
 
 def compare_sigma2_sb_vs_pyssc(z_arr_pyssc, sigma2_pyssc_arr, z_1_idx=100):
-    path = '/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/integrand_arrays/sigma2'
+    path = '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/integrand_arrays/sigma2'
     sigma2_sb = np.load(f'{path}/sigma2_zsteps3000_simps.npy')
     z_arr_sb = np.load(f'{path}/z_grid_sigma2_zsteps3000.npy')
 

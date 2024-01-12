@@ -16,7 +16,7 @@ from scipy.ndimage import gaussian_filter1d
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
-ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 SB_ROOT = f'{ROOT}/Spaceborne'
 
 # project modules

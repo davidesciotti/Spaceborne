@@ -12,7 +12,7 @@ from chainconsumer import ChainConsumer
 from tqdm import tqdm
 %matplotlib qt
 
-ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 SB_ROOT = f'{ROOT}/Spaceborne'
 
 
@@ -41,7 +41,7 @@ cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
 # ! options
 specs_str = 'idIA2_idB3_idM3_idR1'
-fm_root_path = ('/Users/davide/Documents/Lavoro/Programmi/Spaceborne/'
+fm_root_path = ('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/'
                 'jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM')
 fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}'
 fm_pickle_name_raw = 'FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_' \
@@ -109,8 +109,8 @@ if ng_cov_code == 'exactSSC':
     which_grids = ''
 
 # quick check: between PyCCL SSC FMs computed with different grids
-fm_dict_a = mm.load_pickle('/Users/davide/Documents/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodebar_CSSTgrids.pickle')
-fm_dict_b = mm.load_pickle('/Users/davide/Documents/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodebar_densegrids.pickle')
+fm_dict_a = mm.load_pickle('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodebar_CSSTgrids.pickle')
+fm_dict_b = mm.load_pickle('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodebar_densegrids.pickle')
 
 for key in fm_dict_a.keys():
     if key not in ['param_names_dict', 'fiducial_values_dict', 'fiducials_dict_flattened']:
@@ -179,7 +179,7 @@ for probe in probes:
 
                                             kmax_1_over_Mpc = kmax_1_over_Mpc_vinc_str_list[kmax_counter]
 
-                                            fm_path = '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/' \
+                                            fm_path = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/' \
                                                     f'LiFEforSPV3/OutputFiles/FishMat/GaussOnly/Flat/{which_pk}/TestKappaMax'
                                             fm_name = f'fm-{probe_vinc_dict[probe]}-{EP_or_ED}{zbins}-ML{ML}-MS{MS}-{specs_str.replace("_", "-")}' \
                                                     f'-kM{kmax_1_over_Mpc}.dat'
@@ -192,7 +192,7 @@ for probe in probes:
                                             fm += fm_wa
 
                                         # TODO probably better a yaml file, like below
-                                        # with open('/Users/davide/Documents/Lavoro/Programmi/Spaceborne/common_cfg/'
+                                        # with open('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/common_cfg/'
                                         #           'fiducial_params_dict_for_FM.yml') as f:
                                         #     fiducials_dict = yaml.safe_load(f)
                                         fiducials_dict = fm_dict['fiducial_values_dict']
@@ -349,7 +349,7 @@ assert False, 'checking SSC btw pyccl and exactSSC'
 # mm.plot_correlation_matrix(correlation_dict['HMCode2020'] / correlation_dict['TakaBird'], cosmo_params_tex,
                         #    title='HMCodebar/TakaBird')
 if save_plots:
-    plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/correlation_matrix.pdf',
+    plt.savefig('/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/correlation_matrix.pdf',
                 bbox_inches='tight', dpi=500)
 
 # ! check difference between ell_cuts True and False
@@ -434,7 +434,7 @@ plt.ylabel('3$\\times$2pt FoM')
 plt.legend()
 
 if save_plots:
-    plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/fom_hmcodebar_vs_kmax.pdf',
+    plt.savefig('/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/fom_hmcodebar_vs_kmax.pdf',
                 bbox_inches='tight', dpi=500)
 
 # ! plot cosmo pars vs kmax
@@ -463,7 +463,7 @@ plt.legend()
 plt.show()
 
 if save_plots:
-    plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/cosmo_params_vs_kmax.pdf',
+    plt.savefig('/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/cosmo_params_vs_kmax.pdf',
                 bbox_inches='tight',
                 dpi=500)
 
@@ -530,7 +530,7 @@ plt.yscale('log')
 plt.legend()
 plt.show()
 if save_plots:
-    plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/fom_vs_kmax_vs_pk.pdf',
+    plt.savefig('/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/fom_vs_kmax_vs_pk.pdf',
                 bbox_inches='tight',
                 dpi=500)
 
@@ -546,7 +546,7 @@ plt.yscale('log')
 plt.legend()
 plt.show()
 if save_plots:
-    plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/foc_vs_kmax_vs_pk.pdf',
+    plt.savefig('/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/foc_vs_kmax_vs_pk.pdf',
                 bbox_inches='tight',
                 dpi=500)
 

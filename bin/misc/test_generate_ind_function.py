@@ -26,7 +26,7 @@ for triu_tril_square in ['triu', 'tril', 'full_square']:
                 low = 0
                 high = zpairs_auto
                 triu_tril = triu_tril_square
-            ind = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/common_data/ind_files'
+            ind = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/common_data/ind_files'
                                 f'/{triu_tril}_{rowcol}-wise/indices_{triu_tril}_{rowcol}'
                                 f'-wise_zbins{zbins:02}.dat', dtype=int)[low:high, 2:]
             ind_new = mm.generate_ind(triu_tril_square, row_col_major, zbins)
@@ -37,7 +37,7 @@ for triu_tril in ['triu', 'tril']:
     for row_col_major in ['row_major', 'col_major']:
         for zbins in range(1, 25):
             rowcol = row_col_major.rstrip('_major')
-            ind = np.genfromtxt(f'/Users/davide/Documents/Lavoro/Programmi/common_data/ind_files'
+            ind = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/common_data/ind_files'
                                 f'/{triu_tril}_{rowcol}-wise/indices_{triu_tril}_{rowcol}'
                                 f'-wise_zbins{zbins:02}.dat', dtype=int)
             ind_new = mm.build_full_ind(triu_tril, row_col_major, zbins)

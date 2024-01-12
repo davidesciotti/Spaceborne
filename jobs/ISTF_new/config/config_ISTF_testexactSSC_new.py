@@ -5,7 +5,7 @@ import yaml
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
-ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 
 sys.path.append(f'{project_path}/bin')
 import check_specs as utils
@@ -13,7 +13,7 @@ import check_specs as utils
 
 
 with open(
-        '/Users/davide/Documents/Lavoro/Programmi/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
+        '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
     fiducial_pars_dict = yaml.load(f, Loader=yaml.FullLoader)
 fiducial_pars_dict_for_fm = fiducial_pars_dict['FM_ordered_params']  # necessary for FM handling
 
@@ -160,7 +160,7 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',
         'get_3x2pt_cov_in_4D': False,
-        'cov_path': '/Users/davide/Documents/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF',
+        'cov_path': '/home/davide/Documenti/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',
 
@@ -183,7 +183,7 @@ covariance_cfg = {
         'probe': 'GG',
         'which_ng_cov': 'SSC',
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
-        'cov_path': '/Users/davide/Documents/Lavoro/Programmi/exact_SSC/output/ISTF/SSC_matrix',
+        'cov_path': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/ISTF/SSC_matrix',
         'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
                         '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'
                         '_convention{cl_integral_convention:s}.npy',

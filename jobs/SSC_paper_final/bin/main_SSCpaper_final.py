@@ -16,7 +16,7 @@ job_path = Path.cwd().parent
 home_path = Path.home()
 job_name = job_path.parts[-1]
 
-ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 sys.path.append(f'{ROOT}/Spaceborne')
 import bin.my_module as mm
 import bin.cosmo_lib as csmlib
@@ -391,7 +391,7 @@ axs[0].set_xlabel('$\ell$')
 axs[1].set_xlabel('$\ell$')
 axs[2].set_xlabel('$\ell$')
 fig.legend(loc='right')
-plt.savefig('/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/cls.pdf', dpi=500, bbox_inches='tight')
+plt.savefig('/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/cls.pdf', dpi=500, bbox_inches='tight')
 
 
 assert False, 'stop here and undo the latest changes with git, they were just to produce the cls plot'

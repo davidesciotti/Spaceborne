@@ -3,7 +3,7 @@ Some general configurations for matplotlib
 """
 import sys
 
-ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 
 sys.path.append(f'{ROOT}/Spaceborne/bin')
 import my_module as mm

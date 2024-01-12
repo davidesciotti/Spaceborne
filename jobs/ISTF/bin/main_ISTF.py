@@ -478,16 +478,16 @@ c.add_covariance(fiducials_list, cov_3x2pt_go, parameters=param_names_label, nam
 c.add_marker(fiducials_list, parameters=param_names_label, name="fiducial", marker_style=".", marker_size=20, color="r")
 c.configure(usetex=True, serif=True, label_font_size=15, tick_font_size=10)
 fig = c.plotter.plot()
-plt.savefig(f'/Users/davide/Documents/Lavoro/Programmi/phd_thesis_plots/plots/triangle_ISTF_GO.pdf', dpi=500, bbox_inches='tight')
+plt.savefig(f'/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/triangle_ISTF_GO.pdf', dpi=500, bbox_inches='tight')
 
 print('done')
 
 # veeeeery old FMs, to test ISTF-like forecasts I guess...
 # FM_test_GO = np.genfromtxt(
-#     '/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
+#     '/home/davide/Documenti/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
 #     '/SSC_comparison/output/FM/FM_3x2pt_GO_lmaxXC3000_nbl30.txt')
 # FM_test_GS = np.genfromtxt(
-#     '/Users/davide/Documents/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
+#     '/home/davide/Documenti/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
 #     '/SSC_comparison/output/FM/FM_3x2pt_GS_lmaxXC3000_nbl30.txt')
 # uncert_FM_GO_test = mm.uncertainties_FM(FM_test_GO, FM_test_GO.shape[0], fiducials=fiducials_list,
 #                                         which_uncertainty='marginal',

@@ -9,7 +9,7 @@ from joblib import Parallel, delayed
 from matplotlib import cm
 from tqdm.notebook import tqdm
 
-ROOT = '/Users/davide/Documents/Lavoro/Programmi'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 
 sys.path.append(f'{ROOT}/Spaceborne/bin')
 import my_module as mm

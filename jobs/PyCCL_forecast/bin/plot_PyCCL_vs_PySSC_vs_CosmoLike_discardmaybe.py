@@ -27,10 +27,10 @@ project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 
 
-path = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/PyCCL_forecast'
-path_mm = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/lib'
+path = '/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/PyCCL_forecast'
+path_mm = '/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/lib'
 path_plotlib = '/5_plots/plot_FM'
-path_config = '/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/PyCCL_forecast/configs'
+path_config = '/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/PyCCL_forecast/configs'
 
 
 sys.path.append(project_path)

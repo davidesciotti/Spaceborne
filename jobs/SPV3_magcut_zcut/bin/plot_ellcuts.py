@@ -147,7 +147,7 @@ for ML, ZL, MS, ZS in zip(ML_list, ZL_list, MS_list, ZS_list):
                         lmax = 5000
                         nbl = 32
 
-                    fm_path = f'/Users/davide/Documents/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
+                    fm_path = f'/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
                               f'output/Flagship_{flagship_version}/FM'
                     fm_ellcuts_path = f'{fm_path}/BNT_{BNT_transform}/ell_cuts_True/{which_cuts}/{center_or_min}'
                     fm_no_ellcuts_path = f'{fm_path}/BNT_{BNT_transform}/ell_cuts_False'
@@ -161,7 +161,7 @@ for ML, ZL, MS, ZS in zip(ML_list, ZL_list, MS_list, ZS_list):
 
                     # this is just as a reference; the values roughly match.
                     # FM_GS_kcuts_vinc = np.genfromtxt(
-                    #     '/Users/davide/Documents/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022'
+                    #     '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022'
                     #     '/Flagship_2/TestKappaMax/'
                     #     f'fm-3x2pt-wzwaCDM-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-ED13-'
                     #     f'kM{kmax_1_over_Mpc_filename[k_max_counter]:03d}.dat')

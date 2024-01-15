@@ -2,11 +2,11 @@ import sys
 import time
 from pathlib import Path
 import matplotlib
-from os import environ
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
-import numpy as np
 import os
+# os.environ['OMP_NUM_THREADS'] = '1'
+import numpy as np
 import warnings
 import matplotlib.lines as mlines
 import gc
@@ -40,7 +40,7 @@ matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 script_start_time = time.perf_counter()
 
-environ['OMP_NUM_THREADS'] = '2'
+
 NUMPY_PRECISION = np.finfo(float).eps
 
 # TODO check that the number of ell bins is the same as in the files
@@ -323,7 +323,7 @@ EP_or_ED = general_cfg['EP_or_ED']
 
 # for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
 #     for general_cfg['which_pk'] in general_cfg['which_pk_list']:
-for zbins in (3, ):
+for zbins in (13, ):
 
     # some convenence variables, just to make things more readable
     general_cfg['zbins'] = zbins
@@ -1105,7 +1105,6 @@ for zbins in (3, ):
 
     if fm_cfg['test_against_vincenzo'] and bnt_transform == False:
         fm_vinc_folder = fm_cfg["fm_vinc_folder"].format(**variable_specs, go_gs_vinc='GaussOnly')
-
 
         # for probe_vinc in ('WLO', 'GCO', '3x2pt'):
         for probe_vinc in ('3x2pt',):

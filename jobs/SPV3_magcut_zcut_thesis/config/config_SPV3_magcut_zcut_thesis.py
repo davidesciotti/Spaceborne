@@ -295,7 +295,7 @@ FM_cfg = {
     'save_FM_dict': True,
 
     'load_preprocess_derivatives': False,
-    'derivatives_folder': SPV3_folder + 'OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
+    'derivatives_folder': SPV3_folder + '/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}/OldDerDeltaZed',
 
     'derivatives_filename': '{derivatives_prefix:s}{param_name:s}-{probe:s}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{EP_or_ED:s}{zbins:02d}.dat',
     'derivatives_prefix': 'dDVd',
@@ -311,7 +311,7 @@ FM_cfg = {
     'test_against_benchmarks': True,
 
     'test_against_vincenzo': True,
-    'fm_vinc_folder': SPV3_folder + 'OutputFiles/FishMat/{go_gs_vinc:s}/{flat_or_nonflat:s}/{which_pk:s}',
+    'fm_vinc_folder': SPV3_folder + '/OutputFiles/FishMat/{go_gs_vinc:s}/{flat_or_nonflat:s}/{which_pk:s}',
     'fm_vinc_filename': 'fm-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
 
 }

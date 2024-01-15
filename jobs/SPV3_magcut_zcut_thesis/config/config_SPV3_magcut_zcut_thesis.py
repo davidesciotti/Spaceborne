@@ -6,14 +6,14 @@ GL_or_LG = 'GL'
 
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 PROJ_ROOT = f'{ROOT}/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
-SPV3_folder = f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/Thesis_10_2023'
+SPV3_folder = f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = True
-deriv_BNT_transform = True
+cov_BNT_transform = False
+deriv_BNT_transform = False
 
 cl_ell_cuts = False
 cov_ell_cuts = False
@@ -94,13 +94,11 @@ general_cfg = {
 
     'which_pk': 'HMCodeBar',
     'which_pk_list': ('HMCodeBar', 'TakaBird', 'HMCode2020', 'Bacco', 'EE2'),
-    
+
     'use_CLOE_cls': False,
     'cloe_bench_folder': f'{ROOT}/my_cloe_data',
-    'cl_folder': ROOT + '/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVectors/Noiseless/{which_pk:s}',
-    # 'cl_folder': f'{SPV3_folder}' + 'DataVecDers/{flat_or_nonflat:s}/{probe:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
-    'rl_folder': f'{SPV3_folder}' + '/ResFun/{which_pk:s}',
-    # XXX i don't have the cls, actually, or better, they're the CLOE benchmarks. use cov and derivatives directly...
+    'cl_folder': SPV3_folder + '/OutputFiles/DataVectors/Noiseless/{which_pk:s}',
+    'rl_folder': f'{SPV3_folder}' + '/OutputFiles/ResFun/{which_pk:s}',
     'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
     'rl_filename': 'resfun-idBM{idBM:02d}.dat',  # XXX it's idBM... anyway, not using the responses at the moment
 
@@ -134,8 +132,8 @@ covariance_cfg = {
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
 
-    'nofz_folder': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputNz/NzFid',
-    'nuisance_folder': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputNz/NzPar',
+    'nofz_folder': f'{SPV3_folder}/InputFiles/InputNz/NzFid',
+    'nuisance_folder': f'{SPV3_folder}/InputFiles/InputNz/NzPar',
     'nofz_filename': 'nzTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
     'nuisance_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
 
@@ -185,7 +183,7 @@ covariance_cfg = {
     'cov_filename': 'covmat_{which_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_'
                     'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_'
                     'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D{which_grids:s}',
-    'cov_vinc_folder': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/CovMats/GaussOnly/Full',
+    'cov_vinc_folder': f'{SPV3_folder}/OutputFiles/CovMats/GaussOnly/Full',
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
     'SSC_code': 'exactSSC',  # 'PyCCL' or 'exactSSC'
@@ -252,7 +250,7 @@ if ell_cuts:
                                                                             '_kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D')
 
 Sijkl_cfg = {
-    'wf_input_folder': f'{SPV3_folder}/Windows',
+    'wf_input_folder': f'{SPV3_folder}/InputFiles/InputSSC/Windows',
     'wf_filename': 'wi{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:02d}-MS{magcut_source:02d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
     'wf_normalization': 'IST',
     'nz': None,  # ! is this used?
@@ -297,8 +295,7 @@ FM_cfg = {
     'save_FM_dict': True,
 
     'load_preprocess_derivatives': False,
-    # 'derivatives_folder': f'{SPV3_folder}' + '/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
-    'derivatives_folder': ROOT + '/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
+    'derivatives_folder': SPV3_folder + 'OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
 
     'derivatives_filename': '{derivatives_prefix:s}{param_name:s}-{probe:s}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{EP_or_ED:s}{zbins:02d}.dat',
     'derivatives_prefix': 'dDVd',
@@ -312,4 +309,9 @@ FM_cfg = {
     'FM_dict_filename': FM_dict_filename,
 
     'test_against_benchmarks': True,
+
+    'test_against_vincenzo': True,
+    'fm_vinc_folder': SPV3_folder + 'OutputFiles/FishMat/{go_gs_vinc:s}/{flat_or_nonflat:s}/{which_pk:s}',
+    'fm_vinc_filename': 'fm-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
+
 }

@@ -323,8 +323,8 @@ kmax_fom_400_ellcenter = 2.15443469
 zbins = general_cfg['zbins']
 EP_or_ED = general_cfg['EP_or_ED']
 
-# for zbins in (3, 5, 7, 9, 10, 13):
-# for zbins in (3,):
+# for zbins in (3, 5, 7, 9, 10, 13, 15):
+    # for zbins in (3,):
 
 # some convenence variables, just to make things more readable
 ell_max_WL = general_cfg['ell_max_WL']
@@ -363,7 +363,7 @@ nbl_WA_opt = general_cfg['nbl_WA_opt']
 nbl_3x2pt_opt = general_cfg['nbl_3x2pt_opt']
 colors = cm.rainbow(np.linspace(0, 1, zbins))
 
-with open(general_cfg['fid_yaml_path'].format(zbins=zbins)) as f:
+with open(general_cfg['fid_yaml_filename'].format(zbins=zbins)) as f:
     fid_pars_dict = yaml.safe_load(f)
 flat_fid_pars_dict = mm.flatten_dict(fid_pars_dict)
 general_cfg['flat_fid_pars_dict'] = flat_fid_pars_dict
@@ -373,7 +373,7 @@ general_cfg['fid_pars_dict'] = fid_pars_dict
 
 cosmo_dict_ccl = csmlib.map_keys(mm.flatten_dict(fid_pars_dict), key_mapping=None)
 cosmo_ccl = csmlib.instantiate_cosmo_ccl_obj(cosmo_dict_ccl,
-                                             fid_pars_dict['other_params']['camb_extra_parameters'])
+                                                fid_pars_dict['other_params']['camb_extra_parameters'])
 
 # some checks
 assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
@@ -381,7 +381,7 @@ assert general_cfg['use_WA'] is False, 'We do not use Wadd for SPV3 at the momen
 assert general_cfg[
     'flat_or_nonflat'] == 'Flat', 'We do not use non-flat cosmologies for SPV3 at the moment, if I recall correclty'
 assert general_cfg['which_cuts'] == 'Vincenzo', ('to begin with, use only Vincenzo/standard cuts. '
-                                                 'For the thesis, probably use just these')
+                                                    'For the thesis, probably use just these')
 if general_cfg['ell_cuts']:
     assert BNT_transform, 'you should BNT transform if you want to apply ell cuts'
 
@@ -423,7 +423,7 @@ assert general_cfg['nbl_WL_opt'] == 32, 'this is used as the reference binning, 
 assert general_cfg['ell_max_WL_opt'] == 5000, 'this is used as the reference binning, from which the cuts are made'
 ell_ref_nbl32, delta_l_ref_nbl32, ell_edges_ref_nbl32 = (
     ell_utils.compute_ells(general_cfg['nbl_WL_opt'], general_cfg['ell_min'], general_cfg['ell_max_WL_opt'],
-                           recipe='ISTF', output_ell_bin_edges=True))
+                            recipe='ISTF', output_ell_bin_edges=True))
 
 # perform the cuts (not the redshift-dependent ones!) on the ell centers and edges
 ell_dict = {}
@@ -456,8 +456,8 @@ general_cfg['nbl_GC'] = nbl_GC
 general_cfg['nbl_3x2pt'] = nbl_3x2pt
 
 delta_dict = {'delta_l_WL': np.copy(delta_l_ref_nbl32[:nbl_WL]),
-              'delta_l_GC': np.copy(delta_l_ref_nbl32[:nbl_GC]),
-              'delta_l_WA': np.copy(delta_l_ref_nbl32[nbl_GC:])}
+                'delta_l_GC': np.copy(delta_l_ref_nbl32[:nbl_GC]),
+                'delta_l_WA': np.copy(delta_l_ref_nbl32[nbl_GC:])}
 
 # set # of nbl in the opt case, import and reshape, then cut the reshaped datavectors in the pes case
 assert (general_cfg['ell_max_WL_opt'],
@@ -472,18 +472,18 @@ if ell_max_WL == general_cfg['ell_max_WL_opt']:
 
 # this is just to make the .format() more compact
 variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_lens,
-                  'zcut_lens': zcut_lens,
-                  'magcut_source': magcut_source, 'zcut_source': zcut_source, 'zmax': zmax,
-                  'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_3x2pt': ell_max_3x2pt,
-                  'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
-                  'kmax_h_over_Mpc': kmax_h_over_Mpc, 'center_or_min': center_or_min,
-                  'idIA': idIA, 'idB': idB, 'idM': idM, 'idR': idR, 'idBM': idBM,
-                  'flat_or_nonflat': flat_or_nonflat,
-                  'which_pk': which_pk, 'BNT_transform': BNT_transform,
-                  'which_ng_cov': which_ng_cov_suffix,
-                  'ng_cov_code': covariance_cfg['SSC_code'],
-                  'which_grids': covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_grids']
-                  }
+                    'zcut_lens': zcut_lens,
+                    'magcut_source': magcut_source, 'zcut_source': zcut_source, 'zmax': zmax,
+                    'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_3x2pt': ell_max_3x2pt,
+                    'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
+                    'kmax_h_over_Mpc': kmax_h_over_Mpc, 'center_or_min': center_or_min,
+                    'idIA': idIA, 'idB': idB, 'idM': idM, 'idR': idR, 'idBM': idBM,
+                    'flat_or_nonflat': flat_or_nonflat,
+                    'which_pk': which_pk, 'BNT_transform': BNT_transform,
+                    'which_ng_cov': which_ng_cov_suffix,
+                    'ng_cov_code': covariance_cfg['SSC_code'],
+                    'which_grids': covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_grids']
+                    }
 pp.pprint(variable_specs)
 
 # import nuisance, to get fiducials and to shift the distribution
@@ -507,8 +507,10 @@ gal_bias_fit_fiducials_names = [f'bG{zi:02d}' for zi in range(1, 5)]
 mag_bias_fit_fiducials_names = [f'bM{zi:02d}' for zi in range(1, 5)]
 galaxy_bias_fit_fiducials_yml = np.array([flat_fid_pars_dict[gal_bias_fit_fiducials_names[zi]] for zi in range(4)])
 mag_bias_fit_fiducials_yml = np.array([flat_fid_pars_dict[mag_bias_fit_fiducials_names[zi]] for zi in range(4)])
-np.testing.assert_array_equal(galaxy_bias_fit_fiducials, galaxy_bias_fit_fiducials_yml, err_msg='galaxy bias fiducials do not match')
-np.testing.assert_array_equal(magnification_bias_fit_fiducials, mag_bias_fit_fiducials_yml, err_msg='magnification bias fiducials do not match')
+np.testing.assert_array_equal(galaxy_bias_fit_fiducials, galaxy_bias_fit_fiducials_yml,
+                                err_msg='galaxy bias fiducials do not match')
+np.testing.assert_array_equal(magnification_bias_fit_fiducials, mag_bias_fit_fiducials_yml,
+                                err_msg='magnification bias fiducials do not match')
 
 # some check on the input nuisance values
 assert np.all(covariance_cfg['ng'] < 9), 'ng values are likely < 9 *per bin*; this is just a rough check'
@@ -521,14 +523,14 @@ assert np.all(dzWL_fiducial == dzGC_fiducial), 'dzWL and dzGC shifts do not matc
 # just a check, to be sure that the nuisance file is the same one defined in the yaml file
 dz_shifts_names = [f'dzWL{zi:02d}' for zi in range(1, zbins + 1)]
 dz_shifts = np.array([flat_fid_pars_dict[dz_shifts_names[zi]] for zi in range(zbins)])
-np.testing.assert_array_equal(dz_shifts, dzWL_fiducial, err_msg='dzWL shifts do not match with '
-                                                                'the ones from the yml file')
+np.testing.assert_array_equal(dz_shifts, dzWL_fiducial,
+                              err_msg='dzWL shifts do not match with the ones from the yml file')
 
 for zi in range(1, zbins + 1):
-    fid_pars_dict['FM_ordered_params'][f'dzWL{zi:02d}'] = dzWL_fiducial[zi - 1]
-
-with open(general_cfg['fid_yaml_path'].format(zbins=zbins), 'w') as f:
-    yaml.dump(fid_pars_dict, f, default_flow_style=False)
+    fid_pars_dict['FM_ordered_params'][f'dzWL{zi:02d}'] = dzWL_fiducial[zi - 1].item()
+    
+with open(general_cfg['fid_yaml_filename'].format(zbins=zbins), 'w') as f:
+    yaml.dump(fid_pars_dict, f, sort_keys=False)
 
 
 # ! import n(z), for the BNT and the scale cuts
@@ -712,54 +714,55 @@ ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the 
 #             dpi=500, bbox_inches='tight')
 
 # ! import and reshape datavectors (cl) and response functions (rl)
-if which_pk != 'HMCodeBar':
-    cl_fld = general_cfg['cl_folder']
-    cl_filename = general_cfg['cl_filename']
-    cl_ll_1d = np.genfromtxt(
-        f"{cl_fld.format(probe='WLO', which_pk=which_pk)}/{cl_filename.format(probe='WLO', **variable_specs)}")
-    cl_gg_1d = np.genfromtxt(
-        f"{cl_fld.format(probe='GCO', which_pk=which_pk)}/{cl_filename.format(probe='GCO', **variable_specs)}")
-    cl_wa_1d = np.genfromtxt(
-        f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', **variable_specs)}")
-    cl_3x2pt_1d = np.genfromtxt(
-        f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
+cl_fld = general_cfg['cl_folder']
+cl_filename = general_cfg['cl_filename']
+cl_ll_1d = np.genfromtxt(
+    f"{cl_fld.format(probe='WLO', which_pk=which_pk)}/{cl_filename.format(probe='WLO', **variable_specs)}")
+cl_gg_1d = np.genfromtxt(
+    f"{cl_fld.format(probe='GCO', which_pk=which_pk)}/{cl_filename.format(probe='GCO', **variable_specs)}")
+cl_wa_1d = np.genfromtxt(
+    f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', **variable_specs)}")
+cl_3x2pt_1d = np.genfromtxt(
+    f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
 
-    # ! reshape to 3d
-    cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
-    cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
-    cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
-    cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
-    cl_gl_3d = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
+# ! reshape to 3d
+cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
+cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
+cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
+cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
+cl_gl_3d = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
 
-    # ! import responses, not used at the moment (not using PySSC)
-    # rl_fld = general_cfg['rl_folder'].format(which_pk=which_pk)
-    # rl_filename = general_cfg['rl_filename'].format()
-    # rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', **variable_specs)}")
-    # rl_gg_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='GCO', **variable_specs)}")
-    # rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **variable_specs)}")
-    # rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **variable_specs)}")
-    if covariance_cfg[f'SSC_code'] == 'PySSC':
-        assert covariance_cfg['compute_SSC'] is False, \
-            'I am using mock responses; if you want to compute the SSC, you need to ' \
-            'import the responses as well (see ssc_integrands_SPV3.py) for how to do it. moreover, ' \
-            'pyssc w/ magbias is not yet ready'
-    rl_ll_1d = np.ones_like(cl_ll_1d)
-    rl_gg_1d = np.ones_like(cl_gg_1d)
-    rl_wa_1d = np.ones_like(cl_wa_1d)
-    rl_3x2pt_1d = np.ones_like(cl_3x2pt_1d)
+# ! import responses, not used at the moment (not using PySSC)
+# rl_fld = general_cfg['rl_folder'].format(which_pk=which_pk)
+# rl_filename = general_cfg['rl_filename'].format()
+# rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', **variable_specs)}")
+# rl_gg_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='GCO', **variable_specs)}")
+# rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **variable_specs)}")
+# rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **variable_specs)}")
+if covariance_cfg[f'SSC_code'] == 'PySSC':
+    assert covariance_cfg['compute_SSC'] is False, \
+        'I am using mock responses; if you want to compute the SSC, you need to ' \
+        'import the responses as well (see ssc_integrands_SPV3.py) for how to do it. moreover, ' \
+        'pyssc w/ magbias is not yet ready'
+rl_ll_1d = np.ones_like(cl_ll_1d)
+rl_gg_1d = np.ones_like(cl_gg_1d)
+rl_wa_1d = np.ones_like(cl_wa_1d)
+rl_3x2pt_1d = np.ones_like(cl_3x2pt_1d)
 
-    rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
-    rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC_opt, zbins)
-    rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA_opt, zbins)
-    rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
+rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
+rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC_opt, zbins)
+rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA_opt, zbins)
+rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
 
-else:
-    print(f'Pk is {which_pk}; no LiFE datavectors in this case, using CLOE benchmarks (directly in 3d)...')
-    cloe_bench_path = f'{ROOT}/my_cloe_data'
+if general_cfg['use_CLOE_cls']:
+    assert which_pk == 'HMCodeBar', 'I am using CLOE Cls, so I should use HMCodeBar'
+    print(f'Using CLOE cls; pk is {which_pk}')
+    
+    cloe_bench_folder = general_cfg['cloe_bench_folder']
     warnings.warn('TODO fix number of bins here for correct WL handling in the lmax=3000 case')
-    cl_ll_3d = np.load(f'{cloe_bench_path}/Cls_zNLA3D_ShearShear_C00.npy')
-    cl_gl_3d = np.load(f'{cloe_bench_path}/Cls_zNLA3D_PosShear_C00.npy')[:nbl_3x2pt, :, :]
-    cl_gg_3d = np.load(f'{cloe_bench_path}/Cls_zNLA3D_PosPos_C00.npy')[:nbl_3x2pt, :, :]
+    cl_ll_3d = np.load(f'{cloe_bench_folder}/Cls_zNLA3D_ShearShear_C00.npy')
+    cl_gl_3d = np.load(f'{cloe_bench_folder}/Cls_zNLA3D_PosShear_C00.npy')[:nbl_3x2pt, :, :]
+    cl_gg_3d = np.load(f'{cloe_bench_folder}/Cls_zNLA3D_PosPos_C00.npy')[:nbl_3x2pt, :, :]
     cl_wa_3d = cl_ll_3d[nbl_3x2pt:, :, :]
     cl_3x2pt_5d = cl_utils.build_3x2pt_datavector_5D(cl_ll_3d[:nbl_3x2pt, ...], cl_gl_3d,
                                                      cl_gg_3d, nbl_3x2pt, zbins, n_probes=2)

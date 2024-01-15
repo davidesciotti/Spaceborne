@@ -94,8 +94,10 @@ general_cfg = {
 
     'which_pk': 'HMCodeBar',
     'which_pk_list': ('HMCodeBar', 'TakaBird', 'HMCode2020', 'Bacco', 'EE2'),
-    'cl_folder': ROOT + '/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/'
-    'DataVectors/Noiseless/{which_pk:s}',
+    
+    'use_CLOE_cls': False,
+    'cloe_bench_folder': f'{ROOT}/my_cloe_data',
+    'cl_folder': ROOT + '/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVectors/Noiseless/{which_pk:s}',
     # 'cl_folder': f'{SPV3_folder}' + 'DataVecDers/{flat_or_nonflat:s}/{probe:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
     'rl_folder': f'{SPV3_folder}' + '/ResFun/{which_pk:s}',
     # XXX i don't have the cls, actually, or better, they're the CLOE benchmarks. use cov and derivatives directly...
@@ -131,19 +133,19 @@ covariance_cfg = {
     'fsky': fsky,  # ! new
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
-    
+
     'nofz_folder': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputNz/NzFid',
     'nuisance_folder': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputNz/NzPar',
     'nofz_filename': 'nzTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
     'nuisance_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
-    
+
 
     # sources (and lenses) redshift distributions
     # 'nofz_folder': f'{ROOT}/likelihood-mcmc-generator/input_files/SPV3',
     # 'nuisance_folder': f'{ROOT}/likelihood-mcmc-generator/input_files/SPV3',
     # 'nofz_filename': 'nzTabSPV3.dat',
     # 'nuisance_filename': 'nuiTabSPV3.dat',
-    
+
 
     'shift_nz': True,  # ! are vincenzo's kernels shifted?? it looks like they are not
     'shift_nz_interpolation_kind': 'linear',
@@ -173,7 +175,7 @@ covariance_cfg = {
     'save_cov_GS': False,
     'save_cov_SSC': False,
     'save_2DCLOE': False,  # outermost loop is on the probes
-    
+
     'test_against_benchmarks': False,
     'test_against_CLOE_benchmarks': False,
     'test_against_vincenzo': True,

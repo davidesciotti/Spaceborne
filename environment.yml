@@ -22,6 +22,7 @@ dependencies:
   - ipympl
   - pip:
     - chainconsumer 
+    - cython
     - getdist
     - type_enforced
     - array_to_latex

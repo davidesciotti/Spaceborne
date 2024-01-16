@@ -186,7 +186,7 @@ covariance_cfg = {
     'cov_vinc_folder': f'{SPV3_folder}/OutputFiles/CovMats/GaussOnly/Full',
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
-    'SSC_code': 'exactSSC',  # 'PyCCL' or 'exactSSC'
+    'SSC_code': 'PyCCL',  # 'PyCCL' or 'exactSSC'
 
     'PyCCL_cfg': {
         'probe': '3x2pt',  # TODO deprecate this?
@@ -195,7 +195,7 @@ covariance_cfg = {
         'which_grids': '_densegrids',
 
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
-        'load_precomputed_cov': True,
+        'load_precomputed_cov': False,
         # 'cov_path': f'{ROOT}/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
         #             '/output/Flagship_2/covmat/PyCCL',
         'cov_path': '/Users/davide/Downloads/PyCCL',
@@ -211,7 +211,7 @@ covariance_cfg = {
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         'z_grid_tkka_min': 0.001,
         'z_grid_tkka_max': 3,
-        'z_grid_tkka_steps': 500,
+        'z_grid_tkka_steps': 300,
         'z_grid_min': 0.001,
         'z_grid_max': 3,
         'z_grid_steps': 1000,

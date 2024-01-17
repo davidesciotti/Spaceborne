@@ -34,7 +34,7 @@ sys.path.append(f'{job_path}/config')
 import config_SSCpaper_final as cfg
 
 
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 

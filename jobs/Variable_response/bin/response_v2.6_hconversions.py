@@ -19,7 +19,7 @@ job_path = Path.cwd().parent
 sys.path.append(f'{project_path.parent}/common_data/common_lib')
 import my_module as mm
 
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 
 params = {'lines.linewidth': 3.5,
           'font.size': 20,

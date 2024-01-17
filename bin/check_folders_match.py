@@ -14,7 +14,7 @@ sys.path.append(f'{ROOT}/Spaceborne/common_cfg')
 import mpl_cfg as mpl_cfg
 
 
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 

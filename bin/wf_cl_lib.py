@@ -34,7 +34,7 @@ import mpl_cfg as mpl_cfg
 
 # update plot pars
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 
 ###############################################################################
 ###############################################################################

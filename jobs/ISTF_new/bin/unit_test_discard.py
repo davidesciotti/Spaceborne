@@ -21,7 +21,7 @@ import mpl_cfg
 sys.path.append(f'{job_path}/config')
 import config_SPV3 as cfg
 
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 

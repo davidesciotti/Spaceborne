@@ -15,7 +15,7 @@ import config_SPV3 as cfg
 sys.path.append(f'{project_path.parent}/common_data/common_lib')
 import my_module as mm
 
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 
 # ! options
 plot_cl = False

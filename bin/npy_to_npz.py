@@ -5,7 +5,7 @@ import numpy as np
 import common_cfg.mpl_cfg as mpl_cfg
 from . import my_module as mm
 
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 

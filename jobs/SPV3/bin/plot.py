@@ -29,7 +29,7 @@ import plots_FM_running as plot_utils
 
 # plot config
 matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 markersize = 10
 
 ########################################################################################################################

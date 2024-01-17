@@ -41,7 +41,7 @@ import fisher_matrix as FM_utils
 import check_specs as utils
 import unit_test as ut
 
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 start_time = time.perf_counter()

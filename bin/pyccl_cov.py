@@ -48,6 +48,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p
     z_grid_tkka = np.linspace(pyccl_cfg['z_grid_tkka_min'], pyccl_cfg['z_grid_tkka_max'],
                               pyccl_cfg['z_grid_tkka_steps'])
     a_grid_increasing_for_ttka = cosmo_lib.z_to_a(z_grid_tkka)[::-1]
+    k_grid_tkka = np.geomspace(1E-5, 1E2, 1024)
 
     # from https://github.com/LSSTDESC/CCL/blob/4df2a29eca58d7cd171bc1986e059fd35f425d45/benchmarks/test_covariances.py
     # see also https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/tools/covariance_NG.py#L282
@@ -124,11 +125,13 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p
                                                   prof4=halo_profile_dict[D],
                                                   prof12_2pt=prof_2pt_dict[A, B],
                                                   prof34_2pt=prof_2pt_dict[C, D],
-                                                  p_of_k_a=None, lk_arr=None,
+                                                  p_of_k_a=None, lk_arr=np.log(k_grid_tkka),
                                                   a_arr=a_grid_increasing_for_ttka,
                                                   extrap_order_lok=1, extrap_order_hik=1, use_log=False,
-                                                  probe_block=A+B+C+D,
+                                                  probe_block=A + B + C + D,
                                                   **prof_2pt_args)
+                
+
 
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
     if pyccl_cfg['save_trispectrum']:

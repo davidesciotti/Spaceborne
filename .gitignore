@@ -12,6 +12,7 @@ jobs/ISTF_new/output/cl15gen
 jobs/ISTF/output/covmat
 jobs/SSC_paper_final/output/covmat
 jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/covmat
+jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/pyccl_responses
 
 
 *.fits

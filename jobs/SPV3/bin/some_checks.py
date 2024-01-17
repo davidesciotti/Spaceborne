@@ -66,7 +66,7 @@ if plot_cl:
     plt.yscale('log')
 
 probe_v_lst = ['WLO', 'WLA', 'GCO', '3x2pt']
-path = '/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3/output/covmat/vincenzos_format/GaussOnly'
+path = '/home/cosmo/davide.sciotti/data/SSC_restructured_v2/jobs/SPV3/output/covmat/vincenzos_format/GaussOnly'
 if check_cov_pesopt:
     # this checks that the pes covmat can be obtained from the opt one, simply by cutting it
     for probe_v in probe_v_lst:

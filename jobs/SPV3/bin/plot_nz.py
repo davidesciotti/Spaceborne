@@ -22,9 +22,9 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
 zbins = 10
-niz_flagship = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/'
+niz_flagship = np.genfromtxt(f'/home/cosmo/davide.sciotti/data/common_data/vincenzo/'
                              f'SPV3_07_2022/InputNz/Lenses/Flagship/niTab-EP{zbins}.dat')
-niz_redbook = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/'
+niz_redbook = np.genfromtxt(f'/home/cosmo/davide.sciotti/data/common_data/vincenzo/'
                             f'SPV3_07_2022/InputNz/Lenses/RedBook/niTab-EP{zbins}.dat')
 
 z_flagship = niz_flagship[:, 0]

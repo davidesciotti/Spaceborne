@@ -101,7 +101,7 @@ general_cfg = {
     'which_pk': 'HMCode2020',
     'which_pk_list': ('HMCode2020', 'Bacco', 'EE2', 'TakaBird'),
     'cl_folder': f'{SPV3_folder}' + '/OutputFiles/DataVectors/Noiseless/{probe:s}/{which_pk:s}',
-    'rl_folder': f'/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
+    'rl_folder': f'/home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/'
                  f'Flagship_2/ResFunTabs/magcut_zcut_True',
     'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
     'rl_filename': 'rf-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
@@ -129,7 +129,7 @@ covariance_cfg = {
 
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which is quite wrong
-    'cov_SSC_PyCCL_folder': '/home/davide/Documenti/Lavoro/Programmi/PyCCL_SSC/output/covmat/after_script_update',
+    'cov_SSC_PyCCL_folder': '/home/cosmo/davide.sciotti/data/PyCCL_SSC/output/covmat/after_script_update',
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:s}_ellmax{ell_max:d}_HMrecipeKrause2017_6D.npy',
 
     # n_gal, sigma_eps, fsky, all entering the covariance matrix
@@ -174,7 +174,7 @@ covariance_cfg = {
     'exactSSC_cfg': {
         'probe': '3x2pt',
         # in this case it is only possible to load precomputed arraya, I have to compute the integral with Julia
-        'path': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia',
+        'path': '/home/cosmo/davide.sciotti/data/exact_SSC/output/SSC_matrix/julia',
 
         # settings for sigma2
         'cl_integral_convention': 'PySSC',  # or Euclid, but gives same results as it should!!! TODO remove this

@@ -12,7 +12,7 @@ mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 mpl.pyplot.set_cmap('rainbow')
 ep_or_ed = 'EP'
 zbins = 10
-n_of_z_fs1_paper = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
+n_of_z_fs1_paper = np.genfromtxt(f'/home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/'
                                  f'Flagship_1_restored/InputNz/Lenses/Flagship/niTab-{ep_or_ed}{zbins}.dat')
 
 plt.figure()
@@ -28,6 +28,6 @@ plt.tight_layout()
 
 # savefig in .pdf
 plt.savefig(
-    f'/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_paper_final/output/plots/'
+    f'/home/cosmo/davide.sciotti/data/SSC_restructured_v2/jobs/SSC_paper_final/output/plots/'
     f'n_of_z_{ep_or_ed}{zbins}.pdf',
     dpi=500, bbox_inches='tight', pad_inches=0.1, transparent=True, format='pdf')

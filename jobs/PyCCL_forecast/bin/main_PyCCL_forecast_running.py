@@ -159,7 +159,7 @@ elif whos_SSC == 'CosmoLike':
     GS_or_GScNG = 'GS'
 
     # import and reshape Robin's SS-only cov
-    path_robin = '/home/davide/Documenti/Lavoro/Programmi/SSC_paper_jan22/PySSC_vs_CosmoLike/Robin' \
+    path_robin = '/home/cosmo/davide.sciotti/data/SSC_paper_jan22/PySSC_vs_CosmoLike/Robin' \
                  '/cov_SS_full_sky_rescaled/lmax5000_noextrap/davides_reshape'
     cov_CosmoLike_WLonly_SS_6D = np.load(f'{path_robin}/cov_R_WLonly_SSC_lmax{ell_max_WL}_6D.npy')
     cov_CosmoLike_WLonly_SS_4D = mm.cov_6D_to_4D(cov_CosmoLike_WLonly_SS_6D, nbl, npairs=npairs_auto,
@@ -214,11 +214,11 @@ if FM_config['save_FM']:
 ######################################################### TESTS ########################################################
 # check FMS
 if general_config['which_forecast'] == 'sylvain':
-    path_import = '/home/davide/Documenti/Lavoro/Programmi/SSCcomp_prove/output/FM/common_ell_and_deltas/Cij_14may'
+    path_import = '/home/cosmo/davide.sciotti/data/SSCcomp_prove/output/FM/common_ell_and_deltas/Cij_14may'
 elif general_config['which_forecast'] == 'ISTF':
-    path_import = '/home/davide/Documenti/Lavoro/Programmi/SSCcomp_prove/output/FM/ISTspecs_indVincenzo/Cij_14may'
+    path_import = '/home/cosmo/davide.sciotti/data/SSCcomp_prove/output/FM/ISTspecs_indVincenzo/Cij_14may'
 elif general_config['which_forecast'] == 'CLOE':
-    path_import = '/home/davide/Documenti/Lavoro/Programmi/SSCcomp_prove/output/FM/ISTspecs_indVincenzo/Cij_14may'
+    path_import = '/home/cosmo/davide.sciotti/data/SSCcomp_prove/output/FM/ISTspecs_indVincenzo/Cij_14may'
 else:
     raise ValueError('which_forecast must be either sylvain, ISTF or CLOE')
 

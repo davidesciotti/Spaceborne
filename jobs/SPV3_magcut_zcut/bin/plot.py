@@ -111,9 +111,9 @@ for probe in probes:
             lmax = 5000
             nbl = 32
 
-        FM_noBNT_path = f'/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output' \
+        FM_noBNT_path = f'/home/cosmo/davide.sciotti/data/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output' \
                         f'/Flagship_{flagship_version}/FM/BNT_False'
-        FM_BNT_path = f'/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output' \
+        FM_BNT_path = f'/home/cosmo/davide.sciotti/data/SSC_restructured_v2/jobs/SPV3_magcut_zcut/output' \
                       f'/Flagship_{flagship_version}/FM/BNT_True'
         FM_noBNT_dict = mm.load_pickle(f'{FM_noBNT_path}/FM_dict_ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}.pickle')
         FM_BNT_dict = mm.load_pickle(f'{FM_BNT_path}/FM_dict_ML{ML:03d}-ZL{ZL:02d}-MS{MS:03d}-ZS{ZS:02d}.pickle')

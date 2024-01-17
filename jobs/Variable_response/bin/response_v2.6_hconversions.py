@@ -433,7 +433,7 @@ R1_mm_interp = interp2d(k_array, z_array, R1_mm, kind='linear')
 # import WF
 # ! these should be in Mpc ** -1 !! include a scaling below (after removing the z column)
 W_LL = np.genfromtxt(
-    '/home/davide/Documenti/Lavoro/Programmi/common_data/everyones_WF_from_Gdrive/davide/nz10000/gen2022/wil_dav_IA_IST_nz10000_bia2.17.txt')
+    '/home/cosmo/davide.sciotti/data/common_data/everyones_WF_from_Gdrive/davide/nz10000/gen2022/wil_dav_IA_IST_nz10000_bia2.17.txt')
 z_WF = W_LL[:, 0]
 W_LL = W_LL[:, 1:]  # resmove redshift column
 

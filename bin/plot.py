@@ -93,31 +93,31 @@ FM_GS = FM_dict[f'FM_{probe}_GS']
 
 
 # from SSC_paper_jan22_backup_works
-# FM_GO_old = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/SSC_paper_jan22_backup_works/output/FM/'
+# FM_GO_old = np.genfromtxt(f'/home/cosmo/davide.sciotti/data/SSC_paper_jan22_backup_works/output/FM/'
 #                           f'common_ell_and_deltas/Cij_14may/FM_{probe}_G_lmax{probe}{lmax}_nbl{nbl}.txt')
-# FM_GS_old = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/SSC_paper_jan22_backup_works/output/FM/'
+# FM_GS_old = np.genfromtxt(f'/home/cosmo/davide.sciotti/data/SSC_paper_jan22_backup_works/output/FM/'
 #                           f'common_ell_and_deltas/Cij_14may/FM_{probe}_G+SSC_lmax{probe}{lmax}_nbl{nbl}.txt')
 
 # from SSC_restructured_bu_may2022
-# FM_GO_old = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/!archive/SSC_restructured_v2_bu/jobs/'
+# FM_GO_old = np.genfromtxt(f'/home/cosmo/davide.sciotti/data/!archive/SSC_restructured_v2_bu/jobs/'
 #                           f'SSC_comparison/output/FM/FM_{probe}_GO_lmax{probe}{lmax}_nbl{nbl}.txt')
-# FM_GS_old = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/!archive/SSC_restructured_v2_bu/jobs/'
+# FM_GS_old = np.genfromtxt(f'/home/cosmo/davide.sciotti/data/!archive/SSC_restructured_v2_bu/jobs/'
 #                           f'SSC_comparison/output/FM/FM_{probe}_GS_lmax{probe}{lmax}_nbl{nbl}.txt')
 
 # from common_data/sylvain/FM/common_ell_and_deltas/latest_downloads/renamed
-# FM_GO_old = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/FM/common_ell_and_deltas/'
+# FM_GO_old = np.genfromtxt(f'/home/cosmo/davide.sciotti/data/common_data/sylvain/FM/common_ell_and_deltas/'
 #                           f'latest_downloads/renamed/FM_{probe}_GO_lmax{probe}{lmax}_nbl{nbl}_ellDavide.txt')
-# FM_GS_old = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/FM/common_ell_and_deltas/'
+# FM_GS_old = np.genfromtxt(f'/home/cosmo/davide.sciotti/data/common_data/sylvain/FM/common_ell_and_deltas/'
 #                           f'latest_downloads/renamed/FM_{probe}_GS_lmax{probe}{lmax}_nbl{nbl}_ellDavide.txt')
 
 # from SSC_restructured_v2/jobs/SSC_comparison/output/FM/
-FM_GO_old = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/FM'
+FM_GO_old = np.genfromtxt(f'/home/cosmo/davide.sciotti/data/SSC_restructured_v2/jobs/SSC_comparison/output/FM'
                           f'/FM_{probe}_GO_lmax{probe}{lmax}_nbl{nbl}.txt')
-FM_GS_old = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/SSC_comparison/output/FM'
+FM_GS_old = np.genfromtxt(f'/home/cosmo/davide.sciotti/data/SSC_restructured_v2/jobs/SSC_comparison/output/FM'
                           f'/FM_{probe}_GS_lmax{probe}{lmax}_nbl{nbl}_Rlconst.txt')
 
 
-FM_GS_PyCCL = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/PyCCL_forecast/output/'
+FM_GS_PyCCL = np.genfromtxt(f'/home/cosmo/davide.sciotti/data/SSC_restructured_v2/jobs/PyCCL_forecast/output/'
                             f'FM/FM_{probe}_GS_lmax{probe}{lmax}_nbl{nbl}_PyCCLKiDS1000.txt')
 
 # fix the desired parameters and remove null rows/columns

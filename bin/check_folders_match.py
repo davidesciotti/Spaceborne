@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+ROOT = '/home/cosmo/davide.sciotti/data'
 
 sys.path.append(f'{ROOT}/Spaceborne/bin')
 import my_module as mm
@@ -18,7 +18,7 @@ matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
-output = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVecDers/Flat/Bacco/'
+output = '/home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVecDers/Flat/Bacco/'
 benchmark = '/home/davide/Scaricati/drive-download-20240112T092248Z-001/DataVecDers/Flat/All/Bacco/EP13/'
 extension = 'dat'
 

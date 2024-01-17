@@ -2,11 +2,11 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
-sys.path.append('/home/davide/Documenti/Lavoro/Programmi/cl_v2/bin')
+sys.path.append('/home/cosmo/davide.sciotti/data/cl_v2/bin')
 import wf_cl_lib
 
 # this should be the file used in the paper
-ngbtab_ep10 = np.genfromtxt('/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
+ngbtab_ep10 = np.genfromtxt('/home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/'
                             'Flagship_1_restored/InputNz/Lenses/Flagship/ngbTab-EP10.dat')
 
 # where is this bias taken from?

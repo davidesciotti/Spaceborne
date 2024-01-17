@@ -186,7 +186,7 @@ covariance_cfg = {
     'cov_vinc_folder': f'{SPV3_folder}/OutputFiles/CovMats/GaussOnly/Full',
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
-    'SSC_code': 'PyCCL',  # 'PyCCL' or 'exactSSC'
+    'SSC_code': 'exactSSC',  # 'PyCCL' or 'exactSSC'
 
     'PyCCL_cfg': {
         'probe': '3x2pt',  # TODO deprecate this?
@@ -195,10 +195,10 @@ covariance_cfg = {
         'which_grids': '_densegrids',
 
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
-        'load_precomputed_cov': False,
+        'load_precomputed_cov': True,
         # 'cov_path': f'{ROOT}/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
         #             '/output/Flagship_2/covmat/PyCCL',
-        'cov_path': '/Users/davide/Downloads/PyCCL',
+        'cov_path': f'{PROJ_ROOT}/jobs/SPV3_magcut_zcut_thesis/output/Flagship_{flagship_version}/covmat/PyCCL/',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
@@ -226,7 +226,7 @@ covariance_cfg = {
 
 
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
-        'cov_path': f'{ROOT}/exact_SSC/output/SSC_matrix/julia',
+        'cov_path': f'{ROOT}/exact_SSC/output/SSC_matrix/julia/halo_model',
         'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
                         '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'
                         '_convention{cl_integral_convention:s}.npy',

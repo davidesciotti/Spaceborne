@@ -130,8 +130,6 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p
                                                   extrap_order_lok=1, extrap_order_hik=1, use_log=False,
                                                   probe_block=A + B + C + D,
                                                   **prof_2pt_args)
-                
-
 
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
     if pyccl_cfg['save_trispectrum']:
@@ -295,13 +293,13 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     wf_lensing_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
                                       ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
-                                      mag_bias_tuple=mag_bias_tuple, return_ccl_obj=True, n_samples=1000)
+                                      mag_bias_tuple=mag_bias_tuple, has_rsd=False, return_ccl_obj=True, n_samples=1000)
     wf_lensing_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
                                       ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
-                                      mag_bias_tuple=mag_bias_tuple, return_ccl_obj=False, n_samples=1000)
+                                      mag_bias_tuple=mag_bias_tuple, has_rsd=False, return_ccl_obj=False, n_samples=1000)
     wf_galaxy_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'with_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
                                      ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
-                                     mag_bias_tuple=mag_bias_tuple, return_ccl_obj=True, n_samples=1000)
+                                     mag_bias_tuple=mag_bias_tuple, has_rsd=False, return_ccl_obj=True, n_samples=1000)
 
     # ! manually construct galaxy = delta + magnification radial kernel
     a_arr = cosmo_lib.z_to_a(z_grid)
@@ -385,7 +383,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     ax[0].legend()
     ax[1].legend()
     ax[2].legend()
-    plt.show()
+    plt.show()    
 
     # covariance ordering stuff, also used to compute the trispectrum
     if probe == 'LL':

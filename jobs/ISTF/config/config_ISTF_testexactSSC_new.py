@@ -2,7 +2,7 @@ import sys
 import numpy as np
 import yaml
 
-ROOT = '/home/cosmo/davide.sciotti/data'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi/'
 JOB_ROOT = f'{ROOT}/Spaceborne/jobs/ISTF'
 
 
@@ -11,7 +11,7 @@ import bin.check_specs as utils
 
 
 with open(
-        '/home/cosmo/davide.sciotti/data/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
+        '/home/davide/Documenti/Lavoro/Programmi//Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
     fid_pars_dict = yaml.load(f, Loader=yaml.FullLoader)
 fid_pars_dict_for_fm = fid_pars_dict['FM_ordered_params']  # necessary for FM handling
 
@@ -172,7 +172,7 @@ covariance_cfg = {
         'which_grids': '',
         'get_3x2pt_cov_in_4D': False,
         'save_trispectrum': False,
-        'cov_path': '/home/cosmo/davide.sciotti/data/PyCCL_SSC/output/covmat/ISTF',
+        'cov_path': '/home/davide/Documenti/Lavoro/Programmi//PyCCL_SSC/output/covmat/ISTF',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',
 
@@ -195,7 +195,7 @@ covariance_cfg = {
     'exactSSC_cfg': {
         'which_ng_cov': 'SSC',
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
-        'cov_path': '/home/cosmo/davide.sciotti/data/exact_SSC/output/ISTF/SSC_matrix',
+        'cov_path': '/home/davide/Documenti/Lavoro/Programmi//exact_SSC/output/ISTF/SSC_matrix',
         'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
                         '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'
                         '_convention{cl_integral_convention:s}.npy',

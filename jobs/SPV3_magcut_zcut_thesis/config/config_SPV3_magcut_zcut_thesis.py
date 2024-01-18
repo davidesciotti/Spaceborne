@@ -4,7 +4,7 @@ which_forecast = 'SPV3'
 fsky = 0.3563380664078408
 GL_or_LG = 'GL'
 
-ROOT = '/home/cosmo/davide.sciotti/data'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi/'
 JOB_ROOT = f'{ROOT}/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
 SPV3_folder = f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
 

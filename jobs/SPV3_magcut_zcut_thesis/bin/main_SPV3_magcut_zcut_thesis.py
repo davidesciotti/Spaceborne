@@ -18,7 +18,7 @@ from copy import deepcopy
 import numpy.testing as npt
 pp = pprint.PrettyPrinter(indent=4)
 
-ROOT = '/home/cosmo/davide.sciotti/data'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi/'
 SB_ROOT = f'{ROOT}/Spaceborne'
 
 # project modules

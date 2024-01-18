@@ -9,7 +9,7 @@ from joblib import Parallel, delayed
 from matplotlib import cm
 from tqdm import tqdm
 
-ROOT = '/home/cosmo/davide.sciotti/data'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi/'
 sys.path.append(f'{ROOT}/Spaceborne')
 import bin.my_module as mm
 import bin.cosmo_lib as cosmo_lib
@@ -358,7 +358,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     p_of_k_a = 'delta_matter:delta_matter'
 
     # this is a test to use the actual P(k) from the input files, but the agreement gets much worse
-    # pk_mm_table = np.genfromtxt(f'/home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/'
+    # pk_mm_table = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi//common_data/vincenzo/SPV3_07_2022/'
     #                             'LiFEforSPV3/InputFiles/InputPS/HMCodeBar/'
     #                             'InFiles/Flat/h/PddVsZedLogK-h_6.700e-01.dat')
     # # reshape pk

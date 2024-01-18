@@ -478,7 +478,9 @@ def instantiate_cosmo_ccl_obj(fiducial_pars_dict, extra_parameters):
                               n_s=fiducial_pars_dict['n_s'],
                               m_nu=fiducial_pars_dict['m_nu'],
                               Omega_k=Omega_k,
-                              # baryonic_effects=None,
+                              baryonic_effects=None,
+                              mass_split='single',
+                              matter_power_spectrum='camb',
                               extra_parameters=extra_parameters)
 
     return cosmo_ccl

@@ -18,8 +18,8 @@ matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
-output = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVecDers/Flat/Bacco/'
-benchmark = '/home/davide/Scaricati/drive-download-20240112T092248Z-001/DataVecDers/Flat/All/Bacco/EP13/'
-extension = 'dat'
+output = '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia'
+benchmark = '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia/halo_model'
+extension = 'npy'
 
 mm.test_folder_content(output, benchmark, extension, verbose=True, rtol=1e-3)

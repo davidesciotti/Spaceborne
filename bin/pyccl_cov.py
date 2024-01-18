@@ -38,12 +38,7 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 # HALO MODEL PRESCRIPTIONS:
 # KiDS1000 Methodology: https://www.pure.ed.ac.uk/ws/portalfiles/portal/188893969/2007.01844v2.pdf, after (E.10)
 # Krause2017: https://arxiv.org/pdf/1601.05779.pdf
-
-# it was p_of_k_a=Pk, but it should use the LINEAR power spectrum, so we leave it as None (see documentation:
-# https://ccl.readthedocs.io/en/latest/api/pyccl.halos.halo_model.html?highlight=halomod_Tk3D_SSC#pyccl.halos.halo_model.halomod_Tk3D_SSC)
-# 🐛 bug fixed: normprof shoud be True
-# 🐛 bug fixed?: p_of_k_a=None instead of Pk
-def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p_of_k_a, which_pk):
+def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, which_pk):
     use_hod_for_gg = pyccl_cfg['use_HOD_for_GCph']
     z_grid_tkka = np.linspace(pyccl_cfg['z_grid_tkka_min'], pyccl_cfg['z_grid_tkka_max'],
                               pyccl_cfg['z_grid_tkka_steps'])
@@ -136,10 +131,8 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p
         trispectrum_filename = pyccl_cfg['trispectrum_filename'].format(which_ng_cov=which_ng_cov, which_pk=which_pk)
         mm.save_pickle(trispectrum_filename, tkka_dict)
 
-    # TODO pass lk_arr?
     # TODO do they interpolate existing tracer arrays?
     # TODO spline for SSC...
-    # TODO update to halomod_Tk3D_cNG with pyccl v3.0.0
 
     return tkka_dict
 
@@ -337,7 +330,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
                    label='galaxy vinc' if zi == 0 else None)
     # set labels
     ax[0].set_title('lensing kernel')
-    ax[1].set_title('galaxy kernel\nno gal bias!')
+    ax[1].set_title('galaxy kernel\n(no gal bias!)')
     ax[0].set_xlabel('$z$')
     ax[1].set_xlabel('$z$')
     ax[0].set_ylabel('wil')
@@ -348,6 +341,19 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     # the cls are not needed, but just in case:
     p_of_k_a = 'delta_matter:delta_matter'
+
+    # this is a test to use the actual P(k) from the input files, but the agreement gets much worse
+    # pk_mm_table = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
+    #                             'LiFEforSPV3/InputFiles/InputPS/HMCodeBar/'
+    #                             'InFiles/Flat/h/PddVsZedLogK-h_6.700e-01.dat')
+    # # reshape pk
+    # z_grid_Pk = np.unique(pk_mm_table[:, 0])
+    # k_grid_Pk = np.unique(10 ** pk_mm_table[:, 1])
+    # pk_mm_2d = np.reshape(pk_mm_table[:, 2], (len(z_grid_Pk), len(k_grid_Pk))).T  # I want P(k, z), not P(z, k)
+    # scale_factor_grid_pk = cosmo_lib.z_to_a(z_grid_Pk)  # flip it
+    # p_of_k_a = ccl.pk2d.Pk2D(a_arr=scale_factor_grid_pk, lk_arr=np.log(k_grid_Pk),
+    #                             pk_arr=pk_mm_2d.T, is_logp=False)
+
     cl_ll_3d = wf_cl_lib.cl_PyCCL(wf_lensing_obj, wf_lensing_obj, ell_grid, zbins,
                                   p_of_k_a=p_of_k_a, cosmo=cosmo_ccl, limber_integration_method='spline')
     cl_gl_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_lensing_obj, ell_grid, zbins,
@@ -383,7 +389,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     ax[0].legend()
     ax[1].legend()
     ax[2].legend()
-    plt.show()    
+    plt.show()
 
     # covariance ordering stuff, also used to compute the trispectrum
     if probe == 'LL':

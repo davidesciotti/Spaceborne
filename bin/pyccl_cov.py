@@ -7,7 +7,7 @@ import pyccl as ccl
 import sys
 from joblib import Parallel, delayed
 from matplotlib import cm
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 

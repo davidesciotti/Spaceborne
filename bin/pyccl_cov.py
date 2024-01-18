@@ -40,7 +40,10 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
     z_grid_tkka = np.linspace(pyccl_cfg['z_grid_tkka_min'], pyccl_cfg['z_grid_tkka_max'],
                               pyccl_cfg['z_grid_tkka_steps'])
     a_grid_increasing_for_ttka = cosmo_lib.z_to_a(z_grid_tkka)[::-1]
-    k_grid_tkka = np.geomspace(1E-5, 1E2, 1024)
+    logn_k_grid_tkka = np.log(np.geomspace(1E-5, 1E2, 1024))
+
+    a_grid_increasing_for_ttka = None
+    logn_k_grid_tkka = None
 
     # from https://github.com/LSSTDESC/CCL/blob/4df2a29eca58d7cd171bc1986e059fd35f425d45/benchmarks/test_covariances.py
     # see also https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/tools/covariance_NG.py#L282
@@ -91,8 +94,9 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
     for row, (A, B) in tqdm(enumerate(probe_ordering)):
         for col, (C, D) in enumerate(probe_ordering):
             if col >= row:
-                print(f'Computing trispectrum for {which_ng_cov}, '
-                      f'z points = {a_grid_increasing_for_ttka.size}, k points = {k_grid_tkka.size}, probe combination {A}{B}{C}{D}')
+                print(f'Computing trispectrum for {which_ng_cov},  probe combination {A}{B}{C}{D}')
+                if a_grid_increasing_for_ttka is not None and logn_k_grid_tkka is not None:
+                    print(f'z points = {a_grid_increasing_for_ttka.size}, k points = {logn_k_grid_tkka.size}')
 
                 # not very nice to put this if-else in the for loop, but A, B, C, D are referenced only here
                 if which_ng_cov == 'SSC':
@@ -116,7 +120,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                                   prof4=halo_profile_dict[D],
                                                   prof12_2pt=prof_2pt_dict[A, B],
                                                   prof34_2pt=prof_2pt_dict[C, D],
-                                                  p_of_k_a=None, lk_arr=np.log(k_grid_tkka),
+                                                  p_of_k_a=None, lk_arr=logn_k_grid_tkka,
                                                   a_arr=a_grid_increasing_for_ttka,
                                                   extrap_order_lok=1, extrap_order_hik=1, use_log=False,
                                                 #   probe_block=A + B + C + D,

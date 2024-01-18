@@ -10,13 +10,10 @@ from matplotlib import cm
 from tqdm import tqdm
 
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
-
-sys.path.append(f'{ROOT}/Spaceborne/bin')
-import my_module as mm
-import cosmo_lib as cosmo_lib
-import wf_cl_lib as wf_cl_lib
-
-sys.path.append(f'{ROOT}/Spaceborne/common_cfg')
+sys.path.append(f'{ROOT}/Spaceborne')
+import bin.my_module as mm
+import bin.cosmo_lib as cosmo_lib
+import bin.wf_cl_lib as wf_cl_lib
 import common_cfg.mpl_cfg as mpl_cfg
 
 matplotlib.use('Qt5Agg')
@@ -300,13 +297,13 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     wf_lensing_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
                                       ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
-                                      mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=True, n_samples=1000)
+                                      mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=True, n_samples=n_samples_wf)
     wf_lensing_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
                                       ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
-                                      mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=False, n_samples=1000)
+                                      mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=False, n_samples=n_samples_wf)
     wf_galaxy_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'with_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
                                      ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
-                                     mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=True, n_samples=1000)
+                                     mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=True, n_samples=n_samples_wf)
 
     # ! manually construct galaxy = delta + magnification radial kernel
     a_arr = cosmo_lib.z_to_a(zgrid_nz)
@@ -320,7 +317,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     # wf_mu_tot_alt_arr = -2 * np.array(
     #     [ccl.tracers.get_lensing_kernel(cosmo=cosmo_ccl, dndz=(nz_tuple[0], nz_tuple[1][:, zi]),
     #                                     mag_bias=(mag_bias_tuple[0], mag_bias_tuple[1][:, zi]),
-    #                                     n_chi=1000)
+    #                                     n_chi=n_samples_wf)
     #      for zi in range(zbins)])
     # wf_mu_alt_arr = wf_mu_tot_alt_arr[:, 1, :].T
 

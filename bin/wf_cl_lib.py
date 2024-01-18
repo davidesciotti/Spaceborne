@@ -20,16 +20,12 @@ from functools import partial
 import sys
 from tqdm import tqdm
 
-
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
-
-sys.path.append(f'{ROOT}/Spaceborne/bin')
-import my_module as mm
-import cosmo_lib as csmlib
-
-sys.path.append(f'{ROOT}/Spaceborne/common_cfg')
-import ISTF_fid_params as ISTF
-import mpl_cfg as mpl_cfg
+sys.path.append(f'{ROOT}/Spaceborne')
+import bin.my_module as mm
+import bin.cosmo_lib as csmlib
+import common_cfg.ISTF_fid_params as ISTF
+import common_cfg.mpl_cfg as mpl_cfg
 
 
 # update plot pars

@@ -4,9 +4,8 @@ Some general configurations for matplotlib
 import sys
 
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
-
-sys.path.append(f'{ROOT}/Spaceborne/bin')
-import my_module as mm
+sys.path.append(f'{ROOT}/Spaceborne')
+import bin.my_module as mm
 
 
 mpl_rcParams_dict = {'lines.linewidth': 3.5,

@@ -12,8 +12,8 @@ from scipy.integrate import simps
 import sys
 
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
-sys.path.append(f'{ROOT}/Spaceborne/bin')
-import my_module as mm
+sys.path.append(f'{ROOT}/Spaceborne')
+import bin.my_module as mm
 
 
 # TODO create function to compute pk from CAMB, hoping it accepts a vectorized k or z

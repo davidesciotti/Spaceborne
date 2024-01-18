@@ -13,15 +13,10 @@ from matplotlib import cm
 
 
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
-
-sys.path.append(f'{ROOT}/Spaceborne/bin')
-import my_module as mm
-
-sys.path.append(f'{ROOT}/Spaceborne/common_cfg')
-# import ISTF_fid_params as ISTF
-import mpl_cfg as mpl_cfg
-
-
+sys.path.append(f'{ROOT}/Spaceborne')
+import bin.my_module as mm
+# import bin.ISTF_fid_params as ISTF
+import bin.mpl_cfg as mpl_cfg
 
 
 matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)

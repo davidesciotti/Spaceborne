@@ -9,13 +9,13 @@ from matplotlib import pyplot as plt
 from scipy.integrate import simps
 
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
-sys.path.append(f'{ROOT}/Spaceborne/bin')
-import cl_preprocessing
-import pyccl_cov
-import sigma2_SSC
-import my_module as mm
-import cosmo_lib as csmlib
-import wf_cl_lib as wf_cl_lib
+sys.path.append(f'{ROOT}/Spaceborne')
+import bin.cl_preprocessing as cl_preprocessing
+import bin.pyccl_cov as pyccl_cov
+import bin.sigma2_SSC as sigma2_SSC
+import bin.my_module as mm
+import bin.cosmo_lib as csmlib
+import bin.wf_cl_lib as wf_cl_lib
 
 ###############################################################################
 ################ CODE TO COMPUTE THE G AND SSC COVMATS ########################

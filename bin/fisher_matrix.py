@@ -1,14 +1,14 @@
 import time
 import warnings
-import joblib
 import numpy as np
 import scipy
 from matplotlib import pyplot as plt
 import sys
+
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
-sys.path.append(f'{ROOT}/Spaceborne/bin')
-import my_module as mm
-import cl_preprocessing as cl_utils
+sys.path.append(f'{ROOT}/Spaceborne')
+import bin.my_module as mm
+import bin.cl_preprocessing as cl_utils
 
 
 # def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum):

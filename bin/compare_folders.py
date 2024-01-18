@@ -4,14 +4,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
-
-sys.path.append(f'{ROOT}/Spaceborne/bin')
-import my_module as mm
-
-sys.path.append(f'{ROOT}/Spaceborne/common_cfg')
-import mpl_cfg as mpl_cfg
+sys.path.append(f'{ROOT}/Spaceborne')
+import bin.my_module as mm
+import common_cfg.mpl_cfg as mpl_cfg
 
 
 matplotlib.use('Qt5Agg')

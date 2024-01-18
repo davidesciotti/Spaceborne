@@ -150,7 +150,7 @@ def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel
     else:
         raise ValueError("Invalid value for which_ng_cov. Must be 'SSC' or 'cNG'.")
 
-    cov_ng_4D = Parallel(n_jobs=-1, backend='threading')(
+    cov_ng_4D = Parallel(n_jobs=16, backend='threading')(
         delayed(ng_cov_func)(cosmo,
                              tracer1=kernel_A[ind_AB[ij, -2]],
                              tracer2=kernel_B[ind_AB[ij, -1]],

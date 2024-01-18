@@ -95,7 +95,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
         for col, (C, D) in enumerate(probe_ordering):
             if col >= row:
                 print(f'Computing trispectrum for {which_ng_cov}, '
-                      f'npoints = {a_grid_increasing_for_ttka.size}, probe combination {A}{B}{C}{D}')
+                      f'z points = {a_grid_increasing_for_ttka.size}, k points = {k_grid_tkka.size}, probe combination {A}{B}{C}{D}')
 
                 # not very nice to put this if-else in the for loop, but A, B, C, D are referenced only here
                 if which_ng_cov == 'SSC':

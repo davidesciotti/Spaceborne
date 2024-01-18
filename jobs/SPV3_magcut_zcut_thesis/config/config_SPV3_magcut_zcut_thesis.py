@@ -108,7 +108,10 @@ general_cfg = {
     'zcut_source': 2,
     'zcut_lens': 2,
     'flagship_version': flagship_version,
-    'bias_model': 'constant',
+    
+    'bias_model': 'SPV3_bias',
+    'has_rsd': False,
+    'has_magnification_bias': True,
 }
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:

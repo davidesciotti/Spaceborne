@@ -4,7 +4,7 @@ which_forecast = 'SPV3'
 fsky = 0.3563380664078408
 GL_or_LG = 'GL'
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+ROOT = '/home/cosmo/davide.sciotti/data'
 JOB_ROOT = f'{ROOT}/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
 SPV3_folder = f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
 
@@ -201,12 +201,12 @@ covariance_cfg = {
         'load_precomputed_cov': False,
         # 'cov_path': f'{ROOT}/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
         #             '/output/Flagship_2/covmat/PyCCL',
-        'cov_path': f'{JOB_ROOT}/jobs/SPV3_magcut_zcut_thesis/output/Flagship_{flagship_version}/covmat/PyCCL/',
+        'cov_path': f'{JOB_ROOT}/jobs/SPV3_magcut_zcut_thesis/output/Flagship_{flagship_version}/covmat/PyCCL/jan_2024',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
 
-        'save_cov': False,
+        'save_cov': True,
         'save_trispectrum': False,
 
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!

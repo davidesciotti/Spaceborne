@@ -20,7 +20,7 @@ from functools import partial
 import sys
 from tqdm import tqdm
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+ROOT = '/home/cosmo/davide.sciotti/data'
 sys.path.append(f'{ROOT}/Spaceborne')
 import bin.my_module as mm
 import bin.cosmo_lib as csmlib
@@ -30,7 +30,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 
 # update plot pars
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 
 ###############################################################################
 ###############################################################################

@@ -11,7 +11,7 @@ import pandas as pd
 from matplotlib import cm
 
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+ROOT = '/home/cosmo/davide.sciotti/data'
 SB_ROOT = f'{ROOT}/Spaceborne'
 
 # project modules
@@ -29,7 +29,7 @@ import common_cfg.ISTF_fid_params as ISTF_fid
 # job configuration and modules
 from jobs.ISTF.config import config_ISTF_testexactSSC_new as cfg
 
-mpl.use('Qt5Agg')
+mpl.use('Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
@@ -446,10 +446,10 @@ print('done')
 
 # veeeeery old FMs, to test ISTF-like forecasts I guess...
 # FM_test_G = np.genfromtxt(
-#     '/home/davide/Documenti/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
+#     '/home/cosmo/davide.sciotti/data/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
 #     '/SSC_comparison/output/FM/FM_3x2pt_G_lmaxXC3000_nbl30.txt')
 # FM_test_GSSC = np.genfromtxt(
-#     '/home/davide/Documenti/Lavoro/Programmi/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
+#     '/home/cosmo/davide.sciotti/data/!archive/SSC_restructured_v2_didntmanagetopush/jobs'
 #     '/SSC_comparison/output/FM/FM_3x2pt_GSSC_lmaxXC3000_nbl30.txt')
 # uncert_FM_G_test = mm.uncertainties_FM(FM_test_G, FM_test_G.shape[0], fiducials=fiducials_list,
 #                                         which_uncertainty='marginal',

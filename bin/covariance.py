@@ -8,7 +8,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.integrate import simps
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+ROOT = '/home/cosmo/davide.sciotti/data'
 sys.path.append(f'{ROOT}/Spaceborne')
 import bin.cl_preprocessing as cl_preprocessing
 import bin.pyccl_cov as pyccl_cov
@@ -77,7 +77,7 @@ def get_cov_ssc_exactssc(general_cfg, covariance_cfg, return_format_3x2pt, probe
         sigma2, z_grid_sigma2 = sigma2_SSC.compute_sigma2(covariance_cfg['exactSSC_cfg'], cosmo_ccl)
 
         z_steps_sigma2 = len(z_grid_sigma2)
-        np.savez_compressed(f'/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/integrand_arrays/sigma2/'
+        np.savez_compressed(f'/home/cosmo/davide.sciotti/data/exact_SSC/output/integrand_arrays/sigma2/'
                             f'sigma2_zsteps{z_steps_sigma2}.npz')
 
     if probe in ('LL', 'GG'):

@@ -21,7 +21,7 @@ sys.path.append(SB_ROOT)
 import bin.my_module as mm
 import bin.cosmo_lib as csmlib
 
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 start_time = time.perf_counter()
 
 

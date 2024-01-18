@@ -15,8 +15,8 @@ from matplotlib import cm
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 sys.path.append(f'{ROOT}/Spaceborne')
 import bin.my_module as mm
-# import bin.ISTF_fid_params as ISTF
-import bin.mpl_cfg as mpl_cfg
+# import common_cfg.ISTF_fid_params as ISTF
+import common_cfg.mpl_cfg as mpl_cfg
 
 
 matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)

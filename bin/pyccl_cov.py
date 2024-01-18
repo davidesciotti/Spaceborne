@@ -9,14 +9,14 @@ from joblib import Parallel, delayed
 from matplotlib import cm
 from tqdm import tqdm
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+ROOT = '/home/cosmo/davide.sciotti/data'
 sys.path.append(f'{ROOT}/Spaceborne')
 import bin.my_module as mm
 import bin.cosmo_lib as cosmo_lib
 import bin.wf_cl_lib as wf_cl_lib
 import common_cfg.mpl_cfg as mpl_cfg
 
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 start_time = time.perf_counter()
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
@@ -119,7 +119,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                                   p_of_k_a=None, lk_arr=np.log(k_grid_tkka),
                                                   a_arr=a_grid_increasing_for_ttka,
                                                   extrap_order_lok=1, extrap_order_hik=1, use_log=False,
-                                                  probe_block=A + B + C + D,
+                                                #   probe_block=A + B + C + D,
                                                   **prof_2pt_args)
 
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
@@ -150,7 +150,7 @@ def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel
     else:
         raise ValueError("Invalid value for which_ng_cov. Must be 'SSC' or 'cNG'.")
 
-    cov_ng_4D = Parallel(n_jobs=-1, backend='threading')(
+    cov_ng_4D = Parallel(n_jobs=16, backend='threading')(
         delayed(ng_cov_func)(cosmo,
                              tracer1=kernel_A[ind_AB[ij, -2]],
                              tracer2=kernel_B[ind_AB[ij, -1]],
@@ -354,7 +354,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     p_of_k_a = 'delta_matter:delta_matter'
 
     # this is a test to use the actual P(k) from the input files, but the agreement gets much worse
-    # pk_mm_table = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
+    # pk_mm_table = np.genfromtxt(f'/home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/'
     #                             'LiFEforSPV3/InputFiles/InputPS/HMCodeBar/'
     #                             'InFiles/Flat/h/PddVsZedLogK-h_6.700e-01.dat')
     # # reshape pk

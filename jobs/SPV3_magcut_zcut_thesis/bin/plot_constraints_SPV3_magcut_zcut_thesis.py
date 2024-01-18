@@ -128,7 +128,6 @@ for key in fm_dict_a.keys():
             mm.compare_arrays(fm_dict_a[key], fm_dict_b[key], log_diff=True)
         print('SU == halo_model?', key, is_close)
 
-
 # TODO understand nan instead of None in the fm_uncert_df
 # TODO maybe there is a bettewr way to handle the prior values in relation to the fix flag
 # TODO superimpose bars

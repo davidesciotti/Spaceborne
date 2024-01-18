@@ -3,19 +3,18 @@ import sys
 import numpy as np
 import yaml
 
-project_path = Path.cwd().parent.parent.parent
-job_path = Path.cwd().parent
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+JOB_ROOT = f'{ROOT}/Spaceborne/jobs/ISTF'
 
-sys.path.append(f'{project_path}/bin')
-import check_specs as utils
 
+sys.path.append(f'{ROOT}/Spaceborne')
+import bin.check_specs as utils
 
 
 with open(
         '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
-    fiducial_pars_dict = yaml.load(f, Loader=yaml.FullLoader)
-fiducial_pars_dict_for_fm = fiducial_pars_dict['FM_ordered_params']  # necessary for FM handling
+    fid_pars_dict = yaml.load(f, Loader=yaml.FullLoader)
+fid_pars_dict_for_fm = fid_pars_dict['FM_ordered_params']  # necessary for FM handling
 
 which_input_files = 'cl14may'  # which input files to use
 which_forecast = 'ISTF'
@@ -50,16 +49,16 @@ if cov_ell_cuts:
 use_sylvains_deltas = False
 use_WA = False
 if which_input_files == 'cl14may':
-    cl_folder = f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}'
+    cl_folder = f'{ROOT}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}'
     cl_filename = 'Cij{probe:s}-GR-Flat-eNLA-NA.dat'
     gal_bias_prefix = 'bL'
-    derivatives_folder = f'{project_path.parent}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}'
+    derivatives_folder = f'{ROOT}/common_data/vincenzo/14may/CijDers/' + '{EP_or_ED:s}{zbins:02d}'
     derivatives_suffix = '-GR-Flat-eNLA-NA'
 elif which_input_files == 'cl15gen':
-    cl_folder = f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_tesi/new_names'
+    cl_folder = f'{ROOT}/common_data/vincenzo/thesis_data/Cij_tesi/new_names'
     cl_filename = 'Cij{probe:s}-N4TB-GR-eNLA.dat'
     gal_bias_prefix = 'b'
-    derivatives_folder = f'{project_path.parent}/common_data/vincenzo/thesis_data/Cij_derivatives_tesi/new_names'
+    derivatives_folder = f'{ROOT}/common_data/vincenzo/thesis_data/Cij_derivatives_tesi/new_names'
     derivatives_suffix = '-N4TB-GR-eNLA'
 elif which_input_files == 'SSC_comparison_updated':
     # settings for SSC comparison (aka 'sylvain'):
@@ -73,7 +72,7 @@ elif which_input_files == 'SSC_comparison_updated':
 general_cfg = {
     'fid_yaml_path': f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yml',
 
-    'fiducial_pars_dict': fiducial_pars_dict,
+    'fid_pars_dict': fid_pars_dict,
     'which_input_files': which_input_files,
     'which_forecast': which_forecast,
 
@@ -92,15 +91,19 @@ general_cfg = {
     'use_WA': use_WA,  # ! xxx
     'save_cls_3d': False,
     'save_rls_3d': False,
+    
+    'bias_model': 'ISTF_bias',
+    'has_rsd': False,
+    'has_magnification_bias': False,
 
     'ell_cuts': ell_cuts,
 
     'cl_BNT_transform': cl_BNT_transform,
     'BNT_transform': BNT_transform,
-    'BNT_matrix_path': f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/BNT_matrix',
+    'BNT_matrix_path': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/BNT_matrix',
     'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
     'cl_folder': cl_folder,
-    'rl_folder': f'{project_path.parent}/common_data/vincenzo/Pk_responses_2D/' + '{EP_or_ED:s}{zbins:02d}',
+    'rl_folder': f'{ROOT}/common_data/vincenzo/Pk_responses_2D/' + '{EP_or_ED:s}{zbins:02d}',
     'cl_filename': cl_filename,
     'rl_filename': 'rij{probe:s}corr-istf-alex.dat',
 
@@ -111,7 +114,7 @@ if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
     general_cfg['use_WA'] = False
 
 covariance_cfg = {
-    # 'ind_folder': f'{project_path.parent}/common_data/ind_files' + '/{triu_tril:s}_{row_col_major:s}',
+    # 'ind_folder': f'{ROOT}/common_data/ind_files' + '/{triu_tril:s}_{row_col_major:s}',
     # 'ind_filename': 'indices_{triu_tril:s}_{row_col_major:s}_zbins{zbins:02d}.dat',
     'triu_tril': 'triu',
     'row_col_major': 'row-major',
@@ -128,6 +131,9 @@ covariance_cfg = {
     'ng_filename': None,
     'sigma_eps2': 0.3 ** 2,
     'use_sylvains_deltas': use_sylvains_deltas,
+    
+    'nofz_folder': f'{ROOT}/CLOE_validation/data/n_of_z',
+    'nofz_filename': 'nzTabISTF.dat',
 
     'cov_BNT_transform': cov_BNT_transform,
     'cov_ell_cuts': cov_ell_cuts,
@@ -149,14 +155,14 @@ covariance_cfg = {
     'save_cov_SSC': False,
     'save_2DCLOE': False,  # outermost loop is on the probes
 
-    'cov_folder': f'{job_path}/output/{which_input_files}/' + 'covmat/{SSC_code:s}',
+    'cov_folder': f'{JOB_ROOT}/output/{which_input_files}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
-    'cov_SSC_PyCCL_folder': f'{project_path.parent}/PyCCL_SSC/output/covmat',
+    'cov_SSC_PyCCL_folder': f'{ROOT}/PyCCL_SSC/output/covmat',
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_HMrecipeKrause2017_6D',
     # TODO these 2 filenames could be unified...
 
-    'SSC_code': 'PySSC',  # ! PySSC or PyCCL or exactSSC
-    
+    'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or exactSSC
+
     'PySSC_cfg': {
         'which_ng_cov': 'SSC',
     },
@@ -171,7 +177,7 @@ covariance_cfg = {
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',
 
 
-        'load_precomputed_cov': True,
+        'load_precomputed_cov': False,
         'save_cov': False,
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 
@@ -208,14 +214,14 @@ covariance_cfg = {
 }
 
 Sijkl_cfg = {
-    'wf_input_folder': f'{project_path.parent}/common_data/everyones_WF_from_Gdrive/davide/' + 'nz{nz:d}/gen2022',
+    'wf_input_folder': f'{ROOT}/common_data/everyones_WF_from_Gdrive/davide/' + 'nz{nz:d}/gen2022',
     'wf_WL_input_filename': 'wil_dav_IA{has_IA:s}_{normalization:s}_nz{nz:d}_bia{bIA:.02f}.txt',
     'wf_GC_input_filename': 'wig_dav_{normalization:s}_nz{nz:d}.txt',
     'wf_normalization': 'IST',
     'nz': 10_000,
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
 
-    'Sijkl_folder': f'{project_path.parent}/common_data/Sijkl',
+    'Sijkl_folder': f'{ROOT}/common_data/Sijkl',
     'Sijkl_filename': 'Sijkl_WFdavide_nz{nz:d}_IA_3may.npy',
     'load_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
     'save_sijkl': False,  # save the computed Sijkl in Sijkl_folder
@@ -230,12 +236,12 @@ param_names_dict = {
 }
 # fiducial values
 fiducials_dict = {
-    'cosmo': [fiducial_pars_dict_for_fm['Om_m0'], fiducial_pars_dict_for_fm['Om_b0'], fiducial_pars_dict_for_fm['w_0'],
-              fiducial_pars_dict_for_fm['w_a'],
-              fiducial_pars_dict_for_fm['h'], fiducial_pars_dict_for_fm['n_s'], fiducial_pars_dict_for_fm['sigma_8']],
-    'IA': [fiducial_pars_dict_for_fm['A_IA'], fiducial_pars_dict_for_fm['eta_IA'],
-           fiducial_pars_dict_for_fm['beta_IA']],
-    'galaxy_bias': [fiducial_pars_dict_for_fm[f'b{zbin:02d}_photo'] for zbin in range(1, general_cfg['zbins'] + 1)],
+    'cosmo': [fid_pars_dict_for_fm['Om_m0'], fid_pars_dict_for_fm['Om_b0'], fid_pars_dict_for_fm['w_0'],
+              fid_pars_dict_for_fm['w_a'],
+              fid_pars_dict_for_fm['h'], fid_pars_dict_for_fm['n_s'], fid_pars_dict_for_fm['sigma_8']],
+    'IA': [fid_pars_dict_for_fm['A_IA'], fid_pars_dict_for_fm['eta_IA'],
+           fid_pars_dict_for_fm['beta_IA']],
+    'galaxy_bias': [fid_pars_dict_for_fm[f'b{zbin:02d}_photo'] for zbin in range(1, general_cfg['zbins'] + 1)],
 }
 
 param_names_3x2pt = param_names_dict['cosmo'] + param_names_dict['IA'] + param_names_dict['galaxy_bias']
@@ -263,7 +269,7 @@ FM_cfg = {
     'derivatives_BNT_transform': deriv_BNT_transform,
     'deriv_ell_cuts': deriv_ell_cuts,
 
-    'fm_folder': str(job_path) + f'/output/{which_input_files}/' + 'FM/{SSC_code:s}',
+    'fm_folder': str(JOB_ROOT) + f'/output/{which_input_files}/' + 'FM/{SSC_code:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
     'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}',
 

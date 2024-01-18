@@ -49,7 +49,6 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
     # see also https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/tools/covariance_NG.py#L282
     halomod_start_time = time.perf_counter()
 
-    # breakpoint()
     mass_def = ccl.halos.MassDef200m
     c_M_relation = ccl.halos.ConcentrationDuffy08(mass_def=mass_def)
     hmf = ccl.halos.MassFuncTinker10(mass_def=mass_def)
@@ -234,7 +233,10 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     z_grid = np.linspace(pyccl_cfg['z_grid_min'], pyccl_cfg['z_grid_max'], pyccl_cfg['z_grid_steps'])
     n_samples_wf = pyccl_cfg['n_samples_wf']
     get_3x2pt_cov_in_4D = pyccl_cfg['get_3x2pt_cov_in_4D']  # TODO save all blocks separately
-    bias_model = pyccl_cfg['bias_model']
+    # this is needed only for a visual check of the cls, which are not used for SSC anyways
+    bias_model = general_cfg['bias_model']
+    has_rsd = general_cfg['has_rsd']
+    has_magnification_bias = general_cfg['has_magnification_bias']
     # ! settings
 
     # just a check on the settings
@@ -247,6 +249,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     assert probe in ['LL', 'GG', '3x2pt'], 'probe must be either LL, GG, or 3x2pt'
     assert which_ng_cov in ['SSC', 'cNG'], 'which_ng_cov must be either SSC or cNG'
     assert GL_or_LG == 'GL', 'you should update ind_cross (used in ind_dict) for GL, but we work with GL...'
+    assert has_rsd == False, 'RSD not implemented yet'
 
     # get number of redshift pairs
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
@@ -260,69 +263,80 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     cosmo_ccl = cosmo_lib.instantiate_cosmo_ccl_obj(cosmo_dict_ccl,
                                                     fiducial_pars_dict['other_params']['camb_extra_parameters'])
 
-    assert isinstance(nz_tuple, tuple), 'nz_tuple must be a tuple'
-    assert nz_tuple[0].shape == z_grid.shape, 'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
-    assert nz_tuple[1].shape == (len(z_grid), zbins), 'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
-
-    # new kernel stuff
-    zgrid_nz = nz_tuple[0]
-
     # ! ccl kernels
+    zgrid_nz = nz_tuple[0]
+    assert isinstance(nz_tuple, tuple), 'nz_tuple must be a tuple'
+
+    assert nz_tuple[0].shape == zgrid_nz.shape, 'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
+    assert nz_tuple[1].shape == (
+        len(zgrid_nz), zbins), 'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
+
     ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(zgrid_nz, cosmo_ccl=cosmo_ccl, flat_fid_pars_dict=flat_fid_pars_dict,
                                                 input_z_grid_lumin_ratio=None,
                                                 input_lumin_ratio=None, output_F_IA_of_z=False)
     ia_bias_tuple = (zgrid_nz, ia_bias_1d)
 
-    maglim = general_cfg['magcut_source'] / 10
-    gal_bias_1d = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, maglim=maglim)
-    # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
-    gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), zbins, axis=0).T
+    if bias_model == 'SPV3_bias':
+        maglim = general_cfg['magcut_source'] / 10
+        gal_bias_1d = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, maglim=maglim)
+        # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
+        gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), zbins, axis=0).T
+    elif bias_model == 'ISTF_bias':
+        z_means = np.array([flat_fid_pars_dict[f'zmean{zbin:02d}_photo'] for zbin in range(1, zbins+1 )])
+        gal_bias_1d = wf_cl_lib.b_of_z_fs1_pocinofit(z_means)
+        gal_bias_2d = wf_cl_lib.build_galaxy_bias_2d_arr(gal_bias_1d, z_means, None, zbins, zgrid_nz, bias_model='constant', plot_bias=True)
+    else: 
+        raise ValueError('bias_model must be either SPV3_bias or ISTF_bias')
     gal_bias_tuple = (zgrid_nz, gal_bias_2d)
+        
 
-    # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
-    mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(zgrid_nz, maglim=maglim, poly_fit_values=None)
-    mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), zbins, axis=0).T
-    mag_bias_tuple = (zgrid_nz, mag_bias_2d)
+    if has_magnification_bias:
+        # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
+        mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(zgrid_nz, maglim=maglim, poly_fit_values=None)
+        mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), zbins, axis=0).T
+        mag_bias_tuple = (zgrid_nz, mag_bias_2d)
+    else:
+        mag_bias_tuple = None
 
     wf_lensing_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
                                       ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
-                                      mag_bias_tuple=mag_bias_tuple, has_rsd=False, return_ccl_obj=True, n_samples=1000)
+                                      mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=True, n_samples=1000)
     wf_lensing_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
                                       ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
-                                      mag_bias_tuple=mag_bias_tuple, has_rsd=False, return_ccl_obj=False, n_samples=1000)
+                                      mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=False, n_samples=1000)
     wf_galaxy_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'with_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
                                      ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
-                                     mag_bias_tuple=mag_bias_tuple, has_rsd=False, return_ccl_obj=True, n_samples=1000)
+                                     mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=True, n_samples=1000)
 
     # ! manually construct galaxy = delta + magnification radial kernel
-    a_arr = cosmo_lib.z_to_a(z_grid)
+    a_arr = cosmo_lib.z_to_a(zgrid_nz)
     comoving_distance = ccl.comoving_radial_distance(cosmo_ccl, a_arr)
     wf_galaxy_tot_arr = np.asarray([wf_galaxy_obj[zbin_idx].get_kernel(comoving_distance) for zbin_idx in range(zbins)])
     wf_delta_arr = wf_galaxy_tot_arr[:, 0, :].T
-    wf_mu_arr = wf_galaxy_tot_arr[:, 1, :].T
+    wf_mu_arr = wf_galaxy_tot_arr[:, 1, :].T if has_magnification_bias else np.zeros_like(wf_delta_arr)
     wf_galaxy_arr = wf_delta_arr + wf_mu_arr
 
     # alternative way to get the magnification kernel
-    wf_mu_tot_alt_arr = -2 * np.array(
-        [ccl.tracers.get_lensing_kernel(cosmo=cosmo_ccl, dndz=(nz_tuple[0], nz_tuple[1][:, zi]),
-                                        mag_bias=(mag_bias_tuple[0], mag_bias_tuple[1][:, zi]),
-                                        n_chi=1000)
-         for zi in range(zbins)])
-    wf_mu_alt_arr = wf_mu_tot_alt_arr[:, 1, :].T
+    # wf_mu_tot_alt_arr = -2 * np.array(
+    #     [ccl.tracers.get_lensing_kernel(cosmo=cosmo_ccl, dndz=(nz_tuple[0], nz_tuple[1][:, zi]),
+    #                                     mag_bias=(mag_bias_tuple[0], mag_bias_tuple[1][:, zi]),
+    #                                     n_chi=1000)
+    #      for zi in range(zbins)])
+    # wf_mu_alt_arr = wf_mu_tot_alt_arr[:, 1, :].T
 
     # ! import Vincenzo's kernels and compare
     wf_lensing_import = general_cfg['wf_WL']
     wf_galaxy_import = general_cfg['wf_GC']
-    wf_delta_import = general_cfg['wf_delta']
-    wf_mu_import = general_cfg['wf_mu']
+    # wf_delta_import = general_cfg['wf_delta']
+    # wf_mu_import = general_cfg['wf_mu']
     z_grid_wf_import = general_cfg['z_grid_wf']
 
     colors = cm.rainbow(np.linspace(0, 1, zbins))
     fig, ax = plt.subplots(1, 2, figsize=(16, 6), constrained_layout=True)
     for zi in range(zbins):
-        ax[0].plot(z_grid, wf_lensing_arr[:, zi], ls="-", c=colors[zi], alpha=0.6,
+        ax[0].plot(zgrid_nz, wf_lensing_arr[:, zi], ls="-", c=colors[zi], alpha=0.6,
                    label='lensing ccl' if zi == 0 else None)
-        ax[1].plot(z_grid, wf_galaxy_arr[:, zi], ls="-", c=colors[zi], alpha=0.6,
+        ax[1].plot(zgrid_nz, wf_galaxy_arr[:, zi], ls="-", c=colors[zi], alpha=0.6,
                    label='galaxy ccl' if zi == 0 else None)
         ax[0].plot(z_grid_wf_import, wf_lensing_import[:, zi], ls="--", c=colors[zi], alpha=0.6,
                    label='lensing vinc' if zi == 0 else None)
@@ -417,8 +431,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     # ! =============================================== compute covs ===============================================
     which_pk = fiducial_pars_dict['other_params']['camb_extra_parameters']['camb']['halofit_version']
-    tkka_dict = initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, p_of_k_a=None,
-                                       which_pk=which_pk)
+    tkka_dict = initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, which_pk=which_pk)
 
     if probe in ['LL', 'GG']:
 

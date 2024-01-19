@@ -160,7 +160,7 @@ covariance_cfg = {
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_HMrecipeKrause2017_6D',
     # TODO these 2 filenames could be unified...
 
-    'SSC_code': 'exactSSC',  # ! PySSC or PyCCL or exactSSC
+    'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or exactSSC
 
     'PySSC_cfg': {
         'which_ng_cov': 'SSC',
@@ -268,7 +268,7 @@ FM_cfg = {
     'derivatives_BNT_transform': deriv_BNT_transform,
     'deriv_ell_cuts': deriv_ell_cuts,
 
-    'fm_folder': str(JOB_ROOT) + f'/output/{which_input_files}/' + 'FM/{SSC_code:s}/jan_2024',
+    'fm_folder': str(JOB_ROOT) + f'/output/{which_input_files}/' + 'FM/jan_2024/{SSC_code:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
     'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}',
 

@@ -1,3 +1,4 @@
+#!/home/cosmo/davide.sciotti/software/anaconda3/envs/spaceborne python3
 import gc
 import sys
 import time
@@ -27,7 +28,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 import common_cfg.ISTF_fid_params as ISTF_fid
 
 # job configuration and modules
-from jobs.ISTF.config import config_ISTF_testexactSSC_new as cfg
+from jobs.ISTF.config import config_ISTF_new as cfg
 
 mpl.use('Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)

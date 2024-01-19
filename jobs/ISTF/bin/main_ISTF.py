@@ -27,7 +27,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 import common_cfg.ISTF_fid_params as ISTF_fid
 
 # job configuration and modules
-from jobs.ISTF.config import config_ISTF_testexactSSC_new as cfg
+from jobs.ISTF.config import config_ISTF as cfg
 
 mpl.use('Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)

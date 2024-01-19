@@ -29,7 +29,7 @@ import plots_FM_running as plot_utils
 
 # plot config
 matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 markersize = 10
 
 ########################################################################################################################
@@ -229,9 +229,9 @@ for probe in probes:
 
                 # old FMs (before specs updates)
                 if check_old_FM:
-                    FM_GO_old = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/'
+                    FM_GO_old = np.genfromtxt(f'/home/cosmo/davide.sciotti/data/SSC_restructured_v2/jobs/'
                                               f'SSC_comparison/output/FM/FM_{probe}_GO_lmax{probe_lmax}{ell_max}_nbl30.txt')
-                    FM_GS_old = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/'
+                    FM_GS_old = np.genfromtxt(f'/home/cosmo/davide.sciotti/data/SSC_restructured_v2/jobs/'
                                               f'SSC_comparison/output/FM/FM_{probe}_GS_lmax{probe_lmax}{ell_max}_nbl30_Rlvar.txt')
                     cases = ('GO_old', 'GO_new', 'GS_old', 'GS_new')
                     FMs = (FM_GO_old, FM_GO, FM_GS_old, FM_GS)
@@ -651,7 +651,7 @@ if plot_response:
 
     ED_or_EP = 'EP'
     zbins = 10
-    path = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_1/ResFunTabs'
+    path = '/home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/Flagship_1/ResFunTabs'
 
     ell_WL = np.genfromtxt(
         f'{path}/480_ell_points_for_paper_plot/elllist-WLO-{ED_or_EP}{zbins}-HR.dat')

@@ -16,7 +16,7 @@ sys.path.append(f'{project_path}/common_config')
 import ISTF_fid_params
 import mpl_cfg
 
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
@@ -26,13 +26,13 @@ zbin_type = 'ED'
 nbl = 29
 # ! end options
 
-path_stef = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_2/CovMats/BNT_True/produced_by_stefano'
+path_stef = '/home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/Flagship_2/CovMats/BNT_True/produced_by_stefano'
 cov_GGGL = np.load(f'{path_stef}/BNT_covmat_GGGL_3x2pt_lmax3000_nbl{nbl}_zbins{zbins}_{zbin_type}_Rlvar_10D.npy')
 cov_GGLL = np.load(f'{path_stef}/BNT_covmat_GGLL_3x2pt_lmax3000_nbl{nbl}_zbins{zbins}_{zbin_type}_Rlvar_10D.npy')
 cov_LLLL = np.load(f'{path_stef}/BNT_covmat_LLLL_3x2pt_lmax3000_nbl{nbl}_zbins{zbins}_{zbin_type}_Rlvar_10D.npy')
 cov_GLGL = np.load(f'{path_stef}/BNT_covmat_GLGL_3x2pt_lmax3000_nbl{nbl}_zbins{zbins}_{zbin_type}_Rlvar_10D.npy')
 cov_LLGL = np.load(f'{path_stef}/BNT_covmat_LLGL_3x2pt_lmax3000_nbl{nbl}_zbins{zbins}_{zbin_type}_Rlvar_10D.npy')
-cov_GGGG_6D = np.load(f'/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3/output/Flagship_2/BNT_False/covmat/zbins{zbins}/covmat_GS_GC_lmax3000_nbl{nbl}_zbins{zbins}_{zbin_type}_Rlvar_6D.npy')
+cov_GGGG_6D = np.load(f'/home/cosmo/davide.sciotti/data/SSC_restructured_v2/jobs/SPV3/output/Flagship_2/BNT_False/covmat/zbins{zbins}/covmat_GS_GC_lmax3000_nbl{nbl}_zbins{zbins}_{zbin_type}_Rlvar_6D.npy')
 
 zpairs = int(zbins * (zbins + 1) / 2)
 tril_indices = np.tril_indices(zbins)

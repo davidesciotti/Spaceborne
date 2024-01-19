@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import interp1d
 
-sys.path.append('/home/davide/Documenti/Lavoro/Programmi/common_lib_and_cfg/common_lib')
+sys.path.append('/home/cosmo/davide.sciotti/data/common_lib_and_cfg/common_lib')
 import common_lib.my_module as mm
 import common_lib.cosmo_lib as csmlib
 import common_lib.wf_cl_lib as wf_cl_lib
@@ -14,15 +14,15 @@ import common_cfg.ISTF_fid_params as ISTFfid
 import common_cfg.mpl_cfg as mpl_cfg
 
 
-sys.path.append('/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/bin')
+sys.path.append('/home/cosmo/davide.sciotti/data/SSC_restructured_v2/bin')
 import ell_values
 
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 cfg = mm.read_yaml('../cfg/cfg_pyccl_pipeline.yml')
 fiducial_pars_dict_nested = mm.read_yaml(
-    '/home/davide/Documenti/Lavoro/Programmi/common_lib_and_cfg/common_cfg/ISTF_fiducial_params.yml')
+    '/home/cosmo/davide.sciotti/data/common_lib_and_cfg/common_cfg/ISTF_fiducial_params.yml')
 fiducial_pars_dict = mm.flatten_dict(fiducial_pars_dict_nested)
 
 zbins = cfg['zbins']
@@ -36,7 +36,7 @@ cmap = matplotlib.cm.get_cmap("rainbow")
 colors = [cmap(i) for i in np.linspace(0, 1, zbins)]
 
 cosmo_ccl = csmlib.instantiate_cosmo_ccl_obj(fiducial_pars_dict)
-n_of_z = np.genfromtxt('/home/davide/Documenti/Lavoro/Programmi/CLOE_validation/data/n_of_z/nzTabISTF.dat')
+n_of_z = np.genfromtxt('/home/cosmo/davide.sciotti/data/CLOE_validation/data/n_of_z/nzTabISTF.dat')
 z_grid_nz = n_of_z[:, 0]
 n_of_z = n_of_z[:, 1:]
 dndz = (z_grid_nz, n_of_z)
@@ -84,7 +84,7 @@ np.savetxt('../output/ell_GG.txt', ell_GG)
 
 # compare against vincenzo
 param_to_plot = 'A_IA'
-path_vinc = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/14may/CijDers/EP10'
+path_vinc = '/home/cosmo/davide.sciotti/data/common_data/vincenzo/14may/CijDers/EP10'
 dcl_vinc_LL_2d = np.genfromtxt(f'{path_vinc}/dCijLLdAia-GR-Flat-eNLA-NA.dat')
 dcl_vinc_GL_2d = np.genfromtxt(f'{path_vinc}/dCijGLdAia-GR-Flat-eNLA-NA.dat')
 dcl_vinc_GG_2d = np.genfromtxt(f'{path_vinc}/dCijGGdAia-GR-Flat-eNLA-NA.dat')

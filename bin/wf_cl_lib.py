@@ -20,6 +20,7 @@ from functools import partial
 import sys
 from tqdm import tqdm
 
+
 ROOT = '/home/davide/Documenti/Lavoro/Programmi/'
 sys.path.append(f'{ROOT}/Spaceborne')
 import bin.my_module as mm

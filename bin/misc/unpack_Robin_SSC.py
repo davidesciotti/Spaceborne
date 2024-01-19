@@ -41,7 +41,7 @@ bin and the second is the shear (source).
 """
 
 
-# /home/davide/Documenti/Lavoro/Programmi/SSC_paper_jan22/data/robin/lmax5000_noextrap
+# /home/cosmo/davide.sciotti/data/SSC_paper_jan22/data/robin/lmax5000_noextrap
 
 lmax = 5000
 zbins = 10
@@ -57,7 +57,7 @@ ind = ind = mm.get_ind_file(path, 'vincenzo', 'sylvain')
 
 # import all files in dict
 cov_R_dict = dict(
-    mm.get_kv_pairs('/home/davide/Documenti/Lavoro/Programmi/SSC_paper_jan22/data/robin/lmax5000_noextrap', 'txt'))
+    mm.get_kv_pairs('/home/cosmo/davide.sciotti/data/SSC_paper_jan22/data/robin/lmax5000_noextrap', 'txt'))
 # select only the cov_ss_shear_..._shear... strings
 mystr = 'cov_ss_shear_z'
 shear_keys_list = []
@@ -126,8 +126,8 @@ diff = mm.percent_diff(cov_D_WL_SSC_4D, cov_R_WL_SSC_4D)
 mm.matshow(diff[ell1, ell2, ...], '% diff')
 
 """
-# cov_D_WL_G_2D = np.load('/home/davide/Documenti/Lavoro/Programmi/SSCcomp_prove/output/covmat/common_ell_and_deltas/Cij_14may/covmat_G_WL_lmaxWL5000_nbl30_2D.npy')
-cov_D_WL_SSC_4D = np.load('/home/davide/Documenti/Lavoro/Programmi/SSCcomp_prove/output/covmat/common_ell_and_deltas/Cij_14may/covmat_G_WL_lmaxWL5000_nbl30_4D.npy')
+# cov_D_WL_G_2D = np.load('/home/cosmo/davide.sciotti/data/SSCcomp_prove/output/covmat/common_ell_and_deltas/Cij_14may/covmat_G_WL_lmaxWL5000_nbl30_2D.npy')
+cov_D_WL_SSC_4D = np.load('/home/cosmo/davide.sciotti/data/SSCcomp_prove/output/covmat/common_ell_and_deltas/Cij_14may/covmat_G_WL_lmaxWL5000_nbl30_4D.npy')
 cov_D_WL_G_2D = mm.array_4D_to_2D(cov_D_WL_G_4D, nbl, npairs) # this is tested and works
 
 print(np.all(cov_D_WL_G_2D == cov_D_WL_G_2D.T)) # the 2D matrix is symmetrix, as it should be

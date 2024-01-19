@@ -40,10 +40,10 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
     z_grid_tkka = np.linspace(pyccl_cfg['z_grid_tkka_min'], pyccl_cfg['z_grid_tkka_max'],
                               pyccl_cfg['z_grid_tkka_steps'])
     a_grid_increasing_for_ttka = cosmo_lib.z_to_a(z_grid_tkka)[::-1]
-    logn_k_grid_tkka = np.log(np.geomspace(1E-5, 1E2, 1024))
+    logn_k_grid_tkka = np.log(np.geomspace(1E-5, 1E2, 2000))
 
-    a_grid_increasing_for_ttka = None
-    logn_k_grid_tkka = None
+    # a_grid_increasing_for_ttka = None
+    # logn_k_grid_tkka = None
 
     # from https://github.com/LSSTDESC/CCL/blob/4df2a29eca58d7cd171bc1986e059fd35f425d45/benchmarks/test_covariances.py
     # see also https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/tools/covariance_NG.py#L282
@@ -123,7 +123,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                                   p_of_k_a=None, lk_arr=logn_k_grid_tkka,
                                                   a_arr=a_grid_increasing_for_ttka,
                                                   extrap_order_lok=1, extrap_order_hik=1, use_log=False,
-                                                #   probe_block=A + B + C + D,
+                                                  #   probe_block=A + B + C + D,
                                                   **prof_2pt_args)
 
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
@@ -154,7 +154,9 @@ def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel
     else:
         raise ValueError("Invalid value for which_ng_cov. Must be 'SSC' or 'cNG'.")
 
-    cov_ng_4D = Parallel(n_jobs=16, backend='threading')(
+    n_jobs = 1  # 17 min with 32 jobs, 11 min with 1 job...
+    print('n_jobs = ', n_jobs)
+    cov_ng_4D = Parallel(n_jobs=n_jobs, backend='threading')(
         delayed(ng_cov_func)(cosmo,
                              tracer1=kernel_A[ind_AB[ij, -2]],
                              tracer2=kernel_B[ind_AB[ij, -1]],
@@ -175,6 +177,7 @@ def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel
     print(f'{which_ng_cov} computed with pyccl in {(time.perf_counter() - start_time) / 60:.0f} min')
 
     return cov_ng_4D
+
 
 
 def compute_ng_cov_3x2pt(cosmo, which_ng_cov, kernel_dict, ell, tkka_dict, f_sky, integration_method,
@@ -283,13 +286,13 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
         gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), zbins, axis=0).T
     elif bias_model == 'ISTF_bias':
-        z_means = np.array([flat_fid_pars_dict[f'zmean{zbin:02d}_photo'] for zbin in range(1, zbins+1 )])
+        z_means = np.array([flat_fid_pars_dict[f'zmean{zbin:02d}_photo'] for zbin in range(1, zbins + 1)])
         gal_bias_1d = wf_cl_lib.b_of_z_fs1_pocinofit(z_means)
-        gal_bias_2d = wf_cl_lib.build_galaxy_bias_2d_arr(gal_bias_1d, z_means, None, zbins, zgrid_nz, bias_model='constant', plot_bias=True)
-    else: 
+        gal_bias_2d = wf_cl_lib.build_galaxy_bias_2d_arr(
+            gal_bias_1d, z_means, None, zbins, zgrid_nz, bias_model='constant', plot_bias=True)
+    else:
         raise ValueError('bias_model must be either SPV3_bias or ISTF_bias')
     gal_bias_tuple = (zgrid_nz, gal_bias_2d)
-        
 
     if has_magnification_bias:
         # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin

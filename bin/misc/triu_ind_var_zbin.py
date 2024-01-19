@@ -16,7 +16,7 @@ sys.path.append(f'{project_path}/common_config')
 import ISTF_fid_params
 import mpl_cfg
 
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
@@ -54,5 +54,5 @@ for zbins in range(2, 25):
         f'{project_path}/input/ind_files/indici_triu_like_int.dat', dtype='int')
 
     np.savetxt(
-        f'/home/davide/Documenti/Lavoro/Programmi/common_data/ind_files/variable_zbins/triu_like/indici_triu_like_zbins{zbins}.dat',
+        f'/home/cosmo/davide.sciotti/data/common_data/ind_files/variable_zbins/triu_like/indici_triu_like_zbins{zbins}.dat',
         ind, fmt='%i', delimiter='\t')

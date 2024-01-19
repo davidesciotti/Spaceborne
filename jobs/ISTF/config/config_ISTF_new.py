@@ -2,7 +2,7 @@ import sys
 import numpy as np
 import yaml
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi/'
+ROOT = '/home/cosmo/davide.sciotti/data'
 JOB_ROOT = f'{ROOT}/Spaceborne/jobs/ISTF'
 
 
@@ -11,7 +11,7 @@ import bin.check_specs as utils
 
 
 with open(
-        '/home/davide/Documenti/Lavoro/Programmi//Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
+        '/home/cosmo/davide.sciotti/data/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
     fid_pars_dict = yaml.load(f, Loader=yaml.FullLoader)
 fid_pars_dict_for_fm = fid_pars_dict['FM_ordered_params']  # necessary for FM handling
 
@@ -160,7 +160,7 @@ covariance_cfg = {
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_HMrecipeKrause2017_6D',
     # TODO these 2 filenames could be unified...
 
-    'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or exactSSC
+    'SSC_code': 'exactSSC',  # ! PySSC or PyCCL or exactSSC
 
     'PySSC_cfg': {
         'which_ng_cov': 'SSC',
@@ -172,19 +172,18 @@ covariance_cfg = {
         'which_grids': '',
         'get_3x2pt_cov_in_4D': False,
         'save_trispectrum': False,
-        'cov_path': '/home/davide/Documenti/Lavoro/Programmi//PyCCL_SSC/output/covmat/ISTF',
+        'cov_path': '/home/cosmo/davide.sciotti/data/PyCCL_SSC/output/covmat/ISTF/jan_2024',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',
 
-
-        'load_precomputed_cov': True,
+        'load_precomputed_cov': False,
         'save_cov': False,
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         'z_grid_tkka_min': 0.001,
         'z_grid_tkka_max': 3,
-        'z_grid_tkka_steps': 300,
+        'z_grid_tkka_steps': 500,
         'z_grid_min': 0.001,
         'z_grid_max': 3,
         'z_grid_steps': 1000,
@@ -195,7 +194,7 @@ covariance_cfg = {
     'exactSSC_cfg': {
         'which_ng_cov': 'SSC',
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
-        'cov_path': '/home/davide/Documenti/Lavoro/Programmi//exact_SSC/output/ISTF/SSC_matrix',
+        'cov_path': '/home/cosmo/davide.sciotti/data/exact_SSC/output/ISTF/jan_2024/SSC_matrix',
         'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
                         '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'
                         '_convention{cl_integral_convention:s}.npy',
@@ -269,7 +268,7 @@ FM_cfg = {
     'derivatives_BNT_transform': deriv_BNT_transform,
     'deriv_ell_cuts': deriv_ell_cuts,
 
-    'fm_folder': str(JOB_ROOT) + f'/output/{which_input_files}/' + 'FM/{SSC_code:s}',
+    'fm_folder': str(JOB_ROOT) + f'/output/{which_input_files}/' + 'FM/{SSC_code:s}/jan_2024',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
     'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}',
 

@@ -19,7 +19,7 @@ params = {'lines.linewidth': 3.5,
 plt.rcParams.update(params)
 markersize = 10
 
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 plt.rcParams['axes.grid'] = True
 plt.rcParams['figure.constrained_layout.use'] = True
 
@@ -27,10 +27,10 @@ project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent
 
 
-path = '/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/PyCCL_forecast'
-path_mm = '/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/lib'
+path = '/home/cosmo/davide.sciotti/data/SSC_restructured_v2/jobs/PyCCL_forecast'
+path_mm = '/home/cosmo/davide.sciotti/data/SSC_restructured_v2/lib'
 path_plotlib = '/5_plots/plot_FM'
-path_config = '/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/PyCCL_forecast/configs'
+path_config = '/home/cosmo/davide.sciotti/data/SSC_restructured_v2/jobs/PyCCL_forecast/configs'
 
 
 sys.path.append(project_path)

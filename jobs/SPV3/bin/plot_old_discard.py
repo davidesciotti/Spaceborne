@@ -28,7 +28,7 @@ import SPV3.config.config_SPV3 as cfg
 
 # plot config
 matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 markersize = 10
 
 

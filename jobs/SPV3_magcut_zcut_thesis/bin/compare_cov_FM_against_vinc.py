@@ -5,7 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+ROOT = '/home/cosmo/davide.sciotti/data'
 SB_ROOT = f'{ROOT}/Spaceborne'
 
 sys.path.append(SB_ROOT)
@@ -13,7 +13,7 @@ import bin.plots_FM_running as plot_utils
 import bin.my_module as mm
 import common_cfg.mpl_cfg as mpl_cfg
 
-matplotlib.use('Qt5Agg')
+matplotlib.use('Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
@@ -42,9 +42,9 @@ probe_dict = {
     '3x2pt': '3x2pt'
 }
 
-path_dav = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2'
+path_dav = '/home/cosmo/davide.sciotti/data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2'
 cov_dav_path = f'{path_dav}/covmat/BNT_False/ell_cuts_False'
-cov_vinc_path = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/' \
+cov_vinc_path = '/home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/' \
                 f'OutputFiles/CovMats/GaussOnly/Full'
 
 fm_dav_path = cov_dav_path.replace('covmat', 'FM')

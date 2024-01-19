@@ -52,7 +52,7 @@ wil_m_bia2 = np.load(path / 'data/Cl_e_WF_marco/WL_WeightFunction_zNLA_bia2.17.n
 
 # wil_m_bia2 = 
 # wigl_m = 
-# /home/davide/Documenti/Lavoro/Programmi/SSC_for_ISTNL/data/Cl_e_WF_marco
+# /home/cosmo/davide.sciotti/data/SSC_for_ISTNL/data/Cl_e_WF_marco
 
 # pay attention to the different bia values
 wil_d_bia0 = np.genfromtxt(path.parent / 'Cij_davide/output/WF/WFs_v15_zNLA_gen22/wil_davide_IA_IST_nz300_bia0.00.txt')

@@ -8,12 +8,13 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from chainconsumer import ChainConsumer
 
-sys.path.append('/home/cosmo/davide.sciotti/data/Spaceborne')
+sys.path.append('/home/davide/Documenti/Lavoro/Programmi/Spaceborne')
 import bin.plots_FM_running as plot_utils
 import bin.my_module as mm
 import common_cfg.mpl_cfg as mpl_cfg
 
 
+mpl.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 # mpl.use('qt')
 
@@ -68,7 +69,7 @@ for go_or_gs in ['GO', 'GS']:
                         num_params_tokeep = 7
                         
 
-                        fm_path = f'/home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/Flagship_1_restored/' \
+                        fm_path = f'/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_1_restored/' \
                                   f'FishMat_restored/{go_or_gs_folder_dict[go_or_gs]}/{probe_vinc}/FS1NoCuts'
                         fm_name = f'fm-{probe_vinc}-{nbl_WL_opt}-wzwaCDM-NonFlat-GR-TB-{specs_str}-{ep_or_ed}{zbins}'
                         fm = np.genfromtxt(f'{fm_path}/{fm_name}.dat')
@@ -78,7 +79,7 @@ for go_or_gs in ['GO', 'GS']:
                                 f'{fm_path.replace("3x2pt", "WLA")}/{fm_name.replace("3x2pt", "WLA")}.dat')
                             fm += fm_wa
 
-                        with open('/home/cosmo/davide.sciotti/data/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
+                        with open('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
                             fiducials_dict = yaml.safe_load(f)['FM_ordered_params']
                             
                         assert len(fiducials_dict) == fm.shape[0] == fm.shape[1], 'Wrong shape of FM matrix!'

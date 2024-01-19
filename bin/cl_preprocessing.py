@@ -2,7 +2,7 @@ import warnings
 import numpy as np
 import sys
 
-ROOT = '/home/cosmo/davide.sciotti/data'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 sys.path.append(f'{ROOT}/Spaceborne/bin')
 import my_module as mm
 

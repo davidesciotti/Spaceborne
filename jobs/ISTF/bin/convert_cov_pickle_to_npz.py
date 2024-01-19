@@ -3,11 +3,11 @@ This is just to uniform the format used when loading the covariance matrix in th
 
 import numpy as np
 import sys
-sys.path.append('/home/cosmo/davide.sciotti/data/Spaceborne')
+sys.path.append('/home/davide/Documenti/Lavoro/Programmi/Spaceborne')
 import bin.my_module as mm
 
 
-path = '/home/cosmo/davide.sciotti/data/PyCCL_SSC/output/covmat/ISTF'
+path = '/home/davide/Documenti/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF'
 
 filenames = mm.get_filenames_in_folder(path)
 

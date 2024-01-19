@@ -21,8 +21,9 @@ import my_module as mm
 sys.path.append('../config')
 import config_SPV3_magcut_zcut as cfg
 
-mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 mpl.use('Qt5Agg')
+mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
+
 
 general_cfg = cfg.general_cfg
 FM_cfg = cfg.FM_cfg
@@ -80,7 +81,7 @@ for go_or_gs in ['GO', ]:
                             names_params_to_fix = []
 
                             if whose_FM == 'davide':
-                                fm_path = f'/home/cosmo/davide.sciotti/data/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
+                                fm_path = f'/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/jobs/SPV3_magcut_zcut/' \
                                           f'output/Flagship_2/FM/BNT_{BNT_transform}/ell_cuts_{ell_cuts}'
                                 fm_name = f'FM_{go_or_gs}_{probe}_zbins{EP_or_ED}{zbins}_' \
                                           f'ML{ML}_ZL{ZL:02d}_MS{MS}_ZS{ZS:02d}_{specs_str}_pk{which_pk}.pickle'
@@ -98,7 +99,7 @@ for go_or_gs in ['GO', ]:
 
                                 kmax_1_over_Mpc = int(np.round(kmax_h_over_Mpc * h * 100))  # for vincenzo's file names
 
-                                fm_path = '/home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/' \
+                                fm_path = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/' \
                                           f'LiFEforSPV3/OutputFiles/FishMat/GaussOnly/Flat/' \
                                           f'{probe_vinc_dict[probe]}/{which_pk}/TestKappaMax'
                                 fm_name = f'fm-{probe_vinc_dict[probe]}-{EP_or_ED}{zbins}-ML{ML}-MS{MS}-{specs_str.replace("_", "-")}' \
@@ -111,7 +112,7 @@ for go_or_gs in ['GO', ]:
                                     f'{fm_path.replace("3x2pt", "WA")}/{fm_name.replace("3x2pt", "WA")}')
                                 fm += fm_wa
 
-                            # with open('/home/cosmo/davide.sciotti/data/common_lib_and_cfg/common_config/'
+                            # with open('/home/davide/Documenti/Lavoro/Programmi/common_lib_and_cfg/common_config/'
                             #           'fiducial_params_dict_for_FM.yml') as f:
                             #     fiducials_dict = yaml.safe_load(f)
                             fiducials_dict = fm_dict['fiducials_dict_flattened']  # TODO probably better a yaml file...

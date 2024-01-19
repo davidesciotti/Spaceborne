@@ -11,7 +11,7 @@ import pyccl as ccl
 from scipy.integrate import simps
 import sys
 
-ROOT = '/home/cosmo/davide.sciotti/data'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 sys.path.append(f'{ROOT}/Spaceborne/bin')
 import my_module as mm
 
@@ -318,7 +318,7 @@ def get_external_Pk(h, whos_Pk='vincenzo', Pk_kind='nonlinear', use_h_units=True
     else:
         raise ValueError(f'Pk_kind must be either "linear" or "nonlinear"')
 
-    Pkfile = np.genfromtxt(glob(f'/home/cosmo/davide.sciotti/data/common_data/Pk/Pk_{whos_Pk}.*')[0])
+    Pkfile = np.genfromtxt(glob(f'/home/davide/Documenti/Lavoro/Programmi/common_data/Pk/Pk_{whos_Pk}.*')[0])
     z_array = np.unique(Pkfile[:, z_column])
     k_array = np.unique(Pkfile[:, k_column])
     Pk = Pkfile[:, Pk_column].reshape(z_array.size, k_array.size)  # / h ** 3

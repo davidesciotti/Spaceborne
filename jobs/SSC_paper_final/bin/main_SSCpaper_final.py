@@ -16,7 +16,7 @@ job_path = Path.cwd().parent
 home_path = Path.home()
 job_name = job_path.parts[-1]
 
-ROOT = '/home/cosmo/davide.sciotti/data'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 sys.path.append(f'{ROOT}/Spaceborne')
 import bin.my_module as mm
 import bin.cosmo_lib as csmlib
@@ -35,6 +35,7 @@ import config_SSCpaper_final as cfg
 
 
 matplotlib.use('Agg')
+mpl.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
@@ -391,7 +392,7 @@ axs[0].set_xlabel('$\ell$')
 axs[1].set_xlabel('$\ell$')
 axs[2].set_xlabel('$\ell$')
 fig.legend(loc='right')
-plt.savefig('/home/cosmo/davide.sciotti/data/phd_thesis_plots/plots/cls.pdf', dpi=500, bbox_inches='tight')
+plt.savefig('/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/cls.pdf', dpi=500, bbox_inches='tight')
 
 
 assert False, 'stop here and undo the latest changes with git, they were just to produce the cls plot'

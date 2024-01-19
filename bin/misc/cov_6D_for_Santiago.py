@@ -33,7 +33,7 @@ markersize = 10
 ###############################################################################
 
 
-path_import = '/home/cosmo/davide.sciotti/data/SSC_restructured/jobs/IST_NL/output/covmat'
+path_import = '/home/davide/Documenti/Lavoro/Programmi/SSC_restructured/jobs/IST_NL/output/covmat'
 
 NL_flag = 1
 cov_dict = {}
@@ -53,7 +53,7 @@ for probe in ['WL', '3x2pt']:
 probe = 'WL'
 GO_or_GS = 'GO'
 nbl = 20
-ind = np.genfromtxt('/home/cosmo/davide.sciotti/data/SSC_restructured/jobs/IST_NL/input/indici_cloe_like.dat').astype(int) - 1
+ind = np.genfromtxt('/home/davide/Documenti/Lavoro/Programmi/SSC_restructured/jobs/IST_NL/input/indici_cloe_like.dat').astype(int) - 1
 ind_LL = ind[:55, :]
 # i think the XC part has to be switched!!! like this
 ind[55:155, [2, 3]] = ind[55:155, [3, 2]]
@@ -82,7 +82,7 @@ for GO_or_GS in ['GO', 'GS']:
     np.save(f'{path_import}/6D_for_Santiago/CovMat-ShearShear-{GO_or_GS_filename}-20bins-NL_flag_{NL_flag}_6D.npy', cov_dict[f'cov_WL_{GO_or_GS}_6D'])
 
 
-path_santiago = '/home/cosmo/davide.sciotti/data/SSC_restructured/jobs/IST_NL/output/covmat/6D_for_Santiago'
+path_santiago = '/home/davide/Documenti/Lavoro/Programmi/SSC_restructured/jobs/IST_NL/output/covmat/6D_for_Santiago'
 with open(f"{path_santiago}/cov_3x2pt_GO_10D.pkl", "rb") as file:
     cov_3x2pt_GO_new_10D = pickle.load(file)
 

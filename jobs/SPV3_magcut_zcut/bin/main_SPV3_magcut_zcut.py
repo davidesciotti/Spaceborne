@@ -39,6 +39,7 @@ import covariance as covmat_utils
 import fisher_matrix as FM_utils
 
 matplotlib.use('Agg')
+mpl.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
@@ -536,7 +537,7 @@ assert wil.shape == (z_arr.shape[0], zbins), 'the kernels have the wrong shape'
 import pyccl as ccl
 from scipy.integrate import simps
 
-sys.path.append('/home/cosmo/davide.sciotti/data/common_lib_and_cfg/common_lib')
+sys.path.append('/home/davide/Documenti/Lavoro/Programmi/common_lib_and_cfg/common_lib')
 import wf_cl_lib
 
 colors = cm.rainbow(np.linspace(0, 1, zbins))

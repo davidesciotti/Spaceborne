@@ -123,7 +123,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                                   p_of_k_a=None, lk_arr=logn_k_grid_tkka,
                                                   a_arr=a_grid_increasing_for_ttka,
                                                   extrap_order_lok=1, extrap_order_hik=1, use_log=False,
-                                                  #   probe_block=A + B + C + D,
+                                                  probe_block=A + B + C + D,
                                                   **prof_2pt_args)
 
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
@@ -177,7 +177,6 @@ def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel
     print(f'{which_ng_cov} computed with pyccl in {(time.perf_counter() - start_time) / 60:.0f} min')
 
     return cov_ng_4D
-
 
 
 def compute_ng_cov_3x2pt(cosmo, which_ng_cov, kernel_dict, ell, tkka_dict, f_sky, integration_method,
@@ -387,15 +386,15 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         zj = zi
         ax[0].loglog(ell_grid, cl_ll_3d[:, zi, zj], ls="-", c=colors[zi], alpha=0.6,
                      label='ll' if zi == 0 else None)
-        ax[0].loglog(ell_grid, cl_ll_3d_vinc[:29, zi, zj], ls="--", c=colors[zi], alpha=0.6,
+        ax[0].loglog(ell_grid, cl_ll_3d_vinc[:, zi, zj], ls="--", c=colors[zi], alpha=0.6,
                      label='ll vinc' if zi == 0 else None)
         ax[1].loglog(ell_grid, cl_gl_3d[:, zi, zj], ls="-", c=colors[zi], alpha=0.6,
                      label='gl' if zi == 0 else None)
-        ax[1].loglog(ell_grid, cl_gl_3d_vinc[:29, zi, zj], ls="--", c=colors[zi], alpha=0.6,
+        ax[1].loglog(ell_grid, cl_gl_3d_vinc[:, zi, zj], ls="--", c=colors[zi], alpha=0.6,
                      label='gl vinc' if zi == 0 else None)
         ax[2].loglog(ell_grid, cl_gg_3d[:, zi, zj], ls="-", c=colors[zi], alpha=0.6,
                      label='gg' if zi == 0 else None)
-        ax[2].loglog(ell_grid, cl_gg_3d_vinc[:29, zi, zj], ls="--", c=colors[zi], alpha=0.6,
+        ax[2].loglog(ell_grid, cl_gg_3d_vinc[:, zi, zj], ls="--", c=colors[zi], alpha=0.6,
                      label='gg vinc' if zi == 0 else None)
     # set labels
     ax[0].set_xlabel('$\\ell$')
@@ -417,7 +416,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     elif probe == '3x2pt':
         probe_ordering = covariance_cfg['probe_ordering']
         # warnings.warn('TESTING ONLY GLGL TO DEBUG 3X2PT cNG')
-        # probe_ordering = (('G', 'L'),)  # for testing 3x2pt GLGL, which seems a problematic case.
+        probe_ordering = (('G', 'L'),)  # for testing 3x2pt GLGL, which seems a problematic case.
     else:
         raise ValueError('probe must be either LL, GG, or 3x2pt')
 

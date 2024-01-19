@@ -1,4 +1,3 @@
-#!/home/cosmo/davide.sciotti/software/anaconda3/envs/spaceborne python3
 import gc
 import sys
 import time
@@ -10,7 +9,6 @@ from pprint import pprint
 import warnings
 import pandas as pd
 from matplotlib import cm
-
 
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 SB_ROOT = f'{ROOT}/Spaceborne'
@@ -351,7 +349,7 @@ nparams_toplot = 7
 include_fom = False
 divide_fom_by_10 = False
 
-for ssc_code_here in ['PyCCL', 'PySSC', 'exactSSC']:
+for ssc_code_here in ['PySSC', 'PyCCL', 'exactSSC']:
     for probe in ['WL', 'GC', '3x2pt']:
         fm_folder = FM_cfg["fm_folder"].format(SSC_code=ssc_code_here)
         lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_XC']

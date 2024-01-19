@@ -84,9 +84,9 @@ general_cfg = {
     'zbins_list': None,
     'EP_or_ED': 'EP',
     'n_probes': 2,
-    'nbl_WL': 30,
-    'nbl_GC': 30,
-    'nbl_3x2pt': 30,
+    'nbl_WL': 20,
+    'nbl_GC': 20,
+    'nbl_3x2pt': 20,
     'use_WA': use_WA,  # ! xxx
     'save_cls_3d': False,
     'save_rls_3d': False,
@@ -160,7 +160,7 @@ covariance_cfg = {
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_HMrecipeKrause2017_6D',
     # TODO these 2 filenames could be unified...
 
-    'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or exactSSC
+    'SSC_code': 'exactSSC',  # ! PySSC or PyCCL or exactSSC
 
     'PySSC_cfg': {
         'which_ng_cov': 'SSC',
@@ -173,10 +173,11 @@ covariance_cfg = {
         'get_3x2pt_cov_in_4D': False,
         'save_trispectrum': False,
         'cov_path': '/home/davide/Documenti/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF/jan_2024',
+        # 'cov_path': '/home/davide/Documenti/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',
 
-        'load_precomputed_cov': False,
+        'load_precomputed_cov': True,
         'save_cov': False,
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 
@@ -195,6 +196,7 @@ covariance_cfg = {
         'which_ng_cov': 'SSC',
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
         'cov_path': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/ISTF/jan_2024/SSC_matrix',
+        # 'cov_path': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/ISTF/SSC_matrix',
         'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
                         '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'
                         '_convention{cl_integral_convention:s}.npy',
@@ -269,6 +271,7 @@ FM_cfg = {
     'deriv_ell_cuts': deriv_ell_cuts,
 
     'fm_folder': str(JOB_ROOT) + f'/output/{which_input_files}/' + 'FM/jan_2024/{SSC_code:s}',
+    # 'fm_folder': str(JOB_ROOT) + f'/output/{which_input_files}/' + 'FM/{SSC_code:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
     'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}',
 

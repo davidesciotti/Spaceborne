@@ -108,7 +108,10 @@ general_cfg = {
     'zcut_source': 2,
     'zcut_lens': 2,
     'flagship_version': flagship_version,
-    'bias_model': 'constant',
+    
+    'bias_model': 'SPV3_bias',
+    'has_rsd': False,
+    'has_magnification_bias': True,
 }
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
@@ -136,7 +139,6 @@ covariance_cfg = {
     'nuisance_folder': f'{SPV3_folder}/InputFiles/InputNz/NzPar',
     'nofz_filename': 'nzTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
     'nuisance_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zcut_source:02d}-zedMax{zmax:02d}-mag{magcut_source:03d}.dat',
-
 
     # sources (and lenses) redshift distributions
     # 'nofz_folder': f'{ROOT}/likelihood-mcmc-generator/input_files/SPV3',
@@ -179,13 +181,14 @@ covariance_cfg = {
     'test_against_vincenzo': True,
 
     # ! no folders for ell_cut_center or min
-    'cov_folder': f'{PROJ_ROOT}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{cov_ell_cuts:s}',
+    'cov_folder': f'{JOB_ROOT}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{cov_ell_cuts:s}',
     'cov_filename': 'covmat_{which_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_'
                     'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_'
                     'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D{which_grids:s}',
     'cov_vinc_folder': f'{SPV3_folder}/OutputFiles/CovMats/GaussOnly/Full',
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
+    
     'SSC_code': 'PyCCL',  # 'PyCCL' or 'exactSSC'
 
     'PyCCL_cfg': {
@@ -196,14 +199,12 @@ covariance_cfg = {
 
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
         'load_precomputed_cov': False,
-        # 'cov_path': f'{ROOT}/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
-        #             '/output/Flagship_2/covmat/PyCCL',
-        'cov_path': '/Users/davide/Downloads/PyCCL',
+        'cov_path': f'{JOB_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL/jan_2024',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
 
-        'save_cov': False,
+        'save_cov': True,
         'save_trispectrum': False,
 
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
@@ -211,7 +212,7 @@ covariance_cfg = {
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         'z_grid_tkka_min': 0.001,
         'z_grid_tkka_max': 3,
-        'z_grid_tkka_steps': 300,
+        'z_grid_tkka_steps': 500,
         'z_grid_min': 0.001,
         'z_grid_max': 3,
         'z_grid_steps': 1000,
@@ -256,7 +257,7 @@ Sijkl_cfg = {
     'nz': None,  # ! is this used?
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
 
-    'Sijkl_folder': f'{PROJ_ROOT}/output/Flagship_{flagship_version}/sijkl',
+    'Sijkl_folder': f'{JOB_ROOT}/output/Flagship_{flagship_version}/sijkl',
     'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}'
                       '_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
@@ -303,7 +304,7 @@ FM_cfg = {
     'derivatives_BNT_transform': deriv_BNT_transform,
     'deriv_ell_cuts': deriv_ell_cuts,
 
-    'fm_folder': f'{PROJ_ROOT}/output/Flagship_{flagship_version}/FM/' +
+    'fm_folder': f'{JOB_ROOT}/output/Flagship_{flagship_version}/FM/' +
                  'BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}',
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,

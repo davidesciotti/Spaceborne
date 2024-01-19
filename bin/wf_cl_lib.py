@@ -626,7 +626,7 @@ def wig_IST(z_grid, which_wf, zbins=10, gal_bias_2d_array=None, bias_model='step
 
 
 def wf_ccl(z_grid, probe, which_wf, flat_fid_pars_dict, cosmo_ccl, dndz_tuple, ia_bias_tuple=None, gal_bias_tuple=None,
-           mag_bias_tuple=None, return_ccl_obj=False, n_samples=1000):
+           mag_bias_tuple=None, has_rsd=False, return_ccl_obj=False, n_samples=1000):
     """
     Computes the CCL kernel for the given probe, on the given redshift grid.
     :param z_grid:
@@ -707,7 +707,7 @@ def wf_ccl(z_grid, probe, which_wf, flat_fid_pars_dict, cosmo_ccl, dndz_tuple, i
             mag_bias = None
 
         wf_galaxy_obj = [ccl.tracers.NumberCountsTracer(cosmo_ccl,
-                                                        has_rsd=False,
+                                                        has_rsd=has_rsd,
                                                         dndz=(dndz_tuple[0], dndz_tuple[1][:, zbin_idx]),
                                                         bias=(gal_bias_tuple[0], gal_bias_tuple[1][:, zbin_idx]),
                                                         mag_bias=mag_bias(

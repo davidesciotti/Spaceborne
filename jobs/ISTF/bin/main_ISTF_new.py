@@ -1,3 +1,4 @@
+#!/home/cosmo/davide.sciotti/software/anaconda3/envs/spaceborne python3
 import gc
 import sys
 import time
@@ -27,9 +28,9 @@ import common_cfg.mpl_cfg as mpl_cfg
 import common_cfg.ISTF_fid_params as ISTF_fid
 
 # job configuration and modules
-from jobs.ISTF.config import config_ISTF_testexactSSC_new as cfg
+from jobs.ISTF.config import config_ISTF_new as cfg
 
-mpl.use('Qt5Agg')
+mpl.use('Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
@@ -172,6 +173,10 @@ rl_dict_3D['rl_3x2pt_5D'] = cl_utils.build_3x2pt_datavector_5D(rl_LLfor3x2pt_3D,
                                                                rl_dict_3D['rl_GG_3D'],
                                                                nbl_GC, zbins, n_probes)
 
+general_cfg['cl_ll_3d'] = cl_LLfor3x2pt_3D
+general_cfg['cl_gl_3d'] = cl_GL_3D
+general_cfg['cl_gg_3d'] = cl_dict_3D['cl_GG_3D']
+
 # ! compute covariance matrix
 if not covariance_cfg['compute_covmat']:
     raise KeyboardInterrupt('Fisher matrix computation is set to False; exiting')
@@ -192,10 +197,16 @@ z_arr_2, wig = Sijkl_utils.preprocess_wf(wig, zbins)
 assert np.array_equal(z_arr, z_arr_2), 'the redshift arrays are different for the GC and WL kernels'
 assert nz == z_arr.shape[0], 'nz is not the same as the number of redshift points in the kernels'
 
+nz_import = np.genfromtxt(f'{covariance_cfg["nofz_folder"]}/{covariance_cfg["nofz_filename"]}')
+z_grid_nz = nz_import[:, 0]
+nz_import = nz_import[:, 1:]
+nz_tuple = (z_grid_nz, nz_import)
+
 # store them to be passed to pyccl_cov for comparison (or import)
 general_cfg['wf_WL'] = wil
 general_cfg['wf_GC'] = wig
 general_cfg['z_grid_wf'] = z_arr
+general_cfg['nz_tuple'] = nz_tuple
 
 # ! compute or load Sijkl
 # if Sijkl exists, load it; otherwise, compute it and save it

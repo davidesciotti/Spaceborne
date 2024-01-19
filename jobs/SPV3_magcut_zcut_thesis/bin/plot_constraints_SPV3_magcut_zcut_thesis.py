@@ -44,7 +44,7 @@ fm_root_path = ('/home/cosmo/davide.sciotti/data/Spaceborne/'
                 'jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM')
 fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}'
 fm_pickle_name_raw = 'FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_' \
-                    'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}{which_grids:s}.pickle'
+    'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}{which_grids:s}.pickle'
 EP_or_ED = 'EP'
 zbins = 13
 num_params_tokeep = 7
@@ -116,6 +116,17 @@ for key in fm_dict_a.keys():
         print('CSSTgrids == densegrids?', key, np.allclose(fm_dict_a[key], fm_dict_b[key], rtol=1e-3, atol=0))
 
 
+fm_dict_a = mm.load_pickle(
+    '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_exactSSC_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar.pickle')
+fm_dict_b = mm.load_pickle(
+    '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_exactSSC_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_halo_model.pickle')
+for key in fm_dict_a.keys():
+    if key not in ['param_names_dict', 'fiducial_values_dict', 'fiducials_dict_flattened']:
+        is_close = np.allclose(fm_dict_a[key], fm_dict_b[key], rtol=1e-3, atol=0)
+        if not is_close:
+            mm.compare_arrays(fm_dict_a[key], fm_dict_b[key], log_diff=True)
+        print('SU == halo_model?', key, is_close)
+
 # TODO understand nan instead of None in the fm_uncert_df
 # TODO maybe there is a bettewr way to handle the prior values in relation to the fix flag
 # TODO superimpose bars
@@ -148,20 +159,19 @@ for probe in probes:
 
                                         if which_cov_term == 'GSSC':
                                             which_pk = 'HMCodeBar'  # GSSC is only availane in this case
-                                        
 
                                         names_params_to_fix = []
 
                                         if whose_FM == 'davide':
                                             fm_path = fm_path_raw.format(BNT_transform=BNT_transform, ell_cuts=ell_cuts)
                                             fm_pickle_name = fm_pickle_name_raw.format(which_ng_cov=which_ng_cov,
-                                                                                        EP_or_ED=EP_or_ED,
-                                                                                        zbins=zbins,
-                                                                                        ML=ML, ZL=ZL, MS=MS, ZS=ZS,
-                                                                                        specs_str=specs_str,
-                                                                                        which_pk=which_pk,
-                                                                                        ng_cov_code=ng_cov_code,
-                                                                                        which_grids=which_grids)
+                                                                                       EP_or_ED=EP_or_ED,
+                                                                                       zbins=zbins,
+                                                                                       ML=ML, ZL=ZL, MS=MS, ZS=ZS,
+                                                                                       specs_str=specs_str,
+                                                                                       which_pk=which_pk,
+                                                                                       ng_cov_code=ng_cov_code,
+                                                                                       which_grids=which_grids)
                                             if ell_cuts:
                                                 fm_path += f'/{which_cuts}/ell_{center_or_min}'
                                                 fm_pickle_name = fm_pickle_name.replace(f'.pickle',
@@ -181,7 +191,7 @@ for probe in probes:
                                             fm_path = '/home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/' \
                                                     f'LiFEforSPV3/OutputFiles/FishMat/GaussOnly/Flat/{which_pk}/TestKappaMax'
                                             fm_name = f'fm-{probe_vinc_dict[probe]}-{EP_or_ED}{zbins}-ML{ML}-MS{MS}-{specs_str.replace("_", "-")}' \
-                                                    f'-kM{kmax_1_over_Mpc}.dat'
+                                                f'-kM{kmax_1_over_Mpc}.dat'
                                             fm = np.genfromtxt(f'{fm_path}/{fm_name}')
 
                                         if probe == '3x2pt' and use_Wadd:
@@ -199,7 +209,7 @@ for probe in probes:
 
                                         assert fm.shape[0] == fm.shape[1], 'FM matrix is not square!'
                                         assert len(fiducials_dict) == fm.shape[0], 'FM matrix and fiducial parameters ' \
-                                                                                'length do not match!'
+                                            'length do not match!'
 
                                         # fix some of the parameters (i.e., which columns to remove)
                                         # if fix_curvature:
@@ -224,7 +234,7 @@ for probe in probes:
                                             names_params_to_fix += [f'dzWL{(zi + 1):02d}' for zi in range(zbins)]
 
                                         fm, fiducials_dict = mm.mask_fm_v2(fm, fiducials_dict, names_params_to_fix,
-                                                                        remove_null_rows_cols=True)
+                                                                           remove_null_rows_cols=True)
 
                                         param_names = list(fiducials_dict.keys())
                                         cosmo_param_names = list(fiducials_dict.keys())[:num_params_tokeep]
@@ -241,7 +251,7 @@ for probe in probes:
 
                                             # go from sigma_b / b_fid to sigma_b
                                             gal_bias_idxs = [param_names.index(gal_bias_param_name)
-                                                            for gal_bias_param_name in gal_bias_param_names]
+                                                             for gal_bias_param_name in gal_bias_param_names]
 
                                             gal_bias_fid_values = np.array(list(fiducials_dict.values()))[gal_bias_idxs]
                                             gal_bias_prior_values = gal_bias_perc_prior * gal_bias_fid_values / 100
@@ -253,7 +263,7 @@ for probe in probes:
                                             if probe == '3x2pt' and which_cov_term == 'GSSC' and fix_shear_bias == False:
                                                 # decide params to show in the triangle plot
                                                 shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in
-                                                                        range(zbins)]
+                                                                          range(zbins)]
                                                 params_tot_list = cosmo_param_names + shear_bias_param_names
 
                                                 trimmed_fid_dict = {param: fiducials_dict[param] for param in
@@ -261,23 +271,24 @@ for probe in probes:
 
                                                 # get the covariance matrix (careful on how you cut the FM!!)
                                                 fm_idxs_tokeep = [list(fiducials_dict.keys()).index(param) for param in
-                                                                params_tot_list]
+                                                                  params_tot_list]
                                                 cov = np.linalg.inv(fm)[fm_idxs_tokeep, :][:, fm_idxs_tokeep]
 
                                                 plot_utils.contour_plot_chainconsumer(cov, trimmed_fid_dict)
 
                                         # ! compute uncertainties from fm
                                         uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict,
-                                                                        which_uncertainty='marginal',
-                                                                        normalize=True,
-                                                                        percent_units=True)[:num_params_tokeep]
+                                                                           which_uncertainty='marginal',
+                                                                           normalize=True,
+                                                                           percent_units=True)[:num_params_tokeep]
 
                                         # compute the FoM
                                         w0wa_idxs = param_names.index('wz'), param_names.index('wa')
                                         fom = mm.compute_FoM(fm, w0wa_idxs)
 
                                         # ! this piece of code is for the foc of the different cases
-                                        corr_mat = mm.correlation_from_covariance(np.linalg.inv(fm))[:num_params_tokeep, :num_params_tokeep]
+                                        corr_mat = mm.correlation_from_covariance(
+                                            np.linalg.inv(fm))[:num_params_tokeep, :num_params_tokeep]
                                         foc = mm.figure_of_correlation(corr_mat)
                                         if plor_corr_matrix and which_cov_term == 'G' and BNT_transform is False and \
                                                 ell_cuts is False and fix_dz is True and fix_shear_bias is False and \
@@ -285,30 +296,30 @@ for probe in probes:
                                             correlation_dict[which_pk] = corr_mat
 
                                         df_columns_names = string_columns + [param_name for param_name in
-                                                                            fiducials_dict.keys()][
-                                                                            :num_params_tokeep] + ['FoM']
+                                                                             fiducials_dict.keys()][
+                                            :num_params_tokeep] + ['FoM']
 
                                         # this is a list of lists just to have a 'row list' instead of a 'column list',
                                         # I still haven't figured out the problem, but in this way it works
                                         df_columns_values = [
                                             [probe, which_cov_term, whose_FM, which_pk, BNT_transform, ell_cuts, which_cuts,
-                                            center_or_min, fix_dz, fix_shear_bias, foc, kmax_h_over_Mpc] +
+                                             center_or_min, fix_dz, fix_shear_bias, foc, kmax_h_over_Mpc] +
                                             uncert_fm.tolist() + [fom]]
 
                                         assert len(df_columns_names) == len(
                                             df_columns_values[0]), 'Wrong number of columns!'
 
                                         fm_uncert_df_to_concat = pd.DataFrame(df_columns_values,
-                                                                            columns=df_columns_names)
+                                                                              columns=df_columns_names)
                                         fm_uncert_df = pd.concat([fm_uncert_df, fm_uncert_df_to_concat],
-                                                                ignore_index=True)
+                                                                 ignore_index=True)
                                         fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
 
 # ! ============================================================ PLOTS ============================================================
 
 
 # # ! bar plot
-probe_toplot = 'WL'
+probe_toplot = 'GC'
 include_fom = False
 
 fm_uncert_df_toplot = fm_uncert_df[
@@ -322,10 +333,10 @@ fm_uncert_df_toplot = fm_uncert_df[
     (fm_uncert_df['kmax_h_over_Mpc'] == 0.1) &
     (fm_uncert_df['which_cuts'] == which_cuts_plt) &
     (fm_uncert_df['center_or_min'] == center_or_min_plt)
-    ]
+]
 
 fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', which_cov_term_list[0],
-                                      which_cov_term_list[1], num_string_columns)
+                                         which_cov_term_list[1], num_string_columns)
 
 data = fm_uncert_df_toplot.iloc[:, num_string_columns:].values
 label_list = list(fm_uncert_df_toplot['which_cov_term'].values)
@@ -343,10 +354,9 @@ plot_utils.bar_plot(data, f'{probe_toplot}, {which_cov_term_list[1]}, {ng_cov_co
 # plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GGSSC_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)
 
 
-
 assert False, 'checking SSC btw pyccl and exactSSC'
 # mm.plot_correlation_matrix(correlation_dict['HMCode2020'] / correlation_dict['TakaBird'], cosmo_params_tex,
-                        #    title='HMCodeBar/TakaBird')
+#    title='HMCodeBar/TakaBird')
 if save_plots:
     plt.savefig('/home/cosmo/davide.sciotti/data/phd_thesis_plots/plots/correlation_matrix.pdf',
                 bbox_inches='tight', dpi=500)
@@ -354,10 +364,10 @@ if save_plots:
 # ! check difference between ell_cuts True and False
 df_true = fm_uncert_df[(fm_uncert_df['ell_cuts'] == True) &
                        (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_list[-1])].iloc[:,
-          num_string_columns:].values
+                                                                                           num_string_columns:].values
 df_false = fm_uncert_df[(fm_uncert_df['ell_cuts'] == False) &
                         (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_list[-1])].iloc[:,
-           num_string_columns:].values
+                                                                                            num_string_columns:].values
 diff = (df_true / df_false - 1) * 100
 mm.matshow(diff, log=True, title=f'difference between ell_cuts True, kmax = {kmax_h_over_Mpc_list[-1]:.2f} and False')
 
@@ -372,7 +382,7 @@ reduced_df = fm_uncert_df[
     (fm_uncert_df['ell_cuts'] == True) &
     (fm_uncert_df['which_cuts'] == which_cuts_plt) &
     (fm_uncert_df['center_or_min'] == center_or_min_plt)
-    ]
+]
 fom_dz_false_sb_false = reduced_df[(reduced_df['fix_dz'] == False) &
                                    (reduced_df['fix_shear_bias'] == False)
                                    ]['FoM'].values
@@ -399,7 +409,7 @@ fom_noellcuts = fm_uncert_df[
     (fm_uncert_df['which_cuts'] == which_cuts_plt) &
     (fm_uncert_df['center_or_min'] == center_or_min_plt) &
     (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_plt)
-    ]['FoM'].values[0]
+]['FoM'].values[0]
 
 # find kmax for a given FoM (400)
 kmax_fom400_dz_false_sb_false = mm.find_inverse_from_array(kmax_h_over_Mpc_list, fom_dz_false_sb_false, fom_redbook)
@@ -449,7 +459,7 @@ cosmo_params_df_dav = fm_uncert_df[
     (fm_uncert_df['fix_shear_bias'] == False) &
     (fm_uncert_df['center_or_min'] == center_or_min) &
     (fm_uncert_df['which_pk'] == pk_ref)
-    ]
+]
 
 plt.figure()
 for i, cosmo_param in enumerate(cosmo_param_names):
@@ -479,7 +489,7 @@ cosmo_params_df_dav = fm_uncert_df[
     (fm_uncert_df['BNT_transform'] == BNT_transform) &
     (fm_uncert_df['ell_cuts'] == ell_cuts) &
     (fm_uncert_df['center_or_min'] == center_or_min)
-    ]
+]
 
 # FoM dispersion between different pks, for each kmax
 reduced_unc_df = cosmo_params_df_dav.groupby('kmax_h_over_Mpc')[param_toplot]
@@ -569,9 +579,10 @@ go_gs_df = fm_uncert_df[
     (fm_uncert_df['ell_cuts'] == ell_cuts) &
     (fm_uncert_df['which_cuts'] == which_cuts_plt) &
     (fm_uncert_df['center_or_min'] == center_or_min_plt)
-    ]
+]
 
-go_gs_df = mm.compare_df_keys(go_gs_df, 'which_cov_term', which_cov_term_list[0], which_cov_term_list[1], num_string_columns)
+go_gs_df = mm.compare_df_keys(go_gs_df, 'which_cov_term',
+                              which_cov_term_list[0], which_cov_term_list[1], num_string_columns)
 
 cosmo_params_tex_plusfom = cosmo_params_tex + ['FoM']
 plt.figure()

@@ -41,8 +41,6 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 script_start_time = time.perf_counter()
 
 
-NUMPY_PRECISION = np.finfo(float).eps
-
 # TODO check that the number of ell bins is the same as in the files
 # TODO double check the delta values
 # TODO update consistency_checks
@@ -925,6 +923,8 @@ for zbins in (13, ):
     if general_cfg['BNT_transform'] is True and general_cfg['ell_cuts'] is True and which_pk == 'HMCodeBar' \
             and covariance_cfg['SSC_code'] == 'PyCCL':
         cond_number = np.linalg.cond(cov_dict['cov_3x2pt_GS_2D'])
+        
+        NUMPY_PRECISION = np.finfo(float).eps
         precision = cond_number * NUMPY_PRECISION
         print(f'kmax = {kmax_h_over_Mpc}, precision in the inversion of GS covariance = '
               f'{precision:.2e}, cond number = {cond_number:.2e}')

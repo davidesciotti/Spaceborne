@@ -382,6 +382,8 @@ for zbins in (13, ):
                                                      'For the thesis, probably use just these')
     if general_cfg['ell_cuts']:
         assert bnt_transform, 'you should BNT transform if you want to apply ell cuts'
+    if bnt_transform:
+        assert general_cfg['ell_cuts'] is False, 'you should not apply ell cuts if you want to BNT transform'
 
     if covariance_cfg['cov_BNT_transform']:
         assert general_cfg['cl_BNT_transform'] is False, \

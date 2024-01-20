@@ -189,7 +189,7 @@ covariance_cfg = {
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
     
-    'SSC_code': 'exactSSC',  # 'PyCCL' or 'exactSSC'
+    'SSC_code': 'exactSSC',  # ! 'PySSC' or PyCCL' or 'exactSSC'
 
     'PyCCL_cfg': {
         'probe': '3x2pt',  # TODO deprecate this?
@@ -198,7 +198,7 @@ covariance_cfg = {
         'which_grids': '_densegrids',
 
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
-        'load_precomputed_cov': False,
+        'load_precomputed_cov': True,
         'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL/standard',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',

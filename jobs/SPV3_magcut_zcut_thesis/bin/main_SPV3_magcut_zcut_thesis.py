@@ -360,7 +360,7 @@ for zbins in (13, ):
     nbl_WA_opt = general_cfg['nbl_WA_opt']
     nbl_3x2pt_opt = general_cfg['nbl_3x2pt_opt']
     colors = cm.rainbow(np.linspace(0, 1, zbins))
-
+    
     with open(general_cfg['fid_yaml_filename'].format(zbins=zbins)) as f:
         fid_pars_dict = yaml.safe_load(f)
     flat_fid_pars_dict = mm.flatten_dict(fid_pars_dict)
@@ -886,6 +886,17 @@ for zbins in (13, ):
     # TODO: if already existing, don't compute the covmat, like done above for Sijkl
     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix)
+
+    if not general_cfg['BNT_transform']:
+        cov_bench = np.genfromtxt('/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.dat')
+    elif general_cfg['BNT_transform']:
+        cov_bench = np.genfromtxt('/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1-BNT.dat')
+    
+    num_elements = cov_dict['cov_3x2pt_GS_2D'].shape[0]
+    mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench[:num_elements, :num_elements],  \
+                      name_A='BNT_transform = ' +  str(general_cfg['BNT_transform']), name_B='bench', log_diff=True)
+    breakpoint()
+    assert False, 'stop here to check vincenzo bnt ingredients'
 
     # save covariance m atrix and test against benchmarks
     cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),

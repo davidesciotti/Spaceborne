@@ -354,7 +354,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_exactSSC_SS_dict_10D, nbl_3x2pt, zbins, n_probes)
 
         cov_WL_SS_6D = get_cov_ssc_exactssc(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d', probe='LL')
-        cov_GC_SS_6D = get_cov_ssc_exactssc(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d', probe='GG')
+        cov_GC_SS_6D = cov_3x2pt_SS_10D[1, 1, 1, 1, ...]
 
         which_ng_cov = covariance_cfg[SSC_code + '_cfg']['which_ng_cov']
         print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
@@ -372,12 +372,13 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             else:
                 raise NotImplementedError('WL cannot be given by simply cutting the 3x2pt case, finish implementing this')
             
-            assert ell_max_GC == ell_max_3x2pt, 'I obtain GC cov by cutting the 3x2pt, but the ellmax values are'
             cov_GC_SS_6D = cov_3x2pt_SS_10D[1, 1, 1, 1, ...]
             print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
 
     elif SSC_code not in ('PySSC', 'PyCCL', 'exactSSC'):
         raise ValueError('covariance_cfg["SSC_code"] must be PySSC or PyCCL or exactSSC')
+
+    assert ell_max_GC == ell_max_3x2pt, 'I obtained the GC cov by cutting the 3x2pt, but the ellmax values are different'
 
     # sum GO and SS in 6D (or 10D), not in 4D (it's the same)
     cov_WL_GS_6D = cov_WL_GO_6D + cov_WL_SS_6D

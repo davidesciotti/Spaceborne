@@ -3,7 +3,8 @@ import numpy as np
 import yaml
 
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
-JOB_ROOT = f'{ROOT}/Spaceborne/jobs/ISTF'
+# DATA_ROOT = f'{ROOT}/Spaceborne/jobs/ISTF'
+DATA_ROOT = f'{ROOT}/common_data/Spaceborne/jobs/ISTF'
 
 
 sys.path.append(f'{ROOT}/Spaceborne')
@@ -154,7 +155,7 @@ covariance_cfg = {
     'save_cov_SSC': False,
     'save_2DCLOE': False,  # outermost loop is on the probes
 
-    'cov_folder': f'{JOB_ROOT}/output/{which_input_files}/' + 'covmat/{SSC_code:s}',
+    'cov_folder': f'{DATA_ROOT}/output/{which_input_files}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
     'cov_SSC_PyCCL_folder': f'{ROOT}/PyCCL_SSC/output/covmat',
     'cov_SSC_PyCCL_filename': 'cov_PyCCL_SSC_{probe:s}_nbl{nbl:d}_ellsISTF_ellmax{ell_max:d}_HMrecipeKrause2017_6D',
@@ -173,7 +174,7 @@ covariance_cfg = {
         'get_3x2pt_cov_in_4D': False,
         'save_trispectrum': False,
         # 'cov_path': '/home/davide/Documenti/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF/jan_2024', # old path
-        'cov_path': '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/ISTF/output/cl14may/covmat/PyCCL/standard',
+        'cov_path': f'{DATA_ROOT}/output/cl14may/covmat/PyCCL/standard',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',
 
@@ -269,7 +270,7 @@ FM_cfg = {
     'derivatives_BNT_transform': deriv_BNT_transform,
     'deriv_ell_cuts': deriv_ell_cuts,
 
-    'fm_folder': str(JOB_ROOT) + f'/output/{which_input_files}/' + 'FM/jan_2024/{SSC_code:s}',
+    'fm_folder': str(DATA_ROOT) + f'/output/{which_input_files}/' + 'FM/jan_2024/{SSC_code:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
     'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}',
 

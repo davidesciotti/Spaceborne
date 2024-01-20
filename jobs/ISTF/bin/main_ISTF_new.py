@@ -398,7 +398,8 @@ for probe in ['WL', 'GC', '3x2pt']:
 
     uncert_dict['perc_diff_PyCCL'] = mm.percent_diff(uncert_dict[key_pyccl], uncert_dict[key_gauss])
     uncert_dict['perc_diff_exactSSC'] = mm.percent_diff(uncert_dict[key_exactssc], uncert_dict[key_gauss])
-    fom_dict['perc_diff'] = np.abs(mm.percent_diff(fom_dict[key_pyssc], fom_dict[key_pyccl]))
+    fom_dict['perc_diff_PyCCL'] = np.abs(mm.percent_diff(fom_dict[key_pyccl], fom_dict[key_gauss]))
+    fom_dict['perc_diff_exactSSC'] = np.abs(mm.percent_diff(fom_dict[key_exactssc], fom_dict[key_gauss]))
 
     cases_to_plot = (key_gauss, key_pyssc, key_pyccl, key_exactssc, key_exactssc_std, 
                      'perc_diff_PyCCL', 'perc_diff_exactSSC')

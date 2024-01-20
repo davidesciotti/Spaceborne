@@ -199,7 +199,7 @@ covariance_cfg = {
 
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
         'load_precomputed_cov': False,
-        'cov_path': f'{JOB_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL/jan_2024',
+        'cov_path': f'{JOB_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL/standard',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
@@ -226,7 +226,7 @@ covariance_cfg = {
         'which_grids': '',
 
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
-        'cov_path': f'{ROOT}/exact_SSC/output/SPV3/separate_universe/jan_2024/SSC_matrix',
+        'cov_path': f'{ROOT}/exact_SSC/output/SPV3/separate_universe/standard/SSC_matrix',
         'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
                         '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'
                         '_convention{cl_integral_convention:s}.npy',
@@ -304,7 +304,7 @@ FM_cfg = {
     'deriv_ell_cuts': deriv_ell_cuts,
 
     'fm_folder': f'{JOB_ROOT}/output/Flagship_{flagship_version}/FM/' +
-                 'BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}',
+                 'BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}/standard',
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,
 

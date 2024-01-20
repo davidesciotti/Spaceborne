@@ -43,7 +43,7 @@ cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 specs_str = 'idIA2_idB3_idM3_idR1'
 fm_root_path = ('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/'
                 'jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM')
-fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}'
+fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}/jan_2024'
 fm_pickle_name_raw = 'FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_' \
     'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}{which_grids:s}.pickle'
 EP_or_ED = 'EP'
@@ -108,25 +108,6 @@ correlation_dict = {}
 if ng_cov_code == 'exactSSC':
     which_grids = ''
 
-# quick check: between PyCCL SSC FMs computed with different grids
-fm_dict_a = mm.load_pickle('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_CSSTgrids.pickle')
-fm_dict_b = mm.load_pickle('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_densegrids.pickle')
-
-for key in fm_dict_a.keys():
-    if key not in ['param_names_dict', 'fiducial_values_dict', 'fiducials_dict_flattened']:
-        print('CSSTgrids == densegrids?', key, np.allclose(fm_dict_a[key], fm_dict_b[key], rtol=1e-3, atol=0))
-
-
-fm_dict_a = mm.load_pickle(
-    '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_exactSSC_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar.pickle')
-fm_dict_b = mm.load_pickle(
-    '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/FM_GSSC_exactSSC_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_halo_model.pickle')
-for key in fm_dict_a.keys():
-    if key not in ['param_names_dict', 'fiducial_values_dict', 'fiducials_dict_flattened']:
-        is_close = np.allclose(fm_dict_a[key], fm_dict_b[key], rtol=1e-3, atol=0)
-        if not is_close:
-            mm.compare_arrays(fm_dict_a[key], fm_dict_b[key], log_diff=True)
-        print('SU == halo_model?', key, is_close)
 
 # TODO understand nan instead of None in the fm_uncert_df
 # TODO maybe there is a bettewr way to handle the prior values in relation to the fix flag
@@ -190,7 +171,7 @@ for probe in probes:
                                             kmax_1_over_Mpc = kmax_1_over_Mpc_vinc_str_list[kmax_counter]
 
                                             fm_path = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/' \
-                                                    f'LiFEforSPV3/OutputFiles/FishMat/GaussOnly/Flat/{which_pk}/TestKappaMax'
+                                                f'LiFEforSPV3/OutputFiles/FishMat/GaussOnly/Flat/{which_pk}/TestKappaMax'
                                             fm_name = f'fm-{probe_vinc_dict[probe]}-{EP_or_ED}{zbins}-ML{ML}-MS{MS}-{specs_str.replace("_", "-")}' \
                                                 f'-kM{kmax_1_over_Mpc}.dat'
                                             fm = np.genfromtxt(f'{fm_path}/{fm_name}')
@@ -320,39 +301,39 @@ for probe in probes:
 
 
 # # ! bar plot
-probe_toplot = 'WL'
 include_fom = False
 
-fm_uncert_df_toplot = fm_uncert_df[
-    (fm_uncert_df['probe'] == probe_toplot) &
-    (fm_uncert_df['whose_FM'] == 'davide') &
-    (fm_uncert_df['which_pk'] == pk_ref) &
-    (fm_uncert_df['fix_dz'] == False) &
-    (fm_uncert_df['fix_shear_bias'] == False) &
-    (fm_uncert_df['BNT_transform'] == False) &
-    (fm_uncert_df['ell_cuts'] == False) &
-    (fm_uncert_df['kmax_h_over_Mpc'] == 0.1) &
-    (fm_uncert_df['which_cuts'] == which_cuts_plt) &
-    (fm_uncert_df['center_or_min'] == center_or_min_plt)
-]
+for probe_toplot in ('WL', 'GC', '3x2pt'):
 
-fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', which_cov_term_list[0],
-                                         which_cov_term_list[1], num_string_columns)
+    fm_uncert_df_toplot = fm_uncert_df[
+        (fm_uncert_df['probe'] == probe_toplot) &
+        (fm_uncert_df['whose_FM'] == 'davide') &
+        (fm_uncert_df['which_pk'] == pk_ref) &
+        (fm_uncert_df['fix_dz'] == False) &
+        (fm_uncert_df['fix_shear_bias'] == False) &
+        (fm_uncert_df['BNT_transform'] == False) &
+        (fm_uncert_df['ell_cuts'] == False) &
+        (fm_uncert_df['kmax_h_over_Mpc'] == 0.1) &
+        (fm_uncert_df['which_cuts'] == which_cuts_plt) &
+        (fm_uncert_df['center_or_min'] == center_or_min_plt)
+    ]
 
-data = fm_uncert_df_toplot.iloc[:, num_string_columns:].values
-label_list = list(fm_uncert_df_toplot['which_cov_term'].values)
-label_list = ['None' if value is None else value for value in label_list]
+    fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', which_cov_term_list[0],
+                                            which_cov_term_list[1], num_string_columns)
 
-if include_fom:
-    num_params_tokeep += 1
-data = data[:, :num_params_tokeep]
+    data = fm_uncert_df_toplot.iloc[:, num_string_columns:].values
+    label_list = list(fm_uncert_df_toplot['which_cov_term'].values)
+    label_list = ['None' if value is None else value for value in label_list]
 
-ylabel = f'relative uncertainty [%]'
-plot_utils.bar_plot(data, f'{probe_toplot}, {which_cov_term_list[1]}, {ng_cov_code}', label_list, bar_width=0.2, nparams=num_params_tokeep,
-                    param_names_label=None,
-                    second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
-                    include_fom=include_fom, figsize=(10, 8))
-# plt.savefig('../output/plots/WL_vs_GC_vs_3x2pt_GGSSC_perc_uncert_increase.pdf', bbox_inches='tight', dpi=600)
+    if include_fom:
+        num_params_tokeep += 1
+    data = data[:, :num_params_tokeep]
+
+    ylabel = f'relative uncertainty [%]'
+    plot_utils.bar_plot(data, f'{probe_toplot}, {which_cov_term_list[1]}, {ng_cov_code}', label_list, bar_width=0.2, nparams=num_params_tokeep,
+                        param_names_label=None,
+                        second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
+                        include_fom=include_fom, figsize=(10, 8))
 
 
 assert False, 'checking SSC btw pyccl and exactSSC'

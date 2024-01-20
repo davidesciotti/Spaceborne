@@ -353,11 +353,21 @@ divide_fom_by_10 = False
 
 for ssc_code_here in ['PySSC', 'PyCCL', 'exactSSC']:
     for probe in ['WL', 'GC', '3x2pt']:
+        
         fm_folder = FM_cfg["fm_folder"].format(SSC_code=ssc_code_here)
+        if 'jan_2024' in fm_folder:
+            fm_folder_std = fm_folder.replace("jan_2024", "standard") 
+        else:
+            raise ValueError('you are not using the jan_2024 folder!')
+        
         lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_XC']
+
         FM_dict[f'FM_{ssc_code_here}_{probe}_GSSC'] = (
             np.genfromtxt(f'{fm_folder}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
 
+        # add the standard case
+        FM_dict[f'FM_{ssc_code_here}_{probe}_GSSC_std'] = (
+            np.genfromtxt(f'{fm_folder_std}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
 
 fom_dict = {}
 uncert_dict = {}
@@ -380,14 +390,19 @@ for key in list(FM_dict.keys()):
 
 for probe in ['WL', 'GC', '3x2pt']:
     nparams_toplot = 7
-    to_compare_A = f'FM_PySSC_{probe}_GSSC'
-    to_compare_B = f'FM_PyCCL_{probe}_GSSC'
-    to_compare_C = f'FM_exactSSC_{probe}_GSSC'
-    cases_to_plot = (f'FM_{probe}_G', to_compare_A, to_compare_B, to_compare_C)
+    key_gauss = f'FM_{probe}_G'
+    key_pyssc = f'FM_PySSC_{probe}_GSSC'
+    key_pyccl = f'FM_PyCCL_{probe}_GSSC'
+    key_exactssc = f'FM_exactSSC_{probe}_GSSC'
+    key_exactssc_std = f'FM_exactSSC_{probe}_GSSC_std'
 
-    uncert_dict['perc_diff'] = mm.percent_diff(uncert_dict[to_compare_A], uncert_dict[to_compare_B])
-    fom_dict['perc_diff'] = np.abs(mm.percent_diff(fom_dict[to_compare_A], fom_dict[to_compare_B]))
+    uncert_dict['perc_diff_PyCCL'] = mm.percent_diff(uncert_dict[key_pyccl], uncert_dict[key_gauss])
+    uncert_dict['perc_diff_exactSSC'] = mm.percent_diff(uncert_dict[key_exactssc], uncert_dict[key_gauss])
+    fom_dict['perc_diff'] = np.abs(mm.percent_diff(fom_dict[key_pyssc], fom_dict[key_pyccl]))
 
+    cases_to_plot = (key_gauss, key_pyssc, key_pyccl, key_exactssc, key_exactssc_std, 
+                     'perc_diff_PyCCL', 'perc_diff_exactSSC')
+    
     # just a check, to be performed only if I am actually using PyCCL as well
     if 'FM_PySSC_G' in uncert_dict.keys() and 'FM_PyCCL_G' in uncert_dict.keys():
         assert np.array_equal(uncert_dict['FM_PySSC_G'], uncert_dict['FM_PyCCL_G']), \

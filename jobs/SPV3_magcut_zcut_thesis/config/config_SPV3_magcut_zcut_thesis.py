@@ -189,7 +189,7 @@ covariance_cfg = {
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
     
-    'SSC_code': 'PyCCL',  # 'PyCCL' or 'exactSSC'
+    'SSC_code': 'exactSSC',  # 'PyCCL' or 'exactSSC'
 
     'PyCCL_cfg': {
         'probe': '3x2pt',  # TODO deprecate this?
@@ -225,9 +225,8 @@ covariance_cfg = {
         'which_ng_cov': 'SSC',  # only 'SSC' available in this case
         'which_grids': '',
 
-
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
-        'cov_path': f'{ROOT}/exact_SSC/output/SSC_matrix/julia',
+        'cov_path': f'{ROOT}/exact_SSC/output/SPV3/separate_universe/jan_2024/SSC_matrix',
         'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
                         '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'
                         '_convention{cl_integral_convention:s}.npy',

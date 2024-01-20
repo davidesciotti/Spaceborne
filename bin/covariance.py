@@ -64,7 +64,6 @@ def get_cov_ssc_exactssc(general_cfg, covariance_cfg, return_format_3x2pt, probe
     # cov_filename = cov_filename.replace('nbl29', 'nbl32')
     # cov_filename = cov_filename.replace('ellmax3000', 'ellmax5000')
     
-    print(f'Loading covariance from file {cov_path}/{cov_filename}')
 
     assert which_ng_cov == 'SSC', 'no cNG term has been computed with Spaceborne!'
 

@@ -320,7 +320,7 @@ for probe in probes:
 
 
 # # ! bar plot
-probe_toplot = 'GC'
+probe_toplot = 'WL'
 include_fom = False
 
 fm_uncert_df_toplot = fm_uncert_df[

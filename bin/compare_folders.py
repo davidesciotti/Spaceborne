@@ -14,8 +14,8 @@ matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
-output = '/home/davide/Scrivania/d2cl_10jan'
-benchmark = '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/ISTF/jan_2024/d2ClAB_dVddeltab'
+folder_a = '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia/used_in_CLOE_MCMC/'
+folder_b = '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia/'
 extension = 'npy'
 
-mm.test_folder_content(output, benchmark, extension, verbose=True, rtol=1e-3)
+mm.test_folder_content(folder_a, folder_b, extension, verbose=True, rtol=1e-3)

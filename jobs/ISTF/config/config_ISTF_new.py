@@ -106,7 +106,7 @@ general_cfg = {
     'cl_filename': cl_filename,
     'rl_filename': 'rij{probe:s}corr-istf-alex.dat',
 
-    'test_against_benchmarks': True,
+    'test_against_benchmarks': False,
 }
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
@@ -173,7 +173,7 @@ covariance_cfg = {
         'get_3x2pt_cov_in_4D': False,
         'save_trispectrum': False,
         # 'cov_path': '/home/davide/Documenti/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF/jan_2024', # old path
-        'cov_path': '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/ISTF/output/cl14may/covmat/PyCCL',
+        'cov_path': '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/ISTF/output/cl14may/covmat/PyCCL/standard',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',
 
@@ -270,7 +270,6 @@ FM_cfg = {
     'deriv_ell_cuts': deriv_ell_cuts,
 
     'fm_folder': str(JOB_ROOT) + f'/output/{which_input_files}/' + 'FM/jan_2024/{SSC_code:s}',
-    # 'fm_folder': str(JOB_ROOT) + f'/output/{which_input_files}/' + 'FM/{SSC_code:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
     'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}',
 

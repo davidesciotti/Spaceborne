@@ -14,8 +14,8 @@ matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
-folder_a = '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia/used_in_CLOE_MCMC/'
-folder_b = '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/SSC_matrix/julia/'
+folder_a = '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/ISTF/jan_2024/SSC_matrix/nbl20_wrong'
+folder_b = '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/ISTF/jan_2024/SSC_matrix'
 extension = 'npy'
 
 mm.test_folder_content(folder_a, folder_b, extension, verbose=True, rtol=1e-3)

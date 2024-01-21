@@ -17,7 +17,7 @@ sys.path.append(f'{project_path}/common_config')
 import ISTF_fid_params
 import mpl_cfg
 
-matplotlib.use('Agg')
+matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 

@@ -27,7 +27,7 @@ import cosmo_lib as csmlib
 import ISTF_fid_params
 import mpl_cfg
 
-matplotlib.use('Agg')
+matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 markersize = ['lines.markersize']
 

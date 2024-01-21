@@ -16,7 +16,7 @@ import bin.cosmo_lib as cosmo_lib
 import bin.wf_cl_lib as wf_cl_lib
 import common_cfg.mpl_cfg as mpl_cfg
 
-matplotlib.use('Agg')
+matplotlib.use('Qt5Agg')
 start_time = time.perf_counter()
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 

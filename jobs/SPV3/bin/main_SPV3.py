@@ -41,7 +41,7 @@ import fisher_matrix as FM_utils
 import check_specs as utils
 import unit_test as ut
 
-matplotlib.use('Agg')
+matplotlib.use('Qt5Agg')
 mpl.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 

@@ -12,7 +12,7 @@ from matplotlib.ticker import FormatStrFormatter
 from scipy import interpolate
 import numpy as np
 
-matplotlib.use('Agg')
+matplotlib.use('Qt5Agg')
 
 project_path = Path.cwd().parent.parent.parent
 job_path = Path.cwd().parent

@@ -19,7 +19,7 @@ params = {'lines.linewidth': 3.5,
 plt.rcParams.update(params)
 markersize = 10
 
-matplotlib.use('Agg')
+matplotlib.use('Qt5Agg')
 plt.rcParams['axes.grid'] = True
 plt.rcParams['figure.constrained_layout.use'] = True
 

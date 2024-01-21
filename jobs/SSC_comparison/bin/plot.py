@@ -28,7 +28,7 @@ import SSC_comparison.config.config_SSC_comparison as cfg
 
 # plot config
 matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
-matplotlib.use('Agg')
+matplotlib.use('Qt5Agg')
 markersize = 10
 
 nbl = cfg.general_cfg['nbl']

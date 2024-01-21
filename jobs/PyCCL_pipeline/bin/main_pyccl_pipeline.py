@@ -17,7 +17,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 sys.path.append('/home/davide/Documenti/Lavoro/Programmi/SSC_restructured_v2/bin')
 import ell_values
 
-matplotlib.use('Agg')
+matplotlib.use('Qt5Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 cfg = mm.read_yaml('../cfg/cfg_pyccl_pipeline.yml')

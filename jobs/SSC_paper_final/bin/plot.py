@@ -20,7 +20,7 @@ import my_module as mm
 import plots_FM_running as plot_utils
 import SSC_comparison.configs.config_SSC_comparison as cfg
 
-matplotlib.use('Agg')
+matplotlib.use('Qt5Agg')
 
 params = {'lines.linewidth': 3.5,
           'font.size': 20,

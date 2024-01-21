@@ -38,7 +38,7 @@ import compute_Sijkl as Sijkl_utils
 import covariance as covmat_utils
 import fisher_matrix as FM_utils
 
-matplotlib.use('Agg')
+matplotlib.use('Qt5Agg')
 mpl.use('Qt5Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()

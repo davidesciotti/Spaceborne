@@ -1057,7 +1057,7 @@ def matshow(array, title="title", log=False, abs_val=False, threshold=None):
 
     if threshold is not None:
         array = np.ma.masked_where(array < threshold, array)
-        title += f" (\nmasked below {threshold})"
+        title += f" \n(masked below {threshold} \%)"
 
     plt.matshow(array)
     plt.colorbar()

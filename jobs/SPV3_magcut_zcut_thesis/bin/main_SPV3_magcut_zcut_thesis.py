@@ -107,7 +107,6 @@ def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b):
                 ell_cut_j = kmax_1_over_Mpc * r_of_zj - 1 / 2
                 ell_cuts_array[zi, zj] = np.min((ell_cut_i, ell_cut_j))
 
-        warnings.warn('the ell cuts are the same for all probes, so no need to define a dictionary!!')
         return ell_cuts_array
 
     else:
@@ -360,7 +359,7 @@ for zbins in (13, ):
     nbl_WA_opt = general_cfg['nbl_WA_opt']
     nbl_3x2pt_opt = general_cfg['nbl_3x2pt_opt']
     colors = cm.rainbow(np.linspace(0, 1, zbins))
-    
+
     with open(general_cfg['fid_yaml_filename'].format(zbins=zbins)) as f:
         fid_pars_dict = yaml.safe_load(f)
     flat_fid_pars_dict = mm.flatten_dict(fid_pars_dict)
@@ -888,15 +887,15 @@ for zbins in (13, ):
                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix)
 
     if not general_cfg['BNT_transform']:
-        cov_bench = np.genfromtxt('/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.dat')
+        cov_bench = np.genfromtxt(
+            '/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.dat')
     elif general_cfg['BNT_transform']:
-        cov_bench = np.genfromtxt('/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1-BNT.dat')
-    
+        cov_bench = np.genfromtxt(
+            '/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1-BNT.dat')
+
     num_elements = cov_dict['cov_3x2pt_GS_2D'].shape[0]
-    mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench[:num_elements, :num_elements],  \
-                      name_A='BNT_transform = ' +  str(general_cfg['BNT_transform']), name_B='bench', log_diff=True)
-    breakpoint()
-    assert False, 'stop here to check vincenzo bnt ingredients'
+    diff = mm.percent_diff(cov_dict['cov_3x2pt_GS_2D'], cov_bench[:num_elements, :num_elements])
+    mm.matshow(diff, log=True, abs_val=True, threshold=1, title=f'per diff, BNT {general_cfg["BNT_transform"]}')
 
     # save covariance m atrix and test against benchmarks
     cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
@@ -936,7 +935,7 @@ for zbins in (13, ):
     if general_cfg['BNT_transform'] is True and general_cfg['ell_cuts'] is True and which_pk == 'HMCodeBar' \
             and covariance_cfg['SSC_code'] == 'PyCCL':
         cond_number = np.linalg.cond(cov_dict['cov_3x2pt_GS_2D'])
-        
+
         NUMPY_PRECISION = np.finfo(float).eps
         precision = cond_number * NUMPY_PRECISION
         print(f'kmax = {kmax_h_over_Mpc}, precision in the inversion of GS covariance = '
@@ -1073,6 +1072,40 @@ for zbins in (13, ):
         dC_WA_4D = np.ones((nbl_WA, zbins, zbins, dC_LL_4D.shape[-1]))
         dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(
             dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins, der_prefix, is_3x2pt=True)
+            
+            
+        dDVdOm_3x2pt_NoBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-3x2pt-NoBNT.dat')
+        dDVdOm_3x2pt_WiBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-3x2pt-WiBNT.dat')
+        dDVdOm_WLO_NoBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-NoBNT.dat')
+        dDVdOm_WLO_WiBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-WiBNT.dat')
+
+        dDVdOm_3x2pt_NoBNT_3d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_3x2pt_NoBNT_1d, '3x2pt', nbl_3x2pt, zbins)  # ! 5d?
+        dDVdOm_3x2pt_WiBNT_3d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_3x2pt_WiBNT_1d, '3x2pt', nbl_3x2pt, zbins)
+        dDVdOm_WLO_NoBNT_3d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_WLO_NoBNT_1d, 'WL', nbl_WL, zbins)
+        dDVdOm_WLO_WiBNT_3d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_WLO_WiBNT_1d, 'WL', nbl_WL, zbins)
+        
+        
+        dDVdOm_3x2pt_flat_dav = dC_dict_3x2pt_5D['dDVdOm-3x2pt-ML245-MS245-EP13'].flatten()
+        dDVdOm_WLO_flat_dav = dC_dict_LL_3D['dDVdOm-WLO-ML245-MS245-EP13'].flatten()
+        if bnt_transform:
+            dDVdOm_3x2pt_flat_vinc = dDVdOm_3x2pt_WiBNT_3d.flatten()
+            dDVdOm_WLO_flat_vinc = dDVdOm_WLO_WiBNT_3d.flatten()
+        else:
+            dDVdOm_3x2pt_flat_vinc = dDVdOm_3x2pt_NoBNT_3d.flatten()
+            dDVdOm_WLO_flat_vinc = dDVdOm_WLO_NoBNT_3d.flatten()
+            
+        np.testing.assert_allclose(dDVdOm_3x2pt_flat_dav, dDVdOm_3x2pt_flat_vinc, rtol=1e-3, atol=0)
+        np.testing.assert_allclose(dDVdOm_WLO_flat_dav, dDVdOm_WLO_flat_vinc, rtol=1e-3, atol=0)
+        
+        plt.figure()
+        plt.plot(dDVdOm_3x2pt_flat_dav, label='dDVdOm_3x2pt_flat_dav', ls='-', c='tab:blue', alpha=0.5)
+        plt.plot(dDVdOm_3x2pt_flat_vinc, label='dDVdOm_3x2pt_flat_vinc', ls='--', c='tab:blue', alpha=0.5)
+        plt.plot(dDVdOm_WLO_flat_dav, label='dDVdOm_WLO_flat_dav', ls='-', c='tab:orange', alpha=0.5)
+        plt.plot(dDVdOm_WLO_flat_vinc, label='dDVdOm_WLO_flat_vinc', ls='--', c='tab:orange', alpha=0.5)
+        plt.legend()
+        plt.show()
+
+        assert False, 'stop here to check BNT ingredients for Vincenzo'
 
         # free up memory
         del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
@@ -1125,16 +1158,16 @@ for zbins in (13, ):
             fm_vinc_filename = fm_cfg['fm_vinc_filename'].format(**variable_specs, probe=probe_vinc)
             fm_vinc_g = np.genfromtxt(f'{fm_vinc_folder}/{fm_vinc_filename}')
             print(probe_dav)
-            
+
             diff = mm.percent_diff(FM_dict[f'FM_{probe_dav}_G'], fm_vinc_g)
             xticks = param_names_3x2pt
             plt.matshow(np.log10(np.abs(diff)))
             plt.colorbar()
             plt.xticks(np.arange(len(xticks)), xticks, rotation=90)
-            
+
             mm.compare_arrays(FM_dict[f'FM_{probe_dav}_G'], fm_vinc_g, log_array=True, log_diff=False,
                               abs_val=False, plot_diff_threshold=5)
-            
+
             npt.assert_allclose(FM_dict[f'FM_{probe_dav}_G'], fm_vinc_g, rtol=1e-3, atol=0)
 
     del cov_dict

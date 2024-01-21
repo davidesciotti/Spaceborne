@@ -65,7 +65,6 @@ def get_cov_ssc_exactssc(general_cfg, covariance_cfg, return_format_3x2pt, probe
         warnings.warn('I am hardcoding the number of bins here, should be fixed')
         cov_filename = cov_filename.replace('nbl29', 'nbl32')
         cov_filename = cov_filename.replace('ellmax3000', 'ellmax5000')
-    
 
     assert which_ng_cov == 'SSC', 'no cNG term has been computed with Spaceborne!'
 
@@ -89,8 +88,9 @@ def get_cov_ssc_exactssc(general_cfg, covariance_cfg, return_format_3x2pt, probe
         cov_filename = cov_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)
         cov_exactSSC_SS_4D = np.load(f'{cov_path}/{cov_filename}')[:nbl, :nbl, :, :]
 
-        cov_exactSSC_SS_6D = mm.cov_4D_to_6D(cov_exactSSC_SS_4D, nbl, zbins, probe, ind_dict[probe_a, probe_b])/covariance_cfg['fsky']
-        
+        cov_exactSSC_SS_6D = mm.cov_4D_to_6D(cov_exactSSC_SS_4D, nbl, zbins, probe,
+                                             ind_dict[probe_a, probe_b]) / covariance_cfg['fsky']
+
         return cov_exactSSC_SS_6D
 
     elif probe == '3x2pt':
@@ -370,8 +370,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             if ell_max_WL == ell_max_3x2pt:
                 cov_WL_SS_6D = cov_3x2pt_SS_10D[0, 0, 0, 0, ...]
             else:
-                raise NotImplementedError('WL cannot be given by simply cutting the 3x2pt case, finish implementing this')
-            
+                raise NotImplementedError(
+                    'WL cannot be given by simply cutting the 3x2pt case, finish implementing this')
+
             cov_GC_SS_6D = cov_3x2pt_SS_10D[1, 1, 1, 1, ...]
             print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
 
@@ -388,7 +389,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     # ! BNT transform
     if covariance_cfg['cov_BNT_transform']:
+
         print('BNT-transforming the covariance matrix...')
+        start_time = time.perf_counter()
 
         # turn to dict for the BNT function
         cov_3x2pt_GO_10D_dict = mm.cov_10D_array_to_dict(cov_3x2pt_GO_10D, probe_ordering)
@@ -408,19 +411,19 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_3x2pt_GO_10D = mm.cov_10D_dict_to_array(cov_3x2pt_GO_10D_dict, nbl_3x2pt, zbins, n_probes=2)
         cov_3x2pt_GS_10D = mm.cov_10D_dict_to_array(cov_3x2pt_GS_10D_dict, nbl_3x2pt, zbins, n_probes=2)
 
+        print('Covariance matrix BNT-transformed in {:.2f} s'.format(time.perf_counter() - start_time))
+
     # ! transform everything in 4D
     start = time.perf_counter()
     cov_WL_GO_4D = mm.cov_6D_to_4D(cov_WL_GO_6D, nbl_WL, zpairs_auto, ind_auto)
     cov_GC_GO_4D = mm.cov_6D_to_4D(cov_GC_GO_6D, nbl_GC, zpairs_auto, ind_auto)
     cov_WA_GO_4D = mm.cov_6D_to_4D(cov_WA_GO_6D, nbl_WA, zpairs_auto, ind_auto)
-    cov_3x2pt_GO_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GO_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(),
-                                             GL_or_LG)
+    cov_3x2pt_GO_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GO_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
 
     cov_WL_GS_4D = mm.cov_6D_to_4D(cov_WL_GS_6D, nbl_WL, zpairs_auto, ind_auto)
     cov_GC_GS_4D = mm.cov_6D_to_4D(cov_GC_GS_6D, nbl_GC, zpairs_auto, ind_auto)
     cov_WA_GS_4D = mm.cov_6D_to_4D(cov_WA_GS_6D, nbl_WA, zpairs_auto, ind_auto)
-    cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(),
-                                             GL_or_LG)
+    cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
     print('covariance matrices reshaped (6D -> 4D) in {:.2f} s'.format(time.perf_counter() - start))
 
     # ! ========================= plug the 4D covariances into the pipeline ============================================

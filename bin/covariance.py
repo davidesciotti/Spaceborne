@@ -41,7 +41,7 @@ def get_ellmax_nbl(probe, general_cfg):
 
 def get_cov_ssc_exactssc(general_cfg, covariance_cfg, return_format_3x2pt, probe):
     # this actually just imports the precomputed ssc. It can also compute deltab, quite useless at the moment
-    print(f'computing SSC covariance with exactSSC, probe = {probe}')
+    print(f'Computing SSC covariance with exactSSC, probe = {probe}')
 
     which_ng_cov = covariance_cfg['exactSSC_cfg']['which_ng_cov']
     zbins = general_cfg['zbins']
@@ -424,7 +424,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_GC_GS_4D = mm.cov_6D_to_4D(cov_GC_GS_6D, nbl_GC, zpairs_auto, ind_auto)
     cov_WA_GS_4D = mm.cov_6D_to_4D(cov_WA_GS_6D, nbl_WA, zpairs_auto, ind_auto)
     cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
-    print('covariance matrices reshaped (6D -> 4D) in {:.2f} s'.format(time.perf_counter() - start))
+    print('Covariance matrices reshaped (6D -> 4D) in {:.2f} s'.format(time.perf_counter() - start))
 
     # ! ========================= plug the 4D covariances into the pipeline ============================================
     # ! i commented this because now I'm plugging exactSSC as a 10d dict (10 array, to be precise)
@@ -457,7 +457,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_GC_GS_2D = mm.cov_4D_to_2D(cov_GC_GS_4D, block_index=block_index)
     cov_WA_GS_2D = mm.cov_4D_to_2D(cov_WA_GS_4D, block_index=block_index)
     cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, block_index=block_index)
-    print('covariance matrices reshaped (4D -> 2D) in {:.2f} s'.format(time.perf_counter() - start))
+    print('Covariance matrices reshaped (4D -> 2D) in {:.2f} s'.format(time.perf_counter() - start))
 
     if covariance_cfg['cov_ell_cuts']:
         # perform the cuts on the 2D covs (way faster!)
@@ -518,6 +518,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_dict[f'cov_3x2pt_SS_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SS_4D, nbl_3x2pt, zbins)
         cov_dict[f'cov_3x2pt_GS_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_GS_4D, nbl_3x2pt, zbins)
 
+    print('Covariance matrices computed')
+    
     return cov_dict
 
 

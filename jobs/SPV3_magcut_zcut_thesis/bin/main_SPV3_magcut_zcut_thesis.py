@@ -527,6 +527,7 @@ for zbins in (13, ):
     for zi in range(1, zbins + 1):
         fid_pars_dict['FM_ordered_params'][f'dzWL{zi:02d}'] = dzWL_fiducial[zi - 1].item()
 
+    warnings.warn('You should remove this, stop overwriting the yaml files (11 bins case still missing')
     with open(general_cfg['fid_yaml_filename'].format(zbins=zbins), 'w') as f:
         yaml.dump(fid_pars_dict, f, sort_keys=False)
 
@@ -886,16 +887,22 @@ for zbins in (13, ):
     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix)
 
+    # ! rmove from here
     if not general_cfg['BNT_transform']:
         cov_bench = np.genfromtxt(
             '/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.dat')
+        np.save('/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.npy', cov_bench)
     elif general_cfg['BNT_transform']:
         cov_bench = np.genfromtxt(
             '/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1-BNT.dat')
+        np.save('/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1-BNT.npy', cov_bench)
 
     num_elements = cov_dict['cov_3x2pt_GS_2D'].shape[0]
     diff = mm.percent_diff(cov_dict['cov_3x2pt_GS_2D'], cov_bench[:num_elements, :num_elements])
     mm.matshow(diff, log=True, abs_val=True, threshold=1, title=f'per diff, BNT {general_cfg["BNT_transform"]}')
+    
+    assert False, 'check CLOE bench'
+    # ! rmove until here
 
     # save covariance m atrix and test against benchmarks
     cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
@@ -952,6 +959,9 @@ for zbins in (13, ):
         npt.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_vinc_g[:num_elements_nbl29, :num_elements_nbl29],
                             rtol=1e-3, atol=0)
         print('covariance matrix matches with Vincenzo\'s ✅')
+        
+    assert False, 'stop here to check BNT ingredients for Vincenzo'
+    
 
     # TODO compute BNT for Vincenzo's covs, which are not exactly equal to the CLOE-datavector ones?
     # mm.matshow(cov_dict['cov_3x2pt_GS_2D'], log=True, title=f'BNT {BNT_transform}')
@@ -1074,6 +1084,7 @@ for zbins in (13, ):
             dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins, der_prefix, is_3x2pt=True)
             
             
+        # ! remove from here
         dDVdOm_3x2pt_NoBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-3x2pt-NoBNT.dat')
         dDVdOm_3x2pt_WiBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-3x2pt-WiBNT.dat')
         dDVdOm_WLO_NoBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-NoBNT.dat')
@@ -1104,8 +1115,7 @@ for zbins in (13, ):
         plt.plot(dDVdOm_WLO_flat_vinc, label='dDVdOm_WLO_flat_vinc', ls='--', c='tab:orange', alpha=0.5)
         plt.legend()
         plt.show()
-
-        assert False, 'stop here to check BNT ingredients for Vincenzo'
+        # ! remove until here
 
         # free up memory
         del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D

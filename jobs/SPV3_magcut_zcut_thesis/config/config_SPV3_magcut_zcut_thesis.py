@@ -12,8 +12,8 @@ SPV3_folder = f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = False
-deriv_BNT_transform = False
+cov_BNT_transform = True
+deriv_BNT_transform = True
 
 cl_ell_cuts = False
 cov_ell_cuts = False
@@ -95,7 +95,7 @@ general_cfg = {
     'which_pk': 'HMCodeBar',
     'which_pk_list': ('HMCodeBar', 'TakaBird', 'HMCode2020', 'Bacco', 'EE2'),
 
-    'use_CLOE_cls': False,
+    'use_CLOE_cls': True,
     'cloe_bench_folder': f'{ROOT}/my_cloe_data',
     'cl_folder': SPV3_folder + '/OutputFiles/DataVectors/Noiseless/{which_pk:s}',
     'rl_folder': f'{SPV3_folder}' + '/OutputFiles/ResFun/{which_pk:s}',

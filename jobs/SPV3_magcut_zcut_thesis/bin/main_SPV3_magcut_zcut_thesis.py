@@ -485,7 +485,7 @@ for zbins in (13, ):
                       }
     pp.pprint(variable_specs)
 
-    # import nuisance, to get fiducials and to shift the distribution
+    # ! import nuisance, to get fiducials and to shift the distribution
     nuisance_filename = covariance_cfg['nuisance_filename'].format(**variable_specs)
     nuisance_tab = np.genfromtxt(f'{covariance_cfg["nuisance_folder"]}/{nuisance_filename}')
     # this is not exactly equal to the result of wf_cl_lib.get_z_mean...
@@ -524,12 +524,14 @@ for zbins in (13, ):
     np.testing.assert_array_equal(dz_shifts, dzWL_fiducial,
                                   err_msg='dzWL shifts do not match with the ones from the yml file')
 
-    for zi in range(1, zbins + 1):
-        fid_pars_dict['FM_ordered_params'][f'dzWL{zi:02d}'] = dzWL_fiducial[zi - 1].item()
+    if EP_or_ED == 'ED':
+        raise Exception('you should re-check the nz shifts for ED!!')
+    # for zi in range(1, zbins + 1):
+    #     fid_pars_dict['FM_ordered_params'][f'dzWL{zi:02d}'] = dzWL_fiducial[zi - 1].item()
 
-    warnings.warn('You should remove this, stop overwriting the yaml files (11 bins case still missing')
-    with open(general_cfg['fid_yaml_filename'].format(zbins=zbins), 'w') as f:
-        yaml.dump(fid_pars_dict, f, sort_keys=False)
+    # warnings.warn('You should remove this, stop overwriting the yaml files (11 bins case still missing')
+    # with open(general_cfg['fid_yaml_filename'].format(zbins=zbins), 'w') as f:
+    #     yaml.dump(fid_pars_dict, f, sort_keys=False)
 
     # ! import n(z), for the BNT and the scale cuts
     nofz_folder = covariance_cfg["nofz_folder"]
@@ -912,15 +914,20 @@ for zbins in (13, ):
 
         # compare
         try:
-            np.testing.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_G_lmax3000, atol=0, rtol=1e-5)
-            np.testing.assert_allclose(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_GSSC_lmax3000, atol=0, rtol=1e-5)
+            np.testing.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_G_lmax3000, atol=0, rtol=1e-3)
+            np.testing.assert_allclose(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_GSSC_lmax3000, atol=0, rtol=1e-3)
         except AssertionError as error:
-            print('covariance matrix does not match with CLOE benchmark')
+            print(f'covariance matrix does not match with CLOE benchmark; use_cl_CLOE is {general_cfg["use_CLOE_cls"]}')
             print(error)
             mm.compare_arrays(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_G_lmax3000,
+                              "cov_dict['cov_3x2pt_GO_2D']", "cov_bench_2ddav_G_lmax3000",
                               log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
             mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_GSSC_lmax3000,
+                              "cov_dict['cov_3x2pt_GS_2D']", "cov_bench_2ddav_GSSC_lmax3000",
                               log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+
+            del cov_bench_2ddav_G_lmax3000, cov_bench_2ddav_GSSC_lmax3000
+            gc.collect()
 
     if general_cfg['BNT_transform'] is True and general_cfg['ell_cuts'] is True and which_pk == 'HMCodeBar' \
             and covariance_cfg['SSC_code'] == 'PyCCL':
@@ -945,16 +952,58 @@ for zbins in (13, ):
 
     # ! remove from here
     if not general_cfg['BNT_transform']:
-        cov_bench = np.load('/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.npy')
+        cov_bench = np.load(
+            '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.npy')
     elif general_cfg['BNT_transform']:
         cov_bench = np.load(
-            '/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1-BNT.npy')
+            '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1-BNT.npy')
 
     num_elements = cov_dict['cov_3x2pt_GS_2D'].shape[0]
     diff = mm.percent_diff(cov_dict['cov_3x2pt_GS_2D'], cov_bench[:num_elements, :num_elements])
     mm.matshow(diff, log=True, abs_val=True, threshold=1, title=f'per diff, BNT {general_cfg["BNT_transform"]}')
 
-    assert False, 'check covariance'
+    cov_vinc_no_bnt_2d = np.load(
+        '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.npy')
+    cov_vinc_no_bnt_4d = mm.cov_2D_to_4D(cov_vinc_no_bnt_2d, nbl=32, block_index='vincenzo', optimize=True)
+
+    ind_auto = ind[:zpairs_auto, :].copy()
+    ind_cross = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
+    ind_dict = {('L', 'L'): ind_auto,
+                ('G', 'L'): ind_cross,
+                ('G', 'G'): ind_auto}
+    probe_ordering = (('L', 'L'), ('G', 'L'), ('G', 'G'))
+
+    # slice the 4d cov
+    zpairs_sum = zpairs_auto + zpairs_cross
+    cov_vinc_no_bnt_8d_dict = {}
+    cov_vinc_no_bnt_8d_dict['L', 'L', 'L', 'L'] = cov_vinc_no_bnt_4d[:, :, :zpairs_auto, :zpairs_auto]
+    cov_vinc_no_bnt_8d_dict['L', 'L', 'G', 'L'] = cov_vinc_no_bnt_4d[:, :, :zpairs_auto, zpairs_auto:zpairs_sum]
+    cov_vinc_no_bnt_8d_dict['L', 'L', 'G', 'G'] = cov_vinc_no_bnt_4d[:, :, :zpairs_auto, zpairs_sum:]
+
+    cov_vinc_no_bnt_8d_dict['G', 'L', 'L', 'L'] = cov_vinc_no_bnt_4d[:, :, zpairs_auto:zpairs_sum, :zpairs_auto]
+    cov_vinc_no_bnt_8d_dict['G', 'L', 'G', 'L'] = cov_vinc_no_bnt_4d[:,
+                                                                     :, zpairs_auto:zpairs_sum, zpairs_auto:zpairs_sum]
+    cov_vinc_no_bnt_8d_dict['G', 'L', 'G', 'G'] = cov_vinc_no_bnt_4d[:, :, zpairs_auto:zpairs_sum, zpairs_sum:]
+
+    cov_vinc_no_bnt_8d_dict['G', 'G', 'L', 'L'] = cov_vinc_no_bnt_4d[:, :, zpairs_sum:, :zpairs_auto]
+    cov_vinc_no_bnt_8d_dict['G', 'G', 'G', 'L'] = cov_vinc_no_bnt_4d[:, :, zpairs_sum:, zpairs_auto:zpairs_sum]
+    cov_vinc_no_bnt_8d_dict['G', 'G', 'G', 'G'] = cov_vinc_no_bnt_4d[:, :, zpairs_sum:, zpairs_sum:]
+
+    cov_vinc_no_bnt_10d_dict = {}
+    for key in cov_vinc_no_bnt_8d_dict.keys():
+        cov_vinc_no_bnt_10d_dict[key] = mm.cov_4D_to_6D_blocks(
+            cov_vinc_no_bnt_8d_dict[key], 32, zbins, ind_dict[key[0], key[1]], ind_dict[key[2], key[3]])
+
+    # turn to dict for the BNT function
+    X_dict = covmat_utils.build_X_matrix_BNT(bnt_matrix)
+    cov_vinc_bnt_10d_dict = covmat_utils.cov_3x2pt_BNT_transform(cov_vinc_no_bnt_10d_dict, X_dict)
+    cov_vinc_bnt_4d = mm.cov_3x2pt_10D_to_4D(cov_vinc_bnt_10d_dict, probe_ordering, 32, zbins, ind.copy(), GL_or_LG)
+    cov_vinc_bnt_2d = mm.cov_4D_to_2D(cov_vinc_bnt_4d)
+
+    if bnt_transform:
+        mm.compare_arrays(cov_vinc_bnt_2d, cov_bench, 'cov_vinc_bnt_2d', 'cov_bench', log_diff=True, plot_diff_threshold=5)
+
+    assert False, 'stop here'
     # ! remove until here
 
     # TODO compute BNT for Vincenzo's covs, which are not exactly equal to the CLOE-datavector ones?

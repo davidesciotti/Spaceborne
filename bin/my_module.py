@@ -658,7 +658,7 @@ def compare_arrays_v0(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=T
 
     for rtol in [1e-5, 1e-3, 1e-2, 5e-2, 1e-1]:  # these are NOT percent units, see print below
         if np.allclose(A, B, rtol=rtol, atol=0):
-            print(f'A and B are close within relative tolerance of {rtol * 100}%) ✅')
+            print(f'{name_A} and {name_B} are close within relative tolerance of {rtol * 100}%) ✅')
             return
 
     diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=True)
@@ -670,7 +670,7 @@ def compare_arrays_v0(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=T
     additional_info = f'\nMax discrepancy: {np.max(diff_AB):.2f}%;' \
                       f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
                       f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
-    print(f'Are A and B different by less than {higher_rtol}%? {result_emoji} {additional_info}')
+    print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
 
 
 def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True, log_array=True, log_diff=False,
@@ -720,11 +720,11 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
         plt.show()
 
     if np.array_equal(A, B):
-        print('A and B are equal ✅')
+        print(f'{name_A} and {name_B} are equal ✅')
     else:
-        for rtol in [1e-5, 1e-3, 1e-2, 5e-2, 1e-1]:  # these are NOT percent units
+        for rtol in [1e-3, 1e-2, 5e-2]:  # these are NOT percent units
             if np.allclose(A, B, rtol=rtol, atol=0):
-                print(f'A and B are close within relative tolerance of {rtol * 100}%) ✅')
+                print(f'{name_A} and {name_B} are close within relative tolerance of {rtol * 100}%) ✅')
                 return
 
         diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=True)
@@ -734,7 +734,7 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
         additional_info = f'\nMax discrepancy: {np.max(diff_AB):.2f}%;' \
                           f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
                           f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
-        print(f'Are A and B different by less than {higher_rtol}%? {result_emoji} {additional_info}')
+        print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
 
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):

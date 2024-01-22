@@ -1,5 +1,4 @@
 FM_ordered_params:
-
   Om: 0.318592238
   ODE: 0.68140775651
   Ob: 0.05001413
@@ -8,11 +7,9 @@ FM_ordered_params:
   h: 0.6737
   ns: 0.966
   s8: 0.816
-  logT: 7.75  # logT_AGN
-
+  logT: 7.75
   Aia: 0.16
   eIA: 1.66
-
   m01: 0.0
   m02: 0.0
   m03: 0.0
@@ -24,48 +21,34 @@ FM_ordered_params:
   m09: 0.0
   m10: 0.0
   m11: 0.0
-
-  dzWL01: NaN
-  dzWL02: NaN
-  dzWL03: NaN
-  dzWL04: NaN
-  dzWL05: NaN
-  dzWL06: NaN
-  dzWL07: NaN
-  dzWL08: NaN
-  dzWL09: NaN
-  dzWL10: NaN
-  dzWL11: NaN
-
+  dzWL01: -0.032773
+  dzWL02: 0.009833
+  dzWL03: -0.005251
+  dzWL04: 0.03265
+  dzWL05: 0.016682
+  dzWL06: 0.042363
+  dzWL07: 0.030262
+  dzWL08: 0.023232
+  dzWL09: 0.023839
+  dzWL10: 0.055165
+  dzWL11: 0.027746
   bG01: 1.33291
   bG02: -0.72414
   bG03: 1.0183
   bG04: -0.14913
-
   bM01: -1.50685
   bM02: 1.35034
   bM03: 0.08321
   bM04: 0.04279
-
-  # The order is, after the cosmological parameters:
-  # shear bias
-  # dzWL
-  # galaxy bias
-  # magnification bias
-  # dzGC
-
 other_params:
   m_nu: 0.06
   N_eff: 3.046
-  bIA: 0.0  # not varied in the analysis!???
+  bIA: 0.0
   CIA: 0.0134
   Om_k0: 0
-
   camb_extra_parameters:
     camb:
-      halofit_version: 'mead2020_feedback'
+      halofit_version: mead2020_feedback
       HMCode_logT_AGN: 7.75
       num_massive_neutrinos: 1
-      dark_energy_model: 'ppf'
-
-
+      dark_energy_model: ppf

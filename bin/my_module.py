@@ -32,6 +32,7 @@ def block_diag(array_3d):
     """
     return scipy.linalg.block_diag(*[array_3d[ell, :, :] for ell in range(nbl)])
 
+
 def compare_df_keys(dataframe, key_to_compare, value_a, value_b, num_string_colums):
     """
     This function compares two rows of a dataframe and returns a new row with the percentage difference between the two
@@ -64,18 +65,18 @@ def contour_FoM_calculator(sample, param1, param2, sigma_level=1):
     contour_coords = {}
     density = sample.get2DDensityGridData(j=param1, j2=param2, num_plot_contours=3)
     contour_levels = density.contours
-    contours = plt.contour(density.x, density.y, density.P, sorted(contour_levels));
+    contours = plt.contour(density.x, density.y, density.P, sorted(contour_levels))
     for ii, contour in enumerate(contours.collections):
         paths = contour.get_paths()
         for path in paths:
             xy = path.vertices
-            x = xy[:,0]
-            y = xy[:,1]
+            x = xy[:, 0]
+            y = xy[:, 1]
             contour_coords[ii] = list(zip(x, y))
-    sigma_lvls = {3:0, 2:1, 1:2}
+    sigma_lvls = {3: 0, 2: 1, 1: 2}
     poly = Polygon(contour_coords[sigma_lvls[sigma_level]])  # 0:3sigma, 1:2sigma, 2:1sigma
     area = poly.area
-    FoM_area = (2.3*np.pi)/area
+    FoM_area = (2.3 * np.pi) / area
     return FoM_area, density
 
 
@@ -97,7 +98,7 @@ def load_cov_from_probe_blocks(path, filename, probe_ordering):
     {probe_B}, {probe_C}, {probe_D} which will be replaced with the actual probe names.
     :param probe_ordering: Probe ordering tuple
     :return:
-    
+
     BEWARE OF USING deepcopy, otherwise the different blocks become correlated
     """
     cov_ssc_dict_8D = {}
@@ -593,7 +594,7 @@ def get_var_name(var):
 
 
 def compare_arrays_v0(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True, log_array=True, log_diff=False,
-                   abs_val=False, plot_diff_threshold=None, white_where_zero=True):
+                      abs_val=False, plot_diff_threshold=None, white_where_zero=True):
     if plot_diff or plot_array:
         assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
 
@@ -674,53 +675,11 @@ def compare_arrays_v0(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=T
 
 
 def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True, log_array=True, log_diff=False,
-                             abs_val=False, plot_diff_threshold=None, white_where_zero=True):
-    if plot_diff or plot_array:
-        assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
-
-    if plot_diff:
-        diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=log_diff, abs_val=abs_val)
-        
-        if plot_diff_threshold is not None:
-            # take the log of the threshold if using the log of the precent difference
-            if log_diff:
-                plot_diff_threshold = np.log10(plot_diff_threshold)
-
-            diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, np.abs(diff_AB))
-
-        fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
-        im = ax[0].matshow(diff_AB)
-        ax[0].set_title(f'(A/B - 1) * 100')
-        fig.colorbar(im, ax=ax[0])
-
-        im = ax[1].matshow(diff_AB)
-        ax[1].set_title(f'(A/B - 1) * 100')
-        fig.colorbar(im, ax=ax[1])
-
-        fig.suptitle(f'log={log_diff}, abs={abs_val}')
-        plt.show()
-
-    if plot_array:
-        A_toplot, B_toplot = A, B
-
-        if abs_val:
-            A_toplot, B_toplot = np.abs(A), np.abs(B)
-        if log_array:
-            A_toplot, B_toplot = np.log10(A), np.log10(B)
-
-        fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
-        im = ax[0].matshow(A_toplot)
-        ax[0].set_title(f'{name_A}')
-        fig.colorbar(im, ax=ax[0])
-
-        im = ax[1].matshow(B_toplot)
-        ax[1].set_title(f'{name_B}')
-        fig.colorbar(im, ax=ax[1])
-        fig.suptitle(f'log={log_array}, abs={abs_val}')
-        plt.show()
-
+                   abs_val=False, plot_diff_threshold=None, white_where_zero=True):
+    
     if np.array_equal(A, B):
         print(f'{name_A} and {name_B} are equal ✅')
+        return
     else:
         for rtol in [1e-3, 1e-2, 5e-2]:  # these are NOT percent units
             if np.allclose(A, B, rtol=rtol, atol=0):
@@ -735,6 +694,52 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
                           f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
                           f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
         print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
+
+
+        if plot_diff or plot_array:
+            assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
+
+        if plot_diff:
+            diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=log_diff, abs_val=abs_val)
+
+            if plot_diff_threshold is not None:
+                # take the log of the threshold if using the log of the precent difference
+                if log_diff:
+                    plot_diff_threshold = np.log10(plot_diff_threshold)
+
+                diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, np.abs(diff_AB))
+
+            fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
+            im = ax[0].matshow(diff_AB)
+            ax[0].set_title(f'(A/B - 1) * 100')
+            fig.colorbar(im, ax=ax[0])
+
+            im = ax[1].matshow(diff_AB)
+            ax[1].set_title(f'(A/B - 1) * 100')
+            fig.colorbar(im, ax=ax[1])
+
+            fig.suptitle(f'log={log_diff}, abs={abs_val}')
+            plt.show()
+
+        if plot_array:
+            A_toplot, B_toplot = A, B
+
+            if abs_val:
+                A_toplot, B_toplot = np.abs(A), np.abs(B)
+            if log_array:
+                A_toplot, B_toplot = np.log10(A), np.log10(B)
+
+            fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
+            im = ax[0].matshow(A_toplot)
+            ax[0].set_title(f'{name_A}')
+            fig.colorbar(im, ax=ax[0])
+
+            im = ax[1].matshow(B_toplot)
+            ax[1].set_title(f'{name_B}')
+            fig.colorbar(im, ax=ax[1])
+            fig.suptitle(f'log={log_array}, abs={abs_val}')
+            plt.show()
+
 
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):
@@ -1179,7 +1184,7 @@ def build_full_ind(triu_tril, row_col_major, size):
     return ind
 
 
-######## CHECK FOR DUPLICATES
+# CHECK FOR DUPLICATES
 def cl_2D_to_3D_symmetric(Cl_2D, nbl, zpairs, zbins):
     """ reshape from (nbl, zpairs) to (nbl, zbins, zbins) according to
     upper traigular ordering 0-th rows filled first, then second from i to 10...
@@ -1538,7 +1543,7 @@ def get_zpairs(zbins):
 
 
 ##############################################################################
-#################### COVARIANCE MATRIX COMPUTATION ############################ 
+#################### COVARIANCE MATRIX COMPUTATION ############################
 ###############################################################################
 # TODO unify these 3 into a single function
 # TODO workaround for start_index, stop_index (super easy)
@@ -1660,7 +1665,7 @@ def expand_dims_sijkl_generalized(sijkl, zbins):
             for k in range(n_probes):
                 for l in range(n_probes):
                     s_ABCD_ijkl[i, j, k, l, ...] = sijkl[i * zbins:(i + 1) * zbins, j * zbins:(j + 1) * zbins,
-                                                   k * zbins:(k + 1) * zbins, l * zbins:(l + 1) * zbins]
+                                                         k * zbins:(k + 1) * zbins, l * zbins:(l + 1) * zbins]
 
     return s_ABCD_ijkl
 
@@ -1749,9 +1754,9 @@ def covariance_WA(nbl, npairs, start_index, stop_index, Cij, noise, l_lin, delta
 
                 covariance[ell, ell, p - start_index, q - start_index] = \
                     ((Cij[ell, ind[p, 2], ind[q, 2]] + noise[ind[p, 0], ind[q, 0], ind[p, 2], ind[q, 2]]) * (
-                            Cij[ell, ind[p, 3], ind[q, 3]] + noise[ind[p, 1], ind[q, 1], ind[p, 3], ind[q, 3]]) + (
-                             Cij[ell, ind[p, 2], ind[q, 3]] + noise[ind[p, 0], ind[q, 1], ind[p, 2], ind[q, 3]]) * (
-                             Cij[ell, ind[p, 3], ind[q, 2]] + noise[ind[p, 1], ind[q, 0], ind[p, 3], ind[q, 2]])) \
+                        Cij[ell, ind[p, 3], ind[q, 3]] + noise[ind[p, 1], ind[q, 1], ind[p, 3], ind[q, 3]]) + (
+                        Cij[ell, ind[p, 2], ind[q, 3]] + noise[ind[p, 0], ind[q, 1], ind[p, 2], ind[q, 3]]) * (
+                        Cij[ell, ind[p, 3], ind[q, 2]] + noise[ind[p, 1], ind[q, 0], ind[p, 3], ind[q, 2]])) \
                     / denominator
     return covariance
 
@@ -1822,9 +1827,9 @@ def build_Sijkl_dict(Sijkl, zbins):
                 for probe_D in ['L', 'G']:
                     Sijkl_dict[probe_A, probe_B, probe_C, probe_D] = \
                         Sijkl[probe_lookup[probe_A]['start']:probe_lookup[probe_A]['stop'],
-                        probe_lookup[probe_B]['start']:probe_lookup[probe_B]['stop'],
-                        probe_lookup[probe_C]['start']:probe_lookup[probe_C]['stop'],
-                        probe_lookup[probe_D]['start']:probe_lookup[probe_D]['stop']]
+                              probe_lookup[probe_B]['start']:probe_lookup[probe_B]['stop'],
+                              probe_lookup[probe_C]['start']:probe_lookup[probe_C]['stop'],
+                              probe_lookup[probe_D]['start']:probe_lookup[probe_D]['stop']]
 
     return Sijkl_dict
 
@@ -1940,7 +1945,7 @@ def cov_G_10D_dict(cl_dict, noise_dict, nbl, zbins, l_lin, delta_l, fsky, probe_
     Note that, adding together the different datavectors, cov_3x2pt_6D needs
     probe indices, becoming 10D (maybe a (nbl, nbl, 3*zbins, 3*zbins, 3*zbins, 3*zbins))
     shape would work? Anyway, much less convenient to work with.
-    
+
     This version is faster, it is a wrapper function for covariance_6D_blocks,
     which makes use of jit
     """
@@ -2138,6 +2143,41 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, probe_ordering, combinations=None
     return cov_3x2pt_4D
 
 
+def cov_3x2pt_4d_to_10d_dict(cov_3x2pt_4d, zbins, probe_ordering, nbl, ind_copy):
+
+    zpairs_auto, zpairs_cross, _ = get_zpairs(zbins)
+    
+    ind_copy = ind_copy.copy()  # just to ensure the input ind file is not changed
+    
+    ind_auto = ind_copy[:zpairs_auto, :]
+    ind_cross = ind_copy[zpairs_auto:zpairs_cross + zpairs_auto, :]
+    ind_dict = {('L', 'L'): ind_auto,
+                ('G', 'L'): ind_cross,
+                ('G', 'G'): ind_auto}
+
+    assert probe_ordering == (('L', 'L'), ('G', 'L'), ('G', 'G')), 'more elaborate probe_ordering not implemented yet'
+
+    # slice the 4d cov to be able to use cov_4D_to_6D_blocks on the nine separate blocks
+    zpairs_sum = zpairs_auto + zpairs_cross
+    cov_vinc_no_bnt_8d_dict = {}
+    cov_vinc_no_bnt_8d_dict['L', 'L', 'L', 'L'] = cov_3x2pt_4d[:, :, :zpairs_auto, :zpairs_auto]
+    cov_vinc_no_bnt_8d_dict['L', 'L', 'G', 'L'] = cov_3x2pt_4d[:, :, :zpairs_auto, zpairs_auto:zpairs_sum]
+    cov_vinc_no_bnt_8d_dict['L', 'L', 'G', 'G'] = cov_3x2pt_4d[:, :, :zpairs_auto, zpairs_sum:]
+
+    cov_vinc_no_bnt_8d_dict['G', 'L', 'L', 'L'] = cov_3x2pt_4d[:, :, zpairs_auto:zpairs_sum, :zpairs_auto]
+    cov_vinc_no_bnt_8d_dict['G', 'L', 'G', 'L'] = cov_3x2pt_4d[:, :, zpairs_auto:zpairs_sum, zpairs_auto:zpairs_sum]
+    cov_vinc_no_bnt_8d_dict['G', 'L', 'G', 'G'] = cov_3x2pt_4d[:, :, zpairs_auto:zpairs_sum, zpairs_sum:]
+
+    cov_vinc_no_bnt_8d_dict['G', 'G', 'L', 'L'] = cov_3x2pt_4d[:, :, zpairs_sum:, :zpairs_auto]
+    cov_vinc_no_bnt_8d_dict['G', 'G', 'G', 'L'] = cov_3x2pt_4d[:, :, zpairs_sum:, zpairs_auto:zpairs_sum]
+    cov_vinc_no_bnt_8d_dict['G', 'G', 'G', 'G'] = cov_3x2pt_4d[:, :, zpairs_sum:, zpairs_sum:]
+
+    cov_vinc_no_bnt_10d_dict = {}
+    for key in cov_vinc_no_bnt_8d_dict.keys():
+        cov_vinc_no_bnt_10d_dict[key] = cov_4D_to_6D_blocks(
+            cov_vinc_no_bnt_8d_dict[key], nbl, zbins, ind_dict[key[0], key[1]], ind_dict[key[2], key[3]])
+
+    return cov_vinc_no_bnt_10d_dict
 
 
 # ! to be deprecated
@@ -2385,7 +2425,7 @@ def slice_cl_3x2pt_1D_ell_probe_zpair(cl_3x2pt_1D_ell_probe_zpair, nbl, zbins, p
 def cov_2D_to_4D(cov_2D, nbl, block_index='vincenzo', optimize=True):
     """ new (more elegant) version of cov_2D_to_4D. Also works for 3x2pt. The order
     of the for loops does not affect the result!
-    
+
     Ordeting convention:
     - whether to use ij or ell as the outermost index (determined by the ordering of the for loops)
       This is going to be the index of the blocks in the 2D covariance matrix.
@@ -2802,7 +2842,7 @@ def build_noise(zbins, nProbes, sigma_eps2, ng, EP_or_ED='EP'):
         assert EP_or_ED == 'EP', 'if ng is a scalar (not a vector), the bins should be equipopulated'
         if ng < 20:
             warnings.warn(
-                'ng should roughly be > 20 (this check is meant to make sure that ng is the cumulative galaxy ' \
+                'ng should roughly be > 20 (this check is meant to make sure that ng is the cumulative galaxy '
                 'density, not the galaxy density in each bin)')
         n_bar = ng / zbins * conversion_factor
 
@@ -2837,9 +2877,9 @@ def my_exit():
 
 def pk_vinc_file_to_2d_npy(path, plot_pk_z0):
     # e.g. path = '/home/davide/Documenti/Lavoro/Programmi/CAMB_pk_baryons/output/Omega_M/PddVsZedLogK-Omega_M_3.040e-01.dat'
-    warnings.warn('double-check the units in the header and whether k is in log scale in the input file (this function assumes it is))')
+    warnings.warn(
+        'double-check the units in the header and whether k is in log scale in the input file (this function assumes it is))')
     warnings.warn('the output ordering is [k, z], not the other way around!')
-    
 
     pkfile = np.genfromtxt(path)
     z_array = np.unique(pkfile[:, 0])

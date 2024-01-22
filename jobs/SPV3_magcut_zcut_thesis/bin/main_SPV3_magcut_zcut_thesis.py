@@ -894,45 +894,59 @@ for zbins in (13, ):
                                                      **variable_specs)
     covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
-    if general_cfg['BNT_transform'] is False and general_cfg['ell_cuts'] is False and which_pk == 'HMCodeBar' \
-            and covariance_cfg['SSC_code'] == 'exactSSC' and covariance_cfg['test_against_CLOE_benchmarks']:
+    if EP_or_ED == 'EP' and covariance_cfg['SSC_code'] == 'exactSSC' and covariance_cfg['test_against_CLOE_benchmarks'] \
+        and general_cfg['ell_cuts'] is False and which_pk == 'HMCodeBar':
 
         # load benchmark cov and check that it matches the one computed here; I am not actually using it
-        cov_cloe_bench_2d_G = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-Gauss-{nbl_WL_opt}Bins.npy')
-        cov_cloe_bench_2dcloe_GSSC = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.npy')
+        if not general_cfg['BNT_transform']:
+            cov_cloe_bench_2d_G = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-Gauss-{nbl_WL_opt}Bins.npy')
+            cov_cloe_bench_2dcloe_GSSC = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.npy')
+            
+            
+            # reshape it in dav format
+            cov_bench_2ddav_G = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2d_G, nbl_WL_opt, zbins, 'ell', 'ell')
+            cov_bench_2ddav_GSSC = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2dcloe_GSSC, nbl_WL_opt, zbins, 'ell', 'ell')
 
-        # reshape it in dav format
-        cov_bench_2ddav_G = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2d_G, nbl_WL_opt, zbins, 'ell', 'ell')
-        cov_bench_2ddav_GSSC = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2dcloe_GSSC, nbl_WL_opt, zbins, 'ell', 'ell')
+            # ell cut, 29 bins instead of 32
+            assert cov_dict['cov_3x2pt_GO_2D'].shape == cov_dict['cov_3x2pt_GS_2D'].shape, \
+                'cov_3x2pt_GO_2D and cov_3x2pt_GS_2D should have the same shape'
+            n_cov_elements = cov_dict['cov_3x2pt_GO_2D'].shape[0]
+            cov_bench_2ddav_G_lmax3000 = cov_bench_2ddav_G[:n_cov_elements, :n_cov_elements]
+            cov_bench_2ddav_GSSC_lmax3000 = cov_bench_2ddav_GSSC[:n_cov_elements, :n_cov_elements]
 
-        # ell cut, 29 bins instead of 32
-        assert cov_dict['cov_3x2pt_GO_2D'].shape == cov_dict['cov_3x2pt_GS_2D'].shape, \
-            'cov_3x2pt_GO_2D and cov_3x2pt_GS_2D should have the same shape'
-        n_cov_elements = cov_dict['cov_3x2pt_GO_2D'].shape[0]
-        cov_bench_2ddav_G_lmax3000 = cov_bench_2ddav_G[:n_cov_elements, :n_cov_elements]
-        cov_bench_2ddav_GSSC_lmax3000 = cov_bench_2ddav_GSSC[:n_cov_elements, :n_cov_elements]
-
-        # compare
-        try:
-            np.testing.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_G_lmax3000, atol=0, rtol=1e-3)
-            np.testing.assert_allclose(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_GSSC_lmax3000, atol=0, rtol=1e-3)
-        except AssertionError as error:
-            print(f'covariance matrix does not match with CLOE benchmark; use_cl_CLOE is {general_cfg["use_CLOE_cls"]}')
-            print(error)
             mm.compare_arrays(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_G_lmax3000,
-                              "cov_dict['cov_3x2pt_GO_2D']", "cov_bench_2ddav_G_lmax3000",
-                              log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+                            "cov_dict['cov_3x2pt_GO_2D']", "cov_bench_2ddav_G_lmax3000",
+                            log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
             mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_GSSC_lmax3000,
-                              "cov_dict['cov_3x2pt_GS_2D']", "cov_bench_2ddav_GSSC_lmax3000",
-                              log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+                            "cov_dict['cov_3x2pt_GS_2D']", "cov_bench_2ddav_GSSC_lmax3000",
+                            log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+        
+        elif general_cfg['BNT_transform']:
+            cov_cloe_bench_2dcloe_GSSC = np.load(
+                f'{ROOT}/my_cloe_data/for_vincenzo/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.dat')
+            
+            # reshape it in dav format
+            cov_bench_2ddav_GSSC = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2dcloe_GSSC, nbl_WL_opt, zbins, 'ell', 'ell')
 
-            del cov_bench_2ddav_G_lmax3000, cov_bench_2ddav_GSSC_lmax3000
-            gc.collect()
+            # ell cut, 29 bins instead of 32
+            assert cov_dict['cov_3x2pt_GO_2D'].shape == cov_dict['cov_3x2pt_GS_2D'].shape, \
+                'cov_3x2pt_GO_2D and cov_3x2pt_GS_2D should have the same shape'
+            n_cov_elements = cov_dict['cov_3x2pt_GO_2D'].shape[0]
+            cov_bench_2ddav_GSSC_lmax3000 = cov_bench_2ddav_GSSC[:n_cov_elements, :n_cov_elements]
+            mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_GSSC_lmax3000,
+                            "cov_dict['cov_3x2pt_GS_2D']", "cov_bench_2ddav_GSSC_lmax3000",
+                            log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+        
 
-    if general_cfg['BNT_transform'] is True and general_cfg['ell_cuts'] is True and which_pk == 'HMCodeBar' \
-            and covariance_cfg['SSC_code'] == 'PyCCL':
+
+        del cov_bench_2ddav_G_lmax3000, cov_bench_2ddav_GSSC_lmax3000
+        gc.collect()
+
+        assert False
+
+    if general_cfg['compute_GSSC_condition_number']:
+
         cond_number = np.linalg.cond(cov_dict['cov_3x2pt_GS_2D'])
-
         NUMPY_PRECISION = np.finfo(float).eps
         precision = cond_number * NUMPY_PRECISION
         print(f'kmax = {kmax_h_over_Mpc}, precision in the inversion of GS covariance = '
@@ -966,33 +980,14 @@ for zbins in (13, ):
         '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.npy')
     cov_vinc_no_bnt_4d = mm.cov_2D_to_4D(cov_vinc_no_bnt_2d, nbl=32, block_index='vincenzo', optimize=True)
 
-    ind_auto = ind[:zpairs_auto, :].copy()
-    ind_cross = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
-    ind_dict = {('L', 'L'): ind_auto,
-                ('G', 'L'): ind_cross,
-                ('G', 'G'): ind_auto}
     probe_ordering = (('L', 'L'), ('G', 'L'), ('G', 'G'))
+    cov_vinc_no_bnt_10d_dict = mm.cov_3x2pt_4d_to_10d_dict(cov_vinc_no_bnt_4d, zbins, probe_ordering, 32, ind.copy())
 
-    # slice the 4d cov
-    zpairs_sum = zpairs_auto + zpairs_cross
-    cov_vinc_no_bnt_8d_dict = {}
-    cov_vinc_no_bnt_8d_dict['L', 'L', 'L', 'L'] = cov_vinc_no_bnt_4d[:, :, :zpairs_auto, :zpairs_auto]
-    cov_vinc_no_bnt_8d_dict['L', 'L', 'G', 'L'] = cov_vinc_no_bnt_4d[:, :, :zpairs_auto, zpairs_auto:zpairs_sum]
-    cov_vinc_no_bnt_8d_dict['L', 'L', 'G', 'G'] = cov_vinc_no_bnt_4d[:, :, :zpairs_auto, zpairs_sum:]
+    cov_vinc_no_bnt_4d_test = mm.cov_3x2pt_10D_to_4D(
+        cov_vinc_no_bnt_10d_dict, probe_ordering, 32, zbins, ind.copy(), GL_or_LG)
+    np.testing.assert_allclose(cov_vinc_no_bnt_4d, cov_vinc_no_bnt_4d_test, rtol=1e-3, atol=0)
 
-    cov_vinc_no_bnt_8d_dict['G', 'L', 'L', 'L'] = cov_vinc_no_bnt_4d[:, :, zpairs_auto:zpairs_sum, :zpairs_auto]
-    cov_vinc_no_bnt_8d_dict['G', 'L', 'G', 'L'] = cov_vinc_no_bnt_4d[:,
-                                                                     :, zpairs_auto:zpairs_sum, zpairs_auto:zpairs_sum]
-    cov_vinc_no_bnt_8d_dict['G', 'L', 'G', 'G'] = cov_vinc_no_bnt_4d[:, :, zpairs_auto:zpairs_sum, zpairs_sum:]
-
-    cov_vinc_no_bnt_8d_dict['G', 'G', 'L', 'L'] = cov_vinc_no_bnt_4d[:, :, zpairs_sum:, :zpairs_auto]
-    cov_vinc_no_bnt_8d_dict['G', 'G', 'G', 'L'] = cov_vinc_no_bnt_4d[:, :, zpairs_sum:, zpairs_auto:zpairs_sum]
-    cov_vinc_no_bnt_8d_dict['G', 'G', 'G', 'G'] = cov_vinc_no_bnt_4d[:, :, zpairs_sum:, zpairs_sum:]
-
-    cov_vinc_no_bnt_10d_dict = {}
-    for key in cov_vinc_no_bnt_8d_dict.keys():
-        cov_vinc_no_bnt_10d_dict[key] = mm.cov_4D_to_6D_blocks(
-            cov_vinc_no_bnt_8d_dict[key], 32, zbins, ind_dict[key[0], key[1]], ind_dict[key[2], key[3]])
+    assert False, 'stop here'
 
     # turn to dict for the BNT function
     X_dict = covmat_utils.build_X_matrix_BNT(bnt_matrix)
@@ -1001,7 +996,8 @@ for zbins in (13, ):
     cov_vinc_bnt_2d = mm.cov_4D_to_2D(cov_vinc_bnt_4d)
 
     if bnt_transform:
-        mm.compare_arrays(cov_vinc_bnt_2d, cov_bench, 'cov_vinc_bnt_2d', 'cov_bench', log_diff=True, plot_diff_threshold=5)
+        mm.compare_arrays(cov_vinc_bnt_2d, cov_bench, 'cov_vinc_bnt_2d',
+                          'cov_bench', log_diff=True, plot_diff_threshold=5)
 
     assert False, 'stop here'
     # ! remove until here

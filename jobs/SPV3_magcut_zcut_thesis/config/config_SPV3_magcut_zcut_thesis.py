@@ -177,8 +177,9 @@ covariance_cfg = {
     'save_2DCLOE': False,  # outermost loop is on the probes
 
     'test_against_benchmarks': False,
-    'test_against_CLOE_benchmarks': False,
+    'test_against_CLOE_benchmarks': True,
     'test_against_vincenzo': True,
+    'compute_GSSC_condition_number': True,
 
     # ! no folders for ell_cut_center or min
     'cov_folder': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{cov_ell_cuts:s}',

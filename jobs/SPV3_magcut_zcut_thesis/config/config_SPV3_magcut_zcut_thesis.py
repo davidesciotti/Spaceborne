@@ -187,7 +187,7 @@ covariance_cfg = {
                     'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D{which_grids:s}',
     'cov_vinc_folder': f'{SPV3_folder}/OutputFiles/CovMats/GaussOnly/Full',
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
-                         'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat',
+                         'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
     
     'SSC_code': 'exactSSC',  # ! 'PySSC' or PyCCL' or 'exactSSC'
 

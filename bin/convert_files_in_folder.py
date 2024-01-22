@@ -47,7 +47,7 @@ filenames = mm.get_filenames_in_folder(folder_path)
 
 start_time = time.perf_counter()
 
-Parallel(n_jobs=2)(delayed(load_save_func)(folder_path, filename,
+Parallel(n_jobs=1)(delayed(load_save_func)(folder_path, filename,
                                            input_extension, output_extension) for filename in filenames)
 
 print(f'Elapsed time: {time.perf_counter() - start_time:.2f} s')

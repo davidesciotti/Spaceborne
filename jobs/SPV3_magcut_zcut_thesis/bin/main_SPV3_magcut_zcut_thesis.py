@@ -937,14 +937,13 @@ for zbins in (13, ):
 
     if covariance_cfg['test_against_vincenzo'] and bnt_transform == False and not general_cfg['use_CLOE_cls']:
         cov_vinc_filename = covariance_cfg['cov_vinc_filename'].format(**variable_specs, probe='3x2pt')
-        cov_vinc_g = np.genfromtxt(f'{covariance_cfg["cov_vinc_folder"]}/{cov_vinc_filename}')
+        cov_vinc_g = np.load(f'{covariance_cfg["cov_vinc_folder"]}/{cov_vinc_filename}')['arr_0']
         num_elements_nbl29 = cov_dict['cov_3x2pt_GO_2D'].shape[0]
         npt.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_vinc_g[:num_elements_nbl29, :num_elements_nbl29],
                             rtol=1e-3, atol=0)
         print('covariance matrix matches with Vincenzo\'s ✅')
 
-
-    # # ! rmove from here
+    # ! remove from here
     if not general_cfg['BNT_transform']:
         cov_bench = np.load('/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.npy')
     elif general_cfg['BNT_transform']:
@@ -956,7 +955,7 @@ for zbins in (13, ):
     mm.matshow(diff, log=True, abs_val=True, threshold=1, title=f'per diff, BNT {general_cfg["BNT_transform"]}')
 
     assert False, 'check covariance'
-    # ! rmove until here
+    # ! remove until here
 
     # TODO compute BNT for Vincenzo's covs, which are not exactly equal to the CLOE-datavector ones?
     # mm.matshow(cov_dict['cov_3x2pt_GS_2D'], log=True, title=f'BNT {BNT_transform}')

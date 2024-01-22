@@ -801,7 +801,7 @@ for zbins in (13, ):
     if ell_max_WL == 1500:
         warnings.warn(
             'you are cutting the datavectors and responses in the pessimistic case, but is this compatible '
-            'with the redshift-dependent ell cuts?')
+            'with the redshift-dependent ell cuts? Yes, this is an old warning; nonetheless, check ')
         assert False, 'you should check this'
         cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
         cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
@@ -887,24 +887,7 @@ for zbins in (13, ):
     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix)
 
-    # ! rmove from here
-    if not general_cfg['BNT_transform']:
-        cov_bench = np.genfromtxt(
-            '/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.dat')
-        np.save('/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.npy', cov_bench)
-    elif general_cfg['BNT_transform']:
-        cov_bench = np.genfromtxt(
-            '/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1-BNT.dat')
-        np.save('/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1-BNT.npy', cov_bench)
-
-    num_elements = cov_dict['cov_3x2pt_GS_2D'].shape[0]
-    diff = mm.percent_diff(cov_dict['cov_3x2pt_GS_2D'], cov_bench[:num_elements, :num_elements])
-    mm.matshow(diff, log=True, abs_val=True, threshold=1, title=f'per diff, BNT {general_cfg["BNT_transform"]}')
-    
-    assert False, 'check CLOE bench'
-    # ! rmove until here
-
-    # save covariance m atrix and test against benchmarks
+    # save covariance matrix and test against benchmarks
     cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
                                                      **variable_specs)
     covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
@@ -952,16 +935,28 @@ for zbins in (13, ):
         cov_benchmark_folder = f'{cov_folder}/benchmarks'
         mm.test_folder_content(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
 
-    if covariance_cfg['test_against_vincenzo'] and bnt_transform == False:
+    if covariance_cfg['test_against_vincenzo'] and bnt_transform == False and not general_cfg['use_CLOE_cls']:
         cov_vinc_filename = covariance_cfg['cov_vinc_filename'].format(**variable_specs, probe='3x2pt')
         cov_vinc_g = np.genfromtxt(f'{covariance_cfg["cov_vinc_folder"]}/{cov_vinc_filename}')
         num_elements_nbl29 = cov_dict['cov_3x2pt_GO_2D'].shape[0]
         npt.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_vinc_g[:num_elements_nbl29, :num_elements_nbl29],
                             rtol=1e-3, atol=0)
         print('covariance matrix matches with Vincenzo\'s ✅')
-        
-    assert False, 'stop here to check BNT ingredients for Vincenzo'
-    
+
+
+    # # ! rmove from here
+    if not general_cfg['BNT_transform']:
+        cov_bench = np.load('/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.npy')
+    elif general_cfg['BNT_transform']:
+        cov_bench = np.load(
+            '/home/davide/Scaricati/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1-BNT.npy')
+
+    num_elements = cov_dict['cov_3x2pt_GS_2D'].shape[0]
+    diff = mm.percent_diff(cov_dict['cov_3x2pt_GS_2D'], cov_bench[:num_elements, :num_elements])
+    mm.matshow(diff, log=True, abs_val=True, threshold=1, title=f'per diff, BNT {general_cfg["BNT_transform"]}')
+
+    assert False, 'check covariance'
+    # ! rmove until here
 
     # TODO compute BNT for Vincenzo's covs, which are not exactly equal to the CLOE-datavector ones?
     # mm.matshow(cov_dict['cov_3x2pt_GS_2D'], log=True, title=f'BNT {BNT_transform}')
@@ -1082,40 +1077,6 @@ for zbins in (13, ):
         dC_WA_4D = np.ones((nbl_WA, zbins, zbins, dC_LL_4D.shape[-1]))
         dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(
             dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins, der_prefix, is_3x2pt=True)
-            
-            
-        # ! remove from here
-        dDVdOm_3x2pt_NoBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-3x2pt-NoBNT.dat')
-        dDVdOm_3x2pt_WiBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-3x2pt-WiBNT.dat')
-        dDVdOm_WLO_NoBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-NoBNT.dat')
-        dDVdOm_WLO_WiBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-WiBNT.dat')
-
-        dDVdOm_3x2pt_NoBNT_3d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_3x2pt_NoBNT_1d, '3x2pt', nbl_3x2pt, zbins)  # ! 5d?
-        dDVdOm_3x2pt_WiBNT_3d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_3x2pt_WiBNT_1d, '3x2pt', nbl_3x2pt, zbins)
-        dDVdOm_WLO_NoBNT_3d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_WLO_NoBNT_1d, 'WL', nbl_WL, zbins)
-        dDVdOm_WLO_WiBNT_3d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_WLO_WiBNT_1d, 'WL', nbl_WL, zbins)
-        
-        
-        dDVdOm_3x2pt_flat_dav = dC_dict_3x2pt_5D['dDVdOm-3x2pt-ML245-MS245-EP13'].flatten()
-        dDVdOm_WLO_flat_dav = dC_dict_LL_3D['dDVdOm-WLO-ML245-MS245-EP13'].flatten()
-        if bnt_transform:
-            dDVdOm_3x2pt_flat_vinc = dDVdOm_3x2pt_WiBNT_3d.flatten()
-            dDVdOm_WLO_flat_vinc = dDVdOm_WLO_WiBNT_3d.flatten()
-        else:
-            dDVdOm_3x2pt_flat_vinc = dDVdOm_3x2pt_NoBNT_3d.flatten()
-            dDVdOm_WLO_flat_vinc = dDVdOm_WLO_NoBNT_3d.flatten()
-            
-        np.testing.assert_allclose(dDVdOm_3x2pt_flat_dav, dDVdOm_3x2pt_flat_vinc, rtol=1e-3, atol=0)
-        np.testing.assert_allclose(dDVdOm_WLO_flat_dav, dDVdOm_WLO_flat_vinc, rtol=1e-3, atol=0)
-        
-        plt.figure()
-        plt.plot(dDVdOm_3x2pt_flat_dav, label='dDVdOm_3x2pt_flat_dav', ls='-', c='tab:blue', alpha=0.5)
-        plt.plot(dDVdOm_3x2pt_flat_vinc, label='dDVdOm_3x2pt_flat_vinc', ls='--', c='tab:blue', alpha=0.5)
-        plt.plot(dDVdOm_WLO_flat_dav, label='dDVdOm_WLO_flat_dav', ls='-', c='tab:orange', alpha=0.5)
-        plt.plot(dDVdOm_WLO_flat_vinc, label='dDVdOm_WLO_flat_vinc', ls='--', c='tab:orange', alpha=0.5)
-        plt.legend()
-        plt.show()
-        # ! remove until here
 
         # free up memory
         del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D

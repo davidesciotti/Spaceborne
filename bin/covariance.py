@@ -411,7 +411,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_3x2pt_GO_10D = mm.cov_10D_dict_to_array(cov_3x2pt_GO_10D_dict, nbl_3x2pt, zbins, n_probes=2)
         cov_3x2pt_GS_10D = mm.cov_10D_dict_to_array(cov_3x2pt_GS_10D_dict, nbl_3x2pt, zbins, n_probes=2)
 
-        print('Covariance matrix BNT-transformed in {:.2f} s'.format(time.perf_counter() - start_time))
+        print('Covariance matrices BNT-transformed in {:.2f} s'.format(time.perf_counter() - start_time))
 
     # ! transform everything in 4D
     start = time.perf_counter()

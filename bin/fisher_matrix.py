@@ -161,18 +161,13 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         print('\nAttention! switching columns in the ind array (for the XC part)')
         ind[zpairs_auto:(zpairs_auto + zpairs_cross), [2, 3]] = ind[zpairs_auto:(zpairs_auto + zpairs_cross), [3, 2]]
 
-    # ===================================================================================================================
-    # import and invert covariance matrices
-    # ===================================================================================================================
-
+    # ! import and invert covariance matrices
     if cov_dict['cov_WA_GO_2D'].shape == (0, 0):
         warnings.warn('cov_WA_GO_2D is empty, setting use_WA to False and the covariance matrix to the identity')
         general_cfg['use_WA'] = False
         cov_dict['cov_WA_GO_2D'] = np.eye(nbl_WA * zpairs_auto)
         cov_dict['cov_WA_GS_2D'] = np.eye(nbl_WA * zpairs_auto)
 
-    # invert GO covmats
-    # TODO try to use scipy.sparse.linalg.inv
     print('Starting covariance matrix inversion...')
     start_time = time.perf_counter()
     cov_WL_GO_2D_inv = np.linalg.inv(cov_dict['cov_WL_GO_2D'])
@@ -181,7 +176,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     cov_3x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GO_2D'])
     print(f'GO covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
 
-    # invert GS covmats
     if covariance_cfg['compute_SSC']:
         start_time = time.perf_counter()
         cov_WL_GS_2D_inv = np.linalg.inv(cov_dict['cov_WL_GS_2D'])
@@ -208,32 +202,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     assert dC_3x2pt_6D.shape == (2, 2, nbl_3x2pt, zbins, zbins, nparams_tot), \
         f'dC_3x2pt_6D has incorrect shape: {dC_3x2pt_6D.shape}'
 
-    #
-    # dC_LLfor3x2pt_2D = np.zeros((nbl_3x2pt * zpairs_auto, nparams_tot))
-    # dC_GLfor3x2pt_2D = np.zeros((nbl_3x2pt * zpairs_cross, nparams_tot))
-    # dC_GGfor3x2pt_2D = np.zeros((nbl_3x2pt * zpairs_auto, nparams_tot))
-    # count = 0
-    # for ell_idx, ell_val in enumerate(ell_dict['ell_3x2pt']):
-    #     for zi in range(zbins):
-    #         for zj in range(zi, zbins):
-    #             dC_LLfor3x2pt_2D[count, :] = dC_3x2pt_6D[ell_idx, 0, 0, zi, zj, :]
-    #             dC_GGfor3x2pt_2D[count, :] = dC_3x2pt_6D[ell_idx, 1, 1, zi, zj, :]
-    #             count += 1
-    #
-    # count = 0
-    # for ell_idx, ell_val in enumerate(ell_dict['ell_3x2pt']):
-    #     for zi in range(zbins):
-    #         for zj in range(zi, zbins):
-    #             dC_GLfor3x2pt_2D[count, :] = dC_3x2pt_6D[ell_idx, 1, 0, zi, zj, :]
-    #             count += 1
-    #
-    # dC_3x2pt_2D = np.vstack((dC_LLfor3x2pt_2D, dC_GLfor3x2pt_2D, dC_GGfor3x2pt_2D))
-    # dC_3x2pt_2D_v2 = np.concatenate((dC_LLfor3x2pt_2D, dC_GLfor3x2pt_2D, dC_GGfor3x2pt_2D), axis=1)
-    # assert np.array_equal(dC_3x2pt_2D, dC_3x2pt_2D_v2), 'something is wrong with the 3x2pt derivatives'
-
-    # plt.figure()
-    # plt.plot(dC_3x2pt_2D[:, 0], label='dC_3x2pt_2D_flattened by hand')
-
     if FM_cfg['derivatives_BNT_transform']:
 
         # assert covariance_cfg['cov_BNT_transform'], 'you should BNT transform the covariance as well'
@@ -245,6 +213,57 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
             dC_WA_4D[:, :, :, param_idx] = cl_utils.cl_BNT_transform(dC_WA_4D[:, :, :, param_idx], BNT_matrix, 'L', 'L')
             dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_BNT_transform_3x2pt(
                 dC_3x2pt_6D[:, :, :, :, :, param_idx], BNT_matrix)
+
+    for ell in (0, 1, 2, 5, 10, 15, 20, 25):
+
+        if general_cfg['BNT_transform']:
+            np.savetxt(
+                f'/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-WiBNT-davide-ell{ell:02d}.dat', dC_LL_4D[ell, :, :, 0], fmt='%.7e')
+        else:
+            np.savetxt(
+                f'/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-NoBNT-davide-ell{ell:02d}.dat', dC_LL_4D[ell, :, :, 0], fmt='%.7e')
+
+    # ! remove from here
+    dDVdOm_3x2pt_NoBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-3x2pt-NoBNT.dat')
+    dDVdOm_3x2pt_WiBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-3x2pt-WiBNT.dat')
+    dDVdOm_WLO_NoBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-NoBNT.dat')
+    dDVdOm_WLO_WiBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-WiBNT.dat')
+
+    dDVdOm_3x2pt_NoBNT_5d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_3x2pt_NoBNT_1d, '3x2pt', nbl_3x2pt, zbins)
+    dDVdOm_3x2pt_WiBNT_5d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_3x2pt_WiBNT_1d, '3x2pt', nbl_3x2pt, zbins)
+    dDVdOm_WLO_NoBNT_3d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_WLO_NoBNT_1d, 'WL', nbl_WL, zbins)
+    dDVdOm_WLO_WiBNT_3d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_WLO_WiBNT_1d, 'WL', nbl_WL, zbins)
+
+    dDVdOm_3x2pt_flat_dav = dC_3x2pt_6D[:, :, :, :, :, 0].flatten()
+    dDVdOm_WLO_flat_dav = dC_LL_4D[:, :, :, 0].flatten()
+
+    if general_cfg:
+        dDVdOm_3x2pt_flat_vinc = dDVdOm_3x2pt_WiBNT_5d.flatten()
+        dDVdOm_WLO_flat_vinc = dDVdOm_WLO_WiBNT_3d.flatten()
+    else:
+        dDVdOm_3x2pt_flat_vinc = dDVdOm_3x2pt_NoBNT_5d.flatten()
+        dDVdOm_WLO_flat_vinc = dDVdOm_WLO_NoBNT_3d.flatten()
+
+    print('generating derivatives plot')
+    plt.figure()
+    plt.plot(dDVdOm_3x2pt_flat_dav, label='dDVdOm_3x2pt_flat_dav', ls='-', c='tab:blue', alpha=0.5)
+    plt.plot(dDVdOm_3x2pt_flat_vinc, label='dDVdOm_3x2pt_flat_vinc', ls='--', c='tab:blue', alpha=0.5)
+    plt.plot(dDVdOm_WLO_flat_dav, label='dDVdOm_WLO_flat_dav', ls='-', c='tab:orange', alpha=0.5)
+    plt.plot(dDVdOm_WLO_flat_vinc, label='dDVdOm_WLO_flat_vinc', ls='--', c='tab:orange', alpha=0.5)
+    plt.legend()
+    plt.show()
+
+    diff_3x2pt = mm.percent_diff(dDVdOm_3x2pt_flat_dav, dDVdOm_3x2pt_flat_vinc)
+    diff_WLO = mm.percent_diff(dDVdOm_WLO_flat_dav, dDVdOm_WLO_flat_vinc)
+
+    plt.figure()
+    plt.plot(diff_3x2pt, label='diff_3x2pt', ls='-', c='tab:blue', alpha=0.5)
+    plt.plot(diff_WLO, label='diff_WLO', ls='-', c='tab:orange', alpha=0.5)
+    plt.show()
+
+    # ! remove until here
+
+    assert False, 'BNT checks'
 
     # ! ell-cut the derivatives in 3d
     # dC_LL_4D_v1, dC_WA_4D_v1, dC_GG_4D_v1, dC_3x2pt_6D_v1 = ell_cuts_derivatives(FM_cfg, ell_dict,
@@ -348,7 +367,8 @@ def save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=False, save_dict=
     """saves the FM in .txt and .pickle formats
     :param fm_folder:
     """
-    raise DeprecationWarning('this function is too convoluted, no need to save individual txt files? maybe it makes sense for git...')
+    raise DeprecationWarning(
+        'this function is too convoluted, no need to save individual txt files? maybe it makes sense for git...')
 
     ell_max_WL = save_specs['ell_max_WL']
     ell_max_GC = save_specs['ell_max_GC']

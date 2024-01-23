@@ -31,7 +31,7 @@ import config_SPV3_magcut_zcut as cfg
 
 # plot config
 matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
-matplotlib.use('Qt5Agg')
+
 markersize = 10
 
 ########################################################################################################################

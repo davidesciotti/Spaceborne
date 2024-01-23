@@ -46,8 +46,8 @@ general_cfg = {
     'fid_yaml_filename': ROOT + '/Spaceborne/common_cfg/SPV3_fiducial_params_magcut245_zbins{zbins:02d}.yml',
     'ell_min': 10,
     'ell_max_WL': 5000,
-    'ell_max_GC': 3000,
-    'ell_max_3x2pt': 3000,
+    'ell_max_GC': 5000,
+    'ell_max_3x2pt': 5000,
     'zbins': 13,
     'zbins_list': None,
     'EP_or_ED': 'EP',
@@ -65,9 +65,10 @@ general_cfg = {
     'nbl_WL_opt': 32,  # this is the value from which the various bin cuts are applied, do not change it
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied, do not change it
 
-    'nbl_GC_opt': 29,
-    'nbl_WA_opt': 3,
-    'nbl_3x2pt_opt': 29,
+    'nbl_GC_opt': 32,
+    'nbl_WA_opt': 0,
+    # 'nbl_WA_opt': 3,
+    'nbl_3x2pt_opt': 32,
 
     'ell_cuts': ell_cuts,
     'which_cuts': 'Vincenzo',
@@ -177,9 +178,9 @@ covariance_cfg = {
     'save_2DCLOE': False,  # outermost loop is on the probes
 
     'test_against_benchmarks': False,
-    'test_against_CLOE_benchmarks': True,
+    'test_against_CLOE_benchmarks': False,
     'test_against_vincenzo': True,
-    'compute_GSSC_condition_number': True,
+    'compute_GSSC_condition_number': False,
 
     # ! no folders for ell_cut_center or min
     'cov_folder': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{cov_ell_cuts:s}',

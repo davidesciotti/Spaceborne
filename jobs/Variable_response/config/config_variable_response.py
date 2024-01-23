@@ -9,7 +9,7 @@ import numpy as np
 import scipy.stats as stats
 from matplotlib.cm import get_cmap
 
-matplotlib.use('Qt5Agg')
+
 
 params = {'lines.linewidth': 3.5,
           'font.size': 20,

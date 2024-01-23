@@ -6,7 +6,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-matplotlib.use('Qt5Agg')
+
 
 # get project directory
 job_path = Path.cwd().parent

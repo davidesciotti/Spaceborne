@@ -36,7 +36,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 # job config
 import jobs.SPV3_magcut_zcut_thesis.config.config_SPV3_magcut_zcut_thesis as cfg
 
-matplotlib.use('Qt5Agg')
+
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 script_start_time = time.perf_counter()
 
@@ -303,10 +303,25 @@ def plot_kernels_for_thesis():
     plt.legend(loc='lower right')
 
 
-# * ====================================================================================================================
-# * ====================================================================================================================
-# * ====================================================================================================================
+def process_cov_matrix(filename, file_ext, cov_dict_key, comparison_label):
 
+    cov_cloe_bench = np.load(f'{ROOT}/my_cloe_data/{filename}-{nbl_WL_opt}Bins.{file_ext}')
+    cov_bench_dav = mm.cov_2d_cloe_to_dav(cov_cloe_bench, nbl_WL_opt, zbins, 'ell', 'ell')
+
+    # ell cut, 29 bins instead of 32
+    assert cov_dict['cov_3x2pt_GO_2D'].shape == cov_dict['cov_3x2pt_GS_2D'].shape, \
+        'cov_3x2pt_GO_2D and cov_3x2pt_GS_2D should have the same shape'
+    n_cov_elements = cov_dict['cov_3x2pt_GO_2D'].shape[0]
+    cov_bench_dav_lmax3000 = cov_bench_dav[:n_cov_elements, :n_cov_elements]
+
+    mm.compare_arrays(cov_dict[cov_dict_key], cov_bench_dav_lmax3000,
+                      cov_dict_key, comparison_label,
+                      log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+
+
+# * ====================================================================================================================
+# * ====================================================================================================================
+# * ====================================================================================================================
 
 general_cfg = cfg.general_cfg
 covariance_cfg = cfg.covariance_cfg
@@ -459,11 +474,11 @@ for zbins in (13, ):
                   'delta_l_WA': np.copy(delta_l_ref_nbl32[nbl_GC:])}
 
     # set # of nbl in the opt case, import and reshape, then cut the reshaped datavectors in the pes case
-    assert (general_cfg['ell_max_WL_opt'],
-            general_cfg['ell_max_WL'],
-            general_cfg['ell_max_GC'],
-            general_cfg['ell_max_3x2pt']) == (5000, 5000, 3000, 3000), \
-        'the number of bins defined in the config file is compatible with these ell_max values'
+    # assert (general_cfg['ell_max_WL_opt'],
+    #         general_cfg['ell_max_WL'],
+    #         general_cfg['ell_max_GC'],
+    #         general_cfg['ell_max_3x2pt']) == (5000, 5000, 3000, 3000), \
+    #     'the number of bins defined in the config file is compatible with these ell_max values'
 
     if ell_max_WL == general_cfg['ell_max_WL_opt']:
         assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
@@ -712,47 +727,6 @@ for zbins in (13, ):
     # plt.savefig(f'{ROOT}/phd_thesis_plots/plots/bnt_matrix_fs2.pdf',
     #             dpi=500, bbox_inches='tight')
 
-    # ! import and reshape datavectors (cl) and response functions (rl)
-    cl_fld = general_cfg['cl_folder']
-    cl_filename = general_cfg['cl_filename']
-    cl_ll_1d = np.genfromtxt(
-        f"{cl_fld.format(probe='WLO', which_pk=which_pk)}/{cl_filename.format(probe='WLO', **variable_specs)}")
-    cl_gg_1d = np.genfromtxt(
-        f"{cl_fld.format(probe='GCO', which_pk=which_pk)}/{cl_filename.format(probe='GCO', **variable_specs)}")
-    cl_wa_1d = np.genfromtxt(
-        f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', **variable_specs)}")
-    cl_3x2pt_1d = np.genfromtxt(
-        f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
-
-    # ! reshape to 3d
-    cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
-    cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
-    cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
-    cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
-    cl_gl_3d = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
-
-    # ! import responses, not used at the moment (not using PySSC)
-    # rl_fld = general_cfg['rl_folder'].format(which_pk=which_pk)
-    # rl_filename = general_cfg['rl_filename'].format()
-    # rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', **variable_specs)}")
-    # rl_gg_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='GCO', **variable_specs)}")
-    # rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **variable_specs)}")
-    # rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **variable_specs)}")
-    if covariance_cfg[f'SSC_code'] == 'PySSC':
-        assert covariance_cfg['compute_SSC'] is False, \
-            'I am using mock responses; if you want to compute the SSC, you need to ' \
-            'import the responses as well (see ssc_integrands_SPV3.py) for how to do it. moreover, ' \
-            'pyssc w/ magbias is not yet ready'
-    rl_ll_1d = np.ones_like(cl_ll_1d)
-    rl_gg_1d = np.ones_like(cl_gg_1d)
-    rl_wa_1d = np.ones_like(cl_wa_1d)
-    rl_3x2pt_1d = np.ones_like(cl_3x2pt_1d)
-
-    rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
-    rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC_opt, zbins)
-    rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA_opt, zbins)
-    rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
-
     if general_cfg['use_CLOE_cls']:
         assert which_pk == 'HMCodeBar', 'I am using CLOE Cls, so I should use HMCodeBar'
         print(f'Using CLOE cls; pk is {which_pk}')
@@ -776,6 +750,49 @@ for zbins in (13, ):
         rl_gg_3d = np.ones_like(cl_gg_3d)
         rl_wa_3d = np.ones_like(cl_wa_3d)
         rl_3x2pt_5d = np.ones_like(cl_3x2pt_5d)
+
+    else:
+
+        # ! import and reshape datavectors (cl) and response functions (rl)
+        cl_fld = general_cfg['cl_folder']
+        cl_filename = general_cfg['cl_filename']
+        cl_ll_1d = np.genfromtxt(
+            f"{cl_fld.format(probe='WLO', which_pk=which_pk)}/{cl_filename.format(probe='WLO', **variable_specs)}")
+        cl_gg_1d = np.genfromtxt(
+            f"{cl_fld.format(probe='GCO', which_pk=which_pk)}/{cl_filename.format(probe='GCO', **variable_specs)}")
+        cl_wa_1d = np.genfromtxt(
+            f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', **variable_specs)}")
+        cl_3x2pt_1d = np.genfromtxt(
+            f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
+
+        # ! reshape to 3d
+        cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
+        cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
+        cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
+        cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
+        cl_gl_3d = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
+
+        # ! import responses, not used at the moment (not using PySSC)
+        # rl_fld = general_cfg['rl_folder'].format(which_pk=which_pk)
+        # rl_filename = general_cfg['rl_filename'].format()
+        # rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', **variable_specs)}")
+        # rl_gg_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='GCO', **variable_specs)}")
+        # rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', **variable_specs)}")
+        # rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', **variable_specs)}")
+        if covariance_cfg[f'SSC_code'] == 'PySSC':
+            assert covariance_cfg['compute_SSC'] is False, \
+                'I am using mock responses; if you want to compute the SSC, you need to ' \
+                'import the responses as well (see ssc_integrands_SPV3.py) for how to do it. moreover, ' \
+                'pyssc w/ magbias is not yet ready'
+        rl_ll_1d = np.ones_like(cl_ll_1d)
+        rl_gg_1d = np.ones_like(cl_gg_1d)
+        rl_wa_1d = np.ones_like(cl_wa_1d)
+        rl_3x2pt_1d = np.ones_like(cl_3x2pt_1d)
+
+        rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
+        rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC_opt, zbins)
+        rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA_opt, zbins)
+        rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
 
     # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
     if ell_max_WL == general_cfg['ell_max_WL_opt'] and general_cfg['use_WA']:
@@ -895,19 +912,20 @@ for zbins in (13, ):
     covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
     if EP_or_ED == 'EP' and covariance_cfg['SSC_code'] == 'exactSSC' and covariance_cfg['test_against_CLOE_benchmarks'] \
-        and general_cfg['ell_cuts'] is False and which_pk == 'HMCodeBar':
+            and general_cfg['ell_cuts'] is False and which_pk == 'HMCodeBar':
 
         # load benchmark cov and check that it matches the one computed here; I am not actually using it
         if not general_cfg['BNT_transform']:
+            
+            # load CLOE benchmarks
             cov_cloe_bench_2d_G = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-Gauss-{nbl_WL_opt}Bins.npy')
             cov_cloe_bench_2dcloe_GSSC = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.npy')
-            
-            
+
             # reshape it in dav format
             cov_bench_2ddav_G = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2d_G, nbl_WL_opt, zbins, 'ell', 'ell')
             cov_bench_2ddav_GSSC = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2dcloe_GSSC, nbl_WL_opt, zbins, 'ell', 'ell')
 
-            # ell cut, 29 bins instead of 32
+            # ell cut, if needed
             assert cov_dict['cov_3x2pt_GO_2D'].shape == cov_dict['cov_3x2pt_GS_2D'].shape, \
                 'cov_3x2pt_GO_2D and cov_3x2pt_GS_2D should have the same shape'
             n_cov_elements = cov_dict['cov_3x2pt_GO_2D'].shape[0]
@@ -915,36 +933,16 @@ for zbins in (13, ):
             cov_bench_2ddav_GSSC_lmax3000 = cov_bench_2ddav_GSSC[:n_cov_elements, :n_cov_elements]
 
             mm.compare_arrays(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_G_lmax3000,
-                            "cov_dict['cov_3x2pt_GO_2D']", "cov_bench_2ddav_G_lmax3000",
-                            log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+                              "cov_dict['cov_3x2pt_GO_2D']", "cov_bench_2ddav_G_lmax3000",
+                              log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
             mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_GSSC_lmax3000,
-                            "cov_dict['cov_3x2pt_GS_2D']", "cov_bench_2ddav_GSSC_lmax3000",
-                            log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
-        
-        elif general_cfg['BNT_transform']:
-            cov_cloe_bench_2dcloe_GSSC = np.load(
-                f'{ROOT}/my_cloe_data/for_vincenzo/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.dat')
-            
-            # reshape it in dav format
-            cov_bench_2ddav_GSSC = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2dcloe_GSSC, nbl_WL_opt, zbins, 'ell', 'ell')
-
-            # ell cut, 29 bins instead of 32
-            assert cov_dict['cov_3x2pt_GO_2D'].shape == cov_dict['cov_3x2pt_GS_2D'].shape, \
-                'cov_3x2pt_GO_2D and cov_3x2pt_GS_2D should have the same shape'
-            n_cov_elements = cov_dict['cov_3x2pt_GO_2D'].shape[0]
-            cov_bench_2ddav_GSSC_lmax3000 = cov_bench_2ddav_GSSC[:n_cov_elements, :n_cov_elements]
-            mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_GSSC_lmax3000,
-                            "cov_dict['cov_3x2pt_GS_2D']", "cov_bench_2ddav_GSSC_lmax3000",
-                            log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
-        
-
+                              "cov_dict['cov_3x2pt_GS_2D']", "cov_bench_2ddav_GSSC_lmax3000",
+                              log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
 
         del cov_bench_2ddav_G_lmax3000, cov_bench_2ddav_GSSC_lmax3000
         gc.collect()
 
-        assert False
-
-    if general_cfg['compute_GSSC_condition_number']:
+    if covariance_cfg['compute_GSSC_condition_number']:
 
         cond_number = np.linalg.cond(cov_dict['cov_3x2pt_GS_2D'])
         NUMPY_PRECISION = np.finfo(float).eps
@@ -964,43 +962,43 @@ for zbins in (13, ):
                             rtol=1e-3, atol=0)
         print('covariance matrix matches with Vincenzo\'s ✅')
 
-    # ! remove from here
-    if not general_cfg['BNT_transform']:
-        cov_bench = np.load(
-            '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.npy')
-    elif general_cfg['BNT_transform']:
-        cov_bench = np.load(
-            '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1-BNT.npy')
+    # # ! remove from here
+    # # these are the covmats used
+    # cov_checkBNT_GSSC_noBNT = np.load(
+    #     '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.npy')
+    # cov_checkBNT_GSSC_BNT = np.load(
+    #     '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1-BNT.npy')
 
-    num_elements = cov_dict['cov_3x2pt_GS_2D'].shape[0]
-    diff = mm.percent_diff(cov_dict['cov_3x2pt_GS_2D'], cov_bench[:num_elements, :num_elements])
-    mm.matshow(diff, log=True, abs_val=True, threshold=1, title=f'per diff, BNT {general_cfg["BNT_transform"]}')
+    # # mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench, 'cov_dict["cov_3x2pt_GS_2D"]',
+    # #                   'cov_bench', plot_diff_threshold=5)
 
-    cov_vinc_no_bnt_2d = np.load(
-        '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.npy')
-    cov_vinc_no_bnt_4d = mm.cov_2D_to_4D(cov_vinc_no_bnt_2d, nbl=32, block_index='vincenzo', optimize=True)
+    # num_elements = cov_dict['cov_3x2pt_GS_2D'].shape[0]
+    # diff = mm.percent_diff(cov_dict['cov_3x2pt_GS_2D'], cov_checkBNT_GSSC_BNT[:num_elements, :num_elements])
+    # mm.matshow(diff, log=True, abs_val=True, threshold=1, title=f'per diff, BNT {general_cfg["BNT_transform"]}')
 
-    probe_ordering = (('L', 'L'), ('G', 'L'), ('G', 'G'))
-    cov_vinc_no_bnt_10d_dict = mm.cov_3x2pt_4d_to_10d_dict(cov_vinc_no_bnt_4d, zbins, probe_ordering, 32, ind.copy())
+    # diff = mm.percent_diff(cov_bench_2ddav_GSSC, cov_checkBNT_GSSC_noBNT)
+    # mm.matshow(diff, log=True, abs_val=True, threshold=1, title=f'per diff, BNT {general_cfg["BNT_transform"]}')
 
-    cov_vinc_no_bnt_4d_test = mm.cov_3x2pt_10D_to_4D(
-        cov_vinc_no_bnt_10d_dict, probe_ordering, 32, zbins, ind.copy(), GL_or_LG)
-    np.testing.assert_allclose(cov_vinc_no_bnt_4d, cov_vinc_no_bnt_4d_test, rtol=1e-3, atol=0)
+    # cov_vinc_no_bnt_4d = mm.cov_2D_to_4D(cov_checkBNT_GSSC_noBNT, nbl=32, block_index='vincenzo', optimize=True)
 
-    assert False, 'stop here'
+    # probe_ordering = (('L', 'L'), ('G', 'L'), ('G', 'G'))
+    # cov_vinc_no_bnt_10d_dict = mm.cov_3x2pt_4d_to_10d_dict(cov_vinc_no_bnt_4d, zbins, probe_ordering, 32, ind.copy())
 
-    # turn to dict for the BNT function
-    X_dict = covmat_utils.build_X_matrix_BNT(bnt_matrix)
-    cov_vinc_bnt_10d_dict = covmat_utils.cov_3x2pt_BNT_transform(cov_vinc_no_bnt_10d_dict, X_dict)
-    cov_vinc_bnt_4d = mm.cov_3x2pt_10D_to_4D(cov_vinc_bnt_10d_dict, probe_ordering, 32, zbins, ind.copy(), GL_or_LG)
-    cov_vinc_bnt_2d = mm.cov_4D_to_2D(cov_vinc_bnt_4d)
+    # cov_vinc_no_bnt_4d_test = mm.cov_3x2pt_10D_to_4D(
+    #     cov_vinc_no_bnt_10d_dict, probe_ordering, 32, zbins, ind.copy(), GL_or_LG)
+    # np.testing.assert_allclose(cov_vinc_no_bnt_4d, cov_vinc_no_bnt_4d_test, rtol=1e-3, atol=0)
 
-    if bnt_transform:
-        mm.compare_arrays(cov_vinc_bnt_2d, cov_bench, 'cov_vinc_bnt_2d',
-                          'cov_bench', log_diff=True, plot_diff_threshold=5)
+    # # turn to dict for the BNT function
+    # X_dict = covmat_utils.build_X_matrix_BNT(bnt_matrix)
+    # cov_vinc_bnt_10d_dict = covmat_utils.cov_3x2pt_BNT_transform(cov_vinc_no_bnt_10d_dict, X_dict)
+    # cov_vinc_bnt_4d = mm.cov_3x2pt_10D_to_4D(cov_vinc_bnt_10d_dict, probe_ordering, 32, zbins, ind.copy(), GL_or_LG)
+    # cov_vinc_bnt_2d = mm.cov_4D_to_2D(cov_vinc_bnt_4d)
 
-    assert False, 'stop here'
-    # ! remove until here
+    # if bnt_transform:
+    #     mm.compare_arrays(cov_vinc_bnt_2d, cov_checkBNT_GSSC_BNT, 'cov_vinc_bnt_2d',
+    #                       'cov_bench', log_diff=True, plot_diff_threshold=5)
+
+    # # ! remove until here
 
     # TODO compute BNT for Vincenzo's covs, which are not exactly equal to the CLOE-datavector ones?
     # mm.matshow(cov_dict['cov_3x2pt_GS_2D'], log=True, title=f'BNT {BNT_transform}')

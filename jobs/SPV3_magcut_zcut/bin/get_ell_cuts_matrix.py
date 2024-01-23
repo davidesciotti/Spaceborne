@@ -8,7 +8,7 @@ sys.path.append(f'/home/davide/Documenti/Lavoro/Programmi/Spaceborne')
 import bin.my_module as mm
 import common_cfg.mpl_cfg as mpl_cfg
 
-matplotlib.use('Qt5Agg')
+
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 

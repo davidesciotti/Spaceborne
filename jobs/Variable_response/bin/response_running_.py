@@ -35,7 +35,7 @@ import config_variable_response as cfg
 
 import ell_values as ell_utils
 
-matplotlib.use('Qt5Agg')
+
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 markersize = ['lines.markersize']
 

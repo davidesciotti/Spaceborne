@@ -116,7 +116,7 @@ def find_lmax(ell, cl_mask, var_tol=0.05, debug=False):
 # ! generate my own polar cap
 def generate_polar_cap(area_deg2, nside=2048):
 
-    print('generating a polar cap mask with area %.2f deg2 and resolution nside {nside}' % area_deg2)
+    print('Generating a polar cap mask with area %.2f deg2 and resolution nside {nside}' % area_deg2)
 
     # Total area of the sphere in square degrees
     total_area_deg2 = 41253
@@ -171,7 +171,7 @@ mask_euclid_highres_path = f'/home/davide/Documenti/Lavoro/Programmi/common_data
 mask_csst_npz = np.load('/home/davide/Documenti/Lavoro/Programmi/CSSTforecasts/mask_nside4096.npz')
 
 # load sylvain's mask (which is low-resolution)
-mask_euclid_lowres = hp.read_map(mask_euclid_lowres_path, verbose=True)
+mask_euclid_lowres = hp.read_map(mask_euclid_lowres_path, verbose=False)
 
 # TODO understand why the plot is different, it's probably vec = hp.ang2vec(0, 0)
 # Plot the masks using mollview
@@ -192,8 +192,8 @@ plt.loglog(ell_euclid_highres, cl_mask_euclid_highres, ls='--', label='high res,
 plt.xlabel(r'$\ell$')
 plt.ylabel(r'$C_\ell^{mask}$')
 
-np.save('/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside}_davide.npy', ell_euclid_highres)
-np.save('/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside}_davide.npy', cl_mask_euclid_highres)
+np.save(f'/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside}_davide.npy', ell_euclid_highres)
+np.save(f'/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside}_davide.npy', cl_mask_euclid_highres)
 hp.write_map(mask_euclid_highres_path, mask_euclid_highres, overwrite=True)
 
 # (re-) get nside, just to check

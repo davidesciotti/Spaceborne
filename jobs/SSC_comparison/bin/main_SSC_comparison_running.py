@@ -37,7 +37,7 @@ import check_specs as utils
 import unit_test
 
 
-mpl.use('Qt5Agg')
+
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 start_time = time.perf_counter()

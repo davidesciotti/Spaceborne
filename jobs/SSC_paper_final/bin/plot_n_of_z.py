@@ -7,7 +7,7 @@ sys.path.append('/')
 import mpl_cfg
 
 
-mpl.use('Qt5Agg')
+
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 mpl.pyplot.set_cmap('rainbow')

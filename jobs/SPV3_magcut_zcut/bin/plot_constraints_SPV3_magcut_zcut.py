@@ -21,7 +21,7 @@ import my_module as mm
 sys.path.append('../config')
 import config_SPV3_magcut_zcut as cfg
 
-mpl.use('Qt5Agg')
+
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 

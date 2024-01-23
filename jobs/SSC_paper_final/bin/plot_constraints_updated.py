@@ -14,7 +14,7 @@ import bin.my_module as mm
 import common_cfg.mpl_cfg as mpl_cfg
 
 
-mpl.use('Qt5Agg')
+
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 # mpl.use('qt')
 

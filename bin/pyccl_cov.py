@@ -11,7 +11,8 @@ from matplotlib import cm
 from tqdm import tqdm
 from scipy.interpolate import interp1d
 
-ROOT = '/home/cosmo/davide.sciotti/data'
+import os
+ROOT = os.getenv('ROOT')
 sys.path.append(f'{ROOT}/Spaceborne')
 import bin.my_module as mm
 import bin.cosmo_lib as cosmo_lib
@@ -125,7 +126,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                                   p_of_k_a=None, lk_arr=logn_k_grid_tkka,
                                                   a_arr=a_grid_increasing_for_ttka,
                                                   extrap_order_lok=1, extrap_order_hik=1, use_log=False,
-                                                  #   probe_block=A + B + C + D,
+                                                  probe_block=A + B + C + D,
                                                   **prof_2pt_args)
 
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
@@ -474,7 +475,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     # ! =============================================== compute covs ===============================================
 
     z_grid_tkka = np.linspace(pyccl_cfg['z_grid_tkka_min'],
-                              pyccl_cfg['z_grid_tkka_max'], 
+                              pyccl_cfg['z_grid_tkka_max'],
                               pyccl_cfg['z_grid_tkka_steps'])
 
     if pyccl_cfg['which_sigma2_B'] == 'mask':
@@ -506,13 +507,13 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         print('Loading sigma2_B from file')
         z_grid_sigma2_B = np.load(pyccl_cfg['z_grid_sigma2_B_filename'])
         sigma2_B = np.load(pyccl_cfg['sigma2_B_filename'])
-        
+        sigma2_B = np.diag(sigma2_B) if sigma2_B.ndim == 2 else sigma2_B
+
         sigma2_B_interp_func = interp1d(z_grid_sigma2_B, sigma2_B, kind='linear')
         z_grid_sigma2_B = z_grid_tkka
         sigma2_B = sigma2_B_interp_func(z_grid_sigma2_B)
 
         a_grid_sigma2_B = cosmo_lib.z_to_a(z_grid_sigma2_B)[::-1]
-        sigma2_B = np.diag(sigma2_B) if sigma2_B.ndim == 2 else sigma2_B
 
         sigma2_B_tuple = (a_grid_sigma2_B, sigma2_B)
 

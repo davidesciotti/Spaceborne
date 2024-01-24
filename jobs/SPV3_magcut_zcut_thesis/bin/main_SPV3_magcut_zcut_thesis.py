@@ -15,8 +15,6 @@ from copy import deepcopy
 import numpy.testing as npt
 pp = pprint.PrettyPrinter(indent=4)
 
-
-import os
 ROOT = os.getenv('ROOT')
 SB_ROOT = f'{ROOT}/Spaceborne'
 

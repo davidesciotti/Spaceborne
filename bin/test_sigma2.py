@@ -21,19 +21,24 @@ covariance_cfg = cfg.covariance_cfg
 
 z_grid_tkka = np.load(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/z_grid_tkka.npy')
 sigma2_B_ccl_SPV3 = np.load(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/sigma2_B_ccl.npy')
-sigma2_B_ccl_ISTF = np.load('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/covmat/PyCCL/standard/sigma2_B_ccl_ISTF.npy')
+sigma2_B_ccl_ISTF = np.load(
+    f'{ROOT}/common_data/Spaceborne/jobs/ISTF/output/cl14may/covmat/PyCCL/standard/sigma2_B_ccl_ISTF.npy')
 sigma2_B_ccl_SPV3_polar_cap = np.load(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/sigma2_B_ccl_polar_cap.npy')
 
 
 z_grid_dav_ISTF = np.load(
-    '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_ISTF.npy')
-sigma2_dav_ISTF = np.load('/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/sigma2/sigma2_zsteps3000_ISTF.npy')
+    f'{ROOT}/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_ISTF.npy')
+sigma2_dav_ISTF = np.load(f'{ROOT}/exact_SSC/output/sigma2/sigma2_zsteps3000_ISTF.npy')
 
 # TODO the path in the cfg dile seems to be wrong, it points to the folder above, but no interpolation
 z_grid_dav_SPV3 = np.load(
-    '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/SPV3/separate_universe/jan_2024/d2ClAB_dVddeltab/z_grid_ssc_integrand_zsteps2899.npy')
+    f'{ROOT}/exact_SSC/output/SPV3/separate_universe/jan_2024/d2ClAB_dVddeltab/z_grid_ssc_integrand_zsteps2899.npy')
 sigma2_dav_SPV3 = np.load(
-    '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/SPV3/separate_universe/jan_2024/d2ClAB_dVddeltab/sigma2_zsteps2899_SPV3.npy')
+    f'{ROOT}/exact_SSC/output/SPV3/separate_universe/jan_2024/d2ClAB_dVddeltab/sigma2_zsteps2899_SPV3.npy')
+
+z_grid_sigma2_SPV3_3000 = np.load(ROOT + '/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_SPV3_serial.npy')
+sigma2_SPV3_3000 = np.load(ROOT + '/exact_SSC/output/sigma2/sigma2_zsteps3000_SPV3_serial.npy')
+
 
 sigma2_dav_SPV3_diag = np.diag(sigma2_dav_SPV3)
 sigma2_dav_ISTF_diag = np.diag(sigma2_dav_ISTF)
@@ -49,6 +54,7 @@ plt.plot(z_grid_tkka, sigma2_B_ccl_ISTF, label='ccl ISTF')
 plt.plot(z_grid_tkka, sigma2_B_ccl_SPV3_polar_cap, label='ccl polar cap')
 plt.plot(z_grid_dav_SPV3, np.diag(sigma2_dav_SPV3), label='dav SPV3')
 plt.plot(z_grid_dav_ISTF, np.diag(sigma2_dav_ISTF), label='dav ISTF', ls='--')
+plt.plot(z_grid_sigma2_SPV3_3000, sigma2_SPV3_3000, label='dav SPV3 3000', ls='--')
 plt.yscale('log')
 plt.legend()
 plt.xlabel('z')
@@ -61,7 +67,5 @@ plt.yscale('log')
 plt.xlabel('z')
 plt.ylabel('ratio ccl/dav')
 
-# save 
 
 
-# ! remove until here

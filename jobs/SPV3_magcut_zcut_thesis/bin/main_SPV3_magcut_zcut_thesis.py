@@ -5,7 +5,6 @@ import matplotlib
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import os
-# os.environ['OMP_NUM_THREADS'] = '1'
 import numpy as np
 import warnings
 import matplotlib.lines as mlines
@@ -39,6 +38,7 @@ import jobs.SPV3_magcut_zcut_thesis.config.config_SPV3_magcut_zcut_thesis as cfg
 
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 script_start_time = time.perf_counter()
+os.environ['OMP_NUM_THREADS'] = '4'
 
 
 # TODO check that the number of ell bins is the same as in the files
@@ -303,25 +303,24 @@ def plot_kernels_for_thesis():
     plt.legend(loc='lower right')
 
 
-def process_cov_matrix(filename, file_ext, cov_dict_key, comparison_label):
+def nz_gaussian_smmothing_func(zgrid_nz, n_of_z, plot=True):
 
-    cov_cloe_bench = np.load(f'{ROOT}/my_cloe_data/{filename}-{nbl_WL_opt}Bins.{file_ext}')
-    cov_bench_dav = mm.cov_2d_cloe_to_dav(cov_cloe_bench, nbl_WL_opt, zbins, 'ell', 'ell')
+    print(f'Applying a Gaussian filter of sigma = {nz_gaussian_smoothing_sigma} to the n(z)')
+    n_of_z = gaussian_filter1d(n_of_z, nz_gaussian_smoothing_sigma, axis=0)
 
-    # ell cut, 29 bins instead of 32
-    assert cov_dict['cov_3x2pt_GO_2D'].shape == cov_dict['cov_3x2pt_GS_2D'].shape, \
-        'cov_3x2pt_GO_2D and cov_3x2pt_GS_2D should have the same shape'
-    n_cov_elements = cov_dict['cov_3x2pt_GO_2D'].shape[0]
-    cov_bench_dav_lmax3000 = cov_bench_dav[:n_cov_elements, :n_cov_elements]
+    if plot:
+        plt.figure()
+        for zi in range(zbins):
+            plt.plot(zgrid_nz, n_of_z[:, zi], label=f'zbin {zi}', c=colors[zi], ls='-')
+            plt.plot(zgrid_nz, n_of_z[:, zi], c=colors[zi], ls='--')
+        plt.title(f'Gaussian filter w/ sigma = {nz_gaussian_smoothing_sigma}')
 
-    mm.compare_arrays(cov_dict[cov_dict_key], cov_bench_dav_lmax3000,
-                      cov_dict_key, comparison_label,
-                      log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
-
+    return n_of_z
 
 # * ====================================================================================================================
 # * ====================================================================================================================
 # * ====================================================================================================================
+
 
 general_cfg = cfg.general_cfg
 covariance_cfg = cfg.covariance_cfg
@@ -366,7 +365,7 @@ for zbins in (13, ):
     nz_gaussian_smoothing_sigma = covariance_cfg['nz_gaussian_smoothing_sigma']
     shift_nz = covariance_cfg['shift_nz']  # ! are vincenzo's kernels shifted?? it looks like they are not
     normalize_shifted_nz = covariance_cfg['normalize_shifted_nz']
-    compute_bnt_with_shifted_nz = covariance_cfg['compute_bnt_with_shifted_nz']  # ! let's test this
+    compute_bnt_with_shifted_nz_for_zcuts = covariance_cfg['compute_bnt_with_shifted_nz_for_zcuts']  # ! let's test this
     include_ia_in_bnt_kernel_for_zcuts = covariance_cfg['include_ia_in_bnt_kernel_for_zcuts']
     # these 4 only needed because vincenzo's files for GG and 3x2pt are with nbl=29
     nbl_WL_opt = general_cfg['nbl_WL_opt']
@@ -540,11 +539,11 @@ for zbins in (13, ):
                                   err_msg='dzWL shifts do not match with the ones from the yml file')
 
     if EP_or_ED == 'ED':
-        raise Exception('you should re-check the nz shifts for ED!!')
+        raise Exception('you should re-check the nz shifts in the yml fiducial for the ED case!!')
     # for zi in range(1, zbins + 1):
     #     fid_pars_dict['FM_ordered_params'][f'dzWL{zi:02d}'] = dzWL_fiducial[zi - 1].item()
 
-    # warnings.warn('You should remove this, stop overwriting the yaml files (11 bins case still missing')
+    # warnings.warn('You should remove this, stop overwriting the yaml files
     # with open(general_cfg['fid_yaml_filename'].format(zbins=zbins), 'w') as f:
     #     yaml.dump(fid_pars_dict, f, sort_keys=False)
 
@@ -556,37 +555,7 @@ for zbins in (13, ):
     n_of_z = n_of_z[:, 1:]
     n_of_z_original = n_of_z
 
-    whose_wf = 'davide'  # TODO 'vincenzo' or 'davide'. whose wf you want to use to compute the z mean for the ell cuts
-
-    warnings.warn('test shift_nz!!')
-    assert compute_bnt_with_shifted_nz is False, 'We compute the BNT just for a simple case: no IA, no shift. This is because we want' \
-        'to compute the z means'
-    assert include_ia_in_bnt_kernel_for_zcuts is False, 'We compute the BNT just for a simple case: no IA, no shift. This is because we want' \
-                                                        ' to compute the z means'
-
-    # ! apply a Gaussian filter
-    if nz_gaussian_smoothing:
-        print(f'Applying a Gaussian filter of sigma = {nz_gaussian_smoothing_sigma} to the n(z)')
-        n_of_z = gaussian_filter1d(n_of_z, nz_gaussian_smoothing_sigma, axis=0)
-        # plt.figure()
-        # for zi in range(zbins):
-        #     plt.plot(zgrid_nz, n_of_z[:, zi], label=f'zbin {zi}', c=colors[zi], ls='-')
-        #     plt.plot(zgrid_nz, n_of_z[:, zi], c=colors[zi], ls='--')
-        # plt.title(f'Gaussian filter w/ sigma = {nz_gaussian_smoothing_sigma}')
-
-    n_of_z_bnt = n_of_z
-
-    # ! shift it (plus, re-normalize it after the shift)
-    if shift_nz:
-        n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z, dz_shifts, normalize=normalize_shifted_nz, plot_nz=False,
-                                    interpolation_kind=shift_nz_interpolation_kind)
-
-    if compute_bnt_with_shifted_nz:
-        n_of_z_bnt = n_of_z
-
-    bnt_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z_bnt, cosmo_ccl=cosmo_ccl, plot_nz=False)
-
-    # ! load vincenzo's kernels, including mag bias and IA
+    # ! load vincenzo's kernels, including magnification bias, IA and n(z) shifts!
     wf_folder = Sijkl_cfg['wf_input_folder']
     wf_filename = Sijkl_cfg['wf_filename'].format(probe='{probe:s}', **variable_specs)
     wf_delta_vin = np.genfromtxt(f'{wf_folder}/{wf_filename.format(probe="delta")}')
@@ -610,37 +579,47 @@ for zbins in (13, ):
     wf_lensing_vin = wf_gamma_vin + ia_bias_vin[:, None] * wf_ia_vin
     wf_galaxy_vin = wf_delta_vin + wf_mu_vin  # TODO in theory, I should BNT-tansform wf_mu...
 
-    # ! my kernels
+    assert compute_bnt_with_shifted_nz_for_zcuts is False, 'The BNT used to compute the z_means and ell cuts is just for a simple case: no IA, no dz shift'
+    assert shift_nz is True, 'The signal (and BNT used to transform it) is computed with a shifted n(z); You could use an un-shifted n(z) for the BNT, but' \
+        'this would be slightly inconsistent (but also what I did so far).'
+    assert include_ia_in_bnt_kernel_for_zcuts is False, 'We compute the BNT just for a simple case: no IA, no shift. This is because we want' \
+                                                        ' to compute the z means'
+
+    # ! apply a Gaussian filter
+    if nz_gaussian_smoothing:
+        n_of_z = nz_gaussian_smmothing_func(zgrid_nz, n_of_z, plot=True)
+
+    # ! shift it (plus, re-normalize it after the shift)
+    # * IMPORTANT NOTE: The BNT should be computed from the same n(z) (shifted or not) which is then used to compute
+    # * the kernels which are then used to get the z_means, and finally the ell_cuts, for consistency. In other words,
+    # * we cannot compute the kernels with a shifted n(z) and transforme them with a BNT computed from the unshifted n(z)
+    # * and viceversa. If the n(z) are shifted, one of the BNT kernels will become negative, but this is just because
+    # * two of the original kernels get very close after the shift: the transformation is correct.
+    # * Having said that, I leave the possibility to continue with the rest of the code with a
+    if compute_bnt_with_shifted_nz_for_zcuts:
+        n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z, dz_shifts, normalize=normalize_shifted_nz, plot_nz=False,
+                                    interpolation_kind=shift_nz_interpolation_kind)
     nz_tuple = (zgrid_nz, n_of_z)
+
+    bnt_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, cosmo_ccl=cosmo_ccl, plot_nz=False)
+
+    # ! my kernels, which are needed because I want the flexibility to shift the n(z) or not
     gal_bias_1d_arr = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, general_cfg['magcut_source'] / 10,
                                                galaxy_bias_fit_fiducials)
     gal_bias_2d_arr = np.repeat(gal_bias_1d_arr.reshape(1, -1), zbins, axis=0).T
     gal_bias_tuple = (zgrid_nz, gal_bias_2d_arr)
 
-    wf_lensing_ccl_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'without_IA', flat_fid_pars_dict, cosmo_ccl,
-                                          nz_tuple,
-                                          ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
-                                          return_ccl_obj=True, n_samples=len(zgrid_nz))
     wf_lensing_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl,
-                                          nz_tuple,
-                                          ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                          nz_tuple, ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
                                           return_ccl_obj=False, n_samples=len(zgrid_nz))
     wf_gamma_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'without_IA', flat_fid_pars_dict, cosmo_ccl,
-                                        nz_tuple,
-                                        ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                        nz_tuple, ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
                                         return_ccl_obj=False, n_samples=len(zgrid_nz))
     wf_ia_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'IA_only', flat_fid_pars_dict, cosmo_ccl,
-                                     nz_tuple,
-                                     ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                     nz_tuple, ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
                                      return_ccl_obj=False, n_samples=len(zgrid_nz))
-
-    wf_galaxy_ccl_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'without_galaxy_bias', flat_fid_pars_dict, cosmo_ccl,
-                                         nz_tuple,
-                                         ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
-                                         return_ccl_obj=True, n_samples=len(zgrid_nz))
     wf_galaxy_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'without_galaxy_bias', flat_fid_pars_dict, cosmo_ccl,
-                                         nz_tuple,
-                                         ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                         nz_tuple, ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
                                          return_ccl_obj=False, n_samples=len(zgrid_nz))
 
     # this is to check against ccl in pyccl_cov
@@ -649,65 +628,39 @@ for zbins in (13, ):
     general_cfg['wf_delta'] = wf_delta_vin
     general_cfg['wf_mu'] = wf_mu_vin
     general_cfg['z_grid_wf'] = zgrid_wf_vin
-    general_cfg['nz_tuple'] = nz_tuple
 
     # BNT-transform the lensing kernels
     wf_gamma_ccl_bnt = (bnt_matrix @ wf_gamma_ccl_arr.T).T
-    wf_gamma_vin_bnt = (bnt_matrix @ wf_gamma_vin.T).T
-
     wf_lensing_ccl_bnt = (bnt_matrix @ wf_lensing_ccl_arr.T).T
-    wf_lensing_vin_bnt = (bnt_matrix @ wf_lensing_vin.T).T
 
     # compute z means
     if include_ia_in_bnt_kernel_for_zcuts:
         wf_ll_ccl = wf_lensing_ccl_arr
         wf_ll_ccl_bnt = wf_lensing_ccl_bnt
-        wf_ll_vin = wf_lensing_vin
-        wf_ll_vin_bnt = wf_lensing_vin_bnt
     else:
         wf_ll_ccl = wf_gamma_ccl_arr
         wf_ll_ccl_bnt = wf_gamma_ccl_bnt
-        wf_ll_vin = wf_gamma_vin
-        wf_ll_vin_bnt = wf_gamma_vin_bnt
 
     z_means_ll = wf_cl_lib.get_z_means(zgrid_nz, wf_ll_ccl)
     z_means_gg = wf_cl_lib.get_z_means(zgrid_nz, wf_galaxy_ccl_arr)
     z_means_ll_bnt = wf_cl_lib.get_z_means(zgrid_nz, wf_ll_ccl_bnt)
 
-    # check that the z means are close (within 5%)
-    z_means_ll_vin = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_ll_vin)
-    z_means_gg_vin = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_galaxy_vin)
-    z_means_ll_vin_bnt = wf_cl_lib.get_z_means(zgrid_wf_vin, wf_ll_vin_bnt)
-
     # plot_kernels_for_thesis()
-
-    # # check that the z means are close (within 5%)
-    # np.testing.assert_allclose(z_means_ll, z_means_ll_vin, rtol=1e-2, atol=0,
-    #                            err_msg='z means computed w/ my vs vincenzo kernels don\'t match')
-    # np.testing.assert_allclose(z_means_ll_bnt, z_means_ll_vin_bnt, rtol=5e-2, atol=0,
-    #                            err_msg='z means bnt computed w/ my vs vincenzo kernels don\'t match')
-    # np.testing.assert_allclose(z_means_gg, z_means_gg_vin, rtol=5e-2, atol=0,
-    #                            err_msg='z means bnt computed w/ my vs vincenzo kernels don\'t match')
 
     plt.figure()
     for zi in range(zbins):
-        plt.plot(zgrid_wf_vin, wf_gamma_vin[:, zi], ls='-', c=colors[zi],
-                 alpha=0.6, label='wf_gamma_vin' if zi == 0 else None)
-        plt.plot(zgrid_nz, wf_gamma_ccl_arr[:, zi], ls='--', c=colors[zi],
-                 alpha=0.6, label='wf_ll_ccl' if zi == 0 else None)
+        plt.plot(zgrid_nz, wf_gamma_ccl_arr[:, zi], ls='-', c=colors[zi],
+                 alpha=0.6, label='wf_gamma_ccl' if zi == 0 else None)
         plt.plot(zgrid_nz, wf_gamma_ccl_bnt[:, zi], ls='--', c=colors[zi],
-                 alpha=0.6, label='wf_ll_ccl_bnt' if zi == 0 else None)
+                 alpha=0.6, label='wf_gamma_ccl_bnt' if zi == 0 else None)
         plt.axvline(z_means_ll_bnt[zi], ls=':', c=colors[zi])
 
     plt.legend()
 
-    # assert False
-
-    warnings.warn('RESTORE THIS CHECK!!! finish understanding this part')
-    # assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll must be monotonically increasing'
-    # assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg must be monotonically increasing'
-    # assert np.all(np.diff(z_means_ll_bnt) > 0), ('z_means_ll_bnt should be monotonically increasing '
-    #                                              '(not a strict condition, but it would be better...)')
+    assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically increasing'
+    assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically increasing'
+    assert np.all(np.diff(z_means_ll_bnt) > 0), ('z_means_ll_bnt should be monotonically increasing '
+                                                 '(not a strict condition, valid only if we do not shift the n(z) in this part)')
 
     ell_cuts_dict = {}
     ell_cuts_dict['LL'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_ll_bnt, z_values_b=z_means_ll_bnt)
@@ -726,6 +679,16 @@ for zbins in (13, ):
     # mm.plot_bnt_matrix(BNT_matrix, zbins)
     # plt.savefig(f'{ROOT}/phd_thesis_plots/plots/bnt_matrix_fs2.pdf',
     #             dpi=500, bbox_inches='tight')
+
+    if shift_nz:
+        n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z, dz_shifts, normalize=normalize_shifted_nz, plot_nz=False,
+                                    interpolation_kind=shift_nz_interpolation_kind)
+        nz_tuple = (zgrid_nz, n_of_z)
+        # * this is important: the BNT matrix i use for the rest of the code (so not to compute the ell cuts) is instead
+        # * consistent with the shifted n(z) used to compute the kernels
+        bnt_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, cosmo_ccl=cosmo_ccl, plot_nz=False)
+
+    general_cfg['nz_tuple'] = nz_tuple
 
     if general_cfg['use_CLOE_cls']:
         assert which_pk == 'HMCodeBar', 'I am using CLOE Cls, so I should use HMCodeBar'
@@ -916,7 +879,7 @@ for zbins in (13, ):
 
         # load benchmark cov and check that it matches the one computed here; I am not actually using it
         if not general_cfg['BNT_transform']:
-            
+
             # load CLOE benchmarks
             cov_cloe_bench_2d_G = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-Gauss-{nbl_WL_opt}Bins.npy')
             cov_cloe_bench_2dcloe_GSSC = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.npy')

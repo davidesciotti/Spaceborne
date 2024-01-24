@@ -454,7 +454,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     elif probe == '3x2pt':
         probe_ordering = covariance_cfg['probe_ordering']
         # warnings.warn('TESTING ONLY GLGL TO DEBUG 3X2PT cNG')
-        # probe_ordering = (('G', 'L'),)  # for testing 3x2pt GLGL, which seems a problematic case.
+        probe_ordering = (('G', 'L'),)  # for testing 3x2pt GLGL, which seems a problematic case.
     else:
         raise ValueError('probe must be either LL, GG, or 3x2pt')
 
@@ -499,32 +499,31 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         sigma2_B_tuple = (a_grid_sigma2_B[::-1], sigma2_B)
 
     elif pyccl_cfg['which_sigma2_B'] == 'file':
-        a_grid_sigma2_B = np.load(pyccl_cfg['a_grid_sigma2_B_filename'])
+        print('Loading sigma2_B from file')
+        z_grid_sigma2_B = np.load(pyccl_cfg['z_grid_sigma2_B_filename'])
         sigma2_B = np.load(pyccl_cfg['sigma2_B_filename'])
-        sigma2_B_tuple = (a_grid_sigma2_B[::-1], sigma2_B)
+
+        a_grid_sigma2_B = cosmo_lib.z_to_a(z_grid_sigma2_B)[::-1]
+        sigma2_B = np.diag(sigma2_B) if sigma2_B.ndim == 2 else sigma2_B
+
+        sigma2_B_tuple = (a_grid_sigma2_B, sigma2_B)
 
     elif pyccl_cfg['which_sigma2_B'] == None:
         sigma2_B_tuple = None
+
     else:
         raise ValueError('which_sigma2_B must be either mask, file or None')
 
-    if pyccl_cfg['which_sigma2_B'] == None:
-
-        z_grid_sigma2_B = np.linspace(pyccl_cfg['z_grid_tkka_min'], pyccl_cfg['z_grid_tkka_max'],
-                                      pyccl_cfg['z_grid_tkka_steps'])
-        a_grid_sigma2_B = cosmo_lib.z_to_a(z_grid_sigma2_B)
-        sigma2_B = ccl.covariances.sigma2_B_disc(
-            cosmo_ccl, a_arr=a_grid_sigma2_B, fsky=f_sky, p_of_k_a='delta_matter:delta_matter')
+    if pyccl_cfg['save_sigma2_B'] and pyccl_cfg['which_sigma2_B'] != 'file':
+        np.save(f'{pyccl_cfg["cov_path"]}/{pyccl_cfg["z_grid_sigma2_B_filename"]}.npy', z_grid_sigma2_B)
+        np.save(f'{pyccl_cfg["cov_path"]}/{pyccl_cfg["sigma2_B_filename"]}.npy', sigma2_B)
 
     plt.figure()
     plt.plot(z_grid_sigma2_B, sigma2_B)
     plt.xlabel('z')
     plt.ylabel('sigma2_B(z)')
     plt.yscale('log')
-
-    if pyccl_cfg['save_sigma2_B']:
-        np.save(f'{pyccl_cfg["cov_path"]}/{pyccl_cfg["z_grid_sigma2_B_filename"]}.npy', z_grid_sigma2_B)
-        np.save(f'{pyccl_cfg["cov_path"]}/{pyccl_cfg["sigma2_B_filename"]}.npy', sigma2_B)
+    plt.show()
 
     which_pk = fiducial_pars_dict['other_params']['camb_extra_parameters']['camb']['halofit_version']
     tkka_dict = initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, which_pk=which_pk)

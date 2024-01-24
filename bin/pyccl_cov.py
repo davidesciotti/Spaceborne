@@ -427,9 +427,9 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     # assert mm.percent_diff(f_sky, area_deg2 / 41253, abs_value=True) < 1, 'f_sky is not correct'
 
     # ell_mask = np.load(
-    #     f'/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy')
+    #     f'/home/davide/Documenti/Lavoro/Programmi/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy')
     # cl_mask = np.load(
-    #     f'/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy')
+    #     f'/home/davide/Documenti/Lavoro/Programmi/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy')
 
     # mask_wl = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * f_sky)**2  # ! important to normalize!
 
@@ -496,12 +496,12 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
         sigma2_B = ccl.covariances.sigma2_B_from_mask(
             cosmo_ccl, a_arr=a_grid_sigma2_B, mask_wl=mask_wl, p_of_k_a=p_of_k_a)
-        sigma2_B_tuple = (a_grid_sigma2_B, sigma2_B)
+        sigma2_B_tuple = (a_grid_sigma2_B[::-1], sigma2_B)
 
     elif pyccl_cfg['which_sigma2_B'] == 'file':
         a_grid_sigma2_B = np.load(pyccl_cfg['a_grid_sigma2_B_filename'])
         sigma2_B = np.load(pyccl_cfg['sigma2_B_filename'])
-        sigma2_B_tuple = (a_grid_sigma2_B, sigma2_B)
+        sigma2_B_tuple = (a_grid_sigma2_B[::-1], sigma2_B)
 
     elif pyccl_cfg['which_sigma2_B'] == None:
         sigma2_B_tuple = None

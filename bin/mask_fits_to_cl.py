@@ -183,6 +183,7 @@ mask_path = '/home/davide/Documenti/Lavoro/Programmi/common_data/mask'
 mask_lowres_path = f'{mask_path}/mask_circular_1pole_15000deg2.fits'
 mask_circular_path = f'{mask_path}/mask_circular_1pole_{area_deg2:d}deg2_nside{nside}_davide.fits'
 mask_dr1_path = f'{mask_path}/euclid_dr1_mask.fits'
+mask_q1_path = f'{mask_path}/euclid_q1_mask.fits'
 mask_csst_npz = np.load('/home/davide/Documenti/Lavoro/Programmi/CSSTforecasts/mask_nside4096.npz')
 
 
@@ -192,13 +193,18 @@ mask_csst_npz = np.load('/home/davide/Documenti/Lavoro/Programmi/CSSTforecasts/m
 ell_mask_circular, cl_mask_circular, fsky_circular, nside_circular = mask_path_to_cl(
     mask_circular_path, 'pole highres', coord=coord)
 ell_mask_dr1, cl_mask_dr1, fsky_dr1, nside_dr1 = mask_path_to_cl(mask_dr1_path, 'dr1', coord=coord)
+ell_mask_q1, cl_mask_q1, fsky_q1, nside_q1 = mask_path_to_cl(mask_q1_path, 'q1', coord=coord)
 
 area_deg2_circular = int(cosmo_lib.fsky_to_deg2(fsky_circular))
 area_deg2_dr1 = int(cosmo_lib.fsky_to_deg2(fsky_dr1))
+area_deg2_q1 = int(cosmo_lib.fsky_to_deg2(fsky_q1))
+
+area_deg2_circular = 14700 if area_deg2_circular == 14701 else area_deg2_circular
 
 plt.figure()
 plt.loglog(ell_mask_circular, cl_mask_circular, ls='--', label=f'high res, fsky = {fsky_circular}', alpha=0.5)
 plt.loglog(ell_mask_dr1, cl_mask_dr1, ls='--', label=f'dr1, fsky = {fsky_dr1}', alpha=0.5)
+plt.loglog(ell_mask_q1, cl_mask_q1, ls='--', label=f'q1, fsky = {fsky_q1}', alpha=0.5)
 plt.xlabel(r'$\ell$')
 plt.ylabel(r'$C_\ell^{mask}$')
 plt.legend()
@@ -208,6 +214,9 @@ np.save(f'{mask_path}/Cell_circular_1pole_{area_deg2_circular:d}deg2_nside{nside
 
 np.save(f'{mask_path}/ell_DR1_{area_deg2_dr1:d}deg2_nside{nside_dr1}.npy', ell_mask_dr1)
 np.save(f'{mask_path}/Cell_DR1_{area_deg2_dr1:d}deg2_nside{nside_dr1}.npy', cl_mask_dr1)
+
+np.save(f'{mask_path}/ell_Q1_{area_deg2_q1:d}deg2_nside{nside_q1}.npy', ell_mask_q1)
+np.save(f'{mask_path}/Cell_Q1_{area_deg2_q1:d}deg2_nside{nside_q1}.npy', cl_mask_q1)
 
 
 # mask_circular = generate_polar_cap(area_deg2=area_deg2, nside=nside)

@@ -8,7 +8,6 @@ import sys
 from joblib import Parallel, delayed
 from matplotlib import cm
 from tqdm import tqdm
-import ipdb
 
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 sys.path.append(f'{ROOT}/Spaceborne')

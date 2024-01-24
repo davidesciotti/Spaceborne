@@ -17,7 +17,6 @@ mpl_rcParams = {'lines.linewidth': 3.5,
                 'lines.markersize': 8,
                 'axes.grid': True,
                 'figure.constrained_layout.use': True,
-                'backend': 'Qt5Agg'
                 }
 plt.rcParams.update(mpl_rcParams)
 

@@ -30,7 +30,6 @@ params = {'lines.linewidth': 3.5,
           'mathtext.fontset': 'stix',
           'font.family': 'STIXGeneral',
           'figure.figsize': (8, 8),
-          'backend': 'Qt5Agg'
           }
 plt.rcParams.update(params)
 markersize = 10

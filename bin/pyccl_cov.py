@@ -454,7 +454,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     elif probe == '3x2pt':
         probe_ordering = covariance_cfg['probe_ordering']
         # warnings.warn('TESTING ONLY GLGL TO DEBUG 3X2PT cNG')
-        probe_ordering = (('L', 'L'),)  # for testing 3x2pt GLGL, which seems a problematic case.
+        # probe_ordering = (('G', 'L'),)  # for testing 3x2pt GLGL, which seems a problematic case.
     else:
         raise ValueError('probe must be either LL, GG, or 3x2pt')
 
@@ -562,6 +562,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
                                          ind_dict=ind_dict,
                                          output_4D_array=get_3x2pt_cov_in_4D,
                                          covariance_cfg=covariance_cfg,
+                                         sigma2_B_tuple=sigma2_B_tuple,
                                          integration_method=integration_method_dict[probe][which_ng_cov],
                                          )
 

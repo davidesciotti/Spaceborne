@@ -4,6 +4,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pyccl as ccl
+import os
 import sys
 from joblib import Parallel, delayed
 from matplotlib import cm

@@ -16,7 +16,8 @@ job_path = Path.cwd().parent
 home_path = Path.home()
 job_name = job_path.parts[-1]
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+import os
+ROOT = os.getenv('ROOT')
 sys.path.append(f'{ROOT}/Spaceborne')
 import bin.my_module as mm
 import bin.cosmo_lib as csmlib

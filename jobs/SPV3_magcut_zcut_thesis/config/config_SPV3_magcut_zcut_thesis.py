@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 which_forecast = 'SPV3'
 fsky = 0.3563380664078408
@@ -8,7 +9,8 @@ GL_or_LG = 'GL'
 fsky_dr1 = 0.06841711056057495
 area_deg2_dr1 = 2822
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+import os
+ROOT = os.getenv('ROOT')
 DATA_ROOT = f'{ROOT}/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
 SPV3_folder = f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
 
@@ -183,7 +185,7 @@ covariance_cfg = {
     'cov_folder': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{cov_ell_cuts:s}',
     'cov_filename': 'covmat_{which_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_'
                     'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_'
-                    'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D_sigma2_mask',
+                    'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D_sigma2_dav',
     'cov_vinc_folder': f'{SPV3_folder}/OutputFiles/CovMats/GaussOnly/Full',
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
@@ -202,7 +204,7 @@ covariance_cfg = {
 
         'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL/jan_2024',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
-                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_sigma2_mask.npz',
+                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_sigma2_dav.npz',
 
         'save_trispectrum': False,
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
@@ -210,12 +212,12 @@ covariance_cfg = {
         'which_sigma2_B': 'file',  # 'mask' or 'file' or None
         'area_deg2_mask': 14700,
         'nside_mask': 2048,
-        'ell_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
-        'cl_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
-        'save_sigma2_B': False, # only if you're not loading it
-        'z_grid_sigma2_B_filename': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_SPV3_serial.npy',
-        'sigma2_B_filename': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/sigma2/sigma2_zsteps3000_SPV3_serial.npy',
-        
+        'ell_mask_filename': ROOT + '/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
+        'cl_mask_filename': ROOT + '/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
+        'save_sigma2_B': False,  # only if you're not loading it
+        'z_grid_sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_SPV3_serial.npy',
+        'sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/sigma2_zsteps3000_SPV3_serial.npy',
+
 
 
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!

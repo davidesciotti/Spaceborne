@@ -6,7 +6,8 @@ import sys
 from joblib import Parallel, delayed
 
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+import os
+ROOT = os.getenv('ROOT')
 SB_ROOT = f'{ROOT}/Spaceborne'
 
 # project modules

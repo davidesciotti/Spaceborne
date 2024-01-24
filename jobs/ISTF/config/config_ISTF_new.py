@@ -2,8 +2,8 @@ import sys
 import numpy as np
 import yaml
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
-# DATA_ROOT = f'{ROOT}/Spaceborne/jobs/ISTF'
+import os
+ROOT = os.getenv('ROOT')
 DATA_ROOT = f'{ROOT}/common_data/Spaceborne/jobs/ISTF'
 
 

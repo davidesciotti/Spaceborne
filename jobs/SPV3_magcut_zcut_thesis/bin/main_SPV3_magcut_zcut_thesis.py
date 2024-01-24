@@ -1,7 +1,5 @@
 import sys
 import time
-from pathlib import Path
-import matplotlib
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import os
@@ -17,7 +15,9 @@ from copy import deepcopy
 import numpy.testing as npt
 pp = pprint.PrettyPrinter(indent=4)
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+
+import os
+ROOT = os.getenv('ROOT')
 SB_ROOT = f'{ROOT}/Spaceborne'
 
 # project modules

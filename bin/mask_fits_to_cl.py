@@ -6,7 +6,8 @@ from astropy.io import fits
 import healpy as hp
 import sys
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+import os
+ROOT = os.getenv('ROOT')
 sys.path.append(f'{ROOT}/Spaceborne')
 import bin.cosmo_lib as cosmo_lib
 

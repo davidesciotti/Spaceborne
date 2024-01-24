@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 
 import sys
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+import os
+ROOT = os.getenv('ROOT')
 SB_ROOT = f'{ROOT}/Spaceborne'
 
 # project modules

@@ -4,7 +4,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+import os
+ROOT = os.getenv('ROOT')
 sys.path.append(f'{ROOT}/Spaceborne')
 import bin.my_module as mm
 import common_cfg.mpl_cfg as mpl_cfg

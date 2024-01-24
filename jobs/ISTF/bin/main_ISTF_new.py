@@ -10,7 +10,8 @@ import warnings
 import pandas as pd
 from matplotlib import cm
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+import os
+ROOT = os.getenv('ROOT')
 SB_ROOT = f'{ROOT}/Spaceborne'
 
 # project modules

@@ -12,7 +12,8 @@ from getdist.gaussian_mixtures import GaussianND
 from matplotlib import cm
 
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+import os
+ROOT = os.getenv('ROOT')
 
 sys.path.append(f'{ROOT}/Spaceborne/bin')
 import my_module as mm

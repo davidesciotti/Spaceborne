@@ -3,7 +3,8 @@ Some general configurations for matplotlib
 """
 import sys
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+import os
+ROOT = os.getenv('ROOT')
 
 sys.path.append(f'{ROOT}/Spaceborne')
 import bin.my_module as mm

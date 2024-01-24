@@ -1,8 +1,10 @@
 import warnings
 import numpy as np
 import sys
+import os
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+import os
+ROOT = os.getenv('ROOT')
 sys.path.append(f'{ROOT}/Spaceborne/bin')
 import my_module as mm
 

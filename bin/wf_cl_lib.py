@@ -4,7 +4,7 @@ from copy import deepcopy
 import scipy
 import sys
 import time
-
+import os
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,7 +21,7 @@ import sys
 from tqdm import tqdm
 
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+ROOT = os.getenv('ROOT')
 sys.path.append(f'{ROOT}/Spaceborne')
 import bin.my_module as mm
 import bin.cosmo_lib as csmlib

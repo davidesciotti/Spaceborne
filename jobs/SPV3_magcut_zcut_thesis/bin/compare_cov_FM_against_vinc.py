@@ -5,7 +5,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+import os
+ROOT = os.getenv('ROOT')
 SB_ROOT = f'{ROOT}/Spaceborne'
 
 sys.path.append(SB_ROOT)

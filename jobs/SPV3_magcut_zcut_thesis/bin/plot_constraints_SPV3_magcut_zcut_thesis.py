@@ -11,7 +11,8 @@ import matplotlib.gridspec as gridspec
 from chainconsumer import ChainConsumer
 from tqdm import tqdm
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+import os
+ROOT = os.getenv('ROOT')
 SB_ROOT = f'{ROOT}/Spaceborne'
 
 

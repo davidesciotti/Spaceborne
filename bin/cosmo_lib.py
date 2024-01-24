@@ -3,6 +3,7 @@ import warnings
 from copy import deepcopy
 from glob import glob
 import camb
+import os
 import numpy as np
 from astropy.cosmology import w0waCDM
 # from classy import Class
@@ -11,7 +12,8 @@ import pyccl as ccl
 from scipy.integrate import simps
 import sys
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+import os
+ROOT = os.getenv('ROOT')
 sys.path.append(f'{ROOT}/Spaceborne/bin')
 import my_module as mm
 

@@ -2,13 +2,14 @@ import time
 import warnings
 import pickle
 import sys
-
+import os
 import matplotlib
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.integrate import simps
 
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+import os
+ROOT = os.getenv('ROOT')
 sys.path.append(f'{ROOT}/Spaceborne')
 import bin.cl_preprocessing as cl_preprocessing
 import bin.pyccl_cov as pyccl_cov

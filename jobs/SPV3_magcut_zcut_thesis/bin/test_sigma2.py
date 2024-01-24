@@ -40,7 +40,7 @@ sigma2_dav_ISTF_diag = np.diag(sigma2_dav_ISTF)
 sigma2_dav_SPV3_diag_interp_func = scipy.interpolate.interp1d(
     z_grid_dav_SPV3, sigma2_dav_SPV3_diag, kind='linear', fill_value='extrapolate')
 sigma2_dav_SPV3_diag_interp = sigma2_dav_SPV3_diag_interp_func(z_grid_tkka)
-np.save(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/sigma2_dav_SPV3_diag_interp.npy', sigma2_dav_SPV3_diag_interp)
+
 
 plt.figure()
 plt.plot(z_grid_tkka, sigma2_B_ccl_SPV3, label='ccl SPV3')

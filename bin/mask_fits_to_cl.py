@@ -4,6 +4,11 @@ from matplotlib import pyplot as plt
 import numpy as np
 from astropy.io import fits
 import healpy as hp
+import sys
+
+ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+sys.path.append(f'{ROOT}/Spaceborne')
+import bin.cosmo_lib as cosmo_lib
 
 
 def get_mask_quantities(clmask=None, mask=None, mask2=None, verbose=True):
@@ -118,11 +123,8 @@ def generate_polar_cap(area_deg2, nside=2048):
 
     print('Generating a polar cap mask with area %.2f deg2 and resolution nside {nside}' % area_deg2)
 
-    # Total area of the sphere in square degrees
-    total_area_deg2 = 41253
-
     # Expected sky fraction
-    fsky_expected = area_deg2 / total_area_deg2
+    fsky_expected = cosmo_lib.deg2_to_fsky(area_deg2)
     print(f"Expected f_sky: {fsky_expected}")
 
     # Convert the area to radians squared for the angular radius calculation
@@ -157,53 +159,59 @@ def generate_polar_cap(area_deg2, nside=2048):
     return mask
 
 
-# area_deg2 = 14700
-area_deg2 = 15000
+def mask_path_to_cl(mask_path, plot_title, coord=['C', 'E']):
+
+    mask = hp.read_map(mask_path)
+    hp.mollview(mask, coord=coord, title=plot_title, cmap='inferno_r')
+    ell_mask, cl_mask, fsky = get_mask_quantities(clmask=None, mask=mask, mask2=None, verbose=True)
+    nside = hp.get_nside(mask)
+    print(f'nside = {nside}')
+    return ell_mask, cl_mask, fsky, nside
+
+
+# ! settings
+area_deg2 = 14700
+# area_deg2 = 15000
 # nside = 4096
 nside = 2048
-
-# change to 15000 to match the Euclid mask, for a check
-mask_euclid_highres = generate_polar_cap(area_deg2=area_deg2, nside=nside)
+coord = ['C', 'E']
+# ! end settings
 
 
 # Path to the FITS files
-mask_euclid_lowres_path = '/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/mask_circular_1pole_15000deg2.fits'
-mask_euclid_highres_path = f'/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/mask_circular_1pole_{area_deg2:d}deg2_nside{nside}_davide.fits'
+mask_path = '/home/davide/Documenti/Lavoro/Programmi/common_data/mask'
+mask_lowres_path = f'{mask_path}/mask_circular_1pole_15000deg2.fits'
+mask_circular_path = f'{mask_path}/mask_circular_1pole_{area_deg2:d}deg2_nside{nside}_davide.fits'
+mask_dr1_path = f'{mask_path}/euclid_dr1_mask.fits'
 mask_csst_npz = np.load('/home/davide/Documenti/Lavoro/Programmi/CSSTforecasts/mask_nside4096.npz')
 
-# load sylvain's mask (which is low-resolution)
-mask_euclid_lowres = hp.read_map(mask_euclid_lowres_path, verbose=False)
 
 # TODO understand why the plot is different, it's probably vec = hp.ang2vec(0, 0)
-# Plot the masks using mollview
-coord = ['C', 'E']
-hp.mollview(mask_euclid_lowres, coord=coord, title='Polar Cap Mask low res', cmap='inferno_r')
-hp.mollview(mask_euclid_highres, coord=coord, title='Polar Cap Mask high res', cmap='inferno_r')
 
 # compute Cl(mask) and fsky computed from user input (mask(s) or clmask)
-ell_euclid_lowres, cl_mask_euclid_lowres, fsky_euclid_lowres = get_mask_quantities(
-    clmask=None, mask=mask_euclid_lowres, mask2=None, verbose=True)
-ell_euclid_highres, cl_mask_euclid_highres, fsky_euclid__highres = get_mask_quantities(
-    clmask=None, mask=mask_euclid_highres, mask2=None, verbose=True)
+ell_mask_circular, cl_mask_circular, fsky_circular, nside_circular = mask_path_to_cl(
+    mask_circular_path, 'pole highres', coord=coord)
+ell_mask_dr1, cl_mask_dr1, fsky_dr1, nside_dr1 = mask_path_to_cl(mask_dr1_path, 'dr1', coord=coord)
 
+area_deg2_circular = int(cosmo_lib.fsky_to_deg2(fsky_circular))
+area_deg2_dr1 = int(cosmo_lib.fsky_to_deg2(fsky_dr1))
 
 plt.figure()
-plt.loglog(ell_euclid_lowres, cl_mask_euclid_lowres, label='low res', alpha=0.5)
-plt.loglog(ell_euclid_highres, cl_mask_euclid_highres, ls='--', label='high res, area = %i deg2' % area_deg2, alpha=0.5)
+plt.loglog(ell_mask_circular, cl_mask_circular, ls='--', label=f'high res, fsky = {fsky_circular}', alpha=0.5)
+plt.loglog(ell_mask_dr1, cl_mask_dr1, ls='--', label=f'dr1, fsky = {fsky_dr1}', alpha=0.5)
 plt.xlabel(r'$\ell$')
 plt.ylabel(r'$C_\ell^{mask}$')
+plt.legend()
 
-np.save(f'/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside}_davide.npy', ell_euclid_highres)
-np.save(f'/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside}_davide.npy', cl_mask_euclid_highres)
-hp.write_map(mask_euclid_highres_path, mask_euclid_highres, overwrite=True)
+np.save(f'{mask_path}/ell_circular_1pole_{area_deg2_circular:d}deg2_nside{nside_circular}_davide.npy', ell_mask_circular)
+np.save(f'{mask_path}/Cell_circular_1pole_{area_deg2_circular:d}deg2_nside{nside_circular}_davide.npy', cl_mask_circular)
 
-# (re-) get nside, just to check
-nside_euclid_lowres = hp.get_nside(mask_euclid_lowres)
-nside_euclid_highres = hp.get_nside(mask_euclid_highres)
+np.save(f'{mask_path}/ell_DR1_{area_deg2_dr1:d}deg2_nside{nside_dr1}.npy', ell_mask_dr1)
+np.save(f'{mask_path}/Cell_DR1_{area_deg2_dr1:d}deg2_nside{nside_dr1}.npy', cl_mask_dr1)
 
-print(f'nside_euclid_lowres, {nside_euclid_lowres}')
-print(f'nside_euclid_highres, {nside_euclid_highres}')
 
+# mask_circular = generate_polar_cap(area_deg2=area_deg2, nside=nside)
+# hp.write_map(mask_circular_path, mask_circular, overwrite=True)
 
 
 # ! csst mask, very slow to load (more than 3 GB)
@@ -213,8 +221,3 @@ print(f'nside_euclid_highres, {nside_euclid_highres}')
 # cl_mask_csst = mask_csst_npz['Cmask']
 # cl_mask_csst = hp.anafast(mask_csst_full)  # should give the same as above?
 # hp.mollview(mask_csst_full, coord=coord, cmap='inferno_r')
-
-
-
-
-

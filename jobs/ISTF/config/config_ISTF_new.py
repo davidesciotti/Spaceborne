@@ -181,8 +181,8 @@ covariance_cfg = {
         'which_sigma2_B': None,  # 'mask' or 'file' or None
         'area_deg2_mask': 14700,
         'nside_mask': 4096,
-        'ell_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
-        'cl_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
+        'ell_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
+        'cl_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
         'save_sigma2_B': False,
         'sigma2_B_filename': 'sigma2_B_ccl_ISTF',
         'z_grid_sigma2_B_filename': 'z_grid_sigma2_B_ccl_ISTF',

@@ -4,6 +4,10 @@ which_forecast = 'SPV3'
 fsky = 0.3563380664078408
 GL_or_LG = 'GL'
 
+# TODO to be updated:
+fsky_dr1 = 0.06841711056057495
+area_deg2_dr1 = 2822
+
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 DATA_ROOT = f'{ROOT}/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
 SPV3_folder = f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
@@ -211,8 +215,8 @@ covariance_cfg = {
         'which_sigma2_B': 'mask',  # 'mask' or 'file' or None
         'area_deg2_mask': 14700,
         'nside_mask': 4096,
-        'ell_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
-        'cl_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
+        'ell_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
+        'cl_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
         'save_sigma2_B': False,
         'sigma2_B_filename': 'sigma2_B_ccl_ISTF',
         'z_grid_sigma2_B_filename': 'z_grid_sigma2_B_ccl_ISTF',

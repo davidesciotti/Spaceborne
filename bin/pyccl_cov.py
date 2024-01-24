@@ -8,6 +8,7 @@ import sys
 from joblib import Parallel, delayed
 from matplotlib import cm
 from tqdm import tqdm
+import ipdb
 
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 sys.path.append(f'{ROOT}/Spaceborne')
@@ -358,7 +359,6 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     # the cls are not needed, but just in case:
     p_of_k_a = 'delta_matter:delta_matter'
-
     # this is a test to use the actual P(k) from the input files, but the agreement gets much worse
     # pk_mm_table = np.genfromtxt(f'/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/'
     #                             'LiFEforSPV3/InputFiles/InputPS/HMCodeBar/'
@@ -381,20 +381,21 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     cl_gl_3d_vinc = general_cfg['cl_gl_3d']
     cl_gg_3d_vinc = general_cfg['cl_gg_3d']
 
+    nbl_plt = len(ell_grid)
     fig, ax = plt.subplots(1, 3, figsize=(15, 6), constrained_layout=True)
     for zi in range(zbins):
         zj = zi
-        ax[0].loglog(ell_grid, cl_ll_3d[:, zi, zj], ls="-", c=colors[zi], alpha=0.6,
+        ax[0].loglog(ell_grid, cl_ll_3d[:nbl_plt, zi, zj], ls="-", c=colors[zi], alpha=0.6,
                      label='ll' if zi == 0 else None)
-        ax[0].loglog(ell_grid, cl_ll_3d_vinc[:, zi, zj], ls="--", c=colors[zi], alpha=0.6,
+        ax[0].loglog(ell_grid, cl_ll_3d_vinc[:nbl_plt, zi, zj], ls="--", c=colors[zi], alpha=0.6,
                      label='ll vinc' if zi == 0 else None)
-        ax[1].loglog(ell_grid, cl_gl_3d[:, zi, zj], ls="-", c=colors[zi], alpha=0.6,
+        ax[1].loglog(ell_grid, cl_gl_3d[:nbl_plt, zi, zj], ls="-", c=colors[zi], alpha=0.6,
                      label='gl' if zi == 0 else None)
-        ax[1].loglog(ell_grid, cl_gl_3d_vinc[:, zi, zj], ls="--", c=colors[zi], alpha=0.6,
+        ax[1].loglog(ell_grid, cl_gl_3d_vinc[:nbl_plt, zi, zj], ls="--", c=colors[zi], alpha=0.6,
                      label='gl vinc' if zi == 0 else None)
-        ax[2].loglog(ell_grid, cl_gg_3d[:, zi, zj], ls="-", c=colors[zi], alpha=0.6,
+        ax[2].loglog(ell_grid, cl_gg_3d[:nbl_plt, zi, zj], ls="-", c=colors[zi], alpha=0.6,
                      label='gg' if zi == 0 else None)
-        ax[2].loglog(ell_grid, cl_gg_3d_vinc[:, zi, zj], ls="--", c=colors[zi], alpha=0.6,
+        ax[2].loglog(ell_grid, cl_gg_3d_vinc[:nbl_plt, zi, zj], ls="--", c=colors[zi], alpha=0.6,
                      label='gg vinc' if zi == 0 else None)
     # set labels
     ax[0].set_xlabel('$\\ell$')
@@ -407,6 +408,38 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     ax[1].legend()
     ax[2].legend()
     plt.show()
+
+    # ! this should be handled a bit better bruh
+    z_grid_tkka = np.linspace(pyccl_cfg['z_grid_tkka_min'], pyccl_cfg['z_grid_tkka_max'],
+                              pyccl_cfg['z_grid_tkka_steps'])
+    a_grid_ttka = cosmo_lib.z_to_a(z_grid_tkka)
+    sigma2_B_ccl = ccl.covariances.sigma2_B_disc(
+        cosmo_ccl, a_arr=a_grid_ttka, fsky=f_sky, p_of_k_a='delta_matter:delta_matter')
+
+    area_deg2 = 14700
+    nside = 2048
+    assert mm.percent_diff(f_sky, area_deg2 / 41253, abs_value=True) < 1, 'f_sky is not correct'
+
+    ell_mask = np.load(
+        f'/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy')
+    cl_mask = np.load(
+        f'/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy')
+
+    # ipdb.set_trace()
+    mask_wl = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * f_sky)**2
+
+    cosmo_ccl.compute_linear_power()
+    p_of_k_a = cosmo_ccl.get_linear_power()
+    sigma2_B_ccl_polar_cap = ccl.covariances.sigma2_B_from_mask(
+        cosmo_ccl, a_arr=a_grid_ttka, mask_wl=mask_wl, p_of_k_a=p_of_k_a)
+
+    np.save(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/sigma2_B_ccl.npy', sigma2_B_ccl)
+    np.save(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/sigma2_B_ccl_polar_cap.npy', sigma2_B_ccl_polar_cap)
+    np.save(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/z_grid_tkka.npy', z_grid_tkka)
+
+    # ! this should be handled a bit better bruh
+
+    assert False, 'stop here'
 
     # covariance ordering stuff, also used to compute the trispectrum
     if probe == 'LL':

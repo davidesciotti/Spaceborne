@@ -157,7 +157,8 @@ def generate_polar_cap(area_deg2, nside=2048):
     return mask
 
 
-area_deg2 = 14700
+# area_deg2 = 14700
+area_deg2 = 15000
 # nside = 4096
 nside = 2048
 
@@ -187,8 +188,8 @@ ell_euclid_highres, cl_mask_euclid_highres, fsky_euclid__highres = get_mask_quan
 
 
 plt.figure()
-plt.loglog(ell_euclid_lowres, cl_mask_euclid_lowres, label='low res')
-plt.loglog(ell_euclid_highres, cl_mask_euclid_highres, ls='--', label='high res, area = %i deg2' % area_deg2)
+plt.loglog(ell_euclid_lowres, cl_mask_euclid_lowres, label='low res', alpha=0.5)
+plt.loglog(ell_euclid_highres, cl_mask_euclid_highres, ls='--', label='high res, area = %i deg2' % area_deg2, alpha=0.5)
 plt.xlabel(r'$\ell$')
 plt.ylabel(r'$C_\ell^{mask}$')
 

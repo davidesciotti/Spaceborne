@@ -50,8 +50,8 @@ general_cfg = {
     'fid_yaml_filename': ROOT + '/Spaceborne/common_cfg/SPV3_fiducial_params_magcut245_zbins{zbins:02d}.yml',
     'ell_min': 10,
     'ell_max_WL': 5000,
-    'ell_max_GC': 3000,
-    'ell_max_3x2pt': 3000,
+    'ell_max_GC': 5000,
+    'ell_max_3x2pt': 5000,
     'zbins': 13,
     'zbins_list': None,
     'EP_or_ED': 'EP',
@@ -68,11 +68,6 @@ general_cfg = {
     # lmax=5000, 3000 holds
     'nbl_WL_opt': 32,  # this is the value from which the various bin cuts are applied, do not change it
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied, do not change it
-
-    'nbl_GC_opt': 29,
-    # 'nbl_WA_opt': 0,
-    'nbl_WA_opt': 3,
-    'nbl_3x2pt_opt': 29,
 
     'ell_cuts': ell_cuts,
     'which_cuts': 'Vincenzo',
@@ -218,8 +213,8 @@ covariance_cfg = {
         'ell_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
         'cl_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
         'save_sigma2_B': False, # only if you're not loading it
-        'z_grid_sigma2_B_filename': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/SPV3/separate_universe/jan_2024/d2ClAB_dVddeltab/z_grid_ssc_integrand_zsteps2899.npy',
-        'sigma2_B_filename': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/SPV3/separate_universe/jan_2024/d2ClAB_dVddeltab/sigma2_zsteps2899_SPV3.npy',
+        'z_grid_sigma2_B_filename': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_SPV3_serial.npy',
+        'sigma2_B_filename': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/sigma2/sigma2_zsteps3000_SPV3_serial.npy',
         
 
 

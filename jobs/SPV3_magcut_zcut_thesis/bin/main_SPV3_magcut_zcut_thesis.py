@@ -367,11 +367,7 @@ for zbins in (13, ):
     normalize_shifted_nz = covariance_cfg['normalize_shifted_nz']
     compute_bnt_with_shifted_nz_for_zcuts = covariance_cfg['compute_bnt_with_shifted_nz_for_zcuts']  # ! let's test this
     include_ia_in_bnt_kernel_for_zcuts = covariance_cfg['include_ia_in_bnt_kernel_for_zcuts']
-    # these 4 only needed because vincenzo's files for GG and 3x2pt are with nbl=29
     nbl_WL_opt = general_cfg['nbl_WL_opt']
-    nbl_GC_opt = general_cfg['nbl_GC_opt']
-    nbl_WA_opt = general_cfg['nbl_WA_opt']
-    nbl_3x2pt_opt = general_cfg['nbl_3x2pt_opt']
     colors = cm.rainbow(np.linspace(0, 1, zbins))
 
     with open(general_cfg['fid_yaml_filename'].format(zbins=zbins)) as f:
@@ -471,17 +467,6 @@ for zbins in (13, ):
     delta_dict = {'delta_l_WL': np.copy(delta_l_ref_nbl32[:nbl_WL]),
                   'delta_l_GC': np.copy(delta_l_ref_nbl32[:nbl_GC]),
                   'delta_l_WA': np.copy(delta_l_ref_nbl32[nbl_GC:])}
-
-    # set # of nbl in the opt case, import and reshape, then cut the reshaped datavectors in the pes case
-    # assert (general_cfg['ell_max_WL_opt'],
-    #         general_cfg['ell_max_WL'],
-    #         general_cfg['ell_max_GC'],
-    #         general_cfg['ell_max_3x2pt']) == (5000, 5000, 3000, 3000), \
-    #     'the number of bins defined in the config file is compatible with these ell_max values'
-
-    if ell_max_WL == general_cfg['ell_max_WL_opt']:
-        assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
-            'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
 
     # this is just to make the .format() more compact
     variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_lens,
@@ -716,6 +701,10 @@ for zbins in (13, ):
 
     else:
 
+        if nbl_3x2pt == 29:
+            warnings.warn('An error in cl_SPV3_1D_to_3D is probably indicating that the non-LL Vincenzos files are'
+                          'for lmax = 3000.')
+
         # ! import and reshape datavectors (cl) and response functions (rl)
         cl_fld = general_cfg['cl_folder']
         cl_filename = general_cfg['cl_filename']
@@ -729,10 +718,10 @@ for zbins in (13, ):
             f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
 
         # ! reshape to 3d
-        cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
-        cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
-        cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
-        cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
+        cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL, zbins)
+        cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
+        cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
+        cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
         cl_gl_3d = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
 
         # ! import responses, not used at the moment (not using PySSC)
@@ -752,10 +741,10 @@ for zbins in (13, ):
         rl_wa_1d = np.ones_like(cl_wa_1d)
         rl_3x2pt_1d = np.ones_like(cl_3x2pt_1d)
 
-        rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
-        rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC_opt, zbins)
-        rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA_opt, zbins)
-        rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
+        rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL, zbins)
+        rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC, zbins)
+        rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA, zbins)
+        rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
 
     # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
     if ell_max_WL == general_cfg['ell_max_WL_opt'] and general_cfg['use_WA']:

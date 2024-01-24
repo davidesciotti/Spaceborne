@@ -218,8 +218,8 @@ covariance_cfg = {
         'ell_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
         'cl_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
         'save_sigma2_B': False, # only if you're not loading it
-        'z_grid_sigma2_B_filename': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/SPV3/separate_universe/jan_2024/d2ClAB_dVddeltab/z_grid_ssc_integrand_zsteps2899.npy',
-        'sigma2_B_filename': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/SPV3/separate_universe/jan_2024/d2ClAB_dVddeltab/sigma2_zsteps2899_SPV3.npy',
+        'z_grid_sigma2_B_filename': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_SPV3_serial.npy',
+        'sigma2_B_filename': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/sigma2/sigma2_zsteps3000_SPV3_serial.npy',
         
 
 

@@ -113,7 +113,7 @@ general_cfg = {
     'zcut_source': 2,
     'zcut_lens': 2,
     'flagship_version': flagship_version,
-    
+
     'bias_model': 'SPV3_bias',
     'has_rsd': False,
     'has_magnification_bias': True,
@@ -192,7 +192,7 @@ covariance_cfg = {
     'cov_vinc_folder': f'{SPV3_folder}/OutputFiles/CovMats/GaussOnly/Full',
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
-    
+
     'SSC_code': 'PyCCL',  # ! 'PySSC' or PyCCL' or 'exactSSC'
 
     'PyCCL_cfg': {
@@ -204,22 +204,22 @@ covariance_cfg = {
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
         'load_precomputed_cov': False,
         'save_cov': True,
-        
+
         'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL/jan_2024',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_sigma2_mask.npz',
-        
+
         'save_trispectrum': False,
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
-        
-        'which_sigma2_B': 'mask',  # 'mask' or 'file' or None
+
+        'which_sigma2_B': 'file',  # 'mask' or 'file' or None
         'area_deg2_mask': 14700,
-        'nside_mask': 4096,
+        'nside_mask': 2048,
         'ell_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
         'cl_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
-        'save_sigma2_B': False,
-        'sigma2_B_filename': 'sigma2_B_ccl_ISTF',
-        'z_grid_sigma2_B_filename': 'z_grid_sigma2_B_ccl_ISTF',
+        'save_sigma2_B': False, # only if you're not loading it
+        'z_grid_sigma2_B_filename': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/SPV3/separate_universe/jan_2024/d2ClAB_dVddeltab/z_grid_ssc_integrand_zsteps2899.npy',
+        'sigma2_B_filename': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/SPV3/separate_universe/jan_2024/d2ClAB_dVddeltab/sigma2_zsteps2899_SPV3.npy',
         
 
 

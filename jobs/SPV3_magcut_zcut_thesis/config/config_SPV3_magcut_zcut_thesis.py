@@ -128,8 +128,6 @@ covariance_cfg = {
 
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which is quite wrong
-    'cov_SSC_PyCCL_folder': f'{ROOT}/PyCCL_SSC/output/covmat/after_script_update',
-    'cov_SSC_PyCCL_filename': 'cov_PyCCL_{which_cov_ng:s}_{probe:s}_nbl{nbl:s}_ellmax{ell_max:d}_HMrecipeKrause2017_6D.npy',
 
     # n_gal, sigma_eps, fsky, all entering the covariance matrix
     'fsky': fsky,  # ! new

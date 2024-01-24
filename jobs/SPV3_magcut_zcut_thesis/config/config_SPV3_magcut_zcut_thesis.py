@@ -12,8 +12,8 @@ SPV3_folder = f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
 flagship_version = 2
 
 cl_BNT_transform = False
-cov_BNT_transform = True
-deriv_BNT_transform = True
+cov_BNT_transform = False
+deriv_BNT_transform = False
 
 cl_ell_cuts = False
 cov_ell_cuts = False
@@ -46,8 +46,8 @@ general_cfg = {
     'fid_yaml_filename': ROOT + '/Spaceborne/common_cfg/SPV3_fiducial_params_magcut245_zbins{zbins:02d}.yml',
     'ell_min': 10,
     'ell_max_WL': 5000,
-    'ell_max_GC': 5000,
-    'ell_max_3x2pt': 5000,
+    'ell_max_GC': 3000,
+    'ell_max_3x2pt': 3000,
     'zbins': 13,
     'zbins_list': None,
     'EP_or_ED': 'EP',
@@ -65,10 +65,10 @@ general_cfg = {
     'nbl_WL_opt': 32,  # this is the value from which the various bin cuts are applied, do not change it
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied, do not change it
 
-    'nbl_GC_opt': 32,
-    'nbl_WA_opt': 0,
-    # 'nbl_WA_opt': 3,
-    'nbl_3x2pt_opt': 32,
+    'nbl_GC_opt': 29,
+    # 'nbl_WA_opt': 0,
+    'nbl_WA_opt': 3,
+    'nbl_3x2pt_opt': 29,
 
     'ell_cuts': ell_cuts,
     'which_cuts': 'Vincenzo',
@@ -149,11 +149,11 @@ covariance_cfg = {
 
 
     'shift_nz': True,  # ! are vincenzo's kernels shifted?? it looks like they are not
+    'compute_bnt_with_shifted_nz_for_zcuts': False,  # ! let's test this
     'shift_nz_interpolation_kind': 'linear',
     'normalize_shifted_nz': True,
     'nz_gaussian_smoothing': False,  # does not seem to have a large effect...
     'nz_gaussian_smoothing_sigma': 2,
-    'compute_bnt_with_shifted_nz': False,  # ! let's test this
     'include_ia_in_bnt_kernel_for_zcuts': False,
 
 
@@ -191,7 +191,7 @@ covariance_cfg = {
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
     
-    'SSC_code': 'exactSSC',  # ! 'PySSC' or PyCCL' or 'exactSSC'
+    'SSC_code': 'PyCCL',  # ! 'PySSC' or PyCCL' or 'exactSSC'
 
     'PyCCL_cfg': {
         'probe': '3x2pt',  # TODO deprecate this?
@@ -200,7 +200,7 @@ covariance_cfg = {
         'which_grids': '_densegrids',
 
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
-        'load_precomputed_cov': True,
+        'load_precomputed_cov': False,
         'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL/standard',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',

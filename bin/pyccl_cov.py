@@ -293,6 +293,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
             gal_bias_1d, z_means, None, zbins, zgrid_nz, bias_model='constant', plot_bias=True)
     else:
         raise ValueError('bias_model must be either SPV3_bias or ISTF_bias')
+
     gal_bias_tuple = (zgrid_nz, gal_bias_2d)
 
     if has_magnification_bias:
@@ -312,6 +313,10 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     wf_galaxy_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'with_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
                                      ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
                                      mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=True, n_samples=n_samples_wf)
+    # TODO better understand galaxy bias in the plots below and in the ITF signal......
+    wf_galaxy_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'with_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
+                                     ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
+                                     mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=False, n_samples=n_samples_wf)
 
     # ! manually construct galaxy = delta + magnification radial kernel
     a_arr = cosmo_lib.z_to_a(zgrid_nz)
@@ -503,12 +508,26 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     else:
         raise ValueError('which_sigma2_B must be either mask, file or None')
 
-    if pyccl_cfg['which_sigma2_B'] != None:
+    if pyccl_cfg['which_sigma2_B'] == None:
 
-        plt.figure()
-        plt.semilog(z_grid_sigma2_B, sigma2_B)
-        plt.xlabel('z')
-        plt.ylabel('sigma2_B(z)')
+        z_grid_sigma2_B = np.linspace(pyccl_cfg['z_grid_tkka_min'], pyccl_cfg['z_grid_tkka_max'],
+                                      pyccl_cfg['z_grid_tkka_steps'])
+        a_grid_sigma2_B = cosmo_lib.z_to_a(z_grid_sigma2_B)
+        sigma2_B = ccl.covariances.sigma2_B_disc(
+            cosmo_ccl, a_arr=a_grid_sigma2_B, fsky=f_sky, p_of_k_a='delta_matter:delta_matter')
+
+    plt.figure()
+    plt.plot(z_grid_sigma2_B, sigma2_B)
+    plt.xlabel('z')
+    plt.ylabel('sigma2_B(z)')
+    plt.yscale('log')
+
+
+    if pyccl_cfg['save_sigma2_B']:
+        np.save(f'{pyccl_cfg["cov_path"]}/{pyccl_cfg["z_grid_sigma2_B_filename"]}.npy', z_grid_sigma2_B)
+        np.save(f'{pyccl_cfg["cov_path"]}/{pyccl_cfg["sigma2_B_filename"]}.npy', sigma2_B)
+        
+    assert False, 'stop here'
 
     which_pk = fiducial_pars_dict['other_params']['camb_extra_parameters']['camb']['halofit_version']
     tkka_dict = initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, which_pk=which_pk)

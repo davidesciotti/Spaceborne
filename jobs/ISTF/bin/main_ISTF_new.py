@@ -28,8 +28,6 @@ import common_cfg.ISTF_fid_params as ISTF_fid
 # job configuration and modules
 from jobs.ISTF.config import config_ISTF_new as cfg
 
-
-
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
@@ -48,7 +46,8 @@ Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
 
-for covariance_cfg['SSC_code'] in ['PySSC', 'PyCCL', 'exactSSC']:
+# for covariance_cfg['SSC_code'] in ['PySSC', 'PyCCL', 'exactSSC']:
+for covariance_cfg['SSC_code'] in ['PyCCL',]:
     # check_specs.consistency_checks(general_cfg, covariance_cfg)
     # for covariance_cfg['SSC_code'] in ['PyCCL', 'exactSSC']:
     #     for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['probe'] in ['LL', 'GG', '3x2pt']:
@@ -167,13 +166,13 @@ for covariance_cfg['SSC_code'] in ['PySSC', 'PyCCL', 'exactSSC']:
     rl_LLfor3x2pt_3D = mm.cl_2D_to_3D_symmetric(rl_dict_2D['rl_LLfor3x2pt_2D'], nbl_GC, zpairs_auto, zbins)
 
     cl_dict_3D['cl_3x2pt_5D'] = cl_utils.build_3x2pt_datavector_5D(cl_LLfor3x2pt_3D,
-                                                                cl_GL_3D,
-                                                                cl_dict_3D['cl_GG_3D'],
-                                                                nbl_GC, zbins, n_probes)
+                                                                   cl_GL_3D,
+                                                                   cl_dict_3D['cl_GG_3D'],
+                                                                   nbl_GC, zbins, n_probes)
     rl_dict_3D['rl_3x2pt_5D'] = cl_utils.build_3x2pt_datavector_5D(rl_LLfor3x2pt_3D,
-                                                                rl_GL_3D,
-                                                                rl_dict_3D['rl_GG_3D'],
-                                                                nbl_GC, zbins, n_probes)
+                                                                   rl_GL_3D,
+                                                                   rl_dict_3D['rl_GG_3D'],
+                                                                   nbl_GC, zbins, n_probes)
 
     general_cfg['cl_ll_3d'] = cl_LLfor3x2pt_3D
     general_cfg['cl_gl_3d'] = cl_GL_3D
@@ -224,7 +223,7 @@ for covariance_cfg['SSC_code'] in ['PySSC', 'PyCCL', 'exactSSC']:
         # transpose and stack, ordering is important here!
         transp_stacked_wf = np.vstack((wil.T, wig.T))
         sijkl = Sijkl_utils.compute_Sijkl(cosmo_lib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
-                                        Sijkl_cfg['wf_normalization'])
+                                          Sijkl_cfg['wf_normalization'])
         if Sijkl_cfg['save_sijkl']:
             np.save(f'{Sijkl_folder}/{Sijkl_filename}', sijkl)
 
@@ -275,7 +274,7 @@ for covariance_cfg['SSC_code'] in ['PySSC', 'PyCCL', 'exactSSC']:
                     dC_dict_LL_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_LL_2D[key], nbl_WL, zpairs_auto, zbins)
                     dC_dict_WA_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_WA_2D[key], nbl_WA, zpairs_auto, zbins)
                     dC_dict_LLfor3x2pt_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_LL_2D[key], nbl_GC, zpairs_auto,
-                                                                        zbins)
+                                                                          zbins)
 
                 elif key.startswith(der_prefix.format(probe='GG')):
                     dC_dict_GG_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_GC, nbl_GC)
@@ -312,9 +311,9 @@ for covariance_cfg['SSC_code'] in ['PySSC', 'PyCCL', 'exactSSC']:
 
     # store the arrays of derivatives in a dictionary to pass to the Fisher Matrix function
     deriv_dict = {'dC_LL_4D': dC_LL_4D,
-                'dC_GG_4D': dC_GG_4D,
-                'dC_WA_4D': dC_WA_4D,
-                'dC_3x2pt_6D': dC_3x2pt_6D}
+                  'dC_GG_4D': dC_GG_4D,
+                  'dC_WA_4D': dC_WA_4D,
+                  'dC_3x2pt_6D': dC_3x2pt_6D}
 
     FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
     FM_dict['param_names_dict'] = param_names_dict
@@ -353,13 +352,13 @@ divide_fom_by_10 = False
 
 for ssc_code_here in ['PySSC', 'PyCCL', 'exactSSC']:
     for probe in ['WL', 'GC', '3x2pt']:
-        
+
         fm_folder = FM_cfg["fm_folder"].format(SSC_code=ssc_code_here)
         if 'jan_2024' in fm_folder:
-            fm_folder_std = fm_folder.replace("jan_2024", "standard") 
+            fm_folder_std = fm_folder.replace("jan_2024", "standard")
         else:
             raise ValueError('you are not using the jan_2024 folder!')
-        
+
         lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_XC']
 
         FM_dict[f'FM_{ssc_code_here}_{probe}_GSSC'] = (
@@ -401,9 +400,9 @@ for probe in ['WL', 'GC', '3x2pt']:
     fom_dict['perc_diff_PyCCL'] = np.abs(mm.percent_diff(fom_dict[key_pyccl], fom_dict[key_gauss]))
     fom_dict['perc_diff_exactSSC'] = np.abs(mm.percent_diff(fom_dict[key_exactssc], fom_dict[key_gauss]))
 
-    cases_to_plot = (key_gauss, key_pyssc, key_pyccl, key_exactssc, key_exactssc_std, 
+    cases_to_plot = (key_gauss, key_pyssc, key_pyccl, key_exactssc, key_exactssc_std,
                      'perc_diff_PyCCL', 'perc_diff_exactSSC')
-    
+
     # just a check, to be performed only if I am actually using PyCCL as well
     if 'FM_PySSC_G' in uncert_dict.keys() and 'FM_PyCCL_G' in uncert_dict.keys():
         assert np.array_equal(uncert_dict['FM_PySSC_G'], uncert_dict['FM_PyCCL_G']), \

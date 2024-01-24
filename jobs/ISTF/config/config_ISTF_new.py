@@ -158,7 +158,7 @@ covariance_cfg = {
     'cov_folder': f'{DATA_ROOT}/output/{which_input_files}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
 
-    'SSC_code': 'PySSC',  # ! PySSC or PyCCL or exactSSC
+    'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or exactSSC
 
     'PySSC_cfg': {
         'which_ng_cov': 'SSC',
@@ -168,14 +168,25 @@ covariance_cfg = {
         'probe': '3x2pt',  # TODO deprecate this? probably still useful if I want to compute instead of loading...
         'which_ng_cov': ('SSC',),
         'which_grids': '',
+        
         'get_3x2pt_cov_in_4D': False,
+        'load_precomputed_cov': False,
+        
         'save_trispectrum': False,
         # 'cov_path': '/home/davide/Documenti/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF/jan_2024', # old path
         'cov_path': f'{DATA_ROOT}/output/cl14may/covmat/PyCCL/standard',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',
 
-        'load_precomputed_cov': True,
+        'which_sigma2_B': None,  # 'mask' or 'file' or None
+        'area_deg2_mask': 14700,
+        'nside_mask': 4096,
+        'ell_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
+        'cl_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
+        'save_sigma2_B': False,
+        'sigma2_B_filename': 'sigma2_B_ccl_ISTF',
+        'z_grid_sigma2_B_filename': 'z_grid_sigma2_B_ccl_ISTF',
+
         'save_cov': False,
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 

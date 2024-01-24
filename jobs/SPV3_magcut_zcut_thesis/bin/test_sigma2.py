@@ -19,8 +19,9 @@ covariance_cfg = cfg.covariance_cfg
 
 
 z_grid_tkka = np.load(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/z_grid_tkka.npy')
-sigma2_B_ccl = np.load(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/sigma2_B_ccl.npy')
-sigma2_B_ccl_polar_cap = np.load(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/sigma2_B_ccl_polar_cap.npy')
+sigma2_B_ccl_SPV3 = np.load(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/sigma2_B_ccl.npy')
+sigma2_B_ccl_ISTF = np.load('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/covmat/PyCCL/standard/sigma2_B_ccl_ISTF.npy')
+sigma2_B_ccl_SPV3_polar_cap = np.load(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/sigma2_B_ccl_polar_cap.npy')
 
 
 z_grid_dav_ISTF = np.load(
@@ -39,19 +40,25 @@ sigma2_dav_ISTF_diag = np.diag(sigma2_dav_ISTF)
 sigma2_dav_SPV3_diag_interp_func = scipy.interpolate.interp1d(
     z_grid_dav_SPV3, sigma2_dav_SPV3_diag, kind='linear', fill_value='extrapolate')
 sigma2_dav_SPV3_diag_interp = sigma2_dav_SPV3_diag_interp_func(z_grid_tkka)
+np.save(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/sigma2_dav_SPV3_diag_interp.npy', sigma2_dav_SPV3_diag_interp)
 
 plt.figure()
-plt.plot(z_grid_tkka, sigma2_B_ccl, label='ccl')
-plt.plot(z_grid_tkka, sigma2_B_ccl_polar_cap, label='ccl polar cap')
+plt.plot(z_grid_tkka, sigma2_B_ccl_SPV3, label='ccl SPV3')
+plt.plot(z_grid_tkka, sigma2_B_ccl_ISTF, label='ccl ISTF')
+plt.plot(z_grid_tkka, sigma2_B_ccl_SPV3_polar_cap, label='ccl polar cap')
 plt.plot(z_grid_dav_SPV3, np.diag(sigma2_dav_SPV3), label='dav SPV3')
 plt.plot(z_grid_dav_ISTF, np.diag(sigma2_dav_ISTF), label='dav ISTF', ls='--')
 plt.yscale('log')
 plt.legend()
+plt.xlabel('z')
+plt.ylabel(r'$\sigma^2$')
 
 plt.figure()
-diff = mm.percent_diff(sigma2_B_ccl, sigma2_dav_SPV3_diag_interp)
+diff = mm.percent_diff(sigma2_B_ccl_SPV3, sigma2_dav_SPV3_diag_interp)
 plt.plot(z_grid_tkka, diff, label='perc diff')
 plt.yscale('log')
+plt.xlabel('z')
+plt.ylabel('ratio ccl/dav')
 
 # save 
 

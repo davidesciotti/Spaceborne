@@ -184,7 +184,7 @@ covariance_cfg = {
     'cov_folder': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{cov_ell_cuts:s}',
     'cov_filename': 'covmat_{which_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_'
                     'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_'
-                    'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D{which_grids:s}',
+                    'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D_sigma2_mask',
     'cov_vinc_folder': f'{SPV3_folder}/OutputFiles/CovMats/GaussOnly/Full',
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
@@ -195,13 +195,17 @@ covariance_cfg = {
         'probe': '3x2pt',  # TODO deprecate this?
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
         'which_ng_cov': ('SSC',),
-        'which_grids': '_densegrids',
+        'which_grids': '',
 
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
         'load_precomputed_cov': False,
-        'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL/standard',
+        'save_cov': True,
+        
+        'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL/jan_2024',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
-                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{which_grids:s}.npz',
+                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_sigma2_mask.npz',
+        
+        'save_trispectrum': False,
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
         
         'which_sigma2_B': 'mask',  # 'mask' or 'file' or None
@@ -209,17 +213,18 @@ covariance_cfg = {
         'nside_mask': 4096,
         'ell_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
         'cl_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/sylvain/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
+        'save_sigma2_B': False,
+        'sigma2_B_filename': 'sigma2_B_ccl_ISTF',
+        'z_grid_sigma2_B_filename': 'z_grid_sigma2_B_ccl_ISTF',
         
 
-        'save_cov': True,
-        'save_trispectrum': False,
 
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         'z_grid_tkka_min': 0.001,
         'z_grid_tkka_max': 3,
-        'z_grid_tkka_steps': 500,
+        'z_grid_tkka_steps': 300,
         'z_grid_min': 0.001,
         'z_grid_max': 3,
         'z_grid_steps': 1000,
@@ -233,7 +238,7 @@ covariance_cfg = {
         'which_grids': '',
 
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
-        'cov_path': f'{ROOT}/exact_SSC/output/SPV3/separate_universe/standard/SSC_matrix',
+        'cov_path': f'{ROOT}/exact_SSC/output/SPV3/separate_universe/jan_2024/SSC_matrix',
         'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
                         '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'
                         '_convention{cl_integral_convention:s}.npy',
@@ -311,7 +316,7 @@ FM_cfg = {
     'deriv_ell_cuts': deriv_ell_cuts,
 
     'fm_folder': f'{DATA_ROOT}/output/Flagship_{flagship_version}/FM/' +
-                 'BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}/standard',
+                 'BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}/jan_2024',
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,
 

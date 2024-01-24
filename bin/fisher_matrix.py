@@ -214,56 +214,56 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
             dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_BNT_transform_3x2pt(
                 dC_3x2pt_6D[:, :, :, :, :, param_idx], BNT_matrix)
 
-    for ell in (0, 1, 2, 5, 10, 15, 20, 25):
+    # # ! remove from here
+    # for ell in (0, 1, 2, 5, 10, 15, 20, 25):
 
-        if general_cfg['BNT_transform']:
-            np.savetxt(
-                f'/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-WiBNT-davide-ell{ell:02d}.dat', dC_LL_4D[ell, :, :, 0], fmt='%.7e')
-        else:
-            np.savetxt(
-                f'/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-NoBNT-davide-ell{ell:02d}.dat', dC_LL_4D[ell, :, :, 0], fmt='%.7e')
+    #     if general_cfg['BNT_transform']:
+    #         np.savetxt(
+    #             f'/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-WiBNT-davide-ell{ell:02d}.dat', dC_LL_4D[ell, :, :, 0], fmt='%.7e')
+    #     else:
+    #         np.savetxt(
+    #             f'/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-NoBNT-davide-ell{ell:02d}.dat', dC_LL_4D[ell, :, :, 0], fmt='%.7e')
 
-    # ! remove from here
-    dDVdOm_3x2pt_NoBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-3x2pt-NoBNT.dat')
-    dDVdOm_3x2pt_WiBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-3x2pt-WiBNT.dat')
-    dDVdOm_WLO_NoBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-NoBNT.dat')
-    dDVdOm_WLO_WiBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-WiBNT.dat')
+    # dDVdOm_3x2pt_NoBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-3x2pt-NoBNT.dat')
+    # dDVdOm_3x2pt_WiBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-3x2pt-WiBNT.dat')
+    # dDVdOm_WLO_NoBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-NoBNT.dat')
+    # dDVdOm_WLO_WiBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-WiBNT.dat')
 
-    dDVdOm_3x2pt_NoBNT_5d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_3x2pt_NoBNT_1d, '3x2pt', nbl_3x2pt, zbins)
-    dDVdOm_3x2pt_WiBNT_5d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_3x2pt_WiBNT_1d, '3x2pt', nbl_3x2pt, zbins)
-    dDVdOm_WLO_NoBNT_3d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_WLO_NoBNT_1d, 'WL', nbl_WL, zbins)
-    dDVdOm_WLO_WiBNT_3d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_WLO_WiBNT_1d, 'WL', nbl_WL, zbins)
+    # dDVdOm_3x2pt_NoBNT_5d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_3x2pt_NoBNT_1d, '3x2pt', nbl_3x2pt, zbins)
+    # dDVdOm_3x2pt_WiBNT_5d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_3x2pt_WiBNT_1d, '3x2pt', nbl_3x2pt, zbins)
+    # dDVdOm_WLO_NoBNT_3d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_WLO_NoBNT_1d, 'WL', nbl_WL, zbins)
+    # dDVdOm_WLO_WiBNT_3d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_WLO_WiBNT_1d, 'WL', nbl_WL, zbins)
 
-    dDVdOm_3x2pt_flat_dav = dC_3x2pt_6D[:, :, :, :, :, 0].flatten()
-    dDVdOm_WLO_flat_dav = dC_LL_4D[:, :, :, 0].flatten()
+    # dDVdOm_3x2pt_flat_dav = dC_3x2pt_6D[:, :, :, :, :, 0].flatten()
+    # dDVdOm_WLO_flat_dav = dC_LL_4D[:, :, :, 0].flatten()
 
-    if general_cfg:
-        dDVdOm_3x2pt_flat_vinc = dDVdOm_3x2pt_WiBNT_5d.flatten()
-        dDVdOm_WLO_flat_vinc = dDVdOm_WLO_WiBNT_3d.flatten()
-    else:
-        dDVdOm_3x2pt_flat_vinc = dDVdOm_3x2pt_NoBNT_5d.flatten()
-        dDVdOm_WLO_flat_vinc = dDVdOm_WLO_NoBNT_3d.flatten()
+    # if general_cfg:
+    #     dDVdOm_3x2pt_flat_vinc = dDVdOm_3x2pt_WiBNT_5d.flatten()
+    #     dDVdOm_WLO_flat_vinc = dDVdOm_WLO_WiBNT_3d.flatten()
+    # else:
+    #     dDVdOm_3x2pt_flat_vinc = dDVdOm_3x2pt_NoBNT_5d.flatten()
+    #     dDVdOm_WLO_flat_vinc = dDVdOm_WLO_NoBNT_3d.flatten()
 
-    print('generating derivatives plot')
-    plt.figure()
-    plt.plot(dDVdOm_3x2pt_flat_dav, label='dDVdOm_3x2pt_flat_dav', ls='-', c='tab:blue', alpha=0.5)
-    plt.plot(dDVdOm_3x2pt_flat_vinc, label='dDVdOm_3x2pt_flat_vinc', ls='--', c='tab:blue', alpha=0.5)
-    plt.plot(dDVdOm_WLO_flat_dav, label='dDVdOm_WLO_flat_dav', ls='-', c='tab:orange', alpha=0.5)
-    plt.plot(dDVdOm_WLO_flat_vinc, label='dDVdOm_WLO_flat_vinc', ls='--', c='tab:orange', alpha=0.5)
-    plt.legend()
-    plt.show()
+    # print('generating derivatives plot')
+    # plt.figure()
+    # plt.plot(dDVdOm_3x2pt_flat_dav, label='dDVdOm_3x2pt_flat_dav', ls='-', c='tab:blue', alpha=0.5)
+    # plt.plot(dDVdOm_3x2pt_flat_vinc, label='dDVdOm_3x2pt_flat_vinc', ls='--', c='tab:blue', alpha=0.5)
+    # plt.plot(dDVdOm_WLO_flat_dav, label='dDVdOm_WLO_flat_dav', ls='-', c='tab:orange', alpha=0.5)
+    # plt.plot(dDVdOm_WLO_flat_vinc, label='dDVdOm_WLO_flat_vinc', ls='--', c='tab:orange', alpha=0.5)
+    # plt.legend()
+    # plt.show()
 
-    diff_3x2pt = mm.percent_diff(dDVdOm_3x2pt_flat_dav, dDVdOm_3x2pt_flat_vinc)
-    diff_WLO = mm.percent_diff(dDVdOm_WLO_flat_dav, dDVdOm_WLO_flat_vinc)
+    # diff_3x2pt = mm.percent_diff(dDVdOm_3x2pt_flat_dav, dDVdOm_3x2pt_flat_vinc)
+    # diff_WLO = mm.percent_diff(dDVdOm_WLO_flat_dav, dDVdOm_WLO_flat_vinc)
 
-    plt.figure()
-    plt.plot(diff_3x2pt, label='diff_3x2pt', ls='-', c='tab:blue', alpha=0.5)
-    plt.plot(diff_WLO, label='diff_WLO', ls='-', c='tab:orange', alpha=0.5)
-    plt.show()
+    # plt.figure()
+    # plt.plot(diff_3x2pt, label='diff_3x2pt', ls='-', c='tab:blue', alpha=0.5)
+    # plt.plot(diff_WLO, label='diff_WLO', ls='-', c='tab:orange', alpha=0.5)
+    # plt.show()
+    # assert False, 'BNT checks'
 
-    # ! remove until here
+    # # ! remove until here
 
-    assert False, 'BNT checks'
 
     # ! ell-cut the derivatives in 3d
     # dC_LL_4D_v1, dC_WA_4D_v1, dC_GG_4D_v1, dC_3x2pt_6D_v1 = ell_cuts_derivatives(FM_cfg, ell_dict,

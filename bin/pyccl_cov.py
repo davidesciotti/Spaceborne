@@ -41,7 +41,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
     z_grid_tkka = np.linspace(pyccl_cfg['z_grid_tkka_min'], pyccl_cfg['z_grid_tkka_max'],
                               pyccl_cfg['z_grid_tkka_steps'])
     a_grid_increasing_for_ttka = cosmo_lib.z_to_a(z_grid_tkka)[::-1]
-    logn_k_grid_tkka = np.log(np.geomspace(1E-5, 1E2, 2000))
+    logn_k_grid_tkka = np.log(np.geomspace(1E-5, 1E2, 1000))
 
     # a_grid_increasing_for_ttka = None
     # logn_k_grid_tkka = None
@@ -522,12 +522,9 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     plt.ylabel('sigma2_B(z)')
     plt.yscale('log')
 
-
     if pyccl_cfg['save_sigma2_B']:
         np.save(f'{pyccl_cfg["cov_path"]}/{pyccl_cfg["z_grid_sigma2_B_filename"]}.npy', z_grid_sigma2_B)
         np.save(f'{pyccl_cfg["cov_path"]}/{pyccl_cfg["sigma2_B_filename"]}.npy', sigma2_B)
-        
-    assert False, 'stop here'
 
     which_pk = fiducial_pars_dict['other_params']['camb_extra_parameters']['camb']['halofit_version']
     tkka_dict = initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, which_pk=which_pk)

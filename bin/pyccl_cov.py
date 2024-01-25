@@ -43,7 +43,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
     z_grid_tkka = np.linspace(pyccl_cfg['z_grid_tkka_min'], pyccl_cfg['z_grid_tkka_max'],
                               pyccl_cfg['z_grid_tkka_steps'])
     a_grid_increasing_for_ttka = cosmo_lib.z_to_a(z_grid_tkka)[::-1]
-    logn_k_grid_tkka = np.log(np.geomspace(1E-5, 1E2, 1000))
+    logn_k_grid_tkka = np.log(np.geomspace(1E-5, 1E2, 2000))
 
     # a_grid_increasing_for_ttka = None
     # logn_k_grid_tkka = None
@@ -126,7 +126,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                                   p_of_k_a=None, lk_arr=logn_k_grid_tkka,
                                                   a_arr=a_grid_increasing_for_ttka,
                                                   extrap_order_lok=1, extrap_order_hik=1, use_log=False,
-                                                  probe_block=A + B + C + D,
+                                                #   probe_block=A + B + C + D,
                                                   **prof_2pt_args)
 
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
@@ -417,37 +417,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     ax[2].legend()
     plt.show()
 
-    # # ! this should be handled a bit better bruh
-    # z_grid_tkka = np.linspace(pyccl_cfg['z_grid_tkka_min'], pyccl_cfg['z_grid_tkka_max'],
-    #                           pyccl_cfg['z_grid_tkka_steps'])
-    # a_grid_ttka = cosmo_lib.z_to_a(z_grid_tkka)
-    # sigma2_B_ccl = ccl.covariances.sigma2_B_disc(
-    #     cosmo_ccl, a_arr=a_grid_ttka, fsky=f_sky, p_of_k_a='delta_matter:delta_matter')
-
-    # area_deg2 = 14700
-    # nside = 2048
-    # assert mm.percent_diff(f_sky, area_deg2 / 41253, abs_value=True) < 1, 'f_sky is not correct'
-
-    # ell_mask = np.load(
-    #     f'/home/cosmo/davide.sciotti/data/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy')
-    # cl_mask = np.load(
-    #     f'/home/cosmo/davide.sciotti/data/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy')
-
-    # mask_wl = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * f_sky)**2  # ! important to normalize!
-
-    # # this is because p_of_k_a='delta_matter:delta_matter' gives an error, probably a bug in pyccl
-    # cosmo_ccl.compute_linear_power()
-    # p_of_k_a = cosmo_ccl.get_linear_power()
-
-    # sigma2_B_ccl_polar_cap = ccl.covariances.sigma2_B_from_mask(
-    #     cosmo_ccl, a_arr=a_grid_ttka, mask_wl=mask_wl, p_of_k_a=p_of_k_a)
-
-    # np.save(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/sigma2_B_ccl.npy', sigma2_B_ccl)
-    # np.save(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/sigma2_B_ccl_polar_cap.npy', sigma2_B_ccl_polar_cap)
-    # np.save(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/z_grid_tkka.npy', z_grid_tkka)
-
-    # ! this should be handled a bit better bruh
-
+  
     # covariance ordering stuff, also used to compute the trispectrum
     if probe == 'LL':
         probe_ordering = (('L', 'L'),)
@@ -477,6 +447,9 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     z_grid_tkka = np.linspace(pyccl_cfg['z_grid_tkka_min'],
                               pyccl_cfg['z_grid_tkka_max'],
                               pyccl_cfg['z_grid_tkka_steps'])
+    
+    z_grid_sigma2_B = z_grid_tkka
+    a_grid_sigma2_B = cosmo_lib.z_to_a(z_grid_sigma2_B)[::-1]
 
     if pyccl_cfg['which_sigma2_B'] == 'mask':
 
@@ -493,28 +466,26 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         mask_wl = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * f_sky)**2  # ! important to normalize!
 
         # this is because p_of_k_a='delta_matter:delta_matter' gives an error, probably a bug in pyccl
-        cosmo_ccl.compute_linear_power()
-        p_of_k_a = cosmo_ccl.get_linear_power()
+        # cosmo_ccl.compute_linear_power()
+        # p_of_k_a = cosmo_ccl.get_linear_power()
 
-        z_grid_sigma2_B = z_grid_tkka
-        a_grid_sigma2_B = cosmo_lib.z_to_a(z_grid_sigma2_B)
+
 
         sigma2_B = ccl.covariances.sigma2_B_from_mask(
-            cosmo_ccl, a_arr=a_grid_sigma2_B, mask_wl=mask_wl, p_of_k_a=p_of_k_a)
-        sigma2_B_tuple = (a_grid_sigma2_B[::-1], sigma2_B)
+            cosmo=cosmo_ccl, a_arr=a_grid_sigma2_B, mask_wl=mask_wl, p_of_k_a='delta_matter:delta_matter')
+        
+        sigma2_B_tuple = (a_grid_sigma2_B, sigma2_B)
 
     elif pyccl_cfg['which_sigma2_B'] == 'file':
+        
         print('Loading sigma2_B from file')
+        
         z_grid_sigma2_B = np.load(pyccl_cfg['z_grid_sigma2_B_filename'])
         sigma2_B = np.load(pyccl_cfg['sigma2_B_filename'])
         sigma2_B = np.diag(sigma2_B) if sigma2_B.ndim == 2 else sigma2_B
 
         sigma2_B_interp_func = interp1d(z_grid_sigma2_B, sigma2_B, kind='linear')
-        z_grid_sigma2_B = z_grid_tkka
         sigma2_B = sigma2_B_interp_func(z_grid_sigma2_B)
-
-        a_grid_sigma2_B = cosmo_lib.z_to_a(z_grid_sigma2_B)[::-1]
-
         sigma2_B_tuple = (a_grid_sigma2_B, sigma2_B)
 
     elif pyccl_cfg['which_sigma2_B'] == None:
@@ -527,12 +498,13 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         np.save(f'{pyccl_cfg["cov_path"]}/{pyccl_cfg["z_grid_sigma2_B_filename"]}.npy', z_grid_sigma2_B)
         np.save(f'{pyccl_cfg["cov_path"]}/{pyccl_cfg["sigma2_B_filename"]}.npy', sigma2_B)
 
-    plt.figure()
-    plt.plot(z_grid_sigma2_B, sigma2_B)
-    plt.xlabel('z')
-    plt.ylabel('sigma2_B(z)')
-    plt.yscale('log')
-    plt.show()
+    if  pyccl_cfg['which_sigma2_B'] != None:
+        plt.figure()
+        plt.plot(z_grid_sigma2_B, sigma2_B)
+        plt.xlabel('z')
+        plt.ylabel('sigma2_B(z)')
+        plt.yscale('log')
+        plt.show()
 
     which_pk = fiducial_pars_dict['other_params']['camb_extra_parameters']['camb']['halofit_version']
     tkka_dict = initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, which_pk=which_pk)

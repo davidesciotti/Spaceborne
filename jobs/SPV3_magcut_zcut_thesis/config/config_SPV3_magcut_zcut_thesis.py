@@ -15,7 +15,7 @@ DATA_ROOT = f'{ROOT}/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
 SPV3_folder = f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
 
 fm_last_folder = '/jan_2024'
-filename_suffix = '_sigma2_mask'
+filename_suffix = '_sigma2_dav'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2

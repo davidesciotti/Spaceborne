@@ -39,12 +39,15 @@ kmax_tex = mpl_cfg.kmax_tex
 kmax_star_tex = mpl_cfg.kmax_star_tex
 cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
+# ! some issued with 'PyCCL' '', 'standard', in the fm dict
+
 
 # ! options
 ng_cov_code = 'PyCCL'  # exactSSC or PyCCL
 # filename_suffix = '_sigma2_mask'
-filename_suffix = '_defaultgrids'
-fm_last_folder = '/standard'
+filename_suffix = ''  # _sigma2_dav or _sigma2_mask or halo_model
+fm_last_folder = '/standard'  # /standard or /jan_2024
+
 specs_str = 'idIA2_idB3_idM3_idR1'
 fm_root_path = ('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/'
                 'jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM')
@@ -150,7 +153,7 @@ for probe in probes:
                                                 names_params_to_fix = []
 
                                                 if whose_FM == 'davide':
-                                                    fm_path = fm_path_raw.format(BNT_transform=BNT_transform, 
+                                                    fm_path = fm_path_raw.format(BNT_transform=BNT_transform,
                                                                                  ell_cuts=ell_cuts,
                                                                                  fm_last_folder=fm_last_folder)
                                                     fm_pickle_name = fm_pickle_name_raw.format(which_ng_cov=which_ng_cov,

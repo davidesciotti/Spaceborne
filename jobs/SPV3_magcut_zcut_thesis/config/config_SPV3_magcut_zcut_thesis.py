@@ -1,18 +1,29 @@
 import numpy as np
 import os
 
+ROOT = os.getenv('ROOT')
+DATA_ROOT = f'{ROOT}/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
+SPV3_folder = f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
+
+# TODO to be updated for DR1:
+fsky_dr1 = 0.06841711056057495
+area_deg2_dr1 = 2822
+
+# * SETTINGS TO CHANGE (IN GENERAL) FOR CLUSTER RUNS
+# * 'SSC_code'
+# * 'load_precomputed_cov': False,
+# * 'save_cov': True,
+# * fm_final_folder
+# * filename_suffix
+# * which_sigma2_B
+
+
 which_forecast = 'SPV3'
 fsky = 0.3563380664078408
 GL_or_LG = 'GL'
 
-# TODO to be updated:
-fsky_dr1 = 0.06841711056057495
-area_deg2_dr1 = 2822
 
-import os
-ROOT = os.getenv('ROOT')
-DATA_ROOT = f'{ROOT}/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
-SPV3_folder = f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
+
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -185,7 +196,7 @@ covariance_cfg = {
     'cov_folder': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{cov_ell_cuts:s}',
     'cov_filename': 'covmat_{which_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_'
                     'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_'
-                    'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D_sigma2_dav',
+                    'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D_sigma2_None_densegrids',
     'cov_vinc_folder': f'{SPV3_folder}/OutputFiles/CovMats/GaussOnly/Full',
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
@@ -196,7 +207,6 @@ covariance_cfg = {
         'probe': '3x2pt',  # TODO deprecate this?
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
         'which_ng_cov': ('SSC',),
-        'which_grids': '',
 
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
         'load_precomputed_cov': False,
@@ -204,12 +214,12 @@ covariance_cfg = {
 
         'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL/jan_2024',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
-                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_sigma2_dav.npz',
+                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_sigma2_None_densegrids.npz',
 
         'save_trispectrum': False,
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
 
-        'which_sigma2_B': 'file',  # 'mask' or 'file' or None
+        'which_sigma2_B': None,  # 'mask' or 'file' or None
         'area_deg2_mask': 14700,
         'nside_mask': 2048,
         'ell_mask_filename': ROOT + '/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
@@ -218,17 +228,15 @@ covariance_cfg = {
         'z_grid_sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_ISTF.npy',
         'sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/sigma2_zsteps3000_ISTF.npy',
 
-
-
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         'z_grid_tkka_min': 0.001,
         'z_grid_tkka_max': 3,
-        'z_grid_tkka_steps': 300,
+        'z_grid_tkka_steps': 500,
         'z_grid_min': 0.001,
         'z_grid_max': 3,
-        'z_grid_steps': 1000,
+        'z_grid_steps': 2000,
         'n_samples_wf': 1000,
         'bias_model': 'polynomial',  # TODO this is not used at the momen (for SPV3)
     },
@@ -236,7 +244,6 @@ covariance_cfg = {
     'exactSSC_cfg': {
         'probe': '3x2pt',
         'which_ng_cov': 'SSC',  # only 'SSC' available in this case
-        'which_grids': '',
 
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
         'cov_path': f'{ROOT}/exact_SSC/output/SPV3/separate_universe/jan_2024/SSC_matrix',

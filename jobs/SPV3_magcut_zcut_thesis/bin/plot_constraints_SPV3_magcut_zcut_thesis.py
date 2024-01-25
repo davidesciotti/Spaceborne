@@ -41,12 +41,16 @@ cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
 
 # ! options
+ng_cov_code = 'PyCCL'  # exactSSC or PyCCL
+# filename_suffix = '_sigma2_mask'
+filename_suffix = '_defaultgrids'
+fm_last_folder = '/standard'
 specs_str = 'idIA2_idB3_idM3_idR1'
 fm_root_path = ('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/'
                 'jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM')
-fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}/standard'
+fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}{fm_last_folder}'
 fm_pickle_name_raw = 'FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_' \
-    'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}{which_grids:s}.pickle'
+    'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}{filename_suffix}.pickle'
 EP_or_ED = 'EP'
 zbins = 13
 num_params_tokeep = 7
@@ -77,8 +81,7 @@ whose_FM_list = ('davide',)
 kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
 
 which_cov_term_list = ['G', 'GSSC']
-ng_cov_code = 'PyCCL'  # exactSSC or PyCCL
-which_grids = '_densegrids'  # '_defaultgrids' or '_CSSTgrids' or '_densegrids' or grids used for k and a arrays in pyccl
+
 which_ng_cov = which_cov_term_list[1]
 BNT_transform_list = [False, ]
 center_or_min_list = ['center']
@@ -107,9 +110,6 @@ probe_vinc_dict = {
 num_string_columns = len(string_columns)
 fm_uncert_df = pd.DataFrame()
 correlation_dict = {}
-
-if ng_cov_code == 'exactSSC':
-    which_grids = ''
 
 
 # TODO understand nan instead of None in the fm_uncert_df
@@ -150,15 +150,17 @@ for probe in probes:
                                                 names_params_to_fix = []
 
                                                 if whose_FM == 'davide':
-                                                    fm_path = fm_path_raw.format(BNT_transform=BNT_transform, ell_cuts=ell_cuts)
+                                                    fm_path = fm_path_raw.format(BNT_transform=BNT_transform, 
+                                                                                 ell_cuts=ell_cuts,
+                                                                                 fm_last_folder=fm_last_folder)
                                                     fm_pickle_name = fm_pickle_name_raw.format(which_ng_cov=which_ng_cov,
-                                                                                            EP_or_ED=EP_or_ED,
-                                                                                            zbins=zbins,
-                                                                                            ML=ML, ZL=ZL, MS=MS, ZS=ZS,
-                                                                                            specs_str=specs_str,
-                                                                                            which_pk=which_pk,
-                                                                                            ng_cov_code=ng_cov_code,
-                                                                                            which_grids=which_grids)
+                                                                                               EP_or_ED=EP_or_ED,
+                                                                                               zbins=zbins,
+                                                                                               ML=ML, ZL=ZL, MS=MS, ZS=ZS,
+                                                                                               specs_str=specs_str,
+                                                                                               which_pk=which_pk,
+                                                                                               ng_cov_code=ng_cov_code,
+                                                                                               filename_suffix=filename_suffix)
                                                     if ell_cuts:
                                                         fm_path += f'/{which_cuts}/ell_{center_or_min}'
                                                         fm_pickle_name = fm_pickle_name.replace(f'.pickle',
@@ -207,7 +209,8 @@ for probe in probes:
 
                                                 if fix_dz:
                                                     # print('fixing dz parameters')
-                                                    names_params_to_fix += [f'dzWL{(zi + 1):02d}' for zi in range(zbins)]
+                                                    names_params_to_fix += [
+                                                        f'dzWL{(zi + 1):02d}' for zi in range(zbins)]
 
                                                 if fix_shear_bias:
                                                     # print('fixing shear bias parameters')
@@ -219,14 +222,14 @@ for probe in probes:
                                                     # print('fixing galaxy bias parameters')
                                                     names_params_to_fix += [f'bG{(zi + 1):02d}' for zi in range(4)]
                                                     gal_bias_perc_prior = None
-                                                    
+
                                                 if fix_mag_bias:
                                                     # print('fixing galaxy bias parameters')
                                                     names_params_to_fix += [f'bM{(zi + 1):02d}' for zi in range(4)]
                                                     mag_bias_perc_prior = None
 
                                                 fm, fiducials_dict = mm.mask_fm_v2(fm, fiducials_dict, names_params_to_fix,
-                                                                                remove_null_rows_cols=True)
+                                                                                   remove_null_rows_cols=True)
 
                                                 param_names = list(fiducials_dict.keys())
                                                 cosmo_param_names = list(fiducials_dict.keys())[:num_params_tokeep]
@@ -243,9 +246,10 @@ for probe in probes:
 
                                                     # go from sigma_b / b_fid to sigma_b
                                                     gal_bias_idxs = [param_names.index(gal_bias_param_name)
-                                                                    for gal_bias_param_name in gal_bias_param_names]
+                                                                     for gal_bias_param_name in gal_bias_param_names]
 
-                                                    gal_bias_fid_values = np.array(list(fiducials_dict.values()))[gal_bias_idxs]
+                                                    gal_bias_fid_values = np.array(list(fiducials_dict.values()))[
+                                                        gal_bias_idxs]
                                                     gal_bias_prior_values = gal_bias_perc_prior * gal_bias_fid_values / 100
                                                     fm = mm.add_prior_to_fm(fm, fiducials_dict, gal_bias_param_names,
                                                                             gal_bias_prior_values)
@@ -255,7 +259,7 @@ for probe in probes:
                                                     if probe == '3x2pt' and which_cov_term == 'GSSC' and fix_shear_bias == False:
                                                         # decide params to show in the triangle plot
                                                         shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in
-                                                                                range(zbins)]
+                                                                                  range(zbins)]
                                                         params_tot_list = cosmo_param_names + shear_bias_param_names
 
                                                         trimmed_fid_dict = {param: fiducials_dict[param] for param in
@@ -263,16 +267,16 @@ for probe in probes:
 
                                                         # get the covariance matrix (careful on how you cut the FM!!)
                                                         fm_idxs_tokeep = [list(fiducials_dict.keys()).index(param) for param in
-                                                                        params_tot_list]
+                                                                          params_tot_list]
                                                         cov = np.linalg.inv(fm)[fm_idxs_tokeep, :][:, fm_idxs_tokeep]
 
                                                         plot_utils.contour_plot_chainconsumer(cov, trimmed_fid_dict)
 
                                                 # ! compute uncertainties from fm
                                                 uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict,
-                                                                                which_uncertainty='marginal',
-                                                                                normalize=True,
-                                                                                percent_units=True)[:num_params_tokeep]
+                                                                                   which_uncertainty='marginal',
+                                                                                   normalize=True,
+                                                                                   percent_units=True)[:num_params_tokeep]
 
                                                 # compute the FoM
                                                 w0wa_idxs = param_names.index('wz'), param_names.index('wa')
@@ -288,54 +292,54 @@ for probe in probes:
                                                     correlation_dict[which_pk] = corr_mat
 
                                                 df_columns_names = string_columns + [param_name for param_name in
-                                                                                    fiducials_dict.keys()][
+                                                                                     fiducials_dict.keys()][
                                                     :num_params_tokeep] + ['FoM']
 
                                                 # this is a list of lists just to have a 'row list' instead of a 'column list',
                                                 # I still haven't figured out the problem, but in this way it works
                                                 df_columns_values = [
                                                     [probe, which_cov_term, whose_FM, which_pk, BNT_transform, ell_cuts, which_cuts,
-                                                    center_or_min, fix_dz, fix_shear_bias, fix_gal_bias, fix_mag_bias, foc, kmax_h_over_Mpc] +
+                                                     center_or_min, fix_dz, fix_shear_bias, fix_gal_bias, fix_mag_bias, foc, kmax_h_over_Mpc] +
                                                     uncert_fm.tolist() + [fom]]
 
                                                 assert len(df_columns_names) == len(
                                                     df_columns_values[0]), 'Wrong number of columns!'
 
                                                 fm_uncert_df_to_concat = pd.DataFrame(df_columns_values,
-                                                                                    columns=df_columns_names)
+                                                                                      columns=df_columns_names)
                                                 fm_uncert_df = pd.concat([fm_uncert_df, fm_uncert_df_to_concat],
-                                                                        ignore_index=True)
+                                                                         ignore_index=True)
                                                 fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
 
 # ! ============================================================ PLOTS ============================================================
 
 
 # # ! bar plot
-include_fom = True
+include_fom = False
 
 for probe_toplot in ('WL', 'GC', '3x2pt'):
-    
+
     num_params_tokeep_here = num_params_tokeep
 
     fm_uncert_df_toplot = fm_uncert_df[
         (fm_uncert_df['probe'] == probe_toplot) &
         (fm_uncert_df['whose_FM'] == 'davide') &
         (fm_uncert_df['which_pk'] == pk_ref) &
-        
-        (fm_uncert_df['fix_dz'] == True) &
-        (fm_uncert_df['fix_shear_bias'] == True) &
-        (fm_uncert_df['fix_gal_bias'] == True) &
-        (fm_uncert_df['fix_mag_bias'] == True) &
-        
+
+        (fm_uncert_df['fix_dz'] == False) &
+        (fm_uncert_df['fix_shear_bias'] == False) &
+        (fm_uncert_df['fix_gal_bias'] == False) &
+        (fm_uncert_df['fix_mag_bias'] == False) &
+
         (fm_uncert_df['BNT_transform'] == False) &
         (fm_uncert_df['ell_cuts'] == False) &
         (fm_uncert_df['kmax_h_over_Mpc'] == 0.1) &
         (fm_uncert_df['which_cuts'] == which_cuts_plt) &
         (fm_uncert_df['center_or_min'] == center_or_min_plt)
-    ]    
+    ]
 
     fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', which_cov_term_list[0],
-                                            which_cov_term_list[1], num_string_columns)
+                                             which_cov_term_list[1], num_string_columns)
 
     data = fm_uncert_df_toplot.iloc[:, num_string_columns:].values
     label_list = list(fm_uncert_df_toplot['which_cov_term'].values)

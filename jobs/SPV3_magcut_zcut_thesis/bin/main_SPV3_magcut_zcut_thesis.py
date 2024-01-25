@@ -1100,7 +1100,8 @@ for zbins in (13, ):
     fm_folder = fm_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
                                            which_cuts=general_cfg['which_cuts'],
                                            BNT_transform=str(bnt_transform),
-                                           center_or_min=general_cfg['center_or_min'])
+                                           center_or_min=general_cfg['center_or_min'],
+                                           fm_last_folder=fm_cfg['fm_last_folder'],)
     if not general_cfg['ell_cuts']:
         # not very nice, i defined the ell_cuts_subfolder above...
         fm_folder = fm_folder.replace(f'/{general_cfg["which_cuts"]}/ell_{center_or_min}', '')

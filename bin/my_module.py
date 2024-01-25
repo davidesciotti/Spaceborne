@@ -471,10 +471,6 @@ def is_increasing(arr):
     return np.all(np.diff(arr) > 0)
 
 
-def pycharm_exit():
-    assert 1 > 2, 'aborting execution'
-
-
 def save_pickle(filename, obj):
     with open(f'{filename}', 'wb') as handle:
         pickle.dump(obj, handle)
@@ -676,7 +672,7 @@ def compare_arrays_v0(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=T
 
 def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True, log_array=True, log_diff=False,
                    abs_val=False, plot_diff_threshold=None, white_where_zero=True):
-    
+
     if np.array_equal(A, B):
         print(f'{name_A} and {name_B} are equal ✅')
         return
@@ -694,7 +690,6 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
                           f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
                           f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
         print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
-
 
         if plot_diff or plot_array:
             assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
@@ -739,7 +734,6 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
             fig.colorbar(im, ax=ax[1])
             fig.suptitle(f'log={log_array}, abs={abs_val}')
             plt.show()
-
 
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):
@@ -2146,9 +2140,9 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, probe_ordering, combinations=None
 def cov_3x2pt_4d_to_10d_dict(cov_3x2pt_4d, zbins, probe_ordering, nbl, ind_copy):
 
     zpairs_auto, zpairs_cross, _ = get_zpairs(zbins)
-    
+
     ind_copy = ind_copy.copy()  # just to ensure the input ind file is not changed
-    
+
     ind_auto = ind_copy[:zpairs_auto, :]
     ind_cross = ind_copy[zpairs_auto:zpairs_cross + zpairs_auto, :]
     ind_dict = {('L', 'L'): ind_auto,

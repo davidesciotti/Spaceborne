@@ -23,7 +23,8 @@ fsky = 0.3563380664078408
 GL_or_LG = 'GL'
 
 
-
+fm_last_folder = '/jan_2024'
+filename_suffix = '_sigma2_dav'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -63,8 +64,8 @@ general_cfg = {
     'fid_yaml_filename': ROOT + '/Spaceborne/common_cfg/SPV3_fiducial_params_magcut245_zbins{zbins:02d}.yml',
     'ell_min': 10,
     'ell_max_WL': 5000,
-    'ell_max_GC': 5000,
-    'ell_max_3x2pt': 5000,
+    'ell_max_GC': 3000,
+    'ell_max_3x2pt': 3000,
     'zbins': 13,
     'zbins_list': None,
     'EP_or_ED': 'EP',
@@ -196,7 +197,7 @@ covariance_cfg = {
     'cov_folder': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{cov_ell_cuts:s}',
     'cov_filename': 'covmat_{which_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_'
                     'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_'
-                    'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D_sigma2_None_densegrids',
+                    'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D' + filename_suffix,
     'cov_vinc_folder': f'{SPV3_folder}/OutputFiles/CovMats/GaussOnly/Full',
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
@@ -209,12 +210,12 @@ covariance_cfg = {
         'which_ng_cov': ('SSC',),
 
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
-        'load_precomputed_cov': False,
-        'save_cov': True,
+        'load_precomputed_cov': True,
+        'save_cov': False,
 
-        'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL/jan_2024',
+        'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL' + fm_last_folder,
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
-                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_sigma2_None_densegrids.npz',
+                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}' + filename_suffix + '.npz',
 
         'save_trispectrum': False,
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
@@ -246,7 +247,7 @@ covariance_cfg = {
         'which_ng_cov': 'SSC',  # only 'SSC' available in this case
 
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
-        'cov_path': f'{ROOT}/exact_SSC/output/SPV3/separate_universe/jan_2024/SSC_matrix',
+        'cov_path': f'{ROOT}/exact_SSC/output/SPV3/separate_universe/{fm_last_folder}/SSC_matrix',
         'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
                         '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'
                         '_convention{cl_integral_convention:s}.npy',
@@ -324,7 +325,8 @@ FM_cfg = {
     'deriv_ell_cuts': deriv_ell_cuts,
 
     'fm_folder': f'{DATA_ROOT}/output/Flagship_{flagship_version}/FM/' +
-                 'BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}/jan_2024',
+                 'BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}/{fm_last_folder}',
+    'fm_last_folder': fm_last_folder,
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,
 

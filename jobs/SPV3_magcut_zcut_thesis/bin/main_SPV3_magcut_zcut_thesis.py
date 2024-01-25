@@ -36,7 +36,7 @@ import jobs.SPV3_magcut_zcut_thesis.config.config_SPV3_magcut_zcut_thesis as cfg
 
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 script_start_time = time.perf_counter()
-os.environ['OMP_NUM_THREADS'] = '4'
+os.environ['OMP_NUM_THREADS'] = '8'
 
 
 # TODO check that the number of ell bins is the same as in the files
@@ -1100,7 +1100,8 @@ for zbins in (13, ):
     fm_folder = fm_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
                                            which_cuts=general_cfg['which_cuts'],
                                            BNT_transform=str(bnt_transform),
-                                           center_or_min=general_cfg['center_or_min'])
+                                           center_or_min=general_cfg['center_or_min'],
+                                           fm_last_folder=fm_cfg['fm_last_folder'],)
     if not general_cfg['ell_cuts']:
         # not very nice, i defined the ell_cuts_subfolder above...
         fm_folder = fm_folder.replace(f'/{general_cfg["which_cuts"]}/ell_{center_or_min}', '')
@@ -1120,7 +1121,6 @@ for zbins in (13, ):
             probe_dav = probe_vinc.replace('O', '')
             fm_vinc_filename = fm_cfg['fm_vinc_filename'].format(**variable_specs, probe=probe_vinc)
             fm_vinc_g = np.genfromtxt(f'{fm_vinc_folder}/{fm_vinc_filename}')
-            print(probe_dav)
 
             diff = mm.percent_diff(FM_dict[f'FM_{probe_dav}_G'], fm_vinc_g)
             xticks = param_names_3x2pt

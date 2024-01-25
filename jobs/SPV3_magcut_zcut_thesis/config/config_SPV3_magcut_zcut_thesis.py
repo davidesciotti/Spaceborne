@@ -210,8 +210,8 @@ covariance_cfg = {
         'which_ng_cov': ('SSC',),
 
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
-        'load_precomputed_cov': True,
-        'save_cov': False,
+        'load_precomputed_cov': False,
+        'save_cov': True,
 
         'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL' + fm_last_folder,
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
@@ -228,13 +228,17 @@ covariance_cfg = {
         'save_sigma2_B': False,  # only if you're not loading it
         'z_grid_sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_ISTF.npy',
         'sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/sigma2_zsteps3000_ISTF.npy',
+        'sigma2_suffix': 'None',  # this is the filename suffix for the sigma2_B file saved directly from cov_SSC in CCL
 
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         'z_grid_tkka_min': 0.001,
         'z_grid_tkka_max': 3,
-        'z_grid_tkka_steps': 500,
+        'z_grid_tkka_steps': 300,
+        'k_grid_tkka_min': 1e-5,
+        'k_grid_tkka_max': 1e2,
+        'k_grid_tkka_steps': 1000,
         'z_grid_min': 0.001,
         'z_grid_max': 3,
         'z_grid_steps': 2000,

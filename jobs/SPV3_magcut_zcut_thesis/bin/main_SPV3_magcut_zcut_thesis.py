@@ -478,7 +478,6 @@ for zbins in (13, ):
                       'which_pk': which_pk, 'BNT_transform': bnt_transform,
                       'which_ng_cov': which_ng_cov_suffix,
                       'ng_cov_code': covariance_cfg['SSC_code'],
-                      'which_grids': covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_grids']
                       }
     pp.pprint(variable_specs)
 

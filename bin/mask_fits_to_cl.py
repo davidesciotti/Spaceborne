@@ -180,7 +180,7 @@ coord = ['C', 'E']
 
 
 # Path to the FITS files
-mask_path = '/home/davide/Documenti/Lavoro/Programmi/common_data/mask'
+mask_path =f'{ROOT}/common_data/mask'
 mask_lowres_path = f'{mask_path}/mask_circular_1pole_15000deg2.fits'
 mask_circular_path = f'{mask_path}/mask_circular_1pole_{area_deg2:d}deg2_nside{nside}_davide.fits'
 mask_dr1_path = f'{mask_path}/euclid_dr1_mask.fits'

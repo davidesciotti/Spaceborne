@@ -2,6 +2,7 @@
 import scipy
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.interpolate import interp1d
 
 import sys
 
@@ -37,7 +38,7 @@ sigma2_dav_SPV3 = np.load(
     f'{ROOT}/exact_SSC/output/SPV3/separate_universe/jan_2024/d2ClAB_dVddeltab/sigma2_zsteps2899_SPV3.npy')
 
 z_grid_sigma2_SPV3_3000 = np.load(ROOT + '/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_SPV3_serial.npy')
-sigma2_SPV3_3000 = np.load(ROOT + '/exact_SSC/output/sigma2/sigma2_zsteps3000_SPV3_serial.npy')
+sigma2_SPV3_3000 /= np.load(ROOT + '/exact_SSC/output/sigma2/sigma2_zsteps3000_SPV3_serial.npy')
 
 
 sigma2_dav_SPV3_diag = np.diag(sigma2_dav_SPV3)
@@ -69,3 +70,40 @@ plt.ylabel('ratio ccl/dav')
 
 
 
+# test all the different sigma2 i have: the goal is to delete useless filsigma2_zsteps2899_SPV3_pyssces, ISTF and SPV3 are practically identical...add()
+z_grid_sigma2_ksteps10000 = np.load(f'{ROOT}/exact_SSC/output/sigma2/z_grid_sigma2_ksteps10000.npy.npy')
+sigma2_ksteps10000 = np.load(f'{ROOT}/exact_SSC/output/sigma2/sigma2_ksteps10000.npy')
+sigma2_zsteps2899_SPV3_pyssc = np.load(f'{ROOT}/exact_SSC/output/sigma2/sigma2_zsteps2899_SPV3_pyssc.npy')
+z_grid_sigma2_zsteps2900_SPV3_pyssc = np.load(f'{ROOT}/exact_SSC/output/sigma2/z_grid_sigma2_zsteps2900_SPV3_pyssc.npy')
+sigma2_zsteps2900_SPV3_pyssc = np.load(f'{ROOT}/exact_SSC/output/sigma2/sigma2_zsteps2900_SPV3_pyssc.npy')
+z_grid_sigma2_zsteps3000_SPV3_serial = np.load(f'{ROOT}/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_SPV3_serial.npy')
+sigma2_zsteps3000_SPV3_serial = np.load(f'{ROOT}/exact_SSC/output/sigma2/sigma2_zsteps3000_SPV3_serial.npy')
+z_grid_sigma2_zsteps2990_SPV3_night = np.load(f'{ROOT}/exact_SSC/output/sigma2/z_grid_sigma2_zsteps2990_SPV3_night.npy')
+sigma2_zsteps2990_SPV3_night = np.load(f'{ROOT}/exact_SSC/output/sigma2/sigma2_zsteps2990_SPV3_night.npy')
+z_grid_sigma2_zsteps3000_ISTF = np.load(f'{ROOT}/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_ISTF.npy')
+sigma2_zsteps3000_ISTF = np.load(f'{ROOT}/exact_SSC/output/sigma2/sigma2_zsteps3000_ISTF.npy')
+
+
+plt.plot(z_grid_sigma2_ksteps10000, np.diag(sigma2_ksteps10000), label='sigma2_ksteps10000')
+plt.plot(z_grid_sigma2_zsteps2900_SPV3_pyssc, np.diag(sigma2_zsteps2900_SPV3_pyssc))
+plt.plot(z_grid_sigma2_zsteps3000_SPV3_serial, np.diag(sigma2_zsteps3000_SPV3_serial))
+plt.plot(z_grid_sigma2_zsteps2990_SPV3_night, np.diag(sigma2_zsteps2990_SPV3_night))
+plt.plot(z_grid_sigma2_zsteps3000_ISTF, np.diag(sigma2_zsteps3000_ISTF))
+plt.yscale('log')
+
+plt.plot(z_grid_sigma2_ksteps10000, sigma2_ksteps10000[100, :], label='sigma2_ksteps10000')
+plt.plot(z_grid_sigma2_zsteps2900_SPV3_pyssc, sigma2_zsteps2900_SPV3_pyssc[100, :], label='sigma2_zsteps2900_SPV3_pyssc')
+plt.plot(z_grid_sigma2_zsteps3000_SPV3_serial, sigma2_zsteps3000_SPV3_serial[100, :], label='sigma2_zsteps3000_SPV3_serial')
+plt.plot(z_grid_sigma2_zsteps2990_SPV3_night, sigma2_zsteps2990_SPV3_night[100, :], label='sigma2_zsteps2990_SPV3_night')
+plt.plot(z_grid_sigma2_zsteps3000_ISTF, sigma2_zsteps3000_ISTF[100, :], label='sigma2_zsteps3000_ISTF')
+# plt.yscale('log')
+plt.legend()
+
+common_zgrid = np.linspace(0.1, 3, 250)
+sigma2_ksteps10000_interp_func = interp1d(z_grid_sigma2_ksteps10000, sigma2_ksteps10000, kind='linear')
+sigma2_ksteps10000_interp_func = interp1d(z_grid_sigma2_ksteps10000, sigma2_ksteps10000, kind='linear')
+sigma2_ksteps10000_interp_func = interp1d(z_grid_sigma2_ksteps10000, sigma2_ksteps10000, kind='linear')
+sigma2_ksteps10000_interp_func = interp1d(z_grid_sigma2_ksteps10000, sigma2_ksteps10000, kind='linear')
+sigma2_ksteps10000_interp_func = interp1d(z_grid_sigma2_ksteps10000, sigma2_ksteps10000, kind='linear')
+
+sigma2_ksteps10000_interp = sigma2_ksteps10000_interp_func(common_zgrid)

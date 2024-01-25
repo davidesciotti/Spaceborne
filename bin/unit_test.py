@@ -40,12 +40,12 @@ def check_FMs_against_oldSSCscript(FM_new_path, general_config, covariance_confi
             'old scripts did not implement the pessimistic case unless which_forecasts is "sylvain", apparently')
 
     if general_config['which_forecast'] == 'sylvain':
-        path_import = '/home/davide/Documenti/Lavoro/Programmi/SSCcomp_prove/output/FM/common_ell_and_deltas/Cij_14may'
+        path_import = f'{ROOT}/SSCcomp_prove/output/FM/common_ell_and_deltas/Cij_14may'
     elif general_config['which_forecast'] == 'IST':
-        path_import = '/home/davide/Documenti/Lavoro/Programmi/SSCcomp_prove/output/FM/ISTspecs_indVincenzo/Cij_14may'
+        path_import = f'{ROOT}/SSCcomp_prove/output/FM/ISTspecs_indVincenzo/Cij_14may'
     elif general_config['which_forecast'] == 'CLOE':
         print('WARNING: is this unit test implemented?? path is the same as general_config[which_forecast] == "IST"...')
-        path_import = '/home/davide/Documenti/Lavoro/Programmi/SSCcomp_prove/output/FM/ISTspecs_indVincenzo/Cij_14may'
+        path_import = f'{ROOT}/SSCcomp_prove/output/FM/ISTspecs_indVincenzo/Cij_14may'
     else:
         raise ValueError('general_config["which_forecast"] must be either "sylvain", "IST" or "CLOE"')
 

@@ -214,7 +214,7 @@ def compute_ng_cov_3x2pt(cosmo, which_ng_cov, kernel_dict, ell, tkka_dict, f_sky
                                        ind_AB=ind_dict[probe_a + probe_b],
                                        ind_CD=ind_dict[probe_c + probe_d],
                                        sigma2_B_tuple=sigma2_B_tuple,
-                                       sigma2_suffix=pyccl_cfg['sigma2_suffix'],
+                                       pyccl_cfg=pyccl_cfg,
                                        integration_method=integration_method,
                                        ))
 
@@ -476,11 +476,11 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         mask_wl = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * f_sky)**2  # ! important to normalize!
 
         # this is because p_of_k_a='delta_matter:delta_matter' gives an error, probably a bug in pyccl
-        # cosmo_ccl.compute_linear_power()
-        # p_of_k_a = cosmo_ccl.get_linear_power()
+        cosmo_ccl.compute_linear_power()
+        p_of_k_a = cosmo_ccl.get_linear_power()
 
         sigma2_B = ccl.covariances.sigma2_B_from_mask(
-            cosmo=cosmo_ccl, a_arr=a_grid_sigma2_B, mask_wl=mask_wl, p_of_k_a='delta_matter:delta_matter')
+            cosmo=cosmo_ccl, a_arr=a_grid_sigma2_B, mask_wl=mask_wl, p_of_k_a=p_of_k_a)
 
         sigma2_B_tuple = (a_grid_sigma2_B, sigma2_B)
 
@@ -488,12 +488,12 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
         print('Loading sigma2_B from file')
 
-        z_grid_sigma2_B = np.load(pyccl_cfg['z_grid_sigma2_B_filename'])
+        z_grid_sigma2_B_import = np.load(pyccl_cfg['z_grid_sigma2_B_filename'])
         sigma2_B = np.load(pyccl_cfg['sigma2_B_filename'])
         sigma2_B = np.diag(sigma2_B) if sigma2_B.ndim == 2 else sigma2_B
 
-        sigma2_B_interp_func = interp1d(z_grid_sigma2_B, sigma2_B, kind='linear')
-        sigma2_B = sigma2_B_interp_func(z_grid_sigma2_B)
+        sigma2_B_interp_func = interp1d(z_grid_sigma2_B_import, sigma2_B, kind='linear')
+        sigma2_B = sigma2_B_interp_func(z_grid_sigma2_B)[::-1]  # flip it, it's a function of a
 
         sigma2_B_tuple = (a_grid_sigma2_B, sigma2_B)
 
@@ -503,15 +503,11 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     else:
         raise ValueError('which_sigma2_B must be either mask, file or None')
 
-    if pyccl_cfg['save_sigma2_B'] and pyccl_cfg['which_sigma2_B'] != 'file':
-        np.save(f'{pyccl_cfg["cov_path"]}/{pyccl_cfg["z_grid_sigma2_B_filename"]}.npy', z_grid_sigma2_B)
-        np.save(f'{pyccl_cfg["cov_path"]}/{pyccl_cfg["sigma2_B_filename"]}.npy', sigma2_B)
-
     if pyccl_cfg['which_sigma2_B'] != None:
         plt.figure()
-        plt.plot(z_grid_sigma2_B, sigma2_B)
-        plt.xlabel('z')
-        plt.ylabel('sigma2_B(z)')
+        plt.plot(sigma2_B_tuple[0], sigma2_B_tuple[1])
+        plt.xlabel('a')
+        plt.ylabel('sigma2_B(a)')
         plt.yscale('log')
         plt.show()
 
@@ -538,7 +534,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
                                        ind_AB=ind_AB,
                                        ind_CD=ind_CD,
                                        sigma2_B_tuple=sigma2_B_tuple,
-                                       sigma2_suffix=pyccl_cfg['sigma2_suffix'],
+                                       pyccl_cfg=pyccl_cfg,
                                        integration_method=integration_method_dict[probe][which_ng_cov],
                                        )
 
@@ -553,7 +549,6 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
                                          output_4D_array=get_3x2pt_cov_in_4D,
                                          covariance_cfg=covariance_cfg,
                                          sigma2_B_tuple=sigma2_B_tuple,
-                                         sigma2_suffix=pyccl_cfg['sigma2_suffix'],
                                          integration_method=integration_method_dict[probe][which_ng_cov],
                                          )
 

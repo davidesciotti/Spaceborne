@@ -708,11 +708,9 @@ if general_cfg['use_CLOE_cls']:
 
     # reshape for OneCovariance code
     ascii_folder = cloe_bench_folder
-    ascii_filename = 'Cell_ll'
-
-    mm.write_cl_ascii(ascii_folder, 'Cell_ll', cl_ll_3d)
-    mm.write_cl_ascii(ascii_folder, 'Cell_gl', cl_gl_3d)
-    mm.write_cl_ascii(ascii_folder, 'Cell_gg', cl_gg_3d)
+    mm.write_cl_ascii(ascii_folder, 'Cell_ll', cl_ll_3d, ell_dict['ell_WL'], zbins)
+    mm.write_cl_ascii(ascii_folder, 'Cell_gl', cl_gl_3d, ell_dict['ell_XC'], zbins)
+    mm.write_cl_ascii(ascii_folder, 'Cell_gg', cl_gg_3d, ell_dict['ell_3x2pt'], zbins)
 
 
 else:
@@ -1129,7 +1127,9 @@ if fm_cfg['save_FM_dict']:
     mm.save_pickle(f'{fm_folder}/{FM_dict_filename}.pickle', FM_dict)
 
 if fm_cfg['test_against_benchmarks']:
-    mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')
+    saved_fm_path = f'{fm_folder}/{FM_dict_filename}.pickle'
+    benchmark_path = f'{fm_folder}/benchmarks/{FM_dict_filename}.pickle'
+    mm.compare_param_cov_from_fm_pickles(saved_fm_path, benchmark_path, compare_fms=True, compare_param_covs=True)
 
 if fm_cfg['test_against_vincenzo'] and bnt_transform == False:
     fm_vinc_folder = fm_cfg["fm_vinc_folder"].format(**variable_specs, go_gs_vinc='GaussOnly')

@@ -44,7 +44,7 @@ cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
 # ! options
 ng_cov_code = 'PyCCL'  # exactSSC or PyCCL
-filename_suffix = '_sigma2_None'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
+filename_suffix = '_sigma2_None_densegrids'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 fm_last_folder = '/jan_2024'  # /standard or /jan_2024
 fix_dz_plt = True
 fix_shear_bias_plt = False
@@ -133,10 +133,7 @@ assert fix_dz_plt, 'without fixing dz you\'ll get very large errors, there is no
 fm_pickle_path_a = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_mask.pickle'
 fm_pickle_path_b = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_None_densegrids.pickle'
 
-mm.compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b)
-
-
-assert False
+# mm.compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b)
 
 
 for probe in probes:

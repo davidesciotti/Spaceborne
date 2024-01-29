@@ -20,12 +20,24 @@ import jobs.SPV3_magcut_zcut_thesis.config.config_SPV3_magcut_zcut_thesis as cfg
 covariance_cfg = cfg.covariance_cfg
 
 
-z_grid_tkka = np.load(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/z_grid_tkka.npy')
-sigma2_B_ccl_SPV3 = np.load(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/sigma2_B_ccl.npy')
-sigma2_B_ccl_ISTF = np.load(
-    f'{ROOT}/common_data/Spaceborne/jobs/ISTF/output/cl14may/covmat/PyCCL/standard/sigma2_B_ccl_ISTF.npy')
-sigma2_B_ccl_SPV3_polar_cap = np.load(f'{covariance_cfg["PyCCL_cfg"]["cov_path"]}/sigma2_B_ccl_polar_cap.npy')
+# sigma2 from ccl (can be imported from file, as well...)
+a_arr_sigma2_ccl_new_import_mask = np.load(f'{ROOT}/exact_SSC/output/sigma2/PyCCL/a_arrmask.npy')
+sigma2_ccl_new_import_mask = np.load(f'{ROOT}/exact_SSC/output/sigma2/PyCCL/s2b_arrmask.npy')
 
+a_arr_sigma2_ccl_new_import_None = np.load(f'{ROOT}/exact_SSC/output/sigma2/PyCCL/a_arrNone.npy')
+sigma2_ccl_new_import_None = np.load(f'{ROOT}/exact_SSC/output/sigma2/PyCCL/s2b_arrNone.npy')
+
+a_arr_sigma2_ccl_new_import_zsteps3000_ISTF = np.load(f'{ROOT}/exact_SSC/output/sigma2/PyCCL/a_arrzsteps3000_ISTF.npy')
+sigma2_ccl_new_import_zsteps3000_ISTF = np.load(f'{ROOT}/exact_SSC/output/sigma2/PyCCL/s2b_arrzsteps3000_ISTF.npy')
+
+plt.plot(a_arr_sigma2_ccl_new_import_mask, sigma2_ccl_new_import_mask, label='mask')
+plt.plot(a_arr_sigma2_ccl_new_import_None, sigma2_ccl_new_import_None, label='None')
+plt.plot(a_arr_sigma2_ccl_new_import_zsteps3000_ISTF, sigma2_ccl_new_import_zsteps3000_ISTF, label='zsteps3000_ISTF')
+plt.legend()
+plt.yscale('log')
+plt.xscale('log')
+
+assert False
 
 z_grid_dav_ISTF = np.load(
     f'{ROOT}/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_ISTF.npy')
@@ -69,14 +81,14 @@ plt.xlabel('z')
 plt.ylabel('ratio ccl/dav')
 
 
-
 # test all the different sigma2 i have: the goal is to delete useless filsigma2_zsteps2899_SPV3_pyssces, ISTF and SPV3 are practically identical...add()
 z_grid_sigma2_ksteps10000 = np.load(f'{ROOT}/exact_SSC/output/sigma2/z_grid_sigma2_ksteps10000.npy.npy')
 sigma2_ksteps10000 = np.load(f'{ROOT}/exact_SSC/output/sigma2/sigma2_ksteps10000.npy')
 sigma2_zsteps2899_SPV3_pyssc = np.load(f'{ROOT}/exact_SSC/output/sigma2/sigma2_zsteps2899_SPV3_pyssc.npy')
 z_grid_sigma2_zsteps2900_SPV3_pyssc = np.load(f'{ROOT}/exact_SSC/output/sigma2/z_grid_sigma2_zsteps2900_SPV3_pyssc.npy')
 sigma2_zsteps2900_SPV3_pyssc = np.load(f'{ROOT}/exact_SSC/output/sigma2/sigma2_zsteps2900_SPV3_pyssc.npy')
-z_grid_sigma2_zsteps3000_SPV3_serial = np.load(f'{ROOT}/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_SPV3_serial.npy')
+z_grid_sigma2_zsteps3000_SPV3_serial = np.load(
+    f'{ROOT}/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_SPV3_serial.npy')
 sigma2_zsteps3000_SPV3_serial = np.load(f'{ROOT}/exact_SSC/output/sigma2/sigma2_zsteps3000_SPV3_serial.npy')
 z_grid_sigma2_zsteps2990_SPV3_night = np.load(f'{ROOT}/exact_SSC/output/sigma2/z_grid_sigma2_zsteps2990_SPV3_night.npy')
 sigma2_zsteps2990_SPV3_night = np.load(f'{ROOT}/exact_SSC/output/sigma2/sigma2_zsteps2990_SPV3_night.npy')
@@ -92,9 +104,12 @@ plt.plot(z_grid_sigma2_zsteps3000_ISTF, np.diag(sigma2_zsteps3000_ISTF))
 plt.yscale('log')
 
 plt.plot(z_grid_sigma2_ksteps10000, sigma2_ksteps10000[100, :], label='sigma2_ksteps10000')
-plt.plot(z_grid_sigma2_zsteps2900_SPV3_pyssc, sigma2_zsteps2900_SPV3_pyssc[100, :], label='sigma2_zsteps2900_SPV3_pyssc')
-plt.plot(z_grid_sigma2_zsteps3000_SPV3_serial, sigma2_zsteps3000_SPV3_serial[100, :], label='sigma2_zsteps3000_SPV3_serial')
-plt.plot(z_grid_sigma2_zsteps2990_SPV3_night, sigma2_zsteps2990_SPV3_night[100, :], label='sigma2_zsteps2990_SPV3_night')
+plt.plot(z_grid_sigma2_zsteps2900_SPV3_pyssc,
+         sigma2_zsteps2900_SPV3_pyssc[100, :], label='sigma2_zsteps2900_SPV3_pyssc')
+plt.plot(z_grid_sigma2_zsteps3000_SPV3_serial,
+         sigma2_zsteps3000_SPV3_serial[100, :], label='sigma2_zsteps3000_SPV3_serial')
+plt.plot(z_grid_sigma2_zsteps2990_SPV3_night,
+         sigma2_zsteps2990_SPV3_night[100, :], label='sigma2_zsteps2990_SPV3_night')
 plt.plot(z_grid_sigma2_zsteps3000_ISTF, sigma2_zsteps3000_ISTF[100, :], label='sigma2_zsteps3000_ISTF')
 # plt.yscale('log')
 plt.legend()

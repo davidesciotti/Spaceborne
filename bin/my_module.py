@@ -18,6 +18,7 @@ import pickle
 import itertools
 import os
 import inspect
+import datetime
 from tqdm import tqdm
 import pandas as pd
 
@@ -26,10 +27,78 @@ import pandas as pd
 
 ###############################################################################
 
+def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
+
+    with open(f'{ascii_folder}/{ascii_filename}.ascii', 'w') as file:
+        # Write header
+        file.write(f'#ell\ttomo_i\ttomo_j\t{ascii_filename}\n')
+
+        # Iterate over the array and write the data
+        for ell_idx, ell_val in enumerate(ells):
+            for zi in range(zbins):
+                for zj in range(zbins):
+                    value = cl_3d[ell_idx, zi, zj]
+                    # Format the line with appropriate spacing
+                    file.write(f"{ell_val:.3f}\t{zi}\t{zj}\t{value:.10e}\n")
+
+    print(f"Data has been written to {ascii_filename}")
+
+
+def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b):
+
+    fm_dict_a = load_pickle(fm_pickle_path_a)
+    fm_dict_b = load_pickle(fm_pickle_path_b)
+
+    # check that the keys match
+    assert fm_dict_a.keys() == fm_dict_b.keys()
+
+    # check if the dictionaries contained in the key 'fiducial_values_dict' match
+    assert fm_dict_a['fiducial_values_dict'] == fm_dict_b['fiducial_values_dict'], 'fiducial values do not match!'
+
+    # check that the values match
+    for key in fm_dict_a.keys():
+        if key != 'fiducial_values_dict' and 'WA' not in key:
+            print('Comparing ', key)
+            fm_dict_a[key] = remove_null_rows_cols_2D_copilot(fm_dict_a[key])
+            fm_dict_b[key] = remove_null_rows_cols_2D_copilot(fm_dict_b[key])
+
+            cov_a = np.linalg.inv(fm_dict_a[key])
+            cov_b = np.linalg.inv(fm_dict_b[key])
+
+            compare_arrays(cov_a, cov_b)
+
+
+def is_file_created_in_last_x_hours(file_path, hours):
+    """
+    Check if the specified file was created in the last 24 hours.
+
+    Parameters:
+    file_path (str): The path to the file.
+
+    Returns:
+    bool: True if the file was created in the last 24 hours, False otherwise.
+    """
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"No such file: '{file_path}'")
+
+    # Get the current time
+    now = datetime.datetime.now()
+
+    # Get the file creation time
+    creation_time = datetime.datetime.fromtimestamp(os.path.getctime(file_path))
+
+    # Calculate the time difference
+    time_diff = now - creation_time
+
+    # Check if the difference is less than or equal to 24 hours
+    return time_diff <= datetime.timedelta(hours=hours)
+
+
 def block_diag(array_3d):
     """
     Useful for visualizing nbl, zbins, zbins arrays at a glance
     """
+    nbl = array_3d.shape[0]
     return scipy.linalg.block_diag(*[array_3d[ell, :, :] for ell in range(nbl)])
 
 

@@ -16,6 +16,8 @@ area_deg2_dr1 = 2822
 # * fm_final_folder
 # * filename_suffix
 # * which_sigma2_B
+# * ell_max_GC: 5000,
+# * ell_max_3x2pt: 5000,
 
 
 which_forecast = 'SPV3'
@@ -24,7 +26,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-filename_suffix = '_sigma2_dav'
+filename_suffix = '_sigma2_mask_refgrid'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -64,8 +66,8 @@ general_cfg = {
     'fid_yaml_filename': ROOT + '/Spaceborne/common_cfg/SPV3_fiducial_params_magcut245_zbins{zbins:02d}.yml',
     'ell_min': 10,
     'ell_max_WL': 5000,
-    'ell_max_GC': 3000,
-    'ell_max_3x2pt': 3000,
+    'ell_max_GC': 5000,
+    'ell_max_3x2pt': 5000,
     'zbins': 13,
     'zbins_list': None,
     'EP_or_ED': 'EP',
@@ -203,6 +205,7 @@ covariance_cfg = {
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
 
     'SSC_code': 'PyCCL',  # ! 'PySSC' or PyCCL' or 'exactSSC'
+    'check_if_recently_created': False,
 
     'PyCCL_cfg': {
         'probe': '3x2pt',  # TODO deprecate this?
@@ -220,25 +223,25 @@ covariance_cfg = {
         'save_trispectrum': False,
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
 
-        'which_sigma2_B': None,  # 'mask' or 'file' or None
+        'which_sigma2_B': 'mask',  # 'mask' or 'file' or None
         'area_deg2_mask': 14700,
         'nside_mask': 2048,
         'ell_mask_filename': ROOT + '/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
         'cl_mask_filename': ROOT + '/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
-        'save_sigma2_B': False,  # only if you're not loading it
         'z_grid_sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_ISTF.npy',
         'sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/sigma2_zsteps3000_ISTF.npy',
-        'sigma2_suffix': 'None',  # this is the filename suffix for the sigma2_B file saved directly from cov_SSC in CCL
+        'sigma2_suffix': 'zsteps3000_ISTF',  # this is the filename suffix for the sigma2_B file saved directly from cov_SSC in CCL
 
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         'z_grid_tkka_min': 0.001,
         'z_grid_tkka_max': 3,
-        'z_grid_tkka_steps': 300,
+        'z_grid_tkka_steps': 200,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
-        'k_grid_tkka_steps': 1000,
+        'k_grid_tkka_steps': 512,
+        
         'z_grid_min': 0.001,
         'z_grid_max': 3,
         'z_grid_steps': 2000,
@@ -329,7 +332,7 @@ FM_cfg = {
     'deriv_ell_cuts': deriv_ell_cuts,
 
     'fm_folder': f'{DATA_ROOT}/output/Flagship_{flagship_version}/FM/' +
-                 'BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}/{fm_last_folder}',
+                 'BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}{fm_last_folder}',
     'fm_last_folder': fm_last_folder,
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,

@@ -44,7 +44,7 @@ def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
     print(f"Data has been written to {ascii_filename}")
 
 
-def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b):
+def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, compare_fms=True, compare_param_covs=True):
 
     fm_dict_a = load_pickle(fm_pickle_path_a)
     fm_dict_b = load_pickle(fm_pickle_path_b)
@@ -62,10 +62,14 @@ def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b):
             fm_dict_a[key] = remove_null_rows_cols_2D_copilot(fm_dict_a[key])
             fm_dict_b[key] = remove_null_rows_cols_2D_copilot(fm_dict_b[key])
 
-            cov_a = np.linalg.inv(fm_dict_a[key])
-            cov_b = np.linalg.inv(fm_dict_b[key])
+            if compare_fms:
+                compare_arrays(fm_dict_a[key], fm_dict_b[key])
 
-            compare_arrays(cov_a, cov_b)
+            if compare_param_covs:
+                cov_a = np.linalg.inv(fm_dict_a[key])
+                cov_b = np.linalg.inv(fm_dict_b[key])
+
+                compare_arrays(cov_a, cov_b)
 
 
 def is_file_created_in_last_x_hours(file_path, hours):
@@ -168,7 +172,7 @@ def load_cov_from_probe_blocks(path, filename, probe_ordering):
     :param probe_ordering: Probe ordering tuple
     :return:
 
-    BEWARE OF USING deepcopy, otherwise the different blocks become correlated
+    YOU SHOULD USE deepcopy, otherwise the different blocks become correlated
     """
     cov_ssc_dict_8D = {}
     for row, (probe_a, probe_b) in enumerate(probe_ordering):

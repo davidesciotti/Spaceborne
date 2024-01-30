@@ -253,8 +253,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     triu_tril = covariance_cfg['triu_tril']
     rowcol_major = covariance_cfg['row_col_major']
     SSC_code = covariance_cfg['SSC_code']
-    nbl_WL_opt = general_cfg['nbl_WL_opt']
-    ell_max_WL_opt = general_cfg['ell_max_WL_opt']
     ssc_code_cfg = covariance_cfg[SSC_code + '_cfg']
 
     fsky = covariance_cfg['fsky']
@@ -447,45 +445,53 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     # if nbl_WL == 20 or nbl_WL == 30:
     #     raise NotImplementedError(
     #         'You are probably running ISTF forecasts; the covariance cannot be sliced in this case')
-    assert ell_max_GC == ell_max_3x2pt, 'I obtain the GC cov by cutting the 3x2pt, but the ellmax values are different'
+    
+    if SSC_code != 'PySSC':
+        assert ell_max_GC == ell_max_3x2pt, 'I obtain the GC cov by cutting the 3x2pt, but the ellmax values are different'
 
-    # Initialize cov_3x2pt_SS_10D depending on SSC_code
-    if general_cfg['which_forecast'] == 'SPV3':
-        # in this case, load the full, 32 bins, ell_max = 5000 covariance, then slice it according to probe ell bins
-        nbl, ell_max = nbl_WL_opt, ell_max_WL_opt
-    elif general_cfg['which_forecast'] == 'ISTF':
-        # in this case, load the 3x2pt covariance, then take the GC part, then reload for WL
-        nbl, ell_max = nbl_3x2pt, ell_max_3x2pt
+        # Initialize cov_3x2pt_SS_10D depending on SSC_code
+        if general_cfg['which_forecast'] == 'SPV3':
+            # in this case, load the full, 32 bins, ell_max = 5000 covariance, then slice it according to probe ell bins
+            nbl, ell_max = general_cfg['nbl_WL_opt'], general_cfg['ell_max_WL_opt']
+        elif general_cfg['which_forecast'] == 'ISTF':
+            # in this case, load the 3x2pt covariance, then take the GC part, then reload for WL
+            nbl, ell_max = nbl_3x2pt, ell_max_3x2pt
 
-    cov_3x2pt_SS_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
-                                nbl, nbl, zbins, zbins, zbins, zbins))
-    for which_ng_cov in ssc_code_cfg['which_ng_cov']:
-        cov_ng_3x2pt_10D_dict = get_cov_ng_3x2pt(
-            general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, ell_max)
-        cov_3x2pt_SS_10D += mm.cov_10D_dict_to_array(cov_ng_3x2pt_10D_dict, nbl, zbins, n_probes)
+        cov_3x2pt_SS_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
+                                    nbl, nbl, zbins, zbins, zbins, zbins))
+        for which_ng_cov in ssc_code_cfg['which_ng_cov']:
+            cov_ng_3x2pt_10D_dict = get_cov_ng_3x2pt(
+                general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, ell_max)
+            cov_3x2pt_SS_10D += mm.cov_10D_dict_to_array(cov_ng_3x2pt_10D_dict, nbl, zbins, n_probes)
 
-    # Slice or reload to get the LL, GG and 3x2pt covariance
-    if general_cfg['which_forecast'] == 'SPV3':
-        cov_WL_SS_6D = deepcopy(cov_3x2pt_SS_10D[0, 0, 0, 0, :nbl_WL, :nbl_WL, :, :, :, :])
-        cov_GC_SS_6D = deepcopy(cov_3x2pt_SS_10D[1, 1, 1, 1, :nbl_GC, :nbl_GC, :, :, :, :])
-        cov_3x2pt_SS_10D = deepcopy(cov_3x2pt_SS_10D[:, :, :, :, :nbl_3x2pt, :nbl_3x2pt, :, :, :, :])
+        # Slice or reload to get the LL, GG and 3x2pt covariance
+        if general_cfg['which_forecast'] == 'SPV3':
+            cov_WL_SS_6D = deepcopy(cov_3x2pt_SS_10D[0, 0, 0, 0, :nbl_WL, :nbl_WL, :, :, :, :])
+            cov_GC_SS_6D = deepcopy(cov_3x2pt_SS_10D[1, 1, 1, 1, :nbl_GC, :nbl_GC, :, :, :, :])
+            cov_3x2pt_SS_10D = deepcopy(cov_3x2pt_SS_10D[:, :, :, :, :nbl_3x2pt, :nbl_3x2pt, :, :, :, :])
 
-    elif general_cfg['which_forecast'] == 'ISTF':
-        # for GC and 3x2pt, the already loaded 3x2pt is the right one
-        cov_GC_SS_6D = cov_3x2pt_SS_10D[1, 1, 1, 1, ...]  # take GC 6D
+        elif general_cfg['which_forecast'] == 'ISTF':
+            # for GC and 3x2pt, the already loaded 3x2pt is the right one
+            cov_GC_SS_6D = cov_3x2pt_SS_10D[1, 1, 1, 1, ...]  # take GC 6D
+            
+            if nbl_WL == nbl_3x2pt and ell_max_WL == ell_max_3x2pt:
+                cov_WL_SS_6D = cov_3x2pt_SS_10D[0, 0, 0, 0, ...]  # if WL and 3x2pt nbl and ell_max match
 
-        if nbl_WL != nbl_3x2pt and ell_max_WL != ell_max_3x2pt:
-            # for LL, re-load with nbl_WL, ell_max_WL, then take the lensing block
-            cov_3x2pt_SS_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
-                                        nbl_WL, nbl_WL, zbins, zbins, zbins, zbins))
-            for which_ng_cov in ssc_code_cfg['which_ng_cov']:
-                cov_ng_3x2pt_10D_dict = get_cov_ng_3x2pt(
-                    general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl_WL, ell_max_WL)
-                cov_3x2pt_SS_10D += mm.cov_10D_dict_to_array(cov_ng_3x2pt_10D_dict, nbl_WL, zbins, n_probes)
+            elif nbl_WL == nbl_3x2pt and ell_max_WL != ell_max_3x2pt:
+                # for LL, re-load with nbl_WL, ell_max_WL, then take the lensing block
+                cov_3x2pt_SS_10D_forWL = np.zeros((n_probes, n_probes, n_probes, n_probes,
+                                            nbl_WL, nbl_WL, zbins, zbins, zbins, zbins))
+                for which_ng_cov in ssc_code_cfg['which_ng_cov']:
+                    cov_ng_3x2pt_10D_dict = get_cov_ng_3x2pt(
+                        general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl_WL, ell_max_WL)
+                    cov_3x2pt_SS_10D_forWL += mm.cov_10D_dict_to_array(cov_ng_3x2pt_10D_dict, nbl_WL, zbins, n_probes)
 
-        cov_WL_SS_6D = cov_3x2pt_SS_10D[0, 0, 0, 0, ...]
+                cov_WL_SS_6D = cov_3x2pt_SS_10D_forWL[0, 0, 0, 0, ...]
+            
+            else:
+                raise ValueError('Mpre complicated cases, with a different number of ell bins and different ellmax btw WL and 3x2pt, are not implemented yet')
 
-    print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
+        print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
 
     # sum GO and SS in 6D (or 10D), not in 4D (it's the same)
     cov_WL_GS_6D = cov_WL_GO_6D + cov_WL_SS_6D

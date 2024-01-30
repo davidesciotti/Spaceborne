@@ -77,7 +77,7 @@ general_cfg = {
     'which_forecast': which_forecast,
 
     'ell_min': 10,
-    'ell_max_WL': 3000,
+    'ell_max_WL': 5000,
     'ell_max_GC': 3000,
     'ell_max_XC': 3000,
     'ell_max_3x2pt': 3000,
@@ -100,8 +100,6 @@ general_cfg = {
 
     'cl_BNT_transform': cl_BNT_transform,
     'BNT_transform': BNT_transform,
-    'BNT_matrix_path': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/BNT_matrix',
-    'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
     'cl_folder': cl_folder,
     'rl_folder': f'{ROOT}/common_data/vincenzo/Pk_responses_2D/' + '{EP_or_ED:s}{zbins:02d}',
     'cl_filename': cl_filename,
@@ -169,7 +167,8 @@ covariance_cfg = {
         'which_ng_cov': ('SSC',),
         
         'get_3x2pt_cov_in_4D': False,
-        'load_precomputed_cov': False,
+        'load_precomputed_cov': True,
+        'save_cov': False,
         
         'save_trispectrum': False,
         # 'cov_path': '/home/davide/Documenti/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF/jan_2024', # old path
@@ -186,13 +185,15 @@ covariance_cfg = {
         'sigma2_B_filename': 'sigma2_B_ccl_ISTF',
         'z_grid_sigma2_B_filename': 'z_grid_sigma2_B_ccl_ISTF',
 
-        'save_cov': False,
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         'z_grid_tkka_min': 0.001,
         'z_grid_tkka_max': 3,
-        'z_grid_tkka_steps': 500,
+        'z_grid_tkka_steps': 200,
+        'k_grid_tkka_min': 1e-5,
+        'k_grid_tkka_max': 1e2,
+        'k_grid_tkka_steps': 512,
         'z_grid_min': 0.001,
         'z_grid_max': 3,
         'z_grid_steps': 1000,
@@ -201,8 +202,9 @@ covariance_cfg = {
     },
 
     'exactSSC_cfg': {
-        'which_ng_cov': 'SSC',
+        'which_ng_cov': ('SSC',),
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
+        'load_precomputed_cov': True,
         'cov_path': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/ISTF/jan_2024/SSC_matrix',
         'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
                         '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'

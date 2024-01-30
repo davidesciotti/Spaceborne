@@ -172,7 +172,6 @@ def get_cov_ng_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict):
     return cov_ccl_3x2pt_dict_10D
 
 
-# TODO finish this; the problem is that this does not work for ISTF!!
 def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, ell_max):
 
     ssc_code = covariance_cfg['SSC_code']
@@ -407,7 +406,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     print("SS cov. matrices computed in %.2f s with PySSC" % (time.perf_counter() - start))
 
     start_time = time.perf_counter()
-    
+
     if SSC_code != 'PySSC':
         assert ell_max_GC == ell_max_3x2pt, 'I obtain the GC cov by cutting the 3x2pt, but the ellmax values are different'
 
@@ -435,23 +434,24 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         elif general_cfg['which_forecast'] == 'ISTF':
             # for GC and 3x2pt, the already loaded 3x2pt is the right one
             cov_GC_SS_6D = cov_3x2pt_SS_10D[1, 1, 1, 1, ...]  # take GC 6D
-            
+
             if nbl_WL == nbl_3x2pt and ell_max_WL == ell_max_3x2pt:
                 cov_WL_SS_6D = cov_3x2pt_SS_10D[0, 0, 0, 0, ...]  # if WL and 3x2pt nbl and ell_max match
 
             elif nbl_WL == nbl_3x2pt and ell_max_WL != ell_max_3x2pt:
                 # for LL, re-load with nbl_WL, ell_max_WL, then take the lensing block
                 cov_3x2pt_SS_10D_forWL = np.zeros((n_probes, n_probes, n_probes, n_probes,
-                                            nbl_WL, nbl_WL, zbins, zbins, zbins, zbins))
+                                                   nbl_WL, nbl_WL, zbins, zbins, zbins, zbins))
                 for which_ng_cov in ssc_code_cfg['which_ng_cov']:
                     cov_ng_3x2pt_10D_dict = get_cov_ng_3x2pt(
                         general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl_WL, ell_max_WL)
                     cov_3x2pt_SS_10D_forWL += mm.cov_10D_dict_to_array(cov_ng_3x2pt_10D_dict, nbl_WL, zbins, n_probes)
 
                 cov_WL_SS_6D = cov_3x2pt_SS_10D_forWL[0, 0, 0, 0, ...]
-            
+
             else:
-                raise ValueError('Mpre complicated cases, with a different number of ell bins and different ellmax btw WL and 3x2pt, are not implemented yet')
+                raise ValueError(
+                    'Mpre complicated cases, with a different number of ell bins and different ellmax btw WL and 3x2pt, are not implemented yet')
 
         print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
 

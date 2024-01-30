@@ -176,7 +176,7 @@ covariance_cfg = {
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',
 
-        'which_sigma2_B': None,  # 'mask' or 'file' or None
+        'which_sigma2_B': 'mask',  # 'mask' or 'file' or None
         'area_deg2_mask': 14700,
         'nside_mask': 4096,
         'ell_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',

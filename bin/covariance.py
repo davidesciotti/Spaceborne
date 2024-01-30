@@ -407,44 +407,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     print("SS cov. matrices computed in %.2f s with PySSC" % (time.perf_counter() - start))
 
     start_time = time.perf_counter()
-    # if SSC_code == 'exactSSC':
-    #     cov_exactSSC_SS_dict_10D = get_cov_ssc_exactssc(
-    #         general_cfg, covariance_cfg, return_format_3x2pt='dict_10d', probe='3x2pt')
-    #     cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_exactSSC_SS_dict_10D, nbl_WL_opt, zbins, n_probes)
-
-    #     if nbl_WL == 20 or nbl_WL == 30:
-    #         raise NotImplementedError(
-    #             'You are probably running ISTF forecasts; the covariance cannot be sliced in this case')
-    #     # cov_WL_SS_6D = get_cov_ssc_exactssc(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d', probe='LL')
-    #     # cov_GC_SS_6D = get_cov_ssc_exactssc(general_cfg, covariance_cfg, return_format_3x2pt='dict_10d', probe='GG')
-    #     cov_WL_SS_6D = cov_3x2pt_SS_10D[0, 0, 0, 0, :nbl_WL, :nbl_WL, :, :, :, :]
-    #     cov_GC_SS_6D = cov_3x2pt_SS_10D[1, 1, 1, 1, :nbl_GC, :nbl_GC, :, :, :, :]
-    #     cov_3x2pt_SS_10D = cov_3x2pt_SS_10D[:, :, :, :, :nbl_3x2pt, :nbl_3x2pt, :, :, :, :]
-
-    #     which_ng_cov = covariance_cfg[SSC_code + '_cfg']['which_ng_cov']
-    #     print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
-
-    # elif SSC_code == 'PyCCL':
-    #     if nbl_WL == 20 or nbl_WL == 30:
-    #         raise NotImplementedError(
-    #             'You are probably running ISTF forecasts; the covariance cannot be sliced in this case')
-
-    #     cov_3x2pt_SS_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
-    #                                  nbl_WL_opt, nbl_WL_opt, zbins, zbins, zbins, zbins))
-    #     for which_ng_cov in covariance_cfg['PyCCL_cfg']['which_ng_cov']:
-    #         cov_ng_ccl_3x2pt_10D_dict = get_cov_ng_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict)
-
-    #         cov_3x2pt_SS_10D += mm.cov_10D_dict_to_array(cov_ng_ccl_3x2pt_10D_dict, nbl_WL_opt, zbins, n_probes)
-
-    #     cov_WL_SS_6D = cov_3x2pt_SS_10D[0, 0, 0, 0, :nbl_WL, :nbl_WL, :, :, :, :]
-    #     cov_GC_SS_6D = cov_3x2pt_SS_10D[1, 1, 1, 1, :nbl_GC, :nbl_GC, :, :, :, :]
-    #     cov_3x2pt_SS_10D = cov_3x2pt_SS_10D[:, :, :, :, :nbl_3x2pt, :nbl_3x2pt, :, :, :, :]
-    #     print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
-
-    # Check for invalid nbl_WL values before proceeding
-    # if nbl_WL == 20 or nbl_WL == 30:
-    #     raise NotImplementedError(
-    #         'You are probably running ISTF forecasts; the covariance cannot be sliced in this case')
     
     if SSC_code != 'PySSC':
         assert ell_max_GC == ell_max_3x2pt, 'I obtain the GC cov by cutting the 3x2pt, but the ellmax values are different'

@@ -91,7 +91,7 @@ general_cfg = {
     'use_WA': use_WA,  # ! xxx
     'save_cls_3d': False,
     'save_rls_3d': False,
-    
+
     'bias_model': 'ISTF_bias',
     'has_rsd': False,
     'has_magnification_bias': False,
@@ -129,7 +129,7 @@ covariance_cfg = {
     'ng_filename': None,
     'sigma_eps2': 0.3 ** 2,
     'use_sylvains_deltas': use_sylvains_deltas,
-    
+
     'nofz_folder': f'{ROOT}/CLOE_validation/data/n_of_z',
     'nofz_filename': 'nzTabISTF.dat',
 
@@ -165,25 +165,28 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',  # TODO deprecate this? probably still useful if I want to compute instead of loading...
         'which_ng_cov': ('SSC',),
-        
+
         'get_3x2pt_cov_in_4D': False,
-        'load_precomputed_cov': True,
-        'save_cov': False,
-        
+        'load_precomputed_cov': False,
+        'save_cov': True,
+
         'save_trispectrum': False,
         # 'cov_path': '/home/davide/Documenti/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF/jan_2024', # old path
         'cov_path': f'{DATA_ROOT}/output/cl14may/covmat/PyCCL/standard',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
-                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',
+                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_mask.npz',
 
-        'which_sigma2_B': 'mask',  # 'mask' or 'file' or None
-        'area_deg2_mask': 14700,
-        'nside_mask': 4096,
-        'ell_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
-        'cl_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
-        'save_sigma2_B': False,
-        'sigma2_B_filename': 'sigma2_B_ccl_ISTF',
-        'z_grid_sigma2_B_filename': 'z_grid_sigma2_B_ccl_ISTF',
+        'which_sigma2_B': 'spaceborne',  # 'mask' or 'spaceborne' or None
+        # if passing a mask power spectrum
+        'area_deg2_mask': 15000,
+        'nside_mask': 2048,
+        'ell_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy',
+        'cl_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy',
+        # if passing sigmaB from file
+        'z_grid_sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/z_grid_sigma2_B_ccl_ISTF.npy',
+        'sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/sigma2_B_ccl_ISTF.npy',
+        # this is the filename suffix for the sigma2_B file saved directly from cov_SSC in CCL
+        'sigma2_suffix': 'mask',
 
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 

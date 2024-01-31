@@ -47,8 +47,8 @@ Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
 
-for covariance_cfg['SSC_code'] in ['PySSC', 'PyCCL', 'exactSSC']:
-    # for covariance_cfg['SSC_code'] in ['PyCCL',]:
+# for covariance_cfg['SSC_code'] in ['PySSC', 'PyCCL', 'exactSSC']:
+for covariance_cfg['SSC_code'] in ['PyCCL',]:
     # check_specs.consistency_checks(general_cfg, covariance_cfg)
     # for covariance_cfg['SSC_code'] in ['PyCCL', 'exactSSC']:
     #     for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['probe'] in ['LL', 'GG', '3x2pt']:

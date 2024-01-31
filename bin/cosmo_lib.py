@@ -472,7 +472,10 @@ def instantiate_cosmo_ccl_obj(fiducial_pars_dict, extra_parameters):
         Omega_k = get_omega_k0(omega_m0=fiducial_pars_dict['Om_m0'], omega_Lambda0=fiducial_pars_dict['Om_Lambda0'])
 
     if extra_parameters is None:
-        print('No extra parameters passed to CAMB in instantiate_cosmo_ccl_obj')
+        try:
+            extra_parameters = fiducial_pars_dict['other_params']['camb_extra_parameters']
+        except KeyError:
+            print('No extra parameters passed to CAMB in instantiate_cosmo_ccl_obj')
 
     cosmo_ccl = ccl.Cosmology(Omega_c=Omega_c,
                               Omega_b=fiducial_pars_dict['Om_b0'],

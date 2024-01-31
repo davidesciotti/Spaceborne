@@ -43,10 +43,14 @@ cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
 
 # ! options
-ng_cov_code = 'PyCCL'  # exactSSC or PyCCL
-# filename_suffix = '_sigma2_mask'
-filename_suffix = ''  # _sigma2_dav or _sigma2_mask or halo_model
-fm_last_folder = '/standard'  # /standard or /jan_2024
+ng_cov_code = 'exactSSC'  # exactSSC or PyCCL
+filename_suffix = '_sigma2_None_densegrids'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
+filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
+fm_last_folder = '/jan_2024'  # /standard or /jan_2024
+fix_dz_plt = True
+fix_shear_bias_plt = False
+fix_gal_bias_plt = False
+fix_mag_bias_plt = False
 
 specs_str = 'idIA2_idB3_idM3_idR1'
 fm_root_path = ('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/'
@@ -58,10 +62,6 @@ EP_or_ED = 'EP'
 zbins = 13
 num_params_tokeep = 7
 fix_curvature = True
-fix_gal_bias = False
-fix_dz = True
-fix_shear_bias = False  # this has to be an outer loop if you also want to vary the shear bias prior itself
-include_fom = True
 fid_shear_bias_prior = 5e-4
 shear_bias_prior = fid_shear_bias_prior
 gal_bias_perc_prior = None  # ! not quite sure this works properly...
@@ -103,6 +103,10 @@ center_or_min_plt = 'center'
 which_cuts_plt = 'Vincenzo'
 save_plots = False
 plor_corr_matrix = True
+dz_param_names = [f'dzWL{(zi + 1):02d}' for zi in range(zbins)]
+shear_bias_param_names = [f'm{(zi + 1):02d}' for zi in range(zbins)]
+gal_bias_param_names = [f'bG{(zi + 1):02d}' for zi in range(4)]
+mag_bias_param_names = [f'bM{(zi + 1):02d}' for zi in range(4)]
 # ! options
 
 probe_vinc_dict = {
@@ -124,6 +128,13 @@ assert 'Flagship_2' in fm_root_path, 'The input files used in this job for flags
 assert which_cuts == 'Vincenzo', ('to begin with, use only Vincenzo/standard cuts. '
                                   'For the thesis, probably use just these')
 assert not use_Wadd, 'import of Wadd not implemented yet'
+assert fix_dz_plt, 'without fixing dz you\'ll get very large errors, there is no prior at the moment!!'
+
+
+fm_pickle_path_a = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_mask.pickle'
+fm_pickle_path_b = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_None_densegrids.pickle'
+
+# mm.compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b)
 
 
 for probe in probes:
@@ -211,24 +222,19 @@ for probe in probes:
                                                 #     num_params_tokeep += 1
 
                                                 if fix_dz:
-                                                    # print('fixing dz parameters')
-                                                    names_params_to_fix += [
-                                                        f'dzWL{(zi + 1):02d}' for zi in range(zbins)]
+                                                    names_params_to_fix += dz_param_names
 
                                                 if fix_shear_bias:
-                                                    # print('fixing shear bias parameters')
-                                                    names_params_to_fix += [f'm{(zi + 1):02d}' for zi in range(zbins)]
+                                                    names_params_to_fix += shear_bias_param_names
                                                     # in this way, 👇there is no need for a 'add_shear_bias_prior' (or similar) boolean flag
                                                     shear_bias_prior = None
 
                                                 if fix_gal_bias:
-                                                    # print('fixing galaxy bias parameters')
-                                                    names_params_to_fix += [f'bG{(zi + 1):02d}' for zi in range(4)]
+                                                    names_params_to_fix += gal_bias_param_names
                                                     gal_bias_perc_prior = None
 
                                                 if fix_mag_bias:
-                                                    # print('fixing galaxy bias parameters')
-                                                    names_params_to_fix += [f'bM{(zi + 1):02d}' for zi in range(4)]
+                                                    names_params_to_fix += mag_bias_param_names
                                                     mag_bias_perc_prior = None
 
                                                 fm, fiducials_dict = mm.mask_fm_v2(fm, fiducials_dict, names_params_to_fix,
@@ -239,13 +245,11 @@ for probe in probes:
 
                                                 # ! add prior on shear and/or gal bias
                                                 if shear_bias_prior != None and probe in ['WL', '3x2pt']:
-                                                    shear_bias_param_names = [f'm{(zi + 1):02d}' for zi in range(zbins)]
                                                     shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
                                                     fm = mm.add_prior_to_fm(fm, fiducials_dict, shear_bias_param_names,
                                                                             shear_bias_prior_values)
 
                                                 if gal_bias_perc_prior != None and probe in ['GC', '3x2pt']:
-                                                    gal_bias_param_names = [f'bG{(zi + 1):02d}' for zi in range(4)]
 
                                                     # go from sigma_b / b_fid to sigma_b
                                                     gal_bias_idxs = [param_names.index(gal_bias_param_name)
@@ -261,8 +265,7 @@ for probe in probes:
                                                 if triangle_plot:
                                                     if probe == '3x2pt' and which_cov_term == 'GSSC' and fix_shear_bias == False:
                                                         # decide params to show in the triangle plot
-                                                        shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in
-                                                                                  range(zbins)]
+
                                                         params_tot_list = cosmo_param_names + shear_bias_param_names
 
                                                         trimmed_fid_dict = {param: fiducials_dict[param] for param in
@@ -329,10 +332,10 @@ for probe_toplot in ('WL', 'GC', '3x2pt'):
         (fm_uncert_df['whose_FM'] == 'davide') &
         (fm_uncert_df['which_pk'] == pk_ref) &
 
-        (fm_uncert_df['fix_dz'] == False) &
-        (fm_uncert_df['fix_shear_bias'] == False) &
-        (fm_uncert_df['fix_gal_bias'] == False) &
-        (fm_uncert_df['fix_mag_bias'] == False) &
+        (fm_uncert_df['fix_dz'] == fix_dz_plt) &
+        (fm_uncert_df['fix_shear_bias'] == fix_shear_bias_plt) &
+        (fm_uncert_df['fix_gal_bias'] == fix_gal_bias_plt) &
+        (fm_uncert_df['fix_mag_bias'] == fix_mag_bias_plt) &
 
         (fm_uncert_df['BNT_transform'] == False) &
         (fm_uncert_df['ell_cuts'] == False) &

@@ -122,7 +122,7 @@ def find_lmax(ell, cl_mask, var_tol=0.05, debug=False):
 # ! generate my own polar cap
 def generate_polar_cap(area_deg2, nside=2048):
 
-    print('Generating a polar cap mask with area %.2f deg2 and resolution nside {nside}' % area_deg2)
+    print(f'Generating a polar cap mask with area {area_deg2} deg2 and resolution nside {nside}')
 
     # Expected sky fraction
     fsky_expected = cosmo_lib.deg2_to_fsky(area_deg2)
@@ -170,64 +170,78 @@ def mask_path_to_cl(mask_path, plot_title, coord=['C', 'E']):
     return ell_mask, cl_mask, fsky, nside
 
 
-# ! settings
-area_deg2 = 14700
-# area_deg2 = 15000
-# nside = 4096
-nside = 2048
-coord = ['C', 'E']
-# ! end settings
+def save_masks():
+    # ! settings
+    area_deg2 = 14700
+    # area_deg2 = 15000
+    # nside = 4096
+    nside = 2048
+    coord = ['C', 'E']
+    # ! end settings
 
+    # note: generate new mask with
 
-# Path to the FITS files
-mask_path =f'{ROOT}/common_data/mask'
-mask_lowres_path = f'{mask_path}/mask_circular_1pole_15000deg2.fits'
-mask_circular_path = f'{mask_path}/mask_circular_1pole_{area_deg2:d}deg2_nside{nside}_davide.fits'
-mask_dr1_path = f'{mask_path}/euclid_dr1_mask.fits'
-mask_q1_path = f'{mask_path}/euclid_q1_mask.fits'
-mask_csst_npz = np.load('/home/davide/Documenti/Lavoro/Programmi/CSSTforecasts/mask_nside4096.npz')
+    # Path to the FITS files
+    mask_path = f'{ROOT}/common_data/mask'
+    mask_lowres_path = f'{mask_path}/mask_circular_1pole_15000deg2.fits'
+    mask_circular_path = f'{mask_path}/mask_circular_1pole_{area_deg2:d}deg2_nside{nside}.fits'
+    mask_dr1_path = f'{mask_path}/euclid_dr1_mask.fits'
+    mask_q1_path = f'{mask_path}/euclid_q1_mask.fits'
+    # mask_csst_npz = np.load('/home/davide/Documenti/Lavoro/Programmi/CSSTforecasts/mask_nside4096.npz')
 
+    # * note: to generate new mask:
+    mask = generate_polar_cap(30000, nside)
+    hp.mollview(mask, coord=coord, title='mask', cmap='inferno_r')
+    ell_mask, cl_mask, fsky = get_mask_quantities(clmask=None, mask=mask, mask2=None, verbose=True)
 
-# TODO understand why the plot is different, it's probably vec = hp.ang2vec(0, 0)
+    # * note: get the mask with
+    # mask = hp.read_map(mask_path)
+    # compute the area in steradians with
+    # area_ster = mask.sum()*hp.nside2pixarea(nside)
+    # and in square degrees with
+    # area_deg2 = mask.sum()*hp.nside2pixarea(nside, degrees=True)
 
-# compute Cl(mask) and fsky computed from user input (mask(s) or clmask)
-ell_mask_circular, cl_mask_circular, fsky_circular, nside_circular = mask_path_to_cl(
-    mask_circular_path, 'pole highres', coord=coord)
-ell_mask_dr1, cl_mask_dr1, fsky_dr1, nside_dr1 = mask_path_to_cl(mask_dr1_path, 'dr1', coord=coord)
-ell_mask_q1, cl_mask_q1, fsky_q1, nside_q1 = mask_path_to_cl(mask_q1_path, 'q1', coord=coord)
+    # TODO understand why the plot is different, it's probably vec = hp.ang2vec(0, 0)
 
-area_deg2_circular = int(cosmo_lib.fsky_to_deg2(fsky_circular))
-area_deg2_dr1 = int(cosmo_lib.fsky_to_deg2(fsky_dr1))
-area_deg2_q1 = int(cosmo_lib.fsky_to_deg2(fsky_q1))
+    # compute Cl(mask) and fsky computed from user input (mask(s) or clmask)
+    ell_mask_circular, cl_mask_circular, fsky_circular, nside_circular = mask_path_to_cl(
+        mask_circular_path, 'pole highres', coord=coord)
+    ell_mask_dr1, cl_mask_dr1, fsky_dr1, nside_dr1 = mask_path_to_cl(mask_dr1_path, 'dr1', coord=coord)
+    ell_mask_q1, cl_mask_q1, fsky_q1, nside_q1 = mask_path_to_cl(mask_q1_path, 'q1', coord=coord)
+    ell_mask_q1, cl_mask_q1, fsky_q1, nside_q1 = mask_path_to_cl(mask_q1_path, 'q1', coord=coord)
+    ell_mask_circ_5deg2, cl_mask_circ_5deg2, fsky_circ_5deg2, nside_circ_5deg2 = mask_path_to_cl(
+        mask_circ_5deg2_path, '5deg2', coord=coord)
 
-area_deg2_circular = 14700 if area_deg2_circular == 14701 else area_deg2_circular
+    area_deg2_circular = int(cosmo_lib.fsky_to_deg2(fsky_circular))
+    area_deg2_dr1 = int(cosmo_lib.fsky_to_deg2(fsky_dr1))
+    area_deg2_q1 = int(cosmo_lib.fsky_to_deg2(fsky_q1))
 
-plt.figure()
-plt.loglog(ell_mask_circular, cl_mask_circular, ls='--', label=f'high res, fsky = {fsky_circular}', alpha=0.5)
-plt.loglog(ell_mask_dr1, cl_mask_dr1, ls='--', label=f'dr1, fsky = {fsky_dr1}', alpha=0.5)
-plt.loglog(ell_mask_q1, cl_mask_q1, ls='--', label=f'q1, fsky = {fsky_q1}', alpha=0.5)
-plt.xlabel(r'$\ell$')
-plt.ylabel(r'$C_\ell^{mask}$')
-plt.legend()
+    area_deg2_circular = 14700 if area_deg2_circular == 14701 else area_deg2_circular
 
-np.save(f'{mask_path}/ell_circular_1pole_{area_deg2_circular:d}deg2_nside{nside_circular}_davide.npy', ell_mask_circular)
-np.save(f'{mask_path}/Cell_circular_1pole_{area_deg2_circular:d}deg2_nside{nside_circular}_davide.npy', cl_mask_circular)
+    plt.figure()
+    plt.loglog(ell_mask_circular, cl_mask_circular, ls='--', label=f'high res, fsky = {fsky_circular}', alpha=0.5)
+    plt.loglog(ell_mask_dr1, cl_mask_dr1, ls='--', label=f'dr1, fsky = {fsky_dr1}', alpha=0.5)
+    plt.loglog(ell_mask_q1, cl_mask_q1, ls='--', label=f'q1, fsky = {fsky_q1}', alpha=0.5)
+    plt.xlabel(r'$\ell$')
+    plt.ylabel(r'$C_\ell^{mask}$')
+    plt.legend()
 
-np.save(f'{mask_path}/ell_DR1_{area_deg2_dr1:d}deg2_nside{nside_dr1}.npy', ell_mask_dr1)
-np.save(f'{mask_path}/Cell_DR1_{area_deg2_dr1:d}deg2_nside{nside_dr1}.npy', cl_mask_dr1)
+    np.save(f'{mask_path}/ell_circular_1pole_{area_deg2_circular:d}deg2_nside{nside_circular}.npy', ell_mask_circular)
+    np.save(f'{mask_path}/Cell_circular_1pole_{area_deg2_circular:d}deg2_nside{nside_circular}.npy', cl_mask_circular)
 
-np.save(f'{mask_path}/ell_Q1_{area_deg2_q1:d}deg2_nside{nside_q1}.npy', ell_mask_q1)
-np.save(f'{mask_path}/Cell_Q1_{area_deg2_q1:d}deg2_nside{nside_q1}.npy', cl_mask_q1)
+    np.save(f'{mask_path}/ell_DR1_{area_deg2_dr1:d}deg2_nside{nside_dr1}.npy', ell_mask_dr1)
+    np.save(f'{mask_path}/Cell_DR1_{area_deg2_dr1:d}deg2_nside{nside_dr1}.npy', cl_mask_dr1)
 
+    np.save(f'{mask_path}/ell_Q1_{area_deg2_q1:d}deg2_nside{nside_q1}.npy', ell_mask_q1)
+    np.save(f'{mask_path}/Cell_Q1_{area_deg2_q1:d}deg2_nside{nside_q1}.npy', cl_mask_q1)
 
-# mask_circular = generate_polar_cap(area_deg2=area_deg2, nside=nside)
-# hp.write_map(mask_circular_path, mask_circular, overwrite=True)
+    np.save(f'{mask_path}/ell_circular_1pole_5deg2_nside{nside}.npy', ell_mask_circ_5deg2)
+    np.save(f'{mask_path}/Cell_circular_1pole_5deg2_nside{nside}.npy', cl_mask_circ_5deg2)
 
-
-# ! csst mask, very slow to load (more than 3 GB)
-# mask_csst_full = mask_csst_npz['map_area_only']
-# map_csst_nobright = mask_csst_npz['map_remove_bright']
-# ell_csst = mask_csst_npz['l']
-# cl_mask_csst = mask_csst_npz['Cmask']
-# cl_mask_csst = hp.anafast(mask_csst_full)  # should give the same as above?
-# hp.mollview(mask_csst_full, coord=coord, cmap='inferno_r')
+    # ! csst mask, very slow to load (more than 3 GB)
+    # mask_csst_full = mask_csst_npz['map_area_only']
+    # map_csst_nobright = mask_csst_npz['map_remove_bright']
+    # ell_csst = mask_csst_npz['l']
+    # cl_mask_csst = mask_csst_npz['Cmask']
+    # cl_mask_csst = hp.anafast(mask_csst_full)  # should give the same as above?
+    # hp.mollview(mask_csst_full, coord=coord, cmap='inferno_r')

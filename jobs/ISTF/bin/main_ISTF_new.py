@@ -272,9 +272,10 @@ for covariance_cfg['SSC_code'] in ['PyCCL',]:
                     dC_dict_LL_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_WL, nbl_WL)
                     dC_dict_WA_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_WA, nbl_WA)
                     dC_dict_LLfor3x2pt_2D[key] = mm.cl_interpolator(dC_dict_2D[key], zpairs_auto, ell_GC, nbl_GC)
+                    
                     dC_dict_LL_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_LL_2D[key], nbl_WL, zpairs_auto, zbins)
                     dC_dict_WA_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_WA_2D[key], nbl_WA, zpairs_auto, zbins)
-                    dC_dict_LLfor3x2pt_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_LL_2D[key], nbl_GC, zpairs_auto,
+                    dC_dict_LLfor3x2pt_3D[key] = mm.cl_2D_to_3D_symmetric(dC_dict_LLfor3x2pt_2D[key], nbl_GC, zpairs_auto,
                                                                           zbins)
 
                 elif key.startswith(der_prefix.format(probe='GG')):
@@ -365,9 +366,12 @@ for ssc_code_here in ['PySSC', 'PyCCL', 'exactSSC']:
         FM_dict[f'FM_{ssc_code_here}_{probe}_GSSC'] = (
             np.genfromtxt(f'{fm_folder}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
 
-        # add the standard case
-        FM_dict[f'FM_{ssc_code_here}_{probe}_GSSC_std'] = (
-            np.genfromtxt(f'{fm_folder_std}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
+        # make sure that this file has been created very recently (aka, is the one just produced)
+        mm.is_file_created_in_last_x_hours(f'{fm_folder}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt', 0.1)
+
+        # # add the standard case
+        # FM_dict[f'FM_{ssc_code_here}_{probe}_GSSC_std'] = (
+        #     np.genfromtxt(f'{fm_folder_std}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
 
 fom_dict = {}
 uncert_dict = {}
@@ -394,14 +398,16 @@ for probe in ['WL', 'GC', '3x2pt']:
     key_pyssc = f'FM_PySSC_{probe}_GSSC'
     key_pyccl = f'FM_PyCCL_{probe}_GSSC'
     key_exactssc = f'FM_exactSSC_{probe}_GSSC'
-    key_exactssc_std = f'FM_exactSSC_{probe}_GSSC_std'
+    # key_exactssc_std = f'FM_exactSSC_{probe}_GSSC_std'
 
     uncert_dict['perc_diff_PyCCL'] = mm.percent_diff(uncert_dict[key_pyccl], uncert_dict[key_gauss])
     uncert_dict['perc_diff_exactSSC'] = mm.percent_diff(uncert_dict[key_exactssc], uncert_dict[key_gauss])
     fom_dict['perc_diff_PyCCL'] = np.abs(mm.percent_diff(fom_dict[key_pyccl], fom_dict[key_gauss]))
     fom_dict['perc_diff_exactSSC'] = np.abs(mm.percent_diff(fom_dict[key_exactssc], fom_dict[key_gauss]))
 
-    cases_to_plot = (key_gauss, key_pyssc, key_pyccl, key_exactssc, key_exactssc_std,
+    # cases_to_plot = (key_gauss, key_pyssc, key_pyccl, key_exactssc, key_exactssc_std,
+    #                  'perc_diff_PyCCL', 'perc_diff_exactSSC')
+    cases_to_plot = (key_gauss, key_pyssc, key_pyccl, key_exactssc,
                      'perc_diff_PyCCL', 'perc_diff_exactSSC')
 
     # just a check, to be performed only if I am actually using PyCCL as well

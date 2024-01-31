@@ -9,9 +9,9 @@ from scipy.integrate import simps
 from scipy.interpolate import RegularGridInterpolator
 from scipy.special import spherical_jn
 import ray
-# import pyccl as ccl
+import pyccl as ccl
 from tqdm import tqdm
-# import PySSC
+import PySSC
 
 import os
 ROOT = os.getenv('ROOT')
@@ -57,7 +57,7 @@ start_time = time.perf_counter()
 # - growth_factor
 
 
-def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl):
+def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2, ell_mask=None, cl_mask=None):
     """ Computes the integral in k. The rest is in another function, to vectorize the call to the growth_factor.
     Note that the 1/Omega_S^2 factors are missing in this function!! This is consistent with the definitio given in
     mine and Fabien's paper."""
@@ -75,8 +75,8 @@ def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl):
     growth_factor_z2 = ccl.growth_factor(cosmo_ccl, a2)
 
     # define the integrand as a function of k
-    integrand = lambda k: k ** 2 * ccl.linear_matter_power(cosmo_ccl, k=k, a=1.) * \
-                          spherical_jn(0, k * r1) * spherical_jn(0, k * r2)
+    def integrand(k): return k ** 2 * ccl.linear_matter_power(cosmo_ccl, k=k, a=1.) * \
+        spherical_jn(0, k * r1) * spherical_jn(0, k * r2)
 
     integral_result = simps(integrand(k_grid_sigma2), k_grid_sigma2)
 
@@ -90,7 +90,16 @@ def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl):
     # else:
     #     raise ValueError('sigma2_integrating_function must be either "simps" or "quad" or "quad_vec"')
 
-    return 1 / (2 * np.pi ** 2) * growth_factor_z1 * growth_factor_z2 * integral_result
+    if which_sigma2 == 'full-curved-sky':
+        result = 1 / (2 * np.pi ** 2) * growth_factor_z1 * growth_factor_z2 * integral_result
+    elif which_sigma2 == 'mask':
+        fsky = np.sqrt(cl_mask[0] / (4 * np.pi))
+        result = 1 / (4 * np.pi * fsky)**2 * np.sum((2 * ell_mask + 1) * cl_mask * 2 /
+                                                    np.pi * growth_factor_z1 * growth_factor_z2 * integral_result)
+    else:
+        raise ValueError('which_sigma2 must be either "full-curved-sky" or "mask"')
+
+    return result
 
 
 def plot_sigma2(sigma2_arr, z_grid_sigma2):

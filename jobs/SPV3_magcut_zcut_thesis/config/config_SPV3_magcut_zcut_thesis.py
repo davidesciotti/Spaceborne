@@ -16,6 +16,8 @@ area_deg2_dr1 = 2822
 # * fm_final_folder
 # * filename_suffix
 # * which_sigma2_B
+# * ell_max_GC: 5000,
+# * ell_max_3x2pt: 5000,
 
 
 which_forecast = 'SPV3'
@@ -24,7 +26,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-filename_suffix = '_sigma2_dav'
+filename_suffix = '_sigma2_sb_mask'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -109,7 +111,7 @@ general_cfg = {
     'which_pk': 'HMCodeBar',
     'which_pk_list': ('HMCodeBar', 'TakaBird', 'HMCode2020', 'Bacco', 'EE2'),
 
-    'use_CLOE_cls': True,
+    'use_CLOE_cls': False,
     'cloe_bench_folder': f'{ROOT}/my_cloe_data',
     'cl_folder': SPV3_folder + '/OutputFiles/DataVectors/Noiseless/{which_pk:s}',
     'rl_folder': f'{SPV3_folder}' + '/OutputFiles/ResFun/{which_pk:s}',
@@ -203,6 +205,7 @@ covariance_cfg = {
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
 
     'SSC_code': 'PyCCL',  # ! 'PySSC' or PyCCL' or 'exactSSC'
+    'check_if_recently_created': False,
 
     'PyCCL_cfg': {
         'probe': '3x2pt',  # TODO deprecate this?
@@ -210,8 +213,8 @@ covariance_cfg = {
         'which_ng_cov': ('SSC',),
 
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
-        'load_precomputed_cov': True,
-        'save_cov': False,
+        'load_precomputed_cov': False,
+        'save_cov': True,
 
         'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL' + fm_last_folder,
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
@@ -220,21 +223,25 @@ covariance_cfg = {
         'save_trispectrum': False,
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
 
-        'which_sigma2_B': None,  # 'mask' or 'file' or None
+        'which_sigma2_B': 'spaceborne',  # 'mask' or 'spaceborne' or None
         'area_deg2_mask': 14700,
         'nside_mask': 2048,
-        'ell_mask_filename': ROOT + '/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
-        'cl_mask_filename': ROOT + '/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}_davide.npy',
-        'save_sigma2_B': False,  # only if you're not loading it
+        'ell_mask_filename': ROOT + '/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy',
+        'cl_mask_filename': ROOT + '/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy',
         'z_grid_sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_ISTF.npy',
         'sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/sigma2_zsteps3000_ISTF.npy',
+        'sigma2_suffix': 'zsteps3000_ISTF',  # this is the filename suffix for the sigma2_B file saved directly from cov_SSC in CCL
 
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         'z_grid_tkka_min': 0.001,
         'z_grid_tkka_max': 3,
-        'z_grid_tkka_steps': 500,
+        'z_grid_tkka_steps': 200,
+        'k_grid_tkka_min': 1e-5,
+        'k_grid_tkka_max': 1e2,
+        'k_grid_tkka_steps': 512,
+        
         'z_grid_min': 0.001,
         'z_grid_max': 3,
         'z_grid_steps': 2000,
@@ -244,10 +251,11 @@ covariance_cfg = {
 
     'exactSSC_cfg': {
         'probe': '3x2pt',
-        'which_ng_cov': 'SSC',  # only 'SSC' available in this case
+        'which_ng_cov': ('SSC', ),  # only 'SSC' available in this case
+        'load_precomputed_cov': True,  # always True for the moment
 
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
-        'cov_path': f'{ROOT}/exact_SSC/output/SPV3/separate_universe/{fm_last_folder}/SSC_matrix',
+        'cov_path': f'{ROOT}/exact_SSC/output/SPV3/separate_universe{fm_last_folder}/SSC_matrix',
         'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
                         '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'
                         '_convention{cl_integral_convention:s}.npy',
@@ -325,7 +333,7 @@ FM_cfg = {
     'deriv_ell_cuts': deriv_ell_cuts,
 
     'fm_folder': f'{DATA_ROOT}/output/Flagship_{flagship_version}/FM/' +
-                 'BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}/{fm_last_folder}',
+                 'BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}{fm_last_folder}',
     'fm_last_folder': fm_last_folder,
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,

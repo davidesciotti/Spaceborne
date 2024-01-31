@@ -17,6 +17,7 @@ sys.path.append(f'{ROOT}/Spaceborne')
 import bin.my_module as mm
 import bin.cosmo_lib as cosmo_lib
 import bin.wf_cl_lib as wf_cl_lib
+import bin.sigma2_SSC as sigma2_SSC
 import common_cfg.mpl_cfg as mpl_cfg
 
 
@@ -42,13 +43,14 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
 
     use_hod_for_gg = pyccl_cfg['use_HOD_for_GCph']
 
-    z_grid_tkka = np.linspace(pyccl_cfg['z_grid_tkka_min'],
-                              pyccl_cfg['z_grid_tkka_max'],
-                              pyccl_cfg['z_grid_tkka_steps'])
+    a_grid_tkka = np.linspace(
+        cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
+        cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
+        pyccl_cfg['z_grid_tkka_steps'])
+
     logn_k_grid_tkka = np.log(np.geomspace(pyccl_cfg['k_grid_tkka_min'],
                                            pyccl_cfg['k_grid_tkka_max'],
                                            pyccl_cfg['k_grid_tkka_steps']))
-    a_grid_increasing_for_ttka = cosmo_lib.z_to_a(z_grid_tkka)[::-1]
 
     # or, to set to the default:
     # a_grid_increasing_for_ttka = None
@@ -104,8 +106,8 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
         for col, (C, D) in enumerate(probe_ordering):
             if col >= row:
                 print(f'Computing trispectrum for {which_ng_cov},  probe combination {A}{B}{C}{D}')
-                if a_grid_increasing_for_ttka is not None and logn_k_grid_tkka is not None:
-                    print(f'z points = {a_grid_increasing_for_ttka.size}, k points = {logn_k_grid_tkka.size}')
+                if a_grid_tkka is not None and logn_k_grid_tkka is not None:
+                    print(f'z points = {a_grid_tkka.size}, k points = {logn_k_grid_tkka.size}')
 
                 # not very nice to put this if-else in the for loop, but A, B, C, D are referenced only here
                 if which_ng_cov == 'SSC':
@@ -130,7 +132,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                                   prof12_2pt=prof_2pt_dict[A, B],
                                                   prof34_2pt=prof_2pt_dict[C, D],
                                                   p_of_k_a=None, lk_arr=logn_k_grid_tkka,
-                                                  a_arr=a_grid_increasing_for_ttka,
+                                                  a_arr=a_grid_tkka,
                                                   extrap_order_lok=1, extrap_order_hik=1, use_log=False,
                                                   probe_block=A + B + C + D,
                                                   **prof_2pt_args)
@@ -436,7 +438,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     elif probe == '3x2pt':
         probe_ordering = covariance_cfg['probe_ordering']
         # warnings.warn('TESTING ONLY GLGL TO DEBUG 3X2PT cNG')
-        # probe_ordering = (('L', 'L'),)  # for testing 3x2pt GLGL, which seems a problematic case.
+        # probe_ordering = (('G', 'L'),)  # for testing 3x2pt GLGL, which seems a problematic case.
     else:
         raise ValueError('probe must be either LL, GG, or 3x2pt')
 
@@ -454,12 +456,19 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     # ! =============================================== compute covs ===============================================
 
-    z_grid_tkka = np.linspace(pyccl_cfg['z_grid_tkka_min'],
-                              pyccl_cfg['z_grid_tkka_max'],
-                              pyccl_cfg['z_grid_tkka_steps'])
+    a_grid_sigma2_B = np.linspace(cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
+                                  cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
+                                  pyccl_cfg['z_grid_tkka_steps'])
 
-    z_grid_sigma2_B = z_grid_tkka
-    a_grid_sigma2_B = cosmo_lib.z_to_a(z_grid_sigma2_B)[::-1]
+    # z_grid_sigma2_B = z_grid_tkka
+    z_grid_sigma2_B = cosmo_lib.z_to_a(a_grid_sigma2_B)[::-1]
+
+    a_grid_sigma2_B = np.linspace(
+        cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
+        cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
+        pyccl_cfg['z_grid_tkka_steps'])
+
+    z_grid_sigma2_B = cosmo_lib.a_to_z(a_grid_sigma2_B)[::-1]
 
     if pyccl_cfg['which_sigma2_B'] == 'mask':
 
@@ -473,41 +482,50 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=area_deg2, nside=nside))
         cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=area_deg2, nside=nside))
 
-        mask_wl = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * f_sky)**2  # ! important to normalize!
+        # normalization has been checked from https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
+        # and is the same as CSST paper https://zenodo.org/records/7813033
+        cl_mask_norm = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * f_sky)**2
 
         # this is because p_of_k_a='delta_matter:delta_matter' gives an error, probably a bug in pyccl
         cosmo_ccl.compute_linear_power()
         p_of_k_a = cosmo_ccl.get_linear_power()
 
         sigma2_B = ccl.covariances.sigma2_B_from_mask(
-            cosmo=cosmo_ccl, a_arr=a_grid_sigma2_B, mask_wl=mask_wl, p_of_k_a=p_of_k_a)
+            cosmo=cosmo_ccl, a_arr=a_grid_sigma2_B, mask_wl=cl_mask_norm, p_of_k_a=p_of_k_a)
 
         sigma2_B_tuple = (a_grid_sigma2_B, sigma2_B)
 
-    elif pyccl_cfg['which_sigma2_B'] == 'file':
+    elif pyccl_cfg['which_sigma2_B'] == 'spaceborne':
 
-        print('Loading sigma2_B from file')
+        print('Computing sigma2_B with Spaceborne, using input mask')
 
-        z_grid_sigma2_B_import = np.load(pyccl_cfg['z_grid_sigma2_B_filename'])
-        sigma2_B = np.load(pyccl_cfg['sigma2_B_filename'])
-        sigma2_B = np.diag(sigma2_B) if sigma2_B.ndim == 2 else sigma2_B
+        area_deg2 = pyccl_cfg['area_deg2_mask']
+        nside = pyccl_cfg['nside_mask']
 
-        sigma2_B_interp_func = interp1d(z_grid_sigma2_B_import, sigma2_B, kind='linear')
-        sigma2_B = sigma2_B_interp_func(z_grid_sigma2_B)[::-1]  # flip it, it's a function of a
+        assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(area_deg2), abs_value=True) < 1, 'f_sky is not correct'
 
-        sigma2_B_tuple = (a_grid_sigma2_B, sigma2_B)
+        ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=area_deg2, nside=nside))
+        cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=area_deg2, nside=nside))
+
+        k_grid_tkka = np.geomspace(pyccl_cfg['k_grid_tkka_min'],
+                                   pyccl_cfg['k_grid_tkka_max'],
+                                   5000)
+
+        sigma2_B = np.array([sigma2_SSC.sigma2_func(zi, zi, k_grid_tkka, cosmo_ccl, 'mask', ell_mask=ell_mask, cl_mask=cl_mask)
+                             for zi in tqdm(z_grid_sigma2_B)])  # if you pass the mask, you don't need to divide by fsky
+        sigma2_B_tuple = (a_grid_sigma2_B, sigma2_B[::-1])
 
     elif pyccl_cfg['which_sigma2_B'] == None:
         sigma2_B_tuple = None
 
     else:
-        raise ValueError('which_sigma2_B must be either mask, file or None')
+        raise ValueError('which_sigma2_B must be either mask, spaceborne or None')
 
     if pyccl_cfg['which_sigma2_B'] != None:
         plt.figure()
         plt.plot(sigma2_B_tuple[0], sigma2_B_tuple[1])
-        plt.xlabel('a')
-        plt.ylabel('sigma2_B(a)')
+        plt.xlabel('$a$')
+        plt.ylabel('$sigma^2_B(a)$')
         plt.yscale('log')
         plt.show()
 

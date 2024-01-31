@@ -41,135 +41,135 @@ def get_ellmax_nbl(probe, general_cfg):
     return ell_max, nbl
 
 
-def get_cov_ssc_exactssc(general_cfg, covariance_cfg, return_format_3x2pt, probe):
-    # this actually just imports the precomputed ssc. It can also compute deltab, quite useless at the moment
-    print(f'Computing SSC covariance with exactSSC, probe = {probe}')
+# def get_cov_ssc_exactssc(general_cfg, covariance_cfg, return_format_3x2pt, probe):
+#     # this actually just imports the precomputed ssc. It can also compute deltab, quite useless at the moment
+#     print(f'Computing SSC covariance with exactSSC, probe = {probe}')
 
-    which_ng_cov = covariance_cfg['exactSSC_cfg']['which_ng_cov']
-    zbins = general_cfg['zbins']
-    probe_ordering = covariance_cfg['probe_ordering']
-    ind_dict = covariance_cfg['ind_dict']
+#     which_ng_cov = covariance_cfg['exactSSC_cfg']['which_ng_cov']
+#     zbins = general_cfg['zbins']
+#     probe_ordering = covariance_cfg['probe_ordering']
+#     ind_dict = covariance_cfg['ind_dict']
 
-    z_steps_sigma2 = covariance_cfg['exactSSC_cfg']['z_steps_sigma2']
-    k_txt_label = covariance_cfg['exactSSC_cfg']['k_txt_label']
-    cl_integral_convention = covariance_cfg['exactSSC_cfg']['cl_integral_convention']
-    cov_path = covariance_cfg['exactSSC_cfg']['cov_path']
-    cov_filename = covariance_cfg['exactSSC_cfg']['cov_filename']
+#     z_steps_sigma2 = covariance_cfg['exactSSC_cfg']['z_steps_sigma2']
+#     k_txt_label = covariance_cfg['exactSSC_cfg']['k_txt_label']
+#     cl_integral_convention = covariance_cfg['exactSSC_cfg']['cl_integral_convention']
+#     cov_path = covariance_cfg['exactSSC_cfg']['cov_path']
+#     cov_filename = covariance_cfg['exactSSC_cfg']['cov_filename']
 
-    if general_cfg['which_forecast'] == 'SPV3':
-        ell_max = general_cfg['ell_max_WL_opt']
-        nbl = general_cfg['nbl_WL_opt']
-    elif general_cfg['which_forecast'] == 'ISTF':
-        ell_max, nbl = get_ellmax_nbl(probe, general_cfg)
+#     if general_cfg['which_forecast'] == 'SPV3':
+#         ell_max = general_cfg['ell_max_WL_opt']
+#         nbl = general_cfg['nbl_WL_opt']
+#     elif general_cfg['which_forecast'] == 'ISTF':
+#         ell_max, nbl = get_ellmax_nbl(probe, general_cfg)
 
-    cov_filename = cov_filename.format(which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
-                                       probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl, lmax=ell_max,
-                                       EP_or_ED=general_cfg['EP_or_ED'],
-                                       zbins=zbins, z_steps_sigma2=z_steps_sigma2, k_txt_label=k_txt_label,
-                                       cl_integral_convention=cl_integral_convention)
+#     cov_filename = cov_filename.format(which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
+#                                        probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl, lmax=ell_max,
+#                                        EP_or_ED=general_cfg['EP_or_ED'],
+#                                        zbins=zbins, z_steps_sigma2=z_steps_sigma2, k_txt_label=k_txt_label,
+#                                        cl_integral_convention=cl_integral_convention)
 
-    assert which_ng_cov == 'SSC', 'no cNG term has been computed with Spaceborne!'
+#     assert which_ng_cov == 'SSC', 'no cNG term has been computed with Spaceborne!'
 
-    if probe in ('LL', 'GG'):
-        assert NotImplementedError('probe must be 3x2pt; delete this section, probably (still useful for ISTF?)')
-        # in this case, load a single block of the 4D covariance, the reshape and return it
-        probe_a, probe_b, probe_c, probe_d = probe[0], probe[1], probe[0], probe[1]
-        cov_filename = cov_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)
-        cov_exactSSC_SS_4D = np.load(f'{cov_path}/{cov_filename}')[:nbl, :nbl, :, :]
+#     if probe in ('LL', 'GG'):
+#         assert NotImplementedError('probe must be 3x2pt; delete this section, probably (still useful for ISTF?)')
+#         # in this case, load a single block of the 4D covariance, the reshape and return it
+#         probe_a, probe_b, probe_c, probe_d = probe[0], probe[1], probe[0], probe[1]
+#         cov_filename = cov_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)
+#         cov_exactSSC_SS_4D = np.load(f'{cov_path}/{cov_filename}')[:nbl, :nbl, :, :]
 
-        cov_exactSSC_SS_6D = mm.cov_4D_to_6D(cov_exactSSC_SS_4D, nbl, zbins, probe,
-                                             ind_dict[probe_a, probe_b]) / covariance_cfg['fsky']
+#         cov_exactSSC_SS_6D = mm.cov_4D_to_6D(cov_exactSSC_SS_4D, nbl, zbins, probe,
+#                                              ind_dict[probe_a, probe_b]) / covariance_cfg['fsky']
 
-        return cov_exactSSC_SS_6D
+#         return cov_exactSSC_SS_6D
 
-    elif probe == '3x2pt':
+#     elif probe == '3x2pt':
 
-        # populate 3x2pt dictionary
-        cov_exactSSC_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
-            cov_path, cov_filename, probe_ordering)
+#         # populate 3x2pt dictionary
+#         cov_exactSSC_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
+#             cov_path, cov_filename, probe_ordering)
 
-        for key in cov_exactSSC_3x2pt_dict_8D.keys():
-            # ! divide the different blocks by fsky
-            cov_exactSSC_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
+#         for key in cov_exactSSC_3x2pt_dict_8D.keys():
+#             # ! divide the different blocks by fsky
+#             cov_exactSSC_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
 
-            # # ! cut to the correct number of ell bins
-            # cov_exactSSC_3x2pt_dict_8D[key] = cov_exactSSC_3x2pt_dict_8D[key][:nbl, :nbl, :, :]
+#             # # ! cut to the correct number of ell bins
+#             # cov_exactSSC_3x2pt_dict_8D[key] = cov_exactSSC_3x2pt_dict_8D[key][:nbl, :nbl, :, :]
 
-        # reshape the blocks from 4D to 6D, as needed by the BNT
-        cov_exactSSC_3x2pt_dict_10D = {}
-        for probe_A, probe_B in probe_ordering:
-            for probe_C, probe_D in probe_ordering:
-                cov_exactSSC_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
-                    cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
-                    nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
+#         # reshape the blocks from 4D to 6D, as needed by the BNT
+#         cov_exactSSC_3x2pt_dict_10D = {}
+#         for probe_A, probe_B in probe_ordering:
+#             for probe_C, probe_D in probe_ordering:
+#                 cov_exactSSC_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
+#                     cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
+#                     nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
 
-                if covariance_cfg['check_if_recently_created']:
-                    mm.is_file_created_in_last_x_hours(f'{cov_path}/{cov_filename}', 24)
+#                 if covariance_cfg['check_if_recently_created']:
+#                     mm.is_file_created_in_last_x_hours(f'{cov_path}/{cov_filename}', 24)
 
-        assert probe == '3x2pt', ('probe must be 3x2pt at the moment, messing around with return dimension for BNT. to '
-                                  'be implemented better later')
-        assert return_format_3x2pt == 'dict_10d', ('return format must be dict_10d moment, messing around with '
-                                                   'dimension for BNT. to be implemented better later')
+#         assert probe == '3x2pt', ('probe must be 3x2pt at the moment, messing around with return dimension for BNT. to '
+#                                   'be implemented better later')
+#         assert return_format_3x2pt == 'dict_10d', ('return format must be dict_10d moment, messing around with '
+#                                                    'dimension for BNT. to be implemented better later')
 
-        if return_format_3x2pt == 'dict_8d':
-            return cov_exactSSC_3x2pt_dict_8D
-        elif return_format_3x2pt == 'dict_10d':
-            return cov_exactSSC_3x2pt_dict_10D
-        elif return_format_3x2pt == '4d_array':
-            cov_exactSSC_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_exactSSC_3x2pt_dict_8D, probe_ordering)
-            return cov_exactSSC_SS_4D
-        else:
-            raise ValueError('return_format_3x2pt must be "dict_8d" or "dict_10d" or 4d_array')
+#         if return_format_3x2pt == 'dict_8d':
+#             return cov_exactSSC_3x2pt_dict_8D
+#         elif return_format_3x2pt == 'dict_10d':
+#             return cov_exactSSC_3x2pt_dict_10D
+#         elif return_format_3x2pt == '4d_array':
+#             cov_exactSSC_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_exactSSC_3x2pt_dict_8D, probe_ordering)
+#             return cov_exactSSC_SS_4D
+#         else:
+#             raise ValueError('return_format_3x2pt must be "dict_8d" or "dict_10d" or 4d_array')
 
-    else:
-        raise ValueError('probe must be LL or GG or 3x2pt')
+#     else:
+#         raise ValueError('probe must be LL or GG or 3x2pt')
 
 
-def get_cov_ng_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict):
-    # TODO add probe like in exactSSC function...?
-    print(f'computing {which_ng_cov} covariance with PyCCL')
+# def get_cov_ng_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict):
+#     # TODO add probe like in exactSSC function...?
+#     print(f'computing {which_ng_cov} covariance with PyCCL')
 
-    probe = covariance_cfg['PyCCL_cfg']['probe']
-    zbins = general_cfg['zbins']
-    ellmax, nbl = get_ellmax_nbl(probe, general_cfg)
-    ell_grid = ell_dict['ell_' + probe_names_dict[probe]]
-    probe_ordering = covariance_cfg['probe_ordering']
-    ind_dict = covariance_cfg['ind_dict']
-    nbl_WL_opt = general_cfg['nbl_WL_opt']
+#     probe = covariance_cfg['PyCCL_cfg']['probe']
+#     zbins = general_cfg['zbins']
+#     ellmax, nbl = get_ellmax_nbl(probe, general_cfg)
+#     ell_grid = ell_dict['ell_' + probe_names_dict[probe]]
+#     probe_ordering = covariance_cfg['probe_ordering']
+#     ind_dict = covariance_cfg['ind_dict']
+#     nbl_WL_opt = general_cfg['nbl_WL_opt']
 
-    if probe != '3x2pt':
-        raise NotImplementedError('This function is not yet implemented for LL or GG; take only a '
-                                  'specific block of the 3x2pt covariance')
+#     if probe != '3x2pt':
+#         raise NotImplementedError('This function is not yet implemented for LL or GG; take only a '
+#                                   'specific block of the 3x2pt covariance')
 
-    # pre-format covariance filename and store it in the covariance_cfg dictionary
-    covariance_cfg['PyCCL_cfg']['cov_filename'] = covariance_cfg['PyCCL_cfg']['cov_filename'].format(
-        which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
-        probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl_WL_opt, lmax=5000,
-        EP_or_ED=general_cfg['EP_or_ED'],
-        zbins=zbins)
+#     # pre-format covariance filename and store it in the covariance_cfg dictionary
+#     covariance_cfg['PyCCL_cfg']['cov_filename'] = covariance_cfg['PyCCL_cfg']['cov_filename'].format(
+#         which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
+#         probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl_WL_opt, lmax=5000,
+#         EP_or_ED=general_cfg['EP_or_ED'],
+#         zbins=zbins)
 
-    if covariance_cfg['PyCCL_cfg']['load_precomputed_cov']:
+#     if covariance_cfg['PyCCL_cfg']['load_precomputed_cov']:
 
-        # load SSC blocks in 4D and store them into a dictionary
-        cov_path = covariance_cfg['PyCCL_cfg']['cov_path']
-        cov_filename = covariance_cfg['PyCCL_cfg']['cov_filename']
-        cov_ccl_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(cov_path, cov_filename, probe_ordering)
+#         # load SSC blocks in 4D and store them into a dictionary
+#         cov_path = covariance_cfg['PyCCL_cfg']['cov_path']
+#         cov_filename = covariance_cfg['PyCCL_cfg']['cov_filename']
+#         cov_ccl_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(cov_path, cov_filename, probe_ordering)
 
-    else:
-        cov_ccl_3x2pt_dict_8D = pyccl_cov.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], probe,
-                                                                    which_ng_cov,
-                                                                    ell_grid,
-                                                                    general_cfg, covariance_cfg)
+#     else:
+#         cov_ccl_3x2pt_dict_8D = pyccl_cov.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], probe,
+#                                                                     which_ng_cov,
+#                                                                     ell_grid,
+#                                                                     general_cfg, covariance_cfg)
 
-    # reshape the blocks from 4D to 6D, as needed by the BNT
-    cov_ccl_3x2pt_dict_10D = {}
-    for probe_A, probe_B in probe_ordering:
-        for probe_C, probe_D in probe_ordering:
-            cov_ccl_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
-                cov_ccl_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
-                nbl_WL_opt, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
+#     # reshape the blocks from 4D to 6D, as needed by the BNT
+#     cov_ccl_3x2pt_dict_10D = {}
+#     for probe_A, probe_B in probe_ordering:
+#         for probe_C, probe_D in probe_ordering:
+#             cov_ccl_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
+#                 cov_ccl_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
+#                 nbl_WL_opt, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
 
-    return cov_ccl_3x2pt_dict_10D
+#     return cov_ccl_3x2pt_dict_10D
 
 
 def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, ell_max):
@@ -200,11 +200,13 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
         additional_kwargs = {}
 
     # pre-format covariance filename, leaving probes identifiers as placeholders
-    cov_filename = ssc_code_cfg['cov_filename'].format(
+    covariance_cfg[ssc_code + '_cfg']['cov_filename'] = ssc_code_cfg['cov_filename'].format(
         which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
         probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl, lmax=ell_max,
         EP_or_ED=general_cfg['EP_or_ED'],
         zbins=zbins, **additional_kwargs)
+    # this is because the name needs to be preformatted and passed to the cfg dict to be accessed by PyCCL when saving the cov files
+    cov_filename = covariance_cfg['cov_filename']
 
     print(f'NG covariance filename is {cov_filename}')
 
@@ -408,6 +410,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     start_time = time.perf_counter()
 
     if SSC_code != 'PySSC':
+
         assert ell_max_GC == ell_max_3x2pt, 'I obtain the GC cov by cutting the 3x2pt, but the ellmax values are different'
 
         # Initialize cov_3x2pt_SS_10D depending on SSC_code

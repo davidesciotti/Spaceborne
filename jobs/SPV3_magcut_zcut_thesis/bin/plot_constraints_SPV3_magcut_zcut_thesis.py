@@ -43,14 +43,15 @@ cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
 
 # ! options
-ng_cov_code = 'exactSSC'  # exactSSC or PyCCL
-filename_suffix = '_sigma2_None_densegrids'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
-filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
+ng_cov_code = 'PyCCL'  # exactSSC or PyCCL
+filename_suffix = '_sigma2_mask'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
+# filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 fm_last_folder = '/jan_2024'  # /standard or /jan_2024
 fix_dz_plt = True
 fix_shear_bias_plt = False
 fix_gal_bias_plt = False
 fix_mag_bias_plt = False
+check_if_just_created = True
 
 specs_str = 'idIA2_idB3_idM3_idR1'
 fm_root_path = ('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/'
@@ -180,6 +181,9 @@ for probe in probes:
                                                         fm_pickle_name = fm_pickle_name.replace(f'.pickle',
                                                                                                 f'_kmaxhoverMpc{kmax_h_over_Mpc:.03f}.pickle')
 
+                                                    if check_if_just_created:
+                                                        mm.is_file_created_in_last_x_hours(f'{fm_path}/{fm_pickle_name}', 0.1)
+                                                        
                                                     fm_dict = mm.load_pickle(f'{fm_path}/{fm_pickle_name}')
 
                                                     fm = fm_dict[f'FM_{probe}_{which_cov_term}']

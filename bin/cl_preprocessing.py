@@ -296,8 +296,12 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
     else:
         raise ValueError('probe must be WL, WA, XC, GC or 3x2pt')
 
-    assert zpairs == int(cl_1d.shape[0] / nbl), 'the number of elements in the datavector is incompatible ' \
-                                                'with the number of ell bins for this case/probe'
+    try:
+        assert zpairs == int(cl_1d.shape[0] / nbl), 'the number of elements in the datavector is incompatible ' \
+                                                    'with the number of ell bins for this case/probe'
+    except ZeroDivisionError:
+        if probe == 'WA':
+            print(f'There are 0 bins for Wadd in this case, cl_wa will be empty')
 
     if probe != '3x2pt':
         cl_3d = mm.cl_1D_to_3D(cl_1d, nbl, zbins, is_symmetric=is_symmetric)

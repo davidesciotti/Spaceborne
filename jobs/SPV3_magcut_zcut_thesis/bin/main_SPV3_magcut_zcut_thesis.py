@@ -464,7 +464,7 @@ general_cfg['nbl_3x2pt'] = nbl_3x2pt
 
 delta_dict = {'delta_l_WL': np.copy(delta_l_ref_nbl32[:nbl_WL]),
               'delta_l_GC': np.copy(delta_l_ref_nbl32[:nbl_GC]),
-              'delta_l_WA': np.copy(delta_l_ref_nbl32[nbl_GC:])}
+              'delta_l_WA': np.copy(delta_l_ref_nbl32[nbl_GC:nbl_WL])}
 
 # this is just to make the .format() more compact
 variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_lens,
@@ -732,7 +732,7 @@ else:
         f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
 
     # ! reshape to 3d
-    cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL, zbins)
+    cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
     cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
     cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
     cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
@@ -755,7 +755,7 @@ else:
     rl_wa_1d = np.ones_like(cl_wa_1d)
     rl_3x2pt_1d = np.ones_like(cl_3x2pt_1d)
 
-    rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL, zbins)
+    rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
     rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC, zbins)
     rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA, zbins)
     rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
@@ -1069,11 +1069,11 @@ elif not fm_cfg['load_preprocess_derivatives']:
     for key in vinc_filenames:  # loop over these, I already selected ML, MS and so on
         if not key.startswith('dDVddzGC'):
             if 'WLO' in key:
-                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
+                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL_opt, zbins)[:nbl_WL,:, :]
             elif 'GCO' in key:
                 dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
-            # elif 'WLA' in key:
-                # dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
+            elif 'WLA' in key:
+                dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
             elif '3x2pt' in key:
                 dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt,
                                                                   zbins)

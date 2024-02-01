@@ -188,8 +188,8 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
 
     if general_cfg['which_forecast'] == 'SPV3':
         # in this cas, load the full covariance and then cut it accorfin to the nbl values
-        assert ell_max == general_cfg['ell_max_WL_opt'], 'ell_max and nbl do not match with the WL optimistic case'
-        assert nbl == general_cfg['nbl_WL_opt'], 'ell_max and nbl do not match with the WL optimistic case'
+        assert ell_max == general_cfg['ell_max_WL'], 'ell_max and nbl do not match with the WL optimistic case'
+        assert nbl == general_cfg['nbl_WL'], 'ell_max and nbl do not match with the WL optimistic case'
 
     # additional kwargs for exactSSC
     if ssc_code == 'exactSSC':
@@ -206,7 +206,7 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
         EP_or_ED=general_cfg['EP_or_ED'],
         zbins=zbins, **additional_kwargs)
     # this is because the name needs to be preformatted and passed to the cfg dict to be accessed by PyCCL when saving the cov files
-    cov_filename = covariance_cfg['cov_filename']
+    cov_filename = covariance_cfg[ssc_code + '_cfg']['cov_filename']
 
     print(f'NG covariance filename is {cov_filename}')
 
@@ -227,6 +227,8 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
         # in this case, you still need to divide by fsky
         for key in cov_3x2pt_dict_8D.keys():
             cov_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
+            
+    breakpoint()
 
     # reshape the blocks in the dictionary from 4D to 6D, as needed by the BNT
     cov_3x2pt_dict_10D = {}
@@ -382,6 +384,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     rl_LL_5d = rl_LL_3D[np.newaxis, np.newaxis, ...]
     rl_GG_5d = rl_GG_3D[np.newaxis, np.newaxis, ...]
     rl_WA_5d = rl_WA_3D[np.newaxis, np.newaxis, ...]
+    
+    breakpoint()
 
     # 5d versions of auto-probe spectra
     cov_WL_GO_6D = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_WL, delta_l_WL)[0, 0, 0, 0, ...]
@@ -416,7 +420,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         # Initialize cov_3x2pt_SS_10D depending on SSC_code
         if general_cfg['which_forecast'] == 'SPV3':
             # in this case, load the full, 32 bins, ell_max = 5000 covariance, then slice it according to probe ell bins
-            nbl, ell_max = general_cfg['nbl_WL_opt'], general_cfg['ell_max_WL_opt']
+            nbl, ell_max = general_cfg['nbl_WL'], general_cfg['ell_max_WL']
         elif general_cfg['which_forecast'] == 'ISTF':
             # in this case, load the 3x2pt covariance, then take the GC part, then reload for WL
             nbl, ell_max = nbl_3x2pt, ell_max_3x2pt

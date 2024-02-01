@@ -26,7 +26,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-filename_suffix = '_sigma2_sb_mask'
+filename_suffix = '_sigma2_mask'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -65,7 +65,7 @@ if BNT_transform:
 general_cfg = {
     'fid_yaml_filename': ROOT + '/Spaceborne/common_cfg/SPV3_fiducial_params_magcut245_zbins{zbins:02d}.yml',
     'ell_min': 10,
-    'ell_max_WL': 5000,
+    'ell_max_WL': 3000,
     'ell_max_GC': 3000,
     'ell_max_3x2pt': 3000,
     'zbins': 13,
@@ -213,8 +213,8 @@ covariance_cfg = {
         'which_ng_cov': ('SSC',),
 
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
-        'load_precomputed_cov': False,
-        'save_cov': True,
+        'load_precomputed_cov': True,
+        'save_cov': False,
 
         'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL' + fm_last_folder,
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'

@@ -225,6 +225,9 @@ def compute_ng_cov_3x2pt(cosmo, which_ng_cov, kernel_dict, ell, tkka_dict, f_sky
                     cov_path = pyccl_cfg['cov_path']
                     cov_filename = pyccl_cfg['cov_filename'].format(probe_a=probe_a, probe_b=probe_b,
                                                                     probe_c=probe_c, probe_d=probe_d)
+                    
+                    nbl_grid_here = len(ell)
+                    assert f'nbl{nbl_grid_here}' in cov_filename, f'cov_filename could be inconsistent with the actual grid used'
                     np.savez_compressed(
                         f'{cov_path}/{cov_filename}', cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d])
 

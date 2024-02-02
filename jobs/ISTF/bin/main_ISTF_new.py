@@ -458,7 +458,8 @@ for which_probe in ['WL', '3x2pt']:
         print(f'IST:F and GO are consistent for probe {which_probe} within {rtol * 100}% ✅')
     except AssertionError:
         print(f'IST:F and GO are not consistent for probe {which_probe} within {rtol * 100}% ❌')
-        print('(remember that you are checking against the optimistic case')
+        print('(remember that you are checking against the optimistic case, with lmax_WL = 5000. '
+              f'\nYour lmax_WL is {ell_max_WL})')
         print('ISTF GO:\t', uncert_dict['ISTF'])
         print('Spaceborne GO:\t', uncert_dict[f'FM_{which_probe}_G'][:nparams_toplot])
         print('percent_discrepancies (*not wrt mean!*):\n',

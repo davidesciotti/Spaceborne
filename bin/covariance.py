@@ -184,7 +184,6 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
     assert ssc_code in ('exactSSC', 'PyCCL'), 'ssc_code must be "exactSSC" or "PyCCL"'
 
     print(f'Computing 3x2pt {which_ng_cov} covariance with {ssc_code}')
-    print(f'NG covariance folder is {cov_path}')
 
     if general_cfg['which_forecast'] == 'SPV3':
         # in this cas, load the full covariance and then cut it accorfin to the nbl values
@@ -199,7 +198,6 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
     elif ssc_code == 'PyCCL':
         additional_kwargs = {}
 
-
     # pre-format covariance filename, leaving probes identifiers as placeholders
     cov_filename = covariance_cfg[ssc_code + '_cfg']['cov_filename'].format(
         which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
@@ -207,6 +205,8 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
         EP_or_ED=general_cfg['EP_or_ED'],
         zbins=zbins, **additional_kwargs)
 
+    print(f'NG covariance folder is:\n{cov_path}\n')
+    print(f'NG covariance filename is:\n{cov_filename}\n')
 
     if ssc_code_cfg['load_precomputed_cov']:
         # load SSC blocks in 4D and store them into a dictionary of 8D blocks
@@ -444,13 +444,13 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
                 # for LL, re-load with nbl_WL, ell_max_WL, then take the lensing block
                 cov_3x2pt_SS_10D_forWL = np.zeros((n_probes, n_probes, n_probes, n_probes,
                                                    nbl_WL, nbl_WL, zbins, zbins, zbins, zbins))
-                
+
                 for which_ng_cov in ssc_code_cfg['which_ng_cov']:
                     cov_ng_3x2pt_10D_dict = get_cov_ng_3x2pt(
                         general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl_WL, ell_max_WL)
                     cov_3x2pt_SS_10D_forWL += mm.cov_10D_dict_to_array(cov_ng_3x2pt_10D_dict, nbl_WL, zbins, n_probes)
 
-                cov_WL_SS_6D = cov_3x2pt_SS_10D_forWL[0, 0, 0, 0, ...]                
+                cov_WL_SS_6D = cov_3x2pt_SS_10D_forWL[0, 0, 0, 0, ...]
 
             else:
                 raise ValueError(

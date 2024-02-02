@@ -77,7 +77,7 @@ general_cfg = {
     'which_forecast': which_forecast,
 
     'ell_min': 10,
-    'ell_max_WL': 5000,
+    'ell_max_WL': 3000,
     'ell_max_GC': 3000,
     'ell_max_XC': 3000,
     'ell_max_3x2pt': 3000,
@@ -167,15 +167,14 @@ covariance_cfg = {
         'probe': '3x2pt',  # TODO deprecate this? probably still useful if I want to compute instead of loading...
         'which_ng_cov': ('SSC',),
 
-        'get_3x2pt_cov_in_4D': False,
-        'load_precomputed_cov': False,
-        'save_cov': True,
+        'load_precomputed_cov': True,
+        'save_cov': False,
 
         'save_trispectrum': False,
         # 'cov_path': '/home/davide/Documenti/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF/jan_2024', # old path
-        'cov_path': f'{DATA_ROOT}/output/cl14may/covmat/PyCCL/standard',
+        'cov_path': f'{DATA_ROOT}/output/cl14may/covmat/PyCCL/jan_2024',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
-                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_mask.npz',
+                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_sigma2_mask.npz',
 
         'which_sigma2_B': None,  # 'mask' or 'spaceborne' or None
         # if passing a mask power spectrum
@@ -284,7 +283,7 @@ FM_cfg = {
 
     'fm_folder': str(DATA_ROOT) + f'/output/{which_input_files}/' + 'FM/jan_2024/{SSC_code:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
-    'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}',
+    'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}_sigma2_mask',
 
     'test_against_benchmarks': True,
     'FM_file_format': 'txt',

@@ -57,8 +57,8 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                            pyccl_cfg['k_grid_tkka_steps']))
 
     # or, to set to the default:
-    # a_grid_increasing_for_ttka = None
-    # logn_k_grid_tkka = None
+    a_grid_tkka = None
+    logn_k_grid_tkka = None
 
     # from https://github.com/LSSTDESC/CCL/blob/4df2a29eca58d7cd171bc1986e059fd35f425d45/benchmarks/test_covariances.py
     # see also https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/tools/covariance_NG.py#L282
@@ -187,6 +187,8 @@ def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel
         for ij in tqdm(range(zpairs_AB))
         for kl in range(zpairs_CD)
     )
+
+    # breakpoint()
     # this is to move ell1, ell2 to the first axes and unpack the result in two separate dimensions
     cov_ng_4D = np.array(cov_ng_4D).transpose(1, 2, 0).reshape(nbl, nbl, zpairs_AB, zpairs_CD)
 
@@ -196,7 +198,7 @@ def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel
 
 
 def compute_ng_cov_3x2pt(cosmo, which_ng_cov, kernel_dict, ell, tkka_dict, f_sky, integration_method,
-                         probe_ordering, ind_dict, sigma2_B_tuple, covariance_cfg, output_4D_array):
+                         probe_ordering, ind_dict, sigma2_B_tuple, covariance_cfg):
 
     pyccl_cfg = covariance_cfg['PyCCL_cfg']
 
@@ -240,9 +242,6 @@ def compute_ng_cov_3x2pt(cosmo, which_ng_cov, kernel_dict, ell, tkka_dict, f_sky
                 cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
                     cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b].transpose(1, 0, 3, 2))
 
-    if output_4D_array:
-        return mm.cov_3x2pt_8D_dict_to_4D(cov_ng_3x2pt_dict_8D, probe_ordering)
-
     return cov_ng_3x2pt_dict_8D
 
 
@@ -259,7 +258,6 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     pyccl_cfg = covariance_cfg['PyCCL_cfg']
     z_grid = np.linspace(pyccl_cfg['z_grid_min'], pyccl_cfg['z_grid_max'], pyccl_cfg['z_grid_steps'])
     n_samples_wf = pyccl_cfg['n_samples_wf']
-    get_3x2pt_cov_in_4D = pyccl_cfg['get_3x2pt_cov_in_4D']  # TODO save all blocks separately
     # this is needed only for a visual check of the cls, which are not used for SSC anyways
     has_rsd = general_cfg['has_rsd']
     has_magnification_bias = general_cfg['has_magnification_bias']
@@ -303,14 +301,14 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     ia_bias_tuple = (zgrid_nz, ia_bias_1d)
 
     if general_cfg['which_forecast'] == 'SPV3':
-        
+
         maglim = general_cfg['magcut_source'] / 10
         gal_bias_1d = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, maglim=maglim)
         # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
         gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), zbins, axis=0).T
-    
+
     elif general_cfg['which_forecast'] == 'ISTF':
-        
+
         istf_bias_func_dict = {
             'analytical': wf_cl_lib.b_of_z_analytical,
             'leporifit': wf_cl_lib.b_of_z_fs1_leporifit,
@@ -318,14 +316,14 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         }
         istf_bias_func = istf_bias_func_dict[general_cfg['bias_function']]
         bias_model = general_cfg['bias_model']
-        
+
         z_means = np.array([flat_fid_pars_dict[f'zmean{zbin:02d}_photo'] for zbin in range(1, zbins + 1)])
         z_edges = np.array([flat_fid_pars_dict[f'zedge{zbin:02d}_photo'] for zbin in range(1, zbins + 2)])
-        
+
         gal_bias_1d = istf_bias_func(z_means)
         gal_bias_2d = wf_cl_lib.build_galaxy_bias_2d_arr(
             gal_bias_1d, z_means, z_edges, zbins, zgrid_nz, bias_model=bias_model, plot_bias=True)
-    
+
     else:
         raise ValueError('general_cfg["which_forecast"] must be either SPV3 or ISTF')
 
@@ -338,7 +336,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), zbins, axis=0).T
         mag_bias_tuple = (zgrid_nz, mag_bias_2d)
     else:
-        # this is the correct way to set the magnification bias values so that the actual bias is 1, ant the corresponding 
+        # this is the correct way to set the magnification bias values so that the actual bias is 1, ant the corresponding
         # wf_mu is zero (which is, in theory, the case mag_bias_tuple=None, which however causes pyccl to crash!)
         mag_bias_2d = (np.ones_like(gal_bias_2d) * + 2) / 5
         mag_bias_tuple = (zgrid_nz, mag_bias_2d)
@@ -356,20 +354,20 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     # ! manually construct galaxy = delta + magnification radial kernel
     a_arr = cosmo_lib.z_to_a(zgrid_nz)
     comoving_distance = ccl.comoving_radial_distance(cosmo_ccl, a_arr)
-    
+
     wf_galaxy_tot_arr = np.asarray([wf_galaxy_obj[zbin_idx].get_kernel(comoving_distance) for zbin_idx in range(zbins)])
     wf_delta_arr = wf_galaxy_tot_arr[:, 0, :].T
     wf_mu_arr = wf_galaxy_tot_arr[:, 1, :].T if has_magnification_bias else np.zeros_like(wf_delta_arr)
-    
+
     gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias!)'
     # in the case of ISTF, the galaxt bias is bin-per-bin and is therefore included in the kernels. Add it here
-    # for a fair comparison with vincenzo's kernels, in the plot. 
-    # * Note that the galaxy bias is included in the wf_ccl_obj in any way, both in ISTF and SPV3 cases! It must 
+    # for a fair comparison with vincenzo's kernels, in the plot.
+    # * Note that the galaxy bias is included in the wf_ccl_obj in any way, both in ISTF and SPV3 cases! It must
     # * in fact be passed to the congular_cov_SSC function
     if general_cfg['which_forecast'] == 'ISTF':
         wf_delta_arr *= gal_bias_2d
         gal_kernel_plt_title = 'galaxy kernel\n(w/ gal bias)'
-    
+
     wf_galaxy_arr = wf_delta_arr + wf_mu_arr
 
     # alternative way to get the magnification kernel
@@ -562,8 +560,9 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     which_pk = fiducial_pars_dict['other_params']['camb_extra_parameters']['camb']['halofit_version']
     tkka_dict = initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, which_pk=which_pk)
-
+    cov_ng_8D_dict = {}
     if probe in ['LL', 'GG']:
+        raise NotImplementedError('you should check that the dictionary cov_ng_8D_dict return works, in this case')
 
         kernel_A = kernel_dict[probe[0]]
         kernel_B = kernel_dict[probe[1]]
@@ -572,43 +571,44 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         ind_AB = ind_dict[probe[0] + probe[1]]
         ind_CD = ind_dict[probe[0] + probe[1]]
 
-        cov_ng_4D = compute_ng_cov_ccl(cosmo=cosmo_ccl,
-                                       which_ng_cov=which_ng_cov,
-                                       kernel_A=kernel_A,
-                                       kernel_B=kernel_B,
-                                       kernel_C=kernel_C,
-                                       kernel_D=kernel_D,
-                                       ell=ell_grid, tkka=tkka_dict[probe[0], probe[1], probe[0], probe[1]],
-                                       f_sky=f_sky,
-                                       ind_AB=ind_AB,
-                                       ind_CD=ind_CD,
-                                       sigma2_B_tuple=sigma2_B_tuple,
-                                       pyccl_cfg=pyccl_cfg,
-                                       integration_method=integration_method_dict[probe][which_ng_cov],
-                                       )
+        cov_ng_8D_dict[probe[0], probe[1], probe[0], probe[1]] = compute_ng_cov_ccl(cosmo=cosmo_ccl,
+                                                                                    which_ng_cov=which_ng_cov,
+                                                                                    kernel_A=kernel_A,
+                                                                                    kernel_B=kernel_B,
+                                                                                    kernel_C=kernel_C,
+                                                                                    kernel_D=kernel_D,
+                                                                                    ell=ell_grid, tkka=tkka_dict[probe[0],
+                                                                                                                 probe[1], probe[0], probe[1]],
+                                                                                    f_sky=f_sky,
+                                                                                    ind_AB=ind_AB,
+                                                                                    ind_CD=ind_CD,
+                                                                                    sigma2_B_tuple=sigma2_B_tuple,
+                                                                                    pyccl_cfg=pyccl_cfg,
+                                                                                    integration_method=integration_method_dict[probe][which_ng_cov],
+                                                                                    )
 
     elif probe == '3x2pt':
         # TODO remove this if statement and use the same code for all probes
-        cov_ng_4D = compute_ng_cov_3x2pt(cosmo=cosmo_ccl,
-                                         which_ng_cov=which_ng_cov,
-                                         kernel_dict=kernel_dict,
-                                         ell=ell_grid, tkka_dict=tkka_dict, f_sky=f_sky,
-                                         probe_ordering=probe_ordering,
-                                         ind_dict=ind_dict,
-                                         output_4D_array=get_3x2pt_cov_in_4D,
-                                         covariance_cfg=covariance_cfg,
-                                         sigma2_B_tuple=sigma2_B_tuple,
-                                         integration_method=integration_method_dict[probe][which_ng_cov],
-                                         )
+        cov_ng_8D_dict = compute_ng_cov_3x2pt(cosmo=cosmo_ccl,
+                                              which_ng_cov=which_ng_cov,
+                                              kernel_dict=kernel_dict,
+                                              ell=ell_grid, tkka_dict=tkka_dict, f_sky=f_sky,
+                                              probe_ordering=probe_ordering,
+                                              ind_dict=ind_dict,
+                                              covariance_cfg=covariance_cfg,
+                                              sigma2_B_tuple=sigma2_B_tuple,
+                                              integration_method=integration_method_dict[probe][which_ng_cov],
+                                              )
 
     else:
         raise ValueError('probe must be either LL, GG, or 3x2pt')
 
     # test if cov is symmetric in ell1, ell2
-    np.testing.assert_allclose(cov_ng_4D, np.transpose(cov_ng_4D, (1, 0, 2, 3)), rtol=1e-6, atol=0,
-                               error_msg='cov_ng_4D is not symmetric in ell1, ell2')
+    for key in cov_ng_8D_dict.keys():
+        np.testing.assert_allclose(cov_ng_8D_dict[key], np.transpose(cov_ng_8D_dict[key], (1, 0, 2, 3)), rtol=1e-6, atol=0,
+                                   error_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
 
-    return cov_ng_4D
+    return cov_ng_8D_dict
 
 
 integration_method_dict = {

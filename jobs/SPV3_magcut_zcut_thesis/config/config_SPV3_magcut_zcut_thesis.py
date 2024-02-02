@@ -211,7 +211,6 @@ covariance_cfg = {
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
         'which_ng_cov': ('SSC',),
 
-        'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
         'load_precomputed_cov': False,
         'save_cov': True,
 

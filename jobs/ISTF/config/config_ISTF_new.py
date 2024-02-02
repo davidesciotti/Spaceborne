@@ -92,9 +92,10 @@ general_cfg = {
     'save_cls_3d': False,
     'save_rls_3d': False,
 
-    'bias_model': 'ISTF_bias',
     'has_rsd': False,
     'has_magnification_bias': False,
+    'bias_function': 'analytical',  # 'analytical', 'leporifit', 'pocinofit'
+    'bias_model': 'step-wise',  # 'step-wise', 'constant', 'linint', 'ones'
 
     'ell_cuts': ell_cuts,
 
@@ -176,7 +177,7 @@ covariance_cfg = {
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_mask.npz',
 
-        'which_sigma2_B': 'spaceborne',  # 'mask' or 'spaceborne' or None
+        'which_sigma2_B': None,  # 'mask' or 'spaceborne' or None
         # if passing a mask power spectrum
         'area_deg2_mask': 15000,
         'nside_mask': 2048,
@@ -201,7 +202,6 @@ covariance_cfg = {
         'z_grid_max': 3,
         'z_grid_steps': 1000,
         'n_samples_wf': 1000,
-        'bias_model': 'step-wise',
     },
 
     'exactSSC_cfg': {

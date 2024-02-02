@@ -125,7 +125,6 @@ general_cfg = {
     'zcut_lens': 2,
     'flagship_version': flagship_version,
 
-    'bias_model': 'SPV3_bias',
     'has_rsd': False,
     'has_magnification_bias': True,
 }
@@ -213,8 +212,8 @@ covariance_cfg = {
         'which_ng_cov': ('SSC',),
 
         'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
-        'load_precomputed_cov': True,
-        'save_cov': False,
+        'load_precomputed_cov': False,
+        'save_cov': True,
 
         'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL' + fm_last_folder,
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'

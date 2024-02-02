@@ -57,8 +57,8 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                            pyccl_cfg['k_grid_tkka_steps']))
 
     # or, to set to the default:
-    a_grid_tkka = None
-    logn_k_grid_tkka = None
+    # a_grid_tkka = None
+    # logn_k_grid_tkka = None
 
     # from https://github.com/LSSTDESC/CCL/blob/4df2a29eca58d7cd171bc1986e059fd35f425d45/benchmarks/test_covariances.py
     # see also https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/tools/covariance_NG.py#L282
@@ -466,8 +466,8 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         probe_ordering = (('G', 'G'),)
     elif probe == '3x2pt':
         probe_ordering = covariance_cfg['probe_ordering']
-        warnings.warn('TESTING ONLY GLGL TO DEBUG')
-        probe_ordering = (('G', 'G'),)  # for testing 3x2pt GLGL, which seems a problematic case.
+        # warnings.warn('TESTING ONLY GLGL TO DEBUG')
+        # probe_ordering = (('G', 'G'),)  # for testing 3x2pt GLGL, which seems a problematic case.
     else:
         raise ValueError('probe must be either LL, GG, or 3x2pt')
 
@@ -607,7 +607,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     # test if cov is symmetric in ell1, ell2
     for key in cov_ng_8D_dict.keys():
         np.testing.assert_allclose(cov_ng_8D_dict[key], np.transpose(cov_ng_8D_dict[key], (1, 0, 2, 3)), rtol=1e-6, atol=0,
-                                   error_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
+                                   err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
 
     return cov_ng_8D_dict
 

@@ -153,7 +153,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
 
 
 def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka, f_sky,
-                       ind_AB, ind_CD, sigma2_B_tuple, pyccl_cfg, integration_method='spline'):
+                       ind_AB, ind_CD, sigma2_B_tuple, sigma2_suffix, integration_method='spline'):
     zpairs_AB = ind_AB.shape[0]
     zpairs_CD = ind_CD.shape[0]
     nbl = len(ell)
@@ -163,7 +163,7 @@ def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel
     if which_ng_cov == 'SSC':
         ng_cov_func = ccl.covariances.angular_cl_cov_SSC
         sigma2_B_arg = {'sigma2_B': sigma2_B_tuple,
-                        'sigma2_suffix': pyccl_cfg['sigma2_suffix']}
+                        'sigma2_suffix': sigma2_suffix}
     elif which_ng_cov == 'cNG':
         ng_cov_func = ccl.covariances.angular_cl_cov_cNG
         sigma2_B_arg = {}
@@ -198,7 +198,7 @@ def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel
 
 
 def compute_ng_cov_3x2pt(cosmo, which_ng_cov, kernel_dict, ell, tkka_dict, f_sky, integration_method,
-                         probe_ordering, ind_dict, sigma2_B_tuple, covariance_cfg):
+                         probe_ordering, ind_dict, sigma2_B_tuple, covariance_cfg, cov_filename):
 
     pyccl_cfg = covariance_cfg['PyCCL_cfg']
 
@@ -222,14 +222,14 @@ def compute_ng_cov_3x2pt(cosmo, which_ng_cov, kernel_dict, ell, tkka_dict, f_sky
                                        ind_AB=ind_dict[probe_a + probe_b],
                                        ind_CD=ind_dict[probe_c + probe_d],
                                        sigma2_B_tuple=sigma2_B_tuple,
-                                       pyccl_cfg=pyccl_cfg,
+                                       sigma2_suffix=pyccl_cfg['sigma2_suffix'],
                                        integration_method=integration_method,
                                        ))
 
                 # save only the upper triangle blocks
                 if pyccl_cfg['save_cov']:
                     cov_path = pyccl_cfg['cov_path']
-                    cov_filename = pyccl_cfg['cov_filename'].format(probe_a=probe_a, probe_b=probe_b,
+                    cov_filename = cov_filename.format(probe_a=probe_a, probe_b=probe_b,
                                                                     probe_c=probe_c, probe_d=probe_d)
 
                     nbl_grid_here = len(ell)
@@ -246,7 +246,7 @@ def compute_ng_cov_3x2pt(cosmo, which_ng_cov, kernel_dict, ell, tkka_dict, f_sky
 
 
 def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid, general_cfg,
-                              covariance_cfg):
+                              covariance_cfg, cov_filename):
     # ! settings
     zbins = general_cfg['zbins']
     nz_tuple = general_cfg['nz_tuple']
@@ -583,7 +583,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
                                                                                     ind_AB=ind_AB,
                                                                                     ind_CD=ind_CD,
                                                                                     sigma2_B_tuple=sigma2_B_tuple,
-                                                                                    pyccl_cfg=pyccl_cfg,
+                                                                                    sigma2_suffix=sigma2_suffix,
                                                                                     integration_method=integration_method_dict[probe][which_ng_cov],
                                                                                     )
 
@@ -596,6 +596,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
                                               probe_ordering=probe_ordering,
                                               ind_dict=ind_dict,
                                               covariance_cfg=covariance_cfg,
+                                              cov_filename=cov_filename,
                                               sigma2_B_tuple=sigma2_B_tuple,
                                               integration_method=integration_method_dict[probe][which_ng_cov],
                                               )

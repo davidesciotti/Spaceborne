@@ -199,16 +199,14 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
     elif ssc_code == 'PyCCL':
         additional_kwargs = {}
 
+
     # pre-format covariance filename, leaving probes identifiers as placeholders
-    covariance_cfg[ssc_code + '_cfg']['cov_filename'] = ssc_code_cfg['cov_filename'].format(
+    cov_filename = covariance_cfg[ssc_code + '_cfg']['cov_filename'].format(
         which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
         probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl, lmax=ell_max,
         EP_or_ED=general_cfg['EP_or_ED'],
         zbins=zbins, **additional_kwargs)
-    # this is because the name needs to be preformatted and passed to the cfg dict to be accessed by PyCCL when saving the cov files
-    cov_filename = covariance_cfg[ssc_code + '_cfg']['cov_filename']
 
-    print(f'NG covariance filename is {cov_filename}')
 
     if ssc_code_cfg['load_precomputed_cov']:
         # load SSC blocks in 4D and store them into a dictionary of 8D blocks
@@ -221,7 +219,8 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
                                                                 which_ng_cov=which_ng_cov,
                                                                 ell_grid=ell_dict['ell_3x2pt'],
                                                                 general_cfg=general_cfg,
-                                                                covariance_cfg=covariance_cfg)
+                                                                covariance_cfg=covariance_cfg,
+                                                                cov_filename=cov_filename)
 
     if ssc_code == 'exactSSC':
         # in this case, you still need to divide by fsky
@@ -445,16 +444,17 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
                 # for LL, re-load with nbl_WL, ell_max_WL, then take the lensing block
                 cov_3x2pt_SS_10D_forWL = np.zeros((n_probes, n_probes, n_probes, n_probes,
                                                    nbl_WL, nbl_WL, zbins, zbins, zbins, zbins))
+                
                 for which_ng_cov in ssc_code_cfg['which_ng_cov']:
                     cov_ng_3x2pt_10D_dict = get_cov_ng_3x2pt(
                         general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl_WL, ell_max_WL)
                     cov_3x2pt_SS_10D_forWL += mm.cov_10D_dict_to_array(cov_ng_3x2pt_10D_dict, nbl_WL, zbins, n_probes)
 
-                cov_WL_SS_6D = cov_3x2pt_SS_10D_forWL[0, 0, 0, 0, ...]
+                cov_WL_SS_6D = cov_3x2pt_SS_10D_forWL[0, 0, 0, 0, ...]                
 
             else:
                 raise ValueError(
-                    'Mpre complicated cases, with a different number of ell bins and different ellmax btw WL and 3x2pt, are not implemented yet')
+                    'More complicated cases, with a different number of ell bins and different ellmax btw WL and 3x2pt, are not implemented yet')
 
         print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
 

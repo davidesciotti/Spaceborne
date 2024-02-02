@@ -1109,7 +1109,7 @@ def build_labels(zbins):
     return [galaxy_bias_label, shear_bias_label, zmean_shift_label]
 
 
-def matshow(array, title="title", log=False, abs_val=False, threshold=None):
+def matshow(array, title="title", log=False, abs_val=False, threshold=None, only_show_nans=False):
     """
     :param array:
     :param title:
@@ -1119,6 +1119,13 @@ def matshow(array, title="title", log=False, abs_val=False, threshold=None):
     (i.e., mask the ones below the threshold)
     :return:
     """
+    
+    if only_show_nans:
+        warnings.warn('only_show_nans is True, better switch off log and abs_val for the moment')
+        # Set non-NaN elements to 0 and NaN elements to 1
+        array = np.where(np.isnan(array), 1, 0)
+        title += ' (only NaNs shown)'
+        
     # the ordering of these is important: I want the log(abs), not abs(log)
     if abs_val:  # take the absolute value
         array = np.abs(array)
@@ -1130,6 +1137,8 @@ def matshow(array, title="title", log=False, abs_val=False, threshold=None):
     if threshold is not None:
         array = np.ma.masked_where(array < threshold, array)
         title += f" \n(masked below {threshold} \%)"
+    
+
 
     plt.matshow(array)
     plt.colorbar()

@@ -227,8 +227,6 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
         # in this case, you still need to divide by fsky
         for key in cov_3x2pt_dict_8D.keys():
             cov_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
-            
-    breakpoint()
 
     # reshape the blocks in the dictionary from 4D to 6D, as needed by the BNT
     cov_3x2pt_dict_10D = {}
@@ -384,8 +382,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     rl_LL_5d = rl_LL_3D[np.newaxis, np.newaxis, ...]
     rl_GG_5d = rl_GG_3D[np.newaxis, np.newaxis, ...]
     rl_WA_5d = rl_WA_3D[np.newaxis, np.newaxis, ...]
-    
-    breakpoint()
 
     # 5d versions of auto-probe spectra
     cov_WL_GO_6D = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_WL, delta_l_WL)[0, 0, 0, 0, ...]

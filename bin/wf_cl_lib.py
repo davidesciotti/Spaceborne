@@ -231,7 +231,7 @@ def niz_normalized(z, zbin_idx):
         raise TypeError('z must be a float, an int or a numpy array')
 
 
-def niz_unnormalized_analytical(z, zbin_idx, z_edges=z_edges):
+def niz_unnormalized_analytical(z, zbin_idx, z_edges):
     """the one used by Stefano in the PyCCL notebook
     by far the fastest, 0.009592 s"""
 

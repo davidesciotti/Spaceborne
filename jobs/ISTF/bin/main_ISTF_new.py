@@ -48,8 +48,8 @@ Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
 
-# for covariance_cfg['SSC_code'] in ['PySSC', 'PyCCL', 'exactSSC']:
-for covariance_cfg['SSC_code'] in ['PyCCL',]:
+for covariance_cfg['SSC_code'] in ['PySSC', 'exactSSC', 'PyCCL', 'OneCovariance']:
+# for covariance_cfg['SSC_code'] in ['OneCovariance',]:
     # check_specs.consistency_checks(general_cfg, covariance_cfg)
     # for covariance_cfg['SSC_code'] in ['PyCCL', 'exactSSC']:
     #     for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['probe'] in ['LL', 'GG', '3x2pt']:
@@ -75,7 +75,7 @@ for covariance_cfg['SSC_code'] in ['PyCCL',]:
     der_prefix = FM_cfg['derivatives_prefix']
     derivatives_suffix = FM_cfg['derivatives_suffix']
     ssc_code = covariance_cfg['SSC_code']
-
+    
     # which cases to save: GO, GS or GO, GS and SSC
     cases_tosave = []  #
     if covariance_cfg[f'save_cov_GO']:
@@ -179,6 +179,11 @@ for covariance_cfg['SSC_code'] in ['PyCCL',]:
     general_cfg['cl_ll_3d'] = cl_LLfor3x2pt_3D
     general_cfg['cl_gl_3d'] = cl_GL_3D
     general_cfg['cl_gg_3d'] = cl_dict_3D['cl_GG_3D']
+    
+    # reshape for OneCovariance code
+    mm.write_cl_ascii(cl_folder, 'Cell_ll', cl_LLfor3x2pt_3D, ell_dict['ell_GC'], zbins)
+    mm.write_cl_ascii(cl_folder, 'Cell_gl', cl_GL_3D, ell_dict['ell_GC'], zbins)
+    mm.write_cl_ascii(cl_folder, 'Cell_gg', cl_dict_3D['cl_GG_3D'], ell_dict['ell_GC'], zbins)
 
     # ! compute covariance matrix
     if not covariance_cfg['compute_covmat']:
@@ -201,6 +206,7 @@ for covariance_cfg['SSC_code'] in ['PyCCL',]:
     assert nz == z_arr.shape[0], 'nz is not the same as the number of redshift points in the kernels'
 
     nz_import = np.genfromtxt(f'{covariance_cfg["nofz_folder"]}/{covariance_cfg["nofz_filename"]}')
+    np.savetxt(f'{covariance_cfg["nofz_folder"]}/{covariance_cfg["nofz_filename"].replace("dat", "ascii")}', nz_import)
     z_grid_nz = nz_import[:, 0]
     nz_import = nz_import[:, 1:]
     nz_tuple = (z_grid_nz, nz_import)
@@ -327,13 +333,12 @@ for covariance_cfg['SSC_code'] in ['PyCCL',]:
     gc.collect()
 
     # ! save and test
-    fm_folder_gssc = FM_cfg["fm_folder"].format(SSC_code=ssc_code)
-    fm_folder_g = FM_cfg["fm_folder"].format(SSC_code=ssc_code).replace(ssc_code, 'Gauss')
+    fm_folder = FM_cfg["fm_folder"].format(SSC_code=ssc_code)
 
     for probe in ('WL', 'GC', '3x2pt'):
         lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_3x2pt']
-        filename_fm_g = f'{fm_folder_g}/FM_{probe}_G_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'
-        filename_fm_from_ssc_code = f'{fm_folder_gssc}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'
+        filename_fm_g = f'{fm_folder}/FM_{probe}_G_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'
+        filename_fm_from_ssc_code = filename_fm_g.replace('_G_', '_GSSC_')
 
         np.savetxt(f'{filename_fm_g}', FM_dict[f'FM_{probe}_G'])
         np.savetxt(f'{filename_fm_from_ssc_code}', FM_dict[f'FM_{probe}_GSSC'])
@@ -343,8 +348,7 @@ for covariance_cfg['SSC_code'] in ['PyCCL',]:
         # probe_ssc_code = 'GC' if probe_ssc_code == 'GG' else probe_ssc_code
 
     if general_cfg['test_against_benchmarks']:
-        mm.test_folder_content(fm_folder_g, fm_folder_g + '/benchmarks', FM_cfg['FM_file_format'])
-        mm.test_folder_content(fm_folder_gssc, fm_folder_gssc + '/benchmarks', FM_cfg['FM_file_format'])
+        mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', FM_cfg['FM_file_format'])
 
 ################################################ ! plot ############################################################
 
@@ -353,7 +357,8 @@ nparams_toplot = 7
 include_fom = False
 divide_fom_by_10 = False
 
-for ssc_code_here in ['PySSC', 'PyCCL', 'exactSSC']:
+FM_dict_loaded = {}
+for ssc_code_here in ['PySSC', 'PyCCL', 'exactSSC', 'OneCovariance']:
     for probe in ['WL', 'GC', '3x2pt']:
 
         fm_folder = FM_cfg["fm_folder"].format(SSC_code=ssc_code_here)
@@ -363,23 +368,35 @@ for ssc_code_here in ['PySSC', 'PyCCL', 'exactSSC']:
             raise ValueError('you are not using the jan_2024 folder!')
 
         lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_XC']
+        
+        FM_dict_loaded[f'FM_{ssc_code_here}_{probe}_G'] = (
+            np.genfromtxt(f'{fm_folder}/FM_{probe}_G_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
 
-        FM_dict[f'FM_{ssc_code_here}_{probe}_GSSC'] = (
+        FM_dict_loaded[f'FM_{ssc_code_here}_{probe}_GSSC'] = (
             np.genfromtxt(f'{fm_folder}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
 
         # make sure that this file has been created very recently (aka, is the one just produced)
         mm.is_file_created_in_last_x_hours(f'{fm_folder}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt', 0.1)
 
         # # add the standard case
-        # FM_dict[f'FM_{ssc_code_here}_{probe}_GSSC_std'] = (
+        # FM_dict_loaded[f'FM_{ssc_code_here}_{probe}_GSSC_std'] = (
         #     np.genfromtxt(f'{fm_folder_std}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
+
+# just a test: the Gaussian FMs must be equal in all but the OneCovariance case. I simply compare to PySSC
+for ssc_code_here in ['PyCCL', 'exactSSC']:
+    for probe in ['WL', 'GC', '3x2pt']:
+        np.testing.assert_allclose(FM_dict_loaded[f'FM_{ssc_code_here}_{probe}_G'], 
+                                   FM_dict_loaded[f'FM_PySSC_{probe}_G'],
+                                   rtol=1e-5, atol=0,
+                                   err_msg=f'Gaussian FMs are not equal for {ssc_code_here} and {probe}!')
+
 
 fom_dict = {}
 uncert_dict = {}
 masked_FM_dict = {}
-for key in list(FM_dict.keys()):
+for key in list(FM_dict_loaded.keys()):
     if key not in ['param_names_dict', 'fiducial_values_dict']:
-        masked_FM_dict[key], param_names_list, fiducials_list = mm.mask_FM(FM_dict[key], param_names_dict,
+        masked_FM_dict[key], param_names_list, fiducials_list = mm.mask_FM(FM_dict_loaded[key], param_names_dict,
                                                                            fiducials_dict,
                                                                            params_tofix_dict={})
 
@@ -393,28 +410,22 @@ for key in list(FM_dict.keys()):
         fom_dict[key] = mm.compute_FoM(masked_FM_dict[key], w0wa_idxs=(2, 3))
 
 
+# compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
+for probe in ['WL', 'GC', '3x2pt']:
+
+    for ssc_code in ['PySSC', 'PyCCL', 'exactSSC', 'OneCovariance']:
+        key_g = f'FM_{ssc_code}_{probe}_G'
+        key_gssc = f'FM_{ssc_code}_{probe}_GSSC'
+        
+        uncert_dict[f'perc_diff_{ssc_code}_{probe}'] = mm.percent_diff(uncert_dict[key_gssc], uncert_dict[key_g])
+        fom_dict[f'perc_diff_{ssc_code}_{probe}'] = mm.percent_diff(fom_dict[key_gssc], fom_dict[key_g])
+        
 for probe in ['WL', 'GC', '3x2pt']:
     nparams_toplot = 7
-    key_gauss = f'FM_{probe}_G'
-    key_pyssc = f'FM_PySSC_{probe}_GSSC'
-    key_pyccl = f'FM_PyCCL_{probe}_GSSC'
-    key_exactssc = f'FM_exactSSC_{probe}_GSSC'
-    # key_exactssc_std = f'FM_exactSSC_{probe}_GSSC_std'
 
-    uncert_dict['perc_diff_PyCCL'] = mm.percent_diff(uncert_dict[key_pyccl], uncert_dict[key_gauss])
-    uncert_dict['perc_diff_exactSSC'] = mm.percent_diff(uncert_dict[key_exactssc], uncert_dict[key_gauss])
-    fom_dict['perc_diff_PyCCL'] = np.abs(mm.percent_diff(fom_dict[key_pyccl], fom_dict[key_gauss]))
-    fom_dict['perc_diff_exactSSC'] = np.abs(mm.percent_diff(fom_dict[key_exactssc], fom_dict[key_gauss]))
-
-    # cases_to_plot = (key_gauss, key_pyssc, key_pyccl, key_exactssc, key_exactssc_std,
-    #                  'perc_diff_PyCCL', 'perc_diff_exactSSC')
-    cases_to_plot = (key_gauss, key_pyssc, key_pyccl, key_exactssc,
-                     'perc_diff_PyCCL', 'perc_diff_exactSSC')
-
-    # just a check, to be performed only if I am actually using PyCCL as well
-    if 'FM_PySSC_G' in uncert_dict.keys() and 'FM_PyCCL_G' in uncert_dict.keys():
-        assert np.array_equal(uncert_dict['FM_PySSC_G'], uncert_dict['FM_PyCCL_G']), \
-            'the GO uncertainties must be the same, I am only changing the SSC code!'
+    cases_to_plot = (f'FM_PySSC_{probe}_G', f'FM_OneCovariance_{probe}_G', 
+                     f'FM_PySSC_{probe}_GSSC', f'FM_PyCCL_{probe}_GSSC', f'FM_exactSSC_{probe}_GSSC', f'FM_OneCovariance_{probe}_GSSC',
+                     f'perc_diff_PyCCL_{probe}', f'perc_diff_exactSSC_{probe}', f'perc_diff_OneCovariance_{probe}')
 
     df = pd.DataFrame(uncert_dict)  # you should switch to using this...
 
@@ -442,7 +453,7 @@ for probe in ['WL', 'GC', '3x2pt']:
     if include_fom:
         nparams_toplot = 8
     plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
-                        param_names_label=param_names_label, bar_width=0.12)
+                        param_names_label=param_names_label, bar_width=0.08)
     # plt.yscale('log')
 
 

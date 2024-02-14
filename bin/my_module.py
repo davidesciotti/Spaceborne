@@ -27,6 +27,9 @@ import pandas as pd
 
 ###############################################################################
 
+
+
+
 def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
 
     with open(f'{ascii_folder}/{ascii_filename}.ascii', 'w') as file:
@@ -39,7 +42,7 @@ def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
                 for zj in range(zbins):
                     value = cl_3d[ell_idx, zi, zj]
                     # Format the line with appropriate spacing
-                    file.write(f"{ell_val:.3f}\t{zi}\t{zj}\t{value:.10e}\n")
+                    file.write(f"{ell_val:.3f}\t{zi + 1}\t{zj + 1}\t{value:.10e}\n")
 
     print(f"Data has been written to {ascii_filename}")
 
@@ -494,7 +497,7 @@ def test_folder_content(output_path, benchmarks_path, extension, verbose=False, 
             print(f'\nFile {file_name} does not match: {exc}')
         else:
             discrepancies['comparison_results'].append((file_name, 'Match'))
-            print(f"{file_name:<{max_length}} \t matches ✅")
+            print(f"{file_name:<{max_length}} \t matches to within {rtol*100}% ✅")
 
     # Provide a summary of the results
     num_comparisons = len(discrepancies['comparison_results'])

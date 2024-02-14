@@ -229,13 +229,13 @@ def compute_ng_cov_3x2pt(cosmo, which_ng_cov, kernel_dict, ell, tkka_dict, f_sky
                 # save only the upper triangle blocks
                 if pyccl_cfg['save_cov']:
                     cov_path = pyccl_cfg['cov_path']
-                    cov_filename = cov_filename.format(probe_a=probe_a, probe_b=probe_b,
-                                                                    probe_c=probe_c, probe_d=probe_d)
+                    cov_filename_fmt = cov_filename.format(probe_a=probe_a, probe_b=probe_b,
+                                                           probe_c=probe_c, probe_d=probe_d)
 
                     nbl_grid_here = len(ell)
                     assert f'nbl{nbl_grid_here}' in cov_filename, f'cov_filename could be inconsistent with the actual grid used'
                     np.savez_compressed(
-                        f'{cov_path}/{cov_filename}', cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d])
+                        f'{cov_path}/{cov_filename_fmt}', cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d])
 
             else:
                 print('3x2pt: skipping probe combination ', probe_a, probe_b, probe_c, probe_d)
@@ -328,6 +328,11 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         raise ValueError('general_cfg["which_forecast"] must be either SPV3 or ISTF')
 
     gal_bias_tuple = (zgrid_nz, gal_bias_2d)
+
+    # save in ascii for OneCovariance
+    gal_bias_table = np.hstack((zgrid_nz.reshape(-1, 1), gal_bias_2d))
+    np.savetxt(f'{covariance_cfg["nofz_folder"]}/'
+               f'gal_bias_table_{general_cfg["which_forecast"]}.ascii', gal_bias_table)
 
     if has_magnification_bias:
         maglim = general_cfg['magcut_source'] / 10
@@ -607,7 +612,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     # test if cov is symmetric in ell1, ell2
     for key in cov_ng_8D_dict.keys():
         np.testing.assert_allclose(cov_ng_8D_dict[key], np.transpose(cov_ng_8D_dict[key], (1, 0, 2, 3)), rtol=1e-6, atol=0,
-                                   err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
+           err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
 
     return cov_ng_8D_dict
 

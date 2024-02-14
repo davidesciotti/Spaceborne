@@ -17,6 +17,17 @@ ROOT = os.getenv('ROOT')
 sys.path.append(f'{ROOT}/Spaceborne/bin')
 import my_module as mm
 
+# ! prefactor for limber and curved-sky corrections
+# prefactor = np.array(
+#     [np.sqrt(math.factorial(int(ell) + 2) / math.factorial(int(ell) - 2)) * (2 / (2 * ell + 1)) ** 2
+#      for ell in ell_grid])
+#
+# prefactor = prefactor.reshape((-1, 1, 1))
+#
+# if divide_cls_by_prefactor:
+#     cl_LL_3D /= prefactor ** 2
+#     cl_GL_3D /= prefactor
+
 
 # TODO create function to compute pk from CAMB, hoping it accepts a vectorized k or z
 # TODO check that the modifications to calculate_power don't break anything, I switched the order

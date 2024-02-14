@@ -164,7 +164,7 @@ covariance_cfg = {
     'cov_folder': f'{DATA_ROOT}/output/{which_input_files}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
 
-    'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or exactSSC
+    'SSC_code': 'OneCovariance',  # ! PySSC or PyCCL or exactSSC 
 
     'PySSC_cfg': {
         'which_ng_cov': 'SSC',
@@ -174,16 +174,16 @@ covariance_cfg = {
         'probe': '3x2pt',  # TODO deprecate this? probably still useful if I want to compute instead of loading...
         'which_ng_cov': ('SSC',),
 
-        'load_precomputed_cov': False,
+        'load_precomputed_cov': True,
         'save_cov': True,
 
         'save_trispectrum': False,
         # 'cov_path': '/home/davide/Documenti/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF/jan_2024', # old path
         'cov_path': f'{DATA_ROOT}/output/cl14may/covmat/PyCCL/jan_2024',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
-                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_sigma2_mask_TEgrids.npz',
-
-        'which_sigma2_B': 'None',  # 'mask' or 'spaceborne' or None
+                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_sigma2_mask_superdense_grid_kz.npz',
+                        
+        'which_sigma2_B': 'mask',  # 'mask' or 'spaceborne' or None
         # if passing a mask power spectrum
         'area_deg2_mask': 15000,
         'nside_mask': 2048,
@@ -197,13 +197,14 @@ covariance_cfg = {
 
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 
-        # z_grid min and max should probably coincide. play around with steps to find the minimum number
+        # z_grid min and max should probably coincide. play around with steps to find the minimum number        
         'z_grid_tkka_min': 0.,
         'z_grid_tkka_max': 6,
-        'z_grid_tkka_steps': 50,
-        'k_grid_tkka_min': 1e-3,
-        'k_grid_tkka_max': 1,
-        'k_grid_tkka_steps': 100,
+        'z_grid_tkka_steps': 200,
+        'k_grid_tkka_min': 1e-5,
+        'k_grid_tkka_max': 1e2,
+        'k_grid_tkka_steps': 1300,
+        
         'z_grid_min': 0.001,
         'z_grid_max': 3,
         'z_grid_steps': 1000,
@@ -230,7 +231,17 @@ covariance_cfg = {
         'log10_k_min_sigma2': -4,
         'log10_k_max_sigma2': 1,
         'k_steps_sigma2': 20_000,
+    },
+    
+    'OneCovariance_cfg': {
+        'which_ng_cov': ('SSC',),
+        'load_precomputed_cov': True,  # this must be True for OneCovariance
+        
+        'cov_path': f'{DATA_ROOT}/output/cl14may/covmat/OneCovariance',
+        'cov_filename': 'cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
+                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',
     }
+    
 }
 
 Sijkl_cfg = {
@@ -291,7 +302,7 @@ FM_cfg = {
 
     'fm_folder': str(DATA_ROOT) + f'/output/{which_input_files}/' + 'FM/jan_2024/{SSC_code:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
-    'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}_sigma2_mask_TEgrids',
+    'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}_sigma2_mask_superdense_grid_kz',
 
     'test_against_benchmarks': True,
     'FM_file_format': 'txt',

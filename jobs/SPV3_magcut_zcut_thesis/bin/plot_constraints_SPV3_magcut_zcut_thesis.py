@@ -182,8 +182,9 @@ for probe in probes:
                                                                                                 f'_kmaxhoverMpc{kmax_h_over_Mpc:.03f}.pickle')
 
                                                     if check_if_just_created:
-                                                        mm.is_file_created_in_last_x_hours(f'{fm_path}/{fm_pickle_name}', 0.1)
-                                                        
+                                                        mm.is_file_created_in_last_x_hours(
+                                                            f'{fm_path}/{fm_pickle_name}', 0.1)
+
                                                     fm_dict = mm.load_pickle(f'{fm_path}/{fm_pickle_name}')
 
                                                     fm = fm_dict[f'FM_{probe}_{which_cov_term}']

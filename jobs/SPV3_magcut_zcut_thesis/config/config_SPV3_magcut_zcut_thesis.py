@@ -13,7 +13,7 @@ area_deg2_dr1 = 2822
 # * 'SSC_code'
 # * 'load_precomputed_cov': False,
 # * 'save_cov': True,
-# * fm_final_folder
+# * fm_last_folder
 # * filename_suffix
 # * which_sigma2_B
 # * ell_max_GC: 5000,
@@ -26,7 +26,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-filename_suffix = '_sigma2_mask'
+filename_suffix = '_sigma2_sb_TEgrids_dense'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -221,7 +221,7 @@ covariance_cfg = {
         'save_trispectrum': False,
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
 
-        'which_sigma2_B': 'spaceborne',  # 'mask' or 'spaceborne' or None
+        'which_sigma2_B': None,  # 'mask' or 'spaceborne' or None
         'area_deg2_mask': 14700,
         'nside_mask': 2048,
         'ell_mask_filename': ROOT + '/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy',
@@ -233,12 +233,18 @@ covariance_cfg = {
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
-        'z_grid_tkka_min': 0.001,
-        'z_grid_tkka_max': 3,
+        # 'z_grid_tkka_min': 0.001,
+        # 'z_grid_tkka_max': 3,
+        # 'z_grid_tkka_steps': 200,
+        # 'k_grid_tkka_min': 1e-5,
+        # 'k_grid_tkka_max': 1e2,
+        # 'k_grid_tkka_steps': 512,
+        'z_grid_tkka_min': 0.,
+        'z_grid_tkka_max': 6,
         'z_grid_tkka_steps': 200,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
-        'k_grid_tkka_steps': 512,
+        'k_grid_tkka_steps': 1300,
         
         'z_grid_min': 0.001,
         'z_grid_max': 3,

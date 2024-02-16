@@ -458,16 +458,19 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
         print(f'{which_ng_cov} covariance computed with {SSC_code} in {(time.perf_counter() - start_time):.2f} s')
 
-    if SSC_code == 'OneCovariance':
+    if SSC_code == 'OneCovariance' and covariance_cfg['OneCovariance_cfg']['use_OneCovariance_Gaussian']:
+        
+        print('Loading Gaussian covariance from OneCovariance...')
+        
         # in this case, also overwrite the Gaussian part for a fair comparison
         # TODO do it with pyccl as well, after computing the G covariance
         
         cov_path = covariance_cfg['OneCovariance_cfg']['cov_path']
         cov_filename = covariance_cfg['OneCovariance_cfg']['cov_filename'].format(
-        which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
+        which_ng_cov='G', probe_a='{probe_a:s}', probe_b='{probe_b:s}',
         probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl, lmax=ell_max,
         EP_or_ED=general_cfg['EP_or_ED'],
-        zbins=zbins).replace('SSC', 'G')
+        zbins=zbins)
 
 
         # load SSC blocks in 4D and store them into a dictionary of 8D blocks

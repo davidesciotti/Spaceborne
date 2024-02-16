@@ -203,7 +203,7 @@ covariance_cfg = {
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
 
-    'SSC_code': 'PyCCL',  # ! 'PySSC' or PyCCL' or 'exactSSC'
+    'SSC_code': 'OneCovariance',  # ! 'PySSC' or PyCCL' or 'exactSSC' or 'OneCovariance'
     'check_if_recently_created': False,
 
     'PyCCL_cfg': {
@@ -274,6 +274,16 @@ covariance_cfg = {
         'log10_k_min_sigma2': -4,
         'log10_k_max_sigma2': 1,
         'k_steps_sigma2': 20_000,
+    },
+    
+    'OneCovariance_cfg': {
+        'which_ng_cov': ('SSC', 'cNG'),
+        'load_precomputed_cov': True,  # this must be True for OneCovariance
+        'use_OneCovariance_Gaussian': False,
+        
+        'cov_path': f'{DATA_ROOT}/output/Flagship_2/covmat/OneCovariance',
+        'cov_filename': 'cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
+                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',
     }
 
 }

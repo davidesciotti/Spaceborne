@@ -566,6 +566,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     which_pk = fiducial_pars_dict['other_params']['camb_extra_parameters']['camb']['halofit_version']
     tkka_dict = initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, which_pk=which_pk)
     cov_ng_8D_dict = {}
+    
     if probe in ['LL', 'GG']:
         raise NotImplementedError('you should check that the dictionary cov_ng_8D_dict return works, in this case')
 

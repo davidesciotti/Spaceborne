@@ -27,7 +27,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 import common_cfg.ISTF_fid_params as ISTF_fid
 
 # job configuration and modules
-from jobs.ISTF.config import config_ISTF_new as cfg
+from jobs.ISTF.config import config_ISTF as cfg
 
 # mpl.use('Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -48,8 +48,8 @@ Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
 
-for covariance_cfg['SSC_code'] in ['PySSC', 'exactSSC', 'PyCCL', 'OneCovariance']:
-# for covariance_cfg['SSC_code'] in ['OneCovariance',]:
+# for covariance_cfg['SSC_code'] in ['PySSC', 'exactSSC', 'PyCCL', 'OneCovariance']:
+for covariance_cfg['SSC_code'] in ['OneCovariance',]:
     # check_specs.consistency_checks(general_cfg, covariance_cfg)
     # for covariance_cfg['SSC_code'] in ['PyCCL', 'exactSSC']:
     #     for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['probe'] in ['LL', 'GG', '3x2pt']:
@@ -238,6 +238,167 @@ for covariance_cfg['SSC_code'] in ['PySSC', 'exactSSC', 'PyCCL', 'OneCovariance'
     # ! compute covariance matrix
     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl, BNT_matrix=None)
+    
+    
+    
+    # # ! check the difference in the Gaussian covariances
+    
+    # fsky = covariance_cfg['fsky']
+    # nbl_3x2pt = nbl_GC
+    # ell_3x2pt = ell_GC
+    # probe_ordering = (('L', 'L'), ('G', 'L'), ('G', 'G'))
+    
+    
+    
+    #     # build noise vector
+    # noise_3x2pt_4D = mm.build_noise(zbins, n_probes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=covariance_cfg['ng'],
+    #                                 EP_or_ED=general_cfg['EP_or_ED'])
+
+    # # create dummy ell axis, the array is just repeated along it
+    # nbl_max = np.max((nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA))
+    # noise_5D = np.zeros((n_probes, n_probes, nbl_max, zbins, zbins))
+    # for probe_A in (0, 1):
+    #     for probe_B in (0, 1):
+    #         for ell_idx in range(nbl_WL):
+    #             noise_5D[probe_A, probe_B, ell_idx, :, :] = noise_3x2pt_4D[probe_A, probe_B, ...]
+
+    # # remember, the ell axis is a dummy one for the noise, is just needs to be of the
+    # # same length as the corresponding cl one
+    # noise_LL_5D = noise_5D[0, 0, :nbl_WL, :, :][np.newaxis, np.newaxis, ...]
+    # noise_GG_5D = noise_5D[1, 1, :nbl_GC, :, :][np.newaxis, np.newaxis, ...]
+    # noise_WA_5D = noise_5D[0, 0, :nbl_WA, :, :][np.newaxis, np.newaxis, ...]
+    # noise_3x2pt_5D = noise_5D[:, :, :nbl_3x2pt, :, :]
+
+
+    # start = time.perf_counter()
+    # cl_LL_5D = cl_dict_3D['cl_LL_3D'][np.newaxis, np.newaxis, ...]
+    # cl_GG_5D = cl_dict_3D['cl_GG_3D'][np.newaxis, np.newaxis, ...]
+    # cl_WA_5D = cl_dict_3D['cl_WA_3D'][np.newaxis, np.newaxis, ...]
+
+    # # 5d versions of auto-probe spectra
+    # cov_WL_GO_6D = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_WL, delta_dict['delta_l_WL'])[0, 0, 0, 0, ...]
+    # cov_GC_GO_6D = mm.covariance_einsum(cl_GG_5D, noise_GG_5D, fsky, ell_GC, delta_dict['delta_l_GC'])[0, 0, 0, 0, ...]
+    # cov_WA_GO_6D = mm.covariance_einsum(cl_WA_5D, noise_WA_5D, fsky, ell_WA, delta_dict['delta_l_WA'])[0, 0, 0, 0, ...]
+    # cov_3x2pt_GO_10D = mm.covariance_einsum(cl_dict_3D['cl_3x2pt_5D'], noise_3x2pt_5D, fsky, ell_3x2pt, delta_dict['delta_l_3x2pt'])
+    
+    # cov_WL_SN_6D = mm.covariance_einsum(np.zeros_like(cl_LL_5D), noise_LL_5D, fsky, ell_WL, delta_dict['delta_l_WL'], prefactor=1)[0, 0, 0, 0, ...]
+    # cov_GC_SN_6D = mm.covariance_einsum(np.zeros_like(cl_GG_5D), noise_GG_5D, fsky, ell_GC, delta_dict['delta_l_GC'], prefactor=1)[0, 0, 0, 0, ...]
+    # cov_WA_SN_6D = mm.covariance_einsum(np.zeros_like(cl_WA_5D), noise_WA_5D, fsky, ell_WA, delta_dict['delta_l_WA'], prefactor=1)[0, 0, 0, 0, ...]
+    # cov_3x2pt_SN_10D = mm.covariance_einsum(np.zeros_like(cl_dict_3D['cl_3x2pt_5D']), noise_3x2pt_5D, fsky, ell_3x2pt, delta_dict['delta_l_3x2pt'], prefactor=1)
+    
+    # cov_WL_SVA_6D = mm.covariance_einsum(cl_LL_5D, np.zeros_like(noise_LL_5D), fsky, ell_WL, delta_dict['delta_l_WL'])[0, 0, 0, 0, ...]
+    # cov_GC_SVA_6D = mm.covariance_einsum(cl_GG_5D, np.zeros_like(noise_GG_5D), fsky, ell_GC, delta_dict['delta_l_GC'])[0, 0, 0, 0, ...]
+    # cov_WA_SVA_6D = mm.covariance_einsum(cl_WA_5D, np.zeros_like(noise_WA_5D), fsky, ell_WA, delta_dict['delta_l_WA'])[0, 0, 0, 0, ...]
+    # cov_3x2pt_SVA_10D = mm.covariance_einsum(cl_dict_3D['cl_3x2pt_5D'], np.zeros_like(noise_3x2pt_5D), fsky, ell_3x2pt, delta_dict['delta_l_3x2pt'])
+    
+    # ind_auto = ind[:zpairs_auto, :].copy()
+    # ind_cross = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
+    # ind_dict = {('L', 'L'): ind_auto,
+    #             ('G', 'L'): ind_cross,
+    #             ('G', 'G'): ind_auto}
+    # covariance_cfg['ind_dict'] = ind_dict
+    # from copy import deepcopy
+    
+
+    # cov_path = '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/output_ISTF_v2'
+    # cov_SN_filename = covariance_cfg['OneCovariance_cfg']['cov_filename'].format(
+    # which_ng_cov='SN', probe_a='{probe_a:s}', probe_b='{probe_b:s}',
+    # probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl, lmax=3000,
+    # EP_or_ED=general_cfg['EP_or_ED'],
+    # zbins=zbins)
+    # cov_MIX_filename = cov_SN_filename.replace('_SN_', '_MIX_')
+    # cov_SVA_filename = cov_SN_filename.replace('_SN_', '_SVA_')
+    # cov_G_filename = cov_SN_filename.replace('_SN_', '_G_')
+
+
+    # # load SSC blocks in 4D and store them into a dictionary of 8D blocks
+    # cov_SN_3x2pt_dict_8D_OC = mm.load_cov_from_probe_blocks(cov_path, cov_SN_filename, probe_ordering)
+    # cov_MIX_3x2pt_dict_8D_OC = mm.load_cov_from_probe_blocks(cov_path, cov_MIX_filename, probe_ordering)
+    # cov_SVA_3x2pt_dict_8D_OC = mm.load_cov_from_probe_blocks(cov_path, cov_SVA_filename, probe_ordering)
+    # cov_G_3x2pt_dict_8D_OC = mm.load_cov_from_probe_blocks(cov_path, cov_G_filename, probe_ordering)
+    
+    # # reshape the blocks in the dictionary from 4D to 6D, as needed by the BNT
+    # cov_SN_3x2pt_dict_10D_OC = {}
+    # cov_SVA_3x2pt_dict_10D_OC = {}
+    # cov_MIX_3x2pt_dict_10D_OC = {}
+    # cov_G_3x2pt_dict_10D_OC = {}
+    # for probe_A, probe_B in probe_ordering:
+    #     for probe_C, probe_D in probe_ordering:
+    #         cov_SN_3x2pt_dict_10D_OC[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
+    #             cov_SN_3x2pt_dict_8D_OC[probe_A, probe_B, probe_C, probe_D],
+    #             nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
+    #         cov_MIX_3x2pt_dict_10D_OC[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
+    #             cov_MIX_3x2pt_dict_8D_OC[probe_A, probe_B, probe_C, probe_D],
+    #             nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
+    #         cov_SVA_3x2pt_dict_10D_OC[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
+    #             cov_SVA_3x2pt_dict_8D_OC[probe_A, probe_B, probe_C, probe_D],
+    #             nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
+    #         cov_G_3x2pt_dict_10D_OC[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
+    #             cov_G_3x2pt_dict_8D_OC[probe_A, probe_B, probe_C, probe_D],
+    #             nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
+            
+        
+    # cov_3x2pt_SN_4D_OC = mm.cov_3x2pt_10D_to_4D(cov_SN_3x2pt_dict_10D_OC, probe_ordering, nbl, zbins, ind.copy(), GL_or_LG)
+    # cov_3x2pt_SN_4D_SB = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SN_10D, probe_ordering, nbl, zbins, ind.copy(), GL_or_LG)
+    # cov_3x2pt_SVA_4D_OC = mm.cov_3x2pt_10D_to_4D(cov_SVA_3x2pt_dict_10D_OC, probe_ordering, nbl, zbins, ind.copy(), GL_or_LG)
+    # cov_3x2pt_SVA_4D_SB = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SVA_10D, probe_ordering, nbl, zbins, ind.copy(), GL_or_LG)
+    
+    # cov_3x2pt_SN_2D_OC = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SN_4D_OC, zbins, block_index='vincenzo')
+    # cov_3x2pt_SN_2D_SB = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SN_4D_SB, zbins, block_index='vincenzo')
+    # cov_3x2pt_SVA_2D_OC = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SVA_4D_OC, zbins, block_index='vincenzo')
+    # cov_3x2pt_SVA_2D_SB = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SVA_4D_SB, zbins, block_index='vincenzo')
+    
+    # cov_3x2pt_SN_diag_OC = np.diag(cov_3x2pt_SN_2D_OC)
+    # cov_3x2pt_SN_diag_SB = np.diag(cov_3x2pt_SN_2D_SB)
+    
+    # plt.figure()
+    # # plt.plot(cov_3x2pt_SN_diag_OC, label='OC')
+    # # plt.plot(cov_3x2pt_SN_diag_SB, label='SB', ls='--')
+    # plt.plot(cov_3x2pt_SN_diag_SB/cov_3x2pt_SN_diag_OC, label='ratio', ls='-', marker='.')
+    # plt.legend()
+    
+    
+    # A = cov_3x2pt_SVA_2D_OC
+    # B = cov_3x2pt_SVA_2D_SB
+    # diff = mm.percent_diff(A, B)
+    # mm.matshow(diff, log=True, abs_val=True)
+    
+    # log_diff = False
+    # abs_val = False
+    # plot_diff_threshold = 5
+    # mm.compare_arrays(A, B, plot_diff_threshold=plot_diff_threshold)
+    
+    # diff_AB = mm.percent_diff_nan(A, B, eraseNaN=True, log=log_diff, abs_val=abs_val)
+
+    # if plot_diff_threshold is not None:
+    #     # take the log of the threshold if using the log of the precent difference
+    #     if log_diff:
+    #         plot_diff_threshold = np.log10(plot_diff_threshold)
+
+    #     diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, np.abs(diff_AB))
+
+    # fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
+    # im = ax[0].matshow(diff_AB)
+    # ax[0].set_title(f'(A/B - 1) * 100')
+    # fig.colorbar(im, ax=ax[0])
+
+    # im = ax[1].matshow(diff_AB)
+    # ax[1].set_title(f'(A/B - 1) * 100')
+    # fig.colorbar(im, ax=ax[1])
+
+    # fig.suptitle(f'log={log_diff}, abs={abs_val}')
+    # plt.show()
+
+
+
+    
+    # assert False, 'stop here to check cov G'
+    
+    
+    
+    
+    
+    
     # ! save and test against benchmarks
     cov_folder = covariance_cfg["cov_folder"].format(SSC_code=ssc_code, **variable_specs)
     covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
@@ -331,6 +492,7 @@ for covariance_cfg['SSC_code'] in ['PySSC', 'exactSSC', 'PyCCL', 'OneCovariance'
     # free memory, cov_dict is HUGE
     del cov_dict
     gc.collect()
+    
 
     # ! save and test
     fm_folder = FM_cfg["fm_folder"].format(SSC_code=ssc_code)
@@ -338,10 +500,13 @@ for covariance_cfg['SSC_code'] in ['PySSC', 'exactSSC', 'PyCCL', 'OneCovariance'
     for probe in ('WL', 'GC', '3x2pt'):
         lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_3x2pt']
         filename_fm_g = f'{fm_folder}/FM_{probe}_G_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'
-        filename_fm_from_ssc_code = filename_fm_g.replace('_G_', '_GSSC_')
+        
+        which_ng_cov_suffix = ''.join(covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'])
+        filename_fm_from_ssc_code = filename_fm_g.replace('_G_', f'_G{which_ng_cov_suffix}_')
 
         np.savetxt(f'{filename_fm_g}', FM_dict[f'FM_{probe}_G'])
-        np.savetxt(f'{filename_fm_from_ssc_code}', FM_dict[f'FM_{probe}_GSSC'])
+        np.savetxt(f'{filename_fm_from_ssc_code}', FM_dict[f'FM_{probe}_G{which_ng_cov_suffix}'])
+        # np.savetxt(f'{filename_fm_from_ssc_code}', FM_dict[f'FM_{probe}_GSSCcNG'])
 
         # probe_ssc_code = covariance_cfg[f'{covariance_cfg["SSC_code"]}_cfg']['probe']
         # probe_ssc_code = 'WL' if probe_ssc_code == 'LL' else probe_ssc_code
@@ -374,6 +539,12 @@ for ssc_code_here in ['PySSC', 'PyCCL', 'exactSSC', 'OneCovariance']:
 
         FM_dict_loaded[f'FM_{ssc_code_here}_{probe}_GSSC'] = (
             np.genfromtxt(f'{fm_folder}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
+        
+        try:
+            FM_dict_loaded[f'FM_{ssc_code_here}_{probe}_GSSCcNG'] = (
+                np.genfromtxt(f'{fm_folder}/FM_{probe}_GSSCcNG_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
+        except FileNotFoundError:
+            print(f'FM_{ssc_code_here}_{probe}_GSSCcNG not found')
 
         # make sure that this file has been created very recently (aka, is the one just produced)
         mm.is_file_created_in_last_x_hours(f'{fm_folder}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt', 0.1)
@@ -382,15 +553,21 @@ for ssc_code_here in ['PySSC', 'PyCCL', 'exactSSC', 'OneCovariance']:
         # FM_dict_loaded[f'FM_{ssc_code_here}_{probe}_GSSC_std'] = (
         #     np.genfromtxt(f'{fm_folder_std}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
 
-# just a test: the Gaussian FMs must be equal in all but the OneCovariance case. I simply compare to PySSC
-for ssc_code_here in ['PyCCL', 'exactSSC']:
+# just a test: the Gaussian FMs must be equal. This is true also for OneCovariance if I do not use the OneCovariance Gaussian cov,
+# of course. The baseline is PySSC, but it's an arbitrary choice.
+
+ssc_code_here_list = ['PyCCL', 'exactSSC']
+if covariance_cfg['OneCovariance_cfg']['use_OneCovariance_Gaussian'] is False:
+    ssc_code_here_list.append('OneCovariance')
+
+for ssc_code_here in ssc_code_here_list:
     for probe in ['WL', 'GC', '3x2pt']:
         np.testing.assert_allclose(FM_dict_loaded[f'FM_{ssc_code_here}_{probe}_G'], 
                                    FM_dict_loaded[f'FM_PySSC_{probe}_G'],
                                    rtol=1e-5, atol=0,
                                    err_msg=f'Gaussian FMs are not equal for {ssc_code_here} and {probe}!')
 
-
+# compute FoM
 fom_dict = {}
 uncert_dict = {}
 masked_FM_dict = {}
@@ -414,18 +591,31 @@ for key in list(FM_dict_loaded.keys()):
 for probe in ['WL', 'GC', '3x2pt']:
 
     for ssc_code in ['PySSC', 'PyCCL', 'exactSSC', 'OneCovariance']:
-        key_g = f'FM_{ssc_code}_{probe}_G'
-        key_gssc = f'FM_{ssc_code}_{probe}_GSSC'
+        key_a = f'FM_{ssc_code}_{probe}_G'
+        key_b = f'FM_{ssc_code}_{probe}_GSSC'
         
-        uncert_dict[f'perc_diff_{ssc_code}_{probe}'] = mm.percent_diff(uncert_dict[key_gssc], uncert_dict[key_g])
-        fom_dict[f'perc_diff_{ssc_code}_{probe}'] = mm.percent_diff(fom_dict[key_gssc], fom_dict[key_g])
+        uncert_dict[f'perc_diff_{ssc_code}_{probe}_GSSC'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
+        fom_dict[f'perc_diff_{ssc_code}_{probe}_GSSC'] = mm.percent_diff(fom_dict[key_b], fom_dict[key_a])
+        
+    # do the same for cNG
+    for ssc_code in ['OneCovariance',]:
+        key_a = f'FM_{ssc_code}_{probe}_GSSC'
+        key_b = f'FM_{ssc_code}_{probe}_GSSCcNG'
+        
+        uncert_dict[f'perc_diff_{ssc_code}_{probe}_GSSCcNG'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
+        fom_dict[f'perc_diff_{ssc_code}_{probe}_GSSCcNG'] = mm.percent_diff(fom_dict[key_b], fom_dict[key_a])
         
 for probe in ['WL', 'GC', '3x2pt']:
     nparams_toplot = 7
 
-    cases_to_plot = (f'FM_PySSC_{probe}_G', f'FM_OneCovariance_{probe}_G', 
-                     f'FM_PySSC_{probe}_GSSC', f'FM_PyCCL_{probe}_GSSC', f'FM_exactSSC_{probe}_GSSC', f'FM_OneCovariance_{probe}_GSSC',
-                     f'perc_diff_PyCCL_{probe}', f'perc_diff_exactSSC_{probe}', f'perc_diff_OneCovariance_{probe}')
+    cases_to_plot = (f'FM_PySSC_{probe}_G', 
+                    #  f'FM_OneCovariance_{probe}_G', 
+                    #  f'FM_PySSC_{probe}_GSSC', f'FM_PyCCL_{probe}_GSSC', f'FM_exactSSC_{probe}_GSSC', 
+                     f'FM_OneCovariance_{probe}_GSSC',f'FM_OneCovariance_{probe}_GSSCcNG',
+                    #  f'perc_diff_PyCCL_{probe}_GSSC', 
+                    # f'perc_diff_exactSSC_{probe}_GSSC', 
+                    f'perc_diff_OneCovariance_{probe}_GSSC', f'perc_diff_OneCovariance_{probe}_GSSCcNG'
+                     )
 
     df = pd.DataFrame(uncert_dict)  # you should switch to using this...
 
@@ -446,15 +636,15 @@ for probe in ['WL', 'GC', '3x2pt']:
     param_names_label = param_names_list[:nparams_toplot] + [fom_label] if include_fom else param_names_list[
         :nparams_toplot]
     lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_XC']
-    use_hod_for_gc = 'use_HOD' + str(covariance_cfg["PyCCL_cfg"]["use_HOD_for_GCph"]) if covariance_cfg[
-        "SSC_code"] == 'PyCCL' else ''
-    title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i, %s' % (probe, lmax, EP_or_ED, zbins, use_hod_for_gc)
+    title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
     # bar plot
     if include_fom:
         nparams_toplot = 8
     plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
-                        param_names_label=param_names_label, bar_width=0.08)
+                        param_names_label=param_names_label, bar_width=0.15)
     # plt.yscale('log')
+    
+    plt.savefig(f'{fm_folder}/{title}.png', dpi=400)
 
 
 # silent check against IST:F (which does not exist for GC alone):
@@ -464,7 +654,7 @@ for which_probe in ['WL', '3x2pt']:
     uncert_dict['ISTF'] = ISTF_fid.forecasts[f'{which_probe}_opt_w0waCDM_flat']
     try:
         rtol = 10e-2
-        assert np.allclose(uncert_dict[f'FM_{which_probe}_G'][:nparams_toplot], uncert_dict['ISTF'], atol=0,
+        assert np.allclose(uncert_dict[f'FM_PySSC_{which_probe}_G'][:nparams_toplot], uncert_dict['ISTF'], atol=0,
                            rtol=rtol)
         print(f'IST:F and GO are consistent for probe {which_probe} within {rtol * 100}% ✅')
     except AssertionError:
@@ -472,9 +662,9 @@ for which_probe in ['WL', '3x2pt']:
         print('(remember that you are checking against the optimistic case, with lmax_WL = 5000. '
               f'\nYour lmax_WL is {ell_max_WL})')
         print('ISTF GO:\t', uncert_dict['ISTF'])
-        print('Spaceborne GO:\t', uncert_dict[f'FM_{which_probe}_G'][:nparams_toplot])
+        print('Spaceborne GO:\t', uncert_dict[f'FM_PySSC_{which_probe}_G'][:nparams_toplot])
         print('percent_discrepancies (*not wrt mean!*):\n',
-              mm.percent_diff(uncert_dict[f'FM_{which_probe}_G'][:nparams_toplot],
+              mm.percent_diff(uncert_dict[f'FM_PySSC_{which_probe}_G'][:nparams_toplot],
                               uncert_dict['ISTF']))
 
         print('Spaceborne GS:\t', uncert_dict[f'FM_{ssc_code}_{which_probe}_GSSC'][:nparams_toplot])
@@ -496,42 +686,3 @@ print('done')
 #                                         which_uncertainty='marginal',
 #                                         normalize=True)[:nparams_toplot]
 
-
-# ! save cls and responses: THIS MUST BE MOVED TO A DIFFERENT FUNCTION!
-"""
-# this is just to set the correct probe names
-probe_dav_dict = {
-    'WL': 'LL_3D',
-    'GC': 'GG_3D',
-    'WA': 'WA_3D',
-    '3x2pt': '3x2pt_5D'}
-
-# just a dict for the output file names
-clrl_dict = {
-    'cl_inputname': 'dv',
-    'rl_inputname': 'rf',
-    'cl_dict_3D': cl_dict_3D,
-    'rl_dict_3D': rl_dict_3D,
-    'cl_dict_key': 'C',
-    'rl_dict_key': 'R',
-}
-for cl_or_rl in ['cl', 'rl']:
-    folder = general_cfg[f'{cl_or_rl}_folder']
-    if general_cfg[f'save_{cl_or_rl}s_3d']:
-
-        for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
-            # save cl and/or response
-            np.save(f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/'
-                    f'{clrl_dict[f"{cl_or_rl}_inputname"]}-{probe_vinc}-{nbl_WL}-{general_cfg["specs"]}-{EP_or_ED}{zbins:02}.npy',
-                    clrl_dict[f"{cl_or_rl}_dict_3D"][
-                        f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}'])
-
-            # save ells and deltas
-            if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
-                np.savetxt(
-                    f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
-                    10 ** ell_dict[f'ell_{probe_dav}'])
-                np.savetxt(
-                    f'{folder}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}/delta_ell_{probe_dav}_ellmaxWL{ell_max_WL}.txt',
-                    delta_dict[f'delta_l_{probe_dav}'])
-"""

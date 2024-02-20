@@ -44,7 +44,7 @@ cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
 # ! options
 ng_cov_code = 'PyCCL'  # exactSSC or PyCCL
-filename_suffix = '_sigma2_mask'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
+filename_suffix = '_sigma2_sb_rightgrids_highres'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 # filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 fm_last_folder = '/jan_2024'  # /standard or /jan_2024
 fix_dz_plt = True
@@ -132,8 +132,18 @@ assert not use_Wadd, 'import of Wadd not implemented yet'
 assert fix_dz_plt, 'without fixing dz you\'ll get very large errors, there is no prior at the moment!!'
 
 
-fm_pickle_path_a = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_mask.pickle'
-fm_pickle_path_b = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_None_densegrids.pickle'
+# quinck check between two given FMs
+fm_pickle_path_a = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_sb_rightgrids_highres.pickle'
+fm_pickle_path_b = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_mask_rightgrids_lowres.pickle'
+
+fm_dict_a = mm.load_pickle(fm_pickle_path_a)
+fm_dict_b = mm.load_pickle(fm_pickle_path_b)
+
+# check that the keys match
+assert fm_dict_a.keys() == fm_dict_b.keys()
+
+# check if the dictionaries contained in the key 'fiducial_values_dict' match
+assert fm_dict_a['fiducial_values_dict'] == fm_dict_b['fiducial_values_dict'], 'fiducial values do not match!'
 
 # mm.compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b)
 

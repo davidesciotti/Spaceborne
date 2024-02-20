@@ -29,8 +29,20 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 # ccl.gsl_params["INTEGRATION_EPSREL"] = 1e-7  # was 1e-4
 # ccl.gsl_params["N_ITERATION"] = 10000  # was 1000
-# ccl.spline_params.reload()
-# ccl.gsl_params.reload()
+ccl.gsl_params.reload()
+ccl.gsl_params.reload()
+ccl.spline_params.reload()
+
+
+# ccl.spline_params['A_SPLINE_NA'] *= 10
+# ccl.spline_params['A_SPLINE_NLOG'] *= 10
+# ccl.spline_params['A_SPLINE_NLOG_PK'] *= 10
+ccl.spline_params['A_SPLINE_NA_PK'] = 200  # gives CAMB error if too high
+# ccl.spline_params['N_ELL_CORR'] *= 10
+
+# ccl.spline_params['K_MAX_SPLINE'] = 100
+# ccl.spline_params['N_K'] = 1670
+# ccl.spline_params['K_MIN'] = 1e-5
 
 # ======================================================================================================================
 # ======================================================================================================================
@@ -116,10 +128,12 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                 # not very nice to put this if-else in the for loop, but A, B, C, D are referenced only here
                 if which_ng_cov == 'SSC':
                     tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
-                    prof_2pt_args = {}
+                    additional_args = {
+                        'probe_block': A + B + C + D,
+                    }
                 elif which_ng_cov == 'cNG':
                     tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
-                    prof_2pt_args = {
+                    additional_args = {
                         'prof13_2pt': prof_2pt_dict[A, C],
                         'prof14_2pt': prof_2pt_dict[A, D],
                         'prof24_2pt': prof_2pt_dict[B, D]
@@ -138,8 +152,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                                   p_of_k_a=None, lk_arr=logn_k_grid_tkka,
                                                   a_arr=a_grid_tkka,
                                                   extrap_order_lok=1, extrap_order_hik=1, use_log=False,
-                                                  probe_block=A + B + C + D,
-                                                  **prof_2pt_args)
+                                                 **additional_args)
 
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
     if pyccl_cfg['save_trispectrum']:
@@ -306,6 +319,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         gal_bias_1d = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, maglim=maglim)
         # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
         gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), zbins, axis=0).T
+        # todo import power spectrum!!!
 
     elif general_cfg['which_forecast'] == 'ISTF':
 

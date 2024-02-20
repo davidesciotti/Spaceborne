@@ -519,8 +519,8 @@ for covariance_cfg['SSC_code'] in ['OneCovariance',]:
 
 # plot settings
 nparams_toplot = 7
-include_fom = False
-divide_fom_by_10 = False
+include_fom = True
+divide_fom_by_10 = True
 
 FM_dict_loaded = {}
 for ssc_code_here in ['PySSC', 'PyCCL', 'exactSSC', 'OneCovariance']:
@@ -595,40 +595,49 @@ for probe in ['WL', 'GC', '3x2pt']:
         key_b = f'FM_{ssc_code}_{probe}_GSSC'
         
         uncert_dict[f'perc_diff_{ssc_code}_{probe}_GSSC'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
-        fom_dict[f'perc_diff_{ssc_code}_{probe}_GSSC'] = mm.percent_diff(fom_dict[key_b], fom_dict[key_a])
+        fom_dict[f'perc_diff_{ssc_code}_{probe}_GSSC'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
         
     # do the same for cNG
     for ssc_code in ['OneCovariance',]:
-        key_a = f'FM_{ssc_code}_{probe}_GSSC'
+        key_a = f'FM_{ssc_code}_{probe}_G'
         key_b = f'FM_{ssc_code}_{probe}_GSSCcNG'
         
         uncert_dict[f'perc_diff_{ssc_code}_{probe}_GSSCcNG'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
-        fom_dict[f'perc_diff_{ssc_code}_{probe}_GSSCcNG'] = mm.percent_diff(fom_dict[key_b], fom_dict[key_a])
+        fom_dict[f'perc_diff_{ssc_code}_{probe}_GSSCcNG'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
         
 for probe in ['WL', 'GC', '3x2pt']:
     nparams_toplot = 7
+    divide_fom_by_10_plt = False if probe == 'WL' else divide_fom_by_10
 
-    cases_to_plot = (f'FM_PySSC_{probe}_G', 
+    cases_to_plot = [f'FM_PySSC_{probe}_G', 
                     #  f'FM_OneCovariance_{probe}_G', 
-                    #  f'FM_PySSC_{probe}_GSSC', f'FM_PyCCL_{probe}_GSSC', f'FM_exactSSC_{probe}_GSSC', 
-                     f'FM_OneCovariance_{probe}_GSSC',f'FM_OneCovariance_{probe}_GSSCcNG',
+                    #  f'FM_PySSC_{probe}_GSSC', 
+                    #  f'FM_PyCCL_{probe}_GSSC', 
+                    #  f'FM_exactSSC_{probe}_GSSC', 
+                     f'FM_OneCovariance_{probe}_GSSC',
+                     f'FM_OneCovariance_{probe}_GSSCcNG',
+                    
                     #  f'perc_diff_PyCCL_{probe}_GSSC', 
                     # f'perc_diff_exactSSC_{probe}_GSSC', 
-                    f'perc_diff_OneCovariance_{probe}_GSSC', f'perc_diff_OneCovariance_{probe}_GSSCcNG'
-                     )
+                    f'perc_diff_OneCovariance_{probe}_GSSC', 
+                    f'perc_diff_OneCovariance_{probe}_GSSCcNG'
+    ]
 
     df = pd.DataFrame(uncert_dict)  # you should switch to using this...
 
     # # transform dict. into an array and add the fom
     uncert_array, fom_array = [], []
+    
     for case in cases_to_plot:
+        
         uncert_array.append(uncert_dict[case])
+        if divide_fom_by_10 and 'FM' in case and 'WL' not in case:
+            fom_dict[case] /= 10
         fom_array.append(fom_dict[case])
+        
     uncert_array = np.asarray(uncert_array)
     fom_array = np.asarray(fom_array)
 
-    if divide_fom_by_10:
-        fom_array /= 10
     uncert_array = np.hstack((uncert_array, fom_array.reshape(-1, 1)))
 
     # label and title stuff
@@ -640,8 +649,23 @@ for probe in ['WL', 'GC', '3x2pt']:
     # bar plot
     if include_fom:
         nparams_toplot = 8
+    
+    for i, case in enumerate(cases_to_plot):
+        
+        cases_to_plot[i] = case
+        if 'OneCovariance' in cases_to_plot[i]:
+            cases_to_plot[i] = cases_to_plot[i].replace('OneCovariance', 'OneCov')
+        if f'PySSC_{probe}_G' in cases_to_plot[i]: 
+            cases_to_plot[i] = cases_to_plot[i].replace(f'PySSC_{probe}_G', f'{probe}_G')
+        
+        cases_to_plot[i] = cases_to_plot[i].replace(f'_{probe}', f'')
+        cases_to_plot[i] = cases_to_plot[i].replace(f'FM_', f'')
+        cases_to_plot[i] = cases_to_plot[i].replace(f'_', f' ')
+        cases_to_plot[i] = cases_to_plot[i].replace(f'GSSC', f'G+SSC')
+        cases_to_plot[i] = cases_to_plot[i].replace(f'SSCcNG', f'SSC+cNG')
+    
     plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
-                        param_names_label=param_names_label, bar_width=0.15)
+                        param_names_label=None, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
     # plt.yscale('log')
     
     plt.savefig(f'{fm_folder}/{title}.png', dpi=400)

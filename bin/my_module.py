@@ -45,7 +45,7 @@ def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
     print(f"Data has been written to {ascii_filename}")
 
 
-def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, compare_fms=True, compare_param_covs=True):
+def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, compare_fms=True, compare_param_covs=True, plot=True):
 
     fm_dict_a = load_pickle(fm_pickle_path_a)
     fm_dict_b = load_pickle(fm_pickle_path_b)
@@ -63,14 +63,32 @@ def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, compar
             fm_dict_a[key] = remove_null_rows_cols_2D_copilot(fm_dict_a[key])
             fm_dict_b[key] = remove_null_rows_cols_2D_copilot(fm_dict_b[key])
 
+            cov_a = np.linalg.inv(fm_dict_a[key])
+            cov_b = np.linalg.inv(fm_dict_b[key])
+            
             if compare_fms:
-                compare_arrays(fm_dict_a[key], fm_dict_b[key])
+                compare_arrays(fm_dict_a[key], fm_dict_b[key], 'FM_A', 'FM_B', plot_diff_threshold=5)
 
             if compare_param_covs:
-                cov_a = np.linalg.inv(fm_dict_a[key])
-                cov_b = np.linalg.inv(fm_dict_b[key])
 
-                compare_arrays(cov_a, cov_b)
+                compare_arrays(cov_a, cov_b, 'cov_A', 'cov_B', plot_diff_threshold=5)
+                
+            if plot:
+                param_names = list(fm_dict_a['fiducial_values_dict'].keys())[:10]
+                fiducials_a = list(fm_dict_a['fiducial_values_dict'].values())[:10]
+                fiducials_b = list(fm_dict_b['fiducial_values_dict'].values())[:10]
+                uncert_a = uncertainties_FM(fm_dict_a[key], 10, fiducials=fiducials_a, which_uncertainty='marginal', normalize=True)
+                uncert_b = uncertainties_FM(fm_dict_b[key], 10, fiducials=fiducials_b, which_uncertainty='marginal', normalize=True)
+                diff = percent_diff(uncert_a, uncert_b)
+                
+                
+                plt.figure()
+                plt.title(f'Marginalised uncertainties, {key}')
+                plt.plot(param_names, uncert_a, label='FM_A')
+                plt.plot(param_names, uncert_b, ls='--', label='FM_B')
+                plt.plot(param_names, diff, label='percent diff')
+                plt.legend()
+                
 
 
 def is_file_created_in_last_x_hours(file_path, hours):

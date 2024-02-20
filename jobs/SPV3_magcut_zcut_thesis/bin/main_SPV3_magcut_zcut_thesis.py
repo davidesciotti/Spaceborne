@@ -34,7 +34,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 # job config
 import jobs.SPV3_magcut_zcut_thesis.config.config_SPV3_magcut_zcut_thesis as cfg
 
-mpl.use('Agg')
+# mpl.use('Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 script_start_time = time.perf_counter()
 os.environ['OMP_NUM_THREADS'] = '8'
@@ -709,9 +709,12 @@ if general_cfg['use_CLOE_cls']:
 
     # reshape for OneCovariance code
     ascii_folder = cloe_bench_folder
-    mm.write_cl_ascii(ascii_folder, 'Cell_ll', cl_ll_3d, ell_dict['ell_WL'], zbins)
-    mm.write_cl_ascii(ascii_folder, 'Cell_gl', cl_gl_3d, ell_dict['ell_XC'], zbins)
-    mm.write_cl_ascii(ascii_folder, 'Cell_gg', cl_gg_3d, ell_dict['ell_3x2pt'], zbins)
+    cloe_suffix = '_CLOE' if general_cfg['use_CLOE_cls'] else '_LiFE'
+    mm.write_cl_ascii(ascii_folder, f'Cell_ll{cloe_suffix}', cl_ll_3d, ell_dict['ell_WL'], zbins)
+    mm.write_cl_ascii(ascii_folder, f'Cell_gl{cloe_suffix}', cl_gl_3d, ell_dict['ell_XC'], zbins)
+    mm.write_cl_ascii(ascii_folder, f'Cell_gg{cloe_suffix}', cl_gg_3d, ell_dict['ell_3x2pt'], zbins)
+    
+    assert False
 
 
 else:

@@ -8,10 +8,10 @@ from joblib import delayed, Parallel
 from scipy.integrate import simps
 from scipy.interpolate import RegularGridInterpolator
 from scipy.special import spherical_jn
-import ray
+# import ray
 import pyccl as ccl
 from tqdm import tqdm
-import PySSC
+# import PySSC
 
 import os
 ROOT = os.getenv('ROOT')

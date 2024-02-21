@@ -1,0 +1,55 @@
+name: spaceborne_ccl_v3
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python>=3.9
+  - matplotlib
+  - numpy
+  - scipy
+  - pandas
+  - tqdm
+  - pip
+  - pyyaml
+  - astropy
+  - ipykernel
+  - ipywidgets
+  - joblib
+  - numba
+  - camb
+  - cmake
+  - pyqt
+  - ipympl
+  - pip:
+    - chainconsumer 
+    - cython
+    - getdist
+    - type_enforced
+    - array_to_latex
+    - pynverse
+    #- classy
+    #- ray
+    - PyQt5
+    - PySide2
+    - fast-pt
+    - pyccl
+
+# To install the master version of pyccl:
+# $ conda activate spaceborne
+# $ git clone https://github.com/LSSTDESC/CCL.git
+# $ cd CCL    
+# $ pip install .
+# $ cd .. 
+# $ rm -r CCL
+
+# or (to be tested)
+# pip install pyccl==3.0.1.dev100+g80576258f
+
+# In case of issues, try
+# $ sudo apt install gfortran
+# $ sudo apt-get install cmake
+# $ sudo apt-get install build-essential
+# $ sudo apt-get install autoconf
+# $ sudo apt-get install bison
+# $ sudo apt-get install swig
+

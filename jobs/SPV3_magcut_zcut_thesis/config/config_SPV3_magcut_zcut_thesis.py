@@ -26,7 +26,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-filename_suffix = '_sigma2_sb_mask'
+filename_suffix = '_sigma2_mask'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -223,14 +223,14 @@ covariance_cfg = {
         'save_trispectrum': False,
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
 
-        'which_sigma2_B': 'spaceborne',  # 'mask' or 'spaceborne' or None
+        'which_sigma2_B': 'mask',  # 'mask' or 'spaceborne' (with mask) or None
         'area_deg2_mask': 14700,
         'nside_mask': 2048,
         'ell_mask_filename': ROOT + '/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy',
         'cl_mask_filename': ROOT + '/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy',
-        'z_grid_sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_ISTF.npy',
-        'sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/sigma2_zsteps3000_ISTF.npy',
-        'sigma2_suffix': 'zsteps3000_ISTF',  # this is the filename suffix for the sigma2_B file saved directly from cov_SSC in CCL
+        # 'z_grid_sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_ISTF.npy',
+        # 'sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/sigma2_zsteps3000_ISTF.npy',
+        # 'sigma2_suffix': 'zsteps3000_ISTF',  # this is the filename suffix for the sigma2_B file saved directly from cov_SSC in CCL
 
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 

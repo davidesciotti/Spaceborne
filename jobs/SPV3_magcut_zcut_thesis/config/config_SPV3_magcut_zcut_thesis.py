@@ -13,6 +13,7 @@ area_deg2_dr1 = 2822
 # * 'SSC_code'
 # * 'load_precomputed_cov': False,
 # * 'save_cov': True,
+# * use_CLOE_cls: False, or True, remember I don't have the derivatives
 # * fm_last_folder
 # * filename_suffix
 # * which_sigma2_B
@@ -26,7 +27,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-filename_suffix = '_sigma2_sb_TEgrids_dense'
+filename_suffix = ''
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -65,9 +66,9 @@ if BNT_transform:
 general_cfg = {
     'fid_yaml_filename': ROOT + '/Spaceborne/common_cfg/SPV3_fiducial_params_magcut245_zbins{zbins:02d}.yml',
     'ell_min': 10,
-    'ell_max_WL': 3000,
-    'ell_max_GC': 3000,
-    'ell_max_3x2pt': 3000,
+    'ell_max_WL': 5000,
+    'ell_max_GC': 5000,
+    'ell_max_3x2pt': 5000,
     'zbins': 13,
     'zbins_list': None,
     'EP_or_ED': 'EP',
@@ -111,7 +112,7 @@ general_cfg = {
     'which_pk': 'HMCodeBar',
     'which_pk_list': ('HMCodeBar', 'TakaBird', 'HMCode2020', 'Bacco', 'EE2'),
 
-    'use_CLOE_cls': False,
+    'use_CLOE_cls': True,
     'cloe_bench_folder': f'{ROOT}/my_cloe_data',
     'cl_folder': SPV3_folder + '/OutputFiles/DataVectors/Noiseless/{which_pk:s}',
     'rl_folder': f'{SPV3_folder}' + '/OutputFiles/ResFun/{which_pk:s}',
@@ -127,6 +128,8 @@ general_cfg = {
 
     'has_rsd': False,
     'has_magnification_bias': True,
+    
+    'CLOE_pk_filename': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputPS/HMCodeBar/InFiles/Flat/h/PddVsZedLogK-h_6.700e-01.dat'
 }
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
@@ -203,13 +206,13 @@ covariance_cfg = {
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
 
-    'SSC_code': 'OneCovariance',  # ! 'PySSC' or PyCCL' or 'exactSSC' or 'OneCovariance'
+    'SSC_code': 'PyCCL',  # ! 'PySSC' or 'PyCCL' or 'exactSSC' or 'OneCovariance'
     'check_if_recently_created': False,
 
     'PyCCL_cfg': {
         'probe': '3x2pt',  # TODO deprecate this?
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
-        'which_ng_cov': ('SSC',),
+        'which_ng_cov': ('cNG', ),
 
         'load_precomputed_cov': False,
         'save_cov': True,
@@ -221,7 +224,7 @@ covariance_cfg = {
         'save_trispectrum': False,
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
 
-        'which_sigma2_B': None,  # 'mask' or 'spaceborne' or None
+        'which_sigma2_B': 'mask',  # 'mask' or 'spaceborne' or None
         'area_deg2_mask': 14700,
         'nside_mask': 2048,
         'ell_mask_filename': ROOT + '/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy',
@@ -241,10 +244,10 @@ covariance_cfg = {
         # 'k_grid_tkka_steps': 512,
         'z_grid_tkka_min': 0.,
         'z_grid_tkka_max': 6,
-        'z_grid_tkka_steps': 200,
+        'z_grid_tkka_steps': 100,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
-        'k_grid_tkka_steps': 1300,
+        'k_grid_tkka_steps': 1200,
         
         'z_grid_min': 0.001,
         'z_grid_max': 3,
@@ -277,7 +280,7 @@ covariance_cfg = {
     },
     
     'OneCovariance_cfg': {
-        'which_ng_cov': ('SSC', 'cNG'),
+        'which_ng_cov': ('SSC', ),
         'load_precomputed_cov': True,  # this must be True for OneCovariance
         'use_OneCovariance_Gaussian': False,
         

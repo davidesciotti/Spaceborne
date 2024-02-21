@@ -415,7 +415,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         # Initialize cov_3x2pt_SS_10D depending on SSC_code
         if general_cfg['which_forecast'] == 'SPV3':
             # in this case, load the full, 32 bins, ell_max = 5000 covariance, then slice it according to probe ell bins
-            nbl, ell_max = general_cfg['nbl_WL'], general_cfg['ell_max_WL']
+            nbl, ell_max = general_cfg['nbl_WL_opt'], general_cfg['ell_max_WL_opt']
         elif general_cfg['which_forecast'] == 'ISTF':
             # in this case, load the 3x2pt covariance, then take the GC part, then reload for WL
             nbl, ell_max = nbl_3x2pt, ell_max_3x2pt

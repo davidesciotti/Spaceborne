@@ -43,9 +43,9 @@ cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
 
 # ! options
-ng_cov_code = 'PyCCL'  # exactSSC or PyCCL
-filename_suffix = '_sigma2_sb_rightgrids_highres'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
-# filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
+ng_cov_code = 'OneCovariance'  # exactSSC or PyCCL or OneCovariance
+# filename_suffix = '_sigma2_sb_rightgrids_highres'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
+filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 fm_last_folder = '/jan_2024'  # /standard or /jan_2024
 fix_dz_plt = True
 fix_shear_bias_plt = False
@@ -337,6 +337,7 @@ for probe in probes:
 
 # # ! bar plot
 include_fom = False
+divide_fom_by_10_plt = True
 
 for probe_toplot in ('WL', 'GC', '3x2pt'):
 
@@ -374,7 +375,7 @@ for probe_toplot in ('WL', 'GC', '3x2pt'):
     plot_utils.bar_plot(data, f'{probe_toplot}, {which_cov_term_list[1]}, {ng_cov_code}', label_list, bar_width=0.2, nparams=num_params_tokeep_here,
                         param_names_label=None,
                         second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
-                        include_fom=include_fom, figsize=(10, 8))
+                        include_fom=include_fom, figsize=(10, 8), divide_fom_by_10_plt=divide_fom_by_10_plt)
 
 
 assert False, 'checking SSC btw pyccl and exactSSC'

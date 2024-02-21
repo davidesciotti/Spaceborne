@@ -34,7 +34,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 # job config
 import jobs.SPV3_magcut_zcut_thesis.config.config_SPV3_magcut_zcut_thesis as cfg
 
-# mpl.use('Agg')
+mpl.use('Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 script_start_time = time.perf_counter()
 os.environ['OMP_NUM_THREADS'] = '8'
@@ -685,6 +685,7 @@ if shift_nz:
 general_cfg['nz_tuple'] = nz_tuple
 
 if general_cfg['use_CLOE_cls']:
+    
     assert which_pk == 'HMCodeBar', 'I am using CLOE Cls, so I should use HMCodeBar'
     print(f'Using CLOE cls; pk is {which_pk}')
 
@@ -714,8 +715,6 @@ if general_cfg['use_CLOE_cls']:
     mm.write_cl_ascii(ascii_folder, f'Cell_gl{cloe_suffix}', cl_gl_3d, ell_dict['ell_XC'], zbins)
     mm.write_cl_ascii(ascii_folder, f'Cell_gg{cloe_suffix}', cl_gg_3d, ell_dict['ell_3x2pt'], zbins)
     
-    assert False
-
 
 else:
 

@@ -6,6 +6,7 @@ import os
 import numpy as np
 import warnings
 import matplotlib.lines as mlines
+import matplotlib as mpl
 import gc
 import matplotlib.gridspec as gridspec
 import yaml
@@ -33,7 +34,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 # job config
 import jobs.SPV3_magcut_zcut_thesis.config.config_SPV3_magcut_zcut_thesis as cfg
 
-
+# mpl.use('Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 script_start_time = time.perf_counter()
 os.environ['OMP_NUM_THREADS'] = '8'
@@ -464,7 +465,7 @@ general_cfg['nbl_3x2pt'] = nbl_3x2pt
 
 delta_dict = {'delta_l_WL': np.copy(delta_l_ref_nbl32[:nbl_WL]),
               'delta_l_GC': np.copy(delta_l_ref_nbl32[:nbl_GC]),
-              'delta_l_WA': np.copy(delta_l_ref_nbl32[nbl_GC:])}
+              'delta_l_WA': np.copy(delta_l_ref_nbl32[nbl_GC:nbl_WL])}
 
 # this is just to make the .format() more compact
 variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_lens,
@@ -708,9 +709,12 @@ if general_cfg['use_CLOE_cls']:
 
     # reshape for OneCovariance code
     ascii_folder = cloe_bench_folder
-    mm.write_cl_ascii(ascii_folder, 'Cell_ll', cl_ll_3d, ell_dict['ell_WL'], zbins)
-    mm.write_cl_ascii(ascii_folder, 'Cell_gl', cl_gl_3d, ell_dict['ell_XC'], zbins)
-    mm.write_cl_ascii(ascii_folder, 'Cell_gg', cl_gg_3d, ell_dict['ell_3x2pt'], zbins)
+    cloe_suffix = '_CLOE' if general_cfg['use_CLOE_cls'] else '_LiFE'
+    mm.write_cl_ascii(ascii_folder, f'Cell_ll{cloe_suffix}', cl_ll_3d, ell_dict['ell_WL'], zbins)
+    mm.write_cl_ascii(ascii_folder, f'Cell_gl{cloe_suffix}', cl_gl_3d, ell_dict['ell_XC'], zbins)
+    mm.write_cl_ascii(ascii_folder, f'Cell_gg{cloe_suffix}', cl_gg_3d, ell_dict['ell_3x2pt'], zbins)
+    
+    assert False
 
 
 else:
@@ -720,23 +724,25 @@ else:
                       'for lmax = 3000.')
 
     # ! import and reshape datavectors (cl) and response functions (rl)
-    cl_fld = general_cfg['cl_folder']
+    cl_fld = general_cfg['cl_folder'].format(which_pk=which_pk)
     cl_filename = general_cfg['cl_filename']
-    cl_ll_1d = np.genfromtxt(
-        f"{cl_fld.format(probe='WLO', which_pk=which_pk)}/{cl_filename.format(probe='WLO', **variable_specs)}")
-    cl_gg_1d = np.genfromtxt(
-        f"{cl_fld.format(probe='GCO', which_pk=which_pk)}/{cl_filename.format(probe='GCO', **variable_specs)}")
-    cl_wa_1d = np.genfromtxt(
-        f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', **variable_specs)}")
-    cl_3x2pt_1d = np.genfromtxt(
-        f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
+    cl_ll_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLO', **variable_specs)}")
+    cl_gg_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='GCO', **variable_specs)}")
+    cl_wa_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='WLA', **variable_specs)}")
+    cl_3x2pt_1d = np.genfromtxt(f"{cl_fld}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
 
     # ! reshape to 3d
-    cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL, zbins)
+    cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
     cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
     cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
     cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
     cl_gl_3d = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
+
+    # reshape for OneCovariance code
+    ascii_folder = cl_fld
+    mm.write_cl_ascii(ascii_folder, 'Cell_ll', cl_3x2pt_5d[0, 0, ...], ell_dict['ell_3x2pt'], zbins)
+    mm.write_cl_ascii(ascii_folder, 'Cell_gl', cl_3x2pt_5d[1, 0, ...], ell_dict['ell_3x2pt'], zbins)
+    mm.write_cl_ascii(ascii_folder, 'Cell_gg', cl_3x2pt_5d[1, 1, ...], ell_dict['ell_3x2pt'], zbins)
 
     # ! import responses, not used at the moment (not using PySSC)
     # rl_fld = general_cfg['rl_folder'].format(which_pk=which_pk)
@@ -755,7 +761,7 @@ else:
     rl_wa_1d = np.ones_like(cl_wa_1d)
     rl_3x2pt_1d = np.ones_like(cl_3x2pt_1d)
 
-    rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL, zbins)
+    rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
     rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC, zbins)
     rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA, zbins)
     rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
@@ -1069,11 +1075,11 @@ elif not fm_cfg['load_preprocess_derivatives']:
     for key in vinc_filenames:  # loop over these, I already selected ML, MS and so on
         if not key.startswith('dDVddzGC'):
             if 'WLO' in key:
-                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
+                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL_opt, zbins)[:nbl_WL,:, :]
             elif 'GCO' in key:
                 dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
-            # elif 'WLA' in key:
-                # dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
+            elif 'WLA' in key:
+                dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
             elif '3x2pt' in key:
                 dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt,
                                                                   zbins)

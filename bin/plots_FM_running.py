@@ -81,7 +81,7 @@ def bar_plot_old(uncert_gauss, uncert_SSC, difference):
     plt.savefig(fname=f'bar_plot_{probe}.png', dpi=300, figsize=[16, 9])
 
 
-def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_label=None,
+def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, nparams=7, param_names_label=None,
              second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=None,
              include_fom=False, figsize=None, grey_bars=False, alpha=1):
     """
@@ -124,8 +124,9 @@ def bar_plot(data, title, label_list, bar_width=0.18, nparams=7, param_names_lab
 
     if param_names_label is None:
         param_names_label = mpl_cfg.general_dict['cosmo_labels_TeX']
+        fom_div_10_str = '/10' if divide_fom_by_10_plt else ''
         if include_fom:
-            param_names_label = mpl_cfg.general_dict['cosmo_labels_TeX'] + ['FoM']
+            param_names_label = mpl_cfg.general_dict['cosmo_labels_TeX'] + [f'FoM{fom_div_10_str}']
 
     if ylabel is None:
         ylabel = ylabel_sigma_relative_fid

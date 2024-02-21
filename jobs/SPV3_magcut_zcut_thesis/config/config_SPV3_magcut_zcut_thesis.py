@@ -13,7 +13,7 @@ area_deg2_dr1 = 2822
 # * 'SSC_code'
 # * 'load_precomputed_cov': False,
 # * 'save_cov': True,
-# * fm_final_folder
+# * fm_last_folder
 # * filename_suffix
 # * which_sigma2_B
 # * ell_max_GC: 5000,
@@ -65,7 +65,7 @@ if BNT_transform:
 general_cfg = {
     'fid_yaml_filename': ROOT + '/Spaceborne/common_cfg/SPV3_fiducial_params_magcut245_zbins{zbins:02d}.yml',
     'ell_min': 10,
-    'ell_max_WL': 5000,
+    'ell_max_WL': 3000,
     'ell_max_GC': 3000,
     'ell_max_3x2pt': 3000,
     'zbins': 13,
@@ -125,7 +125,6 @@ general_cfg = {
     'zcut_lens': 2,
     'flagship_version': flagship_version,
 
-    'bias_model': 'SPV3_bias',
     'has_rsd': False,
     'has_magnification_bias': True,
 }
@@ -204,7 +203,7 @@ covariance_cfg = {
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
 
-    'SSC_code': 'PyCCL',  # ! 'PySSC' or PyCCL' or 'exactSSC'
+    'SSC_code': 'OneCovariance',  # ! 'PySSC' or PyCCL' or 'exactSSC' or 'OneCovariance'
     'check_if_recently_created': False,
 
     'PyCCL_cfg': {
@@ -212,7 +211,6 @@ covariance_cfg = {
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
         'which_ng_cov': ('SSC',),
 
-        'get_3x2pt_cov_in_4D': False,  # TODO deprecate this, I'm working with 4D blocks
         'load_precomputed_cov': False,
         'save_cov': True,
 
@@ -235,12 +233,18 @@ covariance_cfg = {
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
-        'z_grid_tkka_min': 0.001,
-        'z_grid_tkka_max': 3,
+        # 'z_grid_tkka_min': 0.001,
+        # 'z_grid_tkka_max': 3,
+        # 'z_grid_tkka_steps': 200,
+        # 'k_grid_tkka_min': 1e-5,
+        # 'k_grid_tkka_max': 1e2,
+        # 'k_grid_tkka_steps': 512,
+        'z_grid_tkka_min': 0.,
+        'z_grid_tkka_max': 6,
         'z_grid_tkka_steps': 200,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
-        'k_grid_tkka_steps': 512,
+        'k_grid_tkka_steps': 1300,
         
         'z_grid_min': 0.001,
         'z_grid_max': 3,
@@ -270,6 +274,16 @@ covariance_cfg = {
         'log10_k_min_sigma2': -4,
         'log10_k_max_sigma2': 1,
         'k_steps_sigma2': 20_000,
+    },
+    
+    'OneCovariance_cfg': {
+        'which_ng_cov': ('SSC', 'cNG'),
+        'load_precomputed_cov': True,  # this must be True for OneCovariance
+        'use_OneCovariance_Gaussian': False,
+        
+        'cov_path': f'{DATA_ROOT}/output/Flagship_2/covmat/OneCovariance',
+        'cov_filename': 'cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
+                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',
     }
 
 }

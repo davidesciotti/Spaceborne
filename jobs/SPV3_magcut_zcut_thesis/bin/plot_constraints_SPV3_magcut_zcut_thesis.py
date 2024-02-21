@@ -43,14 +43,15 @@ cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
 
 # ! options
-ng_cov_code = 'exactSSC'  # exactSSC or PyCCL
-filename_suffix = '_sigma2_None_densegrids'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
-filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
+ng_cov_code = 'PyCCL'  # exactSSC or PyCCL
+filename_suffix = '_sigma2_sb_rightgrids_highres'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
+# filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 fm_last_folder = '/jan_2024'  # /standard or /jan_2024
 fix_dz_plt = True
 fix_shear_bias_plt = False
 fix_gal_bias_plt = False
 fix_mag_bias_plt = False
+check_if_just_created = True
 
 specs_str = 'idIA2_idB3_idM3_idR1'
 fm_root_path = ('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/'
@@ -131,8 +132,18 @@ assert not use_Wadd, 'import of Wadd not implemented yet'
 assert fix_dz_plt, 'without fixing dz you\'ll get very large errors, there is no prior at the moment!!'
 
 
-fm_pickle_path_a = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_mask.pickle'
-fm_pickle_path_b = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_None_densegrids.pickle'
+# quinck check between two given FMs
+fm_pickle_path_a = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_sb_rightgrids_highres.pickle'
+fm_pickle_path_b = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_mask_rightgrids_lowres.pickle'
+
+fm_dict_a = mm.load_pickle(fm_pickle_path_a)
+fm_dict_b = mm.load_pickle(fm_pickle_path_b)
+
+# check that the keys match
+assert fm_dict_a.keys() == fm_dict_b.keys()
+
+# check if the dictionaries contained in the key 'fiducial_values_dict' match
+assert fm_dict_a['fiducial_values_dict'] == fm_dict_b['fiducial_values_dict'], 'fiducial values do not match!'
 
 # mm.compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b)
 
@@ -179,6 +190,10 @@ for probe in probes:
                                                         fm_path += f'/{which_cuts}/ell_{center_or_min}'
                                                         fm_pickle_name = fm_pickle_name.replace(f'.pickle',
                                                                                                 f'_kmaxhoverMpc{kmax_h_over_Mpc:.03f}.pickle')
+
+                                                    if check_if_just_created:
+                                                        mm.is_file_created_in_last_x_hours(
+                                                            f'{fm_path}/{fm_pickle_name}', 0.1)
 
                                                     fm_dict = mm.load_pickle(f'{fm_path}/{fm_pickle_name}')
 

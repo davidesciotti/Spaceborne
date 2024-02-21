@@ -46,7 +46,7 @@ c = 299792.458  # km/s
 
 # gamma = ISTF.extensions['gamma']
 
-z_edges = ISTF.photoz_bins['all_zbin_edges']
+# z_edges = ISTF.photoz_bins['all_zbin_edges']
 # z_median = ISTF.photoz_bins['z_median']
 # zbins = ISTF.photoz_bins['zbins']
 # z_minus = ISTF.photoz_bins['z_minus']
@@ -54,7 +54,7 @@ z_edges = ISTF.photoz_bins['all_zbin_edges']
 
 # z_0 = z_median / np.sqrt(2)
 # z_min = z_edges[0]
-# z_max = cfg.z_max
+# # z_max = cfg.z_max
 # sqrt2 = np.sqrt(2)
 
 # f_out = ISTF.photoz_pdf['f_out']
@@ -85,6 +85,7 @@ def pph(z_p, z):
 @njit
 def n_of_z(z):
     return n_gal * (z / z_0) ** 2 * np.exp(-(z / z_0) ** (3 / 2))
+    # return  (z / z_0) ** 2 * np.exp(-(z / z_0) ** (3 / 2))
 
 
 ################################## niz_unnorm_quad(z) ##############################################
@@ -230,7 +231,7 @@ def niz_normalized(z, zbin_idx):
         raise TypeError('z must be a float, an int or a numpy array')
 
 
-def niz_unnormalized_analytical(z, zbin_idx, z_edges=z_edges):
+def niz_unnormalized_analytical(z, zbin_idx, z_edges):
     """the one used by Stefano in the PyCCL notebook
     by far the fastest, 0.009592 s"""
 
@@ -502,9 +503,9 @@ def build_galaxy_bias_2d_arr(gal_bias_vs_zmean, zmeans, z_edges, zbins, z_grid, 
             plt.plot(z_grid, gal_bias_2d_arr[:, zbin_idx], label=f'zbin {zbin_idx}')
             plt.scatter(zmeans[zbin_idx], gal_bias_vs_zmean[zbin_idx], marker='o', color='black')
         plt.legend()
-        plt.show()
         plt.xlabel('$z$')
         plt.ylabel('$b_i(z)$')
+        plt.show()
 
     assert gal_bias_2d_arr.shape == (len(z_grid), zbins), 'gal_bias_2d_arr must have shape (len(z_grid), zbins)'
 
@@ -699,15 +700,15 @@ def wf_ccl(z_grid, probe, which_wf, flat_fid_pars_dict, cosmo_ccl, dndz_tuple, i
             assert mag_bias_tuple[1].shape == (
                 len(z_grid), zbins), 'mag_bias_tuple[1] must have shape (len(z_grid), zbins)'
 
-            def mag_bias(zbin_idx): return (mag_bias_tuple[0], mag_bias_tuple[1][:, zbin_idx])
+            def mag_bias_func(zbin_idx): return (mag_bias_tuple[0], mag_bias_tuple[1][:, zbin_idx])
         else:
-            mag_bias = None
+            mag_bias = None            
 
         wf_galaxy_obj = [ccl.tracers.NumberCountsTracer(cosmo_ccl,
                                                         has_rsd=has_rsd,
                                                         dndz=(dndz_tuple[0], dndz_tuple[1][:, zbin_idx]),
                                                         bias=(gal_bias_tuple[0], gal_bias_tuple[1][:, zbin_idx]),
-                                                        mag_bias=mag_bias(
+                                                        mag_bias=mag_bias_func(
                                                             zbin_idx) if mag_bias_tuple is not None else mag_bias,
                                                         n_samples=n_samples)
                          for zbin_idx in range(zbins)]

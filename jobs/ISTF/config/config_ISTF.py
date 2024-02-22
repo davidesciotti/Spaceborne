@@ -17,9 +17,10 @@ import bin.check_specs as utils
 # * jan_2024 folder
 # * mpl.use('Agg') in the main
 
+fm_and_cov_suffix = '_cNG_CSSTres'
 
-with open(
-        '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
+
+with open(f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
     fid_pars_dict = yaml.load(f, Loader=yaml.FullLoader)
 fid_pars_dict_for_fm = fid_pars_dict['FM_ordered_params']  # necessary for FM handling
 
@@ -120,13 +121,10 @@ if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
     general_cfg['use_WA'] = False
 
 covariance_cfg = {
-    # 'ind_folder': f'{ROOT}/common_data/ind_files' + '/{triu_tril:s}_{row_col_major:s}',
-    # 'ind_filename': 'indices_{triu_tril:s}_{row_col_major:s}_zbins{zbins:02d}.dat',
     'triu_tril': 'triu',
     'row_col_major': 'row-major',
     'block_index': 'ell',
-    'GL_or_LG': 'GL',
-    'probe_ordering': None,  # this is set in the main
+    'GL_or_LG': GL_or_LG,
 
     'which_probe_response': 'variable',
     'response_const_value': None,  # it used to be 4 for a constant probe response, which this is wrong
@@ -171,24 +169,24 @@ covariance_cfg = {
     },
 
     'PyCCL_cfg': {
-        'probe': '3x2pt',  # TODO deprecate this? probably still useful if I want to compute instead of loading...
-        'which_ng_cov': ('SSC',),
+        'probe': 'GG',
+        'which_ng_cov': ('cNG',),
 
-        'load_precomputed_cov': True,
+        'load_precomputed_cov': False,
         'save_cov': True,
 
         'save_trispectrum': False,
-        # 'cov_path': '/home/davide/Documenti/Lavoro/Programmi/PyCCL_SSC/output/covmat/ISTF/jan_2024', # old path
+        # 'cov_path':  ROOT + '/PyCCL_SSC/output/covmat/ISTF/jan_2024', # old path
         'cov_path': f'{DATA_ROOT}/output/cl14may/covmat/PyCCL/jan_2024',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
-                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_sigma2_mask_superdense_grid_kz.npz',
+                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}' + fm_and_cov_suffix + '.npz',
                         
         'which_sigma2_B': 'mask',  # 'mask' or 'spaceborne' or None
         # if passing a mask power spectrum
         'area_deg2_mask': 15000,
         'nside_mask': 2048,
-        'ell_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy',
-        'cl_mask_filename': '/home/davide/Documenti/Lavoro/Programmi/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy',
+        'ell_mask_filename': ROOT + '/common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy',
+        'cl_mask_filename': ROOT + '/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy',
         # if passing sigmaB from file
         'z_grid_sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/z_grid_sigma2_B_ccl_ISTF.npy',
         'sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/sigma2_B_ccl_ISTF.npy',
@@ -200,10 +198,10 @@ covariance_cfg = {
         # z_grid min and max should probably coincide. play around with steps to find the minimum number        
         'z_grid_tkka_min': 0.,
         'z_grid_tkka_max': 6,
-        'z_grid_tkka_steps': 200,
+        'z_grid_tkka_steps': 100,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
-        'k_grid_tkka_steps': 1300,
+        'k_grid_tkka_steps': 512,
         
         'z_grid_min': 0.001,
         'z_grid_max': 3,
@@ -216,7 +214,7 @@ covariance_cfg = {
         'which_ng_cov': ('SSC',),
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
         'load_precomputed_cov': True,
-        'cov_path': '/home/davide/Documenti/Lavoro/Programmi/exact_SSC/output/ISTF/jan_2024/SSC_matrix',
+        'cov_path': ROOT + '/exact_SSC/output/ISTF/jan_2024/SSC_matrix',
         'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
                         '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'
                         '_convention{cl_integral_convention:s}.npy',
@@ -303,7 +301,7 @@ FM_cfg = {
 
     'fm_folder': str(DATA_ROOT) + f'/output/{which_input_files}/' + 'FM/jan_2024/{SSC_code:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
-    'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}_sigma2_mask_superdense_grid_kz',
+    'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}' + fm_and_cov_suffix,
 
     'test_against_benchmarks': True,
     'FM_file_format': 'txt',

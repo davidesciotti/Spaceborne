@@ -89,7 +89,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                             'should be fixed now')
 
     if use_hod_for_gg:
-        # This is the correct way to initialize the trispectrum, but the code does not run.
+        # This is the correct way to initialize the trispectrum
         # Asked David Alonso about this.
         halo_profile_dict = {
             'L': halo_profile_nfw,

@@ -43,8 +43,8 @@ cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
 
 # ! options
-ng_cov_code = 'OneCovariance'  # exactSSC or PyCCL or OneCovariance
-# filename_suffix = '_sigma2_sb_rightgrids_highres'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
+ng_cov_code = 'exactSSC'  # exactSSC or PyCCL or OneCovariance
+# filename_suffix = '_sigma2_mask_rightgrids_highres'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 fm_last_folder = '/jan_2024'  # /standard or /jan_2024
 fix_dz_plt = True
@@ -259,12 +259,12 @@ for probe in probes:
                                                 cosmo_param_names = list(fiducials_dict.keys())[:num_params_tokeep]
 
                                                 # ! add prior on shear and/or gal bias
-                                                if shear_bias_prior != None and probe in ['WL', '3x2pt']:
+                                                if shear_bias_prior != None and probe in ['WL', 'XC', '3x2pt']:
                                                     shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
                                                     fm = mm.add_prior_to_fm(fm, fiducials_dict, shear_bias_param_names,
                                                                             shear_bias_prior_values)
 
-                                                if gal_bias_perc_prior != None and probe in ['GC', '3x2pt']:
+                                                if gal_bias_perc_prior != None and probe in ['GC', 'XC', '3x2pt']:
 
                                                     # go from sigma_b / b_fid to sigma_b
                                                     gal_bias_idxs = [param_names.index(gal_bias_param_name)
@@ -339,7 +339,7 @@ for probe in probes:
 include_fom = False
 divide_fom_by_10_plt = True
 
-for probe_toplot in ('WL', 'GC', '3x2pt'):
+for probe_toplot in probes:
 
     num_params_tokeep_here = num_params_tokeep
 

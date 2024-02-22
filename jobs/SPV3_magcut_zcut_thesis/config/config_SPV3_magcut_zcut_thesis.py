@@ -15,7 +15,7 @@ area_deg2_dr1 = 2822
 # * 'save_cov': True,
 # * use_CLOE_cls: False, or True, remember I don't have the derivatives
 # * fm_last_folder
-# * filename_suffix
+# * fm_and_cov_suffix
 # * which_sigma2_B
 # * ell_max_GC: 5000,
 # * ell_max_3x2pt: 5000,
@@ -27,7 +27,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-filename_suffix = '_sigma2_mask_rightgrids_highres'
+fm_and_cov_suffix = '_cNG_CSSTres'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -128,7 +128,7 @@ general_cfg = {
 
     'has_rsd': False,
     'has_magnification_bias': True,
-    
+
     'CLOE_pk_filename': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputPS/HMCodeBar/InFiles/Flat/h/PddVsZedLogK-h_6.700e-01.dat'
 }
 
@@ -185,9 +185,11 @@ covariance_cfg = {
     'cov_file_format': 'npz',  # or npy
     'save_cov_dat': False,  # this is the format used by Vincenzo
 
+    # in cov_dict
     'save_cov_2D': True,
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt
+    'save_cov_GO': False,
     'save_cov_GS': False,
     'save_cov_SSC': False,
     'save_2DCLOE': False,  # outermost loop is on the probes
@@ -201,7 +203,7 @@ covariance_cfg = {
     'cov_folder': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform}' + '/ell_cuts_{cov_ell_cuts:s}',
     'cov_filename': 'covmat_{which_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_'
                     'ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_'
-                    'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D' + filename_suffix,
+                    'idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D' + fm_and_cov_suffix,
     'cov_vinc_folder': f'{SPV3_folder}/OutputFiles/CovMats/GaussOnly/Full',
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
@@ -210,7 +212,7 @@ covariance_cfg = {
     'check_if_recently_created': False,
 
     'PyCCL_cfg': {
-        'probe': '3x2pt',  # TODO deprecate this?
+        'probe': '3x2pt',
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
         'which_ng_cov': ('SSC', ),
 
@@ -219,7 +221,7 @@ covariance_cfg = {
 
         'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL' + fm_last_folder,
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
-                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}' + filename_suffix + '.npz',
+                        'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}' + fm_and_cov_suffix + '.npz',
 
         'save_trispectrum': False,
         'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
@@ -231,7 +233,7 @@ covariance_cfg = {
         'cl_mask_filename': ROOT + '/common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy',
         # 'z_grid_sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_ISTF.npy',
         # 'sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/sigma2_zsteps3000_ISTF.npy',
-        # 'sigma2_suffix': 'zsteps3000_ISTF',  # this is the filename suffix for the sigma2_B file saved directly from cov_SSC in CCL
+        'sigma2_suffix': 'mask',  # this is the filename suffix for the sigma2_B file saved directly from cov_SSC in CCL
 
         'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
 
@@ -247,8 +249,8 @@ covariance_cfg = {
         'z_grid_tkka_steps': 100,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
-        'k_grid_tkka_steps': 1200,
-        
+        'k_grid_tkka_steps': 512,
+
         'z_grid_min': 0.001,
         'z_grid_max': 3,
         'z_grid_steps': 2000,
@@ -278,12 +280,12 @@ covariance_cfg = {
         'log10_k_max_sigma2': 1,
         'k_steps_sigma2': 20_000,
     },
-    
+
     'OneCovariance_cfg': {
         'which_ng_cov': ('SSC', ),
         'load_precomputed_cov': True,  # this must be True for OneCovariance
         'use_OneCovariance_Gaussian': False,
-        
+
         'cov_path': f'{DATA_ROOT}/output/Flagship_2/covmat/OneCovariance',
         'cov_filename': 'cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',

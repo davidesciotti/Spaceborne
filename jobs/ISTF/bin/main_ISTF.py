@@ -49,7 +49,7 @@ FM_cfg = cfg.FM_cfg
 
 
 # for covariance_cfg['SSC_code'] in ['PySSC', 'exactSSC', 'PyCCL', 'OneCovariance']:
-for covariance_cfg['SSC_code'] in ['OneCovariance',]:
+for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     # check_specs.consistency_checks(general_cfg, covariance_cfg)
     # for covariance_cfg['SSC_code'] in ['PyCCL', 'exactSSC']:
     #     for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['probe'] in ['LL', 'GG', '3x2pt']:

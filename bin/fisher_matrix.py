@@ -174,6 +174,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     cov_WL_GO_2D_inv = np.linalg.inv(cov_dict['cov_WL_GO_2D'])
     cov_GC_GO_2D_inv = np.linalg.inv(cov_dict['cov_GC_GO_2D'])
     cov_WA_GO_2D_inv = np.linalg.inv(cov_dict['cov_WA_GO_2D'])
+    cov_XC_GO_2D_inv = np.linalg.inv(cov_dict['cov_XC_GO_2D'])
     cov_3x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GO_2D'])
     print(f'GO covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
 
@@ -182,12 +183,14 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         cov_WL_GS_2D_inv = np.linalg.inv(cov_dict['cov_WL_GS_2D'])
         cov_GC_GS_2D_inv = np.linalg.inv(cov_dict['cov_GC_GS_2D'])
         cov_WA_GS_2D_inv = np.linalg.inv(cov_dict['cov_WA_GS_2D'])
+        cov_XC_GS_2D_inv = np.linalg.inv(cov_dict['cov_XC_GS_2D'])
         cov_3x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GS_2D'])
         print(f'GS covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
     else:
         cov_WL_GS_2D_inv = np.eye(cov_dict['cov_WL_GO_2D'].shape[0])
         cov_GC_GS_2D_inv = np.eye(cov_dict['cov_GC_GO_2D'].shape[0])
         cov_WA_GS_2D_inv = np.eye(cov_dict['cov_WA_GO_2D'].shape[0])
+        cov_XC_GS_2D_inv = np.eye(cov_dict['cov_XC_GO_2D'].shape[0])
         cov_3x2pt_GS_2D_inv = np.eye(cov_dict['cov_3x2pt_GO_2D'].shape[0])
         warnings.warn('Not computing GS constraints, setting the inverse covmats to identity')
 
@@ -196,7 +199,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_GG_4D = deriv_dict['dC_GG_4D']
     dC_WA_4D = deriv_dict['dC_WA_4D']
     dC_3x2pt_6D = deriv_dict['dC_3x2pt_6D']
-
+    
     assert dC_LL_4D.shape == (nbl_WL, zbins, zbins, nparams_tot), f'dC_LL_4D has incorrect shape: {dC_LL_4D.shape}'
     assert dC_GG_4D.shape == (nbl_GC, zbins, zbins, nparams_tot), f'dC_GG_4D has incorrect shape: {dC_GG_4D.shape}'
     assert dC_WA_4D.shape == (nbl_WA, zbins, zbins, nparams_tot), f'dC_WA_4D has incorrect shape: {dC_WA_4D.shape}'
@@ -215,57 +218,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
             dC_3x2pt_6D[:, :, :, :, :, param_idx] = cl_utils.cl_BNT_transform_3x2pt(
                 dC_3x2pt_6D[:, :, :, :, :, param_idx], BNT_matrix)
 
-    # # ! remove from here
-    # for ell in (0, 1, 2, 5, 10, 15, 20, 25):
-
-    #     if general_cfg['BNT_transform']:
-    #         np.savetxt(
-    #             f'/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-WiBNT-davide-ell{ell:02d}.dat', dC_LL_4D[ell, :, :, 0], fmt='%.7e')
-    #     else:
-    #         np.savetxt(
-    #             f'/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-NoBNT-davide-ell{ell:02d}.dat', dC_LL_4D[ell, :, :, 0], fmt='%.7e')
-
-    # dDVdOm_3x2pt_NoBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-3x2pt-NoBNT.dat')
-    # dDVdOm_3x2pt_WiBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-3x2pt-WiBNT.dat')
-    # dDVdOm_WLO_NoBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-NoBNT.dat')
-    # dDVdOm_WLO_WiBNT_1d = np.genfromtxt('/home/davide/Scaricati/CheckBNT/dDVdOm-WLO-WiBNT.dat')
-
-    # dDVdOm_3x2pt_NoBNT_5d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_3x2pt_NoBNT_1d, '3x2pt', nbl_3x2pt, zbins)
-    # dDVdOm_3x2pt_WiBNT_5d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_3x2pt_WiBNT_1d, '3x2pt', nbl_3x2pt, zbins)
-    # dDVdOm_WLO_NoBNT_3d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_WLO_NoBNT_1d, 'WL', nbl_WL, zbins)
-    # dDVdOm_WLO_WiBNT_3d = cl_utils.cl_SPV3_1D_to_3D(dDVdOm_WLO_WiBNT_1d, 'WL', nbl_WL, zbins)
-
-    # dDVdOm_3x2pt_flat_dav = dC_3x2pt_6D[:, :, :, :, :, 0].flatten()
-    # dDVdOm_WLO_flat_dav = dC_LL_4D[:, :, :, 0].flatten()
-
-    # if general_cfg:
-    #     dDVdOm_3x2pt_flat_vinc = dDVdOm_3x2pt_WiBNT_5d.flatten()
-    #     dDVdOm_WLO_flat_vinc = dDVdOm_WLO_WiBNT_3d.flatten()
-    # else:
-    #     dDVdOm_3x2pt_flat_vinc = dDVdOm_3x2pt_NoBNT_5d.flatten()
-    #     dDVdOm_WLO_flat_vinc = dDVdOm_WLO_NoBNT_3d.flatten()
-
-    # print('generating derivatives plot')
-    # plt.figure()
-    # plt.plot(dDVdOm_3x2pt_flat_dav, label='dDVdOm_3x2pt_flat_dav', ls='-', c='tab:blue', alpha=0.5)
-    # plt.plot(dDVdOm_3x2pt_flat_vinc, label='dDVdOm_3x2pt_flat_vinc', ls='--', c='tab:blue', alpha=0.5)
-    # plt.plot(dDVdOm_WLO_flat_dav, label='dDVdOm_WLO_flat_dav', ls='-', c='tab:orange', alpha=0.5)
-    # plt.plot(dDVdOm_WLO_flat_vinc, label='dDVdOm_WLO_flat_vinc', ls='--', c='tab:orange', alpha=0.5)
-    # plt.legend()
-    # plt.show()
-
-    # diff_3x2pt = mm.percent_diff(dDVdOm_3x2pt_flat_dav, dDVdOm_3x2pt_flat_vinc)
-    # diff_WLO = mm.percent_diff(dDVdOm_WLO_flat_dav, dDVdOm_WLO_flat_vinc)
-
-    # plt.figure()
-    # plt.plot(diff_3x2pt, label='diff_3x2pt', ls='-', c='tab:blue', alpha=0.5)
-    # plt.plot(diff_WLO, label='diff_WLO', ls='-', c='tab:orange', alpha=0.5)
-    # plt.show()
-    # assert False, 'BNT checks'
-
-    # # ! remove until here
-
-
     # ! ell-cut the derivatives in 3d
     # dC_LL_4D_v1, dC_WA_4D_v1, dC_GG_4D_v1, dC_3x2pt_6D_v1 = ell_cuts_derivatives(FM_cfg, ell_dict,
     #                                                                              dC_LL_4D, dC_WA_4D,
@@ -279,7 +231,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         probe_A, probe_B = 0, 1
     else:
         raise ValueError('GL_or_LG must be "GL" or "LG"')
-
+    
     dC_LLfor3x2pt_4D = dC_3x2pt_6D[0, 0, :, :, :, :]
     dC_XCfor3x2pt_4D = dC_3x2pt_6D[probe_A, probe_B, :, :, :, :]
     dC_GGfor3x2pt_4D = dC_3x2pt_6D[1, 1, :, :, :, :]
@@ -308,6 +260,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_LL_2D = np.reshape(dC_LL_3D, (nbl_WL * zpairs_auto, nparams_tot), order=which_flattening)
     dC_GG_2D = np.reshape(dC_GG_3D, (nbl_GC * zpairs_auto, nparams_tot), order=which_flattening)
     dC_WA_2D = np.reshape(dC_WA_3D, (nbl_WA * zpairs_auto, nparams_tot), order=which_flattening)
+    dC_XC_2D = np.reshape(dC_XCfor3x2pt_3D, (nbl_3x2pt * zpairs_cross, nparams_tot), order=which_flattening)
     dC_3x2pt_2D = np.reshape(dC_3x2pt_3D, (nbl_3x2pt * zpairs_3x2pt, nparams_tot), order=which_flattening)
 
     # ! cut the *flattened* derivatives vector
@@ -316,6 +269,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         dC_LL_2D = np.delete(dC_LL_2D, ell_dict['idxs_to_delete_dict']['LL'], axis=0)
         dC_GG_2D = np.delete(dC_GG_2D, ell_dict['idxs_to_delete_dict']['GG'], axis=0)
         dC_WA_2D = np.delete(dC_WA_2D, ell_dict['idxs_to_delete_dict']['WA'], axis=0)
+        dC_XC_2D = np.delete(dC_XC_2D, ell_dict['idxs_to_delete_dict'][GL_or_LG], axis=0)
         dC_3x2pt_2D = np.delete(dC_3x2pt_2D, ell_dict['idxs_to_delete_dict']['3x2pt'], axis=0)
 
     # if the ell cuts removed all WA bins (which is in fact the case)
@@ -328,6 +282,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     FM_WL_GO = np.einsum('ia,ik,kb->ab', dC_LL_2D, cov_WL_GO_2D_inv, dC_LL_2D, optimize='optimal')
     FM_GC_GO = np.einsum('ia,ik,kb->ab', dC_GG_2D, cov_GC_GO_2D_inv, dC_GG_2D, optimize='optimal')
     FM_WA_GO = np.einsum('ia,ik,kb->ab', dC_WA_2D, cov_WA_GO_2D_inv, dC_WA_2D, optimize='optimal')
+    FM_XC_GO = np.einsum('ia,ik,kb->ab', dC_XC_2D, cov_XC_GO_2D_inv, dC_XC_2D, optimize='optimal')
     FM_3x2pt_GO = np.einsum('ia,ik,kb->ab', dC_3x2pt_2D, cov_3x2pt_GO_2D_inv, dC_3x2pt_2D, optimize='optimal')
     print(f'GO FM done in {(time.perf_counter() - start):.2f} s')
 
@@ -335,6 +290,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     FM_WL_GS = np.einsum('ia,ik,kb->ab', dC_LL_2D, cov_WL_GS_2D_inv, dC_LL_2D, optimize='optimal')
     FM_GC_GS = np.einsum('ia,ik,kb->ab', dC_GG_2D, cov_GC_GS_2D_inv, dC_GG_2D, optimize='optimal')
     FM_WA_GS = np.einsum('ia,ik,kb->ab', dC_WA_2D, cov_WA_GS_2D_inv, dC_WA_2D, optimize='optimal')
+    FM_XC_GS = np.einsum('ia,ik,kb->ab', dC_XC_2D, cov_XC_GS_2D_inv, dC_XC_2D, optimize='optimal')
     FM_3x2pt_GS = np.einsum('ia,ik,kb->ab', dC_3x2pt_2D, cov_3x2pt_GS_2D_inv, dC_3x2pt_2D, optimize='optimal')
     print(f'GS FM done in {(time.perf_counter() - start):.2f} s')
 
@@ -344,9 +300,9 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         FM_3x2pt_GS += FM_WA_GS
 
     # store the matrices in the dictionary
-    probe_names = ['WL', 'GC', 'WA', '3x2pt']
-    FMs_GO = [FM_WL_GO, FM_GC_GO, FM_WA_GO, FM_3x2pt_GO]
-    FMs_GS = [FM_WL_GS, FM_GC_GS, FM_WA_GS, FM_3x2pt_GS]
+    probe_names = ['WL', 'GC', 'WA', 'XC', '3x2pt']
+    FMs_GO = [FM_WL_GO, FM_GC_GO, FM_WA_GO, FM_XC_GO, FM_3x2pt_GO]
+    FMs_GS = [FM_WL_GS, FM_GC_GS, FM_WA_GS, FM_XC_GS, FM_3x2pt_GS]
 
     which_ng_cov_suffix = ''.join(covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'])
 

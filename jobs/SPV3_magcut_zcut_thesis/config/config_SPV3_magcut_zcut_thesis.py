@@ -27,7 +27,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-filename_suffix = ''
+filename_suffix = '_sigma2_mask_rightgrids_highres'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -66,9 +66,9 @@ if BNT_transform:
 general_cfg = {
     'fid_yaml_filename': ROOT + '/Spaceborne/common_cfg/SPV3_fiducial_params_magcut245_zbins{zbins:02d}.yml',
     'ell_min': 10,
-    'ell_max_WL': 5000,
-    'ell_max_GC': 5000,
-    'ell_max_3x2pt': 5000,
+    'ell_max_WL': 3000,
+    'ell_max_GC': 3000,
+    'ell_max_3x2pt': 3000,
     'zbins': 13,
     'zbins_list': None,
     'EP_or_ED': 'EP',
@@ -212,9 +212,9 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',  # TODO deprecate this?
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
-        'which_ng_cov': ('cNG', ),
+        'which_ng_cov': ('SSC', ),
 
-        'load_precomputed_cov': False,
+        'load_precomputed_cov': True,
         'save_cov': True,
 
         'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL' + fm_last_folder,
@@ -355,7 +355,7 @@ FM_cfg = {
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,
 
-    'test_against_benchmarks': True,
+    'test_against_benchmarks': False,
 
     'test_against_vincenzo': False,
     'fm_vinc_folder': SPV3_folder + '/OutputFiles/FishMat/{go_gs_vinc:s}/{flat_or_nonflat:s}/{which_pk:s}',

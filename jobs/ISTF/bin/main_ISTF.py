@@ -49,7 +49,7 @@ FM_cfg = cfg.FM_cfg
 
 
 # for covariance_cfg['SSC_code'] in ['PySSC', 'exactSSC', 'PyCCL', 'OneCovariance']:
-for covariance_cfg['SSC_code'] in ['OneCovariance',]:
+for covariance_cfg['SSC_code'] in ['PyCCL',]:
     # check_specs.consistency_checks(general_cfg, covariance_cfg)
     # for covariance_cfg['SSC_code'] in ['PyCCL', 'exactSSC']:
     #     for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['probe'] in ['LL', 'GG', '3x2pt']:
@@ -497,7 +497,8 @@ for covariance_cfg['SSC_code'] in ['OneCovariance',]:
     # ! save and test
     fm_folder = FM_cfg["fm_folder"].format(SSC_code=ssc_code)
 
-    for probe in ('WL', 'GC', '3x2pt'):
+    for probe in ('WL', 'GC', 'XC', '3x2pt'):
+        
         lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_3x2pt']
         filename_fm_g = f'{fm_folder}/FM_{probe}_G_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'
         
@@ -524,7 +525,7 @@ divide_fom_by_10 = True
 
 FM_dict_loaded = {}
 for ssc_code_here in ['PySSC', 'PyCCL', 'exactSSC', 'OneCovariance']:
-    for probe in ['WL', 'GC', '3x2pt']:
+    for probe in ['WL', 'GC', 'XC', '3x2pt']:
 
         fm_folder = FM_cfg["fm_folder"].format(SSC_code=ssc_code_here)
         if 'jan_2024' in fm_folder:
@@ -561,7 +562,7 @@ if covariance_cfg['OneCovariance_cfg']['use_OneCovariance_Gaussian'] is False:
     ssc_code_here_list.append('OneCovariance')
 
 for ssc_code_here in ssc_code_here_list:
-    for probe in ['WL', 'GC', '3x2pt']:
+    for probe in ['WL', 'GC', 'XC', '3x2pt']:
         np.testing.assert_allclose(FM_dict_loaded[f'FM_{ssc_code_here}_{probe}_G'], 
                                    FM_dict_loaded[f'FM_PySSC_{probe}_G'],
                                    rtol=1e-5, atol=0,
@@ -588,7 +589,7 @@ for key in list(FM_dict_loaded.keys()):
 
 
 # compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
-for probe in ['WL', 'GC', '3x2pt']:
+for probe in ['WL', 'GC', 'XC', '3x2pt']:
 
     for ssc_code in ['PySSC', 'PyCCL', 'exactSSC', 'OneCovariance']:
         key_a = f'FM_{ssc_code}_{probe}_G'
@@ -598,29 +599,30 @@ for probe in ['WL', 'GC', '3x2pt']:
         fom_dict[f'perc_diff_{ssc_code}_{probe}_GSSC'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
         
     # do the same for cNG
-    for ssc_code in ['OneCovariance',]:
-        key_a = f'FM_{ssc_code}_{probe}_G'
-        key_b = f'FM_{ssc_code}_{probe}_GSSCcNG'
+    # for ssc_code in ['OneCovariance',]:
+    #     key_a = f'FM_{ssc_code}_{probe}_G'
+    #     key_b = f'FM_{ssc_code}_{probe}_GSSCcNG'
         
-        uncert_dict[f'perc_diff_{ssc_code}_{probe}_GSSCcNG'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
-        fom_dict[f'perc_diff_{ssc_code}_{probe}_GSSCcNG'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
+    #     uncert_dict[f'perc_diff_{ssc_code}_{probe}_GSSCcNG'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
+    #     fom_dict[f'perc_diff_{ssc_code}_{probe}_GSSCcNG'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
         
-for probe in ['WL', 'GC', '3x2pt']:
+for probe in ['WL', 'GC', 'XC', '3x2pt']:
     nparams_toplot = 7
-    divide_fom_by_10_plt = False if probe == 'WL' else divide_fom_by_10
+    divide_fom_by_10_plt = False if probe in ('WL' 'XC') else divide_fom_by_10
 
     cases_to_plot = [f'FM_PySSC_{probe}_G', 
                     #  f'FM_OneCovariance_{probe}_G', 
-                    #  f'FM_PySSC_{probe}_GSSC', 
-                    #  f'FM_PyCCL_{probe}_GSSC', 
-                    #  f'FM_exactSSC_{probe}_GSSC', 
-                     f'FM_OneCovariance_{probe}_GSSC',
-                     f'FM_OneCovariance_{probe}_GSSCcNG',
                     
-                    #  f'perc_diff_PyCCL_{probe}_GSSC', 
-                    # f'perc_diff_exactSSC_{probe}_GSSC', 
-                    f'perc_diff_OneCovariance_{probe}_GSSC', 
-                    f'perc_diff_OneCovariance_{probe}_GSSCcNG'
+                    #  f'FM_PySSC_{probe}_GSSC', 
+                     f'FM_PyCCL_{probe}_GSSC', 
+                     f'FM_exactSSC_{probe}_GSSC', 
+                    #  f'FM_OneCovariance_{probe}_GSSC',
+                    #  f'FM_OneCovariance_{probe}_GSSCcNG',
+                    
+                     f'perc_diff_PyCCL_{probe}_GSSC', 
+                    f'perc_diff_exactSSC_{probe}_GSSC', 
+                    # f'perc_diff_OneCovariance_{probe}_GSSC', 
+                    # f'perc_diff_OneCovariance_{probe}_GSSCcNG'
     ]
 
     df = pd.DataFrame(uncert_dict)  # you should switch to using this...
@@ -668,7 +670,7 @@ for probe in ['WL', 'GC', '3x2pt']:
                         param_names_label=None, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
     # plt.yscale('log')
     
-    plt.savefig(f'{fm_folder}/{title}.png', dpi=400)
+    # plt.savefig(f'{fm_folder}/{title}.png', dpi=400)
 
 
 # silent check against IST:F (which does not exist for GC alone):

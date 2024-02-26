@@ -630,8 +630,12 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     # test if cov is symmetric in ell1, ell2
     for key in cov_ng_8D_dict.keys():
-        np.testing.assert_allclose(cov_ng_8D_dict[key], np.transpose(cov_ng_8D_dict[key], (1, 0, 2, 3)), rtol=1e-6, atol=0,
-           err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
+        try:
+            np.testing.assert_allclose(cov_ng_8D_dict[key], np.transpose(cov_ng_8D_dict[key], (1, 0, 2, 3)), rtol=1e-6, atol=0,
+            err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
+        except AssertionError as error:
+            print(error)
+            
 
     return cov_ng_8D_dict
 

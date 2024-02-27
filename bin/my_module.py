@@ -45,7 +45,7 @@ def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
     print(f"Data has been written to {ascii_filename}")
 
 
-def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, compare_fms=True, compare_param_covs=True, plot=True):
+def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, compare_fms=True, compare_param_covs=True, plot=True, n_params_toplot=10):
 
     fm_dict_a = load_pickle(fm_pickle_path_a)
     fm_dict_b = load_pickle(fm_pickle_path_b)
@@ -74,11 +74,11 @@ def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, compar
                 compare_arrays(cov_a, cov_b, 'cov_A', 'cov_B', plot_diff_threshold=5)
                 
             if plot:
-                param_names = list(fm_dict_a['fiducial_values_dict'].keys())[:10]
-                fiducials_a = list(fm_dict_a['fiducial_values_dict'].values())[:10]
-                fiducials_b = list(fm_dict_b['fiducial_values_dict'].values())[:10]
-                uncert_a = uncertainties_FM(fm_dict_a[key], 10, fiducials=fiducials_a, which_uncertainty='marginal', normalize=True)
-                uncert_b = uncertainties_FM(fm_dict_b[key], 10, fiducials=fiducials_b, which_uncertainty='marginal', normalize=True)
+                param_names = list(fm_dict_a['fiducial_values_dict'].keys())[:n_params_toplot]
+                fiducials_a = list(fm_dict_a['fiducial_values_dict'].values())[:n_params_toplot]
+                fiducials_b = list(fm_dict_b['fiducial_values_dict'].values())[:n_params_toplot]
+                uncert_a = uncertainties_FM(fm_dict_a[key], n_params_toplot, fiducials=fiducials_a, which_uncertainty='marginal', normalize=True)
+                uncert_b = uncertainties_FM(fm_dict_b[key], n_params_toplot, fiducials=fiducials_b, which_uncertainty='marginal', normalize=True)
                 diff = percent_diff(uncert_a, uncert_b)
                 
                 
@@ -142,7 +142,7 @@ def compare_df_keys(dataframe, key_to_compare, value_a, value_b, num_string_colu
     perc_diff_df = df_A.copy()
     # ! the reference is G, this might change to G + SSC + cNG
     perc_diff_df.iloc[:, num_string_colums:] = percent_diff(arr_B, arr_A)
-    perc_diff_df[key_to_compare] = 'perc_diff'
+    perc_diff_df[key_to_compare] = f'perc_diff_{value_b}'
     perc_diff_df['FoM'] = -perc_diff_df['FoM']  # ! abs? minus??
     dataframe = pd.concat([dataframe, perc_diff_df], axis=0, ignore_index=True)
     dataframe = dataframe.drop_duplicates()

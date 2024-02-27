@@ -48,8 +48,8 @@ Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
 
-# for covariance_cfg['SSC_code'] in ['PySSC', 'exactSSC', 'PyCCL', 'OneCovariance']:
-for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
+for covariance_cfg['SSC_code'] in ['PyCCL', 'OneCovariance']:
+# for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     # check_specs.consistency_checks(general_cfg, covariance_cfg)
     # for covariance_cfg['SSC_code'] in ['PyCCL', 'exactSSC']:
     #     for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['probe'] in ['LL', 'GG', '3x2pt']:
@@ -523,32 +523,38 @@ nparams_toplot = 7
 include_fom = True
 divide_fom_by_10 = True
 
-FM_dict_loaded = {}
-for ssc_code_here in ['PySSC', 'PyCCL', 'exactSSC', 'OneCovariance']:
+fm_dict_loaded = {}
+for ssc_code_here in ['PySSC', 'PyCCL', 'Spaceborne', 'OneCovariance']:
     for probe in ['WL', 'GC', 'XC', '3x2pt']:
 
         fm_folder = FM_cfg["fm_folder"].format(SSC_code=ssc_code_here)
-        if 'jan_2024' in fm_folder:
-            fm_folder_std = fm_folder.replace("jan_2024", "standard")
-        else:
-            raise ValueError('you are not using the jan_2024 folder!')
+        # if 'jan_2024' in fm_folder:
+            # fm_folder_std = fm_folder.replace("jan_2024", "standard")
+        # else:
+            # raise ValueError('you are not using the jan_2024 folder!')
 
         lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_XC']
         
-        FM_dict_loaded[f'FM_{ssc_code_here}_{probe}_G'] = (
+        fm_dict_loaded[f'FM_{ssc_code_here}_{probe}_G'] = (
             np.genfromtxt(f'{fm_folder}/FM_{probe}_G_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
 
-        FM_dict_loaded[f'FM_{ssc_code_here}_{probe}_GSSC'] = (
+        fm_dict_loaded[f'FM_{ssc_code_here}_{probe}_GSSC'] = (
             np.genfromtxt(f'{fm_folder}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
         
         try:
-            FM_dict_loaded[f'FM_{ssc_code_here}_{probe}_GSSCcNG'] = (
+            fm_dict_loaded[f'FM_{ssc_code_here}_{probe}_GSSCcNG'] = (
                 np.genfromtxt(f'{fm_folder}/FM_{probe}_GSSCcNG_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
         except FileNotFoundError:
             print(f'FM_{ssc_code_here}_{probe}_GSSCcNG not found')
+        
+        try:
+            fm_dict_loaded[f'FM_{ssc_code_here}_{probe}_GcNG'] = (
+                np.genfromtxt(f'{fm_folder}/FM_{probe}_GcNG_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt'))
+        except FileNotFoundError:
+            print(f'FM_{ssc_code_here}_{probe}_GcNG not found')
 
         # make sure that this file has been created very recently (aka, is the one just produced)
-        mm.is_file_created_in_last_x_hours(f'{fm_folder}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt', 0.1)
+        file_created_flag = mm.is_file_created_in_last_x_hours(f'{fm_folder}/FM_{probe}_GSSC_lmax{lmax}_nbl{nbl}_zbinsEP{zbins}.txt', 0.1)
 
         # # add the standard case
         # FM_dict_loaded[f'FM_{ssc_code_here}_{probe}_GSSC_std'] = (
@@ -557,14 +563,14 @@ for ssc_code_here in ['PySSC', 'PyCCL', 'exactSSC', 'OneCovariance']:
 # just a test: the Gaussian FMs must be equal. This is true also for OneCovariance if I do not use the OneCovariance Gaussian cov,
 # of course. The baseline is PySSC, but it's an arbitrary choice.
 
-ssc_code_here_list = ['PyCCL', 'exactSSC']
+ssc_code_here_list = ['PyCCL', 'Spaceborne']
 if covariance_cfg['OneCovariance_cfg']['use_OneCovariance_Gaussian'] is False:
     ssc_code_here_list.append('OneCovariance')
 
 for ssc_code_here in ssc_code_here_list:
     for probe in ['WL', 'GC', 'XC', '3x2pt']:
-        np.testing.assert_allclose(FM_dict_loaded[f'FM_{ssc_code_here}_{probe}_G'], 
-                                   FM_dict_loaded[f'FM_PySSC_{probe}_G'],
+        np.testing.assert_allclose(fm_dict_loaded[f'FM_{ssc_code_here}_{probe}_G'], 
+                                   fm_dict_loaded[f'FM_PySSC_{probe}_G'],
                                    rtol=1e-5, atol=0,
                                    err_msg=f'Gaussian FMs are not equal for {ssc_code_here} and {probe}!')
 
@@ -572,9 +578,9 @@ for ssc_code_here in ssc_code_here_list:
 fom_dict = {}
 uncert_dict = {}
 masked_FM_dict = {}
-for key in list(FM_dict_loaded.keys()):
+for key in list(fm_dict_loaded.keys()):
     if key not in ['param_names_dict', 'fiducial_values_dict']:
-        masked_FM_dict[key], param_names_list, fiducials_list = mm.mask_FM(FM_dict_loaded[key], param_names_dict,
+        masked_FM_dict[key], param_names_list, fiducials_list = mm.mask_FM(fm_dict_loaded[key], param_names_dict,
                                                                            fiducials_dict,
                                                                            params_tofix_dict={})
 
@@ -591,20 +597,26 @@ for key in list(FM_dict_loaded.keys()):
 # compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
 for probe in ['WL', 'GC', 'XC', '3x2pt']:
 
-    for ssc_code in ['PySSC', 'PyCCL', 'exactSSC', 'OneCovariance']:
-        key_a = f'FM_{ssc_code}_{probe}_G'
-        key_b = f'FM_{ssc_code}_{probe}_GSSC'
+    for ssc_code in ['PySSC', 'PyCCL', 'Spaceborne', 'OneCovariance']:
+        cov_a = 'G'
+        cov_b = 'GSSC'
         
-        uncert_dict[f'perc_diff_{ssc_code}_{probe}_GSSC'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
-        fom_dict[f'perc_diff_{ssc_code}_{probe}_GSSC'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
+        key_a = f'FM_{ssc_code}_{probe}_{cov_a}'
+        key_b = f'FM_{ssc_code}_{probe}_{cov_b}'
+        
+        uncert_dict[f'perc_diff_{ssc_code}_{probe}_{cov_b}'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
+        fom_dict[f'perc_diff_{ssc_code}_{probe}_{cov_b}'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
         
     # do the same for cNG
-    # for ssc_code in ['OneCovariance',]:
-    #     key_a = f'FM_{ssc_code}_{probe}_G'
-    #     key_b = f'FM_{ssc_code}_{probe}_GSSCcNG'
+    for ssc_code in ['PyCCL', 'OneCovariance']:
+        cov_a = 'G'
+        cov_b = 'GcNG'
+
+        key_a = f'FM_{ssc_code}_{probe}_{cov_a}'
+        key_b = f'FM_{ssc_code}_{probe}_{cov_b}'
         
-    #     uncert_dict[f'perc_diff_{ssc_code}_{probe}_GSSCcNG'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
-    #     fom_dict[f'perc_diff_{ssc_code}_{probe}_GSSCcNG'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
+        uncert_dict[f'perc_diff_{ssc_code}_{probe}_{cov_b}'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
+        fom_dict[f'perc_diff_{ssc_code}_{probe}_{cov_b}'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
         
 for probe in ['WL', 'GC', 'XC', '3x2pt']:
     nparams_toplot = 7
@@ -614,14 +626,20 @@ for probe in ['WL', 'GC', 'XC', '3x2pt']:
                     #  f'FM_OneCovariance_{probe}_G', 
                     
                     #  f'FM_PySSC_{probe}_GSSC', 
-                     f'FM_PyCCL_{probe}_GSSC', 
-                     f'FM_exactSSC_{probe}_GSSC', 
+                    # f'FM_PyCCL_{probe}_GSSC', 
+                    f'FM_PyCCL_{probe}_GcNG', 
+                    # f'FM_PyCCL_{probe}_GSSCcNG', 
+                    # f'FM_Spaceborne_{probe}_GSSC', 
                     #  f'FM_OneCovariance_{probe}_GSSC',
+                     f'FM_OneCovariance_{probe}_GcNG',
                     #  f'FM_OneCovariance_{probe}_GSSCcNG',
                     
-                     f'perc_diff_PyCCL_{probe}_GSSC', 
-                    f'perc_diff_exactSSC_{probe}_GSSC', 
+                    # f'perc_diff_PyCCL_{probe}_GSSC', 
+                    f'perc_diff_PyCCL_{probe}_GcNG', 
+                    # f'perc_diff_PyCCL_{probe}_GSSCcNG', 
+                    # f'perc_diff_Spaceborne_{probe}_GSSC', 
                     # f'perc_diff_OneCovariance_{probe}_GSSC', 
+                    f'perc_diff_OneCovariance_{probe}_GcNG', 
                     # f'perc_diff_OneCovariance_{probe}_GSSCcNG'
     ]
 

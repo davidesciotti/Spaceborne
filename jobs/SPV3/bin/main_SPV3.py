@@ -29,12 +29,14 @@ import bin.fisher_matrix as FM_utils
 import bin.my_module as mm
 import bin.cosmo_lib as csmlib
 import bin.wf_cl_lib as wf_cl_lib
+import bin.plots_FM_running as plot_utils
 import common_cfg.mpl_cfg as mpl_cfg
 
-# job config
-import jobs.SPV3_magcut_zcut_thesis.config.config_SPV3_magcut_zcut_thesis as cfg
 
-mpl.use('Agg')
+# job config
+import jobs.SPV3.config.config_SPV3 as cfg
+
+# mpl.use('Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 script_start_time = time.perf_counter()
 os.environ['OMP_NUM_THREADS'] = '8'
@@ -284,7 +286,8 @@ def plot_kernels_for_thesis():
         plt.plot(zgrid_wf_vin, wf_ll_vin_bnt[:, zi], ls=':', c=colors[zi], alpha=0.6)
 
     plt.title(
-        f'interpolation_kind {shift_nz_interpolation_kind}, use_ia {include_ia_in_bnt_kernel_for_zcuts}, sigma_gauss {nz_gaussian_smoothing_sigma}\n'
+        f'interpolation_kind {shift_nz_interpolation_kind}, '
+        f'use_ia {include_ia_in_bnt_kernel_for_zcuts}, sigma_gauss {nz_gaussian_smoothing_sigma}\n'
         f'shift_dz {shift_nz}')
     plt.xlabel('$z$')
     plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
@@ -685,7 +688,7 @@ if shift_nz:
 general_cfg['nz_tuple'] = nz_tuple
 
 if general_cfg['use_CLOE_cls']:
-    
+
     assert which_pk == 'HMCodeBar', 'I am using CLOE Cls, so I should use HMCodeBar'
     print(f'Using CLOE cls; pk is {which_pk}')
 
@@ -714,7 +717,7 @@ if general_cfg['use_CLOE_cls']:
     mm.write_cl_ascii(ascii_folder, f'Cell_ll{cloe_suffix}', cl_ll_3d, ell_dict['ell_WL'], zbins)
     mm.write_cl_ascii(ascii_folder, f'Cell_gl{cloe_suffix}', cl_gl_3d, ell_dict['ell_XC'], zbins)
     mm.write_cl_ascii(ascii_folder, f'Cell_gg{cloe_suffix}', cl_gg_3d, ell_dict['ell_3x2pt'], zbins)
-    
+
 
 else:
 
@@ -1074,7 +1077,7 @@ elif not fm_cfg['load_preprocess_derivatives']:
     for key in vinc_filenames:  # loop over these, I already selected ML, MS and so on
         if not key.startswith('dDVddzGC'):
             if 'WLO' in key:
-                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL_opt, zbins)[:nbl_WL,:, :]
+                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
             elif 'GCO' in key:
                 dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
             elif 'WLA' in key:
@@ -1155,6 +1158,122 @@ if fm_cfg['test_against_vincenzo'] and bnt_transform == False:
                           abs_val=False, plot_diff_threshold=5)
 
         npt.assert_allclose(FM_dict[f'FM_{probe_dav}_G'], fm_vinc_g, rtol=1e-3, atol=0)
+
+# plot the results directly, as a quick check
+nparams_toplot = 7
+names_params_to_fix = []
+divide_fom_by_10 = True
+include_fom = True
+fix_dz = True
+fix_shear_bias = True
+fix_gal_bias = False
+fix_mag_bias = False
+dz_param_names = [f'dzWL{(zi + 1):02d}' for zi in range(zbins)]
+shear_bias_param_names = [f'm{(zi + 1):02d}' for zi in range(zbins)]
+gal_bias_param_names = [f'bG{(zi + 1):02d}' for zi in range(4)]
+mag_bias_param_names = [f'bM{(zi + 1):02d}' for zi in range(4)]
+param_names_list = list(fid_pars_dict['FM_ordered_params'].keys())
+
+if fix_dz:
+    names_params_to_fix += dz_param_names
+
+if fix_shear_bias:
+    names_params_to_fix += shear_bias_param_names
+
+if fix_gal_bias:
+    names_params_to_fix += gal_bias_param_names
+
+if fix_mag_bias:
+    names_params_to_fix += mag_bias_param_names
+
+fom_dict = {}
+uncert_dict = {}
+masked_FM_dict = {}
+for key in list(FM_dict.keys()):
+    if key != 'fiducial_values_dict' and '_WA_' not in key:
+        print(key)
+        masked_FM, masked_fid_pars_dict = mm.mask_fm_v2(FM_dict[key], fid_pars_dict['FM_ordered_params'],
+                                                        names_params_to_fix=names_params_to_fix,
+                                                        remove_null_rows_cols=True)
+
+        uncert_dict[key] = mm.uncertainties_fm_v2(masked_FM, masked_fid_pars_dict,
+                                                  which_uncertainty='marginal',
+                                                  normalize=True,
+                                                  percent_units=True)[:nparams_toplot]
+
+        fom_dict[key] = mm.compute_FoM(masked_FM, w0wa_idxs=(2, 3))
+
+
+# compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
+for probe in ['WL', 'GC', 'XC', '3x2pt']:
+    
+    # key_a = f'FM_{probe}_G'
+    # key_b = f'FM_{probe}_GSSC'
+    
+    # uncert_dict[f'perc_diff_{probe}_GSSC'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
+    # fom_dict[f'perc_diff_{probe}_GSSC'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
+
+    # do the same for cNG
+    key_a = f'FM_{probe}_G'
+    key_b = f'FM_{probe}_GSSCcNG'
+
+    uncert_dict[f'perc_diff_{probe}_GSSCcNG'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
+    fom_dict[f'perc_diff_{probe}_GSSCcNG'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
+
+for probe in ['WL', 'GC', 'XC', '3x2pt']:
+    nparams_toplot = 7
+    divide_fom_by_10_plt = False if probe in ('WL' 'XC') else divide_fom_by_10
+
+    cases_to_plot = [f'FM_{probe}_G',
+                     f'FM_{probe}_GSSCcNG',
+                     f'perc_diff_{probe}_GSSCcNG',
+                     # f'perc_diff_OneCovariance_{probe}_GSSC',
+                     # f'perc_diff_OneCovariance_{probe}_GSSCcNG'
+                     ]
+
+    # # transform dict. into an array and add the fom
+    uncert_array, fom_array = [], []
+
+    for case in cases_to_plot:
+
+        uncert_array.append(uncert_dict[case])
+        if divide_fom_by_10 and 'FM' in case and 'WL' not in case:
+            fom_dict[case] /= 10
+        fom_array.append(fom_dict[case])
+
+    uncert_array = np.asarray(uncert_array)
+    fom_array = np.asarray(fom_array)
+
+    uncert_array = np.hstack((uncert_array, fom_array.reshape(-1, 1)))
+
+    # label and title stuff
+    fom_label = 'FoM/10\nperc_diff' if divide_fom_by_10 else 'FoM'
+    param_names_label = param_names_list[:nparams_toplot] + [fom_label] if include_fom else param_names_list[
+        :nparams_toplot]
+    lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_3x2pt']
+    title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
+    # bar plot
+    if include_fom:
+        nparams_toplot = 8
+
+    for i, case in enumerate(cases_to_plot):
+
+        cases_to_plot[i] = case
+        if 'OneCovariance' in cases_to_plot[i]:
+            cases_to_plot[i] = cases_to_plot[i].replace('OneCovariance', 'OneCov')
+        if f'PySSC_{probe}_G' in cases_to_plot[i]:
+            cases_to_plot[i] = cases_to_plot[i].replace(f'PySSC_{probe}_G', f'{probe}_G')
+
+        cases_to_plot[i] = cases_to_plot[i].replace(f'_{probe}', f'')
+        cases_to_plot[i] = cases_to_plot[i].replace(f'FM_', f'')
+        cases_to_plot[i] = cases_to_plot[i].replace(f'_', f' ')
+        cases_to_plot[i] = cases_to_plot[i].replace(f'GSSC', f'G+SSC')
+        cases_to_plot[i] = cases_to_plot[i].replace(f'SSCcNG', f'SSC+cNG')
+
+    plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
+                        param_names_label=None, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
+    # plt.yscale('log')
+
 
 del cov_dict
 gc.collect()

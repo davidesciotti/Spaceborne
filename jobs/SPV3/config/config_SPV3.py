@@ -27,7 +27,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-fm_and_cov_suffix = '_cNG_CSSTres'
+fm_and_cov_suffix = '_sigma2_None_densegrids'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -66,7 +66,7 @@ if BNT_transform:
 general_cfg = {
     'fid_yaml_filename': ROOT + '/Spaceborne/common_cfg/SPV3_fiducial_params_magcut245_zbins{zbins:02d}.yml',
     'ell_min': 10,
-    'ell_max_WL': 3000,
+    'ell_max_WL': 5000,
     'ell_max_GC': 3000,
     'ell_max_3x2pt': 3000,
     'zbins': 13,
@@ -208,7 +208,7 @@ covariance_cfg = {
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
 
-    'SSC_code': 'PyCCL',  # ! 'PySSC' or 'PyCCL' or 'exactSSC' or 'OneCovariance'
+    'SSC_code': 'OneCovariance',  # ! 'PySSC' or 'PyCCL' or 'exactSSC' or 'OneCovariance'
     'check_if_recently_created': False,
 
     'PyCCL_cfg': {
@@ -261,10 +261,9 @@ covariance_cfg = {
     'exactSSC_cfg': {
         'probe': '3x2pt',
         'which_ng_cov': ('SSC', ),  # only 'SSC' available in this case
-        'load_precomputed_cov': True,  # always True for the moment
+        'load_precomputed_cov': True,  # always True for the moment, I have to compute the integral with Julia
 
-        # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
-        'cov_path': f'{ROOT}/exact_SSC/output/SPV3/separate_universe{fm_last_folder}/SSC_matrix',
+        'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/Spaceborne/separate_universe' + fm_last_folder,
         'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
                         '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'
                         '_convention{cl_integral_convention:s}.npy',
@@ -282,11 +281,11 @@ covariance_cfg = {
     },
 
     'OneCovariance_cfg': {
-        'which_ng_cov': ('SSC', ),
+        'which_ng_cov': ('SSC', 'cNG'),
         'load_precomputed_cov': True,  # this must be True for OneCovariance
         'use_OneCovariance_Gaussian': False,
 
-        'cov_path': f'{DATA_ROOT}/output/Flagship_2/covmat/OneCovariance',
+        'cov_path': f'{DATA_ROOT}/output/Flagship_2/covmat/OneCovariance/output_SPV3',
         'cov_filename': 'cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',
     }

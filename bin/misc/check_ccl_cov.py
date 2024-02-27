@@ -3,7 +3,7 @@ import sys
 sys.path.append('/home/cosmo/davide.sciotti/data/Spaceborne/')
 import bin.my_module as mm
 
-path = '/home/cosmo/davide.sciotti/data/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/covmat/PyCCL/jan_2024'
+path = '/home/cosmo/davide.sciotti/data/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/covmat/PyCCL/jan_2024'
 probe_combinations = (('L', 'L'), ('G', 'L'), ('G', 'G'))
 nbl = 29
 

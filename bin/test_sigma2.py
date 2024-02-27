@@ -23,7 +23,7 @@ import bin.mask_fits_to_cl as mask_fits_to_cl
 import healpy as hp
 import PySSC
 # job config
-import jobs.SPV3_magcut_zcut_thesis.config.config_SPV3_magcut_zcut_thesis as cfg
+import jobs.SPV3.config.config_SPV3 as cfg
 
 covariance_cfg = cfg.covariance_cfg
 pyccl_cfg = covariance_cfg['PyCCL_cfg']

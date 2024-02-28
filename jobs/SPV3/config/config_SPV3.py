@@ -2,7 +2,7 @@ import numpy as np
 import os
 
 ROOT = os.getenv('ROOT')
-DATA_ROOT = f'{ROOT}/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis'
+DATA_ROOT = f'{ROOT}/common_data/Spaceborne/jobs/SPV3'
 SPV3_folder = f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
 
 # TODO to be updated for DR1:
@@ -283,9 +283,9 @@ covariance_cfg = {
     'OneCovariance_cfg': {
         'which_ng_cov': ('SSC', 'cNG'),
         'load_precomputed_cov': True,  # this must be True for OneCovariance
-        'use_OneCovariance_Gaussian': False,
+        'use_OneCovariance_Gaussian': True,
 
-        'cov_path': f'{DATA_ROOT}/output/Flagship_2/covmat/OneCovariance/output_SPV3',
+        'cov_path': f'{DATA_ROOT}/output/Flagship_2/covmat/OneCovariance',
         'cov_filename': 'cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',
     }

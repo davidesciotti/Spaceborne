@@ -539,14 +539,6 @@ nofz_folder = covariance_cfg["nofz_folder"]
 nofz_filename = covariance_cfg["nofz_filename"].format(**variable_specs)
 n_of_z = np.genfromtxt(f'{nofz_folder}/{nofz_filename}')
 
-# save in ASCII format for OneCovariance
-nofz_filename_ascii = nofz_filename.replace('.dat', '.ascii')
-with open(f'{nofz_folder}/{nofz_filename}', 'r') as f:
-    data = f.read()
-
-with open(f'{nofz_folder}/{nofz_filename_ascii}', 'w') as f:
-    f.write(data)
-
 zgrid_nz = n_of_z[:, 0]
 n_of_z = n_of_z[:, 1:]
 n_of_z_original = n_of_z
@@ -596,6 +588,7 @@ if nz_gaussian_smoothing:
 if compute_bnt_with_shifted_nz_for_zcuts:
     n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z, dz_shifts, normalize=normalize_shifted_nz, plot_nz=False,
                                 interpolation_kind=shift_nz_interpolation_kind)
+
 nz_tuple = (zgrid_nz, n_of_z)
 
 bnt_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, cosmo_ccl=cosmo_ccl, plot_nz=False)
@@ -684,6 +677,11 @@ if shift_nz:
     # * this is important: the BNT matrix i use for the rest of the code (so not to compute the ell cuts) is instead
     # * consistent with the shifted n(z) used to compute the kernels
     bnt_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, cosmo_ccl=cosmo_ccl, plot_nz=False)
+
+# save in ASCII format for OneCovariance
+nofz_filename_ascii = nofz_filename.replace('.dat', '.ascii')
+nofz_tosave = np.column_stack((zgrid_nz, n_of_z))
+np.savetxt(f'{nofz_folder}/{nofz_filename_ascii}', nofz_tosave)
 
 general_cfg['nz_tuple'] = nz_tuple
 
@@ -1206,29 +1204,21 @@ for key in list(FM_dict.keys()):
 
 # compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
 for probe in ['WL', 'GC', 'XC', '3x2pt']:
-    
-    # key_a = f'FM_{probe}_G'
-    # key_b = f'FM_{probe}_GSSC'
-    
-    # uncert_dict[f'perc_diff_{probe}_GSSC'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
-    # fom_dict[f'perc_diff_{probe}_GSSC'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
 
-    # do the same for cNG
     key_a = f'FM_{probe}_G'
-    key_b = f'FM_{probe}_GSSCcNG'
+    key_b = f'FM_{probe}_{which_ng_cov_suffix}'
 
-    uncert_dict[f'perc_diff_{probe}_GSSCcNG'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
-    fom_dict[f'perc_diff_{probe}_GSSCcNG'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
+    uncert_dict[f'perc_diff_{probe}_{which_ng_cov_suffix}'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
+    fom_dict[f'perc_diff_{probe}_{which_ng_cov_suffix}'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
 
 for probe in ['WL', 'GC', 'XC', '3x2pt']:
     nparams_toplot = 7
     divide_fom_by_10_plt = False if probe in ('WL' 'XC') else divide_fom_by_10
 
     cases_to_plot = [f'FM_{probe}_G',
-                     f'FM_{probe}_GSSCcNG',
-                     f'perc_diff_{probe}_GSSCcNG',
-                     # f'perc_diff_OneCovariance_{probe}_GSSC',
-                     # f'perc_diff_OneCovariance_{probe}_GSSCcNG'
+                     f'FM_{probe}_{which_ng_cov_suffix}',
+                     
+                     f'perc_diff_{probe}_{which_ng_cov_suffix}',
                      ]
 
     # # transform dict. into an array and add the fom

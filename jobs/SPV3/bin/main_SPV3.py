@@ -883,7 +883,7 @@ cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg
                                                  **variable_specs)
 covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
-if EP_or_ED == 'EP' and covariance_cfg['SSC_code'] == 'exactSSC' and covariance_cfg['test_against_CLOE_benchmarks'] \
+if EP_or_ED == 'EP' and covariance_cfg['SSC_code'] == 'Spaceborne' and covariance_cfg['test_against_CLOE_benchmarks'] \
         and general_cfg['ell_cuts'] is False and which_pk == 'HMCodeBar':
 
     # load benchmark cov and check that it matches the one computed here; I am not actually using it

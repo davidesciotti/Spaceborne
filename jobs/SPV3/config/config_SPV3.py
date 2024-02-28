@@ -208,7 +208,7 @@ covariance_cfg = {
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
 
-    'SSC_code': 'OneCovariance',  # ! 'PySSC' or 'PyCCL' or 'exactSSC' or 'OneCovariance'
+    'SSC_code': 'OneCovariance',  # ! 'PySSC' or 'PyCCL' or 'Spaceborne' or 'OneCovariance'
     'check_if_recently_created': False,
 
     'PyCCL_cfg': {
@@ -258,7 +258,7 @@ covariance_cfg = {
         'bias_model': 'polynomial',  # TODO this is not used at the momen (for SPV3)
     },
 
-    'exactSSC_cfg': {
+    'Spaceborne_cfg': {
         'probe': '3x2pt',
         'which_ng_cov': ('SSC', ),  # only 'SSC' available in this case
         'load_precomputed_cov': True,  # always True for the moment, I have to compute the integral with Julia

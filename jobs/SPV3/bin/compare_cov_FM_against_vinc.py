@@ -20,7 +20,7 @@ start_time = time.perf_counter()
 
 probe = '3x2pt'
 GO_or_GS = 'G'
-ssc_code = 'exactSSC'
+ssc_code = 'Spaceborne'
 ML = 245
 MS = 245
 ZL = 2

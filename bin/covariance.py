@@ -41,20 +41,20 @@ def get_ellmax_nbl(probe, general_cfg):
     return ell_max, nbl
 
 
-# def get_cov_ssc_exactssc(general_cfg, covariance_cfg, return_format_3x2pt, probe):
+# def get_cov_ssc_spaceborne(general_cfg, covariance_cfg, return_format_3x2pt, probe):
 #     # this actually just imports the precomputed ssc. It can also compute deltab, quite useless at the moment
-#     print(f'Computing SSC covariance with exactSSC, probe = {probe}')
+#     print(f'Computing SSC covariance with Spaceborne, probe = {probe}')
 
-#     which_ng_cov = covariance_cfg['exactSSC_cfg']['which_ng_cov']
+#     which_ng_cov = covariance_cfg['spaceborne_cfg']['which_ng_cov']
 #     zbins = general_cfg['zbins']
 #     probe_ordering = covariance_cfg['probe_ordering']
 #     ind_dict = covariance_cfg['ind_dict']
 
-#     z_steps_sigma2 = covariance_cfg['exactSSC_cfg']['z_steps_sigma2']
-#     k_txt_label = covariance_cfg['exactSSC_cfg']['k_txt_label']
-#     cl_integral_convention = covariance_cfg['exactSSC_cfg']['cl_integral_convention']
-#     cov_path = covariance_cfg['exactSSC_cfg']['cov_path']
-#     cov_filename = covariance_cfg['exactSSC_cfg']['cov_filename']
+#     z_steps_sigma2 = covariance_cfg['Spaceborne_cfg']['z_steps_sigma2']
+#     k_txt_label = covariance_cfg['Spaceborne_cfg']['k_txt_label']
+#     cl_integral_convention = covariance_cfg['Spaceborne_cfg']['cl_integral_convention']
+#     cov_path = covariance_cfg['Spaceborne_cfg']['cov_path']
+#     cov_filename = covariance_cfg['Spaceborne_cfg']['cov_filename']
 
 #     if general_cfg['which_forecast'] == 'SPV3':
 #         ell_max = general_cfg['ell_max_WL_opt']
@@ -75,32 +75,32 @@ def get_ellmax_nbl(probe, general_cfg):
 #         # in this case, load a single block of the 4D covariance, the reshape and return it
 #         probe_a, probe_b, probe_c, probe_d = probe[0], probe[1], probe[0], probe[1]
 #         cov_filename = cov_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)
-#         cov_exactSSC_SS_4D = np.load(f'{cov_path}/{cov_filename}')[:nbl, :nbl, :, :]
+#         cov_spaceborne_SS_4D = np.load(f'{cov_path}/{cov_filename}')[:nbl, :nbl, :, :]
 
-#         cov_exactSSC_SS_6D = mm.cov_4D_to_6D(cov_exactSSC_SS_4D, nbl, zbins, probe,
+#         cov_spaceborne_SS_6D = mm.cov_4D_to_6D(cov_spaceborne_SS_4D, nbl, zbins, probe,
 #                                              ind_dict[probe_a, probe_b]) / covariance_cfg['fsky']
 
-#         return cov_exactSSC_SS_6D
+#         return cov_spaceborne_SS_6D
 
 #     elif probe == '3x2pt':
 
 #         # populate 3x2pt dictionary
-#         cov_exactSSC_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
+#         cov_spaceborne_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
 #             cov_path, cov_filename, probe_ordering)
 
-#         for key in cov_exactSSC_3x2pt_dict_8D.keys():
+#         for key in cov_spaceborne_3x2pt_dict_8D.keys():
 #             # ! divide the different blocks by fsky
-#             cov_exactSSC_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
+#             cov_spaceborne_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
 
 #             # # ! cut to the correct number of ell bins
-#             # cov_exactSSC_3x2pt_dict_8D[key] = cov_exactSSC_3x2pt_dict_8D[key][:nbl, :nbl, :, :]
+#             # cov_spaceborne_3x2pt_dict_8D[key] = cov_spaceborne_3x2pt_dict_8D[key][:nbl, :nbl, :, :]
 
 #         # reshape the blocks from 4D to 6D, as needed by the BNT
-#         cov_exactSSC_3x2pt_dict_10D = {}
+#         cov_spaceborne_3x2pt_dict_10D = {}
 #         for probe_A, probe_B in probe_ordering:
 #             for probe_C, probe_D in probe_ordering:
-#                 cov_exactSSC_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
-#                     cov_exactSSC_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
+#                 cov_spaceborne_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
+#                     cov_spaceborne_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
 #                     nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
 
 #                 if covariance_cfg['check_if_recently_created']:
@@ -112,12 +112,12 @@ def get_ellmax_nbl(probe, general_cfg):
 #                                                    'dimension for BNT. to be implemented better later')
 
 #         if return_format_3x2pt == 'dict_8d':
-#             return cov_exactSSC_3x2pt_dict_8D
+#             return cov_spaceborne_3x2pt_dict_8D
 #         elif return_format_3x2pt == 'dict_10d':
-#             return cov_exactSSC_3x2pt_dict_10D
+#             return cov_spaceborne_3x2pt_dict_10D
 #         elif return_format_3x2pt == '4d_array':
-#             cov_exactSSC_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_exactSSC_3x2pt_dict_8D, probe_ordering)
-#             return cov_exactSSC_SS_4D
+#             cov_spaceborne_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_spaceborne_3x2pt_dict_8D, probe_ordering)
+#             return cov_spaceborne_SS_4D
 #         else:
 #             raise ValueError('return_format_3x2pt must be "dict_8d" or "dict_10d" or 4d_array')
 
@@ -126,7 +126,7 @@ def get_ellmax_nbl(probe, general_cfg):
 
 
 # def get_cov_ng_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict):
-#     # TODO add probe like in exactSSC function...?
+#     # TODO add probe like in spaceborne function...?
 #     print(f'computing {which_ng_cov} covariance with PyCCL')
 
 #     probe = covariance_cfg['PyCCL_cfg']['probe']
@@ -181,7 +181,7 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
     ind_dict = covariance_cfg['ind_dict']
     cov_path = ssc_code_cfg['cov_path']
 
-    assert ssc_code in ('exactSSC', 'PyCCL', 'OneCovariance'), 'ssc_code must be "exactSSC", "PyCCL" or "OneCovariance"'
+    assert ssc_code in ('Spaceborne', 'PyCCL', 'OneCovariance'), 'ssc_code must be "Spaceborne", "PyCCL" or "OneCovariance"'
 
     print(f'Computing 3x2pt {which_ng_cov} covariance with {ssc_code}')
 
@@ -190,8 +190,8 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
         assert ell_max == general_cfg['ell_max_WL'], 'ell_max and nbl do not match with the WL optimistic case'
         assert nbl == general_cfg['nbl_WL'], 'ell_max and nbl do not match with the WL optimistic case'
 
-    # additional kwargs for exactSSC
-    if ssc_code == 'exactSSC':
+    # additional kwargs for Spaceborne
+    if ssc_code == 'Spaceborne':
         additional_kwargs = {'z_steps_sigma2': ssc_code_cfg['z_steps_sigma2'],
                              'k_txt_label': ssc_code_cfg['k_txt_label'],
                              'cl_integral_convention': ssc_code_cfg['cl_integral_convention']}
@@ -222,7 +222,7 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
                                                                 covariance_cfg=covariance_cfg,
                                                                 cov_filename=cov_filename)
 
-    if ssc_code == 'exactSSC':
+    if ssc_code == 'Spaceborne':
         # in this case, you still need to divide by fsky
         for key in cov_3x2pt_dict_8D.keys():
             cov_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
@@ -567,6 +567,13 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_3x2pt_GS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_GS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
     print('Covariance matrices reshaped (6D -> 4D) in {:.2f} s'.format(time.perf_counter() - start))
 
+    cov_2x2pt_GO_4D = np.zeros((nbl_3x2pt, nbl_3x2pt, zpairs_cross + zpairs_auto, zpairs_cross + zpairs_auto))
+    cov_2x2pt_GS_4D = np.zeros_like(cov_2x2pt_GO_4D)
+    for ell1 in range(nbl_3x2pt):
+        for ell2 in range(nbl_3x2pt):
+            cov_2x2pt_GO_4D[ell1, ell2, :, :] = cov_3x2pt_GO_4D[ell1, ell2, zpairs_auto:, zpairs_auto:]
+            cov_2x2pt_GS_4D[ell1, ell2, :, :] = cov_3x2pt_GS_4D[ell1, ell2, zpairs_auto:, zpairs_auto:]
+
     # ! transform everything in 2D
     start = time.perf_counter()
     cov_WL_GO_2D = mm.cov_4D_to_2D(cov_WL_GO_4D, block_index=block_index)
@@ -574,12 +581,14 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_WA_GO_2D = mm.cov_4D_to_2D(cov_WA_GO_4D, block_index=block_index)
     cov_XC_GO_2D = mm.cov_4D_to_2D(cov_XC_GO_4D, block_index=block_index)
     cov_3x2pt_GO_2D = mm.cov_4D_to_2D(cov_3x2pt_GO_4D, block_index=block_index)
+    cov_2x2pt_GO_2D = mm.cov_4D_to_2D(cov_2x2pt_GO_4D, block_index=block_index)
 
     cov_WL_GS_2D = mm.cov_4D_to_2D(cov_WL_GS_4D, block_index=block_index)
     cov_GC_GS_2D = mm.cov_4D_to_2D(cov_GC_GS_4D, block_index=block_index)
     cov_WA_GS_2D = mm.cov_4D_to_2D(cov_WA_GS_4D, block_index=block_index)
     cov_XC_GS_2D = mm.cov_4D_to_2D(cov_XC_GS_4D, block_index=block_index)
     cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, block_index=block_index)
+    cov_2x2pt_GS_2D = mm.cov_4D_to_2D(cov_2x2pt_GS_4D, block_index=block_index)
     print('Covariance matrices reshaped (4D -> 2D) in {:.2f} s'.format(time.perf_counter() - start))
 
     if covariance_cfg['cov_ell_cuts']:
@@ -590,24 +599,27 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_WA_GO_2D = mm.remove_rows_cols_array2D(cov_WA_GO_2D, ell_dict['idxs_to_delete_dict']['WA'])
         cov_XC_GO_2D = mm.remove_rows_cols_array2D(cov_XC_GO_2D, ell_dict['idxs_to_delete_dict'][GL_or_LG])
         cov_3x2pt_GO_2D = mm.remove_rows_cols_array2D(cov_3x2pt_GO_2D, ell_dict['idxs_to_delete_dict']['3x2pt'])
+        cov_2x2pt_GO_2D = mm.remove_rows_cols_array2D(cov_2x2pt_GO_2D, ell_dict['idxs_to_delete_dict']['2x2pt'])
 
         cov_WL_GS_2D = mm.remove_rows_cols_array2D(cov_WL_GS_2D, ell_dict['idxs_to_delete_dict']['LL'])
         cov_GC_GS_2D = mm.remove_rows_cols_array2D(cov_GC_GS_2D, ell_dict['idxs_to_delete_dict']['GG'])
         cov_WA_GS_2D = mm.remove_rows_cols_array2D(cov_WA_GS_2D, ell_dict['idxs_to_delete_dict']['WA'])
         cov_XC_GS_2D = mm.remove_rows_cols_array2D(cov_XC_GS_2D, ell_dict['idxs_to_delete_dict'][GL_or_LG])
         cov_3x2pt_GS_2D = mm.remove_rows_cols_array2D(cov_3x2pt_GS_2D, ell_dict['idxs_to_delete_dict']['3x2pt'])
+        cov_2x2pt_GS_2D = mm.remove_rows_cols_array2D(cov_2x2pt_GS_2D, ell_dict['idxs_to_delete_dict']['2x2pt'])
 
     ############################### save in dictionary ########################
-    probe_names = ('WL', 'GC', '3x2pt', 'WA', 'XC')
+    probe_names = ('WL', 'GC', '3x2pt', 'WA', 'XC', '2x2pt')
 
-    covs_GO_4D = (cov_WL_GO_4D, cov_GC_GO_4D, cov_3x2pt_GO_4D, cov_WA_GO_4D, cov_XC_GO_4D)
-    covs_GS_4D = (cov_WL_GS_4D, cov_GC_GS_4D, cov_3x2pt_GS_4D, cov_WA_GS_4D, cov_XC_GS_4D)
+    covs_GO_4D = (cov_WL_GO_4D, cov_GC_GO_4D, cov_3x2pt_GO_4D, cov_WA_GO_4D, cov_XC_GO_4D, cov_2x2pt_GO_4D)
+    covs_GS_4D = (cov_WL_GS_4D, cov_GC_GS_4D, cov_3x2pt_GS_4D, cov_WA_GS_4D, cov_XC_GS_4D, cov_2x2pt_GS_4D)
 
-    covs_GO_2D = (cov_WL_GO_2D, cov_GC_GO_2D, cov_3x2pt_GO_2D, cov_WA_GO_2D, cov_XC_GO_2D)
-    covs_GS_2D = (cov_WL_GS_2D, cov_GC_GS_2D, cov_3x2pt_GS_2D, cov_WA_GS_2D, cov_XC_GS_2D)
+    covs_GO_2D = (cov_WL_GO_2D, cov_GC_GO_2D, cov_3x2pt_GO_2D, cov_WA_GO_2D, cov_XC_GO_2D, cov_2x2pt_GO_2D)
+    covs_GS_2D = (cov_WL_GS_2D, cov_GC_GS_2D, cov_3x2pt_GS_2D, cov_WA_GS_2D, cov_XC_GS_2D, cov_2x2pt_GS_2D)
 
     if covariance_cfg['save_cov_SSC']:
         warnings.warn('this is not correct for exatcSSC and PySSC, the dimensionality reduction is done earlier!')
+        warnings.warn('2x2pt MISSING')
         cov_WL_SS_4D = mm.cov_6D_to_4D(cov_WL_SS_6D, nbl_WL, zpairs_auto, ind_auto)
         cov_GC_SS_4D = mm.cov_6D_to_4D(cov_GC_SS_6D, nbl_GC, zpairs_auto, ind_auto)
         cov_WA_SS_4D = mm.cov_6D_to_4D(cov_WA_SS_6D, nbl_WA, zpairs_auto, ind_auto)

@@ -1,3 +1,4 @@
+from copy import deepcopy
 import time
 import warnings
 import numpy as np
@@ -145,7 +146,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     ell_WA, nbl_WA = ell_dict['ell_WA'], ell_dict['ell_WA'].shape[0]
     ell_XC, nbl_3x2pt = ell_GC, nbl_GC
     nbl_WA = ell_WA.shape[0]
-
+    
     # set the flattening convention for the derivatives vector, based on the setting used to reduce the covariance
     # matrix' dimensions
     # TODO review this
@@ -176,6 +177,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     cov_WA_GO_2D_inv = np.linalg.inv(cov_dict['cov_WA_GO_2D'])
     cov_XC_GO_2D_inv = np.linalg.inv(cov_dict['cov_XC_GO_2D'])
     cov_3x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GO_2D'])
+    cov_2x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_2x2pt_GO_2D'])
     print(f'GO covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
 
     if covariance_cfg['compute_SSC']:
@@ -185,6 +187,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         cov_WA_GS_2D_inv = np.linalg.inv(cov_dict['cov_WA_GS_2D'])
         cov_XC_GS_2D_inv = np.linalg.inv(cov_dict['cov_XC_GS_2D'])
         cov_3x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_GS_2D'])
+        cov_2x2pt_GS_2D_inv = np.linalg.inv(cov_dict['cov_2x2pt_GS_2D'])
         print(f'GS covariance matrices inverted in {(time.perf_counter() - start_time):.2f} s')
     else:
         cov_WL_GS_2D_inv = np.eye(cov_dict['cov_WL_GO_2D'].shape[0])
@@ -192,6 +195,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         cov_WA_GS_2D_inv = np.eye(cov_dict['cov_WA_GO_2D'].shape[0])
         cov_XC_GS_2D_inv = np.eye(cov_dict['cov_XC_GO_2D'].shape[0])
         cov_3x2pt_GS_2D_inv = np.eye(cov_dict['cov_3x2pt_GO_2D'].shape[0])
+        cov_2x2pt_GS_2D_inv = np.eye(cov_dict['cov_2x2pt_GO_2D'].shape[0])
         warnings.warn('Not computing GS constraints, setting the inverse covmats to identity')
 
     # load reshaped derivatives, with shape (nbl, zbins, zbins, nparams)
@@ -254,6 +258,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
 
     # concatenate the flattened components of the 3x2pt datavector
     dC_3x2pt_3D = np.concatenate((dC_LLfor3x2pt_3D, dC_XCfor3x2pt_3D, dC_GGfor3x2pt_3D), axis=1)
+    dC_2x2pt_3D = np.concatenate((dC_XCfor3x2pt_3D, dC_GGfor3x2pt_3D), axis=1)
 
     # collapse ell and zpair - ATTENTION: np.reshape, like ndarray.flatten, accepts an 'ordering' parameter, which works
     # in the same way not with the old datavector, which was ordered in a different way...
@@ -262,6 +267,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     dC_WA_2D = np.reshape(dC_WA_3D, (nbl_WA * zpairs_auto, nparams_tot), order=which_flattening)
     dC_XC_2D = np.reshape(dC_XCfor3x2pt_3D, (nbl_3x2pt * zpairs_cross, nparams_tot), order=which_flattening)
     dC_3x2pt_2D = np.reshape(dC_3x2pt_3D, (nbl_3x2pt * zpairs_3x2pt, nparams_tot), order=which_flattening)
+    dC_2x2pt_2D = np.reshape(dC_2x2pt_3D, (nbl_3x2pt * (zpairs_3x2pt - zpairs_auto), nparams_tot), order=which_flattening)
 
     # ! cut the *flattened* derivatives vector
     if FM_cfg['deriv_ell_cuts']:
@@ -271,6 +277,8 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         dC_WA_2D = np.delete(dC_WA_2D, ell_dict['idxs_to_delete_dict']['WA'], axis=0)
         dC_XC_2D = np.delete(dC_XC_2D, ell_dict['idxs_to_delete_dict'][GL_or_LG], axis=0)
         dC_3x2pt_2D = np.delete(dC_3x2pt_2D, ell_dict['idxs_to_delete_dict']['3x2pt'], axis=0)
+        raise ValueError('the above cuts are correct, but I should be careful when defining the 2x2pt datavector/covmat,\
+            as n_elem_ll will be lower because of the cuts...')
 
     # if the ell cuts removed all WA bins (which is in fact the case)
     if dC_WA_2D.shape[0] == 0:
@@ -284,6 +292,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     FM_WA_GO = np.einsum('ia,ik,kb->ab', dC_WA_2D, cov_WA_GO_2D_inv, dC_WA_2D, optimize='optimal')
     FM_XC_GO = np.einsum('ia,ik,kb->ab', dC_XC_2D, cov_XC_GO_2D_inv, dC_XC_2D, optimize='optimal')
     FM_3x2pt_GO = np.einsum('ia,ik,kb->ab', dC_3x2pt_2D, cov_3x2pt_GO_2D_inv, dC_3x2pt_2D, optimize='optimal')
+    FM_2x2pt_GO = np.einsum('ia,ik,kb->ab', dC_2x2pt_2D, cov_2x2pt_GO_2D_inv, dC_2x2pt_2D, optimize='optimal')
     print(f'GO FM done in {(time.perf_counter() - start):.2f} s')
 
     start = time.perf_counter()
@@ -292,6 +301,7 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
     FM_WA_GS = np.einsum('ia,ik,kb->ab', dC_WA_2D, cov_WA_GS_2D_inv, dC_WA_2D, optimize='optimal')
     FM_XC_GS = np.einsum('ia,ik,kb->ab', dC_XC_2D, cov_XC_GS_2D_inv, dC_XC_2D, optimize='optimal')
     FM_3x2pt_GS = np.einsum('ia,ik,kb->ab', dC_3x2pt_2D, cov_3x2pt_GS_2D_inv, dC_3x2pt_2D, optimize='optimal')
+    FM_2x2pt_GS = np.einsum('ia,ik,kb->ab', dC_2x2pt_2D, cov_2x2pt_GS_2D_inv, dC_2x2pt_2D, optimize='optimal')
     print(f'GS FM done in {(time.perf_counter() - start):.2f} s')
 
     # sum WA, this is the actual FM_3x2pt
@@ -300,9 +310,9 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         FM_3x2pt_GS += FM_WA_GS
 
     # store the matrices in the dictionary
-    probe_names = ['WL', 'GC', 'WA', 'XC', '3x2pt']
-    FMs_GO = [FM_WL_GO, FM_GC_GO, FM_WA_GO, FM_XC_GO, FM_3x2pt_GO]
-    FMs_GS = [FM_WL_GS, FM_GC_GS, FM_WA_GS, FM_XC_GS, FM_3x2pt_GS]
+    probe_names = ['WL', 'GC', 'WA', 'XC', '3x2pt', '2x2pt']
+    FMs_GO = [FM_WL_GO, FM_GC_GO, FM_WA_GO, FM_XC_GO, FM_3x2pt_GO, FM_2x2pt_GO]
+    FMs_GS = [FM_WL_GS, FM_GC_GS, FM_WA_GS, FM_XC_GS, FM_3x2pt_GS, FM_2x2pt_GS]
 
     which_ng_cov_suffix = ''.join(covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'])
 

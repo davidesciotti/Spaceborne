@@ -1,3 +1,4 @@
+from copy import deepcopy
 import gc
 import sys
 import time
@@ -9,6 +10,9 @@ from pprint import pprint
 import warnings
 import pandas as pd
 from matplotlib import cm
+
+from getdist import plots
+from getdist.gaussian_mixtures import GaussianND
 
 import os
 ROOT = os.getenv('ROOT')
@@ -50,8 +54,9 @@ FM_cfg = cfg.FM_cfg
 probes = ['WL', 'GC', 'XC', '3x2pt', '2x2pt']
 
 
-for covariance_cfg['SSC_code'] in ['PyCCL', 'OneCovariance', 'Spaceborne', 'PySSC']:
-# for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
+# for covariance_cfg['SSC_code'] in ['PyCCL', 'OneCovariance', 'Spaceborne', 'PySSC']:
+for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
+# for covariance_cfg['SSC_code'] in ('OneCovariance',  ):
     
     # check_specs.consistency_checks(general_cfg, covariance_cfg)
     
@@ -487,14 +492,13 @@ for covariance_cfg['SSC_code'] in ['PyCCL', 'OneCovariance', 'Spaceborne', 'PySS
                   'dC_WA_4D': dC_WA_4D,
                   'dC_3x2pt_6D': dC_3x2pt_6D}
 
-    FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
-    FM_dict['param_names_dict'] = param_names_dict
-    FM_dict['fiducial_values_dict'] = fiducials_dict
+    fm_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
+    fm_dict['param_names_dict'] = param_names_dict
+    fm_dict['fiducial_values_dict'] = fiducials_dict
 
     # free memory, cov_dict is HUGE
     del cov_dict
     gc.collect()
-    
 
     # ! save and test
     fm_folder = FM_cfg["fm_folder"].format(SSC_code=ssc_code)
@@ -507,8 +511,8 @@ for covariance_cfg['SSC_code'] in ['PyCCL', 'OneCovariance', 'Spaceborne', 'PySS
         which_ng_cov_suffix = ''.join(covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'])
         filename_fm_from_ssc_code = filename_fm_g.replace('_G_', f'_G{which_ng_cov_suffix}_')
 
-        np.savetxt(f'{filename_fm_g}', FM_dict[f'FM_{probe}_G'])
-        np.savetxt(f'{filename_fm_from_ssc_code}', FM_dict[f'FM_{probe}_G{which_ng_cov_suffix}'])
+        np.savetxt(f'{filename_fm_g}', fm_dict[f'FM_{probe}_G'])
+        np.savetxt(f'{filename_fm_from_ssc_code}', fm_dict[f'FM_{probe}_G{which_ng_cov_suffix}'])
         # np.savetxt(f'{filename_fm_from_ssc_code}', FM_dict[f'FM_{probe}_GSSCcNG'])
 
         # probe_ssc_code = covariance_cfg[f'{covariance_cfg["SSC_code"]}_cfg']['probe']
@@ -599,7 +603,8 @@ for key in list(fm_dict_loaded.keys()):
 # compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
 for probe in probes:
 
-    for ssc_code in ['PySSC', 'PyCCL', 'Spaceborne', 'OneCovariance']:
+    # for ssc_code in [ 'OneCovariance', 'PySSC', 'PyCCL', 'Spaceborne']:
+    for ssc_code in [ 'OneCovariance', ]:
         cov_a = 'G'
         cov_b = 'GSSC'
         
@@ -610,9 +615,10 @@ for probe in probes:
         fom_dict[f'perc_diff_{ssc_code}_{probe}_{cov_b}'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
         
     # do the same for cNG
-    for ssc_code in ['PyCCL', 'OneCovariance']:
+    # for ssc_code in ['OneCovariance', 'PyCCL']:
+    for ssc_code in ['OneCovariance', ]:
         cov_a = 'G'
-        cov_b = 'GcNG'
+        cov_b = 'GSSCcNG'
 
         key_a = f'FM_{ssc_code}_{probe}_{cov_a}'
         key_b = f'FM_{ssc_code}_{probe}_{cov_b}'
@@ -632,17 +638,17 @@ for probe in probes:
                     # f'FM_PyCCL_{probe}_GcNG', 
                     # f'FM_PyCCL_{probe}_GSSCcNG', 
                     # f'FM_Spaceborne_{probe}_GSSC', 
-                    #  f'FM_OneCovariance_{probe}_GSSC',
-                     f'FM_OneCovariance_{probe}_GcNG',
-                    #  f'FM_OneCovariance_{probe}_GSSCcNG',
+                     f'FM_OneCovariance_{probe}_GSSC',
+                    #  f'FM_OneCovariance_{probe}_GcNG',
+                     f'FM_OneCovariance_{probe}_GSSCcNG',
                     
                     # f'perc_diff_PyCCL_{probe}_GSSC', 
                     # f'perc_diff_PyCCL_{probe}_GcNG', 
                     # f'perc_diff_PyCCL_{probe}_GSSCcNG', 
                     # f'perc_diff_Spaceborne_{probe}_GSSC', 
-                    # f'perc_diff_OneCovariance_{probe}_GSSC', 
-                    f'perc_diff_OneCovariance_{probe}_GcNG', 
-                    # f'perc_diff_OneCovariance_{probe}_GSSCcNG'
+                    f'perc_diff_OneCovariance_{probe}_GSSC', 
+                    # f'perc_diff_OneCovariance_{probe}_GcNG', 
+                    f'perc_diff_OneCovariance_{probe}_GSSCcNG'
     ]
 
     df = pd.DataFrame(uncert_dict)  # you should switch to using this...
@@ -692,6 +698,45 @@ for probe in probes:
     
     # plt.savefig(f'{fm_folder}/{title}.png', dpi=400)
 
+# ! triangle plot
+ssc_code = 'OneCovariance'
+fm_triangle_list = [f'FM_{ssc_code}_GC_GSSCcNG', f'FM_{ssc_code}_GC_GcNG', f'FM_{ssc_code}_GC_G']
+samples_list = []
+pars_toplot = 7
+fid_pars_dict_here = deepcopy(cfg.fid_pars_dict_for_fm)
+
+
+for fm_name in fm_triangle_list:
+    
+    fm = fm_dict_loaded[fm_name]
+    fm = mm.remove_null_rows_cols_2D_copilot(fm)
+    
+    if 'Om_Lambda0' in fid_pars_dict_here:
+        del fid_pars_dict_here['Om_Lambda0']
+
+    params_plt_list = list(fid_pars_dict_here.keys())[:pars_toplot]
+    trimmed_fid_dict = {param: fid_pars_dict_here[param] for param in
+                        params_plt_list}
+
+    # get the covariance matrix (careful on how you cut the FM!!)
+    fm_idxs_tokeep = [list(fid_pars_dict_here.keys()).index(param) for param in
+                        params_plt_list]
+    cov = np.linalg.inv(fm)[fm_idxs_tokeep, :][:, fm_idxs_tokeep]
+
+    samples_list.append(GaussianND(mean=list(trimmed_fid_dict.values()), cov=cov, names=(trimmed_fid_dict.keys())))
+
+g = plots.get_subplot_plotter()
+g.settings.linewidth = 2
+g.settings.legend_fontsize = 30
+g.settings.linewidth_contour = 2.5
+g.settings.axes_fontsize = 27
+g.settings.axes_labelsize = 30
+g.settings.subplot_size_ratio = 1
+g.settingstight_layout = True
+g.settings.solid_colors = 'tab10'
+g.triangle_plot(samples_list, filled=True, contour_lws=1.4,
+                legend_labels=fm_triangle_list, legend_loc='upper right')
+plt.suptitle('GC', fontsize='xx-large')
 
 # silent check against IST:F (which does not exist for GC alone):
 for which_probe in ['WL', '3x2pt']:

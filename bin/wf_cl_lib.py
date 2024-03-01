@@ -95,7 +95,7 @@ def n_of_z(z):
 # # TODO re-compute and check niz_unnorm_quad(z), maybe compute it with scipy.special.erf
 # if cfg.load_external_niz:
 #     n_bar = np.genfromtxt(f"{ROOT}/cl_v2/output/n_bar.txt")
-    
+
 #     niz_import = np.genfromtxt(f'{cfg.niz_path}/{cfg.niz_filename}')
 #     # store and remove the redshift values, ie the 1st column
 #     z_values_from_nz = niz_import[:, 0]
@@ -167,19 +167,18 @@ def niz_unnormalized_simps(z_grid, zbin_idx, pph=pph, zp_points=500):
     return niz_unnorm_integral
 
 
-
 def niz_unnormalized_simps_fullgrid(z_grid, zbin_idx, pph=pph):
     """numerator of Eq. (112) of ISTF, with simpson integration and "global" grid"""
     warnings.warn('this function needs very high number of samples;'
                   ' the zp_bin_grid sampling should perform better')
     assert type(zbin_idx) == int, 'zbin_idx must be an integer'
-    
+
     # alternative: equispaced grid with z_edges added (does *not* work well, needs a lot of samples!!)
     zp_grid = np.linspace(z_min, z_max, 4000)
     zp_grid = np.concatenate((z_edges, zp_grid))
     zp_grid = np.unique(zp_grid)
     zp_grid = np.sort(zp_grid)
-    
+
     # indices of z_edges in zp_grid:
     z_edges_idxs = np.array([np.where(zp_grid == z_edges[i])[0][0] for i in range(z_edges.shape[0])])
 
@@ -457,7 +456,8 @@ def stepwise_bias(z, gal_bias_vs_zmean, z_edges):
             return gal_bias_vs_zmean[zbin_idx]
 
 
-def build_galaxy_bias_2d_arr(gal_bias_vs_zmean, zmeans, z_edges, zbins, z_grid, bias_model, plot_bias=False):
+def build_galaxy_bias_2d_arr(gal_bias_vs_zmean, zmeans, z_edges, zbins, z_grid, bias_model, 
+                             plot_bias=False, bias_fit_function=None, kwargs_bias_fit_function=None):
     """
     Builds a 2d array of shape (len(z_grid), zbins) containing the bias values for each redshift bin. The bias values
     can be given as a function of z, or as a constant value for each redshift bin. Each weight funcion will
@@ -478,6 +478,7 @@ def build_galaxy_bias_2d_arr(gal_bias_vs_zmean, zmeans, z_edges, zbins, z_grid, 
 
     if bias_model == 'unbiased':
         gal_bias_2d_arr = np.ones((len(z_grid), zbins))
+
     elif bias_model == 'linint':
         # linear interpolation
         galaxy_bias_func = scipy.interpolate.interp1d(zmeans, gal_bias_vs_zmean, kind='linear',
@@ -485,22 +486,31 @@ def build_galaxy_bias_2d_arr(gal_bias_vs_zmean, zmeans, z_edges, zbins, z_grid, 
                                                       bounds_error=False)
         gal_bias_1d_arr = galaxy_bias_func(z_grid)
         gal_bias_2d_arr = np.repeat(gal_bias_1d_arr[:, np.newaxis], zbins, axis=1)
+
     elif bias_model == 'constant':
         # this is the *only* case in which the bias is different for each zbin
         gal_bias_2d_arr = np.repeat(gal_bias_vs_zmean[np.newaxis, :], len(z_grid), axis=0)
+
     elif bias_model == 'step-wise':
         assert z_edges is not None, 'z_edges must be provided for step-wise bias'
         assert len(z_edges) == zbins + 1, 'z_edges must have length zbins + 1'
         gal_bias_1d_arr = np.array([stepwise_bias(z, gal_bias_vs_zmean, z_edges) for z in z_grid])
         gal_bias_2d_arr = np.repeat(gal_bias_1d_arr[:, np.newaxis], zbins, axis=1)
+
+    elif bias_model == 'polynomial':
+        assert bias_fit_function is not None, 'bias_fit_function must be provided for polynomial bias'
+        gal_bias_1d_arr = bias_fit_function(z_grid, **kwargs_bias_fit_function)
+        # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
+        gal_bias_2d_arr = np.repeat(gal_bias_1d_arr.reshape(1, -1), zbins, axis=0).T
+
     else:
-        raise ValueError('bias_model must be "unbiased", "linint", "constant" or "step-wise"')
+        raise ValueError('bias_model must be "unbiased", "linint", "constant", "step-wise" or "polynomial"')
 
     if plot_bias:
         plt.figure()
         plt.title(f'bias_model {bias_model}')
         for zbin_idx in range(zbins):
-            plt.plot(z_grid, gal_bias_2d_arr[:, zbin_idx], label=f'zbin {zbin_idx}')
+            plt.plot(z_grid, gal_bias_2d_arr[:, zbin_idx], label=f'zbin {zbin_idx + 1}')
             plt.scatter(zmeans[zbin_idx], gal_bias_vs_zmean[zbin_idx], marker='o', color='black')
         plt.legend()
         plt.xlabel('$z$')
@@ -702,7 +712,7 @@ def wf_ccl(z_grid, probe, which_wf, flat_fid_pars_dict, cosmo_ccl, dndz_tuple, i
 
             def mag_bias_func(zbin_idx): return (mag_bias_tuple[0], mag_bias_tuple[1][:, zbin_idx])
         else:
-            mag_bias = None            
+            mag_bias = None
 
         wf_galaxy_obj = [ccl.tracers.NumberCountsTracer(cosmo_ccl,
                                                         has_rsd=has_rsd,

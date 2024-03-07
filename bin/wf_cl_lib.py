@@ -714,18 +714,18 @@ def wf_ccl(z_grid, probe, which_wf, flat_fid_pars_dict, cosmo_ccl, dndz_tuple, i
         wf_galaxy_obj = []
         for zbin_idx in range(zbins):
             
-            this is needed to be eble to pass mag_bias = None for each zbin
+            # this is needed to be eble to pass mag_bias = None for each zbin
             if mag_bias_tuple is None:
-                pass
+                mag_bias_arg = mag_bias_tuple
             else:
-                mag_bias_tuple = (mag_bias_tuple[0], mag_bias_tuple[1][:, zbin_idx])
+                mag_bias_arg = (mag_bias_tuple[0], mag_bias_tuple[1][:, zbin_idx])
                 
             wf_galaxy_obj.append(ccl.tracers.NumberCountsTracer(cosmo_ccl,
                                                                 has_rsd=has_rsd,
                                                                 dndz=(dndz_tuple[0], dndz_tuple[1][:, zbin_idx]),
                                                                 bias=(gal_bias_tuple[0],
                                                                       gal_bias_tuple[1][:, zbin_idx]),
-                                                                mag_bias=mag_bias_tuple,
+                                                                mag_bias=mag_bias_arg,
                                                                 n_samples=n_samples))
 
         if return_ccl_obj:

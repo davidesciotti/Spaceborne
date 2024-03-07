@@ -1,0 +1,125 @@
+nohup: ignoring input
+1323069
+/home/cosmo/davide.sciotti/data/Spaceborne/bin/wf_cl_lib.py:72: UserWarning: these global variables should be deleted...
+  warnings.warn('these global variables should be deleted...')
+/home/cosmo/davide.sciotti/data/Spaceborne/bin/wf_cl_lib.py:73: UserWarning: RECHECK Ox0 in cosmolib
+  warnings.warn('RECHECK Ox0 in cosmolib')
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/jobs/SPV3_magcut_zcut_thesis/bin/main_SPV3_magcut_zcut_thesis.py:407: UserWarning: find a better way to treat with the various ng covariances
+  warnings.warn('find a better way to treat with the various ng covariances')
+{   'BNT_transform': False,
+    'EP_or_ED': 'EP',
+    'center_or_min': 'center',
+    'ell_max_3x2pt': 5000,
+    'ell_max_GC': 5000,
+    'ell_max_WL': 5000,
+    'flat_or_nonflat': 'Flat',
+    'idB': 3,
+    'idBM': 1,
+    'idIA': 2,
+    'idM': 3,
+    'idR': 1,
+    'kmax_h_over_Mpc': 1.0,
+    'magcut_lens': 245,
+    'magcut_source': 245,
+    'nbl_3x2pt': 32,
+    'nbl_GC': 32,
+    'nbl_WA': 0,
+    'nbl_WL': 32,
+    'ng_cov_code': 'PyCCL',
+    'which_ng_cov': 'GcNG',
+    'which_pk': 'HMCodeBar',
+    'zbins': 13,
+    'zcut_lens': 2,
+    'zcut_source': 2,
+    'zmax': 25}
+/home/cosmo/davide.sciotti/data/Spaceborne/bin/covariance.py:713: UserWarning: z_grid starts at 0, which gives a null comoving distance. Removing the first element from the grid
+  warnings.warn('z_grid starts at 0, which gives a null comoving distance. '
+Shifting n(z), clipping between redshifts 0 and 3
+Using CLOE cls; pk is HMCodeBar
+Data has been written to Cell_ll_CLOE
+Data has been written to Cell_gl_CLOE
+Data has been written to Cell_gg_CLOE
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/jobs/SPV3_magcut_zcut_thesis/bin/main_SPV3_magcut_zcut_thesis.py:871: UserWarning: Sijkl is not computed, but set to identity
+  warnings.warn('Sijkl is not computed, but set to identity')
+all probes (but WAdd) have the same number of ell bins
+
+check: 
+ind_ordering = triu, row-major 
+block_index = ell
+zbins: EP13
+nbl_WA: 0 nbl_WL: 32 nbl_GC:  32, nbl_3x2pt:  32
+ell_max_WL = 5000 
+ell_max_GC = 5000
+GL_or_LG: GL
+
+Gauss. cov. matrices computed in 0.48 seconds
+SS cov. matrices computed in 6.26 s with PySSC
+Computing 3x2pt cNG covariance with PyCCL
+NG covariance folder is:
+/home/cosmo/davide.sciotti/data/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/covmat/PyCCL/jan_2024
+
+NG covariance filename is:
+cov_cNG_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d}_4D_nbl32_ellmax5000_zbinsEP13_cNG_CSSTres.npz
+
+
+****************** ccl settings ****************
+probe = 3x2pt
+which_ng_cov = cNG
+integration_method = spline
+nbl = 32
+f_sky = 0.3563380664078408
+zbins = 13
+************************************************
+
+/home/cosmo/davide.sciotti/data/Spaceborne/bin/my_module.py:2973: UserWarning: double-check the units in the header and whether k is in log scale in the input file (this function assumes it is))
+  warnings.warn(
+/home/cosmo/davide.sciotti/data/Spaceborne/bin/my_module.py:2975: UserWarning: the output ordering is [k, z], not the other way around!
+  warnings.warn('the output ordering is [k, z], not the other way around!')
+/home/cosmo/davide.sciotti/data/Spaceborne/bin/pyccl_cov.py:492: UserWarning: TESTING ONLY GLGL TO DEBUG
+  warnings.warn('TESTING ONLY GLGL TO DEBUG')
+Computing sigma2_B from mask
+
+0it [00:00, ?it/s]Computing trispectrum for cNG,  probe combination GGGG
+z points = 100, k points = 512
+halomod_Tk3D_cNG: computing halomod_trispectruhalomod_Tk3D_cNG: computing halomod_trispectrum_1h... done in 37.19s
+halomod_Tk3D_cNG: computing _halomod_trispectrum_2h_22...
+halomod_Tk3D_cNG: computing _halomod_trispectrum_2h_22... done in 14035.94s
+halomod_Tk3D_cNG: computing _halomod_trispectrum_2h_13...
+halomod_Tk3D_cNG: computing _halomod_trispectrum_2h_13... done in 38.70s
+halomod_Tk3D_cNG: computing halomod_trispectrum_3h...
+halomod_Tk3D_cNG: computing halomod_trispectrum_3h... done in 11116.49s
+halomod_Tk3D_cNG: computing halomod_trispectrum_4h...
+halomod_Tk3D_cNG: computing halomod_trispectrum_4h... done in 1061.00s
+1it [7:18:13, 26293.32s/it]1it [7:18:13, 26293.32s/it]
+trispectrum computed in 26293.32 seconds
+3x2pt: working on probe combination  G G G G
+n_jobs =  1
+  0%|          | 0/91 [00:00<?, ?it/s]  1%|          | 1/91 [01:11<1:46:36, 71.07s/it]  2%|▏         | 2/91 [02:01<1:27:39, 59.09s/it]  3%|▎         | 3/91 [02:50<1:19:52, 54.46s/it]  4%|▍         | 4/91 [03:47<1:20:02, 55.20s/it]  5%|▌         | 5/91 [04:50<1:23:12, 58.05s/it]  7%|▋         | 6/91 [05:52<1:24:04, 59.34s/it]  8%|▊         | 7/91 [06:56<1:25:16, 60.91s/it]  9%|▉         | 8/91 [07:59<1:25:06, 61.53s/it] 10%|▉         | 9/91 [09:10<1:28:18, 64.61s/it] 11%|█         | 10/91 [10:20<1:29:33, 66.34s/it] 12%|█▏        | 11/91 [11:32<1:30:53, 68.16s/it] 13%|█▎        | 12/91 [12:43<1:30:35, 68.80s/it] 14%|█▍        | 13/91 [13:55<1:30:54, 69.93s/it] 15%|█▌        | 14/91 [14:46<1:22:25, 64.23s/it] 16%|█▋        | 15/91 [15:36<1:15:38, 59.71s/it] 18%|█▊        | 16/91 [16:26<1:11:12, 56.97s/it] 19%|█▊        | 17/91 [17:18<1:08:27, 55.51s/it] 20%|█▉        | 18/91 [18:09<1:05:58, 54.22s/it] 21%|██        | 19/91 [19:00<1:03:48, 53.18s/it] 22%|██▏       | 20/91 [19:51<1:02:12, 52.57s/it] 23%|██▎       | 21/91 [20:42<1:00:44, 52.07s/it] 24%|██▍       | 22/91 [21:34<59:38, 51.86s/it]   25%|██▌       | 23/91 [22:24<58:17, 51.43s/it] 26%|██▋       | 24/91 [23:14<57:00, 51.05s/it] 27%|██▋       | 25/91 [24:04<55:54, 50.82s/it] 29%|██▊       | 26/91 [24:52<54:00, 49.85s/it] 30%|██▉       | 27/91 [25:40<52:39, 49.37s/it] 31%|███       | 28/91 [26:28<51:25, 48.97s/it] 32%|███▏      | 29/91 [27:18<50:54, 49.27s/it] 33%|███▎      | 30/91 [28:07<49:59, 49.18s/it] 34%|███▍      | 31/91 [28:56<49:08, 49.14s/it] 35%|███▌      | 32/91 [29:45<48:12, 49.03s/it] 36%|███▋      | 33/91 [30:33<47:09, 48.79s/it] 37%|███▋      | 34/91 [31:22<46:17, 48.73s/it] 38%|███▊      | 35/91 [32:11<45:32, 48.79s/it] 40%|███▉      | 36/91 [33:00<44:47, 48.87s/it] 41%|████      | 37/91 [33:54<45:20, 50.38s/it] 42%|████▏     | 38/91 [34:49<45:52, 51.94s/it] 43%|████▎     | 39/91 [35:45<46:04, 53.16s/it] 44%|████▍     | 40/91 [36:42<46:00, 54.13s/it] 45%|████▌     | 41/91 [37:38<45:39, 54.79s/it] 46%|████▌     | 42/91 [38:34<45:00, 55.10s/it] 47%|████▋     | 43/91 [39:31<44:28, 55.58s/it] 48%|████▊     | 44/91 [40:27<43:40, 55.76s/it] 49%|████▉     | 45/91 [41:22<42:41, 55.69s/it] 51%|█████     | 46/91 [42:18<41:40, 55.57s/it] 52%|█████▏    | 47/91 [43:19<42:01, 57.31s/it] 53%|█████▎    | 48/91 [44:21<42:08, 58.81s/it] 54%|█████▍    | 49/91 [45:24<41:58, 59.96s/it] 55%|█████▍    | 50/91 [46:26<41:18, 60.45s/it] 56%|█████▌    | 51/91 [47:27<40:29, 60.74s/it] 57%|█████▋    | 52/91 [48:28<39:37, 60.95s/it] 58%|█████▊    | 53/91 [49:31<38:50, 61.33s/it] 59%|█████▉    | 54/91 [50:33<38:05, 61.78s/it] 60%|██████    | 55/91 [51:38<37:28, 62.47s/it] 62%|██████▏   | 56/91 [52:42<36:50, 63.17s/it] 63%|██████▎   | 57/91 [53:47<36:00, 63.54s/it] 64%|██████▎   | 58/91 [54:50<34:56, 63.52s/it] 65%|██████▍   | 59/91 [55:54<33:54, 63.58s/it] 66%|██████▌   | 60/91 [56:57<32:47, 63.48s/it] 67%|██████▋   | 61/91 [58:01<31:45, 63.52s/it] 68%|██████▊   | 62/91 [59:02<30:19, 62.73s/it] 69%|██████▉   | 63/91 [1:00:05<29:20, 62.89s/it] 70%|███████   | 64/91 [1:01:08<28:18, 62.89s/it] 71%|███████▏  | 65/91 [1:02:11<27:17, 63.00s/it] 73%|███████▎  | 66/91 [1:03:16<26:30, 63.61s/it] 74%|███████▎  | 67/91 [1:04:20<25:31, 63.80s/it] 75%|███████▍  | 68/91 [1:05:25<24:35, 64.16s/it] 76%|███████▌  | 69/91 [1:06:30<23:34, 64.31s/it] 77%|███████▋  | 70/91 [1:07:35<22:35, 64.54s/it] 78%|███████▊  | 71/91 [1:08:38<21:19, 63.97s/it] 79%|███████▉  | 72/91 [1:09:41<20:11, 63.76s/it] 80%|████████  | 73/91 [1:10:44<19:01, 63.44s/it] 81%|████████▏ | 74/91 [1:11:48<18:00, 63.58s/it] 82%|████████▏ | 75/91 [1:12:52<17:00, 63.78s/it] 84%|████████▎ | 76/91 [1:13:56<15:58, 63.91s/it] 85%|████████▍ | 77/91 [1:15:08<15:27, 66.28s/it] 86%|████████▌ | 78/91 [1:16:19<14:38, 67.59s/it] 87%|████████▋ | 79/91 [1:17:30<13:44, 68.71s/it] 88%|████████▊ | 80/91 [1:18:41<12:45, 69.56s/it] 89%|████████▉ | 81/91 [1:19:54<11:43, 70.33s/it] 90%|█████████ | 82/91 [1:21:03<10:31, 70.13s/it] 91%|█████████ | 83/91 [1:22:15<09:23, 70.50s/it] 92%|█████████▏| 84/91 [1:23:25<08:13, 70.56s/it] 93%|█████████▎| 85/91 [1:24:36<07:04, 70.73s/it] 95%|█████████▍| 86/91 [1:25:46<05:52, 70.43s/it] 96%|█████████▌| 87/91 [1:26:57<04:41, 70.42s/it] 97%|█████████▋| 88/91 [1:28:07<03:31, 70.51s/it] 98%|█████████▊| 89/91 [1:29:19<02:22, 71.01s/it] 99%|█████████▉| 90/91 [1:30:32<01:11, 71.46s/it]100%|██████████| 91/91 [1:31:42<00:00, 71.18s/it]100%|██████████| 91/91 [1:31:42<00:00, 60.47s/it]
+cNG computed with pyccl in 92 min
+Traceback (most recent call last):
+  File "/export/NAS/cosmo/data/davide.sciotti/Spaceborne/jobs/SPV3_magcut_zcut_thesis/bin/main_SPV3_magcut_zcut_thesis.py", line 877, in <module>
+    cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+  File "/home/cosmo/davide.sciotti/data/Spaceborne/bin/covariance.py", line 426, in compute_cov
+    cov_ng_3x2pt_10D_dict = get_cov_ng_3x2pt(
+  File "/home/cosmo/davide.sciotti/data/Spaceborne/bin/covariance.py", line 218, in get_cov_ng_3x2pt
+    cov_3x2pt_dict_8D = pyccl_cov.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], '3x2pt',
+  File "/home/cosmo/davide.sciotti/data/Spaceborne/bin/pyccl_cov.py", line 633, in compute_cov_ng_with_pyccl
+    np.testing.assert_allclose(cov_ng_8D_dict[key], np.transpose(cov_ng_8D_dict[key], (1, 0, 2, 3)), rtol=1e-6, atol=0,
+  File "/home/cosmo/davide.sciotti/software/anaconda3/envs/spaceborne/lib/python3.10/site-packages/numpy/testing/_private/utils.py", line 1504, in assert_allclose
+    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),
+  File "/home/cosmo/davide.sciotti/software/anaconda3/envs/spaceborne/lib/python3.10/contextlib.py", line 79, in inner
+    return func(*args, **kwds)
+  File "/home/cosmo/davide.sciotti/software/anaconda3/envs/spaceborne/lib/python3.10/site-packages/numpy/testing/_private/utils.py", line 797, in assert_array_compare
+    raise AssertionError(msg)
+AssertionError: 
+Not equal to tolerance rtol=1e-06, atol=0
+cov_ng_4D ('G', 'G', 'G', 'G') is not symmetric in ell1, ell2
+Mismatched elements: 6351366 / 8479744 (74.9%)
+Max absolute difference: 6.07018261e-17
+Max relative difference: 74.67212976
+ x: array([[[[2.078235e-13, 7.868800e-15, 1.526961e-14, ..., 3.096771e-17,
+          7.047947e-17, 1.604258e-16],
+         [7.868800e-15, 1.080138e-15, 1.120175e-15, ..., 1.283157e-18,...
+ y: array([[[[2.078235e-13, 7.868800e-15, 1.526961e-14, ..., 3.096771e-17,
+          7.047947e-17, 1.604258e-16],
+         [7.868800e-15, 1.080138e-15, 1.120175e-15, ..., 1.283157e-18,...

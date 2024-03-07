@@ -17,7 +17,7 @@ import bin.check_specs as utils
 # * jan_2024 folder
 # * mpl.use('Agg') in the main
 
-fm_and_cov_suffix = '_cNG_CSSTres'
+fm_and_cov_suffix = '_sigma2_mask_superdense_grid_kz'
 
 
 with open(f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
@@ -162,7 +162,7 @@ covariance_cfg = {
     'cov_folder': f'{DATA_ROOT}/output/{which_input_files}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
 
-    'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or exactSSC or OneCovariance
+    'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or Spaceborne or OneCovariance
 
     'PySSC_cfg': {
         'which_ng_cov': 'SSC',
@@ -170,14 +170,13 @@ covariance_cfg = {
 
     'PyCCL_cfg': {
         'probe': '3x2pt',
-        'which_ng_cov': ('cNG',),
+        'which_ng_cov': ('SSC',),
 
         'load_precomputed_cov': False,
         'save_cov': True,
 
         'save_trispectrum': False,
-        # 'cov_path':  ROOT + '/PyCCL_SSC/output/covmat/ISTF/jan_2024', # old path
-        'cov_path': f'{DATA_ROOT}/output/cl14may/covmat/PyCCL/jan_2024',
+        'cov_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/PyCCL/jan_2024',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}' + fm_and_cov_suffix + '.npz',
                         
@@ -198,7 +197,7 @@ covariance_cfg = {
         # z_grid min and max should probably coincide. play around with steps to find the minimum number        
         'z_grid_tkka_min': 0.,
         'z_grid_tkka_max': 6,
-        'z_grid_tkka_steps': 100,
+        'z_grid_tkka_steps': 200,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
         'k_grid_tkka_steps': 512,
@@ -210,11 +209,11 @@ covariance_cfg = {
         
     },
 
-    'exactSSC_cfg': {
-        'which_ng_cov': ('SSC',),
+    'Spaceborne_cfg': {
+        'which_ng_cov': ('SSC', 'cNG'),
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
         'load_precomputed_cov': True,
-        'cov_path': ROOT + '/exact_SSC/output/ISTF/jan_2024/SSC_matrix',
+        'cov_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/Spaceborne',
         'cov_filename': 'cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}'
                         '_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}'
                         '_convention{cl_integral_convention:s}.npy',
@@ -236,7 +235,7 @@ covariance_cfg = {
         'load_precomputed_cov': True,  # this must be True for OneCovariance
         'use_OneCovariance_Gaussian': False,
         
-        'cov_path': f'{DATA_ROOT}/output/cl14may/covmat/OneCovariance',
+        'cov_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/OneCovariance',
         'cov_filename': 'cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',
     }
@@ -299,7 +298,7 @@ FM_cfg = {
     'derivatives_BNT_transform': deriv_BNT_transform,
     'deriv_ell_cuts': deriv_ell_cuts,
 
-    'fm_folder': str(DATA_ROOT) + f'/output/{which_input_files}/' + 'FM/jan_2024/{SSC_code:s}',
+    'fm_folder': str(DATA_ROOT) + f'/output/{which_input_files}/' + 'FM/{SSC_code:s}',
     'FM_txt_filename': 'FM_{probe:s}_{which_cov:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02}',
     'FM_dict_filename': 'FM_dict_zbins{EP_or_ED:s}{zbins:02}' + fm_and_cov_suffix,
 

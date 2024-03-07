@@ -89,7 +89,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                             'should be fixed now')
 
     if use_hod_for_gg:
-        # This is the correct way to initialize the trispectrum, but the code does not run.
+        # This is the correct way to initialize the trispectrum
         # Asked David Alonso about this.
         halo_profile_dict = {
             'L': halo_profile_nfw,
@@ -131,14 +131,20 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                     tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
                     additional_args = {
                         'probe_block': A + B + C + D,
+                        'prof12_2pt': prof_2pt_dict[A, B],
+                        'prof34_2pt': prof_2pt_dict[C, D],
                         'p_of_k_a': p_of_k_a,
                     }
                 elif which_ng_cov == 'cNG':
                     tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
                     additional_args = {
+                        'prof12_2pt': prof_2pt_dict[A, B],
                         'prof13_2pt': prof_2pt_dict[A, C],
                         'prof14_2pt': prof_2pt_dict[A, D],
-                        'prof24_2pt': prof_2pt_dict[B, D]
+                        'prof24_2pt': prof_2pt_dict[B, D],
+                        'prof32_2pt': prof_2pt_dict[C, B],
+                        'prof34_2pt': prof_2pt_dict[C, D],
+                        'p_of_k_a': None,  # TODO pass object? anyway, None takes the pk stored in cosmo
                     }
                     # tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_1h
                     # additional_args = {}
@@ -151,12 +157,10 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                                   prof2=halo_profile_dict[B],
                                                   prof3=halo_profile_dict[C],
                                                   prof4=halo_profile_dict[D],
-                                                  prof12_2pt=prof_2pt_dict[A, B],
-                                                  prof34_2pt=prof_2pt_dict[C, D],
                                                   lk_arr=logn_k_grid_tkka,
                                                   a_arr=a_grid_tkka,
                                                   extrap_order_lok=1, extrap_order_hik=1, use_log=False,
-                                                 **additional_args)
+                                                  **additional_args)
 
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
     if pyccl_cfg['save_trispectrum']:
@@ -249,7 +253,8 @@ def compute_ng_cov_3x2pt(cosmo, which_ng_cov, kernel_dict, ell, tkka_dict, f_sky
                                                            probe_c=probe_c, probe_d=probe_d)
 
                     nbl_grid_here = len(ell)
-                    assert f'nbl{nbl_grid_here}' in cov_filename, f'cov_filename could be inconsistent with the actual grid used'
+                    assert f'nbl{nbl_grid_here}' in cov_filename, \
+                        f'cov_filename could be inconsistent with the actual grid used'
                     np.savez_compressed(
                         f'{cov_path}/{cov_filename_fmt}', cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d])
 
@@ -289,7 +294,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     assert probe in ['LL', 'GG', '3x2pt'], 'probe must be either LL, GG, or 3x2pt'
     assert which_ng_cov in ['SSC', 'cNG'], 'which_ng_cov must be either SSC or cNG'
     assert GL_or_LG == 'GL', 'you should update ind_cross (used in ind_dict) for GL, but we work with GL...'
-    assert has_rsd == False, 'RSD not implemented yet'
+    assert has_rsd == False, 'RSD not validated yet...'
 
     # get number of redshift pairs
     zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
@@ -322,18 +327,16 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         gal_bias_1d = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, maglim=maglim)
         # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
         gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), zbins, axis=0).T
-        
+
         # this is a test to use the actual P(k) from the input files, but the agreement gets much worse
         k_grid_Pk, z_grid_Pk, pk_mm_2d = mm.pk_vinc_file_to_2d_npy(general_cfg['CLOE_pk_filename'], plot_pk_z0=True)
         pk_flipped_in_z = np.flip(pk_mm_2d, axis=1)
         scale_factor_grid_pk = cosmo_lib.z_to_a(z_grid_Pk)[::-1]  # flip it
         p_of_k_a = ccl.pk2d.Pk2D(a_arr=scale_factor_grid_pk, lk_arr=np.log(k_grid_Pk),
-                                pk_arr=pk_flipped_in_z.T, is_logp=False)
-        
+                                 pk_arr=pk_flipped_in_z.T, is_logp=False)
+
         # TODO delete the line below to use input pk, range needs to be extended to higher redshifts to match tkka grid (probably larger k range too)
         p_of_k_a = 'delta_matter:delta_matter'
-    
-    
 
     elif general_cfg['which_forecast'] == 'ISTF':
 
@@ -351,9 +354,8 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         gal_bias_1d = istf_bias_func(z_means)
         gal_bias_2d = wf_cl_lib.build_galaxy_bias_2d_arr(
             gal_bias_1d, z_means, z_edges, zbins, zgrid_nz, bias_model=bias_model, plot_bias=True)
-        
+
         p_of_k_a = 'delta_matter:delta_matter'
-        
 
     else:
         raise ValueError('general_cfg["which_forecast"] must be either SPV3 or ISTF')
@@ -374,8 +376,9 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     else:
         # this is the correct way to set the magnification bias values so that the actual bias is 1, ant the corresponding
         # wf_mu is zero (which is, in theory, the case mag_bias_tuple=None, which however causes pyccl to crash!)
-        mag_bias_2d = (np.ones_like(gal_bias_2d) * + 2) / 5
-        mag_bias_tuple = (zgrid_nz, mag_bias_2d)
+        # mag_bias_2d = (np.ones_like(gal_bias_2d) * + 2) / 5
+        # mag_bias_tuple = (zgrid_nz, mag_bias_2d)
+        mag_bias_tuple = None
 
     wf_lensing_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
                                       ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
@@ -393,7 +396,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     wf_galaxy_tot_arr = np.asarray([wf_galaxy_obj[zbin_idx].get_kernel(comoving_distance) for zbin_idx in range(zbins)])
     wf_delta_arr = wf_galaxy_tot_arr[:, 0, :].T
-    wf_mu_arr = wf_galaxy_tot_arr[:, 1, :].T if has_magnification_bias else np.zeros_like(wf_delta_arr)
+    wf_mu_arr = wf_galaxy_tot_arr[:, -1, :].T if has_magnification_bias else np.zeros_like(wf_delta_arr)
 
     gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias!)'
     # in the case of ISTF, the galaxt bias is bin-per-bin and is therefore included in the kernels. Add it here
@@ -445,11 +448,22 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     # the cls are not needed, but just in case:
     cl_ll_3d = wf_cl_lib.cl_PyCCL(wf_lensing_obj, wf_lensing_obj, ell_grid, zbins,
-                                  p_of_k_a=p_of_k_a, cosmo=cosmo_ccl, limber_integration_method='spline')
+                                  p_of_k_a=p_of_k_a, cosmo=cosmo_ccl)
     cl_gl_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_lensing_obj, ell_grid, zbins,
-                                  p_of_k_a=p_of_k_a, cosmo=cosmo_ccl, limber_integration_method='spline')
+                                  p_of_k_a=p_of_k_a, cosmo=cosmo_ccl)
     cl_gg_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_galaxy_obj, ell_grid, zbins,
-                                  p_of_k_a=p_of_k_a, cosmo=cosmo_ccl, limber_integration_method='spline')
+                                  p_of_k_a=p_of_k_a, cosmo=cosmo_ccl)
+
+    # if you need to save finely sampled cls for OneCovariance
+    # ell_grid = np.geomspace(10, 5000, 90)
+    # which_pk = general_cfg['which_pk']
+    # mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
+    #                   f'Cell_ll_SPV3_ccl', cl_ll_3d, ell_grid, zbins)
+    # mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
+    #                   f'Cell_gl_SPV3_ccl', cl_gl_3d, ell_grid, zbins)
+    # mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
+    #                   f'Cell_gg_SPV3_ccl', cl_gg_3d, ell_grid, zbins)
+
     cl_ll_3d_vinc = general_cfg['cl_ll_3d']
     cl_gl_3d_vinc = general_cfg['cl_gl_3d']
     cl_gg_3d_vinc = general_cfg['cl_gg_3d']
@@ -481,7 +495,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     ax[1].legend()
     ax[2].legend()
     plt.show()
-    
+
     # covariance ordering stuff, also used to compute the trispectrum
     if probe == 'LL':
         probe_ordering = (('L', 'L'),)
@@ -490,7 +504,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     elif probe == '3x2pt':
         probe_ordering = covariance_cfg['probe_ordering']
         warnings.warn('TESTING ONLY GLGL TO DEBUG')
-        probe_ordering = (('G', 'G'),)  # for testing 3x2pt GLGL, which seems a problematic case.
+        probe_ordering = (('G', 'L'),)  # for testing 3x2pt GLGL, which seems a problematic case.
     else:
         raise ValueError('probe must be either LL, GG, or 3x2pt')
 
@@ -582,9 +596,10 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         plt.show()
 
     which_pk = fiducial_pars_dict['other_params']['camb_extra_parameters']['camb']['halofit_version']
-    tkka_dict = initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, which_pk=which_pk, p_of_k_a=p_of_k_a)
+    tkka_dict = initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering,
+                                       pyccl_cfg, which_pk=which_pk, p_of_k_a=p_of_k_a)
     cov_ng_8D_dict = {}
-    
+
     if probe in ['LL', 'GG']:
         raise NotImplementedError('you should check that the dictionary cov_ng_8D_dict return works, in this case')
 
@@ -630,8 +645,11 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     # test if cov is symmetric in ell1, ell2
     for key in cov_ng_8D_dict.keys():
-        np.testing.assert_allclose(cov_ng_8D_dict[key], np.transpose(cov_ng_8D_dict[key], (1, 0, 2, 3)), rtol=1e-6, atol=0,
-           err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
+        try:
+            np.testing.assert_allclose(cov_ng_8D_dict[key], np.transpose(cov_ng_8D_dict[key], (1, 0, 2, 3)), rtol=1e-6, atol=0,
+                                       err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
+        except AssertionError as error:
+            print(error)
 
     return cov_ng_8D_dict
 

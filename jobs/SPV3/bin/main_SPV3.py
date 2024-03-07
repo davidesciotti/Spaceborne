@@ -29,10 +29,12 @@ import bin.fisher_matrix as FM_utils
 import bin.my_module as mm
 import bin.cosmo_lib as csmlib
 import bin.wf_cl_lib as wf_cl_lib
+import bin.plots_FM_running as plot_utils
 import common_cfg.mpl_cfg as mpl_cfg
 
+
 # job config
-import jobs.SPV3_magcut_zcut_thesis.config.config_SPV3_magcut_zcut_thesis as cfg
+import jobs.SPV3.config.config_SPV3 as cfg
 
 # mpl.use('Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -284,7 +286,8 @@ def plot_kernels_for_thesis():
         plt.plot(zgrid_wf_vin, wf_ll_vin_bnt[:, zi], ls=':', c=colors[zi], alpha=0.6)
 
     plt.title(
-        f'interpolation_kind {shift_nz_interpolation_kind}, use_ia {include_ia_in_bnt_kernel_for_zcuts}, sigma_gauss {nz_gaussian_smoothing_sigma}\n'
+        f'interpolation_kind {shift_nz_interpolation_kind}, '
+        f'use_ia {include_ia_in_bnt_kernel_for_zcuts}, sigma_gauss {nz_gaussian_smoothing_sigma}\n'
         f'shift_dz {shift_nz}')
     plt.xlabel('$z$')
     plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
@@ -536,14 +539,6 @@ nofz_folder = covariance_cfg["nofz_folder"]
 nofz_filename = covariance_cfg["nofz_filename"].format(**variable_specs)
 n_of_z = np.genfromtxt(f'{nofz_folder}/{nofz_filename}')
 
-# save in ASCII format for OneCovariance
-nofz_filename_ascii = nofz_filename.replace('.dat', '.ascii')
-with open(f'{nofz_folder}/{nofz_filename}', 'r') as f:
-    data = f.read()
-
-with open(f'{nofz_folder}/{nofz_filename_ascii}', 'w') as f:
-    f.write(data)
-
 zgrid_nz = n_of_z[:, 0]
 n_of_z = n_of_z[:, 1:]
 n_of_z_original = n_of_z
@@ -581,7 +576,7 @@ assert include_ia_in_bnt_kernel_for_zcuts is False, 'We compute the BNT just for
 
 # ! apply a Gaussian filter
 if nz_gaussian_smoothing:
-    n_of_z = nz_gaussian_smmothing_func(zgrid_nz, n_of_z, plot=True)
+    n_of_z = nz_gaussian_smmothing_func(zgrid_nz, n_of_z_original, plot=True)
 
 # ! shift it (plus, re-normalize it after the shift)
 # * IMPORTANT NOTE: The BNT should be computed from the same n(z) (shifted or not) which is then used to compute
@@ -591,8 +586,9 @@ if nz_gaussian_smoothing:
 # * two of the original kernels get very close after the shift: the transformation is correct.
 # * Having said that, I leave the possibility to continue with the rest of the code with a
 if compute_bnt_with_shifted_nz_for_zcuts:
-    n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z, dz_shifts, normalize=normalize_shifted_nz, plot_nz=False,
+    n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z_original, dz_shifts, normalize=normalize_shifted_nz, plot_nz=False,
                                 interpolation_kind=shift_nz_interpolation_kind)
+
 nz_tuple = (zgrid_nz, n_of_z)
 
 bnt_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, cosmo_ccl=cosmo_ccl, plot_nz=False)
@@ -648,8 +644,9 @@ for zi in range(zbins):
     plt.plot(zgrid_nz, wf_gamma_ccl_bnt[:, zi], ls='--', c=colors[zi],
              alpha=0.6, label='wf_gamma_ccl_bnt' if zi == 0 else None)
     plt.axvline(z_means_ll_bnt[zi], ls=':', c=colors[zi])
-
 plt.legend()
+plt.xlabel('z')
+plt.ylabel('W_i^{gamma}(z)')
 
 assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically increasing'
 assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically increasing'
@@ -675,17 +672,49 @@ ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the 
 #             dpi=500, bbox_inches='tight')
 
 if shift_nz:
-    n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z, dz_shifts, normalize=normalize_shifted_nz, plot_nz=False,
+    n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z_original, dz_shifts, normalize=normalize_shifted_nz, plot_nz=False,
                                 interpolation_kind=shift_nz_interpolation_kind)
     nz_tuple = (zgrid_nz, n_of_z)
-    # * this is important: the BNT matrix i use for the rest of the code (so not to compute the ell cuts) is instead
+    # * this is important: the BNT matrix I use for the rest of the code (so not to compute the ell cuts) is instead
     # * consistent with the shifted n(z) used to compute the kernels
     bnt_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, cosmo_ccl=cosmo_ccl, plot_nz=False)
+    
+
+# ! you can delete this
+# wf_gamma_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'without_IA', flat_fid_pars_dict, cosmo_ccl,
+#                                     nz_tuple, ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+#                                     return_ccl_obj=False, n_samples=len(zgrid_nz))
+# wf_gamma_ccl_bnt = (bnt_matrix @ wf_gamma_ccl_arr.T).T
+
+# plt.figure()
+# for zi in range(zbins):
+#     plt.plot(zgrid_nz, wf_gamma_ccl_arr[:, zi], ls='-', c=colors[zi],
+#              alpha=0.6, label='wf_gamma_ccl' if zi == 0 else None)
+#     plt.plot(zgrid_nz, wf_gamma_ccl_bnt[:, zi], ls='--', c=colors[zi],
+#              alpha=0.6, label='wf_gamma_ccl_bnt' if zi == 0 else None)
+#     plt.axvline(z_means_ll_bnt[zi], ls=':', c=colors[zi])
+# plt.legend()
+# plt.xlabel('z')
+# plt.ylabel('W_i^{gamma}(z)')
+
+# np.savetxt('/home/davide/Scrivania/bnt_kernels_guada/bnt_matrix.txt', bnt_matrix)
+# np.savetxt('/home/davide/Scrivania/bnt_kernels_guada/n_of_z.txt', np.hstack((zgrid_nz.reshape(-1, 1), n_of_z)), header='z \t n_i(z) shifted')
+# np.savetxt('/home/davide/Scrivania/bnt_kernels_guada/wf_gamma.txt', np.hstack((zgrid_nz.reshape(-1, 1), wf_gamma_ccl_arr)), header='z \t W_i^{gamma}(z)')
+# np.savetxt('/home/davide/Scrivania/bnt_kernels_guada/wf_gamma_bnt.txt', np.hstack((zgrid_nz.reshape(-1, 1), wf_gamma_ccl_bnt)), header='z \t W_i^{gamma, BNT}(z)')
+
+
+# assert False, 'stop here for Guadas checks'
+# ! end you can delete this
+
+# save in ASCII format for OneCovariance
+nofz_filename_ascii = nofz_filename.replace('.dat', '.ascii')
+nofz_tosave = np.column_stack((zgrid_nz, n_of_z))
+np.savetxt(f'{nofz_folder}/{nofz_filename_ascii}', nofz_tosave)
 
 general_cfg['nz_tuple'] = nz_tuple
 
 if general_cfg['use_CLOE_cls']:
-    
+
     assert which_pk == 'HMCodeBar', 'I am using CLOE Cls, so I should use HMCodeBar'
     print(f'Using CLOE cls; pk is {which_pk}')
 
@@ -714,7 +743,7 @@ if general_cfg['use_CLOE_cls']:
     mm.write_cl_ascii(ascii_folder, f'Cell_ll{cloe_suffix}', cl_ll_3d, ell_dict['ell_WL'], zbins)
     mm.write_cl_ascii(ascii_folder, f'Cell_gl{cloe_suffix}', cl_gl_3d, ell_dict['ell_XC'], zbins)
     mm.write_cl_ascii(ascii_folder, f'Cell_gg{cloe_suffix}', cl_gg_3d, ell_dict['ell_3x2pt'], zbins)
-    
+
 
 else:
 
@@ -882,7 +911,7 @@ cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg
                                                  **variable_specs)
 covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
-if EP_or_ED == 'EP' and covariance_cfg['SSC_code'] == 'exactSSC' and covariance_cfg['test_against_CLOE_benchmarks'] \
+if EP_or_ED == 'EP' and covariance_cfg['SSC_code'] == 'Spaceborne' and covariance_cfg['test_against_CLOE_benchmarks'] \
         and general_cfg['ell_cuts'] is False and which_pk == 'HMCodeBar':
 
     # load benchmark cov and check that it matches the one computed here; I am not actually using it
@@ -932,49 +961,6 @@ if covariance_cfg['test_against_vincenzo'] and bnt_transform == False and not ge
     npt.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_vinc_g[:num_elements_nbl29, :num_elements_nbl29],
                         rtol=1e-3, atol=0)
     print('covariance matrix matches with Vincenzo\'s ✅')
-
-# # ! remove from here
-# # these are the covmats used
-# cov_checkBNT_GSSC_noBNT = np.load(
-#     '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.npy')
-# cov_checkBNT_GSSC_BNT = np.load(
-#     '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/CheckBNT/cmfull-3x2pt-EP13-ML245-MS245-idIA2-idB3-idM3-idR1-BNT.npy')
-
-# # mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench, 'cov_dict["cov_3x2pt_GS_2D"]',
-# #                   'cov_bench', plot_diff_threshold=5)
-
-# num_elements = cov_dict['cov_3x2pt_GS_2D'].shape[0]
-# diff = mm.percent_diff(cov_dict['cov_3x2pt_GS_2D'], cov_checkBNT_GSSC_BNT[:num_elements, :num_elements])
-# mm.matshow(diff, log=True, abs_val=True, threshold=1, title=f'per diff, BNT {general_cfg["BNT_transform"]}')
-
-# diff = mm.percent_diff(cov_bench_2ddav_GSSC, cov_checkBNT_GSSC_noBNT)
-# mm.matshow(diff, log=True, abs_val=True, threshold=1, title=f'per diff, BNT {general_cfg["BNT_transform"]}')
-
-# cov_vinc_no_bnt_4d = mm.cov_2D_to_4D(cov_checkBNT_GSSC_noBNT, nbl=32, block_index='vincenzo', optimize=True)
-
-# probe_ordering = (('L', 'L'), ('G', 'L'), ('G', 'G'))
-# cov_vinc_no_bnt_10d_dict = mm.cov_3x2pt_4d_to_10d_dict(cov_vinc_no_bnt_4d, zbins, probe_ordering, 32, ind.copy())
-
-# cov_vinc_no_bnt_4d_test = mm.cov_3x2pt_10D_to_4D(
-#     cov_vinc_no_bnt_10d_dict, probe_ordering, 32, zbins, ind.copy(), GL_or_LG)
-# np.testing.assert_allclose(cov_vinc_no_bnt_4d, cov_vinc_no_bnt_4d_test, rtol=1e-3, atol=0)
-
-# # turn to dict for the BNT function
-# X_dict = covmat_utils.build_X_matrix_BNT(bnt_matrix)
-# cov_vinc_bnt_10d_dict = covmat_utils.cov_3x2pt_BNT_transform(cov_vinc_no_bnt_10d_dict, X_dict)
-# cov_vinc_bnt_4d = mm.cov_3x2pt_10D_to_4D(cov_vinc_bnt_10d_dict, probe_ordering, 32, zbins, ind.copy(), GL_or_LG)
-# cov_vinc_bnt_2d = mm.cov_4D_to_2D(cov_vinc_bnt_4d)
-
-# if bnt_transform:
-#     mm.compare_arrays(cov_vinc_bnt_2d, cov_checkBNT_GSSC_BNT, 'cov_vinc_bnt_2d',
-#                       'cov_bench', log_diff=True, plot_diff_threshold=5)
-
-# # ! remove until here
-
-# TODO compute BNT for Vincenzo's covs, which are not exactly equal to the CLOE-datavector ones?
-# mm.matshow(cov_dict['cov_3x2pt_GS_2D'], log=True, title=f'BNT {BNT_transform}')
-# cov_bnt_filename = cov_vinc_filename.replace('cmfull-', 'cmfull-bnt-')
-# np.savetxt(f'covariance_cfg["cov_vinc_folder"]/{cov_bnt_filename}', cov_dict['cov_3x2pt_GS_2D'], fmt='%.7e')
 
 # ! compute Fisher matrix
 if not fm_cfg['compute_FM']:
@@ -1074,7 +1060,7 @@ elif not fm_cfg['load_preprocess_derivatives']:
     for key in vinc_filenames:  # loop over these, I already selected ML, MS and so on
         if not key.startswith('dDVddzGC'):
             if 'WLO' in key:
-                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL_opt, zbins)[:nbl_WL,:, :]
+                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
             elif 'GCO' in key:
                 dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
             elif 'WLA' in key:
@@ -1155,6 +1141,115 @@ if fm_cfg['test_against_vincenzo'] and bnt_transform == False:
                           abs_val=False, plot_diff_threshold=5)
 
         npt.assert_allclose(FM_dict[f'FM_{probe_dav}_G'], fm_vinc_g, rtol=1e-3, atol=0)
+
+# plot the results directly, as a quick check
+nparams_toplot = 7
+names_params_to_fix = []
+divide_fom_by_10 = True
+include_fom = True
+fix_dz = True
+fix_shear_bias = True
+fix_gal_bias = False
+fix_mag_bias = False
+probes = ['WL', 'GC', 'XC', '3x2pt', '2x2pt']
+dz_param_names = [f'dzWL{(zi + 1):02d}' for zi in range(zbins)]
+shear_bias_param_names = [f'm{(zi + 1):02d}' for zi in range(zbins)]
+gal_bias_param_names = [f'bG{(zi + 1):02d}' for zi in range(4)]
+mag_bias_param_names = [f'bM{(zi + 1):02d}' for zi in range(4)]
+param_names_list = list(fid_pars_dict['FM_ordered_params'].keys())
+
+if fix_dz:
+    names_params_to_fix += dz_param_names
+
+if fix_shear_bias:
+    names_params_to_fix += shear_bias_param_names
+
+if fix_gal_bias:
+    names_params_to_fix += gal_bias_param_names
+
+if fix_mag_bias:
+    names_params_to_fix += mag_bias_param_names
+
+fom_dict = {}
+uncert_dict = {}
+masked_FM_dict = {}
+for key in list(FM_dict.keys()):
+    if key != 'fiducial_values_dict' and '_WA_' not in key:
+        print(key)
+        masked_FM, masked_fid_pars_dict = mm.mask_fm_v2(FM_dict[key], fid_pars_dict['FM_ordered_params'],
+                                                        names_params_to_fix=names_params_to_fix,
+                                                        remove_null_rows_cols=True)
+
+        uncert_dict[key] = mm.uncertainties_fm_v2(masked_FM, masked_fid_pars_dict,
+                                                  which_uncertainty='marginal',
+                                                  normalize=True,
+                                                  percent_units=True)[:nparams_toplot]
+
+        fom_dict[key] = mm.compute_FoM(masked_FM, w0wa_idxs=(2, 3))
+
+
+# compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
+for probe in probes:
+
+    key_a = f'FM_{probe}_G'
+    key_b = f'FM_{probe}_{which_ng_cov_suffix}'
+
+    uncert_dict[f'perc_diff_{probe}_{which_ng_cov_suffix}'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
+    fom_dict[f'perc_diff_{probe}_{which_ng_cov_suffix}'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
+
+for probe in probes:
+    nparams_toplot = 7
+    divide_fom_by_10_plt = False if probe in ('WL' 'XC') else divide_fom_by_10
+
+    cases_to_plot = [f'FM_{probe}_G',
+                     f'FM_{probe}_{which_ng_cov_suffix}',
+
+                     f'perc_diff_{probe}_{which_ng_cov_suffix}',
+                     ]
+
+    # # transform dict. into an array and add the fom
+    uncert_array, fom_array = [], []
+
+    for case in cases_to_plot:
+
+        uncert_array.append(uncert_dict[case])
+        if divide_fom_by_10 and 'FM' in case and 'WL' not in case:
+            fom_dict[case] /= 10
+        fom_array.append(fom_dict[case])
+
+    uncert_array = np.asarray(uncert_array)
+    fom_array = np.asarray(fom_array)
+
+    uncert_array = np.hstack((uncert_array, fom_array.reshape(-1, 1)))
+
+    # label and title stuff
+    fom_label = 'FoM/10\nperc_diff' if divide_fom_by_10 else 'FoM'
+    param_names_label = param_names_list[:nparams_toplot] + [fom_label] if include_fom else param_names_list[
+        :nparams_toplot]
+    lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_3x2pt']
+    title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, EP_or_ED, zbins)
+    # bar plot
+    if include_fom:
+        nparams_toplot = 8
+
+    for i, case in enumerate(cases_to_plot):
+
+        cases_to_plot[i] = case
+        if 'OneCovariance' in cases_to_plot[i]:
+            cases_to_plot[i] = cases_to_plot[i].replace('OneCovariance', 'OneCov')
+        if f'PySSC_{probe}_G' in cases_to_plot[i]:
+            cases_to_plot[i] = cases_to_plot[i].replace(f'PySSC_{probe}_G', f'{probe}_G')
+
+        cases_to_plot[i] = cases_to_plot[i].replace(f'_{probe}', f'')
+        cases_to_plot[i] = cases_to_plot[i].replace(f'FM_', f'')
+        cases_to_plot[i] = cases_to_plot[i].replace(f'_', f' ')
+        cases_to_plot[i] = cases_to_plot[i].replace(f'GSSC', f'G+SSC')
+        cases_to_plot[i] = cases_to_plot[i].replace(f'SSCcNG', f'SSC+cNG')
+
+    plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
+                        param_names_label=None, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
+    # plt.yscale('log')
+
 
 del cov_dict
 gc.collect()

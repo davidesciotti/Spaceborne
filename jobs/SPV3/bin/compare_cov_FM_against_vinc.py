@@ -20,7 +20,7 @@ start_time = time.perf_counter()
 
 probe = '3x2pt'
 GO_or_GS = 'G'
-ssc_code = 'exactSSC'
+ssc_code = 'Spaceborne'
 ML = 245
 MS = 245
 ZL = 2
@@ -43,7 +43,7 @@ probe_dict = {
     '3x2pt': '3x2pt'
 }
 
-path_dav = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2'
+path_dav = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3/output/Flagship_2'
 cov_dav_path = f'{path_dav}/covmat/BNT_False/ell_cuts_False'
 cov_vinc_path = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/' \
                 f'OutputFiles/CovMats/GaussOnly/Full'

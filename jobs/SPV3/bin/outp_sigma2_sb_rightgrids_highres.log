@@ -1,0 +1,103 @@
+nohup: input ignorato
+/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/wf_cl_lib.py:72: UserWarning: these global variables should be deleted...
+  warnings.warn('these global variables should be deleted...')
+/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/wf_cl_lib.py:73: UserWarning: RECHECK Ox0 in cosmolib
+  warnings.warn('RECHECK Ox0 in cosmolib')
+/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/bin/main_SPV3_magcut_zcut_thesis.py:407: UserWarning: find a better way to treat with the various ng covariances
+  warnings.warn('find a better way to treat with the various ng covariances')
+{   'BNT_transform': False,
+    'EP_or_ED': 'EP',
+    'center_or_min': 'center',
+    'ell_max_3x2pt': 3000,
+    'ell_max_GC': 3000,
+    'ell_max_WL': 3000,
+    'flat_or_nonflat': 'Flat',
+    'idB': 3,
+    'idBM': 1,
+    'idIA': 2,
+    'idM': 3,
+    'idR': 1,
+    'kmax_h_over_Mpc': 1.0,
+    'magcut_lens': 245,
+    'magcut_source': 245,
+    'nbl_3x2pt': 29,
+    'nbl_GC': 29,
+    'nbl_WA': 0,
+    'nbl_WL': 29,
+    'ng_cov_code': 'PyCCL',
+    'which_ng_cov': 'GcNG',
+    'which_pk': 'HMCodeBar',
+    'zbins': 13,
+    'zcut_lens': 2,
+    'zcut_source': 2,
+    'zmax': 25}
+/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/covariance.py:713: UserWarning: z_grid starts at 0, which gives a null comoving distance. Removing the first element from the grid
+  warnings.warn('z_grid starts at 0, which gives a null comoving distance. '
+Shifting n(z), clipping between redshifts 0 and 3
+/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/bin/main_SPV3_magcut_zcut_thesis.py:720: UserWarning: An error in cl_SPV3_1D_to_3D is probably indicating that the non-LL Vincenzos files arefor lmax = 3000.
+  warnings.warn('An error in cl_SPV3_1D_to_3D is probably indicating that the non-LL Vincenzos files are'
+There are 0 bins for Wadd in this case, cl_wa will be empty
+Data has been written to Cell_ll
+Data has been written to Cell_gl
+Data has been written to Cell_gg
+There are 0 bins for Wadd in this case, cl_wa will be empty
+/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/bin/main_SPV3_magcut_zcut_thesis.py:869: UserWarning: Sijkl is not computed, but set to identity
+  warnings.warn('Sijkl is not computed, but set to identity')
+all probes (but WAdd) have the same number of ell bins
+
+check: 
+ind_ordering = triu, row-major 
+block_index = ell
+zbins: EP13
+nbl_WA: 0 nbl_WL: 29 nbl_GC:  29, nbl_3x2pt:  29
+ell_max_WL = 3000 
+ell_max_GC = 3000
+GL_or_LG: GL
+
+Gauss. cov. matrices computed in 0.29 seconds
+SS cov. matrices computed in 5.41 s with PySSC
+Computing 3x2pt cNG covariance with PyCCL
+NG covariance folder is:
+/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/covmat/PyCCL/jan_2024
+
+NG covariance filename is:
+cov_cNG_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d}_4D_nbl29_ellmax3000_zbinsEP13_sigma2_sb_rightgrids_highres.npz
+
+
+****************** ccl settings ****************
+probe = 3x2pt
+which_ng_cov = cNG
+integration_method = spline
+nbl = 29
+f_sky = 0.3563380664078408
+zbins = 13
+************************************************
+
+/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/pyccl_cov.py:425: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+  plt.show()
+/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/pyccl_cov.py:477: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+  plt.show()
+Computing sigma2_B with Spaceborne, using input mask
+  0%|          | 0/500 [00:00<?, ?it/s] 16%|█▋        | 82/500 [00:00<00:00, 817.81it/s] 39%|███▉      | 194/500 [00:00<00:00, 994.86it/s] 61%|██████    | 306/500 [00:00<00:00, 1049.98it/s] 83%|████████▎ | 417/500 [00:00<00:00, 1072.51it/s]100%|██████████| 500/500 [00:00<00:00, 1050.23it/s]
+/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/pyccl_cov.py:576: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+  plt.show()
+0it [00:00, ?it/s]Computing trispectrum for cNG,  probe combination LLLL
+z points = 500, k points = 2000
+0it [00:00, ?it/s]
+Traceback (most recent call last):
+  File "/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SPV3_magcut_zcut_thesis/bin/main_SPV3_magcut_zcut_thesis.py", line 875, in <module>
+    cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/covariance.py", line 426, in compute_cov
+    cov_ng_3x2pt_10D_dict = get_cov_ng_3x2pt(
+                            ^^^^^^^^^^^^^^^^^
+  File "/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/covariance.py", line 218, in get_cov_ng_3x2pt
+    cov_3x2pt_dict_8D = pyccl_cov.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], '3x2pt',
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/pyccl_cov.py", line 579, in compute_cov_ng_with_pyccl
+    tkka_dict = initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, which_pk=which_pk)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/pyccl_cov.py", line 142, in initialize_trispectrum
+    tkka_dict[A, B, C, D] = tkka_func(cosmo=cosmo_ccl,
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: halomod_Tk3D_cNG() got an unexpected keyword argument 'probe_block'

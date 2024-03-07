@@ -22,7 +22,7 @@ import bin.my_module as mm
 import common_cfg.mpl_cfg as mpl_cfg
 
 sys.path.append(f'{SB_ROOT}/jobs/config')
-import jobs.SPV3_magcut_zcut_thesis.config.config_SPV3_magcut_zcut_thesis as cfg
+import jobs.SPV3.config.config_SPV3 as cfg
 
 
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -43,9 +43,9 @@ cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
 
 # ! options
-ng_cov_code = 'OneCovariance'  # exactSSC or PyCCL or OneCovariance
-# filename_suffix = '_sigma2_sb_rightgrids_highres'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
-filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
+ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
+filename_suffix = '_sigma2_None_densegrids'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
+# filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 fm_last_folder = '/jan_2024'  # /standard or /jan_2024
 fix_dz_plt = True
 fix_shear_bias_plt = False
@@ -54,8 +54,8 @@ fix_mag_bias_plt = False
 check_if_just_created = True
 
 specs_str = 'idIA2_idB3_idM3_idR1'
-fm_root_path = ('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/'
-                'jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM')
+fm_root_path = (f'{ROOT}/common_data/Spaceborne/'
+                'jobs/SPV3/output/Flagship_2/FM')
 fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}{fm_last_folder}'
 fm_pickle_name_raw = 'FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_' \
     'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}{filename_suffix}.pickle'
@@ -79,14 +79,13 @@ ML = 245
 MS = 245
 ZL = 2
 ZS = 2
-probes = ('WL', 'GC', '3x2pt')
+probes = ('WL', 'GC', 'XC', '3x2pt')
 which_cuts = 'Vincenzo'
 whose_FM_list = ('davide',)
 kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
 
-which_cov_term_list = ['G', 'GSSC']
+which_cov_term_list = ['G', 'GSSC', 'GSSCcNG']
 
-which_ng_cov = which_cov_term_list[1]
 BNT_transform_list = [False, ]
 center_or_min_list = ['center']
 kmax_h_over_Mpc_list = (general_cfg['kmax_h_over_Mpc_list'][0],)
@@ -133,17 +132,17 @@ assert fix_dz_plt, 'without fixing dz you\'ll get very large errors, there is no
 
 
 # quinck check between two given FMs
-fm_pickle_path_a = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_sb_rightgrids_highres.pickle'
-fm_pickle_path_b = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3_magcut_zcut_thesis/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_mask_rightgrids_lowres.pickle'
+# fm_pickle_path_a = '{ROOT}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_sb_rightgrids_highres.pickle'
+# fm_pickle_path_b = '{ROOT}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_mask_rightgrids_lowres.pickle'
 
-fm_dict_a = mm.load_pickle(fm_pickle_path_a)
-fm_dict_b = mm.load_pickle(fm_pickle_path_b)
+# fm_dict_a = mm.load_pickle(fm_pickle_path_a)
+# fm_dict_b = mm.load_pickle(fm_pickle_path_b)
 
-# check that the keys match
-assert fm_dict_a.keys() == fm_dict_b.keys()
+# # check that the keys match
+# assert fm_dict_a.keys() == fm_dict_b.keys()
 
-# check if the dictionaries contained in the key 'fiducial_values_dict' match
-assert fm_dict_a['fiducial_values_dict'] == fm_dict_b['fiducial_values_dict'], 'fiducial values do not match!'
+# # check if the dictionaries contained in the key 'fiducial_values_dict' match
+# assert fm_dict_a['fiducial_values_dict'] == fm_dict_b['fiducial_values_dict'], 'fiducial values do not match!'
 
 # mm.compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b)
 
@@ -178,6 +177,9 @@ for probe in probes:
                                                     fm_path = fm_path_raw.format(BNT_transform=BNT_transform,
                                                                                  ell_cuts=ell_cuts,
                                                                                  fm_last_folder=fm_last_folder)
+
+                                                    # this is because the is no "G" pickle file; the Gaussian covariance is saved withing the "GSSC" or "GSSCcNG" pickles
+                                                    which_ng_cov = 'GSSC' if which_cov_term == 'G' else which_cov_term
                                                     fm_pickle_name = fm_pickle_name_raw.format(which_ng_cov=which_ng_cov,
                                                                                                EP_or_ED=EP_or_ED,
                                                                                                zbins=zbins,
@@ -206,8 +208,8 @@ for probe in probes:
 
                                                     kmax_1_over_Mpc = kmax_1_over_Mpc_vinc_str_list[kmax_counter]
 
-                                                    fm_path = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/' \
-                                                        f'LiFEforSPV3/OutputFiles/FishMat/GaussOnly/Flat/{which_pk}/TestKappaMax'
+                                                    fm_path = f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles'\
+                                                        f'/FishMat/GaussOnly/Flat/{which_pk}/TestKappaMax'
                                                     fm_name = f'fm-{probe_vinc_dict[probe]}-{EP_or_ED}{zbins}-ML{ML}-MS{MS}-{specs_str.replace("_", "-")}' \
                                                         f'-kM{kmax_1_over_Mpc}.dat'
                                                     fm = np.genfromtxt(f'{fm_path}/{fm_name}')
@@ -219,7 +221,7 @@ for probe in probes:
                                                     fm += fm_wa
 
                                                 # TODO probably better a yaml file, like below
-                                                # with open('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/common_cfg/'
+                                                # with open(f'{ROOT}/Spaceborne/common_cfg/'
                                                 #           'fiducial_params_dict_for_FM.yml') as f:
                                                 #     fiducials_dict = yaml.safe_load(f)
                                                 fiducials_dict = fm_dict['fiducial_values_dict']
@@ -259,12 +261,12 @@ for probe in probes:
                                                 cosmo_param_names = list(fiducials_dict.keys())[:num_params_tokeep]
 
                                                 # ! add prior on shear and/or gal bias
-                                                if shear_bias_prior != None and probe in ['WL', '3x2pt']:
+                                                if shear_bias_prior != None and probe in ['WL', 'XC', '3x2pt']:
                                                     shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
                                                     fm = mm.add_prior_to_fm(fm, fiducials_dict, shear_bias_param_names,
                                                                             shear_bias_prior_values)
 
-                                                if gal_bias_perc_prior != None and probe in ['GC', '3x2pt']:
+                                                if gal_bias_perc_prior != None and probe in ['GC', 'XC', '3x2pt']:
 
                                                     # go from sigma_b / b_fid to sigma_b
                                                     gal_bias_idxs = [param_names.index(gal_bias_param_name)
@@ -336,10 +338,12 @@ for probe in probes:
 
 
 # # ! bar plot
-include_fom = False
-divide_fom_by_10_plt = True
+include_fom = True
+divide_fom_by_10 = True
 
-for probe_toplot in ('WL', 'GC', '3x2pt'):
+for probe_toplot in probes:
+
+    divide_fom_by_10_plt = False if probe_toplot in ('WL' 'XC') else divide_fom_by_10
 
     num_params_tokeep_here = num_params_tokeep
 
@@ -360,8 +364,11 @@ for probe_toplot in ('WL', 'GC', '3x2pt'):
         (fm_uncert_df['center_or_min'] == center_or_min_plt)
     ]
 
-    fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', which_cov_term_list[0],
-                                             which_cov_term_list[1], num_string_columns)
+    fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
+                                             'GSSCcNG', num_string_columns)
+
+    if divide_fom_by_10_plt:
+        fm_uncert_df_toplot.loc[fm_uncert_df_toplot['probe'] != 'perc_diff', 'FoM'] /= 10
 
     data = fm_uncert_df_toplot.iloc[:, num_string_columns:].values
     label_list = list(fm_uncert_df_toplot['which_cov_term'].values)
@@ -378,11 +385,11 @@ for probe_toplot in ('WL', 'GC', '3x2pt'):
                         include_fom=include_fom, figsize=(10, 8), divide_fom_by_10_plt=divide_fom_by_10_plt)
 
 
-assert False, 'checking SSC btw pyccl and exactSSC'
+assert False, 'stop here'
 # mm.plot_correlation_matrix(correlation_dict['HMCode2020'] / correlation_dict['TakaBird'], cosmo_params_tex,
 #    title='HMCodeBar/TakaBird')
 if save_plots:
-    plt.savefig('/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/correlation_matrix.pdf',
+    plt.savefig(f'{ROOT}/phd_thesis_plots/plots/correlation_matrix.pdf',
                 bbox_inches='tight', dpi=500)
 
 # ! check difference between ell_cuts True and False
@@ -467,7 +474,7 @@ plt.ylabel('3$\\times$2pt FoM')
 plt.legend()
 
 if save_plots:
-    plt.savefig('/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/fom_hmcodebar_vs_kmax.pdf',
+    plt.savefig(f'{ROOT}/phd_thesis_plots/plots/fom_hmcodebar_vs_kmax.pdf',
                 bbox_inches='tight', dpi=500)
 
 # ! plot cosmo pars vs kmax
@@ -496,7 +503,7 @@ plt.legend()
 plt.show()
 
 if save_plots:
-    plt.savefig('/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/cosmo_params_vs_kmax.pdf',
+    plt.savefig(f'{ROOT}/phd_thesis_plots/plots/cosmo_params_vs_kmax.pdf',
                 bbox_inches='tight',
                 dpi=500)
 
@@ -563,7 +570,7 @@ plt.yscale('log')
 plt.legend()
 plt.show()
 if save_plots:
-    plt.savefig('/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/fom_vs_kmax_vs_pk.pdf',
+    plt.savefig(f'{ROOT}/phd_thesis_plots/plots/fom_vs_kmax_vs_pk.pdf',
                 bbox_inches='tight',
                 dpi=500)
 
@@ -579,7 +586,7 @@ plt.yscale('log')
 plt.legend()
 plt.show()
 if save_plots:
-    plt.savefig('/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/foc_vs_kmax_vs_pk.pdf',
+    plt.savefig(f'{ROOT}/phd_thesis_plots/plots/foc_vs_kmax_vs_pk.pdf',
                 bbox_inches='tight',
                 dpi=500)
 

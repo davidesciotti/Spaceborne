@@ -17,7 +17,7 @@ import bin.check_specs as utils
 # * jan_2024 folder
 # * mpl.use('Agg') in the main
 
-fm_and_cov_suffix = '_cNG_CSSTres'
+fm_and_cov_suffix = '_sigma2_mask_superdense_grid_kz'
 
 
 with open(f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
@@ -162,7 +162,7 @@ covariance_cfg = {
     'cov_folder': f'{DATA_ROOT}/output/{which_input_files}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
 
-    'SSC_code': 'OneCovariance',  # ! PySSC or PyCCL or Spaceborne or OneCovariance
+    'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or Spaceborne or OneCovariance
 
     'PySSC_cfg': {
         'which_ng_cov': 'SSC',
@@ -170,9 +170,9 @@ covariance_cfg = {
 
     'PyCCL_cfg': {
         'probe': '3x2pt',
-        'which_ng_cov': ('cNG',),
+        'which_ng_cov': ('SSC',),
 
-        'load_precomputed_cov': True,
+        'load_precomputed_cov': False,
         'save_cov': True,
 
         'save_trispectrum': False,
@@ -210,7 +210,7 @@ covariance_cfg = {
     },
 
     'Spaceborne_cfg': {
-        'which_ng_cov': ('SSC',),
+        'which_ng_cov': ('SSC', 'cNG'),
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
         'load_precomputed_cov': True,
         'cov_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/Spaceborne',
@@ -231,7 +231,7 @@ covariance_cfg = {
     },
     
     'OneCovariance_cfg': {
-        'which_ng_cov': ('cNG', ),
+        'which_ng_cov': ('SSC', ),
         'load_precomputed_cov': True,  # this must be True for OneCovariance
         'use_OneCovariance_Gaussian': False,
         

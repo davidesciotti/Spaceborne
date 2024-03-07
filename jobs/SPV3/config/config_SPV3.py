@@ -27,7 +27,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-fm_and_cov_suffix = '_sigma2_None_densegrids'
+fm_and_cov_suffix = '_cNG_presentation'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -66,7 +66,7 @@ if BNT_transform:
 general_cfg = {
     'fid_yaml_filename': ROOT + '/Spaceborne/common_cfg/SPV3_fiducial_params_magcut245_zbins{zbins:02d}.yml',
     'ell_min': 10,
-    'ell_max_WL': 5000,
+    'ell_max_WL': 3000,
     'ell_max_GC': 3000,
     'ell_max_3x2pt': 3000,
     'zbins': 13,
@@ -112,7 +112,7 @@ general_cfg = {
     'which_pk': 'HMCodeBar',
     'which_pk_list': ('HMCodeBar', 'TakaBird', 'HMCode2020', 'Bacco', 'EE2'),
 
-    'use_CLOE_cls': True,
+    'use_CLOE_cls': False,
     'cloe_bench_folder': f'{ROOT}/my_cloe_data',
     'cl_folder': SPV3_folder + '/OutputFiles/DataVectors/Noiseless/{which_pk:s}',
     'rl_folder': f'{SPV3_folder}' + '/OutputFiles/ResFun/{which_pk:s}',
@@ -208,15 +208,15 @@ covariance_cfg = {
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
 
-    'SSC_code': 'OneCovariance',  # ! 'PySSC' or 'PyCCL' or 'Spaceborne' or 'OneCovariance'
+    'SSC_code': 'PyCCL',  # ! 'PySSC' or 'PyCCL' or 'Spaceborne' or 'OneCovariance'
     'check_if_recently_created': False,
 
     'PyCCL_cfg': {
         'probe': '3x2pt',
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
-        'which_ng_cov': ('SSC', ),
+        'which_ng_cov': ('cNG', ),
 
-        'load_precomputed_cov': True,
+        'load_precomputed_cov': False,
         'save_cov': True,
 
         'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL' + fm_last_folder,
@@ -281,9 +281,9 @@ covariance_cfg = {
     },
 
     'OneCovariance_cfg': {
-        'which_ng_cov': ('SSC', 'cNG'),
+        'which_ng_cov': ('cNG',),
         'load_precomputed_cov': True,  # this must be True for OneCovariance
-        'use_OneCovariance_Gaussian': True,
+        'use_OneCovariance_Gaussian': False,
 
         'cov_path': f'{DATA_ROOT}/output/Flagship_2/covmat/OneCovariance',
         'cov_filename': 'cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'

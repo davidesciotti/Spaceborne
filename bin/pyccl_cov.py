@@ -131,14 +131,20 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                     tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
                     additional_args = {
                         'probe_block': A + B + C + D,
+                        'prof12_2pt': prof_2pt_dict[A, B],
+                        'prof34_2pt': prof_2pt_dict[C, D],
                         'p_of_k_a': p_of_k_a,
                     }
                 elif which_ng_cov == 'cNG':
                     tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
                     additional_args = {
+                        'prof12_2pt': prof_2pt_dict[A, B],
                         'prof13_2pt': prof_2pt_dict[A, C],
                         'prof14_2pt': prof_2pt_dict[A, D],
-                        'prof24_2pt': prof_2pt_dict[B, D]
+                        'prof24_2pt': prof_2pt_dict[B, D],
+                        'prof32_2pt': prof_2pt_dict[C, B],
+                        'prof34_2pt': prof_2pt_dict[C, D],
+                        'p_of_k_a': None,  # TODO pass object? anyway, None takes the pk stored in cosmo
                     }
                     # tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_1h
                     # additional_args = {}
@@ -151,8 +157,6 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                                   prof2=halo_profile_dict[B],
                                                   prof3=halo_profile_dict[C],
                                                   prof4=halo_profile_dict[D],
-                                                  prof12_2pt=prof_2pt_dict[A, B],
-                                                  prof34_2pt=prof_2pt_dict[C, D],
                                                   lk_arr=logn_k_grid_tkka,
                                                   a_arr=a_grid_tkka,
                                                   extrap_order_lok=1, extrap_order_hik=1, use_log=False,
@@ -442,7 +446,6 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     ax[1].legend()
     plt.show()
 
-
     # the cls are not needed, but just in case:
     cl_ll_3d = wf_cl_lib.cl_PyCCL(wf_lensing_obj, wf_lensing_obj, ell_grid, zbins,
                                   p_of_k_a=p_of_k_a, cosmo=cosmo_ccl)
@@ -501,7 +504,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     elif probe == '3x2pt':
         probe_ordering = covariance_cfg['probe_ordering']
         warnings.warn('TESTING ONLY GLGL TO DEBUG')
-        probe_ordering = (('L', 'L'),)  # for testing 3x2pt GLGL, which seems a problematic case.
+        probe_ordering = (('G', 'L'),)  # for testing 3x2pt GLGL, which seems a problematic case.
     else:
         raise ValueError('probe must be either LL, GG, or 3x2pt')
 

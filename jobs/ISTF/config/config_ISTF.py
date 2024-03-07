@@ -169,7 +169,7 @@ covariance_cfg = {
     },
 
     'PyCCL_cfg': {
-        'probe': 'GG',
+        'probe': '3x2pt',
         'which_ng_cov': ('cNG',),
 
         'load_precomputed_cov': False,

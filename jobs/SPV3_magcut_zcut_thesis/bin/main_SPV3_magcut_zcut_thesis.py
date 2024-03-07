@@ -34,7 +34,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 # job config
 import jobs.SPV3_magcut_zcut_thesis.config.config_SPV3_magcut_zcut_thesis as cfg
 
-mpl.use('Agg')
+# mpl.use('Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 script_start_time = time.perf_counter()
 os.environ['OMP_NUM_THREADS'] = '8'

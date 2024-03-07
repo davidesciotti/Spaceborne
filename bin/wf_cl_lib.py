@@ -456,7 +456,7 @@ def stepwise_bias(z, gal_bias_vs_zmean, z_edges):
             return gal_bias_vs_zmean[zbin_idx]
 
 
-def build_galaxy_bias_2d_arr(gal_bias_vs_zmean, zmeans, z_edges, zbins, z_grid, bias_model, 
+def build_galaxy_bias_2d_arr(gal_bias_vs_zmean, zmeans, z_edges, zbins, z_grid, bias_model,
                              plot_bias=False, bias_fit_function=None, kwargs_bias_fit_function=None):
     """
     Builds a 2d array of shape (len(z_grid), zbins) containing the bias values for each redshift bin. The bias values
@@ -710,18 +710,23 @@ def wf_ccl(z_grid, probe, which_wf, flat_fid_pars_dict, cosmo_ccl, dndz_tuple, i
             assert mag_bias_tuple[1].shape == (
                 len(z_grid), zbins), 'mag_bias_tuple[1] must have shape (len(z_grid), zbins)'
 
-            def mag_bias_func(zbin_idx): return (mag_bias_tuple[0], mag_bias_tuple[1][:, zbin_idx])
-        else:
-            mag_bias = None
 
-        wf_galaxy_obj = [ccl.tracers.NumberCountsTracer(cosmo_ccl,
-                                                        has_rsd=has_rsd,
-                                                        dndz=(dndz_tuple[0], dndz_tuple[1][:, zbin_idx]),
-                                                        bias=(gal_bias_tuple[0], gal_bias_tuple[1][:, zbin_idx]),
-                                                        mag_bias=mag_bias_func(
-                                                            zbin_idx) if mag_bias_tuple is not None else mag_bias,
-                                                        n_samples=n_samples)
-                         for zbin_idx in range(zbins)]
+        wf_galaxy_obj = []
+        for zbin_idx in range(zbins):
+            
+            this is needed to be eble to pass mag_bias = None for each zbin
+            if mag_bias_tuple is None:
+                pass
+            else:
+                mag_bias_tuple = (mag_bias_tuple[0], mag_bias_tuple[1][:, zbin_idx])
+                
+            wf_galaxy_obj.append(ccl.tracers.NumberCountsTracer(cosmo_ccl,
+                                                                has_rsd=has_rsd,
+                                                                dndz=(dndz_tuple[0], dndz_tuple[1][:, zbin_idx]),
+                                                                bias=(gal_bias_tuple[0],
+                                                                      gal_bias_tuple[1][:, zbin_idx]),
+                                                                mag_bias=mag_bias_tuple,
+                                                                n_samples=n_samples))
 
         if return_ccl_obj:
             return wf_galaxy_obj

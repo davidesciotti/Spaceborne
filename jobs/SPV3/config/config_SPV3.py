@@ -19,6 +19,8 @@ area_deg2_dr1 = 2822
 # * which_sigma2_B
 # * ell_max_GC: 5000,
 # * ell_max_3x2pt: 5000,
+# * mpl.use('Agg') in the main
+ 
 
 
 which_forecast = 'SPV3'
@@ -27,7 +29,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-fm_and_cov_suffix = '_cNG_presentation'
+fm_and_cov_suffix = '_cNGfix'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -255,7 +257,7 @@ covariance_cfg = {
         'z_grid_max': 3,
         'z_grid_steps': 2000,
         'n_samples_wf': 1000,
-        'bias_model': 'polynomial',  # TODO this is not used at the momen (for SPV3)
+        'bias_model': 'polynomial',  # TODO this is not used at the moment (for SPV3)
     },
 
     'Spaceborne_cfg': {

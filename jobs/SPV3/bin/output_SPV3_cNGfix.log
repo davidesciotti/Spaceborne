@@ -1,0 +1,115 @@
+nohup: ignoring input
+/home/cosmo/davide.sciotti/data/Spaceborne/bin/wf_cl_lib.py:72: UserWarning: these global variables should be deleted...
+  warnings.warn('these global variables should be deleted...')
+/home/cosmo/davide.sciotti/data/Spaceborne/bin/wf_cl_lib.py:73: UserWarning: RECHECK Ox0 in cosmolib
+  warnings.warn('RECHECK Ox0 in cosmolib')
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/jobs/SPV3/bin/main_SPV3.py:410: UserWarning: find a better way to treat with the various ng covariances
+  warnings.warn('find a better way to treat with the various ng covariances')
+{   'BNT_transform': False,
+    'EP_or_ED': 'EP',
+    'center_or_min': 'center',
+    'ell_max_3x2pt': 3000,
+    'ell_max_GC': 3000,
+    'ell_max_WL': 3000,
+    'flat_or_nonflat': 'Flat',
+    'idB': 3,
+    'idBM': 1,
+    'idIA': 2,
+    'idM': 3,
+    'idR': 1,
+    'kmax_h_over_Mpc': 1.0,
+    'magcut_lens': 245,
+    'magcut_source': 245,
+    'nbl_3x2pt': 29,
+    'nbl_GC': 29,
+    'nbl_WA': 0,
+    'nbl_WL': 29,
+    'ng_cov_code': 'PyCCL',
+    'which_ng_cov': 'GcNG',
+    'which_pk': 'HMCodeBar',
+    'zbins': 13,
+    'zcut_lens': 2,
+    'zcut_source': 2,
+    'zmax': 25}
+/home/cosmo/davide.sciotti/data/Spaceborne/bin/covariance.py:746: UserWarning: z_grid starts at 0, which gives a null comoving distance. Removing the first element from the grid
+  warnings.warn('z_grid starts at 0, which gives a null comoving distance. '
+Shifting n(z), clipping between redshifts 0 and 3
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/jobs/SPV3/bin/main_SPV3.py:751: UserWarning: An error in cl_SPV3_1D_to_3D is probably indicating that the non-LL Vincenzos files arefor lmax = 3000.
+  warnings.warn('An error in cl_SPV3_1D_to_3D is probably indicating that the non-LL Vincenzos files are'
+There are 0 bins for Wadd in this case, cl_wa will be empty
+Data has been written to Cell_ll
+Data has been written to Cell_gl
+Data has been written to Cell_gg
+There are 0 bins for Wadd in this case, cl_wa will be empty
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/jobs/SPV3/bin/main_SPV3.py:900: UserWarning: Sijkl is not computed, but set to identity
+  warnings.warn('Sijkl is not computed, but set to identity')
+all probes (but WAdd) have the same number of ell bins
+
+check: 
+ind_ordering = triu, row-major 
+block_index = ell
+zbins: EP13
+nbl_WA: 0 nbl_WL: 29 nbl_GC:  29, nbl_3x2pt:  29
+ell_max_WL = 3000 
+ell_max_GC = 3000
+GL_or_LG: GL
+
+Gauss. cov. matrices computed in 0.45 seconds
+SS cov. matrices computed in 5.29 s with PySSC
+Computing 3x2pt cNG covariance with PyCCL
+NG covariance folder is:
+/home/cosmo/davide.sciotti/data/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/covmat/PyCCL/jan_2024
+
+NG covariance filename is:
+cov_cNG_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl29_ellmax3000_zbinsEP13_cNG_fix.npz
+
+
+****************** ccl settings ****************
+probe = 3x2pt
+which_ng_cov = cNG
+integration_method = spline
+nbl = 29
+f_sky = 0.3563380664078408
+zbins = 13
+************************************************
+
+/home/cosmo/davide.sciotti/data/Spaceborne/bin/my_module.py:2973: UserWarning: double-check the units in the header and whether k is in log scale in the input file (this function assumes it is))
+  warnings.warn(
+/home/cosmo/davide.sciotti/data/Spaceborne/bin/my_module.py:2975: UserWarning: the output ordering is [k, z], not the other way around!
+  warnings.warn('the output ordering is [k, z], not the other way around!')
+WARNING 18: ccl_cls.c: integ_cls_limber_qag_quad(): Default GSL integration failure, attempting backup method.: GSL ERROR: roundoff error
+WARNING 18: ccl_cls.c: integ_cls_limber_qag_quad(): Default GSL integration failure, attempting backup method.: GSL ERROR: roundoff error
+WARNING 18: ccl_cls.c: integ_cls_limber_qag_quad(): Default GSL integration failure, attempting backup method.: GSL ERROR: roundoff error
+WARNING 18: ccl_cls.c: integ_cls_limber_qag_quad(): Default GSL integration failure, attempting backup method.: GSL ERROR: roundoff error
+WARNING 18: ccl_cls.c: integ_cls_limber_qag_quad(): Default GSL integration failure, attempting backup method.: GSL ERROR: roundoff error
+Computing sigma2_B from mask
+
+0it [00:00, ?it/s]Computing trispectrum for cNG,  probe combination LLLL
+z points = 100, k points = 512
+halomod_Tk3D_cNG: computing halomod_trispectrum_1h...
+halomod_Tk3D_cNG: computing halomod_trispectrum_1h... done in 0.62 m
+halomod_Tk3D_cNG: computing _halomod_trispectrum_2h_22...
+halomod_Tk3D_cNG: computing _halomod_trispectrum_2h_22... done in 268.99 m
+halomod_Tk3D_cNG: computing _halomod_trispectrum_2h_13...
+halomod_Tk3D_cNG: computing _halomod_trispectrum_2h_13... done in 0.69 m
+halomod_Tk3D_cNG: computing halomod_trispectrum_3h...
+halomod_Tk3D_cNG: computing halomod_trispectrum_3h... done in 214.55 m
+halomod_Tk3D_cNG: computing halomod_trispectrum_4h...
+halomod_Tk3D_cNG: computing halomod_trispectrum_4h... done in 20.52 m
+Computing trispectrum for cNG,  probe combination LLGL
+z points = 100, k points = 512
+halomod_Tk3D_cNG: computing halomod_trispectrum_1h...
+halomod_Tk3D_cNG: computing halomod_trispectrum_1h... done in 0.71 m
+halomod_Tk3D_cNG: computing _halomod_trispectrum_2h_22...
+halomod_Tk3D_cNG: computing _halomod_trispectrum_2h_22... done in 210.71 m
+halomod_Tk3D_cNG: computing _halomod_trispectrum_2h_13...
+halomod_Tk3D_cNG: computing _halomod_trispectrum_2h_13... done in 1.92 m
+halomod_Tk3D_cNG: computing halomod_trispectrum_3h...
+halomod_Tk3D_cNG: computing halomod_trispectrum_3h... done in 156.90 m
+halomod_Tk3D_cNG: computing halomod_trispectrum_4h...
+halomod_Tk3D_cNG: computing halomod_trispectrum_4h... done in 16.71 m
+Computing trispectrum for cNG,  probe combination LLGG
+z points = 100, k points = 512
+halomod_Tk3D_cNG: computing halomod_trispectrum_1h...
+halomod_Tk3D_cNG: computing halomod_trispectrum_1h... done in 0.65 m
+halomod_Tk3D_cNG: computing _halomod_trispectrum_2h_22...

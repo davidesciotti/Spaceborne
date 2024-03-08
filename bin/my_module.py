@@ -42,7 +42,7 @@ def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
                     # Format the line with appropriate spacing
                     file.write(f"{ell_val:.3f}\t{zi + 1}\t{zj + 1}\t{value:.10e}\n")
 
-    print(f"Data has been written to {ascii_filename}")
+    print(f"Data has been written to {ascii_folder}/{ascii_filename}")
 
 
 def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, compare_fms=True, compare_param_covs=True, plot=True, n_params_toplot=10):

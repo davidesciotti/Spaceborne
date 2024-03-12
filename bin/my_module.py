@@ -1128,7 +1128,7 @@ def build_labels(zbins):
     return [galaxy_bias_label, shear_bias_label, zmean_shift_label]
 
 
-def matshow(array, title="title", log=False, abs_val=False, threshold=None, only_show_nans=False):
+def matshow(array, title="title", log=False, abs_val=False, threshold=None, only_show_nans=False, cmap='viridis'):
     """
     :param array:
     :param title:
@@ -1157,7 +1157,7 @@ def matshow(array, title="title", log=False, abs_val=False, threshold=None, only
         array = np.ma.masked_where(array < threshold, array)
         title += f" \n(masked below {threshold} \%)"
 
-    plt.matshow(array)
+    plt.matshow(array,  cmap=cmap)
     plt.colorbar()
     plt.title(title)
     plt.show()
@@ -2845,13 +2845,10 @@ def cov_4D_to_2DCLOE_3x2pt_bu(cov_4D, nbl, zbins, block_index='vincenzo'):
     return array_2D
 
 
-def correlation_from_covariance(covariance):
-    """ not thoroughly tested. Taken from 
+def cov2corr(covariance):
+    """ Taken from 
     https://gist.github.com/wiso/ce2a9919ded228838703c1c7c7dad13b
-    does NOT work with 3x2pt
     """
-    if covariance.shape[0] > 2000:
-        print("this function doesn't work for 3x2pt")
 
     v = np.sqrt(np.diag(covariance))
     outer_v = np.outer(v, v)

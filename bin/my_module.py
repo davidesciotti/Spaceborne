@@ -27,6 +27,15 @@ import pandas as pd
 
 ###############################################################################
 
+def cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering):
+    cov_3x2pt_dict_10D = {}
+    for probe_A, probe_B in probe_ordering:
+        for probe_C, probe_D in probe_ordering:
+            cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = cov_4D_to_6D_blocks(
+                cov_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
+                nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
+    return cov_3x2pt_dict_10D        
+
 
 def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
 
@@ -151,7 +160,9 @@ def compare_df_keys(dataframe, key_to_compare, value_a, value_b, num_string_colu
 
 def contour_FoM_calculator(sample, param1, param2, sigma_level=1):
     """ Santiago's function to compute the FoM from getDist samples.
-    add()sample is a getDist sample object, you need as well the shapely package to compute polygons. The function returns the 1sigma FoM, but in principle you could compute 2-, or 3-sigma "FoMs"
+    add()sample is a getDist sample object, you need as well the shapely 
+    package to compute polygons. The function returns the 1sigma FoM, 
+    but in principle you could compute 2-, or 3-sigma "FoMs"
     """
     from shapely.geometry import Polygon
     contour_coords = {}
@@ -1718,6 +1729,88 @@ def covariance_einsum(cl_5d, noise_5d, f_sky, ell_values, delta_ell, return_only
 
     return cov_10d
 
+def covariance_einsum_split(cl_5d, noise_5d, f_sky, ell_values, delta_ell, return_only_diagonal_ells=False):
+    """
+    computes the 10-dimensional covariance matrix, of shape
+    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins). The 5-th axis is added only if
+    return_only_diagonal_ells is True. *for the single-probe case, n_probes = 1*
+
+    In np.einsum, the indices have the following meaning:
+        A, B, C, D = probe identifier. 0 for WL, 1 for GCph
+        L, M = ell, ell_prime
+        i, j, k, l = redshift bin indices
+
+    cl_5d must have shape = (n_probes, n_probes, nbl, zbins, zbins) = (A, B, L, i, j), same as noise_5d
+
+    :param cl_5d:
+    :param noise_5d:
+    :param f_sky:
+    :param ell_values:
+    :param delta_ell:
+    :param return_only_diagonal_ells:
+    :return: 10-dimensional numpy array of shape
+    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins), containing the covariance.
+
+    example code to compute auto probe data and spectra, if needed
+    cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]
+    noise_LL_5D = noise_3x2pt_5D[0, 0, ...][np.newaxis, np.newaxis, ...]
+    cov_WL_6D = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_values, delta_ell)[0, 0, 0, 0, ...]
+    
+    KiDS implementation (from Robert's email, to be checked in the relevant paper):
+    Regarding the Gaussian term. Yes the Delta\ell is missing: 
+    the code sums over the bandwidth explicitely and does not assume that the 
+    covariance is constant across the ell bin. For most ell binnings though, 
+    this will reduce to the equation you provided.
+
+    """
+
+    assert cl_5d.shape[0] == 1 or cl_5d.shape[0] == 2, 'This funcion only works with 1 or two probes'
+    assert cl_5d.shape[0] == cl_5d.shape[1], 'cl_5d must be an array of shape (n_probes, n_probes, nbl, zbins, zbins)'
+    assert cl_5d.shape[-1] == cl_5d.shape[-2], 'cl_5d must be an array of shape (n_probes, n_probes, nbl, zbins, zbins)'
+    assert noise_5d.shape == cl_5d.shape, 'noise_5d must have shape the same shape as cl_5d, although there ' \
+                                          'is no ell dependence'
+
+    nbl = cl_5d.shape[2]
+
+    prefactor = 1 / ((2 * ell_values + 1) * f_sky * delta_ell)
+
+    # considering ells off-diagonal (wrong for Gauss: I am not implementing the delta)
+    # term_1 = np.einsum('ACLik, BDMjl -> ABCDLMijkl', cl_5d + noise_5d, cl_5d + noise_5d)
+    # term_2 = np.einsum('ADLil, BCMjk -> ABCDLMijkl', cl_5d + noise_5d, cl_5d + noise_5d)
+    # cov_10d = np.einsum('ABCDLMijkl, L -> ABCDLMijkl', term_1 + term_2, prefactor)
+
+    # considering only ell diagonal
+    term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', cl_5d, cl_5d)
+    term_2 = np.einsum('ADLil, BCLjk -> ABCDLijkl', cl_5d, cl_5d)
+    cov_9d_sva = np.einsum('ABCDLijkl, L -> ABCDLijkl', term_1 + term_2, prefactor)
+    
+    term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', noise_5d, noise_5d)
+    term_2 = np.einsum('ADLil, BCLjk -> ABCDLijkl', noise_5d, noise_5d)
+    cov_9d_sn = np.einsum('ABCDLijkl, L -> ABCDLijkl', term_1 + term_2, prefactor)
+    
+    term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', cl_5d, noise_5d)
+    term_2 = np.einsum('ACLik, BDLjl -> ABCDLijkl', noise_5d, cl_5d)
+    term_3 = np.einsum('ADLil, BCLjk -> ABCDLijkl', cl_5d, noise_5d)
+    term_4 = np.einsum('ADLil, BCLjk -> ABCDLijkl', noise_5d, cl_5d)
+    cov_9d_mix = np.einsum('ABCDLijkl, L -> ABCDLijkl', term_1 + term_2 + term_3 + term_4, prefactor)
+
+    if return_only_diagonal_ells:
+        warnings.warn('return_only_diagonal_ells is True, the array will be 9-dimensional, potentially causing '
+                      'problems when reshaping or summing to cov_SSC arrays')
+        return cov_9d_sva, cov_9d_sn, cov_9d_mix
+
+    n_probes = cov_9d_sva.shape[0]
+    zbins = cov_9d_sva.shape[-1]
+    
+    cov_10d_sva = np.zeros((n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins))
+    cov_10d_sn = np.zeros((n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins))
+    cov_10d_mix = np.zeros((n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins))
+    
+    cov_10d_sva[:, :, :, :, np.arange(nbl), np.arange(nbl), ...] = cov_9d_sva[:, :, :, :, np.arange(nbl), ...]
+    cov_10d_sn[:, :, :, :, np.arange(nbl), np.arange(nbl), ...] = cov_9d_sn[:, :, :, :, np.arange(nbl), ...]
+    cov_10d_mix[:, :, :, :, np.arange(nbl), np.arange(nbl), ...] = cov_9d_mix[:, :, :, :, np.arange(nbl), ...]
+
+    return cov_10d_sva, cov_10d_sn, cov_10d_mix
 
 def expand_dims_sijkl(sijkl, zbins):
     n_probes = 2

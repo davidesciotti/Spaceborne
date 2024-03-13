@@ -74,30 +74,30 @@ def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, compar
 
             cov_a = np.linalg.inv(fm_dict_a[key])
             cov_b = np.linalg.inv(fm_dict_b[key])
-            
+
             if compare_fms:
                 compare_arrays(fm_dict_a[key], fm_dict_b[key], 'FM_A', 'FM_B', plot_diff_threshold=5)
 
             if compare_param_covs:
 
                 compare_arrays(cov_a, cov_b, 'cov_A', 'cov_B', plot_diff_threshold=5)
-                
+
             if plot:
                 param_names = list(fm_dict_a['fiducial_values_dict'].keys())[:n_params_toplot]
                 fiducials_a = list(fm_dict_a['fiducial_values_dict'].values())[:n_params_toplot]
                 fiducials_b = list(fm_dict_b['fiducial_values_dict'].values())[:n_params_toplot]
-                uncert_a = uncertainties_FM(fm_dict_a[key], n_params_toplot, fiducials=fiducials_a, which_uncertainty='marginal', normalize=True)
-                uncert_b = uncertainties_FM(fm_dict_b[key], n_params_toplot, fiducials=fiducials_b, which_uncertainty='marginal', normalize=True)
+                uncert_a = uncertainties_FM(fm_dict_a[key], n_params_toplot,
+                                            fiducials=fiducials_a, which_uncertainty='marginal', normalize=True)
+                uncert_b = uncertainties_FM(fm_dict_b[key], n_params_toplot,
+                                            fiducials=fiducials_b, which_uncertainty='marginal', normalize=True)
                 diff = percent_diff(uncert_a, uncert_b)
-                
-                
+
                 plt.figure()
                 plt.title(f'Marginalised uncertainties, {key}')
                 plt.plot(param_names, uncert_a, label='FM_A')
                 plt.plot(param_names, uncert_b, ls='--', label='FM_B')
                 plt.plot(param_names, diff, label='percent diff')
                 plt.legend()
-                
 
 
 def is_file_created_in_last_x_hours(file_path, hours):
@@ -1139,7 +1139,7 @@ def build_labels(zbins):
     return [galaxy_bias_label, shear_bias_label, zmean_shift_label]
 
 
-def matshow(array, title="title", log=False, abs_val=False, threshold=None, only_show_nans=False):
+def matshow(array, title="title", log=False, abs_val=False, threshold=None, only_show_nans=False, matshow_kwargs={}):
     """
     :param array:
     :param title:
@@ -1168,7 +1168,7 @@ def matshow(array, title="title", log=False, abs_val=False, threshold=None, only
         array = np.ma.masked_where(array < threshold, array)
         title += f" \n(masked below {threshold} \%)"
 
-    plt.matshow(array)
+    plt.matshow(array, **matshow_kwargs)
     plt.colorbar()
     plt.title(title)
     plt.show()
@@ -2938,13 +2938,10 @@ def cov_4D_to_2DCLOE_3x2pt_bu(cov_4D, nbl, zbins, block_index='vincenzo'):
     return array_2D
 
 
-def correlation_from_covariance(covariance):
-    """ not thoroughly tested. Taken from 
+def cov2corr(covariance):
+    """ Taken from 
     https://gist.github.com/wiso/ce2a9919ded228838703c1c7c7dad13b
-    does NOT work with 3x2pt
     """
-    if covariance.shape[0] > 2000:
-        print("this function doesn't work for 3x2pt")
 
     v = np.sqrt(np.diag(covariance))
     outer_v = np.outer(v, v)
@@ -3072,7 +3069,6 @@ def pk_vinc_file_to_2d_npy(path, plot_pk_z0):
     k_array = 10 ** np.unique(pkfile[:, 1])
     pk_2D = pkfile[:, 2].reshape(len(z_array), len(k_array)).T
 
-    
     if plot_pk_z0:
         plt.figure()
         plt.plot(k_array, pk_2D[:, 0])

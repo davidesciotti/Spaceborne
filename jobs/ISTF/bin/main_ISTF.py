@@ -288,15 +288,15 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     # cov_WA_GO_6D = mm.covariance_einsum(cl_WA_5D, noise_WA_5D, fsky, ell_WA, delta_dict['delta_l_WA'])[0, 0, 0, 0, ...]
     # cov_3x2pt_GO_10D = mm.covariance_einsum(cl_dict_3D['cl_3x2pt_5D'], noise_3x2pt_5D, fsky, ell_3x2pt, delta_dict['delta_l_3x2pt'])
     
-    # cov_WL_SN_6D = mm.covariance_einsum(np.zeros_like(cl_LL_5D), noise_LL_5D, fsky, ell_WL, delta_dict['delta_l_WL'], prefactor=1)[0, 0, 0, 0, ...]
-    # cov_GC_SN_6D = mm.covariance_einsum(np.zeros_like(cl_GG_5D), noise_GG_5D, fsky, ell_GC, delta_dict['delta_l_GC'], prefactor=1)[0, 0, 0, 0, ...]
-    # cov_WA_SN_6D = mm.covariance_einsum(np.zeros_like(cl_WA_5D), noise_WA_5D, fsky, ell_WA, delta_dict['delta_l_WA'], prefactor=1)[0, 0, 0, 0, ...]
-    # cov_3x2pt_SN_10D = mm.covariance_einsum(np.zeros_like(cl_dict_3D['cl_3x2pt_5D']), noise_3x2pt_5D, fsky, ell_3x2pt, delta_dict['delta_l_3x2pt'], prefactor=1)
+    # cov_WL_SVA_6D, cov_WL_SN_6D, cov_WL_MIX_6D = mm.covariance_einsum_split(cl_LL_5D, noise_LL_5D, fsky, ell_WL, delta_dict['delta_l_WL'])
+    # cov_GC_SVA_6D, cov_GC_SN_6D, cov_GC_MIX_6D = mm.covariance_einsum_split(cl_GG_5D, noise_GG_5D, fsky, ell_GC, delta_dict['delta_l_GC'])
+    # cov_WA_SVA_6D, cov_WA_SN_6D, cov_WA_MIX_6D = mm.covariance_einsum_split(cl_WA_5D, noise_WA_5D, fsky, ell_WA, delta_dict['delta_l_WA'])
+    # cov_3x2pt_SVA_10D, cov_3x2pt_SN_10D, cov_3x2pt_MIX_10D = mm.covariance_einsum_split(cl_dict_3D['cl_3x2pt_5D'], noise_3x2pt_5D, fsky, ell_3x2pt, delta_dict['delta_l_3x2pt'])
     
-    # cov_WL_SVA_6D = mm.covariance_einsum(cl_LL_5D, np.zeros_like(noise_LL_5D), fsky, ell_WL, delta_dict['delta_l_WL'])[0, 0, 0, 0, ...]
-    # cov_GC_SVA_6D = mm.covariance_einsum(cl_GG_5D, np.zeros_like(noise_GG_5D), fsky, ell_GC, delta_dict['delta_l_GC'])[0, 0, 0, 0, ...]
-    # cov_WA_SVA_6D = mm.covariance_einsum(cl_WA_5D, np.zeros_like(noise_WA_5D), fsky, ell_WA, delta_dict['delta_l_WA'])[0, 0, 0, 0, ...]
-    # cov_3x2pt_SVA_10D = mm.covariance_einsum(cl_dict_3D['cl_3x2pt_5D'], np.zeros_like(noise_3x2pt_5D), fsky, ell_3x2pt, delta_dict['delta_l_3x2pt'])
+    # cov_WL_SVA_6D, cov_WL_SN_6D, cov_WL_MIX_6D = cov_WL_SVA_6D[0, 0, 0, 0, ...], cov_WL_SN_6D[0, 0, 0, 0], cov_WL_MIX_6D[0, 0, 0, 0]
+    # cov_GC_SVA_6D, cov_GC_SN_6D, cov_GC_MIX_6D = cov_GC_SVA_6D[0, 0, 0, 0, ...], cov_GC_SN_6D[0, 0, 0, 0], cov_GC_MIX_6D[0, 0, 0, 0]
+    # cov_WA_SVA_6D, cov_WA_SN_6D, cov_WA_MIX_6D = cov_WA_SVA_6D[0, 0, 0, 0, ...], cov_WA_SN_6D[0, 0, 0, 0], cov_WA_MIX_6D[0, 0, 0, 0]
+    
     
     # ind_auto = ind[:zpairs_auto, :].copy()
     # ind_cross = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
@@ -307,7 +307,7 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     # from copy import deepcopy
     
 
-    # cov_path = '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/output_ISTF_v2'
+    # cov_path = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/covmat/OneCovariance'
     # cov_SN_filename = covariance_cfg['OneCovariance_cfg']['cov_filename'].format(
     # which_ng_cov='SN', probe_a='{probe_a:s}', probe_b='{probe_b:s}',
     # probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl, lmax=3000,
@@ -349,19 +349,46 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     # cov_3x2pt_SN_4D_SB = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SN_10D, probe_ordering, nbl, zbins, ind.copy(), GL_or_LG)
     # cov_3x2pt_SVA_4D_OC = mm.cov_3x2pt_10D_to_4D(cov_SVA_3x2pt_dict_10D_OC, probe_ordering, nbl, zbins, ind.copy(), GL_or_LG)
     # cov_3x2pt_SVA_4D_SB = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SVA_10D, probe_ordering, nbl, zbins, ind.copy(), GL_or_LG)
+    # cov_3x2pt_MIX_4D_OC = mm.cov_3x2pt_10D_to_4D(cov_MIX_3x2pt_dict_10D_OC, probe_ordering, nbl, zbins, ind.copy(), GL_or_LG)
+    # cov_3x2pt_MIX_4D_SB = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_MIX_10D, probe_ordering, nbl, zbins, ind.copy(), GL_or_LG)
     
     # cov_3x2pt_SN_2D_OC = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SN_4D_OC, zbins, block_index='vincenzo')
     # cov_3x2pt_SN_2D_SB = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SN_4D_SB, zbins, block_index='vincenzo')
     # cov_3x2pt_SVA_2D_OC = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SVA_4D_OC, zbins, block_index='vincenzo')
-    # cov_3x2pt_SVA_2D_SB = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SVA_4D_SB, zbins, block_index='vincenzo')
-    
+    # cov_3x2pt_SVA_2D_SB = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SVA_4D_SB, zbins, block_index='vincenzo')    
+    # cov_3x2pt_MIX_2D_OC = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_MIX_4D_OC, zbins, block_index='vincenzo')
+    # cov_3x2pt_MIX_2D_SB = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_MIX_4D_SB, zbins, block_index='vincenzo')
+
     # cov_3x2pt_SN_diag_OC = np.diag(cov_3x2pt_SN_2D_OC)
     # cov_3x2pt_SN_diag_SB = np.diag(cov_3x2pt_SN_2D_SB)
+    # cov_3x2pt_SVA_diag_OC = np.diag(cov_3x2pt_SVA_2D_OC)
+    # cov_3x2pt_SVA_diag_SB = np.diag(cov_3x2pt_SVA_2D_SB)
+    # cov_3x2pt_MIX_diag_OC = np.diag(cov_3x2pt_MIX_2D_OC)
+    # cov_3x2pt_MIX_diag_SB = np.diag(cov_3x2pt_MIX_2D_SB)
     
     # plt.figure()
-    # # plt.plot(cov_3x2pt_SN_diag_OC, label='OC')
-    # # plt.plot(cov_3x2pt_SN_diag_SB, label='SB', ls='--')
+    # plt.title('SN')
+    # plt.plot(cov_3x2pt_SN_diag_OC, label='OC')
+    # plt.plot(cov_3x2pt_SN_diag_SB, label='SB', ls='--')
+    # plt.yscale('log')
     # plt.plot(cov_3x2pt_SN_diag_SB/cov_3x2pt_SN_diag_OC, label='ratio', ls='-', marker='.')
+    # plt.legend()
+    
+    
+    # plt.figure()
+    # plt.title('SVA')
+    # plt.plot(cov_3x2pt_SVA_diag_OC, label='OC')
+    # plt.plot(cov_3x2pt_SVA_diag_SB, label='SB', ls='--')
+    # plt.yscale('log')
+    # plt.plot(cov_3x2pt_SVA_diag_SB/cov_3x2pt_SVA_diag_OC, label='ratio', ls='-', marker='.')
+    # plt.legend()
+    
+    # plt.figure()
+    # plt.title('MIX')
+    # plt.plot(cov_3x2pt_MIX_diag_OC, label='OC')
+    # plt.plot(cov_3x2pt_MIX_diag_SB, label='SB', ls='--')
+    # plt.yscale('log')
+    # # plt.plot(cov_3x2pt_MIX_diag_SB/cov_3x2pt_MIX_diag_OC, label='ratio', ls='-', marker='.')
     # plt.legend()
     
     

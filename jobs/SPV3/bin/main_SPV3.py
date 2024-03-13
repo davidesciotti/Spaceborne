@@ -36,7 +36,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 # job config
 import jobs.SPV3.config.config_SPV3 as cfg
 
-mpl.use('Agg')
+# mpl.use('Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 script_start_time = time.perf_counter()
 os.environ['OMP_NUM_THREADS'] = '32'
@@ -1142,12 +1142,12 @@ if fm_cfg['test_against_vincenzo'] and bnt_transform == False:
 
         npt.assert_allclose(FM_dict[f'FM_{probe_dav}_G'], fm_vinc_g, rtol=1e-3, atol=0)
 
-# plot the results directly, as a quick check
+# ! plot the results directly, as a quick check
 nparams_toplot = 7
 names_params_to_fix = []
 divide_fom_by_10 = True
 include_fom = True
-fix_dz = True
+fix_dz = False
 fix_shear_bias = True
 fix_gal_bias = False
 fix_mag_bias = False

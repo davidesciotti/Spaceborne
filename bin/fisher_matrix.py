@@ -197,6 +197,9 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         cov_3x2pt_GS_2D_inv = np.eye(cov_dict['cov_3x2pt_GO_2D'].shape[0])
         cov_2x2pt_GS_2D_inv = np.eye(cov_dict['cov_2x2pt_GO_2D'].shape[0])
         warnings.warn('Not computing GS constraints, setting the inverse covmats to identity')
+        
+    del cov_dict
+    gc.collect()
 
     # load reshaped derivatives, with shape (nbl, zbins, zbins, nparams)
     dC_LL_4D = deriv_dict['dC_LL_4D']

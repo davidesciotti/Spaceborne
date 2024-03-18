@@ -27,6 +27,55 @@ import pandas as pd
 
 ###############################################################################
 
+
+def plot_dominant_array_element(arrays_dict):
+    """
+    Plot 2D arrays from a dictionary, highlighting the dominant component in each element.
+    Colors are assigned based on the array with the dominant component at each position.
+    If no component is dominant (all are zero), the color will be white.
+    """
+    # Stack arrays along a new dimension and calculate the absolute values
+    stacked_abs_arrays = np.abs(np.stack(list(arrays_dict.values()), axis=-1))
+
+    # Find indices of the dominant array at each position
+    dominant_indices = np.argmax(stacked_abs_arrays, axis=-1)
+
+    # Add an extra category for non-dominant cases (where all arrays are zero)
+    non_dominant_value = -1  # Choose a value that doesn't conflict with existing indices
+    dominant_indices[np.all(stacked_abs_arrays == 0, axis=-1)] = non_dominant_value
+
+    # Prepare the colormap, including an extra color for non-dominant cases
+    selected_colors = ['white'] + tab_colors[:len(arrays_dict)]  # 'white' is for non-dominant cases
+    cmap = ListedColormap(selected_colors)
+
+    # Plot the dominant indices with the custom colormap
+    plt.figure(figsize=(10, 8))
+    im = plt.imshow(dominant_indices, cmap=cmap, vmin=non_dominant_value, vmax=len(arrays_dict) - 1)
+
+    # Create a colorbar with labels
+    # Set the ticks so they are at the center of each color segment
+    cbar_ticks = np.linspace(non_dominant_value, len(arrays_dict) - 1, len(selected_colors))
+    cbar_labels = ['0'] + list(arrays_dict.keys())  # 'None' corresponds to the non-dominant case
+    cbar = plt.colorbar(im, ticks=cbar_ticks)
+    cbar.set_ticklabels(cbar_labels)
+
+    lw = 2
+    plt.axvline(elements_auto, c='k', lw=lw)
+    plt.axvline(elements_auto + elements_cross, c='k', lw=lw)
+    plt.axhline(elements_auto, c='k', lw=lw)
+    plt.axhline(elements_auto + elements_cross, c='k', lw=lw)
+    plt.xticks([])
+    plt.yticks([])
+
+    for idx, label in enumerate(labels):
+        x = centers[idx]
+        plt.text(x, -1.5, label, va='bottom', ha='center')
+        plt.text(-1.5, x, label, va='center', ha='right', rotation='vertical')
+
+    plt.show()
+    
+    
+
 def cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering):
     cov_3x2pt_dict_10D = {}
     for probe_A, probe_B in probe_ordering:

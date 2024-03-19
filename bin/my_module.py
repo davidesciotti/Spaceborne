@@ -21,6 +21,8 @@ import inspect
 import datetime
 from tqdm import tqdm
 import pandas as pd
+from matplotlib.colors import ListedColormap
+
 
 # from ..common_cfg import ISTF_fid_params as ISTF_fid
 
@@ -28,12 +30,16 @@ import pandas as pd
 ###############################################################################
 
 
-def plot_dominant_array_element(arrays_dict):
+def plot_dominant_array_element(arrays_dict, tab_colors, elements_auto, elements_cross, elements_3x2pt):
     """
     Plot 2D arrays from a dictionary, highlighting the dominant component in each element.
     Colors are assigned based on the array with the dominant component at each position.
     If no component is dominant (all are zero), the color will be white.
     """
+    
+    centers = [elements_auto // 2, elements_auto + elements_cross // 2, elements_auto + elements_cross + elements_auto // 2]
+    labels = ['WL', 'GGL', 'GCph']
+
     # Stack arrays along a new dimension and calculate the absolute values
     stacked_abs_arrays = np.abs(np.stack(list(arrays_dict.values()), axis=-1))
 

@@ -162,7 +162,7 @@ covariance_cfg = {
     'cov_folder': f'{DATA_ROOT}/output/{which_input_files}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
 
-    'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or Spaceborne or OneCovariance
+    'SSC_code': 'OneCovariance',  # ! PySSC or PyCCL or Spaceborne or OneCovariance
 
     'PySSC_cfg': {
         'which_ng_cov': 'SSC',
@@ -172,7 +172,7 @@ covariance_cfg = {
         'probe': '3x2pt',
         'which_ng_cov': ('SSC',),
 
-        'load_precomputed_cov': False,
+        'load_precomputed_cov': True,
         'save_cov': True,
 
         'save_trispectrum': False,
@@ -231,11 +231,12 @@ covariance_cfg = {
     },
     
     'OneCovariance_cfg': {
-        'which_ng_cov': ('SSC', ),
+        'which_ng_cov': ('SSC', 'cNG', ),
         'load_precomputed_cov': True,  # this must be True for OneCovariance
         'use_OneCovariance_Gaussian': False,
         
-        'cov_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/OneCovariance',
+        # 'cov_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/OneCovariance',
+        'cov_path': '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/output_ISTF_v2',
         'cov_filename': 'cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',
     }

@@ -57,9 +57,9 @@ def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, compar
                 plt.plot(param_names, diff, label='percent diff')
                 plt.legend()
 
-folder_a = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/FM/jan_2024/Gauss'
-folder_b = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/FM/standard/Gauss'
-extension = 'txt'
+folder_a = '/home/cosmo/davide.sciotti/data/OneCovariance/output_ISTF'
+folder_b = '/home/cosmo/davide.sciotti/data/OneCovariance/output_ISTF_v2'
+extension = 'npz'
 
 mm.test_folder_content(folder_a, folder_b, extension, verbose=True, rtol=1e-3)
 

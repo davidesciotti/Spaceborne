@@ -181,7 +181,8 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
     ind_dict = covariance_cfg['ind_dict']
     cov_path = ssc_code_cfg['cov_path']
 
-    assert ssc_code in ('Spaceborne', 'PyCCL', 'OneCovariance'), 'ssc_code must be "Spaceborne", "PyCCL" or "OneCovariance"'
+    assert ssc_code in ('Spaceborne', 'PyCCL',
+                        'OneCovariance'), 'ssc_code must be "Spaceborne", "PyCCL" or "OneCovariance"'
 
     print(f'Computing 3x2pt {which_ng_cov} covariance with {ssc_code}')
 
@@ -228,12 +229,7 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
             cov_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
 
     # reshape the blocks in the dictionary from 4D to 6D, as needed by the BNT
-    cov_3x2pt_dict_10D = {}
-    for probe_A, probe_B in probe_ordering:
-        for probe_C, probe_D in probe_ordering:
-            cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
-                cov_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
-                nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
+    cov_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering)
 
     return cov_3x2pt_dict_10D
 
@@ -480,13 +476,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_go_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(cov_path, cov_filename, probe_ordering)
 
         # reshape the blocks in the dictionary from 4D to 6D, as needed by the BNT
-        cov_go_3x2pt_dict_10D = {}
-        for probe_A, probe_B in probe_ordering:
-            for probe_C, probe_D in probe_ordering:
-                cov_go_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
-                    cov_go_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
-                    nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
-
+        cov_go_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(cov_go_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering)
         cov_3x2pt_GO_10D = mm.cov_10D_dict_to_array(cov_go_3x2pt_dict_10D, nbl, zbins, n_probes)
 
         # Slice or reload to get the LL, GG and 3x2pt covariance

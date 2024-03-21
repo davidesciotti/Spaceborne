@@ -970,6 +970,10 @@ def cl_PyCCL(wf_A, wf_B, ell, zbins, p_of_k_a, cosmo, limber_integration_method=
         is_auto_spectrum = True
 
     nbl = len(ell)
+    
+    if p_of_k_a is None:
+        p_of_k_a = 'delta_matter:delta_matter'
+    
 
     if is_auto_spectrum:
         cl_3D = np.zeros((nbl, zbins, zbins))

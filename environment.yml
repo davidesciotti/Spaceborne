@@ -22,6 +22,7 @@ dependencies:
   - ipympl
   - pip:
     - chainconsumer 
+    - pymaster
     - cython
     - getdist
     - type_enforced

@@ -44,13 +44,17 @@ cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
 # ! options
 ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
-filename_suffix = '_sigma2_None_densegrids'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
+filename_suffix = '_cNGfix'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 # filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 fm_last_folder = '/jan_2024'  # /standard or /jan_2024
 fix_dz_plt = True
-fix_shear_bias_plt = False
+fix_shear_bias_plt = True
 fix_gal_bias_plt = False
-fix_mag_bias_plt = False
+fix_mag_bias_plt = True
+fid_shear_bias_prior = 5e-4
+shear_bias_prior = fid_shear_bias_prior  # None if you want no prior
+fix_curvature = True
+
 check_if_just_created = True
 
 specs_str = 'idIA2_idB3_idM3_idR1'
@@ -62,9 +66,7 @@ fm_pickle_name_raw = 'FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbin
 EP_or_ED = 'EP'
 zbins = 13
 num_params_tokeep = 7
-fix_curvature = True
-fid_shear_bias_prior = 5e-4
-shear_bias_prior = fid_shear_bias_prior
+
 gal_bias_perc_prior = None  # ! not quite sure this works properly...
 string_columns = ['probe', 'which_cov_term', 'whose_FM', 'which_pk', 'BNT_transform', 'ell_cuts', 'which_cuts',
                   'center_or_min', 'fix_dz', 'fix_shear_bias', 'fix_gal_bias', 'fix_mag_bias', 'foc', 'kmax_h_over_Mpc']
@@ -79,7 +81,7 @@ ML = 245
 MS = 245
 ZL = 2
 ZS = 2
-probes = ('WL', 'GC', 'XC', '3x2pt')
+probes = ('WL', 'GC', 'XC', '2x2pt', '3x2pt')
 which_cuts = 'Vincenzo'
 whose_FM_list = ('davide',)
 kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
@@ -306,7 +308,7 @@ for probe in probes:
                                                 fom = mm.compute_FoM(fm, w0wa_idxs)
 
                                                 # ! this piece of code is for the foc of the different cases
-                                                corr_mat = mm.correlation_from_covariance(
+                                                corr_mat = mm.cov2corr(
                                                     np.linalg.inv(fm))[:num_params_tokeep, :num_params_tokeep]
                                                 foc = mm.figure_of_correlation(corr_mat)
                                                 if plor_corr_matrix and which_cov_term == 'G' and BNT_transform is False and \
@@ -365,10 +367,13 @@ for probe_toplot in probes:
     ]
 
     fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
+                                            'GSSC', num_string_columns)
+    fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
                                              'GSSCcNG', num_string_columns)
 
     if divide_fom_by_10_plt:
-        fm_uncert_df_toplot.loc[fm_uncert_df_toplot['probe'] != 'perc_diff', 'FoM'] /= 10
+        mask = ~fm_uncert_df_toplot['which_cov_term'].str.startswith('perc_diff') 
+        fm_uncert_df_toplot.loc[mask, 'FoM'] /= 10
 
     data = fm_uncert_df_toplot.iloc[:, num_string_columns:].values
     label_list = list(fm_uncert_df_toplot['which_cov_term'].values)
@@ -379,12 +384,14 @@ for probe_toplot in probes:
     data = data[:, :num_params_tokeep_here]
 
     ylabel = f'relative uncertainty [%]'
-    plot_utils.bar_plot(data, f'{probe_toplot}, {which_cov_term_list[1]}, {ng_cov_code}', label_list, bar_width=0.2, nparams=num_params_tokeep_here,
+    plot_utils.bar_plot(data, f'{probe_toplot}, {which_cov_term_list[1]}, {ng_cov_code}', label_list, bar_width=0.12, nparams=num_params_tokeep_here,
                         param_names_label=None,
                         second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
                         include_fom=include_fom, figsize=(10, 8), divide_fom_by_10_plt=divide_fom_by_10_plt)
 
+    plt.savefig(f'/home/davide/Documenti/Science/Talks/2024_03_20 - Waterloo/{probe_toplot}_SPV3_GSSCcNG.png', bbox_inches='tight', dpi=300)
 
+    
 assert False, 'stop here'
 # mm.plot_correlation_matrix(correlation_dict['HMCode2020'] / correlation_dict['TakaBird'], cosmo_params_tex,
 #    title='HMCodeBar/TakaBird')

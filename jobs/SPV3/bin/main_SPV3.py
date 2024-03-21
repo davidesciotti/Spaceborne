@@ -407,20 +407,13 @@ assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \
 assert magcut_lens == 245, 'magcut_lens must be 245: the yaml file with the fiducial params is for magcut 245'
 assert magcut_source == 245, 'magcut_source must be 245: the yaml file with the fiducial params is for magcut 245'
 
-warnings.warn('find a better way to treat with the various ng covariances')
-# which cases to save: GO, GS or GO, GS and SS
-cases_tosave = ['GO', ]
-if covariance_cfg[f'compute_SSC']:
-    # cases_tosave.append('G' + covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'])
-    cases_tosave.append('GS')
-if covariance_cfg[f'save_cov_SSC']:
-    cases_tosave.append('SS')
+# TODO delete this arg in save_cov function
+cases_tosave = '_'
 
 # build the ind array and store it into the covariance dictionary
 ind = mm.build_full_ind(triu_tril, row_col_major, zbins)
 covariance_cfg['ind'] = ind
 zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
-
 covariance_cfg['probe_ordering'] = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
 
 if not general_cfg['ell_cuts']:
@@ -429,9 +422,10 @@ if not general_cfg['ell_cuts']:
 else:
     general_cfg['ell_cuts_subfolder'] = f'{general_cfg["which_cuts"]}/ell_{general_cfg["center_or_min"]}'
 
-# compute ell and delta ell values in the reference (optimistic) case
 assert general_cfg['nbl_WL_opt'] == 32, 'this is used as the reference binning, from which the cuts are made'
 assert general_cfg['ell_max_WL_opt'] == 5000, 'this is used as the reference binning, from which the cuts are made'
+
+# compute ell and delta ell values in the reference (optimistic) case
 ell_ref_nbl32, delta_l_ref_nbl32, ell_edges_ref_nbl32 = (
     ell_utils.compute_ells(general_cfg['nbl_WL_opt'], general_cfg['ell_min'], general_cfg['ell_max_WL_opt'],
                            recipe='ISTF', output_ell_bin_edges=True))
@@ -542,7 +536,6 @@ n_of_z = np.genfromtxt(f'{nofz_folder}/{nofz_filename}')
 zgrid_nz = n_of_z[:, 0]
 n_of_z = n_of_z[:, 1:]
 n_of_z_original = n_of_z
-
 
 # ! load vincenzo's kernels, including magnification bias, IA and n(z) shifts!
 wf_folder = Sijkl_cfg['wf_input_folder']
@@ -678,40 +671,13 @@ if shift_nz:
     # * this is important: the BNT matrix I use for the rest of the code (so not to compute the ell cuts) is instead
     # * consistent with the shifted n(z) used to compute the kernels
     bnt_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, cosmo_ccl=cosmo_ccl, plot_nz=False)
-    
 
-# ! you can delete this
-# wf_gamma_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'without_IA', flat_fid_pars_dict, cosmo_ccl,
-#                                     nz_tuple, ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
-#                                     return_ccl_obj=False, n_samples=len(zgrid_nz))
-# wf_gamma_ccl_bnt = (bnt_matrix @ wf_gamma_ccl_arr.T).T
-
-# plt.figure()
-# for zi in range(zbins):
-#     plt.plot(zgrid_nz, wf_gamma_ccl_arr[:, zi], ls='-', c=colors[zi],
-#              alpha=0.6, label='wf_gamma_ccl' if zi == 0 else None)
-#     plt.plot(zgrid_nz, wf_gamma_ccl_bnt[:, zi], ls='--', c=colors[zi],
-#              alpha=0.6, label='wf_gamma_ccl_bnt' if zi == 0 else None)
-#     plt.axvline(z_means_ll_bnt[zi], ls=':', c=colors[zi])
-# plt.legend()
-# plt.xlabel('z')
-# plt.ylabel('W_i^{gamma}(z)')
-
-# np.savetxt('/home/davide/Scrivania/bnt_kernels_guada/bnt_matrix.txt', bnt_matrix)
-# np.savetxt('/home/davide/Scrivania/bnt_kernels_guada/n_of_z.txt', np.hstack((zgrid_nz.reshape(-1, 1), n_of_z)), header='z \t n_i(z) shifted')
-# np.savetxt('/home/davide/Scrivania/bnt_kernels_guada/wf_gamma.txt', np.hstack((zgrid_nz.reshape(-1, 1), wf_gamma_ccl_arr)), header='z \t W_i^{gamma}(z)')
-# np.savetxt('/home/davide/Scrivania/bnt_kernels_guada/wf_gamma_bnt.txt', np.hstack((zgrid_nz.reshape(-1, 1), wf_gamma_ccl_bnt)), header='z \t W_i^{gamma, BNT}(z)')
-
-
-# assert False, 'stop here for Guadas checks'
-# ! end you can delete this
+general_cfg['nz_tuple'] = nz_tuple
 
 # save in ASCII format for OneCovariance
 nofz_filename_ascii = nofz_filename.replace('.dat', '.ascii')
 nofz_tosave = np.column_stack((zgrid_nz, n_of_z))
 np.savetxt(f'{nofz_folder}/{nofz_filename_ascii}', nofz_tosave)
-
-general_cfg['nz_tuple'] = nz_tuple
 
 if general_cfg['use_CLOE_cls']:
 
@@ -1142,7 +1108,7 @@ if fm_cfg['test_against_vincenzo'] and bnt_transform == False:
 
         npt.assert_allclose(FM_dict[f'FM_{probe_dav}_G'], fm_vinc_g, rtol=1e-3, atol=0)
 
-# plot the results directly, as a quick check
+# ! plot the results directly, as a quick check
 nparams_toplot = 7
 names_params_to_fix = []
 divide_fom_by_10 = True

@@ -174,7 +174,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
 
 
 def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka, f_sky,
-                       ind_AB, ind_CD, sigma2_B_tuple, sigma2_suffix, integration_method='spline'):
+                       ind_AB, ind_CD, sigma2_B_tuple, integration_method='spline'):
     zpairs_AB = ind_AB.shape[0]
     zpairs_CD = ind_CD.shape[0]
     nbl = len(ell)
@@ -184,7 +184,7 @@ def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel
     if which_ng_cov == 'SSC':
         ng_cov_func = ccl.covariances.angular_cl_cov_SSC
         sigma2_B_arg = {'sigma2_B': sigma2_B_tuple,
-                        'sigma2_suffix': sigma2_suffix}
+                        }
     elif which_ng_cov == 'cNG':
         ng_cov_func = ccl.covariances.angular_cl_cov_cNG
         sigma2_B_arg = {}
@@ -242,7 +242,6 @@ def compute_ng_cov_3x2pt(cosmo, which_ng_cov, kernel_dict, ell, tkka_dict, f_sky
                                        ind_AB=ind_dict[probe_a + probe_b],
                                        ind_CD=ind_dict[probe_c + probe_d],
                                        sigma2_B_tuple=sigma2_B_tuple,
-                                       sigma2_suffix=pyccl_cfg['sigma2_suffix'],
                                        integration_method=integration_method,
                                        ))
 
@@ -552,12 +551,8 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         # and is the same as CSST paper https://zenodo.org/records/7813033
         cl_mask_norm = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * f_sky)**2
 
-        # this is because p_of_k_a='delta_matter:delta_matter' gives an error, probably a bug in pyccl
-        cosmo_ccl.compute_linear_power()
-        p_of_k_a_lin = cosmo_ccl.get_linear_power()
-
         sigma2_B = ccl.covariances.sigma2_B_from_mask(
-            cosmo=cosmo_ccl, a_arr=a_grid_sigma2_B, mask_wl=cl_mask_norm, p_of_k_a=p_of_k_a_lin)
+            cosmo=cosmo_ccl, a_arr=a_grid_sigma2_B, mask_wl=cl_mask_norm, p_of_k_a='delta_matter:delta_matter')
 
         sigma2_B_tuple = (a_grid_sigma2_B, sigma2_B)
 
@@ -622,7 +617,6 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
                                                                                     ind_AB=ind_AB,
                                                                                     ind_CD=ind_CD,
                                                                                     sigma2_B_tuple=sigma2_B_tuple,
-                                                                                    sigma2_suffix=sigma2_suffix,
                                                                                     integration_method=integration_method_dict[probe][which_ng_cov],
                                                                                     )
 
@@ -656,12 +650,12 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
 integration_method_dict = {
     'LL': {
-        'SSC': 'qag_quad',
-        'cNG': 'qag_quad',
+        'SSC': 'spline',
+        'cNG': 'spline',
     },
     'GG': {
-        'SSC': 'qag_quad',
-        'cNG': 'qag_quad',
+        'SSC': 'spline',
+        'cNG': 'spline',
     },
     '3x2pt': {
         'SSC': 'spline',

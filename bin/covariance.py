@@ -579,6 +579,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_XC_GS_2D = mm.cov_4D_to_2D(cov_XC_GS_4D, block_index=block_index)
     cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, block_index=block_index)
     cov_2x2pt_GS_2D = mm.cov_4D_to_2D(cov_2x2pt_GS_4D, block_index=block_index)
+    
+    cov_2x2pt_GO_2D = np.eye(cov_2x2pt_GO_2D.shape[0])
+    cov_2x2pt_GS_2D = np.eye(cov_2x2pt_GS_2D.shape[0])
     print('Covariance matrices reshaped (4D -> 2D) in {:.2f} s'.format(time.perf_counter() - start))
 
     if covariance_cfg['cov_ell_cuts']:
@@ -589,14 +592,14 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_WA_GO_2D = mm.remove_rows_cols_array2D(cov_WA_GO_2D, ell_dict['idxs_to_delete_dict']['WA'])
         cov_XC_GO_2D = mm.remove_rows_cols_array2D(cov_XC_GO_2D, ell_dict['idxs_to_delete_dict'][GL_or_LG])
         cov_3x2pt_GO_2D = mm.remove_rows_cols_array2D(cov_3x2pt_GO_2D, ell_dict['idxs_to_delete_dict']['3x2pt'])
-        cov_2x2pt_GO_2D = mm.remove_rows_cols_array2D(cov_2x2pt_GO_2D, ell_dict['idxs_to_delete_dict']['2x2pt'])
+        # cov_2x2pt_GO_2D = mm.remove_rows_cols_array2D(cov_2x2pt_GO_2D, ell_dict['idxs_to_delete_dict']['2x2pt'])
 
         cov_WL_GS_2D = mm.remove_rows_cols_array2D(cov_WL_GS_2D, ell_dict['idxs_to_delete_dict']['LL'])
         cov_GC_GS_2D = mm.remove_rows_cols_array2D(cov_GC_GS_2D, ell_dict['idxs_to_delete_dict']['GG'])
         cov_WA_GS_2D = mm.remove_rows_cols_array2D(cov_WA_GS_2D, ell_dict['idxs_to_delete_dict']['WA'])
         cov_XC_GS_2D = mm.remove_rows_cols_array2D(cov_XC_GS_2D, ell_dict['idxs_to_delete_dict'][GL_or_LG])
         cov_3x2pt_GS_2D = mm.remove_rows_cols_array2D(cov_3x2pt_GS_2D, ell_dict['idxs_to_delete_dict']['3x2pt'])
-        cov_2x2pt_GS_2D = mm.remove_rows_cols_array2D(cov_2x2pt_GS_2D, ell_dict['idxs_to_delete_dict']['2x2pt'])
+        # cov_2x2pt_GS_2D = mm.remove_rows_cols_array2D(cov_2x2pt_GS_2D, ell_dict['idxs_to_delete_dict']['2x2pt'])
 
     ############################### save in dictionary ########################
     probe_names = ('WL', 'GC', '3x2pt', 'WA', 'XC', '2x2pt')

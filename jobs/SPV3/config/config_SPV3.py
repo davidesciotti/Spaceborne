@@ -216,9 +216,9 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
-        'which_ng_cov': ('SSC', 'cNG'),
+        'which_ng_cov': ('SSC',),
 
-        'load_precomputed_cov': True,
+        'load_precomputed_cov': False,
         'save_cov': True,
 
         'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL' + fm_last_folder,
@@ -283,7 +283,7 @@ covariance_cfg = {
     },
 
     'OneCovariance_cfg': {
-        'which_ng_cov': ('cNG',),
+        'which_ng_cov': ('SSC', 'cNG',),
         'load_precomputed_cov': True,  # this must be True for OneCovariance
         'use_OneCovariance_Gaussian': False,
 

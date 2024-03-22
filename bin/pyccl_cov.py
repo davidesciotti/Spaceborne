@@ -119,6 +119,9 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
     # store the trispectrum for the various probes in a dictionary
     tkka_dict = {}
 
+    # the default pk bust be passed to yhe Tk3D functions as None, not as 'delta_matter:delta_matter'
+    p_of_k_a = None if p_of_k_a == 'delta_matter:delta_matter' else p_of_k_a
+
     for row, (A, B) in tqdm(enumerate(probe_ordering)):
         for col, (C, D) in enumerate(probe_ordering):
             if col >= row:
@@ -130,10 +133,8 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                 if which_ng_cov == 'SSC':
                     tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
                     additional_args = {
-                        'probe_block': A + B + C + D,
                         'prof12_2pt': prof_2pt_dict[A, B],
                         'prof34_2pt': prof_2pt_dict[C, D],
-                        'p_of_k_a': p_of_k_a,
                     }
                 elif which_ng_cov == 'cNG':
                     tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
@@ -144,23 +145,28 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                         'prof24_2pt': prof_2pt_dict[B, D],
                         'prof32_2pt': prof_2pt_dict[C, B],
                         'prof34_2pt': prof_2pt_dict[C, D],
-                        'p_of_k_a': None,  # TODO pass object? anyway, None takes the pk stored in cosmo
                     }
                     # tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_1h
                     # additional_args = {}
                 else:
                     raise ValueError(f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
 
-                tkka_dict[A, B, C, D] = tkka_func(cosmo=cosmo_ccl,
-                                                  hmc=hmc,
-                                                  prof=halo_profile_dict[A],
-                                                  prof2=halo_profile_dict[B],
-                                                  prof3=halo_profile_dict[C],
-                                                  prof4=halo_profile_dict[D],
-                                                  lk_arr=logn_k_grid_tkka,
-                                                  a_arr=a_grid_tkka,
-                                                  extrap_order_lok=1, extrap_order_hik=1, use_log=False,
-                                                  **additional_args)
+                tkka_dict[A, B, C, D], responses_dict = tkka_func(cosmo=cosmo_ccl,
+                                                                  hmc=hmc,
+                                                                  prof=halo_profile_dict[A],
+                                                                  prof2=halo_profile_dict[B],
+                                                                  prof3=halo_profile_dict[C],
+                                                                  prof4=halo_profile_dict[D],
+                                                                  lk_arr=logn_k_grid_tkka,
+                                                                  a_arr=a_grid_tkka,
+                                                                  extrap_order_lok=1, extrap_order_hik=1, use_log=False,
+                                                                  **additional_args)
+
+                # save responses
+                if which_ng_cov == 'SSC':
+                    probe_block = A + B + C + D
+                    for key, value in responses_dict.items():
+                        np.save(f"{pyccl_cfg['cov_path']}/halomodel_responses/{probe_block}/{key}.npy", value)
 
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
     if pyccl_cfg['save_trispectrum']:

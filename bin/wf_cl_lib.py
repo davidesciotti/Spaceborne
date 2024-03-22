@@ -38,9 +38,9 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 ###############################################################################
 
 
-fiducial_pars_dict_nested = mm.read_yaml(
-    f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yml')
-fiducial_pars_dict = mm.flatten_dict(fiducial_pars_dict_nested)
+# fiducial_pars_dict_nested = mm.read_yaml(
+#     f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yml')
+# fiducial_pars_dict = mm.flatten_dict(fiducial_pars_dict_nested)
 
 c = 299792.458  # km/s
 
@@ -69,8 +69,6 @@ c = 299792.458  # km/s
 # z_grid = np.linspace(z_min, z_max_cl, cfg.zsteps_cl)
 # # use_h_units = cfg.use_h_units
 
-warnings.warn('these global variables should be deleted...')
-warnings.warn('RECHECK Ox0 in cosmolib')
 
 
 @njit

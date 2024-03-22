@@ -175,7 +175,10 @@ covariance_cfg = {
         'load_precomputed_cov': False,
         'save_cov': True,
 
-        'save_trispectrum': False,
+        'load_precomputed_tkka': True,
+        'save_tkka': True,
+        'tkka_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/PyCCL/jan_2024',
+        
         'cov_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/PyCCL/jan_2024',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}' + fm_and_cov_suffix + '.npz',

@@ -85,49 +85,56 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
     halo_profile_hod = ccl.halos.HaloProfileHOD(mass_def=mass_def, concentration=c_M_relation)
 
     # TODO pk from input files
-    assert use_hod_for_gg, ('you need to use HOD for GG to get correct results for GCph! I previously got an error, '
-                            'should be fixed now')
-
-    if use_hod_for_gg:
-        # This is the correct way to initialize the trispectrum
-        # Asked David Alonso about this.
-        halo_profile_dict = {
-            'L': halo_profile_nfw,
-            'G': halo_profile_hod,
-        }
-        prof_2pt_dict = {
-            # see again https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
-            ('L', 'L'): ccl.halos.Profile2pt(),
-            ('G', 'L'): ccl.halos.Profile2pt(),
-            ('L', 'G'): ccl.halos.Profile2pt(),
-            ('G', 'G'): ccl.halos.Profile2ptHOD(),
-        }
-
-    else:
-        warnings.warn('!!! using the same halo profile (NFW) for all probes, this produces wrong results for GCph!!')
-        halo_profile_dict = {
-            'L': halo_profile_nfw,
-            'G': halo_profile_nfw,
-        }
-        prof_2pt_dict = {
-            ('L', 'L'): None,
-            ('G', 'L'): None,
-            ('L', 'G'): None,
-            ('G', 'G'): None,
-        }
+    # This is the correct way to initialize the trispectrum (I Asked David Alonso about this.)
+    halo_profile_dict = {
+        'L': halo_profile_nfw,
+        'G': halo_profile_hod,
+    }
+    prof_2pt_dict = {
+        # see again https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
+        ('L', 'L'): ccl.halos.Profile2pt(),
+        ('G', 'L'): ccl.halos.Profile2pt(),
+        ('L', 'G'): ccl.halos.Profile2pt(),
+        ('G', 'G'): ccl.halos.Profile2ptHOD(),
+    }
 
     # store the trispectrum for the various probes in a dictionary
-    tkka_dict = {}
 
     # the default pk bust be passed to yhe Tk3D functions as None, not as 'delta_matter:delta_matter'
     p_of_k_a = None if p_of_k_a == 'delta_matter:delta_matter' else p_of_k_a
 
+    tkka_dict = {}
     for row, (A, B) in tqdm(enumerate(probe_ordering)):
         for col, (C, D) in enumerate(probe_ordering):
-            if col >= row:
-                print(f'Computing trispectrum for {which_ng_cov},  probe combination {A}{B}{C}{D}')
-                if a_grid_tkka is not None and logn_k_grid_tkka is not None:
-                    print(f'z points = {a_grid_tkka.size}, k points = {logn_k_grid_tkka.size}')
+
+            print(f'Computing/loading who knows trispectrum for {which_ng_cov},  probe combination {A}{B}{C}{D}')
+            if a_grid_tkka is not None and logn_k_grid_tkka is not None:
+                print(f'z points = {a_grid_tkka.size}, k points = {logn_k_grid_tkka.size}')
+
+            if col >= row and pyccl_cfg['load_precomputed_tkka']:
+
+                tkka_folder = 'Tk3D_SSC' if which_ng_cov == 'SSC' else 'Tk3D_cNG'
+                tkka_path = f'{pyccl_cfg["tkka_path"]}/{tkka_folder}'
+                a_arr = np.load(f'{tkka_path}/a_arr_tkka.npy')
+                k1_arr = np.load(f'{tkka_path}/k1_arr_tkka.npy')
+                k2_arr = np.load(f'{tkka_path}/k2_arr_tkka.npy')
+                pk2_arr_k1_tkka = np.load(f'{tkka_path}/pk2_arr_k1_tkka.npy')
+                pk2_arr_k2_tkka = np.load(f'{tkka_path}/pk2_arr_k2_tkka.npy')
+
+                assert np.array_equal(k1_arr, k2_arr), 'k1_arr and k2_arr must be equal'
+                assert pk2_arr_k1_tkka[0].shape == pk2_arr_k2_tkka[1].shape, 'pk2_arr_k1_tkka and pk2_arr_k2_tkka must have the same shape'
+
+                tkka_dict[A, B, C, D] = ccl.tk3d.Tk3D(a_arr,
+                                                      np.log10(k1_arr),
+                                                      tkk_arr=None,
+                                                      pk1_arr=pk2_arr_k1_tkka,
+                                                      pk2_arr=pk2_arr_k2_tkka,
+                                                      is_logt=True,
+                                                      extrap_order_lok=1,
+                                                      extrap_order_hik=1
+                                                      )
+
+            elif col >= row and not pyccl_cfg['load_precomputed_tkka']:
 
                 # not very nice to put this if-else in the for loop, but A, B, C, D are referenced only here
                 if which_ng_cov == 'SSC':
@@ -168,10 +175,18 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                     for key, value in responses_dict.items():
                         np.save(f"{pyccl_cfg['cov_path']}/halomodel_responses/{probe_block}/{key}.npy", value)
 
+                if pyccl_cfg['save_tkka']:
+                    breakpoint()
+                    tkka_folder = 'Tk3D_SSC' if which_ng_cov == 'SSC' else 'Tk3D_cNG'
+                    tkka_path = f'{pyccl_cfg["cov_path"]}/{tkka_folder}'
+                    (a_arr, k1_arr, k2_arr, tk3d_arr) = tkka_dict[A, B, C, D].get_spline_arrays()
+                    np.save(f'{tkka_path}/a_arr_tkka.npy', a_arr)
+                    np.save(f'{tkka_path}/k1_arr_tkka.npy', k1_arr)
+                    np.save(f'{tkka_path}/k2_arr_tkka.npy', k2_arr)
+                    np.save(f'{tkka_path}/pk2_arr_k1_tkka.npy', tk3d_arr[0])
+                    np.save(f'{tkka_path}/pk2_arr_k2_tkka.npy', tk3d_arr[1])
+
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
-    if pyccl_cfg['save_trispectrum']:
-        trispectrum_filename = pyccl_cfg['trispectrum_filename'].format(which_ng_cov=which_ng_cov, which_pk=which_pk)
-        mm.save_pickle(trispectrum_filename, tkka_dict)
 
     # TODO do they interpolate existing tracer arrays?
     # TODO spline for SSC...

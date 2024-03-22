@@ -343,9 +343,7 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     par_tovary_name, par_tovary_value = list(par_tovary_dict.items())[0]
     x0 = par_tovary_value
     x_data = ell_dict['ell_WL']
-    n_samples = 1
-    
-    
+    n_samples = 1000
     
     # pick a fiducial bwteen ccl and vincenzo's
     # cl_wl_1d_fid = cl_dict_2D['cl_LL_2D'].flatten()
@@ -357,13 +355,11 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     cov_wl_2d = cov_dict['cov_WL_GS_2D']
     inv_cov_wl_2d = np.linalg.inv(cov_wl_2d)  # TODO put different types of NG cov here
     cl_wl_1d_fid_samples = np.random.multivariate_normal(cl_wl_1d_fid, cov_wl_2d, n_samples)
-        
-    
 
     # parallel version
     print('starting minimization in parallel...')
     start = time.perf_counter()
-    result_parallel_list = Parallel(n_jobs=-1)(delayed(parallel_wrapper)(sample_idx, cl_wl_1d_fid_samples) for sample_idx in range(n_samples))
+    result_parallel_list = Parallel(n_jobs=8)(delayed(parallel_wrapper)(sample_idx, cl_wl_1d_fid_samples) for sample_idx in range(n_samples))
     print(f'...done in {time.perf_counter() - start:.2f} s')
     
     best_fit_parall, chi2_bf_parall = [], []
@@ -389,15 +385,18 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     # plt.ylabel('% diff')
     # plt.xlabel('sample idx')
     
-    fig, ax = plt.subplots(1, 2)
-    ax[0].hist(chi2_bf_parall)
-    ax[1].hist(best_fit_parall)
+    # fig, ax = plt.subplots(1, 2)
+    # ax[0].hist(chi2_bf_parall)
+    # ax[1].hist(best_fit_parall)
     # plt.hist(best_fit_om)
         
     # for sample_idx in [1, 100, 500, 900]:
     # plt.loglog(cl_wl_1d_fid)
     # plt.loglog(dv_wl_samples[sample_idx, :], '--')
     # plt.loglog(y_data, '--')
+    
+    np.save('/home/cosmo/davide.sciotti/data/common_data/Spaceborne/jobs/ISTF/output/cl14may/chi2_test/chi2_bf_parall.npy', chi2_bf_parall)
+    np.save('/home/cosmo/davide.sciotti/data/common_data/Spaceborne/jobs/ISTF/output/cl14may/chi2_test/best_fit_parall.npy', best_fit_parall)
     
     assert False, 'stop here for chi2 test'
 

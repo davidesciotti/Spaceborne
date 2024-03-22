@@ -246,23 +246,7 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl, BNT_matrix=None)
 
-    # # ! signal to noise
-    # cov_ll_G_4d = mm.cov_2D_to_4D(cov_dict['cov_WL_GO_2D'], nbl_WL, block_index='vincenzo')
-    # cov_ll_NG_4d = mm.cov_2D_to_4D(cov_dict['cov_WL_GS_2D'], nbl_WL, block_index='vincenzo')
 
-    # sn_ll_g = []
-    # sn_ll_ng = []
-    # for ell_max_idx, _ in enumerate(ell_dict['ell_WL']):
-
-    #     snr_g_tosum = np.array([cl_dict_2D['cl_LL_2D'][ell_idx, :].T @ np.linalg.inv(cov_ll_G_4d[ell_idx, ell_idx, :, :]) @ cl_dict_2D['cl_LL_2D'][ell_idx, :] for ell_idx in range(ell_max_idx + 1)])
-    #     snr_ng_tosum = np.array([cl_dict_2D['cl_LL_2D'][ell_idx, :].T @ np.linalg.inv(cov_ll_NG_4d[ell_idx, ell_idx, :, :]) @ cl_dict_2D['cl_LL_2D'][ell_idx, :] for ell_idx in range(ell_max_idx + 1)])
-    #     sn_ll_g.append(np.sqrt(np.sum(snr_g_tosum)))
-    #     sn_ll_ng.append(np.sqrt(np.sum(snr_ng_tosum)))
-
-    # plt.loglog(ell_dict['ell_WL'], sn_ll_g)
-    # plt.loglog(ell_dict['ell_WL'], sn_ll_ng)
-
-    # assert False, 'stop here'
 
     # ! check the difference in the Gaussian covariances
     cov_folder = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/covmat/Spaceborne/'

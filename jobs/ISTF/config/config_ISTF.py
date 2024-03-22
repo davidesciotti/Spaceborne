@@ -175,7 +175,7 @@ covariance_cfg = {
         'load_precomputed_cov': False,
         'save_cov': True,
 
-        'load_precomputed_tkka': True,
+        'load_precomputed_tkka': False,
         'save_tkka': True,
         'tkka_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/PyCCL/jan_2024',
         

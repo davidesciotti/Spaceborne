@@ -343,7 +343,7 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     par_tovary_name, par_tovary_value = list(par_tovary_dict.items())[0]
     x0 = par_tovary_value
     x_data = ell_dict['ell_WL']
-    n_samples = 5
+    n_samples = 1
     
     
     
@@ -370,35 +370,34 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     for sample_idx in tqdm(range(n_samples)):
         best_fit_parall.append(result_parallel_list[sample_idx].x[0])
         chi2_bf_parall.append(result_parallel_list[sample_idx].fun)
+    best_fit_parall, chi2_bf_parall = np.array(best_fit_parall), np.array(chi2_bf_parall)
         
-    print('starting minimization in serial...')
-    start = time.perf_counter()
-    best_fit_serial, chi2_bf_serial = [], []
-    for sample_idx in tqdm(range(n_samples)):
-        y_data = cl_wl_1d_fid_samples[sample_idx, :]
-        result_serial = minimize(objective, x0=(x0, ), args=(x_data, y_data, inv_cov_wl_2d), bounds=((0.2, 0.6), ))
-        best_fit_serial.append(result_serial.x[0])
-        chi2_bf_serial.append(result_serial.fun)
-    print(f'...done {time.perf_counter() - start:.2f} s')
+    # print('starting minimization in serial...')
+    # start = time.perf_counter()
+    # best_fit_serial, chi2_bf_serial = [], []
+    # for sample_idx in tqdm(range(n_samples)):
+    #     y_data = cl_wl_1d_fid_samples[sample_idx, :]
+    #     result_serial = minimize(objective, x0=(x0, ), args=(x_data, y_data, inv_cov_wl_2d), bounds=((0.2, 0.6), ))
+    #     best_fit_serial.append(result_serial.x[0])
+    #     chi2_bf_serial.append(result_serial.fun)
+    # print(f'...done {time.perf_counter() - start:.2f} s')
+    # best_fit_serial, chi2_bf_serial = np.array(best_fit_serial), np.array(chi2_bf_serial)
     
     # check that // and serial results coincide
-    # assert np.array_equal(np.array(best_fit_parall), np.array(best_fit_serial))
+    # plt.plot((np.array(chi2_bf_serial)/np.array(chi2_bf_parall) - 1)*100, label='chi2')
+    # plt.plot((np.array(best_fit_parall)/np.array(best_fit_serial) - 1)*100, label='best-fit')
+    # plt.ylabel('% diff')
+    # plt.xlabel('sample idx')
     
-    # plt.plot((np.array(chi2_bf_serial)/np.array(chi2_bf_parall) - 1)*100)
-    # plt.ylabel('% diff chi2')
-    # plt.ylabel('sample idx')
-    
-    ax, fig = plt.subplots((1, 2),)
+    fig, ax = plt.subplots(1, 2)
     ax[0].hist(chi2_bf_parall)
     ax[1].hist(best_fit_parall)
-    
-    plt.figure()
     # plt.hist(best_fit_om)
         
     # for sample_idx in [1, 100, 500, 900]:
-    plt.loglog(cl_wl_1d_fid)
+    # plt.loglog(cl_wl_1d_fid)
     # plt.loglog(dv_wl_samples[sample_idx, :], '--')
-    plt.loglog(y_data, '--')
+    # plt.loglog(y_data, '--')
     
     assert False, 'stop here for chi2 test'
 

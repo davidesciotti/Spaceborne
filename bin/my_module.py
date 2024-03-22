@@ -1422,12 +1422,12 @@ def Cl_3D_to_2D_asymmetric(Cl_3D):
     return Cl_2D
 
 
-def cl_3D_to_2D_or_1D_v0(cl_3D, ind, is_auto_spectrum, use_triu_row_major, convert_to_2D, block_index):
+def cl_3D_to_2D_or_1D_slow(cl_3D, ind, is_auto_spectrum, use_triu_row_major, convert_to_2D, block_index):
     """ reshape from (nbl, zbins, zbins) to (nbl, zpairs), according to the ordering given in the ind file
     (valid for asymmetric Cij, i.e. C_XC)
     """
 
-    warnings.warn('finish this function!!')
+    warnings.warn('finish this function!! (old warning, I dont remember exactly what is missing...)')
     assert cl_3D.ndim == 3, 'cl_3D must be a 3D array'
     assert cl_3D.shape[1] == cl_3D.shape[2], 'cl_3D must be a square array of shape (nbl, zbins, zbins)'
 
@@ -1473,6 +1473,7 @@ def cl_3D_to_2D_or_1D(cl_3D, ind, is_auto_spectrum, use_triu_row_major, convert_
     (valid for asymmetric Cij, i.e. C_XC)
     """
 
+    # warnings.warn('finish this function!! (old warning, I dont remember exactly what is missing...)')
     assert cl_3D.ndim == 3, 'cl_3D must be a 3D array'
     assert cl_3D.shape[1] == cl_3D.shape[2], 'cl_3D must be a square array of shape (nbl, zbins, zbins)'
 

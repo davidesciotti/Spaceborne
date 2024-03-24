@@ -162,7 +162,7 @@ covariance_cfg = {
     'cov_folder': f'{DATA_ROOT}/output/{which_input_files}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
 
-    'SSC_code': 'OneCovariance',  # ! PySSC or PyCCL or Spaceborne or OneCovariance
+    'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or Spaceborne or OneCovariance
 
     'PySSC_cfg': {
         'which_ng_cov': 'SSC',
@@ -175,8 +175,8 @@ covariance_cfg = {
         'load_precomputed_cov': False,
         'save_cov': True,
 
-        'load_precomputed_tkka': True,
-        'save_tkka': True,
+        'load_precomputed_tkka': False,
+        'save_tkka': False,
         'tkka_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/PyCCL/jan_2024',
         
         'cov_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/PyCCL/jan_2024',
@@ -200,10 +200,10 @@ covariance_cfg = {
         # z_grid min and max should probably coincide. play around with steps to find the minimum number        
         'z_grid_tkka_min': 0.,
         'z_grid_tkka_max': 6,
-        'z_grid_tkka_steps': 100,
+        'z_grid_tkka_steps': 4,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
-        'k_grid_tkka_steps': 512,
+        'k_grid_tkka_steps': 8,
         
         'z_grid_min': 0.001,
         'z_grid_max': 3,

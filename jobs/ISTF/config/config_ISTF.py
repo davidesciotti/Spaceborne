@@ -17,7 +17,7 @@ import bin.check_specs as utils
 # * jan_2024 folder
 # * mpl.use('Agg') in the main
 
-fm_and_cov_suffix = '_cNGfix'
+fm_and_cov_suffix = '_cNGfix_highres'
 
 
 with open(f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
@@ -39,7 +39,7 @@ deriv_ell_cuts = False
 if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
     BNT_transform = True
 else:
-    BNT_transform = False
+    BNT_transform = False 
 
 if cl_ell_cuts or cov_ell_cuts or deriv_ell_cuts:
     ell_cuts = True
@@ -162,7 +162,7 @@ covariance_cfg = {
     'cov_folder': f'{DATA_ROOT}/output/{which_input_files}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
 
-    'SSC_code': 'OneCovariance',  # ! PySSC or PyCCL or Spaceborne or OneCovariance
+    'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or Spaceborne or OneCovariance
 
     'PySSC_cfg': {
         'which_ng_cov': 'SSC',
@@ -195,15 +195,13 @@ covariance_cfg = {
         # this is the filename suffix for the sigma2_B file saved directly from cov_SSC in CCL
         'sigma2_suffix': 'mask',
 
-        'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
-
         # z_grid min and max should probably coincide. play around with steps to find the minimum number        
         'z_grid_tkka_min': 0.,
         'z_grid_tkka_max': 6,
-        'z_grid_tkka_steps': 100,
+        'z_grid_tkka_steps': 200,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
-        'k_grid_tkka_steps': 512,
+        'k_grid_tkka_steps': 1024,
         
         'z_grid_min': 0.001,
         'z_grid_max': 3,

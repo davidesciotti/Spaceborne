@@ -37,7 +37,7 @@ ccl.spline_params.reload()
 # ccl.spline_params['A_SPLINE_NA'] *= 10
 # ccl.spline_params['A_SPLINE_NLOG'] *= 10
 # ccl.spline_params['A_SPLINE_NLOG_PK'] *= 10
-ccl.spline_params['A_SPLINE_NA_PK'] = 140  # gives CAMB error if too high
+# ccl.spline_params['A_SPLINE_NA_PK'] = 140  # gives CAMB error if too high
 # ccl.spline_params['N_ELL_CORR'] *= 10
 
 # ccl.spline_params['K_MAX_SPLINE'] = 100
@@ -158,7 +158,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                 else:
                     raise ValueError(f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
 
-                tkka_dict[A, B, C, D], responses_dict = tkka_func(cosmo=cosmo_ccl,
+                tkka_dict[A, B, C, D] = tkka_func(cosmo=cosmo_ccl,
                                                                   hmc=hmc,
                                                                   prof=halo_profile_dict[A],
                                                                   prof2=halo_profile_dict[B],
@@ -170,10 +170,10 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                                                   **additional_args)
 
                 # save responses
-                if which_ng_cov == 'SSC':
-                    probe_block = A + B + C + D
-                    for key, value in responses_dict.items():
-                        np.save(f"{pyccl_cfg['cov_path']}/halomodel_responses/{probe_block}/{key}.npy", value)
+                # if which_ng_cov == 'SSC':
+                #     probe_block = A + B + C + D
+                #     for key, value in responses_dict.items():
+                #         np.save(f"{pyccl_cfg['cov_path']}/halomodel_responses/{probe_block}/{key}.npy", value)
 
                 if pyccl_cfg['save_tkka']:
                     breakpoint()
@@ -658,13 +658,15 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     else:
         raise ValueError('probe must be either LL, GG, or 3x2pt')
 
-    # test if cov is symmetric in ell1, ell2
+    # test if cov is symmetric in ell1, ell2 (only for the diagonal covariance blocks!! 
+    # the noff-diagonal need *not* to be symmetrix in ell1, ell2)
     for key in cov_ng_8D_dict.keys():
-        try:
-            np.testing.assert_allclose(cov_ng_8D_dict[key], np.transpose(cov_ng_8D_dict[key], (1, 0, 2, 3)), rtol=1e-6, atol=0,
-                                       err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
-        except AssertionError as error:
-            print(error)
+        if (key == ('L', 'L', 'L', 'L')) or (key == ('G', 'L', 'G', 'L')) or (key == ('G', 'G', 'G', 'G')):
+            try:
+                np.testing.assert_allclose(cov_ng_8D_dict[key], np.transpose(cov_ng_8D_dict[key], (1, 0, 2, 3)), rtol=1e-6, atol=0,
+                                        err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
+            except AssertionError as error:
+                print(error)
 
     return cov_ng_8D_dict
 
@@ -679,7 +681,7 @@ integration_method_dict = {
         'cNG': 'spline',
     },
     '3x2pt': {
-        'SSC': 'spline',
-        'cNG': 'spline',
+        'SSC': 'qag_quad',
+        'cNG': 'qag_quad',
     }
 }

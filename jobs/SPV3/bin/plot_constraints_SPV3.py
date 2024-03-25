@@ -86,10 +86,10 @@ which_cuts = 'Vincenzo'
 whose_FM_list = ('davide',)
 kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
 
-which_cov_term_list = ['G', 'GSSC']
+which_cov_term_list = ['G', 'GSSC', 'GSSCcNG']
 
-BNT_transform_list = [True,]
-ell_cuts_list = [True,]
+BNT_transform_list = [False,]
+ell_cuts_list = [False,]
 center_or_min_list = ['center']
 kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list'][:9]
 kmax_1_over_Mpc_vinc_str_list = ['025', '050', '075', '100', '125', '150', '175', '200', '300',
@@ -392,7 +392,7 @@ for probe_toplot in probes:
                         second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
                         include_fom=include_fom, figsize=(10, 8), divide_fom_by_10_plt=divide_fom_by_10_plt)
 
-    # plt.savefig(f'/home/davide/Documenti/Science/Talks/2024_03_20 - Waterloo/{probe_toplot}_SPV3_GSSCcNG.png', bbox_inches='tight', dpi=300)
+    plt.savefig(f'/home/davide/Documenti/Science/Talks/2024_03_20 - Waterloo/{probe_toplot}_SPV3_GSSCcNG.png', bbox_inches='tight', dpi=300)
 
 
 # assert False, 'stop here'

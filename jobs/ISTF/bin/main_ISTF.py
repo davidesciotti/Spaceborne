@@ -45,6 +45,15 @@ os.environ['OMP_NUM_THREADS'] = '16'
 # TODO update consistency_checks
 
 
+# bf = np.load('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/chi2_test/chi2_bf_parall.npy')
+# chi2 = np.load('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/chi2_test/best_fit_parall.npy')
+
+# plt.hist(bf, bins=15)
+# plt.figure()
+# plt.hist(chi2, bins=15)
+# assert False
+
+
 ###############################################################################
 #################### PARAMETERS AND SETTINGS DEFINITION #######################
 ###############################################################################
@@ -256,7 +265,17 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     # import pyccl as ccl
     # from scipy.optimize import minimize
     # from tqdm import tqdm
+    # import bin.wf_cl_lib as wf_cl_lib
+    # import bin.cosmo_lib as cosmo_lib
+    # import pyccl as ccl
+    # from scipy.optimize import minimize
+    # from tqdm import tqdm
     
+    # has_magnification_bias = False
+    # mag_bias_tuple = None
+    # has_rsd = False
+    # p_of_k_a = 'delta_matter:delta_matter'
+    # flat_fid_pars_dict = mm.flatten_dict(deepcopy(cfg.fid_pars_dict))
     # has_magnification_bias = False
     # mag_bias_tuple = None
     # has_rsd = False
@@ -264,7 +283,12 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     # flat_fid_pars_dict = mm.flatten_dict(deepcopy(cfg.fid_pars_dict))
    
     # def cls_with_ccl(par_tovary_value, ell_grid, par_tovary_name):
+    # def cls_with_ccl(par_tovary_value, ell_grid, par_tovary_name):
 
+    #     if par_tovary_name in flat_fid_pars_dict.keys():
+    #         flat_fid_pars_dict[par_tovary_name] = float(par_tovary_value)
+    #     else:
+    #         raise ValueError(f'{par_tovary_name} not found in fiducial parameters')    
     #     if par_tovary_name in flat_fid_pars_dict.keys():
     #         flat_fid_pars_dict[par_tovary_name] = float(par_tovary_value)
     #     else:
@@ -273,7 +297,14 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     #     cosmo_dict_ccl = cosmo_lib.map_keys(flat_fid_pars_dict, key_mapping=None)
     #     cosmo_ccl = cosmo_lib.instantiate_cosmo_ccl_obj(cosmo_dict_ccl,
     #                                                     cfg.fid_pars_dict['other_params']['camb_extra_parameters'])
+    #     cosmo_dict_ccl = cosmo_lib.map_keys(flat_fid_pars_dict, key_mapping=None)
+    #     cosmo_ccl = cosmo_lib.instantiate_cosmo_ccl_obj(cosmo_dict_ccl,
+    #                                                     cfg.fid_pars_dict['other_params']['camb_extra_parameters'])
         
+    #     ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(z_grid_nz, cosmo_ccl=cosmo_ccl, flat_fid_pars_dict=flat_fid_pars_dict,
+    #                                         input_z_grid_lumin_ratio=None,
+    #                                         input_lumin_ratio=None, output_F_IA_of_z=False)
+    #     ia_bias_tuple = (z_grid_nz, ia_bias_1d)
     #     ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(z_grid_nz, cosmo_ccl=cosmo_ccl, flat_fid_pars_dict=flat_fid_pars_dict,
     #                                         input_z_grid_lumin_ratio=None,
     #                                         input_lumin_ratio=None, output_F_IA_of_z=False)
@@ -287,17 +318,34 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     #     # }
     #     # istf_bias_func = istf_bias_func_dict[general_cfg['bias_function']]
     #     # bias_model = general_cfg['bias_model']
+    #     # istf_bias_func_dict = {
+    #     #     'analytical': wf_cl_lib.b_of_z_analytical,
+    #     #     'leporifit': wf_cl_lib.b_of_z_fs1_leporifit,
+    #     #     'pocinofit': wf_cl_lib.b_of_z_fs1_pocinofit,
+    #     # }
+    #     # istf_bias_func = istf_bias_func_dict[general_cfg['bias_function']]
+    #     # bias_model = general_cfg['bias_model']
 
+    #     # z_means = np.array([flat_fid_pars_dict[f'zmean{zbin:02d}_photo'] for zbin in range(1, zbins + 1)])
+    #     # z_edges = np.array([flat_fid_pars_dict[f'zedge{zbin:02d}_photo'] for zbin in range(1, zbins + 2)])
     #     # z_means = np.array([flat_fid_pars_dict[f'zmean{zbin:02d}_photo'] for zbin in range(1, zbins + 1)])
     #     # z_edges = np.array([flat_fid_pars_dict[f'zedge{zbin:02d}_photo'] for zbin in range(1, zbins + 2)])
 
     #     # gal_bias_1d = istf_bias_func(z_means)
     #     # gal_bias_2d = wf_cl_lib.build_galaxy_bias_2d_arr(
     #     #     gal_bias_1d, z_means, z_edges, zbins, z_grid_nz, bias_model=bias_model, plot_bias=False)
+    #     # gal_bias_1d = istf_bias_func(z_means)
+    #     # gal_bias_2d = wf_cl_lib.build_galaxy_bias_2d_arr(
+    #     #     gal_bias_1d, z_means, z_edges, zbins, z_grid_nz, bias_model=bias_model, plot_bias=False)
 
 
     #     # gal_bias_tuple = (z_grid_nz, gal_bias_2d)
+    #     # gal_bias_tuple = (z_grid_nz, gal_bias_2d)
 
+    #     # # save in ascii for OneCovariance
+    #     # gal_bias_table = np.hstack((z_grid_nz.reshape(-1, 1), gal_bias_2d))
+    #     # np.savetxt(f'{covariance_cfg["nofz_folder"]}/'
+    #     #         f'gal_bias_table_{general_cfg["which_forecast"]}.ascii', gal_bias_table)
     #     # # save in ascii for OneCovariance
     #     # gal_bias_table = np.hstack((z_grid_nz.reshape(-1, 1), gal_bias_2d))
     #     # np.savetxt(f'{covariance_cfg["nofz_folder"]}/'
@@ -306,6 +354,12 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
         
 
 
+    #     wf_lensing_obj = wf_cl_lib.wf_ccl(z_grid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
+    #                                     ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=None,
+    #                                     mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=True, n_samples=256)
+    #     # wf_galaxy_obj = wf_cl_lib.wf_ccl(z_grid_nz, 'galaxy', 'with_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
+    #                                     # ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
+    #                                     # mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=True, n_samples=256)
     #     wf_lensing_obj = wf_cl_lib.wf_ccl(z_grid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
     #                                     ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=None,
     #                                     mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=True, n_samples=256)
@@ -321,9 +375,18 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     #                                 # p_of_k_a=p_of_k_a, cosmo=cosmo_ccl)
     #     # cl_gg_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_galaxy_obj, ell_grid, zbins,
     #                                 # p_of_k_a=p_of_k_a, cosmo=cosmo_ccl)
+    #     # the cls are not needed, but just in case:
+    #     cl_ll_3d = wf_cl_lib.cl_PyCCL(wf_lensing_obj, wf_lensing_obj, ell_grid, zbins,
+    #                                 p_of_k_a=p_of_k_a, cosmo=cosmo_ccl, limber_integration_method='spline')
+    #     # cl_gl_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_lensing_obj, ell_grid, zbins,
+    #                                 # p_of_k_a=p_of_k_a, cosmo=cosmo_ccl)
+    #     # cl_gg_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_galaxy_obj, ell_grid, zbins,
+    #                                 # p_of_k_a=p_of_k_a, cosmo=cosmo_ccl)
         
     #     cl_ll_1d = mm.cl_3D_to_2D_or_1D(cl_ll_3d, ind, True, True, False, 'vincenzo')
+    #     cl_ll_1d = mm.cl_3D_to_2D_or_1D(cl_ll_3d, ind, True, True, False, 'vincenzo')
         
+    #     return cl_ll_1d
     #     return cl_ll_1d
     
     # def objective(par_tovary_value, x_data, y_data, inv_cov):
@@ -331,8 +394,17 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     #     diff = y_data - cls_with_ccl(par_tovary_value=par_tovary_value, ell_grid=x_data, par_tovary_name=par_tovary_name)
     #     chi2 = diff @ inv_cov @ diff
     #     return chi2
+    # def objective(par_tovary_value, x_data, y_data, inv_cov):
+    #     # Define your objective function here. This is usually the sum of squared residuals.
+    #     diff = y_data - cls_with_ccl(par_tovary_value=par_tovary_value, ell_grid=x_data, par_tovary_name=par_tovary_name)
+    #     chi2 = diff @ inv_cov @ diff
+    #     return chi2
     
     
+    # def parallel_wrapper(sample_idx, cl_wl_1d_fid_samples):
+    #     y_data = cl_wl_1d_fid_samples[sample_idx, :]
+    #     result_om = minimize(objective, x0=(x0, ), args=(x_data, y_data, inv_cov_wl_2d), bounds=((0.2, 0.6), ))
+    #     return result_om
     # def parallel_wrapper(sample_idx, cl_wl_1d_fid_samples):
     #     y_data = cl_wl_1d_fid_samples[sample_idx, :]
     #     result_om = minimize(objective, x0=(x0, ), args=(x_data, y_data, inv_cov_wl_2d), bounds=((0.2, 0.6), ))
@@ -345,6 +417,11 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     # x_data = ell_dict['ell_WL']
     # n_samples = 1000
     
+    # # pick a fiducial bwteen ccl and vincenzo's
+    # # cl_wl_1d_fid = cl_dict_2D['cl_LL_2D'].flatten()
+    # start = time.perf_counter()
+    # cl_wl_1d_fid = cls_with_ccl(par_tovary_value = par_tovary_value, ell_grid=ell_dict['ell_WL'], par_tovary_name=par_tovary_name)
+    # print(f'ccl took {time.perf_counter() - start:.2f} s')
     # # pick a fiducial bwteen ccl and vincenzo's
     # # cl_wl_1d_fid = cl_dict_2D['cl_LL_2D'].flatten()
     # start = time.perf_counter()
@@ -364,6 +441,11 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     # result_parallel_list = Parallel(n_jobs=8)(delayed(parallel_wrapper)(sample_idx, cl_wl_1d_fid_samples) for sample_idx in range(n_samples))
     # print(f'...done in {time.perf_counter() - start:.2f} s')
     
+    # best_fit_parall, chi2_bf_parall = [], []
+    # for sample_idx in tqdm(range(n_samples)):
+    #     best_fit_parall.append(result_parallel_list[sample_idx].x[0])
+    #     chi2_bf_parall.append(result_parallel_list[sample_idx].fun)
+    # best_fit_parall, chi2_bf_parall = np.array(best_fit_parall), np.array(chi2_bf_parall)
     # best_fit_parall, chi2_bf_parall = [], []
     # for sample_idx in tqdm(range(n_samples)):
     #     best_fit_parall.append(result_parallel_list[sample_idx].x[0])
@@ -390,12 +472,12 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     # fig, ax = plt.subplots(1, 2)
     # ax[0].hist(chi2_bf_parall)
     # ax[1].hist(best_fit_parall)
-    # plt.hist(best_fit_om)
+    # # plt.hist(best_fit_om)
         
-    # for sample_idx in [1, 100, 500, 900]:
-    # plt.loglog(cl_wl_1d_fid)
-    # plt.loglog(dv_wl_samples[sample_idx, :], '--')
-    # plt.loglog(y_data, '--')
+    # # for sample_idx in [1, 100, 500, 900]:
+    # # plt.loglog(cl_wl_1d_fid)
+    # # plt.loglog(dv_wl_samples[sample_idx, :], '--')
+    # # plt.loglog(y_data, '--')
     
     # np.save('/home/cosmo/davide.sciotti/data/common_data/Spaceborne/jobs/ISTF/output/cl14may/chi2_test/chi2_bf_parall_GO.npy', chi2_bf_parall)
     # np.save('/home/cosmo/davide.sciotti/data/common_data/Spaceborne/jobs/ISTF/output/cl14may/chi2_test/best_fit_parall_GO.npy', best_fit_parall)

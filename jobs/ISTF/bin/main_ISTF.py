@@ -34,7 +34,7 @@ import common_cfg.ISTF_fid_params as ISTF_fid
 # job configuration and modules
 from jobs.ISTF.config import config_ISTF as cfg
 
-# mpl.use('Agg')
+mpl.use('Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
@@ -45,12 +45,31 @@ os.environ['OMP_NUM_THREADS'] = '16'
 # TODO update consistency_checks
 
 
-# bf = np.load('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/chi2_test/chi2_bf_parall.npy')
-# chi2 = np.load('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/chi2_test/best_fit_parall.npy')
+# bf_g = np.load('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/chi2_test/best_fit_parall_GO.npy')
+# bf_tot = np.load('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/chi2_test/best_fit_parall.npy')
 
-# plt.hist(bf, bins=15)
+# chi2_g = np.load('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/chi2_test/chi2_bf_parall_GO.npy')
+# chi2_tot = np.load('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/chi2_test/chi2_bf_parall.npy')
+
+# dof = 1099
+
 # plt.figure()
-# plt.hist(chi2, bins=15)
+# plt.hist(bf_g, bins=20, color='tab:red', histtype='step', linewidth=3, label='G')
+# plt.hist(bf_tot, bins=20, color='tab:green', histtype='step', linewidth=3, label='G+SSC+cNG')
+# plt.axvline(np.mean(bf_g), color='tab:red', linewidth=1)
+# plt.axvline(np.mean(bf_tot), color='tab:green', linewidth=1)
+# plt.xlabel(r'best-fit $\Omega_{\rm m}$')
+# plt.ylabel('Counts')
+# plt.legend()
+
+# plt.figure()
+# plt.hist(chi2_g/dof, bins=20, color='tab:red', histtype='step', linewidth=3)
+# plt.hist(chi2_tot/dof, bins=20, color='tab:green', histtype='step', linewidth=3)
+# plt.axvline(np.mean(chi2_g/dof), color='tab:red', linewidth=1)
+# plt.axvline(np.mean(chi2_tot/dof), color='tab:green', linewidth=1)
+# plt.xlabel(r'$\chi^2_{\rm min}/{\rm dof}$')
+# plt.ylabel('Counts')
+
 # assert False
 
 

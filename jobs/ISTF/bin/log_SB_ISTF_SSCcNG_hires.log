@@ -1,0 +1,7 @@
+nohup: ignoring input
+Traceback (most recent call last):
+  File "/export/NAS/cosmo/data/davide.sciotti/Spaceborne/jobs/ISTF/bin/main_ISTF.py", line 35, in <module>
+    from jobs.ISTF.config import config_ISTF as cfg
+  File "/home/cosmo/davide.sciotti/data/Spaceborne/jobs/ISTF/config/config_ISTF.py", line 114, in <module>
+    'cl_filename': cl_filename,
+NameError: name 'cl_filename' is not defined

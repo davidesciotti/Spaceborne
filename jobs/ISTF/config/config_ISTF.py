@@ -163,7 +163,6 @@ covariance_cfg = {
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
 
     'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or Spaceborne or OneCovariance
-    'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or Spaceborne or OneCovariance
 
     'PySSC_cfg': {
         'which_ng_cov': 'SSC',

@@ -29,7 +29,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-fm_and_cov_suffix = '_cNGfix'
+fm_and_cov_suffix = '_cNGfix_highres'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -216,17 +216,19 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
-        'which_ng_cov': ('SSC',),
+        'which_ng_cov': ('SSC', 'cNG'),
 
         'load_precomputed_cov': False,
         'save_cov': True,
+        
+        'load_precomputed_tkka': False,
+        'save_tkka': False,
+        'tkka_path': f'{DATA_ROOT}/output/covmat/PyCCL/jan_2024',
 
         'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL' + fm_last_folder,
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}' + fm_and_cov_suffix + '.npz',
 
-        'save_trispectrum': False,
-        'trispectrum_filename': 'trispectrum_{which_ng_cov:s}_{which_pk:s}.pickle',
 
         'which_sigma2_B': 'mask',  # 'mask' or 'spaceborne' (with mask) or None
         'area_deg2_mask': 14700,
@@ -237,8 +239,6 @@ covariance_cfg = {
         # 'sigma2_B_filename': ROOT + '/exact_SSC/output/sigma2/sigma2_zsteps3000_ISTF.npy',
         'sigma2_suffix': 'mask',  # this is the filename suffix for the sigma2_B file saved directly from cov_SSC in CCL
 
-        'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
-
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         # 'z_grid_tkka_min': 0.001,
         # 'z_grid_tkka_max': 3,
@@ -248,10 +248,10 @@ covariance_cfg = {
         # 'k_grid_tkka_steps': 512,
         'z_grid_tkka_min': 0.,
         'z_grid_tkka_max': 6,
-        'z_grid_tkka_steps': 100,
+        'z_grid_tkka_steps': 200,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
-        'k_grid_tkka_steps': 512,
+        'k_grid_tkka_steps': 1024,
 
         'z_grid_min': 0.001,
         'z_grid_max': 3,

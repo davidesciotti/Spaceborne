@@ -1,7 +1,42 @@
 nohup: ignoring input
-Traceback (most recent call last):
-  File "/export/NAS/cosmo/data/davide.sciotti/Spaceborne/jobs/ISTF/bin/main_ISTF.py", line 35, in <module>
-    from jobs.ISTF.config import config_ISTF as cfg
-  File "/home/cosmo/davide.sciotti/data/Spaceborne/jobs/ISTF/config/config_ISTF.py", line 114, in <module>
-    'cl_filename': cl_filename,
-NameError: name 'cl_filename' is not defined
+Data has been written to /home/cosmo/davide.sciotti/data/common_data/vincenzo/14may/CijDers/EP10/Cell_ll
+Data has been written to /home/cosmo/davide.sciotti/data/common_data/vincenzo/14may/CijDers/EP10/Cell_gl
+Data has been written to /home/cosmo/davide.sciotti/data/common_data/vincenzo/14may/CijDers/EP10/Cell_gg
+Sijkl matrix already exists in folder
+/home/cosmo/davide.sciotti/data/common_data/Sijkl; loading it
+all probes (but WAdd) have the same number of ell bins
+
+check: 
+ind_ordering = triu, row-major 
+block_index = ell
+zbins: EP10
+nbl_WA: 2 nbl_WL: 20 nbl_GC:  20, nbl_3x2pt:  20
+ell_max_WL = 3000 
+ell_max_GC = 3000
+GL_or_LG: GL
+
+Gauss. cov. matrices computed in 0.17 seconds
+SS cov. matrices computed in 1.10 s with PySSC
+Computing 3x2pt cNG covariance with PyCCL
+NG covariance folder is:
+/home/cosmo/davide.sciotti/data/common_data/Spaceborne/jobs/ISTF/output/cl14may/covmat/PyCCL/jan_2024
+
+NG covariance filename is:
+cov_cNG_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl20_ellmax3000_zbinsEP10_cNGfix_highres.npz
+
+
+****************** ccl settings ****************
+probe = 3x2pt
+which_ng_cov = cNG
+integration_method = qag_quad
+nbl = 20
+f_sky = 0.3636102718447355
+zbins = 10
+************************************************
+
+Computing sigma2_B from mask
+0it [00:00, ?it/s]Computing/loading who knows trispectrum for cNG,  probe combination LLLL
+z points = 200, k points = 1024
+halomod_Tk3D_cNG: computing halomod_trispectrum_1h...
+halomod_Tk3D_cNG: computing halomod_trispectrum_1h... done in 5.28 m
+halomod_Tk3D_cNG: computing _halomod_trispectrum_2h_22...

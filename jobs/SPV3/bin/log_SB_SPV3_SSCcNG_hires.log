@@ -1,0 +1,139 @@
+nohup: ignoring input
+{   'BNT_transform': False,
+    'EP_or_ED': 'EP',
+    'center_or_min': 'center',
+    'ell_max_3x2pt': 3000,
+    'ell_max_GC': 3000,
+    'ell_max_WL': 3000,
+    'flat_or_nonflat': 'Flat',
+    'idB': 3,
+    'idBM': 1,
+    'idIA': 2,
+    'idM': 3,
+    'idR': 1,
+    'kmax_h_over_Mpc': 1.0,
+    'magcut_lens': 245,
+    'magcut_source': 245,
+    'nbl_3x2pt': 29,
+    'nbl_GC': 29,
+    'nbl_WA': 0,
+    'nbl_WL': 29,
+    'ng_cov_code': 'PyCCL',
+    'which_ng_cov': 'GSSCcNG',
+    'which_pk': 'HMCodeBar',
+    'zbins': 13,
+    'zcut_lens': 2,
+    'zcut_source': 2,
+    'zmax': 25}
+/home/cosmo/davide.sciotti/data/Spaceborne/bin/covariance.py:739: UserWarning: z_grid starts at 0, which gives a null comoving distance. Removing the first element from the grid
+  warnings.warn('z_grid starts at 0, which gives a null comoving distance. '
+Shifting n(z), clipping between redshifts 0 and 3
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/jobs/SPV3/bin/main_SPV3.py:718: UserWarning: An error in cl_SPV3_1D_to_3D is probably indicating that the non-LL Vincenzos files arefor lmax = 3000.
+  warnings.warn('An error in cl_SPV3_1D_to_3D is probably indicating that the non-LL Vincenzos files are'
+There are 0 bins for Wadd in this case, cl_wa will be empty
+Data has been written to /home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVectors/Noiseless/HMCodeBar/Cell_ll
+Data has been written to /home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVectors/Noiseless/HMCodeBar/Cell_gl
+Data has been written to /home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVectors/Noiseless/HMCodeBar/Cell_gg
+There are 0 bins for Wadd in this case, cl_wa will be empty
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/jobs/SPV3/bin/main_SPV3.py:867: UserWarning: Sijkl is not computed, but set to identity
+  warnings.warn('Sijkl is not computed, but set to identity')
+all probes (but WAdd) have the same number of ell bins
+
+check: 
+ind_ordering = triu, row-major 
+block_index = ell
+zbins: EP13
+nbl_WA: 0 nbl_WL: 29 nbl_GC:  29, nbl_3x2pt:  29
+ell_max_WL = 3000 
+ell_max_GC = 3000
+GL_or_LG: GL
+
+Gauss. cov. matrices computed in 0.50 seconds
+SS cov. matrices computed in 6.55 s with PySSC
+Computing 3x2pt SSC covariance with PyCCL
+NG covariance folder is:
+/home/cosmo/davide.sciotti/data/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/covmat/PyCCL/jan_2024
+
+NG covariance filename is:
+cov_SSC_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl29_ellmax3000_zbinsEP13_cNGfix_highres.npz
+
+
+****************** ccl settings ****************
+probe = 3x2pt
+which_ng_cov = SSC
+integration_method = qag_quad
+nbl = 29
+f_sky = 0.3563380664078408
+zbins = 13
+************************************************
+
+/home/cosmo/davide.sciotti/data/Spaceborne/bin/my_module.py:3153: UserWarning: double-check the units in the header and whether k is in log scale in the input file (this function assumes it is))
+  warnings.warn(
+/home/cosmo/davide.sciotti/data/Spaceborne/bin/my_module.py:3155: UserWarning: the output ordering is [k, z], not the other way around!
+  warnings.warn('the output ordering is [k, z], not the other way around!')
+WARNING 18: ccl_cls.c: integ_cls_limber_qag_quad(): Default GSL integration failure, attempting backup method.: GSL ERROR: roundoff error
+WARNING 18: ccl_cls.c: integ_cls_limber_qag_quad(): Default GSL integration failure, attempting backup method.: GSL ERROR: roundoff error
+WARNING 18: ccl_cls.c: integ_cls_limber_qag_quad(): Default GSL integration failure, attempting backup method.: GSL ERROR: roundoff error
+WARNING 18: ccl_cls.c: integ_cls_limber_qag_quad(): Default GSL integration failure, attempting backup method.: GSL ERROR: roundoff error
+WARNING 18: ccl_cls.c: integ_cls_limber_qag_quad(): Default GSL integration failure, attempting backup method.: GSL ERROR: roundoff error
+Computing sigma2_B from mask
+
+0it [00:00, ?it/s]Computing/loading who knows trispectrum for SSC,  probe combination LLLL
+z points = 200, k points = 1024
+Computing/loading who knows trispectrum for SSC,  probe combination LLGL
+z points = 200, k points = 1024
+Computing/loading who knows trispectrum for SSC,  probe combination LLGG
+z points = 200, k points = 1024
+
+1it [00:40, 40.63s/it]Computing/loading who knows trispectrum for SSC,  probe combination GLLL
+z points = 200, k points = 1024
+Computing/loading who knows trispectrum for SSC,  probe combination GLGL
+z points = 200, k points = 1024
+Computing/loading who knows trispectrum for SSC,  probe combination GLGG
+z points = 200, k points = 1024
+
+2it [01:28, 44.80s/it]Computing/loading who knows trispectrum for SSC,  probe combination GGLL
+z points = 200, k points = 1024
+Computing/loading who knows trispectrum for SSC,  probe combination GGGL
+z points = 200, k points = 1024
+Computing/loading who knows trispectrum for SSC,  probe combination GGGG
+z points = 200, k points = 1024
+
+3it [01:39, 29.27s/it]
+3it [01:39, 33.04s/it]
+trispectrum computed in 99.14 seconds
+3x2pt: working on probe combination  L L L L
+n_jobs =  1
+
+  0%|          | 0/91 [00:00<?, ?it/s]Traceback (most recent call last):
+  File "/export/NAS/cosmo/data/davide.sciotti/Spaceborne/jobs/SPV3/bin/main_SPV3.py", line 873, in <module>
+    cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+  File "/home/cosmo/davide.sciotti/data/Spaceborne/bin/covariance.py", line 425, in compute_cov
+    cov_ng_3x2pt_10D_dict = get_cov_ng_3x2pt(
+  File "/home/cosmo/davide.sciotti/data/Spaceborne/bin/covariance.py", line 219, in get_cov_ng_3x2pt
+    cov_3x2pt_dict_8D = pyccl_cov.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], '3x2pt',
+  File "/home/cosmo/davide.sciotti/data/Spaceborne/bin/pyccl_cov.py", line 644, in compute_cov_ng_with_pyccl
+    cov_ng_8D_dict = compute_ng_cov_3x2pt(cosmo=cosmo_ccl,
+  File "/home/cosmo/davide.sciotti/data/Spaceborne/bin/pyccl_cov.py", line 252, in compute_ng_cov_3x2pt
+    compute_ng_cov_ccl(cosmo=cosmo,
+  File "/home/cosmo/davide.sciotti/data/Spaceborne/bin/pyccl_cov.py", line 215, in compute_ng_cov_ccl
+    cov_ng_4D = Parallel(n_jobs=n_jobs, backend='threading')(
+  File "/home/cosmo/davide.sciotti/software/anaconda3/envs/spaceborne/lib/python3.10/site-packages/joblib/parallel.py", line 1085, in __call__
+    if self.dispatch_one_batch(iterator):
+  File "/home/cosmo/davide.sciotti/software/anaconda3/envs/spaceborne/lib/python3.10/site-packages/joblib/parallel.py", line 901, in dispatch_one_batch
+    self._dispatch(tasks)
+  File "/home/cosmo/davide.sciotti/software/anaconda3/envs/spaceborne/lib/python3.10/site-packages/joblib/parallel.py", line 819, in _dispatch
+    job = self._backend.apply_async(batch, callback=cb)
+  File "/home/cosmo/davide.sciotti/software/anaconda3/envs/spaceborne/lib/python3.10/site-packages/joblib/_parallel_backends.py", line 208, in apply_async
+    result = ImmediateResult(func)
+  File "/home/cosmo/davide.sciotti/software/anaconda3/envs/spaceborne/lib/python3.10/site-packages/joblib/_parallel_backends.py", line 597, in __init__
+    self.results = batch()
+  File "/home/cosmo/davide.sciotti/software/anaconda3/envs/spaceborne/lib/python3.10/site-packages/joblib/parallel.py", line 288, in __call__
+    return [func(*args, **kwargs)
+  File "/home/cosmo/davide.sciotti/software/anaconda3/envs/spaceborne/lib/python3.10/site-packages/joblib/parallel.py", line 288, in <listcomp>
+    return [func(*args, **kwargs)
+  File "/home/cosmo/davide.sciotti/software/anaconda3/envs/spaceborne/lib/python3.10/site-packages/pyccl/covariances.py", line 328, in angular_cl_cov_SSC
+    tsp = t_of_kk_a.tsp
+AttributeError: 'tuple' object has no attribute 'tsp'
+
+  0%|          | 0/91 [00:00<?, ?it/s]

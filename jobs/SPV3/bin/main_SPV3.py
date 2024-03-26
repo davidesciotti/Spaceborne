@@ -14,6 +14,7 @@ from scipy.ndimage import gaussian_filter1d
 import pprint
 from copy import deepcopy
 import numpy.testing as npt
+import multiprocessing
 pp = pprint.PrettyPrinter(indent=4)
 
 ROOT = os.getenv('ROOT')
@@ -39,7 +40,9 @@ import jobs.SPV3.config.config_SPV3 as cfg
 mpl.use('Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 script_start_time = time.perf_counter()
-os.environ['OMP_NUM_THREADS'] = '32'
+
+num_cores = multiprocessing.cpu_count()
+os.environ['OMP_NUM_THREADS'] = str(num_cores)
 
 
 # TODO check that the number of ell bins is the same as in the files

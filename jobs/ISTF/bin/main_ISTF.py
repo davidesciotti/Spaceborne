@@ -11,6 +11,8 @@ from pprint import pprint
 import warnings
 import pandas as pd
 from matplotlib import cm
+import multiprocessing
+
 
 from getdist import plots   
 from getdist.gaussian_mixtures import GaussianND
@@ -38,7 +40,9 @@ mpl.use('Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
-os.environ['OMP_NUM_THREADS'] = '16'
+num_cores = multiprocessing.cpu_count()
+os.environ['OMP_NUM_THREADS'] = str(num_cores)
+
 
 # TODO check that the number of ell bins is the same as in the files
 # TODO double check the delta values

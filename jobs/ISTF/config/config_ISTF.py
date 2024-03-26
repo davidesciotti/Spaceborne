@@ -176,7 +176,8 @@ covariance_cfg = {
         'save_cov': True,
 
         'load_precomputed_tkka': False,
-        'save_tkka': False,
+        'save_hm_responses': True,
+        'save_tkka': True,
         'tkka_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/PyCCL/jan_2024',
         
         'cov_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/PyCCL/jan_2024',
@@ -198,10 +199,10 @@ covariance_cfg = {
         # z_grid min and max should probably coincide. play around with steps to find the minimum number        
         'z_grid_tkka_min': 0.,
         'z_grid_tkka_max': 6,
-        'z_grid_tkka_steps': 50,
+        'z_grid_tkka_steps': 200,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
-        'k_grid_tkka_steps': 50,
+        'k_grid_tkka_steps': 1024,
         
         'z_grid_min': 0.001,
         'z_grid_max': 3,

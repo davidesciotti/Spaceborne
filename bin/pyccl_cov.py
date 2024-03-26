@@ -1,3 +1,6 @@
+""" This module should be run with pyccl >= v3.0.0
+"""
+
 import time
 import warnings
 import matplotlib
@@ -24,14 +27,15 @@ import common_cfg.mpl_cfg as mpl_cfg
 start_time = time.perf_counter()
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
-""" This is run with v 3.0.1 of pyccl
-"""
+
+# TODO do they interpolate existing tracer arrays?
+
 
 # ccl.gsl_params["INTEGRATION_EPSREL"] = 1e-7  # was 1e-4
 # ccl.gsl_params["N_ITERATION"] = 10000  # was 1000
-ccl.gsl_params.reload()
-ccl.gsl_params.reload()
-ccl.spline_params.reload()
+# ccl.gsl_params.reload()
+# ccl.gsl_params.reload()
+# ccl.spline_params.reload()
 
 
 # ccl.spline_params['A_SPLINE_NA'] *= 10
@@ -56,6 +60,9 @@ ccl.spline_params.reload()
 # KiDS1000 Methodology: https://www.pure.ed.ac.uk/ws/portalfiles/portal/188893969/2007.01844v2.pdf, after (E.10)
 # Krause2017: https://arxiv.org/pdf/1601.05779.pdf
 def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, which_pk, p_of_k_a):
+    
+    save_tkka = pyccl_cfg['save_tkka']
+    comp_load_str = 'Loading' if pyccl_cfg['load_precomputed_tkka'] else 'Computing'
 
     a_grid_tkka = np.linspace(
         cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
@@ -104,12 +111,15 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
     tkka_dict = {}
     for row, (A, B) in tqdm(enumerate(probe_ordering)):
         for col, (C, D) in enumerate(probe_ordering):
-
-            print(f'Computing/loading who knows trispectrum for {which_ng_cov},  probe combination {A}{B}{C}{D}')
+            
+            print(f'{comp_load_str} trispectrum for {which_ng_cov},  probe combination {A}{B}{C}{D}')
+            
             if a_grid_tkka is not None and logn_k_grid_tkka is not None:
                 print(f'z points = {a_grid_tkka.size}, k points = {logn_k_grid_tkka.size}')
 
             if col >= row and pyccl_cfg['load_precomputed_tkka']:
+                
+                save_tkka = False
 
                 tkka_folder = 'Tk3D_SSC' if which_ng_cov == 'SSC' else 'Tk3D_cNG'
                 tkka_path = f'{pyccl_cfg["tkka_path"]}/{tkka_folder}'
@@ -118,16 +128,17 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                 k2_arr = np.load(f'{tkka_path}/k2_arr_tkka.npy')
                 pk2_arr_k1_tkka = np.load(f'{tkka_path}/pk2_arr_k1_tkka.npy')
                 pk2_arr_k2_tkka = np.load(f'{tkka_path}/pk2_arr_k2_tkka.npy')
+                
 
                 assert np.array_equal(k1_arr, k2_arr), 'k1_arr and k2_arr must be equal'
                 assert pk2_arr_k1_tkka[0].shape == pk2_arr_k2_tkka[1].shape, 'pk2_arr_k1_tkka and pk2_arr_k2_tkka must have the same shape'
 
-                tkka_dict[A, B, C, D] = ccl.tk3d.Tk3D(a_arr,
-                                                      np.log10(k1_arr),
+                tkka_dict[A, B, C, D] = ccl.tk3d.Tk3D(a_arr=a_arr,
+                                                      lk_arr=k1_arr,
                                                       tkk_arr=None,
                                                       pk1_arr=pk2_arr_k1_tkka,
                                                       pk2_arr=pk2_arr_k2_tkka,
-                                                      is_logt=True,
+                                                      is_logt=False,
                                                       extrap_order_lok=1,
                                                       extrap_order_hik=1
                                                       )
@@ -174,20 +185,17 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                 if which_ng_cov == 'SSC' and pyccl_cfg['save_hm_responses']:
                     probe_block = A + B + C + D
                     for key, value in responses_dict.items():
-                        np.save(f"{tkka_path}{key}_{probe_block}.npy", value)
+                        np.save(f"{tkka_path}/{key}_{probe_block}.npy", value)
 
-                if pyccl_cfg['save_tkka']:
+                if save_tkka:
                     (a_arr, k1_arr, k2_arr, tk3d_arr) = tkka_dict[A, B, C, D].get_spline_arrays()
                     np.save(f'{tkka_path}/a_arr_tkka_{probe_block}.npy', a_arr)
                     np.save(f'{tkka_path}/k1_arr_tkka_{probe_block}.npy', k1_arr)
                     np.save(f'{tkka_path}/k2_arr_tkka_{probe_block}.npy', k2_arr)
-                    np.save(f'{tkka_path}/pk2_arr_k1_tkka_{probe_block}.npy', tk3d_arr[0])
-                    np.save(f'{tkka_path}/pk2_arr_k2_tkka_{probe_block}.npy', tk3d_arr[1])
+                    np.save(f'{tkka_path}/pk1_arr_tkka_{probe_block}.npy', tk3d_arr[0])
+                    np.save(f'{tkka_path}/pk2_arr_tkka_{probe_block}.npy', tk3d_arr[1])
 
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
-
-    # TODO do they interpolate existing tracer arrays?
-    # TODO spline for SSC...
 
     return tkka_dict
 

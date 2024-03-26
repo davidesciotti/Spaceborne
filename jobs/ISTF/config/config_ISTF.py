@@ -170,7 +170,7 @@ covariance_cfg = {
 
     'PyCCL_cfg': {
         'probe': '3x2pt',
-        'which_ng_cov': ('cNG', ),
+        'which_ng_cov': ('SSC', 'cNG'),
 
         'load_precomputed_cov': False,
         'save_cov': True,
@@ -198,10 +198,10 @@ covariance_cfg = {
         # z_grid min and max should probably coincide. play around with steps to find the minimum number        
         'z_grid_tkka_min': 0.,
         'z_grid_tkka_max': 6,
-        'z_grid_tkka_steps': 200,
+        'z_grid_tkka_steps': 50,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
-        'k_grid_tkka_steps': 1024,
+        'k_grid_tkka_steps': 50,
         
         'z_grid_min': 0.001,
         'z_grid_max': 3,

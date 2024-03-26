@@ -57,8 +57,6 @@ ccl.spline_params.reload()
 # Krause2017: https://arxiv.org/pdf/1601.05779.pdf
 def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, which_pk, p_of_k_a):
 
-    use_hod_for_gg = pyccl_cfg['use_HOD_for_GCph']
-
     a_grid_tkka = np.linspace(
         cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
         cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
@@ -158,7 +156,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                 else:
                     raise ValueError(f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
 
-                tkka_dict[A, B, C, D] = tkka_func(cosmo=cosmo_ccl,
+                tkka_dict[A, B, C, D], responses_dict = tkka_func(cosmo=cosmo_ccl,
                                                                   hmc=hmc,
                                                                   prof=halo_profile_dict[A],
                                                                   prof2=halo_profile_dict[B],
@@ -170,10 +168,10 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                                                   **additional_args)
 
                 # save responses
-                # if which_ng_cov == 'SSC':
-                #     probe_block = A + B + C + D
-                #     for key, value in responses_dict.items():
-                #         np.save(f"{pyccl_cfg['cov_path']}/halomodel_responses/{probe_block}/{key}.npy", value)
+                if which_ng_cov == 'SSC':
+                    probe_block = A + B + C + D
+                    for key, value in responses_dict.items():
+                        np.save(f"{pyccl_cfg['cov_path']}/halomodel_responses/{probe_block}/{key}.npy", value)
 
                 if pyccl_cfg['save_tkka']:
                     breakpoint()

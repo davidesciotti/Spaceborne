@@ -63,6 +63,9 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
     
     save_tkka = pyccl_cfg['save_tkka']
     comp_load_str = 'Loading' if pyccl_cfg['load_precomputed_tkka'] else 'Computing'
+    
+    k_z_str = f'zmin{pyccl_cfg["z_grid_tkka_min"]:.1f}_zmax{pyccl_cfg["z_grid_tkka_max"]:.1f}_zsteps{pyccl_cfg["z_grid_tkka_steps"]:d}_' \
+              f'kmin{pyccl_cfg["k_grid_tkka_min"]:.1e}_kmax{pyccl_cfg["k_grid_tkka_max"]:.1e}_ksteps{pyccl_cfg["k_grid_tkka_steps"]:d}'
 
     a_grid_tkka = np.linspace(
         cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
@@ -189,11 +192,11 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
 
                 if save_tkka:
                     (a_arr, k1_arr, k2_arr, tk3d_arr) = tkka_dict[A, B, C, D].get_spline_arrays()
-                    np.save(f'{tkka_path}/a_arr_tkka_{probe_block}.npy', a_arr)
-                    np.save(f'{tkka_path}/k1_arr_tkka_{probe_block}.npy', k1_arr)
-                    np.save(f'{tkka_path}/k2_arr_tkka_{probe_block}.npy', k2_arr)
-                    np.save(f'{tkka_path}/pk1_arr_tkka_{probe_block}.npy', tk3d_arr[0])
-                    np.save(f'{tkka_path}/pk2_arr_tkka_{probe_block}.npy', tk3d_arr[1])
+                    np.save(f'{tkka_path}/a_arr_tkka_{probe_block}_{k_z_str}.npy', a_arr)
+                    np.save(f'{tkka_path}/k1_arr_tkka_{probe_block}_{k_z_str}.npy', k1_arr)
+                    np.save(f'{tkka_path}/k2_arr_tkka_{probe_block}_{k_z_str}.npy', k2_arr)
+                    np.save(f'{tkka_path}/pk1_arr_tkka_{probe_block}_{k_z_str}.npy', tk3d_arr[0])
+                    np.save(f'{tkka_path}/pk2_arr_tkka_{probe_block}_{k_z_str}.npy', tk3d_arr[1])
 
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
 

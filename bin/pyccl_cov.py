@@ -57,8 +57,6 @@ ccl.spline_params.reload()
 # Krause2017: https://arxiv.org/pdf/1601.05779.pdf
 def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, which_pk, p_of_k_a):
 
-    use_hod_for_gg = pyccl_cfg['use_HOD_for_GCph']
-
     a_grid_tkka = np.linspace(
         cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
         cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
@@ -158,7 +156,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                 else:
                     raise ValueError(f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
 
-                tkka_dict[A, B, C, D] = tkka_func(cosmo=cosmo_ccl,
+                tkka_dict[A, B, C, D], responses_dict = tkka_func(cosmo=cosmo_ccl,
                                                                   hmc=hmc,
                                                                   prof=halo_profile_dict[A],
                                                                   prof2=halo_profile_dict[B],
@@ -169,22 +167,22 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                                                   extrap_order_lok=1, extrap_order_hik=1, use_log=False,
                                                                   **additional_args)
 
+                tkka_folder = 'Tk3D_SSC' if which_ng_cov == 'SSC' else 'Tk3D_cNG'
+                tkka_path = f'{pyccl_cfg["cov_path"]}/{tkka_folder}'
+               
                 # save responses
-                # if which_ng_cov == 'SSC':
-                #     probe_block = A + B + C + D
-                #     for key, value in responses_dict.items():
-                #         np.save(f"{pyccl_cfg['cov_path']}/halomodel_responses/{probe_block}/{key}.npy", value)
+                if which_ng_cov == 'SSC' and pyccl_cfg['save_hm_responses']:
+                    probe_block = A + B + C + D
+                    for key, value in responses_dict.items():
+                        np.save(f"{tkka_path}{key}_{probe_block}.npy", value)
 
                 if pyccl_cfg['save_tkka']:
-                    breakpoint()
-                    tkka_folder = 'Tk3D_SSC' if which_ng_cov == 'SSC' else 'Tk3D_cNG'
-                    tkka_path = f'{pyccl_cfg["cov_path"]}/{tkka_folder}'
                     (a_arr, k1_arr, k2_arr, tk3d_arr) = tkka_dict[A, B, C, D].get_spline_arrays()
-                    np.save(f'{tkka_path}/a_arr_tkka.npy', a_arr)
-                    np.save(f'{tkka_path}/k1_arr_tkka.npy', k1_arr)
-                    np.save(f'{tkka_path}/k2_arr_tkka.npy', k2_arr)
-                    np.save(f'{tkka_path}/pk2_arr_k1_tkka.npy', tk3d_arr[0])
-                    np.save(f'{tkka_path}/pk2_arr_k2_tkka.npy', tk3d_arr[1])
+                    np.save(f'{tkka_path}/a_arr_tkka_{probe_block}.npy', a_arr)
+                    np.save(f'{tkka_path}/k1_arr_tkka_{probe_block}.npy', k1_arr)
+                    np.save(f'{tkka_path}/k2_arr_tkka_{probe_block}.npy', k2_arr)
+                    np.save(f'{tkka_path}/pk2_arr_k1_tkka_{probe_block}.npy', tk3d_arr[0])
+                    np.save(f'{tkka_path}/pk2_arr_k2_tkka_{probe_block}.npy', tk3d_arr[1])
 
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
 

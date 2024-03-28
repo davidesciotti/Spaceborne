@@ -32,15 +32,14 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 # ccl.gsl_params["INTEGRATION_EPSREL"] = 1e-7  # was 1e-4
 # ccl.gsl_params["N_ITERATION"] = 10000  # was 1000
-# ccl.gsl_params.reload()
-# ccl.gsl_params.reload()
-# ccl.spline_params.reload()
+ccl.gsl_params.reload()
+ccl.spline_params.reload()
 
 
 # ccl.spline_params['A_SPLINE_NA'] *= 10
 # ccl.spline_params['A_SPLINE_NLOG'] *= 10
 # ccl.spline_params['A_SPLINE_NLOG_PK'] *= 10
-# ccl.spline_params['A_SPLINE_NA_PK'] = 140  # gives CAMB error if too high
+ccl.spline_params['A_SPLINE_NA_PK'] = 150  # gives CAMB error if too high
 # ccl.spline_params['N_ELL_CORR'] *= 10
 
 # ccl.spline_params['K_MAX_SPLINE'] = 100
@@ -186,8 +185,8 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                 tkka_folder = 'Tk3D_SSC' if which_ng_cov == 'SSC' else 'Tk3D_cNG'
                
                 # save responses
+                probe_block = A + B + C + D
                 if which_ng_cov == 'SSC' and pyccl_cfg['save_hm_responses']:
-                    probe_block = A + B + C + D
                     for key, value in responses_dict.items():
                         np.save(f"{tkka_path}/{key}_{probe_block}.npy", value)
 
@@ -222,7 +221,7 @@ def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel
     else:
         raise ValueError("Invalid value for which_ng_cov. Must be 'SSC' or 'cNG'.")
 
-    cov_ng_4D = np.zeros(nbl, nbl, zpairs_AB, zpairs_CD)
+    cov_ng_4D = np.zeros((nbl, nbl, zpairs_AB, zpairs_CD))
     for ij in tqdm(range(zpairs_AB)):
         for kl in range(zpairs_CD):
             cov_ng_4D[:, :, ij, kl] = ng_cov_func(cosmo,
@@ -608,7 +607,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     if pyccl_cfg['which_sigma2_B'] != None:
         plt.figure()
-        plt.plot(sigma2_B_tuple[0], sigma2_B_tuple[1])
+        plt.plot(sigma2_B_tuple[0], sigma2_B_tuple[1], marker='o')
         plt.xlabel('$a$')
         plt.ylabel('$\sigma^2_B(a)$')
         plt.yscale('log')
@@ -684,7 +683,7 @@ integration_method_dict = {
         'cNG': 'spline',
     },
     '3x2pt': {
-        'SSC': 'spline',
-        'cNG': 'spline',  # qag_quad
+        'SSC': 'qag_quad',
+        'cNG': 'qag_quad',  # qag_quad
     }
 }

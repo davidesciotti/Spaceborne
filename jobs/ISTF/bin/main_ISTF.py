@@ -13,7 +13,7 @@ from matplotlib import cm
 import multiprocessing
 
 
-from getdist import plots   
+from getdist import plots
 from getdist.gaussian_mixtures import GaussianND
 
 import os

@@ -9,7 +9,6 @@ import numpy as np
 import pyccl as ccl
 import os
 import sys
-from joblib import Parallel, delayed
 from matplotlib import cm
 from tqdm import tqdm
 from scipy.interpolate import interp1d
@@ -114,14 +113,16 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
     # the default pk bust be passed to yhe Tk3D functions as None, not as 'delta_matter:delta_matter'
     p_of_k_a = None if p_of_k_a == 'delta_matter:delta_matter' else p_of_k_a
 
+    if a_grid_tkka is not None and logn_k_grid_tkka is not None:
+        print(f'z points = {a_grid_tkka.size}, k points = {logn_k_grid_tkka.size}')
+
     tkka_dict = {}
     for row, (A, B) in tqdm(enumerate(probe_ordering)):
         for col, (C, D) in enumerate(probe_ordering):
             
-            print(f'{comp_load_str} trispectrum for {which_ng_cov},  probe combination {A}{B}{C}{D}')
+            if col >= row: 
+                print(f'{comp_load_str} trispectrum for {which_ng_cov}, probe combination {A}{B}{C}{D}')
             
-            if a_grid_tkka is not None and logn_k_grid_tkka is not None:
-                print(f'z points = {a_grid_tkka.size}, k points = {logn_k_grid_tkka.size}')
 
             if col >= row and pyccl_cfg['load_precomputed_tkka']:
                 
@@ -221,26 +222,20 @@ def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel
     else:
         raise ValueError("Invalid value for which_ng_cov. Must be 'SSC' or 'cNG'.")
 
-    n_jobs = 1  # 17 min with 32 jobs, 11 min with 1 job...
-    print('n_jobs = ', n_jobs)
-    cov_ng_4D = Parallel(n_jobs=n_jobs, backend='threading')(
-        delayed(ng_cov_func)(cosmo,
-                             tracer1=kernel_A[ind_AB[ij, -2]],
-                             tracer2=kernel_B[ind_AB[ij, -1]],
-                             ell=ell,
-                             t_of_kk_a=tkka,
-                             fsky=f_sky,
-                             tracer3=kernel_C[ind_CD[kl, -2]],
-                             tracer4=kernel_D[ind_CD[kl, -1]],
-                             ell2=None,
-                             integration_method=integration_method,
-                             **sigma2_B_arg)
-        for ij in tqdm(range(zpairs_AB))
-        for kl in range(zpairs_CD)
-    )
-
-    # this is to move ell1, ell2 to the first axes and unpack the result in two separate dimensions
-    cov_ng_4D = np.array(cov_ng_4D).transpose(1, 2, 0).reshape(nbl, nbl, zpairs_AB, zpairs_CD)
+    cov_ng_4D = np.zeros(nbl, nbl, zpairs_AB, zpairs_CD)
+    for ij in tqdm(range(zpairs_AB)):
+        for kl in range(zpairs_CD):
+            cov_ng_4D[:, :, ij, kl] = ng_cov_func(cosmo,
+                                    tracer1=kernel_A[ind_AB[ij, -2]],
+                                    tracer2=kernel_B[ind_AB[ij, -1]],
+                                    ell=ell,
+                                    t_of_kk_a=tkka,
+                                    fsky=f_sky,
+                                    tracer3=kernel_C[ind_CD[kl, -2]],
+                                    tracer4=kernel_D[ind_CD[kl, -1]],
+                                    ell2=None,
+                                    integration_method=integration_method,
+                                    **sigma2_B_arg)                     
 
     print(f'{which_ng_cov} computed with pyccl in {(time.perf_counter() - start_time) / 60:.0f} min')
 

@@ -222,8 +222,8 @@ covariance_cfg = {
         'save_cov': True,
         
         'load_precomputed_tkka': False,
-        'save_tkka': False,
-        'tkka_path': f'{DATA_ROOT}/output/covmat/PyCCL/jan_2024',
+        'save_hm_responses': True,
+        'save_tkka': True,
 
         'cov_path': f'{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/PyCCL' + fm_last_folder,
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
@@ -253,9 +253,6 @@ covariance_cfg = {
         'k_grid_tkka_max': 1e2,
         'k_grid_tkka_steps': 1024,
 
-        'z_grid_min': 0.001,
-        'z_grid_max': 3,
-        'z_grid_steps': 2000,
         'n_samples_wf': 1000,
         'bias_model': 'polynomial',  # TODO this is not used at the moment (for SPV3)
     },

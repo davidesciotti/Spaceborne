@@ -203,9 +203,6 @@ covariance_cfg = {
         'k_grid_tkka_max': 1e2,
         'k_grid_tkka_steps': 1024,
         
-        'z_grid_min': 0.001,
-        'z_grid_max': 3,
-        'z_grid_steps': 1000,
         'n_samples_wf': 1000,
         
     },

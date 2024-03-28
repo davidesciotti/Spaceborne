@@ -64,6 +64,9 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
     save_tkka = pyccl_cfg['save_tkka']
     comp_load_str = 'Loading' if pyccl_cfg['load_precomputed_tkka'] else 'Computing'
     
+    tkka_folder = 'Tk3D_SSC' if which_ng_cov == 'SSC' else 'Tk3D_cNG'
+    tkka_path = f'{pyccl_cfg["cov_path"]}/{tkka_folder}'
+    
     k_z_str = f'zmin{pyccl_cfg["z_grid_tkka_min"]:.1f}_zmax{pyccl_cfg["z_grid_tkka_max"]:.1f}_zsteps{pyccl_cfg["z_grid_tkka_steps"]:d}_' \
               f'kmin{pyccl_cfg["k_grid_tkka_min"]:.1e}_kmax{pyccl_cfg["k_grid_tkka_max"]:.1e}_ksteps{pyccl_cfg["k_grid_tkka_steps"]:d}'
 
@@ -124,8 +127,6 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                 
                 save_tkka = False
 
-                tkka_folder = 'Tk3D_SSC' if which_ng_cov == 'SSC' else 'Tk3D_cNG'
-                tkka_path = f'{pyccl_cfg["tkka_path"]}/{tkka_folder}'
                 a_arr = np.load(f'{tkka_path}/a_arr_tkka.npy')
                 k1_arr = np.load(f'{tkka_path}/k1_arr_tkka.npy')
                 k2_arr = np.load(f'{tkka_path}/k2_arr_tkka.npy')
@@ -182,7 +183,6 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                                                   **additional_args)
 
                 tkka_folder = 'Tk3D_SSC' if which_ng_cov == 'SSC' else 'Tk3D_cNG'
-                tkka_path = f'{pyccl_cfg["cov_path"]}/{tkka_folder}'
                
                 # save responses
                 if which_ng_cov == 'SSC' and pyccl_cfg['save_hm_responses']:
@@ -306,7 +306,6 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     nbl = len(ell_grid)
 
     pyccl_cfg = covariance_cfg['PyCCL_cfg']
-    z_grid = np.linspace(pyccl_cfg['z_grid_min'], pyccl_cfg['z_grid_max'], pyccl_cfg['z_grid_steps'])
     n_samples_wf = pyccl_cfg['n_samples_wf']
     # this is needed only for a visual check of the cls, which are not used for SSC anyways
     has_rsd = general_cfg['has_rsd']
@@ -690,7 +689,7 @@ integration_method_dict = {
         'cNG': 'spline',
     },
     '3x2pt': {
-        'SSC': 'qag_quad',
-        'cNG': 'qag_quad',
+        'SSC': 'spline',
+        'cNG': 'spline',  # qag_quad
     }
 }

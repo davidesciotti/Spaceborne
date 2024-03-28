@@ -170,7 +170,7 @@ covariance_cfg = {
 
     'PyCCL_cfg': {
         'probe': '3x2pt',
-        'which_ng_cov': ('SSC', 'cNG'),
+        'which_ng_cov': ('cNG', ),
 
         'load_precomputed_cov': False,
         'save_cov': True,
@@ -178,7 +178,6 @@ covariance_cfg = {
         'load_precomputed_tkka': False,
         'save_hm_responses': True,
         'save_tkka': True,
-        'tkka_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/PyCCL/jan_2024',
         
         'cov_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/PyCCL/jan_2024',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'

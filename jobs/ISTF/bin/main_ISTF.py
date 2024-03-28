@@ -2,7 +2,6 @@ from copy import deepcopy
 import gc
 import sys
 import time
-from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
@@ -36,7 +35,7 @@ import common_cfg.ISTF_fid_params as ISTF_fid
 # job configuration and modules
 from jobs.ISTF.config import config_ISTF as cfg
 
-mpl.use('Agg')
+# mpl.use('Agg')
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
@@ -504,10 +503,6 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     
     # np.save('/home/cosmo/davide.sciotti/data/common_data/Spaceborne/jobs/ISTF/output/cl14may/chi2_test/chi2_bf_parall_GO.npy', chi2_bf_parall)
     # np.save('/home/cosmo/davide.sciotti/data/common_data/Spaceborne/jobs/ISTF/output/cl14may/chi2_test/best_fit_parall_GO.npy', best_fit_parall)
-    
-    
-    
-    
     
     # assert False, 'stop here for chi2 test'
 

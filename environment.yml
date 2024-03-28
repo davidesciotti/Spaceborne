@@ -33,7 +33,7 @@ dependencies:
     - PyQt5
     - PySide2
     - fast-pt
-    #- pyccl
+    # - pyccl>=3.0.2  # to be tested
 
 # To install the master version of pyccl:
 # $ conda activate spaceborne

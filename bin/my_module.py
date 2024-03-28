@@ -24,10 +24,11 @@ import pandas as pd
 from matplotlib.colors import ListedColormap
 
 
-# from ..common_cfg import ISTF_fid_params as ISTF_fid
-
-
-###############################################################################
+def zpair_from_zidx(zidx, ind):
+    """ Return the zpair corresponding to the zidx for a given ind array.
+    To be thoroughly tested, but quite straightforward"""
+    assert ind.shape[1] == 2, 'ind array must have shape (n, 2), maybe you are passing the full ind file instead of ind_auto/ind_cross'
+    return np.where((ind == [zidx, zidx]).all(axis=1))[0][0]
 
 
 def plot_dominant_array_element(arrays_dict, tab_colors, elements_auto, elements_cross, elements_3x2pt):
@@ -323,31 +324,27 @@ def plot_correlation_matrix(correlation_matrix, labels, title):
     fig, ax = plt.subplots(figsize=(10, 8))
 
     # Using the RdBu_r colormap for the heatmap
-    # cax = ax.matshow(correlation_matrix, cmap='RdBu_r', vmin=-1, vmax=1)
-    cax = ax.matshow(correlation_matrix, cmap='viridis')
+    cax = ax.matshow(correlation_matrix, cmap='RdBu_r', vmin=-1, vmax=1)
+    # cax = ax.matshow(correlation_matrix, cmap='RdBu_r')
+    # cax = ax.matshow(correlation_matrix, cmap='viridis')
 
     # Display color bar
     cbar = fig.colorbar(cax)
 
     # Set labels
-    ax.set_xticks(np.arange(len(labels)))
-    ax.set_yticks(np.arange(len(labels)))
-    ax.set_xticklabels(labels)
-    ax.set_yticklabels(labels)
+    # ax.set_xticks(np.arange(len(labels)))
+    # ax.set_yticks(np.arange(len(labels)))
+    # ax.set_xticklabels(labels)
+    # ax.set_yticklabels(labels)
 
     # Rotate x-axis labels for better clarity
-    plt.xticks()
+    # plt.xticks()
 
     # Set the title
-    ax.set_title(title, pad=20, loc='center', rotation=90)
+    ax.set_title(title, loc='center', rotation=0)
 
     # Display the plot
     plt.show()
-
-
-# Example usage
-# Assuming you have a correlation matrix named "correlation_matrix" and labels
-# correlation_matrix = ...
 
 
 def find_inverse_from_array(input_x, input_y, desired_y, interpolation_kind='linear'):

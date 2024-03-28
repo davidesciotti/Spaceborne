@@ -17,7 +17,7 @@ import bin.check_specs as utils
 # * jan_2024 folder
 # * mpl.use('Agg') in the main
 
-fm_and_cov_suffix = '_cNGfix_highres'
+fm_and_cov_suffix = '_cNGfix'
 
 
 with open(f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
@@ -198,10 +198,10 @@ covariance_cfg = {
         # z_grid min and max should probably coincide. play around with steps to find the minimum number        
         'z_grid_tkka_min': 0.,
         'z_grid_tkka_max': 6,
-        'z_grid_tkka_steps': 200,
+        'z_grid_tkka_steps': 100,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
-        'k_grid_tkka_steps': 1024,
+        'k_grid_tkka_steps': 512,
         
         'n_samples_wf': 1000,
         

@@ -62,20 +62,30 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
     save_tkka = pyccl_cfg['save_tkka']
     comp_load_str = 'Loading' if pyccl_cfg['load_precomputed_tkka'] else 'Computing'
     
-    tkka_folder = 'Tk3D_SSC' if which_ng_cov == 'SSC' else 'Tk3D_cNG'
+    tkka_folder = f'Tk3D_{which_ng_cov}'
     tkka_path = f'{pyccl_cfg["cov_path"]}/{tkka_folder}'
     
-    k_z_str = f'zmin{pyccl_cfg["z_grid_tkka_min"]:.1f}_zmax{pyccl_cfg["z_grid_tkka_max"]:.1f}_zsteps{pyccl_cfg["z_grid_tkka_steps"]:d}_' \
-              f'kmin{pyccl_cfg["k_grid_tkka_min"]:.1e}_kmax{pyccl_cfg["k_grid_tkka_max"]:.1e}_ksteps{pyccl_cfg["k_grid_tkka_steps"]:d}'
+    k_z_str = f'zmin{pyccl_cfg["z_grid_tkka_min"]:.1f}_zmax{pyccl_cfg["z_grid_tkka_max"]:.1f}_zsteps{pyccl_cfg[f"z_grid_tkka_steps_{which_ng_cov}"]:d}_' \
+              f'kmin{pyccl_cfg["k_grid_tkka_min"]:.1e}_kmax{pyccl_cfg["k_grid_tkka_max"]:.1e}_ksteps{pyccl_cfg[f"k_grid_tkka_steps_{which_ng_cov}"]:d}'
 
-    a_grid_tkka = np.linspace(
+    a_grid_tkka_SSC = np.linspace(
         cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
         cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
-        pyccl_cfg['z_grid_tkka_steps'])
+        pyccl_cfg['z_grid_tkka_steps_SSC'])
 
-    logn_k_grid_tkka = np.log(np.geomspace(pyccl_cfg['k_grid_tkka_min'],
+    logn_k_grid_tkka_SSC = np.log(np.geomspace(pyccl_cfg['k_grid_tkka_min'],
                                            pyccl_cfg['k_grid_tkka_max'],
-                                           pyccl_cfg['k_grid_tkka_steps']))
+                                           pyccl_cfg['k_grid_tkka_steps_SSC']))
+    
+
+    a_grid_tkka_cNG = np.linspace(
+        cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
+        cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
+        pyccl_cfg['z_grid_tkka_steps_cNG'])
+
+    logn_k_grid_tkka_cNG = np.log(np.geomspace(pyccl_cfg['k_grid_tkka_min'],
+                                           pyccl_cfg['k_grid_tkka_max'],
+                                           pyccl_cfg['k_grid_tkka_steps_cNG']))
 
     # or, to set to the default:
     # a_grid_tkka = None
@@ -112,8 +122,10 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
     # the default pk bust be passed to yhe Tk3D functions as None, not as 'delta_matter:delta_matter'
     p_of_k_a = None if p_of_k_a == 'delta_matter:delta_matter' else p_of_k_a
 
-    if a_grid_tkka is not None and logn_k_grid_tkka is not None:
-        print(f'z points = {a_grid_tkka.size}, k points = {logn_k_grid_tkka.size}')
+    if a_grid_tkka_SSC is not None and logn_k_grid_tkka_SSC is not None:
+        print(f'SSC tkka: z points = {a_grid_tkka_SSC.size}, k points = {logn_k_grid_tkka_SSC.size}')
+    if a_grid_tkka_cNG is not None and logn_k_grid_tkka_cNG is not None:
+        print(f'cNG tkka: z points = {a_grid_tkka_cNG.size}, k points = {logn_k_grid_tkka_cNG.size}')
 
     tkka_dict = {}
     for row, (A, B) in tqdm(enumerate(probe_ordering)):
@@ -155,6 +167,8 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                     additional_args = {
                         'prof12_2pt': prof_2pt_dict[A, B],
                         'prof34_2pt': prof_2pt_dict[C, D],
+                        'lk_arr':logn_k_grid_tkka_SSC,
+                        'a_arr':a_grid_tkka_SSC,
                     }
                 elif which_ng_cov == 'cNG':
                     tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
@@ -165,6 +179,8 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                         'prof24_2pt': prof_2pt_dict[B, D],
                         'prof32_2pt': prof_2pt_dict[C, B],
                         'prof34_2pt': prof_2pt_dict[C, D],
+                        'lk_arr': logn_k_grid_tkka_cNG,
+                        'a_arr': a_grid_tkka_cNG,
                     }
                     # tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_1h
                     # additional_args = {}
@@ -177,8 +193,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                                                   prof2=halo_profile_dict[B],
                                                                   prof3=halo_profile_dict[C],
                                                                   prof4=halo_profile_dict[D],
-                                                                  lk_arr=logn_k_grid_tkka,
-                                                                  a_arr=a_grid_tkka,
+
                                                                   extrap_order_lok=1, extrap_order_hik=1, use_log=False,
                                                                   **additional_args)
 
@@ -546,7 +561,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     a_grid_sigma2_B = np.linspace(cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
                                   cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
-                                  pyccl_cfg['z_grid_tkka_steps'])
+                                  pyccl_cfg['z_grid_tkka_steps_SSC'])
 
     # z_grid_sigma2_B = z_grid_tkka
     z_grid_sigma2_B = cosmo_lib.z_to_a(a_grid_sigma2_B)[::-1]
@@ -554,7 +569,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     a_grid_sigma2_B = np.linspace(
         cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
         cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
-        pyccl_cfg['z_grid_tkka_steps'])
+        pyccl_cfg['z_grid_tkka_steps_SSC'])
 
     z_grid_sigma2_B = cosmo_lib.a_to_z(a_grid_sigma2_B)[::-1]
 

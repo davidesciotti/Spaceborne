@@ -18,6 +18,7 @@ import bin.check_specs as utils
 # * mpl.use('Agg') in the main
 
 fm_and_cov_suffix = '_cNGfix'
+fm_and_cov_suffix = '_cNGfix'
 
 
 with open(f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
@@ -39,7 +40,7 @@ deriv_ell_cuts = False
 if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
     BNT_transform = True
 else:
-    BNT_transform = False
+    BNT_transform = False 
 
 if cl_ell_cuts or cov_ell_cuts or deriv_ell_cuts:
     ell_cuts = True
@@ -162,7 +163,7 @@ covariance_cfg = {
     'cov_folder': f'{DATA_ROOT}/output/{which_input_files}/' + 'covmat/{SSC_code:s}',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_lmax{ell_max:d}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
 
-    'SSC_code': 'OneCovariance',  # ! PySSC or PyCCL or Spaceborne or OneCovariance
+    'SSC_code': 'PyCCL',  # ! PySSC or PyCCL or Spaceborne or OneCovariance
 
     'PySSC_cfg': {
         'which_ng_cov': 'SSC',
@@ -170,12 +171,15 @@ covariance_cfg = {
 
     'PyCCL_cfg': {
         'probe': '3x2pt',
-        'which_ng_cov': ('cNG',),
+        'which_ng_cov': ('SSC', 'cNG'),
 
-        'load_precomputed_cov': True,
+        'load_precomputed_cov': False,
         'save_cov': True,
 
-        'save_trispectrum': False,
+        'load_precomputed_tkka': False,
+        'save_hm_responses': True,
+        'save_tkka': False,
+        
         'cov_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/PyCCL/jan_2024',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}' + fm_and_cov_suffix + '.npz',
@@ -192,19 +196,17 @@ covariance_cfg = {
         # this is the filename suffix for the sigma2_B file saved directly from cov_SSC in CCL
         'sigma2_suffix': 'mask',
 
-        'use_HOD_for_GCph': True,  # ! this must be True, incorrect results for GCph!!
-
         # z_grid min and max should probably coincide. play around with steps to find the minimum number        
         'z_grid_tkka_min': 0.,
         'z_grid_tkka_max': 6,
         'z_grid_tkka_steps': 100,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
-        'k_grid_tkka_steps': 512,
+        'z_grid_tkka_steps_SSC': 200,
+        'k_grid_tkka_steps_SSC': 1000,
+        'z_grid_tkka_steps_cNG': 100,
+        'k_grid_tkka_steps_cNG': 512,
         
-        'z_grid_min': 0.001,
-        'z_grid_max': 3,
-        'z_grid_steps': 1000,
         'n_samples_wf': 1000,
         
     },
@@ -236,7 +238,7 @@ covariance_cfg = {
         'use_OneCovariance_Gaussian': False,
         
         # 'cov_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/OneCovariance',
-        'cov_path': '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/output_ISTF_v2',
+        'cov_path': f'{ROOT}/OneCovariance/output_ISTF_v2',
         'cov_filename': 'cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',
     }

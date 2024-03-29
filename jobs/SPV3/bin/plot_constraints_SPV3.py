@@ -48,19 +48,19 @@ filename_suffix = '_cNGfix'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _h
 # filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 fm_last_folder = '/jan_2024'  # /standard or /jan_2024
 fix_dz_plt = True
-fix_shear_bias_plt = True
+fix_shear_bias_plt = False
 fix_gal_bias_plt = False
-fix_mag_bias_plt = True
+fix_mag_bias_plt = False
 fid_shear_bias_prior = 5e-4
 shear_bias_prior = fid_shear_bias_prior  # None if you want no prior
 fix_curvature = True
 
-check_if_just_created = True
+check_if_just_created = False
 
 specs_str = 'idIA2_idB3_idM3_idR1'
 fm_root_path = (f'{ROOT}/common_data/Spaceborne/'
                 'jobs/SPV3/output/Flagship_2/FM')
-fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}{fm_last_folder}'
+fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}'
 fm_pickle_name_raw = 'FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_' \
     'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}{filename_suffix}.pickle'
 EP_or_ED = 'EP'
@@ -81,25 +81,26 @@ ML = 245
 MS = 245
 ZL = 2
 ZS = 2
-probes = ('WL', 'GC', 'XC', '2x2pt', '3x2pt')
+probes = ('WL', 'GC', 'XC', '3x2pt')
 which_cuts = 'Vincenzo'
 whose_FM_list = ('davide',)
 kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
 
 which_cov_term_list = ['G', 'GSSC', 'GSSCcNG']
 
-BNT_transform_list = [False, ]
+BNT_transform_list = [False,]
+ell_cuts_list = [False,]
 center_or_min_list = ['center']
-kmax_h_over_Mpc_list = (general_cfg['kmax_h_over_Mpc_list'][0],)
+kmax_h_over_Mpc_list = general_cfg['kmax_h_over_Mpc_list'][:9]
 kmax_1_over_Mpc_vinc_str_list = ['025', '050', '075', '100', '125', '150', '175', '200', '300',
                                  '500', '1000', '1500', '2000']
 # kmax_1_over_Mpc_vinc_list = [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00, 15.00, 20.00]
 
-ell_cuts_list = [False, ]
 fix_dz_list = [True, False]
 fix_shear_bias_list = [True, False]
 fix_gal_bias_list = [True, False]
 fix_mag_bias_list = [True, False]
+
 which_pk_list = (general_cfg['which_pk_list'][0], )
 center_or_min_plt = 'center'
 which_cuts_plt = 'Vincenzo'
@@ -170,7 +171,7 @@ for probe in probes:
                                                 elif BNT_transform is True:
                                                     ell_cuts = True
 
-                                                if which_cov_term == 'GSSC':
+                                                if which_cov_term == 'GSSC' or which_cov_term == 'GSSCcNG':
                                                     which_pk = 'HMCodeBar'  # GSSC is only availane in this case
 
                                                 names_params_to_fix = []
@@ -181,7 +182,7 @@ for probe in probes:
                                                                                  fm_last_folder=fm_last_folder)
 
                                                     # this is because the is no "G" pickle file; the Gaussian covariance is saved withing the "GSSC" or "GSSCcNG" pickles
-                                                    which_ng_cov = 'GSSC' if which_cov_term == 'G' else which_cov_term
+                                                    which_ng_cov = which_cov_term_list[-1] if which_cov_term == 'G' else which_cov_term
                                                     fm_pickle_name = fm_pickle_name_raw.format(which_ng_cov=which_ng_cov,
                                                                                                EP_or_ED=EP_or_ED,
                                                                                                zbins=zbins,
@@ -191,13 +192,15 @@ for probe in probes:
                                                                                                ng_cov_code=ng_cov_code,
                                                                                                filename_suffix=filename_suffix)
                                                     if ell_cuts:
-                                                        fm_path += f'/{which_cuts}/ell_{center_or_min}'
-                                                        fm_pickle_name = fm_pickle_name.replace(f'.pickle',
-                                                                                                f'_kmaxhoverMpc{kmax_h_over_Mpc:.03f}.pickle')
+                                                        fm_path += f'/{which_cuts}/ell_{center_or_min}{fm_last_folder}'
+                                                        fm_pickle_name = fm_pickle_name.replace(f'{filename_suffix}.pickle',
+                                                                                                f'_kmaxhoverMpc{kmax_h_over_Mpc:.03f}{filename_suffix}.pickle')
+                                                    else:
+                                                        fm_path += fm_last_folder
 
                                                     if check_if_just_created:
-                                                        mm.is_file_created_in_last_x_hours(
-                                                            f'{fm_path}/{fm_pickle_name}', 0.1)
+                                                        assert mm.is_file_created_in_last_x_hours(
+                                                            f'{fm_path}/{fm_pickle_name}', 0.1), 'file has not been created recently'
 
                                                     fm_dict = mm.load_pickle(f'{fm_path}/{fm_pickle_name}')
 
@@ -367,12 +370,12 @@ for probe_toplot in probes:
     ]
 
     fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
-                                            'GSSC', num_string_columns)
+                                             'GSSC', num_string_columns)
     fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
                                              'GSSCcNG', num_string_columns)
 
     if divide_fom_by_10_plt:
-        mask = ~fm_uncert_df_toplot['which_cov_term'].str.startswith('perc_diff') 
+        mask = ~fm_uncert_df_toplot['which_cov_term'].str.startswith('perc_diff')
         fm_uncert_df_toplot.loc[mask, 'FoM'] /= 10
 
     data = fm_uncert_df_toplot.iloc[:, num_string_columns:].values
@@ -391,8 +394,8 @@ for probe_toplot in probes:
 
     plt.savefig(f'/home/davide/Documenti/Science/Talks/2024_03_20 - Waterloo/{probe_toplot}_SPV3_GSSCcNG.png', bbox_inches='tight', dpi=300)
 
-    
-assert False, 'stop here'
+
+# assert False, 'stop here'
 # mm.plot_correlation_matrix(correlation_dict['HMCode2020'] / correlation_dict['TakaBird'], cosmo_params_tex,
 #    title='HMCodeBar/TakaBird')
 if save_plots:
@@ -400,85 +403,73 @@ if save_plots:
                 bbox_inches='tight', dpi=500)
 
 # ! check difference between ell_cuts True and False
-df_true = fm_uncert_df[(fm_uncert_df['ell_cuts'] == True) &
-                       (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_list[-1])].iloc[:,
-                                                                                           num_string_columns:].values
-df_false = fm_uncert_df[(fm_uncert_df['ell_cuts'] == False) &
-                        (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_list[-1])].iloc[:,
-                                                                                            num_string_columns:].values
-diff = (df_true / df_false - 1) * 100
-mm.matshow(diff, log=True, title=f'difference between ell_cuts True, kmax = {kmax_h_over_Mpc_list[-1]:.2f} and False')
+# df_true = fm_uncert_df[(fm_uncert_df['ell_cuts'] == True) &
+#                        (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_list[-1])].iloc[:,
+#                                                                                            num_string_columns:].values
+# df_false = fm_uncert_df[(fm_uncert_df['ell_cuts'] == False) &
+#                         (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_list[-1])].iloc[:,
+#                                                                                             num_string_columns:].values
+# diff = (df_true / df_false - 1) * 100
+# mm.matshow(diff, log=True, title=f'difference between ell_cuts True, kmax = {kmax_h_over_Mpc_list[-1]:.2f} and False')
 
 # ! plot FoM pk_ref vs kmax
 probe_toplot = '3x2pt'
 reduced_df = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
-    (fm_uncert_df['which_cov_term'] == 'G') &
     (fm_uncert_df['whose_FM'] == 'davide') &
     (fm_uncert_df['which_pk'] == pk_ref) &
     (fm_uncert_df['BNT_transform'] == True) &
     (fm_uncert_df['ell_cuts'] == True) &
     (fm_uncert_df['which_cuts'] == which_cuts_plt) &
-    (fm_uncert_df['center_or_min'] == center_or_min_plt)
-]
-fom_dz_false_sb_false = reduced_df[(reduced_df['fix_dz'] == False) &
-                                   (reduced_df['fix_shear_bias'] == False)
-                                   ]['FoM'].values
-fom_dz_true_sb_false = reduced_df[(reduced_df['fix_dz'] == True) &
-                                  (reduced_df['fix_shear_bias'] == False)
-                                  ]['FoM'].values
-fom_dz_false_sb_true = reduced_df[(reduced_df['fix_dz'] == False) &
-                                  (reduced_df['fix_shear_bias'] == True)
-                                  ]['FoM'].values
-fom_dz_true_sb_true = reduced_df[(reduced_df['fix_dz'] == True) &
-                                 (reduced_df['fix_shear_bias'] == True)
-                                 ]['FoM'].values
-
-# add FoM for no ell cuts case
-fom_noellcuts = fm_uncert_df[
-    (fm_uncert_df['probe'] == probe_toplot) &
-    (fm_uncert_df['which_cov_term'] == 'G') &
-    (fm_uncert_df['whose_FM'] == 'davide') &
-    (fm_uncert_df['which_pk'] == pk_ref) &
-    (fm_uncert_df['BNT_transform'] == False) &
-    (fm_uncert_df['ell_cuts'] == False) &
-    (fm_uncert_df['fix_dz'] == True) &
-    (fm_uncert_df['fix_shear_bias'] == False) &
-    (fm_uncert_df['which_cuts'] == which_cuts_plt) &
     (fm_uncert_df['center_or_min'] == center_or_min_plt) &
-    (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_plt)
-]['FoM'].values[0]
+
+    (fm_uncert_df['fix_dz'] == fix_dz_plt) &
+    (fm_uncert_df['fix_shear_bias'] == fix_shear_bias_plt) &
+    (fm_uncert_df['fix_gal_bias'] == fix_gal_bias_plt) &
+    (fm_uncert_df['fix_mag_bias'] == fix_mag_bias_plt)
+]
+fom_g = reduced_df[(fm_uncert_df['which_cov_term'] == 'G')]['FoM'].values
+fom_ng = reduced_df[(fm_uncert_df['which_cov_term'] == 'GSSC')]['FoM'].values
+fom_diff = np.abs(mm.percent_diff(fom_ng, fom_g))
+
 
 # find kmax for a given FoM (400)
-kmax_fom400_dz_false_sb_false = mm.find_inverse_from_array(kmax_h_over_Mpc_list, fom_dz_false_sb_false, fom_redbook)
-kmax_fom400_dz_true_sb_false = mm.find_inverse_from_array(kmax_h_over_Mpc_list, fom_dz_true_sb_false, fom_redbook)
-kmax_fom400_dz_false_sb_true = mm.find_inverse_from_array(kmax_h_over_Mpc_list, fom_dz_false_sb_true, fom_redbook)
-kmax_fom400_dz_true_sb_true = mm.find_inverse_from_array(kmax_h_over_Mpc_list, fom_dz_true_sb_true, fom_redbook)
+kmax_fom400_gs_diff_10 = mm.find_inverse_from_array(kmax_h_over_Mpc_list[:5], fom_diff[:5], 10)
 
-fom_ref = fom_dz_true_sb_false
-kmax_fom400_ref = kmax_fom400_dz_true_sb_false
 
-dz_tex = '$\\Delta z_i$'
-sb_tex = '$m_i$'
-title_plot = '3$\\times$2pt' if probe_toplot == '3x2pt' else None
-plt.figure()
-plt.plot(kmax_h_over_Mpc_list, fom_dz_false_sb_false, label=f'{dz_tex} free, {sb_tex} free', marker='o')
-plt.plot(kmax_h_over_Mpc_list, fom_dz_true_sb_false, label=f'{dz_tex} fixed, {sb_tex} free (ref)', marker='o')
-plt.plot(kmax_h_over_Mpc_list, fom_dz_false_sb_true, label=f'{dz_tex} free, {sb_tex} fixed', marker='o')
-plt.plot(kmax_h_over_Mpc_list, fom_dz_true_sb_true, label=f'{dz_tex} fixed, {sb_tex} fixed', marker='o')
-plt.axvline(kmax_fom400_dz_false_sb_false,
-            label=f'{kmax_star_tex} = {kmax_fom400_dz_false_sb_false:.02f} {h_over_mpc_tex}', c='tab:blue', ls='--')
-plt.axvline(kmax_fom400_dz_true_sb_false,
-            label=f'{kmax_star_tex} = {kmax_fom400_dz_true_sb_false:.02f} {h_over_mpc_tex}', c='tab:orange', ls='--')
-plt.axvline(kmax_fom400_dz_false_sb_true,
-            label=f'{kmax_star_tex} = {kmax_fom400_dz_false_sb_true:.02f} {h_over_mpc_tex}', c='tab:green', ls='--')
-plt.axvline(kmax_fom400_dz_true_sb_true, label=f'{kmax_star_tex} = {kmax_fom400_dz_true_sb_true:.02f} {h_over_mpc_tex}',
-            c='tab:red', ls='--')
-plt.axhline(fom_noellcuts, label='$\\ell_{\\rm max, opt}^{\\rm EC20} = 3000$', c='k', ls=':')
-plt.axhline(fom_redbook, label=f'FoM = {fom_redbook}', c='k', ls='-', alpha=0.3)
-plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
-plt.ylabel('3$\\times$2pt FoM')
-plt.legend()
+labelsize = 22  # Smaller label size
+ticksize = 20    # Smaller tick size
+legendsize = 15  # Smaller legend size
+
+fig = plt.figure(figsize=(10, 8))
+gs = gridspec.GridSpec(3, 1, figure=fig, hspace=0.0)
+
+ax1 = fig.add_subplot(gs[:2, :])
+ax1.plot(kmax_h_over_Mpc_list, fom_g, label='G', marker='o')
+ax1.plot(kmax_h_over_Mpc_list, fom_ng, label='G+SSC', marker='o')
+ax1.axvline(kmax_fom400_gs_diff_10, c='k', ls='--')
+ax1.axhline(fom_redbook, label=f'FoM = {fom_redbook}', c='k', ls='-', alpha=0.3)
+ax1.set_ylabel('3$\\times$2pt FoM', fontsize=labelsize)
+# ax1.set_xscale('log')
+ax1.legend(fontsize=legendsize)
+ax1.tick_params(labelsize=ticksize)
+
+
+# Bottom plot (1/3 of total height)
+ax2 = fig.add_subplot(gs[2, :], sharex=ax1)
+ax2.axvline(kmax_fom400_gs_diff_10, label=f'{kmax_star_tex} = {kmax_fom400_gs_diff_10:.2f}', c='k', ls='--')
+ax2.plot(kmax_h_over_Mpc_list, fom_diff, marker='o', c='tab:red')
+ax2.fill_between(kmax_h_over_Mpc_list, 0, 10, alpha=0.3, color='grey', label='10%')
+ax2.set_xlabel(f'{kmax_tex} [{h_over_mpc_tex}]', fontsize=labelsize)
+ax2.set_ylabel('% diff', fontsize=labelsize)
+ax2.legend(fontsize=legendsize)
+ax2.tick_params(labelsize=ticksize)
+
+plt.tight_layout()
+plt.show()
+
+assert False, 'stop here'
+
 
 if save_plots:
     plt.savefig(f'{ROOT}/phd_thesis_plots/plots/fom_hmcodebar_vs_kmax.pdf',
@@ -508,6 +499,7 @@ plt.ylabel('relative uncertainty [%]')
 plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
 plt.legend()
 plt.show()
+
 
 if save_plots:
     plt.savefig(f'{ROOT}/phd_thesis_plots/plots/cosmo_params_vs_kmax.pdf',

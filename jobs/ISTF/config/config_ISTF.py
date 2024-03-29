@@ -199,11 +199,10 @@ covariance_cfg = {
         # z_grid min and max should probably coincide. play around with steps to find the minimum number        
         'z_grid_tkka_min': 0.,
         'z_grid_tkka_max': 6,
-        'z_grid_tkka_steps': 100,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
         'z_grid_tkka_steps_SSC': 200,
-        'k_grid_tkka_steps_SSC': 1000,
+        'k_grid_tkka_steps_SSC': 1024,
         'z_grid_tkka_steps_cNG': 100,
         'k_grid_tkka_steps_cNG': 512,
         

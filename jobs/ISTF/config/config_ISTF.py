@@ -205,6 +205,10 @@ covariance_cfg = {
         'k_grid_tkka_steps_SSC': 1024,
         'z_grid_tkka_steps_cNG': 100,
         'k_grid_tkka_steps_cNG': 512,
+        # 'z_grid_tkka_steps_SSC': 10,
+        # 'k_grid_tkka_steps_SSC': 10,
+        # 'z_grid_tkka_steps_cNG': 10,
+        # 'k_grid_tkka_steps_cNG': 10,
         
         'n_samples_wf': 1000,
         

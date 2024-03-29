@@ -174,11 +174,11 @@ covariance_cfg = {
         'which_ng_cov': ('SSC', 'cNG'),
 
         'load_precomputed_cov': False,
-        'save_cov': True,
+        'save_cov': False,
 
-        'load_precomputed_tkka': False,
+        'load_precomputed_tkka': True,
         'save_hm_responses': True,
-        'save_tkka': False,
+        'save_tkka': True,
         
         'cov_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/PyCCL/jan_2024',
         'cov_filename': 'cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
@@ -201,8 +201,8 @@ covariance_cfg = {
         'z_grid_tkka_max': 6,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
-        'z_grid_tkka_steps_SSC': 200,
-        'k_grid_tkka_steps_SSC': 1024,
+        'z_grid_tkka_steps_SSC': 100,
+        'k_grid_tkka_steps_SSC': 512,
         'z_grid_tkka_steps_cNG': 100,
         'k_grid_tkka_steps_cNG': 512,
         # 'z_grid_tkka_steps_SSC': 10,

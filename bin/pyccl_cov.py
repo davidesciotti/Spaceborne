@@ -32,8 +32,8 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 # ccl.gsl_params["INTEGRATION_EPSREL"] = 1e-7  # was 1e-4
 # ccl.gsl_params["N_ITERATION"] = 10000  # was 1000
-ccl.gsl_params.reload()
-ccl.spline_params.reload()
+# ccl.gsl_params.reload()
+# ccl.spline_params.reload()
 
 
 # ccl.spline_params['A_SPLINE_NA'] *= 10
@@ -130,6 +130,8 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
     tkka_dict = {}
     for row, (A, B) in tqdm(enumerate(probe_ordering)):
         for col, (C, D) in enumerate(probe_ordering):
+            probe_block = A + B + C + D
+            
             
             if col >= row: 
                 print(f'{comp_load_str} trispectrum for {which_ng_cov}, probe combination {A}{B}{C}{D}')
@@ -139,12 +141,11 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                 
                 save_tkka = False
 
-                a_arr = np.load(f'{tkka_path}/a_arr_tkka.npy')
-                k1_arr = np.load(f'{tkka_path}/k1_arr_tkka.npy')
-                k2_arr = np.load(f'{tkka_path}/k2_arr_tkka.npy')
-                pk2_arr_k1_tkka = np.load(f'{tkka_path}/pk2_arr_k1_tkka.npy')
-                pk2_arr_k2_tkka = np.load(f'{tkka_path}/pk2_arr_k2_tkka.npy')
-                
+                a_arr = np.load(f'{tkka_path}/a_arr_tkka_{probe_block}_{k_z_str}.npy')
+                k1_arr = np.load(f'{tkka_path}/k1_arr_tkka_{probe_block}_{k_z_str}.npy')
+                k2_arr = np.load(f'{tkka_path}/k2_arr_tkka_{probe_block}_{k_z_str}.npy')
+                pk2_arr_k1_tkka = np.load(f'{tkka_path}/pk1_arr_tkka_{probe_block}_{k_z_str}.npy')
+                pk2_arr_k2_tkka = np.load(f'{tkka_path}/pk2_arr_tkka_{probe_block}_{k_z_str}.npy')
 
                 assert np.array_equal(k1_arr, k2_arr), 'k1_arr and k2_arr must be equal'
                 assert pk2_arr_k1_tkka[0].shape == pk2_arr_k2_tkka[1].shape, 'pk2_arr_k1_tkka and pk2_arr_k2_tkka must have the same shape'
@@ -200,7 +201,6 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                 tkka_folder = 'Tk3D_SSC' if which_ng_cov == 'SSC' else 'Tk3D_cNG'
                
                 # save responses
-                probe_block = A + B + C + D
                 if which_ng_cov == 'SSC' and pyccl_cfg['save_hm_responses']:
                     for key, value in responses_dict.items():
                         np.save(f"{tkka_path}/{key}_{probe_block}.npy", value)

@@ -132,9 +132,8 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
         for col, (C, D) in enumerate(probe_ordering):
             probe_block = A + B + C + D
             
-            
             if col >= row: 
-                print(f'{comp_load_str} trispectrum for {which_ng_cov}, probe combination {A}{B}{C}{D}')
+                print(f'{comp_load_str} trispectrum for {which_ng_cov}, probe combination {probe_block}')
             
 
             if col >= row and pyccl_cfg['load_precomputed_tkka']:
@@ -144,20 +143,30 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                 a_arr = np.load(f'{tkka_path}/a_arr_tkka_{probe_block}_{k_z_str}.npy')
                 k1_arr = np.load(f'{tkka_path}/k1_arr_tkka_{probe_block}_{k_z_str}.npy')
                 k2_arr = np.load(f'{tkka_path}/k2_arr_tkka_{probe_block}_{k_z_str}.npy')
-                pk2_arr_k1_tkka = np.load(f'{tkka_path}/pk1_arr_tkka_{probe_block}_{k_z_str}.npy')
-                pk2_arr_k2_tkka = np.load(f'{tkka_path}/pk2_arr_tkka_{probe_block}_{k_z_str}.npy')
+                if which_ng_cov == 'SSC':
+                    pk1_arr_tkka = np.load(f'{tkka_path}/pk1_arr_tkka_{probe_block}_{k_z_str}.npy')
+                    pk2_arr_tkka = np.load(f'{tkka_path}/pk2_arr_tkka_{probe_block}_{k_z_str}.npy') 
+                    tk3d_kwargs = {
+                        'tkk_arr': None,
+                        'pk1_arr': pk1_arr_tkka,
+                        'pk2_arr': pk2_arr_tkka,
+                    }
+                elif which_ng_cov == 'cNG':
+                    tkk_arr = np.load(f'{tkka_path}/tkk_arr_{probe_block}_{k_z_str}.npy')
+                    tk3d_kwargs = {
+                        'tkk_arr': tkk_arr,
+                        'pk1_arr': None,
+                        'pk2_arr': None,
+                    }
 
                 assert np.array_equal(k1_arr, k2_arr), 'k1_arr and k2_arr must be equal'
-                assert pk2_arr_k1_tkka[0].shape == pk2_arr_k2_tkka[1].shape, 'pk2_arr_k1_tkka and pk2_arr_k2_tkka must have the same shape'
 
                 tkka_dict[A, B, C, D] = ccl.tk3d.Tk3D(a_arr=a_arr,
                                                       lk_arr=k1_arr,
-                                                      tkk_arr=None,
-                                                      pk1_arr=pk2_arr_k1_tkka,
-                                                      pk2_arr=pk2_arr_k2_tkka,
                                                       is_logt=False,
                                                       extrap_order_lok=1,
-                                                      extrap_order_hik=1
+                                                      extrap_order_hik=1,
+                                                      **tk3d_kwargs,
                                                       )
 
             elif col >= row and not pyccl_cfg['load_precomputed_tkka']:
@@ -194,25 +203,28 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
                                                                   prof2=halo_profile_dict[B],
                                                                   prof3=halo_profile_dict[C],
                                                                   prof4=halo_profile_dict[D],
-
-                                                                  extrap_order_lok=1, extrap_order_hik=1, use_log=False,
+                                                                  extrap_order_lok=1, extrap_order_hik=1, 
+                                                                  use_log=False,
                                                                   **additional_args)
 
-                tkka_folder = 'Tk3D_SSC' if which_ng_cov == 'SSC' else 'Tk3D_cNG'
-               
                 # save responses
                 if which_ng_cov == 'SSC' and pyccl_cfg['save_hm_responses']:
                     for key, value in responses_dict.items():
                         np.save(f"{tkka_path}/{key}_{probe_block}.npy", value)
-
+                        
+                
                 if save_tkka:
-                    (a_arr, k1_arr, k2_arr, tk3d_arr) = tkka_dict[A, B, C, D].get_spline_arrays()
+                    (a_arr, k1_arr, k2_arr, tk3d_arr_list) = tkka_dict[A, B, C, D].get_spline_arrays()
                     np.save(f'{tkka_path}/a_arr_tkka_{probe_block}_{k_z_str}.npy', a_arr)
                     np.save(f'{tkka_path}/k1_arr_tkka_{probe_block}_{k_z_str}.npy', k1_arr)
                     np.save(f'{tkka_path}/k2_arr_tkka_{probe_block}_{k_z_str}.npy', k2_arr)
-                    np.save(f'{tkka_path}/pk1_arr_tkka_{probe_block}_{k_z_str}.npy', tk3d_arr[0])
-                    np.save(f'{tkka_path}/pk2_arr_tkka_{probe_block}_{k_z_str}.npy', tk3d_arr[1])
-
+                    # for SSC, the tK3D is factorizable and there are two items in the tk3d_arr_list; for cNG, just one
+                    if which_ng_cov == 'SSC':
+                        np.save(f'{tkka_path}/pk1_arr_tkka_{probe_block}_{k_z_str}.npy', tk3d_arr_list[0])
+                        np.save(f'{tkka_path}/pk2_arr_tkka_{probe_block}_{k_z_str}.npy', tk3d_arr_list[1])
+                    elif which_ng_cov == 'cNG':
+                        np.save(f'{tkka_path}/tkk_arr_{probe_block}_{k_z_str}.npy', tk3d_arr_list[0])
+                    
     print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
 
     return tkka_dict

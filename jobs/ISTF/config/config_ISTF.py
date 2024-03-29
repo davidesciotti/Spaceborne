@@ -171,7 +171,7 @@ covariance_cfg = {
 
     'PyCCL_cfg': {
         'probe': '3x2pt',
-        'which_ng_cov': ('SSC', 'cNG'),
+        'which_ng_cov': ('cNG',),
 
         'load_precomputed_cov': False,
         'save_cov': False,
@@ -201,10 +201,12 @@ covariance_cfg = {
         'z_grid_tkka_max': 6,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
-        'z_grid_tkka_steps_SSC': 100,
-        'k_grid_tkka_steps_SSC': 512,
+        'z_grid_tkka_steps_SSC': 200,
+        'k_grid_tkka_steps_SSC': 1024,
         'z_grid_tkka_steps_cNG': 100,
         'k_grid_tkka_steps_cNG': 512,
+        
+        # for thesting; gives limber integration error when computing the covariance!
         # 'z_grid_tkka_steps_SSC': 10,
         # 'k_grid_tkka_steps_SSC': 10,
         # 'z_grid_tkka_steps_cNG': 10,

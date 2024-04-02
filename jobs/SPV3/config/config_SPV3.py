@@ -240,18 +240,17 @@ covariance_cfg = {
         'sigma2_suffix': 'mask',  # this is the filename suffix for the sigma2_B file saved directly from cov_SSC in CCL
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
-        # 'z_grid_tkka_min': 0.001,
-        # 'z_grid_tkka_max': 3,
-        # 'z_grid_tkka_steps': 200,
-        # 'k_grid_tkka_min': 1e-5,
-        # 'k_grid_tkka_max': 1e2,
-        # 'k_grid_tkka_steps': 512,
         'z_grid_tkka_min': 0.,
         'z_grid_tkka_max': 6,
-        'z_grid_tkka_steps': 200,
         'k_grid_tkka_min': 1e-5,
         'k_grid_tkka_max': 1e2,
-        'k_grid_tkka_steps': 1024,
+        'z_grid_tkka_steps_SSC': 200,
+        'k_grid_tkka_steps_SSC': 1024,
+        'z_grid_tkka_steps_cNG': 100,
+        'k_grid_tkka_steps_cNG': 512,
+        
+        'integration_method': 'spline',
+        
 
         'n_samples_wf': 1000,
         'bias_model': 'polynomial',  # TODO this is not used at the moment (for SPV3)

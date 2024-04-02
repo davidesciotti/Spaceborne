@@ -181,14 +181,13 @@ covariance_cfg = {
 
     'compute_covmat': True,
     'compute_SSC': True,
-    'compute_cov_6D': False,  # ! to be deprecated!
 
     'save_cov': False,
     'cov_file_format': 'npz',  # or npy
     'save_cov_dat': False,  # this is the format used by Vincenzo
 
     # in cov_dict
-    'save_cov_2D': True,
+    'save_cov_2D': False,
     'save_cov_4D': False,
     'save_cov_6D': False,  # or 10D for the 3x2pt
     'save_cov_GO': False,
@@ -210,13 +209,15 @@ covariance_cfg = {
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
 
-    'SSC_code': 'OneCovariance',  # ! 'PySSC' or 'PyCCL' or 'Spaceborne' or 'OneCovariance'
+    'SSC_code': 'PyCCL',  # ! 'PySSC' or 'PyCCL' or 'Spaceborne' or 'OneCovariance'
     'check_if_recently_created': False,
 
     'PyCCL_cfg': {
         'probe': '3x2pt',
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
         'which_ng_cov': ('SSC', 'cNG'),
+        'integration_method': 'spline',
+        'test_GLGL': True,  # must be set to False for actual 3x2pt runs
 
         'load_precomputed_cov': False,
         'save_cov': True,
@@ -249,9 +250,6 @@ covariance_cfg = {
         'z_grid_tkka_steps_cNG': 100,
         'k_grid_tkka_steps_cNG': 512,
         
-        'integration_method': 'spline',
-        
-
         'n_samples_wf': 1000,
         'bias_model': 'polynomial',  # TODO this is not used at the moment (for SPV3)
     },

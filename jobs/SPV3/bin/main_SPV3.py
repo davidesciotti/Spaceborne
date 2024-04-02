@@ -37,7 +37,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 # job config
 import jobs.SPV3.config.config_SPV3 as cfg
 
-mpl.use('Agg')
+# mpl.use('Agg')
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 script_start_time = time.perf_counter()
 

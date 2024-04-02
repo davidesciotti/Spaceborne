@@ -145,7 +145,6 @@ covariance_cfg = {
 
     'compute_covmat': True,
     'compute_SSC': True,
-    'compute_cov_6D': False,
 
     'save_cov': False,
     'cov_file_format': 'npz',  # or npy
@@ -172,6 +171,8 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',
         'which_ng_cov': ('SSC', 'cNG',),
+        'integration_method': 'qag_quad',  # or 'qag_quad'
+        'test_GLGL': True,  # must be set to False for actual 3x2pt runs
 
         'load_precomputed_cov': False,
         'save_cov': False,
@@ -205,8 +206,6 @@ covariance_cfg = {
         'k_grid_tkka_steps_SSC': 1024,
         'z_grid_tkka_steps_cNG': 100,
         'k_grid_tkka_steps_cNG': 512,
-        
-        'integration_method': 'spline',
         
         # for thesting; gives limber integration error when computing the covariance!
         # 'z_grid_tkka_steps_SSC': 10,

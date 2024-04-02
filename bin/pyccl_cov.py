@@ -328,6 +328,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     pyccl_cfg = covariance_cfg['PyCCL_cfg']
     n_samples_wf = pyccl_cfg['n_samples_wf']
+    integration_method = pyccl_cfg['integration_method']
     # this is needed only for a visual check of the cls, which are not used for SSC anyways
     has_rsd = general_cfg['has_rsd']
     has_magnification_bias = general_cfg['has_magnification_bias']
@@ -336,7 +337,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     # just a check on the settings
     print(f'\n****************** ccl settings ****************'
           f'\nprobe = {probe}\nwhich_ng_cov = {which_ng_cov}'
-          f'\nintegration_method = {integration_method_dict[probe][which_ng_cov]}'
+          f'\nintegration_method = {integration_method}'
           f'\nnbl = {nbl}\nf_sky = {f_sky}\nzbins = {zbins}'
           f'\n************************************************\n')
 
@@ -681,7 +682,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
                                               covariance_cfg=covariance_cfg,
                                               cov_filename=cov_filename,
                                               sigma2_B_tuple=sigma2_B_tuple,
-                                              integration_method=integration_method_dict[probe][which_ng_cov],
+                                              integration_method=integration_method,
                                               )
 
     else:
@@ -698,19 +699,3 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
                 print(error)
 
     return cov_ng_8D_dict
-
-
-integration_method_dict = {
-    'LL': {
-        'SSC': 'spline',
-        'cNG': 'spline',
-    },
-    'GG': {
-        'SSC': 'spline',
-        'cNG': 'spline',
-    },
-    '3x2pt': {
-        'SSC': 'qag_quad',
-        'cNG': 'qag_quad',  # qag_quad
-    }
-}

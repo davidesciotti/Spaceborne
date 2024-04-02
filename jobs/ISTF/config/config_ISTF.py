@@ -171,12 +171,12 @@ covariance_cfg = {
 
     'PyCCL_cfg': {
         'probe': '3x2pt',
-        'which_ng_cov': ('cNG',),
+        'which_ng_cov': ('SSC', 'cNG',),
 
         'load_precomputed_cov': False,
         'save_cov': False,
 
-        'load_precomputed_tkka': True,
+        'load_precomputed_tkka': False,
         'save_hm_responses': True,
         'save_tkka': True,
         
@@ -206,6 +206,8 @@ covariance_cfg = {
         'z_grid_tkka_steps_cNG': 100,
         'k_grid_tkka_steps_cNG': 512,
         
+        'integration_method': 'spline',
+        
         # for thesting; gives limber integration error when computing the covariance!
         # 'z_grid_tkka_steps_SSC': 10,
         # 'k_grid_tkka_steps_SSC': 10,
@@ -217,7 +219,7 @@ covariance_cfg = {
     },
 
     'Spaceborne_cfg': {
-        'which_ng_cov': ('SSC', 'cNG'),
+        'which_ng_cov': ('SSC', ),
         # in this case it is only possible to load precomputed arrays, I have to compute the integral with Julia
         'load_precomputed_cov': True,
         'cov_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/Spaceborne',

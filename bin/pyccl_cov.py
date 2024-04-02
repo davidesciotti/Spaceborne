@@ -5,6 +5,7 @@ import time
 import warnings
 import matplotlib
 import matplotlib.pyplot as plt
+from pyccl.errors import CCLError
 import numpy as np
 import pyccl as ccl
 import os
@@ -231,7 +232,7 @@ def initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering, pyccl_cfg, w
 
 
 def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka, f_sky,
-                       ind_AB, ind_CD, sigma2_B_tuple, integration_method='spline'):
+                       ind_AB, ind_CD, sigma2_B_tuple, integration_method):
     zpairs_AB = ind_AB.shape[0]
     zpairs_CD = ind_CD.shape[0]
     nbl = len(ell)
@@ -249,19 +250,36 @@ def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel
         raise ValueError("Invalid value for which_ng_cov. Must be 'SSC' or 'cNG'.")
 
     cov_ng_4D = np.zeros((nbl, nbl, zpairs_AB, zpairs_CD))
-    for ij in tqdm(range(zpairs_AB)):
-        for kl in range(zpairs_CD):
-            cov_ng_4D[:, :, ij, kl] = ng_cov_func(cosmo,
-                                    tracer1=kernel_A[ind_AB[ij, -2]],
-                                    tracer2=kernel_B[ind_AB[ij, -1]],
-                                    ell=ell,
-                                    t_of_kk_a=tkka,
-                                    fsky=f_sky,
-                                    tracer3=kernel_C[ind_CD[kl, -2]],
-                                    tracer4=kernel_D[ind_CD[kl, -1]],
-                                    ell2=None,
-                                    integration_method=integration_method,
-                                    **sigma2_B_arg)                     
+    try:
+        for ij in tqdm(range(zpairs_AB)):
+            for kl in range(zpairs_CD):
+                cov_ng_4D[:, :, ij, kl] = ng_cov_func(cosmo,
+                                        tracer1=kernel_A[ind_AB[ij, -2]],
+                                        tracer2=kernel_B[ind_AB[ij, -1]],
+                                        ell=ell,
+                                        t_of_kk_a=tkka,
+                                        fsky=f_sky,
+                                        tracer3=kernel_C[ind_CD[kl, -2]],
+                                        tracer4=kernel_D[ind_CD[kl, -1]],
+                                        ell2=None,
+                                        integration_method='qag_quad',
+                                        **sigma2_B_arg)                
+    except CCLError as err:
+        print(f"CCLError: {err}\nRetrying with spline integration.")
+        for ij in tqdm(range(zpairs_AB)):
+            for kl in range(zpairs_CD):
+                cov_ng_4D[:, :, ij, kl] = ng_cov_func(cosmo,
+                                        tracer1=kernel_A[ind_AB[ij, -2]],
+                                        tracer2=kernel_B[ind_AB[ij, -1]],
+                                        ell=ell,
+                                        t_of_kk_a=tkka,
+                                        fsky=f_sky,
+                                        tracer3=kernel_C[ind_CD[kl, -2]],
+                                        tracer4=kernel_D[ind_CD[kl, -1]],
+                                        ell2=None,
+                                        integration_method='spline',
+                                        **sigma2_B_arg)    
+             
 
     print(f'{which_ng_cov} computed with pyccl in {(time.perf_counter() - start_time) / 60:.0f} min')
 
@@ -553,8 +571,9 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         probe_ordering = (('G', 'G'),)
     elif probe == '3x2pt':
         probe_ordering = covariance_cfg['probe_ordering']
-        # warnings.warn('TESTING ONLY GLGL TO DEBUG')
-        # probe_ordering = (('G', 'L'),)  # for testing 3x2pt GLGL, which seems a problematic case.
+        if pyccl_cfg['test_GLGL']:
+            warnings.warn('COMPUTING GLGL ONLY FOR TESTING')
+            probe_ordering = (('G', 'L'),)  # for testing 3x2pt GLGL, which seems a problematic case.
     else:
         raise ValueError('probe must be either LL, GG, or 3x2pt')
 

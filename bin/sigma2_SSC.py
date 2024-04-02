@@ -56,6 +56,46 @@ start_time = time.perf_counter()
 # * secondary:
 # - growth_factor
 
+# TODO finish implementing this function and test if if needed
+# def sigma2_flatsky(z1, z2, k_perp_grid, k_par_grid, cosmo_ccl, Omega_S, theta_S):
+#     """Compute the flatsky variance between two redshifts z1 and z2 for a cosmology given by cosmo_ccl."""
+
+#     # Compute the comoving distance at the given redshifts
+    # from scipy.special import j1 as J1
+#     a1 = 1 / (1 + z1)
+#     a2 = 1 / (1 + z2)
+#     r1 = ccl.comoving_radial_distance(cosmo_ccl, a1)
+#     r2 = ccl.comoving_radial_distance(cosmo_ccl, a2)
+
+#     # Compute the growth factors at the given redshifts
+#     growth_factor_z1 = ccl.growth_factor(cosmo_ccl, a1)
+#     growth_factor_z2 = ccl.growth_factor(cosmo_ccl, a2)
+
+#     # Compute the integrand over k_perp and k_par grids
+#     def integrand(k_perp, k_par, r1, r2, theta_S):
+#         k = np.sqrt(k_par**2 + k_perp**2)
+#         bessel_term = J1(k_perp * theta_S * r1) * J1(k_perp * theta_S * r2) / (k_perp * theta_S * r1 * k_perp * theta_S * r2)
+#         power_spectrum = ccl.linear_matter_power(cosmo_ccl, k=k, a=1.0)
+#         return k_perp * bessel_term * np.cos(k_par * (r1 - r2)) * power_spectrum
+
+#     # Perform the double integral using Simpson's rule
+#     integral_result_k_perp = np.array([
+#         simps(integrand(k_perp, k_par_grid, r1, r2, theta_S), k_par_grid)
+#         for k_perp in k_perp_grid
+#     ])
+#     integral_result = simps(integral_result_k_perp, k_perp_grid)
+    
+#     # Compute the final result
+#     sigma2 = 1 / (2 * np.pi**2) * growth_factor_z1 * growth_factor_z2 * integral_result / Omega_S**2
+    
+#     return sigma2
+
+# # Example usage:
+# # Define your k_perp_grid and k_par_grid appropriately
+# # Omega_S and theta_S must also be defined based on your survey parameters
+# # sigma2_result = sigma2_flatsky(z1, z2, k_perp_grid, k_par_grid, cosmo_ccl, Omega_S, theta_S)
+
+
 
 def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2, ell_mask=None, cl_mask=None):
     """ Computes the integral in k. The rest is in another function, to vectorize the call to the growth_factor.

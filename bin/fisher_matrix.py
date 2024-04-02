@@ -281,8 +281,8 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         dC_WA_2D = np.delete(dC_WA_2D, ell_dict['idxs_to_delete_dict']['WA'], axis=0)
         dC_XC_2D = np.delete(dC_XC_2D, ell_dict['idxs_to_delete_dict'][GL_or_LG], axis=0)
         dC_3x2pt_2D = np.delete(dC_3x2pt_2D, ell_dict['idxs_to_delete_dict']['3x2pt'], axis=0)
-        raise ValueError('the above cuts are correct, but I should be careful when defining the 2x2pt datavector/covmat,\
-            as n_elem_ll will be lower because of the cuts...')
+        # raise ValueError('the above cuts are correct, but I should be careful when defining the 2x2pt datavector/covmat,\
+            # as n_elem_ll will be lower because of the cuts...')
 
     # if the ell cuts removed all WA bins (which is in fact the case)
     if dC_WA_2D.shape[0] == 0:

@@ -24,10 +24,11 @@ import pandas as pd
 from matplotlib.colors import ListedColormap
 
 
-# from ..common_cfg import ISTF_fid_params as ISTF_fid
-
-
-###############################################################################
+def zpair_from_zidx(zidx, ind):
+    """ Return the zpair corresponding to the zidx for a given ind array.
+    To be thoroughly tested, but quite straightforward"""
+    assert ind.shape[1] == 2, 'ind array must have shape (n, 2), maybe you are passing the full ind file instead of ind_auto/ind_cross'
+    return np.where((ind == [zidx, zidx]).all(axis=1))[0][0]
 
 
 def plot_dominant_array_element(arrays_dict, tab_colors, elements_auto, elements_cross, elements_3x2pt):
@@ -323,31 +324,27 @@ def plot_correlation_matrix(correlation_matrix, labels, title):
     fig, ax = plt.subplots(figsize=(10, 8))
 
     # Using the RdBu_r colormap for the heatmap
-    # cax = ax.matshow(correlation_matrix, cmap='RdBu_r', vmin=-1, vmax=1)
-    cax = ax.matshow(correlation_matrix, cmap='viridis')
+    cax = ax.matshow(correlation_matrix, cmap='RdBu_r', vmin=-1, vmax=1)
+    # cax = ax.matshow(correlation_matrix, cmap='RdBu_r')
+    # cax = ax.matshow(correlation_matrix, cmap='viridis')
 
     # Display color bar
     cbar = fig.colorbar(cax)
 
     # Set labels
-    ax.set_xticks(np.arange(len(labels)))
-    ax.set_yticks(np.arange(len(labels)))
-    ax.set_xticklabels(labels)
-    ax.set_yticklabels(labels)
+    # ax.set_xticks(np.arange(len(labels)))
+    # ax.set_yticks(np.arange(len(labels)))
+    # ax.set_xticklabels(labels)
+    # ax.set_yticklabels(labels)
 
     # Rotate x-axis labels for better clarity
-    plt.xticks()
+    # plt.xticks()
 
     # Set the title
-    ax.set_title(title, pad=20, loc='center', rotation=90)
+    ax.set_title(title, loc='center', rotation=0)
 
     # Display the plot
     plt.show()
-
-
-# Example usage
-# Assuming you have a correlation matrix named "correlation_matrix" and labels
-# correlation_matrix = ...
 
 
 def find_inverse_from_array(input_x, input_y, desired_y, interpolation_kind='linear'):
@@ -1422,12 +1419,12 @@ def Cl_3D_to_2D_asymmetric(Cl_3D):
     return Cl_2D
 
 
-def cl_3D_to_2D_or_1D(cl_3D, ind, is_auto_spectrum, use_triu_row_major, convert_to_2D, block_index):
+def cl_3D_to_2D_or_1D_slow(cl_3D, ind, is_auto_spectrum, use_triu_row_major, convert_to_2D, block_index):
     """ reshape from (nbl, zbins, zbins) to (nbl, zpairs), according to the ordering given in the ind file
     (valid for asymmetric Cij, i.e. C_XC)
     """
 
-    warnings.warn('finish this function!!')
+    warnings.warn('finish this function!! (old warning, I dont remember exactly what is missing...)')
     assert cl_3D.ndim == 3, 'cl_3D must be a 3D array'
     assert cl_3D.shape[1] == cl_3D.shape[2], 'cl_3D must be a square array of shape (nbl, zbins, zbins)'
 
@@ -1465,6 +1462,41 @@ def cl_3D_to_2D_or_1D(cl_3D, ind, is_auto_spectrum, use_triu_row_major, convert_
         raise ValueError('block_index must be either "ij" or "ell"')
 
     return cl_1D
+
+import numpy as np
+
+def cl_3D_to_2D_or_1D(cl_3D, ind, is_auto_spectrum, use_triu_row_major, convert_to_2D, block_index):
+    """ reshape from (nbl, zbins, zbins) to (nbl, zpairs), according to the ordering given in the ind file
+    (valid for asymmetric Cij, i.e. C_XC)
+    """
+
+    # warnings.warn('finish this function!! (old warning, I dont remember exactly what is missing...)')
+    assert cl_3D.ndim == 3, 'cl_3D must be a 3D array'
+    assert cl_3D.shape[1] == cl_3D.shape[2], 'cl_3D must be a square array of shape (nbl, zbins, zbins)'
+
+    zbins = cl_3D.shape[1]
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
+
+    if use_triu_row_major:
+        ind = build_full_ind('triu', 'row-major', zbins)
+
+    # Select appropriate indices based on whether the spectrum is auto or cross
+    zpairs = zpairs_auto if is_auto_spectrum else zpairs_cross
+    selected_ind = ind[:zpairs, 2:] if is_auto_spectrum else ind[zpairs_auto:zpairs_auto + zpairs_cross, 2:]
+
+    # Vectorize the selection of elements based on the indices
+    cl_2D = cl_3D[:, selected_ind[:, 0], selected_ind[:, 1]]
+
+    if convert_to_2D:
+        return cl_2D
+
+    # Flatten the array based on the 'block_index' parameter
+    order = 'C' if block_index in ['ell', 'vincenzo'] else 'F' if block_index in ['ij', 'sylvain'] else None
+    if order is None:
+        raise ValueError('block_index must be either "ij" or "ell"')
+    
+    return cl_2D.flatten(order=order)
+
 
 
 @njit

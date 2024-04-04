@@ -17,8 +17,7 @@ import bin.check_specs as utils
 # * jan_2024 folder
 # * mpl.use('Agg') in the main
 
-fm_and_cov_suffix = '_cNGfix'
-fm_and_cov_suffix = '_cNGfix'
+fm_and_cov_suffix = '_cNG_intfix'
 
 
 with open(f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
@@ -171,11 +170,12 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',
         'which_ng_cov': ('SSC', 'cNG',),
+        # 'which_ng_cov': ( 'cNG',),
         'integration_method': 'qag_quad',  # or 'qag_quad'
-        'test_GLGL': True,  # must be set to False for actual 3x2pt runs
+        'test_GLGL': False,  # must be set to False for actual 3x2pt runs
 
-        'load_precomputed_cov': False,
-        'save_cov': False,
+        'load_precomputed_cov': True,
+        'save_cov': True,
 
         'load_precomputed_tkka': False,
         'save_hm_responses': True,

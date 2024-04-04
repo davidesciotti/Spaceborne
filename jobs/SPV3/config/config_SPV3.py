@@ -29,7 +29,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-fm_and_cov_suffix = '_cNGfix_highres'
+fm_and_cov_suffix = '_cNG_intfix'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -216,10 +216,10 @@ covariance_cfg = {
         'probe': '3x2pt',
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
         'which_ng_cov': ('SSC', 'cNG'),
-        'integration_method': 'spline',
-        'test_GLGL': True,  # must be set to False for actual 3x2pt runs
+        'integration_method': 'qag_quad',
+        'test_GLGL': False,  # must be set to False for actual 3x2pt runs
 
-        'load_precomputed_cov': False,
+        'load_precomputed_cov': True,
         'save_cov': True,
         
         'load_precomputed_tkka': False,

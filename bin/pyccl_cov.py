@@ -40,7 +40,7 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 # ccl.spline_params['A_SPLINE_NA'] *= 10
 # ccl.spline_params['A_SPLINE_NLOG'] *= 10
 # ccl.spline_params['A_SPLINE_NLOG_PK'] *= 10
-ccl.spline_params['A_SPLINE_NA_PK'] = 150  # gives CAMB error if too high
+ccl.spline_params['A_SPLINE_NA_PK'] = 140  # gives CAMB error if too high
 # ccl.spline_params['N_ELL_CORR'] *= 10
 
 # ccl.spline_params['K_MAX_SPLINE'] = 100

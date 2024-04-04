@@ -1,132 +1,0 @@
-nohup: input ignorato
-Data has been written to /home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/14may/CijDers/EP10/Cell_ll
-Data has been written to /home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/14may/CijDers/EP10/Cell_gl
-Data has been written to /home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/14may/CijDers/EP10/Cell_gg
-Sijkl matrix already exists in folder
-/home/davide/Documenti/Lavoro/Programmi/common_data/Sijkl; loading it
-all probes (but WAdd) have the same number of ell bins
-
-check: 
-ind_ordering = triu, row-major 
-block_index = ell
-zbins: EP10
-nbl_WA: 2 nbl_WL: 20 nbl_GC:  20, nbl_3x2pt:  20
-ell_max_WL = 3000 
-ell_max_GC = 3000
-GL_or_LG: GL
-
-Gauss. cov. matrices computed in 0.08 seconds
-SS cov. matrices computed in 0.81 s with PySSC
-Computing 3x2pt SSC covariance with PyCCL
-NG covariance folder is:
-/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/covmat/PyCCL/jan_2024
-
-NG covariance filename is:
-cov_SSC_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl20_ellmax3000_zbinsEP10_cNGfix.npz
-
-
-****************** ccl settings ****************
-probe = 3x2pt
-which_ng_cov = SSC
-integration_method = spline
-nbl = 20
-f_sky = 0.3636102718447355
-zbins = 10
-************************************************
-
-/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/wf_cl_lib.py:516: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
-  plt.show()
-/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/pyccl_cov.py:475: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
-  plt.show()
-/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/pyccl_cov.py:525: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
-  plt.show()
-Computing sigma2_B from mask
-/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/pyccl_cov.py:620: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
-  plt.show()
-0it [00:00, ?it/s]Computing trispectrum for SSC,  probe combination LLLL
-z points = 100, k points = 512
-Computing trispectrum for SSC,  probe combination LLGL
-z points = 100, k points = 512
-Computing trispectrum for SSC,  probe combination LLGG
-z points = 100, k points = 512
-1it [00:16, 16.45s/it]Computing trispectrum for SSC,  probe combination GLLL
-z points = 100, k points = 512
-Computing trispectrum for SSC,  probe combination GLGL
-z points = 100, k points = 512
-Computing trispectrum for SSC,  probe combination GLGG
-z points = 100, k points = 512
-2it [00:35, 18.07s/it]Computing trispectrum for SSC,  probe combination GGLL
-z points = 100, k points = 512
-Computing trispectrum for SSC,  probe combination GGGL
-z points = 100, k points = 512
-Computing trispectrum for SSC,  probe combination GGGG
-z points = 100, k points = 512
-3it [00:39, 11.77s/it]3it [00:39, 13.31s/it]
-trispectrum computed in 39.92 seconds
-3x2pt: working on probe combination  L L L L
-n_jobs =  1
-  0%|          | 0/55 [00:00<?, ?it/s]  2%|▏         | 1/55 [00:03<03:19,  3.69s/it]  4%|▎         | 2/55 [00:07<03:21,  3.79s/it]  5%|▌         | 3/55 [00:12<03:41,  4.25s/it]  7%|▋         | 4/55 [00:16<03:37,  4.27s/it]  9%|▉         | 5/55 [00:21<03:36,  4.33s/it] 11%|█         | 6/55 [00:25<03:29,  4.27s/it] 13%|█▎        | 7/55 [00:29<03:24,  4.26s/it] 15%|█▍        | 8/55 [00:33<03:20,  4.26s/it] 16%|█▋        | 9/55 [00:37<03:13,  4.20s/it] 18%|█▊        | 10/55 [00:41<03:04,  4.09s/it] 20%|██        | 11/55 [00:46<03:06,  4.25s/it] 22%|██▏       | 12/55 [00:50<03:04,  4.29s/it] 24%|██▎       | 13/55 [00:55<03:02,  4.35s/it] 25%|██▌       | 14/55 [00:59<03:00,  4.40s/it] 27%|██▋       | 15/55 [01:03<02:52,  4.32s/it] 29%|██▉       | 16/55 [01:08<02:47,  4.29s/it] 31%|███       | 17/55 [01:12<02:44,  4.34s/it] 33%|███▎      | 18/55 [01:17<02:52,  4.67s/it] 35%|███▍      | 19/55 [01:22<02:47,  4.65s/it] 36%|███▋      | 20/55 [01:27<02:44,  4.70s/it] 38%|███▊      | 21/55 [01:32<02:41,  4.76s/it] 40%|████      | 22/55 [01:37<02:38,  4.79s/it] 42%|████▏     | 23/55 [01:41<02:31,  4.75s/it] 44%|████▎     | 24/55 [01:46<02:25,  4.69s/it] 45%|████▌     | 25/55 [01:51<02:21,  4.71s/it] 47%|████▋     | 26/55 [01:55<02:17,  4.75s/it] 49%|████▉     | 27/55 [02:00<02:12,  4.72s/it] 51%|█████     | 28/55 [02:05<02:08,  4.74s/it] 53%|█████▎    | 29/55 [02:10<02:05,  4.82s/it] 55%|█████▍    | 30/55 [02:15<02:00,  4.81s/it] 56%|█████▋    | 31/55 [02:20<01:56,  4.87s/it] 58%|█████▊    | 32/55 [02:25<01:53,  4.94s/it] 60%|██████    | 33/55 [02:30<01:48,  4.93s/it] 62%|██████▏   | 34/55 [02:35<01:44,  4.96s/it] 64%|██████▎   | 35/55 [02:40<01:39,  4.99s/it] 65%|██████▌   | 36/55 [02:45<01:35,  5.03s/it] 67%|██████▋   | 37/55 [02:50<01:29,  4.99s/it] 69%|██████▉   | 38/55 [02:55<01:24,  4.96s/it] 71%|███████   | 39/55 [03:00<01:19,  4.98s/it] 73%|███████▎  | 40/55 [03:05<01:15,  5.01s/it] 75%|███████▍  | 41/55 [03:10<01:09,  4.97s/it] 76%|███████▋  | 42/55 [03:15<01:07,  5.21s/it] 78%|███████▊  | 43/55 [03:20<01:01,  5.13s/it] 80%|████████  | 44/55 [03:25<00:56,  5.13s/it] 82%|████████▏ | 45/55 [03:31<00:51,  5.17s/it] 84%|████████▎ | 46/55 [03:36<00:47,  5.24s/it] 85%|████████▌ | 47/55 [03:42<00:43,  5.38s/it] 87%|████████▋ | 48/55 [03:47<00:37,  5.43s/it] 89%|████████▉ | 49/55 [03:53<00:32,  5.46s/it] 91%|█████████ | 50/55 [03:58<00:26,  5.33s/it] 93%|█████████▎| 51/55 [04:03<00:21,  5.31s/it] 95%|█████████▍| 52/55 [04:09<00:16,  5.47s/it] 96%|█████████▋| 53/55 [04:14<00:10,  5.39s/it] 98%|█████████▊| 54/55 [04:20<00:05,  5.45s/it]100%|██████████| 55/55 [04:26<00:00,  5.55s/it]100%|██████████| 55/55 [04:26<00:00,  4.84s/it]
-SSC computed with pyccl in 4 min
-3x2pt: working on probe combination  L L G L
-n_jobs =  1
-  0%|          | 0/55 [00:00<?, ?it/s]WARNING 1025: ccl_cls.c: ccl_angular_cov_limber():: GSL ERROR: unknown error code
-WARNING 1025: ccl_cls.c: ccl_angular_cov_limber():: GSL ERROR: unknown error code
-WARNING 1025: ccl_cls.c: ccl_angular_cov_limber():: GSL ERROR: unknown error code
-WARNING 1025: ccl_cls.c: ccl_angular_cov_limber():: GSL ERROR: unknown error code
-WARNING 1025: ccl_cls.c: ccl_angular_cov_limber():: GSL ERROR: unknown error code
-WARNING 1025: ccl_cls.c: ccl_angular_cov_limber():: GSL ERROR: unknown error code
-WARNING 1025: ccl_cls.c: ccl_angular_cov_limber():: GSL ERROR: unknown error code
-WARNING 1025: ccl_cls.c: ccl_angular_cov_limber():: GSL ERROR: unknown error code
-WARNING 1025: ccl_cls.c: ccl_angular_cov_limber():: GSL ERROR: unknown error code
-WARNING 1025: ccl_cls.c: ccl_angular_cov_limber():: GSL ERROR: unknown error code
-WARNING 1025: ccl_cls.c: ccl_angular_cov_limber():: GSL ERROR: unknown error code
-WARNING 1025: ccl_cls.c: ccl_angular_cov_limber():: GSL ERROR: unknown error code
-WARNING 1025: ccl_cls.c: ccl_angular_cov_limber():: GSL ERROR: unknown error code
-WARNING 1025: ccl_cls.c: ccl_angular_cov_limber():: GSL ERROR: unknown error code
-WARNING 1025: ccl_cls.c: ccl_angular_cov_limber():: GSL ERROR: unknown error code
-WARNING 1025: ccl_cls.c: ccl_angular_cov_limber():: GSL ERROR: unknown error code
-Traceback (most recent call last):
-  File "/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/ISTF/bin/main_ISTF.py", line 281, in <module>
-    cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/covariance.py", line 425, in compute_cov
-    cov_ng_3x2pt_10D_dict = get_cov_ng_3x2pt(
-                            ^^^^^^^^^^^^^^^^^
-  File "/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/covariance.py", line 219, in get_cov_ng_3x2pt
-    cov_3x2pt_dict_8D = pyccl_cov.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], '3x2pt',
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/pyccl_cov.py", line 654, in compute_cov_ng_with_pyccl
-    cov_ng_8D_dict = compute_ng_cov_3x2pt(cosmo=cosmo_ccl,
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/pyccl_cov.py", line 263, in compute_ng_cov_3x2pt
-    compute_ng_cov_ccl(cosmo=cosmo,
-  File "/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/pyccl_cov.py", line 226, in compute_ng_cov_ccl
-    cov_ng_4D = Parallel(n_jobs=n_jobs, backend='threading')(
-                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/davide/anaconda3/envs/spaceborne/lib/python3.11/site-packages/joblib/parallel.py", line 1088, in __call__
-    while self.dispatch_one_batch(iterator):
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/davide/anaconda3/envs/spaceborne/lib/python3.11/site-packages/joblib/parallel.py", line 901, in dispatch_one_batch
-    self._dispatch(tasks)
-  File "/home/davide/anaconda3/envs/spaceborne/lib/python3.11/site-packages/joblib/parallel.py", line 819, in _dispatch
-    job = self._backend.apply_async(batch, callback=cb)
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/davide/anaconda3/envs/spaceborne/lib/python3.11/site-packages/joblib/_parallel_backends.py", line 208, in apply_async
-    result = ImmediateResult(func)
-             ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/davide/anaconda3/envs/spaceborne/lib/python3.11/site-packages/joblib/_parallel_backends.py", line 597, in __init__
-    self.results = batch()
-                   ^^^^^^^
-  File "/home/davide/anaconda3/envs/spaceborne/lib/python3.11/site-packages/joblib/parallel.py", line 288, in __call__
-    return [func(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/davide/anaconda3/envs/spaceborne/lib/python3.11/site-packages/joblib/parallel.py", line 288, in <listcomp>
-    return [func(*args, **kwargs)
-            ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/davide/anaconda3/envs/spaceborne/lib/python3.11/site-packages/pyccl/covariances.py", line 380, in angular_cl_cov_SSC
-    check(status, cosmo=cosmo_in)
-  File "/home/davide/anaconda3/envs/spaceborne/lib/python3.11/site-packages/pyccl/pyutils.py", line 89, in check
-    raise CCLError(f"Error {CLevelErrors[status]}: {msg}")
-pyccl.errors.CCLError: Error CCL_ERROR_INTEG: ccl_cls.c: ccl_angular_cov_limber(); integration error
-
-  0%|          | 0/55 [00:02<?, ?it/s]

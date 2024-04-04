@@ -171,10 +171,10 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',
         'which_ng_cov': ('SSC', 'cNG',),
-        'integration_method': 'qag_quad',  # or 'qag_quad'
+        'integration_method': 'qag_quad',  # 'spline' or 'qag_quad'
         'test_GLGL': True,  # must be set to False for actual 3x2pt runs
 
-        'load_precomputed_cov': False,
+        'load_precomputed_cov': True,
         'save_cov': False,
 
         'load_precomputed_tkka': False,

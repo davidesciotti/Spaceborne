@@ -642,8 +642,8 @@ for zi in range(zbins):
             alpha=0.6, label='wf_gamma_ccl_bnt' if zi == 0 else None)
     plt.axvline(z_means_ll_bnt[zi], ls=':', c=colors[zi])
 plt.legend()
-plt.xlabel('z')
-plt.ylabel('W_i^{gamma}(z)')
+plt.xlabel('$z$')
+plt.ylabel(r'$W_i^{\gamma}(z)$')
 
 assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically increasing'
 assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically increasing'

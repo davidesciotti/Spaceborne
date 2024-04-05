@@ -23,11 +23,10 @@ from tqdm import tqdm
 
 ROOT = os.getenv('ROOT')
 sys.path.append(f'{ROOT}/Spaceborne')
-import bin.my_module as mm
-import bin.cosmo_lib as csmlib
+import my_module as mm
+import cosmo_lib as csmlib
 import common_cfg.ISTF_fid_params as ISTF
 import common_cfg.mpl_cfg as mpl_cfg
-
 
 # update plot pars
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)

@@ -250,35 +250,20 @@ def compute_ng_cov_ccl(cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel
         raise ValueError("Invalid value for which_ng_cov. Must be 'SSC' or 'cNG'.")
 
     cov_ng_4D = np.zeros((nbl, nbl, zpairs_AB, zpairs_CD))
-    try:
-        for ij in tqdm(range(zpairs_AB)):
-            for kl in range(zpairs_CD):
-                cov_ng_4D[:, :, ij, kl] = ng_cov_func(cosmo,
-                                        tracer1=kernel_A[ind_AB[ij, -2]],
-                                        tracer2=kernel_B[ind_AB[ij, -1]],
-                                        ell=ell,
-                                        t_of_kk_a=tkka,
-                                        fsky=f_sky,
-                                        tracer3=kernel_C[ind_CD[kl, -2]],
-                                        tracer4=kernel_D[ind_CD[kl, -1]],
-                                        ell2=None,
-                                        integration_method='qag_quad',
-                                        **sigma2_B_arg)                
-    except CCLError as err:
-        print(f"CCLError: {err}\nRetrying with spline integration.")
-        for ij in tqdm(range(zpairs_AB)):
-            for kl in range(zpairs_CD):
-                cov_ng_4D[:, :, ij, kl] = ng_cov_func(cosmo,
-                                        tracer1=kernel_A[ind_AB[ij, -2]],
-                                        tracer2=kernel_B[ind_AB[ij, -1]],
-                                        ell=ell,
-                                        t_of_kk_a=tkka,
-                                        fsky=f_sky,
-                                        tracer3=kernel_C[ind_CD[kl, -2]],
-                                        tracer4=kernel_D[ind_CD[kl, -1]],
-                                        ell2=None,
-                                        integration_method='spline',
-                                        **sigma2_B_arg)    
+    for ij in tqdm(range(zpairs_AB)):
+        for kl in range(zpairs_CD):
+            cov_ng_4D[:, :, ij, kl] = ng_cov_func(cosmo,
+                                    tracer1=kernel_A[ind_AB[ij, -2]],
+                                    tracer2=kernel_B[ind_AB[ij, -1]],
+                                    ell=ell,
+                                    t_of_kk_a=tkka,
+                                    fsky=f_sky,
+                                    tracer3=kernel_C[ind_CD[kl, -2]],
+                                    tracer4=kernel_D[ind_CD[kl, -1]],
+                                    ell2=None,
+                                    integration_method=integration_method,
+                                    **sigma2_B_arg)                
+
              
 
     print(f'{which_ng_cov} computed with pyccl in {(time.perf_counter() - start_time) / 60:.0f} min')
@@ -346,7 +331,6 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     pyccl_cfg = covariance_cfg['PyCCL_cfg']
     n_samples_wf = pyccl_cfg['n_samples_wf']
-    integration_method = pyccl_cfg['integration_method']
     # this is needed only for a visual check of the cls, which are not used for SSC anyways
     has_rsd = general_cfg['has_rsd']
     has_magnification_bias = general_cfg['has_magnification_bias']
@@ -355,7 +339,6 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     # just a check on the settings
     print(f'\n****************** ccl settings ****************'
           f'\nprobe = {probe}\nwhich_ng_cov = {which_ng_cov}'
-          f'\nintegration_method = {integration_method}'
           f'\nnbl = {nbl}\nf_sky = {f_sky}\nzbins = {zbins}'
           f'\n************************************************\n')
 
@@ -692,17 +675,31 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     elif probe == '3x2pt':
         # TODO remove this if statement and use the same code for all probes
-        cov_ng_8D_dict = compute_ng_cov_3x2pt(cosmo=cosmo_ccl,
-                                              which_ng_cov=which_ng_cov,
-                                              kernel_dict=kernel_dict,
-                                              ell=ell_grid, tkka_dict=tkka_dict, f_sky=f_sky,
-                                              probe_ordering=probe_ordering,
-                                              ind_dict=ind_dict,
-                                              covariance_cfg=covariance_cfg,
-                                              cov_filename=cov_filename,
-                                              sigma2_B_tuple=sigma2_B_tuple,
-                                              integration_method=integration_method,
-                                              )
+        try:
+            cov_ng_8D_dict = compute_ng_cov_3x2pt(cosmo=cosmo_ccl,
+                                                which_ng_cov=which_ng_cov,
+                                                kernel_dict=kernel_dict,
+                                                ell=ell_grid, tkka_dict=tkka_dict, f_sky=f_sky,
+                                                probe_ordering=probe_ordering,
+                                                ind_dict=ind_dict,
+                                                covariance_cfg=covariance_cfg,
+                                                cov_filename=cov_filename,
+                                                sigma2_B_tuple=sigma2_B_tuple,
+                                                integration_method='spline',
+                                                )
+        except CCLError as err:
+            print(f"CCLError: {err}\nSpline integration failed. Retrying with qag_quad.")
+            cov_ng_8D_dict = compute_ng_cov_3x2pt(cosmo=cosmo_ccl,
+                                                which_ng_cov=which_ng_cov,
+                                                kernel_dict=kernel_dict,
+                                                ell=ell_grid, tkka_dict=tkka_dict, f_sky=f_sky,
+                                                probe_ordering=probe_ordering,
+                                                ind_dict=ind_dict,
+                                                covariance_cfg=covariance_cfg,
+                                                cov_filename=cov_filename,
+                                                sigma2_B_tuple=sigma2_B_tuple,
+                                                integration_method='qag_quad',
+                                                )
 
     else:
         raise ValueError('probe must be either LL, GG, or 3x2pt')

@@ -204,6 +204,10 @@ def compare_df_keys(dataframe, key_to_compare, value_a, value_b, num_string_colu
     df_B = dataframe[dataframe[key_to_compare] == value_b]
     arr_A = df_A.iloc[:, num_string_colums:].select_dtypes('number').values
     arr_B = df_B.iloc[:, num_string_colums:].select_dtypes('number').values
+    
+    if arr_A.shape[0] != arr_B.shape[0]:
+        raise ValueError(f"Cannot compare groups with different sizes: {arr_A.shape[0]} vs {arr_B.shape[0]}")
+
     perc_diff_df = df_A.copy()
     # ! the reference is G, this might change to G + SSC + cNG
     perc_diff_df.iloc[:, num_string_colums:] = percent_diff(arr_B, arr_A)

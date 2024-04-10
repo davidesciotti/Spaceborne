@@ -960,7 +960,6 @@ def get_cl_3D_array(wf_A, wf_B, ell_values):
 
 
 def cl_PyCCL(wf_A, wf_B, ell, zbins, p_of_k_a, cosmo, limber_integration_method='qag_quad'):
-    # instantiate cosmology
 
     is_auto_spectrum = False
     if wf_A == wf_B:

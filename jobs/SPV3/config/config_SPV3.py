@@ -29,7 +29,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-fm_and_cov_suffix = '_cNG_intfix'
+fm_and_cov_suffix = ''
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -209,14 +209,13 @@ covariance_cfg = {
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
 
-    'SSC_code': 'PyCCL',  # ! 'PySSC' or 'PyCCL' or 'Spaceborne' or 'OneCovariance'
+    'SSC_code': 'OneCovariance',  # ! 'PySSC' or 'PyCCL' or 'Spaceborne' or 'OneCovariance'
     'check_if_recently_created': False,
 
     'PyCCL_cfg': {
         'probe': '3x2pt',
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
-        'which_ng_cov': ('SSC', 'cNG'),
-        'integration_method': 'qag_quad',
+        'which_ng_cov': ('cNG', ),
         'test_GLGL': False,  # must be set to False for actual 3x2pt runs
 
         'load_precomputed_cov': True,
@@ -277,12 +276,12 @@ covariance_cfg = {
     },
 
     'OneCovariance_cfg': {
-        'which_ng_cov': ('SSC', 'cNG',),
+        'which_ng_cov': ('cNG', ),
         'load_precomputed_cov': True,  # this must be True for OneCovariance
         'use_OneCovariance_Gaussian': False,
 
-        # 'cov_path': f'{DATA_ROOT}/output/Flagship_2/covmat/OneCovariance',
-        'cov_path': f'{ROOT}/common_data/OneCovariance/output_SPV3_std',
+        'cov_path': f'{DATA_ROOT}/output/Flagship_2/covmat/OneCovariance/output_SPV3_std',
+        # 'cov_path': f'{ROOT}/common_data/OneCovariance/output_SPV3_std',
         'cov_filename': 'cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',
     }

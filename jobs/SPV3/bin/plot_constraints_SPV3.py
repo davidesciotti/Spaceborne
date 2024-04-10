@@ -420,15 +420,22 @@ custom_parameter_order_tex = mpl_cfg.general_dict['cosmo_labels_TeX'] + ['FoM']
 # Define the custom order
 custom_order = ['PyCCL', 'OneCovariance', ]
 custom_parameter_order = ['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8', 'FoM']
-color_mapping = {
-    'perc_diff_GSSCcNG_PyCCL': 'tab:blue', 
-    'perc_diff_GSSCcNG_OneCovariance': 'tab:blue',
-    'perc_diff_GcNG_PyCCL': 'tab:orange',
-    'perc_diff_GcNG_OneCovariance': 'tab:orange',
-                 }
+hatch_list = ['', '//']
 
-for which_cov_term in ['perc_diff_GSSCcNG', 'perc_diff_GcNG',]:
-# for which_cov_term in ['perc_diff_GSSCcNG',]:
+
+# TODO hatch pattern does not march the code
+# TODO include the relative uncertainties, not just the % diff
+color_mapping = {}
+for which_cov_term in ['GSSCcNG', 'GcNG', 'perc_diff_GSSCcNG', 'perc_diff_GcNG',]:
+    for ng_cov_code in ['PyCCL', 'OneCovariance', ]:
+        key = f"{which_cov_term}_{ng_cov_code}"
+        
+        if 'GSSCcNG' in key:
+            color_mapping[key] = 'tab:blue'
+        elif 'GcNG' in key:
+            color_mapping[key] = 'tab:orange'
+
+for i, which_cov_term in enumerate(['perc_diff_GSSCcNG', 'perc_diff_GcNG',]):
     df_long = pd.melt(fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] == which_cov_term],
                     id_vars=['probe', 'which_cov_term', 'ng_cov_code', 'filename_suffix', 'whose_FM', 'which_pk', 'BNT_transform', 'ell_cuts', 'which_cuts', 'center_or_min', 'fix_dz', 'fix_shear_bias', 'fix_gal_bias', 'fix_mag_bias', 'foc', 'kmax_h_over_Mpc'],
                     value_vars=['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8', 'FoM'],
@@ -447,13 +454,16 @@ for which_cov_term in ['perc_diff_GSSCcNG', 'perc_diff_GcNG',]:
 
     # Create the barplot
     barplot = sns.barplot(x='Parameter', y='Value', hue='Condition', 
-                        data=df_long, dodge=True, order=custom_parameter_order, width=0.3, palette=color_mapping)
+                        data=df_long, dodge=True, order=custom_parameter_order, 
+                        width=0.3, palette=color_mapping, edgecolor='black', hatch=hatch_list[i])
+    
+    # Add a grid to the background
+    ax.yaxis.grid(True)  # Only horizontal gridlines
+    ax.set_axisbelow(True)  # Ensure gridlines are behind the bars
         
 barplot.set_xticklabels(custom_parameter_order_tex)
 barplot.set_ylabel('relative uncertainty [%]')
 barplot.set_xlabel('')
-
-
 
 
 assert False

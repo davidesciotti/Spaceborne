@@ -85,12 +85,12 @@ covariance_cfg = cfg.covariance_cfg
 Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
-probes = ['WL', 'GC', 'XC', '3x2pt', '2x2pt']
+# probes = ['WL', 'GC', 'XC', '3x2pt', '2x2pt']
+probes = ['WL', 'GC', 'XC', '3x2pt',]
 
 
 # for covariance_cfg['SSC_code'] in ['PyCCL', 'OneCovariance', 'Spaceborne', 'PySSC']:
 for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
-    # for covariance_cfg['SSC_code'] in ('OneCovariance',  ):
 
     # check_specs.consistency_checks(general_cfg, covariance_cfg)
 
@@ -615,7 +615,6 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
 
         np.savetxt(f'{filename_fm_g}', fm_dict[f'FM_{probe}_G'])
         np.savetxt(f'{filename_fm_from_ssc_code}', fm_dict[f'FM_{probe}_G{which_ng_cov_suffix}'])
-        # np.savetxt(f'{filename_fm_from_ssc_code}', FM_dict[f'FM_{probe}_GSSCcNG'])
 
         # probe_ssc_code = covariance_cfg[f'{covariance_cfg["SSC_code"]}_cfg']['probe']
         # probe_ssc_code = 'WL' if probe_ssc_code == 'LL' else probe_ssc_code
@@ -682,7 +681,7 @@ for ssc_code_here in ssc_code_here_list:
         np.testing.assert_allclose(fm_dict_loaded[f'FM_{ssc_code_here}_{probe}_G'],
                                    fm_dict_loaded[f'FM_PySSC_{probe}_G'],
                                    rtol=1e-5, atol=0,
-                                   err_msg=f'Gaussian FMs are not equal for {ssc_code_here} and {probe}!')
+                                   err_msg=f'Gaussian FMs are not equal for {ssc_code_here} {probe}!')
 
 # compute FoM
 fom_dict = {}
@@ -719,8 +718,7 @@ for probe in probes:
         fom_dict[f'perc_diff_{ssc_code}_{probe}_{cov_b}'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
 
     # do the same for cNG
-    # for ssc_code in ['OneCovariance', 'PyCCL']:
-    for ssc_code in ['OneCovariance', ]:
+    for ssc_code in ['OneCovariance', 'PyCCL']:
         cov_a = 'G'
 
         for cov_b in ['GSSC', 'GcNG', 'GSSCcNG']:
@@ -741,17 +739,17 @@ for probe in probes:
                      #  f'FM_OneCovariance_{probe}_G',
 
                      #  f'FM_PySSC_{probe}_GSSC',
-                     # f'FM_PyCCL_{probe}_GSSC',
+                     f'FM_PyCCL_{probe}_GSSC',
                      # f'FM_PyCCL_{probe}_GcNG',
-                     # f'FM_PyCCL_{probe}_GSSCcNG',
+                     f'FM_PyCCL_{probe}_GSSCcNG',
                      # f'FM_Spaceborne_{probe}_GSSC',
-                     f'FM_OneCovariance_{probe}_GSSC',
-                     #  f'FM_OneCovariance_{probe}_GcNG',
-                     f'FM_OneCovariance_{probe}_GSSCcNG',
+                    #  f'FM_OneCovariance_{probe}_GSSC',
+                    #   f'FM_OneCovariance_{probe}_GcNG',
+                    #  f'FM_OneCovariance_{probe}_GSSCcNG',
 
-                     #  f'perc_diff_PyCCL_{probe}_GSSC',
+                      f'perc_diff_PyCCL_{probe}_GSSC',
                      #  f'perc_diff_PyCCL_{probe}_GcNG',
-                     #  f'perc_diff_PyCCL_{probe}_GSSCcNG',
+                      f'perc_diff_PyCCL_{probe}_GSSCcNG',
                      # f'perc_diff_Spaceborne_{probe}_GSSC',
                      #  f'perc_diff_OneCovariance_{probe}_GSSC',
                      # f'perc_diff_OneCovariance_{probe}_GcNG',
@@ -858,17 +856,17 @@ for i, case in enumerate(cases_to_plot):
     if f'PySSC_{probe}_G' in cases_to_plot[i]:
         cases_to_plot[i] = cases_to_plot[i].replace(f'PySSC_{probe}_G', f'{probe}_G')
 
-    cases_to_plot[i] = cases_to_plot[i].replace(f'_{probe}', f'')
-    cases_to_plot[i] = cases_to_plot[i].replace(f'FM_', f'')
-    cases_to_plot[i] = cases_to_plot[i].replace(f'_', f' ')
-    cases_to_plot[i] = cases_to_plot[i].replace(f'GSSC', f'G+SSC')
-    cases_to_plot[i] = cases_to_plot[i].replace(f'GcNG', f'G+cNG')
-    cases_to_plot[i] = cases_to_plot[i].replace(f'SSCcNG', f'SSC+cNG')
-    cases_to_plot[i] = cases_to_plot[i].replace('perc diff', '')
-    cases_to_plot[i] = cases_to_plot[i].replace('OneCov', '')
-    cases_to_plot[i] = cases_to_plot[i].replace('G+SSC+cNG', '')
-    cases_to_plot[i] = cases_to_plot[i].replace('G+SSC', '')
-    cases_to_plot[i] = cases_to_plot[i].replace('G+cNG', '')
+    # cases_to_plot[i] = cases_to_plot[i].replace(f'_{probe}', f'')
+    # cases_to_plot[i] = cases_to_plot[i].replace(f'FM_', f'')
+    # cases_to_plot[i] = cases_to_plot[i].replace(f'_', f' ')
+    # cases_to_plot[i] = cases_to_plot[i].replace(f'GSSC', f'G+SSC')
+    # cases_to_plot[i] = cases_to_plot[i].replace(f'GcNG', f'G+cNG')
+    # cases_to_plot[i] = cases_to_plot[i].replace(f'SSCcNG', f'SSC+cNG')
+    # cases_to_plot[i] = cases_to_plot[i].replace('perc diff', '')
+    # cases_to_plot[i] = cases_to_plot[i].replace('OneCov', '')
+    # cases_to_plot[i] = cases_to_plot[i].replace('G+SSC+cNG', '')
+    # cases_to_plot[i] = cases_to_plot[i].replace('G+SSC', '')
+    # cases_to_plot[i] = cases_to_plot[i].replace('G+cNG', '')
 
 plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                     param_names_label=None, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt,

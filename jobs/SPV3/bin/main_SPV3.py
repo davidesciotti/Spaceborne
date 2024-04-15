@@ -396,6 +396,7 @@ assert general_cfg['which_cuts'] == 'Vincenzo', ('to begin with, use only Vincen
                                                 'For the thesis, probably use just these')
 if general_cfg['ell_cuts']:
     assert bnt_transform, 'you should BNT transform if you want to apply ell cuts'
+
 # ! XXX old, wrong I guess
 # if bnt_transform:
     # assert general_cfg['ell_cuts'] is False, 'you should not apply ell cuts if you want to BNT transform'

@@ -380,14 +380,19 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), zbins, axis=0).T
 
         # this is a test to use the actual P(k) from the input files, but the agreement gets much worse
-        k_grid_Pk, z_grid_Pk, pk_mm_2d = mm.pk_vinc_file_to_2d_npy(general_cfg['CLOE_pk_filename'], plot_pk_z0=True)
-        pk_flipped_in_z = np.flip(pk_mm_2d, axis=1)
-        scale_factor_grid_pk = cosmo_lib.z_to_a(z_grid_Pk)[::-1]  # flip it
-        p_of_k_a = ccl.pk2d.Pk2D(a_arr=scale_factor_grid_pk, lk_arr=np.log(k_grid_Pk),
-                                 pk_arr=pk_flipped_in_z.T, is_logp=False)
+        if pyccl_cfg['which_pk_for_pyccl'] == 'CLOE':
+            cloe_pk_filename = general_cfg['CLOE_pk_filename'].format(flat_or_nonflat=general_cfg['flat_or_nonflat'], which_pk=general_cfg['which_pk'])
+            k_grid_Pk, z_grid_Pk, pk_mm_2d = mm.pk_vinc_file_to_2d_npy(cloe_pk_filename, plot_pk_z0=True)
+            pk_flipped_in_z = np.flip(pk_mm_2d, axis=1)
+            scale_factor_grid_pk = cosmo_lib.z_to_a(z_grid_Pk)[::-1]  # flip it
+            p_of_k_a = ccl.pk2d.Pk2D(a_arr=scale_factor_grid_pk, lk_arr=np.log(k_grid_Pk),
+                                    pk_arr=pk_flipped_in_z.T, is_logp=False)
+            # TODO finish implementing this
+            raise NotImplementedError('range needs to be extended to higher redshifts to match tkka grid (probably larger k range too), \
+                some other small consistency checks needed')
 
-        # TODO delete the line below to use input pk, range needs to be extended to higher redshifts to match tkka grid (probably larger k range too)
-        p_of_k_a = 'delta_matter:delta_matter'
+        elif pyccl_cfg['which_pk_for_pyccl'] == 'PyCCL':
+            p_of_k_a = 'delta_matter:delta_matter'
 
     elif general_cfg['which_forecast'] == 'ISTF':
 

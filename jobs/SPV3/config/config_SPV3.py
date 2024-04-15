@@ -131,7 +131,7 @@ general_cfg = {
     'has_rsd': False,
     'has_magnification_bias': True,
 
-    'CLOE_pk_filename': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputPS/HMCodeBar/InFiles/Flat/h/PddVsZedLogK-h_6.700e-01.dat'
+    'CLOE_pk_filename': SPV3_folder+ '/InputFiles/InputPS/{which_pk:s}/InFiles/{flat_or_nonflat:s}/h/PddVsZedLogK-h_6.700e-01.dat'
 }
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
@@ -215,8 +215,10 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
-        'which_ng_cov': ('cNG', ),
+        'which_ng_cov': ('SSC', ),
         'test_GLGL': False,  # must be set to False for actual 3x2pt runs
+        
+        'which_pk_for_pyccl': 'PyCCL',  # 'PyCCL' (the one stored in cosmo obj) or 'CLOE' (from input files - to be implemented)
 
         'load_precomputed_cov': True,
         'save_cov': True,

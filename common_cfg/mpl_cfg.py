@@ -10,18 +10,19 @@ sys.path.append(f'{ROOT}/Spaceborne')
 import bin.my_module as mm
 
 
-mpl_rcParams_dict = {'lines.linewidth': 3.5,
+mpl_rcParams_dict = {
+    # 'lines.linewidth': 3.5,
                      'font.size': 20,
                      'axes.labelsize': 'x-large',
                      'axes.titlesize': 'x-large',
                      'xtick.labelsize': 'x-large',
                      'ytick.labelsize': 'x-large',
-                     'mathtext.fontset': 'stix',
-                     'font.family': 'STIXGeneral',
+                    #  'mathtext.fontset': 'stix',
+                    #  'font.family': 'STIXGeneral',
                      'figure.figsize': (15, 10),
                      'lines.markersize': 8,
                      # 'axes.grid': True,
-                     # 'figure.constrained_layout.use': True,
+                     'figure.constrained_layout.use': True,
                      # 'axes.axisbelow': True
                      }
 

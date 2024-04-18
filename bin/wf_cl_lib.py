@@ -27,6 +27,8 @@ import my_module as mm
 import cosmo_lib as csmlib
 import common_cfg.ISTF_fid_params as ISTF
 import common_cfg.mpl_cfg as mpl_cfg
+import matplotlib.lines as mlines
+
 
 # update plot pars
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -1462,18 +1464,22 @@ def shift_nz(zgrid_nz, nz_original, dz_shifts, normalize, plot_nz=False, interpo
         z_grid_nz_shifted = np.clip(z_grid_nz_shifted, clip_min, clip_max)
         n_of_z_shifted[:, zi] = n_of_z_func(z_grid_nz_shifted)
 
+
+    if normalize:
+        integrals = simps(n_of_z_shifted, zgrid_nz, axis=0)
+        n_of_z_shifted /= integrals[None, :]
+        
     if plot_nz:
         plt.figure()
         for zi in range(zbins):
             plt.plot(zgrid_nz, nz_original[:, zi], ls='-', c=colors[zi])
             plt.plot(zgrid_nz, n_of_z_shifted[:, zi], ls='--', c=colors[zi])
-        plt.legend()
-        plt.xlabel('z')
-        plt.ylabel('n(z)')
-
-    if normalize:
-        integrals = simps(n_of_z_shifted, zgrid_nz, axis=0)
-        n_of_z_shifted /= integrals[None, :]
+        
+        legend_elements = [mlines.Line2D([], [], color='k', linestyle='-', label='Original'),
+                           mlines.Line2D([], [], color='k', linestyle='--', label='Shifted')]
+        plt.legend(handles=legend_elements)
+        plt.xlabel('$z$')
+        plt.ylabel('$n_i(z)$')
 
     return n_of_z_shifted
 

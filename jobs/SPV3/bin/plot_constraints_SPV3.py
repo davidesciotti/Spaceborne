@@ -49,6 +49,11 @@ ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
 # filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 fm_last_folder = '/jan_2024'  # /standard or /jan_2024
 ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
+ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
+
+codes_to_compare = ('OneCovariance', 'OneCovariance', 'OneCovariance')
+filename_suffix_list = ('_std_ellFix', '_dense', '_dense_LiFECls')
+which_cov_term_list = ['G', 'GSSC', 'GSSCcNG', ]
 
 codes_to_compare = ('OneCovariance', 'OneCovariance', 'OneCovariance')
 filename_suffix_list = ('_std_ellFix', '_dense', '_dense_LiFECls')

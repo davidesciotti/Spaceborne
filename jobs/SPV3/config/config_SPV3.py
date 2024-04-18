@@ -29,7 +29,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-fm_and_cov_suffix = ''
+fm_and_cov_suffix = '_dense_LiFECls'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -282,7 +282,7 @@ covariance_cfg = {
         'load_precomputed_cov': True,  # this must be True for OneCovariance
         'use_OneCovariance_Gaussian': False,
 
-        'cov_path': f'{DATA_ROOT}/output/Flagship_2/covmat/OneCovariance/output_SPV3_std',
+        'cov_path': f'{DATA_ROOT}/output/Flagship_2/covmat/OneCovariance/output_SPV3_v3_dense_LiFECls',
         # 'cov_path': f'{ROOT}/common_data/OneCovariance/output_SPV3_std',
         'cov_filename': 'cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',

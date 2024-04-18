@@ -48,12 +48,12 @@ ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
 # filename_suffix = '_cNG_intfix'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 # filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 fm_last_folder = '/jan_2024'  # /standard or /jan_2024
-ng_cov_code_plt = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
+ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
 
-codes_to_compare = ('PyCCL', 'OneCovariance')
-filename_suffix_list = ('_cNG_splinedefault', '',)
-# which_cov_term_list = ['G', 'GSSC', 'GSSCcNG']
-which_cov_term_list = ['G', 'GcNG', 'GSSCcNG', ]
+codes_to_compare = ('OneCovariance', 'OneCovariance', 'OneCovariance')
+filename_suffix_list = ('_std_ellFix', '_dense', '_dense_LiFECls')
+which_cov_term_list = ['G', 'GSSC', 'GSSCcNG', ]
+
 
 fix_dz_plt = True
 fix_shear_bias_plt = True
@@ -184,19 +184,19 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
 
                                                     if whose_FM == 'davide':
                                                         fm_path = fm_path_raw.format(BNT_transform=BNT_transform,
-                                                                                    ell_cuts=ell_cuts,
-                                                                                    fm_last_folder=fm_last_folder)
+                                                                                     ell_cuts=ell_cuts,
+                                                                                     fm_last_folder=fm_last_folder)
 
                                                         # this is because the is no "G" pickle file; the Gaussian covariance is saved withing the "GSSC" or "GSSCcNG" pickles
                                                         which_ng_cov = which_cov_term_list[-1] if which_cov_term == 'G' else which_cov_term
                                                         fm_pickle_name = fm_pickle_name_raw.format(which_ng_cov=which_ng_cov,
-                                                                                                EP_or_ED=EP_or_ED,
-                                                                                                zbins=zbins,
-                                                                                                ML=ML, ZL=ZL, MS=MS, ZS=ZS,
-                                                                                                specs_str=specs_str,
-                                                                                                which_pk=which_pk,
-                                                                                                ng_cov_code=ng_cov_code,
-                                                                                                filename_suffix=filename_suffix)
+                                                                                                   EP_or_ED=EP_or_ED,
+                                                                                                   zbins=zbins,
+                                                                                                   ML=ML, ZL=ZL, MS=MS, ZS=ZS,
+                                                                                                   specs_str=specs_str,
+                                                                                                   which_pk=which_pk,
+                                                                                                   ng_cov_code=ng_cov_code,
+                                                                                                   filename_suffix=filename_suffix)
                                                         if ell_cuts:
                                                             fm_path += f'/{which_cuts}/ell_{center_or_min}{fm_last_folder}'
                                                             fm_pickle_name = fm_pickle_name.replace(f'{filename_suffix}.pickle',
@@ -266,7 +266,7 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
                                                         mag_bias_perc_prior = None
 
                                                     fm, fiducials_dict = mm.mask_fm_v2(fm, fiducials_dict, names_params_to_fix,
-                                                                                    remove_null_rows_cols=True)
+                                                                                       remove_null_rows_cols=True)
 
                                                     param_names = list(fiducials_dict.keys())
                                                     cosmo_param_names = list(fiducials_dict.keys())[:num_params_tokeep]
@@ -281,7 +281,7 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
 
                                                         # go from sigma_b / b_fid to sigma_b
                                                         gal_bias_idxs = [param_names.index(gal_bias_param_name)
-                                                                        for gal_bias_param_name in gal_bias_param_names]
+                                                                         for gal_bias_param_name in gal_bias_param_names]
 
                                                         gal_bias_fid_values = np.array(list(fiducials_dict.values()))[
                                                             gal_bias_idxs]
@@ -301,16 +301,16 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
 
                                                             # get the covariance matrix (careful on how you cut the FM!!)
                                                             fm_idxs_tokeep = [list(fiducials_dict.keys()).index(param) for param in
-                                                                            params_tot_list]
+                                                                              params_tot_list]
                                                             cov = np.linalg.inv(fm)[fm_idxs_tokeep, :][:, fm_idxs_tokeep]
 
                                                             plot_utils.contour_plot_chainconsumer(cov, trimmed_fid_dict)
 
                                                     # ! compute uncertainties from fm
                                                     uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict,
-                                                                                    which_uncertainty='marginal',
-                                                                                    normalize=True,
-                                                                                    percent_units=True)[:num_params_tokeep]
+                                                                                       which_uncertainty='marginal',
+                                                                                       normalize=True,
+                                                                                       percent_units=True)[:num_params_tokeep]
 
                                                     # compute the FoM
                                                     w0wa_idxs = param_names.index('wz'), param_names.index('wa')
@@ -326,23 +326,23 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
                                                         correlation_dict[which_pk] = corr_mat
 
                                                     df_columns_names = string_columns + [param_name for param_name in
-                                                                                        fiducials_dict.keys()][
+                                                                                         fiducials_dict.keys()][
                                                         :num_params_tokeep] + ['FoM']
 
                                                     # this is a list of lists just to have a 'row list' instead of a 'column list',
                                                     # I still haven't figured out the problem, but in this way it works
                                                     df_columns_values = [
                                                         [probe, which_cov_term, ng_cov_code, filename_suffix, whose_FM, which_pk, BNT_transform, ell_cuts, which_cuts,
-                                                        center_or_min, fix_dz, fix_shear_bias, fix_gal_bias, fix_mag_bias, foc, kmax_h_over_Mpc] +
+                                                         center_or_min, fix_dz, fix_shear_bias, fix_gal_bias, fix_mag_bias, foc, kmax_h_over_Mpc] +
                                                         uncert_fm.tolist() + [fom]]
 
                                                     assert len(df_columns_names) == len(
                                                         df_columns_values[0]), 'Wrong number of columns!'
 
                                                     fm_uncert_df_to_concat = pd.DataFrame(df_columns_values,
-                                                                                        columns=df_columns_names)
+                                                                                          columns=df_columns_names)
                                                     fm_uncert_df = pd.concat([fm_uncert_df, fm_uncert_df_to_concat],
-                                                                            ignore_index=True)
+                                                                             ignore_index=True)
                                                     fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
 
 # ! ============================================================ PLOTS ============================================================
@@ -381,15 +381,17 @@ for probe_toplot in probes:
                                              which_cov_term_list[1], num_string_columns)
     fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
                                              'GSSCcNG', num_string_columns)
-    
+
     # check that the G term is the same, all other entries being the same
     g_rows_df = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] == 'G']
     g_rows_arr = g_rows_df.iloc[:, num_string_columns:].select_dtypes('number').values
     for i in range(1, g_rows_arr.shape[0]):
         np.testing.assert_allclose(g_rows_arr[0], g_rows_arr[i], rtol=1e-3)
-        
+
     # drop G entry for clearer plot
-    fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term']!= 'G']
+    fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'G']
+    fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GSSC']
+    fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GSSCcNG']
 
     if divide_fom_by_10_plt:
         mask = ~fm_uncert_df_toplot['which_cov_term'].str.startswith('perc_diff')
@@ -412,39 +414,55 @@ for probe_toplot in probes:
     # plt.savefig(f'/home/davide/Documenti/Science/Talks/2024_03_20 - Waterloo/{probe_toplot}_SPV3_GSSCcNG.png', bbox_inches='tight', dpi=300)
 
 
-
 plt.figure(figsize=(12, 7))
 ax = plt.gca()
 offset = 0.2  # Adjust this offset as needed for your dataset
 custom_parameter_order_tex = mpl_cfg.general_dict['cosmo_labels_TeX'] + ['FoM']
 # Define the custom order
-custom_order = ['PyCCL', 'OneCovariance', ]
 custom_parameter_order = ['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8', 'FoM']
-hatch_list = ['', '//']
+hatch_list = ['', '//', '', '//']
 
 
 # TODO hatch pattern does not march the code
 # TODO include the relative uncertainties, not just the % diff
+
 color_mapping = {}
-for which_cov_term in ['GSSCcNG', 'GcNG', 'perc_diff_GSSCcNG', 'perc_diff_GcNG',]:
+for which_cov_term in ['GSSCcNG', 'GSSC', 'perc_diff_GSSCcNG', 'perc_diff_GSSC',]:
     for ng_cov_code in ['PyCCL', 'OneCovariance', ]:
         key = f"{which_cov_term}_{ng_cov_code}"
-        
+
         if 'GSSCcNG' in key:
             color_mapping[key] = 'tab:blue'
-        elif 'GcNG' in key:
+        else:
             color_mapping[key] = 'tab:orange'
 
-for i, which_cov_term in enumerate(['perc_diff_GSSCcNG', 'perc_diff_GcNG',]):
+hatch_mapping = {}
+for which_cov_term in ['GSSCcNG', 'GSSC', 'perc_diff_GSSCcNG', 'perc_diff_GSSC',]:
+    for ng_cov_code in ['PyCCL', 'OneCovariance', ]:
+        key = f"{which_cov_term}_{ng_cov_code}"
+
+        if 'PyCCL' in key:
+            hatch_mapping[key] = ''
+        else:
+            hatch_mapping[key] = '//'
+
+
+fm_uncert_df_toplot.loc[fm_uncert_df_toplot['ng_cov_code'] == 'OneCovariance', 'hatch'] = '//'
+fm_uncert_df_toplot.loc[fm_uncert_df_toplot['ng_cov_code'] == 'PyCCL', 'hatch'] = ''
+
+
+for i, which_cov_term in enumerate(['perc_diff_GSSCcNG', 'perc_diff_GSSC',]):
+
     df_long = pd.melt(fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] == which_cov_term],
-                    id_vars=['probe', 'which_cov_term', 'ng_cov_code', 'filename_suffix', 'whose_FM', 'which_pk', 'BNT_transform', 'ell_cuts', 'which_cuts', 'center_or_min', 'fix_dz', 'fix_shear_bias', 'fix_gal_bias', 'fix_mag_bias', 'foc', 'kmax_h_over_Mpc'],
-                    value_vars=['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8', 'FoM'],
-                    var_name='Parameter',
-                    value_name='Value')
+                      id_vars=['probe', 'which_cov_term', 'ng_cov_code', 'filename_suffix', 'whose_FM', 'which_pk', 'BNT_transform', 'ell_cuts',
+                               'which_cuts', 'center_or_min', 'fix_dz', 'fix_shear_bias', 'fix_gal_bias', 'fix_mag_bias', 'foc', 'kmax_h_over_Mpc', 'hatch'],
+                      value_vars=['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8', 'FoM'],
+                      var_name='Parameter',
+                      value_name='Value')
 
     df_long['Condition'] = df_long.apply(
         lambda row: f"{row['which_cov_term']}_{row['ng_cov_code']}", axis=1
-)
+    )
 
     # # use categorical data type for 'Condition' with custom order
     # df_long['Condition'] = pd.Categorical(df_long['ng_cov_code'], categories=custom_order, ordered=True)
@@ -453,20 +471,21 @@ for i, which_cov_term in enumerate(['perc_diff_GSSCcNG', 'perc_diff_GcNG',]):
     df_long_sorted = df_long.sort_values('Condition')
 
     # Create the barplot
-    barplot = sns.barplot(x='Parameter', y='Value', hue='Condition', 
-                        data=df_long, dodge=True, order=custom_parameter_order, 
-                        width=0.3, palette=color_mapping, edgecolor='black', hatch=hatch_list[i])
-    
-    # Add a grid to the background
-    ax.yaxis.grid(True)  # Only horizontal gridlines
-    ax.set_axisbelow(True)  # Ensure gridlines are behind the bars
-        
+    barplot = sns.barplot(x='Parameter', y='Value', hue='Condition',
+                          data=df_long, dodge=True, order=custom_parameter_order,
+                          width=0.3, palette=color_mapping, edgecolor='black')
+
+
+# Add a grid to the background
+ax.yaxis.grid(True)  # Only horizontal gridlines
+ax.set_axisbelow(True)  # Ensure gridlines are behind the bars
+
 barplot.set_xticklabels(custom_parameter_order_tex)
 barplot.set_ylabel('relative uncertainty [%]')
 barplot.set_xlabel('')
 
 
-assert False
+assert False, 'stop here'
 
 # Plotting with seaborn
 sns.set(style="whitegrid")

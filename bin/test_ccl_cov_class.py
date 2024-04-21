@@ -166,7 +166,12 @@ ccl_obj.save_gal_bias_table_ascii(filename=gal_bias_table_ascii_name)
 ccl_obj.set_mag_bias_tuple(has_magnification_bias=general_cfg['has_magnification_bias'], maglim=maglim)
 
 
-
+# set kernel arrays and objects
+ccl_obj.set_kernel_obj(general_cfg['has_rsd'], covariance_cfg['PyCCL_cfg']['n_samples_wf'])
+ccl_obj.set_kernel_arr(z_grid_wf = ccl_obj.zgrid_nz, has_magnification_bias=general_cfg['has_magnification_bias'])
 
 for zi in range(zbins):
-    plt.plot(ccl_obj.mag_bias_tuple[0], ccl_obj.mag_bias_tuple[1][:, zi], color=colors[zi], label=f'z={zi}')
+    plt.plot(ccl_obj.zgrid_nz, ccl_obj.wf_galaxy_w_gal_bias_arr[:, zi], color=colors[zi], label=f'lensing')
+    plt.plot(ccl_obj.zgrid_nz, ccl_obj.wf_delta_arr[:, zi], color=colors[zi], label=f'lensing', ls=':')
+    plt.plot(ccl_obj.zgrid_nz, ccl_obj.wf_mu_arr[:, zi], color=colors[zi], label=f'lensing', ls=':')
+    # plt.plot(ccl_obj.zgrid_nz, ccl_obj.wf_ia_arr[:, zi], color=colors[zi], label=f'lensing')

@@ -390,6 +390,58 @@ class PycclClass():
         gal_bias_table = np.hstack((self.zgrid_nz.reshape(-1, 1), self.gal_bias_2d))
         np.savetxt(filename, gal_bias_table)
 
+    def set_mag_bias_tuple(self, has_magnification_bias, maglim):
+
+        if has_magnification_bias:
+            # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
+            mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(self.zgrid_nz, maglim=maglim, poly_fit_values=None)
+            mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), self.zbins, axis=0).T
+            self.mag_bias_tuple = (self.zgrid_nz, mag_bias_2d)
+        else:
+            # this is the correct way to set the magnification bias values so that the actual bias is 1, ant the corresponding
+            # wf_mu is zero (which is, in theory, the case mag_bias_tuple=None, which however causes pyccl to crash!)
+            # mag_bias_2d = (np.ones_like(gal_bias_2d) * + 2) / 5
+            # mag_bias_tuple = (zgrid_nz, mag_bias_2d)
+            self.mag_bias_tuple = None
+
+    def set_kernel_obj(self, has_rsd, n_samples_wf):
+
+        self.wf_lensing_obj = wf_cl_lib.wf_ccl(self.zgrid_nz, 'lensing', 'with_IA', self.flat_fid_pars_dict, self.cosmo_ccl, self.nz_tuple,
+                                               ia_bias_tuple=self.ia_bias_tuple, gal_bias_tuple=self.gal_bias_tuple,
+                                               mag_bias_tuple=self.mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=True, n_samples=n_samples_wf)
+        self.wf_galaxy_obj = wf_cl_lib.wf_ccl(self.zgrid_nz, 'galaxy', 'with_galaxy_bias', self.flat_fid_pars_dict, self.cosmo_ccl, self.nz_tuple,
+                                              ia_bias_tuple=self.ia_bias_tuple, gal_bias_tuple=self.gal_bias_tuple,
+                                              mag_bias_tuple=self.mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=True, n_samples=n_samples_wf)
+
+    def set_kernel_arr(self, has_rsd, has_magnification_bias, n_samples_wf):
+        
+        # TODO more elegant to extract the lensing array "manually as done below for the gal bias one"
+        self.wf_lensing_arr = wf_cl_lib.wf_ccl(self.zgrid_nz, 'lensing', 'with_IA', self.flat_fid_pars_dict, self.cosmo_ccl, self.nz_tuple,
+                                               ia_bias_tuple=self.ia_bias_tuple, gal_bias_tuple=self.gal_bias_tuple,
+                                               mag_bias_tuple=self.mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=False, n_samples=n_samples_wf)
+        
+        # ! manually construct galaxy = delta + magnification radial kernel
+        a_arr = cosmo_lib.z_to_a(self.zgrid_nz)
+        comoving_distance = ccl.comoving_radial_distance(self.cosmo_ccl, a_arr)
+
+        wf_galaxy_tot_arr = np.asarray([self.wf_galaxy_obj[zbin_idx].get_kernel(comoving_distance)
+                                       for zbin_idx in range(self.zbins)])
+        self.wf_delta_arr = wf_galaxy_tot_arr[:, 0, :].T
+        self.wf_mu_arr = wf_galaxy_tot_arr[:, -1, :].T if has_magnification_bias else np.zeros_like(self.wf_delta_arr)
+
+        gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias!)'
+        # in the case of ISTF, the galaxt bias is bin-per-bin and is therefore included in the kernels. Add it here
+        # for a fair comparison with vincenzo's kernels, in the plot.
+        # * Note that the galaxy bias is included in the wf_ccl_obj in any way, both in ISTF and SPV3 cases! It must
+        # * in fact be passed to the angular_cov_SSC function
+        self.wf_galaxy_arr = self.wf_delta_arr + self.wf_mu_arr
+        
+        self.wf_delta_with_gal_bias_arr = self.wf_delta_arr * self.gal_bias_2d
+        self.wf_galaxy_with_gal_bias_arr = self.wf_delta_with_gal_bias_arr + self.wf_mu_arr
+        
+        
+    # ! ==========================================================================================================================================================================
+
     def compute_cov_ng_with_pyccl(self, fid_pars_dict, probe, which_ng_cov, ell_grid, general_cfg,
                                   covariance_cfg, cov_filename):
         # ! settings

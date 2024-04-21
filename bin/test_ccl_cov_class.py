@@ -127,11 +127,12 @@ ccl_obj.check_nz_tuple(zbins)
 # set ia_bias
 ccl_obj.set_ia_bias_tuple()
 
+# TODO here I'm still setting some cfgs, which do not go in the Class init
 ccl_obj.zbins = zbins  # TODO is this inelegant?
+maglim = general_cfg['magcut_source'] / 10
 
 # SET GALAXY BIAS
 if general_cfg['which_forecast'] == 'SPV3':
-    maglim = general_cfg['magcut_source'] / 10
     ccl_obj.set_gal_bias_tuple_spv3(maglim=maglim)
 
 
@@ -157,6 +158,15 @@ elif general_cfg['which_forecast'] == 'SPV3' and pyccl_cfg['which_pk_for_pyccl']
 elif general_cfg['which_forecast'] == 'ISTF':
     ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
 
-
+# save gal bias for Robert - not needed at the moment
 gal_bias_table_ascii_name = f'{covariance_cfg["nofz_folder"]}/gal_bias_table_{general_cfg["which_forecast"]}.ascii'
 ccl_obj.save_gal_bias_table_ascii(filename=gal_bias_table_ascii_name)
+
+# set mag bias
+ccl_obj.set_mag_bias_tuple(has_magnification_bias=general_cfg['has_magnification_bias'], maglim=maglim)
+
+
+
+
+for zi in range(zbins):
+    plt.plot(ccl_obj.mag_bias_tuple[0], ccl_obj.mag_bias_tuple[1][:, zi], color=colors[zi], label=f'z={zi}')

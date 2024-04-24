@@ -37,8 +37,9 @@ def plot_dominant_array_element(arrays_dict, tab_colors, elements_auto, elements
     Colors are assigned based on the array with the dominant component at each position.
     If no component is dominant (all are zero), the color will be white.
     """
-    
-    centers = [elements_auto // 2, elements_auto + elements_cross // 2, elements_auto + elements_cross + elements_auto // 2]
+
+    centers = [elements_auto // 2, elements_auto + elements_cross //
+               2, elements_auto + elements_cross + elements_auto // 2]
     labels = ['WL', 'GGL', 'GCph']
 
     # Stack arrays along a new dimension and calculate the absolute values
@@ -80,8 +81,7 @@ def plot_dominant_array_element(arrays_dict, tab_colors, elements_auto, elements
         plt.text(-1.5, x, label, va='center', ha='right', rotation='vertical')
 
     plt.show()
-    
-    
+
 
 def cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering):
     cov_3x2pt_dict_10D = {}
@@ -90,7 +90,7 @@ def cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_orde
             cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = cov_4D_to_6D_blocks(
                 cov_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
                 nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
-    return cov_3x2pt_dict_10D        
+    return cov_3x2pt_dict_10D
 
 
 def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
@@ -204,7 +204,7 @@ def compare_df_keys(dataframe, key_to_compare, value_a, value_b, num_string_colu
     df_B = dataframe[dataframe[key_to_compare] == value_b]
     arr_A = df_A.iloc[:, num_string_colums:].select_dtypes('number').values
     arr_B = df_B.iloc[:, num_string_colums:].select_dtypes('number').values
-    
+
     if arr_A.shape[0] != arr_B.shape[0]:
         raise ValueError(f"Cannot compare groups with different sizes: {arr_A.shape[0]} vs {arr_B.shape[0]}")
 
@@ -1467,7 +1467,9 @@ def cl_3D_to_2D_or_1D_slow(cl_3D, ind, is_auto_spectrum, use_triu_row_major, con
 
     return cl_1D
 
+
 import numpy as np
+
 
 def cl_3D_to_2D_or_1D(cl_3D, ind, is_auto_spectrum, use_triu_row_major, convert_to_2D, block_index):
     """ reshape from (nbl, zbins, zbins) to (nbl, zpairs), according to the ordering given in the ind file
@@ -1498,9 +1500,8 @@ def cl_3D_to_2D_or_1D(cl_3D, ind, is_auto_spectrum, use_triu_row_major, convert_
     order = 'C' if block_index in ['ell', 'vincenzo'] else 'F' if block_index in ['ij', 'sylvain'] else None
     if order is None:
         raise ValueError('block_index must be either "ij" or "ell"')
-    
-    return cl_2D.flatten(order=order)
 
+    return cl_2D.flatten(order=order)
 
 
 @njit
@@ -1820,6 +1821,7 @@ def covariance_einsum(cl_5d, noise_5d, f_sky, ell_values, delta_ell, return_only
 
     return cov_10d
 
+
 def covariance_einsum_split(cl_5d, noise_5d, f_sky, ell_values, delta_ell, return_only_diagonal_ells=False):
     """
     computes the 10-dimensional covariance matrix, of shape
@@ -1846,7 +1848,7 @@ def covariance_einsum_split(cl_5d, noise_5d, f_sky, ell_values, delta_ell, retur
     cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]
     noise_LL_5D = noise_3x2pt_5D[0, 0, ...][np.newaxis, np.newaxis, ...]
     cov_WL_6D = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_values, delta_ell)[0, 0, 0, 0, ...]
-    
+
     KiDS implementation (from Robert's email, to be checked in the relevant paper):
     Regarding the Gaussian term. Yes the Delta\ell is missing: 
     the code sums over the bandwidth explicitely and does not assume that the 
@@ -1874,11 +1876,11 @@ def covariance_einsum_split(cl_5d, noise_5d, f_sky, ell_values, delta_ell, retur
     term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', cl_5d, cl_5d)
     term_2 = np.einsum('ADLil, BCLjk -> ABCDLijkl', cl_5d, cl_5d)
     cov_9d_sva = np.einsum('ABCDLijkl, L -> ABCDLijkl', term_1 + term_2, prefactor)
-    
+
     term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', noise_5d, noise_5d)
     term_2 = np.einsum('ADLil, BCLjk -> ABCDLijkl', noise_5d, noise_5d)
     cov_9d_sn = np.einsum('ABCDLijkl, L -> ABCDLijkl', term_1 + term_2, prefactor)
-    
+
     term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', cl_5d, noise_5d)
     term_2 = np.einsum('ACLik, BDLjl -> ABCDLijkl', noise_5d, cl_5d)
     term_3 = np.einsum('ADLil, BCLjk -> ABCDLijkl', cl_5d, noise_5d)
@@ -1892,16 +1894,17 @@ def covariance_einsum_split(cl_5d, noise_5d, f_sky, ell_values, delta_ell, retur
 
     n_probes = cov_9d_sva.shape[0]
     zbins = cov_9d_sva.shape[-1]
-    
+
     cov_10d_sva = np.zeros((n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins))
     cov_10d_sn = np.zeros((n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins))
     cov_10d_mix = np.zeros((n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins))
-    
+
     cov_10d_sva[:, :, :, :, np.arange(nbl), np.arange(nbl), ...] = cov_9d_sva[:, :, :, :, np.arange(nbl), ...]
     cov_10d_sn[:, :, :, :, np.arange(nbl), np.arange(nbl), ...] = cov_9d_sn[:, :, :, :, np.arange(nbl), ...]
     cov_10d_mix[:, :, :, :, np.arange(nbl), np.arange(nbl), ...] = cov_9d_mix[:, :, :, :, np.arange(nbl), ...]
 
     return cov_10d_sva, cov_10d_sn, cov_10d_mix
+
 
 def expand_dims_sijkl(sijkl, zbins):
     n_probes = 2
@@ -3108,7 +3111,7 @@ def build_noise(zbins, nProbes, sigma_eps2, ng, EP_or_ED='EP'):
     ng = number of galaxies per arcmin^2 (constant, = 30 in IST:F 2020)
     n_bar = # of gal per bin
     """
-    conversion_factor = 11818102.860035626  # deg to arcmin^2
+    conversion_factor = (180 / np.pi * 60)**2  # deg^2 to arcmin^2
 
     # if ng is a number, n_bar will be ng/zbins and the bins have to be equipopulated
     if type(ng) == int or type(ng) == float:

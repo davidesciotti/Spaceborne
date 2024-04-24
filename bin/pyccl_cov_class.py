@@ -259,7 +259,7 @@ class PycclClass():
 
         return
 
-    def compute_ng_cov_ccl(self, cosmo, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka, f_sky,
+    def compute_ng_cov_ccl(self, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka, f_sky,
                            ind_AB, ind_CD, sigma2_B_tuple, integration_method):
         zpairs_AB = ind_AB.shape[0]
         zpairs_CD = ind_CD.shape[0]
@@ -296,7 +296,7 @@ class PycclClass():
 
         return cov_ng_4D
 
-    def compute_ng_cov_3x2pt(self, cosmo, which_ng_cov, kernel_dict, ell, tkka_dict, f_sky, integration_method,
+    def compute_ng_cov_3x2pt(self, which_ng_cov, kernel_dict, ell, tkka_dict, f_sky, integration_method,
                              probe_ordering, ind_dict, sigma2_B_tuple, covariance_cfg, cov_filename):
 
         pyccl_cfg = covariance_cfg['PyCCL_cfg']
@@ -309,20 +309,20 @@ class PycclClass():
 
                     print('3x2pt: working on probe combination ', probe_a, probe_b, probe_c, probe_d)
                     cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
-                        compute_ng_cov_ccl(cosmo=cosmo,
-                                           which_ng_cov=which_ng_cov,
-                                           kernel_A=kernel_dict[probe_a],
-                                           kernel_B=kernel_dict[probe_b],
-                                           kernel_C=kernel_dict[probe_c],
-                                           kernel_D=kernel_dict[probe_d],
-                                           ell=ell,
-                                           tkka=tkka_dict[probe_a, probe_b, probe_c, probe_d],
-                                           f_sky=f_sky,
-                                           ind_AB=ind_dict[probe_a + probe_b],
-                                           ind_CD=ind_dict[probe_c + probe_d],
-                                           sigma2_B_tuple=sigma2_B_tuple,
-                                           integration_method=integration_method,
-                                           ))
+                        self.compute_ng_cov_ccl(cosmo=self.cosmo,
+                                                which_ng_cov=which_ng_cov,
+                                                kernel_A=kernel_dict[probe_a],
+                                                kernel_B=kernel_dict[probe_b],
+                                                kernel_C=kernel_dict[probe_c],
+                                                kernel_D=kernel_dict[probe_d],
+                                                ell=ell,
+                                                tkka=tkka_dict[probe_a, probe_b, probe_c, probe_d],
+                                                f_sky=f_sky,
+                                                ind_AB=ind_dict[probe_a + probe_b],
+                                                ind_CD=ind_dict[probe_c + probe_d],
+                                                sigma2_B_tuple=sigma2_B_tuple,
+                                                integration_method=integration_method,
+                                                ))
 
                     # save only the upper triangle blocks
                     if pyccl_cfg['save_cov']:
@@ -353,8 +353,6 @@ class PycclClass():
         assert isinstance(self.nz_tuple, tuple), 'nz_tuple must be a tuple'
         assert self.nz_tuple[1].shape == (len(self.zgrid_nz), zbins), \
             'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
-
-        # ! ccl kernels
 
     def set_ia_bias_tuple(self):
 
@@ -430,8 +428,22 @@ class PycclClass():
                                                                      mag_bias=mag_bias_arg,
                                                                      n_samples=n_samples_wf))
 
+    def set_cls(self, ell_grid, p_of_k_a, limber_integration_method):
+
+        self.ell_grid = ell_grid
+        self.cl_ll_3d = wf_cl_lib.cl_PyCCL(self.wf_lensing_obj, self.wf_lensing_obj, ell_grid, self.zbins,
+                                           p_of_k_a=p_of_k_a, cosmo=self.cosmo_ccl,
+                                           limber_integration_method=limber_integration_method)
+        self.cl_gl_3d = wf_cl_lib.cl_PyCCL(self.wf_galaxy_obj, self.wf_lensing_obj, ell_grid, self.zbins,
+                                           p_of_k_a=p_of_k_a, cosmo=self.cosmo_ccl,
+                                           limber_integration_method=limber_integration_method)
+        self.cl_gg_3d = wf_cl_lib.cl_PyCCL(self.wf_galaxy_obj, self.wf_galaxy_obj, ell_grid, self.zbins,
+                                           p_of_k_a=p_of_k_a, cosmo=self.cosmo_ccl,
+                                           limber_integration_method=limber_integration_method)
+
     def set_kernel_arr(self, z_grid_wf, has_magnification_bias):
 
+        self.z_grid_wf = z_grid_wf
         a_arr = cosmo_lib.z_to_a(z_grid_wf)
         comoving_distance = ccl.comoving_radial_distance(self.cosmo_ccl, a_arr)
 
@@ -440,8 +452,6 @@ class PycclClass():
 
         wf_galaxy_tot_arr = np.asarray([self.wf_galaxy_obj[zbin_idx].get_kernel(comoving_distance)
                                        for zbin_idx in range(self.zbins)])
-
-        self.z_grid_wf = z_grid_wf
 
         # lensing
         self.wf_gamma_arr = wf_lensing_tot_arr[:, 0, :].T
@@ -461,6 +471,61 @@ class PycclClass():
 
     # ! ==========================================================================================================================================================================
 
+    def set_sigma2_b(self, zmin, zmax, zsteps, f_sky, pyccl_cfg):
+
+        self.a_grid_sigma2_b = np.linspace(cosmo_lib.z_to_a(zmax),
+                                           cosmo_lib.z_to_a(zmin),
+                                           zsteps)
+        self.z_grid_sigma2_b = cosmo_lib.z_to_a(self.a_grid_sigma2_b)[::-1]
+
+        if pyccl_cfg['which_sigma2_B'] == 'mask':
+
+            print('Computing sigma2_B from mask')
+
+            area_deg2 = pyccl_cfg['area_deg2_mask']
+            nside = pyccl_cfg['nside_mask']
+
+            assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(area_deg2), abs_value=True) < 1, 'f_sky is not correct'
+
+            ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=area_deg2, nside=nside))
+            cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=area_deg2, nside=nside))
+
+            # normalization has been checked from https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
+            # and is the same as CSST paper https://zenodo.org/records/7813033
+            cl_mask_norm = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * f_sky)**2
+
+            sigma2_B = ccl.covariances.sigma2_B_from_mask(
+                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, mask_wl=cl_mask_norm, p_of_k_a='delta_matter:delta_matter')
+
+            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_B)
+
+        elif pyccl_cfg['which_sigma2_B'] == 'spaceborne':
+
+            print('Computing sigma2_B with Spaceborne, using input mask')
+
+            area_deg2 = pyccl_cfg['area_deg2_mask']
+            nside = pyccl_cfg['nside_mask']
+
+            assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(area_deg2), abs_value=True) < 1, 'f_sky is not correct'
+
+            ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=area_deg2, nside=nside))
+            cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=area_deg2, nside=nside))
+
+            k_grid_tkka = np.geomspace(pyccl_cfg['k_grid_tkka_min'],
+                                       pyccl_cfg['k_grid_tkka_max'],
+                                       5000)
+
+            # ! I spoke to Fabien and this is indeed an oversimplification
+            sigma2_B = np.array([sigma2_SSC.sigma2_func(zi, zi, k_grid_tkka, self.cosmo_ccl, 'mask', ell_mask=ell_mask, cl_mask=cl_mask)
+                                for zi in tqdm(self.z_grid_sigma2_b)])  # if you pass the mask, you don't need to divide by fsky
+            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_B[::-1])
+
+        elif pyccl_cfg['which_sigma2_B'] == None:
+            self.sigma2_b_tuple = None
+
+        else:
+            raise ValueError('which_sigma2_B must be either mask, spaceborne or None')
+
     def compute_cov_ng_with_pyccl(self, fid_pars_dict, probe, which_ng_cov, ell_grid, general_cfg,
                                   covariance_cfg, cov_filename):
         # ! settings
@@ -475,6 +540,7 @@ class PycclClass():
         # this is needed only for a visual check of the cls, which are not used for SSC anyways
         has_rsd = general_cfg['has_rsd']
         has_magnification_bias = general_cfg['has_magnification_bias']
+        n_of_z_load = general_cfg['n_of_z_load']
         # ! settings
 
         # just a check on the settings
@@ -483,86 +549,72 @@ class PycclClass():
               f'\nnbl = {nbl}\nf_sky = {f_sky}\nzbins = {zbins}'
               f'\n************************************************\n')
 
-        self.check_specs()
+        # self.check_specs()
 
         # get number of redshift pairs - where??
         zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
         ind_auto = ind[:zpairs_auto, :]
         ind_cross = ind[zpairs_auto:zpairs_auto + zpairs_cross, :]
 
+        # set n_z
+        self.set_nz(n_of_z_load)
+        self.check_nz_tuple(zbins)
+
+        # set ia_bias
+        self.set_ia_bias_tuple()
+
+        # TODO here I'm still setting some cfgs, which do not go in the Class init
+        self.zbins = zbins  # TODO is this inelegant?
+        maglim = general_cfg['magcut_source'] / 10
+
+        # gal bias
         if general_cfg['which_forecast'] == 'SPV3':
-
-            maglim = general_cfg['magcut_source'] / 10
-            set_gal_bias_tuple_spv3(maglim=maglim)
-
-            # this is a test to use the actual P(k) from the input files, but the agreement gets much worse
-            if pyccl_cfg['which_pk_for_pyccl'] == 'CLOE':
-                cloe_pk_filename = general_cfg['CLOE_pk_filename'].format(
-                    flat_or_nonflat=general_cfg['flat_or_nonflat'], which_pk=general_cfg['which_pk'])
-                self.p_of_k_a = self.pk_obj_from_file(pk_filename=cloe_pk_filename)
-                # TODO finish implementing this
-                raise NotImplementedError('range needs to be extended to higher redshifts to match tkka grid (probably larger k range too), \
-                    some other small consistency checks needed')
-
-            elif pyccl_cfg['which_pk_for_pyccl'] == 'PyCCL':
-                self.p_of_k_a = 'delta_matter:delta_matter'
+            self.set_gal_bias_tuple_spv3(maglim=maglim)
 
         elif general_cfg['which_forecast'] == 'ISTF':
-
-            istf_bias_func = istf_bias_func_dict[general_cfg['bias_function']]
+            bias_func_str = general_cfg['bias_function']
             bias_model = general_cfg['bias_model']
+            self.set_gal_bias_tuple_istf(bias_function_str=bias_func_str, bias_model=bias_model)
 
+        # set pk
+        # this is a test to use the actual P(k) from the input files, but the agreement gets much worse
+        if general_cfg['which_forecast'] == 'SPV3' and pyccl_cfg['which_pk_for_pyccl'] == 'CLOE':
+            cloe_pk_filename = general_cfg['CLOE_pk_filename'].format(
+                flat_or_nonflat=general_cfg['flat_or_nonflat'], which_pk=general_cfg['which_pk'])
+            self.p_of_k_a = self.pk_obj_from_file(pk_filename=cloe_pk_filename)
+            # TODO finish implementing this
+            raise NotImplementedError('range needs to be extended to higher redshifts to match tkka grid (probably larger k range too), \
+                some other small consistency checks needed')
+
+        elif general_cfg['which_forecast'] == 'SPV3' and pyccl_cfg['which_pk_for_pyccl'] == 'PyCCL':
             self.p_of_k_a = 'delta_matter:delta_matter'
 
-        else:
-            raise ValueError('general_cfg["which_forecast"] must be either SPV3 or ISTF')
+        elif general_cfg['which_forecast'] == 'ISTF':
+            self.p_of_k_a = 'delta_matter:delta_matter'
 
-        gal_bias_tuple = (zgrid_nz, gal_bias_2d)
+        # save gal bias for Robert - not needed at the moment
+        gal_bias_table_ascii_name = f'{covariance_cfg["nofz_folder"]}/gal_bias_table_{general_cfg["which_forecast"]}.ascii'
+        self.save_gal_bias_table_ascii(filename=gal_bias_table_ascii_name)
 
-        # save in ascii for OneCovariance
+        # set mag bias
+        self.set_mag_bias_tuple(has_magnification_bias=general_cfg['has_magnification_bias'], maglim=maglim)
 
-        if has_magnification_bias:
-            maglim = general_cfg['magcut_source'] / 10
-            # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
-            mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(zgrid_nz, maglim=maglim, poly_fit_values=None)
-            mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), zbins, axis=0).T
-            mag_bias_tuple = (zgrid_nz, mag_bias_2d)
-        else:
-            # this is the correct way to set the magnification bias values so that the actual bias is 1, ant the corresponding
-            # wf_mu is zero (which is, in theory, the case mag_bias_tuple=None, which however causes pyccl to crash!)
-            # mag_bias_2d = (np.ones_like(gal_bias_2d) * + 2) / 5
-            # mag_bias_tuple = (zgrid_nz, mag_bias_2d)
-            mag_bias_tuple = None
+        # set kernel arrays and objects
+        self.set_kernel_obj(general_cfg['has_rsd'], covariance_cfg['PyCCL_cfg']['n_samples_wf'])
+        self.set_kernel_arr(z_grid_wf=self.zgrid_nz, has_magnification_bias=general_cfg['has_magnification_bias'])
 
-        wf_lensing_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
-                                          ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
-                                          mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=True, n_samples=n_samples_wf)
-        wf_lensing_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
-                                          ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
-                                          mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=False, n_samples=n_samples_wf)
-        wf_galaxy_obj = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'with_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
-                                         ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
-                                         mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=True, n_samples=n_samples_wf)
-
-        # ! manually construct galaxy = delta + magnification radial kernel
-        a_arr = cosmo_lib.z_to_a(zgrid_nz)
-        comoving_distance = ccl.comoving_radial_distance(cosmo_ccl, a_arr)
-
-        wf_galaxy_tot_arr = np.asarray([wf_galaxy_obj[zbin_idx].get_kernel(comoving_distance)
-                                       for zbin_idx in range(zbins)])
-        wf_delta_arr = wf_galaxy_tot_arr[:, 0, :].T
-        wf_mu_arr = wf_galaxy_tot_arr[:, -1, :].T if has_magnification_bias else np.zeros_like(wf_delta_arr)
-
-        gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias!)'
         # in the case of ISTF, the galaxt bias is bin-per-bin and is therefore included in the kernels. Add it here
         # for a fair comparison with vincenzo's kernels, in the plot.
         # * Note that the galaxy bias is included in the wf_ccl_obj in any way, both in ISTF and SPV3 cases! It must
         # * in fact be passed to the congular_cov_SSC function
+        if general_cfg['which_forecast'] == 'SPV3':
+            gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias!)'
+            wf_galaxy_arr = self.wf_galaxy_wo_gal_bias_arr
+            
         if general_cfg['which_forecast'] == 'ISTF':
-            wf_delta_arr *= gal_bias_2d
             gal_kernel_plt_title = 'galaxy kernel\n(w/ gal bias)'
+            wf_galaxy_arr = self.wf_galaxy_w_gal_bias_arr
 
-        wf_galaxy_arr = wf_delta_arr + wf_mu_arr
 
         # alternative way to get the magnification kernel
         # wf_mu_tot_alt_arr = -2 * np.array(
@@ -582,9 +634,9 @@ class PycclClass():
         colors = cm.rainbow(np.linspace(0, 1, zbins))
         fig, ax = plt.subplots(1, 2, figsize=(16, 6), constrained_layout=True)
         for zi in range(zbins):
-            ax[0].plot(zgrid_nz, wf_lensing_arr[:, zi], ls="-", c=colors[zi], alpha=0.6,
+            ax[0].plot(self.zgrid_nz, self.wf_lensing_arr[:, zi], ls="-", c=colors[zi], alpha=0.6,
                        label='lensing ccl' if zi == 0 else None)
-            ax[1].plot(zgrid_nz, wf_galaxy_arr[:, zi], ls="-", c=colors[zi], alpha=0.6,
+            ax[1].plot(self.zgrid_nz, wf_galaxy_arr[:, zi], ls="-", c=colors[zi], alpha=0.6,
                        label='galaxy ccl' if zi == 0 else None)
             ax[0].plot(z_grid_wf_import, wf_lensing_import[:, zi], ls="--", c=colors[zi], alpha=0.6,
                        label='lensing vinc' if zi == 0 else None)
@@ -600,14 +652,11 @@ class PycclClass():
         ax[0].legend()
         ax[1].legend()
         plt.show()
+        
+        
+        # compute cls
+        self.set_cls(ell_grid, self.p_of_k_a, 'spline')
 
-        # the cls are not needed, but just in case:
-        cl_ll_3d = wf_cl_lib.cl_PyCCL(wf_lensing_obj, wf_lensing_obj, ell_grid, zbins,
-                                      p_of_k_a=p_of_k_a, cosmo=cosmo_ccl)
-        cl_gl_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_lensing_obj, ell_grid, zbins,
-                                      p_of_k_a=p_of_k_a, cosmo=cosmo_ccl)
-        cl_gg_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_galaxy_obj, ell_grid, zbins,
-                                      p_of_k_a=p_of_k_a, cosmo=cosmo_ccl)
 
         # if you need to save finely sampled cls for OneCovariance
         # ell_grid = np.geomspace(10, 5000, 90)
@@ -627,15 +676,15 @@ class PycclClass():
         fig, ax = plt.subplots(1, 3, figsize=(15, 6), constrained_layout=True)
         for zi in range(zbins):
             zj = zi
-            ax[0].loglog(ell_grid, cl_ll_3d[:nbl_plt, zi, zj], ls="-", c=colors[zi], alpha=0.6,
+            ax[0].loglog(ell_grid, self.cl_ll_3d[:nbl_plt, zi, zj], ls="-", c=colors[zi], alpha=0.6,
                          label='ll' if zi == 0 else None)
             ax[0].loglog(ell_grid, cl_ll_3d_vinc[:nbl_plt, zi, zj], ls="--", c=colors[zi], alpha=0.6,
                          label='ll vinc' if zi == 0 else None)
-            ax[1].loglog(ell_grid, cl_gl_3d[:nbl_plt, zi, zj], ls="-", c=colors[zi], alpha=0.6,
+            ax[1].loglog(ell_grid, self.cl_gl_3d[:nbl_plt, zi, zj], ls="-", c=colors[zi], alpha=0.6,
                          label='gl' if zi == 0 else None)
             ax[1].loglog(ell_grid, cl_gl_3d_vinc[:nbl_plt, zi, zj], ls="--", c=colors[zi], alpha=0.6,
                          label='gl vinc' if zi == 0 else None)
-            ax[2].loglog(ell_grid, cl_gg_3d[:nbl_plt, zi, zj], ls="-", c=colors[zi], alpha=0.6,
+            ax[2].loglog(ell_grid, self.cl_gg_3d[:nbl_plt, zi, zj], ls="-", c=colors[zi], alpha=0.6,
                          label='gg' if zi == 0 else None)
             ax[2].loglog(ell_grid, cl_gg_3d_vinc[:nbl_plt, zi, zj], ls="--", c=colors[zi], alpha=0.6,
                          label='gg vinc' if zi == 0 else None)
@@ -650,6 +699,8 @@ class PycclClass():
         ax[1].legend()
         ax[2].legend()
         plt.show()
+    
+        assert False, 'stop here'
 
         # covariance ordering stuff, also used to compute the trispectrum
         if probe == 'LL':
@@ -748,8 +799,8 @@ class PycclClass():
             plt.show()
 
         which_pk = fid_pars_dict['other_params']['camb_extra_parameters']['camb']['halofit_version']
-        tkka_dict = initialize_trispectrum(cosmo_ccl, which_ng_cov, probe_ordering,
-                                           pyccl_cfg, which_pk=which_pk, p_of_k_a=p_of_k_a)
+        tkka_dict = self.initialize_trispectrum(self.cosmo_ccl, which_ng_cov, probe_ordering,
+                                                pyccl_cfg, which_pk=which_pk, p_of_k_a=self.p_of_k_a)
         cov_ng_8D_dict = {}
 
         if probe in ['LL', 'GG']:
@@ -780,30 +831,28 @@ class PycclClass():
         elif probe == '3x2pt':
             # TODO remove this if statement and use the same code for all probes
             try:
-                cov_ng_8D_dict = compute_ng_cov_3x2pt(cosmo=cosmo_ccl,
-                                                      which_ng_cov=which_ng_cov,
-                                                      kernel_dict=kernel_dict,
-                                                      ell=ell_grid, tkka_dict=tkka_dict, f_sky=f_sky,
-                                                      probe_ordering=probe_ordering,
-                                                      ind_dict=ind_dict,
-                                                      covariance_cfg=covariance_cfg,
-                                                      cov_filename=cov_filename,
-                                                      sigma2_B_tuple=sigma2_B_tuple,
-                                                      integration_method='spline',
-                                                      )
+                cov_ng_8D_dict = self.compute_ng_cov_3x2pt(which_ng_cov=which_ng_cov,
+                                                           kernel_dict=kernel_dict,
+                                                           ell=ell_grid, tkka_dict=tkka_dict, f_sky=f_sky,
+                                                           probe_ordering=probe_ordering,
+                                                           ind_dict=ind_dict,
+                                                           covariance_cfg=covariance_cfg,
+                                                           cov_filename=cov_filename,
+                                                           sigma2_B_tuple=sigma2_B_tuple,
+                                                           integration_method='spline',
+                                                           )
             except CCLError as err:
                 print(f"CCLError: {err}\nSpline integration failed. Retrying with qag_quad.")
-                cov_ng_8D_dict = compute_ng_cov_3x2pt(cosmo=cosmo_ccl,
-                                                      which_ng_cov=which_ng_cov,
-                                                      kernel_dict=kernel_dict,
-                                                      ell=ell_grid, tkka_dict=tkka_dict, f_sky=f_sky,
-                                                      probe_ordering=probe_ordering,
-                                                      ind_dict=ind_dict,
-                                                      covariance_cfg=covariance_cfg,
-                                                      cov_filename=cov_filename,
-                                                      sigma2_B_tuple=sigma2_B_tuple,
-                                                      integration_method='qag_quad',
-                                                      )
+                cov_ng_8D_dict = self.compute_ng_cov_3x2pt(which_ng_cov=which_ng_cov,
+                                                           kernel_dict=kernel_dict,
+                                                           ell=ell_grid, tkka_dict=tkka_dict, f_sky=f_sky,
+                                                           probe_ordering=probe_ordering,
+                                                           ind_dict=ind_dict,
+                                                           covariance_cfg=covariance_cfg,
+                                                           cov_filename=cov_filename,
+                                                           sigma2_B_tuple=sigma2_B_tuple,
+                                                           integration_method='qag_quad',
+                                                           )
 
         else:
             raise ValueError('probe must be either LL, GG, or 3x2pt')

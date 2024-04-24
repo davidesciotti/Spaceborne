@@ -170,8 +170,16 @@ ccl_obj.set_mag_bias_tuple(has_magnification_bias=general_cfg['has_magnification
 ccl_obj.set_kernel_obj(general_cfg['has_rsd'], covariance_cfg['PyCCL_cfg']['n_samples_wf'])
 ccl_obj.set_kernel_arr(z_grid_wf = ccl_obj.zgrid_nz, has_magnification_bias=general_cfg['has_magnification_bias'])
 
-for zi in range(zbins):
-    plt.plot(ccl_obj.zgrid_nz, ccl_obj.wf_galaxy_w_gal_bias_arr[:, zi], color=colors[zi], label=f'lensing')
-    plt.plot(ccl_obj.zgrid_nz, ccl_obj.wf_delta_arr[:, zi], color=colors[zi], label=f'lensing', ls=':')
-    plt.plot(ccl_obj.zgrid_nz, ccl_obj.wf_mu_arr[:, zi], color=colors[zi], label=f'lensing', ls=':')
-    # plt.plot(ccl_obj.zgrid_nz, ccl_obj.wf_ia_arr[:, zi], color=colors[zi], label=f'lensing')
+ccl_obj.set_cls(ell_grid, ccl_obj.p_of_k_a, 'spline')
+
+zmin = 1e-3
+zmax = 3
+zsteps = 1000
+ccl_obj.set_sigma2_b(zmin, zmax, zsteps, covariance_cfg['fsky'], pyccl_cfg)
+
+# for zi in range(zbins):
+plt.plot(ccl_obj.sigma2_b_tuple[0], ccl_obj.sigma2_b_tuple[1], label=f'lensing')
+    # plt.plot(ccl_obj.ell_grid, ccl_obj.cl_gl_3d[:, zi, zi], color=colors[zi], label=f'lensing', ls='--')
+    # plt.plot(ccl_obj.ell_grid, ccl_obj.cl_gg_3d[:, zi, zi], color=colors[zi], label=f'lensing', ls=':')
+# plt.xscale('log')
+plt.yscale('log')

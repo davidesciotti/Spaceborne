@@ -340,8 +340,9 @@ EP_or_ED = general_cfg['EP_or_ED']
 # for kmax_h_over_Mpc in general_cfg['kmax_h_over_Mpc_list']:
 #     for general_cfg['which_pk'] in general_cfg['which_pk_list']:
 # for zbins in (13, ):
-for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SSC',), ('cNG',), ('SSC', 'cNG')):
-# for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SSC', 'cNG'), ):
+# for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SSC',), ('cNG',), ('SSC', 'cNG')):
+for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SSC',), ):
+    # for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SSC', 'cNG'), ):
 
     # some convenence variables, just to make things more readable
     general_cfg['zbins'] = zbins
@@ -387,7 +388,7 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
 
     cosmo_dict_ccl = csmlib.map_keys(mm.flatten_dict(fid_pars_dict), key_mapping=None)
     cosmo_ccl = csmlib.instantiate_cosmo_ccl_obj(cosmo_dict_ccl,
-                                                fid_pars_dict['other_params']['camb_extra_parameters'])
+                                                 fid_pars_dict['other_params']['camb_extra_parameters'])
 
     # some checks
     assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
@@ -395,7 +396,7 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
     assert general_cfg[
         'flat_or_nonflat'] == 'Flat', 'We do not use non-flat cosmologies for SPV3 at the moment, if I recall correclty'
     assert general_cfg['which_cuts'] == 'Vincenzo', ('to begin with, use only Vincenzo/standard cuts. '
-                                                    'For the thesis, probably use just these')
+                                                     'For the thesis, probably use just these')
     if general_cfg['ell_cuts']:
         assert bnt_transform, 'you should BNT transform if you want to apply ell cuts'
 
@@ -428,14 +429,14 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
         kmax_h_over_Mpc = general_cfg['kmax_h_over_Mpc_ref']
     else:
         general_cfg['ell_cuts_subfolder'] = f'{general_cfg["which_cuts"]}/ell_{general_cfg["center_or_min"]}'
-        
+
     assert general_cfg['nbl_WL_opt'] == 32, 'this is used as the reference binning, from which the cuts are made'
     assert general_cfg['ell_max_WL_opt'] == 5000, 'this is used as the reference binning, from which the cuts are made'
 
     # compute ell and delta ell values in the reference (optimistic) case
     ell_ref_nbl32, delta_l_ref_nbl32, ell_edges_ref_nbl32 = (
         ell_utils.compute_ells(general_cfg['nbl_WL_opt'], general_cfg['ell_min'], general_cfg['ell_max_WL_opt'],
-                            recipe='ISTF', output_ell_bin_edges=True))
+                               recipe='ISTF', output_ell_bin_edges=True))
 
     # perform the cuts (not the redshift-dependent ones!) on the ell centers and edges
     ell_dict = {}
@@ -468,22 +469,22 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
     general_cfg['nbl_3x2pt'] = nbl_3x2pt
 
     delta_dict = {'delta_l_WL': np.copy(delta_l_ref_nbl32[:nbl_WL]),
-                'delta_l_GC': np.copy(delta_l_ref_nbl32[:nbl_GC]),
-                'delta_l_WA': np.copy(delta_l_ref_nbl32[nbl_GC:nbl_WL])}
+                  'delta_l_GC': np.copy(delta_l_ref_nbl32[:nbl_GC]),
+                  'delta_l_WA': np.copy(delta_l_ref_nbl32[nbl_GC:nbl_WL])}
 
     # this is just to make the .format() more compact
     variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins, 'magcut_lens': magcut_lens,
-                    'zcut_lens': zcut_lens,
-                    'magcut_source': magcut_source, 'zcut_source': zcut_source, 'zmax': zmax,
-                    'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_3x2pt': ell_max_3x2pt,
-                    'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
-                    'kmax_h_over_Mpc': kmax_h_over_Mpc, 'center_or_min': center_or_min,
-                    'idIA': idIA, 'idB': idB, 'idM': idM, 'idR': idR, 'idBM': idBM,
-                    'flat_or_nonflat': flat_or_nonflat,
-                    'which_pk': which_pk, 'BNT_transform': bnt_transform,
-                    'which_ng_cov': which_ng_cov_suffix,
-                    'ng_cov_code': covariance_cfg['SSC_code'],
-                    }
+                      'zcut_lens': zcut_lens,
+                      'magcut_source': magcut_source, 'zcut_source': zcut_source, 'zmax': zmax,
+                      'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_3x2pt': ell_max_3x2pt,
+                      'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
+                      'kmax_h_over_Mpc': kmax_h_over_Mpc, 'center_or_min': center_or_min,
+                      'idIA': idIA, 'idB': idB, 'idM': idM, 'idR': idR, 'idBM': idBM,
+                      'flat_or_nonflat': flat_or_nonflat,
+                      'which_pk': which_pk, 'BNT_transform': bnt_transform,
+                      'which_ng_cov': which_ng_cov_suffix,
+                      'ng_cov_code': covariance_cfg['SSC_code'],
+                      }
     pp.pprint(variable_specs)
 
     # ! import nuisance, to get fiducials and to shift the distribution
@@ -494,7 +495,6 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
     covariance_cfg['ng'] = nuisance_tab[:, 1]
     dzWL_fiducial = nuisance_tab[:, 4]
     dzGC_fiducial = nuisance_tab[:, 4]
-
 
     # get galaxy and magnification bias fiducials
     bias_fiducials = np.genfromtxt(f'{covariance_cfg["nuisance_folder"]}/gal_mag_fiducial_polynomial_fit.dat')
@@ -509,9 +509,9 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
     galaxy_bias_fit_fiducials_yml = np.array([flat_fid_pars_dict[gal_bias_fit_fiducials_names[zi]] for zi in range(4)])
     mag_bias_fit_fiducials_yml = np.array([flat_fid_pars_dict[mag_bias_fit_fiducials_names[zi]] for zi in range(4)])
     np.testing.assert_array_equal(galaxy_bias_fit_fiducials, galaxy_bias_fit_fiducials_yml,
-                                err_msg='galaxy bias fiducials do not match')
+                                  err_msg='galaxy bias fiducials do not match')
     np.testing.assert_array_equal(magnification_bias_fit_fiducials, mag_bias_fit_fiducials_yml,
-                                err_msg='magnification bias fiducials do not match')
+                                  err_msg='magnification bias fiducials do not match')
 
     # some check on the input nuisance values
     assert np.all(covariance_cfg['ng'] < 9), 'ng values are likely < 9 *per bin*; this is just a rough check'
@@ -524,7 +524,7 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
     dz_shifts_names = [f'dzWL{zi:02d}' for zi in range(1, zbins + 1)]
     dz_shifts = np.array([flat_fid_pars_dict[dz_shifts_names[zi]] for zi in range(zbins)])
     np.testing.assert_array_equal(dz_shifts, dzWL_fiducial,
-                                err_msg='dzWL shifts do not match with the ones from the yml file')
+                                  err_msg='dzWL shifts do not match with the ones from the yml file')
 
     if EP_or_ED == 'ED':
         raise Exception('you should re-check the nz shifts in the yml fiducial for the ED case!!')
@@ -560,10 +560,10 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
 
     # IA bias array, to get wf lensing from Vincenzo's inputs
     ia_bias_vin = wf_cl_lib.build_ia_bias_1d_arr(zgrid_wf_vin, cosmo_ccl=cosmo_ccl,
-                                                flat_fid_pars_dict=flat_fid_pars_dict,
-                                                input_z_grid_lumin_ratio=None,
-                                                input_lumin_ratio=None,
-                                                output_F_IA_of_z=False)
+                                                 flat_fid_pars_dict=flat_fid_pars_dict,
+                                                 input_z_grid_lumin_ratio=None,
+                                                 input_lumin_ratio=None,
+                                                 output_F_IA_of_z=False)
 
     wf_lensing_vin = wf_gamma_vin + ia_bias_vin[:, None] * wf_ia_vin
     wf_galaxy_vin = wf_delta_vin + wf_mu_vin  # TODO in theory, I should BNT-tansform wf_mu...
@@ -595,22 +595,22 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
 
     # ! my kernels, which are needed because I want the flexibility to shift the n(z) or not
     gal_bias_1d_arr = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, general_cfg['magcut_source'] / 10,
-                                            galaxy_bias_fit_fiducials)
+                                               galaxy_bias_fit_fiducials)
     gal_bias_2d_arr = np.repeat(gal_bias_1d_arr.reshape(1, -1), zbins, axis=0).T
     gal_bias_tuple = (zgrid_nz, gal_bias_2d_arr)
 
     wf_lensing_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl,
-                                        nz_tuple, ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
-                                        return_ccl_obj=False, n_samples=len(zgrid_nz))
+                                          nz_tuple, ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                          return_ccl_obj=False, n_samples=len(zgrid_nz))
     wf_gamma_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'without_IA', flat_fid_pars_dict, cosmo_ccl,
                                         nz_tuple, ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
                                         return_ccl_obj=False, n_samples=len(zgrid_nz))
     wf_ia_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'IA_only', flat_fid_pars_dict, cosmo_ccl,
-                                    nz_tuple, ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
-                                    return_ccl_obj=False, n_samples=len(zgrid_nz))
+                                     nz_tuple, ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                     return_ccl_obj=False, n_samples=len(zgrid_nz))
     wf_galaxy_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'without_galaxy_bias', flat_fid_pars_dict, cosmo_ccl,
-                                        nz_tuple, ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
-                                        return_ccl_obj=False, n_samples=len(zgrid_nz))
+                                         nz_tuple, ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
+                                         return_ccl_obj=False, n_samples=len(zgrid_nz))
 
     # this is to check against ccl in pyccl_cov
     general_cfg['wf_WL'] = wf_lensing_vin
@@ -640,9 +640,9 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
     plt.figure()
     for zi in range(zbins):
         plt.plot(zgrid_nz, wf_gamma_ccl_arr[:, zi], ls='-', c=colors[zi],
-                alpha=0.6, label='wf_gamma_ccl' if zi == 0 else None)
+                 alpha=0.6, label='wf_gamma_ccl' if zi == 0 else None)
         plt.plot(zgrid_nz, wf_gamma_ccl_bnt[:, zi], ls='--', c=colors[zi],
-                alpha=0.6, label='wf_gamma_ccl_bnt' if zi == 0 else None)
+                 alpha=0.6, label='wf_gamma_ccl_bnt' if zi == 0 else None)
         plt.axvline(z_means_ll_bnt[zi], ls=':', c=colors[zi])
     plt.legend()
     plt.xlabel('$z$')
@@ -651,7 +651,7 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
     assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically increasing'
     assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically increasing'
     assert np.all(np.diff(z_means_ll_bnt) > 0), ('z_means_ll_bnt should be monotonically increasing '
-                                                '(not a strict condition, valid only if we do not shift the n(z) in this part)')
+                                                 '(not a strict condition, valid only if we do not shift the n(z) in this part)')
 
     ell_cuts_dict = {}
     ell_cuts_dict['LL'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_ll_bnt, z_values_b=z_means_ll_bnt)
@@ -680,6 +680,7 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
         bnt_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, cosmo_ccl=cosmo_ccl, plot_nz=False)
 
     general_cfg['nz_tuple'] = nz_tuple
+    general_cfg['n_of_z_load'] = np.hstack((zgrid_nz[:, None], n_of_z))
 
     # save in ASCII format for OneCovariance
     nofz_filename_ascii = nofz_filename.replace('.dat', '.ascii')
@@ -697,7 +698,7 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
         cl_gg_3d = np.load(f'{cloe_bench_folder}/Cls_zNLA3D_PosPos_C00.npy')[:nbl_3x2pt, :, :]
         cl_wa_3d = cl_ll_3d[nbl_3x2pt:, :, :]
         cl_3x2pt_5d = cl_utils.build_3x2pt_datavector_5D(cl_ll_3d[:nbl_3x2pt, ...], cl_gl_3d,
-                                                        cl_gg_3d, nbl_3x2pt, zbins, n_probes=2)
+                                                         cl_gg_3d, nbl_3x2pt, zbins, n_probes=2)
         # this repetition is not very nice, but no time right now
         if covariance_cfg[f'SSC_code'] == 'PySSC':
             assert covariance_cfg['compute_SSC'] is False, \
@@ -717,12 +718,11 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
         mm.write_cl_ascii(ascii_folder, f'Cell_gl{cloe_suffix}', cl_gl_3d, ell_dict['ell_XC'], zbins)
         mm.write_cl_ascii(ascii_folder, f'Cell_gg{cloe_suffix}', cl_gg_3d, ell_dict['ell_3x2pt'], zbins)
 
-
     else:
 
         if nbl_3x2pt == 29:
             warnings.warn('An error in cl_SPV3_1D_to_3D is probably indicating that the non-LL Vincenzos files are'
-                        'for lmax = 3000.')
+                          'for lmax = 3000.')
 
         # ! import and reshape datavectors (cl) and response functions (rl)
         cl_fld = general_cfg['cl_folder'].format(which_pk=which_pk)
@@ -776,7 +776,7 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
             assert (np.allclose(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :], rtol=rtol, atol=0)), \
                 'cl_wa_3d should be obtainable from cl_ll_3d!'
             print(f'cl_wa_3d and cl_ll_3d[nbl_GC:nbl_WL, :, :] are not exactly equal, but have a relative '
-                f'difference of less than {rtol}')
+                  f'difference of less than {rtol}')
 
     # ! BNT transform the cls (and responses?) - it's more complex since I also have to transform the noise
     # ! spectra, better to transform directly the covariance matrix
@@ -866,7 +866,7 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
             Sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
         else:
             Sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
-                                            Sijkl_cfg['wf_normalization'])
+                                              Sijkl_cfg['wf_normalization'])
             np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
 
     else:
@@ -881,7 +881,7 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
 
     # save covariance matrix and test against benchmarks
     cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
-                                                    **variable_specs)
+                                                     **variable_specs)
     covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
     if EP_or_ED == 'EP' and covariance_cfg['SSC_code'] == 'Spaceborne' and covariance_cfg['test_against_CLOE_benchmarks'] \
@@ -906,11 +906,11 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
             cov_bench_2ddav_GSSC_lmax3000 = cov_bench_2ddav_GSSC[:n_cov_elements, :n_cov_elements]
 
             mm.compare_arrays(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_G_lmax3000,
-                            "cov_dict['cov_3x2pt_GO_2D']", "cov_bench_2ddav_G_lmax3000",
-                            log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+                              "cov_dict['cov_3x2pt_GO_2D']", "cov_bench_2ddav_G_lmax3000",
+                              log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
             mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_GSSC_lmax3000,
-                            "cov_dict['cov_3x2pt_GS_2D']", "cov_bench_2ddav_GSSC_lmax3000",
-                            log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+                              "cov_dict['cov_3x2pt_GS_2D']", "cov_bench_2ddav_GSSC_lmax3000",
+                              log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
 
         del cov_bench_2ddav_G_lmax3000, cov_bench_2ddav_GSSC_lmax3000
         gc.collect()
@@ -921,7 +921,7 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
         NUMPY_PRECISION = np.finfo(float).eps
         precision = cond_number * NUMPY_PRECISION
         print(f'kmax = {kmax_h_over_Mpc}, precision in the inversion of GS covariance = '
-            f'{precision:.2e}, cond number = {cond_number:.2e}')
+              f'{precision:.2e}, cond number = {cond_number:.2e}')
 
     if covariance_cfg['test_against_benchmarks']:
         cov_benchmark_folder = f'{cov_folder}/benchmarks'
@@ -932,7 +932,7 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
         cov_vinc_g = np.load(f'{covariance_cfg["cov_vinc_folder"]}/{cov_vinc_filename}')['arr_0']
         num_elements_nbl29 = cov_dict['cov_3x2pt_GO_2D'].shape[0]
         npt.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_vinc_g[:num_elements_nbl29, :num_elements_nbl29],
-                            rtol=1e-3, atol=0)
+                            rtol=1e-3, atol=0, err_msg='cov_dict["cov_3x2pt_GO_2D"] does not match with Vincenzo\'s')
         print('covariance matrix matches with Vincenzo\'s ✅')
 
     # ! compute Fisher matrix
@@ -949,12 +949,12 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
     der_prefix = fm_cfg['derivatives_prefix']
     vinc_filenames = mm.get_filenames_in_folder(derivatives_folder)
     vinc_filenames = [vinc_filename for vinc_filename in vinc_filenames if
-                    vinc_filename.startswith(der_prefix)]
+                      vinc_filename.startswith(der_prefix)]
 
     # keep only the files corresponding to the correct magcut_lens, magcut_source and zbins
     vinc_filenames = [filename for filename in vinc_filenames if
-                    all(x in filename for x in
-                        [f'ML{magcut_lens}', f'MS{magcut_source}', f'{EP_or_ED}{zbins:02d}'])]
+                      all(x in filename for x in
+                          [f'ML{magcut_lens}', f'MS{magcut_source}', f'{EP_or_ED}{zbins:02d}'])]
     vinc_filenames = [filename.replace('.dat', '') for filename in vinc_filenames]
 
     vinc_trimmed_filenames = [vinc_filename.split('-', 1)[0].strip() for vinc_filename in vinc_filenames]
@@ -984,7 +984,7 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
 
     # check whether the 2 lists match and print the elements that are in one list but not in the other
     param_names_not_in_my_list = [vinc_param_name for vinc_param_name in vinc_param_names if
-                                vinc_param_name not in my_sorted_param_names]
+                                  vinc_param_name not in my_sorted_param_names]
     param_names_not_in_vinc_list = [my_sorted_param_name for my_sorted_param_name in my_sorted_param_names
                                     if
                                     my_sorted_param_name not in vinc_param_names]
@@ -1033,14 +1033,15 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
         for key in vinc_filenames:  # loop over these, I already selected ML, MS and so on
             if not key.startswith('dDVddzGC'):
                 if 'WLO' in key:
-                    dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
+                    dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(
+                        dC_dict_1D[key], 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
                 elif 'GCO' in key:
                     dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
                 elif 'WLA' in key:
                     dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
                 elif '3x2pt' in key:
                     dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt,
-                                                                    zbins)
+                                                                      zbins)
 
         # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
         dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
@@ -1068,20 +1069,20 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
 
     # store the derivatives arrays in a dictionary
     deriv_dict = {'dC_LL_4D': dC_LL_4D,
-                'dC_WA_4D': dC_WA_4D,
-                'dC_GG_4D': dC_GG_4D,
-                'dC_3x2pt_6D': dC_3x2pt_6D}
+                  'dC_WA_4D': dC_WA_4D,
+                  'dC_GG_4D': dC_GG_4D,
+                  'dC_3x2pt_6D': dC_3x2pt_6D}
 
     # ! compute and save fisher matrix
     FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, fm_cfg, ell_dict, cov_dict, deriv_dict,
-                                bnt_matrix)
+                                  bnt_matrix)
     FM_dict['fiducial_values_dict'] = fm_fid_dict  # ordered fiducial parameters entering the FM
 
     fm_folder = fm_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
-                                        which_cuts=general_cfg['which_cuts'],
-                                        BNT_transform=str(bnt_transform),
-                                        center_or_min=general_cfg['center_or_min'],
-                                        fm_last_folder=fm_cfg['fm_last_folder'],)
+                                           which_cuts=general_cfg['which_cuts'],
+                                           BNT_transform=str(bnt_transform),
+                                           center_or_min=general_cfg['center_or_min'],
+                                           fm_last_folder=fm_cfg['fm_last_folder'],)
     if not general_cfg['ell_cuts']:
         # not very nice, i defined the ell_cuts_subfolder above...
         fm_folder = fm_folder.replace(f'/{general_cfg["which_cuts"]}/ell_{center_or_min}', '')
@@ -1111,7 +1112,7 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
             plt.xticks(np.arange(len(xticks)), xticks, rotation=90)
 
             mm.compare_arrays(FM_dict[f'FM_{probe_dav}_G'], fm_vinc_g, log_array=True, log_diff=False,
-                            abs_val=False, plot_diff_threshold=5)
+                              abs_val=False, plot_diff_threshold=5)
 
             npt.assert_allclose(FM_dict[f'FM_{probe_dav}_G'], fm_vinc_g, rtol=1e-3, atol=0)
 
@@ -1154,12 +1155,11 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
                                                             remove_null_rows_cols=True)
 
             uncert_dict[key] = mm.uncertainties_fm_v2(masked_FM, masked_fid_pars_dict,
-                                                    which_uncertainty='marginal',
-                                                    normalize=True,
-                                                    percent_units=True)[:nparams_toplot]
+                                                      which_uncertainty='marginal',
+                                                      normalize=True,
+                                                      percent_units=True)[:nparams_toplot]
 
             fom_dict[key] = mm.compute_FoM(masked_FM, w0wa_idxs=(2, 3))
-
 
     # compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
     for probe in probes:
@@ -1167,7 +1167,8 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
         key_a = f'FM_{probe}_G'
         key_b = f'FM_{probe}_{which_ng_cov_suffix}'
 
-        uncert_dict[f'perc_diff_{probe}_{which_ng_cov_suffix}'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
+        uncert_dict[f'perc_diff_{probe}_{which_ng_cov_suffix}'] = mm.percent_diff(
+            uncert_dict[key_b], uncert_dict[key_a])
         fom_dict[f'perc_diff_{probe}_{which_ng_cov_suffix}'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
 
     for probe in probes:
@@ -1175,10 +1176,10 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
         divide_fom_by_10_plt = False if probe in ('WL' 'XC') else divide_fom_by_10
 
         cases_to_plot = [f'FM_{probe}_G',
-                        f'FM_{probe}_{which_ng_cov_suffix}',
+                         f'FM_{probe}_{which_ng_cov_suffix}',
 
-                        f'perc_diff_{probe}_{which_ng_cov_suffix}',
-                        ]
+                         f'perc_diff_{probe}_{which_ng_cov_suffix}',
+                         ]
 
         # # transform dict. into an array and add the fom
         uncert_array, fom_array = [], []
@@ -1222,7 +1223,6 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
         plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                             param_names_label=None, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
         # plt.yscale('log')
-
 
     del cov_dict
     gc.collect()

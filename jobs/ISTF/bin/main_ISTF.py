@@ -2,6 +2,7 @@ from copy import deepcopy
 import gc
 import sys
 import time
+from matplotlib import gridspec
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
@@ -86,11 +87,11 @@ Sijkl_cfg = cfg.Sijkl_cfg
 FM_cfg = cfg.FM_cfg
 
 # probes = ['WL', 'GC', 'XC', '3x2pt', '2x2pt']
-probes = ['WL', 'GC', 'XC', '3x2pt',]
+probes = ['WL', 'GC', '3x2pt',]
 
 
-# for covariance_cfg['SSC_code'] in ['PyCCL', 'OneCovariance', 'Spaceborne', 'PySSC']:
-for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
+for covariance_cfg['SSC_code'] in ['PyCCL', 'OneCovariance', 'Spaceborne', 'PySSC']:
+    # for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
 
     # check_specs.consistency_checks(general_cfg, covariance_cfg)
 
@@ -141,6 +142,16 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
 
     # ! compute ell and delta ell values
     ell_dict, delta_dict = ell_utils.generate_ell_and_deltas(general_cfg)
+
+    ells_oc = np.array([11.4, 14.9, 19.8, 26.7, 35.7, 47.5, 63.4, 84.1, 112.0, 150.0,
+                        199.0, 265.0, 353.0, 469.0, 624.0, 831.0, 1110.0, 1470.0, 1960.0, 2600.0, ])
+
+    ell_edges_oc = np.array([10, 13, 17, 23, 31, 41, 55, 73, 97, 130, 173, 230,
+                            306, 407, 541, 720, 958, 1275, 1695, 2255, 3000])
+    delta_ell = np.array([3, 4, 6, 8, 10, 14, 18, 24, 33, 43, 57, 76, 101, 134, 179, 238, 317, 420])
+
+    print(mm.percent_diff(ells_oc, ell_dict['ell_GC']))
+
     nbl_WA = ell_dict['ell_WA'].shape[0]
     ell_WL, ell_GC, ell_WA = ell_dict['ell_WL'], ell_dict['ell_GC'], ell_dict['ell_WA']
 
@@ -279,9 +290,239 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     # ! compute covariance matrix
     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                         ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, sijkl, BNT_matrix=None)
-    
-    
-    # ! start chi2 plot like Barreira 2018    
+
+    # ! check the difference in the Gaussian covariances
+
+    # cov_folder = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/covmat/Spaceborne/'
+
+    # nbl_3x2pt = nbl_GC
+    # fsky = covariance_cfg['fsky']
+    # ell_3x2pt = ell_GC
+    # probe_ordering = (('L', 'L'), ('G', 'L'), ('G', 'G'))
+    # ind_auto = ind[:zpairs_auto, :].copy()
+    # ind_cross = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
+    # ind_dict = {('L', 'L'): ind_auto,
+    #             ('G', 'L'): ind_cross,
+    #             ('G', 'G'): ind_auto}
+    # covariance_cfg['ind_dict'] = ind_dict
+    # from copy import deepcopy
+
+    # # build noise vector
+    # noise_3x2pt_4D = mm.build_noise(zbins, n_probes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=covariance_cfg['ng'],
+    #                                 EP_or_ED=general_cfg['EP_or_ED'])
+
+    # # create dummy ell axis, the array is just repeated along it
+    # nbl_max = np.max((nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA))
+    # noise_5D = np.zeros((n_probes, n_probes, nbl_max, zbins, zbins))
+    # for probe_A in (0, 1):
+    #     for probe_B in (0, 1):
+    #         for ell_idx in range(nbl_WL):
+    #             noise_5D[probe_A, probe_B, ell_idx, :, :] = noise_3x2pt_4D[probe_A, probe_B, ...]
+
+    # # remember, the ell axis is a dummy one for the noise, is just needs to be of the
+    # # same length as the corresponding cl one
+    # noise_LL_5D = noise_5D[0, 0, :nbl_WL, :, :][np.newaxis, np.newaxis, ...]
+    # noise_GG_5D = noise_5D[1, 1, :nbl_GC, :, :][np.newaxis, np.newaxis, ...]
+    # noise_WA_5D = noise_5D[0, 0, :nbl_WA, :, :][np.newaxis, np.newaxis, ...]
+    # noise_3x2pt_5D = noise_5D[:, :, :nbl_3x2pt, :, :]
+
+    # start = time.perf_counter()
+    # cl_LL_5D = cl_dict_3D['cl_LL_3D'][np.newaxis, np.newaxis, ...]
+    # cl_GG_5D = cl_dict_3D['cl_GG_3D'][np.newaxis, np.newaxis, ...]
+    # cl_WA_5D = cl_dict_3D['cl_WA_3D'][np.newaxis, np.newaxis, ...]
+
+    # # 5d versions of auto-probe spectra
+    # cov_WL_GO_6D = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_WL, delta_dict['delta_l_WL'])[0, 0, 0, 0, ...]
+    # cov_GC_GO_6D = mm.covariance_einsum(cl_GG_5D, noise_GG_5D, fsky, ell_GC, delta_dict['delta_l_GC'])[0, 0, 0, 0, ...]
+    # cov_WA_GO_6D = mm.covariance_einsum(cl_WA_5D, noise_WA_5D, fsky, ell_WA, delta_dict['delta_l_WA'])[0, 0, 0, 0, ...]
+    # cov_3x2pt_GO_10D = mm.covariance_einsum(
+    #     cl_dict_3D['cl_3x2pt_5D'], noise_3x2pt_5D, fsky, ell_3x2pt, delta_dict['delta_l_3x2pt'])
+
+    # cov_WL_SVA_6D, cov_WL_SN_6D, cov_WL_MIX_6D = mm.covariance_einsum_split(
+    #     cl_LL_5D, noise_LL_5D, fsky, ell_WL, delta_dict['delta_l_WL'])
+    # cov_GC_SVA_6D, cov_GC_SN_6D, cov_GC_MIX_6D = mm.covariance_einsum_split(
+    #     cl_GG_5D, noise_GG_5D, fsky, ell_GC, delta_dict['delta_l_GC'])
+    # cov_WA_SVA_6D, cov_WA_SN_6D, cov_WA_MIX_6D = mm.covariance_einsum_split(
+    #     cl_WA_5D, noise_WA_5D, fsky, ell_WA, delta_dict['delta_l_WA'])
+    # cov_3x2pt_SVA_10D, cov_3x2pt_SN_10D, cov_3x2pt_MIX_10D = mm.covariance_einsum_split(
+    #     cl_dict_3D['cl_3x2pt_5D'], noise_3x2pt_5D, fsky, ell_3x2pt, delta_dict['delta_l_3x2pt'])
+
+    # # ! new bit: bin the covariance using Robert's formula (and function?)
+
+    # # 1) get unbinned cls
+    # import bin.pyccl_cov_class as pyccl_cov_class
+
+    # # ! end new bit: bin the covariance using Robert's formula (and function?)
+
+    # cov_WL_SVA_6D, cov_WL_SN_6D, cov_WL_MIX_6D = cov_WL_SVA_6D[0, 0,
+    #                                                            0, 0, ...], cov_WL_SN_6D[0, 0, 0, 0], cov_WL_MIX_6D[0, 0, 0, 0]
+    # cov_GC_SVA_6D, cov_GC_SN_6D, cov_GC_MIX_6D = cov_GC_SVA_6D[0, 0,
+    #                                                            0, 0, ...], cov_GC_SN_6D[0, 0, 0, 0], cov_GC_MIX_6D[0, 0, 0, 0]
+    # cov_WA_SVA_6D, cov_WA_SN_6D, cov_WA_MIX_6D = cov_WA_SVA_6D[0, 0,
+    #                                                            0, 0, ...], cov_WA_SN_6D[0, 0, 0, 0], cov_WA_MIX_6D[0, 0, 0, 0]
+
+    # cov_10d_dict = {
+    #     'SVA': cov_3x2pt_SVA_10D,
+    #     'MIX': cov_3x2pt_MIX_10D,
+    #     'SN': cov_3x2pt_SN_10D,
+    #     'G': cov_3x2pt_GO_10D,
+    # }
+
+    # for cov_term in cov_10d_dict.keys():
+
+    #     print(f'working on {cov_term}')
+
+    #     cov_10d = cov_10d_dict[cov_term]
+
+    #     cov_llll_4d = mm.cov_6D_to_4D_blocks(cov_10d[0, 0, 0, 0, ...], nbl,
+    #                                          zpairs_auto, zpairs_auto, ind_auto, ind_auto)
+    #     cov_llgl_4d = mm.cov_6D_to_4D_blocks(cov_10d[0, 0, 1, 0, ...], nbl,
+    #                                          zpairs_auto, zpairs_cross, ind_auto, ind_cross)
+    #     cov_ggll_4d = mm.cov_6D_to_4D_blocks(cov_10d[1, 1, 0, 0, ...], nbl,
+    #                                          zpairs_auto, zpairs_auto, ind_auto, ind_auto)
+    #     cov_glgl_4d = mm.cov_6D_to_4D_blocks(cov_10d[1, 0, 1, 0, ...], nbl,
+    #                                          zpairs_cross, zpairs_cross, ind_cross, ind_cross)
+    #     cov_gggl_4d = mm.cov_6D_to_4D_blocks(cov_10d[1, 1, 1, 0, ...], nbl,
+    #                                          zpairs_auto, zpairs_cross, ind_auto, ind_cross)
+    #     cov_gggg_4d = mm.cov_6D_to_4D_blocks(cov_10d[1, 1, 1, 1, ...], nbl,
+    #                                          zpairs_auto, zpairs_auto, ind_auto, ind_auto)
+
+    #     cov_llgg_4d = np.transpose(cov_ggll_4d, (1, 0, 3, 2))
+    #     cov_glgg_4d = np.transpose(cov_gggl_4d, (1, 0, 3, 2))
+
+    #     np.savez_compressed(
+    #         f'{cov_folder}/cov_{cov_term}_Spaceborne_LLLL_4D_nbl{nbl}_ellmax{ell_max_WL}_zbinsEP{zbins}.npz', cov_llll_4d)
+    #     np.savez_compressed(
+    #         f'{cov_folder}/cov_{cov_term}_Spaceborne_LLGL_4D_nbl{nbl}_ellmax{ell_max_WL}_zbinsEP{zbins}.npz', cov_llgl_4d)
+    #     np.savez_compressed(
+    #         f'{cov_folder}/cov_{cov_term}_Spaceborne_LLGG_4D_nbl{nbl}_ellmax{ell_max_WL}_zbinsEP{zbins}.npz', cov_llgg_4d)
+    #     np.savez_compressed(
+    #         f'{cov_folder}/cov_{cov_term}_Spaceborne_GLGL_4D_nbl{nbl}_ellmax{ell_max_WL}_zbinsEP{zbins}.npz', cov_glgl_4d)
+    #     np.savez_compressed(
+    #         f'{cov_folder}/cov_{cov_term}_Spaceborne_GLGG_4D_nbl{nbl}_ellmax{ell_max_WL}_zbinsEP{zbins}.npz', cov_glgg_4d)
+    #     np.savez_compressed(
+    #         f'{cov_folder}/cov_{cov_term}_Spaceborne_GGGG_4D_nbl{nbl}_ellmax{ell_max_WL}_zbinsEP{zbins}.npz', cov_gggg_4d)
+
+    # del cov_llll_4d, cov_llgl_4d, cov_llgg_4d, cov_glgl_4d, cov_glgg_4d, cov_gggg_4d
+    # gc.collect()
+
+    # # assert False, 'stop here'
+
+    # # cov_path_oc = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/covmat/OneCovariance/output_ISTF_v2'
+    # cov_path_oc = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/ISTF/output/cl14may/covmat/OneCovariance/output_ISTF_v3_nobinning'
+    # cov_SN_filename = covariance_cfg['OneCovariance_cfg']['cov_filename'].format(
+    #     which_ng_cov='SN', probe_a='{probe_a:s}', probe_b='{probe_b:s}',
+    #     probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl, lmax=3000,
+    #     EP_or_ED=general_cfg['EP_or_ED'],
+    #     zbins=zbins)
+    # cov_MIX_filename = cov_SN_filename.replace('_SN_', '_MIX_')
+    # cov_SVA_filename = cov_SN_filename.replace('_SN_', '_SVA_')
+    # cov_G_filename = cov_SN_filename.replace('_SN_', '_G_')
+
+    # # load SSC blocks in 4D and store them into a dictionary of 8D blocks
+    # cov_SN_3x2pt_dict_8D_OC = mm.load_cov_from_probe_blocks(cov_path_oc, cov_SN_filename, probe_ordering)
+    # cov_MIX_3x2pt_dict_8D_OC = mm.load_cov_from_probe_blocks(cov_path_oc, cov_MIX_filename, probe_ordering)
+    # cov_SVA_3x2pt_dict_8D_OC = mm.load_cov_from_probe_blocks(cov_path_oc, cov_SVA_filename, probe_ordering)
+    # cov_G_3x2pt_dict_8D_OC = mm.load_cov_from_probe_blocks(cov_path_oc, cov_G_filename, probe_ordering)
+
+    # # reshape the blocks in the dictionary from 4D to 6D, as needed by the BNT
+    # cov_SN_3x2pt_dict_10D_OC = {}
+    # cov_SVA_3x2pt_dict_10D_OC = {}
+    # cov_MIX_3x2pt_dict_10D_OC = {}
+    # cov_G_3x2pt_dict_10D_OC = {}
+    # for probe_A, probe_B in probe_ordering:
+    #     for probe_C, probe_D in probe_ordering:
+    #         cov_SN_3x2pt_dict_10D_OC[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
+    #             cov_SN_3x2pt_dict_8D_OC[probe_A, probe_B, probe_C, probe_D],
+    #             nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
+    #         cov_MIX_3x2pt_dict_10D_OC[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
+    #             cov_MIX_3x2pt_dict_8D_OC[probe_A, probe_B, probe_C, probe_D],
+    #             nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
+    #         cov_SVA_3x2pt_dict_10D_OC[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
+    #             cov_SVA_3x2pt_dict_8D_OC[probe_A, probe_B, probe_C, probe_D],
+    #             nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
+    #         cov_G_3x2pt_dict_10D_OC[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
+    #             cov_G_3x2pt_dict_8D_OC[probe_A, probe_B, probe_C, probe_D],
+    #             nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
+
+    # cov_3x2pt_SN_4D_OC = mm.cov_3x2pt_10D_to_4D(
+    #     cov_SN_3x2pt_dict_10D_OC, probe_ordering, nbl, zbins, ind.copy(), GL_or_LG)
+    # cov_3x2pt_SN_4D_SB = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SN_10D, probe_ordering, nbl, zbins, ind.copy(), GL_or_LG)
+    # cov_3x2pt_SVA_4D_OC = mm.cov_3x2pt_10D_to_4D(
+    #     cov_SVA_3x2pt_dict_10D_OC, probe_ordering, nbl, zbins, ind.copy(), GL_or_LG)
+    # cov_3x2pt_SVA_4D_SB = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SVA_10D, probe_ordering, nbl, zbins, ind.copy(), GL_or_LG)
+    # cov_3x2pt_MIX_4D_OC = mm.cov_3x2pt_10D_to_4D(
+    #     cov_MIX_3x2pt_dict_10D_OC, probe_ordering, nbl, zbins, ind.copy(), GL_or_LG)
+    # cov_3x2pt_MIX_4D_SB = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_MIX_10D, probe_ordering, nbl, zbins, ind.copy(), GL_or_LG)
+
+    # cov_3x2pt_SN_2D_OC = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SN_4D_OC, zbins, block_index='vincenzo')
+    # cov_3x2pt_SN_2D_SB = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SN_4D_SB, zbins, block_index='vincenzo')
+    # cov_3x2pt_SVA_2D_OC = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SVA_4D_OC, zbins, block_index='vincenzo')
+    # cov_3x2pt_SVA_2D_SB = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SVA_4D_SB, zbins, block_index='vincenzo')
+    # cov_3x2pt_SVA_2D_SB = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SVA_4D_SB, zbins, block_index='vincenzo')
+    # cov_3x2pt_MIX_2D_OC = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_MIX_4D_OC, zbins, block_index='vincenzo')
+    # cov_3x2pt_MIX_2D_SB = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_MIX_4D_SB, zbins, block_index='vincenzo')
+
+    # cov_3x2pt_SN_diag_OC = np.diag(cov_3x2pt_SN_2D_OC)
+    # cov_3x2pt_SN_diag_SB = np.diag(cov_3x2pt_SN_2D_SB)
+    # cov_3x2pt_SVA_diag_OC = np.diag(cov_3x2pt_SVA_2D_OC)
+    # cov_3x2pt_SVA_diag_SB = np.diag(cov_3x2pt_SVA_2D_SB)
+    # cov_3x2pt_MIX_diag_OC = np.diag(cov_3x2pt_MIX_2D_OC)
+    # cov_3x2pt_MIX_diag_SB = np.diag(cov_3x2pt_MIX_2D_SB)
+
+    # for cov_oc, cov_sb, label in zip((cov_3x2pt_SN_diag_OC, cov_3x2pt_SVA_diag_OC, cov_3x2pt_MIX_diag_OC),
+    #                                  (cov_3x2pt_SN_diag_SB, cov_3x2pt_SVA_diag_SB, cov_3x2pt_MIX_diag_SB),
+    #                                  ('SN', 'SVA', 'MIX')):
+    #     fig, ax = plt.subplots(2, 1, sharex=True, figsize=(12, 5), height_ratios=[2, 1])
+    #     plt.tight_layout()
+    #     fig.subplots_adjust(hspace=0)
+    #     ax[0].plot(cov_oc, label='OC')
+    #     ax[0].plot(cov_sb, label='SB', ls='--', alpha=0.5)
+    #     ax[0].set_yscale('log')
+    #     # ax[0].set_ylim(1e-22, 1e-16)
+    #     ax[0].set_ylabel('cov')
+    #     ax[1].plot(np.abs(cov_sb/cov_oc), label='abs ratio', ls='-', marker='.', c='green')
+    #     ax[1].set_ylabel('abs ratio')
+    #     ax[1].set_ylim(0, 4.5)
+    #     ax[1].axhline(1, c='k', ls='--', label='1')
+    #     ax[1].set_xlabel('diag cov element')
+    #     fig.suptitle(label)
+    #     fig.legend()
+
+    # A = cov_3x2pt_SVA_2D_OC
+    # B = cov_3x2pt_SVA_2D_SB
+    # diff = mm.percent_diff(A, B)
+    # mm.matshow(diff, log=True, abs_val=True)
+
+    # log_diff = False
+    # abs_val = False
+    # plot_diff_threshold = 5
+    # mm.compare_arrays(A, B, plot_diff_threshold=plot_diff_threshold)
+
+    # diff_AB = mm.percent_diff_nan(A, B, eraseNaN=True, log=log_diff, abs_val=abs_val)
+
+    # if plot_diff_threshold is not None:
+    #     # take the log of the threshold if using the log of the precent difference
+    #     if log_diff:
+    #         plot_diff_threshold = np.log10(plot_diff_threshold)
+
+    #     diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, np.abs(diff_AB))
+
+    # fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
+    # im = ax[0].matshow(diff_AB)
+    # ax[0].set_title(f'(A/B - 1) * 100')
+    # fig.colorbar(im, ax=ax[0])
+
+    # im = ax[1].matshow(diff_AB)
+    # ax[1].set_title(f'(A/B - 1) * 100')
+    # fig.colorbar(im, ax=ax[1])
+
+    # fig.suptitle(f'log={log_diff}, abs={abs_val}')
+    # plt.show()
+
+    # assert False, 'stop here to check Gaussian cov binning'
+
+    # ! start chi2 plot like Barreira 2018
     # import bin.wf_cl_lib as wf_cl_lib
     # import bin.cosmo_lib as cosmo_lib
     # import pyccl as ccl
@@ -292,7 +533,7 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     # import pyccl as ccl
     # from scipy.optimize import minimize
     # from tqdm import tqdm
-    
+
     # has_magnification_bias = False
     # mag_bias_tuple = None
     # has_rsd = False
@@ -303,26 +544,26 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     # has_rsd = False
     # p_of_k_a = 'delta_matter:delta_matter'
     # flat_fid_pars_dict = mm.flatten_dict(deepcopy(cfg.fid_pars_dict))
-   
+
     # def cls_with_ccl(par_tovary_value, ell_grid, par_tovary_name):
     # def cls_with_ccl(par_tovary_value, ell_grid, par_tovary_name):
 
     #     if par_tovary_name in flat_fid_pars_dict.keys():
     #         flat_fid_pars_dict[par_tovary_name] = float(par_tovary_value)
     #     else:
-    #         raise ValueError(f'{par_tovary_name} not found in fiducial parameters')    
+    #         raise ValueError(f'{par_tovary_name} not found in fiducial parameters')
     #     if par_tovary_name in flat_fid_pars_dict.keys():
     #         flat_fid_pars_dict[par_tovary_name] = float(par_tovary_value)
     #     else:
-    #         raise ValueError(f'{par_tovary_name} not found in fiducial parameters')    
-        
+    #         raise ValueError(f'{par_tovary_name} not found in fiducial parameters')
+
     #     cosmo_dict_ccl = cosmo_lib.map_keys(flat_fid_pars_dict, key_mapping=None)
     #     cosmo_ccl = cosmo_lib.instantiate_cosmo_ccl_obj(cosmo_dict_ccl,
     #                                                     cfg.fid_pars_dict['other_params']['camb_extra_parameters'])
     #     cosmo_dict_ccl = cosmo_lib.map_keys(flat_fid_pars_dict, key_mapping=None)
     #     cosmo_ccl = cosmo_lib.instantiate_cosmo_ccl_obj(cosmo_dict_ccl,
     #                                                     cfg.fid_pars_dict['other_params']['camb_extra_parameters'])
-        
+
     #     ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(z_grid_nz, cosmo_ccl=cosmo_ccl, flat_fid_pars_dict=flat_fid_pars_dict,
     #                                         input_z_grid_lumin_ratio=None,
     #                                         input_lumin_ratio=None, output_F_IA_of_z=False)
@@ -331,7 +572,6 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     #                                         input_z_grid_lumin_ratio=None,
     #                                         input_lumin_ratio=None, output_F_IA_of_z=False)
     #     ia_bias_tuple = (z_grid_nz, ia_bias_1d)
-
 
     #     # istf_bias_func_dict = {
     #     #     'analytical': wf_cl_lib.b_of_z_analytical,
@@ -360,7 +600,6 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     #     # gal_bias_2d = wf_cl_lib.build_galaxy_bias_2d_arr(
     #     #     gal_bias_1d, z_means, z_edges, zbins, z_grid_nz, bias_model=bias_model, plot_bias=False)
 
-
     #     # gal_bias_tuple = (z_grid_nz, gal_bias_2d)
     #     # gal_bias_tuple = (z_grid_nz, gal_bias_2d)
 
@@ -372,9 +611,6 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     #     # gal_bias_table = np.hstack((z_grid_nz.reshape(-1, 1), gal_bias_2d))
     #     # np.savetxt(f'{covariance_cfg["nofz_folder"]}/'
     #     #         f'gal_bias_table_{general_cfg["which_forecast"]}.ascii', gal_bias_table)
-
-        
-
 
     #     wf_lensing_obj = wf_cl_lib.wf_ccl(z_grid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
     #                                     ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=None,
@@ -388,7 +624,6 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     #     # wf_galaxy_obj = wf_cl_lib.wf_ccl(z_grid_nz, 'galaxy', 'with_galaxy_bias', flat_fid_pars_dict, cosmo_ccl, nz_tuple,
     #                                     # ia_bias_tuple=ia_bias_tuple, gal_bias_tuple=gal_bias_tuple,
     #                                     # mag_bias_tuple=mag_bias_tuple, has_rsd=has_rsd, return_ccl_obj=True, n_samples=256)
-
 
     #     # the cls are not needed, but just in case:
     #     cl_ll_3d = wf_cl_lib.cl_PyCCL(wf_lensing_obj, wf_lensing_obj, ell_grid, zbins,
@@ -404,13 +639,13 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     #                                 # p_of_k_a=p_of_k_a, cosmo=cosmo_ccl)
     #     # cl_gg_3d = wf_cl_lib.cl_PyCCL(wf_galaxy_obj, wf_galaxy_obj, ell_grid, zbins,
     #                                 # p_of_k_a=p_of_k_a, cosmo=cosmo_ccl)
-        
+
     #     cl_ll_1d = mm.cl_3D_to_2D_or_1D(cl_ll_3d, ind, True, True, False, 'vincenzo')
     #     cl_ll_1d = mm.cl_3D_to_2D_or_1D(cl_ll_3d, ind, True, True, False, 'vincenzo')
-        
+
     #     return cl_ll_1d
     #     return cl_ll_1d
-    
+
     # def objective(par_tovary_value, x_data, y_data, inv_cov):
     #     # Define your objective function here. This is usually the sum of squared residuals.
     #     diff = y_data - cls_with_ccl(par_tovary_value=par_tovary_value, ell_grid=x_data, par_tovary_name=par_tovary_name)
@@ -421,8 +656,7 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     #     diff = y_data - cls_with_ccl(par_tovary_value=par_tovary_value, ell_grid=x_data, par_tovary_name=par_tovary_name)
     #     chi2 = diff @ inv_cov @ diff
     #     return chi2
-    
-    
+
     # def parallel_wrapper(sample_idx, cl_wl_1d_fid_samples):
     #     y_data = cl_wl_1d_fid_samples[sample_idx, :]
     #     result_om = minimize(objective, x0=(x0, ), args=(x_data, y_data, inv_cov_wl_2d), bounds=((0.2, 0.6), ))
@@ -431,14 +665,14 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     #     y_data = cl_wl_1d_fid_samples[sample_idx, :]
     #     result_om = minimize(objective, x0=(x0, ), args=(x_data, y_data, inv_cov_wl_2d), bounds=((0.2, 0.6), ))
     #     return result_om
-    
+
     # # ! settings for chi2 test
     # par_tovary_dict = {'Om_m0': 0.32}
     # par_tovary_name, par_tovary_value = list(par_tovary_dict.items())[0]
     # x0 = par_tovary_value
     # x_data = ell_dict['ell_WL']
     # n_samples = 1000
-    
+
     # # pick a fiducial bwteen ccl and vincenzo's
     # # cl_wl_1d_fid = cl_dict_2D['cl_LL_2D'].flatten()
     # start = time.perf_counter()
@@ -449,12 +683,10 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     # start = time.perf_counter()
     # cl_wl_1d_fid = cls_with_ccl(par_tovary_value = par_tovary_value, ell_grid=ell_dict['ell_WL'], par_tovary_name=par_tovary_name)
     # print(f'ccl took {time.perf_counter() - start:.2f} s')
-    
-    
+
     # cov_wl_2d = cov_dict['cov_WL_GS_2D']
     # cl_wl_1d_fid_samples = np.random.multivariate_normal(cl_wl_1d_fid, cov_wl_2d, n_samples)
-    
-    
+
     # inv_cov_wl_2d = np.linalg.inv(cov_dict['cov_WL_GO_2D'])  # TODO put different types of NG cov here
 
     # # parallel version
@@ -462,7 +694,7 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     # start = time.perf_counter()
     # result_parallel_list = Parallel(n_jobs=8)(delayed(parallel_wrapper)(sample_idx, cl_wl_1d_fid_samples) for sample_idx in range(n_samples))
     # print(f'...done in {time.perf_counter() - start:.2f} s')
-    
+
     # best_fit_parall, chi2_bf_parall = [], []
     # for sample_idx in tqdm(range(n_samples)):
     #     best_fit_parall.append(result_parallel_list[sample_idx].x[0])
@@ -473,7 +705,7 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     #     best_fit_parall.append(result_parallel_list[sample_idx].x[0])
     #     chi2_bf_parall.append(result_parallel_list[sample_idx].fun)
     # best_fit_parall, chi2_bf_parall = np.array(best_fit_parall), np.array(chi2_bf_parall)
-        
+
     # print('starting minimization in serial...')
     # start = time.perf_counter()
     # best_fit_serial, chi2_bf_serial = [], []
@@ -484,29 +716,27 @@ for covariance_cfg['SSC_code'] in (covariance_cfg['SSC_code'], ):
     #     chi2_bf_serial.append(result_serial.fun)
     # print(f'...done {time.perf_counter() - start:.2f} s')
     # best_fit_serial, chi2_bf_serial = np.array(best_fit_serial), np.array(chi2_bf_serial)
-    
+
     # check that // and serial results coincide
     # plt.plot((np.array(chi2_bf_serial)/np.array(chi2_bf_parall) - 1)*100, label='chi2')
     # plt.plot((np.array(best_fit_parall)/np.array(best_fit_serial) - 1)*100, label='best-fit')
     # plt.ylabel('% diff')
     # plt.xlabel('sample idx')
-    
+
     # fig, ax = plt.subplots(1, 2)
     # ax[0].hist(chi2_bf_parall)
     # ax[1].hist(best_fit_parall)
     # # plt.hist(best_fit_om)
-        
+
     # # for sample_idx in [1, 100, 500, 900]:
     # # plt.loglog(cl_wl_1d_fid)
     # # plt.loglog(dv_wl_samples[sample_idx, :], '--')
     # # plt.loglog(y_data, '--')
-    
+
     # np.save('/home/cosmo/davide.sciotti/data/common_data/Spaceborne/jobs/ISTF/output/cl14may/chi2_test/chi2_bf_parall_GO.npy', chi2_bf_parall)
     # np.save('/home/cosmo/davide.sciotti/data/common_data/Spaceborne/jobs/ISTF/output/cl14may/chi2_test/best_fit_parall_GO.npy', best_fit_parall)
-    
+
     # assert False, 'stop here for chi2 test'
-
-
 
     # ! save and test against benchmarks
     cov_folder = covariance_cfg["cov_folder"].format(SSC_code=ssc_code, **variable_specs)
@@ -706,8 +936,8 @@ for key in list(fm_dict_loaded.keys()):
 # compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
 for probe in probes:
 
-    # for ssc_code in [ 'OneCovariance', 'PySSC', 'PyCCL', 'Spaceborne']:
-    for ssc_code in ['OneCovariance', 'PyCCL']:
+    for ssc_code in ['OneCovariance', 'PySSC', 'PyCCL', 'Spaceborne']:
+        # for ssc_code in ['OneCovariance', 'PyCCL']:
         cov_a = 'G'
         cov_b = 'GSSC'
 
@@ -735,26 +965,27 @@ for probe in probes:
     nparams_toplot = 7
     divide_fom_by_10_plt = False if probe in ('WL' 'XC') else divide_fom_by_10
 
-    cases_to_plot = [f'FM_PySSC_{probe}_G',
-                     #  f'FM_OneCovariance_{probe}_G',
+    cases_to_plot = [
+        f'FM_PySSC_{probe}_G',
+        f'FM_OneCovariance_{probe}_G',
 
-                     #  f'FM_PySSC_{probe}_GSSC',
-                     f'FM_PyCCL_{probe}_GSSC',
-                     # f'FM_PyCCL_{probe}_GcNG',
-                     f'FM_PyCCL_{probe}_GSSCcNG',
-                     # f'FM_Spaceborne_{probe}_GSSC',
-                    #  f'FM_OneCovariance_{probe}_GSSC',
-                    #   f'FM_OneCovariance_{probe}_GcNG',
-                    #  f'FM_OneCovariance_{probe}_GSSCcNG',
+        #  f'FM_PySSC_{probe}_GSSC',
+        #  f'FM_PyCCL_{probe}_GSSC',
+        # f'FM_PyCCL_{probe}_GcNG',
+        #  f'FM_PyCCL_{probe}_GSSCcNG',
+        #  f'FM_Spaceborne_{probe}_GSSC',
+        #   f'FM_OneCovariance_{probe}_GSSC',
+        #   f'FM_OneCovariance_{probe}_GcNG',
+        #  f'FM_OneCovariance_{probe}_GSSCcNG',
 
-                      f'perc_diff_PyCCL_{probe}_GSSC',
-                     #  f'perc_diff_PyCCL_{probe}_GcNG',
-                      f'perc_diff_PyCCL_{probe}_GSSCcNG',
-                     # f'perc_diff_Spaceborne_{probe}_GSSC',
-                     #  f'perc_diff_OneCovariance_{probe}_GSSC',
-                     # f'perc_diff_OneCovariance_{probe}_GcNG',
-                     #  f'perc_diff_OneCovariance_{probe}_GSSCcNG'
-                     ]
+        f'perc_diff_PyCCL_{probe}_GSSC',
+        #  f'perc_diff_PyCCL_{probe}_GcNG',
+        #  f'perc_diff_PyCCL_{probe}_GSSCcNG',
+        f'perc_diff_Spaceborne_{probe}_GSSC',
+        f'perc_diff_OneCovariance_{probe}_GSSC',
+        # f'perc_diff_OneCovariance_{probe}_GcNG',
+        #  f'perc_diff_OneCovariance_{probe}_GSSCcNG'
+    ]
 
     df = pd.DataFrame(uncert_dict)  # you should switch to using this...
 
@@ -793,10 +1024,10 @@ for probe in probes:
 
         cases_to_plot[i] = cases_to_plot[i].replace(f'_{probe}', f'')
         cases_to_plot[i] = cases_to_plot[i].replace(f'FM_', f'')
-        cases_to_plot[i] = cases_to_plot[i].replace(f'_GSSC', f'G+SSC')
+        cases_to_plot[i] = cases_to_plot[i].replace(f'_GSSC', f' G+SSC')
         cases_to_plot[i] = cases_to_plot[i].replace(f'_', f' ')
         cases_to_plot[i] = cases_to_plot[i].replace(f'SSCcNG', f'SSC+cNG')
-        cases_to_plot[i] = cases_to_plot[i].replace(f'OneCov', f'')
+        # cases_to_plot[i] = cases_to_plot[i].replace(f'OneCov', f'')
         cases_to_plot[i] = cases_to_plot[i].replace(f'perc diff', f'% diff')
 
     plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,

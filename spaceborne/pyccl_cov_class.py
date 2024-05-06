@@ -148,7 +148,7 @@ class PycclClass():
         # store the trispectrum for the various probes in a dictionary
 
         # the default pk bust be passed to yhe Tk3D functions as None, not as 'delta_matter:delta_matter'
-        p_of_k_a = None if p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
+        p_of_k_a = None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
 
         if a_grid_tkka_SSC is not None and logn_k_grid_tkka_SSC is not None:
             print(f'SSC tkka: z points = {a_grid_tkka_SSC.size}, k points = {logn_k_grid_tkka_SSC.size}')
@@ -156,6 +156,7 @@ class PycclClass():
             print(f'cNG tkka: z points = {a_grid_tkka_cNG.size}, k points = {logn_k_grid_tkka_cNG.size}')
 
         self.tkka_dict = {}
+        self.responses_dict = {}
         for row, (A, B) in tqdm(enumerate(probe_ordering)):
             for col, (C, D) in enumerate(probe_ordering):
                 probe_block = A + B + C + D
@@ -219,13 +220,11 @@ class PycclClass():
                             'lk_arr': logn_k_grid_tkka_cNG,
                             'a_arr': a_grid_tkka_cNG,
                         }
-                        # tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_1h
-                        # additional_args = {}
                     else:
                         raise ValueError(
                             f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
 
-                    self.tkka_dict[A, B, C, D], responses_dict = tkka_func(cosmo=self.cosmo_ccl,
+                    self.tkka_dict[A, B, C, D], self.responses_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
                                                                            hmc=hmc,
                                                                            prof=halo_profile_dict[A],
                                                                            prof2=halo_profile_dict[B],
@@ -233,24 +232,25 @@ class PycclClass():
                                                                            prof4=halo_profile_dict[D],
                                                                            extrap_order_lok=1, extrap_order_hik=1,
                                                                            use_log=False,
+                                                                           p_of_k_a=p_of_k_a,
                                                                            **additional_args)
 
                     # save responses
-                    if which_ng_cov == 'SSC' and pyccl_cfg['save_hm_responses']:
-                        for key, value in responses_dict.items():
-                            np.save(f"{tkka_path}/{key}_{probe_block}.npy", value)
+                    # if which_ng_cov == 'SSC' and pyccl_cfg['save_hm_responses']:
+                    #     for key, value in self.responses_dict.items():
+                    #         np.save(f"{tkka_path}/{key}_{probe_block}.npy", value)
 
-                    if save_tkka:
-                        (a_arr, k1_arr, k2_arr, tk3d_arr_list) = self.tkka_dict[A, B, C, D].get_spline_arrays()
-                        np.save(f'{tkka_path}/a_arr_tkka_{probe_block}_{k_z_str}.npy', a_arr)
-                        np.save(f'{tkka_path}/k1_arr_tkka_{probe_block}_{k_z_str}.npy', k1_arr)
-                        np.save(f'{tkka_path}/k2_arr_tkka_{probe_block}_{k_z_str}.npy', k2_arr)
-                        # for SSC, the tK3D is factorizable and there are two items in the tk3d_arr_list; for cNG, just one
-                        if which_ng_cov == 'SSC':
-                            np.save(f'{tkka_path}/pk1_arr_tkka_{probe_block}_{k_z_str}.npy', tk3d_arr_list[0])
-                            np.save(f'{tkka_path}/pk2_arr_tkka_{probe_block}_{k_z_str}.npy', tk3d_arr_list[1])
-                        elif which_ng_cov == 'cNG':
-                            np.save(f'{tkka_path}/tkk_arr_{probe_block}_{k_z_str}.npy', tk3d_arr_list[0])
+                    # if save_tkka:
+                    #     (a_arr, k1_arr, k2_arr, tk3d_arr_list) = self.tkka_dict[A, B, C, D].get_spline_arrays()
+                    #     np.save(f'{tkka_path}/a_arr_tkka_{probe_block}_{k_z_str}.npy', a_arr)
+                    #     np.save(f'{tkka_path}/k1_arr_tkka_{probe_block}_{k_z_str}.npy', k1_arr)
+                    #     np.save(f'{tkka_path}/k2_arr_tkka_{probe_block}_{k_z_str}.npy', k2_arr)
+                    #     # for SSC, the tK3D is factorizable and there are two items in the tk3d_arr_list; for cNG, just one
+                    #     if which_ng_cov == 'SSC':
+                    #         np.save(f'{tkka_path}/pk1_arr_tkka_{probe_block}_{k_z_str}.npy', tk3d_arr_list[0])
+                    #         np.save(f'{tkka_path}/pk2_arr_tkka_{probe_block}_{k_z_str}.npy', tk3d_arr_list[1])
+                    #     elif which_ng_cov == 'cNG':
+                    #         np.save(f'{tkka_path}/tkk_arr_{probe_block}_{k_z_str}.npy', tk3d_arr_list[0])
 
         print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
 
@@ -654,7 +654,6 @@ class PycclClass():
         self.cl_gl_3d = self.set_cls(ell_grid, self.p_of_k_a, self.wf_galaxy_obj, self.wf_lensing_obj, 'spline')
         self.cl_gg_3d = self.set_cls(ell_grid, self.p_of_k_a, self.wf_galaxy_obj, self.wf_galaxy_obj, 'spline')
 
-        # if you need to save finely sampled cls for OneCovariance
         # ell_grid = np.geomspace(10, 5000, 90)
         # which_pk = general_cfg['which_pk']
         # mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
@@ -696,7 +695,7 @@ class PycclClass():
         ax[2].legend()
         plt.show()
 
-        assert False, 'stop here'
+
 
         # covariance ordering stuff, also used to compute the trispectrum
         if probe == 'LL':

@@ -485,11 +485,11 @@ n_of_z_original = n_of_z  # it may be subjected to a shift
 
 
 # ! SCALE CUTS: for these, we need to:
-# 1. Compute the BNT. This is done with the raw, or unshifted n(z), but only for the purpose of computing the 
+# 1. Compute the BNT. This is done with the raw, or unshifted n(z), but only for the purpose of computing the
 #    ell cuts - the rest of the code uses a BNT matrix from the shifted n(z) - see also comment below.
 # 2. compute the kernels for the un-shifted n(z) (for consistency)
 # 3. bnt-transform these kernels (for lensing, it's only the gamma kernel), and use these to:
-# 4. compute the z means 
+# 4. compute the z means
 # 5. compute the ell cuts
 
 # 1. Compute BNT
@@ -514,7 +514,7 @@ if compute_bnt_with_shifted_nz_for_zcuts:
 bnt_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
 
 # 2. compute the kernels for the un-shifted n(z) (for consistency)
-ccl_obj.zbins = zbins  
+ccl_obj.zbins = zbins
 ccl_obj.set_nz(np.hstack((zgrid_nz[:, None], n_of_z)))
 ccl_obj.check_nz_tuple(zbins)
 ccl_obj.set_ia_bias_tuple()
@@ -522,7 +522,7 @@ ccl_obj.set_ia_bias_tuple()
 # set galaxy bias
 if general_cfg['which_forecast'] == 'SPV3':
     ccl_obj.set_gal_bias_tuple_spv3(maglim=maglim)
-    
+
 elif general_cfg['which_forecast'] == 'ISTF':
     bias_func_str = general_cfg['bias_function']
     bias_model = general_cfg['bias_model']
@@ -562,7 +562,7 @@ if general_cfg['which_forecast'] == 'ISTF':
 # 3. bnt-transform these kernels (for lensing, it's only the gamma kernel, without IA)
 wf_gamma_ccl_bnt = (bnt_matrix @ ccl_obj.wf_gamma_arr.T).T
 
-# 4. compute the z means 
+# 4. compute the z means
 z_means_ll = wf_cl_lib.get_z_means(zgrid_nz, ccl_obj.wf_gamma_arr)
 z_means_gg = wf_cl_lib.get_z_means(zgrid_nz, ccl_obj.wf_galaxy_arr)
 z_means_ll_bnt = wf_cl_lib.get_z_means(zgrid_nz, wf_gamma_ccl_bnt)
@@ -645,146 +645,154 @@ for zi in range(zbins):
                  label='gl' if zi == 0 else None)
     ax[2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], ls="-", c=colors[zi], alpha=0.6,
                  label='gg' if zi == 0 else None)
-    
+
     ax[0].loglog(ell_dict['ell_WL'], cl_ll_3d_vinc[:, zi, zj], ls="--", c=colors[zi], alpha=0.6,
                  label='ll' if zi == 0 else None)
     ax[1].loglog(ell_dict['ell_XC'], cl_gl_3d_vinc[:, zi, zj], ls="--", c=colors[zi], alpha=0.6,
                  label='gl' if zi == 0 else None)
     ax[2].loglog(ell_dict['ell_GC'], cl_gg_3d_vinc[:, zi, zj], ls="--", c=colors[zi], alpha=0.6,
                  label='gg' if zi == 0 else None)
-    
+
 # set labels
 ax[0].set_xlabel('$\\ell$')
 ax[1].set_xlabel('$\\ell$')
 ax[2].set_xlabel('$\\ell$')
-ax[0].set_ylabel('cl_ll')
-ax[1].set_ylabel('cl_gl')
-ax[2].set_ylabel('cl_gg')
+ax[0].set_ylabel('$C_{\ell}$')
 ax[0].legend()
 ax[1].legend()
 ax[2].legend()
 plt.show()
 
-assert False, 'stop here'
+# again, save in ASCII format for OneCovariance
+# ell_grid = np.geomspace(10, 5000, 90)
+# which_pk = general_cfg['which_pk']
+# mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
+#                   f'Cell_ll_SPV3_ccl', cl_ll_3d, ell_grid, zbins)
+# mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
+#                   f'Cell_gl_SPV3_ccl', cl_gl_3d, ell_grid, zbins)
+# mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
+#                   f'Cell_gg_SPV3_ccl', cl_gg_3d, ell_grid, zbins)
 
-# # ! load vincenzo's kernels, including magnification bias, IA and n(z) shifts!
-# wf_folder = general_cfg['wf_input_folder']
-# wf_filename = general_cfg['wf_filename'].format(probe='{probe:s}', **variable_specs)
-# wf_delta_vin = np.genfromtxt(f'{wf_folder}/{wf_filename.format(probe="delta")}')
-# wf_gamma_vin = np.genfromtxt(f'{wf_folder}/{wf_filename.format(probe="gamma")}')
-# wf_ia_vin = np.genfromtxt(f'{wf_folder}/{wf_filename.format(probe="ia")}')
-# wf_mu_vin = np.genfromtxt(f'{wf_folder}/{wf_filename.format(probe="mu")}')
-
-# zgrid_wf_vin = wf_delta_vin[:, 0]
-# wf_delta_vin = wf_delta_vin[:, 1:]
-# wf_gamma_vin = wf_gamma_vin[:, 1:]
-# wf_ia_vin = wf_ia_vin[:, 1:]
-# wf_mu_vin = wf_mu_vin[:, 1:]
-
-# # IA bias array, to get wf lensing from Vincenzo's inputs
-# ia_bias_vin = wf_cl_lib.build_ia_bias_1d_arr(zgrid_wf_vin, cosmo_ccl=ccl_obj.cosmo_ccl,
-#                                              flat_fid_pars_dict=flat_fid_pars_dict,
-#                                              input_z_grid_lumin_ratio=None,
-#                                              input_lumin_ratio=None,
-#                                              output_F_IA_of_z=False)
-
-# wf_lensing_vin = wf_gamma_vin + ia_bias_vin[:, None] * wf_ia_vin
-# wf_galaxy_vin = wf_delta_vin + wf_mu_vin  # TODO in theory, I should BNT-tansform wf_mu...
+# ! ================================ SSC =======================================
 
 
-# ! my kernels, which are needed because I want the flexibility to shift the n(z) or not
-gal_bias_1d_arr = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, general_cfg['magcut_source'] / 10,
-                                           galaxy_bias_fit_fiducials)
-gal_bias_2d_arr = np.repeat(gal_bias_1d_arr.reshape(1, -1), zbins, axis=0).T
-gal_bias_tuple = (zgrid_nz, gal_bias_2d_arr)
+# get halo model responses from CCL
+probe_ordering = covariance_cfg['probe_ordering']
+ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
+                               pyccl_cfg=pyccl_cfg, which_pk='_')
 
-wf_lensing_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'with_IA', flat_fid_pars_dict, cosmo_ccl,
-                                      nz_tuple, ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
-                                      return_ccl_obj=False, n_samples=len(zgrid_nz))
-wf_gamma_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'without_IA', flat_fid_pars_dict, cosmo_ccl,
-                                    nz_tuple, ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
-                                    return_ccl_obj=False, n_samples=len(zgrid_nz))
-wf_ia_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'lensing', 'IA_only', flat_fid_pars_dict, cosmo_ccl,
-                                 nz_tuple, ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
-                                 return_ccl_obj=False, n_samples=len(zgrid_nz))
-wf_galaxy_ccl_arr = wf_cl_lib.wf_ccl(zgrid_nz, 'galaxy', 'without_galaxy_bias', flat_fid_pars_dict, cosmo_ccl,
-                                     nz_tuple, ia_bias_tuple=None, gal_bias_tuple=gal_bias_tuple,
-                                     return_ccl_obj=False, n_samples=len(zgrid_nz))
+ccl_obj.responses_dict['L', 'L', 'L', 'L']
 
-# this is to check against ccl in pyccl_cov
-general_cfg['wf_WL'] = wf_lensing_vin
-general_cfg['wf_GC'] = wf_galaxy_vin
-general_cfg['wf_delta'] = wf_delta_vin
-general_cfg['wf_mu'] = wf_mu_vin
-general_cfg['z_grid_wf'] = zgrid_wf_vin
+k_grid_dPk_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
+a_grid_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
 
-# BNT-transform the lensing kernels
-wf_gamma_ccl_bnt = (bnt_matrix @ wf_gamma_ccl_arr.T).T
-wf_lensing_ccl_bnt = (bnt_matrix @ wf_lensing_ccl_arr.T).T
+dPmm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
+dPgm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk12']
+dPgg_ddeltab_hm = ccl_obj.responses_dict['G', 'G', 'G', 'G']['dpk12']
 
-# compute z means
-if include_ia_in_bnt_kernel_for_zcuts:
-    wf_ll_ccl = wf_lensing_ccl_arr
-    wf_ll_ccl_bnt = wf_lensing_ccl_bnt
-else:
-    wf_ll_ccl = wf_gamma_ccl_arr
-    wf_ll_ccl_bnt = wf_gamma_ccl_bnt
+# just a quick check
+assert np.allclose(ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34'],
+                   ccl_obj.responses_dict['G', 'L', 'G', 'G']['dpk12'], atol=0, rtol=1e-5)
+assert np.allclose(ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk34'],
+                   ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12'], atol=0, rtol=1e-5)
 
-z_means_ll = wf_cl_lib.get_z_means(zgrid_nz, wf_ll_ccl)
-z_means_gg = wf_cl_lib.get_z_means(zgrid_nz, wf_galaxy_ccl_arr)
-z_means_ll_bnt = wf_cl_lib.get_z_means(zgrid_nz, wf_ll_ccl_bnt)
+# counterterms, to be better understood - 0 for lensing, as they should be
+bA12 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bA12_tosave']
+bB12 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bB12_tosave']
+bA34 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bA34_tosave']
+bB34 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bB34_tosave']
 
-# plot_kernels_for_thesis()
+
+# a is flipped w.r.t. z
+dPmm_ddeltab_hm = np.flip(dPmm_ddeltab_hm, axis=1)
+dPgm_ddeltab_hm = np.flip(dPgm_ddeltab_hm, axis=1)
+dPgg_ddeltab_hm = np.flip(dPgg_ddeltab_hm, axis=1)
+bA12 = np.flip(bA12, axis=1)
+bB12 = np.flip(bB12, axis=1)
+bA34 = np.flip(bA34, axis=1)
+bB34 = np.flip(bB34, axis=1)
+
+assert dPmm_ddeltab_hm.shape == dPgm_ddeltab_hm.shape == dPgg_ddeltab_hm.shape, 'dPab_ddeltab_hm shape mismatch'
+assert bA12.shape == bA34.shape == bB12.shape == bB34.shape, 'counterterms shape mismatch'
+
+# translate a to z and cut the arrays to the maximum redshift of the SU responses (much smaller range!)
+z_grid_dPk_hm = csmlib.a_to_z(a_grid_hm)[::-1]
+
+# trim grids and arrays
+# z_mask = (z_grid_dPk.min() <= z_grid_dPk_hm) & (z_grid_dPk_hm <= z_grid_dPk.max())
+# k_mask = (k_grid_dPk.min() <= k_grid_dPk_hm) & (k_grid_dPk_hm <= k_grid_dPk.max())
+
+# z_grid_dPk_hm = z_grid_dPk_hm[z_mask]
+# k_grid_dPk_hm = k_grid_dPk_hm[k_mask]
+# dPmm_ddeltab_hm = dPmm_ddeltab_hm[np.ix_(k_mask, z_mask)]
+# dPgm_ddeltab_hm = dPgm_ddeltab_hm[np.ix_(k_mask, z_mask)]
+# dPgg_ddeltab_hm = dPgg_ddeltab_hm[np.ix_(k_mask, z_mask)]
+# bA12 = bA12[np.ix_(k_mask, z_mask)]
+# bB12 = bB12[np.ix_(k_mask, z_mask)]
+# bA34 = bA34[np.ix_(k_mask, z_mask)]
+# bB34 = bB34[np.ix_(k_mask, z_mask)]
+
+_, pk2d_dav = csmlib.pk_from_ccl(k_grid_dPk_hm, z_grid_dPk_hm, False, ccl_obj.cosmo_ccl, pk_kind='nonlinear')
+assert np.all(_ == k_grid_dPk_hm)
 
 plt.figure()
-for zi in range(zbins):
-    plt.plot(zgrid_nz, wf_gamma_ccl_arr[:, zi], ls='-', c=colors[zi],
-             alpha=0.6, label='wf_gamma_ccl' if zi == 0 else None)
-    plt.plot(zgrid_nz, wf_gamma_ccl_bnt[:, zi], ls='--', c=colors[zi],
-             alpha=0.6, label='wf_gamma_ccl_bnt' if zi == 0 else None)
-    plt.axvline(z_means_ll_bnt[zi], ls=':', c=colors[zi])
+# pick a redshift and get the corresponding index
+colors = cm.rainbow(np.linspace(0, 1, 5))
+# for count, z_val in enumerate((0, 0.5, 1, 2, 3)):
+for count, z_val in enumerate((0, )):
+
+    # z_idx_su = np.argmin(np.abs(z_grid_dPk - z_val))
+    z_idx_hm = np.argmin(np.abs(z_grid_dPk_hm - z_val))
+
+    z_hm = z_grid_dPk_hm[z_idx_hm]
+    # z_su = z_grid_dPk[z_idx_su]
+
+    # plt.loglog(k_grid_dPk, pk_mm_2d[:, z_idx_su], ls='-', c=colors[count], label='cloe')
+    plt.loglog(k_grid_dPk_hm, pk2d_dav[:, z_idx_hm], ls=':', c=colors[count], alpha=0.5, label='davide ccl')
+plt.title('Pk, ccl vs imported')
+
+# since the nonlin pks don't match, I define a custom Pk2D object
+scale_factor_grid_pk = csmlib.z_to_a(z_grid_Pk)[::-1]  # flip it
+pk2d_ccl_obj = ccl.pk2d.Pk2D(a_arr=scale_factor_grid_pk, lk_arr=np.log(k_grid_Pk),
+                             pk_arr=pk_mm_2d.T, is_logp=False)
+
+
+# TODO check galaxy counterterms
+# plt.figure()
+# plt.plot(z_arr_hm, bA34[0, :])
+# plt.plot(z_arr_hm, bB34[0, :])
+
+plt.figure()
+# for count, z_val in enumerate((0, 0.5, 1, 2, 3)):
+
+plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk2d_dav[:, z_idx_hm],
+        label=f'dpk_mm/pkmm_2d_dav, z={z_hm}', alpha=0.5)
+# plt.plot(k_grid_dPk, r_mm[:, z_idx_su], label=f'R1_mm_su, z={z_su:.2f}', alpha=0.5)
 plt.legend()
-plt.xlabel('$z$')
-plt.ylabel(r'$W_i^{\gamma}(z)$')
+plt.xlim(1e-2, 8)
+plt.ylim(-5, 7)
+plt.xscale('log')
+plt.xlabel('k [1/Mpc]')
+plt.ylabel('$\partial \ln P_{mm} / \partial \delta_b$')
+plt.title('dPk/ddeltab, halomodel vs separate universe')
 
-assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically increasing'
-assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically increasing'
-assert np.all(np.diff(z_means_ll_bnt) > 0), ('z_means_ll_bnt should be monotonically increasing '
-                                             '(not a strict condition, valid only if we do not shift the n(z) in this part)')
 
-ell_cuts_dict = {}
-ell_cuts_dict['LL'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_ll_bnt, z_values_b=z_means_ll_bnt)
-ell_cuts_dict['GG'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_gg, z_values_b=z_means_gg)
-ell_cuts_dict['GL'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_gg, z_values_b=z_means_ll_bnt)
-ell_cuts_dict['LG'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_ll_bnt, z_values_b=z_means_gg)
-ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the covariance module
+plt.figure()
+plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm],
+         label=f'dPmm_ddeltab_hm, z={z_hm}', ls='--', alpha=0.5, c='tab:blue')
+plt.plot(k_grid_dPk_hm, dPgm_ddeltab_hm[:, z_idx_hm],
+         label=f'dPgm_ddeltab_hm, z={z_hm}', ls='--', alpha=0.5, c='tab:orange')
+plt.plot(k_grid_dPk_hm, dPgg_ddeltab_hm[:, z_idx_hm],
+         label=f'dPgg_ddeltab_hm, z={z_hm}', ls='--', alpha=0.5, c='tab:green')
+plt.plot(k_grid_dPk, dPmm_ddeltab[:, z_idx_su], label=f'dPmm_ddeltab, z={z_su:.2f}', alpha=0.5, c='tab:blue')
+plt.plot(k_grid_dPk, dPgm_ddeltab[:, z_idx_su], label=f'dPgm_ddeltab, z={z_su:.2f}', alpha=0.5, c='tab:orange')
+plt.plot(k_grid_dPk, dPgg_ddeltab[:, z_idx_su], label=f'dPgg_ddeltab, z={z_su:.2f}', alpha=0.5, c='tab:green')
+plt.legend()
+plt.xscale('log')
+plt.xlabel('k [1/Mpc]')
+plt.ylabel('$\partial P_{mm} / \partial \delta_b$')
 
-# ! plot ell cuts matrix for thesis, for "reference" kmax (corresponding to FoM 400 for ell_cuts_center)
-# if kmax_h_over_Mpc == kmax_fom_400_ellcenter and center_or_min == 'center':
-#     plot_ell_cuts_for_thesis(ell_cuts_dict['LL'], ell_cuts_dict['GL'], ell_cuts_dict['GG'],
-#                              'LL', 'GL', 'GL', kmax_h_over_Mpc)
-#     plt.savefig(f'{ROOT}/phd_thesis_plots/plots/'
-#                 f'z_dependent_ell_cuts_kmax{kmax_h_over_Mpc:02f}.pdf', dpi=500, bbox_inches='tight')
-
-# mm.plot_bnt_matrix(BNT_matrix, zbins)
-# plt.savefig(f'{ROOT}/phd_thesis_plots/plots/bnt_matrix_fs2.pdf',
-#             dpi=500, bbox_inches='tight')
-
-if shift_nz:
-    n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z_original, dz_shifts, normalize=normalize_shifted_nz, plot_nz=False,
-                                interpolation_kind=shift_nz_interpolation_kind)
-    nz_tuple = (zgrid_nz, n_of_z)
-    # * this is important: the BNT matrix I use for the rest of the code (so not to compute the ell cuts) is instead
-    # * consistent with the shifted n(z) used to compute the kernels
-    bnt_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, cosmo_ccl=cosmo_ccl, plot_nz=False)
-
-general_cfg['nz_tuple'] = nz_tuple
-general_cfg['n_of_z_load'] = np.hstack((zgrid_nz[:, None], n_of_z))
-
-# save in ASCII format for OneCovariance
-nofz_filename_ascii = nofz_filename.replace('.dat', '.ascii')
-nofz_tosave = np.column_stack((zgrid_nz, n_of_z))
-np.savetxt(f'{nofz_folder}/{nofz_filename_ascii}', nofz_tosave)
+assert False, 'stop here'
 
 
 # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins

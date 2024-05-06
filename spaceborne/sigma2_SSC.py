@@ -19,8 +19,8 @@ SB_ROOT = f'{ROOT}/Spaceborne'
 
 # project modules
 sys.path.append(SB_ROOT)
-import bin.my_module as mm
-import bin.cosmo_lib as csmlib
+import spaceborne.my_module as mm
+import spaceborne.cosmo_lib as csmlib
 
 
 start_time = time.perf_counter()

@@ -14,13 +14,10 @@ from matplotlib import cm
 from tqdm import tqdm
 from scipy.interpolate import interp1d
 
-import os
-ROOT = os.getenv('ROOT')
-sys.path.append(f'{ROOT}/Spaceborne')
-import bin.my_module as mm
-import bin.cosmo_lib as cosmo_lib
-import bin.wf_cl_lib as wf_cl_lib
-import bin.sigma2_SSC as sigma2_SSC
+import spaceborne.my_module as mm
+import spaceborne.cosmo_lib as cosmo_lib
+import spaceborne.wf_cl_lib as wf_cl_lib
+import spaceborne.sigma2_SSC as sigma2_SSC
 import common_cfg.mpl_cfg as mpl_cfg
 
 
@@ -344,7 +341,6 @@ class PycclClass():
         return cov_ng_3x2pt_dict_8D
 
     def set_nz(self, n_of_z_load):
-
         self.zgrid_nz = n_of_z_load[:, 0]
         self.n_of_z = n_of_z_load[:, 1:]
         self.nz_tuple = (self.zgrid_nz, self.n_of_z)
@@ -428,18 +424,17 @@ class PycclClass():
                                                                      mag_bias=mag_bias_arg,
                                                                      n_samples=n_samples_wf))
 
-    def set_cls(self, ell_grid, p_of_k_a, limber_integration_method):
 
+    def set_ell_grid(self, ell_grid):
         self.ell_grid = ell_grid
-        self.cl_ll_3d = wf_cl_lib.cl_PyCCL(self.wf_lensing_obj, self.wf_lensing_obj, ell_grid, self.zbins,
+        
+    def set_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, limber_integration_method):
+
+        cl_ab_3d = wf_cl_lib.cl_PyCCL(kernel_a, kernel_b, ell_grid, self.zbins,
                                            p_of_k_a=p_of_k_a, cosmo=self.cosmo_ccl,
                                            limber_integration_method=limber_integration_method)
-        self.cl_gl_3d = wf_cl_lib.cl_PyCCL(self.wf_galaxy_obj, self.wf_lensing_obj, ell_grid, self.zbins,
-                                           p_of_k_a=p_of_k_a, cosmo=self.cosmo_ccl,
-                                           limber_integration_method=limber_integration_method)
-        self.cl_gg_3d = wf_cl_lib.cl_PyCCL(self.wf_galaxy_obj, self.wf_galaxy_obj, ell_grid, self.zbins,
-                                           p_of_k_a=p_of_k_a, cosmo=self.cosmo_ccl,
-                                           limber_integration_method=limber_integration_method)
+        
+        return cl_ab_3d
 
     def set_kernel_arr(self, z_grid_wf, has_magnification_bias):
 
@@ -610,11 +605,10 @@ class PycclClass():
         if general_cfg['which_forecast'] == 'SPV3':
             gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias!)'
             wf_galaxy_arr = self.wf_galaxy_wo_gal_bias_arr
-            
+
         if general_cfg['which_forecast'] == 'ISTF':
             gal_kernel_plt_title = 'galaxy kernel\n(w/ gal bias)'
             wf_galaxy_arr = self.wf_galaxy_w_gal_bias_arr
-
 
         # alternative way to get the magnification kernel
         # wf_mu_tot_alt_arr = -2 * np.array(
@@ -652,11 +646,13 @@ class PycclClass():
         ax[0].legend()
         ax[1].legend()
         plt.show()
-        
-        
+
         # compute cls
         self.set_cls(ell_grid, self.p_of_k_a, 'spline')
-
+        
+        self.cl_ll_3d = self.set_cls(ell_grid, self.p_of_k_a, self.wf_lensing_obj, self.wf_lensing_obj, 'spline')
+        self.cl_gl_3d = self.set_cls(ell_grid, self.p_of_k_a, self.wf_galaxy_obj, self.wf_lensing_obj, 'spline')
+        self.cl_gg_3d = self.set_cls(ell_grid, self.p_of_k_a, self.wf_galaxy_obj, self.wf_galaxy_obj, 'spline')
 
         # if you need to save finely sampled cls for OneCovariance
         # ell_grid = np.geomspace(10, 5000, 90)
@@ -699,7 +695,7 @@ class PycclClass():
         ax[1].legend()
         ax[2].legend()
         plt.show()
-    
+
         assert False, 'stop here'
 
         # covariance ordering stuff, also used to compute the trispectrum

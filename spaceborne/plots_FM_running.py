@@ -16,11 +16,10 @@ import os
 ROOT = os.getenv('ROOT')
 
 sys.path.append(f'{ROOT}/Spaceborne/bin')
-import my_module as mm
+import spaceborne.my_module as mm
 
 sys.path.append(f'{ROOT}/Spaceborne/common_cfg')
-# import ISTF_fid_params as ISTF
-import mpl_cfg as mpl_cfg
+import common_cfg.mpl_cfg as mpl_cfg
 
 
 

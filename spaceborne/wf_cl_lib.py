@@ -15,16 +15,17 @@ from matplotlib import cm
 from numba import njit
 from scipy.integrate import quad, quad_vec, simpson, dblquad, simps
 from scipy.interpolate import interp1d, interp2d
+from scipy.ndimage import gaussian_filter1d
 from scipy.special import erf
 from functools import partial
 import sys
 from tqdm import tqdm
-
-
+import os
 ROOT = os.getenv('ROOT')
-sys.path.append(f'{ROOT}/Spaceborne')
-import my_module as mm
-import cosmo_lib as csmlib
+
+
+import spaceborne.my_module as mm
+import spaceborne.cosmo_lib as csmlib
 import common_cfg.ISTF_fid_params as ISTF
 import common_cfg.mpl_cfg as mpl_cfg
 import matplotlib.lines as mlines
@@ -69,7 +70,6 @@ c = 299792.458  # km/s
 # z_max_cl = cfg.z_max_cl
 # z_grid = np.linspace(z_min, z_max_cl, cfg.zsteps_cl)
 # # use_h_units = cfg.use_h_units
-
 
 
 @njit
@@ -709,16 +709,15 @@ def wf_ccl(z_grid, probe, which_wf, flat_fid_pars_dict, cosmo_ccl, dndz_tuple, i
             assert mag_bias_tuple[1].shape == (
                 len(z_grid), zbins), 'mag_bias_tuple[1] must have shape (len(z_grid), zbins)'
 
-
         wf_galaxy_obj = []
         for zbin_idx in range(zbins):
-            
+
             # this is needed to be eble to pass mag_bias = None for each zbin
             if mag_bias_tuple is None:
                 mag_bias_arg = mag_bias_tuple
             else:
                 mag_bias_arg = (mag_bias_tuple[0], mag_bias_tuple[1][:, zbin_idx])
-                
+
             wf_galaxy_obj.append(ccl.tracers.NumberCountsTracer(cosmo_ccl,
                                                                 has_rsd=has_rsd,
                                                                 dndz=(dndz_tuple[0], dndz_tuple[1][:, zbin_idx]),
@@ -968,10 +967,9 @@ def cl_PyCCL(wf_A, wf_B, ell, zbins, p_of_k_a, cosmo, limber_integration_method=
         is_auto_spectrum = True
 
     nbl = len(ell)
-    
+
     if p_of_k_a is None:
         p_of_k_a = 'delta_matter:delta_matter'
-    
 
     if is_auto_spectrum:
         cl_3D = np.zeros((nbl, zbins, zbins))
@@ -1444,6 +1442,24 @@ def cl_parallel_helper(param_to_vary, variation_idx, varied_fiducials, cl_LL, cl
     return cl_LL, cl_GL, cl_GG
 
 
+def gaussian_smmothing_nz(zgrid_nz, nz_original, nz_gaussian_smoothing_sigma, plot=True):
+
+    print(f'Applying a Gaussian filter of sigma = {nz_gaussian_smoothing_sigma} to the n(z)')
+    
+    zbins = nz_original.shape[1]
+    colors = cm.rainbow(np.linspace(0, 1, zbins))
+    
+    nz_smooth = gaussian_filter1d(nz_original, nz_gaussian_smoothing_sigma, axis=0)
+
+    if plot:
+        plt.figure()
+        for zi in range(zbins):
+            plt.plot(zgrid_nz, nz_smooth[:, zi], label=f'zbin {zi}', c=colors[zi], ls='-')
+            plt.plot(zgrid_nz, nz_smooth[:, zi], c=colors[zi], ls='--')
+        plt.title(f'Gaussian filter w/ sigma = {nz_gaussian_smoothing_sigma}')
+
+    return nz_smooth
+
 def shift_nz(zgrid_nz, nz_original, dz_shifts, normalize, plot_nz=False, interpolation_kind='linear', clip_min=0,
              clip_max=3):
     print(f'Shifting n(z), clipping between redshifts {clip_min} and {clip_max}')
@@ -1464,17 +1480,16 @@ def shift_nz(zgrid_nz, nz_original, dz_shifts, normalize, plot_nz=False, interpo
         z_grid_nz_shifted = np.clip(z_grid_nz_shifted, clip_min, clip_max)
         n_of_z_shifted[:, zi] = n_of_z_func(z_grid_nz_shifted)
 
-
     if normalize:
         integrals = simps(n_of_z_shifted, zgrid_nz, axis=0)
         n_of_z_shifted /= integrals[None, :]
-        
+
     if plot_nz:
         plt.figure()
         for zi in range(zbins):
             plt.plot(zgrid_nz, nz_original[:, zi], ls='-', c=colors[zi])
             plt.plot(zgrid_nz, n_of_z_shifted[:, zi], ls='--', c=colors[zi])
-        
+
         legend_elements = [mlines.Line2D([], [], color='k', linestyle='-', label='Original'),
                            mlines.Line2D([], [], color='k', linestyle='--', label='Shifted')]
         plt.legend(handles=legend_elements)

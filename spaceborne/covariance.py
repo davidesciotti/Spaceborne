@@ -10,14 +10,12 @@ from scipy.integrate import simps
 from copy import deepcopy
 
 import os
-ROOT = os.getenv('ROOT')
-sys.path.append(f'{ROOT}/Spaceborne')
-import bin.cl_preprocessing as cl_preprocessing
-import bin.pyccl_cov_class as pyccl_cov
-import bin.sigma2_SSC as sigma2_SSC
-import bin.my_module as mm
-import bin.cosmo_lib as csmlib
-import bin.wf_cl_lib as wf_cl_lib
+import spaceborne.cl_preprocessing as cl_preprocessing
+import spaceborne.pyccl_cov_class as pyccl_cov
+import spaceborne.sigma2_SSC as sigma2_SSC
+import spaceborne.my_module as mm
+import spaceborne.cosmo_lib as csmlib
+import spaceborne.wf_cl_lib as wf_cl_lib
 from scipy.interpolate import UnivariateSpline, interp1d
 
 ###############################################################################
@@ -265,14 +263,14 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
     else:
         assert ssc_code == 'PyCCL', 'covariance can be computed directly only with PyCCL at the moment'
 
-        ccl_obj = pyccl_cov.PycclClass(general_cfg['fid_pars_dict'])
-        cov_3x2pt_dict_8D = ccl_obj.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], '3x2pt',
+        ccl_obj = pyccl_cov.PycclClass(general_cfg['cosmology'])
+        cov_3x2pt_dict_8D = ccl_obj.compute_cov_ng_with_pyccl(general_cfg['cosmology'], '3x2pt',
                                                               which_ng_cov=which_ng_cov,
                                                               ell_grid=ell_dict['ell_3x2pt'],
                                                               general_cfg=general_cfg,
                                                               covariance_cfg=covariance_cfg,
                                                               cov_filename=cov_filename)
-        cov_3x2pt_dict_8D = ccl_obj.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], '3x2pt', which_ng_cov, ell_grid, general_cfg,
+        cov_3x2pt_dict_8D = ccl_obj.compute_cov_ng_with_pyccl(general_cfg['cosmology'], '3x2pt', which_ng_cov, ell_grid, general_cfg,
                                                               covariance_cfg, cov_filename)
 
     if ssc_code == 'Spaceborne':

@@ -7,10 +7,8 @@ import scipy
 from matplotlib import pyplot as plt
 import sys
 import os
-ROOT = os.getenv('ROOT')
-sys.path.append(f'{ROOT}/Spaceborne/bin')
-import my_module as mm
-import cl_preprocessing as cl_utils
+import spaceborne.my_module as mm
+import spaceborne.cl_preprocessing as cl_utils
 
 
 # def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum):

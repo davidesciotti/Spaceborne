@@ -13,9 +13,7 @@ from scipy.integrate import simps
 import sys
 
 import os
-ROOT = os.getenv('ROOT')
-sys.path.append(f'{ROOT}/Spaceborne/bin')
-import my_module as mm
+import spaceborne.my_module as mm
 
 # ! prefactor for limber and curved-sky corrections
 # prefactor = np.array(

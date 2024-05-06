@@ -515,7 +515,7 @@ bnt_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, cosmo_ccl=
 
 # 2. compute the kernels for the un-shifted n(z) (for consistency)
 ccl_obj.zbins = zbins  
-ccl_obj.set_nz(np.hstack(zgrid_nz[None, :], n_of_z))
+ccl_obj.set_nz(np.hstack((zgrid_nz[:, None], n_of_z)))
 ccl_obj.check_nz_tuple(zbins)
 ccl_obj.set_ia_bias_tuple()
 
@@ -592,12 +592,9 @@ ell_cuts_dict['GG'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_gg, z_va
 ell_cuts_dict['GL'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_gg, z_values_b=z_means_ll_bnt)
 ell_cuts_dict['LG'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_ll_bnt, z_values_b=z_means_gg)
 ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the covariance module
-
-
 # ! END ELL CUTS
 
-
-# ! shift it (plus, re-normalize it after the shift\)
+# now compute the BNT used for the rest of the code
 if shift_nz:
     n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z_original, dzWL_fiducial, normalize=normalize_shifted_nz, plot_nz=False,
                                 interpolation_kind=shift_nz_interpolation_kind)
@@ -607,76 +604,17 @@ if shift_nz:
     bnt_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
 
 
-ccl_obj.set_nz(np.hstack(zgrid_nz[None, :], n_of_z))
+# save in ASCII format for OneCovariance
+nofz_filename_ascii = nofz_filename.replace('.dat', '.ascii')
+nofz_tosave = np.column_stack((zgrid_nz, n_of_z))
+np.savetxt(f'{nofz_folder}/{nofz_filename_ascii}', nofz_tosave)
 
-
-assert False, 'stop here'
-
-# * IMPORTANT NOTE: The BNT should be computed from the same n(z) (shifted or not) which is then used to compute
-# * the kernels which are then used to get the z_means, and finally the ell_cuts, for consistency. In other words,
-# * we cannot compute the kernels with a shifted n(z) and transforme them with a BNT computed from the unshifted n(z)
-# * and viceversa. If the n(z) are shifted, one of the BNT kernels will become negative, but this is just because
-# * two of the original kernels get very close after the shift: the transformation is correct.
-# * Having said that, I leave the possibility to continue with the rest of the code with a
-if compute_bnt_with_shifted_nz_for_zcuts:
-    n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z_original, dzWL_fiducial, normalize=normalize_shifted_nz, plot_nz=False,
-                                interpolation_kind=shift_nz_interpolation_kind)
-
-bnt_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
-
-
-
-
-# set n_of_z
-ccl_obj.set_nz(n_of_z_full)
-ccl_obj.check_nz_tuple(zbins)
-
-# set ia_bias
-ccl_obj.set_ia_bias_tuple()
-
-# TODO here I'm still setting some cfgs, which do not go in the Class init
-ccl_obj.zbins = zbins  # TODO is this inelegant?
-maglim = general_cfg['magcut_source'] / 10
-
-# set galaxy bias
-if general_cfg['which_forecast'] == 'SPV3':
-    ccl_obj.set_gal_bias_tuple_spv3(maglim=maglim)
-
-
-elif general_cfg['which_forecast'] == 'ISTF':
-    bias_func_str = general_cfg['bias_function']
-    bias_model = general_cfg['bias_model']
-    ccl_obj.set_gal_bias_tuple_istf(bias_function_str=bias_func_str, bias_model=bias_model)
-
-
-# save gal bias for Robert - not needed at the moment
-# gal_bias_table_ascii_name = f'{covariance_cfg["nofz_folder"]}/gal_bias_table_{general_cfg["which_forecast"]}.ascii'
-# ccl_obj.save_gal_bias_table_ascii(filename=gal_bias_table_ascii_name)
-
-# set magnification bias
-ccl_obj.set_mag_bias_tuple(has_magnification_bias=general_cfg['has_magnification_bias'], maglim=maglim)
-
-# set pk
-# this is a test to use the actual P(k) from the input files, but the agreement gets much worse
-if general_cfg['which_forecast'] == 'SPV3' and pyccl_cfg['which_pk_for_pyccl'] == 'CLOE':
-    cloe_pk_filename = general_cfg['CLOE_pk_filename'].format(
-        flat_or_nonflat=general_cfg['flat_or_nonflat'], which_pk=general_cfg['which_pk'])
-    ccl_obj.p_of_k_a = ccl_obj.pk_obj_from_file(pk_filename=cloe_pk_filename)
-    # TODO finish implementing this
-    raise NotImplementedError('range needs to be extended to higher redshifts to match tkka grid (probably larger k range too), \
-        some other small consistency checks needed')
-
-elif general_cfg['which_forecast'] == 'SPV3' and pyccl_cfg['which_pk_for_pyccl'] == 'PyCCL':
-    ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
-
-elif general_cfg['which_forecast'] == 'ISTF':
-    ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
-
-
-# set kernel arrays and objects
+# re-set n(z) used in CCL class, then re-compute kernels
+ccl_obj.set_nz(np.hstack((zgrid_nz[:, None], n_of_z)))
 ccl_obj.set_kernel_obj(general_cfg['has_rsd'], covariance_cfg['PyCCL_cfg']['n_samples_wf'])
 ccl_obj.set_kernel_arr(z_grid_wf=ccl_obj.zgrid_nz, has_magnification_bias=general_cfg['has_magnification_bias'])
 
+# compute cls
 ccl_obj.cl_ll_3d = ccl_obj.set_cls(ell_dict['ell_WL'], ccl_obj.p_of_k_a,
                                    ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, 'spline')
 ccl_obj.cl_gl_3d = ccl_obj.set_cls(ell_dict['ell_XC'], ccl_obj.p_of_k_a,
@@ -684,6 +622,19 @@ ccl_obj.cl_gl_3d = ccl_obj.set_cls(ell_dict['ell_XC'], ccl_obj.p_of_k_a,
 ccl_obj.cl_gg_3d = ccl_obj.set_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
                                    ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
 
+cl_folder = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVectors/Noiseless/HMCodeBar'
+cl_filename = 'dv-{probe:s}-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.dat'
+cl_ll_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='WLO', **variable_specs)}")
+cl_gg_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='GCO', **variable_specs)}")
+cl_wa_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='WLA', **variable_specs)}")
+cl_3x2pt_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
+
+# ! reshape to 3d
+cl_ll_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
+cl_gg_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
+cl_wa_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
+cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
+cl_gl_3d_vinc = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
 
 fig, ax = plt.subplots(1, 3, figsize=(15, 6), constrained_layout=True)
 for zi in range(zbins):
@@ -694,6 +645,14 @@ for zi in range(zbins):
                  label='gl' if zi == 0 else None)
     ax[2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], ls="-", c=colors[zi], alpha=0.6,
                  label='gg' if zi == 0 else None)
+    
+    ax[0].loglog(ell_dict['ell_WL'], cl_ll_3d_vinc[:, zi, zj], ls="--", c=colors[zi], alpha=0.6,
+                 label='ll' if zi == 0 else None)
+    ax[1].loglog(ell_dict['ell_XC'], cl_gl_3d_vinc[:, zi, zj], ls="--", c=colors[zi], alpha=0.6,
+                 label='gl' if zi == 0 else None)
+    ax[2].loglog(ell_dict['ell_GC'], cl_gg_3d_vinc[:, zi, zj], ls="--", c=colors[zi], alpha=0.6,
+                 label='gg' if zi == 0 else None)
+    
 # set labels
 ax[0].set_xlabel('$\\ell$')
 ax[1].set_xlabel('$\\ell$')
@@ -706,6 +665,7 @@ ax[1].legend()
 ax[2].legend()
 plt.show()
 
+assert False, 'stop here'
 
 # # ! load vincenzo's kernels, including magnification bias, IA and n(z) shifts!
 # wf_folder = general_cfg['wf_input_folder']

@@ -3104,13 +3104,44 @@ def Recast_Sijkl_3x2pt(Sijkl, nzbins):
     return [Sijkl_recast, npairs_full, pairs_full]
 
 
-## build the noise matrices ##
-def build_noise(zbins, nProbes, sigma_eps2, ng, EP_or_ED='EP'):
+def build_noise(zbins, n_probes, sigma_eps2, ng, EP_or_ED):
+    """Builds the noise power spectra.
+
+    Parameters
+    ----------
+    zbins : int
+        Number of redshift bins.
+    n_probes : int 
+        Number of probes.
+    sigma_eps2 : float
+        Square of the *total* ellipticity dispersion.
+        sigma_eps2 = sigma_eps ** 2, with
+        sigma_eps = sigma_eps_i * sqrt(2),
+        sigma_eps_i being the ellipticity dispersion *per component*
+    ng : int, float or numpy.ndarray
+        If a scalar, cumulative galaxy density number density, per arcmin^2. 
+        This will assume equipopulated bins. 
+        If an array, galaxy density number density, per arcmin^2, per redshift bin. 
+        Must have length zbins.
+    EP_or_ED : str, optional
+        Whether bins are equipopulated ('EP') or equidistant ('ED').
+
+    Returns
+    -------
+    N : ndarray, shape (n_probes, n_probes, zbins, zbins)
+        Noise power spectra matrices
+
+    Notes
+    -----
+    The noise is defined as:
+        N_LL = sigma_eps^2 / (2 * n_bar) 
+        N_GG = 1 / n_bar
+        N_GL = N_LG = 0
+
+    Where sigma_eps includes factor of sqrt(2) for two components.
+
     """
-    function to build the noise power spectra.
-    ng = number of galaxies per arcmin^2 (constant, = 30 in IST:F 2020)
-    n_bar = # of gal per bin
-    """
+
     conversion_factor = (180 / np.pi * 60)**2  # deg^2 to arcmin^2
 
     # if ng is a number, n_bar will be ng/zbins and the bins have to be equipopulated
@@ -3123,7 +3154,7 @@ def build_noise(zbins, nProbes, sigma_eps2, ng, EP_or_ED='EP'):
                 'density, not the galaxy density in each bin)')
         n_bar = ng / zbins * conversion_factor
 
-    # if ng is an array, n_bar == ng (this is a slight minomer, since ng is the cumulative galaxy density, while
+    # if ng is an array, n_bar == ng (this is a slight misnomer, since ng is the cumulative galaxy density, while
     # n_bar the galaxy density in each bin). In this case, if the bins are quipopulated, the n_bar array should
     # have all entries almost identical.
     elif type(ng) == np.ndarray:
@@ -3139,12 +3170,14 @@ def build_noise(zbins, nProbes, sigma_eps2, ng, EP_or_ED='EP'):
         raise ValueError('ng must be an int, float or numpy.ndarray')
 
     # create and fill N
-    N = np.zeros((nProbes, nProbes, zbins, zbins))
-    np.fill_diagonal(N[0, 0, :, :], sigma_eps2 / n_bar)
-    np.fill_diagonal(N[1, 1, :, :], 1 / n_bar)
-    N[0, 1, :, :] = 0
-    N[1, 0, :, :] = 0
-    return N
+    noise_4d = np.zeros((n_probes, n_probes, zbins, zbins))
+    # np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar))  # ! correct
+    np.fill_diagonal(N[0, 0, :, :], sigma_eps2 / n_bar)  # ! old, INcorrect
+    np.fill_diagonal(noise_4d[1, 1, :, :], 1 / n_bar)
+    noise_4d[0, 1, :, :] = 0
+    noise_4d[1, 0, :, :] = 0
+
+    return noise_4d
 
 
 def my_exit():

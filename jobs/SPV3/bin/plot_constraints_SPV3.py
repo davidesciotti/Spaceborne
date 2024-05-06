@@ -25,7 +25,6 @@ import common_cfg.mpl_cfg as mpl_cfg
 sys.path.append(f'{SB_ROOT}/jobs/config')
 import jobs.SPV3.config.config_SPV3 as cfg
 
-
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 # Display all columns
@@ -50,7 +49,7 @@ ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
 fm_last_folder = '/jan_2024'  # /standard or /jan_2024
 ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
 
-codes_to_compare = ( 'OneCovariance', 'OneCovariance')
+codes_to_compare = ('OneCovariance', 'OneCovariance')
 filename_suffix_list = ('_std_ellFix', '_dense_LiFECls_shearFix')
 which_cov_term_list = ['G', 'GSSC', 'GcNG', ]
 

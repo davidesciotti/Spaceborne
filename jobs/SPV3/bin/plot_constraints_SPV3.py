@@ -49,15 +49,10 @@ ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
 # filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 fm_last_folder = '/jan_2024'  # /standard or /jan_2024
 ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
-ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
 
-codes_to_compare = ('OneCovariance', 'OneCovariance', 'OneCovariance')
-filename_suffix_list = ('_std_ellFix', '_dense', '_dense_LiFECls')
-which_cov_term_list = ['G', 'GSSC', 'GSSCcNG', ]
-
-codes_to_compare = ('OneCovariance', 'OneCovariance', 'OneCovariance')
-filename_suffix_list = ('_std_ellFix', '_dense', '_dense_LiFECls')
-which_cov_term_list = ['G', 'GSSC', 'GSSCcNG', ]
+codes_to_compare = ( 'OneCovariance', 'OneCovariance')
+filename_suffix_list = ('_std_ellFix', '_dense_LiFECls_shearFix')
+which_cov_term_list = ['G', 'GSSC', 'GcNG', ]
 
 
 fix_dz_plt = True
@@ -94,7 +89,7 @@ MS = 245
 ZL = 2
 ZS = 2
 probes = ('WL', 'GC', 'XC', '3x2pt')
-probes = ('WL', 'GC', '3x2pt')
+# probes = ('WL', 'GC', '3x2pt')
 which_cuts = 'Vincenzo'
 whose_FM_list = ('davide',)
 kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
@@ -307,7 +302,8 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
                                                             # get the covariance matrix (careful on how you cut the FM!!)
                                                             fm_idxs_tokeep = [list(fiducials_dict.keys()).index(param) for param in
                                                                               params_tot_list]
-                                                            cov = np.linalg.inv(fm)[fm_idxs_tokeep, :][:, fm_idxs_tokeep]
+                                                            cov = np.linalg.inv(
+                                                                fm)[fm_idxs_tokeep, :][:, fm_idxs_tokeep]
 
                                                             plot_utils.contour_plot_chainconsumer(cov, trimmed_fid_dict)
 
@@ -385,7 +381,7 @@ for probe_toplot in probes:
     fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
                                              which_cov_term_list[1], num_string_columns)
     fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
-                                             'GSSCcNG', num_string_columns)
+                                             'GcNG', num_string_columns)
 
     # check that the G term is the same, all other entries being the same
     g_rows_df = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] == 'G']
@@ -393,9 +389,10 @@ for probe_toplot in probes:
     for i in range(1, g_rows_arr.shape[0]):
         np.testing.assert_allclose(g_rows_arr[0], g_rows_arr[i], rtol=1e-3)
 
-    # drop G entry for clearer plot
+    # ! drop some entries for clearer plot
     fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'G']
     fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GSSC']
+    fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GcNG']
     fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GSSCcNG']
 
     if divide_fom_by_10_plt:

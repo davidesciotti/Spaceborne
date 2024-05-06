@@ -29,7 +29,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-fm_and_cov_suffix = '_dense_LiFECls'
+fm_and_cov_suffix = '_dense_LiFECls_shearFix'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -197,7 +197,7 @@ covariance_cfg = {
 
     'test_against_benchmarks': False,
     'test_against_CLOE_benchmarks': False,
-    'test_against_vincenzo': True,
+    'test_against_vincenzo': False,
     'compute_GSSC_condition_number': False,
 
     # ! no folders for ell_cut_center or min

@@ -503,8 +503,6 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
     galaxy_bias_fit_fiducials = bias_fiducials[bias_fiducials_rows, 1]
     magnification_bias_fit_fiducials = bias_fiducials[bias_fiducials_rows, 2]
     
-    assert False, 'stop here'
-
     # check that the values in the yml file match the ones in the "gal_mag_fiducial_polynomial_fit" file
     gal_bias_fit_fiducials_names = [f'bG{zi:02d}' for zi in range(1, 5)]
     mag_bias_fit_fiducials_names = [f'bM{zi:02d}' for zi in range(1, 5)]

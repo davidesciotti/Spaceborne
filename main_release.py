@@ -738,7 +738,6 @@ kgrid_pk2d_ccl, pk2d_ccl = csmlib.pk_from_ccl(k_grid_dPk_hm, z_grid_dPk_hm, Fals
 # CLOE pk
 kgrid_pk2d_cloe, z_grid_pk2d_cloe, pk2d_cloe = mm.pk_vinc_file_to_2d_npy(cloe_pk_filename, plot_pk_z0=True)
 
-assert np.all(kgrid_pk2d_ccl == kgrid_pk2d_cloe)
 
 plt.figure()
 # pick a redshift and get the corresponding index
@@ -765,6 +764,32 @@ plt.title('P(k), ccl vs imported (CLOE)')
 # plt.figure()
 # plt.plot(z_arr_hm, bA34[0, :])
 # plt.plot(z_arr_hm, bB34[0, :])
+
+# TODO integrate this with SPV3_integrands
+# TODO integrate this with Spaceborne_covg
+
+# ! quickly check responses
+import sys
+sys.path.append('/home/davide/Documenti/Lavoro/Programmi/exact_SSC/bin')
+import ssc_integrands_SPV3
+
+
+plt.figure()
+# pick a redshift and get the corresponding index
+colors = cm.rainbow(np.linspace(0, 1, zbins))
+for count, z_val in enumerate((0, 0.5, 1, 2, 3)):
+    # for count, z_val in enumerate((0, )):
+
+    z_idx_su = np.argmin(np.abs(z_grid_dPk - z_val))
+    z_idx_hm = np.argmin(np.abs(z_grid_dPk_hm - z_val))
+
+    z_hm = z_grid_dPk_hm[z_idx_hm]
+    z_su = z_grid_dPk[z_idx_su]
+
+    plt.loglog(k_grid_dPk, pk_mm_2d[:, z_idx_su], ls='-', c=colors[count], label='cloe')
+    plt.loglog(k_grid_dPk_hm, pk2d_dav[:, z_idx_hm], ls=':', c=colors[count], alpha=0.5, label='davide ccl')
+plt.title('Pk, ccl vs imported')
+        
 
 plt.figure()
 # for count, z_val in enumerate((0, 0.5, 1, 2, 3)):

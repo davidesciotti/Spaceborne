@@ -129,11 +129,10 @@ ccl_obj.set_ia_bias_tuple()
 
 # TODO here I'm still setting some cfgs, which do not go in the Class init
 ccl_obj.zbins = zbins  # TODO is this inelegant?
-maglim = general_cfg['magcut_source'] / 10
 
 # SET GALAXY BIAS
 if general_cfg['which_forecast'] == 'SPV3':
-    ccl_obj.set_gal_bias_tuple_spv3(maglim=maglim)
+    ccl_obj.set_gal_bias_tuple_spv3(magcut_lens=general_cfg['magcut_lens'] / 10)
 
 
 elif general_cfg['which_forecast'] == 'ISTF':
@@ -163,7 +162,7 @@ gal_bias_table_ascii_name = f'{covariance_cfg["nofz_folder"]}/gal_bias_table_{ge
 ccl_obj.save_gal_bias_table_ascii(filename=gal_bias_table_ascii_name)
 
 # set mag bias
-ccl_obj.set_mag_bias_tuple(has_magnification_bias=general_cfg['has_magnification_bias'], maglim=maglim)
+ccl_obj.set_mag_bias_tuple(has_magnification_bias=general_cfg['has_magnification_bias'], magcut_lens=general_cfg['magcut_lens'] / 10)
 
 
 # set kernel arrays and objects

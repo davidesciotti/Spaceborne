@@ -362,10 +362,10 @@ class PycclClass():
                                                     input_lumin_ratio=None, output_F_IA_of_z=False)
         self.ia_bias_tuple = (self.zgrid_nz, ia_bias_1d)
 
-    def set_gal_bias_tuple_spv3(self, maglim):
+    def set_gal_bias_tuple_spv3(self, magcut_lens):
 
         gal_bias_func = self.gal_bias_func_dict['fs2_fit']
-        gal_bias_1d = gal_bias_func(self.zgrid_nz, maglim=maglim)
+        gal_bias_1d = gal_bias_func(self.zgrid_nz, magcut_lens=magcut_lens)
 
         # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
         self.gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
@@ -388,11 +388,11 @@ class PycclClass():
         gal_bias_table = np.hstack((self.zgrid_nz.reshape(-1, 1), self.gal_bias_2d))
         np.savetxt(filename, gal_bias_table)
 
-    def set_mag_bias_tuple(self, has_magnification_bias, maglim):
+    def set_mag_bias_tuple(self, has_magnification_bias, magcut_lens):
 
         if has_magnification_bias:
             # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
-            mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(self.zgrid_nz, maglim=maglim, poly_fit_values=None)
+            mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(self.zgrid_nz, magcut_lens=magcut_lens, poly_fit_values=None)
             mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), self.zbins, axis=0).T
             self.mag_bias_tuple = (self.zgrid_nz, mag_bias_2d)
         else:
@@ -565,11 +565,10 @@ class PycclClass():
 
         # TODO here I'm still setting some cfgs, which do not go in the Class init
         self.zbins = zbins  # TODO is this inelegant?
-        maglim = general_cfg['magcut_source'] / 10
 
         # gal bias
         if general_cfg['which_forecast'] == 'SPV3':
-            self.set_gal_bias_tuple_spv3(maglim=maglim)
+            self.set_gal_bias_tuple_spv3(magcut_lens=general_cfg['magcut_lens'] / 10)
 
         elif general_cfg['which_forecast'] == 'ISTF':
             bias_func_str = general_cfg['bias_function']
@@ -597,7 +596,7 @@ class PycclClass():
         self.save_gal_bias_table_ascii(filename=gal_bias_table_ascii_name)
 
         # set mag bias
-        self.set_mag_bias_tuple(has_magnification_bias=general_cfg['has_magnification_bias'], maglim=maglim)
+        self.set_mag_bias_tuple(has_magnification_bias=general_cfg['has_magnification_bias'], magcut_lens=general_cfg['magcut_lens'] / 10)
 
         # set kernel arrays and objects
         self.set_kernel_obj(general_cfg['has_rsd'], covariance_cfg['PyCCL_cfg']['n_samples_wf'])
@@ -610,11 +609,10 @@ class PycclClass():
         if general_cfg['which_forecast'] == 'SPV3':
             gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias!)'
             wf_galaxy_arr = self.wf_galaxy_wo_gal_bias_arr
-            
+
         if general_cfg['which_forecast'] == 'ISTF':
             gal_kernel_plt_title = 'galaxy kernel\n(w/ gal bias)'
             wf_galaxy_arr = self.wf_galaxy_w_gal_bias_arr
-
 
         # alternative way to get the magnification kernel
         # wf_mu_tot_alt_arr = -2 * np.array(
@@ -652,11 +650,9 @@ class PycclClass():
         ax[0].legend()
         ax[1].legend()
         plt.show()
-        
-        
+
         # compute cls
         self.set_cls(ell_grid, self.p_of_k_a, 'spline')
-
 
         # if you need to save finely sampled cls for OneCovariance
         # ell_grid = np.geomspace(10, 5000, 90)
@@ -699,7 +695,7 @@ class PycclClass():
         ax[1].legend()
         ax[2].legend()
         plt.show()
-    
+
         assert False, 'stop here'
 
         # covariance ordering stuff, also used to compute the trispectrum

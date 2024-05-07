@@ -374,8 +374,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     if general_cfg['which_forecast'] == 'SPV3':
 
-        maglim = general_cfg['magcut_source'] / 10
-        gal_bias_1d = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, maglim=maglim)
+        gal_bias_1d = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, magcut_lens=general_cfg['magcut_lens'] / 10)
         # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
         gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), zbins, axis=0).T
 
@@ -424,9 +423,8 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
                f'gal_bias_table_{general_cfg["which_forecast"]}.ascii', gal_bias_table)
 
     if has_magnification_bias:
-        maglim = general_cfg['magcut_source'] / 10
         # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
-        mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(zgrid_nz, maglim=maglim, poly_fit_values=None)
+        mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(zgrid_nz, magcut_lens=general_cfg['magcut_lens'] / 10, poly_fit_values=None)
         mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), zbins, axis=0).T
         mag_bias_tuple = (zgrid_nz, mag_bias_2d)
     else:

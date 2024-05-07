@@ -400,6 +400,7 @@ def deg2_to_fsky(survey_area_deg2):
     f_sky = survey_area_deg2 * (np.pi / 180) ** 2 / (4 * np.pi)
     return f_sky
 
+
 def fsky_to_deg2(f_sky):
     return f_sky * 4 * np.pi / (np.pi / 180) ** 2
 
@@ -517,14 +518,14 @@ def project_pk_helper(key, pab_k_z_interp_func_dict, wf_dict, z_grid, ell_grid, 
 def project_pk(pab_k_z_interp_func, kernel_a, kernel_b, z_grid, ell_grid, cl_integral_convention, use_h_units,
                cosmo_ccl):
     """
-        Project the pk to get the cls, or the pk responses to get the projected responses.
-        ! Remember, if you use cl_integral_convention = PySSC you must normalize the kernels properly, it is not enough to
-        ! pass the approptiate cl_integral_convention to csmlib.cl_integral_prefactor!
-        :param pab_k_z_interp_func:
-        :param kernel_a:
-        :param kernel_b:
-        :return:
-        """
+    Project the pk to get the cls, or the pk responses to get the projected responses.
+    ! Remember, if you use cl_integral_convention = PySSC you must normalize the kernels properly, it is not enough to
+    ! pass the approptiate cl_integral_convention to csmlib.cl_integral_prefactor!
+    :param pab_k_z_interp_func:
+    :param kernel_a:
+    :param kernel_b:
+    :return:
+    """
 
     # Compute prefactors
     cl_integral_prefactor_arr = cl_integral_prefactor(z_grid, cl_integral_convention,
@@ -554,6 +555,23 @@ def project_pk(pab_k_z_interp_func, kernel_a, kernel_b, z_grid, ell_grid, cl_int
 
     print(f'cl integral done in {(time.time() - start_time):.2f} seconds')
     return cl
+
+
+def ell_prefactor_gamma_and_ia(ell):
+    """
+    From Kilbinger, M., Heymans, C., Asgari, M., et al. 2017, MNRAS, 472, 2126.
+    Taken from CLOE. Formula is 
+    (ell + 2)!/(ell-2)! * (2/(2*ell+1))**4 
+    """
+    result = np.sqrt((ell + 2.0) * (ell + 1.0) * ell * (ell - 1.0)) / (ell + 0.5)**2
+    return result
+
+
+def ell_prefactor_mag(ell):
+    """
+    Taken from CLOE.
+    """
+    return ell * (ell + 1) / (ell + 0.5)**2
 
 
 def reshape_pk_vincenzo_to_2d(filename):

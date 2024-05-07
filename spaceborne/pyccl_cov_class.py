@@ -207,6 +207,7 @@ class PycclClass():
                             'prof34_2pt': prof_2pt_dict[C, D],
                             'lk_arr': logn_k_grid_tkka_SSC,
                             'a_arr': a_grid_tkka_SSC,
+                            'extrap_pk': True,
                         }
                     elif which_ng_cov == 'cNG':
                         tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG

@@ -538,8 +538,9 @@ if general_cfg['which_forecast'] == 'SPV3' and pyccl_cfg['which_pk_for_pyccl'] =
         flat_or_nonflat=general_cfg['flat_or_nonflat'], which_pk=general_cfg['which_pk'])
     ccl_obj.p_of_k_a = ccl_obj.pk_obj_from_file(pk_filename=cloe_pk_filename)
     # TODO finish implementing this
-    raise NotImplementedError('range needs to be extended to higher redshifts to match tkka grid (probably larger k range too), \
-        some other small consistency checks needed')
+    warnings.warn('Extrapolating the P(k) in Tk3D_SSC!')
+    # raise NotImplementedError('range needs to be extended to higher redshifts to match tkka grid (probably larger k range too), \
+        # some other small consistency checks needed')
 
 elif general_cfg['which_forecast'] == 'SPV3' and pyccl_cfg['which_pk_for_pyccl'] == 'PyCCL':
     ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
@@ -702,7 +703,6 @@ bB12 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bB12_tosave']
 bA34 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bA34_tosave']
 bB34 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bB34_tosave']
 
-
 # a is flipped w.r.t. z
 dPmm_ddeltab_hm = np.flip(dPmm_ddeltab_hm, axis=1)
 dPgm_ddeltab_hm = np.flip(dPgm_ddeltab_hm, axis=1)
@@ -732,29 +732,33 @@ z_grid_dPk_hm = csmlib.a_to_z(a_grid_hm)[::-1]
 # bA34 = bA34[np.ix_(k_mask, z_mask)]
 # bB34 = bB34[np.ix_(k_mask, z_mask)]
 
-_, pk2d_dav = csmlib.pk_from_ccl(k_grid_dPk_hm, z_grid_dPk_hm, False, ccl_obj.cosmo_ccl, pk_kind='nonlinear')
-assert np.all(_ == k_grid_dPk_hm)
+# CCL pk
+kgrid_pk2d_ccl, pk2d_ccl = csmlib.pk_from_ccl(k_grid_dPk_hm, z_grid_dPk_hm, False, ccl_obj.cosmo_ccl, pk_kind='nonlinear')
+
+# CLOE pk
+kgrid_pk2d_cloe, z_grid_pk2d_cloe, pk2d_cloe = mm.pk_vinc_file_to_2d_npy(cloe_pk_filename, plot_pk_z0=True)
+
+assert np.all(kgrid_pk2d_ccl == kgrid_pk2d_cloe)
 
 plt.figure()
 # pick a redshift and get the corresponding index
 colors = cm.rainbow(np.linspace(0, 1, 5))
-# for count, z_val in enumerate((0, 0.5, 1, 2, 3)):
-for count, z_val in enumerate((0, )):
+for count, z_val in enumerate((0,0.5, 1, 2, 3)):
 
-    # z_idx_su = np.argmin(np.abs(z_grid_dPk - z_val))
-    z_idx_hm = np.argmin(np.abs(z_grid_dPk_hm - z_val))
+    z_idx_cloe = np.argmin(np.abs(z_grid_pk2d_cloe - z_val))
+    z_idx_ccl = np.argmin(np.abs(z_grid_dPk_hm - z_val))
 
-    z_hm = z_grid_dPk_hm[z_idx_hm]
-    # z_su = z_grid_dPk[z_idx_su]
+    z_val_cloe = z_grid_pk2d_cloe[z_idx_cloe]
+    z_val_ccl = z_grid_dPk_hm[z_idx_ccl]
 
-    # plt.loglog(k_grid_dPk, pk_mm_2d[:, z_idx_su], ls='-', c=colors[count], label='cloe')
-    plt.loglog(k_grid_dPk_hm, pk2d_dav[:, z_idx_hm], ls=':', c=colors[count], alpha=0.5, label='davide ccl')
-plt.title('Pk, ccl vs imported')
+    plt.loglog(kgrid_pk2d_cloe, pk2d_cloe[:, z_idx_cloe], ls='-', c=colors[count], label='cloe')
+    plt.loglog(k_grid_dPk_hm, pk2d_ccl[:, z_idx_ccl], ls=':', c=colors[count], alpha=0.5, label='davide ccl')
+plt.title('P(k), ccl vs imported (CLOE)')
 
 # since the nonlin pks don't match, I define a custom Pk2D object
-scale_factor_grid_pk = csmlib.z_to_a(z_grid_Pk)[::-1]  # flip it
-pk2d_ccl_obj = ccl.pk2d.Pk2D(a_arr=scale_factor_grid_pk, lk_arr=np.log(k_grid_Pk),
-                             pk_arr=pk_mm_2d.T, is_logp=False)
+# scale_factor_grid_pk = csmlib.z_to_a(z_grid_Pk)[::-1]  # flip it
+# pk2d_ccl_obj = ccl.pk2d.Pk2D(a_arr=scale_factor_grid_pk, lk_arr=np.log(k_grid_Pk),
+                            #  pk_arr=pk_mm_2d.T, is_logp=False)
 
 
 # TODO check galaxy counterterms
@@ -765,7 +769,7 @@ pk2d_ccl_obj = ccl.pk2d.Pk2D(a_arr=scale_factor_grid_pk, lk_arr=np.log(k_grid_Pk
 plt.figure()
 # for count, z_val in enumerate((0, 0.5, 1, 2, 3)):
 
-plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk2d_dav[:, z_idx_hm],
+plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk2d_ccl[:, z_idx_hm],
         label=f'dpk_mm/pkmm_2d_dav, z={z_hm}', alpha=0.5)
 # plt.plot(k_grid_dPk, r_mm[:, z_idx_su], label=f'R1_mm_su, z={z_su:.2f}', alpha=0.5)
 plt.legend()
@@ -791,6 +795,8 @@ plt.legend()
 plt.xscale('log')
 plt.xlabel('k [1/Mpc]')
 plt.ylabel('$\partial P_{mm} / \partial \delta_b$')
+
+
 
 assert False, 'stop here'
 

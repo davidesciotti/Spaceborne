@@ -95,6 +95,7 @@ general_cfg:
     # kmax_h_over_Mpc_list: [0.37108505, 0.74217011, 1.11325516, 1.48434021, 1.85542526,
     #                                   2.22651032, 2.59759537, 2.96868042, 4.45302063, 7.42170105, 14.84340211]
     kmax_h_over_Mpc_list: [0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.]
+    use_h_units: False
 
     BNT_transform: False  # ! to be deprecated?
     cl_BNT_transform: False
@@ -131,7 +132,7 @@ covariance_cfg:
     which_probe_response: variable
     response_const_value: None  # it used to be 4 for a constant probe response, which is quite wrong
 
-    fsky: 0.3563380664078408  # ! new
+    fsky: 0.3563380664078408
     sigma_eps_i: 0.26  # ellipticity dispersion *per component*; sigma_eps: (0.26 * np.sqrt(2))
 
     nofz_folder: /home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputNz/NzFid/
@@ -150,6 +151,9 @@ covariance_cfg:
     nz_gaussian_smoothing: False  # does not seem to have a large effect...
     nz_gaussian_smoothing_sigma: 2
     include_ia_in_bnt_kernel_for_zcuts: False
+
+    magcut_lens: 230  # valid for GCph
+    magcut_source: 245  # valid for WL
 
 
     plot_nz_tocheck: True
@@ -184,14 +188,14 @@ covariance_cfg:
 
     SSC_code: OneCovariance  # ! PySSC or PyCCL or Spaceborne or OneCovariance
 
+
     PyCCL_cfg: 
         probe: 3x2pt
         # cNG or SSC. Which non-Gaussian covariance terms to compute. Must be a tuple
-        which_ng_cov: (SSC )
+        which_ng_cov: [SSC, ]
         test_GLGL: False  # must be set to False for actual 3x2pt runs
         
         which_pk_for_pyccl: CLOE  # PyCCL (the one stored in cosmo obj) or CLOE (from input files - to be implemented)
-
 
         load_precomputed_cov: True
         save_cov: True
@@ -205,6 +209,7 @@ covariance_cfg:
                         nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d} + fm_and_cov_suffix + .npz
 
 
+        # TODO these have to be tidied up
         which_sigma2_B: mask  # mask or spaceborne (with mask) or None
         area_deg2_mask: 14700
         nside_mask: 2048
@@ -219,7 +224,7 @@ covariance_cfg:
         z_grid_tkka_max: 6
         k_grid_tkka_min: 1.e-5
         k_grid_tkka_max: 1.e+2
-        z_grid_tkka_steps_SSC: 200
+        z_grid_tkka_steps_SSC: 50
         k_grid_tkka_steps_SSC: 1024
         z_grid_tkka_steps_cNG: 100
         k_grid_tkka_steps_cNG: 512
@@ -238,7 +243,14 @@ covariance_cfg:
                         # _convention{cl_integral_convention:s}.npy
 
         # settings for sigma2
-        cl_integral_convention: PySSC  # or Euclid, but gives same results as it should!!! TODO remove this
+        # TODO these have to be tidied up
+        which_sigma2_B: full-curved-sky  # mask or spaceborne (with mask) or None
+        area_deg2_mask: 14700
+        nside_mask: 2048
+        ell_mask_filename: ROOT + /common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy
+        cl_mask_filename: ROOT + /common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy
+
+        cl_integral_convention: PySSC  # "Euclid" or "PySSC". results are the same
         k_txt_label: 1overMpc
         use_precomputed_sigma2: True  # still need to understand exactly where to call/save this
         z_min_sigma2: 0.001
@@ -247,6 +259,12 @@ covariance_cfg:
         log10_k_min_sigma2: -4
         log10_k_max_sigma2: 1
         k_steps_sigma2: 20_000
+        z_min_ssc_integrands: 0.01
+        z_max_ssc_integrands: 3.
+        z_steps_ssc_integrands: 3000 # this should be high because I have to trace the spikes in sigma2
+
+
+
 
     OneCovariance_cfg: 
         which_ng_cov: [cNG, ]

@@ -1,7 +1,10 @@
+from functools import partial
 import os
 import multiprocessing
 num_cores = multiprocessing.cpu_count()
 os.environ['OMP_NUM_THREADS'] = str(num_cores)
+os.environ['NUMBA_NUM_THREADS'] = str(num_cores)
+os.environ['NUMBA_PARALLEL_DIAGNOSTICS'] = '4'
 import numpy as np
 import time
 import matplotlib.cm as cm
@@ -14,6 +17,8 @@ import yaml
 import pprint
 from copy import deepcopy
 import numpy.testing as npt
+from scipy.interpolate import interp1d, RegularGridInterpolator
+from numba import njit, prange
 
 import spaceborne.ell_values as ell_utils
 import spaceborne.cl_preprocessing as cl_utils
@@ -25,6 +30,7 @@ import spaceborne.cosmo_lib as csmlib
 import spaceborne.wf_cl_lib as wf_cl_lib
 import spaceborne.pyccl_cov_class as pyccl_cov_class
 import spaceborne.plots_FM_running as plot_utils
+import spaceborne.sigma2_SSC as sigma2_SSC
 
 pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
@@ -267,11 +273,11 @@ def plot_kernels_for_thesis():
         #     plt.axvline(z_means_ll_bnt[zi], ls='--', c=colors[zi], ymin=0, lw=2, zorder=1)
         # plt.axvline(z_means[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
 
-        plt.plot(zgrid_nz, wf_ll_ccl[:, zi], ls='-', c=colors[zi], alpha=0.6)
-        plt.plot(zgrid_nz, wf_ll_ccl_bnt[:, zi], ls='-', c=colors[zi], alpha=0.6)
+        plt.plot(zgrid_nz, wf_ll_ccl[:, zi], ls='-', c=clr[zi], alpha=0.6)
+        plt.plot(zgrid_nz, wf_ll_ccl_bnt[:, zi], ls='-', c=clr[zi], alpha=0.6)
 
-        plt.plot(zgrid_wf_vin, wf_ll_vin[:, zi], ls=':', label='$z_{%d}$' % (zi + 1), c=colors[zi], alpha=0.6)
-        plt.plot(zgrid_wf_vin, wf_ll_vin_bnt[:, zi], ls=':', c=colors[zi], alpha=0.6)
+        plt.plot(zgrid_wf_vin, wf_ll_vin[:, zi], ls=':', label='$z_{%d}$' % (zi + 1), c=clr[zi], alpha=0.6)
+        plt.plot(zgrid_wf_vin, wf_ll_vin_bnt[:, zi], ls=':', c=clr[zi], alpha=0.6)
 
     plt.title(
         f'interpolation_kind {shift_nz_interpolation_kind}, '
@@ -334,8 +340,16 @@ compute_bnt_with_shifted_nz_for_zcuts = covariance_cfg['compute_bnt_with_shifted
 include_ia_in_bnt_kernel_for_zcuts = covariance_cfg['include_ia_in_bnt_kernel_for_zcuts']
 nbl_WL_opt = general_cfg['nbl_WL_opt']
 covariance_ordering_2D = covariance_cfg['covariance_ordering_2D']
-maglim = general_cfg['magcut_source'] / 10
-colors = cm.rainbow(np.linspace(0, 1, zbins))
+magcut_lens = general_cfg['magcut_lens']
+magcut_source = general_cfg['magcut_source']
+clr = cm.rainbow(np.linspace(0, 1, zbins))
+use_h_units = general_cfg['use_h_units']
+covariance_cfg['probe_ordering'] = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
+probe_ordering = covariance_cfg['probe_ordering']
+
+z_grid_ssc_integrands = np.linspace(covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
+                                    covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
+                                    covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'])
 
 # load some nuisance parameters
 # note that zbin_centers is not exactly equal to the result of wf_cl_lib.get_z_mean...
@@ -387,7 +401,6 @@ cases_tosave = '_'
 ind = mm.build_full_ind(triu_tril, row_col_major, zbins)
 covariance_cfg['ind'] = ind
 zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
-covariance_cfg['probe_ordering'] = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
 
 if not general_cfg['ell_cuts']:
     general_cfg['ell_cuts_subfolder'] = ''
@@ -446,6 +459,8 @@ variable_specs = {'EP_or_ED': ep_or_ed, 'zbins': zbins,
                   'BNT_transform': bnt_transform,
                   'which_ng_cov': which_ng_cov_suffix,
                   'ng_cov_code': covariance_cfg['SSC_code'],
+                  'magcut_lens': magcut_lens,
+                  'magcut_source': magcut_source,
                   }
 pp.pprint(variable_specs)
 
@@ -517,19 +532,24 @@ bnt_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, cosmo_ccl=
 ccl_obj.zbins = zbins
 ccl_obj.set_nz(np.hstack((zgrid_nz[:, None], n_of_z)))
 ccl_obj.check_nz_tuple(zbins)
-ccl_obj.set_ia_bias_tuple()
+ccl_obj.set_ia_bias_tuple(z_grid=z_grid_ssc_integrands)
 
 # set galaxy bias
 if general_cfg['which_forecast'] == 'SPV3':
-    ccl_obj.set_gal_bias_tuple_spv3(maglim=maglim)
+    ccl_obj.set_gal_bias_tuple_spv3(z_grid=z_grid_ssc_integrands,
+                                    magcut_lens=magcut_lens)
 
 elif general_cfg['which_forecast'] == 'ISTF':
     bias_func_str = general_cfg['bias_function']
     bias_model = general_cfg['bias_model']
-    ccl_obj.set_gal_bias_tuple_istf(bias_function_str=bias_func_str, bias_model=bias_model)
+    ccl_obj.set_gal_bias_tuple_istf(z_grid=z_grid_ssc_integrands,
+                                    bias_function_str=bias_func_str, 
+                                    bias_model=bias_model)
 
 # set magnification bias
-ccl_obj.set_mag_bias_tuple(has_magnification_bias=general_cfg['has_magnification_bias'], maglim=maglim)
+ccl_obj.set_mag_bias_tuple(z_grid=z_grid_ssc_integrands, 
+                           has_magnification_bias=general_cfg['has_magnification_bias'], 
+                           magcut_lens=magcut_lens / 10)
 
 # set pk
 # this is a test to use the actual P(k) from the input files, but the agreement gets much worse
@@ -540,7 +560,7 @@ if general_cfg['which_forecast'] == 'SPV3' and pyccl_cfg['which_pk_for_pyccl'] =
     # TODO finish implementing this
     warnings.warn('Extrapolating the P(k) in Tk3D_SSC!')
     # raise NotImplementedError('range needs to be extended to higher redshifts to match tkka grid (probably larger k range too), \
-        # some other small consistency checks needed')
+    # some other small consistency checks needed')
 
 elif general_cfg['which_forecast'] == 'SPV3' and pyccl_cfg['which_pk_for_pyccl'] == 'PyCCL':
     ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
@@ -550,7 +570,7 @@ elif general_cfg['which_forecast'] == 'ISTF':
 
 # set kernel arrays and objects
 ccl_obj.set_kernel_obj(general_cfg['has_rsd'], covariance_cfg['PyCCL_cfg']['n_samples_wf'])
-ccl_obj.set_kernel_arr(z_grid_wf=ccl_obj.zgrid_nz, has_magnification_bias=general_cfg['has_magnification_bias'])
+ccl_obj.set_kernel_arr(z_grid_wf=z_grid_ssc_integrands, has_magnification_bias=general_cfg['has_magnification_bias'])
 
 if general_cfg['which_forecast'] == 'SPV3':
     gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias!)'
@@ -564,19 +584,19 @@ if general_cfg['which_forecast'] == 'ISTF':
 wf_gamma_ccl_bnt = (bnt_matrix @ ccl_obj.wf_gamma_arr.T).T
 
 # 4. compute the z means
-z_means_ll = wf_cl_lib.get_z_means(zgrid_nz, ccl_obj.wf_gamma_arr)
-z_means_gg = wf_cl_lib.get_z_means(zgrid_nz, ccl_obj.wf_galaxy_arr)
-z_means_ll_bnt = wf_cl_lib.get_z_means(zgrid_nz, wf_gamma_ccl_bnt)
+z_means_ll = wf_cl_lib.get_z_means(z_grid_ssc_integrands, ccl_obj.wf_gamma_arr)
+z_means_gg = wf_cl_lib.get_z_means(z_grid_ssc_integrands, ccl_obj.wf_galaxy_arr)
+z_means_ll_bnt = wf_cl_lib.get_z_means(z_grid_ssc_integrands, wf_gamma_ccl_bnt)
 
 # plot_kernels_for_thesis()
 
 plt.figure()
 for zi in range(zbins):
-    plt.plot(zgrid_nz, ccl_obj.wf_gamma_arr[:, zi], ls='-', c=colors[zi],
+    plt.plot(z_grid_ssc_integrands, ccl_obj.wf_gamma_arr[:, zi], ls='-', c=clr[zi],
              alpha=0.6, label='wf_gamma_ccl' if zi == 0 else None)
-    plt.plot(zgrid_nz, wf_gamma_ccl_bnt[:, zi], ls='--', c=colors[zi],
+    plt.plot(z_grid_ssc_integrands, wf_gamma_ccl_bnt[:, zi], ls='--', c=clr[zi],
              alpha=0.6, label='wf_gamma_ccl_bnt' if zi == 0 else None)
-    plt.axvline(z_means_ll_bnt[zi], ls=':', c=colors[zi])
+    plt.axvline(z_means_ll_bnt[zi], ls=':', c=clr[zi])
 plt.legend()
 plt.xlabel('$z$')
 plt.ylabel(r'$W_i^{\gamma}(z)$')
@@ -613,7 +633,7 @@ np.savetxt(f'{nofz_folder}/{nofz_filename_ascii}', nofz_tosave)
 # re-set n(z) used in CCL class, then re-compute kernels
 ccl_obj.set_nz(np.hstack((zgrid_nz[:, None], n_of_z)))
 ccl_obj.set_kernel_obj(general_cfg['has_rsd'], covariance_cfg['PyCCL_cfg']['n_samples_wf'])
-ccl_obj.set_kernel_arr(z_grid_wf=ccl_obj.zgrid_nz, has_magnification_bias=general_cfg['has_magnification_bias'])
+ccl_obj.set_kernel_arr(z_grid_wf=z_grid_ssc_integrands, has_magnification_bias=general_cfg['has_magnification_bias'])
 
 # compute cls
 ccl_obj.cl_ll_3d = ccl_obj.set_cls(ell_dict['ell_WL'], ccl_obj.p_of_k_a,
@@ -624,7 +644,7 @@ ccl_obj.cl_gg_3d = ccl_obj.set_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
                                    ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
 
 cl_folder = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVectors/Noiseless/HMCodeBar'
-cl_filename = 'dv-{probe:s}-EP13-ML245-MS245-idIA2-idB3-idM3-idR1.dat'
+cl_filename = 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:d}-MS{magcut_source:d}-idIA2-idB3-idM3-idR1.dat'
 cl_ll_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='WLO', **variable_specs)}")
 cl_gg_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='GCO', **variable_specs)}")
 cl_wa_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='WLA', **variable_specs)}")
@@ -640,18 +660,18 @@ cl_gl_3d_vinc = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
 fig, ax = plt.subplots(1, 3, figsize=(15, 6), constrained_layout=True)
 for zi in range(zbins):
     zj = zi
-    ax[0].loglog(ell_dict['ell_WL'], ccl_obj.cl_ll_3d[:, zi, zj], ls="-", c=colors[zi], alpha=0.6,
+    ax[0].loglog(ell_dict['ell_WL'], ccl_obj.cl_ll_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6,
                  label='ll' if zi == 0 else None)
-    ax[1].loglog(ell_dict['ell_XC'], ccl_obj.cl_gl_3d[:, zi, zj], ls="-", c=colors[zi], alpha=0.6,
+    ax[1].loglog(ell_dict['ell_XC'], ccl_obj.cl_gl_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6,
                  label='gl' if zi == 0 else None)
-    ax[2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], ls="-", c=colors[zi], alpha=0.6,
+    ax[2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6,
                  label='gg' if zi == 0 else None)
 
-    ax[0].loglog(ell_dict['ell_WL'], cl_ll_3d_vinc[:, zi, zj], ls="--", c=colors[zi], alpha=0.6,
+    ax[0].loglog(ell_dict['ell_WL'], cl_ll_3d_vinc[:, zi, zj], ls="--", c=clr[zi], alpha=0.6,
                  label='ll' if zi == 0 else None)
-    ax[1].loglog(ell_dict['ell_XC'], cl_gl_3d_vinc[:, zi, zj], ls="--", c=colors[zi], alpha=0.6,
+    ax[1].loglog(ell_dict['ell_XC'], cl_gl_3d_vinc[:, zi, zj], ls="--", c=clr[zi], alpha=0.6,
                  label='gl' if zi == 0 else None)
-    ax[2].loglog(ell_dict['ell_GC'], cl_gg_3d_vinc[:, zi, zj], ls="--", c=colors[zi], alpha=0.6,
+    ax[2].loglog(ell_dict['ell_GC'], cl_gg_3d_vinc[:, zi, zj], ls="--", c=clr[zi], alpha=0.6,
                  label='gg' if zi == 0 else None)
 
 # set labels
@@ -662,6 +682,37 @@ ax[0].set_ylabel('$C_{\ell}$')
 ax[0].legend()
 ax[1].legend()
 ax[2].legend()
+plt.show()
+
+clr = cm.rainbow(np.linspace(0, 1, zbins))
+# fig, ax = plt.subplots(1, 3, figsize=(15, 6), constrained_layout=True)
+fig, ax = plt.subplots(2, 3, sharex=True, figsize=(10, 5), height_ratios=[2, 1])
+plt.tight_layout()
+fig.subplots_adjust(hspace=0)
+
+for zi in range(zbins):
+    zj = zi
+    ax[0, 0].loglog(ell_dict['ell_WL'], ccl_obj.cl_ll_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 0].loglog(ell_dict['ell_WL'], cl_ll_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+
+    ax[0, 1].loglog(ell_dict['ell_WL'], ccl_obj.cl_gl_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 1].loglog(ell_dict['ell_WL'][:29], cl_gl_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+
+    ax[0, 2].loglog(ell_dict['ell_WL'], ccl_obj.cl_gg_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 2].loglog(ell_dict['ell_WL'][:29], cl_gg_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+
+    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(ccl_obj.cl_ll_3d, cl_ll_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 1].plot(ell_dict['ell_WL'][:29], mm.percent_diff(ccl_obj.cl_gl_3d[:29], cl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 2].plot(ell_dict['ell_WL'][:29], mm.percent_diff(ccl_obj.cl_gg_3d[:29], cl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
+
+ax[1, 0].set_xlabel('$\\ell$')
+ax[1, 1].set_xlabel('$\\ell$')
+ax[1, 2].set_xlabel('$\\ell$')
+ax[0, 0].set_ylabel('$C_{\ell}$')
+ax[1, 0].set_ylabel('% diff')
+
+lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
+plt.legend(lines, ['davide', 'vincenzo'], loc='upper right', bbox_to_anchor=(1.55, 1))
 plt.show()
 
 # again, save in ASCII format for OneCovariance
@@ -676,48 +727,49 @@ plt.show()
 
 # ! ================================ SSC =======================================
 
+print('Start SSC computation...')
 
 # get halo model responses from CCL
-probe_ordering = covariance_cfg['probe_ordering']
 ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
                                pyccl_cfg=pyccl_cfg, which_pk='_')
 
-ccl_obj.responses_dict['L', 'L', 'L', 'L']
-
+# k and z grids (responses will be interpolated below)
 k_grid_dPk_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
-a_grid_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
+a_grid_dPk_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
+# translate a to z and cut the arrays to the maximum redshift of the SU responses (much smaller range!)
+z_grid_dPk_hm = csmlib.a_to_z(a_grid_dPk_hm)[::-1]
 
 dPmm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
 dPgm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk12']
 dPgg_ddeltab_hm = ccl_obj.responses_dict['G', 'G', 'G', 'G']['dpk12']
 
-# just a quick check
-assert np.allclose(ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34'],
-                   ccl_obj.responses_dict['G', 'L', 'G', 'G']['dpk12'], atol=0, rtol=1e-5)
-assert np.allclose(ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk34'],
-                   ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12'], atol=0, rtol=1e-5)
-
-# counterterms, to be better understood - 0 for lensing, as they should be
-bA12 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bA12_tosave']
-bB12 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bB12_tosave']
-bA34 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bA34_tosave']
-bB34 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bB34_tosave']
-
 # a is flipped w.r.t. z
 dPmm_ddeltab_hm = np.flip(dPmm_ddeltab_hm, axis=1)
 dPgm_ddeltab_hm = np.flip(dPgm_ddeltab_hm, axis=1)
 dPgg_ddeltab_hm = np.flip(dPgg_ddeltab_hm, axis=1)
-bA12 = np.flip(bA12, axis=1)
-bB12 = np.flip(bB12, axis=1)
-bA34 = np.flip(bA34, axis=1)
-bB34 = np.flip(bB34, axis=1)
 
+# quick sanity check
+assert np.allclose(ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34'],
+                   ccl_obj.responses_dict['G', 'L', 'G', 'G']['dpk12'], atol=0, rtol=1e-5)
+assert np.allclose(ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk34'],
+                   ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12'], atol=0, rtol=1e-5)
 assert dPmm_ddeltab_hm.shape == dPgm_ddeltab_hm.shape == dPgg_ddeltab_hm.shape, 'dPab_ddeltab_hm shape mismatch'
-assert bA12.shape == bA34.shape == bB12.shape == bB34.shape, 'counterterms shape mismatch'
 
-# translate a to z and cut the arrays to the maximum redshift of the SU responses (much smaller range!)
-z_grid_dPk_hm = csmlib.a_to_z(a_grid_hm)[::-1]
+# TODO counterterms, to be better understood - 0 for lensing, as they should be
+# bA12 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bA12_tosave']
+# bB12 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bB12_tosave']
+# bA34 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bA34_tosave']
+# bB34 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bB34_tosave']
 
+# a is flipped w.r.t. z
+# bA12 = np.flip(bA12, axis=1)
+# bB12 = np.flip(bB12, axis=1)
+# bA34 = np.flip(bA34, axis=1)
+# bB34 = np.flip(bB34, axis=1)
+
+# assert bA12.shape == bA34.shape == bB12.shape == bB34.shape, 'counterterms shape mismatch'
+
+# TODO delete this?
 # trim grids and arrays
 # z_mask = (z_grid_dPk.min() <= z_grid_dPk_hm) & (z_grid_dPk_hm <= z_grid_dPk.max())
 # k_mask = (k_grid_dPk.min() <= k_grid_dPk_hm) & (k_grid_dPk_hm <= k_grid_dPk.max())
@@ -732,8 +784,141 @@ z_grid_dPk_hm = csmlib.a_to_z(a_grid_hm)[::-1]
 # bA34 = bA34[np.ix_(k_mask, z_mask)]
 # bB34 = bB34[np.ix_(k_mask, z_mask)]
 
+
+k_limber = partial(csmlib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
+r_of_z_func = partial(csmlib.ccl_comoving_distance, use_h_units=use_h_units, cosmo_ccl=ccl_obj.cosmo_ccl)
+
+# ! divide by r(z)**2 if cl_integral_convention == 'PySSC'
+if covariance_cfg['Spaceborne_cfg']['cl_integral_convention'] == 'PySSC':
+    r_of_z_square = r_of_z_func(z_grid_ssc_integrands) ** 2
+
+    wf_delta = ccl_obj.wf_delta_arr / r_of_z_square[:, None]
+    wf_gamma = ccl_obj.wf_gamma_arr / r_of_z_square[:, None]
+    wf_ia = ccl_obj.wf_ia_arr / r_of_z_square[:, None]
+    wf_mu = ccl_obj.wf_mu_arr / r_of_z_square[:, None]
+    wf_lensing = ccl_obj.wf_lensing_arr / r_of_z_square[:, None]
+
+# ! compute the Pk responses(k, z) in k_limber and z_grid_ssc_integrands
+dPmm_ddeltab_interp = RegularGridInterpolator((k_grid_dPk_hm, z_grid_dPk_hm), dPmm_ddeltab_hm, method='linear')
+dPgm_ddeltab_interp = RegularGridInterpolator((k_grid_dPk_hm, z_grid_dPk_hm), dPgm_ddeltab_hm, method='linear')
+dPgg_ddeltab_interp = RegularGridInterpolator((k_grid_dPk_hm, z_grid_dPk_hm), dPgg_ddeltab_hm, method='linear')
+
+dPmm_ddeltab_klimb = np.array(
+    [dPmm_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
+        ell_dict['ell_WL']])
+dPgm_ddeltab_klimb = np.array(
+    [dPgm_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
+        ell_dict['ell_XC']])
+dPgg_ddeltab_klimb = np.array(
+    [dPgg_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
+        ell_dict['ell_GC']])
+
+# ! volume element
+cl_integral_prefactor = csmlib.cl_integral_prefactor(z_grid_ssc_integrands, 
+                                                     covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
+                                                     use_h_units=use_h_units,
+                                                     cosmo_ccl=ccl_obj.cosmo_ccl)
+
+# ! observable densities
+d2CLL_dVddeltab = np.einsum('zi,zj,Lz->Lijz', wf_lensing, wf_lensing, dPmm_ddeltab_klimb)
+d2CGL_dVddeltab = \
+    np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_lensing, dPgm_ddeltab_klimb) + \
+    np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_lensing, dPmm_ddeltab_klimb)
+d2CGG_dVddeltab = \
+    np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_delta, dPgg_ddeltab_klimb) + \
+    np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_mu, dPgm_ddeltab_klimb) + \
+    np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_delta, dPgm_ddeltab_klimb) + \
+    np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
+    
+# ! last ingredient: sigma2_b
+# TODO restore parallel with joblib loky
+# TODO pass z_grid_ssc_integrands to sigma2_SSC.compute_sigma2
+sigma2_cfg = covariance_cfg['Spaceborne_cfg']
+sigma2_b = sigma2_SSC.compute_sigma2(sigma2_cfg, ccl_obj.cosmo_ccl, parallel=False)
+    
+
+# TODO finish this check, looking promising considering one is hm and one is su
+# plt.loglog(ell_dict['ell_WL'], d2CLL_dVddeltab[:, 0, 0, 0], label='new')
+# plt.loglog(sscint.ell_grid, sscint.d2CLL_dVddeltab[:, 0, 0, 0], label='old')
+
+# plt.loglog(ell_dict['ell_XC'], np.abs(d2CGL_dVddeltab[:, 0, 0, 0]), label='new')
+# plt.loglog(sscint.ell_grid, np.abs(sscint.d2CGL_dVddeltab[:, 0, 0, 0]), label='old')
+
+# plt.plot(ell_dict['ell_GC'], d2CGG_dVddeltab[:, 0, 0, 0], label='new')
+# plt.plot(sscint.ell_grid, sscint.d2CGG_dVddeltab[:, 0, 0, 0], label='old')
+# plt.xscale('log')
+# plt.legend()
+
+print('SSC integrand computed')
+
+
+
+@njit(parallel=True)
+def SSC_integral_4D_optimized_simpson(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array):
+
+    z_step = (z_array[-1] - z_array[0]) / (len(z_array) - 1)
+
+    zpairs_AB = ind_AB.shape[0]
+    zpairs_CD = ind_CD.shape[0]
+    num_col = ind_CD.shape[1]
+
+    result = np.zeros((nbl, nbl, zpairs_AB, zpairs_CD))
+
+    for ell1 in prange(nbl):
+        for ell2 in prange(nbl):  # TODO compute only symmetric elements FOR THE LLLL, GLGL AND GGGG BLOCKS ONLY
+            for zij in prange(zpairs_AB):
+                for zkl in prange(zpairs_CD):
+                    zi, zj, zk, zl = ind_AB[zij, num_col - 2], ind_AB[zij, num_col -
+                                                                      1], ind_CD[zkl, num_col - 2], ind_CD[zkl, num_col - 1]
+                    for z1_idx in prange(z_steps):
+                        for z2_idx in prange(z_steps):
+
+                            result[ell1, ell2, zij, zkl] += cl_integral_prefactor[z1_idx] *  \
+                                cl_integral_prefactor[z2_idx] *\
+                                d2ClAB_dVddeltab[ell1, zi, zj, z1_idx] * \
+                                d2ClCD_dVddeltab[ell2, zk, zl, z2_idx] *\
+                                sigma2[z1_idx, z2_idx] * \
+                                simpson_weights[z1_idx] *\
+                                simpson_weights[z2_idx]
+
+    return (z_step**2) * result
+
+simpson_weights = mm.get_simpson_weights(len(z_grid_ssc_integrands))
+
+d2Cl_dVddeltab_dict = {
+    ("L", "L"): d2CLL_dVddeltab,
+    ("G", "L"): d2CGL_dVddeltab,
+    ("G", "G"): d2CGG_dVddeltab}
+
+ind_dict = {
+    ("L", "L"): ind_auto,
+    ("G", "L"): ind_cross,
+    ("G", "G"): ind_auto}
+
+cov_ssc_dict_8d = {}
+for row, (probe_A, probe_B) in enumerate(probe_ordering):
+    for col, (probe_C, probe_D) in enumerate(probe_ordering):
+        if col >= row:
+
+            print(f"Computing cov_SSC_{probe_A}{probe_B}_{probe_C}{probe_D}, zbins = {ep_or_ed} {zbins}")
+
+            start = time.perf_counter()
+
+            # ! numba
+            cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)] = SSC_integral_4D_optimized_simpson(
+                d2Cl_dVddeltab_dict[probe_A, probe_B],
+                d2Cl_dVddeltab_dict[probe_C, probe_D],
+                ind_dict[probe_A, probe_B],
+                ind_dict[probe_C, probe_D],
+                nbl, z_steps, cl_integral_prefactor, sigma2, z_grid_ssc_integrands)
+
+assert False, 'stop here'
+
+
+
 # CCL pk
-kgrid_pk2d_ccl, pk2d_ccl = csmlib.pk_from_ccl(k_grid_dPk_hm, z_grid_dPk_hm, False, ccl_obj.cosmo_ccl, pk_kind='nonlinear')
+kgrid_pk2d_ccl, pk2d_ccl = csmlib.pk_from_ccl(
+    k_grid_dPk_hm, z_grid_dPk_hm, False, ccl_obj.cosmo_ccl, pk_kind='nonlinear')
 
 # CLOE pk
 kgrid_pk2d_cloe, z_grid_pk2d_cloe, pk2d_cloe = mm.pk_vinc_file_to_2d_npy(cloe_pk_filename, plot_pk_z0=True)
@@ -741,8 +926,8 @@ kgrid_pk2d_cloe, z_grid_pk2d_cloe, pk2d_cloe = mm.pk_vinc_file_to_2d_npy(cloe_pk
 
 plt.figure()
 # pick a redshift and get the corresponding index
-colors = cm.rainbow(np.linspace(0, 1, 5))
-for count, z_val in enumerate((0,0.5, 1, 2, 3)):
+clr = cm.rainbow(np.linspace(0, 1, 5))
+for count, z_val in enumerate((0, 0.5, 1, 2, 3)):
 
     z_idx_cloe = np.argmin(np.abs(z_grid_pk2d_cloe - z_val))
     z_idx_ccl = np.argmin(np.abs(z_grid_dPk_hm - z_val))
@@ -750,14 +935,14 @@ for count, z_val in enumerate((0,0.5, 1, 2, 3)):
     z_val_cloe = z_grid_pk2d_cloe[z_idx_cloe]
     z_val_ccl = z_grid_dPk_hm[z_idx_ccl]
 
-    plt.loglog(kgrid_pk2d_cloe, pk2d_cloe[:, z_idx_cloe], ls='-', c=colors[count], label='cloe')
-    plt.loglog(k_grid_dPk_hm, pk2d_ccl[:, z_idx_ccl], ls=':', c=colors[count], alpha=0.5, label='davide ccl')
+    plt.loglog(kgrid_pk2d_cloe, pk2d_cloe[:, z_idx_cloe], ls='-', c=clr[count], label='cloe')
+    plt.loglog(k_grid_dPk_hm, pk2d_ccl[:, z_idx_ccl], ls=':', c=clr[count], alpha=0.5, label='davide ccl')
 plt.title('P(k), ccl vs imported (CLOE)')
 
 # since the nonlin pks don't match, I define a custom Pk2D object
 # scale_factor_grid_pk = csmlib.z_to_a(z_grid_Pk)[::-1]  # flip it
 # pk2d_ccl_obj = ccl.pk2d.Pk2D(a_arr=scale_factor_grid_pk, lk_arr=np.log(k_grid_Pk),
-                            #  pk_arr=pk_mm_2d.T, is_logp=False)
+#  pk_arr=pk_mm_2d.T, is_logp=False)
 
 
 # TODO check galaxy counterterms
@@ -771,12 +956,51 @@ plt.title('P(k), ccl vs imported (CLOE)')
 # ! quickly check responses
 import sys
 sys.path.append('/home/davide/Documenti/Lavoro/Programmi/exact_SSC/bin')
-import ssc_integrands_SPV3
+import ssc_integrands_SPV3 as sscint
+
+
+z_val = 0
+
+z_grid_dPk_su = sscint.z_grid_dPk
+
+z_idx_hm = np.argmin(np.abs(z_grid_dPk_hm - z_val))
+z_idx_su = np.argmin(np.abs(z_grid_dPk_su - z_val))
+z_val_hm = z_grid_dPk_hm[z_idx_hm]
+z_val_su = z_grid_dPk_su[z_idx_su]
+
+plt.figure()
+plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk2d_ccl[:, z_idx_hm],
+         label=f'dpk_mm/pkmm_2d_dav, z={z_val_hm}', alpha=0.5)
+plt.plot(sscint.k_grid_dPk, sscint.r_mm[:, z_idx_su], label=f'R1_mm_su, z={z_val_su:.2f}', alpha=0.5)
+plt.legend()
+plt.xlim(1e-2, 8)
+plt.ylim(-5, 7)
+plt.xscale('log')
+plt.xlabel('k [1/Mpc]')
+plt.ylabel('$\partial \ln P_{mm} / \partial \delta_b$')
+plt.title('dPk/ddeltab, halomodel vs separate universe')
+
+plt.figure()
+# plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm],
+#  label=f'dPmm_ddeltab_hm, z={z_val_hm}', ls='--', alpha=0.5, c='tab:blue')
+plt.plot(k_grid_dPk_hm, dPgm_ddeltab_hm[:, z_idx_hm],
+         label=f'dPgm_ddeltab_hm, z={z_val_hm}', ls='--', alpha=0.5, c='tab:orange')
+# plt.plot(k_grid_dPk_hm, dPgg_ddeltab_hm[:, z_idx_hm],
+#  label=f'dPgg_ddeltab_hm, z={z_val_hm}', ls='--', alpha=0.5, c='tab:green')
+# plt.plot(sscint.k_grid_dPk, sscint.dPmm_ddeltab[:, z_idx_su], label=f'dPmm_ddeltab, z={z_val_su:.2f}', alpha=0.5, c='tab:blue')
+plt.plot(sscint.k_grid_dPk, sscint.dPgm_ddeltab[:, z_idx_su],
+         label=f'dPgm_ddeltab, z={z_val_su:.2f}', alpha=0.5, c='tab:orange')
+# plt.plot(sscint.k_grid_dPk, sscint.dPgg_ddeltab[:, z_idx_su], label=f'dPgg_ddeltab, z={z_val_su:.2f}', alpha=0.5, c='tab:green')
+plt.legend()
+plt.xscale('log')
+plt.yscale('log')
+plt.xlabel('k [1/Mpc]')
+plt.ylabel('$\partial P_{mm} / \partial \delta_b$')
 
 
 plt.figure()
 # pick a redshift and get the corresponding index
-colors = cm.rainbow(np.linspace(0, 1, zbins))
+clr = cm.rainbow(np.linspace(0, 1, zbins))
 for count, z_val in enumerate((0, 0.5, 1, 2, 3)):
     # for count, z_val in enumerate((0, )):
 
@@ -786,16 +1010,16 @@ for count, z_val in enumerate((0, 0.5, 1, 2, 3)):
     z_hm = z_grid_dPk_hm[z_idx_hm]
     z_su = z_grid_dPk[z_idx_su]
 
-    plt.loglog(k_grid_dPk, pk_mm_2d[:, z_idx_su], ls='-', c=colors[count], label='cloe')
-    plt.loglog(k_grid_dPk_hm, pk2d_dav[:, z_idx_hm], ls=':', c=colors[count], alpha=0.5, label='davide ccl')
+    plt.loglog(k_grid_dPk, pk_mm_2d[:, z_idx_su], ls='-', c=clr[count], label='cloe')
+    plt.loglog(k_grid_dPk_hm, pk2d_dav[:, z_idx_hm], ls=':', c=clr[count], alpha=0.5, label='davide ccl')
 plt.title('Pk, ccl vs imported')
-        
+
 
 plt.figure()
 # for count, z_val in enumerate((0, 0.5, 1, 2, 3)):
 
 plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk2d_ccl[:, z_idx_hm],
-        label=f'dpk_mm/pkmm_2d_dav, z={z_hm}', alpha=0.5)
+         label=f'dpk_mm/pkmm_2d_dav, z={z_hm}', alpha=0.5)
 # plt.plot(k_grid_dPk, r_mm[:, z_idx_su], label=f'R1_mm_su, z={z_su:.2f}', alpha=0.5)
 plt.legend()
 plt.xlim(1e-2, 8)
@@ -820,7 +1044,6 @@ plt.legend()
 plt.xscale('log')
 plt.xlabel('k [1/Mpc]')
 plt.ylabel('$\partial P_{mm} / \partial \delta_b$')
-
 
 
 assert False, 'stop here'

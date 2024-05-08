@@ -97,7 +97,7 @@ start_time = time.perf_counter()
 
 
 
-def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2, ell_mask=None, cl_mask=None):
+def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None, cl_mask=None):
     """ Computes the integral in k. The rest is in another function, to vectorize the call to the growth_factor.
     Note that the 1/Omega_S^2 factors are missing in this function!! This is consistent with the definitio given in
     mine and Fabien's paper."""
@@ -130,14 +130,14 @@ def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2, ell_mask=None, c
     # else:
     #     raise ValueError('sigma2_integrating_function must be either "simps" or "quad" or "quad_vec"')
 
-    if which_sigma2 == 'full-curved-sky':
+    if which_sigma2_B == 'full-curved-sky':
         result = 1 / (2 * np.pi ** 2) * growth_factor_z1 * growth_factor_z2 * integral_result
-    elif which_sigma2 == 'mask':
+    elif which_sigma2_B == 'mask':
         fsky = np.sqrt(cl_mask[0] / (4 * np.pi))
         result = 1 / (4 * np.pi * fsky)**2 * np.sum((2 * ell_mask + 1) * cl_mask * 2 /
                                                     np.pi * growth_factor_z1 * growth_factor_z2 * integral_result)
     else:
-        raise ValueError('which_sigma2 must be either "full-curved-sky" or "mask"')
+        raise ValueError('which_sigma2_B must be either "full-curved-sky" or "mask"')
 
     return result
 
@@ -176,6 +176,7 @@ def compute_sigma2(sigma2_cfg, cosmo_ccl, parallel=True):
     z_grid_sigma2 = np.linspace(sigma2_cfg['z_min_sigma2'], sigma2_cfg['z_max_sigma2'], sigma2_cfg['z_steps_sigma2'])
     k_grid_sigma2 = np.logspace(sigma2_cfg['log10_k_min_sigma2'], sigma2_cfg['log10_k_max_sigma2'],
                                 sigma2_cfg['k_steps_sigma2'])
+    which_sigma2_B = sigma2_cfg['which_sigma2_B']
 
     if parallel:
         # ! parallelize with ray
@@ -184,7 +185,7 @@ def compute_sigma2(sigma2_cfg, cosmo_ccl, parallel=True):
         remote_calls = []
         for z1 in tqdm(z_grid_sigma2):
             for z2 in z_grid_sigma2:
-                remote_calls.append(sigma2_func_remote.remote(z1, z2, k_grid_sigma2, cosmo_ccl))
+                remote_calls.append(sigma2_func_remote.remote(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B))
         # Get the results from the remote function calls
         sigma2_arr = ray.get(remote_calls)
 
@@ -201,7 +202,7 @@ def compute_sigma2(sigma2_cfg, cosmo_ccl, parallel=True):
         sigma2_arr = np.zeros((len(z_grid_sigma2), len(z_grid_sigma2)))
         for z1_idx, z1 in enumerate(tqdm(z_grid_sigma2)):
             for z2_idx, z2 in enumerate(z_grid_sigma2):
-                sigma2_arr[z1_idx, z2_idx] = sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl)
+                sigma2_arr[z1_idx, z2_idx] = sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B)
 
     return sigma2_arr, z_grid_sigma2
 

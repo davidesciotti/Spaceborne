@@ -1,22 +1,18 @@
 import time
 import warnings
 import pickle
-import sys
-import os
-import matplotlib
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.integrate import simps
 from copy import deepcopy
+from scipy.interpolate import UnivariateSpline, interp1d
 
-import os
 import spaceborne.cl_preprocessing as cl_preprocessing
 import spaceborne.pyccl_cov_class as pyccl_cov
 import spaceborne.sigma2_SSC as sigma2_SSC
 import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib
 import spaceborne.wf_cl_lib as wf_cl_lib
-from scipy.interpolate import UnivariateSpline, interp1d
 
 ###############################################################################
 ################ CODE TO COMPUTE THE G AND SSC COVMATS ########################

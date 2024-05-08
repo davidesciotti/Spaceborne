@@ -23,6 +23,41 @@ from tqdm import tqdm
 import pandas as pd
 from matplotlib.colors import ListedColormap
 
+symmetrize_output_dict = {
+    ('L', 'L'): True,
+    ('G', 'L'): False,
+    ('L', 'G'): False,
+    ('G', 'G'): True,
+}
+
+
+def get_simpson_weights(n):
+    """
+    Function written by Marco Bonici
+    """
+    number_intervals = (n - 1) // 2
+    weight_array = np.zeros(n)
+    if n == number_intervals * 2 + 1:
+        for i in range(number_intervals):
+            weight_array[2 * i] += 1 / 3
+            weight_array[2 * i + 1] += 4 / 3
+            weight_array[2 * i + 2] += 1 / 3
+    else:
+        weight_array[0] += 0.5
+        weight_array[1] += 0.5
+        for i in range(number_intervals):
+            weight_array[2 * i + 1] += 1 / 3
+            weight_array[2 * i + 2] += 4 / 3
+            weight_array[2 * i + 3] += 1 / 3
+        weight_array[-1] += 0.5
+        weight_array[-2] += 0.5
+        for i in range(number_intervals):
+            weight_array[2 * i] += 1 / 3
+            weight_array[2 * i + 1] += 4 / 3
+            weight_array[2 * i + 2] += 1 / 3
+        weight_array /= 2
+    return weight_array
+
 
 def zpair_from_zidx(zidx, ind):
     """ Return the zpair corresponding to the zidx for a given ind array.
@@ -89,7 +124,11 @@ def cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_orde
         for probe_C, probe_D in probe_ordering:
             cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = cov_4D_to_6D_blocks(
                 cov_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
-                nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
+                nbl, zbins,
+                ind_dict[probe_A, probe_B],
+                ind_dict[probe_C, probe_D],
+                symmetrize_output_dict[probe_A, probe_B],
+                symmetrize_output_dict[probe_C, probe_D])
     return cov_3x2pt_dict_10D
 
 
@@ -2423,7 +2462,7 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, probe_ordering, combinations=None
     return cov_3x2pt_4D
 
 
-def cov_3x2pt_4d_to_10d_dict(cov_3x2pt_4d, zbins, probe_ordering, nbl, ind_copy):
+def cov_3x2pt_4d_to_10d_dict(cov_3x2pt_4d, zbins, probe_ordering, nbl, ind_copy, optimize=False):
 
     zpairs_auto, zpairs_cross, _ = get_zpairs(zbins)
 
@@ -2452,12 +2491,24 @@ def cov_3x2pt_4d_to_10d_dict(cov_3x2pt_4d, zbins, probe_ordering, nbl, ind_copy)
     cov_vinc_no_bnt_8d_dict['G', 'G', 'G', 'L'] = cov_3x2pt_4d[:, :, zpairs_sum:, zpairs_auto:zpairs_sum]
     cov_vinc_no_bnt_8d_dict['G', 'G', 'G', 'G'] = cov_3x2pt_4d[:, :, zpairs_sum:, zpairs_sum:]
 
+    if optimize:
+        # this version is only marginally faster, it seems
+        cov_4D_to_6D_blocks_func = cov_4D_to_6D_blocks_opt
+    else:
+        # safer, default value
+        cov_4D_to_6D_blocks_func = cov_4D_to_6D_blocks
+
+
     cov_vinc_no_bnt_10d_dict = {}
     for key in cov_vinc_no_bnt_8d_dict.keys():
-        cov_vinc_no_bnt_10d_dict[key] = cov_4D_to_6D_blocks(
-            cov_vinc_no_bnt_8d_dict[key], nbl, zbins, ind_dict[key[0], key[1]], ind_dict[key[2], key[3]])
+        cov_vinc_no_bnt_10d_dict[key] = cov_4D_to_6D_blocks_func(
+            cov_vinc_no_bnt_8d_dict[key], nbl, zbins,
+            ind_dict[key[0], key[1]], ind_dict[key[2], key[3]],
+            symmetrize_output_dict[key[0], key[1]],
+            symmetrize_output_dict[key[2], key[3]])
 
     return cov_vinc_no_bnt_10d_dict
+
 
 
 # ! to be deprecated
@@ -2473,7 +2524,6 @@ def symmetrize_ij(cov_6D, zbins):
 
 
 # @njit
-# ! this function is new - still to be thouroughly tested
 def cov_4D_to_6D(cov_4D, nbl, zbins, probe, ind):
     """transform the cov from shape (nbl, nbl, npairs, npairs) 
     to (nbl, nbl, zbins, zbins, zbins, zbins). Not valid for 3x2pt, the total
@@ -2481,6 +2531,7 @@ def cov_4D_to_6D(cov_4D, nbl, zbins, probe, ind):
     enough to store 3 probes. Use cov_4D functions or cov_6D as a dictionary
     instead,
     """
+    # TODO deprecate this in favor of cov_4D_to_6D_blocks
 
     npairs_auto, npairs_cross, npairs_tot = get_zpairs(zbins)
     if probe in ['LL', 'GG']:
@@ -2578,14 +2629,11 @@ def cov_6D_to_4D_blocks(cov_6D, nbl, npairs_AB, npairs_CD, ind_AB, ind_CD):
 
 
 # @njit
-def cov_4D_to_6D_blocks(cov_4D, nbl, zbins, ind_ab, ind_cd):
+def cov_4D_to_6D_blocks(cov_4D, nbl, zbins, ind_ab, ind_cd, symmetrize_output_ab, symmetrize_output_cd):
     """ reshapes the covariance even for the non-diagonal (hence, non-square) blocks needed to build the 3x2pt.
     use zpairs_ab = zpairs_cd and ind_ab = ind_cd for the normal routine (valid for auto-covariance
     LL-LL, GG-GG, GL-GL and LG-LG).
     """
-    warnings.warn(
-        'This function does not symmetrize the output covariance block, but it works if you want to re-reduce '
-        'to the 4d or 2d covariance')
 
     assert ind_ab.shape[1] == ind_cd.shape[1], 'ind_ab and ind_cd must have the same number of columns'
     assert ind_ab.shape[1] == 2 or ind_ab.shape[1] == 4, 'ind_ab and ind_cd must have 2 or 4 columns'
@@ -2600,6 +2648,56 @@ def cov_4D_to_6D_blocks(cov_4D, nbl, zbins, ind_ab, ind_cd):
             for kl in range(zpairs_cd):
                 i, j, k, l = ind_ab[ij, ncols - 2], ind_ab[ij, ncols - 1], ind_cd[kl, ncols - 2], ind_cd[kl, ncols - 1]
                 cov_6D[:, ell2, i, j, k, l] = cov_4D[:, ell2, ij, kl]
+
+    # GL blocks are not symmetric
+    # ! this part makes this function quite slow
+    if symmetrize_output_ab:
+        for ell1 in range(nbl):
+            for ell2 in range(nbl):
+                for i in range(zbins):
+                    for j in range(zbins):
+                        cov_6D[ell1, ell2, :, :, i, j] = symmetrize_2d_array(cov_6D[ell1, ell2, :, :, i, j])
+
+    if symmetrize_output_cd:
+        for ell1 in range(nbl):
+            for ell2 in range(nbl):
+                for i in range(zbins):
+                    for j in range(zbins):
+                        cov_6D[ell1, ell2, i, j, :, :] = symmetrize_2d_array(cov_6D[ell1, ell2, i, j, :, :])
+
+    return cov_6D
+
+
+def cov_4D_to_6D_blocks_opt(cov_4D, nbl, zbins, ind_ab, ind_cd, symmetrize_output_ab, symmetrize_output_cd):
+    assert ind_ab.shape[1] == ind_cd.shape[1], 'ind_ab and ind_cd must have the same number of columns'
+    assert ind_ab.shape[1] in {2, 4}, 'ind_ab and ind_cd must have 2 or 4 columns'
+
+    ncols = ind_ab.shape[1]
+    zpairs_ab = ind_ab.shape[0]
+    zpairs_cd = ind_cd.shape[0]
+
+    cov_6D = np.zeros((nbl, nbl, zbins, zbins, zbins, zbins))
+
+    ell2_indices, ij_indices, kl_indices = np.ogrid[:nbl, :zpairs_ab, :zpairs_cd]
+    i_indices = ind_ab[ij_indices, ncols - 2]
+    j_indices = ind_ab[ij_indices, ncols - 1]
+    k_indices = ind_cd[kl_indices, ncols - 2]
+    l_indices = ind_cd[kl_indices, ncols - 1]
+
+    cov_6D[:, ell2_indices, i_indices, j_indices, k_indices,
+           l_indices] = cov_4D[:, ell2_indices, ij_indices, kl_indices]
+
+    if symmetrize_output_ab or symmetrize_output_cd:
+        for ell1 in range(nbl):
+            for ell2 in range(nbl):
+                if symmetrize_output_ab:
+                    for i in range(zbins):
+                        for j in range(zbins):
+                            cov_6D[ell1, ell2, :, :, i, j] = symmetrize_2d_array(cov_6D[ell1, ell2, :, :, i, j])
+                if symmetrize_output_cd:
+                    for i in range(zbins):
+                        for j in range(zbins):
+                            cov_6D[ell1, ell2, i, j, :, :] = symmetrize_2d_array(cov_6D[ell1, ell2, i, j, :, :])
 
     return cov_6D
 

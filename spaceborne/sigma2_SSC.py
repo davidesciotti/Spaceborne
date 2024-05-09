@@ -147,22 +147,19 @@ def sigma2_func_vectorized(z1_arr, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B,
     """
     Vectorized version of sigma2_func in z1.
     """
-    # Compute the comoving distance at the given redshifts
+    a1_arr = csmlib.z_to_a(z1_arr)
     a2 = csmlib.z_to_a(z2)
+
+    r1_arr = ccl.comoving_radial_distance(cosmo_ccl, a1_arr)
     r2 = ccl.comoving_radial_distance(cosmo_ccl, a2)
 
-    # Compute the growth factor at z2
-    growth_factor_z2 = ccl.growth_factor(cosmo_ccl, a2)
-
-    # Vectorize the computations for z1
-    a1_arr = csmlib.z_to_a(z1_arr)
-    r1_arr = ccl.comoving_radial_distance(cosmo_ccl, a1_arr)
     growth_factor_z1_arr = ccl.growth_factor(cosmo_ccl, a1_arr)
+    growth_factor_z2 = ccl.growth_factor(cosmo_ccl, a2)
 
     # Define the integrand as a function of k
     def integrand(k):
         return k ** 2 * ccl.linear_matter_power(cosmo_ccl, k=k, a=1.) * \
-            spherical_jn(0, k * r1_arr[:, np.newaxis]) * spherical_jn(0, k * r2)
+            spherical_jn(0, k * r1_arr[:, None]) * spherical_jn(0, k * r2)
 
     integral_result = simps(integrand(k_grid_sigma2), k_grid_sigma2, axis=1)
 
@@ -170,8 +167,9 @@ def sigma2_func_vectorized(z1_arr, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B,
         result = 1 / (2 * np.pi ** 2) * growth_factor_z1_arr * growth_factor_z2 * integral_result
     elif which_sigma2_B == 'mask':
         fsky = np.sqrt(cl_mask[0] / (4 * np.pi))
-        result = 1 / (4 * np.pi * fsky) ** 2 * np.sum((2 * ell_mask + 1) * cl_mask * 2 /
-                                                      np.pi * growth_factor_z1_arr[:, np.newaxis] * growth_factor_z2 * integral_result, axis=1)
+        result = 1 / (4 * np.pi * fsky) ** 2 * \
+            np.sum((2 * ell_mask + 1) * cl_mask * 2 / np.pi *
+                   growth_factor_z1_arr[:, None] * growth_factor_z2 * integral_result, axis=1)
     else:
         raise ValueError('which_sigma2_B must be either "full-curved-sky" or "mask"')
 
@@ -204,16 +202,6 @@ def plot_sigma2(sigma2_arr, z_grid_sigma2):
     # z_steps_sigma2 = len(z_grid_sigma2)
     # plt.savefig(f'../output/plots/sigma2_spikes_zsteps{z_steps_sigma2}.pdf', dpi=500, bbox_inches='tight')
     # plt.savefig(f'../output/plots/sigma2_matshow_zsteps{z_steps_sigma2}.pdf', dpi=500, bbox_inches='tight')
-
-
-import multiprocessing.shared_memory as shm
-
-
-class SharedCosmology(shm.ShareableList):
-    def __init__(self, sequence):
-        self._types_mapping = shm.ShareableList._types_mapping.copy()
-        self._types_mapping[ccl.cosmology.Cosmology] = 'c'
-        super().__init__(sequence)
 
 
 def compute_sigma2(z_grid_sigma2, k_grid_sigma2, which_sigma2_B, cosmo_ccl, parallel=True, vectorize=False):
@@ -257,7 +245,6 @@ def compute_sigma2(z_grid_sigma2, k_grid_sigma2, which_sigma2_B, cosmo_ccl, para
                 for z2_idx, z2 in enumerate(z_grid_sigma2):
                     sigma2_arr[z1_idx, z2_idx] = sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B)
         elif vectorize:
-            z1_arr = z_grid_sigma2
             for z2_idx, z2 in enumerate(tqdm(z_grid_sigma2)):
                 sigma2_arr[:, z2_idx] = sigma2_func_vectorized(
                     z_grid_sigma2, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, None, None)

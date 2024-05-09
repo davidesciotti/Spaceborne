@@ -258,7 +258,7 @@ covariance_cfg:
         k_steps_sigma2: 20_000
         z_min_ssc_integrands: 0.01
         z_max_ssc_integrands: 3.
-        z_steps_ssc_integrands: 200 # this should be high because I have to trace the spikes in sigma2
+        z_steps_ssc_integrands: 100 # this should be high because I have to trace the spikes in sigma2
 
 
 

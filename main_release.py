@@ -839,6 +839,7 @@ z_grid_sigma2 = np.linspace(covariance_cfg['Spaceborne_cfg']['z_min_ssc_integran
 k_grid_sigma2 = np.logspace(covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'], covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
                             covariance_cfg['Spaceborne_cfg']['k_steps_sigma2'])
 which_sigma2_B = covariance_cfg['Spaceborne_cfg']['which_sigma2_B']
+
 sigma2_b_vec = sigma2_SSC.compute_sigma2(z_grid_sigma2, k_grid_sigma2, which_sigma2_B, ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
 sigma2_b = sigma2_SSC.compute_sigma2(z_grid_sigma2, k_grid_sigma2, which_sigma2_B, ccl_obj.cosmo_ccl, parallel=False, vectorize=False)
 

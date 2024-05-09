@@ -224,7 +224,7 @@ covariance_cfg:
         z_grid_tkka_max: 6
         k_grid_tkka_min: 1.e-5
         k_grid_tkka_max: 1.e+2
-        z_grid_tkka_steps_SSC: 50
+        z_grid_tkka_steps_SSC: 30
         k_grid_tkka_steps_SSC: 1024
         z_grid_tkka_steps_cNG: 100
         k_grid_tkka_steps_cNG: 512
@@ -253,15 +253,12 @@ covariance_cfg:
         cl_integral_convention: PySSC  # "Euclid" or "PySSC". results are the same
         k_txt_label: 1overMpc
         use_precomputed_sigma2: True  # still need to understand exactly where to call/save this
-        z_min_sigma2: 0.001
-        z_max_sigma2: 3
-        z_steps_sigma2: 2899
         log10_k_min_sigma2: -4
         log10_k_max_sigma2: 1
         k_steps_sigma2: 20_000
         z_min_ssc_integrands: 0.01
         z_max_ssc_integrands: 3.
-        z_steps_ssc_integrands: 3000 # this should be high because I have to trace the spikes in sigma2
+        z_steps_ssc_integrands: 200 # this should be high because I have to trace the spikes in sigma2
 
 
 

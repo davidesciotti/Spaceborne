@@ -1,3 +1,4 @@
+from functools import partial
 import logging
 import sys
 import time
@@ -5,10 +6,11 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from joblib import delayed, Parallel
+import multiprocessing as mp
 from scipy.integrate import simps
 from scipy.interpolate import RegularGridInterpolator
 from scipy.special import spherical_jn
-# import ray
+import ray
 import pyccl as ccl
 from tqdm import tqdm
 # import PySSC
@@ -61,7 +63,7 @@ start_time = time.perf_counter()
 #     """Compute the flatsky variance between two redshifts z1 and z2 for a cosmology given by cosmo_ccl."""
 
 #     # Compute the comoving distance at the given redshifts
-    # from scipy.special import j1 as J1
+# from scipy.special import j1 as J1
 #     a1 = 1 / (1 + z1)
 #     a2 = 1 / (1 + z2)
 #     r1 = ccl.comoving_radial_distance(cosmo_ccl, a1)
@@ -84,17 +86,16 @@ start_time = time.perf_counter()
 #         for k_perp in k_perp_grid
 #     ])
 #     integral_result = simps(integral_result_k_perp, k_perp_grid)
-    
+
 #     # Compute the final result
 #     sigma2 = 1 / (2 * np.pi**2) * growth_factor_z1 * growth_factor_z2 * integral_result / Omega_S**2
-    
+
 #     return sigma2
 
 # # Example usage:
 # # Define your k_perp_grid and k_par_grid appropriately
 # # Omega_S and theta_S must also be defined based on your survey parameters
 # # sigma2_result = sigma2_flatsky(z1, z2, k_perp_grid, k_par_grid, cosmo_ccl, Omega_S, theta_S)
-
 
 
 def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None, cl_mask=None):
@@ -142,6 +143,41 @@ def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None,
     return result
 
 
+def sigma2_func_vectorized(z1_arr, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None, cl_mask=None):
+    """
+    Vectorized version of sigma2_func in z1.
+    """
+    # Compute the comoving distance at the given redshifts
+    a2 = csmlib.z_to_a(z2)
+    r2 = ccl.comoving_radial_distance(cosmo_ccl, a2)
+
+    # Compute the growth factor at z2
+    growth_factor_z2 = ccl.growth_factor(cosmo_ccl, a2)
+
+    # Vectorize the computations for z1
+    a1_arr = csmlib.z_to_a(z1_arr)
+    r1_arr = ccl.comoving_radial_distance(cosmo_ccl, a1_arr)
+    growth_factor_z1_arr = ccl.growth_factor(cosmo_ccl, a1_arr)
+
+    # Define the integrand as a function of k
+    def integrand(k):
+        return k ** 2 * ccl.linear_matter_power(cosmo_ccl, k=k, a=1.) * \
+            spherical_jn(0, k * r1_arr[:, np.newaxis]) * spherical_jn(0, k * r2)
+
+    integral_result = simps(integrand(k_grid_sigma2), k_grid_sigma2, axis=1)
+
+    if which_sigma2_B == 'full-curved-sky':
+        result = 1 / (2 * np.pi ** 2) * growth_factor_z1_arr * growth_factor_z2 * integral_result
+    elif which_sigma2_B == 'mask':
+        fsky = np.sqrt(cl_mask[0] / (4 * np.pi))
+        result = 1 / (4 * np.pi * fsky) ** 2 * np.sum((2 * ell_mask + 1) * cl_mask * 2 /
+                                                      np.pi * growth_factor_z1_arr[:, np.newaxis] * growth_factor_z2 * integral_result, axis=1)
+    else:
+        raise ValueError('which_sigma2_B must be either "full-curved-sky" or "mask"')
+
+    return result
+
+
 def plot_sigma2(sigma2_arr, z_grid_sigma2):
     font_size = 28
     plt.rcParams.update({'font.size': font_size})
@@ -170,13 +206,18 @@ def plot_sigma2(sigma2_arr, z_grid_sigma2):
     # plt.savefig(f'../output/plots/sigma2_matshow_zsteps{z_steps_sigma2}.pdf', dpi=500, bbox_inches='tight')
 
 
-def compute_sigma2(sigma2_cfg, cosmo_ccl, parallel=True):
-    print(f'computing sigma^2(z_1, z_2) for SSC...')
+import multiprocessing.shared_memory as shm
 
-    z_grid_sigma2 = np.linspace(sigma2_cfg['z_min_sigma2'], sigma2_cfg['z_max_sigma2'], sigma2_cfg['z_steps_sigma2'])
-    k_grid_sigma2 = np.logspace(sigma2_cfg['log10_k_min_sigma2'], sigma2_cfg['log10_k_max_sigma2'],
-                                sigma2_cfg['k_steps_sigma2'])
-    which_sigma2_B = sigma2_cfg['which_sigma2_B']
+
+class SharedCosmology(shm.ShareableList):
+    def __init__(self, sequence):
+        self._types_mapping = shm.ShareableList._types_mapping.copy()
+        self._types_mapping[ccl.cosmology.Cosmology] = 'c'
+        super().__init__(sequence)
+
+
+def compute_sigma2(z_grid_sigma2, k_grid_sigma2, which_sigma2_B, cosmo_ccl, parallel=True, vectorize=False):
+    print(f'computing sigma^2(z_1, z_2) for SSC...')
 
     if parallel:
         # ! parallelize with ray
@@ -189,22 +230,39 @@ def compute_sigma2(sigma2_cfg, cosmo_ccl, parallel=True):
         # Get the results from the remote function calls
         sigma2_arr = ray.get(remote_calls)
 
-        # with joblib (doesn't seem to work anymore, I still don't know why)
-        # sigma2_arr = Parallel(n_jobs=-1, backend='threading')(delayed(sigma2_func)(
-        #     z1, z2, k_grid_sigma2, cosmo_ccl) for z1 in tqdm(z_grid_sigma2) for z2 in z_grid_sigma2)
+        # ! with joblib (doesn't seem to work anymore, I still don't know why)
+        # sigma2_arr = Parallel(n_jobs=-1, backend='loky')(delayed(sigma2_func)(
+        # z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B) for z1 in tqdm(z_grid_sigma2) for z2 in z_grid_sigma2)
+
+        # ! with pool.map
+        # Share cosmo_ccl object using custom SharedCosmology
+        # shm_cosmo_ccl = SharedCosmology([cosmo_ccl])
+
+        # with mp.Pool() as pool:
+        #     sigma2_arr = pool.starmap(
+        #         partial(sigma2_func, k_grid_sigma2=k_grid_sigma2, cosmo_ccl=shm_cosmo_ccl[0], which_sigma2_B=which_sigma2_B),
+        #         [(z1, z2) for z1 in z_grid_sigma2 for z2 in z_grid_sigma2]
+        #     )
 
         # reshape result
         sigma2_arr = np.array(sigma2_arr).reshape((len(z_grid_sigma2), len(z_grid_sigma2)))
         print(f'sigma2 computed in: {(time.perf_counter() - start_time):.2f} s')
 
+    # ! serial version
     else:
-        # ! serial version
         sigma2_arr = np.zeros((len(z_grid_sigma2), len(z_grid_sigma2)))
-        for z1_idx, z1 in enumerate(tqdm(z_grid_sigma2)):
-            for z2_idx, z2 in enumerate(z_grid_sigma2):
-                sigma2_arr[z1_idx, z2_idx] = sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B)
 
-    return sigma2_arr, z_grid_sigma2
+        if not vectorize:
+            for z1_idx, z1 in enumerate(tqdm(z_grid_sigma2)):
+                for z2_idx, z2 in enumerate(z_grid_sigma2):
+                    sigma2_arr[z1_idx, z2_idx] = sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B)
+        elif vectorize:
+            z1_arr = z_grid_sigma2
+            for z2_idx, z2 in enumerate(tqdm(z_grid_sigma2)):
+                sigma2_arr[:, z2_idx] = sigma2_func_vectorized(
+                    z_grid_sigma2, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, None, None)
+
+    return sigma2_arr
 
 
 # @ray.remote

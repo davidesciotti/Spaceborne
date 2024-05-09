@@ -833,8 +833,19 @@ d2CGG_dVddeltab = \
 # ! last ingredient: sigma2_b
 # TODO restore parallel with joblib loky
 # TODO pass z_grid_ssc_integrands to sigma2_SSC.compute_sigma2
-sigma2_cfg = covariance_cfg['Spaceborne_cfg']
-sigma2_b = sigma2_SSC.compute_sigma2(sigma2_cfg, ccl_obj.cosmo_ccl, parallel=False)
+z_grid_sigma2 = np.linspace(covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'], 
+                            covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'], 
+                            covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'])
+k_grid_sigma2 = np.logspace(covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'], covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
+                            covariance_cfg['Spaceborne_cfg']['k_steps_sigma2'])
+which_sigma2_B = covariance_cfg['Spaceborne_cfg']['which_sigma2_B']
+sigma2_b_vec = sigma2_SSC.compute_sigma2(z_grid_sigma2, k_grid_sigma2, which_sigma2_B, ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
+sigma2_b = sigma2_SSC.compute_sigma2(z_grid_sigma2, k_grid_sigma2, which_sigma2_B, ccl_obj.cosmo_ccl, parallel=False, vectorize=False)
+
+np.testing.assert_allclose(sigma2_b, sigma2_b_vec, rtol=1e-6, atol=0)
+
+mm.matshow(sigma2_b, log=True)
+mm.matshow(sigma2_b_vec, log=True)
     
 
 # TODO finish this check, looking promising considering one is hm and one is su

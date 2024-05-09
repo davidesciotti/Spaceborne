@@ -26,6 +26,7 @@ ROOT = os.getenv('ROOT')
 
 import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib
+import spaceborne.pyccl_cov_class as pyccl_cov_class
 import common_cfg.ISTF_fid_params as ISTF
 import common_cfg.mpl_cfg as mpl_cfg
 import matplotlib.lines as mlines
@@ -995,6 +996,7 @@ def cl_PyCCL(wf_A, wf_B, ell, zbins, p_of_k_a, cosmo, limber_integration_method=
 
 
 def stem(cl_4d, variations_arr, zbins, nbl):
+
     # instantiate array of derivatives
     dcl_3d = np.zeros((nbl, zbins, zbins))
 
@@ -1389,6 +1391,98 @@ def cls_and_derivatives_parallel(fiducial_values_dict, extra_parameters, list_pa
     return cl_LL, cl_GL, cl_GG, dcl_LL, dcl_GL, dcl_GG
 
 
+def cls_and_derivatives_parallel_v2(cfg, list_params_to_vary, zbins, nz_tuple,
+                                    ell_LL, ell_GL, ell_GG, pk=None, use_only_flat_models=True):
+    """
+    Compute the derivatives of the power spectrum with respect to the free parameters
+    """
+    # TODO cleanup the function, + make it single-probe
+    # TODO implement checks on the input parameters
+    # TODO input dndz galaxy and IA bias
+
+    free_fid_pars_dict = deepcopy(cfg['cosmology']['FM_ordered_params'])
+    
+    if use_only_flat_models:
+        assert free_fid_pars_dict['Om_k0'] == 0, 'if use_only_flat_models is True, Om_k0 must be 0'
+    
+
+    nbl_WL = len(ell_LL)
+    nbl_GC = len(ell_GG)
+
+    percentages = np.asarray((-10., -5., -3.75, -2.5, -1.875, -1.25, -0.625, 0,
+                              0.625, 1.25, 1.875, 2.5, 3.75, 5., 10.)) / 100
+    num_points_derivative = len(percentages)
+
+    # declare cl and dcl vectors
+    cl_LL, cl_GL, cl_GG = {}, {}, {}
+    dcl_LL, dcl_GL, dcl_GG = {}, {}, {}
+
+    # loop over the free parameters and store the cls in a dictionary
+    for param_to_vary in list_params_to_vary:
+
+        assert param_to_vary in free_fid_pars_dict.keys(), f'{param_to_vary} is not in the fiducial values dict'
+
+        t0 = time.perf_counter()
+
+        print(f'working on {param_to_vary}...')
+
+        # shift the parameter
+        varied_param_values = free_fid_pars_dict[param_to_vary] + free_fid_pars_dict[param_to_vary] * percentages
+        if param_to_vary == "wa":  # wa is 0! take directly the percentages
+            varied_param_values = percentages
+
+        # ricorda che, quando shifti OmegaM va messo OmegaCDM in modo che OmegaB + OmegaCDM dia il valore corretto di OmegaM,
+        # mentre quando shifti OmegaB deve essere aggiustato sempre OmegaCDM in modo che OmegaB + OmegaCDM = 0.32; per OmegaX
+        # lo shift ti darà un OmegaM + OmegaDE diverso da 1 il che corrisponde appunto ad avere modelli non piatti
+
+        # this dictionary will contain the shifted values of the parameters; it is initialized with the fiducial values
+        # for each new parameter to be varied
+        # ! important note: the fiducial and varied_fiducial dict contain all cosmological parameters, not just the ones
+        # ! that are varied (specified in list_params_to_vary). This is to be able to change the set of
+        # ! varied parameters easily
+        varied_fid_pars_dict = deepcopy(free_fid_pars_dict)
+
+        # instantiate derivatives array for the given free parameter key
+        cl_LL[param_to_vary] = np.zeros((num_points_derivative, nbl_WL, zbins, zbins))
+        cl_GL[param_to_vary] = np.zeros((num_points_derivative, nbl_GC, zbins, zbins))
+        cl_GG[param_to_vary] = np.zeros((num_points_derivative, nbl_GC, zbins, zbins))
+
+        # ! newwww
+        # results = Parallel(n_jobs=-1, backend='loky')(
+        #     delayed(cl_parallel_helper_v2)(param_to_vary, variation_idx, varied_fid_pars_dict, cl_LL, cl_GL, cl_GG,
+        #                                    fid_pars_dict, cfg, nz_tuple, list_params_to_vary,
+        #                                    zbins, nz_tuple, ell_LL, ell_GL, ell_GG,
+        #                                    pk=pk, use_only_flat_models=use_only_flat_models) for
+        #     variation_idx, varied_fid_pars_dict[param_to_vary] in tqdm(enumerate(varied_param_values)))
+
+        results = [cl_parallel_helper_v2(param_to_vary, variation_idx, varied_fid_pars_dict, cl_LL, cl_GL, cl_GG,
+                                         cfg, nz_tuple, list_params_to_vary,
+                                         zbins, nz_tuple, ell_LL, ell_GL, ell_GG,
+                                         pk=pk, use_only_flat_models=use_only_flat_models) for
+                   variation_idx, varied_fid_pars_dict[param_to_vary] in tqdm(enumerate(varied_param_values))]
+
+        # Collect the results
+        for variation_idx, cl_LL_part, cl_GL_part, cl_GG_part in results:
+            cl_LL[param_to_vary][variation_idx, :, :, :] = cl_LL_part
+            cl_GL[param_to_vary][variation_idx, :, :, :] = cl_GL_part
+            cl_GG[param_to_vary][variation_idx, :, :, :] = cl_GG_part
+        # ! and newwww
+
+        for variation_idx, varied_fid_pars_dict[param_to_vary] in tqdm(enumerate(varied_param_values)):
+            print(f'param {param_to_vary} Cls computed in {(time.perf_counter() - t0):.2f} seconds')
+
+        # once finished looping over the variations, reset the parameter to its fiducial value
+        # list_params_to_vary[param_to_vary] = fiducial_values_dict[param_to_vary]
+
+        # save the Cls
+        dcl_LL[param_to_vary] = stem(cl_LL[param_to_vary], varied_param_values, zbins, nbl_WL)
+        dcl_GL[param_to_vary] = stem(cl_GL[param_to_vary], varied_param_values, zbins, nbl_GC)
+        dcl_GG[param_to_vary] = stem(cl_GG[param_to_vary], varied_param_values, zbins, nbl_GC)
+
+        print(f'SteM derivative computed for {param_to_vary}')
+    return cl_LL, cl_GL, cl_GG, dcl_LL, dcl_GL, dcl_GG
+
+
 def cl_parallel_helper(param_to_vary, variation_idx, varied_fiducials, cl_LL, cl_GL, cl_GG,
                        fiducial_values_dict, extra_parameters,
                        list_params_to_vary, zbins, dndz, ell_LL, ell_GL, ell_GG,
@@ -1443,13 +1537,94 @@ def cl_parallel_helper(param_to_vary, variation_idx, varied_fiducials, cl_LL, cl
     return cl_LL, cl_GL, cl_GG
 
 
+def cl_parallel_helper_v2(param_to_vary, variation_idx, varied_fiducials, cl_LL, cl_GL, cl_GG,
+                          cfg, nz_tuple, list_params_to_vary,
+                          zbins, zgrid_nz, ell_LL, ell_GL, ell_GG,
+                          pk=None, use_only_flat_models=True):
+
+
+    general_cfg = cfg['general_cfg']
+    magcut_lens = general_cfg['magcut_lens']
+
+    z_grid_nz, n_of_z = nz_tuple
+
+    if use_only_flat_models:
+        # in this case I want omk = 0, so if Om_Lambda0 varies Om_m0 will have to be adjusted and vice versa
+        # (and Om_m0 is adjusted by adjusting Omega_CDM), see the else statement
+
+        assert varied_fiducials['Om_k0'] == 0, 'if use_only_flat_models is True, Om_k0 must be 0'
+        assert 'Om_k0' not in list_params_to_vary, 'if use_only_flat_models is True, ' \
+                                                   'Om_k0 must not be in list_params_to_vary'
+
+        # If I vary Om_Lambda0 and Om_k0 = 0, I need to adjust Om_m0
+        if param_to_vary == 'Om_Lambda0':
+            varied_fiducials['Om_m0'] = 1 - varied_fiducials['Om_Lambda0']
+
+    else:
+        # If I vary Om_Lambda0 or Om_m0 and Om_k0 can vary, I need to adjust Om_k0
+        varied_fiducials['Om_k0'] = 1 - varied_fiducials['Om_m0'] - varied_fiducials['Om_Lambda0']
+        if np.abs(varied_fiducials['Om_k0']) < 1e-8:
+            varied_fiducials['Om_k0'] = 0
+
+    varied_fiducials['Om_nu0'] = csmlib.get_omega_nu0(varied_fiducials['m_nu'], varied_fiducials['h'],
+                                                      n_ur=None, n_eff=varied_fiducials['N_eff'],
+                                                      n_ncdm=None,
+                                                      neutrino_mass_fac=None, g_factor=None)
+
+
+    # warnings.warn('there seems to be a small discrepancy here...')
+    assert (varied_fiducials['Om_m0'] / ccl_obj.cosmo_ccl.cosmo.params.Omega_m - 1) < 1e-7, \
+        'Om_m0 is not the same as the one in the fiducial model'
+
+
+    dzWL_fiducial = np.array([free_fid_pars_dict[f'dzWL{zi:02d}'] for zi in range(1, zbins + 1)])
+    # dzGC_fiducial = np.array([free_fid_pars_dict[f'dzGC{zi:02d}'] for zi in range(1, zbins + 1)])
+    ccl_obj = pyccl_cov_class.PycclClass(free_fid_pars_dict)
+    ccl_obj.zbins = zbins
+    n_of_z = shift_nz(zgrid_nz, n_of_z, dzWL_fiducial, normalize=False, plot_nz=False,
+                      interpolation_kind='linear')
+
+    ccl_obj.set_nz(np.hstack((zgrid_nz[:, None], n_of_z)))
+    ccl_obj.check_nz_tuple(zbins)
+    ccl_obj.set_ia_bias_tuple(z_grid=z_grid_nz)
+
+    # set galaxy bias
+    if general_cfg['which_forecast'] == 'SPV3':
+        ccl_obj.set_gal_bias_tuple_spv3(z_grid=z_grid_nz,
+                                        magcut_lens=magcut_lens)
+
+    elif general_cfg['which_forecast'] == 'ISTF':
+        bias_func_str = general_cfg['bias_function']
+        bias_model = general_cfg['bias_model']
+        ccl_obj.set_gal_bias_tuple_istf(z_grid=z_grid_nz,
+                                        bias_function_str=bias_func_str,
+                                        bias_model=bias_model)
+
+    ccl_obj.set_mag_bias_tuple(z_grid=z_grid_nz,
+                               has_magnification_bias=general_cfg['has_magnification_bias'],
+                               magcut_lens=magcut_lens / 10)
+
+    ccl_obj.set_kernel_obj(general_cfg['has_rsd'], n_samples_wf=256)
+
+    # TODO set pk importing the appropriate file, more cumbersome, for the time being use the cosmo obj
+
+    cl_LL[param_to_vary][variation_idx, :, :, :] = ccl_obj.set_cls(ell_LL, ccl_obj.p_of_k_a,
+                                                                   ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, 'spline')
+    cl_GL[param_to_vary][variation_idx, :, :, :] = ccl_obj.set_cls(ell_GL, ccl_obj.p_of_k_a,
+                                                                   ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
+    cl_GG[param_to_vary][variation_idx, :, :, :] = ccl_obj.set_cls(ell_GG, ccl_obj.p_of_k_a,
+                                                                   ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
+
+    return cl_LL, cl_GL, cl_GG
+
+
 def gaussian_smmothing_nz(zgrid_nz, nz_original, nz_gaussian_smoothing_sigma, plot=True):
 
     print(f'Applying a Gaussian filter of sigma = {nz_gaussian_smoothing_sigma} to the n(z)')
-    
+
     zbins = nz_original.shape[1]
     colors = cm.rainbow(np.linspace(0, 1, zbins))
-    
+
     nz_smooth = gaussian_filter1d(nz_original, nz_gaussian_smoothing_sigma, axis=0)
 
     if plot:
@@ -1460,6 +1635,7 @@ def gaussian_smmothing_nz(zgrid_nz, nz_original, nz_gaussian_smoothing_sigma, pl
         plt.title(f'Gaussian filter w/ sigma = {nz_gaussian_smoothing_sigma}')
 
     return nz_smooth
+
 
 def shift_nz(zgrid_nz, nz_original, dz_shifts, normalize, plot_nz=False, interpolation_kind='linear', clip_min=0,
              clip_max=3):

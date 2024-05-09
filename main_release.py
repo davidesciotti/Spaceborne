@@ -5,6 +5,7 @@ num_cores = multiprocessing.cpu_count()
 os.environ['OMP_NUM_THREADS'] = str(num_cores)
 os.environ['NUMBA_NUM_THREADS'] = str(num_cores)
 os.environ['NUMBA_PARALLEL_DIAGNOSTICS'] = '4'
+import matplotlib as mpl
 import numpy as np
 import time
 import matplotlib.cm as cm
@@ -34,6 +35,8 @@ import spaceborne.sigma2_SSC as sigma2_SSC
 
 pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
+
+mpl.use('Agg')
 
 
 # TODO check that the number of ell bins is the same as in the files
@@ -543,12 +546,12 @@ elif general_cfg['which_forecast'] == 'ISTF':
     bias_func_str = general_cfg['bias_function']
     bias_model = general_cfg['bias_model']
     ccl_obj.set_gal_bias_tuple_istf(z_grid=z_grid_ssc_integrands,
-                                    bias_function_str=bias_func_str, 
+                                    bias_function_str=bias_func_str,
                                     bias_model=bias_model)
 
 # set magnification bias
-ccl_obj.set_mag_bias_tuple(z_grid=z_grid_ssc_integrands, 
-                           has_magnification_bias=general_cfg['has_magnification_bias'], 
+ccl_obj.set_mag_bias_tuple(z_grid=z_grid_ssc_integrands,
+                           has_magnification_bias=general_cfg['has_magnification_bias'],
                            magcut_lens=magcut_lens / 10)
 
 # set pk
@@ -624,7 +627,6 @@ if shift_nz:
     # * consistent with the shifted n(z) used to compute the kernels
     bnt_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
 
-
 # save in ASCII format for OneCovariance
 nofz_filename_ascii = nofz_filename.replace('.dat', '.ascii')
 nofz_tosave = np.column_stack((zgrid_nz, n_of_z))
@@ -643,6 +645,7 @@ ccl_obj.cl_gl_3d = ccl_obj.set_cls(ell_dict['ell_XC'], ccl_obj.p_of_k_a,
 ccl_obj.cl_gg_3d = ccl_obj.set_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
                                    ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
 
+# import Vicnenzo's cls, as a quick check (no RSDs in GCph in my Cls!)
 cl_folder = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVectors/Noiseless/HMCodeBar'
 cl_filename = 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:d}-MS{magcut_source:d}-idIA2-idB3-idM3-idR1.dat'
 cl_ll_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='WLO', **variable_specs)}")
@@ -657,35 +660,7 @@ cl_wa_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
 cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
 cl_gl_3d_vinc = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
 
-fig, ax = plt.subplots(1, 3, figsize=(15, 6), constrained_layout=True)
-for zi in range(zbins):
-    zj = zi
-    ax[0].loglog(ell_dict['ell_WL'], ccl_obj.cl_ll_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6,
-                 label='ll' if zi == 0 else None)
-    ax[1].loglog(ell_dict['ell_XC'], ccl_obj.cl_gl_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6,
-                 label='gl' if zi == 0 else None)
-    ax[2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6,
-                 label='gg' if zi == 0 else None)
-
-    ax[0].loglog(ell_dict['ell_WL'], cl_ll_3d_vinc[:, zi, zj], ls="--", c=clr[zi], alpha=0.6,
-                 label='ll' if zi == 0 else None)
-    ax[1].loglog(ell_dict['ell_XC'], cl_gl_3d_vinc[:, zi, zj], ls="--", c=clr[zi], alpha=0.6,
-                 label='gl' if zi == 0 else None)
-    ax[2].loglog(ell_dict['ell_GC'], cl_gg_3d_vinc[:, zi, zj], ls="--", c=clr[zi], alpha=0.6,
-                 label='gg' if zi == 0 else None)
-
-# set labels
-ax[0].set_xlabel('$\\ell$')
-ax[1].set_xlabel('$\\ell$')
-ax[2].set_xlabel('$\\ell$')
-ax[0].set_ylabel('$C_{\ell}$')
-ax[0].legend()
-ax[1].legend()
-ax[2].legend()
-plt.show()
-
 clr = cm.rainbow(np.linspace(0, 1, zbins))
-# fig, ax = plt.subplots(1, 3, figsize=(15, 6), constrained_layout=True)
 fig, ax = plt.subplots(2, 3, sharex=True, figsize=(10, 5), height_ratios=[2, 1])
 plt.tight_layout()
 fig.subplots_adjust(hspace=0)
@@ -710,7 +685,6 @@ ax[1, 1].set_xlabel('$\\ell$')
 ax[1, 2].set_xlabel('$\\ell$')
 ax[0, 0].set_ylabel('$C_{\ell}$')
 ax[1, 0].set_ylabel('% diff')
-
 lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
 plt.legend(lines, ['davide', 'vincenzo'], loc='upper right', bbox_to_anchor=(1.55, 1))
 plt.show()
@@ -725,11 +699,24 @@ plt.show()
 # mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
 #                   f'Cell_gg_SPV3_ccl', cl_gg_3d, ell_grid, zbins)
 
+
+# !============================= derivatives ===================================
+
+list_params_to_vary = ['Om']
+
+cl_LL, cl_GL, cl_GG, dcl_LL, dcl_GL, dcl_GG = wf_cl_lib.cls_and_derivatives_parallel_v2(
+    cfg, list_params_to_vary, zbins, nz_tuple,
+    ell_dict['ell_WL'], ell_dict['ell_XC'], ell_dict['ell_GC'],
+    pk=None, use_only_flat_models=True)
+
+assert False, 'stop here'
+
+
 # ! ================================ SSC =======================================
 
 print('Start SSC computation...')
 
-# get halo model responses from CCL
+# ! 1. Get halo model responses from CCL
 ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
                                pyccl_cfg=pyccl_cfg, which_pk='_')
 
@@ -784,7 +771,7 @@ assert dPmm_ddeltab_hm.shape == dPgm_ddeltab_hm.shape == dPgg_ddeltab_hm.shape, 
 # bA34 = bA34[np.ix_(k_mask, z_mask)]
 # bB34 = bB34[np.ix_(k_mask, z_mask)]
 
-
+# ! 2. prepare integrands (d2CAB_dVddeltab) and volume element
 k_limber = partial(csmlib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
 r_of_z_func = partial(csmlib.ccl_comoving_distance, use_h_units=use_h_units, cosmo_ccl=ccl_obj.cosmo_ccl)
 
@@ -814,7 +801,7 @@ dPgg_ddeltab_klimb = np.array(
         ell_dict['ell_GC']])
 
 # ! volume element
-cl_integral_prefactor = csmlib.cl_integral_prefactor(z_grid_ssc_integrands, 
+cl_integral_prefactor = csmlib.cl_integral_prefactor(z_grid_ssc_integrands,
                                                      covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
                                                      use_h_units=use_h_units,
                                                      cosmo_ccl=ccl_obj.cosmo_ccl)
@@ -829,25 +816,17 @@ d2CGG_dVddeltab = \
     np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_mu, dPgm_ddeltab_klimb) + \
     np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_delta, dPgm_ddeltab_klimb) + \
     np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
-    
-# ! last ingredient: sigma2_b
-# TODO restore parallel with joblib loky
-# TODO pass z_grid_ssc_integrands to sigma2_SSC.compute_sigma2
-z_grid_sigma2 = np.linspace(covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'], 
-                            covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'], 
-                            covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'])
+
+# ! 3. Compute sigma2_b
 k_grid_sigma2 = np.logspace(covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'], covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
                             covariance_cfg['Spaceborne_cfg']['k_steps_sigma2'])
 which_sigma2_B = covariance_cfg['Spaceborne_cfg']['which_sigma2_B']
 
-sigma2_b_vec = sigma2_SSC.compute_sigma2(z_grid_sigma2, k_grid_sigma2, which_sigma2_B, ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
-sigma2_b = sigma2_SSC.compute_sigma2(z_grid_sigma2, k_grid_sigma2, which_sigma2_B, ccl_obj.cosmo_ccl, parallel=False, vectorize=False)
+sigma2_b = sigma2_SSC.compute_sigma2(z_grid_ssc_integrands, k_grid_sigma2, which_sigma2_B,
+                                     ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
 
-np.testing.assert_allclose(sigma2_b, sigma2_b_vec, rtol=1e-6, atol=0)
 
-mm.matshow(sigma2_b, log=True)
-mm.matshow(sigma2_b_vec, log=True)
-    
+# ! 4. Perform the integration calling the Julia module
 
 # TODO finish this check, looking promising considering one is hm and one is su
 # plt.loglog(ell_dict['ell_WL'], d2CLL_dVddeltab[:, 0, 0, 0], label='new')
@@ -861,71 +840,10 @@ mm.matshow(sigma2_b_vec, log=True)
 # plt.xscale('log')
 # plt.legend()
 
-print('SSC integrand computed')
+print('SSC computed')
 
-
-
-@njit(parallel=True)
-def SSC_integral_4D_optimized_simpson(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array):
-
-    z_step = (z_array[-1] - z_array[0]) / (len(z_array) - 1)
-
-    zpairs_AB = ind_AB.shape[0]
-    zpairs_CD = ind_CD.shape[0]
-    num_col = ind_CD.shape[1]
-
-    result = np.zeros((nbl, nbl, zpairs_AB, zpairs_CD))
-
-    for ell1 in prange(nbl):
-        for ell2 in prange(nbl):  # TODO compute only symmetric elements FOR THE LLLL, GLGL AND GGGG BLOCKS ONLY
-            for zij in prange(zpairs_AB):
-                for zkl in prange(zpairs_CD):
-                    zi, zj, zk, zl = ind_AB[zij, num_col - 2], ind_AB[zij, num_col -
-                                                                      1], ind_CD[zkl, num_col - 2], ind_CD[zkl, num_col - 1]
-                    for z1_idx in prange(z_steps):
-                        for z2_idx in prange(z_steps):
-
-                            result[ell1, ell2, zij, zkl] += cl_integral_prefactor[z1_idx] *  \
-                                cl_integral_prefactor[z2_idx] *\
-                                d2ClAB_dVddeltab[ell1, zi, zj, z1_idx] * \
-                                d2ClCD_dVddeltab[ell2, zk, zl, z2_idx] *\
-                                sigma2[z1_idx, z2_idx] * \
-                                simpson_weights[z1_idx] *\
-                                simpson_weights[z2_idx]
-
-    return (z_step**2) * result
-
-simpson_weights = mm.get_simpson_weights(len(z_grid_ssc_integrands))
-
-d2Cl_dVddeltab_dict = {
-    ("L", "L"): d2CLL_dVddeltab,
-    ("G", "L"): d2CGL_dVddeltab,
-    ("G", "G"): d2CGG_dVddeltab}
-
-ind_dict = {
-    ("L", "L"): ind_auto,
-    ("G", "L"): ind_cross,
-    ("G", "G"): ind_auto}
-
-cov_ssc_dict_8d = {}
-for row, (probe_A, probe_B) in enumerate(probe_ordering):
-    for col, (probe_C, probe_D) in enumerate(probe_ordering):
-        if col >= row:
-
-            print(f"Computing cov_SSC_{probe_A}{probe_B}_{probe_C}{probe_D}, zbins = {ep_or_ed} {zbins}")
-
-            start = time.perf_counter()
-
-            # ! numba
-            cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)] = SSC_integral_4D_optimized_simpson(
-                d2Cl_dVddeltab_dict[probe_A, probe_B],
-                d2Cl_dVddeltab_dict[probe_C, probe_D],
-                ind_dict[probe_A, probe_B],
-                ind_dict[probe_C, probe_D],
-                nbl, z_steps, cl_integral_prefactor, sigma2, z_grid_ssc_integrands)
 
 assert False, 'stop here'
-
 
 
 # CCL pk

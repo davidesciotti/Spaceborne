@@ -36,7 +36,7 @@ import spaceborne.sigma2_SSC as sigma2_SSC
 pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 
-mpl.use('Agg')
+# mpl.use('Agg')
 
 
 # TODO check that the number of ell bins is the same as in the files
@@ -702,12 +702,134 @@ plt.show()
 
 # !============================= derivatives ===================================
 
-list_params_to_vary = ['Om']
+list_params_to_vary = ['Om', ]
 
 cl_LL, cl_GL, cl_GG, dcl_LL, dcl_GL, dcl_GG = wf_cl_lib.cls_and_derivatives_parallel_v2(
     cfg, list_params_to_vary, zbins, nz_tuple,
     ell_dict['ell_WL'], ell_dict['ell_XC'], ell_dict['ell_GC'],
     pk=None, use_only_flat_models=True)
+
+# Vincenzo's derivatives
+
+start_time = time.perf_counter()
+
+derivatives_prefix = 'dDV'
+flat_or_nonflat='Flat'
+SPV3_folder = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
+derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs, flat_or_nonflat=flat_or_nonflat, which_pk='HMCodeBar',
+                                                         SPV3_folder = SPV3_folder)
+der_prefix = fm_cfg['derivatives_prefix']
+# ! get vincenzo's derivatives' parameters, to check that they match with the yaml file
+# check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
+vinc_filenames = mm.get_filenames_in_folder(derivatives_folder)
+vinc_filenames = [vinc_filename for vinc_filename in vinc_filenames if
+                  vinc_filename.startswith(der_prefix)]
+
+# keep only the files corresponding to the correct magcut_lens, magcut_source and zbins
+vinc_filenames = [filename for filename in vinc_filenames if
+                  all(x in filename for x in
+                      [f'ML{magcut_lens}', f'MS{magcut_source}', f'{ep_or_ed}{zbins:02d}'])]
+vinc_filenames = [filename.replace('.dat', '') for filename in vinc_filenames]
+
+vinc_trimmed_filenames = [vinc_filename.split('-', 1)[0].strip() for vinc_filename in vinc_filenames]
+vinc_trimmed_filenames = [
+    vinc_trimmed_filename[len(der_prefix):] if vinc_trimmed_filename.startswith(
+        der_prefix) else vinc_trimmed_filename
+    for vinc_trimmed_filename in vinc_trimmed_filenames]
+vinc_param_names = list(set(vinc_trimmed_filenames))
+vinc_param_names.sort()
+
+# ! get fiducials names and values from the yaml file
+# remove ODE if I'm studying only flat models
+if flat_or_nonflat == 'Flat' and 'ODE' in fid_pars_dict['FM_ordered_params']:
+    fid_pars_dict['FM_ordered_params'].pop('ODE')
+fm_fid_dict = fid_pars_dict['FM_ordered_params']
+param_names_3x2pt = list(fm_fid_dict.keys())
+fm_cfg['param_names_3x2pt'] = param_names_3x2pt
+fm_cfg['nparams_tot'] = len(param_names_3x2pt)
+
+# sort them to compare with vincenzo's param names
+my_sorted_param_names = param_names_3x2pt.copy()
+my_sorted_param_names.sort()
+
+for dzgc_param_name in [f'dzGC{zi:02d}' for zi in range(1, zbins + 1)]:
+    if dzgc_param_name in vinc_param_names:  # ! added this if statement, not very elegant
+        vinc_param_names.remove(dzgc_param_name)
+
+# check whether the 2 lists match and print the elements that are in one list but not in the other
+param_names_not_in_my_list = [vinc_param_name for vinc_param_name in vinc_param_names if
+                              vinc_param_name not in my_sorted_param_names]
+param_names_not_in_vinc_list = [my_sorted_param_name for my_sorted_param_name in my_sorted_param_names
+                                if
+                                my_sorted_param_name not in vinc_param_names]
+
+# Check if the parameter names match
+if not np.all(vinc_param_names == my_sorted_param_names):
+    # Print the mismatching parameters
+    print(f'Params present in input folder but not in the cfg file: {param_names_not_in_my_list}')
+    print(f'Params present in cfg file but not in the input folder: {param_names_not_in_vinc_list}')
+
+# try:
+#     assert np.all(vinc_param_names == my_sorted_param_names), \
+#         f'Params present in input folder but not in the cfg file: {param_names_not_in_my_list}\n' \
+#         f'Params present in cfg file but not in the input folder: {param_names_not_in_vinc_list}'
+# except AssertionError as error:
+#     print(error)
+#     if param_names_not_in_vinc_list == ['logT']:
+#         print('The derivative w.r.t logT is missing in the input folder but '
+#             'the corresponding FM is still set to 0; moving on')
+#     else:
+#         raise AssertionError(
+#             'there is something wrong with the parameter names in the derivatives folder')
+
+# ! preprocess derivatives (or load the alreay preprocessed ones)
+if fm_cfg['load_preprocess_derivatives']:
+    warnings.warn(
+        'loading preprocessed derivatives is faster but a bit more dangerous, make sure all the specs are taken into account')
+    dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_LL_4D.npy')
+    dC_GG_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_GG_4D.npy')
+    dC_WA_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_WA_4D.npy')
+    dC_3x2pt_6D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_3x2pt_6D.npy')
+
+elif not fm_cfg['load_preprocess_derivatives']:
+    der_prefix = fm_cfg['derivatives_prefix']
+    dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
+    # check if dictionary is empty
+    if not dC_dict_1D:
+        raise ValueError(f'No derivatives found in folder {derivatives_folder}')
+
+    # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
+    dC_dict_LL_3D = {}
+    dC_dict_GG_3D = {}
+    dC_dict_WA_3D = {}
+    dC_dict_3x2pt_5D = {}
+
+    for key in vinc_filenames:  # loop over these, I already selected ML, MS and so on
+        if not key.startswith('dDVddzGC'):
+            if 'WLO' in key:
+                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(
+                    dC_dict_1D[key], 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
+            elif 'GCO' in key:
+                dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
+            elif 'WLA' in key:
+                dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
+            elif '3x2pt' in key:
+                dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt,
+                                                                  zbins)
+
+# compare
+param='Om'
+zi, zj = 1, 2
+for zi in range(zbins):
+    for zj in range(zi, zbins):
+        der_dav = dcl_LL[param][:, zi, zj]
+        der_vinc = dC_dict_LL_3D[f'dDVd{param}-WLO-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}'][:, zi, zj]
+        # plt.loglog(ell_dict['ell_WL'], der_dav, label='davide')
+        # plt.loglog(ell_dict['ell_WL'], der_vinc, label='vinc')
+        plt.plot(ell_dict['ell_WL'], der_dav/der_vinc, label='perc_diff')
+# plt.legend()
+plt.yscale('log')
+plt.fill_between(ell_dict['ell_WL'], 0.9, 1.1, alpha=0.2, color='grey')
 
 assert False, 'stop here'
 

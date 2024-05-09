@@ -326,9 +326,10 @@ FM_cfg:
     save_FM_dict: True
 
     load_preprocess_derivatives: False
-    derivatives_folder: SPV3_folder/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}
+    derivatives_folder: '{SPV3_folder:s}/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}'
 
     derivatives_filename: dDVd{param_name:s}-{probe:s}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{EP_or_ED:s}{zbins:02d}.dat
+    derivatives_prefix: dDVd
 
     derivatives_BNT_transform: False
     deriv_ell_cuts: False

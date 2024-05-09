@@ -2981,8 +2981,7 @@ def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='vincenzo'):
 
     warnings.warn(
         "the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work with other combinations (but it"
-        " will work both for LG and GL) ")
-    warnings.warn('did you remove the nbl argument?')
+        " will work both for LG and GL) ")    
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
 

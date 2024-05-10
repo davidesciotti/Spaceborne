@@ -77,9 +77,9 @@ class PycclClass():
     # KiDS1000 Methodology: https://www.pure.ed.ac.uk/ws/portalfiles/portal/188893969/2007.01844v2.pdf, after (E.10)
     # Krause2017: https://arxiv.org/pdf/1601.05779.pdf
 
-    def pk_obj_from_file(self, pk_filename):
+    def pk_obj_from_file(self, pk_filename, plot_pk_z0):
 
-        k_grid_Pk, z_grid_Pk, pk_mm_2d = mm.pk_vinc_file_to_2d_npy(pk_filename, plot_pk_z0=True)
+        k_grid_Pk, z_grid_Pk, pk_mm_2d = mm.pk_vinc_file_to_2d_npy(pk_filename, plot_pk_z0=plot_pk_z0)
         pk_flipped_in_z = np.flip(pk_mm_2d, axis=1)
         scale_factor_grid_pk = cosmo_lib.z_to_a(z_grid_Pk)[::-1]  # flip it
         p_of_k_a = ccl.pk2d.Pk2D(a_arr=scale_factor_grid_pk, lk_arr=np.log(k_grid_Pk),

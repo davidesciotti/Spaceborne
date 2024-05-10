@@ -1077,7 +1077,7 @@ def cls_and_derivatives(fiducial_values_dict, extra_parameters, list_params_to_v
 
         t0 = time.perf_counter()
 
-        print(f'working on {param_to_vary}...')
+        print(f'Cl derivatives: working on {param_to_vary}...')
 
         # shift the parameter
         varied_param_values = fiducial_values_dict[param_to_vary] + fiducial_values_dict[param_to_vary] * percentages
@@ -1421,16 +1421,16 @@ def cls_and_derivatives_parallel_v2(cfg, list_params_to_vary, zbins, nz_tuple,
             'Om_k0 must not be in list_params_to_vary'
 
     # loop over the free parameters and store the cls in a dictionary
-    for param_to_vary in list_params_to_vary:
+    for name_par_tovary in list_params_to_vary:
 
-        assert param_to_vary in free_fid_pars_dict.keys(), f'{param_to_vary} is not in the fiducial values dict'
+        assert name_par_tovary in free_fid_pars_dict.keys(), f'{name_par_tovary} is not in the fiducial values dict'
 
         t0 = time.perf_counter()
-        print(f'working on {param_to_vary}...')
+        print(f'Cl derivatives: working on {name_par_tovary}...')
 
         # shift the parameter
-        varied_param_values = free_fid_pars_dict[param_to_vary] + free_fid_pars_dict[param_to_vary] * percentages
-        if param_to_vary == "wa":  # wa is 0! take directly the percentages
+        varied_param_values = free_fid_pars_dict[name_par_tovary] + free_fid_pars_dict[name_par_tovary] * percentages
+        if name_par_tovary == "wa":  # wa is 0! take directly the percentages
             varied_param_values = percentages / 100
 
         # ricorda che, quando shifti OmegaM va messo OmegaCDM in modo che OmegaB + OmegaCDM dia il valore corretto di OmegaM,
@@ -1445,51 +1445,12 @@ def cls_and_derivatives_parallel_v2(cfg, list_params_to_vary, zbins, nz_tuple,
         varied_fid_pars_dict = deepcopy(free_fid_pars_dict)
 
         # instantiate derivatives array for the given free parameter key
-        cl_LL[param_to_vary] = np.zeros((num_points_derivative, nbl_WL, zbins, zbins))
-        cl_GL[param_to_vary] = np.zeros((num_points_derivative, nbl_XC, zbins, zbins))
-        cl_GG[param_to_vary] = np.zeros((num_points_derivative, nbl_GC, zbins, zbins))
-
-
-        # ! parallel new
-        # Preparing arguments for parallel execution
-        # tasks = []
-        # for _, param_value in enumerate(varied_param_values):
-        #     # Make a copy of the dictionary for each task
-        #     task_fid_pars_dict = deepcopy(varied_fid_pars_dict)
-        #     task_fid_pars_dict[param_to_vary] = param_value
-            
-        #     task = (param_to_vary, task_fid_pars_dict, cl_LL, cl_GL, cl_GG, cfg, nz_tuple,
-        #             list_params_to_vary, zbins, ell_LL, ell_GL, ell_GG, pk, use_only_flat_models)
-            
-        #     tasks.append(task)
-
-        # # Execute in parallel
-        # results = Parallel(n_jobs=-1, backend='loky')(
-        #     delayed(cl_parallel_helper_v2)(*task) for task in tqdm(tasks))
-
-        # For non-parallel execution, using the same prepared tasks list
-        # results_non_parallel = [cl_parallel_helper_v2(*task) for task in tqdm.tqdm(tasks)]
-
-        # ! parallel, wrong
-        # results = Parallel(n_jobs=-1, backend='loky')(
-        #     delayed(cl_parallel_helper_v2)(param_to_vary=param_to_vary,
-        #                                    varied_fid_pars_dict=varied_fid_pars_dict,
-        #                                    cl_LL=cl_LL,
-        #                                    cl_GL=cl_GL,
-        #                                    cl_GG=cl_GG,
-        #                                    cfg=cfg,
-        #                                    nz_tuple=nz_tuple,
-        #                                    list_params_to_vary=list_params_to_vary,
-        #                                    zbins=zbins,
-        #                                    ell_LL=ell_LL,
-        #                                    ell_GL=ell_GL,
-        #                                    ell_GG=ell_GG,
-        #                                    pk=pk,
-        #                                    use_only_flat_models=use_only_flat_models) for
-        #     variation_idx, varied_fid_pars_dict[param_to_vary] in tqdm(enumerate(varied_param_values)))
+        cl_LL[name_par_tovary] = np.zeros((num_points_derivative, nbl_WL, zbins, zbins))
+        cl_GL[name_par_tovary] = np.zeros((num_points_derivative, nbl_XC, zbins, zbins))
+        cl_GG[name_par_tovary] = np.zeros((num_points_derivative, nbl_GC, zbins, zbins))
 
         # ! benchmark
-        results = [cl_parallel_helper_v2(param_to_vary=param_to_vary,
+        results = [cl_parallel_helper_v2(name_par_tovary=name_par_tovary,
                                          varied_fid_pars_dict=varied_fid_pars_dict,
                                          cl_LL=cl_LL,
                                          cl_GL=cl_GL,
@@ -1503,21 +1464,21 @@ def cls_and_derivatives_parallel_v2(cfg, list_params_to_vary, zbins, nz_tuple,
                                          ell_GG=ell_GG,
                                          pk=pk,
                                          use_only_flat_models=use_only_flat_models) for
-                   variation_idx, varied_fid_pars_dict[param_to_vary] in tqdm(enumerate(varied_param_values))]
+                   varied_fid_pars_dict[name_par_tovary] in tqdm(varied_param_values)]
 
         # Collect the results
         for variation_idx, (cl_LL_part, cl_GL_part, cl_GG_part) in enumerate(results):
-            cl_LL[param_to_vary][variation_idx, :, :, :] = cl_LL_part
-            cl_GL[param_to_vary][variation_idx, :, :, :] = cl_GL_part
-            cl_GG[param_to_vary][variation_idx, :, :, :] = cl_GG_part
+            cl_LL[name_par_tovary][variation_idx, :, :, :] = cl_LL_part
+            cl_GL[name_par_tovary][variation_idx, :, :, :] = cl_GL_part
+            cl_GG[name_par_tovary][variation_idx, :, :, :] = cl_GG_part
 
-        print(f'param {param_to_vary} Cls computed in {(time.perf_counter() - t0):.2f} seconds')
+        print(f'param {name_par_tovary} Cls computed in {(time.perf_counter() - t0):.2f} seconds')
 
-        dcl_LL[param_to_vary] = stem(cl_LL[param_to_vary], varied_param_values, zbins, nbl_WL)
-        dcl_GL[param_to_vary] = stem(cl_GL[param_to_vary], varied_param_values, zbins, nbl_GC)
-        dcl_GG[param_to_vary] = stem(cl_GG[param_to_vary], varied_param_values, zbins, nbl_GC)
+        dcl_LL[name_par_tovary] = stem(cl_LL[name_par_tovary], varied_param_values, zbins, nbl_WL)
+        dcl_GL[name_par_tovary] = stem(cl_GL[name_par_tovary], varied_param_values, zbins, nbl_GC)
+        dcl_GG[name_par_tovary] = stem(cl_GG[name_par_tovary], varied_param_values, zbins, nbl_GC)
 
-        print(f'SteM derivative computed for {param_to_vary}')
+        print(f'SteM derivative computed for {name_par_tovary}')
 
     return cl_LL, cl_GL, cl_GG, dcl_LL, dcl_GL, dcl_GG
 
@@ -1576,7 +1537,7 @@ def cl_parallel_helper(param_to_vary, variation_idx, varied_fiducials, cl_LL, cl
     return cl_LL, cl_GL, cl_GG
 
 
-def cl_parallel_helper_v2(param_to_vary, varied_fid_pars_dict, cl_LL, cl_GL, cl_GG,
+def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, cl_GG,
                           cfg, nz_tuple, list_params_to_vary,
                           zbins, ell_LL, ell_GL, ell_GG,
                           pk=None, use_only_flat_models=True):
@@ -1594,7 +1555,7 @@ def cl_parallel_helper_v2(param_to_vary, varied_fid_pars_dict, cl_LL, cl_GL, cl_
         assert 'Om_k0' not in list_params_to_vary, 'if use_only_flat_models is True, Om_k0 must not be in list_params_to_vary'
 
         # If I vary ODE and Om_k0 = 0, I need to adjust Om
-        if param_to_vary == 'ODE':
+        if name_par_tovary == 'ODE':
             varied_fid_pars_dict['Om'] = 1 - varied_fid_pars_dict['ODE']
 
     else:
@@ -1604,7 +1565,6 @@ def cl_parallel_helper_v2(param_to_vary, varied_fid_pars_dict, cl_LL, cl_GL, cl_
             varied_fid_pars_dict['Om_k0'] = 0
 
     # TODO does this change when I change h?
-
     # if 'm_nu' in list_params_to_vary:
     # m_nu = varied_fid_pars_dict['m_nu'] if 'm_nu' in list_params_to_vary else fid_pars_dict['other_params']['m_nu']
     # N_eff = varied_fid_pars_dict['N_eff'] if 'N_eff' in list_params_to_vary else fid_pars_dict['other_params']['N_eff']
@@ -1612,20 +1572,47 @@ def cl_parallel_helper_v2(param_to_vary, varied_fid_pars_dict, cl_LL, cl_GL, cl_
     #                                                       n_eff=N_eff)
 
     dzWL_par_names = [varied_fid_pars_dict[f'dzWL{zi:02d}'] for zi in range(1, zbins + 1)]
+    # dzGC_par_names = [varied_fid_pars_dict[f'dzGC{zi:02d}'] for zi in range(1, zbins + 1)]
+
     dzWL_fiducial = np.array(dzWL_par_names)
-    # dzGC_fiducial = np.array([varied_fid_pars_dict[f'dzGC{zi:02d}'] for zi in range(1, zbins + 1)])
+    # dzGC_fiducial = np.array(dzGC_par_names)
 
     full_pars_dict_for_ccl = {**varied_fid_pars_dict, 'other_params': fid_pars_dict['other_params']}
     ccl_obj = pyccl_cov_class.PycclClass(full_pars_dict_for_ccl)
+    ccl_obj.zbins = zbins
+
+    if cfg['covariance_cfg']['PyCCL_cfg']['which_pk_for_pyccl'] == 'CLOE':
+
+        dav_to_vinc_par_names = {
+            'Om': 'Omega_M',
+            'Ob': 'Omega_B',
+            'logT': 'HMCode_logT_AGN',
+            'ns': 'n_s',
+            'ODE': 'Omega_DE',
+            's8': 'sigma8',
+            'wz': 'w0',
+        }
+        
+        if name_par_tovary in dav_to_vinc_par_names:
+            name_par_tovary_vinc = dav_to_vinc_par_names[name_par_tovary]
+        else:
+            name_par_tovary_vinc = name_par_tovary
+
+        which_pk = cfg['general_cfg']['which_pk']
+        flat_or_nonflat = cfg['general_cfg']['flat_or_nonflat']
+        val_par_tovary = varied_fid_pars_dict[name_par_tovary]
+        cloe_pk_filename = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputPS/' +\
+            f'{which_pk}/InFiles/{flat_or_nonflat}/{name_par_tovary_vinc}/PddVsZedLogK-{name_par_tovary_vinc}_{val_par_tovary:.3e}.dat'
+            
+        # ccl_obj.cosmo_ccl.p_of_k_a = ccl_obj.pk_obj_from_file(pk_filename=cloe_pk_filename, plot_pk_z0=False)
+        pk = ccl_obj.pk_obj_from_file(pk_filename=cloe_pk_filename, plot_pk_z0=False)
 
     # quick check
     assert (varied_fid_pars_dict['Om'] / ccl_obj.cosmo_ccl.cosmo.params.Omega_m - 1) < 1e-7, \
         'Om_m0 is not the same as the one in the fiducial model'
 
-    ccl_obj.zbins = zbins
-
-    # TODO check this
-    if param_to_vary in dzWL_par_names:
+    # TODO check this a bit better
+    if name_par_tovary in dzWL_par_names:
         n_of_z = shift_nz(z_grid_nz, n_of_z, dzWL_fiducial, normalize=False, plot_nz=False, interpolation_kind='linear')
 
     ccl_obj.set_nz(np.hstack((z_grid_nz[:, None], n_of_z)))
@@ -1650,7 +1637,6 @@ def cl_parallel_helper_v2(param_to_vary, varied_fid_pars_dict, cl_LL, cl_GL, cl_
     ccl_obj.set_kernel_obj(general_cfg['has_rsd'], n_samples_wf=256)
 
     # TODO set pk importing the appropriate file, more cumbersome, for the time being use the cosmo obj
-
     cl_LL = ccl_obj.set_cls(ell_LL, pk, ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, 'spline')
     cl_GL = ccl_obj.set_cls(ell_GL, pk, ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
     cl_GG = ccl_obj.set_cls(ell_GG, pk, ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')

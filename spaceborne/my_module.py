@@ -3301,7 +3301,7 @@ def pk_vinc_file_to_2d_npy(path, plot_pk_z0):
         plt.xlabel('$k [1/Mpc]$')
         plt.ylabel('$P(k) [Mpc^3]$')
         plt.show()
-    plt.legend('$z=0$')
+        plt.legend('$z=0$')
 
     return k_array, z_array, pk_2D
 

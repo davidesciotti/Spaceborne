@@ -559,7 +559,7 @@ ccl_obj.set_mag_bias_tuple(z_grid=z_grid_ssc_integrands,
 if general_cfg['which_forecast'] == 'SPV3' and pyccl_cfg['which_pk_for_pyccl'] == 'CLOE':
     cloe_pk_filename = general_cfg['CLOE_pk_filename'].format(
         flat_or_nonflat=general_cfg['flat_or_nonflat'], which_pk=general_cfg['which_pk'])
-    ccl_obj.p_of_k_a = ccl_obj.pk_obj_from_file(pk_filename=cloe_pk_filename)
+    ccl_obj.p_of_k_a = ccl_obj.pk_obj_from_file(pk_filename=cloe_pk_filename, plot_pk_z0=True)
     # TODO finish implementing this
     warnings.warn('Extrapolating the P(k) in Tk3D_SSC!')
     # raise NotImplementedError('range needs to be extended to higher redshifts to match tkka grid (probably larger k range too), \
@@ -703,6 +703,7 @@ plt.show()
 # !============================= derivatives ===================================
 
 list_params_to_vary = fid_pars_dict['FM_ordered_params'].keys()
+list_params_to_vary = ['Om']
 
 start_time = time.perf_counter()
 cl_LL, cl_GL, cl_GG, dcl_LL, dcl_GL, dcl_GG = wf_cl_lib.cls_and_derivatives_parallel_v2(
@@ -817,7 +818,7 @@ elif not fm_cfg['load_preprocess_derivatives']:
                                                                   zbins)
 
 # compare
-param='Ob'
+param='Om'
 cl_ll_3d_vinc = dC_dict_LL_3D[f'dDVd{param}-WLO-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}']
 cl_gl_3d_vinc = dC_dict_3x2pt_5D[f'dDVd{param}-3x2pt-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}'][1, 0, ...]
 cl_gg_3d_vinc = dC_dict_GG_3D[f'dDVd{param}-GCO-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}']

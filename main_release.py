@@ -540,7 +540,8 @@ ccl_obj.set_ia_bias_tuple(z_grid=z_grid_ssc_integrands)
 # set galaxy bias
 if general_cfg['which_forecast'] == 'SPV3':
     ccl_obj.set_gal_bias_tuple_spv3(z_grid=z_grid_ssc_integrands,
-                                    magcut_lens=magcut_lens)
+                                    magcut_lens=magcut_lens,
+                                    poly_fit_values=None)
 
 elif general_cfg['which_forecast'] == 'ISTF':
     bias_func_str = general_cfg['bias_function']
@@ -552,7 +553,8 @@ elif general_cfg['which_forecast'] == 'ISTF':
 # set magnification bias
 ccl_obj.set_mag_bias_tuple(z_grid=z_grid_ssc_integrands,
                            has_magnification_bias=general_cfg['has_magnification_bias'],
-                           magcut_lens=magcut_lens / 10)
+                           magcut_lens=magcut_lens / 10,
+                           poly_fit_values=None)
 
 # set pk
 # this is a test to use the actual P(k) from the input files, but the agreement gets much worse
@@ -638,15 +640,15 @@ ccl_obj.set_kernel_obj(general_cfg['has_rsd'], covariance_cfg['PyCCL_cfg']['n_sa
 ccl_obj.set_kernel_arr(z_grid_wf=z_grid_ssc_integrands, has_magnification_bias=general_cfg['has_magnification_bias'])
 
 # compute cls
-ccl_obj.cl_ll_3d = ccl_obj.set_cls(ell_dict['ell_WL'], ccl_obj.p_of_k_a,
+ccl_obj.cl_ll_3d = ccl_obj.compute_cls(ell_dict['ell_WL'], ccl_obj.p_of_k_a,
                                    ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, 'spline')
-ccl_obj.cl_gl_3d = ccl_obj.set_cls(ell_dict['ell_XC'], ccl_obj.p_of_k_a,
+ccl_obj.cl_gl_3d = ccl_obj.compute_cls(ell_dict['ell_XC'], ccl_obj.p_of_k_a,
                                    ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
-ccl_obj.cl_gg_3d = ccl_obj.set_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
+ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
                                    ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
 
 # import Vicnenzo's cls, as a quick check (no RSDs in GCph in my Cls!)
-cl_folder = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVectors/Noiseless/HMCodeBar'
+cl_folder = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/OutputFiles/DataVectors/Noiseless/HMCodeBar'
 cl_filename = 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:d}-MS{magcut_source:d}-idIA2-idB3-idM3-idR1.dat'
 cl_ll_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='WLO', **variable_specs)}")
 cl_gg_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='GCO', **variable_specs)}")
@@ -654,11 +656,11 @@ cl_wa_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='WLA', **variab
 cl_3x2pt_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
 
 # ! reshape to 3d
-cl_ll_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
-cl_gg_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
+dcl_ll_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
+dcl_gg_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
 cl_wa_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
 cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
-cl_gl_3d_vinc = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
+dcl_gl_3d_vinc = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
 
 clr = cm.rainbow(np.linspace(0, 1, zbins))
 fig, ax = plt.subplots(2, 3, sharex=True, figsize=(10, 5), height_ratios=[2, 1])
@@ -668,17 +670,17 @@ fig.subplots_adjust(hspace=0)
 for zi in range(zbins):
     zj = zi
     ax[0, 0].loglog(ell_dict['ell_WL'], ccl_obj.cl_ll_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
-    ax[0, 0].loglog(ell_dict['ell_WL'], cl_ll_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+    ax[0, 0].loglog(ell_dict['ell_WL'], dcl_ll_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
     ax[0, 1].loglog(ell_dict['ell_XC'], ccl_obj.cl_gl_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
-    ax[0, 1].loglog(ell_dict['ell_XC'][:29], cl_gl_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+    ax[0, 1].loglog(ell_dict['ell_XC'][:29], dcl_gl_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
     ax[0, 2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
-    ax[0, 2].loglog(ell_dict['ell_GC'][:29], cl_gg_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+    ax[0, 2].loglog(ell_dict['ell_GC'][:29], dcl_gg_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
-    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(ccl_obj.cl_ll_3d, cl_ll_3d_vinc)[:, zi, zj], c=clr[zi])
-    ax[1, 1].plot(ell_dict['ell_XC'][:29], mm.percent_diff(ccl_obj.cl_gl_3d[:29], cl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
-    ax[1, 2].plot(ell_dict['ell_GC'][:29], mm.percent_diff(ccl_obj.cl_gg_3d[:29], cl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(ccl_obj.cl_ll_3d, dcl_ll_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 1].plot(ell_dict['ell_XC'][:29], mm.percent_diff(ccl_obj.cl_gl_3d[:29], dcl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 2].plot(ell_dict['ell_GC'][:29], mm.percent_diff(ccl_obj.cl_gg_3d[:29], dcl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
 
 ax[1, 0].set_xlabel('$\\ell$')
 ax[1, 1].set_xlabel('$\\ell$')
@@ -703,7 +705,8 @@ plt.show()
 # !============================= derivatives ===================================
 
 list_params_to_vary = fid_pars_dict['FM_ordered_params'].keys()
-list_params_to_vary = ['Om']
+# list_params_to_vary = ['Om', 'bG02', 'dzWL01', 'm06']
+list_params_to_vary = ['Om',  ]
 
 start_time = time.perf_counter()
 cl_LL, cl_GL, cl_GG, dcl_LL, dcl_GL, dcl_GG = wf_cl_lib.cls_and_derivatives_parallel_v2(
@@ -714,10 +717,10 @@ print('derivatives computation time: {:.2f} s'.format(time.perf_counter() - star
 
 # Vincenzo's derivatives
 derivatives_prefix = 'dDV'
-flat_or_nonflat='Flat'
+flat_or_nonflat = 'Flat'
 SPV3_folder = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
 derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs, flat_or_nonflat=flat_or_nonflat, which_pk='HMCodeBar',
-                                                         SPV3_folder = SPV3_folder)
+                                                         SPV3_folder=SPV3_folder)
 der_prefix = fm_cfg['derivatives_prefix']
 # ! get vincenzo's derivatives' parameters, to check that they match with the yaml file
 # check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
@@ -769,18 +772,6 @@ if not np.all(vinc_param_names == my_sorted_param_names):
     print(f'Params present in input folder but not in the cfg file: {param_names_not_in_my_list}')
     print(f'Params present in cfg file but not in the input folder: {param_names_not_in_vinc_list}')
 
-# try:
-#     assert np.all(vinc_param_names == my_sorted_param_names), \
-#         f'Params present in input folder but not in the cfg file: {param_names_not_in_my_list}\n' \
-#         f'Params present in cfg file but not in the input folder: {param_names_not_in_vinc_list}'
-# except AssertionError as error:
-#     print(error)
-#     if param_names_not_in_vinc_list == ['logT']:
-#         print('The derivative w.r.t logT is missing in the input folder but '
-#             'the corresponding FM is still set to 0; moving on')
-#     else:
-#         raise AssertionError(
-#             'there is something wrong with the parameter names in the derivatives folder')
 
 # ! preprocess derivatives (or load the alreay preprocessed ones)
 if fm_cfg['load_preprocess_derivatives']:
@@ -818,10 +809,10 @@ elif not fm_cfg['load_preprocess_derivatives']:
                                                                   zbins)
 
 # compare
-param='Om'
-cl_ll_3d_vinc = dC_dict_LL_3D[f'dDVd{param}-WLO-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}']
-cl_gl_3d_vinc = dC_dict_3x2pt_5D[f'dDVd{param}-3x2pt-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}'][1, 0, ...]
-cl_gg_3d_vinc = dC_dict_GG_3D[f'dDVd{param}-GCO-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}']
+param = 'bG02'
+dcl_ll_3d_vinc = dC_dict_LL_3D[f'dDVd{param}-WLO-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}']
+dcl_gl_3d_vinc = dC_dict_3x2pt_5D[f'dDVd{param}-3x2pt-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}'][1, 0, ...]
+dcl_gg_3d_vinc = dC_dict_GG_3D[f'dDVd{param}-GCO-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}']
 
 
 # zi, zj = 1, 2
@@ -845,22 +836,22 @@ fig.subplots_adjust(hspace=0)
 for zi in range(zbins):
     zj = zi
     ax[0, 0].loglog(ell_dict['ell_WL'], dcl_LL[param][:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
-    ax[0, 0].loglog(ell_dict['ell_WL'], cl_ll_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+    ax[0, 0].loglog(ell_dict['ell_WL'], dcl_ll_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
     ax[0, 1].loglog(ell_dict['ell_XC'], dcl_GL[param][:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
-    ax[0, 1].loglog(ell_dict['ell_XC'], cl_gl_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+    ax[0, 1].loglog(ell_dict['ell_XC'], dcl_gl_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
     ax[0, 2].loglog(ell_dict['ell_GC'], dcl_GG[param][:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
-    ax[0, 2].loglog(ell_dict['ell_GC'], cl_gg_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+    ax[0, 2].loglog(ell_dict['ell_GC'], dcl_gg_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
-    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(dcl_LL[param], cl_ll_3d_vinc)[:, zi, zj], c=clr[zi])
-    ax[1, 1].plot(ell_dict['ell_XC'], mm.percent_diff(dcl_GL[param], cl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
-    ax[1, 2].plot(ell_dict['ell_GC'], mm.percent_diff(dcl_GG[param], cl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(dcl_LL[param], dcl_ll_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 1].plot(ell_dict['ell_XC'], mm.percent_diff(dcl_GL[param], dcl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 2].plot(ell_dict['ell_GC'], mm.percent_diff(dcl_GG[param], dcl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
 
     ax[1, 0].set_ylim(-20, 20)
     ax[1, 1].set_ylim(-20, 20)
     ax[1, 2].set_ylim(-20, 20)
-    
+
     ax[1, 0].fill_between(ell_dict['ell_WL'], -5, 5, color='grey', alpha=0.3)
     ax[1, 1].fill_between(ell_dict['ell_XC'], -5, 5, color='grey', alpha=0.3)
     ax[1, 2].fill_between(ell_dict['ell_GC'], -5, 5, color='grey', alpha=0.3)
@@ -875,7 +866,9 @@ lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
 plt.legend(lines, ['davide', 'vincenzo'], loc='upper right', bbox_to_anchor=(1.55, 1))
 plt.show()
 
-
+ell_idx = 0
+mm.compare_arrays(dcl_LL[param][ell_idx, ...], dcl_ll_3d_vinc[ell_idx, ...], 'davide', 'vincenzo', abs_val=True)
+mm.compare_arrays(dcl_GG[param][ell_idx, ...], dcl_gg_3d_vinc[ell_idx, ...], 'davide', 'vincenzo', abs_val=True)
 
 assert False, 'stop here'
 

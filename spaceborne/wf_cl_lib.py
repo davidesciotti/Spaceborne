@@ -1449,16 +1449,47 @@ def cls_and_derivatives_parallel_v2(cfg, list_params_to_vary, zbins, nz_tuple,
         cl_GL[param_to_vary] = np.zeros((num_points_derivative, nbl_XC, zbins, zbins))
         cl_GG[param_to_vary] = np.zeros((num_points_derivative, nbl_GC, zbins, zbins))
 
-        # ! TODO restore //
+
+        # ! parallel new
+        # Preparing arguments for parallel execution
+        # tasks = []
+        # for _, param_value in enumerate(varied_param_values):
+        #     # Make a copy of the dictionary for each task
+        #     task_fid_pars_dict = deepcopy(varied_fid_pars_dict)
+        #     task_fid_pars_dict[param_to_vary] = param_value
+            
+        #     task = (param_to_vary, task_fid_pars_dict, cl_LL, cl_GL, cl_GG, cfg, nz_tuple,
+        #             list_params_to_vary, zbins, ell_LL, ell_GL, ell_GG, pk, use_only_flat_models)
+            
+        #     tasks.append(task)
+
+        # # Execute in parallel
         # results = Parallel(n_jobs=-1, backend='loky')(
-        #     delayed(cl_parallel_helper_v2)(param_to_vary, variation_idx, varied_fid_pars_dict, cl_LL, cl_GL, cl_GG,
-        #                                    fid_pars_dict, cfg, nz_tuple, list_params_to_vary,
-        #                                    zbins, nz_tuple, ell_LL, ell_GL, ell_GG,
-        #                                    pk=pk, use_only_flat_models=use_only_flat_models) for
+        #     delayed(cl_parallel_helper_v2)(*task) for task in tqdm(tasks))
+
+        # For non-parallel execution, using the same prepared tasks list
+        # results_non_parallel = [cl_parallel_helper_v2(*task) for task in tqdm.tqdm(tasks)]
+
+        # ! parallel, wrong
+        # results = Parallel(n_jobs=-1, backend='loky')(
+        #     delayed(cl_parallel_helper_v2)(param_to_vary=param_to_vary,
+        #                                    varied_fid_pars_dict=varied_fid_pars_dict,
+        #                                    cl_LL=cl_LL,
+        #                                    cl_GL=cl_GL,
+        #                                    cl_GG=cl_GG,
+        #                                    cfg=cfg,
+        #                                    nz_tuple=nz_tuple,
+        #                                    list_params_to_vary=list_params_to_vary,
+        #                                    zbins=zbins,
+        #                                    ell_LL=ell_LL,
+        #                                    ell_GL=ell_GL,
+        #                                    ell_GG=ell_GG,
+        #                                    pk=pk,
+        #                                    use_only_flat_models=use_only_flat_models) for
         #     variation_idx, varied_fid_pars_dict[param_to_vary] in tqdm(enumerate(varied_param_values)))
 
+        # ! benchmark
         results = [cl_parallel_helper_v2(param_to_vary=param_to_vary,
-                                         variation_idx=variation_idx,
                                          varied_fid_pars_dict=varied_fid_pars_dict,
                                          cl_LL=cl_LL,
                                          cl_GL=cl_GL,
@@ -1476,7 +1507,6 @@ def cls_and_derivatives_parallel_v2(cfg, list_params_to_vary, zbins, nz_tuple,
 
         # Collect the results
         for variation_idx, (cl_LL_part, cl_GL_part, cl_GG_part) in enumerate(results):
-            print(f'variation {variation_idx} done', (cl_LL_part, cl_GL_part, cl_GG_part))
             cl_LL[param_to_vary][variation_idx, :, :, :] = cl_LL_part
             cl_GL[param_to_vary][variation_idx, :, :, :] = cl_GL_part
             cl_GG[param_to_vary][variation_idx, :, :, :] = cl_GG_part
@@ -1546,7 +1576,7 @@ def cl_parallel_helper(param_to_vary, variation_idx, varied_fiducials, cl_LL, cl
     return cl_LL, cl_GL, cl_GG
 
 
-def cl_parallel_helper_v2(param_to_vary, variation_idx, varied_fid_pars_dict, cl_LL, cl_GL, cl_GG,
+def cl_parallel_helper_v2(param_to_vary, varied_fid_pars_dict, cl_LL, cl_GL, cl_GG,
                           cfg, nz_tuple, list_params_to_vary,
                           zbins, ell_LL, ell_GL, ell_GG,
                           pk=None, use_only_flat_models=True):

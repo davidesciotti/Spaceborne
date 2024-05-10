@@ -5,9 +5,13 @@
 cosmology:
     # these are the parameters varied in the analysis. The ordering is the same used in the FM
     FM_ordered_params:
-        Om: 0.318592238
-        ODE: 0.68140775651
-        Ob: 0.05001413
+        # where did these come from??
+        # Om: 0.318592238
+        # ODE: 0.68140775651
+        # Ob: 0.05001413
+        Om: 0.32
+        ODE: 0.68
+        Ob: 0.05
         wz: -1.0
         wa: 0.0
         h: 0.6737
@@ -246,7 +250,7 @@ covariance_cfg:
         which_ng_cov: [SSC]
         test_GLGL: False # must be set to False for actual 3x2pt runs
 
-        which_pk_for_pyccl: CLOE # PyCCL (the one stored in cosmo obj) or CLOE (from input files - to be implemented)
+        which_pk_for_pyccl: PyCCL # PyCCL (the one stored in cosmo obj) or CLOE (from input files - to be implemented)
 
         load_precomputed_cov: True
         save_cov: True

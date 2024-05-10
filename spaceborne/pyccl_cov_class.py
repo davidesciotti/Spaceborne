@@ -361,10 +361,10 @@ class PycclClass():
                                                     input_lumin_ratio=None, output_F_IA_of_z=False)
         self.ia_bias_tuple = (z_grid, ia_bias_1d)
 
-    def set_gal_bias_tuple_spv3(self, z_grid, magcut_lens):
+    def set_gal_bias_tuple_spv3(self, z_grid, magcut_lens, poly_fit_values):
 
         gal_bias_func = self.gal_bias_func_dict['fs2_fit']
-        gal_bias_1d = gal_bias_func(z_grid, magcut_lens=magcut_lens / 10)
+        gal_bias_1d = gal_bias_func(z_grid, magcut_lens=magcut_lens / 10, poly_fit_values=poly_fit_values)
 
         # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
         self.gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
@@ -385,10 +385,10 @@ class PycclClass():
         gal_bias_table = np.hstack((z_grid.reshape(-1, 1), self.gal_bias_2d))
         np.savetxt(filename, gal_bias_table)
 
-    def set_mag_bias_tuple(self, z_grid, has_magnification_bias, magcut_lens):
+    def set_mag_bias_tuple(self, z_grid, has_magnification_bias, magcut_lens, poly_fit_values):
         if has_magnification_bias:
             # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
-            mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(z_grid, magcut_lens=magcut_lens, poly_fit_values=None)
+            mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(z_grid, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values)
             mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), self.zbins, axis=0).T
             self.mag_bias_tuple = (z_grid, mag_bias_2d)
         else:
@@ -427,7 +427,7 @@ class PycclClass():
     def set_ell_grid(self, ell_grid):
         self.ell_grid = ell_grid
 
-    def set_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, limber_integration_method):
+    def compute_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, limber_integration_method):
 
         cl_ab_3d = wf_cl_lib.cl_PyCCL(kernel_a, kernel_b, ell_grid, self.zbins,
                                       p_of_k_a=p_of_k_a, cosmo=self.cosmo_ccl,
@@ -647,11 +647,11 @@ class PycclClass():
         plt.show()
 
         # compute cls
-        self.set_cls(ell_grid, self.p_of_k_a, 'spline')
+        self.compute_cls(ell_grid, self.p_of_k_a, 'spline')
 
-        self.cl_ll_3d = self.set_cls(ell_grid, self.p_of_k_a, self.wf_lensing_obj, self.wf_lensing_obj, 'spline')
-        self.cl_gl_3d = self.set_cls(ell_grid, self.p_of_k_a, self.wf_galaxy_obj, self.wf_lensing_obj, 'spline')
-        self.cl_gg_3d = self.set_cls(ell_grid, self.p_of_k_a, self.wf_galaxy_obj, self.wf_galaxy_obj, 'spline')
+        self.cl_ll_3d = self.compute_cls(ell_grid, self.p_of_k_a, self.wf_lensing_obj, self.wf_lensing_obj, 'spline')
+        self.cl_gl_3d = self.compute_cls(ell_grid, self.p_of_k_a, self.wf_galaxy_obj, self.wf_lensing_obj, 'spline')
+        self.cl_gg_3d = self.compute_cls(ell_grid, self.p_of_k_a, self.wf_galaxy_obj, self.wf_galaxy_obj, 'spline')
 
         # ell_grid = np.geomspace(10, 5000, 90)
         # which_pk = general_cfg['which_pk']

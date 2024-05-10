@@ -670,15 +670,15 @@ for zi in range(zbins):
     ax[0, 0].loglog(ell_dict['ell_WL'], ccl_obj.cl_ll_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
     ax[0, 0].loglog(ell_dict['ell_WL'], cl_ll_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
-    ax[0, 1].loglog(ell_dict['ell_WL'], ccl_obj.cl_gl_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
-    ax[0, 1].loglog(ell_dict['ell_WL'][:29], cl_gl_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+    ax[0, 1].loglog(ell_dict['ell_XC'], ccl_obj.cl_gl_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 1].loglog(ell_dict['ell_XC'][:29], cl_gl_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
-    ax[0, 2].loglog(ell_dict['ell_WL'], ccl_obj.cl_gg_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
-    ax[0, 2].loglog(ell_dict['ell_WL'][:29], cl_gg_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+    ax[0, 2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 2].loglog(ell_dict['ell_GC'][:29], cl_gg_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
     ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(ccl_obj.cl_ll_3d, cl_ll_3d_vinc)[:, zi, zj], c=clr[zi])
-    ax[1, 1].plot(ell_dict['ell_WL'][:29], mm.percent_diff(ccl_obj.cl_gl_3d[:29], cl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
-    ax[1, 2].plot(ell_dict['ell_WL'][:29], mm.percent_diff(ccl_obj.cl_gg_3d[:29], cl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 1].plot(ell_dict['ell_XC'][:29], mm.percent_diff(ccl_obj.cl_gl_3d[:29], cl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 2].plot(ell_dict['ell_GC'][:29], mm.percent_diff(ccl_obj.cl_gg_3d[:29], cl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
 
 ax[1, 0].set_xlabel('$\\ell$')
 ax[1, 1].set_xlabel('$\\ell$')
@@ -702,17 +702,16 @@ plt.show()
 
 # !============================= derivatives ===================================
 
-list_params_to_vary = ['Om', ]
+list_params_to_vary = fid_pars_dict['FM_ordered_params'].keys()
 
+start_time = time.perf_counter()
 cl_LL, cl_GL, cl_GG, dcl_LL, dcl_GL, dcl_GG = wf_cl_lib.cls_and_derivatives_parallel_v2(
     cfg, list_params_to_vary, zbins, nz_tuple,
     ell_dict['ell_WL'], ell_dict['ell_XC'], ell_dict['ell_GC'],
     pk=None, use_only_flat_models=True)
+print('derivatives computation time: {:.2f} s'.format(time.perf_counter() - start_time))
 
 # Vincenzo's derivatives
-
-start_time = time.perf_counter()
-
 derivatives_prefix = 'dDV'
 flat_or_nonflat='Flat'
 SPV3_folder = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3'
@@ -818,18 +817,64 @@ elif not fm_cfg['load_preprocess_derivatives']:
                                                                   zbins)
 
 # compare
-param='Om'
-zi, zj = 1, 2
+param='Ob'
+cl_ll_3d_vinc = dC_dict_LL_3D[f'dDVd{param}-WLO-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}']
+cl_gl_3d_vinc = dC_dict_3x2pt_5D[f'dDVd{param}-3x2pt-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}'][1, 0, ...]
+cl_gg_3d_vinc = dC_dict_GG_3D[f'dDVd{param}-GCO-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}']
+
+
+# zi, zj = 1, 2
+# for zi in range(zbins):
+#     # for zj in range(zi, zbins):
+#     zj = zi
+#     der_dav = dcl_LL[param][:, zi, zj]
+#     cl_gg_3d_vinc = cl_ll_3d_vinc[param][:, zi, zj]
+#     plt.loglog(ell_dict['ell_WL'], der_dav, label='davide')
+#     plt.loglog(ell_dict['ell_WL'], cl_ll_3d_vinc, label='vinc')
+#     plt.plot(ell_dict['ell_WL'], der_dav/cl_ll_3d_vinc, label='perc_diff')
+# # plt.legend()
+# plt.yscale('log')
+# plt.fill_between(ell_dict['ell_WL'], 0.9, 1.1, alpha=0.2, color='grey')
+
+clr = cm.rainbow(np.linspace(0, 1, zbins))
+fig, ax = plt.subplots(2, 3, sharex=True, figsize=(10, 5), height_ratios=[2, 1])
+plt.tight_layout()
+fig.subplots_adjust(hspace=0)
+
 for zi in range(zbins):
-    for zj in range(zi, zbins):
-        der_dav = dcl_LL[param][:, zi, zj]
-        der_vinc = dC_dict_LL_3D[f'dDVd{param}-WLO-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}'][:, zi, zj]
-        # plt.loglog(ell_dict['ell_WL'], der_dav, label='davide')
-        # plt.loglog(ell_dict['ell_WL'], der_vinc, label='vinc')
-        plt.plot(ell_dict['ell_WL'], der_dav/der_vinc, label='perc_diff')
-# plt.legend()
-plt.yscale('log')
-plt.fill_between(ell_dict['ell_WL'], 0.9, 1.1, alpha=0.2, color='grey')
+    zj = zi
+    ax[0, 0].loglog(ell_dict['ell_WL'], dcl_LL[param][:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 0].loglog(ell_dict['ell_WL'], cl_ll_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+
+    ax[0, 1].loglog(ell_dict['ell_XC'], dcl_GL[param][:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 1].loglog(ell_dict['ell_XC'], cl_gl_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+
+    ax[0, 2].loglog(ell_dict['ell_GC'], dcl_GG[param][:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 2].loglog(ell_dict['ell_GC'], cl_gg_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+
+    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(dcl_LL[param], cl_ll_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 1].plot(ell_dict['ell_XC'], mm.percent_diff(dcl_GL[param], cl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 2].plot(ell_dict['ell_GC'], mm.percent_diff(dcl_GG[param], cl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
+
+    ax[1, 0].set_ylim(-20, 20)
+    ax[1, 1].set_ylim(-20, 20)
+    ax[1, 2].set_ylim(-20, 20)
+    
+    ax[1, 0].fill_between(ell_dict['ell_WL'], -5, 5, color='grey', alpha=0.3)
+    ax[1, 1].fill_between(ell_dict['ell_XC'], -5, 5, color='grey', alpha=0.3)
+    ax[1, 2].fill_between(ell_dict['ell_GC'], -5, 5, color='grey', alpha=0.3)
+
+
+ax[1, 0].set_xlabel('$\\ell$')
+ax[1, 1].set_xlabel('$\\ell$')
+ax[1, 2].set_xlabel('$\\ell$')
+ax[0, 0].set_ylabel('$\partial C_{\ell}/ \partial \\theta$')
+ax[1, 0].set_ylabel('% diff')
+lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
+plt.legend(lines, ['davide', 'vincenzo'], loc='upper right', bbox_to_anchor=(1.55, 1))
+plt.show()
+
+
 
 assert False, 'stop here'
 

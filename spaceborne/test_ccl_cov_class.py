@@ -169,7 +169,7 @@ ccl_obj.set_mag_bias_tuple(has_magnification_bias=general_cfg['has_magnification
 ccl_obj.set_kernel_obj(general_cfg['has_rsd'], covariance_cfg['PyCCL_cfg']['n_samples_wf'])
 ccl_obj.set_kernel_arr(z_grid_wf=ccl_obj.zgrid_nz, has_magnification_bias=general_cfg['has_magnification_bias'])
 
-ccl_obj.set_cls(ell_grid, ccl_obj.p_of_k_a, 'spline')
+ccl_obj.compute_cls(ell_grid, ccl_obj.p_of_k_a, 'spline')
 
 zmin = 1e-3
 zmax = 3

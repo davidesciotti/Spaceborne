@@ -250,7 +250,7 @@ covariance_cfg:
         which_ng_cov: [SSC]
         test_GLGL: False # must be set to False for actual 3x2pt runs
 
-        which_pk_for_pyccl: PyCCL # PyCCL (the one stored in cosmo obj) or CLOE (from input files - to be implemented)
+        which_pk_for_pyccl: CLOE # PyCCL (the one stored in cosmo obj) or CLOE (from input files - to be implemented)
 
         load_precomputed_cov: True
         save_cov: True

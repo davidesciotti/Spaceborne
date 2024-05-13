@@ -1560,7 +1560,7 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
     magcut_lens = general_cfg['magcut_lens']
     fid_pars_dict = cfg['cosmology']
     z_grid_nz, n_of_z = nz_tuple
-    names_cosmo_pars = ['Om', 'Ob', 'ns', 'logT', 'ODE','s8', 'wz', 'wa']
+    names_cosmo_pars = ['Om', 'Ob', 'h', 'ns', 'logT', 'ODE','s8', 'wz', 'wa']
 
     # ! v1
     # if use_only_flat_models:
@@ -1637,7 +1637,7 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
     ccl_obj = pyccl_cov_class.PycclClass(full_pars_dict_for_ccl)
     ccl_obj.zbins = zbins
 
-    if cfg['covariance_cfg']['PyCCL_cfg']['which_pk_for_pyccl'] == 'CLOE' and name_par_tovary in names_cosmo_pars:
+    if cfg['covariance_cfg']['PyCCL_cfg']['which_pk_for_pyccl'] == 'CLOE':
 
         if name_par_tovary in dav_to_vinc_par_names:
             name_par_tovary_vinc = dav_to_vinc_par_names[name_par_tovary]
@@ -1645,17 +1645,24 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
             name_par_tovary_vinc = name_par_tovary
 
         val_par_tovary = varied_fid_pars_dict[name_par_tovary]
-
+        
         cloe_pk_folder = cfg['general_cfg']['CLOE_pk_folder'].format(
             SPV3_folder=cfg['general_cfg']['SPV3_folder'],
             which_pk=cfg['general_cfg']['which_pk'],
             flat_or_nonflat=cfg['general_cfg']['flat_or_nonflat'])
+        
+        if name_par_tovary in names_cosmo_pars:
 
-        cloe_pk_filename = cfg['general_cfg']['CLOE_pk_filename'].format(
-            CLOE_pk_folder=cloe_pk_folder,
-            param_name=name_par_tovary_vinc,
-            param_value=val_par_tovary
-        )
+            cloe_pk_filename = cfg['general_cfg']['CLOE_pk_filename'].format(
+                CLOE_pk_folder=cloe_pk_folder,
+                param_name=name_par_tovary_vinc,
+                param_value=val_par_tovary)
+            
+        else:
+            cloe_pk_filename = cfg['general_cfg']['CLOE_pk_filename'].format(
+                CLOE_pk_folder=cloe_pk_folder,
+                param_name='w0',
+                param_value=-1)
 
         # ccl_obj.cosmo_ccl.p_of_k_a = ccl_obj.pk_obj_from_file(pk_filename=cloe_pk_filename, plot_pk_z0=False)
         pk = ccl_obj.pk_obj_from_file(pk_filename=cloe_pk_filename, plot_pk_z0=False)

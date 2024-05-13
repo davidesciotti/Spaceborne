@@ -397,8 +397,7 @@ def b_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
 
     if poly_fit_values is not None:
         assert len(poly_fit_values) == 4, 'a list of 4 best-fit values must be passed'
-        np.testing.assert_allclose(np.array(poly_fit_values),
-                                   np.array((b0_gal, b1_gal, b2_gal, b3_gal)), atol=0, rtol=1e-5)
+        b0_gal, b1_gal, b2_gal, b3_gal = poly_fit_values
 
     return b0_gal + (b1_gal * z) + (b2_gal * z ** 2) + (b3_gal * z ** 3)
 
@@ -415,8 +414,7 @@ def magbias_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
 
     if poly_fit_values is not None:
         assert len(poly_fit_values) == 4, 'a list of 4 best-fit values must be passed'
-        np.testing.assert_allclose(np.array(poly_fit_values), np.array((b0_mag, b1_mag, b2_mag, b3_mag)), atol=0,
-                                   rtol=1e-5)
+        b0_mag, b1_mag, b2_mag, b3_mag = poly_fit_values
 
     return b0_mag + (b1_mag * z) + (b2_mag * z ** 2) + (b3_mag * z ** 3)
 
@@ -1056,8 +1054,8 @@ def cls_and_derivatives(fiducial_values_dict, extra_parameters, list_params_to_v
         assert param in fiducial_values_dict.keys(), f'{param} is not in the fiducial values dict'
 
     nbl_WL = len(ell_LL)
-    nbl_GC = len(ell_GG)
     nbl_XC = len(ell_GL)
+    nbl_GC = len(ell_GG)
 
     percentages = np.asarray((-10., -5., -3.75, -2.5, -1.875, -1.25, -0.625, 0,
                               0.625, 1.25, 1.875, 2.5, 3.75, 5., 10.)) / 100
@@ -1430,7 +1428,7 @@ def cls_and_derivatives_parallel_v2(cfg, list_params_to_vary, zbins, nz_tuple,
 
         # shift the parameter
         varied_param_values = free_fid_pars_dict[name_par_tovary] + free_fid_pars_dict[name_par_tovary] * percentages
-        if name_par_tovary == "wa":  # wa is 0! take directly the percentages
+        if free_fid_pars_dict[name_par_tovary] == 0:  # wa is 0! take directly the percentages
             varied_param_values = percentages / 100
 
         # ricorda che, quando shifti OmegaM va messo OmegaCDM in modo che OmegaB + OmegaCDM dia il valore corretto di OmegaM,
@@ -1571,12 +1569,20 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
     # varied_fid_pars_dict['Om_nu0'] = csmlib.get_omega_nu0(m_nu=m_nu, h=varied_fid_pars_dict['h'],
     #                                                       n_eff=N_eff)
 
-    dzWL_par_names = [varied_fid_pars_dict[f'dzWL{zi:02d}'] for zi in range(1, zbins + 1)]
-    # dzGC_par_names = [varied_fid_pars_dict[f'dzGC{zi:02d}'] for zi in range(1, zbins + 1)]
+    # check that the other parameters are still equal to the fiducials
+    for cosmo_par in varied_fid_pars_dict.keys():
+        if cosmo_par != name_par_tovary:
+            assert fid_pars_dict['FM_ordered_params'][cosmo_par] == varied_fid_pars_dict[
+                cosmo_par], f'{cosmo_par} is not the same as in the fiducial model'
 
-    dzWL_fiducial = np.array(dzWL_par_names)
-    # dzGC_fiducial = np.array(dzGC_par_names)
+    dzWL_shifts = [varied_fid_pars_dict[f'dzWL{zi:02d}'] for zi in range(1, zbins + 1)]
+    # dzGC_shifts = [varied_fid_pars_dict[f'dzGC{zi:02d}'] for zi in range(1, zbins + 1)]
 
+    gal_bias_polyfit_values = [varied_fid_pars_dict[f'bG{zi:02d}'] for zi in range(1, 5)]
+    mag_bias_polyfit_values = [varied_fid_pars_dict[f'bM{zi:02d}'] for zi in range(1, 5)]
+
+    # instantiate cosmology object. camb_extra_parameters are not varied, so they can be passed from the fid_pars_dict
+    # TODO logT_AGN is both in the varied and fixed params
     full_pars_dict_for_ccl = {**varied_fid_pars_dict, 'other_params': fid_pars_dict['other_params']}
     ccl_obj = pyccl_cov_class.PycclClass(full_pars_dict_for_ccl)
     ccl_obj.zbins = zbins
@@ -1592,7 +1598,7 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
             's8': 'sigma8',
             'wz': 'w0',
         }
-        
+
         if name_par_tovary in dav_to_vinc_par_names:
             name_par_tovary_vinc = dav_to_vinc_par_names[name_par_tovary]
         else:
@@ -1603,7 +1609,7 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
         val_par_tovary = varied_fid_pars_dict[name_par_tovary]
         cloe_pk_filename = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputPS/' +\
             f'{which_pk}/InFiles/{flat_or_nonflat}/{name_par_tovary_vinc}/PddVsZedLogK-{name_par_tovary_vinc}_{val_par_tovary:.3e}.dat'
-            
+
         # ccl_obj.cosmo_ccl.p_of_k_a = ccl_obj.pk_obj_from_file(pk_filename=cloe_pk_filename, plot_pk_z0=False)
         pk = ccl_obj.pk_obj_from_file(pk_filename=cloe_pk_filename, plot_pk_z0=False)
 
@@ -1611,9 +1617,7 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
     assert (varied_fid_pars_dict['Om'] / ccl_obj.cosmo_ccl.cosmo.params.Omega_m - 1) < 1e-7, \
         'Om_m0 is not the same as the one in the fiducial model'
 
-    # TODO check this a bit better
-    if name_par_tovary in dzWL_par_names:
-        n_of_z = shift_nz(z_grid_nz, n_of_z, dzWL_fiducial, normalize=False, plot_nz=False, interpolation_kind='linear')
+    n_of_z = shift_nz(z_grid_nz, n_of_z, dzWL_shifts, normalize=False, plot_nz=False, interpolation_kind='linear')
 
     ccl_obj.set_nz(np.hstack((z_grid_nz[:, None], n_of_z)))
     ccl_obj.set_ia_bias_tuple(z_grid=z_grid_nz)
@@ -1621,7 +1625,8 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
     # set galaxy bias
     if general_cfg['which_forecast'] == 'SPV3':
         ccl_obj.set_gal_bias_tuple_spv3(z_grid=z_grid_nz,
-                                        magcut_lens=magcut_lens)
+                                        magcut_lens=magcut_lens,
+                                        poly_fit_values=gal_bias_polyfit_values)
 
     elif general_cfg['which_forecast'] == 'ISTF':
         bias_func_str = general_cfg['bias_function']
@@ -1632,14 +1637,22 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
 
     ccl_obj.set_mag_bias_tuple(z_grid=z_grid_nz,
                                has_magnification_bias=general_cfg['has_magnification_bias'],
-                               magcut_lens=magcut_lens / 10)
+                               magcut_lens=magcut_lens / 10,
+                               poly_fit_values=mag_bias_polyfit_values)
 
     ccl_obj.set_kernel_obj(general_cfg['has_rsd'], n_samples_wf=256)
 
     # TODO set pk importing the appropriate file, more cumbersome, for the time being use the cosmo obj
-    cl_LL = ccl_obj.set_cls(ell_LL, pk, ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, 'spline')
-    cl_GL = ccl_obj.set_cls(ell_GL, pk, ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
-    cl_GG = ccl_obj.set_cls(ell_GG, pk, ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
+    cl_LL = ccl_obj.compute_cls(ell_LL, pk, ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, 'spline')
+    cl_GL = ccl_obj.compute_cls(ell_GL, pk, ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
+    cl_GG = ccl_obj.compute_cls(ell_GG, pk, ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
+
+     
+    if varied_fid_pars_dict[name_par_tovary] == fid_pars_dict['FM_ordered_params'][name_par_tovary]:
+        print('saving fiducial spectra for comparison')    
+        np.save(f'/home/davide/Scrivania/test_ders/cl_LL_{name_par_tovary}.npy', cl_LL)
+        np.save(f'/home/davide/Scrivania/test_ders/cl_GL_{name_par_tovary}.npy', cl_GL)
+        np.save(f'/home/davide/Scrivania/test_ders/cl_GG_{name_par_tovary}.npy', cl_GG)
 
     return cl_LL, cl_GL, cl_GG
 

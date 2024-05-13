@@ -1434,7 +1434,8 @@ def cls_and_derivatives_parallel_v2(cfg, list_params_to_vary, zbins, nz_tuple,
         # shift the parameter
         varied_param_values = free_fid_pars_dict[name_par_tovary] + free_fid_pars_dict[name_par_tovary] * percentages
         if free_fid_pars_dict[name_par_tovary] == 0:  # wa is 0! take directly the percentages
-            varied_param_values = percentages / 100
+            varied_param_values = percentages
+            
 
         # ricorda che, quando shifti OmegaM va messo OmegaCDM in modo che OmegaB + OmegaCDM dia il valore corretto di OmegaM,
         # mentre quando shifti OmegaB deve essere aggiustato sempre OmegaCDM in modo che OmegaB + OmegaCDM = 0.32; per OmegaX
@@ -1557,9 +1558,9 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
 
     general_cfg = cfg['general_cfg']
     magcut_lens = general_cfg['magcut_lens']
-    z_grid_nz, n_of_z = nz_tuple
-
     fid_pars_dict = cfg['cosmology']
+    z_grid_nz, n_of_z = nz_tuple
+    names_cosmo_pars = ['Om', 'Ob', 'ns', 'logT', 'ODE','s8', 'wz', 'wa']
 
     # ! v1
     # if use_only_flat_models:
@@ -1636,7 +1637,7 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
     ccl_obj = pyccl_cov_class.PycclClass(full_pars_dict_for_ccl)
     ccl_obj.zbins = zbins
 
-    if cfg['covariance_cfg']['PyCCL_cfg']['which_pk_for_pyccl'] == 'CLOE':
+    if cfg['covariance_cfg']['PyCCL_cfg']['which_pk_for_pyccl'] == 'CLOE' and name_par_tovary in names_cosmo_pars:
 
         if name_par_tovary in dav_to_vinc_par_names:
             name_par_tovary_vinc = dav_to_vinc_par_names[name_par_tovary]
@@ -1644,11 +1645,6 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
             name_par_tovary_vinc = name_par_tovary
 
         val_par_tovary = varied_fid_pars_dict[name_par_tovary]
-
-        # cloe_pk_folder = cfg['general_cfg']['CLOE_pk_folder'].format(
-        #     SPV3_folder=cfg['general_cfg']['SPV3_folder'],
-        #     flat_or_nonflat=cfg['general_cfg']['flat_or_nonflat'],
-        #     which_pk=cfg['general_cfg']['which_pk']) + f'/{name_par_tovary_vinc}/PddVsZedLogK-{name_par_tovary_vinc}_{val_par_tovary:.3e}.dat'
 
         cloe_pk_folder = cfg['general_cfg']['CLOE_pk_folder'].format(
             SPV3_folder=cfg['general_cfg']['SPV3_folder'],

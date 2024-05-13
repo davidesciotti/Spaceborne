@@ -115,8 +115,9 @@ general_cfg:
     BNT_transform: False # ! to be deprecated?
     cl_BNT_transform: False
 
-    cl_folder: SPV3_folder + /OutputFiles/DataVectors/Noiseless/{which_pk:s}
-    rl_folder: f{SPV3_folder} + /OutputFiles/ResFun/{which_pk:s}
+    SPV3_folder: /home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3
+    cl_folder: '{SPV3_folder:s}/OutputFiles/DataVectors/Noiseless/{which_pk:s}'
+    rl_folder: '{SPV3_folder:s}/OutputFiles/ResFun/{which_pk:s}'
     cl_filename: dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat
     rl_filename: resfun-idBM{idBM:02d}.dat # XXX its idBM... anyway not using the responses at the moment
 
@@ -130,7 +131,7 @@ general_cfg:
     bias_function: analytical # 'analytical', 'leporifit', 'pocinofit'
     bias_model: step-wise # 'step-wise', 'constant', 'linint', 'ones', 'polynomial'
 
-    CLOE_pk_folder: "/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputPS/{which_pk:s}/InFiles/{flat_or_nonflat:s}"
+    CLOE_pk_folder: "{SPV3_folder:s}/InputFiles/InputPS/{which_pk:s}/InFiles/{flat_or_nonflat:s}"
     CLOE_pk_filename: "{CLOE_pk_folder:s}/h/PddVsZedLogK-h_6.700e-01.dat"
     flat_or_nonflat: Flat
     which_pk: HMCodeBar
@@ -148,7 +149,7 @@ covariance_cfg:
     fsky: 0.3563380664078408
     sigma_eps_i: 0.26 # ellipticity dispersion *per component*; sigma_eps: (0.26 * np.sqrt(2))
 
-    nofz_folder: /home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputNz/NzFid/
+    nofz_folder: '{SPV3_folder:s}/InputFiles/InputNz/NzFid'
     nofz_filename: nzTab-EP13-zedMin02-zedMax25-mag245.dat
 
     zbin_centers:

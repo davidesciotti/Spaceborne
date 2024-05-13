@@ -561,10 +561,18 @@ ccl_obj.set_mag_bias_tuple(z_grid=z_grid_ssc_integrands,
 # set pk
 # this is a test to use the actual P(k) from the input files, but the agreement gets much worse
 if general_cfg['which_forecast'] == 'SPV3' and pyccl_cfg['which_pk_for_pyccl'] == 'CLOE':
+    
+    cloe_pk_folder = general_cfg['CLOE_pk_folder'].format(
+        SPV3_folder=general_cfg['SPV3_folder'],
+        which_pk=general_cfg['which_pk'],
+        flat_or_nonflat=general_cfg['flat_or_nonflat'])
+    
     cloe_pk_filename = general_cfg['CLOE_pk_filename'].format(
-        CLOE_pk_folder=general_cfg['CLOE_pk_folder'],
-        flat_or_nonflat=general_cfg['flat_or_nonflat'],
-        which_pk=general_cfg['which_pk'])
+        CLOE_pk_folder=cloe_pk_folder,
+        param_name='h',
+        param_value=0.67
+        )
+    
     ccl_obj.p_of_k_a = ccl_obj.pk_obj_from_file(pk_filename=cloe_pk_filename, plot_pk_z0=True)
     # TODO finish implementing this
     warnings.warn('Extrapolating the P(k) in Tk3D_SSC!')
@@ -710,9 +718,9 @@ plt.show()
 # !============================= derivatives ===================================
 
 list_params_to_vary = list(fid_pars_dict['FM_ordered_params'].keys())
-list_params_to_vary = [param for param in fid_pars_dict['FM_ordered_params'].keys() if param != 'ODE']
+# list_params_to_vary = [param for param in fid_pars_dict['FM_ordered_params'].keys() if param != 'ODE']
 # list_params_to_vary = ['h', 'wa', 'dzWL01', 'm06', 'bG02', 'bM02']
-list_params_to_vary = ['ODE', ]
+# list_params_to_vary = ['ns', ]
 
 
 start_time = time.perf_counter()
@@ -869,6 +877,7 @@ ax[1, 2].set_xlabel('$\\ell$')
 ax[0, 0].set_ylabel('$\partial C_{\ell}/ \partial \\theta$')
 ax[1, 0].set_ylabel('% diff')
 lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
+fig.suptitle(param)
 plt.legend(lines, ['davide', 'vincenzo'], loc='upper right', bbox_to_anchor=(1.55, 1))
 plt.show()
 

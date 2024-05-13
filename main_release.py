@@ -656,11 +656,14 @@ cl_wa_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='WLA', **variab
 cl_3x2pt_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
 
 # ! reshape to 3d
-dcl_ll_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
-dcl_gg_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
+cl_ll_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
+cl_gg_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
 cl_wa_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
 cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
-dcl_gl_3d_vinc = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
+cl_gl_3d_vinc = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
+
+
+
 
 clr = cm.rainbow(np.linspace(0, 1, zbins))
 fig, ax = plt.subplots(2, 3, sharex=True, figsize=(10, 5), height_ratios=[2, 1])
@@ -670,17 +673,17 @@ fig.subplots_adjust(hspace=0)
 for zi in range(zbins):
     zj = zi
     ax[0, 0].loglog(ell_dict['ell_WL'], ccl_obj.cl_ll_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
-    ax[0, 0].loglog(ell_dict['ell_WL'], dcl_ll_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+    ax[0, 0].loglog(ell_dict['ell_WL'], cl_ll_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
     ax[0, 1].loglog(ell_dict['ell_XC'], ccl_obj.cl_gl_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
-    ax[0, 1].loglog(ell_dict['ell_XC'][:29], dcl_gl_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+    ax[0, 1].loglog(ell_dict['ell_XC'][:29], cl_gl_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
     ax[0, 2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
-    ax[0, 2].loglog(ell_dict['ell_GC'][:29], dcl_gg_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+    ax[0, 2].loglog(ell_dict['ell_GC'][:29], cl_gg_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
-    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(ccl_obj.cl_ll_3d, dcl_ll_3d_vinc)[:, zi, zj], c=clr[zi])
-    ax[1, 1].plot(ell_dict['ell_XC'][:29], mm.percent_diff(ccl_obj.cl_gl_3d[:29], dcl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
-    ax[1, 2].plot(ell_dict['ell_GC'][:29], mm.percent_diff(ccl_obj.cl_gg_3d[:29], dcl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(ccl_obj.cl_ll_3d, cl_ll_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 1].plot(ell_dict['ell_XC'][:29], mm.percent_diff(ccl_obj.cl_gl_3d[:29], cl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 2].plot(ell_dict['ell_GC'][:29], mm.percent_diff(ccl_obj.cl_gg_3d[:29], cl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
 
 ax[1, 0].set_xlabel('$\\ell$')
 ax[1, 1].set_xlabel('$\\ell$')
@@ -704,13 +707,15 @@ plt.show()
 
 # !============================= derivatives ===================================
 
-list_params_to_vary = fid_pars_dict['FM_ordered_params'].keys()
+list_params_to_vary = list(fid_pars_dict['FM_ordered_params'].keys())
+list_params_to_vary = [param for param in fid_pars_dict['FM_ordered_params'].keys() if param != 'ODE']
+
 # list_params_to_vary = ['Om', 'bG02', 'dzWL01', 'm06']
-list_params_to_vary = ['Om',  ]
+# list_params_to_vary = ['Om',  ]
 
 start_time = time.perf_counter()
 cl_LL, cl_GL, cl_GG, dcl_LL, dcl_GL, dcl_GG = wf_cl_lib.cls_and_derivatives_parallel_v2(
-    cfg, list_params_to_vary, zbins, nz_tuple,
+    cfg, list_params_to_vary, zbins, (n_of_z_full[:, 0], n_of_z_full[:, 1:]),
     ell_dict['ell_WL'], ell_dict['ell_XC'], ell_dict['ell_GC'],
     pk=None, use_only_flat_models=True)
 print('derivatives computation time: {:.2f} s'.format(time.perf_counter() - start_time))
@@ -809,7 +814,7 @@ elif not fm_cfg['load_preprocess_derivatives']:
                                                                   zbins)
 
 # compare
-param = 'bG02'
+param = list_params_to_vary[0]
 dcl_ll_3d_vinc = dC_dict_LL_3D[f'dDVd{param}-WLO-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}']
 dcl_gl_3d_vinc = dC_dict_3x2pt_5D[f'dDVd{param}-3x2pt-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}'][1, 0, ...]
 dcl_gg_3d_vinc = dC_dict_GG_3D[f'dDVd{param}-GCO-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}']
@@ -869,6 +874,44 @@ plt.show()
 ell_idx = 0
 mm.compare_arrays(dcl_LL[param][ell_idx, ...], dcl_ll_3d_vinc[ell_idx, ...], 'davide', 'vincenzo', abs_val=True)
 mm.compare_arrays(dcl_GG[param][ell_idx, ...], dcl_gg_3d_vinc[ell_idx, ...], 'davide', 'vincenzo', abs_val=True)
+
+
+# ! compare saved cls from fiducial value (percentages = 0 case)
+cl_LL_3d = np.load('/home/davide/Scrivania/test_ders/cl_LL.npy')
+cl_GL_3d = np.load('/home/davide/Scrivania/test_ders/cl_GL.npy')
+cl_GG_3d = np.load('/home/davide/Scrivania/test_ders/cl_GG.npy')
+
+clr = cm.rainbow(np.linspace(0, 1, zbins))
+fig, ax = plt.subplots(2, 3, sharex=True, figsize=(10, 5), height_ratios=[2, 1])
+plt.tight_layout()
+fig.subplots_adjust(hspace=0)
+
+for zi in range(zbins):
+    zj = zi
+    ax[0, 0].loglog(ell_dict['ell_WL'], cl_LL_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 0].loglog(ell_dict['ell_WL'], cl_ll_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+
+    ax[0, 1].loglog(ell_dict['ell_XC'], cl_GL_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 1].loglog(ell_dict['ell_XC'][:29], cl_gl_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+
+    ax[0, 2].loglog(ell_dict['ell_GC'], cl_GG_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 2].loglog(ell_dict['ell_GC'][:29], cl_gg_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+
+    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(cl_LL_3d, cl_ll_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 1].plot(ell_dict['ell_XC'][:29], mm.percent_diff(cl_GL_3d[:29], cl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 2].plot(ell_dict['ell_GC'][:29], mm.percent_diff(cl_GG_3d[:29], cl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
+
+ax[1, 0].set_xlabel('$\\ell$')
+ax[1, 1].set_xlabel('$\\ell$')
+ax[1, 2].set_xlabel('$\\ell$')
+ax[0, 0].set_ylabel('$C_{\ell}$')
+ax[1, 0].set_ylabel('% diff')
+lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
+plt.legend(lines, ['davide', 'vincenzo'], loc='upper right', bbox_to_anchor=(1.55, 1))
+plt.show()
+
+# ! end new, delete
+
 
 assert False, 'stop here'
 

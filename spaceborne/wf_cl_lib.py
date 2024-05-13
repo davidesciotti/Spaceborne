@@ -1391,7 +1391,7 @@ def cls_and_derivatives_parallel(fiducial_values_dict, extra_parameters, list_pa
 
 
 def cls_and_derivatives_parallel_v2(cfg, list_params_to_vary, zbins, nz_tuple,
-                                    ell_LL, ell_GL, ell_GG, pk=None, use_only_flat_models=True):
+                                    ell_LL, ell_GL, ell_GG, use_only_flat_models=True):
     """
     Compute the derivatives of the power spectrum with respect to the free parameters
     """
@@ -1460,7 +1460,6 @@ def cls_and_derivatives_parallel_v2(cfg, list_params_to_vary, zbins, nz_tuple,
                                          ell_LL=ell_LL,
                                          ell_GL=ell_GL,
                                          ell_GG=ell_GG,
-                                         pk=pk,
                                          use_only_flat_models=use_only_flat_models) for
                    varied_fid_pars_dict[name_par_tovary] in tqdm(varied_param_values)]
 
@@ -1535,10 +1534,21 @@ def cl_parallel_helper(param_to_vary, variation_idx, varied_fiducials, cl_LL, cl
     return cl_LL, cl_GL, cl_GG
 
 
+dav_to_vinc_par_names = {
+    'Om': 'Omega_M',
+    'Ob': 'Omega_B',
+    'logT': 'HMCode_logT_AGN',
+    'ns': 'n_s',
+    'ODE': 'Omega_DE',
+    's8': 'sigma8',
+    'wz': 'w0',
+}
+
+
 def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, cl_GG,
                           cfg, nz_tuple, list_params_to_vary,
                           zbins, ell_LL, ell_GL, ell_GG,
-                          pk=None, use_only_flat_models=True):
+                        use_only_flat_models=True):
 
     general_cfg = cfg['general_cfg']
     magcut_lens = general_cfg['magcut_lens']
@@ -1546,21 +1556,50 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
 
     fid_pars_dict = cfg['cosmology']
 
+    # ! v1
+    # if use_only_flat_models:
+    #     # in this case I want omk = 0, so if ODE varies Om will have to be adjusted and vice versa
+    #     # (and Om is adjusted by adjusting Omega_CDM), see the else statement
+
+    #     assert 'Om_k0' not in list_params_to_vary, 'if use_only_flat_models is True, Om_k0 must not be in list_params_to_vary'
+
+    #     # If I vary ODE and Om_k0 = 0, I need to adjust Om
+    #     if name_par_tovary == 'ODE':
+    #         varied_fid_pars_dict['Om'] = 1 - varied_fid_pars_dict['ODE']
+
+    # else:
+    #     # If I vary ODE or Om and Om_k0 can vary, I need to adjust Om_k0
+    #     varied_fid_pars_dict['Om_k0'] = 1 - varied_fid_pars_dict['Om'] - varied_fid_pars_dict['ODE']
+    #     if np.abs(varied_fid_pars_dict['Om_k0']) < 1e-8:
+    #         varied_fid_pars_dict['Om_k0'] = 0
+
+    # ! v2
+    # from CLOE_pk_for_SPV3
     if use_only_flat_models:
-        # in this case I want omk = 0, so if ODE varies Om will have to be adjusted and vice versa
-        # (and Om is adjusted by adjusting Omega_CDM), see the else statement
+        # in this case I want omk = 0, so if Omega_DE varies Omega_M will have to be adjusted and vice versa
+        # (and Omega_M is adjusted by adjusting Omega_CDM), see the else statement
 
         assert 'Om_k0' not in list_params_to_vary, 'if use_only_flat_models is True, Om_k0 must not be in list_params_to_vary'
-
-        # If I vary ODE and Om_k0 = 0, I need to adjust Om
-        if name_par_tovary == 'ODE':
+        omk = 0
+        if name_par_tovary == 'Om':
+            varied_fid_pars_dict['ODE'] = 1 - varied_fid_pars_dict['Om']
+        elif name_par_tovary == 'ODE':
             varied_fid_pars_dict['Om'] = 1 - varied_fid_pars_dict['ODE']
 
     else:
-        # If I vary ODE or Om and Om_k0 can vary, I need to adjust Om_k0
-        varied_fid_pars_dict['Om_k0'] = 1 - varied_fid_pars_dict['Om'] - varied_fid_pars_dict['ODE']
-        if np.abs(varied_fid_pars_dict['Om_k0']) < 1e-8:
-            varied_fid_pars_dict['Om_k0'] = 0
+
+        omk = 1 - varied_fid_pars_dict['Om'] - varied_fid_pars_dict['ODE']
+        if np.abs(omk) < 1e-8:
+            omk = 0
+
+        # if name_par_tovary == 'Om':
+        #     Omega_CDM = varied_fid_pars_dict['Om'] - varied_fid_pars_dict['Omega_B'] - Omega_nu
+
+    # other CAMB quantities - call them with CAMB-friendly names already
+    # Omega_CDM = varied_fid_pars_dict['Om'] - varied_fid_pars_dict['Ob'] - Omega_nu
+    # omch2 = Omega_CDM * varied_fid_pars_dict['h'] ** 2
+    # ombh2 = varied_fid_pars_dict['Omega_B'] * varied_fid_pars_dict['h'] ** 2
+    # H0 = varied_fid_pars_dict['h'] * 100
 
     # TODO does this change when I change h?
     # if 'm_nu' in list_params_to_vary:
@@ -1570,48 +1609,49 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
     #                                                       n_eff=N_eff)
 
     # check that the other parameters are still equal to the fiducials
-    for cosmo_par in varied_fid_pars_dict.keys():
-        if cosmo_par != name_par_tovary:
-            assert fid_pars_dict['FM_ordered_params'][cosmo_par] == varied_fid_pars_dict[
-                cosmo_par], f'{cosmo_par} is not the same as in the fiducial model'
+    # for cosmo_par in varied_fid_pars_dict.keys():
+    #     if cosmo_par != name_par_tovary:
+    #         assert fid_pars_dict['FM_ordered_params'][cosmo_par] == varied_fid_pars_dict[
+    #             cosmo_par], f'{cosmo_par} is not the same as in the fiducial model'
 
     dzWL_shifts = [varied_fid_pars_dict[f'dzWL{zi:02d}'] for zi in range(1, zbins + 1)]
     # dzGC_shifts = [varied_fid_pars_dict[f'dzGC{zi:02d}'] for zi in range(1, zbins + 1)]
 
     gal_bias_polyfit_values = [varied_fid_pars_dict[f'bG{zi:02d}'] for zi in range(1, 5)]
     mag_bias_polyfit_values = [varied_fid_pars_dict[f'bM{zi:02d}'] for zi in range(1, 5)]
+    mult_shear_bias_values = [varied_fid_pars_dict[f'm{zi:02d}'] for zi in range(1, zbins + 1)]
 
     # instantiate cosmology object. camb_extra_parameters are not varied, so they can be passed from the fid_pars_dict
     # TODO logT_AGN is both in the varied and fixed params
-    full_pars_dict_for_ccl = {**varied_fid_pars_dict, 'other_params': fid_pars_dict['other_params']}
+    breakpoint()
+    
+    other_params = deepcopy(fid_pars_dict['other_params'])
+    other_params['camb_extra_parameters']['camb']['HMCode_logT_AGN'] = varied_fid_pars_dict['logT']
+    full_pars_dict_for_ccl = {**varied_fid_pars_dict, 'other_params': other_params}
     ccl_obj = pyccl_cov_class.PycclClass(full_pars_dict_for_ccl)
     ccl_obj.zbins = zbins
 
     if cfg['covariance_cfg']['PyCCL_cfg']['which_pk_for_pyccl'] == 'CLOE':
-
-        dav_to_vinc_par_names = {
-            'Om': 'Omega_M',
-            'Ob': 'Omega_B',
-            'logT': 'HMCode_logT_AGN',
-            'ns': 'n_s',
-            'ODE': 'Omega_DE',
-            's8': 'sigma8',
-            'wz': 'w0',
-        }
 
         if name_par_tovary in dav_to_vinc_par_names:
             name_par_tovary_vinc = dav_to_vinc_par_names[name_par_tovary]
         else:
             name_par_tovary_vinc = name_par_tovary
 
-        which_pk = cfg['general_cfg']['which_pk']
-        flat_or_nonflat = cfg['general_cfg']['flat_or_nonflat']
         val_par_tovary = varied_fid_pars_dict[name_par_tovary]
-        cloe_pk_filename = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputPS/' +\
-            f'{which_pk}/InFiles/{flat_or_nonflat}/{name_par_tovary_vinc}/PddVsZedLogK-{name_par_tovary_vinc}_{val_par_tovary:.3e}.dat'
+        cloe_pk_filename = cfg['general_cfg']['CLOE_pk_folder'].format(
+            SPV3_folder=cfg['general_cfg']['SPV3_folder'],
+            flat_or_nonflat=cfg['general_cfg']['flat_or_nonflat'], 
+            which_pk=cfg['general_cfg']['which_pk']) + f'/{name_par_tovary_vinc}/PddVsZedLogK-{name_par_tovary_vinc}_{val_par_tovary:.3e}.dat'
+                
 
         # ccl_obj.cosmo_ccl.p_of_k_a = ccl_obj.pk_obj_from_file(pk_filename=cloe_pk_filename, plot_pk_z0=False)
         pk = ccl_obj.pk_obj_from_file(pk_filename=cloe_pk_filename, plot_pk_z0=False)
+        
+    elif cfg['covariance_cfg']['PyCCL_cfg']['which_pk_for_pyccl'] == 'PyCCL':
+        pk=None
+    else:
+        raise ValueError('which_pk_for_pyccl must be either "CLOE" or "PyCCL"')
 
     # quick check
     assert (varied_fid_pars_dict['Om'] / ccl_obj.cosmo_ccl.cosmo.params.Omega_m - 1) < 1e-7, \
@@ -1647,9 +1687,18 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
     cl_GL = ccl_obj.compute_cls(ell_GL, pk, ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
     cl_GG = ccl_obj.compute_cls(ell_GG, pk, ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
 
-     
+    for ell_idx, _ in enumerate(ell_LL):
+        for zi in range(zbins):
+            for zj in range(zbins):
+                cl_LL[ell_idx, zi, zj] *= (1 + mult_shear_bias_values[zi]) * (1 + mult_shear_bias_values[zj])
+
+    for ell_idx, _ in enumerate(ell_GL):
+        for zi in range(zbins):
+            for zj in range(zbins):
+                cl_GL[ell_idx, zi, zj] *= (1 + mult_shear_bias_values[zj])
+
     if varied_fid_pars_dict[name_par_tovary] == fid_pars_dict['FM_ordered_params'][name_par_tovary]:
-        print('saving fiducial spectra for comparison')    
+        print('saving fiducial spectra for comparison')
         np.save(f'/home/davide/Scrivania/test_ders/cl_LL_{name_par_tovary}.npy', cl_LL)
         np.save(f'/home/davide/Scrivania/test_ders/cl_GL_{name_par_tovary}.npy', cl_GL)
         np.save(f'/home/davide/Scrivania/test_ders/cl_GG_{name_par_tovary}.npy', cl_GG)

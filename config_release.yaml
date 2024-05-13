@@ -130,7 +130,8 @@ general_cfg:
     bias_function: analytical # 'analytical', 'leporifit', 'pocinofit'
     bias_model: step-wise # 'step-wise', 'constant', 'linint', 'ones', 'polynomial'
 
-    CLOE_pk_filename: "/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputPS/{which_pk:s}/InFiles/{flat_or_nonflat:s}/h/PddVsZedLogK-h_6.700e-01.dat"
+    CLOE_pk_folder: "/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputPS/{which_pk:s}/InFiles/{flat_or_nonflat:s}"
+    CLOE_pk_filename: "{CLOE_pk_folder:s}/h/PddVsZedLogK-h_6.700e-01.dat"
     flat_or_nonflat: Flat
     which_pk: HMCodeBar
 
@@ -250,7 +251,7 @@ covariance_cfg:
         which_ng_cov: [SSC]
         test_GLGL: False # must be set to False for actual 3x2pt runs
 
-        which_pk_for_pyccl: CLOE # PyCCL (the one stored in cosmo obj) or CLOE (from input files - to be implemented)
+        which_pk_for_pyccl: PyCCL # PyCCL (the one stored in cosmo obj) or CLOE (from input files - to be implemented)
 
         load_precomputed_cov: True
         save_cov: True

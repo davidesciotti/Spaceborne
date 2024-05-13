@@ -1403,8 +1403,13 @@ def cls_and_derivatives_parallel_v2(cfg, list_params_to_vary, zbins, nz_tuple,
     nbl_XC = len(ell_GL)
     nbl_GC = len(ell_GG)
 
-    percentages = np.asarray((-10., -5., -3.75, -2.5, -1.875, -1.25, -0.625, 0,
-                              0.625, 1.25, 1.875, 2.5, 3.75, 5., 10.)) / 100
+    # old
+    # percentages = np.asarray((-10., -5., -3.75, -2.5, -1.875, -1.25, -0.625, 0,
+    #                           0.625, 1.25, 1.875, 2.5, 3.75, 5., 10.)) / 100
+    
+    # new
+    percentages = np.asarray((-10, -5, -3.75, -3, -2.5, -1.875, -1.25, -1.0, -0.625, 0.0,
+                              0.625, 1.0, 1.25, 1.875, 2.5, 3.0, 3.75, 5.0, 10.0)) / 100
     num_points_derivative = len(percentages)
 
     free_fid_pars_dict = deepcopy(cfg['cosmology']['FM_ordered_params'])
@@ -1548,7 +1553,7 @@ dav_to_vinc_par_names = {
 def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, cl_GG,
                           cfg, nz_tuple, list_params_to_vary,
                           zbins, ell_LL, ell_GL, ell_GG,
-                        use_only_flat_models=True):
+                          use_only_flat_models=True):
 
     general_cfg = cfg['general_cfg']
     magcut_lens = general_cfg['magcut_lens']
@@ -1624,7 +1629,7 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
     # instantiate cosmology object. camb_extra_parameters are not varied, so they can be passed from the fid_pars_dict
     # TODO logT_AGN is both in the varied and fixed params
     breakpoint()
-    
+
     other_params = deepcopy(fid_pars_dict['other_params'])
     other_params['camb_extra_parameters']['camb']['HMCode_logT_AGN'] = varied_fid_pars_dict['logT']
     full_pars_dict_for_ccl = {**varied_fid_pars_dict, 'other_params': other_params}
@@ -1639,17 +1644,28 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
             name_par_tovary_vinc = name_par_tovary
 
         val_par_tovary = varied_fid_pars_dict[name_par_tovary]
-        cloe_pk_filename = cfg['general_cfg']['CLOE_pk_folder'].format(
+
+        # cloe_pk_folder = cfg['general_cfg']['CLOE_pk_folder'].format(
+        #     SPV3_folder=cfg['general_cfg']['SPV3_folder'],
+        #     flat_or_nonflat=cfg['general_cfg']['flat_or_nonflat'],
+        #     which_pk=cfg['general_cfg']['which_pk']) + f'/{name_par_tovary_vinc}/PddVsZedLogK-{name_par_tovary_vinc}_{val_par_tovary:.3e}.dat'
+
+        cloe_pk_folder = cfg['general_cfg']['CLOE_pk_folder'].format(
             SPV3_folder=cfg['general_cfg']['SPV3_folder'],
-            flat_or_nonflat=cfg['general_cfg']['flat_or_nonflat'], 
-            which_pk=cfg['general_cfg']['which_pk']) + f'/{name_par_tovary_vinc}/PddVsZedLogK-{name_par_tovary_vinc}_{val_par_tovary:.3e}.dat'
-                
+            which_pk=cfg['general_cfg']['which_pk'],
+            flat_or_nonflat=cfg['general_cfg']['flat_or_nonflat'])
+
+        cloe_pk_filename = cfg['general_cfg']['CLOE_pk_filename'].format(
+            CLOE_pk_folder=cloe_pk_folder,
+            param_name=name_par_tovary_vinc,
+            param_value=val_par_tovary
+        )
 
         # ccl_obj.cosmo_ccl.p_of_k_a = ccl_obj.pk_obj_from_file(pk_filename=cloe_pk_filename, plot_pk_z0=False)
         pk = ccl_obj.pk_obj_from_file(pk_filename=cloe_pk_filename, plot_pk_z0=False)
-        
+
     elif cfg['covariance_cfg']['PyCCL_cfg']['which_pk_for_pyccl'] == 'PyCCL':
-        pk=None
+        pk = None
     else:
         raise ValueError('which_pk_for_pyccl must be either "CLOE" or "PyCCL"')
 

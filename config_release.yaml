@@ -10,7 +10,6 @@ cosmology:
         # ODE: 0.68140775651
         # Ob: 0.05001413
         Om: 0.32
-        ODE: 0.68
         Ob: 0.05
         wz: -1.0
         wa: 0.0
@@ -60,6 +59,7 @@ cosmology:
     # these parameters are not varied in the analysis; their specific ordering is not important
     # TODO how about logT? below it's fixed, above it's varied
     other_params:
+        ODE: 0.68
         m_nu: 0.06
         N_eff: 3.046
         bIA: 0.0
@@ -225,7 +225,7 @@ covariance_cfg:
     cov_ell_cuts: False
 
     compute_covmat: True
-    compute_SSC: False  # TODO re-implement this
+    compute_SSC: True  # TODO re-implement this
 
     save_cov: False
     cov_file_format: npz # or npy
@@ -242,11 +242,14 @@ covariance_cfg:
     covariance_ordering_2D: ell_probe_zpair
 
     test_against_benchmarks: False  # TODO delete this
+    test_against_CLOE_benchmarks: False  # TODO delete this
+    test_against_vincenzo: False  # TODO delete this
+
 
     compute_GSSC_condition_number: False
 
     # ! no folders for ell_cut_center or min
-    cov_folder: f{DATA_ROOT}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform} + /ell_cuts_{cov_ell_cuts:s}
+    cov_folder: f{DATA_ROOT:s}/output/Flagship_{flagship_version}/covmat/BNT_{BNT_transform} + /ell_cuts_{cov_ell_cuts:s}
     cov_filename:
         covmat_{which_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_
         ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_
@@ -334,7 +337,7 @@ FM_cfg:
     compute_FM: True
 
     save_FM_txt: True
-    save_FM_dict: True
+    save_FM_dict: False
 
     load_preprocess_derivatives: False
     derivatives_folder: "{SPV3_folder:s}/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}"  # TODO delete this
@@ -345,7 +348,10 @@ FM_cfg:
     derivatives_BNT_transform: False
     deriv_ell_cuts: False
 
-    fm_folder: f{DATA_ROOT}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}{fm_last_folder}
+    fm_folder: f{DATA_ROOT:s}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}{fm_last_folder}
     fm_last_folder: fm_last_folder
     fm_txt_filename: fm_txt_filename
     fm_dict_filename: fm_dict_filename
+
+    test_against_vincenzo: False  # TODO delete this
+    test_against_benchmarks: False  # TODO delete this

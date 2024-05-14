@@ -3269,13 +3269,105 @@ def build_noise(zbins, n_probes, sigma_eps2, ng, EP_or_ED):
     # create and fill N
     noise_4d = np.zeros((n_probes, n_probes, zbins, zbins))
     # np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar))  # ! correct
-    np.fill_diagonal(N[0, 0, :, :], sigma_eps2 / n_bar)  # ! old, INcorrect
+    np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / n_bar)  # ! old, INcorrect
     np.fill_diagonal(noise_4d[1, 1, :, :], 1 / n_bar)
     noise_4d[0, 1, :, :] = 0
     noise_4d[1, 0, :, :] = 0
 
     return noise_4d
 
+
+
+def build_noise_v2(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED):
+    """Builds the noise power spectra.
+
+    Parameters
+    ----------
+    zbins : int
+        Number of redshift bins.
+    n_probes : int 
+        Number of probes.
+    sigma_eps2 : float
+        Square of the *total* ellipticity dispersion.
+        sigma_eps2 = sigma_eps ** 2, with
+        sigma_eps = sigma_eps_i * sqrt(2),
+        sigma_eps_i being the ellipticity dispersion *per component*
+    ng_shear : int, float or numpy.ndarray
+        Galaxy density of sources, relevant for cosmic shear
+        If a scalar, cumulative galaxy density number density, per arcmin^2. 
+        This will assume equipopulated bins. 
+        If an array, galaxy number density, per arcmin^2, per redshift bin. 
+        Must have length zbins.
+    ng_clust : int, float or numpy.ndarray
+        Galaxy density of lenses, relevant for galaxy clustering
+        If a scalar, cumulative galaxy density number density, per arcmin^2. 
+        This will assume equipopulated bins. 
+        If an array, galaxy number density, per arcmin^2, per redshift bin. 
+        Must have length zbins.
+    EP_or_ED : str, optional
+        Whether bins are equipopulated ('EP') or equidistant ('ED').
+
+    Returns
+    -------
+    N : ndarray, shape (n_probes, n_probes, zbins, zbins)
+        Noise power spectra matrices
+
+    Notes
+    -----
+    The noise is defined as:
+        N_LL = sigma_eps^2 / (2 * n_bar) 
+        N_GG = 1 / n_bar
+        N_GL = N_LG = 0
+
+    Where sigma_eps includes factor of sqrt(2) for two components.
+
+    """
+    
+    if type(ng_shear) == list:
+        ng_shear = np.array(ng_shear)
+    if type(ng_clust) == list:
+        ng_clust = np.array(ng_clust)
+
+    conversion_factor = (180 / np.pi * 60)**2  # deg^2 to arcmin^2
+
+    assert isinstance(ng_shear, (int, float, np.ndarray)), 'ng_shear should be int, float or an array'
+    assert isinstance(ng_clust, (int, float, np.ndarray)), 'ng_shear should be int, float or an array'
+    # this may be relaxed in the future...
+    assert type(ng_shear) == type(ng_clust), 'ng_shear and ng_clust should be the same type)'
+
+    # if ng is a scalar, n_bar will be ng/zbins and the bins have to be equipopulated
+    if np.isscalar(ng_shear) and np.isscalar(ng_clust):
+        assert ng_shear > 0, 'ng_shear should be positive'
+        assert ng_clust > 0, 'ng_clust should be positive'
+        assert EP_or_ED == 'EP', 'if ng is a scalar (not a vector), the bins should be equipopulated'
+        # assert ng > 20, 'ng should roughly be > 20 (this check is meant to make sure that ng is the cumulative galaxy ' \
+        #                 'density, not the galaxy density in each bin)'
+        n_bar_shear = ng_shear / zbins * conversion_factor
+        n_bar_clust = ng_clust / zbins * conversion_factor
+
+    # if ng is an array, n_bar == ng (this is a slight misnomer, since ng is the cumulative galaxy density, while
+    # n_bar the galaxy density in each bin). In this case, if the bins are quipopulated, the n_bar array should
+    # have all entries almost identical.
+    else:
+        assert np.all(ng_shear > 0), 'ng_shear should be positive'
+        # assert np.sum(ng_shear) > 20, 'ng should roughly be > 20 (this check is meant to make sure that ng is the cumulative galaxy ' \
+        #                 'density, not the galaxy density in each bin)'
+        if EP_or_ED == 'EP':
+            assert np.allclose(np.ones_like(ng_shear) * ng_shear[0], ng_shear, rtol=0.05,
+                               atol=0), 'if ng_shear is a vector and the bins are equipopulated, ' \
+                                        'the value in each bin should be the same (or very similar)'
+
+        n_bar_shear = ng_shear * conversion_factor
+        n_bar_clust = ng_clust * conversion_factor
+
+    # create and fill N
+    noise_4d = np.zeros((n_probes, n_probes, zbins, zbins))
+    np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar_shear))
+    np.fill_diagonal(noise_4d[1, 1, :, :], 1 / n_bar_clust)
+    noise_4d[0, 1, :, :] = 0
+    noise_4d[1, 0, :, :] = 0
+
+    return noise_4d
 
 def my_exit():
     print('\nquitting script with sys.exit()')
@@ -3300,8 +3392,8 @@ def pk_vinc_file_to_2d_npy(path, plot_pk_z0):
         plt.yscale('log')
         plt.xlabel('$k [1/Mpc]$')
         plt.ylabel('$P(k) [Mpc^3]$')
-        plt.show()
         plt.legend('$z=0$')
+        plt.show()
 
     return k_array, z_array, pk_2D
 

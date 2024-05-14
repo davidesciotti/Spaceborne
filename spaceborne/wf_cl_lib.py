@@ -993,7 +993,7 @@ def cl_PyCCL(wf_A, wf_B, ell, zbins, p_of_k_a, cosmo, limber_integration_method=
     return cl_3D
 
 
-def stem(cl_4d, variations_arr, zbins, nbl):
+def stem(cl_4d, variations_arr, zbins, nbl, percent_tolerance=1):
 
     # instantiate array of derivatives
     dcl_3d = np.zeros((nbl, zbins, zbins))
@@ -1015,7 +1015,7 @@ def stem(cl_4d, variations_arr, zbins, nbl):
                 perc_diffs = mm.percent_diff(cl_4d_cpy[:, ell, zi, zj], fitted_y_values)
 
                 # as long as any element has a percent deviation greater than 1%, remove first and last values
-                while np.any(np.abs(perc_diffs) > 1):
+                while np.any(np.abs(perc_diffs) > percent_tolerance):
                     # if the condition is satisfied, remove the first and last values
                     cl_4d_cpy = np.delete(cl_4d_cpy, [0, -1], axis=0)
                     variations_arr_cpy = np.delete(variations_arr_cpy, [0, -1])
@@ -1030,12 +1030,129 @@ def stem(cl_4d, variations_arr, zbins, nbl):
                     # breakpoint()
                     # plt.figure()
                     # plt.plot(variations_arr_cpy, fitted_y_values, '--', lw=2)
-                    # plt.plot(variations_arr, cl_4d_cpy[:, ell, zi, zj][:, ell, zi, zj], marker='o')
+                    # plt.plot(variations_arr_cpy, cl_4d_cpy[:, ell, zi, zj], marker='o')
+                    # plt.xlabel('$\\theta$')
 
                 # store the value of the derivative
                 dcl_3d[ell, zi, zj] = angular_coefficient
 
     return dcl_3d
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.linear_model import Ridge
+
+def stem_v2(cl_4d, variations_arr, zbins, nbl, percent_tolerance=1, alpha=1e-4):
+
+    # instantiate array of derivatives
+    dcl_3d = np.zeros((nbl, zbins, zbins))
+
+    # create copy of the "x" and "y" arrays, because their items could get popped by the stem algorithm
+    cl_4d_cpy = cl_4d.copy()
+    variations_arr_cpy = variations_arr.copy()
+
+    # TODO is there a way to specify the axis along which to fit, instead of having to loop over i, j, ell?
+    for zi in range(zbins):
+        for zj in range(zbins):
+            for ell in range(nbl):
+
+                # Scale the data
+                x_mean = np.mean(variations_arr_cpy)
+                x_std = np.std(variations_arr_cpy)
+                y_mean = np.mean(cl_4d_cpy[:, ell, zi, zj])
+                y_std = np.std(cl_4d_cpy[:, ell, zi, zj])
+                x_scaled = (variations_arr_cpy - x_mean) / x_std
+                y_scaled = (cl_4d_cpy[:, ell, zi, zj] - y_mean) / y_std
+
+                # perform linear fit with regularization
+                ridge = Ridge(alpha=alpha)
+                ridge.fit(x_scaled.reshape(-1, 1), y_scaled)
+                angular_coefficient = ridge.coef_[0] * (y_std / x_std)
+                intercept = y_mean - angular_coefficient * x_mean
+
+                fitted_y_values = angular_coefficient * variations_arr_cpy + intercept
+
+                # check % difference
+                perc_diffs = mm.percent_diff(cl_4d_cpy[:, ell, zi, zj], fitted_y_values)
+
+                # as long as any element has a percent deviation greater than 1%, remove first and last values
+                while np.any(np.abs(perc_diffs) > percent_tolerance):
+                    # if the condition is satisfied, remove the first and last values
+                    cl_4d_cpy = np.delete(cl_4d_cpy, [0, -1], axis=0)
+                    variations_arr_cpy = np.delete(variations_arr_cpy, [0, -1])
+
+                    # re-compute the fit on the reduced set
+                    x_mean = np.mean(variations_arr_cpy)
+                    x_std = np.std(variations_arr_cpy)
+                    y_mean = np.mean(cl_4d_cpy[:, ell, zi, zj])
+                    y_std = np.std(cl_4d_cpy[:, ell, zi, zj])
+                    x_scaled = (variations_arr_cpy - x_mean) / x_std
+                    y_scaled = (cl_4d_cpy[:, ell, zi, zj] - y_mean) / y_std
+
+                    ridge.fit(x_scaled.reshape(-1, 1), y_scaled)
+                    angular_coefficient = ridge.coef_[0] * (y_std / x_std)
+                    intercept = y_mean - angular_coefficient * x_mean
+
+                    fitted_y_values = angular_coefficient * variations_arr_cpy + intercept
+
+                    # test again
+                    perc_diffs = mm.percent_diff(cl_4d_cpy[:, ell, zi, zj], fitted_y_values)
+
+                    # plt.figure()
+                    # plt.plot(variations_arr_cpy, fitted_y_values, '--', lw=2)
+                    # plt.plot(variations_arr_cpy, cl_4d_cpy[:, ell, zi, zj], marker='o')
+                    # plt.xlabel('$\\theta$')
+
+                # store the value of the derivative
+                dcl_3d[ell, zi, zj] = angular_coefficient
+
+    return dcl_3d
+
+
+
+def optimized_stem(cl_4d, variations_arr, zbins, nbl, percent_tolerance=1):
+    # Instantiate array of derivatives
+    dcl_3d = np.zeros((nbl, zbins, zbins))
+
+    # Create copy of the "x" and "y" arrays
+    cl_4d_cpy = cl_4d.copy()
+    variations_arr_cpy = variations_arr.copy()
+
+    # Define a linear fit function
+    def linear_fit(x, y):
+        A = np.vstack([x, np.ones_like(x)]).T
+        return np.linalg.lstsq(A, y, rcond=None)[0]
+
+    for ell in range(nbl):
+        for zi in range(zbins):
+            for zj in range(zbins):
+                # Perform linear fit
+                angular_coefficient, intercept = linear_fit(variations_arr_cpy, cl_4d_cpy[:, ell, zi, zj])
+                fitted_y_values = angular_coefficient * variations_arr_cpy + intercept
+
+                # Check % difference
+                perc_diffs = mm.percent_diff(cl_4d_cpy[:, ell, zi, zj], fitted_y_values)
+
+                # If all differences are within tolerance, break the loop
+                if np.all(np.abs(perc_diffs) <= percent_tolerance):
+                    break
+
+                # If not, remove the first and last values
+                cl_4d_cpy = np.delete(cl_4d_cpy, [0, -1], axis=0)
+                variations_arr_cpy = np.delete(variations_arr_cpy, [0, -1])
+                
+                # Store the value of the derivative
+                dcl_3d[ell, zi, zj] = angular_coefficient
+
+                # Plot for debugging
+                # plt.figure()
+                # plt.plot(variations_arr_cpy, fitted_y_values, '--', lw=2)
+                # plt.plot(variations_arr_cpy, cl_4d_cpy[:, ell, zi, zj], marker='o')
+                # plt.xlabel('$\\theta$')
+
+    return dcl_3d
+
 
 
 def cls_and_derivatives(fiducial_values_dict, extra_parameters, list_params_to_vary, zbins, dndz_tuple,
@@ -1477,9 +1594,17 @@ def cls_and_derivatives_parallel_v2(cfg, list_params_to_vary, zbins, nz_tuple,
 
         print(f'param {name_par_tovary} Cls computed in {(time.perf_counter() - t0):.2f} seconds')
 
-        dcl_LL[name_par_tovary] = stem(cl_LL[name_par_tovary], varied_param_values, zbins, nbl_WL)
-        dcl_GL[name_par_tovary] = stem(cl_GL[name_par_tovary], varied_param_values, zbins, nbl_GC)
-        dcl_GG[name_par_tovary] = stem(cl_GG[name_par_tovary], varied_param_values, zbins, nbl_GC)
+        try:
+            dcl_LL[name_par_tovary] = stem(cl_LL[name_par_tovary], varied_param_values, zbins, nbl_WL, 1)
+            dcl_GL[name_par_tovary] = stem(cl_GL[name_par_tovary], varied_param_values, zbins, nbl_GC, 1)
+            dcl_GG[name_par_tovary] = stem(cl_GG[name_par_tovary], varied_param_values, zbins, nbl_GC, 1)
+        except np.linalg.LinAlgError as e:
+            print(e)
+            print('SteM derivative computation failed, increasing tolerance from 1% to 6%')
+            dcl_LL[name_par_tovary] = stem(cl_LL[name_par_tovary], varied_param_values, zbins, nbl_WL, 6)
+            dcl_GL[name_par_tovary] = stem(cl_GL[name_par_tovary], varied_param_values, zbins, nbl_GC, 6)
+            dcl_GG[name_par_tovary] = stem(cl_GG[name_par_tovary], varied_param_values, zbins, nbl_GC, 6)
+            
 
         print(f'SteM derivative computed for {name_par_tovary}')
 
@@ -1562,6 +1687,7 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
     z_grid_nz, n_of_z = nz_tuple
     names_cosmo_pars = ['Om', 'Ob', 'h', 'ns', 'logT', 'ODE','s8', 'wz', 'wa']
 
+
     # ! v1
     # if use_only_flat_models:
     #     # in this case I want omk = 0, so if ODE varies Om will have to be adjusted and vice versa
@@ -1628,8 +1754,6 @@ def cl_parallel_helper_v2(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
     mult_shear_bias_values = [varied_fid_pars_dict[f'm{zi:02d}'] for zi in range(1, zbins + 1)]
 
     # instantiate cosmology object. camb_extra_parameters are not varied, so they can be passed from the fid_pars_dict
-    # TODO logT_AGN is both in the varied and fixed params
-    breakpoint()
 
     other_params = deepcopy(fid_pars_dict['other_params'])
     other_params['camb_extra_parameters']['camb']['HMCode_logT_AGN'] = varied_fid_pars_dict['logT']

@@ -38,7 +38,6 @@ script_start_time = time.perf_counter()
 
 # mpl.use('Agg')
 
-
 # TODO check that the number of ell bins is the same as in the files
 # TODO double check the delta values
 # TODO update consistency_checks
@@ -56,8 +55,8 @@ script_start_time = time.perf_counter()
 
 def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b):
     """loads ell_cut values, rescales them and load into a dictionary.
-    z_values_a: redshifts at which to compute the ell_max for a fiven Limber wavenumber, for probe A
-    z_values_b: redshifts at which to compute the ell_max for a fiven Limber wavenumber, for probe B
+    z_values_a: redshifts at which to compute the ell_max for a given Limber wavenumber, for probe A
+    z_values_b: redshifts at which to compute the ell_max for a given Limber wavenumber, for probe B
     """
     if kmax_h_over_Mpc is None:
         kmax_h_over_Mpc = general_cfg['kmax_h_over_Mpc_ref']
@@ -720,7 +719,7 @@ plt.show()
 list_params_to_vary = list(fid_pars_dict['FM_ordered_params'].keys())
 # list_params_to_vary = [param for param in fid_pars_dict['FM_ordered_params'].keys() if param != 'ODE']
 # list_params_to_vary = ['h', 'wa', 'dzWL01', 'm06', 'bG02', 'bM02']
-# list_params_to_vary = ['ns', ]
+list_params_to_vary = ['Om', ]
 
 
 start_time = time.perf_counter()

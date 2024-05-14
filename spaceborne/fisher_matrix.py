@@ -129,15 +129,20 @@ def ell_cuts_derivatives(FM_cfg, ell_dict, dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2p
     return dC_LL_4D, dC_WA_4D, dC_GG_4D, dC_3x2pt_6D
 
 
-def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict, BNT_matrix=None):
+def compute_FM(cfg, ell_dict, cov_dict, deriv_dict, BNT_matrix=None):
+    
+    general_cfg = cfg['general_cfg']
+    covariance_cfg = cfg['covariance_cfg']
+    FM_cfg = cfg['FM_cfg']
+    
     # shorten names
     zbins = general_cfg['zbins']
     use_WA = general_cfg['use_WA']
     GL_or_LG = covariance_cfg['GL_or_LG']
     ind = covariance_cfg['ind']
     block_index = covariance_cfg['block_index']
-    nparams_tot = FM_cfg['nparams_tot']
-    param_names_3x2pt = FM_cfg['param_names_3x2pt']
+    param_names_3x2pt = [param for param in cfg['cosmology']['FM_ordered_params'].keys() if param != 'ODE']
+    nparams_tot = len(param_names_3x2pt)
 
     # import ell values
     ell_WL, nbl_WL = ell_dict['ell_WL'], ell_dict['ell_WL'].shape[0]

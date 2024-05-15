@@ -369,6 +369,16 @@ class PycclClass():
         # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
         self.gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
         self.gal_bias_tuple = (z_grid, self.gal_bias_2d)
+        
+    def get_gal_bias_tuple_spv3(self, z_grid, magcut_lens, poly_fit_values):
+
+        gal_bias_func = self.gal_bias_func_dict['fs2_fit']
+        gal_bias_1d = gal_bias_func(z_grid, magcut_lens=magcut_lens / 10, poly_fit_values=poly_fit_values)
+
+        # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
+        gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
+        gal_bias_tuple = (z_grid, gal_bias_2d)
+        return gal_bias_tuple
 
     def set_gal_bias_tuple_istf(self, z_grid, bias_function_str, bias_model):
         gal_bias_func = self.gal_bias_func_dict[bias_function_str]

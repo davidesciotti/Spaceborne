@@ -357,6 +357,9 @@ which_pk = general_cfg['which_pk']
 z_grid_ssc_integrands = np.linspace(covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
                                     covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
                                     covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'])
+if len(z_grid_ssc_integrands) < 250:
+    warnings.warn('z_grid_ssc_integrands is small, at the moment it used to compute various intermediate quantities')
+
 
 # load some nuisance parameters
 # note that zbin_centers is not exactly equal to the result of wf_cl_lib.get_z_mean...
@@ -1068,8 +1071,8 @@ k_grid_sigma2 = np.logspace(covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2
                             covariance_cfg['Spaceborne_cfg']['k_steps_sigma2'])
 which_sigma2_B = covariance_cfg['Spaceborne_cfg']['which_sigma2_B']
 
-sigma2_b = sigma2_SSC.compute_sigma2(z_grid_ssc_integrands, k_grid_sigma2, which_sigma2_B,
-                                     ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
+# sigma2_b = sigma2_SSC.compute_sigma2(z_grid_ssc_integrands, k_grid_sigma2, which_sigma2_B,
+                                    #  ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
 
 
 # ! 4. Perform the integration calling the Julia module
@@ -1090,12 +1093,19 @@ print('SSC computed')
 
 
 # CCL pk
-kgrid_pk2d_ccl, pk2d_ccl = csmlib.pk_from_ccl(
-    k_grid_dPk_hm, z_grid_dPk_hm, False, ccl_obj.cosmo_ccl, pk_kind='nonlinear')
+kgrid_pk_mm_ccl, pk_mm_ccl = csmlib.pk_from_ccl(
+    k_grid_dPk_hm, z_grid_dPk_hm, use_h_units, ccl_obj.cosmo_ccl, pk_kind='nonlinear')
 
 # CLOE pk
 kgrid_pk2d_cloe, z_grid_pk2d_cloe, pk2d_cloe = mm.pk_vinc_file_to_2d_npy(cloe_pk_filename, plot_pk_z0=True)
 
+
+# compute Pgm, Pgg
+gal_bias_2d = ccl_obj.get_gal_bias_tuple_spv3(z_grid_dPk_hm, magcut_lens, None)[1]
+gal_bias = gal_bias_2d[:, 0]
+
+pk_gm_ccl = gal_bias[None, :] * pk_mm_ccl
+pk_gg_ccl = gal_bias[None, :]**2 * pk_mm_ccl
 
 plt.figure()
 # pick a redshift and get the corresponding index
@@ -1109,7 +1119,7 @@ for count, z_val in enumerate((0, 0.5, 1, 2, 3)):
     z_val_ccl = z_grid_dPk_hm[z_idx_ccl]
 
     plt.loglog(kgrid_pk2d_cloe, pk2d_cloe[:, z_idx_cloe], ls='-', c=clr[count], label='cloe')
-    plt.loglog(k_grid_dPk_hm, pk2d_ccl[:, z_idx_ccl], ls=':', c=clr[count], alpha=0.5, label='davide ccl')
+    plt.loglog(k_grid_dPk_hm, pk_mm_ccl[:, z_idx_ccl], ls=':', c=clr[count], alpha=0.5, label='davide ccl')
 plt.title('P(k), ccl vs imported (CLOE)')
 
 # since the nonlin pks don't match, I define a custom Pk2D object
@@ -1126,17 +1136,33 @@ plt.title('P(k), ccl vs imported (CLOE)')
 # TODO integrate this with SPV3_integrands
 # TODO integrate this with Spaceborne_covg
 
+
 # # ! quickly check responses
 import sys
 sys.path.append('/home/davide/Documenti/Lavoro/Programmi/exact_SSC/bin')
 import ssc_integrands_SPV3 as sscint
 
 path = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SSC_paper_final/output/responses'
-np.save(f'{path}/k_grid_dPk_hm_mead2020.npy', k_grid_dPk_hm)
-np.save(f'{path}/z_grid_dPk_hm_mead2020.npy', z_grid_dPk_hm)
-np.save(f'{path}/dPmm_ddeltab_hm_mead2020.npy', dPmm_ddeltab_hm)
-np.save(f'{path}/dPgm_ddeltab_hm_mead2020.npy', dPgm_ddeltab_hm)
-np.save(f'{path}/dPgg_ddeltab_hm_mead2020.npy', dPgg_ddeltab_hm)
+halofit_version = cfg['cosmology']['other_params']['camb_extra_parameters']['camb']['halofit_version']
+np.save(f'{path}/k_grid_dPk_hm_{halofit_version}.npy', k_grid_dPk_hm)
+np.save(f'{path}/z_grid_dPk_hm_{halofit_version}.npy', k_grid_dPk_hm)
+np.save(f'{path}/dPmm_ddeltab_hm_{halofit_version}.npy', dPmm_ddeltab_hm)
+np.save(f'{path}/dPgm_ddeltab_hm_{halofit_version}.npy', dPgm_ddeltab_hm)
+np.save(f'{path}/dPgg_ddeltab_hm_{halofit_version}.npy', dPgg_ddeltab_hm)
+np.save(f'{path}/dPlog_mm_ddeltab_hm_{halofit_version}.npy', dPmm_ddeltab_hm/pk_mm_ccl)
+np.save(f'{path}/dPlog_gm_ddeltab_hm_{halofit_version}.npy', dPgm_ddeltab_hm/pk_gm_ccl)
+np.save(f'{path}/dPlog_gg_ddeltab_hm_{halofit_version}.npy', dPgg_ddeltab_hm/pk_gg_ccl)
+
+
+# halofit_version = 'mead2020_feedback'
+# k_grid_dPk_hm_m2f = np.load(f'{path}/k_grid_dPk_hm_{halofit_version}.npy', k_grid_dPk_hm)
+# z_grid_dPk_hm_m2f = np.load(f'{path}/z_grid_dPk_hm_{halofit_version}.npy', k_grid_dPk_hm)
+# dPmm_ddeltab_hm_m2f = np.load(f'{path}/dPmm_ddeltab_hm_{halofit_version}.npy', dPmm_ddeltab_hm)
+# dPgm_ddeltab_hm_m2f = np.load(f'{path}/dPgm_ddeltab_hm_{halofit_version}.npy', dPgm_ddeltab_hm)
+# dPgg_ddeltab_hm_m2f = np.load(f'{path}/dPgg_ddeltab_hm_{halofit_version}.npy', dPgg_ddeltab_hm)
+# dlogPmm_ddeltab_hm_m2f = np.load(f'{path}/dPlog_mm_ddeltab_hm_{halofit_version}.npy', dPmm_ddeltab_hm/pk_mm_ccl)
+# dlogPgm_ddeltab_hm_m2f = np.load(f'{path}/dPlog_gm_ddeltab_hm_{halofit_version}.npy', dPgm_ddeltab_hm/pk_gm_ccl)
+# dlogPgg_ddeltab_hm_m2f = np.load(f'{path}/dPlog_gg_ddeltab_hm_{halofit_version}.npy', dPgg_ddeltab_hm/pk_gg_ccl)
 
 
 z_val = 0
@@ -1153,25 +1179,32 @@ plt.plot(k_grid_dPk_hm, np.abs(dPmm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5,
 plt.plot(k_grid_dPk_hm, np.abs(dPgm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:orange')
 plt.plot(k_grid_dPk_hm, np.abs(dPgg_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:green')
 
+# HM_mead2020_feedback
+plt.plot(k_grid_dPk_hm, np.abs(dPmm_ddeltab_hm_m2f[:, z_idx_hm]), ls='--', alpha=0.5, c='tab:blue')
+plt.plot(k_grid_dPk_hm, np.abs(dPgm_ddeltab_hm_m2f[:, z_idx_hm]), ls='--', alpha=0.5, c='tab:orange')
+plt.plot(k_grid_dPk_hm, np.abs(dPgg_ddeltab_hm_m2f[:, z_idx_hm]), ls='--', alpha=0.5, c='tab:green')
+
 # SU
-plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPmm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:blue')
-plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:orange')
-plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgg_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:green')
+# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPmm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:blue')
+# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:orange')
+# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgg_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:green')
 
 plt.xscale('log')
 plt.yscale('log')
 plt.xlabel('k [1/Mpc]')
-plt.ylabel('$\partial P_{AB} / \partial \delta_b$')
+plt.ylabel(r'${\rm abs} \; \partial P_{AB} / \partial \delta_b$')
 
 colors = ['tab:blue', 'tab:orange', 'tab:green']
 labels_a = ['dPmm_ddeltab', 'dPgm_ddeltab', 'dPgg_ddeltab']
-handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels[i]) for i in range(3)]
+handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels_a[i]) for i in range(3)]
 handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
               for ls, label in zip(['-', '--'], ['signal', 'error'])]
 handles = handles_z + handles_ls
-labels = labels_a + ['Halo model', 'Separate universe']
+# labels = labels_a + ['Halo model', 'Separate universe']
+labels = labels_a + ['Bird', 'mead2020_feedback']
 plt.legend(handles, labels)
-plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
+# plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
+plt.title(f'z_hm = {z_val_hm:.3f}')
 plt.tight_layout()
 plt.show()
 
@@ -1179,9 +1212,14 @@ plt.show()
 # dlogPAB/ddeltab
 plt.figure()
 # HM
-plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk2d_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:blue')
-plt.plot(k_grid_dPk_hm, dPgm_ddeltab_hm[:, z_idx_hm] / pk2d_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:orange')
-plt.plot(k_grid_dPk_hm, dPgg_ddeltab_hm[:, z_idx_hm] / pk2d_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:green')
+plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:blue')
+plt.plot(k_grid_dPk_hm, dPgm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:orange')
+plt.plot(k_grid_dPk_hm, dPgg_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:green')
+
+plt.plot(k_grid_dPk_hm, dlogPmm_ddeltab_hm_m2f[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='--', alpha=0.5, c='tab:blue')
+plt.plot(k_grid_dPk_hm, dlogPgm_ddeltab_hm_m2f[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='--', alpha=0.5, c='tab:orange')
+plt.plot(k_grid_dPk_hm, dlogPgg_ddeltab_hm_m2f[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='--', alpha=0.5, c='tab:green')
+
 
 # SU
 # plt.plot(sscint.k_grid_dPk, sscint.r_mm[:, z_idx_su], ls='--', alpha=0.5, c='tab:blue')

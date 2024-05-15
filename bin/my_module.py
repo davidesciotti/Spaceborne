@@ -1344,6 +1344,27 @@ def build_full_ind(triu_tril, row_col_major, size):
     return ind
 
 
+def build_ind_dict(triu_tril, row_col_major, size, GL_or_LG):
+
+    ind = build_full_ind(triu_tril, row_col_major, size)
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(size)
+
+    ind_dict = {}
+    ind_dict['L', 'L'] = ind[:zpairs_auto, :]
+    ind_dict['G', 'G'] = ind[(zpairs_auto + zpairs_cross):, :]
+
+    if GL_or_LG == 'LG':
+        ind_dict['L', 'G'] = ind[zpairs_auto:(zpairs_auto + zpairs_cross), :]
+        ind_dict['G', 'L'] = ind_dict['L', 'G'].copy()  # copy and switch columns
+        ind_dict['G', 'L'][:, [2, 3]] = ind_dict['G', 'L'][:, [3, 2]]
+    elif GL_or_LG == 'GL':
+        ind_dict['G', 'L'] = ind[zpairs_auto:(zpairs_auto + zpairs_cross), :]
+        ind_dict['L', 'G'] = ind_dict['G', 'L'].copy()  # copy and switch columns
+        ind_dict['L', 'G'][:, [2, 3]] = ind_dict['L', 'G'][:, [3, 2]]
+
+    return ind_dict
+
+
 # CHECK FOR DUPLICATES
 def cl_2D_to_3D_symmetric(Cl_2D, nbl, zpairs, zbins):
     """ reshape from (nbl, zpairs) to (nbl, zbins, zbins) according to
@@ -3104,7 +3125,7 @@ def Recast_Sijkl_3x2pt(Sijkl, nzbins):
     return [Sijkl_recast, npairs_full, pairs_full]
 
 
-def build_noise(zbins, n_probes, sigma_eps2, ng, EP_or_ED):
+def build_noise(zbins, n_probes, sigma_eps2, ng, EP_or_ED, which_shape_noise='ISTF'):
     """Builds the noise power spectra.
 
     Parameters
@@ -3171,8 +3192,14 @@ def build_noise(zbins, n_probes, sigma_eps2, ng, EP_or_ED):
 
     # create and fill N
     noise_4d = np.zeros((n_probes, n_probes, zbins, zbins))
-    # np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar))  # ! correct
-    np.fill_diagonal(N[0, 0, :, :], sigma_eps2 / n_bar)  # ! old, INcorrect
+
+    if which_shape_noise == 'ISTF':
+        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / n_bar)  # ! old, INcorrect
+    elif which_shape_noise == 'correct':
+        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar))  # ! correct
+    else:
+        raise ValueError('which_shape_noise must be ISTF or correct')
+
     np.fill_diagonal(noise_4d[1, 1, :, :], 1 / n_bar)
     noise_4d[0, 1, :, :] = 0
     noise_4d[1, 0, :, :] = 0

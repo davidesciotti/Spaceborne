@@ -1131,6 +1131,13 @@ import sys
 sys.path.append('/home/davide/Documenti/Lavoro/Programmi/exact_SSC/bin')
 import ssc_integrands_SPV3 as sscint
 
+path = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SSC_paper_final/output/responses'
+np.save(f'{path}/k_grid_dPk_hm_mead2020.npy', k_grid_dPk_hm)
+np.save(f'{path}/z_grid_dPk_hm_mead2020.npy', z_grid_dPk_hm)
+np.save(f'{path}/dPmm_ddeltab_hm_mead2020.npy', dPmm_ddeltab_hm)
+np.save(f'{path}/dPgm_ddeltab_hm_mead2020.npy', dPgm_ddeltab_hm)
+np.save(f'{path}/dPgg_ddeltab_hm_mead2020.npy', dPgg_ddeltab_hm)
+
 
 z_val = 0
 z_grid_dPk_su = sscint.z_grid_dPk
@@ -1177,9 +1184,9 @@ plt.plot(k_grid_dPk_hm, dPgm_ddeltab_hm[:, z_idx_hm] / pk2d_ccl[:, z_idx_hm], ls
 plt.plot(k_grid_dPk_hm, dPgg_ddeltab_hm[:, z_idx_hm] / pk2d_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:green')
 
 # SU
-plt.plot(sscint.k_grid_dPk, sscint.r_mm[:, z_idx_su], ls='--', alpha=0.5, c='tab:blue')
-plt.plot(sscint.k_grid_dPk, sscint.r_gm[:, z_idx_su], ls='--', alpha=0.5, c='tab:orange')
-plt.plot(sscint.k_grid_dPk, sscint.r_gg[:, z_idx_su], ls='--', alpha=0.5, c='tab:green')
+# plt.plot(sscint.k_grid_dPk, sscint.r_mm[:, z_idx_su], ls='--', alpha=0.5, c='tab:blue')
+# plt.plot(sscint.k_grid_dPk, sscint.r_gm[:, z_idx_su], ls='--', alpha=0.5, c='tab:orange')
+# plt.plot(sscint.k_grid_dPk, sscint.r_gg[:, z_idx_su], ls='--', alpha=0.5, c='tab:green')
 
 plt.xscale('log')
 plt.xlabel('k [1/Mpc]')

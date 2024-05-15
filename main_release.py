@@ -665,7 +665,7 @@ ccl_obj.cl_gl_3d = ccl_obj.compute_cls(ell_dict['ell_XC'], ccl_obj.p_of_k_a,
 ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
 # TODO do this properly
-ccl_obj.cl_wa_3d = cl_ll_3d[nbl_3x2pt:nbl_WL]
+ccl_obj.cl_wa_3d = ccl_obj.cl_ll_3d[nbl_3x2pt:nbl_WL]
 cl_ll_3d, cl_gl_3d, cl_gg_3d, cl_wa_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d, ccl_obj.cl_wa_3d
 
 # import Vicnenzo's cls, as a quick check (no RSDs in GCph in my Cls!!)
@@ -762,7 +762,7 @@ for par_idx, par_name in enumerate(list_params_to_vary):
 
 
 # # Vincenzo's derivatives
-# derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs, 
+# derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs,
 #                                                          SPV3_folder=general_cfg['SPV3_folder'])
 # # ! get vincenzo's derivatives' parameters, to check that they match with the yaml file
 # # check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
@@ -973,7 +973,7 @@ a_grid_dPk_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
 z_grid_dPk_hm = csmlib.a_to_z(a_grid_dPk_hm)[::-1]
 
 dPmm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
-dPgm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk12']
+dPgm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
 dPgg_ddeltab_hm = ccl_obj.responses_dict['G', 'G', 'G', 'G']['dpk12']
 
 # a is flipped w.r.t. z
@@ -1127,99 +1127,78 @@ plt.title('P(k), ccl vs imported (CLOE)')
 # TODO integrate this with Spaceborne_covg
 
 # # ! quickly check responses
-# import sys
-# sys.path.append('/home/davide/Documenti/Lavoro/Programmi/exact_SSC/bin')
-# import ssc_integrands_SPV3 as sscint
+import sys
+sys.path.append('/home/davide/Documenti/Lavoro/Programmi/exact_SSC/bin')
+import ssc_integrands_SPV3 as sscint
 
 
-# z_val = 0
+z_val = 0
+z_grid_dPk_su = sscint.z_grid_dPk
+z_idx_hm = np.argmin(np.abs(z_grid_dPk_hm - z_val))
+z_idx_su = np.argmin(np.abs(z_grid_dPk_su - z_val))
+z_val_hm = z_grid_dPk_hm[z_idx_hm]
+z_val_su = z_grid_dPk_su[z_idx_su]
 
-# z_grid_dPk_su = sscint.z_grid_dPk
+# dPAB/ddeltab
+plt.figure()
+# HM
+plt.plot(k_grid_dPk_hm, np.abs(dPmm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:blue')
+plt.plot(k_grid_dPk_hm, np.abs(dPgm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:orange')
+plt.plot(k_grid_dPk_hm, np.abs(dPgg_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:green')
 
-# z_idx_hm = np.argmin(np.abs(z_grid_dPk_hm - z_val))
-# z_idx_su = np.argmin(np.abs(z_grid_dPk_su - z_val))
-# z_val_hm = z_grid_dPk_hm[z_idx_hm]
-# z_val_su = z_grid_dPk_su[z_idx_su]
+# SU
+plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPmm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:blue')
+plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:orange')
+plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgg_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:green')
 
-# plt.figure()
-# plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk2d_ccl[:, z_idx_hm],
-#          label=f'dpk_mm/pkmm_2d_dav, z={z_val_hm}', alpha=0.5)
-# plt.plot(sscint.k_grid_dPk, sscint.r_mm[:, z_idx_su], label=f'R1_mm_su, z={z_val_su:.2f}', alpha=0.5)
-# plt.legend()
-# plt.xlim(1e-2, 8)
-# plt.ylim(-5, 7)
-# plt.xscale('log')
-# plt.xlabel('k [1/Mpc]')
-# plt.ylabel('$\partial \ln P_{mm} / \partial \delta_b$')
-# plt.title('dPk/ddeltab, halomodel vs separate universe')
+plt.xscale('log')
+plt.yscale('log')
+plt.xlabel('k [1/Mpc]')
+plt.ylabel('$\partial P_{AB} / \partial \delta_b$')
 
-# plt.figure()
-# # plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm],
-# #  label=f'dPmm_ddeltab_hm, z={z_val_hm}', ls='--', alpha=0.5, c='tab:blue')
-# plt.plot(k_grid_dPk_hm, dPgm_ddeltab_hm[:, z_idx_hm],
-#          label=f'dPgm_ddeltab_hm, z={z_val_hm}', ls='--', alpha=0.5, c='tab:orange')
-# # plt.plot(k_grid_dPk_hm, dPgg_ddeltab_hm[:, z_idx_hm],
-# #  label=f'dPgg_ddeltab_hm, z={z_val_hm}', ls='--', alpha=0.5, c='tab:green')
-# # plt.plot(sscint.k_grid_dPk, sscint.dPmm_ddeltab[:, z_idx_su], label=f'dPmm_ddeltab, z={z_val_su:.2f}', alpha=0.5, c='tab:blue')
-# plt.plot(sscint.k_grid_dPk, sscint.dPgm_ddeltab[:, z_idx_su],
-#          label=f'dPgm_ddeltab, z={z_val_su:.2f}', alpha=0.5, c='tab:orange')
-# # plt.plot(sscint.k_grid_dPk, sscint.dPgg_ddeltab[:, z_idx_su], label=f'dPgg_ddeltab, z={z_val_su:.2f}', alpha=0.5, c='tab:green')
-# plt.legend()
-# plt.xscale('log')
-# plt.yscale('log')
-# plt.xlabel('k [1/Mpc]')
-# plt.ylabel('$\partial P_{mm} / \partial \delta_b$')
+colors = ['tab:blue', 'tab:orange', 'tab:green']
+labels_a = ['dPmm_ddeltab', 'dPgm_ddeltab', 'dPgg_ddeltab']
+handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels[i]) for i in range(3)]
+handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
+              for ls, label in zip(['-', '--'], ['signal', 'error'])]
+handles = handles_z + handles_ls
+labels = labels_a + ['Halo model', 'Separate universe']
+plt.legend(handles, labels)
+plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
+plt.tight_layout()
+plt.show()
 
 
-# plt.figure()
-# # pick a redshift and get the corresponding index
-# clr = cm.rainbow(np.linspace(0, 1, zbins))
-# for count, z_val in enumerate((0, 0.5, 1, 2, 3)):
-#     # for count, z_val in enumerate((0, )):
+# dlogPAB/ddeltab
+plt.figure()
+# HM
+plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk2d_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:blue')
+plt.plot(k_grid_dPk_hm, dPgm_ddeltab_hm[:, z_idx_hm] / pk2d_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:orange')
+plt.plot(k_grid_dPk_hm, dPgg_ddeltab_hm[:, z_idx_hm] / pk2d_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:green')
 
-#     z_idx_su = np.argmin(np.abs(z_grid_dPk - z_val))
-#     z_idx_hm = np.argmin(np.abs(z_grid_dPk_hm - z_val))
+# SU
+plt.plot(sscint.k_grid_dPk, sscint.r_mm[:, z_idx_su], ls='--', alpha=0.5, c='tab:blue')
+plt.plot(sscint.k_grid_dPk, sscint.r_gm[:, z_idx_su], ls='--', alpha=0.5, c='tab:orange')
+plt.plot(sscint.k_grid_dPk, sscint.r_gg[:, z_idx_su], ls='--', alpha=0.5, c='tab:green')
 
-#     z_hm = z_grid_dPk_hm[z_idx_hm]
-#     z_su = z_grid_dPk[z_idx_su]
+plt.xscale('log')
+plt.xlabel('k [1/Mpc]')
+plt.ylabel(r'$\partial {\rm log} P_{AB} / \partial \delta_b$')
 
-#     plt.loglog(k_grid_dPk, pk_mm_2d[:, z_idx_su], ls='-', c=clr[count], label='cloe')
-#     plt.loglog(k_grid_dPk_hm, pk2d_dav[:, z_idx_hm], ls=':', c=clr[count], alpha=0.5, label='davide ccl')
-# plt.title('Pk, ccl vs imported')
-
-
-# plt.figure()
-# # for count, z_val in enumerate((0, 0.5, 1, 2, 3)):
-
-# plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk2d_ccl[:, z_idx_hm],
-#          label=f'dpk_mm/pkmm_2d_dav, z={z_hm}', alpha=0.5)
-# # plt.plot(k_grid_dPk, r_mm[:, z_idx_su], label=f'R1_mm_su, z={z_su:.2f}', alpha=0.5)
-# plt.legend()
-# plt.xlim(1e-2, 8)
-# plt.ylim(-5, 7)
-# plt.xscale('log')
-# plt.xlabel('k [1/Mpc]')
-# plt.ylabel('$\partial \ln P_{mm} / \partial \delta_b$')
-# plt.title('dPk/ddeltab, halomodel vs separate universe')
+colors = ['tab:blue', 'tab:orange', 'tab:green']
+labels_a = ['dPmm_ddeltab/Pmm', 'dPgm_ddeltab/Pgm', 'dPgg_ddeltab/Pgg']
+handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels[i]) for i in range(3)]
+handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
+              for ls, label in zip(['-', '--'], ['signal', 'error'])]
+handles = handles_z + handles_ls
+labels = labels_a + ['Halo model', 'Separate universe']
+plt.legend(handles, labels)
+plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
+plt.tight_layout()
+plt.show()
 
 
-# plt.figure()
-# plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm],
-#          label=f'dPmm_ddeltab_hm, z={z_hm}', ls='--', alpha=0.5, c='tab:blue')
-# plt.plot(k_grid_dPk_hm, dPgm_ddeltab_hm[:, z_idx_hm],
-#          label=f'dPgm_ddeltab_hm, z={z_hm}', ls='--', alpha=0.5, c='tab:orange')
-# plt.plot(k_grid_dPk_hm, dPgg_ddeltab_hm[:, z_idx_hm],
-#          label=f'dPgg_ddeltab_hm, z={z_hm}', ls='--', alpha=0.5, c='tab:green')
-# plt.plot(k_grid_dPk, dPmm_ddeltab[:, z_idx_su], label=f'dPmm_ddeltab, z={z_su:.2f}', alpha=0.5, c='tab:blue')
-# plt.plot(k_grid_dPk, dPgm_ddeltab[:, z_idx_su], label=f'dPgm_ddeltab, z={z_su:.2f}', alpha=0.5, c='tab:orange')
-# plt.plot(k_grid_dPk, dPgg_ddeltab[:, z_idx_su], label=f'dPgg_ddeltab, z={z_su:.2f}', alpha=0.5, c='tab:green')
-# plt.legend()
-# plt.xscale('log')
-# plt.xlabel('k [1/Mpc]')
-# plt.ylabel('$\partial P_{mm} / \partial \delta_b$')
-
-
-# assert False, 'stop here to check responses'
+assert False, 'stop here to check responses'
 
 
 # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
@@ -1401,7 +1380,7 @@ if not fm_cfg['compute_FM']:
 # import and store derivative in one big dictionary
 
 start_time = time.perf_counter()
-derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs, 
+derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs,
                                                          SPV3_folder=general_cfg['SPV3_folder'])
 # ! get vincenzo's derivatives' parameters, to check that they match with the yaml file
 # check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file

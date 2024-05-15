@@ -13,8 +13,8 @@ cosmology:
         Ob: 0.05
         wz: -1.0
         wa: 0.0
-        # h: 0.6737
-        h: 0.67 # fiducial for generating the Pk
+        # h: 0.6737  # fiducial value used in CLOE MCMC runs
+        h: 0.67 # fiducial value used in Vincenzo's files!
         ns: 0.966
         s8: 0.816
         logT: 7.75

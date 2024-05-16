@@ -29,7 +29,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-fm_and_cov_suffix = '_cNG_intfix'
+fm_and_cov_suffix = '_cNG_splinedefault'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -215,11 +215,10 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
-        'which_ng_cov': ('SSC', 'cNG'),
-        'integration_method': 'qag_quad',
+        'which_ng_cov': ('SSC', 'cNG', ),
         'test_GLGL': False,  # must be set to False for actual 3x2pt runs
 
-        'load_precomputed_cov': True,
+        'load_precomputed_cov': False,
         'save_cov': True,
         
         'load_precomputed_tkka': False,

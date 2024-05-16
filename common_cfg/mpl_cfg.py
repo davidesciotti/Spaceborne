@@ -10,20 +10,21 @@ sys.path.append(f'{ROOT}/Spaceborne')
 import bin.my_module as mm
 
 
-mpl_rcParams_dict = {'lines.linewidth': 3.5,
-                     'font.size': 20,
-                     'axes.labelsize': 'x-large',
-                     'axes.titlesize': 'x-large',
-                     'xtick.labelsize': 'x-large',
-                     'ytick.labelsize': 'x-large',
-                     'mathtext.fontset': 'stix',
-                     'font.family': 'STIXGeneral',
-                     'figure.figsize': (15, 10),
-                     'lines.markersize': 8,
-                     # 'axes.grid': True,
-                     # 'figure.constrained_layout.use': True,
-                     # 'axes.axisbelow': True
-                     }
+mpl_rcParams_dict = {
+    'lines.linewidth': 1.7,
+    'font.size': 17,
+    'axes.labelsize': 'large',
+    'axes.titlesize': 'large',
+    'xtick.labelsize': 'large',
+    'ytick.labelsize': 'large',
+    #  'mathtext.fontset': 'stix',
+    #  'font.family': 'STIXGeneral',
+    'figure.figsize': (15, 10),
+    'lines.markersize': 8,
+    # 'axes.grid': True,
+    'figure.constrained_layout.use': True,
+    # 'axes.axisbelow': True
+}
 
 general_dict = {
     'cosmo_labels_TeX': ["$\Omega_{{\\rm m},0}$", "$\Omega_{{\\rm b},0}$", "$w_0$", "$w_a$", "$h$", "$n_{\\rm s}$",

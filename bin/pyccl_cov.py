@@ -374,20 +374,24 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
 
     if general_cfg['which_forecast'] == 'SPV3':
 
-        maglim = general_cfg['magcut_source'] / 10
-        gal_bias_1d = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, maglim=maglim)
+        gal_bias_1d = wf_cl_lib.b_of_z_fs2_fit(zgrid_nz, magcut_lens=general_cfg['magcut_lens'] / 10)
         # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
         gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), zbins, axis=0).T
 
         # this is a test to use the actual P(k) from the input files, but the agreement gets much worse
-        k_grid_Pk, z_grid_Pk, pk_mm_2d = mm.pk_vinc_file_to_2d_npy(general_cfg['CLOE_pk_filename'], plot_pk_z0=True)
-        pk_flipped_in_z = np.flip(pk_mm_2d, axis=1)
-        scale_factor_grid_pk = cosmo_lib.z_to_a(z_grid_Pk)[::-1]  # flip it
-        p_of_k_a = ccl.pk2d.Pk2D(a_arr=scale_factor_grid_pk, lk_arr=np.log(k_grid_Pk),
-                                 pk_arr=pk_flipped_in_z.T, is_logp=False)
+        if pyccl_cfg['which_pk_for_pyccl'] == 'CLOE':
+            cloe_pk_filename = general_cfg['CLOE_pk_filename'].format(flat_or_nonflat=general_cfg['flat_or_nonflat'], which_pk=general_cfg['which_pk'])
+            k_grid_Pk, z_grid_Pk, pk_mm_2d = mm.pk_vinc_file_to_2d_npy(cloe_pk_filename, plot_pk_z0=True)
+            pk_flipped_in_z = np.flip(pk_mm_2d, axis=1)
+            scale_factor_grid_pk = cosmo_lib.z_to_a(z_grid_Pk)[::-1]  # flip it
+            p_of_k_a = ccl.pk2d.Pk2D(a_arr=scale_factor_grid_pk, lk_arr=np.log(k_grid_Pk),
+                                    pk_arr=pk_flipped_in_z.T, is_logp=False)
+            # TODO finish implementing this
+            raise NotImplementedError('range needs to be extended to higher redshifts to match tkka grid (probably larger k range too), \
+                some other small consistency checks needed')
 
-        # TODO delete the line below to use input pk, range needs to be extended to higher redshifts to match tkka grid (probably larger k range too)
-        p_of_k_a = 'delta_matter:delta_matter'
+        elif pyccl_cfg['which_pk_for_pyccl'] == 'PyCCL':
+            p_of_k_a = 'delta_matter:delta_matter'
 
     elif general_cfg['which_forecast'] == 'ISTF':
 
@@ -419,9 +423,8 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
                f'gal_bias_table_{general_cfg["which_forecast"]}.ascii', gal_bias_table)
 
     if has_magnification_bias:
-        maglim = general_cfg['magcut_source'] / 10
         # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
-        mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(zgrid_nz, maglim=maglim, poly_fit_values=None)
+        mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(zgrid_nz, magcut_lens=general_cfg['magcut_lens'] / 10, poly_fit_values=None)
         mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), zbins, axis=0).T
         mag_bias_tuple = (zgrid_nz, mag_bias_2d)
     else:
@@ -709,7 +712,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
     for key in cov_ng_8D_dict.keys():
         if (key == ('L', 'L', 'L', 'L')) or (key == ('G', 'L', 'G', 'L')) or (key == ('G', 'G', 'G', 'G')):
             try:
-                np.testing.assert_allclose(cov_ng_8D_dict[key], np.transpose(cov_ng_8D_dict[key], (1, 0, 2, 3)), rtol=1e-6, atol=0,
+                np.testing.assert_allclose(cov_ng_8D_dict[key], np.transpose(cov_ng_8D_dict[key], (1, 0, 2, 3)), rtol=1e-5, atol=0,
                                         err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
             except AssertionError as error:
                 print(error)

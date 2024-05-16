@@ -131,7 +131,7 @@ general_cfg = {
     'has_rsd': False,
     'has_magnification_bias': True,
 
-    'CLOE_pk_filename': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputPS/HMCodeBar/InFiles/Flat/h/PddVsZedLogK-h_6.700e-01.dat'
+    'CLOE_pk_filename': SPV3_folder+ '/InputFiles/InputPS/{which_pk:s}/InFiles/{flat_or_nonflat:s}/h/PddVsZedLogK-h_6.700e-01.dat'
 }
 
 if general_cfg['ell_max_WL'] == general_cfg['ell_max_GC']:
@@ -197,7 +197,7 @@ covariance_cfg = {
 
     'test_against_benchmarks': False,
     'test_against_CLOE_benchmarks': False,
-    'test_against_vincenzo': True,
+    'test_against_vincenzo': False,
     'compute_GSSC_condition_number': False,
 
     # ! no folders for ell_cut_center or min
@@ -209,7 +209,7 @@ covariance_cfg = {
     'cov_vinc_filename': 'cmfull-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-'
                          'idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.npz',
 
-    'SSC_code': 'PyCCL',  # ! 'PySSC' or 'PyCCL' or 'Spaceborne' or 'OneCovariance'
+    'SSC_code': 'OneCovariance',  # ! 'PySSC' or 'PyCCL' or 'Spaceborne' or 'OneCovariance'
     'check_if_recently_created': False,
 
     'PyCCL_cfg': {
@@ -217,8 +217,10 @@ covariance_cfg = {
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
         'which_ng_cov': ('SSC', 'cNG', ),
         'test_GLGL': False,  # must be set to False for actual 3x2pt runs
+        
+        'which_pk_for_pyccl': 'PyCCL',  # 'PyCCL' (the one stored in cosmo obj) or 'CLOE' (from input files - to be implemented)
 
-        'load_precomputed_cov': False,
+        'load_precomputed_cov': True,
         'save_cov': True,
         
         'load_precomputed_tkka': False,
@@ -276,12 +278,12 @@ covariance_cfg = {
     },
 
     'OneCovariance_cfg': {
-        'which_ng_cov': ('SSC', 'cNG',),
+        'which_ng_cov': ('cNG', ),
         'load_precomputed_cov': True,  # this must be True for OneCovariance
         'use_OneCovariance_Gaussian': False,
 
-        # 'cov_path': f'{DATA_ROOT}/output/Flagship_2/covmat/OneCovariance',
-        'cov_path': f'{ROOT}/common_data/OneCovariance/output_SPV3_std',
+        'cov_path': f'{DATA_ROOT}/output/Flagship_2/covmat/OneCovariance/output_SPV3_v3_dense_LiFECls',
+        # 'cov_path': f'{ROOT}/common_data/OneCovariance/output_SPV3_std',
         'cov_filename': 'cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',
     }

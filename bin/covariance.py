@@ -13,17 +13,66 @@ import os
 ROOT = os.getenv('ROOT')
 sys.path.append(f'{ROOT}/Spaceborne')
 import bin.cl_preprocessing as cl_preprocessing
-import bin.pyccl_cov as pyccl_cov
+import bin.pyccl_cov_class as pyccl_cov
 import bin.sigma2_SSC as sigma2_SSC
 import bin.my_module as mm
 import bin.cosmo_lib as csmlib
 import bin.wf_cl_lib as wf_cl_lib
+from scipy.interpolate import UnivariateSpline, interp1d
 
 ###############################################################################
 ################ CODE TO COMPUTE THE G AND SSC COVMATS ########################
 ###############################################################################
 
 probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt', }
+
+
+def __bin_cov_ell_gauss(ellrange_12_ul,
+                        ellrange_34_ul,
+                        area_12,
+                        area_34,
+                        cov,
+                        unique_12,
+                        unique_34,
+                        dense_ellrange):
+    if not isinstance(cov, np.ndarray):
+        return 0
+    full_sky_angle = 1 * 180 / np.pi * 180 / np.pi
+
+    binned_covariance = np.zeros((len(ellrange_12_ul) - 1, len(ellrange_34_ul) - 1, len(cov[0, 0, :, 0, 0, 0, 0, 0]), len(cov[0, 0, 0, :, 0, 0, 0, 0]), len(
+        cov[0, 0, 0, 0, :, 0, 0, 0]), len(cov[0, 0, 0, 0, 0, :, 0, 0]), len(cov[0, 0, 0, 0, 0, 0, :, 0]), len(cov[0, 0, 0, 0, 0, 0, 0, :])))
+    for i_ell in range(len(ellrange_12_ul) - 1):
+        for j_ell in range(len(ellrange_34_ul) - 1):
+            integration_ell_12 = np.arange(ellrange_12_ul[i_ell], ellrange_12_ul[i_ell + 1]).astype(int)
+            N_ell_12 = len(integration_ell_12)
+            integration_ell_34 = np.arange(ellrange_34_ul[j_ell], ellrange_34_ul[j_ell + 1]).astype(int)
+            N_ell_34 = len(integration_ell_34)
+            overlapping_elements = np.array(list(set(integration_ell_12).intersection(set(integration_ell_34))))
+
+            if len(overlapping_elements) == 0:
+                continue
+            else:
+                for i_sample in range(len(cov[0, 0, :, 0, 0, 0, 0, 0])):
+                    for j_sample in range(len(cov[0, 0, 0, :, 0, 0, 0, 0])):
+                        for i_tomo in range(len(cov[0, 0, 0, 0, :, 0, 0, 0])):
+                            j_tomo_start = 0
+                            if unique_12:
+                                j_tomo_start = i_tomo
+                            for j_tomo in range(j_tomo_start, len(cov[0, 0, 0, 0, 0, :, 0, 0])):
+                                for k_tomo in range(len(cov[0, 0, 0, 0, 0, 0, :, 0])):
+                                    l_tomo_start = 0
+                                    if unique_34:
+                                        l_tomo_start = k_tomo
+                                    for l_tomo in range(l_tomo_start, len(cov[0, 0, 0, 0, 0, 0, 0, :])):
+                                        if len(np.where(np.diagonal(cov[:, :, i_sample, j_sample, i_tomo, j_tomo, k_tomo, l_tomo]))[0]):
+                                            spline = UnivariateSpline(dense_ellrange, np.diagonal(
+                                                cov[:, :, i_sample, j_sample, i_tomo, j_tomo, k_tomo, l_tomo]), k=2, s=0, ext=1)
+                                            result = full_sky_angle / \
+                                                max(area_12, area_34) * np.sum(spline(overlapping_elements) /
+                                                                               (2. * overlapping_elements + 1)) / N_ell_12 / N_ell_34
+                                            binned_covariance[i_ell, j_ell, i_sample, j_sample,
+                                                              i_tomo, j_tomo, k_tomo, l_tomo] = result
+    return binned_covariance
 
 
 def get_ellmax_nbl(probe, general_cfg):
@@ -216,12 +265,15 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
     else:
         assert ssc_code == 'PyCCL', 'covariance can be computed directly only with PyCCL at the moment'
 
-        cov_3x2pt_dict_8D = pyccl_cov.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], '3x2pt',
-                                                                which_ng_cov=which_ng_cov,
-                                                                ell_grid=ell_dict['ell_3x2pt'],
-                                                                general_cfg=general_cfg,
-                                                                covariance_cfg=covariance_cfg,
-                                                                cov_filename=cov_filename)
+        ccl_obj = pyccl_cov.PycclClass(general_cfg['fid_pars_dict'])
+        cov_3x2pt_dict_8D = ccl_obj.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], '3x2pt',
+                                                              which_ng_cov=which_ng_cov,
+                                                              ell_grid=ell_dict['ell_3x2pt'],
+                                                              general_cfg=general_cfg,
+                                                              covariance_cfg=covariance_cfg,
+                                                              cov_filename=cov_filename)
+        cov_3x2pt_dict_8D = ccl_obj.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], '3x2pt', which_ng_cov, ell_grid, general_cfg,
+                                                              covariance_cfg, cov_filename)
 
     if ssc_code == 'Spaceborne':
         # in this case, you still need to divide by fsky
@@ -579,7 +631,14 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_XC_GS_2D = mm.cov_4D_to_2D(cov_XC_GS_4D, block_index=block_index)
     cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, block_index=block_index)
     cov_2x2pt_GS_2D = mm.cov_4D_to_2D(cov_2x2pt_GS_4D, block_index=block_index)
-    
+
+    # elem_3x2pt = cov_3x2pt_GO_2D.shape[0]
+    # path_drive = '/home/davide/Scaricati/SPV3Forecasts_covs/covs_dav'
+    # cov_3x2pt_GO_2D_drive = np.genfromtxt(f'{path_drive}/CovMat-3x2pt-Gauss-nbl32_ellmax5000_zbins{general_cfg["EP_or_ED"]}{zbins:02d}.dat')[:elem_3x2pt, :elem_3x2pt]
+    # mm.compare_arrays(cov_3x2pt_GO_2D, cov_3x2pt_GO_2D_drive, 'cov_3x2pt_GO_2D', 'cov_3x2pt_GO_2D_drive')
+
+    # assert False, 'stop here'
+
     cov_2x2pt_GO_2D = np.eye(cov_2x2pt_GO_2D.shape[0])
     cov_2x2pt_GS_2D = np.eye(cov_2x2pt_GS_2D.shape[0])
     print('Covariance matrices reshaped (4D -> 2D) in {:.2f} s'.format(time.perf_counter() - start))

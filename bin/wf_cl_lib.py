@@ -27,6 +27,8 @@ import my_module as mm
 import cosmo_lib as csmlib
 import common_cfg.ISTF_fid_params as ISTF
 import common_cfg.mpl_cfg as mpl_cfg
+import matplotlib.lines as mlines
+
 
 # update plot pars
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -67,7 +69,6 @@ c = 299792.458  # km/s
 # z_max_cl = cfg.z_max_cl
 # z_grid = np.linspace(z_min, z_max_cl, cfg.zsteps_cl)
 # # use_h_units = cfg.use_h_units
-
 
 
 @njit
@@ -382,32 +383,33 @@ def b_of_z_fs1_pocinofit(z):
     return a * z ** b / (1 + z) + c
 
 
-def b_of_z_fs2_fit(z, maglim, poly_fit_values=None):
+def b_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
     # from the MCMC for SPV3 google doc: https://docs.google.com/document/d/1WCGhiBrlTsvl1VS-2ngpjirMnAS-ahtnoGX_7h8JoQU/edit
-    if maglim == 24.5:
+    if magcut_lens == 24.5:
         b0_gal, b1_gal, b2_gal, b3_gal = 1.33291, -0.72414, 1.0183, -0.14913
-    elif maglim == 23:
+    elif magcut_lens == 23:
         b0_gal, b1_gal, b2_gal, b3_gal = 1.88571, -2.73925, 3.24688, -0.73496
     else:
-        raise ValueError('maglim, i.e. the limiting magnitude of the GCph sample, must be 23 or 24.5')
+        raise ValueError('magcut_lens, i.e. the limiting magnitude of the GCph sample \
+                         (the naming is confusing but correct), must be 23 or 24.5')
 
     if poly_fit_values is not None:
         assert len(poly_fit_values) == 4, 'a list of 4 best-fit values must be passed'
-        np.testing.assert_allclose(np.array(poly_fit_values), np.array((b0_gal, b1_gal, b2_gal, b3_gal)), atol=0,
-                                   rtol=1e-5)
+        np.testing.assert_allclose(np.array(poly_fit_values),
+                                   np.array((b0_gal, b1_gal, b2_gal, b3_gal)), atol=0, rtol=1e-5)
 
     return b0_gal + (b1_gal * z) + (b2_gal * z ** 2) + (b3_gal * z ** 3)
 
 
-def magbias_of_z_fs2_fit(z, maglim, poly_fit_values=None):
+def magbias_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
     # from the MCMC for SPV3 google doc: https://docs.google.com/document/d/1WCGhiBrlTsvl1VS-2ngpjirMnAS-ahtnoGX_7h8JoQU/edit
-
-    if maglim == 24.5:
+    if magcut_lens == 24.5:
         b0_mag, b1_mag, b2_mag, b3_mag = -1.50685, 1.35034, 0.08321, 0.04279
-    elif maglim == 23:
+    elif magcut_lens == 23:
         b0_mag, b1_mag, b2_mag, b3_mag = -2.34493, 3.73098, 0.12500, -0.01788
     else:
-        raise ValueError('maglim, i.e. the limiting magnitude of the GCph sample, must be 23 or 24.5')
+        raise ValueError('magcut_lens, i.e. the limiting magnitude of the GCph sample \
+                         (the naming is confusing but correct), must be 23 or 24.5')
 
     if poly_fit_values is not None:
         assert len(poly_fit_values) == 4, 'a list of 4 best-fit values must be passed'
@@ -417,10 +419,10 @@ def magbias_of_z_fs2_fit(z, maglim, poly_fit_values=None):
     return b0_mag + (b1_mag * z) + (b2_mag * z ** 2) + (b3_mag * z ** 3)
 
 
-def s_of_z_fs2_fit(z, maglim, poly_fit_values=None):
+def s_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
     """ wrapper function to output the magnification bias as needed in ccl; function written by Marco """
     # from the MCMC for SPV3 google doc: https://docs.google.com/document/d/1WCGhiBrlTsvl1VS-2ngpjirMnAS-ahtnoGX_7h8JoQU/edit
-    return (magbias_of_z_fs2_fit(z, maglim, poly_fit_values=poly_fit_values) + 2) / 5
+    return (magbias_of_z_fs2_fit(z, magcut_lens, poly_fit_values=poly_fit_values) + 2) / 5
 
 
 def stepwise_bias(z, gal_bias_vs_zmean, z_edges):
@@ -707,16 +709,15 @@ def wf_ccl(z_grid, probe, which_wf, flat_fid_pars_dict, cosmo_ccl, dndz_tuple, i
             assert mag_bias_tuple[1].shape == (
                 len(z_grid), zbins), 'mag_bias_tuple[1] must have shape (len(z_grid), zbins)'
 
-
         wf_galaxy_obj = []
         for zbin_idx in range(zbins):
-            
+
             # this is needed to be eble to pass mag_bias = None for each zbin
             if mag_bias_tuple is None:
                 mag_bias_arg = mag_bias_tuple
             else:
                 mag_bias_arg = (mag_bias_tuple[0], mag_bias_tuple[1][:, zbin_idx])
-                
+
             wf_galaxy_obj.append(ccl.tracers.NumberCountsTracer(cosmo_ccl,
                                                                 has_rsd=has_rsd,
                                                                 dndz=(dndz_tuple[0], dndz_tuple[1][:, zbin_idx]),
@@ -960,17 +961,15 @@ def get_cl_3D_array(wf_A, wf_B, ell_values):
 
 
 def cl_PyCCL(wf_A, wf_B, ell, zbins, p_of_k_a, cosmo, limber_integration_method='qag_quad'):
-    # instantiate cosmology
 
     is_auto_spectrum = False
     if wf_A == wf_B:
         is_auto_spectrum = True
 
     nbl = len(ell)
-    
+
     if p_of_k_a is None:
         p_of_k_a = 'delta_matter:delta_matter'
-    
 
     if is_auto_spectrum:
         cl_3D = np.zeros((nbl, zbins, zbins))
@@ -1463,18 +1462,21 @@ def shift_nz(zgrid_nz, nz_original, dz_shifts, normalize, plot_nz=False, interpo
         z_grid_nz_shifted = np.clip(z_grid_nz_shifted, clip_min, clip_max)
         n_of_z_shifted[:, zi] = n_of_z_func(z_grid_nz_shifted)
 
+    if normalize:
+        integrals = simps(n_of_z_shifted, zgrid_nz, axis=0)
+        n_of_z_shifted /= integrals[None, :]
+
     if plot_nz:
         plt.figure()
         for zi in range(zbins):
             plt.plot(zgrid_nz, nz_original[:, zi], ls='-', c=colors[zi])
             plt.plot(zgrid_nz, n_of_z_shifted[:, zi], ls='--', c=colors[zi])
-        plt.legend()
-        plt.xlabel('z')
-        plt.ylabel('n(z)')
 
-    if normalize:
-        integrals = simps(n_of_z_shifted, zgrid_nz, axis=0)
-        n_of_z_shifted /= integrals[None, :]
+        legend_elements = [mlines.Line2D([], [], color='k', linestyle='-', label='Original'),
+                           mlines.Line2D([], [], color='k', linestyle='--', label='Shifted')]
+        plt.legend(handles=legend_elements)
+        plt.xlabel('$z$')
+        plt.ylabel('$n_i(z)$')
 
     return n_of_z_shifted
 

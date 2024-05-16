@@ -242,7 +242,7 @@ covariance_cfg = {
         'use_OneCovariance_Gaussian': False,
         
         # 'cov_path': f'{DATA_ROOT}/output/{which_input_files}/covmat/OneCovariance',
-        'cov_path': f'{ROOT}/OneCovariance/output_ISTF_v2',
+        'cov_path': f'{ROOT}/common_data/Spaceborne/jobs/ISTF/output/{which_input_files}/covmat/OneCovariance//output_ISTF_v3_nobinning',
         'cov_filename': 'cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_'
                         'nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz',
     }

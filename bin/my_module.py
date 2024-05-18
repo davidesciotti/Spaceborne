@@ -3182,9 +3182,9 @@ def build_noise(zbins, n_probes, sigma_eps2, ng, EP_or_ED, which_shape_noise='IS
         assert np.all(ng > 0), 'ng should be positive'
         assert np.sum(ng) > 20, 'ng should roughly be > 20'
         if EP_or_ED == 'EP':
-            assert np.allclose(np.ones_like(ng) * ng[0], ng, rtol=0.05,
-                               atol=0), 'if ng is a vector and the bins are equipopulated, ' \
-                                        'the value in each bin should be the same (or very similar)'
+            if not np.allclose(np.ones_like(ng) * ng[0], ng, rtol=0.05, atol=0):
+                warnings.warn('if ng is a vector and the bins are equipopulated, ' \
+                                        'the value in each bin should be the same (or very similar)')
         n_bar = ng * conversion_factor
 
     else:
@@ -3198,7 +3198,7 @@ def build_noise(zbins, n_probes, sigma_eps2, ng, EP_or_ED, which_shape_noise='IS
     elif which_shape_noise == 'correct':
         np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar))  # ! correct
     else:
-        raise ValueError('which_shape_noise must be ISTF or correct')
+        raise ValueError('which_shape_noise must be "ISTF" or "correct"')
 
     np.fill_diagonal(noise_4d[1, 1, :, :], 1 / n_bar)
     noise_4d[0, 1, :, :] = 0

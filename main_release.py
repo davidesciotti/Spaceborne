@@ -1108,24 +1108,23 @@ pk_gm_ccl = gal_bias[None, :] * pk_mm_ccl
 pk_gg_ccl = gal_bias[None, :]**2 * pk_mm_ccl
 
 plt.figure()
-# pick a redshift and get the corresponding index
 clr = cm.rainbow(np.linspace(0, 1, 5))
 for count, z_val in enumerate((0, 0.5, 1, 2, 3)):
 
+    # pick a redshift and get the corresponding index
     z_idx_cloe = np.argmin(np.abs(z_grid_pk2d_cloe - z_val))
     z_idx_ccl = np.argmin(np.abs(z_grid_dPk_hm - z_val))
 
     z_val_cloe = z_grid_pk2d_cloe[z_idx_cloe]
     z_val_ccl = z_grid_dPk_hm[z_idx_ccl]
 
-    plt.loglog(kgrid_pk2d_cloe, pk2d_cloe[:, z_idx_cloe], ls='-', c=clr[count], label='cloe')
-    plt.loglog(k_grid_dPk_hm, pk_mm_ccl[:, z_idx_ccl], ls=':', c=clr[count], alpha=0.5, label='davide ccl')
-plt.title('P(k), ccl vs imported (CLOE)')
+    plt.loglog(kgrid_pk2d_cloe, pk2d_cloe[:, z_idx_cloe], ls='-', c=clr[count], )
+    plt.loglog(k_grid_dPk_hm, pk_mm_ccl[:, z_idx_ccl], ls=':', c=clr[count], alpha=0.5)
 
-# since the nonlin pks don't match, I define a custom Pk2D object
-# scale_factor_grid_pk = csmlib.z_to_a(z_grid_Pk)[::-1]  # flip it
-# pk2d_ccl_obj = ccl.pk2d.Pk2D(a_arr=scale_factor_grid_pk, lk_arr=np.log(k_grid_Pk),
-#  pk_arr=pk_mm_2d.T, is_logp=False)
+handles = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
+              for ls, label in zip(['-', '--'], ['CLOE', 'CCL'])]
+plt.legend(handles=handles)
+plt.title('P(k), ccl vs imported (CLOE)')
 
 
 # TODO check galaxy counterterms

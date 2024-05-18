@@ -68,6 +68,7 @@ cosmology:
         camb_extra_parameters:
             camb:
                 halofit_version: mead2020_feedback
+                kmax: 100
                 HMCode_logT_AGN: 7.75
                 num_massive_neutrinos: 1
                 dark_energy_model: ppf

@@ -305,9 +305,37 @@ def plot_kernels_for_thesis():
     plt.legend(loc='lower right')
 
 
+def SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab, 
+                                  ind_auto, ind_cross, cl_integral_prefactor, sigma2, z_grid):
+    """Kernel to compute the 4D integral optimized using Simpson's rule using Julia."""
+    
+    if not os.path.exists("tmp"):
+        os.system("mkdir tmp")
+    np.save("tmp/d2CLL_dVddeltab", d2CLL_dVddeltab)
+    np.save("tmp/d2CGL_dVddeltab", d2CGL_dVddeltab)
+    np.save("tmp/d2CGG_dVddeltab", d2CGG_dVddeltab)
+    np.save("tmp/ind_auto", ind_auto)
+    np.save("tmp/ind_cross", ind_cross)
+    np.save("tmp/cl_integral_prefactor", cl_integral_prefactor)
+    np.save("tmp/sigma2", sigma2)
+    np.save("tmp/z_grid", z_grid)
+    os.system("julia --project=. --threads=16 spaceborne/SSC_integral_julia_new_dav.jl")
+    
+    cov_filename = "cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npy"
+    
+    cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
+        path='tmp/', 
+        filename=cov_filename, 
+        probe_ordering=probe_ordering)
+    
+    os.system("rm -rf tmp")
+    return cov_ssc_3x2pt_dict_8D
+
 # * ====================================================================================================================
 # * ====================================================================================================================
 # * ====================================================================================================================
+
+
 with open('config_release.yaml') as f:
     cfg = yaml.safe_load(f)
 
@@ -412,6 +440,8 @@ cases_tosave = '_'
 ind = mm.build_full_ind(triu_tril, row_col_major, zbins)
 covariance_cfg['ind'] = ind
 zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
+ind_auto = ind[:zpairs_auto, :].copy()
+ind_cross = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
 
 if not general_cfg['ell_cuts']:
     general_cfg['ell_cuts_subfolder'] = ''
@@ -581,7 +611,7 @@ if general_cfg['which_forecast'] == 'SPV3' and pyccl_cfg['which_pk_for_pyccl'] =
         param_value=0.67
     )
 
-    ccl_obj.p_of_k_a = ccl_obj.pk_obj_from_file(pk_filename=cloe_pk_filename, plot_pk_z0=True)
+    ccl_obj.p_of_k_a = ccl_obj.pk_obj_from_file(pk_filename=cloe_pk_filename, plot_pk_z0=False)
     # TODO finish implementing this
     warnings.warn('Extrapolating the P(k) in Tk3D_SSC!')
     # raise NotImplementedError('range needs to be extended to higher redshifts to match tkka grid (probably larger k range too), \
@@ -1071,8 +1101,10 @@ k_grid_sigma2 = np.logspace(covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2
                             covariance_cfg['Spaceborne_cfg']['k_steps_sigma2'])
 which_sigma2_B = covariance_cfg['Spaceborne_cfg']['which_sigma2_B']
 
-# sigma2_b = sigma2_SSC.compute_sigma2(z_grid_ssc_integrands, k_grid_sigma2, which_sigma2_B,
-                                    #  ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
+sigma2_b = sigma2_SSC.compute_sigma2(z_grid_ssc_integrands, k_grid_sigma2, which_sigma2_B,
+                                     ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
+
+
 
 
 # ! 4. Perform the integration calling the Julia module
@@ -1089,7 +1121,13 @@ which_sigma2_B = covariance_cfg['Spaceborne_cfg']['which_sigma2_B']
 # plt.xscale('log')
 # plt.legend()
 
+
+cov_ssc_3x2pt_dict_8D = SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab, 
+                                  ind_auto, ind_cross, cl_integral_prefactor, sigma2_b, z_grid_ssc_integrands)
+
 print('SSC computed')
+
+assert False, 'stop here to check Julia SSC integral'
 
 
 # CCL pk
@@ -1141,27 +1179,6 @@ import sys
 sys.path.append('/home/davide/Documenti/Lavoro/Programmi/exact_SSC/bin')
 import ssc_integrands_SPV3 as sscint
 
-path = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SSC_paper_final/output/responses'
-halofit_version = cfg['cosmology']['other_params']['camb_extra_parameters']['camb']['halofit_version']
-np.save(f'{path}/k_grid_dPk_hm_{halofit_version}.npy', k_grid_dPk_hm)
-np.save(f'{path}/z_grid_dPk_hm_{halofit_version}.npy', k_grid_dPk_hm)
-np.save(f'{path}/dPmm_ddeltab_hm_{halofit_version}.npy', dPmm_ddeltab_hm)
-np.save(f'{path}/dPgm_ddeltab_hm_{halofit_version}.npy', dPgm_ddeltab_hm)
-np.save(f'{path}/dPgg_ddeltab_hm_{halofit_version}.npy', dPgg_ddeltab_hm)
-np.save(f'{path}/dPlog_mm_ddeltab_hm_{halofit_version}.npy', dPmm_ddeltab_hm/pk_mm_ccl)
-np.save(f'{path}/dPlog_gm_ddeltab_hm_{halofit_version}.npy', dPgm_ddeltab_hm/pk_gm_ccl)
-np.save(f'{path}/dPlog_gg_ddeltab_hm_{halofit_version}.npy', dPgg_ddeltab_hm/pk_gg_ccl)
-
-
-# halofit_version = 'mead2020_feedback'
-# k_grid_dPk_hm_m2f = np.load(f'{path}/k_grid_dPk_hm_{halofit_version}.npy', k_grid_dPk_hm)
-# z_grid_dPk_hm_m2f = np.load(f'{path}/z_grid_dPk_hm_{halofit_version}.npy', k_grid_dPk_hm)
-# dPmm_ddeltab_hm_m2f = np.load(f'{path}/dPmm_ddeltab_hm_{halofit_version}.npy', dPmm_ddeltab_hm)
-# dPgm_ddeltab_hm_m2f = np.load(f'{path}/dPgm_ddeltab_hm_{halofit_version}.npy', dPgm_ddeltab_hm)
-# dPgg_ddeltab_hm_m2f = np.load(f'{path}/dPgg_ddeltab_hm_{halofit_version}.npy', dPgg_ddeltab_hm)
-# dlogPmm_ddeltab_hm_m2f = np.load(f'{path}/dPlog_mm_ddeltab_hm_{halofit_version}.npy', dPmm_ddeltab_hm/pk_mm_ccl)
-# dlogPgm_ddeltab_hm_m2f = np.load(f'{path}/dPlog_gm_ddeltab_hm_{halofit_version}.npy', dPgm_ddeltab_hm/pk_gm_ccl)
-# dlogPgg_ddeltab_hm_m2f = np.load(f'{path}/dPlog_gg_ddeltab_hm_{halofit_version}.npy', dPgg_ddeltab_hm/pk_gg_ccl)
 
 
 z_val = 0
@@ -1178,15 +1195,10 @@ plt.plot(k_grid_dPk_hm, np.abs(dPmm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5,
 plt.plot(k_grid_dPk_hm, np.abs(dPgm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:orange')
 plt.plot(k_grid_dPk_hm, np.abs(dPgg_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:green')
 
-# HM_mead2020_feedback
-plt.plot(k_grid_dPk_hm, np.abs(dPmm_ddeltab_hm_m2f[:, z_idx_hm]), ls='--', alpha=0.5, c='tab:blue')
-plt.plot(k_grid_dPk_hm, np.abs(dPgm_ddeltab_hm_m2f[:, z_idx_hm]), ls='--', alpha=0.5, c='tab:orange')
-plt.plot(k_grid_dPk_hm, np.abs(dPgg_ddeltab_hm_m2f[:, z_idx_hm]), ls='--', alpha=0.5, c='tab:green')
-
 # SU
-# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPmm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:blue')
-# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:orange')
-# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgg_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:green')
+plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPmm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:blue')
+plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:orange')
+plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgg_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:green')
 
 plt.xscale('log')
 plt.yscale('log')
@@ -1199,11 +1211,9 @@ handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels_a[i]) for 
 handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
               for ls, label in zip(['-', '--'], ['signal', 'error'])]
 handles = handles_z + handles_ls
-# labels = labels_a + ['Halo model', 'Separate universe']
-labels = labels_a + ['Bird', 'mead2020_feedback']
+labels = labels_a + ['Halo model', 'Separate universe']
 plt.legend(handles, labels)
-# plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
-plt.title(f'z_hm = {z_val_hm:.3f}')
+plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
 plt.tight_layout()
 plt.show()
 
@@ -1214,16 +1224,10 @@ plt.figure()
 plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:blue')
 plt.plot(k_grid_dPk_hm, dPgm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:orange')
 plt.plot(k_grid_dPk_hm, dPgg_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:green')
-
-plt.plot(k_grid_dPk_hm, dlogPmm_ddeltab_hm_m2f[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='--', alpha=0.5, c='tab:blue')
-plt.plot(k_grid_dPk_hm, dlogPgm_ddeltab_hm_m2f[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='--', alpha=0.5, c='tab:orange')
-plt.plot(k_grid_dPk_hm, dlogPgg_ddeltab_hm_m2f[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='--', alpha=0.5, c='tab:green')
-
-
 # SU
-# plt.plot(sscint.k_grid_dPk, sscint.r_mm[:, z_idx_su], ls='--', alpha=0.5, c='tab:blue')
-# plt.plot(sscint.k_grid_dPk, sscint.r_gm[:, z_idx_su], ls='--', alpha=0.5, c='tab:orange')
-# plt.plot(sscint.k_grid_dPk, sscint.r_gg[:, z_idx_su], ls='--', alpha=0.5, c='tab:green')
+plt.plot(sscint.k_grid_dPk, sscint.r_mm[:, z_idx_su], ls='--', alpha=0.5, c='tab:blue')
+plt.plot(sscint.k_grid_dPk, sscint.r_gm[:, z_idx_su], ls='--', alpha=0.5, c='tab:orange')
+plt.plot(sscint.k_grid_dPk, sscint.r_gg[:, z_idx_su], ls='--', alpha=0.5, c='tab:green')
 
 plt.xscale('log')
 plt.xlabel('k [1/Mpc]')

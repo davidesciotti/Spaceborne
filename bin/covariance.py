@@ -893,6 +893,6 @@ def save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_spec
                 cov_filename_vincenzo = covariance_cfg['cov_filename_vincenzo'].format(probe_vinc=probe_vinc,
                                                                                        GOGS_filename=GOGS_filename,
                                                                                        **variable_specs)
-                np.savetxt(f'{cov_folder_vincenzo}/{GOGS_folder}/{cov_filename_vincenzo}',
+                np.savetxt(f'{cov_folder}/{cov_filename_vincenzo}',
                            cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.9e')
         print('Covariance matrices saved')

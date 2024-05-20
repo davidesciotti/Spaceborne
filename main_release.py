@@ -770,15 +770,15 @@ list_params_to_vary = [param for param in fid_pars_dict['FM_ordered_params'].key
 # list_params_to_vary = ['h', 'wa', 'dzWL01', 'm06', 'bG02', 'bM02']
 # list_params_to_vary = ['bM02', ]
 
-if general_cfg['which_derivatives'] == 'Spaceborne':
+if fm_cfg['which_derivatives'] == 'Spaceborne':
 
-    if general_cfg['load_precomputed_derivatives']:
+    if fm_cfg['load_preprocess_derivatives']:
         # a better name should be dict_4D...? anyway, not so important
         dC_dict_LL_3D = np.load(f'/home/davide/Scrivania/test_ders/dcl_LL.npy', allow_pickle=True).item()
         dC_dict_GL_3D = np.load(f'/home/davide/Scrivania/test_ders/dcl_GL.npy', allow_pickle=True).item()
         dC_dict_GG_3D = np.load(f'/home/davide/Scrivania/test_ders/dcl_GG.npy', allow_pickle=True).item()
 
-    elif not general_cfg['load_precomputed_derivatives']:
+    elif not fm_cfg['load_preprocess_derivatives']:
         start_time = time.perf_counter()
         cl_LL, cl_GL, cl_GG, dC_dict_LL_3D, dC_dict_GL_3D, dC_dict_GG_3D = wf_cl_lib.compute_cls_derivatives(
             cfg, list_params_to_vary, zbins, (n_of_z_full[:, 0], n_of_z_full[:, 1:]),
@@ -804,8 +804,9 @@ if general_cfg['which_derivatives'] == 'Spaceborne':
         dC_3x2pt_6D[1, 0, :, :, :, par_idx] = dC_dict_GL_3D[par_name][:nbl_3x2pt, :, :]
         dC_3x2pt_6D[1, 1, :, :, :, par_idx] = dC_dict_GG_3D[par_name][:nbl_3x2pt, :, :]
 
-elif general_cfg['which_derivatives'] == 'Vincenzo':
+elif fm_cfg['which_derivatives'] == 'Vincenzo':
     # Vincenzo's derivatives
+    der_prefix = fm_cfg['derivatives_prefix']
     derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs, SPV3_folder=general_cfg['SPV3_folder'])
     # ! get vincenzo's derivatives' parameters, to check that they match with the yaml file
     # check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
@@ -890,8 +891,7 @@ elif general_cfg['which_derivatives'] == 'Vincenzo':
                 elif 'WLA' in key:
                     dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
                 elif '3x2pt' in key:
-                    dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt,
-                                                                    zbins)
+                    dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt, zbins)
 
 else:
     raise ValueError('which_derivatives must be either "Spaceborne" or "Vincenzo"')
@@ -1133,6 +1133,13 @@ sigma2_b = sigma2_SSC.compute_sigma2(z_grid_ssc_integrands, k_grid_sigma2, which
 cov_ssc_3x2pt_dict_8D = SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
                                                       ind_auto, ind_cross, cl_integral_prefactor, sigma2_b, z_grid_ssc_integrands)
 
+for key in cov_ssc_3x2pt_dict_8D.keys():
+    cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
+
+# TODO handle better this covariance object
+# at the moment, I pass the covariance in this way
+covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
+
 print('SSC computed with Spaceborne')
 
 
@@ -1182,77 +1189,76 @@ plt.title('P(k), ccl vs imported (CLOE)')
 
 
 # # ! quickly check responses
-import sys
-sys.path.append('/home/davide/Documenti/Lavoro/Programmi/exact_SSC/bin')
-import ssc_integrands_SPV3 as sscint
+# import sys
+# sys.path.append('/home/davide/Documenti/Lavoro/Programmi/exact_SSC/bin')
+# import ssc_integrands_SPV3 as sscint
 
 
-z_val = 0
-z_grid_dPk_su = sscint.z_grid_dPk
-z_idx_hm = np.argmin(np.abs(z_grid_dPk_hm - z_val))
-z_idx_su = np.argmin(np.abs(z_grid_dPk_su - z_val))
-z_val_hm = z_grid_dPk_hm[z_idx_hm]
-z_val_su = z_grid_dPk_su[z_idx_su]
+# z_val = 0
+# z_grid_dPk_su = sscint.z_grid_dPk
+# z_idx_hm = np.argmin(np.abs(z_grid_dPk_hm - z_val))
+# z_idx_su = np.argmin(np.abs(z_grid_dPk_su - z_val))
+# z_val_hm = z_grid_dPk_hm[z_idx_hm]
+# z_val_su = z_grid_dPk_su[z_idx_su]
 
-# dPAB/ddeltab
-plt.figure()
-# HM
-plt.plot(k_grid_dPk_hm, np.abs(dPmm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:blue')
-plt.plot(k_grid_dPk_hm, np.abs(dPgm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:orange')
-plt.plot(k_grid_dPk_hm, np.abs(dPgg_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:green')
+# # dPAB/ddeltab
+# plt.figure()
+# # HM
+# plt.plot(k_grid_dPk_hm, np.abs(dPmm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:blue')
+# plt.plot(k_grid_dPk_hm, np.abs(dPgm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:orange')
+# plt.plot(k_grid_dPk_hm, np.abs(dPgg_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:green')
 
-# SU
-plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPmm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:blue')
-plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:orange')
-plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgg_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:green')
+# # SU
+# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPmm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:blue')
+# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:orange')
+# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgg_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:green')
 
-plt.xscale('log')
-plt.yscale('log')
-plt.xlabel('k [1/Mpc]')
-plt.ylabel(r'${\rm abs} \; \partial P_{AB} / \partial \delta_b$')
+# plt.xscale('log')
+# plt.yscale('log')
+# plt.xlabel('k [1/Mpc]')
+# plt.ylabel(r'${\rm abs} \; \partial P_{AB} / \partial \delta_b$')
 
-colors = ['tab:blue', 'tab:orange', 'tab:green']
-labels_a = ['dPmm_ddeltab', 'dPgm_ddeltab', 'dPgg_ddeltab']
-handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels_a[i]) for i in range(3)]
-handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
-              for ls, label in zip(['-', '--'], ['signal', 'error'])]
-handles = handles_z + handles_ls
-labels = labels_a + ['Halo model', 'Separate universe']
-plt.legend(handles, labels)
-plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
-plt.tight_layout()
-plt.show()
-
-
-# dlogPAB/ddeltab
-plt.figure()
-# HM
-plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:blue')
-plt.plot(k_grid_dPk_hm, dPgm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:orange')
-plt.plot(k_grid_dPk_hm, dPgg_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:green')
-# SU
-plt.plot(sscint.k_grid_dPk, sscint.r_mm[:, z_idx_su], ls='--', alpha=0.5, c='tab:blue')
-plt.plot(sscint.k_grid_dPk, sscint.r_gm[:, z_idx_su], ls='--', alpha=0.5, c='tab:orange')
-plt.plot(sscint.k_grid_dPk, sscint.r_gg[:, z_idx_su], ls='--', alpha=0.5, c='tab:green')
-
-plt.xscale('log')
-plt.xlabel('k [1/Mpc]')
-plt.ylabel(r'$\partial {\rm log} P_{AB} / \partial \delta_b$')
-
-colors = ['tab:blue', 'tab:orange', 'tab:green']
-labels_a = ['dPmm_ddeltab/Pmm', 'dPgm_ddeltab/Pgm', 'dPgg_ddeltab/Pgg']
-handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels[i]) for i in range(3)]
-handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
-              for ls, label in zip(['-', '--'], ['signal', 'error'])]
-handles = handles_z + handles_ls
-labels = labels_a + ['Halo model', 'Separate universe']
-plt.legend(handles, labels)
-plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
-plt.tight_layout()
-plt.show()
+# colors = ['tab:blue', 'tab:orange', 'tab:green']
+# labels_a = ['dPmm_ddeltab', 'dPgm_ddeltab', 'dPgg_ddeltab']
+# handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels_a[i]) for i in range(3)]
+# handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
+#               for ls, label in zip(['-', '--'], ['signal', 'error'])]
+# handles = handles_z + handles_ls
+# labels = labels_a + ['Halo model', 'Separate universe']
+# plt.legend(handles, labels)
+# plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
+# plt.tight_layout()
+# plt.show()
 
 
-assert False, 'stop here to check responses'
+# # dlogPAB/ddeltab
+# plt.figure()
+# # HM
+# plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:blue')
+# plt.plot(k_grid_dPk_hm, dPgm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:orange')
+# plt.plot(k_grid_dPk_hm, dPgg_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:green')
+# # SU
+# plt.plot(sscint.k_grid_dPk, sscint.r_mm[:, z_idx_su], ls='--', alpha=0.5, c='tab:blue')
+# plt.plot(sscint.k_grid_dPk, sscint.r_gm[:, z_idx_su], ls='--', alpha=0.5, c='tab:orange')
+# plt.plot(sscint.k_grid_dPk, sscint.r_gg[:, z_idx_su], ls='--', alpha=0.5, c='tab:green')
+
+# plt.xscale('log')
+# plt.xlabel('k [1/Mpc]')
+# plt.ylabel(r'$\partial {\rm log} P_{AB} / \partial \delta_b$')
+
+# colors = ['tab:blue', 'tab:orange', 'tab:green']
+# labels_a = ['dPmm_ddeltab/Pmm', 'dPgm_ddeltab/Pgm', 'dPgg_ddeltab/Pgg']
+# handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels[i]) for i in range(3)]
+# handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
+#               for ls, label in zip(['-', '--'], ['signal', 'error'])]
+# handles = handles_z + handles_ls
+# labels = labels_a + ['Halo model', 'Separate universe']
+# plt.legend(handles, labels)
+# plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
+# plt.tight_layout()
+# plt.show()
+
+
 
 
 # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
@@ -1459,7 +1465,7 @@ vinc_param_names.sort()
 
 # ! get fiducials names and values from the yaml file
 # remove ODE if I'm studying only flat models
-if flat_or_nonflat == 'Flat' and 'ODE' in fid_pars_dict['FM_ordered_params']:
+if general_cfg['flat_or_nonflat'] == 'Flat' and 'ODE' in fid_pars_dict['FM_ordered_params']:
     fid_pars_dict['FM_ordered_params'].pop('ODE')
 fm_fid_dict = fid_pars_dict['FM_ordered_params']
 param_names_3x2pt = list(fm_fid_dict.keys())

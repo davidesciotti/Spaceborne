@@ -342,6 +342,7 @@ FM_cfg:
     save_FM_dict: False
 
     load_preprocess_derivatives: False
+    which_derivatives: Vincenzo  # Vincenzo or Spaceborne
     derivatives_folder: "{SPV3_folder:s}/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}"  # TODO delete this
 
     derivatives_filename: dDVd{param_name:s}-{probe:s}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{EP_or_ED:s}{zbins:02d}.dat

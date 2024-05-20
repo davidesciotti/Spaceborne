@@ -270,9 +270,14 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
                                                               covariance_cfg, cov_filename)
 
     if ssc_code == 'Spaceborne':
-        # in this case, you still need to divide by fsky
-        for key in cov_3x2pt_dict_8D.keys():
-            cov_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
+        # in this case, you still need to divide by fsky - done in the main for the moment
+        # for key in cov_3x2pt_dict_8D.keys():
+        #     cov_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
+
+        cov_3x2pt_dict_8D = covariance_cfg['cov_ssc_3x2pt_dict_8D_sb']
+
+        # raise NotImplementedError('Spaceborne is currently implemented in the main, but it will eventually go here '
+        #                           'or in a separate module')
 
     # reshape the blocks in the dictionary from 4D to 6D, as needed by the BNT
     cov_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering)
@@ -392,8 +397,12 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     # ! ======================================= COMPUTE GAUSS ONLY COVARIANCE =======================================
 
     # build noise vector
-    noise_3x2pt_4D = mm.build_noise(zbins, n_probes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=covariance_cfg['ng'],
-                                    EP_or_ED=general_cfg['EP_or_ED'])
+    sigma_eps2 = (covariance_cfg['sigma_eps_i'] * np.sqrt(2))**2
+    ng_shear = np.array(covariance_cfg['ngal_lensing'])
+    ng_clust = np.array(covariance_cfg['ngal_clustering'])
+    noise_3x2pt_4D = mm.build_noise_v2(zbins, n_probes, sigma_eps2=sigma_eps2,
+                                       ng_shear=ng_shear, ng_clust=ng_clust,
+                                       EP_or_ED=general_cfg['EP_or_ED'], which_shape_noise='ISTF')
 
     # create dummy ell axis, the array is just repeated along it
     nbl_max = np.max((nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA))

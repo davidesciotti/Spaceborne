@@ -51,8 +51,8 @@ fm_last_folder = '/jan_2024'  # /standard or /jan_2024
 ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
 
 codes_to_compare = ( 'OneCovariance', 'OneCovariance')
-filename_suffix_list = ('_std_ellFix', '_dense_LiFECls_shearFix')
-which_cov_term_list = ['G', 'GSSC', 'GcNG', ]
+filename_suffix_list = ('_GaussWrong', '_GaussCorrect')
+which_cov_term_list = ['G', 'GSSC']
 
 
 fix_dz_plt = True
@@ -76,7 +76,7 @@ num_params_tokeep = 7
 
 gal_bias_perc_prior = None  # ! not quite sure this works properly...
 string_columns = ['probe', 'which_cov_term', 'ng_cov_code', 'filename_suffix', 'whose_FM', 'which_pk', 'BNT_transform', 'ell_cuts', 'which_cuts',
-                  'center_or_min', 'fix_dz', 'fix_shear_bias', 'fix_gal_bias', 'fix_mag_bias', 'foc', 'kmax_h_over_Mpc']
+                  'center_or_min', 'fix_dz', 'fix_shear_bias', 'fix_gal_bias', 'fix_mag_bias', 'foc', 'kmax_h_over_Mpc', 'fm', 'fiducials_dict']
 triangle_plot = False
 use_Wadd = False  # the difference is extremely small
 pk_ref = 'HMCodeBar'
@@ -289,24 +289,6 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
                                                         fm = mm.add_prior_to_fm(fm, fiducials_dict, gal_bias_param_names,
                                                                                 gal_bias_prior_values)
 
-                                                    # ! triangle plot
-                                                    if triangle_plot:
-                                                        if probe == '3x2pt' and which_cov_term == 'GSSC' and fix_shear_bias == False:
-                                                            # decide params to show in the triangle plot
-
-                                                            params_tot_list = cosmo_param_names + shear_bias_param_names
-
-                                                            trimmed_fid_dict = {param: fiducials_dict[param] for param in
-                                                                                params_tot_list}
-
-                                                            # get the covariance matrix (careful on how you cut the FM!!)
-                                                            fm_idxs_tokeep = [list(fiducials_dict.keys()).index(param) for param in
-                                                                              params_tot_list]
-                                                            cov = np.linalg.inv(
-                                                                fm)[fm_idxs_tokeep, :][:, fm_idxs_tokeep]
-
-                                                            plot_utils.contour_plot_chainconsumer(cov, trimmed_fid_dict)
-
                                                     # ! compute uncertainties from fm
                                                     uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict,
                                                                                        which_uncertainty='marginal',
@@ -334,7 +316,7 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
                                                     # I still haven't figured out the problem, but in this way it works
                                                     df_columns_values = [
                                                         [probe, which_cov_term, ng_cov_code, filename_suffix, whose_FM, which_pk, BNT_transform, ell_cuts, which_cuts,
-                                                         center_or_min, fix_dz, fix_shear_bias, fix_gal_bias, fix_mag_bias, foc, kmax_h_over_Mpc] +
+                                                         center_or_min, fix_dz, fix_shear_bias, fix_gal_bias, fix_mag_bias, foc, kmax_h_over_Mpc, fm, fiducials_dict] +
                                                         uncert_fm.tolist() + [fom]]
 
                                                     assert len(df_columns_names) == len(
@@ -344,9 +326,88 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
                                                                                           columns=df_columns_names)
                                                     fm_uncert_df = pd.concat([fm_uncert_df, fm_uncert_df_to_concat],
                                                                              ignore_index=True)
-                                                    fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
+                                                    
+                                                    # # Convert numpy arrays to tuples before dropping duplicates
+                                                    # for col in fm_uncert_df.columns:
+                                                    #     if fm_uncert_df[col].apply(lambda x: isinstance(x, np.ndarray)).any():
+                                                    #         fm_uncert_df[col] = fm_uncert_df[col].apply(lambda x: tuple(x) if isinstance(x, np.ndarray) else x)
+
+                                                    # # Drop duplicates
+                                                    # fm_uncert_df = fm_uncert_df.drop_duplicates()  # drop duplicates from df!!
+
+                                                    # # Convert tuples back to numpy arrays
+                                                    # for col in fm_uncert_df.columns:
+                                                    #     if fm_uncert_df[col].apply(lambda x: isinstance(x, tuple)).any():
+                                                    #         fm_uncert_df[col] = fm_uncert_df[col].apply(lambda x: np.array(x) if isinstance(x, tuple) else x)
+
+
+                                                    # fm_uncert_df = fm_uncert_df.drop_duplicates()  # ! drop duplicates from df!!
 
 # ! ============================================================ PLOTS ============================================================
+
+
+
+# ! triangle plot
+probe_toplot = '3x2pt'
+fm_g_wrong = fm_uncert_df[
+    (fm_uncert_df['probe'] == probe_toplot) &
+    (fm_uncert_df['whose_FM'] == 'davide') &
+    (fm_uncert_df['which_pk'] == pk_ref) &
+    (fm_uncert_df['filename_suffix'] == '_GaussWrong') &
+    (fm_uncert_df['which_cov_term'] == 'G') &
+
+    (fm_uncert_df['fix_dz'] == fix_dz_plt) &
+    (fm_uncert_df['fix_shear_bias'] == fix_shear_bias_plt) &
+    (fm_uncert_df['fix_gal_bias'] == fix_gal_bias_plt) &
+    (fm_uncert_df['fix_mag_bias'] == fix_mag_bias_plt) &
+
+    (fm_uncert_df['kmax_h_over_Mpc'] == 0.1) &
+    (fm_uncert_df['which_cuts'] == which_cuts_plt) &
+    (fm_uncert_df['center_or_min'] == center_or_min_plt)
+]['fm'].values[0]
+
+fm_g_correct = fm_uncert_df[
+    (fm_uncert_df['probe'] == probe_toplot) &
+    (fm_uncert_df['whose_FM'] == 'davide') &
+    (fm_uncert_df['which_pk'] == pk_ref) &
+    (fm_uncert_df['filename_suffix'] == '_GaussCorrect') &
+    (fm_uncert_df['which_cov_term'] == 'G') &
+
+    (fm_uncert_df['fix_dz'] == fix_dz_plt) &
+    (fm_uncert_df['fix_shear_bias'] == fix_shear_bias_plt) &
+    (fm_uncert_df['fix_gal_bias'] == fix_gal_bias_plt) &
+    (fm_uncert_df['fix_mag_bias'] == fix_mag_bias_plt) &
+
+    (fm_uncert_df['kmax_h_over_Mpc'] == 0.1) &
+    (fm_uncert_df['which_cuts'] == which_cuts_plt) &
+    (fm_uncert_df['center_or_min'] == center_or_min_plt)
+]['fm'].values[0]
+
+fid_pars_dict_fm_toplot = fm_uncert_df[
+    (fm_uncert_df['probe'] == probe_toplot) &
+    (fm_uncert_df['whose_FM'] == 'davide') &
+    (fm_uncert_df['which_pk'] == pk_ref) &
+    (fm_uncert_df['filename_suffix'] == '_GaussCorrect') &
+    (fm_uncert_df['which_cov_term'] == 'G') &
+
+    (fm_uncert_df['fix_dz'] == fix_dz_plt) &
+    (fm_uncert_df['fix_shear_bias'] == fix_shear_bias_plt) &
+    (fm_uncert_df['fix_gal_bias'] == fix_gal_bias_plt) &
+    (fm_uncert_df['fix_mag_bias'] == fix_mag_bias_plt) &
+
+    (fm_uncert_df['kmax_h_over_Mpc'] == 0.1) &
+    (fm_uncert_df['which_cuts'] == which_cuts_plt) &
+    (fm_uncert_df['center_or_min'] == center_or_min_plt)
+]['fiducials_dict'].values[0]
+
+
+fiducials = list(fid_pars_dict_fm_toplot.values())
+param_names_label = list(fid_pars_dict_fm_toplot.keys())
+plot_utils.triangle_plot(fm_g_wrong, fm_g_correct, fiducials, f'Gauss comparison, {probe_toplot}', 'G wrong', 'G correct', param_names_label)
+
+assert False, 'stop here for triangle plot'
+ 
+
 
 
 # # ! bar plot

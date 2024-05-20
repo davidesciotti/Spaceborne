@@ -292,7 +292,7 @@ covariance_cfg:
         z_grid_tkka_max: 6
         k_grid_tkka_min: 1.e-5
         k_grid_tkka_max: 1.e+2
-        z_grid_tkka_steps_SSC: 30
+        z_grid_tkka_steps_SSC: 15
         k_grid_tkka_steps_SSC: 1024
         z_grid_tkka_steps_cNG: 100
         k_grid_tkka_steps_cNG: 512
@@ -325,6 +325,8 @@ covariance_cfg:
         z_max_ssc_integrands: 3.
         z_steps_ssc_integrands: 100 # this should be high because I have to trace the spikes in sigma2
         
+        load_precomputed_sigma2: False
+        sigma2_b_filename: '{DATA_ROOT:s}/output/Flagship_2/sigma2_b/sigma2_b_zmin{zmin:.2e}_zmax{zmax:.2e}_zsteps{zsteps:d}_log10kmin{log10kmin:.2e}_log10kmax{log10kmax:.2e}_ksteps{ksteps:d}'
         z_steps_sigma2: 2899 # TODO delete this
 
     OneCovariance_cfg:
@@ -332,8 +334,8 @@ covariance_cfg:
         load_precomputed_cov: True # this must be True for OneCovariance
         use_OneCovariance_Gaussian: False
 
-        cov_path: f{DATA_ROOT}/output/Flagship_2/covmat/OneCovariance/output_SPV3_v3_dense_LiFECls
-        cov_filename: cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz
+        cov_path: '{DATA_ROOT:s}/output/Flagship_2/covmat/OneCovariance/output_SPV3_v3_dense_LiFECls'
+        cov_filename: 'cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz'
 
 FM_cfg:
     compute_FM: True

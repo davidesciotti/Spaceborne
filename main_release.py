@@ -762,6 +762,70 @@ plt.show()
 # mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
 #                   f'Cell_gg_SPV3_ccl', cl_gg_3d, ell_grid, zbins)
 
+# !=========================== 2PCF covariance =================================
+# import numpy as np
+# from scipy.special import j0, jv
+# from scipy.integrate import simpson
+
+# def K_mu(l_theta, theta_l, theta_u, mu):
+#     if mu == 0:
+#         integrand = lambda theta: theta * j0(l_theta * theta)
+#     elif mu == 2:
+#         integrand = lambda theta: theta * jv(v=2, z=l_theta * theta)
+#     else:
+#         raise ValueError("mu must be 0 or 2")
+
+#     theta_vals = np.linspace(theta_l, theta_u, 100)
+#     integrand_vals = integrand(theta_vals)
+#     result = simpson(integrand_vals, theta_vals)
+#     return 2 / (theta_u**2 - theta_l**2) * result
+
+# def covariance_gaussian_sva(C_ik, C_jl, C_il, C_jk, theta1, theta2, theta_l, theta_u, A_max, mu, nu):
+#     l_vals = np.linspace(0, 1000, 1000)  # Range and resolution for l
+#     integrand_vals = l_vals * K_mu(l_vals * theta1, theta_l, theta_u, mu) * K_mu(l_vals * theta2, theta_l, theta_u, nu) * (C_ik(l_vals) * C_jl(l_vals) + C_il(l_vals) * C_jk(l_vals))
+#     result = simpson(integrand_vals, l_vals)
+#     return result / (2 * np.pi * A_max)
+
+# def covariance_gaussian_mix(C_ik, theta1, theta2, theta_l, theta_u, A_max, mu, nu, T_mix, n_eff):
+#     l_vals = np.linspace(0, 1000, 1000)  # Range and resolution for l
+#     integrand_vals = l_vals * K_mu(l_vals * theta1, theta_l, theta_u, mu) * K_mu(l_vals * theta2, theta_l, theta_u, nu) * C_ik(l_vals)
+#     result = simpson(integrand_vals, l_vals)
+#     return T_mix / (2 * np.pi * n_eff) * A_max * result
+
+# def covariance_gaussian_sn(theta1, theta2, theta_l, theta_u, A_max, mu, nu, n_eff_i, n_eff_j):
+#     l_vals = np.linspace(0, 1000, 1000)  # Range and resolution for l
+#     integrand_vals = l_vals * K_mu(l_vals * theta1, theta_l, theta_u, mu) * K_mu(l_vals * theta2, theta_l, theta_u, nu)
+#     result = simpson(integrand_vals, l_vals)
+#     return A_max / (2 * np.pi * n_eff_i * n_eff_j) * result
+
+# # Example usage (you would need to define C_ik, C_jl, C_il, C_jk as functions of l):
+# theta_l = 0.1
+# theta_u = 1.0
+# theta1 = 0.5
+# theta2 = 0.5
+# A_max = 1.0
+# mu = 0
+# nu = 0
+
+# C_ik = lambda l: 1.0  # Placeholder function
+# C_jl = lambda l: 1.0  # Placeholder function
+# C_il = lambda l: 1.0  # Placeholder function
+# C_jk = lambda l: 1.0  # Placeholder function
+
+# T_mix = 1.0  # Placeholder value for T_mix
+# n_eff_i = 1.0  # Placeholder value for n_eff_i
+# n_eff_j = 1.0  # Placeholder value for n_eff_j
+
+# cov_sva = covariance_gaussian_sva(C_ik, C_jl, C_il, C_jk, theta1, theta2, theta_l, theta_u, A_max, mu, nu)
+# cov_mix = covariance_gaussian_mix(C_ik, theta1, theta2, theta_l, theta_u, A_max, mu, nu, T_mix, n_eff_i)
+# cov_sn = covariance_gaussian_sn(theta1, theta2, theta_l, theta_u, A_max, mu, nu, n_eff_i, n_eff_j)
+
+# print(f"Gaussian Sample Variance Covariance: {cov_sva}")
+# print(f"Gaussian Mixed Term Covariance: {cov_mix}")
+# print(f"Gaussian Shape Noise Covariance: {cov_sn}")
+
+# assert False, 'stop here to check 2PCF cov'
+
 
 # !============================= derivatives ===================================
 
@@ -812,12 +876,12 @@ elif fm_cfg['which_derivatives'] == 'Vincenzo':
     # check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
     vinc_filenames = mm.get_filenames_in_folder(derivatives_folder)
     vinc_filenames = [vinc_filename for vinc_filename in vinc_filenames if
-                    vinc_filename.startswith(der_prefix)]
+                      vinc_filename.startswith(der_prefix)]
 
     # keep only the files corresponding to the correct magcut_lens, magcut_source and zbins
     vinc_filenames = [filename for filename in vinc_filenames if
-                    all(x in filename for x in
-                        [f'ML{magcut_lens}', f'MS{magcut_source}', f'{ep_or_ed}{zbins:02d}'])]
+                      all(x in filename for x in
+                          [f'ML{magcut_lens}', f'MS{magcut_source}', f'{ep_or_ed}{zbins:02d}'])]
     vinc_filenames = [filename.replace('.dat', '') for filename in vinc_filenames]
 
     vinc_trimmed_filenames = [vinc_filename.split('-', 1)[0].strip() for vinc_filename in vinc_filenames]
@@ -847,7 +911,7 @@ elif fm_cfg['which_derivatives'] == 'Vincenzo':
 
     # check whether the 2 lists match and print the elements that are in one list but not in the other
     param_names_not_in_my_list = [vinc_param_name for vinc_param_name in vinc_param_names if
-                                vinc_param_name not in my_sorted_param_names]
+                                  vinc_param_name not in my_sorted_param_names]
     param_names_not_in_vinc_list = [my_sorted_param_name for my_sorted_param_name in my_sorted_param_names
                                     if
                                     my_sorted_param_name not in vinc_param_names]
@@ -857,7 +921,6 @@ elif fm_cfg['which_derivatives'] == 'Vincenzo':
         # Print the mismatching parameters
         print(f'Params present in input folder but not in the cfg file: {param_names_not_in_my_list}')
         print(f'Params present in cfg file but not in the input folder: {param_names_not_in_vinc_list}')
-
 
     # ! preprocess derivatives (or load the alreay preprocessed ones)
     if fm_cfg['load_preprocess_derivatives']:
@@ -1106,13 +1169,34 @@ d2CGG_dVddeltab = \
     np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_delta, dPgm_ddeltab_klimb) + \
     np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
 
-# ! 3. Compute sigma2_b
-k_grid_sigma2 = np.logspace(covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'], covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
+# ! 3. Compute/load/save sigma2_b
+k_grid_sigma2 = np.logspace(covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'],
+                            covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
                             covariance_cfg['Spaceborne_cfg']['k_steps_sigma2'])
 which_sigma2_B = covariance_cfg['Spaceborne_cfg']['which_sigma2_B']
 
-sigma2_b = sigma2_SSC.compute_sigma2(z_grid_ssc_integrands, k_grid_sigma2, which_sigma2_B,
-                                     ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
+sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename'].format(
+    DATA_ROOT=general_cfg['DATA_ROOT'],
+    zmin=covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
+    zmax=covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
+    zsteps=covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'],
+    log10kmin=covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'],
+    log10kmax=covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
+    ksteps=covariance_cfg['Spaceborne_cfg']['k_steps_sigma2']
+)
+if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
+    # TODO define a suitable interpolator if the zgrid doesn't match
+    sigma2_b = np.load(sigma2_b_filename)
+else:
+    sigma2_b = sigma2_SSC.compute_sigma2(z_grid_ssc_integrands, k_grid_sigma2, which_sigma2_B,
+                                         ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
+    
+    sigma2_b_tosave = {
+        'sigma2_b': sigma2_b,
+        'cfg': cfg
+    }
+    np.save(sigma2_b_filename, sigma2_b_tosave, allow_pickle=True)
+    
 
 
 # ! 4. Perform the integration calling the Julia module
@@ -1143,7 +1227,6 @@ covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 print('SSC computed with Spaceborne')
 
 
-
 # CCL pk
 kgrid_pk_mm_ccl, pk_mm_ccl = csmlib.pk_from_ccl(
     k_grid_dPk_hm, z_grid_dPk_hm, use_h_units, ccl_obj.cosmo_ccl, pk_kind='nonlinear')
@@ -1158,6 +1241,7 @@ gal_bias = gal_bias_2d[:, 0]
 
 pk_gm_ccl = gal_bias[None, :] * pk_mm_ccl
 pk_gg_ccl = gal_bias[None, :]**2 * pk_mm_ccl
+
 
 plt.figure()
 clr = cm.rainbow(np.linspace(0, 1, 5))
@@ -1257,8 +1341,6 @@ plt.title('P(k), ccl vs imported (CLOE)')
 # plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
 # plt.tight_layout()
 # plt.show()
-
-
 
 
 # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins

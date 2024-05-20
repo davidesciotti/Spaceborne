@@ -399,7 +399,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     # build noise vector
     noise_3x2pt_4D = mm.build_noise(zbins, n_probes, sigma_eps2=covariance_cfg['sigma_eps2'], ng=covariance_cfg['ng'],
-                                    EP_or_ED=general_cfg['EP_or_ED'])
+                                    EP_or_ED=general_cfg['EP_or_ED'], which_shape_noise='ISTF')
 
     # create dummy ell axis, the array is just repeated along it
     nbl_max = np.max((nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA))

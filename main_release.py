@@ -305,10 +305,10 @@ def plot_kernels_for_thesis():
     plt.legend(loc='lower right')
 
 
-def SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab, 
+def SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
                                   ind_auto, ind_cross, cl_integral_prefactor, sigma2, z_grid):
     """Kernel to compute the 4D integral optimized using Simpson's rule using Julia."""
-    
+
     if not os.path.exists("tmp"):
         os.system("mkdir tmp")
     np.save("tmp/d2CLL_dVddeltab", d2CLL_dVddeltab)
@@ -320,14 +320,14 @@ def SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddel
     np.save("tmp/sigma2", sigma2)
     np.save("tmp/z_grid", z_grid)
     os.system("julia --project=. --threads=16 spaceborne/SSC_integral_julia_new_dav.jl")
-    
+
     cov_filename = "cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npy"
-    
+
     cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
-        path='tmp/', 
-        filename=cov_filename, 
+        path='tmp/',
+        filename=cov_filename,
         probe_ordering=probe_ordering)
-    
+
     os.system("rm -rf tmp")
     return cov_ssc_3x2pt_dict_8D
 
@@ -716,6 +716,12 @@ cl_wa_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
 cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
 cl_gl_3d_vinc = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
 
+if general_cfg['use_vincenzos_cls']:
+    cl_ll_3d = cl_ll_3d_vinc
+    cl_gg_3d = cl_gg_3d_vinc
+    cl_wa_3d = cl_wa_3d_vinc
+    cl_gl_3d = cl_gl_3d_vinc
+
 
 clr = cm.rainbow(np.linspace(0, 1, zbins))
 fig, ax = plt.subplots(2, 3, sharex=True, figsize=(10, 5), height_ratios=[2, 1])
@@ -724,18 +730,18 @@ fig.subplots_adjust(hspace=0)
 
 for zi in range(zbins):
     zj = zi
-    ax[0, 0].loglog(ell_dict['ell_WL'], ccl_obj.cl_ll_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 0].loglog(ell_dict['ell_WL'], cl_ll_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
     ax[0, 0].loglog(ell_dict['ell_WL'], cl_ll_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
-    ax[0, 1].loglog(ell_dict['ell_XC'], ccl_obj.cl_gl_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 1].loglog(ell_dict['ell_XC'], cl_gl_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
     ax[0, 1].loglog(ell_dict['ell_XC'][:29], cl_gl_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
-    ax[0, 2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 2].loglog(ell_dict['ell_GC'], cl_gg_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
     ax[0, 2].loglog(ell_dict['ell_GC'][:29], cl_gg_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
-    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(ccl_obj.cl_ll_3d, cl_ll_3d_vinc)[:, zi, zj], c=clr[zi])
-    ax[1, 1].plot(ell_dict['ell_XC'][:29], mm.percent_diff(ccl_obj.cl_gl_3d[:29], cl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
-    ax[1, 2].plot(ell_dict['ell_GC'][:29], mm.percent_diff(ccl_obj.cl_gg_3d[:29], cl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(cl_ll_3d, cl_ll_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 1].plot(ell_dict['ell_XC'][:29], mm.percent_diff(cl_gl_3d[:29], cl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 2].plot(ell_dict['ell_GC'][:29], mm.percent_diff(cl_gg_3d[:29], cl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
 
 ax[1, 0].set_xlabel('$\\ell$')
 ax[1, 1].set_xlabel('$\\ell$')
@@ -764,232 +770,236 @@ list_params_to_vary = [param for param in fid_pars_dict['FM_ordered_params'].key
 # list_params_to_vary = ['h', 'wa', 'dzWL01', 'm06', 'bG02', 'bM02']
 # list_params_to_vary = ['bM02', ]
 
+if general_cfg['which_derivatives'] == 'Spaceborne':
 
-# start_time = time.perf_counter()
-# cl_LL, cl_GL, cl_GG, dC_dict_LL_3D, dC_dict_GL_3D, dC_dict_GG_3D = wf_cl_lib.compute_cls_derivatives(
-#     cfg, list_params_to_vary, zbins, (n_of_z_full[:, 0], n_of_z_full[:, 1:]),
-#     ell_dict['ell_WL'], ell_dict['ell_XC'], ell_dict['ell_GC'], use_only_flat_models=True)
-# print('derivatives computation time: {:.2f} s'.format(time.perf_counter() - start_time))
+    if general_cfg['load_precomputed_derivatives']:
+        # a better name should be dict_4D...? anyway, not so important
+        dC_dict_LL_3D = np.load(f'/home/davide/Scrivania/test_ders/dcl_LL.npy', allow_pickle=True).item()
+        dC_dict_GL_3D = np.load(f'/home/davide/Scrivania/test_ders/dcl_GL.npy', allow_pickle=True).item()
+        dC_dict_GG_3D = np.load(f'/home/davide/Scrivania/test_ders/dcl_GG.npy', allow_pickle=True).item()
 
-# np.save(f'/home/davide/Scrivania/test_ders/dcl_LL.npy', dcl_LL, allow_pickle=True)
-# np.save(f'/home/davide/Scrivania/test_ders/dcl_GL.npy', dcl_GL, allow_pickle=True)
-# np.save(f'/home/davide/Scrivania/test_ders/dcl_GG.npy', dcl_GG, allow_pickle=True)
+    elif not general_cfg['load_precomputed_derivatives']:
+        start_time = time.perf_counter()
+        cl_LL, cl_GL, cl_GG, dC_dict_LL_3D, dC_dict_GL_3D, dC_dict_GG_3D = wf_cl_lib.compute_cls_derivatives(
+            cfg, list_params_to_vary, zbins, (n_of_z_full[:, 0], n_of_z_full[:, 1:]),
+            ell_dict['ell_WL'], ell_dict['ell_XC'], ell_dict['ell_GC'], use_only_flat_models=True)
+        print('derivatives computation time: {:.2f} s'.format(time.perf_counter() - start_time))
 
-dC_dict_LL_3D = np.load(f'/home/davide/Scrivania/test_ders/dcl_LL.npy', allow_pickle=True).item()
-dC_dict_GL_3D = np.load(f'/home/davide/Scrivania/test_ders/dcl_GL.npy', allow_pickle=True).item()
-dC_dict_GG_3D = np.load(f'/home/davide/Scrivania/test_ders/dcl_GG.npy', allow_pickle=True).item()
+        # np.save(f'/home/davide/Scrivania/test_ders/dcl_LL.npy', dcl_LL, allow_pickle=True)
+        # np.save(f'/home/davide/Scrivania/test_ders/dcl_GL.npy', dcl_GL, allow_pickle=True)
+        # np.save(f'/home/davide/Scrivania/test_ders/dcl_GG.npy', dcl_GG, allow_pickle=True)
 
-dC_LL_4D = np.zeros((nbl_3x2pt, zbins, zbins, len(list_params_to_vary)))
-dC_WA_4D = np.zeros((nbl_WA, zbins, zbins, len(list_params_to_vary)))
-dC_GL_4D = np.zeros((nbl_3x2pt, zbins, zbins, len(list_params_to_vary)))
-dC_GG_4D = np.zeros((nbl_3x2pt, zbins, zbins, len(list_params_to_vary)))
-dC_3x2pt_6D = np.zeros((2, 2, nbl_3x2pt, zbins, zbins, len(list_params_to_vary)))
+    # reshape to 4D array (instead of dictionaries)
+    dC_LL_4D = np.zeros((nbl_3x2pt, zbins, zbins, len(list_params_to_vary)))
+    dC_WA_4D = np.zeros((nbl_WA, zbins, zbins, len(list_params_to_vary)))
+    dC_GL_4D = np.zeros((nbl_3x2pt, zbins, zbins, len(list_params_to_vary)))
+    dC_GG_4D = np.zeros((nbl_3x2pt, zbins, zbins, len(list_params_to_vary)))
+    dC_3x2pt_6D = np.zeros((2, 2, nbl_3x2pt, zbins, zbins, len(list_params_to_vary)))
 
-for par_idx, par_name in enumerate(list_params_to_vary):
-    dC_LL_4D[:, :, :, par_idx] = dC_dict_LL_3D[par_name]
-    dC_GL_4D[:, :, :, par_idx] = dC_dict_GL_3D[par_name]
-    dC_GG_4D[:, :, :, par_idx] = dC_dict_GG_3D[par_name]
-    dC_3x2pt_6D[0, 0, :, :, :, par_idx] = dC_dict_LL_3D[par_name][:nbl_3x2pt, :, :]
-    dC_3x2pt_6D[1, 0, :, :, :, par_idx] = dC_dict_GL_3D[par_name][:nbl_3x2pt, :, :]
-    dC_3x2pt_6D[1, 1, :, :, :, par_idx] = dC_dict_GG_3D[par_name][:nbl_3x2pt, :, :]
+    for par_idx, par_name in enumerate(list_params_to_vary):
+        dC_LL_4D[:, :, :, par_idx] = dC_dict_LL_3D[par_name]
+        dC_GL_4D[:, :, :, par_idx] = dC_dict_GL_3D[par_name]
+        dC_GG_4D[:, :, :, par_idx] = dC_dict_GG_3D[par_name]
+        dC_3x2pt_6D[0, 0, :, :, :, par_idx] = dC_dict_LL_3D[par_name][:nbl_3x2pt, :, :]
+        dC_3x2pt_6D[1, 0, :, :, :, par_idx] = dC_dict_GL_3D[par_name][:nbl_3x2pt, :, :]
+        dC_3x2pt_6D[1, 1, :, :, :, par_idx] = dC_dict_GG_3D[par_name][:nbl_3x2pt, :, :]
+
+elif general_cfg['which_derivatives'] == 'Vincenzo':
+    # Vincenzo's derivatives
+    derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs, SPV3_folder=general_cfg['SPV3_folder'])
+    # ! get vincenzo's derivatives' parameters, to check that they match with the yaml file
+    # check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
+    vinc_filenames = mm.get_filenames_in_folder(derivatives_folder)
+    vinc_filenames = [vinc_filename for vinc_filename in vinc_filenames if
+                    vinc_filename.startswith(der_prefix)]
+
+    # keep only the files corresponding to the correct magcut_lens, magcut_source and zbins
+    vinc_filenames = [filename for filename in vinc_filenames if
+                    all(x in filename for x in
+                        [f'ML{magcut_lens}', f'MS{magcut_source}', f'{ep_or_ed}{zbins:02d}'])]
+    vinc_filenames = [filename.replace('.dat', '') for filename in vinc_filenames]
+
+    vinc_trimmed_filenames = [vinc_filename.split('-', 1)[0].strip() for vinc_filename in vinc_filenames]
+    vinc_trimmed_filenames = [
+        vinc_trimmed_filename[len(der_prefix):] if vinc_trimmed_filename.startswith(
+            der_prefix) else vinc_trimmed_filename
+        for vinc_trimmed_filename in vinc_trimmed_filenames]
+    vinc_param_names = list(set(vinc_trimmed_filenames))
+    vinc_param_names.sort()
+
+    # ! get fiducials names and values from the yaml file
+    # remove ODE if I'm studying only flat models
+    if general_cfg['flat_or_nonflat'] == 'Flat' and 'ODE' in fid_pars_dict['FM_ordered_params']:
+        fid_pars_dict['FM_ordered_params'].pop('ODE')
+    fm_fid_dict = fid_pars_dict['FM_ordered_params']
+    param_names_3x2pt = list(fm_fid_dict.keys())
+    fm_cfg['param_names_3x2pt'] = param_names_3x2pt
+    fm_cfg['nparams_tot'] = len(param_names_3x2pt)
+
+    # sort them to compare with vincenzo's param names
+    my_sorted_param_names = param_names_3x2pt.copy()
+    my_sorted_param_names.sort()
+
+    for dzgc_param_name in [f'dzGC{zi:02d}' for zi in range(1, zbins + 1)]:
+        if dzgc_param_name in vinc_param_names:  # ! added this if statement, not very elegant
+            vinc_param_names.remove(dzgc_param_name)
+
+    # check whether the 2 lists match and print the elements that are in one list but not in the other
+    param_names_not_in_my_list = [vinc_param_name for vinc_param_name in vinc_param_names if
+                                vinc_param_name not in my_sorted_param_names]
+    param_names_not_in_vinc_list = [my_sorted_param_name for my_sorted_param_name in my_sorted_param_names
+                                    if
+                                    my_sorted_param_name not in vinc_param_names]
+
+    # Check if the parameter names match
+    if not np.all(vinc_param_names == my_sorted_param_names):
+        # Print the mismatching parameters
+        print(f'Params present in input folder but not in the cfg file: {param_names_not_in_my_list}')
+        print(f'Params present in cfg file but not in the input folder: {param_names_not_in_vinc_list}')
 
 
-# # Vincenzo's derivatives
-# derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs,
-#                                                          SPV3_folder=general_cfg['SPV3_folder'])
-# # ! get vincenzo's derivatives' parameters, to check that they match with the yaml file
-# # check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
-# vinc_filenames = mm.get_filenames_in_folder(derivatives_folder)
-# vinc_filenames = [vinc_filename for vinc_filename in vinc_filenames if
-#                   vinc_filename.startswith(der_prefix)]
+    # ! preprocess derivatives (or load the alreay preprocessed ones)
+    if fm_cfg['load_preprocess_derivatives']:
+        warnings.warn(
+            'loading preprocessed derivatives is faster but a bit more dangerous, make sure all the specs are taken into account')
+        dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_LL_4D.npy')
+        dC_GG_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_GG_4D.npy')
+        dC_WA_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_WA_4D.npy')
+        dC_3x2pt_6D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_3x2pt_6D.npy')
 
-# # keep only the files corresponding to the correct magcut_lens, magcut_source and zbins
-# vinc_filenames = [filename for filename in vinc_filenames if
-#                   all(x in filename for x in
-#                       [f'ML{magcut_lens}', f'MS{magcut_source}', f'{ep_or_ed}{zbins:02d}'])]
-# vinc_filenames = [filename.replace('.dat', '') for filename in vinc_filenames]
+    elif not fm_cfg['load_preprocess_derivatives']:
+        der_prefix = fm_cfg['derivatives_prefix']
+        dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
+        # check if dictionary is empty
+        if not dC_dict_1D:
+            raise ValueError(f'No derivatives found in folder {derivatives_folder}')
 
-# vinc_trimmed_filenames = [vinc_filename.split('-', 1)[0].strip() for vinc_filename in vinc_filenames]
-# vinc_trimmed_filenames = [
-#     vinc_trimmed_filename[len(der_prefix):] if vinc_trimmed_filename.startswith(
-#         der_prefix) else vinc_trimmed_filename
-#     for vinc_trimmed_filename in vinc_trimmed_filenames]
-# vinc_param_names = list(set(vinc_trimmed_filenames))
-# vinc_param_names.sort()
+        # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
+        dC_dict_LL_3D = {}
+        dC_dict_GG_3D = {}
+        dC_dict_WA_3D = {}
+        dC_dict_3x2pt_5D = {}
 
-# # ! get fiducials names and values from the yaml file
-# # remove ODE if I'm studying only flat models
-# if flat_or_nonflat == 'Flat' and 'ODE' in fid_pars_dict['FM_ordered_params']:
-#     fid_pars_dict['FM_ordered_params'].pop('ODE')
-# fm_fid_dict = fid_pars_dict['FM_ordered_params']
-# param_names_3x2pt = list(fm_fid_dict.keys())
-# fm_cfg['param_names_3x2pt'] = param_names_3x2pt
-# fm_cfg['nparams_tot'] = len(param_names_3x2pt)
+        for key in vinc_filenames:  # loop over these, I already selected ML, MS and so on
+            if not key.startswith('dDVddzGC'):
+                if 'WLO' in key:
+                    dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(
+                        dC_dict_1D[key], 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
+                elif 'GCO' in key:
+                    dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
+                elif 'WLA' in key:
+                    dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
+                elif '3x2pt' in key:
+                    dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt,
+                                                                    zbins)
 
-# # sort them to compare with vincenzo's param names
-# my_sorted_param_names = param_names_3x2pt.copy()
-# my_sorted_param_names.sort()
+else:
+    raise ValueError('which_derivatives must be either "Spaceborne" or "Vincenzo"')
 
-# for dzgc_param_name in [f'dzGC{zi:02d}' for zi in range(1, zbins + 1)]:
-#     if dzgc_param_name in vinc_param_names:  # ! added this if statement, not very elegant
-#         vinc_param_names.remove(dzgc_param_name)
+# ! compare derivatives
+"""
+param = list_params_to_vary[0]
+for param in list_params_to_vary:
+    dcl_ll_3d_vinc = dC_dict_LL_3D[f'dDVd{param}-WLO-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}']
+    dcl_gl_3d_vinc = dC_dict_3x2pt_5D[f'dDVd{param}-3x2pt-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}'][1, 0, ...]
+    dcl_gg_3d_vinc = dC_dict_GG_3D[f'dDVd{param}-GCO-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}']
 
-# # check whether the 2 lists match and print the elements that are in one list but not in the other
-# param_names_not_in_my_list = [vinc_param_name for vinc_param_name in vinc_param_names if
-#                               vinc_param_name not in my_sorted_param_names]
-# param_names_not_in_vinc_list = [my_sorted_param_name for my_sorted_param_name in my_sorted_param_names
-#                                 if
-#                                 my_sorted_param_name not in vinc_param_names]
+    clr = cm.rainbow(np.linspace(0, 1, zbins))
+    fig, ax = plt.subplots(2, 3, sharex=True, figsize=(10, 5), height_ratios=[2, 1])
+    plt.tight_layout()
+    fig.subplots_adjust(hspace=0)
 
-# # Check if the parameter names match
-# if not np.all(vinc_param_names == my_sorted_param_names):
-#     # Print the mismatching parameters
-#     print(f'Params present in input folder but not in the cfg file: {param_names_not_in_my_list}')
-#     print(f'Params present in cfg file but not in the input folder: {param_names_not_in_vinc_list}')
+for zi in range(zbins):
+    zj = zi
+    ax[0, 0].loglog(ell_dict['ell_WL'], np.abs(dC_dict_LL_3D[param][:, zi, zj]), ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 0].loglog(ell_dict['ell_WL'], np.abs(dcl_ll_3d_vinc[:, zi, zj]), ls=":", c=clr[zi], alpha=0.6)
 
+    ax[0, 1].loglog(ell_dict['ell_XC'], np.abs(dC_dict_GL_3D[param][:, zi, zj]), ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 1].loglog(ell_dict['ell_XC'], np.abs(dcl_gl_3d_vinc[:, zi, zj]), ls=":", c=clr[zi], alpha=0.6)
 
-# # ! preprocess derivatives (or load the alreay preprocessed ones)
-# if fm_cfg['load_preprocess_derivatives']:
-#     warnings.warn(
-#         'loading preprocessed derivatives is faster but a bit more dangerous, make sure all the specs are taken into account')
-#     dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_LL_4D.npy')
-#     dC_GG_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_GG_4D.npy')
-#     dC_WA_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_WA_4D.npy')
-#     dC_3x2pt_6D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_3x2pt_6D.npy')
+    ax[0, 2].loglog(ell_dict['ell_GC'], np.abs(dC_dict_GG_3D[param][:, zi, zj]), ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 2].loglog(ell_dict['ell_GC'], np.abs(dcl_gg_3d_vinc[:, zi, zj]), ls=":", c=clr[zi], alpha=0.6)
 
-# elif not fm_cfg['load_preprocess_derivatives']:
-#     der_prefix = fm_cfg['derivatives_prefix']
-#     dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
-#     # check if dictionary is empty
-#     if not dC_dict_1D:
-#         raise ValueError(f'No derivatives found in folder {derivatives_folder}')
+    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(dC_dict_LL_3D[param], dcl_ll_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 1].plot(ell_dict['ell_XC'], mm.percent_diff(dC_dict_GL_3D[param], dcl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 2].plot(ell_dict['ell_GC'], mm.percent_diff(dC_dict_GG_3D[param], dcl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
 
-#     # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
-#     dC_dict_LL_3D = {}
-#     dC_dict_GG_3D = {}
-#     dC_dict_WA_3D = {}
-#     dC_dict_3x2pt_5D = {}
+    ax[1, 0].set_ylim(-20, 20)
+    ax[1, 1].set_ylim(-20, 20)
+    ax[1, 2].set_ylim(-20, 20)
 
-#     for key in vinc_filenames:  # loop over these, I already selected ML, MS and so on
-#         if not key.startswith('dDVddzGC'):
-#             if 'WLO' in key:
-#                 dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(
-#                     dC_dict_1D[key], 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
-#             elif 'GCO' in key:
-#                 dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
-#             elif 'WLA' in key:
-#                 dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
-#             elif '3x2pt' in key:
-#                 dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt,
-#                                                                   zbins)
+    ax[1, 0].fill_between(ell_dict['ell_WL'], -5, 5, color='grey', alpha=0.3)
+    ax[1, 1].fill_between(ell_dict['ell_XC'], -5, 5, color='grey', alpha=0.3)
+    ax[1, 2].fill_between(ell_dict['ell_GC'], -5, 5, color='grey', alpha=0.3)
 
-# compare
-# param = list_params_to_vary[0]
-# for param in list_params_to_vary:
-    # dcl_ll_3d_vinc = dC_dict_LL_3D[f'dDVd{param}-WLO-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}']
-    # dcl_gl_3d_vinc = dC_dict_3x2pt_5D[f'dDVd{param}-3x2pt-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}'][1, 0, ...]
-    # dcl_gg_3d_vinc = dC_dict_GG_3D[f'dDVd{param}-GCO-ML{magcut_lens}-MS{magcut_source}-{ep_or_ed}{zbins}']
+    ax[1, 0].set_xlabel('$\\ell$')
+    ax[1, 1].set_xlabel('$\\ell$')
+    ax[1, 2].set_xlabel('$\\ell$')
+    ax[0, 0].set_ylabel('$\partial C_{\ell}/ \partial \\theta$')
+    ax[1, 0].set_ylabel('% diff')
+    lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
+    fig.suptitle(param)
+    plt.legend(lines, ['davide', 'vincenzo'], loc='upper right', bbox_to_anchor=(1.55, 1))
+    plt.show()
 
-    # clr = cm.rainbow(np.linspace(0, 1, zbins))
-    # fig, ax = plt.subplots(2, 3, sharex=True, figsize=(10, 5), height_ratios=[2, 1])
-    # plt.tight_layout()
-    # fig.subplots_adjust(hspace=0)
-
-# for zi in range(zbins):
-# for zi in range(zbins):
-#     # for zj in range(zi, zbins):
-    # for zi in range(zbins):
-#     # for zj in range(zi, zbins):
-    #     zj = zi
-    #     ax[0, 0].loglog(ell_dict['ell_WL'], np.abs(dC_dict_LL_3D[param][:, zi, zj]), ls="-", c=clr[zi], alpha=0.6)
-    #     ax[0, 0].loglog(ell_dict['ell_WL'], np.abs(dcl_ll_3d_vinc[:, zi, zj]), ls=":", c=clr[zi], alpha=0.6)
-
-    #     ax[0, 1].loglog(ell_dict['ell_XC'], np.abs(dC_dict_GL_3D[param][:, zi, zj]), ls="-", c=clr[zi], alpha=0.6)
-    #     ax[0, 1].loglog(ell_dict['ell_XC'], np.abs(dcl_gl_3d_vinc[:, zi, zj]), ls=":", c=clr[zi], alpha=0.6)
-
-    #     ax[0, 2].loglog(ell_dict['ell_GC'], np.abs(dC_dict_GG_3D[param][:, zi, zj]), ls="-", c=clr[zi], alpha=0.6)
-    #     ax[0, 2].loglog(ell_dict['ell_GC'], np.abs(dcl_gg_3d_vinc[:, zi, zj]), ls=":", c=clr[zi], alpha=0.6)
-
-    #     ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(dC_dict_LL_3D[param], dcl_ll_3d_vinc)[:, zi, zj], c=clr[zi])
-    #     ax[1, 1].plot(ell_dict['ell_XC'], mm.percent_diff(dC_dict_GL_3D[param], dcl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
-    #     ax[1, 2].plot(ell_dict['ell_GC'], mm.percent_diff(dC_dict_GG_3D[param], dcl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
-
-    #     ax[1, 0].set_ylim(-20, 20)
-    #     ax[1, 1].set_ylim(-20, 20)
-    #     ax[1, 2].set_ylim(-20, 20)
-
-    #     ax[1, 0].fill_between(ell_dict['ell_WL'], -5, 5, color='grey', alpha=0.3)
-    #     ax[1, 1].fill_between(ell_dict['ell_XC'], -5, 5, color='grey', alpha=0.3)
-    #     ax[1, 2].fill_between(ell_dict['ell_GC'], -5, 5, color='grey', alpha=0.3)
-
-    # ax[1, 0].set_xlabel('$\\ell$')
-    # ax[1, 1].set_xlabel('$\\ell$')
-    # ax[1, 2].set_xlabel('$\\ell$')
-    # ax[0, 0].set_ylabel('$\partial C_{\ell}/ \partial \\theta$')
-    # ax[1, 0].set_ylabel('% diff')
-    # lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
-    # fig.suptitle(param)
-    # plt.legend(lines, ['davide', 'vincenzo'], loc='upper right', bbox_to_anchor=(1.55, 1))
-    # plt.show()
-
-# ell_low, ell_up = 0, 1
-# mm.compare_arrays(mm.block_diag(dC_dict_LL_3D[param][ell_low: ell_up]), mm.block_diag(
-#     dcl_ll_3d_vinc[ell_low: ell_up]), 'davide, LL', 'vincenzo', abs_val=True, plot_diff=False)
-# mm.compare_arrays(mm.block_diag(dC_dict_GL_3D[param][ell_low: ell_up]), mm.block_diag(
-#     dcl_gl_3d_vinc[ell_low: ell_up]), 'davide, GL', 'vincenzo', abs_val=True, plot_diff=False)
-# mm.compare_arrays(mm.block_diag(dC_dict_GG_3D[param][ell_low: ell_up]), mm.block_diag(
-#     dcl_gg_3d_vinc[ell_low: ell_up]), 'davide, GG', 'vincenzo', abs_val=True, plot_diff=False)
+ell_low, ell_up = 0, 1
+mm.compare_arrays(mm.block_diag(dC_dict_LL_3D[param][ell_low: ell_up]), mm.block_diag(
+    dcl_ll_3d_vinc[ell_low: ell_up]), 'davide, LL', 'vincenzo', abs_val=True, plot_diff=False)
+mm.compare_arrays(mm.block_diag(dC_dict_GL_3D[param][ell_low: ell_up]), mm.block_diag(
+    dcl_gl_3d_vinc[ell_low: ell_up]), 'davide, GL', 'vincenzo', abs_val=True, plot_diff=False)
+mm.compare_arrays(mm.block_diag(dC_dict_GG_3D[param][ell_low: ell_up]), mm.block_diag(
+    dcl_gg_3d_vinc[ell_low: ell_up]), 'davide, GG', 'vincenzo', abs_val=True, plot_diff=False)
 
 
 # ! compare saved cls from fiducial value (percentages = 0 case)
-# cl_LL_3d_fid_bench = np.load(f'/home/davide/Scrivania/test_ders/cl_LL_h.npy')
-# cl_GL_3d_fid_bench = np.load(f'/home/davide/Scrivania/test_ders/cl_GL_h.npy')
-# cl_GG_3d_fid_bench = np.load(f'/home/davide/Scrivania/test_ders/cl_GG_h.npy')
+cl_LL_3d_fid_bench = np.load(f'/home/davide/Scrivania/test_ders/cl_LL_h.npy')
+cl_GL_3d_fid_bench = np.load(f'/home/davide/Scrivania/test_ders/cl_GL_h.npy')
+cl_GG_3d_fid_bench = np.load(f'/home/davide/Scrivania/test_ders/cl_GG_h.npy')
 
-# for param in list_params_to_vary:
+for param in list_params_to_vary:
 
-#     # in the derivatives computation, the cls computed for the fiducial prediction must match
-#     cl_LL_3d_fid = np.load(f'/home/davide/Scrivania/test_ders/cl_LL_{param}.npy')
-#     cl_GL_3d_fid = np.load(f'/home/davide/Scrivania/test_ders/cl_GL_{param}.npy')
-#     cl_GG_3d_fid = np.load(f'/home/davide/Scrivania/test_ders/cl_GG_{param}.npy')
+    # in the derivatives computation, the cls computed for the fiducial prediction must match
+    cl_LL_3d_fid = np.load(f'/home/davide/Scrivania/test_ders/cl_LL_{param}.npy')
+    cl_GL_3d_fid = np.load(f'/home/davide/Scrivania/test_ders/cl_GL_{param}.npy')
+    cl_GG_3d_fid = np.load(f'/home/davide/Scrivania/test_ders/cl_GG_{param}.npy')
 
-#     # lower tolerance for Vincenzo's cls, GG and GL are tricier to compare in this way
-#     np.testing.assert_allclose(cl_LL_3d_fid, cl_ll_3d_vinc, atol=0, rtol=2e-2)
+    # lower tolerance for Vincenzo's cls, GG and GL are tricier to compare in this way
+    np.testing.assert_allclose(cl_LL_3d_fid, cl_ll_3d_vinc, atol=0, rtol=2e-2)
 
-#     np.testing.assert_allclose(cl_LL_3d_fid, cl_LL_3d_fid_bench, atol=0, rtol=1e-5)
-#     np.testing.assert_allclose(cl_GL_3d_fid, cl_GL_3d_fid_bench, atol=0, rtol=1e-5)
-#     np.testing.assert_allclose(cl_GG_3d_fid, cl_GG_3d_fid_bench, atol=0, rtol=1e-5)
+    np.testing.assert_allclose(cl_LL_3d_fid, cl_LL_3d_fid_bench, atol=0, rtol=1e-5)
+    np.testing.assert_allclose(cl_GL_3d_fid, cl_GL_3d_fid_bench, atol=0, rtol=1e-5)
+    np.testing.assert_allclose(cl_GG_3d_fid, cl_GG_3d_fid_bench, atol=0, rtol=1e-5)
 
-#     clr = cm.rainbow(np.linspace(0, 1, zbins))
-#     fig, ax = plt.subplots(2, 3, sharex=True, figsize=(10, 5), height_ratios=[2, 1])
-#     plt.tight_layout()
-#     fig.subplots_adjust(hspace=0)
+    clr = cm.rainbow(np.linspace(0, 1, zbins))
+    fig, ax = plt.subplots(2, 3, sharex=True, figsize=(10, 5), height_ratios=[2, 1])
+    plt.tight_layout()
+    fig.subplots_adjust(hspace=0)
 
-#     for zi in range(zbins):
-#         zj = zi
-#         ax[0, 0].loglog(ell_dict['ell_WL'], cl_LL_3d_fid[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
-#         ax[0, 0].loglog(ell_dict['ell_WL'], cl_ll_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+    for zi in range(zbins):
+        zj = zi
+        ax[0, 0].loglog(ell_dict['ell_WL'], cl_LL_3d_fid[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
+        ax[0, 0].loglog(ell_dict['ell_WL'], cl_ll_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
-#         ax[0, 1].loglog(ell_dict['ell_XC'], np.abs(cl_GL_3d_fid[:, zi, zj]), ls="-", c=clr[zi], alpha=0.6)
-#         ax[0, 1].loglog(ell_dict['ell_XC'][:29], np.abs(cl_gl_3d_vinc[:, zi, zj]), ls=":", c=clr[zi], alpha=0.6)
+        ax[0, 1].loglog(ell_dict['ell_XC'], np.abs(cl_GL_3d_fid[:, zi, zj]), ls="-", c=clr[zi], alpha=0.6)
+        ax[0, 1].loglog(ell_dict['ell_XC'][:29], np.abs(cl_gl_3d_vinc[:, zi, zj]), ls=":", c=clr[zi], alpha=0.6)
 
-#         ax[0, 2].loglog(ell_dict['ell_GC'], cl_GG_3d_fid[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
-#         ax[0, 2].loglog(ell_dict['ell_GC'][:29], cl_gg_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+        ax[0, 2].loglog(ell_dict['ell_GC'], cl_GG_3d_fid[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
+        ax[0, 2].loglog(ell_dict['ell_GC'][:29], cl_gg_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
-#         ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(cl_LL_3d_fid, cl_ll_3d_vinc)[:, zi, zj], c=clr[zi])
-#         ax[1, 1].plot(ell_dict['ell_XC'][:29], mm.percent_diff(cl_GL_3d_fid[:29], cl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
-#         ax[1, 2].plot(ell_dict['ell_GC'][:29], mm.percent_diff(cl_GG_3d_fid[:29], cl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
+        ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(cl_LL_3d_fid, cl_ll_3d_vinc)[:, zi, zj], c=clr[zi])
+        ax[1, 1].plot(ell_dict['ell_XC'][:29], mm.percent_diff(cl_GL_3d_fid[:29], cl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
+        ax[1, 2].plot(ell_dict['ell_GC'][:29], mm.percent_diff(cl_GG_3d_fid[:29], cl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
 
-#     ax[1, 0].set_xlabel('$\\ell$')
-#     ax[1, 1].set_xlabel('$\\ell$')
-#     ax[1, 2].set_xlabel('$\\ell$')
-#     ax[0, 0].set_ylabel('$C_{\ell}$')
-#     ax[1, 0].set_ylabel('% diff')
-#     ax[1, 1].set_ylim(-20, 20)
-#     lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
-#     plt.legend(lines, ['davide', 'vincenzo'], loc='upper center', bbox_to_anchor=(1.55, 1))
-#     plt.show()
-
+    ax[1, 0].set_xlabel('$\\ell$')
+    ax[1, 1].set_xlabel('$\\ell$')
+    ax[1, 2].set_xlabel('$\\ell$')
+    ax[0, 0].set_ylabel('$C_{\ell}$')
+    ax[1, 0].set_ylabel('% diff')
+    ax[1, 1].set_ylim(-20, 20)
+    lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
+    plt.legend(lines, ['davide', 'vincenzo'], loc='upper center', bbox_to_anchor=(1.55, 1))
+    plt.show()
+"""
 
 # ! ================================ SSC =======================================
 
@@ -1105,8 +1115,6 @@ sigma2_b = sigma2_SSC.compute_sigma2(z_grid_ssc_integrands, k_grid_sigma2, which
                                      ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
 
 
-
-
 # ! 4. Perform the integration calling the Julia module
 
 # TODO finish this check, looking promising considering one is hm and one is su
@@ -1122,12 +1130,11 @@ sigma2_b = sigma2_SSC.compute_sigma2(z_grid_ssc_integrands, k_grid_sigma2, which
 # plt.legend()
 
 
-cov_ssc_3x2pt_dict_8D = SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab, 
-                                  ind_auto, ind_cross, cl_integral_prefactor, sigma2_b, z_grid_ssc_integrands)
+cov_ssc_3x2pt_dict_8D = SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
+                                                      ind_auto, ind_cross, cl_integral_prefactor, sigma2_b, z_grid_ssc_integrands)
 
-print('SSC computed')
+print('SSC computed with Spaceborne')
 
-assert False, 'stop here to check Julia SSC integral'
 
 
 # CCL pk
@@ -1160,7 +1167,7 @@ for count, z_val in enumerate((0, 0.5, 1, 2, 3)):
     plt.loglog(k_grid_dPk_hm, pk_mm_ccl[:, z_idx_ccl], ls=':', c=clr[count], alpha=0.5)
 
 handles = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
-              for ls, label in zip(['-', '--'], ['CLOE', 'CCL'])]
+           for ls, label in zip(['-', '--'], ['CLOE', 'CCL'])]
 plt.legend(handles=handles)
 plt.title('P(k), ccl vs imported (CLOE)')
 
@@ -1178,7 +1185,6 @@ plt.title('P(k), ccl vs imported (CLOE)')
 import sys
 sys.path.append('/home/davide/Documenti/Lavoro/Programmi/exact_SSC/bin')
 import ssc_integrands_SPV3 as sscint
-
 
 
 z_val = 0

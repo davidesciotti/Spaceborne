@@ -189,22 +189,16 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
     plt.show()
 
 
-def triangle_plot(FM_GO, FM_GS, fiducials, title, param_names_label):
-    # should I do this?
-    fiducials = np.where(fiducials == 0., 1,
-                         fiducials)  # the fiducial for wa is 0, substitute with 1 to avoid division by zero
-    fiducials = np.where(fiducials == -1, 1,
-                         fiducials)  # the fiducial for wa is -1, substitute with 1 to avoid negative values
-
+def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_background, label_foreground, param_names_label):
+    
     nparams = len(param_names_label)
 
     # parameters' covariance matrix - first invert, then slice! Otherwise, you're fixing the nuisance parameters
-    FM_inv_GO = np.linalg.inv(FM_GO)[:nparams, :nparams]
-    FM_inv_GS = np.linalg.inv(FM_GS)[:nparams, :nparams]
+    fm_inv_fg = np.linalg.inv(fm_foreground)[:nparams, :nparams]
+    fm_inv_bg = np.linalg.inv(fm_backround)[:nparams, :nparams]
 
-    GO_gaussian = GaussianND(mean=fiducials, cov=FM_inv_GO, names=param_names_label)
-    GS_gaussian = GaussianND(mean=fiducials, cov=FM_inv_GS, names=param_names_label)
-    print(GS_gaussian, len(param_names_label), len(fiducials), FM_inv_GO.shape)
+    fg_gaussian = GaussianND(mean=fiducials, cov=fm_inv_fg, names=param_names_label)
+    bg_gaussian = GaussianND(mean=fiducials, cov=fm_inv_bg, names=param_names_label)
     g = plots.get_subplot_plotter()
     g.settings.linewidth = 2
     g.settings.legend_fontsize = 30
@@ -212,10 +206,10 @@ def triangle_plot(FM_GO, FM_GS, fiducials, title, param_names_label):
     g.settings.axes_fontsize = 27
     g.settings.axes_labelsize = 30
     g.settings.subplot_size_ratio = 1
-    g.settingstight_layout = True
+    g.settings.tight_layout = True
     g.settings.solid_colors = 'tab10'
-    g.triangle_plot([GS_gaussian, GO_gaussian], filled=True, contour_lws=1.4,
-                    legend_labels=['Gauss + SSC', 'Gauss-only'], legend_loc='upper right')
+    g.triangle_plot([bg_gaussian, fg_gaussian], filled=True, contour_lws=1.4,
+                    legend_labels=[label_background, label_foreground], legend_loc='upper right')
     plt.suptitle(f'{title}', fontsize='xx-large')
 
 

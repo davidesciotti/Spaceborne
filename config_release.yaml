@@ -117,10 +117,9 @@ general_cfg:
     BNT_transform: False # ! to be deprecated?
     cl_BNT_transform: False
 
-    SPV3_folder: /home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3
-    cl_folder: "{SPV3_folder:s}/OutputFiles/DataVectors/Noiseless/{which_pk:s}"
-    rl_folder: "{SPV3_folder:s}/OutputFiles/ResFun/{which_pk:s}"
-    cl_filename: dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat
+    cl_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVectors/Noiseless/{which_pk:s}"
+    rl_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/ResFun/{which_pk:s}"
+    cl_filename: "dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat"
     rl_filename: resfun-idBM{idBM:02d}.dat # XXX its idBM... anyway not using the responses at the moment
     use_vincenzos_cls: True
 
@@ -134,7 +133,7 @@ general_cfg:
     bias_function: analytical # 'analytical', 'leporifit', 'pocinofit'
     bias_model: step-wise # 'step-wise', 'constant', 'linint', 'ones', 'polynomial'
 
-    CLOE_pk_folder: "{SPV3_folder:s}/InputFiles/InputPS/{which_pk:s}/InFiles/{flat_or_nonflat:s}"
+    CLOE_pk_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputPS/{which_pk:s}/InFiles/{flat_or_nonflat:s}"
     CLOE_pk_filename: "{CLOE_pk_folder:s}/{param_name:s}/PddVsZedLogK-{param_name:s}_{param_value:.3e}.dat"
     flat_or_nonflat: Flat
     which_pk: HMCodeBar
@@ -142,7 +141,6 @@ general_cfg:
     fm_last_folder: jan_2024 # TODO delete this
     flagship_version: 2 # TODO delete this
     fm_and_cov_suffix: _cNG_splinedefault # TODO delete this
-    DATA_ROOT: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3 # TODO delete this
     num_threads: 32
 
 covariance_cfg:
@@ -158,7 +156,7 @@ covariance_cfg:
     fsky: 0.3563380664078408
     sigma_eps_i: 0.26 # ellipticity dispersion *per component*; sigma_eps: (0.26 * np.sqrt(2))
 
-    nofz_folder: "{SPV3_folder:s}/InputFiles/InputNz/NzFid"
+    nofz_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputNz/NzFid"
     nofz_filename: nzTab-EP13-zedMin02-zedMax25-mag245.dat
 
     zbin_centers:
@@ -251,7 +249,7 @@ covariance_cfg:
     compute_GSSC_condition_number: False
 
     # ! no folders for ell_cut_center or min
-    cov_folder: '{DATA_ROOT:s}/output/Flagship_{flagship_version:d}/covmat/BNT_{BNT_transform:s}/ell_cuts_{cov_ell_cuts:s}'
+    cov_folder: '{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/BNT_{BNT_transform:s}/ell_cuts_{cov_ell_cuts:s}'
     cov_filename:
         covmat_{which_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_
         ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_
@@ -274,7 +272,7 @@ covariance_cfg:
         save_hm_responses: True
         save_tkka: True
 
-        cov_path: "{DATA_ROOT:s}/output/Flagship_{flagship_version:d}/covmat/PyCCL/{fm_last_folder:s}"
+        cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/PyCCL/{fm_last_folder:s}"
         cov_filename: "cov_{which_ng_cov:s}_pyccl_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}{fm_and_cov_suffix:s}.npz"
 
         # TODO these have to be tidied up
@@ -304,7 +302,7 @@ covariance_cfg:
         which_ng_cov: [SSC] # only SSC available in this case
         load_precomputed_cov: True # always True for the moment, I have to compute the integral with Julia
 
-        cov_path: "{DATA_ROOT:s}/output/Flagship_{flagship_version:d}/covmat/Spaceborne/separate_universe/{fm_last_folder:s}"
+        cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Spaceborne/separate_universe/{fm_last_folder:s}"
         cov_filename: "cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}_convention{cl_integral_convention:s}.npy"
 
         # settings for sigma2
@@ -326,7 +324,7 @@ covariance_cfg:
         z_steps_ssc_integrands: 50 # this should be high because I have to trace the spikes in sigma2
 
         load_precomputed_sigma2: False
-        sigma2_b_filename: "{DATA_ROOT:s}/output/Flagship_2/sigma2_b/sigma2_b_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}"
+        sigma2_b_filename: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}"
         z_steps_sigma2: 2899 # TODO delete this
         use_KE_approximation: False # TODO implement this in the Julia module
 
@@ -335,7 +333,7 @@ covariance_cfg:
         load_precomputed_cov: True # this must be True for OneCovariance
         use_OneCovariance_Gaussian: False
 
-        cov_path: "{DATA_ROOT:s}/output/Flagship_2/covmat/OneCovariance/output_SPV3_v3_dense_LiFECls"
+        cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/covmat/OneCovariance/output_SPV3_v3_dense_LiFECls"
         cov_filename: "cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz"
 
 FM_cfg:
@@ -346,7 +344,7 @@ FM_cfg:
 
     load_preprocess_derivatives: False
     which_derivatives: Vincenzo # Vincenzo or Spaceborne
-    derivatives_folder: "{SPV3_folder:s}/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}" # TODO delete this
+    derivatives_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}" # TODO delete this
 
     derivatives_filename: dDVd{param_name:s}-{probe:s}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{EP_or_ED:s}{zbins:02d}.dat
     derivatives_prefix: dDVd
@@ -354,7 +352,7 @@ FM_cfg:
     derivatives_BNT_transform: False
     deriv_ell_cuts: False
 
-    fm_folder: f{DATA_ROOT:s}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}{fm_last_folder}
+    fm_folder: f{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}{fm_last_folder}
     fm_last_folder: fm_last_folder
     fm_txt_filename: fm_txt_filename
     fm_dict_filename: fm_dict_filename

@@ -30,7 +30,7 @@ import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib
 import spaceborne.wf_cl_lib as wf_cl_lib
 import spaceborne.pyccl_cov_class as pyccl_cov_class
-import spaceborne.plots_FM_running as plot_utils
+import spaceborne.plot_lib as plot_utils
 import spaceborne.sigma2_SSC as sigma2_SSC
 
 pp = pprint.PrettyPrinter(indent=4)
@@ -328,7 +328,7 @@ def SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddel
         filename=cov_filename,
         probe_ordering=probe_ordering)
 
-    os.system("rm -rf tmp")
+    # os.system("rm -rf tmp")
     return cov_ssc_3x2pt_dict_8D
 
 # * ====================================================================================================================
@@ -506,6 +506,10 @@ variable_specs = {'EP_or_ED': ep_or_ed, 'zbins': zbins,
                   'zmax_nz': general_cfg['zmax_nz'],
                   'which_pk': which_pk,
                   'flat_or_nonflat': general_cfg['flat_or_nonflat'],
+                  'idIA': general_cfg['idIA'],
+                    'idM': general_cfg['idM'],
+                    'idB': general_cfg['idB'],
+                    'idR': general_cfg['idR'],
                   }
 pp.pprint(variable_specs)
 
@@ -1216,15 +1220,17 @@ else:
 # plt.legend()
 
 
-cov_ssc_3x2pt_dict_8D = SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-                                                      ind_auto, ind_cross, cl_integral_prefactor, sigma2_b, z_grid_ssc_integrands)
+# cov_ssc_3x2pt_dict_8D = SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
+                                                    #   ind_auto, ind_cross, cl_integral_prefactor, sigma2_b, z_grid_ssc_integrands)
 
-for key in cov_ssc_3x2pt_dict_8D.keys():
-    cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
+# for key in cov_ssc_3x2pt_dict_8D.keys():
+    # cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
 
 # TODO handle better this covariance object
 # at the moment, I pass the covariance in this way
+cov_ssc_3x2pt_dict_8D = np.load('cov_ssc_3x2pt_dict_8D_zsteps1000.npy', allow_pickle=True).item()
 covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
+
 
 print('SSC computed with Spaceborne')
 
@@ -1233,8 +1239,6 @@ print('SSC computed with Spaceborne')
 kgrid_pk_mm_ccl, pk_mm_ccl = csmlib.pk_from_ccl(
     k_grid_dPk_hm, z_grid_dPk_hm, use_h_units, ccl_obj.cosmo_ccl, pk_kind='nonlinear')
 
-# CLOE pk
-kgrid_pk2d_cloe, z_grid_pk2d_cloe, pk2d_cloe = mm.pk_vinc_file_to_2d_npy(cloe_pk_filename, plot_pk_z0=True)
 
 
 # compute Pgm, Pgg
@@ -1245,32 +1249,12 @@ pk_gm_ccl = gal_bias[None, :] * pk_mm_ccl
 pk_gg_ccl = gal_bias[None, :]**2 * pk_mm_ccl
 
 
-plt.figure()
-clr = cm.rainbow(np.linspace(0, 1, 5))
-for count, z_val in enumerate((0, 0.5, 1, 2, 3)):
-
-    # pick a redshift and get the corresponding index
-    z_idx_cloe = np.argmin(np.abs(z_grid_pk2d_cloe - z_val))
-    z_idx_ccl = np.argmin(np.abs(z_grid_dPk_hm - z_val))
-
-    z_val_cloe = z_grid_pk2d_cloe[z_idx_cloe]
-    z_val_ccl = z_grid_dPk_hm[z_idx_ccl]
-
-    plt.loglog(kgrid_pk2d_cloe, pk2d_cloe[:, z_idx_cloe], ls='-', c=clr[count], )
-    plt.loglog(k_grid_dPk_hm, pk_mm_ccl[:, z_idx_ccl], ls=':', c=clr[count], alpha=0.5)
-
-handles = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
-           for ls, label in zip(['-', '--'], ['CLOE', 'CCL'])]
-plt.legend(handles=handles)
-plt.title('P(k), ccl vs imported (CLOE)')
-
 
 # TODO check galaxy counterterms
 # plt.figure()
 # plt.plot(z_arr_hm, bA34[0, :])
 # plt.plot(z_arr_hm, bB34[0, :])
 
-# TODO integrate this with SPV3_integrands
 # TODO integrate this with Spaceborne_covg
 
 
@@ -1455,7 +1439,6 @@ else:
     Sijkl = np.ones((n_probes * zbins, n_probes * zbins, n_probes * zbins, n_probes * zbins))
 
 # ! compute covariance matrix
-# the ng values are in the second column, for these input files 👇
 # TODO: if already existing, don't compute the covmat, like done above for Sijkl
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix)
@@ -1684,15 +1667,15 @@ fm_folder = fm_cfg['fm_folder'].format(ROOT=ROOT,
                                        flagship_version=general_cfg['flagship_version'],
                                        BNT_transform=str(bnt_transform),
                                        center_or_min=general_cfg['center_or_min'],
-                                       fm_last_folder=fm_cfg['fm_last_folder'])
+                                       fm_last_folder=general_cfg['fm_last_folder'])
 
 if not general_cfg['ell_cuts']:
     # not very nice, i defined the ell_cuts_subfolder above...
     fm_folder = fm_folder.replace(f'/{general_cfg["which_cuts"]}/ell_{center_or_min}', '')
 
 if fm_cfg['save_FM_dict']:
-    fm_dict_filename = fm_cfg['FM_dict_filename'].format(**variable_specs)
-    mm.save_pickle(f'{fm_folder}/{fm_dict_filename}.pickle', fm_dict)
+    fm_dict_filename = fm_cfg['fm_dict_filename'].format(**variable_specs, fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'])
+    mm.save_pickle(f'{fm_folder}/{fm_dict_filename}', fm_dict)
 
 if fm_cfg['test_against_benchmarks']:
     saved_fm_path = f'{fm_folder}/{fm_dict_filename}.pickle'

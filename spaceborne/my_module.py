@@ -118,7 +118,7 @@ def plot_dominant_array_element(arrays_dict, tab_colors, elements_auto, elements
     plt.show()
 
 
-def cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering):
+def cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering, symmetrize_output_dict=symmetrize_output_dict):
     cov_3x2pt_dict_10D = {}
     for probe_A, probe_B in probe_ordering:
         for probe_C, probe_D in probe_ordering:

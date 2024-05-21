@@ -254,7 +254,9 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
 
     if ssc_code_cfg['load_precomputed_cov']:
         # load SSC blocks in 4D and store them into a dictionary of 8D blocks
-        cov_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(cov_path, cov_filename, probe_ordering)
+        ...
+        # TODO find a better solution for Spaceborne cov handling
+        # cov_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(cov_path, cov_filename, probe_ordering)
 
     else:
         assert ssc_code == 'PyCCL', 'covariance can be computed directly only with PyCCL at the moment'
@@ -280,7 +282,16 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
         #                           'or in a separate module')
 
     # reshape the blocks in the dictionary from 4D to 6D, as needed by the BNT
-    cov_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering)
+    
+    # TODO test this, although it should be fine
+    # by passing this dict this function does not symmetrize the 6D covariance blocks, speeding up the code considerably
+    symmetrize_output_dict = {
+        ('L', 'L'): False,
+        ('G', 'L'): False,
+        ('L', 'G'): False,
+        ('G', 'G'): False,
+    }
+    cov_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
 
     return cov_3x2pt_dict_10D
 
@@ -402,7 +413,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     ng_clust = np.array(covariance_cfg['ngal_clustering'])
     noise_3x2pt_4D = mm.build_noise_v2(zbins, n_probes, sigma_eps2=sigma_eps2,
                                        ng_shear=ng_shear, ng_clust=ng_clust,
-                                       EP_or_ED=general_cfg['EP_or_ED'], which_shape_noise='ISTF')
+                                       EP_or_ED=general_cfg['EP_or_ED'])
 
     # create dummy ell axis, the array is just repeated along it
     nbl_max = np.max((nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA))

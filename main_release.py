@@ -30,7 +30,7 @@ import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib
 import spaceborne.wf_cl_lib as wf_cl_lib
 import spaceborne.pyccl_cov_class as pyccl_cov_class
-import spaceborne.plots_FM_running as plot_utils
+import spaceborne.plot_lib as plot_utils
 import spaceborne.sigma2_SSC as sigma2_SSC
 
 pp = pprint.PrettyPrinter(indent=4)
@@ -506,6 +506,10 @@ variable_specs = {'EP_or_ED': ep_or_ed, 'zbins': zbins,
                   'zmax_nz': general_cfg['zmax_nz'],
                   'which_pk': which_pk,
                   'flat_or_nonflat': general_cfg['flat_or_nonflat'],
+                  'idIA': general_cfg['idIA'],
+                    'idM': general_cfg['idM'],
+                    'idB': general_cfg['idB'],
+                    'idR': general_cfg['idR'],
                   }
 pp.pprint(variable_specs)
 
@@ -1223,7 +1227,7 @@ sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename'].format
 
 # TODO handle better this covariance object
 # at the moment, I pass the covariance in this way
-cov_ssc_3x2pt_dict_8D = np.load('cov_ssc_3x2pt_dict_8D_zsteps1000.npy', allow_pickle=True)
+cov_ssc_3x2pt_dict_8D = np.load('cov_ssc_3x2pt_dict_8D_zsteps1000.npy', allow_pickle=True).item()
 covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 
 
@@ -1434,7 +1438,6 @@ else:
     Sijkl = np.ones((n_probes * zbins, n_probes * zbins, n_probes * zbins, n_probes * zbins))
 
 # ! compute covariance matrix
-# the ng values are in the second column, for these input files 👇
 # TODO: if already existing, don't compute the covmat, like done above for Sijkl
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix)
@@ -1663,15 +1666,15 @@ fm_folder = fm_cfg['fm_folder'].format(ROOT=ROOT,
                                        flagship_version=general_cfg['flagship_version'],
                                        BNT_transform=str(bnt_transform),
                                        center_or_min=general_cfg['center_or_min'],
-                                       fm_last_folder=fm_cfg['fm_last_folder'])
+                                       fm_last_folder=general_cfg['fm_last_folder'])
 
 if not general_cfg['ell_cuts']:
     # not very nice, i defined the ell_cuts_subfolder above...
     fm_folder = fm_folder.replace(f'/{general_cfg["which_cuts"]}/ell_{center_or_min}', '')
 
 if fm_cfg['save_FM_dict']:
-    fm_dict_filename = fm_cfg['FM_dict_filename'].format(**variable_specs)
-    mm.save_pickle(f'{fm_folder}/{fm_dict_filename}.pickle', fm_dict)
+    fm_dict_filename = fm_cfg['fm_dict_filename'].format(**variable_specs, fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'])
+    mm.save_pickle(f'{fm_folder}/{fm_dict_filename}', fm_dict)
 
 if fm_cfg['test_against_benchmarks']:
     saved_fm_path = f'{fm_folder}/{fm_dict_filename}.pickle'

@@ -129,7 +129,11 @@ general_cfg:
     magcut_lens: 245 # valid for GCph
     magcut_source: 245 # valid for WL
     zmin_nz: 02 # = 0.2
-    zmax_nz: 25  # = 2.5
+    zmax_nz: 25 # = 2.5
+    idIA: 2
+    idB: 3
+    idM: 3
+    idR: 1
 
     which_forecast: SPV3
     bias_function: analytical # 'analytical', 'leporifit', 'pocinofit'
@@ -142,7 +146,7 @@ general_cfg:
 
     fm_last_folder: jan_2024 # TODO delete this
     flagship_version: 2 # TODO delete this
-    fm_and_cov_suffix: _cNG_splinedefault # TODO delete this
+    fm_and_cov_suffix: _sigma2b_1000 # TODO delete this
     num_threads: 32 # how many threads to use for the Julia SSC integral with @tturbo
 
 covariance_cfg:
@@ -248,7 +252,7 @@ covariance_cfg:
     compute_GSSC_condition_number: False
 
     # ! no folders for ell_cut_center or min
-    cov_folder: '{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/BNT_{BNT_transform:s}/ell_cuts_{cov_ell_cuts:s}'
+    cov_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/BNT_{BNT_transform:s}/ell_cuts_{cov_ell_cuts:s}"
     cov_filename:
         covmat_{which_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_
         ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}_
@@ -289,7 +293,7 @@ covariance_cfg:
         z_grid_tkka_max: 6
         k_grid_tkka_min: 1.e-5
         k_grid_tkka_max: 1.e+2
-        z_grid_tkka_steps_SSC: 700
+        z_grid_tkka_steps_SSC: 200
         k_grid_tkka_steps_SSC: 1024
         z_grid_tkka_steps_cNG: 100
         k_grid_tkka_steps_cNG: 512
@@ -318,10 +322,12 @@ covariance_cfg:
         use_precomputed_sigma2: True # still need to understand exactly where to call/save this
         log10_k_min_sigma2: -4
         log10_k_max_sigma2: 1
-        k_steps_sigma2: 20_000
+        k_steps_sigma2: 20_000 # TODO can I lower this? double bessel integral...
         z_min_ssc_integrands: 0.01
         z_max_ssc_integrands: 3.
-        z_steps_ssc_integrands: 5000 # this should be high because I have to trace the spikes in sigma2
+        z_steps_ssc_integrands: 1000 # this should be high because I have to trace the spikes in sigma2
+
+        z_steps_sigma2: 2899 # TODO delete this
 
         load_precomputed_sigma2: False
         sigma2_b_filename: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}"
@@ -339,7 +345,7 @@ FM_cfg:
     compute_FM: True
 
     save_FM_txt: True
-    save_FM_dict: False
+    save_FM_dict: True
 
     load_preprocess_derivatives: False
     which_derivatives: Vincenzo # Vincenzo or Spaceborne
@@ -351,10 +357,9 @@ FM_cfg:
     derivatives_BNT_transform: False
     deriv_ell_cuts: False
 
-    fm_folder: f{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{which_cuts:s}/ell_{center_or_min:s}{fm_last_folder}
-    fm_last_folder: fm_last_folder
+    fm_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{fm_last_folder:s}"
     fm_txt_filename: fm_txt_filename
-    fm_dict_filename: fm_dict_filename
+    fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz:d}_MS{magcut_source:03d}_ZS{zmin_nz:d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}{fm_and_cov_suffix:s}.pickle
 
     test_against_vincenzo: False # TODO delete this
     test_against_benchmarks: False # TODO delete this

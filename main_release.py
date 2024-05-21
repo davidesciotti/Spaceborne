@@ -306,7 +306,7 @@ def plot_kernels_for_thesis():
 
 
 def SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-                                  ind_auto, ind_cross, cl_integral_prefactor, sigma2, z_grid):
+                                  ind_auto, ind_cross, cl_integral_prefactor, sigma2, z_grid, num_threads=16):
     """Kernel to compute the 4D integral optimized using Simpson's rule using Julia."""
 
     if not os.path.exists("tmp"):
@@ -319,7 +319,7 @@ def SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddel
     np.save("tmp/cl_integral_prefactor", cl_integral_prefactor)
     np.save("tmp/sigma2", sigma2)
     np.save("tmp/z_grid", z_grid)
-    os.system("julia --project=. --threads=16 spaceborne/SSC_integral_julia_new_dav.jl")
+    os.system(f"julia --project=. --threads={num_threads} spaceborne/SSC_integral_julia_new_dav.jl")
 
     cov_filename = "cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npy"
 
@@ -1190,13 +1190,12 @@ if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
 else:
     sigma2_b = sigma2_SSC.compute_sigma2(z_grid_ssc_integrands, k_grid_sigma2, which_sigma2_B,
                                          ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
-    
+
     sigma2_b_tosave = {
         'sigma2_b': sigma2_b,
         'cfg': cfg
     }
     np.save(sigma2_b_filename, sigma2_b_tosave, allow_pickle=True)
-    
 
 
 # ! 4. Perform the integration calling the Julia module
@@ -1459,8 +1458,12 @@ cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix)
 
 # save covariance matrix and test against benchmarks
-cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
-                                                 **variable_specs)
+cov_folder = covariance_cfg['cov_folder'].format(DATA_ROOT=general_cfg['DATA_ROOT'],
+                                                 flagship_version=general_cfg['flagship_version'],
+                                                 cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
+                                                 BNT_transform=str(general_cfg['BNT_transform']))
+
+
 covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
 if ep_or_ed == 'EP' and covariance_cfg['SSC_code'] == 'Spaceborne' and covariance_cfg['test_against_CLOE_benchmarks'] \
@@ -1648,10 +1651,10 @@ else:
     raise ValueError('"load_preprocess_derivatives" must be True or False')
 
 # store the derivatives arrays in a dictionary
-deriv_dict_dav = {'dC_LL_4D': dC_LL_4D,
-                  'dC_WA_4D': dC_WA_4D,
-                  'dC_GG_4D': dC_GG_4D,
-                  'dC_3x2pt_6D': dC_3x2pt_6D}
+# deriv_dict_dav = {'dC_LL_4D': dC_LL_4D,
+#                   'dC_WA_4D': dC_WA_4D,
+#                   'dC_GG_4D': dC_GG_4D,
+#                   'dC_3x2pt_6D': dC_3x2pt_6D}
 
 deriv_dict_vin = {'dC_LL_4D': dC_LL_4D_vin,
                   'dC_WA_4D': dC_WA_4D_vin,
@@ -1659,13 +1662,15 @@ deriv_dict_vin = {'dC_LL_4D': dC_LL_4D_vin,
                   'dC_3x2pt_6D': dC_3x2pt_6D_vin}
 
 # ! compute and save fisher matrix
-fm_dict_dav = fm_utils.compute_FM(cfg, ell_dict, cov_dict, deriv_dict_dav, bnt_matrix)
 fm_dict_vin = fm_utils.compute_FM(cfg, ell_dict, cov_dict, deriv_dict_vin, bnt_matrix)
 
-fm_dict_vin_modified = {key + '_vin': value for key, value in fm_dict_vin.items()}
-del fm_dict_vin_modified['fiducial_values_dict_vin']
+# TODO finish testing derivatives
+# fm_dict_dav = fm_utils.compute_FM(cfg, ell_dict, cov_dict, deriv_dict_dav, bnt_matrix)
+# fm_dict_vin_modified = {key + '_vin': value for key, value in fm_dict_vin.items()}
+# del fm_dict_vin_modified['fiducial_values_dict_vin']
+# fm_dict = {**fm_dict_dav, **fm_dict_vin_modified}
 
-fm_dict = {**fm_dict_dav, **fm_dict_vin_modified}
+fm_dict = fm_dict_vin
 
 # ordered fiducial parameters entering the FM
 fm_dict['fiducial_values_dict'] = cfg['cosmology']['FM_ordered_params']
@@ -1715,7 +1720,7 @@ if fm_cfg['test_against_vincenzo'] and bnt_transform == False:
 nparams_toplot = 7
 names_params_to_fix = []
 divide_fom_by_10 = True
-include_fom = False
+include_fom = True
 fix_dz = True
 fix_shear_bias = True
 fix_gal_bias = False
@@ -1759,7 +1764,7 @@ for key in list(fm_dict.keys()):
 for probe in probes:
 
     key_a = f'FM_{probe}_G'
-    key_b = f'FM_{probe}_G_vin'
+    key_b = f'FM_{probe}_GSSC'
 
     uncert_dict[f'perc_diff_{probe}_G'] = mm.percent_diff(
         uncert_dict[key_b], uncert_dict[key_a])
@@ -1771,8 +1776,8 @@ for probe in probes:
 
     cases_to_plot = [
         f'FM_{probe}_G',
-        f'FM_{probe}_G_vin',
-        # f'perc_diff_{probe}_G',
+        f'FM_{probe}_GSSC',
+        f'perc_diff_{probe}_G',
 
         #  f'FM_{probe}_{which_ng_cov_suffix}',
         #  f'perc_diff_{probe}_{which_ng_cov_suffix}',

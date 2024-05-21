@@ -502,6 +502,8 @@ variable_specs = {'EP_or_ED': ep_or_ed, 'zbins': zbins,
                   'ng_cov_code': covariance_cfg['SSC_code'],
                   'magcut_lens': magcut_lens,
                   'magcut_source': magcut_source,
+                  'zmin_nz': general_cfg['zmin_nz'],
+                  'zmax_nz': general_cfg['zmax_nz'],
                   'which_pk': which_pk,
                   'flat_or_nonflat': general_cfg['flat_or_nonflat'],
                   }

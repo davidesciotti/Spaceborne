@@ -1,0 +1,93 @@
+nohup: ignoring input 1355692
+Error.  nthreads cannot be larger than environment variable "NUMEXPR_MAX_THREADS" (64)/export/NAS/cosmo/data/davide.sciotti/Spaceborne/main_release.py:402: UserWarning: dzGC_fiducial are equal to dzWL_fiducial
+  warnings.warn('dzGC_fiducial are equal to dzWL_fiducial')
+{   'BNT_transform': False,
+    'EP_or_ED': 'EP',
+    'center_or_min': 'center',
+    'ell_max_3x2pt': 3000,
+    'ell_max_GC': 3000,
+    'ell_max_WL': 3000,
+    'flat_or_nonflat': 'Flat',
+    'kmax_h_over_Mpc': 1.0,
+    'magcut_lens': 245,
+    'magcut_source': 245,
+    'nbl_3x2pt': 29,
+    'nbl_GC': 29,
+    'nbl_WA': 0,
+    'nbl_WL': 29,
+    'ng_cov_code': 'Spaceborne',
+    'which_ng_cov': 'GSSC',
+    'which_pk': 'HMCodeBar',
+    'zbins': 13}
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/spaceborne/covariance.py:812: UserWarning: z_grid starts at 0, which gives a null comoving distance. Removing the first element from the grid
+  warnings.warn('z_grid starts at 0, which gives a null comoving distance. '
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/spaceborne/my_module.py:3406: UserWarning: double-check the units in the header and whether k is in log scale in the input file (this function assumes it is))
+  warnings.warn(
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/spaceborne/my_module.py:3408: UserWarning: the output ordering is [k, z], not the other way around!
+  warnings.warn('the output ordering is [k, z], not the other way around!')
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/main_release.py:616: UserWarning: Extrapolating the P(k) in Tk3D_SSC!
+  warnings.warn('Extrapolating the P(k) in Tk3D_SSC!')
+Shifting n(z), clipping between redshifts 0 and 3
+There are 0 bins for Wadd in this case, cl_wa will be empty
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/main_release.py:728: UserWarning: The figure layout has changed to tight
+  plt.tight_layout()
+Params present in input folder but not in the cfg file: ['bIA']
+Params present in cfg file but not in the input folder: []
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+Start SSC computation...
+SSC tkka: z points = 700, k points = 1024
+cNG tkka: z points = 100, k points = 512
+
+0it [00:00, ?it/s]Computing trispectrum for SSC, probe combinatiComputing trispectrum for SSC, probe combination LLGL
+Computing trispectrum for SSC, probe combination LLGG
+1it [02:18, 138.91s/it]Computing trispectrum for SSC, probe combination GLGL
+Computing trispectrum for SSC, probe combination GLGG
+2it [05:00, 151.97s/it]Computing trispectrum for SSC, probe combination GGGG
+3it [05:34, 98.36s/it] 3it [05:34, 111.53s/it]
+trispectrum computed in 334.59 seconds
+computing sigma^2(z_1, z_2) for SSC...
+  0%|          | 0/5000 [00:00<?, ?it/s]  0%|          | 1/5000 [00:02<4:01:25,  2.90s/it]  0%|          | 2/5000 [00:05<3:57:37,  2.85s/it]  0%|          | 3/5000 [00:08<3:56:48,  2.84s/it]  0%|          | 4/5000 [00:11<3:59:51,  2.88s/it]  0%|          | 5/5000 [00:14<3:58:33,  2.87s/it]  0%|          | 6/5000 [00:17<3:57:56,  2.86s/it]  0%|          | 7/5000 [00:19<3:56:58,  2.85s/it]  0%|          | 8/5000 [00:22<3:56:10,  2.84s/it]  0%|          | 9/5000 [00:25<4:00:40,  2.89s/it]  0%|          | 10/5000 [00:28<4:01:31,  2.90s/it]  0%|          | 11/5000 [00:31<4:00:26,  2.89s/it]  0%|          | 12/5000 [00:34<3:59:56,  2.89s/it]  0%|          | 13/5000 [00:37<3:58:54,  2.87s/it]  0%|          | 14/5000 [00:40<4:00:57,  2.90s/it]  0%|          | 15/5000 [00:43<4:00:15,  2.89s/it]  0%|          | 16/5000 [00:46<3:59:58,  2.89s/it]  0%|          | 17/5000 [00:48<3:59:04,  2.88s/it]  0%|          | 18/5000 [00:51<3:58:07,  2.87s/it]  0%|          | 19/5000 [00:54<3:59:19,  2.88s/it]  0%|          | 20/5000 [00:57<3:59:38,  2.89s/it]  0%|          | 21/5000 [01:00<3:59:09,  2.88s/it]  0%|          | 22/5000 [01:03<3:58:20,  2.87s/it]  0%|          | 23/5000 [01:06<3:57:13,  2.86s/it]  0%|          | 24/5000 [01:08<3:56:26,  2.85s/it]  0%|          | 25/5000 [01:11<3:59:32,  2.89s/it]  1%|          | 26/5000 [01:14<3:58:43,  2.88s/it]  1%|          | 27/5000 [01:17<3:58:09,  2.87s/it]  1%|          | 28/5000 [01:20<3:56:49,  2.86s/it]  1%|          | 29/5000 [01:23<3:56:13,  2.85s/it]  1%|          | 30/5000 [01:26<3:59:09,  2.89s/it]  1%|          | 31/5000 [01:29<3:58:01,  2.87s/it]  1%|          | 32/5000 [01:31<3:57:36,  2.87s/it]  1%|          | 33/5000 [01:34<3:56:50,  2.86s/it]  1%|          | 34/5000 [01:37<3:56:22,  2.86s/it]  1%|          | 35/5000 [01:40<3:58:20,  2.88s/it]  1%|          | 36/5000 [01:43<3:57:45,  2.87s/it]  1%|          | 37/5000 [01:46<3:57:22,  2.87s/it]  1%|          | 38/5000 [01:49<3:56:40,  2.86s/it]  1%|          | 39/5000 [01:52<3:56:10,  2.86s/it]  1%|          | 40/5000 [01:55<4:02:49,  2.94s/it]  1%|          | 41/5000 [01:58<4:03:26,  2.95s/it]  1%|          | 42/5000 [02:01<4:02:31,  2.93s/it]  1%|          | 43/5000 [02:03<4:01:21,  2.92s/it]  1%|          | 44/5000 [02:06<3:59:53,  2.90s/it]  1%|          | 45/5000 [02:09<4:00:26,  2.91s/it]  1%|          | 46/5000 [02:12<4:00:41,  2.92s/it]  1%|          | 47/5000 [02:15<4:00:06,  2.91s/it]  1%|          | 48/5000 [02:18<3:58:51,  2.89s/it]  1%|          | 49/5000 [02:21<4:03:45,  2.95s/it]  1%|          | 50/5000 [02:24<4:03:26,  2.95s/it]  1%|          | 51/5000 [02:27<4:01:33,  2.93s/it]  1%|          | 52/5000 [02:30<3:59:25,  2.90s/it]  1%|          | 53/5000 [02:32<3:58:23,  2.89s/it]  1%|          | 54/5000 [02:36<4:03:31,  2.95s/it]  1%|          | 55/5000 [02:38<4:01:21,  2.93s/it]  1%|          | 56/5000 [02:41<3:59:28,  2.91s/it]  1%|          | 57/5000 [02:44<4:03:18,  2.95s/it]  1%|          | 58/5000 [02:48<4:08:38,  3.02s/it]  1%|          | 59/5000 [02:52<4:37:43,  3.37s/it]  1%|          | 60/5000 [02:55<4:25:32,  3.23s/it]  1%|          | 61/5000 [02:57<4:16:32,  3.12s/it]  1%|          | 62/5000 [03:00<4:09:29,  3.03s/it]  1%|▏         | 63/5000 [03:03<4:04:40,  2.97s/it]  1%|▏         | 64/5000 [03:06<4:03:40,  2.96s/it]  1%|▏         | 65/5000 [03:09<4:00:33,  2.92s/it]  1%|▏         | 66/5000 [03:12<3:59:51,  2.92s/it]  1%|▏         | 67/5000 [03:15<3:56:30,  2.88s/it]  1%|▏         | 68/5000 [03:17<3:53:57,  2.85s/it]  1%|▏         | 69/5000 [03:20<3:57:24,  2.89s/it]  1%|▏         | 70/5000 [03:23<3:57:09,  2.89s/it]  1%|▏         | 71/5000 [03:26<3:55:01,  2.86s/it]  1%|▏         | 72/5000 [03:29<3:53:29,  2.84s/it]  1%|▏         | 73/5000 [03:32<3:51:47,  2.82s/it]  1%|▏         | 74/5000 [03:34<3:50:30,  2.81s/it]  2%|▏         | 75/5000 [03:37<3:54:45,  2.86s/it]  2%|▏         | 76/5000 [03:40<3:53:22,  2.84s/it]  2%|▏         | 77/5000 [03:43<3:52:11,  2.83s/it]  2%|▏         | 78/5000 [03:46<3:50:50,  2.81s/it]  2%|▏         | 79/5000 [03:49<3:49:47,  2.80s/it]  2%|▏         | 80/5000 [03:52<3:54:55,  2.86s/it]  2%|▏         | 81/5000 [03:54<3:54:52,  2.86s/it]  2%|▏         | 82/5000 [03:57<3:54:12,  2.86s/it]  2%|▏         | 83/5000 [04:00<3:53:36,  2.85s/it]  2%|▏         | 84/5000 [04:03<3:54:03,  2.86s/it]  2%|▏         | 85/5000 [04:06<3:56:35,  2.89s/it]  2%|▏         | 86/5000 [04:09<3:56:02,  2.88s/it]  2%|▏         | 87/5000 [04:12<3:55:00,  2.87s/it]  2%|▏         | 88/5000 [04:15<3:54:59,  2.87s/it]  2%|▏         | 89/5000 [04:17<3:53:04,  2.85s/it]  2%|▏         | 90/5000 [04:20<3:53:40,  2.86s/it]  2%|▏         | 91/5000 [04:23<3:54:34,  2.87s/it]  2%|▏         | 92/5000 [04:26<3:52:42,  2.84s/it]  2%|▏         | 93/5000 [04:29<3:51:32,  2.83s/it]  2%|▏         | 94/5000 [04:31<3:50:49,  2.82s/it]  2%|▏         | 95/5000 [04:34<3:49:56,  2.81s/it]  2%|▏         | 96/5000 [04:37<3:52:11,  2.84s/it]  2%|▏         | 97/5000 [04:40<3:51:16,  2.83s/it]  2%|▏         | 98/5000 [04:43<3:50:33,  2.82s/it]  2%|▏         | 99/5000 [04:46<3:49:21,  2.81s/it]  2%|▏         | 100/5000 [04:48<3:48:34,  2.80s/it]  2%|▏         | 101/5000 [04:51<3:53:27,  2.86s/it]  2%|▏         | 102/5000 [04:54<3:52:14,  2.84s/it]  2%|▏         | 103/5000 [04:57<3:50:59,  2.83s/it]  2%|▏         | 104/5000 [05:00<3:50:22,  2.82s/it]  2%|▏         | 105/5000 [05:03<3:49:08,  2.81s/it]  2%|▏         | 106/5000 [05:05<3:48:58,  2.81s/it]  2%|▏         | 107/5000 [05:08<3:49:44,  2.82s/it]  2%|▏         | 108/5000 [05:11<3:49:30,  2.81s/it]  2%|▏         | 109/5000 [05:14<3:49:06,  2.81s/it]  2%|▏         | 110/5000 [05:17<3:48:31,  2.80s/it]  2%|▏         | 111/5000 [05:19<3:48:22,  2.80s/it]  2%|▏         | 112/5000 [05:22<3:51:41,  2.84s/it]  2%|▏         | 113/5000 [05:25<3:50:41,  2.83s/it]  2%|▏         | 114/5000 [05:28<3:50:11,  2.83s/it]  2%|▏         | 115/5000 [05:31<3:49:11,  2.82s/it]  2%|▏         | 116/5000 [05:33<3:48:37,  2.81s/it]  2%|▏         | 117/5000 [05:36<3:52:38,  2.86s/it]  2%|▏         | 118/5000 [05:39<3:51:31,  2.85s/it]  2%|▏         | 119/5000 [05:42<3:50:44,  2.84s/it]  2%|▏         | 120/5000 [05:45<3:49:41,  2.82s/it]  2%|▏         | 121/5000 [05:48<3:49:19,  2.82s/it]  2%|▏         | 122/5000 [05:51<3:54:07,  2.88s/it]  2%|▏         | 123/5000 [05:54<3:52:14,  2.86s/it]  2%|▏         | 124/5000 [05:56<3:51:12,  2.84s/it]  2%|▎         | 125/5000 [05:59<3:49:55,  2.83s/it]  3%|▎         | 126/5000 [06:02<3:48:48,  2.82s/it]  3%|▎         | 127/5000 [06:05<3:52:25,  2.86s/it]  3%|▎         | 128/5000 [06:08<3:51:08,  2.85s/it]  3%|▎         | 129/5000 [06:11<3:50:16,  2.84s/it]  3%|▎         | 130/5000 [06:13<3:49:27,  2.83s/it]  3%|▎         | 131/5000 [06:16<3:49:41,  2.83s/it]  3%|▎         | 132/5000 [06:19<3:50:36,  2.84s/it]  3%|▎         | 133/5000 [06:22<3:49:34,  2.83s/it]  3%|▎         | 134/5000 [06:25<3:49:00,  2.82s/it]  3%|▎         | 135/5000 [06:27<3:48:06,  2.81s/it]  3%|▎         | 136/5000 [06:30<3:47:29,  2.81s/it]  3%|▎         | 137/5000 [06:33<3:49:27,  2.83s/it]  3%|▎         | 138/5000 [06:36<3:48:53,  2.82s/it]  3%|▎         | 139/5000 [06:39<3:48:14,  2.82s/it]  3%|▎         | 140/5000 [06:42<3:47:25,  2.81s/it]  3%|▎         | 141/5000 [06:44<3:46:39,  2.80s/it]  3%|▎         | 142/5000 [06:47<3:51:03,  2.85s/it]  3%|▎         | 143/5000 [06:50<3:49:50,  2.84s/it]  3%|▎         | 144/5000 [06:53<3:48:55,  2.83s/it]  3%|▎         | 145/5000 [06:56<3:47:47,  2.82s/it]  3%|▎         | 146/5000 [06:58<3:47:07,  2.81s/it]  3%|▎         | 147/5000 [07:01<3:52:33,  2.88s/it]  3%|▎         | 148/5000 [07:04<3:50:50,  2.85s/it]  3%|▎         | 149/5000 [07:07<3:49:42,  2.84s/it]  3%|▎         | 150/5000 [07:10<3:48:28,  2.83s/it]  3%|▎         | 151/5000 [07:13<3:47:34,  2.82s/it]  3%|▎         | 152/5000 [07:16<3:51:45,  2.87s/it]  3%|▎         | 153/5000 [07:19<3:51:22,  2.86s/it]  3%|▎         | 154/5000 [07:21<3:50:16,  2.85s/it]  3%|▎         | 155/5000 [07:24<3:49:10,  2.84s/it]  3%|▎         | 156/5000 [07:27<3:47:31,  2.82s/it]  3%|▎         | 157/5000 [07:30<3:46:33,  2.81s/it]  3%|▎         | 158/5000 [07:33<3:49:07,  2.84s/it]  3%|▎         | 159/5000 [07:35<3:48:29,  2.83s/it]  3%|▎         | 160/5000 [07:38<3:47:48,  2.82s/it]  3%|▎         | 161/5000 [07:41<3:47:05,  2.82s/it]  3%|▎         | 162/5000 [07:44<3:46:04,  2.80s/it]  3%|▎         | 163/5000 [07:47<3:46:51,  2.81s/it]  3%|▎         | 164/5000 [07:49<3:47:33,  2.82s/it]  3%|▎         | 165/5000 [07:52<3:46:51,  2.82s/it]  3%|▎         | 166/5000 [07:55<3:46:33,  2.81s/it]  3%|▎         | 167/5000 [07:58<3:45:49,  2.80s/it]  3%|▎         | 168/5000 [08:01<3:45:09,  2.80s/it]  3%|▎         | 169/5000 [08:04<3:47:45,  2.83s/it]  3%|▎         | 170/5000 [08:06<3:47:06,  2.82s/it]  3%|▎         | 171/5000 [08:09<3:46:42,  2.82s/it]  3%|▎         | 172/5000 [08:12<3:46:08,  2.81s/it]  3%|▎         | 173/5000 [08:15<3:45:38,  2.80s/it]  3%|▎         | 174/5000 [08:18<3:45:46,  2.81s/it]  4%|▎         | 175/5000 [08:20<3:47:05,  2.82s/it]  4%|▎         | 176/5000 [08:23<3:46:31,  2.82s/it]

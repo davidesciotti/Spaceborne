@@ -328,7 +328,7 @@ def SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddel
         filename=cov_filename,
         probe_ordering=probe_ordering)
 
-    os.system("rm -rf tmp")
+    # os.system("rm -rf tmp")
     return cov_ssc_3x2pt_dict_8D
 
 # * ====================================================================================================================
@@ -1186,18 +1186,18 @@ sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename'].format
     log10kmax=covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
     ksteps=covariance_cfg['Spaceborne_cfg']['k_steps_sigma2']
 )
-if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
-    # TODO define a suitable interpolator if the zgrid doesn't match
-    sigma2_b = np.load(sigma2_b_filename)
-else:
-    sigma2_b = sigma2_SSC.compute_sigma2(z_grid_ssc_integrands, k_grid_sigma2, which_sigma2_B,
-                                         ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
+# if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
+#     # TODO define a suitable interpolator if the zgrid doesn't match
+#     sigma2_b = np.load(sigma2_b_filename)
+# else:
+#     sigma2_b = sigma2_SSC.compute_sigma2(z_grid_ssc_integrands, k_grid_sigma2, which_sigma2_B,
+#                                          ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
 
-    sigma2_b_tosave = {
-        'sigma2_b': sigma2_b,
-        'cfg': cfg
-    }
-    np.save(sigma2_b_filename, sigma2_b_tosave, allow_pickle=True)
+#     sigma2_b_tosave = {
+#         'sigma2_b': sigma2_b,
+#         'cfg': cfg
+#     }
+#     np.save(sigma2_b_filename, sigma2_b_tosave, allow_pickle=True)
 
 
 # ! 4. Perform the integration calling the Julia module
@@ -1215,15 +1215,17 @@ else:
 # plt.legend()
 
 
-cov_ssc_3x2pt_dict_8D = SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-                                                      ind_auto, ind_cross, cl_integral_prefactor, sigma2_b, z_grid_ssc_integrands)
+# cov_ssc_3x2pt_dict_8D = SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
+                                                    #   ind_auto, ind_cross, cl_integral_prefactor, sigma2_b, z_grid_ssc_integrands)
 
-for key in cov_ssc_3x2pt_dict_8D.keys():
-    cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
+# for key in cov_ssc_3x2pt_dict_8D.keys():
+    # cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
 
 # TODO handle better this covariance object
 # at the moment, I pass the covariance in this way
+cov_ssc_3x2pt_dict_8D = np.load('cov_ssc_3x2pt_dict_8D_zsteps1000.npy', allow_pickle=True)
 covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
+
 
 print('SSC computed with Spaceborne')
 
@@ -1232,8 +1234,6 @@ print('SSC computed with Spaceborne')
 kgrid_pk_mm_ccl, pk_mm_ccl = csmlib.pk_from_ccl(
     k_grid_dPk_hm, z_grid_dPk_hm, use_h_units, ccl_obj.cosmo_ccl, pk_kind='nonlinear')
 
-# CLOE pk
-kgrid_pk2d_cloe, z_grid_pk2d_cloe, pk2d_cloe = mm.pk_vinc_file_to_2d_npy(cloe_pk_filename, plot_pk_z0=True)
 
 
 # compute Pgm, Pgg
@@ -1244,32 +1244,12 @@ pk_gm_ccl = gal_bias[None, :] * pk_mm_ccl
 pk_gg_ccl = gal_bias[None, :]**2 * pk_mm_ccl
 
 
-plt.figure()
-clr = cm.rainbow(np.linspace(0, 1, 5))
-for count, z_val in enumerate((0, 0.5, 1, 2, 3)):
-
-    # pick a redshift and get the corresponding index
-    z_idx_cloe = np.argmin(np.abs(z_grid_pk2d_cloe - z_val))
-    z_idx_ccl = np.argmin(np.abs(z_grid_dPk_hm - z_val))
-
-    z_val_cloe = z_grid_pk2d_cloe[z_idx_cloe]
-    z_val_ccl = z_grid_dPk_hm[z_idx_ccl]
-
-    plt.loglog(kgrid_pk2d_cloe, pk2d_cloe[:, z_idx_cloe], ls='-', c=clr[count], )
-    plt.loglog(k_grid_dPk_hm, pk_mm_ccl[:, z_idx_ccl], ls=':', c=clr[count], alpha=0.5)
-
-handles = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
-           for ls, label in zip(['-', '--'], ['CLOE', 'CCL'])]
-plt.legend(handles=handles)
-plt.title('P(k), ccl vs imported (CLOE)')
-
 
 # TODO check galaxy counterterms
 # plt.figure()
 # plt.plot(z_arr_hm, bA34[0, :])
 # plt.plot(z_arr_hm, bB34[0, :])
 
-# TODO integrate this with SPV3_integrands
 # TODO integrate this with Spaceborne_covg
 
 

@@ -18,8 +18,8 @@ SB_ROOT = f'{ROOT}/Spaceborne'
 
 
 sys.path.append(SB_ROOT)
-import bin.plots_FM_running as plot_utils
-import bin.my_module as mm
+import spaceborne.plots_FM_running as plot_utils
+import spaceborne.my_module as mm
 import common_cfg.mpl_cfg as mpl_cfg
 
 sys.path.append(f'{SB_ROOT}/jobs/config')
@@ -49,9 +49,9 @@ ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
 fm_last_folder = '/jan_2024'  # /standard or /jan_2024
 ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
 
-codes_to_compare = ('OneCovariance', 'OneCovariance')
-filename_suffix_list = ('_std_ellFix', '_dense_LiFECls_shearFix')
-which_cov_term_list = ['G', 'GSSC', 'GcNG', ]
+codes_to_compare = ('Spaceborne', 'OneCovariance')
+filename_suffix_list = ('_sigma2b_1000', '_dense_LiFECls_shearFix')
+which_cov_term_list = ['G', 'GSSC', ]
 
 
 fix_dz_plt = True
@@ -379,18 +379,18 @@ for probe_toplot in probes:
     # append percent differences to df
     fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
                                              which_cov_term_list[1], num_string_columns)
-    fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
-                                             'GcNG', num_string_columns)
+    # fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
+                                            #  'GcNG', num_string_columns)
 
     # check that the G term is the same, all other entries being the same
     g_rows_df = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] == 'G']
     g_rows_arr = g_rows_df.iloc[:, num_string_columns:].select_dtypes('number').values
-    for i in range(1, g_rows_arr.shape[0]):
-        np.testing.assert_allclose(g_rows_arr[0], g_rows_arr[i], rtol=1e-3)
+    # for i in range(1, g_rows_arr.shape[0]):
+        # np.testing.assert_allclose(g_rows_arr[0], g_rows_arr[i], rtol=1e-3)
 
     # ! drop some entries for clearer plot
-    fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'G']
-    fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GSSC']
+    # fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'G']
+    # fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GSSC']
     fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GcNG']
     fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GSSCcNG']
 

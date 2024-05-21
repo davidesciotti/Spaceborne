@@ -502,6 +502,8 @@ variable_specs = {'EP_or_ED': ep_or_ed, 'zbins': zbins,
                   'ng_cov_code': covariance_cfg['SSC_code'],
                   'magcut_lens': magcut_lens,
                   'magcut_source': magcut_source,
+                  'zmin_nz': general_cfg['zmin_nz'],
+                  'zmax_nz': general_cfg['zmax_nz'],
                   'which_pk': which_pk,
                   'flat_or_nonflat': general_cfg['flat_or_nonflat'],
                   }
@@ -532,7 +534,7 @@ if ep_or_ed == 'ED':
 # ! import n(z)
 # n_of_z_full: nz table including a column for the z values
 # n_of_z:      nz table excluding a column for the z values
-nofz_folder = covariance_cfg["nofz_folder"].format(SPV3_folder=general_cfg['SPV3_folder'])
+nofz_folder = covariance_cfg["nofz_folder"].format(ROOT=ROOT)
 nofz_filename = covariance_cfg["nofz_filename"].format(**variable_specs)
 n_of_z_full = np.genfromtxt(f'{nofz_folder}/{nofz_filename}')
 assert n_of_z_full.shape[1] == zbins + 1, 'n_of_z must have zbins + 1 columns; the first one must be for the z values'
@@ -601,7 +603,7 @@ ccl_obj.set_mag_bias_tuple(z_grid=z_grid_ssc_integrands,
 if general_cfg['which_forecast'] == 'SPV3' and pyccl_cfg['which_pk_for_pyccl'] == 'CLOE':
 
     cloe_pk_folder = general_cfg['CLOE_pk_folder'].format(
-        SPV3_folder=general_cfg['SPV3_folder'],
+        ROOT=ROOT,
         which_pk=general_cfg['which_pk'],
         flat_or_nonflat=general_cfg['flat_or_nonflat'])
 
@@ -702,7 +704,7 @@ ccl_obj.cl_wa_3d = ccl_obj.cl_ll_3d[nbl_3x2pt:nbl_WL]
 cl_ll_3d, cl_gl_3d, cl_gg_3d, cl_wa_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d, ccl_obj.cl_wa_3d
 
 # import Vicnenzo's cls, as a quick check (no RSDs in GCph in my Cls!!)
-cl_folder = general_cfg['cl_folder'].format(which_pk=general_cfg['which_pk'], SPV3_folder=general_cfg['SPV3_folder'])
+cl_folder = general_cfg['cl_folder'].format(which_pk=general_cfg['which_pk'], ROOT=ROOT)
 cl_filename = 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:d}-MS{magcut_source:d}-idIA2-idB3-idM3-idR1.dat'
 cl_ll_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='WLO', **variable_specs)}")
 cl_gg_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='GCO', **variable_specs)}")
@@ -871,7 +873,7 @@ if fm_cfg['which_derivatives'] == 'Spaceborne':
 elif fm_cfg['which_derivatives'] == 'Vincenzo':
     # Vincenzo's derivatives
     der_prefix = fm_cfg['derivatives_prefix']
-    derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs, SPV3_folder=general_cfg['SPV3_folder'])
+    derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs, ROOT=ROOT)
     # ! get vincenzo's derivatives' parameters, to check that they match with the yaml file
     # check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
     vinc_filenames = mm.get_filenames_in_folder(derivatives_folder)
@@ -1176,7 +1178,7 @@ k_grid_sigma2 = np.logspace(covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2
 which_sigma2_B = covariance_cfg['Spaceborne_cfg']['which_sigma2_B']
 
 sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename'].format(
-    DATA_ROOT=general_cfg['DATA_ROOT'],
+    ROOT=ROOT,
     zmin=covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
     zmax=covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
     zsteps=covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'],
@@ -1458,7 +1460,7 @@ cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix)
 
 # save covariance matrix and test against benchmarks
-cov_folder = covariance_cfg['cov_folder'].format(DATA_ROOT=general_cfg['DATA_ROOT'],
+cov_folder = covariance_cfg['cov_folder'].format(ROOT=ROOT,
                                                  flagship_version=general_cfg['flagship_version'],
                                                  cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
                                                  BNT_transform=str(general_cfg['BNT_transform']))
@@ -1526,7 +1528,7 @@ if not fm_cfg['compute_FM']:
 
 start_time = time.perf_counter()
 derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs,
-                                                         SPV3_folder=general_cfg['SPV3_folder'])
+                                                         ROOT=ROOT)
 # ! get vincenzo's derivatives' parameters, to check that they match with the yaml file
 # check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
 der_prefix = fm_cfg['derivatives_prefix']
@@ -1675,7 +1677,7 @@ fm_dict = fm_dict_vin
 # ordered fiducial parameters entering the FM
 fm_dict['fiducial_values_dict'] = cfg['cosmology']['FM_ordered_params']
 
-fm_folder = fm_cfg['fm_folder'].format(DATA_ROOT=general_cfg['DATA_ROOT'],
+fm_folder = fm_cfg['fm_folder'].format(ROOT=ROOT,
                                        ell_cuts=str(general_cfg['ell_cuts']),
                                        which_cuts=general_cfg['which_cuts'],
                                        flagship_version=general_cfg['flagship_version'],

@@ -261,21 +261,16 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
     else:
         assert ssc_code == 'PyCCL', 'covariance can be computed directly only with PyCCL at the moment'
 
-        ccl_obj = pyccl_cov.PycclClass(general_cfg['cosmology'])
+        # TODO pass ccl_obj, do not reinstantiate it!!
+        # ccl_obj = pyccl_cov.PycclClass(general_cfg['cosmology'])
         cov_3x2pt_dict_8D = ccl_obj.compute_cov_ng_with_pyccl(general_cfg['cosmology'], '3x2pt',
                                                               which_ng_cov=which_ng_cov,
                                                               ell_grid=ell_dict['ell_3x2pt'],
                                                               general_cfg=general_cfg,
                                                               covariance_cfg=covariance_cfg,
                                                               cov_filename=cov_filename)
-        cov_3x2pt_dict_8D = ccl_obj.compute_cov_ng_with_pyccl(general_cfg['cosmology'], '3x2pt', which_ng_cov, ell_grid, general_cfg,
-                                                              covariance_cfg, cov_filename)
 
     if ssc_code == 'Spaceborne':
-        # in this case, you still need to divide by fsky - done in the main for the moment
-        # for key in cov_3x2pt_dict_8D.keys():
-        #     cov_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
-
         cov_3x2pt_dict_8D = covariance_cfg['cov_ssc_3x2pt_dict_8D_sb']
 
         # raise NotImplementedError('Spaceborne is currently implemented in the main, but it will eventually go here '

@@ -306,7 +306,7 @@ covariance_cfg:
         load_precomputed_cov: True # TODO implement this, at the moment it's actually always False
 
         cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Spaceborne/separate_universe/{fm_last_folder:s}"
-        cov_filename: "cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_sigma2:d}_k{k_txt_label:s}_convention{cl_integral_convention:s}.npy"
+        cov_filename: "cov_{which_ng_cov:s}_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_zsteps{z_steps_ssc_integrands:d}_k{k_txt_label:s}_convention{cl_integral_convention:s}.npy"
 
         # settings for sigma2
         # TODO these have to be tidied up
@@ -325,12 +325,10 @@ covariance_cfg:
         k_steps_sigma2: 20_000 # TODO can I lower this? double bessel integral...
         z_min_ssc_integrands: 0.01
         z_max_ssc_integrands: 3.
-        z_steps_ssc_integrands: 1000 # this should be high because I have to trace the spikes in sigma2
+        z_steps_ssc_integrands: 50 # this should be high because I have to trace the spikes in sigma2
 
-        z_steps_sigma2: 2899 # TODO delete this
-
-        load_precomputed_sigma2: False
-        sigma2_b_filename: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}"
+        load_precomputed_sigma2: True
+        sigma2_b_filename: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}.npy"
         use_KE_approximation: False # TODO implement this in the Julia module
 
     OneCovariance_cfg:

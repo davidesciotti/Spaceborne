@@ -1,8 +1,8 @@
 import os
 import multiprocessing
 num_cores = multiprocessing.cpu_count()
-os.environ['OMP_NUM_THREADS'] = str(num_cores)
-os.environ['NUMBA_NUM_THREADS'] = str(num_cores)
+os.environ['OMP_NUM_THREADS'] = '32'
+os.environ['NUMBA_NUM_THREADS'] = '32'
 os.environ['NUMBA_PARALLEL_DIAGNOSTICS'] = '4'
 import matplotlib as mpl
 from functools import partial
@@ -1191,18 +1191,19 @@ sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename'].format
     log10kmax=covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
     ksteps=covariance_cfg['Spaceborne_cfg']['k_steps_sigma2']
 )
-# if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
-#     # TODO define a suitable interpolator if the zgrid doesn't match
-#     sigma2_b = np.load(sigma2_b_filename)
-# else:
-#     sigma2_b = sigma2_SSC.compute_sigma2(z_grid_ssc_integrands, k_grid_sigma2, which_sigma2_B,
-#                                          ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
-
-#     sigma2_b_tosave = {
-#         'sigma2_b': sigma2_b,
-#         'cfg': cfg
-#     }
-#     np.save(sigma2_b_filename, sigma2_b_tosave, allow_pickle=True)
+if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
+    # TODO define a suitable interpolator if the zgrid doesn't match
+    sigma2_b_dict = np.load(sigma2_b_filename, allow_pickle=True).item()
+    cfg_sigma2_b = sigma2_b_dict['cfg']  # TODO check that the cfg matches the one 
+    sigma2_b = sigma2_b_dict['sigma2_b']
+else:
+    sigma2_b = sigma2_SSC.compute_sigma2(z_grid_ssc_integrands, k_grid_sigma2, which_sigma2_B,
+                                         ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
+    sigma2_b_dict_tosave = {
+        'cfg': cfg,
+        'sigma2_b': sigma2_b,
+    }
+    np.save(sigma2_b_filename, sigma2_b_dict_tosave, allow_pickle=True)
 
 
 # ! 4. Perform the integration calling the Julia module
@@ -1220,16 +1221,17 @@ sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename'].format
 # plt.legend()
 
 
-# cov_ssc_3x2pt_dict_8D = SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-#   ind_auto, ind_cross, cl_integral_prefactor, sigma2_b, z_grid_ssc_integrands)
+cov_ssc_3x2pt_dict_8D = SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
+                                                      ind_auto, ind_cross, cl_integral_prefactor, sigma2_b, z_grid_ssc_integrands)
 
-# for key in cov_ssc_3x2pt_dict_8D.keys():
-# cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
+for key in cov_ssc_3x2pt_dict_8D.keys():
+    cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
+
+covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 
 # TODO handle better this covariance object
 # at the moment, I pass the covariance in this way
-cov_ssc_3x2pt_dict_8D = np.load('cov_ssc_3x2pt_dict_8D_zsteps1000.npy', allow_pickle=True).item()
-covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
+
 
 print('SSC computed with Spaceborne')
 

@@ -236,7 +236,7 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
 
     # additional kwargs for Spaceborne
     if ssc_code == 'Spaceborne':
-        additional_kwargs = {'z_steps_sigma2': ssc_code_cfg['z_steps_sigma2'],
+        additional_kwargs = {'z_steps_ssc_integrands': ssc_code_cfg['z_steps_ssc_integrands'],
                              'k_txt_label': ssc_code_cfg['k_txt_label'],
                              'cl_integral_convention': ssc_code_cfg['cl_integral_convention']}
     elif ssc_code == 'PyCCL' or ssc_code == 'OneCovariance':

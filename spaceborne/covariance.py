@@ -282,7 +282,7 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
         #                           'or in a separate module')
 
     # reshape the blocks in the dictionary from 4D to 6D, as needed by the BNT
-    
+
     # TODO test this, although it should be fine
     # by passing this dict this function does not symmetrize the 6D covariance blocks, speeding up the code considerably
     symmetrize_output_dict = {
@@ -291,7 +291,8 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
         ('L', 'G'): False,
         ('G', 'G'): False,
     }
-    cov_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
+    cov_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
+        cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
 
     return cov_3x2pt_dict_10D
 
@@ -411,9 +412,10 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     sigma_eps2 = (covariance_cfg['sigma_eps_i'] * np.sqrt(2))**2
     ng_shear = np.array(covariance_cfg['ngal_lensing'])
     ng_clust = np.array(covariance_cfg['ngal_clustering'])
-    noise_3x2pt_4D = mm.build_noise_v2(zbins, n_probes, sigma_eps2=sigma_eps2,
+    noise_3x2pt_4D = mm.build_noise(zbins, n_probes, sigma_eps2=sigma_eps2,
                                        ng_shear=ng_shear, ng_clust=ng_clust,
-                                       EP_or_ED=general_cfg['EP_or_ED'])
+                                       EP_or_ED=general_cfg['EP_or_ED'],
+                                       which_shape_noise=covariance_cfg['which_shape_noise'])
 
     # create dummy ell axis, the array is just repeated along it
     nbl_max = np.max((nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA))

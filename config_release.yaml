@@ -157,10 +157,10 @@ covariance_cfg:
     GL_or_LG: GL
 
     which_probe_response: variable
-    response_const_value: None # it used to be 4 for a constant probe response, which is quite wrong
 
     fsky: 0.3563380664078408
     sigma_eps_i: 0.26 # ellipticity dispersion *per component*; sigma_eps: (0.26 * np.sqrt(2))
+    which_shape_noise: ISTF
 
     nofz_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputNz/NzFid"
     nofz_filename: nzTab-{EP_or_ED:s}{zbins:02d}-zedMin{zmin_nz:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
@@ -293,7 +293,7 @@ covariance_cfg:
         z_grid_tkka_max: 6
         k_grid_tkka_min: 1.e-5
         k_grid_tkka_max: 1.e+2
-        z_grid_tkka_steps_SSC: 200
+        z_grid_tkka_steps_SSC: 20
         k_grid_tkka_steps_SSC: 1024
         z_grid_tkka_steps_cNG: 100
         k_grid_tkka_steps_cNG: 512
@@ -359,7 +359,7 @@ FM_cfg:
 
     fm_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}/{fm_last_folder:s}"
     fm_txt_filename: fm_txt_filename
-    fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz:d}_MS{magcut_source:03d}_ZS{zmin_nz:d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}{fm_and_cov_suffix:s}.pickle
+    fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz:02d}_MS{magcut_source:03d}_ZS{zmin_nz:02d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}{fm_and_cov_suffix:s}.pickle
 
     test_against_vincenzo: False # TODO delete this
     test_against_benchmarks: False # TODO delete this

@@ -1,0 +1,199 @@
+nohup: ignoring input
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/main_release.py:402: UserWarning: dzGC_fiducial are equal to dzWL_fiducial
+  warnings.warn('dzGC_fiducial are equal to dzWL_fiducial')
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/spaceborne/covariance.py:812: UserWarning: z_grid starts at 0, which gives a null comoving distance. Removing the first element from the grid
+  warnings.warn('z_grid starts at 0, which gives a null comoving distance. '
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/spaceborne/my_module.py:3406: UserWarning: double-check the units in the header and whether k is in log scale in the input file (this function assumes it is))
+  warnings.warn(
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/spaceborne/my_module.py:3408: UserWarning: the output ordering is [k, z], not the other way around!
+  warnings.warn('the output ordering is [k, z], not the other way around!')
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/main_release.py:622: UserWarning: Extrapolating the P(k) in Tk3D_SSC!
+  warnings.warn('Extrapolating the P(k) in Tk3D_SSC!')
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/main_release.py:734: UserWarning: The figure layout has changed to tight
+  plt.tight_layout()
+{   'BNT_transform': False,
+    'EP_or_ED': 'EP',
+    'center_or_min': 'center',
+    'ell_max_3x2pt': 3000,
+    'ell_max_GC': 3000,
+    'ell_max_WL': 3000,
+    'flat_or_nonflat': 'Flat',
+    'idB': 3,
+    'idIA': 2,
+    'idM': 3,
+    'idR': 1,
+    'kmax_h_over_Mpc': 1.0,
+    'magcut_lens': 245,
+    'magcut_source': 245,
+    'nbl_3x2pt': 29,
+    'nbl_GC': 29,
+    'nbl_WA': 0,
+    'nbl_WL': 29,
+    'ng_cov_code': 'Spaceborne',
+    'which_ng_cov': 'GSSC',
+    'which_pk': 'HMCodeBar',
+    'zbins': 13,
+    'zmax_nz': 25,
+    'zmin_nz': 2}
+Shifting n(z), clipping between redshifts 0 and 3
+There are 0 bins for Wadd in this case, cl_wa will be empty
+Params present in input folder but not in the cfg file: ['bIA']
+Params present in cfg file but not in the input folder: []
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+Start SSC computation...
+SSC tkka: z points = 500, k points = 1024
+cNG tkka: z points = 100, k points = 512
+0it [00:00, ?it/s]1it [02:10, 130.51s/it]2it [04:34, 138.36s/it]3it [05:06, 89.75s/it] 3it [05:06, 102.09s/it]
+*** Computing SSC integral with Julia ****
+nbl: 29
+zbins: 13
+z_steps: 5000
+probe_combinations: (("L", "L"), ("G", "L"), ("G", "G"))
+*****************
+Computing cov_SSC_LL_LL, zbins = 13
+1445.836037 seconds (9.48 M allocations: 691.959 MiB, 0.01% gc time, 0.45% compilation time)
+Computing cov_SSC_LL_GL, zbins = 13
+2850.486027 seconds (23 allocations: 197.392 MiB, 0.00% gc time)
+Computing cov_SSC_LL_GG, zbins = 13
+1599.760461 seconds (23 allocations: 106.306 MiB, 0.00% gc time)
+Computing cov_SSC_GL_GL, zbins = 13
+5455.711753 seconds (23 allocations: 366.552 MiB, 0.00% gc time)
+Computing cov_SSC_GL_GG, zbins = 13
+2757.786770 seconds (23 allocations: 197.392 MiB, 0.00% gc time)
+Computing cov_SSC_GG_GG, zbins = 13
+1509.697647 seconds (23 allocations: 106.306 MiB, 0.00% gc time)
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/main_release.py:1438: UserWarning: Sijkl is not computed, but set to identity
+  warnings.warn('Sijkl is not computed, but set to identity')
+/export/NAS/cosmo/data/davide.sciotti/Spaceborne/spaceborne/fisher_matrix.py:172: UserWarning: cov_WA_GO_2D is empty, setting use_WA to False and the covariance matrix to the identity
+  warnings.warn('cov_WA_GO_2D is empty, setting use_WA to False and the covariance matrix to the identity')
+Computing trispectrum for SSC, probe combination LLLL
+Computing trispectrum for SSC, probe combination LLGL
+Computing trispectrum for SSC, probe combination LLGG
+Computing trispectrum for SSC, probe combination GLGL
+Computing trispectrum for SSC, probe combination GLGG
+Computing trispectrum for SSC, probe combination GGGG
+trispectrum computed in 306.26 seconds
+SSC computed with Spaceborne
+all probes (but WAdd) have the same number of ell bins
+
+check: 
+ind_ordering = triu, row-major 
+block_index = ell
+zbins: EP13
+nbl_WA: 0 nbl_WL: 29 nbl_GC:  29, nbl_3x2pt:  29
+ell_max_WL = 3000 
+ell_max_GC = 3000
+GL_or_LG: GL
+
+Gauss. cov. matrices computed in 0.45 seconds
+SS cov. matrices computed in 4.27 s with PySSC
+Computing 3x2pt SSC covariance with Spaceborne
+NG covariance folder is:
+{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Spaceborne/separate_universe/{fm_last_folder:s}
+
+NG covariance filename is:
+cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl29_ellmax3000_zbinsEP13_zsteps5000_k1overMpc_conventionPySSC.npy
+
+SSC covariance computed with Spaceborne in 8.89 s
+Covariance matrices reshaped (6D -> 4D) in 2.69 s
+Covariance matrices reshaped (4D -> 2D) in 4.21 s
+Covariance matrices computed
+Params present in input folder but not in the cfg file: ['bIA']
+Params present in cfg file but not in the input folder: []
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+There are 0 bins for Wadd in this case, cl_wa will be empty
+derivatives reshaped in 4D arrays in 2.65 seconds
+Starting covariance matrix inversion...
+GO covariance matrices inverted in 6.40 s
+GS covariance matrices inverted in 6.04 s
+GO FM done in 0.06 s
+GS FM done in 0.04 s
+FMs computed in 0.04 seconds
+Finished in 266.56 minutes

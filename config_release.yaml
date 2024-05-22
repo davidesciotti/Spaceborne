@@ -293,7 +293,7 @@ covariance_cfg:
         z_grid_tkka_max: 6
         k_grid_tkka_min: 1.e-5
         k_grid_tkka_max: 1.e+2
-        z_grid_tkka_steps_SSC: 20
+        z_grid_tkka_steps_SSC: 500
         k_grid_tkka_steps_SSC: 1024
         z_grid_tkka_steps_cNG: 100
         k_grid_tkka_steps_cNG: 512
@@ -325,7 +325,7 @@ covariance_cfg:
         k_steps_sigma2: 20_000 # TODO can I lower this? double bessel integral...
         z_min_ssc_integrands: 0.01
         z_max_ssc_integrands: 3.
-        z_steps_ssc_integrands: 50 # this should be high because I have to trace the spikes in sigma2
+        z_steps_ssc_integrands: 5000 # this should be high because I have to trace the spikes in sigma2
 
         load_precomputed_sigma2: True
         sigma2_b_filename: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}.npy"

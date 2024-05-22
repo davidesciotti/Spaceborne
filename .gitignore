@@ -13,3 +13,4 @@
 *.xml
 *.xml
 tmp/*
+tmp*/

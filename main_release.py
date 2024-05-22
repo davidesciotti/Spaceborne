@@ -30,8 +30,9 @@ import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib
 import spaceborne.wf_cl_lib as wf_cl_lib
 import spaceborne.pyccl_cov_class as pyccl_cov_class
-import spaceborne.plot_lib as plot_utils
+import spaceborne.plot_lib as plot_lib
 import spaceborne.sigma2_SSC as sigma2_SSC
+
 
 pp = pprint.PrettyPrinter(indent=4)
 ROOT = os.getenv('ROOT')
@@ -507,9 +508,9 @@ variable_specs = {'EP_or_ED': ep_or_ed, 'zbins': zbins,
                   'which_pk': which_pk,
                   'flat_or_nonflat': general_cfg['flat_or_nonflat'],
                   'idIA': general_cfg['idIA'],
-                    'idM': general_cfg['idM'],
-                    'idB': general_cfg['idB'],
-                    'idR': general_cfg['idR'],
+                  'idM': general_cfg['idM'],
+                  'idB': general_cfg['idB'],
+                  'idR': general_cfg['idR'],
                   }
 pp.pprint(variable_specs)
 
@@ -1220,24 +1221,21 @@ sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename'].format
 
 
 # cov_ssc_3x2pt_dict_8D = SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-                                                    #   ind_auto, ind_cross, cl_integral_prefactor, sigma2_b, z_grid_ssc_integrands)
+#   ind_auto, ind_cross, cl_integral_prefactor, sigma2_b, z_grid_ssc_integrands)
 
 # for key in cov_ssc_3x2pt_dict_8D.keys():
-    # cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
+# cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
 
 # TODO handle better this covariance object
 # at the moment, I pass the covariance in this way
 cov_ssc_3x2pt_dict_8D = np.load('cov_ssc_3x2pt_dict_8D_zsteps1000.npy', allow_pickle=True).item()
 covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 
-
 print('SSC computed with Spaceborne')
-
 
 # CCL pk
 kgrid_pk_mm_ccl, pk_mm_ccl = csmlib.pk_from_ccl(
     k_grid_dPk_hm, z_grid_dPk_hm, use_h_units, ccl_obj.cosmo_ccl, pk_kind='nonlinear')
-
 
 
 # compute Pgm, Pgg
@@ -1246,7 +1244,6 @@ gal_bias = gal_bias_2d[:, 0]
 
 pk_gm_ccl = gal_bias[None, :] * pk_mm_ccl
 pk_gg_ccl = gal_bias[None, :]**2 * pk_mm_ccl
-
 
 
 # TODO check galaxy counterterms
@@ -1411,7 +1408,7 @@ general_cfg['cl_gg_3d'] = cl_gg_3d
 
 if covariance_cfg['compute_SSC'] and covariance_cfg['SSC_code'] == 'PySSC':
 
-    transp_stacked_wf = np.vstack((wf_lensing_vin.T, wf_galaxy_vin.T))
+    transp_stacked_wf = np.vstack((wf_lensing.T, wf_galaxy.T))
     # ! compute or load Sijkl
     nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
     Sijkl_folder = Sijkl_cfg['Sijkl_folder']
@@ -1673,7 +1670,8 @@ if not general_cfg['ell_cuts']:
     fm_folder = fm_folder.replace(f'/{general_cfg["which_cuts"]}/ell_{center_or_min}', '')
 
 if fm_cfg['save_FM_dict']:
-    fm_dict_filename = fm_cfg['fm_dict_filename'].format(**variable_specs, fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'])
+    fm_dict_filename = fm_cfg['fm_dict_filename'].format(
+        **variable_specs, fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'])
     mm.save_pickle(f'{fm_folder}/{fm_dict_filename}', fm_dict)
 
 if fm_cfg['test_against_benchmarks']:
@@ -1807,7 +1805,7 @@ for probe in probes:
         cases_to_plot[i] = cases_to_plot[i].replace(f'GSSC', f'G+SSC')
         cases_to_plot[i] = cases_to_plot[i].replace(f'SSCcNG', f'SSC+cNG')
 
-    plot_utils.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
+    plot_lib.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                         param_names_label=None, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
     # plt.yscale('log')
 

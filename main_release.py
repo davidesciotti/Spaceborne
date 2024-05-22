@@ -329,7 +329,7 @@ def SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddel
         filename=cov_filename,
         probe_ordering=probe_ordering)
 
-    # os.system("rm -rf tmp")
+    os.system("rm -rf tmp")
     return cov_ssc_3x2pt_dict_8D
 
 # * ====================================================================================================================
@@ -352,7 +352,6 @@ if 'logT' in cfg['cosmology']['FM_ordered_params']:
 if general_cfg['ell_cuts']:
     covariance_cfg['cov_filename'] = covariance_cfg['cov_filename'].replace('{ndim:d}D',
                                                                             '_kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D')
-
 
 # some convenence variables, just to make things more readable
 zbins = general_cfg['zbins']
@@ -1082,7 +1081,7 @@ for param in list_params_to_vary:
 
 # ! ================================ SSC =======================================
 
-cov_sb_folder = covariance_cfg['Spaceborne_cfg']['cov_path'].format(ROOT=ROOT,
+cov_folder = covariance_cfg['Spaceborne_cfg']['cov_path'].format(ROOT=ROOT,
                                                                     flagship_version=general_cfg['flagship_version'],
                                                                     cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
                                                                     BNT_transform=str(general_cfg['BNT_transform']),
@@ -1269,11 +1268,11 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
     for key in cov_ssc_3x2pt_dict_8D.keys():
         probe_a, probe_b, probe_c, probe_d = key
         np.savez_compressed(
-            f'{cov_sb_folder}/{cov_sb_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}', cov_ssc_3x2pt_dict_8D[key])
+            f'{cov_folder}/{cov_sb_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}', cov_ssc_3x2pt_dict_8D[key])
 
 elif covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
     cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
-        path=cov_sb_folder,
+        path=cov_folder,
         filename=cov_sb_filename,
         probe_ordering=probe_ordering)
 

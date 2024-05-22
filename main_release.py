@@ -1220,16 +1220,16 @@ else:
 # plt.legend()
 
 
-# cov_ssc_3x2pt_dict_8D = SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-                                                    #   ind_auto, ind_cross, cl_integral_prefactor, sigma2_b, z_grid_ssc_integrands)
+cov_ssc_3x2pt_dict_8D = SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
+                                                      ind_auto, ind_cross, cl_integral_prefactor, sigma2_b, z_grid_ssc_integrands)
 
-# for key in cov_ssc_3x2pt_dict_8D.keys():
-    # cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
+for key in cov_ssc_3x2pt_dict_8D.keys():
+    cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
+
+covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 
 # TODO handle better this covariance object
 # at the moment, I pass the covariance in this way
-cov_ssc_3x2pt_dict_8D = np.load('cov_ssc_3x2pt_dict_8D_zsteps1000.npy', allow_pickle=True).item()
-covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 
 
 print('SSC computed with Spaceborne')

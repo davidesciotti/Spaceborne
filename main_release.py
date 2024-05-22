@@ -309,27 +309,37 @@ def plot_kernels_for_thesis():
 def SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
                                   ind_auto, ind_cross, cl_integral_prefactor, sigma2, z_grid, num_threads=16):
     """Kernel to compute the 4D integral optimized using Simpson's rule using Julia."""
+        
+    suffix = 0
+    folder_name = f'tmp{suffix}'
+    unique_folder_name = folder_name
 
-    if not os.path.exists("tmp"):
-        os.system("mkdir tmp")
-    np.save("tmp/d2CLL_dVddeltab", d2CLL_dVddeltab)
-    np.save("tmp/d2CGL_dVddeltab", d2CGL_dVddeltab)
-    np.save("tmp/d2CGG_dVddeltab", d2CGG_dVddeltab)
-    np.save("tmp/ind_auto", ind_auto)
-    np.save("tmp/ind_cross", ind_cross)
-    np.save("tmp/cl_integral_prefactor", cl_integral_prefactor)
-    np.save("tmp/sigma2", sigma2)
-    np.save("tmp/z_grid", z_grid)
-    os.system(f"julia --project=. --threads={num_threads} spaceborne/SSC_integral_julia_new_dav.jl")
+    # Loop until we find a folder name that does not exist
+    while os.path.exists(unique_folder_name):
+        suffix += 1
+        unique_folder_name = f'{folder_name}{suffix}'
+    os.makedirs(unique_folder_name)
+    folder_name = unique_folder_name
+
+    np.save(f"{folder_name}/d2CLL_dVddeltab", d2CLL_dVddeltab)
+    np.save(f"{folder_name}/d2CGL_dVddeltab", d2CGL_dVddeltab)
+    np.save(f"{folder_name}/d2CGG_dVddeltab", d2CGG_dVddeltab)
+    np.save(f"{folder_name}/ind_auto", ind_auto)
+    np.save(f"{folder_name}/ind_cross", ind_cross)
+    np.save(f"{folder_name}/cl_integral_prefactor", cl_integral_prefactor)
+    np.save(f"{folder_name}/sigma2", sigma2)
+    np.save(f"{folder_name}/z_grid", z_grid)
+    # os.system(f"julia --project=. --threads={num_threads} spaceborne/SSC_integral_julia_new_dav.jl")
+    os.system(f"julia --project=. --threads={num_threads} spaceborne/SSC_integral_julia_new_dav.jl {folder_name}")
 
     cov_filename = "cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npy"
 
     cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
-        path='tmp/',
+        path=f'{folder_name}',
         filename=cov_filename,
         probe_ordering=probe_ordering)
 
-    os.system("rm -rf tmp")
+    os.system(f"rm -rf {folder_name}")
     return cov_ssc_3x2pt_dict_8D
 
 # * ====================================================================================================================
@@ -1082,10 +1092,11 @@ for param in list_params_to_vary:
 # ! ================================ SSC =======================================
 
 cov_folder = covariance_cfg['Spaceborne_cfg']['cov_path'].format(ROOT=ROOT,
-                                                                    flagship_version=general_cfg['flagship_version'],
-                                                                    cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
-                                                                    BNT_transform=str(general_cfg['BNT_transform']),
-                                                                    fm_last_folder=general_cfg['fm_last_folder'])
+                                                                 which_pk_responses=covariance_cfg['Spaceborne_cfg']['which_pk_responses'],
+                                                                 flagship_version=general_cfg['flagship_version'],
+                                                                 cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
+                                                                 BNT_transform=str(general_cfg['BNT_transform']))
+
 cov_sb_suffix = covariance_cfg['Spaceborne_cfg']['cov_suffix'].format(
     z_steps_ssc_integrands=covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'],
     k_txt_label=k_txt_label,
@@ -1093,13 +1104,18 @@ cov_sb_suffix = covariance_cfg['Spaceborne_cfg']['cov_suffix'].format(
 )
 
 variable_specs.pop('ng_cov_code')
+variable_specs.pop('which_ng_cov')
 cov_sb_filename = covariance_cfg['cov_filename'].format(ng_cov_code='spaceborne',
                                                         probe='{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}',
                                                         cov_suffix=cov_sb_suffix,
+                                                        which_ng_cov=which_ng_cov_suffix.replace('G', ''),
                                                         fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'],
                                                         ndim=4,
                                                         **variable_specs)
+# cov_sb_filename = covariance_cfg['cov_filename']  # ! delete
+
 variable_specs['ng_cov_code'] = covariance_cfg['ng_cov_code']
+variable_specs['which_ng_cov'] = which_ng_cov_suffix
 
 if 'cNG' in covariance_cfg['Spaceborne_cfg']['which_ng_cov']:
     raise NotImplementedError('You should review the which_ng_cov arg in the cov_filename formatting above, "SSC" is'
@@ -1108,31 +1124,37 @@ if 'cNG' in covariance_cfg['Spaceborne_cfg']['which_ng_cov']:
 if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
     print('Start SSC computation...')
 
-    # ! 1. Get halo model responses from CCL
-    ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
-                                   pyccl_cfg=pyccl_cfg, which_pk='_')
+    if covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'halo_model':
+        # ! 1. Get halo model responses from CCL
+        ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
+                                    pyccl_cfg=pyccl_cfg, which_pk='_')
 
-    # k and z grids (responses will be interpolated below)
-    k_grid_dPk_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
-    a_grid_dPk_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
-    # translate a to z and cut the arrays to the maximum redshift of the SU responses (much smaller range!)
-    z_grid_dPk_hm = csmlib.a_to_z(a_grid_dPk_hm)[::-1]
+        # k and z grids (responses will be interpolated below)
+        k_grid_dPk_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
+        a_grid_dPk_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
+        # translate a to z and cut the arrays to the maximum redshift of the SU responses (much smaller range!)
+        z_grid_dPk_hm = csmlib.a_to_z(a_grid_dPk_hm)[::-1]
 
-    dPmm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
-    dPgm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
-    dPgg_ddeltab_hm = ccl_obj.responses_dict['G', 'G', 'G', 'G']['dpk12']
+        dPmm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
+        dPgm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
+        dPgg_ddeltab_hm = ccl_obj.responses_dict['G', 'G', 'G', 'G']['dpk12']
 
-    # a is flipped w.r.t. z
-    dPmm_ddeltab_hm = np.flip(dPmm_ddeltab_hm, axis=1)
-    dPgm_ddeltab_hm = np.flip(dPgm_ddeltab_hm, axis=1)
-    dPgg_ddeltab_hm = np.flip(dPgg_ddeltab_hm, axis=1)
+        # a is flipped w.r.t. z
+        dPmm_ddeltab_hm = np.flip(dPmm_ddeltab_hm, axis=1)
+        dPgm_ddeltab_hm = np.flip(dPgm_ddeltab_hm, axis=1)
+        dPgg_ddeltab_hm = np.flip(dPgg_ddeltab_hm, axis=1)
 
-    # quick sanity check
-    assert np.allclose(ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34'],
-                       ccl_obj.responses_dict['G', 'L', 'G', 'G']['dpk12'], atol=0, rtol=1e-5)
-    assert np.allclose(ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk34'],
-                       ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12'], atol=0, rtol=1e-5)
-    assert dPmm_ddeltab_hm.shape == dPgm_ddeltab_hm.shape == dPgg_ddeltab_hm.shape, 'dPab_ddeltab_hm shape mismatch'
+        # quick sanity check
+        assert np.allclose(ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34'],
+                        ccl_obj.responses_dict['G', 'L', 'G', 'G']['dpk12'], atol=0, rtol=1e-5)
+        assert np.allclose(ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk34'],
+                        ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12'], atol=0, rtol=1e-5)
+        assert dPmm_ddeltab_hm.shape == dPgm_ddeltab_hm.shape == dPgg_ddeltab_hm.shape, 'dPab_ddeltab_hm shape mismatch'
+    
+    elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe':
+        raise NotImplementedError('Separate Universe responses not implemented yet')
+    else:
+        raise ValueError('which_pk_responses must be either "halo_model" or "separate_universe"')
 
     # TODO check counterterms, to be better understood - 0 for lensing, as they should be
     # bA12 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bA12_tosave']
@@ -1280,17 +1302,17 @@ covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 print('SSC computed with Spaceborne')
 
 
-# CCL pk
-kgrid_pk_mm_ccl, pk_mm_ccl = csmlib.pk_from_ccl(
-    k_grid_dPk_hm, z_grid_dPk_hm, use_h_units, ccl_obj.cosmo_ccl, pk_kind='nonlinear')
+# # CCL pk
+# kgrid_pk_mm_ccl, pk_mm_ccl = csmlib.pk_from_ccl(
+#     k_grid_dPk_hm, z_grid_dPk_hm, use_h_units, ccl_obj.cosmo_ccl, pk_kind='nonlinear')
 
 
-# compute Pgm, Pgg
-gal_bias_2d = ccl_obj.get_gal_bias_tuple_spv3(z_grid_dPk_hm, magcut_lens, None)[1]
-gal_bias = gal_bias_2d[:, 0]
+# # compute Pgm, Pgg
+# gal_bias_2d = ccl_obj.get_gal_bias_tuple_spv3(z_grid_dPk_hm, magcut_lens, None)[1]
+# gal_bias = gal_bias_2d[:, 0]
 
-pk_gm_ccl = gal_bias[None, :] * pk_mm_ccl
-pk_gg_ccl = gal_bias[None, :]**2 * pk_mm_ccl
+# pk_gm_ccl = gal_bias[None, :] * pk_mm_ccl
+# pk_gg_ccl = gal_bias[None, :]**2 * pk_mm_ccl
 
 
 # TODO integrate this with Spaceborne_covg

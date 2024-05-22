@@ -18,7 +18,7 @@ SB_ROOT = f'{ROOT}/Spaceborne'
 
 
 sys.path.append(SB_ROOT)
-import spaceborne.plots_FM_running as plot_utils
+import spaceborne.plot_lib as plot_lib
 import spaceborne.my_module as mm
 import common_cfg.mpl_cfg as mpl_cfg
 
@@ -49,10 +49,12 @@ ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
 fm_last_folder = '/jan_2024'  # /standard or /jan_2024
 ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
 
-codes_to_compare = ('Spaceborne', 'OneCovariance')
-filename_suffix_list = ('_sigma2b_1000', '_dense_LiFECls_shearFix')
+codes_to_compare = ('Spaceborne', 'Spaceborne')
+filename_suffix_list = ('_sigma2b_5000', '_sigma2b_1000')
 which_cov_term_list = ['G', 'GSSC', ]
 
+# FM_GSSC_Spaceborne_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2b_5000.pickle
+# FM_GSSC_Spaceborne_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2b_5000.pickle
 
 fix_dz_plt = True
 fix_shear_bias_plt = True
@@ -304,7 +306,7 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
                                                             cov = np.linalg.inv(
                                                                 fm)[fm_idxs_tokeep, :][:, fm_idxs_tokeep]
 
-                                                            plot_utils.contour_plot_chainconsumer(cov, trimmed_fid_dict)
+                                                            plot_lib.contour_plot_chainconsumer(cov, trimmed_fid_dict)
 
                                                     # ! compute uncertainties from fm
                                                     uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict,
@@ -407,7 +409,7 @@ for probe_toplot in probes:
     data = data[:, :num_params_tokeep_here]
 
     ylabel = f'relative uncertainty [%]'
-    plot_utils.bar_plot(data, f'{probe_toplot}, {which_cov_term_list[1]}, {ng_cov_code_plt}', label_list, bar_width=0.12, nparams=num_params_tokeep_here,
+    plot_lib.bar_plot(data, f'{probe_toplot}, {which_cov_term_list[1]}, {ng_cov_code_plt}', label_list, bar_width=0.12, nparams=num_params_tokeep_here,
                         param_names_label=None,
                         second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
                         include_fom=include_fom, figsize=(10, 8), divide_fom_by_10_plt=divide_fom_by_10_plt)

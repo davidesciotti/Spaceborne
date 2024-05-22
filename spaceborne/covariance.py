@@ -261,28 +261,23 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
     else:
         assert ssc_code == 'PyCCL', 'covariance can be computed directly only with PyCCL at the moment'
 
-        ccl_obj = pyccl_cov.PycclClass(general_cfg['cosmology'])
+        # TODO pass ccl_obj, do not reinstantiate it!!
+        # ccl_obj = pyccl_cov.PycclClass(general_cfg['cosmology'])
         cov_3x2pt_dict_8D = ccl_obj.compute_cov_ng_with_pyccl(general_cfg['cosmology'], '3x2pt',
                                                               which_ng_cov=which_ng_cov,
                                                               ell_grid=ell_dict['ell_3x2pt'],
                                                               general_cfg=general_cfg,
                                                               covariance_cfg=covariance_cfg,
                                                               cov_filename=cov_filename)
-        cov_3x2pt_dict_8D = ccl_obj.compute_cov_ng_with_pyccl(general_cfg['cosmology'], '3x2pt', which_ng_cov, ell_grid, general_cfg,
-                                                              covariance_cfg, cov_filename)
 
     if ssc_code == 'Spaceborne':
-        # in this case, you still need to divide by fsky - done in the main for the moment
-        # for key in cov_3x2pt_dict_8D.keys():
-        #     cov_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
-
         cov_3x2pt_dict_8D = covariance_cfg['cov_ssc_3x2pt_dict_8D_sb']
 
         # raise NotImplementedError('Spaceborne is currently implemented in the main, but it will eventually go here '
         #                           'or in a separate module')
 
     # reshape the blocks in the dictionary from 4D to 6D, as needed by the BNT
-    
+
     # TODO test this, although it should be fine
     # by passing this dict this function does not symmetrize the 6D covariance blocks, speeding up the code considerably
     symmetrize_output_dict = {
@@ -291,7 +286,8 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
         ('L', 'G'): False,
         ('G', 'G'): False,
     }
-    cov_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
+    cov_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
+        cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
 
     return cov_3x2pt_dict_10D
 
@@ -411,9 +407,10 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     sigma_eps2 = (covariance_cfg['sigma_eps_i'] * np.sqrt(2))**2
     ng_shear = np.array(covariance_cfg['ngal_lensing'])
     ng_clust = np.array(covariance_cfg['ngal_clustering'])
-    noise_3x2pt_4D = mm.build_noise_v2(zbins, n_probes, sigma_eps2=sigma_eps2,
+    noise_3x2pt_4D = mm.build_noise(zbins, n_probes, sigma_eps2=sigma_eps2,
                                        ng_shear=ng_shear, ng_clust=ng_clust,
-                                       EP_or_ED=general_cfg['EP_or_ED'])
+                                       EP_or_ED=general_cfg['EP_or_ED'],
+                                       which_shape_noise=covariance_cfg['which_shape_noise'])
 
     # create dummy ell axis, the array is just repeated along it
     nbl_max = np.max((nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA))

@@ -2519,7 +2519,6 @@ def cov_3x2pt_4d_to_10d_dict(cov_3x2pt_4d, zbins, probe_ordering, nbl, ind_copy,
         # safer, default value
         cov_4D_to_6D_blocks_func = cov_4D_to_6D_blocks
 
-
     cov_vinc_no_bnt_10d_dict = {}
     for key in cov_vinc_no_bnt_8d_dict.keys():
         cov_vinc_no_bnt_10d_dict[key] = cov_4D_to_6D_blocks_func(
@@ -2529,7 +2528,6 @@ def cov_3x2pt_4d_to_10d_dict(cov_3x2pt_4d, zbins, probe_ordering, nbl, ind_copy,
             symmetrize_output_dict[key[2], key[3]])
 
     return cov_vinc_no_bnt_10d_dict
-
 
 
 # ! to be deprecated
@@ -3002,7 +3000,7 @@ def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='vincenzo'):
 
     warnings.warn(
         "the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work with other combinations (but it"
-        " will work both for LG and GL) ")    
+        " will work both for LG and GL) ")
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
 
@@ -3222,90 +3220,7 @@ def Recast_Sijkl_3x2pt(Sijkl, nzbins):
     return [Sijkl_recast, npairs_full, pairs_full]
 
 
-def build_noise(zbins, n_probes, sigma_eps2, ng, EP_or_ED, which_shape_noise='ISTF'):
-    """Builds the noise power spectra.
-
-    Parameters
-    ----------
-    zbins : int
-        Number of redshift bins.
-    n_probes : int 
-        Number of probes.
-    sigma_eps2 : float
-        Square of the *total* ellipticity dispersion.
-        sigma_eps2 = sigma_eps ** 2, with
-        sigma_eps = sigma_eps_i * sqrt(2),
-        sigma_eps_i being the ellipticity dispersion *per component*
-    ng : int, float or numpy.ndarray
-        If a scalar, cumulative galaxy density number density, per arcmin^2. 
-        This will assume equipopulated bins. 
-        If an array, galaxy density number density, per arcmin^2, per redshift bin. 
-        Must have length zbins.
-    EP_or_ED : str, optional
-        Whether bins are equipopulated ('EP') or equidistant ('ED').
-
-    Returns
-    -------
-    N : ndarray, shape (n_probes, n_probes, zbins, zbins)
-        Noise power spectra matrices
-
-    Notes
-    -----
-    The noise is defined as:
-        N_LL = sigma_eps^2 / (2 * n_bar) 
-        N_GG = 1 / n_bar
-        N_GL = N_LG = 0
-
-    Where sigma_eps includes factor of sqrt(2) for two components.
-
-    """
-
-    conversion_factor = (180 / np.pi * 60)**2  # deg^2 to arcmin^2
-
-    # if ng is a number, n_bar will be ng/zbins and the bins have to be equipopulated
-    if type(ng) == int or type(ng) == float:
-        assert ng > 0, 'ng should be positive'
-        assert EP_or_ED == 'EP', 'if ng is a scalar (not a vector), the bins should be equipopulated'
-        if ng < 20:
-            warnings.warn(
-                'ng should roughly be > 20 (this check is meant to make sure that ng is the cumulative galaxy '
-                'density, not the galaxy density in each bin)')
-        n_bar = ng / zbins * conversion_factor
-
-    # if ng is an array, n_bar == ng (this is a slight misnomer, since ng is the cumulative galaxy density, while
-    # n_bar the galaxy density in each bin). In this case, if the bins are quipopulated, the n_bar array should
-    # have all entries almost identical.
-    elif type(ng) == np.ndarray:
-        assert np.all(ng > 0), 'ng should be positive'
-        assert np.sum(ng) > 20, 'ng should roughly be > 20'
-        if EP_or_ED == 'EP':
-            assert np.allclose(np.ones_like(ng) * ng[0], ng, rtol=0.05,
-                               atol=0), 'if ng is a vector and the bins are equipopulated, ' \
-                                        'the value in each bin should be the same (or very similar)'
-        n_bar = ng * conversion_factor
-
-    else:
-        raise ValueError('ng must be an int, float or numpy.ndarray')
-
-    # create and fill N
-    noise_4d = np.zeros((n_probes, n_probes, zbins, zbins))
-
-    if which_shape_noise == 'ISTF':
-        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / n_bar)  # ! old, INcorrect
-    elif which_shape_noise == 'correct':
-        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar))  # ! correct
-    else:
-        raise ValueError('which_shape_noise must be ISTF or correct')
-
-    np.fill_diagonal(noise_4d[1, 1, :, :], 1 / n_bar)
-    noise_4d[0, 1, :, :] = 0
-    noise_4d[1, 0, :, :] = 0
-
-    return noise_4d
-
-
-
-def build_noise_v2(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED):
+def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED, which_shape_noise='ISTF'):
     """Builds the noise power spectra.
 
     Parameters
@@ -3349,7 +3264,7 @@ def build_noise_v2(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED):
     Where sigma_eps includes factor of sqrt(2) for two components.
 
     """
-    
+
     if type(ng_shear) == list:
         ng_shear = np.array(ng_shear)
     if type(ng_clust) == list:
@@ -3389,12 +3304,20 @@ def build_noise_v2(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED):
 
     # create and fill N
     noise_4d = np.zeros((n_probes, n_probes, zbins, zbins))
-    np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar_shear))
+
+    if which_shape_noise == 'ISTF':
+        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / n_bar_shear)  # ! old, INcorrect
+    elif which_shape_noise == 'correct':
+        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar_shear))  # ! correct
+    else:
+        raise ValueError('which_shape_noise must be ISTF or correct')
+
     np.fill_diagonal(noise_4d[1, 1, :, :], 1 / n_bar_clust)
     noise_4d[0, 1, :, :] = 0
     noise_4d[1, 0, :, :] = 0
 
     return noise_4d
+
 
 def my_exit():
     print('\nquitting script with sys.exit()')

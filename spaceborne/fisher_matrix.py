@@ -321,7 +321,7 @@ def compute_FM(cfg, ell_dict, cov_dict, deriv_dict, BNT_matrix=None):
     FMs_GO = [FM_WL_GO, FM_GC_GO, FM_WA_GO, FM_XC_GO, FM_3x2pt_GO, FM_2x2pt_GO]
     FMs_GS = [FM_WL_GS, FM_GC_GS, FM_WA_GS, FM_XC_GS, FM_3x2pt_GS, FM_2x2pt_GS]
 
-    which_ng_cov_suffix = ''.join(covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'])
+    which_ng_cov_suffix = ''.join(covariance_cfg[covariance_cfg['ng_cov_code'] + '_cfg']['which_ng_cov'])
 
     FM_dict = {}
     if covariance_cfg['compute_SSC']:

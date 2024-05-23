@@ -2,9 +2,12 @@ using NPZ
 using LoopVectorization
 using YAML
 
-function SSC_integral_6D(d2ClAB_dVddeltab, d2ClCD_dVddeltab)
-    """ "brute-force" implementation, returns a 6D array.
+function SSC_integral_6D_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
+    """ "brute-force" implementation, returns a 6D array. many args are unnecessary, but I keep the same format for a 
+    more agile comparison against the other functions
     """
+    # TODO zbins should be passed to the functions, args should be
+    zbins = size(d2ClAB_dVddeltab, 2)
     result = zeros(nbl, nbl, zbins, zbins, zbins, zbins)
 
     @tturbo for ell1 in 1:nbl
@@ -58,7 +61,7 @@ function get_simpson_weights(n::Int)
 end
 
 
-function SSC_integral_4D_optimized_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
+function SSC_integral_4D_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
     """ this version takes advantage of the symmetries between redshift pairs.
     """
 
@@ -77,7 +80,7 @@ function SSC_integral_4D_optimized_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind
                     for z1_idx in 1:z_steps
                         for z2_idx in 1:z_steps
 
-                            zi, zj, zk, zl = ind_AB[zij, num_col - 2], ind_AB[zij, num_col - 1], ind_CD[zkl, num_col - 2], ind_CD[zkl, num_col - 1]
+                            zi, zj, zk, zl = ind_AB[zij, num_col - 1], ind_AB[zij, num_col], ind_CD[zkl, num_col - 1], ind_CD[zkl, num_col]
 
                             result[ell1, ell2, zij, zkl] += cl_integral_prefactor[z1_idx] * cl_integral_prefactor[z2_idx] *
                             d2ClAB_dVddeltab[ell1, zi, zj, z1_idx] * d2ClCD_dVddeltab[ell2, zk, zl, z2_idx] * sigma2[z1_idx, z2_idx]
@@ -91,7 +94,7 @@ function SSC_integral_4D_optimized_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind
     return (dz^2) .* result
 end
 
-function SSC_integral_4D_optimized_simpson(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
+function SSC_integral_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
     """ this version takes advantage of the symmetries between redshift pairs.
     """
 
@@ -112,7 +115,7 @@ function SSC_integral_4D_optimized_simpson(d2ClAB_dVddeltab, d2ClCD_dVddeltab, i
                     for z1_idx in 1:z_steps
                         for z2_idx in 1:z_steps
 
-                            zi, zj, zk, zl = ind_AB[zij, num_col - 2], ind_AB[zij, num_col - 1], ind_CD[zkl, num_col - 2], ind_CD[zkl, num_col - 1]
+                            zi, zj, zk, zl = ind_AB[zij, num_col - 1], ind_AB[zij, num_col], ind_CD[zkl, num_col - 1], ind_CD[zkl, num_col]
 
                             result[ell1, ell2, zij, zkl] += cl_integral_prefactor[z1_idx] * cl_integral_prefactor[z2_idx] *
                             d2ClAB_dVddeltab[ell1, zi, zj, z1_idx] *
@@ -129,7 +132,7 @@ function SSC_integral_4D_optimized_simpson(d2ClAB_dVddeltab, d2ClCD_dVddeltab, i
 end
 
 
-# function SSC_integral_4D_optimized_simpson_KE(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
+# function SSC_integral_4D_opmpson_(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
 #     """ this version tries to use the KE approximation, to check its impact on the results.
 #     """
 #     # TODO test this function!
@@ -169,6 +172,7 @@ end
 # end
 
 folder_name = ARGS[1]
+integration_type = ARGS[2]
 
 # import arrays:
 # the ones actually used in the integration
@@ -223,8 +227,21 @@ ind_dict = Dict(("L", "L") => ind_auto,
                 ("G", "L") => ind_cross,
                 ("G", "G") => ind_auto)
 
+if integration_type == "trapz"
+    ssc_integral_4d_func = SSC_integral_4D_trapz
+elseif integration_type == "simps"
+    ssc_integral_4d_func = SSC_integral_4D_simps
+elseif integration_type == "trapz-6D"
+    ssc_integral_4d_func = SSC_integral_6D_trapz
+else
+    error("Integration type not recognized")
+end
+
 
 cov_ssc_dict_8d = Dict{Tuple{String, String, String, String}, Array{Float64, 4}}()
+if integration_type == "trapz-6D"
+    cov_ssc_dict_8d = Dict{Tuple{String, String, String, String}, Array{Float64, 6}}()
+end
 
 for row in 1:length(probe_combinations)
     for col in 1:length(probe_combinations)
@@ -233,10 +250,10 @@ for row in 1:length(probe_combinations)
         probe_C, probe_D = probe_combinations[col]
 
         if col >= row  # upper triangle and diagonal
-            println("Computing cov_SSC_$(probe_A)$(probe_B)_$(probe_C)$(probe_D), zbins = $(zbins)")
+            println("Computing cov_SSC_$(probe_A)$(probe_B)_$(probe_C)$(probe_D), zbins = $(zbins) with $(integration_type)")
 
             cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)] =
-            @time SSC_integral_4D_optimized_trapz(
+            @time ssc_integral_4d_func(
                 d2Cl_dVddeltab_dict[probe_A, probe_B],
                 d2Cl_dVddeltab_dict[probe_C, probe_D],
                 ind_dict[probe_A, probe_B],

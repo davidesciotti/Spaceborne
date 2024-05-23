@@ -309,8 +309,8 @@ def plot_kernels_for_thesis():
     plt.legend(loc='lower right')
 
 
-def SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-                                  ind_auto, ind_cross, cl_integral_prefactor, sigma2, z_grid, num_threads=16):
+def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
+                          ind_auto, ind_cross, cl_integral_prefactor, sigma2, z_grid, integration_type, num_threads=16):
     """Kernel to compute the 4D integral optimized using Simpson's rule using Julia."""
 
     suffix = 0
@@ -332,7 +332,8 @@ def SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddel
     np.save(f"{folder_name}/cl_integral_prefactor", cl_integral_prefactor)
     np.save(f"{folder_name}/sigma2", sigma2)
     np.save(f"{folder_name}/z_grid", z_grid)
-    os.system(f"julia --project=. --threads={num_threads} spaceborne/SSC_integral_julia_new_dav.jl {folder_name}")
+    os.system(
+        f"julia --project=. --threads={num_threads} spaceborne/SSC_integral_julia_new_dav.jl {folder_name} {integration_type}")
 
     cov_filename = "cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npy"
 
@@ -1277,17 +1278,30 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
     # plt.legend()
 
     start = time.perf_counter()
-    cov_ssc_3x2pt_dict_8D_trapz = SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-                                                          ind_auto, ind_cross, cl_integral_prefactor, sigma2_b, z_grid_ssc_integrands)
-    # cov_ssc_3x2pt_dict_8D_simps = SSC_integral_4D_simpson_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-                                                        # ind_auto, ind_cross, cl_integral_prefactor, sigma2_b, z_grid_ssc_integrands, 'simps')
-
+    cov_ssc_3x2pt_dict_8D_trapz = SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
+                                                        ind_auto, ind_cross, cl_integral_prefactor, sigma2_b,
+                                                        z_grid_ssc_integrands,
+                                                        integration_type='trapz',
+                                                        num_threads=general_cfg['num_threads'])
+    # cov_ssc_3x2pt_dict_8D_simps = SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
+    #                                                     ind_auto, ind_cross, cl_integral_prefactor, sigma2_b,
+    #                                                     z_grid_ssc_integrands,
+    #                                                     integration_type='simps',
+    #                                                     num_threads=general_cfg['num_threads'])
+    # cov_ssc_3x2pt_dict_10D_trapz = SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
+    #                                                     ind_auto, ind_cross, cl_integral_prefactor, sigma2_b,
+    #                                                     z_grid_ssc_integrands,
+    #                                                     integration_type='trapz-6D',
+    #                                                     num_threads=general_cfg['num_threads'])
+    cov_ssc_LLLL_jl_trapz_6d = np.load('/home/cosmo/davide.sciotti/data/Spaceborne/tmp3/cov_SSC_spaceborne_LLLL_4D.npy')
     print('SSC computed with Julia in {:.2f} s'.format(time.perf_counter() - start))
 
     # If the mask is not passed to sigma2_b, we need to divide by fsky
     if which_sigma2_B == 'full-curved-sky':
         for key in cov_ssc_3x2pt_dict_8D_trapz.keys():
             cov_ssc_3x2pt_dict_8D_trapz[key] /= covariance_cfg['fsky']
+            # cov_ssc_3x2pt_dict_8D_simps[key] /= covariance_cfg['fsky']
+    cov_ssc_LLLL_jl_trapz_6d /= covariance_cfg['fsky']
 
     # save the covariance blocks
     # ! note that these files already account for the sky fraction!!
@@ -1300,8 +1314,9 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
     # ! TEST JL INTEGRAL AND INTEGRANDS
     block_index = 'ell'
 
-    @njit(parallel=True)
+    @njit()
     def numba_integrand():
+        # used to perform integration with scipy simps, fails if z_steps is too large due to memory allocation issues
         d2ClAB_dVddeltab = d2CLL_dVddeltab
         d2ClCD_dVddeltab = d2CLL_dVddeltab
         num_col = 4
@@ -1328,58 +1343,126 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
         return integrand
 
     @njit(parallel=True)
-    def numba_integral_trapz():
+    def numba_integral_trapz_4d(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array):
+        zpairs_AB = ind_AB.shape[0]
+        zpairs_CD = ind_CD.shape[0]
+        num_col = ind_AB.shape[1]
 
-        dz = z_grid_ssc_integrands[1] - z_grid_ssc_integrands[0]
-        d2ClAB_dVddeltab = d2CLL_dVddeltab
-        d2ClCD_dVddeltab = d2CLL_dVddeltab
-        num_col = 4
-        nbl = nbl_WL
-        zpairs_AB, zpairs_CD = zpairs_auto, zpairs_auto
-        ind_AB, ind_CD = ind_auto, ind_auto
-        integral_trapz = np.zeros((nbl, nbl, zpairs_AB, zpairs_CD))
-        # plot integrand as a function of z1, z2
+        dz = z_array[1] - z_array[0]
+
+        result = np.zeros((nbl, nbl, zpairs_AB, zpairs_CD))
+
         for ell1 in prange(nbl):
-            # this could be further optimized by computing only upper triangular ells (for LLLL, GLGL, GGGG only), but not with tturbo
-            for ell2 in prange(nbl):
-                for zij in prange(zpairs_auto):
-                    for zkl in prange(zpairs_auto):
-                        for z1_idx in prange(len(z_grid_ssc_integrands)):
-                            for z2_idx in prange(len(z_grid_ssc_integrands)):
+            for ell2 in range(nbl):  # this could be further optimized by computing only upper triangular ells, but not with prange
+                for zij in range(zpairs_AB):
+                    for zkl in range(zpairs_CD):
+                        for z1_idx in range(z_steps):
+                            for z2_idx in range(z_steps):
 
-                                zi, zj, zk, zl = ind_AB[zij, num_col - 2], ind_AB[zij, num_col - 1], \
-                                    ind_CD[zkl, num_col - 2], ind_CD[zkl, num_col - 1]
+                                zi = ind_AB[zij, num_col - 2]
+                                zj = ind_AB[zij, num_col - 1]
+                                zk = ind_CD[zkl, num_col - 2]
+                                zl = ind_CD[zkl, num_col - 1]
 
-                                integral_trapz[ell1, ell2, zij, zkl] += \
-                                    cl_integral_prefactor[z1_idx] * cl_integral_prefactor[z2_idx] * \
-                                    d2ClAB_dVddeltab[ell1, zi, zj, z1_idx] * \
-                                    d2ClCD_dVddeltab[ell2, zk, zl, z2_idx] * sigma2_b[z1_idx, z2_idx]
-        integral_trapz *= dz**2
-        return integral_trapz
+                                result[ell1, ell2, zij, zkl] += (cl_integral_prefactor[z1_idx] *
+                                                                 cl_integral_prefactor[z2_idx] *
+                                                                 d2ClAB_dVddeltab[ell1, zi, zj, z1_idx] *
+                                                                 d2ClCD_dVddeltab[ell2, zk, zl, z2_idx] *
+                                                                 sigma2[z1_idx, z2_idx])
 
-    # compute integrand in python
-    
+        result *= dz**2
+        return result
+
+    @njit(parallel=True)
+    def numba_integral_trapz_6d(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array):
+        zpairs_AB = ind_AB.shape[0]
+        zpairs_CD = ind_CD.shape[0]
+
+        dz = z_array[1] - z_array[0]
+
+        result = np.zeros((nbl, nbl, zbins, zbins, zbins, zbins))
+
+        for ell1 in prange(nbl):
+            for ell2 in range(nbl):
+                for zi in range(zbins):
+                    for zj in range(zbins):
+                        for zk in range(zbins):
+                            for zl in range(zbins):
+                                for z1_idx in range(z_steps):
+                                    for z2_idx in range(z_steps):
+
+                                        result[ell1, ell2, zi, zj, zk, zl] += (cl_integral_prefactor[z1_idx] *
+                                                                               cl_integral_prefactor[z2_idx] *
+                                                                               d2ClAB_dVddeltab[ell1, zi, zj, z1_idx] *
+                                                                               d2ClCD_dVddeltab[ell2, zk, zl, z2_idx] *
+                                                                               sigma2[z1_idx, z2_idx])
+
+        result *= dz**2
+        return result
+
+    # compute integrand/integral in python
     start_time = time.perf_counter()
-    cov_ssc_LLLL_py_4d_trapz = numba_integral_trapz()
+    cov_ssc_LLLL_py_trapz_4D = numba_integral_trapz_4d(d2ClAB_dVddeltab=d2CLL_dVddeltab,
+                                                    d2ClCD_dVddeltab=d2CLL_dVddeltab,
+                                                    ind_AB=ind_auto,
+                                                    ind_CD=ind_auto,
+                                                    nbl=nbl_WL,
+                                                    z_steps=len(z_grid_ssc_integrands),
+                                                    cl_integral_prefactor=cl_integral_prefactor,
+                                                    sigma2=sigma2_b,
+                                                    z_array=z_grid_ssc_integrands)
+    cov_ssc_LLLL_py_trapz_6D = numba_integral_trapz_6d(d2ClAB_dVddeltab=d2CLL_dVddeltab,
+                                                    d2ClCD_dVddeltab=d2CLL_dVddeltab,
+                                                    ind_AB=ind_auto,
+                                                    ind_CD=ind_auto,
+                                                    nbl=nbl_WL,
+                                                    z_steps=len(z_grid_ssc_integrands),
+                                                    cl_integral_prefactor=cl_integral_prefactor,
+                                                    sigma2=sigma2_b,
+                                                    z_array=z_grid_ssc_integrands)
+
     print('Python integral computed in {:.2f} s'.format(time.perf_counter() - start_time))
 
+    integrand_ssc_spaceborne_py_LLLL = numba_integrand()
+    # cov_ssc_LLLL_py_4d_simps_part = simps(y=integrand, x=z_grid_ssc_integrands, axis=-1)
+    # cov_ssc_LLLL_py_4d_simps = simps(y=cov_ssc_LLLL_py_4d_simps_part, x=z_grid_ssc_integrands, axis=-1)
 
-    integrand = numba_integrand()
-    cov_ssc_LLLL_py_4d_simps_part = simps(y=integrand, x=z_grid_ssc_integrands, axis=-1)
-    cov_ssc_LLLL_py_4d_simps = simps(y=cov_ssc_LLLL_py_4d_simps_part, x=z_grid_ssc_integrands, axis=-1)
+    cov_ssc_LLLL_py_trapz_4D /= covariance_cfg['fsky']
+    # cov_ssc_LLLL_py_4d_simps /= covariance_cfg['fsky']
+    cov_ssc_LLLL_py_trapz_6D /= covariance_cfg['fsky']
+
+    # the py vs jl 6d versions match, very good!!    
+    np.testing.assert_allclose(cov_ssc_LLLL_py_trapz_6D, cov_ssc_LLLL_jl_trapz_6d, atol=0, rtol=1e-5)
     
-    cov_ssc_LLLL_py_4d_trapz /= covariance_cfg['fsky']
-    cov_ssc_LLLL_py_4d_simps /= covariance_cfg['fsky']
+    # reshape to 4d
+    cov_ssc_LLLL_py_4d_trapz_from_6D = mm.cov_6D_to_4D(cov_ssc_LLLL_py_trapz_6D, nbl_WL, zpairs_auto, ind_auto)
+    cov_ssc_LLLL_jl_4d_trapz_from_6D = mm.cov_6D_to_4D(cov_ssc_LLLL_jl_trapz_6d, nbl_WL, zpairs_auto, ind_auto)
+    np.testing.assert_allclose(cov_ssc_LLLL_py_4d_trapz_from_6D, cov_ssc_LLLL_jl_4d_trapz_from_6D, atol=0, rtol=1e-5)
+    
+    # the python 4d matches python 6D -> 4D
+    np.testing.assert_allclose(cov_ssc_LLLL_py_4d_trapz_from_6D, cov_ssc_LLLL_py_trapz_4D, atol=0, rtol=1e-5)
+    np.testing.assert_allclose(cov_ssc_LLLL_jl_4d_trapz_from_6D, cov_ssc_LLLL_py_trapz_4D, atol=0, rtol=1e-5)
 
-    cov_ssc_LLLL_py_2d_trapz = mm.cov_4D_to_2D(cov_ssc_LLLL_py_4d_trapz, block_index=block_index)
-    cov_ssc_LLLL_py_2d_simps = mm.cov_4D_to_2D(cov_ssc_LLLL_py_4d_simps, block_index=block_index)
+    # reshape to 2d
+    cov_ssc_LLLL_py_2d_trapz = mm.cov_4D_to_2D(cov_ssc_LLLL_py_trapz_4D, block_index=block_index)
     cov_ssc_LLLL_jl_2d_trapz = mm.cov_4D_to_2D(cov_ssc_3x2pt_dict_8D_trapz['L', 'L', 'L', 'L'], block_index=block_index)
+    cov_ssc_LLLL_py_2d_trapz_from_6d = mm.cov_4D_to_2D(cov_ssc_LLLL_py_4d_trapz_from_6D, block_index=block_index)
+    cov_ssc_LLLL_jl_2d_trapz_from_6d = mm.cov_4D_to_2D(cov_ssc_LLLL_jl_4d_trapz_from_6D, block_index=block_index)
+    # cov_ssc_LLLL_py_2d_simps = mm.cov_4D_to_2D(cov_ssc_LLLL_py_4d_simps, block_index=block_index)
+    # cov_ssc_LLLL_jl_2d_simps = mm.cov_4D_to_2D(cov_ssc_3x2pt_dict_8D_simps['L', 'L', 'L', 'L'], block_index=block_index)
+    
+    plt.title('DA PLOT')
+    plt.plot(cov_ssc_LLLL_jl_4d_trapz_from_6D.flatten())
+    plt.plot(cov_ssc_3x2pt_dict_8D_trapz['L', 'L', 'L', 'L'].flatten())
+    plt.yscale('log')
 
-    mm.compare_arrays(cov_ssc_LLLL_py_2d_trapz, cov_ssc_LLLL_py_2d_simps, 'Py trapz', 'py simps',
-                      abs_val=True, plot_diff=True, plot_diff_threshold=5)
-    mm.compare_arrays(cov_ssc_LLLL_py_2d_trapz, cov_ssc_LLLL_jl_2d_trapz, 'Py trapz', 'Jl simps', 
-                      abs_val=True, plot_diff=True, plot_diff_threshold=5)
-    mm.compare_arrays(cov_ssc_LLLL_py_2d_simps, cov_ssc_LLLL_jl_2d_trapz, 'Py simps', 'Jl trapz', 
+    mm.compare_arrays(cov_ssc_LLLL_py_2d_trapz, cov_ssc_LLLL_jl_2d_trapz, 'Py trapz', 'Jl trapz',
+                      abs_val=True, plot_diff=True, plot_diff_threshold=10)
+    mm.compare_arrays(cov_ssc_LLLL_py_2d_trapz_from_6d, cov_ssc_LLLL_py_2d_trapz, 'Py trapz 6d', 'py trapz 4d',
+                      abs_val=True, plot_diff=True, plot_diff_threshold=10)
+    mm.compare_arrays(cov_ssc_LLLL_jl_2d_trapz_from_6d, cov_ssc_LLLL_jl_2d_trapz, 'jl trapz 6d', 'jl trapz 4d',
+                      abs_val=True, plot_diff=True, plot_diff_threshold=10)
+    mm.compare_arrays(cov_ssc_LLLL_py_2d_trapz_from_6d, cov_ssc_LLLL_jl_2d_trapz, 'jl simps', 'jl trapz',
                       abs_val=True, plot_diff=True, plot_diff_threshold=5)
     
     plt.figure()
@@ -1390,14 +1473,21 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
     ind_AB, ind_CD = ind_auto, ind_auto
     zi, zj, zk, zl = ind_AB[zpair_AB, num_col - 2], ind_AB[zpair_AB, num_col - 1], \
         ind_CD[zpair_CD, num_col - 2], ind_CD[zpair_CD, num_col - 1]
-    # plt.plot(z_grid_ssc_integrands, integrand[ell1_idx, ell2_idx,zpair_AB, zpair_CD, z1_idx, :], label='total integrand')
+    plt.plot(z_grid_ssc_integrands, integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD, z1_idx, :], label='total integrand')
     plt.plot(z_grid_ssc_integrands, d2CLL_dVddeltab[ell2_idx, zk, zl, :], label='d2CLL_dVddeltab')
     plt.plot(z_grid_ssc_integrands, cl_integral_prefactor, label='cl_integral_prefactor')
     plt.plot(z_grid_ssc_integrands, sigma2_b[z1_idx, :], label='sigma2_b')
     plt.yscale('log')
     plt.legend()
     
+    mm.matshow(integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD], log=True, abs_val=True)
+    mm.matshow(sigma2_b, log=True, abs_val=True)
+    plt.plot(z_grid_ssc_integrands, np.diag(sigma2_b), marker='o')
+    plt.plot(z_grid_ssc_integrands, np.diag(integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD]), marker='o')
+    plt.yscale('log')
     
+    plt.plot(z_grid_ssc_integrands, integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD, z1_idx, :], marker='o')
+
     assert False, 'stop here'
 
 

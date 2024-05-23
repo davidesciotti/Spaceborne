@@ -58,13 +58,15 @@ function get_simpson_weights(n::Int)
 end
 
 
-function SSC_integral_4D_optimized(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, dz::Real)
+function SSC_integral_4D_optimized_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
     """ this version takes advantage of the symmetries between redshift pairs.
     """
 
     zpairs_AB = size(ind_AB, 1)
     zpairs_CD = size(ind_CD, 1)
     num_col = size(ind_AB, 2)
+
+    dz = z_array[2]-z_array[1]
 
     result = zeros(nbl, nbl, zpairs_AB, zpairs_CD)
 
@@ -234,7 +236,7 @@ for row in 1:length(probe_combinations)
             println("Computing cov_SSC_$(probe_A)$(probe_B)_$(probe_C)$(probe_D), zbins = $(zbins)")
 
             cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)] =
-            @time SSC_integral_4D_optimized_simpson(
+            @time SSC_integral_4D_optimized_trapz(
                 d2Cl_dVddeltab_dict[probe_A, probe_B],
                 d2Cl_dVddeltab_dict[probe_C, probe_D],
                 ind_dict[probe_A, probe_B],

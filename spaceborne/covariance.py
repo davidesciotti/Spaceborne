@@ -252,23 +252,25 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
     # print(f'NG covariance folder is:\n{cov_path}\n')
     # print(f'NG covariance filename is:\n{cov_filename}\n')
 
-    if ng_cov_code_cfg['load_precomputed_cov']:
-        # load SSC blocks in 4D and store them into a dictionary of 8D blocks
-        ...
-        # TODO find a better solution for Spaceborne cov handling
-        # cov_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(cov_path, cov_filename, probe_ordering)
+    # TODO restore this logic
+    # if ng_cov_code_cfg['load_precomputed_cov']:
+    #     # load SSC blocks in 4D and store them into a dictionary of 8D blocks
+    #     ...
+    #     # TODO find a better solution for Spaceborne cov handling
+    #     # cov_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(cov_path, cov_filename, probe_ordering)
 
-    else:
-        assert ng_cov_code == 'PyCCL', 'covariance can be computed directly only with PyCCL at the moment'
+    # else:
+        
+    #     assert ng_cov_code == 'PyCCL', 'covariance can be computed directly only with PyCCL at the moment'
 
-        # TODO pass ccl_obj, do not reinstantiate it!!
-        # ccl_obj = pyccl_cov.PycclClass(general_cfg['cosmology'])
-        cov_3x2pt_dict_8D = ccl_obj.compute_cov_ng_with_pyccl(general_cfg['cosmology'], '3x2pt',
-                                                              which_ng_cov=which_ng_cov,
-                                                              ell_grid=ell_dict['ell_3x2pt'],
-                                                              general_cfg=general_cfg,
-                                                              covariance_cfg=covariance_cfg,
-                                                              cov_filename=cov_filename)
+    #     # TODO pass ccl_obj, do not reinstantiate it!!
+    #     # ccl_obj = pyccl_cov.PycclClass(general_cfg['cosmology'])
+    #     cov_3x2pt_dict_8D = ccl_obj.compute_cov_ng_with_pyccl(general_cfg['cosmology'], '3x2pt',
+    #                                                           which_ng_cov=which_ng_cov,
+    #                                                           ell_grid=ell_dict['ell_3x2pt'],
+    #                                                           general_cfg=general_cfg,
+    #                                                           covariance_cfg=covariance_cfg,
+    #                                                           cov_filename=cov_filename)
 
     if ng_cov_code == 'Spaceborne':
         cov_3x2pt_dict_8D = covariance_cfg['cov_ssc_3x2pt_dict_8D_sb']

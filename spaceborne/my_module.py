@@ -1110,6 +1110,10 @@ def mask_fm_v2(fm: np.ndarray, fiducials_dict: dict, names_params_to_fix: list, 
     """
     Trim the Fisher matrix to remove null rows/columns and/or fix nuisance parameters
     """
+    fm = deepcopy(fm)
+    fiducials_dict = deepcopy(fiducials_dict)
+
+    assert len(list(fiducials_dict.keys())) == fm.shape[0] == fm.shape[1], 'Wrong shape of FM matrix!'
 
     if names_params_to_fix is not None:
         fm = fix_params_in_fm(fm, names_params_to_fix, fiducials_dict)  # cut fm entries
@@ -1125,6 +1129,8 @@ def mask_fm_v2(fm: np.ndarray, fiducials_dict: dict, names_params_to_fix: list, 
 
 def fix_params_in_fm(fm, names_params_to_fix, fiducials_dict):
     param_names = list(fiducials_dict.keys())
+    fm = deepcopy(fm)
+    fiducials_dict = deepcopy(fiducials_dict)
 
     # check the correctness of the parameters' names
     for param_to_fix in names_params_to_fix:
@@ -1139,6 +1145,8 @@ def fix_params_in_fm(fm, names_params_to_fix, fiducials_dict):
 
 def add_prior_to_fm(fm, fiducials_dict, prior_param_names, prior_param_values):
     """ adds a FM of priors (with elements 1/sigma in the correct positions) to the input FM"""
+    fm = deepcopy(fm)
+    fiducials_dict = deepcopy(fiducials_dict)
 
     assert len(list(fiducials_dict.keys())) == fm.shape[0] == fm.shape[1], 'Wrong shape of FM matrix!'
     fid_param_names = list(fiducials_dict.keys())
@@ -1150,6 +1158,7 @@ def add_prior_to_fm(fm, fiducials_dict, prior_param_names, prior_param_values):
 
     prior_param_idxs = [fid_param_names.index(prior_param_name) for prior_param_name in prior_param_names]
 
+    breakpoint()
     prior_fm = np.zeros(fm.shape)
     prior_fm[prior_param_idxs, prior_param_idxs] = 1 / np.array(prior_param_values)
     return fm + prior_fm

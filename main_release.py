@@ -681,7 +681,6 @@ z_means_ll = wf_cl_lib.get_z_means(z_grid_ssc_integrands, ccl_obj.wf_gamma_arr)
 z_means_gg = wf_cl_lib.get_z_means(z_grid_ssc_integrands, ccl_obj.wf_galaxy_arr)
 z_means_ll_bnt = wf_cl_lib.get_z_means(z_grid_ssc_integrands, wf_gamma_ccl_bnt)
 
-# plot_kernels_for_thesis()
 
 plt.figure()
 for zi in range(zbins):
@@ -1114,6 +1113,8 @@ cov_sb_suffix = covariance_cfg['Spaceborne_cfg']['cov_suffix'].format(
     z_steps_ssc_integrands=covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'],
     k_txt_label=k_txt_label,
     cl_integral_convention=covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
+    integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
+    fsky=covariance_cfg['fsky'],
 )
 
 variable_specs.pop('ng_cov_code')
@@ -1124,7 +1125,7 @@ cov_sb_filename = covariance_cfg['cov_filename'].format(ng_cov_code='spaceborne'
                                                         which_ng_cov=which_ng_cov_suffix.replace('G', ''),
                                                         fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'],
                                                         ndim=4,
-                                                        **variable_specs)
+                                                        ** variable_specs)
 # cov_sb_filename = covariance_cfg['cov_filename']  # ! delete
 
 variable_specs['ng_cov_code'] = covariance_cfg['ng_cov_code']
@@ -1143,29 +1144,81 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
                                        pyccl_cfg=pyccl_cfg, which_pk='_')
 
         # k and z grids (responses will be interpolated below)
-        k_grid_dPk_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
-        a_grid_dPk_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
+        k_grid_resp = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
+        a_grid_resp = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
         # translate a to z and cut the arrays to the maximum redshift of the SU responses (much smaller range!)
-        z_grid_dPk_hm = csmlib.a_to_z(a_grid_dPk_hm)[::-1]
+        z_grid_resp = csmlib.a_to_z(a_grid_resp)[::-1]
 
-        dPmm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
-        dPgm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
-        dPgg_ddeltab_hm = ccl_obj.responses_dict['G', 'G', 'G', 'G']['dpk12']
+        dPmm_ddeltab = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
+        dPgm_ddeltab = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
+        dPgg_ddeltab = ccl_obj.responses_dict['G', 'G', 'G', 'G']['dpk12']
 
         # a is flipped w.r.t. z
-        dPmm_ddeltab_hm = np.flip(dPmm_ddeltab_hm, axis=1)
-        dPgm_ddeltab_hm = np.flip(dPgm_ddeltab_hm, axis=1)
-        dPgg_ddeltab_hm = np.flip(dPgg_ddeltab_hm, axis=1)
+        dPmm_ddeltab = np.flip(dPmm_ddeltab, axis=1)
+        dPgm_ddeltab = np.flip(dPgm_ddeltab, axis=1)
+        dPgg_ddeltab = np.flip(dPgg_ddeltab, axis=1)
 
         # quick sanity check
         assert np.allclose(ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34'],
                            ccl_obj.responses_dict['G', 'L', 'G', 'G']['dpk12'], atol=0, rtol=1e-5)
         assert np.allclose(ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk34'],
                            ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12'], atol=0, rtol=1e-5)
-        assert dPmm_ddeltab_hm.shape == dPgm_ddeltab_hm.shape == dPgg_ddeltab_hm.shape, 'dPab_ddeltab_hm shape mismatch'
+        assert dPmm_ddeltab.shape == dPgm_ddeltab.shape == dPgg_ddeltab.shape, 'dPab_ddeltab_hm shape mismatch'
 
     elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe':
-        raise NotImplementedError('Separate Universe responses not implemented yet')
+        # import the response *coefficients* (not the responses themselves)
+        su_responses_folder = covariance_cfg['Spaceborne_cfg']['separate_universe_responses_folder'].format(
+            which_pk=general_cfg['which_pk'], ROOT=ROOT)
+        su_responses_filename = covariance_cfg['Spaceborne_cfg']['separate_universe_responses_filename'].format(
+            idBM=general_cfg['idBM'])
+        rAB_of_k = np.genfromtxt(f'{su_responses_folder}/{su_responses_filename}')
+
+        log_k_arr = np.unique(rAB_of_k[:, 0])
+        k_grid_resp = 10 ** log_k_arr
+        z_grid_resp = np.unique(rAB_of_k[:, 1])
+
+        r_mm = np.reshape(rAB_of_k[:, 2], (len(k_grid_resp), len(z_grid_resp)))
+        r_gm = np.reshape(rAB_of_k[:, 3], (len(k_grid_resp), len(z_grid_resp)))
+        r_gg = np.reshape(rAB_of_k[:, 4], (len(k_grid_resp), len(z_grid_resp)))
+
+        # remove z=0
+        z_grid_resp = z_grid_resp[1:]
+        r_mm = r_mm[:, 1:]
+        r_gm = r_gm[:, 1:]
+        r_gg = r_gg[:, 1:]
+
+        # compute pk_mm on the responses' k, z grid to rescale them
+        k_array, pk_mm_2d = csmlib.pk_from_ccl(k_grid_resp, z_grid_resp, use_h_units,
+                                               ccl_obj.cosmo_ccl, pk_kind='nonlinear')
+
+        # compute P_gm, P_gg
+        gal_bias = ccl_obj.gal_bias_2d[:, 0]
+
+        # check that it's the same in each bin
+        for zi in range(zbins):
+            np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
+
+        gal_bias_func = interp1d(z_grid_ssc_integrands, gal_bias, kind='linear')
+        gal_bias = gal_bias_func(z_grid_resp)
+
+        pk_gm_2d = pk_mm_2d * gal_bias
+        pk_gg_2d = pk_mm_2d * gal_bias ** 2
+
+        # now turn the response coefficients into responses
+        dPmm_ddeltab = r_mm * pk_mm_2d
+        dPgm_ddeltab = r_gm * pk_gm_2d
+        dPgg_ddeltab = r_gg * pk_gg_2d
+
+        # # compare against HM, if needed
+        # z_val = 0
+        # z_idx_hm = np.argmin(np.abs(z_grid_resp_hm - z_val))
+        # z_idx_su = np.argmin(np.abs(z_grid_resp_su - z_val))
+        # plt.figure()
+        # plt.title(f'z_su={z_grid_resp_su[z_idx_su]:.2f}, z_hm={z_grid_resp_hm[z_idx_hm]:.2f}')
+        # plt.loglog(k_grid_resp_hm, np.abs(dPgg_ddeltab_hm[:, z_idx_hm]), label='hm', c='tab:blue')
+        # plt.loglog(k_grid_resp_su, np.abs(dPgg_ddeltab_su[:, z_idx_su]), label='su', c='tab:blue', ls='--')
+        # plt.legend()
+
     else:
         raise ValueError('which_pk_responses must be either "halo_model" or "separate_universe"')
 
@@ -1213,9 +1266,9 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
         wf_lensing = ccl_obj.wf_lensing_arr / r_of_z_square[:, None]
 
     # ! compute the Pk responses(k, z) in k_limber and z_grid_ssc_integrands
-    dPmm_ddeltab_interp = RegularGridInterpolator((k_grid_dPk_hm, z_grid_dPk_hm), dPmm_ddeltab_hm, method='linear')
-    dPgm_ddeltab_interp = RegularGridInterpolator((k_grid_dPk_hm, z_grid_dPk_hm), dPgm_ddeltab_hm, method='linear')
-    dPgg_ddeltab_interp = RegularGridInterpolator((k_grid_dPk_hm, z_grid_dPk_hm), dPgg_ddeltab_hm, method='linear')
+    dPmm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPmm_ddeltab, method='linear')
+    dPgm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgm_ddeltab, method='linear')
+    dPgg_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgg_ddeltab, method='linear')
 
     dPmm_ddeltab_klimb = np.array(
         [dPmm_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
@@ -1274,211 +1327,33 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
         np.save(sigma2_b_filename, sigma2_b_dict_tosave, allow_pickle=True)
 
     # ! 4. Perform the integration calling the Julia module
-
-    # TODO finish this check, looking promising considering one is hm and one is su
-    # plt.loglog(ell_dict['ell_WL'], d2CLL_dVddeltab[:, 0, 0, 0], label='new')
-    # plt.loglog(sscint.ell_grid, sscint.d2CLL_dVddeltab[:, 0, 0, 0], label='old')
-
-    # plt.loglog(ell_dict['ell_XC'], np.abs(d2CGL_dVddeltab[:, 0, 0, 0]), label='new')
-    # plt.loglog(sscint.ell_grid, np.abs(sscint.d2CGL_dVddeltab[:, 0, 0, 0]), label='old')
-
-    # plt.plot(ell_dict['ell_GC'], d2CGG_dVddeltab[:, 0, 0, 0], label='new')
-    # plt.plot(sscint.ell_grid, sscint.d2CGG_dVddeltab[:, 0, 0, 0], label='old')
-    # plt.xscale('log')
-    # plt.legend()
-
     start = time.perf_counter()
-    cov_ssc_3x2pt_dict_8D_trapz = SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-                                                     ind_auto, ind_cross, cl_integral_prefactor, sigma2_b,
-                                                     z_grid_ssc_integrands,
-                                                     integration_type='trapz',
-                                                     num_threads=general_cfg['num_threads'])
-    # cov_ssc_3x2pt_dict_8D_simps = SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-    #                                                     ind_auto, ind_cross, cl_integral_prefactor, sigma2_b,
-    #                                                     z_grid_ssc_integrands,
-    #                                                     integration_type='simps',
-    #                                                     num_threads=general_cfg['num_threads'])
-    cov_ssc_3x2pt_dict_10D_trapz = SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-                                                      ind_auto, ind_cross, cl_integral_prefactor, sigma2_b,
-                                                      z_grid_ssc_integrands,
-                                                      integration_type='trapz-6D',
-                                                      num_threads=general_cfg['num_threads'])
+    cov_ssc_3x2pt_dict_8D = SSC_integral_julia(d2CLL_dVddeltab=d2CLL_dVddeltab,
+                                               d2CGL_dVddeltab=d2CGL_dVddeltab,
+                                               d2CGG_dVddeltab=d2CGG_dVddeltab,
+                                               ind_auto=ind_auto, ind_cross=ind_cross,
+                                               cl_integral_prefactor=cl_integral_prefactor, sigma2=sigma2_b,
+                                               z_grid=z_grid_ssc_integrands,
+                                               integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
+                                               num_threads=general_cfg['num_threads'])
     print('SSC computed with Julia in {:.2f} s'.format(time.perf_counter() - start))
 
     # If the mask is not passed to sigma2_b, we need to divide by fsky
     if which_sigma2_B == 'full-curved-sky':
-        for key in cov_ssc_3x2pt_dict_8D_trapz.keys():
-            cov_ssc_3x2pt_dict_8D_trapz[key] /= covariance_cfg['fsky']
-            # cov_ssc_3x2pt_dict_8D_simps[key] /= covariance_cfg['fsky']
-        
-        for key in cov_ssc_3x2pt_dict_10D_trapz.keys():
-            cov_ssc_3x2pt_dict_10D_trapz[key] /= covariance_cfg['fsky']
+        for key in cov_ssc_3x2pt_dict_8D.keys():
+            cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
 
     # save the covariance blocks
     # ! note that these files already account for the sky fraction!!
-
-    for key in cov_ssc_3x2pt_dict_8D_trapz.keys():
+    # TODO fsky suffix in cov name should be added only in this case... or not? the other covariance files don't have this...
+    for key in cov_ssc_3x2pt_dict_8D.keys():
         probe_a, probe_b, probe_c, probe_d = key
         np.savez_compressed(
-            f'{cov_folder}/{cov_sb_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}', cov_ssc_3x2pt_dict_8D_trapz[key])
+            f'{cov_folder}/{cov_sb_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d, integration_type="simps")}',
+            cov_ssc_3x2pt_dict_8D[key]
+        )
 
-    # ! TEST JL INTEGRAL AND INTEGRANDS
-
-    @njit(parallel=True)
-    def numba_integral_trapz_4d(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array):
-        zpairs_AB = ind_AB.shape[0]
-        zpairs_CD = ind_CD.shape[0]
-        num_col = ind_AB.shape[1]
-
-        dz = z_array[1] - z_array[0]
-
-        result = np.zeros((nbl, nbl, zpairs_AB, zpairs_CD))
-
-        for ell1 in prange(nbl):
-            for ell2 in range(nbl):  # this could be further optimized by computing only upper triangular ells, but not with prange
-                for zij in range(zpairs_AB):
-                    for zkl in range(zpairs_CD):
-                        for z1_idx in range(z_steps):
-                            for z2_idx in range(z_steps):
-
-                                zi = ind_AB[zij, num_col - 2]
-                                zj = ind_AB[zij, num_col - 1]
-                                zk = ind_CD[zkl, num_col - 2]
-                                zl = ind_CD[zkl, num_col - 1]
-
-                                result[ell1, ell2, zij, zkl] += (cl_integral_prefactor[z1_idx] *
-                                                                 cl_integral_prefactor[z2_idx] *
-                                                                 d2ClAB_dVddeltab[ell1, zi, zj, z1_idx] *
-                                                                 d2ClCD_dVddeltab[ell2, zk, zl, z2_idx] *
-                                                                 sigma2[z1_idx, z2_idx])
-
-        result *= dz**2
-        return result
-
-    @njit(parallel=True)
-    def numba_integral_trapz_6d(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array):
-        zpairs_AB = ind_AB.shape[0]
-        zpairs_CD = ind_CD.shape[0]
-
-        dz = z_array[1] - z_array[0]
-
-        result = np.zeros((nbl, nbl, zbins, zbins, zbins, zbins))
-
-        for ell1 in prange(nbl):
-            for ell2 in range(nbl):
-                for zi in range(zbins):
-                    for zj in range(zbins):
-                        for zk in range(zbins):
-                            for zl in range(zbins):
-                                for z1_idx in range(z_steps):
-                                    for z2_idx in range(z_steps):
-
-                                        result[ell1, ell2, zi, zj, zk, zl] += (cl_integral_prefactor[z1_idx] *
-                                                                               cl_integral_prefactor[z2_idx] *
-                                                                               d2ClAB_dVddeltab[ell1, zi, zj, z1_idx] *
-                                                                               d2ClCD_dVddeltab[ell2, zk, zl, z2_idx] *
-                                                                               sigma2[z1_idx, z2_idx])
-
-        result *= dz**2
-        return result
-
-    # compute integrand/integral in python
-    start_time = time.perf_counter()
-    d2CAB_dVddeltab_dict = {
-        ('L', 'L'): d2CLL_dVddeltab,
-        ('G', 'L'): d2CGL_dVddeltab,
-        ('G', 'G'): d2CGG_dVddeltab,
-    }
-    ind_dict = {
-        ('L', 'L'): ind_auto,
-        ('G', 'L'): ind_cross,
-        ('G', 'G'): ind_auto,
-    }
-
-    cov_ssc_3x2pt_py_trapz_8D = {}
-    cov_ssc_3x2pt_py_trapz_10D = {}
-    for probe_a, probe_b in probe_ordering:
-        for probe_c, probe_d in probe_ordering:
-            if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
-                
-                cov_ssc_3x2pt_py_trapz_8D[probe_a, probe_b, probe_c, probe_d] = numba_integral_trapz_4d(
-                    d2ClAB_dVddeltab=d2CAB_dVddeltab_dict[probe_a, probe_b],
-                    d2ClCD_dVddeltab=d2CAB_dVddeltab_dict[probe_c, probe_d],
-                    ind_AB=ind_dict[probe_a, probe_b],
-                    ind_CD=ind_dict[probe_c, probe_d],
-                    nbl=nbl_WL,
-                    z_steps=len(z_grid_ssc_integrands),
-                    cl_integral_prefactor=cl_integral_prefactor,
-                    sigma2=sigma2_b,
-                    z_array=z_grid_ssc_integrands)
-                cov_ssc_3x2pt_py_trapz_10D[probe_a, probe_b, probe_c, probe_d] = numba_integral_trapz_6d(
-                    d2ClAB_dVddeltab=d2CAB_dVddeltab_dict[probe_a, probe_b],
-                    d2ClCD_dVddeltab=d2CAB_dVddeltab_dict[probe_c, probe_d],
-                    ind_AB=ind_dict[probe_a, probe_b],
-                    ind_CD=ind_dict[probe_c, probe_d],
-                    nbl=nbl_WL,
-                    z_steps=len(z_grid_ssc_integrands),
-                    cl_integral_prefactor=cl_integral_prefactor,
-                    sigma2=sigma2_b,
-                    z_array=z_grid_ssc_integrands)
-
-
-    print('Python integral computed in {:.2f} s'.format(time.perf_counter() - start_time))
-
-    # integrand_ssc_spaceborne_py_LLLL = numba_integrand()
-    # cov_ssc_LLLL_py_4d_simps_part = simps(y=integrand, x=z_grid_ssc_integrands, axis=-1)
-    # cov_ssc_LLLL_py_4d_simps = simps(y=cov_ssc_LLLL_py_4d_simps_part, x=z_grid_ssc_integrands, axis=-1)
-
-    if which_sigma2_B == 'full-curved-sky':
-        for key in cov_ssc_3x2pt_py_trapz_8D.keys():
-            cov_ssc_3x2pt_py_trapz_8D[key] /= covariance_cfg['fsky']
-            # cov_ssc_3x2pt_dict_8D_simps[key] /= covariance_cfg['fsky']
-            np.testing.assert_allclose(cov_ssc_3x2pt_py_trapz_8D[key], cov_ssc_3x2pt_dict_8D_trapz[key], atol=0, rtol=1e-5)
-        
-        for key in cov_ssc_3x2pt_py_trapz_10D.keys():
-            cov_ssc_3x2pt_py_trapz_10D[key] /= covariance_cfg['fsky']
-            np.testing.assert_allclose(cov_ssc_3x2pt_py_trapz_10D[key], cov_ssc_3x2pt_dict_10D_trapz[key], atol=0, rtol=1e-5)
-
-    # # the py vs jl 6d versions match, very good!!
-    # plt.plot(cov_ssc_LLLL_py_trapz_6D.flatten()[:10000])
-    # plt.plot(cov_ssc_LLLL_jl_trapz_6d.flatten()[:10000], ls='--', alpha=0.5)
-    # # diff=mm.percent_diff(cov_ssc_LLLL_py_trapz_6D, cov_ssc_LLLL_jl_trapz_6d)
-    # # plt.plot(diff.flatten()* covariance_cfg['fsky'], ls=':', alpha=0.5)
-    # plt.yscale('log')
-    # np.testing.assert_allclose(cov_ssc_LLLL_py_trapz_6D, cov_ssc_LLLL_jl_trapz_6d, atol=0, rtol=1e-5)
-
-    # # reshape to 4d
-    # cov_ssc_LLLL_py_4d_trapz_from_6D = mm.cov_6D_to_4D(cov_ssc_LLLL_py_trapz_6D, nbl_WL, zpairs_auto, ind_auto)
-    # cov_ssc_LLLL_jl_4d_trapz_from_6D = mm.cov_6D_to_4D(cov_ssc_LLLL_jl_trapz_6d, nbl_WL, zpairs_auto, ind_auto)
-    # np.testing.assert_allclose(cov_ssc_LLLL_py_4d_trapz_from_6D, cov_ssc_LLLL_jl_4d_trapz_from_6D, atol=0, rtol=1e-5)
-
-    # # the python 4d matches python 6D -> 4D
-    # np.testing.assert_allclose(cov_ssc_LLLL_py_4d_trapz_from_6D, cov_ssc_LLLL_py_trapz_4D, atol=0, rtol=1e-5)
-    # np.testing.assert_allclose(cov_ssc_LLLL_jl_4d_trapz_from_6D, cov_ssc_LLLL_py_trapz_4D, atol=0, rtol=1e-5)
-
-    # # reshape to 2d
-    # cov_ssc_LLLL_py_2d_trapz = mm.cov_4D_to_2D(cov_ssc_LLLL_py_trapz_4D, block_index=block_index)
-    # cov_ssc_LLLL_jl_2d_trapz = mm.cov_4D_to_2D(cov_ssc_3x2pt_dict_8D_trapz['G', 'G', 'G', 'G'], block_index=block_index)
-    # cov_ssc_LLLL_py_2d_trapz_from_6d = mm.cov_4D_to_2D(cov_ssc_LLLL_py_4d_trapz_from_6D, block_index=block_index)
-    # cov_ssc_LLLL_jl_2d_trapz_from_6d = mm.cov_4D_to_2D(cov_ssc_LLLL_jl_4d_trapz_from_6D, block_index=block_index)
-    # # cov_ssc_LLLL_py_2d_simps = mm.cov_4D_to_2D(cov_ssc_LLLL_py_4d_simps, block_index=block_index)
-    # cov_ssc_LLLL_jl_2d_simps = mm.cov_4D_to_2D(cov_ssc_3x2pt_dict_8D_simps['G', 'G', 'G', 'G'], block_index=block_index)
-
-    # plt.title('diff btw jl sims and trapz')
-    # plt.plot(cov_ssc_3x2pt_dict_8D_simps['G', 'G', 'G', 'G'].flatten())
-    # plt.plot(cov_ssc_3x2pt_dict_8D_trapz['G', 'G', 'G', 'G'].flatten(), ls='--', alpha=0.5)
-    # diff=mm.percent_diff(cov_ssc_3x2pt_dict_8D_simps['G', 'G', 'G', 'G'], cov_ssc_3x2pt_dict_8D_trapz['G', 'G', 'G', 'G'])
-    # plt.plot((diff.flatten()))
-    # plt.yscale('log')
-
-    # mm.compare_arrays(cov_ssc_LLLL_py_2d_trapz, cov_ssc_LLLL_jl_2d_trapz, 'Py trapz', 'Jl trapz',
-    #                   abs_val=True, plot_diff=True, plot_diff_threshold=10)
-    # mm.compare_arrays(cov_ssc_LLLL_py_2d_trapz_from_6d, cov_ssc_LLLL_py_2d_trapz, 'Py trapz 6d', 'py trapz 4d',
-    #                   abs_val=True, plot_diff=True, plot_diff_threshold=10)
-    # mm.compare_arrays(cov_ssc_LLLL_jl_2d_trapz_from_6d, cov_ssc_LLLL_jl_2d_trapz, 'jl trapz 6d', 'jl trapz 4d',
-    #                   abs_val=True, plot_diff=True, plot_diff_threshold=10)
-    # mm.compare_arrays(cov_ssc_3x2pt_dict_8D_simps['G', 'G', 'G', 'G'], cov_ssc_3x2pt_dict_8D_trapz['G', 'G', 'G', 'G'], 'jl simps', 'jl trapz',
-    #                   abs_val=True, plot_diff=True, plot_diff_threshold=5)
+    # ! check SSC INTEGRANDS
 
     # plt.figure()
     # z1_idx = 3
@@ -1503,7 +1378,7 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
 
     # plt.plot(z_grid_ssc_integrands, integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD, z1_idx, :], marker='o')
 
-    assert False, 'stop here'
+    # assert False, 'stop here'
 
 
 elif covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
@@ -1716,6 +1591,7 @@ else:
 # TODO: if already existing, don't compute the covmat, like done above for Sijkl
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix)
+
 
 covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
@@ -1969,16 +1845,21 @@ if fm_cfg['test_against_vincenzo'] and bnt_transform == False:
 
         npt.assert_allclose(fm_dict[f'FM_{probe_dav}_G'], fm_vinc_g, rtol=1e-3, atol=0)
 
+
 # ! plot the results directly, as a quick check
 nparams_toplot = 7
 names_params_to_fix = []
 divide_fom_by_10 = True
 include_fom = True
-fix_dz = True
-fix_shear_bias = True
+
+fix_dz = False
+fix_shear_bias = False
 fix_gal_bias = False
 fix_mag_bias = False
-probes = ['WL', 'GC', 'XC', '3x2pt', '2x2pt']
+shear_bias_prior = 5e-4
+dz_prior = np.array(2 * 1e-3 * (1 + np.array(cfg['covariance_cfg']['zbin_centers'])))
+
+probes = ['WL', 'GC', 'XC', '3x2pt']
 dz_param_names = [f'dzWL{(zi + 1):02d}' for zi in range(zbins)]
 shear_bias_param_names = [f'm{(zi + 1):02d}' for zi in range(zbins)]
 gal_bias_param_names = [f'bG{(zi + 1):02d}' for zi in range(4)]
@@ -2000,18 +1881,37 @@ if fix_mag_bias:
 fom_dict = {}
 uncert_dict = {}
 masked_FM_dict = {}
-for key in list(fm_dict.keys()):
-    if key != 'fiducial_values_dict' and '_WA_' not in key:
-        masked_FM, masked_fid_pars_dict = mm.mask_fm_v2(fm_dict[key], fid_pars_dict['FM_ordered_params'],
+fm_dict_toplot = deepcopy(fm_dict)
+del fm_dict_toplot['fiducial_values_dict']
+for key in list(fm_dict_toplot.keys()):
+    if key != 'fiducial_values_dict' and '_WA_' not in key and '_2x2pt_' not in key:
+
+        fm = deepcopy(fm_dict_toplot[key])
+
+        masked_fm, masked_fid_pars_dict = mm.mask_fm_v2(fm, fid_pars_dict['FM_ordered_params'],
                                                         names_params_to_fix=names_params_to_fix,
                                                         remove_null_rows_cols=True)
 
-        uncert_dict[key] = mm.uncertainties_fm_v2(masked_FM, masked_fid_pars_dict,
+        if not fix_shear_bias and any(item in key for item in ['WL', 'XC', '3x2pt']):
+            print(f'adding shear bias Gaussian prior to {key}')
+            shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
+            masked_fm = mm.add_prior_to_fm(masked_fm, masked_fid_pars_dict,
+                                           shear_bias_param_names, shear_bias_prior_values)
+
+        if not fix_dz:
+            print(f'adding dz Gaussian prior to {key}')
+            masked_fm = mm.add_prior_to_fm(masked_fm, masked_fid_pars_dict, dz_param_names, dz_prior)
+
+        uncert_dict[key] = mm.uncertainties_fm_v2(masked_fm, masked_fid_pars_dict,
                                                   which_uncertainty='marginal',
                                                   normalize=True,
                                                   percent_units=True)[:nparams_toplot]
 
-        fom_dict[key] = mm.compute_FoM(masked_FM, w0wa_idxs=(2, 3))
+        param_names = list(masked_fid_pars_dict.keys())
+        cosmo_param_names = list(masked_fid_pars_dict.keys())[:nparams_toplot]
+
+        w0wa_idxs = param_names.index('wz'), param_names.index('wa')
+        fom_dict[key] = mm.compute_FoM(masked_fm, w0wa_idxs=w0wa_idxs)
 
 # compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
 for probe in probes:
@@ -2019,11 +1919,9 @@ for probe in probes:
     key_a = f'FM_{probe}_G'
     key_b = f'FM_{probe}_GSSC'
 
-    uncert_dict[f'perc_diff_{probe}_G'] = mm.percent_diff(
-        uncert_dict[key_b], uncert_dict[key_a])
+    uncert_dict[f'perc_diff_{probe}_G'] = mm.percent_diff(uncert_dict[key_b], uncert_dict[key_a])
     fom_dict[f'perc_diff_{probe}_G'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
 
-for probe in probes:
     nparams_toplot = 7
     divide_fom_by_10_plt = False if probe in ('WL' 'XC') else divide_fom_by_10
 
@@ -2056,7 +1954,9 @@ for probe in probes:
     param_names_label = param_names_list[:nparams_toplot] + [fom_label] if include_fom else param_names_list[
         :nparams_toplot]
     lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_3x2pt']
-    title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i' % (probe, lmax, ep_or_ed, zbins)
+    title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i, zsteps_ssc_integral %i $\\sigma_\\epsilon$ %s' % (
+        probe, lmax, ep_or_ed, zbins, len(z_grid_ssc_integrands), covariance_cfg['which_shape_noise'])
+
     # bar plot
     if include_fom:
         nparams_toplot = 8

@@ -310,7 +310,7 @@ def plot_kernels_for_thesis():
 
 
 def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-                          ind_auto, ind_cross, cl_integral_prefactor, sigma2, z_grid, integration_type, num_threads=16):
+                       ind_auto, ind_cross, cl_integral_prefactor, sigma2, z_grid, integration_type, num_threads=16):
     """Kernel to compute the 4D integral optimized using Simpson's rule using Julia."""
 
     suffix = 0
@@ -333,14 +333,24 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
     np.save(f"{folder_name}/sigma2", sigma2)
     np.save(f"{folder_name}/z_grid", z_grid)
     os.system(
-        f"julia --project=. --threads={num_threads} spaceborne/SSC_integral_julia_new_dav.jl {folder_name} {integration_type}")
+        f"julia --project=. --threads={num_threads} spaceborne/ssc_integral_julia.jl {folder_name} {integration_type}")
 
     cov_filename = "cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npy"
 
-    cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
-        path=f'{folder_name}',
-        filename=cov_filename,
-        probe_ordering=probe_ordering)
+    if integration_type == 'trapz-6D':
+        cov_ssc_3x2pt_dict_8D = {}  # it's 10D, actually
+        for probe_a, probe_b in probe_ordering:
+            for probe_c, probe_d in probe_ordering:
+                if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
+                    print(f"Loading {probe_a}{probe_b}{probe_c}{probe_d}")
+                    cov_ssc_3x2pt_dict_8D[(probe_a, probe_b, probe_c, probe_d)] = np.load(
+                        f"{folder_name}/{cov_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}")
+
+    else:
+        cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
+            path=f'{folder_name}',
+            filename=cov_filename,
+            probe_ordering=probe_ordering)
 
     os.system(f"rm -rf {folder_name}")
     return cov_ssc_3x2pt_dict_8D
@@ -1279,29 +1289,30 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
 
     start = time.perf_counter()
     cov_ssc_3x2pt_dict_8D_trapz = SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-                                                        ind_auto, ind_cross, cl_integral_prefactor, sigma2_b,
-                                                        z_grid_ssc_integrands,
-                                                        integration_type='trapz',
-                                                        num_threads=general_cfg['num_threads'])
-    cov_ssc_3x2pt_dict_8D_simps = SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-                                                        ind_auto, ind_cross, cl_integral_prefactor, sigma2_b,
-                                                        z_grid_ssc_integrands,
-                                                        integration_type='simps',
-                                                        num_threads=general_cfg['num_threads'])
+                                                     ind_auto, ind_cross, cl_integral_prefactor, sigma2_b,
+                                                     z_grid_ssc_integrands,
+                                                     integration_type='trapz',
+                                                     num_threads=general_cfg['num_threads'])
+    # cov_ssc_3x2pt_dict_8D_simps = SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
+    #                                                     ind_auto, ind_cross, cl_integral_prefactor, sigma2_b,
+    #                                                     z_grid_ssc_integrands,
+    #                                                     integration_type='simps',
+    #                                                     num_threads=general_cfg['num_threads'])
     cov_ssc_3x2pt_dict_10D_trapz = SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-                                                        ind_auto, ind_cross, cl_integral_prefactor, sigma2_b,
-                                                        z_grid_ssc_integrands,
-                                                        integration_type='trapz-6D',
-                                                        num_threads=general_cfg['num_threads'])
-    cov_ssc_LLLL_jl_trapz_6d = np.load('/home/cosmo/davide.sciotti/data/Spaceborne/tmp5/cov_SSC_spaceborne_LLLL_4D.npy')
+                                                      ind_auto, ind_cross, cl_integral_prefactor, sigma2_b,
+                                                      z_grid_ssc_integrands,
+                                                      integration_type='trapz-6D',
+                                                      num_threads=general_cfg['num_threads'])
     print('SSC computed with Julia in {:.2f} s'.format(time.perf_counter() - start))
 
     # If the mask is not passed to sigma2_b, we need to divide by fsky
     if which_sigma2_B == 'full-curved-sky':
         for key in cov_ssc_3x2pt_dict_8D_trapz.keys():
             cov_ssc_3x2pt_dict_8D_trapz[key] /= covariance_cfg['fsky']
-            cov_ssc_3x2pt_dict_8D_simps[key] /= covariance_cfg['fsky']
-    cov_ssc_LLLL_jl_trapz_6d /= covariance_cfg['fsky']
+            # cov_ssc_3x2pt_dict_8D_simps[key] /= covariance_cfg['fsky']
+        
+        for key in cov_ssc_3x2pt_dict_10D_trapz.keys():
+            cov_ssc_3x2pt_dict_10D_trapz[key] /= covariance_cfg['fsky']
 
     # save the covariance blocks
     # ! note that these files already account for the sky fraction!!
@@ -1312,35 +1323,6 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
             f'{cov_folder}/{cov_sb_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}', cov_ssc_3x2pt_dict_8D_trapz[key])
 
     # ! TEST JL INTEGRAL AND INTEGRANDS
-    block_index = 'ell'
-
-    @njit()
-    def numba_integrand():
-        # used to perform integration with scipy simps, fails if z_steps is too large due to memory allocation issues
-        d2ClAB_dVddeltab = d2CLL_dVddeltab
-        d2ClCD_dVddeltab = d2CLL_dVddeltab
-        num_col = 4
-        nbl = nbl_WL
-        zpairs_AB, zpairs_CD = zpairs_auto, zpairs_auto
-        ind_AB, ind_CD = ind_auto, ind_auto
-        integrand = np.zeros((nbl, nbl, zpairs_AB, zpairs_CD, len(z_grid_ssc_integrands), len(z_grid_ssc_integrands)))
-        # plot integrand as a function of z1, z2
-        for ell1 in prange(nbl):
-            # this could be further optimized by computing only upper triangular ells (for LLLL, GLGL, GGGG only), but not with tturbo
-            for ell2 in prange(nbl):
-                for zij in prange(zpairs_auto):
-                    for zkl in prange(zpairs_auto):
-                        for z1_idx in prange(len(z_grid_ssc_integrands)):
-                            for z2_idx in prange(len(z_grid_ssc_integrands)):
-
-                                zi, zj, zk, zl = ind_AB[zij, num_col - 2], ind_AB[zij, num_col - 1], \
-                                    ind_CD[zkl, num_col - 2], ind_CD[zkl, num_col - 1]
-
-                                integrand[ell1, ell2, zij, zkl, z1_idx, z2_idx] = \
-                                    cl_integral_prefactor[z1_idx] * cl_integral_prefactor[z2_idx] * \
-                                    d2ClAB_dVddeltab[ell1, zi, zj, z1_idx] * \
-                                    d2ClCD_dVddeltab[ell2, zk, zl, z2_idx] * sigma2_b[z1_idx, z2_idx]
-        return integrand
 
     @njit(parallel=True)
     def numba_integral_trapz_4d(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array):
@@ -1402,24 +1384,44 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
 
     # compute integrand/integral in python
     start_time = time.perf_counter()
-    cov_ssc_LLLL_py_trapz_4D = numba_integral_trapz_4d(d2ClAB_dVddeltab=d2CLL_dVddeltab,
-                                                    d2ClCD_dVddeltab=d2CLL_dVddeltab,
-                                                    ind_AB=ind_auto,
-                                                    ind_CD=ind_auto,
-                                                    nbl=nbl_WL,
-                                                    z_steps=len(z_grid_ssc_integrands),
-                                                    cl_integral_prefactor=cl_integral_prefactor,
-                                                    sigma2=sigma2_b,
-                                                    z_array=z_grid_ssc_integrands)
-    cov_ssc_LLLL_py_trapz_6D = numba_integral_trapz_6d(d2ClAB_dVddeltab=d2CLL_dVddeltab,
-                                                    d2ClCD_dVddeltab=d2CLL_dVddeltab,
-                                                    ind_AB=ind_auto,
-                                                    ind_CD=ind_auto,
-                                                    nbl=nbl_WL,
-                                                    z_steps=len(z_grid_ssc_integrands),
-                                                    cl_integral_prefactor=cl_integral_prefactor,
-                                                    sigma2=sigma2_b,
-                                                    z_array=z_grid_ssc_integrands)
+    d2CAB_dVddeltab_dict = {
+        ('L', 'L'): d2CLL_dVddeltab,
+        ('G', 'L'): d2CGL_dVddeltab,
+        ('G', 'G'): d2CGG_dVddeltab,
+    }
+    ind_dict = {
+        ('L', 'L'): ind_auto,
+        ('G', 'L'): ind_cross,
+        ('G', 'G'): ind_auto,
+    }
+
+    cov_ssc_3x2pt_py_trapz_8D = {}
+    cov_ssc_3x2pt_py_trapz_10D = {}
+    for probe_a, probe_b in probe_ordering:
+        for probe_c, probe_d in probe_ordering:
+            if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
+                
+                cov_ssc_3x2pt_py_trapz_8D[probe_a, probe_b, probe_c, probe_d] = numba_integral_trapz_4d(
+                    d2ClAB_dVddeltab=d2CAB_dVddeltab_dict[probe_a, probe_b],
+                    d2ClCD_dVddeltab=d2CAB_dVddeltab_dict[probe_c, probe_d],
+                    ind_AB=ind_dict[probe_a, probe_b],
+                    ind_CD=ind_dict[probe_c, probe_d],
+                    nbl=nbl_WL,
+                    z_steps=len(z_grid_ssc_integrands),
+                    cl_integral_prefactor=cl_integral_prefactor,
+                    sigma2=sigma2_b,
+                    z_array=z_grid_ssc_integrands)
+                cov_ssc_3x2pt_py_trapz_10D[probe_a, probe_b, probe_c, probe_d] = numba_integral_trapz_6d(
+                    d2ClAB_dVddeltab=d2CAB_dVddeltab_dict[probe_a, probe_b],
+                    d2ClCD_dVddeltab=d2CAB_dVddeltab_dict[probe_c, probe_d],
+                    ind_AB=ind_dict[probe_a, probe_b],
+                    ind_CD=ind_dict[probe_c, probe_d],
+                    nbl=nbl_WL,
+                    z_steps=len(z_grid_ssc_integrands),
+                    cl_integral_prefactor=cl_integral_prefactor,
+                    sigma2=sigma2_b,
+                    z_array=z_grid_ssc_integrands)
+
 
     print('Python integral computed in {:.2f} s'.format(time.perf_counter() - start_time))
 
@@ -1427,72 +1429,78 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
     # cov_ssc_LLLL_py_4d_simps_part = simps(y=integrand, x=z_grid_ssc_integrands, axis=-1)
     # cov_ssc_LLLL_py_4d_simps = simps(y=cov_ssc_LLLL_py_4d_simps_part, x=z_grid_ssc_integrands, axis=-1)
 
-    cov_ssc_LLLL_py_trapz_4D /= covariance_cfg['fsky']
-    # cov_ssc_LLLL_py_4d_simps /= covariance_cfg['fsky']
-    cov_ssc_LLLL_py_trapz_6D /= covariance_cfg['fsky']
+    if which_sigma2_B == 'full-curved-sky':
+        for key in cov_ssc_3x2pt_py_trapz_8D.keys():
+            cov_ssc_3x2pt_py_trapz_8D[key] /= covariance_cfg['fsky']
+            # cov_ssc_3x2pt_dict_8D_simps[key] /= covariance_cfg['fsky']
+            np.testing.assert_allclose(cov_ssc_3x2pt_py_trapz_8D[key], cov_ssc_3x2pt_dict_8D_trapz[key], atol=0, rtol=1e-5)
+        
+        for key in cov_ssc_3x2pt_py_trapz_10D.keys():
+            cov_ssc_3x2pt_py_trapz_10D[key] /= covariance_cfg['fsky']
+            np.testing.assert_allclose(cov_ssc_3x2pt_py_trapz_10D[key], cov_ssc_3x2pt_dict_10D_trapz[key], atol=0, rtol=1e-5)
 
-    # the py vs jl 6d versions match, very good!!    
-    plt.plot(cov_ssc_LLLL_py_trapz_6D.flatten())
-    plt.plot(cov_ssc_LLLL_jl_trapz_6d.flatten(), ls='--', alpha=0.5)
-    diff=mm.percent_diff(cov_ssc_LLLL_py_trapz_6D, cov_ssc_LLLL_jl_trapz_6d)
-    plt.plot(diff.flatten()* covariance_cfg['fsky'], ls=':', alpha=0.5)
-    plt.yscale('log')
-    np.testing.assert_allclose(cov_ssc_LLLL_py_trapz_6D, cov_ssc_LLLL_jl_trapz_6d, atol=0, rtol=1e-5)
-    
-    # reshape to 4d
-    cov_ssc_LLLL_py_4d_trapz_from_6D = mm.cov_6D_to_4D(cov_ssc_LLLL_py_trapz_6D, nbl_WL, zpairs_auto, ind_auto)
-    cov_ssc_LLLL_jl_4d_trapz_from_6D = mm.cov_6D_to_4D(cov_ssc_LLLL_jl_trapz_6d, nbl_WL, zpairs_auto, ind_auto)
-    np.testing.assert_allclose(cov_ssc_LLLL_py_4d_trapz_from_6D, cov_ssc_LLLL_jl_4d_trapz_from_6D, atol=0, rtol=1e-5)
-    
-    # the python 4d matches python 6D -> 4D
-    np.testing.assert_allclose(cov_ssc_LLLL_py_4d_trapz_from_6D, cov_ssc_LLLL_py_trapz_4D, atol=0, rtol=1e-5)
-    np.testing.assert_allclose(cov_ssc_LLLL_jl_4d_trapz_from_6D, cov_ssc_LLLL_py_trapz_4D, atol=0, rtol=1e-5)
+    # # the py vs jl 6d versions match, very good!!
+    # plt.plot(cov_ssc_LLLL_py_trapz_6D.flatten()[:10000])
+    # plt.plot(cov_ssc_LLLL_jl_trapz_6d.flatten()[:10000], ls='--', alpha=0.5)
+    # # diff=mm.percent_diff(cov_ssc_LLLL_py_trapz_6D, cov_ssc_LLLL_jl_trapz_6d)
+    # # plt.plot(diff.flatten()* covariance_cfg['fsky'], ls=':', alpha=0.5)
+    # plt.yscale('log')
+    # np.testing.assert_allclose(cov_ssc_LLLL_py_trapz_6D, cov_ssc_LLLL_jl_trapz_6d, atol=0, rtol=1e-5)
 
-    # reshape to 2d
-    cov_ssc_LLLL_py_2d_trapz = mm.cov_4D_to_2D(cov_ssc_LLLL_py_trapz_4D, block_index=block_index)
-    cov_ssc_LLLL_jl_2d_trapz = mm.cov_4D_to_2D(cov_ssc_3x2pt_dict_8D_trapz['L', 'L', 'L', 'L'], block_index=block_index)
-    cov_ssc_LLLL_py_2d_trapz_from_6d = mm.cov_4D_to_2D(cov_ssc_LLLL_py_4d_trapz_from_6D, block_index=block_index)
-    cov_ssc_LLLL_jl_2d_trapz_from_6d = mm.cov_4D_to_2D(cov_ssc_LLLL_jl_4d_trapz_from_6D, block_index=block_index)
-    # cov_ssc_LLLL_py_2d_simps = mm.cov_4D_to_2D(cov_ssc_LLLL_py_4d_simps, block_index=block_index)
-    cov_ssc_LLLL_jl_2d_simps = mm.cov_4D_to_2D(cov_ssc_3x2pt_dict_8D_simps['L', 'L', 'L', 'L'], block_index=block_index)
-    
-    plt.title('diff btw jl sims and trapz')
-    plt.plot(cov_ssc_3x2pt_dict_8D_simps['L', 'L', 'L', 'L'].flatten())
-    plt.plot(cov_ssc_3x2pt_dict_8D_trapz['L', 'L', 'L', 'L'].flatten(), ls='--', alpha=0.5)
-    diff=mm.percent_diff(cov_ssc_3x2pt_dict_8D_simps['L', 'L', 'L', 'L'], cov_ssc_3x2pt_dict_8D_trapz['L', 'L', 'L', 'L'])
-    plt.plot(np.abs(diff.flatten()))
-    plt.yscale('log')
+    # # reshape to 4d
+    # cov_ssc_LLLL_py_4d_trapz_from_6D = mm.cov_6D_to_4D(cov_ssc_LLLL_py_trapz_6D, nbl_WL, zpairs_auto, ind_auto)
+    # cov_ssc_LLLL_jl_4d_trapz_from_6D = mm.cov_6D_to_4D(cov_ssc_LLLL_jl_trapz_6d, nbl_WL, zpairs_auto, ind_auto)
+    # np.testing.assert_allclose(cov_ssc_LLLL_py_4d_trapz_from_6D, cov_ssc_LLLL_jl_4d_trapz_from_6D, atol=0, rtol=1e-5)
 
-    mm.compare_arrays(cov_ssc_LLLL_py_2d_trapz, cov_ssc_LLLL_jl_2d_trapz, 'Py trapz', 'Jl trapz',
-                      abs_val=True, plot_diff=True, plot_diff_threshold=10)
-    mm.compare_arrays(cov_ssc_LLLL_py_2d_trapz_from_6d, cov_ssc_LLLL_py_2d_trapz, 'Py trapz 6d', 'py trapz 4d',
-                      abs_val=True, plot_diff=True, plot_diff_threshold=10)
-    mm.compare_arrays(cov_ssc_LLLL_jl_2d_trapz_from_6d, cov_ssc_LLLL_jl_2d_trapz, 'jl trapz 6d', 'jl trapz 4d',
-                      abs_val=True, plot_diff=True, plot_diff_threshold=10)
-    mm.compare_arrays(cov_ssc_3x2pt_dict_8D_simps['L', 'L', 'L', 'L'], cov_ssc_3x2pt_dict_8D_trapz['L', 'L', 'L', 'L'], 'jl simps', 'jl trapz',
-                      abs_val=True, plot_diff=True, plot_diff_threshold=5)
-    
-    plt.figure()
-    z1_idx = 3
-    ell1_idx, ell2_idx = 28, 28
-    zpair_AB, zpair_CD = 5, 5
-    num_col = 4
-    ind_AB, ind_CD = ind_auto, ind_auto
-    zi, zj, zk, zl = ind_AB[zpair_AB, num_col - 2], ind_AB[zpair_AB, num_col - 1], \
-        ind_CD[zpair_CD, num_col - 2], ind_CD[zpair_CD, num_col - 1]
-    # plt.plot(z_grid_ssc_integrands, integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD, z1_idx, :], label='total integrand')
-    plt.plot(z_grid_ssc_integrands, d2CLL_dVddeltab[ell2_idx, zk, zl, :], label='d2CLL_dVddeltab')
-    plt.plot(z_grid_ssc_integrands, cl_integral_prefactor, label='cl_integral_prefactor')
-    plt.plot(z_grid_ssc_integrands, sigma2_b[z1_idx, :], label='sigma2_b')
-    plt.yscale('log')
-    plt.legend()
-    
+    # # the python 4d matches python 6D -> 4D
+    # np.testing.assert_allclose(cov_ssc_LLLL_py_4d_trapz_from_6D, cov_ssc_LLLL_py_trapz_4D, atol=0, rtol=1e-5)
+    # np.testing.assert_allclose(cov_ssc_LLLL_jl_4d_trapz_from_6D, cov_ssc_LLLL_py_trapz_4D, atol=0, rtol=1e-5)
+
+    # # reshape to 2d
+    # cov_ssc_LLLL_py_2d_trapz = mm.cov_4D_to_2D(cov_ssc_LLLL_py_trapz_4D, block_index=block_index)
+    # cov_ssc_LLLL_jl_2d_trapz = mm.cov_4D_to_2D(cov_ssc_3x2pt_dict_8D_trapz['G', 'G', 'G', 'G'], block_index=block_index)
+    # cov_ssc_LLLL_py_2d_trapz_from_6d = mm.cov_4D_to_2D(cov_ssc_LLLL_py_4d_trapz_from_6D, block_index=block_index)
+    # cov_ssc_LLLL_jl_2d_trapz_from_6d = mm.cov_4D_to_2D(cov_ssc_LLLL_jl_4d_trapz_from_6D, block_index=block_index)
+    # # cov_ssc_LLLL_py_2d_simps = mm.cov_4D_to_2D(cov_ssc_LLLL_py_4d_simps, block_index=block_index)
+    # cov_ssc_LLLL_jl_2d_simps = mm.cov_4D_to_2D(cov_ssc_3x2pt_dict_8D_simps['G', 'G', 'G', 'G'], block_index=block_index)
+
+    # plt.title('diff btw jl sims and trapz')
+    # plt.plot(cov_ssc_3x2pt_dict_8D_simps['G', 'G', 'G', 'G'].flatten())
+    # plt.plot(cov_ssc_3x2pt_dict_8D_trapz['G', 'G', 'G', 'G'].flatten(), ls='--', alpha=0.5)
+    # diff=mm.percent_diff(cov_ssc_3x2pt_dict_8D_simps['G', 'G', 'G', 'G'], cov_ssc_3x2pt_dict_8D_trapz['G', 'G', 'G', 'G'])
+    # plt.plot((diff.flatten()))
+    # plt.yscale('log')
+
+    # mm.compare_arrays(cov_ssc_LLLL_py_2d_trapz, cov_ssc_LLLL_jl_2d_trapz, 'Py trapz', 'Jl trapz',
+    #                   abs_val=True, plot_diff=True, plot_diff_threshold=10)
+    # mm.compare_arrays(cov_ssc_LLLL_py_2d_trapz_from_6d, cov_ssc_LLLL_py_2d_trapz, 'Py trapz 6d', 'py trapz 4d',
+    #                   abs_val=True, plot_diff=True, plot_diff_threshold=10)
+    # mm.compare_arrays(cov_ssc_LLLL_jl_2d_trapz_from_6d, cov_ssc_LLLL_jl_2d_trapz, 'jl trapz 6d', 'jl trapz 4d',
+    #                   abs_val=True, plot_diff=True, plot_diff_threshold=10)
+    # mm.compare_arrays(cov_ssc_3x2pt_dict_8D_simps['G', 'G', 'G', 'G'], cov_ssc_3x2pt_dict_8D_trapz['G', 'G', 'G', 'G'], 'jl simps', 'jl trapz',
+    #                   abs_val=True, plot_diff=True, plot_diff_threshold=5)
+
+    # plt.figure()
+    # z1_idx = 3
+    # ell1_idx, ell2_idx = 28, 28
+    # zpair_AB, zpair_CD = 5, 5
+    # num_col = 4
+    # ind_AB, ind_CD = ind_auto, ind_auto
+    # zi, zj, zk, zl = ind_AB[zpair_AB, num_col - 2], ind_AB[zpair_AB, num_col - 1], \
+    #     ind_CD[zpair_CD, num_col - 2], ind_CD[zpair_CD, num_col - 1]
+    # # plt.plot(z_grid_ssc_integrands, integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD, z1_idx, :], label='total integrand')
+    # plt.plot(z_grid_ssc_integrands, d2CLL_dVddeltab[ell2_idx, zk, zl, :], label='d2CLL_dVddeltab')
+    # plt.plot(z_grid_ssc_integrands, cl_integral_prefactor, label='cl_integral_prefactor')
+    # plt.plot(z_grid_ssc_integrands, sigma2_b[z1_idx, :], label='sigma2_b')
+    # plt.yscale('log')
+    # plt.legend()
+
     # mm.matshow(integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD], log=True, abs_val=True)
     # mm.matshow(sigma2_b, log=True, abs_val=True)
     # plt.plot(z_grid_ssc_integrands, np.diag(sigma2_b), marker='o')
     # plt.plot(z_grid_ssc_integrands, np.diag(integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD]), marker='o')
     # plt.yscale('log')
-    
+
     # plt.plot(z_grid_ssc_integrands, integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD, z1_idx, :], marker='o')
 
     assert False, 'stop here'

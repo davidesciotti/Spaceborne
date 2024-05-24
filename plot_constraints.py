@@ -42,22 +42,22 @@ cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 # ! some issued with 'PyCCL' '', 'standard', in the fm dict
 
 
+
 # ! options
 ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
 # filename_suffix = '_cNG_intfix'  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 # filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
-fm_last_folder = '/jan_2024'  # /standard or /jan_2024
 ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
 
-codes_to_compare = ('Spaceborne', 'Spaceborne')
-filename_suffix_list = ('_sigma2b_5000', '_sigma2b_1000')
+codes_to_compare = ('Spaceborne', 'OneCovariance')
+filename_suffix_list = ('', '')
 which_cov_term_list = ['G', 'GSSC', ]
 
 # FM_GSSC_Spaceborne_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2b_5000.pickle
 # FM_GSSC_Spaceborne_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2b_5000.pickle
 
 fix_dz_plt = True
-fix_shear_bias_plt = True
+fix_shear_bias_plt = False
 fix_gal_bias_plt = False
 fix_mag_bias_plt = False
 fid_shear_bias_prior = 5e-4
@@ -185,8 +185,7 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
 
                                                     if whose_FM == 'davide':
                                                         fm_path = fm_path_raw.format(BNT_transform=BNT_transform,
-                                                                                     ell_cuts=ell_cuts,
-                                                                                     fm_last_folder=fm_last_folder)
+                                                                                     ell_cuts=ell_cuts)
 
                                                         # this is because the is no "G" pickle file; the Gaussian covariance is saved withing the "GSSC" or "GSSCcNG" pickles
                                                         which_ng_cov = which_cov_term_list[-1] if which_cov_term == 'G' else which_cov_term
@@ -199,11 +198,9 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
                                                                                                    ng_cov_code=ng_cov_code,
                                                                                                    filename_suffix=filename_suffix)
                                                         if ell_cuts:
-                                                            fm_path += f'/{which_cuts}/ell_{center_or_min}{fm_last_folder}'
+                                                            fm_path += f'/{which_cuts}/ell_{center_or_min}'
                                                             fm_pickle_name = fm_pickle_name.replace(f'{filename_suffix}.pickle',
                                                                                                     f'_kmaxhoverMpc{kmax_h_over_Mpc:.03f}{filename_suffix}.pickle')
-                                                        else:
-                                                            fm_path += fm_last_folder
 
                                                         if check_if_just_created:
                                                             assert mm.is_file_created_in_last_x_hours(

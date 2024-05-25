@@ -219,7 +219,6 @@ println("*****************")
 @assert size(ind_auto) == (zbins*(zbins+1)/2, num_col)
 @assert size(ind_cross) == (zbins^2, num_col)
 
-
 d2Cl_dVddeltab_dict = Dict(("L", "L") => d2CLL_dVddeltab,
                             ("G", "L") => d2CGL_dVddeltab,
                             ("G", "G") => d2CGG_dVddeltab)
@@ -259,7 +258,8 @@ for row in 1:length(probe_combinations)
                 d2Cl_dVddeltab_dict[probe_C, probe_D],
                 ind_dict[probe_A, probe_B],
                 ind_dict[probe_C, probe_D],
-                nbl, z_steps, cl_integral_prefactor, sigma2, z_grid)
+                nbl, z_steps, cl_integral_prefactor, 
+                sigma2, z_grid)
 
             # save
             npzwrite("./$(folder_name)/cov_SSC_spaceborne_$(probe_A)$(probe_B)$(probe_C)$(probe_D)_4D.npy", cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)])

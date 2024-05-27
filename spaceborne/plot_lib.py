@@ -190,10 +190,10 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
 
 def triangle_plot(FM_GO, FM_GS, fiducials, title, label_a, label_b, param_names_label):
     # should I do this?
-    fiducials = np.where(fiducials == 0., 1,
-                         fiducials)  # the fiducial for wa is 0, substitute with 1 to avoid division by zero
-    fiducials = np.where(fiducials == -1, 1,
-                         fiducials)  # the fiducial for wa is -1, substitute with 1 to avoid negative values
+    # fiducials = np.where(fiducials == 0., 1,
+                        #  fiducials)  # the fiducial for wa is 0, substitute with 1 to avoid division by zero
+    # fiducials = np.where(fiducials == -1, 1,
+                        #  fiducials)  # the fiducial for wa is -1, substitute with 1 to avoid negative values
 
     nparams = len(param_names_label)
 
@@ -203,7 +203,6 @@ def triangle_plot(FM_GO, FM_GS, fiducials, title, label_a, label_b, param_names_
 
     GO_gaussian = GaussianND(mean=fiducials, cov=FM_inv_GO, names=param_names_label)
     GS_gaussian = GaussianND(mean=fiducials, cov=FM_inv_GS, names=param_names_label)
-    print(GS_gaussian, len(param_names_label), len(fiducials), FM_inv_GO.shape)
     g = plots.get_subplot_plotter()
     g.settings.linewidth = 2
     g.settings.legend_fontsize = 30
@@ -211,7 +210,7 @@ def triangle_plot(FM_GO, FM_GS, fiducials, title, label_a, label_b, param_names_
     g.settings.axes_fontsize = 27
     g.settings.axes_labelsize = 30
     g.settings.subplot_size_ratio = 1
-    g.settingstight_layout = True
+    g.settings.tight_layout = True
     g.settings.solid_colors = 'tab10'
     g.triangle_plot([GS_gaussian, GO_gaussian], filled=True, contour_lws=1.4,
                     legend_labels=[label_a, label_b], legend_loc='upper right')

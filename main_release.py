@@ -208,6 +208,7 @@ def get_idxs_to_delete_3x2pt_v0(ell_values_3x2pt, ell_cuts_dict):
     idxs_to_delete_GG = get_idxs_to_delete(ell_values_3x2pt, ell_cuts_dict['GG'], is_auto_spectrum=True)
 
     # when concatenating, we need to add the offset from the stacking of the 3 datavectors
+    # when concatenating, we need to add the offset from the stacking of the 3 datavectors
     idxs_to_delete_3x2pt = np.concatenate((
         np.array(idxs_to_delete_LL),
         nbl_3x2pt * zpairs_auto + np.array(idxs_to_delete_GL),
@@ -1387,6 +1388,50 @@ elif covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
         filename=cov_sb_filename,
         probe_ordering=probe_ordering)
 
+
+if covariance_cfg['load_CLOE_benchmark_cov']:
+
+    cov_3x2pt_g_nbl32_2dcloe = np.load(f'{covariance_cfg['CLOE_benchmark_cov_path']}/CovMat-3x2pt-Gauss-32Bins.npy')
+    cov_3x2pt_gs_nbl32_2dcloe = np.load(f'{covariance_cfg['CLOE_benchmark_cov_path']}/CovMat-3x2pt-GaussSSC-32Bins.npy')
+
+    num_elem_auto_nbl32 = zpairs_auto * 32
+    num_elem_cross_nbl32 = zpairs_cross * 32
+
+    # Cut the probe blocks: once I do this, I'm back in the ell-zpair (dav) ordering!
+    cov_wl_g_nbl32_2ddav = deepcopy(cov_3x2pt_g_nbl32_2dcloe)[:num_elem_auto_nbl32, :num_elem_auto_nbl32]
+    cov_xc_g_nbl32_2ddav = deepcopy(cov_3x2pt_g_nbl32_2dcloe)[num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32,
+                                                              num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32]
+    cov_gc_g_nbl32_2ddav = deepcopy(cov_3x2pt_g_nbl32_2dcloe)[num_elem_auto_nbl32 + num_elem_cross_nbl32:,
+                                                              num_elem_auto_nbl32 + num_elem_cross_nbl32:]
+
+    cov_wl_gs_nbl32_2ddav = deepcopy(cov_3x2pt_gs_nbl32_2dcloe)[:num_elem_auto_nbl32, :num_elem_auto_nbl32]
+    cov_xc_gs_nbl32_2ddav = deepcopy(cov_3x2pt_gs_nbl32_2dcloe)[num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32,
+                                                                num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32]
+    cov_gc_gs_nbl32_2ddav = deepcopy(cov_3x2pt_gs_nbl32_2dcloe)[num_elem_auto_nbl32 + num_elem_cross_nbl32:,
+                                                                num_elem_auto_nbl32 + num_elem_cross_nbl32:]
+
+    # now cut to 29 bins
+    num_elem_auto_nbl29 = zpairs_auto * 29
+    num_elem_cross_nbl29 = zpairs_cross * 29
+    cov_wl_g_nbl29_2ddav = cov_wl_g_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
+    cov_xc_g_nbl29_2ddav = cov_xc_g_nbl32_2ddav[:num_elem_cross_nbl29, :num_elem_cross_nbl29]
+    cov_gc_g_nbl29_2ddav = cov_gc_g_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
+
+    cov_wl_gs_nbl29_2ddav = cov_wl_gs_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
+    cov_xc_gs_nbl29_2ddav = cov_xc_gs_nbl32_2ddav[:num_elem_cross_nbl29, :num_elem_cross_nbl29]
+    cov_gc_gs_nbl29_2ddav = cov_gc_gs_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
+
+    # reshape to dav
+    cov_3x2pt_g_nbl32_2ddav = mm.cov_2d_cloe_to_dav(cov_3x2pt_g_nbl32_2dcloe, 32, zbins, 'ell', 'ell')
+    cov_3x2pt_gs_nbl32_2ddav = mm.cov_2d_cloe_to_dav(cov_3x2pt_gs_nbl32_2dcloe, 32, zbins, 'ell', 'ell')
+
+    # cut last 3 ell bins
+    num_elem_tot_nbl29 = (zpairs_auto * 2 + zpairs_cross) * 29
+    cov_3x2pt_g_nbl29_2ddav = cov_3x2pt_g_nbl32_2ddav[:num_elem_tot_nbl29, :num_elem_tot_nbl29]
+    cov_3x2pt_gs_nbl29_2ddav = cov_3x2pt_gs_nbl32_2ddav[:num_elem_tot_nbl29, :num_elem_tot_nbl29]
+
+
+# this is not very elegant, find a better solution
 covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 print('SSC computed with Spaceborne')
 
@@ -1591,6 +1636,18 @@ else:
 # TODO: if already existing, don't compute the covmat, like done above for Sijkl
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix)
+
+if covariance_cfg['load_CLOE_benchmark_cov']:
+    warnings.warn('OVERWRITING cov_dict WITH CLOE BENCHMARKS')
+    cov_dict['cov_WL_GO_2D'] = cov_wl_g_nbl29_2ddav
+    cov_dict['cov_XC_GO_2D'] = cov_xc_g_nbl29_2ddav
+    cov_dict['cov_GC_GO_2D'] = cov_gc_g_nbl29_2ddav
+    cov_dict['cov_3x2pt_GO_2D'] = cov_3x2pt_g_nbl29_2ddav
+
+    cov_dict['cov_WL_GS_2D'] = cov_wl_gs_nbl29_2ddav
+    cov_dict['cov_XC_GS_2D'] = cov_xc_gs_nbl29_2ddav
+    cov_dict['cov_GC_GS_2D'] = cov_gc_gs_nbl29_2ddav
+    cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_gs_nbl29_2ddav
 
 
 covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)

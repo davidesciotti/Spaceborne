@@ -229,31 +229,35 @@ def block_diag(array_3d):
     return scipy.linalg.block_diag(*[array_3d[ell, :, :] for ell in range(nbl)])
 
 
-def compare_df_keys(dataframe, key_to_compare, value_a, value_b, num_string_colums):
+def compare_df_keys(dataframe, key_to_compare, value_a, value_b, num_string_columns):
     """
     This function compares two rows of a dataframe and returns a new row with the percentage difference between the two
     :param dataframe:
     :param key_to_compare:
     :param value_a:
     :param value_b:
-    :param num_string_colums: number of columns containing only strings or various options, such as whether to fix a certain prior or not...
+    :param num_string_columns: number of columns containing only strings or various options, such as whether to fix a certain prior or not...
     :return:
     """
     df_A = dataframe[dataframe[key_to_compare] == value_a]
     df_B = dataframe[dataframe[key_to_compare] == value_b]
-    arr_A = df_A.iloc[:, num_string_colums:].select_dtypes('number').values
-    arr_B = df_B.iloc[:, num_string_colums:].select_dtypes('number').values
+    arr_A = df_A.iloc[:, num_string_columns:].select_dtypes('number').values
+    arr_B = df_B.iloc[:, num_string_columns:].select_dtypes('number').values
 
     if arr_A.shape[0] != arr_B.shape[0]:
         raise ValueError(f"Cannot compare groups with different sizes: {arr_A.shape[0]} vs {arr_B.shape[0]}")
 
     perc_diff_df = df_A.copy()
     # ! the reference is G, this might change to G + SSC + cNG
-    perc_diff_df.iloc[:, num_string_colums:] = percent_diff(arr_B, arr_A)
+    perc_diff_df.iloc[:, num_string_columns:] = percent_diff(arr_B, arr_A)
     perc_diff_df[key_to_compare] = f'perc_diff_{value_b}'
     perc_diff_df['FoM'] = -perc_diff_df['FoM']  # ! abs? minus??
     dataframe = pd.concat([dataframe, perc_diff_df], axis=0, ignore_index=True)
-    dataframe = dataframe.drop_duplicates()
+    
+    # dataframe = dataframe.drop_duplicates()
+    columns_to_consider = [col for col in dataframe.columns if col not in ['fm', 'fiducials_dict']]
+    dataframe = dataframe.drop_duplicates(subset=columns_to_consider)
+
     return dataframe
 
 

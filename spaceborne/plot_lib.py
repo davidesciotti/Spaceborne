@@ -188,7 +188,7 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
     plt.show()
 
 
-def triangle_plot(FM_GO, FM_GS, fiducials, title, param_names_label):
+def triangle_plot(FM_GO, FM_GS, fiducials, title, label_a, label_b, param_names_label):
     # should I do this?
     fiducials = np.where(fiducials == 0., 1,
                          fiducials)  # the fiducial for wa is 0, substitute with 1 to avoid division by zero
@@ -214,7 +214,7 @@ def triangle_plot(FM_GO, FM_GS, fiducials, title, param_names_label):
     g.settingstight_layout = True
     g.settings.solid_colors = 'tab10'
     g.triangle_plot([GS_gaussian, GO_gaussian], filled=True, contour_lws=1.4,
-                    legend_labels=['Gauss + SSC', 'Gauss-only'], legend_loc='upper right')
+                    legend_labels=[label_a, label_b], legend_loc='upper right')
     plt.suptitle(f'{title}', fontsize='xx-large')
 
 

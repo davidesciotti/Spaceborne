@@ -504,11 +504,14 @@ fid_pars_dict_fm_toplot = fm_uncert_df[
 
 fiducials = list(fid_pars_dict_fm_toplot.values())
 param_names_label = list(fid_pars_dict_fm_toplot.keys())
-plot_lib.triangle_plot(fm_gs_3x2pt_correct,
-                       fm_gs_3x2pt_incorrect,
-                       fiducials,
-                       f'Gauss comparison, {probe_toplot}', 'G correct, SSC correct', 'G incorrect, SSC incorrect',
-                       param_names_label)
+plot_lib.triangle_plot(
+    fm_gs_3x2pt_correct,
+    fm_gs_3x2pt_incorrect,
+    fiducials,
+    f'Cov comparison, {probe_toplot}',
+    'G correct, SSC correct',
+    'G incorrect, SSC incorrect',
+    param_names_label)
 plt.savefig('/home/cosmo/davide.sciotti/data/Spaceborne/triangle_plot.pdf', bbox_inches='tight', dpi=500)
 
 

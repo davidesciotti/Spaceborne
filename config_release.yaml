@@ -161,7 +161,7 @@ covariance_cfg:
 
     fsky: 0.3563380664078408
     sigma_eps_i: 0.26 # ellipticity dispersion *per component*; sigma_eps: (0.26 * np.sqrt(2))
-    which_shape_noise: ISTF # ISTF or correct
+    which_shape_noise: per_component # ISTF or per_component
 
     nofz_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputNz/NzFid"
     # TODO zmin_nz is for both sources and lenses, but be careful about this in the future
@@ -325,13 +325,12 @@ covariance_cfg:
 
         cl_integral_convention: PySSC # "Euclid" or "PySSC". results are the same
         k_txt_label: 1overMpc
-        use_precomputed_sigma2: True # still need to understand exactly where to call/save this
         log10_k_min_sigma2: -4
         log10_k_max_sigma2: 1
         k_steps_sigma2: 20_000 # TODO can I lower this? double bessel integral...
         z_min_ssc_integrands: 0.01
         z_max_ssc_integrands: 3.
-        z_steps_ssc_integrands: 3000 # this should be high because I have to trace the spikes in sigma2
+        z_steps_ssc_integrands: 7000 # this should be high because I have to trace the spikes in sigma2
 
         load_precomputed_sigma2: True
         sigma2_b_filename: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}.npy"
@@ -367,7 +366,7 @@ FM_cfg:
 
     fm_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}"
     fm_txt_filename: fm_txt_filename
-    fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_source:02d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}_pk{which_pk:s}{fm_and_cov_suffix:s}.pickle
+    fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_source:02d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}_pk{which_pk:s}{fm_and_cov_suffix:s}GincorrectSSCincorrect.pickle
 
     test_against_vincenzo: False # TODO delete this
     test_against_benchmarks: False # TODO delete this

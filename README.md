@@ -19,12 +19,10 @@ Once having activated the environment, install the dependencies with
 ```bash
 poetry install
 ```
-which may take some time, especially for installing `pyccl`
-
-
+which may take some time, especially for installing `pyccl`.
 
 Run code with 
 
 ```bash
  conda activate spaceborne
- python main_release.py
+ python main.py

@@ -6,6 +6,8 @@ authors = ["davidesciotti <84071067+davidesciotti@users.noreply.github.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
+swig = "^4.2.1"
+setuptools_scm = "^6.3.2" 
 matplotlib = "^3.9.0"
 numpy = "^1.26.4"
 scipy = "^1.13.1"

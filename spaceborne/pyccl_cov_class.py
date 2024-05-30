@@ -23,7 +23,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
-ccl.spline_params['A_SPLINE_NA_PK'] = 140  # gives CAMB error if too high
+ccl.spline_params['A_SPLINE_NA_PK'] = 240  # gives CAMB error if too high
 
 
 class PycclClass():

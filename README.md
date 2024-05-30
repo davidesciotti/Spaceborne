@@ -1,4 +1,12 @@
 ## Istallation
+Spaceborne's dependencies are handled following modern standards; for this, we use a combination of [conda]([url](https://www.anaconda.com/)) and [Poetry]([url](https://python-poetry.org/)).
+
+
+If you have nit yet done so, install Poetry with
+```bash
+curl -sSL https://install.python-poetry.org | python3 -
+```
+
 Create a `conda` environment with
 ```bash
 conda create python=3.12 -n spaceborne

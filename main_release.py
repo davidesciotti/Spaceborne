@@ -800,70 +800,6 @@ plt.show()
 # mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
 #                   f'Cell_gg_SPV3_ccl', cl_gg_3d, ell_grid, zbins)
 
-# !=========================== 2PCF covariance =================================
-# import numpy as np
-# from scipy.special import j0, jv
-# from scipy.integrate import simpson
-
-# def K_mu(l_theta, theta_l, theta_u, mu):
-#     if mu == 0:
-#         integrand = lambda theta: theta * j0(l_theta * theta)
-#     elif mu == 2:
-#         integrand = lambda theta: theta * jv(v=2, z=l_theta * theta)
-#     else:
-#         raise ValueError("mu must be 0 or 2")
-
-#     theta_vals = np.linspace(theta_l, theta_u, 100)
-#     integrand_vals = integrand(theta_vals)
-#     result = simpson(integrand_vals, theta_vals)
-#     return 2 / (theta_u**2 - theta_l**2) * result
-
-# def covariance_gaussian_sva(C_ik, C_jl, C_il, C_jk, theta1, theta2, theta_l, theta_u, A_max, mu, nu):
-#     l_vals = np.linspace(0, 1000, 1000)  # Range and resolution for l
-#     integrand_vals = l_vals * K_mu(l_vals * theta1, theta_l, theta_u, mu) * K_mu(l_vals * theta2, theta_l, theta_u, nu) * (C_ik(l_vals) * C_jl(l_vals) + C_il(l_vals) * C_jk(l_vals))
-#     result = simpson(integrand_vals, l_vals)
-#     return result / (2 * np.pi * A_max)
-
-# def covariance_gaussian_mix(C_ik, theta1, theta2, theta_l, theta_u, A_max, mu, nu, T_mix, n_eff):
-#     l_vals = np.linspace(0, 1000, 1000)  # Range and resolution for l
-#     integrand_vals = l_vals * K_mu(l_vals * theta1, theta_l, theta_u, mu) * K_mu(l_vals * theta2, theta_l, theta_u, nu) * C_ik(l_vals)
-#     result = simpson(integrand_vals, l_vals)
-#     return T_mix / (2 * np.pi * n_eff) * A_max * result
-
-# def covariance_gaussian_sn(theta1, theta2, theta_l, theta_u, A_max, mu, nu, n_eff_i, n_eff_j):
-#     l_vals = np.linspace(0, 1000, 1000)  # Range and resolution for l
-#     integrand_vals = l_vals * K_mu(l_vals * theta1, theta_l, theta_u, mu) * K_mu(l_vals * theta2, theta_l, theta_u, nu)
-#     result = simpson(integrand_vals, l_vals)
-#     return A_max / (2 * np.pi * n_eff_i * n_eff_j) * result
-
-# # Example usage (you would need to define C_ik, C_jl, C_il, C_jk as functions of l):
-# theta_l = 0.1
-# theta_u = 1.0
-# theta1 = 0.5
-# theta2 = 0.5
-# A_max = 1.0
-# mu = 0
-# nu = 0
-
-# C_ik = lambda l: 1.0  # Placeholder function
-# C_jl = lambda l: 1.0  # Placeholder function
-# C_il = lambda l: 1.0  # Placeholder function
-# C_jk = lambda l: 1.0  # Placeholder function
-
-# T_mix = 1.0  # Placeholder value for T_mix
-# n_eff_i = 1.0  # Placeholder value for n_eff_i
-# n_eff_j = 1.0  # Placeholder value for n_eff_j
-
-# cov_sva = covariance_gaussian_sva(C_ik, C_jl, C_il, C_jk, theta1, theta2, theta_l, theta_u, A_max, mu, nu)
-# cov_mix = covariance_gaussian_mix(C_ik, theta1, theta2, theta_l, theta_u, A_max, mu, nu, T_mix, n_eff_i)
-# cov_sn = covariance_gaussian_sn(theta1, theta2, theta_l, theta_u, A_max, mu, nu, n_eff_i, n_eff_j)
-
-# print(f"Gaussian Sample Variance Covariance: {cov_sva}")
-# print(f"Gaussian Mixed Term Covariance: {cov_mix}")
-# print(f"Gaussian Shape Noise Covariance: {cov_sn}")
-
-# assert False, 'stop here to check 2PCF cov'
-
 
 # !============================= derivatives ===================================
 
@@ -1391,8 +1327,8 @@ elif covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
 
 if covariance_cfg['load_CLOE_benchmark_cov']:
 
-    cov_3x2pt_g_nbl32_2dcloe = np.load(f'{covariance_cfg['CLOE_benchmark_cov_path']}/CovMat-3x2pt-Gauss-32Bins.npy')
-    cov_3x2pt_gs_nbl32_2dcloe = np.load(f'{covariance_cfg['CLOE_benchmark_cov_path']}/CovMat-3x2pt-GaussSSC-32Bins.npy')
+    cov_3x2pt_g_nbl32_2dcloe = np.load(f'{covariance_cfg["CLOE_benchmark_cov_path"]}/CovMat-3x2pt-Gauss-32Bins.npy')
+    cov_3x2pt_gs_nbl32_2dcloe = np.load(f'{covariance_cfg["CLOE_benchmark_cov_path"]}/CovMat-3x2pt-GaussSSC-32Bins.npy')
 
     num_elem_auto_nbl32 = zpairs_auto * 32
     num_elem_cross_nbl32 = zpairs_cross * 32
@@ -1434,19 +1370,6 @@ if covariance_cfg['load_CLOE_benchmark_cov']:
 # this is not very elegant, find a better solution
 covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 print('SSC computed with Spaceborne')
-
-
-# # CCL pk
-# kgrid_pk_mm_ccl, pk_mm_ccl = csmlib.pk_from_ccl(
-#     k_grid_dPk_hm, z_grid_dPk_hm, use_h_units, ccl_obj.cosmo_ccl, pk_kind='nonlinear')
-
-
-# # compute Pgm, Pgg
-# gal_bias_2d = ccl_obj.get_gal_bias_tuple_spv3(z_grid_dPk_hm, magcut_lens, None)[1]
-# gal_bias = gal_bias_2d[:, 0]
-
-# pk_gm_ccl = gal_bias[None, :] * pk_mm_ccl
-# pk_gg_ccl = gal_bias[None, :]**2 * pk_mm_ccl
 
 
 # TODO integrate this with Spaceborne_covg

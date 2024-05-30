@@ -12,8 +12,8 @@ dependencies:
   - pip
   - pyyaml
   - astropy
-  - ipykernel
-  - ipywidgets
+  #- ipykernel
+  #- ipywidgets
   - joblib
   - numba
   - camb
@@ -21,17 +21,17 @@ dependencies:
   - pyqt
   - ipympl
   - pip:
-    - chainconsumer 
+    #- chainconsumer 
     - pymaster
     - cython
     - getdist
-    - type_enforced
-    - array_to_latex
+    #- type_enforced
+    #- array_to_latex
     - pynverse
     #- classy
-    - ray
-    - PyQt5
-    - PySide2
+    #- ray
+    #- PyQt5
+    #- PySide2
     - fast-pt
     # - pyccl>=3.0.2  # to be tested
 

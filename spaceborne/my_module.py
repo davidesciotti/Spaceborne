@@ -11,7 +11,6 @@ import matplotlib.lines as mlines
 import numpy as np
 import yaml
 from numba import njit
-from pynverse import inversefunc
 from scipy.interpolate import interp1d
 import scipy
 import pickle
@@ -395,6 +394,7 @@ def plot_correlation_matrix(correlation_matrix, labels, title):
 
 
 def find_inverse_from_array(input_x, input_y, desired_y, interpolation_kind='linear'):
+    import pynverse
     input_y_func = interp1d(input_x, input_y, kind=interpolation_kind)
     desired_y = inversefunc(input_y_func, y_values=desired_y, domain=(input_x[0], input_x[-1]))
     return desired_y
@@ -3233,7 +3233,7 @@ def Recast_Sijkl_3x2pt(Sijkl, nzbins):
     return [Sijkl_recast, npairs_full, pairs_full]
 
 
-def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED, which_shape_noise='ISTF'):
+def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED, which_shape_noise):
     """Builds the noise power spectra.
 
     Parameters
@@ -3261,20 +3261,22 @@ def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED, which
         Must have length zbins.
     EP_or_ED : str, optional
         Whether bins are equipopulated ('EP') or equidistant ('ED').
-
+    which_shape_noise : str
+        Which shape noise to use. 
+        'ISTF' for the "incorrect" shape noise (used in ISTF paper), for backwars-compatibility.
+        'per_component' for the correct shape noise, taking into account EE-only noise.
+    
     Returns
     -------
-    N : ndarray, shape (n_probes, n_probes, zbins, zbins)
+    noise_4d : ndarray, shape (n_probes, n_probes, zbins, zbins)
         Noise power spectra matrices
 
     Notes
     -----
-    The noise is defined as:
+    The noise N is defined as:
         N_LL = sigma_eps^2 / (2 * n_bar) 
         N_GG = 1 / n_bar
         N_GL = N_LG = 0
-
-    Where sigma_eps includes factor of sqrt(2) for two components.
 
     """
 
@@ -3320,10 +3322,10 @@ def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED, which
 
     if which_shape_noise == 'ISTF':
         np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / n_bar_shear)  # ! old, INcorrect
-    elif which_shape_noise == 'correct':
+    elif which_shape_noise == 'per_component':
         np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar_shear))  # ! correct
     else:
-        raise ValueError('which_shape_noise must be ISTF or correct')
+        raise ValueError('which_shape_noise must be ISTF or per_component')
 
     np.fill_diagonal(noise_4d[1, 1, :, :], 1 / n_bar_clust)
     noise_4d[0, 1, :, :] = 0

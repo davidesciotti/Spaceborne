@@ -4,9 +4,7 @@ import matplotlib
 import sys
 from pathlib import Path
 import pandas as pd
-import array_to_latex as a2l
 import getdist
-from chainconsumer import ChainConsumer
 from getdist import plots
 from getdist.gaussian_mixtures import GaussianND
 from matplotlib import cm

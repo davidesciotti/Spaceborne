@@ -10,7 +10,6 @@ import multiprocessing as mp
 from scipy.integrate import simps
 from scipy.interpolate import RegularGridInterpolator
 from scipy.special import spherical_jn
-import ray
 import pyccl as ccl
 from tqdm import tqdm
 # import PySSC
@@ -209,14 +208,14 @@ def compute_sigma2(z_grid_sigma2, k_grid_sigma2, which_sigma2_B, cosmo_ccl, para
 
     if parallel:
         # ! parallelize with ray
-        start_time = time.perf_counter()
-        sigma2_func_remote = ray.remote(sigma2_func)
-        remote_calls = []
-        for z1 in tqdm(z_grid_sigma2):
-            for z2 in z_grid_sigma2:
-                remote_calls.append(sigma2_func_remote.remote(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B))
-        # Get the results from the remote function calls
-        sigma2_arr = ray.get(remote_calls)
+        # start_time = time.perf_counter()
+        # sigma2_func_remote = ray.remote(sigma2_func)
+        # remote_calls = []
+        # for z1 in tqdm(z_grid_sigma2):
+        #     for z2 in z_grid_sigma2:
+        #         remote_calls.append(sigma2_func_remote.remote(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B))
+        # # Get the results from the remote function calls
+        # sigma2_arr = ray.get(remote_calls)
 
         # ! with joblib (doesn't seem to work anymore, I still don't know why)
         # sigma2_arr = Parallel(n_jobs=-1, backend='loky')(delayed(sigma2_func)(

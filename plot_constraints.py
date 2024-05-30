@@ -509,7 +509,9 @@ plot_lib.triangle_plot(fm_gs_3x2pt_correct,
                        fiducials,
                        f'Gauss comparison, {probe_toplot}', 'G correct, SSC correct', 'G incorrect, SSC incorrect',
                        param_names_label)
-plt.savefig('/home/cosmo/davide.sciotti/data/Spaceborne/triangle_plot.pdf', bbox_inches='tight', dpi=500)
+
+
+assert False, 'stop here for cov correction plots'
 
 
 plt.figure(figsize=(12, 7))

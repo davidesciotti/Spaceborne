@@ -1372,9 +1372,6 @@ covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 print('SSC computed with Spaceborne')
 
 
-
-
-
 # TODO integrate this with Spaceborne_covg
 
 

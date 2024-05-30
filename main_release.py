@@ -1372,17 +1372,7 @@ covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 print('SSC computed with Spaceborne')
 
 
-# # CCL pk
-# kgrid_pk_mm_ccl, pk_mm_ccl = csmlib.pk_from_ccl(
-#     k_grid_dPk_hm, z_grid_dPk_hm, use_h_units, ccl_obj.cosmo_ccl, pk_kind='nonlinear')
 
-
-# # compute Pgm, Pgg
-# gal_bias_2d = ccl_obj.get_gal_bias_tuple_spv3(z_grid_dPk_hm, magcut_lens, None)[1]
-# gal_bias = gal_bias_2d[:, 0]
-
-# pk_gm_ccl = gal_bias[None, :] * pk_mm_ccl
-# pk_gg_ccl = gal_bias[None, :]**2 * pk_mm_ccl
 
 
 # TODO integrate this with Spaceborne_covg

@@ -186,29 +186,38 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
     plt.show()
 
     
-def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_background, label_foreground, param_names_label):
+def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_background, label_foreground, 
+                  param_names_labels, param_names_labels_toplot):
     
-    nparams = len(param_names_label)
+    idxs_tokeep = [param_names_labels.index(param) for param in param_names_labels_toplot]
 
     # parameters' covariance matrix - first invert, then slice! Otherwise, you're fixing the nuisance parameters
-    fm_inv_fg = np.linalg.inv(fm_foreground)[:nparams, :nparams]
-    fm_inv_bg = np.linalg.inv(fm_backround)[:nparams, :nparams]
+    fm_inv_bg = np.linalg.inv(fm_backround)[np.ix_(idxs_tokeep, idxs_tokeep)]
+    fm_inv_fg = np.linalg.inv(fm_foreground)[np.ix_(idxs_tokeep, idxs_tokeep)]
+    
+    fiducials = [fiducials[idx] for idx in idxs_tokeep]
+    param_names_labels = [param_names_labels[idx] for idx in idxs_tokeep]
+    
 
-    fg_contours = GaussianND(mean=fiducials, cov=fm_inv_fg, names=param_names_label)
-    bg_contours = GaussianND(mean=fiducials, cov=fm_inv_bg, names=param_names_label)
+    bg_contours = GaussianND(mean=fiducials, cov=fm_inv_bg, names=param_names_labels)
+    fg_contours = GaussianND(mean=fiducials, cov=fm_inv_fg, names=param_names_labels)
     
     g = plots.get_subplot_plotter()
     g.settings.linewidth = 2
     g.settings.legend_fontsize = 30
     g.settings.linewidth_contour = 2.5
-    g.settings.axes_fontsize = 27
-    g.settings.axes_labelsize = 30
+    g.settings.axes_fontsize = 25
+    g.settings.axes_labelsize = 27
     g.settings.subplot_size_ratio = 1
     g.settings.tight_layout = True
     g.settings.solid_colors = 'tab10'
     g.triangle_plot([bg_contours, fg_contours], filled=True, contour_lws=1.4,
-                    legend_labels=[label_background, label_foreground], legend_loc='upper right', colors=['tab:orange', 'tab:blue'])
-    plt.suptitle(f'{title}', fontsize='xx-large')
+                    legend_labels=[label_background, label_foreground], legend_loc='upper right', 
+                    contour_colors=['tab:blue', 'tab:orange'],
+                    line_colors=['tab:blue', 'tab:orange'],
+                    
+                    )
+    plt.suptitle(f'{title}', fontsize='x-large')
 
 
 def contour_plot_chainconsumer(cov, trimmed_fid_dict):

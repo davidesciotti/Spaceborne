@@ -66,7 +66,7 @@ ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
 
 # ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
 codes_to_compare = ('Spaceborne', 'Spaceborne')
-filename_suffix_list = ('GincorrectSSCincorrect', 'GcorrectSSCcorrect')
+filename_suffix_list = ('_GoldSSCold', '_GnewSSCnew')
 which_cov_term_list = ['G', 'GSSC', ]
 
 fix_dz_plt = False
@@ -450,11 +450,11 @@ for probe_toplot in probes:
 
 # # ! triangle plot
 probe_toplot = '3x2pt'
-fm_gs_3x2pt_incorrect = fm_uncert_df[
+fm_a = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['whose_FM'] == 'davide') &
     (fm_uncert_df['which_pk'] == pk_ref) &
-    (fm_uncert_df['filename_suffix'] == 'GincorrectSSCincorrect') &
+    (fm_uncert_df['filename_suffix'] == '_GnewSSCnew') &
     (fm_uncert_df['which_cov_term'] == 'G') &
 
     (fm_uncert_df['fix_dz'] == fix_dz_plt) &
@@ -467,12 +467,12 @@ fm_gs_3x2pt_incorrect = fm_uncert_df[
     (fm_uncert_df['center_or_min'] == center_or_min_plt)
 ]['fm'].values[0]
 
-fm_gs_3x2pt_correct = fm_uncert_df[
+fm_b = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['whose_FM'] == 'davide') &
     (fm_uncert_df['which_pk'] == pk_ref) &
-    (fm_uncert_df['filename_suffix'] == 'GcorrectSSCcorrect') &
-    (fm_uncert_df['which_cov_term'] == 'G') &
+    (fm_uncert_df['filename_suffix'] == '_GnewSSCnew') &
+    (fm_uncert_df['which_cov_term'] == 'GSSC') &
 
     (fm_uncert_df['fix_dz'] == fix_dz_plt) &
     (fm_uncert_df['fix_shear_bias'] == fix_shear_bias_plt) &
@@ -488,8 +488,8 @@ fid_pars_dict_fm_toplot = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['whose_FM'] == 'davide') &
     (fm_uncert_df['which_pk'] == pk_ref) &
-    (fm_uncert_df['filename_suffix'] == 'GincorrectSSCincorrect') &
-    (fm_uncert_df['which_cov_term'] == 'G') &
+    (fm_uncert_df['filename_suffix'] == '_GnewSSCnew') &
+    (fm_uncert_df['which_cov_term'] == 'GSSC') &
 
     (fm_uncert_df['fix_dz'] == fix_dz_plt) &
     (fm_uncert_df['fix_shear_bias'] == fix_shear_bias_plt) &
@@ -505,15 +505,17 @@ fid_pars_dict_fm_toplot = fm_uncert_df[
 fiducials = list(fid_pars_dict_fm_toplot.values())
 param_names_label = list(fid_pars_dict_fm_toplot.keys())
 plot_lib.triangle_plot(
-    fm_gs_3x2pt_correct,
-    fm_gs_3x2pt_incorrect,
-    fiducials,
-    f'Cov comparison, {probe_toplot}',
-    'G correct, SSC correct',
-    'G incorrect, SSC incorrect',
-    param_names_label)
-plt.savefig('/home/cosmo/davide.sciotti/data/Spaceborne/triangle_plot.pdf', bbox_inches='tight', dpi=500)
+    fm_backround=fm_b,
+    fm_foreground=fm_a,
+    fiducials=fiducials,
+    title=f'G new, SSC new, {probe_toplot}',
+    label_background='G + SSC',
+    label_foreground='G',
+    param_names_labels=param_names_label,
+    param_names_labels_toplot=param_names_label[:10])
 
+
+assert False, 'stop before sns plot'
 
 plt.figure(figsize=(12, 7))
 ax = plt.gca()

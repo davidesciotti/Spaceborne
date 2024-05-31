@@ -23,7 +23,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
-ccl.spline_params['A_SPLINE_NA_PK'] = 240  # gives CAMB error if too high
+ccl.spline_params['A_SPLINE_NA_PK'] = 270  # gives CAMB error if too high
 
 
 class PycclClass():
@@ -238,22 +238,6 @@ class PycclClass():
                                                                                             p_of_k_a=p_of_k_a,
                                                                                             **additional_args)
 
-                    # save responses
-                    # if which_ng_cov == 'SSC' and pyccl_cfg['save_hm_responses']:
-                    #     for key, value in self.responses_dict.items():
-                    #         np.save(f"{tkka_path}/{key}_{probe_block}.npy", value)
-
-                    # if save_tkka:
-                    #     (a_arr, k1_arr, k2_arr, tk3d_arr_list) = self.tkka_dict[A, B, C, D].get_spline_arrays()
-                    #     np.save(f'{tkka_path}/a_arr_tkka_{probe_block}_{k_z_str}.npy', a_arr)
-                    #     np.save(f'{tkka_path}/k1_arr_tkka_{probe_block}_{k_z_str}.npy', k1_arr)
-                    #     np.save(f'{tkka_path}/k2_arr_tkka_{probe_block}_{k_z_str}.npy', k2_arr)
-                    #     # for SSC, the tK3D is factorizable and there are two items in the tk3d_arr_list; for cNG, just one
-                    #     if which_ng_cov == 'SSC':
-                    #         np.save(f'{tkka_path}/pk1_arr_tkka_{probe_block}_{k_z_str}.npy', tk3d_arr_list[0])
-                    #         np.save(f'{tkka_path}/pk2_arr_tkka_{probe_block}_{k_z_str}.npy', tk3d_arr_list[1])
-                    #     elif which_ng_cov == 'cNG':
-                    #         np.save(f'{tkka_path}/tkk_arr_{probe_block}_{k_z_str}.npy', tk3d_arr_list[0])
 
         print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
 

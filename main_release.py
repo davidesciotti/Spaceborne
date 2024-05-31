@@ -1062,8 +1062,7 @@ cov_sb_filename = covariance_cfg['cov_filename'].format(ng_cov_code='spaceborne'
                                                         which_ng_cov=which_ng_cov_suffix.replace('G', ''),
                                                         fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'],
                                                         ndim=4,
-                                                        ** variable_specs)
-# cov_sb_filename = covariance_cfg['cov_filename']  # ! delete
+                                                        **variable_specs)
 
 variable_specs['ng_cov_code'] = covariance_cfg['ng_cov_code']
 variable_specs['which_ng_cov'] = which_ng_cov_suffix
@@ -1286,7 +1285,7 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
     for key in cov_ssc_3x2pt_dict_8D.keys():
         probe_a, probe_b, probe_c, probe_d = key
         np.savez_compressed(
-            f'{cov_folder}/{cov_sb_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d, integration_type="simps")}',
+            f'{cov_folder}/{cov_sb_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}',
             cov_ssc_3x2pt_dict_8D[key]
         )
 
@@ -1327,8 +1326,9 @@ elif covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
 
 if covariance_cfg['load_CLOE_benchmark_cov']:
 
-    cov_3x2pt_g_nbl32_2dcloe = np.load(f'{covariance_cfg["CLOE_benchmark_cov_path"]}/CovMat-3x2pt-Gauss-32Bins.npy')
-    cov_3x2pt_gs_nbl32_2dcloe = np.load(f'{covariance_cfg["CLOE_benchmark_cov_path"]}/CovMat-3x2pt-GaussSSC-32Bins.npy')
+    cloe_bench_path = covariance_cfg['CLOE_benchmark_cov_path'].format(ROOT=ROOT)
+    cov_3x2pt_g_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins.npy')
+    cov_3x2pt_gs_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins.npy')
 
     num_elem_auto_nbl32 = zpairs_auto * 32
     num_elem_cross_nbl32 = zpairs_cross * 32
@@ -1687,6 +1687,7 @@ if not np.all(vinc_param_names == my_sorted_param_names):
     print(f'Params present in input folder but not in the cfg file: {param_names_not_in_my_list}')
     print(f'Params present in cfg file but not in the input folder: {param_names_not_in_vinc_list}')
 
+# no longer needed, as long as you pay attention to the print above
 # try:
 #     assert np.all(vinc_param_names == my_sorted_param_names), \
 #         f'Params present in input folder but not in the cfg file: {param_names_not_in_my_list}\n' \
@@ -1695,7 +1696,7 @@ if not np.all(vinc_param_names == my_sorted_param_names):
 #     print(error)
 #     if param_names_not_in_vinc_list == ['logT']:
 #         print('The derivative w.r.t logT is missing in the input folder but '
-#             'the corresponding FM is still set to 0; moving on')
+#                 'the corresponding FM is still set to 0; moving on')
 #     else:
 #         raise AssertionError(
 #             'there is something wrong with the parameter names in the derivatives folder')
@@ -1860,38 +1861,43 @@ if fix_mag_bias:
 
 fom_dict = {}
 uncert_dict = {}
-masked_FM_dict = {}
+masked_fm_dict = {}
+masked_fid_pars_dict = {}
 fm_dict_toplot = deepcopy(fm_dict)
 del fm_dict_toplot['fiducial_values_dict']
 for key in list(fm_dict_toplot.keys()):
     if key != 'fiducial_values_dict' and '_WA_' not in key and '_2x2pt_' not in key:
+        
+        print(key)
 
         fm = deepcopy(fm_dict_toplot[key])
 
-        masked_fm, masked_fid_pars_dict = mm.mask_fm_v2(fm, fid_pars_dict['FM_ordered_params'],
+        masked_fm_dict[key], masked_fid_pars_dict[key] = mm.mask_fm_v2(fm, fid_pars_dict['FM_ordered_params'],
                                                         names_params_to_fix=names_params_to_fix,
                                                         remove_null_rows_cols=True)
 
         if not fix_shear_bias and any(item in key for item in ['WL', 'XC', '3x2pt']):
             print(f'adding shear bias Gaussian prior to {key}')
             shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
-            masked_fm = mm.add_prior_to_fm(masked_fm, masked_fid_pars_dict,
+            masked_fm_dict[key] = mm.add_prior_to_fm(masked_fm_dict[key], masked_fid_pars_dict[key],
                                            shear_bias_param_names, shear_bias_prior_values)
 
         if not fix_dz:
             print(f'adding dz Gaussian prior to {key}')
-            masked_fm = mm.add_prior_to_fm(masked_fm, masked_fid_pars_dict, dz_param_names, dz_prior)
+            masked_fm_dict[key] = mm.add_prior_to_fm(masked_fm_dict[key], masked_fid_pars_dict[key], dz_param_names, dz_prior)
 
-        uncert_dict[key] = mm.uncertainties_fm_v2(masked_fm, masked_fid_pars_dict,
+        uncert_dict[key] = mm.uncertainties_fm_v2(masked_fm_dict[key], masked_fid_pars_dict[key],
                                                   which_uncertainty='marginal',
                                                   normalize=True,
                                                   percent_units=True)[:nparams_toplot]
 
-        param_names = list(masked_fid_pars_dict.keys())
-        cosmo_param_names = list(masked_fid_pars_dict.keys())[:nparams_toplot]
+        param_names = list(masked_fid_pars_dict[key].keys())
+        cosmo_param_names = list(masked_fid_pars_dict[key].keys())[:nparams_toplot]
 
         w0wa_idxs = param_names.index('wz'), param_names.index('wa')
-        fom_dict[key] = mm.compute_FoM(masked_fm, w0wa_idxs=w0wa_idxs)
+        fom_dict[key] = mm.compute_FoM(masked_fm_dict[key], w0wa_idxs=w0wa_idxs)
+        
+
 
 # compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
 for probe in probes:
@@ -1957,7 +1963,17 @@ for probe in probes:
 
     plot_lib.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                       param_names_label=None, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
-    # plt.yscale('log')
+    # plt.yscale('log')    
+
+
+# plot_lib.triangle_plot(masked_fm_dict['FM_3x2pt_GSSC'], masked_fm_dict['FM_3x2pt_G'], 
+#                        fiducials=list(masked_fid_pars_dict['FM_3x2pt_G'].values()), 
+#                        title='3x2pt', 
+#                        label_background='G + SSC', 
+#                        label_foreground='G', 
+#                        param_names_labels=list(masked_fid_pars_dict['FM_3x2pt_G'].keys()),
+#                        param_names_labels_toplot=list(masked_fid_pars_dict['FM_3x2pt_G'].keys()))
+
 
 del cov_dict
 gc.collect()

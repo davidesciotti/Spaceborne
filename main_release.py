@@ -858,9 +858,6 @@ mm.compare_arrays(cl_gl_3d[ell_idx, ...], ccl_obj.cl_gl_3d[ell_idx, ...], abs_va
 #                   f'Cell_gg_SPV3_{general_cfg["which_cls"]}', cl_gg_3d, ell_dict['ell_3x2pt'], zbins)
 
 
-# !============================= derivatives ===================================
-
-
 # ! ================================ SSC =======================================
 
 cov_folder = covariance_cfg['Spaceborne_cfg']['cov_path'].format(ROOT=ROOT,
@@ -1351,7 +1348,7 @@ cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
 if covariance_cfg['load_CLOE_benchmark_cov']:
     warnings.warn('OVERWRITING cov_dict WITH CLOE BENCHMARKS')
 
-    cloe_bench_path = covariance_cfg['CLOE_benchmarks_path'].format(ROOT=ROOT)
+    cloe_bench_path = general_cfg['CLOE_benchmarks_path'].format(ROOT=ROOT)
     cov_3x2pt_g_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins.npy')
     cov_3x2pt_gs_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins.npy')
 
@@ -1455,7 +1452,7 @@ if covariance_cfg['test_against_vincenzo'] and bnt_transform == False and not ge
                         rtol=1e-3, atol=0, err_msg='cov_dict["cov_3x2pt_GO_2D"] does not match with Vincenzo\'s')
     print('covariance matrix matches with Vincenzo\'s ✅')
 
-# ! compute Fisher matrix
+# !============================= derivatives ===================================
 if not fm_cfg['compute_FM']:
     # this guard is just to avoid indenting the whole code below
     raise KeyboardInterrupt('skipping FM computation, the script will exit now')
@@ -1588,6 +1585,24 @@ elif fm_cfg['which_derivatives'] == 'Vincenzo':
                 elif '3x2pt' in key:
                     dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt, zbins)
 
+        # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
+        dC_LL_4D_vin = fm_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
+        dC_GG_4D_vin = fm_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
+        # dC_WA_4D_vin = fm_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
+        dC_WA_4D_vin = np.ones((nbl_WA, zbins, zbins, dC_LL_4D_vin.shape[-1]))
+        dC_3x2pt_6D_vin = fm_utils.dC_dict_to_4D_array(
+            dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins, der_prefix, is_3x2pt=True)
+
+        # free up memory
+        del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
+        gc.collect()
+
+        # save these so they can simply be imported!
+        np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_LL_4D.npy', dC_LL_4D_vin)
+        np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_GG_4D.npy', dC_GG_4D_vin)
+        np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_WA_4D.npy', dC_WA_4D_vin)
+        np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_3x2pt_6D.npy', dC_3x2pt_6D_vin)
+
 else:
     raise ValueError('which_derivatives must be either "Spaceborne" or "Vincenzo"')
 
@@ -1696,135 +1711,7 @@ for param in list_params_to_vary:
     plt.show()
 """
 
-
 # import and store derivative in one big dictionary
-
-start_time = time.perf_counter()
-derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs,
-                                                         ROOT=ROOT)
-# ! get vincenzo's derivatives' parameters, to check that they match with the yaml file
-# check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
-der_prefix = fm_cfg['derivatives_prefix']
-vinc_filenames = mm.get_filenames_in_folder(derivatives_folder)
-vinc_filenames = [vinc_filename for vinc_filename in vinc_filenames if
-                  vinc_filename.startswith(der_prefix)]
-
-# keep only the files corresponding to the correct magcut_lens, magcut_source and zbins
-vinc_filenames = [filename for filename in vinc_filenames if
-                  all(x in filename for x in
-                      [f'ML{magcut_lens}', f'MS{magcut_source}', f'{ep_or_ed}{zbins:02d}'])]
-vinc_filenames = [filename.replace('.dat', '') for filename in vinc_filenames]
-
-vinc_trimmed_filenames = [vinc_filename.split('-', 1)[0].strip() for vinc_filename in vinc_filenames]
-vinc_trimmed_filenames = [
-    vinc_trimmed_filename[len(der_prefix):] if vinc_trimmed_filename.startswith(
-        der_prefix) else vinc_trimmed_filename
-    for vinc_trimmed_filename in vinc_trimmed_filenames]
-vinc_param_names = list(set(vinc_trimmed_filenames))
-vinc_param_names.sort()
-
-# ! get fiducials names and values from the yaml file
-# remove ODE if I'm studying only flat models
-if general_cfg['flat_or_nonflat'] == 'Flat' and 'ODE' in fid_pars_dict['FM_ordered_params']:
-    fid_pars_dict['FM_ordered_params'].pop('ODE')
-fm_fid_dict = fid_pars_dict['FM_ordered_params']
-param_names_3x2pt = list(fm_fid_dict.keys())
-fm_cfg['param_names_3x2pt'] = param_names_3x2pt
-fm_cfg['nparams_tot'] = len(param_names_3x2pt)
-
-# sort them to compare with vincenzo's param names
-my_sorted_param_names = param_names_3x2pt.copy()
-my_sorted_param_names.sort()
-
-for dzgc_param_name in [f'dzGC{zi:02d}' for zi in range(1, zbins + 1)]:
-    if dzgc_param_name in vinc_param_names:  # ! added this if statement, not very elegant
-        vinc_param_names.remove(dzgc_param_name)
-
-# check whether the 2 lists match and print the elements that are in one list but not in the other
-param_names_not_in_my_list = [vinc_param_name for vinc_param_name in vinc_param_names if
-                              vinc_param_name not in my_sorted_param_names]
-param_names_not_in_vinc_list = [my_sorted_param_name for my_sorted_param_name in my_sorted_param_names
-                                if
-                                my_sorted_param_name not in vinc_param_names]
-
-# Check if the parameter names match
-if not np.all(vinc_param_names == my_sorted_param_names):
-    # Print the mismatching parameters
-    print(f'Params present in input folder but not in the cfg file: {param_names_not_in_my_list}')
-    print(f'Params present in cfg file but not in the input folder: {param_names_not_in_vinc_list}')
-
-# no longer needed, as long as you pay attention to the print above
-# try:
-#     assert np.all(vinc_param_names == my_sorted_param_names), \
-#         f'Params present in input folder but not in the cfg file: {param_names_not_in_my_list}\n' \
-#         f'Params present in cfg file but not in the input folder: {param_names_not_in_vinc_list}'
-# except AssertionError as error:
-#     print(error)
-#     if param_names_not_in_vinc_list == ['logT']:
-#         print('The derivative w.r.t logT is missing in the input folder but '
-#                 'the corresponding FM is still set to 0; moving on')
-#     else:
-#         raise AssertionError(
-#             'there is something wrong with the parameter names in the derivatives folder')
-
-# ! preprocess derivatives (or load the alreay preprocessed ones)
-if fm_cfg['load_preprocess_derivatives']:
-    warnings.warn(
-        'loading preprocessed derivatives is faster but a bit more dangerous, make sure all the specs are taken into account')
-    dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_LL_4D.npy')
-    dC_GG_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_GG_4D.npy')
-    dC_WA_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_WA_4D.npy')
-    dC_3x2pt_6D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_3x2pt_6D.npy')
-
-elif not fm_cfg['load_preprocess_derivatives']:
-    der_prefix = fm_cfg['derivatives_prefix']
-    dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
-    # check if dictionary is empty
-    if not dC_dict_1D:
-        raise ValueError(f'No derivatives found in folder {derivatives_folder}')
-
-    # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
-    dC_dict_LL_3D = {}
-    dC_dict_GG_3D = {}
-    dC_dict_WA_3D = {}
-    dC_dict_3x2pt_5D = {}
-
-    for key in vinc_filenames:  # loop over these, I already selected ML, MS and so on
-        if not key.startswith('dDVddzGC'):
-            if 'WLO' in key:
-                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(
-                    dC_dict_1D[key], 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
-            elif 'GCO' in key:
-                dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
-            elif 'WLA' in key:
-                dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
-            elif '3x2pt' in key:
-                dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt,
-                                                                  zbins)
-
-    # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
-    dC_LL_4D_vin = fm_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
-    dC_GG_4D_vin = fm_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
-    # dC_WA_4D_vin = fm_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
-    dC_WA_4D_vin = np.ones((nbl_WA, zbins, zbins, dC_LL_4D_vin.shape[-1]))
-    dC_3x2pt_6D_vin = fm_utils.dC_dict_to_4D_array(
-        dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins, der_prefix, is_3x2pt=True)
-
-    # free up memory
-    del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
-    gc.collect()
-
-    print(
-        'derivatives reshaped in 4D arrays in {:.2f} seconds'.format(time.perf_counter() - start_time))
-
-    # save these so they can simply be imported!
-    np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_LL_4D.npy', dC_LL_4D_vin)
-    np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_GG_4D.npy', dC_GG_4D_vin)
-    np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_WA_4D.npy', dC_WA_4D_vin)
-    np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_3x2pt_6D.npy', dC_3x2pt_6D_vin)
-
-else:
-    raise ValueError('"load_preprocess_derivatives" must be True or False')
 
 # store the derivatives arrays in a dictionary
 # deriv_dict_dav = {'dC_LL_4D': dC_LL_4D,
@@ -1837,7 +1724,7 @@ deriv_dict_vin = {'dC_LL_4D': dC_LL_4D_vin,
                   'dC_GG_4D': dC_GG_4D_vin,
                   'dC_3x2pt_6D': dC_3x2pt_6D_vin}
 
-# ! compute and save fisher matrix
+# ! ==================================== compute and save fisher matrix ================================================
 fm_dict_vin = fm_utils.compute_FM(cfg, ell_dict, cov_dict, deriv_dict_vin, bnt_matrix)
 
 # TODO finish testing derivatives
@@ -1868,8 +1755,8 @@ if fm_cfg['save_FM_dict']:
     mm.save_pickle(f'{fm_folder}/{fm_dict_filename}', fm_dict)
 
 if fm_cfg['test_against_benchmarks']:
-    saved_fm_path = f'{fm_folder}/{fm_dict_filename}.pickle'
-    benchmark_path = f'{fm_folder}/benchmarks/{fm_dict_filename}.pickle'
+    saved_fm_path = f'{fm_folder}/{fm_dict_filename}'
+    benchmark_path = f'{fm_folder}/benchmarks/{fm_dict_filename}'
     mm.compare_param_cov_from_fm_pickles(saved_fm_path, benchmark_path, compare_fms=True, compare_param_covs=True)
 
 if fm_cfg['test_against_vincenzo'] and bnt_transform == False:
@@ -1964,7 +1851,6 @@ for key in list(fm_dict_toplot.keys()):
         w0wa_idxs = param_names.index('wz'), param_names.index('wa')
         fom_dict[key] = mm.compute_FoM(masked_fm_dict[key], w0wa_idxs=w0wa_idxs)
 
-
 # compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
 for probe in probes:
 
@@ -2031,7 +1917,6 @@ for probe in probes:
                       param_names_label=None, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
     # plt.yscale('log')
 
-
 # plot_lib.triangle_plot(masked_fm_dict['FM_3x2pt_GSSC'], masked_fm_dict['FM_3x2pt_G'],
 #                        fiducials=list(masked_fid_pars_dict['FM_3x2pt_G'].values()),
 #                        title='3x2pt',
@@ -2039,7 +1924,6 @@ for probe in probes:
 #                        label_foreground='G',
 #                        param_names_labels=list(masked_fid_pars_dict['FM_3x2pt_G'].keys()),
 #                        param_names_labels_toplot=list(masked_fid_pars_dict['FM_3x2pt_G'].keys()))
-
 
 del cov_dict
 gc.collect()

@@ -230,6 +230,7 @@ else:
 
 assert general_cfg['nbl_WL_opt'] == 32, 'this is used as the reference binning, from which the cuts are made'
 assert general_cfg['ell_max_WL_opt'] == 5000, 'this is used as the reference binning, from which the cuts are made'
+assert n_probes == 2, 'The code can only accept 2 probes at the moment'
 
 # ! 1. compute ell values, ell bins and delta ell
 # compute ell and delta ell values in the reference (optimistic) case
@@ -278,7 +279,9 @@ delta_dict = {'delta_l_WL': np.copy(delta_l_ref_nbl32[:nbl_WL]),
               'delta_l_WA': np.copy(delta_l_ref_nbl32[nbl_GC:nbl_WL])}
 
 # this is just to make the .format() more compact
-variable_specs = {'EP_or_ED': ep_or_ed, 'zbins': zbins,
+variable_specs = {'EP_or_ED': ep_or_ed,
+                  'ep_or_ed': ep_or_ed,
+                  'zbins': zbins,
                   'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_3x2pt': ell_max_3x2pt,
                   'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
                   'kmax_h_over_Mpc': kmax_h_over_Mpc, 'center_or_min': center_or_min,
@@ -296,6 +299,7 @@ variable_specs = {'EP_or_ED': ep_or_ed, 'zbins': zbins,
                   'idM': general_cfg['idM'],
                   'idB': general_cfg['idB'],
                   'idR': general_cfg['idR'],
+                  'idBM': general_cfg['idBM'],
                   }
 pp.pprint(variable_specs)
 
@@ -334,7 +338,7 @@ n_of_z = n_of_z_full[:, 1:]
 n_of_z_original = n_of_z  # it may be subjected to a shift
 
 
-# ! SCALE CUTS: for these, we need to:
+# ! START SCALE CUTS: for these, we need to:
 # 1. Compute the BNT. This is done with the raw, or unshifted n(z), but only for the purpose of computing the
 #    ell cuts - the rest of the code uses a BNT matrix from the shifted n(z) - see also comment below.
 # 2. compute the kernels for the un-shifted n(z) (for consistency)
@@ -455,12 +459,16 @@ assert np.all(np.diff(z_means_ll_bnt) > 0), ('z_means_ll_bnt should be monotonic
 
 # 5. compute the ell cuts
 ell_cuts_dict = {}
-ell_cuts_dict['LL'] = ell_utils.load_ell_cuts(kmax_h_over_Mpc, z_means_ll_bnt, z_means_ll_bnt, ccl_obj.cosmo_ccl, zbins, h, general_cfg)
-ell_cuts_dict['GG'] = ell_utils.load_ell_cuts(kmax_h_over_Mpc, z_means_gg, z_means_gg, ccl_obj.cosmo_ccl, zbins, h, general_cfg)
-ell_cuts_dict['GL'] = ell_utils.load_ell_cuts(kmax_h_over_Mpc, z_means_gg, z_means_ll_bnt, ccl_obj.cosmo_ccl, zbins, h, general_cfg)
-ell_cuts_dict['LG'] = ell_utils.load_ell_cuts(kmax_h_over_Mpc, z_means_ll_bnt, z_means_gg, ccl_obj.cosmo_ccl, zbins, h, general_cfg)
+ell_cuts_dict['LL'] = ell_utils.load_ell_cuts(
+    kmax_h_over_Mpc, z_means_ll_bnt, z_means_ll_bnt, ccl_obj.cosmo_ccl, zbins, h, general_cfg)
+ell_cuts_dict['GG'] = ell_utils.load_ell_cuts(
+    kmax_h_over_Mpc, z_means_gg, z_means_gg, ccl_obj.cosmo_ccl, zbins, h, general_cfg)
+ell_cuts_dict['GL'] = ell_utils.load_ell_cuts(
+    kmax_h_over_Mpc, z_means_gg, z_means_ll_bnt, ccl_obj.cosmo_ccl, zbins, h, general_cfg)
+ell_cuts_dict['LG'] = ell_utils.load_ell_cuts(
+    kmax_h_over_Mpc, z_means_ll_bnt, z_means_gg, ccl_obj.cosmo_ccl, zbins, h, general_cfg)
 ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the covariance module
-# ! END ELL CUTS
+# ! END SCALE CUTS
 
 # now compute the BNT used for the rest of the code
 if shift_nz:
@@ -480,6 +488,78 @@ np.savetxt(f'{nofz_folder}/{nofz_filename_ascii}', nofz_tosave)
 ccl_obj.set_nz(np.hstack((zgrid_nz[:, None], n_of_z)))
 ccl_obj.set_kernel_obj(general_cfg['has_rsd'], covariance_cfg['PyCCL_cfg']['n_samples_wf'])
 ccl_obj.set_kernel_arr(z_grid_wf=z_grid_ssc_integrands, has_magnification_bias=general_cfg['has_magnification_bias'])
+
+if general_cfg['which_forecast'] == 'SPV3':
+    gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias!)'
+    ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
+
+if general_cfg['which_forecast'] == 'ISTF':
+    gal_kernel_plt_title = 'galaxy kernel\n(w/ gal bias)'
+    ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_w_gal_bias_arr
+
+if general_cfg['check_wf_against_vincenzo']:
+
+    # import
+    vincenzo_wf_folder = general_cfg['wf_folder'].format(ROOT=ROOT)
+    specs = general_cfg['specs'].format(**variable_specs)
+    wf_filename = general_cfg['wf_filename'].format(probe='{probe:s}', specs=specs, **variable_specs)
+
+    wf_delta_vin = np.genfromtxt(f'{vincenzo_wf_folder}/{wf_filename.format(probe="delta")}')
+    wf_gamma_vin = np.genfromtxt(f'{vincenzo_wf_folder}/{wf_filename.format(probe="gamma")}')
+    wf_ia_vin = np.genfromtxt(f'{vincenzo_wf_folder}/{wf_filename.format(probe="ia")}')
+    wf_mu_vin = np.genfromtxt(f'{vincenzo_wf_folder}/{wf_filename.format(probe="mu")}')
+
+    z_grid_kernels_vin = wf_delta_vin[:, 0]
+    wf_delta_vin = wf_delta_vin[:, 1:]
+    wf_gamma_vin = wf_gamma_vin[:, 1:]
+    wf_ia_vin = wf_ia_vin[:, 1:]
+    wf_mu_vin = wf_mu_vin[:, 1:]
+
+    # construct lensing kernel
+    ia_bias = wf_cl_lib.build_ia_bias_1d_arr(z_grid_out=z_grid_kernels_vin, cosmo_ccl=ccl_obj.cosmo_ccl,
+                                             flat_fid_pars_dict=flat_fid_pars_dict,
+                                             input_z_grid_lumin_ratio=None, input_lumin_ratio=None,
+                                             output_F_IA_of_z=False)
+
+    wf_lensing_vin = wf_gamma_vin + ia_bias[:, None] * wf_ia_vin
+    wf_galaxy_vin = wf_delta_vin + wf_mu_vin
+
+    # interpolate
+    wf_names_list = ['delta', 'gamma', 'ia', 'mu', 'lensing', 'galaxy']
+    wf_ccl_list = [ccl_obj.wf_delta_arr, ccl_obj.wf_gamma_arr, ccl_obj.wf_ia_arr, ccl_obj.wf_mu_arr,
+                   ccl_obj.wf_lensing_arr, ccl_obj.wf_galaxy_arr]
+    wf_interp_list = []
+    diff_list = []
+    for idx, wf_arr in enumerate([wf_delta_vin, wf_gamma_vin, wf_ia_vin, wf_mu_vin, wf_lensing_vin, wf_galaxy_vin]):
+        wf_func = interp1d(z_grid_kernels_vin, wf_arr, axis=0, kind='linear')
+        wf_interp_list.append(wf_func(z_grid_ssc_integrands))
+        diff_list.append(mm.percent_diff(wf_ccl_list[idx], wf_interp_list[idx]))
+
+    # plot
+    for wf_idx in range(len(wf_interp_list)):
+        clr = cm.rainbow(np.linspace(0, 1, zbins))
+        fig, ax = plt.subplots(2, 1, sharex=True, figsize=(10, 5), height_ratios=[2, 1])
+        plt.tight_layout()
+        fig.subplots_adjust(hspace=0)
+
+        for zi in range(zbins):
+            ax[0].plot(z_grid_ssc_integrands, wf_interp_list[wf_idx][:, zi], ls="-", c=clr[zi], alpha=0.6)
+            ax[0].plot(z_grid_ssc_integrands, wf_ccl_list[wf_idx][:, zi], ls=":", c=clr[zi], alpha=0.6)
+            ax[1].plot(z_grid_ssc_integrands, diff_list[wf_idx][:, zi], c=clr[zi])
+
+        ax[1].set_xlabel('$z$')
+        ax[0].set_xlabel('wf')
+        ax[1].set_ylabel('% diff')
+        ax[1].set_ylim(-20, 20)
+        lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
+        plt.legend(lines, ['Vincenzo', 'CCL'], loc='upper right')
+        plt.suptitle(f'{wf_names_list[wf_idx]}')
+        plt.show()
+
+assert False, 'stop here to check kernels'
+
+# ! end import vincenzo's kernels
+
 
 # compute cls
 ccl_obj.cl_ll_3d = ccl_obj.compute_cls(ell_dict['ell_WL'], ccl_obj.p_of_k_a,
@@ -692,7 +772,7 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
 
         # compute pk_mm on the responses' k, z grid to rescale them
         k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid_resp, z_grid_resp, use_h_units,
-                                               ccl_obj.cosmo_ccl, pk_kind='nonlinear')
+                                                  ccl_obj.cosmo_ccl, pk_kind='nonlinear')
 
         # compute P_gm, P_gg
         gal_bias = ccl_obj.gal_bias_2d[:, 0]
@@ -785,9 +865,9 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
 
     # ! volume element
     cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(z_grid_ssc_integrands,
-                                                         covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
-                                                         use_h_units=use_h_units,
-                                                         cosmo_ccl=ccl_obj.cosmo_ccl)
+                                                            covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
+                                                            use_h_units=use_h_units,
+                                                            cosmo_ccl=ccl_obj.cosmo_ccl)
 
     # ! observable densities
     d2CLL_dVddeltab = np.einsum('zi,zj,Lz->Lijz', wf_lensing, wf_lensing, dPmm_ddeltab_klimb)
@@ -1099,8 +1179,8 @@ if covariance_cfg['load_CLOE_benchmark_cov']:
     cov_3x2pt_g_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins.npy')
     cov_3x2pt_gs_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins.npy')
 
-    num_elem_auto_nbl32 = zpairs_auto * 32
-    num_elem_cross_nbl32 = zpairs_cross * 32
+    num_elem_auto_nbl32 = zpairs_auto * nbl_WL_opt
+    num_elem_cross_nbl32 = zpairs_cross * nbl_WL_opt
 
     # Cut the probe blocks: once I do this, I'm back in the ell-zpair (dav) ordering!
     cov_wl_g_nbl32_2ddav = deepcopy(cov_3x2pt_g_nbl32_2dcloe)[:num_elem_auto_nbl32, :num_elem_auto_nbl32]
@@ -1116,8 +1196,8 @@ if covariance_cfg['load_CLOE_benchmark_cov']:
                                                                 num_elem_auto_nbl32 + num_elem_cross_nbl32:]
 
     # now cut to 29 bins
-    num_elem_auto_nbl29 = zpairs_auto * 29
-    num_elem_cross_nbl29 = zpairs_cross * 29
+    num_elem_auto_nbl29 = zpairs_auto * nbl_3x2pt
+    num_elem_cross_nbl29 = zpairs_cross * nbl_3x2pt
     cov_wl_g_nbl29_2ddav = cov_wl_g_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
     cov_xc_g_nbl29_2ddav = cov_xc_g_nbl32_2ddav[:num_elem_cross_nbl29, :num_elem_cross_nbl29]
     cov_gc_g_nbl29_2ddav = cov_gc_g_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
@@ -1127,11 +1207,11 @@ if covariance_cfg['load_CLOE_benchmark_cov']:
     cov_gc_gs_nbl29_2ddav = cov_gc_gs_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
 
     # reshape to dav
-    cov_3x2pt_g_nbl32_2ddav = mm.cov_2d_cloe_to_dav(cov_3x2pt_g_nbl32_2dcloe, 32, zbins, 'ell', 'ell')
-    cov_3x2pt_gs_nbl32_2ddav = mm.cov_2d_cloe_to_dav(cov_3x2pt_gs_nbl32_2dcloe, 32, zbins, 'ell', 'ell')
+    cov_3x2pt_g_nbl32_2ddav = mm.cov_2d_cloe_to_dav(cov_3x2pt_g_nbl32_2dcloe, nbl_WL_opt, zbins, 'ell', 'ell')
+    cov_3x2pt_gs_nbl32_2ddav = mm.cov_2d_cloe_to_dav(cov_3x2pt_gs_nbl32_2dcloe, nbl_WL_opt, zbins, 'ell', 'ell')
 
     # cut last 3 ell bins
-    num_elem_tot_nbl29 = (zpairs_auto * 2 + zpairs_cross) * 29
+    num_elem_tot_nbl29 = (zpairs_auto * n_probes + zpairs_cross) * nbl_3x2pt
     cov_3x2pt_g_nbl29_2ddav = cov_3x2pt_g_nbl32_2ddav[:num_elem_tot_nbl29, :num_elem_tot_nbl29]
     cov_3x2pt_gs_nbl29_2ddav = cov_3x2pt_gs_nbl32_2ddav[:num_elem_tot_nbl29, :num_elem_tot_nbl29]
 

@@ -1323,7 +1323,6 @@ elif covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
         filename=cov_sb_filename,
         probe_ordering=probe_ordering)
 
-
 if covariance_cfg['load_CLOE_benchmark_cov']:
 
     cloe_bench_path = covariance_cfg['CLOE_benchmark_cov_path'].format(ROOT=ROOT)
@@ -1867,24 +1866,25 @@ fm_dict_toplot = deepcopy(fm_dict)
 del fm_dict_toplot['fiducial_values_dict']
 for key in list(fm_dict_toplot.keys()):
     if key != 'fiducial_values_dict' and '_WA_' not in key and '_2x2pt_' not in key:
-        
+
         print(key)
 
         fm = deepcopy(fm_dict_toplot[key])
 
         masked_fm_dict[key], masked_fid_pars_dict[key] = mm.mask_fm_v2(fm, fid_pars_dict['FM_ordered_params'],
-                                                        names_params_to_fix=names_params_to_fix,
-                                                        remove_null_rows_cols=True)
+                                                                       names_params_to_fix=names_params_to_fix,
+                                                                       remove_null_rows_cols=True)
 
         if not fix_shear_bias and any(item in key for item in ['WL', 'XC', '3x2pt']):
             print(f'adding shear bias Gaussian prior to {key}')
             shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
             masked_fm_dict[key] = mm.add_prior_to_fm(masked_fm_dict[key], masked_fid_pars_dict[key],
-                                           shear_bias_param_names, shear_bias_prior_values)
+                                                     shear_bias_param_names, shear_bias_prior_values)
 
         if not fix_dz:
             print(f'adding dz Gaussian prior to {key}')
-            masked_fm_dict[key] = mm.add_prior_to_fm(masked_fm_dict[key], masked_fid_pars_dict[key], dz_param_names, dz_prior)
+            masked_fm_dict[key] = mm.add_prior_to_fm(
+                masked_fm_dict[key], masked_fid_pars_dict[key], dz_param_names, dz_prior)
 
         uncert_dict[key] = mm.uncertainties_fm_v2(masked_fm_dict[key], masked_fid_pars_dict[key],
                                                   which_uncertainty='marginal',
@@ -1896,7 +1896,6 @@ for key in list(fm_dict_toplot.keys()):
 
         w0wa_idxs = param_names.index('wz'), param_names.index('wa')
         fom_dict[key] = mm.compute_FoM(masked_fm_dict[key], w0wa_idxs=w0wa_idxs)
-        
 
 
 # compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
@@ -1963,14 +1962,14 @@ for probe in probes:
 
     plot_lib.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                       param_names_label=None, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
-    # plt.yscale('log')    
+    # plt.yscale('log')
 
 
-# plot_lib.triangle_plot(masked_fm_dict['FM_3x2pt_GSSC'], masked_fm_dict['FM_3x2pt_G'], 
-#                        fiducials=list(masked_fid_pars_dict['FM_3x2pt_G'].values()), 
-#                        title='3x2pt', 
-#                        label_background='G + SSC', 
-#                        label_foreground='G', 
+# plot_lib.triangle_plot(masked_fm_dict['FM_3x2pt_GSSC'], masked_fm_dict['FM_3x2pt_G'],
+#                        fiducials=list(masked_fid_pars_dict['FM_3x2pt_G'].values()),
+#                        title='3x2pt',
+#                        label_background='G + SSC',
+#                        label_foreground='G',
 #                        param_names_labels=list(masked_fid_pars_dict['FM_3x2pt_G'].keys()),
 #                        param_names_labels_toplot=list(masked_fid_pars_dict['FM_3x2pt_G'].keys()))
 

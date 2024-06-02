@@ -121,7 +121,11 @@ general_cfg:
     rl_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/ResFun/{which_pk:s}"
     cl_filename: "dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat"
     rl_filename: resfun-idBM{idBM:02d}.dat # XXX its idBM... anyway not using the responses at the moment
-    use_vincenzos_cls: True
+    
+    CLOE_benchmarks_path: '{ROOT:s}/CLOE_benchmarks'
+
+    which_cls: CLOE
+
 
     has_rsd: False
     has_magnification_bias: True
@@ -247,7 +251,6 @@ covariance_cfg:
     save_2DCLOE: False # outermost loop is on the probes
     covariance_ordering_2D: ell_probe_zpair
     load_CLOE_benchmark_cov: True
-    CLOE_benchmark_cov_path: '{ROOT:s}/CLOE_benchmarks'
 
     test_against_benchmarks: False # TODO delete this
     test_against_CLOE_benchmarks: False # TODO delete this
@@ -310,7 +313,7 @@ covariance_cfg:
     Spaceborne_cfg:
         probe: 3x2pt
         which_ng_cov: [SSC] # only SSC available in this case
-        load_precomputed_cov: True # TODO implement this, at the moment it's actually always False
+        load_precomputed_cov: True
         which_pk_responses: separate_universe # halo_model (with PyCCL) or separate_universe (from simulations)
 
         cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Spaceborne/{which_pk_responses:s}"

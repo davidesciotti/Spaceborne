@@ -735,30 +735,58 @@ ccl_obj.cl_gl_3d = ccl_obj.compute_cls(ell_dict['ell_XC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
 ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
-# TODO do this properly
+# TODO set WA in a nicer way?
 ccl_obj.cl_wa_3d = ccl_obj.cl_ll_3d[nbl_3x2pt:nbl_WL]
-cl_ll_3d, cl_gl_3d, cl_gg_3d, cl_wa_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d, ccl_obj.cl_wa_3d
 
-# import Vicnenzo's cls, as a quick check (no RSDs in GCph in my Cls!!)
-cl_folder = general_cfg['cl_folder'].format(which_pk=general_cfg['which_pk'], ROOT=ROOT)
-cl_filename = 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:d}-MS{magcut_source:d}-idIA2-idB3-idM3-idR1.dat'
-cl_ll_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='WLO', **variable_specs)}")
-cl_gg_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='GCO', **variable_specs)}")
-cl_wa_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='WLA', **variable_specs)}")
-cl_3x2pt_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
+if general_cfg['which_cls'] == 'Vincenzo':
+    # import Vicnenzo's cls, as a quick check (no RSDs in GCph in my Cls!!)
+    cl_folder = general_cfg['cl_folder'].format(which_pk=general_cfg['which_pk'], ROOT=ROOT)
+    cl_filename = 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:d}-MS{magcut_source:d}-idIA2-idB3-idM3-idR1.dat'
+    cl_ll_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='WLO', **variable_specs)}")
+    cl_gg_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='GCO', **variable_specs)}")
+    cl_wa_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='WLA', **variable_specs)}")
+    cl_3x2pt_1d = np.genfromtxt(f"{cl_folder}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
 
-# ! reshape to 3d
-cl_ll_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
-cl_gg_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
-cl_wa_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
-cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
-cl_gl_3d_vinc = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
-
-if general_cfg['use_vincenzos_cls']:
+    # ! reshape to 3d
+    cl_ll_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
+    cl_gg_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
+    cl_wa_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
+    cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
+    
+    cl_gl_3d_vinc = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
     cl_ll_3d = cl_ll_3d_vinc
     cl_gg_3d = cl_gg_3d_vinc
     cl_wa_3d = cl_wa_3d_vinc
     cl_gl_3d = cl_gl_3d_vinc
+    
+elif general_cfg['which_cls'] == 'CLOE':
+    # import CLOE cls
+    cloe_bench_path = general_cfg["CLOE_benchmarks_path"].format(ROOT=ROOT)
+    cl_ll_2d = np.genfromtxt(f'{cloe_bench_path}/Cls_zNLA_ShearShear_C00.dat')
+    cl_gl_2d = np.genfromtxt(f'{cloe_bench_path}/Cls_zNLA_PosShear_C00.dat')
+    cl_gg_2d = np.genfromtxt(f'{cloe_bench_path}/Cls_zNLA_PosPos_C00.dat')
+    
+    ells_nbl32 = cl_ll_2d[:, 0]
+    
+    # some checks on the ell values
+    np.testing.assert_allclose(cl_ll_2d[:, 0], cl_gl_2d[:, 0], atol=0, rtol=1e-10)
+    np.testing.assert_allclose(cl_ll_2d[:, 0], cl_gg_2d[:, 0], atol=0, rtol=1e-10)
+    np.testing.assert_allclose(cl_ll_2d[:, 0], ell_ref_nbl32, atol=0, rtol=1e-10)
+    np.testing.assert_allclose(cl_ll_2d[:, 0][:nbl_3x2pt], ell_dict['ell_3x2pt'], atol=0, rtol=1e-10)
+    
+    cl_ll_2d = cl_ll_2d[:, 1:]
+    cl_gl_2d = cl_gl_2d[:, 1:]
+    cl_gg_2d = cl_gg_2d[:, 1:]
+    
+    cl_ll_3d = mm.cl_2D_to_3D_symmetric(cl_ll_2d, nbl=nbl_WL_opt, zpairs=zpairs_auto, zbins=zbins)
+    cl_gl_3d = mm.cl_2D_to_3D_asymmetric(cl_gl_2d, nbl=nbl_WL_opt, zbins=zbins, order='C')
+    cl_gg_3d = mm.cl_2D_to_3D_symmetric(cl_gg_2d, nbl=nbl_WL_opt, zpairs=zpairs_auto, zbins=zbins)
+    
+elif general_cfg['which_cls'] == 'CCL':
+    cl_ll_3d, cl_gl_3d, cl_gg_3d, cl_wa_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d, ccl_obj.cl_wa_3d
+    
+else: 
+    raise ValueError(f"general_cfg['which_cls'] = must be in ['Vincenzo', 'CLOE', 'CCL']")
 
 
 clr = cm.rainbow(np.linspace(0, 1, zbins))
@@ -768,40 +796,653 @@ fig.subplots_adjust(hspace=0)
 
 for zi in range(zbins):
     zj = zi
-    ax[0, 0].loglog(ell_dict['ell_WL'], cl_ll_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
-    ax[0, 0].loglog(ell_dict['ell_WL'], cl_ll_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+    ax[0, 0].loglog(ell_dict['ell_WL'], cl_ll_3d[:, zi, zj][:29], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 0].loglog(ell_dict['ell_WL'], ccl_obj.cl_ll_3d[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
-    ax[0, 1].loglog(ell_dict['ell_XC'], cl_gl_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
-    ax[0, 1].loglog(ell_dict['ell_XC'][:29], cl_gl_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+    ax[0, 1].loglog(ell_dict['ell_XC'], cl_gl_3d[:, zi, zj][:29], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 1].loglog(ell_dict['ell_XC'], ccl_obj.cl_gl_3d[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
-    ax[0, 2].loglog(ell_dict['ell_GC'], cl_gg_3d[:, zi, zj], ls="-", c=clr[zi], alpha=0.6)
-    ax[0, 2].loglog(ell_dict['ell_GC'][:29], cl_gg_3d_vinc[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+    ax[0, 2].loglog(ell_dict['ell_GC'], cl_gg_3d[:, zi, zj][:29], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
-    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(cl_ll_3d, cl_ll_3d_vinc)[:, zi, zj], c=clr[zi])
-    ax[1, 1].plot(ell_dict['ell_XC'][:29], mm.percent_diff(cl_gl_3d[:29], cl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
-    ax[1, 2].plot(ell_dict['ell_GC'][:29], mm.percent_diff(cl_gg_3d[:29], cl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
+    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(cl_ll_3d[:29], ccl_obj.cl_ll_3d)[:, zi, zj], c=clr[zi])
+    ax[1, 1].plot(ell_dict['ell_XC'], mm.percent_diff(cl_gl_3d[:29], ccl_obj.cl_gl_3d)[:, zi, zj], c=clr[zi])
+    ax[1, 2].plot(ell_dict['ell_GC'], mm.percent_diff(cl_gg_3d[:29], ccl_obj.cl_gg_3d)[:, zi, zj], c=clr[zi])
 
 ax[1, 0].set_xlabel('$\\ell$')
 ax[1, 1].set_xlabel('$\\ell$')
 ax[1, 2].set_xlabel('$\\ell$')
 ax[0, 0].set_ylabel('$C_{\ell}$')
 ax[1, 0].set_ylabel('% diff')
+ax[1, 1].set_ylim(-20, 20)
 lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
-plt.legend(lines, ['davide', 'vincenzo'], loc='upper right', bbox_to_anchor=(1.55, 1))
+plt.legend(lines, ['used', 'CCL'], loc='upper right', bbox_to_anchor=(1.55, 1))
 plt.show()
 
+# matshow for GL, to make sure it's not LG
+ell_idx = 10
+mm.compare_arrays(cl_gl_3d[ell_idx, ...], ccl_obj.cl_gl_3d[ell_idx, ...], abs_val=True, log_array=True, 
+                  name_A='used GL', name_B='CCL GL')
+
+
 # again, save in ASCII format for OneCovariance
-# ell_grid = np.geomspace(10, 5000, 90)
-# which_pk = general_cfg['which_pk']
-# mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
-#                   f'Cell_ll_SPV3_ccl', cl_ll_3d, ell_grid, zbins)
-# mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
-#                   f'Cell_gl_SPV3_ccl', cl_gl_3d, ell_grid, zbins)
-# mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
-#                   f'Cell_gg_SPV3_ccl', cl_gg_3d, ell_grid, zbins)
+which_pk = general_cfg['which_pk']
+mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
+                  f'Cell_ll_SPV3_{general_cfg["which_cls"]}', cl_ll_3d, ell_dict['ell_3x2pt'], zbins)
+mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
+                  f'Cell_gl_SPV3_{general_cfg["which_cls"]}', cl_gl_3d, ell_dict['ell_3x2pt'], zbins)
+mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
+                  f'Cell_gg_SPV3_{general_cfg["which_cls"]}', cl_gg_3d, ell_dict['ell_3x2pt'], zbins)
 
 
 # !============================= derivatives ===================================
+
+
+# ! ================================ SSC =======================================
+
+cov_folder = covariance_cfg['Spaceborne_cfg']['cov_path'].format(ROOT=ROOT,
+                                                                 which_pk_responses=covariance_cfg['Spaceborne_cfg']['which_pk_responses'],
+                                                                 flagship_version=general_cfg['flagship_version'],
+                                                                 cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
+                                                                 BNT_transform=str(general_cfg['BNT_transform']))
+
+cov_sb_suffix = covariance_cfg['Spaceborne_cfg']['cov_suffix'].format(
+    z_steps_ssc_integrands=covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'],
+    k_txt_label=k_txt_label,
+    cl_integral_convention=covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
+    integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
+    fsky=covariance_cfg['fsky'],
+)
+
+variable_specs.pop('ng_cov_code')
+variable_specs.pop('which_ng_cov')
+cov_sb_filename = covariance_cfg['cov_filename'].format(ng_cov_code='spaceborne',
+                                                        probe='{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}',
+                                                        cov_suffix=cov_sb_suffix,
+                                                        which_ng_cov=which_ng_cov_suffix.replace('G', ''),
+                                                        fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'],
+                                                        ndim=4,
+                                                        **variable_specs)
+
+variable_specs['ng_cov_code'] = covariance_cfg['ng_cov_code']
+variable_specs['which_ng_cov'] = which_ng_cov_suffix
+
+if 'cNG' in covariance_cfg['Spaceborne_cfg']['which_ng_cov']:
+    raise NotImplementedError('You should review the which_ng_cov arg in the cov_filename formatting above, "SSC" is'
+                              'hardcoded at the moment')
+
+if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
+    print('Start SSC computation...')
+
+    if covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'halo_model':
+        # ! 1. Get halo model responses from CCL
+        ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
+                                       pyccl_cfg=pyccl_cfg, which_pk='_')
+
+        # k and z grids (responses will be interpolated below)
+        k_grid_resp = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
+        a_grid_resp = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
+        # translate a to z and cut the arrays to the maximum redshift of the SU responses (much smaller range!)
+        z_grid_resp = csmlib.a_to_z(a_grid_resp)[::-1]
+
+        dPmm_ddeltab = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
+        dPgm_ddeltab = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
+        dPgg_ddeltab = ccl_obj.responses_dict['G', 'G', 'G', 'G']['dpk12']
+
+        # a is flipped w.r.t. z
+        dPmm_ddeltab = np.flip(dPmm_ddeltab, axis=1)
+        dPgm_ddeltab = np.flip(dPgm_ddeltab, axis=1)
+        dPgg_ddeltab = np.flip(dPgg_ddeltab, axis=1)
+
+        # quick sanity check
+        assert np.allclose(ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34'],
+                           ccl_obj.responses_dict['G', 'L', 'G', 'G']['dpk12'], atol=0, rtol=1e-5)
+        assert np.allclose(ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk34'],
+                           ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12'], atol=0, rtol=1e-5)
+        assert dPmm_ddeltab.shape == dPgm_ddeltab.shape == dPgg_ddeltab.shape, 'dPab_ddeltab_hm shape mismatch'
+
+    elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe':
+        # import the response *coefficients* (not the responses themselves)
+        su_responses_folder = covariance_cfg['Spaceborne_cfg']['separate_universe_responses_folder'].format(
+            which_pk=general_cfg['which_pk'], ROOT=ROOT)
+        su_responses_filename = covariance_cfg['Spaceborne_cfg']['separate_universe_responses_filename'].format(
+            idBM=general_cfg['idBM'])
+        rAB_of_k = np.genfromtxt(f'{su_responses_folder}/{su_responses_filename}')
+
+        log_k_arr = np.unique(rAB_of_k[:, 0])
+        k_grid_resp = 10 ** log_k_arr
+        z_grid_resp = np.unique(rAB_of_k[:, 1])
+
+        r_mm = np.reshape(rAB_of_k[:, 2], (len(k_grid_resp), len(z_grid_resp)))
+        r_gm = np.reshape(rAB_of_k[:, 3], (len(k_grid_resp), len(z_grid_resp)))
+        r_gg = np.reshape(rAB_of_k[:, 4], (len(k_grid_resp), len(z_grid_resp)))
+
+        # remove z=0
+        z_grid_resp = z_grid_resp[1:]
+        r_mm = r_mm[:, 1:]
+        r_gm = r_gm[:, 1:]
+        r_gg = r_gg[:, 1:]
+
+        # compute pk_mm on the responses' k, z grid to rescale them
+        k_array, pk_mm_2d = csmlib.pk_from_ccl(k_grid_resp, z_grid_resp, use_h_units,
+                                               ccl_obj.cosmo_ccl, pk_kind='nonlinear')
+
+        # compute P_gm, P_gg
+        gal_bias = ccl_obj.gal_bias_2d[:, 0]
+
+        # check that it's the same in each bin
+        for zi in range(zbins):
+            np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
+
+        gal_bias_func = interp1d(z_grid_ssc_integrands, gal_bias, kind='linear')
+        gal_bias = gal_bias_func(z_grid_resp)
+
+        pk_gm_2d = pk_mm_2d * gal_bias
+        pk_gg_2d = pk_mm_2d * gal_bias ** 2
+
+        # now turn the response coefficients into responses
+        dPmm_ddeltab = r_mm * pk_mm_2d
+        dPgm_ddeltab = r_gm * pk_gm_2d
+        dPgg_ddeltab = r_gg * pk_gg_2d
+
+        # # compare against HM, if needed
+        # z_val = 0
+        # z_idx_hm = np.argmin(np.abs(z_grid_resp_hm - z_val))
+        # z_idx_su = np.argmin(np.abs(z_grid_resp_su - z_val))
+        # plt.figure()
+        # plt.title(f'z_su={z_grid_resp_su[z_idx_su]:.2f}, z_hm={z_grid_resp_hm[z_idx_hm]:.2f}')
+        # plt.loglog(k_grid_resp_hm, np.abs(dPgg_ddeltab_hm[:, z_idx_hm]), label='hm', c='tab:blue')
+        # plt.loglog(k_grid_resp_su, np.abs(dPgg_ddeltab_su[:, z_idx_su]), label='su', c='tab:blue', ls='--')
+        # plt.legend()
+
+    else:
+        raise ValueError('which_pk_responses must be either "halo_model" or "separate_universe"')
+
+    # TODO check counterterms, to be better understood - 0 for lensing, as they should be
+    # bA12 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bA12_tosave']
+    # bB12 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bB12_tosave']
+    # bA34 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bA34_tosave']
+    # bB34 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bB34_tosave']
+
+    # a is flipped w.r.t. z
+    # bA12 = np.flip(bA12, axis=1)
+    # bB12 = np.flip(bB12, axis=1)
+    # bA34 = np.flip(bA34, axis=1)
+    # bB34 = np.flip(bB34, axis=1)
+
+    # assert bA12.shape == bA34.shape == bB12.shape == bB34.shape, 'counterterms shape mismatch'
+
+    # TODO delete this?
+    # trim grids and arrays
+    # z_mask = (z_grid_dPk.min() <= z_grid_dPk_hm) & (z_grid_dPk_hm <= z_grid_dPk.max())
+    # k_mask = (k_grid_dPk.min() <= k_grid_dPk_hm) & (k_grid_dPk_hm <= k_grid_dPk.max())
+
+    # z_grid_dPk_hm = z_grid_dPk_hm[z_mask]
+    # k_grid_dPk_hm = k_grid_dPk_hm[k_mask]
+    # dPmm_ddeltab_hm = dPmm_ddeltab_hm[np.ix_(k_mask, z_mask)]
+    # dPgm_ddeltab_hm = dPgm_ddeltab_hm[np.ix_(k_mask, z_mask)]
+    # dPgg_ddeltab_hm = dPgg_ddeltab_hm[np.ix_(k_mask, z_mask)]
+    # bA12 = bA12[np.ix_(k_mask, z_mask)]
+    # bB12 = bB12[np.ix_(k_mask, z_mask)]
+    # bA34 = bA34[np.ix_(k_mask, z_mask)]
+    # bB34 = bB34[np.ix_(k_mask, z_mask)]
+
+    # ! 2. prepare integrands (d2CAB_dVddeltab) and volume element
+    k_limber = partial(csmlib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
+    r_of_z_func = partial(csmlib.ccl_comoving_distance, use_h_units=use_h_units, cosmo_ccl=ccl_obj.cosmo_ccl)
+
+    # ! divide by r(z)**2 if cl_integral_convention == 'PySSC'
+    if covariance_cfg['Spaceborne_cfg']['cl_integral_convention'] == 'PySSC':
+        r_of_z_square = r_of_z_func(z_grid_ssc_integrands) ** 2
+
+        wf_delta = ccl_obj.wf_delta_arr / r_of_z_square[:, None]
+        wf_gamma = ccl_obj.wf_gamma_arr / r_of_z_square[:, None]
+        wf_ia = ccl_obj.wf_ia_arr / r_of_z_square[:, None]
+        wf_mu = ccl_obj.wf_mu_arr / r_of_z_square[:, None]
+        wf_lensing = ccl_obj.wf_lensing_arr / r_of_z_square[:, None]
+
+    # ! compute the Pk responses(k, z) in k_limber and z_grid_ssc_integrands
+    dPmm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPmm_ddeltab, method='linear')
+    dPgm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgm_ddeltab, method='linear')
+    dPgg_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgg_ddeltab, method='linear')
+
+    dPmm_ddeltab_klimb = np.array(
+        [dPmm_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
+            ell_dict['ell_WL']])
+    dPgm_ddeltab_klimb = np.array(
+        [dPgm_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
+            ell_dict['ell_XC']])
+    dPgg_ddeltab_klimb = np.array(
+        [dPgg_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
+            ell_dict['ell_GC']])
+
+    # ! volume element
+    cl_integral_prefactor = csmlib.cl_integral_prefactor(z_grid_ssc_integrands,
+                                                         covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
+                                                         use_h_units=use_h_units,
+                                                         cosmo_ccl=ccl_obj.cosmo_ccl)
+
+    # ! observable densities
+    d2CLL_dVddeltab = np.einsum('zi,zj,Lz->Lijz', wf_lensing, wf_lensing, dPmm_ddeltab_klimb)
+    d2CGL_dVddeltab = \
+        np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_lensing, dPgm_ddeltab_klimb) + \
+        np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_lensing, dPmm_ddeltab_klimb)
+    d2CGG_dVddeltab = \
+        np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_delta, dPgg_ddeltab_klimb) + \
+        np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_mu, dPgm_ddeltab_klimb) + \
+        np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_delta, dPgm_ddeltab_klimb) + \
+        np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
+
+    # ! 3. Compute/load/save sigma2_b
+    k_grid_sigma2 = np.logspace(covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'],
+                                covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
+                                covariance_cfg['Spaceborne_cfg']['k_steps_sigma2'])
+    which_sigma2_B = covariance_cfg['Spaceborne_cfg']['which_sigma2_B']
+
+    sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename'].format(
+        ROOT=ROOT,
+        zmin=covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
+        zmax=covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
+        zsteps=covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'],
+        log10kmin=covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'],
+        log10kmax=covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
+        ksteps=covariance_cfg['Spaceborne_cfg']['k_steps_sigma2']
+    )
+    if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
+        # TODO define a suitable interpolator if the zgrid doesn't match
+        sigma2_b_dict = np.load(sigma2_b_filename, allow_pickle=True).item()
+        cfg_sigma2_b = sigma2_b_dict['cfg']  # TODO check that the cfg matches the one
+        sigma2_b = sigma2_b_dict['sigma2_b']
+    else:
+        # TODO input ell and cl mask
+        sigma2_b = np.zeros((len(z_grid_ssc_integrands), len(z_grid_ssc_integrands)))
+        for z2_idx, z2 in enumerate(tqdm(z_grid_ssc_integrands)):
+            sigma2_b[:, z2_idx] = sigma2_SSC.sigma2_func_vectorized(
+                z1_arr=z_grid_ssc_integrands,
+                z2=z2, k_grid_sigma2=k_grid_sigma2,
+                cosmo_ccl=ccl_obj.cosmo_ccl,
+                which_sigma2_B=which_sigma2_B,
+                ell_mask=None, cl_mask=None)
+
+        sigma2_b_dict_tosave = {
+            'cfg': cfg,
+            'sigma2_b': sigma2_b,
+        }
+        np.save(sigma2_b_filename, sigma2_b_dict_tosave, allow_pickle=True)
+
+    # ! 4. Perform the integration calling the Julia module
+    start = time.perf_counter()
+    cov_ssc_3x2pt_dict_8D = SSC_integral_julia(d2CLL_dVddeltab=d2CLL_dVddeltab,
+                                               d2CGL_dVddeltab=d2CGL_dVddeltab,
+                                               d2CGG_dVddeltab=d2CGG_dVddeltab,
+                                               ind_auto=ind_auto, ind_cross=ind_cross,
+                                               cl_integral_prefactor=cl_integral_prefactor, sigma2=sigma2_b,
+                                               z_grid=z_grid_ssc_integrands,
+                                               integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
+                                               num_threads=general_cfg['num_threads'])
+    print('SSC computed with Julia in {:.2f} s'.format(time.perf_counter() - start))
+
+    # If the mask is not passed to sigma2_b, we need to divide by fsky
+    if which_sigma2_B == 'full-curved-sky':
+        for key in cov_ssc_3x2pt_dict_8D.keys():
+            cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
+
+    # save the covariance blocks
+    # ! note that these files already account for the sky fraction!!
+    # TODO fsky suffix in cov name should be added only in this case... or not? the other covariance files don't have this...
+    for key in cov_ssc_3x2pt_dict_8D.keys():
+        probe_a, probe_b, probe_c, probe_d = key
+        np.savez_compressed(
+            f'{cov_folder}/{cov_sb_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}',
+            cov_ssc_3x2pt_dict_8D[key]
+        )
+
+    # ! check SSC INTEGRANDS
+
+    # plt.figure()
+    # z1_idx = 3
+    # ell1_idx, ell2_idx = 28, 28
+    # zpair_AB, zpair_CD = 5, 5
+    # num_col = 4
+    # ind_AB, ind_CD = ind_auto, ind_auto
+    # zi, zj, zk, zl = ind_AB[zpair_AB, num_col - 2], ind_AB[zpair_AB, num_col - 1], \
+    #     ind_CD[zpair_CD, num_col - 2], ind_CD[zpair_CD, num_col - 1]
+    # # plt.plot(z_grid_ssc_integrands, integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD, z1_idx, :], label='total integrand')
+    # plt.plot(z_grid_ssc_integrands, d2CLL_dVddeltab[ell2_idx, zk, zl, :], label='d2CLL_dVddeltab')
+    # plt.plot(z_grid_ssc_integrands, cl_integral_prefactor, label='cl_integral_prefactor')
+    # plt.plot(z_grid_ssc_integrands, sigma2_b[z1_idx, :], label='sigma2_b')
+    # plt.yscale('log')
+    # plt.legend()
+
+    # mm.matshow(integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD], log=True, abs_val=True)
+    # mm.matshow(sigma2_b, log=True, abs_val=True)
+    # plt.plot(z_grid_ssc_integrands, np.diag(sigma2_b), marker='o')
+    # plt.plot(z_grid_ssc_integrands, np.diag(integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD]), marker='o')
+    # plt.yscale('log')
+
+    # plt.plot(z_grid_ssc_integrands, integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD, z1_idx, :], marker='o')
+
+    # assert False, 'stop here'
+
+
+elif covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
+    cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
+        path=cov_folder,
+        filename=cov_sb_filename,
+        probe_ordering=probe_ordering)
+
+
+# this is not very elegant, find a better solution
+covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
+print('SSC computed with Spaceborne')
+
+
+# TODO integrate this with Spaceborne_covg
+
+
+# # ! quickly check responses
+# import sys
+# sys.path.append('/home/davide/Documenti/Lavoro/Programmi/exact_SSC/bin')
+# import ssc_integrands_SPV3 as sscint
+
+
+# z_val = 0
+# z_grid_dPk_su = sscint.z_grid_dPk
+# z_idx_hm = np.argmin(np.abs(z_grid_dPk_hm - z_val))
+# z_idx_su = np.argmin(np.abs(z_grid_dPk_su - z_val))
+# z_val_hm = z_grid_dPk_hm[z_idx_hm]
+# z_val_su = z_grid_dPk_su[z_idx_su]
+
+# # dPAB/ddeltab
+# plt.figure()
+# # HM
+# plt.plot(k_grid_dPk_hm, np.abs(dPmm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:blue')
+# plt.plot(k_grid_dPk_hm, np.abs(dPgm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:orange')
+# plt.plot(k_grid_dPk_hm, np.abs(dPgg_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:green')
+
+# # SU
+# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPmm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:blue')
+# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:orange')
+# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgg_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:green')
+
+# plt.xscale('log')
+# plt.yscale('log')
+# plt.xlabel('k [1/Mpc]')
+# plt.ylabel(r'${\rm abs} \; \partial P_{AB} / \partial \delta_b$')
+
+# colors = ['tab:blue', 'tab:orange', 'tab:green']
+# labels_a = ['dPmm_ddeltab', 'dPgm_ddeltab', 'dPgg_ddeltab']
+# handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels_a[i]) for i in range(3)]
+# handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
+#               for ls, label in zip(['-', '--'], ['signal', 'error'])]
+# handles = handles_z + handles_ls
+# labels = labels_a + ['Halo model', 'Separate universe']
+# plt.legend(handles, labels)
+# plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
+# plt.tight_layout()
+# plt.show()
+
+
+# # dlogPAB/ddeltab
+# plt.figure()
+# # HM
+# plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:blue')
+# plt.plot(k_grid_dPk_hm, dPgm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:orange')
+# plt.plot(k_grid_dPk_hm, dPgg_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:green')
+# # SU
+# plt.plot(sscint.k_grid_dPk, sscint.r_mm[:, z_idx_su], ls='--', alpha=0.5, c='tab:blue')
+# plt.plot(sscint.k_grid_dPk, sscint.r_gm[:, z_idx_su], ls='--', alpha=0.5, c='tab:orange')
+# plt.plot(sscint.k_grid_dPk, sscint.r_gg[:, z_idx_su], ls='--', alpha=0.5, c='tab:green')
+
+# plt.xscale('log')
+# plt.xlabel('k [1/Mpc]')
+# plt.ylabel(r'$\partial {\rm log} P_{AB} / \partial \delta_b$')
+
+# colors = ['tab:blue', 'tab:orange', 'tab:green']
+# labels_a = ['dPmm_ddeltab/Pmm', 'dPgm_ddeltab/Pgm', 'dPgg_ddeltab/Pgg']
+# handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels[i]) for i in range(3)]
+# handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
+#               for ls, label in zip(['-', '--'], ['signal', 'error'])]
+# handles = handles_z + handles_ls
+# labels = labels_a + ['Halo model', 'Separate universe']
+# plt.legend(handles, labels)
+# plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
+# plt.tight_layout()
+# plt.show()
+
+
+# check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
+if ell_max_WL == general_cfg['ell_max_WL_opt'] and general_cfg['use_WA']:
+    if not np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :]):
+        rtol = 1e-5
+        # plt.plot(ell_dict['ell_WL'], cl_ll_3d[:, 0, 0])
+        # plt.plot(ell_dict['ell_WL'][nbl_GC:nbl_WL], cl_wa_3d[:, 0, 0])
+        assert (np.allclose(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :], rtol=rtol, atol=0)), \
+            'cl_wa_3d should be obtainable from cl_ll_3d!'
+        print(f'cl_wa_3d and cl_ll_3d[nbl_GC:nbl_WL, :, :] are not exactly equal, but have a relative '
+              f'difference of less than {rtol}')
+
+# ! BNT transform the cls (and responses?) - it's more complex since I also have to transform the noise
+# ! spectra, better to transform directly the covariance matrix
+if general_cfg['cl_BNT_transform']:
+    print('BNT-transforming the Cls...')
+    assert covariance_cfg['cov_BNT_transform'] is False, \
+        'the BNT transform should be applied either to the Cls or to the covariance, not both'
+    cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, bnt_matrix, 'L', 'L')
+    cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, bnt_matrix, 'L', 'L')
+    cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5d, bnt_matrix)
+    warnings.warn('you should probably BNT-transform the responses too!')
+
+# ! cut datavectors and responses in the pessimistic case; be carful of WA, because it does not start from ell_min
+if ell_max_WL == 1500:
+    warnings.warn(
+        'you are cutting the datavectors and responses in the pessimistic case, but is this compatible '
+        'with the redshift-dependent ell cuts? Yes, this is an old warning; nonetheless, check ')
+    assert False, 'you should check this'
+    cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
+    cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
+    cl_wa_3d = cl_ll_3d[nbl_GC:nbl_WL, :, :]
+    cl_3x2pt_5d = cl_3x2pt_5d[:nbl_3x2pt, :, :]
+
+    rl_ll_3d = rl_ll_3d[:nbl_WL, :, :]
+    rl_gg_3d = rl_gg_3d[:nbl_GC, :, :]
+    rl_wa_3d = rl_ll_3d[nbl_GC:nbl_WL, :, :]
+    rl_3x2pt_5d = rl_3x2pt_5d[:nbl_3x2pt, :, :]
+
+# ! Vincenzo's method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
+if general_cfg['center_or_min'] == 'center':
+    prefix = 'ell'
+elif general_cfg['center_or_min'] == 'min':
+    prefix = 'ell_edges'
+else:
+    raise ValueError('general_cfg["center_or_min"] should be either "center" or "min"')
+
+ell_dict['idxs_to_delete_dict'] = {
+    'LL': get_idxs_to_delete(ell_dict[f'{prefix}_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True),
+    'GG': get_idxs_to_delete(ell_dict[f'{prefix}_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True),
+    'WA': get_idxs_to_delete(ell_dict[f'{prefix}_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True),
+    'GL': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False),
+    'LG': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
+    '3x2pt': get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict)
+}
+
+# ! 3d cl ell cuts (*after* BNT!!)
+cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
+    ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc)
+# TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance and derivatives level)
+
+# TODO delete this
+rl_ll_3d, rl_gg_3d, rl_wa_3d, rl_3x2pt_5d = np.ones_like(cl_ll_3d), np.ones_like(cl_gg_3d), np.ones_like(cl_wa_3d), \
+    np.ones_like(cl_3x2pt_5d)
+# store cls and responses in a dictionary
+cl_dict_3D = {
+    'cl_LL_3D': cl_ll_3d,
+    'cl_GG_3D': cl_gg_3d,
+    'cl_WA_3D': cl_wa_3d,
+    'cl_3x2pt_5D': cl_3x2pt_5d}
+
+rl_dict_3D = {
+    'rl_LL_3D': rl_ll_3d,
+    'rl_GG_3D': rl_gg_3d,
+    'rl_WA_3D': rl_wa_3d,
+    'rl_3x2pt_5D': rl_3x2pt_5d}
+
+# this is again to test against ccl cls
+general_cfg['cl_ll_3d'] = cl_ll_3d
+general_cfg['cl_gl_3d'] = cl_gl_3d
+general_cfg['cl_gg_3d'] = cl_gg_3d
+
+if covariance_cfg['compute_SSC'] and covariance_cfg['ng_cov_code'] == 'PySSC':
+
+    transp_stacked_wf = np.vstack((wf_lensing.T, wf_galaxy.T))
+    # ! compute or load Sijkl
+    nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
+    Sijkl_folder = Sijkl_cfg['Sijkl_folder']
+    assert general_cfg[
+        'cl_BNT_transform'] is False, 'for SSC, at the moment the BNT transform should not be ' \
+        'applied to the cls, but to the covariance matrix (how ' \
+        'should we deal with the responses in the former case?)'
+    Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(
+        flagship_version=general_cfg['flagship_version'],
+        nz=nz, IA_flag=Sijkl_cfg['has_IA'],
+        **variable_specs)
+
+    # if Sijkl exists, load it; otherwise, compute it and save it
+    if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
+        print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
+        Sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
+    else:
+        Sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
+                                          Sijkl_cfg['wf_normalization'])
+        np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
+
+else:
+    warnings.warn('Sijkl is not computed, but set to identity')
+    Sijkl = np.ones((n_probes * zbins, n_probes * zbins, n_probes * zbins, n_probes * zbins))
+
+# ! compute covariance matrix
+# TODO: if already existing, don't compute the covmat, like done above for Sijkl
+cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+                                    ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix)
+
+if covariance_cfg['load_CLOE_benchmark_cov']:
+    warnings.warn('OVERWRITING cov_dict WITH CLOE BENCHMARKS')
+
+    cloe_bench_path = covariance_cfg['CLOE_benchmarks_path'].format(ROOT=ROOT)
+    cov_3x2pt_g_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins.npy')
+    cov_3x2pt_gs_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins.npy')
+
+    num_elem_auto_nbl32 = zpairs_auto * 32
+    num_elem_cross_nbl32 = zpairs_cross * 32
+
+    # Cut the probe blocks: once I do this, I'm back in the ell-zpair (dav) ordering!
+    cov_wl_g_nbl32_2ddav = deepcopy(cov_3x2pt_g_nbl32_2dcloe)[:num_elem_auto_nbl32, :num_elem_auto_nbl32]
+    cov_xc_g_nbl32_2ddav = deepcopy(cov_3x2pt_g_nbl32_2dcloe)[num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32,
+                                                              num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32]
+    cov_gc_g_nbl32_2ddav = deepcopy(cov_3x2pt_g_nbl32_2dcloe)[num_elem_auto_nbl32 + num_elem_cross_nbl32:,
+                                                              num_elem_auto_nbl32 + num_elem_cross_nbl32:]
+
+    cov_wl_gs_nbl32_2ddav = deepcopy(cov_3x2pt_gs_nbl32_2dcloe)[:num_elem_auto_nbl32, :num_elem_auto_nbl32]
+    cov_xc_gs_nbl32_2ddav = deepcopy(cov_3x2pt_gs_nbl32_2dcloe)[num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32,
+                                                                num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32]
+    cov_gc_gs_nbl32_2ddav = deepcopy(cov_3x2pt_gs_nbl32_2dcloe)[num_elem_auto_nbl32 + num_elem_cross_nbl32:,
+                                                                num_elem_auto_nbl32 + num_elem_cross_nbl32:]
+
+    # now cut to 29 bins
+    num_elem_auto_nbl29 = zpairs_auto * 29
+    num_elem_cross_nbl29 = zpairs_cross * 29
+    cov_wl_g_nbl29_2ddav = cov_wl_g_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
+    cov_xc_g_nbl29_2ddav = cov_xc_g_nbl32_2ddav[:num_elem_cross_nbl29, :num_elem_cross_nbl29]
+    cov_gc_g_nbl29_2ddav = cov_gc_g_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
+
+    cov_wl_gs_nbl29_2ddav = cov_wl_gs_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
+    cov_xc_gs_nbl29_2ddav = cov_xc_gs_nbl32_2ddav[:num_elem_cross_nbl29, :num_elem_cross_nbl29]
+    cov_gc_gs_nbl29_2ddav = cov_gc_gs_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
+
+    # reshape to dav
+    cov_3x2pt_g_nbl32_2ddav = mm.cov_2d_cloe_to_dav(cov_3x2pt_g_nbl32_2dcloe, 32, zbins, 'ell', 'ell')
+    cov_3x2pt_gs_nbl32_2ddav = mm.cov_2d_cloe_to_dav(cov_3x2pt_gs_nbl32_2dcloe, 32, zbins, 'ell', 'ell')
+
+    # cut last 3 ell bins
+    num_elem_tot_nbl29 = (zpairs_auto * 2 + zpairs_cross) * 29
+    cov_3x2pt_g_nbl29_2ddav = cov_3x2pt_g_nbl32_2ddav[:num_elem_tot_nbl29, :num_elem_tot_nbl29]
+    cov_3x2pt_gs_nbl29_2ddav = cov_3x2pt_gs_nbl32_2ddav[:num_elem_tot_nbl29, :num_elem_tot_nbl29]
+
+    cov_dict['cov_WL_GO_2D'] = cov_wl_g_nbl29_2ddav
+    cov_dict['cov_XC_GO_2D'] = cov_xc_g_nbl29_2ddav
+    cov_dict['cov_GC_GO_2D'] = cov_gc_g_nbl29_2ddav
+    cov_dict['cov_3x2pt_GO_2D'] = cov_3x2pt_g_nbl29_2ddav
+
+    cov_dict['cov_WL_GS_2D'] = cov_wl_gs_nbl29_2ddav
+    cov_dict['cov_XC_GS_2D'] = cov_xc_gs_nbl29_2ddav
+    cov_dict['cov_GC_GS_2D'] = cov_gc_gs_nbl29_2ddav
+    cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_gs_nbl29_2ddav
+
+
+covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
+
+if ep_or_ed == 'EP' and covariance_cfg['ng_cov_code'] == 'Spaceborne' and covariance_cfg['test_against_CLOE_benchmarks'] \
+        and general_cfg['ell_cuts'] is False and which_pk == 'HMCodeBar':
+
+    # load benchmark cov and check that it matches the one computed here; I am not actually using it
+    if not general_cfg['BNT_transform']:
+
+        # load CLOE benchmarks
+        cov_cloe_bench_2d_G = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-Gauss-{nbl_WL_opt}Bins.npy')
+        cov_cloe_bench_2dcloe_GSSC = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.npy')
+
+        # reshape it in dav format
+        cov_bench_2ddav_G = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2d_G, nbl_WL_opt, zbins, 'ell', 'ell')
+        cov_bench_2ddav_GSSC = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2dcloe_GSSC, nbl_WL_opt, zbins, 'ell', 'ell')
+
+        # ell cut, if needed
+        assert cov_dict['cov_3x2pt_GO_2D'].shape == cov_dict['cov_3x2pt_GS_2D'].shape, \
+            'cov_3x2pt_GO_2D and cov_3x2pt_GS_2D should have the same shape'
+        n_cov_elements = cov_dict['cov_3x2pt_GO_2D'].shape[0]
+        cov_bench_2ddav_G_lmax3000 = cov_bench_2ddav_G[:n_cov_elements, :n_cov_elements]
+        cov_bench_2ddav_GSSC_lmax3000 = cov_bench_2ddav_GSSC[:n_cov_elements, :n_cov_elements]
+
+        mm.compare_arrays(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_G_lmax3000,
+                          "cov_dict['cov_3x2pt_GO_2D']", "cov_bench_2ddav_G_lmax3000",
+                          log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+        mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_GSSC_lmax3000,
+                          "cov_dict['cov_3x2pt_GS_2D']", "cov_bench_2ddav_GSSC_lmax3000",
+                          log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+
+    del cov_bench_2ddav_G_lmax3000, cov_bench_2ddav_GSSC_lmax3000
+    gc.collect()
+
+if covariance_cfg['compute_GSSC_condition_number']:
+
+    cond_number = np.linalg.cond(cov_dict['cov_3x2pt_GS_2D'])
+    NUMPY_PRECISION = np.finfo(float).eps
+    precision = cond_number * NUMPY_PRECISION
+    print(f'kmax = {kmax_h_over_Mpc}, precision in the inversion of GS covariance = '
+          f'{precision:.2e}, cond number = {cond_number:.2e}')
+
+if covariance_cfg['test_against_benchmarks']:
+    cov_benchmark_folder = f'{cov_folder}/benchmarks'
+    mm.test_folder_content(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
+
+if covariance_cfg['test_against_vincenzo'] and bnt_transform == False and not general_cfg['use_CLOE_cls']:
+    cov_vinc_filename = covariance_cfg['cov_vinc_filename'].format(**variable_specs, probe='3x2pt')
+    cov_vinc_g = np.load(f'{covariance_cfg["cov_vinc_folder"]}/{cov_vinc_filename}')['arr_0']
+    num_elements_nbl29 = cov_dict['cov_3x2pt_GO_2D'].shape[0]
+    npt.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_vinc_g[:num_elements_nbl29, :num_elements_nbl29],
+                        rtol=1e-3, atol=0, err_msg='cov_dict["cov_3x2pt_GO_2D"] does not match with Vincenzo\'s')
+    print('covariance matrix matches with Vincenzo\'s ✅')
+
+# ! compute Fisher matrix
+if not fm_cfg['compute_FM']:
+    # this guard is just to avoid indenting the whole code below
+    raise KeyboardInterrupt('skipping FM computation, the script will exit now')
+
+
+
+
+
+
+
 
 # list_params_to_vary = list(fid_pars_dict['FM_ordered_params'].keys())
 list_params_to_vary = [param for param in fid_pars_dict['FM_ordered_params'].keys() if param != 'ODE']
@@ -1038,597 +1679,19 @@ for param in list_params_to_vary:
     plt.show()
 """
 
-# ! ================================ SSC =======================================
 
-cov_folder = covariance_cfg['Spaceborne_cfg']['cov_path'].format(ROOT=ROOT,
-                                                                 which_pk_responses=covariance_cfg['Spaceborne_cfg']['which_pk_responses'],
-                                                                 flagship_version=general_cfg['flagship_version'],
-                                                                 cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
-                                                                 BNT_transform=str(general_cfg['BNT_transform']))
 
-cov_sb_suffix = covariance_cfg['Spaceborne_cfg']['cov_suffix'].format(
-    z_steps_ssc_integrands=covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'],
-    k_txt_label=k_txt_label,
-    cl_integral_convention=covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
-    integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
-    fsky=covariance_cfg['fsky'],
-)
 
-variable_specs.pop('ng_cov_code')
-variable_specs.pop('which_ng_cov')
-cov_sb_filename = covariance_cfg['cov_filename'].format(ng_cov_code='spaceborne',
-                                                        probe='{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}',
-                                                        cov_suffix=cov_sb_suffix,
-                                                        which_ng_cov=which_ng_cov_suffix.replace('G', ''),
-                                                        fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'],
-                                                        ndim=4,
-                                                        **variable_specs)
 
-variable_specs['ng_cov_code'] = covariance_cfg['ng_cov_code']
-variable_specs['which_ng_cov'] = which_ng_cov_suffix
 
-if 'cNG' in covariance_cfg['Spaceborne_cfg']['which_ng_cov']:
-    raise NotImplementedError('You should review the which_ng_cov arg in the cov_filename formatting above, "SSC" is'
-                              'hardcoded at the moment')
 
-if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
-    print('Start SSC computation...')
 
-    if covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'halo_model':
-        # ! 1. Get halo model responses from CCL
-        ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
-                                       pyccl_cfg=pyccl_cfg, which_pk='_')
 
-        # k and z grids (responses will be interpolated below)
-        k_grid_resp = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
-        a_grid_resp = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
-        # translate a to z and cut the arrays to the maximum redshift of the SU responses (much smaller range!)
-        z_grid_resp = csmlib.a_to_z(a_grid_resp)[::-1]
 
-        dPmm_ddeltab = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
-        dPgm_ddeltab = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
-        dPgg_ddeltab = ccl_obj.responses_dict['G', 'G', 'G', 'G']['dpk12']
 
-        # a is flipped w.r.t. z
-        dPmm_ddeltab = np.flip(dPmm_ddeltab, axis=1)
-        dPgm_ddeltab = np.flip(dPgm_ddeltab, axis=1)
-        dPgg_ddeltab = np.flip(dPgg_ddeltab, axis=1)
 
-        # quick sanity check
-        assert np.allclose(ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34'],
-                           ccl_obj.responses_dict['G', 'L', 'G', 'G']['dpk12'], atol=0, rtol=1e-5)
-        assert np.allclose(ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk34'],
-                           ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12'], atol=0, rtol=1e-5)
-        assert dPmm_ddeltab.shape == dPgm_ddeltab.shape == dPgg_ddeltab.shape, 'dPab_ddeltab_hm shape mismatch'
 
-    elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe':
-        # import the response *coefficients* (not the responses themselves)
-        su_responses_folder = covariance_cfg['Spaceborne_cfg']['separate_universe_responses_folder'].format(
-            which_pk=general_cfg['which_pk'], ROOT=ROOT)
-        su_responses_filename = covariance_cfg['Spaceborne_cfg']['separate_universe_responses_filename'].format(
-            idBM=general_cfg['idBM'])
-        rAB_of_k = np.genfromtxt(f'{su_responses_folder}/{su_responses_filename}')
 
-        log_k_arr = np.unique(rAB_of_k[:, 0])
-        k_grid_resp = 10 ** log_k_arr
-        z_grid_resp = np.unique(rAB_of_k[:, 1])
-
-        r_mm = np.reshape(rAB_of_k[:, 2], (len(k_grid_resp), len(z_grid_resp)))
-        r_gm = np.reshape(rAB_of_k[:, 3], (len(k_grid_resp), len(z_grid_resp)))
-        r_gg = np.reshape(rAB_of_k[:, 4], (len(k_grid_resp), len(z_grid_resp)))
-
-        # remove z=0
-        z_grid_resp = z_grid_resp[1:]
-        r_mm = r_mm[:, 1:]
-        r_gm = r_gm[:, 1:]
-        r_gg = r_gg[:, 1:]
-
-        # compute pk_mm on the responses' k, z grid to rescale them
-        k_array, pk_mm_2d = csmlib.pk_from_ccl(k_grid_resp, z_grid_resp, use_h_units,
-                                               ccl_obj.cosmo_ccl, pk_kind='nonlinear')
-
-        # compute P_gm, P_gg
-        gal_bias = ccl_obj.gal_bias_2d[:, 0]
-
-        # check that it's the same in each bin
-        for zi in range(zbins):
-            np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
-
-        gal_bias_func = interp1d(z_grid_ssc_integrands, gal_bias, kind='linear')
-        gal_bias = gal_bias_func(z_grid_resp)
-
-        pk_gm_2d = pk_mm_2d * gal_bias
-        pk_gg_2d = pk_mm_2d * gal_bias ** 2
-
-        # now turn the response coefficients into responses
-        dPmm_ddeltab = r_mm * pk_mm_2d
-        dPgm_ddeltab = r_gm * pk_gm_2d
-        dPgg_ddeltab = r_gg * pk_gg_2d
-
-        # # compare against HM, if needed
-        # z_val = 0
-        # z_idx_hm = np.argmin(np.abs(z_grid_resp_hm - z_val))
-        # z_idx_su = np.argmin(np.abs(z_grid_resp_su - z_val))
-        # plt.figure()
-        # plt.title(f'z_su={z_grid_resp_su[z_idx_su]:.2f}, z_hm={z_grid_resp_hm[z_idx_hm]:.2f}')
-        # plt.loglog(k_grid_resp_hm, np.abs(dPgg_ddeltab_hm[:, z_idx_hm]), label='hm', c='tab:blue')
-        # plt.loglog(k_grid_resp_su, np.abs(dPgg_ddeltab_su[:, z_idx_su]), label='su', c='tab:blue', ls='--')
-        # plt.legend()
-
-    else:
-        raise ValueError('which_pk_responses must be either "halo_model" or "separate_universe"')
-
-    # TODO check counterterms, to be better understood - 0 for lensing, as they should be
-    # bA12 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bA12_tosave']
-    # bB12 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bB12_tosave']
-    # bA34 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bA34_tosave']
-    # bB34 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bB34_tosave']
-
-    # a is flipped w.r.t. z
-    # bA12 = np.flip(bA12, axis=1)
-    # bB12 = np.flip(bB12, axis=1)
-    # bA34 = np.flip(bA34, axis=1)
-    # bB34 = np.flip(bB34, axis=1)
-
-    # assert bA12.shape == bA34.shape == bB12.shape == bB34.shape, 'counterterms shape mismatch'
-
-    # TODO delete this?
-    # trim grids and arrays
-    # z_mask = (z_grid_dPk.min() <= z_grid_dPk_hm) & (z_grid_dPk_hm <= z_grid_dPk.max())
-    # k_mask = (k_grid_dPk.min() <= k_grid_dPk_hm) & (k_grid_dPk_hm <= k_grid_dPk.max())
-
-    # z_grid_dPk_hm = z_grid_dPk_hm[z_mask]
-    # k_grid_dPk_hm = k_grid_dPk_hm[k_mask]
-    # dPmm_ddeltab_hm = dPmm_ddeltab_hm[np.ix_(k_mask, z_mask)]
-    # dPgm_ddeltab_hm = dPgm_ddeltab_hm[np.ix_(k_mask, z_mask)]
-    # dPgg_ddeltab_hm = dPgg_ddeltab_hm[np.ix_(k_mask, z_mask)]
-    # bA12 = bA12[np.ix_(k_mask, z_mask)]
-    # bB12 = bB12[np.ix_(k_mask, z_mask)]
-    # bA34 = bA34[np.ix_(k_mask, z_mask)]
-    # bB34 = bB34[np.ix_(k_mask, z_mask)]
-
-    # ! 2. prepare integrands (d2CAB_dVddeltab) and volume element
-    k_limber = partial(csmlib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
-    r_of_z_func = partial(csmlib.ccl_comoving_distance, use_h_units=use_h_units, cosmo_ccl=ccl_obj.cosmo_ccl)
-
-    # ! divide by r(z)**2 if cl_integral_convention == 'PySSC'
-    if covariance_cfg['Spaceborne_cfg']['cl_integral_convention'] == 'PySSC':
-        r_of_z_square = r_of_z_func(z_grid_ssc_integrands) ** 2
-
-        wf_delta = ccl_obj.wf_delta_arr / r_of_z_square[:, None]
-        wf_gamma = ccl_obj.wf_gamma_arr / r_of_z_square[:, None]
-        wf_ia = ccl_obj.wf_ia_arr / r_of_z_square[:, None]
-        wf_mu = ccl_obj.wf_mu_arr / r_of_z_square[:, None]
-        wf_lensing = ccl_obj.wf_lensing_arr / r_of_z_square[:, None]
-
-    # ! compute the Pk responses(k, z) in k_limber and z_grid_ssc_integrands
-    dPmm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPmm_ddeltab, method='linear')
-    dPgm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgm_ddeltab, method='linear')
-    dPgg_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgg_ddeltab, method='linear')
-
-    dPmm_ddeltab_klimb = np.array(
-        [dPmm_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
-            ell_dict['ell_WL']])
-    dPgm_ddeltab_klimb = np.array(
-        [dPgm_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
-            ell_dict['ell_XC']])
-    dPgg_ddeltab_klimb = np.array(
-        [dPgg_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
-            ell_dict['ell_GC']])
-
-    # ! volume element
-    cl_integral_prefactor = csmlib.cl_integral_prefactor(z_grid_ssc_integrands,
-                                                         covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
-                                                         use_h_units=use_h_units,
-                                                         cosmo_ccl=ccl_obj.cosmo_ccl)
-
-    # ! observable densities
-    d2CLL_dVddeltab = np.einsum('zi,zj,Lz->Lijz', wf_lensing, wf_lensing, dPmm_ddeltab_klimb)
-    d2CGL_dVddeltab = \
-        np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_lensing, dPgm_ddeltab_klimb) + \
-        np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_lensing, dPmm_ddeltab_klimb)
-    d2CGG_dVddeltab = \
-        np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_delta, dPgg_ddeltab_klimb) + \
-        np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_mu, dPgm_ddeltab_klimb) + \
-        np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_delta, dPgm_ddeltab_klimb) + \
-        np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
-
-    # ! 3. Compute/load/save sigma2_b
-    k_grid_sigma2 = np.logspace(covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'],
-                                covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
-                                covariance_cfg['Spaceborne_cfg']['k_steps_sigma2'])
-    which_sigma2_B = covariance_cfg['Spaceborne_cfg']['which_sigma2_B']
-
-    sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename'].format(
-        ROOT=ROOT,
-        zmin=covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
-        zmax=covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
-        zsteps=covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'],
-        log10kmin=covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'],
-        log10kmax=covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
-        ksteps=covariance_cfg['Spaceborne_cfg']['k_steps_sigma2']
-    )
-    if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
-        # TODO define a suitable interpolator if the zgrid doesn't match
-        sigma2_b_dict = np.load(sigma2_b_filename, allow_pickle=True).item()
-        cfg_sigma2_b = sigma2_b_dict['cfg']  # TODO check that the cfg matches the one
-        sigma2_b = sigma2_b_dict['sigma2_b']
-    else:
-        sigma2_b = sigma2_SSC.compute_sigma2(z_grid_ssc_integrands, k_grid_sigma2, which_sigma2_B,
-                                             ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
-        sigma2_b_dict_tosave = {
-            'cfg': cfg,
-            'sigma2_b': sigma2_b,
-        }
-        np.save(sigma2_b_filename, sigma2_b_dict_tosave, allow_pickle=True)
-
-    # ! 4. Perform the integration calling the Julia module
-    start = time.perf_counter()
-    cov_ssc_3x2pt_dict_8D = SSC_integral_julia(d2CLL_dVddeltab=d2CLL_dVddeltab,
-                                               d2CGL_dVddeltab=d2CGL_dVddeltab,
-                                               d2CGG_dVddeltab=d2CGG_dVddeltab,
-                                               ind_auto=ind_auto, ind_cross=ind_cross,
-                                               cl_integral_prefactor=cl_integral_prefactor, sigma2=sigma2_b,
-                                               z_grid=z_grid_ssc_integrands,
-                                               integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
-                                               num_threads=general_cfg['num_threads'])
-    print('SSC computed with Julia in {:.2f} s'.format(time.perf_counter() - start))
-
-    # If the mask is not passed to sigma2_b, we need to divide by fsky
-    if which_sigma2_B == 'full-curved-sky':
-        for key in cov_ssc_3x2pt_dict_8D.keys():
-            cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
-
-    # save the covariance blocks
-    # ! note that these files already account for the sky fraction!!
-    # TODO fsky suffix in cov name should be added only in this case... or not? the other covariance files don't have this...
-    for key in cov_ssc_3x2pt_dict_8D.keys():
-        probe_a, probe_b, probe_c, probe_d = key
-        np.savez_compressed(
-            f'{cov_folder}/{cov_sb_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}',
-            cov_ssc_3x2pt_dict_8D[key]
-        )
-
-    # ! check SSC INTEGRANDS
-
-    # plt.figure()
-    # z1_idx = 3
-    # ell1_idx, ell2_idx = 28, 28
-    # zpair_AB, zpair_CD = 5, 5
-    # num_col = 4
-    # ind_AB, ind_CD = ind_auto, ind_auto
-    # zi, zj, zk, zl = ind_AB[zpair_AB, num_col - 2], ind_AB[zpair_AB, num_col - 1], \
-    #     ind_CD[zpair_CD, num_col - 2], ind_CD[zpair_CD, num_col - 1]
-    # # plt.plot(z_grid_ssc_integrands, integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD, z1_idx, :], label='total integrand')
-    # plt.plot(z_grid_ssc_integrands, d2CLL_dVddeltab[ell2_idx, zk, zl, :], label='d2CLL_dVddeltab')
-    # plt.plot(z_grid_ssc_integrands, cl_integral_prefactor, label='cl_integral_prefactor')
-    # plt.plot(z_grid_ssc_integrands, sigma2_b[z1_idx, :], label='sigma2_b')
-    # plt.yscale('log')
-    # plt.legend()
-
-    # mm.matshow(integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD], log=True, abs_val=True)
-    # mm.matshow(sigma2_b, log=True, abs_val=True)
-    # plt.plot(z_grid_ssc_integrands, np.diag(sigma2_b), marker='o')
-    # plt.plot(z_grid_ssc_integrands, np.diag(integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD]), marker='o')
-    # plt.yscale('log')
-
-    # plt.plot(z_grid_ssc_integrands, integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD, z1_idx, :], marker='o')
-
-    # assert False, 'stop here'
-
-
-elif covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
-    cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
-        path=cov_folder,
-        filename=cov_sb_filename,
-        probe_ordering=probe_ordering)
-
-if covariance_cfg['load_CLOE_benchmark_cov']:
-
-    cloe_bench_path = covariance_cfg['CLOE_benchmark_cov_path'].format(ROOT=ROOT)
-    cov_3x2pt_g_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins.npy')
-    cov_3x2pt_gs_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins.npy')
-
-    num_elem_auto_nbl32 = zpairs_auto * 32
-    num_elem_cross_nbl32 = zpairs_cross * 32
-
-    # Cut the probe blocks: once I do this, I'm back in the ell-zpair (dav) ordering!
-    cov_wl_g_nbl32_2ddav = deepcopy(cov_3x2pt_g_nbl32_2dcloe)[:num_elem_auto_nbl32, :num_elem_auto_nbl32]
-    cov_xc_g_nbl32_2ddav = deepcopy(cov_3x2pt_g_nbl32_2dcloe)[num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32,
-                                                              num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32]
-    cov_gc_g_nbl32_2ddav = deepcopy(cov_3x2pt_g_nbl32_2dcloe)[num_elem_auto_nbl32 + num_elem_cross_nbl32:,
-                                                              num_elem_auto_nbl32 + num_elem_cross_nbl32:]
-
-    cov_wl_gs_nbl32_2ddav = deepcopy(cov_3x2pt_gs_nbl32_2dcloe)[:num_elem_auto_nbl32, :num_elem_auto_nbl32]
-    cov_xc_gs_nbl32_2ddav = deepcopy(cov_3x2pt_gs_nbl32_2dcloe)[num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32,
-                                                                num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32]
-    cov_gc_gs_nbl32_2ddav = deepcopy(cov_3x2pt_gs_nbl32_2dcloe)[num_elem_auto_nbl32 + num_elem_cross_nbl32:,
-                                                                num_elem_auto_nbl32 + num_elem_cross_nbl32:]
-
-    # now cut to 29 bins
-    num_elem_auto_nbl29 = zpairs_auto * 29
-    num_elem_cross_nbl29 = zpairs_cross * 29
-    cov_wl_g_nbl29_2ddav = cov_wl_g_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
-    cov_xc_g_nbl29_2ddav = cov_xc_g_nbl32_2ddav[:num_elem_cross_nbl29, :num_elem_cross_nbl29]
-    cov_gc_g_nbl29_2ddav = cov_gc_g_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
-
-    cov_wl_gs_nbl29_2ddav = cov_wl_gs_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
-    cov_xc_gs_nbl29_2ddav = cov_xc_gs_nbl32_2ddav[:num_elem_cross_nbl29, :num_elem_cross_nbl29]
-    cov_gc_gs_nbl29_2ddav = cov_gc_gs_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
-
-    # reshape to dav
-    cov_3x2pt_g_nbl32_2ddav = mm.cov_2d_cloe_to_dav(cov_3x2pt_g_nbl32_2dcloe, 32, zbins, 'ell', 'ell')
-    cov_3x2pt_gs_nbl32_2ddav = mm.cov_2d_cloe_to_dav(cov_3x2pt_gs_nbl32_2dcloe, 32, zbins, 'ell', 'ell')
-
-    # cut last 3 ell bins
-    num_elem_tot_nbl29 = (zpairs_auto * 2 + zpairs_cross) * 29
-    cov_3x2pt_g_nbl29_2ddav = cov_3x2pt_g_nbl32_2ddav[:num_elem_tot_nbl29, :num_elem_tot_nbl29]
-    cov_3x2pt_gs_nbl29_2ddav = cov_3x2pt_gs_nbl32_2ddav[:num_elem_tot_nbl29, :num_elem_tot_nbl29]
-
-
-# this is not very elegant, find a better solution
-covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
-print('SSC computed with Spaceborne')
-
-
-# TODO integrate this with Spaceborne_covg
-
-
-# # ! quickly check responses
-# import sys
-# sys.path.append('/home/davide/Documenti/Lavoro/Programmi/exact_SSC/bin')
-# import ssc_integrands_SPV3 as sscint
-
-
-# z_val = 0
-# z_grid_dPk_su = sscint.z_grid_dPk
-# z_idx_hm = np.argmin(np.abs(z_grid_dPk_hm - z_val))
-# z_idx_su = np.argmin(np.abs(z_grid_dPk_su - z_val))
-# z_val_hm = z_grid_dPk_hm[z_idx_hm]
-# z_val_su = z_grid_dPk_su[z_idx_su]
-
-# # dPAB/ddeltab
-# plt.figure()
-# # HM
-# plt.plot(k_grid_dPk_hm, np.abs(dPmm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:blue')
-# plt.plot(k_grid_dPk_hm, np.abs(dPgm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:orange')
-# plt.plot(k_grid_dPk_hm, np.abs(dPgg_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:green')
-
-# # SU
-# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPmm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:blue')
-# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:orange')
-# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgg_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:green')
-
-# plt.xscale('log')
-# plt.yscale('log')
-# plt.xlabel('k [1/Mpc]')
-# plt.ylabel(r'${\rm abs} \; \partial P_{AB} / \partial \delta_b$')
-
-# colors = ['tab:blue', 'tab:orange', 'tab:green']
-# labels_a = ['dPmm_ddeltab', 'dPgm_ddeltab', 'dPgg_ddeltab']
-# handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels_a[i]) for i in range(3)]
-# handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
-#               for ls, label in zip(['-', '--'], ['signal', 'error'])]
-# handles = handles_z + handles_ls
-# labels = labels_a + ['Halo model', 'Separate universe']
-# plt.legend(handles, labels)
-# plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
-# plt.tight_layout()
-# plt.show()
-
-
-# # dlogPAB/ddeltab
-# plt.figure()
-# # HM
-# plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:blue')
-# plt.plot(k_grid_dPk_hm, dPgm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:orange')
-# plt.plot(k_grid_dPk_hm, dPgg_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:green')
-# # SU
-# plt.plot(sscint.k_grid_dPk, sscint.r_mm[:, z_idx_su], ls='--', alpha=0.5, c='tab:blue')
-# plt.plot(sscint.k_grid_dPk, sscint.r_gm[:, z_idx_su], ls='--', alpha=0.5, c='tab:orange')
-# plt.plot(sscint.k_grid_dPk, sscint.r_gg[:, z_idx_su], ls='--', alpha=0.5, c='tab:green')
-
-# plt.xscale('log')
-# plt.xlabel('k [1/Mpc]')
-# plt.ylabel(r'$\partial {\rm log} P_{AB} / \partial \delta_b$')
-
-# colors = ['tab:blue', 'tab:orange', 'tab:green']
-# labels_a = ['dPmm_ddeltab/Pmm', 'dPgm_ddeltab/Pgm', 'dPgg_ddeltab/Pgg']
-# handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels[i]) for i in range(3)]
-# handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
-#               for ls, label in zip(['-', '--'], ['signal', 'error'])]
-# handles = handles_z + handles_ls
-# labels = labels_a + ['Halo model', 'Separate universe']
-# plt.legend(handles, labels)
-# plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
-# plt.tight_layout()
-# plt.show()
-
-
-# check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
-if ell_max_WL == general_cfg['ell_max_WL_opt'] and general_cfg['use_WA']:
-    if not np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :]):
-        rtol = 1e-5
-        # plt.plot(ell_dict['ell_WL'], cl_ll_3d[:, 0, 0])
-        # plt.plot(ell_dict['ell_WL'][nbl_GC:nbl_WL], cl_wa_3d[:, 0, 0])
-        assert (np.allclose(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :], rtol=rtol, atol=0)), \
-            'cl_wa_3d should be obtainable from cl_ll_3d!'
-        print(f'cl_wa_3d and cl_ll_3d[nbl_GC:nbl_WL, :, :] are not exactly equal, but have a relative '
-              f'difference of less than {rtol}')
-
-# ! BNT transform the cls (and responses?) - it's more complex since I also have to transform the noise
-# ! spectra, better to transform directly the covariance matrix
-if general_cfg['cl_BNT_transform']:
-    print('BNT-transforming the Cls...')
-    assert covariance_cfg['cov_BNT_transform'] is False, \
-        'the BNT transform should be applied either to the Cls or to the covariance, not both'
-    cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, bnt_matrix, 'L', 'L')
-    cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, bnt_matrix, 'L', 'L')
-    cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5d, bnt_matrix)
-    warnings.warn('you should probably BNT-transform the responses too!')
-
-# ! cut datavectors and responses in the pessimistic case; be carful of WA, because it does not start from ell_min
-if ell_max_WL == 1500:
-    warnings.warn(
-        'you are cutting the datavectors and responses in the pessimistic case, but is this compatible '
-        'with the redshift-dependent ell cuts? Yes, this is an old warning; nonetheless, check ')
-    assert False, 'you should check this'
-    cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
-    cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
-    cl_wa_3d = cl_ll_3d[nbl_GC:nbl_WL, :, :]
-    cl_3x2pt_5d = cl_3x2pt_5d[:nbl_3x2pt, :, :]
-
-    rl_ll_3d = rl_ll_3d[:nbl_WL, :, :]
-    rl_gg_3d = rl_gg_3d[:nbl_GC, :, :]
-    rl_wa_3d = rl_ll_3d[nbl_GC:nbl_WL, :, :]
-    rl_3x2pt_5d = rl_3x2pt_5d[:nbl_3x2pt, :, :]
-
-# ! Vincenzo's method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
-if general_cfg['center_or_min'] == 'center':
-    prefix = 'ell'
-elif general_cfg['center_or_min'] == 'min':
-    prefix = 'ell_edges'
-else:
-    raise ValueError('general_cfg["center_or_min"] should be either "center" or "min"')
-
-ell_dict['idxs_to_delete_dict'] = {
-    'LL': get_idxs_to_delete(ell_dict[f'{prefix}_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True),
-    'GG': get_idxs_to_delete(ell_dict[f'{prefix}_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True),
-    'WA': get_idxs_to_delete(ell_dict[f'{prefix}_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True),
-    'GL': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False),
-    'LG': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
-    '3x2pt': get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict)
-}
-
-# ! 3d cl ell cuts (*after* BNT!!)
-cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
-    ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc)
-# TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance and derivatives level)
-
-# TODO delete this
-rl_ll_3d, rl_gg_3d, rl_wa_3d, rl_3x2pt_5d = np.ones_like(cl_ll_3d), np.ones_like(cl_gg_3d), np.ones_like(cl_wa_3d), \
-    np.ones_like(cl_3x2pt_5d)
-# store cls and responses in a dictionary
-cl_dict_3D = {
-    'cl_LL_3D': cl_ll_3d,
-    'cl_GG_3D': cl_gg_3d,
-    'cl_WA_3D': cl_wa_3d,
-    'cl_3x2pt_5D': cl_3x2pt_5d}
-
-rl_dict_3D = {
-    'rl_LL_3D': rl_ll_3d,
-    'rl_GG_3D': rl_gg_3d,
-    'rl_WA_3D': rl_wa_3d,
-    'rl_3x2pt_5D': rl_3x2pt_5d}
-
-# this is again to test against ccl cls
-general_cfg['cl_ll_3d'] = cl_ll_3d
-general_cfg['cl_gl_3d'] = cl_gl_3d
-general_cfg['cl_gg_3d'] = cl_gg_3d
-
-if covariance_cfg['compute_SSC'] and covariance_cfg['ng_cov_code'] == 'PySSC':
-
-    transp_stacked_wf = np.vstack((wf_lensing.T, wf_galaxy.T))
-    # ! compute or load Sijkl
-    nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
-    Sijkl_folder = Sijkl_cfg['Sijkl_folder']
-    assert general_cfg[
-        'cl_BNT_transform'] is False, 'for SSC, at the moment the BNT transform should not be ' \
-        'applied to the cls, but to the covariance matrix (how ' \
-        'should we deal with the responses in the former case?)'
-    Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(
-        flagship_version=general_cfg['flagship_version'],
-        nz=nz, IA_flag=Sijkl_cfg['has_IA'],
-        **variable_specs)
-
-    # if Sijkl exists, load it; otherwise, compute it and save it
-    if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
-        print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
-        Sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
-    else:
-        Sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
-                                          Sijkl_cfg['wf_normalization'])
-        np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
-
-else:
-    warnings.warn('Sijkl is not computed, but set to identity')
-    Sijkl = np.ones((n_probes * zbins, n_probes * zbins, n_probes * zbins, n_probes * zbins))
-
-# ! compute covariance matrix
-# TODO: if already existing, don't compute the covmat, like done above for Sijkl
-cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                    ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix)
-
-if covariance_cfg['load_CLOE_benchmark_cov']:
-    warnings.warn('OVERWRITING cov_dict WITH CLOE BENCHMARKS')
-    cov_dict['cov_WL_GO_2D'] = cov_wl_g_nbl29_2ddav
-    cov_dict['cov_XC_GO_2D'] = cov_xc_g_nbl29_2ddav
-    cov_dict['cov_GC_GO_2D'] = cov_gc_g_nbl29_2ddav
-    cov_dict['cov_3x2pt_GO_2D'] = cov_3x2pt_g_nbl29_2ddav
-
-    cov_dict['cov_WL_GS_2D'] = cov_wl_gs_nbl29_2ddav
-    cov_dict['cov_XC_GS_2D'] = cov_xc_gs_nbl29_2ddav
-    cov_dict['cov_GC_GS_2D'] = cov_gc_gs_nbl29_2ddav
-    cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_gs_nbl29_2ddav
-
-
-covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
-
-if ep_or_ed == 'EP' and covariance_cfg['ng_cov_code'] == 'Spaceborne' and covariance_cfg['test_against_CLOE_benchmarks'] \
-        and general_cfg['ell_cuts'] is False and which_pk == 'HMCodeBar':
-
-    # load benchmark cov and check that it matches the one computed here; I am not actually using it
-    if not general_cfg['BNT_transform']:
-
-        # load CLOE benchmarks
-        cov_cloe_bench_2d_G = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-Gauss-{nbl_WL_opt}Bins.npy')
-        cov_cloe_bench_2dcloe_GSSC = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.npy')
-
-        # reshape it in dav format
-        cov_bench_2ddav_G = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2d_G, nbl_WL_opt, zbins, 'ell', 'ell')
-        cov_bench_2ddav_GSSC = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2dcloe_GSSC, nbl_WL_opt, zbins, 'ell', 'ell')
-
-        # ell cut, if needed
-        assert cov_dict['cov_3x2pt_GO_2D'].shape == cov_dict['cov_3x2pt_GS_2D'].shape, \
-            'cov_3x2pt_GO_2D and cov_3x2pt_GS_2D should have the same shape'
-        n_cov_elements = cov_dict['cov_3x2pt_GO_2D'].shape[0]
-        cov_bench_2ddav_G_lmax3000 = cov_bench_2ddav_G[:n_cov_elements, :n_cov_elements]
-        cov_bench_2ddav_GSSC_lmax3000 = cov_bench_2ddav_GSSC[:n_cov_elements, :n_cov_elements]
-
-        mm.compare_arrays(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_G_lmax3000,
-                          "cov_dict['cov_3x2pt_GO_2D']", "cov_bench_2ddav_G_lmax3000",
-                          log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
-        mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_GSSC_lmax3000,
-                          "cov_dict['cov_3x2pt_GS_2D']", "cov_bench_2ddav_GSSC_lmax3000",
-                          log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
-
-    del cov_bench_2ddav_G_lmax3000, cov_bench_2ddav_GSSC_lmax3000
-    gc.collect()
-
-if covariance_cfg['compute_GSSC_condition_number']:
-
-    cond_number = np.linalg.cond(cov_dict['cov_3x2pt_GS_2D'])
-    NUMPY_PRECISION = np.finfo(float).eps
-    precision = cond_number * NUMPY_PRECISION
-    print(f'kmax = {kmax_h_over_Mpc}, precision in the inversion of GS covariance = '
-          f'{precision:.2e}, cond number = {cond_number:.2e}')
-
-if covariance_cfg['test_against_benchmarks']:
-    cov_benchmark_folder = f'{cov_folder}/benchmarks'
-    mm.test_folder_content(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
-
-if covariance_cfg['test_against_vincenzo'] and bnt_transform == False and not general_cfg['use_CLOE_cls']:
-    cov_vinc_filename = covariance_cfg['cov_vinc_filename'].format(**variable_specs, probe='3x2pt')
-    cov_vinc_g = np.load(f'{covariance_cfg["cov_vinc_folder"]}/{cov_vinc_filename}')['arr_0']
-    num_elements_nbl29 = cov_dict['cov_3x2pt_GO_2D'].shape[0]
-    npt.assert_allclose(cov_dict['cov_3x2pt_GO_2D'], cov_vinc_g[:num_elements_nbl29, :num_elements_nbl29],
-                        rtol=1e-3, atol=0, err_msg='cov_dict["cov_3x2pt_GO_2D"] does not match with Vincenzo\'s')
-    print('covariance matrix matches with Vincenzo\'s ✅')
-
-# ! compute Fisher matrix
-if not fm_cfg['compute_FM']:
-    # this guard is just to avoid indenting the whole code below
-    raise KeyboardInterrupt('skipping FM computation, the script will exit now')
 
 # import and store derivative in one big dictionary
 

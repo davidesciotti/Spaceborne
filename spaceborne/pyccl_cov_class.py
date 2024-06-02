@@ -238,22 +238,6 @@ class PycclClass():
                                                                                             p_of_k_a=p_of_k_a,
                                                                                             **additional_args)
 
-                    # save responses
-                    # if which_ng_cov == 'SSC' and pyccl_cfg['save_hm_responses']:
-                    #     for key, value in self.responses_dict.items():
-                    #         np.save(f"{tkka_path}/{key}_{probe_block}.npy", value)
-
-                    # if save_tkka:
-                    #     (a_arr, k1_arr, k2_arr, tk3d_arr_list) = self.tkka_dict[A, B, C, D].get_spline_arrays()
-                    #     np.save(f'{tkka_path}/a_arr_tkka_{probe_block}_{k_z_str}.npy', a_arr)
-                    #     np.save(f'{tkka_path}/k1_arr_tkka_{probe_block}_{k_z_str}.npy', k1_arr)
-                    #     np.save(f'{tkka_path}/k2_arr_tkka_{probe_block}_{k_z_str}.npy', k2_arr)
-                    #     # for SSC, the tK3D is factorizable and there are two items in the tk3d_arr_list; for cNG, just one
-                    #     if which_ng_cov == 'SSC':
-                    #         np.save(f'{tkka_path}/pk1_arr_tkka_{probe_block}_{k_z_str}.npy', tk3d_arr_list[0])
-                    #         np.save(f'{tkka_path}/pk2_arr_tkka_{probe_block}_{k_z_str}.npy', tk3d_arr_list[1])
-                    #     elif which_ng_cov == 'cNG':
-                    #         np.save(f'{tkka_path}/tkk_arr_{probe_block}_{k_z_str}.npy', tk3d_arr_list[0])
 
         print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
 
@@ -280,7 +264,7 @@ class PycclClass():
         cov_ng_4D = np.zeros((nbl, nbl, zpairs_AB, zpairs_CD))
         for ij in tqdm(range(zpairs_AB)):
             for kl in range(zpairs_CD):
-                cov_ng_4D[:, :, ij, kl] = ng_cov_func(cosmo,
+                cov_ng_4D[:, :, ij, kl] = ng_cov_func(self.cosmo,
                                                       tracer1=kernel_A[ind_AB[ij, -2]],
                                                       tracer2=kernel_B[ind_AB[ij, -1]],
                                                       ell=ell,
@@ -514,6 +498,7 @@ class PycclClass():
 
             ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=area_deg2, nside=nside))
             cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=area_deg2, nside=nside))
+            warnings.warn('should I normalize the mask??')
 
             k_grid_tkka = np.geomspace(pyccl_cfg['k_grid_tkka_min'],
                                        pyccl_cfg['k_grid_tkka_max'],

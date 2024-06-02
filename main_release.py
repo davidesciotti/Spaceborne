@@ -515,6 +515,12 @@ nbl_WL = len(ell_dict['ell_WL'])
 nbl_GC = len(ell_dict['ell_GC'])
 nbl_WA = len(ell_dict['ell_WA'])
 nbl_3x2pt = nbl_GC
+
+assert len(ell_dict['ell_3x2pt']) == len(ell_dict['ell_XC']) == len(ell_dict['ell_GC']), '3x2pt, XC and GC should '\
+    ' have the same number of ell bins'
+assert np.all(ell_dict['ell_3x2pt'] == ell_dict['ell_XC']), '3x2pt and XC should have the same ell values'
+assert np.all(ell_dict['ell_3x2pt'] == ell_dict['ell_GC']), '3x2pt and GC should have the same ell values'
+
 # ! the main should not change the cfg...
 general_cfg['nbl_WL'] = nbl_WL
 general_cfg['nbl_GC'] = nbl_GC
@@ -752,40 +758,40 @@ if general_cfg['which_cls'] == 'Vincenzo':
     cl_gg_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
     cl_wa_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
     cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
-    
+
     cl_gl_3d_vinc = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
     cl_ll_3d = cl_ll_3d_vinc
     cl_gg_3d = cl_gg_3d_vinc
     cl_wa_3d = cl_wa_3d_vinc
     cl_gl_3d = cl_gl_3d_vinc
-    
+
 elif general_cfg['which_cls'] == 'CLOE':
     # import CLOE cls
     cloe_bench_path = general_cfg["CLOE_benchmarks_path"].format(ROOT=ROOT)
     cl_ll_2d = np.genfromtxt(f'{cloe_bench_path}/Cls_zNLA_ShearShear_C00.dat')
     cl_gl_2d = np.genfromtxt(f'{cloe_bench_path}/Cls_zNLA_PosShear_C00.dat')
     cl_gg_2d = np.genfromtxt(f'{cloe_bench_path}/Cls_zNLA_PosPos_C00.dat')
-    
+
     ells_nbl32 = cl_ll_2d[:, 0]
-    
+
     # some checks on the ell values
     np.testing.assert_allclose(cl_ll_2d[:, 0], cl_gl_2d[:, 0], atol=0, rtol=1e-10)
     np.testing.assert_allclose(cl_ll_2d[:, 0], cl_gg_2d[:, 0], atol=0, rtol=1e-10)
     np.testing.assert_allclose(cl_ll_2d[:, 0], ell_ref_nbl32, atol=0, rtol=1e-10)
     np.testing.assert_allclose(cl_ll_2d[:, 0][:nbl_3x2pt], ell_dict['ell_3x2pt'], atol=0, rtol=1e-10)
-    
+
     cl_ll_2d = cl_ll_2d[:, 1:]
     cl_gl_2d = cl_gl_2d[:, 1:]
     cl_gg_2d = cl_gg_2d[:, 1:]
-    
+
     cl_ll_3d = mm.cl_2D_to_3D_symmetric(cl_ll_2d, nbl=nbl_WL_opt, zpairs=zpairs_auto, zbins=zbins)
     cl_gl_3d = mm.cl_2D_to_3D_asymmetric(cl_gl_2d, nbl=nbl_WL_opt, zbins=zbins, order='C')
     cl_gg_3d = mm.cl_2D_to_3D_symmetric(cl_gg_2d, nbl=nbl_WL_opt, zpairs=zpairs_auto, zbins=zbins)
-    
+
 elif general_cfg['which_cls'] == 'CCL':
     cl_ll_3d, cl_gl_3d, cl_gg_3d, cl_wa_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d, ccl_obj.cl_wa_3d
-    
-else: 
+
+else:
     raise ValueError(f"general_cfg['which_cls'] = must be in ['Vincenzo', 'CLOE', 'CCL']")
 
 
@@ -796,18 +802,18 @@ fig.subplots_adjust(hspace=0)
 
 for zi in range(zbins):
     zj = zi
-    ax[0, 0].loglog(ell_dict['ell_WL'], cl_ll_3d[:, zi, zj][:29], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 0].loglog(ell_dict['ell_WL'], cl_ll_3d[:, zi, zj][:nbl_WL], ls="-", c=clr[zi], alpha=0.6)
     ax[0, 0].loglog(ell_dict['ell_WL'], ccl_obj.cl_ll_3d[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
-    ax[0, 1].loglog(ell_dict['ell_XC'], cl_gl_3d[:, zi, zj][:29], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 1].loglog(ell_dict['ell_XC'], cl_gl_3d[:, zi, zj][:nbl_3x2pt], ls="-", c=clr[zi], alpha=0.6)
     ax[0, 1].loglog(ell_dict['ell_XC'], ccl_obj.cl_gl_3d[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
-    ax[0, 2].loglog(ell_dict['ell_GC'], cl_gg_3d[:, zi, zj][:29], ls="-", c=clr[zi], alpha=0.6)
+    ax[0, 2].loglog(ell_dict['ell_GC'], cl_gg_3d[:, zi, zj][:nbl_GC], ls="-", c=clr[zi], alpha=0.6)
     ax[0, 2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
-    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(cl_ll_3d[:29], ccl_obj.cl_ll_3d)[:, zi, zj], c=clr[zi])
-    ax[1, 1].plot(ell_dict['ell_XC'], mm.percent_diff(cl_gl_3d[:29], ccl_obj.cl_gl_3d)[:, zi, zj], c=clr[zi])
-    ax[1, 2].plot(ell_dict['ell_GC'], mm.percent_diff(cl_gg_3d[:29], ccl_obj.cl_gg_3d)[:, zi, zj], c=clr[zi])
+    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(cl_ll_3d[:nbl_3x2p], ccl_obj.cl_ll_3d)[:, zi, zj], c=clr[zi])
+    ax[1, 1].plot(ell_dict['ell_XC'], mm.percent_diff(cl_gl_3d[:nbl_3x2p], ccl_obj.cl_gl_3d)[:, zi, zj], c=clr[zi])
+    ax[1, 2].plot(ell_dict['ell_GC'], mm.percent_diff(cl_gg_3d[:nbl_3x2p], ccl_obj.cl_gg_3d)[:, zi, zj], c=clr[zi])
 
 ax[1, 0].set_xlabel('$\\ell$')
 ax[1, 1].set_xlabel('$\\ell$')
@@ -821,18 +827,18 @@ plt.show()
 
 # matshow for GL, to make sure it's not LG
 ell_idx = 10
-mm.compare_arrays(cl_gl_3d[ell_idx, ...], ccl_obj.cl_gl_3d[ell_idx, ...], abs_val=True, log_array=True, 
+mm.compare_arrays(cl_gl_3d[ell_idx, ...], ccl_obj.cl_gl_3d[ell_idx, ...], abs_val=True, log_array=True,
                   name_A='used GL', name_B='CCL GL')
 
 
 # again, save in ASCII format for OneCovariance
-which_pk = general_cfg['which_pk']
-mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
-                  f'Cell_ll_SPV3_{general_cfg["which_cls"]}', cl_ll_3d, ell_dict['ell_3x2pt'], zbins)
-mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
-                  f'Cell_gl_SPV3_{general_cfg["which_cls"]}', cl_gl_3d, ell_dict['ell_3x2pt'], zbins)
-mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
-                  f'Cell_gg_SPV3_{general_cfg["which_cls"]}', cl_gg_3d, ell_dict['ell_3x2pt'], zbins)
+# which_pk = general_cfg['which_pk']
+# mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
+#                   f'Cell_ll_SPV3_{general_cfg["which_cls"]}', cl_ll_3d, ell_dict['ell_3x2pt'], zbins)
+# mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
+#                   f'Cell_gl_SPV3_{general_cfg["which_cls"]}', cl_gl_3d, ell_dict['ell_3x2pt'], zbins)
+# mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
+#                   f'Cell_gg_SPV3_{general_cfg["which_cls"]}', cl_gg_3d, ell_dict['ell_3x2pt'], zbins)
 
 
 # !============================= derivatives ===================================
@@ -1438,12 +1444,6 @@ if not fm_cfg['compute_FM']:
     raise KeyboardInterrupt('skipping FM computation, the script will exit now')
 
 
-
-
-
-
-
-
 # list_params_to_vary = list(fid_pars_dict['FM_ordered_params'].keys())
 list_params_to_vary = [param for param in fid_pars_dict['FM_ordered_params'].keys() if param != 'ODE']
 # list_params_to_vary = ['h', 'wa', 'dzWL01', 'm06', 'bG02', 'bM02']
@@ -1678,19 +1678,6 @@ for param in list_params_to_vary:
     plt.legend(lines, ['davide', 'vincenzo'], loc='upper center', bbox_to_anchor=(1.55, 1))
     plt.show()
 """
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # import and store derivative in one big dictionary

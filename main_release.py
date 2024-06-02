@@ -1254,8 +1254,16 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
         cfg_sigma2_b = sigma2_b_dict['cfg']  # TODO check that the cfg matches the one
         sigma2_b = sigma2_b_dict['sigma2_b']
     else:
-        sigma2_b = sigma2_SSC.compute_sigma2(z_grid_ssc_integrands, k_grid_sigma2, which_sigma2_B,
-                                             ccl_obj.cosmo_ccl, parallel=False, vectorize=True)
+        # TODO input ell and cl mask
+        sigma2_b = np.zeros((len(z_grid_ssc_integrands), len(z_grid_ssc_integrands)))
+        for z2_idx, z2 in enumerate(tqdm(z_grid_ssc_integrands)):
+            sigma2_b[:, z2_idx] = sigma2_SSC.sigma2_func_vectorized(
+                z1_arr=z_grid_ssc_integrands,
+                z2=z2, k_grid_sigma2=k_grid_sigma2,
+                cosmo_ccl=ccl_obj.cosmo_ccl,
+                which_sigma2_B=which_sigma2_B,
+                ell_mask=None, cl_mask=None)
+
         sigma2_b_dict_tosave = {
             'cfg': cfg,
             'sigma2_b': sigma2_b,
@@ -1322,49 +1330,6 @@ elif covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
         path=cov_folder,
         filename=cov_sb_filename,
         probe_ordering=probe_ordering)
-
-
-if covariance_cfg['load_CLOE_benchmark_cov']:
-
-    cloe_bench_path = covariance_cfg['CLOE_benchmark_cov_path'].format(ROOT=ROOT)
-    cov_3x2pt_g_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins.npy')
-    cov_3x2pt_gs_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins.npy')
-
-    num_elem_auto_nbl32 = zpairs_auto * 32
-    num_elem_cross_nbl32 = zpairs_cross * 32
-
-    # Cut the probe blocks: once I do this, I'm back in the ell-zpair (dav) ordering!
-    cov_wl_g_nbl32_2ddav = deepcopy(cov_3x2pt_g_nbl32_2dcloe)[:num_elem_auto_nbl32, :num_elem_auto_nbl32]
-    cov_xc_g_nbl32_2ddav = deepcopy(cov_3x2pt_g_nbl32_2dcloe)[num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32,
-                                                              num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32]
-    cov_gc_g_nbl32_2ddav = deepcopy(cov_3x2pt_g_nbl32_2dcloe)[num_elem_auto_nbl32 + num_elem_cross_nbl32:,
-                                                              num_elem_auto_nbl32 + num_elem_cross_nbl32:]
-
-    cov_wl_gs_nbl32_2ddav = deepcopy(cov_3x2pt_gs_nbl32_2dcloe)[:num_elem_auto_nbl32, :num_elem_auto_nbl32]
-    cov_xc_gs_nbl32_2ddav = deepcopy(cov_3x2pt_gs_nbl32_2dcloe)[num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32,
-                                                                num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32]
-    cov_gc_gs_nbl32_2ddav = deepcopy(cov_3x2pt_gs_nbl32_2dcloe)[num_elem_auto_nbl32 + num_elem_cross_nbl32:,
-                                                                num_elem_auto_nbl32 + num_elem_cross_nbl32:]
-
-    # now cut to 29 bins
-    num_elem_auto_nbl29 = zpairs_auto * 29
-    num_elem_cross_nbl29 = zpairs_cross * 29
-    cov_wl_g_nbl29_2ddav = cov_wl_g_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
-    cov_xc_g_nbl29_2ddav = cov_xc_g_nbl32_2ddav[:num_elem_cross_nbl29, :num_elem_cross_nbl29]
-    cov_gc_g_nbl29_2ddav = cov_gc_g_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
-
-    cov_wl_gs_nbl29_2ddav = cov_wl_gs_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
-    cov_xc_gs_nbl29_2ddav = cov_xc_gs_nbl32_2ddav[:num_elem_cross_nbl29, :num_elem_cross_nbl29]
-    cov_gc_gs_nbl29_2ddav = cov_gc_gs_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
-
-    # reshape to dav
-    cov_3x2pt_g_nbl32_2ddav = mm.cov_2d_cloe_to_dav(cov_3x2pt_g_nbl32_2dcloe, 32, zbins, 'ell', 'ell')
-    cov_3x2pt_gs_nbl32_2ddav = mm.cov_2d_cloe_to_dav(cov_3x2pt_gs_nbl32_2dcloe, 32, zbins, 'ell', 'ell')
-
-    # cut last 3 ell bins
-    num_elem_tot_nbl29 = (zpairs_auto * 2 + zpairs_cross) * 29
-    cov_3x2pt_g_nbl29_2ddav = cov_3x2pt_g_nbl32_2ddav[:num_elem_tot_nbl29, :num_elem_tot_nbl29]
-    cov_3x2pt_gs_nbl29_2ddav = cov_3x2pt_gs_nbl32_2ddav[:num_elem_tot_nbl29, :num_elem_tot_nbl29]
 
 
 # this is not very elegant, find a better solution
@@ -1562,6 +1527,47 @@ cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
 
 if covariance_cfg['load_CLOE_benchmark_cov']:
     warnings.warn('OVERWRITING cov_dict WITH CLOE BENCHMARKS')
+
+    cloe_bench_path = covariance_cfg['CLOE_benchmarks_path'].format(ROOT=ROOT)
+    cov_3x2pt_g_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins.npy')
+    cov_3x2pt_gs_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins.npy')
+
+    num_elem_auto_nbl32 = zpairs_auto * 32
+    num_elem_cross_nbl32 = zpairs_cross * 32
+
+    # Cut the probe blocks: once I do this, I'm back in the ell-zpair (dav) ordering!
+    cov_wl_g_nbl32_2ddav = deepcopy(cov_3x2pt_g_nbl32_2dcloe)[:num_elem_auto_nbl32, :num_elem_auto_nbl32]
+    cov_xc_g_nbl32_2ddav = deepcopy(cov_3x2pt_g_nbl32_2dcloe)[num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32,
+                                                              num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32]
+    cov_gc_g_nbl32_2ddav = deepcopy(cov_3x2pt_g_nbl32_2dcloe)[num_elem_auto_nbl32 + num_elem_cross_nbl32:,
+                                                              num_elem_auto_nbl32 + num_elem_cross_nbl32:]
+
+    cov_wl_gs_nbl32_2ddav = deepcopy(cov_3x2pt_gs_nbl32_2dcloe)[:num_elem_auto_nbl32, :num_elem_auto_nbl32]
+    cov_xc_gs_nbl32_2ddav = deepcopy(cov_3x2pt_gs_nbl32_2dcloe)[num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32,
+                                                                num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32]
+    cov_gc_gs_nbl32_2ddav = deepcopy(cov_3x2pt_gs_nbl32_2dcloe)[num_elem_auto_nbl32 + num_elem_cross_nbl32:,
+                                                                num_elem_auto_nbl32 + num_elem_cross_nbl32:]
+
+    # now cut to 29 bins
+    num_elem_auto_nbl29 = zpairs_auto * 29
+    num_elem_cross_nbl29 = zpairs_cross * 29
+    cov_wl_g_nbl29_2ddav = cov_wl_g_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
+    cov_xc_g_nbl29_2ddav = cov_xc_g_nbl32_2ddav[:num_elem_cross_nbl29, :num_elem_cross_nbl29]
+    cov_gc_g_nbl29_2ddav = cov_gc_g_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
+
+    cov_wl_gs_nbl29_2ddav = cov_wl_gs_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
+    cov_xc_gs_nbl29_2ddav = cov_xc_gs_nbl32_2ddav[:num_elem_cross_nbl29, :num_elem_cross_nbl29]
+    cov_gc_gs_nbl29_2ddav = cov_gc_gs_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
+
+    # reshape to dav
+    cov_3x2pt_g_nbl32_2ddav = mm.cov_2d_cloe_to_dav(cov_3x2pt_g_nbl32_2dcloe, 32, zbins, 'ell', 'ell')
+    cov_3x2pt_gs_nbl32_2ddav = mm.cov_2d_cloe_to_dav(cov_3x2pt_gs_nbl32_2dcloe, 32, zbins, 'ell', 'ell')
+
+    # cut last 3 ell bins
+    num_elem_tot_nbl29 = (zpairs_auto * 2 + zpairs_cross) * 29
+    cov_3x2pt_g_nbl29_2ddav = cov_3x2pt_g_nbl32_2ddav[:num_elem_tot_nbl29, :num_elem_tot_nbl29]
+    cov_3x2pt_gs_nbl29_2ddav = cov_3x2pt_gs_nbl32_2ddav[:num_elem_tot_nbl29, :num_elem_tot_nbl29]
+
     cov_dict['cov_WL_GO_2D'] = cov_wl_g_nbl29_2ddav
     cov_dict['cov_XC_GO_2D'] = cov_xc_g_nbl29_2ddav
     cov_dict['cov_GC_GO_2D'] = cov_gc_g_nbl29_2ddav
@@ -1867,24 +1873,25 @@ fm_dict_toplot = deepcopy(fm_dict)
 del fm_dict_toplot['fiducial_values_dict']
 for key in list(fm_dict_toplot.keys()):
     if key != 'fiducial_values_dict' and '_WA_' not in key and '_2x2pt_' not in key:
-        
+
         print(key)
 
         fm = deepcopy(fm_dict_toplot[key])
 
         masked_fm_dict[key], masked_fid_pars_dict[key] = mm.mask_fm_v2(fm, fid_pars_dict['FM_ordered_params'],
-                                                        names_params_to_fix=names_params_to_fix,
-                                                        remove_null_rows_cols=True)
+                                                                       names_params_to_fix=names_params_to_fix,
+                                                                       remove_null_rows_cols=True)
 
         if not fix_shear_bias and any(item in key for item in ['WL', 'XC', '3x2pt']):
             print(f'adding shear bias Gaussian prior to {key}')
             shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
             masked_fm_dict[key] = mm.add_prior_to_fm(masked_fm_dict[key], masked_fid_pars_dict[key],
-                                           shear_bias_param_names, shear_bias_prior_values)
+                                                     shear_bias_param_names, shear_bias_prior_values)
 
         if not fix_dz:
             print(f'adding dz Gaussian prior to {key}')
-            masked_fm_dict[key] = mm.add_prior_to_fm(masked_fm_dict[key], masked_fid_pars_dict[key], dz_param_names, dz_prior)
+            masked_fm_dict[key] = mm.add_prior_to_fm(
+                masked_fm_dict[key], masked_fid_pars_dict[key], dz_param_names, dz_prior)
 
         uncert_dict[key] = mm.uncertainties_fm_v2(masked_fm_dict[key], masked_fid_pars_dict[key],
                                                   which_uncertainty='marginal',
@@ -1896,7 +1903,6 @@ for key in list(fm_dict_toplot.keys()):
 
         w0wa_idxs = param_names.index('wz'), param_names.index('wa')
         fom_dict[key] = mm.compute_FoM(masked_fm_dict[key], w0wa_idxs=w0wa_idxs)
-        
 
 
 # compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
@@ -1963,14 +1969,14 @@ for probe in probes:
 
     plot_lib.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                       param_names_label=None, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
-    # plt.yscale('log')    
+    # plt.yscale('log')
 
 
-# plot_lib.triangle_plot(masked_fm_dict['FM_3x2pt_GSSC'], masked_fm_dict['FM_3x2pt_G'], 
-#                        fiducials=list(masked_fid_pars_dict['FM_3x2pt_G'].values()), 
-#                        title='3x2pt', 
-#                        label_background='G + SSC', 
-#                        label_foreground='G', 
+# plot_lib.triangle_plot(masked_fm_dict['FM_3x2pt_GSSC'], masked_fm_dict['FM_3x2pt_G'],
+#                        fiducials=list(masked_fid_pars_dict['FM_3x2pt_G'].values()),
+#                        title='3x2pt',
+#                        label_background='G + SSC',
+#                        label_foreground='G',
 #                        param_names_labels=list(masked_fid_pars_dict['FM_3x2pt_G'].keys()),
 #                        param_names_labels_toplot=list(masked_fid_pars_dict['FM_3x2pt_G'].keys()))
 

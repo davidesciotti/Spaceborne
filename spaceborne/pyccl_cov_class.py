@@ -23,7 +23,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
-ccl.spline_params['A_SPLINE_NA_PK'] = 270  # gives CAMB error if too high
+ccl.spline_params['A_SPLINE_NA_PK'] = 240  # gives CAMB error if too high
 
 
 class PycclClass():
@@ -264,7 +264,7 @@ class PycclClass():
         cov_ng_4D = np.zeros((nbl, nbl, zpairs_AB, zpairs_CD))
         for ij in tqdm(range(zpairs_AB)):
             for kl in range(zpairs_CD):
-                cov_ng_4D[:, :, ij, kl] = ng_cov_func(cosmo,
+                cov_ng_4D[:, :, ij, kl] = ng_cov_func(self.cosmo,
                                                       tracer1=kernel_A[ind_AB[ij, -2]],
                                                       tracer2=kernel_B[ind_AB[ij, -1]],
                                                       ell=ell,
@@ -498,6 +498,7 @@ class PycclClass():
 
             ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=area_deg2, nside=nside))
             cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=area_deg2, nside=nside))
+            warnings.warn('should I normalize the mask??')
 
             k_grid_tkka = np.geomspace(pyccl_cfg['k_grid_tkka_min'],
                                        pyccl_cfg['k_grid_tkka_max'],

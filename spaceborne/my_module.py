@@ -895,6 +895,26 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
 
         if plot_diff or plot_array:
             assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
+            
+        
+        if plot_array:
+            A_toplot, B_toplot = A, B
+
+            if abs_val:
+                A_toplot, B_toplot = np.abs(A), np.abs(B)
+            if log_array:
+                A_toplot, B_toplot = np.log10(A), np.log10(B)
+
+            fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
+            im = ax[0].matshow(A_toplot)
+            ax[0].set_title(f'{name_A}')
+            fig.colorbar(im, ax=ax[0])
+
+            im = ax[1].matshow(B_toplot)
+            ax[1].set_title(f'{name_B}')
+            fig.colorbar(im, ax=ax[1])
+            fig.suptitle(f'log={log_array}, abs={abs_val}')
+            plt.show()
 
         if plot_diff:
             diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=log_diff, abs_val=abs_val)
@@ -918,24 +938,7 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
             fig.suptitle(f'log={log_diff}, abs={abs_val}')
             plt.show()
 
-        if plot_array:
-            A_toplot, B_toplot = A, B
 
-            if abs_val:
-                A_toplot, B_toplot = np.abs(A), np.abs(B)
-            if log_array:
-                A_toplot, B_toplot = np.log10(A), np.log10(B)
-
-            fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
-            im = ax[0].matshow(A_toplot)
-            ax[0].set_title(f'{name_A}')
-            fig.colorbar(im, ax=ax[0])
-
-            im = ax[1].matshow(B_toplot)
-            ax[1].set_title(f'{name_B}')
-            fig.colorbar(im, ax=ax[1])
-            fig.suptitle(f'log={log_array}, abs={abs_val}')
-            plt.show()
 
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):

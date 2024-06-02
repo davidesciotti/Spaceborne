@@ -56,259 +56,6 @@ script_start_time = time.perf_counter()
 # ! new todos
 # TODO make sure youre computing the cls in a consistent way, why do I not see the baryon boost in the rainbow plot?
 
-###############################################################################
-#################### PARAMETERS AND SETTINGS DEFINITION #######################
-###############################################################################
-
-
-def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b):
-    """loads ell_cut values, rescales them and load into a dictionary.
-    z_values_a: redshifts at which to compute the ell_max for a given Limber wavenumber, for probe A
-    z_values_b: redshifts at which to compute the ell_max for a given Limber wavenumber, for probe B
-    """
-    if kmax_h_over_Mpc is None:
-        kmax_h_over_Mpc = general_cfg['kmax_h_over_Mpc_ref']
-
-    if general_cfg['which_cuts'] == 'Francis':
-
-        raise Exception('I want the output to be an array, see the Vincenzo case. probebly best to split these 2 funcs')
-        assert general_cfg['EP_or_ED'] == 'ED', 'Francis cuts are only available for the ED case'
-
-        ell_cuts_fldr = general_cfg['ell_cuts_folder']
-        ell_cuts_filename = general_cfg['ell_cuts_filename']
-        kmax_h_over_Mpc_ref = general_cfg['kmax_h_over_Mpc_ref']
-
-        ell_cuts_LL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}')
-        ell_cuts_GG = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}')
-        warnings.warn('I am not sure this ell_cut file is for GL, the filename is "XC"')
-        ell_cuts_GL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')
-        ell_cuts_LG = ell_cuts_GL.T
-
-        # ! linearly rescale ell cuts
-        warnings.warn('is this the issue with the BNT? kmax_h_over_Mpc_ref is 1, I think...')
-        ell_cuts_LL *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
-        ell_cuts_GG *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
-        ell_cuts_GL *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
-        ell_cuts_LG *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
-
-        ell_cuts_dict = {
-            'LL': ell_cuts_LL,
-            'GG': ell_cuts_GG,
-            'GL': ell_cuts_GL,
-            'LG': ell_cuts_LG
-        }
-
-    elif general_cfg['which_cuts'] == 'Vincenzo':
-        # the "Limber", or "standard" cuts
-
-        kmax_1_over_Mpc = kmax_h_over_Mpc * h
-
-        ell_cuts_array = np.zeros((zbins, zbins))
-        for zi, zval_i in enumerate(z_values_a):
-            for zj, zval_j in enumerate(z_values_b):
-                r_of_zi = csmlib.ccl_comoving_distance(zval_i, use_h_units=False, cosmo_ccl=ccl_obj.cosmo_ccl)
-                r_of_zj = csmlib.ccl_comoving_distance(zval_j, use_h_units=False, cosmo_ccl=ccl_obj.cosmo_ccl)
-                ell_cut_i = kmax_1_over_Mpc * r_of_zi - 1 / 2
-                ell_cut_j = kmax_1_over_Mpc * r_of_zj - 1 / 2
-                ell_cuts_array[zi, zj] = np.min((ell_cut_i, ell_cut_j))
-
-        return ell_cuts_array
-
-    else:
-        raise Exception('which_cuts must be either "Francis" or "Vincenzo"')
-
-    return ell_cuts_dict
-
-
-def cl_ell_cut_wrap(ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc):
-    """Wrapper for the ell cuts. Avoids the 'if general_cfg['cl_ell_cuts']' in the main loop
-    (i.e., we use extraction)"""
-
-    if not general_cfg['cl_ell_cuts']:
-        return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
-
-    warnings.warn('restore this?')
-    # raise Exception('I decided to implement the cuts in 1dim, this function should not be used')
-
-    print('Performing the cl ell cuts...')
-
-    cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_dict['ell_WL'], ell_cuts_dict['LL'])
-    cl_wa_3d = cl_utils.cl_ell_cut(cl_wa_3d, ell_dict['ell_WA'], ell_cuts_dict['LL'])
-    cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_dict['ell_GC'], ell_cuts_dict['GG'])
-    cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt'])
-
-    return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
-
-
-def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum):
-    """ ell_values can be the bin center or the bin lower edge; Francis suggests the second option is better"""
-
-    if is_auto_spectrum:
-        idxs_to_delete = []
-        count = 0
-        for ell_val in ell_values:
-            for zi in range(zbins):
-                for zj in range(zi, zbins):
-                    if ell_val > ell_cuts[zi, zj]:
-                        idxs_to_delete.append(count)
-                    count += 1
-
-    elif not is_auto_spectrum:
-        idxs_to_delete = []
-        count = 0
-        for ell_val in ell_values:
-            for zi in range(zbins):
-                for zj in range(zbins):
-                    if ell_val > ell_cuts[zi, zj]:
-                        idxs_to_delete.append(count)
-                    count += 1
-    else:
-        raise ValueError('is_auto_spectrum must be True or False')
-
-    return idxs_to_delete
-
-
-def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict):
-    """this function tries to implement the indexing for the flattening ell_probe_zpair"""
-
-    if (covariance_cfg['triu_tril'], covariance_cfg['row_col_major']) != ('triu', 'row-major'):
-        raise Exception('This function is only implemented for the triu, row-major case')
-
-    idxs_to_delete_3x2pt = []
-    count = 0
-    for ell_val in ell_values_3x2pt:
-        for zi in range(zbins):
-            for zj in range(zi, zbins):
-                if ell_val > ell_cuts_dict['LL'][zi, zj]:
-                    idxs_to_delete_3x2pt.append(count)
-                count += 1
-        for zi in range(zbins):
-            for zj in range(zbins):
-                if ell_val > ell_cuts_dict['GL'][zi, zj]:
-                    idxs_to_delete_3x2pt.append(count)
-                count += 1
-        for zi in range(zbins):
-            for zj in range(zi, zbins):
-                if ell_val > ell_cuts_dict['GG'][zi, zj]:
-                    idxs_to_delete_3x2pt.append(count)
-                count += 1
-
-    # check if the array is monotonically increasing
-    assert np.all(np.diff(idxs_to_delete_3x2pt) > 0)
-
-    return list(idxs_to_delete_3x2pt)
-
-
-def get_idxs_to_delete_3x2pt_v0(ell_values_3x2pt, ell_cuts_dict):
-    """this implements the indexing for the flattening probe_ell_zpair"""
-    raise Exception('Concatenation must be done *before* flattening, this function is not compatible with the '
-                    '"ell-block ordering of the covariance matrix"')
-    idxs_to_delete_LL = get_idxs_to_delete(ell_values_3x2pt, ell_cuts_dict['LL'], is_auto_spectrum=True)
-    idxs_to_delete_GL = get_idxs_to_delete(ell_values_3x2pt, ell_cuts_dict['GL'], is_auto_spectrum=False)
-    idxs_to_delete_GG = get_idxs_to_delete(ell_values_3x2pt, ell_cuts_dict['GG'], is_auto_spectrum=True)
-
-    # when concatenating, we need to add the offset from the stacking of the 3 datavectors
-    # when concatenating, we need to add the offset from the stacking of the 3 datavectors
-    idxs_to_delete_3x2pt = np.concatenate((
-        np.array(idxs_to_delete_LL),
-        nbl_3x2pt * zpairs_auto + np.array(idxs_to_delete_GL),
-        nbl_3x2pt * (zpairs_auto + zpairs_cross) + np.array(idxs_to_delete_GG)))
-
-    # check if the array is monotonically increasing
-    assert np.all(np.diff(idxs_to_delete_3x2pt) > 0)
-
-    return list(idxs_to_delete_3x2pt)
-
-
-def plot_nz_tocheck_func(zgrid_nz, n_of_z):
-    if not covariance_cfg['plot_nz_tocheck']:
-        return
-    plt.figure()
-    for zi in range(zbins):
-        plt.plot(zgrid_nz, n_of_z[:, zi], label=f'zbin {zi}')
-    plt.legend()
-    plt.xlabel('z')
-    plt.ylabel('n(z)')
-
-
-def plot_ell_cuts_for_thesis(ell_cuts_a, ell_cuts_b, ell_cuts_c, label_a, label_b, label_c, kmax_h_over_Mpc):
-    # Get the global min and max values for the color scale
-    vmin = min(ell_cuts_a.min(), ell_cuts_b.min(), ell_cuts_c.min())
-    vmax = max(ell_cuts_a.max(), ell_cuts_b.max(), ell_cuts_c.min())
-
-    # Create a gridspec layout
-    fig = plt.figure(figsize=(10, 5))
-    gs = gridspec.GridSpec(1, 4, width_ratios=[1, 1, 1, 0.12])
-
-    # Create axes based on the gridspec layout
-    ax0 = plt.subplot(gs[0])
-    ax1 = plt.subplot(gs[1])
-    ax2 = plt.subplot(gs[2])
-    cbar_ax = plt.subplot(gs[3])
-
-    ticks = np.arange(1, zbins + 1)
-    # Set x and y ticks for both subplots
-    for ax in [ax0, ax1, ax2]:
-        ax.set_xticks(np.arange(zbins))
-        ax.set_yticks(np.arange(zbins))
-        ax.set_xticklabels(ticks, fontsize=15)
-        ax.set_yticklabels(ticks, fontsize=15)
-        ax.set_xlabel('$z_{\\rm bin}$', fontsize=15)
-        ax.set_ylabel('$z_{\\rm bin}$', fontsize=15)
-
-    # Display the matrices with the shared color scale
-    cax0 = ax0.matshow(ell_cuts_a, vmin=vmin, vmax=vmax)
-    cax1 = ax1.matshow(ell_cuts_b, vmin=vmin, vmax=vmax)
-    cax2 = ax2.matshow(ell_cuts_c, vmin=vmin, vmax=vmax)
-
-    # Add titles to the plots
-    ax0.set_title(label_a, fontsize=18)
-    ax1.set_title(label_b, fontsize=18)
-    ax2.set_title(label_c, fontsize=18)
-    fig.suptitle(f'{mpl_cfg.kmax_tex} = {kmax_h_over_Mpc:.2f} {mpl_cfg.h_over_mpc_tex}', fontsize=18, y=0.85)
-
-    # Add a shared colorbar on the right
-    cbar = fig.colorbar(cax0, cax=cbar_ax)
-    cbar.set_label('$\\ell^{\\rm max}_{ij}$', fontsize=15, loc='center', )
-    cbar.ax.tick_params(labelsize=15)
-
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_kernels_for_thesis():
-    plt.figure()
-    for zi in range(zbins):
-        # if zi in [2, 10]:
-        #     plt.axvline(z_means_ll[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
-        #     plt.axvline(z_means_ll_bnt[zi], ls='--', c=colors[zi], ymin=0, lw=2, zorder=1)
-        # plt.axvline(z_means[zi], ls='-', c=colors[zi], ymin=0, lw=2, zorder=1)
-
-        plt.plot(zgrid_nz, wf_ll_ccl[:, zi], ls='-', c=clr[zi], alpha=0.6)
-        plt.plot(zgrid_nz, wf_ll_ccl_bnt[:, zi], ls='-', c=clr[zi], alpha=0.6)
-
-        plt.plot(zgrid_wf_vin, wf_ll_vin[:, zi], ls=':', label='$z_{%d}$' % (zi + 1), c=clr[zi], alpha=0.6)
-        plt.plot(zgrid_wf_vin, wf_ll_vin_bnt[:, zi], ls=':', c=clr[zi], alpha=0.6)
-
-    plt.title(
-        f'interpolation_kind {shift_nz_interpolation_kind}, '
-        f'use_ia {include_ia_in_bnt_kernel_for_zcuts}, sigma_gauss {nz_gaussian_smoothing_sigma}\n'
-        f'shift_dz {shift_nz}')
-    plt.xlabel('$z$')
-    plt.ylabel('${\cal K}_i^{\; \gamma}(z)^ \ \\rm{[Mpc^{-1}]}$')
-
-    # Create the first legend
-    ls_dict = {'--': 'standard',
-               '-': 'BNT',
-               ':': '$z_{\\rm mean}$'}
-
-    handles = []
-    for ls, label in ls_dict.items():
-        handles.append(mlines.Line2D([], [], color='black', linestyle=ls, label=label))
-    first_legend = plt.legend(handles=handles, loc='upper right')
-    ax = plt.gca().add_artist(first_legend)
-    plt.legend(loc='lower right')
-
 
 def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
                        ind_auto, ind_cross, cl_integral_prefactor, sigma2, z_grid, integration_type, num_threads=16):
@@ -708,10 +455,10 @@ assert np.all(np.diff(z_means_ll_bnt) > 0), ('z_means_ll_bnt should be monotonic
 
 # 5. compute the ell cuts
 ell_cuts_dict = {}
-ell_cuts_dict['LL'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_ll_bnt, z_values_b=z_means_ll_bnt)
-ell_cuts_dict['GG'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_gg, z_values_b=z_means_gg)
-ell_cuts_dict['GL'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_gg, z_values_b=z_means_ll_bnt)
-ell_cuts_dict['LG'] = load_ell_cuts(kmax_h_over_Mpc, z_values_a=z_means_ll_bnt, z_values_b=z_means_gg)
+ell_cuts_dict['LL'] = ell_utils.load_ell_cuts(kmax_h_over_Mpc, z_means_ll_bnt, z_means_ll_bnt, ccl_obj.cosmo_ccl, zbins, h, general_cfg)
+ell_cuts_dict['GG'] = ell_utils.load_ell_cuts(kmax_h_over_Mpc, z_means_gg, z_means_gg, ccl_obj.cosmo_ccl, zbins, h, general_cfg)
+ell_cuts_dict['GL'] = ell_utils.load_ell_cuts(kmax_h_over_Mpc, z_means_gg, z_means_ll_bnt, ccl_obj.cosmo_ccl, zbins, h, general_cfg)
+ell_cuts_dict['LG'] = ell_utils.load_ell_cuts(kmax_h_over_Mpc, z_means_ll_bnt, z_means_gg, ccl_obj.cosmo_ccl, zbins, h, general_cfg)
 ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the covariance module
 # ! END ELL CUTS
 
@@ -1278,17 +1025,17 @@ else:
     raise ValueError('general_cfg["center_or_min"] should be either "center" or "min"')
 
 ell_dict['idxs_to_delete_dict'] = {
-    'LL': get_idxs_to_delete(ell_dict[f'{prefix}_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True),
-    'GG': get_idxs_to_delete(ell_dict[f'{prefix}_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True),
-    'WA': get_idxs_to_delete(ell_dict[f'{prefix}_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True),
-    'GL': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False),
-    'LG': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
-    '3x2pt': get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict)
+    'LL': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True, zbins=zbins),
+    'GG': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True, zbins=zbins),
+    'WA': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True, zbins=zbins),
+    'GL': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False, zbins=zbins),
+    'LG': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False, zbins=zbins),
+    '3x2pt': ell_utils.get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict, zbins, covariance_cfg)
 }
 
 # ! 3d cl ell cuts (*after* BNT!!)
-cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
-    ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_over_Mpc)
+cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = ell_utils.cl_ell_cut_wrap(
+    ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, ell_cuts_dict, general_cfg)
 # TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance and derivatives level)
 
 # TODO delete this
@@ -1851,6 +1598,7 @@ for key in list(fm_dict_toplot.keys()):
         w0wa_idxs = param_names.index('wz'), param_names.index('wa')
         fom_dict[key] = mm.compute_FoM(masked_fm_dict[key], w0wa_idxs=w0wa_idxs)
 
+
 # compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
 for probe in probes:
 
@@ -1916,6 +1664,7 @@ for probe in probes:
     plot_lib.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                       param_names_label=None, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
     # plt.yscale('log')
+
 
 # plot_lib.triangle_plot(masked_fm_dict['FM_3x2pt_GSSC'], masked_fm_dict['FM_3x2pt_G'],
 #                        fiducials=list(masked_fid_pars_dict['FM_3x2pt_G'].values()),

@@ -1,9 +1,220 @@
 import numpy as np
-
+import spaceborne.cl_preprocessing as cl_utils
+import warnings
+import spaceborne.cosmo_lib as cosmo_lib
 
 ###############################################################################
 ############# CODE TO CREATE THE ELL VALUES ###################################
 ###############################################################################
+
+
+def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b, cosmo_ccl, zbins, h, general_cfg):
+    """loads ell_cut values, rescales them and load into a dictionary.
+    z_values_a: redshifts at which to compute the ell_max for a given Limber wavenumber, for probe A
+    z_values_b: redshifts at which to compute the ell_max for a given Limber wavenumber, for probe B
+    """
+    
+    kmax_h_over_Mpc_ref = general_cfg['kmax_h_over_Mpc_ref']
+    
+    if kmax_h_over_Mpc is None:
+        kmax_h_over_Mpc = kmax_h_over_Mpc_ref
+
+    if general_cfg['which_cuts'] == 'Francis':
+
+        raise Exception('I want the output to be an array, see the Vincenzo case. probebly best to split these 2 funcs')
+        assert general_cfg['EP_or_ED'] == 'ED', 'Francis cuts are only available for the ED case'
+
+        ell_cuts_fldr = general_cfg['ell_cuts_folder']
+        ell_cuts_filename = general_cfg['ell_cuts_filename']
+
+        ell_cuts_LL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}')
+        ell_cuts_GG = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}')
+        warnings.warn('I am not sure this ell_cut file is for GL, the filename is "XC"')
+        ell_cuts_GL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')
+        ell_cuts_LG = ell_cuts_GL.T
+
+        # ! linearly rescale ell cuts
+        warnings.warn('is this the issue with the BNT? kmax_h_over_Mpc_ref is 1, I think...')
+        ell_cuts_LL *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
+        ell_cuts_GG *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
+        ell_cuts_GL *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
+        ell_cuts_LG *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
+
+        ell_cuts_dict = {
+            'LL': ell_cuts_LL,
+            'GG': ell_cuts_GG,
+            'GL': ell_cuts_GL,
+            'LG': ell_cuts_LG
+        }
+
+        return ell_cuts_dict
+    
+    elif general_cfg['which_cuts'] == 'Vincenzo':
+        # the "Limber", or "standard" cuts
+
+        kmax_1_over_Mpc = kmax_h_over_Mpc * h
+
+        ell_cuts_array = np.zeros((zbins, zbins))
+        for zi, zval_i in enumerate(z_values_a):
+            for zj, zval_j in enumerate(z_values_b):
+                r_of_zi = cosmo_lib.ccl_comoving_distance(zval_i, use_h_units=False, cosmo_ccl=cosmo_ccl)
+                r_of_zj = cosmo_lib.ccl_comoving_distance(zval_j, use_h_units=False, cosmo_ccl=cosmo_ccl)
+                ell_cut_i = kmax_1_over_Mpc * r_of_zi - 1 / 2
+                ell_cut_j = kmax_1_over_Mpc * r_of_zj - 1 / 2
+                ell_cuts_array[zi, zj] = np.min((ell_cut_i, ell_cut_j))
+
+        return ell_cuts_array
+
+    else:
+        raise Exception('which_cuts must be either "Francis" or "Vincenzo"')
+
+
+
+def cl_ell_cut_wrap(ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, ell_cuts_dict, general_cfg):
+    """Wrapper for the ell cuts. Avoids the 'if general_cfg['cl_ell_cuts']' in the main loop
+    (i.e., we use extraction)"""
+
+    if not general_cfg['cl_ell_cuts']:
+        return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
+
+    warnings.warn('restore this?')
+    # raise Exception('I decided to implement the cuts in 1dim, this function should not be used')
+
+    print('Performing the cl ell cuts...')
+
+    cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_dict['ell_WL'], ell_cuts_dict['LL'])
+    cl_wa_3d = cl_utils.cl_ell_cut(cl_wa_3d, ell_dict['ell_WA'], ell_cuts_dict['LL'])
+    cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_dict['ell_GC'], ell_cuts_dict['GG'])
+    cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt'])
+
+    return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
+
+
+def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum, zbins):
+    """ ell_values can be the bin center or the bin lower edge; Francis suggests the second option is better"""
+
+    if is_auto_spectrum:
+        idxs_to_delete = []
+        count = 0
+        for ell_val in ell_values:
+            for zi in range(zbins):
+                for zj in range(zi, zbins):
+                    if ell_val > ell_cuts[zi, zj]:
+                        idxs_to_delete.append(count)
+                    count += 1
+
+    elif not is_auto_spectrum:
+        idxs_to_delete = []
+        count = 0
+        for ell_val in ell_values:
+            for zi in range(zbins):
+                for zj in range(zbins):
+                    if ell_val > ell_cuts[zi, zj]:
+                        idxs_to_delete.append(count)
+                    count += 1
+    else:
+        raise ValueError('is_auto_spectrum must be True or False')
+
+    return idxs_to_delete
+
+
+def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict, zbins, covariance_cfg):
+    """this function tries to implement the indexing for the flattening ell_probe_zpair"""
+
+    if (covariance_cfg['triu_tril'], covariance_cfg['row_col_major']) != ('triu', 'row-major'):
+        raise Exception('This function is only implemented for the triu, row-major case')
+
+    idxs_to_delete_3x2pt = []
+    count = 0
+    for ell_val in ell_values_3x2pt:
+        for zi in range(zbins):
+            for zj in range(zi, zbins):
+                if ell_val > ell_cuts_dict['LL'][zi, zj]:
+                    idxs_to_delete_3x2pt.append(count)
+                count += 1
+        for zi in range(zbins):
+            for zj in range(zbins):
+                if ell_val > ell_cuts_dict['GL'][zi, zj]:
+                    idxs_to_delete_3x2pt.append(count)
+                count += 1
+        for zi in range(zbins):
+            for zj in range(zi, zbins):
+                if ell_val > ell_cuts_dict['GG'][zi, zj]:
+                    idxs_to_delete_3x2pt.append(count)
+                count += 1
+
+    # check if the array is monotonically increasing
+    assert np.all(np.diff(idxs_to_delete_3x2pt) > 0)
+
+    return list(idxs_to_delete_3x2pt)
+
+
+def get_idxs_to_delete_3x2pt_v0(ell_values_3x2pt, ell_cuts_dict):
+    """this implements the indexing for the flattening probe_ell_zpair"""
+    raise Exception('Concatenation must be done *before* flattening, this function is not compatible with the '
+                    '"ell-block ordering of the covariance matrix"')
+    idxs_to_delete_LL = get_idxs_to_delete(ell_values_3x2pt, ell_cuts_dict['LL'], is_auto_spectrum=True)
+    idxs_to_delete_GL = get_idxs_to_delete(ell_values_3x2pt, ell_cuts_dict['GL'], is_auto_spectrum=False)
+    idxs_to_delete_GG = get_idxs_to_delete(ell_values_3x2pt, ell_cuts_dict['GG'], is_auto_spectrum=True)
+
+    # when concatenating, we need to add the offset from the stacking of the 3 datavectors
+    # when concatenating, we need to add the offset from the stacking of the 3 datavectors
+    idxs_to_delete_3x2pt = np.concatenate((
+        np.array(idxs_to_delete_LL),
+        nbl_3x2pt * zpairs_auto + np.array(idxs_to_delete_GL),
+        nbl_3x2pt * (zpairs_auto + zpairs_cross) + np.array(idxs_to_delete_GG)))
+
+    # check if the array is monotonically increasing
+    assert np.all(np.diff(idxs_to_delete_3x2pt) > 0)
+
+    return list(idxs_to_delete_3x2pt)
+
+
+
+def plot_ell_cuts_for_thesis(ell_cuts_a, ell_cuts_b, ell_cuts_c, label_a, label_b, label_c, kmax_h_over_Mpc):
+    # Get the global min and max values for the color scale
+    vmin = min(ell_cuts_a.min(), ell_cuts_b.min(), ell_cuts_c.min())
+    vmax = max(ell_cuts_a.max(), ell_cuts_b.max(), ell_cuts_c.min())
+
+    # Create a gridspec layout
+    fig = plt.figure(figsize=(10, 5))
+    gs = gridspec.GridSpec(1, 4, width_ratios=[1, 1, 1, 0.12])
+
+    # Create axes based on the gridspec layout
+    ax0 = plt.subplot(gs[0])
+    ax1 = plt.subplot(gs[1])
+    ax2 = plt.subplot(gs[2])
+    cbar_ax = plt.subplot(gs[3])
+
+    ticks = np.arange(1, zbins + 1)
+    # Set x and y ticks for both subplots
+    for ax in [ax0, ax1, ax2]:
+        ax.set_xticks(np.arange(zbins))
+        ax.set_yticks(np.arange(zbins))
+        ax.set_xticklabels(ticks, fontsize=15)
+        ax.set_yticklabels(ticks, fontsize=15)
+        ax.set_xlabel('$z_{\\rm bin}$', fontsize=15)
+        ax.set_ylabel('$z_{\\rm bin}$', fontsize=15)
+
+    # Display the matrices with the shared color scale
+    cax0 = ax0.matshow(ell_cuts_a, vmin=vmin, vmax=vmax)
+    cax1 = ax1.matshow(ell_cuts_b, vmin=vmin, vmax=vmax)
+    cax2 = ax2.matshow(ell_cuts_c, vmin=vmin, vmax=vmax)
+
+    # Add titles to the plots
+    ax0.set_title(label_a, fontsize=18)
+    ax1.set_title(label_b, fontsize=18)
+    ax2.set_title(label_c, fontsize=18)
+    fig.suptitle(f'{mpl_cfg.kmax_tex} = {kmax_h_over_Mpc:.2f} {mpl_cfg.h_over_mpc_tex}', fontsize=18, y=0.85)
+
+    # Add a shared colorbar on the right
+    cbar = fig.colorbar(cax0, cax=cbar_ax)
+    cbar.set_label('$\\ell^{\\rm max}_{ij}$', fontsize=15, loc='center', )
+    cbar.ax.tick_params(labelsize=15)
+
+    plt.tight_layout()
+    plt.show()
+
 
 
 def generate_ell_and_deltas(general_config):

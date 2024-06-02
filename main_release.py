@@ -701,10 +701,10 @@ plt.xlabel('$z$')
 plt.ylabel(r'$W_i^{\gamma}(z)$')
 
 
-# assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically increasing'
-# assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically increasing'
-# assert np.all(np.diff(z_means_ll_bnt) > 0), ('z_means_ll_bnt should be monotonically increasing '
-#                                              '(not a strict condition, valid only if we do not shift the n(z) in this part)')
+assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically increasing'
+assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically increasing'
+assert np.all(np.diff(z_means_ll_bnt) > 0), ('z_means_ll_bnt should be monotonically increasing '
+                                             '(not a strict condition, valid only if we do not shift the n(z) in this part)')
 
 # 5. compute the ell cuts
 ell_cuts_dict = {}
@@ -741,8 +741,14 @@ ccl_obj.cl_gl_3d = ccl_obj.compute_cls(ell_dict['ell_XC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
 ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
-# TODO set WA in a nicer way?
 ccl_obj.cl_wa_3d = ccl_obj.cl_ll_3d[nbl_3x2pt:nbl_WL]
+
+ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_3x2pt, zbins, zbins))
+ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[:nbl_3x2pt, :, :]
+ccl_obj.cl_3x2pt_5d[1, 0, :, :, :] = ccl_obj.cl_gl_3d[:nbl_3x2pt, :, :]
+ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[:nbl_3x2pt, :, :].transpose(0, 2, 1)
+ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[:nbl_3x2pt, :, :]
+
 
 if general_cfg['which_cls'] == 'Vincenzo':
     # import Vicnenzo's cls, as a quick check (no RSDs in GCph in my Cls!!)
@@ -757,13 +763,14 @@ if general_cfg['which_cls'] == 'Vincenzo':
     cl_ll_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
     cl_gg_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
     cl_wa_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
-    cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
+    cl_3x2pt_5d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
+    cl_gl_3d_vinc = deepcopy(cl_3x2pt_5d_vinc[1, 0, :, :, :])
 
-    cl_gl_3d_vinc = deepcopy(cl_3x2pt_5d[1, 0, :, :, :])
     cl_ll_3d = cl_ll_3d_vinc
     cl_gg_3d = cl_gg_3d_vinc
     cl_wa_3d = cl_wa_3d_vinc
     cl_gl_3d = cl_gl_3d_vinc
+    cl_3x2pt_5d = cl_3x2pt_5d_vinc
 
 elif general_cfg['which_cls'] == 'CLOE':
     # import CLOE cls
@@ -771,8 +778,6 @@ elif general_cfg['which_cls'] == 'CLOE':
     cl_ll_2d = np.genfromtxt(f'{cloe_bench_path}/Cls_zNLA_ShearShear_C00.dat')
     cl_gl_2d = np.genfromtxt(f'{cloe_bench_path}/Cls_zNLA_PosShear_C00.dat')
     cl_gg_2d = np.genfromtxt(f'{cloe_bench_path}/Cls_zNLA_PosPos_C00.dat')
-
-    ells_nbl32 = cl_ll_2d[:, 0]
 
     # some checks on the ell values
     np.testing.assert_allclose(cl_ll_2d[:, 0], cl_gl_2d[:, 0], atol=0, rtol=1e-10)
@@ -787,9 +792,21 @@ elif general_cfg['which_cls'] == 'CLOE':
     cl_ll_3d = mm.cl_2D_to_3D_symmetric(cl_ll_2d, nbl=nbl_WL_opt, zpairs=zpairs_auto, zbins=zbins)
     cl_gl_3d = mm.cl_2D_to_3D_asymmetric(cl_gl_2d, nbl=nbl_WL_opt, zbins=zbins, order='C')
     cl_gg_3d = mm.cl_2D_to_3D_symmetric(cl_gg_2d, nbl=nbl_WL_opt, zpairs=zpairs_auto, zbins=zbins)
+    cl_wa_3d = cl_ll_3d[nbl_3x2pt:nbl_WL]
+
+    cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
+    cl_gl_3d = cl_gl_3d[:nbl_3x2pt, :, :]
+    cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
+
+    cl_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_3x2pt, zbins, zbins))
+    cl_3x2pt_5d[0, 0, :, :, :] = cl_ll_3d[:nbl_3x2pt, :, :]
+    cl_3x2pt_5d[1, 0, :, :, :] = cl_gl_3d[:nbl_3x2pt, :, :]
+    cl_3x2pt_5d[0, 1, :, :, :] = cl_gl_3d[:nbl_3x2pt, :, :].transpose(0, 2, 1)
+    cl_3x2pt_5d[1, 1, :, :, :] = cl_gg_3d[:nbl_3x2pt, :, :]
 
 elif general_cfg['which_cls'] == 'CCL':
     cl_ll_3d, cl_gl_3d, cl_gg_3d, cl_wa_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d, ccl_obj.cl_wa_3d
+    cl_3x2pt_5d = ccl_obj.cl_3x2pt_5d
 
 else:
     raise ValueError(f"general_cfg['which_cls'] = must be in ['Vincenzo', 'CLOE', 'CCL']")
@@ -811,9 +828,9 @@ for zi in range(zbins):
     ax[0, 2].loglog(ell_dict['ell_GC'], cl_gg_3d[:, zi, zj][:nbl_GC], ls="-", c=clr[zi], alpha=0.6)
     ax[0, 2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
 
-    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(cl_ll_3d[:nbl_3x2p], ccl_obj.cl_ll_3d)[:, zi, zj], c=clr[zi])
-    ax[1, 1].plot(ell_dict['ell_XC'], mm.percent_diff(cl_gl_3d[:nbl_3x2p], ccl_obj.cl_gl_3d)[:, zi, zj], c=clr[zi])
-    ax[1, 2].plot(ell_dict['ell_GC'], mm.percent_diff(cl_gg_3d[:nbl_3x2p], ccl_obj.cl_gg_3d)[:, zi, zj], c=clr[zi])
+    ax[1, 0].plot(ell_dict['ell_WL'], mm.percent_diff(cl_ll_3d[:nbl_WL], ccl_obj.cl_ll_3d)[:, zi, zj], c=clr[zi])
+    ax[1, 1].plot(ell_dict['ell_XC'], mm.percent_diff(cl_gl_3d[:nbl_3x2pt], ccl_obj.cl_gl_3d)[:, zi, zj], c=clr[zi])
+    ax[1, 2].plot(ell_dict['ell_GC'], mm.percent_diff(cl_gg_3d[:nbl_GC], ccl_obj.cl_gg_3d)[:, zi, zj], c=clr[zi])
 
 ax[1, 0].set_xlabel('$\\ell$')
 ax[1, 1].set_xlabel('$\\ell$')

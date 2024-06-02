@@ -24,13 +24,13 @@ import numpy.testing as npt
 from scipy.interpolate import interp1d, RegularGridInterpolator
 from numba import njit, prange
 
-import spaceborne.ell_values as ell_utils
+import spaceborne.ell_utils as ell_utils
 import spaceborne.cl_preprocessing as cl_utils
 import spaceborne.compute_Sijkl as Sijkl_utils
 import spaceborne.covariance as covmat_utils
 import spaceborne.fisher_matrix as fm_utils
 import spaceborne.my_module as mm
-import spaceborne.cosmo_lib as csmlib
+import spaceborne.cosmo_lib as cosmo_lib
 import spaceborne.wf_cl_lib as wf_cl_lib
 import spaceborne.pyccl_cov_class as pyccl_cov_class
 import spaceborne.plot_lib as plot_lib
@@ -650,7 +650,7 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
         k_grid_resp = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
         a_grid_resp = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
         # translate a to z and cut the arrays to the maximum redshift of the SU responses (much smaller range!)
-        z_grid_resp = csmlib.a_to_z(a_grid_resp)[::-1]
+        z_grid_resp = cosmo_lib.a_to_z(a_grid_resp)[::-1]
 
         dPmm_ddeltab = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
         dPgm_ddeltab = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
@@ -691,7 +691,7 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
         r_gg = r_gg[:, 1:]
 
         # compute pk_mm on the responses' k, z grid to rescale them
-        k_array, pk_mm_2d = csmlib.pk_from_ccl(k_grid_resp, z_grid_resp, use_h_units,
+        k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid_resp, z_grid_resp, use_h_units,
                                                ccl_obj.cosmo_ccl, pk_kind='nonlinear')
 
         # compute P_gm, P_gg
@@ -755,8 +755,8 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
     # bB34 = bB34[np.ix_(k_mask, z_mask)]
 
     # ! 2. prepare integrands (d2CAB_dVddeltab) and volume element
-    k_limber = partial(csmlib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
-    r_of_z_func = partial(csmlib.ccl_comoving_distance, use_h_units=use_h_units, cosmo_ccl=ccl_obj.cosmo_ccl)
+    k_limber = partial(cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
+    r_of_z_func = partial(cosmo_lib.ccl_comoving_distance, use_h_units=use_h_units, cosmo_ccl=ccl_obj.cosmo_ccl)
 
     # ! divide by r(z)**2 if cl_integral_convention == 'PySSC'
     if covariance_cfg['Spaceborne_cfg']['cl_integral_convention'] == 'PySSC':
@@ -784,7 +784,7 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
             ell_dict['ell_GC']])
 
     # ! volume element
-    cl_integral_prefactor = csmlib.cl_integral_prefactor(z_grid_ssc_integrands,
+    cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(z_grid_ssc_integrands,
                                                          covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
                                                          use_h_units=use_h_units,
                                                          cosmo_ccl=ccl_obj.cosmo_ccl)
@@ -1079,7 +1079,7 @@ if covariance_cfg['compute_SSC'] and covariance_cfg['ng_cov_code'] == 'PySSC':
         print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
         Sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
     else:
-        Sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
+        Sijkl = Sijkl_utils.compute_Sijkl(cosmo_lib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
                                           Sijkl_cfg['wf_normalization'])
         np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
 

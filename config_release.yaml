@@ -338,11 +338,11 @@ covariance_cfg:
         log10_k_min_sigma2: -4
         log10_k_max_sigma2: 1
         k_steps_sigma2: 20_000 # TODO can I lower this? double bessel integral...
-        z_min_ssc_integrands: 0.01
+        z_min_ssc_integrands: 0.02
         z_max_ssc_integrands: 3.
-        z_steps_ssc_integrands: 7000 # this should be high because I have to trace the spikes in sigma2
+        z_steps_ssc_integrands: 512 # this should be high because I have to trace the spikes in sigma2
 
-        load_precomputed_sigma2: True
+        load_precomputed_sigma2: False
         sigma2_b_filename: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}.npy"
         use_KE_approximation: False # TODO implement this in the Julia module
         integration_type: 'simps' # 'simps' or 'trapz' (which is actually using rectangles)

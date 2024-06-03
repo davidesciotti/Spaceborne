@@ -556,8 +556,6 @@ if general_cfg['check_wf_against_vincenzo']:
         plt.suptitle(f'{wf_names_list[wf_idx]}')
         plt.show()
 
-assert False, 'stop here to check kernels'
-
 # ! end import vincenzo's kernels
 
 
@@ -1753,6 +1751,18 @@ for probe in probes:
 #                        label_foreground='G',
 #                        param_names_labels=list(masked_fid_pars_dict['FM_3x2pt_G'].keys()),
 #                        param_names_labels_toplot=list(masked_fid_pars_dict['FM_3x2pt_G'].keys()))
+
+
+# project FM
+jacobian = np.eye(fm_3x2pt.shape)
+sigma_8_row = param_names.index('s8')
+Omega_m_row = param_names.index('Om')
+dS8_dsigma8 = lambda Omega_m: np.sqrt(Omega_m/0.3)
+dS8_dOmegam = lambda Omega_m, sigma_8: sigma_8/2*1/np.sqrt(Omega_m*0.3)
+jac
+
+
+
 
 del cov_dict
 gc.collect()

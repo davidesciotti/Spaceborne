@@ -152,6 +152,7 @@ use_h_units = general_cfg['use_h_units']
 covariance_cfg['probe_ordering'] = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
 probe_ordering = covariance_cfg['probe_ordering']
 which_pk = general_cfg['which_pk']
+general_cfg['fm_and_cov_suffix'] = general_cfg['fm_and_cov_suffix'].format(which_cls=general_cfg['which_cls']) 
 
 z_grid_ssc_integrands = np.linspace(covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
                                     covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
@@ -525,7 +526,7 @@ if general_cfg['check_wf_against_vincenzo']:
     wf_galaxy_vin = wf_delta_vin + wf_mu_vin
 
     # interpolate
-    wf_names_list = ['delta', 'gamma', 'ia', 'mu', 'lensing', 'galaxy']
+    wf_names_list = ['delta', 'gamma', 'ia', 'mu', 'lensing', gal_kernel_plt_title]
     wf_ccl_list = [ccl_obj.wf_delta_arr, ccl_obj.wf_gamma_arr, ccl_obj.wf_ia_arr, ccl_obj.wf_mu_arr,
                    ccl_obj.wf_lensing_arr, ccl_obj.wf_galaxy_arr]
     wf_interp_list = []
@@ -556,7 +557,6 @@ if general_cfg['check_wf_against_vincenzo']:
         plt.suptitle(f'{wf_names_list[wf_idx]}')
         plt.show()
 
-assert False, 'stop here to check kernels'
 
 # ! end import vincenzo's kernels
 
@@ -666,13 +666,13 @@ ax[0, 0].set_ylabel('$C_{\ell}$')
 ax[1, 0].set_ylabel('% diff')
 ax[1, 1].set_ylim(-20, 20)
 lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
-plt.legend(lines, ['used', 'CCL'], loc='upper right', bbox_to_anchor=(1.55, 1))
+plt.legend(lines, [general_cfg["which_cls"], 'CCL'], loc='upper right', bbox_to_anchor=(1.55, 1))
 plt.show()
 
 # matshow for GL, to make sure it's not LG
 ell_idx = 10
 mm.compare_arrays(cl_gl_3d[ell_idx, ...], ccl_obj.cl_gl_3d[ell_idx, ...], abs_val=True, log_array=True,
-                  name_A='used GL', name_B='CCL GL')
+                  name_A=f'{general_cfg["which_cls"]} GL', name_B='CCL GL')
 
 
 # again, save in ASCII format for OneCovariance
@@ -764,11 +764,11 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
         r_gm = np.reshape(rAB_of_k[:, 3], (len(k_grid_resp), len(z_grid_resp)))
         r_gg = np.reshape(rAB_of_k[:, 4], (len(k_grid_resp), len(z_grid_resp)))
 
-        # remove z=0
-        z_grid_resp = z_grid_resp[1:]
-        r_mm = r_mm[:, 1:]
-        r_gm = r_gm[:, 1:]
-        r_gg = r_gg[:, 1:]
+        # remove z=0 and z = 0.01
+        z_grid_resp = z_grid_resp[2:]
+        r_mm = r_mm[:, 2:]
+        r_gm = r_gm[:, 2:]
+        r_gg = r_gg[:, 2:]
 
         # compute pk_mm on the responses' k, z grid to rescale them
         k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid_resp, z_grid_resp, use_h_units,
@@ -853,6 +853,20 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
     dPgm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgm_ddeltab, method='linear')
     dPgg_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgg_ddeltab, method='linear')
 
+
+    # ! test k_max_limber vs k_max_dPk and adjust z_min_ssc_integrands accordingly
+    k_max_resp = np.max(k_grid_resp)
+    ell_grid = ell_dict['ell_3x2pt'] 
+    kmax_limber = cosmo_lib.get_kmax_limber(ell_grid, z_grid_ssc_integrands, use_h_units, ccl_obj.cosmo_ccl)
+
+    z_grid_ssc_integrands_test = deepcopy(z_grid_ssc_integrands)
+    while kmax_limber > k_max_resp:
+        print(f'kmax_limber > k_max_dPk ({kmax_limber:.2f} {k_txt_label} > {k_max_resp:.2f} {k_txt_label}): '
+                f'Increasing z_min until kmax_limber < k_max_dPk. Alternetively, increase k_max_dPk or decrease ell_max.')
+        z_grid_ssc_integrands_test = z_grid_ssc_integrands_test[1:]
+        kmax_limber = cosmo_lib.get_kmax_limber(ell_grid, z_grid_ssc_integrands_test, use_h_units, ccl_obj.cosmo_ccl)
+        print(f'New z_min = {z_grid_ssc_integrands_test[0]:.3f}')
+
     dPmm_ddeltab_klimb = np.array(
         [dPmm_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
             ell_dict['ell_WL']])
@@ -933,6 +947,10 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
     if which_sigma2_B == 'full-curved-sky':
         for key in cov_ssc_3x2pt_dict_8D.keys():
             cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
+    elif which_sigma2_B == 'mask':
+        raise NotImplementedError('Not implemented yet, but very easy to do')
+    else:
+        raise ValueError(f'which_sigma2_B must be either "full-curved-sky" or "mask"')
 
     # save the covariance blocks
     # ! note that these files already account for the sky fraction!!

@@ -1190,6 +1190,32 @@ else:
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix)
 
+# reshape cov in CLOE format
+
+mm.matshow(cov_dict['cov_3x2pt_GO_2D'], log=True, abs_val=False, title='cov_GO_3x2pt')
+mm.matshow(cov_dict['cov_3x2pt_GS_2D'], log=True, abs_val=False, title='cov_GS_3x2pt')
+
+
+cov_3x2pt_GO_2DCLOE = mm.cov_2d_dav_to_cloe(cov_dict['cov_3x2pt_GO_2D'], nbl_3x2pt, zbins, 'ell', 'ell')
+cov_3x2pt_GS_2DCLOE = mm.cov_2d_dav_to_cloe(cov_dict['cov_3x2pt_GS_2D'], nbl_3x2pt, zbins, 'ell', 'ell')
+
+mm.matshow(cov_3x2pt_GO_2DCLOE, log=True, abs_val=False, title='cov_GO_3x2pt_2DCLOE')
+mm.matshow(cov_3x2pt_GS_2DCLOE, log=True, abs_val=False, title='cov_GS_3x2pt_2DCLOE')
+
+
+mm.compare_arrays(cov_3x2pt_GO_2DCLOE, cov_3x2pt_g_nbl32_2dcloe, log_diff=True)
+mm.compare_arrays(cov_3x2pt_GS_2DCLOE, cov_3x2pt_gs_nbl32_2dcloe, log_diff=True)
+
+plt.plot(np.diag(cov_3x2pt_g_nbl32_2dcloe), label='cov_3x2pt_g_nbl32_2dcloe')
+plt.plot(np.diag(cov_3x2pt_GO_2DCLOE), label='cov_3x2pt_GO_2DCLOE')
+plt.legend()
+plt.yscale('log')
+
+
+assert False, 'stop here to check CLOE cov format'
+
+
+
 if covariance_cfg['load_CLOE_benchmark_cov']:
     warnings.warn('OVERWRITING cov_dict WITH CLOE BENCHMARKS')
 

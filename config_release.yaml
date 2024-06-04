@@ -267,7 +267,7 @@ covariance_cfg:
     # TODO change name to cov_path
     cov_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/BNT_{BNT_transform:s}/ell_cuts_{cov_ell_cuts:s}"
     cov_filename:
-        covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_lmax{lmax_3x2pt:d}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D{cov_suffix:s}{fm_and_cov_suffix:s}.npz
+        covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D{cov_suffix:s}{fm_and_cov_suffix:s}.npz
     
     ng_cov_code: Spaceborne # ! PySSC or PyCCL or Spaceborne or OneCovariance
 
@@ -314,7 +314,7 @@ covariance_cfg:
     Spaceborne_cfg:
         probe: 3x2pt
         which_ng_cov: [SSC] # only SSC available in this case
-        load_precomputed_cov: False
+        load_precomputed_cov: True
         which_pk_responses: separate_universe # halo_model (with PyCCL) or separate_universe (from simulations)
 
         cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Spaceborne/{which_pk_responses:s}"
@@ -336,7 +336,7 @@ covariance_cfg:
         k_steps_sigma2: 20_000 # TODO can I lower this? double bessel integral...
         z_min_ssc_integrands: 0.02  # SU responses' kmax allow for z_min = 0.016, at most.
         z_max_ssc_integrands: 3.
-        z_steps_ssc_integrands: 7000 # this should be high because I have to trace the spikes in sigma2
+        z_steps_ssc_integrands: 512 # this should be high because I have to trace the spikes in sigma2
 
         load_precomputed_sigma2: True
         sigma2_b_filename: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}.npy"

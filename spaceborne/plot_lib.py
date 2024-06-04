@@ -198,13 +198,12 @@ def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_backgroun
     fiducials = [fiducials[idx] for idx in idxs_tokeep]
     param_names_labels = [param_names_labels[idx] for idx in idxs_tokeep]
     
-
     bg_contours = GaussianND(mean=fiducials, cov=fm_inv_bg, names=param_names_labels)
     fg_contours = GaussianND(mean=fiducials, cov=fm_inv_fg, names=param_names_labels)
     
     g = plots.get_subplot_plotter()
     g.settings.linewidth = 2
-    g.settings.legend_fontsize = 30
+    g.settings.legend_fontsize = 22
     g.settings.linewidth_contour = 2.5
     g.settings.axes_fontsize = 25
     g.settings.axes_labelsize = 27
@@ -215,7 +214,6 @@ def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_backgroun
                     legend_labels=[label_background, label_foreground], legend_loc='upper right', 
                     contour_colors=['tab:blue', 'tab:orange'],
                     line_colors=['tab:blue', 'tab:orange'],
-                    
                     )
     plt.suptitle(f'{title}', fontsize='x-large')
 

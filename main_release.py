@@ -1,28 +1,22 @@
 import os
 import multiprocessing
-from scipy.integrate import simps
-
 from tqdm import tqdm
 num_cores = multiprocessing.cpu_count()
 os.environ['OMP_NUM_THREADS'] = '32'
 os.environ['NUMBA_NUM_THREADS'] = '32'
 os.environ['NUMBA_PARALLEL_DIAGNOSTICS'] = '4'
-import matplotlib as mpl
 from functools import partial
 import numpy as np
 import time
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import warnings
-import matplotlib.lines as mlines
 import gc
-import matplotlib.gridspec as gridspec
 import yaml
 import pprint
 from copy import deepcopy
 import numpy.testing as npt
 from scipy.interpolate import interp1d, RegularGridInterpolator
-from numba import njit, prange
 
 import spaceborne.ell_utils as ell_utils
 import spaceborne.cl_preprocessing as cl_utils
@@ -40,21 +34,6 @@ import spaceborne.sigma2_SSC as sigma2_SSC
 pp = pprint.PrettyPrinter(indent=4)
 ROOT = os.getenv('ROOT')
 script_start_time = time.perf_counter()
-
-# mpl.use('Agg')
-
-# TODO check that the number of ell bins is the same as in the files
-# TODO double check the delta values
-# TODO update consistency_checks
-
-# TODO reorder all these cutting functions...
-# TODO recompute Sijkl to be safe
-# TODO redefine the last delta value
-# TODO check what happens for ell_cuts_LG (instead of GL) = ell_cuts_XC file
-# TODO cut if ell > ell_edge_lower (!!)
-
-# ! new todos
-# TODO make sure youre computing the cls in a consistent way, why do I not see the baryon boost in the rainbow plot?
 
 
 def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
@@ -152,7 +131,7 @@ use_h_units = general_cfg['use_h_units']
 covariance_cfg['probe_ordering'] = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
 probe_ordering = covariance_cfg['probe_ordering']
 which_pk = general_cfg['which_pk']
-general_cfg['fm_and_cov_suffix'] = general_cfg['fm_and_cov_suffix'].format(which_cls=general_cfg['which_cls']) 
+general_cfg['fm_and_cov_suffix'] = general_cfg['fm_and_cov_suffix'].format(which_cls=general_cfg['which_cls'])
 
 z_grid_ssc_integrands = np.linspace(covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
                                     covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
@@ -188,10 +167,6 @@ else:
     pk_txt_label = "Mpc3"
 
 
-# TODO delete these two lines, it would be cleaner...
-# general_cfg['flat_fid_pars_dict'] = flat_fid_pars_dict
-# general_cfg['fid_pars_dict'] = fid_pars_dict
-
 ccl_obj = pyccl_cov_class.PycclClass(fid_pars_dict)
 
 # ! some checks
@@ -200,10 +175,6 @@ assert general_cfg['which_cuts'] == 'Vincenzo', ('to begin with, use only Vincen
                                                  'For the thesis, probably use just these')
 if general_cfg['ell_cuts']:
     assert bnt_transform, 'you should BNT transform if you want to apply ell cuts'
-
-# ! XXX old, wrong I guess
-# if bnt_transform:
-    # assert general_cfg['ell_cuts'] is False, 'you should not apply ell cuts if you want to BNT transform'
 
 if covariance_cfg['cov_BNT_transform']:
     assert general_cfg['cl_BNT_transform'] is False, \
@@ -556,9 +527,7 @@ if general_cfg['check_wf_against_vincenzo']:
         plt.legend(lines, ['Vincenzo', 'CCL'], loc='upper right')
         plt.suptitle(f'{wf_names_list[wf_idx]}')
         plt.show()
-
 # ! end import vincenzo's kernels
-
 
 # compute cls
 ccl_obj.cl_ll_3d = ccl_obj.compute_cls(ell_dict['ell_WL'], ccl_obj.p_of_k_a,
@@ -852,16 +821,15 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
     dPgm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgm_ddeltab, method='linear')
     dPgg_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgg_ddeltab, method='linear')
 
-
     # ! test k_max_limber vs k_max_dPk and adjust z_min_ssc_integrands accordingly
     k_max_resp = np.max(k_grid_resp)
-    ell_grid = ell_dict['ell_3x2pt'] 
+    ell_grid = ell_dict['ell_3x2pt']
     kmax_limber = cosmo_lib.get_kmax_limber(ell_grid, z_grid_ssc_integrands, use_h_units, ccl_obj.cosmo_ccl)
 
     z_grid_ssc_integrands_test = deepcopy(z_grid_ssc_integrands)
     while kmax_limber > k_max_resp:
         print(f'kmax_limber > k_max_dPk ({kmax_limber:.2f} {k_txt_label} > {k_max_resp:.2f} {k_txt_label}): '
-                f'Increasing z_min until kmax_limber < k_max_dPk. Alternetively, increase k_max_dPk or decrease ell_max.')
+              f'Increasing z_min until kmax_limber < k_max_dPk. Alternetively, increase k_max_dPk or decrease ell_max.')
         z_grid_ssc_integrands_test = z_grid_ssc_integrands_test[1:]
         kmax_limber = cosmo_lib.get_kmax_limber(ell_grid, z_grid_ssc_integrands_test, use_h_units, ccl_obj.cosmo_ccl)
         print(f'New z_min = {z_grid_ssc_integrands_test[0]:.3f}')
@@ -915,6 +883,7 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
         sigma2_b = sigma2_b_dict['sigma2_b']
     else:
         # TODO input ell and cl mask
+        print('Computing sigma2_b...')
         sigma2_b = np.zeros((len(z_grid_ssc_integrands), len(z_grid_ssc_integrands)))
         for z2_idx, z2 in enumerate(tqdm(z_grid_ssc_integrands)):
             sigma2_b[:, z2_idx] = sigma2_SSC.sigma2_func_vectorized(
@@ -931,6 +900,7 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
         np.save(sigma2_b_filename, sigma2_b_dict_tosave, allow_pickle=True)
 
     # ! 4. Perform the integration calling the Julia module
+    print('Performing the 2D integral in Julia...')
     start = time.perf_counter()
     cov_ssc_3x2pt_dict_8D = SSC_integral_julia(d2CLL_dVddeltab=d2CLL_dVddeltab,
                                                d2CGL_dVddeltab=d2CGL_dVddeltab,
@@ -995,12 +965,9 @@ elif covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
         filename=cov_sb_filename,
         probe_ordering=probe_ordering)
 
-
 # this is not very elegant, find a better solution
 covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 print('SSC computed with Spaceborne')
-
-
 # TODO integrate this with Spaceborne_covg
 
 
@@ -1242,6 +1209,10 @@ if covariance_cfg['load_CLOE_benchmark_cov']:
     cov_dict['cov_GC_GS_2D'] = cov_gc_gs_nbl29_2ddav
     cov_dict['cov_3x2pt_GS_2D'] = cov_3x2pt_gs_nbl29_2ddav
 
+    del cov_wl_g_nbl29_2ddav, cov_xc_g_nbl29_2ddav, cov_gc_g_nbl29_2ddav, cov_3x2pt_g_nbl29_2ddav
+    del cov_wl_gs_nbl29_2ddav, cov_xc_gs_nbl29_2ddav, cov_gc_gs_nbl29_2ddav, cov_3x2pt_gs_nbl29_2ddav
+    gc.collect()
+
 
 covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
@@ -1297,8 +1268,8 @@ if covariance_cfg['test_against_vincenzo'] and bnt_transform == False and not ge
     print('covariance matrix matches with Vincenzo\'s ✅')
 
 # !============================= derivatives ===================================
+# this guard is just to avoid indenting the whole code below
 if not fm_cfg['compute_FM']:
-    # this guard is just to avoid indenting the whole code below
     raise KeyboardInterrupt('skipping FM computation, the script will exit now')
 
 
@@ -1773,15 +1744,65 @@ for probe in probes:
 
 
 # project FM
-jacobian = np.eye(fm_3x2pt.shape)
-sigma_8_row = param_names.index('s8')
-Omega_m_row = param_names.index('Om')
-dS8_dsigma8 = lambda Omega_m: np.sqrt(Omega_m/0.3)
-dS8_dOmegam = lambda Omega_m, sigma_8: sigma_8/2*1/np.sqrt(Omega_m*0.3)
-jac
+
+# Define the Jacobian matrix
+jacobian = np.eye(masked_fm_dict['FM_WL_G'].shape[0])
+sigma_8_idx = param_names.index('s8')
+Omega_m_idx = param_names.index('Om')
+S8_idx = param_names.index('s8')
+
+# Functions for derivatives
+def dS8_dsigma8_func(Omega_m): return np.sqrt(Omega_m / 0.3)
+def dS8_dOmegam_func(Omega_m, sigma_8): return (sigma_8 / 2) * (1 / np.sqrt(Omega_m * 0.3))
 
 
+# Fiducial values
+om_fid = fid_pars_dict['FM_ordered_params']['Om']
+s8_fid = fid_pars_dict['FM_ordered_params']['s8']
 
+# Fill in the Jacobian matrix
+# jacobian[sigma_8_idx, sigma_8_idx] = dS8_dsigma8_func(Omega_m=om_fid)
+# jacobian[Omega_m_idx, sigma_8_idx] = dS8_dOmegam_func(Omega_m=om_fid, sigma_8=s8_fid)
+
+jacobian[S8_idx, Omega_m_idx] = dS8_dOmegam_func(Omega_m=om_fid, sigma_8=s8_fid)
+jacobian[S8_idx, sigma_8_idx] = dS8_dsigma8_func(Omega_m=om_fid)
+
+
+# Transform the Fisher matrix
+fm_prime_j = jacobian.T @ masked_fm_dict['FM_WL_G'] @ jacobian
+
+plot_lib.triangle_plot(fm_prime_j, masked_fm_dict['FM_WL_G'],
+                       fiducials=list(masked_fid_pars_dict['FM_WL_G'].values()),
+                       title='WL',
+                       label_background='$S_8$',
+                       label_foreground='$\sigma_8$',
+                       param_names_labels=list(masked_fid_pars_dict['FM_WL_G'].keys()),
+                       param_names_labels_toplot=['Om', 's8'])
+
+# second way
+m_matrix = np.eye(masked_fm_dict['FM_WL_G'].shape[0])
+
+def dsigma8_dS8_func(Omega_m): return (np.sqrt(0.3 / Omega_m))
+def dOmegam_dS8_func(Omega_m, sigma_8): return ((2 / sigma_8) * (np.sqrt(Omega_m * 0.3)))
+
+# Fill in the m_matrix matrix
+m_matrix[Omega_m_idx, S8_idx] = dOmegam_dS8_func(Omega_m=om_fid, sigma_8=s8_fid)
+m_matrix[sigma_8_idx, S8_idx] = dsigma8_dS8_func(Omega_m=om_fid)
+
+# Transform the Fisher matrix
+fm_prime_m = m_matrix.T @ masked_fm_dict['FM_WL_G'] @ m_matrix
+
+mm.compare_arrays(fm_prime_m, masked_fm_dict['FM_WL_G'], log_array=True, log_diff=False, 
+                  plot_diff_threshold=0, white_where_zero=True)
+
+plot_lib.triangle_plot(fm_prime_m, 
+                       masked_fm_dict['FM_WL_G'],
+                       fiducials=list(masked_fid_pars_dict['FM_WL_G'].values()),
+                       title='WL',
+                       label_background='$S_8$',
+                       label_foreground='$\sigma_8$',
+                       param_names_labels=list(masked_fid_pars_dict['FM_WL_G'].keys()),
+                       param_names_labels_toplot=list(masked_fid_pars_dict['FM_WL_G'].keys())[:9])
 
 del cov_dict
 gc.collect()

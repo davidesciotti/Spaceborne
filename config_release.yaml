@@ -75,9 +75,9 @@ cosmology:
 
 general_cfg:
     ell_min: 10
-    ell_max_WL: 3000
-    ell_max_GC: 3000
-    ell_max_3x2pt: 3000
+    ell_max_WL: 5000
+    ell_max_GC: 5000
+    ell_max_3x2pt: 5000
     zbins: 13
     EP_or_ED: EP # equipopulated or equidistant bins
     n_probes: 2
@@ -131,7 +131,6 @@ general_cfg:
 
     which_cls: CLOE
 
-
     has_rsd: False
     has_magnification_bias: True
 
@@ -156,8 +155,8 @@ general_cfg:
     which_pk: HMCodeBar
 
     flagship_version: 2 # TODO delete this
-    fm_and_cov_suffix: '' # TODO delete this
-    num_threads: 40 # how many threads to use for the Julia SSC integral with @tturbo
+    fm_and_cov_suffix: '_cls{which_cls:s}' # TODO delete this
+    num_threads: 60 # how many threads to use for the Julia SSC integral with @tturbo
 
 covariance_cfg:
     # ordering-related settings
@@ -170,11 +169,12 @@ covariance_cfg:
 
     fsky: 0.3563380664078408
     sigma_eps_i: 0.26 # ellipticity dispersion *per component*; sigma_eps: (0.26 * np.sqrt(2))
-    which_shape_noise: ISTF # ISTF or per_component
+    which_shape_noise: per_component # ISTF or per_component
 
-    nofz_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputNz/NzFid"
+    # nofz_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputNz/NzFid"
+    nofz_folder: "{ROOT:s}/CLOE_benchmarks"
     # TODO zmin_nz is for both sources and lenses, but be careful about this in the future
-    nofz_filename: nzTab-{EP_or_ED:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
+    nofz_filename: nzTabSPV3.dat
 
     zbin_centers:
         [
@@ -254,8 +254,8 @@ covariance_cfg:
     save_cov_GS: False
     save_cov_SSC: False
     save_2DCLOE: False # outermost loop is on the probes
-    covariance_ordering_2D: ell_probe_zpair
-    load_CLOE_benchmark_cov: True
+    covariance_ordering_2D: ell_probe_zpair  # TODO restore this
+    load_CLOE_benchmark_cov: False
 
     test_against_benchmarks: False # TODO delete this
     test_against_CLOE_benchmarks: False # TODO delete this
@@ -267,12 +267,8 @@ covariance_cfg:
     # TODO change name to cov_path
     cov_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/BNT_{BNT_transform:s}/ell_cuts_{cov_ell_cuts:s}"
     cov_filename:
-        covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D{cov_suffix:s}{fm_and_cov_suffix:s}.npz
+        covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_lmax{lmax_3x2pt:d}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_idIA{idIA:1d}_idB{idB:1d}_idM{idM:1d}_idR{idR:1d}_pk{which_pk:s}_{ndim:d}D{cov_suffix:s}{fm_and_cov_suffix:s}.npz
     
-    # TODO test from julia manual
-    # cov_folder: "{ROOT:s}/exact_SSC/output/SPV3/separate_universe/jan_2024/SSC_matrix"
-    # cov_filename: cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl32_ellmax5000_zbinsEP13_zsteps2899_k1overMpc_conventionPySSC_ML245MS245.npy
-
     ng_cov_code: Spaceborne # ! PySSC or PyCCL or Spaceborne or OneCovariance
 
     PyCCL_cfg:
@@ -318,7 +314,7 @@ covariance_cfg:
     Spaceborne_cfg:
         probe: 3x2pt
         which_ng_cov: [SSC] # only SSC available in this case
-        load_precomputed_cov: True
+        load_precomputed_cov: False
         which_pk_responses: separate_universe # halo_model (with PyCCL) or separate_universe (from simulations)
 
         cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Spaceborne/{which_pk_responses:s}"
@@ -338,7 +334,7 @@ covariance_cfg:
         log10_k_min_sigma2: -4
         log10_k_max_sigma2: 1
         k_steps_sigma2: 20_000 # TODO can I lower this? double bessel integral...
-        z_min_ssc_integrands: 0.01
+        z_min_ssc_integrands: 0.02  # SU responses' kmax allow for z_min = 0.016, at most.
         z_max_ssc_integrands: 3.
         z_steps_ssc_integrands: 7000 # this should be high because I have to trace the spikes in sigma2
 
@@ -379,4 +375,4 @@ FM_cfg:
     fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_source:02d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}_pk{which_pk:s}{fm_and_cov_suffix:s}_CLOEtest.pickle
 
     test_against_vincenzo: False # TODO delete this
-    test_against_benchmarks: True # TODO delete this
+    test_against_benchmarks: False # TODO delete this

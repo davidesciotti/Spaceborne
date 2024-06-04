@@ -704,6 +704,7 @@ cov_sb_suffix = covariance_cfg['Spaceborne_cfg']['cov_suffix'].format(
 variable_specs.pop('ng_cov_code')
 variable_specs.pop('which_ng_cov')
 cov_sb_filename = covariance_cfg['cov_filename'].format(ng_cov_code='spaceborne',
+                                                        lmax_3x2pt=general_cfg['ell_max_3x2pt'],
                                                         probe='{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}',
                                                         cov_suffix=cov_sb_suffix,
                                                         which_ng_cov=which_ng_cov_suffix.replace('G', ''),

@@ -304,7 +304,7 @@ def load_cov_from_probe_blocks(path, filename, probe_ordering):
     :param probe_ordering: Probe ordering tuple
     :return:
 
-    YOU SHOULD USE deepcopy, otherwise the different blocks become correlated
+    YOU SHOULD USE deepcopy, otherwise the different blocks become correlated (and you e.g. divide twice by fsky)
     """
     cov_ssc_dict_8D = {}
     for row, (probe_a, probe_b) in enumerate(probe_ordering):

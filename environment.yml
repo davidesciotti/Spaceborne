@@ -3,7 +3,7 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - python>=3.9
+  - python>=3.11
   - matplotlib
   - numpy
   - scipy
@@ -18,8 +18,11 @@ dependencies:
   - numba
   - camb
   - cmake
+  - gcc
   - pyqt
   - ipympl
+  - swig
+  # - cfitsio  # for CCL
   - pip:
     #- chainconsumer 
     - pymaster
@@ -27,12 +30,12 @@ dependencies:
     - getdist
     #- type_enforced
     #- array_to_latex
-    - pynverse
+    # - pynverse
     #- classy
     #- ray
     #- PyQt5
     #- PySide2
-    - fast-pt
+    - fast-pt  # for CCL
     - git+https://github.com/davidesciotti/CCL.git@master
 
 # To install the master version of pyccl:

@@ -19,7 +19,14 @@ Once having activated the environment, install the dependencies with
 ```bash
 poetry install
 ```
-which may take some time, especially for installing `pyccl`.
+which may take some time.
+
+
+## Alternative install:
+```bash
+conda env create -f environment.yml
+conda activate spaceborne
+```
 
 Run code with 
 

@@ -30,7 +30,6 @@ import spaceborne.pyccl_cov_class as pyccl_cov_class
 import spaceborne.plot_lib as plot_lib
 import spaceborne.sigma2_SSC as sigma2_SSC
 
-
 pp = pprint.PrettyPrinter(indent=4)
 ROOT = os.getenv('ROOT')
 script_start_time = time.perf_counter()
@@ -183,6 +182,9 @@ if covariance_cfg['cov_BNT_transform']:
 
 assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \
     'ell_max_WL and ell_max_GC must be either (5000, 3000) or (1500, 750)'
+
+fsky_check = cosmo_lib.deg2_to_fsky(covariance_cfg['survey_area_deg2'])
+assert np.abs(mm.percent_diff(covariance_cfg['fsky'], fsky_check)) < 1e-5, 'fsky does not match the survey area'
 
 # TODO delete this arg in save_cov function
 cases_tosave = '_'
@@ -666,7 +668,7 @@ cov_sb_suffix = covariance_cfg['Spaceborne_cfg']['cov_suffix'].format(
     k_txt_label=k_txt_label,
     cl_integral_convention=covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
     integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
-    fsky=covariance_cfg['fsky'],
+    survey_area_deg2=covariance_cfg['survey_area_deg2'],
 )
 
 variable_specs.pop('ng_cov_code')
@@ -691,6 +693,7 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
     print('Start SSC computation...')
 
     if covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'halo_model':
+        
         # ! 1. Get halo model responses from CCL
         ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
                                        pyccl_cfg=pyccl_cfg, which_pk='_')
@@ -927,10 +930,10 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
     # TODO fsky suffix in cov name should be added only in this case... or not? the other covariance files don't have this...
     for key in cov_ssc_3x2pt_dict_8D.keys():
         probe_a, probe_b, probe_c, probe_d = key
-        np.savez_compressed(
-            f'{cov_folder}/{cov_sb_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}',
-            cov_ssc_3x2pt_dict_8D[key]
-        )
+        if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
+            np.savez_compressed(
+                f'{cov_folder}/{cov_sb_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}',
+                cov_ssc_3x2pt_dict_8D[key])
 
     # ! check SSC INTEGRANDS
 
@@ -966,8 +969,12 @@ elif covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
         filename=cov_sb_filename,
         probe_ordering=probe_ordering)
 
+    for key in cov_ssc_3x2pt_dict_8D.keys():
+        cov_ssc_3x2pt_dict_8D[key] = cov_ssc_3x2pt_dict_8D[key][:nbl_3x2pt, :nbl_3x2pt, ...]
+
 # this is not very elegant, find a better solution
 covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
+
 print('SSC computed with Spaceborne')
 # TODO integrate this with Spaceborne_covg
 
@@ -1159,28 +1166,39 @@ cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
 
 # reshape cov in CLOE format
 
-mm.matshow(cov_dict['cov_3x2pt_GO_2D'], log=True, abs_val=False, title='cov_GO_3x2pt')
-mm.matshow(cov_dict['cov_3x2pt_GS_2D'], log=True, abs_val=False, title='cov_GS_3x2pt')
+# mm.matshow(cov_dict['cov_3x2pt_GO_2D'], log=True, abs_val=False, title='cov_GO_3x2pt')
+# mm.matshow(cov_dict['cov_3x2pt_GS_2D'], log=True, abs_val=False, title='cov_GS_3x2pt')
 
 
-cov_3x2pt_GO_2DCLOE = mm.cov_2d_dav_to_cloe(cov_dict['cov_3x2pt_GO_2D'], nbl_3x2pt, zbins, 'ell', 'ell')
-cov_3x2pt_GS_2DCLOE = mm.cov_2d_dav_to_cloe(cov_dict['cov_3x2pt_GS_2D'], nbl_3x2pt, zbins, 'ell', 'ell')
+# cov_3x2pt_GO_2DCLOE = mm.cov_2d_dav_to_cloe(cov_dict['cov_3x2pt_GO_2D'], nbl_3x2pt, zbins, 'ell', 'ell')
+# cov_3x2pt_GS_2DCLOE = mm.cov_2d_dav_to_cloe(cov_dict['cov_3x2pt_GS_2D'], nbl_3x2pt, zbins, 'ell', 'ell')
 
-mm.matshow(cov_3x2pt_GO_2DCLOE, log=True, abs_val=False, title='cov_GO_3x2pt_2DCLOE')
-mm.matshow(cov_3x2pt_GS_2DCLOE, log=True, abs_val=False, title='cov_GS_3x2pt_2DCLOE')
-
-
-mm.compare_arrays(cov_3x2pt_GO_2DCLOE, cov_3x2pt_g_nbl32_2dcloe, log_diff=True)
-mm.compare_arrays(cov_3x2pt_GS_2DCLOE, cov_3x2pt_gs_nbl32_2dcloe, log_diff=True)
-
-plt.plot(np.diag(cov_3x2pt_g_nbl32_2dcloe), label='cov_3x2pt_g_nbl32_2dcloe')
-plt.plot(np.diag(cov_3x2pt_GO_2DCLOE), label='cov_3x2pt_GO_2DCLOE')
-plt.legend()
-plt.yscale('log')
+# mm.matshow(cov_3x2pt_GO_2DCLOE, log=True, abs_val=False, title='cov_GO_3x2pt_2DCLOE')
+# mm.matshow(cov_3x2pt_GS_2DCLOE, log=True, abs_val=False, title='cov_GS_3x2pt_2DCLOE')
 
 
-assert False, 'stop here to check CLOE cov format'
+# mm.compare_arrays(cov_3x2pt_GO_2DCLOE, cov_3x2pt_g_nbl32_2dcloe, log_diff=True)
+# mm.compare_arrays(cov_3x2pt_GS_2DCLOE, cov_3x2pt_gs_nbl32_2dcloe, log_diff=True)
 
+# plt.plot(np.diag(cov_3x2pt_g_nbl32_2dcloe), label='cov_3x2pt_g_nbl32_2dcloe')
+# plt.plot(np.diag(cov_3x2pt_GO_2DCLOE), label='cov_3x2pt_GO_2DCLOE')
+# plt.legend()
+# plt.yscale('log')
+
+# plt.plot(np.diag(cov_3x2pt_gs_nbl32_2dcloe), label='cov_3x2pt_gs_nbl32_2dcloe')
+# plt.plot(np.diag(cov_3x2pt_GS_2DCLOE), label='cov_3x2pt_GS_2DCLOE')
+# plt.legend()
+# plt.yscale('log')
+
+
+# np.save(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins-v2.npy', cov_3x2pt_GO_2DCLOE)
+# np.save(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins-v2.npy', cov_3x2pt_GS_2DCLOE)
+
+
+# check if covariance is positive definite
+
+
+# assert False, 'stop here to check CLOE cov format'
 
 
 if covariance_cfg['load_CLOE_benchmark_cov']:
@@ -1779,6 +1797,8 @@ Omega_m_idx = param_names.index('Om')
 S8_idx = param_names.index('s8')
 
 # Functions for derivatives
+
+
 def dS8_dsigma8_func(Omega_m): return np.sqrt(Omega_m / 0.3)
 def dS8_dOmegam_func(Omega_m, sigma_8): return (sigma_8 / 2) * (1 / np.sqrt(Omega_m * 0.3))
 
@@ -1809,8 +1829,10 @@ plot_lib.triangle_plot(fm_prime_j, masked_fm_dict['FM_WL_G'],
 # second way
 m_matrix = np.eye(masked_fm_dict['FM_WL_G'].shape[0])
 
+
 def dsigma8_dS8_func(Omega_m): return (np.sqrt(0.3 / Omega_m))
 def dOmegam_dS8_func(Omega_m, sigma_8): return ((2 / sigma_8) * (np.sqrt(Omega_m * 0.3)))
+
 
 # Fill in the m_matrix matrix
 m_matrix[Omega_m_idx, S8_idx] = dOmegam_dS8_func(Omega_m=om_fid, sigma_8=s8_fid)
@@ -1819,10 +1841,10 @@ m_matrix[sigma_8_idx, S8_idx] = dsigma8_dS8_func(Omega_m=om_fid)
 # Transform the Fisher matrix
 fm_prime_m = m_matrix.T @ masked_fm_dict['FM_WL_G'] @ m_matrix
 
-mm.compare_arrays(fm_prime_m, masked_fm_dict['FM_WL_G'], log_array=True, log_diff=False, 
+mm.compare_arrays(fm_prime_m, masked_fm_dict['FM_WL_G'], log_array=True, log_diff=False,
                   plot_diff_threshold=0, white_where_zero=True)
 
-plot_lib.triangle_plot(fm_prime_m, 
+plot_lib.triangle_plot(fm_prime_m,
                        masked_fm_dict['FM_WL_G'],
                        fiducials=list(masked_fid_pars_dict['FM_WL_G'].values()),
                        title='WL',

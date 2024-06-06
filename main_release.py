@@ -453,10 +453,6 @@ if shift_nz:
     # * consistent with the shifted n(z) used to compute the kernels
     bnt_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_nz, n_of_z, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
 
-# save in ASCII format for OneCovariance
-nofz_filename_ascii = nofz_filename.replace('.dat', '.ascii')
-nofz_tosave = np.column_stack((zgrid_nz, n_of_z))
-np.savetxt(f'{nofz_folder}/{nofz_filename_ascii}', nofz_tosave)
 
 # re-set n(z) used in CCL class, then re-compute kernels
 ccl_obj.set_nz(np.hstack((zgrid_nz[:, None], n_of_z)))
@@ -645,15 +641,22 @@ mm.compare_arrays(cl_gl_3d[ell_idx, ...], ccl_obj.cl_gl_3d[ell_idx, ...], abs_va
                   name_A=f'{general_cfg["which_cls"]} GL', name_B='CCL GL')
 
 
-# again, save in ASCII format for OneCovariance
-# which_pk = general_cfg['which_pk']
-# mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
-#                   f'Cell_ll_SPV3_{general_cfg["which_cls"]}', cl_ll_3d, ell_dict['ell_3x2pt'], zbins)
-# mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
-#                   f'Cell_gl_SPV3_{general_cfg["which_cls"]}', cl_gl_3d, ell_dict['ell_3x2pt'], zbins)
-# mm.write_cl_ascii(general_cfg['cl_folder'].format(which_pk=which_pk),
-#                   f'Cell_gg_SPV3_{general_cfg["which_cls"]}', cl_gg_3d, ell_dict['ell_3x2pt'], zbins)
+# save ingredients for OneCovariance in ASCII format
+oc_inputs_path = covariance_cfg['OneCovariance_cfg']['inputs_folder'].format(ROOT=ROOT)
 
+nofz_filename_ascii = nofz_filename.replace('.dat', f'_dzshifts{shift_nz}.ascii')
+nofz_tosave = np.column_stack((zgrid_nz, n_of_z))
+np.savetxt(f'{oc_inputs_path}/{nofz_filename_ascii}', nofz_tosave)
+
+mm.write_cl_ascii(oc_inputs_path, f'Cell_ll_SPV3_{general_cfg["which_cls"]}_nbl{nbl_3x2pt}',
+                  cl_3x2pt_5d[0, 0, ...], ell_dict['ell_3x2pt'], zbins)
+mm.write_cl_ascii(oc_inputs_path, f'Cell_gl_SPV3_{general_cfg["which_cls"]}_nbl{nbl_3x2pt}',
+                  cl_3x2pt_5d[1, 0, ...], ell_dict['ell_3x2pt'], zbins)
+mm.write_cl_ascii(oc_inputs_path, f'Cell_gg_SPV3_{general_cfg["which_cls"]}_nbl{nbl_3x2pt}',
+                  cl_3x2pt_5d[1, 1, ...], ell_dict['ell_3x2pt'], zbins)
+
+gal_bias_ascii_filename = f'{oc_inputs_path}/gal_bias_table_{general_cfg["which_forecast"]}.ascii'
+ccl_obj.save_gal_bias_table_ascii(z_grid_ssc_integrands, gal_bias_ascii_filename)
 
 # ! ================================ SSC =======================================
 
@@ -689,11 +692,11 @@ if 'cNG' in covariance_cfg['Spaceborne_cfg']['which_ng_cov']:
     raise NotImplementedError('You should review the which_ng_cov arg in the cov_filename formatting above, "SSC" is'
                               'hardcoded at the moment')
 
-if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
-    print('Start SSC computation...')
+if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
+    print('Start SSC computation with Spaceborne...')
 
     if covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'halo_model':
-        
+
         # ! 1. Get halo model responses from CCL
         ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
                                        pyccl_cfg=pyccl_cfg, which_pk='_')
@@ -963,17 +966,29 @@ if not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
     # assert False, 'stop here'
 
 
-elif covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
-    cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
-        path=cov_folder,
-        filename=cov_sb_filename,
-        probe_ordering=probe_ordering)
+elif covariance_cfg['ng_cov_code'] == 'Spaceborne' and \
+        covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
+
+    try:
+        cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
+            path=cov_folder,
+            filename=cov_sb_filename,
+            probe_ordering=probe_ordering)
+    except FileNotFoundError as err:
+        print(err)
+        print(f'No covariance file found in {cov_folder}')
+        print('Changing ellmax to 5000 and cutting the last bins')
+        cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
+            path=cov_folder,
+            filename=cov_sb_filename.replace('lmax3000', 'lmax5000'),
+            probe_ordering=probe_ordering)
 
     for key in cov_ssc_3x2pt_dict_8D.keys():
         cov_ssc_3x2pt_dict_8D[key] = cov_ssc_3x2pt_dict_8D[key][:nbl_3x2pt, :nbl_3x2pt, ...]
 
 # this is not very elegant, find a better solution
-covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
+if covariance_cfg['ng_cov_code'] == 'Spaceborne':
+    covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 
 print('SSC computed with Spaceborne')
 # TODO integrate this with Spaceborne_covg
@@ -1164,6 +1179,7 @@ else:
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix)
 
+# ! save for CLOE runs
 # reshape cov in CLOE format
 
 # mm.matshow(cov_dict['cov_3x2pt_GO_2D'], log=True, abs_val=False, title='cov_GO_3x2pt')
@@ -1194,19 +1210,14 @@ cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
 # np.save(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins-v2.npy', cov_3x2pt_GO_2DCLOE)
 # np.save(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins-v2.npy', cov_3x2pt_GS_2DCLOE)
 
-
-# check if covariance is positive definite
-
-
 # assert False, 'stop here to check CLOE cov format'
-
 
 if covariance_cfg['load_CLOE_benchmark_cov']:
     warnings.warn('OVERWRITING cov_dict WITH CLOE BENCHMARKS')
 
     cloe_bench_path = general_cfg['CLOE_benchmarks_path'].format(ROOT=ROOT)
-    cov_3x2pt_g_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins.npy')
-    cov_3x2pt_gs_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins.npy')
+    cov_3x2pt_g_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins-13245deg2.npy')
+    cov_3x2pt_gs_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins-13245deg2.npy')
 
     num_elem_auto_nbl32 = zpairs_auto * nbl_WL_opt
     num_elem_cross_nbl32 = zpairs_cross * nbl_WL_opt
@@ -1776,7 +1787,6 @@ for probe in probes:
 
     plot_lib.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                       param_names_label=None, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
-    # plt.yscale('log')
 
 
 # plot_lib.triangle_plot(masked_fm_dict['FM_3x2pt_GSSC'], masked_fm_dict['FM_3x2pt_G'],
@@ -1787,71 +1797,70 @@ for probe in probes:
 #                        param_names_labels=list(masked_fid_pars_dict['FM_3x2pt_G'].keys()),
 #                        param_names_labels_toplot=list(masked_fid_pars_dict['FM_3x2pt_G'].keys()))
 
+# ! project FM
 
-# project FM
+# # Define the Jacobian matrix
+# jacobian = np.eye(masked_fm_dict['FM_WL_G'].shape[0])
+# sigma_8_idx = param_names.index('s8')
+# Omega_m_idx = param_names.index('Om')
+# S8_idx = param_names.index('s8')
 
-# Define the Jacobian matrix
-jacobian = np.eye(masked_fm_dict['FM_WL_G'].shape[0])
-sigma_8_idx = param_names.index('s8')
-Omega_m_idx = param_names.index('Om')
-S8_idx = param_names.index('s8')
-
-# Functions for derivatives
-
-
-def dS8_dsigma8_func(Omega_m): return np.sqrt(Omega_m / 0.3)
-def dS8_dOmegam_func(Omega_m, sigma_8): return (sigma_8 / 2) * (1 / np.sqrt(Omega_m * 0.3))
+# # Functions for derivatives
 
 
-# Fiducial values
-om_fid = fid_pars_dict['FM_ordered_params']['Om']
-s8_fid = fid_pars_dict['FM_ordered_params']['s8']
-
-# Fill in the Jacobian matrix
-# jacobian[sigma_8_idx, sigma_8_idx] = dS8_dsigma8_func(Omega_m=om_fid)
-# jacobian[Omega_m_idx, sigma_8_idx] = dS8_dOmegam_func(Omega_m=om_fid, sigma_8=s8_fid)
-
-jacobian[S8_idx, Omega_m_idx] = dS8_dOmegam_func(Omega_m=om_fid, sigma_8=s8_fid)
-jacobian[S8_idx, sigma_8_idx] = dS8_dsigma8_func(Omega_m=om_fid)
+# def dS8_dsigma8_func(Omega_m): return np.sqrt(Omega_m / 0.3)
+# def dS8_dOmegam_func(Omega_m, sigma_8): return (sigma_8 / 2) * (1 / np.sqrt(Omega_m * 0.3))
 
 
-# Transform the Fisher matrix
-fm_prime_j = jacobian.T @ masked_fm_dict['FM_WL_G'] @ jacobian
+# # Fiducial values
+# om_fid = fid_pars_dict['FM_ordered_params']['Om']
+# s8_fid = fid_pars_dict['FM_ordered_params']['s8']
 
-plot_lib.triangle_plot(fm_prime_j, masked_fm_dict['FM_WL_G'],
-                       fiducials=list(masked_fid_pars_dict['FM_WL_G'].values()),
-                       title='WL',
-                       label_background='$S_8$',
-                       label_foreground='$\sigma_8$',
-                       param_names_labels=list(masked_fid_pars_dict['FM_WL_G'].keys()),
-                       param_names_labels_toplot=['Om', 's8'])
+# # Fill in the Jacobian matrix
+# # jacobian[sigma_8_idx, sigma_8_idx] = dS8_dsigma8_func(Omega_m=om_fid)
+# # jacobian[Omega_m_idx, sigma_8_idx] = dS8_dOmegam_func(Omega_m=om_fid, sigma_8=s8_fid)
 
-# second way
-m_matrix = np.eye(masked_fm_dict['FM_WL_G'].shape[0])
+# jacobian[S8_idx, Omega_m_idx] = dS8_dOmegam_func(Omega_m=om_fid, sigma_8=s8_fid)
+# jacobian[S8_idx, sigma_8_idx] = dS8_dsigma8_func(Omega_m=om_fid)
 
 
-def dsigma8_dS8_func(Omega_m): return (np.sqrt(0.3 / Omega_m))
-def dOmegam_dS8_func(Omega_m, sigma_8): return ((2 / sigma_8) * (np.sqrt(Omega_m * 0.3)))
+# # Transform the Fisher matrix
+# fm_prime_j = jacobian.T @ masked_fm_dict['FM_WL_G'] @ jacobian
+
+# plot_lib.triangle_plot(fm_prime_j, masked_fm_dict['FM_WL_G'],
+#                        fiducials=list(masked_fid_pars_dict['FM_WL_G'].values()),
+#                        title='WL',
+#                        label_background='$S_8$',
+#                        label_foreground='$\sigma_8$',
+#                        param_names_labels=list(masked_fid_pars_dict['FM_WL_G'].keys()),
+#                        param_names_labels_toplot=['Om', 's8'])
+
+# # second way
+# m_matrix = np.eye(masked_fm_dict['FM_WL_G'].shape[0])
 
 
-# Fill in the m_matrix matrix
-m_matrix[Omega_m_idx, S8_idx] = dOmegam_dS8_func(Omega_m=om_fid, sigma_8=s8_fid)
-m_matrix[sigma_8_idx, S8_idx] = dsigma8_dS8_func(Omega_m=om_fid)
+# def dsigma8_dS8_func(Omega_m): return (np.sqrt(0.3 / Omega_m))
+# def dOmegam_dS8_func(Omega_m, sigma_8): return ((2 / sigma_8) * (np.sqrt(Omega_m * 0.3)))
 
-# Transform the Fisher matrix
-fm_prime_m = m_matrix.T @ masked_fm_dict['FM_WL_G'] @ m_matrix
 
-mm.compare_arrays(fm_prime_m, masked_fm_dict['FM_WL_G'], log_array=True, log_diff=False,
-                  plot_diff_threshold=0, white_where_zero=True)
+# # Fill in the m_matrix matrix
+# m_matrix[Omega_m_idx, S8_idx] = dOmegam_dS8_func(Omega_m=om_fid, sigma_8=s8_fid)
+# m_matrix[sigma_8_idx, S8_idx] = dsigma8_dS8_func(Omega_m=om_fid)
 
-plot_lib.triangle_plot(fm_prime_m,
-                       masked_fm_dict['FM_WL_G'],
-                       fiducials=list(masked_fid_pars_dict['FM_WL_G'].values()),
-                       title='WL',
-                       label_background='$S_8$',
-                       label_foreground='$\sigma_8$',
-                       param_names_labels=list(masked_fid_pars_dict['FM_WL_G'].keys()),
-                       param_names_labels_toplot=list(masked_fid_pars_dict['FM_WL_G'].keys())[:9])
+# # Transform the Fisher matrix
+# fm_prime_m = m_matrix.T @ masked_fm_dict['FM_WL_G'] @ m_matrix
+
+# mm.compare_arrays(fm_prime_m, masked_fm_dict['FM_WL_G'], log_array=True, log_diff=False,
+#                   plot_diff_threshold=0, white_where_zero=True)
+
+# plot_lib.triangle_plot(fm_prime_m,
+#                        masked_fm_dict['FM_WL_G'],
+#                        fiducials=list(masked_fid_pars_dict['FM_WL_G'].values()),
+#                        title='WL',
+#                        label_background='$S_8$',
+#                        label_foreground='$\sigma_8$',
+#                        param_names_labels=list(masked_fid_pars_dict['FM_WL_G'].keys()),
+#                        param_names_labels_toplot=list(masked_fid_pars_dict['FM_WL_G'].keys())[:9])
 
 del cov_dict
 gc.collect()

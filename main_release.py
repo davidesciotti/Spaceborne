@@ -671,7 +671,7 @@ cov_sb_suffix = covariance_cfg['Spaceborne_cfg']['cov_suffix'].format(
     k_txt_label=k_txt_label,
     cl_integral_convention=covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
     integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
-    survey_area_deg2=covariance_cfg['survey_area_deg2'],
+    survey_area_deg2=14700,
 )
 
 variable_specs.pop('ng_cov_code')
@@ -1216,8 +1216,9 @@ if covariance_cfg['load_CLOE_benchmark_cov']:
     warnings.warn('OVERWRITING cov_dict WITH CLOE BENCHMARKS')
 
     cloe_bench_path = general_cfg['CLOE_benchmarks_path'].format(ROOT=ROOT)
-    cov_3x2pt_g_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins-13245deg2.npy')
-    cov_3x2pt_gs_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins-13245deg2.npy')
+    area_deg2 = covariance_cfg['survey_area_deg2']
+    cov_3x2pt_g_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins-{area_deg2:d}deg2.npy')
+    cov_3x2pt_gs_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins-{area_deg2:d}deg2.npy')
 
     num_elem_auto_nbl32 = zpairs_auto * nbl_WL_opt
     num_elem_cross_nbl32 = zpairs_cross * nbl_WL_opt
@@ -1622,7 +1623,8 @@ if not general_cfg['ell_cuts']:
 
 if fm_cfg['save_FM_dict']:
     fm_dict_filename = fm_cfg['fm_dict_filename'].format(
-        **variable_specs, fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'])
+        **variable_specs, fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'],
+        lmax=ell_max_3x2pt, areadeg2=covariance_cfg['survey_area_deg2'])
     mm.save_pickle(f'{fm_folder}/{fm_dict_filename}', fm_dict)
 
 if fm_cfg['test_against_benchmarks']:

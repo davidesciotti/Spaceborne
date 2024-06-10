@@ -66,7 +66,7 @@ ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
 
 # ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
 codes_to_compare = ('Spaceborne', 'Spaceborne')
-filename_suffix_list = ('_GoldSSCold', '_GnewSSCnew')
+filename_suffix_list = ('_clsCLOE_CLOEbenchlmax300013254deg_manual', '_clsCLOE_CLOEbenchlmax300014700deg')
 which_cov_term_list = ['G', 'GSSC', ]
 
 fix_dz_plt = False
@@ -421,11 +421,11 @@ for probe_toplot in probes:
     # np.testing.assert_allclose(g_rows_arr[0], g_rows_arr[i], rtol=1e-3)
 
     # ! drop some entries for clearer plot
-    fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'G']
+    # fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'G']
     # fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GSSC']
     fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GcNG']
     fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GSSCcNG']
-    fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'perc_diff_GSSC']
+    # fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'perc_diff_GSSC']
 
     if divide_fom_by_10_plt:
         mask = ~fm_uncert_df_toplot['which_cov_term'].str.startswith('perc_diff')
@@ -454,8 +454,9 @@ fm_a = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['whose_FM'] == 'davide') &
     (fm_uncert_df['which_pk'] == pk_ref) &
-    (fm_uncert_df['filename_suffix'] == '_GnewSSCnew') &
-    (fm_uncert_df['which_cov_term'] == 'G') &
+    (fm_uncert_df['filename_suffix'] == filename_suffix_list[0]) &
+    (fm_uncert_df['ng_cov_code'] == codes_to_compare[0]) &
+    (fm_uncert_df['which_cov_term'] == 'GSSC') &
 
     (fm_uncert_df['fix_dz'] == fix_dz_plt) &
     (fm_uncert_df['fix_shear_bias'] == fix_shear_bias_plt) &
@@ -471,7 +472,8 @@ fm_b = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['whose_FM'] == 'davide') &
     (fm_uncert_df['which_pk'] == pk_ref) &
-    (fm_uncert_df['filename_suffix'] == '_GnewSSCnew') &
+    (fm_uncert_df['filename_suffix'] == filename_suffix_list[1]) &
+    (fm_uncert_df['ng_cov_code'] == codes_to_compare[1]) &
     (fm_uncert_df['which_cov_term'] == 'GSSC') &
 
     (fm_uncert_df['fix_dz'] == fix_dz_plt) &
@@ -488,7 +490,8 @@ fid_pars_dict_fm_toplot = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['whose_FM'] == 'davide') &
     (fm_uncert_df['which_pk'] == pk_ref) &
-    (fm_uncert_df['filename_suffix'] == '_GnewSSCnew') &
+    (fm_uncert_df['ng_cov_code'] == codes_to_compare[1]) &
+    (fm_uncert_df['filename_suffix'] == filename_suffix_list[1]) &
     (fm_uncert_df['which_cov_term'] == 'GSSC') &
 
     (fm_uncert_df['fix_dz'] == fix_dz_plt) &
@@ -505,12 +508,12 @@ fid_pars_dict_fm_toplot = fm_uncert_df[
 fiducials = list(fid_pars_dict_fm_toplot.values())
 param_names_label = list(fid_pars_dict_fm_toplot.keys())
 plot_lib.triangle_plot(
-    fm_backround=fm_b,
-    fm_foreground=fm_a,
+    fm_backround=fm_a,
+    fm_foreground=fm_b,
     fiducials=fiducials,
     title=f'G new, SSC new, {probe_toplot}',
-    label_background='G + SSC',
-    label_foreground='G',
+    label_background=f'G + SSC, {codes_to_compare[0]}',
+    label_foreground=f'G + SSC, {codes_to_compare[1]}',
     param_names_labels=param_names_label,
     param_names_labels_toplot=param_names_label[:10])
 

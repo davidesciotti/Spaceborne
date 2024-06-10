@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 from scipy.integrate import simps
 from copy import deepcopy
 from scipy.interpolate import UnivariateSpline, interp1d
+import os
 
 import spaceborne.cl_preprocessing as cl_preprocessing
 import spaceborne.pyccl_cov_class as pyccl_cov
@@ -14,9 +15,7 @@ import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib
 import spaceborne.wf_cl_lib as wf_cl_lib
 
-###############################################################################
-################ CODE TO COMPUTE THE G AND SSC COVMATS ########################
-###############################################################################
+ROOT = os.getenv('ROOT')
 
 probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt', }
 
@@ -222,7 +221,6 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
     zbins = general_cfg['zbins']
     probe_ordering = covariance_cfg['probe_ordering']
     ind_dict = covariance_cfg['ind_dict']
-    cov_path = ng_cov_code_cfg['cov_path']
 
     assert ng_cov_code in ('Spaceborne', 'PyCCL',
                         'OneCovariance'), 'ssc_code must be "Spaceborne", "PyCCL" or "OneCovariance"'
@@ -236,28 +234,62 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
 
     # additional kwargs for Spaceborne
     if ng_cov_code == 'Spaceborne':
-        additional_kwargs = {'z_steps_ssc_integrands': ng_cov_code_cfg['z_steps_ssc_integrands'],
-                             'k_txt_label': ng_cov_code_cfg['k_txt_label'],
-                             'cl_integral_convention': ng_cov_code_cfg['cl_integral_convention']}
+        # additional_kwargs = {'z_steps_ssc_integrands': ng_cov_code_cfg['z_steps_ssc_integrands'],
+                            #  'k_txt_label': ng_cov_code_cfg['k_txt_label'],
+                            #  'cl_integral_convention': ng_cov_code_cfg['cl_integral_convention']}
+        
+        # TODO test this, although it should be fine
+        cov_ssc_3x2pt_dict_8D = covariance_cfg['cov_ssc_3x2pt_dict_8D_sb']
+    
+
     elif ng_cov_code == 'PyCCL' or ng_cov_code == 'OneCovariance':
         additional_kwargs = {}
+        cov_path = ng_cov_code_cfg['cov_path'].format(ROOT=ROOT)
+        
+        # pre-format covariance filename, leaving probes identifiers as placeholders
+        cov_filename = covariance_cfg[ng_cov_code + '_cfg']['cov_filename'].format(
+            which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
+            probe_c='{probe_c:s}', probe_d='{probe_d:s}', nbl=nbl, lmax=ell_max,
+            EP_or_ED=general_cfg['EP_or_ED'],
+            zbins=zbins, **additional_kwargs)
 
-    # pre-format covariance filename, leaving probes identifiers as placeholders
-    # cov_filename = covariance_cfg[ng_cov_code + '_cfg']['cov_filename'].format(
-    #     which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
-    #     probe_c='{probe_c:s}', probe_d='{probe_d:s}', nbl=nbl, lmax=ell_max,
-    #     EP_or_ED=general_cfg['EP_or_ED'],
-    #     zbins=zbins, **additional_kwargs)
+        try:
+            cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(cov_path, cov_filename, probe_ordering)
+        except FileNotFoundError as err:
+            print(err)
+            print(f'No covariance file found in {cov_path}')
+            print('Changing ellmax to 5000 and cutting the last bins')
+            cov_filename = cov_filename.replace('lmax3000', 'lmax5000')
+            cov_filename = cov_filename.replace('nbl29', 'nbl32')
+            cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
+                path=cov_path,
+                filename=cov_filename,
+                probe_ordering=probe_ordering)
+            
+        for key in cov_ssc_3x2pt_dict_8D.keys():
+            cov_ssc_3x2pt_dict_8D[key] = cov_ssc_3x2pt_dict_8D[key][:general_cfg['nbl_3x2pt'], :general_cfg['nbl_3x2pt'], ...]
+        
+    # print(f'{ng_cov_code} NG covariance folder is:\n{cov_path}\n')
+    # print(f'{ng_cov_code} NG covariance filename is:\n{cov_filename}\n')
+        
+    # by passing this dict this function does not symmetrize the 6D covariance blocks, speeding up the code considerably
+    symmetrize_output_dict = {
+        ('L', 'L'): False,
+        ('G', 'L'): False,
+        ('L', 'G'): False,
+        ('G', 'G'): False,
+    }
+    
+    cov_ssc_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
+        cov_ssc_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
+    
 
-    # print(f'NG covariance folder is:\n{cov_path}\n')
-    # print(f'NG covariance filename is:\n{cov_filename}\n')
-
+    
     # TODO restore this logic
     # if ng_cov_code_cfg['load_precomputed_cov']:
     #     # load SSC blocks in 4D and store them into a dictionary of 8D blocks
     #     ...
     #     # TODO find a better solution for Spaceborne cov handling
-    #     # cov_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(cov_path, cov_filename, probe_ordering)
 
     # else:
         
@@ -272,26 +304,7 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
     #                                                           covariance_cfg=covariance_cfg,
     #                                                           cov_filename=cov_filename)
 
-    if ng_cov_code == 'Spaceborne':
-        cov_3x2pt_dict_8D = covariance_cfg['cov_ssc_3x2pt_dict_8D_sb']
-
-        # raise NotImplementedError('Spaceborne is currently implemented in the main, but it will eventually go here '
-        #                           'or in a separate module')
-
-    # reshape the blocks in the dictionary from 4D to 6D, as needed by the BNT
-
-    # TODO test this, although it should be fine
-    # by passing this dict this function does not symmetrize the 6D covariance blocks, speeding up the code considerably
-    symmetrize_output_dict = {
-        ('L', 'L'): False,
-        ('G', 'L'): False,
-        ('L', 'G'): False,
-        ('G', 'G'): False,
-    }
-    cov_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
-        cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
-
-    return cov_3x2pt_dict_10D
+    return cov_ssc_3x2pt_dict_10D
 
 
 def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix):

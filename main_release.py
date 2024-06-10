@@ -1432,9 +1432,10 @@ elif fm_cfg['which_derivatives'] == 'Vincenzo':
         dC_WA_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_WA_4D.npy')
         dC_3x2pt_6D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_3x2pt_6D.npy')
 
+
     elif not fm_cfg['load_preprocess_derivatives']:
         der_prefix = fm_cfg['derivatives_prefix']
-        dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
+        dC_dict_1D = dict(mm.get_kv_pairs_v2(derivatives_folder, "dat"))
         # check if dictionary is empty
         if not dC_dict_1D:
             raise ValueError(f'No derivatives found in folder {derivatives_folder}')
@@ -1470,6 +1471,8 @@ elif fm_cfg['which_derivatives'] == 'Vincenzo':
         gc.collect()
 
         # save these so they can simply be imported!
+        if not os.path.exists(f'{derivatives_folder}/reshaped_into_np_arrays'):
+            os.makedirs(f'{derivatives_folder}/reshaped_into_np_arrays')
         np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_LL_4D.npy', dC_LL_4D_vin)
         np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_GG_4D.npy', dC_GG_4D_vin)
         np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_WA_4D.npy', dC_WA_4D_vin)
@@ -1710,8 +1713,8 @@ for key in list(fm_dict_toplot.keys()):
 
         if not fix_dz:
             print(f'adding dz Gaussian prior to {key}')
-            masked_fm_dict[key] = mm.add_prior_to_fm(
-                masked_fm_dict[key], masked_fid_pars_dict[key], dz_param_names, dz_prior)
+            masked_fm_dict[key] = mm.add_prior_to_fm(masked_fm_dict[key], masked_fid_pars_dict[key], 
+                                                     dz_param_names, dz_prior)
 
         uncert_dict[key] = mm.uncertainties_fm_v2(masked_fm_dict[key], masked_fid_pars_dict[key],
                                                   which_uncertainty='marginal',

@@ -1302,6 +1302,29 @@ def get_kv_pairs(path_import, extension='npy'):
         yield path.stem, load_function(str(path))
 
 
+def get_kv_pairs_v2(path_import, extension='npy'):
+    """
+    Load npy, npz, txt, or dat files in dictionary.
+    To use it, wrap it in "dict(), e.g.:
+        loaded_dict = dict(get_kv_pairs(path_import, filetype="dat"))
+    """
+    if extension == 'npy' or extension == 'npz':
+        load_function = np.load
+    elif extension == 'txt' or extension == 'dat':
+        load_function = lambda p: np.genfromtxt(p, encoding='latin1')  # Handle non-UTF-8 encoding
+    else:
+        raise NotImplementedError("extension must be either 'npy', 'npz', 'txt' or 'dat'")
+
+    for path in Path(path_import).glob(f"*.{extension}"):
+        if path.is_file():  # Ensure it's a file, not a directory
+            try:
+                yield path.stem, load_function(str(path))
+            except UnicodeDecodeError as e:
+                print(f"Error decoding file {path}: {e}")
+            except Exception as e:
+                print(f"Error loading file {path}: {e}")
+                
+
 # to display the names (keys) more tidily
 def show_keys(arrays_dict):
     for key in arrays_dict:

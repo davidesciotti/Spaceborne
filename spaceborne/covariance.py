@@ -329,7 +329,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     # ! must copy the array! Otherwise, it gets modified and changed at each call
     ind = covariance_cfg['ind'].copy()
     block_index = covariance_cfg['block_index']
-    which_probe_response = covariance_cfg['which_probe_response']
     probe_ordering = covariance_cfg['probe_ordering']
 
     # (not the best) check to ensure that the (LL, XC, GG) ordering is respected
@@ -390,25 +389,16 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
                 ('G', 'G'): ind_auto}
     covariance_cfg['ind_dict'] = ind_dict
 
-    # load Cls
+    # load Cls and responses
     cl_LL_3D = cl_dict_3D['cl_LL_3D']
     cl_GG_3D = cl_dict_3D['cl_GG_3D']
     cl_WA_3D = cl_dict_3D['cl_WA_3D']
     cl_3x2pt_5D = cl_dict_3D['cl_3x2pt_5D']
 
-    if which_probe_response == 'constant':
-        rl_value = covariance_cfg['response_const_value']
-        rl_LL_3D = np.full(cl_LL_3D.shape, rl_value)
-        rl_GG_3D = np.full(cl_GG_3D.shape, rl_value)
-        rl_WA_3D = np.full(cl_WA_3D.shape, rl_value)
-        rl_3x2pt_5D = np.full(cl_3x2pt_5D.shape, rl_value)
-    elif which_probe_response == 'variable':
-        rl_LL_3D = rl_dict_3D['rl_LL_3D']
-        rl_GG_3D = rl_dict_3D['rl_GG_3D']
-        rl_WA_3D = rl_dict_3D['rl_WA_3D']
-        rl_3x2pt_5D = rl_dict_3D['rl_3x2pt_5D']
-    else:
-        raise ValueError("which_probe_response must be 'constant' or 'variable'")
+    rl_LL_3D = rl_dict_3D['rl_LL_3D']
+    rl_GG_3D = rl_dict_3D['rl_GG_3D']
+    rl_WA_3D = rl_dict_3D['rl_WA_3D']
+    rl_3x2pt_5D = rl_dict_3D['rl_3x2pt_5D']
 
     # print settings
     print(f'\ncheck: \nind_ordering = {triu_tril}, {rowcol_major} \nblock_index = {block_index}\n'

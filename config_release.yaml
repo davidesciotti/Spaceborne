@@ -117,19 +117,17 @@ general_cfg:
     BNT_transform: False # ! to be deprecated?
     cl_BNT_transform: False
 
-    cl_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVectors/Noiseless/{which_pk:s}"
-    rl_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/ResFun/{which_pk:s}"
+    # vincenzo's inputs path
+    cl_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/OutputFiles/DataVectors/Noiseless/{which_pk:s}"
     cl_filename: "dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat"
-    rl_filename: resfun-idBM{idBM:02d}.dat # XXX its idBM... anyway not using the responses at the moment
-    # wf_folder: '{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/Windows'
-    wf_folder: '{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputSSC/Windows'
+    wf_folder: '{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputSSC/Windows'
     wf_filename: 'wi{probe:s}-{ep_or_ed:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{specs:s}.dat'
     specs: 'idIA{idIA:d}-idB{idBM:01d}-idM{idM:d}-idR{idR:d}'
     check_wf_against_vincenzo: True
 
     CLOE_benchmarks_path: '{ROOT:s}/CLOE_benchmarks'
 
-    which_cls: CLOE
+    which_cls: Vincenzo # CLOE or Vincenzo or CCL
 
     has_rsd: False
     has_magnification_bias: True
@@ -149,8 +147,9 @@ general_cfg:
     bias_function: analytical # 'analytical', 'leporifit', 'pocinofit'
     bias_model: step-wise # 'step-wise', 'constant', 'linint', 'ones', 'polynomial'
 
-    CLOE_pk_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputPS/{which_pk:s}/InFiles/{flat_or_nonflat:s}"
+    CLOE_pk_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputPS/{which_pk:s}/InFiles/{flat_or_nonflat:s}"
     CLOE_pk_filename: "{CLOE_pk_folder:s}/{param_name:s}/PddVsZedLogK-{param_name:s}_{param_value:.3e}.dat"
+    
     flat_or_nonflat: Flat
     which_pk: HMCodeBar
 
@@ -165,8 +164,6 @@ covariance_cfg:
     block_index: ell
     GL_or_LG: GL
 
-    which_probe_response: variable
-
     # fsky: 0.3563380664078408
     # survey_area_deg2: 14700
     fsky: 0.3210678603147902
@@ -175,7 +172,7 @@ covariance_cfg:
     sigma_eps_i: 0.26 # ellipticity dispersion *per component*; sigma_eps: (0.26 * np.sqrt(2))
     which_shape_noise: per_component # ISTF or per_component
 
-    # nofz_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputNz/NzFid"
+    # nofz_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid"
     nofz_folder: "{ROOT:s}/CLOE_benchmarks"
     # TODO zmin_nz is for both sources and lenses, but be careful about this in the future
     nofz_filename: nzTabSPV3.dat
@@ -278,7 +275,7 @@ covariance_cfg:
     PyCCL_cfg:
         probe: 3x2pt
         # cNG or SSC. Which non-Gaussian covariance terms to compute. Must be a tuple
-        which_ng_cov: [SSC]
+        which_ng_cov: [SSC, ]
         test_GLGL: False # must be set to False for actual 3x2pt runs
 
         which_pk_for_pyccl: CLOE # PyCCL (the one stored in cosmo obj) or CLOE
@@ -322,7 +319,7 @@ covariance_cfg:
         which_pk_responses: separate_universe # halo_model (with PyCCL) or separate_universe (from simulations)
 
         cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Spaceborne/{which_pk_responses:s}"
-        cov_suffix: "_zsteps{z_steps_ssc_integrands:d}_k{k_txt_label:s}_convention{cl_integral_convention:s}_integration{integration_type:s}_{survey_area_deg2:d}deg2"
+        cov_suffix: "_zsteps{z_steps_ssc_integrands:d}_k{k_txt_label:s}_convention{cl_integral_convention:s}_integration{integration_type:s}_{survey_area_deg2:d}deg2_Francis"
 
         # settings for sigma2
         # TODO these have to be tidied up
@@ -348,7 +345,7 @@ covariance_cfg:
         integration_type: 'simps' # 'simps' or 'trapz' (which is actually using rectangles)
 
         separate_universe_responses_filename: 'resfun-idBM{idBM:02d}.dat'
-        separate_universe_responses_folder: '{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputSSC/ResFun/{which_pk:s}'
+        separate_universe_responses_folder: '{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputSSC/ResFun/{which_pk:s}'
 
     OneCovariance_cfg:
         which_ng_cov: [SSC,]
@@ -368,7 +365,7 @@ FM_cfg:
 
     load_preprocess_derivatives: False
     which_derivatives: Vincenzo # Vincenzo or Spaceborne
-    derivatives_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}" # TODO delete this
+    derivatives_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}" # TODO delete this
 
     derivatives_filename: dDVd{param_name:s}-{probe:s}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{EP_or_ED:s}{zbins:02d}.dat
     derivatives_prefix: dDVd
@@ -378,7 +375,7 @@ FM_cfg:
 
     fm_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}"
     fm_txt_filename: fm_txt_filename
-    fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_source:02d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}_pk{which_pk:s}{fm_and_cov_suffix:s}_CLOEbenchlmax{lmax:d}13254deg_manual.pickle
+    fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_source:02d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}_pk{which_pk:s}{fm_and_cov_suffix:s}_Francis.pickle
 
     test_against_vincenzo: False # TODO delete this
     test_against_benchmarks: False # TODO delete this

@@ -1316,7 +1316,7 @@ if covariance_cfg['test_against_benchmarks']:
     cov_benchmark_folder = f'{cov_folder}/benchmarks'
     mm.test_folder_content(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
 
-if covariance_cfg['test_against_vincenzo'] and bnt_transform == False and not general_cfg['use_CLOE_cls']:
+if covariance_cfg['test_against_vincenzo'] and bnt_transform == False and general_cfg['which_cls'] == 'Vincenzo':
     cov_vinc_filename = covariance_cfg['cov_vinc_filename'].format(**variable_specs, probe='3x2pt')
     cov_vinc_g = np.load(f'{covariance_cfg["cov_vinc_folder"]}/{cov_vinc_filename}')['arr_0']
     num_elements_nbl29 = cov_dict['cov_3x2pt_GO_2D'].shape[0]

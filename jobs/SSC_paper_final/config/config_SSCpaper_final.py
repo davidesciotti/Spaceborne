@@ -14,7 +14,7 @@ import ISTF_fid_params as ISTFfid
 which_forecast = 'SPV3'
 fsky, GL_or_LG, ind_ordering, _ = utils.get_specs(which_forecast)
 
-SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_1_restored'
+SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/FiRe'
 output_path = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SSC_paper_final/output'
 
 # ! choose the flagship version and whether you want to use the BNT transform
@@ -53,9 +53,9 @@ general_cfg = {
     'ell_min': 10,
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
     'ell_max_WL': 5000,
-    'ell_max_GC': 3000,
-    'ell_max_XC': 3000,
-    'ell_max_3x2pt': 3000,
+    'ell_max_GC': 5000,
+    'ell_max_XC': 5000,
+    'ell_max_3x2pt': 5000,
     'zbins': 10,
     'zbins_list': None,
     'EP_or_ED': 'EP',
@@ -69,7 +69,11 @@ general_cfg = {
     'magcut_lens': 245,
     'zcut_source': 0,
     'zcut_lens': 0,
+    
+    # new files have "global" specs, it's one sample!
     'zmax': 2.5,
+    'zmin': 0,
+    'magcut': 245,
 
     'flat_or_nonflat': 'flat',
 
@@ -104,10 +108,12 @@ general_cfg = {
     'idM': 3,
     'idR': 1,
 
-    'which_pk': 'HMCode2020',
-    'cl_folder': f'{SPV3_folder}' + '/DataVectors/Noiseless/{probe:s}' + f'/FS{flagship_version}',
-    'rl_folder': f'{SPV3_folder}' + f'/ResFunTabs/FS{flagship_version}' + '/{probe:s}',
+    'which_pk': 'HMCodeBar',
+    'cl_folder': f'{SPV3_folder}' + '/OutputQuantities/DataVectors/DataVecFid/Davide/{probe:s}/{which_pk:s}',
+    'rl_folder': f'{SPV3_folder}'.replace('FiRe', 'Flagship_1_restored') + f'/ResFunTabs/FS{flagship_version}' + '/{probe:s}',
     'cl_filename': 'dv-{probe:s}-{nbl:d}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED:s}{zbins:02d}.dat',
+    'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-zedMin{zmin:02d}-zedMax{zmax:2d}-mag{magcut:d}.dat',
+
     'rl_filename': 'rf-{probe:s}-{nbl:d}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED:s}{zbins:02d}.dat',
 
     'flagship_version': flagship_version,
@@ -134,12 +140,14 @@ covariance_cfg = {
     'fsky': fsky,  # ! new
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
-    'ng_folder': f'{SPV3_folder}/InputNz/Lenses/Flagship',
-    'ng_filename': 'ngbTab-{EP_or_ED:s}{zbins:02d}.dat',
-
+    
+    # nuisance
+    'nuisance_folder': f'{SPV3_folder}/InputQuantities/NzFiles/Davide/NzPar',
+    'nuisance_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zmin:02d}-zedMax{zmax:2d}-mag{magcut:d}.dat',
+    
     # sources (and lenses) redshift distributions
-    'nofz_folder': f'{SPV3_folder}/InputNz/Lenses/Flagship',
-    'nofz_filename': 'niTab-{EP_or_ED:s}{zbins:02d}.dat',
+    'nofz_folder': f'{SPV3_folder}/InputQuantities/NzFiles/Davide/NzTab',
+    'nofz_filename': 'nzTab-{EP_or_ED:s}{zbins:02d}-zedMin{zmin:02d}-zedMax{zmax:2d}-mag{magcut:d}.dat',
     'plot_nz_tocheck': True,
 
     'cov_BNT_transform': cov_BNT_transform,
@@ -176,9 +184,10 @@ if ell_cuts:
     covariance_cfg['cov_filename'].replace('_{ndim:d}D', 'kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D')
 
 Sijkl_cfg = {
-    'wf_input_folder': f'{SPV3_folder}/Windows/FS1',
-    'wf_WL_input_filename': 'WiGamma-{EP_or_ED:s}{zbins:02d}.dat',
-    'wf_GC_input_filename': 'WiGC-{EP_or_ED:s}{zbins:02d}.dat',
+    'wf_input_folder': f'{SPV3_folder}/InputQuantities/NzFiles/Davide/Windows/WiFid',
+    'wf_delta_input_filename': 'widelta-{EP_or_ED:s}{zbins:02d}-zedMin{zmin:02d}-zedMax{zmax:2d}-mag{magcut:d}.dat',
+    'wf_gamma_input_filename': 'wigamma-{EP_or_ED:s}{zbins:02d}-zedMin{zmin:02d}-zedMax{zmax:2d}-mag{magcut:d}.dat',
+    'wf_ia_input_filename': 'wiia-{EP_or_ED:s}{zbins:02d}-zedMin{zmin:02d}-zedMax{zmax:2d}-mag{magcut:d}.dat',
     'wf_normalization': 'IST',
     'nz': None,  # ! is this used?
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl

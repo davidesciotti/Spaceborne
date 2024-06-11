@@ -117,7 +117,6 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
         bar_centers = np.arange(no_params)
         bar_centers = bar_centers[None, :]
         bar_centers = np.repeat(bar_centers, no_cases, axis=0)
-        print(zorders)
 
     if param_names_label is None:
         param_names_label = mpl_cfg.general_dict['cosmo_labels_TeX']
@@ -184,6 +183,8 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
     plt.title(title)
     plt.legend()
     plt.show()
+
+
 
     
 def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_background, label_foreground, 

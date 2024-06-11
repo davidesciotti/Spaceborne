@@ -405,10 +405,23 @@ else:
     cl_wa_1d = np.ones_like(cl_ll_1d)
 
 # reshape to 3 dimensions
-cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL, zbins)
-cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
-cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
-cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
+try:
+    cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL, zbins)
+    cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
+    # cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
+    cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
+except AssertionError as err:
+    print(err)
+    print('Importing ellmax=5000 files and cutting')
+    cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL, zbins)
+    cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_WL, zbins)
+    # cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WL, zbins)
+    cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_WL, zbins)
+    
+    cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
+    cl_3x2pt_5d = cl_3x2pt_5d[:, :, :nbl_3x2pt, :, :]
+
+cl_wa_3d = cl_ll_3d[nbl_GC:nbl_WL, :, :]
 
 # decrease font of the xticks
 plt.rcParams.update({'xtick.labelsize': 19})
@@ -470,8 +483,6 @@ assert np.all(z_center_values < 3), 'z_center values are likely < 3; this is jus
 assert np.all(gal_bias_fid > 1), 'galaxy bias should be > 1'
 assert np.all(gal_bias_fid < 3), 'galaxy bias seems a bit large; this is just a rough check'
 
-# BNT_matrix_filename = general_cfg["BNT_matrix_filename"].format(**variable_specs)
-# BNT_matrix = np.load(f'{general_cfg["BNT_matrix_path"]}/{BNT_matrix_filename}')
 
 # print('Computing BNT matrix...')
 # BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z, plot_nz=False)

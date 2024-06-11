@@ -140,6 +140,7 @@ covariance_cfg = {
     'fsky': fsky,  # ! new
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
+    'which_shape_noise': 'correct',
     
     # nuisance
     'nuisance_folder': f'{SPV3_folder}/InputQuantities/NzFiles/Davide/NzPar',
@@ -193,8 +194,8 @@ Sijkl_cfg = {
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
 
     'Sijkl_folder': f'{output_path}/sijkl',
-    'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}.npy',
-    'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
+    'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}_FiRe.npy',
+    'use_precomputed_sijkl': False,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
 
 

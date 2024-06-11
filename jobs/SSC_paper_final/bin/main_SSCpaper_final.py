@@ -22,6 +22,7 @@ sys.path.append(f'{ROOT}/Spaceborne')
 import bin.my_module as mm
 import bin.cosmo_lib as csmlib
 import bin.ell_values as ell_utils
+import bin.pyccl_cov_class as pyccl_cov_class
 import bin.cl_preprocessing as cl_utils
 import bin.compute_Sijkl as Sijkl_utils
 import bin.covariance as covmat_utils
@@ -278,6 +279,38 @@ if covariance_cfg[f'compute_SSC']:
 if covariance_cfg[f'save_cov_SSC']:
     cases_tosave.append('SS')
 
+
+flat_fid_pars_dict = {
+    'Om_m0': ISTF_fid.primary['Om_m0'],
+    'Om_b0': ISTF_fid.primary['Om_b0'],
+    'Om_Lambda0': ISTF_fid.extensions['Om_Lambda0'],
+    'w_0': ISTF_fid.primary['w_0'],
+    'w_a': ISTF_fid.primary['w_a'],
+    'h': ISTF_fid.primary['h_0'],
+    'n_s': ISTF_fid.primary['n_s'],
+    'sigma_8': ISTF_fid.primary['sigma_8'],
+    'm_nu': ISTF_fid.extensions['m_nu'],
+    'N_eff': ISTF_fid.neutrino_params['N_eff'],
+    'sigma8': ISTF_fid.primary['sigma_8'],
+    'A_IA': ISTF_fid.IA_free['A_IA'],
+    'eta_IA': ISTF_fid.IA_free['eta_IA'],
+    'beta_IA': ISTF_fid.IA_free['beta_IA'],
+    'C_IA': ISTF_fid.IA_fixed['C_IA'],
+
+    'other_params': {
+        'camb_extra_parameters': {
+            'camb': {
+                'halofit_version': 'mead2020_feedback',
+                'HMCode_logT_AGN': 7.75,
+                'num_massive_neutrinos': 1,
+                'dark_energy_model': 'ppf',
+            }
+        }
+    },
+}
+
+ccl_obj = pyccl_cov_class.PycclClass(flat_fid_pars_dict)
+
 # build the ind array and store it into the covariance dictionary
 ind = mm.build_full_ind(triu_tril, row_col_major, zbins)
 covariance_cfg['ind'] = ind
@@ -348,8 +381,8 @@ nbl_3x2pt_opt = general_cfg['nbl_3x2pt_opt']
 variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
                   'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_XC': ell_max_XC,
                   'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
-                  'ell_max_3x2pt': general_cfg['ell_max_3x2pt'], 
-                  'magcut_source': magcut_source, 'magcut_lens': magcut_lens, 
+                  'ell_max_3x2pt': general_cfg['ell_max_3x2pt'],
+                  'magcut_source': magcut_source, 'magcut_lens': magcut_lens,
                   'zcut_source': zcut_source, 'zcut_lens': zcut_lens,
                   'zmin': general_cfg['zmin'], 'zmax': zmax, 'magcut': general_cfg['magcut'],
                   }
@@ -365,7 +398,7 @@ cl_gg_1d = np.genfromtxt(
 cl_3x2pt_1d = np.genfromtxt(
     f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', nbl=nbl_WL, **variable_specs)}")
 
-if general_cfg['use_WA']: 
+if general_cfg['use_WA']:
     cl_wa_1d = np.genfromtxt(
         f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', nbl=nbl_WL, **variable_specs)}")
 else:
@@ -572,24 +605,29 @@ if covariance_cfg['compute_SSC']:
     wf_gamma_filename = Sijkl_cfg["wf_gamma_input_filename"]
     wf_ia_filename = Sijkl_cfg["wf_ia_input_filename"]
     wf_delta_filename = Sijkl_cfg["wf_delta_input_filename"]
-    
-    wil = np.genfromtxt(f'{wf_folder}/{wf_gamma_filename.format(**variable_specs)}')
-    wig = np.genfromtxt(f'{wf_folder}/{wf_delta_filename.format(**variable_specs)}')
 
+    wf_gamma = np.genfromtxt(f'{wf_folder}/{wf_gamma_filename.format(**variable_specs)}')
+    wf_ia = np.genfromtxt(f'{wf_folder}/{wf_ia_filename.format(**variable_specs)}')
+    wf_delta = np.genfromtxt(f'{wf_folder}/{wf_delta_filename.format(**variable_specs)}')
 
+    z_arr = wf_delta[:, 0]
+    wf_delta = wf_delta[:, 1:]
+    wf_gamma = wf_gamma[:, 1:]
+    wf_ia = wf_ia[:, 1:]
 
-    # preprocess (remove redshift column)
-    z_arr_wil, wil = Sijkl_utils.preprocess_wf(wil, zbins)
-    z_arr_wig, wig = Sijkl_utils.preprocess_wf(wig, zbins)
-    assert np.array_equal(z_arr_wil, z_arr_wig), \
-        'the redshift arrays are different for the GC and WL kernels'
-    z_arr = z_arr_wil
+    # construct lensing kernel
+    ia_bias = wf_cl_lib.build_ia_bias_1d_arr(z_grid_out=z_arr, cosmo_ccl=ccl_obj.cosmo_ccl,
+                                             flat_fid_pars_dict=flat_fid_pars_dict,
+                                             input_z_grid_lumin_ratio=None, input_lumin_ratio=None,
+                                             output_F_IA_of_z=False)
+
+    wil = wf_gamma + ia_bias[:, None] * wf_ia
+    wig = wf_delta
 
     # transpose and stack, ordering is important here!
     assert wil.shape == wig.shape, 'the GC and WL kernels have different shapes'
     assert wil.shape == (z_arr.shape[0], zbins), 'the kernels have the wrong shape'
     transp_stacked_wf = np.vstack((wil.T, wig.T))
-
     # ! compute or load Sijkl
     nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
     Sijkl_folder = Sijkl_cfg['Sijkl_folder']

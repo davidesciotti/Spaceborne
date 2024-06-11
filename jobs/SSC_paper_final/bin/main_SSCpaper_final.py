@@ -362,20 +362,20 @@ delta_dict = {'delta_l_WL': np.copy(delta_l_WL_nbl32[:nbl_WL]),
               'delta_l_WA': np.copy(delta_l_WL_nbl32[nbl_GC:])}
 
 # set # of nbl in the opt case, import and reshape, then cut the reshaped datavectors in the pes case
-# assert (general_cfg['ell_max_WL_opt'],
-#         general_cfg['ell_max_WL'],
-#         general_cfg['ell_max_GC'],
-#         general_cfg['ell_max_XC']) == (5000, 5000, 3000, 3000), \
-#     'the number of bins defined in the config file is compatible with these ell_max values'
+assert (general_cfg['ell_max_WL_opt'],
+        general_cfg['ell_max_WL'],
+        general_cfg['ell_max_GC'],
+        general_cfg['ell_max_XC']) == (5000, 5000, 3000, 3000), \
+    'the number of bins defined in the config file is compatible with these ell_max values'
 
 nbl_WL_opt = general_cfg['nbl_WL_opt']
 nbl_GC_opt = general_cfg['nbl_GC_opt']
 nbl_WA_opt = general_cfg['nbl_WA_opt']
 nbl_3x2pt_opt = general_cfg['nbl_3x2pt_opt']
 
-# if ell_max_WL == general_cfg['ell_max_WL_opt']:
-#     assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
-#         'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
+if ell_max_WL == general_cfg['ell_max_WL_opt']:
+    assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
+        'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
 
 # this is just to make the .format() more compact
 variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
@@ -385,6 +385,7 @@ variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
                   'magcut_source': magcut_source, 'magcut_lens': magcut_lens,
                   'zcut_source': zcut_source, 'zcut_lens': zcut_lens,
                   'zmin': general_cfg['zmin'], 'zmax': zmax, 'magcut': general_cfg['magcut'],
+                  'flat_or_nonflat': general_cfg['flat_or_nonflat'], 'which_pk': which_pk,
                   }
 
 
@@ -417,18 +418,16 @@ except AssertionError as err:
     cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_WL, zbins)
     # cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WL, zbins)
     cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_WL, zbins)
-    
+
     cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
     cl_3x2pt_5d = cl_3x2pt_5d[:, :, :nbl_3x2pt, :, :]
 
 cl_wa_3d = cl_ll_3d[nbl_GC:nbl_WL, :, :]
 
-# decrease font of the xticks
+# plot cls
 plt.rcParams.update({'xtick.labelsize': 19})
 plt.rcParams.update({'ytick.labelsize': 19})
-# decrease font of the x label
 plt.rcParams.update({'axes.labelsize': 21})
-# decrease font of the title
 plt.rcParams.update({'axes.titlesize': 21})
 
 fig, axs = plt.subplots(1, 3, figsize=(20, 7))
@@ -691,6 +690,7 @@ fiducials_dict = {
     'IA': [ISTF_fid.IA_free['A_IA'], ISTF_fid.IA_free['eta_IA'], ISTF_fid.IA_free['beta_IA']],
     'shear_bias': np.zeros((zbins,)),
     'dzWL': np.zeros((zbins,)),  # for the time being, equal to the GC ones
+    'dzGC': np.zeros((zbins,)),  # for the time being, equal to the GC ones
     'galaxy_bias': gal_bias_fid,
 }
 fiducials_values_3x2pt = list(np.concatenate([fiducials_dict[key] for key in fiducials_dict.keys()]))
@@ -714,13 +714,14 @@ derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
 der_prefix = FM_cfg['derivatives_prefix']
 vinc_filenames = mm.get_filenames_in_folder(derivatives_folder)
 vinc_filenames = [vinc_filename for vinc_filename in vinc_filenames if vinc_filename.startswith(der_prefix)]
-vinc_filenames = [vinc_filename for vinc_filename in vinc_filenames if f'{EP_or_ED}{zbins:02d} in ' in vinc_filename]
+vinc_filenames = [
+    vinc_filename for vinc_filename in vinc_filenames if f'{EP_or_ED}{zbins:02d}-zedMin{general_cfg["zmin"]:02d}-zedMax{zmax}-mag{general_cfg["magcut"]}' in vinc_filename]
 
 # perform some checks on the filenames before trimming them
 for vinc_filename in vinc_filenames:
     assert f'{EP_or_ED}{zbins}' in vinc_filename, f'{EP_or_ED}{zbins} not in filename {vinc_filename}'
-    assert f'ML{magcut_lens}' in vinc_filename, f'ML{magcut_lens} not in filename {vinc_filename}'
-    assert f'MS{magcut_source}' in vinc_filename, f'MS{magcut_source} not in filename {vinc_filename}'
+    assert f'mag{general_cfg["magcut"]}' in vinc_filename, f'mag{general_cfg["magcut"]} not in filename {vinc_filename}'
+    assert f'zedMax{zmax}' in vinc_filename, f'zedMax{zmax} not in filename {vinc_filename}'
 
 vinc_trimmed_filenames = [vinc_filename.split('-', 1)[0].strip() for vinc_filename in vinc_filenames]
 vinc_trimmed_filenames = [vinc_trimmed_filename[len(der_prefix):] if vinc_trimmed_filename.startswith(der_prefix) else vinc_trimmed_filename
@@ -746,7 +747,8 @@ except AssertionError as error:
         print('the derivative w.r.t logT_AGN is missing in the input folder but '
               'the corresponding FM is still set to 0; moving on')
     else:
-        raise AssertionError('there is something wrong with the parameter names in the derivatives folder')
+        warnings.warn('there is something wrong with the parameter names in the derivatives folder. '
+                      'SETTING MY PARAM NAMES AS THE REFERENCE')
 
 if FM_cfg['load_preprocess_derivatives']:
     dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_LL_4D.npy')
@@ -760,21 +762,47 @@ elif not FM_cfg['load_preprocess_derivatives']:
     # check if dictionary is empty
     if not dC_dict_1D:
         raise ValueError(f'No derivatives found in folder {derivatives_folder}')
+    
+    # filter the dict
+    dC_dict_1D = {key: value for key, value in dC_dict_1D.items() if any(param in key for param in my_sorted_param_names)}
 
     # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
     dC_dict_LL_3D = {}
     dC_dict_GG_3D = {}
     dC_dict_WA_3D = {}
     dC_dict_3x2pt_5D = {}
-    for key in dC_dict_1D.keys():
-        if 'WLO' in key:
-            dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
-        elif 'GCO' in key:
-            dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
-        elif 'WLA' in key:
-            dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
-        elif '3x2pt' in key:
-            dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt, zbins)
+    
+    try:
+        for key in dC_dict_1D.keys():
+            if 'WLO' in key:
+                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
+            elif 'GCO' in key:
+                dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
+            elif 'WLA' in key:
+                dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
+            elif '3x2pt' in key:
+                dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt, zbins)
+    except AssertionError as err:
+        print(err)
+        print('Importing ellmax=5000 files and cutting')
+        
+        for key in dC_dict_1D.keys():
+            if 'WLO' in key:
+                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
+            elif 'GCO' in key:
+                dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_WL, zbins)
+                dC_dict_GG_3D[key] = dC_dict_GG_3D[key][ :nbl_GC, :, :]
+            elif 'WLA' in key:
+                # dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WL, zbins)
+                dC_dict_WA_3D[key] = dC_dict_LL_3D[key][nbl_GC:nbl_WL, :, :]
+            elif '3x2pt' in key:
+                dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_WL, zbins)
+                dC_dict_3x2pt_5D[key] = dC_dict_3x2pt_5D[key][:, :, :nbl_3x2pt, :, :]
+        
+        
+        
+
+
 
     # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
     dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
@@ -817,6 +845,8 @@ fm_folder = FM_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
 FM_utils.save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, FM_cfg['save_FM_txt'], FM_cfg['save_FM_dict'],
                  **variable_specs)
 
+
+
 if FM_cfg['test_against_benchmarks']:
     mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')
 
@@ -824,42 +854,3 @@ del cov_dict
 gc.collect()
 
 print('Script end')
-
-"""
-# ! save cls and responses:
-# TODO this should go inside a function too
-# this is just to set the correct probe names
-probe_dav_dict = {'WL': 'LL_3D',
-                  'GC': 'GG_3D',
-                  'WA': 'WA_3D',
-                  '3x2pt': '3x2pt_5D'}
-
-# just a dict for the output file names
-clrl_dict = {'cl_dict_3D': cl_dict_3D,
-             'rl_dict_3D': rl_dict_3D,
-             'cl_inputname': 'dv',
-             'rl_inputname': 'rf',
-             'cl_dict_key': 'C',
-             'rl_dict_key': 'R'}
-for cl_or_rl in ['cl', 'rl']:
-    if general_cfg[f'save_{cl_or_rl}s_3d']:
-
-        for probe_vinc, probe_dav in zip(['WLO', 'GCO', '3x2pt', 'WLA'], ['WL', 'GC', '3x2pt', 'WA']):
-            # save cl and/or response; not very readable but it works, plus all the cases are in the for loop
-
-            filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
-            filename = general_cfg[f'{cl_or_rl}_filename'].format(
-                probe=probe_vinc, **variable_specs).replace(".dat", "_3D.npy")
-            file = clrl_dict[f"{cl_or_rl}_dict_3D"][
-                f'{clrl_dict[f"{cl_or_rl}_dict_key"]}_{probe_dav_dict[probe_dav]}']
-            np.save(f'{filepath}/{filename}', file)
-
-            # save ells and deltas
-            if probe_dav != '3x2pt':  # no 3x2pt in ell_dict, it's the same as GC
-                filepath = f'{general_cfg[f"{cl_or_rl}_folder"]}/' \
-                           f'3D_reshaped_BNT_{general_cfg["cl_BNT_transform"]}/{probe_vinc}'
-                ells_filename = f'ell_{probe_dav}_ellmaxWL{ell_max_WL}'
-                np.savetxt(f'{filepath}/{ells_filename}.txt', ell_dict[f'ell_{probe_dav}'])
-                np.savetxt(f'{filepath}/delta_{ells_filename}.txt', delta_dict[f'delta_l_{probe_dav}'])
-
-"""

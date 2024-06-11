@@ -75,7 +75,7 @@ general_cfg = {
     'zmin': 0,
     'magcut': 245,
 
-    'flat_or_nonflat': 'flat',
+    'flat_or_nonflat': 'Flat',
 
     # the case with the largest range is nbl_WL_opt.. This is the reference ell binning from which the cuts are applied;
     # in principle, the other binning should be consistent with this one and should not be hardcoded, as long as
@@ -200,11 +200,12 @@ Sijkl_cfg = {
 
 
 param_names_dict = {
-    'cosmo': ["Om", "Ob", "wz", "wa", "h", "ns", "s8", 'logT_AGN'],
+    'cosmo': ["Om", "Ob", "wz", "wa", "h", "ns", "s8", 'logT'],
     'IA': ["Aia", "eIA", "bIA"],
     'shear_bias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
     'dzWL': [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
-    'galaxy_bias': [f'b{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
+    'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
+    'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
 }
 # declare the set of parameters under study
 param_names_3x2pt = list(np.concatenate([param_names_dict[key] for key in param_names_dict.keys()]))
@@ -232,10 +233,7 @@ FM_cfg = {
     'save_FM_dict': True,
 
     'load_preprocess_derivatives': False,
-    # NO DERIVATIVES FOR FS1!!!!!!!! VINCENZO NEVER UPLOEADED THEM
-    'derivatives_folder': SPV3_folder + '/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}',
-    # 'derivatives_folder':'/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/BNT/Derivatives/ML245ZL00MS245ZS00/',
-    'derivatives_filename': deriv_filename,
+    'derivatives_folder': SPV3_folder + '/OutputQuantities/DataVectors/DataVecDer/{flat_or_nonflat:s}/Davide/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
     'derivatives_prefix': 'dDVd',
 
     'derivatives_BNT_transform': deriv_BNT_transform,

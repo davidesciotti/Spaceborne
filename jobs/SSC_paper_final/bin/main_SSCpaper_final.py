@@ -351,20 +351,25 @@ variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
                   'ell_max_3x2pt': general_cfg['ell_max_3x2pt'], 
                   'magcut_source': magcut_source, 'magcut_lens': magcut_lens, 
                   'zcut_source': zcut_source, 'zcut_lens': zcut_lens,
+                  'zmin': general_cfg['zmin'], 'zmax': zmax, 'magcut': general_cfg['magcut'],
                   }
 
+
 # ! import and reshape datavectors (cl) and response functions (rl)
-cl_fld = general_cfg['cl_folder']
+cl_fld = general_cfg['cl_folder'].format(which_pk=which_pk, probe='{probe:s}')
 cl_filename = general_cfg['cl_filename']
 cl_ll_1d = np.genfromtxt(
     f"{cl_fld.format(probe='WLO', which_pk=which_pk)}/{cl_filename.format(probe='WLO', nbl=nbl_WL, **variable_specs)}")
 cl_gg_1d = np.genfromtxt(
     f"{cl_fld.format(probe='GCO', which_pk=which_pk)}/{cl_filename.format(probe='GCO', nbl=nbl_WL, **variable_specs)}")
-cl_wa_1d = np.genfromtxt(
-    f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', nbl=nbl_WL, **variable_specs)}")
 cl_3x2pt_1d = np.genfromtxt(
     f"{cl_fld.format(probe='3x2pt', which_pk=which_pk)}/{cl_filename.format(probe='3x2pt', nbl=nbl_WL, **variable_specs)}")
 
+if general_cfg['use_WA']: 
+    cl_wa_1d = np.genfromtxt(
+        f"{cl_fld.format(probe='WLA', which_pk=which_pk)}/{cl_filename.format(probe='WLA', nbl=nbl_WL, **variable_specs)}")
+else:
+    cl_wa_1d = np.ones_like(cl_ll_1d)
 
 # reshape to 3 dimensions
 cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL, zbins)
@@ -396,17 +401,25 @@ axs[0].set_xlabel('$\ell$')
 axs[1].set_xlabel('$\ell$')
 axs[2].set_xlabel('$\ell$')
 fig.legend(loc='right')
-plt.savefig('/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/cls.pdf', dpi=500, bbox_inches='tight')
+# plt.savefig('/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/cls.pdf', dpi=500, bbox_inches='tight')
 
 
 # assert False, 'stop here and undo the latest changes with git, they were just to produce the cls plot'
 
-
-ng_folder = covariance_cfg["ng_folder"]
-ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
-ngtab = np.genfromtxt(f'{ng_folder}/'f'{ng_filename}')
-covariance_cfg['ng'] = ngtab[0, :]
-gal_bias_fid = ngtab[1, :]
+# Columns in the nuisance parameters file are as follows for each bin:
+# 1. mean redshift (not used in the code)
+# 2. total number density (needed for covariance estimate)
+# 3. galaxy bias b_g
+# 4. slope s_M of the luminosity function
+# 5. shift dz in the mean redshift of the bin
+# 6. variance of the photo - z error (not used in the code)
+nuisance_folder = covariance_cfg["nuisance_folder"]
+nuisance_filename = f'{covariance_cfg["nuisance_filename"].format(**variable_specs)}'
+nuisance_tab = np.genfromtxt(f'{nuisance_folder}/'f'{nuisance_filename}')
+z_center_values_import = nuisance_tab[:, 0]
+covariance_cfg['ng'] = nuisance_tab[:, 1]
+gal_bias_fid = nuisance_tab[:, 2]
+dz_shifts = nuisance_tab[:, 4]
 
 nofz_folder = covariance_cfg["nofz_folder"]
 nofz_filename = f'{covariance_cfg["nofz_filename"].format(**variable_specs)}'
@@ -421,6 +434,8 @@ assert np.all(covariance_cfg['ng'] < 5), 'ng values are likely < 5 *per bin*; th
 assert np.all(covariance_cfg['ng'] > 0), 'ng values must be positive'
 assert np.all(z_center_values > 0), 'z_center values must be positive'
 assert np.all(z_center_values < 3), 'z_center values are likely < 3; this is just a rough check'
+assert np.all(gal_bias_fid > 1), 'galaxy bias should be > 1'
+assert np.all(gal_bias_fid < 3), 'galaxy bias seems a bit large; this is just a rough check'
 
 # BNT_matrix_filename = general_cfg["BNT_matrix_filename"].format(**variable_specs)
 # BNT_matrix = np.load(f'{general_cfg["BNT_matrix_path"]}/{BNT_matrix_filename}')
@@ -554,10 +569,14 @@ if covariance_cfg['compute_SSC']:
     # ! load kernels
     # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
     wf_folder = Sijkl_cfg["wf_input_folder"].format(**variable_specs)
-    wf_WL_filename = Sijkl_cfg["wf_WL_input_filename"]
-    wf_GC_filename = Sijkl_cfg["wf_GC_input_filename"]
-    wil = np.genfromtxt(f'{wf_folder}/{wf_WL_filename.format(**variable_specs)}')
-    wig = np.genfromtxt(f'{wf_folder}/{wf_GC_filename.format(**variable_specs)}')
+    wf_gamma_filename = Sijkl_cfg["wf_gamma_input_filename"]
+    wf_ia_filename = Sijkl_cfg["wf_ia_input_filename"]
+    wf_delta_filename = Sijkl_cfg["wf_delta_input_filename"]
+    
+    wil = np.genfromtxt(f'{wf_folder}/{wf_gamma_filename.format(**variable_specs)}')
+    wig = np.genfromtxt(f'{wf_folder}/{wf_delta_filename.format(**variable_specs)}')
+
+
 
     # preprocess (remove redshift column)
     z_arr_wil, wil = Sijkl_utils.preprocess_wf(wil, zbins)

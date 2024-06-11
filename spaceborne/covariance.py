@@ -807,24 +807,18 @@ def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr, cosmo_ccl, plot_nz=True)
     :return: BNT matrix, of shape (zbins x zbins)
     """
 
-    if n_of_z_arr is None:
-        assert zbins == 10, 'Only 10 zbins are currently supported, because the analytical n(z) is the ISTF one' \
-                            '(i.e., with IST:F edges)'
-        z_grid = np.linspace(1e-5, 3, 1000)
-        n_of_z_arr = np.array([wf_cl_lib.niz_unnormalized_simps(z_grid, zbin_idx) for zbin_idx in range(zbins)])
-        n_of_z_arr = np.array(
-            [wf_cl_lib.normalize_niz_simps(n_of_z_arr[zbin_idx], z_grid) for zbin_idx in range(zbins)])
-    elif (n_of_z_arr is None) ^ (zgrid_n_of_z is None):
-        raise ValueError('Either both n_of_z_arr and zgrid_n_of_z must be None, or both must be not None')
-    else:
-        assert n_of_z_arr.shape[0] == len(zgrid_n_of_z), 'n_of_z must have zgrid_n_of_z rows'
-        assert n_of_z_arr.shape[1] == zbins, 'n_of_z must have zbins columns'
-        z_grid = zgrid_n_of_z
-        if z_grid[0] == 0:
-            warnings.warn('z_grid starts at 0, which gives a null comoving distance. '
-                          'Removing the first element from the grid')
-            z_grid = z_grid[1:]
-            n_of_z_arr = n_of_z_arr[1:, :]
+
+    assert n_of_z_arr.shape[0] == len(zgrid_n_of_z), 'n_of_z must have zgrid_n_of_z rows'
+    assert n_of_z_arr.shape[1] == zbins, 'n_of_z must have zbins columns'
+    assert np.all(np.diff(zgrid_n_of_z) > 0), 'zgrid_n_of_z must be monotonically increasing'
+    
+    z_grid = zgrid_n_of_z
+    
+    if z_grid[0] == 0:
+        warnings.warn('z_grid starts at 0, which gives a null comoving distance. '
+                        'Removing the first element from the grid')
+        z_grid = z_grid[1:]
+        n_of_z_arr = n_of_z_arr[1:, :]
 
     chi = csmlib.ccl_comoving_distance(z_grid, use_h_units=False, cosmo_ccl=cosmo_ccl)
 

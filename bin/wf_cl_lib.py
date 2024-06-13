@@ -377,7 +377,7 @@ def b_of_z_fs1_leporifit(z):
 
 
 def b_of_z_fs1_pocinofit(z):
-    """fit to the linear galaxy bias measured from FS1. This is the fit that should be used , at least for
+    """fit to the linear galaxy bias measured from FS1. This is the fit that should be used, at least for
     the responses"""
     a, b, c = 0.81, 2.80, 1.02
     return a * z ** b / (1 + z) + c

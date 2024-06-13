@@ -1,0 +1,55 @@
+name: spaceborne-dav
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python>=3.12
+  - matplotlib
+  - numpy
+  - scipy
+  - pandas
+  - tqdm
+  - pip
+  - pyyaml
+  - astropy
+  - joblib
+  - numba
+  - camb
+  - gcc
+  - pyqt
+  - ipympl
+  - ipykernel
+  - ipywidgets
+
+  # for CCL:
+  - fftw
+  - gsl
+  - swig
+  - cmake
+  - make
+  - libgcc-ng
+  - libgfortran-ng
+  - libstdcxx-ng
+  - fast-pt
+  # - cfitsio  # not necessary?
+  - pip:
+    - pymaster
+    - cython
+    - getdist
+    - array_to_latex
+    #- pynverse 
+    #- type_enforced
+    # - pynverse
+    #- classy
+    #- ray
+    #- PyQt5
+    #- PySide2
+    # - git+https://github.com/davidesciotti/CCL.git@master  # doesn't seem to work, have to install from source
+
+
+# this works! But only after installing the env
+# pip install git+https://github.com/davidesciotti/CCL.git@master
+
+# In case of issues, try
+# $ sudo apt-get install gfortran cmake build-essential autoconf bison
+

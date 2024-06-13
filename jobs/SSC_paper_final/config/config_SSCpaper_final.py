@@ -98,8 +98,6 @@ general_cfg = {
                                       2.23880597, 2.6119403, 2.98507463, 4.47761194,
                                       7.46268657]),
 
-    'BNT_matrix_path': f'{SPV3_folder}/BNT_matrix',
-    'BNT_matrix_filename': 'BNT_mat_ML{magcut_lens:03d}_ZL{zcut_lens:02d}_MS{magcut_source:03d}_ZS{zcut_source:02d}.npy',
     'BNT_transform': BNT_transform,  # ! to be deprecated?
     'cl_BNT_transform': cl_BNT_transform,
 
@@ -109,11 +107,11 @@ general_cfg = {
     'idR': 1,
 
     'which_pk': 'HMCodeBar',
+    
     'cl_folder': f'{SPV3_folder}' + '/OutputQuantities/DataVectors/DataVecFid/Davide/{probe:s}/{which_pk:s}',
     'rl_folder': f'{SPV3_folder}'.replace('FiRe', 'Flagship_1_restored') + f'/ResFunTabs/FS{flagship_version}' + '/{probe:s}',
-    'cl_filename': 'dv-{probe:s}-{nbl:d}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED:s}{zbins:02d}.dat',
+    
     'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-zedMin{zmin:02d}-zedMax{zmax:2d}-mag{magcut:d}.dat',
-
     'rl_filename': 'rf-{probe:s}-{nbl:d}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED:s}{zbins:02d}.dat',
 
     'flagship_version': flagship_version,
@@ -171,7 +169,7 @@ covariance_cfg = {
     # ! no folders for ell_cut_center or min
     'cov_folder': f'{output_path}/covmat',
     'cov_filename': 'covmat_{which_cov:s}_{probe:s}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
-    'cov_filename_vincenzo': 'cm-{probe_vinc:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
+    'cov_filename_vincenzo': 'cm-{probe_vinc:s}-{GOGS_filename:s}-{nbl:d}-{EP_or_ED:s}{zbins:02d}-'
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
 
 
@@ -229,7 +227,7 @@ FM_cfg = {
     'param_names_3x2pt': param_names_3x2pt,
     'nparams_tot': len(param_names_3x2pt),  # total (cosmo + nuisance) number of parameters
 
-    'save_FM_txt': True,
+    'save_FM_txt': False,
     'save_FM_dict': True,
 
     'load_preprocess_derivatives': False,
@@ -239,7 +237,7 @@ FM_cfg = {
     'derivatives_BNT_transform': deriv_BNT_transform,
     'deriv_ell_cuts': deriv_ell_cuts,
 
-    'fm_folder': f'{output_path}/Flagship_{flagship_version}/FM/BNT_{BNT_transform}' +
+    'fm_folder': f'{output_path}/FM' +
                  '/ell_cuts_{ell_cuts:s}' + ell_cuts_subfolder,
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,

@@ -26,7 +26,7 @@ import bin.ell_values as ell_utils
 import bin.cl_preprocessing as cl_utils
 import bin.compute_Sijkl as Sijkl_utils
 import bin.covariance as covmat_utils
-import bin.fisher_matrix as FM_utils
+import bin.fisher_matrix as fm_utils
 import bin.my_module as mm
 import bin.cosmo_lib as csmlib
 import bin.wf_cl_lib as wf_cl_lib

@@ -888,10 +888,11 @@ def save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_spec
 
     # save in .dat for Vincenzo, only in the optimistic case and in 2D
     if covariance_cfg['save_cov_dat'] and ell_max_WL == 5000:
-        for probe, probe_vinc in zip(['WL', 'GC', '3x2pt', 'WA'], ['WLO', 'GCO', '3x2pt', 'WLA']):
+        for probe, probe_vinc, nbl in zip(['WL', 'GC', '3x2pt', 'WA'], ['WLO', 'GCO', '3x2pt', 'WLA'], [nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA]):
             for GOGS_folder, GOGS_filename in zip(['GaussOnly', 'GaussSSC'], ['GO', 'GS']):
                 cov_filename_vincenzo = covariance_cfg['cov_filename_vincenzo'].format(probe_vinc=probe_vinc,
                                                                                        GOGS_filename=GOGS_filename,
+                                                                                       nbl=nbl,
                                                                                        **variable_specs)
                 np.savetxt(f'{cov_folder}/{cov_filename_vincenzo}',
                            cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.9e')

@@ -32,7 +32,7 @@ import ell_values as ell_utils
 import cl_preprocessing as cl_utils
 import compute_Sijkl as Sijkl_utils
 import covariance as covmat_utils
-import fisher_matrix as FM_utils
+import fisher_matrix as fm_utils
 import check_specs as utils
 import unit_test
 
@@ -109,7 +109,7 @@ for (general_cfg['ell_max_WL'], general_cfg['ell_max_GC']) in ((5000, 3000), (15
     cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                         ell_dict, delta_dict, cl_dict_3D, Rl_dict_3D, Sijkl)
     # compute Fisher Matrix
-    FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, )
+    FM_dict = fm_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, )
     # ! ############################################## END MAIN BODY ###################################################
 
     # save:

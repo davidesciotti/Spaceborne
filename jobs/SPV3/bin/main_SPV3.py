@@ -26,7 +26,7 @@ import bin.ell_values as ell_utils
 import bin.cl_preprocessing as cl_utils
 import bin.compute_Sijkl as Sijkl_utils
 import bin.covariance as covmat_utils
-import bin.fisher_matrix as FM_utils
+import bin.fisher_matrix as fm_utils
 import bin.my_module as mm
 import bin.cosmo_lib as csmlib
 import bin.wf_cl_lib as wf_cl_lib
@@ -1044,11 +1044,11 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
                                                                       zbins)
 
         # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
-        dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
-        dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
+        dC_LL_4D = fm_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
+        dC_GG_4D = fm_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
         # dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
         dC_WA_4D = np.ones((nbl_WA, zbins, zbins, dC_LL_4D.shape[-1]))
-        dC_3x2pt_6D = FM_utils.dC_dict_to_4D_array(
+        dC_3x2pt_6D = fm_utils.dC_dict_to_4D_array(
             dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins, der_prefix, is_3x2pt=True)
 
         # free up memory
@@ -1074,7 +1074,7 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
                   'dC_3x2pt_6D': dC_3x2pt_6D}
 
     # ! compute and save fisher matrix
-    FM_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, fm_cfg, ell_dict, cov_dict, deriv_dict,
+    FM_dict = fm_utils.compute_FM(general_cfg, covariance_cfg, fm_cfg, ell_dict, cov_dict, deriv_dict,
                                   bnt_matrix)
     FM_dict['fiducial_values_dict'] = fm_fid_dict  # ordered fiducial parameters entering the FM
 

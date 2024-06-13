@@ -28,7 +28,7 @@ import bin.ell_values as ell_utils
 import bin.cl_preprocessing as cl_utils
 import bin.compute_Sijkl as Sijkl_utils
 import bin.covariance as covmat_utils
-import bin.fisher_matrix as FM_utils
+import bin.fisher_matrix as fm_utils
 import bin.plots_FM_running as plot_utils
 import common_cfg.mpl_cfg as mpl_cfg
 import common_cfg.ISTF_fid_params as ISTF_fid
@@ -795,15 +795,15 @@ for covariance_cfg['SSC_code'] in ['PyCCL', 'OneCovariance', 'Spaceborne', 'PySS
 
         # turn dictionary keys into entries of 4-th array axis
         # TODO the obs_name must be defined in the config file
-        dC_LL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl, zbins,
+        dC_LL_4D = fm_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl, zbins,
                                                 der_prefix.format(probe='LL'))
-        dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins,
+        dC_WA_4D = fm_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins,
                                                 der_prefix.format(probe='LL'))
-        dC_LLfor3x2pt_4D = FM_utils.dC_dict_to_4D_array(dC_dict_LLfor3x2pt_3D, param_names_3x2pt, nbl, zbins,
+        dC_LLfor3x2pt_4D = fm_utils.dC_dict_to_4D_array(dC_dict_LLfor3x2pt_3D, param_names_3x2pt, nbl, zbins,
                                                         der_prefix.format(probe='LL'))
-        dC_GG_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl, zbins,
+        dC_GG_4D = fm_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl, zbins,
                                                 der_prefix.format(probe='GG'))
-        dC_GL_4D = FM_utils.dC_dict_to_4D_array(dC_dict_GL_3D, param_names_3x2pt, nbl, zbins,
+        dC_GL_4D = fm_utils.dC_dict_to_4D_array(dC_dict_GL_3D, param_names_3x2pt, nbl, zbins,
                                                 der_prefix.format(probe=GL_or_LG))
 
         # build 5D array of derivatives for the 3x2pt
@@ -824,7 +824,7 @@ for covariance_cfg['SSC_code'] in ['PyCCL', 'OneCovariance', 'Spaceborne', 'PySS
                   'dC_WA_4D': dC_WA_4D,
                   'dC_3x2pt_6D': dC_3x2pt_6D}
 
-    fm_dict = FM_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
+    fm_dict = fm_utils.compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_dict)
     fm_dict['param_names_dict'] = param_names_dict
     fm_dict['fiducial_values_dict'] = fiducials_dict
 

@@ -671,7 +671,7 @@ cov_sb_suffix = covariance_cfg['Spaceborne_cfg']['cov_suffix'].format(
     k_txt_label=k_txt_label,
     cl_integral_convention=covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
     integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
-    survey_area_deg2=14700,
+    survey_area_deg2=covariance_cfg['Spaceborne_cfg']['survey_area_deg2'],
 )
 
 variable_specs.pop('ng_cov_code')

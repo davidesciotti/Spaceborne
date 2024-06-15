@@ -328,7 +328,6 @@ covariance_cfg:
         # TODO these have to be tidied up
         # TODO do not divide by fsky when using which_sigma2_B=mask
         which_sigma2_B: full-curved-sky # mask or spaceborne (with mask) or None
-        area_deg2_mask: 14700
         nside_mask: 2048
         ell_mask_filename: ROOT + /common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy
         cl_mask_filename: ROOT + /common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy

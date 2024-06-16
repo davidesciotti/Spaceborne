@@ -108,12 +108,18 @@ general_cfg = {
 
     'which_pk': 'HMCodeBar',
     
+    # new
     'cl_folder': f'{SPV3_folder}' + '/OutputQuantities/DataVectors/DataVecFid/Davide/{probe:s}/{which_pk:s}',
+    # old
+    # 'cl_folder': '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_1_restored/DataVectors/Noiseless/{probe:s}/FS1',    
     'rl_folder': f'{SPV3_folder}'.replace('FiRe', 'Flagship_1_restored') + f'/ResFunTabs/FS{flagship_version}' + '/{probe:s}',
     
+    # new
     'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-zedMin{zmin:02d}-zedMax{zmax:2d}-mag{magcut:d}.dat',
+    # old
+    # 'cl_filename': 'dv-{pr1obe:s}-{nbl:d}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED:s}{zbins:02d}.dat',
     'rl_filename': 'rf-{probe:s}-{nbl:d}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED:s}{zbins:02d}.dat',
-
+    
     'flagship_version': flagship_version,
 
     'test_against_benchmarks': False,
@@ -138,7 +144,7 @@ covariance_cfg = {
     'fsky': fsky,  # ! new
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
-    'which_shape_noise': 'correct',
+    'which_shape_noise': 'ISTF',
     
     # nuisance
     'nuisance_folder': f'{SPV3_folder}/InputQuantities/NzFiles/Davide/NzPar',
@@ -172,7 +178,6 @@ covariance_cfg = {
     'cov_filename_vincenzo': 'cm-{probe_vinc:s}-{GOGS_filename:s}-{nbl:d}-{EP_or_ED:s}{zbins:02d}-'
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
 
-
     'probe_ordering': (('L', 'L'), ('G', 'L'), ('G', 'G')),
     'PySSC_cfg': {
         'which_ng_cov': ('SSC', ),
@@ -193,6 +198,9 @@ Sijkl_cfg = {
 
     'Sijkl_folder': f'{output_path}/sijkl',
     'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}_FiRe.npy',
+    
+    # 'Sijkl_folder': f'/home/davide/Documenti/Lavoro/Programmi/common_data/Sijkl',
+    # 'Sijkl_filename': 'Sijkl_WFdavide_nz10000_IA_3may.npy',
     'use_precomputed_sijkl': False,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
 
@@ -227,7 +235,7 @@ FM_cfg = {
     'param_names_3x2pt': param_names_3x2pt,
     'nparams_tot': len(param_names_3x2pt),  # total (cosmo + nuisance) number of parameters
 
-    'save_FM_txt': False,
+    'save_FM_txt': True,
     'save_FM_dict': True,
 
     'load_preprocess_derivatives': False,

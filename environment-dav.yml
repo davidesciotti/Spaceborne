@@ -31,6 +31,9 @@ dependencies:
   - libgfortran-ng
   - libstdcxx-ng
   - fast-pt
+
+  # for classy:
+  - gxx_linux-64
   # - cfitsio  # not necessary?
   - pip:
     - pymaster

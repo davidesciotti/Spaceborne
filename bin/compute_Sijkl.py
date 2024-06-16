@@ -7,7 +7,7 @@ from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 import time
 import sys
-sys.path.append('/home/cosmo/davide.sciotti/software/PySSC')
+sys.path.append('/home/davide/Documenti/Lavoro/Programmi/PySSC')
 from PySSC import Sijkl
 
 pi = math.pi

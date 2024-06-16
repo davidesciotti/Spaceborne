@@ -671,7 +671,7 @@ cov_sb_suffix = covariance_cfg['Spaceborne_cfg']['cov_suffix'].format(
     k_txt_label=k_txt_label,
     cl_integral_convention=covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
     integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
-    survey_area_deg2=covariance_cfg['Spaceborne_cfg']['survey_area_deg2'],
+    survey_area_deg2=covariance_cfg['survey_area_deg2'],
 )
 
 variable_specs.pop('ng_cov_code')
@@ -1191,7 +1191,6 @@ cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
 
 # mm.matshow(cov_3x2pt_GO_2DCLOE, log=True, abs_val=False, title='cov_GO_3x2pt_2DCLOE')
 # mm.matshow(cov_3x2pt_GS_2DCLOE, log=True, abs_val=False, title='cov_GS_3x2pt_2DCLOE')
-
 
 # mm.compare_arrays(cov_3x2pt_GO_2DCLOE, cov_3x2pt_g_nbl32_2dcloe, log_diff=True)
 # mm.compare_arrays(cov_3x2pt_GS_2DCLOE, cov_3x2pt_gs_nbl32_2dcloe, log_diff=True)
@@ -1791,13 +1790,14 @@ for probe in probes:
                       param_names_label=None, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
 
 
-# plot_lib.triangle_plot(masked_fm_dict['FM_3x2pt_GSSC'], masked_fm_dict['FM_3x2pt_G'],
-#                        fiducials=list(masked_fid_pars_dict['FM_3x2pt_G'].values()),
-#                        title='3x2pt',
-#                        label_background='G + SSC',
-#                        label_foreground='G',
-#                        param_names_labels=list(masked_fid_pars_dict['FM_3x2pt_G'].keys()),
-#                        param_names_labels_toplot=list(masked_fid_pars_dict['FM_3x2pt_G'].keys()))
+plot_lib.triangle_plot(masked_fm_dict['FM_3x2pt_GSSC'], 
+                       masked_fm_dict['FM_3x2pt_G'],
+                       fiducials=list(masked_fid_pars_dict['FM_3x2pt_G'].values()),
+                       title='3x2pt',
+                       label_background='G + SSC',
+                       label_foreground='G',
+                       param_names_labels=list(masked_fid_pars_dict['FM_3x2pt_G'].keys()),
+                       param_names_labels_toplot=list(masked_fid_pars_dict['FM_3x2pt_G'].keys())[:7])
 
 # ! project FM
 

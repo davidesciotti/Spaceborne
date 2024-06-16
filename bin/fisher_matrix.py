@@ -338,8 +338,8 @@ def save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=False, save_dict=
     """saves the FM in .txt and .pickle formats
     :param fm_folder:
     """
-    raise DeprecationWarning(
-        'this function is too convoluted, no need to save individual txt files? maybe it makes sense for git...')
+    # raise DeprecationWarning(
+        # 'this function is too convoluted, no need to save individual txt files? maybe it makes sense for git...')
 
     ell_max_WL = save_specs['ell_max_WL']
     ell_max_GC = save_specs['ell_max_GC']
@@ -355,15 +355,12 @@ def save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=False, save_dict=
 
     # TODO deprecate cases_tosave
     # TODO deprecate this, do I really need to save the different FM in txt format?
-    # if save_txt:
-    #     # there is no SSC-only Fisher!
-    #     if 'SS' in cases_tosave:
-    #         cases_tosave.remove('SS')
-    #     for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
-    #         for which_cov in cases_tosave:
-    #             FM_txt_filename = FM_cfg['FM_txt_filename'].format(probe=probe, which_cov=which_cov, ell_max=ell_max,
-    #                                                                nbl=nbl, **save_specs)
-    #             np.savetxt(f'{fm_folder}/{FM_txt_filename}.txt', FM_dict[f'FM_{probe}_{which_cov}'])
+    if save_txt:
+        for probe, ell_max, nbl in zip(probe_list, ellmax_list, nbl_list):
+            for which_cov in cases_tosave:
+                FM_txt_filename = FM_cfg['FM_txt_filename'].format(probe=probe, which_cov=which_cov, ell_max=ell_max,
+                                                                   nbl=nbl, **save_specs)
+                np.savetxt(f'{fm_folder}/{FM_txt_filename}.txt', FM_dict[f'FM_{probe}_{which_cov}'])
 
     if save_dict:
         FM_dict_filename = FM_cfg['FM_dict_filename'].format(**save_specs)

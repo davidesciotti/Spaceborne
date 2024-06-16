@@ -6,14 +6,11 @@ import pandas as pd
 import yaml
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from chainconsumer import ChainConsumer
 
 sys.path.append('/home/davide/Documenti/Lavoro/Programmi/Spaceborne')
 import bin.plots_FM_running as plot_utils
 import bin.my_module as mm
 import common_cfg.mpl_cfg as mpl_cfg
-
-
 
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 # mpl.use('qt')
@@ -236,7 +233,7 @@ ylabel = r'relative uncertainty, G [%]'
 plot_utils.bar_plot(data, title, label_list, bar_width=0.2, nparams=num_params_tokeep,
                     param_names_label=param_names_label,
                     second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=ylabel,
-                    include_fom=include_fom, figsize=(10, 8))
+                    include_fom=include_fom, figsize=(10, 8), divide_fom_by_10_plt=True)
 
 # plt.savefig('/Users/davide/Documents/Science 🛰/Talks/2023_12_22 - Defense/img/WL_shear_bias_free_fixed.pdf', dpi=300, bbox_inches='tight')
 assert False, 'stop here to check which fiducials I used for the galaxy bias'

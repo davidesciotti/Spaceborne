@@ -315,7 +315,7 @@ covariance_cfg:
     Spaceborne_cfg:
         probe: 3x2pt
         which_ng_cov: [SSC] # only SSC available in this case
-        load_precomputed_cov: False
+        load_precomputed_cov: True
         which_pk_responses: separate_universe # halo_model (with PyCCL) or separate_universe (from simulations)
 
         cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Spaceborne/{which_pk_responses:s}"
@@ -325,7 +325,6 @@ covariance_cfg:
         # TODO these have to be tidied up
         # TODO do not divide by fsky when using which_sigma2_B=mask
         which_sigma2_B: full-curved-sky # mask or spaceborne (with mask) or None
-        area_deg2_mask: 14700
         nside_mask: 2048
         ell_mask_filename: ROOT + /common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy
         cl_mask_filename: ROOT + /common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy

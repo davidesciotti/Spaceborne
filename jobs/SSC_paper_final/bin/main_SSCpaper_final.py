@@ -486,7 +486,7 @@ assert np.all(gal_bias_fid > 1), 'galaxy bias should be > 1'
 assert np.all(gal_bias_fid < 3), 'galaxy bias seems a bit large; this is just a rough check'
 
 
-# print('Computing BNT matrix...')
+# print('Computing BNT mrix...')
 # BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z, plot_nz=False)
 BNT_matrix = np.eye(zbins)
 if general_cfg['BNT_transform']:
@@ -674,7 +674,7 @@ cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
 # save covariance matrix and test against benchmarks
 cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
                                                  **variable_specs)
-covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
+covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave=['GO', 'GS'], **variable_specs)
 
 if general_cfg['test_against_benchmarks']:
     cov_benchmark_folder = f'{cov_folder}/benchmarks'
@@ -693,7 +693,7 @@ fiducials_dict = {
     'IA': [ISTF_fid.IA_free['A_IA'], ISTF_fid.IA_free['eta_IA'], ISTF_fid.IA_free['beta_IA']],
     'shear_bias': np.zeros((zbins,)),
     'dzWL': np.zeros((zbins,)),  # for the time being, equal to the GC ones
-    'dzGC': np.zeros((zbins,)),  # for the time being, equal to the GC ones
+    # 'dzGC': np.zeros((zbins,)),  # for the time being, equal to the GC ones
     'galaxy_bias': gal_bias_fid,
 }
 fiducials_values_3x2pt = list(np.concatenate([fiducials_dict[key] for key in fiducials_dict.keys()]))
@@ -710,121 +710,164 @@ assert len(fiducials_values_3x2pt) == len(param_names_3x2pt), \
 
 # ! preprocess derivatives (or load the alreay preprocessed ones)
 # import and store them in one big dictionary
-start_time = time.perf_counter()
-derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs)
+# start_time = time.perf_counter()
+# derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs)
 
-# check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
-der_prefix = fm_cfg['derivatives_prefix']
-vinc_filenames = mm.get_filenames_in_folder(derivatives_folder)
-vinc_filenames = [vinc_filename for vinc_filename in vinc_filenames if vinc_filename.startswith(der_prefix)]
-vinc_filenames = [
-    vinc_filename for vinc_filename in vinc_filenames if f'{EP_or_ED}{zbins:02d}-zedMin{general_cfg["zmin"]:02d}-zedMax{zmax}-mag{general_cfg["magcut"]}' in vinc_filename]
+# # check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
+# der_prefix = fm_cfg['derivatives_prefix']
+# vinc_filenames = mm.get_filenames_in_folder(derivatives_folder)
+# vinc_filenames = [vinc_filename for vinc_filename in vinc_filenames if vinc_filename.startswith(der_prefix)]
+# vinc_filenames = [
+#     vinc_filename for vinc_filename in vinc_filenames if f'{EP_or_ED}{zbins:02d}-zedMin{general_cfg["zmin"]:02d}-zedMax{zmax}-mag{general_cfg["magcut"]}' in vinc_filename]
 
-# perform some checks on the filenames before trimming them
-for vinc_filename in vinc_filenames:
-    assert f'{EP_or_ED}{zbins}' in vinc_filename, f'{EP_or_ED}{zbins} not in filename {vinc_filename}'
-    assert f'mag{general_cfg["magcut"]}' in vinc_filename, f'mag{general_cfg["magcut"]} not in filename {vinc_filename}'
-    assert f'zedMax{zmax}' in vinc_filename, f'zedMax{zmax} not in filename {vinc_filename}'
+# # perform some checks on the filenames before trimming them
+# for vinc_filename in vinc_filenames:
+#     assert f'{EP_or_ED}{zbins}' in vinc_filename, f'{EP_or_ED}{zbins} not in filename {vinc_filename}'
+#     assert f'mag{general_cfg["magcut"]}' in vinc_filename, f'mag{general_cfg["magcut"]} not in filename {vinc_filename}'
+#     assert f'zedMax{zmax}' in vinc_filename, f'zedMax{zmax} not in filename {vinc_filename}'
 
-vinc_trimmed_filenames = [vinc_filename.split('-', 1)[0].strip() for vinc_filename in vinc_filenames]
-vinc_trimmed_filenames = [vinc_trimmed_filename[len(der_prefix):] if vinc_trimmed_filename.startswith(der_prefix) else vinc_trimmed_filename
-                          for vinc_trimmed_filename in vinc_trimmed_filenames]
-vinc_param_names = list(set(vinc_trimmed_filenames))
-vinc_param_names.sort()
+# vinc_trimmed_filenames = [vinc_filename.split('-', 1)[0].strip() for vinc_filename in vinc_filenames]
+# vinc_trimmed_filenames = [vinc_trimmed_filename[len(der_prefix):] if vinc_trimmed_filename.startswith(der_prefix) else vinc_trimmed_filename
+#                           for vinc_trimmed_filename in vinc_trimmed_filenames]
+# vinc_param_names = list(set(vinc_trimmed_filenames))
+# vinc_param_names.sort()
 
-my_sorted_param_names = param_names_3x2pt.copy()
-my_sorted_param_names.sort()
+# my_sorted_param_names = param_names_3x2pt.copy()
+# my_sorted_param_names.sort()
 
-# check whether the 2 lists match and print the elements that are in one list but not in the other
-param_names_not_in_my_list = [vinc_param_name for vinc_param_name in vinc_param_names if
-                              vinc_param_name not in my_sorted_param_names]
-param_names_not_in_vinc_list = [my_sorted_param_name for my_sorted_param_name in my_sorted_param_names if
-                                my_sorted_param_name not in vinc_param_names]
-try:
-    assert np.all(vinc_param_names == my_sorted_param_names), \
-        f'\nparams present in input folder but not in the cfg file: {param_names_not_in_my_list}\n' \
-        f'params present in cfg file but not in the input folder: {param_names_not_in_vinc_list}'
-except AssertionError as error:
-    print(error)
-    if param_names_not_in_vinc_list == ['logT_AGN']:
-        print('the derivative w.r.t logT_AGN is missing in the input folder but '
-              'the corresponding FM is still set to 0; moving on')
-    else:
-        warnings.warn('there is something wrong with the parameter names in the derivatives folder. '
-                      'SETTING MY PARAM NAMES AS THE REFERENCE')
+# # check whether the 2 lists match and print the elements that are in one list but not in the other
+# param_names_not_in_my_list = [vinc_param_name for vinc_param_name in vinc_param_names if
+#                               vinc_param_name not in my_sorted_param_names]
+# param_names_not_in_vinc_list = [my_sorted_param_name for my_sorted_param_name in my_sorted_param_names if
+#                                 my_sorted_param_name not in vinc_param_names]
+# try:
+#     assert np.all(vinc_param_names == my_sorted_param_names), \
+#         f'\nparams present in input folder but not in the cfg file: {param_names_not_in_my_list}\n' \
+#         f'params present in cfg file but not in the input folder: {param_names_not_in_vinc_list}'
+# except AssertionError as error:
+#     print(error)
+#     if param_names_not_in_vinc_list == ['logT_AGN']:
+#         print('the derivative w.r.t logT_AGN is missing in the input folder but '
+#               'the corresponding FM is still set to 0; moving on')
+#     else:
+#         warnings.warn('there is something wrong with the parameter names in the derivatives folder. '
+#                       'SETTING MY PARAM NAMES AS THE REFERENCE')
 
-if fm_cfg['load_preprocess_derivatives']:
-    dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_LL_4D.npy')
-    dC_GG_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_GG_4D.npy')
-    dC_WA_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_WA_4D.npy')
-    dC_3x2pt_6D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_3x2pt_6D.npy')
+# if fm_cfg['load_preprocess_derivatives']:
+#     dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_LL_4D.npy')
+#     dC_GG_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_GG_4D.npy')
+#     dC_WA_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_WA_4D.npy')
+#     dC_3x2pt_6D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_3x2pt_6D.npy')
 
-elif not fm_cfg['load_preprocess_derivatives']:
-    der_prefix = fm_cfg['derivatives_prefix']
-    dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
-    # check if dictionary is empty
-    if not dC_dict_1D:
-        raise ValueError(f'No derivatives found in folder {derivatives_folder}')
+# elif not fm_cfg['load_preprocess_derivatives']:
+#     der_prefix = fm_cfg['derivatives_prefix']
+#     dC_dict_1D = dict(mm.get_kv_pairs(derivatives_folder, "dat"))
+#     # check if dictionary is empty
+#     if not dC_dict_1D:
+#         raise ValueError(f'No derivatives found in folder {derivatives_folder}')
     
-    # filter the dict
-    dC_dict_1D = {key: value for key, value in dC_dict_1D.items() if any(param in key for param in my_sorted_param_names)}
+#     # filter the dict
+#     dC_dict_1D = {key: value for key, value in dC_dict_1D.items() if any(param in key for param in my_sorted_param_names)}
 
-    # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
-    dC_dict_LL_3D = {}
-    dC_dict_GG_3D = {}
-    dC_dict_WA_3D = {}
-    dC_dict_3x2pt_5D = {}
+#     # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
+#     dC_dict_LL_3D = {}
+#     dC_dict_GG_3D = {}
+#     dC_dict_WA_3D = {}
+#     dC_dict_3x2pt_5D = {}
     
-    try:
-        for key in dC_dict_1D.keys():
-            if 'WLO' in key:
-                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
-            elif 'GCO' in key:
-                dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
-            elif 'WLA' in key:
-                dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
-            elif '3x2pt' in key:
-                dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt, zbins)
-    except AssertionError as err:
-        print(err)
-        print('Importing ellmax=5000 files and cutting')
+#     try:
+#         for key in dC_dict_1D.keys():
+#             if 'WLO' in key:
+#                 dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
+#             elif 'GCO' in key:
+#                 dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
+#             elif 'WLA' in key:
+#                 dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
+#             elif '3x2pt' in key:
+#                 dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_3x2pt, zbins)
+#     except AssertionError as err:
+#         print(err)
+#         print('Importing ellmax=5000 files and cutting')
         
-        for key in dC_dict_1D.keys():
-            if 'WLO' in key:
-                dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
-            elif 'GCO' in key:
-                dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_WL, zbins)
-                dC_dict_GG_3D[key] = dC_dict_GG_3D[key][ :nbl_GC, :, :]
-            elif 'WLA' in key:
-                # dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WL, zbins)
-                dC_dict_WA_3D[key] = dC_dict_LL_3D[key][nbl_GC:nbl_WL, :, :]
-            elif '3x2pt' in key:
-                dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_WL, zbins)
-                dC_dict_3x2pt_5D[key] = dC_dict_3x2pt_5D[key][:, :, :nbl_3x2pt, :, :]
+#         for key in dC_dict_1D.keys():
+#             if 'WLO' in key:
+#                 dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WL', nbl_WL, zbins)
+#             elif 'GCO' in key:
+#                 dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_WL, zbins)
+#                 dC_dict_GG_3D[key] = dC_dict_GG_3D[key][ :nbl_GC, :, :]
+#             elif 'WLA' in key:
+#                 # dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WL, zbins)
+#                 dC_dict_WA_3D[key] = dC_dict_LL_3D[key][nbl_GC:nbl_WL, :, :]
+#             elif '3x2pt' in key:
+#                 dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], '3x2pt', nbl_WL, zbins)
+#                 dC_dict_3x2pt_5D[key] = dC_dict_3x2pt_5D[key][:, :, :nbl_3x2pt, :, :]
 
 
-    # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
-    dC_LL_4D = fm_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
-    dC_GG_4D = fm_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
-    # dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
-    dC_WA_4D = dC_LL_4D[nbl_GC:nbl_WL, ...]
-    dC_3x2pt_6D = fm_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
-                                               der_prefix, is_3x2pt=True)
+#     # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
+#     dC_LL_4D = fm_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
+#     dC_GG_4D = fm_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
+#     # dC_WA_4D = FM_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
+#     dC_WA_4D = dC_LL_4D[nbl_GC:nbl_WL, ...]
+#     dC_3x2pt_6D = fm_utils.dC_dict_to_4D_array(dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins,
+#                                                der_prefix, is_3x2pt=True)
 
-    # free up memory
-    # del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
-    # gc.collect()
 
-    print('derivatives reshaped in 4D arrays in {:.2f} seconds'.format(time.perf_counter() - start_time))
+param_names_wl = [param_name for param_name in param_names_3x2pt if 'bG' not in param_name]
+param_names_wl = [param_name for param_name in param_names_wl if 'dzGC' not in param_name]
+param_names_gc = [param_name for param_name in param_names_3x2pt if 'm0' not in param_name]
+param_names_gc = [param_name for param_name in param_names_gc if 'm1' not in param_name]
+param_names_gc = [param_name for param_name in param_names_gc if 'dzWL' not in param_name]
+param_names_gc = [param_name for param_name in param_names_gc if not any(substring in param_name for substring in ['Aia', 'eIA', 'bIA'])]
 
-    # save these so they can simply be imported!
-    # np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_LL_4D.npy', dC_LL_4D)
-    # np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_GG_4D.npy', dC_GG_4D)
-    # np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_WA_4D.npy', dC_WA_4D)
-    # np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_3x2pt_6D.npy', dC_3x2pt_6D)
+param_names_3x2pt_vin = deepcopy(param_names_3x2pt)
+index = param_names_3x2pt_vin.index('logT')
+param_names_3x2pt_vin.insert(index, 'gamma')
 
-else:
-    raise ValueError('"load_preprocess_derivatives" can only be True or False')
+param_names_wl_vin = [param_name for param_name in param_names_3x2pt_vin if 'bG' not in param_name]
+param_names_wl_vin = [param_name for param_name in param_names_wl_vin if 'dzGC' not in param_name]
+param_names_gc_vin = [param_name for param_name in param_names_3x2pt_vin if 'm0' not in param_name]
+param_names_gc_vin = [param_name for param_name in param_names_gc_vin if 'm1' not in param_name]
+param_names_gc_vin = [param_name for param_name in param_names_gc_vin if 'dzWL' not in param_name]
+param_names_gc_vin = [param_name for param_name in param_names_gc_vin if not any(substring in param_name for substring in ['Aia', 'eIA', 'bIA'])]
+
+# separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
+dC_dict_LL_3D = {}
+dC_dict_GG_3D = {}
+dC_dict_WA_3D = {}
+dC_dict_3x2pt_5D = {}
+derivatives_filename = fm_cfg['derivatives_filename']
+derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs, ROOT=ROOT, probe='{probe:s}')
+
+for param in param_names_wl:
+    der_name = derivatives_filename.format(probe='WLO', param_name=param, **variable_specs)
+    dcl_wl_1d = np.genfromtxt(f'{derivatives_folder}/{der_name}')
+    dC_dict_LL_3D[param] = cl_utils.cl_SPV3_1D_to_3D(dcl_wl_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
+    dC_dict_WA_3D[param] = dC_dict_LL_3D[param][nbl_GC:nbl_WL]
+
+for param in param_names_gc:
+    der_name = derivatives_filename.format(probe='GCO', param_name=param, **variable_specs)
+    dcl_gc_1d = np.genfromtxt(f'{derivatives_folder}/{der_name}')
+    dC_dict_GG_3D[param] = cl_utils.cl_SPV3_1D_to_3D(dcl_gc_1d, 'GC', nbl_WL_opt, zbins)[:nbl_GC, :, :]
+    
+for param in param_names_3x2pt:
+    der_name = derivatives_filename.format(probe='3x2pt', param_name=param, **variable_specs)
+    dcl_3x2pt_1d = np.genfromtxt(f'{derivatives_folder}/{der_name}')
+    dC_dict_3x2pt_5D[param] = cl_utils.cl_SPV3_1D_to_3D(dcl_3x2pt_1d, '3x2pt', nbl_WL_opt, zbins)[:, :, :nbl_3x2pt, :, :]
+
+
+# turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
+dC_LL_4D = fm_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, derivatives_prefix='')
+dC_GG_4D = fm_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, derivatives_prefix='')
+dC_WA_4D = fm_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, derivatives_prefix='')
+# dC_WA_4D = np.ones((nbl_WA, zbins, zbins, dC_LL_4D.shape[-1]))
+dC_3x2pt_6D = fm_utils.dC_dict_to_4D_array(
+    dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins, derivatives_prefix='', is_3x2pt=True)
+
+# free up memory
+del dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
+gc.collect()
+
+print('derivatives reshaped in 4D arrays in {:.2f} seconds'.format(time.perf_counter() - start_time))
 
 # store the derivatives arrays in a dictionary
 deriv_dict = {'dC_LL_4D': dC_LL_4D,
@@ -843,14 +886,15 @@ for idx, param_name in enumerate(param_names_dict['cosmo']):
     fm_dict['fiducial_values_dict_v2'][param_name] = fiducials_dict['cosmo'][idx]
 for idx, param_name in enumerate(param_names_dict['IA']):
     fm_dict['fiducial_values_dict_v2'][param_name] = fiducials_dict['IA'][idx]
+for idx, param_name in enumerate(param_names_dict['galaxy_bias']):
+    fm_dict['fiducial_values_dict_v2'][param_name] = fiducials_dict['galaxy_bias'][idx]
 for idx, param_name in enumerate(param_names_dict['shear_bias']):
     fm_dict['fiducial_values_dict_v2'][param_name] = fiducials_dict['shear_bias'][idx]
 for idx, param_name in enumerate(param_names_dict['dzWL']):
     fm_dict['fiducial_values_dict_v2'][param_name] = fiducials_dict['dzWL'][idx]
-for idx, param_name in enumerate(param_names_dict['dzGC']):
-    fm_dict['fiducial_values_dict_v2'][param_name] = fiducials_dict['dzGC'][idx]
-for idx, param_name in enumerate(param_names_dict['galaxy_bias']):
-    fm_dict['fiducial_values_dict_v2'][param_name] = fiducials_dict['galaxy_bias'][idx]
+# for idx, param_name in enumerate(param_names_dict['dzGC']):
+    # fm_dict['fiducial_values_dict_v2'][param_name] = fiducials_dict['dzGC'][idx]
+
 
 fm_folder = fm_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
                                        which_cuts=general_cfg['which_cuts'],
@@ -878,24 +922,26 @@ divide_fom_by_10 = True
 include_fom = True
 which_uncertainty = 'marginal'
 
-fix_dz = True
-fix_shear_bias = True
+fix_dz = False
+fix_shear_bias = False
 fix_gal_bias = False
-fix_logT = True
+fix_logT = False
 shear_bias_prior = 5e-4  # 5e-4 or None
 dz_prior = np.array(2 * 1e-3 * (1 + np.array(z_center_values))) # TODO check z_center_values!!
+shear_bias_prior = None  # 5e-4 or None
+dz_prior = None
 
 probes = ['WL', 'GC', '3x2pt']
 dzWL_param_names = [f'dzWL{(zi + 1):02d}' for zi in range(zbins)]
-dzGC_param_names = [f'dzGC{(zi + 1):02d}' for zi in range(zbins)]
+# dzGC_param_names = [f'dzGC{(zi + 1):02d}' for zi in range(zbins)]
 shear_bias_param_names = [f'm{(zi + 1):02d}' for zi in range(zbins)]
 gal_bias_param_names = [f'bG{(zi + 1):02d}' for zi in range(zbins)]
 param_names_list = param_names_3x2pt
 
 for name in dzWL_param_names:
     assert name in param_names_list, f"{name} not found in param_names_list"
-for name in dzGC_param_names:
-    assert name in param_names_list, f"{name} not found in param_names_list"
+# for name in dzGC_param_names:
+    # assert name in param_names_list, f"{name} not found in param_names_list"
 for name in shear_bias_param_names:
     assert name in param_names_list, f"{name} not found in param_names_list"
 for name in gal_bias_param_names:
@@ -903,7 +949,7 @@ for name in gal_bias_param_names:
 
 if fix_dz:
     names_params_to_fix += dzWL_param_names
-    names_params_to_fix += dzGC_param_names
+    # names_params_to_fix += dzGC_param_names
 
 if fix_shear_bias:
     names_params_to_fix += shear_bias_param_names
@@ -1026,13 +1072,269 @@ if include_fom:
 
 titles = param_names_list[:n_cosmo_par] + ['FoM']
 
+print("GSSC/G ratio:")
 data = []
 for probe in probes:
     ratios = [f'{ratio:.3f}' for ratio in uncert_dict[f'ratio_{probe}_G']]
     fom = f'{fom_dict[f"ratio_{probe}_G"]:.2f}'
     data.append([probe] + ratios + [fom])
-
-print("GSSC/G ratio:")
 print(tabulate(data, headers=titles, tablefmt="pretty"))
 
+print("G uncertainties [%]:")
+data = []
+for probe in probes:
+    uncerts = [f'{uncert:.3f}' for uncert in uncert_dict[f'FM_{probe}_G']]
+    fom = f'{fom_dict[f"FM_{probe}_G"]:.2f}'
+    data.append([probe] + uncerts + [fom])
+print(tabulate(data, headers=titles, tablefmt="pretty"))
+
+print("SSC % increase:")
+data = []
+for probe in probes:
+    ratios = [f'{ratio:.3f}' for ratio in uncert_dict[f'perc_diff_{probe}_G']]
+    fom = f'{fom_dict[f"perc_diff_{probe}_G"]:.2f}'
+    data.append([probe] + ratios + [fom])
+print(tabulate(data, headers=titles, tablefmt="pretty"))
+
+
+# ! ================================ vincenzo 
+fm_dict_vin = {}
+fm_folder = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/FiRe/OutputQuantities/FishMat/Davide/Flat/HMCodeBar'
+fm_dict_vin['FM_3x2pt_G'] = np.genfromtxt(f'{fm_folder}/fmnew-3x2pt-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GO-Opt.dat')
+fm_dict_vin['FM_3x2pt_GSSC'] = np.genfromtxt(f'{fm_folder}/fmnew-3x2pt-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GS-Opt.dat')
+
+fm_dict_vin['FM_WL_G'] = np.genfromtxt(f'{fm_folder}/fmnew-WLO-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GS-Opt.dat')
+fm_dict_vin['FM_WL_GSSC'] = np.genfromtxt(f'{fm_folder}/fmnew-WLO-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GS-Opt.dat')
+
+fm_dict_vin['FM_GC_G'] = np.genfromtxt(f'{fm_folder}/fmnew-GCO-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GS-Opt.dat')
+fm_dict_vin['FM_GC_GSSC'] = np.genfromtxt(f'{fm_folder}/fmnew-GCO-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GS-Opt.dat')
+
+fm_dict_vin['fiducial_values_dict_v2_3x2pt'] = deepcopy(fm_dict['fiducial_values_dict_v2'])
+# Convert the dictionary to a list of tuples
+params_list = list(fm_dict_vin['fiducial_values_dict_v2_3x2pt'].items())
+
+# Find the index of 'logT'
+index = next(i for i, v in enumerate(params_list) if v[0] == 'logT')
+
+# Insert 'gamma': 0.55 before 'logT'
+params_list.insert(index, ('gamma', 0.55))
+
+# Convert the list of tuples back to a dictionary
+fm_dict_vin['fiducial_values_dict_v2_3x2pt'] = dict(params_list)
+fm_dict_vin['fiducial_values_dict_v2_WL'] = {param: fm_dict_vin['fiducial_values_dict_v2_3x2pt'][param] for param in param_names_wl_vin}
+fm_dict_vin['fiducial_values_dict_v2_GC'] = {param: fm_dict_vin['fiducial_values_dict_v2_3x2pt'][param] for param in param_names_gc_vin}
+
+mm.matshow(masked_fm_dict['FM_GC_G'], log=True, title='davide')
+mm.matshow(fm_dict_vin['FM_GC_G'], log=True, title='vincenzo')
+    
+
+
+# ! plot the results directly, as a quick check
+nparams_toplot = 7
+names_params_to_fix = []
+divide_fom_by_10 = True
+include_fom = True
+which_uncertainty = 'marginal'
+
+fix_dz = False
+fix_shear_bias = False   
+fix_gal_bias = False
+fix_logT = False
+fix_gamma = True
+# shear_bias_prior = 5e-4  # 5e-4 or None
+# dz_prior = np.array(2 * 1e-3 * (1 + np.array(z_center_values))) # TODO check z_center_values!!
+shear_bias_prior=None
+dz_prior=None
+logT_prior = .....................
+
+probes = ['WL', 'GC', '3x2pt']
+dzWL_param_names = [f'dzWL{(zi + 1):02d}' for zi in range(zbins)]
+# dzGC_param_names = [f'dzGC{(zi + 1):02d}' for zi in range(zbins)]
+shear_bias_param_names = [f'm{(zi + 1):02d}' for zi in range(zbins)]
+gal_bias_param_names = [f'bG{(zi + 1):02d}' for zi in range(zbins)]
+param_names_list = param_names_3x2pt_vin
+
+for name in dzWL_param_names:
+    assert name in param_names_list, f"{name} not found in param_names_list"
+# for name in dzGC_param_names:
+    assert name in param_names_list, f"{name} not found in param_names_list"
+for name in shear_bias_param_names:
+    assert name in param_names_list, f"{name} not found in param_names_list"
+for name in gal_bias_param_names:
+    assert name in param_names_list, f"{name} not found in param_names_list"
+
+if fix_dz:
+    names_params_to_fix += dzWL_param_names
+    # names_params_to_fix += dzGC_param_names
+
+if fix_shear_bias:
+    names_params_to_fix += shear_bias_param_names
+
+if fix_gal_bias:
+    names_params_to_fix += gal_bias_param_names
+
+if fix_logT:
+    names_params_to_fix += ['logT']
+    
+if fix_gamma:
+    names_params_to_fix += ['gamma']
+    
+# names_params_to_fix_dict = {}
+# names_params_to_fix_dict['WL'] = dzWL_param_names + shear_bias_param_names + ['logT', 'gamma']
+# names_params_to_fix_dict['GC'] = ['logT', 'gamma']
+# names_params_to_fix_dict['3x2pt'] = dzWL_param_names + shear_bias_param_names + ['logT', 'gamma']
+names_params_to_fix_dict = {}
+names_params_to_fix_dict['WL'] = ['gamma']
+names_params_to_fix_dict['GC'] = ['gamma']
+names_params_to_fix_dict['3x2pt'] = ['gamma']
+
+fom_dict_vin = {}
+uncert_dict_vin = {}
+masked_fm_dict_vin = {}
+masked_fid_pars_dict_vin = {}
+fm_dict_toplot_vin = deepcopy(fm_dict_vin)
+for key in list(fm_dict_toplot_vin.keys()):
+    if '_WA_' not in key and '_2x2pt_' not in key and 'fiducial_values_dict' not in key:
+        
+        print(key)
+        
+        probe = key.split('_')[-2]
+
+        fm = deepcopy(fm_dict_toplot_vin[key])
+        
+        masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key] = mm.mask_fm_v2(fm, fm_dict_vin[f'fiducial_values_dict_v2_{probe}'],
+                                                                       names_params_to_fix=names_params_to_fix_dict[probe],
+                                                                       remove_null_rows_cols=True)
+        
+        if not fix_shear_bias and any(item in key for item in ['WL', 'XC', '3x2pt', '2x2pt']) and shear_bias_prior is not None:
+            print(f'adding shear bias Gaussian prior to {key}')
+            shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
+            masked_fm_dict_vin[key] = mm.add_prior_to_fm(masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key],
+                                                     shear_bias_param_names, shear_bias_prior_values)
+
+        if not fix_dz and dz_prior is not None:
+            print(f'adding dz Gaussian prior to {key}')
+            masked_fm_dict_vin[key] = mm.add_prior_to_fm(
+                masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key], dzWL_param_names, dz_prior)
+
+        uncert_dict_vin[key] = mm.uncertainties_fm_v2(masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key],
+                                                  which_uncertainty=which_uncertainty,
+                                                  normalize=True,
+                                                  percent_units=True)[:nparams_toplot]
+
+        param_names = list(masked_fid_pars_dict_vin[key].keys())
+        cosmo_param_names = list(masked_fid_pars_dict_vin[key].keys())[:nparams_toplot]
+
+        w0wa_idxs = param_names.index('wz'), param_names.index('wa')
+        fom_dict_vin[key] = mm.compute_FoM(masked_fm_dict_vin[key], w0wa_idxs=w0wa_idxs)
+
+# compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
+for probe in probes:
+
+    key_a = f'FM_{probe}_G'
+    key_b = f'FM_{probe}_GSSC'
+
+    uncert_dict_vin[f'perc_diff_{probe}_G'] = mm.percent_diff(uncert_dict_vin[key_b], uncert_dict_vin[key_a])
+    uncert_dict_vin[f'ratio_{probe}_G'] = uncert_dict_vin[key_b]/ uncert_dict_vin[key_a]
+    fom_dict_vin[f'perc_diff_{probe}_G'] = np.abs(mm.percent_diff(fom_dict_vin[key_b], fom_dict_vin[key_a]))
+    fom_dict_vin[f'ratio_{probe}_G'] = fom_dict_vin[key_b]/ fom_dict_vin[key_a]
+
+    nparams_toplot = 7
+    divide_fom_by_10_plt = False if probe in ('WL' 'XC') else divide_fom_by_10
+
+    cases_to_plot = [
+        f'FM_{probe}_G',
+        f'FM_{probe}_GSSC',
+        f'perc_diff_{probe}_G',
+
+        #  f'FM_{probe}_{which_ng_cov_suffix}',
+        #  f'perc_diff_{probe}_{which_ng_cov_suffix}',
+    ]
+
+    # # transform dict. into an array and add the fom
+    uncert_array, fom_array = [], []
+
+    for case in cases_to_plot:
+
+        uncert_array.append(uncert_dict_vin[case])
+        if divide_fom_by_10 and 'FM' in case and 'WL' not in case:
+            fom_dict_vin[case] /= 10
+        fom_array.append(fom_dict_vin[case])
+
+    uncert_array = np.asarray(uncert_array)
+    fom_array = np.asarray(fom_array)
+
+    uncert_array = np.hstack((uncert_array, fom_array.reshape(-1, 1)))
+
+    # label and title stuff
+    fom_label = 'FoM/10\nperc_diff' if divide_fom_by_10 else 'FoM'
+    param_names_label = param_names_list[:nparams_toplot] + [fom_label] if include_fom else param_names_list[
+        :nparams_toplot]
+    lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_3x2pt']
+    title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i, $\\sigma_\\epsilon$ %s\nfix_shear_bias %s, fix_dz %s, fix_logT %s' % (
+        probe, lmax, EP_or_ED, zbins, covariance_cfg['which_shape_noise'], str(fix_shear_bias), str(fix_dz), str(fix_logT))
+
+    # bar plot
+    if include_fom:
+        nparams_toplot = 8
+
+    for i, case in enumerate(cases_to_plot):
+
+        cases_to_plot[i] = case
+        if f'PySSC_{probe}_G' in cases_to_plot[i]:
+            cases_to_plot[i] = cases_to_plot[i].replace(f'PySSC_{probe}_G', f'{probe}_G')
+
+        cases_to_plot[i] = cases_to_plot[i].replace(f'_{probe}', f'')
+        cases_to_plot[i] = cases_to_plot[i].replace(f'FM_', f'')
+        cases_to_plot[i] = cases_to_plot[i].replace(f'_', f' ')
+        cases_to_plot[i] = cases_to_plot[i].replace(f'GSSC', f'G+SSC')
+
+    plot_lib.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
+                      param_names_label=None, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
+
+
+# Print the table
+from tabulate import tabulate
+
+if include_fom:
+    n_cosmo_par = nparams_toplot - 1
+
+titles = param_names_list[:n_cosmo_par] + ['FoM']
+
+print("GSSC/G ratio:")
+data = []
+for probe in probes:
+    ratios = [f'{ratio:.3f}' for ratio in uncert_dict_vin[f'ratio_{probe}_G']]
+    fom = f'{fom_dict_vin[f"ratio_{probe}_G"]:.2f}'
+    data.append([probe] + ratios + [fom])
+print(tabulate(data, headers=titles, tablefmt="pretty"))
+
+print("G uncertainties [%]:")
+data = []
+for probe in probes:
+    uncerts = [f'{uncert:.3f}' for uncert in uncert_dict_vin[f'FM_{probe}_G']]
+    fom = f'{fom_dict_vin[f"FM_{probe}_G"]:.2f}'
+    data.append([probe] + uncerts + [fom])
+print(tabulate(data, headers=titles, tablefmt="pretty"))
+
+print("SSC % increase:")
+data = []
+for probe in probes:
+    ratios = [f'{ratio:.3f}' for ratio in uncert_dict_vin[f'perc_diff_{probe}_G']]
+    fom = f'{fom_dict_vin[f"perc_diff_{probe}_G"]:.2f}'
+    data.append([probe] + ratios + [fom])
+print(tabulate(data, headers=titles, tablefmt="pretty"))
+
+
+par_toplot = -1
+mm.compare_arrays(masked_fm_dict['FM_WL_G'][:par_toplot, :par_toplot], masked_fm_dict_vin['FM_WL_G'][:par_toplot, :par_toplot], 'Dav WL', 'Vin WL', log_array=True, plot_diff=False)
+mm.compare_arrays(masked_fm_dict['FM_GC_G'][:par_toplot, :par_toplot], masked_fm_dict_vin['FM_GC_G'][:par_toplot, :par_toplot], 'Dav GC', 'Vin GC', log_array=True, plot_diff=False)
+mm.compare_arrays(fm_dict['FM_3x2pt_G'][:par_toplot, :par_toplot], masked_fm_dict_vin['FM_3x2pt_G'][:par_toplot, :par_toplot], 'Dav 3x2pt', 'Vin 3x2pt', log_array=True, plot_diff=True)
+
+
+# * 3x2pt cosmo is ok!
+# TODO logT prior??
+
+
 print('Script end')
+r

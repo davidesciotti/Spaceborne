@@ -8,10 +8,8 @@ import yaml
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from chainconsumer import ChainConsumer
 import matplotlib.patches as mpatches
 from tqdm import tqdm
-import seaborn as sns
 
 import os
 ROOT = os.getenv('ROOT')
@@ -66,8 +64,8 @@ ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
 # filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 
 # ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
-codes_to_compare = ('Spaceborne', 'Spaceborne')
-filename_suffix_list = ('_clsVincenzo_Francis', '_clsVincenzo_Francis_may24')
+codes_to_compare = ('OneCovariance', 'Spaceborne')
+filename_suffix_list = ('_clsCLOE_CLOEbenchTestOC', '_clsCLOE_CLOEbench')
 which_cov_term_list = ['G', 'GSSC', ]
 
 fix_dz_plt = False
@@ -75,6 +73,7 @@ fix_shear_bias_plt = False
 fix_gal_bias_plt = False
 fix_mag_bias_plt = False
 fix_curvature = True
+
 
 fid_shear_bias_prior = 5e-4
 shear_bias_prior = fid_shear_bias_prior  # None if you want no prior
@@ -611,8 +610,8 @@ ax_diff_fom.set_xlim(xlim_adjusted)
 color_mapping = {}
 hatch_mapping = {}
 for which_cov_term in ['G', 'GSSC', 'perc_diff_GSSC']:
-    for filename_suffix in ['clsVincenzo_Francis_may24', 'clsVincenzo_Francis']:
-        key = f"{which_cov_term}_{filename_suffix}"
+    for filename_suffix in filename_suffix_list:
+        key = f"{which_cov_term}{filename_suffix}"
 
         if 'GSSC' in key:
             color_mapping[key] = 'tab:orange'
@@ -621,7 +620,7 @@ for which_cov_term in ['G', 'GSSC', 'perc_diff_GSSC']:
         if 'G_' in key:
             color_mapping[key] = 'tab:blue'
 
-        if 'clsVincenzo_Francis_may24' in key:
+        if key == f"{which_cov_term}{filename_suffix_list[1]}":
             hatch_mapping[key] = ''
         else:
             hatch_mapping[key] = '//'
@@ -741,12 +740,12 @@ for color, label in zip(('tab:blue', 'tab:orange', 'tab:green'), ['G', 'GSSC', '
     handles.append(patch)
 
 # Add handles for hatch legend
-for hatch, label in zip(('', '//'), ['ClsVincenzo', 'ClsVincenzo_24may']):
+for hatch, label in zip(('', '//'), codes_to_compare):
     patch = mpatches.Patch(facecolor='white', edgecolor='k', hatch=hatch, label=label)
     handles.append(patch)
 
 ax_main.legend(handles=handles)
-
+ax_main.set_title('%s $\ell_{max} = 3000$' %probe)
 
 plt.show()
 

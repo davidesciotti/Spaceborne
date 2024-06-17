@@ -201,17 +201,17 @@ Sijkl_cfg = {
     
     # 'Sijkl_folder': f'/home/davide/Documenti/Lavoro/Programmi/common_data/Sijkl',
     # 'Sijkl_filename': 'Sijkl_WFdavide_nz10000_IA_3may.npy',
-    'use_precomputed_sijkl': False,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
+    'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
 
 
 param_names_dict = {
     'cosmo': ["Om", "Ob", "wz", "wa", "h", "ns", "s8", 'logT'],
     'IA': ["Aia", "eIA", "bIA"],
+    'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
     'shear_bias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
     'dzWL': [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
-    'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
-    'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
+    # 'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
 }
 # declare the set of parameters under study
 param_names_3x2pt = list(np.concatenate([param_names_dict[key] for key in param_names_dict.keys()]))
@@ -239,8 +239,12 @@ FM_cfg = {
     'save_FM_dict': True,
 
     'load_preprocess_derivatives': False,
-    'derivatives_folder': SPV3_folder + '/OutputQuantities/DataVectors/DataVecDer/{flat_or_nonflat:s}/Davide/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
-    'derivatives_prefix': 'dDVd',
+    # 'derivatives_folder': SPV3_folder + '/OutputQuantities/DataVectors/DataVecDer/{flat_or_nonflat:s}/Davide/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
+    # 'derivatives_prefix': 'dDVd',
+    
+    'derivatives_folder': "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/FiRe/OutputQuantities/DataVectors/DataVecDer/{flat_or_nonflat:s}/Davide/{which_pk:s}/{EP_or_ED:s}{zbins:02d}" ,
+    'derivatives_filename': "dDVd{param_name:s}-{probe:s}-{EP_or_ED:s}{zbins:02d}-zedMin{zmin:02d}-zedMax{zmax:02d}-mag{magcut:d}.dat",
+
 
     'derivatives_BNT_transform': deriv_BNT_transform,
     'deriv_ell_cuts': deriv_ell_cuts,

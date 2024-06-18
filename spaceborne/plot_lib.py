@@ -211,7 +211,7 @@ def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_backgroun
     g.settings.subplot_size_ratio = 1
     g.settings.tight_layout = True
     g.settings.solid_colors = 'tab10'
-    g.triangle_plot([bg_contours, fg_contours], filled=True, contour_lws=1.4,
+    g.triangle_plot([bg_contours, fg_contours], filled=False, contour_lws=2, ls=['-','--'],
                     legend_labels=[label_background, label_foreground], legend_loc='upper right', 
                     contour_colors=['tab:blue', 'tab:orange'],
                     line_colors=['tab:blue', 'tab:orange'],

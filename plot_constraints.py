@@ -64,9 +64,11 @@ ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
 # filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 
 # ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
-codes_to_compare = ('OneCovariance', 'Spaceborne')
-filename_suffix_list = ('_clsCLOE_CLOEbenchTestOC', '_clsCLOE_CLOEbench')
-which_cov_term_list = ['G', 'GSSC', ]
+codes_to_compare = ('OneCovariance', 'OneCovariance')
+filename_suffix_list = ('_dense_LiFECls', '_dense_LiFECls')
+# filename_suffix_list = ('_dense_LiFECls', '_clsCLOE_CLOEbench')
+which_cov_term_list = ['G', 'GSSC', 'GSSCcNG' ]
+
 
 fix_dz_plt = False
 fix_shear_bias_plt = False
@@ -79,12 +81,11 @@ fid_shear_bias_prior = 5e-4
 shear_bias_prior = fid_shear_bias_prior  # None if you want no prior
 dz_prior = np.array(2 * 1e-3 * (1 + zbin_centers))
 
-
 check_if_just_created = False
 
 specs_str = 'idIA2_idB3_idM3_idR1'
 fm_root_path = (f'{ROOT}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM')
-fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}'
+fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}/jan_2024'
 fm_pickle_name_raw = 'FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_' \
     'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}{filename_suffix}.pickle'
 EP_or_ED = 'EP'
@@ -410,9 +411,9 @@ for probe_toplot in probes:
 
     # append percent differences to df
     fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
-                                             which_cov_term_list[1], num_string_columns)
-    # fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
-    #  'GcNG', num_string_columns)
+                                             'GSSC', num_string_columns)
+    fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
+                                            'GSSCcNG', num_string_columns)
 
     # check that the G term is the same, all other entries being the same
     g_rows_df = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] == 'G']
@@ -423,8 +424,8 @@ for probe_toplot in probes:
     # ! drop some entries for clearer plot
     # fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'G']
     # fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GSSC']
-    fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GcNG']
-    fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GSSCcNG']
+    # fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GcNG']
+    # fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GSSCcNG']
     # fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'perc_diff_GSSC']
 
     if divide_fom_by_10_plt:
@@ -505,17 +506,18 @@ fid_pars_dict_fm_toplot = fm_uncert_df[
 ]['fiducials_dict'].values[0]
 
 
-# fiducials = list(fid_pars_dict_fm_toplot.values())
-# param_names_label = list(fid_pars_dict_fm_toplot.keys())
+fiducials = list(fid_pars_dict_fm_toplot.values())
+param_names_label = list(fid_pars_dict_fm_toplot.keys())
+
 # plot_lib.triangle_plot(
 #     fm_backround=fm_a,
 #     fm_foreground=fm_b,
 #     fiducials=fiducials,
-#     title=f'G new, SSC new, {probe_toplot}',
-#     label_background=f'G + SSC, {codes_to_compare[0]}',
-#     label_foreground=f'G + SSC, {codes_to_compare[1]}',
+#     title=f'SB vs OC, {probe_toplot}, G + SSC',
+#     label_background=f'{codes_to_compare[0]}',
+#     label_foreground=f'{codes_to_compare[1]}',
 #     param_names_labels=param_names_label,
-#     param_names_labels_toplot=param_names_label[:10])
+#     param_names_labels_toplot=param_names_label[:7])
 
 
 offset = 0.2  # Adjust this offset as needed for your dataset
@@ -578,6 +580,7 @@ hatch_list = ['', '//', ':',]
 # ! =================================== with mpl ============================
 
 
+which_cov_terms = ['G', 'GSSC', 'GSSCcNG', 'perc_diff_GSSC', 'perc_diff_GSSCcNG']
 # Initialize the figure and the grid
 fig = plt.figure(figsize=(14, 10))
 gs = gridspec.GridSpec(2, 2, height_ratios=[3, 1], width_ratios=[10, 1], hspace=0, wspace=0)
@@ -609,16 +612,20 @@ ax_diff_fom.set_xlim(xlim_adjusted)
 # Define color and hatch mappings
 color_mapping = {}
 hatch_mapping = {}
-for which_cov_term in ['G', 'GSSC', 'perc_diff_GSSC']:
+for which_cov_term in which_cov_terms:
     for filename_suffix in filename_suffix_list:
         key = f"{which_cov_term}{filename_suffix}"
 
-        if 'GSSC' in key:
-            color_mapping[key] = 'tab:orange'
-        if 'perc_diff' in key:
-            color_mapping[key] = 'tab:green'
         if 'G_' in key:
             color_mapping[key] = 'tab:blue'
+        if 'GSSCcNG_' in key:
+            color_mapping[key] = 'tab:purple'
+        if 'GSSC_' in key:
+            color_mapping[key] = 'tab:orange'
+        if 'perc_diff_GSSC' in key:
+            color_mapping[key] = 'tab:green'
+        if 'perc_diff_GSSCcNG' in key:
+            color_mapping[key] = 'tab:red'
 
         if key == f"{which_cov_term}{filename_suffix_list[1]}":
             hatch_mapping[key] = ''
@@ -628,7 +635,7 @@ for which_cov_term in ['G', 'GSSC', 'perc_diff_GSSC']:
 # Collect all data
 all_data = []
 
-for which_cov_term in ['G', 'GSSC', 'perc_diff_GSSC']:
+for which_cov_term in which_cov_terms:
     df_long = pd.melt(fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] == which_cov_term],
                       id_vars=['probe', 'which_cov_term', 'ng_cov_code', 'filename_suffix', 'whose_FM', 'which_pk', 'BNT_transform', 'ell_cuts',
                                'which_cuts', 'center_or_min', 'fix_dz', 'fix_shear_bias', 'fix_gal_bias', 'fix_mag_bias', 'foc', 'kmax_h_over_Mpc'],
@@ -654,12 +661,12 @@ index = np.arange(n_parameters)
 unique_filename_suffix = all_data_combined['filename_suffix'].unique()
 
 # Offset to ensure bars are tightly packed
-offset = np.linspace(-bar_width / 4, bar_width / 4, len(unique_filename_suffix))
+offset = np.linspace(-bar_width / 10, bar_width / 10, len(unique_filename_suffix))
 
 # Plot each filename_suffix group
 for i, filename_suffix in enumerate(unique_filename_suffix):
     subset = all_data_combined[all_data_combined['filename_suffix'] == filename_suffix]
-    for j, which_cov_term in enumerate(['GSSC', 'G']):
+    for j, which_cov_term in enumerate(['GSSCcNG', 'GSSC', 'G']):
         data = subset[subset['which_cov_term'] == which_cov_term]
         condition = f"{which_cov_term}{filename_suffix}"
 
@@ -669,7 +676,7 @@ for i, filename_suffix in enumerate(unique_filename_suffix):
                                label=condition, edgecolor='k', hatch=hatch_mapping[condition],
                                facecolor=color_mapping[condition])
 
-    for j, which_cov_term in enumerate(['G', 'GSSC']):
+    for j, which_cov_term in enumerate(['G', 'GSSC', 'GSSCcNG']):
         data = subset[subset['which_cov_term'] == which_cov_term]
         condition = f"{which_cov_term}{filename_suffix}"
         data_fom = data[data['Parameter'] == 'FoM']
@@ -679,31 +686,37 @@ for i, filename_suffix in enumerate(unique_filename_suffix):
 
 # Plot percent differences in the bottom plot
 for i, filename_suffix in enumerate(unique_filename_suffix):
+    
     subset = all_data_combined[all_data_combined['filename_suffix'] == filename_suffix]
     data = subset[subset['which_cov_term'] == 'perc_diff_GSSC']
-    condition = f"perc_diff_GSSC{filename_suffix}"
 
     for k, param in enumerate(custom_parameter_order):
-        data_param = data[data['Parameter'] == param]
-        bars_diff = ax_diff.bar(index[k] + offset[i], data_param['Value'], bar_width / len(unique_filename_suffix),
+        for j, which_cov_term in enumerate(['perc_diff_GSSCcNG', 'perc_diff_GSSC']):
+            condition = f"{which_cov_term}{filename_suffix}"
+            data = subset[subset['which_cov_term'] == which_cov_term]
+            data_param = data[data['Parameter'] == param]
+            bars_diff = ax_diff.bar(index[k] + offset[i], data_param['Value'], bar_width / len(unique_filename_suffix),
                                 label=condition, edgecolor='k', hatch=hatch_mapping[condition],
                                 facecolor=color_mapping[condition])
 
-    # Plot FoM percent differences
-    data_fom_diff = data[data['Parameter'] == 'FoM']
-    bars_diff_fom = ax_diff_fom.bar(7 + offset[i], data_fom_diff['Value'], bar_width / len(unique_filename_suffix),
-                                    label=condition, edgecolor='k', hatch=hatch_mapping[condition],
-                                    facecolor=color_mapping[condition])
+    for j, which_cov_term in enumerate(['perc_diff_GSSCcNG', 'perc_diff_GSSC']):
+        # Plot FoM percent differences
+        data = subset[subset['which_cov_term'] == which_cov_term]
+        data_fom_diff = data[data['Parameter'] == 'FoM']
+        condition = f"{which_cov_term}{filename_suffix}"
+        bars_diff_fom = ax_diff_fom.bar(7 + offset[i], data_fom_diff['Value'], bar_width / len(unique_filename_suffix),
+                                        label=condition, edgecolor='k', hatch=hatch_mapping[condition],
+                                        facecolor=color_mapping[condition])
 
 
 # Add grid
 ax_main.yaxis.grid(True)  # Only horizontal gridlines
-ax_diff.yaxis.grid(True)
 ax_fom.yaxis.grid(True)
-ax_diff_fom.yaxis.grid(True)
 ax_main.set_axisbelow(True)  # Ensure gridlines are behind the bars
-ax_diff.set_axisbelow(True)
 ax_fom.set_axisbelow(True)
+ax_diff.yaxis.grid(True)
+ax_diff.set_axisbelow(True)
+ax_diff_fom.yaxis.grid(True)
 ax_diff_fom.set_axisbelow(True)
 
 # Customize x-ticks and labels
@@ -714,7 +727,7 @@ ax_main.set_xlabel('')
 
 ax_diff.set_xticks(index)
 ax_diff.set_xticklabels(custom_parameter_order_tex)
-ax_diff.set_ylabel('GSSC/G - 1 [%]')
+ax_diff.set_ylabel('% diff')
 ax_diff.set_xlabel('')
 
 # Set the ticks and labels for FoM plots
@@ -735,14 +748,14 @@ handles = []
 # ax_main.legend(handles=handles)
 
 # Add handles for color legend
-for color, label in zip(('tab:blue', 'tab:orange', 'tab:green'), ['G', 'GSSC', '% diff']):
+for color, label in zip(('tab:blue', 'tab:orange', 'tab:purple', 'tab:green', 'tab:red'), ['G', 'GSSC', 'GSSCcNG', 'GSSC/G -1 [%]', 'GSSCcNG/G -1 [%]']):
     patch = mpatches.Patch(facecolor=color, edgecolor='k', label=label)
     handles.append(patch)
 
 # Add handles for hatch legend
-for hatch, label in zip(('', '//'), codes_to_compare):
-    patch = mpatches.Patch(facecolor='white', edgecolor='k', hatch=hatch, label=label)
-    handles.append(patch)
+# for hatch, label in zip(('', '//'), codes_to_compare):
+    # patch = mpatches.Patch(facecolor='white', edgecolor='k', hatch=hatch, label=label)
+    # handles.append(patch)
 
 ax_main.legend(handles=handles)
 ax_main.set_title('%s $\ell_{max} = 3000$' %probe)

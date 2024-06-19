@@ -1106,8 +1106,7 @@ def add_prior_to_fm(fm, fiducials_dict, prior_param_names, prior_param_values):
 
     for prior_param_name in prior_param_names:
         if prior_param_name not in fid_param_names:
-            warnings.warn(f'Prior parameter {prior_param_names} not found in fiducial parameters dict!')
-            return fm
+            raise ValueError(f'Prior parameter {prior_param_name} not found in fiducials_dict!')
 
     prior_param_idxs = [fid_param_names.index(prior_param_name) for prior_param_name in prior_param_names]
 

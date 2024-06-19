@@ -360,23 +360,16 @@ general_cfg['nbl_WL'] = nbl_WL
 
 delta_dict = {'delta_l_WL': np.copy(delta_l_WL_nbl32[:nbl_WL]),
               'delta_l_GC': np.copy(delta_l_WL_nbl32[:nbl_GC]),
-              'delta_l_WA': np.copy(delta_l_WL_nbl32[nbl_GC:])}
-
-# set # of nbl in the opt case, import and reshape, then cut the reshaped datavectors in the pes case
-assert (general_cfg['ell_max_WL_opt'],
-        general_cfg['ell_max_WL'],
-        general_cfg['ell_max_GC'],
-        general_cfg['ell_max_XC']) == (5000, 5000, 3000, 3000), \
-    'the number of bins defined in the config file is compatible with these ell_max values'
+              'delta_l_WA': np.copy(delta_l_WL_nbl32[nbl_GC:nbl_WL])}
 
 nbl_WL_opt = general_cfg['nbl_WL_opt']
 nbl_GC_opt = general_cfg['nbl_GC_opt']
 nbl_WA_opt = general_cfg['nbl_WA_opt']
 nbl_3x2pt_opt = general_cfg['nbl_3x2pt_opt']
 
-if ell_max_WL == general_cfg['ell_max_WL_opt']:
-    assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
-        'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
+# if ell_max_WL == general_cfg['ell_max_WL_opt']:
+#     assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
+#         'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
 
 # this is just to make the .format() more compact
 variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
@@ -410,16 +403,15 @@ else:
 try:
     cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL, zbins)
     cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
-    # cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
     cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
 except AssertionError as err:
     print(err)
     print('Importing ellmax=5000 files and cutting')
-    cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL, zbins)
-    cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_WL, zbins)
-    # cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WL, zbins)
-    cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_WL, zbins)
+    cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
+    cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_WL_opt, zbins)
+    cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_WL_opt, zbins)
 
+    cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
     cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
     cl_3x2pt_5d = cl_3x2pt_5d[:, :, :nbl_3x2pt, :, :]
 
@@ -496,19 +488,21 @@ if general_cfg['BNT_transform']:
 rl_fld = general_cfg['rl_folder']
 rl_filename = general_cfg['rl_filename']
 rl_ll_1d = np.genfromtxt(
-    f"{rl_fld.format(probe='WLO')}/{rl_filename.format(probe='WLO', nbl=nbl_WL, **variable_specs)}")
+    f"{rl_fld.format(probe='WLO')}/{rl_filename.format(probe='WLO', nbl=nbl_WL_opt, **variable_specs)}")
 rl_gg_1d = np.genfromtxt(
-    f"{rl_fld.format(probe='GCO')}/{rl_filename.format(probe='GCO', nbl=nbl_WL, **variable_specs)}")
-rl_wa_1d = np.genfromtxt(
-    f"{rl_fld.format(probe='WLA')}/{rl_filename.format(probe='WLA', nbl=nbl_WL, **variable_specs)}")
+    f"{rl_fld.format(probe='GCO')}/{rl_filename.format(probe='GCO', nbl=nbl_3x2pt_opt, **variable_specs)}")
 rl_3x2pt_1d = np.genfromtxt(
-    f"{rl_fld.format(probe='3x2pt')}/{rl_filename.format(probe='3x2pt', nbl=nbl_WL, **variable_specs)}")
+    f"{rl_fld.format(probe='3x2pt')}/{rl_filename.format(probe='3x2pt', nbl=nbl_3x2pt_opt, **variable_specs)}")
 
 
 rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
-rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_GC_opt, zbins)
-rl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(rl_wa_1d, 'WA', nbl_WA_opt, zbins)
+rl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(rl_gg_1d, 'GC', nbl_3x2pt_opt, zbins)
 rl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(rl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
+
+rl_ll_3d=rl_ll_3d[:nbl_WL, :, :]
+rl_gg_3d=rl_gg_3d[:nbl_GC, :, :]
+rl_3x2pt_5d=rl_3x2pt_5d[:, :,:nbl_3x2pt, :, :]
+rl_wa_3d = rl_ll_3d[nbl_GC:nbl_WL, :, :]
 
 # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
 if ell_max_WL == general_cfg['ell_max_WL_opt']:
@@ -537,7 +531,6 @@ if ell_max_WL == 1500:
     warnings.warn(
         'you are cutting the datavectors and responses in the pessimistic case, but is this compatible '
         'with the redshift-dependent ell cuts?')
-    assert 1 > 2, 'you should check this'
     cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
     cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
     cl_wa_3d = cl_ll_3d[nbl_GC:nbl_WL, :, :]
@@ -667,8 +660,6 @@ else:
     Sijkl = np.ones((n_probes * zbins, n_probes * zbins, n_probes * zbins, n_probes * zbins))
 
 # ! compute covariance matrix
-# the ng values are in the second column, for these input files 👇
-# TODO: if already existing, don't compute the covmat, like done above for Sijkl
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix)
 
@@ -819,6 +810,12 @@ param_names_gc = [param_name for param_name in param_names_3x2pt if 'm0' not in 
 param_names_gc = [param_name for param_name in param_names_gc if 'm1' not in param_name]
 param_names_gc = [param_name for param_name in param_names_gc if 'dzWL' not in param_name]
 param_names_gc = [param_name for param_name in param_names_gc if not any(substring in param_name for substring in ['Aia', 'eIA', 'bIA'])]
+param_names_full_dict = {
+    'WL': param_names_wl,
+    'GC': param_names_gc,
+    '3x2pt': param_names_3x2pt,
+}
+
 
 param_names_3x2pt_vin = deepcopy(param_names_3x2pt)
 index = param_names_3x2pt_vin.index('logT')
@@ -901,7 +898,7 @@ fm_folder = fm_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
                                        which_cuts=general_cfg['which_cuts'],
                                        center_or_min=general_cfg['center_or_min'])
 
-fm_utils.save_FM(fm_folder, fm_dict, fm_cfg, cases_tosave, fm_cfg['save_FM_txt'], False,
+fm_utils.save_FM(fm_folder, fm_dict, fm_cfg, cases_tosave, save_txt=fm_cfg['save_FM_txt'], save_dict=False,
                  **variable_specs)
 
 if fm_cfg['save_FM_dict']:
@@ -914,8 +911,6 @@ if fm_cfg['test_against_benchmarks']:
 
 del cov_dict
 gc.collect()
-
-
 
 # ! ================================ vincenzo 
 fm_dict_vin = {}
@@ -945,7 +940,6 @@ fm_dict_vin['fiducial_values_dict_v2_WL'] = {param: fm_dict_vin['fiducial_values
 fm_dict_vin['fiducial_values_dict_v2_GC'] = {param: fm_dict_vin['fiducial_values_dict_v2_3x2pt'][param] for param in param_names_gc_vin}
 
 
-
 # ! plot the results directly, as a quick check
 nparams_toplot = 7
 names_params_to_fix = []
@@ -959,9 +953,10 @@ fix_gal_bias = False
 fix_logT = False
 fix_gamma = True
 
+nsigma_logT_prior = 1
 shear_bias_prior = 5e-4  # 5e-4 or None
 dz_prior = np.array(2 * 1e-3 * (1 + np.array(z_center_values)))
-logT_prior = 0.05 * fm_dict['fiducial_values_dict_v2']['logT'] # TODO 5%, just a test
+logT_prior = (8 - 7.6)/(nsigma_logT_prior*2)  # BAHAMAS range "converted" to Gaussian prior
 
 probes = ['WL', 'GC', '3x2pt']
 dzWL_param_names = [f'dzWL{(zi + 1):02d}' for zi in range(zbins)]
@@ -1030,13 +1025,26 @@ for key in list(fm_dict_toplot.keys()):
             masked_fm_dict_vin[key] = mm.add_prior_to_fm(masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key],
                                                      shear_bias_param_names, shear_bias_prior_values)
 
-        if not fix_dz and dz_prior is not None:
+        if not fix_dz and dz_prior is not None and any(item in key for item in ['WL', 'XC', '3x2pt', '2x2pt']):
             print(f'adding dz Gaussian prior to {key}')
             masked_fm_dict[key] = mm.add_prior_to_fm(
                 masked_fm_dict[key], masked_fid_pars_dict[key], dzWL_param_names, dz_prior)
             masked_fm_dict_vin[key] = mm.add_prior_to_fm(
                 masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key], dzWL_param_names, dz_prior)
+            
+        if not fix_logT and logT_prior is not None:
+            print(f'adding logT Gaussian prior to {key}')
+            masked_fm_dict[key] = mm.add_prior_to_fm(
+                masked_fm_dict[key], masked_fid_pars_dict[key], ['logT'], logT_prior)
+            masked_fm_dict_vin[key] = mm.add_prior_to_fm(
+                masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key], ['logT'], logT_prior)
 
+        # save for sylvain
+        # np.savetxt(f'{fm_folder}/{key}_.txt', masked_fm_dict[key])
+        # np.savetxt(f'{fm_folder}/{key}_.txt', masked_fm_dict[key])
+        
+        # continue
+        
         uncert_dict[key] = mm.uncertainties_fm_v2(masked_fm_dict[key], masked_fid_pars_dict[key],
                                                   which_uncertainty=which_uncertainty,
                                                   normalize=True,
@@ -1072,16 +1080,15 @@ for probe in probes:
     fom_dict[f'perc_diff_{probe}_G_vin'] = np.abs(mm.percent_diff(fom_dict[key_b_vin], fom_dict[key_a_vin]))
     fom_dict[f'ratio_{probe}_G_vin'] = fom_dict[key_b_vin]/ fom_dict[key_a_vin]
 
-    nparams_toplot = 7
     divide_fom_by_10_plt = False if probe in ('WL' 'XC') else divide_fom_by_10
 
     cases_to_plot = [
         f'FM_{probe}_G',
-        f'FM_{probe}_G_vin',
+        # f'FM_{probe}_G_vin',
         f'FM_{probe}_GSSC',
-        f'FM_{probe}_GSSC_vin',
+        # f'FM_{probe}_GSSC_vin',
         f'perc_diff_{probe}_G',
-        f'perc_diff_{probe}_G_vin',
+        # f'perc_diff_{probe}_G_vin',
     ]
 
     # # transform dict. into an array and add the fom
@@ -1122,12 +1129,11 @@ for probe in probes:
         cases_to_plot[i] = cases_to_plot[i].replace(f'_', f' ')
         cases_to_plot[i] = cases_to_plot[i].replace(f'GSSC', f'G+SSC')
 
-
     # bar plot
     if include_fom:
-        nparams_toplot = 8
+        nparams_toplot += 1
     plot_lib.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
-                      param_names_label=None, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
+                      param_names_label=param_names_full_dict[probe][:nparams_toplot], bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
 
 
 # ! Print tables
@@ -1135,7 +1141,7 @@ if include_fom:
     n_cosmo_par = nparams_toplot - 1
 titles = param_names_list[:n_cosmo_par] + ['FoM']
 
-for uncert_dict, fm_dict, name in zip([uncert_dict, uncert_dict], [fm_dict, fm_dict_vin], ['Davide', 'Vincenzo']):
+for uncert_dict, _, name in zip([uncert_dict, uncert_dict], [fm_dict, fm_dict_vin], ['Davide', 'Vincenzo']):
     print(f"G uncertainties {name} [%]:")
     data = []
     for probe in probes:
@@ -1160,238 +1166,19 @@ for uncert_dict, fm_dict, name in zip([uncert_dict, uncert_dict], [fm_dict, fm_d
         data.append([probe] + ratios + [fom])
     print(tabulate(data, headers=titles, tablefmt="pretty"))
     
-assert False, 'stop here'
-
-
-# ! ================================ vincenzo 
-fm_dict_vin = {}
-fm_folder = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/FiRe/OutputQuantities/FishMat/Davide/Flat/HMCodeBar'
-fm_dict_vin['FM_3x2pt_G'] = np.genfromtxt(f'{fm_folder}/fmnew-3x2pt-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GO-Opt.dat')
-fm_dict_vin['FM_3x2pt_GSSC'] = np.genfromtxt(f'{fm_folder}/fmnew-3x2pt-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GS-Opt.dat')
-
-fm_dict_vin['FM_WL_G'] = np.genfromtxt(f'{fm_folder}/fmnew-WLO-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GO-Opt.dat')
-fm_dict_vin['FM_WL_GSSC'] = np.genfromtxt(f'{fm_folder}/fmnew-WLO-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GS-Opt.dat')
-
-fm_dict_vin['FM_GC_G'] = np.genfromtxt(f'{fm_folder}/fmnew-GCO-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GO-Opt.dat')
-fm_dict_vin['FM_GC_GSSC'] = np.genfromtxt(f'{fm_folder}/fmnew-GCO-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GS-Opt.dat')
-
-fm_dict_vin['fiducial_values_dict_v2_3x2pt'] = deepcopy(fm_dict['fiducial_values_dict_v2'])
-# Convert the dictionary to a list of tuples
-params_list = list(fm_dict_vin['fiducial_values_dict_v2_3x2pt'].items())
-
-# Find the index of 'logT'
-index = next(i for i, v in enumerate(params_list) if v[0] == 'logT')
-
-# Insert 'gamma': 0.55 before 'logT'
-params_list.insert(index, ('gamma', 0.55))
-
-# Convert the list of tuples back to a dictionary
-fm_dict_vin['fiducial_values_dict_v2_3x2pt'] = dict(params_list)
-fm_dict_vin['fiducial_values_dict_v2_WL'] = {param: fm_dict_vin['fiducial_values_dict_v2_3x2pt'][param] for param in param_names_wl_vin}
-fm_dict_vin['fiducial_values_dict_v2_GC'] = {param: fm_dict_vin['fiducial_values_dict_v2_3x2pt'][param] for param in param_names_gc_vin}
-
-mm.matshow(masked_fm_dict['FM_GC_G'], log=True, title='davide')
-mm.matshow(fm_dict_vin['FM_GC_G'], log=True, title='vincenzo')
+    print(f"G/GSSC ratio {name}:")
+    data = []
+    for probe in probes:
+        ratios = [f'{ratio:.3f}' for ratio in uncert_dict[f'ratio_{probe}_G']**-1]
+        fom = f'{fom_dict[f"ratio_{probe}_G"]**-1:.2f}'
+        data.append([probe] + ratios + [fom])
+    print(tabulate(data, headers=titles, tablefmt="pretty"))
     
 
 
-# ! plot the results directly, as a quick check
-# nparams_toplot = 7
-# names_params_to_fix = []
-# divide_fom_by_10 = True
-# include_fom = True
-# which_uncertainty = 'marginal'
-
-
-# shear_bias_prior = 5e-4  # 5e-4 or None
-# dz_prior = np.array(2 * 1e-3 * (1 + np.array(z_center_values))) # TODO check z_center_values!!
-# shear_bias_prior=None
-# dz_prior=None
-# logT_prior = ..........................................
-
-probes = ['WL', 'GC', '3x2pt']
-dzWL_param_names = [f'dzWL{(zi + 1):02d}' for zi in range(zbins)]
-shear_bias_param_names = [f'm{(zi + 1):02d}' for zi in range(zbins)]
-gal_bias_param_names = [f'bG{(zi + 1):02d}' for zi in range(zbins)]
-param_names_list = param_names_3x2pt_vin
-
-for name in dzWL_param_names:
-    assert name in param_names_list, f"{name} not found in param_names_list"
-for name in shear_bias_param_names:
-    assert name in param_names_list, f"{name} not found in param_names_list"
-for name in gal_bias_param_names:
-    assert name in param_names_list, f"{name} not found in param_names_list"
-
-if fix_dz:
-    names_params_to_fix += dzWL_param_names
-
-if fix_shear_bias:
-    names_params_to_fix += shear_bias_param_names
-
-if fix_gal_bias:
-    names_params_to_fix += gal_bias_param_names
-
-if fix_logT:
-    names_params_to_fix += ['logT']
-    
-if fix_gamma:
-    names_params_to_fix += ['gamma']
-    
-# names_params_to_fix_dict = {}
-# names_params_to_fix_dict['WL'] = dzWL_param_names + shear_bias_param_names + ['logT', 'gamma']
-# names_params_to_fix_dict['GC'] = ['logT', 'gamma']
-# names_params_to_fix_dict['3x2pt'] = dzWL_param_names + shear_bias_param_names + ['logT', 'gamma']
-names_params_to_fix_dict_vin = {}
-names_params_to_fix_dict_vin['WL'] = ['gamma']
-names_params_to_fix_dict_vin['GC'] = ['gamma']
-names_params_to_fix_dict_vin['3x2pt'] = ['gamma']
-
-fom_dict_vin = {}
-uncert_dict_vin = {}
-masked_fm_dict_vin = {}
-masked_fid_pars_dict_vin = {}
-fm_dict_toplot_vin = deepcopy(fm_dict_vin)
-for key in list(fm_dict_toplot_vin.keys()):
-    if '_WA_' not in key and '_2x2pt_' not in key and 'fiducial_values_dict' not in key:
-        
-        print(key)
-        
-        probe = key.split('_')[-2]
-
-        fm = deepcopy(fm_dict_toplot_vin[key])
-        
-        masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key] = mm.mask_fm_v2(fm, fm_dict_vin[f'fiducial_values_dict_v2_{probe}'],
-                                                                       names_params_to_fix=names_params_to_fix_dict_vin[probe],
-                                                                       remove_null_rows_cols=True)
-        
-        if not fix_shear_bias and any(item in key for item in ['WL', 'XC', '3x2pt', '2x2pt']) and shear_bias_prior is not None:
-            print(f'adding shear bias Gaussian prior to {key}')
-            shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
-            masked_fm_dict_vin[key] = mm.add_prior_to_fm(masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key],
-                                                     shear_bias_param_names, shear_bias_prior_values)
-
-        if not fix_dz and dz_prior is not None:
-            print(f'adding dz Gaussian prior to {key}')
-            masked_fm_dict_vin[key] = mm.add_prior_to_fm(
-                masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key], dzWL_param_names, dz_prior)
-
-        uncert_dict_vin[key] = mm.uncertainties_fm_v2(masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key],
-                                                  which_uncertainty=which_uncertainty,
-                                                  normalize=True,
-                                                  percent_units=True)[:nparams_toplot]
-
-        param_names = list(masked_fid_pars_dict_vin[key].keys())
-        cosmo_param_names = list(masked_fid_pars_dict_vin[key].keys())[:nparams_toplot]
-
-        w0wa_idxs = param_names.index('wz'), param_names.index('wa')
-        fom_dict_vin[key] = mm.compute_FoM(masked_fm_dict_vin[key], w0wa_idxs=w0wa_idxs)
-
-# compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
-for probe in probes:
-
-    key_a = f'FM_{probe}_G'
-    key_b = f'FM_{probe}_GSSC'
-
-    uncert_dict_vin[f'perc_diff_{probe}_G'] = mm.percent_diff(uncert_dict_vin[key_b], uncert_dict_vin[key_a])
-    uncert_dict_vin[f'ratio_{probe}_G'] = uncert_dict_vin[key_b]/ uncert_dict_vin[key_a]
-    fom_dict_vin[f'perc_diff_{probe}_G'] = np.abs(mm.percent_diff(fom_dict_vin[key_b], fom_dict_vin[key_a]))
-    fom_dict_vin[f'ratio_{probe}_G'] = fom_dict_vin[key_b]/ fom_dict_vin[key_a]
-
-    nparams_toplot = 7
-    divide_fom_by_10_plt = False if probe in ('WL' 'XC') else divide_fom_by_10
-
-    cases_to_plot = [
-        f'FM_{probe}_G',
-        f'FM_{probe}_GSSC',
-        f'perc_diff_{probe}_G',
-
-        #  f'FM_{probe}_{which_ng_cov_suffix}',
-        #  f'perc_diff_{probe}_{which_ng_cov_suffix}',
-    ]
-
-    # # transform dict. into an array and add the fom
-    uncert_array, fom_array = [], []
-
-    for case in cases_to_plot:
-
-        uncert_array.append(uncert_dict_vin[case])
-        if divide_fom_by_10 and 'FM' in case and 'WL' not in case:
-            fom_dict_vin[case] /= 10
-        fom_array.append(fom_dict_vin[case])
-
-    uncert_array = np.asarray(uncert_array)
-    fom_array = np.asarray(fom_array)
-
-    uncert_array = np.hstack((uncert_array, fom_array.reshape(-1, 1)))
-
-    # label and title stuff
-    fom_label = 'FoM/10\nperc_diff' if divide_fom_by_10 else 'FoM'
-    param_names_label = param_names_list[:nparams_toplot] + [fom_label] if include_fom else param_names_list[
-        :nparams_toplot]
-    lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_3x2pt']
-    title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i, $\\sigma_\\epsilon$ %s\nfix_shear_bias %s, fix_dz %s, fix_logT %s' % (
-        probe, lmax, EP_or_ED, zbins, covariance_cfg['which_shape_noise'], str(fix_shear_bias), str(fix_dz), str(fix_logT))
-
-    # bar plot
-    if include_fom:
-        nparams_toplot = 8
-
-    for i, case in enumerate(cases_to_plot):
-
-        cases_to_plot[i] = case
-        if f'PySSC_{probe}_G' in cases_to_plot[i]:
-            cases_to_plot[i] = cases_to_plot[i].replace(f'PySSC_{probe}_G', f'{probe}_G')
-
-        cases_to_plot[i] = cases_to_plot[i].replace(f'_{probe}', f'')
-        cases_to_plot[i] = cases_to_plot[i].replace(f'FM_', f'')
-        cases_to_plot[i] = cases_to_plot[i].replace(f'_', f' ')
-        cases_to_plot[i] = cases_to_plot[i].replace(f'GSSC', f'G+SSC')
-
-    plot_lib.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
-                      param_names_label=None, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
-
-
-# Print the table
-from tabulate import tabulate
-
-if include_fom:
-    n_cosmo_par = nparams_toplot - 1
-
-titles = param_names_list[:n_cosmo_par] + ['FoM']
-
-print("GSSC/G ratio:")
-data = []
-for probe in probes:
-    ratios = [f'{ratio:.3f}' for ratio in uncert_dict_vin[f'ratio_{probe}_G']]
-    fom = f'{fom_dict_vin[f"ratio_{probe}_G"]:.2f}'
-    data.append([probe] + ratios + [fom])
-print(tabulate(data, headers=titles, tablefmt="pretty"))
-
-print("G uncertainties [%]:")
-data = []
-for probe in probes:
-    uncerts = [f'{uncert:.3f}' for uncert in uncert_dict_vin[f'FM_{probe}_G']]
-    fom = f'{fom_dict_vin[f"FM_{probe}_G"]:.2f}'
-    data.append([probe] + uncerts + [fom])
-print(tabulate(data, headers=titles, tablefmt="pretty"))
-
-print("SSC % increase:")
-data = []
-for probe in probes:
-    ratios = [f'{ratio:.3f}' for ratio in uncert_dict_vin[f'perc_diff_{probe}_G']]
-    fom = f'{fom_dict_vin[f"perc_diff_{probe}_G"]:.2f}'
-    data.append([probe] + ratios + [fom])
-print(tabulate(data, headers=titles, tablefmt="pretty"))
-
-
-par_toplot = -1
-mm.compare_arrays(masked_fm_dict['FM_WL_G'][:par_toplot, :par_toplot], masked_fm_dict_vin['FM_WL_G'][:par_toplot, :par_toplot], 'Dav WL', 'Vin WL', log_array=True, plot_diff=False)
-mm.compare_arrays(masked_fm_dict['FM_GC_G'][:par_toplot, :par_toplot], masked_fm_dict_vin['FM_GC_G'][:par_toplot, :par_toplot], 'Dav GC', 'Vin GC', log_array=True, plot_diff=False)
-mm.compare_arrays(masked_fm_dict['FM_3x2pt_G'][:par_toplot, :par_toplot], masked_fm_dict_vin['FM_3x2pt_G'][:par_toplot, :par_toplot], 'Dav 3x2pt', 'Vin 3x2pt', log_array=True, plot_diff=True)
 
 
 # * 3x2pt cosmo is ok!
 # TODO logT prior??
 
-
-print('Script end')
+print('done')

@@ -144,7 +144,7 @@ covariance_cfg = {
     'fsky': fsky,  # ! new
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
-    'which_shape_noise': 'ISTF',
+    'which_shape_noise': 'correct',
     
     # nuisance
     'nuisance_folder': f'{SPV3_folder}/InputQuantities/NzFiles/Davide/NzPar',

@@ -267,6 +267,13 @@ row_col_major = covariance_cfg['row_col_major']
 n_probes = general_cfg['n_probes']
 which_pk = general_cfg['which_pk']
 
+if (general_cfg['ell_max_WL'], general_cfg['ell_max_3x2pt'], general_cfg['ell_max_XC'], general_cfg['ell_max_GC']) == (5000, 3000, 3000, 3000):
+    which_case = 'Opt'
+elif (general_cfg['ell_max_WL'], general_cfg['ell_max_3x2pt'], general_cfg['ell_max_XC'], general_cfg['ell_max_GC']) == (1500, 750, 750, 750):
+    which_case = 'Pes'
+else:
+    raise ValueError('This combination of ell_max_WL and ell_max_3x2pt is not relevant to the paper!')
+
 # some checks
 # assert general_cfg['flagship_version'] == 2, 'The input files used in this job for flagship version 2!'
 assert general_cfg['use_WA'] is False, 'We do not use Wadd for SPV3 at the moment'
@@ -915,14 +922,14 @@ gc.collect()
 # ! ================================ vincenzo 
 fm_dict_vin = {}
 fm_folder = '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/FiRe/OutputQuantities/FishMat/Davide/Flat/HMCodeBar'
-fm_dict_vin['FM_3x2pt_G'] = np.genfromtxt(f'{fm_folder}/fmnew-3x2pt-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GO-Opt.dat')
-fm_dict_vin['FM_3x2pt_GSSC'] = np.genfromtxt(f'{fm_folder}/fmnew-3x2pt-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GS-Opt.dat')
+fm_dict_vin['FM_3x2pt_G'] = np.genfromtxt(f'{fm_folder}/fmnew-3x2pt-{EP_or_ED}{zbins:02d}-zedMin{general_cfg["zmin"]:02d}-zedMax{zmax}-mag{general_cfg["magcut"]}-GO-{which_case}.dat')
+fm_dict_vin['FM_3x2pt_GSSC'] = np.genfromtxt(f'{fm_folder}/fmnew-3x2pt-{EP_or_ED}{zbins:02d}-zedMin{general_cfg["zmin"]:02d}-zedMax{zmax}-mag{general_cfg["magcut"]}-GS-{which_case}.dat')
 
-fm_dict_vin['FM_WL_G'] = np.genfromtxt(f'{fm_folder}/fmnew-WLO-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GO-Opt.dat')
-fm_dict_vin['FM_WL_GSSC'] = np.genfromtxt(f'{fm_folder}/fmnew-WLO-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GS-Opt.dat')
+fm_dict_vin['FM_WL_G'] = np.genfromtxt(f'{fm_folder}/fmnew-WLO-{EP_or_ED}{zbins:02d}-zedMin{general_cfg["zmin"]:02d}-zedMax{zmax}-mag{general_cfg["magcut"]}-GO-{which_case}.dat')
+fm_dict_vin['FM_WL_GSSC'] = np.genfromtxt(f'{fm_folder}/fmnew-WLO-{EP_or_ED}{zbins:02d}-zedMin{general_cfg["zmin"]:02d}-zedMax{zmax}-mag{general_cfg["magcut"]}-GS-{which_case}.dat')
 
-fm_dict_vin['FM_GC_G'] = np.genfromtxt(f'{fm_folder}/fmnew-GCO-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GO-Opt.dat')
-fm_dict_vin['FM_GC_GSSC'] = np.genfromtxt(f'{fm_folder}/fmnew-GCO-{EP_or_ED}{zbins:02d}-zedMin00-zedMax25-mag245-GS-Opt.dat')
+fm_dict_vin['FM_GC_G'] = np.genfromtxt(f'{fm_folder}/fmnew-GCO-{EP_or_ED}{zbins:02d}-zedMin{general_cfg["zmin"]:02d}-zedMax{zmax}-mag{general_cfg["magcut"]}-GO-{which_case}.dat')
+fm_dict_vin['FM_GC_GSSC'] = np.genfromtxt(f'{fm_folder}/fmnew-GCO-{EP_or_ED}{zbins:02d}-zedMin{general_cfg["zmin"]:02d}-zedMax{zmax}-mag{general_cfg["magcut"]}-GS-{which_case}.dat')
 
 fm_dict_vin['fiducial_values_dict_v2_3x2pt'] = deepcopy(fm_dict['fiducial_values_dict_v2'])
 # Convert the dictionary to a list of tuples
@@ -940,12 +947,13 @@ fm_dict_vin['fiducial_values_dict_v2_WL'] = {param: fm_dict_vin['fiducial_values
 fm_dict_vin['fiducial_values_dict_v2_GC'] = {param: fm_dict_vin['fiducial_values_dict_v2_3x2pt'][param] for param in param_names_gc_vin}
 
 
-# ! plot the results directly, as a quick check
-nparams_toplot = 7
+# ! =========================== FM settings #######################################
+nparams_toplot_ref = 8
 names_params_to_fix = []
 divide_fom_by_10 = True
 include_fom = True
-which_uncertainty = 'marginal'
+which_uncertainty = 'conditional'
+remove_null_rows_cols = True
 
 fix_dz = False
 fix_shear_bias = False
@@ -953,10 +961,14 @@ fix_gal_bias = False
 fix_logT = False
 fix_gamma = True
 
-nsigma_logT_prior = 1
+nsigma_logT_prior = 3
 shear_bias_prior = 5e-4  # 5e-4 or None
 dz_prior = np.array(2 * 1e-3 * (1 + np.array(z_center_values)))
 logT_prior = (8 - 7.6)/(nsigma_logT_prior*2)  # BAHAMAS range "converted" to Gaussian prior
+# shear_bias_prior = None
+# dz_prior = None
+# logT_prior = None
+# ! =========================== FM settings end #######################################
 
 probes = ['WL', 'GC', '3x2pt']
 dzWL_param_names = [f'dzWL{(zi + 1):02d}' for zi in range(zbins)]
@@ -984,7 +996,14 @@ if fix_gal_bias:
 if fix_logT:
     names_params_to_fix += ['logT']
     
-names_params_to_fix_vin = names_params_to_fix + ['gamma']
+if fix_logT:
+    names_params_to_fix += ['logT']
+    
+if fix_gamma:
+    names_params_to_fix_vin = names_params_to_fix + ['gamma']
+else:
+    names_params_to_fix_vin = names_params_to_fix
+    
 names_params_to_fix_dict_vin = {}
 names_params_to_fix_dict_vin['WL'] = names_params_to_fix_vin
 names_params_to_fix_dict_vin['GC'] = [name for name in names_params_to_fix_vin if 'dzWL' not in name]
@@ -1004,6 +1023,7 @@ fm_dict_toplot_vin = deepcopy(fm_dict_vin)
 for key in list(fm_dict_toplot.keys()):
     if '_WA_' not in key and '_2x2pt_' not in key and '_XC_' not in key and 'fiducial_values_dict' not in key and 'param_names_dict' not in key:
 
+        nparams_toplot = nparams_toplot_ref
         print(key)
         probe = key.split('_')[-2]
         
@@ -1012,10 +1032,10 @@ for key in list(fm_dict_toplot.keys()):
         
         masked_fm_dict[key], masked_fid_pars_dict[key] = mm.mask_fm_v2(fm, fm_dict['fiducial_values_dict_v2'],
                                                                        names_params_to_fix=names_params_to_fix,
-                                                                       remove_null_rows_cols=True)
+                                                                       remove_null_rows_cols=remove_null_rows_cols)
         masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key] = mm.mask_fm_v2(fm_vin, fm_dict_vin[f'fiducial_values_dict_v2_{probe}'],
                                                                        names_params_to_fix=names_params_to_fix_dict_vin[probe],
-                                                                       remove_null_rows_cols=True)
+                                                                       remove_null_rows_cols=remove_null_rows_cols)
         
         if not fix_shear_bias and any(item in key for item in ['WL', 'XC', '3x2pt', '2x2pt']) and shear_bias_prior is not None:
             print(f'adding shear bias Gaussian prior to {key}')
@@ -1039,10 +1059,12 @@ for key in list(fm_dict_toplot.keys()):
             masked_fm_dict_vin[key] = mm.add_prior_to_fm(
                 masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key], ['logT'], logT_prior)
 
-        # save for sylvain
-        # np.savetxt(f'{fm_folder}/{key}_.txt', masked_fm_dict[key])
-        # np.savetxt(f'{fm_folder}/{key}_.txt', masked_fm_dict[key])
-        
+        # save for sylvain/vinc
+        # np.savetxt(f'{fm_folder}/{key}_{which_case}_noPriors_cut{remove_null_rows_cols}.txt', masked_fm_dict[key])
+        # np.savetxt(f'{fm_folder}/fid_param_values.txt', list(fm_dict['fiducial_values_dict_v2'].values()))
+        # with open(f'{fm_folder}/fid_param_names.txt', 'w') as file:
+        #     for param in list(fm_dict['fiducial_values_dict_v2'].values()):
+        #         file.write(f"{param}\n")
         # continue
         
         uncert_dict[key] = mm.uncertainties_fm_v2(masked_fm_dict[key], masked_fid_pars_dict[key],
@@ -1064,6 +1086,7 @@ for key in list(fm_dict_toplot.keys()):
 
 # compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
 for probe in probes:
+    nparams_toplot = nparams_toplot_ref
 
     key_a = f'FM_{probe}_G'
     key_b = f'FM_{probe}_GSSC'
@@ -1133,48 +1156,50 @@ for probe in probes:
     if include_fom:
         nparams_toplot += 1
     plot_lib.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
-                      param_names_label=param_names_full_dict[probe][:nparams_toplot], bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
+                      param_names_label=param_names_label[:nparams_toplot], bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
 
 
 # ! Print tables
 if include_fom:
-    n_cosmo_par = nparams_toplot - 1
-titles = param_names_list[:n_cosmo_par] + ['FoM']
+    nparams_toplot = nparams_toplot_ref + 1 
+titles = param_names_list[:nparams_toplot_ref] + ['FoM']
 
-for uncert_dict, _, name in zip([uncert_dict, uncert_dict], [fm_dict, fm_dict_vin], ['Davide', 'Vincenzo']):
-    print(f"G uncertainties {name} [%]:")
-    data = []
-    for probe in probes:
-        uncerts = [f'{uncert:.3f}' for uncert in uncert_dict[f'FM_{probe}_G']]
-        fom = f'{fom_dict[f"FM_{probe}_G"]:.2f}'
-        data.append([probe] + uncerts + [fom])
-    print(tabulate(data, headers=titles, tablefmt="pretty"))
+# for uncert_dict, _, name in zip([uncert_dict, uncert_dict], [fm_dict, fm_dict_vin], ['Davide', 'Vincenzo']):
+# print(f"G uncertainties {name} [%]:")
+# data = []
+# for probe in probes:
+#     uncerts = [f'{uncert:.3f}' for uncert in uncert_dict[f'FM_{probe}_G']]
+#     fom = f'{fom_dict[f"FM_{probe}_G"]:.2f}'
+#     data.append([probe] + uncerts + [fom])
+# print(tabulate(data, headers=titles, tablefmt="pretty"))
 
-    print(f"GSSC/G ratio {name}:")
-    data = []
-    for probe in probes:
-        ratios = [f'{ratio:.3f}' for ratio in uncert_dict[f'ratio_{probe}_G']]
-        fom = f'{fom_dict[f"ratio_{probe}_G"]:.2f}'
-        data.append([probe] + ratios + [fom])
-    print(tabulate(data, headers=titles, tablefmt="pretty"))
+print(f"GSSC/G ratio {which_uncertainty} {which_case}:")
+data = []
+table = []  # tor tex
+for probe in probes:
+    ratios = [f'{ratio:.3f}' for ratio in uncert_dict[f'ratio_{probe}_G']]
+    fom = f'{fom_dict[f"ratio_{probe}_G"]:.2f}'
+    data.append([probe] + ratios + [fom])
+    table.append(ratios + [fom])
+print(tabulate(data, headers=titles, tablefmt="pretty"))
+a2l.to_ltx(np.array(table, dtype=float), frmt = '{:6.3f}', print_out=True)
 
-    print(f"SSC % increase {name}:")
-    data = []
-    for probe in probes:
-        ratios = [f'{ratio:.3f}' for ratio in uncert_dict[f'perc_diff_{probe}_G']]
-        fom = f'{fom_dict[f"perc_diff_{probe}_G"]:.2f}'
-        data.append([probe] + ratios + [fom])
-    print(tabulate(data, headers=titles, tablefmt="pretty"))
-    
-    print(f"G/GSSC ratio {name}:")
-    data = []
-    for probe in probes:
-        ratios = [f'{ratio:.3f}' for ratio in uncert_dict[f'ratio_{probe}_G']**-1]
-        fom = f'{fom_dict[f"ratio_{probe}_G"]**-1:.2f}'
-        data.append([probe] + ratios + [fom])
-    print(tabulate(data, headers=titles, tablefmt="pretty"))
-    
+print(f"SSC % increase {name}:")
+data = []
+for probe in probes:
+    ratios = [f'{ratio:.3f}' for ratio in uncert_dict[f'perc_diff_{probe}_G']]
+    fom = f'{fom_dict[f"perc_diff_{probe}_G"]:.2f}'
+    data.append([probe] + ratios + [fom])
+print(tabulate(data, headers=titles, tablefmt="pretty"))
 
+# * invert ratio to check against barreira
+# print(f"G/GSSC ratio {name}:")
+# data = []
+# for probe in probes:
+#     ratios = [f'{ratio:.3f}' for ratio in uncert_dict[f'ratio_{probe}_G']**-1]
+#     fom = f'{fom_dict[f"ratio_{probe}_G"]**-1:.2f}'
+#     data.append([probe] + ratios + [fom])
+# print(tabulate(data, headers=titles, tablefmt="pretty"))
 
 
 

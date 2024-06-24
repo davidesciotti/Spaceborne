@@ -996,9 +996,6 @@ if fix_gal_bias:
 if fix_logT:
     names_params_to_fix += ['logT']
     
-if fix_logT:
-    names_params_to_fix += ['logT']
-    
 if fix_gamma:
     names_params_to_fix_vin = names_params_to_fix + ['gamma']
 else:

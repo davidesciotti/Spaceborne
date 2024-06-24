@@ -28,7 +28,7 @@ mpl_rcParams_dict = {
 
 general_dict = {
     'cosmo_labels_TeX': ["$\Omega_{{\\rm m},0}$", "$\Omega_{{\\rm b},0}$", "$w_0$", "$w_a$", "$h$", "$n_{\\rm s}$",
-                         "$\sigma_8$"],
+                         "$\sigma_8$", "logT"],
     'IA_labels_TeX': ['$A_{\\rm IA}$', '$\eta_{\\rm IA}$', '$\\beta_{\\rm IA}$'],
     'galaxy_bias_labels_TeX': mm.build_labels_TeX(zbins=10)[0],
     'shear_bias_labels_TeX': mm.build_labels_TeX(zbins=10)[1],

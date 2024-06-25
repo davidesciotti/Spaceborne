@@ -155,7 +155,7 @@ general_cfg:
 
     flagship_version: 2 # TODO delete this
     fm_and_cov_suffix: '_cls{which_cls:s}' # TODO delete this
-    num_threads: 60 # how many threads to use for the Julia SSC integral with @tturbo
+    num_threads: 16 # how many threads to use for the Julia SSC integral with @tturbo
 
 covariance_cfg:
     # ordering-related settings
@@ -315,7 +315,7 @@ covariance_cfg:
     Spaceborne_cfg:
         probe: 3x2pt
         which_ng_cov: [SSC] # only SSC available in this case
-        load_precomputed_cov: True
+        load_precomputed_cov: False
         which_pk_responses: separate_universe # halo_model (with PyCCL) or separate_universe (from simulations)
 
         cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Spaceborne/{which_pk_responses:s}"

@@ -65,12 +65,12 @@ ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
 
 # ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
 codes_to_compare = ('OneCovariance', 'OneCovariance')
-filename_suffix_list = ('_dense_LiFECls', '_dense_LiFECls')
+filename_suffix_list = ('_cNGfix_highres', '_cNGfix_highres')
 # filename_suffix_list = ('_dense_LiFECls', '_clsCLOE_CLOEbench')
 which_cov_term_list = ['G', 'GSSC', 'GSSCcNG' ]
 
 
-fix_dz_plt = False
+fix_dz_plt = True
 fix_shear_bias_plt = False
 fix_gal_bias_plt = False
 fix_mag_bias_plt = False
@@ -85,7 +85,7 @@ check_if_just_created = False
 
 specs_str = 'idIA2_idB3_idM3_idR1'
 fm_root_path = (f'{ROOT}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM')
-fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}/jan_2024'
+fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}'
 fm_pickle_name_raw = 'FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_' \
     'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}{filename_suffix}.pickle'
 EP_or_ED = 'EP'
@@ -383,7 +383,7 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
 
 # # ! bar plot
 include_fom = True
-divide_fom_by_10 = True
+divide_fom_by_10 = False
 
 for probe_toplot in probes:
 
@@ -450,7 +450,7 @@ for probe_toplot in probes:
 
 
 # # ! triangle plot
-probe_toplot = '3x2pt'
+probe_toplot = 'WL'
 fm_a = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['whose_FM'] == 'davide') &
@@ -579,8 +579,35 @@ hatch_list = ['', '//', ':',]
 
 # ! =================================== with mpl ============================
 
-
 which_cov_terms = ['G', 'GSSC', 'GSSCcNG', 'perc_diff_GSSC', 'perc_diff_GSSCcNG']
+probe_toplot = '3x2pt'
+
+
+fm_uncert_df_toplot = fm_uncert_df[
+    (fm_uncert_df['probe'] == probe_toplot) &
+    (fm_uncert_df['whose_FM'] == 'davide') &
+    (fm_uncert_df['which_pk'] == pk_ref) &
+    # (fm_uncert_df['ng_cov_code'] == ng_cov_code_plt) &
+
+    (fm_uncert_df['fix_dz'] == fix_dz_plt) &
+    (fm_uncert_df['fix_shear_bias'] == fix_shear_bias_plt) &
+    (fm_uncert_df['fix_gal_bias'] == fix_gal_bias_plt) &
+    (fm_uncert_df['fix_mag_bias'] == fix_mag_bias_plt) &
+
+    (fm_uncert_df['BNT_transform'] == False) &
+    (fm_uncert_df['ell_cuts'] == False) &
+    (fm_uncert_df['kmax_h_over_Mpc'] == 0.1) &
+    (fm_uncert_df['which_cuts'] == which_cuts_plt) &
+    (fm_uncert_df['center_or_min'] == center_or_min_plt)
+]
+
+# append percent differences to df
+fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
+                                            'GSSC', num_string_columns)
+fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
+                                        'GSSCcNG', num_string_columns)
+
+
 # Initialize the figure and the grid
 fig = plt.figure(figsize=(14, 10))
 gs = gridspec.GridSpec(2, 2, height_ratios=[3, 1], width_ratios=[10, 1], hspace=0, wspace=0)
@@ -758,7 +785,7 @@ for color, label in zip(('tab:blue', 'tab:orange', 'tab:purple', 'tab:green', 't
     # handles.append(patch)
 
 ax_main.legend(handles=handles)
-ax_main.set_title('%s $\ell_{max} = 3000$' %probe)
+ax_main.set_title('%s $\ell_{max} = 3000$' %probe_toplot)
 
 plt.show()
 

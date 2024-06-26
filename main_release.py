@@ -34,6 +34,7 @@ import spaceborne.wf_cl_lib as wf_cl_lib
 import spaceborne.pyccl_cov_class as pyccl_cov_class
 import spaceborne.plot_lib as plot_lib
 import spaceborne.sigma2_SSC as sigma2_SSC
+import spaceborne.onecovariance_interface as oc_interface
 
 pp = pprint.PrettyPrinter(indent=4)
 ROOT = os.getenv('ROOT')
@@ -287,6 +288,10 @@ covariance_cfg['ind'] = ind
 zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
 ind_auto = ind[:zpairs_auto, :].copy()
 ind_cross = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
+ind_dict = {('L', 'L'): ind_auto,
+            ('G', 'L'): ind_cross,
+            ('G', 'G'): ind_auto}
+covariance_cfg['ind_dict'] = ind_dict
 
 if not general_cfg['ell_cuts']:
     general_cfg['ell_cuts_subfolder'] = ''
@@ -730,156 +735,190 @@ mm.compare_arrays(cl_gl_3d[ell_idx, ...], ccl_obj.cl_gl_3d[ell_idx, ...], abs_va
                   name_A=f'{general_cfg["which_cls"]} GL', name_B='CCL GL')
 
 
-# ! save ingredients for OneCovariance in ASCII format
+# ! ================================ OneCovariance ====================================================
+
+# * 1. save ingredients in ascii format
 oc_path = covariance_cfg['OneCovariance_cfg']['onecovariance_folder'].format(ROOT=ROOT, **variable_specs)
 
 if not os.path.exists(oc_path):
     os.makedirs(oc_path)
 
 
-nofz_filename_ascii = nofz_filename.replace('.dat', f'_dzshifts{shift_nz}.ascii')
+nofz_ascii_filename = nofz_filename.replace('.dat', f'_dzshifts{shift_nz}.ascii')
 nofz_tosave = np.column_stack((zgrid_nz, n_of_z))
-np.savetxt(f'{oc_path}/{nofz_filename_ascii}', nofz_tosave)
+np.savetxt(f'{oc_path}/{nofz_ascii_filename}', nofz_tosave)
 
-cl_ll_oc_filename = f'Cell_ll_SPV3_{general_cfg["which_cls"]}_nbl{nbl_3x2pt}'
-cl_gl_oc_filename = f'Cell_gl_SPV3_{general_cfg["which_cls"]}_nbl{nbl_3x2pt}'
-cl_gg_oc_filename = f'Cell_gg_SPV3_{general_cfg["which_cls"]}_nbl{nbl_3x2pt}'
-mm.write_cl_ascii(oc_path, cl_ll_oc_filename, cl_3x2pt_5d[0, 0, ...], ell_dict['ell_3x2pt'], zbins)
-mm.write_cl_ascii(oc_path, cl_gl_oc_filename, cl_3x2pt_5d[1, 0, ...], ell_dict['ell_3x2pt'], zbins)
-mm.write_cl_ascii(oc_path, cl_gg_oc_filename, cl_3x2pt_5d[1, 1, ...], ell_dict['ell_3x2pt'], zbins)
+cl_ll_ascii_filename = f'Cell_ll_SPV3_{general_cfg["which_cls"]}_nbl{nbl_3x2pt}'
+cl_gl_ascii_filename = f'Cell_gl_SPV3_{general_cfg["which_cls"]}_nbl{nbl_3x2pt}'
+cl_gg_ascii_filename = f'Cell_gg_SPV3_{general_cfg["which_cls"]}_nbl{nbl_3x2pt}'
+mm.write_cl_ascii(oc_path, cl_ll_ascii_filename, cl_3x2pt_5d[0, 0, ...], ell_dict['ell_3x2pt'], zbins)
+mm.write_cl_ascii(oc_path, cl_gl_ascii_filename, cl_3x2pt_5d[1, 0, ...], ell_dict['ell_3x2pt'], zbins)
+mm.write_cl_ascii(oc_path, cl_gg_ascii_filename, cl_3x2pt_5d[1, 1, ...], ell_dict['ell_3x2pt'], zbins)
 
 gal_bias_ascii_filename = f'{oc_path}/gal_bias_table_{general_cfg["which_forecast"]}.ascii'
 ccl_obj.save_gal_bias_table_ascii(z_grid_ssc_integrands, gal_bias_ascii_filename)
 
-# ! now prepare .ini file for OC
+ascii_filenames_dict = {
+    'cl_ll_ascii_filename': cl_ll_ascii_filename,
+    'cl_gl_ascii_filename': cl_gl_ascii_filename,
+    'cl_gg_ascii_filename': cl_gg_ascii_filename,
+    'gal_bias_ascii_filename': gal_bias_ascii_filename,
+    'nofz_ascii_filename': nofz_ascii_filename,
+}
+
+# * 2. compute cov using the onecovariance interface class
 if covariance_cfg['ng_cov_code'] == 'OneCovariance':
+    start_time = time.perf_counter()
+    oc_obj = oc_interface.OneCovarianceInterface(ROOT, cfg, variable_specs)
+    oc_obj.build_save_oc_ini(ascii_filenames_dict, print_ini=True)
 
-    # this is just to preserve case sensitivity
-    class CaseConfigParser(configparser.ConfigParser):
-        def optionxform(self, optionstr):
-            return optionstr
+    if not covariance_cfg['OneCovariance_cfg']['load_precomputed_cov']:
+        oc_obj.call_onecovariance()
+        
 
-    # TODO import another file??
-    # Read the existing reference .ini file
-    cfg_onecov_ini = CaseConfigParser()
-    cfg_onecov_ini.read(f'{ROOT}/OneCovariance/config_files_dav/config_3x2pt_pure_Cell_dav.ini')
-
-    # set useful lists
-    mult_shear_bias_list = [cfg['cosmology']['FM_ordered_params'][f'm{zi:02d}'] for zi in range(1, zbins + 1)]
-    n_eff_clust_list = cfg['covariance_cfg']['ngal_clustering']
-    n_eff_lensing_list = cfg['covariance_cfg']['ngal_lensing']
-    ellipticity_dispersion_list = [cfg['covariance_cfg']['sigma_eps_i']] * zbins
-
-    cfg_onecov_ini['covariance terms']['nongauss'] = str(True)
-    cfg_onecov_ini['output settings']['directory'] = oc_path
-
-    cfg_onecov_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(map(str, mult_shear_bias_list))
-    cfg_onecov_ini['covELLspace settings']['ell_min'] = str(general_cfg['ell_min'])
-    cfg_onecov_ini['covELLspace settings']['ell_max'] = str(
-        general_cfg['ell_max_3x2pt'])  # TODO slightly different ell_max for 3000?
-    cfg_onecov_ini['covELLspace settings']['ell_bins'] = str(general_cfg['nbl_3x2pt'])
-
-    cfg_onecov_ini['survey specs']['mask_directory'] = '/home/cosmo/davide.sciotti/data/common_data/mask/'
-    cfg_onecov_ini['survey specs']['which_cov_binning'] = 'OneCovariance'  # TODO test diff with EC20
-
-    # TODO import this in a cleaner way
-    cfg_onecov_ini['survey specs']['mask_file_clust'] = 'mask_circular_1pole_14700deg2_nside2048.fits'
-    cfg_onecov_ini['survey specs']['mask_file_lensing'] = 'mask_circular_1pole_14700deg2_nside2048.fits'
-    cfg_onecov_ini['survey specs']['mask_file_ggl'] = 'mask_circular_1pole_14700deg2_nside2048.fits'
-    cfg_onecov_ini['survey specs']['n_eff_clust'] = ', '.join(map(str, n_eff_clust_list))
-    cfg_onecov_ini['survey specs']['n_eff_lensing'] = ', '.join(map(str, n_eff_lensing_list))
-    cfg_onecov_ini['survey specs']['ellipticity_dispersion'] = ', '.join(map(str, ellipticity_dispersion_list))
-
-    cfg_onecov_ini['redshift']['z_directory'] = oc_path
-    cfg_onecov_ini['redshift']['zclust_file'] = nofz_filename_ascii
-    cfg_onecov_ini['redshift']['zlens_file'] = nofz_filename_ascii
-
-    cfg_onecov_ini['cosmo']['h'] = str(cfg['cosmology']['FM_ordered_params']['h'])
-    cfg_onecov_ini['cosmo']['ns'] = str(cfg['cosmology']['FM_ordered_params']['ns'])
-    cfg_onecov_ini['cosmo']['omega_m'] = str(cfg['cosmology']['FM_ordered_params']['Om'])
-    cfg_onecov_ini['cosmo']['omega_b'] = str(cfg['cosmology']['FM_ordered_params']['Ob'])
-    cfg_onecov_ini['cosmo']['omega_de'] = str(cfg['cosmology']['other_params']['ODE'])
-    cfg_onecov_ini['cosmo']['sigma8'] = str(cfg['cosmology']['FM_ordered_params']['s8'])
-    cfg_onecov_ini['cosmo']['w0'] = str(cfg['cosmology']['FM_ordered_params']['wz'])
-    cfg_onecov_ini['cosmo']['wa'] = str(cfg['cosmology']['FM_ordered_params']['wa'])
-    cfg_onecov_ini['cosmo']['neff'] = str(cfg['cosmology']['other_params']['N_eff'])
-    cfg_onecov_ini['cosmo']['m_nu'] = str(cfg['cosmology']['other_params']['m_nu'])
-
-    cfg_onecov_ini['bias']['bias_files'] = gal_bias_ascii_filename
-
-    cfg_onecov_ini['IA']['A_IA'] = str(cfg['cosmology']['FM_ordered_params']['Aia'])
-    cfg_onecov_ini['IA']['eta_IA'] = str(cfg['cosmology']['FM_ordered_params']['eIA'])
-
-    cfg_onecov_ini['powspec evaluation']['non_linear_model'] = str(
-        cfg['cosmology']['other_params']['camb_extra_parameters']['camb']['halofit_version'])
-    cfg_onecov_ini['powspec evaluation']['HMCode_logT_AGN'] = str(
-        cfg['cosmology']['other_params']['camb_extra_parameters']['camb']['HMCode_logT_AGN'])
-
-    cfg_onecov_ini['tabulated inputs files']['Cell_directory'] = oc_path
-    cfg_onecov_ini['tabulated inputs files']['Cmm_file'] = f'{cl_ll_oc_filename}.ascii'
-    cfg_onecov_ini['tabulated inputs files']['Cgm_file'] = f'{cl_gl_oc_filename}.ascii'
-    cfg_onecov_ini['tabulated inputs files']['Cgg_file'] = f'{cl_gg_oc_filename}.ascii'
-
-    cfg_onecov_ini['misc']['num_cores'] = str(general_cfg['num_threads'])
+    symmetrize_output_dict = {
+            ('L', 'L'): False,
+            ('G', 'L'): False,
+            ('L', 'G'): False,
+            ('G', 'G'): False,
+        }
+    oc_obj.cov_g_oc_3x2pt_10D = oc_obj.oc_output_to_dict_or_array('G', '10D_array', ind_dict, symmetrize_output_dict)
+    oc_obj.cov_ssc_oc_3x2pt_10D = oc_obj.oc_output_to_dict_or_array('SSC', '10D_array', ind_dict, symmetrize_output_dict)
+    oc_obj.cov_cng_oc_3x2pt_10D = oc_obj.oc_output_to_dict_or_array('cNG', '10D_array', ind_dict, symmetrize_output_dict)
+        
+    print('Time taken to compute OC: {:.2f}'.format(time.perf_counter() - start_time))
 
 
-    # print the updated ini
-    for section in cfg_onecov_ini.sections():
-        print(f"[{section}]")
-        for key, value in cfg_onecov_ini[section].items():
-            print(f"{key} = {value}")
-        print()
+    # # ! now prepare .ini file for OC
+    # if covariance_cfg['ng_cov_code'] == 'OneCovariance':
 
-    # Save the updated configuration to a new .ini file
-    with open(f'{oc_path}/input_configs.ini', 'w') as configfile:
-        cfg_onecov_ini.write(configfile)
+    #     # this is just to preserve case sensitivity
+    #     class CaseConfigParser(configparser.ConfigParser):
+    #         def optionxform(self, optionstr):
+    #             return optionstr
 
-    path_to_oc_executable = covariance_cfg['OneCovariance_cfg']['path_to_oc_executable'].format(ROOT=ROOT)
-    path_to_config_oc_ini = f'{oc_path}/input_configs.ini'
-    call_onecovariance(path_to_oc_executable, path_to_config_oc_ini)
+    #     # TODO import another file??
+    #     # Read the existing reference .ini file
+    #     cfg_onecov_ini = CaseConfigParser()
+    #     cfg_onecov_ini.read(f'{ROOT}/OneCovariance/config_files_dav/config_3x2pt_pure_Cell_dav.ini')
 
-    # load saved blocks
-    variable_specs_here = deepcopy(variable_specs)
-    if 'which_ng_cov' in variable_specs.keys():
-        variable_specs_here.pop('which_ng_cov')
+    #     # set useful lists
+    #     mult_shear_bias_list = [cfg['cosmology']['FM_ordered_params'][f'm{zi:02d}'] for zi in range(1, zbins + 1)]
+    #     n_eff_clust_list = cfg['covariance_cfg']['ngal_clustering']
+    #     n_eff_lensing_list = cfg['covariance_cfg']['ngal_lensing']
+    #     ellipticity_dispersion_list = [cfg['covariance_cfg']['sigma_eps_i']] * zbins
 
-    cov_g_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
-        path=oc_path,
-        filename=covariance_cfg['OneCovariance_cfg']['cov_filename'].format(ROOT=ROOT,
-                                                                            which_ng_cov='G',
-                                                                            probe_a='{probe_a:s}',
-                                                                            probe_b='{probe_b:s}',
-                                                                            probe_c='{probe_c:s}',
-                                                                            probe_d='{probe_d:s}',
-                                                                            nbl=nbl_3x2pt,
-                                                                            lmax=ell_max_3x2pt,
-                                                                            **variable_specs_here),
-        probe_ordering=probe_ordering)
+    #     cfg_onecov_ini['covariance terms']['nongauss'] = str(True)
+    #     cfg_onecov_ini['output settings']['directory'] = oc_path
 
-    cov_ssc_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
-        path=oc_path,
-        filename=covariance_cfg['OneCovariance_cfg']['cov_filename'].format(ROOT=ROOT,
-                                                                            which_ng_cov='SSC',
-                                                                            probe_a='{probe_a:s}',
-                                                                            probe_b='{probe_b:s}',
-                                                                            probe_c='{probe_c:s}',
-                                                                            probe_d='{probe_d:s}',
-                                                                            nbl=nbl_3x2pt,
-                                                                            lmax=ell_max_3x2pt,
-                                                                            **variable_specs_here),
-        probe_ordering=probe_ordering)
-    cov_cng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
-        path=oc_path,
-        filename=covariance_cfg['OneCovariance_cfg']['cov_filename'].format(ROOT=ROOT,
-                                                                            which_ng_cov='cNG',
-                                                                            probe_a='{probe_a:s}',
-                                                                            probe_b='{probe_b:s}',
-                                                                            probe_c='{probe_c:s}',
-                                                                            probe_d='{probe_d:s}',
-                                                                            nbl=nbl_3x2pt,
-                                                                            lmax=ell_max_3x2pt,
-                                                                            **variable_specs_here),
-        probe_ordering=probe_ordering)
+    #     cfg_onecov_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(map(str, mult_shear_bias_list))
+    #     cfg_onecov_ini['covELLspace settings']['ell_min'] = str(general_cfg['ell_min'])
+    #     cfg_onecov_ini['covELLspace settings']['ell_max'] = str(
+    #         general_cfg['ell_max_3x2pt'])  # TODO slightly different ell_max for 3000?
+    #     cfg_onecov_ini['covELLspace settings']['ell_bins'] = str(general_cfg['nbl_3x2pt'])
+
+    #     cfg_onecov_ini['survey specs']['mask_directory'] = '/home/cosmo/davide.sciotti/data/common_data/mask/'
+    #     cfg_onecov_ini['survey specs']['which_cov_binning'] = 'OneCovariance'  # TODO test diff with EC20
+
+    #     # TODO import this in a cleaner way
+    #     cfg_onecov_ini['survey specs']['mask_file_clust'] = 'mask_circular_1pole_14700deg2_nside2048.fits'
+    #     cfg_onecov_ini['survey specs']['mask_file_lensing'] = 'mask_circular_1pole_14700deg2_nside2048.fits'
+    #     cfg_onecov_ini['survey specs']['mask_file_ggl'] = 'mask_circular_1pole_14700deg2_nside2048.fits'
+    #     cfg_onecov_ini['survey specs']['n_eff_clust'] = ', '.join(map(str, n_eff_clust_list))
+    #     cfg_onecov_ini['survey specs']['n_eff_lensing'] = ', '.join(map(str, n_eff_lensing_list))
+    #     cfg_onecov_ini['survey specs']['ellipticity_dispersion'] = ', '.join(map(str, ellipticity_dispersion_list))
+
+    #     cfg_onecov_ini['redshift']['z_directory'] = oc_path
+    #     cfg_onecov_ini['redshift']['zclust_file'] = nofz_ascii_filename
+    #     cfg_onecov_ini['redshift']['zlens_file'] = nofz_ascii_filename
+
+    #     cfg_onecov_ini['cosmo']['h'] = str(cfg['cosmology']['FM_ordered_params']['h'])
+    #     cfg_onecov_ini['cosmo']['ns'] = str(cfg['cosmology']['FM_ordered_params']['ns'])
+    #     cfg_onecov_ini['cosmo']['omega_m'] = str(cfg['cosmology']['FM_ordered_params']['Om'])
+    #     cfg_onecov_ini['cosmo']['omega_b'] = str(cfg['cosmology']['FM_ordered_params']['Ob'])
+    #     cfg_onecov_ini['cosmo']['omega_de'] = str(cfg['cosmology']['other_params']['ODE'])
+    #     cfg_onecov_ini['cosmo']['sigma8'] = str(cfg['cosmology']['FM_ordered_params']['s8'])
+    #     cfg_onecov_ini['cosmo']['w0'] = str(cfg['cosmology']['FM_ordered_params']['wz'])
+    #     cfg_onecov_ini['cosmo']['wa'] = str(cfg['cosmology']['FM_ordered_params']['wa'])
+    #     cfg_onecov_ini['cosmo']['neff'] = str(cfg['cosmology']['other_params']['N_eff'])
+    #     cfg_onecov_ini['cosmo']['m_nu'] = str(cfg['cosmology']['other_params']['m_nu'])
+
+    #     cfg_onecov_ini['bias']['bias_files'] = gal_bias_ascii_filename
+
+    #     cfg_onecov_ini['IA']['A_IA'] = str(cfg['cosmology']['FM_ordered_params']['Aia'])
+    #     cfg_onecov_ini['IA']['eta_IA'] = str(cfg['cosmology']['FM_ordered_params']['eIA'])
+
+    #     cfg_onecov_ini['powspec evaluation']['non_linear_model'] = str(
+    #         cfg['cosmology']['other_params']['camb_extra_parameters']['camb']['halofit_version'])
+    #     cfg_onecov_ini['powspec evaluation']['HMCode_logT_AGN'] = str(
+    #         cfg['cosmology']['other_params']['camb_extra_parameters']['camb']['HMCode_logT_AGN'])
+
+    #     cfg_onecov_ini['tabulated inputs files']['Cell_directory'] = oc_path
+    #     cfg_onecov_ini['tabulated inputs files']['Cmm_file'] = f'{cl_ll_ascii_filename}.ascii'
+    #     cfg_onecov_ini['tabulated inputs files']['Cgm_file'] = f'{cl_gl_ascii_filename}.ascii'
+    #     cfg_onecov_ini['tabulated inputs files']['Cgg_file'] = f'{cl_gg_ascii_filename}.ascii'
+
+    #     cfg_onecov_ini['misc']['num_cores'] = str(general_cfg['num_threads'])
+
+
+    #     # print the updated ini
+    #     for section in cfg_onecov_ini.sections():
+    #         print(f"[{section}]")
+    #         for key, value in cfg_onecov_ini[section].items():
+    #             print(f"{key} = {value}")
+    #         print()
+
+    #     # Save the updated configuration to a new .ini file
+    #     with open(f'{oc_path}/input_configs.ini', 'w') as configfile:
+    #         cfg_onecov_ini.write(configfile)
+
+    #     path_to_oc_executable = covariance_cfg['OneCovariance_cfg']['path_to_oc_executable'].format(ROOT=ROOT)
+    #     path_to_config_oc_ini = f'{oc_path}/input_configs.ini'
+    #     call_onecovariance(path_to_oc_executable, path_to_config_oc_ini)
+
+    #     # load saved blocks
+    #     variable_specs_here = deepcopy(variable_specs)
+    #     if 'which_ng_cov' in variable_specs.keys():
+    #         variable_specs_here.pop('which_ng_cov')
+
+    #     cov_g_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
+    #         path=oc_path,
+    #         filename=covariance_cfg['OneCovariance_cfg']['cov_filename'].format(ROOT=ROOT,
+    #                                                                             which_ng_cov='G',
+    #                                                                             probe_a='{probe_a:s}',
+    #                                                                             probe_b='{probe_b:s}',
+    #                                                                             probe_c='{probe_c:s}',
+    #                                                                             probe_d='{probe_d:s}',
+    #                                                                             nbl=nbl_3x2pt,
+    #                                                                             lmax=ell_max_3x2pt,
+    #                                                                             **variable_specs_here),
+    #         probe_ordering=probe_ordering)
+
+    #     cov_ssc_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
+    #         path=oc_path,
+    #         filename=covariance_cfg['OneCovariance_cfg']['cov_filename'].format(ROOT=ROOT,
+    #                                                                             which_ng_cov='SSC',
+    #                                                                             probe_a='{probe_a:s}',
+    #                                                                             probe_b='{probe_b:s}',
+    #                                                                             probe_c='{probe_c:s}',
+    #                                                                             probe_d='{probe_d:s}',
+    #                                                                             nbl=nbl_3x2pt,
+    #                                                                             lmax=ell_max_3x2pt,
+    #                                                                             **variable_specs_here),
+    #         probe_ordering=probe_ordering)
+    #     cov_cng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
+    #         path=oc_path,
+    #         filename=covariance_cfg['OneCovariance_cfg']['cov_filename'].format(ROOT=ROOT,
+    #                                                                             which_ng_cov='cNG',
+    #                                                                             probe_a='{probe_a:s}',
+    #                                                                             probe_b='{probe_b:s}',
+    #                                                                             probe_c='{probe_c:s}',
+    #                                                                             probe_d='{probe_d:s}',
+    #                                                                             nbl=nbl_3x2pt,
+    #                                                                             lmax=ell_max_3x2pt,
+    #                                                                             **variable_specs_here),
+    #         probe_ordering=probe_ordering)
+        
 
 
 # ! ================================ SSC =======================================
@@ -1213,10 +1252,6 @@ elif covariance_cfg['ng_cov_code'] == 'Spaceborne' and \
 # this is not very elegant, find a better solution
 if covariance_cfg['ng_cov_code'] == 'Spaceborne':
     covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
-elif covariance_cfg['ng_cov_code'] == 'OneCovariance':
-    covariance_cfg['cov_g_3x2pt_dict_8D_oc'] = cov_g_oc_3x2pt_dict_8D
-    covariance_cfg['cov_ssc_3x2pt_dict_8D_oc'] = cov_ssc_oc_3x2pt_dict_8D
-    covariance_cfg['cov_cng_3x2pt_dict_8D_oc'] = cov_cng_oc_3x2pt_dict_8D
 
 # print('SSC computed with Spaceborne')
 # TODO integrate this with Spaceborne_covg
@@ -1405,7 +1440,7 @@ else:
 # ! compute covariance matrix
 # TODO: if already existing, don't compute the covmat, like done above for Sijkl
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                    ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix)
+                                    ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix, oc_obj)
 
 # ! save for CLOE runs
 # reshape cov in CLOE format

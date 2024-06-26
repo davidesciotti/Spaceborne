@@ -20,32 +20,32 @@ cosmology:
         logT: 7.75
         Aia: 0.16
         eIA: 1.66
-        m01: 0.0
-        m02: 0.0
-        m03: 0.0
-        m04: 0.0
-        m05: 0.0
-        m06: 0.0
-        m07: 0.0
-        m08: 0.0
-        m09: 0.0
-        m10: 0.0
-        m11: 0.0
-        m12: 0.0
-        m13: 0.0
-        dzWL01: -0.025749
-        dzWL02: 0.022716
-        dzWL03: -0.026032
-        dzWL04: 0.012594
-        dzWL05: 0.019285
-        dzWL06: 0.008326
-        dzWL07: 0.038207
-        dzWL08: 0.002732
-        dzWL09: 0.034066
-        dzWL10: 0.049479
-        dzWL11: 0.06649
-        dzWL12: 0.000815
-        dzWL13: 0.04907
+        # m01: 0.0
+        # m02: 0.0
+        # m03: 0.0
+        # m04: 0.0
+        # m05: 0.0
+        # m06: 0.0
+        # m07: 0.0
+        # m08: 0.0
+        # m09: 0.0
+        # m10: 0.0
+        # m11: 0.0
+        # m12: 0.0
+        # m13: 0.0
+        # dzWL01: -0.025749
+        # dzWL02: 0.022716
+        # dzWL03: -0.026032
+        # dzWL04: 0.012594
+        # dzWL05: 0.019285
+        # dzWL06: 0.008326
+        # dzWL07: 0.038207
+        # dzWL08: 0.002732
+        # dzWL09: 0.034066
+        # dzWL10: 0.049479
+        # dzWL11: 0.06649
+        # dzWL12: 0.000815
+        # dzWL13: 0.04907
         # coefficients for the polynomial magnification and galaxy bias fits
         bG01: 1.33291
         bG02: -0.72414
@@ -74,11 +74,14 @@ cosmology:
                 dark_energy_model: ppf
 
 general_cfg:
+
+    is_test_run: True  # True or False; if True, a check on some of the key options will be performed
+
     ell_min: 10
     ell_max_WL: 3000
     ell_max_GC: 3000
     ell_max_3x2pt: 3000
-    zbins: 13
+    zbins: 3
     EP_or_ED: EP # equipopulated or equidistant bins
     n_probes: 2
     use_WA: False
@@ -100,18 +103,7 @@ general_cfg:
     # kmax_h_over_Mpc_list: [0.37108505, 0.74217011, 1.11325516, 1.48434021, 1.85542526,
     #                                   2.22651032, 2.59759537, 2.96868042, 4.45302063, 7.42170105, 14.84340211]
     kmax_h_over_Mpc_list:
-        [
-            0.1,
-            0.16681005,
-            0.27825594,
-            0.46415888,
-            0.77426368,
-            1.29154967,
-            2.15443469,
-            3.59381366,
-            5.9948425,
-            10.,
-        ]
+        [ 0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.]
     use_h_units: False
 
     BNT_transform: False # ! to be deprecated?
@@ -119,6 +111,7 @@ general_cfg:
 
     # vincenzo's inputs path
     cl_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/OutputFiles/DataVectors/Noiseless/{which_pk:s}"
+    # cl_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/OutputFiles/DataVectors/Temp/{probe:s}/{which_pk:s}"
     cl_filename: "dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat"
     wf_folder: '{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputSSC/Windows'
     wf_filename: 'wi{probe:s}-{ep_or_ed:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{specs:s}.dat'
@@ -154,8 +147,8 @@ general_cfg:
     which_pk: HMCodeBar
 
     flagship_version: 2 # TODO delete this
-    fm_and_cov_suffix: '_cls{which_cls:s}' # TODO delete this
-    num_threads: 16 # how many threads to use for the Julia SSC integral with @tturbo
+    fm_and_cov_suffix: '' # TODO delete this
+    num_threads: 32 # how many threads to use for the Julia SSC integral with @tturbo
 
 covariance_cfg:
     # ordering-related settings
@@ -172,60 +165,20 @@ covariance_cfg:
     sigma_eps_i: 0.26 # ellipticity dispersion *per component*; sigma_eps: (0.26 * np.sqrt(2))
     which_shape_noise: per_component # ISTF or per_component
 
-    # nofz_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid"
-    nofz_folder: "{ROOT:s}/CLOE_benchmarks"
-    # TODO zmin_nz is for both sources and lenses, but be careful about this in the future
-    nofz_filename: nzTabSPV3.dat
+    nofz_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid"
+    nofz_filename: nzTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
+    
+    nuisance_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzPar"
+    nuisance_filename: ngbsTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
 
-    zbin_centers:
-        [
-            0.27575,
-            0.37635,
-            0.44634,
-            0.54284,
-            0.62145,
-            0.70957,
-            0.7986,
-            0.86687,
-            0.97753,
-            1.09136,
-            1.24264,
-            1.47918,
-            1.89264,
-        ]
+    # zbin_centers:
+    #     [ 0.27575, 0.37635, 0.44634, 0.54284, 0.62145, 0.70957, 0.7986, 0.86687, 0.97753, 1.09136, 1.24264, 1.47918, 1.89264]
+    
     # number of galaxies per arcmin**2 for each redshift bin.
-    ngal_lensing:
-        [
-            1.86742,
-            1.86744,
-            1.8674,
-            1.86743,
-            1.86741,
-            1.86742,
-            1.86742,
-            1.86742,
-            1.86744,
-            1.8674,
-            1.86742,
-            1.86742,
-            1.86742,
-        ]
-    ngal_clustering:
-        [
-            1.86742,
-            1.86744,
-            1.8674,
-            1.86743,
-            1.86741,
-            1.86742,
-            1.86742,
-            1.86742,
-            1.86744,
-            1.8674,
-            1.86742,
-            1.86742,
-            1.86742,
-        ]
+    # ngal_lensing:
+    #     [ 1.86742, 1.86744, 1.8674, 1.86743, 1.86741, 1.86742, 1.86742, 1.86742, 1.86744, 1.8674, 1.86742, 1.86742, 1.86742]
+    # ngal_clustering:
+    #     [ 1.86742, 1.86744, 1.8674, 1.86743, 1.86741, 1.86742, 1.86742, 1.86742, 1.86744, 1.8674, 1.86742, 1.86742, 1.86742]
 
     shift_nz: True # Vincenzo's kernels are computed using a shifted n(z)!
     compute_bnt_with_shifted_nz_for_zcuts: False # ! lets test this
@@ -243,9 +196,8 @@ covariance_cfg:
     compute_covmat: True
     compute_SSC: True # TODO re-implement this
 
-    save_cov: False
-    cov_file_format: npz # or npy
-    save_cov_dat: False # this is the format used by Vincenzo
+    save_cov_2D_npz: False
+    save_cov_2D_dat: True # this is the format used by Vincenzo
 
     # in cov_dict
     save_cov_2D: False
@@ -318,7 +270,7 @@ covariance_cfg:
         load_precomputed_cov: False
         which_pk_responses: separate_universe # halo_model (with PyCCL) or separate_universe (from simulations)
 
-        cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Spaceborne/{which_pk_responses:s}"
+        cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Spaceborne/{which_pk_responses:s}/Sesto"
         cov_suffix: "_zsteps{z_steps_ssc_integrands:d}_k{k_txt_label:s}_convention{cl_integral_convention:s}_integration{integration_type:s}_{survey_area_deg2:d}deg2_Francis"
 
         # settings for sigma2
@@ -347,12 +299,12 @@ covariance_cfg:
         separate_universe_responses_folder: '{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputSSC/ResFun/{which_pk:s}'
 
     OneCovariance_cfg:
-        which_ng_cov: [SSC,]
-        load_precomputed_cov: True # this must be True for OneCovariance
+        which_ng_cov: [SSC, cNG]
+        load_precomputed_cov: False 
         use_OneCovariance_Gaussian: False
+        path_to_oc_executable: "{ROOT:s}/OneCovariance/covariance.py"
 
-        inputs_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/OneCovariance_inputs"
-        cov_path: "{ROOT:s}/OneCovariance/output_SPV3_v2.5_dense"
+        onecovariance_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/covmat/OneCovariance/{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}"
         cov_filename: "cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}.npz"
         cov_suffix: ".npz"
 

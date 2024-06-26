@@ -1,17 +1,17 @@
 import sys
+import os
 import warnings
-import matplotlib.cm as cm
 
 import numpy as np
 import pandas as pd
 import yaml
 import matplotlib as mpl
+import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib.patches as mpatches
 from tqdm import tqdm
 
-import os
 ROOT = os.getenv('ROOT')
 SB_ROOT = f'{ROOT}/Spaceborne'
 
@@ -28,7 +28,6 @@ mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 # Display all columns
 pd.set_option('display.max_columns', None)
-# Disable text wrapping within cells
 pd.set_option('display.expand_frame_repr', False)
 
 
@@ -38,22 +37,7 @@ kmax_tex = mpl_cfg.kmax_tex
 kmax_star_tex = mpl_cfg.kmax_star_tex
 cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
-zbin_centers = np.array(
-    [
-        0.27575,
-        0.37635,
-        0.44634,
-        0.54284,
-        0.62145,
-        0.70957,
-        0.7986,
-        0.86687,
-        0.97753,
-        1.09136,
-        1.24264,
-        1.47918,
-        1.89264,
-    ])
+zbin_centers = np.array([0.27575,0.37635,0.44634,0.54284,0.62145,0.70957,0.7986,0.86687,0.97753,1.09136,1.24264,1.47918,1.89264,])
 
 # ! some issued with 'PyCCL' '', 'standard', in the fm dict
 
@@ -64,10 +48,10 @@ ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
 # filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 
 # ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
-codes_to_compare = ('OneCovariance', 'OneCovariance')
-filename_suffix_list = ('_cNGfix_highres', '_cNGfix_highres')
+codes_to_compare = ('Spaceborne', 'OneCovariance')
+filename_suffix_list = ('_Francis_may24', '_Francis_may24')
 # filename_suffix_list = ('_dense_LiFECls', '_clsCLOE_CLOEbench')
-which_cov_term_list = ['G', 'GSSC', 'GSSCcNG' ]
+which_cov_term_list = ['G', 'GSSC']
 
 
 fix_dz_plt = True
@@ -84,12 +68,12 @@ dz_prior = np.array(2 * 1e-3 * (1 + zbin_centers))
 check_if_just_created = False
 
 specs_str = 'idIA2_idB3_idM3_idR1'
-fm_root_path = (f'{ROOT}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM')
+fm_root_path = f'{ROOT}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM'
 fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}'
 fm_pickle_name_raw = 'FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_' \
     'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}{filename_suffix}.pickle'
 EP_or_ED = 'EP'
-zbins = 13
+zbins = 3
 num_params_tokeep = 7
 
 gal_bias_perc_prior = None  # ! not quite sure this works properly...
@@ -120,7 +104,7 @@ kmax_1_over_Mpc_vinc_str_list = ['025', '050', '075', '100', '125', '150', '175'
                                  '500', '1000', '1500', '2000']
 # kmax_1_over_Mpc_vinc_list = [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00, 15.00, 20.00]
 
-fix_dz_list = [True, False]
+fix_dz_list = [True]
 fix_shear_bias_list = [True, False]
 fix_gal_bias_list = [True, False]
 fix_mag_bias_list = [True, False]
@@ -412,8 +396,9 @@ for probe_toplot in probes:
     # append percent differences to df
     fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
                                              'GSSC', num_string_columns)
-    fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
-                                            'GSSCcNG', num_string_columns)
+    if 'GSSCcNG' in which_cov_term_list:
+        fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
+                                                 'GSSCcNG', num_string_columns)
 
     # check that the G term is the same, all other entries being the same
     g_rows_df = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] == 'G']
@@ -579,7 +564,8 @@ hatch_list = ['', '//', ':',]
 
 # ! =================================== with mpl ============================
 
-which_cov_terms = ['G', 'GSSC', 'GSSCcNG', 'perc_diff_GSSC', 'perc_diff_GSSCcNG']
+perc_diff_list = [f'perc_diff_{which_cov_term}' for which_cov_term in which_cov_term_list]
+which_cov_terms = which_cov_term_list + perc_diff_list
 probe_toplot = '3x2pt'
 
 
@@ -603,9 +589,10 @@ fm_uncert_df_toplot = fm_uncert_df[
 
 # append percent differences to df
 fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
-                                            'GSSC', num_string_columns)
-fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
-                                        'GSSCcNG', num_string_columns)
+                                         'GSSC', num_string_columns)
+if 'GSSCcNG' in which_cov_term_list:
+    fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
+                                             'GSSCcNG', num_string_columns)
 
 
 # Initialize the figure and the grid
@@ -640,8 +627,8 @@ ax_diff_fom.set_xlim(xlim_adjusted)
 color_mapping = {}
 hatch_mapping = {}
 for which_cov_term in which_cov_terms:
-    for filename_suffix in filename_suffix_list:
-        key = f"{which_cov_term}{filename_suffix}"
+    for cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
+        key = f"{which_cov_term}_{cov_code}{filename_suffix}"
 
         if 'G_' in key:
             color_mapping[key] = 'tab:blue'
@@ -654,7 +641,7 @@ for which_cov_term in which_cov_terms:
         if 'perc_diff_GSSCcNG' in key:
             color_mapping[key] = 'tab:red'
 
-        if key == f"{which_cov_term}{filename_suffix_list[1]}":
+        if key == f"{which_cov_term}_{cov_code}{filename_suffix_list[1]}":
             hatch_mapping[key] = ''
         else:
             hatch_mapping[key] = '//'
@@ -671,7 +658,7 @@ for which_cov_term in which_cov_terms:
                       value_name='Value')
 
     df_long['Condition'] = df_long.apply(
-        lambda row: f"{row['which_cov_term']}_{row['filename_suffix']}", axis=1
+        lambda row: f"{row['which_cov_term']}_{row['ng_cov_code']}{row['filename_suffix']}", axis=1
     )
 
     all_data.append(df_long)
@@ -685,17 +672,22 @@ n_parameters = len(custom_parameter_order)
 index = np.arange(n_parameters)
 
 # Unique filename_suffix for plotting
-unique_filename_suffix = all_data_combined['filename_suffix'].unique()
+all_data_combined['combined_suffix'] = all_data_combined['ng_cov_code'] + all_data_combined['filename_suffix']
+
+# Unique combined_suffix for plotting
+unique_filename_suffix = all_data_combined['combined_suffix'].unique()
+
 
 # Offset to ensure bars are tightly packed
-offset = np.linspace(-bar_width / 10, bar_width / 10, len(unique_filename_suffix))
+bar_width_norm = 2* len(unique_filename_suffix)
+offset = np.linspace(-bar_width / bar_width_norm, bar_width / bar_width_norm, len(unique_filename_suffix))
 
 # Plot each filename_suffix group
 for i, filename_suffix in enumerate(unique_filename_suffix):
-    subset = all_data_combined[all_data_combined['filename_suffix'] == filename_suffix]
-    for j, which_cov_term in enumerate(['GSSCcNG', 'GSSC', 'G']):
+    subset = all_data_combined[all_data_combined['combined_suffix'] == filename_suffix]
+    for j, which_cov_term in enumerate(which_cov_term_list[::-1]):
         data = subset[subset['which_cov_term'] == which_cov_term]
-        condition = f"{which_cov_term}{filename_suffix}"
+        condition = f"{which_cov_term}_{filename_suffix}"
 
         for k, param in enumerate(custom_parameter_order):
             data_param = data[data['Parameter'] == param]
@@ -703,34 +695,31 @@ for i, filename_suffix in enumerate(unique_filename_suffix):
                                label=condition, edgecolor='k', hatch=hatch_mapping[condition],
                                facecolor=color_mapping[condition])
 
-    for j, which_cov_term in enumerate(['G', 'GSSC', 'GSSCcNG']):
+    for j, which_cov_term in enumerate(which_cov_term_list):
         data = subset[subset['which_cov_term'] == which_cov_term]
-        condition = f"{which_cov_term}{filename_suffix}"
+        condition = f"{which_cov_term}_{filename_suffix}"
         data_fom = data[data['Parameter'] == 'FoM']
         bars_fom = ax_fom.bar(7 + offset[i], data_fom['Value'], bar_width / len(unique_filename_suffix),
                               label=condition, edgecolor='k', hatch=hatch_mapping[condition],
                               facecolor=color_mapping[condition])
 
-# Plot percent differences in the bottom plot
-for i, filename_suffix in enumerate(unique_filename_suffix):
-    
-    subset = all_data_combined[all_data_combined['filename_suffix'] == filename_suffix]
+    # plot percent diff in bottom plot
     data = subset[subset['which_cov_term'] == 'perc_diff_GSSC']
 
     for k, param in enumerate(custom_parameter_order):
-        for j, which_cov_term in enumerate(['perc_diff_GSSCcNG', 'perc_diff_GSSC']):
-            condition = f"{which_cov_term}{filename_suffix}"
+        for j, which_cov_term in enumerate(perc_diff_list[::-1]):
+            condition = f"{which_cov_term}_{filename_suffix}"
             data = subset[subset['which_cov_term'] == which_cov_term]
             data_param = data[data['Parameter'] == param]
             bars_diff = ax_diff.bar(index[k] + offset[i], data_param['Value'], bar_width / len(unique_filename_suffix),
-                                label=condition, edgecolor='k', hatch=hatch_mapping[condition],
-                                facecolor=color_mapping[condition])
+                                    label=condition, edgecolor='k', hatch=hatch_mapping[condition],
+                                    facecolor=color_mapping[condition])
 
-    for j, which_cov_term in enumerate(['perc_diff_GSSCcNG', 'perc_diff_GSSC']):
+    for j, which_cov_term in enumerate(perc_diff_list[::-1]):
         # Plot FoM percent differences
         data = subset[subset['which_cov_term'] == which_cov_term]
         data_fom_diff = data[data['Parameter'] == 'FoM']
-        condition = f"{which_cov_term}{filename_suffix}"
+        condition = f"{which_cov_term}_{filename_suffix}"
         bars_diff_fom = ax_diff_fom.bar(7 + offset[i], data_fom_diff['Value'], bar_width / len(unique_filename_suffix),
                                         label=condition, edgecolor='k', hatch=hatch_mapping[condition],
                                         facecolor=color_mapping[condition])
@@ -785,38 +774,12 @@ for color, label in zip(('tab:blue', 'tab:orange', 'tab:purple', 'tab:green', 't
     # handles.append(patch)
 
 ax_main.legend(handles=handles)
-ax_main.set_title('%s $\ell_{max} = 3000$' %probe_toplot)
+ax_main.set_title('%s $\ell_{max} = 3000$' % probe_toplot)
 
 plt.show()
 
-
 assert False, 'stop here'
 
-# Plotting with seaborn
-sns.set(style="whitegrid")
-
-# Create the barplot
-plt.figure(figsize=(12, 7))
-barplot = sns.barplot(x='Parameter', y='Value', hue='which_cov_term', data=df_long, dodge=False)
-
-# Post-process the bars to superimpose them by adjusting the widths and positions
-# Seaborn does not support superimposing directly, so we have to adjust the patches (bars) manually
-for bar in barplot.patches:
-    # The current width of the bar
-    current_width = bar.get_width()
-    # Divide by 2 to get half width
-    half_width = current_width / 2
-    # Set new width
-    bar.set_width(half_width)
-    # Move the bar to the left by half its width
-    bar.set_x(bar.get_x() + half_width / 2)
-
-plt.title("3x2pt, GcNG, PyCCL")
-plt.ylabel("relative uncertainty [%]")
-plt.legend(title="Condition")
-plt.show()
-
-assert False, 'stop here'
 # mm.plot_correlation_matrix(correlation_dict['HMCode2020'] / correlation_dict['TakaBird'], cosmo_params_tex,
 #    title='HMCodeBar/TakaBird')
 if save_plots:

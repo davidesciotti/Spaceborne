@@ -223,7 +223,7 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
     ind_dict = covariance_cfg['ind_dict']
 
     assert ng_cov_code in ('Spaceborne', 'PyCCL',
-                        'OneCovariance'), 'ssc_code must be "Spaceborne", "PyCCL" or "OneCovariance"'
+                           'OneCovariance'), 'ssc_code must be "Spaceborne", "PyCCL" or "OneCovariance"'
 
     print(f'Computing 3x2pt {which_ng_cov} covariance with {ng_cov_code}')
 
@@ -235,17 +235,15 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
     # additional kwargs for Spaceborne
     if ng_cov_code == 'Spaceborne':
         # additional_kwargs = {'z_steps_ssc_integrands': ng_cov_code_cfg['z_steps_ssc_integrands'],
-                            #  'k_txt_label': ng_cov_code_cfg['k_txt_label'],
-                            #  'cl_integral_convention': ng_cov_code_cfg['cl_integral_convention']}
-        
-        # TODO test this, although it should be fine
-        cov_ssc_3x2pt_dict_8D = covariance_cfg['cov_ssc_3x2pt_dict_8D_sb']
-    
+        #  'k_txt_label': ng_cov_code_cfg['k_txt_label'],
+        #  'cl_integral_convention': ng_cov_code_cfg['cl_integral_convention']}
 
-    elif ng_cov_code == 'PyCCL' or ng_cov_code == 'OneCovariance':
+        cov_ssc_3x2pt_dict_8D = covariance_cfg['cov_ssc_3x2pt_dict_8D_sb']
+
+    elif ng_cov_code == 'PyCCL':
         additional_kwargs = {}
         cov_path = ng_cov_code_cfg['cov_path'].format(ROOT=ROOT)
-        
+
         # pre-format covariance filename, leaving probes identifiers as placeholders
         cov_filename = covariance_cfg[ng_cov_code + '_cfg']['cov_filename'].format(
             which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
@@ -265,13 +263,14 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
                 path=cov_path,
                 filename=cov_filename,
                 probe_ordering=probe_ordering)
-            
+
         for key in cov_ssc_3x2pt_dict_8D.keys():
-            cov_ssc_3x2pt_dict_8D[key] = cov_ssc_3x2pt_dict_8D[key][:general_cfg['nbl_3x2pt'], :general_cfg['nbl_3x2pt'], ...]
-        
+            cov_ssc_3x2pt_dict_8D[key] = cov_ssc_3x2pt_dict_8D[key][:general_cfg['nbl_3x2pt'],
+                                                                    :general_cfg['nbl_3x2pt'], ...]
+
     # print(f'{ng_cov_code} NG covariance folder is:\n{cov_path}\n')
     # print(f'{ng_cov_code} NG covariance filename is:\n{cov_filename}\n')
-        
+
     # by passing this dict this function does not symmetrize the 6D covariance blocks, speeding up the code considerably
     symmetrize_output_dict = {
         ('L', 'L'): False,
@@ -279,12 +278,10 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
         ('L', 'G'): False,
         ('G', 'G'): False,
     }
-    
+
     cov_ssc_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
         cov_ssc_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
-    
 
-    
     # TODO restore this logic
     # if ng_cov_code_cfg['load_precomputed_cov']:
     #     # load SSC blocks in 4D and store them into a dictionary of 8D blocks
@@ -292,11 +289,10 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
     #     # TODO find a better solution for Spaceborne cov handling
 
     # else:
-        
+
     #     assert ng_cov_code == 'PyCCL', 'covariance can be computed directly only with PyCCL at the moment'
 
-    #     # TODO pass ccl_obj, do not reinstantiate it!!
-    #     # ccl_obj = pyccl_cov.PycclClass(general_cfg['cosmology'])
+    #     # TODO pass ccl_obj
     #     cov_3x2pt_dict_8D = ccl_obj.compute_cov_ng_with_pyccl(general_cfg['cosmology'], '3x2pt',
     #                                                           which_ng_cov=which_ng_cov,
     #                                                           ell_grid=ell_dict['ell_3x2pt'],
@@ -307,7 +303,7 @@ def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, e
     return cov_ssc_3x2pt_dict_10D
 
 
-def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix):
+def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix, oc_obj):
     """
     This code computes the Gaussian-only, SSC-only and Gaussian+SSC
     covariance matrices, for different ordering options
@@ -413,9 +409,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     ng_shear = np.array(covariance_cfg['ngal_lensing'])
     ng_clust = np.array(covariance_cfg['ngal_clustering'])
     noise_3x2pt_4D = mm.build_noise(zbins, n_probes, sigma_eps2=sigma_eps2,
-                                       ng_shear=ng_shear, ng_clust=ng_clust,
-                                       EP_or_ED=general_cfg['EP_or_ED'],
-                                       which_shape_noise=covariance_cfg['which_shape_noise'])
+                                    ng_shear=ng_shear, ng_clust=ng_clust,
+                                    EP_or_ED=general_cfg['EP_or_ED'],
+                                    which_shape_noise=covariance_cfg['which_shape_noise'])
 
     # create dummy ell axis, the array is just repeated along it
     nbl_max = np.max((nbl_WL, nbl_GC, nbl_3x2pt, nbl_WA))
@@ -455,117 +451,63 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     ######################## COMPUTE SSC COVARIANCE ###############################
 
-    # compute the covariance with PySSC anyway, not to have problems with WA
     start = time.perf_counter()
 
-    # preprocess Sijkl by expanding the probe dimensions
-    s_ABCD_ijkl = mm.expand_dims_sijkl(Sijkl, zbins)
-    s_LLLL_ijkl = s_ABCD_ijkl[0, 0, 0, 0, ...][np.newaxis, np.newaxis, np.newaxis, np.newaxis, ...]
-    s_GGGG_ijkl = s_ABCD_ijkl[1, 1, 1, 1, ...][np.newaxis, np.newaxis, np.newaxis, np.newaxis, ...]
+    if ng_cov_code == 'PySSC':
+        
+        # preprocess Sijkl by expanding the probe dimensions
+        s_ABCD_ijkl = mm.expand_dims_sijkl(Sijkl, zbins)
+        s_LLLL_ijkl = s_ABCD_ijkl[0, 0, 0, 0, ...][np.newaxis, np.newaxis, np.newaxis, np.newaxis, ...]
+        s_GGGG_ijkl = s_ABCD_ijkl[1, 1, 1, 1, ...][np.newaxis, np.newaxis, np.newaxis, np.newaxis, ...]
+        
+        # compute 6d SSC
+        cov_WL_SS_6D = mm.covariance_SSC_einsum(cl_LL_5D, rl_LL_5d, s_LLLL_ijkl, fsky)[0, 0, 0, 0, ...]
+        cov_GC_SS_6D = mm.covariance_SSC_einsum(cl_GG_5D, rl_GG_5d, s_GGGG_ijkl, fsky)[0, 0, 0, 0, ...]
+        cov_WA_SS_6D = mm.covariance_SSC_einsum(cl_WA_5D, rl_WA_5d, s_LLLL_ijkl, fsky)[0, 0, 0, 0, ...]
+        cov_3x2pt_SS_10D = mm.covariance_SSC_einsum(cl_3x2pt_5D, rl_3x2pt_5D, s_ABCD_ijkl, fsky)
 
-    # compute 6d SSC
-    cov_WL_SS_6D = mm.covariance_SSC_einsum(cl_LL_5D, rl_LL_5d, s_LLLL_ijkl, fsky)[0, 0, 0, 0, ...]
-    cov_GC_SS_6D = mm.covariance_SSC_einsum(cl_GG_5D, rl_GG_5d, s_GGGG_ijkl, fsky)[0, 0, 0, 0, ...]
-    cov_WA_SS_6D = mm.covariance_SSC_einsum(cl_WA_5D, rl_WA_5d, s_LLLL_ijkl, fsky)[0, 0, 0, 0, ...]
-    cov_3x2pt_SS_10D = mm.covariance_SSC_einsum(cl_3x2pt_5D, rl_3x2pt_5D, s_ABCD_ijkl, fsky)
-    print("SS cov. matrices computed in %.2f s with PySSC" % (time.perf_counter() - start))
+    if ng_cov_code == 'OneCovariance':
 
-    # ! Initialize cov_3x2pt_SS_10D depending on ng_cov_code
-    if ng_cov_code != 'PySSC':
+        if covariance_cfg['OneCovariance_cfg']['use_OneCovariance_Gaussian']:
 
-        start_time = time.perf_counter()
-        assert ell_max_GC == ell_max_3x2pt, 'I obtain the GC cov by cutting the 3x2pt, but the ellmax values are different'
-
-        if general_cfg['which_forecast'] == 'SPV3':
-            # in this case, load the nbl_WL, ell_max_WL covariance, then slice it according to probe ell bins.
-            # Ideally, nbl=32 and lmax=5000, but files are not always available
-            nbl, ell_max = general_cfg['nbl_WL'], general_cfg['ell_max_WL']
-
-        elif general_cfg['which_forecast'] == 'ISTF':
-            # in this case, load the 3x2pt covariance, then take the GC part, then reload for WL
-            nbl, ell_max = nbl_3x2pt, ell_max_3x2pt
-
-        cov_3x2pt_SS_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
-                                     nbl, nbl, zbins, zbins, zbins, zbins))
-
-        # load 3x2pt cov from the saved blocks, for the NG cov terms needed, and sum
-        for which_ng_cov in ng_cov_code_cfg['which_ng_cov']:
-            cov_ng_3x2pt_10D_dict = get_cov_ng_3x2pt(
-                general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, ell_max)
-            cov_3x2pt_SS_10D += mm.cov_10D_dict_to_array(cov_ng_3x2pt_10D_dict, nbl, zbins, n_probes)
-
-        if general_cfg['which_forecast'] == 'SPV3':
-            # In this case, you just need to slice get the LL, GG and 3x2pt covariance
-            # WL slicing unnecessary, since I load with nbl_WL and max_WL but just in case
-            cov_WL_SS_6D = deepcopy(cov_3x2pt_SS_10D[0, 0, 0, 0, :nbl_WL, :nbl_WL, :, :, :, :])
-            cov_GC_SS_6D = deepcopy(cov_3x2pt_SS_10D[1, 1, 1, 1, :nbl_GC, :nbl_GC, :, :, :, :])
-            cov_3x2pt_SS_10D = deepcopy(cov_3x2pt_SS_10D[:, :, :, :, :nbl_3x2pt, :nbl_3x2pt, :, :, :, :])
-
-        elif general_cfg['which_forecast'] == 'ISTF':
-            # for GC and 3x2pt, the already loaded 3x2pt is the right one
-            cov_GC_SS_6D = deepcopy(cov_3x2pt_SS_10D[1, 1, 1, 1, ...])  # take GC 6D
-
-            if nbl_WL == nbl_3x2pt and ell_max_WL == ell_max_3x2pt:
-                cov_WL_SS_6D = deepcopy(cov_3x2pt_SS_10D[0, 0, 0, 0, ...])  # if WL and 3x2pt nbl and ell_max match
-
-            elif nbl_WL == nbl_3x2pt and ell_max_WL != ell_max_3x2pt:
-                # for LL, re-load with nbl_WL, ell_max_WL, then take the lensing block
-                cov_3x2pt_SS_10D_forWL = np.zeros((n_probes, n_probes, n_probes, n_probes,
-                                                   nbl_WL, nbl_WL, zbins, zbins, zbins, zbins))
-
-                for which_ng_cov in ng_cov_code_cfg['which_ng_cov']:
-                    cov_ng_3x2pt_10D_dict = get_cov_ng_3x2pt(
-                        general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl_WL, ell_max_WL)
-                    cov_3x2pt_SS_10D_forWL += mm.cov_10D_dict_to_array(cov_ng_3x2pt_10D_dict, nbl_WL, zbins, n_probes)
-
-                cov_WL_SS_6D = cov_3x2pt_SS_10D_forWL[0, 0, 0, 0, ...]
-
-            else:
-                raise ValueError(
-                    'More complicated cases, with a different number of ell bins and different ellmax btw WL and 3x2pt, are not implemented yet')
-
-        print(f'{which_ng_cov} covariance computed with {ng_cov_code} in {(time.perf_counter() - start_time):.2f} s')
-
-    if ng_cov_code == 'OneCovariance' and covariance_cfg['OneCovariance_cfg']['use_OneCovariance_Gaussian']:
-
-        print('Loading Gaussian covariance from OneCovariance...')
-
-        # in this case, also overwrite the Gaussian part for a fair comparison
-        # TODO do it with pyccl as well, after computing the G covariance
-
-        cov_path = covariance_cfg['OneCovariance_cfg']['cov_path']
-        cov_filename = covariance_cfg['OneCovariance_cfg']['cov_filename'].format(
-            which_ng_cov='G', probe_a='{probe_a:s}', probe_b='{probe_b:s}',
-            probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl, lmax=ell_max,
-            EP_or_ED=general_cfg['EP_or_ED'],
-            zbins=zbins)
-
-        # load SSC blocks in 4D and store them into a dictionary of 8D blocks
-        cov_go_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(cov_path, cov_filename, probe_ordering)
-
-        # reshape the blocks in the dictionary from 4D to 6D, as needed by the BNT
-        cov_go_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(cov_go_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering)
-        cov_3x2pt_GO_10D = mm.cov_10D_dict_to_array(cov_go_3x2pt_dict_10D, nbl, zbins, n_probes)
-
-        # Slice or reload to get the LL, GG and 3x2pt covariance
-        if general_cfg['which_forecast'] == 'SPV3':
+            print('Loading Gaussian covariance from OneCovariance...')
+            # TODO do it with pyccl as well, after computing the G covariance
+            cov_3x2pt_GO_10D = oc_obj.cov_g_oc_3x2pt_10D
+            # Slice or reload to get the LL, GG and 3x2pt covariance
             cov_WL_GO_6D = deepcopy(cov_3x2pt_GO_10D[0, 0, 0, 0, :nbl_WL, :nbl_WL, :, :, :, :])
             cov_GC_GO_6D = deepcopy(cov_3x2pt_GO_10D[1, 1, 1, 1, :nbl_GC, :nbl_GC, :, :, :, :])
             cov_3x2pt_GO_10D = deepcopy(cov_3x2pt_GO_10D[:, :, :, :, :nbl_3x2pt, :nbl_3x2pt, :, :, :, :])
 
-        elif general_cfg['which_forecast'] == 'ISTF':
-            # for GC and 3x2pt, the already loaded 3x2pt is the right one
-            cov_GC_GO_6D = deepcopy(cov_3x2pt_GO_10D[1, 1, 1, 1, ...])  # take GC 6D
+        if covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC',]:
+            cov_3x2pt_SS_10D = oc_obj.cov_ssc_oc_3x2pt_10D
+        elif covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC', 'cNG']:
+            cov_3x2pt_SS_10D = oc_obj.cov_ssc_oc_3x2pt_10D + oc_obj.cov_cng_oc_3x2pt_10D
+        elif covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['cNG',]:
+            raise NotImplementedError('TODO add cNG - only case, with SSC from SB')
+        else:
+            raise ValueError('covariance_cfg[OneCovariance_cfg][which_ng_cov] not recognized')
 
-            if nbl_WL == nbl_3x2pt and ell_max_WL == ell_max_3x2pt:
-                cov_WL_GO_6D = deepcopy(cov_3x2pt_GO_10D[0, 0, 0, 0, ...])  # if WL and 3x2pt nbl and ell_max match
+    elif ng_cov_code == 'Spaceborne':
+        symmetrize_output_dict = {
+            ('L', 'L'): False,
+            ('G', 'L'): False,
+            ('L', 'G'): False,
+            ('G', 'G'): False,
+        }
+        cov_ssc_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
+            covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
+        cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_ssc_3x2pt_dict_10D, nbl, zbins, n_probes)
+    
+    else:
+        raise NotImplementedError(f'ng_cov_code {ng_cov_code} not implemented')
 
-            elif nbl_WL == nbl_3x2pt and ell_max_WL != ell_max_3x2pt:
-                raise ValueError('This case is not implemented yet')
+    print(f'{which_ng_cov} covariance computed with {ng_cov_code} in {(time.perf_counter() - start_time):.2f} s')
 
-            else:
-                raise ValueError(
-                    'More complicated cases, with a different number of ell bins and different ellmax btw WL and 3x2pt, are not implemented yet')
+    # In this case, you just need to slice get the LL, GG and 3x2pt covariance
+    # WL slicing unnecessary, since I load with nbl_WL and max_WL but just in case
+    cov_WL_SS_6D = deepcopy(cov_3x2pt_SS_10D[0, 0, 0, 0, :nbl_WL, :nbl_WL, :, :, :, :])
+    cov_GC_SS_6D = deepcopy(cov_3x2pt_SS_10D[1, 1, 1, 1, :nbl_GC, :nbl_GC, :, :, :, :])
+    cov_3x2pt_SS_10D = deepcopy(cov_3x2pt_SS_10D[:, :, :, :, :nbl_3x2pt, :nbl_3x2pt, :, :, :, :])
 
     # sum GO and SS in 6D (or 10D), not in 4D (it's the same)
     cov_WL_GS_6D = cov_WL_GO_6D + cov_WL_SS_6D
@@ -846,9 +788,6 @@ def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr, cosmo_ccl, plot_nz=True)
 
 
 def save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs):
-    # TODO skip the computation and saving if the file already exists
-    if not covariance_cfg['save_cov']:
-        return
 
     ell_max_WL = variable_specs['ell_max_WL']
     ell_max_GC = variable_specs['ell_max_GC']
@@ -909,6 +848,6 @@ def save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_spec
                 cov_filename_vincenzo = covariance_cfg['cov_filename_vincenzo'].format(probe_vinc=probe_vinc,
                                                                                        GOGS_filename=GOGS_filename,
                                                                                        **variable_specs)
-                np.savetxt(f'{cov_folder_vincenzo}/{GOGS_folder}/{cov_filename_vincenzo}',
-                           cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.9e')
+                np.savetxt(f'{cov_folder}/{GOGS_folder}/{cov_filename_vincenzo}',
+                           cov_dict[f'cov_{probe}_{GOGS_filename}_2D'], fmt='%.8e')
         print('Covariance matrices saved')

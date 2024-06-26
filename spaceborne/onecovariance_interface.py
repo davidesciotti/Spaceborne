@@ -42,16 +42,17 @@ class OneCovarianceInterface():
     def __init__(self, ROOT, cfg, variable_specs):
         self.cfg = cfg
         self.variable_specs = variable_specs
-        
+
         # paths
         self.ROOT = ROOT
         self.conda_base_path = self.get_conda_base_path()
         self.oc_path = cfg['covariance_cfg']['OneCovariance_cfg']['onecovariance_folder'].format(
             ROOT=self.ROOT, **self.variable_specs)
-        self.path_to_oc_executable = cfg['covariance_cfg']['OneCovariance_cfg']['path_to_oc_executable'].format(ROOT=ROOT)
+        self.path_to_oc_executable = cfg['covariance_cfg']['OneCovariance_cfg']['path_to_oc_executable'].format(
+            ROOT=ROOT)
         self.path_to_config_oc_ini = f'{self.oc_path }/input_configs.ini'
 
-    def get_conda_base_path():
+    def get_conda_base_path(self):
         try:
             # Run the conda info --base command and capture the output
             result = subprocess.run(['conda', 'info', '--base'], stdout=subprocess.PIPE, check=True, text=True)
@@ -61,47 +62,25 @@ class OneCovarianceInterface():
             print(f"Error occurred: {e}")
             return None
 
-    def call_onecovariance(self):
-        """This function runs OneCovariance and reshapes the output"""
+    def build_save_oc_ini(self, ascii_filenames_dict, print_ini=True):
 
-        activate_and_run = f"""
-        source {self.conda_base_path}/activate cov20_env
-        python {self.path_to_oc_executable} {self.path_to_config_oc_ini}
-        source {self.conda_base_path}/deactivate
-        source {self.conda_base_path}/activate spaceborne-dav
-        python {self.path_to_oc_executable.replace('covariance.py', 'reshape_cov_list_Cl_callable.py')} {self.path_to_config_oc_ini.replace('input_configs.ini', '')}
-        """
-
-        process = subprocess.Popen(activate_and_run, shell=True, executable='/bin/bash')
-        process.communicate()
-
-    def oc_output_to_8d_dict(self, which_ng_cov):
-        filename = self.cfg['covariance_cfg']['OneCovariance_cfg']['cov_filename'].format(ROOT=self.ROOT,
-                                                                                          which_ng_cov=which_ng_cov,
-                                                                                          probe_a='{probe_a:s}',
-                                                                                          probe_b='{probe_b:s}',
-                                                                                          probe_c='{probe_c:s}',
-                                                                                          probe_d='{probe_d:s}',
-                                                                                          nbl=self.variable_specs['nbl_3x2pt'],
-                                                                                          lmax=self.variable_specs['ell_max_3x2pt'],
-                                                                                          **self.variable_specs)
-        self.cov_ng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path=self.oc_path,
-                                                                     filename=filename,
-                                                                     probe_ordering=self.cfg['covariance_cfg']['probe_ordering'])
-
-    def build_oc_ini(self):
-        
         # this is just to preserve case sensitivity
         class CaseConfigParser(configparser.ConfigParser):
             def optionxform(self, optionstr):
                 return optionstr
 
+        cl_ll_oc_filename = ascii_filenames_dict['cl_ll_ascii_filename']
+        cl_gl_oc_filename = ascii_filenames_dict['cl_gl_ascii_filename']
+        cl_gg_oc_filename = ascii_filenames_dict['cl_gg_ascii_filename']
+        nofz_filename_ascii = ascii_filenames_dict['nofz_ascii_filename']
+        gal_bias_ascii_filename = ascii_filenames_dict['gal_bias_ascii_filename']
+
         # TODO import another file??
         # Read the existing reference .ini file
         cfg_onecov_ini = CaseConfigParser()
         cfg_onecov_ini.read(f'{self.ROOT}/OneCovariance/config_files_dav/config_3x2pt_pure_Cell_dav.ini')
-        zbins = cfg['general_cfg']['zbins']
-        general_cfg = cfg['general_cfg']
+        zbins = self.cfg['general_cfg']['zbins']
+        general_cfg = self.cfg['general_cfg']
 
         # set useful lists
         mult_shear_bias_list = [self.cfg['cosmology']['FM_ordered_params'][f'm{zi:02d}'] for zi in range(1, zbins + 1)]
@@ -129,7 +108,7 @@ class OneCovarianceInterface():
         cfg_onecov_ini['survey specs']['n_eff_lensing'] = ', '.join(map(str, n_eff_lensing_list))
         cfg_onecov_ini['survey specs']['ellipticity_dispersion'] = ', '.join(map(str, ellipticity_dispersion_list))
 
-        cfg_onecov_ini['redshift']['z_directory'] = oc_path
+        cfg_onecov_ini['redshift']['z_directory'] = self.oc_path
         cfg_onecov_ini['redshift']['zclust_file'] = nofz_filename_ascii
         cfg_onecov_ini['redshift']['zlens_file'] = nofz_filename_ascii
 
@@ -154,21 +133,75 @@ class OneCovarianceInterface():
         cfg_onecov_ini['powspec evaluation']['HMCode_logT_AGN'] = str(
             self.cfg['cosmology']['other_params']['camb_extra_parameters']['camb']['HMCode_logT_AGN'])
 
-        cfg_onecov_ini['tabulated inputs files']['Cell_directory'] = oc_path
+        cfg_onecov_ini['tabulated inputs files']['Cell_directory'] = self.oc_path
         cfg_onecov_ini['tabulated inputs files']['Cmm_file'] = f'{cl_ll_oc_filename}.ascii'
         cfg_onecov_ini['tabulated inputs files']['Cgm_file'] = f'{cl_gl_oc_filename}.ascii'
         cfg_onecov_ini['tabulated inputs files']['Cgg_file'] = f'{cl_gg_oc_filename}.ascii'
 
         cfg_onecov_ini['misc']['num_cores'] = str(general_cfg['num_threads'])
 
-
         # print the updated ini
-        for section in cfg_onecov_ini.sections():
-            print(f"[{section}]")
-            for key, value in cfg_onecov_ini[section].items():
-                print(f"{key} = {value}")
-            print()
+        if print_ini:
+            for section in cfg_onecov_ini.sections():
+                print(f"[{section}]")
+                for key, value in cfg_onecov_ini[section].items():
+                    print(f"{key} = {value}")
+                print()
 
         # Save the updated configuration to a new .ini file
-        with open(f'{oc_path}/input_configs.ini', 'w') as configfile:
+        with open(f'{self.oc_path}/input_configs.ini', 'w') as configfile:
             cfg_onecov_ini.write(configfile)
+
+    def call_onecovariance(self):
+        """This function runs OneCovariance and reshapes the output"""
+
+        activate_and_run = f"""
+        source {self.conda_base_path}/activate cov20_env
+        python {self.path_to_oc_executable} {self.path_to_config_oc_ini}
+        source {self.conda_base_path}/deactivate
+        source {self.conda_base_path}/activate spaceborne-dav
+        python {self.path_to_oc_executable.replace('covariance.py', 'reshape_cov_list_Cl_callable.py')} {self.path_to_config_oc_ini.replace('input_configs.ini', '')}
+        """
+
+        process = subprocess.Popen(activate_and_run, shell=True, executable='/bin/bash')
+        process.communicate()
+
+    def oc_output_to_dict_or_array(self, which_ng_cov, output_type, ind_dict=None, symmetrize_output_dict=None):
+        variable_specs = deepcopy(self.variable_specs)
+        variable_specs.pop('which_ng_cov')
+        filename = self.cfg['covariance_cfg']['OneCovariance_cfg']['cov_filename'].format(ROOT=self.ROOT,
+                                                                                          which_ng_cov=which_ng_cov,
+                                                                                          probe_a='{probe_a:s}',
+                                                                                          probe_b='{probe_b:s}',
+                                                                                          probe_c='{probe_c:s}',
+                                                                                          probe_d='{probe_d:s}',
+                                                                                          nbl=variable_specs['nbl_3x2pt'],
+                                                                                          lmax=variable_specs['ell_max_3x2pt'],
+                                                                                          **variable_specs)
+        cov_ng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path=self.oc_path,
+                                                                filename=filename,
+                                                                probe_ordering=self.cfg['covariance_cfg']['probe_ordering'])
+
+        if output_type == '8D_dict':
+            return cov_ng_oc_3x2pt_dict_8D
+
+        elif output_type in ['10D_dict', '10D_array']:
+            cov_ng_oc_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
+                cov_3x2pt_dict_8D=cov_ng_oc_3x2pt_dict_8D,
+                nbl=variable_specs['nbl_3x2pt'],
+                zbins=self.cfg['general_cfg']['zbins'],
+                ind_dict=ind_dict,
+                probe_ordering=self.cfg['covariance_cfg']['probe_ordering'],
+                symmetrize_output_dict=symmetrize_output_dict)
+
+            if output_type == '10D_dict':
+                return cov_ng_oc_3x2pt_dict_10D
+
+            elif output_type == '10D_array':
+                return mm.cov_10D_dict_to_array(cov_ng_oc_3x2pt_dict_10D,
+                                                nbl=variable_specs['nbl_3x2pt'],
+                                                zbins=self.cfg['general_cfg']['zbins'],
+                                                n_probes=self.cfg['general_cfg']['n_probes'])
+
+        else:
+            raise ValueError('output_dict_dim must be 8D or 10D')

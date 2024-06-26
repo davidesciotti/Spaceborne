@@ -463,10 +463,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         # compute 6d SSC
         cov_WL_SS_6D = mm.covariance_SSC_einsum(cl_LL_5D, rl_LL_5d, s_LLLL_ijkl, fsky)[0, 0, 0, 0, ...]
         cov_GC_SS_6D = mm.covariance_SSC_einsum(cl_GG_5D, rl_GG_5d, s_GGGG_ijkl, fsky)[0, 0, 0, 0, ...]
-        cov_WA_SS_6D = mm.covariance_SSC_einsum(cl_WA_5D, rl_WA_5d, s_LLLL_ijkl, fsky)[0, 0, 0, 0, ...]
         cov_3x2pt_SS_10D = mm.covariance_SSC_einsum(cl_3x2pt_5D, rl_3x2pt_5D, s_ABCD_ijkl, fsky)
 
-    if ng_cov_code == 'OneCovariance':
+    elif ng_cov_code == 'OneCovariance':
 
         if covariance_cfg['OneCovariance_cfg']['use_OneCovariance_Gaussian']:
 
@@ -496,7 +495,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         }
         cov_ssc_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
             covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
-        cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_ssc_3x2pt_dict_10D, nbl, zbins, n_probes)
+        cov_3x2pt_SS_10D = mm.cov_10D_dict_to_array(cov_ssc_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
     
     else:
         raise NotImplementedError(f'ng_cov_code {ng_cov_code} not implemented')
@@ -505,6 +504,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     # In this case, you just need to slice get the LL, GG and 3x2pt covariance
     # WL slicing unnecessary, since I load with nbl_WL and max_WL but just in case
+    cov_WA_SS_6D =  deepcopy(cov_3x2pt_SS_10D[0, 0, 0, 0, nbl_3x2pt:nbl_WL, nbl_3x2pt:nbl_WL, :, :, :, :])
     cov_WL_SS_6D = deepcopy(cov_3x2pt_SS_10D[0, 0, 0, 0, :nbl_WL, :nbl_WL, :, :, :, :])
     cov_GC_SS_6D = deepcopy(cov_3x2pt_SS_10D[1, 1, 1, 1, :nbl_GC, :nbl_GC, :, :, :, :])
     cov_3x2pt_SS_10D = deepcopy(cov_3x2pt_SS_10D[:, :, :, :, :nbl_3x2pt, :nbl_3x2pt, :, :, :, :])

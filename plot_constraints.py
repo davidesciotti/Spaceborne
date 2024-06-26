@@ -48,8 +48,8 @@ ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
 # filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 
 # ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
-codes_to_compare = ('Spaceborne', 'OneCovariance')
-filename_suffix_list = ('_Francis_may24', '_Francis_may24')
+codes_to_compare = ('OneCovariance', 'OneCovariance')
+filename_suffix_list = ('_Francis_may24', '_Francis_may24_OCint')
 # filename_suffix_list = ('_dense_LiFECls', '_clsCLOE_CLOEbench')
 which_cov_term_list = ['G', 'GSSC']
 

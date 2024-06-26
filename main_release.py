@@ -345,6 +345,9 @@ general_cfg['nbl_WL'] = nbl_WL
 general_cfg['nbl_GC'] = nbl_GC
 general_cfg['nbl_3x2pt'] = nbl_3x2pt
 
+assert nbl_WL == nbl_3x2pt == nbl_GC, 'use the same number of bins for the moment'
+
+
 delta_dict = {'delta_l_WL': np.copy(delta_l_ref_nbl32[:nbl_WL]),
               'delta_l_GC': np.copy(delta_l_ref_nbl32[:nbl_GC]),
               'delta_l_WA': np.copy(delta_l_ref_nbl32[nbl_GC:nbl_WL])}

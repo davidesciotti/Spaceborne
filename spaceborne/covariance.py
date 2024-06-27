@@ -455,17 +455,16 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     start = time.perf_counter()
 
     if ng_cov_code == 'PySSC':
-        
+
         # preprocess Sijkl by expanding the probe dimensions
         s_ABCD_ijkl = mm.expand_dims_sijkl(Sijkl, zbins)
         s_LLLL_ijkl = s_ABCD_ijkl[0, 0, 0, 0, ...][np.newaxis, np.newaxis, np.newaxis, np.newaxis, ...]
         s_GGGG_ijkl = s_ABCD_ijkl[1, 1, 1, 1, ...][np.newaxis, np.newaxis, np.newaxis, np.newaxis, ...]
-        
+
         # compute 6d SSC
         cov_WL_SS_6D = mm.covariance_SSC_einsum(cl_LL_5D, rl_LL_5d, s_LLLL_ijkl, fsky)[0, 0, 0, 0, ...]
         cov_GC_SS_6D = mm.covariance_SSC_einsum(cl_GG_5D, rl_GG_5d, s_GGGG_ijkl, fsky)[0, 0, 0, 0, ...]
         cov_3x2pt_SS_10D = mm.covariance_SSC_einsum(cl_3x2pt_5D, rl_3x2pt_5D, s_ABCD_ijkl, fsky)
-
 
     elif ng_cov_code == 'Spaceborne':
         symmetrize_output_dict = {
@@ -478,8 +477,13 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
         cov_ssc_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_ssc_sb_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
         cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
-    
+
     elif ng_cov_code == 'OneCovariance':
+
+        assert (
+            (covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC', 'cNG']) or
+            (covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC',])
+        ), "covariance_cfg['OneCovariance_cfg']['which_ng_cov'] not recognised"
 
         if covariance_cfg['OneCovariance_cfg']['use_OneCovariance_Gaussian']:
 
@@ -491,16 +495,19 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_GC_GO_6D = deepcopy(cov_3x2pt_GO_10D[1, 1, 1, 1, :nbl_GC, :nbl_GC, :, :, :, :])
             cov_3x2pt_GO_10D = deepcopy(cov_3x2pt_GO_10D[:, :, :, :, :nbl_3x2pt, :nbl_3x2pt, :, :, :, :])
 
-        if covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC_OC',]:
+
+        if 'SSC' in covariance_cfg['OneCovariance_cfg']['which_ng_cov'] and \
+                covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']:
             cov_3x2pt_SS_10D = oc_obj.cov_ssc_oc_3x2pt_10D
-        elif covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC_SB', 'cNG']:
-            raise NotImplementedError('TODO add SSC_SB - only case, with SSC from SB, in a clean way')
-            cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D + oc_obj.cov_cng_oc_3x2pt_10D
-        elif covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC_OC', 'cNG']:
-            cov_3x2pt_SS_10D = oc_obj.cov_ssc_oc_3x2pt_10D + oc_obj.cov_cng_oc_3x2pt_10D
-        else:
-            raise ValueError('covariance_cfg[OneCovariance_cfg][which_ng_cov] not recognized')
-    
+        elif 'SSC' in covariance_cfg['OneCovariance_cfg']['which_ng_cov'] and \
+                (not covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']):
+            raise NotImplementedError(
+                'TODO add SSC_SB - only case, with SSC from SB, filename should be treated in a more consistent way...')
+            cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
+
+        if 'cNG' in covariance_cfg['OneCovariance_cfg']['which_ng_cov']:
+            cov_3x2pt_SS_10D += oc_obj.cov_cng_oc_3x2pt_10D
+
     else:
         raise NotImplementedError(f'ng_cov_code {ng_cov_code} not implemented')
 
@@ -508,7 +515,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     # In this case, you just need to slice get the LL, GG and 3x2pt covariance
     # WL slicing unnecessary, since I load with nbl_WL and max_WL but just in case
-    cov_WA_SS_6D =  deepcopy(cov_3x2pt_SS_10D[0, 0, 0, 0, nbl_3x2pt:nbl_WL, nbl_3x2pt:nbl_WL, :, :, :, :])
+    cov_WA_SS_6D = deepcopy(cov_3x2pt_SS_10D[0, 0, 0, 0, nbl_3x2pt:nbl_WL, nbl_3x2pt:nbl_WL, :, :, :, :])
     cov_WL_SS_6D = deepcopy(cov_3x2pt_SS_10D[0, 0, 0, 0, :nbl_WL, :nbl_WL, :, :, :, :])
     cov_GC_SS_6D = deepcopy(cov_3x2pt_SS_10D[1, 1, 1, 1, :nbl_GC, :nbl_GC, :, :, :, :])
     cov_3x2pt_SS_10D = deepcopy(cov_3x2pt_SS_10D[:, :, :, :, :nbl_3x2pt, :nbl_3x2pt, :, :, :, :])

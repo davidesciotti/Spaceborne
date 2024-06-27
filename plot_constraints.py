@@ -49,9 +49,9 @@ ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
 
 # ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
 codes_to_compare = ('OneCovariance', 'OneCovariance')
-filename_suffix_list = ('_Francis_may24', '_Francis_may24_OCint')
+filename_suffix_list = ('_Francis_may24_OCint', '_Francis_may24_OCint')
 # filename_suffix_list = ('_dense_LiFECls', '_clsCLOE_CLOEbench')
-which_cov_term_list = ['G', 'GSSC']
+which_cov_term_list = ['G', 'GSSC', 'GSSCcNG']
 
 
 fix_dz_plt = True
@@ -71,9 +71,10 @@ specs_str = 'idIA2_idB3_idM3_idR1'
 fm_root_path = f'{ROOT}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM'
 fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}'
 fm_pickle_name_raw = 'FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_' \
-    'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}{filename_suffix}.pickle'
+    'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}_{survey_area_deg2:d}deg2{filename_suffix}.pickle'
 EP_or_ED = 'EP'
 zbins = 3
+survey_area_deg2 = 13245
 num_params_tokeep = 7
 
 gal_bias_perc_prior = None  # ! not quite sure this works properly...
@@ -82,6 +83,7 @@ string_columns = ['probe', 'which_cov_term', 'ng_cov_code', 'filename_suffix', '
 triangle_plot = True
 use_Wadd = False  # the difference is extremely small
 pk_ref = 'HMCodeBar'
+
 fom_redbook = 400
 target_perc_dispersion = 10  # percent
 w0_uncert_redbook = 2  # percent
@@ -90,8 +92,7 @@ ML = 245
 MS = 245
 ZL = 2
 ZS = 2
-probes = ('WL', 'GC', 'XC', '3x2pt')
-# probes = ('WL', 'GC', '3x2pt')
+probes = ('WL', 'GC', '3x2pt')
 which_cuts = 'Vincenzo'
 whose_FM_list = ('davide',)
 kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
@@ -178,8 +179,6 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
                                                     elif BNT_transform is True:
                                                         ell_cuts = True
 
-                                                    if which_cov_term == 'GSSC' or which_cov_term == 'GSSCcNG':
-                                                        which_pk = 'HMCodeBar'  # GSSC is only availane in this case
 
                                                     names_params_to_fix = []
 
@@ -196,7 +195,8 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
                                                                                                    specs_str=specs_str,
                                                                                                    which_pk=which_pk,
                                                                                                    ng_cov_code=ng_cov_code,
-                                                                                                   filename_suffix=filename_suffix)
+                                                                                                   filename_suffix=filename_suffix,
+                                                                                                   survey_area_deg2=survey_area_deg2,)
                                                         if ell_cuts:
                                                             fm_path += f'/{which_cuts}/ell_{center_or_min}'
                                                             fm_pickle_name = fm_pickle_name.replace(f'{filename_suffix}.pickle',
@@ -511,56 +511,6 @@ custom_parameter_order = ['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8']
 hatch_list = ['', '//', ':',]
 
 
-# ! =================================== with sns ============================
-
-# color_mapping = {}
-# hatch_mapping = {}
-# for which_cov_term in ['G', 'GSSC', 'perc_diff_GSSC',]:
-#     for filename_suffix in ['clsVincenzo_Francis_may24', 'clsVincenzo_Francis', ]:
-#         key = f"{which_cov_term}_{filename_suffix}"
-
-#         if 'GSSC' in key:
-#             color_mapping[key] = 'tab:orange'
-#         if 'perc_diff' in key:
-#             color_mapping[key] = 'tab:green'
-#         if 'G_' in key:
-#             color_mapping[key] = 'tab:blue'
-
-
-#         if 'clsVincenzo_Francis_may24' in key:
-#             hatch_mapping[key] = ''
-#         else:
-#             hatch_mapping[key] = '//'
-
-
-# for i, which_cov_term in enumerate(['perc_diff_GSSC', 'GSSC', 'G']):
-
-#     df_long = pd.melt(fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] == which_cov_term],
-#                       id_vars=['probe', 'which_cov_term', 'ng_cov_code', 'filename_suffix', 'whose_FM', 'which_pk',
-#                                'BNT_transform', 'ell_cuts', 'which_cuts', 'center_or_min',
-#                                'fix_dz', 'fix_shear_bias', 'fix_gal_bias', 'fix_mag_bias', 'foc',
-#                                'kmax_h_over_Mpc', 'hatch'],
-#                       value_vars=['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8', 'FoM'],
-#                       var_name='Parameter',
-#                       value_name='Value')
-
-#     df_long['Condition'] = df_long.apply(
-#         lambda row: f"{row['which_cov_term']}{row['filename_suffix']}", axis=1
-#     )
-
-#     # Create the barplot
-#     barplot = sns.barplot(x='Parameter', y='Value', hue='Condition',
-#                           data=df_long, dodge=True, order=custom_parameter_order,
-#                           width=0.4, palette=color_mapping, edgecolor='k')
-
-# # Add a grid to the background
-# ax.yaxis.grid(True)  # Only horizontal gridlines
-# ax.set_axisbelow(True)  # Ensure gridlines are behind the bars
-
-# barplot.set_xticklabels(custom_parameter_order_tex)
-# barplot.set_ylabel('relative uncertainty [%]')
-# barplot.set_xlabel('')
-
 
 # ! =================================== with mpl ============================
 
@@ -641,9 +591,9 @@ for which_cov_term in which_cov_terms:
         if 'perc_diff_GSSCcNG' in key:
             color_mapping[key] = 'tab:red'
 
-        if key == f"{which_cov_term}_{cov_code}{filename_suffix_list[1]}":
+        if codes_to_compare[0] in key:
             hatch_mapping[key] = ''
-        else:
+        elif codes_to_compare[1]:
             hatch_mapping[key] = '//'
 
 # Collect all data
@@ -763,15 +713,23 @@ handles = []
 
 # ax_main.legend(handles=handles)
 
+# this is not elegant at all
+if 'cNG' in which_cov_terms:
+    colors = ('tab:blue', 'tab:orange', 'tab:purple', 'tab:green', 'tab:red')
+    labels = ['G', 'GSSC', 'GSSCcNG', 'GSSC/G -1 [%]', 'GSSCcNG/G -1 [%]']
+else:
+    colors = ('tab:blue', 'tab:orange', 'tab:green')
+    labels = ['G', 'GSSC', 'GSSC/G -1 [%]']
+    
 # Add handles for color legend
-for color, label in zip(('tab:blue', 'tab:orange', 'tab:purple', 'tab:green', 'tab:red'), ['G', 'GSSC', 'GSSCcNG', 'GSSC/G -1 [%]', 'GSSCcNG/G -1 [%]']):
+for color, label in zip(colors, labels):
     patch = mpatches.Patch(facecolor=color, edgecolor='k', label=label)
     handles.append(patch)
 
 # Add handles for hatch legend
-# for hatch, label in zip(('', '//'), codes_to_compare):
-    # patch = mpatches.Patch(facecolor='white', edgecolor='k', hatch=hatch, label=label)
-    # handles.append(patch)
+for hatch, label in zip(('', '//'), codes_to_compare):
+    patch = mpatches.Patch(facecolor='white', edgecolor='k', hatch=hatch, label=label)
+    handles.append(patch)
 
 ax_main.legend(handles=handles)
 ax_main.set_title('%s $\ell_{max} = 3000$' % probe_toplot)
@@ -1020,6 +978,59 @@ plt.show()
 # plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
 # plt.ylabel('3$\\times$2pt FoM')
 # plt.legend()
+
+
+
+
+# ! =================================== sns bar plot ============================
+
+# color_mapping = {}
+# hatch_mapping = {}
+# for which_cov_term in ['G', 'GSSC', 'perc_diff_GSSC',]:
+#     for filename_suffix in ['clsVincenzo_Francis_may24', 'clsVincenzo_Francis', ]:
+#         key = f"{which_cov_term}_{filename_suffix}"
+
+#         if 'GSSC' in key:
+#             color_mapping[key] = 'tab:orange'
+#         if 'perc_diff' in key:
+#             color_mapping[key] = 'tab:green'
+#         if 'G_' in key:
+#             color_mapping[key] = 'tab:blue'
+
+
+#         if 'clsVincenzo_Francis_may24' in key:
+#             hatch_mapping[key] = ''
+#         else:
+#             hatch_mapping[key] = '//'
+
+
+# for i, which_cov_term in enumerate(['perc_diff_GSSC', 'GSSC', 'G']):
+
+#     df_long = pd.melt(fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] == which_cov_term],
+#                       id_vars=['probe', 'which_cov_term', 'ng_cov_code', 'filename_suffix', 'whose_FM', 'which_pk',
+#                                'BNT_transform', 'ell_cuts', 'which_cuts', 'center_or_min',
+#                                'fix_dz', 'fix_shear_bias', 'fix_gal_bias', 'fix_mag_bias', 'foc',
+#                                'kmax_h_over_Mpc', 'hatch'],
+#                       value_vars=['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8', 'FoM'],
+#                       var_name='Parameter',
+#                       value_name='Value')
+
+#     df_long['Condition'] = df_long.apply(
+#         lambda row: f"{row['which_cov_term']}{row['filename_suffix']}", axis=1
+#     )
+
+#     # Create the barplot
+#     barplot = sns.barplot(x='Parameter', y='Value', hue='Condition',
+#                           data=df_long, dodge=True, order=custom_parameter_order,
+#                           width=0.4, palette=color_mapping, edgecolor='k')
+
+# # Add a grid to the background
+# ax.yaxis.grid(True)  # Only horizontal gridlines
+# ax.set_axisbelow(True)  # Ensure gridlines are behind the bars
+
+# barplot.set_xticklabels(custom_parameter_order_tex)
+# barplot.set_ylabel('relative uncertainty [%]')
+# barplot.set_xlabel('')
 
 
 print('done')

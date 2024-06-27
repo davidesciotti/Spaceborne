@@ -1165,7 +1165,6 @@ def add_prior_to_fm(fm, fiducials_dict, prior_param_names, prior_param_values):
 
     prior_param_idxs = [fid_param_names.index(prior_param_name) for prior_param_name in prior_param_names]
 
-    breakpoint()
     prior_fm = np.zeros(fm.shape)
     prior_fm[prior_param_idxs, prior_param_idxs] = 1 / np.array(prior_param_values)
     return fm + prior_fm

@@ -114,13 +114,12 @@ def call_onecovariance(path_to_oc_executable, path_to_config_oc_ini):
 # * ====================================================================================================================
 
 
-# for zbins in (3, 5, 7, 9, 10, 11, 13, 15):
-#     for ep_or_ed in ('EP', 'ED'):
-for zbins in (3, ):
-    for ep_or_ed in ('EP', ):
+with open('config_release.yaml', 'r') as f:
+    cfg = yaml.safe_load(f)
+    
+for zbins in (7, 9, 10, 11, 13, 15):
+    for ep_or_ed in ('EP', 'ED'):
 
-        with open('config_release.yaml', 'r') as f:
-            cfg = yaml.safe_load(f)
 
         # add type/number-specific nuisance/hyperparameters
         cfg['general_cfg']['zbins'] = zbins
@@ -260,14 +259,13 @@ for zbins in (3, ):
                                                          'For the thesis, probably use just these')
         if general_cfg['ell_cuts']:
             assert bnt_transform, 'you should BNT transform if you want to apply ell cuts'
-
         if covariance_cfg['cov_BNT_transform']:
             assert general_cfg['cl_BNT_transform'] is False, \
                 'the BNT transform should be applied either to the Cls or to the covariance'
             assert fm_cfg['derivatives_BNT_transform'], 'you should BNT transform the derivatives as well'
-
         assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \
             'ell_max_WL and ell_max_GC must be either (5000, 3000) or (1500, 750)'
+        assert general_cfg['which_forecast'] == 'SPV3', 'ISTF forecasts not supported at the moment'
 
         if not general_cfg['is_test_run']:
             assert covariance_cfg['survey_area_deg2'] == 13245, 'survey area must be 13245 deg2'
@@ -278,9 +276,10 @@ for zbins in (3, ):
             assert general_cfg['flat_or_nonflat'] == 'Flat', 'Model must be flat'
             assert covariance_cfg['load_CLOE_benchmark_cov'] is False, 'load_CLOE_benchmark_cov must be False'
             assert covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'] > 500, 'z_steps_ssc_integrands must be large enough'
-            assert cfg['covariance_cfg']['OneCovariance_cfg']['high_precision'] is True
+            assert cfg['covariance_cfg']['OneCovariance_cfg']['high_precision'] is False
             assert covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == [
                 'SSC', 'cNG'], 'which_ng_cov must be ["SSC", "cNG"]'
+            assert covariance_cfg['OneCovariance_cfg']['which_gauss_cov_binning'] == 'OneCovariance', 'which_gauss_cov_binning must be "OneCovariance" for the moment'
 
         fsky_check = cosmo_lib.deg2_to_fsky(covariance_cfg['survey_area_deg2'])
         assert np.abs(mm.percent_diff(covariance_cfg['fsky'], fsky_check)) < 1e-5, 'fsky does not match the survey area'
@@ -383,21 +382,17 @@ for zbins in (3, ):
                           }
         pp.pprint(variable_specs)
 
-        # some check on the input nuisance values
+        # ! some check on the input nuisance values
         # assert np.all(np.array(covariance_cfg['ngal_lensing']) <
         # 9), 'ngal_lensing values are likely < 9 *per bin*; this is just a rough check'
-        assert np.all(np.array(covariance_cfg['ngal_lensing']) > 0), 'ngal_lensing values must be positive'
         # assert np.all(np.array(covariance_cfg['ngal_clustering']) <
         # 9), 'ngal_clustering values are likely < 9 *per bin*; this is just a rough check'
+        assert np.all(np.array(covariance_cfg['ngal_lensing']) > 0), 'ngal_lensing values must be positive'
         assert np.all(np.array(covariance_cfg['ngal_clustering']) > 0), 'ngal_clustering values must be positive'
         assert np.all(np.array(zbin_centers) > 0), 'z_center values must be positive'
         assert np.all(np.array(zbin_centers) < 3), 'z_center values are likely < 3; this is just a rough check'
         assert np.all(dzWL_fiducial == dzGC_fiducial), 'dzWL and dzGC shifts do not match'
         assert general_cfg['magcut_source'] == 245, 'magcut_source should be 245, only magcut lens is varied'
-
-        # warnings.warn('You should remove this, stop overwriting the yaml files
-        # with open(general_cfg['fid_yaml_filename'].format(zbins=zbins), 'w') as f:
-        #     yaml.dump(fid_pars_dict, f, sort_keys=False)
 
         # ! import n(z)
         # n_of_z_full: nz table including a column for the z values
@@ -780,9 +775,11 @@ for zbins in (3, ):
 
         # * 2. compute cov using the onecovariance interface class
         start_time = time.perf_counter()
-        if covariance_cfg['ng_cov_code'] == 'Spaceborne':
+        if covariance_cfg['ng_cov_code'] == 'OneCovariance' or \
+            (covariance_cfg['ng_cov_code'] == 'Spaceborne' and \
+               not covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']):
 
-            print('Start cNG cov computation with OneCovariance...')
+            print('Start NG cov computation with OneCovariance...')
 
             # TODO this should be defined globally...
             symmetrize_output_dict = {
@@ -807,8 +804,13 @@ for zbins in (3, ):
                 'cNG', '10D_array', ind_dict, symmetrize_output_dict)
 
             print('Time taken to compute OC: {:.2f} m'.format((time.perf_counter() - start_time) / 60))
+        
+        else:
+            oc_obj = None
+            
         # ! ========================================== end OneCovariance ===================================================
 
+        # ! ========================================== start Spaceborne ===================================================
         cov_folder_sb = covariance_cfg['Spaceborne_cfg']['cov_path'].format(ROOT=ROOT,
                                                                             which_pk_responses=covariance_cfg['Spaceborne_cfg']['which_pk_responses'],
                                                                             flagship_version=general_cfg['flagship_version'],
@@ -1435,7 +1437,7 @@ for zbins in (3, ):
                                                                  BNT_transform=str(general_cfg['BNT_transform']),
                                                                  **var_specs_here)
 
-            np.savetxt(f'{cov_folder_vin}/{cov_filename_vin.format(which_ng_cov='GSSCcNG', probe='3x2pt')}.dat',
+            np.savetxt(f'{cov_folder_vin}/{cov_filename_vin.format(which_ng_cov=which_ng_cov_suffix, probe='3x2pt')}.dat',
                        cov_dict[f'cov_3x2pt_GS_2D'], fmt='%.7e')
 
         if ep_or_ed == 'EP' and covariance_cfg['ng_cov_code'] == 'Spaceborne' and covariance_cfg['test_against_CLOE_benchmarks'] \
@@ -1493,9 +1495,9 @@ for zbins in (3, ):
         # !============================= derivatives ===================================
         # this guard is just to avoid indenting the whole code below
         if not fm_cfg['compute_FM']:
-            # del cov_dict
-            # gc.collect()
-            # continue
+            del cov_dict
+            gc.collect()
+            continue
             raise KeyboardInterrupt('skipping FM computation, the script will exit now')
 
         # list_params_to_vary = list(fid_pars_dict['FM_ordered_params'].keys())
@@ -1910,6 +1912,8 @@ for zbins in (3, ):
             cases_to_plot = [
                 f'FM_{probe}_G',
                 f'FM_{probe}_GSSC',
+                # f'FM_{probe}_GSSCcNG',
+                
                 f'perc_diff_{probe}_G',
 
                 #  f'FM_{probe}_{which_ng_cov_suffix}',

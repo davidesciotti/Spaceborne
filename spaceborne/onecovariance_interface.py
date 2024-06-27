@@ -42,24 +42,11 @@ class OneCovarianceInterface():
             result = subprocess.run(['conda', 'info', '--base'], stdout=subprocess.PIPE, check=True, text=True)
             # Extract and return the base path
             return result.stdout.strip() + '/bin'
+        except FileNotFoundError as e:
+            return '/home/cosmo/davide.sciotti/software/anaconda3/bin'
         except subprocess.CalledProcessError as e:
             print(f"Error occurred: {e}")
             return None
-        
-    # def get_conda_base_path(self):
-    #     try:
-    #         conda_executable = '/home/cosmo/davide.sciotti/software/anaconda3/bin/conda'
-    #         os.environ['PATH'] = f"/home/cosmo/davide.sciotti/software/anaconda3/bin:" + os.environ['PATH']
-    #         # Run the conda info --base command and capture the output
-    #         result = subprocess.run([conda_executable, 'info', '--base'], stdout=subprocess.PIPE, check=True, text=True)
-    #         # Extract and return the base path
-    #         return result.stdout.strip() + '/bin'
-    #     except subprocess.CalledProcessError as e:
-    #         print(f"Error occurred: {e}")
-    #         return None
-    #     except FileNotFoundError as e:
-    #         print(f"Error occurred: {e}")
-    #         return None
 
     def build_save_oc_ini(self, ascii_filenames_dict, print_ini=True):
 
@@ -86,7 +73,6 @@ class OneCovarianceInterface():
         n_eff_clust_list = self.cfg['covariance_cfg']['ngal_clustering']
         n_eff_lensing_list = self.cfg['covariance_cfg']['ngal_lensing']
         ellipticity_dispersion_list = [self.cfg['covariance_cfg']['sigma_eps_i']] * self.zbins
-
 
         cfg_onecov_ini['covariance terms']['gauss'] = str(True)
         cfg_onecov_ini['covariance terms']['split_gauss'] = str(True)
@@ -150,8 +136,8 @@ class OneCovarianceInterface():
             delta_z = 0.04
             tri_delta_z = 0.25
             integration_steps = 1000
-            m_bins = 900 # 1500
-            log10k_bins = 150 # 200
+            m_bins = 900  # 1500
+            log10k_bins = 150  # 200
         else:  # these are the default values
             delta_z = 0.08
             tri_delta_z = 0.5
@@ -212,9 +198,9 @@ class OneCovarianceInterface():
         print('.dat file header: ')
         print(header)
         header_list = re.split('\t', header.strip().replace('\t\t', '\t').replace('\t\t', '\t'))
-        
+
         # assert column_names == header_list, 'column names from .dat file do not match with the expected ones'
-        
+
         column_names = header_list
 
         # ell values actually used in OC; save in self to be able to compare to the SB ell values
@@ -226,8 +212,6 @@ class OneCovarianceInterface():
             'm': 0,
             'g': 1,
         }
-        
-        breakpoint()
 
         # ! import .list covariance file
         cov_g_oc_10d = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))

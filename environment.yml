@@ -22,6 +22,10 @@ dependencies:
   - pyqt
   - ipympl
   - swig
+  # for OneCovariance
+  - gfortran
+  - gsl
+  - pybind11
   # - cfitsio  # for CCL
   - pip:
     #- chainconsumer 
@@ -30,7 +34,7 @@ dependencies:
     - getdist
     #- type_enforced
     #- array_to_latex
-    # - pynverse
+    #- pynverse
     #- classy
     #- ray
     #- PyQt5

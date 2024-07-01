@@ -8,9 +8,6 @@ job_path = Path.cwd().parent
 sys.path.append(f'{project_path}/bin')
 import check_specs as utils
 
-sys.path.append(f'{project_path}/common_cfg')
-import ISTF_fid_params as ISTFfid
-
 which_forecast = 'SPV3'
 fsky, GL_or_LG, ind_ordering, _ = utils.get_specs(which_forecast)
 
@@ -53,9 +50,9 @@ general_cfg = {
     'ell_min': 10,
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
     'ell_max_WL': 5000,
+    'ell_max_3x2pt': 3000,
     'ell_max_GC': 3000,
     'ell_max_XC': 3000,
-    'ell_max_3x2pt': 3000,
     'zbins': 10,
     'zbins_list': None,
     'EP_or_ED': 'EP',
@@ -228,7 +225,7 @@ FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_{which_cov:s}_
     '')
 deriv_filename = covariance_cfg['cov_filename'].replace('covmat_', 'dDVd')
 FM_cfg = {
-    'compute_FM': True,
+    'compute_FM': False,
 
     'param_names_dict': param_names_dict,
     'fiducials_dict': None,  # this needs to be set in the main, since it depends on the n_gal file

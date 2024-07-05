@@ -9,7 +9,7 @@ import sys
 import os
 ROOT = os.getenv('ROOT')
 sys.path.append(f'{ROOT}/Spaceborne')
-import bin.cosmo_lib as cosmo_lib
+import spaceborne.cosmo_lib as cosmo_lib
 
 
 def get_mask_quantities(clmask=None, mask=None, mask2=None, verbose=True):

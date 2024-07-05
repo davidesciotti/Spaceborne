@@ -47,14 +47,14 @@ cosmology:
         # dzWL12: 0.000815
         # dzWL13: 0.04907
         # coefficients for the polynomial magnification and galaxy bias fits
-        bG01: 1.33291
-        bG02: -0.72414
-        bG03: 1.0183
-        bG04: -0.14913
-        bM01: -1.50685
-        bM02: 1.35034
-        bM03: 0.08321
-        bM04: 0.04279
+        # bG01: 1.33291
+        # bG02: -0.72414
+        # bG03: 1.0183
+        # bG04: -0.14913
+        # bM01: -1.50685
+        # bM02: 1.35034
+        # bM03: 0.08321
+        # bM04: 0.04279
 
     # these parameters are not varied in the analysis; their specific ordering is not important
     # TODO how about logT? below it's fixed, above it's varied
@@ -110,9 +110,8 @@ general_cfg:
     cl_BNT_transform: False
 
     # vincenzo's inputs path
-    # cl_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/OutputFiles/DataVectors/Noiseless/{which_pk:s}"
-    cl_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/OutputFiles/DataVectors/Temp/{probe:s}/{which_pk:s}"
-    cl_filename: "dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat"
+    cl_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/FiRe/OutputQuantities/DataVectors/DataVecFid/DR1/{probe:s}/{which_pk:s}"
+    cl_filename: "dv-{probe:s}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-NBS{zbins:02d}-NBL{zbins:02d}-IE{magcut_lens:03d}.dat"
     wf_folder: '{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputSSC/Windows'
     wf_filename: 'wi{probe:s}-{ep_or_ed:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{specs:s}.dat'
     specs: 'idIA{idIA:d}-idB{idBM:01d}-idM{idM:d}-idR{idR:d}'

@@ -517,8 +517,8 @@ plot_lib.triangle_plot(
     param_names_labels=param_names_label,
     param_names_labels_toplot=param_names_label[:10])
 
-
 assert False, 'stop before sns plot'
+
 
 plt.figure(figsize=(12, 7))
 ax = plt.gca()

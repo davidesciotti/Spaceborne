@@ -117,6 +117,9 @@ def call_onecovariance(path_to_oc_executable, path_to_config_oc_ini):
 with open('config_release.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
     
+zbins = cfg['general_cfg']['zbins']
+ep_or_ed = cfg['general_cfg']['EP_or_ED']
+    
 # for zbins in (7, 9, 10, 11, 13, 15):
     # for ep_or_ed in ('EP', 'ED'):
 
@@ -126,33 +129,36 @@ with open('config_release.yaml', 'r') as f:
 # cfg['general_cfg']['EP_or_ED'] = ep_or_ed
 
 nuisance_folder = cfg['covariance_cfg']['nuisance_folder'].format(ROOT=ROOT)
-nuisance_src_filename = cfg['covariance_cfg']['nuisance_sources_filename'].format(zbins=cfg['general_cfg']['zbins'], ep_or_ed=cfg['general_cfg']['EP_or_ED'],
+nuisance_filename_src = cfg['covariance_cfg']['nuisance_sources_filename'].format(zbins=cfg['general_cfg']['zbins'], ep_or_ed=cfg['general_cfg']['EP_or_ED'],
+                                                                        zmin_nz_lens=cfg['general_cfg']['zmin_nz_lens'],
+                                                                        zmax_nz=cfg['general_cfg']['zmax_nz'],
+                                                                        signal_to_noise=cfg['general_cfg']['signal_to_noise'],
+                                                                        )
+nuisance_filename_lns = cfg['covariance_cfg']['nuisance_lenses_filename'].format(zbins=cfg['general_cfg']['zbins'], ep_or_ed=cfg['general_cfg']['EP_or_ED'],
                                                                         zmin_nz_lens=cfg['general_cfg']['zmin_nz_lens'],
                                                                         zmax_nz=cfg['general_cfg']['zmax_nz'],
                                                                         magcut_lens=cfg['general_cfg']['magcut_lens'],
                                                                         )
-nuisance_lns_filename = cfg['covariance_cfg']['nuisance_lenses_filename'].format(zbins=cfg['general_cfg']['zbins'], ep_or_ed=cfg['general_cfg']['EP_or_ED'],
-                                                                        zmin_nz_lens=cfg['general_cfg']['zmin_nz_lens'],
-                                                                        zmax_nz=cfg['general_cfg']['zmax_nz'],
-                                                                        magcut_lens=cfg['general_cfg']['magcut_lens'],
-                                                                        )
-nuisance_src_tab = np.genfromtxt(f'{nuisance_folder}/{nuisance_src_filename}')
-nuisance_lns_tab = np.genfromtxt(f'{nuisance_folder}/{nuisance_lns_filename}')
+nuisance_tab_src = np.genfromtxt(f'{nuisance_folder}/{nuisance_filename_src}')
+nuisance_tab_lns = np.genfromtxt(f'{nuisance_folder}/{nuisance_filename_lns}')
 
-
-assert False
-zbin_centers = nuisance_src_tab[:, 0]
-ngal_lensing = nuisance_src_tab[:, 1]
-ngal_clustering = nuisance_src_tab[:, 1]
-galaxy_bias_fit_fiducials = nuisance_src_tab[:, 2]
-
-dzWL_fiducial = nuisance_src_tab[:, 4]
-dzGC_fiducial = nuisance_src_tab[:, 4]
+# TODO ask vin about SN and IE
+# TODO re-ask vin sbout WL-src and GC-lns
+zbin_centers_src = nuisance_tab_src[:, 0]
+zbin_centers_lns = nuisance_tab_lns[:, 0]
+ngal_src = nuisance_tab_src[:, 1]
+ngal_lns = nuisance_tab_lns[:, 1]
+dzWL_fiducial = nuisance_tab_src[:, 4]
+dzGC_fiducial = nuisance_tab_lns[:, 4]
+mag_bias_values = nuisance_tab_src[:, 3]
+gal_bias_values = nuisance_tab_lns[:, 2]
 
 # insert in cfg dict:
-cfg['covariance_cfg']['zbin_centers'] = zbin_centers
-cfg['covariance_cfg']['ngal_lensing'] = ngal_lensing
-cfg['covariance_cfg']['ngal_clustering'] = ngal_clustering
+cfg['covariance_cfg']['zbin_centers_src'] = zbin_centers_src
+cfg['covariance_cfg']['zbin_centers_lns'] = zbin_centers_lns
+# ! pay attention, "lenses" is not for "lensing" but for "clustering"!
+cfg['covariance_cfg']['ngal_lensing'] = ngal_src  
+cfg['covariance_cfg']['ngal_clustering'] = ngal_lns
 
 # insert the nuisance values in the ordered cfg section
 # Convert FM_ordered_params to OrderedDict to maintain order
@@ -161,6 +167,8 @@ fm_ordered_params = OrderedDict(cfg['cosmology']['FM_ordered_params'])
 # Find the index of 'eIA'
 keys = list(fm_ordered_params.keys())
 index_eIA = keys.index('eIA')
+if 'bia' in [key.lower() for key in keys]:
+    raise NotImplementedError('you should double-check your parameters indexing if bIA is in FM_ordered_params')
 
 # Create a new OrderedDict to insert dzWL and dzGC after eIA
 new_fm_ordered_params = OrderedDict()
@@ -173,6 +181,9 @@ for i, key in enumerate(keys):
 
         for zi, dz in enumerate(dzWL_fiducial, start=1):
             new_fm_ordered_params[f'dzWL{zi:02d}'] = dz
+            
+        for zi, dz in enumerate(dzGC_fiducial, start=1):
+            new_fm_ordered_params[f'dzGC{zi:02d}'] = dz
 
 cfg['cosmology']['FM_ordered_params'] = dict(new_fm_ordered_params)
 
@@ -197,8 +208,8 @@ if general_cfg['ell_cuts']:
                                                                             '_kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D')
 
 # some convenence variables, just to make things more readable
-zbins = general_cfg['zbins']
-ep_or_ed = general_cfg['EP_or_ED']
+# zbins = general_cfg['zbins']
+# ep_or_ed = general_cfg['EP_or_ED']
 ell_max_WL = general_cfg['ell_max_WL']
 ell_max_GC = general_cfg['ell_max_GC']
 ell_max_3x2pt = general_cfg['ell_max_3x2pt']
@@ -235,16 +246,14 @@ if len(z_grid_ssc_integrands) < 250:
 
 # load some nuisance parameters
 # note that zbin_centers is not exactly equal to the result of wf_cl_lib.get_z_mean...
-zbin_centers = cfg['covariance_cfg']['zbin_centers']
-ngal_lensing = cfg['covariance_cfg']['ngal_lensing']
-ngal_clustering = cfg['covariance_cfg']['ngal_clustering']
-galaxy_bias_fit_fiducials = np.array(
-    [cfg['cosmology']['FM_ordered_params'][f'bG{zi:02d}'] for zi in range(1, 5)])
-magnification_bias_fit_fiducials = np.array(
-    [cfg['cosmology']['FM_ordered_params'][f'bM{zi:02d}'] for zi in range(1, 5)])
+zbin_centers_src = cfg['covariance_cfg']['zbin_centers_src']
+zbin_centers_lns = cfg['covariance_cfg']['zbin_centers_lns']
+ngal_src = cfg['covariance_cfg']['ngal_lensing']
+ngal_lns = cfg['covariance_cfg']['ngal_clustering']
+galaxy_bias_fit_fiducials = np.array([cfg['cosmology']['FM_ordered_params'][f'bG{zi:02d}'] for zi in range(1, 5)])
+magnification_bias_fit_fiducials = np.array([cfg['cosmology']['FM_ordered_params'][f'bM{zi:02d}'] for zi in range(1, 5)])
 dzWL_fiducial = np.array([cfg['cosmology']['FM_ordered_params'][f'dzWL{zi:02d}'] for zi in range(1, zbins + 1)])
-dzGC_fiducial = np.array([cfg['cosmology']['FM_ordered_params'][f'dzWL{zi:02d}'] for zi in range(1, zbins + 1)])
-warnings.warn('dzGC_fiducial are equal to dzWL_fiducial')
+dzGC_fiducial = np.array([cfg['cosmology']['FM_ordered_params'][f'dzGC{zi:02d}'] for zi in range(1, zbins + 1)])
 
 which_ng_cov_suffix = 'G' + ''.join(covariance_cfg[covariance_cfg['ng_cov_code'] + '_cfg']['which_ng_cov'])
 fid_pars_dict = cfg['cosmology']
@@ -387,6 +396,7 @@ variable_specs = {'EP_or_ED': ep_or_ed,
                     'idB': general_cfg['idB'],
                     'idR': general_cfg['idR'],
                     'idBM': general_cfg['idBM'],
+                    'signal_to_noise': general_cfg['signal_to_noise'],
                     }
 pp.pprint(variable_specs)
 
@@ -397,28 +407,49 @@ pp.pprint(variable_specs)
 # 9), 'ngal_clustering values are likely < 9 *per bin*; this is just a rough check'
 assert np.all(np.array(covariance_cfg['ngal_lensing']) > 0), 'ngal_lensing values must be positive'
 assert np.all(np.array(covariance_cfg['ngal_clustering']) > 0), 'ngal_clustering values must be positive'
-assert np.all(np.array(zbin_centers) > 0), 'z_center values must be positive'
-assert np.all(np.array(zbin_centers) < 3), 'z_center values are likely < 3; this is just a rough check'
-assert np.all(dzWL_fiducial == dzGC_fiducial), 'dzWL and dzGC shifts do not match'
+assert np.all(np.array(zbin_centers_src) > 0), 'z_center values must be positive'
+assert np.all(np.array(zbin_centers_src) < 3), 'z_center values are likely < 3; this is just a rough check'
 assert general_cfg['magcut_source'] == 245, 'magcut_source should be 245, only magcut lens is varied'
 
 # ! import n(z)
 # n_of_z_full: nz table including a column for the z values
 # n_of_z:      nz table excluding a column for the z values
 nz_folder = covariance_cfg["nz_folder"].format(ROOT=ROOT)
-nz_src_filename = covariance_cfg["nz_src_filename"].format(**variable_specs)
-n_of_z_full = np.genfromtxt(f'{nz_folder}/{nz_src_filename}')
-assert n_of_z_full.shape[1] == zbins + \
-    1, 'n_of_z must have zbins + 1 columns; the first one must be for the z values'
-    
-    
-assert False, 'stop here'
+nz_src_filename = covariance_cfg["nz_sources_filename"].format(**variable_specs)
+nz_lns_filename = covariance_cfg["nz_lenses_filename"].format(**variable_specs)
+nz_src_full = np.genfromtxt(f'{nz_folder}/{nz_src_filename}')
+nz_lns_full = np.genfromtxt(f'{nz_folder}/{nz_lns_filename}')
 
-zgrid_nz = n_of_z_full[:, 0]
-n_of_z = n_of_z_full[:, 1:]
-n_of_z_original = n_of_z  # it may be subjected to a shift
+assert nz_src_full.shape[1] == zbins + 1, 'n_of_z must have zbins + 1 columns; the first one must be for the z values'
+assert nz_lns_full.shape[1] == zbins + 1, 'n_of_z must have zbins + 1 columns; the first one must be for the z values'
+    
 
-plt.plot()
+zgrid_nz_src = nz_src_full[:, 0]
+zgrid_nz_lns = nz_lns_full[:, 0]
+nz_src = nz_src_full[:, 1:]
+nz_lns = nz_lns_full[:, 1:]
+nz_unshifted_src = nz_src  # it may be subjected to a shift
+nz_unshifted_lns = nz_lns  # it may be subjected to a shift
+
+fig, ax = plt.subplots(2, 1, sharex=True)
+colors = cm.rainbow(np.linspace(0, 1, zbins))
+for zi in range(zbins):
+    ax[0].plot(zgrid_nz_src, nz_src[:, zi], c=colors[zi], label=r'$z_{%d}$' %(zi+1))
+    ax[0].axvline(zbin_centers_src[zi], c=colors[zi], ls='--', alpha=0.6, label=r'$z_{%d}^{eff}$' %(zi+1))
+    ax[0].fill_between(zgrid_nz_src, nz_src[:, zi], color=colors[zi], alpha=0.2)
+    ax[0].set_xlabel('$z$')
+    ax[0].set_ylabel(r'$n_i(z) \; {\rm sources}$')
+ax[0].legend(ncol=2)
+    
+for zi in range(zbins):
+    ax[1].plot(zgrid_nz_lns, nz_lns[:, zi], c=colors[zi], label=r'$z_{%d}$' %(zi+1))
+    ax[1].axvline(zbin_centers_lns[zi], c=colors[zi], ls='--', alpha=0.6, label=r'$z_{%d}^{eff}$' %(zi+1))
+    ax[1].fill_between(zgrid_nz_lns, nz_lns[:, zi], color=colors[zi], alpha=0.2)
+    ax[1].set_xlabel('$z$')
+    ax[1].set_ylabel(r'$n_i(z) \; {\rm lenses}$')
+    
+ax[1].legend(ncol=2)
+
 
 # ! START SCALE CUTS: for these, we need to:
 # 1. Compute the BNT. This is done with the raw, or unshifted n(z), but only for the purpose of computing the
@@ -442,17 +473,17 @@ assert include_ia_in_bnt_kernel_for_zcuts is False, 'We compute the BNT just for
 # * two of the original kernels get very close after the shift: the transformation is correct.
 # * Having said that, I leave the code below in case we want to change this in the future
 if nz_gaussian_smoothing:
-    n_of_z = wf_cl_lib.gaussian_smmothing_nz(zgrid_nz, n_of_z_original, nz_gaussian_smoothing_sigma, plot=True)
+    nz_src = wf_cl_lib.gaussian_smmothing_nz(zgrid_nz_src, nz_unshifted_src, nz_gaussian_smoothing_sigma, plot=True)
 if compute_bnt_with_shifted_nz_for_zcuts:
-    n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z_original, dzWL_fiducial, normalize=normalize_shifted_nz, plot_nz=False,
+    nz_src = wf_cl_lib.shift_nz(zgrid_nz_src, nz_unshifted_src, dzWL_fiducial, normalize=normalize_shifted_nz, plot_nz=False,
                                 interpolation_kind=shift_nz_interpolation_kind)
 
 bnt_matrix = covmat_utils.compute_BNT_matrix(
-    zbins, zgrid_nz, n_of_z, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
+    zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
 
 # 2. compute the kernels for the un-shifted n(z) (for consistency)
 ccl_obj.zbins = zbins
-ccl_obj.set_nz(np.hstack((zgrid_nz[:, None], n_of_z)))
+ccl_obj.set_nz(np.hstack((zgrid_nz_src[:, None], nz_src)))
 ccl_obj.check_nz_tuple(zbins)
 ccl_obj.set_ia_bias_tuple(z_grid=z_grid_ssc_integrands)
 
@@ -554,16 +585,16 @@ ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the 
 
 # now compute the BNT used for the rest of the code
 if shift_nz:
-    n_of_z = wf_cl_lib.shift_nz(zgrid_nz, n_of_z_original, dzWL_fiducial, normalize=normalize_shifted_nz, plot_nz=False,
+    nz_src = wf_cl_lib.shift_nz(zgrid_nz_src, nz_unshifted_src, dzWL_fiducial, normalize=normalize_shifted_nz, plot_nz=False,
                                 interpolation_kind=shift_nz_interpolation_kind)
-    nz_tuple = (zgrid_nz, n_of_z)
+    nz_tuple = (zgrid_nz_src, nz_src)
     # * this is important: the BNT matrix I use for the rest of the code (so not to compute the ell cuts) is instead
     # * consistent with the shifted n(z) used to compute the kernels
     bnt_matrix = covmat_utils.compute_BNT_matrix(
-        zbins, zgrid_nz, n_of_z, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
+        zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
 
 # re-set n(z) used in CCL class, then re-compute kernels
-ccl_obj.set_nz(np.hstack((zgrid_nz[:, None], n_of_z)))
+ccl_obj.set_nz(np.hstack((zgrid_nz_src[:, None], nz_src)))
 ccl_obj.set_kernel_obj(general_cfg['has_rsd'], covariance_cfg['PyCCL_cfg']['n_samples_wf'])
 ccl_obj.set_kernel_arr(z_grid_wf=z_grid_ssc_integrands,
                         has_magnification_bias=general_cfg['has_magnification_bias'])
@@ -765,7 +796,7 @@ if not os.path.exists(oc_path):
     os.makedirs(oc_path)
 
 nofz_ascii_filename = nz_src_filename.replace('.dat', f'_dzshifts{shift_nz}.ascii')
-nofz_tosave = np.column_stack((zgrid_nz, n_of_z))
+nofz_tosave = np.column_stack((zgrid_nz_src, nz_src))
 np.savetxt(f'{oc_path}/{nofz_ascii_filename}', nofz_tosave)
 
 cl_ll_ascii_filename = f'Cell_ll_SPV3_{general_cfg["which_cls"]}_nbl{nbl_3x2pt}'
@@ -1526,7 +1557,7 @@ if fm_cfg['which_derivatives'] == 'Spaceborne':
     elif not fm_cfg['load_preprocess_derivatives']:
         start_time = time.perf_counter()
         cl_LL, cl_GL, cl_GG, dC_dict_LL_3D, dC_dict_GL_3D, dC_dict_GG_3D = wf_cl_lib.compute_cls_derivatives(
-            cfg, list_params_to_vary, zbins, (n_of_z_full[:, 0], n_of_z_full[:, 1:]),
+            cfg, list_params_to_vary, zbins, (nz_src_full[:, 0], nz_src_full[:, 1:]),
             ell_dict['ell_WL'], ell_dict['ell_XC'], ell_dict['ell_GC'], use_only_flat_models=True)
         print('derivatives computation time: {:.2f} s'.format(time.perf_counter() - start_time))
 

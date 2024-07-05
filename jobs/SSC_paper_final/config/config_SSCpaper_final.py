@@ -225,7 +225,7 @@ FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_{which_cov:s}_
     '')
 deriv_filename = covariance_cfg['cov_filename'].replace('covmat_', 'dDVd')
 FM_cfg = {
-    'compute_FM': False,
+    'compute_FM': True,
 
     'param_names_dict': param_names_dict,
     'fiducials_dict': None,  # this needs to be set in the main, since it depends on the n_gal file

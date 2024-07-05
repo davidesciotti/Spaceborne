@@ -237,9 +237,9 @@ fm_cfg = cfg.FM_cfg
 
 for general_cfg['ell_max_WL'], general_cfg['ell_max_GC'], general_cfg['ell_max_XC'], general_cfg['ell_max_3x2pt'] in \
     tqdm(((5000, 3000, 3000, 3000), (1500, 750, 750, 750))):
-    for general_cfg['EP_or_ED'] in ('EP', 'ED'):
+    # for general_cfg['EP_or_ED'] in ('EP', 'ED'):
         # for general_cfg['zbins'] in (3, 5, 7, 9, 10, 11, 13):
-        for general_cfg['zbins'] in (15, 17):
+        # for general_cfg['zbins'] in (15, 17):
 
             # some convenence variables, just to make things more readable
             general_cfg['which_cuts'] = 'Vincenzo'
@@ -945,7 +945,7 @@ for general_cfg['ell_max_WL'], general_cfg['ell_max_GC'], general_cfg['ell_max_X
             fm_dict_vin['fiducial_values_dict_v2_GC'] = {param: fm_dict_vin['fiducial_values_dict_v2_3x2pt'][param] for param in param_names_gc_vin}
 
 
-            # ! =========================== FM settings #######################################
+            # ! =========================== FM settings ===========================
             nparams_toplot_ref = 8
             names_params_to_fix = []
             divide_fom_by_10 = True
@@ -966,7 +966,7 @@ for general_cfg['ell_max_WL'], general_cfg['ell_max_GC'], general_cfg['ell_max_X
             # shear_bias_prior = None
             # dz_prior = None
             # logT_prior = None
-            # ! =========================== FM settings end #######################################
+            # ! =========================== FM settings end ===========================
 
             probes = ['WL', 'GC', '3x2pt']
             dzWL_param_names = [f'dzWL{(zi + 1):02d}' for zi in range(zbins)]
@@ -1106,7 +1106,7 @@ for general_cfg['ell_max_WL'], general_cfg['ell_max_GC'], general_cfg['ell_max_X
                     f'FM_{probe}_GSSC',
                     # f'FM_{probe}_GSSC_vin',
                     f'perc_diff_{probe}_G',
-                    # f'perc_diff_{probe}_G_vin',
+                    f'perc_diff_{probe}_G_vin',
                 ]
 
                 # # transform dict. into an array and add the fom

@@ -1165,7 +1165,6 @@ def add_prior_to_fm(fm, fiducials_dict, prior_param_names, prior_param_values):
 
     prior_param_idxs = [fid_param_names.index(prior_param_name) for prior_param_name in prior_param_names]
 
-    breakpoint()
     prior_fm = np.zeros(fm.shape)
     prior_fm[prior_param_idxs, prior_param_idxs] = 1 / np.array(prior_param_values)
     return fm + prior_fm
@@ -1301,6 +1300,29 @@ def get_kv_pairs(path_import, extension='npy'):
     for path in Path(path_import).glob(f"*.{extension}"):
         yield path.stem, load_function(str(path))
 
+
+def get_kv_pairs_v2(path_import, extension='npy'):
+    """
+    Load npy, npz, txt, or dat files in dictionary.
+    To use it, wrap it in "dict(), e.g.:
+        loaded_dict = dict(get_kv_pairs(path_import, filetype="dat"))
+    """
+    if extension == 'npy' or extension == 'npz':
+        load_function = np.load
+    elif extension == 'txt' or extension == 'dat':
+        load_function = lambda p: np.genfromtxt(p, encoding='latin1')  # Handle non-UTF-8 encoding
+    else:
+        raise NotImplementedError("extension must be either 'npy', 'npz', 'txt' or 'dat'")
+
+    for path in Path(path_import).glob(f"*.{extension}"):
+        if path.is_file():  # Ensure it's a file, not a directory
+            try:
+                yield path.stem, load_function(str(path))
+            except UnicodeDecodeError as e:
+                print(f"Error decoding file {path}: {e}")
+            except Exception as e:
+                print(f"Error loading file {path}: {e}")
+                
 
 # to display the names (keys) more tidily
 def show_keys(arrays_dict):

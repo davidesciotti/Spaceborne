@@ -1,18 +1,17 @@
 import sys
+import os
 import warnings
-import matplotlib.cm as cm
 
 import numpy as np
 import pandas as pd
 import yaml
 import matplotlib as mpl
+import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from chainconsumer import ChainConsumer
+import matplotlib.patches as mpatches
 from tqdm import tqdm
-import seaborn as sns
 
-import os
 ROOT = os.getenv('ROOT')
 SB_ROOT = f'{ROOT}/Spaceborne'
 
@@ -29,7 +28,6 @@ mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 # Display all columns
 pd.set_option('display.max_columns', None)
-# Disable text wrapping within cells
 pd.set_option('display.expand_frame_repr', False)
 
 
@@ -39,22 +37,7 @@ kmax_tex = mpl_cfg.kmax_tex
 kmax_star_tex = mpl_cfg.kmax_star_tex
 cosmo_params_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
 
-zbin_centers = np.array(
-    [
-        0.27575,
-        0.37635,
-        0.44634,
-        0.54284,
-        0.62145,
-        0.70957,
-        0.7986,
-        0.86687,
-        0.97753,
-        1.09136,
-        1.24264,
-        1.47918,
-        1.89264,
-    ])
+zbin_centers = np.array([0.27575,0.37635,0.44634,0.54284,0.62145,0.70957,0.7986,0.86687,0.97753,1.09136,1.24264,1.47918,1.89264,])
 
 # ! some issued with 'PyCCL' '', 'standard', in the fm dict
 
@@ -65,30 +48,33 @@ ng_cov_code = 'PyCCL'  # Spaceborne or PyCCL or OneCovariance
 # filename_suffix = ''  # _sigma2_dav or _sigma2_mask or _sigma2_None or _halo_model
 
 # ng_cov_code_plt = 'OneCovariance'  # Spaceborne or PyCCL or OneCovariance
-codes_to_compare = ('Spaceborne', 'Spaceborne')
-filename_suffix_list = ('_clsCLOE_CLOEbenchlmax300013254deg_manual', '_clsCLOE_CLOEbenchlmax300014700deg')
-which_cov_term_list = ['G', 'GSSC', ]
+codes_to_compare = ('OneCovariance', 'OneCovariance')
+filename_suffix_list = ('_Francis_may24_OCint', '_Francis_may24_OCint')
+# filename_suffix_list = ('_dense_LiFECls', '_clsCLOE_CLOEbench')
+which_cov_term_list = ['G', 'GSSC', 'GSSCcNG']
 
-fix_dz_plt = False
+
+fix_dz_plt = True
 fix_shear_bias_plt = False
 fix_gal_bias_plt = False
 fix_mag_bias_plt = False
 fix_curvature = True
 
+
 fid_shear_bias_prior = 5e-4
 shear_bias_prior = fid_shear_bias_prior  # None if you want no prior
 dz_prior = np.array(2 * 1e-3 * (1 + zbin_centers))
 
-
 check_if_just_created = False
 
 specs_str = 'idIA2_idB3_idM3_idR1'
-fm_root_path = (f'{ROOT}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM')
+fm_root_path = f'{ROOT}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM'
 fm_path_raw = fm_root_path + '/BNT_{BNT_transform!s}/ell_cuts_{ell_cuts!s}'
 fm_pickle_name_raw = 'FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_' \
-    'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}{filename_suffix}.pickle'
+    'ML{ML:03d}_ZL{ZL:02d}_MS{MS:03d}_ZS{ZS:02d}_{specs_str:s}_pk{which_pk:s}_{survey_area_deg2:d}deg2{filename_suffix}.pickle'
 EP_or_ED = 'EP'
-zbins = 13
+zbins = 3
+survey_area_deg2 = 13245
 num_params_tokeep = 7
 
 gal_bias_perc_prior = None  # ! not quite sure this works properly...
@@ -97,6 +83,7 @@ string_columns = ['probe', 'which_cov_term', 'ng_cov_code', 'filename_suffix', '
 triangle_plot = True
 use_Wadd = False  # the difference is extremely small
 pk_ref = 'HMCodeBar'
+
 fom_redbook = 400
 target_perc_dispersion = 10  # percent
 w0_uncert_redbook = 2  # percent
@@ -105,8 +92,7 @@ ML = 245
 MS = 245
 ZL = 2
 ZS = 2
-probes = ('WL', 'GC', 'XC', '3x2pt')
-# probes = ('WL', 'GC', '3x2pt')
+probes = ('WL', 'GC', '3x2pt')
 which_cuts = 'Vincenzo'
 whose_FM_list = ('davide',)
 kmax_h_over_Mpc_plt = general_cfg['kmax_h_over_Mpc_list'][0]  # some cases are indep of kamx, just take the fist one
@@ -119,7 +105,7 @@ kmax_1_over_Mpc_vinc_str_list = ['025', '050', '075', '100', '125', '150', '175'
                                  '500', '1000', '1500', '2000']
 # kmax_1_over_Mpc_vinc_list = [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, 10.00, 15.00, 20.00]
 
-fix_dz_list = [True, False]
+fix_dz_list = [True]
 fix_shear_bias_list = [True, False]
 fix_gal_bias_list = [True, False]
 fix_mag_bias_list = [True, False]
@@ -193,8 +179,6 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
                                                     elif BNT_transform is True:
                                                         ell_cuts = True
 
-                                                    if which_cov_term == 'GSSC' or which_cov_term == 'GSSCcNG':
-                                                        which_pk = 'HMCodeBar'  # GSSC is only availane in this case
 
                                                     names_params_to_fix = []
 
@@ -211,7 +195,8 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
                                                                                                    specs_str=specs_str,
                                                                                                    which_pk=which_pk,
                                                                                                    ng_cov_code=ng_cov_code,
-                                                                                                   filename_suffix=filename_suffix)
+                                                                                                   filename_suffix=filename_suffix,
+                                                                                                   survey_area_deg2=survey_area_deg2,)
                                                         if ell_cuts:
                                                             fm_path += f'/{which_cuts}/ell_{center_or_min}'
                                                             fm_pickle_name = fm_pickle_name.replace(f'{filename_suffix}.pickle',
@@ -382,7 +367,7 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
 
 # # ! bar plot
 include_fom = True
-divide_fom_by_10 = True
+divide_fom_by_10 = False
 
 for probe_toplot in probes:
 
@@ -410,9 +395,10 @@ for probe_toplot in probes:
 
     # append percent differences to df
     fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
-                                             which_cov_term_list[1], num_string_columns)
-    # fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
-    #  'GcNG', num_string_columns)
+                                             'GSSC', num_string_columns)
+    if 'GSSCcNG' in which_cov_term_list:
+        fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
+                                                 'GSSCcNG', num_string_columns)
 
     # check that the G term is the same, all other entries being the same
     g_rows_df = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] == 'G']
@@ -423,8 +409,8 @@ for probe_toplot in probes:
     # ! drop some entries for clearer plot
     # fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'G']
     # fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GSSC']
-    fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GcNG']
-    fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GSSCcNG']
+    # fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GcNG']
+    # fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'GSSCcNG']
     # fm_uncert_df_toplot = fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] != 'perc_diff_GSSC']
 
     if divide_fom_by_10_plt:
@@ -449,7 +435,7 @@ for probe_toplot in probes:
 
 
 # # ! triangle plot
-probe_toplot = '3x2pt'
+probe_toplot = 'WL'
 fm_a = fm_uncert_df[
     (fm_uncert_df['probe'] == probe_toplot) &
     (fm_uncert_df['whose_FM'] == 'davide') &
@@ -507,116 +493,251 @@ fid_pars_dict_fm_toplot = fm_uncert_df[
 
 fiducials = list(fid_pars_dict_fm_toplot.values())
 param_names_label = list(fid_pars_dict_fm_toplot.keys())
-plot_lib.triangle_plot(
-    fm_backround=fm_a,
-    fm_foreground=fm_b,
-    fiducials=fiducials,
-    title=f'G new, SSC new, {probe_toplot}',
-    label_background=f'G + SSC, {codes_to_compare[0]}',
-    label_foreground=f'G + SSC, {codes_to_compare[1]}',
-    param_names_labels=param_names_label,
-    param_names_labels_toplot=param_names_label[:10])
 
-assert False, 'stop before sns plot'
+# plot_lib.triangle_plot(
+#     fm_backround=fm_a,
+#     fm_foreground=fm_b,
+#     fiducials=fiducials,
+#     title=f'SB vs OC, {probe_toplot}, G + SSC',
+#     label_background=f'{codes_to_compare[0]}',
+#     label_foreground=f'{codes_to_compare[1]}',
+#     param_names_labels=param_names_label,
+#     param_names_labels_toplot=param_names_label[:7])
 
 
-plt.figure(figsize=(12, 7))
-ax = plt.gca()
 offset = 0.2  # Adjust this offset as needed for your dataset
-custom_parameter_order_tex = mpl_cfg.general_dict['cosmo_labels_TeX'] + ['FoM']
-# Define the custom order
-custom_parameter_order = ['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8', 'FoM']
-hatch_list = ['', '//', '', '//']
+custom_parameter_order_tex = mpl_cfg.general_dict['cosmo_labels_TeX']
+custom_parameter_order = ['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8']
+hatch_list = ['', '//', ':',]
 
 
-# TODO hatch pattern does not march the code
-# TODO include the relative uncertainties, not just the % diff
 
+# ! =================================== with mpl ============================
+
+perc_diff_list = [f'perc_diff_{which_cov_term}' for which_cov_term in which_cov_term_list]
+which_cov_terms = which_cov_term_list + perc_diff_list
+probe_toplot = '3x2pt'
+
+
+fm_uncert_df_toplot = fm_uncert_df[
+    (fm_uncert_df['probe'] == probe_toplot) &
+    (fm_uncert_df['whose_FM'] == 'davide') &
+    (fm_uncert_df['which_pk'] == pk_ref) &
+    # (fm_uncert_df['ng_cov_code'] == ng_cov_code_plt) &
+
+    (fm_uncert_df['fix_dz'] == fix_dz_plt) &
+    (fm_uncert_df['fix_shear_bias'] == fix_shear_bias_plt) &
+    (fm_uncert_df['fix_gal_bias'] == fix_gal_bias_plt) &
+    (fm_uncert_df['fix_mag_bias'] == fix_mag_bias_plt) &
+
+    (fm_uncert_df['BNT_transform'] == False) &
+    (fm_uncert_df['ell_cuts'] == False) &
+    (fm_uncert_df['kmax_h_over_Mpc'] == 0.1) &
+    (fm_uncert_df['which_cuts'] == which_cuts_plt) &
+    (fm_uncert_df['center_or_min'] == center_or_min_plt)
+]
+
+# append percent differences to df
+fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
+                                         'GSSC', num_string_columns)
+if 'GSSCcNG' in which_cov_term_list:
+    fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
+                                             'GSSCcNG', num_string_columns)
+
+
+# Initialize the figure and the grid
+fig = plt.figure(figsize=(14, 10))
+gs = gridspec.GridSpec(2, 2, height_ratios=[3, 1], width_ratios=[10, 1], hspace=0, wspace=0)
+
+
+# Axes for the main parameters
+ax_main = fig.add_subplot(gs[0, 0])
+ax_fom = fig.add_subplot(gs[0, 1])
+
+# Axes for the percent differences
+ax_diff = fig.add_subplot(gs[1, 0], sharex=ax_main)
+ax_diff_fom = fig.add_subplot(gs[1, 1], sharey=ax_diff, sharex=ax_fom)
+
+# Remove y-tick labels from ax_diff_fom
+# ax_diff_fom.yaxis.set_visible(True)
+
+# Move the y-axis to the right for ax_fom
+ax_fom.yaxis.tick_right()
+ax_diff_fom.yaxis.tick_right()
+
+# Increase the upper limit by a small margin (adjust as needed)
+xlim_adjusted = (6.7, 7.3)
+
+# Set the adjusted limits for the rightmost subplots
+ax_fom.set_xlim(xlim_adjusted)
+ax_diff_fom.set_xlim(xlim_adjusted)
+
+
+# Define color and hatch mappings
 color_mapping = {}
-for which_cov_term in ['GSSCcNG', 'GSSC', 'perc_diff_GSSCcNG', 'perc_diff_GSSC',]:
-    for ng_cov_code in ['PyCCL', 'OneCovariance', ]:
-        key = f"{which_cov_term}_{ng_cov_code}"
-
-        if 'GSSCcNG' in key:
-            color_mapping[key] = 'tab:blue'
-        else:
-            color_mapping[key] = 'tab:orange'
-
 hatch_mapping = {}
-for which_cov_term in ['GSSCcNG', 'GSSC', 'perc_diff_GSSCcNG', 'perc_diff_GSSC',]:
-    for ng_cov_code in ['PyCCL', 'OneCovariance', ]:
-        key = f"{which_cov_term}_{ng_cov_code}"
+for which_cov_term in which_cov_terms:
+    for cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
+        key = f"{which_cov_term}_{cov_code}{filename_suffix}"
 
-        if 'PyCCL' in key:
+        if 'G_' in key:
+            color_mapping[key] = 'tab:blue'
+        if 'GSSCcNG_' in key:
+            color_mapping[key] = 'tab:purple'
+        if 'GSSC_' in key:
+            color_mapping[key] = 'tab:orange'
+        if 'perc_diff_GSSC' in key:
+            color_mapping[key] = 'tab:green'
+        if 'perc_diff_GSSCcNG' in key:
+            color_mapping[key] = 'tab:red'
+
+        if codes_to_compare[0] in key:
             hatch_mapping[key] = ''
-        else:
+        elif codes_to_compare[1]:
             hatch_mapping[key] = '//'
 
+# Collect all data
+all_data = []
 
-fm_uncert_df_toplot.loc[fm_uncert_df_toplot['ng_cov_code'] == 'OneCovariance', 'hatch'] = '//'
-fm_uncert_df_toplot.loc[fm_uncert_df_toplot['ng_cov_code'] == 'PyCCL', 'hatch'] = ''
-
-
-for i, which_cov_term in enumerate(['perc_diff_GSSCcNG', 'perc_diff_GSSC',]):
-
+for which_cov_term in which_cov_terms:
     df_long = pd.melt(fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] == which_cov_term],
                       id_vars=['probe', 'which_cov_term', 'ng_cov_code', 'filename_suffix', 'whose_FM', 'which_pk', 'BNT_transform', 'ell_cuts',
-                               'which_cuts', 'center_or_min', 'fix_dz', 'fix_shear_bias', 'fix_gal_bias', 'fix_mag_bias', 'foc', 'kmax_h_over_Mpc', 'hatch'],
+                               'which_cuts', 'center_or_min', 'fix_dz', 'fix_shear_bias', 'fix_gal_bias', 'fix_mag_bias', 'foc', 'kmax_h_over_Mpc'],
                       value_vars=['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8', 'FoM'],
                       var_name='Parameter',
                       value_name='Value')
 
     df_long['Condition'] = df_long.apply(
-        lambda row: f"{row['which_cov_term']}_{row['ng_cov_code']}", axis=1
+        lambda row: f"{row['which_cov_term']}_{row['ng_cov_code']}{row['filename_suffix']}", axis=1
     )
 
-    # # use categorical data type for 'Condition' with custom order
-    # df_long['Condition'] = pd.Categorical(df_long['ng_cov_code'], categories=custom_order, ordered=True)
+    all_data.append(df_long)
 
-    # # sort the DataFrame by 'Condition'
-    df_long_sorted = df_long.sort_values('Condition')
+# Combine all data
+all_data_combined = pd.concat(all_data)
 
-    # Create the barplot
-    barplot = sns.barplot(x='Parameter', y='Value', hue='Condition',
-                          data=df_long, dodge=True, order=custom_parameter_order,
-                          width=0.3, palette=color_mapping, edgecolor='black')
+# Plotting with matplotlib
+bar_width = 0.4
+n_parameters = len(custom_parameter_order)
+index = np.arange(n_parameters)
 
-# Add a grid to the background
-ax.yaxis.grid(True)  # Only horizontal gridlines
-ax.set_axisbelow(True)  # Ensure gridlines are behind the bars
+# Unique filename_suffix for plotting
+all_data_combined['combined_suffix'] = all_data_combined['ng_cov_code'] + all_data_combined['filename_suffix']
 
-barplot.set_xticklabels(custom_parameter_order_tex)
-barplot.set_ylabel('relative uncertainty [%]')
-barplot.set_xlabel('')
+# Unique combined_suffix for plotting
+unique_filename_suffix = all_data_combined['combined_suffix'].unique()
 
 
-assert False, 'stop here'
+# Offset to ensure bars are tightly packed
+bar_width_norm = 2* len(unique_filename_suffix)
+offset = np.linspace(-bar_width / bar_width_norm, bar_width / bar_width_norm, len(unique_filename_suffix))
 
-# Plotting with seaborn
-sns.set(style="whitegrid")
+# Plot each filename_suffix group
+for i, filename_suffix in enumerate(unique_filename_suffix):
+    subset = all_data_combined[all_data_combined['combined_suffix'] == filename_suffix]
+    for j, which_cov_term in enumerate(which_cov_term_list[::-1]):
+        data = subset[subset['which_cov_term'] == which_cov_term]
+        condition = f"{which_cov_term}_{filename_suffix}"
 
-# Create the barplot
-plt.figure(figsize=(12, 7))
-barplot = sns.barplot(x='Parameter', y='Value', hue='which_cov_term', data=df_long, dodge=False)
+        for k, param in enumerate(custom_parameter_order):
+            data_param = data[data['Parameter'] == param]
+            bars = ax_main.bar(index[k] + offset[i], data_param['Value'], bar_width / len(unique_filename_suffix),
+                               label=condition, edgecolor='k', hatch=hatch_mapping[condition],
+                               facecolor=color_mapping[condition])
 
-# Post-process the bars to superimpose them by adjusting the widths and positions
-# Seaborn does not support superimposing directly, so we have to adjust the patches (bars) manually
-for bar in barplot.patches:
-    # The current width of the bar
-    current_width = bar.get_width()
-    # Divide by 2 to get half width
-    half_width = current_width / 2
-    # Set new width
-    bar.set_width(half_width)
-    # Move the bar to the left by half its width
-    bar.set_x(bar.get_x() + half_width / 2)
+    for j, which_cov_term in enumerate(which_cov_term_list):
+        data = subset[subset['which_cov_term'] == which_cov_term]
+        condition = f"{which_cov_term}_{filename_suffix}"
+        data_fom = data[data['Parameter'] == 'FoM']
+        bars_fom = ax_fom.bar(7 + offset[i], data_fom['Value'], bar_width / len(unique_filename_suffix),
+                              label=condition, edgecolor='k', hatch=hatch_mapping[condition],
+                              facecolor=color_mapping[condition])
 
-plt.title("3x2pt, GcNG, PyCCL")
-plt.ylabel("relative uncertainty [%]")
-plt.legend(title="Condition")
+    # plot percent diff in bottom plot
+    data = subset[subset['which_cov_term'] == 'perc_diff_GSSC']
+
+    for k, param in enumerate(custom_parameter_order):
+        for j, which_cov_term in enumerate(perc_diff_list[::-1]):
+            condition = f"{which_cov_term}_{filename_suffix}"
+            data = subset[subset['which_cov_term'] == which_cov_term]
+            data_param = data[data['Parameter'] == param]
+            bars_diff = ax_diff.bar(index[k] + offset[i], data_param['Value'], bar_width / len(unique_filename_suffix),
+                                    label=condition, edgecolor='k', hatch=hatch_mapping[condition],
+                                    facecolor=color_mapping[condition])
+
+    for j, which_cov_term in enumerate(perc_diff_list[::-1]):
+        # Plot FoM percent differences
+        data = subset[subset['which_cov_term'] == which_cov_term]
+        data_fom_diff = data[data['Parameter'] == 'FoM']
+        condition = f"{which_cov_term}_{filename_suffix}"
+        bars_diff_fom = ax_diff_fom.bar(7 + offset[i], data_fom_diff['Value'], bar_width / len(unique_filename_suffix),
+                                        label=condition, edgecolor='k', hatch=hatch_mapping[condition],
+                                        facecolor=color_mapping[condition])
+
+
+# Add grid
+ax_main.yaxis.grid(True)  # Only horizontal gridlines
+ax_fom.yaxis.grid(True)
+ax_main.set_axisbelow(True)  # Ensure gridlines are behind the bars
+ax_fom.set_axisbelow(True)
+ax_diff.yaxis.grid(True)
+ax_diff.set_axisbelow(True)
+ax_diff_fom.yaxis.grid(True)
+ax_diff_fom.set_axisbelow(True)
+
+# Customize x-ticks and labels
+ax_main.set_xticks(index)
+ax_main.set_xticklabels(custom_parameter_order_tex)
+ax_main.set_ylabel('relative uncertainty [%]')
+ax_main.set_xlabel('')
+
+ax_diff.set_xticks(index)
+ax_diff.set_xticklabels(custom_parameter_order_tex)
+ax_diff.set_ylabel('% diff')
+ax_diff.set_xlabel('')
+
+# Set the ticks and labels for FoM plots
+ax_fom.set_xticks([7])  # Single tick at 0
+ax_fom.set_xticklabels(['FoM'])  # Label it as FoM
+ax_diff_fom.set_xticks([7])  # Single tick at 0
+ax_diff_fom.set_xticklabels(['FoM'])  # Label it as FoM
+
+# # Create custom legend
+handles = []
+# for which_cov_term in ['G', 'GSSC', 'perc_diff_GSSC']:
+#     for filename_suffix in unique_filename_suffix:
+#         condition = f"{which_cov_term}{filename_suffix}"
+#         patch = mpatches.Patch(facecolor=color_mapping[condition], edgecolor='k',
+#                                hatch=hatch_mapping[condition], label=condition)
+#         handles.append(patch)
+
+# ax_main.legend(handles=handles)
+
+# this is not elegant at all
+if 'cNG' in which_cov_terms:
+    colors = ('tab:blue', 'tab:orange', 'tab:purple', 'tab:green', 'tab:red')
+    labels = ['G', 'GSSC', 'GSSCcNG', 'GSSC/G -1 [%]', 'GSSCcNG/G -1 [%]']
+else:
+    colors = ('tab:blue', 'tab:orange', 'tab:green')
+    labels = ['G', 'GSSC', 'GSSC/G -1 [%]']
+    
+# Add handles for color legend
+for color, label in zip(colors, labels):
+    patch = mpatches.Patch(facecolor=color, edgecolor='k', label=label)
+    handles.append(patch)
+
+# Add handles for hatch legend
+for hatch, label in zip(('', '//'), codes_to_compare):
+    patch = mpatches.Patch(facecolor='white', edgecolor='k', hatch=hatch, label=label)
+    handles.append(patch)
+
+ax_main.legend(handles=handles)
+ax_main.set_title('%s $\ell_{max} = 3000$' % probe_toplot)
+
 plt.show()
 
 assert False, 'stop here'
+
 # mm.plot_correlation_matrix(correlation_dict['HMCode2020'] / correlation_dict['TakaBird'], cosmo_params_tex,
 #    title='HMCodeBar/TakaBird')
 if save_plots:
@@ -857,6 +978,59 @@ plt.show()
 # plt.xlabel(f'{kmax_tex} [{h_over_mpc_tex}]')
 # plt.ylabel('3$\\times$2pt FoM')
 # plt.legend()
+
+
+
+
+# ! =================================== sns bar plot ============================
+
+# color_mapping = {}
+# hatch_mapping = {}
+# for which_cov_term in ['G', 'GSSC', 'perc_diff_GSSC',]:
+#     for filename_suffix in ['clsVincenzo_Francis_may24', 'clsVincenzo_Francis', ]:
+#         key = f"{which_cov_term}_{filename_suffix}"
+
+#         if 'GSSC' in key:
+#             color_mapping[key] = 'tab:orange'
+#         if 'perc_diff' in key:
+#             color_mapping[key] = 'tab:green'
+#         if 'G_' in key:
+#             color_mapping[key] = 'tab:blue'
+
+
+#         if 'clsVincenzo_Francis_may24' in key:
+#             hatch_mapping[key] = ''
+#         else:
+#             hatch_mapping[key] = '//'
+
+
+# for i, which_cov_term in enumerate(['perc_diff_GSSC', 'GSSC', 'G']):
+
+#     df_long = pd.melt(fm_uncert_df_toplot[fm_uncert_df_toplot['which_cov_term'] == which_cov_term],
+#                       id_vars=['probe', 'which_cov_term', 'ng_cov_code', 'filename_suffix', 'whose_FM', 'which_pk',
+#                                'BNT_transform', 'ell_cuts', 'which_cuts', 'center_or_min',
+#                                'fix_dz', 'fix_shear_bias', 'fix_gal_bias', 'fix_mag_bias', 'foc',
+#                                'kmax_h_over_Mpc', 'hatch'],
+#                       value_vars=['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8', 'FoM'],
+#                       var_name='Parameter',
+#                       value_name='Value')
+
+#     df_long['Condition'] = df_long.apply(
+#         lambda row: f"{row['which_cov_term']}{row['filename_suffix']}", axis=1
+#     )
+
+#     # Create the barplot
+#     barplot = sns.barplot(x='Parameter', y='Value', hue='Condition',
+#                           data=df_long, dodge=True, order=custom_parameter_order,
+#                           width=0.4, palette=color_mapping, edgecolor='k')
+
+# # Add a grid to the background
+# ax.yaxis.grid(True)  # Only horizontal gridlines
+# ax.set_axisbelow(True)  # Ensure gridlines are behind the bars
+
+# barplot.set_xticklabels(custom_parameter_order_tex)
+# barplot.set_ylabel('relative uncertainty [%]')
+# barplot.set_xlabel('')
 
 
 print('done')

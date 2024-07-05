@@ -81,7 +81,7 @@ general_cfg:
     ell_max_WL: 5000
     ell_max_GC: 5000
     ell_max_3x2pt: 5000
-    zbins: 3
+    zbins: 6
     EP_or_ED: EP # equipopulated or equidistant bins
     n_probes: 2
     use_WA: False
@@ -130,6 +130,7 @@ general_cfg:
     zmin_nz_lens: 02 # = 0.2
     zmin_nz_source: 02 # = 0.2
     zmax_nz: 25 # = 2.5
+    signal_to_noise: 5
     idIA: 2
     idB: 3
     idM: 3
@@ -165,11 +166,13 @@ covariance_cfg:
     sigma_eps_i: 0.26 # ellipticity dispersion *per component*; sigma_eps: (0.26 * np.sqrt(2))
     which_shape_noise: per_component # ISTF or per_component
 
-    nofz_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid"
-    nofz_filename: nzTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
+    nz_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/DR1/NzTab"
+    nz_sources_filename: nzSources-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-SN{signal_to_noise:02d}.dat
+    nz_lenses_filename: nzLenses-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-SN{signal_to_noise:02d}.dat
     
-    nuisance_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzPar"
-    nuisance_filename: ngbsTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
+    nuisance_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/DR1/NzPar"
+    nuisance_sources_filename: ngbsSources-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-IE{magcut_lens:d}.dat
+    nuisance_lenses_filename: ngbsLenses-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-IE{magcut_lens:d}.dat
 
     # zbin_centers:
     #     [ 0.27575, 0.37635, 0.44634, 0.54284, 0.62145, 0.70957, 0.7986, 0.86687, 0.97753, 1.09136, 1.24264, 1.47918, 1.89264]

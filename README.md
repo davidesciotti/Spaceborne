@@ -11,15 +11,27 @@ Create a `conda` environment with
 ```bash
 conda create python=3.12 -n spaceborne
 ```
-Then activate it with 
+Then activate it with
 ```bash
 conda activate spaceborne
 ```
-Once having activated the environment, install the dependencies with 
+Once having activated the environment, install the dependencies with
 ```bash
 poetry install
 ```
 which may take some time.
+
+Spaceborne takes advantage of `julia` to perform some computationally heavy calculations. In order to install `julia`, the recommended way is to use [`juliaup`](https://github.com/JuliaLang/juliaup)
+
+```bash
+curl -fsSL https://install.julialang.org | sh #install juliaup
+juliaup default 1.10 #install
+julia -e 'using Pkg; Pkg.add("LoopVectorization"); Pkg.add("YAML"); Pkg.add("NPZ")'
+#install the necessary packages
+```
+
+
+
 
 
 ## Alternative install:
@@ -28,7 +40,7 @@ conda env create -f environment.yml
 conda activate spaceborne
 ```
 
-Run code with 
+Run code with
 
 ```bash
  conda activate spaceborne

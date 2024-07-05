@@ -101,9 +101,9 @@ class PycclClass():
             cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
             cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
             pyccl_cfg['z_grid_tkka_steps_SSC'])
-        
+
         self.z_grid_tkka_SSC = cosmo_lib.a_to_z(self.a_grid_tkka_SSC)[::-1]
-        
+
         logn_k_grid_tkka_SSC = np.log(np.geomspace(pyccl_cfg['k_grid_tkka_min'],
                                                    pyccl_cfg['k_grid_tkka_max'],
                                                    pyccl_cfg['k_grid_tkka_steps_SSC']))
@@ -238,7 +238,6 @@ class PycclClass():
                                                                                             p_of_k_a=p_of_k_a,
                                                                                             **additional_args)
 
-
         print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
 
         return
@@ -327,42 +326,49 @@ class PycclClass():
 
         return cov_ng_3x2pt_dict_8D
 
-    def set_nz(self, n_of_z_load):
-        self.zgrid_nz = n_of_z_load[:, 0]
-        self.n_of_z = n_of_z_load[:, 1:]
-        self.nz_tuple = (self.zgrid_nz, self.n_of_z)
+    def set_nz(self, nz_full_src, nz_full_lns):
+
+        # unpack the array
+        self.zgrid_nz_src = nz_full_src[:, 0]
+        self.zgrid_nz_lns = nz_full_lns[:, 0]
+        self.nz_src = nz_full_src[:, 1:]
+        self.nz_lns = nz_full_lns[:, 1:]
+
+        # define tuple
+        self.nz_src_tuple = (self.zgrid_nz_src, self.nz_src)
+        self.nz_lns_tuple = (self.zgrid_nz_lns, self.nz_lns)
 
     def check_nz_tuple(self, zbins):
-        assert isinstance(self.nz_tuple, tuple), 'nz_tuple must be a tuple'
-        assert self.nz_tuple[1].shape == (len(self.zgrid_nz), zbins), \
+
+        assert isinstance(self.nz_src_tuple, tuple), 'nz_src_tuple must be a tuple'
+        assert isinstance(self.nz_lns_tuple, tuple), 'nz_lns_tuple must be a tuple'
+
+        assert self.nz_src_tuple[1].shape == (len(self.zgrid_nz_src), zbins), \
+            'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
+        assert self.nz_lns_tuple[1].shape == (len(self.zgrid_nz_lns), zbins), \
             'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
 
-    def set_ia_bias_tuple(self, z_grid):
+    def set_ia_bias_tuple(self, z_grid_src):
 
-        ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(z_grid, cosmo_ccl=self.cosmo_ccl,
+        ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(z_grid_src, cosmo_ccl=self.cosmo_ccl,
                                                     flat_fid_pars_dict=self.flat_fid_pars_dict,
                                                     input_z_grid_lumin_ratio=None,
                                                     input_lumin_ratio=None, output_F_IA_of_z=False)
-        self.ia_bias_tuple = (z_grid, ia_bias_1d)
+        self.ia_bias_tuple = (z_grid_src, ia_bias_1d)
 
-    def set_gal_bias_tuple_spv3(self, z_grid, magcut_lens, poly_fit_values):
-
+    def get_gal_bias_tuple_spv3(self, z_grid_lns, magcut_lens, poly_fit_values):
         gal_bias_func = self.gal_bias_func_dict['fs2_fit']
-        gal_bias_1d = gal_bias_func(z_grid, magcut_lens=magcut_lens / 10, poly_fit_values=poly_fit_values)
-
-        # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
-        self.gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
-        self.gal_bias_tuple = (z_grid, self.gal_bias_2d)
-        
-    def get_gal_bias_tuple_spv3(self, z_grid, magcut_lens, poly_fit_values):
-
-        gal_bias_func = self.gal_bias_func_dict['fs2_fit']
-        gal_bias_1d = gal_bias_func(z_grid, magcut_lens=magcut_lens / 10, poly_fit_values=poly_fit_values)
+        gal_bias_1d = gal_bias_func(z_grid_lns, magcut_lens=magcut_lens / 10, poly_fit_values=poly_fit_values)
 
         # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
         gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
-        gal_bias_tuple = (z_grid, gal_bias_2d)
+        gal_bias_tuple = (z_grid_lns, gal_bias_2d)
+
         return gal_bias_tuple
+
+    def set_gal_bias_tuple_spv3(self, z_grid_lns, magcut_lens, poly_fit_values):
+        self.gal_bias_tuple = self.get_gal_bias_tuple_spv3(z_grid_lns, magcut_lens, poly_fit_values)
+        self.gal_bias_2d = self.gal_bias_tuple[1]
 
     def set_gal_bias_tuple_istf(self, z_grid, bias_function_str, bias_model):
         gal_bias_func = self.gal_bias_func_dict[bias_function_str]
@@ -395,8 +401,8 @@ class PycclClass():
     def set_kernel_obj(self, has_rsd, n_samples_wf):
 
         self.wf_lensing_obj = [ccl.tracers.WeakLensingTracer(cosmo=self.cosmo_ccl,
-                                                             dndz=(self.nz_tuple[0],
-                                                                   self.nz_tuple[1][:, zbin_idx]),
+                                                             dndz=(self.nz_src_tuple[0],
+                                                                   self.nz_src_tuple[1][:, zbin_idx]),
                                                              ia_bias=self.ia_bias_tuple,
                                                              use_A_ia=False,
                                                              n_samples=n_samples_wf) for zbin_idx in range(self.zbins)]
@@ -411,8 +417,8 @@ class PycclClass():
 
             self.wf_galaxy_obj.append(ccl.tracers.NumberCountsTracer(cosmo=self.cosmo_ccl,
                                                                      has_rsd=has_rsd,
-                                                                     dndz=(self.nz_tuple[0],
-                                                                           self.nz_tuple[1][:, zbin_idx]),
+                                                                     dndz=(self.nz_src_tuple[0],
+                                                                           self.nz_src_tuple[1][:, zbin_idx]),
                                                                      bias=(self.gal_bias_tuple[0],
                                                                            self.gal_bias_tuple[1][:, zbin_idx]),
                                                                      mag_bias=mag_bias_arg,
@@ -506,7 +512,8 @@ class PycclClass():
 
             # ! I spoke to Fabien and this is indeed an oversimplification
             sigma2_B = np.array([sigma2_SSC.sigma2_func(zi, zi, k_grid_tkka, self.cosmo_ccl, 'mask', ell_mask=ell_mask, cl_mask=cl_mask)
-                                for zi in tqdm(self.z_grid_sigma2_b)])  # if you pass the mask, you don't need to divide by fsky
+                                # if you pass the mask, you don't need to divide by fsky
+                                 for zi in tqdm(self.z_grid_sigma2_b)])
             self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_B[::-1])
 
         elif pyccl_cfg['which_sigma2_B'] == None:
@@ -582,7 +589,8 @@ class PycclClass():
             self.p_of_k_a = 'delta_matter:delta_matter'
 
         # save gal bias for Robert - not needed at the moment
-        gal_bias_table_ascii_name = f'{covariance_cfg["nofz_folder"]}/gal_bias_table_{general_cfg["which_forecast"]}.ascii'
+        gal_bias_table_ascii_name = f'{covariance_cfg["nofz_folder"]
+                                       }/gal_bias_table_{general_cfg["which_forecast"]}.ascii'
         self.save_gal_bias_table_ascii(filename=gal_bias_table_ascii_name)
 
         # set mag bias
@@ -590,7 +598,7 @@ class PycclClass():
 
         # set kernel arrays and objects
         self.set_kernel_obj(general_cfg['has_rsd'], covariance_cfg['PyCCL_cfg']['n_samples_wf'])
-        self.set_kernel_arr(z_grid_wf=self.zgrid_nz, has_magnification_bias=general_cfg['has_magnification_bias'])
+        self.set_kernel_arr(z_grid_wf=self.zgrid_nz_src, has_magnification_bias=general_cfg['has_magnification_bias'])
 
         # in the case of ISTF, the galaxt bias is bin-per-bin and is therefore included in the kernels. Add it here
         # for a fair comparison with vincenzo's kernels, in the plot.
@@ -622,9 +630,9 @@ class PycclClass():
         colors = cm.rainbow(np.linspace(0, 1, zbins))
         fig, ax = plt.subplots(1, 2, figsize=(16, 6), constrained_layout=True)
         for zi in range(zbins):
-            ax[0].plot(self.zgrid_nz, self.wf_lensing_arr[:, zi], ls="-", c=colors[zi], alpha=0.6,
+            ax[0].plot(self.zgrid_nz_src, self.wf_lensing_arr[:, zi], ls="-", c=colors[zi], alpha=0.6,
                        label='lensing ccl' if zi == 0 else None)
-            ax[1].plot(self.zgrid_nz, wf_galaxy_arr[:, zi], ls="-", c=colors[zi], alpha=0.6,
+            ax[1].plot(self.zgrid_nz_src, wf_galaxy_arr[:, zi], ls="-", c=colors[zi], alpha=0.6,
                        label='galaxy ccl' if zi == 0 else None)
             ax[0].plot(z_grid_wf_import, wf_lensing_import[:, zi], ls="--", c=colors[zi], alpha=0.6,
                        label='lensing vinc' if zi == 0 else None)
@@ -768,7 +776,8 @@ class PycclClass():
                                        5000)
 
             sigma2_B = np.array([sigma2_SSC.sigma2_func(zi, zi, k_grid_tkka, cosmo_ccl, 'mask', ell_mask=ell_mask, cl_mask=cl_mask)
-                                for zi in tqdm(z_grid_sigma2_B)])  # if you pass the mask, you don't need to divide by fsky
+                                # if you pass the mask, you don't need to divide by fsky
+                                 for zi in tqdm(z_grid_sigma2_B)])
             sigma2_B_tuple = (a_grid_sigma2_B, sigma2_B[::-1])
 
         elif pyccl_cfg['which_sigma2_B'] == None:

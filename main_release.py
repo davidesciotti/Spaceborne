@@ -109,11 +109,29 @@ def call_onecovariance(path_to_oc_executable, path_to_config_oc_ini):
     # os.system("conda activate spaceborne-dav")
 
 
-# * ====================================================================================================================
-# * ====================================================================================================================
-# * ====================================================================================================================
+def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns):
+    fig, ax = plt.subplots(2, 1, sharex=True)
+    colors = cm.rainbow(np.linspace(0, 1, zbins))
+    for zi in range(zbins):
+        ax[0].plot(zgrid_nz_src, nz_src[:, zi], c=colors[zi], label=r'$z_{%d}$' % (zi + 1))
+        ax[0].axvline(zbin_centers_src[zi], c=colors[zi], ls='--', alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
+        ax[0].fill_between(zgrid_nz_src, nz_src[:, zi], color=colors[zi], alpha=0.2)
+        ax[0].set_xlabel('$z$')
+        ax[0].set_ylabel(r'$n_i(z) \; {\rm sources}$')
+    ax[0].legend(ncol=2)
+
+    for zi in range(zbins):
+        ax[1].plot(zgrid_nz_lns, nz_lns[:, zi], c=colors[zi], label=r'$z_{%d}$' % (zi + 1))
+        ax[1].axvline(zbin_centers_lns[zi], c=colors[zi], ls='--', alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
+        ax[1].fill_between(zgrid_nz_lns, nz_lns[:, zi], color=colors[zi], alpha=0.2)
+        ax[1].set_xlabel('$z$')
+        ax[1].set_ylabel(r'$n_i(z) \; {\rm lenses}$')
+    ax[1].legend(ncol=2)
 
 
+# * ====================================================================================================================
+# * ====================================================================================================================
+# * ====================================================================================================================
 with open('config_release.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
 
@@ -151,9 +169,12 @@ dzGC_fiducial = nuisance_tab_lns[:, 4]
 mag_bias_values = nuisance_tab_src[:, 3]
 gal_bias_values = nuisance_tab_lns[:, 2]
 
-# ! get the fit coefficients for the galaxy and magnification bias, which are also the (fiducials) FM parameters 
+# ! get the fit coefficients for the galaxy and magnification bias, which are also the (fiducials) FM parameters
+
+
 def fit_gal_mag_bias(z, b0_gal, b1_gal, b2_gal, b3_gal):
     return b0_gal + (b1_gal * z) + (b2_gal * z ** 2) + (b3_gal * z ** 3)
+
 
 from scipy.optimize import curve_fit
 gal_bias_fit_coeff, _ = curve_fit(fit_gal_mag_bias, zbin_centers_lns, gal_bias_values)
@@ -204,10 +225,10 @@ for i, key in enumerate(keys):
 
         for zi, dz in enumerate(dzGC_fiducial, start=1):
             new_fm_ordered_params[f'dzGC{zi:02d}'] = dz
-            
+
         for zi, gal_bias in enumerate(gal_bias_fit_coeff, start=1):
             new_fm_ordered_params[f'bG{zi:02d}'] = gal_bias
-            
+
         for zi, mag_bias in enumerate(mag_bias_fit_coeff, start=1):
             new_fm_ordered_params[f'bM{zi:02d}'] = mag_bias
 
@@ -274,6 +295,10 @@ gal_bias_fit_fiducials = np.array([cfg['cosmology']['FM_ordered_params'][f'bG{zi
 mag_bias_fit_fiducials = np.array([cfg['cosmology']['FM_ordered_params'][f'bM{zi:02d}'] for zi in range(1, 5)])
 dzWL_fiducial = np.array([cfg['cosmology']['FM_ordered_params'][f'dzWL{zi:02d}'] for zi in range(1, zbins + 1)])
 dzGC_fiducial = np.array([cfg['cosmology']['FM_ordered_params'][f'dzGC{zi:02d}'] for zi in range(1, zbins + 1)])
+
+# the two names are just to highlight different aspects; the fit coefficients are the parameters' fiducial values
+np.testing.assert_array_equal(gal_bias_fit_fiducials, gal_bias_fit_coeff)
+np.testing.assert_array_equal(mag_bias_fit_fiducials, mag_bias_fit_coeff)
 
 which_ng_cov_suffix = 'G' + ''.join(covariance_cfg[covariance_cfg['ng_cov_code'] + '_cfg']['which_ng_cov'])
 fid_pars_dict = cfg['cosmology']
@@ -451,24 +476,7 @@ nz_lns = nz_lns_full[:, 1:]
 nz_unshifted_src = nz_src  # it may be subjected to a shift
 nz_unshifted_lns = nz_lns  # it may be subjected to a shift
 
-fig, ax = plt.subplots(2, 1, sharex=True)
-colors = cm.rainbow(np.linspace(0, 1, zbins))
-for zi in range(zbins):
-    ax[0].plot(zgrid_nz_src, nz_src[:, zi], c=colors[zi], label=r'$z_{%d}$' % (zi + 1))
-    ax[0].axvline(zbin_centers_src[zi], c=colors[zi], ls='--', alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
-    ax[0].fill_between(zgrid_nz_src, nz_src[:, zi], color=colors[zi], alpha=0.2)
-    ax[0].set_xlabel('$z$')
-    ax[0].set_ylabel(r'$n_i(z) \; {\rm sources}$')
-ax[0].legend(ncol=2)
-
-for zi in range(zbins):
-    ax[1].plot(zgrid_nz_lns, nz_lns[:, zi], c=colors[zi], label=r'$z_{%d}$' % (zi + 1))
-    ax[1].axvline(zbin_centers_lns[zi], c=colors[zi], ls='--', alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
-    ax[1].fill_between(zgrid_nz_lns, nz_lns[:, zi], color=colors[zi], alpha=0.2)
-    ax[1].set_xlabel('$z$')
-    ax[1].set_ylabel(r'$n_i(z) \; {\rm lenses}$')
-ax[1].legend(ncol=2)
-
+plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns)
 
 # ! START SCALE CUTS: for these, we need to:
 # 1. Compute the BNT. This is done with the raw, or unshifted n(z), but only for the purpose of computing the
@@ -497,7 +505,7 @@ if nz_gaussian_smoothing:
 if compute_bnt_with_shifted_nz_for_zcuts:
     nz_src = wf_cl_lib.shift_nz(zgrid_nz_src, nz_unshifted_src, dzWL_fiducial, normalize=normalize_shifted_nz,
                                 plot_nz=False, interpolation_kind=shift_nz_interpolation_kind)
-    nz_lns = wf_cl_lib.shift_nz(zgrid_nz_lns, nz_unshifted_lns, dzWL_fiducial, normalize=normalize_shifted_nz,
+    nz_lns = wf_cl_lib.shift_nz(zgrid_nz_lns, nz_unshifted_lns, dzGC_fiducial, normalize=normalize_shifted_nz,
                                 plot_nz=False, interpolation_kind=shift_nz_interpolation_kind)
 
 bnt_matrix = covmat_utils.compute_BNT_matrix(
@@ -505,28 +513,16 @@ bnt_matrix = covmat_utils.compute_BNT_matrix(
 
 # 2. compute the kernels for the un-shifted n(z) (for consistency)
 ccl_obj.zbins = zbins
-ccl_obj.set_nz(nz_full_src=np.hstack((zgrid_nz_src[:, None], nz_src)), 
+ccl_obj.set_nz(nz_full_src=np.hstack((zgrid_nz_src[:, None], nz_src)),
                nz_full_lns=np.hstack((zgrid_nz_lns[:, None], nz_lns)))
 ccl_obj.check_nz_tuple(zbins)
 ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid_ssc_integrands)
-
-
-
-
-
-
-
-
-
-
-assert False, 'stop here for new fal bias fit'
-
 
 # set galaxy bias
 if general_cfg['which_forecast'] == 'SPV3':
     ccl_obj.set_gal_bias_tuple_spv3(z_grid_lns=z_grid_ssc_integrands,
                                     magcut_lens=magcut_lens,
-                                    poly_fit_values=None)
+                                    poly_fit_values=gal_bias_fit_coeff)
 
 elif general_cfg['which_forecast'] == 'ISTF':
     bias_func_str = general_cfg['bias_function']
@@ -539,7 +535,7 @@ elif general_cfg['which_forecast'] == 'ISTF':
 ccl_obj.set_mag_bias_tuple(z_grid_lns=z_grid_ssc_integrands,
                            has_magnification_bias=general_cfg['has_magnification_bias'],
                            magcut_lens=magcut_lens / 10,
-                           poly_fit_values=None)
+                           poly_fit_values=mag_bias_fit_coeff)
 
 # set pk
 # this is a test to use the actual P(k) from the input files, but the agreement gets much worse
@@ -618,20 +614,26 @@ ell_cuts_dict['LG'] = ell_utils.load_ell_cuts(
 ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the covariance module
 # ! END SCALE CUTS
 
-assert False, 'stop here'
 
 # now compute the BNT used for the rest of the code
 if shift_nz:
-    nz_src = wf_cl_lib.shift_nz(zgrid_nz_src, nz_unshifted_src, dzWL_fiducial, normalize=normalize_shifted_nz, plot_nz=False,
-                                interpolation_kind=shift_nz_interpolation_kind)
-    nz_tuple = (zgrid_nz_src, nz_src)
+    nz_src = wf_cl_lib.shift_nz(zgrid_nz_src, nz_unshifted_src, dzWL_fiducial, normalize=normalize_shifted_nz,
+                                plot_nz=False, interpolation_kind=shift_nz_interpolation_kind)
+    nz_lns = wf_cl_lib.shift_nz(zgrid_nz_lns, nz_unshifted_lns, dzGC_fiducial, normalize=normalize_shifted_nz,
+                                plot_nz=False, interpolation_kind=shift_nz_interpolation_kind)
     # * this is important: the BNT matrix I use for the rest of the code (so not to compute the ell cuts) is instead
     # * consistent with the shifted n(z) used to compute the kernels
     bnt_matrix = covmat_utils.compute_BNT_matrix(
         zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
+    
+
+plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns)
+
+assert False, 'should the zbin centers be shifted as well???'
 
 # re-set n(z) used in CCL class, then re-compute kernels
-ccl_obj.set_nz(np.hstack((zgrid_nz_src[:, None], nz_src)))
+ccl_obj.set_nz(nz_full_src=np.hstack((zgrid_nz_src[:, None], nz_src)),
+               nz_full_lns=np.hstack((zgrid_nz_lns[:, None], nz_lns)))
 ccl_obj.set_kernel_obj(general_cfg['has_rsd'], covariance_cfg['PyCCL_cfg']['n_samples_wf'])
 ccl_obj.set_kernel_arr(z_grid_wf=z_grid_ssc_integrands,
                        has_magnification_bias=general_cfg['has_magnification_bias'])

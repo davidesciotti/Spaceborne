@@ -106,7 +106,7 @@ general_cfg:
         [ 0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.]
     use_h_units: False
 
-    BNT_transform: False # ! to be deprecated?
+    BNT_transform: True # ! to be deprecated?
     cl_BNT_transform: False
 
     # vincenzo's inputs path
@@ -115,7 +115,7 @@ general_cfg:
     wf_folder: '{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputSSC/Windows'
     wf_filename: 'wi{probe:s}-{ep_or_ed:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{specs:s}.dat'
     specs: 'idIA{idIA:d}-idB{idBM:01d}-idM{idM:d}-idR{idR:d}'
-    check_wf_against_vincenzo: True
+    check_wf_against_vincenzo: False
 
     CLOE_benchmarks_path: '{ROOT:s}/CLOE_benchmarks'
 
@@ -159,8 +159,8 @@ covariance_cfg:
 
     # fsky: 0.3563380664078408
     # survey_area_deg2: 14700
-    fsky: 0.3210678603147902
-    survey_area_deg2: 13245
+    fsky: 0.06060171013869199
+    survey_area_deg2: 2500
 
     sigma_eps_i: 0.26 # ellipticity dispersion *per component*; sigma_eps: (0.26 * np.sqrt(2))
     which_shape_noise: per_component # ISTF or per_component
@@ -192,7 +192,7 @@ covariance_cfg:
 
     plot_nz_tocheck: True
 
-    cov_BNT_transform: False
+    cov_BNT_transform: True
     cov_ell_cuts: False
 
     compute_covmat: True
@@ -222,9 +222,9 @@ covariance_cfg:
     # TODO change name to cov_path
     cov_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Sesto"
     cov_filename:
-        covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_pk{which_pk:s}_{ndim:d}D{cov_suffix:s}{fm_and_cov_suffix:s}.npz
+        covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_zedMin{zmin_nz_lens:02d}_zedMax{zmax_nz:02d}_NBS{zbins:02d}_NBL{zbins:02d}_IE{magcut_lens:03d}_BNT{bnt_transform:s}_pk{which_pk:s}_{ndim:d}D{cov_suffix:s}{fm_and_cov_suffix:s}.npz
     
-    ng_cov_code: OneCovariance # ! PySSC or PyCCL or Spaceborne or OneCovariance
+    ng_cov_code: Spaceborne # ! PySSC or PyCCL or Spaceborne or OneCovariance
 
     PyCCL_cfg:
         probe: 3x2pt
@@ -289,7 +289,7 @@ covariance_cfg:
         k_steps_sigma2: 20_000 # TODO can I lower this? double bessel integral...
         z_min_ssc_integrands: 0.02  # SU responses' kmax allow for z_min = 0.016, at most.
         z_max_ssc_integrands: 3.
-        z_steps_ssc_integrands: 512 # this should be high because I have to trace the spikes in sigma2
+        z_steps_ssc_integrands: 1000 # this should be high because I have to trace the spikes in sigma2
 
         load_precomputed_sigma2: True
         sigma2_b_filename: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}.npy"
@@ -324,7 +324,7 @@ FM_cfg:
     derivatives_filename: dDVd{param_name:s}-{probe:s}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{EP_or_ED:s}{zbins:02d}.dat
     derivatives_prefix: dDVd
 
-    derivatives_BNT_transform: False
+    derivatives_BNT_transform: True
     deriv_ell_cuts: False
 
     fm_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}"

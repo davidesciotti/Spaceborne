@@ -88,29 +88,9 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
     return cov_ssc_3x2pt_dict_8D
 
 
-def call_onecovariance(path_to_oc_executable, path_to_config_oc_ini):
-    """Kernel to compute the 4D integral optimized using Simpson's rule using Julia."""
-
-    import subprocess
-
-    activate_and_run = f"""
-    source /home/cosmo/davide.sciotti/software/anaconda3/bin/activate cov20_env
-    python {path_to_oc_executable} {path_to_config_oc_ini}
-    source /home/cosmo/davide.sciotti/software/anaconda3/bin/deactivate
-    source /home/cosmo/davide.sciotti/software/anaconda3/bin/activate spaceborne-dav
-    python {path_to_oc_executable.replace('covariance.py', 'reshape_cov_list_Cl_callable.py')} {path_to_config_oc_ini.replace('input_configs.ini', '')}
-    """
-
-    process = subprocess.Popen(activate_and_run, shell=True, executable='/bin/bash')
-    process.communicate()
-
-    # os.system("conda activate cov20_env")
-    # os.system(f"python {path_to_oc_executable} {path_to_config_oc_ini}")
-    # os.system("conda activate spaceborne-dav")
-
 
 def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns):
-    fig, ax = plt.subplots(2, 1, sharex=True)
+    _, ax = plt.subplots(2, 1, sharex=True)
     colors = cm.rainbow(np.linspace(0, 1, zbins))
     for zi in range(zbins):
         ax[0].plot(zgrid_nz_src, nz_src[:, zi], c=colors[zi], label=r'$z_{%d}$' % (zi + 1))
@@ -338,7 +318,7 @@ if not general_cfg['is_test_run']:
     assert general_cfg['flat_or_nonflat'] == 'Flat', 'Model must be flat'
     assert covariance_cfg['load_CLOE_benchmark_cov'] is False, 'load_CLOE_benchmark_cov must be False'
     assert covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'] > 500, 'z_steps_ssc_integrands must be large enough'
-    assert cfg['covariance_cfg']['OneCovariance_cfg']['high_precision'] is False
+    assert cfg['covariance_cfg']['OneCovariance_cfg']['high_precision'] is True
     assert covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == [
         'SSC', 'cNG'], 'which_ng_cov must be ["SSC", "cNG"]'
     assert covariance_cfg['OneCovariance_cfg']['which_gauss_cov_binning'] == 'OneCovariance', 'which_gauss_cov_binning must be "OneCovariance" for the moment'
@@ -855,6 +835,7 @@ ascii_filenames_dict = {
     'cl_gg_ascii_filename': cl_gg_ascii_filename,
     'gal_bias_ascii_filename': gal_bias_ascii_filename,
     'nz_src_ascii_filename': nz_src_ascii_filename,
+    'nz_lns_ascii_filename': nz_lns_ascii_filename,
 }
 
 # * 2. compute cov using the onecovariance interface class

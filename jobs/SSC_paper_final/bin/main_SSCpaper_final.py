@@ -842,17 +842,20 @@ for general_cfg['ell_max_WL'], general_cfg['ell_max_GC'], general_cfg['ell_max_X
             derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs, ROOT=ROOT, probe='{probe:s}')
 
             for param in param_names_wl:
+                print('Loading WL derivatives...')
                 der_name = derivatives_filename.format(probe='WLO', param_name=param, **variable_specs)
                 dcl_wl_1d = np.genfromtxt(f'{derivatives_folder}/{der_name}')
                 dC_dict_LL_3D[param] = cl_utils.cl_SPV3_1D_to_3D(dcl_wl_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
                 dC_dict_WA_3D[param] = dC_dict_LL_3D[param][nbl_GC:nbl_WL]
 
             for param in param_names_gc:
+                print('Loading GCph derivatives...')
                 der_name = derivatives_filename.format(probe='GCO', param_name=param, **variable_specs)
                 dcl_gc_1d = np.genfromtxt(f'{derivatives_folder}/{der_name}')
                 dC_dict_GG_3D[param] = cl_utils.cl_SPV3_1D_to_3D(dcl_gc_1d, 'GC', nbl_WL_opt, zbins)[:nbl_GC, :, :]
                 
             for param in param_names_3x2pt:
+                print('Loading 3x2pt derivatives...')
                 der_name = derivatives_filename.format(probe='3x2pt', param_name=param, **variable_specs)
                 dcl_3x2pt_1d = np.genfromtxt(f'{derivatives_folder}/{der_name}')
                 dC_dict_3x2pt_5D[param] = cl_utils.cl_SPV3_1D_to_3D(dcl_3x2pt_1d, '3x2pt', nbl_WL_opt, zbins)[:, :, :nbl_3x2pt, :, :]
@@ -1160,13 +1163,14 @@ for general_cfg['ell_max_WL'], general_cfg['ell_max_GC'], general_cfg['ell_max_X
             titles = param_names_list[:nparams_toplot_ref] + ['FoM']
 
             # for uncert_dict, _, name in zip([uncert_dict, uncert_dict], [fm_dict, fm_dict_vin], ['Davide', 'Vincenzo']):
-            # print(f"G uncertainties {name} [%]:")
-            # data = []
-            # for probe in probes:
-            #     uncerts = [f'{uncert:.3f}' for uncert in uncert_dict[f'FM_{probe}_G']]
-            #     fom = f'{fom_dict[f"FM_{probe}_G"]:.2f}'
-            #     data.append([probe] + uncerts + [fom])
-            # print(tabulate(data, headers=titles, tablefmt="pretty"))
+           
+            print(f"G uncertainties {which_uncertainty} {which_case} [%]:")
+            data = []
+            for probe in probes:
+                uncerts = [f'{uncert:.3f}' for uncert in uncert_dict[f'FM_{probe}_G']]
+                fom = f'{fom_dict[f"FM_{probe}_G"]:.2f}'
+                data.append([probe] + uncerts + [fom])
+            print(tabulate(data, headers=titles, tablefmt="pretty"))
 
             print(f"GSSC/G ratio {which_uncertainty} {which_case}:")
             data = []
@@ -1179,16 +1183,16 @@ for general_cfg['ell_max_WL'], general_cfg['ell_max_GC'], general_cfg['ell_max_X
             print(tabulate(data, headers=titles, tablefmt="pretty"))
             a2l.to_ltx(np.array(table, dtype=float), frmt = '{:6.3f}', print_out=True)
 
-            print(f"SSC % increase {name}:")
-            data = []
-            for probe in probes:
-                ratios = [f'{ratio:.3f}' for ratio in uncert_dict[f'perc_diff_{probe}_G']]
-                fom = f'{fom_dict[f"perc_diff_{probe}_G"]:.2f}'
-                data.append([probe] + ratios + [fom])
-            print(tabulate(data, headers=titles, tablefmt="pretty"))
+            # print(f"SSC % increase {which_uncertainty} {which_case}:")
+            # data = []
+            # for probe in probes:
+            #     ratios = [f'{ratio:.3f}' for ratio in uncert_dict[f'perc_diff_{probe}_G']]
+            #     fom = f'{fom_dict[f"perc_diff_{probe}_G"]:.2f}'
+            #     data.append([probe] + ratios + [fom])
+            # print(tabulate(data, headers=titles, tablefmt="pretty"))
 
             # * invert ratio to check against barreira
-            # print(f"G/GSSC ratio {name}:")
+            # print(f"G/GSSC ratio:")
             # data = []
             # for probe in probes:
             #     ratios = [f'{ratio:.3f}' for ratio in uncert_dict[f'ratio_{probe}_G']**-1]
@@ -1199,5 +1203,14 @@ for general_cfg['ell_max_WL'], general_cfg['ell_max_GC'], general_cfg['ell_max_X
 
 
         # * 3x2pt cosmo is ok!
+        
+# Convert the data to numerical values
+data_plt = np.array(data)[:, 1:].astype(float)
+
+# Set the title and parameter names
+title = ''
+param_names_label= param_names_list[:8] + ['FoM']
+plot_lib.bar_plot(data_plt, title=title, label_list = param_names_label, divide_fom_by_10_plt=False, nparams=len(param_names_label))
+plt.show()
 
 print('done')

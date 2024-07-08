@@ -330,7 +330,7 @@ assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \
 assert general_cfg['which_forecast'] == 'SPV3', 'ISTF forecasts not supported at the moment'
 
 if not general_cfg['is_test_run']:
-    assert covariance_cfg['survey_area_deg2'] == 13245, 'survey area must be 13245 deg2'
+    assert covariance_cfg['survey_area_deg2'] == 2500, 'survey area must be 13245 deg2'
     assert covariance_cfg['which_shape_noise'] == 'per_component', 'which_shape_noise must be per_component'
     assert ell_max_WL == ell_max_3x2pt == 5000, 'all probes should be up to lmax=5000'
     assert general_cfg['which_pk'] == 'HMCodeBar', 'which_pk must be HMCodeBar'
@@ -521,7 +521,7 @@ ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid_ssc_integrands)
 # set galaxy bias
 if general_cfg['which_forecast'] == 'SPV3':
     ccl_obj.set_gal_bias_tuple_spv3(z_grid_lns=z_grid_ssc_integrands,
-                                    magcut_lens=magcut_lens,
+                                    magcut_lens=None,
                                     poly_fit_values=gal_bias_fit_coeff)
 
 elif general_cfg['which_forecast'] == 'ISTF':
@@ -534,7 +534,7 @@ elif general_cfg['which_forecast'] == 'ISTF':
 # set magnification bias
 ccl_obj.set_mag_bias_tuple(z_grid_lns=z_grid_ssc_integrands,
                            has_magnification_bias=general_cfg['has_magnification_bias'],
-                           magcut_lens=magcut_lens / 10,
+                           magcut_lens=None,
                            poly_fit_values=mag_bias_fit_coeff)
 
 # set pk
@@ -625,11 +625,10 @@ if shift_nz:
     # * consistent with the shifted n(z) used to compute the kernels
     bnt_matrix = covmat_utils.compute_BNT_matrix(
         zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
-    
+
 
 plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns)
 
-assert False, 'should the zbin centers be shifted as well???'
 
 # re-set n(z) used in CCL class, then re-compute kernels
 ccl_obj.set_nz(nz_full_src=np.hstack((zgrid_nz_src[:, None], nz_src)),
@@ -724,22 +723,22 @@ ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[:nbl_3x2pt, :, :]
 if general_cfg['which_cls'] == 'Vincenzo':
     # import Vicnenzo's cls, as a quick check (no RSDs in GCph in my Cls!!)
     cl_folder = general_cfg['cl_folder'].format(which_pk=general_cfg['which_pk'], ROOT=ROOT, probe='{probe:s}')
-    cl_filename = 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:d}-MS{magcut_source:d}-idIA2-idB3-idM3-idR1.dat'
+    cl_filename = general_cfg['cl_filename']
     cl_ll_1d = np.genfromtxt(
         f"{cl_folder.format(probe='WLO')}/{cl_filename.format(probe='WLO', **variable_specs)}")
     cl_gg_1d = np.genfromtxt(
         f"{cl_folder.format(probe='GCO')}/{cl_filename.format(probe='GCO', **variable_specs)}")
-    cl_wa_1d = np.genfromtxt(
-        f"{cl_folder.format(probe='WLA')}/{cl_filename.format(probe='WLA', **variable_specs)}")
+    # cl_wa_1d = np.genfromtxt(
+    # f"{cl_folder.format(probe='WLA')}/{cl_filename.format(probe='WLA', **variable_specs)}")
     cl_3x2pt_1d = np.genfromtxt(
         f"{cl_folder.format(probe='3x2pt')}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
 
     # ! reshape to 3d
     cl_ll_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
     cl_gg_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
-    cl_wa_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
     cl_3x2pt_5d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
     cl_gl_3d_vinc = deepcopy(cl_3x2pt_5d_vinc[1, 0, :, :, :])
+    cl_wa_3d_vinc = np.zeros_like(cl_ll_3d_vinc[nbl_GC:nbl_WL, :, :])
 
     cl_ll_3d = cl_ll_3d_vinc
     cl_gg_3d = cl_gg_3d_vinc
@@ -824,7 +823,6 @@ ell_idx = 10
 mm.compare_arrays(cl_gl_3d[ell_idx, ...], ccl_obj.cl_gl_3d[ell_idx, ...], abs_val=True, log_array=True,
                   name_A=f'{general_cfg["which_cls"]} GL', name_B='CCL GL')
 
-# ! ========================================== SSC ============================================================
 
 # ! ========================================== OneCovariance ===================================================
 
@@ -834,9 +832,12 @@ oc_path = covariance_cfg['OneCovariance_cfg']['onecovariance_folder'].format(ROO
 if not os.path.exists(oc_path):
     os.makedirs(oc_path)
 
-nofz_ascii_filename = nz_src_filename.replace('.dat', f'_dzshifts{shift_nz}.ascii')
-nofz_tosave = np.column_stack((zgrid_nz_src, nz_src))
-np.savetxt(f'{oc_path}/{nofz_ascii_filename}', nofz_tosave)
+nz_src_ascii_filename = nz_src_filename.replace('.dat', f'_dzshifts{shift_nz}.ascii')
+nz_lns_ascii_filename = nz_lns_filename.replace('.dat', f'_dzshifts{shift_nz}.ascii')
+nz_src_tosave = np.column_stack((zgrid_nz_src, nz_src))
+nz_lns_tosave = np.column_stack((zgrid_nz_lns, nz_lns))
+np.savetxt(f'{oc_path}/{nz_src_ascii_filename}', nz_src_tosave)
+np.savetxt(f'{oc_path}/{nz_lns_ascii_filename}', nz_lns_tosave)
 
 cl_ll_ascii_filename = f'Cell_ll_SPV3_{general_cfg["which_cls"]}_nbl{nbl_3x2pt}'
 cl_gl_ascii_filename = f'Cell_gl_SPV3_{general_cfg["which_cls"]}_nbl{nbl_3x2pt}'
@@ -853,7 +854,7 @@ ascii_filenames_dict = {
     'cl_gl_ascii_filename': cl_gl_ascii_filename,
     'cl_gg_ascii_filename': cl_gg_ascii_filename,
     'gal_bias_ascii_filename': gal_bias_ascii_filename,
-    'nofz_ascii_filename': nofz_ascii_filename,
+    'nz_src_ascii_filename': nz_src_ascii_filename,
 }
 
 # * 2. compute cov using the onecovariance interface class
@@ -1521,8 +1522,12 @@ if covariance_cfg['save_cov_2D_dat']:
                                                          BNT_transform=str(general_cfg['BNT_transform']),
                                                          **var_specs_here)
 
+    mm.matshow(cov_dict[f'cov_3x2pt_GS_2D'], log=True, title='cov for Vincenzo')
     np.savetxt(f'{cov_folder_vin}/{cov_filename_vin.format(which_ng_cov=which_ng_cov_suffix, probe="3x2pt")}.dat',
                cov_dict[f'cov_3x2pt_GS_2D'], fmt='%.7e')
+    np.savetxt(f'{cov_folder_vin}/BNT_matrix', bnt_matrix)
+
+assert False, 'stop here, DR1 covmats for Sesto'
 
 if ep_or_ed == 'EP' and covariance_cfg['ng_cov_code'] == 'Spaceborne' and covariance_cfg['test_against_CLOE_benchmarks'] \
         and general_cfg['ell_cuts'] is False and which_pk == 'HMCodeBar':
@@ -1588,7 +1593,7 @@ list_params_to_vary = [param for param in fid_pars_dict['FM_ordered_params'].key
 
 if fm_cfg['which_derivatives'] == 'Spaceborne':
 
-    if fm_cfg['load_preprocess_derivatives']:
+    if fm_cfg['load_preprocess_derivatives']:   
         # a better name should be dict_4D...? anyway, not so important
         dC_dict_LL_3D = np.load(f'/home/davide/Scrivania/test_ders/dcl_LL.npy', allow_pickle=True).item()
         dC_dict_GL_3D = np.load(f'/home/davide/Scrivania/test_ders/dcl_GL.npy', allow_pickle=True).item()

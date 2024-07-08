@@ -358,7 +358,7 @@ class PycclClass():
 
     def get_gal_bias_tuple_spv3(self, z_grid_lns, magcut_lens, poly_fit_values):
         gal_bias_func = self.gal_bias_func_dict['fs2_fit']
-        gal_bias_1d = gal_bias_func(z_grid_lns, magcut_lens=magcut_lens / 10, poly_fit_values=poly_fit_values)
+        gal_bias_1d = gal_bias_func(z_grid_lns, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values)
 
         # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
         gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
@@ -420,8 +420,8 @@ class PycclClass():
 
             self.wf_galaxy_obj.append(ccl.tracers.NumberCountsTracer(cosmo=self.cosmo_ccl,
                                                                      has_rsd=has_rsd,
-                                                                     dndz=(self.nz_src_tuple[0],
-                                                                           self.nz_src_tuple[1][:, zbin_idx]),
+                                                                     dndz=(self.nz_lns_tuple[0],
+                                                                           self.nz_lns_tuple[1][:, zbin_idx]),
                                                                      bias=(self.gal_bias_tuple[0],
                                                                            self.gal_bias_tuple[1][:, zbin_idx]),
                                                                      mag_bias=mag_bias_arg,

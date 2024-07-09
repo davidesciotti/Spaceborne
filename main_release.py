@@ -694,15 +694,17 @@ ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
 
 
 ells_wl_int = ell_dict['ell_WL'].astype(int)
-# prefac_wl_ccl = (2 / (2 * ells_wl_int + 1))**2 * ccl_obj.wf_lensing_obj[0].get_f_ell(ells_wl_int)
+prefac_wl_ccl_original = (2 / (2 * ells_wl_int + 1))**2 * ccl_obj.wf_lensing_obj[0].get_f_ell(ells_wl_int)
+prefac_wl_ccl_original = prefac_wl_ccl_original**2
 prefac_wl_ccl = wf_cl_lib.get_ell_dep_prefactor(ells_wl_int, 'CCL').reshape((-1, 1, 1))**2
 prefac_wl_cloe = wf_cl_lib.get_ell_dep_prefactor(ells_wl_int, 'CLOE').reshape((-1, 1, 1))**2
 
 plt.figure()
-# plt.loglog(ells_wl_int, prefac_wl_ccl[:, 0, 0], label='CCL')
-plt.loglog(ells_wl_int, prefac_wl_cloe[:, 0, 0]/prefac_wl_ccl[:, 0, 0], label='cloe')
+plt.loglog(ells_wl_int, prefac_wl_ccl[:, 0, 0], label='CCL')
+plt.loglog(ells_wl_int, prefac_wl_ccl_original[0, :], label='CCL original', ls='--')
+plt.loglog(ells_wl_int, prefac_wl_cloe[:, 0, 0], label='cloe')
 plt.axhline(1, ls='--', c='k')
-plt.legend(['cloe/ccl'])
+plt.legend()
 plt.xlabel('$\\ell$')
 plt.ylabel('$f(\\ell)$')
 

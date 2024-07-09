@@ -187,36 +187,36 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
     plt.legend()
     plt.show()
 
-
-def triangle_plot(FM_GO, FM_GS, fiducials, title, param_names_label):
-    # should I do this?
-    fiducials = np.where(fiducials == 0., 1,
-                         fiducials)  # the fiducial for wa is 0, substitute with 1 to avoid division by zero
-    fiducials = np.where(fiducials == -1, 1,
-                         fiducials)  # the fiducial for wa is -1, substitute with 1 to avoid negative values
-
-    nparams = len(param_names_label)
+def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_background, label_foreground, 
+                  param_names_labels, param_names_labels_toplot):
+    
+    idxs_tokeep = [param_names_labels.index(param) for param in param_names_labels_toplot]
 
     # parameters' covariance matrix - first invert, then slice! Otherwise, you're fixing the nuisance parameters
-    FM_inv_GO = np.linalg.inv(FM_GO)[:nparams, :nparams]
-    FM_inv_GS = np.linalg.inv(FM_GS)[:nparams, :nparams]
-
-    GO_gaussian = GaussianND(mean=fiducials, cov=FM_inv_GO, names=param_names_label)
-    GS_gaussian = GaussianND(mean=fiducials, cov=FM_inv_GS, names=param_names_label)
-    print(GS_gaussian, len(param_names_label), len(fiducials), FM_inv_GO.shape)
+    fm_inv_bg = np.linalg.inv(fm_backround)[np.ix_(idxs_tokeep, idxs_tokeep)]
+    fm_inv_fg = np.linalg.inv(fm_foreground)[np.ix_(idxs_tokeep, idxs_tokeep)]
+    
+    fiducials = [fiducials[idx] for idx in idxs_tokeep]
+    param_names_labels = [param_names_labels[idx] for idx in idxs_tokeep]
+    
+    bg_contours = GaussianND(mean=fiducials, cov=fm_inv_bg, names=param_names_labels)
+    fg_contours = GaussianND(mean=fiducials, cov=fm_inv_fg, names=param_names_labels)
+    
     g = plots.get_subplot_plotter()
     g.settings.linewidth = 2
-    g.settings.legend_fontsize = 30
+    g.settings.legend_fontsize = 22
     g.settings.linewidth_contour = 2.5
-    g.settings.axes_fontsize = 27
-    g.settings.axes_labelsize = 30
+    g.settings.axes_fontsize = 25
+    g.settings.axes_labelsize = 27
     g.settings.subplot_size_ratio = 1
-    g.settingstight_layout = True
+    g.settings.tight_layout = True
     g.settings.solid_colors = 'tab10'
-    g.triangle_plot([GS_gaussian, GO_gaussian], filled=True, contour_lws=1.4,
-                    legend_labels=['Gauss + SSC', 'Gauss-only'], legend_loc='upper right')
-    plt.suptitle(f'{title}', fontsize='xx-large')
-
+    g.triangle_plot([bg_contours, fg_contours], filled=False, contour_lws=2, ls=['-','--'],
+                    legend_labels=[label_background, label_foreground], legend_loc='upper right', 
+                    contour_colors=['tab:blue', 'tab:orange'],
+                    line_colors=['tab:blue', 'tab:orange'],
+                    )
+    plt.suptitle(f'{title}', fontsize='x-large')
 
 def contour_plot_chainconsumer(cov, trimmed_fid_dict):
     """

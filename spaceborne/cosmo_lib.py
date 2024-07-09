@@ -1,11 +1,9 @@
 import time
 import warnings
 from copy import deepcopy
-from glob import glob
 import camb
-import os
 import numpy as np
-from astropy.cosmology import w0waCDM
+# from astropy.cosmology import w0waCDM
 # from classy import Class
 from numba import njit
 import pyccl as ccl
@@ -306,6 +304,8 @@ def calculate_power(k, z, cosmo_classy, use_h_units=True, Pk_kind='nonlinear'):
 
 
 def get_external_Pk(h, whos_Pk='vincenzo', Pk_kind='nonlinear', use_h_units=True):
+    from glob import glob
+    
     if whos_Pk == 'vincenzo':
         z_column = 1
         k_column = 0  # in [1/Mpc]

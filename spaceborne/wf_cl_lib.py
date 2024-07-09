@@ -1547,7 +1547,7 @@ def get_ell_dep_prefactor(ells, which_code):
                                          math.factorial(int(ell) - 2)) * (2 / (2 * ell + 1)) ** 2
     elif which_code == 'CCL':
         for ell_idx, ell in enumerate(ells):
-            prefactor[ell_idx] = ccl_cl_tracer_t_get_f_ell(ell, 'WL') #* (2 / (2 * ell + 1))
+            prefactor[ell_idx] = ccl_cl_tracer_t_get_f_ell(ell, 'WL') * (2 / (2 * ell + 1))**2
             # prefactor[ell_idx] = -0.5 * np.sqrt(math.factorial(int(ell) + 2) /
             # math.factorial(int(ell) - 2))
     else:

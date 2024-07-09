@@ -88,7 +88,6 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
     return cov_ssc_3x2pt_dict_8D
 
 
-
 def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns):
     _, ax = plt.subplots(2, 1, sharex=True)
     colors = cm.rainbow(np.linspace(0, 1, zbins))
@@ -692,6 +691,22 @@ ccl_obj.cl_gl_3d = ccl_obj.compute_cls(ell_dict['ell_XC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
 ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
+
+
+ells_wl_int = ell_dict['ell_WL'].astype(int)
+# prefac_wl_ccl = (2 / (2 * ells_wl_int + 1))**2 * ccl_obj.wf_lensing_obj[0].get_f_ell(ells_wl_int)
+prefac_wl_ccl = wf_cl_lib.get_ell_dep_prefactor(ells_wl_int, 'CCL').reshape((-1, 1, 1))**2
+prefac_wl_cloe = wf_cl_lib.get_ell_dep_prefactor(ells_wl_int, 'CLOE').reshape((-1, 1, 1))**2
+
+plt.figure()
+# plt.loglog(ells_wl_int, prefac_wl_ccl[:, 0, 0], label='CCL')
+plt.loglog(ells_wl_int, prefac_wl_cloe[:, 0, 0]/prefac_wl_ccl[:, 0, 0], label='cloe')
+plt.axhline(1, ls='--', c='k')
+plt.legend(['cloe/ccl'])
+plt.xlabel('$\\ell$')
+plt.ylabel('$f(\\ell)$')
+
+
 ccl_obj.cl_wa_3d = ccl_obj.cl_ll_3d[nbl_3x2pt:nbl_WL]
 
 ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_3x2pt, zbins, zbins))
@@ -788,20 +803,23 @@ for zi in range(zbins):
     ax[1, 2].plot(ell_dict['ell_GC'], mm.percent_diff(
         cl_gg_3d[:nbl_GC], ccl_obj.cl_gg_3d)[:, zi, zj], c=clr[zi])
 
-ax[1, 0].set_xlabel('$\\ell$')
-ax[1, 1].set_xlabel('$\\ell$')
-ax[1, 2].set_xlabel('$\\ell$')
-ax[0, 0].set_ylabel('$C_{\ell}$')
+ax[1, 0].set_xlabel(r'$\ell$')
+ax[1, 1].set_xlabel(r'$\ell$')
+ax[1, 2].set_xlabel(r'$\ell$')
+ax[0, 0].set_ylabel(r'$C_{\ell}$')
 ax[1, 0].set_ylabel('% diff')
 ax[1, 1].set_ylim(-20, 20)
 lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
 plt.legend(lines, [general_cfg["which_cls"], 'CCL'], loc='upper right', bbox_to_anchor=(1.55, 1))
 plt.show()
 
+
 # matshow for GL, to make sure it's not LG
 ell_idx = 10
 mm.compare_arrays(cl_gl_3d[ell_idx, ...], ccl_obj.cl_gl_3d[ell_idx, ...], abs_val=True, log_array=True,
                   name_A=f'{general_cfg["which_cls"]} GL', name_B='CCL GL')
+
+assert False, 'stop here to check cl prefactor'
 
 
 # ! ========================================== OneCovariance ===================================================
@@ -1494,7 +1512,7 @@ if covariance_cfg['save_cov_2D_dat']:
                                                              fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'])
     cov_filename_vin = cov_filename_vin.replace('.npz', '')
     cov_filename_vin = cov_filename_vin.replace(
-        f'_pk{which_pk}', f'_pk{which_pk}_{covariance_cfg["survey_area_deg2"]}deg2')
+        f'_pk{which_pk}', f'_pk{which_pk}_{covariance_cfg["survey_area_deg2"]}deg2_BNT{str(bnt_transform)}')
 
     var_specs_here = deepcopy(variable_specs)
     var_specs_here.pop('BNT_transform', None)
@@ -1574,7 +1592,7 @@ list_params_to_vary = [param for param in fid_pars_dict['FM_ordered_params'].key
 
 if fm_cfg['which_derivatives'] == 'Spaceborne':
 
-    if fm_cfg['load_preprocess_derivatives']:   
+    if fm_cfg['load_preprocess_derivatives']:
         # a better name should be dict_4D...? anyway, not so important
         dC_dict_LL_3D = np.load(f'/home/davide/Scrivania/test_ders/dcl_LL.npy', allow_pickle=True).item()
         dC_dict_GL_3D = np.load(f'/home/davide/Scrivania/test_ders/dcl_GL.npy', allow_pickle=True).item()
@@ -1754,10 +1772,10 @@ for zi in range(zbins):
     ax[1, 1].fill_between(ell_dict['ell_XC'], -5, 5, color='grey', alpha=0.3)
     ax[1, 2].fill_between(ell_dict['ell_GC'], -5, 5, color='grey', alpha=0.3)
 
-    ax[1, 0].set_xlabel('$\\ell$')
-    ax[1, 1].set_xlabel('$\\ell$')
-    ax[1, 2].set_xlabel('$\\ell$')
-    ax[0, 0].set_ylabel('$\partial C_{\ell}/ \partial \\theta$')
+    ax[1, 0].set_xlabel(r'$\\ell$')
+    ax[1, 1].set_xlabel(r'$\\ell$')
+    ax[1, 2].set_xlabel(r'$\\ell$')
+    ax[0, 0].set_ylabel(r'$\partial C_{\ell}/ \partial \\theta$')
     ax[1, 0].set_ylabel('% diff')
     lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
     fig.suptitle(param)
@@ -1812,10 +1830,10 @@ for param in list_params_to_vary:
         ax[1, 1].plot(ell_dict['ell_XC'][:29], mm.percent_diff(cl_GL_3d_fid[:29], cl_gl_3d_vinc)[:, zi, zj], c=clr[zi])
         ax[1, 2].plot(ell_dict['ell_GC'][:29], mm.percent_diff(cl_GG_3d_fid[:29], cl_gg_3d_vinc)[:, zi, zj], c=clr[zi])
 
-    ax[1, 0].set_xlabel('$\\ell$')
-    ax[1, 1].set_xlabel('$\\ell$')
-    ax[1, 2].set_xlabel('$\\ell$')
-    ax[0, 0].set_ylabel('$C_{\ell}$')
+    ax[1, 0].set_xlabel(r'$\\ell$')
+    ax[1, 1].set_xlabel(r'$\\ell$')
+    ax[1, 2].set_xlabel(r'$\\ell$')
+    ax[0, 0].set_ylabel(r'$C_{\ell}$')
     ax[1, 0].set_ylabel('% diff')
     ax[1, 1].set_ylim(-20, 20)
     lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
@@ -2103,8 +2121,8 @@ print(tabulate(data, headers=titles, tablefmt="pretty"))
 # plot_lib.triangle_plot(fm_prime_j, masked_fm_dict['FM_WL_G'],
 #                        fiducials=list(masked_fid_pars_dict['FM_WL_G'].values()),
 #                        title='WL',
-#                        label_background='$S_8$',
-#                        label_foreground='$\sigma_8$',
+#                        label_background=r'$S_8$',
+#                        label_foreground=r'$\sigma_8$',
 #                        param_names_labels=list(masked_fid_pars_dict['FM_WL_G'].keys()),
 #                        param_names_labels_toplot=['Om', 's8'])
 

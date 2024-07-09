@@ -106,7 +106,7 @@ general_cfg:
         [ 0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.]
     use_h_units: False
 
-    BNT_transform: True # ! to be deprecated?
+    BNT_transform: False # ! to be deprecated?
     cl_BNT_transform: False
 
     # vincenzo's inputs path
@@ -192,7 +192,7 @@ covariance_cfg:
 
     plot_nz_tocheck: True
 
-    cov_BNT_transform: True
+    cov_BNT_transform: False
     cov_ell_cuts: False
 
     compute_covmat: True
@@ -222,9 +222,9 @@ covariance_cfg:
     # TODO change name to cov_path
     cov_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Sesto"
     cov_filename:
-        covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_zedMin{zmin_nz_lens:02d}_zedMax{zmax_nz:02d}_NBS{zbins:02d}_NBL{zbins:02d}_IE{magcut_lens:03d}_BNT{bnt_transform:s}_pk{which_pk:s}_{ndim:d}D{cov_suffix:s}{fm_and_cov_suffix:s}.npz
+        covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_zedMin{zmin_nz_lens:02d}_zedMax{zmax_nz:02d}_NBS{zbins:02d}_NBL{zbins:02d}_IE{magcut_lens:03d}_pk{which_pk:s}_{ndim:d}D{cov_suffix:s}{fm_and_cov_suffix:s}.npz
     
-    ng_cov_code: Spaceborne # ! PySSC or PyCCL or Spaceborne or OneCovariance
+    ng_cov_code: OneCovariance # ! PySSC or PyCCL or Spaceborne or OneCovariance
 
     PyCCL_cfg:
         probe: 3x2pt
@@ -301,11 +301,11 @@ covariance_cfg:
 
     OneCovariance_cfg:
         which_ng_cov: ['SSC', 'cNG']
-        load_precomputed_cov: False
+        load_precomputed_cov: True
         use_OneCovariance_Gaussian: False
         use_OneCovariance_SSC: True
         which_gauss_cov_binning: OneCovariance  # EC20 or OneCovariance
-        high_precision: False  # True to increase different precision parameters, False to use default values
+        high_precision: True  # True to increase different precision parameters, False to use default values
         path_to_oc_executable: "{ROOT:s}/OneCovariance/covariance.py"
 
         onecovariance_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/covmat/OneCovariance/{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}"
@@ -324,7 +324,7 @@ FM_cfg:
     derivatives_filename: dDVd{param_name:s}-{probe:s}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{EP_or_ED:s}{zbins:02d}.dat
     derivatives_prefix: dDVd
 
-    derivatives_BNT_transform: True
+    derivatives_BNT_transform: False
     deriv_ell_cuts: False
 
     fm_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}"

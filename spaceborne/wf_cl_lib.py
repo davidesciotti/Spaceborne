@@ -20,6 +20,7 @@ from scipy.special import erf
 from functools import partial
 import sys
 from tqdm import tqdm
+import math
 import os
 ROOT = os.getenv('ROOT')
 
@@ -1468,7 +1469,7 @@ def shift_nz(zgrid_nz, nz_original, dz_shifts, normalize, plot_nz=False, interpo
     n_of_z_shifted = np.zeros_like(nz_original)
     for zi in range(zbins):
         # not-very-pythonic implementation: create an interpolator for each bin
-        n_of_z_func = interp1d(zgrid_nz, nz_original[:, zi], kind=interpolation_kind, 
+        n_of_z_func = interp1d(zgrid_nz, nz_original[:, zi], kind=interpolation_kind,
                                bounds_error=bounds_error, fill_value=fill_value)
         z_grid_nz_shifted = zgrid_nz - dz_shifts[zi]
         # where < 0, set to 0; where > 3, set to 3
@@ -1525,3 +1526,53 @@ def get_z_effective_isaac(zgrid_nz, n_of_z):
         effective_z[zi] = np.median(zgrid_nz[n_of_zi > threshold])
 
     return effective_z
+
+
+def get_ell_dep_prefactor(ells, which_code):
+    """
+    NOTE: the ccl_cl_tracer_t_get_f_ell(ell, 'WL') call produces almost exactly the same result as
+    the swrt(factorial) part in the for loop above. I am not super sure about the * (2 / (2 * ell + 1))**2
+    multiplication, however; without it, the f(\ell) prefactor grows to very large values instead of converging to 1;
+    this seems to be what the code is doing internally anyways, check e.g. the 
+    double lp1h = l+0.5;
+    dd /= (lp1h*lp1h);
+    bit.
+    """
+
+    prefactor = np.empty(len(ells), dtype='float')
+
+    if which_code == 'CLOE':
+        for ell_idx, ell in enumerate(ells):
+            prefactor[ell_idx] = np.sqrt(math.factorial(int(ell) + 2) /
+                                         math.factorial(int(ell) - 2)) * (2 / (2 * ell + 1)) ** 2
+    elif which_code == 'CCL':
+        for ell_idx, ell in enumerate(ells):
+            prefactor[ell_idx] = ccl_cl_tracer_t_get_f_ell(ell, 'WL') #* (2 / (2 * ell + 1))
+            # prefactor[ell_idx] = -0.5 * np.sqrt(math.factorial(int(ell) + 2) /
+            # math.factorial(int(ell) - 2))
+    else:
+        raise ValueError('which_code must be either CLOE or CCL')
+
+    return prefactor
+
+
+def ccl_cl_tracer_t_get_f_ell(ell, probe):
+
+    if probe == 'GC':
+        return ell * (ell + 1.)
+
+    elif probe == 'WL':
+        if ell <= 1:  # This is identically 0
+            return 0
+        elif ell <= 10:  # Use full expression in this case
+            return np.sqrt((ell + 2) * (ell + 1) * ell * (ell - 1))
+        else:
+            lp1h = ell + 0.5
+            lp1h2 = lp1h * lp1h
+            if ell <= 1000:  # This is accurate to 5E-5 for l>10
+                return lp1h2 * (1 - 1.25 / lp1h2)
+            else:  # This is accurate to 1E-6 for l>1000
+                return lp1h2
+    else:
+        warnings.warn('probe not recognised')
+        return 1

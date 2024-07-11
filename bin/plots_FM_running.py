@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
@@ -188,7 +189,7 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
     plt.show()
 
 def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_background, label_foreground, 
-                  param_names_labels, param_names_labels_toplot):
+                  param_names_labels, param_names_labels_toplot, param_names_labels_tex=None):
     
     idxs_tokeep = [param_names_labels.index(param) for param in param_names_labels_toplot]
 
@@ -199,19 +200,30 @@ def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_backgroun
     fiducials = [fiducials[idx] for idx in idxs_tokeep]
     param_names_labels = [param_names_labels[idx] for idx in idxs_tokeep]
     
-    bg_contours = GaussianND(mean=fiducials, cov=fm_inv_bg, names=param_names_labels)
-    fg_contours = GaussianND(mean=fiducials, cov=fm_inv_fg, names=param_names_labels)
+    if param_names_labels_tex is not None:
+        warnings.warn('the user should make sure that the order of the param_names_labels_tex list is the same as \
+                      the order of the param_names_labels:')
+        print(param_names_labels_tex)
+        print(param_names_labels)
+        # remove all the "$" from param_names_labels_tex
+        param_names_labels_tex = [param_name.replace('$', '') for param_name in param_names_labels_tex]
+    
+    bg_contours = GaussianND(mean=fiducials, cov=fm_inv_bg, names=param_names_labels, labels=param_names_labels_tex)
+    fg_contours = GaussianND(mean=fiducials, cov=fm_inv_fg, names=param_names_labels, labels=param_names_labels_tex)
     
     g = plots.get_subplot_plotter()
-    g.settings.linewidth = 2
-    g.settings.legend_fontsize = 22
-    g.settings.linewidth_contour = 2.5
-    g.settings.axes_fontsize = 25
+    g.settings.linewidth = 3
+    g.settings.legend_fontsize = 35
+    g.settings.linewidth_contour = 3
+    g.settings.axes_fontsize = 27
     g.settings.axes_labelsize = 27
     g.settings.subplot_size_ratio = 1
     g.settings.tight_layout = True
+    g.settings.axis_tick_x_rotation=45
     g.settings.solid_colors = 'tab10'
-    g.triangle_plot([bg_contours, fg_contours], filled=False, contour_lws=2, ls=['-','--'],
+    g.triangle_plot([bg_contours, fg_contours], 
+                    # names=param_names_labels,
+                    filled=True, contour_lws=2, ls=['-','-'],
                     legend_labels=[label_background, label_foreground], legend_loc='upper right', 
                     contour_colors=['tab:blue', 'tab:orange'],
                     line_colors=['tab:blue', 'tab:orange'],

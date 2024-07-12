@@ -66,7 +66,7 @@ general_cfg = {
     'magcut_lens': 245,
     'zcut_source': 0,
     'zcut_lens': 0,
-    
+
     # new files have "global" specs, it's one sample!
     'zmax': 2.5,
     'zmin': 0,
@@ -104,19 +104,19 @@ general_cfg = {
     'idR': 1,
 
     'which_pk': 'HMCodeBar',
-    
+
     # new
     'cl_folder': f'{SPV3_folder}' + '/OutputQuantities/DataVectors/DataVecFid/Davide/{probe:s}/{which_pk:s}',
     # old
-    # 'cl_folder': '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_1_restored/DataVectors/Noiseless/{probe:s}/FS1',    
+    # 'cl_folder': '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/Flagship_1_restored/DataVectors/Noiseless/{probe:s}/FS1',
     'rl_folder': f'{SPV3_folder}'.replace('FiRe', 'Flagship_1_restored') + f'/ResFunTabs/FS{flagship_version}' + '/{probe:s}',
-    
+
     # new
     'cl_filename': 'dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-zedMin{zmin:02d}-zedMax{zmax:2d}-mag{magcut:d}.dat',
     # old
     # 'cl_filename': 'dv-{pr1obe:s}-{nbl:d}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED:s}{zbins:02d}.dat',
     'rl_filename': 'rf-{probe:s}-{nbl:d}-wzwaCDM-Flat-GR-TB-idMag0-idRSD0-idFS0-idSysWL3-idSysGC4-{EP_or_ED:s}{zbins:02d}.dat',
-    
+
     'flagship_version': flagship_version,
 
     'test_against_benchmarks': False,
@@ -142,11 +142,11 @@ covariance_cfg = {
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
     'which_shape_noise': 'correct',
-    
+
     # nuisance
     'nuisance_folder': f'{SPV3_folder}/InputQuantities/NzFiles/Davide/NzPar',
     'nuisance_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}-zedMin{zmin:02d}-zedMax{zmax:2d}-mag{magcut:d}.dat',
-    
+
     # sources (and lenses) redshift distributions
     'nofz_folder': f'{SPV3_folder}/InputQuantities/NzFiles/Davide/NzTab',
     'nofz_filename': 'nzTab-{EP_or_ED:s}{zbins:02d}-zedMin{zmin:02d}-zedMax{zmax:2d}-mag{magcut:d}.dat',
@@ -195,23 +195,33 @@ Sijkl_cfg = {
 
     'Sijkl_folder': f'{output_path}/sijkl',
     'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}_FiRe.npy',
-    
+
     # 'Sijkl_folder': f'/home/davide/Documenti/Lavoro/Programmi/common_data/Sijkl',
     # 'Sijkl_filename': 'Sijkl_WFdavide_nz10000_IA_3may.npy',
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
 
 
-param_names_dict = {
+# this is the order wou whould use!
+param_names_dict_coarse = {
     'cosmo': ["Om", "Ob", "wz", "wa", "h", "ns", "s8", 'logT'],
     'IA': ["Aia", "eIA", "bIA"],
     'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
     'shear_bias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
     'dzWL': [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
-    # 'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
+    'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
 }
 # declare the set of parameters under study
-param_names_3x2pt = list(np.concatenate([param_names_dict[key] for key in param_names_dict.keys()]))
+param_names_wl = param_names_dict_coarse['cosmo'] + param_names_dict_coarse['IA'] + param_names_dict_coarse['shear_bias'] + \
+    param_names_dict_coarse['dzWL']
+param_names_gc = param_names_dict_coarse['cosmo'] + \
+    param_names_dict_coarse['galaxy_bias'] + param_names_dict_coarse['dzGC']
+# 3x2pt has only dv-WLO-ddzWL, the cross and GCph are set to 0. this is to be better understood.
+param_names_3x2pt = param_names_dict_coarse['cosmo'] + param_names_dict_coarse['IA'] + param_names_dict_coarse['galaxy_bias'] + \
+    param_names_dict_coarse['shear_bias'] + param_names_dict_coarse['dzWL']
+param_names_tot = param_names_3x2pt + param_names_dict_coarse['dzGC']
+
+# param_names_3x2pt = list(np.concatenate([param_names_dict_coarse[key] for key in param_names_dict_coarse.keys()]))
 
 # I cannot define the fiducial values here because I need to import the files for the galaxy bias
 
@@ -227,10 +237,10 @@ deriv_filename = covariance_cfg['cov_filename'].replace('covmat_', 'dDVd')
 FM_cfg = {
     'compute_FM': True,
 
-    'param_names_dict': param_names_dict,
+    'param_names_dict_coarse': param_names_dict_coarse,
     'fiducials_dict': None,  # this needs to be set in the main, since it depends on the n_gal file
-    'param_names_3x2pt': param_names_3x2pt,
-    'nparams_tot': len(param_names_3x2pt),  # total (cosmo + nuisance) number of parameters
+    'param_names_tot': param_names_tot,
+    'nparams_tot': len(param_names_tot),  # total (cosmo + nuisance) number of parameters
 
     'save_FM_txt': True,
     'save_FM_dict': True,
@@ -238,16 +248,15 @@ FM_cfg = {
     'load_preprocess_derivatives': False,
     # 'derivatives_folder': SPV3_folder + '/OutputQuantities/DataVectors/DataVecDer/{flat_or_nonflat:s}/Davide/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
     # 'derivatives_prefix': 'dDVd',
-    
-    'derivatives_folder': "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/FiRe/OutputQuantities/DataVectors/DataVecDer/{flat_or_nonflat:s}/Davide/{which_pk:s}/{EP_or_ED:s}{zbins:02d}" ,
+
+    'derivatives_folder': "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/FiRe/OutputQuantities/DataVectors/DataVecDer/{flat_or_nonflat:s}/Davide/{which_pk:s}/{EP_or_ED:s}{zbins:02d}",
     'derivatives_filename': "dDVd{param_name:s}-{probe:s}-{EP_or_ED:s}{zbins:02d}-zedMin{zmin:02d}-zedMax{zmax:02d}-mag{magcut:d}.dat",
 
 
     'derivatives_BNT_transform': deriv_BNT_transform,
     'deriv_ell_cuts': deriv_ell_cuts,
 
-    'fm_folder': f'{output_path}/FM' +
-                 '/ell_cuts_{ell_cuts:s}' + ell_cuts_subfolder,
+    'fm_folder': f'{output_path}/FM' + '/ell_cuts_{ell_cuts:s}' + ell_cuts_subfolder,
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,
 

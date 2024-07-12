@@ -1154,8 +1154,6 @@ def uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal', normal
     param_names = list(fiducials_dict.keys())
     param_values = np.array(list(fiducials_dict.values()))
 
-    # pdb.set_trace()
-
     assert len(param_names) == param_values.shape[0] == fm.shape[0] == fm.shape[1], \
         'param_names and param_values must have the same length and be equal to the number of rows and columns of fm'
 
@@ -1170,7 +1168,7 @@ def uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal', normal
     if normalize:
         # if the fiducial for is 0, substitute with 1 to avoid division by zero; if it's -1, take the absolute value
         param_values = np.where(param_values == 0, 1, param_values)
-        param_values = np.where(param_values == -1, 1, param_values)
+        param_values = np.where(param_values < 0, np.abs(param_values), param_values)
         # normalize to get the relative uncertainties
         sigma_fm /= param_values
 

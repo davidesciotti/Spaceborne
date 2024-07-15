@@ -183,7 +183,7 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
                         marker=markers[bar_idx], label=label_list[bar_idx], zorder=zorders[bar_idx])
 
     plt.ylabel(ylabel)
-    plt.xticks(range(nparams), param_names_label)
+    plt.xticks(range(nparams), param_names_label, rotation=45)
     plt.title(title)
     plt.legend()
     plt.show()

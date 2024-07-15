@@ -912,84 +912,92 @@ if fm_cfg['which_derivatives'] == 'Spaceborne':
         dC_3x2pt_6D[1, 0, :, :, :, par_idx] = dC_dict_GL_3D[par_name][:nbl_3x2pt, :, :]
         dC_3x2pt_6D[1, 1, :, :, :, par_idx] = dC_dict_GG_3D[par_name][:nbl_3x2pt, :, :]
 """
-# separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
-dC_dict_LL_3D = {}
-dC_dict_GG_3D = {}
-dC_dict_WA_3D = {}
-dC_dict_3x2pt_5D = {}
-derivatives_filename = fm_cfg['derivatives_filename']
-derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs, ROOT=ROOT, probe='{probe:s}')
 
-for param in param_names_wl:
-    der_name = derivatives_filename.format(probe='WLO', param_name=param, **variable_specs)
-    dcl_wl_1d = np.genfromtxt(f'{derivatives_folder}/{der_name}')
-    dC_dict_LL_3D[param] = cl_utils.cl_SPV3_1D_to_3D(dcl_wl_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
-    dC_dict_WA_3D[param] = dC_dict_LL_3D[param][nbl_GC:nbl_WL]
+if flat_or_nonflat == 'Flat':
+    # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
+    dC_dict_LL_3D = {}
+    dC_dict_GG_3D = {}
+    dC_dict_WA_3D = {}
+    dC_dict_3x2pt_5D = {}
+    derivatives_filename = fm_cfg['derivatives_filename']
+    derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs, ROOT=ROOT, probe='{probe:s}')
 
-for param in param_names_gc:
-    der_name = derivatives_filename.format(probe='GCO', param_name=param, **variable_specs)
-    dcl_gc_1d = np.genfromtxt(f'{derivatives_folder}/{der_name}')
-    dC_dict_GG_3D[param] = cl_utils.cl_SPV3_1D_to_3D(dcl_gc_1d, 'GC', nbl_WL_opt, zbins)[:nbl_GC, :, :]
+    for param in param_names_wl:
+        der_name = derivatives_filename.format(probe='WLO', param_name=param, **variable_specs)
+        dcl_wl_1d = np.genfromtxt(f'{derivatives_folder}/{der_name}')
+        dC_dict_LL_3D[param] = cl_utils.cl_SPV3_1D_to_3D(dcl_wl_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
+        dC_dict_WA_3D[param] = dC_dict_LL_3D[param][nbl_GC:nbl_WL]
 
-for param in param_names_3x2pt:
-    der_name = derivatives_filename.format(probe='3x2pt', param_name=param, **variable_specs)
-    dcl_3x2pt_1d = np.genfromtxt(f'{derivatives_folder}/{der_name}')
-    dC_dict_3x2pt_5D[param] = cl_utils.cl_SPV3_1D_to_3D(
-        dcl_3x2pt_1d, '3x2pt', nbl_WL_opt, zbins)[:, :, :nbl_3x2pt, :, :]
+    for param in param_names_gc:
+        der_name = derivatives_filename.format(probe='GCO', param_name=param, **variable_specs)
+        dcl_gc_1d = np.genfromtxt(f'{derivatives_folder}/{der_name}')
+        dC_dict_GG_3D[param] = cl_utils.cl_SPV3_1D_to_3D(dcl_gc_1d, 'GC', nbl_WL_opt, zbins)[:nbl_GC, :, :]
 
-# manually set to 0 dz derivatives for all probe combinations but LL
-for key in param_names_dzWL:
-    dC_dict_3x2pt_5D[key][1, 1] = 0
-    dC_dict_3x2pt_5D[key][1, 0] = 0
-    dC_dict_3x2pt_5D[key][0, 1] = 0
+    for param in param_names_3x2pt:
+        der_name = derivatives_filename.format(probe='3x2pt', param_name=param, **variable_specs)
+        dcl_3x2pt_1d = np.genfromtxt(f'{derivatives_folder}/{der_name}')
+        dC_dict_3x2pt_5D[param] = cl_utils.cl_SPV3_1D_to_3D(
+            dcl_3x2pt_1d, '3x2pt', nbl_WL_opt, zbins)[:, :, :nbl_3x2pt, :, :]
 
-# turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams_tot)
-# ! WARNING: the code builds FMs which have all shape nparams_tot x nparams_tot, with null rows/cols if some parameters
-# ! are not present for a given probe.
-print('\nLoading WL derivatives...')
-dC_LL_4D = fm_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_tot, nbl_WL, zbins, derivatives_prefix='')
-print('\nLoading GCph derivatives...')
-dC_GG_4D = fm_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_tot, nbl_GC, zbins, derivatives_prefix='')
-print('\nLoading Wadd derivatives...')
-dC_WA_4D = fm_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_tot, nbl_WA, zbins, derivatives_prefix='')
-# dC_WA_4D = np.ones((nbl_WA, zbins, zbins, dC_LL_4D.shape[-1]))
-print('\nLoading 3x2pt derivatives...')
-dC_3x2pt_6D = fm_utils.dC_dict_to_4D_array(
-    dC_dict_3x2pt_5D, param_names_tot, nbl_3x2pt, zbins, derivatives_prefix='', is_3x2pt=True)
+    # manually set to 0 dz derivatives for all probe combinations but LL
+    for key in param_names_dzWL:
+        dC_dict_3x2pt_5D[key][1, 1] = 0
+        dC_dict_3x2pt_5D[key][1, 0] = 0
+        dC_dict_3x2pt_5D[key][0, 1] = 0
 
-# free up memory
-# del dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
-# gc.collect()
+    # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams_tot)
+    # ! WARNING: the code builds FMs which have all shape nparams_tot x nparams_tot, with null rows/cols if some parameters
+    # ! are not present for a given probe.
+    print('\nLoading WL derivatives...')
+    dC_LL_4D = fm_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_tot, nbl_WL, zbins, derivatives_prefix='')
+    print('\nLoading GCph derivatives...')
+    dC_GG_4D = fm_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_tot, nbl_GC, zbins, derivatives_prefix='')
+    print('\nLoading Wadd derivatives...')
+    dC_WA_4D = fm_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_tot, nbl_WA, zbins, derivatives_prefix='')
+    # dC_WA_4D = np.ones((nbl_WA, zbins, zbins, dC_LL_4D.shape[-1]))
+    print('\nLoading 3x2pt derivatives...')
+    dC_3x2pt_6D = fm_utils.dC_dict_to_4D_array(
+        dC_dict_3x2pt_5D, param_names_tot, nbl_3x2pt, zbins, derivatives_prefix='', is_3x2pt=True)
 
-print('derivatives reshaped in 4D arrays in {:.2f} seconds'.format(time.perf_counter() - start_time))
+    # free up memory
+    # del dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
+    # gc.collect()
 
-# store the derivatives arrays in a dictionary
-deriv_dict = {'dC_LL_4D': dC_LL_4D,
-              'dC_WA_4D': dC_WA_4D,
-              'dC_GG_4D': dC_GG_4D,
-              'dC_3x2pt_6D': dC_3x2pt_6D}
+    print('derivatives reshaped in 4D arrays in {:.2f} seconds'.format(time.perf_counter() - start_time))
 
-# ! compute and save fisher matrix
-fm_dict = fm_utils.compute_FM(general_cfg, covariance_cfg, fm_cfg, ell_dict, cov_dict, deriv_dict,
-                              BNT_matrix)
+    # store the derivatives arrays in a dictionary
+    deriv_dict = {'dC_LL_4D': dC_LL_4D,
+                'dC_WA_4D': dC_WA_4D,
+                'dC_GG_4D': dC_GG_4D,
+                'dC_3x2pt_6D': dC_3x2pt_6D}
+
+    # ! compute and save fisher matrix
+    fm_dict = fm_utils.compute_FM(general_cfg, covariance_cfg, fm_cfg, ell_dict, cov_dict, deriv_dict,
+                                BNT_matrix)
+
+    fm_folder = fm_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
+                                        which_cuts=general_cfg['which_cuts'],
+                                        center_or_min=general_cfg['center_or_min'])
+
+    fm_utils.save_FM(fm_folder, fm_dict, fm_cfg, cases_tosave, save_txt=fm_cfg['save_FM_txt'], save_dict=False,
+                    **variable_specs)
+
+    if fm_cfg['save_FM_dict']:
+        fm_dict_filename = fm_cfg['FM_dict_filename'].format(**variable_specs, nbl=nbl_3x2pt)
+        mm.save_pickle(f'{fm_folder}/{fm_dict_filename}.pickle', fm_dict)
+
+    if fm_cfg['test_against_benchmarks']:
+        mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')
+
+    del cov_dict
+    gc.collect()
+
+elif flat_or_nonflat == 'NonFlat':
+    fm_dict = {}
+    
+else:
+    raise ValueError('flat_or_nonflat must be either flat or nonflat')
 fm_dict['fiducial_values_tot_dict'] = fiducials_dict_tot_fine
-
-fm_folder = fm_cfg['fm_folder'].format(ell_cuts=str(general_cfg['ell_cuts']),
-                                       which_cuts=general_cfg['which_cuts'],
-                                       center_or_min=general_cfg['center_or_min'])
-
-fm_utils.save_FM(fm_folder, fm_dict, fm_cfg, cases_tosave, save_txt=fm_cfg['save_FM_txt'], save_dict=False,
-                 **variable_specs)
-
-if fm_cfg['save_FM_dict']:
-    fm_dict_filename = fm_cfg['FM_dict_filename'].format(**variable_specs, nbl=nbl_3x2pt)
-    mm.save_pickle(f'{fm_folder}/{fm_dict_filename}.pickle', fm_dict)
-
-if fm_cfg['test_against_benchmarks']:
-    mm.test_folder_content(fm_folder, fm_folder + '/benchmarks', 'txt')
-
-del cov_dict
-gc.collect()
 
 # ! ================================ vincenzo
 fm_dict_vin = {}
@@ -1131,15 +1139,18 @@ masked_fm_dict_vin = {}
 masked_fid_pars_dict_vin = {}
 fm_dict_toplot_vin = deepcopy(fm_dict_vin)
 
-for key in list(fm_dict_toplot.keys()):
+if plot_uncert_dav:
+    _keys = list(fm_dict_toplot.keys())
+if plot_uncert_vin:
+    _keys = list(fm_dict_toplot_vin.keys())
+
+for key in _keys:
     if '_WA_' not in key and '_2x2pt_' not in key and '_XC_' not in key and 'fiducial_values_' not in key and 'param_names_dict' not in key:
 
         nparams_toplot = nparams_toplot_ref
         print(key)
         probe = key.split('_')[-2]
 
-        fm = deepcopy(fm_dict_toplot[key])
-        fm_vin = deepcopy(fm_dict_toplot_vin[key])
         
         # mm.matshow(fm, log=True, title='full dav')
         # mm.matshow(fm_vin, log=True, title='full vin')
@@ -1147,11 +1158,13 @@ for key in list(fm_dict_toplot.keys()):
         # ! remove null rows/columns
         print(f'{probe}: fixing parameters {names_params_to_fix_dict_dav[probe]}')
         if plot_uncert_dav:
+            fm = deepcopy(fm_dict_toplot[key])
             masked_fm_dict[key], masked_fid_pars_dict[key] = mm.mask_fm_v2(fm, fm_dict['fiducial_values_tot_dict'],
                                                                         names_params_to_fix=names_params_to_fix_dict_dav[probe],
                                                                         remove_null_rows_cols=remove_null_rows_cols)
             
         if plot_uncert_vin:
+            fm_vin = deepcopy(fm_dict_toplot_vin[key])
             masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key] = mm.mask_fm_v2(fm_vin, fm_dict_vin[f'fiducial_values_dict_{probe}'],
                                                                                 names_params_to_fix=names_params_to_fix_dict_vin[probe],
                                                                                 remove_null_rows_cols=remove_null_rows_cols)
@@ -1224,7 +1237,7 @@ for key in list(fm_dict_toplot.keys()):
             fom_dict[key] = mm.compute_FoM(masked_fm_dict[key], w0wa_idxs=w0wa_idxs)
         if plot_uncert_vin:
             param_names_vin = list(masked_fid_pars_dict_vin[key].keys())
-            w0wa_idxs = param_names_vin.index('wz'), param_names.index('wa')
+            w0wa_idxs = param_names_vin.index('wz'), param_names_vin.index('wa')
             fom_dict[key + '_vin'] = mm.compute_FoM(masked_fm_dict_vin[key], w0wa_idxs=w0wa_idxs)
 
 # compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
@@ -1252,9 +1265,9 @@ for probe in probes:
 
     cases_to_plot = [
         # f'FM_{probe}_G',
-        f'FM_{probe}_G_vin',
+        # f'FM_{probe}_G_vin',
         # f'FM_{probe}_GSSC',
-        f'FM_{probe}_GSSC_vin',
+        # f'FM_{probe}_GSSC_vin',
         # f'perc_diff_{probe}_G',
         f'perc_diff_{probe}_G_vin',
     ]

@@ -72,7 +72,7 @@ general_cfg = {
     'zmin': 0,
     'magcut': 245,
 
-    'flat_or_nonflat': 'Flat',
+    'flat_or_nonflat': 'NonFlat',
 
     # the case with the largest range is nbl_WL_opt.. This is the reference ell binning from which the cuts are applied;
     # in principle, the other binning should be consistent with this one and should not be hardcoded, as long as
@@ -257,6 +257,8 @@ FM_cfg = {
     'deriv_ell_cuts': deriv_ell_cuts,
 
     'fm_folder': f'{output_path}/FM' + '/ell_cuts_{ell_cuts:s}' + ell_cuts_subfolder,
+    'fm_folder_vin': '/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/FiRe/OutputQuantities/FishMat/Davide/{flat_or_nonflat:s}/HMCodeBar',
+
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,
 

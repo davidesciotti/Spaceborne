@@ -83,7 +83,7 @@ def bar_plot_old(uncert_gauss, uncert_SSC, difference):
 
 def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, nparams=7, param_names_label=None,
              second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=None,
-             include_fom=False, figsize=None, grey_bars=False, alpha=1):
+             include_fom=False, figsize=None, grey_bars=False, alpha=1, logy=False, fontsize=15):
     """
     data: usually the percent uncertainties, but could also be the percent difference
     """
@@ -182,10 +182,14 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
             plt.scatter(bar_centers[bar_idx, :], data[bar_idx, :], color=marker_colors[bar_idx],
                         marker=markers[bar_idx], label=label_list[bar_idx], zorder=zorders[bar_idx])
 
-    plt.ylabel(ylabel)
-    plt.xticks(range(nparams), param_names_label, rotation=45)
+    if logy:
+        plt.yscale('log')
+        
+    plt.ylabel(ylabel, fontsize=fontsize + 5)
+    plt.xticks(range(nparams), param_names_label, rotation=45, fontsize=fontsize + 5)
+    plt.yticks(fontsize=fontsize)
     plt.title(title)
-    plt.legend()
+    plt.legend(fontsize=fontsize, loc='upper center', ncols=3, bbox_to_anchor=(0.5, 1.15))
     plt.show()
 
 def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_background, label_foreground, 

@@ -13,6 +13,8 @@ from scipy import interpolate
 import numpy as np
 import pandas as pd
 
+sys.path.append('/home/davide/Documenti/Lavoro/Programmi/Spaceborne')
+
 
 import common_cfg.mpl_cfg as mpl_cfg
 import bin.my_module as mm
@@ -49,7 +51,6 @@ def select_FM(F, probe, curvature=False, shear_bias=False):
 
 fm_folder = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SSC_paper_final/output/FM/ell_cuts_False'
 job_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/jobs/SSC_paper_final'
-uncert_df = pd.read_pickle(f'{fm_folder}/uncert_df_variable_zbins.pkl')
 params_latex = mpl_cfg.general_dict['cosmo_labels_TeX'] + ['FoM']
 params_latex_noFoM = mpl_cfg.general_dict['cosmo_labels_TeX']
 params_plain = ["Om", "Ob", "w0", "wa", "h", "ns", "sigma8", 'logT', "FoM"]
@@ -62,8 +63,6 @@ panel_titles_fontsize = 17
 pic_format = 'pdf'
 fmt = '%.2f'
 dpi = 500
-
-
 params = {'lines.linewidth': 2,
           'font.size': 14,
           'axes.labelsize': 'small',
@@ -76,20 +75,139 @@ params = {'lines.linewidth': 2,
 plt.rcParams.update(params)
 markersize = 4
 
+save_figs = False
+
+# ! =========================================== Fig(s). 7 ================================================================
+uncert_df = pd.read_pickle(f'{fm_folder}/uncert_df_Opt_marg_vs_cond_for_sylv_barplots.pkl')
+uncert_df.drop_duplicates(inplace=True)
+npar = 8
+fix_shear_bias = False
+probes = ['WL', 'GC', '3x2pt']
+for probe in probes:
+
+    if fix_shear_bias:
+        probe = 'WL'
+
+    Marg_err_G = uncert_df[
+        (uncert_df['probe'] == probe) &
+        (uncert_df['which_cov'] == f'FM_{probe}_G') &
+        (uncert_df['which_uncertainty'] == 'marginal') &
+        (uncert_df['fix_shear_bias'] == fix_shear_bias)
+    ].loc[:, 'Om':'logT'].values[0]
+
+    UnMarg_err_G = uncert_df[
+        (uncert_df['probe'] == probe) &
+        (uncert_df['which_cov'] == f'FM_{probe}_G') &
+        (uncert_df['which_uncertainty'] == 'conditional') &
+        (uncert_df['fix_shear_bias'] == fix_shear_bias)
+    ].loc[:, 'Om':'logT'].values[0]
+
+    Marg_err_GS = uncert_df[
+        (uncert_df['probe'] == probe) &
+        (uncert_df['which_cov'] == f'FM_{probe}_GSSC') &
+        (uncert_df['which_uncertainty'] == 'marginal') &
+        (uncert_df['fix_shear_bias'] == fix_shear_bias)
+    ].loc[:, 'Om':'logT'].values[0]
+
+    UnMarg_err_GS = uncert_df[
+        (uncert_df['probe'] == probe) &
+        (uncert_df['which_cov'] == f'FM_{probe}_GSSC') &
+        (uncert_df['which_uncertainty'] == 'conditional') &
+        (uncert_df['fix_shear_bias'] == fix_shear_bias)
+    ].loc[:, 'Om':'logT'].values[0]
+
+    FoM = uncert_df[
+        (uncert_df['which_cov'] != f'FM_{probe}_G') &
+        (uncert_df['which_uncertainty'] == 'marginal') &
+        (uncert_df['fix_shear_bias'] == fix_shear_bias)
+    ].loc[:, 'FoM'].values
+
+    x = (np.arange(npar) + 1) * 2
+    wid = 0.6
+
+    fig, ax = plt.subplots(1, 1, sharex=True, figsize=(15, 10))
+
+    if fix_shear_bias:
+        ax.set_title(f'{probe} w/ fixed shear bias', fontsize=34, pad=15, loc='left')
+    else:
+        ax.set_title(probe_tex_dict[probe], fontsize=34, pad=15, loc='left')
+
+    ax.barh(x + wid / 2, Marg_err_G, height=wid, color='lightcoral', label='G, marginal', edgecolor='k')
+    ax.barh(x + wid / 2, UnMarg_err_G, height=wid, color='firebrick', label='G, conditional', edgecolor='k')
+    ax.barh(x - wid / 2, Marg_err_GS, height=wid, color='skyblue', label='GS, marginal', edgecolor='k')
+    ax.barh(x - wid / 2, UnMarg_err_GS, height=wid, color='dodgerblue', label='GS, conditional', edgecolor='k')
+    # ax.barh(x[-1]+2+wid/2, FoM)
+
+    ax.set_yticks(x)
+    ax.set_yticklabels(params_latex_noFoM, rotation=45)
+
+    ax.set_xlabel('$\\bar{\\sigma} \\; [\%]$', fontsize=46)
+    ax.set_xscale('log')
+
+    ax.tick_params(direction='in', which='both', labelsize=38, pad=10)
+    ax.xaxis.set_ticks_position('both')
+    # ax.xaxis.set_minor_locator(AutoMinorLocator())
+
+    ax.set_axisbelow(True)
+    plt.grid(axis='x', which='both')
+    if probe in ['WL'] and not fix_shear_bias:
+        plt.legend(fontsize=36, ncol=2, bbox_to_anchor=(1.02, 1.27))
+
+    if save_figs:
+        plt.savefig(f'{fm_folder}/plots/barplot_{probe}_v2.{pic_format}', dpi=dpi, bbox_inches='tight')
+
+
+# * same plot but for the FoM
+fom_dict = {}
+for probe in probes:
+    for which_cov in ['G', 'GSSC']:
+
+        fom_dict[f'fom_{which_cov}'] = uncert_df[
+            (uncert_df['which_cov'].str.startswith('FM_') & uncert_df['which_cov'].str.endswith(f'_{which_cov}')) &
+            (uncert_df['which_uncertainty'] == 'marginal') &
+            (uncert_df['fix_shear_bias'] == fix_shear_bias)
+        ].loc[:, 'FoM'].values
+
+x = (np.arange(len(probes)) + 1) * 2
+wid = 0.6
+
+fig, ax = plt.subplots(1, 1, sharex=True, figsize=(13, 8))
+
+ax.barh(x + wid / 2, fom_dict['fom_G'], height=wid, color='lightcoral', label='G, marginal', edgecolor='k')
+ax.barh(x - wid / 2, fom_dict['fom_GSSC'], height=wid, color='skyblue', label='GS, marginal', edgecolor='k')
+
+ax.set_yticks(x)
+ax.set_yticklabels(list(probe_tex_dict.values()), rotation=45)
+
+ax.set_xlabel('FoM', fontsize=46)
+ax.set_xscale('log')
+ax.legend(fontsize=28, ncol=2)
+
+ax.tick_params(direction='in', which='both', labelsize=35, pad=10)
+ax.xaxis.set_ticks_position('both')
+# ax.xaxis.set_minor_locator(AutoMinorLocator())
+
+ax.set_title(f' ', fontsize=34, pad=15, loc='left')
+ax.set_axisbelow(True)
+plt.grid(axis='x', which='both')
+if probe in ['WL'] and not fix_shear_bias:
+    plt.legend(fontsize=40, ncol=2, bbox_to_anchor=(1.02, 1.27))
+
+if save_figs:
+    plt.savefig(f'{fm_folder}/plots/barplot_FoM_v2.{pic_format}', dpi=dpi, bbox_inches='tight')
+
+
 # ! =========================================== Fig. 9 ================================================================
 
 # Probes and colors
 probes = ['WL', '3x2pt']
 opt_pes_list = ['Pes', 'Opt']
 colors = ['tab:blue', 'tab:blue', 'tab:green', 'tab:green']
+uncert_df = pd.read_pickle(f'{fm_folder}/uncert_df_variable_zbins.pkl')
 
 # Create subplots
-# fig, axs = plt.subplots(3, 3, sharex=True, subplot_kw=dict(box_aspect=0.6),
-# constrained_layout=True, figsize=(15, 6.5),)# tight_layout={'pad': 0.4})
-# plt.subplots_adjust(wspace=0.01)
 fig, axs = plt.subplots(3, 3, sharex=True, subplot_kw=dict(box_aspect=0.6),
-                        figsize=(10.5, 6.5),  # layout='constrained',
-                        gridspec_kw={'wspace': 0.0001, 'hspace': 0.0002})
+                        constrained_layout=True, figsize=(10.5, 6.5),)  # tight_layout={'pad': 0.4})
 
 # number each axs box: 0 for [0, 0], 1 for [0, 1] and so forth
 axs_idx = np.arange(0, 9, 1).reshape((3, 3))
@@ -139,22 +257,25 @@ fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol
 fig.supxlabel('${\\cal N}_\\mathrm{b}$')
 fig.supylabel('${\\cal R}(x) = \\sigma_{\\rm GS}(x) \\, / \\, \\sigma_{\\rm G}(x)$', x=-0.02)
 
-# fig.tight_layout()
-
-plt.savefig(f'{fm_folder}/plots/GS_G_ratio_vs_zbins_jul24.{pic_format}', dpi=dpi, bbox_inches='tight')
+if save_figs:
+    plt.savefig(f'{fm_folder}/plots/GS_G_ratio_vs_zbins_jul24.{pic_format}', dpi=dpi, bbox_inches='tight')
 plt.show()
 
 # ! =========================================== Fig. 10 ================================================================
 
 uncert_df = pd.read_pickle(f'{fm_folder}/uncert_df_opt_ep_or_ed_vs_zbins.pkl')
 # Create subplots
-fig, axs = plt.subplots(1, 2, figsize=(15, 5), constrained_layout=True)
+fig, axs = plt.subplots(1, 2, figsize=(15, 6), constrained_layout=False, tight_layout={'pad': 3})
+points_per_inch = 72 / fig.dpi
+labelsize = 30
+legendsize = 25
 
 # Probes and colors
 ep_ed_values = ['EP', 'ED']
 colors = ['tab:blue', 'tab:orange']
 linestyle = 'dashed'
 opt_pes = 'Opt'
+fom_values_dict = {}
 
 # Filter DataFrame and plot for each subplot
 for probe_idx, probe in enumerate(probes):
@@ -170,126 +291,38 @@ for probe_idx, probe in enumerate(probes):
         # Plot data for each "Nbins"
         NbZed = _uncert_df['zbins'].unique()
 
-        # Loop over "Nbins" values
-        # for zbin in NbZed:
-        # _data = _uncert_df[_uncert_df['zbins'] == zbin]
-
         # Extract FoM values
-        fom_values = np.abs((_uncert_df['FoM'].values / 100) - 1)
+        fom_values_dict[f'{probe}_{ep_ed}'] = np.abs((_uncert_df['FoM'].values / 100) - 1)
 
         # Plot data
-        axs[probe_idx].plot(NbZed, fom_values, ls=linestyle, markersize=markersize, marker='o', color=colors[ep_ed_idx],
+        axs[probe_idx].plot(NbZed, fom_values_dict[f'{probe}_{ep_ed}'], ls=linestyle, markersize=7, marker='o', color=colors[ep_ed_idx],
                             label=f'{ep_ed}')
 
         axs[probe_idx].yaxis.set_major_formatter(FormatStrFormatter(f'{fmt}'))
         axs[probe_idx].xaxis.set_major_formatter(FormatStrFormatter('%d'))
         axs[probe_idx].set_xticks(NbZed)
-        axs[probe_idx].legend()
-        axs[probe_idx].set_xlabel('${\\cal N}_\\mathrm{b}$')
+        axs[probe_idx].legend(fontsize=legendsize * points_per_inch)
+        axs[probe_idx].set_xlabel('${\\cal N}_\\mathrm{b}$', fontsize=labelsize * points_per_inch)
         axs[probe_idx].set_ylabel('$\\mathcal{R}(\\mathrm{FoM}) \\, , \\; {\\rm %s}$' %
-                                  probe_tex_dict[probe].replace('$', ''))
+                                  probe_tex_dict[probe].replace('$', ''), fontsize=labelsize * points_per_inch)
         axs[probe_idx].grid(True)
+        axs[probe_idx].tick_params(labelsize=labelsize * points_per_inch)  # Convert 30 points to inches
 
+# compute EP vs ED variation
+print('WL EP vs ED variation:\n', (fom_values_dict['WL_EP'] / fom_values_dict['WL_ED'] - 1) * 100)
+print('3x2pt EP vs ED variation:\n', (fom_values_dict['3x2pt_EP'] / fom_values_dict['3x2pt_ED'] - 1) * 100)
 
-# fig.supylabel('$\\mathcal{R}(\\mathrm{FoM})$')
+# compute EP and ED vs zbins variation
+for probe in ['WL', '3x2pt']:
+    for ep_ed in ep_ed_values:
+        print(f'{probe} {ep_ed} variation:\n', np.diff(
+            fom_values_dict[f'{probe}_{ep_ed}']) / fom_values_dict[f'{probe}_{ep_ed}'][:-1] * 100)
 
-# Legend
-# handles, labels = axs[0].get_legend_handles_labels()
-# fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.1), ncol=2)
-
-plt.savefig(f'{fm_folder}/plots/FoM_vs_EP-ED_zbins_v2.{pic_format}', dpi=dpi, bbox_inches='tight')
+if save_figs:
+    plt.savefig(f'{fm_folder}/plots/FoM_vs_EP-ED_zbins_v2.{pic_format}', dpi=dpi, bbox_inches='tight')
 plt.show()
 
-# ! =========================================== Fig(s). 7 ================================================================
-uncert_df = pd.read_pickle(f'{fm_folder}/uncert_df_Opt_marg_vs_cond_for_sylv_barplots.pkl')
-uncert_df.drop_duplicates(inplace=True)
-npar = 8
-fix_shear_bias = False
 
-xlim_dict = {
-    'WL': [0, 60],
-    'GC': [0, 23],
-    '3x2pt': [0, 5],
-}
-
-for probe in ['WL', 'GC', '3x2pt']:
-
-    Marg_err_G = uncert_df[
-        (uncert_df['probe'] == probe) &
-        (uncert_df['which_cov'] == f'FM_{probe}_G') &
-        (uncert_df['which_uncertainty'] == 'marginal') &
-        (uncert_df['fix_shear_bias'] == fix_shear_bias)
-    ].loc[:, 'Om':'logT'].values[0]
-
-    UnMarg_err_G = uncert_df[
-        (uncert_df['probe'] == probe) &
-        (uncert_df['which_cov'] == f'FM_{probe}_G') &
-        (uncert_df['which_uncertainty'] == 'conditional') &
-        (uncert_df['fix_shear_bias'] == fix_shear_bias)
-    ].loc[:, 'Om':'logT'].values[0]
-
-    Marg_err_GS = uncert_df[
-        (uncert_df['probe'] == probe) &
-        (uncert_df['which_cov'] == f'FM_{probe}_GSSC') &
-        (uncert_df['which_uncertainty'] == 'marginal') &
-        (uncert_df['fix_shear_bias'] == fix_shear_bias)
-    ].loc[:, 'Om':'logT'].values[0]
-
-    UnMarg_err_GS = uncert_df[
-        (uncert_df['probe'] == probe) &
-        (uncert_df['which_cov'] == f'FM_{probe}_GSSC') &
-        (uncert_df['which_uncertainty'] == 'conditional') &
-        (uncert_df['fix_shear_bias'] == fix_shear_bias)
-    ].loc[:, 'Om':'logT'].values[0]
-
-    FoM = uncert_df[
-        (uncert_df['probe'] == probe) &
-        (uncert_df['which_cov'] != f'perc_diff_{probe}_G') &
-        (uncert_df['which_uncertainty'] == 'conditional') &
-        (uncert_df['fix_shear_bias'] == fix_shear_bias)
-    ].loc[:, 'FoM'].values
-    
-    x = (np.arange(npar) + 1) * 2
-    wid = 0.7
-
-    fig, ax = plt.subplots(1, 1, sharex=True, figsize=(15, 8))
-    ax.set_title(probe_tex_dict[probe], fontsize=34, pad=15, loc='left')
-
-    ax.barh(x + wid / 2, Marg_err_G, height=wid, color='lightcoral', label='G, marginal', edgecolor='k')
-    ax.barh(x + wid / 2, UnMarg_err_G, height=wid, color='firebrick', label='G, conditional', edgecolor='k')
-    ax.barh(x - wid / 2, Marg_err_GS, height=wid, color='skyblue', label='GS, marginal', edgecolor='k')
-    ax.barh(x - wid / 2, UnMarg_err_GS, height=wid, color='dodgerblue', label='GS, conditional', edgecolor='k')
-    # ax.barh(x[-1]+2+wid/2, FoM)
-
-    ax.set_yticks(x)
-    ax.set_yticklabels(params_latex_noFoM)
-
-    # ax.set_xscale('log')
-    ax.set_xlabel('$\\bar{\sigma} \\; [\%]$', fontsize=46)
-    
-        
-    ax.set_xscale('log')
-
-    # ax.set_xlim(xlim_dict[probe])
-
-    ax.tick_params(direction='in', which='both', labelsize=34)
-    ax.xaxis.set_ticks_position('both')
-    ax.xaxis.set_minor_locator(AutoMinorLocator())
-
-    ax.set_axisbelow(True)
-    plt.grid(axis='x', which='both')
-    if probe in ['WL']:
-        plt.legend(fontsize=28, ncol=2, bbox_to_anchor=(1.02, 1.27))
-
-
-
-
-
-
-
-
-
-    
 """
 # ! sylavin's code for Fig. 6
 curv = False

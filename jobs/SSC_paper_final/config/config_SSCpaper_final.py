@@ -2,8 +2,8 @@ from pathlib import Path
 import sys
 import numpy as np
 
-project_path = Path.cwd().parent.parent.parent
-job_path = Path.cwd().parent
+project_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne'
+job_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/bin/SSC_paper_final'
 
 sys.path.append(f'{project_path}/bin')
 import check_specs as utils
@@ -11,7 +11,7 @@ import check_specs as utils
 which_forecast = 'SPV3'
 fsky, GL_or_LG, ind_ordering, _ = utils.get_specs(which_forecast)
 
-SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/FiRe'
+SPV3_folder = f'/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/FiRe'
 output_path = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SSC_paper_final/output'
 
 # ! choose the flagship version and whether you want to use the BNT transform
@@ -72,7 +72,7 @@ general_cfg = {
     'zmin': 0,
     'magcut': 245,
 
-    'flat_or_nonflat': 'NonFlat',
+    'flat_or_nonflat': 'Flat',
 
     # the case with the largest range is nbl_WL_opt.. This is the reference ell binning from which the cuts are applied;
     # in principle, the other binning should be consistent with this one and should not be hardcoded, as long as
@@ -171,7 +171,7 @@ covariance_cfg = {
 
     # ! no folders for ell_cut_center or min
     'cov_folder': f'{output_path}/covmat',
-    'cov_filename': 'covmat_{which_cov:s}_{probe:s}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
+    'cov_filename': 'covmat_{which_cov:s}_{probe:s}_nbl_3x2pt{nbl_3x2pt:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
     'cov_filename_vincenzo': 'cm-{probe_vinc:s}-{GOGS_filename:s}-{nbl:d}-{EP_or_ED:s}{zbins:02d}-'
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
 
@@ -196,30 +196,13 @@ Sijkl_cfg = {
     'Sijkl_folder': f'{output_path}/sijkl',
     'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}_FiRe.npy',
 
+    # old
     # 'Sijkl_folder': f'/home/davide/Documenti/Lavoro/Programmi/common_data/Sijkl',
     # 'Sijkl_filename': 'Sijkl_WFdavide_nz10000_IA_3may.npy',
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
 
 
-# this is the order wou whould use!
-param_names_dict_coarse = {
-    'cosmo': ["Om", "Ob", "wz", "wa", "h", "ns", "s8", 'logT'],
-    'IA': ["Aia", "eIA", "bIA"],
-    'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
-    'shear_bias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
-    'dzWL': [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
-    'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
-}
-# declare the set of parameters under study
-param_names_wl = param_names_dict_coarse['cosmo'] + param_names_dict_coarse['IA'] + param_names_dict_coarse['shear_bias'] + \
-    param_names_dict_coarse['dzWL']
-param_names_gc = param_names_dict_coarse['cosmo'] + \
-    param_names_dict_coarse['galaxy_bias'] + param_names_dict_coarse['dzGC']
-# 3x2pt has only dv-WLO-ddzWL, the cross and GCph are set to 0. this is to be better understood.
-param_names_3x2pt = param_names_dict_coarse['cosmo'] + param_names_dict_coarse['IA'] + param_names_dict_coarse['galaxy_bias'] + \
-    param_names_dict_coarse['shear_bias'] + param_names_dict_coarse['dzWL']
-param_names_tot = param_names_3x2pt + param_names_dict_coarse['dzGC']
 
 # param_names_3x2pt = list(np.concatenate([param_names_dict_coarse[key] for key in param_names_dict_coarse.keys()]))
 
@@ -231,16 +214,15 @@ if not ell_cuts:
 
 FM_txt_filename = covariance_cfg['cov_filename'].replace('covmat_', 'FM_').replace('_{ndim:d}D', '')
 FM_dict_filename = covariance_cfg['cov_filename'].replace('covmat_{which_cov:s}_{probe:s}_', 'FM_').replace(
-    '_{ndim:d}D',
-    '')
+    '_{ndim:d}D', '')
 deriv_filename = covariance_cfg['cov_filename'].replace('covmat_', 'dDVd')
 FM_cfg = {
     'compute_FM': True,
 
-    'param_names_dict_coarse': param_names_dict_coarse,
+    # 'param_names_dict_coarse': param_names_dict_coarse,
     'fiducials_dict': None,  # this needs to be set in the main, since it depends on the n_gal file
-    'param_names_tot': param_names_tot,
-    'nparams_tot': len(param_names_tot),  # total (cosmo + nuisance) number of parameters
+    # 'param_names_tot': param_names_tot,
+    # 'nparams_tot': len(param_names_tot),  # total (cosmo + nuisance) number of parameters
 
     'save_FM_txt': True,
     'save_FM_dict': True,

@@ -329,8 +329,6 @@ def compute_FM(general_cfg, covariance_cfg, FM_cfg, ell_dict, cov_dict, deriv_di
         for probe_name, FM_GO in zip(probe_names, FMs_GO):
             FM_dict[f'FM_{probe_name}_GO'] = FM_GO
 
-    print("FMs computed in %.2f seconds" % (time.perf_counter() - start))
-
     return FM_dict
 
 

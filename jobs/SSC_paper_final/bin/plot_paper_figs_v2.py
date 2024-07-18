@@ -5,13 +5,18 @@ import sys
 import time
 from pathlib import Path
 
+from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
 from matplotlib import ticker
 import matplotlib
 from matplotlib.ticker import AutoMinorLocator, FormatStrFormatter
 from scipy import interpolate
 import numpy as np
+import warnings
 import pandas as pd
+
+warnings.filterwarnings('ignore', category=SyntaxWarning, message=r'invalid escape sequence')
+
 
 sys.path.append('/home/davide/Documenti/Lavoro/Programmi/Spaceborne')
 
@@ -75,7 +80,7 @@ params = {'lines.linewidth': 2,
 plt.rcParams.update(params)
 markersize = 4
 
-save_figs = False
+save_figs = True
 
 # ! =========================================== Fig(s). 7 ================================================================
 uncert_df = pd.read_pickle(f'{fm_folder}/uncert_df_Opt_marg_vs_cond_for_sylv_barplots.pkl')
@@ -205,6 +210,13 @@ opt_pes_list = ['Pes', 'Opt']
 colors = ['tab:blue', 'tab:blue', 'tab:green', 'tab:green']
 uncert_df = pd.read_pickle(f'{fm_folder}/uncert_df_variable_zbins.pkl')
 
+fom_opt_3x2pt_g_ref = uncert_df[
+    (uncert_df['zbins'] == 10) &
+    (uncert_df['opt_pes'] == 'Opt') &
+    (uncert_df['which_cov'] == 'FM_3x2pt_G')
+]['FoM'].values[0]
+print(f'Reference FoM for EP10 flat optimistic G 3x2pt case: {int(fom_opt_3x2pt_g_ref)}')
+
 # Create subplots
 fig, axs = plt.subplots(3, 3, sharex=True, subplot_kw=dict(box_aspect=0.6),
                         constrained_layout=True, figsize=(10.5, 6.5),)  # tight_layout={'pad': 0.4})
@@ -264,11 +276,14 @@ plt.show()
 # ! =========================================== Fig. 10 ================================================================
 
 uncert_df = pd.read_pickle(f'{fm_folder}/uncert_df_opt_ep_or_ed_vs_zbins.pkl')
+
 # Create subplots
-fig, axs = plt.subplots(1, 2, figsize=(15, 6), constrained_layout=False, tight_layout={'pad': 3})
+common_figsize = (13, 5)  # for plots 10 and 11
+fig, axs = plt.subplots(1, 2, figsize=common_figsize, constrained_layout=False, tight_layout={'pad': 2})
 points_per_inch = 72 / fig.dpi
-labelsize = 30
-legendsize = 25
+labelsize = 23 * points_per_inch
+legendsize = 20 * points_per_inch
+ticks_size = 20 * points_per_inch
 
 # Probes and colors
 ep_ed_values = ['EP', 'ED']
@@ -301,12 +316,12 @@ for probe_idx, probe in enumerate(probes):
         axs[probe_idx].yaxis.set_major_formatter(FormatStrFormatter(f'{fmt}'))
         axs[probe_idx].xaxis.set_major_formatter(FormatStrFormatter('%d'))
         axs[probe_idx].set_xticks(NbZed)
-        axs[probe_idx].legend(fontsize=legendsize * points_per_inch)
-        axs[probe_idx].set_xlabel('${\\cal N}_\\mathrm{b}$', fontsize=labelsize * points_per_inch)
-        axs[probe_idx].set_ylabel('$\\mathcal{R}(\\mathrm{FoM}) \\, , \\; {\\rm %s}$' %
-                                  probe_tex_dict[probe].replace('$', ''), fontsize=labelsize * points_per_inch)
+        axs[probe_idx].legend(fontsize=legendsize)
+        axs[probe_idx].set_xlabel('${\\cal N}_\\mathrm{b}$', fontsize=labelsize)
+        axs[probe_idx].set_ylabel('$\\mathcal{R}(\\mathrm{FoM}) \\; \\; {\\rm %s}$' %
+                                  probe_tex_dict[probe].replace('$', ''), fontsize=labelsize)
         axs[probe_idx].grid(True)
-        axs[probe_idx].tick_params(labelsize=labelsize * points_per_inch)  # Convert 30 points to inches
+        axs[probe_idx].tick_params(labelsize=ticks_size)  # Convert 30 points to inches
 
 # compute EP vs ED variation
 print('WL EP vs ED variation:\n', (fom_values_dict['WL_EP'] / fom_values_dict['WL_ED'] - 1) * 100)
@@ -321,6 +336,154 @@ for probe in ['WL', '3x2pt']:
 if save_figs:
     plt.savefig(f'{fm_folder}/plots/FoM_vs_EP-ED_zbins_v2.{pic_format}', dpi=dpi, bbox_inches='tight')
 plt.show()
+
+
+# ! =========================================== Fig. 11 ================================================================
+
+uncert_df = pd.read_pickle(f'{fm_folder}/uncert_df_zbinsEP10_fom_vs_epsilonb.pkl')
+eps_b_list = np.unique(uncert_df['epsilon_b'].values) * 100  # it's in percent units
+shear_bias_prior_list = np.unique(uncert_df['shear_bias_prior'].values)
+ls_list = ['-', '--', ':']
+colors = ['tab:blue', 'tab:orange']
+
+# Create subplots
+fig, axs = plt.subplots(1, 2, figsize=common_figsize, constrained_layout=True, tight_layout={'pad': 2})
+points_per_inch = 72 / fig.dpi
+
+# Plot FoM for both G and GS in the left subplot
+for idx, shear_bias_prior in enumerate(shear_bias_prior_list):
+    fom_g = uncert_df[
+        (uncert_df['which_cov'] == 'FM_3x2pt_G') &
+        (uncert_df['probe'] == '3x2pt') &
+        (uncert_df['shear_bias_prior'] == shear_bias_prior)
+    ]['FoM'].values
+    fom_gs = uncert_df[
+        (uncert_df['which_cov'] == 'FM_3x2pt_GSSC') &
+        (uncert_df['probe'] == '3x2pt') &
+        (uncert_df['shear_bias_prior'] == shear_bias_prior)
+    ]['FoM'].values
+
+    axs[0].semilogx(eps_b_list, fom_g, ls=ls_list[idx], c=colors[0], label=f'G $\sigma_m={shear_bias_prior}$')
+    axs[0].semilogx(eps_b_list, fom_gs, ls=ls_list[idx], c=colors[1], label=f'GS $\sigma_m={shear_bias_prior}$')
+    axs[1].semilogx(eps_b_list, fom_gs / fom_g, ls=ls_list[idx], c='k', label=f'$\sigma_m={shear_bias_prior}$')
+
+# Set labels and legend for the left subplot
+axs[0].set_xlabel('$\\epsilon_b \\, [\%]$', fontsize=labelsize)
+axs[1].set_xlabel('$\\epsilon_b \\, [\%]$', fontsize=labelsize)
+axs[0].set_ylabel('${\\rm FoM}  \\; \\; {\\rm 3}\\times 2 {\\rm pt}$', fontsize=labelsize)
+axs[1].set_ylabel('$\\mathcal{R}(\\mathrm{FoM}) \\; \\; {\\rm 3}\\times 2 {\\rm pt}$', fontsize=labelsize)
+axs[0].grid(True)
+axs[1].grid(True)
+axs[0].tick_params(labelsize=ticks_size)
+axs[1].tick_params(labelsize=ticks_size)
+
+# legends
+line_styles = [Line2D([0], [0], color='k', lw=2, linestyle=ls) for ls in ls_list]
+line_colors = [Line2D([0], [0], color=color, lw=2) for color in colors]
+
+combined_legend = line_styles + line_colors
+combined_labels = [r'$\sigma_m=5 \times 10^{-4}$',
+                   r'$\sigma_m=50 \times 10^{-4}$', r'$\sigma_m=500 \times 10^{-4}$', 'G', 'GS']
+
+legend = axs[0].legend(combined_legend, combined_labels, loc='upper right')
+
+# line_styles = [Line2D([0], [0], color='k', lw=2, linestyle=ls) for ls in ls_list]
+# line_colors = [Line2D([0], [0], color=color, lw=2) for color in colors]
+# legend1 = axs[0].legend(line_styles, [r'$\sigma_m=5 \times 10^{-4}$', r'$\sigma_m=50 \times 10^{-4}$', r'$\sigma_m=500 \times 10^{-4}$'], loc='upper right')
+# legend2 = axs[0].legend(line_colors, ['G', 'GS'], loc='lower right')
+# axs[0].add_artist(legend1)
+legend1 = axs[1].legend(line_styles, [
+                        r'$\sigma_m=5 \times 10^{-4}$', r'$\sigma_m=50 \times 10^{-4}$', r'$\sigma_m=500 \times 10^{-4}$'], loc='upper right')
+axs[1].add_artist(legend1)
+
+if save_figs:
+    plt.savefig(f'{fm_folder}/plots/FoM_vs_epsb_and_ratio_v2.pdf', dpi=500, bbox_inches='tight')
+plt.show()
+
+
+# ! =========================================== Fig. 12 ================================================================
+
+uncert_df = pd.read_pickle(f'{fm_folder}/uncert_df_zbinsEP10_fom_vs_epsilonbANDsigmam_isocontour.pkl')
+# clean df
+uncert_df = uncert_df.drop(columns=['gal_bias_prior'])
+uncert_df = uncert_df[
+    (uncert_df['which_cov'] == 'FM_3x2pt_GSSC') &
+    (uncert_df['probe'] == '3x2pt')
+]
+uncert_df = uncert_df[['shear_bias_prior', 'epsilon_b', 'FoM']]
+
+# Generate grid data for contour plot
+eps_b_values = np.unique(uncert_df['epsilon_b'].values)
+sigma_m_values = np.unique(uncert_df['shear_bias_prior'].values)
+eps_b_grid, sigma_m_grid = np.meshgrid(eps_b_values, sigma_m_values)
+
+# Pivoting to create grid values for FoM
+fom_gs_grid = uncert_df.pivot(index='shear_bias_prior', columns='epsilon_b', values='FoM').values
+levels = [0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10]
+xlim = (0, 0.1)
+
+
+plt.scatter(eps_b_grid * 100, sigma_m_grid * 1e4, c=fom_gs_grid / fom_opt_3x2pt_g_ref,
+            cmap='plasma', s=30)
+plt.xlim(xlim)
+plt.grid()
+norm = plt.Normalize(vmin=levels[0], vmax=levels[-1])
+sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
+sm.set_array([])
+plt.colorbar(sm, ax=ax, label='FoM$_{\\rm GS}$/FoM$_{\\rm ref}$')
+plt.show()
+
+# Create contour plot
+fig, ax = plt.subplots(figsize=(10, 10))
+
+contour = ax.contour(eps_b_grid * 100, sigma_m_grid * 1e4, fom_gs_grid / fom_opt_3x2pt_g_ref,
+                     levels=levels, cmap='plasma')
+
+# Set labels
+ax.set_xlabel('$\\epsilon_b \\; [\\%]$', fontsize=15)
+ax.set_ylabel('$\\sigma_m \\times 10^{4}$', fontsize=15)
+ax.set_xlim(xlim)
+# ax.set_ylim(0, 10)
+
+legend_elements = [plt.Line2D([0], [0], color=contour.cmap(contour.norm(level)), lw=2,
+                              label=f'FoM$_{{\\rm GS}}$/FoM$_{{\\rm ref}}$ = {level:.2f}')
+                   for level in levels]
+ax.legend(handles=legend_elements, loc='upper right', fontsize=12)
+ax.grid()
+
+# plt.savefig('isocontour_plot.pdf', dpi=300, bbox_inches='tight')
+plt.show()
+
+print(f'sigma_m_values.min(): \t {sigma_m_values.min()}')
+print(f'sigma_m_values.max(): \t {sigma_m_values.max()}')
+print(f'eps_b_values.min(): \t {eps_b_values.min()}')
+print(f'eps_b_values.max(): \t {eps_b_values.max()}')
+eps_b_triplet = np.array((0.01, 0.05, 1)) / 100  # not in percent units
+sigma_m_triplet = (0.5e-4, 5e-4, 10e-4)
+from pynverse import inversefunc
+
+
+# with RegularGridInterpolator
+f = interpolate.RegularGridInterpolator((sigma_m_values, eps_b_values),
+                                        fom_gs_grid / fom_opt_3x2pt_g_ref, 
+                                        method='linear')
+eps_b_xx, sigma_m_yy = np.meshgrid(eps_b_triplet, sigma_m_triplet)
+# the rows of the result correspond to different fixed values of sigma_m
+fom_gs_over_fom_ref = f((sigma_m_yy, eps_b_xx))
+print(f'FoM_GS/FoM for eps_b = {eps_b_triplet[0]*100} %: \t',fom_gs_over_fom_ref.T[0])
+print(f'FoM_GS/FoM for eps_b = {eps_b_triplet[1]*100} %: \t',fom_gs_over_fom_ref.T[1])
+print(f'FoM_GS/FoM for eps_b = {eps_b_triplet[2]*100} %: \t',fom_gs_over_fom_ref.T[2])
+print(f'\t\t for sigma_m: \t ', sigma_m_triplet)
+
+
+#  ! redo eps_b = {... table
+for sigma_m_tofix in sigma_m_triplet:
+    z_values = (0.8, 0.9, 1)
+    # this is a function of eps_b only, because pyinverse works in 1d
+    def f_fixed_sigmam(epsb): return f((sigma_m_tofix, epsb))
+    # without specifying the domani it gives interpolation issues
+    eps_b_vals = inversefunc(f_fixed_sigmam, y_values=z_values, domain=[eps_b_values.min(), eps_b_values.max()])
+    print(f'eps_b_vals for sigma_m = {sigma_m_tofix}: {eps_b_vals*100} [%]')
 
 
 """

@@ -397,7 +397,7 @@ legend1 = axs[1].legend(line_styles, [
 axs[1].add_artist(legend1)
 
 if save_figs:
-    plt.savefig(f'{fm_folder}/plots/FoM_vs_epsb_and_ratio_v2.pdf', dpi=500, bbox_inches='tight')
+    plt.savefig(f'{fm_folder}/plots/FoM_vs_epsb_and_ratio_v2.pdf', dpi=dpi, bbox_inches='tight')
 plt.show()
 
 
@@ -426,6 +426,7 @@ xlim = (0, 0.1)
 plt.scatter(eps_b_grid * 100, sigma_m_grid * 1e4, c=fom_gs_grid / fom_opt_3x2pt_g_ref,
             cmap='plasma', s=30)
 plt.xlim(xlim)
+
 plt.grid()
 norm = plt.Normalize(vmin=levels[0], vmax=levels[-1])
 sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
@@ -434,24 +435,31 @@ plt.colorbar(sm, ax=ax, label='FoM$_{\\rm GS}$/FoM$_{\\rm ref}$')
 plt.show()
 
 # Create contour plot
-fig, ax = plt.subplots(figsize=(10, 10))
+fig, ax = plt.subplots(figsize=(6.3, 6.3))
+points_per_inch = 72 / fig.dpi
+labelsize = 23 * points_per_inch
+legendsize = 20 * points_per_inch
+ticks_size = 20 * points_per_inch
 
 contour = ax.contour(eps_b_grid * 100, sigma_m_grid * 1e4, fom_gs_grid / fom_opt_3x2pt_g_ref,
                      levels=levels, cmap='plasma')
 
+
 # Set labels
-ax.set_xlabel('$\\epsilon_b \\; [\\%]$', fontsize=15)
-ax.set_ylabel('$\\sigma_m \\times 10^{4}$', fontsize=15)
+ax.set_xlabel('$\\epsilon_b \\; [\\%]$', fontsize=labelsize)
+ax.set_ylabel('$\\sigma_m \\times 10^{4}$', fontsize=labelsize)
 ax.set_xlim(xlim)
+ax.tick_params(labelsize=ticks_size)
 # ax.set_ylim(0, 10)
 
 legend_elements = [plt.Line2D([0], [0], color=contour.cmap(contour.norm(level)), lw=2,
                               label=f'FoM$_{{\\rm GS}}$/FoM$_{{\\rm ref}}$ = {level:.2f}')
                    for level in levels]
-ax.legend(handles=legend_elements, loc='upper right', fontsize=12)
+ax.legend(handles=legend_elements, loc='upper right', fontsize=legendsize)
 ax.grid()
 
-# plt.savefig('isocontour_plot.pdf', dpi=300, bbox_inches='tight')
+
+plt.savefig(f'{fm_folder}/plots/epsb_sigmam_contour_v2.pdf', dpi=dpi, bbox_inches='tight')
 plt.show()
 
 print(f'sigma_m_values.min(): \t {sigma_m_values.min()}')
@@ -470,9 +478,9 @@ f = interpolate.RegularGridInterpolator((sigma_m_values, eps_b_values),
 eps_b_xx, sigma_m_yy = np.meshgrid(eps_b_triplet, sigma_m_triplet)
 # the rows of the result correspond to different fixed values of sigma_m
 fom_gs_over_fom_ref = f((sigma_m_yy, eps_b_xx))
-print(f'FoM_GS/FoM for eps_b = {eps_b_triplet[0]*100} %: \t',fom_gs_over_fom_ref.T[0])
-print(f'FoM_GS/FoM for eps_b = {eps_b_triplet[1]*100} %: \t',fom_gs_over_fom_ref.T[1])
-print(f'FoM_GS/FoM for eps_b = {eps_b_triplet[2]*100} %: \t',fom_gs_over_fom_ref.T[2])
+print(f'FoM_GS/FoM_ref for eps_b = {eps_b_triplet[0]*100} %: \t',fom_gs_over_fom_ref.T[0])
+print(f'FoM_GS/FoM_ref for eps_b = {eps_b_triplet[1]*100} %: \t',fom_gs_over_fom_ref.T[1])
+print(f'FoM_GS/FoM_ref for eps_b = {eps_b_triplet[2]*100} %: \t',fom_gs_over_fom_ref.T[2])
 print(f'\t\t for sigma_m: \t ', sigma_m_triplet)
 
 
@@ -483,7 +491,8 @@ for sigma_m_tofix in sigma_m_triplet:
     def f_fixed_sigmam(epsb): return f((sigma_m_tofix, epsb))
     # without specifying the domani it gives interpolation issues
     eps_b_vals = inversefunc(f_fixed_sigmam, y_values=z_values, domain=[eps_b_values.min(), eps_b_values.max()])
-    print(f'eps_b_vals for sigma_m = {sigma_m_tofix}: {eps_b_vals*100} [%]')
+    print(f'eps_b_vals for sigma_m = {sigma_m_tofix}  [%]:\t{eps_b_vals*100}')
+print(f'\t\tfor FoM_GS/FoM_ref: \t', [0.8, 0.9, 1])
 
 
 """

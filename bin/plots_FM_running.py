@@ -193,7 +193,7 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
     plt.show()
 
 def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_background, label_foreground, 
-                  param_names_labels, param_names_labels_toplot, param_names_labels_tex=None):
+                  param_names_labels, param_names_labels_toplot, param_names_labels_tex=None, rotate_param_labels=False):
     
     idxs_tokeep = [param_names_labels.index(param) for param in param_names_labels_toplot]
 
@@ -215,16 +215,19 @@ def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_backgroun
     bg_contours = GaussianND(mean=fiducials, cov=fm_inv_bg, names=param_names_labels, labels=param_names_labels_tex)
     fg_contours = GaussianND(mean=fiducials, cov=fm_inv_fg, names=param_names_labels, labels=param_names_labels_tex)
     
-    g = plots.get_subplot_plotter()
+    g = plots.get_subplot_plotter(subplot_size=2)
+    g.settings.subplot_size_ratio = 1
     g.settings.linewidth = 3
     g.settings.legend_fontsize = 35
     g.settings.linewidth_contour = 3
-    g.settings.axes_fontsize = 27
-    g.settings.axes_labelsize = 27
-    g.settings.subplot_size_ratio = 1
+    g.settings.axes_fontsize = 40
+    g.settings.axes_labelsize = 40
+    g.settings.lab_fontsize = 55  # this is the x labels size
+    g.settings.scaling = True # prevent scaling down font sizes even though small subplots
     g.settings.tight_layout = True
-    g.settings.axis_tick_x_rotation=45
+    g.settings.axis_tick_x_rotation = 45
     g.settings.solid_colors = 'tab10'
+    
     g.triangle_plot([bg_contours, fg_contours], 
                     # names=param_names_labels,
                     filled=True, contour_lws=2, ls=['-','-'],
@@ -232,7 +235,20 @@ def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_backgroun
                     contour_colors=['tab:blue', 'tab:orange'],
                     line_colors=['tab:blue', 'tab:orange'],
                     )
+    
+    if rotate_param_labels:
+        # Rotate x and y parameter name labels.
+        # * also useful if you want to simply align them, by setting rotation=0
+        for ax in g.subplots[:, 0]:
+            ax.yaxis.set_label_position("left")
+            ax.set_ylabel(ax.get_ylabel(), rotation=45, labelpad=20, fontsize=30, ha='center')
+
+        for ax in g.subplots[-1, :]:
+            ax.set_xlabel(ax.get_xlabel(), rotation=45, labelpad=20, fontsize=30, ha='center', va='center')
+
+
     plt.suptitle(f'{title}', fontsize='x-large')
+    plt.show()
 
 def contour_plot_chainconsumer(cov, trimmed_fid_dict):
     """

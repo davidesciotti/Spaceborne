@@ -84,7 +84,6 @@ general_cfg:
     zbins: 3
     EP_or_ED: EP # equipopulated or equidistant bins
     n_probes: 2
-    use_WA: False
     save_cls_3d: False
     save_rls_3d: False
 
@@ -222,7 +221,7 @@ covariance_cfg:
     cov_filename:
         covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_pk{which_pk:s}_{ndim:d}D{cov_suffix:s}{fm_and_cov_suffix:s}.npz
     
-    ng_cov_code: OneCovariance # ! PySSC or PyCCL or Spaceborne or OneCovariance
+    ng_cov_code: OneCovariance # ! PyCCL or Spaceborne or OneCovariance
 
     PyCCL_cfg:
         probe: 3x2pt
@@ -280,6 +279,7 @@ covariance_cfg:
         ell_mask_filename: ROOT + /common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy
         cl_mask_filename: ROOT + /common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy
 
+        # TODO test and change the default value to Eudlid
         cl_integral_convention: PySSC # "Euclid" or "PySSC". results are the same
         k_txt_label: 1overMpc
         log10_k_min_sigma2: -4

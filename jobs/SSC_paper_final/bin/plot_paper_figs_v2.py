@@ -466,33 +466,37 @@ print(f'sigma_m_values.min(): \t {sigma_m_values.min()}')
 print(f'sigma_m_values.max(): \t {sigma_m_values.max()}')
 print(f'eps_b_values.min(): \t {eps_b_values.min()}')
 print(f'eps_b_values.max(): \t {eps_b_values.max()}')
-eps_b_triplet = np.array((0.01, 0.05, 1)) / 100  # not in percent units
+eps_b_triplet = np.array((0.01, 0.1, 1)) / 100  # not in percent units
 sigma_m_triplet = (0.5e-4, 5e-4, 10e-4)
 from pynverse import inversefunc
 
 
-# with RegularGridInterpolator
-f = interpolate.RegularGridInterpolator((sigma_m_values, eps_b_values),
-                                        fom_gs_grid / fom_opt_3x2pt_g_ref, 
-                                        method='linear')
-eps_b_xx, sigma_m_yy = np.meshgrid(eps_b_triplet, sigma_m_triplet)
-# the rows of the result correspond to different fixed values of sigma_m
-fom_gs_over_fom_ref = f((sigma_m_yy, eps_b_xx))
-print(f'FoM_GS/FoM_ref for eps_b = {eps_b_triplet[0]*100} %: \t',fom_gs_over_fom_ref.T[0])
-print(f'FoM_GS/FoM_ref for eps_b = {eps_b_triplet[1]*100} %: \t',fom_gs_over_fom_ref.T[1])
-print(f'FoM_GS/FoM_ref for eps_b = {eps_b_triplet[2]*100} %: \t',fom_gs_over_fom_ref.T[2])
-print(f'\t\t for sigma_m: \t ', sigma_m_triplet)
-
-
-#  ! redo eps_b = {... table
+#  ! eps_b = {... table
+np.set_printoptions(precision=2)
 for sigma_m_tofix in sigma_m_triplet:
     z_values = (0.8, 0.9, 1)
     # this is a function of eps_b only, because pyinverse works in 1d
     def f_fixed_sigmam(epsb): return f((sigma_m_tofix, epsb))
     # without specifying the domani it gives interpolation issues
     eps_b_vals = inversefunc(f_fixed_sigmam, y_values=z_values, domain=[eps_b_values.min(), eps_b_values.max()])
-    print(f'eps_b_vals for sigma_m = {sigma_m_tofix}  [%]:\t{eps_b_vals*100}')
+    print(f'eps_b_vals for sigma_m = {sigma_m_tofix} [%]:\t{eps_b_vals*100}')
 print(f'\t\tfor FoM_GS/FoM_ref: \t', [0.8, 0.9, 1])
+
+# ! FoM_GS/FoM_ref = {... table
+f = interpolate.RegularGridInterpolator((sigma_m_values, eps_b_values),
+                                        fom_gs_grid / fom_opt_3x2pt_g_ref, 
+                                        method='linear')
+eps_b_xx, sigma_m_yy = np.meshgrid(eps_b_triplet, sigma_m_triplet)
+# the rows of the result correspond to different fixed values of sigma_m
+fom_gs_over_fom_ref = f((sigma_m_yy, eps_b_xx))
+print(f'FoM_GS/FoM_ref for eps_b = {eps_b_triplet[0]*100} [%]: \t',fom_gs_over_fom_ref.T[0])
+print(f'FoM_GS/FoM_ref for eps_b = {eps_b_triplet[1]*100} [%]: \t',fom_gs_over_fom_ref.T[1])
+print(f'FoM_GS/FoM_ref for eps_b = {eps_b_triplet[2]*100} [%]: \t',fom_gs_over_fom_ref.T[2])
+print(f'\t\t for sigma_m: \t ', sigma_m_triplet)
+
+
+
+
 
 
 """

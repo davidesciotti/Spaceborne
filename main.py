@@ -12,7 +12,6 @@ import numpy as np
 import time
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
-import configparser
 import warnings
 import gc
 import yaml
@@ -21,7 +20,6 @@ from copy import deepcopy
 import numpy.testing as npt
 from scipy.interpolate import interp1d, RegularGridInterpolator
 from tabulate import tabulate
-
 
 import spaceborne.ell_utils as ell_utils
 import spaceborne.cl_preprocessing as cl_utils
@@ -36,7 +34,6 @@ import spaceborne.plot_lib as plot_lib
 import spaceborne.sigma2_SSC as sigma2_SSC
 import spaceborne.onecovariance_interface as oc_interface
 
-pp = pprint.PrettyPrinter(indent=4)
 ROOT = os.getenv('ROOT')
 script_start_time = time.perf_counter()
 
@@ -88,27 +85,6 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
     return cov_ssc_3x2pt_dict_8D
 
 
-def call_onecovariance(path_to_oc_executable, path_to_config_oc_ini):
-    """Kernel to compute the 4D integral optimized using Simpson's rule using Julia."""
-
-    import subprocess
-
-    activate_and_run = f"""
-    source /home/cosmo/davide.sciotti/software/anaconda3/bin/activate cov20_env
-    python {path_to_oc_executable} {path_to_config_oc_ini}
-    source /home/cosmo/davide.sciotti/software/anaconda3/bin/deactivate
-    source /home/cosmo/davide.sciotti/software/anaconda3/bin/activate spaceborne-dav
-    python {path_to_oc_executable.replace('covariance.py', 'reshape_cov_list_Cl_callable.py')} {path_to_config_oc_ini.replace('input_configs.ini', '')}
-    """
-
-    process = subprocess.Popen(activate_and_run, shell=True, executable='/bin/bash')
-    process.communicate()
-
-    # os.system("conda activate cov20_env")
-    # os.system(f"python {path_to_oc_executable} {path_to_config_oc_ini}")
-    # os.system("conda activate spaceborne-dav")
-
-
 # * ====================================================================================================================
 # * ====================================================================================================================
 # * ====================================================================================================================
@@ -116,10 +92,9 @@ def call_onecovariance(path_to_oc_executable, path_to_config_oc_ini):
 
 with open('config_release.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
-    
+
 for zbins in (7, 9, 10, 11, 13, 15):
     for ep_or_ed in ('EP', 'ED'):
-
 
         # add type/number-specific nuisance/hyperparameters
         cfg['general_cfg']['zbins'] = zbins
@@ -776,8 +751,8 @@ for zbins in (7, 9, 10, 11, 13, 15):
         # * 2. compute cov using the onecovariance interface class
         start_time = time.perf_counter()
         if covariance_cfg['ng_cov_code'] == 'OneCovariance' or \
-            (covariance_cfg['ng_cov_code'] == 'Spaceborne' and \
-               not covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']):
+            (covariance_cfg['ng_cov_code'] == 'Spaceborne' and
+             not covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']):
 
             print('Start NG cov computation with OneCovariance...')
 
@@ -804,10 +779,10 @@ for zbins in (7, 9, 10, 11, 13, 15):
                 'cNG', '10D_array', ind_dict, symmetrize_output_dict)
 
             print('Time taken to compute OC: {:.2f} m'.format((time.perf_counter() - start_time) / 60))
-        
+
         else:
             oc_obj = None
-            
+
         # ! ========================================== end OneCovariance ===================================================
 
         # ! ========================================== start Spaceborne ===================================================
@@ -1088,35 +1063,9 @@ for zbins in (7, 9, 10, 11, 13, 15):
                 probe_a, probe_b, probe_c, probe_d = key
                 if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
                     np.savez_compressed(
-                        f'{cov_folder_sb}/{cov_sb_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}',
+                        f'{cov_folder_sb}/{cov_sb_filename.format(probe_a=probe_a,
+                                                                  probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}',
                         cov_ssc_3x2pt_dict_8D[key])
-
-            # ! check SSC INTEGRANDS
-
-            # plt.figure()
-            # z1_idx = 3
-            # ell1_idx, ell2_idx = 28, 28
-            # zpair_AB, zpair_CD = 5, 5
-            # num_col = 4
-            # ind_AB, ind_CD = ind_auto, ind_auto
-            # zi, zj, zk, zl = ind_AB[zpair_AB, num_col - 2], ind_AB[zpair_AB, num_col - 1], \
-            #     ind_CD[zpair_CD, num_col - 2], ind_CD[zpair_CD, num_col - 1]
-            # # plt.plot(z_grid_ssc_integrands, integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD, z1_idx, :], label='total integrand')
-            # plt.plot(z_grid_ssc_integrands, d2CLL_dVddeltab[ell2_idx, zk, zl, :], label='d2CLL_dVddeltab')
-            # plt.plot(z_grid_ssc_integrands, cl_integral_prefactor, label='cl_integral_prefactor')
-            # plt.plot(z_grid_ssc_integrands, sigma2_b[z1_idx, :], label='sigma2_b')
-            # plt.yscale('log')
-            # plt.legend()
-
-            # mm.matshow(integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD], log=True, abs_val=True)
-            # mm.matshow(sigma2_b, log=True, abs_val=True)
-            # plt.plot(z_grid_ssc_integrands, np.diag(sigma2_b), marker='o')
-            # plt.plot(z_grid_ssc_integrands, np.diag(integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD]), marker='o')
-            # plt.yscale('log')
-
-            # plt.plot(z_grid_ssc_integrands, integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD, z1_idx, :], marker='o')
-
-            # assert False, 'stop here'
 
         elif covariance_cfg['ng_cov_code'] == 'Spaceborne' and \
                 covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
@@ -1142,76 +1091,8 @@ for zbins in (7, 9, 10, 11, 13, 15):
         if covariance_cfg['ng_cov_code'] == 'Spaceborne':
             covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 
-        # print('SSC computed with Spaceborne')
+        print('SSC computed with Spaceborne')
         # TODO integrate this with Spaceborne_covg
-
-        # # ! quickly check responses
-        # import sys
-        # sys.path.append('/home/davide/Documenti/Lavoro/Programmi/exact_SSC/bin')
-        # import ssc_integrands_SPV3 as sscint
-
-        # z_val = 0
-        # z_grid_dPk_su = sscint.z_grid_dPk
-        # z_idx_hm = np.argmin(np.abs(z_grid_dPk_hm - z_val))
-        # z_idx_su = np.argmin(np.abs(z_grid_dPk_su - z_val))
-        # z_val_hm = z_grid_dPk_hm[z_idx_hm]
-        # z_val_su = z_grid_dPk_su[z_idx_su]
-
-        # # dPAB/ddeltab
-        # plt.figure()
-        # # HM
-        # plt.plot(k_grid_dPk_hm, np.abs(dPmm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:blue')
-        # plt.plot(k_grid_dPk_hm, np.abs(dPgm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:orange')
-        # plt.plot(k_grid_dPk_hm, np.abs(dPgg_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:green')
-
-        # # SU
-        # plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPmm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:blue')
-        # plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:orange')
-        # plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgg_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:green')
-
-        # plt.xscale('log')
-        # plt.yscale('log')
-        # plt.xlabel('k [1/Mpc]')
-        # plt.ylabel(r'${\rm abs} \; \partial P_{AB} / \partial \delta_b$')
-
-        # colors = ['tab:blue', 'tab:orange', 'tab:green']
-        # labels_a = ['dPmm_ddeltab', 'dPgm_ddeltab', 'dPgg_ddeltab']
-        # handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels_a[i]) for i in range(3)]
-        # handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
-        #               for ls, label in zip(['-', '--'], ['signal', 'error'])]
-        # handles = handles_z + handles_ls
-        # labels = labels_a + ['Halo model', 'Separate universe']
-        # plt.legend(handles, labels)
-        # plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
-        # plt.tight_layout()
-        # plt.show()
-
-        # # dlogPAB/ddeltab
-        # plt.figure()
-        # # HM
-        # plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:blue')
-        # plt.plot(k_grid_dPk_hm, dPgm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:orange')
-        # plt.plot(k_grid_dPk_hm, dPgg_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:green')
-        # # SU
-        # plt.plot(sscint.k_grid_dPk, sscint.r_mm[:, z_idx_su], ls='--', alpha=0.5, c='tab:blue')
-        # plt.plot(sscint.k_grid_dPk, sscint.r_gm[:, z_idx_su], ls='--', alpha=0.5, c='tab:orange')
-        # plt.plot(sscint.k_grid_dPk, sscint.r_gg[:, z_idx_su], ls='--', alpha=0.5, c='tab:green')
-
-        # plt.xscale('log')
-        # plt.xlabel('k [1/Mpc]')
-        # plt.ylabel(r'$\partial {\rm log} P_{AB} / \partial \delta_b$')
-
-        # colors = ['tab:blue', 'tab:orange', 'tab:green']
-        # labels_a = ['dPmm_ddeltab/Pmm', 'dPgm_ddeltab/Pgm', 'dPgg_ddeltab/Pgg']
-        # handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels[i]) for i in range(3)]
-        # handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
-        #               for ls, label in zip(['-', '--'], ['signal', 'error'])]
-        # handles = handles_z + handles_ls
-        # labels = labels_a + ['Halo model', 'Separate universe']
-        # plt.legend(handles, labels)
-        # plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
-        # plt.tight_layout()
-        # plt.show()
 
         # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
         if ell_max_WL == general_cfg['ell_max_WL_opt'] and general_cfg['use_WA']:
@@ -1913,7 +1794,7 @@ for zbins in (7, 9, 10, 11, 13, 15):
                 f'FM_{probe}_G',
                 f'FM_{probe}_GSSC',
                 # f'FM_{probe}_GSSCcNG',
-                
+
                 f'perc_diff_{probe}_G',
 
                 #  f'FM_{probe}_{which_ng_cov_suffix}',

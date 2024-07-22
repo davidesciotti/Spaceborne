@@ -1,9 +1,9 @@
-name: spaceborne-pip
+name: spaceborne-release
 channels:
   - defaults
   - conda-forge
 dependencies:
-  - python>=3.11
+  - python>=3.12
   - matplotlib
   - numpy
   - scipy
@@ -12,52 +12,34 @@ dependencies:
   - pip
   - pyyaml
   - astropy
-  #- ipykernel
-  #- ipywidgets
   - joblib
   - numba
   - camb
-  - cmake
   - gcc
   - pyqt
   - ipympl
-  - swig
-  # for OneCovariance
-  - gfortran
+  - cfitsio
+
+  # for CCL:
+  - fftw
   - gsl
-  - pybind11
-  # - cfitsio  # for CCL
+  - swig
+  - cmake
+  - make
+  - libgcc-ng
+  - libgfortran-ng
+  - libstdcxx-ng
+  - fast-pt
+  # - cfitsio  # not necessary?
   - pip:
-    #- chainconsumer 
     - pymaster
     - cython
     - getdist
-    #- type_enforced
-    #- array_to_latex
-    #- pynverse
-    #- classy
-    #- ray
-    #- PyQt5
-    #- PySide2
-    - fast-pt  # for CCL
-    - git+https://github.com/davidesciotti/CCL.git@master
+    # - git+https://github.com/davidesciotti/CCL.git@master  # doesn't seem to work, have to install from source
 
-# To install the master version of pyccl:
-# $ conda activate spaceborne
-# $ git clone https://github.com/LSSTDESC/CCL.git
-# $ cd CCL    
-# $ pip install .
-# $ cd .. 
-# $ rm -r CCL
-
-# or (to be tested)
-# pip install pyccl==3.0.1.dev100+g80576258f
+# this works! But only after installing the env
+# pip install git+https://github.com/davidesciotti/CCL.git@master
 
 # In case of issues, try
-# $ sudo apt install gfortran
-# $ sudo apt-get install cmake
-# $ sudo apt-get install build-essential
-# $ sudo apt-get install autoconf
-# $ sudo apt-get install bison
-# $ sudo apt-get install swig
+# $ sudo apt-get install gfortran cmake build-essential autoconf bison
 

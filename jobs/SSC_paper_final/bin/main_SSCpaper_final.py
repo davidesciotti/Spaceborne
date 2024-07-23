@@ -227,6 +227,28 @@ def plot_nz_tocheck_func():
     plt.legend()
     plt.xlabel('z')
     plt.ylabel('n(z)')
+    
+    
+def check_if_ref_case():
+    assert fix_dz is False, f'fix_dz must be False for the reference case' 
+    assert fix_dzGC is False, f'fix_dzGC must be False for the reference case' 
+    assert fix_shear_bias is False, f'fix_shear_bias must be False for the reference case' 
+    assert fix_gal_bias is False, f'fix_gal_bias must be False for the reference case' 
+    assert fix_logT is False, f'fix_logT must be False for the reference case' 
+    assert fix_omega_m is False, f'fix_omega_m must be False for the reference case' 
+    assert fix_sigma_8 is False, f'fix_sigma_8 must be False for the reference case' 
+    assert fix_gamma is True, f'fix_gamma must be True for the reference case' 
+    assert shear_bias_prior == 5e-4, f'shear_bias_prior must be 5e-4 for the reference case'
+    assert np.allclose(dz_prior,  np.array(2 * 1e-3 * (1 + np.array([0.211711712, 0.363363363, 0.447447447, 0.566066066, 0.681681682,
+       0.792792793, 0.90990991 , 1.067567568, 1.193693694, 1.627627628]))), atol=0, rtol=1e-6), \
+           'dz priors do not corresponding to the reference values'
+    assert logT_prior == 0.06666666666666672, f'logT_prior must be 0.06666666666666672 for the reference case'
+    assert gal_bias_prior is None, f'gal_bias_prior must be None for the reference case'
+    if flat_or_nonflat == 'Flat':
+        assert plot_uncert_dav is True, f'plot_uncert_dav must be True for the reference case'
+    elif flat_or_nonflat == 'NonFlat':
+        assert plot_uncert_dav is False, f'gal_bias_prior must be False for the reference case'
+
 
 
 # ======================================================================================================================
@@ -1075,10 +1097,6 @@ triangle_plot = False
 plot_uncert_dav = True
 plot_uncert_vin = False
 compute_om_s8_fom = True
-epsilon_b = 0.1  # 1 = 100%, 0.01 = 1%
-epsilon_b_list = np.geomspace(1e-5, 1e-2, 200)
-shear_bias_prior_list = np.linspace(0.1e-4, 10e-4, 50)
-# epsilon_b_list = np.append(epsilon_b_list, np.array((0.1, 1, 10))*1e-2)  #
 
 fix_dz = False
 fix_dzGC = False
@@ -1093,12 +1111,19 @@ nsigma_logT_prior = 3
 shear_bias_prior = 5e-4  # 5e-4 or None
 dz_prior = np.array(2 * 1e-3 * (1 + np.array(z_center_values)))
 logT_prior = (8 - 7.6) / (nsigma_logT_prior * 2)  # BAHAMAS range "converted" to Gaussian prior
+
+# epsilon_b = 0.1  # 1 = 100%, 0.01 = 1%
+# epsilon_b_list = np.geomspace(1e-5, 1e-2, 200)
+# shear_bias_prior_list = np.linspace(0.1e-4, 10e-4, 50)
 # gal_bias_prior = epsilon_b / fiducials_dict_tot_coarse['galaxy_bias']
 gal_bias_prior = None
+
 # shear_bias_prior = None
 # dz_prior = None
 # logT_prior = None
 # ! =========================== FM settings end ===========================
+
+check_if_ref_case()
 
 # for epsilon_b in epsilon_b_list:
 # for shear_bias_prior in shear_bias_prior_list:
@@ -1335,9 +1360,9 @@ for probe in probes:
     divide_fom_by_10_plt = False if probe in ('WL' 'XC') else divide_fom_by_10
 
     cases_to_plot = [
-        # f'FM_{probe}_G',
+        f'FM_{probe}_G',
         # f'FM_{probe}_G_vin',
-        # f'FM_{probe}_GSSC',
+        f'FM_{probe}_GSSC',
         # f'FM_{probe}_GSSC_vin',
         f'perc_diff_{probe}_G',
         # f'perc_diff_{probe}_G_vin',
@@ -1450,7 +1475,7 @@ data = []
 table = []  # tor tex
 for probe in probes:
     ratios = [f'{ratio:.3f}' for ratio in uncert_dict[f'ratio_{probe}_G{whos_fm}']]
-    fom = f'{fom_dict[f"ratio_{probe}_G{whos_fm}"]:.2f}'
+    fom = f'{fom_dict[f"ratio_{probe}_G{whos_fm}"]:.3f}'  # ! paper used .2f, in principle it would be better to use .3f
     data.append([probe] + ratios + [fom])
     table.append(ratios + [fom])
 print(tabulate(data, headers=titles, tablefmt="pretty"))
@@ -1527,63 +1552,72 @@ if opt_or_pes == 'Opt':
         )
     # plt.savefig(f'{fm_folder}/plots/triangle_plot.png', bbox_inches='tight', dpi=500)
 
+if plot_uncert_dav:
+    masked_fm_dict = masked_fm_dict
+    masked_fid_pars_dict = masked_fid_pars_dict
+elif plot_uncert_vin:
+    masked_fm_dict = masked_fm_dict_vin
+    masked_fid_pars_dict = masked_fid_pars_dict_vin
+
 if compute_om_s8_fom:
 
-    probe = 'WL'
-    which_cov = 'G'
+    # probe = 'WL'
+    # which_cov = 'G'
     fom_omS8_dict = {}
     w0_wa_fom_dict = {}
 
-    for which_cov in ['G', 'GSSC']:
+    for probe in probes:
+        for which_cov in ['G', 'GSSC']:
 
-        fm = masked_fm_dict[f'FM_{probe}_{which_cov}']
-        fid = masked_fid_pars_dict[f'FM_{probe}_{which_cov}']
+            fm = masked_fm_dict[f'FM_{probe}_{which_cov}']
+            fid = masked_fid_pars_dict[f'FM_{probe}_{which_cov}']
 
-        # ! project FM
+            # ! project FM
 
-        # ! 1st way: Define the Jacobian matrix
-        jacobian = np.eye(fm.shape[0])
-        sigma_8_idx = param_names.index('s8')
-        Omega_m_idx = param_names.index('Om')
-        S8_idx = param_names.index('s8')
+            # ! 1st way: Define the Jacobian matrix
+            jacobian = np.eye(fm.shape[0])
+            sigma_8_idx = param_names.index('s8')
+            Omega_m_idx = param_names.index('Om')
+            S8_idx = param_names.index('s8')
 
-        # Functions for derivatives
-        def dS8_dsigma8_func(Omega_m): return np.sqrt(Omega_m / 0.3)
-        def dS8_dOmegam_func(Omega_m, sigma_8): return (sigma_8 / 2) * (1 / np.sqrt(Omega_m * 0.3))
+            # Functions for derivatives
+            def dS8_dsigma8_func(Omega_m): return np.sqrt(Omega_m / 0.3)
+            def dS8_dOmegam_func(Omega_m, sigma_8): return (sigma_8 / 2) * (1 / np.sqrt(Omega_m * 0.3))
 
-        # Fiducial values
-        om_fid = fid['Om']
-        s8_fid = fid['s8']
+            # Fiducial values
+            om_fid = fid['Om']
+            s8_fid = fid['s8']
 
-        # Fill in the Jacobian matrix
-        # jacobian[sigma_8_idx, sigma_8_idx] = dS8_dsigma8_func(Omega_m=om_fid)
-        # jacobian[Omega_m_idx, sigma_8_idx] = dS8_dOmegam_func(Omega_m=om_fid, sigma_8=s8_fid)
+            # Fill in the Jacobian matrix
+            # jacobian[sigma_8_idx, sigma_8_idx] = dS8_dsigma8_func(Omega_m=om_fid)
+            # jacobian[Omega_m_idx, sigma_8_idx] = dS8_dOmegam_func(Omega_m=om_fid, sigma_8=s8_fid)
 
-        jacobian[S8_idx, Omega_m_idx] = dS8_dOmegam_func(Omega_m=om_fid, sigma_8=s8_fid)
-        jacobian[S8_idx, sigma_8_idx] = dS8_dsigma8_func(Omega_m=om_fid)
+            jacobian[S8_idx, Omega_m_idx] = dS8_dOmegam_func(Omega_m=om_fid, sigma_8=s8_fid)
+            jacobian[S8_idx, sigma_8_idx] = dS8_dsigma8_func(Omega_m=om_fid)
 
-        # Transform the Fisher matrix
-        fm_prime_j = jacobian.T @ fm @ jacobian
+            # Transform the Fisher matrix
+            fm_prime_j = jacobian.T @ fm @ jacobian
 
-        plot_lib.triangle_plot(fm_backround=fm_prime_j,
-                               fm_foreground=fm,
-                               fiducials=list(masked_fid_pars_dict[f'FM_{probe}_{which_cov}'].values()),
-                               title='WL, first way',
-                               label_background='$S_8$',
-                               label_foreground='$\sigma_8$',
-                               param_names_labels=list(masked_fid_pars_dict[f'FM_{probe}_{which_cov}'].keys()),
-                               param_names_labels_toplot=['Om', 's8'])
+            # plot_lib.triangle_plot(fm_backround=fm_prime_j,
+            #                     fm_foreground=fm,
+            #                     fiducials=list(masked_fid_pars_dict[f'FM_{probe}_{which_cov}'].values()),
+            #                     title='WL, first way',
+            #                     label_background='$S_8$',
+            #                     label_foreground='$\sigma_8$',
+            #                     param_names_labels=list(masked_fid_pars_dict[f'FM_{probe}_{which_cov}'].keys()),
+            #                     param_names_labels_toplot=['Om', 's8'])
 
-        fom_omS8_dict[f'{probe}_{which_cov}'] = mm.compute_FoM(fm_prime_j, (Omega_m_idx, sigma_8_idx))
-        w0_wa_fom_dict[f'{probe}_{which_cov}'] = mm.compute_FoM(fm_prime_j, w0wa_idxs)
+            fom_omS8_dict[f'{probe}_{which_cov}'] = mm.compute_FoM(fm_prime_j, (Omega_m_idx, sigma_8_idx))
+            w0_wa_fom_dict[f'{probe}_{which_cov}'] = mm.compute_FoM(fm_prime_j, w0wa_idxs)
 
-    for which_cov in ['G', 'GSSC']:
-        print(f'Omega_m-S8 FoM for {probe}, {which_cov} case: ', fom_omS8_dict[f'{probe}_{which_cov}'])
-    print(f'Omega_m-S8 FoM ratio: ', fom_omS8_dict[f'{probe}_GSSC']/fom_omS8_dict[f'{probe}_G'], '\n')
+        for which_cov in ['G', 'GSSC']:
+            print(f'Omega_m-S8 FoM for {probe}, {which_cov} case: {fom_omS8_dict[f"{probe}_{which_cov}"]:.3f}')
+        print(f'Omega_m-S8 FoM ratio: {fom_omS8_dict[f"{probe}_GSSC"]/fom_omS8_dict[f"{probe}_G"]:.3f}\n')
 
-    for which_cov in ['G', 'GSSC']:
-        print(f'w0-wa FoM for {probe}, {which_cov} case: ', w0_wa_fom_dict[f'{probe}_{which_cov}'])
-    print(f'w0-wa FoM ratio: ', w0_wa_fom_dict[f'{probe}_GSSC']/w0_wa_fom_dict[f'{probe}_G'])
+        for which_cov in ['G', 'GSSC']:
+            print(f'w0-wa FoM for {probe}, {which_cov} case: {w0_wa_fom_dict[f"{probe}_{which_cov}"]:.3f}')
+        print(f'w0-wa FoM ratio: {w0_wa_fom_dict[f"{probe}_GSSC"]/w0_wa_fom_dict[f"{probe}_G"]:.3f}')
+        print(f'\n*****************\n')
 
     # ! second way, which seems wrong (Om contour changes)
     # m_matrix = np.eye(fm.shape[0])

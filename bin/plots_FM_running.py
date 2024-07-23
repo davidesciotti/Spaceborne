@@ -215,14 +215,14 @@ def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_backgroun
     bg_contours = GaussianND(mean=fiducials, cov=fm_inv_bg, names=param_names_labels, labels=param_names_labels_tex)
     fg_contours = GaussianND(mean=fiducials, cov=fm_inv_fg, names=param_names_labels, labels=param_names_labels_tex)
     
-    g = plots.get_subplot_plotter(subplot_size=2)
+    g = plots.get_subplot_plotter(subplot_size=2.3)
     g.settings.subplot_size_ratio = 1
     g.settings.linewidth = 3
-    g.settings.legend_fontsize = 35
+    g.settings.legend_fontsize = 20
     g.settings.linewidth_contour = 3
-    g.settings.axes_fontsize = 40
-    g.settings.axes_labelsize = 40
-    g.settings.lab_fontsize = 55  # this is the x labels size
+    g.settings.axes_fontsize = 20
+    g.settings.axes_labelsize = 20
+    g.settings.lab_fontsize = 25  # this is the x labels size
     g.settings.scaling = True # prevent scaling down font sizes even though small subplots
     g.settings.tight_layout = True
     g.settings.axis_tick_x_rotation = 45

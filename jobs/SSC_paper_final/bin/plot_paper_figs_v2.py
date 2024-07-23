@@ -172,12 +172,25 @@ for probe in probes:
             (uncert_df['which_uncertainty'] == 'marginal') &
             (uncert_df['fix_shear_bias'] == fix_shear_bias)
         ].loc[:, 'FoM'].values
+        
+# copied "a mano" here because it's faster (but quite horrible)
+fom_dict['Om_S8_WL_G'] = 335.7602093529698
+fom_dict['Om_S8_WL_GSSC'] = 292.28110972353716
+fom_dict['Om_S8_GC_G'] = 4177.065646401082
+fom_dict['Om_S8_GC_GSSC'] = 3859.2561978803974
+fom_dict['Om_S8_3x2pt_G'] = 65997.60570943652
+fom_dict['Om_S8_3x2pt_GSSC'] = 39184.359725847586
+
+fom_dict['Om_S8_G'] = (fom_dict['Om_S8_WL_G'], fom_dict['Om_S8_GC_G'], fom_dict['Om_S8_3x2pt_G'])
+fom_dict['Om_S8_GSSC'] = (fom_dict['Om_S8_WL_GSSC'], fom_dict['Om_S8_GC_GSSC'], fom_dict['Om_S8_3x2pt_GSSC'])
 
 x = (np.arange(len(probes)) + 1) * 2
 wid = 0.6
 
 fig, ax = plt.subplots(1, 1, sharex=True, figsize=(13, 8))
 
+ax.barh(x + wid / 2, fom_dict['Om_S8_G'], height=wid, color='lightcoral', label='G, marginal', edgecolor='k', hatch='//')
+ax.barh(x - wid / 2, fom_dict['Om_S8_GSSC'], height=wid, color='skyblue', label='GS, marginal', edgecolor='k', hatch='//')
 ax.barh(x + wid / 2, fom_dict['fom_G'], height=wid, color='lightcoral', label='G, marginal', edgecolor='k')
 ax.barh(x - wid / 2, fom_dict['fom_GSSC'], height=wid, color='skyblue', label='GS, marginal', edgecolor='k')
 
@@ -186,7 +199,20 @@ ax.set_yticklabels(list(probe_tex_dict.values()), rotation=45)
 
 ax.set_xlabel('FoM', fontsize=46)
 ax.set_xscale('log')
-ax.legend(fontsize=28, ncol=2)
+
+# Create custom legend handles
+import matplotlib.patches as mpatches
+handles = [
+    mpatches.Patch(facecolor='white', edgecolor='k', hatch='', label='${\\rm FoM}_{w0wa}$'),
+    mpatches.Patch(facecolor='white', edgecolor='k', hatch='//', label='${\\rm FoM}_{\\Omega_{\\rm m, 0} S_8}$'),
+    mpatches.Patch(facecolor='lightcoral', edgecolor='k', label='G'),
+    mpatches.Patch(facecolor='skyblue', edgecolor='k', label='GS')
+]
+
+# Use the custom handles to create a single legend
+ax.legend(handles=handles, fontsize=28, ncol=2, bbox_to_anchor=(1.015, 1.3))
+
+# ax.legend(fontsize=28, ncol=2)
 
 ax.tick_params(direction='in', which='both', labelsize=35, pad=10)
 ax.xaxis.set_ticks_position('both')
@@ -195,8 +221,6 @@ ax.xaxis.set_ticks_position('both')
 ax.set_title(f' ', fontsize=34, pad=15, loc='left')
 ax.set_axisbelow(True)
 plt.grid(axis='x', which='both')
-if probe in ['WL'] and not fix_shear_bias:
-    plt.legend(fontsize=40, ncol=2, bbox_to_anchor=(1.02, 1.27))
 
 if save_figs:
     plt.savefig(f'{fm_folder}/plots/barplot_FoM_v2.{pic_format}', dpi=dpi, bbox_inches='tight')

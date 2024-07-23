@@ -1715,7 +1715,9 @@ def compute_FoM(FM, w0wa_idxs):
     start = w0wa_idxs[0]
     stop = w0wa_idxs[1] + 1
     cov_param = np.linalg.inv(FM)
-    cov_param_reduced = cov_param[start:stop, start:stop]
+    # cov_param_reduced = cov_param[start:stop, start:stop]
+    cov_param_reduced = cov_param[np.ix_(w0wa_idxs, w0wa_idxs)]
+
     FM_reduced = np.linalg.inv(cov_param_reduced)
     FoM = np.sqrt(np.linalg.det(FM_reduced))
     return FoM

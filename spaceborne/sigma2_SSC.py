@@ -27,11 +27,8 @@ import spaceborne.cosmo_lib as csmlib
 start_time = time.perf_counter()
 
 
-# TODO maybe re-check that the various cosmo_ccl objects are equivalent...
 # TODO play around with the k_grid_sigma2 and z_grid_sigma2
 # TODO should we add more points at low z for sigma2? I get a strange behavior...
-# TODO test these interpolations
-# TODO most likely you can easily vectorize sigma squared in one of the redshifts
 # TODO range(ell1_idx, nbl) to avoid computing symmetric ell elements (check first)
 
 
@@ -39,7 +36,6 @@ start_time = time.perf_counter()
 # - the vectorization is quite messy; the quad version accepts z_1 or z_2 as vector, but only
 # setting sigma2_integrating_function=quad_vec
 # - the simpson version is not vectorized in z1/z2, but it is much faster than the quad version (and much noisier!!)
-# - try to finish building the cov_SSC function, which is commented below.
 # - find the optimal k_grid_sigma2 and just fix it
 
 
@@ -91,16 +87,10 @@ start_time = time.perf_counter()
 
 #     return sigma2
 
-# # Example usage:
-# # Define your k_perp_grid and k_par_grid appropriately
-# # Omega_S and theta_S must also be defined based on your survey parameters
-# # sigma2_result = sigma2_flatsky(z1, z2, k_perp_grid, k_par_grid, cosmo_ccl, Omega_S, theta_S)
-
-
 def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None, cl_mask=None):
     """ Computes the integral in k. The rest is in another function, to vectorize the call to the growth_factor.
-    Note that the 1/Omega_S^2 factors are missing in this function!! This is consistent with the definitio given in
-    mine and Fabien's paper."""
+    Note that the 1/Omega_S^2 factors are missing in this function!! This is consistent with the definition given in
+    my and Fabien's paper."""
 
     # compute the comoving distance at the given redshifts
     a1 = csmlib.z_to_a(z1)
@@ -144,8 +134,9 @@ def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None,
 
 def sigma2_func_vectorized(z1_arr, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None, cl_mask=None):
     """
-    Vectorized version of sigma2_func in z1.
+    Version of sigma2_func vectorized in z1.
     """
+    
     a1_arr = csmlib.z_to_a(z1_arr)
     a2 = csmlib.z_to_a(z2)
 
@@ -174,6 +165,50 @@ def sigma2_func_vectorized(z1_arr, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B,
 
     return result
 
+
+
+def sigma2_func_homogenized(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None, cl_mask=None):
+    """
+    Homogenized version of sigma2_func that can handle both scalar and vector inputs for z1.
+    """
+    # Ensure z1 is an array for vectorized operations
+    z1 = np.atleast_1d(z1)
+    
+    # Convert redshifts to scale factors
+    a1 = csmlib.z_to_a(z1)
+    a2 = csmlib.z_to_a(z2)
+    
+    # Compute comoving distances
+    r1 = ccl.comoving_radial_distance(cosmo_ccl, a1)
+    r2 = ccl.comoving_radial_distance(cosmo_ccl, a2)
+    
+    # Compute growth factors
+    growth_factor_z1 = ccl.growth_factor(cosmo_ccl, a1)
+    growth_factor_z2 = ccl.growth_factor(cosmo_ccl, a2)
+    
+    # Define the integrand as a function of k
+    def integrand(k):
+        return k ** 2 * ccl.linear_matter_power(cosmo_ccl, k=k, a=1.) * \
+               spherical_jn(0, k * r1[..., None]) * spherical_jn(0, k * r2)
+    
+    # Compute the integral
+    integral_result = simps(integrand(k_grid_sigma2), k_grid_sigma2, axis=-1)
+    
+    # Compute the result based on which_sigma2_B
+    if which_sigma2_B == 'full-curved-sky':
+        result = 1 / (2 * np.pi ** 2) * growth_factor_z1 * growth_factor_z2 * integral_result
+    elif which_sigma2_B == 'mask':
+        fsky = np.sqrt(cl_mask[0] / (4 * np.pi))
+        result = 1 / (4 * np.pi * fsky) ** 2 * \
+                 np.sum((2 * ell_mask + 1) * cl_mask * 2 / np.pi *
+                        growth_factor_z1[..., None] * growth_factor_z2 * integral_result, axis=-1)
+    else:
+        raise ValueError('which_sigma2_B must be either "full-curved-sky" or "mask"')
+    
+    # If z1 was originally a scalar, return a scalar result
+    if np.isscalar(z1):
+        return result[0]
+    return result
 
 def plot_sigma2(sigma2_arr, z_grid_sigma2):
     font_size = 28

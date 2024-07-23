@@ -221,7 +221,7 @@ covariance_cfg:
     cov_filename:
         covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_pk{which_pk:s}_{ndim:d}D{cov_suffix:s}{fm_and_cov_suffix:s}.npz
     
-    ng_cov_code: OneCovariance # ! PyCCL or Spaceborne or OneCovariance
+    ng_cov_code: Spaceborne # ! PyCCL or Spaceborne or OneCovariance
 
     PyCCL_cfg:
         probe: 3x2pt

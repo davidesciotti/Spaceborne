@@ -90,13 +90,13 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
 # * ====================================================================================================================
 
 
-with open('config_release.yaml', 'r') as f:
+with open('example_cfg.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
 
 
 # add type/number-specific nuisance/hyperparameters
-cfg['general_cfg']['zbins'] = zbins
-cfg['general_cfg']['EP_or_ED'] = ep_or_ed
+zbins = cfg['general_cfg']['zbins']
+ep_or_ed = cfg['general_cfg']['EP_or_ED']
 
 nuisance_folder = cfg['covariance_cfg']['nuisance_folder'].format(ROOT=ROOT)
 nuisance_filename = cfg['covariance_cfg']['nuisance_filename'].format(zbins=cfg['general_cfg']['zbins'], ep_or_ed=cfg['general_cfg']['EP_or_ED'],
@@ -227,7 +227,6 @@ else:
 ccl_obj = pyccl_cov_class.PycclClass(fid_pars_dict)
 
 # ! some checks
-assert general_cfg['use_WA'] is False, 'We do not use Wadd for SPV3 at the moment'
 assert general_cfg['which_cuts'] == 'Vincenzo', ('to begin with, use only Vincenzo/standard cuts. '
                                                     'For the thesis, probably use just these')
 if general_cfg['ell_cuts']:
@@ -353,7 +352,7 @@ variable_specs = {'EP_or_ED': ep_or_ed,
                     'idR': general_cfg['idR'],
                     'idBM': general_cfg['idBM'],
                     }
-pp.pprint(variable_specs)
+print(variable_specs)
 
 # ! some check on the input nuisance values
 # assert np.all(np.array(covariance_cfg['ngal_lensing']) <

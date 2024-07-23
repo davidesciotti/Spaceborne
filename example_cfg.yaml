@@ -116,9 +116,7 @@ general_cfg:
 
     CLOE_benchmarks_path: '{ROOT:s}/CLOE_benchmarks'
 
-    which_cls: Vincenzo # CLOE or Vincenzo or CCL
-
-    has_rsd: False
+    has_rsd: False  # CCL has a different implementation than CLOE
     has_magnification_bias: True
 
     magcut_lens: 245 # valid for GCph
@@ -136,14 +134,10 @@ general_cfg:
     bias_function: analytical # 'analytical', 'leporifit', 'pocinofit'
     bias_model: step-wise # 'step-wise', 'constant', 'linint', 'ones', 'polynomial'
 
-    CLOE_pk_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputPS/{which_pk:s}/InFiles/{flat_or_nonflat:s}"
-    CLOE_pk_filename: "{CLOE_pk_folder:s}/{param_name:s}/PddVsZedLogK-{param_name:s}_{param_value:.3e}.dat"
-    
     flat_or_nonflat: Flat
     which_pk: HMCodeBar
 
     flagship_version: 2 # TODO delete this
-    fm_and_cov_suffix: '' # TODO delete this
     num_threads: 40 # how many threads to use for the Julia SSC integral with @tturbo
 
 covariance_cfg:
@@ -153,20 +147,15 @@ covariance_cfg:
     block_index: ell
     GL_or_LG: GL
 
-    # fsky: 0.3563380664078408
-    # survey_area_deg2: 14700
     fsky: 0.3210678603147902
     survey_area_deg2: 13245
 
     sigma_eps_i: 0.26 # ellipticity dispersion *per component*; sigma_eps: (0.26 * np.sqrt(2))
     which_shape_noise: per_component # ISTF or per_component
 
-    nofz_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid"
+    nofz_folder: "/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/IO_for_Sofia/nz"
     nofz_filename: nzTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
     
-    nuisance_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzPar"
-    nuisance_filename: ngbsTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
-
     zbin_centers:
         [ 0.27575, 0.37635, 0.44634, 0.54284, 0.62145, 0.70957, 0.7986, 0.86687, 0.97753, 1.09136, 1.24264, 1.47918, 1.89264]
     
@@ -262,11 +251,11 @@ covariance_cfg:
     Spaceborne_cfg:
         probe: 3x2pt
         which_ng_cov: [SSC] # only SSC available in this case
-        load_precomputed_cov: True
+        load_precomputed_cov: False
         which_pk_responses: separate_universe # halo_model (with PyCCL) or separate_universe (from simulations)
 
-        cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Spaceborne/{which_pk_responses:s}/Sesto"
-        cov_suffix: "_zsteps{z_steps_ssc_integrands:d}_k{k_txt_label:s}_convention{cl_integral_convention:s}_integration{integration_type:s}_{survey_area_deg2:d}deg2_Francis"
+        cov_path: "/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/IO_for_Sofia"
+        cov_filename: "..."
 
         # settings for sigma2
         # TODO these have to be tidied up
@@ -284,10 +273,11 @@ covariance_cfg:
         k_steps_sigma2: 20_000 # TODO can I lower this? double bessel integral...
         z_min_ssc_integrands: 0.02  # SU responses' kmax allow for z_min = 0.016, at most.
         z_max_ssc_integrands: 3.
-        z_steps_ssc_integrands: 512 # this should be high because I have to trace the spikes in sigma2
+        z_steps_ssc_integrands: 200 # this should be high because I have to trace the spikes in sigma2
 
-        load_precomputed_sigma2: True
-        sigma2_b_filename: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}.npy"
+        load_precomputed_sigma2: False
+        sigma2_b_path: "/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/IO_for_Sofia/sigma2_b"
+        sigma2_b_filename: "..."
         use_KE_approximation: False # TODO implement this in the Julia module
         integration_type: 'simps' # 'simps' or 'trapz' (which is actually using rectangles)
 

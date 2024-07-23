@@ -1071,13 +1071,14 @@ divide_fom_by_10 = True
 include_fom = True
 which_uncertainty = 'marginal'
 remove_null_rows_cols = True
-triangle_plot = True
+triangle_plot = False
 plot_uncert_dav = True
 plot_uncert_vin = False
+compute_om_s8_fom = True
 epsilon_b = 0.1  # 1 = 100%, 0.01 = 1%
 epsilon_b_list = np.geomspace(1e-5, 1e-2, 200)
 shear_bias_prior_list = np.linspace(0.1e-4, 10e-4, 50)
-# epsilon_b_list = np.append(epsilon_b_list, np.array((0.1, 1, 10))*1e-2)  # 
+# epsilon_b_list = np.append(epsilon_b_list, np.array((0.1, 1, 10))*1e-2)  #
 
 fix_dz = False
 fix_dzGC = False
@@ -1100,7 +1101,7 @@ gal_bias_prior = None
 # ! =========================== FM settings end ===========================
 
 # for epsilon_b in epsilon_b_list:
-    # for shear_bias_prior in shear_bias_prior_list:
+# for shear_bias_prior in shear_bias_prior_list:
 # gal_bias_prior = epsilon_b / fiducials_dict_tot_coarse['galaxy_bias']
 
 
@@ -1225,14 +1226,14 @@ for key in _keys:
         if plot_uncert_dav:
             fm = deepcopy(fm_dict_toplot[key])
             masked_fm_dict[key], masked_fid_pars_dict[key] = mm.mask_fm_v2(fm, fm_dict['fiducial_values_tot_dict'],
-                                                                        names_params_to_fix=names_params_to_fix_dict_dav[probe],
-                                                                        remove_null_rows_cols=remove_null_rows_cols)
+                                                                           names_params_to_fix=names_params_to_fix_dict_dav[probe],
+                                                                           remove_null_rows_cols=remove_null_rows_cols)
 
         if plot_uncert_vin:
             fm_vin = deepcopy(fm_dict_toplot_vin[key])
             masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key] = mm.mask_fm_v2(fm_vin, fm_dict_vin[f'fiducial_values_dict_{probe}'],
-                                                                                names_params_to_fix=names_params_to_fix_dict_vin[probe],
-                                                                                remove_null_rows_cols=remove_null_rows_cols)
+                                                                                   names_params_to_fix=names_params_to_fix_dict_vin[probe],
+                                                                                   remove_null_rows_cols=remove_null_rows_cols)
 
         # ! add priors
         if not fix_shear_bias and any(item in key for item in ['WL', 'XC', '3x2pt', '2x2pt']) and shear_bias_prior is not None:
@@ -1240,19 +1241,19 @@ for key in _keys:
             shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
             if plot_uncert_dav:
                 masked_fm_dict[key] = mm.add_prior_to_fm(masked_fm_dict[key], masked_fid_pars_dict[key],
-                                                        param_names_shear_bias, shear_bias_prior_values)
+                                                         param_names_shear_bias, shear_bias_prior_values)
             if plot_uncert_vin:
                 masked_fm_dict_vin[key] = mm.add_prior_to_fm(masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key],
-                                                            param_names_shear_bias, shear_bias_prior_values)
+                                                             param_names_shear_bias, shear_bias_prior_values)
 
         if not fix_gal_bias and any(item in key for item in ['GC', 'XC', '3x2pt', '2x2pt']) and np.all(gal_bias_prior is not None):
             print(f'adding gal bias Gaussian prior to {key}')
             if plot_uncert_dav:
                 masked_fm_dict[key] = mm.add_prior_to_fm(masked_fm_dict[key], masked_fid_pars_dict[key],
-                                                        param_names_gal_bias, gal_bias_prior)
+                                                         param_names_gal_bias, gal_bias_prior)
             if plot_uncert_vin:
                 masked_fm_dict_vin[key] = mm.add_prior_to_fm(masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key],
-                                                            param_names_gal_bias, gal_bias_prior)
+                                                             param_names_gal_bias, gal_bias_prior)
 
         # add dzGC priors, to all probes but GCph
         if not fix_dz and dz_prior is not None and any(item in key for item in ['WL', 'XC', '3x2pt', '2x2pt']):
@@ -1291,14 +1292,14 @@ for key in _keys:
 
         if plot_uncert_dav:
             uncert_dict[key] = mm.uncertainties_fm_v2(masked_fm_dict[key], masked_fid_pars_dict[key],
-                                                    which_uncertainty=which_uncertainty,
-                                                    normalize=True,
-                                                    percent_units=True)[:nparams_toplot]
+                                                      which_uncertainty=which_uncertainty,
+                                                      normalize=True,
+                                                      percent_units=True)[:nparams_toplot]
         if plot_uncert_vin:
             uncert_dict[key + '_vin'] = mm.uncertainties_fm_v2(masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key],
-                                                            which_uncertainty=which_uncertainty,
-                                                            normalize=True,
-                                                            percent_units=True)[:nparams_toplot]
+                                                               which_uncertainty=which_uncertainty,
+                                                               normalize=True,
+                                                               percent_units=True)[:nparams_toplot]
 
         if plot_uncert_dav:
             param_names = list(masked_fid_pars_dict[key].keys())
@@ -1349,8 +1350,8 @@ for probe in probes:
 
         # this is for the dataframe
         df_row = [probe, case, which_uncertainty, fix_shear_bias,
-                shear_bias_prior, gal_bias_prior, epsilon_b,
-                opt_or_pes, EP_or_ED, zbins] + list(uncert_dict[case]) + [fom_dict[case]]
+                  shear_bias_prior, gal_bias_prior, epsilon_b,
+                  opt_or_pes, EP_or_ED, zbins] + list(uncert_dict[case]) + [fom_dict[case]]
         uncert_df.loc[len(uncert_df)] = df_row
 
         uncert_array.append(uncert_dict[case])
@@ -1359,7 +1360,6 @@ for probe in probes:
             fom_dict[case] /= 10
 
         fom_array.append(fom_dict[case])
-
 
     uncert_array = np.asarray(uncert_array)
     fom_array = np.asarray(fom_array)
@@ -1402,8 +1402,8 @@ for probe in probes:
             nparams_toplot += 1
 
     plot_lib.bar_plot(uncert_array[:, param_start_idx:nparams_toplot], title, cases_to_plot, nparams=nparams_toplot - param_start_idx,
-                    param_names_label=param_names_label[:nparams_toplot], bar_width=0.13, include_fom=include_fom,
-                    divide_fom_by_10_plt=divide_fom_by_10_plt)
+                      param_names_label=param_names_label[:nparams_toplot], bar_width=0.13, include_fom=include_fom,
+                      divide_fom_by_10_plt=divide_fom_by_10_plt)
 
 uncert_df.to_pickle(f'{fm_folder}/uncert_df_zbins{EP_or_ED}{zbins:02d}_fom_vs_epsilonbANDsigmam_isocontour.pkl')
 
@@ -1511,8 +1511,7 @@ if opt_or_pes == 'Opt':
     if logt_name_tex in param_names_labels_tex:
         logt_ix = param_names_labels_tex.index(logt_name_tex)
         param_names_labels_tex[logt_ix] = logt_name_tex_short
-    
-    
+
     if triangle_plot:
         plot_lib.triangle_plot(
             fm_backround=masked_fm_dict['FM_3x2pt_GSSC'],
@@ -1526,7 +1525,90 @@ if opt_or_pes == 'Opt':
             param_names_labels_tex=param_names_labels_tex,
             rotate_param_labels=False
         )
-    plt.savefig(f'{fm_folder}/plots/triangle_plot.png', bbox_inches='tight', dpi=500)
+    # plt.savefig(f'{fm_folder}/plots/triangle_plot.png', bbox_inches='tight', dpi=500)
+
+if compute_om_s8_fom:
+
+    probe = 'WL'
+    which_cov = 'G'
+    fom_omS8_dict = {}
+    w0_wa_fom_dict = {}
+
+    for which_cov in ['G', 'GSSC']:
+
+        fm = masked_fm_dict[f'FM_{probe}_{which_cov}']
+        fid = masked_fid_pars_dict[f'FM_{probe}_{which_cov}']
+
+        # ! project FM
+
+        # ! 1st way: Define the Jacobian matrix
+        jacobian = np.eye(fm.shape[0])
+        sigma_8_idx = param_names.index('s8')
+        Omega_m_idx = param_names.index('Om')
+        S8_idx = param_names.index('s8')
+
+        # Functions for derivatives
+        def dS8_dsigma8_func(Omega_m): return np.sqrt(Omega_m / 0.3)
+        def dS8_dOmegam_func(Omega_m, sigma_8): return (sigma_8 / 2) * (1 / np.sqrt(Omega_m * 0.3))
+
+        # Fiducial values
+        om_fid = fid['Om']
+        s8_fid = fid['s8']
+
+        # Fill in the Jacobian matrix
+        # jacobian[sigma_8_idx, sigma_8_idx] = dS8_dsigma8_func(Omega_m=om_fid)
+        # jacobian[Omega_m_idx, sigma_8_idx] = dS8_dOmegam_func(Omega_m=om_fid, sigma_8=s8_fid)
+
+        jacobian[S8_idx, Omega_m_idx] = dS8_dOmegam_func(Omega_m=om_fid, sigma_8=s8_fid)
+        jacobian[S8_idx, sigma_8_idx] = dS8_dsigma8_func(Omega_m=om_fid)
+
+        # Transform the Fisher matrix
+        fm_prime_j = jacobian.T @ fm @ jacobian
+
+        plot_lib.triangle_plot(fm_backround=fm_prime_j,
+                               fm_foreground=fm,
+                               fiducials=list(masked_fid_pars_dict[f'FM_{probe}_{which_cov}'].values()),
+                               title='WL, first way',
+                               label_background='$S_8$',
+                               label_foreground='$\sigma_8$',
+                               param_names_labels=list(masked_fid_pars_dict[f'FM_{probe}_{which_cov}'].keys()),
+                               param_names_labels_toplot=['Om', 's8'])
+
+        fom_omS8_dict[f'{probe}_{which_cov}'] = mm.compute_FoM(fm_prime_j, (Omega_m_idx, sigma_8_idx))
+        w0_wa_fom_dict[f'{probe}_{which_cov}'] = mm.compute_FoM(fm_prime_j, w0wa_idxs)
+
+    for which_cov in ['G', 'GSSC']:
+        print(f'Omega_m-S8 FoM for {probe}, {which_cov} case: ', fom_omS8_dict[f'{probe}_{which_cov}'])
+    print(f'Omega_m-S8 FoM ratio: ', fom_omS8_dict[f'{probe}_GSSC']/fom_omS8_dict[f'{probe}_G'], '\n')
+
+    for which_cov in ['G', 'GSSC']:
+        print(f'w0-wa FoM for {probe}, {which_cov} case: ', w0_wa_fom_dict[f'{probe}_{which_cov}'])
+    print(f'w0-wa FoM ratio: ', w0_wa_fom_dict[f'{probe}_GSSC']/w0_wa_fom_dict[f'{probe}_G'])
+
+    # ! second way, which seems wrong (Om contour changes)
+    # m_matrix = np.eye(fm.shape[0])
+
+    # def dsigma8_dS8_func(Omega_m): return (np.sqrt(0.3 / Omega_m))
+    # def dOmegam_dS8_func(Omega_m, sigma_8): return ((2 / sigma_8) * (np.sqrt(Omega_m * 0.3)))
+
+    # # Fill in the m_matrix matrix
+    # m_matrix[Omega_m_idx, S8_idx] = dOmegam_dS8_func(Omega_m=om_fid, sigma_8=s8_fid)
+    # m_matrix[sigma_8_idx, S8_idx] = dsigma8_dS8_func(Omega_m=om_fid)
+
+    # # Transform the Fisher matrix
+    # fm_prime_m = m_matrix.T @ fm @ m_matrix
+
+    # mm.compare_arrays(fm_prime_m, fm, log_array=True, log_diff=False,
+    #                   plot_diff_threshold=0, white_where_zero=True)
+
+    # plot_lib.triangle_plot(fm_prime_m,
+    #                        fm,
+    #                        fiducials=list(masked_fid_pars_dict['FM_WL_G'].values()),
+    #                        title='WL, second way',
+    #                        label_background='$S_8$',
+    #                        label_foreground='$\sigma_8$',
+    #                        param_names_labels=list(masked_fid_pars_dict['FM_WL_G'].keys()),
+    #                        param_names_labels_toplot=['Om', 's8'])
 
 
 print('done')

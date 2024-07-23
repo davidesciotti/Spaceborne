@@ -5,48 +5,45 @@
 cosmology:
     # these are the parameters varied in the analysis. The ordering is the same used in the FM
     FM_ordered_params:
-        # where did these come from??
-        # Om: 0.318592238
-        # ODE: 0.68140775651
-        # Ob: 0.05001413
         Om: 0.32
         Ob: 0.05
         wz: -1.0
         wa: 0.0
-        h: 0.6737  # fiducial value used in CLOE MCMC runs
-        # h: 0.67 # fiducial value used in Vincenzo's files!
+        h: 0.6737
         ns: 0.966
         s8: 0.816
         logT: 7.75
         Aia: 0.16
         eIA: 1.66
-        # m01: 0.0
-        # m02: 0.0
-        # m03: 0.0
-        # m04: 0.0
-        # m05: 0.0
-        # m06: 0.0
-        # m07: 0.0
-        # m08: 0.0
-        # m09: 0.0
-        # m10: 0.0
-        # m11: 0.0
-        # m12: 0.0
-        # m13: 0.0
-        # dzWL01: -0.025749
-        # dzWL02: 0.022716
-        # dzWL03: -0.026032
-        # dzWL04: 0.012594
-        # dzWL05: 0.019285
-        # dzWL06: 0.008326
-        # dzWL07: 0.038207
-        # dzWL08: 0.002732
-        # dzWL09: 0.034066
-        # dzWL10: 0.049479
-        # dzWL11: 0.06649
-        # dzWL12: 0.000815
-        # dzWL13: 0.04907
-        # coefficients for the polynomial magnification and galaxy bias fits
+        # shear multiplicative bias
+        m01: 0.0
+        m02: 0.0
+        m03: 0.0
+        m04: 0.0
+        m05: 0.0
+        m06: 0.0
+        m07: 0.0
+        m08: 0.0
+        m09: 0.0
+        m10: 0.0
+        m11: 0.0
+        m12: 0.0
+        m13: 0.0
+        # shifts in the mean of the redshift distribution, for each bin
+        dzWL01: -0.025749
+        dzWL02: 0.022716
+        dzWL03: -0.026032
+        dzWL04: 0.012594
+        dzWL05: 0.019285
+        dzWL06: 0.008326
+        dzWL07: 0.038207
+        dzWL08: 0.002732
+        dzWL09: 0.034066
+        dzWL10: 0.049479
+        dzWL11: 0.06649
+        dzWL12: 0.000815
+        dzWL13: 0.04907
+        # coefficients for the polynomial galaxy and magnification bias fits
         bG01: 1.33291
         bG02: -0.72414
         bG03: 1.0183
@@ -81,7 +78,7 @@ general_cfg:
     ell_max_WL: 5000
     ell_max_GC: 5000
     ell_max_3x2pt: 5000
-    zbins: 3
+    zbins: 13
     EP_or_ED: EP # equipopulated or equidistant bins
     n_probes: 2
     save_cls_3d: False
@@ -170,14 +167,14 @@ covariance_cfg:
     nuisance_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzPar"
     nuisance_filename: ngbsTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
 
-    # zbin_centers:
-    #     [ 0.27575, 0.37635, 0.44634, 0.54284, 0.62145, 0.70957, 0.7986, 0.86687, 0.97753, 1.09136, 1.24264, 1.47918, 1.89264]
+    zbin_centers:
+        [ 0.27575, 0.37635, 0.44634, 0.54284, 0.62145, 0.70957, 0.7986, 0.86687, 0.97753, 1.09136, 1.24264, 1.47918, 1.89264]
     
     # number of galaxies per arcmin**2 for each redshift bin.
-    # ngal_lensing:
-    #     [ 1.86742, 1.86744, 1.8674, 1.86743, 1.86741, 1.86742, 1.86742, 1.86742, 1.86744, 1.8674, 1.86742, 1.86742, 1.86742]
-    # ngal_clustering:
-    #     [ 1.86742, 1.86744, 1.8674, 1.86743, 1.86741, 1.86742, 1.86742, 1.86742, 1.86744, 1.8674, 1.86742, 1.86742, 1.86742]
+    ngal_lensing:
+        [ 1.86742, 1.86744, 1.8674, 1.86743, 1.86741, 1.86742, 1.86742, 1.86742, 1.86744, 1.8674, 1.86742, 1.86742, 1.86742]
+    ngal_clustering:
+        [ 1.86742, 1.86744, 1.8674, 1.86743, 1.86741, 1.86742, 1.86742, 1.86742, 1.86744, 1.8674, 1.86742, 1.86742, 1.86742]
 
     shift_nz: True # Vincenzo's kernels are computed using a shifted n(z)!
     compute_bnt_with_shifted_nz_for_zcuts: False # ! lets test this

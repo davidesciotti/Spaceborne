@@ -33,6 +33,7 @@ import spaceborne.pyccl_cov_class as pyccl_cov_class
 import spaceborne.plot_lib as plot_lib
 import spaceborne.sigma2_SSC as sigma2_SSC
 import spaceborne.onecovariance_interface as oc_interface
+import spaceborne.config_checker as config_checker
 
 ROOT = os.getenv('ROOT')
 script_start_time = time.perf_counter()
@@ -127,7 +128,6 @@ use_h_units = general_cfg['use_h_units']
 covariance_cfg['probe_ordering'] = (('L', 'L'), (GL_or_LG[0], GL_or_LG[1]), ('G', 'G'))
 probe_ordering = covariance_cfg['probe_ordering']
 which_pk = general_cfg['which_pk']
-general_cfg['fm_and_cov_suffix'] = general_cfg['fm_and_cov_suffix'].format(which_cls=general_cfg['which_cls'])
 
 z_grid_ssc_integrands = np.linspace(covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
                                     covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
@@ -138,6 +138,7 @@ if len(z_grid_ssc_integrands) < 250:
 which_ng_cov_suffix = 'G' + ''.join(covariance_cfg[covariance_cfg['ng_cov_code'] + '_cfg']['which_ng_cov'])
 fid_pars_dict = cfg['cosmology']
 flat_fid_pars_dict = mm.flatten_dict(fid_pars_dict)
+h = flat_fid_pars_dict['h']
 
 # load some nuisance parameters
 # note that zbin_centers is not exactly equal to the result of wf_cl_lib.get_z_mean...
@@ -150,28 +151,13 @@ dzWL_fiducial = np.array([fid_pars_dict['FM_ordered_params'][f'dzWL{zi:02d}'] fo
 dzGC_fiducial = np.array([fid_pars_dict['FM_ordered_params'][f'dzWL{zi:02d}'] for zi in range(1, zbins + 1)])
 warnings.warn('dzGC_fiducial are equal to dzWL_fiducial')
 
+# some checks
+config_checker = config_checker.SpaceborneConfigChecker(cfg)
+k_txt_label, pk_txt_label = config_checker.run_all_checks()
 
-h = flat_fid_pars_dict['h']
-if general_cfg['use_h_units']:
-    k_txt_label = "hoverMpc"
-    pk_txt_label = "Mpcoverh3"
-else:
-    k_txt_label = "1overMpc"
-    pk_txt_label = "Mpc3"
-
+# instantiate CCL object
 ccl_obj = pyccl_cov_class.PycclClass(fid_pars_dict)
 
-# ! some checks
-if general_cfg['ell_cuts']:
-    assert bnt_transform, 'you should BNT transform if you want to apply ell cuts'
-if covariance_cfg['cov_BNT_transform']:
-    assert general_cfg['cl_BNT_transform'] is False, \
-        'the BNT transform should be applied either to the Cls or to the covariance'
-    assert fm_cfg['derivatives_BNT_transform'], 'you should BNT transform the derivatives as well'
-assert general_cfg['which_forecast'] == 'SPV3', 'ISTF forecasts not supported at the moment'
-
-fsky_check = cosmo_lib.deg2_to_fsky(covariance_cfg['survey_area_deg2'])
-assert np.abs(mm.percent_diff(covariance_cfg['fsky'], fsky_check)) < 1e-5, 'fsky does not match the survey area'
 
 # TODO delete this arg in save_cov function
 cases_tosave = '_'
@@ -471,7 +457,7 @@ cl_3x2pt_5d = ccl_obj.cl_3x2pt_5d
 
 
 clr = cm.rainbow(np.linspace(0, 1, zbins))
-fig, ax = plt.subplots(1, 3, figsize=(10, 5))
+fig, ax = plt.subplots(1, 3, figsize=(13, 5))
 plt.tight_layout()
 
 for zi in range(zbins):
@@ -481,7 +467,7 @@ for zi in range(zbins):
     ax[2].loglog(ell_dict['ell_GC'], cl_gg_3d[:, zi, zj], c=clr[zi])
 
 ax[1].set_xlabel('$\\ell$')
-ax[0].set_ylabel('$C_^{ii}{\ell}$')
+ax[0].set_ylabel('$C^{ii}_{\ell}$')
 ax[0].set_title('LL')
 ax[1].set_title('GL')
 ax[2].set_title('GG')
@@ -493,32 +479,8 @@ plt.show()
 
 
 # ! ========================================== start Spaceborne ===================================================
-cov_folder_sb = covariance_cfg['Spaceborne_cfg']['cov_path'].format(ROOT=ROOT,
-                                                                    which_pk_responses=covariance_cfg['Spaceborne_cfg']['which_pk_responses'],
-                                                                    flagship_version=general_cfg['flagship_version'],
-                                                                    cov_ell_cuts=str(
-                                                                        covariance_cfg['cov_ell_cuts']),
-                                                                    BNT_transform=str(general_cfg['BNT_transform']))
-
-cov_sb_suffix = covariance_cfg['Spaceborne_cfg']['cov_suffix'].format(
-    z_steps_ssc_integrands=covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'],
-    k_txt_label=k_txt_label,
-    cl_integral_convention=covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
-    integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
-    survey_area_deg2=covariance_cfg['survey_area_deg2'],
-)
-
-variable_specs.pop('ng_cov_code')
-variable_specs.pop('which_ng_cov')
-cov_sb_filename = covariance_cfg['cov_filename'].format(ng_cov_code='spaceborne',
-                                                        lmax_3x2pt=general_cfg['ell_max_3x2pt'],
-                                                        probe='{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}',
-                                                        cov_suffix=cov_sb_suffix,
-                                                        which_ng_cov=which_ng_cov_suffix.replace('G', ''),
-                                                        fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'],
-                                                        ndim=4,
-                                                        **variable_specs)
-
+cov_folder_sb = covariance_cfg['Spaceborne_cfg']['cov_path']
+cov_sb_filename = covariance_cfg['Spaceborne_cfg']['cov_filename']
 variable_specs['ng_cov_code'] = covariance_cfg['ng_cov_code']
 variable_specs['which_ng_cov'] = which_ng_cov_suffix
 
@@ -671,18 +633,11 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
                                 covariance_cfg['Spaceborne_cfg']['k_steps_sigma2'])
     which_sigma2_B = covariance_cfg['Spaceborne_cfg']['which_sigma2_B']
 
-    sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename'].format(
-        ROOT=ROOT,
-        zmin=covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
-        zmax=covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
-        zsteps=covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'],
-        log10kmin=covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'],
-        log10kmax=covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
-        ksteps=covariance_cfg['Spaceborne_cfg']['k_steps_sigma2']
-    )
+    sigma2_b_path = covariance_cfg['Spaceborne_cfg']['sigma2_b_path']
+    sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename']
     if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
         # TODO define a suitable interpolator if the zgrid doesn't match
-        sigma2_b_dict = np.load(sigma2_b_filename, allow_pickle=True).item()
+        sigma2_b_dict = np.load(f'{sigma2_b_path}/{sigma2_b_filename}', allow_pickle=True).item()
         cfg_sigma2_b = sigma2_b_dict['cfg']  # TODO check that the cfg matches the one
         sigma2_b = sigma2_b_dict['sigma2_b']
     else:
@@ -701,8 +656,23 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
             'cfg': cfg,
             'sigma2_b': sigma2_b,
         }
-        np.save(sigma2_b_filename, sigma2_b_dict_tosave, allow_pickle=True)
-
+        np.save(f'{sigma2_b_path}/{sigma2_b_filename}', sigma2_b_dict_tosave, allow_pickle=True)
+        
+    mm.matshow(sigma2_b, log=True, abs_val=True, title='$\sigma^2_B(z_1, z_2)$')
+    
+    plt.figure()
+    plt.semilogy(z_grid_ssc_integrands, np.diag(sigma2_b))
+    plt.xlabel('$z$')
+    plt.ylabel(r'$\sigma^2_B(z_1=z_2)$')
+    
+    z1_idx = len(z_grid_ssc_integrands) // 2
+    z1_val = z_grid_ssc_integrands[z1_idx]
+    plt.figure()
+    plt.plot(z_grid_ssc_integrands, sigma2_b[z1_idx, :])
+    plt.xlabel('$z$')
+    plt.ylabel(r'$\sigma^2_B(z_2, z1=%.3f)$' % z1_val)
+    
+    
     # ! 4. Perform the integration calling the Julia module
     print('Performing the 2D integral in Julia...')
     start = time.perf_counter()
@@ -763,43 +733,62 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
 print('SSC computed with Spaceborne')
 # TODO integrate this with Spaceborne_covg
 
+symmetrize_output_dict = {
+    ('L', 'L'): False,
+    ('G', 'L'): False,
+    ('L', 'G'): False,
+    ('G', 'G'): False,
+}
+cov_ssc_sb_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
+    covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
+cov_ssc_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_ssc_sb_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
+cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
+
+cov_3x2pt_SS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
+
+# to see the individual covariance blocks
+cov_3x2pt_SS_2D = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SS_4D, block_index='ell', zbins=zbins)
+
+mm.matshow(cov_3x2pt_SS_2D, log=True, abs_val=True, title='SSC 2D')
+
+assert False, 'stop here for now'
+
 
 # ! ========================================== OneCovariance ===================================================
 
-# * 1. save ingredients in ascii format
-oc_path = covariance_cfg['OneCovariance_cfg']['onecovariance_folder'].format(ROOT=ROOT, **variable_specs)
-
-if not os.path.exists(oc_path):
-    os.makedirs(oc_path)
-
-nofz_ascii_filename = nofz_filename.replace('.dat', f'_dzshifts{shift_nz}.ascii')
-nofz_tosave = np.column_stack((zgrid_nz, n_of_z))
-np.savetxt(f'{oc_path}/{nofz_ascii_filename}', nofz_tosave)
-
-cl_ll_ascii_filename = f'Cell_ll_SPV3_{general_cfg["which_cls"]}_nbl{nbl_3x2pt}'
-cl_gl_ascii_filename = f'Cell_gl_SPV3_{general_cfg["which_cls"]}_nbl{nbl_3x2pt}'
-cl_gg_ascii_filename = f'Cell_gg_SPV3_{general_cfg["which_cls"]}_nbl{nbl_3x2pt}'
-mm.write_cl_ascii(oc_path, cl_ll_ascii_filename, cl_3x2pt_5d[0, 0, ...], ell_dict['ell_3x2pt'], zbins)
-mm.write_cl_ascii(oc_path, cl_gl_ascii_filename, cl_3x2pt_5d[1, 0, ...], ell_dict['ell_3x2pt'], zbins)
-mm.write_cl_ascii(oc_path, cl_gg_ascii_filename, cl_3x2pt_5d[1, 1, ...], ell_dict['ell_3x2pt'], zbins)
-
-gal_bias_ascii_filename = f'{oc_path}/gal_bias_table_{general_cfg["which_forecast"]}.ascii'
-ccl_obj.save_gal_bias_table_ascii(z_grid_ssc_integrands, gal_bias_ascii_filename)
-
-ascii_filenames_dict = {
-    'cl_ll_ascii_filename': cl_ll_ascii_filename,
-    'cl_gl_ascii_filename': cl_gl_ascii_filename,
-    'cl_gg_ascii_filename': cl_gg_ascii_filename,
-    'gal_bias_ascii_filename': gal_bias_ascii_filename,
-    'nofz_ascii_filename': nofz_ascii_filename,
-}
-
-# * 2. compute cov using the onecovariance interface class
 start_time = time.perf_counter()
 if covariance_cfg['ng_cov_code'] == 'OneCovariance' or \
     (covariance_cfg['ng_cov_code'] == 'Spaceborne' and
         not covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']):
 
+    # * 1. save ingredients in ascii format
+    oc_path = covariance_cfg['OneCovariance_cfg']['onecovariance_folder'].format(ROOT=ROOT, **variable_specs)
+    if not os.path.exists(oc_path):
+        os.makedirs(oc_path)
+
+    nofz_ascii_filename = nofz_filename.replace('.dat', f'_dzshifts{shift_nz}.ascii')
+    nofz_tosave = np.column_stack((zgrid_nz, n_of_z))
+    np.savetxt(f'{oc_path}/{nofz_ascii_filename}', nofz_tosave)
+
+    cl_ll_ascii_filename = f'Cell_ll_SPV3_nbl{nbl_3x2pt}'
+    cl_gl_ascii_filename = f'Cell_gl_SPV3_nbl{nbl_3x2pt}'
+    cl_gg_ascii_filename = f'Cell_gg_SPV3_nbl{nbl_3x2pt}'
+    mm.write_cl_ascii(oc_path, cl_ll_ascii_filename, cl_3x2pt_5d[0, 0, ...], ell_dict['ell_3x2pt'], zbins)
+    mm.write_cl_ascii(oc_path, cl_gl_ascii_filename, cl_3x2pt_5d[1, 0, ...], ell_dict['ell_3x2pt'], zbins)
+    mm.write_cl_ascii(oc_path, cl_gg_ascii_filename, cl_3x2pt_5d[1, 1, ...], ell_dict['ell_3x2pt'], zbins)
+
+    gal_bias_ascii_filename = f'{oc_path}/gal_bias_table_{general_cfg["which_forecast"]}.ascii'
+    ccl_obj.save_gal_bias_table_ascii(z_grid_ssc_integrands, gal_bias_ascii_filename)
+
+    ascii_filenames_dict = {
+        'cl_ll_ascii_filename': cl_ll_ascii_filename,
+        'cl_gl_ascii_filename': cl_gl_ascii_filename,
+        'cl_gg_ascii_filename': cl_gg_ascii_filename,
+        'gal_bias_ascii_filename': gal_bias_ascii_filename,
+        'nofz_ascii_filename': nofz_ascii_filename,
+    }
+
+    # * 2. compute cov using the onecovariance interface class
     print('Start NG cov computation with OneCovariance...')
 
     # TODO this should be defined globally...
@@ -866,10 +855,10 @@ cl_dict_3D = {
     'cl_3x2pt_5D': cl_3x2pt_5d}
 
 rl_dict_3D = {
-    'rl_LL_3D': rl_ll_3d,
-    'rl_GG_3D': rl_gg_3d,
-    'rl_WA_3D': rl_wa_3d,
-    'rl_3x2pt_5D': rl_3x2pt_5d}
+    'rl_LL_3D': np.ones_like(cl_ll_3d),
+    'rl_GG_3D': np.ones_like(cl_gg_3d),
+    'rl_WA_3D': np.ones_like(cl_wa_3d),
+    'rl_3x2pt_5D': np.ones_like(cl_3x2pt_5d)}
 
 # this is again to test against ccl cls
 general_cfg['cl_ll_3d'] = cl_ll_3d
@@ -879,8 +868,8 @@ general_cfg['cl_gg_3d'] = cl_gg_3d
 
 # ! compute covariance matrix
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                    ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix, oc_obj)
-
+                                    ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, 
+                                    Sijkl=None, BNT_matrix=bnt_matrix, oc_obj=oc_obj)
 
 if covariance_cfg['test_against_benchmarks']:
     cov_benchmark_folder = f'{cov_folder}/benchmarks'

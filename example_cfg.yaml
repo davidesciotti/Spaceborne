@@ -78,7 +78,7 @@ general_cfg:
     ell_max_WL: 5000
     ell_max_GC: 5000
     ell_max_3x2pt: 5000
-    zbins: 13
+    zbins: 5
     EP_or_ED: EP # equipopulated or equidistant bins
     n_probes: 2
     save_cls_3d: False

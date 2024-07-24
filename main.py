@@ -586,7 +586,6 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         plt.semilogx(k_grid_resp, r1_gg_dav_interp[:, z_idx], label='r1_gg_dav', c='tab:green')
         plt.semilogx(k_grid_resp, r_gg[:, z_idx], label='r_gg', c='tab:green', ls='--')
         
-        assert False, 'stop here to check responses'
 
     else:
         raise ValueError('which_pk_responses must be either "halo_model" or "separate_universe"')

@@ -415,10 +415,9 @@ if general_cfg['which_forecast'] == 'ISTF':
     ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_w_gal_bias_arr
 
 
-
 wf_names_list = ['delta', 'gamma', 'ia', 'mu', 'lensing', gal_kernel_plt_title]
 wf_ccl_list = [ccl_obj.wf_delta_arr, ccl_obj.wf_gamma_arr, ccl_obj.wf_ia_arr, ccl_obj.wf_mu_arr,
-                ccl_obj.wf_lensing_arr, ccl_obj.wf_galaxy_arr]
+               ccl_obj.wf_lensing_arr, ccl_obj.wf_galaxy_arr]
 
 # plot
 for wf_idx in range(len(wf_ccl_list)):
@@ -450,7 +449,7 @@ ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_3x2pt, zbins, zbins))
 ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[:nbl_3x2pt, :, :]
 ccl_obj.cl_3x2pt_5d[1, 0, :, :, :] = ccl_obj.cl_gl_3d[:nbl_3x2pt, :, :]
 ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[:nbl_3x2pt, :, :].transpose(0, 2, 1)
-ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[:nbl_3x2pt, :, :]    
+ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[:nbl_3x2pt, :, :]
 
 cl_ll_3d, cl_gl_3d, cl_gg_3d, cl_wa_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d, ccl_obj.cl_wa_3d
 cl_3x2pt_5d = ccl_obj.cl_3x2pt_5d
@@ -475,7 +474,6 @@ plt.show()
 
 
 # ! ========================================== SSC ============================================================
-
 
 
 # ! ========================================== start Spaceborne ===================================================
@@ -563,6 +561,32 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         dPmm_ddeltab = r_mm * pk_mm_2d
         dPgm_ddeltab = r_gm * pk_gm_2d
         dPgg_ddeltab = r_gg * pk_gg_2d
+
+        folder = '/home/davide/Scrivania/check_responses_arfly/'
+        k_grid_dav = np.load(f'{folder}/k_grid.npy')
+        z_grid_dav = np.load(f'{folder}/z_grid.npy')
+        r1_mm_dav = np.load(f'{folder}/r1_mm.npy')
+        r1_gm_dav = np.load(f'{folder}/r1_gm_nob2.npy')
+        r1_gg_dav = np.load(f'{folder}/r1_gg_nob2.npy')
+
+        r1_mm_dav_func = RegularGridInterpolator((k_grid_dav, z_grid_dav), r1_mm_dav, method='linear')
+        r1_gm_dav_func = RegularGridInterpolator((k_grid_dav, z_grid_dav), r1_gm_dav, method='linear')
+        r1_gg_dav_func = RegularGridInterpolator((k_grid_dav, z_grid_dav), r1_gg_dav, method='linear')
+
+        k_grid_resp_xx, z_grid_resp_yy = np.meshgrid(k_grid_resp, z_grid_resp, indexing='ij')
+        r1_mm_dav_interp = r1_mm_dav_func((k_grid_resp_xx, z_grid_resp_yy))
+        r1_gm_dav_interp = r1_gm_dav_func((k_grid_resp_xx, z_grid_resp_yy))
+        r1_gg_dav_interp = r1_gg_dav_func((k_grid_resp_xx, z_grid_resp_yy))
+
+        z_idx = 200
+        plt.semilogx(k_grid_resp, r1_mm_dav_interp[:, z_idx], label='r1_mm_dav', c='tab:blue')
+        plt.semilogx(k_grid_resp, r_mm[:, z_idx], label='r_mm', c='tab:blue', ls='--')
+        plt.semilogx(k_grid_resp, r1_gm_dav_interp[:, z_idx], label='r1_gm_dav', c='tab:orange')
+        plt.semilogx(k_grid_resp, r_gm[:, z_idx], label='r_gm', c='tab:orange', ls='--')
+        plt.semilogx(k_grid_resp, r1_gg_dav_interp[:, z_idx], label='r1_gg_dav', c='tab:green')
+        plt.semilogx(k_grid_resp, r_gg[:, z_idx], label='r_gg', c='tab:green', ls='--')
+        
+        assert False, 'stop here to check responses'
 
     else:
         raise ValueError('which_pk_responses must be either "halo_model" or "separate_universe"')
@@ -657,22 +681,21 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
             'sigma2_b': sigma2_b,
         }
         np.save(f'{sigma2_b_path}/{sigma2_b_filename}', sigma2_b_dict_tosave, allow_pickle=True)
-        
+
     mm.matshow(sigma2_b, log=True, abs_val=True, title='$\sigma^2_B(z_1, z_2)$')
-    
+
     plt.figure()
     plt.semilogy(z_grid_ssc_integrands, np.diag(sigma2_b))
     plt.xlabel('$z$')
     plt.ylabel(r'$\sigma^2_B(z_1=z_2)$')
-    
+
     z1_idx = len(z_grid_ssc_integrands) // 2
     z1_val = z_grid_ssc_integrands[z1_idx]
     plt.figure()
     plt.plot(z_grid_ssc_integrands, sigma2_b[z1_idx, :])
     plt.xlabel('$z$')
     plt.ylabel(r'$\sigma^2_B(z_2, z1=%.3f)$' % z1_val)
-    
-    
+
     # ! 4. Perform the integration calling the Julia module
     print('Performing the 2D integral in Julia...')
     start = time.perf_counter()
@@ -821,7 +844,6 @@ else:
 # ! ========================================== end OneCovariance ===================================================
 
 
-
 # ! Vincenzo's method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
 if general_cfg['center_or_min'] == 'center':
     prefix = 'ell'
@@ -868,7 +890,7 @@ general_cfg['cl_gg_3d'] = cl_gg_3d
 
 # ! compute covariance matrix
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                    ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, 
+                                    ell_dict, delta_dict, cl_dict_3D, rl_dict_3D,
                                     Sijkl=None, BNT_matrix=bnt_matrix, oc_obj=oc_obj)
 
 if covariance_cfg['test_against_benchmarks']:

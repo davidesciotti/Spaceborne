@@ -28,7 +28,7 @@ import os
 ROOT = os.getenv('ROOT')
 sys.path.append(f'{ROOT}/Spaceborne')
 import bin.my_module as mm
-import bin.cosmo_lib as csmlib
+import bin.cosmo_lib as cosmo_lib
 import bin.ell_values as ell_utils
 import bin.pyccl_cov_class as pyccl_cov_class
 import bin.cl_preprocessing as cl_utils
@@ -99,13 +99,12 @@ def load_ell_cuts(kmax_h_over_Mpc):
             'LG': ell_cuts_LG}
 
     elif general_cfg['which_cuts'] == 'Vincenzo':
-
         h = 0.67
         ell_cuts_array = np.zeros((zbins, zbins))
         for zi, zval_i in enumerate(z_center_values):
             for zj, zval_j in enumerate(z_center_values):
-                r_of_zi = cosmo_lib.astropy_comoving_distance(zval_i, use_h_units=False)
-                r_of_zj = cosmo_lib.astropy_comoving_distance(zval_j, use_h_units=False)
+                r_of_zi = cosmo_lib.ccl_comoving_distance(zval_i, use_h_units=False, cosmo_ccl=ccl_obj.cosmo_ccl)
+                r_of_zj = cosmo_lib.ccl_comoving_distance(zval_j, use_h_units=False, cosmo_ccl=ccl_obj.cosmo_ccl)
                 kmax_1_over_Mpc = kmax_h_over_Mpc * h
                 ell_cut_i = kmax_1_over_Mpc * r_of_zi - 1 / 2
                 ell_cut_j = kmax_1_over_Mpc * r_of_zj - 1 / 2
@@ -143,12 +142,13 @@ def cl_ell_cut_wrap(ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, kmax_h_
 
 
 def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum):
-    """ ell_values can be the bin center or the bin lower edge; Francis suggests the second option is better"""
+    """ ell_values can be the bin center or the bin lower edge; Francis suggests the second option is better.
+    NOTE THAT THIS FUNCTION ONLY WORKS IF THE COVARIANCE IS RESHAPED TO 2D WITH block_index='ell"""
 
     if is_auto_spectrum:
         idxs_to_delete = []
         count = 0
-        for ell_idx, ell_val in enumerate(ell_values):
+        for ell_val in ell_values:
             for zi in range(zbins):
                 for zj in range(zi, zbins):
                     if ell_val > ell_cuts[zi, zj]:
@@ -158,7 +158,7 @@ def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum):
     elif not is_auto_spectrum:
         idxs_to_delete = []
         count = 0
-        for ell_idx, ell_val in enumerate(ell_values):
+        for ell_val in ell_values:
             for zi in range(zbins):
                 for zj in range(zbins):
                     if ell_val > ell_cuts[zi, zj]:
@@ -175,17 +175,21 @@ def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict):
 
     idxs_to_delete_3x2pt = []
     count = 0
-    for ell_idx, ell_val in enumerate(ell_values_3x2pt):
+    for ell_val in ell_values_3x2pt:
+        
+        # the order of the probes is important!
         for zi in range(zbins):
             for zj in range(zi, zbins):
                 if ell_val > ell_cuts_dict['LL'][zi, zj]:
                     idxs_to_delete_3x2pt.append(count)
                 count += 1
+                
         for zi in range(zbins):
             for zj in range(zbins):
                 if ell_val > ell_cuts_dict['GL'][zi, zj]:
                     idxs_to_delete_3x2pt.append(count)
                 count += 1
+                
         for zi in range(zbins):
             for zj in range(zi, zbins):
                 if ell_val > ell_cuts_dict['GG'][zi, zj]:
@@ -194,7 +198,7 @@ def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict):
 
     # check if the array is monotonically increasing
     assert np.all(np.diff(idxs_to_delete_3x2pt) > 0)
-
+    assert count == nbl_3x2pt * zpairs_3x2pt, f'counter {count} != {nbl_3x2pt * zpairs_3x2pt}'
     return list(idxs_to_delete_3x2pt)
 
 
@@ -227,21 +231,21 @@ def plot_nz_tocheck_func():
     plt.legend()
     plt.xlabel('z')
     plt.ylabel('n(z)')
-    
-    
+
+
 def check_if_ref_case():
-    assert fix_dz is False, f'fix_dz must be False for the reference case' 
-    assert fix_dzGC is False, f'fix_dzGC must be False for the reference case' 
-    assert fix_shear_bias is False, f'fix_shear_bias must be False for the reference case' 
-    assert fix_gal_bias is False, f'fix_gal_bias must be False for the reference case' 
-    assert fix_logT is False, f'fix_logT must be False for the reference case' 
-    assert fix_omega_m is False, f'fix_omega_m must be False for the reference case' 
-    assert fix_sigma_8 is False, f'fix_sigma_8 must be False for the reference case' 
-    assert fix_gamma is True, f'fix_gamma must be True for the reference case' 
+    assert fix_dz is False, f'fix_dz must be False for the reference case'
+    assert fix_dzGC is False, f'fix_dzGC must be False for the reference case'
+    assert fix_shear_bias is False, f'fix_shear_bias must be False for the reference case'
+    assert fix_gal_bias is False, f'fix_gal_bias must be False for the reference case'
+    assert fix_logT is False, f'fix_logT must be False for the reference case'
+    assert fix_omega_m is False, f'fix_omega_m must be False for the reference case'
+    assert fix_sigma_8 is False, f'fix_sigma_8 must be False for the reference case'
+    assert fix_gamma is True, f'fix_gamma must be True for the reference case'
     assert shear_bias_prior == 5e-4, f'shear_bias_prior must be 5e-4 for the reference case'
-    assert np.allclose(dz_prior,  np.array(2 * 1e-3 * (1 + np.array([0.211711712, 0.363363363, 0.447447447, 0.566066066, 0.681681682,
-       0.792792793, 0.90990991 , 1.067567568, 1.193693694, 1.627627628]))), atol=0, rtol=1e-6), \
-           'dz priors do not corresponding to the reference values'
+    assert np.allclose(dz_prior, np.array(2 * 1e-3 * (1 + np.array([0.211711712, 0.363363363, 0.447447447, 0.566066066, 0.681681682,
+                                                                    0.792792793, 0.90990991, 1.067567568, 1.193693694, 1.627627628]))), atol=0, rtol=1e-6), \
+        'dz priors do not corresponding to the reference values'
     assert logT_prior == 0.06666666666666672, f'logT_prior must be 0.06666666666666672 for the reference case'
     assert gal_bias_prior is None, f'gal_bias_prior must be None for the reference case'
     if flat_or_nonflat == 'Flat':
@@ -250,11 +254,9 @@ def check_if_ref_case():
         assert plot_uncert_dav is False, f'gal_bias_prior must be False for the reference case'
 
 
-
 # ======================================================================================================================
 # ======================================================================================================================
 # ======================================================================================================================
-
 general_cfg = cfg.general_cfg
 covariance_cfg = cfg.covariance_cfg
 Sijkl_cfg = cfg.Sijkl_cfg
@@ -270,8 +272,6 @@ uncert_df = pd.DataFrame(columns=df_cols)
 #     for general_cfg['zbins'] in (7, 9, 10, 11, 13):
 
 # some convenence variables, just to make things more readable
-general_cfg['which_cuts'] = 'Vincenzo'
-general_cfg['center_or_min'] = 'min'
 kmax_h_over_Mpc = general_cfg['kmax_h_over_Mpc_list'][5]
 zbins = general_cfg['zbins']
 EP_or_ED = general_cfg['EP_or_ED']
@@ -468,7 +468,6 @@ axs[2].set_xlabel('$\\ell$')
 fig.legend(loc='upper center')
 # plt.savefig('/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/cls.pdf', dpi=500, bbox_inches='tight')
 
-# assert False, 'stop here and undo the latest changes with git, they were just to produce the cls plot'
 
 # Columns in the nuisance parameters file are as follows for each bin:
 # 1. mean redshift (not used in the code)
@@ -567,8 +566,16 @@ if ell_max_WL == 1500:
     rl_3x2pt_5d = rl_3x2pt_5d[:nbl_3x2pt, :, :]
 
 # this is to pass the ll cuts to the covariance module
-# ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc)
 ell_cuts_dict = {}
+if general_cfg['use_only_auto_z_for_GC']:
+    ell_cuts_dict['LL'] = np.ones((zbins, zbins)) * 10_000
+    ell_cuts_dict['GG'] = np.eye(zbins) * 10_000
+    ell_cuts_dict['GL'] = np.triu(np.ones((zbins, zbins)) * 10_000)  # this has null lower triangle (excluding the diagonal)
+    ell_cuts_dict['LG'] = np.tril(np.ones((zbins, zbins)) * 10_000)  # this has null upper triangle (excluding the diagonal)
+
+else:
+    ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc)
+
 ell_dict['ell_cuts_dict'] = ell_cuts_dict  # rename for better readability
 
 # ! Vincenzo's method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
@@ -579,14 +586,15 @@ elif general_cfg['center_or_min'] == 'min':
 else:
     raise ValueError('general_cfg["center_or_min"] should be either "center" or "min"')
 
-# ell_dict['idxs_to_delete_dict'] = {
-#     'LL': get_idxs_to_delete(ell_dict[f'{prefix}_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True),
-#     'GG': get_idxs_to_delete(ell_dict[f'{prefix}_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True),
-#     'WA': get_idxs_to_delete(ell_dict[f'{prefix}_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True),
-#     'GL': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False),
-#     'LG': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
-#     '3x2pt': get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict)
-# }
+ell_dict['idxs_to_delete_dict'] = {
+    'LL': get_idxs_to_delete(ell_dict[f'{prefix}_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True),
+    'GG': get_idxs_to_delete(ell_dict[f'{prefix}_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True),
+    'WA': get_idxs_to_delete(ell_dict[f'{prefix}_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True),
+    'GL': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False),
+    'LG': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
+    '3x2pt': get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict)
+}
+
 
 # ! 3d cl ell cuts (*after* BNT!!)
 cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
@@ -1055,6 +1063,21 @@ if flat_or_nonflat == 'Flat':
                   'dC_GG_4D': dC_GG_4D,
                   'dC_3x2pt_6D': dC_3x2pt_6D}
 
+    # if general_cfg['use_only_auto_z_for_GC']:
+    #     print('removing cross-z elements for GC and 3x2pt (GC) derivatives')
+
+    #     # Create a mask for the diagonal elements in the middle two dimensions
+    #     mask = np.eye(zbins, dtype=bool)
+
+    #     # Extend the mask to cover all ell_idx and param_idx by adding new axes and using broadcasting
+    #     extended_mask = mask[np.newaxis, :, :, np.newaxis]
+    #     extended_mask = np.broadcast_to(extended_mask, deriv_dict['dC_GG_4D'].shape)
+
+    #     # Apply the mask, setting off-diagonal elements to zero
+    #     deriv_dict['dC_GG_4D'][~extended_mask] = 0
+    #     deriv_dict['dC_3x2pt_6D'][1, 1, ...][~extended_mask] = 0
+
+
     # ! compute and save fisher matrix
     fm_dict = fm_utils.compute_FM(general_cfg, covariance_cfg, fm_cfg, ell_dict, cov_dict, deriv_dict,
                                   BNT_matrix)
@@ -1083,7 +1106,7 @@ else:
     raise ValueError('flat_or_nonflat must be either flat or nonflat')
 fm_dict['fiducial_values_tot_dict'] = fiducials_dict_tot_fine
 
-
+np.save(f'/home/davide/Scrivania/check_gcph_no_auto_fm/fm_dict_autoGC{general_cfg["use_only_auto_z_for_GC"]}.npy', fm_dict, allow_pickle=True)
 # ! =========================== FM settings start ===========================
 probes = ['WL', 'GC', '3x2pt']
 nparams_toplot_ref = 8
@@ -1374,10 +1397,10 @@ for probe in probes:
     for case in cases_to_plot:
 
         # this is for the dataframe
-        df_row = [probe, case, which_uncertainty, fix_shear_bias,
-                  shear_bias_prior, gal_bias_prior, epsilon_b,
-                  opt_or_pes, EP_or_ED, zbins] + list(uncert_dict[case]) + [fom_dict[case]]
-        uncert_df.loc[len(uncert_df)] = df_row
+        # df_row = [probe, case, which_uncertainty, fix_shear_bias,
+        #           shear_bias_prior, gal_bias_prior, epsilon_b,
+        #           opt_or_pes, EP_or_ED, zbins] + list(uncert_dict[case]) + [fom_dict[case]]
+        # uncert_df.loc[len(uncert_df)] = df_row
 
         uncert_array.append(uncert_dict[case])
 
@@ -1430,7 +1453,7 @@ for probe in probes:
                       param_names_label=param_names_label[:nparams_toplot], bar_width=0.13, include_fom=include_fom,
                       divide_fom_by_10_plt=divide_fom_by_10_plt)
 
-uncert_df.to_pickle(f'{fm_folder}/uncert_df_zbins{EP_or_ED}{zbins:02d}_fom_vs_epsilonbANDsigmam_isocontour.pkl')
+# uncert_df.to_pickle(f'{fm_folder}/uncert_df_zbins{EP_or_ED}{zbins:02d}_fom_vs_epsilonbANDsigmam_isocontour.pkl')
 
 # comparison against Vincenzo's fishers:
 if covariance_cfg['which_shape_noise'] == 'correct' and fix_gamma and flat_or_nonflat == 'Flat' and plot_uncert_vin:
@@ -1612,11 +1635,11 @@ if compute_om_s8_fom:
 
         for which_cov in ['G', 'GSSC']:
             print(f'Omega_m-S8 FoM for {probe}, {which_cov} case: {fom_omS8_dict[f"{probe}_{which_cov}"]:.3f}')
-        print(f'Omega_m-S8 FoM ratio: {fom_omS8_dict[f"{probe}_GSSC"]/fom_omS8_dict[f"{probe}_G"]:.3f}\n')
+        print(f'Omega_m-S8 FoM ratio: {fom_omS8_dict[f"{probe}_GSSC"] / fom_omS8_dict[f"{probe}_G"]:.3f}\n')
 
         for which_cov in ['G', 'GSSC']:
             print(f'w0-wa FoM for {probe}, {which_cov} case: {w0_wa_fom_dict[f"{probe}_{which_cov}"]:.3f}')
-        print(f'w0-wa FoM ratio: {w0_wa_fom_dict[f"{probe}_GSSC"]/w0_wa_fom_dict[f"{probe}_G"]:.3f}')
+        print(f'w0-wa FoM ratio: {w0_wa_fom_dict[f"{probe}_GSSC"] / w0_wa_fom_dict[f"{probe}_G"]:.3f}')
         print(f'\n*****************\n')
 
     # ! second way, which seems wrong (Om contour changes)

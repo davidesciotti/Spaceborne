@@ -562,31 +562,6 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         dPgm_ddeltab = r_gm * pk_gm_2d
         dPgg_ddeltab = r_gg * pk_gg_2d
 
-        folder = '/home/davide/Scrivania/check_responses_arfly/'
-        k_grid_dav = np.load(f'{folder}/k_grid.npy')
-        z_grid_dav = np.load(f'{folder}/z_grid.npy')
-        r1_mm_dav = np.load(f'{folder}/r1_mm.npy')
-        r1_gm_dav = np.load(f'{folder}/r1_gm_nob2.npy')
-        r1_gg_dav = np.load(f'{folder}/r1_gg_nob2.npy')
-
-        r1_mm_dav_func = RegularGridInterpolator((k_grid_dav, z_grid_dav), r1_mm_dav, method='linear')
-        r1_gm_dav_func = RegularGridInterpolator((k_grid_dav, z_grid_dav), r1_gm_dav, method='linear')
-        r1_gg_dav_func = RegularGridInterpolator((k_grid_dav, z_grid_dav), r1_gg_dav, method='linear')
-
-        k_grid_resp_xx, z_grid_resp_yy = np.meshgrid(k_grid_resp, z_grid_resp, indexing='ij')
-        r1_mm_dav_interp = r1_mm_dav_func((k_grid_resp_xx, z_grid_resp_yy))
-        r1_gm_dav_interp = r1_gm_dav_func((k_grid_resp_xx, z_grid_resp_yy))
-        r1_gg_dav_interp = r1_gg_dav_func((k_grid_resp_xx, z_grid_resp_yy))
-
-        z_idx = 200
-        plt.semilogx(k_grid_resp, r1_mm_dav_interp[:, z_idx], label='r1_mm_dav', c='tab:blue')
-        plt.semilogx(k_grid_resp, r_mm[:, z_idx], label='r_mm', c='tab:blue', ls='--')
-        plt.semilogx(k_grid_resp, r1_gm_dav_interp[:, z_idx], label='r1_gm_dav', c='tab:orange')
-        plt.semilogx(k_grid_resp, r_gm[:, z_idx], label='r_gm', c='tab:orange', ls='--')
-        plt.semilogx(k_grid_resp, r1_gg_dav_interp[:, z_idx], label='r1_gg_dav', c='tab:green')
-        plt.semilogx(k_grid_resp, r_gg[:, z_idx], label='r_gg', c='tab:green', ls='--')
-        
-
     else:
         raise ValueError('which_pk_responses must be either "halo_model" or "separate_universe"')
 

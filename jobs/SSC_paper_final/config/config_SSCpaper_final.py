@@ -22,8 +22,8 @@ cov_BNT_transform = False
 deriv_BNT_transform = False
 
 cl_ell_cuts = False
-cov_ell_cuts = False
-deriv_ell_cuts = False
+cov_ell_cuts = True
+deriv_ell_cuts = True
 
 if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
     BNT_transform = True
@@ -49,10 +49,10 @@ if BNT_transform:
 general_cfg = {
     'ell_min': 10,
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
-    'ell_max_WL': 5000,
-    'ell_max_3x2pt': 3000,
-    'ell_max_GC': 3000,
-    'ell_max_XC': 3000,
+    'ell_max_WL': 1500,
+    'ell_max_3x2pt': 750,
+    'ell_max_GC': 750,
+    'ell_max_XC': 750,
     'zbins': 10,
     'zbins_list': None,
     'EP_or_ED': 'EP',
@@ -61,6 +61,7 @@ general_cfg = {
     'use_WA': False,
     'save_cls_3d': True,
     'save_rls_3d': True,
+    'use_only_auto_z_for_GC': True,
 
     'magcut_source': 245,
     'magcut_lens': 245,
@@ -84,7 +85,7 @@ general_cfg = {
 
     'ell_cuts': ell_cuts,
     'which_cuts': 'Vincenzo',
-    'center_or_min': 'min',  # cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
+    'center_or_min': 'center',  # cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
     'cl_ell_cuts': cl_ell_cuts,
     'ell_cuts_folder': f'{SPV3_folder}/ell_cuts',
     'ell_cuts_filename': 'lmax_cut_{probe:s}_{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-'
@@ -158,7 +159,7 @@ covariance_cfg = {
     'compute_covmat': True,
     'compute_SSC': True,
 
-    'save_cov': True,
+    'save_cov': False,
     'cov_file_format': 'npz',  # or npy
     'save_cov_dat': True,  # this is the format used by Vincenzo
 
@@ -224,8 +225,8 @@ FM_cfg = {
     # 'param_names_tot': param_names_tot,
     # 'nparams_tot': len(param_names_tot),  # total (cosmo + nuisance) number of parameters
 
-    'save_FM_txt': True,
-    'save_FM_dict': True,
+    'save_FM_txt': False,
+    'save_FM_dict': False,
 
     'load_preprocess_derivatives': False,
     # 'derivatives_folder': SPV3_folder + '/OutputQuantities/DataVectors/DataVecDer/{flat_or_nonflat:s}/Davide/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',

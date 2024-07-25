@@ -176,20 +176,20 @@ def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict):
     idxs_to_delete_3x2pt = []
     count = 0
     for ell_val in ell_values_3x2pt:
-        
+
         # the order of the probes is important!
         for zi in range(zbins):
             for zj in range(zi, zbins):
                 if ell_val > ell_cuts_dict['LL'][zi, zj]:
                     idxs_to_delete_3x2pt.append(count)
                 count += 1
-                
+
         for zi in range(zbins):
             for zj in range(zbins):
                 if ell_val > ell_cuts_dict['GL'][zi, zj]:
                     idxs_to_delete_3x2pt.append(count)
                 count += 1
-                
+
         for zi in range(zbins):
             for zj in range(zi, zbins):
                 if ell_val > ell_cuts_dict['GG'][zi, zj]:
@@ -570,8 +570,10 @@ ell_cuts_dict = {}
 if general_cfg['use_only_auto_z_for_GC']:
     ell_cuts_dict['LL'] = np.ones((zbins, zbins)) * 10_000
     ell_cuts_dict['GG'] = np.eye(zbins) * 10_000
-    ell_cuts_dict['GL'] = np.triu(np.ones((zbins, zbins)) * 10_000)  # this has null lower triangle (excluding the diagonal)
-    ell_cuts_dict['LG'] = np.tril(np.ones((zbins, zbins)) * 10_000)  # this has null upper triangle (excluding the diagonal)
+    # this has null lower triangle (excluding the diagonal)
+    ell_cuts_dict['GL'] = np.triu(np.ones((zbins, zbins)) * 10_000)
+    # this has null upper triangle (excluding the diagonal)
+    ell_cuts_dict['LG'] = np.tril(np.ones((zbins, zbins)) * 10_000)
 
 else:
     ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc)
@@ -1077,7 +1079,6 @@ if flat_or_nonflat == 'Flat':
     #     deriv_dict['dC_GG_4D'][~extended_mask] = 0
     #     deriv_dict['dC_3x2pt_6D'][1, 1, ...][~extended_mask] = 0
 
-
     # ! compute and save fisher matrix
     fm_dict = fm_utils.compute_FM(general_cfg, covariance_cfg, fm_cfg, ell_dict, cov_dict, deriv_dict,
                                   BNT_matrix)
@@ -1106,7 +1107,13 @@ else:
     raise ValueError('flat_or_nonflat must be either flat or nonflat')
 fm_dict['fiducial_values_tot_dict'] = fiducials_dict_tot_fine
 
-np.save(f'/home/davide/Scrivania/check_gcph_no_auto_fm/fm_dict_autoGC{general_cfg["use_only_auto_z_for_GC"]}.npy', fm_dict, allow_pickle=True)
+# I load the opposite to what I'm computing, to check the consistency of the FM
+np.save(f'/home/davide/Scrivania/check_gcph_no_auto_fm/fm_dict_autoGC{covariance_cfg["cov_ell_cuts"]}.npy', fm_dict, allow_pickle=True)
+
+opposite_value = not covariance_cfg["cov_ell_cuts"]
+fm_dict_std = np.load(f'/home/davide/Scrivania/check_gcph_no_auto_fm/fm_dict_autoGCFalse.npy', allow_pickle=True).item()
+
+
 # ! =========================== FM settings start ===========================
 probes = ['WL', 'GC', '3x2pt']
 nparams_toplot_ref = 8
@@ -1118,6 +1125,7 @@ which_uncertainty = 'marginal'
 remove_null_rows_cols = True
 triangle_plot = False
 plot_uncert_dav = True
+plot_uncert_dav_b = True
 plot_uncert_vin = False
 compute_om_s8_fom = True
 
@@ -1262,101 +1270,107 @@ if plot_uncert_vin:
     fm_dict_toplot_vin = deepcopy(fm_dict_vin)
     _keys = list(fm_dict_toplot_vin.keys())
 
-for key in _keys:
-    if '_WA_' not in key and '_2x2pt_' not in key and '_XC_' not in key and 'fiducial_values_' not in key and 'param_names_dict' not in key:
+for ix, fm_dict_toplot in enumerate([fm_dict, fm_dict_std]):
+    for key in _keys:
+        if '_WA_' not in key and '_2x2pt_' not in key and '_XC_' not in key and 'fiducial_values_' not in key and 'param_names_dict' not in key:
 
-        nparams_toplot = nparams_toplot_ref
-        print(key)
-        probe = key.split('_')[-2]
+            nparams_toplot = nparams_toplot_ref
+            print(key)
+            probe = key.split('_')[-2]
 
-        # ! remove null rows/columns
-        print(f'{probe}: fixing parameters {names_params_to_fix_dict_dav[probe]}')
-        if plot_uncert_dav:
-            fm = deepcopy(fm_dict_toplot[key])
-            masked_fm_dict[key], masked_fid_pars_dict[key] = mm.mask_fm_v2(fm, fm_dict['fiducial_values_tot_dict'],
-                                                                           names_params_to_fix=names_params_to_fix_dict_dav[probe],
-                                                                           remove_null_rows_cols=remove_null_rows_cols)
+            if ix == 1:
+                suffix = '_std'
+            elif ix == 0:
+                suffix = ''
 
-        if plot_uncert_vin:
-            fm_vin = deepcopy(fm_dict_toplot_vin[key])
-            masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key] = mm.mask_fm_v2(fm_vin, fm_dict_vin[f'fiducial_values_dict_{probe}'],
-                                                                                   names_params_to_fix=names_params_to_fix_dict_vin[probe],
-                                                                                   remove_null_rows_cols=remove_null_rows_cols)
-
-        # ! add priors
-        if not fix_shear_bias and any(item in key for item in ['WL', 'XC', '3x2pt', '2x2pt']) and shear_bias_prior is not None:
-            print(f'adding shear bias Gaussian prior to {key}')
-            shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
+            # ! remove null rows/columns
+            print(f'{probe}: fixing parameters {names_params_to_fix_dict_dav[probe]}')
             if plot_uncert_dav:
-                masked_fm_dict[key] = mm.add_prior_to_fm(masked_fm_dict[key], masked_fid_pars_dict[key],
-                                                         param_names_shear_bias, shear_bias_prior_values)
+                fm = deepcopy(fm_dict_toplot[key])
+                masked_fm_dict[key], masked_fid_pars_dict[key] = mm.mask_fm_v2(fm, fm_dict['fiducial_values_tot_dict'],
+                                                                               names_params_to_fix=names_params_to_fix_dict_dav[probe],
+                                                                               remove_null_rows_cols=remove_null_rows_cols)
+
             if plot_uncert_vin:
-                masked_fm_dict_vin[key] = mm.add_prior_to_fm(masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key],
+                fm_vin = deepcopy(fm_dict_toplot_vin[key])
+                masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key] = mm.mask_fm_v2(fm_vin, fm_dict_vin[f'fiducial_values_dict_{probe}'],
+                                                                                       names_params_to_fix=names_params_to_fix_dict_vin[probe],
+                                                                                       remove_null_rows_cols=remove_null_rows_cols)
+
+            # ! add priors
+            if not fix_shear_bias and any(item in key for item in ['WL', 'XC', '3x2pt', '2x2pt']) and shear_bias_prior is not None:
+                print(f'adding shear bias Gaussian prior to {key}')
+                shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
+                if plot_uncert_dav:
+                    masked_fm_dict[key] = mm.add_prior_to_fm(masked_fm_dict[key], masked_fid_pars_dict[key],
                                                              param_names_shear_bias, shear_bias_prior_values)
+                if plot_uncert_vin:
+                    masked_fm_dict_vin[key] = mm.add_prior_to_fm(masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key],
+                                                                 param_names_shear_bias, shear_bias_prior_values)
 
-        if not fix_gal_bias and any(item in key for item in ['GC', 'XC', '3x2pt', '2x2pt']) and np.all(gal_bias_prior is not None):
-            print(f'adding gal bias Gaussian prior to {key}')
-            if plot_uncert_dav:
-                masked_fm_dict[key] = mm.add_prior_to_fm(masked_fm_dict[key], masked_fid_pars_dict[key],
-                                                         param_names_gal_bias, gal_bias_prior)
-            if plot_uncert_vin:
-                masked_fm_dict_vin[key] = mm.add_prior_to_fm(masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key],
+            if not fix_gal_bias and any(item in key for item in ['GC', 'XC', '3x2pt', '2x2pt']) and np.all(gal_bias_prior is not None):
+                print(f'adding gal bias Gaussian prior to {key}')
+                if plot_uncert_dav:
+                    masked_fm_dict[key] = mm.add_prior_to_fm(masked_fm_dict[key], masked_fid_pars_dict[key],
                                                              param_names_gal_bias, gal_bias_prior)
+                if plot_uncert_vin:
+                    masked_fm_dict_vin[key] = mm.add_prior_to_fm(masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key],
+                                                                 param_names_gal_bias, gal_bias_prior)
 
-        # add dzGC priors, to all probes but GCph
-        if not fix_dz and dz_prior is not None and any(item in key for item in ['WL', 'XC', '3x2pt', '2x2pt']):
-            print(f'adding dz Gaussian prior to {key}')
+            # add dzGC priors, to all probes but GCph
+            if not fix_dz and dz_prior is not None and any(item in key for item in ['WL', 'XC', '3x2pt', '2x2pt']):
+                print(f'adding dz Gaussian prior to {key}')
+                if plot_uncert_dav:
+                    masked_fm_dict[key] = mm.add_prior_to_fm(
+                        masked_fm_dict[key], masked_fid_pars_dict[key], param_names_dzWL, dz_prior)
+                if plot_uncert_vin:
+                    # vincenzo has no dzGC, not even in GC - but this is wrong
+                    masked_fm_dict_vin[key] = mm.add_prior_to_fm(
+                        masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key], param_names_dzWL, dz_prior)
+
+            # add dzGC priors, only to GCph
+            if not fix_dz and not fix_dzGC and dz_prior is not None and any(item in key for item in ['GC',]):
+                print(f'adding dz Gaussian prior to {key}')
+                if plot_uncert_dav:
+                    masked_fm_dict[key] = mm.add_prior_to_fm(
+                        masked_fm_dict[key], masked_fid_pars_dict[key], param_names_dzGC, dz_prior)
+
+            if not fix_logT and logT_prior is not None:
+                print(f'adding logT Gaussian prior to {key}')
+                if plot_uncert_dav:
+                    masked_fm_dict[key] = mm.add_prior_to_fm(
+                        masked_fm_dict[key], masked_fid_pars_dict[key], ['logT'], logT_prior)
+                if plot_uncert_vin:
+                    masked_fm_dict_vin[key] = mm.add_prior_to_fm(
+                        masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key], ['logT'], logT_prior)
+
+            # # save for sylvain/vinc
+            # np.savetxt(f'{fm_folder}/{key}_{which_case}_noPriors_cut{remove_null_rows_cols}.txt', masked_fm_dict[key])
+            # np.savetxt(f'{fm_folder}/fid_param_values.txt', list(fm_dict['fiducial_values_dict_v2'].values()))
+            # with open(f'{fm_folder}/fid_param_names.txt', 'w') as file:
+            #     for param in list(fm_dict['fiducial_values_dict_v2'].values()):
+            #         file.write(f"{param}\n")
+            # continue
+
             if plot_uncert_dav:
-                masked_fm_dict[key] = mm.add_prior_to_fm(
-                    masked_fm_dict[key], masked_fid_pars_dict[key], param_names_dzWL, dz_prior)
+                uncert_dict[key + suffix] = mm.uncertainties_fm_v2(masked_fm_dict[key], masked_fid_pars_dict[key],
+                                                                   which_uncertainty=which_uncertainty,
+                                                                   normalize=True,
+                                                                   percent_units=True)[:nparams_toplot]
             if plot_uncert_vin:
-                # vincenzo has no dzGC, not even in GC - but this is wrong
-                masked_fm_dict_vin[key] = mm.add_prior_to_fm(
-                    masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key], param_names_dzWL, dz_prior)
+                uncert_dict[key + '_vin'] = mm.uncertainties_fm_v2(masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key],
+                                                                   which_uncertainty=which_uncertainty,
+                                                                   normalize=True,
+                                                                   percent_units=True)[:nparams_toplot]
 
-        # add dzGC priors, only to GCph
-        if not fix_dz and not fix_dzGC and dz_prior is not None and any(item in key for item in ['GC',]):
-            print(f'adding dz Gaussian prior to {key}')
             if plot_uncert_dav:
-                masked_fm_dict[key] = mm.add_prior_to_fm(
-                    masked_fm_dict[key], masked_fid_pars_dict[key], param_names_dzGC, dz_prior)
-
-        if not fix_logT and logT_prior is not None:
-            print(f'adding logT Gaussian prior to {key}')
-            if plot_uncert_dav:
-                masked_fm_dict[key] = mm.add_prior_to_fm(
-                    masked_fm_dict[key], masked_fid_pars_dict[key], ['logT'], logT_prior)
+                param_names = list(masked_fid_pars_dict[key].keys())
+                w0wa_idxs = param_names.index('wz'), param_names.index('wa')
+                fom_dict[key + suffix] = mm.compute_FoM(masked_fm_dict[key], w0wa_idxs=w0wa_idxs)
             if plot_uncert_vin:
-                masked_fm_dict_vin[key] = mm.add_prior_to_fm(
-                    masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key], ['logT'], logT_prior)
-
-        # # save for sylvain/vinc
-        # np.savetxt(f'{fm_folder}/{key}_{which_case}_noPriors_cut{remove_null_rows_cols}.txt', masked_fm_dict[key])
-        # np.savetxt(f'{fm_folder}/fid_param_values.txt', list(fm_dict['fiducial_values_dict_v2'].values()))
-        # with open(f'{fm_folder}/fid_param_names.txt', 'w') as file:
-        #     for param in list(fm_dict['fiducial_values_dict_v2'].values()):
-        #         file.write(f"{param}\n")
-        # continue
-
-        if plot_uncert_dav:
-            uncert_dict[key] = mm.uncertainties_fm_v2(masked_fm_dict[key], masked_fid_pars_dict[key],
-                                                      which_uncertainty=which_uncertainty,
-                                                      normalize=True,
-                                                      percent_units=True)[:nparams_toplot]
-        if plot_uncert_vin:
-            uncert_dict[key + '_vin'] = mm.uncertainties_fm_v2(masked_fm_dict_vin[key], masked_fid_pars_dict_vin[key],
-                                                               which_uncertainty=which_uncertainty,
-                                                               normalize=True,
-                                                               percent_units=True)[:nparams_toplot]
-
-        if plot_uncert_dav:
-            param_names = list(masked_fid_pars_dict[key].keys())
-            w0wa_idxs = param_names.index('wz'), param_names.index('wa')
-            fom_dict[key] = mm.compute_FoM(masked_fm_dict[key], w0wa_idxs=w0wa_idxs)
-        if plot_uncert_vin:
-            param_names_vin = list(masked_fid_pars_dict_vin[key].keys())
-            w0wa_idxs = param_names_vin.index('wz'), param_names_vin.index('wa')
-            fom_dict[key + '_vin'] = mm.compute_FoM(masked_fm_dict_vin[key], w0wa_idxs=w0wa_idxs)
+                param_names_vin = list(masked_fid_pars_dict_vin[key].keys())
+                w0wa_idxs = param_names_vin.index('wz'), param_names_vin.index('wa')
+                fom_dict[key + '_vin'] = mm.compute_FoM(masked_fm_dict_vin[key], w0wa_idxs=w0wa_idxs)
 
 # compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
 for probe in probes:
@@ -1373,6 +1387,11 @@ for probe in probes:
         fom_dict[f'perc_diff_{probe}_G'] = np.abs(mm.percent_diff(fom_dict[key_b], fom_dict[key_a]))
         fom_dict[f'ratio_{probe}_G'] = fom_dict[key_b] / fom_dict[key_a]
 
+        uncert_dict[f'perc_diff_{probe}_G_std'] = mm.percent_diff(uncert_dict[key_b + '_std'], uncert_dict[key_a + '_std'])
+        uncert_dict[f'ratio_{probe}_G_std'] = uncert_dict[key_b + '_std'] / uncert_dict[key_a + '_std']
+        fom_dict[f'perc_diff_{probe}_G_std'] = np.abs(mm.percent_diff(fom_dict[key_b + '_std'], fom_dict[key_a + '_std']))
+        fom_dict[f'ratio_{probe}_G_std'] = fom_dict[key_b + '_std'] / fom_dict[key_a + '_std']
+
     if plot_uncert_vin:
         uncert_dict[f'perc_diff_{probe}_G_vin'] = mm.percent_diff(
             uncert_dict[key_b_vin], uncert_dict[key_a_vin])
@@ -1384,11 +1403,11 @@ for probe in probes:
 
     cases_to_plot = [
         f'FM_{probe}_G',
-        # f'FM_{probe}_G_vin',
+        f'FM_{probe}_G_std',
         f'FM_{probe}_GSSC',
-        # f'FM_{probe}_GSSC_vin',
+        f'FM_{probe}_GSSC_std',
         f'perc_diff_{probe}_G',
-        # f'perc_diff_{probe}_G_vin',
+        f'perc_diff_{probe}_G_std',
     ]
 
     # # transform dict. into an array and add the fom
@@ -1454,6 +1473,15 @@ for probe in probes:
                       divide_fom_by_10_plt=divide_fom_by_10_plt)
 
 # uncert_df.to_pickle(f'{fm_folder}/uncert_df_zbins{EP_or_ED}{zbins:02d}_fom_vs_epsilonbANDsigmam_isocontour.pkl')
+
+np.set_printoptions(precision=3)
+max_key_length = max(len(key) for key in uncert_dict.keys() if not key.endswith('_std'))
+for key in uncert_dict.keys():
+    if not key.endswith('_std'):
+        diff = mm.percent_diff(uncert_dict[key], uncert_dict[key + '_std'])
+        print(f'A: {key:<{max_key_length}}\t\t{uncert_dict[key]}')
+        print(f'B: {key:<{max_key_length}}\t\t{uncert_dict[key + '_std']}')
+        print(f'%: {key:<{max_key_length}}\t\t{diff}')
 
 # comparison against Vincenzo's fishers:
 if covariance_cfg['which_shape_noise'] == 'correct' and fix_gamma and flat_or_nonflat == 'Flat' and plot_uncert_vin:

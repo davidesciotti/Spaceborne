@@ -2,7 +2,6 @@
 
 Spaceborne's dependencies are handled following modern standards; for this, we use a combination of [conda]([url](https://www.anaconda.com/)) and [Poetry]([url](https://python-poetry.org/)).
 
-
 If you have nit yet done so, install Poetry with
 
 ```bash
@@ -38,7 +37,7 @@ julia -e 'using Pkg; Pkg.add("LoopVectorization"); Pkg.add("YAML"); Pkg.add("NPZ
 # install the necessary packages
 ```
 
-## Alternative install:
+## Alternative install
 
 ```bash
 conda env create -f environment.yaml
@@ -50,4 +49,10 @@ Run code with
 ```bash
  conda activate spaceborne
  python main.py < ./example_cfg.yaml
+```
+
+If you don't want to display the figures, you can instead run the code with
+
+```bash
+ python main.py --nofigs < ./example_cfg.yaml 
 ```

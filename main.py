@@ -41,10 +41,10 @@ script_start_time = time.perf_counter()
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Run the Spaceborne analysis script.")
-parser.add_argument('-nofigs', action='store_true', help="Use non-interactive backend for matplotlib to prevent figures from displaying")
+parser.add_argument('--nofigs', action='store_true', help="Use non-interactive backend for matplotlib to prevent figures from displaying")
 args, unknown = parser.parse_known_args()
 
-# Use 'Agg' backend if -nofigs flag is set
+# Use 'Agg' backend if --nofigs flag is set
 if args.nofigs:
     matplotlib.use('Agg')
 

@@ -20,9 +20,9 @@ import ell_values
 
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
-cfg = mm.read_yaml('../cfg/cfg_pyccl_pipeline.yml')
+cfg = mm.read_yaml('../cfg/cfg_pyccl_pipeline.yaml')
 fiducial_pars_dict_nested = mm.read_yaml(
-    '/home/davide/Documenti/Lavoro/Programmi/common_lib_and_cfg/common_cfg/ISTF_fiducial_params.yml')
+    '/home/davide/Documenti/Lavoro/Programmi/common_lib_and_cfg/common_cfg/ISTF_fiducial_params.yaml')
 fiducial_pars_dict = mm.flatten_dict(fiducial_pars_dict_nested)
 
 zbins = cfg['zbins']

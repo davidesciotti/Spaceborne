@@ -113,7 +113,7 @@ for go_or_gs in ['GO', ]:
                                 fm += fm_wa
 
                             # with open('/home/davide/Documenti/Lavoro/Programmi/common_lib_and_cfg/common_config/'
-                            #           'fiducial_params_dict_for_FM.yml') as f:
+                            #           'fiducial_params_dict_for_FM.yaml') as f:
                             #     fiducials_dict = yaml.safe_load(f)
                             fiducials_dict = fm_dict['fiducials_dict_flattened']  # TODO probably better a yaml file...
 

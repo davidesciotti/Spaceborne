@@ -1,4 +1,6 @@
-name: spaceborne-release
+# This is the environment file for the `spaceborne` conda environment to be used on Linux machines
+
+name: spaceborne
 channels:
   - defaults
   - conda-forge
@@ -35,11 +37,11 @@ dependencies:
     - pymaster
     - cython
     - getdist
-    # - git+https://github.com/davidesciotti/CCL.git@master  # doesn't seem to work, have to install from source
 
-# this works! But only after installing the env
+# After installing the environment, run
 # pip install git+https://github.com/davidesciotti/CCL.git@master
+# to install the CCL fork used in this project
 
-# In case of issues, try
+# In case of issues with this last step, try
 # $ sudo apt-get install gfortran cmake build-essential autoconf bison
-
+# and then retry the pip install command above

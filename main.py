@@ -12,10 +12,12 @@ from collections import OrderedDict
 import numpy as np
 import time
 import matplotlib.cm as cm
+import matplotlib
 import matplotlib.pyplot as plt
 import warnings
 import gc
 import yaml
+import argparse
 import pprint
 from copy import deepcopy
 import numpy.testing as npt
@@ -36,6 +38,15 @@ import spaceborne.responses as responses
 
 ROOT = os.getenv('ROOT')
 script_start_time = time.perf_counter()
+
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description="Run the Spaceborne analysis script.")
+parser.add_argument('-nofigs', action='store_true', help="Use non-interactive backend for matplotlib to prevent figures from displaying")
+args, unknown = parser.parse_known_args()
+
+# Use 'Agg' backend if -nofigs flag is set
+if args.nofigs:
+    matplotlib.use('Agg')
 
 
 def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
@@ -89,11 +100,11 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
 # * ====================================================================================================================
 # * ====================================================================================================================
 
-cfg = yaml.load(sys.stdin, Loader=yaml.FullLoader)
+# cfg = yaml.load(sys.stdin, Loader=yaml.FullLoader)
 
 # if you want to run without arguments, uncomment the following lines
-# with open('example_cfg.yaml', 'r') as f:
-    # cfg = yaml.safe_load(f)
+with open('example_cfg.yaml', 'r') as f:
+    cfg = yaml.safe_load(f)
 
 general_cfg = cfg['general_cfg']
 covariance_cfg = cfg['covariance_cfg']
@@ -373,6 +384,7 @@ for zi in range(zbins):
 plt.legend()
 plt.xlabel('$z$')
 plt.ylabel(r'$W_i^{\gamma}(z)$')
+plt.close()
 
 # assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically increasing'
 # assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically increasing'
@@ -435,6 +447,7 @@ for wf_idx in range(len(wf_ccl_list)):
     plt.legend()
     plt.title(f'{wf_names_list[wf_idx]}')
     plt.show()
+    plt.close()
 # ! end import vincenzo's kernels
 
 
@@ -760,6 +773,8 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     plt.semilogy(z_grid_ssc_integrands, np.diag(sigma2_b))
     plt.xlabel('$z$')
     plt.ylabel(r'$\sigma^2_B(z_1=z_2)$')
+    plt.close()
+
 
     z1_idx = len(z_grid_ssc_integrands) // 2
     z1_val = z_grid_ssc_integrands[z1_idx]
@@ -767,6 +782,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     plt.plot(z_grid_ssc_integrands, sigma2_b[z1_idx, :])
     plt.xlabel('$z$')
     plt.ylabel(r'$\sigma^2_B(z_2, z1=%.3f)$' % z1_val)
+    plt.close()
 
     # ! 4. Perform the integration calling the Julia module
     print('Performing the 2D integral in Julia...')

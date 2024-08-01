@@ -1,5 +1,6 @@
 import os
 import multiprocessing
+import sys
 num_cores = multiprocessing.cpu_count()
 os.environ['OMP_NUM_THREADS'] = '32'
 os.environ['NUMBA_NUM_THREADS'] = '32'
@@ -19,18 +20,15 @@ import pprint
 from copy import deepcopy
 import numpy.testing as npt
 from scipy.interpolate import interp1d, RegularGridInterpolator
-from tabulate import tabulate
 
 import spaceborne.ell_utils as ell_utils
 import spaceborne.cl_preprocessing as cl_utils
-import spaceborne.compute_Sijkl as Sijkl_utils
 import spaceborne.covariance as covmat_utils
 import spaceborne.fisher_matrix as fm_utils
 import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as cosmo_lib
 import spaceborne.wf_cl_lib as wf_cl_lib
 import spaceborne.pyccl_cov_class as pyccl_cov_class
-import spaceborne.plot_lib as plot_lib
 import spaceborne.sigma2_SSC as sigma2_SSC
 import spaceborne.onecovariance_interface as oc_interface
 import spaceborne.config_checker as config_checker
@@ -91,9 +89,11 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
 # * ====================================================================================================================
 # * ====================================================================================================================
 
+cfg = yaml.load(sys.stdin, Loader=yaml.FullLoader)
 
-with open('example_cfg.yaml', 'r') as f:
-    cfg = yaml.safe_load(f)
+# if you want to run without arguments, uncomment the following lines
+# with open('example_cfg.yaml', 'r') as f:
+    # cfg = yaml.safe_load(f)
 
 general_cfg = cfg['general_cfg']
 covariance_cfg = cfg['covariance_cfg']
@@ -256,6 +256,7 @@ variable_specs = {'EP_or_ED': ep_or_ed,
                   'idR': general_cfg['idR'],
                   'idBM': general_cfg['idBM'],
                   }
+print('variable_specs:\n')
 print(variable_specs)
 
 # ! some check on the input nuisance values
@@ -466,8 +467,8 @@ for zi in range(zbins):
     ax[1].loglog(ell_dict['ell_XC'], cl_gl_3d[:, zi, zj], c=clr[zi])
     ax[2].loglog(ell_dict['ell_GC'], cl_gg_3d[:, zi, zj], c=clr[zi])
 
-ax[1].set_xlabel('$\\ell$')
-ax[0].set_ylabel('$C^{ii}_{\ell}$')
+ax[1].set_xlabel(r'$\ell$')
+ax[0].set_ylabel(r'$C^{ii}_{\ell}$')
 ax[0].set_title('LL')
 ax[1].set_title('GL')
 ax[2].set_title('GG')
@@ -753,7 +754,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         }
         np.save(f'{sigma2_b_path}/{sigma2_b_filename}', sigma2_b_dict_tosave, allow_pickle=True)
 
-    mm.matshow(sigma2_b, log=True, abs_val=True, title='$\sigma^2_B(z_1, z_2)$')
+    mm.matshow(sigma2_b, log=True, abs_val=True, title=r'$\sigma^2_B(z_1, z_2)$')
 
     plt.figure()
     plt.semilogy(z_grid_ssc_integrands, np.diag(sigma2_b))

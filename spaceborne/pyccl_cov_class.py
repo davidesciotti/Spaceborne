@@ -1,6 +1,7 @@
 """ This module should be run with pyccl >= v3.0.0
 """
 
+from functools import partial
 import time
 import warnings
 import matplotlib
@@ -101,9 +102,9 @@ class PycclClass():
             cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
             cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
             pyccl_cfg['z_grid_tkka_steps_SSC'])
-        
+
         self.z_grid_tkka_SSC = cosmo_lib.a_to_z(self.a_grid_tkka_SSC)[::-1]
-        
+
         logn_k_grid_tkka_SSC = np.log(np.geomspace(pyccl_cfg['k_grid_tkka_min'],
                                                    pyccl_cfg['k_grid_tkka_max'],
                                                    pyccl_cfg['k_grid_tkka_steps_SSC']))
@@ -238,7 +239,6 @@ class PycclClass():
                                                                                             p_of_k_a=p_of_k_a,
                                                                                             **additional_args)
 
-
         print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
 
         return
@@ -348,21 +348,12 @@ class PycclClass():
     def set_gal_bias_tuple_spv3(self, z_grid, magcut_lens, poly_fit_values):
 
         gal_bias_func = self.gal_bias_func_dict['fs2_fit']
-        gal_bias_1d = gal_bias_func(z_grid, magcut_lens=magcut_lens / 10, poly_fit_values=poly_fit_values)
+        self.gal_bias_func_ofz = partial(gal_bias_func, magcut_lens=magcut_lens / 10, poly_fit_values=poly_fit_values)
+        gal_bias_1d = self.gal_bias_func_ofz(z_grid)
 
         # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
         self.gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
         self.gal_bias_tuple = (z_grid, self.gal_bias_2d)
-        
-    def get_gal_bias_tuple_spv3(self, z_grid, magcut_lens, poly_fit_values):
-
-        gal_bias_func = self.gal_bias_func_dict['fs2_fit']
-        gal_bias_1d = gal_bias_func(z_grid, magcut_lens=magcut_lens / 10, poly_fit_values=poly_fit_values)
-
-        # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
-        gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
-        gal_bias_tuple = (z_grid, gal_bias_2d)
-        return gal_bias_tuple
 
     def set_gal_bias_tuple_istf(self, z_grid, bias_function_str, bias_model):
         gal_bias_func = self.gal_bias_func_dict[bias_function_str]
@@ -506,7 +497,8 @@ class PycclClass():
 
             # ! I spoke to Fabien and this is indeed an oversimplification
             sigma2_B = np.array([sigma2_SSC.sigma2_func(zi, zi, k_grid_tkka, self.cosmo_ccl, 'mask', ell_mask=ell_mask, cl_mask=cl_mask)
-                                for zi in tqdm(self.z_grid_sigma2_b)])  # if you pass the mask, you don't need to divide by fsky
+                                # if you pass the mask, you don't need to divide by fsky
+                                 for zi in tqdm(self.z_grid_sigma2_b)])
             self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_B[::-1])
 
         elif pyccl_cfg['which_sigma2_B'] == None:

@@ -754,7 +754,7 @@ for zbins in (3, ):
         start_time = time.perf_counter()
         if covariance_cfg['ng_cov_code'] == 'OneCovariance' or \
             (covariance_cfg['ng_cov_code'] == 'Spaceborne' and
-            covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']):  # TODO better handle these mixed cases!
+             covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']):  # TODO better handle these mixed cases!
 
             print('Start NG cov computation with OneCovariance...')
 
@@ -1001,7 +1001,7 @@ for zbins in (3, ):
             k_grid_sigma2 = np.logspace(covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'],
                                         covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
                                         covariance_cfg['Spaceborne_cfg']['k_steps_sigma2'])
-            which_sigma2_B = covariance_cfg['Spaceborne_cfg']['which_sigma2_B']
+            which_sigma2_b = covariance_cfg['Spaceborne_cfg']['which_sigma2_b']
 
             sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename'].format(
                 ROOT=ROOT,
@@ -1026,7 +1026,7 @@ for zbins in (3, ):
                         z1_arr=z_grid_ssc_integrands,
                         z2=z2, k_grid_sigma2=k_grid_sigma2,
                         cosmo_ccl=ccl_obj.cosmo_ccl,
-                        which_sigma2_B=which_sigma2_B,
+                        which_sigma2_b=which_sigma2_b,
                         ell_mask=None, cl_mask=None)
 
                 sigma2_b_dict_tosave = {
@@ -1049,13 +1049,13 @@ for zbins in (3, ):
             print('SSC computed with Julia in {:.2f} s'.format(time.perf_counter() - start))
 
             # If the mask is not passed to sigma2_b, we need to divide by fsky
-            if which_sigma2_B == 'full-curved-sky':
+            if which_sigma2_b == 'full-curved-sky':
                 for key in cov_ssc_3x2pt_dict_8D.keys():
                     cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
-            elif which_sigma2_B == 'mask':
+            elif which_sigma2_b == 'mask':
                 raise NotImplementedError('Not implemented yet, but very easy to do')
             else:
-                raise ValueError(f'which_sigma2_B must be either "full-curved-sky" or "mask"')
+                raise ValueError(f'which_sigma2_b must be either "full-curved-sky" or "mask"')
 
             # save the covariance blocks
             # ! note that these files already account for the sky fraction!!
@@ -1119,7 +1119,7 @@ for zbins in (3, ):
         if covariance_cfg['ng_cov_code'] == 'Spaceborne':
             covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 
-        # print('SSC computed with Spaceborne')
+        print('SSC computed with Spaceborne')
         # TODO integrate this with Spaceborne_covg
 
         # # ! quickly check responses
@@ -1189,6 +1189,27 @@ for zbins in (3, ):
         # plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
         # plt.tight_layout()
         # plt.show()
+
+        # ! ========================================== end Spaceborne ===================================================
+
+        # ! ========================================== start PyCCL ===================================================
+        if covariance_cfg['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomputed_cov']:
+            ccl_obj.set_sigma2_b(z_grid_ssc_integrands.min(), z_grid_ssc_integrands.max(), len(z_grid_ssc_integrands),
+                                 covariance_cfg['fsky'], covariance_cfg['survey_area_deg2'], pyccl_cfg)
+
+            for which_ng_cov in pyccl_cfg['which_ng_cov']:
+                warnings.warn('HANDLE BETTER THE DIFFERENT COV TERMS')
+                ccl_obj.initialize_trispectrum(which_ng_cov, probe_ordering, pyccl_cfg)
+
+                ccl_obj.compute_ng_cov_3x2pt(which_ng_cov, ell_dict['ell_3x2pt'], covariance_cfg['fsky'],
+                                             integration_method='spline',  # TODO add try block for quad
+                                             probe_ordering=probe_ordering, ind_dict=ind_dict)
+
+                covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
+
+            assert False, 'stop here'
+
+        # ! ========================================== end PyCCL ===================================================
 
         # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
         if ell_max_WL == general_cfg['ell_max_WL_opt'] and general_cfg['use_WA']:

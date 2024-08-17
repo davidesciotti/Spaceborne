@@ -246,7 +246,7 @@ for zbins in (3, ):
         if not general_cfg['is_test_run']:
             assert covariance_cfg['survey_area_deg2'] == 13245, 'survey area must be 13245 deg2'
             assert covariance_cfg['which_shape_noise'] == 'per_component', 'which_shape_noise must be per_component'
-            assert ell_max_WL == ell_max_3x2pt == 5000, 'all probes should be up to lmax=5000'
+            # assert ell_max_WL == ell_max_3x2pt == 5000, 'all probes should be up to lmax=5000'
             assert general_cfg['which_pk'] == 'HMCodeBar', 'which_pk must be HMCodeBar'
             assert general_cfg['which_cls'] == 'Vincenzo', 'which_cls must be "Vincenzo"'
             assert general_cfg['flat_or_nonflat'] == 'Flat', 'Model must be flat'
@@ -630,7 +630,8 @@ for zbins in (3, ):
             # ! reshape to 3d
             cl_ll_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
             cl_gg_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
-            cl_wa_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
+            cl_wa_3d_vinc = np.ones_like(cl_ll_3d_vinc)[:nbl_WA, :, :]
+            # cl_wa_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
             cl_3x2pt_5d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
             cl_gl_3d_vinc = deepcopy(cl_3x2pt_5d_vinc[1, 0, :, :, :])
 

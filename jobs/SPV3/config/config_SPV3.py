@@ -66,7 +66,7 @@ if BNT_transform:
     assert flagship_version == 2, 'we are applying the BNT only for Flagship_2'
 
 general_cfg = {
-    'fid_yaml_filename': ROOT + '/Spaceborne/common_cfg/SPV3_fiducial_params_magcut245_zbins{zbins:02d}.yml',
+    'fid_yaml_filename': ROOT + '/Spaceborne/common_cfg/SPV3_fiducial_params_magcut245_zbins{zbins:02d}.yaml',
     'ell_min': 10,
     'ell_max_WL': 3000,
     'ell_max_GC': 3000,

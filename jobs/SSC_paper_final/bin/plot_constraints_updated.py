@@ -79,7 +79,7 @@ for go_or_gs in ['GO', 'GS']:
                                 f'{fm_path.replace("3x2pt", "WLA")}/{fm_name.replace("3x2pt", "WLA")}.dat')
                             fm += fm_wa
 
-                        with open('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
+                        with open('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/common_cfg/ISTF_fiducial_params.yaml') as f:
                             fiducials_dict = yaml.safe_load(f)['FM_ordered_params']
                             
                         assert len(fiducials_dict) == fm.shape[0] == fm.shape[1], 'Wrong shape of FM matrix!'

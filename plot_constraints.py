@@ -231,7 +231,7 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
 
                                                     # TODO probably better a yaml file, like below
                                                     # with open(f'{ROOT}/Spaceborne/common_cfg/'
-                                                    #           'fiducial_params_dict_for_FM.yml') as f:
+                                                    #           'fiducial_params_dict_for_FM.yaml') as f:
                                                     #     fiducials_dict = yaml.safe_load(f)
                                                     fiducials_dict = fm_dict['fiducial_values_dict']
                                                     h = fiducials_dict['h']

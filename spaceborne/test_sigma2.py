@@ -35,7 +35,7 @@ area_deg2 = 15000  # 14700, 15000, 30000 or 5, for the various tests
 fsky = cosmo_lib.deg2_to_fsky(area_deg2)
 
 # load a yaml file
-with open(f'{SB_ROOT}/common_cfg/SPV3_fiducial_params_magcut245_zbins13.yml', 'r') as f:
+with open(f'{SB_ROOT}/common_cfg/SPV3_fiducial_params_magcut245_zbins13.yaml', 'r') as f:
     fid_pars_dict = yaml.load(f, Loader=yaml.FullLoader)
 
 flat_fid_pars_dict = mm.flatten_dict(fid_pars_dict)

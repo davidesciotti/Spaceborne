@@ -36,7 +36,7 @@ julia -e 'using Pkg; Pkg.add("LoopVectorization"); Pkg.add("YAML"); Pkg.add("NPZ
 
 ## Alternative install:
 ```bash
-conda env create -f environment.yml
+conda env create -f environment.yaml
 conda activate spaceborne
 ```
 

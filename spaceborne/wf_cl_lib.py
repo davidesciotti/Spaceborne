@@ -42,7 +42,7 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 
 # fiducial_pars_dict_nested = mm.read_yaml(
-#     f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yml')
+#     f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yaml')
 # fiducial_pars_dict = mm.flatten_dict(fiducial_pars_dict_nested)
 
 c = 299792.458  # km/s

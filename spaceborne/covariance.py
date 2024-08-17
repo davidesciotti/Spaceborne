@@ -601,13 +601,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_3x2pt_GS_2D = mm.cov_4D_to_2D(cov_3x2pt_GS_4D, block_index=block_index)
     cov_2x2pt_GS_2D = mm.cov_4D_to_2D(cov_2x2pt_GS_4D, block_index=block_index)
 
-    # elem_3x2pt = cov_3x2pt_GO_2D.shape[0]
-    # path_drive = '/home/davide/Scaricati/SPV3Forecasts_covs/covs_dav'
-    # cov_3x2pt_GO_2D_drive = np.genfromtxt(f'{path_drive}/CovMat-3x2pt-Gauss-nbl32_ellmax5000_zbins{general_cfg["EP_or_ED"]}{zbins:02d}.dat')[:elem_3x2pt, :elem_3x2pt]
-    # mm.compare_arrays(cov_3x2pt_GO_2D, cov_3x2pt_GO_2D_drive, 'cov_3x2pt_GO_2D', 'cov_3x2pt_GO_2D_drive')
-
-    # assert False, 'stop here'
-
     cov_2x2pt_GO_2D = np.eye(cov_2x2pt_GO_2D.shape[0])
     cov_2x2pt_GS_2D = np.eye(cov_2x2pt_GS_2D.shape[0])
     print('Covariance matrices reshaped (4D -> 2D) in {:.2f} s'.format(time.perf_counter() - start))

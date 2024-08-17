@@ -753,7 +753,7 @@ for zbins in (3, ):
         start_time = time.perf_counter()
         if covariance_cfg['ng_cov_code'] == 'OneCovariance' or \
             (covariance_cfg['ng_cov_code'] == 'Spaceborne' and
-             not covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']):
+            covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']):  # TODO better handle these mixed cases!
 
             print('Start NG cov computation with OneCovariance...')
 
@@ -783,7 +783,6 @@ for zbins in (3, ):
 
         else:
             oc_obj = None
-
         # ! ========================================== end OneCovariance ===================================================
 
         # ! ========================================== start Spaceborne ===================================================
@@ -1149,7 +1148,7 @@ for zbins in (3, ):
         # plt.xscale('log')
         # plt.yscale('log')
         # plt.xlabel('k [1/Mpc]')
-        # plt.ylabel(r'${\rm abs} \; \partial P_{AB} / \partial \delta_b$')
+        # plt.ylabel(r'${\rm abs} \; \\partial P_{AB} / \\partial \delta_b$')
 
         # colors = ['tab:blue', 'tab:orange', 'tab:green']
         # labels_a = ['dPmm_ddeltab', 'dPgm_ddeltab', 'dPgg_ddeltab']
@@ -1176,7 +1175,7 @@ for zbins in (3, ):
 
         # plt.xscale('log')
         # plt.xlabel('k [1/Mpc]')
-        # plt.ylabel(r'$\partial {\rm log} P_{AB} / \partial \delta_b$')
+        # plt.ylabel(r'$\\partial {\rm log} P_{AB} / \\partial \delta_b$')
 
         # colors = ['tab:blue', 'tab:orange', 'tab:green']
         # labels_a = ['dPmm_ddeltab/Pmm', 'dPgm_ddeltab/Pgm', 'dPgg_ddeltab/Pgg']
@@ -1667,7 +1666,7 @@ for zbins in (3, ):
             ax[1, 0].set_xlabel('$\\ell$')
             ax[1, 1].set_xlabel('$\\ell$')
             ax[1, 2].set_xlabel('$\\ell$')
-            ax[0, 0].set_ylabel('$\partial C_{\ell}/ \partial \\theta$')
+            ax[0, 0].set_ylabel('$\\partial C_{\ell}/ \\partial \\theta$')
             ax[1, 0].set_ylabel('% diff')
             lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
             fig.suptitle(param)

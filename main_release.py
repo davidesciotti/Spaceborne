@@ -88,38 +88,14 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
     return cov_ssc_3x2pt_dict_8D
 
 
-def call_onecovariance(path_to_oc_executable, path_to_config_oc_ini):
-    """Kernel to compute the 4D integral optimized using Simpson's rule using Julia."""
-
-    import subprocess
-
-    activate_and_run = f"""
-    source /home/cosmo/davide.sciotti/software/anaconda3/bin/activate cov20_env
-    python {path_to_oc_executable} {path_to_config_oc_ini}
-    source /home/cosmo/davide.sciotti/software/anaconda3/bin/deactivate
-    source /home/cosmo/davide.sciotti/software/anaconda3/bin/activate spaceborne-dav
-    python {path_to_oc_executable.replace('covariance.py', 'reshape_cov_list_Cl_callable.py')} {path_to_config_oc_ini.replace('input_configs.ini', '')}
-    """
-
-    process = subprocess.Popen(activate_and_run, shell=True, executable='/bin/bash')
-    process.communicate()
-
-    # os.system("conda activate cov20_env")
-    # os.system(f"python {path_to_oc_executable} {path_to_config_oc_ini}")
-    # os.system("conda activate spaceborne-dav")
-
-
 # * ====================================================================================================================
 # * ====================================================================================================================
 # * ====================================================================================================================
-
-
 with open('config_release.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
-    
-for zbins in (7, 9, 10, 11, 13, 15):
-    for ep_or_ed in ('EP', 'ED'):
 
+for zbins in (3, ):
+    for ep_or_ed in ('EP', ):
 
         # add type/number-specific nuisance/hyperparameters
         cfg['general_cfg']['zbins'] = zbins
@@ -729,7 +705,7 @@ for zbins in (7, 9, 10, 11, 13, 15):
         ax[1, 0].set_xlabel('$\\ell$')
         ax[1, 1].set_xlabel('$\\ell$')
         ax[1, 2].set_xlabel('$\\ell$')
-        ax[0, 0].set_ylabel('$C_{\ell}$')
+        ax[0, 0].set_ylabel('$C_{\\ell}$')
         ax[1, 0].set_ylabel('% diff')
         ax[1, 1].set_ylim(-20, 20)
         lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
@@ -776,8 +752,8 @@ for zbins in (7, 9, 10, 11, 13, 15):
         # * 2. compute cov using the onecovariance interface class
         start_time = time.perf_counter()
         if covariance_cfg['ng_cov_code'] == 'OneCovariance' or \
-            (covariance_cfg['ng_cov_code'] == 'Spaceborne' and \
-               not covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']):
+            (covariance_cfg['ng_cov_code'] == 'Spaceborne' and
+             not covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']):
 
             print('Start NG cov computation with OneCovariance...')
 
@@ -804,10 +780,10 @@ for zbins in (7, 9, 10, 11, 13, 15):
                 'cNG', '10D_array', ind_dict, symmetrize_output_dict)
 
             print('Time taken to compute OC: {:.2f} m'.format((time.perf_counter() - start_time) / 60))
-        
+
         else:
             oc_obj = None
-            
+
         # ! ========================================== end OneCovariance ===================================================
 
         # ! ========================================== start Spaceborne ===================================================
@@ -1088,7 +1064,8 @@ for zbins in (7, 9, 10, 11, 13, 15):
                 probe_a, probe_b, probe_c, probe_d = key
                 if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
                     np.savez_compressed(
-                        f'{cov_folder_sb}/{cov_sb_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}',
+                        f'{cov_folder_sb}/{cov_sb_filename.format(probe_a=probe_a,
+                                                                  probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}',
                         cov_ssc_3x2pt_dict_8D[key])
 
             # ! check SSC INTEGRANDS
@@ -1913,7 +1890,7 @@ for zbins in (7, 9, 10, 11, 13, 15):
                 f'FM_{probe}_G',
                 f'FM_{probe}_GSSC',
                 # f'FM_{probe}_GSSCcNG',
-                
+
                 f'perc_diff_{probe}_G',
 
                 #  f'FM_{probe}_{which_ng_cov_suffix}',
@@ -2037,7 +2014,7 @@ for zbins in (7, 9, 10, 11, 13, 15):
         #                        fiducials=list(masked_fid_pars_dict['FM_WL_G'].values()),
         #                        title='WL',
         #                        label_background='$S_8$',
-        #                        label_foreground='$\sigma_8$',
+        #                        label_foreground='$\\sigma_8$',
         #                        param_names_labels=list(masked_fid_pars_dict['FM_WL_G'].keys()),
         #                        param_names_labels_toplot=['Om', 's8'])
 
@@ -2062,7 +2039,7 @@ for zbins in (7, 9, 10, 11, 13, 15):
         #                        fiducials=list(masked_fid_pars_dict['FM_WL_G'].values()),
         #                        title='WL',
         #                        label_background='$S_8$',
-        #                        label_foreground='$\sigma_8$',
+        #                        label_foreground='$\\sigma_8$',
         #                        param_names_labels=list(masked_fid_pars_dict['FM_WL_G'].keys()),
         #                        param_names_labels_toplot=list(masked_fid_pars_dict['FM_WL_G'].keys())[:9])
 

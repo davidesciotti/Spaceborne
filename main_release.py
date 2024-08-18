@@ -2074,18 +2074,23 @@ fm_pickle_path_b = f'{
     path}/FM_GSSC_PyCCL_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_13245deg2.pickle'
 fm_pickle_path_c = f'{
     path}/FM_GSSC_Spaceborne_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_13245deg2.pickle'
+fm_pickle_path_d = f'{
+    path}/FM_GSSC_Spaceborne_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_13245deg2_halo_model.pickle'
 
 fm_dict_a = mm.load_pickle(fm_pickle_path_a)
 fm_dict_b = mm.load_pickle(fm_pickle_path_b)
 fm_dict_c = mm.load_pickle(fm_pickle_path_c)
+fm_dict_d = mm.load_pickle(fm_pickle_path_d)
 
 
-labels = ['OC', 'CCL', 'SB']
-keys_toplot = ['FM_3x2pt_GSSC', 'FM_3x2pt_G']
+labels = ['OC', 'CCL', 'SB_su', 'SB_hm']
+keys_toplot = ['FM_WL_GSSC', 'FM_GC_GSSC', 'FM_XC_GSSC', 'FM_3x2pt_GSSC']
 # keys_toplot = 'all'
-mm.compare_fm_constraints(fm_dict_a, fm_dict_b, fm_dict_c, labels=labels, keys_toplot=keys_toplot,
-                       normalize_by_gauss=True,
-                       which_uncertainty='conditional')
+colors = ['tab:blue', 'tab:green', 'tab:orange', 'tab:red']
+mm.compare_fm_constraints(fm_dict_a, fm_dict_b, fm_dict_c, fm_dict_d, labels=labels, keys_toplot_in=keys_toplot,
+                          normalize_by_gauss=True,
+                          which_uncertainty='conditional',
+                          colors=colors)
 
 
 print('Finished in {:.2f} minutes'.format((time.perf_counter() - script_start_time) / 60))

@@ -495,7 +495,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_GC_GO_6D = deepcopy(cov_3x2pt_GO_10D[1, 1, 1, 1, :nbl_GC, :nbl_GC, :, :, :, :])
             cov_3x2pt_GO_10D = deepcopy(cov_3x2pt_GO_10D[:, :, :, :, :nbl_3x2pt, :nbl_3x2pt, :, :, :, :])
 
-
         if 'SSC' in covariance_cfg['OneCovariance_cfg']['which_ng_cov'] and \
                 covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']:
             cov_3x2pt_SS_10D = oc_obj.cov_ssc_oc_3x2pt_10D
@@ -507,6 +506,38 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
         if 'cNG' in covariance_cfg['OneCovariance_cfg']['which_ng_cov']:
             cov_3x2pt_SS_10D += oc_obj.cov_cng_oc_3x2pt_10D
+
+    elif ng_cov_code == 'PyCCL':
+        
+        print('Using PyCCL non-Gaussian covariance matrices...')
+
+        assert (
+            (covariance_cfg['PyCCL_cfg']['which_ng_cov'] == ['SSC', 'cNG']) or
+            (covariance_cfg['PyCCL_cfg']['which_ng_cov'] == ['SSC',])
+        ), "covariance_cfg['PyCCL_cfg']['which_ng_cov'] not recognised"
+
+        symmetrize_output_dict = {
+            ('L', 'L'): False,
+            ('G', 'L'): False,
+            ('L', 'G'): False,
+            ('G', 'G'): False,
+            }
+
+        if 'SSC' in covariance_cfg['PyCCL_cfg']['which_ng_cov']:
+
+            cov_ssc_ccl_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
+                covariance_cfg['cov_ssc_3x2pt_dict_8D_ccl'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
+            cov_ssc_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_ssc_ccl_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
+            cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
+
+
+        if 'cNG' in covariance_cfg['PyCCL_cfg']['which_ng_cov']:
+            
+            cov_cng_ccl_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
+                covariance_cfg['cov_cng_3x2pt_dict_8D_ccl'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
+            cov_cng_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_cng_ccl_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
+            cov_3x2pt_SS_10D += cov_cng_sb_3x2pt_10D
+
 
     else:
         raise NotImplementedError(f'ng_cov_code {ng_cov_code} not implemented')
@@ -743,16 +774,15 @@ def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr, cosmo_ccl, plot_nz=True)
     :return: BNT matrix, of shape (zbins x zbins)
     """
 
-
     assert n_of_z_arr.shape[0] == len(zgrid_n_of_z), 'n_of_z must have zgrid_n_of_z rows'
     assert n_of_z_arr.shape[1] == zbins, 'n_of_z must have zbins columns'
     assert np.all(np.diff(zgrid_n_of_z) > 0), 'zgrid_n_of_z must be monotonically increasing'
-    
+
     z_grid = zgrid_n_of_z
-    
+
     if z_grid[0] == 0:
         warnings.warn('z_grid starts at 0, which gives a null comoving distance. '
-                        'Removing the first element from the grid')
+                      'Removing the first element from the grid')
         z_grid = z_grid[1:]
         n_of_z_arr = n_of_z_arr[1:, :]
 

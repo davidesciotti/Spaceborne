@@ -152,9 +152,9 @@ class PycclClass():
         # the default pk must be passed to yhe Tk3D functions as None, not as 'delta_matter:delta_matter'
         p_of_k_a = None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
 
-        if self.a_grid_tkka_SSC is not None and logn_k_grid_tkka_SSC is not None:
+        if self.a_grid_tkka_SSC is not None and logn_k_grid_tkka_SSC is not None and which_ng_cov == 'SSC':
             print(f'SSC tkka: z points = {self.a_grid_tkka_SSC.size}, k points = {logn_k_grid_tkka_SSC.size}')
-        if a_grid_tkka_cNG is not None and logn_k_grid_tkka_cNG is not None:
+        if a_grid_tkka_cNG is not None and logn_k_grid_tkka_cNG is not None and which_ng_cov == 'cNG':
             print(f'cNG tkka: z points = {a_grid_tkka_cNG.size}, k points = {logn_k_grid_tkka_cNG.size}')
 
         self.tkka_dict = {}
@@ -245,7 +245,7 @@ class PycclClass():
         return
 
     def compute_ng_cov_ccl(self, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka, f_sky,
-                           ind_AB, ind_CD, sigma2_b_tuple, integration_method):
+                           ind_AB, ind_CD, integration_method):
         zpairs_AB = ind_AB.shape[0]
         zpairs_CD = ind_CD.shape[0]
         nbl = len(ell)
@@ -253,11 +253,11 @@ class PycclClass():
         start_time = time.perf_counter()
         # switch between the two functions, which are identical except for the sigma2_b argument
         if which_ng_cov == 'SSC':
-            ng_cov_func = ccl.covariances.angular_cl_cov_SSC
-            sigma2_b_arg = {'sigma2_b': sigma2_b_tuple,
+            ccl_ng_cov_func = ccl.covariances.angular_cl_cov_SSC
+            sigma2_b_arg = {'sigma2_B': self.sigma2_b_tuple,
                             }
         elif which_ng_cov == 'cNG':
-            ng_cov_func = ccl.covariances.angular_cl_cov_cNG
+            ccl_ng_cov_func = ccl.covariances.angular_cl_cov_cNG
             sigma2_b_arg = {}
         else:
             raise ValueError("Invalid value for which_ng_cov. Must be 'SSC' or 'cNG'.")
@@ -265,7 +265,7 @@ class PycclClass():
         cov_ng_4D = np.zeros((nbl, nbl, zpairs_AB, zpairs_CD))
         for ij in tqdm(range(zpairs_AB)):
             for kl in range(zpairs_CD):
-                cov_ng_4D[:, :, ij, kl] = ng_cov_func(self.cosmo,
+                cov_ng_4D[:, :, ij, kl] = ccl_ng_cov_func(self.cosmo_ccl,
                                                       tracer1=kernel_A[ind_AB[ij, -2]],
                                                       tracer2=kernel_B[ind_AB[ij, -1]],
                                                       ell=ell,
@@ -297,8 +297,7 @@ class PycclClass():
 
                     print('3x2pt: working on probe combination ', probe_a, probe_b, probe_c, probe_d)
                     cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
-                        self.compute_ng_cov_ccl(cosmo=self.cosmo_ccl,
-                                                which_ng_cov=which_ng_cov,
+                        self.compute_ng_cov_ccl(which_ng_cov=which_ng_cov,
                                                 kernel_A=kernel_dict[probe_a],
                                                 kernel_B=kernel_dict[probe_b],
                                                 kernel_C=kernel_dict[probe_c],
@@ -308,7 +307,6 @@ class PycclClass():
                                                 f_sky=f_sky,
                                                 ind_AB=ind_dict[probe_a, probe_b],
                                                 ind_CD=ind_dict[probe_c, probe_d],
-                                                sigma2_b_tuple=self.sigma2_b_tuple,
                                                 integration_method=integration_method,
                                                 ))
 
@@ -783,7 +781,7 @@ class PycclClass():
             plt.figure()
             plt.plot(sigma2_b_tuple[0], sigma2_b_tuple[1], marker='o')
             plt.xlabel('$a$')
-            plt.ylabel('$\sigma^2_B(a)$')
+            plt.ylabel('$\\sigma^2_B(a)$')
             plt.yscale('log')
             plt.show()
 

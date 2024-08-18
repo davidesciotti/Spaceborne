@@ -246,7 +246,7 @@ for zbins in (3, ):
         if not general_cfg['is_test_run']:
             assert covariance_cfg['survey_area_deg2'] == 13245, 'survey area must be 13245 deg2'
             assert covariance_cfg['which_shape_noise'] == 'per_component', 'which_shape_noise must be per_component'
-            # assert ell_max_WL == ell_max_3x2pt == 5000, 'all probes should be up to lmax=5000'
+            assert ell_max_WL == ell_max_3x2pt == 5000, 'all probes should be up to lmax=5000'
             assert general_cfg['which_pk'] == 'HMCodeBar', 'which_pk must be HMCodeBar'
             assert general_cfg['which_cls'] == 'Vincenzo', 'which_cls must be "Vincenzo"'
             assert general_cfg['flat_or_nonflat'] == 'Flat', 'Model must be flat'
@@ -827,7 +827,7 @@ for zbins in (3, ):
 
                 # ! 1. Get halo model responses from CCL
                 ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
-                                               pyccl_cfg=pyccl_cfg, which_pk='_')
+                                               pyccl_cfg=pyccl_cfg)
 
                 # k and z grids (responses will be interpolated below)
                 k_grid_resp = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
@@ -1205,9 +1205,7 @@ for zbins in (3, ):
                                              integration_method='spline',  # TODO add try block for quad
                                              probe_ordering=probe_ordering, ind_dict=ind_dict)
 
-                covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
-
-            assert False, 'stop here'
+                covariance_cfg[f'cov_{which_ng_cov.lower()}_3x2pt_dict_8D_ccl'] = ccl_obj.cov_ng_3x2pt_dict_8D
 
         # ! ========================================== end PyCCL ===================================================
 
@@ -1829,6 +1827,7 @@ for zbins in (3, ):
         names_params_to_fix = []
         divide_fom_by_10 = True
         include_fom = True
+        which_uncertainty = 'conditional'
 
         fix_dz = False
         fix_shear_bias = False
@@ -1885,7 +1884,7 @@ for zbins in (3, ):
                                                              dz_param_names, dz_prior)
 
                 uncert_dict[key] = mm.uncertainties_fm_v2(masked_fm_dict[key], masked_fid_pars_dict[key],
-                                                          which_uncertainty='marginal',
+                                                          which_uncertainty=which_uncertainty,
                                                           normalize=True,
                                                           percent_units=True)[:nparams_toplot]
 
@@ -1938,8 +1937,9 @@ for zbins in (3, ):
             param_names_label = param_names_list[:nparams_toplot] + [fom_label] if include_fom else param_names_list[
                 :nparams_toplot]
             lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_3x2pt']
-            title = '%s, $\\ell_{\\rm max} = %i$, zbins %s%i, zsteps_ssc_integral %i $\\sigma_\\epsilon$ %s' % (
-                probe, lmax, ep_or_ed, zbins, len(z_grid_ssc_integrands), covariance_cfg['which_shape_noise'])
+            title = '%s %s, $\\ell_{\\rm max} = %i$, zbins %s%i, zsteps_ssc_integral %i $\\sigma_\\epsilon$ %s' % (
+                covariance_cfg['ng_cov_code'], probe,
+                lmax, ep_or_ed, zbins, len(z_grid_ssc_integrands), covariance_cfg['which_shape_noise'])
 
             # bar plot
             if include_fom:
@@ -2063,6 +2063,29 @@ for zbins in (3, ):
         #                        label_foreground='$\\sigma_8$',
         #                        param_names_labels=list(masked_fid_pars_dict['FM_WL_G'].keys()),
         #                        param_names_labels_toplot=list(masked_fid_pars_dict['FM_WL_G'].keys())[:9])
+
+
+# ! quickly compare two selected FMs
+# TODO this is misleading, understand better why (comparing GSSC, not perc_diff)
+path = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM/BNT_False/ell_cuts_False/'
+fm_pickle_path_a = f'{
+    path}/FM_GSSC_OneCovariance_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_13245deg2.pickle'
+fm_pickle_path_b = f'{
+    path}/FM_GSSC_PyCCL_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_13245deg2.pickle'
+fm_pickle_path_c = f'{
+    path}/FM_GSSC_Spaceborne_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_13245deg2.pickle'
+
+fm_dict_a = mm.load_pickle(fm_pickle_path_a)
+fm_dict_b = mm.load_pickle(fm_pickle_path_b)
+fm_dict_c = mm.load_pickle(fm_pickle_path_c)
+
+
+labels = ['OC', 'CCL', 'SB']
+keys_toplot = ['FM_3x2pt_GSSC', 'FM_3x2pt_G']
+# keys_toplot = 'all'
+mm.compare_fm_constraints(fm_dict_a, fm_dict_b, fm_dict_c, labels=labels, keys_toplot=keys_toplot,
+                       normalize_by_gauss=True,
+                       which_uncertainty='conditional')
 
 
 print('Finished in {:.2f} minutes'.format((time.perf_counter() - script_start_time) / 60))

@@ -148,10 +148,83 @@ def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
     print(f"Data has been written to {ascii_folder}/{ascii_filename}")
 
 
-def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, compare_fms=True, compare_param_covs=True, plot=True, n_params_toplot=10):
+
+def compare_fm_constraints(*fm_dict_list, labels, keys_toplot, normalize_by_gauss, which_uncertainty, nparams_toplot=10):
+
+    masked_fm_dict_list = []
+    masked_fid_pars_dict_list = []
+    uncertainties_dict = {}
+
+    assert keys_toplot == 'all' or type(keys_toplot) == list, 'keys_toplot must be a list or "all"'
+
+    # maks fm and fid pars dict
+    for fm_dict in fm_dict_list:
+        masked_fm_dict, masked_fid_pars_dict = {}, {}
+        all_fm_keys = list(fm_dict.keys())
+        keys_toplot = all_fm_keys if keys_toplot == 'all' else keys_toplot
+        
+        # remove annoying keys
+        if 'fiducial_values_dict' in keys_toplot:
+            keys_toplot.remove('fiducial_values_dict')
+        keys_toplot = [key for key in keys_toplot if not key.startswith('FM_WA_')]
+        keys_toplot = [key for key in keys_toplot if not key.startswith('FM_2x2pt_')]
+        
+        for key in keys_toplot:
+            masked_fm_dict[key], masked_fid_pars_dict[key] = mask_fm_v2(fm_dict[key],
+                                                                            fm_dict['fiducial_values_dict'],
+                                                                            names_params_to_fix=[],
+                                                                            remove_null_rows_cols=True)
+        masked_fm_dict_list.append(masked_fm_dict)
+        masked_fid_pars_dict_list.append(masked_fid_pars_dict)
+
+    # compute reference uncertainties
+    for key in keys_toplot:
+        param_names = list(masked_fid_pars_dict_list[0][key].keys())[:nparams_toplot]
+        uncertainties_dict[key] = np.array([uncertainties_fm_v2(masked_fm_dict[key], fiducials_dict=masked_fid_pars_dict[key],
+                                                                   which_uncertainty=which_uncertainty, normalize=True)[:nparams_toplot]
+                                            for masked_fm_dict, masked_fid_pars_dict in zip(masked_fm_dict_list, masked_fid_pars_dict_list)])
+
+    # plot, and if necessary normalize by the G-only uncertainty
+    for key in keys_toplot:
+
+        ylabel = 'rel. unc. [%]'
+        if normalize_by_gauss and not key.endswith('G'):
+            probe = key.split('_')[1]
+            ng_cov = key.split('_')[2]
+            uncertainties_dict[key] = (uncertainties_dict[key] / uncertainties_dict[f'FM_{probe}_G'] - 1) * 100
+            ylabel = f'{ng_cov}/G - 1 [%]'
+
+        n_rows = 2 if len(fm_dict_list) > 1 else 1
+        fig, ax = plt.subplots(n_rows, 1, figsize=(10, 5), sharex=True)
+        fig.tight_layout(h_pad=-1.1)
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        lss = ['-', '--', ':', '-.']
+
+        ax[0].set_title(f'{which_uncertainty} uncertainties, {key}')
+        for i, uncert in enumerate(uncertainties_dict[key]):
+            ax[0].plot(param_names, uncert, label=f'{labels[i]}', marker='o', c=colors[i], alpha=0.6, ls=lss[i])
+        ax[0].legend()
+        ax[0].set_ylabel(ylabel)
+
+        if len(uncertainties_dict[key]) > 1:
+            diffs = [percent_diff(uncert, uncertainties_dict[key][0]) for uncert in uncertainties_dict[key][1:]]
+
+            for i, diff in enumerate(diffs):
+                ax[1].plot(param_names, diff, label=f'{labels[i + 1]}/{labels[0]
+                                                                       } - 1 [%]', marker='o', c=colors[i + 1], ls=lss[i + 1])
+            ax[1].fill_between((0, nparams_toplot - 1), -10, 10, color='k', alpha=0.1, label='$\\pm 10\\%$')
+
+        ax[1].set_ylabel('% diff')
+        ax[1].legend()
+
+
+def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, which_uncertainty, compare_fms=True, compare_param_covs=True,
+                                      plot=True, n_params_toplot=10):
 
     fm_dict_a = load_pickle(fm_pickle_path_a)
     fm_dict_b = load_pickle(fm_pickle_path_b)
+    masked_fm_dict_a, masked_fid_pars_dict_a = {}, {}
+    masked_fm_dict_b, masked_fid_pars_dict_b = {}, {}
 
     # check that the keys match
     assert fm_dict_a.keys() == fm_dict_b.keys()
@@ -163,27 +236,32 @@ def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, compar
     for key in fm_dict_a.keys():
         if key != 'fiducial_values_dict' and 'WA' not in key:
             print('Comparing ', key)
-            fm_dict_a[key] = remove_null_rows_cols_2D_copilot(fm_dict_a[key])
-            fm_dict_b[key] = remove_null_rows_cols_2D_copilot(fm_dict_b[key])
 
-            cov_a = np.linalg.inv(fm_dict_a[key])
-            cov_b = np.linalg.inv(fm_dict_b[key])
+            masked_fm_dict_a[key], masked_fid_pars_dict_a[key] = mask_fm_v2(fm_dict_a[key],
+                                                                            fm_dict_a['fiducial_values_dict'],
+                                                                            names_params_to_fix=[],
+                                                                            remove_null_rows_cols=True)
+            masked_fm_dict_b[key], masked_fid_pars_dict_b[key] = mask_fm_v2(fm_dict_b[key],
+                                                                            fm_dict_b['fiducial_values_dict'],
+                                                                            names_params_to_fix=[],
+                                                                            remove_null_rows_cols=True)
+
+            cov_a = np.linalg.inv(masked_fm_dict_a[key])
+            cov_b = np.linalg.inv(masked_fm_dict_b[key])
 
             if compare_fms:
-                compare_arrays(fm_dict_a[key], fm_dict_b[key], 'FM_A', 'FM_B', plot_diff_threshold=5)
+                compare_arrays(masked_fm_dict_a[key], masked_fm_dict_b[key], 'FM_A', 'FM_B', plot_diff_threshold=5)
 
             if compare_param_covs:
 
                 compare_arrays(cov_a, cov_b, 'cov_A', 'cov_B', plot_diff_threshold=5)
 
             if plot:
-                param_names = list(fm_dict_a['fiducial_values_dict'].keys())[:n_params_toplot]
-                fiducials_a = list(fm_dict_a['fiducial_values_dict'].values())[:n_params_toplot]
-                fiducials_b = list(fm_dict_b['fiducial_values_dict'].values())[:n_params_toplot]
-                uncert_a = uncertainties_FM(fm_dict_a[key], n_params_toplot,
-                                            fiducials=fiducials_a, which_uncertainty='marginal', normalize=True)
-                uncert_b = uncertainties_FM(fm_dict_b[key], n_params_toplot,
-                                            fiducials=fiducials_b, which_uncertainty='marginal', normalize=True)
+                param_names = list(masked_fid_pars_dict_a[key].keys())[:n_params_toplot]
+                uncert_a = uncertainties_fm_v2(masked_fm_dict_a[key], fiducials_dict=masked_fid_pars_dict_a[key],
+                                               which_uncertainty=which_uncertainty, normalize=True)[:n_params_toplot]
+                uncert_b = uncertainties_fm_v2(masked_fm_dict_b[key], fiducials_dict=masked_fid_pars_dict_b[key],
+                                               which_uncertainty=which_uncertainty, normalize=True)[:n_params_toplot]
                 diff = percent_diff(uncert_a, uncert_b)
 
                 plt.figure()
@@ -252,7 +330,7 @@ def compare_df_keys(dataframe, key_to_compare, value_a, value_b, num_string_colu
     perc_diff_df[key_to_compare] = f'perc_diff_{value_b}'
     perc_diff_df['FoM'] = -perc_diff_df['FoM']  # ! abs? minus??
     dataframe = pd.concat([dataframe, perc_diff_df], axis=0, ignore_index=True)
-    
+
     # dataframe = dataframe.drop_duplicates()
     columns_to_consider = [col for col in dataframe.columns if col not in ['fm', 'fiducials_dict']]
     dataframe = dataframe.drop_duplicates(subset=columns_to_consider)
@@ -623,7 +701,7 @@ def test_folder_content(output_path, benchmarks_path, extension, verbose=False, 
             print(f'\nFile {file_name} does not match: {exc}')
         else:
             discrepancies['comparison_results'].append((file_name, 'Match'))
-            print(f"{file_name:<{max_length}} \t matches to within {rtol*100}% ✅")
+            print(f"{file_name:<{max_length}} \t matches to within {rtol * 100}% ✅")
 
     # Provide a summary of the results
     num_comparisons = len(discrepancies['comparison_results'])
@@ -867,8 +945,8 @@ def compare_arrays_v0(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=T
     result_emoji = '❌'
     no_outliers = np.where(diff_AB > higher_rtol)[0].shape[0]
     additional_info = f'\nMax discrepancy: {np.max(diff_AB):.2f}%;' \
-                      f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
-                      f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
+        f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
+        f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
     print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
 
 
@@ -889,14 +967,13 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
         result_emoji = '❌'
         no_outliers = np.sum(diff_AB > higher_rtol)
         additional_info = f'\nMax discrepancy: {np.max(diff_AB):.2f}%;' \
-                          f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
-                          f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
+            f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
+            f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
         print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
 
         if plot_diff or plot_array:
             assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
-            
-        
+
         if plot_array:
             A_toplot, B_toplot = A, B
 
@@ -937,8 +1014,6 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
 
             fig.suptitle(f'log={log_diff}, abs={abs_val}')
             plt.show()
-
-
 
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):
@@ -1209,8 +1284,6 @@ def uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal', normal
     param_names = list(fiducials_dict.keys())
     param_values = np.array(list(fiducials_dict.values()))
 
-    # pdb.set_trace()
-
     assert len(param_names) == param_values.shape[0] == fm.shape[0] == fm.shape[1], \
         'param_names and param_values must have the same length and be equal to the number of rows and columns of fm'
 
@@ -1310,7 +1383,7 @@ def get_kv_pairs_v2(path_import, extension='npy'):
     if extension == 'npy' or extension == 'npz':
         load_function = np.load
     elif extension == 'txt' or extension == 'dat':
-        load_function = lambda p: np.genfromtxt(p, encoding='latin1')  # Handle non-UTF-8 encoding
+        def load_function(p): return np.genfromtxt(p, encoding='latin1')  # Handle non-UTF-8 encoding
     else:
         raise NotImplementedError("extension must be either 'npy', 'npz', 'txt' or 'dat'")
 
@@ -1322,7 +1395,7 @@ def get_kv_pairs_v2(path_import, extension='npy'):
                 print(f"Error decoding file {path}: {e}")
             except Exception as e:
                 print(f"Error loading file {path}: {e}")
-                
+
 
 # to display the names (keys) more tidily
 def show_keys(arrays_dict):
@@ -3290,7 +3363,7 @@ def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED, which
         Which shape noise to use. 
         'ISTF' for the "incorrect" shape noise (used in ISTF paper), for backwars-compatibility.
         'per_component' for the correct shape noise, taking into account EE-only noise.
-    
+
     Returns
     -------
     noise_4d : ndarray, shape (n_probes, n_probes, zbins, zbins)

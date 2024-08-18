@@ -149,21 +149,25 @@ def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
 
 
 
-def compare_fm_constraints(*fm_dict_list, labels, keys_toplot, normalize_by_gauss, which_uncertainty, nparams_toplot=10):
+def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_gauss, which_uncertainty, 
+                           colors, nparams_toplot=8):
 
     masked_fm_dict_list = []
     masked_fid_pars_dict_list = []
     uncertainties_dict = {}
+    
 
-    assert keys_toplot == 'all' or type(keys_toplot) == list, 'keys_toplot must be a list or "all"'
+    assert keys_toplot_in == 'all' or type(keys_toplot_in) == list, 'keys_toplot must be a list or "all"'
+    assert colors is None or type(colors) == list, 'colors must be a list or "all"'
 
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color'] if colors is None else colors
+    
     # maks fm and fid pars dict
     for fm_dict in fm_dict_list:
         masked_fm_dict, masked_fid_pars_dict = {}, {}
-        all_fm_keys = list(fm_dict.keys())
-        keys_toplot = all_fm_keys if keys_toplot == 'all' else keys_toplot
         
-        # remove annoying keys
+        # define keys and remove unused ones
+        keys_toplot = list(fm_dict.keys())
         if 'fiducial_values_dict' in keys_toplot:
             keys_toplot.remove('fiducial_values_dict')
         keys_toplot = [key for key in keys_toplot if not key.startswith('FM_WA_')]
@@ -184,6 +188,9 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot, normalize_by_gaus
                                                                    which_uncertainty=which_uncertainty, normalize=True)[:nparams_toplot]
                                             for masked_fm_dict, masked_fid_pars_dict in zip(masked_fm_dict_list, masked_fid_pars_dict_list)])
 
+
+    keys_toplot = keys_toplot if keys_toplot_in == 'all' else keys_toplot_in
+    
     # plot, and if necessary normalize by the G-only uncertainty
     for key in keys_toplot:
 
@@ -197,25 +204,24 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot, normalize_by_gaus
         n_rows = 2 if len(fm_dict_list) > 1 else 1
         fig, ax = plt.subplots(n_rows, 1, figsize=(10, 5), sharex=True)
         fig.tight_layout(h_pad=-1.1)
-        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-        lss = ['-', '--', ':', '-.']
 
         ax[0].set_title(f'{which_uncertainty} uncertainties, {key}')
         for i, uncert in enumerate(uncertainties_dict[key]):
-            ax[0].plot(param_names, uncert, label=f'{labels[i]}', marker='o', c=colors[i], alpha=0.6, ls=lss[i])
-        ax[0].legend()
+            ax[0].scatter(param_names, uncert, label=f'{labels[i]}', marker='o', c=colors[i], alpha=0.6)
+        ax[0].legend(ncol=2)
         ax[0].set_ylabel(ylabel)
+        ax[0].grid()
 
         if len(uncertainties_dict[key]) > 1:
             diffs = [percent_diff(uncert, uncertainties_dict[key][0]) for uncert in uncertainties_dict[key][1:]]
 
             for i, diff in enumerate(diffs):
-                ax[1].plot(param_names, diff, label=f'{labels[i + 1]}/{labels[0]
-                                                                       } - 1 [%]', marker='o', c=colors[i + 1], ls=lss[i + 1])
+                ax[1].scatter(param_names, diff, marker='o', c=colors[i + 1])
             ax[1].fill_between((0, nparams_toplot - 1), -10, 10, color='k', alpha=0.1, label='$\\pm 10\\%$')
 
-        ax[1].set_ylabel('% diff')
+        ax[1].set_ylabel(f'% diff wrt {labels[0]}')
         ax[1].legend()
+        ax[1].grid()
 
 
 def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, which_uncertainty, compare_fms=True, compare_param_covs=True,

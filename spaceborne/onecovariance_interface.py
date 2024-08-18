@@ -181,7 +181,6 @@ class OneCovarianceInterface():
 
         zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(self.zbins)
 
-        probe_ordering = self.cfg['covariance_cfg']['probe_ordering']
         ind_auto = ind_dict['G', 'G']
         ind_cross = ind_dict['G', 'L']
 

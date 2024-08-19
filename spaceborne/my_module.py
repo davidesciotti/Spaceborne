@@ -150,7 +150,7 @@ def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
 
 
 def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_gauss, which_uncertainty, 
-                           colors, nparams_toplot=8):
+                           colors, nparams_toplot=8, save_fig=False, fig_path=None):
 
     masked_fm_dict_list = []
     masked_fid_pars_dict_list = []
@@ -208,7 +208,7 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
         ax[0].set_title(f'{which_uncertainty} uncertainties, {key}')
         for i, uncert in enumerate(uncertainties_dict[key]):
             ax[0].scatter(param_names, uncert, label=f'{labels[i]}', marker='o', c=colors[i], alpha=0.6)
-        ax[0].legend(ncol=2)
+        ax[0].legend(ncol=1, loc='center right', bbox_to_anchor=(1.22, 0.5))
         ax[0].set_ylabel(ylabel)
         ax[0].grid()
 
@@ -216,12 +216,15 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
             diffs = [percent_diff(uncert, uncertainties_dict[key][0]) for uncert in uncertainties_dict[key][1:]]
 
             for i, diff in enumerate(diffs):
-                ax[1].scatter(param_names, diff, marker='o', c=colors[i + 1])
+                ax[1].scatter(param_names, diff, marker='o', c=colors[i + 1], alpha=0.6)
             ax[1].fill_between((0, nparams_toplot - 1), -10, 10, color='k', alpha=0.1, label='$\\pm 10\\%$')
 
         ax[1].set_ylabel(f'% diff wrt {labels[0]}')
         ax[1].legend()
         ax[1].grid()
+        
+        if save_fig:
+            plt.savefig(f'{fig_path}/{key}.pdf', dpi=400)
 
 
 def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, which_uncertainty, compare_fms=True, compare_param_covs=True,

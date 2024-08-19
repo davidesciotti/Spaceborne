@@ -516,7 +516,6 @@ class PycclClass():
 
         return
 
-
     def check_cov_blocks_simmetry(self):
         # Test if cov is symmetric in ell1, ell2 (only for the diagonal covariance blocks:
         # the off-diagonal need *not* to be symmetric in ell1, ell2)

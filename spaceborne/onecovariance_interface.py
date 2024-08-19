@@ -224,8 +224,9 @@ class OneCovarianceInterface():
         column_names = header_list
 
         # ell values actually used in OC; save in self to be able to compare to the SB ell values
+        # ! use delim_whitespace=True instead of sep='\s+ if this gives compatibility issues
         self.ells_oc_load = pd.read_csv(f'{self.oc_path}/covariance_list.dat',
-                                        usecols=['ell1'], delim_whitespace=True)['ell1'].unique()
+                                        usecols=['ell1'], sep='\s+')['ell1'].unique()
         cov_ell_indices = {ell_out: idx for idx, ell_out in enumerate(self.ells_oc_load)}
 
         probe_idx_dict = {

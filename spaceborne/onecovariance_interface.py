@@ -224,7 +224,7 @@ class OneCovarianceInterface():
         column_names = header_list
 
         # ell values actually used in OC; save in self to be able to compare to the SB ell values
-        # ! use delim_whitespace=True instead of sep='\s+ if this gives compatibility issues
+        # ! use delim_whitespace=True instead of sep='\s+' if this gives compatibility issues
         self.ells_oc_load = pd.read_csv(f'{self.oc_path}/covariance_list.dat',
                                         usecols=['ell1'], sep='\s+')['ell1'].unique()
         cov_ell_indices = {ell_out: idx for idx, ell_out in enumerate(self.ells_oc_load)}
@@ -245,7 +245,7 @@ class OneCovarianceInterface():
 
         print('loading dataframe in chunks...')
         start = time.perf_counter()
-        for df_chunk in pd.read_csv(f'{self.oc_path}/covariance_list.dat', delim_whitespace=True, names=column_names, skiprows=1, chunksize=chunk_size):
+        for df_chunk in pd.read_csv(f'{self.oc_path}/covariance_list.dat', sep='\s+', names=column_names, skiprows=1, chunksize=chunk_size):
 
             # Vectorize the extraction of probe indices
             probe_idx_a = df_chunk['#obs'].str[0].map(probe_idx_dict).values

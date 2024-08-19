@@ -23,9 +23,19 @@ class OneCovarianceInterface():
 
     def __init__(self, ROOT, cfg, variable_specs):
         self.cfg = cfg
+        self.oc_cfg = self.cfg['covariance_cfg']['OneCovariance_cfg']
         self.variable_specs = variable_specs
-        self.which_gauss_cov_binning = self.cfg['covariance_cfg']['OneCovariance_cfg']['which_gauss_cov_binning']
+        self.which_gauss_cov_binning = self.oc_cfg['which_gauss_cov_binning']
         self.zbins = self.cfg['general_cfg']['zbins']
+        
+        # set which cov terms to compute from cfg file
+        self.compute_ssc = False
+        self.compute_cng = False
+        if 'SSC' in self.oc_cfg['which_ng_cov']:
+            self.compute_ssc = True
+        if 'cNG' in self.oc_cfg['which_ng_cov']:
+            self.compute_cng = True
+        
 
         # paths
         self.ROOT = ROOT
@@ -64,7 +74,7 @@ class OneCovarianceInterface():
         # TODO import another file??
         # Read the existing reference .ini file
         cfg_onecov_ini = CaseConfigParser()
-        cfg_onecov_ini.read(f'{self.ROOT}/OneCovariance/config_files_dav/config_3x2pt_pure_Cell_dav.ini')
+        cfg_onecov_ini.read(f'{self.ROOT}/Spaceborne/input/config_3x2pt_pure_Cell_general.ini')
         general_cfg = self.cfg['general_cfg']
 
         # set useful lists
@@ -76,15 +86,25 @@ class OneCovarianceInterface():
 
         cfg_onecov_ini['covariance terms']['gauss'] = str(True)
         cfg_onecov_ini['covariance terms']['split_gauss'] = str(True)
-        cfg_onecov_ini['covariance terms']['nongauss'] = str(True)
-        cfg_onecov_ini['covariance terms']['ssc'] = str(True)
+        cfg_onecov_ini['covariance terms']['nongauss'] = str(self.compute_cng)
+        cfg_onecov_ini['covariance terms']['ssc'] = str(self.compute_ssc)
         cfg_onecov_ini['output settings']['directory'] = self.oc_path
 
-        cfg_onecov_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(map(str, mult_shear_bias_list))
-        cfg_onecov_ini['covELLspace settings']['ell_min'] = str(general_cfg['ell_min'])
         # TODO slightly different ell_max for 3000?
-        cfg_onecov_ini['covELLspace settings']['ell_max'] = str(general_cfg['ell_max_3x2pt'])
+        if general_cfg['ell_max_3x2pt'] == 3000:
+            warnings.warn('Manually setting ell_max_3x2pt to 2807.39364 in OC to better match SB ell binning')
+            ell_max_3x2pt = 2807.39364
+            
+        cfg_onecov_ini['covELLspace settings']['ell_min'] = str(general_cfg['ell_min'])
+        cfg_onecov_ini['covELLspace settings']['ell_max'] = str(ell_max_3x2pt)
         cfg_onecov_ini['covELLspace settings']['ell_bins'] = str(general_cfg['nbl_3x2pt'])
+        cfg_onecov_ini['covELLspace settings']['ell_min_lensing'] = str(general_cfg['ell_min'])
+        cfg_onecov_ini['covELLspace settings']['ell_max_lensing'] = str(ell_max_3x2pt)
+        cfg_onecov_ini['covELLspace settings']['ell_bins_lensing'] = str(general_cfg['nbl_3x2pt'])
+        cfg_onecov_ini['covELLspace settings']['ell_min_clustering'] = str(general_cfg['ell_min'])
+        cfg_onecov_ini['covELLspace settings']['ell_max_clustering'] = str(ell_max_3x2pt)
+        cfg_onecov_ini['covELLspace settings']['ell_bins_clustering'] = str(general_cfg['nbl_3x2pt'])
+        cfg_onecov_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(map(str, mult_shear_bias_list))
 
         cfg_onecov_ini['survey specs']['mask_directory'] = '/home/cosmo/davide.sciotti/data/common_data/mask/'
         # TODO test diff with EC20 binning
@@ -118,6 +138,7 @@ class OneCovarianceInterface():
 
         cfg_onecov_ini['IA']['A_IA'] = str(self.cfg['cosmology']['FM_ordered_params']['Aia'])
         cfg_onecov_ini['IA']['eta_IA'] = str(self.cfg['cosmology']['FM_ordered_params']['eIA'])
+        cfg_onecov_ini['IA']['z_pivot_IA'] = str(0)
 
         cfg_onecov_ini['powspec evaluation']['non_linear_model'] = str(
             self.cfg['cosmology']['other_params']['camb_extra_parameters']['camb']['halofit_version'])
@@ -132,13 +153,13 @@ class OneCovarianceInterface():
         cfg_onecov_ini['misc']['num_cores'] = str(general_cfg['num_threads'])
 
         # ! precision settings
-        if self.cfg['covariance_cfg']['OneCovariance_cfg']['high_precision']:
+        if self.oc_cfg['precision_settings'] == 'high_precision':
             delta_z = 0.04
             tri_delta_z = 0.25
             integration_steps = 1000
-            m_bins = 900  # 1500
-            log10k_bins = 150  # 200
-        else:  # these are the default values
+            m_bins = 1500  # 900 or 1500
+            log10k_bins = 200  # 150 or 200
+        elif self.oc_cfg['precision_settings'] == 'default':  # these are the default values, used by Robert as well
             delta_z = 0.08
             tri_delta_z = 0.5
             integration_steps = 500
@@ -299,7 +320,7 @@ class OneCovarianceInterface():
 
             variable_specs = deepcopy(self.variable_specs)
             variable_specs.pop('which_ng_cov')
-            cov_filename = self.cfg['covariance_cfg']['OneCovariance_cfg']['cov_filename'].format(ROOT=self.ROOT,
+            cov_filename = self.oc_cfg['cov_filename'].format(ROOT=self.ROOT,
                                                                                                   which_ng_cov='{which_ng_cov:s}',
                                                                                                   probe_a='{probe_a:s}',
                                                                                                   probe_b='{probe_b:s}',
@@ -328,10 +349,10 @@ class OneCovarianceInterface():
     def oc_output_to_dict_or_array(self, which_ng_cov, output_type, ind_dict=None, symmetrize_output_dict=None):
 
         # import
-        which_gauss_cov_binning = self.cfg['covariance_cfg']['OneCovariance_cfg']['which_gauss_cov_binning']
+        which_gauss_cov_binning = self.oc_cfg['which_gauss_cov_binning']
         variable_specs = deepcopy(self.variable_specs)
         variable_specs.pop('which_ng_cov')
-        filename = self.cfg['covariance_cfg']['OneCovariance_cfg']['cov_filename'].format(ROOT=self.ROOT,
+        filename = self.oc_cfg['cov_filename'].format(ROOT=self.ROOT,
                                                                                           which_ng_cov=which_ng_cov,
                                                                                           probe_a='{probe_a:s}',
                                                                                           probe_b='{probe_b:s}',

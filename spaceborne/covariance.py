@@ -495,14 +495,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_GC_GO_6D = deepcopy(cov_3x2pt_GO_10D[1, 1, 1, 1, :nbl_GC, :nbl_GC, :, :, :, :])
             cov_3x2pt_GO_10D = deepcopy(cov_3x2pt_GO_10D[:, :, :, :, :nbl_3x2pt, :nbl_3x2pt, :, :, :, :])
 
-        if 'SSC' in covariance_cfg['OneCovariance_cfg']['which_ng_cov'] and \
-                covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']:
+        if 'SSC' in covariance_cfg['OneCovariance_cfg']['which_ng_cov']:
             cov_3x2pt_SS_10D = oc_obj.cov_ssc_oc_3x2pt_10D
-        elif 'SSC' in covariance_cfg['OneCovariance_cfg']['which_ng_cov'] and \
-                (not covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']):
-            raise NotImplementedError(
-                'TODO add SSC_SB - only case, with SSC from SB, filename should be treated in a more consistent way...')
-            cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
 
         if 'cNG' in covariance_cfg['OneCovariance_cfg']['which_ng_cov']:
             cov_3x2pt_SS_10D += oc_obj.cov_cng_oc_3x2pt_10D

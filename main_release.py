@@ -245,6 +245,7 @@ for zbins in (3, ):
 
         if not general_cfg['is_test_run']:
             assert covariance_cfg['survey_area_deg2'] == 13245, 'survey area must be 13245 deg2'
+            assert covariance_cfg['PyCCL_cfg']['which_pk_for_pyccl'] == 'CLOE', 'pk should be from CLOE'
             assert covariance_cfg['which_shape_noise'] == 'per_component', 'which_shape_noise must be per_component'
             assert ell_max_WL == ell_max_3x2pt == 5000, 'all probes should be up to lmax=5000'
             assert general_cfg['which_pk'] == 'HMCodeBar', 'which_pk must be HMCodeBar'
@@ -752,9 +753,7 @@ for zbins in (3, ):
 
         # * 2. compute cov using the onecovariance interface class
         start_time = time.perf_counter()
-        if covariance_cfg['ng_cov_code'] == 'OneCovariance' or \
-            (covariance_cfg['ng_cov_code'] == 'Spaceborne' and
-             covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']):  # TODO better handle these mixed cases!
+        if covariance_cfg['ng_cov_code'] == 'OneCovariance':
 
             print('Start NG cov computation with OneCovariance...')
 
@@ -1093,7 +1092,6 @@ for zbins in (3, ):
 
             # plt.plot(z_grid_ssc_integrands, integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD, z1_idx, :], marker='o')
 
-            # assert False, 'stop here'
 
         elif covariance_cfg['ng_cov_code'] == 'Spaceborne' and \
                 covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:

@@ -1019,14 +1019,17 @@ for zbins in (3, ):
             else:
                 # TODO input ell and cl mask
                 print('Computing sigma2_b...')
-                sigma2_b = np.zeros((len(z_grid_ssc_integrands), len(z_grid_ssc_integrands)))
-                for z2_idx, z2 in enumerate(tqdm(z_grid_ssc_integrands)):
-                    sigma2_b[:, z2_idx] = sigma2_SSC.sigma2_func_vectorized(
-                        z1_arr=z_grid_ssc_integrands,
-                        z2=z2, k_grid_sigma2=k_grid_sigma2,
-                        cosmo_ccl=ccl_obj.cosmo_ccl,
-                        which_sigma2_b=which_sigma2_b,
-                        ell_mask=None, cl_mask=None)
+                sigma2_b = sigma2_SSC.sigma2_z1z2_wrap(
+                    z_grid_ssc_integrands=z_grid_ssc_integrands, 
+                    k_grid_sigma2=k_grid_sigma2,
+                    cosmo_ccl=ccl_obj.cosmo_ccl,
+                    which_sigma2_b=which_sigma2_b,
+                    ell_mask=None, cl_mask=None,
+                    fsky_in=covariance_cfg['fsky'],
+                    area_deg2_in=covariance_cfg['survey_area_deg2'],
+                    nside=covariance_cfg['Spaceborne_cfg']['nside_mask'],
+                    ellmax=general_cfg['ell_max_3x2pt']
+                    )
 
                 sigma2_b_dict_tosave = {
                     'cfg': cfg,
@@ -1051,10 +1054,6 @@ for zbins in (3, ):
             if which_sigma2_b == 'full-curved-sky':
                 for key in cov_ssc_3x2pt_dict_8D.keys():
                     cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
-            elif which_sigma2_b == 'mask':
-                raise NotImplementedError('Not implemented yet, but very easy to do')
-            else:
-                raise ValueError(f'which_sigma2_b must be either "full-curved-sky" or "mask"')
 
             # save the covariance blocks
             # ! note that these files already account for the sky fraction!!
@@ -1684,7 +1683,7 @@ for zbins in (3, ):
             ax[1, 0].set_xlabel('$\\ell$')
             ax[1, 1].set_xlabel('$\\ell$')
             ax[1, 2].set_xlabel('$\\ell$')
-            ax[0, 0].set_ylabel('$\\partial C_{\ell}/ \\partial \\theta$')
+            ax[0, 0].set_ylabel('$\\partial C_{\\ell}/ \\partial \\theta$')
             ax[1, 0].set_ylabel('% diff')
             lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
             fig.suptitle(param)
@@ -1962,19 +1961,19 @@ for zbins in (3, ):
 
         # ! Print tables
 
-        if include_fom:
-            nparams_toplot_ref = nparams_toplot
-            nparams_toplot = nparams_toplot_ref + 1
-        titles = param_names_list[:nparams_toplot_ref] + ['FoM']
+        # if include_fom:
+        #     nparams_toplot_ref = nparams_toplot
+        #     nparams_toplot = nparams_toplot_ref + 1
+        # titles = param_names_list[:nparams_toplot_ref] + ['FoM']
 
-        # for uncert_dict, _, name in zip([uncert_dict, uncert_dict], [fm_dict, fm_dict_vin], ['Davide', 'Vincenzo']):
-        print(f"G uncertainties [%]:")
-        data = []
-        for probe in probes:
-            uncerts = [f'{uncert:.3f}' for uncert in uncert_dict[f'FM_{probe}_G']]
-            fom = f'{fom_dict[f"FM_{probe}_G"]:.2f}'
-            data.append([probe] + uncerts + [fom])
-        print(tabulate(data, headers=titles, tablefmt="pretty"))
+        # # for uncert_dict, _, name in zip([uncert_dict, uncert_dict], [fm_dict, fm_dict_vin], ['Davide', 'Vincenzo']):
+        # print(f"G uncertainties [%]:")
+        # data = []
+        # for probe in probes:
+        #     uncerts = [f'{uncert:.3f}' for uncert in uncert_dict[f'FM_{probe}_G']]
+        #     fom = f'{fom_dict[f"FM_{probe}_G"]:.2f}'
+        #     data.append([probe] + uncerts + [fom])
+        # print(tabulate(data, headers=titles, tablefmt="pretty"))
 
         # print(f"GSSC/G ratio  :")
         # data = []
@@ -1986,109 +1985,45 @@ for zbins in (3, ):
         #     table.append(ratios + [fom])
         # print(tabulate(data, headers=titles, tablefmt="pretty"))
 
-        print(f"SSC % increase :")
-        data = []
-        for probe in probes:
-            ratios = [f'{ratio:.3f}' for ratio in uncert_dict[f'perc_diff_{probe}_G']]
-            fom = f'{fom_dict[f"perc_diff_{probe}_G"]:.2f}'
-            data.append([probe] + ratios + [fom])
-        print(tabulate(data, headers=titles, tablefmt="pretty"))
-
-        # plot_lib.triangle_plot(masked_fm_dict['FM_3x2pt_GSSC'], masked_fm_dict['FM_3x2pt_G'],
-        #                        fiducials=list(masked_fid_pars_dict['FM_3x2pt_G'].values()),
-        #                        title='3x2pt',
-        #                        label_background='G + SSC',
-        #                        label_foreground='G',
-        #                        param_names_labels=list(masked_fid_pars_dict['FM_3x2pt_G'].keys()),
-        #                        param_names_labels_toplot=list(masked_fid_pars_dict['FM_3x2pt_G'].keys()))
-
-        # ! project FM
-
-        # # Define the Jacobian matrix
-        # jacobian = np.eye(masked_fm_dict['FM_WL_G'].shape[0])
-        # sigma_8_idx = param_names.index('s8')
-        # Omega_m_idx = param_names.index('Om')
-        # S8_idx = param_names.index('s8')
-
-        # # Functions for derivatives
-
-        # def dS8_dsigma8_func(Omega_m): return np.sqrt(Omega_m / 0.3)
-        # def dS8_dOmegam_func(Omega_m, sigma_8): return (sigma_8 / 2) * (1 / np.sqrt(Omega_m * 0.3))
-
-        # # Fiducial values
-        # om_fid = fid_pars_dict['FM_ordered_params']['Om']
-        # s8_fid = fid_pars_dict['FM_ordered_params']['s8']
-
-        # # Fill in the Jacobian matrix
-        # # jacobian[sigma_8_idx, sigma_8_idx] = dS8_dsigma8_func(Omega_m=om_fid)
-        # # jacobian[Omega_m_idx, sigma_8_idx] = dS8_dOmegam_func(Omega_m=om_fid, sigma_8=s8_fid)
-
-        # jacobian[S8_idx, Omega_m_idx] = dS8_dOmegam_func(Omega_m=om_fid, sigma_8=s8_fid)
-        # jacobian[S8_idx, sigma_8_idx] = dS8_dsigma8_func(Omega_m=om_fid)
-
-        # # Transform the Fisher matrix
-        # fm_prime_j = jacobian.T @ masked_fm_dict['FM_WL_G'] @ jacobian
-
-        # plot_lib.triangle_plot(fm_prime_j, masked_fm_dict['FM_WL_G'],
-        #                        fiducials=list(masked_fid_pars_dict['FM_WL_G'].values()),
-        #                        title='WL',
-        #                        label_background='$S_8$',
-        #                        label_foreground='$\\sigma_8$',
-        #                        param_names_labels=list(masked_fid_pars_dict['FM_WL_G'].keys()),
-        #                        param_names_labels_toplot=['Om', 's8'])
-
-        # # second way
-        # m_matrix = np.eye(masked_fm_dict['FM_WL_G'].shape[0])
-
-        # def dsigma8_dS8_func(Omega_m): return (np.sqrt(0.3 / Omega_m))
-        # def dOmegam_dS8_func(Omega_m, sigma_8): return ((2 / sigma_8) * (np.sqrt(Omega_m * 0.3)))
-
-        # # Fill in the m_matrix matrix
-        # m_matrix[Omega_m_idx, S8_idx] = dOmegam_dS8_func(Omega_m=om_fid, sigma_8=s8_fid)
-        # m_matrix[sigma_8_idx, S8_idx] = dsigma8_dS8_func(Omega_m=om_fid)
-
-        # # Transform the Fisher matrix
-        # fm_prime_m = m_matrix.T @ masked_fm_dict['FM_WL_G'] @ m_matrix
-
-        # mm.compare_arrays(fm_prime_m, masked_fm_dict['FM_WL_G'], log_array=True, log_diff=False,
-        #                   plot_diff_threshold=0, white_where_zero=True)
-
-        # plot_lib.triangle_plot(fm_prime_m,
-        #                        masked_fm_dict['FM_WL_G'],
-        #                        fiducials=list(masked_fid_pars_dict['FM_WL_G'].values()),
-        #                        title='WL',
-        #                        label_background='$S_8$',
-        #                        label_foreground='$\\sigma_8$',
-        #                        param_names_labels=list(masked_fid_pars_dict['FM_WL_G'].keys()),
-        #                        param_names_labels_toplot=list(masked_fid_pars_dict['FM_WL_G'].keys())[:9])
-
+        # print(f"SSC % increase :")
+        # data = []
+        # for probe in probes:
+        #     ratios = [f'{ratio:.3f}' for ratio in uncert_dict[f'perc_diff_{probe}_G']]
+        #     fom = f'{fom_dict[f"perc_diff_{probe}_G"]:.2f}'
+        #     data.append([probe] + ratios + [fom])
+        # print(tabulate(data, headers=titles, tablefmt="pretty"))
 
 # ! quickly compare two selected FMs
 # TODO this is misleading, understand better why (comparing GSSC, not perc_diff)
 path = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM/BNT_False/ell_cuts_False/'
-fm_pickle_path_a = f'{
-    path}/FM_GSSC_OneCovariance_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_13245deg2.pickle'
-fm_pickle_path_b = f'{
-    path}/FM_GSSC_PyCCL_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_13245deg2.pickle'
-fm_pickle_path_c = f'{
-    path}/FM_GSSC_Spaceborne_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_13245deg2.pickle'
-fm_pickle_path_d = f'{
-    path}/FM_GSSC_Spaceborne_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_13245deg2_halo_model.pickle'
+common_str = '_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_13245deg2'
+fm_pickle_path_a = f'{path}/FM_GSSC_OneCovariance{common_str}_defaultprecision.pickle'
+fm_pickle_path_b = f'{path}/FM_GSSC_PyCCL{common_str}.pickle'
+fm_pickle_path_c = f'{path}/FM_GSSC_Spaceborne{common_str}.pickle'
+fm_pickle_path_d = f'{path}/FM_GSSC_Spaceborne{common_str}_halo_model.pickle'
+fm_pickle_path_e = f'{path}/FM_GSSC_OneCovariance{common_str}.pickle'
+fm_pickle_path_f = f'{path}/FM_GSSC_Spaceborne{common_str}_maskonthefly.pickle'
+fm_pickle_path_g = f'{path}/FM_GSSC_Spaceborne{common_str}_maskontheflytest.pickle'
 
 fm_dict_a = mm.load_pickle(fm_pickle_path_a)
 fm_dict_b = mm.load_pickle(fm_pickle_path_b)
 fm_dict_c = mm.load_pickle(fm_pickle_path_c)
 fm_dict_d = mm.load_pickle(fm_pickle_path_d)
+fm_dict_e = mm.load_pickle(fm_pickle_path_e)
+fm_dict_f = mm.load_pickle(fm_pickle_path_f)
+fm_dict_g = mm.load_pickle(fm_pickle_path_g)
 
 
-labels = ['OC', 'CCL', 'SB_su', 'SB_hm']
+labels = ['OC_def', 'CCL', 'SB_su', 'SB_hm', 'OC_cfggen', 'OC']
+labels = ['SB_su', 'maskotf', 'fullsky']
 keys_toplot = ['FM_WL_GSSC', 'FM_GC_GSSC', 'FM_XC_GSSC', 'FM_3x2pt_GSSC']
 # keys_toplot = 'all'
-colors = ['tab:blue', 'tab:green', 'tab:orange', 'tab:red']
-mm.compare_fm_constraints(fm_dict_a, fm_dict_b, fm_dict_c, fm_dict_d, labels=labels, keys_toplot_in=keys_toplot,
+colors = ['tab:blue', 'tab:green', 'tab:orange', 'tab:red', 'tab:cyan', 'tab:grey']
+mm.compare_fm_constraints(fm_dict_c, fm_dict_f, fm_dict_g, labels=labels, keys_toplot_in=keys_toplot,
                           normalize_by_gauss=True,
                           which_uncertainty='conditional',
-                          colors=colors)
-
+                          colors=colors,
+                          save_fig=True,
+                          fig_path='/home/davide/Scrivania/')
 
 print('Finished in {:.2f} minutes'.format((time.perf_counter() - script_start_time) / 60))

@@ -22,6 +22,7 @@ SB_ROOT = f'{ROOT}/Spaceborne'
 sys.path.append(SB_ROOT)
 import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib
+import spaceborne.mask_fits_to_cl as mask_utils
 
 
 start_time = time.perf_counter()
@@ -97,7 +98,7 @@ start_time = time.perf_counter()
 # # sigma2_result = sigma2_flatsky(z1, z2, k_perp_grid, k_par_grid, cosmo_ccl, Omega_S, theta_S)
 
 
-def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None, cl_mask=None):
+def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b, ell_mask=None, cl_mask=None):
     """ Computes the integral in k. The rest is in another function, to vectorize the call to the growth_factor.
     Note that the 1/Omega_S^2 factors are missing in this function!! This is consistent with the definitio given in
     mine and Fabien's paper."""
@@ -130,22 +131,59 @@ def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None,
     # else:
     #     raise ValueError('sigma2_integrating_function must be either "simps" or "quad" or "quad_vec"')
 
-    if which_sigma2_B == 'full-curved-sky':
+    if which_sigma2_b == 'full-curved-sky':
         result = 1 / (2 * np.pi ** 2) * growth_factor_z1 * growth_factor_z2 * integral_result
-    elif which_sigma2_B == 'mask':
+    elif which_sigma2_b == 'mask':
         fsky = np.sqrt(cl_mask[0] / (4 * np.pi))
         result = 1 / (4 * np.pi * fsky)**2 * np.sum((2 * ell_mask + 1) * cl_mask * 2 /
                                                     np.pi * growth_factor_z1 * growth_factor_z2 * integral_result)
     else:
-        raise ValueError('which_sigma2_B must be either "full-curved-sky" or "mask"')
+        raise ValueError('which_sigma2_b must be either "full-curved-sky" or "mask"')
 
     return result
 
 
-def sigma2_func_vectorized(z1_arr, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None, cl_mask=None):
+def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigma2_b, ell_mask, cl_mask,
+                     fsky_in, area_deg2_in, nside, ellmax):
+
+    if which_sigma2_b == 'full_curved_sky':
+        fsky = None  # not needed in this case, the whole covariance is normalized at the end of the computation
+
+    elif which_sigma2_b == 'from_input_mask':
+        raise NotImplementedError('not implemented yet, simply import the necessary ingredients')
+        
+    elif which_sigma2_b == 'polar_cap_on_the_fly':
+        import healpy as hp
+        mask = mask_utils.generate_polar_cap(area_deg2_in, nside)
+        hp.mollview(mask, coord=['C', 'E'], title='polar cap generated on-the fly', cmap='inferno_r')
+        ell_mask, cl_mask, fsky_mask = mask_utils.get_mask_quantities(
+            clmask=ell_mask, mask=mask, mask2=None, verbose=True)
+
+        fsky = np.sqrt(cl_mask[0] / (4 * np.pi))
+        assert np.abs(fsky / fsky_in) < 1.01, 'fsky_in is not the same as the fsky of the mask'
+        assert np.abs(fsky / fsky_mask) < 1.01, 'fsky_in is not the same as the fsky_mask of the mask'
+        assert len(ell_mask) > ellmax, 'the maximum ell from this mask is lower than the needed lmax. Try increasing nside'
+
+    sigma2_b = np.zeros((len(z_grid_ssc_integrands), len(z_grid_ssc_integrands)))
+    for z2_idx, z2 in enumerate(tqdm(z_grid_ssc_integrands)):
+        sigma2_b[:, z2_idx] = sigma2_z2_func_vectorized(
+            z1_arr=z_grid_ssc_integrands,
+            z2=z2,
+            k_grid_sigma2=k_grid_sigma2,
+            cosmo_ccl=cosmo_ccl,
+            which_sigma2_b=which_sigma2_b,
+            ell_mask=ell_mask, cl_mask=cl_mask,
+            fsky=fsky
+        )
+
+    return sigma2_b
+
+
+def sigma2_z2_func_vectorized(z1_arr, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b, ell_mask, cl_mask, fsky):
     """
     Vectorized version of sigma2_func in z1.
     """
+
     a1_arr = csmlib.z_to_a(z1_arr)
     a2 = csmlib.z_to_a(z2)
 
@@ -162,15 +200,27 @@ def sigma2_func_vectorized(z1_arr, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B,
 
     integral_result = simps(integrand(k_grid_sigma2), k_grid_sigma2, axis=1)
 
-    if which_sigma2_B == 'full-curved-sky':
+    if which_sigma2_b == 'full_curved_sky':
         result = 1 / (2 * np.pi ** 2) * growth_factor_z1_arr * growth_factor_z2 * integral_result
-    elif which_sigma2_B == 'mask':
-        fsky = np.sqrt(cl_mask[0] / (4 * np.pi))
-        result = 1 / (4 * np.pi * fsky) ** 2 * \
-            np.sum((2 * ell_mask + 1) * cl_mask * 2 / np.pi *
-                   growth_factor_z1_arr[:, None] * growth_factor_z2 * integral_result, axis=1)
+
+    elif which_sigma2_b == 'polar_cap_on_the_fly' or which_sigma2_b == 'from_input_mask':
+
+        one_over_omega_s_squared = 1 / (4 * np.pi * fsky)**2
+        partial_summand = np.zeros((len(z1_arr), len(ell_mask)))
+        partial_summand = (2 * ell_mask + 1) * cl_mask * growth_factor_z1_arr[:, None] * growth_factor_z2
+        partial_summand *= one_over_omega_s_squared
+        partial_summand *= integral_result[:, None]
+        result = np.sum(partial_summand, axis=1)
+
+        # result = 1 / (4 * np.pi * fsky) ** 2 * \
+        # np.sum((2 * ell_mask + 1) * cl_mask * 2 / np.pi *
+        #    growth_factor_z1_arr[:, None] * growth_factor_z2 * integral_result, axis=1)
+
+        # Fabien
+        # np.sum((2*ell+1)*cl_mask*Cl_XY[ipair,jpair,:])/(4*pi*fsky)**2
     else:
-        raise ValueError('which_sigma2_B must be either "full-curved-sky" or "mask"')
+        raise ValueError(
+            'which_sigma2_b must be either "full_curved_sky" or "polar_cap_on_the_fly" or "from_input_mask"')
 
     return result
 
@@ -203,7 +253,7 @@ def plot_sigma2(sigma2_arr, z_grid_sigma2):
     # plt.savefig(f'../output/plots/sigma2_matshow_zsteps{z_steps_sigma2}.pdf', dpi=500, bbox_inches='tight')
 
 
-def compute_sigma2(z_grid_sigma2, k_grid_sigma2, which_sigma2_B, cosmo_ccl, parallel=True, vectorize=False):
+def compute_sigma2(z_grid_sigma2, k_grid_sigma2, which_sigma2_b, cosmo_ccl, parallel=True, vectorize=False):
     print(f'computing sigma^2(z_1, z_2) for SSC...')
 
     if parallel:
@@ -213,13 +263,13 @@ def compute_sigma2(z_grid_sigma2, k_grid_sigma2, which_sigma2_B, cosmo_ccl, para
         # remote_calls = []
         # for z1 in tqdm(z_grid_sigma2):
         #     for z2 in z_grid_sigma2:
-        #         remote_calls.append(sigma2_func_remote.remote(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B))
+        #         remote_calls.append(sigma2_func_remote.remote(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b))
         # # Get the results from the remote function calls
         # sigma2_arr = ray.get(remote_calls)
 
         # ! with joblib (doesn't seem to work anymore, I still don't know why)
         # sigma2_arr = Parallel(n_jobs=-1, backend='loky')(delayed(sigma2_func)(
-        # z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B) for z1 in tqdm(z_grid_sigma2) for z2 in z_grid_sigma2)
+        # z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b) for z1 in tqdm(z_grid_sigma2) for z2 in z_grid_sigma2)
 
         # ! with pool.map
         # Share cosmo_ccl object using custom SharedCosmology
@@ -227,7 +277,7 @@ def compute_sigma2(z_grid_sigma2, k_grid_sigma2, which_sigma2_B, cosmo_ccl, para
 
         # with mp.Pool() as pool:
         #     sigma2_arr = pool.starmap(
-        #         partial(sigma2_func, k_grid_sigma2=k_grid_sigma2, cosmo_ccl=shm_cosmo_ccl[0], which_sigma2_B=which_sigma2_B),
+        #         partial(sigma2_func, k_grid_sigma2=k_grid_sigma2, cosmo_ccl=shm_cosmo_ccl[0], which_sigma2_b=which_sigma2_b),
         #         [(z1, z2) for z1 in z_grid_sigma2 for z2 in z_grid_sigma2]
         #     )
 
@@ -242,11 +292,11 @@ def compute_sigma2(z_grid_sigma2, k_grid_sigma2, which_sigma2_B, cosmo_ccl, para
         if not vectorize:
             for z1_idx, z1 in enumerate(tqdm(z_grid_sigma2)):
                 for z2_idx, z2 in enumerate(z_grid_sigma2):
-                    sigma2_arr[z1_idx, z2_idx] = sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B)
+                    sigma2_arr[z1_idx, z2_idx] = sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b)
         elif vectorize:
             for z2_idx, z2 in enumerate(tqdm(z_grid_sigma2)):
-                sigma2_arr[:, z2_idx] = sigma2_func_vectorized(
-                    z_grid_sigma2, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, None, None)
+                sigma2_arr[:, z2_idx] = sigma2_z2_func_vectorized(
+                    z_grid_sigma2, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b, None, None)
 
     return sigma2_arr
 

@@ -131,23 +131,25 @@ def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b, ell_mask=None,
     # else:
     #     raise ValueError('sigma2_integrating_function must be either "simps" or "quad" or "quad_vec"')
 
-    if which_sigma2_b == 'full-curved-sky':
+    if which_sigma2_b == 'full_curved_sky':
         result = 1 / (2 * np.pi ** 2) * growth_factor_z1 * growth_factor_z2 * integral_result
     elif which_sigma2_b == 'mask':
         fsky = np.sqrt(cl_mask[0] / (4 * np.pi))
         result = 1 / (4 * np.pi * fsky)**2 * np.sum((2 * ell_mask + 1) * cl_mask * 2 /
                                                     np.pi * growth_factor_z1 * growth_factor_z2 * integral_result)
     else:
-        raise ValueError('which_sigma2_b must be either "full-curved-sky" or "mask"')
+        raise ValueError('which_sigma2_b must be either "full_curved_sky" or "mask"')
 
     return result
 
 
-def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigma2_b, ell_mask, cl_mask,
+def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigma2_b,
                      fsky_in, area_deg2_in, nside, ellmax):
 
     if which_sigma2_b == 'full_curved_sky':
         fsky = None  # not needed in this case, the whole covariance is normalized at the end of the computation
+        ell_mask = None
+        cl_mask = None
 
     elif which_sigma2_b == 'from_input_mask':
         raise NotImplementedError('not implemented yet, simply import the necessary ingredients')
@@ -205,12 +207,12 @@ def sigma2_z2_func_vectorized(z1_arr, z2, k_grid_sigma2, cosmo_ccl, which_sigma2
 
     elif which_sigma2_b == 'polar_cap_on_the_fly' or which_sigma2_b == 'from_input_mask':
 
-        one_over_omega_s_squared = 1 / (4 * np.pi * fsky)**2
         partial_summand = np.zeros((len(z1_arr), len(ell_mask)))
         partial_summand = (2 * ell_mask + 1) * cl_mask * growth_factor_z1_arr[:, None] * growth_factor_z2
-        partial_summand *= one_over_omega_s_squared
         partial_summand *= integral_result[:, None]
         result = np.sum(partial_summand, axis=1)
+        one_over_omega_s_squared = 1 / (4 * np.pi * fsky)**2
+        result *= one_over_omega_s_squared
 
         # result = 1 / (4 * np.pi * fsky) ** 2 * \
         # np.sum((2 * ell_mask + 1) * cl_mask * 2 / np.pi *

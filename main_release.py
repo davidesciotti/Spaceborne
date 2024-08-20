@@ -1017,14 +1017,12 @@ for zbins in (3, ):
                 cfg_sigma2_b = sigma2_b_dict['cfg']  # TODO check that the cfg matches the one
                 sigma2_b = sigma2_b_dict['sigma2_b']
             else:
-                # TODO input ell and cl mask
                 print('Computing sigma2_b...')
                 sigma2_b = sigma2_SSC.sigma2_z1z2_wrap(
                     z_grid_ssc_integrands=z_grid_ssc_integrands, 
                     k_grid_sigma2=k_grid_sigma2,
                     cosmo_ccl=ccl_obj.cosmo_ccl,
                     which_sigma2_b=which_sigma2_b,
-                    ell_mask=None, cl_mask=None,
                     fsky_in=covariance_cfg['fsky'],
                     area_deg2_in=covariance_cfg['survey_area_deg2'],
                     nside=covariance_cfg['Spaceborne_cfg']['nside_mask'],
@@ -1051,9 +1049,13 @@ for zbins in (3, ):
             print('SSC computed with Julia in {:.2f} s'.format(time.perf_counter() - start))
 
             # If the mask is not passed to sigma2_b, we need to divide by fsky
-            if which_sigma2_b == 'full-curved-sky':
+            if which_sigma2_b == 'full_curved_sky':
                 for key in cov_ssc_3x2pt_dict_8D.keys():
                     cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
+            elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
+                pass
+            else:
+                raise ValueError(f'which_sigma2_b = {which_sigma2_b} not recognized')
 
             # save the covariance blocks
             # ! note that these files already account for the sky fraction!!
@@ -1995,7 +1997,7 @@ for zbins in (3, ):
 
 # ! quickly compare two selected FMs
 # TODO this is misleading, understand better why (comparing GSSC, not perc_diff)
-path = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM/BNT_False/ell_cuts_False/'
+path = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM/BNT_False/ell_cuts_False'
 common_str = '_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_13245deg2'
 fm_pickle_path_a = f'{path}/FM_GSSC_OneCovariance{common_str}_defaultprecision.pickle'
 fm_pickle_path_b = f'{path}/FM_GSSC_PyCCL{common_str}.pickle'
@@ -2003,23 +2005,27 @@ fm_pickle_path_c = f'{path}/FM_GSSC_Spaceborne{common_str}.pickle'
 fm_pickle_path_d = f'{path}/FM_GSSC_Spaceborne{common_str}_halo_model.pickle'
 fm_pickle_path_e = f'{path}/FM_GSSC_OneCovariance{common_str}.pickle'
 fm_pickle_path_f = f'{path}/FM_GSSC_Spaceborne{common_str}_maskonthefly.pickle'
-fm_pickle_path_g = f'{path}/FM_GSSC_Spaceborne{common_str}_maskontheflytest.pickle'
+fm_pickle_path_g = f'{path}/FM_GSSC_Spaceborne{common_str}_fullsky.pickle'
+# fm_pickle_path_h = f'{path}/FM_GSSC_Spaceborne{common_str}_load2.pickle'
 
-fm_dict_a = mm.load_pickle(fm_pickle_path_a)
-fm_dict_b = mm.load_pickle(fm_pickle_path_b)
-fm_dict_c = mm.load_pickle(fm_pickle_path_c)
-fm_dict_d = mm.load_pickle(fm_pickle_path_d)
-fm_dict_e = mm.load_pickle(fm_pickle_path_e)
-fm_dict_f = mm.load_pickle(fm_pickle_path_f)
-fm_dict_g = mm.load_pickle(fm_pickle_path_g)
+fm_dict_of_dicts = {
+    # 'OC': mm.load_pickle(fm_pickle_path_e),
+    # 'CCL': mm.load_pickle(fm_pickle_path_b),
+    'SB_su': mm.load_pickle(fm_pickle_path_c),
+    # 'SB_hm': mm.load_pickle(fm_pickle_path_d),
+    # 'OC_def':  mm.load_pickle(fm_pickle_path_a),
+    # 'SB_maskotf': mm.load_pickle(fm_pickle_path_f),
+    'SB_fullsky': mm.load_pickle(fm_pickle_path_g),
+    # 'SB_loads2': mm.load_pickle(fm_pickle_path_h),
+}
 
 
-labels = ['OC_def', 'CCL', 'SB_su', 'SB_hm', 'OC_cfggen', 'OC']
-labels = ['SB_su', 'maskotf', 'fullsky']
+labels = list(fm_dict_of_dicts.keys())
+fm_dict_list = list(fm_dict_of_dicts.values())
 keys_toplot = ['FM_WL_GSSC', 'FM_GC_GSSC', 'FM_XC_GSSC', 'FM_3x2pt_GSSC']
 # keys_toplot = 'all'
-colors = ['tab:blue', 'tab:green', 'tab:orange', 'tab:red', 'tab:cyan', 'tab:grey']
-mm.compare_fm_constraints(fm_dict_c, fm_dict_f, fm_dict_g, labels=labels, keys_toplot_in=keys_toplot,
+colors = ['tab:blue', 'tab:green', 'tab:orange', 'tab:red', 'tab:cyan', 'tab:grey', 'tab:olive', 'tab:purple']
+mm.compare_fm_constraints(*fm_dict_list, labels=labels, keys_toplot_in=keys_toplot,
                           normalize_by_gauss=True,
                           which_uncertainty='conditional',
                           colors=colors,

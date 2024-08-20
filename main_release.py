@@ -1024,11 +1024,13 @@ for zbins in (3, ):
                     k_grid_sigma2=k_grid_sigma2,
                     cosmo_ccl=ccl_obj.cosmo_ccl,
                     which_sigma2_b=which_sigma2_b,
-                    fsky_in=covariance_cfg['fsky'],
                     area_deg2_in=covariance_cfg['survey_area_deg2'],
                     nside=covariance_cfg['Spaceborne_cfg']['nside_mask'],
                     ellmax=general_cfg['ell_max_3x2pt']
                     )
+                
+                # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to decrease
+                # the former by fsky (eq. 29 of https://arxiv.org/pdf/1612.05958)
 
                 sigma2_b_dict_tosave = {
                     'cfg': cfg,
@@ -1796,7 +1798,10 @@ for zbins in (3, ):
                 lmax=ell_max_3x2pt, survey_area_deg2=covariance_cfg['survey_area_deg2'])
             
             if covariance_cfg['ng_cov_code'] == 'Spaceborne':
-                fm_dict_filename += f'_{covariance_cfg['Spaceborne_cfg']['which_pk_responses']}_{covariance_cfg['Spaceborne_cfg']['which_sigma2_b']}'
+                fm_dict_filename = fm_dict_filename.replace(
+                    '.pickle',
+                    f'_{covariance_cfg['Spaceborne_cfg']['which_pk_responses'].replace('_', '')}.pickle'
+                    )
             
             mm.save_pickle(f'{fm_folder}/{fm_dict_filename}', fm_dict)
 
@@ -2004,24 +2009,17 @@ for zbins in (3, ):
 # TODO this is misleading, understand better why (comparing GSSC, not perc_diff)
 path = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM/BNT_False/ell_cuts_False'
 common_str = '_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_13245deg2'
-fm_pickle_path_a = f'{path}/FM_GSSC_OneCovariance{common_str}.pickle'
-fm_pickle_path_b = f'{path}/FM_GSSC_PyCCL{common_str}.pickle'
-fm_pickle_path_d = f'{path}/FM_GSSC_Spaceborne{common_str}_halo_model.pickle'
-fm_pickle_path_e = f'{path}/FM_GSSC_OneCovariance{common_str}_defaultprecision.pickle'
-fm_pickle_path_f = f'{path}/FM_GSSC_Spaceborne{common_str}_separate_universe_full_curved_sky.pickle'
-fm_pickle_path_g = f'{path}/FM_GSSC_Spaceborne{common_str}_separate_universe_polar_cap_on_the_fly.pickle'
-# fm_pickle_path_h = f'{path}/FM_GSSC_Spaceborne{common_str}_load2.pickle'
 
 fm_dict_of_dicts = {
-    'OC_def':  mm.load_pickle(fm_pickle_path_e),
-    # 'CCL': mm.load_pickle(fm_pickle_path_b),
-    # 'SB_hm': mm.load_pickle(fm_pickle_path_d),
-    # 'OC': mm.load_pickle(fm_pickle_path_a),
-    'SB_su_fullsky': mm.load_pickle(fm_pickle_path_f),
-    'SB_su_maskotf': mm.load_pickle(fm_pickle_path_g),
-    # 'SB_loads2': mm.load_pickle(fm_pickle_path_h),
+    'SB_su_fullsky': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_separateuniverse_fullcurvedsky.pickle'),
+    # 'OC_hp': mm.load_pickle( f'{path}/FM_GSSC_OneCovariance{common_str}_highprecision.pickle'),
+    # 'CCL': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}.pickle'),
+    # 'SB_hm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_halo_model.pickle'),
+    # 'OC_def':  mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_defaultprecision.pickle'),
+    # 'SB_su_maskotf': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_separateuniverse_polarcaponthefly.pickle'),
+    'SB_su_NSIDE512': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_separateuniverse_polarcaponthefly.pickle'),
+    'SB_su_1400': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_1400_separateuniverse_fullcurvedsky.pickle'),
 }
-
 
 labels = list(fm_dict_of_dicts.keys())
 fm_dict_list = list(fm_dict_of_dicts.values())

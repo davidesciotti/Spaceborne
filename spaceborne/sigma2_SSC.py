@@ -159,7 +159,7 @@ def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigm
         mask = mask_utils.generate_polar_cap(area_deg2_in, nside)
         hp.mollview(mask, coord=['C', 'E'], title='polar cap generated on-the fly', cmap='inferno_r')
         ell_mask, cl_mask, fsky_mask = mask_utils.get_mask_quantities(
-            clmask=ell_mask, mask=mask, mask2=None, verbose=True)
+            clmask=None, mask=mask, mask2=None, verbose=True)
 
         fsky = np.sqrt(cl_mask[0] / (4 * np.pi))
         assert np.abs(fsky / fsky_in) < 1.01, 'fsky_in is not the same as the fsky of the mask'

@@ -249,7 +249,7 @@ covariance_cfg:
         z_steps_ssc_integrands: 512 # this should be high because I have to trace the spikes in sigma2
 
         load_precomputed_sigma2: False
-        sigma2_b_filename: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}.npy"
+        sigma2_b_filename: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_{which_sigma2_b:s}_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}.npy"
         use_KE_approximation: False # TODO implement this in the Julia module
         integration_type: "simps" # 'simps' or 'trapz' (which is actually using rectangles)
 
@@ -285,7 +285,7 @@ covariance_cfg:
 
         # z_grid min and max should probably coincide. play around with steps to find the minimum number
         z_grid_tkka_min: 0.
-        z_grid_tkka_max: 3
+        z_grid_tkka_max: 3 # used to be 6
         k_grid_tkka_min: 1.e-5
         k_grid_tkka_max: 1.e+2
         z_grid_tkka_steps_SSC: 50 # (z, k) = (50, 100) seems altrady enough
@@ -300,7 +300,7 @@ covariance_cfg:
         load_precomputed_cov: False
         use_OneCovariance_Gaussian: False
         which_gauss_cov_binning: OneCovariance # 'EC20' or 'OneCovariance'
-        precision_settings: default # 'high_precision' or 'default'
+        precision_settings: high_precision # 'high_precision' or 'default'
         path_to_oc_executable: "{ROOT:s}/OneCovariance/covariance.py"
 
         onecovariance_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/covmat/OneCovariance/{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}"
@@ -324,7 +324,7 @@ FM_cfg:
 
     fm_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}"
     fm_txt_filename: fm_txt_filename
-    fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_source:02d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}_pk{which_pk:s}_{survey_area_deg2:d}deg2{fm_and_cov_suffix:s}_maskonthefly.pickle
+    fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_source:02d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}_pk{which_pk:s}_{survey_area_deg2:d}deg2{fm_and_cov_suffix:s}.pickle
 
     test_against_vincenzo: False # TODO delete this
     test_against_benchmarks: False # TODO delete this

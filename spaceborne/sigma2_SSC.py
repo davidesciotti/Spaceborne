@@ -12,7 +12,6 @@ from scipy.interpolate import RegularGridInterpolator
 from scipy.special import spherical_jn
 import pyccl as ccl
 from tqdm import tqdm
-# import PySSC
 
 import os
 ROOT = os.getenv('ROOT')
@@ -24,6 +23,8 @@ import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib
 import spaceborne.mask_fits_to_cl as mask_utils
 
+sys.path.append(f'{ROOT}/PySSC')
+import PySSC
 
 start_time = time.perf_counter()
 
@@ -143,29 +144,31 @@ def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b, ell_mask=None,
     return result
 
 
-def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigma2_b,
-                     fsky_in, area_deg2_in, nside, ellmax):
+def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigma2_b, area_deg2_in, nside, ellmax):
 
     if which_sigma2_b == 'full_curved_sky':
-        fsky = None  # not needed in this case, the whole covariance is normalized at the end of the computation
         ell_mask = None
         cl_mask = None
+        fsky_mask = None  # not needed in this case, the whole covariance is normalized at the end of the computation
 
-    elif which_sigma2_b == 'from_input_mask':
-        raise NotImplementedError('not implemented yet, simply import the necessary ingredients')
-        
     elif which_sigma2_b == 'polar_cap_on_the_fly':
         import healpy as hp
         mask = mask_utils.generate_polar_cap(area_deg2_in, nside)
         hp.mollview(mask, coord=['C', 'E'], title='polar cap generated on-the fly', cmap='inferno_r')
-        ell_mask, cl_mask, fsky_mask = mask_utils.get_mask_quantities(
-            clmask=None, mask=mask, mask2=None, verbose=True)
-
-        fsky = np.sqrt(cl_mask[0] / (4 * np.pi))
-        assert np.abs(fsky / fsky_in) < 1.01, 'fsky_in is not the same as the fsky of the mask'
-        assert np.abs(fsky / fsky_mask) < 1.01, 'fsky_in is not the same as the fsky_mask of the mask'
-        assert len(ell_mask) > ellmax, 'the maximum ell from this mask is lower than the needed lmax. Try increasing nside'
-
+        
+        cl_mask  = hp.anafast(mask)
+        ell_mask = np.arange(len(cl_mask))
+        # Compute fsky from the mask
+        fsky_mask = np.sqrt(cl_mask[0]/(4*np.pi))
+        print('fsky from mask: {fsky:.4f}')
+        
+        fsky_in = csmlib.deg2_to_fsky(area_deg2_in)
+        assert np.abs(fsky_mask / fsky_in) < 1.01, 'fsky_in is not the same as the fsky of the mask'
+        # assert len(ell_mask) > ellmax, 'the maximum ell from this mask is lower than the needed lmax. Try increasing nside'
+        
+    elif which_sigma2_b == 'from_input_mask':
+        raise NotImplementedError('not implemented yet, simply import the necessary ingredients')
+        
     sigma2_b = np.zeros((len(z_grid_ssc_integrands), len(z_grid_ssc_integrands)))
     for z2_idx, z2 in enumerate(tqdm(z_grid_ssc_integrands)):
         sigma2_b[:, z2_idx] = sigma2_z2_func_vectorized(
@@ -174,14 +177,15 @@ def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigm
             k_grid_sigma2=k_grid_sigma2,
             cosmo_ccl=cosmo_ccl,
             which_sigma2_b=which_sigma2_b,
-            ell_mask=ell_mask, cl_mask=cl_mask,
-            fsky=fsky
+            ell_mask=ell_mask, 
+            cl_mask=cl_mask,
+            fsky_mask=fsky_mask
         )
 
     return sigma2_b
 
 
-def sigma2_z2_func_vectorized(z1_arr, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b, ell_mask, cl_mask, fsky):
+def sigma2_z2_func_vectorized(z1_arr, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b, ell_mask, cl_mask, fsky_mask):
     """
     Vectorized version of sigma2_func in z1.
     """
@@ -208,15 +212,12 @@ def sigma2_z2_func_vectorized(z1_arr, z2, k_grid_sigma2, cosmo_ccl, which_sigma2
     elif which_sigma2_b == 'polar_cap_on_the_fly' or which_sigma2_b == 'from_input_mask':
 
         partial_summand = np.zeros((len(z1_arr), len(ell_mask)))
-        partial_summand = (2 * ell_mask + 1) * cl_mask * growth_factor_z1_arr[:, None] * growth_factor_z2
+        # NOTE: you should include a 2/np.pi factor, see Eq. (26) of https://arxiv.org/pdf/1612.05958, or Champaghe et al 2017
+        partial_summand = (2 * ell_mask + 1) * cl_mask  * 2 / np.pi * growth_factor_z1_arr[:, None] * growth_factor_z2
         partial_summand *= integral_result[:, None]
         result = np.sum(partial_summand, axis=1)
-        one_over_omega_s_squared = 1 / (4 * np.pi * fsky)**2
+        one_over_omega_s_squared = 1 / (4 * np.pi * fsky_mask)**2
         result *= one_over_omega_s_squared
-
-        # result = 1 / (4 * np.pi * fsky) ** 2 * \
-        # np.sum((2 * ell_mask + 1) * cl_mask * 2 / np.pi *
-        #    growth_factor_z1_arr[:, None] * growth_factor_z2 * integral_result, axis=1)
 
         # Fabien
         # np.sum((2*ell+1)*cl_mask*Cl_XY[ipair,jpair,:])/(4*pi*fsky)**2

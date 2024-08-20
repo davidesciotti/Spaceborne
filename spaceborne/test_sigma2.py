@@ -93,7 +93,7 @@ sigma2_B = ccl.covariances.sigma2_B_disc(
 sigma2_B_tuple_ccl_disc = (a_grid_sigma2_B, sigma2_B)
 
 # spaceborne, curved full sky
-sigma2_B = np.array([sigma2_SSC.sigma2_func(z1, z1, k_grid_sigma2, cosmo_ccl, 'full-curved-sky', ell_mask=None, cl_mask=None)
+sigma2_B = np.array([sigma2_SSC.sigma2_func(z1, z1, k_grid_sigma2, cosmo_ccl, 'full_curved_sky', ell_mask=None, cl_mask=None)
                      for z1 in tqdm(z_grid_sigma2_B)])
 sigma2_B_tuple_sb_curved_full_sky = (a_grid_sigma2_B, sigma2_B[::-1])
 

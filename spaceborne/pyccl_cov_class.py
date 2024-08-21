@@ -62,7 +62,19 @@ class PycclClass():
             'pocinofit': wf_cl_lib.b_of_z_fs1_pocinofit,
             'fs2_fit': wf_cl_lib.b_of_z_fs2_fit,
         }
-        # self.check_specs()
+        # self.check_specs()   # prolly I don't need these ingredients at all!
+
+        # initialize halo model
+        # from https://github.com/LSSTDESC/CCL/blob/4df2a29eca58d7cd171bc1986e059fd35f425d45/benchmarks/test_covariances.py
+        # see also https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/tools/covariance_NG.py#L282
+
+        self.mass_def = ccl.halos.MassDef200m
+        self.c_m_relation = ccl.halos.ConcentrationDuffy08(mass_def=self.mass_def)
+        self.hmf = ccl.halos.MassFuncTinker10(mass_def=self.mass_def)
+        self.hbf = ccl.halos.HaloBiasTinker10(mass_def=self.mass_def)
+        self.hmc = ccl.halos.HMCalculator(mass_function=self.hmf, halo_bias=self.hbf, mass_def=self.mass_def)
+        self.halo_profile_nfw = ccl.halos.HaloProfileNFW(mass_def=self.mass_def, concentration=self.c_m_relation)
+        self.halo_profile_hod = ccl.halos.HaloProfileHOD(mass_def=self.mass_def, concentration=self.c_m_relation)
 
     def check_specs(self):
         assert self.probe in ['LL', 'GG', '3x2pt'], 'probe must be either LL, GG, or 3x2pt'
@@ -267,7 +279,6 @@ class PycclClass():
         else:
             raise ValueError('which_sigma2_b must be either mask, spaceborne or None')
 
-
     def initialize_trispectrum(self, which_ng_cov, probe_ordering, pyccl_cfg):
 
         # save_tkka = pyccl_cfg['save_tkka']
@@ -303,23 +314,12 @@ class PycclClass():
         # a_grid_tkka = None
         # logn_k_grid_tkka = None
 
-        # from https://github.com/LSSTDESC/CCL/blob/4df2a29eca58d7cd171bc1986e059fd35f425d45/benchmarks/test_covariances.py
-        # see also https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/tools/covariance_NG.py#L282
-        halomod_start_time = time.perf_counter()
-
-        mass_def = ccl.halos.MassDef200m
-        c_M_relation = ccl.halos.ConcentrationDuffy08(mass_def=mass_def)
-        hmf = ccl.halos.MassFuncTinker10(mass_def=mass_def)
-        hbf = ccl.halos.HaloBiasTinker10(mass_def=mass_def)
-        hmc = ccl.halos.HMCalculator(mass_function=hmf, halo_bias=hbf, mass_def=mass_def)
-        halo_profile_nfw = ccl.halos.HaloProfileNFW(mass_def=mass_def, concentration=c_M_relation)
-        halo_profile_hod = ccl.halos.HaloProfileHOD(mass_def=mass_def, concentration=c_M_relation)
-
+        tkka_start_time = time.perf_counter()
         # TODO pk from input files
         # This is the correct way to initialize the trispectrum (I Asked David Alonso about this.)
         halo_profile_dict = {
-            'L': halo_profile_nfw,
-            'G': halo_profile_hod,
+            'L': self.halo_profile_nfw,
+            'G': self.halo_profile_hod,
         }
         prof_2pt_dict = {
             # see again https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
@@ -412,7 +412,7 @@ class PycclClass():
                             f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
 
                     self.tkka_dict[A, B, C, D], self.responses_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
-                                                                                            hmc=hmc,
+                                                                                            hmc=self.hmc,
                                                                                             prof=halo_profile_dict[A],
                                                                                             prof2=halo_profile_dict[B],
                                                                                             prof3=halo_profile_dict[C],
@@ -422,7 +422,7 @@ class PycclClass():
                                                                                             p_of_k_a=p_of_k_a,
                                                                                             **additional_args)
 
-        print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - halomod_start_time))
+        print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - tkka_start_time))
 
         return
 
@@ -448,16 +448,16 @@ class PycclClass():
         for ij in tqdm(range(zpairs_AB)):
             for kl in range(zpairs_CD):
                 cov_ng_4D[:, :, ij, kl] = ccl_ng_cov_func(self.cosmo_ccl,
-                                                      tracer1=kernel_A[ind_AB[ij, -2]],
-                                                      tracer2=kernel_B[ind_AB[ij, -1]],
-                                                      ell=ell,
-                                                      t_of_kk_a=tkka,
-                                                      fsky=f_sky,
-                                                      tracer3=kernel_C[ind_CD[kl, -2]],
-                                                      tracer4=kernel_D[ind_CD[kl, -1]],
-                                                      ell2=None,
-                                                      integration_method=integration_method,
-                                                      **sigma2_b_arg)
+                                                          tracer1=kernel_A[ind_AB[ij, -2]],
+                                                          tracer2=kernel_B[ind_AB[ij, -1]],
+                                                          ell=ell,
+                                                          t_of_kk_a=tkka,
+                                                          fsky=f_sky,
+                                                          tracer3=kernel_C[ind_CD[kl, -2]],
+                                                          tracer4=kernel_D[ind_CD[kl, -1]],
+                                                          ell2=None,
+                                                          integration_method=integration_method,
+                                                          **sigma2_b_arg)
 
         print(f'{which_ng_cov} computed with pyccl in {(time.perf_counter() - start_time) / 60:.0f} min')
 
@@ -511,7 +511,7 @@ class PycclClass():
                         cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b].transpose(1, 0, 3, 2))
 
         self.cov_ng_3x2pt_dict_8D = cov_ng_3x2pt_dict_8D
-        
+
         self.check_cov_blocks_simmetry()
 
         return

@@ -114,8 +114,14 @@ def call_onecovariance(path_to_oc_executable, path_to_config_oc_ini):
 # * ====================================================================================================================
 
 
+%matplotlib inline
+
 for zbins in (3, 5, 7, 9, 10, 11, 13, 15):
     for ep_or_ed in ('ED', 'EP'):
+        
+        if ep_or_eded == 'ED' and zbins == 15:
+            raise ValueERror('ED15 windows are wrong (they are actually EP15)! wait for new files')
+            
 
         with open('config_release.yaml', 'r') as f:
             cfg = yaml.safe_load(f)
@@ -348,6 +354,7 @@ for zbins in (3, 5, 7, 9, 10, 11, 13, 15):
         general_cfg['nbl_WL'] = nbl_WL
         general_cfg['nbl_GC'] = nbl_GC
         general_cfg['nbl_3x2pt'] = nbl_3x2pt
+        
 
         assert nbl_WL == nbl_3x2pt == nbl_GC, 'use the same number of bins for the moment'
 
@@ -1428,11 +1435,11 @@ for zbins in (3, 5, 7, 9, 10, 11, 13, 15):
             else:
                 raise ValueError(f'ng_cov_code must be Spaceborne or OneCovariance')
 
-            cov_filename_vin = covariance_cfg['cov_filename_vin'].format(**var_specs_here, ng_cov_code_vin='{ng_cov_code_vin:s}')
+            cov_filename_vin = covariance_cfg['cov_filename_vin'].format(
+                **var_specs_here, ng_cov_code_vin='{ng_cov_code_vin:s}')
             cov_filename_vin = cov_filename_vin.replace('.npz', '')
             cov_filename_vin = cov_filename_vin.replace(
                 f'_pk{which_pk}', f'_pk{which_pk}_{covariance_cfg["survey_area_deg2"]}deg2')
-            
 
             var_specs_here = deepcopy(variable_specs)
             var_specs_here.pop('BNT_transform', None)
@@ -1441,16 +1448,20 @@ for zbins in (3, 5, 7, 9, 10, 11, 13, 15):
                                                                  BNT_transform=str(general_cfg['BNT_transform']),
                                                                  **var_specs_here)
 
-            # cmfull-{EP_or_ED:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{ng_cov_code_vin:s}.npz
-            # compare against preexisting saved cov files
-            # cov_test = np.genfromtxt(f'{cov_folder_vin}/{cov_filename_vin.format(ng_cov_code_vin=ng_cov_code_vin, probe="3x2pt")}.dat')
-            # mm.compare_arrays(cov_test, cov_dict[f'cov_3x2pt_GS_2D'])
+            # ! compare against preexisting saved cov files, at the moment I only want to add the G cov files
+            cov_filename = covariance_cfg['cov_filename']
+            cov_test = np.genfromtxt(f'{cov_folder_vin}/{cov_filename.format(**variable_specs, probe="3x2pt", lmax_3x2pt=ell_max_3x2pt, ndim=2, fm_and_cov_suffix='', cov_suffix='13245deg2_').replace('.npz', '.dat')}')
+            np.testing.assert_allclose(cov_test, cov_dict[f'cov_3x2pt_GS_2D'], atol=0, rtol=1e-4)
 
             np.savetxt(f'{cov_folder_vin}/{cov_filename_vin.format(ng_cov_code_vin=ng_cov_code_vin, probe="3x2pt")}.dat',
                        cov_dict[f'cov_3x2pt_GS_2D'], fmt='%.7e')
-            # * new: save also G only covs
-            np.savetxt(f'{cov_folder_vin}/{cov_filename_vin.format(ng_cov_code_vin="G", probe="3x2pt")}.dat',
+
+            # * new: save also G only covs and BNT mat
+            np.savetxt(f'{cov_folder_vin}/{cov_filename_vin.format(ng_cov_code_vin="GO", probe="3x2pt")}.dat',
                        cov_dict[f'cov_3x2pt_GO_2D'], fmt='%.7e')
+            
+            bnt_filename = cov_filename_vin.replace('cmfull', 'BNTmat').replace(ng_cov_code_vin, '')
+            np.savetxt(f'{cov_folder}/{bnt_filename}.dat', bnt_matrix)
 
         if ep_or_ed == 'EP' and covariance_cfg['ng_cov_code'] == 'Spaceborne' and covariance_cfg['test_against_CLOE_benchmarks'] \
                 and general_cfg['ell_cuts'] is False and which_pk == 'HMCodeBar':

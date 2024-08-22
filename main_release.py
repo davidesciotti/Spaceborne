@@ -114,12 +114,11 @@ def call_onecovariance(path_to_oc_executable, path_to_config_oc_ini):
 # * ====================================================================================================================
 
 
-with open('config_release.yaml', 'r') as f:
-    cfg = yaml.safe_load(f)
-    
-for zbins in (7, 9, 10, 11, 13, 15):
-    for ep_or_ed in ('EP', 'ED'):
+for zbins in (3, 5, 7, 9, 10, 11, 13, 15):
+    for ep_or_ed in ('ED', 'EP'):
 
+        with open('config_release.yaml', 'r') as f:
+            cfg = yaml.safe_load(f)
 
         # add type/number-specific nuisance/hyperparameters
         cfg['general_cfg']['zbins'] = zbins
@@ -776,8 +775,8 @@ for zbins in (7, 9, 10, 11, 13, 15):
         # * 2. compute cov using the onecovariance interface class
         start_time = time.perf_counter()
         if covariance_cfg['ng_cov_code'] == 'OneCovariance' or \
-            (covariance_cfg['ng_cov_code'] == 'Spaceborne' and \
-               not covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']):
+            (covariance_cfg['ng_cov_code'] == 'Spaceborne' and
+             covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']):
 
             print('Start NG cov computation with OneCovariance...')
 
@@ -804,10 +803,10 @@ for zbins in (7, 9, 10, 11, 13, 15):
                 'cNG', '10D_array', ind_dict, symmetrize_output_dict)
 
             print('Time taken to compute OC: {:.2f} m'.format((time.perf_counter() - start_time) / 60))
-        
+
         else:
             oc_obj = None
-            
+
         # ! ========================================== end OneCovariance ===================================================
 
         # ! ========================================== start Spaceborne ===================================================
@@ -1421,14 +1420,19 @@ for zbins in (7, 9, 10, 11, 13, 15):
         if covariance_cfg['save_cov_2D_dat']:
             var_specs_here = deepcopy(variable_specs)
             var_specs_here.pop('which_ng_cov', None)
-            cov_filename_vin = covariance_cfg['cov_filename'].format(**var_specs_here, probe='{probe:s}',
-                                                                     lmax_3x2pt=ell_max_3x2pt, ndim=2,
-                                                                     cov_suffix='',
-                                                                     which_ng_cov='{which_ng_cov:s}',
-                                                                     fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'])
+
+            if covariance_cfg['ng_cov_code'] == 'Spaceborne':
+                ng_cov_code_vin = 'SB'
+            elif covariance_cfg['ng_cov_code'] == 'OneCovariance':
+                ng_cov_code_vin = 'OC'
+            else:
+                raise ValueError(f'ng_cov_code must be Spaceborne or OneCovariance')
+
+            cov_filename_vin = covariance_cfg['cov_filename_vin'].format(**var_specs_here, ng_cov_code_vin='{ng_cov_code_vin:s}')
             cov_filename_vin = cov_filename_vin.replace('.npz', '')
             cov_filename_vin = cov_filename_vin.replace(
                 f'_pk{which_pk}', f'_pk{which_pk}_{covariance_cfg["survey_area_deg2"]}deg2')
+            
 
             var_specs_here = deepcopy(variable_specs)
             var_specs_here.pop('BNT_transform', None)
@@ -1437,8 +1441,16 @@ for zbins in (7, 9, 10, 11, 13, 15):
                                                                  BNT_transform=str(general_cfg['BNT_transform']),
                                                                  **var_specs_here)
 
-            np.savetxt(f'{cov_folder_vin}/{cov_filename_vin.format(which_ng_cov=which_ng_cov_suffix, probe='3x2pt')}.dat',
+            # cmfull-{EP_or_ED:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{ng_cov_code_vin:s}.npz
+            # compare against preexisting saved cov files
+            # cov_test = np.genfromtxt(f'{cov_folder_vin}/{cov_filename_vin.format(ng_cov_code_vin=ng_cov_code_vin, probe="3x2pt")}.dat')
+            # mm.compare_arrays(cov_test, cov_dict[f'cov_3x2pt_GS_2D'])
+
+            np.savetxt(f'{cov_folder_vin}/{cov_filename_vin.format(ng_cov_code_vin=ng_cov_code_vin, probe="3x2pt")}.dat',
                        cov_dict[f'cov_3x2pt_GS_2D'], fmt='%.7e')
+            # * new: save also G only covs
+            np.savetxt(f'{cov_folder_vin}/{cov_filename_vin.format(ng_cov_code_vin="G", probe="3x2pt")}.dat',
+                       cov_dict[f'cov_3x2pt_GO_2D'], fmt='%.7e')
 
         if ep_or_ed == 'EP' and covariance_cfg['ng_cov_code'] == 'Spaceborne' and covariance_cfg['test_against_CLOE_benchmarks'] \
                 and general_cfg['ell_cuts'] is False and which_pk == 'HMCodeBar':
@@ -1913,7 +1925,7 @@ for zbins in (7, 9, 10, 11, 13, 15):
                 f'FM_{probe}_G',
                 f'FM_{probe}_GSSC',
                 # f'FM_{probe}_GSSCcNG',
-                
+
                 f'perc_diff_{probe}_G',
 
                 #  f'FM_{probe}_{which_ng_cov_suffix}',

@@ -222,7 +222,11 @@ covariance_cfg:
     cov_filename:
         covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_pk{which_pk:s}_{ndim:d}D{cov_suffix:s}{fm_and_cov_suffix:s}.npz
     
-    ng_cov_code: OneCovariance # ! PySSC or PyCCL or Spaceborne or OneCovariance
+    # this has been changed after seeing the filenames in folder https://drive.google.com/drive/u/2/folders/1VWl_HWPc-9R-La11EBkshzBx9TR69Cjs
+    cov_filename_vin:
+        cmfull-{EP_or_ED:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{ng_cov_code_vin:s}.npz
+    
+    ng_cov_code: Spaceborne # ! PySSC or PyCCL or Spaceborne or OneCovariance
 
     PyCCL_cfg:
         probe: 3x2pt
@@ -301,7 +305,7 @@ covariance_cfg:
         which_ng_cov: ['SSC', 'cNG']
         load_precomputed_cov: False
         use_OneCovariance_Gaussian: False
-        use_OneCovariance_SSC: True
+        use_OneCovariance_SSC: False
         which_gauss_cov_binning: OneCovariance  # EC20 or OneCovariance
         high_precision: False  # True to increase different precision parameters, False to use default values
         path_to_oc_executable: "{ROOT:s}/OneCovariance/covariance.py"

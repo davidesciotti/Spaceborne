@@ -113,8 +113,15 @@ general_cfg:
     # cl_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/OutputFiles/DataVectors/Noiseless/{which_pk:s}"
     cl_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/OutputFiles/DataVectors/Temp/{probe:s}/{which_pk:s}"
     cl_filename: "dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat"
+
+    # old, LiFE: these are the original files, but there are no zbins15 files. I checked that these match with FiRE, below
     wf_folder: '{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputSSC/Windows'
     wf_filename: 'wi{probe:s}-{ep_or_ed:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{specs:s}.dat'
+
+    # new, FiRE - some ED ML145 or so files still missing!
+    # wf_folder: '{ROOT:s}/common_data/vincenzo/SPV3_07_2022/FiRE/InputQuantities/NzFiles/SPV3/Windows/WiFid'
+    # wf_filename: 'wi{probe:s}-{ep_or_ed:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{specs:s}.dat'
+    
     specs: 'idIA{idIA:d}-idB{idBM:01d}-idM{idM:d}-idR{idR:d}'
     check_wf_against_vincenzo: True
 
@@ -220,7 +227,7 @@ covariance_cfg:
     # TODO change name to cov_path
     cov_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Sesto"
     cov_filename:
-        covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_pk{which_pk:s}_{ndim:d}D{cov_suffix:s}{fm_and_cov_suffix:s}.npz
+        covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_pk{which_pk:s}_{cov_suffix:s}{ndim:d}D{fm_and_cov_suffix:s}.npz
     
     # this has been changed after seeing the filenames in folder https://drive.google.com/drive/u/2/folders/1VWl_HWPc-9R-La11EBkshzBx9TR69Cjs
     cov_filename_vin:

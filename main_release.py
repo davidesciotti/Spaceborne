@@ -116,11 +116,12 @@ def call_onecovariance(path_to_oc_executable, path_to_config_oc_ini):
 
 %matplotlib inline
 
-for zbins in (3, 5, 7, 9, 10, 11, 13, 15):
+# for zbins in (3, 5, 7, 9, 10, 11, 13, 15):
+for zbins in (3, 5, 7, 9, 10, 11, 13):
     for ep_or_ed in ('ED', 'EP'):
         
-        if ep_or_eded == 'ED' and zbins == 15:
-            raise ValueERror('ED15 windows are wrong (they are actually EP15)! wait for new files')
+        if ep_or_ed == 'ED' and zbins == 15:
+            raise ValueError('ED15 windows are wrong (they are actually EP15)! wait for new files')
             
 
         with open('config_release.yaml', 'r') as f:
@@ -1460,8 +1461,8 @@ for zbins in (3, 5, 7, 9, 10, 11, 13, 15):
             np.savetxt(f'{cov_folder_vin}/{cov_filename_vin.format(ng_cov_code_vin="GO", probe="3x2pt")}.dat',
                        cov_dict[f'cov_3x2pt_GO_2D'], fmt='%.7e')
             
-            bnt_filename = cov_filename_vin.replace('cmfull', 'BNTmat').replace(ng_cov_code_vin, '')
-            np.savetxt(f'{cov_folder}/{bnt_filename}.dat', bnt_matrix)
+            bnt_filename = cov_filename_vin.replace('cmfull', 'BNTmat').replace('-{ng_cov_code_vin:s}', '')
+            np.savetxt(f'{cov_folder_vin}/{bnt_filename}.dat', bnt_matrix)
 
         if ep_or_ed == 'EP' and covariance_cfg['ng_cov_code'] == 'Spaceborne' and covariance_cfg['test_against_CLOE_benchmarks'] \
                 and general_cfg['ell_cuts'] is False and which_pk == 'HMCodeBar':

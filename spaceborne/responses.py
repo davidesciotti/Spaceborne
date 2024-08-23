@@ -125,9 +125,9 @@ class SpaceborneResponses():
         # from https://github.com/LSSTDESC/CCLX/blob/master/Halo-mass-function-example.ipynb
         
         # # 1-st order halo bias
-        # halo_mass_range = np.geomspace(1.01E12, 1E15, 128) / self.cosmo_ccl['h']
-        # halo_bias_1ord = np.array([self.ccl_obj.hbf(cosmo=self.cosmo_ccl, M=halo_mass_range,
-        #                                             a=cosmo_lib.z_to_a(z)) for z in z_grid])
+        self.halo_mass_range = np.geomspace(1.01E12, 1E15, 128) / self.cosmo_ccl['h']
+        self.b1h_hm = np.array([self.ccl_obj.hbf(cosmo=self.cosmo_ccl, M=self.halo_mass_range,
+                                                    a=cosmo_lib.z_to_a(z)) for z in z_grid])
         # plt.semilogx(halo_mass_range, halo_bias_1ord[0, :])
         # #  halo mass function
         # nm = np.array([self.ccl_obj.hmf(cosmo=self.cosmo_ccl, M=halo_mass_range,

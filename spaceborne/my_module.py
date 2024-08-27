@@ -29,6 +29,22 @@ symmetrize_output_dict = {
     ('G', 'G'): True,
 }
 
+def regularize_covariance(cov_matrix, lambda_reg=1e-5):
+    """
+    Regularizes the covariance matrix by adding lambda * I.
+
+    Parameters:
+    - cov_matrix: Original covariance matrix (numpy.ndarray)
+    - lambda_reg: Regularization parameter
+
+    Returns:
+    - Regularized covariance matrix
+    """
+    n = cov_matrix.shape[0]
+    identity_matrix = np.eye(n)
+    cov_matrix_reg = cov_matrix + lambda_reg * identity_matrix
+    return cov_matrix_reg
+
 
 def get_simpson_weights(n):
     """
@@ -1354,6 +1370,7 @@ def matshow(array, title="title", log=False, abs_val=False, threshold=None, only
         title = 'abs ' + title
     if log:  # take the log
         array = np.log10(array)
+        threshold = np.log10(threshold)
         title = 'log10 ' + title
 
     if threshold is not None:

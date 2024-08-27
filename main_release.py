@@ -864,7 +864,7 @@ for zbins in (3, ):
                 #     (k_grid_resp, z_grid_resp), dPgg_ddeltab_hm, method='linear')
 
             elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe':
-                
+
                 # ! from Vincenzo's files
                 # import the response *coefficients* (not the responses themselves)
                 su_responses_folder = covariance_cfg['Spaceborne_cfg']['separate_universe_responses_folder'].format(
@@ -908,7 +908,7 @@ for zbins in (3, ):
                 dPmm_ddeltab_su = r_mm * pk_mm_2d
                 dPgm_ddeltab_su = r_gm * pk_gm_2d
                 dPgg_ddeltab_su = r_gg * pk_gg_2d
-                
+
                 dPmm_ddeltab = dPmm_ddeltab_su
                 dPgm_ddeltab = dPgm_ddeltab_su
                 dPgg_ddeltab = dPgg_ddeltab_su
@@ -958,21 +958,29 @@ for zbins in (3, ):
                 # r_gg_hm = dPgg_ddeltab_hm_interp / pk_gg_2d
 
                 # # ! from SpaceborneResponses class
-                # resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
-                #                                          z_grid=z_grid_resp,
-                #                                          ccl_obj=ccl_obj)
-                # r_mm_sbclass = resp_obj.compute_r1_mm()
-                # resp_obj.get_rab_and_dpab_ddeltab(b2g_from_halomodel=True)
+                resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
+                                                         z_grid=z_grid_resp,
+                                                         ccl_obj=ccl_obj)
+                r_mm_sbclass = resp_obj.compute_r1_mm()
+                resp_obj.get_rab_and_dpab_ddeltab(b2g_from_halomodel=True)
 
-                # r_gm_sbclass = resp_obj.r1_gm
-                # r_gg_sbclass = resp_obj.r1_gg
-                # if not covariance_cfg['Spaceborne_cfg']['include_b2']:
-                #     r_gm_sbclass = resp_obj.r1_gm_nob2
-                #     r_gg_sbclass = resp_obj.r1_gg_nob2
-                    
-                # dPmm_ddeltab = resp_obj.dPmm_ddeltab
-                # dPgm_ddeltab = resp_obj.dPgm_ddeltab
-                # dPgg_ddeltab = resp_obj.dPgg_ddeltab
+                r_gm_sbclass = resp_obj.r1_gm
+                r_gg_sbclass = resp_obj.r1_gg
+                if not covariance_cfg['Spaceborne_cfg']['include_b2']:
+                    r_gm_sbclass = resp_obj.r1_gm_nob2
+                    r_gg_sbclass = resp_obj.r1_gg_nob2
+
+                dPmm_ddeltab = resp_obj.dPmm_ddeltab
+                dPgm_ddeltab = resp_obj.dPgm_ddeltab
+                dPgg_ddeltab = resp_obj.dPgg_ddeltab
+
+                b1g_hm = resp_obj.b1g_hm
+                b2g_hm = resp_obj.b2g_hm
+
+
+
+
+
 
                 # z_idx = 0
                 # k_idx = 0
@@ -1001,7 +1009,7 @@ for zbins in (3, ):
 
                 # plt.ylim(-5, 5)
                 # plt.title(f'z={z_grid_resp[z_idx]}')
-                
+
                 # ! end Davide resp
 
                 # np.testing.assert_allclose(r_mm_sbclass, r1_mm_sbload_interp, atol=0, rtol=1e-8)
@@ -1010,8 +1018,8 @@ for zbins in (3, ):
                 # np.testing.assert_allclose(pk_mm_2d, resp_obj.pk_mm, atol=0, rtol=1e-8)
                 # np.testing.assert_allclose(pk_mm_2d, pk_mm_2d_sbload, atol=0, rtol=1e-8)
 
-                plt.plot(z_grid_sbload, b1_sbload[0, :], label='b1_dav', c='tab:blue')
-                plt.plot(z_grid_resp, resp_obj.b1_arr[0, :], label='b1_dav', c='tab:blue')
+                # plt.plot(z_grid_sbload, b1_sbload[0, :], label='b1_dav', c='tab:blue')
+                # plt.plot(z_grid_resp, resp_obj.b1_arr[0, :], label='b1_dav', c='tab:blue')
 
                 # # TODO check counterterms, to be better understood - 0 for lensing, as they should be
                 # bA12 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bA12']
@@ -1037,7 +1045,6 @@ for zbins in (3, ):
                 # plt.plot(z_grid_resp_hm, bB34[0, :], label='bB34', alpha=0.6, ls='--')
                 # plt.plot(z_grid_resp, gal_bias, label='FS2_gal_bias')
                 # plt.legend()
-
 
             else:
                 raise ValueError('which_pk_responses must be either "halo_model" or "separate_universe"')
@@ -2117,7 +2124,7 @@ common_str = '_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_
 
 fm_dict_of_dicts = {
     # 'SB_su_fullsky': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_separateuniverse_fullcurvedsky.pickle'),
-    'OC_hp': mm.load_pickle( f'{path}/FM_GSSC_OneCovariance{common_str}_highprecision.pickle'),
+    'OC_hp': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_highprecision.pickle'),
     'CCL': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}.pickle'),
     # 'SB_hm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_halo_model.pickle'),
     # 'OC_def':  mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_defaultprecision.pickle'),

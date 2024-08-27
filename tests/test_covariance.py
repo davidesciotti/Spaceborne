@@ -154,5 +154,5 @@ class TestCovarianceMatrix(unittest.TestCase):
                              eff_rank:.2f}) exceeds matrix size ({self.cov.shape[0]})")
 
 
-if __name__ == '__main__':
-    unittest.main()
+# if __name__ == '__main__':
+#     unittest.main()

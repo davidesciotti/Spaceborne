@@ -95,7 +95,7 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
 with open('config_release.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
 
-for zbins in (10, ):
+for zbins in (13, ):
     for ep_or_ed in ('EP', ):
 
         # add type/number-specific nuisance/hyperparameters
@@ -250,20 +250,23 @@ for zbins in (10, ):
             assert cfg['covariance_cfg']['PyCCL_cfg']['which_sigma2_b'] is not None, \
                 'the flat-sky approximation is likely inappropriate for the large Euclid survey area'
 
-        if not general_cfg['is_test_run']:
+        if general_cfg['is_CLOE_run']:
             assert covariance_cfg['survey_area_deg2'] == 13245, 'survey area must be 13245 deg2'
             assert covariance_cfg['PyCCL_cfg']['which_pk_for_pyccl'] == 'CLOE', 'pk should be from CLOE'
             assert covariance_cfg['which_shape_noise'] == 'per_component', 'which_shape_noise must be per_component'
             assert ell_max_WL == ell_max_3x2pt == 5000, 'all probes should be up to lmax=5000'
             assert general_cfg['which_pk'] == 'HMCodeBar', 'which_pk must be HMCodeBar'
-            assert general_cfg['which_cls'] == 'Vincenzo', 'which_cls must be "Vincenzo"'
+            assert general_cfg['which_cls'] == 'CLOE', 'which_cls must be "Vincenzo"'
             assert general_cfg['flat_or_nonflat'] == 'Flat', 'Model must be flat'
             assert covariance_cfg['load_CLOE_benchmark_cov'] is False, 'load_CLOE_benchmark_cov must be False'
-            assert covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'] > 500, 'z_steps_ssc_integrands must be large enough'
-            assert cfg['covariance_cfg']['OneCovariance_cfg']['high_precision'] is False
+            assert covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'] in (7000, 5000), \
+                'for the actual run, I used z_steps_ssc_integrands == 7000 or 5000'
+            assert cfg['covariance_cfg']['OneCovariance_cfg']['high_precision'] is True
             assert covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == [
-                'SSC', 'cNG'], 'which_ng_cov must be ["SSC", "cNG"]'
+                'cNG',], 'which_ng_cov must be ["cNG"]'
             assert covariance_cfg['OneCovariance_cfg']['which_gauss_cov_binning'] == 'OneCovariance', 'which_gauss_cov_binning must be "OneCovariance" for the moment'
+            assert zbins == 13, 'zbins must be 13'
+            assert ep_or_ed == 'EP', 'ep_or_ed must be "EP"'
 
         fsky_check = cosmo_lib.deg2_to_fsky(covariance_cfg['survey_area_deg2'])
         assert np.abs(mm.percent_diff(covariance_cfg['fsky'], fsky_check)) < 1e-5, 'fsky does not match the survey area'
@@ -964,6 +967,7 @@ for zbins in (10, ):
                 # r_gg_hm = dPgg_ddeltab_hm_interp / pk_gg_2d
 
                 # # ! from SpaceborneResponses class
+                """
                 resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
                                                          z_grid=z_grid_resp,
                                                          ccl_obj=ccl_obj)
@@ -982,6 +986,7 @@ for zbins in (10, ):
 
                 b1g_hm = resp_obj.b1g_hm
                 b2g_hm = resp_obj.b2g_hm
+                """
 
                 # z_idx = 0
                 # k_idx = 0
@@ -1169,7 +1174,7 @@ for zbins in (10, ):
                         nside=covariance_cfg['Spaceborne_cfg']['nside_mask'],
                         ellmax=general_cfg['ell_max_3x2pt']
                     )
-
+                    
                     # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to decrease
                     # the former by fsky (eq. 29 of https://arxiv.org/pdf/1612.05958)
                     sigma2_b_dict_tosave = {
@@ -1179,7 +1184,7 @@ for zbins in (10, ):
                     np.save(sigma2_b_filename, sigma2_b_dict_tosave, allow_pickle=True)
 
             # ! 4. Perform the integration calling the Julia module
-            print('Performing the 2D integral in Julia...')
+            print('Performing the SSC integral with Julia...')
             start = time.perf_counter()
             cov_ssc_3x2pt_dict_8D = SSC_integral_julia(d2CLL_dVddeltab=d2CLL_dVddeltab,
                                                        d2CGL_dVddeltab=d2CGL_dVddeltab,
@@ -1465,14 +1470,10 @@ for zbins in (10, ):
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix, oc_obj)
         
-        cov_wl_ss = []
-        plt.figure()
-        for zi in range(zbins):
-            cov_wl_ss.append(cov_dict['cov_WL_SS_6D'][0, 0, zi, zi, zi, zi])
-        plt.plot(cov_wl_ss[::-1]/cov_wl_ss[0])
-        plt.show()
-
-        assert False, 'stop here'
+        
+        # np.save('./tests_cov_tmp/cov_dict.npy', cov_dict, allow_pickle=True)
+        
+        assert False, 'stop here to check against previous CLOE covs'
         # ! save for CLOE runs
         # reshape cov in CLOE format
 
@@ -1488,15 +1489,20 @@ for zbins in (10, ):
         # mm.compare_arrays(cov_3x2pt_GO_2DCLOE, cov_3x2pt_g_nbl32_2dcloe, log_diff=True)
         # mm.compare_arrays(cov_3x2pt_GS_2DCLOE, cov_3x2pt_gs_nbl32_2dcloe, log_diff=True)
 
-        # plt.plot(np.diag(cov_3x2pt_g_nbl32_2dcloe), label='cov_3x2pt_g_nbl32_2dcloe')
-        # plt.plot(np.diag(cov_3x2pt_GO_2DCLOE), label='cov_3x2pt_GO_2DCLOE')
+        # plt.figure()
+        # plt.plot(np.diag(cov_3x2pt_g_nbl32_2dcloe), label='diag cov_3x2pt_g_nbl32_2dcloe')
+        # plt.plot(np.diag(cov_3x2pt_GO_2DCLOE), label='diag cov_3x2pt_GO_2DCLOE')
+        # plt.plot(np.diag(cov_3x2pt_GO_2DCLOE)/np.diag(cov_3x2pt_g_nbl32_2dcloe), label='ratio diag cov_3x2pt_GO_2DCLOE')
         # plt.legend()
         # plt.yscale('log')
 
-        # plt.plot(np.diag(cov_3x2pt_gs_nbl32_2dcloe), label='cov_3x2pt_gs_nbl32_2dcloe')
-        # plt.plot(np.diag(cov_3x2pt_GS_2DCLOE), label='cov_3x2pt_GS_2DCLOE')
+        # plt.figure()
+        # plt.plot(np.diag(cov_3x2pt_gs_nbl32_2dcloe), label='diag cov_3x2pt_gs_nbl32_2dcloe')
+        # plt.plot(np.diag(cov_3x2pt_GS_2DCLOE), label='diag cov_3x2pt_GS_2DCLOE')
+        # plt.plot(np.diag(cov_3x2pt_GS_2DCLOE)/np.diag(cov_3x2pt_gs_nbl32_2dcloe), label='ratio diag cov_3x2pt_GS_2DCLOE')
         # plt.legend()
         # plt.yscale('log')
+        
 
         # np.save(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins-v2.npy', cov_3x2pt_GO_2DCLOE)
         # np.save(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins-v2.npy', cov_3x2pt_GS_2DCLOE)

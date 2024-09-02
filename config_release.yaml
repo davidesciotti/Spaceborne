@@ -204,7 +204,7 @@ covariance_cfg:
     save_cov_6D: False # or 10D for the 3x2pt
     save_cov_GO: False
     save_cov_GS: False
-    save_cov_SSC: False
+    save_cov_SSC: True
     save_2DCLOE: False # outermost loop is on the probes
     covariance_ordering_2D: ell_probe_zpair # TODO restore this
     load_CLOE_benchmark_cov: False
@@ -241,7 +241,7 @@ covariance_cfg:
         # ell_mask_filename: ROOT + /common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy
         # cl_mask_filename: ROOT + /common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy
 
-        cl_integral_convention: PySSC # "Euclid" or "PySSC". results are the same
+        cl_integral_convention: Euclid_KE_approximation # "Euclid" or "PySSC" (results are the same) or "Euclid_KE_approximation"
         k_txt_label: 1overMpc
         log10_k_min_sigma2: -4
         log10_k_max_sigma2: 1
@@ -250,10 +250,10 @@ covariance_cfg:
         z_max_ssc_integrands: 3.
         z_steps_ssc_integrands: 512 # this should be high because I have to trace the spikes in sigma2
 
-        load_precomputed_sigma2: True
+        load_precomputed_sigma2: False
         sigma2_b_filename: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_{which_sigma2_b:s}_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}.npy"
-        use_KE_approximation: False # TODO implement this in the Julia module
-        integration_type: "simps" # 'simps' or 'trapz' (which is actually using rectangles)
+        use_KE_approximation: True # TODO implement this in the Julia module
+        integration_type: "simps_KE_approximation" # 'simps' or 'simps_KE_approximation' or 'trapz' (which is actually using rectangles)
 
         separate_universe_responses_filename: "resfun-idBM{idBM:02d}.dat"
         separate_universe_responses_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputSSC/ResFun/{which_pk:s}"
@@ -277,8 +277,8 @@ covariance_cfg:
         cov_suffix: ""
 
         # TODO these have to be tidied up
-        which_sigma2_b: null # mask or spaceborne (with mask) or null (None)
-        nside_mask: 2048
+        which_sigma2_b: polar_cap_on_the_fly # "from_input_mask" or "polar_cap_on_the_fly" or null (None) for flat-sky approx
+        nside_mask: 512
         ell_mask_filename: ROOT + /common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy
         cl_mask_filename: ROOT + /common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy
         # z_grid_sigma2_b_filename: ROOT + /exact_SSC/output/sigma2/z_grid_sigma2_zsteps3000_ISTF.npy
@@ -326,7 +326,7 @@ FM_cfg:
 
     fm_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}"
     fm_txt_filename: fm_txt_filename
-    fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_source:02d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}_pk{which_pk:s}_{survey_area_deg2:d}deg2{fm_and_cov_suffix:s}_vinSU.pickle
+    fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_source:02d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}_pk{which_pk:s}_{survey_area_deg2:d}deg2{fm_and_cov_suffix:s}_{cl_integral_convention:s}.pickle
 
     test_against_vincenzo: False # TODO delete this
     test_against_benchmarks: False # TODO delete this

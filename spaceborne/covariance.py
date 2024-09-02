@@ -9,7 +9,6 @@ from scipy.interpolate import UnivariateSpline, interp1d
 import os
 
 import spaceborne.cl_preprocessing as cl_preprocessing
-import spaceborne.pyccl_cov_class as pyccl_cov
 import spaceborne.sigma2_SSC as sigma2_SSC
 import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib
@@ -330,6 +329,13 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_GC_GS_6D = cov_GC_GO_6D + cov_GC_SS_6D
     cov_WA_GS_6D = cov_WA_GO_6D + cov_WA_SS_6D
     cov_3x2pt_GS_10D = cov_3x2pt_GO_10D + cov_3x2pt_SS_10D
+    
+    
+    cov_dict['cov_WL_SS_6D'] = cov_WL_SS_6D
+    cov_dict['cov_GC_SS_6D'] = cov_GC_SS_6D
+    cov_dict['cov_WL_GO_6D'] = cov_WL_GO_6D
+    cov_dict['cov_GC_GO_6D'] = cov_GC_GO_6D
+    
 
     # ! BNT transform
     if covariance_cfg['cov_BNT_transform']:
@@ -429,6 +435,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     ############################### save in dictionary ########################
     probe_names = ('WL', 'GC', '3x2pt', 'WA', 'XC', '2x2pt')
+    
 
     covs_GO_4D = (cov_WL_GO_4D, cov_GC_GO_4D, cov_3x2pt_GO_4D, cov_WA_GO_4D, cov_XC_GO_4D, cov_2x2pt_GO_4D)
     covs_GS_4D = (cov_WL_GS_4D, cov_GC_GS_4D, cov_3x2pt_GS_4D, cov_WA_GS_4D, cov_XC_GS_4D, cov_2x2pt_GS_4D)

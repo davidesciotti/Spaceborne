@@ -95,7 +95,7 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
 with open('config_release.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
 
-for zbins in (3, ):
+for zbins in (10, ):
     for ep_or_ed in ('EP', ):
 
         # add type/number-specific nuisance/hyperparameters
@@ -243,6 +243,12 @@ for zbins in (3, ):
         assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \
             'ell_max_WL and ell_max_GC must be either (5000, 3000) or (1500, 750)'
         assert general_cfg['which_forecast'] == 'SPV3', 'ISTF forecasts not supported at the moment'
+
+        if cfg['covariance_cfg']['Spaceborne_cfg']['use_KE_approximation']:
+            assert cfg['covariance_cfg']['Spaceborne_cfg']['cl_integral_convention'] == 'Euclid_KE_approximation'
+            assert cfg['covariance_cfg']['Spaceborne_cfg']['integration_type'] == 'simps_KE_approximation'
+            assert cfg['covariance_cfg']['PyCCL_cfg']['which_sigma2_b'] is not None, \
+                'the flat-sky approximation is likely inappropriate for the large Euclid survey area'
 
         if not general_cfg['is_test_run']:
             assert covariance_cfg['survey_area_deg2'] == 13245, 'survey area must be 13245 deg2'
@@ -977,11 +983,6 @@ for zbins in (3, ):
                 b1g_hm = resp_obj.b1g_hm
                 b2g_hm = resp_obj.b2g_hm
 
-
-
-
-
-
                 # z_idx = 0
                 # k_idx = 0
                 # # plt.semilogx(k_grid_resp, r1_mm_sbload_interp[:, z_idx], label=f'r1_mm_sbload_interp includeb2{
@@ -1062,6 +1063,16 @@ for zbins in (3, ):
                 wf_ia = ccl_obj.wf_ia_arr / r_of_z_square[:, None]
                 wf_mu = ccl_obj.wf_mu_arr / r_of_z_square[:, None]
                 wf_lensing = ccl_obj.wf_lensing_arr / r_of_z_square[:, None]
+                
+            elif covariance_cfg['Spaceborne_cfg']['cl_integral_convention'] in ('Euclid', 'Euclid_KE_approximation'):
+                wf_delta = ccl_obj.wf_delta_arr
+                wf_gamma = ccl_obj.wf_gamma_arr
+                wf_ia = ccl_obj.wf_ia_arr
+                wf_mu = ccl_obj.wf_mu_arr
+                wf_lensing = ccl_obj.wf_lensing_arr
+            
+            else:
+                raise ValueError('cl_integral_convention must be either "PySSC" or "Euclid" or "Euclid_KE_approximation')
 
             # ! compute the Pk responses(k, z) in k_limber and z_grid_ssc_integrands
             dPmm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPmm_ddeltab, method='linear')
@@ -1113,11 +1124,11 @@ for zbins in (3, ):
             k_grid_sigma2 = np.logspace(covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'],
                                         covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
                                         covariance_cfg['Spaceborne_cfg']['k_steps_sigma2'])
-            which_sigma2_b = covariance_cfg['Spaceborne_cfg']['which_sigma2_b']
 
+            # TODO find best way to handle these conditions, too much nesting
             sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename'].format(
                 ROOT=ROOT,
-                which_sigma2_b=which_sigma2_b,
+                which_sigma2_b=covariance_cfg['Spaceborne_cfg']['which_sigma2_b'],
                 zmin=covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
                 zmax=covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
                 zsteps=covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'],
@@ -1125,31 +1136,47 @@ for zbins in (3, ):
                 log10kmax=covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
                 ksteps=covariance_cfg['Spaceborne_cfg']['k_steps_sigma2']
             )
-            if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
-                # TODO define a suitable interpolator if the zgrid doesn't match
-                sigma2_b_dict = np.load(sigma2_b_filename, allow_pickle=True).item()
-                cfg_sigma2_b = sigma2_b_dict['cfg']  # TODO check that the cfg matches the one
-                sigma2_b = sigma2_b_dict['sigma2_b']
+            if covariance_cfg['Spaceborne_cfg']['use_KE_approximation']:
+                
+                which_sigma2_b = covariance_cfg['PyCCL_cfg']['which_sigma2_b']
+                ccl_obj.set_sigma2_b(z_grid_ssc_integrands.min(), z_grid_ssc_integrands.max(), len(z_grid_ssc_integrands),
+                        covariance_cfg['fsky'], covariance_cfg['survey_area_deg2'], 
+                        which_sigma2_b=which_sigma2_b, pyccl_cfg=pyccl_cfg)
+                
+                _a , sigma2_b = ccl_obj.sigma2_b_tuple
+                sigma2_b = sigma2_b[::-1]
+                _z = cosmo_lib.a_to_z(_a)[::-1]
+                
+                if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
+                    raise NotImplementedError('TODO')
+                
             else:
-                print('Computing sigma2_b...')
-                sigma2_b = sigma2_SSC.sigma2_z1z2_wrap(
-                    z_grid_ssc_integrands=z_grid_ssc_integrands,
-                    k_grid_sigma2=k_grid_sigma2,
-                    cosmo_ccl=ccl_obj.cosmo_ccl,
-                    which_sigma2_b=which_sigma2_b,
-                    area_deg2_in=covariance_cfg['survey_area_deg2'],
-                    nside=covariance_cfg['Spaceborne_cfg']['nside_mask'],
-                    ellmax=general_cfg['ell_max_3x2pt']
-                )
+                
+                which_sigma2_b = covariance_cfg['Spaceborne_cfg']['which_sigma2_b']
+                if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
+                    # TODO define a suitable interpolator if the zgrid doesn't match
+                    sigma2_b_dict = np.load(sigma2_b_filename, allow_pickle=True).item()
+                    cfg_sigma2_b = sigma2_b_dict['cfg']  # TODO check that the cfg matches the one
+                    sigma2_b = sigma2_b_dict['sigma2_b']
+                else:
+                    print('Computing sigma2_b...')
+                    sigma2_b = sigma2_SSC.sigma2_z1z2_wrap(
+                        z_grid_ssc_integrands=z_grid_ssc_integrands,
+                        k_grid_sigma2=k_grid_sigma2,
+                        cosmo_ccl=ccl_obj.cosmo_ccl,
+                        which_sigma2_b=which_sigma2_b,
+                        area_deg2_in=covariance_cfg['survey_area_deg2'],
+                        nside=covariance_cfg['Spaceborne_cfg']['nside_mask'],
+                        ellmax=general_cfg['ell_max_3x2pt']
+                    )
 
-                # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to decrease
-                # the former by fsky (eq. 29 of https://arxiv.org/pdf/1612.05958)
-
-                sigma2_b_dict_tosave = {
-                    'cfg': cfg,
-                    'sigma2_b': sigma2_b,
-                }
-                np.save(sigma2_b_filename, sigma2_b_dict_tosave, allow_pickle=True)
+                    # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to decrease
+                    # the former by fsky (eq. 29 of https://arxiv.org/pdf/1612.05958)
+                    sigma2_b_dict_tosave = {
+                        'cfg': cfg,
+                        'sigma2_b': sigma2_b,
+                    }
+                    np.save(sigma2_b_filename, sigma2_b_dict_tosave, allow_pickle=True)
 
             # ! 4. Perform the integration calling the Julia module
             print('Performing the 2D integral in Julia...')
@@ -1309,7 +1336,8 @@ for zbins in (3, ):
         # ! ========================================== start PyCCL ===================================================
         if covariance_cfg['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomputed_cov']:
             ccl_obj.set_sigma2_b(z_grid_ssc_integrands.min(), z_grid_ssc_integrands.max(), len(z_grid_ssc_integrands),
-                                 covariance_cfg['fsky'], covariance_cfg['survey_area_deg2'], pyccl_cfg)
+                                 covariance_cfg['fsky'], covariance_cfg['survey_area_deg2'], 
+                                 which_sigma2_b=which_sigma2_b, pyccl_cfg=pyccl_cfg)
 
             for which_ng_cov in pyccl_cfg['which_ng_cov']:
                 warnings.warn('HANDLE BETTER THE DIFFERENT COV TERMS')
@@ -1436,7 +1464,15 @@ for zbins in (3, ):
         # TODO: if already existing, don't compute the covmat, like done above for Sijkl
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix, oc_obj)
+        
+        cov_wl_ss = []
+        plt.figure()
+        for zi in range(zbins):
+            cov_wl_ss.append(cov_dict['cov_WL_SS_6D'][0, 0, zi, zi, zi, zi])
+        plt.plot(cov_wl_ss[::-1]/cov_wl_ss[0])
+        plt.show()
 
+        assert False, 'stop here'
         # ! save for CLOE runs
         # reshape cov in CLOE format
 
@@ -1907,7 +1943,8 @@ for zbins in (3, ):
         if fm_cfg['save_FM_dict']:
             fm_dict_filename = fm_cfg['fm_dict_filename'].format(
                 **variable_specs, fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'],
-                lmax=ell_max_3x2pt, survey_area_deg2=covariance_cfg['survey_area_deg2'])
+                lmax=ell_max_3x2pt, survey_area_deg2=covariance_cfg['survey_area_deg2'],
+                cl_integral_convention=covariance_cfg['Spaceborne_cfg']['cl_integral_convention'])
 
             if covariance_cfg['ng_cov_code'] == 'Spaceborne':
                 fm_dict_filename = fm_dict_filename.replace(
@@ -2131,6 +2168,7 @@ fm_dict_of_dicts = {
     # 'SB_su_maskotf': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_separateuniverse_polarcaponthefly.pickle'),
     'SB_suVin': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_vinSU_separateuniverse.pickle'),
     'SB_suDav_b2ghm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_davSU_b2ghm_separateuniverse.pickle'),
+    'SB_KEapp': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_separateuniverse.pickle'),
 }
 
 labels = list(fm_dict_of_dicts.keys())

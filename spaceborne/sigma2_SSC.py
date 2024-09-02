@@ -160,7 +160,7 @@ def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigm
         ell_mask = np.arange(len(cl_mask))
         # Compute fsky from the mask
         fsky_mask = np.sqrt(cl_mask[0]/(4*np.pi))
-        print('fsky from mask: {fsky:.4f}')
+        print('fsky from mask: {fsky_mask:.4f}')
         
         fsky_in = csmlib.deg2_to_fsky(area_deg2_in)
         assert np.abs(fsky_mask / fsky_in) < 1.01, 'fsky_in is not the same as the fsky of the mask'

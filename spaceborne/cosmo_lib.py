@@ -408,8 +408,8 @@ def cl_integral_prefactor(z, cl_integral_convention, use_h_units, cosmo_ccl):
     afterwards in the actual integration, for example when using simps or trapz.
 
     note that this is not the volume element, but the collection of prefactors:
-    PySSC: Cl = \int dV W^A_pyssc W^B_pyssc Pk = \int dz * dr/dz * r(z)**2 W^A_pyssc W^B_pyssc Pk
-    Euclid: Cl = \int dz/(c*H0*E(z)*r(z)**2) W^A_euc W^B_euc Pk = \int dz * dr/dz * 1/r(z)**2 W^A W^B Pk
+    PySSC: Cl = \int dV W^A_pyssc W^B_pyssc Pk = \int dz * dr/dz * r(z)**2 * W^A_pyssc * W^B_pyssc * Pk
+    Euclid: Cl = \int dz * c/(H0*E(z)*r(z)**2) * W^A_euc * W^B_euc * Pk = \int dz * dr/dz * 1/r(z)**2 * W^A_euc * W^B_euc * Pk
 
     This function is simply returning the terms after dz and excluding the kernels and the Pk.
 
@@ -426,6 +426,8 @@ def cl_integral_prefactor(z, cl_integral_convention, use_h_units, cosmo_ccl):
         cl_integral_prefactor = r_of_z ** 2 * dr_dz  # this is dV/dz
     elif cl_integral_convention == 'Euclid':
         cl_integral_prefactor = 1 / r_of_z ** 2 * dr_dz  # this is not dV/dz! that's why I don't write dV in the function name
+    elif cl_integral_convention == 'Euclid_KE_approximation':
+        cl_integral_prefactor = 1 / r_of_z ** 4 * dr_dz  # this is not dV/dz! that's why I don't write dV in the function name
     else:
         raise ValueError('cl_integral_convention must be either "Euclid" or "PySSC"')
     return cl_integral_prefactor

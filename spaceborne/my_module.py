@@ -1370,7 +1370,6 @@ def matshow(array, title="title", log=False, abs_val=False, threshold=None, only
         title = 'abs ' + title
     if log:  # take the log
         array = np.log10(array)
-        threshold = np.log10(threshold)
         title = 'log10 ' + title
 
     if threshold is not None:

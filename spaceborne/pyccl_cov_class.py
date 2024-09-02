@@ -20,6 +20,7 @@ import spaceborne.cosmo_lib as cosmo_lib
 import spaceborne.wf_cl_lib as wf_cl_lib
 import spaceborne.sigma2_SSC as sigma2_SSC
 import common_cfg.mpl_cfg as mpl_cfg
+import spaceborne.mask_fits_to_cl as mask_utils
 
 
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -221,24 +222,24 @@ class PycclClass():
 
     # ! ==========================================================================================================================================================================
 
-    def set_sigma2_b(self, zmin, zmax, zsteps, f_sky, survey_area_deg2, pyccl_cfg):
+    def set_sigma2_b(self, zmin, zmax, zsteps, f_sky, survey_area_deg2, which_sigma2_b, pyccl_cfg):
 
         self.a_grid_sigma2_b = np.linspace(cosmo_lib.z_to_a(zmax),
                                            cosmo_lib.z_to_a(zmin),
                                            zsteps)
         self.z_grid_sigma2_b = cosmo_lib.z_to_a(self.a_grid_sigma2_b)[::-1]
+        nside = pyccl_cfg['nside_mask']
 
-        if pyccl_cfg['which_sigma2_b'] == 'mask':
+        if which_sigma2_b == 'from_input_mask':
 
+            warnings.warn('should I normalize the mask??')
             print('Computing sigma2_b from mask')
 
-            area_deg2 = survey_area_deg2
-            nside = pyccl_cfg['nside_mask']
 
-            assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(area_deg2), abs_value=True) < 1, 'f_sky is not correct'
+            assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(survey_area_deg2), abs_value=True) < 1, 'f_sky is not correct'
 
-            ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=area_deg2, nside=nside))
-            cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=area_deg2, nside=nside))
+            ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=survey_area_deg2, nside=nside))
+            cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=survey_area_deg2, nside=nside))
 
             # normalization has been checked from https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
             # and is the same as CSST paper https://zenodo.org/records/7813033
@@ -249,35 +250,44 @@ class PycclClass():
 
             self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
 
-        elif pyccl_cfg['which_sigma2_b'] == 'spaceborne':
-            # TODO delete this and move it to the SB class (anzi, in the main for the moment)
+        elif which_sigma2_b == 'polar_cap_on_the_fly':
 
-            print('Computing sigma2_b with Spaceborne, using input mask')
-
-            area_deg2 = pyccl_cfg['area_deg2_mask']
-            nside = pyccl_cfg['nside_mask']
-
-            assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(area_deg2), abs_value=True) < 1, 'f_sky is not correct'
-
-            ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=area_deg2, nside=nside))
-            cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=area_deg2, nside=nside))
+            print('Computing sigma2_b from polar cap generated on the fly')
             warnings.warn('should I normalize the mask??')
+            import healpy as hp
+            
+            # TODO this is repeated code from the sigma2_SSC class; unify
+            
+            # generate the mask and compute its power spectrum
+            mask = mask_utils.generate_polar_cap(survey_area_deg2, nside)
+            hp.mollview(mask, coord=['C', 'E'], title='polar cap generated on-the fly', cmap='inferno_r')
+            cl_mask  = hp.anafast(mask)
+            ell_mask = np.arange(len(cl_mask))
+            
+            # check: compute fsky from the mask
+            fsky_mask = np.sqrt(cl_mask[0]/(4*np.pi))
+            print('fsky from mask: {fsky_mask:.4f}')
+            fsky_in = cosmo_lib.deg2_to_fsky(survey_area_deg2)
+            assert np.abs(fsky_mask / fsky_in) < 1.01, 'fsky_in is not the same as the fsky of the mask'
+            assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(survey_area_deg2), abs_value=True) < 1, 'f_sky is not correct'
+            # assert len(ell_mask) > ellmax, 'the maximum ell from this mask is lower than the needed lmax. Try increasing nside'
+
 
             k_grid_tkka = np.geomspace(pyccl_cfg['k_grid_tkka_min'],
                                        pyccl_cfg['k_grid_tkka_max'],
                                        5000)
 
-            # ! I spoke to Fabien and this is indeed an oversimplification
-            sigma2_b = np.array([sigma2_SSC.sigma2_func(zi, zi, k_grid_tkka, self.cosmo_ccl, 'mask', ell_mask=ell_mask, cl_mask=cl_mask)
-                                # if you pass the mask, you don't need to divide by fsky
-                                 for zi in tqdm(self.z_grid_sigma2_b)])
-            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b[::-1])
+            cl_mask_norm = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * f_sky)**2
+            sigma2_b = ccl.covariances.sigma2_B_from_mask(
+                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, mask_wl=cl_mask_norm, p_of_k_a='delta_matter:delta_matter')
 
-        elif pyccl_cfg['which_sigma2_b'] == None:
+            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
+
+        elif which_sigma2_b == None:
             self.sigma2_b_tuple = None
 
         else:
-            raise ValueError('which_sigma2_b must be either mask, spaceborne or None')
+            raise ValueError('which_sigma2_b must be either "from_input_mask", "polar_cap_on_the_fly" or None')
 
     def initialize_trispectrum(self, which_ng_cov, probe_ordering, pyccl_cfg):
 

@@ -4,6 +4,8 @@ num_cores = multiprocessing.cpu_count()
 os.environ['OMP_NUM_THREADS'] = '32'
 os.environ['NUMBA_NUM_THREADS'] = '32'
 os.environ['NUMBA_PARALLEL_DIAGNOSTICS'] = '4'
+# os.chdir('/home/cosmo/davide.sciotti/data/Spaceborne/')  # for new interactive window
+
 
 from tqdm import tqdm
 from functools import partial
@@ -77,7 +79,7 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
                     print(f"Loading {probe_a}{probe_b}{probe_c}{probe_d}")
                     cov_ssc_3x2pt_dict_8D[(probe_a, probe_b, probe_c, probe_d)] = np.load(
                         f"{folder_name}/{cov_filename.format(probe_a=probe_a, probe_b=probe_b,
-                                                             probe_c=probe_c, probe_d=probe_d)}")
+                                                               probe_c=probe_c, probe_d=probe_d)}")
 
     else:
         cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
@@ -763,7 +765,9 @@ for zbins in (13, ):
 
         # * 2. compute cov using the onecovariance interface class
         start_time = time.perf_counter()
-        if covariance_cfg['ng_cov_code'] == 'OneCovariance':
+        if (covariance_cfg['ng_cov_code'] == 'OneCovariance') or \
+                ((covariance_cfg['ng_cov_code'] == 'Spaceborne') and
+                 covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['cNG']):
 
             print('Start NG cov computation with OneCovariance...')
 
@@ -776,6 +780,7 @@ for zbins in (13, ):
             }
 
             oc_obj = oc_interface.OneCovarianceInterface(ROOT, cfg, variable_specs)
+            oc_obj.ells_sb = ell_dict['ell_3x2pt']
             oc_obj.build_save_oc_ini(ascii_filenames_dict, print_ini=True)
 
             if not covariance_cfg['OneCovariance_cfg']['load_precomputed_cov']:
@@ -1068,14 +1073,14 @@ for zbins in (13, ):
                 wf_ia = ccl_obj.wf_ia_arr / r_of_z_square[:, None]
                 wf_mu = ccl_obj.wf_mu_arr / r_of_z_square[:, None]
                 wf_lensing = ccl_obj.wf_lensing_arr / r_of_z_square[:, None]
-                
+
             elif covariance_cfg['Spaceborne_cfg']['cl_integral_convention'] in ('Euclid', 'Euclid_KE_approximation'):
                 wf_delta = ccl_obj.wf_delta_arr
                 wf_gamma = ccl_obj.wf_gamma_arr
                 wf_ia = ccl_obj.wf_ia_arr
                 wf_mu = ccl_obj.wf_mu_arr
                 wf_lensing = ccl_obj.wf_lensing_arr
-            
+
             else:
                 raise ValueError('cl_integral_convention must be either "PySSC" or "Euclid" or "Euclid_KE_approximation')
 
@@ -1142,21 +1147,21 @@ for zbins in (13, ):
                 ksteps=covariance_cfg['Spaceborne_cfg']['k_steps_sigma2']
             )
             if covariance_cfg['Spaceborne_cfg']['use_KE_approximation']:
-                
+
                 which_sigma2_b = covariance_cfg['PyCCL_cfg']['which_sigma2_b']
                 ccl_obj.set_sigma2_b(z_grid_ssc_integrands.min(), z_grid_ssc_integrands.max(), len(z_grid_ssc_integrands),
-                        covariance_cfg['fsky'], covariance_cfg['survey_area_deg2'], 
-                        which_sigma2_b=which_sigma2_b, pyccl_cfg=pyccl_cfg)
-                
-                _a , sigma2_b = ccl_obj.sigma2_b_tuple
+                                     covariance_cfg['fsky'], covariance_cfg['survey_area_deg2'],
+                                     which_sigma2_b=which_sigma2_b, pyccl_cfg=pyccl_cfg)
+
+                _a, sigma2_b = ccl_obj.sigma2_b_tuple
                 sigma2_b = sigma2_b[::-1]
                 _z = cosmo_lib.a_to_z(_a)[::-1]
-                
+
                 if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
                     raise NotImplementedError('TODO')
-                
+
             else:
-                
+
                 which_sigma2_b = covariance_cfg['Spaceborne_cfg']['which_sigma2_b']
                 if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
                     # TODO define a suitable interpolator if the zgrid doesn't match
@@ -1174,7 +1179,7 @@ for zbins in (13, ):
                         nside=covariance_cfg['Spaceborne_cfg']['nside_mask'],
                         ellmax=general_cfg['ell_max_3x2pt']
                     )
-                    
+
                     # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to decrease
                     # the former by fsky (eq. 29 of https://arxiv.org/pdf/1612.05958)
                     sigma2_b_dict_tosave = {
@@ -1213,7 +1218,7 @@ for zbins in (13, ):
                 if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
                     np.savez_compressed(
                         f'{cov_folder_sb}/{cov_sb_filename.format(probe_a=probe_a,
-                                                                  probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}',
+                                                                    probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}',
                         cov_ssc_3x2pt_dict_8D[key])
 
             # ! check SSC INTEGRANDS
@@ -1341,7 +1346,7 @@ for zbins in (13, ):
         # ! ========================================== start PyCCL ===================================================
         if covariance_cfg['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomputed_cov']:
             ccl_obj.set_sigma2_b(z_grid_ssc_integrands.min(), z_grid_ssc_integrands.max(), len(z_grid_ssc_integrands),
-                                 covariance_cfg['fsky'], covariance_cfg['survey_area_deg2'], 
+                                 covariance_cfg['fsky'], covariance_cfg['survey_area_deg2'],
                                  which_sigma2_b=which_sigma2_b, pyccl_cfg=pyccl_cfg)
 
             for which_ng_cov in pyccl_cfg['which_ng_cov']:
@@ -1469,10 +1474,9 @@ for zbins in (13, ):
         # TODO: if already existing, don't compute the covmat, like done above for Sijkl
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix, oc_obj)
-        
-        
+
         # np.save('./tests_cov_tmp/cov_dict.npy', cov_dict, allow_pickle=True)
-        
+
         assert False, 'stop here to check against previous CLOE covs'
         # ! save for CLOE runs
         # reshape cov in CLOE format
@@ -1502,7 +1506,6 @@ for zbins in (13, ):
         # plt.plot(np.diag(cov_3x2pt_GS_2DCLOE)/np.diag(cov_3x2pt_gs_nbl32_2dcloe), label='ratio diag cov_3x2pt_GS_2DCLOE')
         # plt.legend()
         # plt.yscale('log')
-        
 
         # np.save(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins-v2.npy', cov_3x2pt_GO_2DCLOE)
         # np.save(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins-v2.npy', cov_3x2pt_GS_2DCLOE)

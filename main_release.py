@@ -4,7 +4,10 @@ num_cores = multiprocessing.cpu_count()
 os.environ['OMP_NUM_THREADS'] = '32'
 os.environ['NUMBA_NUM_THREADS'] = '32'
 os.environ['NUMBA_PARALLEL_DIAGNOSTICS'] = '4'
-# os.chdir('/home/cosmo/davide.sciotti/data/Spaceborne/')  # for new interactive window
+
+# jupyter stuff:
+os.chdir('/home/cosmo/davide.sciotti/data/Spaceborne/')  # for new interactive window
+%matplotlib inline
 
 
 from tqdm import tqdm
@@ -77,9 +80,10 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
             for probe_c, probe_d in probe_ordering:
                 if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
                     print(f"Loading {probe_a}{probe_b}{probe_c}{probe_d}")
+                    _cov_filename = cov_filename.format(probe_a=probe_a, probe_b=probe_b,
+                                                        probe_c=probe_c, probe_d=probe_d)
                     cov_ssc_3x2pt_dict_8D[(probe_a, probe_b, probe_c, probe_d)] = np.load(
-                        f"{folder_name}/{cov_filename.format(probe_a=probe_a, probe_b=probe_b,
-                                                               probe_c=probe_c, probe_d=probe_d)}")
+                        f"{folder_name}/{_cov_filename}")
 
     else:
         cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
@@ -158,7 +162,7 @@ for zbins in (13, ):
         covariance_cfg = cfg['covariance_cfg']
         fm_cfg = cfg['FM_cfg']
         pyccl_cfg = covariance_cfg['PyCCL_cfg']
-
+        
         if 'logT' in cfg['cosmology']['FM_ordered_params']:
             assert cfg['cosmology']['FM_ordered_params']['logT'] == cfg['cosmology']['other_params']['camb_extra_parameters']['camb']['HMCode_logT_AGN'], (
                 'Value mismatch for logT_AGN in the parameters definition')
@@ -258,15 +262,18 @@ for zbins in (13, ):
             assert covariance_cfg['which_shape_noise'] == 'per_component', 'which_shape_noise must be per_component'
             assert ell_max_WL == ell_max_3x2pt == 5000, 'all probes should be up to lmax=5000'
             assert general_cfg['which_pk'] == 'HMCodeBar', 'which_pk must be HMCodeBar'
-            assert general_cfg['which_cls'] == 'CLOE', 'which_cls must be "Vincenzo"'
+            assert general_cfg['which_cls'] == 'CLOE', 'which_cls must be "CLOE"'
             assert general_cfg['flat_or_nonflat'] == 'Flat', 'Model must be flat'
             assert covariance_cfg['load_CLOE_benchmark_cov'] is False, 'load_CLOE_benchmark_cov must be False'
-            assert covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'] in (7000, 5000), \
-                'for the actual run, I used z_steps_ssc_integrands == 7000 or 5000'
-            assert cfg['covariance_cfg']['OneCovariance_cfg']['high_precision'] is True
-            assert covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == [
-                'cNG',], 'which_ng_cov must be ["cNG"]'
-            assert covariance_cfg['OneCovariance_cfg']['which_gauss_cov_binning'] == 'OneCovariance', 'which_gauss_cov_binning must be "OneCovariance" for the moment'
+            assert covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'] == 7000, \
+                'for the actual run, I used z_steps_ssc_integrands == 7000'
+            assert cfg['covariance_cfg']['OneCovariance_cfg']['precision_settings'] == 'high_precision'
+            assert cfg['covariance_cfg']['OneCovariance_cfg']['use_OneCovariance_cNG'] is True, \
+                'for the final run you should include the OC cNG term'
+            assert covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['cNG',], \
+                'which_ng_cov must be ["cNG"]'
+            assert covariance_cfg['OneCovariance_cfg']['which_gauss_cov_binning'] == 'OneCovariance', \
+                'which_gauss_cov_binning must be "OneCovariance" for the moment'
             assert zbins == 13, 'zbins must be 13'
             assert ep_or_ed == 'EP', 'ep_or_ed must be "EP"'
 
@@ -767,7 +774,7 @@ for zbins in (13, ):
         start_time = time.perf_counter()
         if (covariance_cfg['ng_cov_code'] == 'OneCovariance') or \
                 ((covariance_cfg['ng_cov_code'] == 'Spaceborne') and
-                 covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['cNG']):
+                 covariance_cfg['OneCovariance_cfg']['use_OneCovariance_cNG']):
 
             print('Start NG cov computation with OneCovariance...')
 
@@ -1216,10 +1223,10 @@ for zbins in (13, ):
             for key in cov_ssc_3x2pt_dict_8D.keys():
                 probe_a, probe_b, probe_c, probe_d = key
                 if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
-                    np.savez_compressed(
-                        f'{cov_folder_sb}/{cov_sb_filename.format(probe_a=probe_a,
-                                                                    probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}',
-                        cov_ssc_3x2pt_dict_8D[key])
+                    _cov_sb_filename = cov_sb_filename.format(probe_a=probe_a, probe_b=probe_b,
+                                                              probe_c=probe_c, probe_d=probe_d)
+                    _filename = f'{cov_folder_sb}/{_cov_sb_filename}'
+                    np.savez_compressed(_filename, cov_ssc_3x2pt_dict_8D[key])
 
             # ! check SSC INTEGRANDS
 
@@ -1475,9 +1482,6 @@ for zbins in (13, ):
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix, oc_obj)
 
-        # np.save('./tests_cov_tmp/cov_dict.npy', cov_dict, allow_pickle=True)
-
-        assert False, 'stop here to check against previous CLOE covs'
         # ! save for CLOE runs
         # reshape cov in CLOE format
 
@@ -1595,34 +1599,42 @@ for zbins in (13, ):
             np.savetxt(f'{cov_folder_vin}/{cov_filename_vin.format(which_ng_cov=which_ng_cov_suffix, probe='3x2pt')}.dat',
                        cov_dict[f'cov_3x2pt_GS_2D'], fmt='%.7e')
 
-        if ep_or_ed == 'EP' and covariance_cfg['ng_cov_code'] == 'Spaceborne' and covariance_cfg['test_against_CLOE_benchmarks'] \
-                and general_cfg['ell_cuts'] is False and which_pk == 'HMCodeBar':
+        # load benchmark cov and check that it matches the one computed here; I am not actually using it
+        if (
+            ep_or_ed == 'EP' and
+            covariance_cfg['ng_cov_code'] == 'Spaceborne' and
+            covariance_cfg['test_against_CLOE_benchmarks'] and
+            not general_cfg['ell_cuts'] and
+            which_pk == 'HMCodeBar' and
+            not general_cfg['BNT_transform']
+        ):
+            
+            # load CLOE benchmarks
+            area_deg2 = covariance_cfg['survey_area_deg2']
+            cov_cloe_bench_2dcloe_G = np.load(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins-{area_deg2:d}deg2.npy')
+            cov_cloe_bench_2dcloe_GSSC = np.load(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins-{area_deg2:d}deg2.npy')
 
-            # load benchmark cov and check that it matches the one computed here; I am not actually using it
-            if not general_cfg['BNT_transform']:
+            # cov_cloe_bench_2d_G = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-Gauss-{nbl_WL_opt}Bins.npy')
+            # cov_cloe_bench_2dcloe_GSSC = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.npy')
 
-                # load CLOE benchmarks
-                cov_cloe_bench_2d_G = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-Gauss-{nbl_WL_opt}Bins.npy')
-                cov_cloe_bench_2dcloe_GSSC = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.npy')
+            # reshape it in dav format
+            cov_bench_2ddav_G = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2dcloe_G, nbl_WL_opt, zbins, 'ell', 'ell')
+            cov_bench_2ddav_GSSC = mm.cov_2d_cloe_to_dav(
+                cov_cloe_bench_2dcloe_GSSC, nbl_WL_opt, zbins, 'ell', 'ell')
 
-                # reshape it in dav format
-                cov_bench_2ddav_G = mm.cov_2d_cloe_to_dav(cov_cloe_bench_2d_G, nbl_WL_opt, zbins, 'ell', 'ell')
-                cov_bench_2ddav_GSSC = mm.cov_2d_cloe_to_dav(
-                    cov_cloe_bench_2dcloe_GSSC, nbl_WL_opt, zbins, 'ell', 'ell')
+            # ell cut, if needed
+            assert cov_dict['cov_3x2pt_GO_2D'].shape == cov_dict['cov_3x2pt_GS_2D'].shape, \
+                'cov_3x2pt_GO_2D and cov_3x2pt_GS_2D should have the same shape'
+            n_cov_elements = cov_dict['cov_3x2pt_GO_2D'].shape[0]
+            cov_bench_2ddav_G_lmax3000 = cov_bench_2ddav_G[:n_cov_elements, :n_cov_elements]
+            cov_bench_2ddav_GSSC_lmax3000 = cov_bench_2ddav_GSSC[:n_cov_elements, :n_cov_elements]
 
-                # ell cut, if needed
-                assert cov_dict['cov_3x2pt_GO_2D'].shape == cov_dict['cov_3x2pt_GS_2D'].shape, \
-                    'cov_3x2pt_GO_2D and cov_3x2pt_GS_2D should have the same shape'
-                n_cov_elements = cov_dict['cov_3x2pt_GO_2D'].shape[0]
-                cov_bench_2ddav_G_lmax3000 = cov_bench_2ddav_G[:n_cov_elements, :n_cov_elements]
-                cov_bench_2ddav_GSSC_lmax3000 = cov_bench_2ddav_GSSC[:n_cov_elements, :n_cov_elements]
-
-                mm.compare_arrays(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_G_lmax3000,
-                                  "cov_dict['cov_3x2pt_GO_2D']", "cov_bench_2ddav_G_lmax3000",
-                                  log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
-                mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_GSSC_lmax3000,
-                                  "cov_dict['cov_3x2pt_GS_2D']", "cov_bench_2ddav_GSSC_lmax3000",
-                                  log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+            mm.compare_arrays(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_G_lmax3000,
+                              "cov_dict['cov_3x2pt_GO_2D']", "cov_bench_2ddav_G_lmax3000",
+                              log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+            mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_GSSC_lmax3000,
+                              "cov_dict['cov_3x2pt_GS_2D']", "cov_bench_2ddav_GSSC_lmax3000",
+                              log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
 
             del cov_bench_2ddav_G_lmax3000, cov_bench_2ddav_GSSC_lmax3000
             gc.collect()

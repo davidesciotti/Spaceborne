@@ -230,7 +230,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     print("Gauss. cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
 
     ######################## COMPUTE SSC COVARIANCE ###############################
-
+    
     start = time.perf_counter()
 
     if ng_cov_code == 'PySSC':
@@ -256,15 +256,23 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
         cov_ssc_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_ssc_sb_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
         cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
+        
+        if covariance_cfg['OneCovariance_cfg']['use_OneCovariance_cNG']:
+            print('Adding cNG covariance from OneCovariance...')
+            
+            # test that oc_obj.cov_cng_oc_3x2pt_10D is not identically zero
+            assert not np.allclose(oc_obj.cov_cng_oc_3x2pt_10D, 0, atol=0, rtol=1e-10), \
+                'OneCovariance covariance matrix is identically zero'
+            
+            cov_3x2pt_SS_10D += oc_obj.cov_cng_oc_3x2pt_10D
 
-    elif ng_cov_code == 'OneCovariance' or \
-            ((ng_cov_code == 'Spaceborne') and
-                (covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == 'cNG')):
 
-        # assert (
-        #     (covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC', 'cNG']) or
-        #     (covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC',])
-        # ), "covariance_cfg['OneCovariance_cfg']['which_ng_cov'] not recognised"
+    elif ng_cov_code == 'OneCovariance':
+
+        assert (
+            covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC', 'cNG'] or
+            covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC',]
+        ), "covariance_cfg['OneCovariance_cfg']['which_ng_cov'] not recognised"
 
         if covariance_cfg['OneCovariance_cfg']['use_OneCovariance_Gaussian']:
 
@@ -280,7 +288,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_3x2pt_SS_10D = oc_obj.cov_ssc_oc_3x2pt_10D
 
         if 'cNG' in covariance_cfg['OneCovariance_cfg']['which_ng_cov']:
-            print('Adding cNG covariance from OneCovariance...')
             cov_3x2pt_SS_10D += oc_obj.cov_cng_oc_3x2pt_10D
 
     elif ng_cov_code == 'PyCCL':

@@ -100,7 +100,7 @@ class OneCovarianceInterface():
         cfg_onecov_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(map(str, mult_shear_bias_list))
 
         # find best ell_max for OC, since it uses a slightly different recipe
-        self.find_best_ellmax_oc(target_ell_array=self.ells_sb)
+        self.find_optimal_ellmax_oc(target_ell_array=self.ells_sb)
         cfg_onecov_ini['covELLspace settings']['ell_max'] = str(self.optimal_ellmax)
         cfg_onecov_ini['covELLspace settings']['ell_max_lensing'] = str(self.optimal_ellmax)
         cfg_onecov_ini['covELLspace settings']['ell_max_clustering'] = str(self.optimal_ellmax)
@@ -242,6 +242,15 @@ class OneCovarianceInterface():
         # note use delim_whitespace=True instead of sep='\s+' if this gives compatibility issues
         self.ells_oc_load = pd.read_csv(f'{self.oc_path}/covariance_list.dat',
                                         usecols=['ell1'], sep='\s+')['ell1'].unique()
+        
+        # check if the saved ells are within 1% of the required ones; I think the saved values are truncated to only 
+        # 2 decimals, so this is a rough comparison
+        try:
+            np.testing.assert_allclose(self.new_ells_oc, self.ells_oc_load, atol=0, rtol=1e-2)
+        except AssertionError as err:
+            print('ell values computed vs loaded for OC are not the same')
+            print(err)
+            
         cov_ell_indices = {ell_out: idx for idx, ell_out in enumerate(self.ells_oc_load)}
 
         probe_idx_dict = {
@@ -409,7 +418,7 @@ class OneCovarianceInterface():
         else:
             raise ValueError('output_dict_dim must be 8D or 10D')
 
-    def find_best_ellmax_oc(self, target_ell_array):
+    def find_optimal_ellmax_oc(self, target_ell_array):
         # Perform the minimization
         result = minimize_scalar(self.objective_function, bounds=[2000, 9000], method='bounded')
 

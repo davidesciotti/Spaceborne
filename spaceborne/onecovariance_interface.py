@@ -395,7 +395,7 @@ class OneCovarianceInterface():
                                                                     probe_ordering=self.cfg['covariance_cfg']['probe_ordering'])
         except FileNotFoundError as err:
             print(err)
-            print('LOADING LMAX=5000 FILES AND CUTTING')
+            print('OC: LOADING LMAX=5000 FILES AND CUTTING')
             filename = self.oc_cfg['cov_filename'].format(ROOT=self.ROOT,
                                             which_ng_cov=which_ng_cov,
                                             probe_a='{probe_a:s}',

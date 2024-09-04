@@ -239,13 +239,14 @@ ind_cross = ind_cross .+ 1
 # this is for the 3x2pt covariance
 probe_combinations = (("L", "L"), ("G", "L"), ("G", "G"))
 
-println("\n*** Computing SSC integral with Julia ****")
+println("\n*** Computing SSC integral in Julia ****")
+println("specs:")
 println("nbl: ", nbl)
 println("zbins: ", zbins)
 println("z_steps: ", z_steps)
 println("probe_combinations: ", probe_combinations)
 println("integration_type: ", integration_type)
-println("*****************")
+println("*****************\n")
 
 # some sanity checks
 @assert length(z_grid) == z_steps
@@ -290,7 +291,7 @@ for row in 1:length(probe_combinations)
         probe_C, probe_D = probe_combinations[col]
 
         if col >= row  # upper triangle and diagonal
-            println("Computing cov_SSC_$(probe_A)$(probe_B)_$(probe_C)$(probe_D), zbins = $(zbins)")
+            println("Computing SSC covariance block $(probe_A)$(probe_B)_$(probe_C)$(probe_D)")
 
             cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)] =
             @time ssc_integral_4d_func(

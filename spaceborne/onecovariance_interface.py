@@ -378,20 +378,41 @@ class OneCovarianceInterface():
         which_gauss_cov_binning = self.oc_cfg['which_gauss_cov_binning']
         variable_specs = deepcopy(self.variable_specs)
         variable_specs.pop('which_ng_cov')
-        filename = self.oc_cfg['cov_filename'].format(ROOT=self.ROOT,
-                                                      which_ng_cov=which_ng_cov,
-                                                      probe_a='{probe_a:s}',
-                                                      probe_b='{probe_b:s}',
-                                                      probe_c='{probe_c:s}',
-                                                      probe_d='{probe_d:s}',
-                                                      nbl=variable_specs['nbl_3x2pt'],
-                                                      lmax=variable_specs['ell_max_3x2pt'],
-                                                      which_gauss_cov_binning=which_gauss_cov_binning,
-                                                      **variable_specs)
+        try:
+            filename = self.oc_cfg['cov_filename'].format(ROOT=self.ROOT,
+                                                        which_ng_cov=which_ng_cov,
+                                                        probe_a='{probe_a:s}',
+                                                        probe_b='{probe_b:s}',
+                                                        probe_c='{probe_c:s}',
+                                                        probe_d='{probe_d:s}',
+                                                        nbl=variable_specs['nbl_3x2pt'],
+                                                        lmax=variable_specs['ell_max_3x2pt'],
+                                                        which_gauss_cov_binning=which_gauss_cov_binning,
+                                                        **variable_specs)
 
-        cov_ng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path=self.oc_path,
-                                                                filename=filename,
-                                                                probe_ordering=self.cfg['covariance_cfg']['probe_ordering'])
+            cov_ng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path=self.oc_path,
+                                                                    filename=filename,
+                                                                    probe_ordering=self.cfg['covariance_cfg']['probe_ordering'])
+        except FileNotFoundError as err:
+            print(err)
+            print('LOADING LMAX=5000 FILES AND CUTTING')
+            filename = self.oc_cfg['cov_filename'].format(ROOT=self.ROOT,
+                                            which_ng_cov=which_ng_cov,
+                                            probe_a='{probe_a:s}',
+                                            probe_b='{probe_b:s}',
+                                            probe_c='{probe_c:s}',
+                                            probe_d='{probe_d:s}',
+                                            nbl=32,
+                                            lmax=5000,
+                                            which_gauss_cov_binning=which_gauss_cov_binning,
+                                            **variable_specs)
+
+            cov_ng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path=self.oc_path,
+                                                                    filename=filename,
+                                                                    probe_ordering=self.cfg['covariance_cfg']['probe_ordering'])
+            for key in cov_ng_oc_3x2pt_dict_8D.keys():
+                cov_ng_oc_3x2pt_dict_8D[key] = cov_ng_oc_3x2pt_dict_8D[key][:29, :29, ...]
+
 
         # reshape
         if output_type == '8D_dict':

@@ -8,6 +8,8 @@ os.environ['NUMBA_PARALLEL_DIAGNOSTICS'] = '4'
 # jupyter stuff:
 os.chdir('/home/cosmo/davide.sciotti/data/Spaceborne/')  # for new interactive window
 %matplotlib inline
+# import niceplots.utils as nicepl
+# nicepl.initPlot()
 
 
 from tqdm import tqdm
@@ -162,7 +164,7 @@ for zbins in (13, ):
         covariance_cfg = cfg['covariance_cfg']
         fm_cfg = cfg['FM_cfg']
         pyccl_cfg = covariance_cfg['PyCCL_cfg']
-        
+
         if 'logT' in cfg['cosmology']['FM_ordered_params']:
             assert cfg['cosmology']['FM_ordered_params']['logT'] == cfg['cosmology']['other_params']['camb_extra_parameters']['camb']['HMCode_logT_AGN'], (
                 'Value mismatch for logT_AGN in the parameters definition')
@@ -265,8 +267,8 @@ for zbins in (13, ):
             assert general_cfg['which_cls'] == 'CLOE', 'which_cls must be "CLOE"'
             assert general_cfg['flat_or_nonflat'] == 'Flat', 'Model must be flat'
             assert covariance_cfg['load_CLOE_benchmark_cov'] is False, 'load_CLOE_benchmark_cov must be False'
-            assert covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'] == 7000, \
-                'for the actual run, I used z_steps_ssc_integrands == 7000'
+            # assert covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'] == 7000, \
+            # 'for the actual run, I used z_steps_ssc_integrands == 7000'
             assert cfg['covariance_cfg']['OneCovariance_cfg']['precision_settings'] == 'high_precision'
             assert cfg['covariance_cfg']['OneCovariance_cfg']['use_OneCovariance_cNG'] is True, \
                 'for the final run you should include the OC cNG term'
@@ -1264,7 +1266,7 @@ for zbins in (13, ):
             except FileNotFoundError as err:
                 print(err)
                 print(f'No covariance file found in {cov_folder_sb}')
-                print('Changing ellmax to 5000 and cutting the last bins')
+                print('Retrying with ellmax=5000 and cutting the last bins')
                 cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
                     path=cov_folder_sb,
                     filename=cov_sb_filename.replace('lmax3000', 'lmax5000'),
@@ -1482,6 +1484,37 @@ for zbins in (13, ):
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix, oc_obj)
 
+        # reshape, plot and save cNG to (my) CLOE_benchmarks folder - this is just for future reference
+        cloe_bench_path = general_cfg['CLOE_benchmarks_path'].format(ROOT=ROOT)
+
+        cov_cng_oc_3x2pt_10d_dict = oc_obj.cov_cng_oc_3x2pt_10D
+        cov_cng_oc_3x2pt_4d = mm.cov_3x2pt_10D_to_4D(
+            cov_cng_oc_3x2pt_10d_dict, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
+        cov_cng_oc_3x2pt_2ddav = mm.cov_4D_to_2D(cov_cng_oc_3x2pt_4d, block_index='vincenzo')
+        cov_cng_oc_3x2pt_2dcloe = mm.cov_4D_to_2DCLOE_3x2pt(cov_cng_oc_3x2pt_4d, zbins, block_index='vincenzo')
+
+        # mm.matshow(cov_cng_oc_3x2pt_2ddav, 'cov_cng_oc_3x2pt_2ddav', log=True)
+        # mm.matshow(cov_cng_oc_3x2pt_2dcloe, log=True, abs_val=False, title='cov_cng_oc_3x2pt_2dcloe')
+        # mm.matshow(mm.cov2corr(cov_cng_oc_3x2pt_2dcloe), log=False, abs_val=False, title='corr_cng_oc_3x2pt_2dcloe')
+
+        # np.save(f'{cloe_bench_path}/CovMat-3x2pt-cNG-32Bins-{area_deg2:d}deg2.npy', cov_cng_oc_3x2pt_2dcloe)
+
+        # load benchmark GSSC CLOE cov, sum to cNG and save
+        cov_gs_3x2pt_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins-13245deg2.npy')
+        cov_gsc_3x2pt_2dcloe = cov_gs_3x2pt_2dcloe + cov_cng_oc_3x2pt_2dcloe
+        
+        mm.matshow(cov_gs_3x2pt_2dcloe, 'cov_gs_3x2pt_2dcloe', log=True)
+        mm.matshow(cov_gsc_3x2pt_2dcloe, 'cov_gsc_3x2pt_2dcloe', log=True)
+        
+        # np.save(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSCcNG-32Bins.npy', cov_gsc_3x2pt_2dcloe)
+        
+        # TODO why does this not work??
+        cov_gsc_3x2pt_4d = mm.cov_2DCLOE_to_4D_3x2pt(cov_gsc_3x2pt_2dcloe, 32, zbins, block_index='vincenzo')
+        cov_gsc_3x2pt_4d = cov_gsc_3x2pt_4d[:29, :29, ...]
+        cov_gsc_3x2pt_2ddav = mm.cov_4D_to_2D(cov_gsc_3x2pt_4d, block_index='vincenzo')
+        mm.matshow(cov_gsc_3x2pt_2ddav, 'cov_gsc_3x2pt_2ddav', log=True)
+
+        # assert False, 'stop here to save cng for CLOE'
         # ! save for CLOE runs
         # reshape cov in CLOE format
 
@@ -1519,7 +1552,6 @@ for zbins in (13, ):
         if covariance_cfg['load_CLOE_benchmark_cov']:
             warnings.warn('OVERWRITING cov_dict WITH CLOE BENCHMARKS')
 
-            cloe_bench_path = general_cfg['CLOE_benchmarks_path'].format(ROOT=ROOT)
             area_deg2 = covariance_cfg['survey_area_deg2']
             cov_3x2pt_g_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins-{area_deg2:d}deg2.npy')
             cov_3x2pt_gs_nbl32_2dcloe = np.load(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins-{area_deg2:d}deg2.npy')
@@ -1533,7 +1565,6 @@ for zbins in (13, ):
                                                                       num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32]
             cov_gc_g_nbl32_2ddav = deepcopy(cov_3x2pt_g_nbl32_2dcloe)[num_elem_auto_nbl32 + num_elem_cross_nbl32:,
                                                                       num_elem_auto_nbl32 + num_elem_cross_nbl32:]
-
             cov_wl_gs_nbl32_2ddav = deepcopy(cov_3x2pt_gs_nbl32_2dcloe)[:num_elem_auto_nbl32, :num_elem_auto_nbl32]
             cov_xc_gs_nbl32_2ddav = deepcopy(cov_3x2pt_gs_nbl32_2dcloe)[num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32,
                                                                         num_elem_auto_nbl32:num_elem_auto_nbl32 + num_elem_cross_nbl32]
@@ -1546,7 +1577,6 @@ for zbins in (13, ):
             cov_wl_g_nbl29_2ddav = cov_wl_g_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
             cov_xc_g_nbl29_2ddav = cov_xc_g_nbl32_2ddav[:num_elem_cross_nbl29, :num_elem_cross_nbl29]
             cov_gc_g_nbl29_2ddav = cov_gc_g_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
-
             cov_wl_gs_nbl29_2ddav = cov_wl_gs_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
             cov_xc_gs_nbl29_2ddav = cov_xc_gs_nbl32_2ddav[:num_elem_cross_nbl29, :num_elem_cross_nbl29]
             cov_gc_gs_nbl29_2ddav = cov_gc_gs_nbl32_2ddav[:num_elem_auto_nbl29, :num_elem_auto_nbl29]
@@ -1596,7 +1626,7 @@ for zbins in (13, ):
                                                                  BNT_transform=str(general_cfg['BNT_transform']),
                                                                  **var_specs_here)
 
-            np.savetxt(f'{cov_folder_vin}/{cov_filename_vin.format(which_ng_cov=which_ng_cov_suffix, probe='3x2pt')}.dat',
+            np.savetxt(f'{cov_folder_vin}/{cov_filename_vin.format(which_ng_cov=which_ng_cov_suffix, probe="3x2pt")}.dat',
                        cov_dict[f'cov_3x2pt_GS_2D'], fmt='%.7e')
 
         # load benchmark cov and check that it matches the one computed here; I am not actually using it
@@ -1608,11 +1638,12 @@ for zbins in (13, ):
             which_pk == 'HMCodeBar' and
             not general_cfg['BNT_transform']
         ):
-            
+
             # load CLOE benchmarks
             area_deg2 = covariance_cfg['survey_area_deg2']
             cov_cloe_bench_2dcloe_G = np.load(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins-{area_deg2:d}deg2.npy')
-            cov_cloe_bench_2dcloe_GSSC = np.load(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins-{area_deg2:d}deg2.npy')
+            cov_cloe_bench_2dcloe_GSSC = np.load(
+                f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins-{area_deg2:d}deg2.npy')
 
             # cov_cloe_bench_2d_G = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-Gauss-{nbl_WL_opt}Bins.npy')
             # cov_cloe_bench_2dcloe_GSSC = np.load(f'{ROOT}/my_cloe_data/CovMat-3x2pt-GaussSSC-{nbl_WL_opt}Bins.npy')
@@ -1970,7 +2001,7 @@ for zbins in (13, ):
             if covariance_cfg['ng_cov_code'] == 'Spaceborne':
                 fm_dict_filename = fm_dict_filename.replace(
                     '.pickle',
-                    f'_{covariance_cfg['Spaceborne_cfg']['which_pk_responses'].replace('_', '')}.pickle'
+                    f'_{covariance_cfg["Spaceborne_cfg"]["which_pk_responses"].replace("_", "")}.pickle'
                 )
 
             mm.save_pickle(f'{fm_folder}/{fm_dict_filename}', fm_dict)
@@ -2006,7 +2037,7 @@ for zbins in (13, ):
         names_params_to_fix = []
         divide_fom_by_10 = True
         include_fom = True
-        which_uncertainty = 'conditional'
+        which_uncertainty = 'marginal'
 
         fix_dz = False
         fix_shear_bias = False
@@ -2116,9 +2147,9 @@ for zbins in (13, ):
             param_names_label = param_names_list[:nparams_toplot] + [fom_label] if include_fom else param_names_list[
                 :nparams_toplot]
             lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_3x2pt']
-            title = '%s %s, $\\ell_{\\rm max} = %i$, zbins %s%i, zsteps_ssc_integral %i $\\sigma_\\epsilon$ %s' % (
+            title = '%s %s, $\\ell_{\\rm max} = %i$, zbins %s%i, zsteps_ssc_integral %i $\\sigma_\\epsilon$ %s \nwhich_uncertainty=%s' % (
                 covariance_cfg['ng_cov_code'], probe,
-                lmax, ep_or_ed, zbins, len(z_grid_ssc_integrands), covariance_cfg['which_shape_noise'])
+                lmax, ep_or_ed, zbins, len(z_grid_ssc_integrands), covariance_cfg['which_shape_noise'], which_uncertainty)
 
             # bar plot
             if include_fom:
@@ -2199,7 +2230,7 @@ keys_toplot = ['FM_WL_GSSC', 'FM_GC_GSSC', 'FM_XC_GSSC', 'FM_3x2pt_GSSC']
 colors = ['tab:blue', 'tab:green', 'tab:orange', 'tab:red', 'tab:cyan', 'tab:grey', 'tab:olive', 'tab:purple']
 mm.compare_fm_constraints(*fm_dict_list, labels=labels, keys_toplot_in=keys_toplot,
                           normalize_by_gauss=True,
-                          which_uncertainty='conditional',
+                          which_uncertainty=which_uncertainty,
                           colors=colors,
                           save_fig=True,
                           fig_path='/home/davide/Scrivania/')

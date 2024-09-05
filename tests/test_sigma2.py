@@ -130,7 +130,7 @@ plt.plot(sigma2_B_tuple_sb_curved_full_sky[0], sigma2_B_tuple_sb_curved_full_sky
 plt.plot(sigma2_B_tuple_pyssc_curved_full_sky[0],
          sigma2_B_tuple_pyssc_curved_full_sky[1], label='pyssc curved full sky', ls='-', marker='o')
 plt.xlabel('$a$')
-plt.ylabel('$\sigma^2_B(a)$')
+plt.ylabel('$\\sigma^2_B(a)$')
 plt.yscale('log')
 plt.legend()
 plt.axvline(cosmo_lib.z_to_a(0.5), ls='--', color='k')
@@ -189,7 +189,7 @@ plt.plot(z_grid_sigma2_SPV3_3000, sigma2_SPV3_3000, label='dav SPV3 3000', ls='-
 plt.yscale('log')
 plt.legend()
 plt.xlabel('z')
-plt.ylabel(r'$\sigma^2$')
+plt.ylabel(r'$\\sigma^2$')
 
 plt.figure()
 diff = mm.percent_diff(sigma2_B_ccl_SPV3, sigma2_dav_SPV3_diag_interp)

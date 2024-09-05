@@ -642,7 +642,7 @@ def compute_cov_ng_with_pyccl(fiducial_pars_dict, probe, which_ng_cov, ell_grid,
         plt.figure()
         plt.plot(sigma2_B_tuple[0], sigma2_B_tuple[1], marker='o')
         plt.xlabel('$a$')
-        plt.ylabel('$\sigma^2_B(a)$')
+        plt.ylabel('$\\sigma^2_B(a)$')
         plt.yscale('log')
         plt.show()
 

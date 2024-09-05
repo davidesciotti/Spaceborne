@@ -29,6 +29,7 @@ class OneCovarianceInterface():
         self.variable_specs = variable_specs
         self.which_gauss_cov_binning = self.oc_cfg['which_gauss_cov_binning']
         self.zbins = self.cfg['general_cfg']['zbins']
+        self.nbl_3x2pt = self.cfg['general_cfg']['nbl_3x2pt']
 
         # set which cov terms to compute from cfg file
         self.compute_ssc = False
@@ -410,8 +411,9 @@ class OneCovarianceInterface():
             cov_ng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path=self.oc_path,
                                                                     filename=filename,
                                                                     probe_ordering=self.cfg['covariance_cfg']['probe_ordering'])
+            
             for key in cov_ng_oc_3x2pt_dict_8D.keys():
-                cov_ng_oc_3x2pt_dict_8D[key] = cov_ng_oc_3x2pt_dict_8D[key][:29, :29, ...]
+                cov_ng_oc_3x2pt_dict_8D[key] = cov_ng_oc_3x2pt_dict_8D[key][:variable_specs['nbl_3x2pt'], :variable_specs['nbl_3x2pt'], ...]
 
 
         # reshape

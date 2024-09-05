@@ -242,14 +242,14 @@ def plot_sigma2(sigma2_arr, z_grid_sigma2):
         plt.plot(z_grid_sigma2, sigma2_arr[z1_idx, :], label=f'$z_1=%.2f$ ' % z_1)
         plt.axvline(z_1, color='k', ls='--', label='$z_1$')
     plt.xlabel('$z_2$')
-    plt.ylabel('$\sigma^2(z_1, z_2)$')  # sigma2 is dimensionless!
+    plt.ylabel('$\\sigma^2(z_1, z_2)$')  # sigma2 is dimensionless!
     plt.legend()
     plt.show()
 
     font_size = 18
     plt.rcParams.update({'font.size': font_size})
     plt.rcParams["legend.fontsize"] = font_size
-    mm.matshow(sigma2_arr, log=True, abs_val=True, title='$\sigma^2(z_1, z_2)$')
+    mm.matshow(sigma2_arr, log=True, abs_val=True, title='$\\sigma^2(z_1, z_2)$')
 
     # z_steps_sigma2 = len(z_grid_sigma2)
     # plt.savefig(f'../output/plots/sigma2_spikes_zsteps{z_steps_sigma2}.pdf', dpi=500, bbox_inches='tight')
@@ -400,7 +400,7 @@ def compare_sigma2_sb_vs_pyssc(z_arr_pyssc, sigma2_pyssc_arr, z_1_idx=100):
     plt.axvline(z_arr_pyssc[z_1_idx], color='k', ls='--', label='$z_1$')
     plt.xlim(0, 2.5)
     plt.xlabel('$z_2$')
-    plt.ylabel('$\sigma^2(z_1, z_2)$')
+    plt.ylabel('$\\sigma^2(z_1, z_2)$')
     plt.legend()
 
 # TODO compute sigma_b with PyCCL for a rought comparison

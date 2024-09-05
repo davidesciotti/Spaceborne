@@ -43,6 +43,9 @@ import spaceborne.sigma2_SSC as sigma2_SSC
 import spaceborne.onecovariance_interface as oc_interface
 import spaceborne.responses as responses
 
+# import niceplot.utils as nicepl
+# nicepl.init()
+
 pp = pprint.PrettyPrinter(indent=4)
 ROOT = os.getenv('ROOT')
 script_start_time = time.perf_counter()

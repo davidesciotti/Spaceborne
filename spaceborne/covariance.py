@@ -82,7 +82,6 @@ def get_ellmax_nbl(probe, general_cfg):
     return ell_max, nbl
 
 
-
 def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix, oc_obj):
     """
     This code computes the Gaussian-only, SSC-only and Gaussian+SSC
@@ -231,7 +230,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     print("Gauss. cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
 
     ######################## COMPUTE SSC COVARIANCE ###############################
-
+    
     start = time.perf_counter()
 
     if ng_cov_code == 'PySSC':
@@ -257,12 +256,22 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
         cov_ssc_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_ssc_sb_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
         cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
+        
+        if covariance_cfg['OneCovariance_cfg']['use_OneCovariance_cNG']:
+            print('Adding cNG covariance from OneCovariance...')
+            
+            # test that oc_obj.cov_cng_oc_3x2pt_10D is not identically zero
+            assert not np.allclose(oc_obj.cov_cng_oc_3x2pt_10D, 0, atol=0, rtol=1e-10), \
+                'OneCovariance covariance matrix is identically zero'
+            
+            cov_3x2pt_SS_10D += oc_obj.cov_cng_oc_3x2pt_10D
+
 
     elif ng_cov_code == 'OneCovariance':
 
         assert (
-            (covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC', 'cNG']) or
-            (covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC',])
+            covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC', 'cNG'] or
+            covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC',]
         ), "covariance_cfg['OneCovariance_cfg']['which_ng_cov'] not recognised"
 
         if covariance_cfg['OneCovariance_cfg']['use_OneCovariance_Gaussian']:
@@ -282,7 +291,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_3x2pt_SS_10D += oc_obj.cov_cng_oc_3x2pt_10D
 
     elif ng_cov_code == 'PyCCL':
-        
+
         print('Using PyCCL non-Gaussian covariance matrices...')
 
         assert (
@@ -295,7 +304,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             ('G', 'L'): False,
             ('L', 'G'): False,
             ('G', 'G'): False,
-            }
+        }
 
         if 'SSC' in covariance_cfg['PyCCL_cfg']['which_ng_cov']:
 
@@ -304,9 +313,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_ssc_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_ssc_ccl_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
             cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
 
-
         if 'cNG' in covariance_cfg['PyCCL_cfg']['which_ng_cov']:
-            
+
             cov_cng_ccl_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
                 covariance_cfg['cov_cng_3x2pt_dict_8D_ccl'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
             cov_cng_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_cng_ccl_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
@@ -329,13 +337,11 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_GC_GS_6D = cov_GC_GO_6D + cov_GC_SS_6D
     cov_WA_GS_6D = cov_WA_GO_6D + cov_WA_SS_6D
     cov_3x2pt_GS_10D = cov_3x2pt_GO_10D + cov_3x2pt_SS_10D
-    
-    
+
     cov_dict['cov_WL_SS_6D'] = cov_WL_SS_6D
     cov_dict['cov_GC_SS_6D'] = cov_GC_SS_6D
     cov_dict['cov_WL_GO_6D'] = cov_WL_GO_6D
     cov_dict['cov_GC_GO_6D'] = cov_GC_GO_6D
-    
 
     # ! BNT transform
     if covariance_cfg['cov_BNT_transform']:
@@ -435,7 +441,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     ############################### save in dictionary ########################
     probe_names = ('WL', 'GC', '3x2pt', 'WA', 'XC', '2x2pt')
-    
 
     covs_GO_4D = (cov_WL_GO_4D, cov_GC_GO_4D, cov_3x2pt_GO_4D, cov_WA_GO_4D, cov_XC_GO_4D, cov_2x2pt_GO_4D)
     covs_GS_4D = (cov_WL_GS_4D, cov_GC_GS_4D, cov_3x2pt_GS_4D, cov_WA_GS_4D, cov_XC_GS_4D, cov_2x2pt_GS_4D)

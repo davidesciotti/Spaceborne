@@ -1347,7 +1347,7 @@ def build_labels(zbins):
     return [galaxy_bias_label, shear_bias_label, zmean_shift_label]
 
 
-def matshow(array, title="title", log=False, abs_val=False, threshold=None, only_show_nans=False, matshow_kwargs={}):
+def matshow(array, title="title", log=True, abs_val=False, threshold=None, only_show_nans=False, matshow_kwargs={}):
     """
     :param array:
     :param title:

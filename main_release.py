@@ -1508,9 +1508,8 @@ for zbins in (13, ):
         
         # np.save(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSCcNG-32Bins.npy', cov_gsc_3x2pt_2dcloe)
         
-        # TODO why does this not work??
-        cov_gsc_3x2pt_4d = mm.cov_2DCLOE_to_4D_3x2pt(cov_gsc_3x2pt_2dcloe, 32, zbins, block_index='vincenzo')
-        cov_gsc_3x2pt_4d = cov_gsc_3x2pt_4d[:29, :29, ...]
+        cov_gsc_3x2pt_4d = mm.cov_2DCLOE_to_4D_3x2pt(cov_gsc_3x2pt_2dcloe, nbl_WL_opt, zbins, block_index='vincenzo')
+        cov_gsc_3x2pt_4d = cov_gsc_3x2pt_4d[:nbl_3x2pt, :nbl_3x2pt, ...]
         cov_gsc_3x2pt_2ddav = mm.cov_4D_to_2D(cov_gsc_3x2pt_4d, block_index='vincenzo')
         mm.matshow(cov_gsc_3x2pt_2ddav, 'cov_gsc_3x2pt_2ddav', log=True)
 
@@ -1588,7 +1587,7 @@ for zbins in (13, ):
             # cut last 3 ell bins
             num_elem_tot_nbl29 = (zpairs_auto * n_probes + zpairs_cross) * nbl_3x2pt
             cov_3x2pt_g_nbl29_2ddav = cov_3x2pt_g_nbl32_2ddav[:num_elem_tot_nbl29, :num_elem_tot_nbl29]
-            cov_3x2pt_gs_nbl29_2ddav = cov_3x2pt_gs_nbl32_2ddav[:num_elem_tot_nbl29, :num_elem_tot_nbl29]
+            cov_3x2pt_gs_nbl29_2ddav = cov_3x2pt_gs_nbl32_2ddav[:num_elem_tot_nbl29, :num_elem_tot_nbl29]            
 
             cov_dict['cov_WL_GO_2D'] = cov_wl_g_nbl29_2ddav
             cov_dict['cov_XC_GO_2D'] = cov_xc_g_nbl29_2ddav

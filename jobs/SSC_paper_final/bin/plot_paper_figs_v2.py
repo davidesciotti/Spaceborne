@@ -80,9 +80,9 @@ params = {'lines.linewidth': 2,
 plt.rcParams.update(params)
 markersize = 4
 
-save_figs = True
+save_figs = False
 
-# ! =========================================== Fig(s). 7 ================================================================
+# ! =========================================== Fig(s). 5-6 ================================================================
 uncert_df = pd.read_pickle(f'{fm_folder}/uncert_df_Opt_marg_vs_cond_for_sylv_barplots.pkl')
 uncert_df.drop_duplicates(inplace=True)
 npar = 8
@@ -154,7 +154,7 @@ for probe in probes:
     # ax.xaxis.set_minor_locator(AutoMinorLocator())
 
     ax.set_axisbelow(True)
-    plt.grid(axis='x', which='both')
+    # plt.grid(axis='x', which='both')
     if probe in ['WL'] and not fix_shear_bias:
         plt.legend(fontsize=36, ncol=2, bbox_to_anchor=(1.02, 1.27))
 
@@ -220,7 +220,7 @@ ax.xaxis.set_ticks_position('both')
 
 ax.set_title(f' ', fontsize=34, pad=15, loc='left')
 ax.set_axisbelow(True)
-plt.grid(axis='x', which='both')
+# plt.grid(axis='x', which='both')
 
 if save_figs:
     plt.savefig(f'{fm_folder}/plots/barplot_FoM_v2.{pic_format}', dpi=dpi, bbox_inches='tight')
@@ -283,7 +283,7 @@ for param_idx, param in enumerate(params_plain):
             axs[i, j].xaxis.set_major_formatter(FormatStrFormatter('%d'))
             axs[i, j].set_xticks(NbZed)
 
-    axs[i, j].grid()
+    # axs[i, j].grid()
     axs[i, j].set_title(f'{params_latex[param_idx]}', pad=10.0, fontsize=panel_titles_fontsize)
 
 # Legend in the bottom
@@ -344,7 +344,7 @@ for probe_idx, probe in enumerate(probes):
         axs[probe_idx].set_xlabel('${\\cal N}_\\mathrm{b}$', fontsize=labelsize)
         axs[probe_idx].set_ylabel('$\\mathcal{R}(\\mathrm{FoM}) \\; \\; {\\rm %s}$' %
                                   probe_tex_dict[probe].replace('$', ''), fontsize=labelsize)
-        axs[probe_idx].grid(True)
+        # axs[probe_idx].grid(True)
         axs[probe_idx].tick_params(labelsize=ticks_size)  # Convert 30 points to inches
 
 # compute EP vs ED variation
@@ -396,8 +396,8 @@ axs[0].set_xlabel('$\\epsilon_b \\, [\%]$', fontsize=labelsize)
 axs[1].set_xlabel('$\\epsilon_b \\, [\%]$', fontsize=labelsize)
 axs[0].set_ylabel('${\\rm FoM}  \\; \\; {\\rm 3}\\times 2 {\\rm pt}$', fontsize=labelsize)
 axs[1].set_ylabel('$\\mathcal{R}(\\mathrm{FoM}) \\; \\; {\\rm 3}\\times 2 {\\rm pt}$', fontsize=labelsize)
-axs[0].grid(True)
-axs[1].grid(True)
+# axs[0].grid(True)
+# axs[1].grid(True)
 axs[0].tick_params(labelsize=ticks_size)
 axs[1].tick_params(labelsize=ticks_size)
 
@@ -423,7 +423,6 @@ axs[1].add_artist(legend1)
 if save_figs:
     plt.savefig(f'{fm_folder}/plots/FoM_vs_epsb_and_ratio_v2.pdf', dpi=dpi, bbox_inches='tight')
 plt.show()
-
 
 # ! =========================================== Fig. 12 ================================================================
 
@@ -451,7 +450,6 @@ plt.scatter(eps_b_grid * 100, sigma_m_grid * 1e4, c=fom_gs_grid / fom_opt_3x2pt_
             cmap='plasma', s=30)
 plt.xlim(xlim)
 
-plt.grid()
 norm = plt.Normalize(vmin=levels[0], vmax=levels[-1])
 sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
 sm.set_array([])
@@ -480,7 +478,6 @@ legend_elements = [plt.Line2D([0], [0], color=contour.cmap(contour.norm(level)),
                               label=f'FoM$_{{\\rm GS}}$/FoM$_{{\\rm ref}}$ = {level:.2f}')
                    for level in levels]
 ax.legend(handles=legend_elements, loc='upper right', fontsize=legendsize)
-ax.grid()
 
 
 plt.savefig(f'{fm_folder}/plots/epsb_sigmam_contour_v2.pdf', dpi=dpi, bbox_inches='tight')

@@ -171,7 +171,7 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
 
     # elif not second_axis:
     plt.figure(figsize=figsize)
-    plt.grid(zorder=0)
+    # plt.grid(zorder=0)
     plt.rcParams['axes.axisbelow'] = True
 
     for bar_idx in range(no_cases):
@@ -188,8 +188,9 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
     plt.ylabel(ylabel, fontsize=fontsize + 5)
     plt.xticks(range(nparams), param_names_label, rotation=45, fontsize=fontsize + 5)
     plt.yticks(fontsize=fontsize)
-    plt.title(title)
+    plt.title(title, fontsize=fontsize)
     plt.legend(fontsize=fontsize, loc='upper center', ncols=3, bbox_to_anchor=(0.5, 1.15))
+    # plt.legend(fontsize=fontsize)
     plt.show()
 
 def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_background, label_foreground, 

@@ -252,7 +252,9 @@ def check_if_ref_case():
         assert plot_uncert_dav is True, f'plot_uncert_dav must be True for the reference case'
     elif flat_or_nonflat == 'NonFlat':
         assert plot_uncert_dav is False, f'gal_bias_prior must be False for the reference case'
-
+    assert general_cfg['use_only_auto_z_for_GC'] is False, f'use_only_auto_z_for_GC must be False for the reference case'
+    assert general_cfg['cl_ell_cuts'] is False, f'cov_ell_cuts must be False for the reference case'
+    assert covariance_cfg['cov_ell_cuts'] is False, f'cov_ell_cuts must be False for the reference case'
 
 # ======================================================================================================================
 # ======================================================================================================================
@@ -1014,19 +1016,22 @@ if flat_or_nonflat == 'Flat':
     derivatives_folder = fm_cfg['derivatives_folder'].format(**variable_specs, ROOT=ROOT, probe='{probe:s}')
 
     for param in param_names_wl:
+        der_folder = derivatives_folder.format(probe='WLO')
         der_name = derivatives_filename.format(probe='WLO', param_name=param, **variable_specs)
-        dcl_wl_1d = np.genfromtxt(f'{derivatives_folder}/{der_name}')
+        dcl_wl_1d = np.genfromtxt(f'{der_folder}/{der_name}')
         dC_dict_LL_3D[param] = cl_utils.cl_SPV3_1D_to_3D(dcl_wl_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
         dC_dict_WA_3D[param] = dC_dict_LL_3D[param][nbl_GC:nbl_WL]
 
     for param in param_names_gc:
+        der_folder = derivatives_folder.format(probe='GCO')
         der_name = derivatives_filename.format(probe='GCO', param_name=param, **variable_specs)
-        dcl_gc_1d = np.genfromtxt(f'{derivatives_folder}/{der_name}')
+        dcl_gc_1d = np.genfromtxt(f'{der_folder}/{der_name}')
         dC_dict_GG_3D[param] = cl_utils.cl_SPV3_1D_to_3D(dcl_gc_1d, 'GC', nbl_WL_opt, zbins)[:nbl_GC, :, :]
 
     for param in param_names_3x2pt:
+        der_folder = derivatives_folder.format(probe='3x2pt')
         der_name = derivatives_filename.format(probe='3x2pt', param_name=param, **variable_specs)
-        dcl_3x2pt_1d = np.genfromtxt(f'{derivatives_folder}/{der_name}')
+        dcl_3x2pt_1d = np.genfromtxt(f'{der_folder}/{der_name}')
         dC_dict_3x2pt_5D[param] = cl_utils.cl_SPV3_1D_to_3D(
             dcl_3x2pt_1d, '3x2pt', nbl_WL_opt, zbins)[:, :, :nbl_3x2pt, :, :]
 
@@ -1533,17 +1538,6 @@ print(tabulate(data, headers=titles, tablefmt="pretty"))
 a2l.to_ltx(np.array(table, dtype=float), frmt='{:6.3f}', print_out=True)
 data_plt = np.array(data)[:, 1:].astype(float)
 
-# data_plt = np.zeros((3, len(param_names_dict_fine['tot'])))
-# perc_diff_dict = {}
-# for probe_idx, probe in enumerate(probes):
-#     perc_diff_dict[probe] = {param_names_dict_fine[probe][idx]: uncert_dict[f'perc_diff_{probe}_G'][idx]
-#                              for idx in range(len(param_names_dict_fine[probe]))}
-
-#     for param_idx, param_name in enumerate(param_names_dict_fine['tot']):
-#         try:
-#             data_plt[probe_idx, param_idx] = perc_diff_dict[probe][param_name]
-#         except KeyError:
-#             data_plt[probe_idx, param_idx] = 0
 
 # print(f"SSC % increase {which_uncertainty} {which_case}:")
 # data = []
@@ -1562,23 +1556,35 @@ data_plt = np.array(data)[:, 1:].astype(float)
 #     data.append([probe] + ratios + [fom])
 # print(tabulate(data, headers=titles, tablefmt="pretty"))
 
-# ! Fig. 6
-# pars_toplot_start = 8
-# pars_toplot_end = 31
-# title = ''
-# param_names_label = param_names_list[pars_toplot_start:pars_toplot_end]
-# param_names_labels_tex = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['IA_labels_TeX'] + \
-#     mpl_cfg.general_dict['galaxy_bias_labels_TeX'] + mpl_cfg.general_dict['shear_bias_labels_TeX']
-# plot_lib.bar_plot(data_plt[:, pars_toplot_start:pars_toplot_end], title=title,
-#                   param_names_label=param_names_labels_tex[pars_toplot_start:
-#                                                            pars_toplot_end], divide_fom_by_10_plt=False,
-#                   nparams=len(param_names_label), label_list=['WL', 'GCph', '3$\\times$2pt'],
-#                   ylabel='$[ {\\cal R}(\\theta) - 1 ] \\times 100$', logy=True, figsize=(15.5, 6.2), fontsize=20)
-# plt.savefig(f'{fm_folder}/plots/davide_paper_update_shearbias_histo_nuisance_nbl20_Opt_v2.png', format='png', bbox_inches='tight', dpi=500)
-# plt.show()
+# ! Fig. 8 (nuisance bar plot)
+data_plt = np.zeros((3, len(param_names_dict_fine['tot'])))
+perc_diff_dict = {}
+for probe_idx, probe in enumerate(probes):
+    perc_diff_dict[probe] = {param_names_dict_fine[probe][idx]: uncert_dict[f'perc_diff_{probe}_G'][idx]
+                             for idx in range(len(param_names_dict_fine[probe]))}
+
+    for param_idx, param_name in enumerate(param_names_dict_fine['tot']):
+        try:
+            data_plt[probe_idx, param_idx] = perc_diff_dict[probe][param_name]
+        except KeyError:
+            data_plt[probe_idx, param_idx] = 0
+
+pars_toplot_start = 8
+pars_toplot_end = 31
+title = ''
+param_names_label = param_names_list[pars_toplot_start:pars_toplot_end]
+param_names_labels_tex = mpl_cfg.general_dict['cosmo_labels_TeX'] + mpl_cfg.general_dict['IA_labels_TeX'] + \
+    mpl_cfg.general_dict['galaxy_bias_labels_TeX'] + mpl_cfg.general_dict['shear_bias_labels_TeX']
+plot_lib.bar_plot(data_plt[:, pars_toplot_start:pars_toplot_end], title=title,
+                  param_names_label=param_names_labels_tex[pars_toplot_start:
+                                                           pars_toplot_end], divide_fom_by_10_plt=False,
+                  nparams=len(param_names_label), label_list=['WL', 'GCph', '3$\\times$2pt'],
+                  ylabel='$[ {\\cal R}(\\theta) - 1 ] \\times 100$', logy=True, figsize=(15.5, 6.2), fontsize=20)
+plt.savefig(f'{fm_folder}/plots/davide_paper_update_shearbias_histo_nuisance_nbl20_Opt_v2.png', format='png', bbox_inches='tight', dpi=500)
+plt.show()
 
 
-# ! Fig. 5
+# ! Fig. 7 (triangle plot)
 if opt_or_pes == 'Opt':
     pars_toplot = 8
     param_names_labels_tex = mpl_cfg.general_dict['cosmo_labels_TeX'][:pars_toplot]

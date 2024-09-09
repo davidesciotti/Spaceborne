@@ -166,11 +166,12 @@ def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
 
 
 def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_gauss, which_uncertainty, 
-                           colors, nparams_toplot=8, save_fig=False, fig_path=None):
+                           reference, colors, nparams_toplot_in=8, save_fig=False, fig_path=None):
 
     masked_fm_dict_list = []
     masked_fid_pars_dict_list = []
     uncertainties_dict = {}
+    fom_dict = {}
     
 
     assert keys_toplot_in == 'all' or type(keys_toplot_in) == list, 'keys_toplot must be a list or "all"'
@@ -196,19 +197,28 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
                                                                             remove_null_rows_cols=True)
         masked_fm_dict_list.append(masked_fm_dict)
         masked_fid_pars_dict_list.append(masked_fid_pars_dict)
+    print(keys_toplot)
 
     # compute reference uncertainties
     for key in keys_toplot:
+        nparams_toplot = nparams_toplot_in 
         param_names = list(masked_fid_pars_dict_list[0][key].keys())[:nparams_toplot]
         uncertainties_dict[key] = np.array([uncertainties_fm_v2(masked_fm_dict[key], fiducials_dict=masked_fid_pars_dict[key],
                                                                    which_uncertainty=which_uncertainty, normalize=True)[:nparams_toplot]
                                             for masked_fm_dict, masked_fid_pars_dict in zip(masked_fm_dict_list, masked_fid_pars_dict_list)])
-
+        w0wa_idxs = (param_names.index('wz'), param_names.index('wa'))
+        fom_dict[key] = np.array([compute_FoM(masked_fm_dict[key], w0wa_idxs=w0wa_idxs) for masked_fm_dict in masked_fm_dict_list])
+        uncertainties_dict[key] = np.column_stack((uncertainties_dict[key], fom_dict[key]))
+    param_names.append('FoM')
 
     keys_toplot = keys_toplot if keys_toplot_in == 'all' else keys_toplot_in
     
     # plot, and if necessary normalize by the G-only uncertainty
     for key in keys_toplot:
+        probe = key.split('_')[1]
+        print('key: ', key)
+        print('len uncertainties_dict[fFM__G]: ', len(uncertainties_dict[f'FM_{probe}_G']))
+        print('len uncertainties_dict[key]: ', len(uncertainties_dict[key]))
 
         ylabel = 'rel. unc. [%]'
         if normalize_by_gauss and not key.endswith('G'):
@@ -224,19 +234,33 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
         ax[0].set_title(f'{which_uncertainty} uncertainties, {key}')
         for i, uncert in enumerate(uncertainties_dict[key]):
             ax[0].scatter(param_names, uncert, label=f'{labels[i]}', marker='o', c=colors[i], alpha=0.6)
-        ax[0].legend(ncol=1, loc='center right', bbox_to_anchor=(1.22, 0.5))
+        ax[0].legend(ncol=1, loc='center right', bbox_to_anchor=(1.38, 0.))
         ax[0].set_ylabel(ylabel)
         ax[0].grid()
+        
+        start_idx = 0
+        title_str = reference
+        if reference == 'first_key':
+            ref = uncertainties_dict[key][0]
+            start_idx = 1
+            title_str = labels[0]
+        elif reference == 'median':
+            ref = np.median(uncertainties_dict[key], axis=0)
+        elif reference == 'mean':
+            ref = np.mean(uncertainties_dict[key], axis=0)
+        else:
+            raise ValueError('reference must be one of "first_key", "median", or "mean"')
+        
 
         if len(uncertainties_dict[key]) > 1:
-            diffs = [percent_diff(uncert, uncertainties_dict[key][0]) for uncert in uncertainties_dict[key][1:]]
+            diffs = [percent_diff(uncert, ref) for uncert in uncertainties_dict[key][start_idx:]]
 
             for i, diff in enumerate(diffs):
-                ax[1].scatter(param_names, diff, marker='o', c=colors[i + 1], alpha=0.6)
-            ax[1].fill_between((0, nparams_toplot - 1), -10, 10, color='k', alpha=0.1, label='$\\pm 10\\%$')
+                ax[1].scatter(param_names, diff, marker='o', c=colors[i + start_idx], alpha=0.6)
+            ax[1].fill_between((0, nparams_toplot), -10, 10, color='k', alpha=0.1, label='$\\pm 10\\%$')
 
-        ax[1].set_ylabel(f'% diff wrt {labels[0]}')
-        ax[1].legend()
+        ax[1].set_ylabel(f'% diff wrt\n{title_str}')
+        ax[1].legend(ncol=1, loc='center right', bbox_to_anchor=(1.38, 0.5))
         ax[1].grid()
         
         if save_fig:

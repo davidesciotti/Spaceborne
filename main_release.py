@@ -6,20 +6,18 @@ os.environ['NUMBA_NUM_THREADS'] = '32'
 os.environ['NUMBA_PARALLEL_DIAGNOSTICS'] = '4'
 
 # jupyter stuff:
-os.chdir('/home/cosmo/davide.sciotti/data/Spaceborne/')  # for new interactive window
-%matplotlib inline
+# os.chdir('/home/cosmo/davide.sciotti/data/Spaceborne/')  # for new interactive window
+# %matplotlib inline
 # import niceplots.utils as nicepl
 # nicepl.initPlot()
 
 
-from tqdm import tqdm
 from functools import partial
 from collections import OrderedDict
 import numpy as np
 import time
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
-import configparser
 import warnings
 import gc
 import yaml
@@ -90,7 +88,6 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
                     cov_ssc_3x2pt_dict_8D[(probe_a, probe_b, probe_c, probe_d)] = np.load(
                         f"{folder_name}/{_cov_filename}")
 
-
     else:
         cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
             path=f'{folder_name}',
@@ -107,7 +104,7 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
 with open('config_release.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
 
-for zbins in (10, ):
+for zbins in (3, ):
     for ep_or_ed in ('EP', ):
 
         # add type/number-specific nuisance/hyperparameters
@@ -782,7 +779,6 @@ for zbins in (10, ):
                 ((covariance_cfg['ng_cov_code'] == 'Spaceborne') and
                  covariance_cfg['OneCovariance_cfg']['use_OneCovariance_cNG']):
 
-
             print('Start NG cov computation with OneCovariance...')
 
             # TODO this should be defined globally...
@@ -1087,14 +1083,14 @@ for zbins in (10, ):
                 wf_ia = ccl_obj.wf_ia_arr / r_of_z_square[:, None]
                 wf_mu = ccl_obj.wf_mu_arr / r_of_z_square[:, None]
                 wf_lensing = ccl_obj.wf_lensing_arr / r_of_z_square[:, None]
-                
+
             elif covariance_cfg['Spaceborne_cfg']['cl_integral_convention'] in ('Euclid', 'Euclid_KE_approximation'):
                 wf_delta = ccl_obj.wf_delta_arr
                 wf_gamma = ccl_obj.wf_gamma_arr
                 wf_ia = ccl_obj.wf_ia_arr
                 wf_mu = ccl_obj.wf_mu_arr
                 wf_lensing = ccl_obj.wf_lensing_arr
-            
+
             else:
                 raise ValueError('cl_integral_convention must be either "PySSC" or "Euclid" or "Euclid_KE_approximation')
 
@@ -1126,6 +1122,27 @@ for zbins in (10, ):
             dPgg_ddeltab_klimb = np.array(
                 [dPgg_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
                     ell_dict['ell_GC']])
+
+            # print('saving integrands...')
+            # path = '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/check_ssc_integrands'
+            # Pmm_response = np.load(f'{path}/Pmm_response.npy', )
+            # survey_variance = np.load(f'{path}/survey_variance.npy', )
+            # weight = np.load(f'{path}/weight.npy', )
+            # los_integration_chi = np.load(f'{path}/los_integration_chi.npy')
+            # # los_integration_z = np.load(f'{path}/los_integration_z.npy')
+            # ellrange = np.load(f'{path}/ellrange.npy')
+
+            # plt.figure()
+            # plt.plot(los_integration_chi, Pmm_response[:, 0], label='OC')
+            # plt.plot(cosmo_lib.ccl_comoving_distance(z_grid_ssc_integrands, use_h_units=False, cosmo_ccl = ccl_obj.cosmo_ccl), dPmm_ddeltab_klimb[0, :], label='SB')
+            # plt.title('Pmm_response')
+            # plt.legend()
+
+            # plt.figure()
+            # plt.plot(los_integration_chi, survey_variance, marker='.')
+            # plt.title('survey_variance')
+
+            # assert False, 'stop here to check against OC responses'
 
             # ! volume element
             cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(z_grid_ssc_integrands,
@@ -1161,21 +1178,21 @@ for zbins in (10, ):
                 ksteps=covariance_cfg['Spaceborne_cfg']['k_steps_sigma2']
             )
             if covariance_cfg['Spaceborne_cfg']['use_KE_approximation']:
-                
+
                 which_sigma2_b = covariance_cfg['PyCCL_cfg']['which_sigma2_b']
                 ccl_obj.set_sigma2_b(z_grid_ssc_integrands.min(), z_grid_ssc_integrands.max(), len(z_grid_ssc_integrands),
-                        covariance_cfg['fsky'], covariance_cfg['survey_area_deg2'], 
-                        which_sigma2_b=which_sigma2_b, pyccl_cfg=pyccl_cfg)
-                
-                _a , sigma2_b = ccl_obj.sigma2_b_tuple
+                                     covariance_cfg['fsky'], covariance_cfg['survey_area_deg2'],
+                                     which_sigma2_b=which_sigma2_b, pyccl_cfg=pyccl_cfg)
+
+                _a, sigma2_b = ccl_obj.sigma2_b_tuple
                 sigma2_b = sigma2_b[::-1]
                 _z = cosmo_lib.a_to_z(_a)[::-1]
-                
+
                 if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
                     raise NotImplementedError('TODO')
-                
+
             else:
-                
+
                 which_sigma2_b = covariance_cfg['Spaceborne_cfg']['which_sigma2_b']
                 if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
                     # TODO define a suitable interpolator if the zgrid doesn't match
@@ -1360,7 +1377,7 @@ for zbins in (10, ):
         # ! ========================================== start PyCCL ===================================================
         if covariance_cfg['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomputed_cov']:
             ccl_obj.set_sigma2_b(z_grid_ssc_integrands.min(), z_grid_ssc_integrands.max(), len(z_grid_ssc_integrands),
-                                 covariance_cfg['fsky'], covariance_cfg['survey_area_deg2'], 
+                                 covariance_cfg['fsky'], covariance_cfg['survey_area_deg2'],
                                  which_sigma2_b=which_sigma2_b, pyccl_cfg=pyccl_cfg)
 
             for which_ng_cov in pyccl_cfg['which_ng_cov']:
@@ -1488,44 +1505,39 @@ for zbins in (10, ):
         # TODO: if already existing, don't compute the covmat, like done above for Sijkl
         cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                             ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix, oc_obj)
-        
-        cov_wl_ss = []
-        plt.figure()
-        for zi in range(zbins):
-            cov_wl_ss.append(cov_dict['cov_WL_SS_6D'][0, 0, zi, zi, zi, zi])
-        plt.plot(cov_wl_ss[::-1]/cov_wl_ss[0])
-        plt.show()
 
-        assert False, 'stop here'
         # ! save for CLOE runs
-        # reshape cov in CLOE format
+        if covariance_cfg['save_CLOE_benchmark_cov']:
 
-        # mm.matshow(cov_dict['cov_3x2pt_GO_2D'], log=True, abs_val=False, title='cov_GO_3x2pt')
-        # mm.matshow(cov_dict['cov_3x2pt_GS_2D'], log=True, abs_val=False, title='cov_GS_3x2pt')
+            assert general_cfg['ell_max_3x2pt'] == 5000, 'ell_max_3x2pt should be == 5000 for the CLOE bench case'
 
-        # cov_3x2pt_GO_2DCLOE = mm.cov_2d_dav_to_cloe(cov_dict['cov_3x2pt_GO_2D'], nbl_3x2pt, zbins, 'ell', 'ell')
-        # cov_3x2pt_GS_2DCLOE = mm.cov_2d_dav_to_cloe(cov_dict['cov_3x2pt_GS_2D'], nbl_3x2pt, zbins, 'ell', 'ell')
+            # reshape cov in CLOE format
+            mm.matshow(cov_dict['cov_3x2pt_GO_2D'], log=True, abs_val=False, title='cov_GO_3x2pt pre-reshape')
+            mm.matshow(cov_dict['cov_3x2pt_GS_2D'], log=True, abs_val=False, title='cov_GS_3x2pt pre-reshape')
 
-        # mm.matshow(cov_3x2pt_GO_2DCLOE, log=True, abs_val=False, title='cov_GO_3x2pt_2DCLOE')
-        # mm.matshow(cov_3x2pt_GS_2DCLOE, log=True, abs_val=False, title='cov_GS_3x2pt_2DCLOE')
+            cov_3x2pt_GO_2DCLOE = mm.cov_2d_dav_to_cloe(cov_dict['cov_3x2pt_GO_2D'], nbl_3x2pt, zbins, 'ell', 'ell')
+            cov_3x2pt_GS_2DCLOE = mm.cov_2d_dav_to_cloe(cov_dict['cov_3x2pt_GS_2D'], nbl_3x2pt, zbins, 'ell', 'ell')
 
-        # mm.compare_arrays(cov_3x2pt_GO_2DCLOE, cov_3x2pt_g_nbl32_2dcloe, log_diff=True)
-        # mm.compare_arrays(cov_3x2pt_GS_2DCLOE, cov_3x2pt_gs_nbl32_2dcloe, log_diff=True)
+            mm.matshow(cov_3x2pt_GO_2DCLOE, log=True, abs_val=False, title='cov_GO_3x2pt post-reshape')
+            mm.matshow(cov_3x2pt_GS_2DCLOE, log=True, abs_val=False, title='cov_GS_3x2pt post-reshape')
 
-        # plt.plot(np.diag(cov_3x2pt_g_nbl32_2dcloe), label='cov_3x2pt_g_nbl32_2dcloe')
-        # plt.plot(np.diag(cov_3x2pt_GO_2DCLOE), label='cov_3x2pt_GO_2DCLOE')
-        # plt.legend()
-        # plt.yscale('log')
+            np.save(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins-v2.npy', cov_3x2pt_GO_2DCLOE)
+            np.save(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins-v2.npy', cov_3x2pt_GS_2DCLOE)
 
-        # plt.plot(np.diag(cov_3x2pt_gs_nbl32_2dcloe), label='cov_3x2pt_gs_nbl32_2dcloe')
-        # plt.plot(np.diag(cov_3x2pt_GS_2DCLOE), label='cov_3x2pt_GS_2DCLOE')
-        # plt.legend()
-        # plt.yscale('log')
+            # compare against the saved ones - this requires executing the bit of code below this block,
+            # or it will give error
+            mm.compare_arrays(cov_3x2pt_GO_2DCLOE, cov_3x2pt_g_nbl32_2dcloe, log_diff=True)
+            mm.compare_arrays(cov_3x2pt_GS_2DCLOE, cov_3x2pt_gs_nbl32_2dcloe, log_diff=True)
 
-        # np.save(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins-v2.npy', cov_3x2pt_GO_2DCLOE)
-        # np.save(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins-v2.npy', cov_3x2pt_GS_2DCLOE)
+            plt.plot(np.diag(cov_3x2pt_g_nbl32_2dcloe), label='cov_3x2pt_g_nbl32_2dcloe')
+            plt.plot(np.diag(cov_3x2pt_GO_2DCLOE), label='cov_3x2pt_GO_2DCLOE')
+            plt.legend()
+            plt.yscale('log')
 
-        # assert False, 'stop here to check CLOE cov format'
+            plt.plot(np.diag(cov_3x2pt_gs_nbl32_2dcloe), label='cov_3x2pt_gs_nbl32_2dcloe')
+            plt.plot(np.diag(cov_3x2pt_GS_2DCLOE), label='cov_3x2pt_GS_2DCLOE')
+            plt.legend()
+            plt.yscale('log')
 
         if covariance_cfg['load_CLOE_benchmark_cov']:
             warnings.warn('OVERWRITING cov_dict WITH CLOE BENCHMARKS')
@@ -1609,7 +1621,7 @@ for zbins in (10, ):
 
             np.savetxt(f'{cov_folder_vin}/{cov_filename_vin.format(which_ng_cov=which_ng_cov_suffix, probe='3x2pt')}.dat',
                        cov_dict[f'cov_3x2pt_GS_2D'], fmt='%.7e')
-        
+
         # load benchmark cov and check that it matches the one computed here; I am not actually using it
         if (
             ep_or_ed == 'EP' and
@@ -1637,11 +1649,11 @@ for zbins in (10, ):
             cov_bench_2ddav_GSSC_lmax3000 = cov_bench_2ddav_GSSC[:n_cov_elements, :n_cov_elements]
 
             mm.compare_arrays(cov_dict['cov_3x2pt_GO_2D'], cov_bench_2ddav_G_lmax3000,
-                                "cov_dict['cov_3x2pt_GO_2D']", "cov_bench_2ddav_G_lmax3000",
-                                log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+                              "cov_dict['cov_3x2pt_GO_2D']", "cov_bench_2ddav_G_lmax3000",
+                              log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
             mm.compare_arrays(cov_dict['cov_3x2pt_GS_2D'], cov_bench_2ddav_GSSC_lmax3000,
-                                "cov_dict['cov_3x2pt_GS_2D']", "cov_bench_2ddav_GSSC_lmax3000",
-                                log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
+                              "cov_dict['cov_3x2pt_GS_2D']", "cov_bench_2ddav_GSSC_lmax3000",
+                              log_array=True, log_diff=False, abs_val=False, plot_diff_threshold=5)
 
             del cov_bench_2ddav_G_lmax3000, cov_bench_2ddav_GSSC_lmax3000
             gc.collect()
@@ -2191,24 +2203,35 @@ fm_dict_of_dicts = {
     # 'SB_su_fullsky': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_separateuniverse_fullcurvedsky.pickle'),
     'OC_hp': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_highprecision.pickle'),
     'CCL': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}.pickle'),
-    # 'SB_hm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_halo_model.pickle'),
+    'SB_hm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_halo_model.pickle'),
     # 'OC_def':  mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_defaultprecision.pickle'),
     # 'SB_su_maskotf': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_separateuniverse_polarcaponthefly.pickle'),
-    'SB_suVin': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_vinSU_separateuniverse.pickle'),
+    # 'SB_suVin': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_vinSU_separateuniverse.pickle'),
     'SB_suDav_b2ghm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_davSU_b2ghm_separateuniverse.pickle'),
-    'SB_KEapp': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_separateuniverse.pickle'),
+    # 'SB_KEapp_su': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_separateuniverse.pickle'),
+    # 'SB_KEapp_hm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_halomodel.pickle'),
 }
 
 labels = list(fm_dict_of_dicts.keys())
 fm_dict_list = list(fm_dict_of_dicts.values())
-keys_toplot = ['FM_WL_GSSC', 'FM_GC_GSSC', 'FM_XC_GSSC', 'FM_3x2pt_GSSC']
+keys_toplot_in = ['FM_WL_GSSC', 'FM_GC_GSSC', 'FM_XC_GSSC', 'FM_3x2pt_GSSC']
 # keys_toplot = 'all'
 colors = ['tab:blue', 'tab:green', 'tab:orange', 'tab:red', 'tab:cyan', 'tab:grey', 'tab:olive', 'tab:purple']
-mm.compare_fm_constraints(*fm_dict_list, labels=labels, keys_toplot_in=keys_toplot,
+
+reference = 'median'
+nparams_toplot_in = 8
+normalize_by_gauss = True
+
+mm.compare_fm_constraints(*fm_dict_list, labels=labels, keys_toplot_in=keys_toplot_in,
                           normalize_by_gauss=True,
-                          which_uncertainty='conditional',
+                          which_uncertainty='marginal',
+                          reference='median',
                           colors=colors,
                           save_fig=True,
                           fig_path='/home/davide/Scrivania/')
+
+
+
+
 
 print('Finished in {:.2f} minutes'.format((time.perf_counter() - script_start_time) / 60))

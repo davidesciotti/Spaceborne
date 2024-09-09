@@ -22,8 +22,8 @@ cov_BNT_transform = False
 deriv_BNT_transform = False
 
 cl_ell_cuts = False
-cov_ell_cuts = True
-deriv_ell_cuts = True
+cov_ell_cuts = False
+deriv_ell_cuts = False
 
 if cl_BNT_transform or cov_BNT_transform or deriv_BNT_transform:
     BNT_transform = True
@@ -49,10 +49,10 @@ if BNT_transform:
 general_cfg = {
     'ell_min': 10,
     'ell_max_WL_opt': 5000,  # this is the value from which the various bin cuts are applied
-    'ell_max_WL': 1500,
-    'ell_max_3x2pt': 750,
-    'ell_max_GC': 750,
-    'ell_max_XC': 750,
+    'ell_max_WL': 5000,
+    'ell_max_3x2pt': 3000,
+    'ell_max_GC': 3000,
+    'ell_max_XC': 3000,
     'zbins': 10,
     'zbins_list': None,
     'EP_or_ED': 'EP',
@@ -61,7 +61,7 @@ general_cfg = {
     'use_WA': False,
     'save_cls_3d': True,
     'save_rls_3d': True,
-    'use_only_auto_z_for_GC': True,
+    'use_only_auto_z_for_GC': False,
 
     'magcut_source': 245,
     'magcut_lens': 245,
@@ -231,8 +231,7 @@ FM_cfg = {
     'load_preprocess_derivatives': False,
     # 'derivatives_folder': SPV3_folder + '/OutputQuantities/DataVectors/DataVecDer/{flat_or_nonflat:s}/Davide/{which_pk:s}/{EP_or_ED:s}{zbins:02d}',
     # 'derivatives_prefix': 'dDVd',
-
-    'derivatives_folder': "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/FiRe/OutputQuantities/DataVectors/DataVecDer/{flat_or_nonflat:s}/Davide/{which_pk:s}/{EP_or_ED:s}{zbins:02d}",
+    'derivatives_folder': "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/FiRe/OutputQuantities/DataVectors/DataVecDer/{flat_or_nonflat:s}/Davide/{probe:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}",
     'derivatives_filename': "dDVd{param_name:s}-{probe:s}-{EP_or_ED:s}{zbins:02d}-zedMin{zmin:02d}-zedMax{zmax:02d}-mag{magcut:d}.dat",
 
 

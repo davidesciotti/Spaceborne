@@ -80,7 +80,7 @@ params = {'lines.linewidth': 2,
 plt.rcParams.update(params)
 markersize = 4
 
-save_figs = True
+save_figs = False
 
 # ! =========================================== Fig(s). 5-6 ================================================================
 uncert_df = pd.read_pickle(f'{fm_folder}/uncert_df_Opt_marg_vs_cond_for_sylv_barplots.pkl')

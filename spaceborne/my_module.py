@@ -1347,7 +1347,7 @@ def uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal', normal
     if normalize:
         # if the fiducial for is 0, substitute with 1 to avoid division by zero; if it's -1, take the absolute value
         param_values = np.where(param_values == 0, 1, param_values)
-        param_values = np.where(param_values == -1, 1, param_values)
+        param_values = np.where(param_values < 0, np.abs(param_values), param_values)
         # normalize to get the relative uncertainties
         sigma_fm /= param_values
 
@@ -1917,7 +1917,9 @@ def compute_FoM(FM, w0wa_idxs):
     start = w0wa_idxs[0]
     stop = w0wa_idxs[1] + 1
     cov_param = np.linalg.inv(FM)
-    cov_param_reduced = cov_param[start:stop, start:stop]
+    # cov_param_reduced = cov_param[start:stop, start:stop]
+    cov_param_reduced = cov_param[np.ix_(w0wa_idxs, w0wa_idxs)]
+
     FM_reduced = np.linalg.inv(cov_param_reduced)
     FoM = np.sqrt(np.linalg.det(FM_reduced))
     return FoM

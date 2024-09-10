@@ -80,7 +80,7 @@ params = {'lines.linewidth': 2,
 plt.rcParams.update(params)
 markersize = 4
 
-save_figs = False
+save_figs = True
 
 # ! =========================================== Fig(s). 5-6 ================================================================
 uncert_df = pd.read_pickle(f'{fm_folder}/uncert_df_Opt_marg_vs_cond_for_sylv_barplots.pkl')
@@ -426,7 +426,7 @@ plt.show()
 
 # ! =========================================== Fig. 12 ================================================================
 
-uncert_df = pd.read_pickle(f'{fm_folder}/uncert_df_zbinsEP10_fom_vs_epsilonbANDsigmam_isocontour.pkl')
+uncert_df = pd.read_pickle(f'{fm_folder}/uncert_df_zbinsEP10_fom_vs_epsilonbANDsigmam_isocontour_FINAL.pkl')
 # clean df
 uncert_df = uncert_df.drop(columns=['gal_bias_prior'])
 uncert_df = uncert_df[

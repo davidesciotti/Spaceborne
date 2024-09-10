@@ -338,11 +338,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cov_WA_GS_6D = cov_WA_GO_6D + cov_WA_SS_6D
     cov_3x2pt_GS_10D = cov_3x2pt_GO_10D + cov_3x2pt_SS_10D
 
-    cov_dict['cov_WL_SS_6D'] = cov_WL_SS_6D
-    cov_dict['cov_GC_SS_6D'] = cov_GC_SS_6D
-    cov_dict['cov_WL_GO_6D'] = cov_WL_GO_6D
-    cov_dict['cov_GC_GO_6D'] = cov_GC_GO_6D
-
     # ! BNT transform
     if covariance_cfg['cov_BNT_transform']:
 

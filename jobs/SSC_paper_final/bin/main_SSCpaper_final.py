@@ -1162,7 +1162,7 @@ epsilon_b_list = np.geomspace(1e-5, 1e-2, 200)
 # ! =========================== FM settings end ===========================
 
 # uncomment these 3 lines if you want to produce the df for Fig. 12 (isocontour plot)
-for epsilon_b in epsilon_b_list:
+for epsilon_b in tqdm(epsilon_b_list):
     for shear_bias_prior in shear_bias_prior_list:
         gal_bias_prior = epsilon_b / fiducials_dict_tot_coarse['galaxy_bias']
         

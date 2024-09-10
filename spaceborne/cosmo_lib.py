@@ -46,8 +46,8 @@ c = 299792.458  # km/s
 #                          'h': h,
 #                          'n_s': n_s,
 #                          'sigma8': sigma_8,
-#
-#                          'm_ncdm': m_nu,
+
+#                          'm_ncdm': ISTF.extensions['m_nu'],,
 #                          'N_ncdm': ISTF.neutrino_params['N_ncdm'],
 #                          'N_ur': ISTF.neutrino_params['N_ur'],
 #

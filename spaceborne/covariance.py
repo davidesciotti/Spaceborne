@@ -5,66 +5,76 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.integrate import simps
 from copy import deepcopy
-from scipy.interpolate import UnivariateSpline, interp1d
+from scipy.interpolate import UnivariateSpline, interp1d, RectBivariateSpline
 import os
 
 import spaceborne.cl_preprocessing as cl_preprocessing
-import spaceborne.sigma2_SSC as sigma2_SSC
 import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib
-import spaceborne.wf_cl_lib as wf_cl_lib
 
 ROOT = os.getenv('ROOT')
 
 probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt', }
 
 
-def __bin_cov_ell_gauss(ellrange_12_ul,
-                        ellrange_34_ul,
-                        area_12,
-                        area_34,
-                        cov,
-                        unique_12,
-                        unique_34,
-                        dense_ellrange):
-    if not isinstance(cov, np.ndarray):
-        return 0
-    full_sky_angle = 1 * 180 / np.pi * 180 / np.pi
+def bin_2d_matrix(cov, ells_in, ells_out, ells_out_edges):
+    
+    assert cov.shape[0] == cov.shape[1] == len(ells_in), "ells_in must be the same length as the covariance matrix"
+    assert len(ells_out) == len(ells_out_edges) - 1, "ells_out must be the same length as the number of edges - 1"
 
-    binned_covariance = np.zeros((len(ellrange_12_ul) - 1, len(ellrange_34_ul) - 1, len(cov[0, 0, :, 0, 0, 0, 0, 0]), len(cov[0, 0, 0, :, 0, 0, 0, 0]), len(
-        cov[0, 0, 0, 0, :, 0, 0, 0]), len(cov[0, 0, 0, 0, 0, :, 0, 0]), len(cov[0, 0, 0, 0, 0, 0, :, 0]), len(cov[0, 0, 0, 0, 0, 0, 0, :])))
-    for i_ell in range(len(ellrange_12_ul) - 1):
-        for j_ell in range(len(ellrange_34_ul) - 1):
-            integration_ell_12 = np.arange(ellrange_12_ul[i_ell], ellrange_12_ul[i_ell + 1]).astype(int)
-            N_ell_12 = len(integration_ell_12)
-            integration_ell_34 = np.arange(ellrange_34_ul[j_ell], ellrange_34_ul[j_ell + 1]).astype(int)
-            N_ell_34 = len(integration_ell_34)
-            overlapping_elements = np.array(list(set(integration_ell_12).intersection(set(integration_ell_34))))
+    binned_cov = np.zeros((len(ells_out), len(ells_out)))
+    cov_interp_func = RectBivariateSpline(ells_in, ells_in, cov)
+    
+    ells_edges_low = ells_out_edges[:-1]
+    ells_edges_high = ells_out_edges[1:]
 
-            if len(overlapping_elements) == 0:
-                continue
-            else:
-                for i_sample in range(len(cov[0, 0, :, 0, 0, 0, 0, 0])):
-                    for j_sample in range(len(cov[0, 0, 0, :, 0, 0, 0, 0])):
-                        for i_tomo in range(len(cov[0, 0, 0, 0, :, 0, 0, 0])):
-                            j_tomo_start = 0
-                            if unique_12:
-                                j_tomo_start = i_tomo
-                            for j_tomo in range(j_tomo_start, len(cov[0, 0, 0, 0, 0, :, 0, 0])):
-                                for k_tomo in range(len(cov[0, 0, 0, 0, 0, 0, :, 0])):
-                                    l_tomo_start = 0
-                                    if unique_34:
-                                        l_tomo_start = k_tomo
-                                    for l_tomo in range(l_tomo_start, len(cov[0, 0, 0, 0, 0, 0, 0, :])):
-                                        if len(np.where(np.diagonal(cov[:, :, i_sample, j_sample, i_tomo, j_tomo, k_tomo, l_tomo]))[0]):
-                                            spline = UnivariateSpline(dense_ellrange, np.diagonal(
-                                                cov[:, :, i_sample, j_sample, i_tomo, j_tomo, k_tomo, l_tomo]), k=2, s=0, ext=1)
-                                            result = full_sky_angle / \
-                                                max(area_12, area_34) * np.sum(spline(overlapping_elements) /
-                                                                               (2. * overlapping_elements + 1)) / N_ell_12 / N_ell_34
-                                            binned_covariance[i_ell, j_ell, i_sample, j_sample,
-                                                              i_tomo, j_tomo, k_tomo, l_tomo] = result
-    return binned_covariance
+    # Loop over the output bins
+    for ell1_idx, _ in enumerate(ells_out):
+        for ell2_idx, _ in enumerate(ells_out):
+            
+            # Get ell min/max for the current bins
+            ell1_min = ells_edges_low[ell1_idx]
+            ell1_max = ells_edges_high[ell1_idx]
+            ell2_min = ells_edges_low[ell2_idx]
+            ell2_max = ells_edges_high[ell2_idx]
+            
+            # isolate the relevant ranges of ell values from the original ells_in grid
+            ell1_in = ells_in[(ell1_min <= ells_in) & (ells_in < ell1_max)]
+            ell2_in = ells_in[(ell2_min <= ells_in) & (ells_in < ell2_max)]
+            
+            # mask the covariance to the relevant block
+            cov_masked = cov[np.ix_(ell1_in, ell2_in)]
+
+            # Calculate the bin widths
+            delta_ell_1 = ell1_max - ell1_min
+            delta_ell_2 = ell2_max - ell2_min
+
+            # Option 1a: use the original grid for integration and the ell values as weights
+            # ells1_in_xx, ells2_in_yy = np.meshgrid(ell1_in, ell2_in, indexing='ij')
+            # partial_integral = simps(y=cov_masked * ells1_in_xx * ells2_in_yy, x=ell2_in, axis=1)
+            # integral = simps(y=partial_integral, x=ell1_in)
+            # binned_cov[ell1_idx, ell2_idx] = integral / (np.sum(ell1_in) * np.sum(ell2_in))
+            
+            # Option 1b: use the original grid for integration and no weights
+            partial_integral = simps(y=cov_masked, x=ell2_in, axis=1)
+            integral = simps(y=partial_integral, x=ell1_in)
+            binned_cov[ell1_idx, ell2_idx] = integral / (delta_ell_1 * delta_ell_2)
+            
+            # # Option 2: create fine grids for integration over the ell ranges (GIVES GOOD RESULTS ONLY FOR nsteps=delta_ell!)
+            # ell_fine_1 = np.linspace(ell1_min, ell1_max, 50)
+            # ell_fine_2 = np.linspace(ell2_min, ell2_max, 50)
+
+            # # Evaluate the spline on the fine grids
+            # ell1_fine_xx, ell2_fine_yy = np.meshgrid(ell_fine_1, ell_fine_2, indexing='ij')
+            # cov_interp_vals = cov_interp_func(ell_fine_1, ell_fine_2)
+            
+            # # Perform simps integration over the ell ranges
+            # partial_integral = simps(y=cov_interp_vals * ell1_fine_xx * ell2_fine_yy, x=ell_fine_2, axis=1)
+            # integral = simps(y=partial_integral, x=ell_fine_1)
+            # # Normalize by the bin areas
+            # binned_cov[ell1_idx, ell2_idx] = integral / (np.sum(ell_fine_1) * np.sum(ell_fine_2))
+            
+    return binned_cov
 
 
 def get_ellmax_nbl(probe, general_cfg):

@@ -20,52 +20,52 @@ ROOT = os.getenv('ROOT')
 probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt', }
 
 
-def __bin_cov_ell_gauss(ellrange_12_ul,
-                        ellrange_34_ul,
-                        area_12,
-                        area_34,
-                        cov,
-                        unique_12,
-                        unique_34,
-                        dense_ellrange):
-    if not isinstance(cov, np.ndarray):
-        return 0
-    full_sky_angle = 1 * 180 / np.pi * 180 / np.pi
+def ssc_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
+                       ind_auto, ind_cross, cl_integral_prefactor, sigma2, z_grid, integration_type,
+                       probe_ordering, num_threads=16):
+    """Kernel to compute the 4D integral optimized using Simpson's rule using Julia."""
 
-    binned_covariance = np.zeros((len(ellrange_12_ul) - 1, len(ellrange_34_ul) - 1, len(cov[0, 0, :, 0, 0, 0, 0, 0]), len(cov[0, 0, 0, :, 0, 0, 0, 0]), len(
-        cov[0, 0, 0, 0, :, 0, 0, 0]), len(cov[0, 0, 0, 0, 0, :, 0, 0]), len(cov[0, 0, 0, 0, 0, 0, :, 0]), len(cov[0, 0, 0, 0, 0, 0, 0, :])))
-    for i_ell in range(len(ellrange_12_ul) - 1):
-        for j_ell in range(len(ellrange_34_ul) - 1):
-            integration_ell_12 = np.arange(ellrange_12_ul[i_ell], ellrange_12_ul[i_ell + 1]).astype(int)
-            N_ell_12 = len(integration_ell_12)
-            integration_ell_34 = np.arange(ellrange_34_ul[j_ell], ellrange_34_ul[j_ell + 1]).astype(int)
-            N_ell_34 = len(integration_ell_34)
-            overlapping_elements = np.array(list(set(integration_ell_12).intersection(set(integration_ell_34))))
+    suffix = 0
+    folder_name = 'tmp'
+    unique_folder_name = folder_name
 
-            if len(overlapping_elements) == 0:
-                continue
-            else:
-                for i_sample in range(len(cov[0, 0, :, 0, 0, 0, 0, 0])):
-                    for j_sample in range(len(cov[0, 0, 0, :, 0, 0, 0, 0])):
-                        for i_tomo in range(len(cov[0, 0, 0, 0, :, 0, 0, 0])):
-                            j_tomo_start = 0
-                            if unique_12:
-                                j_tomo_start = i_tomo
-                            for j_tomo in range(j_tomo_start, len(cov[0, 0, 0, 0, 0, :, 0, 0])):
-                                for k_tomo in range(len(cov[0, 0, 0, 0, 0, 0, :, 0])):
-                                    l_tomo_start = 0
-                                    if unique_34:
-                                        l_tomo_start = k_tomo
-                                    for l_tomo in range(l_tomo_start, len(cov[0, 0, 0, 0, 0, 0, 0, :])):
-                                        if len(np.where(np.diagonal(cov[:, :, i_sample, j_sample, i_tomo, j_tomo, k_tomo, l_tomo]))[0]):
-                                            spline = UnivariateSpline(dense_ellrange, np.diagonal(
-                                                cov[:, :, i_sample, j_sample, i_tomo, j_tomo, k_tomo, l_tomo]), k=2, s=0, ext=1)
-                                            result = full_sky_angle / \
-                                                max(area_12, area_34) * np.sum(spline(overlapping_elements) /
-                                                                               (2. * overlapping_elements + 1)) / N_ell_12 / N_ell_34
-                                            binned_covariance[i_ell, j_ell, i_sample, j_sample,
-                                                              i_tomo, j_tomo, k_tomo, l_tomo] = result
-    return binned_covariance
+    # Loop until we find a folder name that does not exist
+    while os.path.exists(unique_folder_name):
+        suffix += 1
+        unique_folder_name = f'{folder_name}{suffix}'
+    os.makedirs(unique_folder_name)
+    folder_name = unique_folder_name
+
+    np.save(f"{folder_name}/d2CLL_dVddeltab", d2CLL_dVddeltab)
+    np.save(f"{folder_name}/d2CGL_dVddeltab", d2CGL_dVddeltab)
+    np.save(f"{folder_name}/d2CGG_dVddeltab", d2CGG_dVddeltab)
+    np.save(f"{folder_name}/ind_auto", ind_auto)
+    np.save(f"{folder_name}/ind_cross", ind_cross)
+    np.save(f"{folder_name}/cl_integral_prefactor", cl_integral_prefactor)
+    np.save(f"{folder_name}/sigma2", sigma2)
+    np.save(f"{folder_name}/z_grid", z_grid)
+    os.system(
+        f"julia --project=. --threads={num_threads} spaceborne/ssc_integral_julia.jl {folder_name} {integration_type}")
+
+    cov_filename = "cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npy"
+
+    if integration_type == 'trapz-6D':
+        cov_ssc_3x2pt_dict_8D = {}  # it's 10D, actually
+        for probe_a, probe_b in probe_ordering:
+            for probe_c, probe_d in probe_ordering:
+                if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
+                    print(f"Loading {probe_a}{probe_b}{probe_c}{probe_d}")
+                    cov_ssc_3x2pt_dict_8D[(probe_a, probe_b, probe_c, probe_d)] = np.load(
+                        f"{folder_name}/{cov_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}")
+
+    else:
+        cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
+            path=f'{folder_name}',
+            filename=cov_filename,
+            probe_ordering=probe_ordering)
+
+    os.system(f"rm -rf {folder_name}")
+    return cov_ssc_3x2pt_dict_8D
 
 
 def get_ellmax_nbl(probe, general_cfg):
@@ -495,7 +495,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_GC_GO_6D = deepcopy(cov_3x2pt_GO_10D[1, 1, 1, 1, :nbl_GC, :nbl_GC, :, :, :, :])
             cov_3x2pt_GO_10D = deepcopy(cov_3x2pt_GO_10D[:, :, :, :, :nbl_3x2pt, :nbl_3x2pt, :, :, :, :])
 
-
         if 'SSC' in covariance_cfg['OneCovariance_cfg']['which_ng_cov'] and \
                 covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']:
             cov_3x2pt_SS_10D = oc_obj.cov_ssc_oc_3x2pt_10D
@@ -743,16 +742,15 @@ def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr, cosmo_ccl, plot_nz=True)
     :return: BNT matrix, of shape (zbins x zbins)
     """
 
-
     assert n_of_z_arr.shape[0] == len(zgrid_n_of_z), 'n_of_z must have zgrid_n_of_z rows'
     assert n_of_z_arr.shape[1] == zbins, 'n_of_z must have zbins columns'
     assert np.all(np.diff(zgrid_n_of_z) > 0), 'zgrid_n_of_z must be monotonically increasing'
-    
+
     z_grid = zgrid_n_of_z
-    
+
     if z_grid[0] == 0:
         warnings.warn('z_grid starts at 0, which gives a null comoving distance. '
-                        'Removing the first element from the grid')
+                      'Removing the first element from the grid')
         z_grid = z_grid[1:]
         n_of_z_arr = n_of_z_arr[1:, :]
 

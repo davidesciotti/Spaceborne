@@ -22,9 +22,9 @@ mpl_rcParams_dict = {
 }
 
 general_dict = {
-    'cosmo_labels_TeX': ["$\Omega_{{\\rm m},0}$", "$\Omega_{{\\rm b},0}$", "$w_0$", "$w_a$", "$h$", "$n_{\\rm s}$",
-                         "$\sigma_8$"],
-    'IA_labels_TeX': ['$A_{\\rm IA}$', '$\eta_{\\rm IA}$', '$\\beta_{\\rm IA}$'],
+    'cosmo_labels_TeX': ["$\\Omega_{{\\rm m},0}$", "$\\Omega_{{\\rm b},0}$", "$w_0$", "$w_a$", "$h$", "$n_{\\rm s}$",
+                         "$\\sigma_8$"],
+    'IA_labels_TeX': ['$A_{\\rm IA}$', '$\\eta_{\\rm IA}$', '$\\beta_{\\rm IA}$'],
     'galaxy_bias_labels_TeX': mm.build_labels_TeX(zbins=10)[0],
     'shear_bias_labels_TeX': mm.build_labels_TeX(zbins=10)[1],
     'zmean_shift_labels_TeX': mm.build_labels_TeX(zbins=10)[2],
@@ -35,12 +35,12 @@ general_dict = {
     'shear_bias_labels': mm.build_labels(zbins=10)[1],
     'zmean_shift_labels': mm.build_labels(zbins=10)[2],
 
-    'ylabel_perc_diff_wrt_mean': "$ \\bar{\sigma}_\\alpha^i / \\bar{\sigma}^{\\; m}_\\alpha -1 $ [%]",
+    'ylabel_perc_diff_wrt_mean': "$ \\bar{\\sigma}_\\alpha^i / \\bar{\\sigma}^{\\; m}_\\alpha -1 $ [%]",
     'ylabel_sigma_relative_fid': '$ \\sigma_\\alpha/ \\theta^{fid}_\\alpha $ [%]',
     'dpi': 500,
     'pic_format': 'pdf'
 }
 
-h_over_mpc_tex = '$h\,{\\rm Mpc}^{-1}$'
+h_over_mpc_tex = '$h\\,{\\rm Mpc}^{-1}$'
 kmax_tex = '$k_{\\rm max}$'
 kmax_star_tex = '$k_{\\rm max}^\\star$'

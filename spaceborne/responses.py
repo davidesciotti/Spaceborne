@@ -30,6 +30,10 @@ start_time = time.perf_counter()
 class SpaceborneResponses():
 
     def __init__(self, cfg, k_grid, z_grid, cosmo_ccl, b1_func):
+        
+        ccl.spline_params['A_SPLINE_NA_PK'] = 240  # gives CAMB error if too high
+        ccl.spline_params['K_MAX_SPLINE'] = 300 
+
 
         # grids over which to compute the responses
         self.k_grid = k_grid

@@ -163,8 +163,8 @@ def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, compar
     for key in fm_dict_a.keys():
         if key != 'fiducial_values_dict' and 'WA' not in key:
             print('Comparing ', key)
-            fm_dict_a[key] = remove_null_rows_cols_2D_copilot(fm_dict_a[key])
-            fm_dict_b[key] = remove_null_rows_cols_2D_copilot(fm_dict_b[key])
+            fm_dict_a[key] = remove_null_rows_cols_2D(fm_dict_a[key])
+            fm_dict_b[key] = remove_null_rows_cols_2D(fm_dict_b[key])
 
             cov_a = np.linalg.inv(fm_dict_a[key])
             cov_b = np.linalg.inv(fm_dict_b[key])
@@ -252,7 +252,7 @@ def compare_df_keys(dataframe, key_to_compare, value_a, value_b, num_string_colu
     perc_diff_df[key_to_compare] = f'perc_diff_{value_b}'
     perc_diff_df['FoM'] = -perc_diff_df['FoM']  # ! abs? minus??
     dataframe = pd.concat([dataframe, perc_diff_df], axis=0, ignore_index=True)
-    
+
     # dataframe = dataframe.drop_duplicates()
     columns_to_consider = [col for col in dataframe.columns if col not in ['fm', 'fiducials_dict']]
     dataframe = dataframe.drop_duplicates(subset=columns_to_consider)
@@ -623,7 +623,7 @@ def test_folder_content(output_path, benchmarks_path, extension, verbose=False, 
             print(f'\nFile {file_name} does not match: {exc}')
         else:
             discrepancies['comparison_results'].append((file_name, 'Match'))
-            print(f"{file_name:<{max_length}} \t matches to within {rtol*100}% ✅")
+            print(f"{file_name:<{max_length}} \t matches to within {rtol * 100}% ✅")
 
     # Provide a summary of the results
     num_comparisons = len(discrepancies['comparison_results'])
@@ -791,87 +791,6 @@ def get_var_name(var):
     return [var_name for var_name, var_val in callers_local_vars if var_val is var]
 
 
-def compare_arrays_v0(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True, log_array=True, log_diff=False,
-                      abs_val=False, plot_diff_threshold=None, white_where_zero=True):
-    if plot_diff or plot_array:
-        assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
-
-    # white = to_rgb('white')
-    # cmap = ListedColormap([white] + plt.cm.viridis(np.arange(plt.cm.viridis.N)))
-    # # set the color for 0 values as white and all other values to the standard colormap
-    # cmap = plt.cm.viridis
-    # cmap.set_bad(color=white)
-
-    if plot_diff:
-
-        diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=log_diff, abs_val=abs_val)
-        diff_BA = percent_diff_nan(B, A, eraseNaN=True, log=log_diff, abs_val=abs_val)
-
-        if not np.allclose(diff_AB, diff_BA, rtol=1e-3, atol=0):
-            print('diff_AB and diff_BA have a relative difference of more than 1%')
-
-        if plot_diff_threshold is not None:
-            # take the log of the threshold if using the log of the precent difference
-            if log_diff:
-                plot_diff_threshold = np.log10(plot_diff_threshold)
-
-            print(f'plotting the *absolute value* of the difference only where it is below the given threshold '
-                  f'({plot_diff_threshold}%)')
-            diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, np.abs(diff_AB))
-            diff_BA = np.ma.masked_where(np.abs(diff_BA) < plot_diff_threshold, np.abs(diff_BA))
-
-        fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
-        im = ax[0].matshow(diff_AB)
-        ax[0].set_title(f'(A/B - 1) * 100')
-        fig.colorbar(im, ax=ax[0])
-
-        im = ax[1].matshow(diff_BA)
-        ax[1].set_title(f'(B/A - 1) * 100')
-        fig.colorbar(im, ax=ax[1])
-
-        fig.suptitle(f'log={log_diff}, abs={abs_val}')
-        plt.show()
-
-    if plot_array:
-        A_toplot, B_toplot = A, B
-
-        if abs_val:
-            A_toplot, B_toplot = np.abs(A), np.abs(B)
-        if log_array:
-            A_toplot, B_toplot = np.log10(A), np.log10(B)
-
-        fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
-        im = ax[0].matshow(A_toplot)
-        ax[0].set_title(f'{name_A}')
-        fig.colorbar(im, ax=ax[0])
-
-        im = ax[1].matshow(B_toplot)
-        ax[1].set_title(f'{name_B}')
-        fig.colorbar(im, ax=ax[1])
-        fig.suptitle(f'log={log_array}, abs={abs_val}')
-        plt.show()
-
-    if np.array_equal(A, B):
-        print('A and B are equal ✅')
-        return
-
-    for rtol in [1e-5, 1e-3, 1e-2, 5e-2, 1e-1]:  # these are NOT percent units, see print below
-        if np.allclose(A, B, rtol=rtol, atol=0):
-            print(f'{name_A} and {name_B} are close within relative tolerance of {rtol * 100}%) ✅')
-            return
-
-    diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=True)
-    higher_rtol = plot_diff_threshold  # in "percent" units
-    if higher_rtol is None:
-        higher_rtol = 5.0
-    result_emoji = '❌'
-    no_outliers = np.where(diff_AB > higher_rtol)[0].shape[0]
-    additional_info = f'\nMax discrepancy: {np.max(diff_AB):.2f}%;' \
-                      f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
-                      f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
-    print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
-
-
 def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True, log_array=True, log_diff=False,
                    abs_val=False, plot_diff_threshold=None, white_where_zero=True):
 
@@ -889,14 +808,13 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
         result_emoji = '❌'
         no_outliers = np.sum(diff_AB > higher_rtol)
         additional_info = f'\nMax discrepancy: {np.max(diff_AB):.2f}%;' \
-                          f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
-                          f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
+            f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
+            f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
         print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
 
         if plot_diff or plot_array:
             assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
-            
-        
+
         if plot_array:
             A_toplot, B_toplot = A, B
 
@@ -939,8 +857,6 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
             plt.show()
 
 
-
-
 def compare_folder_content(path_A: str, path_B: str, filetype: str):
     """
     Compare the content of 2 folders. The files in folder A should be a subset of the files in folder B.
@@ -959,11 +875,6 @@ def compare_folder_content(path_A: str, path_B: str, filetype: str):
 def namestr(obj, namespace):
     """ does not work with slices!!! (why?)"""
     return [name for name in namespace if namespace[name] is obj][0]
-
-
-def plot_FM(array, style=".-"):
-    name = namestr(array, globals())
-    plt.plot(range(7), array, style, label=name)
 
 
 ################################################ Fisher Matrix utilities ################################################
@@ -1010,9 +921,15 @@ def remove_rows_cols_array2D(array, rows_idxs_to_remove):
     return array
 
 
-def remove_null_rows_cols_2D_copilot(array_2d):
+def remove_null_rows_cols_2D(array_2d: np.ndarray):
     """
-    Remove null rows and columns from a 2D array - version by GitHub Copilot
+    Remove null rows and columns from a 2D numpy array.
+
+    Args:
+        array_2d (numpy.ndarray): The 2D numpy array to remove null rows and columns from.
+
+    Returns:
+        numpy.ndarray: The 2D numpy array with null rows and columns removed.
     """
 
     assert array_2d.ndim == 2, 'ndim should be <= 2; higher-dimensional case not yet implemented'
@@ -1310,7 +1227,7 @@ def get_kv_pairs_v2(path_import, extension='npy'):
     if extension == 'npy' or extension == 'npz':
         load_function = np.load
     elif extension == 'txt' or extension == 'dat':
-        load_function = lambda p: np.genfromtxt(p, encoding='latin1')  # Handle non-UTF-8 encoding
+        def load_function(p): return np.genfromtxt(p, encoding='latin1')  # Handle non-UTF-8 encoding
     else:
         raise NotImplementedError("extension must be either 'npy', 'npz', 'txt' or 'dat'")
 
@@ -1322,7 +1239,7 @@ def get_kv_pairs_v2(path_import, extension='npy'):
                 print(f"Error decoding file {path}: {e}")
             except Exception as e:
                 print(f"Error loading file {path}: {e}")
-                
+
 
 # to display the names (keys) more tidily
 def show_keys(arrays_dict):
@@ -3187,7 +3104,7 @@ def cov_4D_to_2DCLOE_3x2pt_bu(cov_4D, nbl, zbins, block_index='vincenzo'):
 
 
 def cov2corr(covariance):
-    """ Taken from 
+    """ Credit:
     https://gist.github.com/wiso/ce2a9919ded228838703c1c7c7dad13b
     """
 
@@ -3196,15 +3113,6 @@ def cov2corr(covariance):
     correlation = covariance / outer_v
     correlation[covariance == 0] = 0
     return correlation
-
-
-# compute Sylvain's deltas
-def delta_l_Sylvain(nbl, ell):
-    delta_l = np.zeros(nbl)
-    for l in range(1, nbl):
-        delta_l[l] = ell[l] - ell[l - 1]
-    delta_l[0] = delta_l[1]
-    return delta_l
 
 
 def Recast_Sijkl_1xauto(Sijkl, zbins):
@@ -3290,7 +3198,7 @@ def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED, which
         Which shape noise to use. 
         'ISTF' for the "incorrect" shape noise (used in ISTF paper), for backwars-compatibility.
         'per_component' for the correct shape noise, taking into account EE-only noise.
-    
+
     Returns
     -------
     noise_4d : ndarray, shape (n_probes, n_probes, zbins, zbins)
@@ -3346,9 +3254,9 @@ def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED, which
     noise_4d = np.zeros((n_probes, n_probes, zbins, zbins))
 
     if which_shape_noise == 'ISTF':
-        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / n_bar_shear)  # ! old, INcorrect
+        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / n_bar_shear)
     elif which_shape_noise == 'per_component':
-        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar_shear))  # ! correct
+        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar_shear))
     else:
         raise ValueError('which_shape_noise must be ISTF or per_component')
 

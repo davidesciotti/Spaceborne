@@ -166,7 +166,7 @@ def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
 
 
 def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_gauss, which_uncertainty, 
-                           reference, colors, nparams_toplot_in=8, save_fig=False, fig_path=None):
+                           reference, colors, abs_FoM, nparams_toplot_in=8, save_fig=False, fig_path=None):
 
     masked_fm_dict_list = []
     masked_fid_pars_dict_list = []
@@ -217,8 +217,6 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
     for key in keys_toplot:
         probe = key.split('_')[1]
         print('key: ', key)
-        print('len uncertainties_dict[fFM__G]: ', len(uncertainties_dict[f'FM_{probe}_G']))
-        print('len uncertainties_dict[key]: ', len(uncertainties_dict[key]))
 
         ylabel = 'rel. unc. [%]'
         if normalize_by_gauss and not key.endswith('G'):
@@ -226,6 +224,9 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
             ng_cov = key.split('_')[2]
             uncertainties_dict[key] = (uncertainties_dict[key] / uncertainties_dict[f'FM_{probe}_G'] - 1) * 100
             ylabel = f'{ng_cov}/G - 1 [%]'
+            
+            if abs_FoM:
+                uncertainties_dict[key][:, -1] = np.fabs(uncertainties_dict[key][:, -1])
 
         n_rows = 2 if len(fm_dict_list) > 1 else 1
         fig, ax = plt.subplots(n_rows, 1, figsize=(10, 5), sharex=True)

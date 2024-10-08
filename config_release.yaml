@@ -122,7 +122,8 @@ general_cfg:
     which_cls: CCL # CLOE or Vincenzo or CCL
 
     has_rsd: False
-    has_magnification_bias: True
+    has_magnification_bias: False
+    has_IA: False
 
     magcut_lens: 245 # valid for GCph
     magcut_source: 245 # valid for WL

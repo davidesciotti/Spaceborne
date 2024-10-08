@@ -10,6 +10,7 @@
 *.iml
 *.iml
 /.vscode/
+/.idea/
 *.xml
 *.xml
 tmp/*

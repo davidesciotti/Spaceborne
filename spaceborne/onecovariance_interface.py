@@ -91,6 +91,17 @@ class OneCovarianceInterface():
         cfg_onecov_ini['covariance terms']['nongauss'] = str(self.compute_cng)
         cfg_onecov_ini['covariance terms']['ssc'] = str(self.compute_ssc)
         cfg_onecov_ini['output settings']['directory'] = self.oc_path
+        
+        # [observables]
+        cfg_onecov_ini['observables']['cosmic_shear'] = str(True)
+        cfg_onecov_ini['observables']['est_shear'] = 'C_ell'
+        cfg_onecov_ini['observables']['ggl'] = str(True)
+        cfg_onecov_ini['observables']['est_ggl'] = 'C_ell'
+        cfg_onecov_ini['observables']['clustering'] = str(True)
+        cfg_onecov_ini['observables']['est_clust'] = 'C_ell'
+        cfg_onecov_ini['observables']['cstellar_mf'] = str(False)
+        cfg_onecov_ini['observables']['cross_terms'] = str(True)
+        cfg_onecov_ini['observables']['unbiased_clustering'] = str(False)
 
         cfg_onecov_ini['covELLspace settings']['ell_min'] = str(general_cfg['ell_min'])
         cfg_onecov_ini['covELLspace settings']['ell_bins'] = str(general_cfg['nbl_3x2pt'])

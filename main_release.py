@@ -440,7 +440,7 @@ for zbins in (3, ):
         ccl_obj.zbins = zbins
         ccl_obj.set_nz(np.hstack((zgrid_nz[:, None], n_of_z)))
         ccl_obj.check_nz_tuple(zbins)
-        ccl_obj.set_ia_bias_tuple(z_grid=z_grid_ssc_integrands)
+        ccl_obj.set_ia_bias_tuple(z_grid=z_grid_ssc_integrands, has_ia=general_cfg['has_IA'])
 
         # set galaxy bias
         if general_cfg['which_forecast'] == 'SPV3':
@@ -1122,37 +1122,6 @@ for zbins in (3, ):
             dPgg_ddeltab_klimb = np.array(
                 [dPgg_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
                     ell_dict['ell_GC']])
-
-            print('loading integrands...')
-            path = '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/check_ssc_integrands'
-            Pmm_response = np.load(f'{path}/Pmm_response.npy', )
-            survey_variance = np.load(f'{path}/survey_variance.npy', )
-            weight = np.load(f'{path}/weight.npy', )
-            los_integration_chi = np.load(f'{path}/los_integration_chi.npy')
-            los_integration_z = np.load(f'{path}/los_integration_z.npy')
-            los_integration_a = cosmo_lib.z_to_a(los_integration_z)
-            ellrange = np.load(f'{path}/ellrange.npy')
-            ellrange = np.load(f'{path}/ellrange.npy')
-            aux_response_mm = np.load(f'{path}/aux_response_mm.npy')
-            survey_variance_mmmm = np.load(f'{path}/survey_variance_mmmm.npy')
-            
-            plt.figure()
-            plt.plot(los_integration_z, los_integration_chi, 'oc')
-            plt.plot(los_integration_z, cosmo_lib.ccl_comoving_distance(los_integration_z, use_h_units=True, cosmo_ccl = ccl_obj.cosmo_ccl), 'sb')
-            
-            chi_sb = cosmo_lib.ccl_comoving_distance(z_grid_ssc_integrands, use_h_units=False, cosmo_ccl = ccl_obj.cosmo_ccl)
-            plt.figure()
-            plt.plot(los_integration_chi, Pmm_response[:, 0], label='OC')
-            plt.plot(los_integration_chi, Pmm_response[:, 0], label='OC')
-            plt.plot(chi_sb, dPmm_ddeltab_klimb[0, :], label='SB')
-            plt.title('Pmm_response')
-            plt.legend()
-
-            plt.figure()
-            plt.plot(los_integration_chi, survey_variance_mmmm, marker='.')
-            plt.title('survey_variance')
-
-            assert False, 'stop here to check against OC responses'
 
             # ! volume element
             cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(z_grid_ssc_integrands,
@@ -2241,9 +2210,6 @@ mm.compare_fm_constraints(*fm_dict_list, labels=labels, keys_toplot_in=keys_topl
                           abs_FoM=True,
                           save_fig=True,
                           fig_path='/home/davide/Scrivania/')
-
-
-
 
 
 print('Finished in {:.2f} minutes'.format((time.perf_counter() - script_start_time) / 60))

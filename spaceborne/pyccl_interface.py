@@ -283,11 +283,6 @@ class PycclClass():
             assert np.abs(fsky_mask / fsky_in) < 1.01, 'fsky_in is not the same as the fsky of the mask'
             assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(survey_area_deg2),
                                    abs_value=True) < 1, 'f_sky is not correct'
-            # assert len(ell_mask) > ellmax, 'the maximum ell from this mask is lower than the needed lmax. Try increasing nside'
-
-            k_grid_tkka = np.geomspace(pyccl_cfg['k_grid_tkka_min'],
-                                       pyccl_cfg['k_grid_tkka_max'],
-                                       5000)
 
             cl_mask_norm = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * f_sky)**2
             sigma2_b = ccl.covariances.sigma2_B_from_mask(

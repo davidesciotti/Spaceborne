@@ -196,10 +196,15 @@ probe_ordering = covariance_cfg['probe_ordering']
 which_pk = general_cfg['which_pk']
 general_cfg['fm_and_cov_suffix'] = general_cfg['fm_and_cov_suffix'].format(which_cls=general_cfg['which_cls'])
 which_sigma2_b = covariance_cfg['which_sigma2_b']
+z_steps_ssc_integrands = covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands']
 
 z_grid_ssc_integrands = np.linspace(covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
                                     covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
                                     covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'])
+k_grid_resp = np.geomspace(covariance_cfg['PyCCL_cfg']['k_grid_tkka_min'],
+                           covariance_cfg['PyCCL_cfg']['k_grid_tkka_max'],
+                           covariance_cfg['PyCCL_cfg']['k_grid_tkka_steps_SSC'])
+
 if len(z_grid_ssc_integrands) < 250:
     warnings.warn('z_grid_ssc_integrands is small, at the moment it used to compute various intermediate quantities')
 
@@ -265,7 +270,7 @@ if general_cfg['is_CLOE_run']:
     assert general_cfg['which_cls'] == 'CLOE', 'which_cls must be "CLOE"'
     assert general_cfg['flat_or_nonflat'] == 'Flat', 'Model must be flat'
     assert covariance_cfg['load_CLOE_benchmark_cov'] is False, 'load_CLOE_benchmark_cov must be False'
-    # assert covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'] == 7000, \
+    # assert z_steps_ssc_integrands == 7000, \
     # 'for the actual run, I used z_steps_ssc_integrands == 7000'
     assert cfg['covariance_cfg']['OneCovariance_cfg']['precision_settings'] == 'high_precision'
     assert cfg['covariance_cfg']['OneCovariance_cfg']['use_OneCovariance_cNG'] is True, \
@@ -739,7 +744,6 @@ mm.compare_arrays(cl_gl_3d[ell_idx, ...], ccl_obj.cl_gl_3d[ell_idx, ...], abs_va
                   name_A=f'{general_cfg["which_cls"]} GL', name_B='CCL GL')
 
 
-
 # ! ========================================== OneCovariance ===================================================
 # * 1. save ingredients in ascii format
 oc_path = covariance_cfg['OneCovariance_cfg']['onecovariance_folder'].format(ROOT=ROOT, **variable_specs)
@@ -807,15 +811,18 @@ else:
 # ! ========================================== end OneCovariance ===================================================
 
 # ! ========================================== start Spaceborne ===================================================
+_which_pk_resp = covariance_cfg['Spaceborne_cfg']['which_pk_responses']
+_which_pk_resp = 'separate_universe' if _which_pk_resp.startswith('separate_universe') else _which_pk_resp
+_which_pk_resp = 'halo_model' if _which_pk_resp.startswith('halo_model') else _which_pk_resp
 cov_folder_sb = covariance_cfg['Spaceborne_cfg']['cov_path'].format(ROOT=ROOT,
-                                                                    which_pk_responses=covariance_cfg['Spaceborne_cfg']['which_pk_responses'],
+                                                                    which_pk_responses=_which_pk_resp,
                                                                     flagship_version=general_cfg['flagship_version'],
                                                                     cov_ell_cuts=str(
                                                                         covariance_cfg['cov_ell_cuts']),
                                                                     BNT_transform=str(general_cfg['BNT_transform']))
 
 cov_sb_suffix = covariance_cfg['Spaceborne_cfg']['cov_suffix'].format(
-    z_steps_ssc_integrands=covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'],
+    z_steps_ssc_integrands=z_steps_ssc_integrands,
     k_txt_label=k_txt_label,
     cl_integral_convention=covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
     integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
@@ -840,20 +847,37 @@ if 'cNG' in covariance_cfg['Spaceborne_cfg']['which_ng_cov']:
     raise NotImplementedError('You should review the which_ng_cov arg in the cov_filename formatting above, "SSC" is'
                               'hardcoded at the moment')
 
+# precompute pk_mm, pk_gm and pk_mm, if you want to rescale the responses
+k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid_resp, z_grid_ssc_integrands, use_h_units,
+                                          ccl_obj.cosmo_ccl, pk_kind='nonlinear')
+
+# compute P_gm, P_gg
+gal_bias = ccl_obj.gal_bias_2d[:, 0]
+
+# check that it's the same in each bin
+for zi in range(zbins):
+    np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
+
+pk_gm_2d = pk_mm_2d * gal_bias
+pk_gg_2d = pk_mm_2d * gal_bias ** 2
+
 if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
     print('Start SSC computation with Spaceborne...')
 
+    # ! 1. Get halo model responses from CCL
     if covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'halo_model':
 
-        # ! 1. Get halo model responses from CCL
         ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
                                        pyccl_cfg=pyccl_cfg)
 
         # k and z grids (responses will be interpolated below)
-        k_grid_resp = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
-        a_grid_resp = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
+        k_grid_resp_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
+        a_grid_resp_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
         # translate a to z and cut the arrays to the maximum redshift of the SU responses (much smaller range!)
-        z_grid_resp = cosmo_lib.a_to_z(a_grid_resp)[::-1]
+        z_grid_resp_hm = cosmo_lib.a_to_z(a_grid_resp_hm)[::-1]
+
+        assert np.allclose(k_grid_resp_hm, k_grid_resp, atol=0, rtol=1e-2), 'CCL and SB k_grids for responses '\
+            'should match'
 
         dPmm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
         dPgm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
@@ -871,21 +895,25 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
                            ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12'], atol=0, rtol=1e-5)
         assert dPmm_ddeltab_hm.shape == dPgm_ddeltab_hm.shape == dPgg_ddeltab_hm.shape, 'dPab_ddeltab_hm shape mismatch'
 
+        dPmm_ddeltab_hm_func = interp1d(x=z_grid_resp_hm, y=dPmm_ddeltab_hm, axis=1, kind='linear')
+        dPgm_ddeltab_hm_func = interp1d(x=z_grid_resp_hm, y=dPgm_ddeltab_hm, axis=1, kind='linear')
+        dPgg_ddeltab_hm_func = interp1d(x=z_grid_resp_hm, y=dPgg_ddeltab_hm, axis=1, kind='linear')
+
+        # I do not assign diretly to dPxx_ddeltab to be able to plot later if necessary
+        dPmm_ddeltab_hm = dPmm_ddeltab_hm_func(z_grid_ssc_integrands)
+        dPgm_ddeltab_hm = dPgm_ddeltab_hm_func(z_grid_ssc_integrands)
+        dPgg_ddeltab_hm = dPgg_ddeltab_hm_func(z_grid_ssc_integrands)
+        r_mm_hm = dPmm_ddeltab_hm / pk_mm_2d
+        r_gm_hm = dPgm_ddeltab_hm / pk_gm_2d
+        r_gg_hm = dPgg_ddeltab_hm / pk_gg_2d
+
         dPmm_ddeltab = dPmm_ddeltab_hm
         dPgm_ddeltab = dPgm_ddeltab_hm
         dPgg_ddeltab = dPgg_ddeltab_hm
 
-        # this is needed to compare the responses, afterward
-        dPmm_ddeltab_hm_func = RegularGridInterpolator(
-            (k_grid_resp, z_grid_resp), dPmm_ddeltab_hm, method='linear')
-        dPgm_ddeltab_hm_func = RegularGridInterpolator(
-            (k_grid_resp, z_grid_resp), dPgm_ddeltab_hm, method='linear')
-        dPgg_ddeltab_hm_func = RegularGridInterpolator(
-            (k_grid_resp, z_grid_resp), dPgg_ddeltab_hm, method='linear')
+    # ! from Vincenzo's files
+    elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe_vin':
 
-    # elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe':
-
-        # ! from Vincenzo's files
         # import the response *coefficients* (not the responses themselves)
         su_responses_folder = covariance_cfg['Spaceborne_cfg']['separate_universe_responses_folder'].format(
             which_pk=general_cfg['which_pk'], ROOT=ROOT)
@@ -894,98 +922,52 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         rAB_of_k = np.genfromtxt(f'{su_responses_folder}/{su_responses_filename}')
 
         log_k_arr = np.unique(rAB_of_k[:, 0])
-        k_grid_resp = 10 ** log_k_arr
-        z_grid_resp = np.unique(rAB_of_k[:, 1])
+        k_grid_resp_vin = 10 ** log_k_arr
+        z_grid_resp_vin = np.unique(rAB_of_k[:, 1])
 
-        r_mm = np.reshape(rAB_of_k[:, 2], (len(k_grid_resp), len(z_grid_resp)))
-        r_gm = np.reshape(rAB_of_k[:, 3], (len(k_grid_resp), len(z_grid_resp)))
-        r_gg = np.reshape(rAB_of_k[:, 4], (len(k_grid_resp), len(z_grid_resp)))
+        r_mm_vin = np.reshape(rAB_of_k[:, 2], (len(k_grid_resp_vin), len(z_grid_resp_vin)))
+        r_gm_vin = np.reshape(rAB_of_k[:, 3], (len(k_grid_resp_vin), len(z_grid_resp_vin)))
+        r_gg_vin = np.reshape(rAB_of_k[:, 4], (len(k_grid_resp_vin), len(z_grid_resp_vin)))
 
         # remove z=0 and z = 0.01
-        z_grid_resp = z_grid_resp[2:]
-        r_mm = r_mm[:, 2:]
-        r_gm = r_gm[:, 2:]
-        r_gg = r_gg[:, 2:]
+        z_grid_resp_vin = z_grid_resp_vin[2:]
+        r_mm_vin = r_mm_vin[:, 2:]
+        r_gm_vin = r_gm_vin[:, 2:]
+        r_gg_vin = r_gg_vin[:, 2:]
 
-        # compute pk_mm on the responses' k, z grid to rescale them
-        k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid_resp, z_grid_resp, use_h_units,
-                                                  ccl_obj.cosmo_ccl, pk_kind='nonlinear')
+        r_mm_vin_func = RegularGridInterpolator(
+            (k_grid_resp_vin, z_grid_resp_vin), r_mm_vin, method='linear')
+        r_gm_vin_func = RegularGridInterpolator(
+            (k_grid_resp_vin, z_grid_resp_vin), r_gm_vin, method='linear')
+        r_gg_vin_func = RegularGridInterpolator(
+            (k_grid_resp_vin, z_grid_resp_vin), r_gg_vin, method='linear')
 
-        # compute P_gm, P_gg
-        gal_bias = ccl_obj.gal_bias_2d[:, 0]
-
-        # check that it's the same in each bin
-        for zi in range(zbins):
-            np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
-
-        gal_bias_func = interp1d(z_grid_ssc_integrands, gal_bias, kind='linear')
-        gal_bias = gal_bias_func(z_grid_resp)
-
-        pk_gm_2d = pk_mm_2d * gal_bias
-        pk_gg_2d = pk_mm_2d * gal_bias ** 2
+        k_grid_resp_xx, z_grid_ssc_integrands_yy = np.meshgrid(k_grid_resp, z_grid_ssc_integrands, indexing='ij')
+        r_mm_vin = r_mm_vin_func((k_grid_resp_xx, z_grid_ssc_integrands_yy))
+        r_gm_vin = r_gm_vin_func((k_grid_resp_xx, z_grid_ssc_integrands_yy))
+        r_gg_vin = r_gg_vin_func((k_grid_resp_xx, z_grid_ssc_integrands_yy))
 
         # now turn the response coefficients into responses
-        dPmm_ddeltab_su = r_mm * pk_mm_2d
-        dPgm_ddeltab_su = r_gm * pk_gm_2d
-        dPgg_ddeltab_su = r_gg * pk_gg_2d
+        dPmm_ddeltab_vin = r_mm_vin * pk_mm_2d
+        dPgm_ddeltab_vin = r_gm_vin * pk_gm_2d
+        dPgg_ddeltab_vin = r_gg_vin * pk_gg_2d
 
-        dPmm_ddeltab = dPmm_ddeltab_su
-        dPgm_ddeltab = dPgm_ddeltab_su
-        dPgg_ddeltab = dPgg_ddeltab_su
+        dPmm_ddeltab = dPmm_ddeltab_vin
+        dPgm_ddeltab = dPgm_ddeltab_vin
+        dPgg_ddeltab = dPgg_ddeltab_vin
 
-        # ! start Davide resp
+    # ! from SpaceborneResponses class
+    elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe_dav':
 
-        # # ! from the exactSSC script
-        folder = '/home/davide/Scrivania/check_responses_arfly'
-        k_grid_sbload = np.load(f'{folder}/k_grid.npy')
-        z_grid_sbload = np.load(f'{folder}/z_grid.npy')
-        r_mm_sbload = np.load(f'{folder}/r1_mm.npy')
-        r_gm_sbload = np.load(f'{folder}/r1_gm.npy')
-        r_gg_sbload = np.load(f'{folder}/r1_gg.npy')
-        r_gm_sbload_nob2 = np.load(f'{folder}/r1_gm_nob2.npy')
-        r_gg_sbload_nob2 = np.load(f'{folder}/r1_gg_nob2.npy')
-        b1_sbload = np.load(f'{folder}/b1_arr.npy')
-        b2_sbload = np.load(f'{folder}/b2_arr.npy')
-        pk_mm_2d_sbload = np.load(f'{folder}/pk_mm.npy')
-
-        include_b2 = True
-        if not covariance_cfg['Spaceborne_cfg']['include_b2']:
-            r_gm_sbload = r_gm_sbload_nob2
-            r_gg_sbload = r_gg_sbload_nob2
-
-        # interpolate everything
-        r1_mm_sbload_func = RegularGridInterpolator(
-            (k_grid_sbload, z_grid_sbload), r_mm_sbload, method='linear')
-        r1_gm_sbload_func = RegularGridInterpolator(
-            (k_grid_sbload, z_grid_sbload), r_gm_sbload, method='linear')
-        r1_gg_sbload_func = RegularGridInterpolator(
-            (k_grid_sbload, z_grid_sbload), r_gg_sbload, method='linear')
-        pk_mm_sbload_func = RegularGridInterpolator(
-            (k_grid_sbload, z_grid_sbload), pk_mm_2d_sbload, method='linear')
-
-        k_grid_resp_xx, z_grid_resp_yy = np.meshgrid(k_grid_resp, z_grid_resp, indexing='ij')
-        r1_mm_sbload_interp = r1_mm_sbload_func((k_grid_resp_xx, z_grid_resp_yy))
-        r1_gm_sbload_interp = r1_gm_sbload_func((k_grid_resp_xx, z_grid_resp_yy))
-        r1_gg_sbload_interp = r1_gg_sbload_func((k_grid_resp_xx, z_grid_resp_yy))
-        pk_mm_sbload_interp = pk_mm_sbload_func((k_grid_resp_xx, z_grid_resp_yy))
-
-        # # interpolate HM
-        dPmm_ddeltab_hm_interp = dPmm_ddeltab_hm_func((k_grid_resp_xx, z_grid_resp_yy))
-        dPgm_ddeltab_hm_interp = dPgm_ddeltab_hm_func((k_grid_resp_xx, z_grid_resp_yy))
-        dPgg_ddeltab_hm_interp = dPgg_ddeltab_hm_func((k_grid_resp_xx, z_grid_resp_yy))
-        r_mm_hm = dPmm_ddeltab_hm_interp / pk_mm_2d
-        r_gm_hm = dPgm_ddeltab_hm_interp / pk_gm_2d
-        r_gg_hm = dPgg_ddeltab_hm_interp / pk_gg_2d
-
-        # ! from SpaceborneResponses class
         resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
-                                                    z_grid=z_grid_resp,
-                                                    ccl_obj=ccl_obj)
+                                                 z_grid=z_grid_ssc_integrands,
+                                                 ccl_obj=ccl_obj)
         r_mm_sbclass = resp_obj.compute_r1_mm()
         resp_obj.get_rab_and_dpab_ddeltab(b2g_from_halomodel=True)
 
         r_gm_sbclass = resp_obj.r1_gm
         r_gg_sbclass = resp_obj.r1_gg
+        include_b2 = covariance_cfg['Spaceborne_cfg']['include_b2']
         if not covariance_cfg['Spaceborne_cfg']['include_b2']:
             r_gm_sbclass = resp_obj.r1_gm_nob2
             r_gg_sbclass = resp_obj.r1_gg_nob2
@@ -996,49 +978,28 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
 
         b1g_hm = resp_obj.b1g_hm
         b2g_hm = resp_obj.b2g_hm
-        
-        
 
-        z_idx = 0
-        k_idx = 0
-        plt.semilogx(k_grid_resp, r1_mm_sbload_interp[:, z_idx], label=f'r1_mm_sbload_interp includeb2{
-                     include_b2}', c='tab:blue', ls=':')
-        plt.semilogx(k_grid_resp, r_mm_sbclass[:, z_idx], label=f'r_mm_sbclass includeb2{
-                     include_b2}', c='tab:blue', ls='-.')
-        plt.semilogx(k_grid_resp, r_mm_hm[:, z_idx], label='r_mm_hm', c='tab:blue', ls='-')
-        plt.semilogx(k_grid_resp, r_mm[:, z_idx], label='r_mm vin', c='tab:blue', ls='--')
+        # ! plot for a comparison (you need to remove the 2 above "ifs")
+        # z_idx = 0
+        # k_idx = 0
+        # plt.semilogx(k_grid_resp, r_mm_sbclass[:, z_idx], label=f'r_mm_sbclass includeb2{
+        #              include_b2}', c='tab:blue', ls='-.')
+        # plt.semilogx(k_grid_resp, r_mm_hm[:, z_idx], label='r_mm_hm', c='tab:blue', ls='-')
+        # plt.semilogx(k_grid_resp, r_mm_vin[:, z_idx], label='r_mm vin', c='tab:blue', ls='--')
 
-        plt.semilogx(k_grid_resp, r1_gm_sbload_interp[:, z_idx], c='tab:orange', ls=':')
-        plt.semilogx(k_grid_resp, r_gm_sbclass[:, z_idx], c='tab:orange', ls='-.')
-        plt.semilogx(k_grid_resp, r_gm_hm[:, z_idx], c='tab:orange', ls='-')
-        plt.semilogx(k_grid_resp, r_gm[:, z_idx], c='tab:orange', ls='--')
+        # plt.semilogx(k_grid_resp, r_gm_sbclass[:, z_idx], c='tab:orange', ls='-.')
+        # plt.semilogx(k_grid_resp, r_gm_hm[:, z_idx], c='tab:orange', ls='-')
+        # plt.semilogx(k_grid_resp, r_gm_vin[:, z_idx], c='tab:orange', ls='--')
 
-        plt.semilogx(k_grid_resp, r1_gg_sbload_interp[:, z_idx], c='tab:green', ls=':')
-        plt.semilogx(k_grid_resp, r_gg_sbclass[:, z_idx], c='tab:green', ls='-.')
-        plt.semilogx(k_grid_resp, r_gg_hm[:, z_idx], c='tab:green', ls='-')
-        plt.semilogx(k_grid_resp, r_gg[:, z_idx], c='tab:green', ls='--')
+        # plt.semilogx(k_grid_resp, r_gg_sbclass[:, z_idx], c='tab:green', ls='-.')
+        # plt.semilogx(k_grid_resp, r_gg_hm[:, z_idx], c='tab:green', ls='-')
+        # plt.semilogx(k_grid_resp, r_gg_vin[:, z_idx], c='tab:green', ls='--')
 
-        # legend for the different linestyles
-        # Custom legend for line styles
-        plt.legend()
-        plt.xlabel(f'k {k_txt_label}')
-        plt.ylabel(r'$R_{AB}(k)$')
-
-        plt.ylim(-5, 5)
-        plt.title(f'z={z_grid_resp[z_idx]}')
-        
-        assert False, 'stop here'
-
-        # ! end Davide resp
-
-        # np.testing.assert_allclose(r_mm_sbclass, r1_mm_sbload_interp, atol=0, rtol=1e-8)
-        # np.testing.assert_allclose(r_gm_sbclass, r1_gm_sbload_interp, atol=0, rtol=1e-8)
-        # np.testing.assert_allclose(r_gg_sbclass, r1_gg_sbload_interp, atol=0, rtol=1e-8)
-        # np.testing.assert_allclose(pk_mm_2d, resp_obj.pk_mm, atol=0, rtol=1e-8)
-        # np.testing.assert_allclose(pk_mm_2d, pk_mm_2d_sbload, atol=0, rtol=1e-8)
-
-        # plt.plot(z_grid_sbload, b1_sbload[0, :], label='b1_dav', c='tab:blue')
-        # plt.plot(z_grid_resp, resp_obj.b1_arr[0, :], label='b1_dav', c='tab:blue')
+        # plt.legend()
+        # plt.xlabel(f'k {k_txt_label}')
+        # plt.ylabel(r'$R_{AB}(k)$')
+        # plt.ylim(-5, 5)
+        # plt.title(f'z={z_grid_ssc_integrands[z_idx]}')
 
         # # TODO check counterterms, to be better understood - 0 for lensing, as they should be
         # bA12 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bA12']
@@ -1066,7 +1027,8 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         # plt.legend()
 
     else:
-        raise ValueError('which_pk_responses must be either "halo_model" or "separate_universe"')
+        raise ValueError(
+            'which_pk_responses must be either "halo_model" or "separate_universe_vin" or "separate_universe_dav"')
 
     # ! 2. prepare integrands (d2CAB_dVddeltab) and volume element
     k_limber = partial(cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
@@ -1093,9 +1055,9 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         raise ValueError('cl_integral_convention must be either "PySSC" or "Euclid" or "Euclid_KE_approximation')
 
     # ! compute the Pk responses(k, z) in k_limber and z_grid_ssc_integrands
-    dPmm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPmm_ddeltab, method='linear')
-    dPgm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgm_ddeltab, method='linear')
-    dPgg_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgg_ddeltab, method='linear')
+    dPmm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_ssc_integrands), dPmm_ddeltab, method='linear')
+    dPgm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_ssc_integrands), dPgm_ddeltab, method='linear')
+    dPgg_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_ssc_integrands), dPgg_ddeltab, method='linear')
 
     # ! test k_max_limber vs k_max_dPk and adjust z_min_ssc_integrands accordingly
     k_max_resp = np.max(k_grid_resp)
@@ -1149,7 +1111,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         which_sigma2_b=which_sigma2_b,
         zmin=covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
         zmax=covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
-        zsteps=covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'],
+        zsteps=z_steps_ssc_integrands,
         log10kmin=covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'],
         log10kmax=covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
         ksteps=covariance_cfg['Spaceborne_cfg']['k_steps_sigma2']

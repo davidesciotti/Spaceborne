@@ -232,15 +232,17 @@ class PycclClass():
 
     # ! ==========================================================================================================================================================================
 
-    def set_sigma2_b(self, zmin, zmax, zsteps, f_sky, survey_area_deg2, which_sigma2_b, pyccl_cfg):
+    def set_sigma2_b(self, zmin, zmax, zsteps, f_sky, survey_area_deg2, which_sigma2_b, pyccl_cfg, 
+                     nside_mask, mask_path=None):
 
         self.a_grid_sigma2_b = np.linspace(cosmo_lib.z_to_a(zmax),
                                            cosmo_lib.z_to_a(zmin),
                                            zsteps)
         self.z_grid_sigma2_b = cosmo_lib.z_to_a(self.a_grid_sigma2_b)[::-1]
-        nside = pyccl_cfg['nside_mask']
 
         if which_sigma2_b == 'from_input_mask':
+            
+            raise NotImplementedError('TODO compute cl mask on the fly')
 
             warnings.warn('should I normalize the mask??')
             print('Computing sigma2_b from mask')
@@ -248,8 +250,8 @@ class PycclClass():
             assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(survey_area_deg2),
                                    abs_value=True) < 1, 'f_sky is not correct'
 
-            ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=survey_area_deg2, nside=nside))
-            cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=survey_area_deg2, nside=nside))
+            ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=survey_area_deg2, nside=nside_mask))
+            cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=survey_area_deg2, nside=nside_mask))
 
             # normalization has been checked from https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
             # and is the same as CSST paper https://zenodo.org/records/7813033
@@ -269,14 +271,14 @@ class PycclClass():
             # TODO this is repeated code from the sigma2_SSC class; unify
 
             # generate the mask and compute its power spectrum
-            mask = mask_utils.generate_polar_cap(survey_area_deg2, nside)
+            mask = mask_utils.generate_polar_cap(survey_area_deg2, nside_mask)
             hp.mollview(mask, coord=['C', 'E'], title='polar cap generated on-the fly', cmap='inferno_r')
             cl_mask = hp.anafast(mask)
             ell_mask = np.arange(len(cl_mask))
 
             # check: compute fsky from the mask
             fsky_mask = np.sqrt(cl_mask[0] / (4 * np.pi))
-            print('fsky from mask: {fsky_mask:.4f}')
+            print(f'fsky from mask: {fsky_mask:.4f}')
             fsky_in = cosmo_lib.deg2_to_fsky(survey_area_deg2)
             assert np.abs(fsky_mask / fsky_in) < 1.01, 'fsky_in is not the same as the fsky of the mask'
             assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(survey_area_deg2),

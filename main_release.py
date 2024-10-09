@@ -2195,7 +2195,6 @@ fm_dict_of_dicts = {
     # 'SB_KEapp_hm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_halomodel.pickle'),
     # 'OC_simpker': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_simpkern.pickle'),
     'SB_KEapp_su_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkern_separateuniverse.pickle'),
-    'SB_KEapp2_su_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkern2_separateuniverse.pickle'),
     # 'SB_su_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_simpkern_separateuniverse.pickle'),
 }
 

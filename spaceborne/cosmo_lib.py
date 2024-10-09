@@ -420,7 +420,9 @@ def cl_integral_prefactor(z, cl_integral_convention, use_h_units, cosmo_ccl):
     this is because dr/dz = c/H(z) = c/(H0*E(z))
     """
     r_of_z = ccl_comoving_distance(z, use_h_units=use_h_units, cosmo_ccl=cosmo_ccl)
-    dr_dz = np.gradient(r_of_z, z)
+    a = z_to_a(z)
+    dr_dz = c / (ccl.background.h_over_h0(cosmo_ccl, a) * cosmo_ccl.cosmo.params.h * 100)
+    # dr_dz = np.gradient(r_of_z, z)
 
     if cl_integral_convention == 'PySSC':
         cl_integral_prefactor = r_of_z ** 2 * dr_dz  # this is dV/dz

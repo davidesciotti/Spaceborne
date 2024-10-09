@@ -26,7 +26,7 @@ ROOT = os.getenv('ROOT')
 
 import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib
-import spaceborne.pyccl_cov_class as pyccl_cov_class
+import spaceborne.pyccl_interface as pyccl_interface
 import common_cfg.ISTF_fid_params as ISTF
 import common_cfg.mpl_cfg as mpl_cfg
 import matplotlib.lines as mlines

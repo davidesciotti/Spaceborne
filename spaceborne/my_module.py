@@ -29,6 +29,34 @@ symmetrize_output_dict = {
     ('G', 'G'): True,
 }
 
+
+def test_cov_FM(output_path, benchmarks_path, extension):
+    """tests that the outputs do not change between the old and the new version"""
+    old_dict = dict(get_kv_pairs(benchmarks_path, extension))
+    new_dict = dict(get_kv_pairs(output_path, extension))
+
+    # check if the dictionaries are empty
+    assert len(old_dict) > 0, 'No files in the benchmarks path ❌'
+    assert len(new_dict) > 0, 'No files in the output path ❌'
+
+    assert old_dict.keys() == new_dict.keys(), 'The number of files or their names has changed ❌'
+
+    if extension == 'npz':
+        for key in old_dict.keys():
+            try:
+                np.array_equal(old_dict[key]['arr_0'], new_dict[key]['arr_0'])
+            except AssertionError:
+                f'The file {benchmarks_path}/{key}.{extension} is different ❌'
+    else:
+        for key in old_dict.keys():
+            try:
+                np.array_equal(old_dict[key], new_dict[key])
+            except AssertionError:
+                f'The file {benchmarks_path}/{key}.{extension} is different ❌'
+
+    print('tests passed successfully: the outputs are the same as the benchmarks ✅')
+
+
 def regularize_covariance(cov_matrix, lambda_reg=1e-5):
     """
     Regularizes the covariance matrix by adding lambda * I.
@@ -164,8 +192,7 @@ def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
     print(f"Data has been written to {ascii_folder}/{ascii_filename}")
 
 
-
-def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_gauss, which_uncertainty, 
+def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_gauss, which_uncertainty,
                            reference, colors, abs_FoM, nparams_toplot_in=8, save_fig=False, fig_path=None):
 
     masked_fm_dict_list = []

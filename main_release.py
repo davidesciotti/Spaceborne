@@ -7,10 +7,6 @@ os.environ['NUMBA_PARALLEL_DIAGNOSTICS'] = '4'
 
 # jupyter stuff:
 # os.chdir('/home/cosmo/davide.sciotti/data/Spaceborne/')  # for new interactive window
-# %matplotlib inline
-# import niceplots.utils as nicepl
-# nicepl.initPlot()
-
 
 from functools import partial
 from collections import OrderedDict
@@ -40,9 +36,6 @@ import spaceborne.plot_lib as plot_lib
 import spaceborne.sigma2_SSC as sigma2_SSC
 import spaceborne.onecovariance_interface as oc_interface
 import spaceborne.responses as responses
-
-# import niceplot.utils as nicepl
-# nicepl.init()
 
 pp = pprint.PrettyPrinter(indent=4)
 ROOT = os.getenv('ROOT')
@@ -883,14 +876,14 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         dPgg_ddeltab = dPgg_ddeltab_hm
 
         # this is needed to compare the responses, afterward
-        # dPmm_ddeltab_hm_func = RegularGridInterpolator(
-        #     (k_grid_resp, z_grid_resp), dPmm_ddeltab_hm, method='linear')
-        # dPgm_ddeltab_hm_func = RegularGridInterpolator(
-        #     (k_grid_resp, z_grid_resp), dPgm_ddeltab_hm, method='linear')
-        # dPgg_ddeltab_hm_func = RegularGridInterpolator(
-        #     (k_grid_resp, z_grid_resp), dPgg_ddeltab_hm, method='linear')
+        dPmm_ddeltab_hm_func = RegularGridInterpolator(
+            (k_grid_resp, z_grid_resp), dPmm_ddeltab_hm, method='linear')
+        dPgm_ddeltab_hm_func = RegularGridInterpolator(
+            (k_grid_resp, z_grid_resp), dPgm_ddeltab_hm, method='linear')
+        dPgg_ddeltab_hm_func = RegularGridInterpolator(
+            (k_grid_resp, z_grid_resp), dPgg_ddeltab_hm, method='linear')
 
-    elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe':
+    # elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe':
 
         # ! from Vincenzo's files
         # import the response *coefficients* (not the responses themselves)
@@ -943,49 +936,48 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         # ! start Davide resp
 
         # # ! from the exactSSC script
-        # folder = '/home/davide/Scrivania/check_responses_arfly'
-        # k_grid_sbload = np.load(f'{folder}/k_grid.npy')
-        # z_grid_sbload = np.load(f'{folder}/z_grid.npy')
-        # r_mm_sbload = np.load(f'{folder}/r1_mm.npy')
-        # r_gm_sbload = np.load(f'{folder}/r1_gm.npy')
-        # r_gg_sbload = np.load(f'{folder}/r1_gg.npy')
-        # r_gm_sbload_nob2 = np.load(f'{folder}/r1_gm_nob2.npy')
-        # r_gg_sbload_nob2 = np.load(f'{folder}/r1_gg_nob2.npy')
-        # b1_sbload = np.load(f'{folder}/b1_arr.npy')
-        # b2_sbload = np.load(f'{folder}/b2_arr.npy')
-        # pk_mm_2d_sbload = np.load(f'{folder}/pk_mm.npy')
+        folder = '/home/davide/Scrivania/check_responses_arfly'
+        k_grid_sbload = np.load(f'{folder}/k_grid.npy')
+        z_grid_sbload = np.load(f'{folder}/z_grid.npy')
+        r_mm_sbload = np.load(f'{folder}/r1_mm.npy')
+        r_gm_sbload = np.load(f'{folder}/r1_gm.npy')
+        r_gg_sbload = np.load(f'{folder}/r1_gg.npy')
+        r_gm_sbload_nob2 = np.load(f'{folder}/r1_gm_nob2.npy')
+        r_gg_sbload_nob2 = np.load(f'{folder}/r1_gg_nob2.npy')
+        b1_sbload = np.load(f'{folder}/b1_arr.npy')
+        b2_sbload = np.load(f'{folder}/b2_arr.npy')
+        pk_mm_2d_sbload = np.load(f'{folder}/pk_mm.npy')
 
-        # include_b2 = True
-        # if not covariance_cfg['Spaceborne_cfg']['include_b2']:
-        #     r_gm_sbload = r_gm_sbload_nob2
-        #     r_gg_sbload = r_gg_sbload_nob2
+        include_b2 = True
+        if not covariance_cfg['Spaceborne_cfg']['include_b2']:
+            r_gm_sbload = r_gm_sbload_nob2
+            r_gg_sbload = r_gg_sbload_nob2
 
-        # # interpolate everything
-        # r1_mm_sbload_func = RegularGridInterpolator(
-        #     (k_grid_sbload, z_grid_sbload), r_mm_sbload, method='linear')
-        # r1_gm_sbload_func = RegularGridInterpolator(
-        #     (k_grid_sbload, z_grid_sbload), r_gm_sbload, method='linear')
-        # r1_gg_sbload_func = RegularGridInterpolator(
-        #     (k_grid_sbload, z_grid_sbload), r_gg_sbload, method='linear')
-        # pk_mm_sbload_func = RegularGridInterpolator(
-        #     (k_grid_sbload, z_grid_sbload), pk_mm_2d_sbload, method='linear')
+        # interpolate everything
+        r1_mm_sbload_func = RegularGridInterpolator(
+            (k_grid_sbload, z_grid_sbload), r_mm_sbload, method='linear')
+        r1_gm_sbload_func = RegularGridInterpolator(
+            (k_grid_sbload, z_grid_sbload), r_gm_sbload, method='linear')
+        r1_gg_sbload_func = RegularGridInterpolator(
+            (k_grid_sbload, z_grid_sbload), r_gg_sbload, method='linear')
+        pk_mm_sbload_func = RegularGridInterpolator(
+            (k_grid_sbload, z_grid_sbload), pk_mm_2d_sbload, method='linear')
 
-        # k_grid_resp_xx, z_grid_resp_yy = np.meshgrid(k_grid_resp, z_grid_resp, indexing='ij')
-        # r1_mm_sbload_interp = r1_mm_sbload_func((k_grid_resp_xx, z_grid_resp_yy))
-        # r1_gm_sbload_interp = r1_gm_sbload_func((k_grid_resp_xx, z_grid_resp_yy))
-        # r1_gg_sbload_interp = r1_gg_sbload_func((k_grid_resp_xx, z_grid_resp_yy))
-        # pk_mm_sbload_interp = pk_mm_sbload_func((k_grid_resp_xx, z_grid_resp_yy))
+        k_grid_resp_xx, z_grid_resp_yy = np.meshgrid(k_grid_resp, z_grid_resp, indexing='ij')
+        r1_mm_sbload_interp = r1_mm_sbload_func((k_grid_resp_xx, z_grid_resp_yy))
+        r1_gm_sbload_interp = r1_gm_sbload_func((k_grid_resp_xx, z_grid_resp_yy))
+        r1_gg_sbload_interp = r1_gg_sbload_func((k_grid_resp_xx, z_grid_resp_yy))
+        pk_mm_sbload_interp = pk_mm_sbload_func((k_grid_resp_xx, z_grid_resp_yy))
 
         # # interpolate HM
-        # dPmm_ddeltab_hm_interp = dPmm_ddeltab_hm_func((k_grid_resp_xx, z_grid_resp_yy))
-        # dPgm_ddeltab_hm_interp = dPgm_ddeltab_hm_func((k_grid_resp_xx, z_grid_resp_yy))
-        # dPgg_ddeltab_hm_interp = dPgg_ddeltab_hm_func((k_grid_resp_xx, z_grid_resp_yy))
-        # r_mm_hm = dPmm_ddeltab_hm_interp / pk_mm_2d
-        # r_gm_hm = dPgm_ddeltab_hm_interp / pk_gm_2d
-        # r_gg_hm = dPgg_ddeltab_hm_interp / pk_gg_2d
+        dPmm_ddeltab_hm_interp = dPmm_ddeltab_hm_func((k_grid_resp_xx, z_grid_resp_yy))
+        dPgm_ddeltab_hm_interp = dPgm_ddeltab_hm_func((k_grid_resp_xx, z_grid_resp_yy))
+        dPgg_ddeltab_hm_interp = dPgg_ddeltab_hm_func((k_grid_resp_xx, z_grid_resp_yy))
+        r_mm_hm = dPmm_ddeltab_hm_interp / pk_mm_2d
+        r_gm_hm = dPgm_ddeltab_hm_interp / pk_gm_2d
+        r_gg_hm = dPgg_ddeltab_hm_interp / pk_gg_2d
 
-        # # ! from SpaceborneResponses class
-        """
+        # ! from SpaceborneResponses class
         resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
                                                     z_grid=z_grid_resp,
                                                     ccl_obj=ccl_obj)
@@ -1004,35 +996,38 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
 
         b1g_hm = resp_obj.b1g_hm
         b2g_hm = resp_obj.b2g_hm
-        """
+        
+        
 
-        # z_idx = 0
-        # k_idx = 0
-        # # plt.semilogx(k_grid_resp, r1_mm_sbload_interp[:, z_idx], label=f'r1_mm_sbload_interp includeb2{
-        #             #  include_b2}', c='tab:blue', ls=':')
-        # plt.semilogx(k_grid_resp, r_mm_sbclass[:, z_idx], label=f'r_mm_sbclass includeb2{
-        #              include_b2}', c='tab:blue', ls='-.')
-        # plt.semilogx(k_grid_resp, r_mm_hm[:, z_idx], label='r_mm_hm', c='tab:blue', ls='-')
-        # plt.semilogx(k_grid_resp, r_mm[:, z_idx], label='r_mm vin', c='tab:blue', ls='--')
+        z_idx = 0
+        k_idx = 0
+        plt.semilogx(k_grid_resp, r1_mm_sbload_interp[:, z_idx], label=f'r1_mm_sbload_interp includeb2{
+                     include_b2}', c='tab:blue', ls=':')
+        plt.semilogx(k_grid_resp, r_mm_sbclass[:, z_idx], label=f'r_mm_sbclass includeb2{
+                     include_b2}', c='tab:blue', ls='-.')
+        plt.semilogx(k_grid_resp, r_mm_hm[:, z_idx], label='r_mm_hm', c='tab:blue', ls='-')
+        plt.semilogx(k_grid_resp, r_mm[:, z_idx], label='r_mm vin', c='tab:blue', ls='--')
 
-        # # plt.semilogx(k_grid_resp, r1_gm_sbload_interp[:, z_idx], c='tab:orange', ls=':')
-        # plt.semilogx(k_grid_resp, r_gm_sbclass[:, z_idx], c='tab:orange', ls='-.')
-        # plt.semilogx(k_grid_resp, r_gm_hm[:, z_idx], c='tab:orange', ls='-')
-        # plt.semilogx(k_grid_resp, r_gm[:, z_idx], c='tab:orange', ls='--')
+        plt.semilogx(k_grid_resp, r1_gm_sbload_interp[:, z_idx], c='tab:orange', ls=':')
+        plt.semilogx(k_grid_resp, r_gm_sbclass[:, z_idx], c='tab:orange', ls='-.')
+        plt.semilogx(k_grid_resp, r_gm_hm[:, z_idx], c='tab:orange', ls='-')
+        plt.semilogx(k_grid_resp, r_gm[:, z_idx], c='tab:orange', ls='--')
 
-        # # plt.semilogx(k_grid_resp, r1_gg_sbload_interp[:, z_idx], c='tab:green', ls=':')
-        # plt.semilogx(k_grid_resp, r_gg_sbclass[:, z_idx], c='tab:green', ls='-.')
-        # plt.semilogx(k_grid_resp, r_gg_hm[:, z_idx], c='tab:green', ls='-')
-        # plt.semilogx(k_grid_resp, r_gg[:, z_idx], c='tab:green', ls='--')
+        plt.semilogx(k_grid_resp, r1_gg_sbload_interp[:, z_idx], c='tab:green', ls=':')
+        plt.semilogx(k_grid_resp, r_gg_sbclass[:, z_idx], c='tab:green', ls='-.')
+        plt.semilogx(k_grid_resp, r_gg_hm[:, z_idx], c='tab:green', ls='-')
+        plt.semilogx(k_grid_resp, r_gg[:, z_idx], c='tab:green', ls='--')
 
-        # # legend for the different linestyles
-        # # Custom legend for line styles
-        # plt.legend()
-        # plt.xlabel(f'k {k_txt_label}')
-        # plt.ylabel(r'$R_{AB}(k)$')
+        # legend for the different linestyles
+        # Custom legend for line styles
+        plt.legend()
+        plt.xlabel(f'k {k_txt_label}')
+        plt.ylabel(r'$R_{AB}(k)$')
 
-        # plt.ylim(-5, 5)
-        # plt.title(f'z={z_grid_resp[z_idx]}')
+        plt.ylim(-5, 5)
+        plt.title(f'z={z_grid_resp[z_idx]}')
+        
+        assert False, 'stop here'
 
         # ! end Davide resp
 
@@ -2186,7 +2181,7 @@ fm_dict_of_dicts = {
     # 'OC_hp': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_highprecision.pickle'),
     # 'CCL': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}.pickle'),
     # 'OC_hp': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_highprecision.pickle'),
-    # 'SB_hm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_halo_model.pickle'),
+    'SB_hm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_halo_model.pickle'),
     # 'OC_def':  mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_defaultprecision.pickle'),
     # 'SB_su_maskotf': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_separateuniverse_polarcaponthefly.pickle'),
     # 'SB_suVin': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_vinSU_separateuniverse.pickle'),
@@ -2194,8 +2189,10 @@ fm_dict_of_dicts = {
     # 'SB_KEapp_su': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_separateuniverse.pickle'),
     # 'SB_KEapp_hm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_halomodel.pickle'),
     # 'OC_simpker': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_simpkern.pickle'),
-    'SB_KEapp_su_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkern_separateuniverse.pickle'),
+    # 'SB_KEapp_su_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkern_separateuniverse.pickle'),
     # 'SB_su_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_simpkern_separateuniverse.pickle'),
+    'SB_hm_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkern_halomodel.pickle'),
+    'current': fm_dict,
 }
 
 

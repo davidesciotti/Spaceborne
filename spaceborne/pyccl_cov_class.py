@@ -109,13 +109,19 @@ class PycclClass():
         assert self.nz_tuple[1].shape == (len(self.zgrid_nz), zbins), \
             'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
 
-    def set_ia_bias_tuple(self, z_grid):
+    def set_ia_bias_tuple(self, z_grid, has_ia):
 
-        ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(z_grid, cosmo_ccl=self.cosmo_ccl,
-                                                    flat_fid_pars_dict=self.flat_fid_pars_dict,
-                                                    input_z_grid_lumin_ratio=None,
-                                                    input_lumin_ratio=None, output_F_IA_of_z=False)
-        self.ia_bias_tuple = (z_grid, ia_bias_1d)
+        self.has_ia = has_ia
+
+        if self.has_ia:
+            ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(z_grid, cosmo_ccl=self.cosmo_ccl,
+                                                        flat_fid_pars_dict=self.flat_fid_pars_dict,
+                                                        input_z_grid_lumin_ratio=None,
+                                                        input_lumin_ratio=None, output_F_IA_of_z=False)
+            self.ia_bias_tuple = (z_grid, ia_bias_1d)
+
+        else:
+            self.ia_bias_tuple = None
 
     def set_gal_bias_tuple_spv3(self, z_grid, magcut_lens, poly_fit_values):
 
@@ -206,8 +212,12 @@ class PycclClass():
 
         # lensing
         self.wf_gamma_arr = wf_lensing_tot_arr[:, 0, :].T
-        self.wf_ia_arr = wf_lensing_tot_arr[:, 1, :].T
-        self.wf_lensing_arr = self.wf_gamma_arr + self.ia_bias_tuple[1][:, None] * self.wf_ia_arr
+        if self.has_ia:
+            self.wf_ia_arr = wf_lensing_tot_arr[:, 1, :].T
+            self.wf_lensing_arr = self.wf_gamma_arr + self.ia_bias_tuple[1][:, None] * self.wf_ia_arr
+        else:
+            self.wf_ia_arr = np.zeros_like(self.wf_gamma_arr)
+            self.wf_lensing_arr = self.wf_gamma_arr
 
         # galaxy
         self.wf_delta_arr = wf_galaxy_tot_arr[:, 0, :].T
@@ -222,24 +232,26 @@ class PycclClass():
 
     # ! ==========================================================================================================================================================================
 
-    def set_sigma2_b(self, zmin, zmax, zsteps, f_sky, survey_area_deg2, which_sigma2_b, pyccl_cfg):
+    def set_sigma2_b(self, zmin, zmax, zsteps, f_sky, survey_area_deg2, which_sigma2_b, pyccl_cfg,
+                     nside_mask, mask_path=None):
 
         self.a_grid_sigma2_b = np.linspace(cosmo_lib.z_to_a(zmax),
                                            cosmo_lib.z_to_a(zmin),
                                            zsteps)
         self.z_grid_sigma2_b = cosmo_lib.z_to_a(self.a_grid_sigma2_b)[::-1]
-        nside = pyccl_cfg['nside_mask']
 
         if which_sigma2_b == 'from_input_mask':
+
+            raise NotImplementedError('TODO compute cl mask on the fly')
 
             warnings.warn('should I normalize the mask??')
             print('Computing sigma2_b from mask')
 
+            assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(survey_area_deg2),
+                                   abs_value=True) < 1, 'f_sky is not correct'
 
-            assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(survey_area_deg2), abs_value=True) < 1, 'f_sky is not correct'
-
-            ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=survey_area_deg2, nside=nside))
-            cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=survey_area_deg2, nside=nside))
+            ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=survey_area_deg2, nside=nside_mask))
+            cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=survey_area_deg2, nside=nside_mask))
 
             # normalization has been checked from https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
             # and is the same as CSST paper https://zenodo.org/records/7813033
@@ -259,7 +271,7 @@ class PycclClass():
             # TODO this is repeated code from the sigma2_SSC class; unify
             
             # generate the mask and compute its power spectrum
-            mask = mask_utils.generate_polar_cap(survey_area_deg2, nside)
+            mask = mask_utils.generate_polar_cap(survey_area_deg2, nside_mask)
             hp.mollview(mask, coord=['C', 'E'], title='polar cap generated on-the fly', cmap='inferno_r')
             cl_mask  = hp.anafast(mask)
             ell_mask = np.arange(len(cl_mask))

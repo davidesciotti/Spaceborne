@@ -29,6 +29,34 @@ symmetrize_output_dict = {
     ('G', 'G'): True,
 }
 
+
+def test_cov_FM(output_path, benchmarks_path, extension):
+    """tests that the outputs do not change between the old and the new version"""
+    old_dict = dict(get_kv_pairs(benchmarks_path, extension))
+    new_dict = dict(get_kv_pairs(output_path, extension))
+
+    # check if the dictionaries are empty
+    assert len(old_dict) > 0, 'No files in the benchmarks path ❌'
+    assert len(new_dict) > 0, 'No files in the output path ❌'
+
+    assert old_dict.keys() == new_dict.keys(), 'The number of files or their names has changed ❌'
+
+    if extension == 'npz':
+        for key in old_dict.keys():
+            try:
+                np.array_equal(old_dict[key]['arr_0'], new_dict[key]['arr_0'])
+            except AssertionError:
+                f'The file {benchmarks_path}/{key}.{extension} is different ❌'
+    else:
+        for key in old_dict.keys():
+            try:
+                np.array_equal(old_dict[key], new_dict[key])
+            except AssertionError:
+                f'The file {benchmarks_path}/{key}.{extension} is different ❌'
+
+    print('tests passed successfully: the outputs are the same as the benchmarks ✅')
+
+
 def regularize_covariance(cov_matrix, lambda_reg=1e-5):
     """
     Regularizes the covariance matrix by adding lambda * I.
@@ -164,55 +192,54 @@ def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
     print(f"Data has been written to {ascii_folder}/{ascii_filename}")
 
 
-
-def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_gauss, which_uncertainty, 
+def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_gauss, which_uncertainty,
                            reference, colors, abs_FoM, nparams_toplot_in=8, save_fig=False, fig_path=None):
 
     masked_fm_dict_list = []
     masked_fid_pars_dict_list = []
     uncertainties_dict = {}
     fom_dict = {}
-    
 
     assert keys_toplot_in == 'all' or type(keys_toplot_in) == list, 'keys_toplot must be a list or "all"'
     assert colors is None or type(colors) == list, 'colors must be a list or "all"'
 
     colors = plt.rcParams['axes.prop_cycle'].by_key()['color'] if colors is None else colors
-    
+
     # maks fm and fid pars dict
     for fm_dict in fm_dict_list:
         masked_fm_dict, masked_fid_pars_dict = {}, {}
-        
+
         # define keys and remove unused ones
         keys_toplot = list(fm_dict.keys())
         if 'fiducial_values_dict' in keys_toplot:
             keys_toplot.remove('fiducial_values_dict')
         keys_toplot = [key for key in keys_toplot if not key.startswith('FM_WA_')]
         keys_toplot = [key for key in keys_toplot if not key.startswith('FM_2x2pt_')]
-        
+
         for key in keys_toplot:
             masked_fm_dict[key], masked_fid_pars_dict[key] = mask_fm_v2(fm_dict[key],
-                                                                            fm_dict['fiducial_values_dict'],
-                                                                            names_params_to_fix=[],
-                                                                            remove_null_rows_cols=True)
+                                                                        fm_dict['fiducial_values_dict'],
+                                                                        names_params_to_fix=[],
+                                                                        remove_null_rows_cols=True)
         masked_fm_dict_list.append(masked_fm_dict)
         masked_fid_pars_dict_list.append(masked_fid_pars_dict)
     print(keys_toplot)
 
     # compute reference uncertainties
     for key in keys_toplot:
-        nparams_toplot = nparams_toplot_in 
+        nparams_toplot = nparams_toplot_in
         param_names = list(masked_fid_pars_dict_list[0][key].keys())[:nparams_toplot]
         uncertainties_dict[key] = np.array([uncertainties_fm_v2(masked_fm_dict[key], fiducials_dict=masked_fid_pars_dict[key],
-                                                                   which_uncertainty=which_uncertainty, normalize=True)[:nparams_toplot]
+                                                                which_uncertainty=which_uncertainty, normalize=True)[:nparams_toplot]
                                             for masked_fm_dict, masked_fid_pars_dict in zip(masked_fm_dict_list, masked_fid_pars_dict_list)])
         w0wa_idxs = (param_names.index('wz'), param_names.index('wa'))
-        fom_dict[key] = np.array([compute_FoM(masked_fm_dict[key], w0wa_idxs=w0wa_idxs) for masked_fm_dict in masked_fm_dict_list])
+        fom_dict[key] = np.array([compute_FoM(masked_fm_dict[key], w0wa_idxs=w0wa_idxs)
+                                 for masked_fm_dict in masked_fm_dict_list])
         uncertainties_dict[key] = np.column_stack((uncertainties_dict[key], fom_dict[key]))
     param_names.append('FoM')
 
     keys_toplot = keys_toplot if keys_toplot_in == 'all' else keys_toplot_in
-    
+
     # plot, and if necessary normalize by the G-only uncertainty
     for key in keys_toplot:
         probe = key.split('_')[1]
@@ -224,7 +251,7 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
             ng_cov = key.split('_')[2]
             uncertainties_dict[key] = (uncertainties_dict[key] / uncertainties_dict[f'FM_{probe}_G'] - 1) * 100
             ylabel = f'{ng_cov}/G - 1 [%]'
-            
+
             if abs_FoM:
                 uncertainties_dict[key][:, -1] = np.fabs(uncertainties_dict[key][:, -1])
 
@@ -238,7 +265,7 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
         ax[0].legend(ncol=1, loc='center right', bbox_to_anchor=(1.38, 0.))
         ax[0].set_ylabel(ylabel)
         ax[0].grid()
-        
+
         start_idx = 0
         title_str = reference
         if reference == 'first_key':
@@ -251,7 +278,6 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
             ref = np.mean(uncertainties_dict[key], axis=0)
         else:
             raise ValueError('reference must be one of "first_key", "median", or "mean"')
-        
 
         if len(uncertainties_dict[key]) > 1:
             diffs = [percent_diff(uncert, ref) for uncert in uncertainties_dict[key][start_idx:]]
@@ -263,7 +289,7 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
         ax[1].set_ylabel(f'% diff wrt\n{title_str}')
         ax[1].legend(ncol=1, loc='center right', bbox_to_anchor=(1.38, 0.5))
         ax[1].grid()
-        
+
         if save_fig:
             plt.savefig(f'{fig_path}/{key}.pdf', dpi=400)
 

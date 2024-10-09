@@ -26,7 +26,7 @@ ROOT = os.getenv('ROOT')
 
 import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib
-import spaceborne.pyccl_cov_class as pyccl_cov_class
+import spaceborne.pyccl_interface as pyccl_interface
 import common_cfg.ISTF_fid_params as ISTF
 import common_cfg.mpl_cfg as mpl_cfg
 import matplotlib.lines as mlines
@@ -1339,7 +1339,7 @@ def cl_derivatives_helper(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
     other_params = deepcopy(fid_pars_dict['other_params'])
     other_params['camb_extra_parameters']['camb']['HMCode_logT_AGN'] = varied_fid_pars_dict['logT']
     full_pars_dict_for_ccl = {**varied_fid_pars_dict, 'other_params': other_params}
-    ccl_obj = pyccl_cov_class.PycclClass(full_pars_dict_for_ccl)
+    ccl_obj = pyccl_interface.PycclClass(full_pars_dict_for_ccl)
     ccl_obj.zbins = zbins
 
     if cfg['covariance_cfg']['PyCCL_cfg']['which_pk_for_pyccl'] == 'CLOE':

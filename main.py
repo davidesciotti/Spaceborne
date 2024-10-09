@@ -30,7 +30,7 @@ import spaceborne.fisher_matrix as fm_utils
 import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as cosmo_lib
 import spaceborne.wf_cl_lib as wf_cl_lib
-import spaceborne.pyccl_cov_class as pyccl_cov_class
+import spaceborne.pyccl_interface as pyccl_interface
 import spaceborne.sigma2_SSC as sigma2_SSC
 import spaceborne.onecovariance_interface as oc_interface
 import spaceborne.config_checker as config_checker
@@ -168,7 +168,7 @@ config_checker = config_checker.SpaceborneConfigChecker(cfg)
 k_txt_label, pk_txt_label = config_checker.run_all_checks()
 
 # instantiate CCL object
-ccl_obj = pyccl_cov_class.PycclClass(fid_pars_dict)
+ccl_obj = pyccl_interface.PycclClass(fid_pars_dict)
 
 
 # TODO delete this arg in save_cov function

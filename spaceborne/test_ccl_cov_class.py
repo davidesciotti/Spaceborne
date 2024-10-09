@@ -44,7 +44,7 @@ script_start_time = time.perf_counter()
 num_cores = multiprocessing.cpu_count()
 os.environ['OMP_NUM_THREADS'] = str(num_cores)
 
-import pyccl_cov_class as pyccl_cov_class
+import spaceborne.pyccl_interface as pyccl_interface
 
 
 general_cfg = cfg.general_cfg
@@ -118,7 +118,7 @@ nofz_filename = covariance_cfg["nofz_filename"].format(**variable_specs)
 n_of_z_load = np.genfromtxt(f'{nofz_folder}/{nofz_filename}')
 
 # initialize class, ie initialize cosmo
-ccl_obj = pyccl_cov_class.PycclClass(fid_pars_dict)
+ccl_obj = pyccl_interface.PycclClass(fid_pars_dict)
 
 # set n_z
 ccl_obj.set_nz(n_of_z_load)

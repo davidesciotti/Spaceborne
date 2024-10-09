@@ -9,7 +9,7 @@ from scipy.interpolate import UnivariateSpline, interp1d
 import os
 
 import spaceborne.cl_preprocessing as cl_preprocessing
-import spaceborne.pyccl_cov_class as pyccl_cov
+import spaceborne.pyccl_interface as pyccl_cov
 import spaceborne.sigma2_SSC as sigma2_SSC
 import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib

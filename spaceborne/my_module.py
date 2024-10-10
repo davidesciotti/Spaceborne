@@ -284,7 +284,7 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
                 ax[1].scatter(param_names, diff, marker='o', c=colors[i + start_idx], alpha=0.6)
             ax[1].fill_between((0, nparams_toplot), -10, 10, color='k', alpha=0.1, label='$\\pm 10\\%$')
 
-        ax[1].set_ylabel(f'% diff wrt\n{title_str}')
+        ax[1].set_ylabel(f'% diff wrt\n{title_str}\n')
         ax[1].legend(ncol=1, loc='center right', bbox_to_anchor=(1.38, 0.5))
         ax[1].grid()
 

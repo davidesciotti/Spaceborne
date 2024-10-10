@@ -2172,11 +2172,11 @@ fm_dict_of_dicts = {
     # 'SB_KEapp_su_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkern_separateuniverse.pickle'),
     # 'SB_su_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_simpkern_separateuniverse.pickle'),
     # 'SB_hm_s2bflat': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkern_sigma2bflat_sky_HM.pickle'),
+    'CCL_hm_s2b_pcotf': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}_Euclid_KE_approximation_simpkern_sigma2bpolar_cap_on_the_fly.pickle'),
     'SB_hm_s2b_pcotf': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkern_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     # 'CCL_hm_s2b_none': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}_Euclid_KE_approximation_simpkern_sigma2bNone.pickle'),
     # 'CCL_hm_s2b_flat': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}_Euclid_KE_approximation_simpkern_sigma2bflat_sky.pickle'),
-    'CCL_hm_s2b_pcotf': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}_Euclid_KE_approximation_simpkern_sigma2bpolar_cap_on_the_fly.pickle'),
-    # 'current': fm_dict,
+    'current': fm_dict,
 }
 
 labels = list(fm_dict_of_dicts.keys())
@@ -2185,7 +2185,7 @@ keys_toplot_in = ['FM_WL_GSSC', 'FM_GC_GSSC', 'FM_XC_GSSC', 'FM_3x2pt_GSSC']
 # keys_toplot = 'all'
 colors = ['tab:blue', 'tab:green', 'tab:orange', 'tab:red', 'tab:cyan', 'tab:grey', 'tab:olive', 'tab:purple']
 
-reference = 'mean'
+reference = 'first_key'
 nparams_toplot_in = 8
 normalize_by_gauss = True
 

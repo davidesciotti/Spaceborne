@@ -223,7 +223,6 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
                                                                         remove_null_rows_cols=True)
         masked_fm_dict_list.append(masked_fm_dict)
         masked_fid_pars_dict_list.append(masked_fid_pars_dict)
-    print(keys_toplot)
 
     # compute reference uncertainties
     for key in keys_toplot:
@@ -243,7 +242,6 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
     # plot, and if necessary normalize by the G-only uncertainty
     for key in keys_toplot:
         probe = key.split('_')[1]
-        print('key: ', key)
 
         ylabel = 'rel. unc. [%]'
         if normalize_by_gauss and not key.endswith('G'):
@@ -1425,7 +1423,7 @@ def matshow(array, title="title", log=True, abs_val=False, threshold=None, only_
 
     if threshold is not None:
         array = np.ma.masked_where(array < threshold, array)
-        title += f" \n(masked below {threshold} \%)"
+        title += f" \n(masked below {threshold} \\%)"
 
     plt.matshow(array, **matshow_kwargs)
     plt.colorbar()
@@ -2097,13 +2095,6 @@ def covariance_einsum_split(cl_5d, noise_5d, f_sky, ell_values, delta_ell, retur
     cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]
     noise_LL_5D = noise_3x2pt_5D[0, 0, ...][np.newaxis, np.newaxis, ...]
     cov_WL_6D = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_values, delta_ell)[0, 0, 0, 0, ...]
-
-    KiDS implementation (from Robert's email, to be checked in the relevant paper):
-    Regarding the Gaussian term. Yes the Delta\ell is missing: 
-    the code sums over the bandwidth explicitely and does not assume that the 
-    covariance is constant across the ell bin. For most ell binnings though, 
-    this will reduce to the equation you provided.
-
     """
 
     assert cl_5d.shape[0] == 1 or cl_5d.shape[0] == 2, 'This funcion only works with 1 or two probes'

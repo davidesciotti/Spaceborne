@@ -232,7 +232,7 @@ covariance_cfg:
     # - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only). In this case, the output covmat
     #   has to be rescaled by fsky
     which_sigma2_b: polar_cap_on_the_fly
-    nside_mask: 2048
+    nside_mask: 512
     mask_path: null
 
     Spaceborne_cfg:
@@ -288,8 +288,8 @@ covariance_cfg:
         # z_grid_tkka_max: 3 # used to be 6
         # k_grid_tkka_min: 1.e-5
         # k_grid_tkka_max: 1.e+2
-        z_grid_tkka_steps_SSC: 100 # (z, k) = (50, 100) seems altrady enough
-        k_grid_tkka_steps_SSC: 200
+        z_grid_tkka_steps_SSC: 50 # (z, k) = (50, 100) seems altrady enough
+        k_grid_tkka_steps_SSC: 100
         z_grid_tkka_steps_cNG: 100
         k_grid_tkka_steps_cNG: 512
 

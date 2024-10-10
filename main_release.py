@@ -37,6 +37,9 @@ import spaceborne.sigma2_SSC as sigma2_SSC
 import spaceborne.onecovariance_interface as oc_interface
 import spaceborne.responses as responses
 
+import matplotlib
+# matplotlib.use('Agg')
+
 pp = pprint.PrettyPrinter(indent=4)
 ROOT = os.getenv('ROOT')
 script_start_time = time.perf_counter()
@@ -235,6 +238,8 @@ else:
     pk_txt_label = "Mpc3"
 
 ccl_obj = pyccl_interface.PycclClass(fid_pars_dict)
+a_default_grid_ccl = ccl_obj.cosmo_ccl.get_pk_spline_a()
+z_default_grid_ccl = cosmo_lib.a_to_z(a_default_grid_ccl)[::-1]
 
 # ! some checks
 assert general_cfg['use_WA'] is False, 'We do not use Wadd for SPV3 at the moment'
@@ -255,7 +260,7 @@ if cfg['covariance_cfg']['Spaceborne_cfg']['use_KE_approximation'] and cfg['cova
     assert cfg['covariance_cfg']['Spaceborne_cfg']['integration_type'] == 'simps_KE_approximation'
     assert cfg['covariance_cfg']['which_sigma2_b'] is not None, 'to use the flat-sky sigma2_b, set "flat_sky" in '\
         'the cfg file. Also, bear in mind that the flat-sky approximation for sigma2_b is likely inappropriate '\
-            'for the large Euclid survey area'
+        'for the large Euclid survey area'
 elif not cfg['covariance_cfg']['Spaceborne_cfg']['use_KE_approximation']:
     assert cfg['covariance_cfg']['Spaceborne_cfg']['cl_integral_convention'] in ('Euclid', 'PySSC')
     assert cfg['covariance_cfg']['Spaceborne_cfg']['integration_type'] in ('simps', 'trapz')
@@ -1118,9 +1123,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     if covariance_cfg['Spaceborne_cfg']['use_KE_approximation']:
 
         # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
-        ccl_obj.set_sigma2_b(zmin=z_grid_ssc_integrands.min(),
-                             zmax=z_grid_ssc_integrands.max(),
-                             zsteps=len(z_grid_ssc_integrands),
+        ccl_obj.set_sigma2_b(z_grid=z_grid_ssc_integrands,
                              fsky=covariance_cfg['fsky'],
                              which_sigma2_b=which_sigma2_b,
                              nside_mask=covariance_cfg['nside_mask'],
@@ -1316,9 +1319,12 @@ print('SSC computed with Spaceborne')
 
 # ! ========================================== start PyCCL ===================================================
 if covariance_cfg['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomputed_cov']:
-    ccl_obj.set_sigma2_b(zmin=z_grid_ssc_integrands.min(),
-                         zmax=z_grid_ssc_integrands.max(),
-                         zsteps=len(z_grid_ssc_integrands),
+
+    # Note: this z grid has to be larger than the one requested in the trispectrum (z_grid_tkka in the cfg file).
+    # You can probaby use the same grid as the one used in the trispectrum, but from my tests is should be
+    # zmin_s2b < zmin_s2b_tkka and zmax_s2b =< zmax_s2b_tkka.
+    # if zmin=0 it looks like I can have zmin_s2b = zmin_s2b_tkka
+    ccl_obj.set_sigma2_b(z_grid=z_default_grid_ccl,
                          fsky=covariance_cfg['fsky'],
                          which_sigma2_b=which_sigma2_b,
                          nside_mask=covariance_cfg['nside_mask'],
@@ -1932,12 +1938,12 @@ if fm_cfg['save_FM_dict']:
 
     if covariance_cfg['ng_cov_code'] == 'Spaceborne':
         resp_filename = covariance_cfg['Spaceborne_cfg']['which_pk_responses']
-        
+
         if resp_filename == 'halo_model':
             resp_filename = 'HM'
         elif resp_filename.startswith('separate_universe'):
             resp_filename = resp_filename.replace('separate_universe', 'SU')
-        
+
         fm_dict_filename = fm_dict_filename.replace(
             '.pickle',
             f'_{resp_filename}.pickle'

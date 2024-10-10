@@ -110,7 +110,7 @@ class PycclClass():
             'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
 
     def set_ia_bias_tuple(self, z_grid, has_ia):
-        
+
         self.has_ia = has_ia
 
         if self.has_ia:
@@ -232,28 +232,25 @@ class PycclClass():
 
     # ! ==========================================================================================================================================================================
 
-    def set_sigma2_b(self, zmin, zmax, zsteps, fsky, which_sigma2_b, 
+    def set_sigma2_b(self, z_grid, fsky, which_sigma2_b, 
                      nside_mask, mask_path=None):
 
-        self.a_grid_sigma2_b = np.linspace(cosmo_lib.z_to_a(zmax),
-                                           cosmo_lib.z_to_a(zmin),
-                                           zsteps)
-        self.z_grid_sigma2_b = cosmo_lib.z_to_a(self.a_grid_sigma2_b)[::-1]
+        self.a_grid_sigma2_b = cosmo_lib.z_to_a(z_grid)[::-1]
         area_deg2 = fsky * 4 * np.pi * (180 / np.pi)**2
-        
+
         if which_sigma2_b == 'polar_cap_on_the_fly':
             mask = mask_utils.generate_polar_cap(area_deg2, nside_mask)
-            
+
         elif which_sigma2_b == 'from_input_mask':
             mask = hp.read_map(mask_path)
-        
+
         if which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
             hp.mollview(mask, coord=['C', 'E'], title='polar cap generated on-the fly', cmap='inferno_r')
-            cl_mask  = hp.anafast(mask)
+            cl_mask = hp.anafast(mask)
             ell_mask = np.arange(len(cl_mask))
             cl_mask_norm = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * fsky)**2
             # quick check
-            fsky_mask = np.sqrt(cl_mask[0]/(4*np.pi))
+            fsky_mask = np.sqrt(cl_mask[0] / (4 * np.pi))
             print(f'fsky from mask: {fsky_mask:.4f}')
             assert np.fabs(fsky_mask / fsky) < 1.01, 'fsky_in is not the same as the fsky of the mask'
 
@@ -273,9 +270,11 @@ class PycclClass():
             sigma2_b = ccl.covariances.sigma2_B_disc(
                 cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, fsky=fsky)
             self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
-            
+
         elif which_sigma2_b == None:
             self.sigma2_b_tuple = None
+            
+        # breakpoint()
 
         else:
             raise ValueError('which_sigma2_b must be either "from_input_mask", "polar_cap_on_the_fly" or None')

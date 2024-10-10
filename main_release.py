@@ -258,7 +258,7 @@ assert general_cfg['which_forecast'] == 'SPV3', 'ISTF forecasts not supported at
 if cfg['covariance_cfg']['Spaceborne_cfg']['use_KE_approximation'] and cfg['covariance_cfg']['ng_cov_code'] == 'Spaceborne':
     assert cfg['covariance_cfg']['Spaceborne_cfg']['cl_integral_convention'] == 'Euclid_KE_approximation'
     assert cfg['covariance_cfg']['Spaceborne_cfg']['integration_type'] == 'simps_KE_approximation'
-    assert cfg['covariance_cfg']['which_sigma2_b'] is not None, 'to use the flat-sky sigma2_b, set "flat_sky" in '\
+    assert cfg['covariance_cfg']['which_sigma2_b'] not in [None, 'full_curved_sky'], 'to use the flat-sky sigma2_b, set "flat_sky" in '\
         'the cfg file. Also, bear in mind that the flat-sky approximation for sigma2_b is likely inappropriate '\
         'for the large Euclid survey area'
 elif not cfg['covariance_cfg']['Spaceborne_cfg']['use_KE_approximation']:
@@ -1152,7 +1152,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
                 which_sigma2_b=which_sigma2_b,
                 area_deg2_in=covariance_cfg['survey_area_deg2'],
                 nside_mask=covariance_cfg['nside_mask'],
-                ellmax=general_cfg['ell_max_3x2pt']
+                mask_path=covariance_cfg['mask_path']
             )
 
             # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to decrease
@@ -2171,9 +2171,11 @@ fm_dict_of_dicts = {
     # 'OC_simpker': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_simpkern.pickle'),
     # 'SB_KEapp_su_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkern_separateuniverse.pickle'),
     # 'SB_su_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_simpkern_separateuniverse.pickle'),
-    'SB_hm_s2bflat': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkern_sigma2bflat_sky_HM.pickle'),
+    # 'SB_hm_s2bflat': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkern_sigma2bflat_sky_HM.pickle'),
     'SB_hm_s2b_pcotf': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkern_sigma2bpolar_cap_on_the_fly_HM.pickle'),
-    # 'CCL_hm_s2bflat': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}_Euclid_KE_approximation_simpkern_sigma2bNone.pickle'),
+    # 'CCL_hm_s2b_none': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}_Euclid_KE_approximation_simpkern_sigma2bNone.pickle'),
+    # 'CCL_hm_s2b_flat': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}_Euclid_KE_approximation_simpkern_sigma2bflat_sky.pickle'),
+    'CCL_hm_s2b_pcotf': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}_Euclid_KE_approximation_simpkern_sigma2bpolar_cap_on_the_fly.pickle'),
     # 'current': fm_dict,
 }
 
@@ -2183,7 +2185,7 @@ keys_toplot_in = ['FM_WL_GSSC', 'FM_GC_GSSC', 'FM_XC_GSSC', 'FM_3x2pt_GSSC']
 # keys_toplot = 'all'
 colors = ['tab:blue', 'tab:green', 'tab:orange', 'tab:red', 'tab:cyan', 'tab:grey', 'tab:olive', 'tab:purple']
 
-reference = 'first_key'
+reference = 'mean'
 nparams_toplot_in = 8
 normalize_by_gauss = True
 

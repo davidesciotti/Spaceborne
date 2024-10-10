@@ -12,6 +12,8 @@ from scipy.interpolate import RegularGridInterpolator
 from scipy.special import spherical_jn
 import pyccl as ccl
 from tqdm import tqdm
+import healpy as hp
+
 
 import os
 ROOT = os.getenv('ROOT')
@@ -156,7 +158,6 @@ def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigm
         mask = mask_utils.generate_polar_cap(area_deg2_in, nside_mask)
     
     elif which_sigma2_b == 'from_input_mask':
-        import healpy as hp
         mask = hp.read_map(mask_path)
     
     if which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:

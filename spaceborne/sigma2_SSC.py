@@ -144,7 +144,8 @@ def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b, ell_mask=None,
     return result
 
 
-def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigma2_b, area_deg2_in, nside_mask):
+def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigma2_b, 
+                     area_deg2_in, nside_mask, mask_path):
 
     if which_sigma2_b == 'full_curved_sky':
         ell_mask = None
@@ -152,21 +153,21 @@ def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigm
         fsky_mask = None  # not needed in this case, the whole covariance is normalized at the end of the computation
 
     elif which_sigma2_b == 'polar_cap_on_the_fly':
-        import healpy as hp
         mask = mask_utils.generate_polar_cap(area_deg2_in, nside_mask)
+    
+    elif which_sigma2_b == 'from_input_mask':
+        import healpy as hp
+        mask = hp.read_map(mask_path)
+    
+    if which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
         hp.mollview(mask, coord=['C', 'E'], title='polar cap generated on-the fly', cmap='inferno_r')
-        
         cl_mask  = hp.anafast(mask)
         ell_mask = np.arange(len(cl_mask))
-        # Compute fsky from the mask
+        # quick check
         fsky_mask = np.sqrt(cl_mask[0]/(4*np.pi))
         print(f'fsky from mask: {fsky_mask:.4f}')
-        
         fsky_in = csmlib.deg2_to_fsky(area_deg2_in)
         assert np.abs(fsky_mask / fsky_in) < 1.01, 'fsky_in is not the same as the fsky of the mask'
-        
-    elif which_sigma2_b == 'from_input_mask':
-        raise NotImplementedError('not implemented yet, simply import the necessary ingredients and repeat code above')
         
     sigma2_b = np.zeros((len(z_grid_ssc_integrands), len(z_grid_ssc_integrands)))
     for z2_idx, z2 in enumerate(tqdm(z_grid_ssc_integrands)):
@@ -178,7 +179,7 @@ def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigm
             which_sigma2_b=which_sigma2_b,
             ell_mask=ell_mask, 
             cl_mask=cl_mask,
-            fsky_mask=fsky_mask
+            fsky_mask=fsky_in
         )
 
     return sigma2_b

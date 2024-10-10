@@ -222,16 +222,17 @@ covariance_cfg:
     cov_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat"
     cov_filename: covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_pk{which_pk:s}_{ndim:d}D{cov_suffix:s}{fm_and_cov_suffix:s}.npz
 
-    ng_cov_code: Spaceborne # ! PySSC or PyCCL or Spaceborne or OneCovariance
+    ng_cov_code: PyCCL # ! PySSC or PyCCL or Spaceborne or OneCovariance
 
     # sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
     # - from_input_mask: input a mask with path specified by mask_path
     # - polar_cap_on_the_fly: generate a polar cap during the run, with nside specified by nside
-    # - null (None): use the flat-sky expression (valud for PyCCL only)
+    # - null (None): use the flat-sky expression (valid for PyCCL only)
+    # - flat_sky: use the flat-sky expression (valud for PyCCL only)
     # - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only). In this case, the output covmat
-    # has to be rescaled by fsky
-    which_sigma2_b: polar_cap_on_the_fly # "from_input_mask" or "polar_cap_on_the_fly" or null (None) for flat-sky approx
-    nside_mask: 512
+    #   has to be rescaled by fsky
+    which_sigma2_b: polar_cap_on_the_fly
+    nside_mask: 2048
     mask_path: null
 
     Spaceborne_cfg:
@@ -245,10 +246,6 @@ covariance_cfg:
         cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Spaceborne/{which_pk_responses:s}"
         cov_suffix: "_zsteps{z_steps_ssc_integrands:d}_k{k_txt_label:s}_convention{cl_integral_convention:s}_integration{integration_type:s}_{survey_area_deg2:d}deg2_Francis"
 
-        # TODO these have to be tidied up
-        # TODO do not divide by fsky when using which_sigma2_b=mask
-
-        k_txt_label: 1overMpc
         log10_k_min_sigma2: -4
         log10_k_max_sigma2: 1
         k_steps_sigma2: 20_000 # TODO can I lower this? double bessel integral...
@@ -328,7 +325,7 @@ FM_cfg:
 
     fm_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}"
     fm_txt_filename: fm_txt_filename
-    fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_source:02d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}_pk{which_pk:s}_{survey_area_deg2:d}deg2{fm_and_cov_suffix:s}_{cl_integral_convention:s}_simpkernFalse.pickle
+    fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_source:02d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}_pk{which_pk:s}_{survey_area_deg2:d}deg2{fm_and_cov_suffix:s}_{cl_integral_convention:s}_simpkern_sigma2b{which_sigma2_b:s}.pickle
 
     test_against_vincenzo: False # TODO delete this
     test_against_benchmarks: False # TODO delete this

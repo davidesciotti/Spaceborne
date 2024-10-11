@@ -749,9 +749,12 @@ if covariance_cfg['ng_cov_code'] == 'OneCovariance' or \
     if not os.path.exists(oc_path):
         os.makedirs(oc_path)
 
-    nofz_ascii_filename = nofz_filename.replace('.dat', f'_dzshifts{shift_nz}.ascii')
-    nofz_tosave = np.column_stack((zgrid_nz, n_of_z))
-    np.savetxt(f'{oc_path}/{nofz_ascii_filename}', nofz_tosave)
+    nz_src_ascii_filename = cfg['nz_sources_filename'].replace('.dat', f'_dzshifts{shift_nz}.ascii')
+    nz_lns_ascii_filename = cfg['nz_lenses_filename'].replace('.dat', f'_dzshifts{shift_nz}.ascii')
+    nz_src_tosave = np.column_stack((zgrid_nz_src, nz_src))
+    nz_lns_tosave = np.column_stack((zgrid_nz_lns, nz_lns))
+    np.savetxt(f'{oc_path}/{nz_src_ascii_filename}', nz_src_tosave)
+    np.savetxt(f'{oc_path}/{nz_lns_ascii_filename}', nz_lns_tosave)
 
     cl_ll_ascii_filename = f'Cell_ll_SPV3_nbl{nbl_3x2pt}'
     cl_gl_ascii_filename = f'Cell_gl_SPV3_nbl{nbl_3x2pt}'
@@ -768,7 +771,8 @@ if covariance_cfg['ng_cov_code'] == 'OneCovariance' or \
         'cl_gl_ascii_filename': cl_gl_ascii_filename,
         'cl_gg_ascii_filename': cl_gg_ascii_filename,
         'gal_bias_ascii_filename': gal_bias_ascii_filename,
-        'nofz_ascii_filename': nofz_ascii_filename,
+        'nz_src_ascii_filename': nz_src_ascii_filename,
+        'nz_lns_ascii_filename': nz_lns_ascii_filename,
     }
 
     # * 2. compute cov using the onecovariance interface class

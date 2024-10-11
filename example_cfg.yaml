@@ -90,7 +90,7 @@ general_cfg:
     ell_max_WL_opt: 5000 # this is the value from which the various bin cuts are applied, do not change it
 
     ell_cuts: False
-    which_cuts: Vincenzo
+    which_cuts: standard
     center_or_min: center # cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
     cl_ell_cuts: False
     kmax_h_over_Mpc_ref: 1.0 # this is used when ell_cuts is False, also...?
@@ -251,8 +251,6 @@ covariance_cfg:
         # TODO do not divide by fsky when using which_sigma2_B=mask
         which_sigma2_B: full-curved-sky # mask or spaceborne (with mask) or None
         nside_mask: 2048
-        ell_mask_filename: ROOT + /common_data/mask/ell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy
-        cl_mask_filename: ROOT + /common_data/mask/Cell_circular_1pole_{area_deg2:d}deg2_nside{nside:d}.npy
 
         # TODO test and change the default value to Eudlid
         cl_integral_convention: PySSC # "Euclid" or "PySSC". results are the same
@@ -267,9 +265,10 @@ covariance_cfg:
         z_max_ssc_integrands: 3.
         z_steps_ssc_integrands: 250 # this should be high because I have to trace the spikes in sigma2
 
-        load_precomputed_sigma2: False
-        sigma2_b_path: "/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/IO_for_Sofia/sigma2_b"
-        sigma2_b_filename: "..."
+        load_precomputed_sigma2_b: False
+        save_sigma2_b: False
+        sigma2_b_path: path/to/sigma2_b
+        sigma2_b_filename: sigma2_b_filename
         use_KE_approximation: False # TODO implement this in the Julia module
         integration_type: "simps" # 'simps' or 'trapz' (which is actually using rectangles)
 
@@ -279,30 +278,24 @@ covariance_cfg:
         use_OneCovariance_SSC: True
         which_gauss_cov_binning: OneCovariance # EC20 or OneCovariance
         high_precision: False # True to increase different precision parameters, False to use default values
-        path_to_oc_executable: "{ROOT:s}/OneCovariance/covariance.py"
+        path_to_oc_executable: ".../OneCovariance/covariance.py"
 
-        onecovariance_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/covmat/OneCovariance/{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}"
-        cov_filename: "cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_Gbinning{which_gauss_cov_binning:s}.npz"
+        onecovariance_folder: path/to/onecovariance_output
+        cov_filename: onecovariance_output_filename
 
 FM_cfg:
     compute_FM: False
 
-    save_FM_txt: True
-    save_FM_dict: True
+    save_FM_txt: False
+    save_FM_dict: False
 
     load_preprocess_derivatives: False
-    which_derivatives: Vincenzo # Vincenzo or Spaceborne
-    derivatives_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}" # TODO delete this
-
-    derivatives_filename: dDVd{param_name:s}-{probe:s}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{EP_or_ED:s}{zbins:02d}.dat
-    derivatives_prefix: dDVd
+    derivatives_folder: path/to/ders
+    derivatives_filename: ders_filename
 
     derivatives_BNT_transform: False
     deriv_ell_cuts: False
 
-    fm_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}"
+    fm_folder: path/to/FM
     fm_txt_filename: fm_txt_filename
-    fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_source:02d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}_pk{which_pk:s}_{survey_area_deg2:d}deg2{fm_and_cov_suffix:s}_Francis_may24_OCint.pickle
-
-    test_against_vincenzo: False # TODO delete this
-    test_against_benchmarks: False # TODO delete this
+    fm_dict_filename: fm_dict_filename

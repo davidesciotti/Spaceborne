@@ -13,6 +13,7 @@ import os
 import sys
 from matplotlib import cm
 from tqdm import tqdm
+import healpy as hp
 from scipy.interpolate import interp1d
 
 import spaceborne.my_module as mm
@@ -21,7 +22,6 @@ import spaceborne.wf_cl_lib as wf_cl_lib
 import spaceborne.sigma2_SSC as sigma2_SSC
 import common_cfg.mpl_cfg as mpl_cfg
 import spaceborne.mask_fits_to_cl as mask_utils
-
 
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
@@ -232,67 +232,43 @@ class PycclClass():
 
     # ! ==========================================================================================================================================================================
 
-    def set_sigma2_b(self, zmin, zmax, zsteps, f_sky, survey_area_deg2, which_sigma2_b, pyccl_cfg,
+    def set_sigma2_b(self, z_grid, fsky, which_sigma2_b,
                      nside_mask, mask_path=None):
 
-        self.a_grid_sigma2_b = np.linspace(cosmo_lib.z_to_a(zmax),
-                                           cosmo_lib.z_to_a(zmin),
-                                           zsteps)
-        self.z_grid_sigma2_b = cosmo_lib.z_to_a(self.a_grid_sigma2_b)[::-1]
+        self.a_grid_sigma2_b = cosmo_lib.z_to_a(z_grid)[::-1]
+        area_deg2 = fsky * 4 * np.pi * (180 / np.pi)**2
+
+        if which_sigma2_b == 'polar_cap_on_the_fly':
+            mask = mask_utils.generate_polar_cap(area_deg2, nside_mask)
+
+        elif which_sigma2_b == 'from_input_mask':
+            mask = hp.read_map(mask_path)
+
+        if which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
+            hp.mollview(mask, coord=['C', 'E'], title='polar cap generated on-the fly', cmap='inferno_r')
+            cl_mask = hp.anafast(mask)
+            ell_mask = np.arange(len(cl_mask))
+            cl_mask_norm = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * fsky)**2
+            # quick check
+            fsky_mask = np.sqrt(cl_mask[0] / (4 * np.pi))
+            print(f'fsky from mask: {fsky_mask:.4f}')
+            assert np.fabs(fsky_mask / fsky) < 1.01, 'fsky_in is not the same as the fsky of the mask'
 
         if which_sigma2_b == 'from_input_mask':
-
-            raise NotImplementedError('TODO compute cl mask on the fly')
-
-            warnings.warn('should I normalize the mask??')
-            print('Computing sigma2_b from mask')
-
-            assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(survey_area_deg2),
-                                   abs_value=True) < 1, 'f_sky is not correct'
-
-            ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=survey_area_deg2, nside=nside_mask))
-            cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=survey_area_deg2, nside=nside_mask))
-
             # normalization has been checked from https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
             # and is the same as CSST paper https://zenodo.org/records/7813033
-            cl_mask_norm = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * f_sky)**2
-
             sigma2_b = ccl.covariances.sigma2_B_from_mask(
                 cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, mask_wl=cl_mask_norm, p_of_k_a='delta_matter:delta_matter')
-
             self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
 
         elif which_sigma2_b == 'polar_cap_on_the_fly':
-
-            print('Computing sigma2_b from polar cap generated on the fly')
-            warnings.warn('should I normalize the mask??')
-            import healpy as hp
-            
-            # TODO this is repeated code from the sigma2_SSC class; unify
-            
-            # generate the mask and compute its power spectrum
-            mask = mask_utils.generate_polar_cap(survey_area_deg2, nside_mask)
-            hp.mollview(mask, coord=['C', 'E'], title='polar cap generated on-the fly', cmap='inferno_r')
-            cl_mask  = hp.anafast(mask)
-            ell_mask = np.arange(len(cl_mask))
-            
-            # check: compute fsky from the mask
-            fsky_mask = np.sqrt(cl_mask[0]/(4*np.pi))
-            print('fsky from mask: {fsky_mask:.4f}')
-            fsky_in = cosmo_lib.deg2_to_fsky(survey_area_deg2)
-            assert np.abs(fsky_mask / fsky_in) < 1.01, 'fsky_in is not the same as the fsky of the mask'
-            assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(survey_area_deg2), abs_value=True) < 1, 'f_sky is not correct'
-            # assert len(ell_mask) > ellmax, 'the maximum ell from this mask is lower than the needed lmax. Try increasing nside'
-
-
-            k_grid_tkka = np.geomspace(pyccl_cfg['k_grid_tkka_min'],
-                                       pyccl_cfg['k_grid_tkka_max'],
-                                       5000)
-
-            cl_mask_norm = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * f_sky)**2
             sigma2_b = ccl.covariances.sigma2_B_from_mask(
-                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, mask_wl=cl_mask_norm, p_of_k_a='delta_matter:delta_matter')
+                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, mask_wl=cl_mask_norm)
+            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
 
+        elif which_sigma2_b == 'flat_sky':
+            sigma2_b = ccl.covariances.sigma2_B_disc(
+                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, fsky=fsky)
             self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
 
         elif which_sigma2_b == None:
@@ -544,7 +520,12 @@ class PycclClass():
         for key in self.cov_ng_3x2pt_dict_8D.keys():
             if (key == ('L', 'L', 'L', 'L')) or (key == ('G', 'L', 'G', 'L')) or (key == ('G', 'G', 'G', 'G')):
                 try:
-                    np.testing.assert_allclose(self.cov_ng_3x2pt_dict_8D[key], np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 2, 3)), rtol=1e-5, atol=0,
+                    cov_2d = mm.cov_4D_to_2D(self.cov_ng_3x2pt_dict_8D[key])
+                    assert np.allclose(cov_2d, cov_2d.T, atol=0, rtol=1e-5)
+                    np.testing.assert_allclose(self.cov_ng_3x2pt_dict_8D[key],
+                                            #    np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 2, 3)),
+                                               np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 3, 2)),
+                                               rtol=1e-5, atol=0,
                                                err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
                 except AssertionError as error:
                     print(error)

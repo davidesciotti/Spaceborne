@@ -7,10 +7,6 @@ os.environ['NUMBA_PARALLEL_DIAGNOSTICS'] = '4'
 
 # jupyter stuff:
 # os.chdir('/home/cosmo/davide.sciotti/data/Spaceborne/')  # for new interactive window
-# %matplotlib inline
-# import niceplots.utils as nicepl
-# nicepl.initPlot()
-
 
 from functools import partial
 from collections import OrderedDict
@@ -245,6 +241,8 @@ else:
     pk_txt_label = "Mpc3"
 
 ccl_obj = pyccl_interface.PycclClass(fid_pars_dict)
+a_default_grid_ccl = ccl_obj.cosmo_ccl.get_pk_spline_a()
+z_default_grid_ccl = cosmo_lib.a_to_z(a_default_grid_ccl)[::-1]
 
 # ! some checks
 assert general_cfg['use_WA'] is False, 'We do not use Wadd for SPV3 at the moment'
@@ -260,14 +258,17 @@ assert (ell_max_WL, ell_max_GC) == (5000, 3000) or (1500, 750), \
     'ell_max_WL and ell_max_GC must be either (5000, 3000) or (1500, 750)'
 assert general_cfg['which_forecast'] == 'SPV3', 'ISTF forecasts not supported at the moment'
 
-if cfg['covariance_cfg']['Spaceborne_cfg']['use_KE_approximation']:
+if cfg['covariance_cfg']['Spaceborne_cfg']['use_KE_approximation'] and cfg['covariance_cfg']['ng_cov_code'] == 'Spaceborne':
     assert cfg['covariance_cfg']['Spaceborne_cfg']['cl_integral_convention'] == 'Euclid_KE_approximation'
     assert cfg['covariance_cfg']['Spaceborne_cfg']['integration_type'] == 'simps_KE_approximation'
-    assert cfg['covariance_cfg']['which_sigma2_b'] is not None, \
-        'the flat-sky approximation is likely inappropriate for the large Euclid survey area'
-else:
+    assert cfg['covariance_cfg']['which_sigma2_b'] not in [None, 'full_curved_sky'], \
+        'to use the flat-sky sigma2_b, set "flat_sky" in the cfg file. Also, bear in mind that the flat-sky '\
+        'approximation for sigma2_b is likely inappropriate for the large Euclid survey area'
+elif not cfg['covariance_cfg']['Spaceborne_cfg']['use_KE_approximation'] and cfg['covariance_cfg']['ng_cov_code'] == 'Spaceborne':
     assert cfg['covariance_cfg']['Spaceborne_cfg']['cl_integral_convention'] in ('Euclid', 'PySSC')
     assert cfg['covariance_cfg']['Spaceborne_cfg']['integration_type'] in ('simps', 'trapz')
+    assert cfg['covariance_cfg']['which_sigma2_b'] not in [None, 'flat_sky'], \
+        'If you\'re not using the KE approximation, you should set "full_curved_sky", "from_input_mask or "polar_cap_on_the_fly"'
 
 if general_cfg['is_CLOE_run']:
     assert covariance_cfg['survey_area_deg2'] == 13245, 'survey area must be 13245 deg2'
@@ -1122,7 +1123,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     # TODO find best way to handle these conditions, too much nesting
     sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename'].format(
         ROOT=ROOT,
-        which_sigma2_b=which_sigma2_b,
+        which_sigma2_b=str(which_sigma2_b),
         zmin=covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
         zmax=covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
         zsteps=z_steps_ssc_integrands,
@@ -1133,10 +1134,11 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     if covariance_cfg['Spaceborne_cfg']['use_KE_approximation']:
 
         # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
-        ccl_obj.set_sigma2_b(z_grid_ssc_integrands.min(), z_grid_ssc_integrands.max(), len(z_grid_ssc_integrands),
-                             covariance_cfg['fsky'], covariance_cfg['survey_area_deg2'],
-                             which_sigma2_b=which_sigma2_b, pyccl_cfg=pyccl_cfg,
-                             nside_mask=covariance_cfg['nside_mask'], mask_path=covariance_cfg['mask_path'])
+        ccl_obj.set_sigma2_b(z_grid=z_grid_ssc_integrands,
+                             fsky=covariance_cfg['fsky'],
+                             which_sigma2_b=which_sigma2_b,
+                             nside_mask=covariance_cfg['nside_mask'],
+                             mask_path=covariance_cfg['mask_path'])
 
         _a, sigma2_b = ccl_obj.sigma2_b_tuple
         sigma2_b = sigma2_b[::-1]
@@ -1161,7 +1163,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
                 which_sigma2_b=which_sigma2_b,
                 area_deg2_in=covariance_cfg['survey_area_deg2'],
                 nside_mask=covariance_cfg['nside_mask'],
-                ellmax=general_cfg['ell_max_3x2pt']
+                mask_path=covariance_cfg['mask_path']
             )
 
             # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to decrease
@@ -1185,11 +1187,11 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
                                                num_threads=general_cfg['num_threads'])
     print('SSC computed with Julia in {:.2f} s'.format(time.perf_counter() - start))
 
-    # If the mask is not passed to sigma2_b, we need to divide by fsky
+    # in the full_curved_sky case only, sigma2_b has to be divided by fsky
     if which_sigma2_b == 'full_curved_sky':
         for key in cov_ssc_3x2pt_dict_8D.keys():
             cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
-    elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
+    elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask', 'flat_sky']:
         pass
     else:
         raise ValueError(f'which_sigma2_b = {which_sigma2_b} not recognized')
@@ -1328,9 +1330,14 @@ print('SSC computed with Spaceborne')
 
 # ! ========================================== start PyCCL ===================================================
 if covariance_cfg['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomputed_cov']:
-    ccl_obj.set_sigma2_b(z_grid_ssc_integrands.min(), z_grid_ssc_integrands.max(), len(z_grid_ssc_integrands),
-                         covariance_cfg['fsky'], covariance_cfg['survey_area_deg2'],
-                         which_sigma2_b=which_sigma2_b, pyccl_cfg=pyccl_cfg,
+
+    # Note: this z grid has to be larger than the one requested in the trispectrum (z_grid_tkka in the cfg file).
+    # You can probaby use the same grid as the one used in the trispectrum, but from my tests is should be
+    # zmin_s2b < zmin_s2b_tkka and zmax_s2b =< zmax_s2b_tkka.
+    # if zmin=0 it looks like I can have zmin_s2b = zmin_s2b_tkka
+    ccl_obj.set_sigma2_b(z_grid=z_default_grid_ccl,
+                         fsky=covariance_cfg['fsky'],
+                         which_sigma2_b=which_sigma2_b,
                          nside_mask=covariance_cfg['nside_mask'],
                          mask_path=covariance_cfg['mask_path'])
 
@@ -1343,6 +1350,29 @@ if covariance_cfg['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomputed_
                                      probe_ordering=probe_ordering, ind_dict=ind_dict)
 
         covariance_cfg[f'cov_{which_ng_cov.lower()}_3x2pt_dict_8D_ccl'] = ccl_obj.cov_ng_3x2pt_dict_8D
+
+
+# for key in ccl_obj.cov_ng_3x2pt_dict_8D.keys():
+#     cov_2d = mm.cov_4D_to_2D(ccl_obj.cov_ng_3x2pt_dict_8D[key])
+#     mm.matshow(cov_2d, log=True, abs_val=True, title=''.join(key))
+
+# for key in [('G', 'G', 'G', 'G'), ('L', 'L', 'L', 'L'), ('G', 'L', 'G', 'L'), ]:
+
+#     np.testing.assert_allclose(ccl_obj.cov_ng_3x2pt_dict_8D[key],
+#                                np.transpose(ccl_obj.cov_ng_3x2pt_dict_8D[key], (1, 0, 2, 3)),
+#                                rtol=1e-5, atol=0,
+#                                err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
+
+#     cov_2d = mm.cov_4D_to_2D(ccl_obj.cov_ng_3x2pt_dict_8D[key])
+#     assert np.allclose(cov_2d, cov_2d.T, atol=0, rtol=1e-5)
+#     mm.matshow(mm.cov2corr(cov_2d), log=False, abs_val=False, title=''.join(key))
+
+# key = ('G', 'G', 'G', 'G')
+# cov_2d_1 = mm.cov_4D_to_2D(np.transpose(ccl_obj.cov_ng_3x2pt_dict_8D[key], (1, 0, 2, 3)))
+# # cov_2d_1 = mm.cov_4D_to_2D(np.transpose(ccl_obj.cov_ng_3x2pt_dict_8D[key], (1, 0, 3, 2)))
+# cov_2d_2 = mm.cov_4D_to_2D(ccl_obj.cov_ng_3x2pt_dict_8D[key])
+
+# mm.compare_arrays(cov_2d_1, cov_2d_2, plot_diff_hist=True, plot_diff_threshold=10)
 
 # ! ========================================== end PyCCL ===================================================
 
@@ -1938,12 +1968,20 @@ if fm_cfg['save_FM_dict']:
     fm_dict_filename = fm_cfg['fm_dict_filename'].format(
         **variable_specs, fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'],
         lmax=ell_max_3x2pt, survey_area_deg2=covariance_cfg['survey_area_deg2'],
-        cl_integral_convention=covariance_cfg['Spaceborne_cfg']['cl_integral_convention'])
+        cl_integral_convention=covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
+        which_sigma2_b=str(which_sigma2_b))
 
     if covariance_cfg['ng_cov_code'] == 'Spaceborne':
+        resp_filename = covariance_cfg['Spaceborne_cfg']['which_pk_responses']
+
+        if resp_filename == 'halo_model':
+            resp_filename = 'HM'
+        elif resp_filename.startswith('separate_universe'):
+            resp_filename = resp_filename.replace('separate_universe', 'SU')
+
         fm_dict_filename = fm_dict_filename.replace(
             '.pickle',
-            f'_{covariance_cfg['Spaceborne_cfg']['which_pk_responses'].replace('_', '')}.pickle'
+            f'_{resp_filename}.pickle'
         )
 
     mm.save_pickle(f'{fm_folder}/{fm_dict_filename}', fm_dict)
@@ -2089,9 +2127,9 @@ for probe in probes:
     param_names_label = param_names_list[:nparams_toplot] + [fom_label] if include_fom else param_names_list[
         :nparams_toplot]
     lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_3x2pt']
-    title = '%s %s, $\\ell_{\\rm max} = %i$, zbins %s%i, zsteps_ssc_integral %i $\\sigma_\\epsilon$ %s' % (
+    title = '%s %s, $\\ell_{\\rm max} = %i$, zbins %s%i, zsteps_ssc_integral %i $\\sigma_\\epsilon$ %s\n%s uncertainties' % (
         covariance_cfg['ng_cov_code'], probe,
-        lmax, ep_or_ed, zbins, len(z_grid_ssc_integrands), covariance_cfg['which_shape_noise'])
+        lmax, ep_or_ed, zbins, len(z_grid_ssc_integrands), covariance_cfg['which_shape_noise'], which_uncertainty)
 
     # bar plot
     if include_fom:
@@ -2173,7 +2211,7 @@ keys_toplot_in = ['FM_WL_GSSC', 'FM_GC_GSSC', 'FM_XC_GSSC', 'FM_3x2pt_GSSC']
 # keys_toplot = 'all'
 colors = ['tab:blue', 'tab:green', 'tab:orange', 'tab:red', 'tab:cyan', 'tab:grey', 'tab:olive', 'tab:purple']
 
-reference = 'first_key'
+reference = 'mean'
 nparams_toplot_in = 8
 normalize_by_gauss = True
 
@@ -2183,7 +2221,7 @@ mm.compare_fm_constraints(*fm_dict_list, labels=labels, keys_toplot_in=keys_topl
                           reference=reference,
                           colors=colors,
                           abs_FoM=True,
-                          save_fig=True,
+                          save_fig=False,
                           fig_path='/home/davide/Scrivania/')
 
 

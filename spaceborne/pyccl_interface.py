@@ -100,6 +100,210 @@ class PycclClass():
                                  pk_arr=pk_flipped_in_z.T, is_logp=False)
         return p_of_k_a
 
+    def set_nz(self, nz_full_src, nz_full_lns):
+
+        # unpack the array
+        self.zgrid_nz_src = nz_full_src[:, 0]
+        self.zgrid_nz_lns = nz_full_lns[:, 0]
+        self.nz_src = nz_full_src[:, 1:]
+        self.nz_lns = nz_full_lns[:, 1:]
+
+        # define tuple
+        self.nz_src_tuple = (self.zgrid_nz_src, self.nz_src)
+        self.nz_lns_tuple = (self.zgrid_nz_lns, self.nz_lns)
+
+    def check_nz_tuple(self, zbins):
+
+        assert isinstance(self.nz_src_tuple, tuple), 'nz_src_tuple must be a tuple'
+        assert isinstance(self.nz_lns_tuple, tuple), 'nz_lns_tuple must be a tuple'
+
+        assert self.nz_src_tuple[1].shape == (len(self.zgrid_nz_src), zbins), \
+            'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
+        assert self.nz_lns_tuple[1].shape == (len(self.zgrid_nz_lns), zbins), \
+            'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
+
+    def set_ia_bias_tuple(self, z_grid_src, has_ia):
+
+        self.has_ia = has_ia
+
+        if self.has_ia:
+            ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(z_grid_src, cosmo_ccl=self.cosmo_ccl,
+                                                        flat_fid_pars_dict=self.flat_fid_pars_dict,
+                                                        input_z_grid_lumin_ratio=None,
+                                                        input_lumin_ratio=None, output_F_IA_of_z=False)
+            self.ia_bias_tuple = (z_grid_src, ia_bias_1d)
+
+        else:
+            self.ia_bias_tuple = None
+
+    def set_gal_bias_tuple_spv3(self, z_grid_lns, magcut_lens, poly_fit_values):
+        gal_bias_func = self.gal_bias_func_dict['fs2_fit']
+        self.gal_bias_func_ofz = partial(gal_bias_func, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values)
+        gal_bias_1d = self.gal_bias_func_ofz(z_grid_lns)
+
+        # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
+        self.gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
+        self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
+
+    def set_gal_bias_tuple_istf(self, z_grid_lns, bias_function_str, bias_model):
+        gal_bias_func = self.gal_bias_func_dict[bias_function_str]
+        # TODO it's probably better to pass directly the zbin(_lns) centers and edges, rather than nesting them in a cfg file...
+        z_means_lns = np.array([self.flat_fid_pars_dict[f'zmean{zbin:02d}_photo'] for zbin in range(1, self.zbins + 1)])
+        gal_bias_1d = gal_bias_func(z_means_lns)
+
+        z_edges_lns = np.array([self.flat_fid_pars_dict[f'zedge{zbin:02d}_photo'] for zbin in range(1, self.zbins + 2)])
+        self.gal_bias_2d = wf_cl_lib.build_galaxy_bias_2d_arr(
+            gal_bias_1d, z_means_lns, z_edges_lns, self.zbins, z_grid_lns, bias_model=bias_model, plot_bias=True)
+        self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
+
+    def save_gal_bias_table_ascii(self, z_grid_lns, filename):
+        assert filename.endswith('.ascii'), 'filename must end with.ascii'
+        gal_bias_table = np.hstack((z_grid_lns.reshape(-1, 1), self.gal_bias_2d))
+        np.savetxt(filename, gal_bias_table)
+
+    def set_mag_bias_tuple(self, z_grid_lns, has_magnification_bias, magcut_lens, poly_fit_values):
+        if has_magnification_bias:
+            # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
+            mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(z_grid_lns, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values)
+            mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), self.zbins, axis=0).T
+            self.mag_bias_tuple = (z_grid_lns, mag_bias_2d)
+        else:
+            # this is the correct way to set the magnification bias values so that the actual bias is 1, ant the corresponding
+            # wf_mu is zero (which is, in theory, the case mag_bias_tuple=None, which however causes pyccl to crash!)
+            # mag_bias_2d = (np.ones_like(gal_bias_2d) * + 2) / 5
+            # mag_bias_tuple = (zgrid_nz, mag_bias_2d)
+            self.mag_bias_tuple = None
+
+    def set_kernel_obj(self, has_rsd, n_samples_wf):
+
+        self.wf_lensing_obj = [ccl.tracers.WeakLensingTracer(cosmo=self.cosmo_ccl,
+                                                             dndz=(self.nz_src_tuple[0],
+                                                                   self.nz_src_tuple[1][:, zbin_idx]),
+                                                             ia_bias=self.ia_bias_tuple,
+                                                             use_A_ia=False,
+                                                             n_samples=n_samples_wf) for zbin_idx in range(self.zbins)]
+
+        self.wf_galaxy_obj = []
+        for zbin_idx in range(self.zbins):
+
+            # this is needed to be eble to pass mag_bias = None for each zbin
+            if self.mag_bias_tuple is None:
+                mag_bias_arg = self.mag_bias_tuple
+            else:
+                mag_bias_arg = (self.mag_bias_tuple[0], self.mag_bias_tuple[1][:, zbin_idx])
+
+            self.wf_galaxy_obj.append(ccl.tracers.NumberCountsTracer(cosmo=self.cosmo_ccl,
+                                                                     has_rsd=has_rsd,
+                                                                     dndz=(self.nz_lns_tuple[0],
+                                                                           self.nz_lns_tuple[1][:, zbin_idx]),
+                                                                     bias=(self.gal_bias_tuple[0],
+                                                                           self.gal_bias_tuple[1][:, zbin_idx]),
+                                                                     mag_bias=mag_bias_arg,
+                                                                     n_samples=n_samples_wf))
+
+    def set_ell_grid(self, ell_grid):
+        self.ell_grid = ell_grid
+
+    def compute_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, limber_integration_method):
+
+        cl_ab_3d = wf_cl_lib.cl_PyCCL(kernel_a, kernel_b, ell_grid, self.zbins,
+                                      p_of_k_a=p_of_k_a, cosmo=self.cosmo_ccl,
+                                      limber_integration_method=limber_integration_method)
+
+        return cl_ab_3d
+
+    def set_kernel_arr(self, z_grid_wf, has_magnification_bias):
+
+        self.z_grid_wf = z_grid_wf
+        a_arr = cosmo_lib.z_to_a(z_grid_wf)
+        comoving_distance = ccl.comoving_radial_distance(self.cosmo_ccl, a_arr)
+
+        wf_lensing_tot_arr = np.asarray([self.wf_lensing_obj[zbin_idx].get_kernel(comoving_distance)
+                                        for zbin_idx in range(self.zbins)])
+
+        wf_galaxy_tot_arr = np.asarray([self.wf_galaxy_obj[zbin_idx].get_kernel(comoving_distance)
+                                       for zbin_idx in range(self.zbins)])
+
+        # lensing
+        self.wf_gamma_arr = wf_lensing_tot_arr[:, 0, :].T
+        if self.has_ia:
+            self.wf_ia_arr = wf_lensing_tot_arr[:, 1, :].T
+            self.wf_lensing_arr = self.wf_gamma_arr + self.ia_bias_tuple[1][:, None] * self.wf_ia_arr
+        else:
+            self.wf_ia_arr = np.zeros_like(self.wf_gamma_arr)
+            self.wf_lensing_arr = self.wf_gamma_arr
+
+        # galaxy
+        self.wf_delta_arr = wf_galaxy_tot_arr[:, 0, :].T
+        self.wf_mu_arr = wf_galaxy_tot_arr[:, -1, :].T if has_magnification_bias else np.zeros_like(self.wf_delta_arr)
+
+        # in the case of ISTF, the galaxt bias is bin-per-bin and is therefore included in the kernels. Add it here
+        # for a fair comparison with vincenzo's kernels, in the plot.
+        # * Note that the galaxy bias is included in the wf_ccl_obj in any way, both in ISTF and SPV3 cases! It must
+        # * in fact be passed to the angular_cov_SSC function
+        self.wf_galaxy_wo_gal_bias_arr = self.wf_delta_arr + self.wf_mu_arr
+        self.wf_galaxy_w_gal_bias_arr = self.wf_delta_arr * self.gal_bias_2d + self.wf_mu_arr
+
+    # ! ==========================================================================================================================================================================
+
+    def set_sigma2_b(self, zmin, zmax, zsteps, f_sky, pyccl_cfg):
+
+        self.a_grid_sigma2_b = np.linspace(cosmo_lib.z_to_a(zmax),
+                                           cosmo_lib.z_to_a(zmin),
+                                           zsteps)
+        self.z_grid_sigma2_b = cosmo_lib.z_to_a(self.a_grid_sigma2_b)[::-1]
+
+        if pyccl_cfg['which_sigma2_B'] == 'mask':
+
+            print('Computing sigma2_B from mask')
+
+            area_deg2 = pyccl_cfg['area_deg2_mask']
+            nside = pyccl_cfg['nside_mask']
+
+            assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(area_deg2), abs_value=True) < 1, 'f_sky is not correct'
+
+            ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=area_deg2, nside=nside))
+            cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=area_deg2, nside=nside))
+
+            # normalization has been checked from https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
+            # and is the same as CSST paper https://zenodo.org/records/7813033
+            cl_mask_norm = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * f_sky)**2
+
+            sigma2_B = ccl.covariances.sigma2_B_from_mask(
+                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, mask_wl=cl_mask_norm, p_of_k_a='delta_matter:delta_matter')
+
+            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_B)
+
+        elif pyccl_cfg['which_sigma2_B'] == 'spaceborne':
+
+            print('Computing sigma2_B with Spaceborne, using input mask')
+
+            area_deg2 = pyccl_cfg['area_deg2_mask']
+            nside = pyccl_cfg['nside_mask']
+
+            assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(area_deg2), abs_value=True) < 1, 'f_sky is not correct'
+
+            ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=area_deg2, nside=nside))
+            cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=area_deg2, nside=nside))
+            warnings.warn('should I normalize the mask??')
+
+            k_grid_tkka = np.geomspace(pyccl_cfg['k_grid_tkka_min'],
+                                       pyccl_cfg['k_grid_tkka_max'],
+                                       5000)
+
+            # ! I spoke to Fabien and this is indeed an oversimplification
+            sigma2_B = np.array([sigma2_SSC.sigma2_func(zi, zi, k_grid_tkka, self.cosmo_ccl, 'mask', ell_mask=ell_mask, cl_mask=cl_mask)
+                                # if you pass the mask, you don't need to divide by fsky
+                                 for zi in tqdm(self.z_grid_sigma2_b)])
+            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_B[::-1])
+
+        elif pyccl_cfg['which_sigma2_B'] == None:
+            self.sigma2_b_tuple = None
+
+        else:
+            raise ValueError('which_sigma2_B must be either mask, spaceborne or None')
+
+
     def initialize_trispectrum(self, which_ng_cov, probe_ordering, pyccl_cfg, which_pk):
 
         # save_tkka = pyccl_cfg['save_tkka']
@@ -333,204 +537,6 @@ class PycclClass():
 
         return cov_ng_3x2pt_dict_8D
 
-    def set_nz(self, nz_full_src, nz_full_lns):
-
-        # unpack the array
-        self.zgrid_nz_src = nz_full_src[:, 0]
-        self.zgrid_nz_lns = nz_full_lns[:, 0]
-        self.nz_src = nz_full_src[:, 1:]
-        self.nz_lns = nz_full_lns[:, 1:]
-
-        # define tuple
-        self.nz_src_tuple = (self.zgrid_nz_src, self.nz_src)
-        self.nz_lns_tuple = (self.zgrid_nz_lns, self.nz_lns)
-
-    def check_nz_tuple(self, zbins):
-
-        assert isinstance(self.nz_src_tuple, tuple), 'nz_src_tuple must be a tuple'
-        assert isinstance(self.nz_lns_tuple, tuple), 'nz_lns_tuple must be a tuple'
-
-        assert self.nz_src_tuple[1].shape == (len(self.zgrid_nz_src), zbins), \
-            'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
-        assert self.nz_lns_tuple[1].shape == (len(self.zgrid_nz_lns), zbins), \
-            'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
-
-    def set_ia_bias_tuple(self, z_grid_src):
-
-        ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(z_grid_src, cosmo_ccl=self.cosmo_ccl,
-                                                    flat_fid_pars_dict=self.flat_fid_pars_dict,
-                                                    input_z_grid_lumin_ratio=None,
-                                                    input_lumin_ratio=None, output_F_IA_of_z=False)
-        self.ia_bias_tuple = (z_grid_src, ia_bias_1d)
-
-    def get_gal_bias_tuple_spv3(self, z_grid_lns, magcut_lens, poly_fit_values):
-        gal_bias_func = self.gal_bias_func_dict['fs2_fit']
-        gal_bias_1d = gal_bias_func(z_grid_lns, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values)
-
-        # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
-        gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
-        gal_bias_tuple = (z_grid_lns, gal_bias_2d)
-
-        return gal_bias_tuple
-
-    def set_gal_bias_tuple_spv3(self, z_grid_lns, magcut_lens, poly_fit_values):
-
-        self.gal_bias_tuple = self.get_gal_bias_tuple_spv3(z_grid_lns, magcut_lens, poly_fit_values)
-        self.gal_bias_2d = self.gal_bias_tuple[1]
-
-    def set_gal_bias_tuple_istf(self, z_grid_lns, bias_function_str, bias_model):
-        gal_bias_func = self.gal_bias_func_dict[bias_function_str]
-        # TODO it's probably better to pass directly the zbin(_nls) centers and edges, rather than nesting them in a cfg file...
-        z_means_lns = np.array([self.flat_fid_pars_dict[f'zmean{zbin:02d}_photo'] for zbin in range(1, self.zbins + 1)])
-        gal_bias_1d = gal_bias_func(z_means_lns)
-
-        z_edges_lns = np.array([self.flat_fid_pars_dict[f'zedge{zbin:02d}_photo'] for zbin in range(1, self.zbins + 2)])
-        self.gal_bias_2d = wf_cl_lib.build_galaxy_bias_2d_arr(
-            gal_bias_1d, z_means_lns, z_edges_lns, self.zbins, z_grid_lns, bias_model=bias_model, plot_bias=True)
-        self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
-
-    def save_gal_bias_table_ascii(self, z_grid_lns, filename):
-        assert filename.endswith('.ascii'), 'filename must end with.ascii'
-        gal_bias_table = np.hstack((z_grid_lns.reshape(-1, 1), self.gal_bias_2d))
-        np.savetxt(filename, gal_bias_table)
-
-    def set_mag_bias_tuple(self, z_grid_lns, has_magnification_bias, magcut_lens, poly_fit_values):
-        if has_magnification_bias:
-            # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
-            mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(z_grid_lns, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values)
-            mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), self.zbins, axis=0).T
-            self.mag_bias_tuple = (z_grid_lns, mag_bias_2d)
-        else:
-            # this is the correct way to set the magnification bias values so that the actual bias is 1, ant the corresponding
-            # wf_mu is zero (which is, in theory, the case mag_bias_tuple=None, which however causes pyccl to crash!)
-            # mag_bias_2d = (np.ones_like(gal_bias_2d) * + 2) / 5
-            # mag_bias_tuple = (zgrid_nz, mag_bias_2d)
-            self.mag_bias_tuple = None
-
-    def set_kernel_obj(self, has_rsd, n_samples_wf):
-
-        self.wf_lensing_obj = [ccl.tracers.WeakLensingTracer(cosmo=self.cosmo_ccl,
-                                                             dndz=(self.nz_src_tuple[0],
-                                                                   self.nz_src_tuple[1][:, zbin_idx]),
-                                                             ia_bias=self.ia_bias_tuple,
-                                                             use_A_ia=False,
-                                                             n_samples=n_samples_wf) for zbin_idx in range(self.zbins)]
-
-        self.wf_galaxy_obj = []
-        for zbin_idx in range(self.zbins):
-
-            # this is needed to be eble to pass mag_bias = None for each zbin
-            if self.mag_bias_tuple is None:
-                mag_bias_arg = self.mag_bias_tuple
-            else:
-                mag_bias_arg = (self.mag_bias_tuple[0], self.mag_bias_tuple[1][:, zbin_idx])
-
-            self.wf_galaxy_obj.append(ccl.tracers.NumberCountsTracer(cosmo=self.cosmo_ccl,
-                                                                     has_rsd=has_rsd,
-                                                                     dndz=(self.nz_lns_tuple[0],
-                                                                           self.nz_lns_tuple[1][:, zbin_idx]),
-                                                                     bias=(self.gal_bias_tuple[0],
-                                                                           self.gal_bias_tuple[1][:, zbin_idx]),
-                                                                     mag_bias=mag_bias_arg,
-                                                                     n_samples=n_samples_wf))
-
-    def set_ell_grid(self, ell_grid):
-        self.ell_grid = ell_grid
-
-    def compute_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, limber_integration_method):
-
-        cl_ab_3d = wf_cl_lib.cl_PyCCL(kernel_a, kernel_b, ell_grid, self.zbins,
-                                      p_of_k_a=p_of_k_a, cosmo=self.cosmo_ccl,
-                                      limber_integration_method=limber_integration_method)
-
-        return cl_ab_3d
-
-    def set_kernel_arr(self, z_grid_wf, has_magnification_bias):
-
-        self.z_grid_wf = z_grid_wf
-        a_arr = cosmo_lib.z_to_a(z_grid_wf)
-        comoving_distance = ccl.comoving_radial_distance(self.cosmo_ccl, a_arr)
-
-        wf_lensing_tot_arr = np.asarray([self.wf_lensing_obj[zbin_idx].get_kernel(comoving_distance)
-                                        for zbin_idx in range(self.zbins)])
-
-        wf_galaxy_tot_arr = np.asarray([self.wf_galaxy_obj[zbin_idx].get_kernel(comoving_distance)
-                                       for zbin_idx in range(self.zbins)])
-
-        # lensing
-        self.wf_gamma_arr = wf_lensing_tot_arr[:, 0, :].T
-        self.wf_ia_arr = wf_lensing_tot_arr[:, 1, :].T
-        self.wf_lensing_arr = self.wf_gamma_arr + self.ia_bias_tuple[1][:, None] * self.wf_ia_arr
-
-        # galaxy
-        self.wf_delta_arr = wf_galaxy_tot_arr[:, 0, :].T
-        self.wf_mu_arr = wf_galaxy_tot_arr[:, -1, :].T if has_magnification_bias else np.zeros_like(self.wf_delta_arr)
-
-        # in the case of ISTF, the galaxt bias is bin-per-bin and is therefore included in the kernels. Add it here
-        # for a fair comparison with vincenzo's kernels, in the plot.
-        # * Note that the galaxy bias is included in the wf_ccl_obj in any way, both in ISTF and SPV3 cases! It must
-        # * in fact be passed to the angular_cov_SSC function
-        self.wf_galaxy_wo_gal_bias_arr = self.wf_delta_arr + self.wf_mu_arr
-        self.wf_galaxy_w_gal_bias_arr = self.wf_delta_arr * self.gal_bias_2d + self.wf_mu_arr
-
-    # ! ==========================================================================================================================================================================
-
-    def set_sigma2_b(self, zmin, zmax, zsteps, f_sky, pyccl_cfg):
-
-        self.a_grid_sigma2_b = np.linspace(cosmo_lib.z_to_a(zmax),
-                                           cosmo_lib.z_to_a(zmin),
-                                           zsteps)
-        self.z_grid_sigma2_b = cosmo_lib.z_to_a(self.a_grid_sigma2_b)[::-1]
-
-        if pyccl_cfg['which_sigma2_B'] == 'mask':
-
-            print('Computing sigma2_B from mask')
-
-            area_deg2 = pyccl_cfg['area_deg2_mask']
-            nside = pyccl_cfg['nside_mask']
-
-            assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(area_deg2), abs_value=True) < 1, 'f_sky is not correct'
-
-            ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=area_deg2, nside=nside))
-            cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=area_deg2, nside=nside))
-
-            # normalization has been checked from https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
-            # and is the same as CSST paper https://zenodo.org/records/7813033
-            cl_mask_norm = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * f_sky)**2
-
-            sigma2_B = ccl.covariances.sigma2_B_from_mask(
-                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, mask_wl=cl_mask_norm, p_of_k_a='delta_matter:delta_matter')
-
-            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_B)
-
-        elif pyccl_cfg['which_sigma2_B'] == 'spaceborne':
-
-            print('Computing sigma2_B with Spaceborne, using input mask')
-
-            area_deg2 = pyccl_cfg['area_deg2_mask']
-            nside = pyccl_cfg['nside_mask']
-
-            assert mm.percent_diff(f_sky, cosmo_lib.deg2_to_fsky(area_deg2), abs_value=True) < 1, 'f_sky is not correct'
-
-            ell_mask = np.load(pyccl_cfg['ell_mask_filename'].format(area_deg2=area_deg2, nside=nside))
-            cl_mask = np.load(pyccl_cfg['cl_mask_filename'].format(area_deg2=area_deg2, nside=nside))
-            warnings.warn('should I normalize the mask??')
-
-            k_grid_tkka = np.geomspace(pyccl_cfg['k_grid_tkka_min'],
-                                       pyccl_cfg['k_grid_tkka_max'],
-                                       5000)
-
-            # ! I spoke to Fabien and this is indeed an oversimplification
-            sigma2_B = np.array([sigma2_SSC.sigma2_func(zi, zi, k_grid_tkka, self.cosmo_ccl, 'mask', ell_mask=ell_mask, cl_mask=cl_mask)
-                                # if you pass the mask, you don't need to divide by fsky
-                                 for zi in tqdm(self.z_grid_sigma2_b)])
-            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_B[::-1])
-
-        elif pyccl_cfg['which_sigma2_B'] == None:
-            self.sigma2_b_tuple = None
-
-        else:
-            raise ValueError('which_sigma2_B must be either mask, spaceborne or None')
 
     def compute_cov_ng_with_pyccl(self, fid_pars_dict, probe, which_ng_cov, ell_grid, general_cfg,
                                   covariance_cfg, cov_filename):

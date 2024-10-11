@@ -38,11 +38,9 @@ import spaceborne.wf_cl_lib as wf_cl_lib
 import spaceborne.pyccl_interface as pyccl_interface
 import spaceborne.plot_lib as plot_lib
 import spaceborne.sigma2_SSC as sigma2_SSC
+import spaceborne.config_checker as config_checker
 import spaceborne.onecovariance_interface as oc_interface
 import spaceborne.responses as responses
-
-# import niceplot.utils as nicepl
-# nicepl.init()
 
 pp = pprint.PrettyPrinter(indent=4)
 ROOT = os.getenv('ROOT')
@@ -267,11 +265,9 @@ if cfg['covariance_cfg']['Spaceborne_cfg']['use_KE_approximation']:
     assert cfg['covariance_cfg']['Spaceborne_cfg']['integration_type'] == 'simps_KE_approximation'
     assert cfg['covariance_cfg']['which_sigma2_b'] is not None, \
         'the flat-sky approximation is likely inappropriate for the large Euclid survey area'
-elif not cfg['covariance_cfg']['Spaceborne_cfg']['use_KE_approximation']:
+else:
     assert cfg['covariance_cfg']['Spaceborne_cfg']['cl_integral_convention'] in ('Euclid', 'PySSC')
     assert cfg['covariance_cfg']['Spaceborne_cfg']['integration_type'] in ('simps', 'trapz')
-else:
-    raise ValueError('use_KE_approximation must be True or False')
 
 if general_cfg['is_CLOE_run']:
     assert covariance_cfg['survey_area_deg2'] == 13245, 'survey area must be 13245 deg2'
@@ -320,6 +316,8 @@ else:
 assert general_cfg['nbl_WL_opt'] == 32, 'this is used as the reference binning, from which the cuts are made'
 assert general_cfg['ell_max_WL_opt'] == 5000, 'this is used as the reference binning, from which the cuts are made'
 assert n_probes == 2, 'The code can only accept 2 probes at the moment'
+cfg_check_obj = config_checker.SpaceborneConfigChecker(cfg)
+cfg_check_obj.run_all_checks()
 
 # ! 1. compute ell values, ell bins and delta ell
 # compute ell and delta ell values in the reference (optimistic) case
@@ -977,12 +975,16 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         r_mm_sbclass = resp_obj.compute_r1_mm()
         resp_obj.get_rab_and_dpab_ddeltab(b2g_from_halomodel=True)
 
-        r_gm_sbclass = resp_obj.r1_gm
-        r_gg_sbclass = resp_obj.r1_gg
-        include_b2 = covariance_cfg['Spaceborne_cfg']['include_b2']
-        if not covariance_cfg['Spaceborne_cfg']['include_b2']:
+        if covariance_cfg['Spaceborne_cfg']['include_b2g']:
+            r_gm_sbclass = resp_obj.r1_gm
+            r_gg_sbclass = resp_obj.r1_gg
+        else:
             r_gm_sbclass = resp_obj.r1_gm_nob2
             r_gg_sbclass = resp_obj.r1_gg_nob2
+
+        dPmm_ddeltab = resp_obj.dPmm_ddeltab
+        dPgm_ddeltab = resp_obj.dPgm_ddeltab
+        dPgg_ddeltab = resp_obj.dPgg_ddeltab
 
         dPmm_ddeltab = resp_obj.dPmm_ddeltab
         dPgm_ddeltab = resp_obj.dPgm_ddeltab
@@ -995,7 +997,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         # z_idx = 0
         # k_idx = 0
         # plt.semilogx(k_grid_resp, r_mm_sbclass[:, z_idx], label=f'r_mm_sbclass includeb2{
-        #              include_b2}', c='tab:blue', ls='-.')
+        #              include_b2g}', c='tab:blue', ls='-.')
         # plt.semilogx(k_grid_resp, r_mm_hm[:, z_idx], label='r_mm_hm', c='tab:blue', ls='-')
         # plt.semilogx(k_grid_resp, r_mm_vin[:, z_idx], label='r_mm vin', c='tab:blue', ls='--')
 

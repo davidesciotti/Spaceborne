@@ -58,7 +58,8 @@ class OneCovarianceInterface():
         cl_ll_oc_filename = ascii_filenames_dict['cl_ll_ascii_filename']
         cl_gl_oc_filename = ascii_filenames_dict['cl_gl_ascii_filename']
         cl_gg_oc_filename = ascii_filenames_dict['cl_gg_ascii_filename']
-        nofz_filename_ascii = ascii_filenames_dict['nofz_ascii_filename']
+        nz_src_filename_ascii = ascii_filenames_dict['nz_src_ascii_filename']
+        nz_lns_filename_ascii = ascii_filenames_dict['nz_lns_ascii_filename']
         gal_bias_ascii_filename = ascii_filenames_dict['gal_bias_ascii_filename']
 
         # TODO import another file??
@@ -80,19 +81,32 @@ class OneCovarianceInterface():
         cfg_onecov_ini['covariance terms']['ssc'] = str(True)
         cfg_onecov_ini['output settings']['directory'] = self.oc_path
 
+        warnings.warn('Setting same ell binning for all probes in OC')
+
         cfg_onecov_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(map(str, mult_shear_bias_list))
         cfg_onecov_ini['covELLspace settings']['ell_min'] = str(general_cfg['ell_min'])
+        cfg_onecov_ini['covELLspace settings']['ell_min_clustering'] = str(general_cfg['ell_min'])
+        cfg_onecov_ini['covELLspace settings']['ell_min_lensing'] = str(general_cfg['ell_min'])
         # TODO slightly different ell_max for 3000?
         cfg_onecov_ini['covELLspace settings']['ell_max'] = str(general_cfg['ell_max_3x2pt'])
+        cfg_onecov_ini['covELLspace settings']['ell_max_clustering'] = str(general_cfg['ell_max_3x2pt'])
+        cfg_onecov_ini['covELLspace settings']['ell_max_lensing'] = str(general_cfg['ell_max_3x2pt'])
+
         cfg_onecov_ini['covELLspace settings']['ell_bins'] = str(general_cfg['nbl_3x2pt'])
+        cfg_onecov_ini['covELLspace settings']['ell_bins_clustering'] = str(general_cfg['nbl_3x2pt'])
+        cfg_onecov_ini['covELLspace settings']['ell_bins_lensing'] = str(general_cfg['nbl_3x2pt'])
 
         cfg_onecov_ini['survey specs']['mask_directory'] = '/home/cosmo/davide.sciotti/data/common_data/mask/'
+        cfg_onecov_ini['survey specs']['mask_file_clust'] = ''
+        cfg_onecov_ini['survey specs']['mask_file_lensing'] = ''
+        cfg_onecov_ini['survey specs']['mask_file_ggl'] = ''
         # TODO test diff with EC20 binning
         cfg_onecov_ini['survey specs']['which_cov_binning'] = self.which_gauss_cov_binning
 
         cfg_onecov_ini['survey specs']['survey_area_lensing_in_deg2'] = str(
             self.cfg['covariance_cfg']['survey_area_deg2'])
-        cfg_onecov_ini['survey specs']['survey_area_ggl_in_deg2'] = str(self.cfg['covariance_cfg']['survey_area_deg2'])
+        cfg_onecov_ini['survey specs']['survey_area_ggl_in_deg2'] = str(
+            self.cfg['covariance_cfg']['survey_area_deg2'])
         cfg_onecov_ini['survey specs']['survey_area_clust_in_deg2'] = str(
             self.cfg['covariance_cfg']['survey_area_deg2'])
         cfg_onecov_ini['survey specs']['n_eff_clust'] = ', '.join(map(str, n_eff_clust_list))
@@ -100,8 +114,9 @@ class OneCovarianceInterface():
         cfg_onecov_ini['survey specs']['ellipticity_dispersion'] = ', '.join(map(str, ellipticity_dispersion_list))
 
         cfg_onecov_ini['redshift']['z_directory'] = self.oc_path
-        cfg_onecov_ini['redshift']['zclust_file'] = nofz_filename_ascii
-        cfg_onecov_ini['redshift']['zlens_file'] = nofz_filename_ascii
+        # TODO re-check that the OC documentation is correct
+        cfg_onecov_ini['redshift']['zclust_file'] = nz_lns_filename_ascii
+        cfg_onecov_ini['redshift']['zlens_file'] = nz_src_filename_ascii
 
         cfg_onecov_ini['cosmo']['h'] = str(self.cfg['cosmology']['FM_ordered_params']['h'])
         cfg_onecov_ini['cosmo']['ns'] = str(self.cfg['cosmology']['FM_ordered_params']['ns'])
@@ -136,8 +151,8 @@ class OneCovarianceInterface():
             delta_z = 0.04
             tri_delta_z = 0.25
             integration_steps = 1000
-            m_bins = 900  # 1500
-            log10k_bins = 150  # 200
+            m_bins = 1500  # 1500
+            log10k_bins = 200  # 200
         else:  # these are the default values
             delta_z = 0.08
             tri_delta_z = 0.5

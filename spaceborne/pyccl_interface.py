@@ -522,7 +522,12 @@ class PycclClass():
         for key in self.cov_ng_3x2pt_dict_8D.keys():
             if (key == ('L', 'L', 'L', 'L')) or (key == ('G', 'L', 'G', 'L')) or (key == ('G', 'G', 'G', 'G')):
                 try:
-                    np.testing.assert_allclose(self.cov_ng_3x2pt_dict_8D[key], np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 2, 3)), rtol=1e-5, atol=0,
+                    cov_2d = mm.cov_4D_to_2D(self.cov_ng_3x2pt_dict_8D[key])
+                    assert np.allclose(cov_2d, cov_2d.T, atol=0, rtol=1e-5)
+                    np.testing.assert_allclose(self.cov_ng_3x2pt_dict_8D[key], 
+                                            #    np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 2, 3)), 
+                                               np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 3, 2)), 
+                                               rtol=1e-5, atol=0,
                                                err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
                 except AssertionError as error:
                     print(error)

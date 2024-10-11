@@ -80,7 +80,7 @@ general_cfg:
     ell_max_WL: 3000
     ell_max_GC: 3000
     ell_max_3x2pt: 3000
-    zbins: 10
+    zbins: 3
     EP_or_ED: EP # equipopulated or equidistant bins
     n_probes: 2
     use_WA: False

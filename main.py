@@ -111,7 +111,7 @@ magnification_bias_fit_fiducials = np.array([fid_pars_dict['FM_ordered_params'][
 dzWL_fiducial = np.array([fid_pars_dict['FM_ordered_params'][f'dzWL{zi:02d}'] for zi in range(1, zbins + 1)])
 dzGC_fiducial = np.array([fid_pars_dict['FM_ordered_params'][f'dzWL{zi:02d}'] for zi in range(1, zbins + 1)])
 
-# TODO remove this, pull from the DR1 branch! 
+# TODO remove this, pull from the DR1 branch!
 assert np.all(dzWL_fiducial == dzGC_fiducial), 'dzWL and dzGC shifts do not match'
 warnings.warn('dzGC_fiducial are equal to dzWL_fiducial')
 
@@ -150,7 +150,7 @@ else:
 
 
 # %% [markdown]
-# #### Compute number of ell bins, $\ell$ values, $\Delta\ell$ and corresponding edges 
+# #### Compute number of ell bins, $\ell$ values, $\Delta\ell$ and corresponding edges
 # This is done by taking a reference binning (the default case is 32 logarithmically-equispaced bins in the $\ell$ range $[10, 5000]$) and then cutting the number of bins for the different probes depending on the desired $\ell_{\rm max}$.
 #
 # As an example, a $\ell_{\rm max}^{\rm WL} = 3000$ will fall in the 29th of the 32 above-mentioned bins, so WL will have 29 bins, but with the same centers and edges of the reference case
@@ -266,7 +266,7 @@ nz_unshifted_lns = nz_lns
 wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
 
 # %% [markdown]
-# #### Compute scale cuts 
+# #### Compute scale cuts
 # In order to do this, we need to:
 # 1. Compute the BNT. This is done with the raw, or unshifted n(z), but only for the purpose of computing the
 #     $\ell$ cuts - the rest of the code uses a BNT matrix from the shifted $n(z)$ - see also comment below.
@@ -540,35 +540,34 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
         dPmm_ddeltab_hm_func = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPmm_ddeltab_hm, method='linear')
         dPgm_ddeltab_hm_func = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgm_ddeltab_hm, method='linear')
         dPgg_ddeltab_hm_func = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgg_ddeltab_hm, method='linear')
-    
+
     elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe':
-                
+
         k_grid_resp = np.logspace(covariance_cfg['Spaceborne_cfg']['log10_k_min_resp'],
-                                   covariance_cfg['Spaceborne_cfg']['log10_k_max_resp'],
-                                   covariance_cfg['Spaceborne_cfg']['k_steps_resp'])
+                                  covariance_cfg['Spaceborne_cfg']['log10_k_max_resp'],
+                                  covariance_cfg['Spaceborne_cfg']['k_steps_resp'])
         z_grid_resp = z_grid_ssc_integrands
-        
-        resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp, 
-                                                 z_grid=z_grid_resp, 
-                                                 cosmo_ccl=ccl_obj.cosmo_ccl, 
+
+        resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
+                                                 z_grid=z_grid_resp,
+                                                 cosmo_ccl=ccl_obj.cosmo_ccl,
                                                  b1_func=ccl_obj.gal_bias_func_ofz)
         r_mm = resp_obj.compute_r1_mm()
         resp_obj.get_rab_and_dpab_ddeltab()
-        
+
         r_gm = resp_obj.r1_gm
         r_gg = resp_obj.r1_gg
         if not covariance_cfg['Spaceborne_cfg']['include_b2']:
             r_gm = resp_obj.r1_gm_nob2
             r_gg = resp_obj.r1_gg_nob2
-            
+
             dPmm_ddeltab = resp_obj.dPmm_ddeltab
             dPgm_ddeltab = resp_obj.dPgm_ddeltab
             dPgg_ddeltab = resp_obj.dPgg_ddeltab
-        
+
     else:
         raise ValueError('which_pk_responses must be either "halo_model" or "separate_universe"')
-    
-    
+
     # ! 2. prepare integrands (d2CAB_dVddeltab) and volume element
     k_limber = partial(cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
     r_of_z_func = partial(cosmo_lib.ccl_comoving_distance, use_h_units=use_h_units, cosmo_ccl=ccl_obj.cosmo_ccl)
@@ -669,7 +668,6 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
     plt.ylabel(r'$\sigma^2_B(z_1=z_2)$')
     plt.close()
 
-
     z1_idx = len(z_grid_ssc_integrands) // 2
     z1_val = z_grid_ssc_integrands[z1_idx]
     plt.figure()
@@ -682,14 +680,14 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
     print('Performing the 2D integral in Julia...')
     start = time.perf_counter()
     cov_ssc_3x2pt_dict_8D = covmat_utils.ssc_integral_julia(d2CLL_dVddeltab=d2CLL_dVddeltab,
-                                               d2CGL_dVddeltab=d2CGL_dVddeltab,
-                                               d2CGG_dVddeltab=d2CGG_dVddeltab,
-                                               ind_auto=ind_auto, ind_cross=ind_cross,
-                                               cl_integral_prefactor=cl_integral_prefactor, sigma2=sigma2_b,
-                                               z_grid=z_grid_ssc_integrands,
-                                               integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
-                                               probe_ordering=probe_ordering,
-                                               num_threads=general_cfg['num_threads'])
+                                                            d2CGL_dVddeltab=d2CGL_dVddeltab,
+                                                            d2CGG_dVddeltab=d2CGG_dVddeltab,
+                                                            ind_auto=ind_auto, ind_cross=ind_cross,
+                                                            cl_integral_prefactor=cl_integral_prefactor, sigma2=sigma2_b,
+                                                            z_grid=z_grid_ssc_integrands,
+                                                            integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
+                                                            probe_ordering=probe_ordering,
+                                                            num_threads=general_cfg['num_threads'])
     print('SSC computed with Julia in {:.2f} s'.format(time.perf_counter() - start))
 
     # If the mask is not passed to sigma2_b, we need to divide by fsky
@@ -852,4 +850,3 @@ cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D,
                                     Sijkl=None, BNT_matrix=bnt_matrix, oc_obj=oc_obj)
 print('Finished in {:.2f} minutes'.format((time.perf_counter() - script_start_time) / 60))
-

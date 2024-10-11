@@ -77,7 +77,7 @@ general_cfg:
     ell_max_WL: 5000
     ell_max_GC: 5000
     ell_max_3x2pt: 5000
-    zbins: 5
+    zbins: 6
     EP_or_ED: EP # equipopulated or equidistant bins
     n_probes: 2
     save_cls_3d: False
@@ -147,8 +147,8 @@ covariance_cfg:
     sigma_eps_i: 0.26 # ellipticity dispersion *per component*; sigma_eps: (0.26 * np.sqrt(2))
     which_shape_noise: per_component # ISTF or per_component
 
-    nofz_folder: "/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/IO_for_Sofia/nz"
-    nofz_filename: nzTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
+    nz_sources_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/DR1/NzTab/nzSources-EP06-zedMin02-zedMax25-SN05.dat
+    nz_lenses_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/DR1/NzTab/nzLenses-EP06-zedMin02-zedMax25-IE235.dat
     
     zbin_centers:
         [ 0.27575, 0.37635, 0.44634, 0.54284, 0.62145, 0.70957, 0.7986, 0.86687, 0.97753, 1.09136, 1.24264, 1.47918, 1.89264]

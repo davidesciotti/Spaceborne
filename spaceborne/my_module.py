@@ -260,6 +260,7 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
         ax[0].set_title(f'{which_uncertainty} uncertainties, {key}')
         for i, uncert in enumerate(uncertainties_dict[key]):
             ax[0].scatter(param_names, uncert, label=f'{labels[i]}', marker='o', c=colors[i], alpha=0.6)
+        ax[0].axhline(0, c='k', ls='--')
         ax[0].legend(ncol=1, loc='center right', bbox_to_anchor=(1.38, 0.))
         ax[0].set_ylabel(ylabel)
         ax[0].grid()
@@ -1025,7 +1026,7 @@ def compare_arrays_v0(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=T
 
 
 def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True, log_array=True, log_diff=False,
-                   abs_val=False, plot_diff_threshold=None, white_where_zero=True):
+                   abs_val=False, plot_diff_threshold=None, white_where_zero=True, plot_diff_hist=False):
 
     if np.array_equal(A, B):
         print(f'{name_A} and {name_B} are equal ✅')
@@ -1088,6 +1089,17 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
 
             fig.suptitle(f'log={log_diff}, abs={abs_val}')
             plt.show()
+            
+            if plot_diff_hist:
+                plt.figure()
+                ax = plt.gca()
+                ymin, ymax = ax.get_ylim()
+                plt.fill_betweenx(y=[0, ymax], x1=-10, x2=10, color='gray', alpha=0.3, label='10%')
+                plt.hist(diff_AB.flatten(), log=True, bins=30)
+                plt.xlabel('% difference')
+                plt.ylabel('counts')
+                plt.legend()
+
 
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):
@@ -1161,7 +1173,7 @@ def remove_rows_cols_array2D(array, rows_idxs_to_remove):
 
 def remove_null_rows_cols_2D_copilot(array_2d):
     """
-    Remove null rows and columns from a 2D array - version by GitHub Copilot
+    Remove null rows and columns from a 2D array
     """
 
     assert array_2d.ndim == 2, 'ndim should be <= 2; higher-dimensional case not yet implemented'

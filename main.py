@@ -555,15 +555,16 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
         r_mm = resp_obj.compute_r1_mm()
         resp_obj.get_rab_and_dpab_ddeltab()
 
-        r_gm = resp_obj.r1_gm
-        r_gg = resp_obj.r1_gg
-        if not covariance_cfg['Spaceborne_cfg']['include_b2']:
+        if covariance_cfg['Spaceborne_cfg']['include_b2']:
+            r_gm = resp_obj.r1_gm
+            r_gg = resp_obj.r1_gg
+        elif not covariance_cfg['Spaceborne_cfg']['include_b2']:
             r_gm = resp_obj.r1_gm_nob2
             r_gg = resp_obj.r1_gg_nob2
 
-            dPmm_ddeltab = resp_obj.dPmm_ddeltab
-            dPgm_ddeltab = resp_obj.dPgm_ddeltab
-            dPgg_ddeltab = resp_obj.dPgg_ddeltab
+        dPmm_ddeltab = resp_obj.dPmm_ddeltab
+        dPgm_ddeltab = resp_obj.dPgm_ddeltab
+        dPgg_ddeltab = resp_obj.dPgg_ddeltab
 
     else:
         raise ValueError('which_pk_responses must be either "halo_model" or "separate_universe"')
@@ -828,7 +829,6 @@ if general_cfg['cl_ell_cuts']:
     cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_dict['ell_GC'], ell_cuts_dict['GG'])
     cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt'])
 
-# TODO delete this
 
 # store cls and responses in a dictionary
 cl_dict_3D = {

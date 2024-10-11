@@ -199,51 +199,49 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
     masked_fid_pars_dict_list = []
     uncertainties_dict = {}
     fom_dict = {}
-    
 
     assert keys_toplot_in == 'all' or type(keys_toplot_in) == list, 'keys_toplot must be a list or "all"'
     assert colors is None or type(colors) == list, 'colors must be a list or "all"'
 
     colors = plt.rcParams['axes.prop_cycle'].by_key()['color'] if colors is None else colors
-    
+
     # maks fm and fid pars dict
     for fm_dict in fm_dict_list:
         masked_fm_dict, masked_fid_pars_dict = {}, {}
-        
+
         # define keys and remove unused ones
         keys_toplot = list(fm_dict.keys())
         if 'fiducial_values_dict' in keys_toplot:
             keys_toplot.remove('fiducial_values_dict')
         keys_toplot = [key for key in keys_toplot if not key.startswith('FM_WA_')]
         keys_toplot = [key for key in keys_toplot if not key.startswith('FM_2x2pt_')]
-        
+
         for key in keys_toplot:
             masked_fm_dict[key], masked_fid_pars_dict[key] = mask_fm_v2(fm_dict[key],
-                                                                            fm_dict['fiducial_values_dict'],
-                                                                            names_params_to_fix=[],
-                                                                            remove_null_rows_cols=True)
+                                                                        fm_dict['fiducial_values_dict'],
+                                                                        names_params_to_fix=[],
+                                                                        remove_null_rows_cols=True)
         masked_fm_dict_list.append(masked_fm_dict)
         masked_fid_pars_dict_list.append(masked_fid_pars_dict)
-    print(keys_toplot)
 
     # compute reference uncertainties
     for key in keys_toplot:
-        nparams_toplot = nparams_toplot_in 
+        nparams_toplot = nparams_toplot_in
         param_names = list(masked_fid_pars_dict_list[0][key].keys())[:nparams_toplot]
         uncertainties_dict[key] = np.array([uncertainties_fm_v2(masked_fm_dict[key], fiducials_dict=masked_fid_pars_dict[key],
-                                                                   which_uncertainty=which_uncertainty, normalize=True)[:nparams_toplot]
+                                                                which_uncertainty=which_uncertainty, normalize=True)[:nparams_toplot]
                                             for masked_fm_dict, masked_fid_pars_dict in zip(masked_fm_dict_list, masked_fid_pars_dict_list)])
         w0wa_idxs = (param_names.index('wz'), param_names.index('wa'))
-        fom_dict[key] = np.array([compute_FoM(masked_fm_dict[key], w0wa_idxs=w0wa_idxs) for masked_fm_dict in masked_fm_dict_list])
+        fom_dict[key] = np.array([compute_FoM(masked_fm_dict[key], w0wa_idxs=w0wa_idxs)
+                                 for masked_fm_dict in masked_fm_dict_list])
         uncertainties_dict[key] = np.column_stack((uncertainties_dict[key], fom_dict[key]))
     param_names.append('FoM')
 
     keys_toplot = keys_toplot if keys_toplot_in == 'all' else keys_toplot_in
-    
+
     # plot, and if necessary normalize by the G-only uncertainty
     for key in keys_toplot:
         probe = key.split('_')[1]
-        print('key: ', key)
 
         ylabel = 'rel. unc. [%]'
         if normalize_by_gauss and not key.endswith('G'):
@@ -251,7 +249,7 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
             ng_cov = key.split('_')[2]
             uncertainties_dict[key] = (uncertainties_dict[key] / uncertainties_dict[f'FM_{probe}_G'] - 1) * 100
             ylabel = f'{ng_cov}/G - 1 [%]'
-            
+
             if abs_FoM:
                 uncertainties_dict[key][:, -1] = np.fabs(uncertainties_dict[key][:, -1])
 
@@ -262,10 +260,11 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
         ax[0].set_title(f'{which_uncertainty} uncertainties, {key}')
         for i, uncert in enumerate(uncertainties_dict[key]):
             ax[0].scatter(param_names, uncert, label=f'{labels[i]}', marker='o', c=colors[i], alpha=0.6)
+        ax[0].axhline(0, c='k', ls='--')
         ax[0].legend(ncol=1, loc='center right', bbox_to_anchor=(1.38, 0.))
         ax[0].set_ylabel(ylabel)
         ax[0].grid()
-        
+
         start_idx = 0
         title_str = reference
         if reference == 'first_key':
@@ -278,7 +277,6 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
             ref = np.mean(uncertainties_dict[key], axis=0)
         else:
             raise ValueError('reference must be one of "first_key", "median", or "mean"')
-        
 
         if len(uncertainties_dict[key]) > 1:
             diffs = [percent_diff(uncert, ref) for uncert in uncertainties_dict[key][start_idx:]]
@@ -287,10 +285,10 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
                 ax[1].scatter(param_names, diff, marker='o', c=colors[i + start_idx], alpha=0.6)
             ax[1].fill_between((0, nparams_toplot), -10, 10, color='k', alpha=0.1, label='$\\pm 10\\%$')
 
-        ax[1].set_ylabel(f'% diff wrt\n{title_str}')
+        ax[1].set_ylabel(f'% diff wrt\n{title_str}\n')
         ax[1].legend(ncol=1, loc='center right', bbox_to_anchor=(1.38, 0.5))
         ax[1].grid()
-        
+
         if save_fig:
             plt.savefig(f'{fig_path}/{key}.pdf', dpi=400)
 
@@ -1028,7 +1026,7 @@ def compare_arrays_v0(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=T
 
 
 def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True, log_array=True, log_diff=False,
-                   abs_val=False, plot_diff_threshold=None, white_where_zero=True):
+                   abs_val=False, plot_diff_threshold=None, white_where_zero=True, plot_diff_hist=False):
 
     if np.array_equal(A, B):
         print(f'{name_A} and {name_B} are equal ✅')
@@ -1091,6 +1089,17 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
 
             fig.suptitle(f'log={log_diff}, abs={abs_val}')
             plt.show()
+            
+            if plot_diff_hist:
+                plt.figure()
+                ax = plt.gca()
+                ymin, ymax = ax.get_ylim()
+                plt.fill_betweenx(y=[0, ymax], x1=-10, x2=10, color='gray', alpha=0.3, label='10%')
+                plt.hist(diff_AB.flatten(), log=True, bins=30)
+                plt.xlabel('% difference')
+                plt.ylabel('counts')
+                plt.legend()
+
 
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):
@@ -1164,7 +1173,7 @@ def remove_rows_cols_array2D(array, rows_idxs_to_remove):
 
 def remove_null_rows_cols_2D_copilot(array_2d):
     """
-    Remove null rows and columns from a 2D array - version by GitHub Copilot
+    Remove null rows and columns from a 2D array
     """
 
     assert array_2d.ndim == 2, 'ndim should be <= 2; higher-dimensional case not yet implemented'
@@ -1426,7 +1435,7 @@ def matshow(array, title="title", log=True, abs_val=False, threshold=None, only_
 
     if threshold is not None:
         array = np.ma.masked_where(array < threshold, array)
-        title += f" \n(masked below {threshold} \%)"
+        title += f" \n(masked below {threshold} \\%)"
 
     plt.matshow(array, **matshow_kwargs)
     plt.colorbar()
@@ -2098,13 +2107,6 @@ def covariance_einsum_split(cl_5d, noise_5d, f_sky, ell_values, delta_ell, retur
     cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]
     noise_LL_5D = noise_3x2pt_5D[0, 0, ...][np.newaxis, np.newaxis, ...]
     cov_WL_6D = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_values, delta_ell)[0, 0, 0, 0, ...]
-
-    KiDS implementation (from Robert's email, to be checked in the relevant paper):
-    Regarding the Gaussian term. Yes the Delta\ell is missing: 
-    the code sums over the bandwidth explicitely and does not assume that the 
-    covariance is constant across the ell bin. For most ell binnings though, 
-    this will reduce to the equation you provided.
-
     """
 
     assert cl_5d.shape[0] == 1 or cl_5d.shape[0] == 2, 'This funcion only works with 1 or two probes'

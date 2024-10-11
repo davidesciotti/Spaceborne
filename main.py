@@ -101,7 +101,7 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
 # * ====================================================================================================================
 # * ====================================================================================================================
 # * ====================================================================================================================
-with open('config_release.yaml', 'r') as f:
+with open('config.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
 
 # for zbins in (3, ):
@@ -454,7 +454,7 @@ bnt_matrix = covmat_utils.compute_BNT_matrix(
 ccl_obj.zbins = zbins
 ccl_obj.set_nz(np.hstack((zgrid_nz[:, None], n_of_z)))
 ccl_obj.check_nz_tuple(zbins)
-ccl_obj.set_ia_bias_tuple(z_grid=z_grid_ssc_integrands)
+ccl_obj.set_ia_bias_tuple(z_grid=z_grid_ssc_integrands, has_ia=general_cfg['has_IA'])
 
 # set galaxy bias
 if general_cfg['which_forecast'] == 'SPV3':

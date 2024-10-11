@@ -1342,6 +1342,29 @@ if covariance_cfg['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomputed_
 
         covariance_cfg[f'cov_{which_ng_cov.lower()}_3x2pt_dict_8D_ccl'] = ccl_obj.cov_ng_3x2pt_dict_8D
 
+
+# for key in ccl_obj.cov_ng_3x2pt_dict_8D.keys():
+#     cov_2d = mm.cov_4D_to_2D(ccl_obj.cov_ng_3x2pt_dict_8D[key])
+#     mm.matshow(cov_2d, log=True, abs_val=True, title=''.join(key))
+
+# for key in [('G', 'G', 'G', 'G'), ('L', 'L', 'L', 'L'), ('G', 'L', 'G', 'L'), ]:
+
+#     np.testing.assert_allclose(ccl_obj.cov_ng_3x2pt_dict_8D[key],
+#                                np.transpose(ccl_obj.cov_ng_3x2pt_dict_8D[key], (1, 0, 2, 3)),
+#                                rtol=1e-5, atol=0,
+#                                err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
+
+#     cov_2d = mm.cov_4D_to_2D(ccl_obj.cov_ng_3x2pt_dict_8D[key])
+#     assert np.allclose(cov_2d, cov_2d.T, atol=0, rtol=1e-5)
+#     mm.matshow(mm.cov2corr(cov_2d), log=False, abs_val=False, title=''.join(key))
+
+# key = ('G', 'G', 'G', 'G')
+# cov_2d_1 = mm.cov_4D_to_2D(np.transpose(ccl_obj.cov_ng_3x2pt_dict_8D[key], (1, 0, 2, 3)))
+# # cov_2d_1 = mm.cov_4D_to_2D(np.transpose(ccl_obj.cov_ng_3x2pt_dict_8D[key], (1, 0, 3, 2)))
+# cov_2d_2 = mm.cov_4D_to_2D(ccl_obj.cov_ng_3x2pt_dict_8D[key])
+
+# mm.compare_arrays(cov_2d_1, cov_2d_2, plot_diff_hist=True, plot_diff_threshold=10)
+
 # ! ========================================== end PyCCL ===================================================
 
 # check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
@@ -2094,9 +2117,9 @@ for probe in probes:
     param_names_label = param_names_list[:nparams_toplot] + [fom_label] if include_fom else param_names_list[
         :nparams_toplot]
     lmax = general_cfg[f'ell_max_{probe}'] if probe in ['WL', 'GC'] else general_cfg['ell_max_3x2pt']
-    title = '%s %s, $\\ell_{\\rm max} = %i$, zbins %s%i, zsteps_ssc_integral %i $\\sigma_\\epsilon$ %s' % (
+    title = '%s %s, $\\ell_{\\rm max} = %i$, zbins %s%i, zsteps_ssc_integral %i $\\sigma_\\epsilon$ %s\n%s uncertainties' % (
         covariance_cfg['ng_cov_code'], probe,
-        lmax, ep_or_ed, zbins, len(z_grid_ssc_integrands), covariance_cfg['which_shape_noise'])
+        lmax, ep_or_ed, zbins, len(z_grid_ssc_integrands), covariance_cfg['which_shape_noise'], which_uncertainty)
 
     # bar plot
     if include_fom:
@@ -2174,8 +2197,8 @@ fm_dict_of_dicts = {
     # 'SB_KEapp_su_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkern_separateuniverse.pickle'),
     # 'SB_su_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_simpkern_separateuniverse.pickle'),
     # 'SB_hm_s2bflat': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkern_sigma2bflat_sky_HM.pickle'),
-    'CCL_hm_s2b_pcotf': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}_Euclid_KE_approximation_simpkern_sigma2bpolar_cap_on_the_fly.pickle'),
-    'SB_hm_s2b_pcotf': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkern_sigma2bpolar_cap_on_the_fly_HM.pickle'),
+    'SB_hm_KE_s2b_pcotf': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkern_sigma2bpolar_cap_on_the_fly_HM.pickle'),
+    # 'CCL_hm_s2b_pcotf': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}_Euclid_KE_approximation_simpkern_sigma2bpolar_cap_on_the_fly.pickle'),
     # 'CCL_hm_s2b_none': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}_Euclid_KE_approximation_simpkern_sigma2bNone.pickle'),
     # 'CCL_hm_s2b_flat': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}_Euclid_KE_approximation_simpkern_sigma2bflat_sky.pickle'),
     'current': fm_dict,
@@ -2187,13 +2210,13 @@ keys_toplot_in = ['FM_WL_GSSC', 'FM_GC_GSSC', 'FM_XC_GSSC', 'FM_3x2pt_GSSC']
 # keys_toplot = 'all'
 colors = ['tab:blue', 'tab:green', 'tab:orange', 'tab:red', 'tab:cyan', 'tab:grey', 'tab:olive', 'tab:purple']
 
-reference = 'first_key'
+reference = 'mean'
 nparams_toplot_in = 8
 normalize_by_gauss = True
 
 mm.compare_fm_constraints(*fm_dict_list, labels=labels, keys_toplot_in=keys_toplot_in,
                           normalize_by_gauss=True,
-                          which_uncertainty='conditional',
+                          which_uncertainty='marginal',
                           reference=reference,
                           colors=colors,
                           abs_FoM=True,

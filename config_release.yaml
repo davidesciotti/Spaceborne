@@ -80,7 +80,7 @@ general_cfg:
     ell_max_WL: 3000
     ell_max_GC: 3000
     ell_max_3x2pt: 3000
-    zbins: 3
+    zbins: 10
     EP_or_ED: EP # equipopulated or equidistant bins
     n_probes: 2
     use_WA: False
@@ -255,9 +255,9 @@ covariance_cfg:
 
         load_precomputed_sigma2: False
         sigma2_b_filename: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_{which_sigma2_b:s}_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}.npy"
-        cl_integral_convention: Euclid # "Euclid" or "PySSC" (results are the same) or "Euclid_KE_approximation"
-        use_KE_approximation: False
-        integration_type: "simps" # 'simps' or 'simps_KE_approximation' or 'trapz' (which is actually using rectangles)
+        cl_integral_convention: Euclid_KE_approximation # "Euclid" or "PySSC" (results are the same) or "Euclid_KE_approximation"
+        use_KE_approximation: True
+        integration_type: "simps_KE_approximation" # 'simps' or 'simps_KE_approximation' or 'trapz' (which is actually using rectangles)
 
         separate_universe_responses_filename: "resfun-idBM{idBM:02d}.dat"
         separate_universe_responses_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputSSC/ResFun/{which_pk:s}"
@@ -325,7 +325,7 @@ FM_cfg:
 
     fm_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}"
     fm_txt_filename: fm_txt_filename
-    fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_source:02d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}_pk{which_pk:s}_{survey_area_deg2:d}deg2{fm_and_cov_suffix:s}_{cl_integral_convention:s}_simpkern_sigma2b{which_sigma2_b:s}.pickle
+    fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_source:02d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}_pk{which_pk:s}_{survey_area_deg2:d}deg2{fm_and_cov_suffix:s}_{cl_integral_convention:s}_simpkern_sigma2b{which_sigma2_b:s}_dense.pickle
 
     test_against_vincenzo: False # TODO delete this
     test_against_benchmarks: False # TODO delete this

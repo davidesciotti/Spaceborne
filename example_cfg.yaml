@@ -123,11 +123,6 @@ general_cfg:
     zmin_nz_lens: 02 # = 0.2
     zmin_nz_source: 02 # = 0.2
     zmax_nz: 25 # = 2.5
-    idIA: 2
-    idB: 3
-    idM: 3
-    idR: 1
-    idBM: 3 # for the SU responses
 
     which_forecast: SPV3
     bias_function: analytical # 'analytical', 'leporifit', 'pocinofit'
@@ -164,7 +159,7 @@ covariance_cfg:
     ngal_clustering:
         [ 1.86742, 1.86744, 1.8674, 1.86743, 1.86741, 1.86742, 1.86742, 1.86742, 1.86744, 1.8674, 1.86742, 1.86742, 1.86742]
 
-    shift_nz: True # Vincenzo's kernels are computed using a shifted n(z)!
+    shift_nz: True
     compute_bnt_with_shifted_nz_for_zcuts: False # ! lets test this
     shift_nz_interpolation_kind: linear
     normalize_shifted_nz: True
@@ -181,7 +176,7 @@ covariance_cfg:
     compute_SSC: True # TODO re-implement this
 
     save_cov_2D_npz: False
-    save_cov_2D_dat: True # this is the format used by Vincenzo
+    save_cov_2D_dat: True
 
     # in cov_dict
     save_cov_2D: False
@@ -192,11 +187,6 @@ covariance_cfg:
     save_cov_SSC: False
     save_2DCLOE: False # outermost loop is on the probes
     covariance_ordering_2D: ell_probe_zpair # TODO restore this
-    load_CLOE_benchmark_cov: False
-
-    test_against_benchmarks: False # TODO delete this
-    test_against_CLOE_benchmarks: False # TODO delete this
-    test_against_vincenzo: False # TODO delete this
 
     compute_GSSC_condition_number: False
 
@@ -282,9 +272,6 @@ covariance_cfg:
         sigma2_b_filename: "..."
         use_KE_approximation: False # TODO implement this in the Julia module
         integration_type: "simps" # 'simps' or 'trapz' (which is actually using rectangles)
-
-        separate_universe_responses_filename: "resfun-idBM{idBM:02d}.dat"
-        separate_universe_responses_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputSSC/ResFun/{which_pk:s}"
 
     OneCovariance_cfg:
         which_ng_cov: ["SSC", "cNG"]

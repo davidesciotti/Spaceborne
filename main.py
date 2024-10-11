@@ -15,6 +15,7 @@ from functools import partial
 import numpy as np
 import time
 import matplotlib.cm as cm
+from matplotlib.lines import Line2D
 import matplotlib
 import matplotlib.pyplot as plt
 import warnings
@@ -95,9 +96,10 @@ h = flat_fid_pars_dict['h']
 # load some nuisance parameters
 # note that zbin_centers is not exactly equal to the result of wf_cl_lib.get_z_mean...
 # TODO what are these needed for?? It used to be to compute bias at this points...
-zbin_centers = cfg['covariance_cfg']['zbin_centers']
-ngal_lensing = cfg['covariance_cfg']['ngal_lensing']
-ngal_clustering = cfg['covariance_cfg']['ngal_clustering']
+# zbin_centers_src = cfg['covariance_cfg']['zbin_centers_src']
+# zbin_centers_lns = cfg['covariance_cfg']['zbin_centers_lns']
+ngal_src = cfg['covariance_cfg']['ngal_lensing']
+ngal_lns = cfg['covariance_cfg']['ngal_clustering']
 galaxy_bias_fit_fiducials = np.array([fid_pars_dict['FM_ordered_params'][f'bG{zi:02d}'] for zi in range(1, 5)])
 magnification_bias_fit_fiducials = np.array([fid_pars_dict['FM_ordered_params'][f'bM{zi:02d}'] for zi in range(1, 5)])
 dzWL_fiducial = np.array([fid_pars_dict['FM_ordered_params'][f'dzWL{zi:02d}'] for zi in range(1, zbins + 1)])
@@ -238,9 +240,9 @@ print(variable_specs)
 # The shape of the input file should be `(zpoints, zbins + 1)`, with `zpoints` the number of points over which the distribution is measured and zbins the number of redshift bins. The first column should contain the redshifts values.
 # 
 # We also define:
-# - `n_of_z_full`: nz table including a column for the z values
-# - `n_of_z`:      nz table excluding a column for the z values
-# - `n_of_z_original`: nz table as imported (it may be subjected to shifts later on)
+# - `nz_xxx_full`: nz table including a column for the z values
+# - `nz_xxx`:      nz table excluding a column for the z values
+# - `nz_xxx_unshifted`: nz table as imported (it may be subjected to shifts later on)
 
 # In[27]:
 
@@ -250,7 +252,6 @@ nz_lns_full = np.genfromtxt(covariance_cfg["nz_lenses_filename"])
 
 assert nz_src_full.shape[1] == zbins + 1, 'n_of_z must have zbins + 1 columns; the first one must be for the z values'
 assert nz_lns_full.shape[1] == zbins + 1, 'n_of_z must have zbins + 1 columns; the first one must be for the z values'
-assert np.allclose(nz_lns_full, nz_src_full), 'n_of_z must have zbins + 1 columns; the first one must be for the z values'
 
 zgrid_nz_src = nz_src_full[:, 0]
 zgrid_nz_lns = nz_lns_full[:, 0]
@@ -258,8 +259,8 @@ nz_src = nz_src_full[:, 1:]
 nz_lns = nz_lns_full[:, 1:]
 
 # nz may be subjected to a shift
-nz_src_original = nz_src
-nz_lns_original = nz_lns
+nz_unshifted_src = nz_src  # it may be subjected to a shift
+nz_unshifted_lns = nz_lns  # it may be subjected to a shift
 
 wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
 
@@ -277,9 +278,6 @@ wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr
 
 
 # 1. Compute BNT
-from matplotlib.lines import Line2D
-
-
 assert compute_bnt_with_shifted_nz_for_zcuts is False, 'The BNT used to compute the z_means and ell cuts is just for a simple case: no IA, no dz shift'
 assert shift_nz is True, 'The signal (and BNT used to transform it) is computed with a shifted n(z); You could use an un-shifted n(z) for the BNT, but' \
     'this would be slightly inconsistent (but also what I did so far).'
@@ -293,35 +291,39 @@ assert include_ia_in_bnt_kernel_for_zcuts is False, 'We compute the BNT just for
 # * two of the original kernels get very close after the shift: the transformation is correct.
 # * Having said that, I leave the code below in case we want to change this in the future
 if nz_gaussian_smoothing:
-    n_of_z = wf_cl_lib.gaussian_smmothing_nz(zgrid_nz, nz_src_original, nz_gaussian_smoothing_sigma, plot=True)
+    nz_src = wf_cl_lib.gaussian_smmothing_nz(zgrid_nz_src, nz_unshifted_src, nz_gaussian_smoothing_sigma, plot=True)
+    nz_lns = wf_cl_lib.gaussian_smmothing_nz(zgrid_nz_lns, nz_unshifted_lns, nz_gaussian_smoothing_sigma, plot=True)
 if compute_bnt_with_shifted_nz_for_zcuts:
-    n_of_z = wf_cl_lib.shift_nz(zgrid_nz, nz_src_original, dzWL_fiducial, normalize=normalize_shifted_nz, plot_nz=False,
-                                interpolation_kind=shift_nz_interpolation_kind)
+    nz_src = wf_cl_lib.shift_nz(zgrid_nz_src, nz_unshifted_src, dzWL_fiducial, normalize=normalize_shifted_nz,
+                                plot_nz=False, interpolation_kind=shift_nz_interpolation_kind)
+    nz_lns = wf_cl_lib.shift_nz(zgrid_nz_lns, nz_unshifted_lns, dzGC_fiducial, normalize=normalize_shifted_nz,
+                                plot_nz=False, interpolation_kind=shift_nz_interpolation_kind)
 
 bnt_matrix = covmat_utils.compute_BNT_matrix(
-    zbins, zgrid_nz, n_of_z, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
+    zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
 
 # 2. compute the kernels for the un-shifted n(z) (for consistency)
 ccl_obj.zbins = zbins
-ccl_obj.set_nz(np.hstack((zgrid_nz[:, None], n_of_z)))
+ccl_obj.set_nz(nz_full_src=np.hstack((zgrid_nz_src[:, None], nz_src)),
+               nz_full_lns=np.hstack((zgrid_nz_lns[:, None], nz_lns)))
 ccl_obj.check_nz_tuple(zbins)
-ccl_obj.set_ia_bias_tuple(z_grid=z_grid_ssc_integrands)
+ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid_ssc_integrands)
 
 # set galaxy bias
 if general_cfg['which_forecast'] == 'SPV3':
-    ccl_obj.set_gal_bias_tuple_spv3(z_grid=z_grid_ssc_integrands,
-                                    magcut_lens=magcut_lens,
+    ccl_obj.set_gal_bias_tuple_spv3(z_grid_lns=z_grid_ssc_integrands,
+                                    magcut_lens=magcut_lens / 10,
                                     poly_fit_values=None)
 
 elif general_cfg['which_forecast'] == 'ISTF':
     bias_func_str = general_cfg['bias_function']
     bias_model = general_cfg['bias_model']
-    ccl_obj.set_gal_bias_tuple_istf(z_grid=z_grid_ssc_integrands,
+    ccl_obj.set_gal_bias_tuple_istf(z_grid_lns=z_grid_ssc_integrands,
                                     bias_function_str=bias_func_str,
                                     bias_model=bias_model)
 
 # set magnification bias
-ccl_obj.set_mag_bias_tuple(z_grid=z_grid_ssc_integrands,
+ccl_obj.set_mag_bias_tuple(z_grid_lns=z_grid_ssc_integrands,
                            has_magnification_bias=general_cfg['has_magnification_bias'],
                            magcut_lens=magcut_lens / 10,
                            poly_fit_values=None)
@@ -391,20 +393,23 @@ ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the 
 
 
 if shift_nz:
-    n_of_z = wf_cl_lib.shift_nz(zgrid_nz, nz_src_original, dzWL_fiducial, normalize=normalize_shifted_nz, plot_nz=False,
-                                interpolation_kind=shift_nz_interpolation_kind)
-    nz_tuple = (zgrid_nz, n_of_z)
+    nz_src = wf_cl_lib.shift_nz(zgrid_nz_src, nz_unshifted_src, dzWL_fiducial, normalize=normalize_shifted_nz,
+                                plot_nz=False, interpolation_kind=shift_nz_interpolation_kind)
+    nz_lns = wf_cl_lib.shift_nz(zgrid_nz_lns, nz_unshifted_lns, dzGC_fiducial, normalize=normalize_shifted_nz,
+                                plot_nz=False, interpolation_kind=shift_nz_interpolation_kind)
+    # * this is important: the BNT matrix I use for the rest of the code (so not to compute the ell cuts) is instead
+    # * consistent with the shifted n(z) used to compute the kernels
     bnt_matrix = covmat_utils.compute_BNT_matrix(
-        zbins, zgrid_nz, n_of_z, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
+        zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
 
 
-# Re-set n(z) used in CCL class, then re-compute kernels
-# 
+wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
 
 # In[ ]:
 
-
-ccl_obj.set_nz(np.hstack((zgrid_nz[:, None], n_of_z)))
+# re-set n(z) used in CCL class, then re-compute kernels
+ccl_obj.set_nz(nz_full_src=np.hstack((zgrid_nz_src[:, None], nz_src)),
+               nz_full_lns=np.hstack((zgrid_nz_lns[:, None], nz_lns)))
 ccl_obj.set_kernel_obj(general_cfg['has_rsd'], covariance_cfg['PyCCL_cfg']['n_samples_wf'])
 ccl_obj.set_kernel_arr(z_grid_wf=z_grid_ssc_integrands,
                        has_magnification_bias=general_cfg['has_magnification_bias'])

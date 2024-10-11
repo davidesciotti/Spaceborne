@@ -20,6 +20,7 @@ from scipy.special import erf
 from functools import partial
 import sys
 from tqdm import tqdm
+import math
 import os
 ROOT = os.getenv('ROOT')
 
@@ -42,7 +43,7 @@ plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 
 # fiducial_pars_dict_nested = mm.read_yaml(
-#     f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yaml')
+#     f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yml')
 # fiducial_pars_dict = mm.flatten_dict(fiducial_pars_dict_nested)
 
 c = 299792.458  # km/s
@@ -81,6 +82,29 @@ dav_to_vinc_par_names = {
 # z_max_cl = cfg.z_max_cl
 # z_grid = np.linspace(z_min, z_max_cl, cfg.zsteps_cl)
 # # use_h_units = cfg.use_h_units
+
+def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors):
+    
+    assert nz_src.shape[1] == nz_lns.shape[1], 'number of zbins is not the same'
+    zbins = nz_src.shape[1]
+    
+    _, ax = plt.subplots(2, 1, sharex=True)
+    colors = cm.rainbow(np.linspace(0, 1, zbins))
+    for zi in range(zbins):
+        ax[0].plot(zgrid_nz_src, nz_src[:, zi], c=colors[zi], label=r'$z_{%d}$' % (zi + 1))
+        # ax[0].axvline(zbin_centers_src[zi], c=colors[zi], ls='--', alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
+        ax[0].fill_between(zgrid_nz_src, nz_src[:, zi], color=colors[zi], alpha=0.2)
+        ax[0].set_xlabel('$z$')
+        ax[0].set_ylabel(r'$n_i(z) \; {\rm sources}$')
+    ax[0].legend(ncol=2)
+
+    for zi in range(zbins):
+        ax[1].plot(zgrid_nz_lns, nz_lns[:, zi], c=colors[zi], label=r'$z_{%d}$' % (zi + 1))
+        # ax[1].axvline(zbin_centers_lns[zi], c=colors[zi], ls='--', alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
+        ax[1].fill_between(zgrid_nz_lns, nz_lns[:, zi], color=colors[zi], alpha=0.2)
+        ax[1].set_xlabel('$z$')
+        ax[1].set_ylabel(r'$n_i(z) \; {\rm lenses}$')
+    ax[1].legend(ncol=2)
 
 
 @njit
@@ -397,34 +421,39 @@ def b_of_z_fs1_pocinofit(z):
 
 def b_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
     # from the MCMC for SPV3 google doc: https://docs.google.com/document/d/1WCGhiBrlTsvl1VS-2ngpjirMnAS-ahtnoGX_7h8JoQU/edit
-    if magcut_lens == 24.5:
-        b0_gal, b1_gal, b2_gal, b3_gal = 1.33291, -0.72414, 1.0183, -0.14913
-    elif magcut_lens == 23:
-        b0_gal, b1_gal, b2_gal, b3_gal = 1.88571, -2.73925, 3.24688, -0.73496
-    else:
-        raise ValueError('magcut_lens, i.e. the limiting magnitude of the GCph sample \
-                         (the naming is confusing but correct), must be 23 or 24.5')
 
     if poly_fit_values is not None:
         assert len(poly_fit_values) == 4, 'a list of 4 best-fit values must be passed'
+        warnings.warn('overwriting default polynomial fit coefficients with user-defined ones')
         b0_gal, b1_gal, b2_gal, b3_gal = poly_fit_values
+
+    else:
+        if magcut_lens == 24.5:
+            b0_gal, b1_gal, b2_gal, b3_gal = 1.33291, -0.72414, 1.0183, -0.14913
+        elif magcut_lens == 23:
+            b0_gal, b1_gal, b2_gal, b3_gal = 1.88571, -2.73925, 3.24688, -0.73496
+        else:
+            raise ValueError('magcut_lens, i.e. the limiting magnitude of the GCph sample \
+                            (the naming is confusing but correct), must be 23 or 24.5')
 
     return b0_gal + (b1_gal * z) + (b2_gal * z ** 2) + (b3_gal * z ** 3)
 
 
 def magbias_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
     # from the MCMC for SPV3 google doc: https://docs.google.com/document/d/1WCGhiBrlTsvl1VS-2ngpjirMnAS-ahtnoGX_7h8JoQU/edit
-    if magcut_lens == 24.5:
-        b0_mag, b1_mag, b2_mag, b3_mag = -1.50685, 1.35034, 0.08321, 0.04279
-    elif magcut_lens == 23:
-        b0_mag, b1_mag, b2_mag, b3_mag = -2.34493, 3.73098, 0.12500, -0.01788
-    else:
-        raise ValueError('magcut_lens, i.e. the limiting magnitude of the GCph sample \
-                         (the naming is confusing but correct), must be 23 or 24.5')
-
     if poly_fit_values is not None:
         assert len(poly_fit_values) == 4, 'a list of 4 best-fit values must be passed'
+        warnings.warn('overwriting default polynomial fit coefficients with user-defined ones')
         b0_mag, b1_mag, b2_mag, b3_mag = poly_fit_values
+
+    else:
+        if magcut_lens == 24.5:
+            b0_mag, b1_mag, b2_mag, b3_mag = -1.50685, 1.35034, 0.08321, 0.04279
+        elif magcut_lens == 23:
+            b0_mag, b1_mag, b2_mag, b3_mag = -2.34493, 3.73098, 0.12500, -0.01788
+        else:
+            raise ValueError('magcut_lens, i.e. the limiting magnitude of the GCph sample \
+                            (the naming is confusing but correct), must be 23 or 24.5')
 
     return b0_mag + (b1_mag * z) + (b2_mag * z ** 2) + (b3_mag * z ** 3)
 
@@ -1339,7 +1368,7 @@ def cl_derivatives_helper(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
     other_params = deepcopy(fid_pars_dict['other_params'])
     other_params['camb_extra_parameters']['camb']['HMCode_logT_AGN'] = varied_fid_pars_dict['logT']
     full_pars_dict_for_ccl = {**varied_fid_pars_dict, 'other_params': other_params}
-    ccl_obj = pyccl_interface.PycclClass(full_pars_dict_for_ccl)
+    ccl_obj = pyccl_cov_class.PycclClass(full_pars_dict_for_ccl)
     ccl_obj.zbins = zbins
 
     if cfg['covariance_cfg']['PyCCL_cfg']['which_pk_for_pyccl'] == 'CLOE':
@@ -1450,7 +1479,7 @@ def gaussian_smmothing_nz(zgrid_nz, nz_original, nz_gaussian_smoothing_sigma, pl
 
 
 def shift_nz(zgrid_nz, nz_original, dz_shifts, normalize, plot_nz=False, interpolation_kind='linear', clip_min=0,
-             clip_max=3):
+             clip_max=3, bounds_error=False, fill_value=0):
     print(f'Shifting n(z), clipping between redshifts {clip_min} and {clip_max}')
 
     zbins = nz_original.shape[1]
@@ -1463,7 +1492,8 @@ def shift_nz(zgrid_nz, nz_original, dz_shifts, normalize, plot_nz=False, interpo
     n_of_z_shifted = np.zeros_like(nz_original)
     for zi in range(zbins):
         # not-very-pythonic implementation: create an interpolator for each bin
-        n_of_z_func = interp1d(zgrid_nz, nz_original[:, zi], kind=interpolation_kind)
+        n_of_z_func = interp1d(zgrid_nz, nz_original[:, zi], kind=interpolation_kind,
+                               bounds_error=bounds_error, fill_value=fill_value)
         z_grid_nz_shifted = zgrid_nz - dz_shifts[zi]
         # where < 0, set to 0; where > 3, set to 3
         z_grid_nz_shifted = np.clip(z_grid_nz_shifted, clip_min, clip_max)

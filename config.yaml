@@ -238,9 +238,9 @@ covariance_cfg:
         probe: 3x2pt
         which_ng_cov: [SSC] # only SSC available in this case
         load_precomputed_cov: False
-        which_pk_responses: separate_universe # halo_model (with PyCCL) or separate_universe (from simulations)
-        include_b2: True
-        b2g_from_halomodel: True
+        which_pk_responses: separate_universe_dav # halo_model (with PyCCL) or separate_universe (from simulations)
+        include_b2g: True  # whether or not to include the second-order galaxy bias in the GCph responses
+        b2g_from_halomodel: True  # TODO DELETE THIS in the main branch
 
         cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Spaceborne/{which_pk_responses:s}"
         cov_suffix: "_zsteps{z_steps_ssc_integrands:d}_k{k_txt_label:s}_convention{cl_integral_convention:s}_integration{integration_type:s}_{survey_area_deg2:d}deg2_Francis"

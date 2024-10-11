@@ -439,7 +439,7 @@ class PycclClass():
                             f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
 
                     self.tkka_dict[A, B, C, D], self.responses_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
-                                                                                            hmc=hmc,
+                                                                                            hmc=self.hmc,
                                                                                             prof=halo_profile_dict[A],
                                                                                             prof2=halo_profile_dict[B],
                                                                                             prof3=halo_profile_dict[C],

@@ -57,7 +57,7 @@ ROOT = os.path.dirname(os.getcwd())
 
 # %%
 # if you want to run without arguments
-with open('example_cfg.yaml', 'r') as f:
+with open('config.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
 
 # define dictionaries corresponding to the relevant sections

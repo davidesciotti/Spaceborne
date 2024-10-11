@@ -111,7 +111,6 @@ general_cfg:
     wf_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputSSC/Windows"
     wf_filename: "wi{probe:s}-{ep_or_ed:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{specs:s}.dat"
     specs: "idIA{idIA:d}-idB{idBM:01d}-idM{idM:d}-idR{idR:d}"
-    check_wf_against_vincenzo: True
 
     CLOE_benchmarks_path: "{ROOT:s}/CLOE_benchmarks"
 
@@ -239,7 +238,7 @@ covariance_cfg:
     Spaceborne_cfg:
         probe: 3x2pt
         which_ng_cov: [SSC] # only SSC available in this case
-        which_pk_responses: separate_universe # halo_model (with PyCCL) or separate_universe (from simulations)
+        which_pk_responses: halo_model # halo_model (with PyCCL) or separate_universe (from simulations)
         include_b2: False 
         # True or False. Whether or not to include the approximated b2(z) in the Su responses computed on-the-fly with SB.
         # Note that there is a better match with CCL responses when this is set to False

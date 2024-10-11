@@ -64,7 +64,19 @@ class PycclClass():
             'pocinofit': wf_cl_lib.b_of_z_fs1_pocinofit,
             'fs2_fit': wf_cl_lib.b_of_z_fs2_fit,
         }
-        # self.check_specs()
+        # self.check_specs()   # prolly I don't need these ingredients at all!
+
+        # initialize halo model
+        # from https://github.com/LSSTDESC/CCL/blob/4df2a29eca58d7cd171bc1986e059fd35f425d45/benchmarks/test_covariances.py
+        # see also https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/tools/covariance_NG.py#L282
+
+        self.mass_def = ccl.halos.MassDef200m
+        self.c_m_relation = ccl.halos.ConcentrationDuffy08(mass_def=self.mass_def)
+        self.hmf = ccl.halos.MassFuncTinker10(mass_def=self.mass_def)
+        self.hbf = ccl.halos.HaloBiasTinker10(mass_def=self.mass_def)
+        self.hmc = ccl.halos.HMCalculator(mass_function=self.hmf, halo_bias=self.hbf, mass_def=self.mass_def)
+        self.halo_profile_nfw = ccl.halos.HaloProfileNFW(mass_def=self.mass_def, concentration=self.c_m_relation)
+        self.halo_profile_hod = ccl.halos.HaloProfileHOD(mass_def=self.mass_def, concentration=self.c_m_relation)
 
     def check_specs(self):
         assert self.probe in ['LL', 'GG', '3x2pt'], 'probe must be either LL, GG, or 3x2pt'
@@ -126,20 +138,11 @@ class PycclClass():
         # from https://github.com/LSSTDESC/CCL/blob/4df2a29eca58d7cd171bc1986e059fd35f425d45/benchmarks/test_covariances.py
         # see also https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/tools/covariance_NG.py#L282
         halomod_start_time = time.perf_counter()
-
-        mass_def = ccl.halos.MassDef200m
-        c_M_relation = ccl.halos.ConcentrationDuffy08(mass_def=mass_def)
-        hmf = ccl.halos.MassFuncTinker10(mass_def=mass_def)
-        hbf = ccl.halos.HaloBiasTinker10(mass_def=mass_def)
-        hmc = ccl.halos.HMCalculator(mass_function=hmf, halo_bias=hbf, mass_def=mass_def)
-        halo_profile_nfw = ccl.halos.HaloProfileNFW(mass_def=mass_def, concentration=c_M_relation)
-        halo_profile_hod = ccl.halos.HaloProfileHOD(mass_def=mass_def, concentration=c_M_relation)
-
         # TODO pk from input files
         # This is the correct way to initialize the trispectrum (I Asked David Alonso about this.)
         halo_profile_dict = {
-            'L': halo_profile_nfw,
-            'G': halo_profile_hod,
+            'L': self.halo_profile_nfw,
+            'G': self.halo_profile_hod,
         }
         prof_2pt_dict = {
             # see again https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
@@ -151,12 +154,12 @@ class PycclClass():
 
         # store the trispectrum for the various probes in a dictionary
 
-        # the default pk bust be passed to yhe Tk3D functions as None, not as 'delta_matter:delta_matter'
+        # the default pk must be passed to yhe Tk3D functions as None, not as 'delta_matter:delta_matter'
         p_of_k_a = None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
 
-        if self.a_grid_tkka_SSC is not None and logn_k_grid_tkka_SSC is not None:
+        if self.a_grid_tkka_SSC is not None and logn_k_grid_tkka_SSC is not None and which_ng_cov == 'SSC':
             print(f'SSC tkka: z points = {self.a_grid_tkka_SSC.size}, k points = {logn_k_grid_tkka_SSC.size}')
-        if a_grid_tkka_cNG is not None and logn_k_grid_tkka_cNG is not None:
+        if a_grid_tkka_cNG is not None and logn_k_grid_tkka_cNG is not None and which_ng_cov == 'cNG':
             print(f'cNG tkka: z points = {a_grid_tkka_cNG.size}, k points = {logn_k_grid_tkka_cNG.size}')
 
         self.tkka_dict = {}
@@ -169,6 +172,8 @@ class PycclClass():
                     print(f'{comp_load_str} trispectrum for {which_ng_cov}, probe combination {probe_block}')
 
                 if col >= row and pyccl_cfg['load_precomputed_tkka']:
+
+                    assert False, 'Probably this section must be deleted'
 
                     save_tkka = False
 

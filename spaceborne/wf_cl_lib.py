@@ -433,8 +433,7 @@ def b_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
         elif magcut_lens == 23:
             b0_gal, b1_gal, b2_gal, b3_gal = 1.88571, -2.73925, 3.24688, -0.73496
         else:
-            raise ValueError('magcut_lens, i.e. the limiting magnitude of the GCph sample \
-                            (the naming is confusing but correct), must be 23 or 24.5')
+            raise ValueError('magcut_lens, i.e. the limiting magnitude of the GCph sample, must be 23 or 24.5')
 
     return b0_gal + (b1_gal * z) + (b2_gal * z ** 2) + (b3_gal * z ** 3)
 
@@ -452,8 +451,7 @@ def magbias_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
         elif magcut_lens == 23:
             b0_mag, b1_mag, b2_mag, b3_mag = -2.34493, 3.73098, 0.12500, -0.01788
         else:
-            raise ValueError('magcut_lens, i.e. the limiting magnitude of the GCph sample \
-                            (the naming is confusing but correct), must be 23 or 24.5')
+            raise ValueError('magcut_lens, i.e. the limiting magnitude of the GCph sample, must be 23 or 24.5')
 
     return b0_mag + (b1_mag * z) + (b2_mag * z ** 2) + (b3_mag * z ** 3)
 
@@ -1430,7 +1428,7 @@ def cl_derivatives_helper(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
 
     ccl_obj.set_mag_bias_tuple(z_grid=z_grid_nz,
                                has_magnification_bias=general_cfg['has_magnification_bias'],
-                               magcut_lens=magcut_lens / 10,
+                               magcut_lens=magcut_lens,
                                poly_fit_values=mag_bias_polyfit_values)
 
     ccl_obj.set_kernel_obj(general_cfg['has_rsd'], n_samples_wf=256)

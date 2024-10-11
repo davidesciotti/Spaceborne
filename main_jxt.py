@@ -1,9 +1,18 @@
-#!/usr/bin/env python
-# coding: utf-8
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.16.4
+#   kernelspec:
+#     display_name: spaceborne-dav
+#     language: python
+#     name: python3
+# ---
 
-# In[22]:
-
-
+# %%
 import os
 import multiprocessing
 num_cores = multiprocessing.cpu_count()
@@ -15,7 +24,6 @@ from functools import partial
 import numpy as np
 import time
 import matplotlib.cm as cm
-from matplotlib.lines import Line2D
 import matplotlib
 import matplotlib.pyplot as plt
 import warnings
@@ -43,13 +51,11 @@ script_start_time = time.perf_counter()
 # ROOT = os.getcwd()
 ROOT = os.path.dirname(os.getcwd())
 
-
+# %% [markdown]
 # #### General settings
 # Specify the path of the configuration YAML file (default is `ROOT/example_cfg.yaml`) and shorten variable names
 
-# In[23]:
-
-
+# %%
 # if you want to run without arguments
 with open('example_cfg.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
@@ -112,9 +118,7 @@ warnings.warn('dzGC_fiducial are equal to dzWL_fiducial')
 clr = cm.rainbow(np.linspace(0, 1, zbins))
 
 
-# In[24]:
-
-
+# %%
 # define grid to compute the various quantities entering the SSC integrand
 z_grid_ssc_integrands = np.linspace(covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
                                     covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
@@ -145,15 +149,15 @@ else:
     general_cfg['ell_cuts_subfolder'] = f'{general_cfg["which_cuts"]}/ell_{general_cfg["center_or_min"]}'
 
 
+# %% [markdown]
 # #### Compute number of ell bins, $\ell$ values, $\Delta\ell$ and corresponding edges 
 # This is done by taking a reference binning (the default case is 32 logarithmically-equispaced bins in the $\ell$ range $[10, 5000]$) and then cutting the number of bins for the different probes depending on the desired $\ell_{\rm max}$.
-# 
+#
 # As an example, a $\ell_{\rm max}^{\rm WL} = 3000$ will fall in the 29th of the 32 above-mentioned bins, so WL will have 29 bins, but with the same centers and edges of the reference case
-# 
+#
 # TODO remove wadd???
 
-# In[25]:
-
+# %%
 
 # compute ell and delta ell values in the reference (optimistic) case
 ell_ref_nbl32, delta_l_ref_nbl32, ell_edges_ref_nbl32 = (
@@ -209,9 +213,7 @@ delta_dict = {'delta_l_WL': np.copy(delta_l_ref_nbl32[:nbl_WL]),
               'delta_l_WA': np.copy(delta_l_ref_nbl32[nbl_GC:nbl_WL])}
 
 
-# In[26]:
-
-
+# %%
 # TODO remove this?
 # this is just to make the .format() more compact
 variable_specs = {'EP_or_ED': ep_or_ed,
@@ -235,17 +237,16 @@ variable_specs = {'EP_or_ED': ep_or_ed,
 print('variable_specs:\n')
 print(variable_specs)
 
-
+# %% [markdown]
 # #### Import redshift distribution, $n(z)$
 # The shape of the input file should be `(zpoints, zbins + 1)`, with `zpoints` the number of points over which the distribution is measured and zbins the number of redshift bins. The first column should contain the redshifts values.
-# 
+#
 # We also define:
-# - `nz_xxx_full`: nz table including a column for the z values
-# - `nz_xxx`:      nz table excluding a column for the z values
-# - `nz_xxx_unshifted`: nz table as imported (it may be subjected to shifts later on)
+# - `n_of_z_full`: nz table including a column for the z values
+# - `n_of_z`:      nz table excluding a column for the z values
+# - `n_of_z_original`: nz table as imported (it may be subjected to shifts later on)
 
-# In[27]:
-
+# %%
 
 nz_src_full = np.genfromtxt(covariance_cfg["nz_sources_filename"])
 nz_lns_full = np.genfromtxt(covariance_cfg["nz_lenses_filename"])
@@ -259,12 +260,12 @@ nz_src = nz_src_full[:, 1:]
 nz_lns = nz_lns_full[:, 1:]
 
 # nz may be subjected to a shift
-nz_unshifted_src = nz_src  # it may be subjected to a shift
-nz_unshifted_lns = nz_lns  # it may be subjected to a shift
+nz_unshifted_src = nz_src
+nz_unshifted_lns = nz_lns
 
 wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
 
-
+# %% [markdown]
 # #### Compute scale cuts 
 # In order to do this, we need to:
 # 1. Compute the BNT. This is done with the raw, or unshifted n(z), but only for the purpose of computing the
@@ -274,10 +275,11 @@ wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr
 # 4. Compute the effective redshift as first moment of the (BNT-transformed) kernel
 # 5. Compute redshift-dependent $\ell$ cuts
 
-# In[28]:
-
-
+# %%
 # 1. Compute BNT
+from matplotlib.lines import Line2D
+
+
 assert compute_bnt_with_shifted_nz_for_zcuts is False, 'The BNT used to compute the z_means and ell cuts is just for a simple case: no IA, no dz shift'
 assert shift_nz is True, 'The signal (and BNT used to transform it) is computed with a shifted n(z); You could use an un-shifted n(z) for the BNT, but' \
     'this would be slightly inconsistent (but also what I did so far).'
@@ -387,11 +389,10 @@ ell_cuts_dict['LG'] = ell_utils.load_ell_cuts(
 ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ll cuts to the covariance module
 
 
+# %% [markdown]
 # Now compute the BNT used for the rest of the code, i.e., with the same n(z) used in the rest of the code (i.e., shifted or un-shifted)
 
-# In[ ]:
-
-
+# %%
 if shift_nz:
     nz_src = wf_cl_lib.shift_nz(zgrid_nz_src, nz_unshifted_src, dzWL_fiducial, normalize=normalize_shifted_nz,
                                 plot_nz=False, interpolation_kind=shift_nz_interpolation_kind)
@@ -405,7 +406,7 @@ if shift_nz:
 
 wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
 
-# In[ ]:
+# %%
 
 # re-set n(z) used in CCL class, then re-compute kernels
 ccl_obj.set_nz(nz_full_src=np.hstack((zgrid_nz_src[:, None], nz_src)),
@@ -442,10 +443,10 @@ for wf_idx in range(len(wf_ccl_list)):
     plt.show()
     plt.close()
 
-
+# %% [markdown]
 # #### Compute $C_\ell$
 
-# In[ ]:
+# %%
 
 
 # compute cls
@@ -489,13 +490,11 @@ fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.16), ncol
 plt.tight_layout()
 plt.show()
 
-
+# %% [markdown]
 # ### Super-sample covariance
 # Compute SSC; this is possible with Spaceborne, OneCovariance or CCL
 
-# In[ ]:
-
-
+# %%
 # Spaceborne
 cov_folder_sb = covariance_cfg['Spaceborne_cfg']['cov_path']
 cov_sb_filename = covariance_cfg['Spaceborne_cfg']['cov_filename']
@@ -574,7 +573,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
     k_limber = partial(cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
     r_of_z_func = partial(cosmo_lib.ccl_comoving_distance, use_h_units=use_h_units, cosmo_ccl=ccl_obj.cosmo_ccl)
 
-    # ! divide by r(z)**2 if cl_integral_convention == 'PySSC'
+    # # ! divide by r(z)**2 if cl_integral_convention == 'PySSC'
     if covariance_cfg['Spaceborne_cfg']['cl_integral_convention'] == 'PySSC':
         r_of_z_square = r_of_z_func(z_grid_ssc_integrands) ** 2
 
@@ -584,12 +583,12 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
         wf_mu = ccl_obj.wf_mu_arr / r_of_z_square[:, None]
         wf_lensing = ccl_obj.wf_lensing_arr / r_of_z_square[:, None]
 
-    # ! compute the Pk responses(k, z) in k_limber and z_grid_ssc_integrands
+    # # ! compute the Pk responses(k, z) in k_limber and z_grid_ssc_integrands
     dPmm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPmm_ddeltab, method='linear')
     dPgm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgm_ddeltab, method='linear')
     dPgg_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgg_ddeltab, method='linear')
 
-    # ! test k_max_limber vs k_max_dPk and adjust z_min_ssc_integrands accordingly
+    # # ! test k_max_limber vs k_max_dPk and adjust z_min_ssc_integrands accordingly
     k_max_resp = np.max(k_grid_resp)
     ell_grid = ell_dict['ell_3x2pt']
     kmax_limber = cosmo_lib.get_kmax_limber(ell_grid, z_grid_ssc_integrands, use_h_units, ccl_obj.cosmo_ccl)
@@ -613,13 +612,13 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
         [dPgg_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
             ell_dict['ell_GC']])
 
-    # ! volume element
+    # # ! volume element
     cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(z_grid_ssc_integrands,
                                                             covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
                                                             use_h_units=use_h_units,
                                                             cosmo_ccl=ccl_obj.cosmo_ccl)
 
-    # ! observable densities
+    # # ! observable densities
     d2CLL_dVddeltab = np.einsum('zi,zj,Lz->Lijz', wf_lensing, wf_lensing, dPmm_ddeltab_klimb)
     d2CGL_dVddeltab = \
         np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_lensing, dPgm_ddeltab_klimb) + \
@@ -703,7 +702,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
         raise ValueError(f'which_sigma2_B must be either "full-curved-sky" or "mask"')
 
     # save the covariance blocks
-    # ! note that these files already account for the sky fraction!!
+    # # ! note that these files already account for the sky fraction!!
     # TODO fsky suffix in cov name should be added only in this case... or not? the other covariance files don't have this...
     for key in cov_ssc_3x2pt_dict_8D.keys():
         probe_a, probe_b, probe_c, probe_d = key
@@ -738,12 +737,10 @@ cov_3x2pt_SS_2D = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SS_4D, block_index='ell', 
 
 mm.matshow(cov_3x2pt_SS_2D, log=True, abs_val=True, title='SSC 2D')
 
-
+# %% [markdown]
 # #### NG covariance with OneCovariance
 
-# In[98]:
-
-
+# %%
 start_time = time.perf_counter()
 if covariance_cfg['ng_cov_code'] == 'OneCovariance' or \
     (covariance_cfg['ng_cov_code'] == 'Spaceborne' and
@@ -805,11 +802,8 @@ if covariance_cfg['ng_cov_code'] == 'OneCovariance' or \
 else:
     oc_obj = None
 
-
-# In[ ]:
-
-
-# ! standard method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
+# %%
+# # ! standard method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
 if general_cfg['center_or_min'] == 'center':
     prefix = 'ell'
 elif general_cfg['center_or_min'] == 'min':
@@ -853,7 +847,7 @@ general_cfg['cl_gl_3d'] = cl_gl_3d
 general_cfg['cl_gg_3d'] = cl_gg_3d
 
 
-# ! compute covariance matrix
+# # ! compute covariance matrix
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, delta_dict, cl_dict_3D, rl_dict_3D,
                                     Sijkl=None, BNT_matrix=bnt_matrix, oc_obj=oc_obj)

@@ -117,6 +117,7 @@ general_cfg:
 
     has_rsd: False # CCL has a different implementation than CLOE
     has_magnification_bias: True
+    has_ia: True
 
     magcut_lens: 245 # valid for GCph
     magcut_source: 245 # valid for WL

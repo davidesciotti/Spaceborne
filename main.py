@@ -307,7 +307,7 @@ ccl_obj.zbins = zbins
 ccl_obj.set_nz(nz_full_src=np.hstack((zgrid_nz_src[:, None], nz_src)),
                nz_full_lns=np.hstack((zgrid_nz_lns[:, None], nz_lns)))
 ccl_obj.check_nz_tuple(zbins)
-ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid_ssc_integrands)
+ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid_ssc_integrands, has_ia=general_cfg['has_ia'])
 
 # set galaxy bias
 if general_cfg['which_forecast'] == 'SPV3':

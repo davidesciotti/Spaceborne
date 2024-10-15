@@ -150,6 +150,7 @@ general_cfg:
     fm_and_cov_suffix: "" # TODO delete this
     num_threads: 40 # how many threads to use for the Julia SSC integral with @tturbo
 
+    save_outputs_as_test_benchmarks_path: ./tests/benchmarks/output_dict.npy
 covariance_cfg:
     # ordering-related settings
     triu_tril: triu

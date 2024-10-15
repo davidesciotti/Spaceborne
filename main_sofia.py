@@ -38,8 +38,7 @@ import spaceborne.config_checker as config_checker
 ROOT = '/Users/sofiachiarenza/Desktop/PhD_Stuff'
 script_start_time = time.perf_counter()
 
-
-
+#Function calling the Julia module to compute the inner k-integral.
 def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
                        ind_auto, ind_cross, cl_integral_prefactor, sigma2, z_grid, integration_type, num_threads=16):
     """Kernel to compute the 4D integral optimized using Simpson's rule using Julia."""
@@ -92,7 +91,7 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
 # * ====================================================================================================================
 
 
-with open('example_cfg.yaml', 'r') as f:
+with open('sofia_config.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
 
 general_cfg = cfg['general_cfg']
@@ -100,7 +99,7 @@ covariance_cfg = cfg['covariance_cfg']
 fm_cfg = cfg['FM_cfg']
 pyccl_cfg = covariance_cfg['PyCCL_cfg']
 
-# some convenence variables, just to make things more readable
+# some convenience variables, just to make things more readable
 zbins = general_cfg['zbins']
 ep_or_ed = general_cfg['EP_or_ED']
 ell_max_WL = general_cfg['ell_max_WL']
@@ -133,6 +132,12 @@ which_pk = general_cfg['which_pk']
 z_grid_ssc_integrands = np.linspace(covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
                                     covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
                                     covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'])
+
+R_grid_ssc_integrands = np.linspace(covariance_cfg['Spaceborne_cfg']['R_min_ssc_integrands'],
+                                    covariance_cfg['Spaceborne_cfg']['R_max_ssc_integrands'],
+                                    covariance_cfg['Spaceborne_cfg']['R_steps_ssc_integrands'])
+
+
 if len(z_grid_ssc_integrands) < 250:
     warnings.warn('z_grid_ssc_integrands is small, at the moment it used to compute various intermediate quantities')
 

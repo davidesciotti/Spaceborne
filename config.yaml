@@ -112,8 +112,6 @@ general_cfg:
     wf_filename: "wi{probe:s}-{ep_or_ed:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{specs:s}.dat"
     specs: "idIA{idIA:d}-idB{idBM:01d}-idM{idM:d}-idR{idR:d}"
 
-    CLOE_benchmarks_path: "{ROOT:s}/CLOE_benchmarks"
-
     has_rsd: False # CCL has a different implementation than CLOE
     has_magnification_bias: True
     has_ia: True
@@ -160,7 +158,7 @@ covariance_cfg:
         [ 1.86742, 1.86744, 1.8674, 1.86743, 1.86741, 1.86742, 1.86742, 1.86742, 1.86744, 1.8674, 1.86742, 1.86742, 1.86742]
 
     shift_nz: True
-    compute_bnt_with_shifted_nz_for_zcuts: False # ! lets test this
+    compute_bnt_with_shifted_nz_for_zcuts: False #
     shift_nz_interpolation_kind: linear
     normalize_shifted_nz: True
     nz_gaussian_smoothing: False # does not seem to have a large effect...

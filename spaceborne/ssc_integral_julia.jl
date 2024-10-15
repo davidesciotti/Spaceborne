@@ -214,14 +214,14 @@ integration_type = ARGS[2]
 
 # import arrays:
 # the ones actually used in the integration
-d2CLL_dVddeltab = npzread("./$(folder_name)/d2CLL_dVddeltab.npy")
-d2CGL_dVddeltab = npzread("./$(folder_name)/d2CGL_dVddeltab.npy")
-d2CGG_dVddeltab = npzread("./$(folder_name)/d2CGG_dVddeltab.npy")
-sigma2          = npzread("./$(folder_name)/sigma2.npy")
-z_grid = npzread("./$(folder_name)/z_grid.npy") #previously z_integrands
-cl_integral_prefactor = npzread("./$(folder_name)/cl_integral_prefactor.npy")
-ind_auto = npzread("./$(folder_name)/ind_auto.npy")
-ind_cross = npzread("./$(folder_name)/ind_cross.npy")
+d2CLL_dVddeltab = npzread("$(folder_name)/d2CLL_dVddeltab.npy")
+d2CGL_dVddeltab = npzread("$(folder_name)/d2CGL_dVddeltab.npy")
+d2CGG_dVddeltab = npzread("$(folder_name)/d2CGG_dVddeltab.npy")
+sigma2          = npzread("$(folder_name)/sigma2.npy")
+z_grid = npzread("$(folder_name)/z_grid.npy") #previously z_integrands
+cl_integral_prefactor = npzread("$(folder_name)/cl_integral_prefactor.npy")
+ind_auto = npzread("$(folder_name)/ind_auto.npy")
+ind_cross = npzread("$(folder_name)/ind_cross.npy")
 nbl = size(d2CLL_dVddeltab, 1)
 zbins = size(d2CLL_dVddeltab, 2)
 
@@ -303,7 +303,7 @@ for row in 1:length(probe_combinations)
                 sigma2, z_grid)
 
             # save
-            npzwrite("./$(folder_name)/cov_SSC_spaceborne_$(probe_A)$(probe_B)$(probe_C)$(probe_D)_4D.npy", cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)])
+            npzwrite("$(folder_name)/cov_SSC_spaceborne_$(probe_A)$(probe_B)$(probe_C)$(probe_D)_4D.npy", cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)])
 
             # free memory
             delete!(cov_ssc_dict_8d, (probe_A, probe_B, probe_C, probe_D))

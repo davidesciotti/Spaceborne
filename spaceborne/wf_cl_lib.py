@@ -589,8 +589,8 @@ def build_ia_bias_1d_arr(z_grid_out, cosmo_ccl, flat_fid_pars_dict, input_z_grid
 
     if input_lumin_ratio is None and input_z_grid_lumin_ratio is None:
         # in this case, take the defaults
-        lumin_ratio_file = np.genfromtxt(f"{ROOT}/common_data/"
-                                         f"luminosity_ratio/scaledmeanlum-E2Sa.dat")
+        
+        lumin_ratio_file = np.genfromtxt('./input/scaledmeanlum-E2Sa.dat')
         input_z_grid_lumin_ratio = lumin_ratio_file[:, 0]
         input_lumin_ratio = lumin_ratio_file[:, 1]
 

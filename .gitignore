@@ -16,3 +16,4 @@
 tmp/*
 tmp*/   
 .aider*
+tests/benchmarks/*

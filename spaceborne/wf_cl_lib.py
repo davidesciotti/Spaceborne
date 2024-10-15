@@ -21,7 +21,7 @@ from functools import partial
 import sys
 from tqdm import tqdm
 import os
-ROOT = os.getenv('ROOT')
+ROOT = '/Users/sofiachiarenza/Desktop/PhD_Stuff'
 
 
 import spaceborne.my_module as mm

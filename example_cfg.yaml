@@ -153,12 +153,12 @@ covariance_cfg:
     sigma_eps_i: 0.26 # ellipticity dispersion *per component*; sigma_eps: (0.26 * np.sqrt(2))
     which_shape_noise: per_component # ISTF or per_component
 
-    nofz_folder: "/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/IO_for_Sofia/nz"
+    nofz_folder: "/Users/sofiachiarenza/Desktop/PhD_Stuff/Spaceborne/jobs/IO_for_Sofia/nz"
     nofz_filename: nzTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
-    
+
     zbin_centers:
         [ 0.27575, 0.37635, 0.44634, 0.54284, 0.62145, 0.70957, 0.7986, 0.86687, 0.97753, 1.09136, 1.24264, 1.47918, 1.89264]
-    
+
     # number of galaxies per arcmin**2 for each redshift bin.
     ngal_lensing:
         [ 1.86742, 1.86744, 1.8674, 1.86743, 1.86741, 1.86742, 1.86742, 1.86742, 1.86744, 1.8674, 1.86742, 1.86742, 1.86742]
@@ -206,7 +206,7 @@ covariance_cfg:
     cov_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Sesto"
     cov_filename:
         covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_pk{which_pk:s}_{ndim:d}D{cov_suffix:s}{fm_and_cov_suffix:s}.npz
-    
+
     ng_cov_code: Spaceborne # ! PyCCL or Spaceborne or OneCovariance
 
     PyCCL_cfg:
@@ -254,7 +254,7 @@ covariance_cfg:
         load_precomputed_cov: False
         which_pk_responses: separate_universe # halo_model (with PyCCL) or separate_universe (from simulations)
 
-        cov_path: "/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/IO_for_Sofia"
+        cov_path: "/Users/sofiachiarenza/Desktop/PhD_Stuff/Spaceborne/jobs/IO_for_Sofia"
         cov_filename: "..."
 
         # settings for sigma2
@@ -276,13 +276,13 @@ covariance_cfg:
         z_steps_ssc_integrands: 200 # this should be high because I have to trace the spikes in sigma2
 
         load_precomputed_sigma2: False
-        sigma2_b_path: "/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/IO_for_Sofia/sigma2_b"
+        sigma2_b_path: "/Users/sofiachiarenza/Desktop/PhD_Stuff/Spaceborne/jobs/IO_for_Sofia/sigma2_b"
         sigma2_b_filename: "..."
         use_KE_approximation: False # TODO implement this in the Julia module
         integration_type: 'simps' # 'simps' or 'trapz' (which is actually using rectangles)
 
         separate_universe_responses_filename: 'resfun-idBM{idBM:02d}.dat'
-        separate_universe_responses_folder: '{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputSSC/ResFun/{which_pk:s}'
+        separate_universe_responses_folder: '/Users/sofiachiarenza/Desktop/PhD_Stuff/Spaceborne/jobs/IO_for_Sofia/SU_responses/'
 
     OneCovariance_cfg:
         which_ng_cov: ['SSC', 'cNG']

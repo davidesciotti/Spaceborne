@@ -35,7 +35,7 @@ import spaceborne.sigma2_SSC as sigma2_SSC
 import spaceborne.onecovariance_interface as oc_interface
 import spaceborne.config_checker as config_checker
 
-ROOT = os.getenv('ROOT')
+ROOT = '/Users/sofiachiarenza/Desktop/PhD_Stuff'
 script_start_time = time.perf_counter()
 
 
@@ -699,9 +699,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         probe_a, probe_b, probe_c, probe_d = key
         if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
             np.savez_compressed(
-                f'{cov_folder_sb}/{cov_sb_filename.format(probe_a=probe_a,
-                                                          probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}',
-                cov_ssc_3x2pt_dict_8D[key])
+                f'{cov_folder_sb}/{cov_sb_filename.format(probe_a=probe_a,probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}',cov_ssc_3x2pt_dict_8D[key])
 
 elif covariance_cfg['ng_cov_code'] == 'Spaceborne' and \
         covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
@@ -748,7 +746,7 @@ cov_3x2pt_SS_2D = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SS_4D, block_index='ell', 
 
 mm.matshow(cov_3x2pt_SS_2D, log=True, abs_val=True, title='SSC 2D')
 
-assert False, 'stop here for now'
+assert False, 'I am not an error, stop here for now :)'
 
 
 # ! ========================================== OneCovariance ===================================================

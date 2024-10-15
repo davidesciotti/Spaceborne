@@ -15,7 +15,7 @@ dependencies:
   - joblib
   - numba
   - camb
-  - gcc
+  #- gcc
   - pyqt
   - ipympl
   - cfitsio
@@ -26,13 +26,13 @@ dependencies:
   - swig
   - cmake
   - make
-  - libgcc-ng
+  #- libgcc-ng
   - libgfortran-ng
-  - libstdcxx-ng
+  #- libstdcxx-ng
   - fast-pt
   # - cfitsio  # not necessary?
   - pip:
-    - pymaster
+    #- pymaster
     - cython
     - getdist
     # - git+https://github.com/davidesciotti/CCL.git@master  # doesn't seem to work, have to install from source
@@ -42,4 +42,3 @@ dependencies:
 
 # In case of issues, try
 # $ sudo apt-get install gfortran cmake build-essential autoconf bison
-

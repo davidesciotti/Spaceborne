@@ -57,7 +57,7 @@ ROOT = os.path.dirname(os.getcwd())
 
 # %%
 # if you want to run without arguments
-with open('config.yaml', 'r') as f:
+with open('config_CLOEDR1.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
 
 # define dictionaries corresponding to the relevant sections
@@ -160,9 +160,13 @@ else:
 # %%
 
 # compute ell and delta ell values in the reference (optimistic) case
-ell_ref_nbl32, delta_l_ref_nbl32, ell_edges_ref_nbl32 = (
-    ell_utils.compute_ells(general_cfg['nbl_WL_opt'], general_cfg['ell_min'], general_cfg['ell_max_WL_opt'],
-                           recipe='ISTF', output_ell_bin_edges=True))
+if general_cfg['ell_file'] is None:
+    ell_ref_nbl32, delta_l_ref_nbl32, ell_edges_ref_nbl32 = (
+        ell_utils.compute_ells(general_cfg['nbl_WL_opt'], general_cfg['ell_min'], general_cfg['ell_max_WL_opt'],
+                            recipe='ISTF', output_ell_bin_edges=True))
+
+else:
+    ell_ref_nbl32, delta_l_ref_nbl32, ell_edges_ref_nbl32 = np.loadtxt(general_cfg['ell_file'], unpack=True)
 
 # perform the cuts (not the redshift-dependent ones!) on the ell centers and edges
 ell_dict = {}

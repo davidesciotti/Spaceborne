@@ -13,4 +13,5 @@
 *.xml
 *.xml
 tmp/*
-tmp*/   
+tmp*/
+config_CLOEDR1.yaml

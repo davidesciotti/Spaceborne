@@ -30,9 +30,9 @@ start_time = time.perf_counter()
 class SpaceborneResponses():
 
     def __init__(self, cfg, k_grid, z_grid, cosmo_ccl, b1_func):
-        
+
         ccl.spline_params['A_SPLINE_NA_PK'] = 240  # gives CAMB error if too high
-        ccl.spline_params['K_MAX_SPLINE'] = 300 
+        ccl.spline_params['K_MAX_SPLINE'] = 300
 
 
         # grids over which to compute the responses
@@ -55,7 +55,7 @@ class SpaceborneResponses():
         self.b1_func = b1_func
 
         # ! get growth only values - DIMENSIONLESS
-        g1_table = np.genfromtxt(f'{ROOT}/Spaceborne/input/Resp_G1_fromsims.dat')
+        g1_table = np.genfromtxt(f'input/Resp_G1_fromsims.dat')
 
         # take k and z values (the latter from the header), k is in [h/Mpc]
         self.k_grid_g1 = g1_table[:, 0]
@@ -131,7 +131,7 @@ class SpaceborneResponses():
         self.k_grid, self.pk_mm = csmlib.pk_from_ccl(k_array=self.k_grid, z_array=self.z_grid,
                                                      use_h_units=self.use_h_units, cosmo_ccl=self.cosmo_ccl,
                                                      pk_kind='nonlinear')
-        
+
         dpkmm_dk = np.gradient(self.pk_mm, self.k_grid, axis=0)
         # I broadcast k_grid as k_grid[:, None] here and below to have the correct shape (k_points, 1)
         dlogpkmm_dlogk = self.k_grid[:, None] / self.pk_mm * dpkmm_dk
@@ -147,7 +147,7 @@ class SpaceborneResponses():
 
     def get_b2_with_ccl(self, z, cosmo_ccl):
         # TODO implement this!
-        
+
         # ! new section: compute second-order galaxy bias (I basically didn't even begin this test)
         mass_def = ccl.halos.MassDef200m
         c_M_relation = ccl.halos.ConcentrationDuffy08(mass_def=mass_def)
@@ -156,21 +156,21 @@ class SpaceborneResponses():
         hmc = ccl.halos.HMCalculator(mass_function=hmf, halo_bias=hbf, mass_def=mass_def)
         halo_profile_nfw = ccl.halos.HaloProfileNFW(mass_def=mass_def, concentration=c_M_relation)
         halo_profile_hod = ccl.halos.HaloProfileHOD(mass_def=mass_def, concentration=c_M_relation)
-        
-        
+
+
         a = cosmo_lib.z_to_a(z)
-        
+
         # Define the integrand
         def integrand(M, a):
             # Compute Φ_MF(M, a)
             phi_mf = hmc.mass_function(cosmo_ccl, M, a)
-            
+
             # Compute b_1^h(M, a)
             b1h = hmc.halo_bias(cosmo_ccl, M, a)
-            
+
             # Compute N(M)
             n_given_m = halo_profile_hod.get_number(M)
-            
+
             return phi_mf * b1h * n_given_m
 
         # Define n_gal(z)
@@ -180,8 +180,8 @@ class SpaceborneResponses():
         # Compute b₂(z)
         numerator = integrate.quad(lambda M: integrand(M, a) * self.hbf(M, a), 1e10, 1e16)[0]
         denominator = n_gal(a)
-            
-        
+
+
         return numerator / denominator
 
 

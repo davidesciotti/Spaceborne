@@ -1,5 +1,9 @@
+import argparse
 import os
 import multiprocessing
+import sys
+
+import matplotlib
 num_cores = multiprocessing.cpu_count()
 os.environ['OMP_NUM_THREADS'] = '32'
 os.environ['NUMBA_NUM_THREADS'] = '32'
@@ -40,6 +44,7 @@ import spaceborne.responses as responses
 
 pp = pprint.PrettyPrinter(indent=4)
 ROOT = os.getenv('ROOT')
+SB_ROOT = ROOT + '/Spaceborne'
 script_start_time = time.perf_counter()
 
 
@@ -48,7 +53,8 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
     """Kernel to compute the 4D integral optimized using Simpson's rule using Julia."""
 
     suffix = 0
-    folder_name = 'tmp'
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    folder_name = os.path.join(script_dir, 'tmp')
     unique_folder_name = folder_name
 
     # Loop until we find a folder name that does not exist
@@ -67,7 +73,7 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
     np.save(f"{folder_name}/sigma2", sigma2)
     np.save(f"{folder_name}/z_grid", z_grid)
     os.system(
-        f"julia --project=. --threads={num_threads} spaceborne/ssc_integral_julia.jl {folder_name} {integration_type}")
+        f"julia --project=. --threads={num_threads} {SB_ROOT}/spaceborne/ssc_integral_julia.jl {folder_name} {integration_type}")
 
     cov_filename = "cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npy"
 
@@ -95,8 +101,31 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
 # * ====================================================================================================================
 # * ====================================================================================================================
 # * ====================================================================================================================
-with open('config.yaml', 'r') as f:
+
+
+# Set up argument parsing
+parser = argparse.ArgumentParser(description="Your script description here.")
+parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
+parser.add_argument('--show_plots', action='store_true', help='Show plots if specified')
+
+args = parser.parse_args()
+
+# # Load the configuration file
+with open(args.config, 'r') as f:
     cfg = yaml.safe_load(f)
+# # this is for the test module
+with open(args.config, 'r') as f:
+    original_cfg = yaml.safe_load(f)
+
+if not args.show_plots:
+    matplotlib.use('Agg')
+
+# ! uncomment this if executing from interactive window
+# with open('config.yaml', 'r') as f:
+#     cfg = yaml.safe_load(f)
+# # this is for the test module
+# with open('config.yaml', 'r') as f:
+#     original_cfg = yaml.safe_load(f)
 
 # for zbins in (3, ):
 #     for ep_or_ed in ('EP', ):
@@ -2011,6 +2040,37 @@ if fm_cfg['test_against_vincenzo'] and bnt_transform == False:
                           abs_val=False, plot_diff_threshold=5)
 
         npt.assert_allclose(fm_dict[f'FM_{probe_dav}_G'], fm_vinc_g, rtol=1e-3, atol=0)
+
+# ! save/load outputs for tests
+if isinstance(general_cfg['save_outputs_as_test_benchmarks_path'], str):
+
+    print('Saving outputs as test benchmarks in folder ', general_cfg['save_outputs_as_test_benchmarks_path'])
+
+    output_dict = {
+        'original_cfg': original_cfg,
+        'z_grid_ssc_integrands': z_grid_ssc_integrands,
+        'delta': wf_delta,
+        'gamma': wf_gamma,
+        'ia': wf_ia,
+        'mu': wf_mu,
+        'lensing': wf_lensing,
+
+        'ell_dict': ell_dict,
+        'cl_ll_3d': cl_ll_3d,
+        'cl_gl_3d': cl_gl_3d,
+        'cl_gg_3d': cl_gg_3d,
+
+        'sigma2_b': sigma2_b,
+        'cov_dict': cov_dict,
+        'fm_dict': fm_dict,
+
+    }
+
+    np.save(general_cfg['save_outputs_as_test_benchmarks_path'], output_dict, allow_pickle=True)
+
+elif general_cfg['save_outputs_as_test_benchmarks_path'] is False:
+    pass
+
 
 # ! plot the results directly, as a quick check
 nparams_toplot = 7

@@ -84,10 +84,10 @@ dav_to_vinc_par_names = {
 # # use_h_units = cfg.use_h_units
 
 def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors):
-    
+
     assert nz_src.shape[1] == nz_lns.shape[1], 'number of zbins is not the same'
     zbins = nz_src.shape[1]
-    
+
     _, ax = plt.subplots(2, 1, sharex=True)
     colors = cm.rainbow(np.linspace(0, 1, zbins))
     for zi in range(zbins):
@@ -589,8 +589,8 @@ def build_ia_bias_1d_arr(z_grid_out, cosmo_ccl, flat_fid_pars_dict, input_z_grid
 
     if input_lumin_ratio is None and input_z_grid_lumin_ratio is None:
         # in this case, take the defaults
-        lumin_ratio_file = np.genfromtxt(f"{ROOT}/common_data/"
-                                         f"luminosity_ratio/scaledmeanlum-E2Sa.dat")
+        lumin_ratio_file = np.genfromtxt(f"input/"
+                                         f"scaledmeanlum-E2Sa.dat")
         input_z_grid_lumin_ratio = lumin_ratio_file[:, 0]
         input_lumin_ratio = lumin_ratio_file[:, 1]
 

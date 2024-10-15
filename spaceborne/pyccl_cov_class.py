@@ -338,10 +338,8 @@ class PycclClass():
             'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
 
     def set_ia_bias_tuple(self, z_grid):
-
         ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(z_grid, cosmo_ccl=self.cosmo_ccl,
-                                                    flat_fid_pars_dict=self.flat_fid_pars_dict,
-                                                    input_z_grid_lumin_ratio=None,
+                                                    flat_fid_pars_dict=self.flat_fid_pars_dict,input_z_grid_lumin_ratio=None,
                                                     input_lumin_ratio=None, output_F_IA_of_z=False)
         self.ia_bias_tuple = (z_grid, ia_bias_1d)
 

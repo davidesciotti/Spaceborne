@@ -131,6 +131,56 @@ def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None,
 
     return result
 
+def sigma2_sofia(z, R, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None, cl_mask=None):
+    """ Computes the integral in k. The grid is now."""
+
+    # compute the comoving distance at the given redshifts
+    a = csmlib.z_to_a(z)
+    # in Mpc
+    chi = ccl.comoving_radial_distance(cosmo_ccl, a)
+
+    # compute the growth factors at the given redshifts
+    growth_factor_z = ccl.growth_factor(cosmo_ccl, a)
+
+    # define the integrand as a function of k. chi is a vector and R is a number!
+    #def integrand(k, chi, R): return k ** 2 * ccl.linear_matter_power(cosmo_ccl, k=k, a=1.) * \
+    #    spherical_jn(0, k * chi) * spherical_jn(0, k * R* chi)
+
+    Bessel1 = spherical_jn(0, k_grid_sigma2 * chi[:,None])
+    
+    integral_result = np.zeros((len(chi), len(R)))
+
+    for ridx, r in enumerate(tqdm(R)):
+        chi2 = r*chi
+        Bessel2 = spherical_jn(0, k_grid_sigma2 * chi2[:,None])
+        integrand = k_grid_sigma2**2 *ccl.linear_matter_power(cosmo_ccl, k=k_grid_sigma2, a=1.)*Bessel1*Bessel2
+        integral_result[:, ridx] = simps(integrand, k_grid_sigma2)
+        growth_factor_R = ccl.growth_factor(cosmo_ccl, csmlib.z_to_a(z*r))
+        integral_result[:, ridx] *= growth_factor_z * growth_factor_R 
+        #TODO: i think this is equivalent to what was done before, but double check!
+
+
+    # different integration methods; simps seems to be the best
+    # if integrating_funct == 'simps':
+    #     integral_result = simps(integrand(k_grid_sigma2), k_grid_sigma2)
+    # elif integrating_funct == 'quad':
+    #     integral_result = quad(integrand, k_grid_sigma2[0], k_grid_sigma2[-1])[0]
+    # elif integrating_funct == 'quad_vec':
+    #     integral_result = quad_vec(integrand, k_grid_sigma2[0], k_grid_sigma2[-1])[0]
+    # else:
+    #     raise ValueError('sigma2_integrating_function must be either "simps" or "quad" or "quad_vec"')
+
+    if which_sigma2_B == 'full-curved-sky':
+        result = 1 / (2 * np.pi ** 2) * integral_result
+    elif which_sigma2_B == 'mask':
+        fsky = np.sqrt(cl_mask[0] / (4 * np.pi))
+        result = 1 / (4 * np.pi * fsky)**2 * np.sum((2 * ell_mask + 1) * cl_mask * 2 /
+                                                    np.pi * integral_result)
+    else:
+        raise ValueError('which_sigma2_B must be either "full-curved-sky" or "mask"')
+
+    return result
+
 
 def sigma2_func_vectorized(z1_arr, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None, cl_mask=None):
     """

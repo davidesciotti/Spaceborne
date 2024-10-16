@@ -647,7 +647,8 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     else:
         # TODO input ell and cl mask
         print('Computing sigma2_b...')
-        sigma2_b = np.zeros((len(z_grid_ssc_integrands), len(z_grid_ssc_integrands)))
+        #sigma2_b = np.zeros((len(z_grid_ssc_integrands), len(z_grid_ssc_integrands)))
+        sigma2_b = np.zeros((len(z_grid_ssc_integrands), len(R_grid_ssc_integrands)))
         for z2_idx, z2 in enumerate(tqdm(z_grid_ssc_integrands)):
             sigma2_b[:, z2_idx] = sigma2_SSC.sigma2_func_vectorized(
                 z1_arr=z_grid_ssc_integrands,

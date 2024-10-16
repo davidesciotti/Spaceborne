@@ -17,7 +17,7 @@ mpl_rcParams_dict = {
     'figure.figsize': (15, 10),
     'lines.markersize': 8,
     # 'axes.grid': True,
-    'figure.constrained_layout.use': True,
+    # 'figure.constrained_layout.use': False,
     # 'axes.axisbelow': True
 }
 

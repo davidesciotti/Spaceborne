@@ -262,8 +262,8 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
         for i, uncert in enumerate(uncertainties_dict[key]):
             ax[0].scatter(param_names, uncert, label=f'{labels[i]}', marker='o', c=colors[i], alpha=0.6)
         ax[0].axhline(0, c='k', ls='--')
-        ax[0].legend(ncol=1, loc='center right', bbox_to_anchor=(1.38, 0.))
         ax[0].set_ylabel(ylabel)
+        ax[0].legend(ncol=1, loc='center right', bbox_to_anchor=(1.43, 0.))
         ax[0].grid()
 
         start_idx = 0
@@ -287,7 +287,7 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
             ax[1].fill_between((0, nparams_toplot), -10, 10, color='k', alpha=0.1, label='$\\pm 10\\%$')
 
         ax[1].set_ylabel(f'% diff wrt\n{title_str}\n')
-        ax[1].legend(ncol=1, loc='center right', bbox_to_anchor=(1.38, 0.5))
+        ax[1].legend(ncol=1, loc='center right', bbox_to_anchor=(1.43, 0.5))
         ax[1].grid()
 
         if save_fig:

@@ -255,7 +255,8 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
 
         n_rows = 2 if len(fm_dict_list) > 1 else 1
         fig, ax = plt.subplots(n_rows, 1, figsize=(10, 5), sharex=True)
-        fig.tight_layout(h_pad=-1.1)
+        plt.tight_layout()
+        fig.subplots_adjust(hspace=0)
 
         ax[0].set_title(f'{which_uncertainty} uncertainties, {key}')
         for i, uncert in enumerate(uncertainties_dict[key]):

@@ -2267,9 +2267,9 @@ fm_dict_of_dicts = {
     # 'SB_suDav_b2ghm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_davSU_b2ghm_separateuniverse.pickle'),
     # 'SB_KEapp_su': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_separateuniverse.pickle'),
     # 'SB_KEapp_hm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_halomodel.pickle'),
-    'SB_hm_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     'SB_KEapp_hm_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
-    # 'OC_simpker': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly.pickle'),
+    'SB_hm_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
+    'OC_simpker': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly.pickle'),
     'current': fm_dict
 }
 
@@ -2309,7 +2309,7 @@ fiducials = list(fm_dict_of_dicts['SB_hm_simpker']['fiducial_values_dict'].value
 # )
 param_names_list = list(fm_dict_of_dicts['SB_hm_simpker']['fiducial_values_dict'].keys())
 param_names_labels_toplot = param_names_list[:8]
-plot_lib.triangle_plot_new(fisher_matrices, fiducials, title, labels, param_names_list, param_names_labels_toplot, 
+plot_lib.triangle_plot(fisher_matrices, fiducials, title, labels, param_names_list, param_names_labels_toplot, 
                   param_names_labels_tex=None, rotate_param_labels=False, contour_colors=None, line_colors=None)
 
 

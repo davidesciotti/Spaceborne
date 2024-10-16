@@ -104,28 +104,28 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
 
 
 # Set up argument parsing
-parser = argparse.ArgumentParser(description="Your script description here.")
-parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
-parser.add_argument('--show_plots', action='store_true', help='Show plots if specified')
+# parser = argparse.ArgumentParser(description="Your script description here.")
+# parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
+# parser.add_argument('--show_plots', action='store_true', help='Show plots if specified')
 
-args = parser.parse_args()
+# args = parser.parse_args()
 
-# # Load the configuration file
-with open(args.config, 'r') as f:
-    cfg = yaml.safe_load(f)
-# # this is for the test module
-with open(args.config, 'r') as f:
-    original_cfg = yaml.safe_load(f)
+# # # Load the configuration file
+# with open(args.config, 'r') as f:
+#     cfg = yaml.safe_load(f)
+# # # this is for the test module
+# with open(args.config, 'r') as f:
+#     original_cfg = yaml.safe_load(f)
 
-if not args.show_plots:
-    matplotlib.use('Agg')
+# if not args.show_plots:
+#     matplotlib.use('Agg')
 
 # ! uncomment this if executing from interactive window
-# with open('config.yaml', 'r') as f:
-#     cfg = yaml.safe_load(f)
-# # this is for the test module
-# with open('config.yaml', 'r') as f:
-#     original_cfg = yaml.safe_load(f)
+with open('config.yaml', 'r') as f:
+    cfg = yaml.safe_load(f)
+# this is for the test module
+with open('config.yaml', 'r') as f:
+    original_cfg = yaml.safe_load(f)
 
 # for zbins in (3, ):
 #     for ep_or_ed in ('EP', ):
@@ -1679,10 +1679,6 @@ if covariance_cfg['compute_GSSC_condition_number']:
     print(f'kmax = {kmax_h_over_Mpc}, precision in the inversion of GS covariance = '
           f'{precision:.2e}, cond number = {cond_number:.2e}')
 
-if covariance_cfg['test_against_benchmarks']:
-    cov_benchmark_folder = f'{cov_folder}/benchmarks'
-    mm.test_folder_content(cov_folder, cov_benchmark_folder, covariance_cfg['cov_file_format'])
-
 if covariance_cfg['test_against_vincenzo'] and (not bnt_transform) and (general_cfg['which_cls'] == 'Vincenzo'):
     cov_vinc_filename = covariance_cfg['cov_vinc_filename'].format(**variable_specs, probe='3x2pt')
     cov_vinc_g = np.load(f'{covariance_cfg["cov_vinc_folder"]}/{cov_vinc_filename}')['arr_0']
@@ -1994,10 +1990,17 @@ if not general_cfg['ell_cuts']:
     fm_folder = fm_folder.replace(f'/{general_cfg["which_cuts"]}/ell_{center_or_min}', '')
 
 if fm_cfg['save_FM_dict']:
+
+    if (not general_cfg['has_IA']) and (not general_cfg['has_magnification_bias']):
+        simpkern = str(True)
+    else:
+        simpkern = str(False)
+
     fm_dict_filename = fm_cfg['fm_dict_filename'].format(
         **variable_specs, fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'],
         lmax=ell_max_3x2pt, survey_area_deg2=covariance_cfg['survey_area_deg2'],
         cl_integral_convention=covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
+        simpkern=simpkern,
         which_sigma2_b=str(which_sigma2_b))
 
     if covariance_cfg['ng_cov_code'] == 'Spaceborne':
@@ -2251,19 +2254,25 @@ for probe in probes:
 path = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM/BNT_False/ell_cuts_False'
 common_str = '_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_13245deg2'
 
+
 fm_dict_of_dicts = {
     # 'SB_su_fullsky': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_separateuniverse_fullcurvedsky.pickle'),
     # 'OC_hp': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_highprecision.pickle'),
     # 'CCL': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}.pickle'),
     # 'OC_hp': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_highprecision.pickle'),
-    'SB_hm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_halo_model.pickle'),
-    # 'OC_def':  mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_defaultprecision.pickle'),
+    # 'SB_hm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_halo_model.pickle'),
+    # 'OC_def': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_defaultprecision.pickle'),
     # 'SB_su_maskotf': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_separateuniverse_polarcaponthefly.pickle'),
     # 'SB_suVin': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_vinSU_separateuniverse.pickle'),
-    'SB_suDav_b2ghm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_davSU_b2ghm_separateuniverse.pickle'),
+    # 'SB_suDav_b2ghm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_davSU_b2ghm_separateuniverse.pickle'),
     # 'SB_KEapp_su': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_separateuniverse.pickle'),
     # 'SB_KEapp_hm': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_halomodel.pickle'),
+    'SB_hm_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
+    'SB_KEapp_hm_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
+    # 'OC_simpker': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly.pickle'),
+    'current': fm_dict
 }
+
 
 labels = list(fm_dict_of_dicts.keys())
 fm_dict_list = list(fm_dict_of_dicts.values())
@@ -2271,18 +2280,40 @@ keys_toplot_in = ['FM_WL_GSSC', 'FM_GC_GSSC', 'FM_XC_GSSC', 'FM_3x2pt_GSSC']
 # keys_toplot = 'all'
 colors = ['tab:blue', 'tab:green', 'tab:orange', 'tab:red', 'tab:cyan', 'tab:grey', 'tab:olive', 'tab:purple']
 
-reference = 'mean'
+reference = 'first_key'
 nparams_toplot_in = 8
 normalize_by_gauss = True
 
-mm.compare_fm_constraints(*fm_dict_list, labels=labels, keys_toplot_in=keys_toplot_in,
+mm.compare_fm_constraints(*fm_dict_list, labels=labels,
+                          keys_toplot_in=keys_toplot_in,
                           normalize_by_gauss=True,
-                          which_uncertainty='conditional',
+                          which_uncertainty='marginal',
                           reference=reference,
                           colors=colors,
                           abs_FoM=True,
                           save_fig=False,
                           fig_path='/home/davide/Scrivania/')
+
+fisher_matrices = (
+    fm_dict_of_dicts['SB_hm_simpker']['FM_3x2pt_GSSC'],
+    fm_dict_of_dicts['SB_KEapp_hm_simpker']['FM_3x2pt_GSSC'],
+    fm_dict_of_dicts['OC_simpker']['FM_3x2pt_GSSC'],
+    fm_dict_of_dicts['current']['FM_3x2pt_GSSC'],
+)
+fiducials = list(fm_dict_of_dicts['SB_hm_simpker']['fiducial_values_dict'].values())
+# fiducials = (
+    # fm_dict_of_dicts['SB_hm_simpker']['fiducial_values_dict'].values(),
+    # fm_dict_of_dicts['SB_KEapp_hm_simpker']['fiducial_values_dict'].values(),
+    # fm_dict_of_dicts['OC_simpker']['fiducial_values_dict'].values(),
+    # fm_dict_of_dicts['current']['fiducial_values_dict'].values(),
+# )
+param_names_list = list(fm_dict_of_dicts['SB_hm_simpker']['fiducial_values_dict'].keys())
+param_names_labels_toplot = param_names_list[:8]
+plot_lib.triangle_plot_new(fisher_matrices, fiducials, title, labels, param_names_list, param_names_labels_toplot, 
+                  param_names_labels_tex=None, rotate_param_labels=False, contour_colors=None, line_colors=None)
+
+
+
 
 
 print('Finished in {:.2f} minutes'.format((time.perf_counter() - script_start_time) / 60))

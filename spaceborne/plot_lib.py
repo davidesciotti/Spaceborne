@@ -48,7 +48,7 @@ def plot(array, style=".-"):
 
 
 def bar_plot_old(uncert_gauss, uncert_SSC, difference):
-    labels = ["$\Omega_m$", "$\Omega_b$", "$w_0$", "$w_a$", "$h$", "$n_s$", "$\sigma_8$"]
+    labels = ["$\\Omega_m$", "$\\Omega_b$", "$w_0$", "$w_a$", "$h$", "$n_s$", "$\\sigma_8$"]
 
     x = np.arange(len(labels))  # the label locations
     width = 0.35  # the width of the bars
@@ -59,8 +59,8 @@ def bar_plot_old(uncert_gauss, uncert_SSC, difference):
     ax.bar(x + width / 2, uncert_SSC, width, color="tomato", label='Gauss + SSC')
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
-    ax.set_ylabel('relative uncertainties $\sigma/ \\theta_{fid}$')
-    ax.set_title(f'FM 1-$\sigma$ parameter constraints, {probe} - lower is better')
+    ax.set_ylabel('relative uncertainties $\\sigma/ \\theta_{fid}$')
+    ax.set_title(f'FM 1-$\\sigma$ parameter constraints, {probe} - lower is better')
 
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
@@ -187,7 +187,7 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
 
 
     
-def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_background, label_foreground, 
+def triangle_plot_old(fm_backround, fm_foreground, fiducials, title, label_background, label_foreground, 
                   param_names_labels, param_names_labels_toplot, param_names_labels_tex=None, rotate_param_labels=False):
     
     idxs_tokeep = [param_names_labels.index(param) for param in param_names_labels_toplot]
@@ -244,6 +244,64 @@ def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_backgroun
 
     plt.suptitle(f'{title}', fontsize='x-large')
     plt.show()
+    
+def triangle_plot(fisher_matrices, fiducials, title, labels, param_names_labels, param_names_labels_toplot, 
+                  param_names_labels_tex=None, rotate_param_labels=False, contour_colors=None, line_colors=None):
+    
+    idxs_tokeep = [param_names_labels.index(param) for param in param_names_labels_toplot]
+
+    # Invert and slice the Fisher matrices, ensuring to keep only the desired parameters
+    inv_fisher_matrices = [np.linalg.inv(fm)[np.ix_(idxs_tokeep, idxs_tokeep)] for fm in fisher_matrices]
+
+    fiducials = [fiducials[idx] for idx in idxs_tokeep]
+    param_names_labels = [param_names_labels[idx] for idx in idxs_tokeep]
+    
+    if param_names_labels_tex is not None:
+        warnings.warn('Ensure that the order of param_names_labels_tex matches param_names_labels.')
+        param_names_labels_tex = [param_name.replace('$', '') for param_name in param_names_labels_tex]
+    
+    # Prepare GaussianND contours for each Fisher matrix
+    contours = [GaussianND(mean=fiducials, cov=fm_inv, names=param_names_labels, labels=param_names_labels_tex) 
+                for fm_inv in inv_fisher_matrices]
+
+    g = plots.get_subplot_plotter(subplot_size=2.3)
+    g.settings.subplot_size_ratio = 1
+    g.settings.linewidth = 3
+    g.settings.legend_fontsize = 20
+    g.settings.linewidth_contour = 3
+    g.settings.axes_fontsize = 20
+    g.settings.axes_labelsize = 20
+    g.settings.lab_fontsize = 25  # this is the x labels size
+    g.settings.scaling = True  # prevent scaling down font sizes even with small subplots
+    g.settings.tight_layout = True
+    g.settings.axis_tick_x_rotation = 45
+    g.settings.solid_colors = 'tab10'
+    
+    # Set default colors if not provided
+    if contour_colors is None:
+        contour_colors = [f'tab:{color}' for color in ['blue', 'orange', 'green', 'red']]
+    if line_colors is None:
+        line_colors = contour_colors
+    
+    # Plot the triangle plot for all Fisher matrices
+    g.triangle_plot(contours,
+                    filled=True, contour_lws=2, ls=['-'] * len(fisher_matrices),
+                    legend_labels=labels, legend_loc='upper right', 
+                    contour_colors=contour_colors[:len(fisher_matrices)],
+                    line_colors=line_colors[:len(fisher_matrices)])
+
+    if rotate_param_labels:
+        # Rotate x and y parameter name labels
+        for ax in g.subplots[:, 0]:
+            ax.yaxis.set_label_position("left")
+            ax.set_ylabel(ax.get_ylabel(), rotation=45, labelpad=20, fontsize=30, ha='center')
+
+        for ax in g.subplots[-1, :]:
+            ax.set_xlabel(ax.get_xlabel(), rotation=45, labelpad=20, fontsize=30, ha='center', va='center')
+
+    plt.suptitle(f'{title}', fontsize='x-large')
+    plt.show()
+
 
 def contour_plot_chainconsumer(cov, trimmed_fid_dict):
     """

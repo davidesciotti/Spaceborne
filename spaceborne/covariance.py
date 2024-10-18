@@ -8,9 +8,8 @@ from copy import deepcopy
 from scipy.interpolate import UnivariateSpline, interp1d, RectBivariateSpline
 import os
 
-import spaceborne.cl_preprocessing as cl_preprocessing
 import spaceborne.my_module as mm
-import spaceborne.cosmo_lib as csmlib
+import spaceborne.bnt as bnt_utils
 
 ROOT = os.getenv('ROOT')
 
@@ -220,9 +219,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     if general_cfg['cl_BNT_transform']:
         print('BNT-transforming the noise spectra...')
-        noise_LL_5D = cl_preprocessing.cl_BNT_transform(noise_LL_5D[0, 0, ...], BNT_matrix, 'L', 'L')[None, None, ...]
-        noise_WA_5D = cl_preprocessing.cl_BNT_transform(noise_WA_5D[0, 0, ...], BNT_matrix, 'L', 'L')[None, None, ...]
-        noise_3x2pt_5D = cl_preprocessing.cl_BNT_transform_3x2pt(noise_3x2pt_5D, BNT_matrix)
+        noise_LL_5D = bnt_utils.cl_BNT_transform(noise_LL_5D[0, 0, ...], BNT_matrix, 'L', 'L')[None, None, ...]
+        noise_WA_5D = bnt_utils.cl_BNT_transform(noise_WA_5D[0, 0, ...], BNT_matrix, 'L', 'L')[None, None, ...]
+        noise_3x2pt_5D = bnt_utils.cl_BNT_transform_3x2pt(noise_3x2pt_5D, BNT_matrix)
 
     start = time.perf_counter()
     cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]
@@ -358,14 +357,14 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_3x2pt_GO_10D_dict = mm.cov_10D_array_to_dict(cov_3x2pt_GO_10D, probe_ordering)
         cov_3x2pt_GS_10D_dict = mm.cov_10D_array_to_dict(cov_3x2pt_GS_10D, probe_ordering)
 
-        X_dict = build_X_matrix_BNT(BNT_matrix)
-        cov_WL_GO_6D = cov_BNT_transform(cov_WL_GO_6D, X_dict, 'L', 'L', 'L', 'L')
-        cov_WA_GO_6D = cov_BNT_transform(cov_WA_GO_6D, X_dict, 'L', 'L', 'L', 'L')
-        cov_3x2pt_GO_10D_dict = cov_3x2pt_BNT_transform(cov_3x2pt_GO_10D_dict, X_dict)
+        X_dict = bnt_utils.build_X_matrix_BNT(BNT_matrix)
+        cov_WL_GO_6D = bnt_utils.cov_BNT_transform(cov_WL_GO_6D, X_dict, 'L', 'L', 'L', 'L')
+        cov_WA_GO_6D = bnt_utils.cov_BNT_transform(cov_WA_GO_6D, X_dict, 'L', 'L', 'L', 'L')
+        cov_3x2pt_GO_10D_dict = bnt_utils.cov_3x2pt_BNT_transform(cov_3x2pt_GO_10D_dict, X_dict)
 
-        cov_WL_GS_6D = cov_BNT_transform(cov_WL_GS_6D, X_dict, 'L', 'L', 'L', 'L')
-        cov_WA_GS_6D = cov_BNT_transform(cov_WA_GS_6D, X_dict, 'L', 'L', 'L', 'L')
-        cov_3x2pt_GS_10D_dict = cov_3x2pt_BNT_transform(cov_3x2pt_GS_10D_dict, X_dict)
+        cov_WL_GS_6D = bnt_utils.cov_BNT_transform(cov_WL_GS_6D, X_dict, 'L', 'L', 'L', 'L')
+        cov_WA_GS_6D = bnt_utils.cov_BNT_transform(cov_WA_GS_6D, X_dict, 'L', 'L', 'L', 'L')
+        cov_3x2pt_GS_10D_dict = bnt_utils.cov_3x2pt_BNT_transform(cov_3x2pt_GS_10D_dict, X_dict)
 
         # revert to 10D arrays - this is not strictly necessary since cov_3x2pt_10D_to_4D accepts both a dictionary and
         # an array as input, but it's done to keep the variable names consistent
@@ -498,39 +497,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     return cov_dict
 
 
-def build_X_matrix_BNT(BNT_matrix):
-    """
-    Builds the X matrix for the BNT transform, according to eq.
-    :param BNT_matrix:
-    :return:
-    """
-    X = {}
-    delta_kron = np.eye(BNT_matrix.shape[0])
-    X['L', 'L'] = np.einsum('ae, bf -> aebf', BNT_matrix, BNT_matrix)
-    X['G', 'G'] = np.einsum('ae, bf -> aebf', delta_kron, delta_kron)
-    X['G', 'L'] = np.einsum('ae, bf -> aebf', delta_kron, BNT_matrix)
-    X['L', 'G'] = np.einsum('ae, bf -> aebf', BNT_matrix, delta_kron)
-    return X
-
-
-def cov_BNT_transform(cov_noBNT_6D, X_dict, probe_A, probe_B, probe_C, probe_D, optimize=True):
-    """same as above, but only for one probe (i.e., LL or GL: GG is not modified by the BNT)"""
-    cov_BNT_6D = np.einsum('aebf, cgdh, LMefgh -> LMabcd', X_dict[probe_A, probe_B], X_dict[probe_C, probe_D],
-                           cov_noBNT_6D, optimize=optimize)
-    return cov_BNT_6D
-
-
-def cov_3x2pt_BNT_transform(cov_3x2pt_dict_10D, X_dict, optimize=True):
-    """in np.einsum below, L and M are the ell1, ell2 indices, which are not touched by the BNT transform"""
-
-    cov_3x2pt_BNT_dict_10D = {}
-
-    for probe_A, probe_B, probe_C, probe_D in cov_3x2pt_dict_10D.keys():
-        cov_3x2pt_BNT_dict_10D[probe_A, probe_B, probe_C, probe_D] = cov_BNT_transform(
-            cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D], X_dict, probe_A, probe_B, probe_C, probe_D,
-            optimize=optimize)
-
-    return cov_3x2pt_BNT_dict_10D
 
 
 # @njit
@@ -555,55 +521,6 @@ def cov_ell_cut(cov_6d, ell_cuts_idxs_AB, ell_cuts_idxs_CD, zbins):
     return cov_6d
 
 
-def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr, cosmo_ccl, plot_nz=True):
-    """
-    Computes the BNT matrix. Shamelessly stolen from Santiago's implementation in CLOE
-    :param zbins:
-    :param zgrid_n_of_z:
-    :param n_of_z_arr:
-    :param plot_nz:
-    :return: BNT matrix, of shape (zbins x zbins)
-    """
-
-    assert n_of_z_arr.shape[0] == len(zgrid_n_of_z), 'n_of_z must have zgrid_n_of_z rows'
-    assert n_of_z_arr.shape[1] == zbins, 'n_of_z must have zbins columns'
-    assert np.all(np.diff(zgrid_n_of_z) > 0), 'zgrid_n_of_z must be monotonically increasing'
-
-    z_grid = zgrid_n_of_z
-
-    if z_grid[0] == 0:
-        warnings.warn('z_grid starts at 0, which gives a null comoving distance. '
-                      'Removing the first element from the grid')
-        z_grid = z_grid[1:]
-        n_of_z_arr = n_of_z_arr[1:, :]
-
-    chi = csmlib.ccl_comoving_distance(z_grid, use_h_units=False, cosmo_ccl=cosmo_ccl)
-
-    if plot_nz:
-        plt.figure()
-        for zi in range(zbins):
-            plt.plot(z_grid, n_of_z_arr[:, zi], label=f'zbin {zi}')
-        plt.title('n(z) used for BNT computation')
-        plt.grid()
-        plt.legend()
-
-    A_list = np.zeros(zbins)
-    B_list = np.zeros(zbins)
-    for zbin_idx in range(zbins):
-        n_of_z = n_of_z_arr[:, zbin_idx]
-        A_list[zbin_idx] = simps(y=n_of_z, x=z_grid)
-        B_list[zbin_idx] = simps(y=n_of_z / chi, x=z_grid)
-
-    bnt_matrix = np.eye(zbins)
-    bnt_matrix[1, 0] = -1.
-    for i in range(2, zbins):
-        mat = np.array([[A_list[i - 1], A_list[i - 2]], [B_list[i - 1], B_list[i - 2]]])
-        A = -1. * np.array([A_list[i], B_list[i]])
-        soln = np.dot(np.linalg.inv(mat), A)
-        bnt_matrix[i, i - 1] = soln[0]
-        bnt_matrix[i, i - 2] = soln[1]
-
-    return bnt_matrix
 
 
 def save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs):

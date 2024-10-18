@@ -71,51 +71,6 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
         # but it's not 3d!)
 
 
-def cl_BNT_transform(cl_3D, BNT_matrix, probe_A, probe_B):
-    assert cl_3D.ndim == 3, 'cl_3D must be 3D'
-    assert BNT_matrix.ndim == 2, 'BNT_matrix must be 2D'
-    assert cl_3D.shape[1] == BNT_matrix.shape[0], 'the number of ell bins in cl_3D and BNT_matrix must be the same'
-
-    BNT_transform_dict = {
-        'L': BNT_matrix,
-        'G': np.eye(BNT_matrix.shape[0]),
-    }
-
-    cl_3D_BNT = np.zeros(cl_3D.shape)
-    for ell_idx in range(cl_3D.shape[0]):
-        cl_3D_BNT[ell_idx, :, :] = BNT_transform_dict[probe_A] @ \
-            cl_3D[ell_idx, :, :] @ \
-            BNT_transform_dict[probe_B].T
-
-    return cl_3D_BNT
-
-
-def cl_BNT_transform_3x2pt(cl_3x2pt_5D, BNT_matrix):
-    """wrapper function to quickly implement the cl (or derivatives) BNT transform for the 3x2pt datavector"""
-
-    cl_3x2pt_5D_BNT = np.zeros(cl_3x2pt_5D.shape)
-    cl_3x2pt_5D_BNT[0, 0, :, :, :] = cl_BNT_transform(cl_3x2pt_5D[0, 0, :, :, :], BNT_matrix, 'L', 'L')
-    cl_3x2pt_5D_BNT[0, 1, :, :, :] = cl_BNT_transform(cl_3x2pt_5D[0, 1, :, :, :], BNT_matrix, 'L', 'G')
-    cl_3x2pt_5D_BNT[1, 0, :, :, :] = cl_BNT_transform(cl_3x2pt_5D[1, 0, :, :, :], BNT_matrix, 'G', 'L')
-    cl_3x2pt_5D_BNT[1, 1, :, :, :] = cl_3x2pt_5D[1, 1, :, :, :]  # no need to transform the GG part
-
-    return cl_3x2pt_5D_BNT
-
-
-def get_ell_cuts_indices(ell_values, ell_cuts_2d_array, zbins):
-    """ creates an array of lists containing the ell indices to cut (to set to 0) for each zi, zj)"""
-    ell_idxs_tocut = np.zeros((zbins, zbins), dtype=list)
-    for zi in range(zbins):
-        for zj in range(zbins):
-            ell_cut = ell_cuts_2d_array[zi, zj]
-            if np.any(ell_values > ell_cut):  # i.e., if you need to do a cut at all
-                ell_idxs_tocut[zi, zj] = np.where(ell_values > ell_cut)[0]
-            else:
-                ell_idxs_tocut[zi, zj] = np.array([])
-
-    return ell_idxs_tocut
-
-
 def cl_ell_cut(cl_3D, ell_values, ell_cuts_matrix):
     """cut (sets to zero) the cl_3D array at the ell values specified in ell_cuts_matrix"""
 

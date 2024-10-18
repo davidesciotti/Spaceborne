@@ -46,8 +46,8 @@ c = 299792.458  # km/s
 #                          'h': h,
 #                          'n_s': n_s,
 #                          'sigma8': sigma_8,
-#
-#                          'm_ncdm': m_nu,
+
+#                          'm_ncdm': ISTF.extensions['m_nu'],,
 #                          'N_ncdm': ISTF.neutrino_params['N_ncdm'],
 #                          'N_ur': ISTF.neutrino_params['N_ur'],
 #
@@ -408,24 +408,31 @@ def cl_integral_prefactor(z, cl_integral_convention, use_h_units, cosmo_ccl):
     afterwards in the actual integration, for example when using simps or trapz.
 
     note that this is not the volume element, but the collection of prefactors:
-    PySSC: Cl = \int dV W^A_pyssc W^B_pyssc Pk = \int dz * dr/dz * r(z)**2 W^A_pyssc W^B_pyssc Pk
-    Euclid: Cl = \int dz/(c*H0*E(z)*r(z)**2) W^A_euc W^B_euc Pk = \int dz * dr/dz * 1/r(z)**2 W^A W^B Pk
+    PySSC: Cl = \int dV W^A_pyssc W^B_pyssc Pk = \int dz * dr/dz * r(z)**2 * W^A_pyssc * W^B_pyssc * Pk
+    Euclid: Cl = \int dz * c/(H0*E(z)*r(z)**2) * W^A_euc * W^B_euc * Pk = \int dz * dr/dz * 1/r(z)**2 * W^A_euc * W^B_euc * Pk
 
-    This function is simply returning the terms after dz and excluding the kernels and the Pk.
+    This function is simply returning the terms after dz and excluding the kernels and the Pk (which is *not* d^2Cl/dVddeltab)
 
     Equating the two above equations gives W_pyssc = W_euc / r(z)**2, so:
 
     - Option 1: PySSC convention. Euclid kernels divided by r(z)**2 and integration "prefactor" = r(z)**2 * dr/dz
     - Option 2: Euclid convention. Euclid kernels and integration "prefactor" = dr/dz / r(z)**2 = c/H0 / (E(z)*r(z)**2)
     this is because dr/dz = c/H(z) = c/(H0*E(z))
+    - Option 3: Euclid_KE_approximation. In this case you only need one of these prefactors in the integral (since it's
+    a simple integral over distance). The dr_1/r_1^2 * dr_2/r_2^2 of the previous case becomes dr/r**4, in this way
     """
     r_of_z = ccl_comoving_distance(z, use_h_units=use_h_units, cosmo_ccl=cosmo_ccl)
-    dr_dz = np.gradient(r_of_z, z)
+    a = z_to_a(z)
+    h_of_z = ccl.background.h_over_h0(cosmo_ccl, a) * cosmo_ccl.cosmo.params.h * 100
+    dr_dz = c / h_of_z
+    # dr_dz = np.gradient(r_of_z, z)
 
     if cl_integral_convention == 'PySSC':
         cl_integral_prefactor = r_of_z ** 2 * dr_dz  # this is dV/dz
     elif cl_integral_convention == 'Euclid':
         cl_integral_prefactor = 1 / r_of_z ** 2 * dr_dz  # this is not dV/dz! that's why I don't write dV in the function name
+    elif cl_integral_convention == 'Euclid_KE_approximation':
+        cl_integral_prefactor = 1 / r_of_z ** 4 * dr_dz  # this is not dV/dz! that's why I don't write dV in the function name
     else:
         raise ValueError('cl_integral_convention must be either "Euclid" or "PySSC"')
     return cl_integral_prefactor

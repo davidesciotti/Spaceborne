@@ -120,7 +120,7 @@ def find_lmax(ell, cl_mask, var_tol=0.05, debug=False):
 
 
 # ! generate my own polar cap
-def generate_polar_cap(area_deg2, nside=2048):
+def generate_polar_cap(area_deg2, nside):
 
     print(f'Generating a polar cap mask with area {area_deg2} deg2 and resolution nside {nside}')
 

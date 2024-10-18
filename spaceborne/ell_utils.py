@@ -1,5 +1,5 @@
 import numpy as np
-import spaceborne.cl_preprocessing as cl_utils
+import spaceborne.cl_utils as cl_utils
 import warnings
 import spaceborne.cosmo_lib as cosmo_lib
 

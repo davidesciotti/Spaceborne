@@ -74,7 +74,7 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
 def cl_ell_cut(cl_3D, ell_values, ell_cuts_matrix):
     """cut (sets to zero) the cl_3D array at the ell values specified in ell_cuts_matrix"""
 
-    # TODO call get_ell_cuts_indices function here not to repeat code
+    # TODO call get_ell_cuts_indices function here to avoid repeating code
 
     nbl = cl_3D.shape[0]
     zbins = cl_3D.shape[1]
@@ -142,3 +142,22 @@ def cl_ell_cut_3x2pt(cl_3x2pt_5D, ell_cuts_dict, ell_values_3x2pt):
     cl_3x2pt_5D_ell_cut[1, 1, :, :, :] = cl_GGfor3x2pt_3D_ell_cut
 
     return cl_3x2pt_5D_ell_cut
+
+def cl_ell_cut_wrap(ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, ell_cuts_dict, general_cfg):
+    """Wrapper for the ell cuts. Avoids the 'if general_cfg['cl_ell_cuts']' in the main loop
+    (i.e., we use extraction)"""
+
+    if not general_cfg['cl_ell_cuts']:
+        return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
+
+    warnings.warn('restore this?')
+    # raise Exception('I decided to implement the cuts in 1dim, this function should not be used')
+
+    print('Performing the cl ell cuts...')
+
+    cl_ll_3d = cl_ell_cut(cl_ll_3d, ell_dict['ell_WL'], ell_cuts_dict['LL'])
+    cl_wa_3d = cl_ell_cut(cl_wa_3d, ell_dict['ell_WA'], ell_cuts_dict['LL'])
+    cl_gg_3d = cl_ell_cut(cl_gg_3d, ell_dict['ell_GC'], ell_cuts_dict['GG'])
+    cl_3x2pt_5d = cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt'])
+
+    return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d

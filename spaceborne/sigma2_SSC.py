@@ -149,6 +149,7 @@ def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b, ell_mask=None,
 def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigma2_b, 
                      area_deg2_in, nside_mask, mask_path):
 
+    fsky_in = csmlib.deg2_to_fsky(area_deg2_in)
     if which_sigma2_b == 'full_curved_sky':
         ell_mask = None
         cl_mask = None
@@ -167,7 +168,6 @@ def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigm
         # quick check
         fsky_mask = np.sqrt(cl_mask[0]/(4*np.pi))
         print(f'fsky from mask: {fsky_mask:.4f}')
-        fsky_in = csmlib.deg2_to_fsky(area_deg2_in)
         assert np.abs(fsky_mask / fsky_in) < 1.01, 'fsky_in is not the same as the fsky of the mask'
         
     sigma2_b = np.zeros((len(z_grid_ssc_integrands), len(z_grid_ssc_integrands)))

@@ -17,30 +17,30 @@ probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt', }
 
 
 def bin_2d_matrix(cov, ells_in, ells_out, ells_out_edges):
-    
+
     assert cov.shape[0] == cov.shape[1] == len(ells_in), "ells_in must be the same length as the covariance matrix"
     assert len(ells_out) == len(ells_out_edges) - 1, "ells_out must be the same length as the number of edges - 1"
 
     binned_cov = np.zeros((len(ells_out), len(ells_out)))
     cov_interp_func = RectBivariateSpline(ells_in, ells_in, cov)
-    
+
     ells_edges_low = ells_out_edges[:-1]
     ells_edges_high = ells_out_edges[1:]
 
     # Loop over the output bins
     for ell1_idx, _ in enumerate(ells_out):
         for ell2_idx, _ in enumerate(ells_out):
-            
+
             # Get ell min/max for the current bins
             ell1_min = ells_edges_low[ell1_idx]
             ell1_max = ells_edges_high[ell1_idx]
             ell2_min = ells_edges_low[ell2_idx]
             ell2_max = ells_edges_high[ell2_idx]
-            
+
             # isolate the relevant ranges of ell values from the original ells_in grid
             ell1_in = ells_in[(ell1_min <= ells_in) & (ells_in < ell1_max)]
             ell2_in = ells_in[(ell2_min <= ells_in) & (ells_in < ell2_max)]
-            
+
             # mask the covariance to the relevant block
             cov_masked = cov[np.ix_(ell1_in, ell2_in)]
 
@@ -53,12 +53,12 @@ def bin_2d_matrix(cov, ells_in, ells_out, ells_out_edges):
             # partial_integral = simps(y=cov_masked * ells1_in_xx * ells2_in_yy, x=ell2_in, axis=1)
             # integral = simps(y=partial_integral, x=ell1_in)
             # binned_cov[ell1_idx, ell2_idx] = integral / (np.sum(ell1_in) * np.sum(ell2_in))
-            
+
             # Option 1b: use the original grid for integration and no weights
             partial_integral = simps(y=cov_masked, x=ell2_in, axis=1)
             integral = simps(y=partial_integral, x=ell1_in)
             binned_cov[ell1_idx, ell2_idx] = integral / (delta_ell_1 * delta_ell_2)
-            
+
             # # Option 2: create fine grids for integration over the ell ranges (GIVES GOOD RESULTS ONLY FOR nsteps=delta_ell!)
             # ell_fine_1 = np.linspace(ell1_min, ell1_max, 50)
             # ell_fine_2 = np.linspace(ell2_min, ell2_max, 50)
@@ -66,13 +66,13 @@ def bin_2d_matrix(cov, ells_in, ells_out, ells_out_edges):
             # # Evaluate the spline on the fine grids
             # ell1_fine_xx, ell2_fine_yy = np.meshgrid(ell_fine_1, ell_fine_2, indexing='ij')
             # cov_interp_vals = cov_interp_func(ell_fine_1, ell_fine_2)
-            
+
             # # Perform simps integration over the ell ranges
             # partial_integral = simps(y=cov_interp_vals * ell1_fine_xx * ell2_fine_yy, x=ell_fine_2, axis=1)
             # integral = simps(y=partial_integral, x=ell_fine_1)
             # # Normalize by the bin areas
             # binned_cov[ell1_idx, ell2_idx] = integral / (np.sum(ell_fine_1) * np.sum(ell_fine_2))
-            
+
     return binned_cov
 
 
@@ -239,7 +239,7 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     print("Gauss. cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
 
     ######################## COMPUTE SSC COVARIANCE ###############################
-    
+
     start = time.perf_counter()
 
     if ng_cov_code == 'PySSC':
@@ -265,16 +265,15 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
         cov_ssc_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_ssc_sb_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
         cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
-        
+
         if covariance_cfg['OneCovariance_cfg']['use_OneCovariance_cNG']:
             print('Adding cNG covariance from OneCovariance...')
-            
+
             # test that oc_obj.cov_cng_oc_3x2pt_10D is not identically zero
             assert not np.allclose(oc_obj.cov_cng_oc_3x2pt_10D, 0, atol=0, rtol=1e-10), \
                 'OneCovariance covariance matrix is identically zero'
-            
-            cov_3x2pt_SS_10D += oc_obj.cov_cng_oc_3x2pt_10D
 
+            cov_3x2pt_SS_10D += oc_obj.cov_cng_oc_3x2pt_10D
 
     elif ng_cov_code == 'OneCovariance':
 
@@ -495,32 +494,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     print('Covariance matrices computed')
 
     return cov_dict
-
-
-
-
-# @njit
-def cov_ell_cut(cov_6d, ell_cuts_idxs_AB, ell_cuts_idxs_CD, zbins):
-    # TODO pythonize this
-    for zi in range(zbins):
-        for zj in range(zbins):
-            for zk in range(zbins):
-                for zl in range(zbins):
-                    for ell1 in ell_cuts_idxs_AB[zi, zj]:
-                        for ell2 in ell_cuts_idxs_CD[zk, zl]:
-                            if ell1 < cov_6d.shape[0] and ell2 < cov_6d.shape[1]:
-                                cov_6d[ell1, ell2, zi, zj, zk, zl] = 0
-
-    # pythonic version?
-    # ell_idxs_tocut = np.array(ell_cuts_idxs_LL)  # convert list of lists to numpy array
-    # idx_pairs = itertools.product(range(zbins), repeat=4)
-    # ell_pairs = [(ell1, ell2) for ell1, ell2 in zip(*np.where(ell_idxs_tocut))]
-    # for (zi, zj, zk, zl), (ell1, ell2) in zip(idx_pairs, ell_pairs):
-    #     covariance_matrix[ell1, ell2, zi, zj, zk, zl] = 0
-
-    return cov_6d
-
-
 
 
 def save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs):

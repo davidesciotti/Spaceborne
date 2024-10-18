@@ -34,7 +34,7 @@ from copy import deepcopy
 from scipy.interpolate import interp1d, RegularGridInterpolator
 
 import spaceborne.ell_utils as ell_utils
-import spaceborne.cl_preprocessing as cl_utils
+import spaceborne.cl_utils as cl_utils
 import spaceborne.covariance as covmat_utils
 import spaceborne.fisher_matrix as fm_utils
 import spaceborne.my_module as mm

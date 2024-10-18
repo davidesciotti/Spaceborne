@@ -8,7 +8,7 @@ from copy import deepcopy
 from scipy.interpolate import UnivariateSpline, interp1d
 import os
 
-import spaceborne.cl_preprocessing as cl_preprocessing
+import spaceborne.cl_utils as cl_utils
 import spaceborne.pyccl_interface as pyccl_cov
 import spaceborne.sigma2_SSC as sigma2_SSC
 import spaceborne.my_module as mm
@@ -431,9 +431,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     if general_cfg['cl_BNT_transform']:
         print('BNT-transforming the noise spectra...')
-        noise_LL_5D = cl_preprocessing.cl_BNT_transform(noise_LL_5D[0, 0, ...], BNT_matrix, 'L', 'L')[None, None, ...]
-        noise_WA_5D = cl_preprocessing.cl_BNT_transform(noise_WA_5D[0, 0, ...], BNT_matrix, 'L', 'L')[None, None, ...]
-        noise_3x2pt_5D = cl_preprocessing.cl_BNT_transform_3x2pt(noise_3x2pt_5D, BNT_matrix)
+        noise_LL_5D = cl_utils.cl_BNT_transform(noise_LL_5D[0, 0, ...], BNT_matrix, 'L', 'L')[None, None, ...]
+        noise_WA_5D = cl_utils.cl_BNT_transform(noise_WA_5D[0, 0, ...], BNT_matrix, 'L', 'L')[None, None, ...]
+        noise_3x2pt_5D = cl_utils.cl_BNT_transform_3x2pt(noise_3x2pt_5D, BNT_matrix)
 
     start = time.perf_counter()
     cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]

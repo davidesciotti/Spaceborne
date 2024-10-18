@@ -411,13 +411,15 @@ def cl_integral_prefactor(z, cl_integral_convention, use_h_units, cosmo_ccl):
     PySSC: Cl = \int dV W^A_pyssc W^B_pyssc Pk = \int dz * dr/dz * r(z)**2 * W^A_pyssc * W^B_pyssc * Pk
     Euclid: Cl = \int dz * c/(H0*E(z)*r(z)**2) * W^A_euc * W^B_euc * Pk = \int dz * dr/dz * 1/r(z)**2 * W^A_euc * W^B_euc * Pk
 
-    This function is simply returning the terms after dz and excluding the kernels and the Pk.
+    This function is simply returning the terms after dz and excluding the kernels and the Pk (which is *not* d^2Cl/dVddeltab)
 
     Equating the two above equations gives W_pyssc = W_euc / r(z)**2, so:
 
     - Option 1: PySSC convention. Euclid kernels divided by r(z)**2 and integration "prefactor" = r(z)**2 * dr/dz
     - Option 2: Euclid convention. Euclid kernels and integration "prefactor" = dr/dz / r(z)**2 = c/H0 / (E(z)*r(z)**2)
     this is because dr/dz = c/H(z) = c/(H0*E(z))
+    - Option 3: Euclid_KE_approximation. In this case you only need one of these prefactors in the integral (since it's
+    a simple integral over distance). The dr_1/r_1^2 * dr_2/r_2^2 of the previous case becomes dr/r**4, in this way 
     """
     r_of_z = ccl_comoving_distance(z, use_h_units=use_h_units, cosmo_ccl=cosmo_ccl)
     a = z_to_a(z)

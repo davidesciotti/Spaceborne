@@ -5,19 +5,75 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.integrate import simps
 from copy import deepcopy
-from scipy.interpolate import UnivariateSpline, interp1d
+from scipy.interpolate import UnivariateSpline, interp1d, RectBivariateSpline
 import os
 
-import spaceborne.cl_utils as cl_utils
-import spaceborne.pyccl_interface as pyccl_cov
-import spaceborne.sigma2_SSC as sigma2_SSC
 import spaceborne.my_module as mm
-import spaceborne.cosmo_lib as csmlib
-import spaceborne.wf_cl_lib as wf_cl_lib
+import spaceborne.bnt as bnt_utils
 
 ROOT = os.getenv('ROOT')
 
 probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt', }
+
+
+def bin_2d_matrix(cov, ells_in, ells_out, ells_out_edges):
+
+    assert cov.shape[0] == cov.shape[1] == len(ells_in), "ells_in must be the same length as the covariance matrix"
+    assert len(ells_out) == len(ells_out_edges) - 1, "ells_out must be the same length as the number of edges - 1"
+
+    binned_cov = np.zeros((len(ells_out), len(ells_out)))
+    cov_interp_func = RectBivariateSpline(ells_in, ells_in, cov)
+
+    ells_edges_low = ells_out_edges[:-1]
+    ells_edges_high = ells_out_edges[1:]
+
+    # Loop over the output bins
+    for ell1_idx, _ in enumerate(ells_out):
+        for ell2_idx, _ in enumerate(ells_out):
+
+            # Get ell min/max for the current bins
+            ell1_min = ells_edges_low[ell1_idx]
+            ell1_max = ells_edges_high[ell1_idx]
+            ell2_min = ells_edges_low[ell2_idx]
+            ell2_max = ells_edges_high[ell2_idx]
+
+            # isolate the relevant ranges of ell values from the original ells_in grid
+            ell1_in = ells_in[(ell1_min <= ells_in) & (ells_in < ell1_max)]
+            ell2_in = ells_in[(ell2_min <= ells_in) & (ells_in < ell2_max)]
+
+            # mask the covariance to the relevant block
+            cov_masked = cov[np.ix_(ell1_in, ell2_in)]
+
+            # Calculate the bin widths
+            delta_ell_1 = ell1_max - ell1_min
+            delta_ell_2 = ell2_max - ell2_min
+
+            # Option 1a: use the original grid for integration and the ell values as weights
+            # ells1_in_xx, ells2_in_yy = np.meshgrid(ell1_in, ell2_in, indexing='ij')
+            # partial_integral = simps(y=cov_masked * ells1_in_xx * ells2_in_yy, x=ell2_in, axis=1)
+            # integral = simps(y=partial_integral, x=ell1_in)
+            # binned_cov[ell1_idx, ell2_idx] = integral / (np.sum(ell1_in) * np.sum(ell2_in))
+
+            # Option 1b: use the original grid for integration and no weights
+            partial_integral = simps(y=cov_masked, x=ell2_in, axis=1)
+            integral = simps(y=partial_integral, x=ell1_in)
+            binned_cov[ell1_idx, ell2_idx] = integral / (delta_ell_1 * delta_ell_2)
+
+            # # Option 2: create fine grids for integration over the ell ranges (GIVES GOOD RESULTS ONLY FOR nsteps=delta_ell!)
+            # ell_fine_1 = np.linspace(ell1_min, ell1_max, 50)
+            # ell_fine_2 = np.linspace(ell2_min, ell2_max, 50)
+
+            # # Evaluate the spline on the fine grids
+            # ell1_fine_xx, ell2_fine_yy = np.meshgrid(ell_fine_1, ell_fine_2, indexing='ij')
+            # cov_interp_vals = cov_interp_func(ell_fine_1, ell_fine_2)
+
+            # # Perform simps integration over the ell ranges
+            # partial_integral = simps(y=cov_interp_vals * ell1_fine_xx * ell2_fine_yy, x=ell_fine_2, axis=1)
+            # integral = simps(y=partial_integral, x=ell_fine_1)
+            # # Normalize by the bin areas
+            # binned_cov[ell1_idx, ell2_idx] = integral / (np.sum(ell_fine_1) * np.sum(ell_fine_2))
+
+    return binned_cov
 
 
 def ssc_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
@@ -81,226 +137,6 @@ def get_ellmax_nbl(probe, general_cfg):
     else:
         raise ValueError('probe must be LL or GG or 3x2pt')
     return ell_max, nbl
-
-
-# def get_cov_ssc_spaceborne(general_cfg, covariance_cfg, return_format_3x2pt, probe):
-#     # this actually just imports the precomputed ssc. It can also compute deltab, quite useless at the moment
-#     print(f'Computing SSC covariance with Spaceborne, probe = {probe}')
-
-#     which_ng_cov = covariance_cfg['spaceborne_cfg']['which_ng_cov']
-#     zbins = general_cfg['zbins']
-#     probe_ordering = covariance_cfg['probe_ordering']
-#     ind_dict = covariance_cfg['ind_dict']
-
-#     z_steps_sigma2 = covariance_cfg['Spaceborne_cfg']['z_steps_sigma2']
-#     k_txt_label = covariance_cfg['Spaceborne_cfg']['k_txt_label']
-#     cl_integral_convention = covariance_cfg['Spaceborne_cfg']['cl_integral_convention']
-#     cov_path = covariance_cfg['Spaceborne_cfg']['cov_path']
-#     cov_filename = covariance_cfg['Spaceborne_cfg']['cov_filename']
-
-#     if general_cfg['which_forecast'] == 'SPV3':
-#         ell_max = general_cfg['ell_max_WL_opt']
-#         nbl = general_cfg['nbl_WL_opt']
-#     elif general_cfg['which_forecast'] == 'ISTF':
-#         ell_max, nbl = get_ellmax_nbl(probe, general_cfg)
-
-#     cov_filename = cov_filename.format(which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
-#                                        probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl, lmax=ell_max,
-#                                        EP_or_ED=general_cfg['EP_or_ED'],
-#                                        zbins=zbins, z_steps_sigma2=z_steps_sigma2, k_txt_label=k_txt_label,
-#                                        cl_integral_convention=cl_integral_convention)
-
-#     assert which_ng_cov == 'SSC', 'no cNG term has been computed with Spaceborne!'
-
-#     if probe in ('LL', 'GG'):
-#         assert NotImplementedError('probe must be 3x2pt; delete this section, probably (still useful for ISTF?)')
-#         # in this case, load a single block of the 4D covariance, the reshape and return it
-#         probe_a, probe_b, probe_c, probe_d = probe[0], probe[1], probe[0], probe[1]
-#         cov_filename = cov_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)
-#         cov_spaceborne_SS_4D = np.load(f'{cov_path}/{cov_filename}')[:nbl, :nbl, :, :]
-
-#         cov_spaceborne_SS_6D = mm.cov_4D_to_6D(cov_spaceborne_SS_4D, nbl, zbins, probe,
-#                                              ind_dict[probe_a, probe_b]) / covariance_cfg['fsky']
-
-#         return cov_spaceborne_SS_6D
-
-#     elif probe == '3x2pt':
-
-#         # populate 3x2pt dictionary
-#         cov_spaceborne_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
-#             cov_path, cov_filename, probe_ordering)
-
-#         for key in cov_spaceborne_3x2pt_dict_8D.keys():
-#             # ! divide the different blocks by fsky
-#             cov_spaceborne_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
-
-#             # # ! cut to the correct number of ell bins
-#             # cov_spaceborne_3x2pt_dict_8D[key] = cov_spaceborne_3x2pt_dict_8D[key][:nbl, :nbl, :, :]
-
-#         # reshape the blocks from 4D to 6D, as needed by the BNT
-#         cov_spaceborne_3x2pt_dict_10D = {}
-#         for probe_A, probe_B in probe_ordering:
-#             for probe_C, probe_D in probe_ordering:
-#                 cov_spaceborne_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
-#                     cov_spaceborne_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
-#                     nbl, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
-
-#                 if covariance_cfg['check_if_recently_created']:
-#                     mm.is_file_created_in_last_x_hours(f'{cov_path}/{cov_filename}', 24)
-
-#         assert probe == '3x2pt', ('probe must be 3x2pt at the moment, messing around with return dimension for BNT. to '
-#                                   'be implemented better later')
-#         assert return_format_3x2pt == 'dict_10d', ('return format must be dict_10d moment, messing around with '
-#                                                    'dimension for BNT. to be implemented better later')
-
-#         if return_format_3x2pt == 'dict_8d':
-#             return cov_spaceborne_3x2pt_dict_8D
-#         elif return_format_3x2pt == 'dict_10d':
-#             return cov_spaceborne_3x2pt_dict_10D
-#         elif return_format_3x2pt == '4d_array':
-#             cov_spaceborne_SS_4D = mm.cov_3x2pt_8D_dict_to_4D(cov_spaceborne_3x2pt_dict_8D, probe_ordering)
-#             return cov_spaceborne_SS_4D
-#         else:
-#             raise ValueError('return_format_3x2pt must be "dict_8d" or "dict_10d" or 4d_array')
-
-#     else:
-#         raise ValueError('probe must be LL or GG or 3x2pt')
-
-
-# def get_cov_ng_pyccl(general_cfg, covariance_cfg, which_ng_cov, ell_dict):
-#     # TODO add probe like in spaceborne function...?
-#     print(f'computing {which_ng_cov} covariance with PyCCL')
-
-#     probe = covariance_cfg['PyCCL_cfg']['probe']
-#     zbins = general_cfg['zbins']
-#     ellmax, nbl = get_ellmax_nbl(probe, general_cfg)
-#     ell_grid = ell_dict['ell_' + probe_names_dict[probe]]
-#     probe_ordering = covariance_cfg['probe_ordering']
-#     ind_dict = covariance_cfg['ind_dict']
-#     nbl_WL_opt = general_cfg['nbl_WL_opt']
-
-#     if probe != '3x2pt':
-#         raise NotImplementedError('This function is not yet implemented for LL or GG; take only a '
-#                                   'specific block of the 3x2pt covariance')
-
-#     # pre-format covariance filename and store it in the covariance_cfg dictionary
-#     covariance_cfg['PyCCL_cfg']['cov_filename'] = covariance_cfg['PyCCL_cfg']['cov_filename'].format(
-#         which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
-#         probe_c='{probe_c:s}', probe_d='{probe_d}', nbl=nbl_WL_opt, lmax=5000,
-#         EP_or_ED=general_cfg['EP_or_ED'],
-#         zbins=zbins)
-
-#     if covariance_cfg['PyCCL_cfg']['load_precomputed_cov']:
-
-#         # load SSC blocks in 4D and store them into a dictionary
-#         cov_path = covariance_cfg['PyCCL_cfg']['cov_path']
-#         cov_filename = covariance_cfg['PyCCL_cfg']['cov_filename']
-#         cov_ccl_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(cov_path, cov_filename, probe_ordering)
-
-#     else:
-#         cov_ccl_3x2pt_dict_8D = pyccl_cov.compute_cov_ng_with_pyccl(general_cfg['fid_pars_dict'], probe,
-#                                                                     which_ng_cov,
-#                                                                     ell_grid,
-#                                                                     general_cfg, covariance_cfg)
-
-#     # reshape the blocks from 4D to 6D, as needed by the BNT
-#     cov_ccl_3x2pt_dict_10D = {}
-#     for probe_A, probe_B in probe_ordering:
-#         for probe_C, probe_D in probe_ordering:
-#             cov_ccl_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = mm.cov_4D_to_6D_blocks(
-#                 cov_ccl_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
-#                 nbl_WL_opt, zbins, ind_dict[probe_A, probe_B], ind_dict[probe_C, probe_D])
-
-#     return cov_ccl_3x2pt_dict_10D
-
-
-# def get_cov_ng_3x2pt(general_cfg, covariance_cfg, which_ng_cov, ell_dict, nbl, ell_max):
-
-#     ng_cov_code = covariance_cfg['ng_cov_code']
-#     ng_cov_code_cfg = covariance_cfg[ng_cov_code + '_cfg']
-#     zbins = general_cfg['zbins']
-#     probe_ordering = covariance_cfg['probe_ordering']
-#     ind_dict = covariance_cfg['ind_dict']
-
-#     assert ng_cov_code in ('Spaceborne', 'PyCCL',
-#                            'OneCovariance'), 'ssc_code must be "Spaceborne", "PyCCL" or "OneCovariance"'
-
-#     print(f'Computing 3x2pt {which_ng_cov} covariance with {ng_cov_code}')
-
-#     if general_cfg['which_forecast'] == 'SPV3':
-#         # in this cas, load the full covariance and then cut it accorfin to the nbl values
-#         assert ell_max == general_cfg['ell_max_WL'], 'ell_max and nbl do not match with the WL optimistic case'
-#         assert nbl == general_cfg['nbl_WL'], 'ell_max and nbl do not match with the WL optimistic case'
-
-#     # additional kwargs for Spaceborne
-#     if ng_cov_code == 'Spaceborne':
-#         # additional_kwargs = {'z_steps_ssc_integrands': ng_cov_code_cfg['z_steps_ssc_integrands'],
-#         #  'k_txt_label': ng_cov_code_cfg['k_txt_label'],
-#         #  'cl_integral_convention': ng_cov_code_cfg['cl_integral_convention']}
-
-#         cov_ssc_3x2pt_dict_8D = covariance_cfg['cov_ssc_3x2pt_dict_8D_sb']
-
-#     elif ng_cov_code == 'PyCCL':
-#         additional_kwargs = {}
-#         cov_path = ng_cov_code_cfg['cov_path'].format(ROOT=ROOT)
-
-#         # pre-format covariance filename, leaving probes identifiers as placeholders
-#         cov_filename = covariance_cfg[ng_cov_code + '_cfg']['cov_filename'].format(
-#             which_ng_cov=which_ng_cov, probe_a='{probe_a:s}', probe_b='{probe_b:s}',
-#             probe_c='{probe_c:s}', probe_d='{probe_d:s}', nbl=nbl, lmax=ell_max,
-#             EP_or_ED=general_cfg['EP_or_ED'],
-#             zbins=zbins, **additional_kwargs)
-
-#         try:
-#             cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(cov_path, cov_filename, probe_ordering)
-#         except FileNotFoundError as err:
-#             print(err)
-#             print(f'No covariance file found in {cov_path}')
-#             print('Changing ellmax to 5000 and cutting the last bins')
-#             cov_filename = cov_filename.replace('lmax3000', 'lmax5000')
-#             cov_filename = cov_filename.replace('nbl29', 'nbl32')
-#             cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
-#                 path=cov_path,
-#                 filename=cov_filename,
-#                 probe_ordering=probe_ordering)
-
-#         for key in cov_ssc_3x2pt_dict_8D.keys():
-#             cov_ssc_3x2pt_dict_8D[key] = cov_ssc_3x2pt_dict_8D[key][:general_cfg['nbl_3x2pt'],
-#                                                                     :general_cfg['nbl_3x2pt'], ...]
-
-#     # print(f'{ng_cov_code} NG covariance folder is:\n{cov_path}\n')
-#     # print(f'{ng_cov_code} NG covariance filename is:\n{cov_filename}\n')
-
-#     # by passing this dict this function does not symmetrize the 6D covariance blocks, speeding up the code considerably
-#     symmetrize_output_dict = {
-#         ('L', 'L'): False,
-#         ('G', 'L'): False,
-#         ('L', 'G'): False,
-#         ('G', 'G'): False,
-#     }
-
-#     cov_ssc_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
-#         cov_ssc_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
-
-#     # TODO restore this logic
-#     # if ng_cov_code_cfg['load_precomputed_cov']:
-#     #     # load SSC blocks in 4D and store them into a dictionary of 8D blocks
-#     #     ...
-#     #     # TODO find a better solution for Spaceborne cov handling
-
-#     # else:
-
-#     #     assert ng_cov_code == 'PyCCL', 'covariance can be computed directly only with PyCCL at the moment'
-
-#     #     # TODO pass ccl_obj
-#     #     cov_3x2pt_dict_8D = ccl_obj.compute_cov_ng_with_pyccl(general_cfg['cosmology'], '3x2pt',
-#     #                                                           which_ng_cov=which_ng_cov,
-#     #                                                           ell_grid=ell_dict['ell_3x2pt'],
-#     #                                                           general_cfg=general_cfg,
-#     #                                                           covariance_cfg=covariance_cfg,
-#     #                                                           cov_filename=cov_filename)
-
-#     return cov_ssc_3x2pt_dict_10D
 
 
 def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix, oc_obj):
@@ -431,9 +267,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
     if general_cfg['cl_BNT_transform']:
         print('BNT-transforming the noise spectra...')
-        noise_LL_5D = cl_utils.cl_BNT_transform(noise_LL_5D[0, 0, ...], BNT_matrix, 'L', 'L')[None, None, ...]
-        noise_WA_5D = cl_utils.cl_BNT_transform(noise_WA_5D[0, 0, ...], BNT_matrix, 'L', 'L')[None, None, ...]
-        noise_3x2pt_5D = cl_utils.cl_BNT_transform_3x2pt(noise_3x2pt_5D, BNT_matrix)
+        noise_LL_5D = bnt_utils.cl_BNT_transform(noise_LL_5D[0, 0, ...], BNT_matrix, 'L', 'L')[None, None, ...]
+        noise_WA_5D = bnt_utils.cl_BNT_transform(noise_WA_5D[0, 0, ...], BNT_matrix, 'L', 'L')[None, None, ...]
+        noise_3x2pt_5D = bnt_utils.cl_BNT_transform_3x2pt(noise_3x2pt_5D, BNT_matrix)
 
     start = time.perf_counter()
     cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]
@@ -478,11 +314,20 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_ssc_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_ssc_sb_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
         cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
 
+        if covariance_cfg['OneCovariance_cfg']['use_OneCovariance_cNG']:
+            print('Adding cNG covariance from OneCovariance...')
+
+            # test that oc_obj.cov_cng_oc_3x2pt_10D is not identically zero
+            assert not np.allclose(oc_obj.cov_cng_oc_3x2pt_10D, 0, atol=0, rtol=1e-10), \
+                'OneCovariance covariance matrix is identically zero'
+
+            cov_3x2pt_SS_10D += oc_obj.cov_cng_oc_3x2pt_10D
+
     elif ng_cov_code == 'OneCovariance':
 
         assert (
-            (covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC', 'cNG']) or
-            (covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC',])
+            covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC', 'cNG'] or
+            covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC',]
         ), "covariance_cfg['OneCovariance_cfg']['which_ng_cov'] not recognised"
 
         if covariance_cfg['OneCovariance_cfg']['use_OneCovariance_Gaussian']:
@@ -495,17 +340,41 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_GC_GO_6D = deepcopy(cov_3x2pt_GO_10D[1, 1, 1, 1, :nbl_GC, :nbl_GC, :, :, :, :])
             cov_3x2pt_GO_10D = deepcopy(cov_3x2pt_GO_10D[:, :, :, :, :nbl_3x2pt, :nbl_3x2pt, :, :, :, :])
 
-        if 'SSC' in covariance_cfg['OneCovariance_cfg']['which_ng_cov'] and \
-                covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']:
+        if 'SSC' in covariance_cfg['OneCovariance_cfg']['which_ng_cov']:
             cov_3x2pt_SS_10D = oc_obj.cov_ssc_oc_3x2pt_10D
-        elif 'SSC' in covariance_cfg['OneCovariance_cfg']['which_ng_cov'] and \
-                (not covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']):
-            raise NotImplementedError(
-                'TODO add SSC_SB - only case, with SSC from SB, filename should be treated in a more consistent way...')
-            cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
 
         if 'cNG' in covariance_cfg['OneCovariance_cfg']['which_ng_cov']:
             cov_3x2pt_SS_10D += oc_obj.cov_cng_oc_3x2pt_10D
+
+    elif ng_cov_code == 'PyCCL':
+
+        print('Using PyCCL non-Gaussian covariance matrices...')
+
+        assert (
+            (covariance_cfg['PyCCL_cfg']['which_ng_cov'] == ['SSC', 'cNG']) or
+            (covariance_cfg['PyCCL_cfg']['which_ng_cov'] == ['SSC',])
+        ), "covariance_cfg['PyCCL_cfg']['which_ng_cov'] not recognised"
+
+        symmetrize_output_dict = {
+            ('L', 'L'): False,
+            ('G', 'L'): False,
+            ('L', 'G'): False,
+            ('G', 'G'): False,
+        }
+
+        if 'SSC' in covariance_cfg['PyCCL_cfg']['which_ng_cov']:
+
+            cov_ssc_ccl_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
+                covariance_cfg['cov_ssc_3x2pt_dict_8D_ccl'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
+            cov_ssc_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_ssc_ccl_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
+            cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
+
+        if 'cNG' in covariance_cfg['PyCCL_cfg']['which_ng_cov']:
+
+            cov_cng_ccl_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
+                covariance_cfg['cov_cng_3x2pt_dict_8D_ccl'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
+            cov_cng_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_cng_ccl_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
+            cov_3x2pt_SS_10D += cov_cng_sb_3x2pt_10D
 
     else:
         raise NotImplementedError(f'ng_cov_code {ng_cov_code} not implemented')
@@ -535,14 +404,14 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         cov_3x2pt_GO_10D_dict = mm.cov_10D_array_to_dict(cov_3x2pt_GO_10D, probe_ordering)
         cov_3x2pt_GS_10D_dict = mm.cov_10D_array_to_dict(cov_3x2pt_GS_10D, probe_ordering)
 
-        X_dict = build_X_matrix_BNT(BNT_matrix)
-        cov_WL_GO_6D = cov_BNT_transform(cov_WL_GO_6D, X_dict, 'L', 'L', 'L', 'L')
-        cov_WA_GO_6D = cov_BNT_transform(cov_WA_GO_6D, X_dict, 'L', 'L', 'L', 'L')
-        cov_3x2pt_GO_10D_dict = cov_3x2pt_BNT_transform(cov_3x2pt_GO_10D_dict, X_dict)
+        X_dict = bnt_utils.build_X_matrix_BNT(BNT_matrix)
+        cov_WL_GO_6D = bnt_utils.cov_BNT_transform(cov_WL_GO_6D, X_dict, 'L', 'L', 'L', 'L')
+        cov_WA_GO_6D = bnt_utils.cov_BNT_transform(cov_WA_GO_6D, X_dict, 'L', 'L', 'L', 'L')
+        cov_3x2pt_GO_10D_dict = bnt_utils.cov_3x2pt_BNT_transform(cov_3x2pt_GO_10D_dict, X_dict)
 
-        cov_WL_GS_6D = cov_BNT_transform(cov_WL_GS_6D, X_dict, 'L', 'L', 'L', 'L')
-        cov_WA_GS_6D = cov_BNT_transform(cov_WA_GS_6D, X_dict, 'L', 'L', 'L', 'L')
-        cov_3x2pt_GS_10D_dict = cov_3x2pt_BNT_transform(cov_3x2pt_GS_10D_dict, X_dict)
+        cov_WL_GS_6D = bnt_utils.cov_BNT_transform(cov_WL_GS_6D, X_dict, 'L', 'L', 'L', 'L')
+        cov_WA_GS_6D = bnt_utils.cov_BNT_transform(cov_WA_GS_6D, X_dict, 'L', 'L', 'L', 'L')
+        cov_3x2pt_GS_10D_dict = bnt_utils.cov_3x2pt_BNT_transform(cov_3x2pt_GS_10D_dict, X_dict)
 
         # revert to 10D arrays - this is not strictly necessary since cov_3x2pt_10D_to_4D accepts both a dictionary and
         # an array as input, but it's done to keep the variable names consistent
@@ -673,114 +542,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     print('Covariance matrices computed')
 
     return cov_dict
-
-
-def build_X_matrix_BNT(BNT_matrix):
-    """
-    Builds the X matrix for the BNT transform, according to eq.
-    :param BNT_matrix:
-    :return:
-    """
-    X = {}
-    delta_kron = np.eye(BNT_matrix.shape[0])
-    X['L', 'L'] = np.einsum('ae, bf -> aebf', BNT_matrix, BNT_matrix)
-    X['G', 'G'] = np.einsum('ae, bf -> aebf', delta_kron, delta_kron)
-    X['G', 'L'] = np.einsum('ae, bf -> aebf', delta_kron, BNT_matrix)
-    X['L', 'G'] = np.einsum('ae, bf -> aebf', BNT_matrix, delta_kron)
-    return X
-
-
-def cov_BNT_transform(cov_noBNT_6D, X_dict, probe_A, probe_B, probe_C, probe_D, optimize=True):
-    """same as above, but only for one probe (i.e., LL or GL: GG is not modified by the BNT)"""
-    cov_BNT_6D = np.einsum('aebf, cgdh, LMefgh -> LMabcd', X_dict[probe_A, probe_B], X_dict[probe_C, probe_D],
-                           cov_noBNT_6D, optimize=optimize)
-    return cov_BNT_6D
-
-
-def cov_3x2pt_BNT_transform(cov_3x2pt_dict_10D, X_dict, optimize=True):
-    """in np.einsum below, L and M are the ell1, ell2 indices, which are not touched by the BNT transform"""
-
-    cov_3x2pt_BNT_dict_10D = {}
-
-    for probe_A, probe_B, probe_C, probe_D in cov_3x2pt_dict_10D.keys():
-        cov_3x2pt_BNT_dict_10D[probe_A, probe_B, probe_C, probe_D] = cov_BNT_transform(
-            cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D], X_dict, probe_A, probe_B, probe_C, probe_D,
-            optimize=optimize)
-
-    return cov_3x2pt_BNT_dict_10D
-
-
-# @njit
-def cov_ell_cut(cov_6d, ell_cuts_idxs_AB, ell_cuts_idxs_CD, zbins):
-    # TODO pythonize this
-    for zi in range(zbins):
-        for zj in range(zbins):
-            for zk in range(zbins):
-                for zl in range(zbins):
-                    for ell1 in ell_cuts_idxs_AB[zi, zj]:
-                        for ell2 in ell_cuts_idxs_CD[zk, zl]:
-                            if ell1 < cov_6d.shape[0] and ell2 < cov_6d.shape[1]:
-                                cov_6d[ell1, ell2, zi, zj, zk, zl] = 0
-
-    # pythonic version?
-    # ell_idxs_tocut = np.array(ell_cuts_idxs_LL)  # convert list of lists to numpy array
-    # idx_pairs = itertools.product(range(zbins), repeat=4)
-    # ell_pairs = [(ell1, ell2) for ell1, ell2 in zip(*np.where(ell_idxs_tocut))]
-    # for (zi, zj, zk, zl), (ell1, ell2) in zip(idx_pairs, ell_pairs):
-    #     covariance_matrix[ell1, ell2, zi, zj, zk, zl] = 0
-
-    return cov_6d
-
-
-def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr, cosmo_ccl, plot_nz=True):
-    """
-    Computes the BNT matrix. Shamelessly stolen from Santiago's implementation in CLOE
-    :param zbins:
-    :param zgrid_n_of_z:
-    :param n_of_z_arr:
-    :param plot_nz:
-    :return: BNT matrix, of shape (zbins x zbins)
-    """
-
-    assert n_of_z_arr.shape[0] == len(zgrid_n_of_z), 'n_of_z must have zgrid_n_of_z rows'
-    assert n_of_z_arr.shape[1] == zbins, 'n_of_z must have zbins columns'
-    assert np.all(np.diff(zgrid_n_of_z) > 0), 'zgrid_n_of_z must be monotonically increasing'
-
-    z_grid = zgrid_n_of_z
-
-    if z_grid[0] == 0:
-        warnings.warn('z_grid starts at 0, which gives a null comoving distance. '
-                      'Removing the first element from the grid')
-        z_grid = z_grid[1:]
-        n_of_z_arr = n_of_z_arr[1:, :]
-
-    chi = csmlib.ccl_comoving_distance(z_grid, use_h_units=False, cosmo_ccl=cosmo_ccl)
-
-    if plot_nz:
-        plt.figure()
-        for zi in range(zbins):
-            plt.plot(z_grid, n_of_z_arr[:, zi], label=f'zbin {zi}')
-        plt.title('n(z) used for BNT computation')
-        plt.grid()
-        plt.legend()
-
-    A_list = np.zeros(zbins)
-    B_list = np.zeros(zbins)
-    for zbin_idx in range(zbins):
-        n_of_z = n_of_z_arr[:, zbin_idx]
-        A_list[zbin_idx] = simps(y=n_of_z, x=z_grid)
-        B_list[zbin_idx] = simps(y=n_of_z / chi, x=z_grid)
-
-    bnt_matrix = np.eye(zbins)
-    bnt_matrix[1, 0] = -1.
-    for i in range(2, zbins):
-        mat = np.array([[A_list[i - 1], A_list[i - 2]], [B_list[i - 1], B_list[i - 2]]])
-        A = -1. * np.array([A_list[i], B_list[i]])
-        soln = np.dot(np.linalg.inv(mat), A)
-        bnt_matrix[i, i - 1] = soln[0]
-        bnt_matrix[i, i - 2] = soln[1]
-
-    return bnt_matrix
 
 
 def save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs):

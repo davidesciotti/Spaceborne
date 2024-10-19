@@ -13,9 +13,9 @@ def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b, cosmo_ccl, zbins, h, 
     z_values_a: redshifts at which to compute the ell_max for a given Limber wavenumber, for probe A
     z_values_b: redshifts at which to compute the ell_max for a given Limber wavenumber, for probe B
     """
-    
+
     kmax_h_over_Mpc_ref = general_cfg['kmax_h_over_Mpc_ref']
-    
+
     if kmax_h_over_Mpc is None:
         kmax_h_over_Mpc = kmax_h_over_Mpc_ref
 
@@ -66,28 +66,7 @@ def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b, cosmo_ccl, zbins, h, 
         return ell_cuts_array
 
     else:
-        raise Exception('which_cuts must be either "Francis" or "Standard"')
-
-
-
-def cl_ell_cut_wrap(ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, ell_cuts_dict, general_cfg):
-    """Wrapper for the ell cuts. Avoids the 'if general_cfg['cl_ell_cuts']' in the main loop
-    (i.e., we use extraction)"""
-
-    if not general_cfg['cl_ell_cuts']:
-        return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
-
-    warnings.warn('restore this?')
-    # raise Exception('I decided to implement the cuts in 1dim, this function should not be used')
-
-    print('Performing the cl ell cuts...')
-
-    cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_dict['ell_WL'], ell_cuts_dict['LL'])
-    cl_wa_3d = cl_utils.cl_ell_cut(cl_wa_3d, ell_dict['ell_WA'], ell_cuts_dict['LL'])
-    cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_dict['ell_GC'], ell_cuts_dict['GG'])
-    cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt'])
-
-    return cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d
+        raise Exception('which_cuts must be either "Francis" or "standard"')
 
 
 def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum, zbins):
@@ -170,53 +149,6 @@ def get_idxs_to_delete_3x2pt_v0(ell_values_3x2pt, ell_cuts_dict):
     return list(idxs_to_delete_3x2pt)
 
 
-
-def plot_ell_cuts_for_thesis(ell_cuts_a, ell_cuts_b, ell_cuts_c, label_a, label_b, label_c, kmax_h_over_Mpc):
-    # Get the global min and max values for the color scale
-    vmin = min(ell_cuts_a.min(), ell_cuts_b.min(), ell_cuts_c.min())
-    vmax = max(ell_cuts_a.max(), ell_cuts_b.max(), ell_cuts_c.min())
-
-    # Create a gridspec layout
-    fig = plt.figure(figsize=(10, 5))
-    gs = gridspec.GridSpec(1, 4, width_ratios=[1, 1, 1, 0.12])
-
-    # Create axes based on the gridspec layout
-    ax0 = plt.subplot(gs[0])
-    ax1 = plt.subplot(gs[1])
-    ax2 = plt.subplot(gs[2])
-    cbar_ax = plt.subplot(gs[3])
-
-    ticks = np.arange(1, zbins + 1)
-    # Set x and y ticks for both subplots
-    for ax in [ax0, ax1, ax2]:
-        ax.set_xticks(np.arange(zbins))
-        ax.set_yticks(np.arange(zbins))
-        ax.set_xticklabels(ticks, fontsize=15)
-        ax.set_yticklabels(ticks, fontsize=15)
-        ax.set_xlabel('$z_{\\rm bin}$', fontsize=15)
-        ax.set_ylabel('$z_{\\rm bin}$', fontsize=15)
-
-    # Display the matrices with the shared color scale
-    cax0 = ax0.matshow(ell_cuts_a, vmin=vmin, vmax=vmax)
-    cax1 = ax1.matshow(ell_cuts_b, vmin=vmin, vmax=vmax)
-    cax2 = ax2.matshow(ell_cuts_c, vmin=vmin, vmax=vmax)
-
-    # Add titles to the plots
-    ax0.set_title(label_a, fontsize=18)
-    ax1.set_title(label_b, fontsize=18)
-    ax2.set_title(label_c, fontsize=18)
-    fig.suptitle(f'{mpl_cfg.kmax_tex} = {kmax_h_over_Mpc:.2f} {mpl_cfg.h_over_mpc_tex}', fontsize=18, y=0.85)
-
-    # Add a shared colorbar on the right
-    cbar = fig.colorbar(cax0, cax=cbar_ax)
-    cbar.set_label('$\\ell^{\\rm max}_{ij}$', fontsize=15, loc='center', )
-    cbar.ax.tick_params(labelsize=15)
-
-    plt.tight_layout()
-    plt.show()
-
-
-
 def generate_ell_and_deltas(general_config):
     """old function, but useful to compute ell and delta_ell for Wadd!"""
     nbl_WL = general_config['nbl_WL']
@@ -256,7 +188,7 @@ def generate_ell_and_deltas(general_config):
         ell_WA = np.log10(np.asarray(l_centr_WL[np.where(l_centr_WL > ell_max_3x2pt / 2)]))
     nbl_WA = ell_WA.shape[0]
 
-    # generate the deltas     
+    # generate the deltas
     delta_l_WL = np.diff(ell_WL)
     delta_l_GC = np.diff(ell_GC)
     delta_l_3x2pt = np.diff(ell_3x2pt)

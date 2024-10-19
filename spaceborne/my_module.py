@@ -30,6 +30,50 @@ symmetrize_output_dict = {
 }
 
 
+def test_cov_FM(output_path, benchmarks_path, extension):
+    """tests that the outputs do not change between the old and the new version"""
+    old_dict = dict(get_kv_pairs(benchmarks_path, extension))
+    new_dict = dict(get_kv_pairs(output_path, extension))
+
+    # check if the dictionaries are empty
+    assert len(old_dict) > 0, 'No files in the benchmarks path ❌'
+    assert len(new_dict) > 0, 'No files in the output path ❌'
+
+    assert old_dict.keys() == new_dict.keys(), 'The number of files or their names has changed ❌'
+
+    if extension == 'npz':
+        for key in old_dict.keys():
+            try:
+                np.array_equal(old_dict[key]['arr_0'], new_dict[key]['arr_0'])
+            except AssertionError:
+                f'The file {benchmarks_path}/{key}.{extension} is different ❌'
+    else:
+        for key in old_dict.keys():
+            try:
+                np.array_equal(old_dict[key], new_dict[key])
+            except AssertionError:
+                f'The file {benchmarks_path}/{key}.{extension} is different ❌'
+
+    print('tests passed successfully: the outputs are the same as the benchmarks ✅')
+
+
+def regularize_covariance(cov_matrix, lambda_reg=1e-5):
+    """
+    Regularizes the covariance matrix by adding lambda * I.
+
+    Parameters:
+    - cov_matrix: Original covariance matrix (numpy.ndarray)
+    - lambda_reg: Regularization parameter
+
+    Returns:
+    - Regularized covariance matrix
+    """
+    n = cov_matrix.shape[0]
+    identity_matrix = np.eye(n)
+    cov_matrix_reg = cov_matrix + lambda_reg * identity_matrix
+    return cov_matrix_reg
+
+
 def get_simpson_weights(n):
     """
     Function written by Marco Bonici
@@ -148,10 +192,115 @@ def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
     print(f"Data has been written to {ascii_folder}/{ascii_filename}")
 
 
-def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, compare_fms=True, compare_param_covs=True, plot=True, n_params_toplot=10):
+def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_gauss, which_uncertainty,
+                           reference, colors, abs_FoM, nparams_toplot_in=8, save_fig=False, fig_path=None):
+
+    masked_fm_dict_list = []
+    masked_fid_pars_dict_list = []
+    uncertainties_dict = {}
+    fom_dict = {}
+
+    assert keys_toplot_in == 'all' or type(keys_toplot_in) == list, 'keys_toplot must be a list or "all"'
+    assert colors is None or type(colors) == list, 'colors must be a list or "all"'
+
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color'] if colors is None else colors
+
+    # maks fm and fid pars dict
+    for fm_dict in fm_dict_list:
+        masked_fm_dict, masked_fid_pars_dict = {}, {}
+
+        # define keys and remove unused ones
+        keys_toplot = list(fm_dict.keys())
+        if 'fiducial_values_dict' in keys_toplot:
+            keys_toplot.remove('fiducial_values_dict')
+        keys_toplot = [key for key in keys_toplot if not key.startswith('FM_WA_')]
+        keys_toplot = [key for key in keys_toplot if not key.startswith('FM_2x2pt_')]
+
+        for key in keys_toplot:
+            masked_fm_dict[key], masked_fid_pars_dict[key] = mask_fm_v2(fm_dict[key],
+                                                                        fm_dict['fiducial_values_dict'],
+                                                                        names_params_to_fix=[],
+                                                                        remove_null_rows_cols=True)
+        masked_fm_dict_list.append(masked_fm_dict)
+        masked_fid_pars_dict_list.append(masked_fid_pars_dict)
+
+    # compute reference uncertainties
+    for key in keys_toplot:
+        nparams_toplot = nparams_toplot_in
+        param_names = list(masked_fid_pars_dict_list[0][key].keys())[:nparams_toplot]
+        uncertainties_dict[key] = np.array([uncertainties_fm_v2(masked_fm_dict[key], fiducials_dict=masked_fid_pars_dict[key],
+                                                                which_uncertainty=which_uncertainty, normalize=True)[:nparams_toplot]
+                                            for masked_fm_dict, masked_fid_pars_dict in zip(masked_fm_dict_list, masked_fid_pars_dict_list)])
+        w0wa_idxs = (param_names.index('wz'), param_names.index('wa'))
+        fom_dict[key] = np.array([compute_FoM(masked_fm_dict[key], w0wa_idxs=w0wa_idxs)
+                                 for masked_fm_dict in masked_fm_dict_list])
+        uncertainties_dict[key] = np.column_stack((uncertainties_dict[key], fom_dict[key]))
+    param_names.append('FoM')
+
+    keys_toplot = keys_toplot if keys_toplot_in == 'all' else keys_toplot_in
+
+    # plot, and if necessary normalize by the G-only uncertainty
+    for key in keys_toplot:
+        probe = key.split('_')[1]
+
+        ylabel = 'rel. unc. [%]'
+        if normalize_by_gauss and not key.endswith('G'):
+            probe = key.split('_')[1]
+            ng_cov = key.split('_')[2]
+            uncertainties_dict[key] = (uncertainties_dict[key] / uncertainties_dict[f'FM_{probe}_G'] - 1) * 100
+            ylabel = f'{ng_cov}/G - 1 [%]'
+
+            if abs_FoM:
+                uncertainties_dict[key][:, -1] = np.fabs(uncertainties_dict[key][:, -1])
+
+        n_rows = 2 if len(fm_dict_list) > 1 else 1
+        fig, ax = plt.subplots(n_rows, 1, figsize=(10, 5), sharex=True)
+        plt.tight_layout()
+        fig.subplots_adjust(hspace=0)
+
+        ax[0].set_title(f'{which_uncertainty} uncertainties, {key}')
+        for i, uncert in enumerate(uncertainties_dict[key]):
+            ax[0].scatter(param_names, uncert, label=f'{labels[i]}', marker='o', c=colors[i], alpha=0.6)
+        ax[0].axhline(0, c='k', ls='--')
+        ax[0].set_ylabel(ylabel)
+        ax[0].legend(ncol=1, loc='center right', bbox_to_anchor=(1.43, 0.))
+        ax[0].grid()
+
+        start_idx = 0
+        title_str = reference
+        if reference == 'first_key':
+            ref = uncertainties_dict[key][0]
+            start_idx = 1
+            title_str = labels[0]
+        elif reference == 'median':
+            ref = np.median(uncertainties_dict[key], axis=0)
+        elif reference == 'mean':
+            ref = np.mean(uncertainties_dict[key], axis=0)
+        else:
+            raise ValueError('reference must be one of "first_key", "median", or "mean"')
+
+        if len(uncertainties_dict[key]) > 1:
+            diffs = [percent_diff(uncert, ref) for uncert in uncertainties_dict[key][start_idx:]]
+
+            for i, diff in enumerate(diffs):
+                ax[1].scatter(param_names, diff, marker='o', c=colors[i + start_idx], alpha=0.6)
+            ax[1].fill_between((0, nparams_toplot), -10, 10, color='k', alpha=0.1, label='$\\pm 10\\%$')
+
+        ax[1].set_ylabel(f'% diff wrt\n{title_str}\n')
+        ax[1].legend(ncol=1, loc='center right', bbox_to_anchor=(1.43, 0.5))
+        ax[1].grid()
+
+        if save_fig:
+            plt.savefig(f'{fig_path}/{key}.pdf', dpi=400)
+
+
+def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, which_uncertainty, compare_fms=True, compare_param_covs=True,
+                                      plot=True, n_params_toplot=10):
 
     fm_dict_a = load_pickle(fm_pickle_path_a)
     fm_dict_b = load_pickle(fm_pickle_path_b)
+    masked_fm_dict_a, masked_fid_pars_dict_a = {}, {}
+    masked_fm_dict_b, masked_fid_pars_dict_b = {}, {}
 
     # check that the keys match
     assert fm_dict_a.keys() == fm_dict_b.keys()
@@ -163,27 +312,32 @@ def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, compar
     for key in fm_dict_a.keys():
         if key != 'fiducial_values_dict' and 'WA' not in key:
             print('Comparing ', key)
-            fm_dict_a[key] = remove_null_rows_cols_2D(fm_dict_a[key])
-            fm_dict_b[key] = remove_null_rows_cols_2D(fm_dict_b[key])
 
-            cov_a = np.linalg.inv(fm_dict_a[key])
-            cov_b = np.linalg.inv(fm_dict_b[key])
+            masked_fm_dict_a[key], masked_fid_pars_dict_a[key] = mask_fm_v2(fm_dict_a[key],
+                                                                            fm_dict_a['fiducial_values_dict'],
+                                                                            names_params_to_fix=[],
+                                                                            remove_null_rows_cols=True)
+            masked_fm_dict_b[key], masked_fid_pars_dict_b[key] = mask_fm_v2(fm_dict_b[key],
+                                                                            fm_dict_b['fiducial_values_dict'],
+                                                                            names_params_to_fix=[],
+                                                                            remove_null_rows_cols=True)
+
+            cov_a = np.linalg.inv(masked_fm_dict_a[key])
+            cov_b = np.linalg.inv(masked_fm_dict_b[key])
 
             if compare_fms:
-                compare_arrays(fm_dict_a[key], fm_dict_b[key], 'FM_A', 'FM_B', plot_diff_threshold=5)
+                compare_arrays(masked_fm_dict_a[key], masked_fm_dict_b[key], 'FM_A', 'FM_B', plot_diff_threshold=5)
 
             if compare_param_covs:
 
                 compare_arrays(cov_a, cov_b, 'cov_A', 'cov_B', plot_diff_threshold=5)
 
             if plot:
-                param_names = list(fm_dict_a['fiducial_values_dict'].keys())[:n_params_toplot]
-                fiducials_a = list(fm_dict_a['fiducial_values_dict'].values())[:n_params_toplot]
-                fiducials_b = list(fm_dict_b['fiducial_values_dict'].values())[:n_params_toplot]
-                uncert_a = uncertainties_FM(fm_dict_a[key], n_params_toplot,
-                                            fiducials=fiducials_a, which_uncertainty='marginal', normalize=True)
-                uncert_b = uncertainties_FM(fm_dict_b[key], n_params_toplot,
-                                            fiducials=fiducials_b, which_uncertainty='marginal', normalize=True)
+                param_names = list(masked_fid_pars_dict_a[key].keys())[:n_params_toplot]
+                uncert_a = uncertainties_fm_v2(masked_fm_dict_a[key], fiducials_dict=masked_fid_pars_dict_a[key],
+                                               which_uncertainty=which_uncertainty, normalize=True)[:n_params_toplot]
+                uncert_b = uncertainties_fm_v2(masked_fm_dict_b[key], fiducials_dict=masked_fid_pars_dict_b[key],
+                                               which_uncertainty=which_uncertainty, normalize=True)[:n_params_toplot]
                 diff = percent_diff(uncert_a, uncert_b)
 
                 plt.figure()
@@ -791,8 +945,89 @@ def get_var_name(var):
     return [var_name for var_name, var_val in callers_local_vars if var_val is var]
 
 
+def compare_arrays_v0(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True, log_array=True, log_diff=False,
+                      abs_val=False, plot_diff_threshold=None, white_where_zero=True):
+    if plot_diff or plot_array:
+        assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
+
+    # white = to_rgb('white')
+    # cmap = ListedColormap([white] + plt.cm.viridis(np.arange(plt.cm.viridis.N)))
+    # # set the color for 0 values as white and all other values to the standard colormap
+    # cmap = plt.cm.viridis
+    # cmap.set_bad(color=white)
+
+    if plot_diff:
+
+        diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=log_diff, abs_val=abs_val)
+        diff_BA = percent_diff_nan(B, A, eraseNaN=True, log=log_diff, abs_val=abs_val)
+
+        if not np.allclose(diff_AB, diff_BA, rtol=1e-3, atol=0):
+            print('diff_AB and diff_BA have a relative difference of more than 1%')
+
+        if plot_diff_threshold is not None:
+            # take the log of the threshold if using the log of the precent difference
+            if log_diff:
+                plot_diff_threshold = np.log10(plot_diff_threshold)
+
+            print(f'plotting the *absolute value* of the difference only where it is below the given threshold '
+                  f'({plot_diff_threshold}%)')
+            diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, np.abs(diff_AB))
+            diff_BA = np.ma.masked_where(np.abs(diff_BA) < plot_diff_threshold, np.abs(diff_BA))
+
+        fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
+        im = ax[0].matshow(diff_AB)
+        ax[0].set_title(f'(A/B - 1) * 100')
+        fig.colorbar(im, ax=ax[0])
+
+        im = ax[1].matshow(diff_BA)
+        ax[1].set_title(f'(B/A - 1) * 100')
+        fig.colorbar(im, ax=ax[1])
+
+        fig.suptitle(f'log={log_diff}, abs={abs_val}')
+        plt.show()
+
+    if plot_array:
+        A_toplot, B_toplot = A, B
+
+        if abs_val:
+            A_toplot, B_toplot = np.abs(A), np.abs(B)
+        if log_array:
+            A_toplot, B_toplot = np.log10(A), np.log10(B)
+
+        fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
+        im = ax[0].matshow(A_toplot)
+        ax[0].set_title(f'{name_A}')
+        fig.colorbar(im, ax=ax[0])
+
+        im = ax[1].matshow(B_toplot)
+        ax[1].set_title(f'{name_B}')
+        fig.colorbar(im, ax=ax[1])
+        fig.suptitle(f'log={log_array}, abs={abs_val}')
+        plt.show()
+
+    if np.array_equal(A, B):
+        print('A and B are equal ✅')
+        return
+
+    for rtol in [1e-5, 1e-3, 1e-2, 5e-2, 1e-1]:  # these are NOT percent units, see print below
+        if np.allclose(A, B, rtol=rtol, atol=0):
+            print(f'{name_A} and {name_B} are close within relative tolerance of {rtol * 100}%) ✅')
+            return
+
+    diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=True)
+    higher_rtol = plot_diff_threshold  # in "percent" units
+    if higher_rtol is None:
+        higher_rtol = 5.0
+    result_emoji = '❌'
+    no_outliers = np.where(diff_AB > higher_rtol)[0].shape[0]
+    additional_info = f'\nMax discrepancy: {np.max(diff_AB):.2f}%;' \
+        f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
+        f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
+    print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
+
+
 def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True, log_array=True, log_diff=False,
-                   abs_val=False, plot_diff_threshold=None, white_where_zero=True):
+                   abs_val=False, plot_diff_threshold=None, white_where_zero=True, plot_diff_hist=False):
 
     if np.array_equal(A, B):
         print(f'{name_A} and {name_B} are equal ✅')
@@ -856,6 +1091,17 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
             fig.suptitle(f'log={log_diff}, abs={abs_val}')
             plt.show()
 
+            if plot_diff_hist:
+                plt.figure()
+                ax = plt.gca()
+                ymin, ymax = ax.get_ylim()
+                plt.fill_betweenx(y=[0, ymax], x1=-10, x2=10, color='gray', alpha=0.3, label='10%')
+                plt.hist(diff_AB.flatten(), log=True, bins=30)
+                plt.xlabel('% difference')
+                plt.ylabel('counts')
+                plt.legend()
+
+
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):
     """
@@ -875,6 +1121,11 @@ def compare_folder_content(path_A: str, path_B: str, filetype: str):
 def namestr(obj, namespace):
     """ does not work with slices!!! (why?)"""
     return [name for name in namespace if namespace[name] is obj][0]
+
+
+def plot_FM(array, style=".-"):
+    name = namestr(array, globals())
+    plt.plot(range(7), array, style, label=name)
 
 
 ################################################ Fisher Matrix utilities ################################################
@@ -1126,8 +1377,6 @@ def uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal', normal
     param_names = list(fiducials_dict.keys())
     param_values = np.array(list(fiducials_dict.values()))
 
-    # pdb.set_trace()
-
     assert len(param_names) == param_values.shape[0] == fm.shape[0] == fm.shape[1], \
         'param_names and param_values must have the same length and be equal to the number of rows and columns of fm'
 
@@ -1142,7 +1391,7 @@ def uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal', normal
     if normalize:
         # if the fiducial for is 0, substitute with 1 to avoid division by zero; if it's -1, take the absolute value
         param_values = np.where(param_values == 0, 1, param_values)
-        param_values = np.where(param_values == -1, 1, param_values)
+        param_values = np.where(param_values < 0, np.abs(param_values), param_values)
         # normalize to get the relative uncertainties
         sigma_fm /= param_values
 
@@ -1166,7 +1415,7 @@ def build_labels(zbins):
     return [galaxy_bias_label, shear_bias_label, zmean_shift_label]
 
 
-def matshow(array, title="title", log=False, abs_val=False, threshold=None, only_show_nans=False, matshow_kwargs={}):
+def matshow(array, title="title", log=True, abs_val=False, threshold=None, only_show_nans=False, matshow_kwargs={}):
     """
     :param array:
     :param title:
@@ -1193,7 +1442,7 @@ def matshow(array, title="title", log=False, abs_val=False, threshold=None, only
 
     if threshold is not None:
         array = np.ma.masked_where(array < threshold, array)
-        title += f" \n(masked below {threshold} \%)"
+        title += f" \n(masked below {threshold} \\%)"
 
     plt.matshow(array, **matshow_kwargs)
     plt.colorbar()
@@ -1709,10 +1958,9 @@ def compute_FM_2D_optimized(nbl, npairs, nparams_tot, cov_2D_inv, D_2D):
 
 
 def compute_FoM(FM, w0wa_idxs):
-    start = w0wa_idxs[0]
-    stop = w0wa_idxs[1] + 1
     cov_param = np.linalg.inv(FM)
-    cov_param_reduced = cov_param[start:stop, start:stop]
+    cov_param_reduced = cov_param[np.ix_(w0wa_idxs, w0wa_idxs)]
+
     FM_reduced = np.linalg.inv(cov_param_reduced)
     FoM = np.sqrt(np.linalg.det(FM_reduced))
     return FoM
@@ -1863,13 +2111,6 @@ def covariance_einsum_split(cl_5d, noise_5d, f_sky, ell_values, delta_ell, retur
     cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]
     noise_LL_5D = noise_3x2pt_5D[0, 0, ...][np.newaxis, np.newaxis, ...]
     cov_WL_6D = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_values, delta_ell)[0, 0, 0, 0, ...]
-
-    KiDS implementation (from Robert's email, to be checked in the relevant paper):
-    Regarding the Gaussian term. Yes the Delta\ell is missing: 
-    the code sums over the bandwidth explicitely and does not assume that the 
-    covariance is constant across the ell bin. For most ell binnings though, 
-    this will reduce to the equation you provided.
-
     """
 
     assert cl_5d.shape[0] == 1 or cl_5d.shape[0] == 2, 'This funcion only works with 1 or two probes'
@@ -3113,6 +3354,15 @@ def cov2corr(covariance):
     correlation = covariance / outer_v
     correlation[covariance == 0] = 0
     return correlation
+
+
+# compute Sylvain's deltas
+def delta_l_Sylvain(nbl, ell):
+    delta_l = np.zeros(nbl)
+    for l in range(1, nbl):
+        delta_l[l] = ell[l] - ell[l - 1]
+    delta_l[0] = delta_l[1]
+    return delta_l
 
 
 def Recast_Sijkl_1xauto(Sijkl, zbins):

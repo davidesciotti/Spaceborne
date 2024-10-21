@@ -17,19 +17,19 @@ mpl_rcParams_dict = {
     'figure.figsize': (15, 10),
     'lines.markersize': 8,
     # 'axes.grid': True,
-    'figure.constrained_layout.use': True,
+    # 'figure.constrained_layout.use': False,
     # 'axes.axisbelow': True
 }
 
 general_dict = {
     'cosmo_labels_TeX': ["$\\Omega_{{\\rm m},0}$", "$\\Omega_{{\\rm b},0}$", "$w_0$", "$w_a$", "$h$", "$n_{\\rm s}$",
-                         "$\\sigma_8$"],
+                         "$\\sigma_8$", "${\\rm log}_{10}(T_{\\rm AGN}/{\\rm K})$"],
     'IA_labels_TeX': ['$A_{\\rm IA}$', '$\\eta_{\\rm IA}$', '$\\beta_{\\rm IA}$'],
     'galaxy_bias_labels_TeX': mm.build_labels_TeX(zbins=10)[0],
     'shear_bias_labels_TeX': mm.build_labels_TeX(zbins=10)[1],
     'zmean_shift_labels_TeX': mm.build_labels_TeX(zbins=10)[2],
 
-    'cosmo_labels': ['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8'],
+    'cosmo_labels': ['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8', 'logT'],
     'IA_labels': ['AIA', 'etaIA', 'betaIA'],
     'galaxy_bias_labels': mm.build_labels(zbins=10)[0],
     'shear_bias_labels': mm.build_labels(zbins=10)[1],

@@ -7,6 +7,7 @@ os.environ['OMP_NUM_THREADS'] = '32'
 os.environ['NUMBA_NUM_THREADS'] = '32'
 os.environ['NUMBA_PARALLEL_DIAGNOSTICS'] = '4'
 
+from matplotlib import pyplot as plt
 import numpy as np
 import time
 import configparser
@@ -17,15 +18,26 @@ import pandas as pd
 import spaceborne.ell_utils as ell_utils
 import spaceborne.my_module as mm
 import subprocess
+from scipy.optimize import minimize_scalar
 
 
 class OneCovarianceInterface():
 
     def __init__(self, ROOT, cfg, variable_specs):
         self.cfg = cfg
+        self.oc_cfg = self.cfg['covariance_cfg']['OneCovariance_cfg']
         self.variable_specs = variable_specs
-        self.which_gauss_cov_binning = self.cfg['covariance_cfg']['OneCovariance_cfg']['which_gauss_cov_binning']
+        self.which_gauss_cov_binning = self.oc_cfg['which_gauss_cov_binning']
         self.zbins = self.cfg['general_cfg']['zbins']
+        self.nbl_3x2pt = self.cfg['general_cfg']['nbl_3x2pt']
+
+        # set which cov terms to compute from cfg file
+        self.compute_ssc = False
+        self.compute_cng = False
+        if 'SSC' in self.oc_cfg['which_ng_cov']:
+            self.compute_ssc = True
+        if 'cNG' in self.oc_cfg['which_ng_cov']:
+            self.compute_cng = True
 
         # paths
         self.ROOT = ROOT
@@ -65,7 +77,7 @@ class OneCovarianceInterface():
         # TODO import another file??
         # Read the existing reference .ini file
         cfg_onecov_ini = CaseConfigParser()
-        cfg_onecov_ini.read(f'{self.ROOT}/OneCovariance/config_files_dav/config_3x2pt_pure_Cell_dav.ini')
+        cfg_onecov_ini.read(f'{self.ROOT}/Spaceborne/input/config_3x2pt_pure_Cell_general.ini')
         general_cfg = self.cfg['general_cfg']
 
         # set useful lists
@@ -77,36 +89,43 @@ class OneCovarianceInterface():
 
         cfg_onecov_ini['covariance terms']['gauss'] = str(True)
         cfg_onecov_ini['covariance terms']['split_gauss'] = str(True)
-        cfg_onecov_ini['covariance terms']['nongauss'] = str(True)
-        cfg_onecov_ini['covariance terms']['ssc'] = str(True)
+        cfg_onecov_ini['covariance terms']['nongauss'] = str(self.compute_cng)
+        cfg_onecov_ini['covariance terms']['ssc'] = str(self.compute_ssc)
         cfg_onecov_ini['output settings']['directory'] = self.oc_path
 
-        warnings.warn('Setting same ell binning for all probes in OC')
+        # [observables]
+        cfg_onecov_ini['observables']['cosmic_shear'] = str(True)
+        cfg_onecov_ini['observables']['est_shear'] = 'C_ell'
+        cfg_onecov_ini['observables']['ggl'] = str(True)
+        cfg_onecov_ini['observables']['est_ggl'] = 'C_ell'
+        cfg_onecov_ini['observables']['clustering'] = str(True)
+        cfg_onecov_ini['observables']['est_clust'] = 'C_ell'
+        cfg_onecov_ini['observables']['cstellar_mf'] = str(False)
+        cfg_onecov_ini['observables']['cross_terms'] = str(True)
+        cfg_onecov_ini['observables']['unbiased_clustering'] = str(False)
 
-        cfg_onecov_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(map(str, mult_shear_bias_list))
         cfg_onecov_ini['covELLspace settings']['ell_min'] = str(general_cfg['ell_min'])
-        cfg_onecov_ini['covELLspace settings']['ell_min_clustering'] = str(general_cfg['ell_min'])
-        cfg_onecov_ini['covELLspace settings']['ell_min_lensing'] = str(general_cfg['ell_min'])
-        # TODO slightly different ell_max for 3000?
-        cfg_onecov_ini['covELLspace settings']['ell_max'] = str(general_cfg['ell_max_3x2pt'])
-        cfg_onecov_ini['covELLspace settings']['ell_max_clustering'] = str(general_cfg['ell_max_3x2pt'])
-        cfg_onecov_ini['covELLspace settings']['ell_max_lensing'] = str(general_cfg['ell_max_3x2pt'])
-
         cfg_onecov_ini['covELLspace settings']['ell_bins'] = str(general_cfg['nbl_3x2pt'])
-        cfg_onecov_ini['covELLspace settings']['ell_bins_clustering'] = str(general_cfg['nbl_3x2pt'])
+        cfg_onecov_ini['covELLspace settings']['ell_min_lensing'] = str(general_cfg['ell_min'])
         cfg_onecov_ini['covELLspace settings']['ell_bins_lensing'] = str(general_cfg['nbl_3x2pt'])
+        cfg_onecov_ini['covELLspace settings']['ell_min_clustering'] = str(general_cfg['ell_min'])
+        cfg_onecov_ini['covELLspace settings']['ell_bins_clustering'] = str(general_cfg['nbl_3x2pt'])
+        cfg_onecov_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(map(str, mult_shear_bias_list))
 
-        cfg_onecov_ini['survey specs']['mask_directory'] = '/home/cosmo/davide.sciotti/data/common_data/mask/'
-        cfg_onecov_ini['survey specs']['mask_file_clust'] = ''
-        cfg_onecov_ini['survey specs']['mask_file_lensing'] = ''
-        cfg_onecov_ini['survey specs']['mask_file_ggl'] = ''
+        # find best ell_max for OC, since it uses a slightly different recipe
+        self.find_optimal_ellmax_oc(target_ell_array=self.ells_sb)
+        cfg_onecov_ini['covELLspace settings']['ell_max'] = str(self.optimal_ellmax)
+        cfg_onecov_ini['covELLspace settings']['ell_max_lensing'] = str(self.optimal_ellmax)
+        cfg_onecov_ini['covELLspace settings']['ell_max_clustering'] = str(self.optimal_ellmax)
+
+        # commented out to avoid loading mask file by accident
+        # cfg_onecov_ini['survey specs']['mask_directory'] = '/home/cosmo/davide.sciotti/data/common_data/mask/'
         # TODO test diff with EC20 binning
         cfg_onecov_ini['survey specs']['which_cov_binning'] = self.which_gauss_cov_binning
 
         cfg_onecov_ini['survey specs']['survey_area_lensing_in_deg2'] = str(
             self.cfg['covariance_cfg']['survey_area_deg2'])
-        cfg_onecov_ini['survey specs']['survey_area_ggl_in_deg2'] = str(
-            self.cfg['covariance_cfg']['survey_area_deg2'])
+        cfg_onecov_ini['survey specs']['survey_area_ggl_in_deg2'] = str(self.cfg['covariance_cfg']['survey_area_deg2'])
         cfg_onecov_ini['survey specs']['survey_area_clust_in_deg2'] = str(
             self.cfg['covariance_cfg']['survey_area_deg2'])
         cfg_onecov_ini['survey specs']['n_eff_clust'] = ', '.join(map(str, n_eff_clust_list))
@@ -133,6 +152,7 @@ class OneCovarianceInterface():
 
         cfg_onecov_ini['IA']['A_IA'] = str(self.cfg['cosmology']['FM_ordered_params']['Aia'])
         cfg_onecov_ini['IA']['eta_IA'] = str(self.cfg['cosmology']['FM_ordered_params']['eIA'])
+        cfg_onecov_ini['IA']['z_pivot_IA'] = str(0)
 
         cfg_onecov_ini['powspec evaluation']['non_linear_model'] = str(
             self.cfg['cosmology']['other_params']['camb_extra_parameters']['camb']['halofit_version'])
@@ -147,18 +167,20 @@ class OneCovarianceInterface():
         cfg_onecov_ini['misc']['num_cores'] = str(general_cfg['num_threads'])
 
         # ! precision settings
-        if self.cfg['covariance_cfg']['OneCovariance_cfg']['high_precision']:
+        if self.oc_cfg['precision_settings'] == 'high_precision':
             delta_z = 0.04
             tri_delta_z = 0.25
             integration_steps = 1000
-            m_bins = 1500  # 1500
-            log10k_bins = 200  # 200
-        else:  # these are the default values
+            m_bins = 1500  # 900 or 1500
+            log10k_bins = 200  # 150 or 200
+        elif self.oc_cfg['precision_settings'] == 'default':  # these are the default values, used by Robert as well
             delta_z = 0.08
             tri_delta_z = 0.5
             integration_steps = 500
             m_bins = 900
             log10k_bins = 100
+        else:
+            raise ValueError(f"Unknown precision settings: {self.oc_cfg['precision_settings']}")
 
         cfg_onecov_ini['covELLspace settings']['delta_z'] = str(delta_z)
         cfg_onecov_ini['covELLspace settings']['tri_delta_z'] = str(tri_delta_z)
@@ -178,8 +200,11 @@ class OneCovarianceInterface():
         with open(f'{self.oc_path}/input_configs.ini', 'w') as configfile:
             cfg_onecov_ini.write(configfile)
 
+        # store in self for good measure
+        self.cfg_onecov_ini = cfg_onecov_ini
+
     def call_onecovariance(self):
-        """This function runs OneCovariance and reshapes the output"""
+        """This function runs OneCovariance"""
 
         activate_and_run = f"""
         source {self.conda_base_path}/activate cov20_env
@@ -193,10 +218,19 @@ class OneCovarianceInterface():
         process.communicate()
 
     def reshape_oc_output(self, variable_specs, ind_dict, symmetrize_output_dict):
+        """
+        Reshape the output of the OneCovariance (OC) calculation into a dictionary or array format.
+
+        This function takes the raw output from the OC calculation and reshapes it into a more
+        convenient format for further processing. It supports both 8D and 10D output formats,
+        and can return the data as either a dictionary or a numpy array.
+
+        The function also performs some additional processing, such as symmetrizing the output
+        dictionary and saving the reshaped covariance matrices to compressed numpy files.
+        """
 
         zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(self.zbins)
 
-        probe_ordering = self.cfg['covariance_cfg']['probe_ordering']
         ind_auto = ind_dict['G', 'G']
         ind_cross = ind_dict['G', 'L']
 
@@ -219,8 +253,18 @@ class OneCovarianceInterface():
         column_names = header_list
 
         # ell values actually used in OC; save in self to be able to compare to the SB ell values
+        # note use delim_whitespace=True instead of sep='\s+' if this gives compatibility issues
         self.ells_oc_load = pd.read_csv(f'{self.oc_path}/covariance_list.dat',
-                                        usecols=['ell1'], delim_whitespace=True)['ell1'].unique()
+                                        usecols=['ell1'], sep='\s+')['ell1'].unique()
+
+        # check if the saved ells are within 1% of the required ones; I think the saved values are truncated to only
+        # 2 decimals, so this is a rough comparison
+        try:
+            np.testing.assert_allclose(self.new_ells_oc, self.ells_oc_load, atol=0, rtol=1e-2)
+        except AssertionError as err:
+            print('ell values computed vs loaded for OC are not the same')
+            print(err)
+
         cov_ell_indices = {ell_out: idx for idx, ell_out in enumerate(self.ells_oc_load)}
 
         probe_idx_dict = {
@@ -239,7 +283,7 @@ class OneCovarianceInterface():
 
         print('loading dataframe in chunks...')
         start = time.perf_counter()
-        for df_chunk in pd.read_csv(f'{self.oc_path}/covariance_list.dat', delim_whitespace=True, names=column_names, skiprows=1, chunksize=chunk_size):
+        for df_chunk in pd.read_csv(f'{self.oc_path}/covariance_list.dat', sep='\s+', names=column_names, skiprows=1, chunksize=chunk_size):
 
             # Vectorize the extraction of probe indices
             probe_idx_a = df_chunk['#obs'].str[0].map(probe_idx_dict).values
@@ -313,18 +357,19 @@ class OneCovarianceInterface():
             cov_oc_10d_dict[cov_term][1, 0, 1, 1] = mm.cov_4D_to_6D_blocks(cov_glgg_4d, cov_nbl, self.zbins, ind_cross, ind_auto,
                                                                            symmetrize_output_dict['G', 'L'], symmetrize_output_dict['G', 'G'])
 
+            # partially format cov filename
             variable_specs = deepcopy(self.variable_specs)
             variable_specs.pop('which_ng_cov')
-            cov_filename = self.cfg['covariance_cfg']['OneCovariance_cfg']['cov_filename'].format(ROOT=self.ROOT,
-                                                                                                  which_ng_cov='{which_ng_cov:s}',
-                                                                                                  probe_a='{probe_a:s}',
-                                                                                                  probe_b='{probe_b:s}',
-                                                                                                  probe_c='{probe_c:s}',
-                                                                                                  probe_d='{probe_d:s}',
-                                                                                                  nbl=variable_specs['nbl_3x2pt'],
-                                                                                                  lmax=variable_specs['ell_max_3x2pt'],
-                                                                                                  which_gauss_cov_binning=self.which_gauss_cov_binning,
-                                                                                                  **variable_specs)
+            cov_filename = self.oc_cfg['cov_filename'].format(ROOT=self.ROOT,
+                                                              which_ng_cov='{which_ng_cov:s}',
+                                                              probe_a='{probe_a:s}',
+                                                              probe_b='{probe_b:s}',
+                                                              probe_c='{probe_c:s}',
+                                                              probe_d='{probe_d:s}',
+                                                              nbl=variable_specs['nbl_3x2pt'],
+                                                              lmax=variable_specs['ell_max_3x2pt'],
+                                                              which_gauss_cov_binning=self.which_gauss_cov_binning,
+                                                              **variable_specs)
             np.savez_compressed(
                 f'{self.oc_path}/{cov_filename.format(which_ng_cov=cov_term, probe_a="L", probe_b="L", probe_c="L", probe_d="L")}', cov_llll_4d)
             np.savez_compressed(
@@ -344,23 +389,45 @@ class OneCovarianceInterface():
     def oc_output_to_dict_or_array(self, which_ng_cov, output_type, ind_dict=None, symmetrize_output_dict=None):
 
         # import
-        which_gauss_cov_binning = self.cfg['covariance_cfg']['OneCovariance_cfg']['which_gauss_cov_binning']
+        which_gauss_cov_binning = self.oc_cfg['which_gauss_cov_binning']
         variable_specs = deepcopy(self.variable_specs)
         variable_specs.pop('which_ng_cov')
-        filename = self.cfg['covariance_cfg']['OneCovariance_cfg']['cov_filename'].format(ROOT=self.ROOT,
-                                                                                          which_ng_cov=which_ng_cov,
-                                                                                          probe_a='{probe_a:s}',
-                                                                                          probe_b='{probe_b:s}',
-                                                                                          probe_c='{probe_c:s}',
-                                                                                          probe_d='{probe_d:s}',
-                                                                                          nbl=variable_specs['nbl_3x2pt'],
-                                                                                          lmax=variable_specs['ell_max_3x2pt'],
-                                                                                          which_gauss_cov_binning=which_gauss_cov_binning,
-                                                                                          **variable_specs)
+        try:
+            filename = self.oc_cfg['cov_filename'].format(ROOT=self.ROOT,
+                                                        which_ng_cov=which_ng_cov,
+                                                        probe_a='{probe_a:s}',
+                                                        probe_b='{probe_b:s}',
+                                                        probe_c='{probe_c:s}',
+                                                        probe_d='{probe_d:s}',
+                                                        nbl=variable_specs['nbl_3x2pt'],
+                                                        lmax=variable_specs['ell_max_3x2pt'],
+                                                        which_gauss_cov_binning=which_gauss_cov_binning,
+                                                        **variable_specs)
 
-        cov_ng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path=self.oc_path,
-                                                                filename=filename,
-                                                                probe_ordering=self.cfg['covariance_cfg']['probe_ordering'])
+            cov_ng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path=self.oc_path,
+                                                                    filename=filename,
+                                                                    probe_ordering=self.cfg['covariance_cfg']['probe_ordering'])
+        except FileNotFoundError as err:
+            print(err)
+            print('OC: LOADING LMAX=5000 FILES AND CUTTING')
+            filename = self.oc_cfg['cov_filename'].format(ROOT=self.ROOT,
+                                            which_ng_cov=which_ng_cov,
+                                            probe_a='{probe_a:s}',
+                                            probe_b='{probe_b:s}',
+                                            probe_c='{probe_c:s}',
+                                            probe_d='{probe_d:s}',
+                                            nbl=32,
+                                            lmax=5000,
+                                            which_gauss_cov_binning=which_gauss_cov_binning,
+                                            **variable_specs)
+
+            cov_ng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path=self.oc_path,
+                                                                    filename=filename,
+                                                                    probe_ordering=self.cfg['covariance_cfg']['probe_ordering'])
+
+            for key in cov_ng_oc_3x2pt_dict_8D.keys():
+                cov_ng_oc_3x2pt_dict_8D[key] = cov_ng_oc_3x2pt_dict_8D[key][:variable_specs['nbl_3x2pt'], :variable_specs['nbl_3x2pt'], ...]
+
 
         # reshape
         if output_type == '8D_dict':
@@ -386,3 +453,43 @@ class OneCovarianceInterface():
 
         else:
             raise ValueError('output_dict_dim must be 8D or 10D')
+
+    def find_optimal_ellmax_oc(self, target_ell_array):
+        # Perform the minimization
+        result = minimize_scalar(self.objective_function, bounds=[2000, 9000], method='bounded')
+
+        # Check the result
+        if result.success:
+            self.optimal_ellmax = result.x
+            print(f"Optimal ellmax found: {self.optimal_ellmax}")
+        else:
+            print("Optimization failed.")
+
+        self.new_ells_oc = self.compute_ells_oc(nbl=int(self.cfg['general_cfg']['nbl_3x2pt']),
+                                                ell_min=float(self.cfg['general_cfg']['ell_min']),
+                                                ell_max=self.optimal_ellmax)
+
+        fig, ax = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
+        ax[0].plot(target_ell_array, label='target ells (SB)', marker='o', alpha=.6)
+        ax[0].plot(self.new_ells_oc, label='ells OC', marker='o', alpha=.6)
+        ax[1].plot(mm.percent_diff(target_ell_array, self.new_ells_oc), label='% diff', marker='o')
+
+        ax[0].legend()
+        ax[1].legend()
+        ax[0].set_ylabel('$\\ell$')
+        ax[1].set_ylabel('% diff')
+        fig.supxlabel('ell idx')
+
+    def compute_ells_oc(self, nbl, ell_min, ell_max):
+        ell_bin_edges_oc_int = np.unique(np.geomspace(ell_min, ell_max, nbl + 1)).astype(int)
+        ells_oc_int = np.exp(.5 * (np.log(ell_bin_edges_oc_int[1:])
+                                   + np.log(ell_bin_edges_oc_int[:-1])))  # it's the same if I take base 10 log
+        return ells_oc_int
+
+    def objective_function(self, ell_max):
+        ells_oc = self.compute_ells_oc(nbl=int(self.cfg['general_cfg']['nbl_3x2pt']),
+                                       ell_min=float(self.cfg['general_cfg']['ell_min']),
+                                       ell_max=ell_max)
+        ssd = np.sum((self.ells_sb - ells_oc) ** 2)
+        # ssd = np.sum(mm.percent_diff(self.ells_sb, ells_oc)**2)  # TODO test this
+        return ssd

@@ -1,3 +1,4 @@
+from matplotlib import gridspec
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
@@ -20,8 +21,6 @@ sys.path.append(f'{ROOT}/Spaceborne/common_cfg')
 import common_cfg.mpl_cfg as mpl_cfg
 
 
-
-
 matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 param_names_label = mpl_cfg.general_dict['cosmo_labels_TeX']
@@ -36,19 +35,53 @@ markersize = mpl_cfg.mpl_rcParams_dict['lines.markersize']
 ###############################################################################
 
 
-def get_kv_pairs(folder):
-    from pathlib import Path
-    for path in Path(folder).glob("*.txt"):
-        yield path.stem, np.genfromtxt(str(path))
+def plot_ell_cuts(ell_cuts_a, ell_cuts_b, ell_cuts_c, label_a, label_b, label_c, kmax_h_over_Mpc, zbins):
+    # Get the global min and max values for the color scale
+    vmin = min(ell_cuts_a.min(), ell_cuts_b.min(), ell_cuts_c.min())
+    vmax = max(ell_cuts_a.max(), ell_cuts_b.max(), ell_cuts_c.min())
 
+    # Create a gridspec layout
+    fig = plt.figure(figsize=(10, 5))
+    gs = gridspec.GridSpec(1, 4, width_ratios=[1, 1, 1, 0.12])
 
-def plot(array, style=".-"):
-    name = mm.namestr(array, globals())
-    plt.plot(range(7), array, style, label=name)
+    # Create axes based on the gridspec layout
+    ax0 = plt.subplot(gs[0])
+    ax1 = plt.subplot(gs[1])
+    ax2 = plt.subplot(gs[2])
+    cbar_ax = plt.subplot(gs[3])
+
+    ticks = np.arange(1, zbins + 1)
+    # Set x and y ticks for both subplots
+    for ax in [ax0, ax1, ax2]:
+        ax.set_xticks(np.arange(zbins))
+        ax.set_yticks(np.arange(zbins))
+        ax.set_xticklabels(ticks, fontsize=15)
+        ax.set_yticklabels(ticks, fontsize=15)
+        ax.set_xlabel('$z_{\\rm bin}$', fontsize=15)
+        ax.set_ylabel('$z_{\\rm bin}$', fontsize=15)
+
+    # Display the matrices with the shared color scale
+    cax0 = ax0.matshow(ell_cuts_a, vmin=vmin, vmax=vmax)
+    cax1 = ax1.matshow(ell_cuts_b, vmin=vmin, vmax=vmax)
+    cax2 = ax2.matshow(ell_cuts_c, vmin=vmin, vmax=vmax)
+
+    # Add titles to the plots
+    ax0.set_title(label_a, fontsize=18)
+    ax1.set_title(label_b, fontsize=18)
+    ax2.set_title(label_c, fontsize=18)
+    fig.suptitle(f'kmax = {kmax_h_over_Mpc:.2f} h_over_mpc_tex', fontsize=18, y=0.85)
+
+    # Add a shared colorbar on the right
+    cbar = fig.colorbar(cax0, cax=cbar_ax)
+    cbar.set_label('$\\ell^{\\rm max}_{ij}$', fontsize=15, loc='center', )
+    cbar.ax.tick_params(labelsize=15)
+
+    plt.tight_layout()
+    plt.show()
 
 
 def bar_plot_old(uncert_gauss, uncert_SSC, difference):
-    labels = ["$\Omega_m$", "$\Omega_b$", "$w_0$", "$w_a$", "$h$", "$n_s$", "$\sigma_8$"]
+    labels = ["$\\Omega_m$", "$\\Omega_b$", "$w_0$", "$w_a$", "$h$", "$n_s$", "$\\sigma_8$"]
 
     x = np.arange(len(labels))  # the label locations
     width = 0.35  # the width of the bars
@@ -59,8 +92,8 @@ def bar_plot_old(uncert_gauss, uncert_SSC, difference):
     ax.bar(x + width / 2, uncert_SSC, width, color="tomato", label='Gauss + SSC')
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
-    ax.set_ylabel('relative uncertainties $\sigma/ \\theta_{fid}$')
-    ax.set_title(f'FM 1-$\sigma$ parameter constraints, {probe} - lower is better')
+    ax.set_ylabel('relative uncertainties $\\sigma/ \\theta_{fid}$')
+    ax.set_title(f'FM 1-$\\sigma$ parameter constraints, {probe} - lower is better')
 
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
@@ -185,38 +218,120 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
     plt.show()
 
 
+def triangle_plot_old(fm_backround, fm_foreground, fiducials, title, label_background, label_foreground,
+                      param_names_labels, param_names_labels_toplot, param_names_labels_tex=None, rotate_param_labels=False):
 
-    
-def triangle_plot(fm_backround, fm_foreground, fiducials, title, label_background, label_foreground, 
-                  param_names_labels, param_names_labels_toplot):
-    
     idxs_tokeep = [param_names_labels.index(param) for param in param_names_labels_toplot]
 
     # parameters' covariance matrix - first invert, then slice! Otherwise, you're fixing the nuisance parameters
     fm_inv_bg = np.linalg.inv(fm_backround)[np.ix_(idxs_tokeep, idxs_tokeep)]
     fm_inv_fg = np.linalg.inv(fm_foreground)[np.ix_(idxs_tokeep, idxs_tokeep)]
-    
+
     fiducials = [fiducials[idx] for idx in idxs_tokeep]
     param_names_labels = [param_names_labels[idx] for idx in idxs_tokeep]
-    
-    bg_contours = GaussianND(mean=fiducials, cov=fm_inv_bg, names=param_names_labels)
-    fg_contours = GaussianND(mean=fiducials, cov=fm_inv_fg, names=param_names_labels)
-    
-    g = plots.get_subplot_plotter()
-    g.settings.linewidth = 2
-    g.settings.legend_fontsize = 22
-    g.settings.linewidth_contour = 2.5
-    g.settings.axes_fontsize = 25
-    g.settings.axes_labelsize = 27
+
+    if param_names_labels_tex is not None:
+        warnings.warn('the user should make sure that the order of the param_names_labels_tex list is the same as \
+                      the order of the param_names_labels:')
+        print(param_names_labels_tex)
+        print(param_names_labels)
+        # remove all the "$" from param_names_labels_tex
+        param_names_labels_tex = [param_name.replace('$', '') for param_name in param_names_labels_tex]
+
+    bg_contours = GaussianND(mean=fiducials, cov=fm_inv_bg, names=param_names_labels, labels=param_names_labels_tex)
+    fg_contours = GaussianND(mean=fiducials, cov=fm_inv_fg, names=param_names_labels, labels=param_names_labels_tex)
+
+    g = plots.get_subplot_plotter(subplot_size=2.3)
     g.settings.subplot_size_ratio = 1
+    g.settings.linewidth = 3
+    g.settings.legend_fontsize = 20
+    g.settings.linewidth_contour = 3
+    g.settings.axes_fontsize = 20
+    g.settings.axes_labelsize = 20
+    g.settings.lab_fontsize = 25  # this is the x labels size
+    g.settings.scaling = True  # prevent scaling down font sizes even though small subplots
     g.settings.tight_layout = True
+    g.settings.axis_tick_x_rotation = 45
     g.settings.solid_colors = 'tab10'
-    g.triangle_plot([bg_contours, fg_contours], filled=False, contour_lws=2, ls=['-','--'],
-                    legend_labels=[label_background, label_foreground], legend_loc='upper right', 
+
+    g.triangle_plot([bg_contours, fg_contours],
+                    # names=param_names_labels,
+                    filled=True, contour_lws=2, ls=['-', '-'],
+                    legend_labels=[label_background, label_foreground], legend_loc='upper right',
                     contour_colors=['tab:blue', 'tab:orange'],
                     line_colors=['tab:blue', 'tab:orange'],
                     )
+
+    if rotate_param_labels:
+        # Rotate x and y parameter name labels.
+        # * also useful if you want to simply align them, by setting rotation=0
+        for ax in g.subplots[:, 0]:
+            ax.yaxis.set_label_position("left")
+            ax.set_ylabel(ax.get_ylabel(), rotation=45, labelpad=20, fontsize=30, ha='center')
+
+        for ax in g.subplots[-1, :]:
+            ax.set_xlabel(ax.get_xlabel(), rotation=45, labelpad=20, fontsize=30, ha='center', va='center')
+
     plt.suptitle(f'{title}', fontsize='x-large')
+    plt.show()
+
+
+def triangle_plot(fisher_matrices, fiducials, title, labels, param_names_labels, param_names_labels_toplot,
+                  param_names_labels_tex=None, rotate_param_labels=False, contour_colors=None, line_colors=None):
+
+    idxs_tokeep = [param_names_labels.index(param) for param in param_names_labels_toplot]
+
+    # Invert and slice the Fisher matrices, ensuring to keep only the desired parameters
+    inv_fisher_matrices = [np.linalg.inv(fm)[np.ix_(idxs_tokeep, idxs_tokeep)] for fm in fisher_matrices]
+
+    fiducials = [fiducials[idx] for idx in idxs_tokeep]
+    param_names_labels = [param_names_labels[idx] for idx in idxs_tokeep]
+
+    if param_names_labels_tex is not None:
+        warnings.warn('Ensure that the order of param_names_labels_tex matches param_names_labels.')
+        param_names_labels_tex = [param_name.replace('$', '') for param_name in param_names_labels_tex]
+
+    # Prepare GaussianND contours for each Fisher matrix
+    contours = [GaussianND(mean=fiducials, cov=fm_inv, names=param_names_labels, labels=param_names_labels_tex)
+                for fm_inv in inv_fisher_matrices]
+
+    g = plots.get_subplot_plotter(subplot_size=2.3)
+    g.settings.subplot_size_ratio = 1
+    g.settings.linewidth = 3
+    g.settings.legend_fontsize = 20
+    g.settings.linewidth_contour = 3
+    g.settings.axes_fontsize = 20
+    g.settings.axes_labelsize = 20
+    g.settings.lab_fontsize = 25  # this is the x labels size
+    g.settings.scaling = True  # prevent scaling down font sizes even with small subplots
+    g.settings.tight_layout = True
+    g.settings.axis_tick_x_rotation = 45
+    g.settings.solid_colors = 'tab10'
+
+    # Set default colors if not provided
+    if contour_colors is None:
+        contour_colors = [f'tab:{color}' for color in ['blue', 'orange', 'green', 'red']]
+    if line_colors is None:
+        line_colors = contour_colors
+
+    # Plot the triangle plot for all Fisher matrices
+    g.triangle_plot(contours,
+                    filled=True, contour_lws=2, ls=['-'] * len(fisher_matrices),
+                    legend_labels=labels, legend_loc='upper right',
+                    contour_colors=contour_colors[:len(fisher_matrices)],
+                    line_colors=line_colors[:len(fisher_matrices)])
+
+    if rotate_param_labels:
+        # Rotate x and y parameter name labels
+        for ax in g.subplots[:, 0]:
+            ax.yaxis.set_label_position("left")
+            ax.set_ylabel(ax.get_ylabel(), rotation=45, labelpad=20, fontsize=30, ha='center')
+
+        for ax in g.subplots[-1, :]:
+            ax.set_xlabel(ax.get_xlabel(), rotation=45, labelpad=20, fontsize=30, ha='center', va='center')
+
+    plt.suptitle(f'{title}', fontsize='x-large')
+    plt.show()
 
 
 def contour_plot_chainconsumer(cov, trimmed_fid_dict):
@@ -306,7 +421,7 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
 
     # output_folder = mm.get_output_folder(ind_ordering, which_forecast)
 
-    ######################### OPTIONS
+    # OPTIONS
     # XXX
     # XXX
     # XXX
@@ -363,10 +478,12 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
             ell_max = 750
 
     # set ell_max name to "XC" in 3x2pt case (just naming)
-    if probe != '3x2pt': probe_ell_max = probe
-    if probe == '3x2pt': probe_ell_max = 'XC'
+    if probe != '3x2pt':
+        probe_ell_max = probe
+    if probe == '3x2pt':
+        probe_ell_max = 'XC'
 
-    ######### davide
+    # davide
     # XXX recheck
     # FM_dav_G   = FM_dav_may[f"FM_{probe}_G_lmax{probe_ell_max}{ell_max}_nbl{nbl}"]
     # FM_dav_SSC = FM_dav_may[f"FM_{probe}_G+SSC_lmax{probe_ell_max}{ell_max}_nbl{nbl}"]
@@ -378,13 +495,13 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
         FM_dav_G = FM_sylv_may[f"FM_{probe}_G_lmax{probe_ell_max}{ell_max}_nbl{nbl}_ellDavide_DavCovmat"]
         FM_dav_SSC = FM_sylv_may[f"FM_{probe}_G+SSC_lmax{probe_ell_max}{ell_max}_nbl{nbl}_ellDavide_DavCovmat"]
 
-    ######### sylvain
+    # sylvain
     nbl = 30  # because in ISTF we used 30 ell bins
     FM_sylv_G = FM_sylv_may[f"FM_{probe}_G_lmax{probe_ell_max}{ell_max}_nbl{nbl}_ellDavide"]
     FM_sylv_SSC = FM_sylv_may[f"FM_{probe}_G+SSC_lmax{probe_ell_max}{ell_max}_nbl{nbl}_ellDavide"]
     nbl = general_config['nbl']  # back to correct number of bins
 
-    ######### uncertainties
+    # uncertainties
     uncert_dav_G = mm.uncertainties_FM(FM_dav_G)[:7]
     uncert_dav_SSC = mm.uncertainties_FM(FM_dav_SSC)[:7]
 
@@ -392,7 +509,7 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
     uncert_sylv_SSC = mm.uncertainties_FM(FM_sylv_SSC)[:7]
 
     # if which_forecast != 'sylvain':
-    ######### SEYFERT
+    # SEYFERT
     # if probe == '3x2pt':
     # FM_SEYF_G = FM_dav_may[f"FM_{probe}_G_lmax{probe_ell_max}{ell_max}_nbl{nbl}_SEYFERT"]
     # FM_SEYF_SSC = FM_dav_may[f"FM_{probe}_G+SSC_lmax{probe_ell_max}{ell_max}_nbl{nbl}_SEYFERT"]
@@ -403,7 +520,7 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
     #     uncert_SEYF_G = np.zeros(7)
     #     uncert_SEYF_SSC = np.zeros(7)
 
-    ######### from 2DCLOE:
+    # from 2DCLOE:
     # FM_2DCLOE_G = np.genfromtxt(path / f'output/FM/{output_folder}/{Cij_folder}/FM_2DCLOE_G.txt')
     # FM_2DCLOE_GpSSC = np.genfromtxt(path / f'output/FM/{output_folder}/{Cij_folder}/FM_2DCLOE_G+SSC.txt')
     # # uncertainties
@@ -415,14 +532,14 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
     if GO_or_GS == "GO":
         dav = uncert_dav_G
         sylv = uncert_sylv_G
-        # if which_forecast != 'sylvain': 
+        # if which_forecast != 'sylvain':
         # CLOE2D = uncert_2DCLOE_G
         # SEYF = uncert_SEYF_G
 
     elif GO_or_GS == "GS":
         dav = uncert_dav_SSC
         sylv = uncert_sylv_SSC
-        # if which_forecast != 'sylvain': 
+        # if which_forecast != 'sylvain':
         # CLOE2D = uncert_2DCLOE_GpSSC
         # SEYF = uncert_SEYF_SSC
 
@@ -435,9 +552,9 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
         diff_dav = mm.percent_diff(dav, mean)
         diff_sylv = mm.percent_diff(sylv, mean)
 
-        # plt.plot(range(7), diff_dav, "o--", label = f"davide {GO_or_GS}") 
-        # plt.plot(range(7), diff_sylv, "o--", label = f"sylvain {GO_or_GS}") 
-        # plt.plot(range(7), diff_SEYF, "o--", label = f"SEYF. {GO_or_GS}") 
+        # plt.plot(range(7), diff_dav, "o--", label = f"davide {GO_or_GS}")
+        # plt.plot(range(7), diff_sylv, "o--", label = f"sylvain {GO_or_GS}")
+        # plt.plot(range(7), diff_SEYF, "o--", label = f"SEYF. {GO_or_GS}")
 
         plt.plot(range(7), diff_dav, "o", label=f"group A, {GO_or_GS}",
                  markersize=markersize)  # XXX delete, just different label
@@ -457,19 +574,16 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
         if plot_ISTF:
             plt.plot(range(7), IST[f'{probe}_{case}'] * 100, "o--", label=f"IST_{probe}_{case}")
 
-        # if which_forecast != 'sylvain': 
+        # if which_forecast != 'sylvain':
         # if probe == '3x2pt': plt.plot(range(7), SEYF, "o--", label = f"SEYF {GO_or_GS}")
         # if probe == '3x2pt': plt.plot(range(7), CLOE2D, "o--", label = f"uncert_2DCLOE {GO_or_GS}")
 
         plt.ylabel("$ \\sigma_\\alpha/ \\theta_{fid} [\\%]$")
         plt.title(f"FM forec., {probe}, {case}.")
 
-
-
-
     elif which_plot == "SSC_degradation_dav_vs_sylv":  # plot only constraints
 
-        ########## noSSC vs SSC, dav vs sylv
+        # noSSC vs SSC, dav vs sylv
 
         diff_dav = mm.percent_diff(uncert_dav_SSC, uncert_dav_G)
         diff_sylv = mm.percent_diff(uncert_sylv_SSC, uncert_sylv_G)
@@ -477,7 +591,7 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
         # mean = (diff_dav + diff_sylv)/2
 
         # diff_dav  = mm.percent_diff(diff_dav, mean) # XXX careful
-        # diff_sylv = mm.percent_diff(diff_sylv, mean)    
+        # diff_sylv = mm.percent_diff(diff_sylv, mean)
 
         plt.plot(range(7), diff_dav, "o-", label=f"davide {probe}")
         plt.plot(range(7), diff_sylv, "o--", label=f"sylvain {probe}")
@@ -496,9 +610,8 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
         # diff = mm.percent_diff(uncert_sylv_SSC, uncert_sylv_G)
         # bar_plot(uncert_sylv_G, uncert_sylv_SSC, diff)
 
-
     elif which_plot == "SSC_degradation":
-        ########## noSSC vs SSC
+        # noSSC vs SSC
         diff_dav = mm.percent_diff(uncert_dav_SSC, uncert_dav_G)
         diff_sylv = mm.percent_diff(uncert_sylv_SSC, uncert_sylv_G)
 
@@ -543,7 +656,7 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
     # plot(uncert_unif, style = "o--")
     # plot(uncert_GCph_3000, style = "o--")
 
-    ############## FOM 
+    # FOM
     FoM = mm.compute_FoM(FM_dav_G)
     print(f'FoM davide G {probe}:\t{FoM:.2f}')
     FoM = mm.compute_FoM(FM_dav_SSC)
@@ -602,7 +715,7 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
     # print("IST_XC_pess: ", IST_XC_pess)
     # print("perc_incr_sylvain: ", percent_diff(uncertainties(FM_WL_sylvain)[:7], SSC)[:7])
 
-    # save on a file 
+    # save on a file
     ###############################################################################
     """
     header = 'params: [$\Omega_m$, $\Omega_b$, $w_0$, $w_a$, $h$, $n_s$, $\sigma_8$]'
@@ -633,7 +746,7 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
     """
     ###############################################################################
 
-    ############################# new bit: vincenzo's 14 may data
+    # new bit: vincenzo's 14 may data
     """
     FM_vinc = FM_vinc_may[f"fm{probe.lower()}o-GR-Flat-eNLA-NA-GO-Opt-EP10"]
     if probe == "GC":

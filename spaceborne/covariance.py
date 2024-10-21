@@ -76,6 +76,54 @@ def bin_2d_matrix(cov, ells_in, ells_out, ells_out_edges):
     return binned_cov
 
 
+def ssc_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
+                       ind_auto, ind_cross, cl_integral_prefactor, sigma2, z_grid, integration_type,
+                       probe_ordering, num_threads=16):
+    """Kernel to compute the 4D integral optimized using Simpson's rule using Julia."""
+
+    suffix = 0
+    folder_name = 'tmp'
+    unique_folder_name = folder_name
+
+    # Loop until we find a folder name that does not exist
+    while os.path.exists(unique_folder_name):
+        suffix += 1
+        unique_folder_name = f'{folder_name}{suffix}'
+    os.makedirs(unique_folder_name)
+    folder_name = unique_folder_name
+
+    np.save(f"{folder_name}/d2CLL_dVddeltab", d2CLL_dVddeltab)
+    np.save(f"{folder_name}/d2CGL_dVddeltab", d2CGL_dVddeltab)
+    np.save(f"{folder_name}/d2CGG_dVddeltab", d2CGG_dVddeltab)
+    np.save(f"{folder_name}/ind_auto", ind_auto)
+    np.save(f"{folder_name}/ind_cross", ind_cross)
+    np.save(f"{folder_name}/cl_integral_prefactor", cl_integral_prefactor)
+    np.save(f"{folder_name}/sigma2", sigma2)
+    np.save(f"{folder_name}/z_grid", z_grid)
+    os.system(
+        f"julia --project=. --threads={num_threads} spaceborne/ssc_integral_julia.jl {folder_name} {integration_type}")
+
+    cov_filename = "cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npy"
+
+    if integration_type == 'trapz-6D':
+        cov_ssc_3x2pt_dict_8D = {}  # it's 10D, actually
+        for probe_a, probe_b in probe_ordering:
+            for probe_c, probe_d in probe_ordering:
+                if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
+                    print(f"Loading {probe_a}{probe_b}{probe_c}{probe_d}")
+                    cov_ssc_3x2pt_dict_8D[(probe_a, probe_b, probe_c, probe_d)] = np.load(
+                        f"{folder_name}/{cov_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}")
+
+    else:
+        cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
+            path=f'{folder_name}',
+            filename=cov_filename,
+            probe_ordering=probe_ordering)
+
+    os.system(f"rm -rf {folder_name}")
+    return cov_ssc_3x2pt_dict_8D
+
+
 def get_ellmax_nbl(probe, general_cfg):
     if probe == 'LL':
         ell_max = general_cfg['ell_max_WL']

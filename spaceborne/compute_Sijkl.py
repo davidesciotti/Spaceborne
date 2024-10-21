@@ -6,7 +6,9 @@ from scipy.interpolate import interp1d
 # from classy import Class
 import matplotlib.pyplot as plt
 import time
-# from PySSC import Sijkl
+import sys
+sys.path.append('/home/davide/Documenti/Lavoro/Programmi/PySSC')
+from PySSC import Sijkl
 
 pi = math.pi
 
@@ -74,7 +76,6 @@ def load_WF(Sijkl_cfg, zbins, EP_or_ED):
             wil = np.genfromtxt(f'{wf_input_folder}/WiWL-{EP_or_ED}{zbins:02}-FS2.dat')
             wig = np.genfromtxt(f'{wf_input_folder}/WiGC-{EP_or_ED}{zbins:02}-FS2.dat')
 
-
         else:
             raise ValueError('input_WF must be either davide, sylvain, marco, vincenzo_SPV3, vincenzo or luca')
 
@@ -125,7 +126,8 @@ def preprocess_wf(wf, zbins):
     return z_arr, wf
 
 
-def compute_Sijkl(cosmo_params_dict, z_arr, windows, windows_normalization, zbins=None, EP_or_ED=None, Sijkl_cfg=None, precision=10, tol=1e-3):
+def compute_Sijkl(cosmo_params_dict, z_arr, windows, windows_normalization, precision=10, tol=1e-3):
+
     if windows_normalization == 'PySSC':
         convention = 0
     elif windows_normalization == 'IST':
@@ -133,12 +135,8 @@ def compute_Sijkl(cosmo_params_dict, z_arr, windows, windows_normalization, zbin
     else:
         raise ValueError('windows_normalization must be either PySSC or IST')
 
-    if z_arr is None and windows is None:
-        warnings.warn("the imports filepath should be specified outside this function/module!", DeprecationWarning)
-        z_arr, windows = load_WF(Sijkl_cfg, zbins, EP_or_ED=EP_or_ED)
-
     assert len(z_arr) > 5000, 'the kernels have to be sampled in a sufficiently high number of z points' \
-                              'for PySSC to work properly. This is quite a rough check.'
+                              'for PySSC to work properly. This is a rough check.'
 
     print('Computing the Sijkl matrix...')
     start = time.perf_counter()

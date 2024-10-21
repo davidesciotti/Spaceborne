@@ -1090,7 +1090,7 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
 
             fig.suptitle(f'log={log_diff}, abs={abs_val}')
             plt.show()
-            
+
             if plot_diff_hist:
                 plt.figure()
                 ax = plt.gca()
@@ -1172,9 +1172,15 @@ def remove_rows_cols_array2D(array, rows_idxs_to_remove):
     return array
 
 
-def remove_null_rows_cols_2D_copilot(array_2d):
+def remove_null_rows_cols_2D(array_2d: np.ndarray):
     """
-    Remove null rows and columns from a 2D array
+    Remove null rows and columns from a 2D numpy array.
+
+    Args:
+        array_2d (numpy.ndarray): The 2D numpy array to remove null rows and columns from.
+
+    Returns:
+        numpy.ndarray: The 2D numpy array with null rows and columns removed.
     """
 
     assert array_2d.ndim == 2, 'ndim should be <= 2; higher-dimensional case not yet implemented'
@@ -3342,7 +3348,7 @@ def cov_4D_to_2DCLOE_3x2pt_bu(cov_4D, nbl, zbins, block_index='vincenzo'):
 
 
 def cov2corr(covariance):
-    """ Taken from 
+    """ Credit:
     https://gist.github.com/wiso/ce2a9919ded228838703c1c7c7dad13b
     """
 
@@ -3501,9 +3507,9 @@ def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED, which
     noise_4d = np.zeros((n_probes, n_probes, zbins, zbins))
 
     if which_shape_noise == 'ISTF':
-        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / n_bar_shear)  # ! old, INcorrect
+        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / n_bar_shear)
     elif which_shape_noise == 'per_component':
-        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar_shear))  # ! correct
+        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar_shear))
     else:
         raise ValueError('which_shape_noise must be ISTF or per_component')
 

@@ -123,7 +123,7 @@ class SpaceborneResponses():
 
         # just some intermediate quantities; this code is not needed but left here for future reference
         # from https://github.com/LSSTDESC/CCLX/blob/master/Halo-mass-function-example.ipynb
-        
+
         # # 1-st order halo bias
         self.halo_mass_range = np.geomspace(1.01E12, 1E15, 128) / self.cosmo_ccl['h']
         self.b1h_hm = np.array([self.ccl_obj.hbf(cosmo=self.cosmo_ccl, M=self.halo_mass_range,
@@ -137,7 +137,7 @@ class SpaceborneResponses():
         # n_g_of_m = self.ccl_obj.halo_profile_hod.get_normalization(cosmo=self.cosmo_ccl, a=1, hmc=self.ccl_obj.hmc)
         # # ...
 
-        # TODO to be more consitent, you should minimize some (see paper) halo model parameters to make b1g_hm fit the 
+        # TODO to be more consitent, you should minimize some (see paper) halo model parameters to make b1g_hm fit the
         # TODO b1g we use (e.g., the FS2 bias)
         # ! IMPORTANT: this function sets self._bf to be the 2nd order halo bias, so it's probably better to
         # ! call b1g afterwards to re-set it to b1h as it should.
@@ -183,14 +183,14 @@ class SpaceborneResponses():
         # I loop to check the impact (and the correctness) of b2
         b1_arr = self.b1_func(self.z_grid)
         self.b1_arr = b1_arr[None, :]
-        
+
         if b2g_from_halomodel:
-            # in this case, use hm integrals to compute b2g from b2h, 
+            # in this case, use hm integrals to compute b2g from b2h,
             # itself computed using the Lazeyras 2016 b2h(b1h) fit
             self.get_b2_with_ccl(self.z_grid)
             self.b2_arr = self.b2g_hm[None, :]
         else:
-            # in this case use the Lazeyras 2016 fit, but approximating b2g \sim b2h(b1g) 
+            # in this case use the Lazeyras 2016 fit, but approximating b2g \sim b2h(b1g)
             self.b2_arr = self.b2h_of_b1h_fit(b1_arr)[None, :]
 
         self.b2_arr_null = np.zeros(self.b2_arr.shape)

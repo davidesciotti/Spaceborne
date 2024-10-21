@@ -70,7 +70,8 @@ class OneCovarianceInterface():
         cl_ll_oc_filename = ascii_filenames_dict['cl_ll_ascii_filename']
         cl_gl_oc_filename = ascii_filenames_dict['cl_gl_ascii_filename']
         cl_gg_oc_filename = ascii_filenames_dict['cl_gg_ascii_filename']
-        nofz_filename_ascii = ascii_filenames_dict['nofz_ascii_filename']
+        nz_src_filename_ascii = ascii_filenames_dict['nz_src_ascii_filename']
+        nz_lns_filename_ascii = ascii_filenames_dict['nz_lns_ascii_filename']
         gal_bias_ascii_filename = ascii_filenames_dict['gal_bias_ascii_filename']
 
         # TODO import another file??
@@ -132,8 +133,9 @@ class OneCovarianceInterface():
         cfg_onecov_ini['survey specs']['ellipticity_dispersion'] = ', '.join(map(str, ellipticity_dispersion_list))
 
         cfg_onecov_ini['redshift']['z_directory'] = self.oc_path
-        cfg_onecov_ini['redshift']['zclust_file'] = nofz_filename_ascii
-        cfg_onecov_ini['redshift']['zlens_file'] = nofz_filename_ascii
+        # TODO re-check that the OC documentation is correct
+        cfg_onecov_ini['redshift']['zclust_file'] = nz_lns_filename_ascii
+        cfg_onecov_ini['redshift']['zlens_file'] = nz_src_filename_ascii
 
         cfg_onecov_ini['cosmo']['h'] = str(self.cfg['cosmology']['FM_ordered_params']['h'])
         cfg_onecov_ini['cosmo']['ns'] = str(self.cfg['cosmology']['FM_ordered_params']['ns'])

@@ -45,7 +45,10 @@ import spaceborne.sigma2_SSC as sigma2_SSC
 import spaceborne.onecovariance_interface as oc_interface
 import spaceborne.config_checker as config_checker
 import spaceborne.responses as responses
+import spaceborne.bnt as bnt_utils
+import pprint
 
+pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 # TODO restore this
 # ROOT = os.getcwd()
@@ -98,6 +101,8 @@ which_pk = general_cfg['which_pk']
 which_ng_cov_suffix = 'G' + ''.join(covariance_cfg[covariance_cfg['ng_cov_code'] + '_cfg']['which_ng_cov'])
 flat_fid_pars_dict = mm.flatten_dict(fid_pars_dict)
 h = flat_fid_pars_dict['h']
+which_sigma2_b = covariance_cfg['which_sigma2_b']
+z_steps_ssc_integrands = covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands']
 
 # load some nuisance parameters
 # note that zbin_centers is not exactly equal to the result of wf_cl_lib.get_z_mean...
@@ -123,6 +128,12 @@ clr = cm.rainbow(np.linspace(0, 1, zbins))
 z_grid_ssc_integrands = np.linspace(covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
                                     covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
                                     covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands'])
+k_grid_resp = np.geomspace(covariance_cfg['PyCCL_cfg']['k_grid_tkka_min'],
+                           covariance_cfg['PyCCL_cfg']['k_grid_tkka_max'],
+                           covariance_cfg['PyCCL_cfg']['k_grid_tkka_steps_SSC'])
+if len(z_grid_ssc_integrands) < 250:
+    warnings.warn('z_grid_ssc_integrands is small, at the moment it used to compute various intermediate quantities')
+
 
 # some checks on the configurations
 config_checker_obj = config_checker.SpaceborneConfigChecker(cfg)
@@ -234,7 +245,7 @@ variable_specs = {'EP_or_ED': ep_or_ed,
                   'flat_or_nonflat': general_cfg['flat_or_nonflat'],
                   'flagship_version': general_cfg['flagship_version'],
                   }
-print('variable_specs:\n')
+pp.pprint('variable_specs:\n')
 print(variable_specs)
 
 # %% [markdown]
@@ -295,11 +306,13 @@ if nz_gaussian_smoothing:
     nz_lns = wf_cl_lib.gaussian_smmothing_nz(zgrid_nz_lns, nz_unshifted_lns, nz_gaussian_smoothing_sigma, plot=True)
 if compute_bnt_with_shifted_nz_for_zcuts:
     nz_src = wf_cl_lib.shift_nz(zgrid_nz_src, nz_unshifted_src, dzWL_fiducial, normalize=normalize_shifted_nz,
-                                plot_nz=False, interpolation_kind=shift_nz_interpolation_kind)
+                                plot_nz=False, interpolation_kind=shift_nz_interpolation_kind,
+                                bounds_error=False, fill_value=0)
     nz_lns = wf_cl_lib.shift_nz(zgrid_nz_lns, nz_unshifted_lns, dzGC_fiducial, normalize=normalize_shifted_nz,
-                                plot_nz=False, interpolation_kind=shift_nz_interpolation_kind)
+                                plot_nz=False, interpolation_kind=shift_nz_interpolation_kind,
+                                bounds_error=False, fill_value=0)
 
-bnt_matrix = covmat_utils.compute_BNT_matrix(
+bnt_matrix = bnt_utils.compute_BNT_matrix(
     zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
 
 # 2. compute the kernels for the un-shifted n(z) (for consistency)
@@ -398,7 +411,7 @@ if shift_nz:
                                 plot_nz=False, interpolation_kind=shift_nz_interpolation_kind)
     # * this is important: the BNT matrix I use for the rest of the code (so not to compute the ell cuts) is instead
     # * consistent with the shifted n(z) used to compute the kernels
-    bnt_matrix = covmat_utils.compute_BNT_matrix(
+    bnt_matrix = bnt_utils.compute_BNT_matrix(
         zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
 
 
@@ -498,71 +511,102 @@ cov_folder_sb = covariance_cfg['Spaceborne_cfg']['cov_path']
 cov_sb_filename = covariance_cfg['Spaceborne_cfg']['cov_filename']
 variable_specs['ng_cov_code'] = covariance_cfg['ng_cov_code']
 variable_specs['which_ng_cov'] = which_ng_cov_suffix
-include_b2 = covariance_cfg['Spaceborne_cfg']['include_b2']
+include_b2g = covariance_cfg['Spaceborne_cfg']['include_b2g']
 
 if 'cNG' in covariance_cfg['Spaceborne_cfg']['which_ng_cov']:
     raise NotImplementedError('You should review the which_ng_cov arg in the cov_filename formatting above, "SSC" is'
                               'hardcoded at the moment')
 
+# precompute pk_mm, pk_gm and pk_mm, if you want to rescale the responses
+k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid_resp, z_grid_ssc_integrands, use_h_units,
+                                          ccl_obj.cosmo_ccl, pk_kind='nonlinear')
+
+# compute P_gm, P_gg
+gal_bias = ccl_obj.gal_bias_2d[:, 0]
+
+# check that it's the same in each bin
+for zi in range(zbins):
+    np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
+
+pk_gm_2d = pk_mm_2d * gal_bias
+pk_gg_2d = pk_mm_2d * gal_bias ** 2
+
 if covariance_cfg['ng_cov_code'] == 'Spaceborne':
     print('Start SSC computation with Spaceborne...')
 
+    # ! 1. Get halo model responses from CCL
     if covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'halo_model':
 
-        # ! 1. Get halo model responses from CCL
         ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
-                                       pyccl_cfg=pyccl_cfg, which_pk='_')
+                                       pyccl_cfg=pyccl_cfg)
 
         # k and z grids (responses will be interpolated below)
-        k_grid_resp = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
-        a_grid_resp = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
+        k_grid_resp_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
+        a_grid_resp_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
         # translate a to z and cut the arrays to the maximum redshift of the SU responses (much smaller range!)
-        z_grid_resp = cosmo_lib.a_to_z(a_grid_resp)[::-1]
+        z_grid_resp_hm = cosmo_lib.a_to_z(a_grid_resp_hm)[::-1]
 
-        dPmm_ddeltab = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
-        dPgm_ddeltab = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
-        dPgg_ddeltab = ccl_obj.responses_dict['G', 'G', 'G', 'G']['dpk12']
+        assert np.allclose(k_grid_resp_hm, k_grid_resp, atol=0, rtol=1e-2), 'CCL and SB k_grids for responses '\
+            'should match'
+
+        dPmm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
+        dPgm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
+        dPgg_ddeltab_hm = ccl_obj.responses_dict['G', 'G', 'G', 'G']['dpk12']
 
         # a is flipped w.r.t. z
-        dPmm_ddeltab_hm = np.flip(dPmm_ddeltab, axis=1)
-        dPgm_ddeltab_hm = np.flip(dPgm_ddeltab, axis=1)
-        dPgg_ddeltab_hm = np.flip(dPgg_ddeltab, axis=1)
+        dPmm_ddeltab_hm = np.flip(dPmm_ddeltab_hm, axis=1)
+        dPgm_ddeltab_hm = np.flip(dPgm_ddeltab_hm, axis=1)
+        dPgg_ddeltab_hm = np.flip(dPgg_ddeltab_hm, axis=1)
 
         # quick sanity check
         assert np.allclose(ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34'],
                            ccl_obj.responses_dict['G', 'L', 'G', 'G']['dpk12'], atol=0, rtol=1e-5)
         assert np.allclose(ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk34'],
                            ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12'], atol=0, rtol=1e-5)
-        assert dPmm_ddeltab.shape == dPgm_ddeltab.shape == dPgg_ddeltab.shape, 'dPab_ddeltab_hm shape mismatch'
+        assert dPmm_ddeltab_hm.shape == dPgm_ddeltab_hm.shape == dPgg_ddeltab_hm.shape, 'dPab_ddeltab_hm shape mismatch'
 
-        dPmm_ddeltab_hm_func = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPmm_ddeltab_hm, method='linear')
-        dPgm_ddeltab_hm_func = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgm_ddeltab_hm, method='linear')
-        dPgg_ddeltab_hm_func = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgg_ddeltab_hm, method='linear')
+        dPmm_ddeltab_hm_func = interp1d(x=z_grid_resp_hm, y=dPmm_ddeltab_hm, axis=1, kind='linear')
+        dPgm_ddeltab_hm_func = interp1d(x=z_grid_resp_hm, y=dPgm_ddeltab_hm, axis=1, kind='linear')
+        dPgg_ddeltab_hm_func = interp1d(x=z_grid_resp_hm, y=dPgg_ddeltab_hm, axis=1, kind='linear')
+
+        # I do not assign diretly to dPxx_ddeltab to be able to plot later if necessary
+        dPmm_ddeltab_hm = dPmm_ddeltab_hm_func(z_grid_ssc_integrands)
+        dPgm_ddeltab_hm = dPgm_ddeltab_hm_func(z_grid_ssc_integrands)
+        dPgg_ddeltab_hm = dPgg_ddeltab_hm_func(z_grid_ssc_integrands)
+        r_mm_hm = dPmm_ddeltab_hm / pk_mm_2d
+        r_gm_hm = dPgm_ddeltab_hm / pk_gm_2d
+        r_gg_hm = dPgg_ddeltab_hm / pk_gg_2d
+
+        dPmm_ddeltab = dPmm_ddeltab_hm
+        dPgm_ddeltab = dPgm_ddeltab_hm
+        dPgg_ddeltab = dPgg_ddeltab_hm
 
     elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe':
 
-        k_grid_resp = np.logspace(covariance_cfg['Spaceborne_cfg']['log10_k_min_resp'],
-                                  covariance_cfg['Spaceborne_cfg']['log10_k_max_resp'],
-                                  covariance_cfg['Spaceborne_cfg']['k_steps_resp'])
-        z_grid_resp = z_grid_ssc_integrands
+        resp_obj = responses.SpaceborneResponses(cfg=cfg, 
+                                                 k_grid=k_grid_resp,
+                                                 z_grid=z_grid_ssc_integrands,
+                                                 ccl_obj=ccl_obj)
+        r_mm_sbclass = resp_obj.compute_r1_mm()
+        resp_obj.get_rab_and_dpab_ddeltab(b2g_from_halomodel=True)
 
-        resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
-                                                 z_grid=z_grid_resp,
-                                                 cosmo_ccl=ccl_obj.cosmo_ccl,
-                                                 b1_func=ccl_obj.gal_bias_func_ofz)
-        r_mm = resp_obj.compute_r1_mm()
-        resp_obj.get_rab_and_dpab_ddeltab()
-
-        if covariance_cfg['Spaceborne_cfg']['include_b2']:
-            r_gm = resp_obj.r1_gm
-            r_gg = resp_obj.r1_gg
-        elif not covariance_cfg['Spaceborne_cfg']['include_b2']:
-            r_gm = resp_obj.r1_gm_nob2
-            r_gg = resp_obj.r1_gg_nob2
+        if covariance_cfg['Spaceborne_cfg']['include_b2g']:
+            r_gm_sbclass = resp_obj.r1_gm
+            r_gg_sbclass = resp_obj.r1_gg
+        else:
+            r_gm_sbclass = resp_obj.r1_gm_nob2
+            r_gg_sbclass = resp_obj.r1_gg_nob2
 
         dPmm_ddeltab = resp_obj.dPmm_ddeltab
         dPgm_ddeltab = resp_obj.dPgm_ddeltab
         dPgg_ddeltab = resp_obj.dPgg_ddeltab
+
+        dPmm_ddeltab = resp_obj.dPmm_ddeltab
+        dPgm_ddeltab = resp_obj.dPgm_ddeltab
+        dPgg_ddeltab = resp_obj.dPgg_ddeltab
+
+        b1g_hm = resp_obj.b1g_hm
+        b2g_hm = resp_obj.b2g_hm
 
     else:
         raise ValueError('which_pk_responses must be either "halo_model" or "separate_universe"')
@@ -581,12 +625,22 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
         wf_mu = ccl_obj.wf_mu_arr / r_of_z_square[:, None]
         wf_lensing = ccl_obj.wf_lensing_arr / r_of_z_square[:, None]
 
-    # # ! compute the Pk responses(k, z) in k_limber and z_grid_ssc_integrands
-    dPmm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPmm_ddeltab, method='linear')
-    dPgm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgm_ddeltab, method='linear')
-    dPgg_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_resp), dPgg_ddeltab, method='linear')
+    elif covariance_cfg['Spaceborne_cfg']['cl_integral_convention'] in ('Euclid', 'Euclid_KE_approximation'):
+        wf_delta = ccl_obj.wf_delta_arr
+        wf_gamma = ccl_obj.wf_gamma_arr
+        wf_ia = ccl_obj.wf_ia_arr
+        wf_mu = ccl_obj.wf_mu_arr
+        wf_lensing = ccl_obj.wf_lensing_arr
 
-    # # ! test k_max_limber vs k_max_dPk and adjust z_min_ssc_integrands accordingly
+    else:
+        raise ValueError('cl_integral_convention must be either "PySSC" or "Euclid" or "Euclid_KE_approximation')
+
+    # ! compute the Pk responses(k, z) in k_limber and z_grid_ssc_integrands
+    dPmm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_ssc_integrands), dPmm_ddeltab, method='linear')
+    dPgm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_ssc_integrands), dPgm_ddeltab, method='linear')
+    dPgg_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_ssc_integrands), dPgg_ddeltab, method='linear')
+
+    # ! test k_max_limber vs k_max_dPk and adjust z_min_ssc_integrands accordingly
     k_max_resp = np.max(k_grid_resp)
     ell_grid = ell_dict['ell_3x2pt']
     kmax_limber = cosmo_lib.get_kmax_limber(ell_grid, z_grid_ssc_integrands, use_h_units, ccl_obj.cosmo_ccl)
@@ -631,75 +685,109 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
     k_grid_sigma2 = np.logspace(covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'],
                                 covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
                                 covariance_cfg['Spaceborne_cfg']['k_steps_sigma2'])
-    which_sigma2_B = covariance_cfg['Spaceborne_cfg']['which_sigma2_B']
 
-    sigma2_b_path = covariance_cfg['Spaceborne_cfg']['sigma2_b_path']
-    sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename']
-    if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2_b']:
-        # TODO define a suitable interpolator if the zgrid doesn't match
-        sigma2_b_dict = np.load(f'{sigma2_b_path}/{sigma2_b_filename}', allow_pickle=True).item()
-        cfg_sigma2_b = sigma2_b_dict['cfg']  # TODO check that the cfg matches the one
-        sigma2_b = sigma2_b_dict['sigma2_b']
+    # TODO find best way to handle these conditions, too much nesting
+    sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename'].format(
+        ROOT=ROOT,
+        which_sigma2_b=str(which_sigma2_b),
+        zmin=covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
+        zmax=covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
+        zsteps=z_steps_ssc_integrands,
+        log10kmin=covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'],
+        log10kmax=covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
+        ksteps=covariance_cfg['Spaceborne_cfg']['k_steps_sigma2']
+    )
+    if covariance_cfg['Spaceborne_cfg']['use_KE_approximation']:
+
+        # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
+        ccl_obj.set_sigma2_b(z_grid=z_grid_ssc_integrands,
+                             fsky=covariance_cfg['fsky'],
+                             which_sigma2_b=which_sigma2_b,
+                             nside_mask=covariance_cfg['nside_mask'],
+                             mask_path=covariance_cfg['mask_path'])
+
+        _a, sigma2_b = ccl_obj.sigma2_b_tuple
+        sigma2_b = sigma2_b[::-1]
+        _z = cosmo_lib.a_to_z(_a)[::-1]
+
+        if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
+            raise NotImplementedError('TODO')
+
     else:
-        # TODO input ell and cl mask
-        print('Computing sigma2_b...')
-        sigma2_b = np.zeros((len(z_grid_ssc_integrands), len(z_grid_ssc_integrands)))
-        for z2_idx, z2 in enumerate(tqdm(z_grid_ssc_integrands)):
-            sigma2_b[:, z2_idx] = sigma2_SSC.sigma2_func_vectorized(
-                z1_arr=z_grid_ssc_integrands,
-                z2=z2, k_grid_sigma2=k_grid_sigma2,
-                cosmo_ccl=ccl_obj.cosmo_ccl,
-                which_sigma2_B=which_sigma2_B,
-                ell_mask=None, cl_mask=None)
 
-        if covariance_cfg['Spaceborne_cfg']['save_sigma2_b']:
+        if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
+            # TODO define a suitable interpolator if the zgrid doesn't match
+            sigma2_b_dict = np.load(sigma2_b_filename, allow_pickle=True).item()
+            cfg_sigma2_b = sigma2_b_dict['cfg']  # TODO check that the cfg matches the one
+            sigma2_b = sigma2_b_dict['sigma2_b']
+        else:
+            print('Computing sigma2_b...')
+            sigma2_b = sigma2_SSC.sigma2_z1z2_wrap(
+                z_grid_ssc_integrands=z_grid_ssc_integrands,
+                k_grid_sigma2=k_grid_sigma2,
+                cosmo_ccl=ccl_obj.cosmo_ccl,
+                which_sigma2_b=which_sigma2_b,
+                area_deg2_in=covariance_cfg['survey_area_deg2'],
+                nside_mask=covariance_cfg['nside_mask'],
+                mask_path=covariance_cfg['mask_path']
+            )
+
+            # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to decrease
+            # the former by fsky (eq. 29 of https://arxiv.org/pdf/1612.05958)
             sigma2_b_dict_tosave = {
                 'cfg': cfg,
                 'sigma2_b': sigma2_b,
             }
-            np.save(f'{sigma2_b_path}/{sigma2_b_filename}', sigma2_b_dict_tosave, allow_pickle=True)
+            np.save(sigma2_b_filename, sigma2_b_dict_tosave, allow_pickle=True)
 
-    mm.matshow(sigma2_b, log=True, abs_val=True, title=r'$\sigma^2_B(z_1, z_2)$')
+    if sigma2_b.ndim == 2:
+        mm.matshow(sigma2_b, log=True, abs_val=True, title=r'$\sigma^2_B(z_1, z_2)$')
 
-    plt.figure()
-    plt.semilogy(z_grid_ssc_integrands, np.diag(sigma2_b))
-    plt.xlabel('$z$')
-    plt.ylabel(r'$\sigma^2_B(z_1=z_2)$')
-    plt.close()
+        plt.figure()
+        plt.semilogy(z_grid_ssc_integrands, np.diag(sigma2_b))
+        plt.xlabel('$z$')
+        plt.ylabel(r'$\sigma^2_B(z_1=z_2)$')
+        plt.close()
 
-    z1_idx = len(z_grid_ssc_integrands) // 2
-    z1_val = z_grid_ssc_integrands[z1_idx]
-    plt.figure()
-    plt.plot(z_grid_ssc_integrands, sigma2_b[z1_idx, :])
-    plt.xlabel('$z$')
-    plt.ylabel(r'$\sigma^2_B(z_2, z1=%.3f)$' % z1_val)
-    plt.close()
+        z1_idx = len(z_grid_ssc_integrands) // 2
+        z1_val = z_grid_ssc_integrands[z1_idx]
+        plt.figure()
+        plt.plot(z_grid_ssc_integrands, sigma2_b[z1_idx, :])
+        plt.xlabel('$z$')
+        plt.ylabel(r'$\sigma^2_B(z_2, z1=%.3f)$' % z1_val)
+        plt.close()
+    
+    else:
+        plt.figure()
+        plt.semilogy(z_grid_ssc_integrands, sigma2_b)
+        plt.xlabel('$z$')
+        plt.ylabel(r'$\sigma^2_B(z)$')
 
     # ! 4. Perform the integration calling the Julia module
     print('Performing the 2D integral in Julia...')
     start = time.perf_counter()
     cov_ssc_3x2pt_dict_8D = covmat_utils.ssc_integral_julia(d2CLL_dVddeltab=d2CLL_dVddeltab,
-                                                            d2CGL_dVddeltab=d2CGL_dVddeltab,
-                                                            d2CGG_dVddeltab=d2CGG_dVddeltab,
-                                                            ind_auto=ind_auto, ind_cross=ind_cross,
-                                                            cl_integral_prefactor=cl_integral_prefactor, sigma2=sigma2_b,
-                                                            z_grid=z_grid_ssc_integrands,
-                                                            integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
-                                                            probe_ordering=probe_ordering,
-                                                            num_threads=general_cfg['num_threads'])
+                                               d2CGL_dVddeltab=d2CGL_dVddeltab,
+                                               d2CGG_dVddeltab=d2CGG_dVddeltab,
+                                               ind_auto=ind_auto, ind_cross=ind_cross,
+                                               cl_integral_prefactor=cl_integral_prefactor, sigma2=sigma2_b,
+                                               z_grid=z_grid_ssc_integrands,
+                                               probe_ordering=probe_ordering,
+                                               integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
+                                               num_threads=general_cfg['num_threads'])
     print('SSC computed with Julia in {:.2f} s'.format(time.perf_counter() - start))
 
-    # If the mask is not passed to sigma2_b, we need to divide by fsky
-    if which_sigma2_B == 'full-curved-sky':
+    # in the full_curved_sky case only, sigma2_b has to be divided by fsky
+    if which_sigma2_b == 'full_curved_sky':
         for key in cov_ssc_3x2pt_dict_8D.keys():
             cov_ssc_3x2pt_dict_8D[key] /= covariance_cfg['fsky']
-    elif which_sigma2_B == 'mask':
-        raise NotImplementedError('Not implemented yet, but very easy to do')
+    elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask', 'flat_sky']:
+        pass
     else:
-        raise ValueError(f'which_sigma2_B must be either "full-curved-sky" or "mask"')
+        raise ValueError(f'which_sigma2_b = {which_sigma2_b} not recognized')
 
     # save the covariance blocks
-    # # ! note that these files already account for the sky fraction!!
+    # ! note that these files already account for the sky fraction!!
     # TODO fsky suffix in cov name should be added only in this case... or not? the other covariance files don't have this...
     for key in cov_ssc_3x2pt_dict_8D.keys():
         probe_a, probe_b, probe_c, probe_d = key
@@ -709,30 +797,30 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
                                                           probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}',
                 cov_ssc_3x2pt_dict_8D[key])
 
-# this is not very elegant, find a better solution
-if covariance_cfg['ng_cov_code'] == 'Spaceborne':
-    covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
+    # this is not very elegant, find a better solution
+    if covariance_cfg['ng_cov_code'] == 'Spaceborne':
+        covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 
-print('SSC computed with Spaceborne')
-# TODO integrate this with Spaceborne_covg
+    print('SSC computed with Spaceborne')
+    # TODO integrate this with Spaceborne_covg
 
-symmetrize_output_dict = {
-    ('L', 'L'): False,
-    ('G', 'L'): False,
-    ('L', 'G'): False,
-    ('G', 'G'): False,
-}
-cov_ssc_sb_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
-    covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
-cov_ssc_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_ssc_sb_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
-cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
+    symmetrize_output_dict = {
+        ('L', 'L'): False,
+        ('G', 'L'): False,
+        ('L', 'G'): False,
+        ('G', 'G'): False,
+    }
+    cov_ssc_sb_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
+        covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
+    cov_ssc_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_ssc_sb_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
+    cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
 
-cov_3x2pt_SS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), gl_or_lg)
+    cov_3x2pt_SS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), gl_or_lg)
 
-# to see the individual covariance blocks
-cov_3x2pt_SS_2D = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SS_4D, block_index='ell', zbins=zbins)
+    # to see the individual covariance blocks
+    cov_3x2pt_SS_2D = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SS_4D, block_index='ell', zbins=zbins)
 
-mm.matshow(cov_3x2pt_SS_2D, log=True, abs_val=True, title='SSC 2D')
+    mm.matshow(cov_3x2pt_SS_2D, log=True, abs_val=True, title='SSC 2D')
 
 # %% [markdown]
 # #### NG covariance with OneCovariance

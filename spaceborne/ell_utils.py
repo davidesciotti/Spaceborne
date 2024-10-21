@@ -21,7 +21,7 @@ def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b, cosmo_ccl, zbins, h, 
 
     if general_cfg['which_cuts'] == 'Francis':
 
-        raise Exception('I want the output to be an array, see the Vincenzo case. probebly best to split these 2 funcs')
+        raise Exception('I want the output to be an array, see the standard case. probebly best to split these 2 funcs')
         assert general_cfg['EP_or_ED'] == 'ED', 'Francis cuts are only available for the ED case'
 
         ell_cuts_fldr = general_cfg['ell_cuts_folder']
@@ -49,7 +49,7 @@ def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b, cosmo_ccl, zbins, h, 
 
         return ell_cuts_dict
 
-    elif general_cfg['which_cuts'] == 'Vincenzo':
+    elif general_cfg['which_cuts'] == 'standard':
         # the "Limber", or "standard" cuts
 
         kmax_1_over_Mpc = kmax_h_over_Mpc * h
@@ -66,7 +66,7 @@ def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b, cosmo_ccl, zbins, h, 
         return ell_cuts_array
 
     else:
-        raise Exception('which_cuts must be either "Francis" or "Vincenzo"')
+        raise Exception('which_cuts must be either "Francis" or "standard"')
 
 
 def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum, zbins):

@@ -13,20 +13,19 @@ def load_benchmarks(benchmarks_path):
     return bench_output_dict['original_cfg'], bench_output_dict
 
 
-
 # @pytest.fixture
 # def generate_output_from_cfg(tmp_path, load_benchmarks):
-#     """Run the script with the loaded cfg and save the results to a temp folder, then delete the 
+#     """Run the script with the loaded cfg and save the results to a temp folder, then delete the
 #     loaded cfg file"""
 #     cfg, _ = load_benchmarks
-    
+
 #     # Set the temporary output folder
 #     tmp_dir = tmp_path / "outputs"
 #     tmp_dir.mkdir()
 
 #     # Update the path in cfg for saving outputs
 #     cfg['general_cfg']['save_outputs_as_test_benchmarks_path'] = str(tmp_dir)
-    
+
 #     # save cfg as yaml file
 #     with open('../test_cfg.yaml', 'w') as f:
 #         f.write(yaml.dump(cfg))
@@ -37,7 +36,7 @@ def load_benchmarks(benchmarks_path):
 #         capture_output=True,
 #         text=True
 #     )
-    
+
 #     # delete test_cfg.yaml
 #     os.remove('test_cfg.yaml')
 
@@ -54,10 +53,10 @@ def generate_output_from_cfg(tmp_path, load_benchmarks):
     """Run the script with the loaded cfg and save the results to a temp folder, then delete the 
     loaded cfg file."""
     cfg, _ = load_benchmarks
-    
+
     # Update the path in cfg for saving outputs in the temp folder
     cfg['general_cfg']['save_outputs_as_test_benchmarks_path'] = str(tmp_path / 'output_dict.npy')
-    
+
     # Specify the full path for the test_cfg.yaml file
     cfg_file_path = tmp_path / 'test_cfg.yaml'  # Save in the temp directory
 
@@ -71,7 +70,7 @@ def generate_output_from_cfg(tmp_path, load_benchmarks):
         capture_output=False,
         text=True
     )
-    
+
     print('finished execution of main.py in test_outputs.py')
 
     # Ensure the script ran successfully
@@ -81,6 +80,7 @@ def generate_output_from_cfg(tmp_path, load_benchmarks):
     generated_output_dict = np.load(tmp_path / 'output_dict.npy', allow_pickle=True).item()
 
     return generated_output_dict
+
 
 @pytest.mark.parametrize("benchmarks_path", [
     './benchmarks/output_dict.npy',
@@ -93,11 +93,21 @@ def test_outputs_match_benchmarks(load_benchmarks, generate_output_from_cfg):
     _, bench_output_dict = load_benchmarks
     generated_output_dict = generate_output_from_cfg
 
-    # Compare the outputs (you can add more detailed comparisons if needed)
-    # np.testing.assert_allclose(
-    #     generated_output_dict['cov_dict'], bench_output_dict['cov_dict'], rtol=1e-5
-    # )
-    np.testing.assert_allclose(
-        generated_output_dict['cl_ll_3d'], bench_output_dict['cl_ll_3d'], rtol=1e-5
-    )
-    # Add more comparisons as needed...
+    array_names = ['delta', 'gamma', 'ia', 'mu', 'lensing', 'cl_ll_3d', 'cl_gl_3d', 'cl_gg_3d', 'sigma2_b',
+                   'z_grid_ssc_integrands']
+
+    for name in array_names:
+        np.testing.assert_allclose(
+            generated_output_dict[name], bench_output_dict[name], rtol=1e-5, atol=0)
+
+    for key in generated_output_dict['cov_dict'].keys():
+        np.testing.assert_allclose(
+            generated_output_dict['cov_dict'][key], bench_output_dict['cov_dict'][key], rtol=1e-5, atol=0)
+
+    # for key in generated_output_dict['ell_dict'].keys():
+    #     np.testing.assert_allclose(
+    #         generated_output_dict['ell_dict'][key], bench_output_dict['ell_dict'][key], rtol=1e-5, atol=0)
+
+    for key in generated_output_dict['fm_dict'].keys():
+        np.testing.assert_allclose(
+            generated_output_dict['fm_dict'][key], bench_output_dict['fm_dict'][key], rtol=1e-5, atol=0)

@@ -10,6 +10,7 @@ dependencies:
   - numpy
   - scipy
   - pandas
+  - healpy
   - tqdm
   - pip
   - pyyaml

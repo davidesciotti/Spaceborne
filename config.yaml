@@ -94,7 +94,7 @@ general_cfg:
     ell_max_WL_opt: 5000 # this is the value from which the various bin cuts are applied, do not change it
 
     ell_cuts: False
-    which_cuts: Vincenzo
+    which_cuts: standard
     center_or_min: center # cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
     cl_ell_cuts: False
     kmax_h_over_Mpc_ref: 1.0 # this is used when ell_cuts is False, also...?
@@ -171,8 +171,9 @@ covariance_cfg:
     sigma_eps_i: 0.26
     which_shape_noise: per_component # ISTF or per_component
 
-    nofz_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid"
-    nofz_filename: nzTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
+    nz_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid"
+    nz_sources_filename: nzTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
+    nz_lenses_filename: nzTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
 
     nuisance_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzPar"
     nuisance_filename: ngbsTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
@@ -227,7 +228,7 @@ covariance_cfg:
     cov_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat"
     cov_filename: covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_pk{which_pk:s}_{ndim:d}D{cov_suffix:s}{fm_and_cov_suffix:s}.npz
 
-    ng_cov_code: PyCCL # ! PySSC or PyCCL or Spaceborne or OneCovariance
+    ng_cov_code: Spaceborne # ! PySSC or PyCCL or Spaceborne or OneCovariance
 
     # sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
     # - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only). In this case, the output covmat

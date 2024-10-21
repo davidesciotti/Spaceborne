@@ -828,8 +828,8 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
 # %%
 start_time = time.perf_counter()
 if covariance_cfg['ng_cov_code'] == 'OneCovariance' or \
-    (covariance_cfg['ng_cov_code'] == 'Spaceborne' and
-        not covariance_cfg['OneCovariance_cfg']['use_OneCovariance_SSC']):
+        ((covariance_cfg['ng_cov_code'] == 'Spaceborne') and
+         covariance_cfg['OneCovariance_cfg']['use_OneCovariance_cNG']):
 
     # * 1. save ingredients in ascii format
     oc_path = covariance_cfg['OneCovariance_cfg']['onecovariance_folder'].format(ROOT=ROOT, **variable_specs)

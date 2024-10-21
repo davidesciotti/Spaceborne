@@ -26,6 +26,7 @@ import spaceborne.mask_fits_to_cl as mask_utils
 plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 ccl.spline_params['A_SPLINE_NA_PK'] = 240  # gives CAMB error if too high
+ccl.spline_params['K_MAX_SPLINE'] = 300
 
 
 class PycclClass():
@@ -34,6 +35,7 @@ class PycclClass():
 
         # self.zbins = general_cfg['zbins']
         # self.nz_tuple = general_cfg['nz_tuple']
+        # self.f_sky = covariance_cfg['fsky']
         # self.ind = covariance_cfg['ind']
         # self.GL_or_LG = covariance_cfg['GL_or_LG']
         # self.nbl = len(ell_grid)
@@ -99,61 +101,73 @@ class PycclClass():
                                  pk_arr=pk_flipped_in_z.T, is_logp=False)
         return p_of_k_a
 
-    def set_nz(self, n_of_z_load):
-        self.zgrid_nz = n_of_z_load[:, 0]
-        self.n_of_z = n_of_z_load[:, 1:]
-        self.nz_tuple = (self.zgrid_nz, self.n_of_z)
+    def set_nz(self, nz_full_src, nz_full_lns):
+
+        # unpack the array
+        self.zgrid_nz_src = nz_full_src[:, 0]
+        self.zgrid_nz_lns = nz_full_lns[:, 0]
+        self.nz_src = nz_full_src[:, 1:]
+        self.nz_lns = nz_full_lns[:, 1:]
+
+        # define tuple
+        self.nz_src_tuple = (self.zgrid_nz_src, self.nz_src)
+        self.nz_lns_tuple = (self.zgrid_nz_lns, self.nz_lns)
 
     def check_nz_tuple(self, zbins):
-        assert isinstance(self.nz_tuple, tuple), 'nz_tuple must be a tuple'
-        assert self.nz_tuple[1].shape == (len(self.zgrid_nz), zbins), \
+
+        assert isinstance(self.nz_src_tuple, tuple), 'nz_src_tuple must be a tuple'
+        assert isinstance(self.nz_lns_tuple, tuple), 'nz_lns_tuple must be a tuple'
+
+        assert self.nz_src_tuple[1].shape == (len(self.zgrid_nz_src), zbins), \
+            'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
+        assert self.nz_lns_tuple[1].shape == (len(self.zgrid_nz_lns), zbins), \
             'nz_tuple must be a 2D array with shape (len(z_grid_nofz), zbins)'
 
-    def set_ia_bias_tuple(self, z_grid, has_ia):
+    def set_ia_bias_tuple(self, z_grid_src, has_ia):
 
         self.has_ia = has_ia
 
         if self.has_ia:
-            ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(z_grid, cosmo_ccl=self.cosmo_ccl,
+            ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(z_grid_src, cosmo_ccl=self.cosmo_ccl,
                                                         flat_fid_pars_dict=self.flat_fid_pars_dict,
                                                         input_z_grid_lumin_ratio=None,
                                                         input_lumin_ratio=None, output_F_IA_of_z=False)
-            self.ia_bias_tuple = (z_grid, ia_bias_1d)
+            self.ia_bias_tuple = (z_grid_src, ia_bias_1d)
 
         else:
             self.ia_bias_tuple = None
 
-    def set_gal_bias_tuple_spv3(self, z_grid, magcut_lens, poly_fit_values):
-
+    def set_gal_bias_tuple_spv3(self, z_grid_lns, magcut_lens, poly_fit_values):
         gal_bias_func = self.gal_bias_func_dict['fs2_fit']
-        self.gal_bias_func_ofz = partial(gal_bias_func, magcut_lens=magcut_lens / 10, poly_fit_values=poly_fit_values)
-        gal_bias_1d = self.gal_bias_func_ofz(z_grid)
+        self.gal_bias_func_ofz = partial(gal_bias_func, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values)
+        gal_bias_1d = self.gal_bias_func_ofz(z_grid_lns)
 
         # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
         self.gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
-        self.gal_bias_tuple = (z_grid, self.gal_bias_2d)
+        self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
 
-    def set_gal_bias_tuple_istf(self, z_grid, bias_function_str, bias_model):
+    def set_gal_bias_tuple_istf(self, z_grid_lns, bias_function_str, bias_model):
         gal_bias_func = self.gal_bias_func_dict[bias_function_str]
-        z_means = np.array([self.flat_fid_pars_dict[f'zmean{zbin:02d}_photo'] for zbin in range(1, self.zbins + 1)])
-        gal_bias_1d = gal_bias_func(z_means)
+        # TODO it's probably better to pass directly the zbin(_lns) centers and edges, rather than nesting them in a cfg file...
+        z_means_lns = np.array([self.flat_fid_pars_dict[f'zmean{zbin:02d}_photo'] for zbin in range(1, self.zbins + 1)])
+        gal_bias_1d = gal_bias_func(z_means_lns)
 
-        z_edges = np.array([self.flat_fid_pars_dict[f'zedge{zbin:02d}_photo'] for zbin in range(1, self.zbins + 2)])
+        z_edges_lns = np.array([self.flat_fid_pars_dict[f'zedge{zbin:02d}_photo'] for zbin in range(1, self.zbins + 2)])
         self.gal_bias_2d = wf_cl_lib.build_galaxy_bias_2d_arr(
-            gal_bias_1d, z_means, z_edges, self.zbins, z_grid, bias_model=bias_model, plot_bias=True)
-        self.gal_bias_tuple = (z_grid, self.gal_bias_2d)
+            gal_bias_1d, z_means_lns, z_edges_lns, self.zbins, z_grid_lns, bias_model=bias_model, plot_bias=True)
+        self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
 
-    def save_gal_bias_table_ascii(self, z_grid, filename):
+    def save_gal_bias_table_ascii(self, z_grid_lns, filename):
         assert filename.endswith('.ascii'), 'filename must end with.ascii'
-        gal_bias_table = np.hstack((z_grid.reshape(-1, 1), self.gal_bias_2d))
+        gal_bias_table = np.hstack((z_grid_lns.reshape(-1, 1), self.gal_bias_2d))
         np.savetxt(filename, gal_bias_table)
 
-    def set_mag_bias_tuple(self, z_grid, has_magnification_bias, magcut_lens, poly_fit_values):
+    def set_mag_bias_tuple(self, z_grid_lns, has_magnification_bias, magcut_lens, poly_fit_values):
         if has_magnification_bias:
             # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
-            mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(z_grid, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values)
+            mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(z_grid_lns, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values)
             mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), self.zbins, axis=0).T
-            self.mag_bias_tuple = (z_grid, mag_bias_2d)
+            self.mag_bias_tuple = (z_grid_lns, mag_bias_2d)
         else:
             # this is the correct way to set the magnification bias values so that the actual bias is 1, ant the corresponding
             # wf_mu is zero (which is, in theory, the case mag_bias_tuple=None, which however causes pyccl to crash!)
@@ -164,11 +178,12 @@ class PycclClass():
     def set_kernel_obj(self, has_rsd, n_samples_wf):
 
         self.wf_lensing_obj = [ccl.tracers.WeakLensingTracer(cosmo=self.cosmo_ccl,
-                                                             dndz=(self.nz_tuple[0],
-                                                                   self.nz_tuple[1][:, zbin_idx]),
+                                                             dndz=(self.nz_src_tuple[0],
+                                                                   self.nz_src_tuple[1][:, zbin_idx]),
                                                              ia_bias=self.ia_bias_tuple,
                                                              use_A_ia=False,
                                                              n_samples=n_samples_wf) for zbin_idx in range(self.zbins)]
+
         self.wf_galaxy_obj = []
         for zbin_idx in range(self.zbins):
 
@@ -180,8 +195,8 @@ class PycclClass():
 
             self.wf_galaxy_obj.append(ccl.tracers.NumberCountsTracer(cosmo=self.cosmo_ccl,
                                                                      has_rsd=has_rsd,
-                                                                     dndz=(self.nz_tuple[0],
-                                                                           self.nz_tuple[1][:, zbin_idx]),
+                                                                     dndz=(self.nz_lns_tuple[0],
+                                                                           self.nz_lns_tuple[1][:, zbin_idx]),
                                                                      bias=(self.gal_bias_tuple[0],
                                                                            self.gal_bias_tuple[1][:, zbin_idx]),
                                                                      mag_bias=mag_bias_arg,

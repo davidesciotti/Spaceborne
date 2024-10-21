@@ -20,7 +20,6 @@ from scipy.special import erf
 from functools import partial
 import sys
 from tqdm import tqdm
-import math
 import os
 ROOT = os.getenv('ROOT')
 
@@ -461,6 +460,15 @@ def s_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
     # from the MCMC for SPV3 google doc: https://docs.google.com/document/d/1WCGhiBrlTsvl1VS-2ngpjirMnAS-ahtnoGX_7h8JoQU/edit
     return (magbias_of_z_fs2_fit(z, magcut_lens, poly_fit_values=poly_fit_values) + 2) / 5
 
+def b2g_fs2_fit(z):
+    """This function has been fitted by Sylvain G. Beauchamps based on FS2 measurements:
+    z_meas = [0.395, 0.7849999999999999, 1.1749999999999998, 1.565, 1.9549999999999998, 2.3449999999999998]
+    b2_meas = [-0.25209754,  0.14240271,  0.56409318,  1.06597924,  2.84258843,  4.8300518 ]
+    """
+
+    c0, c1, c2, c3 = -0.69682803, 1.60320679, -1.31676159, 0.70271383
+    b2g_ofz = c0 + c1 * z + c2 * z ** 2 + c3 * z ** 3
+    return b2g_ofz
 
 def stepwise_bias(z, gal_bias_vs_zmean, z_edges):
     """
@@ -589,8 +597,7 @@ def build_ia_bias_1d_arr(z_grid_out, cosmo_ccl, flat_fid_pars_dict, input_z_grid
 
     if input_lumin_ratio is None and input_z_grid_lumin_ratio is None:
         # in this case, take the defaults
-        
-        lumin_ratio_file = np.genfromtxt('./input/scaledmeanlum-E2Sa.dat')
+        lumin_ratio_file = np.genfromtxt(f"{ROOT}/Spaceborne/input/scaledmeanlum-E2Sa.dat")
         input_z_grid_lumin_ratio = lumin_ratio_file[:, 0]
         input_lumin_ratio = lumin_ratio_file[:, 1]
 
@@ -1366,7 +1373,7 @@ def cl_derivatives_helper(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
     other_params = deepcopy(fid_pars_dict['other_params'])
     other_params['camb_extra_parameters']['camb']['HMCode_logT_AGN'] = varied_fid_pars_dict['logT']
     full_pars_dict_for_ccl = {**varied_fid_pars_dict, 'other_params': other_params}
-    ccl_obj = pyccl_cov_class.PycclClass(full_pars_dict_for_ccl)
+    ccl_obj = pyccl_interface.PycclClass(full_pars_dict_for_ccl)
     ccl_obj.zbins = zbins
 
     if cfg['covariance_cfg']['PyCCL_cfg']['which_pk_for_pyccl'] == 'CLOE':

@@ -29,11 +29,7 @@ start_time = time.perf_counter()
 
 class SpaceborneResponses():
 
-    def __init__(self, cfg, k_grid, z_grid, cosmo_ccl, b1_func):
-        
-        ccl.spline_params['A_SPLINE_NA_PK'] = 240  # gives CAMB error if too high
-        ccl.spline_params['K_MAX_SPLINE'] = 300 
-
+    def __init__(self, cfg, k_grid, z_grid, ccl_obj):
 
         # grids over which to compute the responses
         self.k_grid = k_grid
@@ -48,11 +44,12 @@ class SpaceborneResponses():
 
         self.zbins = cfg['general_cfg']['zbins']
 
-        self.cosmo_ccl = cosmo_ccl
+        self.ccl_obj = ccl_obj
+        self.cosmo_ccl = ccl_obj.cosmo_ccl
         self.use_h_units = cfg['general_cfg']['use_h_units']
         self.h = cfg['cosmology']['FM_ordered_params']['h']
         assert self.use_h_units is False, 'case True should be fine but for now stick to False'
-        self.b1_func = b1_func
+        self.b1_func = self.ccl_obj.gal_bias_func_ofz
 
         # ! get growth only values - DIMENSIONLESS
         g1_table = np.genfromtxt(f'{ROOT}/Spaceborne/input/Resp_G1_fromsims.dat')
@@ -116,10 +113,45 @@ class SpaceborneResponses():
         # concatenate the 3 arrays over the rows, i.e. the k values
         return np.concatenate((low, mid, high), axis=0)
 
-    def b2_func(self, z):
+    def b2h_of_b1h_fit(self, b1h_ofz):
         """ second-order galaxy bias from fit in Lazeyras et al. 2016 - note that this formula is actually
         for b2_halo(b1_halo), I need to test this better"""
-        return 0.412 - 2.143 * self.b1_func(z) + 0.929 * (self.b1_func(z) ** 2) + 0.008 * (self.b1_func(z) ** 3)
+        return 0.412 - 2.143 * b1h_ofz + 0.929 * (b1h_ofz ** 2) + 0.008 * (b1h_ofz ** 3)
+
+
+    def get_b2_with_ccl(self, z_grid):
+
+        # just some intermediate quantities; this code is not needed but left here for future reference
+        # from https://github.com/LSSTDESC/CCLX/blob/master/Halo-mass-function-example.ipynb
+
+        # # 1-st order halo bias
+        self.halo_mass_range = np.geomspace(1.01E12, 1E15, 128) / self.cosmo_ccl['h']
+        self.b1h_hm = np.array([self.ccl_obj.hbf(cosmo=self.cosmo_ccl, M=self.halo_mass_range,
+                                                    a=cosmo_lib.z_to_a(z)) for z in z_grid])
+        # plt.semilogx(halo_mass_range, halo_bias_1ord[0, :])
+        # #  halo mass function
+        # nm = np.array([self.ccl_obj.hmf(cosmo=self.cosmo_ccl, M=halo_mass_range,
+        #                                 a=cosmo_lib.z_to_a(z)) for z in z_grid])
+        # plt.semilogx(halo_mass_range, halo_mass_range * nm[0, :])
+        # #  mean number of galaxies in a halo
+        # n_g_of_m = self.ccl_obj.halo_profile_hod.get_normalization(cosmo=self.cosmo_ccl, a=1, hmc=self.ccl_obj.hmc)
+        # # ...
+
+        # TODO to be more consitent, you should minimize some (see paper) halo model parameters to make b1g_hm fit the
+        # TODO b1g we use (e.g., the FS2 bias)
+        # ! IMPORTANT: this function sets self._bf to be the 2nd order halo bias, so it's probably better to
+        # ! call b1g afterwards to re-set it to b1h as it should.
+        b2g_hm = np.array([self.ccl_obj.hmc.I_2_1_dav(cosmo=self.cosmo_ccl, k=1e-10,
+                                                      a=cosmo_lib.z_to_a(z), prof=self.ccl_obj.halo_profile_hod) for z in z_grid])
+
+        b1g_hm = np.array([self.ccl_obj.hmc.I_1_1(cosmo=self.cosmo_ccl, k=1e-10,
+                                                  a=cosmo_lib.z_to_a(z), prof=self.ccl_obj.halo_profile_hod) for z in z_grid])
+
+        norm = np.array([self.ccl_obj.halo_profile_hod.get_normalization(cosmo=self.cosmo_ccl,
+                        a=cosmo_lib.z_to_a(z), hmc=self.ccl_obj.hmc) for z in z_grid])
+        self.b2g_hm = b2g_hm / norm
+        self.b1g_hm = b1g_hm / norm
+
 
     def compute_r1_mm(self):
 
@@ -131,7 +163,7 @@ class SpaceborneResponses():
         self.k_grid, self.pk_mm = csmlib.pk_from_ccl(k_array=self.k_grid, z_array=self.z_grid,
                                                      use_h_units=self.use_h_units, cosmo_ccl=self.cosmo_ccl,
                                                      pk_kind='nonlinear')
-        
+
         dpkmm_dk = np.gradient(self.pk_mm, self.k_grid, axis=0)
         # I broadcast k_grid as k_grid[:, None] here and below to have the correct shape (k_points, 1)
         dlogpkmm_dlogk = self.k_grid[:, None] / self.pk_mm * dpkmm_dk
@@ -145,51 +177,22 @@ class SpaceborneResponses():
 
         return self.r1_mm
 
-    def get_b2_with_ccl(self, z, cosmo_ccl):
-        # TODO implement this!
-        
-        # ! new section: compute second-order galaxy bias (I basically didn't even begin this test)
-        mass_def = ccl.halos.MassDef200m
-        c_M_relation = ccl.halos.ConcentrationDuffy08(mass_def=mass_def)
-        hmf = ccl.halos.MassFuncTinker10(mass_def=mass_def)
-        hbf = ccl.halos.HaloBiasTinker10(mass_def=mass_def)
-        hmc = ccl.halos.HMCalculator(mass_function=hmf, halo_bias=hbf, mass_def=mass_def)
-        halo_profile_nfw = ccl.halos.HaloProfileNFW(mass_def=mass_def, concentration=c_M_relation)
-        halo_profile_hod = ccl.halos.HaloProfileHOD(mass_def=mass_def, concentration=c_M_relation)
-        
-        
-        a = cosmo_lib.z_to_a(z)
-        
-        # Define the integrand
-        def integrand(M, a):
-            # Compute Φ_MF(M, a)
-            phi_mf = hmc.mass_function(cosmo_ccl, M, a)
-            
-            # Compute b_1^h(M, a)
-            b1h = hmc.halo_bias(cosmo_ccl, M, a)
-            
-            # Compute N(M)
-            n_given_m = halo_profile_hod.get_number(M)
-            
-            return phi_mf * b1h * n_given_m
 
-        # Define n_gal(z)
-        def n_gal(a):
-            return integrate.quad(lambda M: integrand(M, a), 1e10, 1e16)[0]
-
-        # Compute b₂(z)
-        numerator = integrate.quad(lambda M: integrand(M, a) * self.hbf(M, a), 1e10, 1e16)[0]
-        denominator = n_gal(a)
-            
-        
-        return numerator / denominator
-
-
-    def get_rab_and_dpab_ddeltab(self):
+    def get_rab_and_dpab_ddeltab(self, b2g_from_halomodel):
         # galaxy bias (I broadcast it to be able to multiply/sum it with r1_mm and pk_mm)
         # I loop to check the impact (and the correctness) of b2
-        self.b1_arr = self.b1_func(self.z_grid)[None, :]
-        self.b2_arr = self.b2_func(self.z_grid)[None, :]
+        b1_arr = self.b1_func(self.z_grid)
+        self.b1_arr = b1_arr[None, :]
+
+        if b2g_from_halomodel:
+            # in this case, use hm integrals to compute b2g from b2h,
+            # itself computed using the Lazeyras 2016 b2h(b1h) fit
+            self.get_b2_with_ccl(self.z_grid)
+            self.b2_arr = self.b2g_hm[None, :]
+        else:
+            # in this case use the Lazeyras 2016 fit, but approximating b2g \sim b2h(b1g)
+            self.b2_arr = self.b2h_of_b1h_fit(b1_arr)[None, :]
+
         self.b2_arr_null = np.zeros(self.b2_arr.shape)
 
         # ! compute dPk/ddelta_b (not the projected ones!)

@@ -318,7 +318,7 @@ class SpaceborneResponses():
 
             # Set counterterms
             if which_b1g == 'from_HOD':
-                b1g = i11_g / norm_prof_g
+                b1g = i11_g / norm_prof_g  # this is the same as self.b1g_hm
                 counter_gm = b1g * self.pknlhm_gm[a_idx]
                 counter_gg = 2 * b1g * self.pknlhm_gg[a_idx]
             elif which_b1g == 'from_input':

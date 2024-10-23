@@ -1,30 +1,14 @@
 import sys
-import time
-import warnings
 import matplotlib.pyplot as plt
-from scipy import integrate
-import yaml
+from tqdm import tqdm
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 import pyccl as ccl
 import matplotlib as mpl
-from matplotlib.lines import Line2D
-
-
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 sys.path.append(f'{ROOT}/Spaceborne')
-import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib
-import spaceborne.ell_utils as ell_utils
-import spaceborne.sigma2_SSC as sigma2_SSC
-import spaceborne.wf_cl_lib as wf_cl_lib
 import spaceborne.cosmo_lib as cosmo_lib
-
-import common_cfg.mpl_cfg as mpl_cfg
-
-
-plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
-start_time = time.perf_counter()
 
 
 class SpaceborneResponses():
@@ -118,8 +102,13 @@ class SpaceborneResponses():
         for b2_halo(b1_halo), I need to test this better"""
         return 0.412 - 2.143 * b1h_ofz + 0.929 * (b1h_ofz ** 2) + 0.008 * (b1h_ofz ** 3)
 
-
-    def get_b2_with_ccl(self, z_grid):
+    def set_bg_hm(self, z_grid):
+        """
+        Uses the halo model to compute: 
+            - First-order halo bias (b1h_hm)
+            - First-order galaxy bias (b1g_hm)
+            - Second-order galaxy bias (b2g_hm)
+        """
 
         # just some intermediate quantities; this code is not needed but left here for future reference
         # from https://github.com/LSSTDESC/CCLX/blob/master/Halo-mass-function-example.ipynb
@@ -127,7 +116,7 @@ class SpaceborneResponses():
         # # 1-st order halo bias
         self.halo_mass_range = np.geomspace(1.01E12, 1E15, 128) / self.cosmo_ccl['h']
         self.b1h_hm = np.array([self.ccl_obj.hbf(cosmo=self.cosmo_ccl, M=self.halo_mass_range,
-                                                    a=cosmo_lib.z_to_a(z)) for z in z_grid])
+                                                 a=cosmo_lib.z_to_a(z)) for z in z_grid])
         # plt.semilogx(halo_mass_range, halo_bias_1ord[0, :])
         # #  halo mass function
         # nm = np.array([self.ccl_obj.hmf(cosmo=self.cosmo_ccl, M=halo_mass_range,
@@ -149,9 +138,8 @@ class SpaceborneResponses():
 
         norm = np.array([self.ccl_obj.halo_profile_hod.get_normalization(cosmo=self.cosmo_ccl,
                         a=cosmo_lib.z_to_a(z), hmc=self.ccl_obj.hmc) for z in z_grid])
-        self.b2g_hm = b2g_hm / norm
         self.b1g_hm = b1g_hm / norm
-
+        self.b2g_hm = b2g_hm / norm
 
     def compute_r1_mm(self):
 
@@ -177,8 +165,7 @@ class SpaceborneResponses():
 
         return self.r1_mm
 
-
-    def get_rab_and_dpab_ddeltab(self, b2g_from_halomodel):
+    def set_su_resp(self, b2g_from_halomodel):
         # galaxy bias (I broadcast it to be able to multiply/sum it with r1_mm and pk_mm)
         # I loop to check the impact (and the correctness) of b2
         b1_arr = self.b1_func(self.z_grid)
@@ -187,7 +174,7 @@ class SpaceborneResponses():
         if b2g_from_halomodel:
             # in this case, use hm integrals to compute b2g from b2h,
             # itself computed using the Lazeyras 2016 b2h(b1h) fit
-            self.get_b2_with_ccl(self.z_grid)
+            self.set_bg_hm(self.z_grid)
             self.b2_arr = self.b2g_hm[None, :]
         else:
             # in this case use the Lazeyras 2016 fit, but approximating b2g \sim b2h(b1g)
@@ -215,6 +202,145 @@ class SpaceborneResponses():
 
         self.r1_gm_nob2 = self.dPgm_ddeltab_nob2 / self.pk_gm
         self.r1_gg_nob2 = self.dPgg_ddeltab_nob2 / self.pk_gg
+
+
+    def set_hm_resp(self, k_grid, z_grid, which_b1g, b1g):
+        """
+        Compute the power spectra response terms from the halo model.
+
+        Parameters:
+        -----------
+        k_grid : array-like
+            The wavenumber grid (in units of 1/Mpc) on which to evaluate the PS and responses.
+        
+        z_grid : array-like
+            The redshift grid on which to evaluate the PS and responses.
+        
+        which_b1g : str
+            String indicating how the first-order galaxy bias (b1g) is to be treated. 
+            - 'from_HOD': Use the halo occupation distribution (HOD) profile to compute galaxy bias.
+            - 'from_input': Use the input `b1g` array provided as an argument.
+        
+        b1g : array-like
+            If `which_b1g` is 'from_input', this array represents the galaxy bias as a function of redshift.
+            Must have the same shape as `z_grid` and be a 1D array.
+        
+        Outputs (Set as attributes of the class):
+        -----------------------------------------
+        pknlhm_mm, pknlhm_gm, pknlhm_gg : np.ndarray
+            Nonlinear power spectra for matter-matter, galaxy-matter, and galaxy-galaxy, respectively, 
+            computed using the halo model. These are 2D arrays of shape (k, z).
+        
+        dPmm_ddeltab_hm, dPgm_ddeltab_hm, dPgg_ddeltab_hm : np.ndarray
+            Response terms for matter-matter, galaxy-matter, and galaxy-galaxy, 
+            respectively. These are 2D arrays of shape (k, z).
+        
+        r1_mm_hm, r1_gm_hm, r1_gg_hm : np.ndarray
+            Normalized response functions for matter-matter, galaxy-matter, and galaxy-galaxy, respectively. 
+            These are computed as the ratio of the responses to the nonlinear halo model power 
+            spectrum, i.e., r1 = dP/delta_b / P_nl.
+
+        Raises:
+        -------
+        AssertionError:
+            If `which_b1g` is not one of 'from_HOD' or 'from_input'.
+            If `b1g` is not a 1D array or does not have the same shape as `z_grid` when `which_b1g` is 'from_input'.
+
+        Notes:
+        ------
+        - The nonlinear power spectra (pknlhm_mm, pknlhm_gm, pknlhm_gg) are computed using the halo model, 
+        as the sum of a 1-halo and a 2-halo term.
+        - The method currently assumes predefined halo profiles (NFW for matter, HOD for galaxies), 
+        but it can be extended to allow user-defined profiles.
+        
+        """
+        
+        print('Computing halo model probe responses...')
+        
+        # perform some checks on the input shapes
+        assert which_b1g in ['from_HOD', 'from_input'], '"which_b1g" must be either "from_HOD" or "from_input"'
+        if which_b1g == 'from_input':
+            assert b1g.shape == z_grid.shape, 'b1g must have the same shape as z_grid'
+            assert b1g.ndim == 1, "b1g must be a 1D array"
+
+        pk2d = self.ccl_obj.cosmo_ccl.parse_pk(None)
+        a_grid = cosmo_lib.z_to_a(z_grid)
+
+        # Initialize arrays for dPmm, dPgm, dPgg and hm nonlinear pks
+        dPmm_ddeltab, dPgm_ddeltab, dPgg_ddeltab = [np.zeros((len(a_grid), len(k_grid))) for _ in range(3)]
+        self.pknlhm_mm, self.pknlhm_gm, self.pknlhm_gg = [np.zeros((len(a_grid), len(k_grid))) for _ in range(3)]
+        
+        # set profiles
+        # TODO generalize to user-defined profiles in pyccl_interface?
+        prof_m = self.ccl_obj.halo_profile_nfw
+        prof_g = self.ccl_obj.halo_profile_hod
+
+        for a_idx, aa in tqdm(enumerate(a_grid)):
+
+            # Linear power spectrum and its derivative
+            pklin = pk2d(k_grid, aa)
+            dpklin = pk2d(k_grid, aa, derivative=True)
+
+            # Normalizations for matter (m) and galaxy (g) profiles
+            norm_prof_m = prof_m.get_normalization(self.ccl_obj.cosmo_ccl, aa, hmc=self.ccl_obj.hmc)
+            norm_prof_g = prof_g.get_normalization(self.ccl_obj.cosmo_ccl, aa, hmc=self.ccl_obj.hmc)
+
+            # I_1_1 integrals for matter and galaxy
+            i11_m = self.ccl_obj.hmc.I_1_1(self.ccl_obj.cosmo_ccl, k_grid, aa, prof=prof_m)
+            i11_g = self.ccl_obj.hmc.I_1_1(self.ccl_obj.cosmo_ccl, k_grid, aa, prof=prof_g)
+
+            # I_1_2 integrals for matter-matter, galaxy-matter, galaxy-galaxy
+            i12_mm = self.ccl_obj.hmc.I_1_2(self.ccl_obj.cosmo_ccl, k_grid, aa, prof=prof_m,
+                                            prof2=prof_m, prof_2pt=ccl.halos.Profile2pt())
+            i12_gm = self.ccl_obj.hmc.I_1_2(self.ccl_obj.cosmo_ccl, k_grid, aa, prof=prof_g,
+                                            prof2=prof_m, prof_2pt=ccl.halos.Profile2pt())
+            i12_gg = self.ccl_obj.hmc.I_1_2(self.ccl_obj.cosmo_ccl, k_grid, aa, prof=prof_g,
+                                            prof2=prof_g, prof_2pt=ccl.halos.Profile2ptHOD())
+            i02_mm = self.ccl_obj.hmc.I_0_2(self.ccl_obj.cosmo_ccl, k_grid, aa, prof=prof_m,
+                                            prof2=prof_m, prof_2pt=ccl.halos.Profile2pt())
+            i02_gm = self.ccl_obj.hmc.I_0_2(self.ccl_obj.cosmo_ccl, k_grid, aa, prof=prof_g,
+                                            prof2=prof_m, prof_2pt=ccl.halos.Profile2pt())
+            i02_gg = self.ccl_obj.hmc.I_0_2(self.ccl_obj.cosmo_ccl, k_grid, aa, prof=prof_g,
+                                            prof2=prof_g, prof_2pt=ccl.halos.Profile2ptHOD())
+
+            # nonlin P(k) halo model = P1h + P2h = I^0_2(k, k) + (I^1_1)^2 * P_lin(k)
+            self.pknlhm_mm[a_idx] = (pklin * i11_m * i11_m + i02_mm) / (norm_prof_m * norm_prof_m)
+            self.pknlhm_gm[a_idx] = (pklin * i11_g * i11_m + i02_gm) / (norm_prof_g * norm_prof_m)
+            self.pknlhm_gg[a_idx] = (pklin * i11_g * i11_g + i02_gg) / (norm_prof_g * norm_prof_g)
+
+            # Super-sample covariance response terms
+            dPmm_ddeltab[a_idx] = ((47 / 21 - dpklin / 3) * i11_m * i11_m *
+                                   pklin + i12_mm) / (norm_prof_m * norm_prof_m)
+            dPgm_ddeltab[a_idx] = ((47 / 21 - dpklin / 3) * i11_g * i11_m *
+                                   pklin + i12_gm) / (norm_prof_g * norm_prof_m)
+            dPgg_ddeltab[a_idx] = ((47 / 21 - dpklin / 3) * i11_g * i11_g *
+                                   pklin + i12_gg) / (norm_prof_g * norm_prof_g)
+
+            # Set counterterms
+            if which_b1g == 'from_HOD':
+                b1g = i11_g / norm_prof_g
+                counter_gm = b1g * self.pknlhm_gm[a_idx]
+                counter_gg = 2 * b1g * self.pknlhm_gg[a_idx]
+            elif which_b1g == 'from_input':
+                counter_gm = b1g[a_idx] * self.pknlhm_gm[a_idx]
+                counter_gg = 2 * b1g[a_idx] * self.pknlhm_gg[a_idx]
+
+            # Subtract the bias counter terms
+            dPgm_ddeltab[a_idx] -= counter_gm
+            dPgg_ddeltab[a_idx] -= counter_gg
+
+        # transpose to have pk(k, z)
+        self.dPmm_ddeltab_hm = dPmm_ddeltab.T
+        self.dPgm_ddeltab_hm = dPgm_ddeltab.T
+        self.dPgg_ddeltab_hm = dPgg_ddeltab.T
+        self.pknlhm_mm = self.pknlhm_mm.T
+        self.pknlhm_gm = self.pknlhm_gm.T
+        self.pknlhm_gg = self.pknlhm_gg.T
+        
+        self.r1_mm_hm = self.dPmm_ddeltab_hm / self.pknlhm_mm
+        self.r1_gm_hm = self.dPgm_ddeltab_hm / self.pknlhm_gm
+        self.r1_gg_hm = self.dPgg_ddeltab_hm / self.pknlhm_gg
+        
 
     def plot_r1mm_func(self):
 

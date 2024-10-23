@@ -11,7 +11,7 @@ import matplotlib.lines as mlines
 import numpy as np
 import yaml
 from numba import njit
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, RectBivariateSpline, RegularGridInterpolator
 import scipy
 import pickle
 import itertools
@@ -28,6 +28,50 @@ symmetrize_output_dict = {
     ('L', 'G'): False,
     ('G', 'G'): True,
 }
+
+
+
+def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
+    """
+    Interpolate a 2D array onto a new grid using bicubic spline interpolation.
+
+    Parameters:
+    - x_in (numpy.ndarray): The x-coordinates of the input 2D array.
+    - y_in (numpy.ndarray): The y-coordinates of the input 2D array.
+    - z2d_in (numpy.ndarray): The 2D input array to be interpolated.
+    - x_out (numpy.ndarray): The x-coordinates of the output grid.
+    - y_out (numpy.ndarray): The y-coordinates of the output grid.
+    - output_masks (bool): A boolean flag indicating whether to mask the output array.
+
+    Returns:
+    - x_out_masked (numpy.ndarray): The x-coordinates of the output grid, clipped to avoid interpolation errors.
+    - y_out_masked (numpy.ndarray): The y-coordinates of the output grid, clipped to avoid interpolation errors.
+    - z2d_interp (numpy.ndarray): The interpolated 2D array.
+    - x_mask (numpy.ndarray): A boolean mask indicating which elements of the original x_out array were used.
+    - y_mask (numpy.ndarray): A boolean mask indicating which elements of the original y_out array were used.
+    """
+    z2d_func = RectBivariateSpline(x=x_in, y=y_in, z=z2d_in)
+
+    # clip x and y grids to avoid interpolation errors
+    x_mask = np.logical_and(x_in.min() <= x_out, x_out < x_in.max())
+    y_mask = np.logical_and(y_in.min() <= y_out, y_out < y_in.max())
+    x_out_masked = x_out[x_mask]
+    y_out_masked = y_out[y_mask]
+
+    if len(x_out_masked) < len(x_out):
+        print(f"x array trimmed: old range [{x_out.min():.2e}, {x_out.max():.2e}], new range [{
+              x_out_masked.min():.2e}, {x_out_masked.max():.2e}]")
+    if len(y_out_masked) < len(y_out):
+        print(f"y array trimmed: old range [{y_out.min():.2e}, {y_out.max():.2e}], new range [{
+              y_out_masked.min():.2e}, {y_out_masked.max():.2e}]")
+
+    z2d_interp = z2d_func(x_out_masked, y_out_masked)
+
+
+    if output_masks:
+        return x_out_masked, y_out_masked, z2d_interp, x_mask, y_mask
+    else:
+        return x_out_masked, y_out_masked, z2d_interp
 
 
 def test_cov_FM(output_path, benchmarks_path, extension):
@@ -1100,7 +1144,6 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
                 plt.xlabel('% difference')
                 plt.ylabel('counts')
                 plt.legend()
-
 
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):

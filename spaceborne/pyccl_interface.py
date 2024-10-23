@@ -259,6 +259,7 @@ class PycclClass():
         elif which_sigma2_b == 'from_input_mask':
             mask = hp.read_map(mask_path)
 
+        # normalize the mask and pass it to sigma2_B_from_mask
         if which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
             hp.mollview(mask, coord=['C', 'E'], title='polar cap generated on-the fly', cmap='inferno_r')
             cl_mask = hp.anafast(mask)
@@ -269,17 +270,12 @@ class PycclClass():
             print(f'fsky from mask: {fsky_mask:.4f}')
             assert np.fabs(fsky_mask / fsky) < 1.01, 'fsky_in is not the same as the fsky of the mask'
 
-        if which_sigma2_b == 'from_input_mask':
             # normalization has been checked from https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
             # and is the same as CSST paper https://zenodo.org/records/7813033
             sigma2_b = ccl.covariances.sigma2_B_from_mask(
-                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, mask_wl=cl_mask_norm, p_of_k_a='delta_matter:delta_matter')
-            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
-
-        elif which_sigma2_b == 'polar_cap_on_the_fly':
-            sigma2_b = ccl.covariances.sigma2_B_from_mask(
                 cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, mask_wl=cl_mask_norm)
             self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
+
 
         elif which_sigma2_b == 'flat_sky':
             sigma2_b = ccl.covariances.sigma2_B_disc(

@@ -1163,8 +1163,6 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     # plt.savefig(f'{path_res_rob}/resp_mm_comparison_{which_pk_resp}_pk{which_pk}_v3.png')
     plt.show()
 
-    assert False
-
     # ! 2. prepare integrands (d2CAB_dVddeltab) and volume element
     k_limber = partial(cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
     r_of_z_func = partial(cosmo_lib.ccl_comoving_distance, use_h_units=use_h_units, cosmo_ccl=ccl_obj.cosmo_ccl)
@@ -1443,73 +1441,6 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
 print('SSC computed with Spaceborne')
 # TODO integrate this with Spaceborne_covg
 
-# # ! quickly check responses
-# import sys
-# sys.path.append('/home/davide/Documenti/Lavoro/Programmi/exact_SSC/bin')
-# import ssc_integrands_SPV3 as sscint
-
-# z_val = 0
-# z_grid_dPk_su = sscint.z_grid_dPk
-# z_idx_hm = np.argmin(np.abs(z_grid_dPk_hm - z_val))
-# z_idx_su = np.argmin(np.abs(z_grid_dPk_su - z_val))
-# z_val_hm = z_grid_dPk_hm[z_idx_hm]
-# z_val_su = z_grid_dPk_su[z_idx_su]
-
-# # dPAB/ddeltab
-# plt.figure()
-# # HM
-# plt.plot(k_grid_dPk_hm, np.abs(dPmm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:blue')
-# plt.plot(k_grid_dPk_hm, np.abs(dPgm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:orange')
-# plt.plot(k_grid_dPk_hm, np.abs(dPgg_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:green')
-
-# # SU
-# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPmm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:blue')
-# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:orange')
-# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgg_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:green')
-
-# plt.xscale('log')
-# plt.yscale('log')
-# plt.xlabel('k [1/Mpc]')
-# plt.ylabel(r'${\rm abs} \; \\partial P_{AB} / \\partial \delta_b$')
-
-# colors = ['tab:blue', 'tab:orange', 'tab:green']
-# labels_a = ['dPmm_ddeltab', 'dPgm_ddeltab', 'dPgg_ddeltab']
-# handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels_a[i]) for i in range(3)]
-# handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
-#               for ls, label in zip(['-', '--'], ['signal', 'error'])]
-# handles = handles_z + handles_ls
-# labels = labels_a + ['Halo model', 'Separate universe']
-# plt.legend(handles, labels)
-# plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
-# plt.tight_layout()
-# plt.show()
-
-# # dlogPAB/ddeltab
-# plt.figure()
-# # HM
-# plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:blue')
-# plt.plot(k_grid_dPk_hm, dPgm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:orange')
-# plt.plot(k_grid_dPk_hm, dPgg_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:green')
-# # SU
-# plt.plot(sscint.k_grid_dPk, sscint.r_mm[:, z_idx_su], ls='--', alpha=0.5, c='tab:blue')
-# plt.plot(sscint.k_grid_dPk, sscint.r_gm[:, z_idx_su], ls='--', alpha=0.5, c='tab:orange')
-# plt.plot(sscint.k_grid_dPk, sscint.r_gg[:, z_idx_su], ls='--', alpha=0.5, c='tab:green')
-
-# plt.xscale('log')
-# plt.xlabel('k [1/Mpc]')
-# plt.ylabel(r'$\\partial {\rm log} P_{AB} / \\partial \delta_b$')
-
-# colors = ['tab:blue', 'tab:orange', 'tab:green']
-# labels_a = ['dPmm_ddeltab/Pmm', 'dPgm_ddeltab/Pgm', 'dPgg_ddeltab/Pgg']
-# handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels[i]) for i in range(3)]
-# handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
-#               for ls, label in zip(['-', '--'], ['signal', 'error'])]
-# handles = handles_z + handles_ls
-# labels = labels_a + ['Halo model', 'Separate universe']
-# plt.legend(handles, labels)
-# plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
-# plt.tight_layout()
-# plt.show()
 # ! ========================================== end Spaceborne ===================================================
 
 # ! ========================================== start PyCCL ===================================================

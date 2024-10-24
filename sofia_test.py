@@ -465,22 +465,34 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
 
     print(np.shape(sigma2_b))
     #plt.imshow(np.flip(sigma2_b, axis=(0, 1)).T, aspect='equal', cmap='viridis')
-    mm.matshow(np.flip(sigma2_b, axis=(0, 1)).T, log=False, abs_val=False, title='$\sigma^2_B(z, Rz)$')
+    mm.matshow(np.flip(sigma2_b, axis=(0, 1)).T, log=True, abs_val=True, title='$\sigma^2_B(z, Rz)$')
     #TODO: capire come plottare bene sta roba, mi manca Julia :(((((
 
+    sigma2_davide = np.load("davide.npy")
 
     plt.figure()
-    plt.semilogy(z_grid_ssc_integrands, sigma2_b[:,-1])
+    plt.semilogy(z_grid_ssc_integrands, sigma2_b[:,-1], label="Me")
+    plt.semilogy(z_grid_ssc_integrands, np.diag(sigma2_davide), label="Davide")
     plt.xlabel('$z$')
+    plt.legend()
     plt.title(r'$\sigma^2_B(R=1)$')
+    plt.show()
+
+    plt.plot(z_grid_ssc_integrands, 100*(1 - sigma2_b[:,-1]/np.diag(sigma2_davide)))
+    plt.title("Residuals")
+    plt.xlabel('$z$')
+    plt.show()
+
 
     plt.figure()
     plt.plot(R_grid_ssc_integrands[1:], sigma2_b[50,1:])
     plt.xlabel('$R$')
     plt.title(f'R_cut at fixed z ={z_grid_ssc_integrands[50]}')
+    plt.show()
 
-    #print("Inner k integral was computed and the result was saved in tests.")
-    print("Seems the same as the one computed by Davide in main.py :)))")
+    
+
+    
 
 
 

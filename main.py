@@ -324,6 +324,13 @@ if general_cfg['is_CLOE_run']:
 fsky_check = cosmo_lib.deg2_to_fsky(covariance_cfg['survey_area_deg2'])
 assert np.abs(mm.percent_diff(covariance_cfg['fsky'], fsky_check)) < 1e-5, 'fsky does not match the survey area'
 
+path_res_rob = '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/check_ssc_integrands/Robert'
+chi = np.load(f'{path_res_rob}/responses_davide_3/chi.npy')
+k_rob = np.load(f'{path_res_rob}/responses_davide_3/k.npy') * h  # (so it's in 1/Mpc)
+z_rob = np.load(f'{path_res_rob}/responses_davide_3/z.npy')
+z_grid_ssc_integrands = z_rob
+k_grid_resp = k_rob
+
 # TODO delete this arg in save_cov function
 cases_tosave = '_'
 
@@ -817,6 +824,8 @@ if not os.path.exists(oc_path):
 
 nz_src_ascii_filename = covariance_cfg['nz_sources_filename'].replace('.dat', f'_dzshifts{shift_nz}.ascii')
 nz_lns_ascii_filename = covariance_cfg['nz_lenses_filename'].replace('.dat', f'_dzshifts{shift_nz}.ascii')
+nz_src_ascii_filename = nz_src_ascii_filename.format(**variable_specs)
+nz_lns_ascii_filename = nz_lns_ascii_filename.format(**variable_specs)
 nz_src_tosave = np.column_stack((zgrid_nz_src, nz_src))
 nz_lns_tosave = np.column_stack((zgrid_nz_lns, nz_lns))
 np.savetxt(f'{oc_path}/{nz_src_ascii_filename}', nz_src_tosave)
@@ -1096,72 +1105,74 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     chi = np.load(f'{path_res_rob}/responses_davide_3/chi.npy')
     k_rob = np.load(f'{path_res_rob}/responses_davide_3/k.npy') * h  # (so it's in 1/Mpc)
     z_rob = np.load(f'{path_res_rob}/responses_davide_3/z.npy')
-    response_mm = np.load(f'{path_res_rob}/responses_davide_3/response_mm.npy') / h**3
-    response_gm = np.load(f'{path_res_rob}/responses_davide_3/response_gm.npy') / h**3
-    response_gg = np.load(f'{path_res_rob}/responses_davide_3/response_gg.npy') / h**3
+    dPmm_ddeltab = np.load(f'{path_res_rob}/responses_davide_3/response_mm.npy') / h**3
+    dPgm_ddeltab = np.load(f'{path_res_rob}/responses_davide_3/response_gm.npy') / h**3
+    dPgg_ddeltab = np.load(f'{path_res_rob}/responses_davide_3/response_gg.npy') / h**3
 
-    response_mm_func = RegularGridInterpolator((k_rob, z_rob), response_mm)
-    response_gm_func = RegularGridInterpolator((k_rob, z_rob), response_gm)
-    response_gg_func = RegularGridInterpolator((k_rob, z_rob), response_gg)
+    # response_mm_func = RegularGridInterpolator((k_rob, z_rob), response_mm)
+    # response_gm_func = RegularGridInterpolator((k_rob, z_rob), response_gm)
+    # response_gg_func = RegularGridInterpolator((k_rob, z_rob), response_gg)
 
-    # clip k_grid_resp and z_grid_ssc_integrands to avoid interpolation errors
-    k_mask = np.logical_and(k_rob.min() <= k_grid_resp, k_grid_resp < k_rob.max())
-    _k_grid_resp = k_grid_resp[k_mask]
-    z_mask = np.logical_and(z_rob.min() <= z_grid_ssc_integrands, z_grid_ssc_integrands < z_rob.max())
-    _z_grid_ssc_integrands = z_grid_ssc_integrands[z_mask]
+    # # clip k_grid_resp and z_grid_ssc_integrands to avoid interpolation errors
+    # k_mask = np.logical_and(k_rob.min() <= k_grid_resp, k_grid_resp < k_rob.max())
+    # _k_grid_resp = k_grid_resp[k_mask]
+    # z_mask = np.logical_and(z_rob.min() <= z_grid_ssc_integrands, z_grid_ssc_integrands < z_rob.max())
+    # _z_grid_ssc_integrands = z_grid_ssc_integrands[z_mask]
 
-    kk, zz = np.meshgrid(_k_grid_resp, _z_grid_ssc_integrands, indexing='ij')
-    response_mm_interp = response_mm_func((kk, zz))
-    response_gm_interp = response_gm_func((kk, zz))
-    response_gg_interp = response_gg_func((kk, zz))
+    # kk, zz = np.meshgrid(_k_grid_resp, _z_grid_ssc_integrands, indexing='ij')
+    # dPmm_ddeltab = response_mm_func((kk, zz))
+    # dPgm_ddeltab = response_gm_func((kk, zz))
+    # dPgg_ddeltab = response_gg_func((kk, zz))
 
-    which_pk_resp = covariance_cfg["Spaceborne_cfg"]["which_pk_responses"]
-    which_pk = cfg["cosmology"]["other_params"]["camb_extra_parameters"]["camb"]["halofit_version"]
+    # assert False, 'stop here'
+    
+    # which_pk_resp = covariance_cfg["Spaceborne_cfg"]["which_pk_responses"]
+    # which_pk = cfg["cosmology"]["other_params"]["camb_extra_parameters"]["camb"]["halofit_version"]
 
-    fig, ax = plt.subplots(2, 1, sharex=True, figsize=(10, 10), height_ratios=[2, 1])
-    # plt.tight_layout()
-    fig.subplots_adjust(hspace=0)
+    # fig, ax = plt.subplots(2, 1, sharex=True, figsize=(10, 10), height_ratios=[2, 1])
+    # # plt.tight_layout()
+    # fig.subplots_adjust(hspace=0)
 
-    z_val = 0.02
-    z_ix_rob = np.argmin(np.abs(_z_grid_ssc_integrands - z_val))
-    z_ix_dav = np.argmin(np.abs(z_grid_ssc_integrands - z_val))
+    # z_val = 0.02
+    # z_ix_rob = np.argmin(np.abs(_z_grid_ssc_integrands - z_val))
+    # z_ix_dav = np.argmin(np.abs(z_grid_ssc_integrands - z_val))
 
-    # ax[0].loglog(_k_grid_resp, response_mm_interp[:, z_ix_rob], label=f'OC mm', c='tab:blue')
-    # ax[0].loglog(_k_grid_resp, np.fabs(response_gm_interp)[:, z_ix_rob], label=f'OC abs(gm)', c='tab:orange')
-    ax[0].loglog(_k_grid_resp, np.fabs(response_gg_interp)[:, z_ix_rob], label=f'OC bgtab abs(gg)', c='tab:orange')
+    # # ax[0].loglog(_k_grid_resp, response_mm_interp[:, z_ix_rob], label=f'OC mm', c='tab:blue')
+    # # ax[0].loglog(_k_grid_resp, np.fabs(response_gm_interp)[:, z_ix_rob], label=f'OC abs(gm)', c='tab:orange')
+    # ax[0].loglog(_k_grid_resp, np.fabs(response_gg_interp)[:, z_ix_rob], label=f'OC bgtab abs(gg)', c='tab:orange')
 
-    # ax[0].loglog(k_grid_resp, dPmm_ddeltab[:, z_ix_dav], label=f'CCL mm', ls='--', c='tab:blue')
-    # ax[0].loglog(k_grid_resp, np.fabs(dPgm_ddeltab)[:, z_ix_dav], label=f'CCL abs(gm)', ls='--', c='tab:orange')
-    ax[0].loglog(k_grid_resp, np.fabs(dPgg_ddeltab)[:, z_ix_dav], label=f'CCL bgHOD abs(gg)', ls='--', c='tab:blue')
+    # # ax[0].loglog(k_grid_resp, dPmm_ddeltab[:, z_ix_dav], label=f'CCL mm', ls='--', c='tab:blue')
+    # # ax[0].loglog(k_grid_resp, np.fabs(dPgm_ddeltab)[:, z_ix_dav], label=f'CCL abs(gm)', ls='--', c='tab:orange')
+    # ax[0].loglog(k_grid_resp, np.fabs(dPgg_ddeltab)[:, z_ix_dav], label=f'CCL bgHOD abs(gg)', ls='--', c='tab:blue')
 
-    # ax[0].loglog(k_grid_resp, dPmm_ddeltab_dav[:, z_ix_dav], label=f'Dav mm', ls=':', c='tab:blue')
-    # ax[0].loglog(k_grid_resp, np.fabs(dPgm_ddeltab_dav)[:, z_ix_dav], label=f'Dav abs(gm)', ls=':', c='tab:orange')
-    ax[0].loglog(k_grid_resp, np.fabs(dPgg_ddeltab_dav)[:, z_ix_dav], label=f'CCL bgtab abs(gg)', ls=':', c='tab:green')
+    # # ax[0].loglog(k_grid_resp, dPmm_ddeltab_dav[:, z_ix_dav], label=f'Dav mm', ls=':', c='tab:blue')
+    # # ax[0].loglog(k_grid_resp, np.fabs(dPgm_ddeltab_dav)[:, z_ix_dav], label=f'Dav abs(gm)', ls=':', c='tab:orange')
+    # ax[0].loglog(k_grid_resp, np.fabs(dPgg_ddeltab_dav)[:, z_ix_dav], label=f'CCL bgtab abs(gg)', ls=':', c='tab:green')
+    # # ax[1].plot(_k_grid_resp, mm.percent_diff(dPmm_ddeltab[k_mask, z_ix_dav],
+    # #            response_mm_interp[:, z_ix_rob]), c='tab:blue')
+    # # ax[1].plot(_k_grid_resp, mm.percent_diff(dPgm_ddeltab[k_mask, z_ix_dav],
+    # #            response_gm_interp[:, z_ix_rob]), c='tab:orange')
+    # # ax[1].plot(_k_grid_resp, mm.percent_diff(dPgg_ddeltab[k_mask, z_ix_dav],
+    # #            response_gg_interp[:, z_ix_rob]), c='tab:green')
     # ax[1].plot(_k_grid_resp, mm.percent_diff(dPmm_ddeltab[k_mask, z_ix_dav],
-    #            response_mm_interp[:, z_ix_rob]), c='tab:blue')
+    #            dPmm_ddeltab_dav[k_mask, z_ix_dav]), c='tab:blue')
     # ax[1].plot(_k_grid_resp, mm.percent_diff(dPgm_ddeltab[k_mask, z_ix_dav],
-    #            response_gm_interp[:, z_ix_rob]), c='tab:orange')
+    #            dPgm_ddeltab_dav[k_mask, z_ix_dav]), c='tab:orange')
     # ax[1].plot(_k_grid_resp, mm.percent_diff(dPgg_ddeltab[k_mask, z_ix_dav],
-    #            response_gg_interp[:, z_ix_rob]), c='tab:green')
-    ax[1].plot(_k_grid_resp, mm.percent_diff(dPmm_ddeltab[k_mask, z_ix_dav],
-               dPmm_ddeltab_dav[k_mask, z_ix_dav]), c='tab:blue')
-    ax[1].plot(_k_grid_resp, mm.percent_diff(dPgm_ddeltab[k_mask, z_ix_dav],
-               dPgm_ddeltab_dav[k_mask, z_ix_dav]), c='tab:orange')
-    ax[1].plot(_k_grid_resp, mm.percent_diff(dPgg_ddeltab[k_mask, z_ix_dav],
-               dPgg_ddeltab_dav[k_mask, z_ix_dav]), c='tab:green')
+    #            dPgg_ddeltab_dav[k_mask, z_ix_dav]), c='tab:green')
 
-    ax[0].set_title(f'z_rob={_z_grid_ssc_integrands[z_ix_rob]} \nz_dav={
-                    z_grid_ssc_integrands[z_ix_dav]}\n {which_pk_resp}, pk {which_pk}')
-    ax[0].set_ylabel('dPmm/ddeltab [Mpc**3]')
-    ax[0].legend()
-    ax[1].set_xlabel('k [1/Mpc]')
-    ax[1].set_ylabel('dav/rob - 1 [%]')
-    ax[1].axhspan(-10, 10, color='gray', alpha=0.2, label='$\\pm 10 \\%$')
-    ax[1].set_ylim(-100, 100)
-    ax[1].legend()
+    # ax[0].set_title(f'z_rob={_z_grid_ssc_integrands[z_ix_rob]} \nz_dav={
+    #                 z_grid_ssc_integrands[z_ix_dav]}\n {which_pk_resp}, pk {which_pk}')
+    # ax[0].set_ylabel('dPmm/ddeltab [Mpc**3]')
+    # ax[0].legend()
+    # ax[1].set_xlabel('k [1/Mpc]')
+    # ax[1].set_ylabel('dav/rob - 1 [%]')
+    # ax[1].axhspan(-10, 10, color='gray', alpha=0.2, label='$\\pm 10 \\%$')
+    # ax[1].set_ylim(-100, 100)
+    # ax[1].legend()
 
-    # plt.savefig(f'{path_res_rob}/resp_mm_comparison_{which_pk_resp}_pk{which_pk}_v3.png')
-    plt.show()
+    # # plt.savefig(f'{path_res_rob}/resp_mm_comparison_{which_pk_resp}_pk{which_pk}_v3.png')
+    # plt.show()
 
     # ! 2. prepare integrands (d2CAB_dVddeltab) and volume element
     k_limber = partial(cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
@@ -1297,37 +1308,37 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         plt.show()
 
         # ! compare linear pk
-        chi_rob = np.load(f'{path_res_rob}/survey_variance/power_spec_lin/chi.npy') / h
-        k_rob = np.load(f'{path_res_rob}/survey_variance/power_spec_lin/k.npy') * h
-        plin_rob = np.load(f'{path_res_rob}/survey_variance/power_spec_lin/lin_pow.npy') / h**3
-        plin_rob = plin_rob.T
-        chi_dav = np.load(f'{path_res_rob}/survey_variance/power_spec_lin/chi_dav.npy')[::-1]
-        k_dav = np.load(f'{path_res_rob}/survey_variance/power_spec_lin/k_dav.npy')
-        plin_dav = np.load(f'{path_res_rob}/survey_variance/power_spec_lin/pklin_dav.npy').T
+        # chi_rob = np.load(f'{path_res_rob}/survey_variance/power_spec_lin/chi.npy') / h
+        # k_rob = np.load(f'{path_res_rob}/survey_variance/power_spec_lin/k.npy') * h
+        # plin_rob = np.load(f'{path_res_rob}/survey_variance/power_spec_lin/lin_pow.npy') / h**3
+        # plin_rob = plin_rob.T
+        # chi_dav = np.load(f'{path_res_rob}/survey_variance/power_spec_lin/chi_dav.npy')[::-1]
+        # k_dav = np.load(f'{path_res_rob}/survey_variance/power_spec_lin/k_dav.npy')
+        # plin_dav = np.load(f'{path_res_rob}/survey_variance/power_spec_lin/pklin_dav.npy').T
 
-        a2_dav = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
-        chi2_dav = ccl_obj.cosmo_ccl.comoving_angular_distance(a=a2_dav[::-1])
-        k2_dav = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
-        plin2_dav = ccl_obj.responses_dict['L', 'L', 'L', 'L']['pk2d_linear']
-        plin2_dav = np.flip(plin2_dav, axis=1)
-        plin_dav = np.flip(plin_dav, axis=1)
+        # a2_dav = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
+        # chi2_dav = ccl_obj.cosmo_ccl.comoving_angular_distance(a=a2_dav[::-1])
+        # k2_dav = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
+        # plin2_dav = ccl_obj.responses_dict['L', 'L', 'L', 'L']['pk2d_linear']
+        # plin2_dav = np.flip(plin2_dav, axis=1)
+        # plin_dav = np.flip(plin_dav, axis=1)
 
-        k_rob_masked, y_rob_masked, pk2d_rob_interp, x_mask, y_mask = mm.interp_2d_arr(k_rob, chi_rob, plin_rob,
-                                                                                       k2_dav, chi2_dav,
-                                                                                       output_masks=True)
+        # k_rob_masked, y_rob_masked, pk2d_rob_interp, x_mask, y_mask = mm.interp_2d_arr(k_rob, chi_rob, plin_rob,
+        #                                                                                k2_dav, chi2_dav,
+        #                                                                                output_masks=True)
 
-        plt.figure()
-        # plt.loglog(k_rob, plin_rob[:, 0])
-        plt.loglog(k_rob_masked, pk2d_rob_interp[:, 0], label='rob')
-        plt.loglog(k2_dav, plin2_dav[:, 0], label='dav cosmo_ccl')
-        plt.loglog(k_dav, plin_dav[:, -5], label='dav sigma2_b func')
-        plt.xlabel('k [1/Mpc]')
-        plt.ylabel('P(k) [Mpc^3]')
+        # plt.figure()
+        # # plt.loglog(k_rob, plin_rob[:, 0])
+        # plt.loglog(k_rob_masked, pk2d_rob_interp[:, 0], label='rob')
+        # plt.loglog(k2_dav, plin2_dav[:, 0], label='dav cosmo_ccl')
+        # plt.loglog(k_dav, plin_dav[:, -5], label='dav sigma2_b func')
+        # plt.xlabel('k [1/Mpc]')
+        # plt.ylabel('P(k) [Mpc^3]')
 
-        plt.figure()
-        plt.semilogx(k_rob_masked, mm.percent_diff(plin2_dav[x_mask, :][:, y_mask], pk2d_rob_interp)[:, -1])
-        plt.xlabel('k [1/Mpc]')
-        plt.ylabel('Pklin dav/rob [%]')
+        # plt.figure()
+        # plt.semilogx(k_rob_masked, mm.percent_diff(plin2_dav[x_mask, :][:, y_mask], pk2d_rob_interp)[:, -1])
+        # plt.xlabel('k [1/Mpc]')
+        # plt.ylabel('Pklin dav/rob [%]')
 
     else:
 
@@ -1438,7 +1449,6 @@ elif covariance_cfg['ng_cov_code'] == 'Spaceborne' and \
 if covariance_cfg['ng_cov_code'] == 'Spaceborne':
     covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 
-print('SSC computed with Spaceborne')
 # TODO integrate this with Spaceborne_covg
 
 # ! ========================================== end Spaceborne ===================================================
@@ -2357,9 +2367,16 @@ fm_dict_of_dicts = {
     # 'SB_KEapp_hm_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     # 'SB_hm_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     # 'OC_simpker': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly.pickle'),
-    'SB_OCs2b': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCs2b_HM.pickle'),
-    'current': fm_dict
+    
+    'SB_bgtab': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinal_bgtab_halo_model_SB.pickle'),
+    'SB_bgHOD': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinal_bgHOD_halo_model_SB.pickle'),
+    'OC_new': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinalpostpull.pickle'),
+    'OC_old': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinalprepull.pickle'),
+    # 'current': fm_dict
 }
+# TODO I want to check: SB_bgHOD, SB_bgtab, OC_old, OC_new (from develop branch, don't forget to reinstall (I think, actually most likely not))
+# ! something wrong with XC for OC_new I think
+
 
 
 labels = list(fm_dict_of_dicts.keys())
@@ -2381,6 +2398,8 @@ mm.compare_fm_constraints(*fm_dict_list, labels=labels,
                           abs_FoM=True,
                           save_fig=False,
                           fig_path='/home/davide/Scrivania/')
+
+assert False, 'stop here'
 
 fisher_matrices = (
     fm_dict_of_dicts['SB_hm_simpker']['FM_3x2pt_GSSC'],

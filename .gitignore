@@ -1,20 +1,3 @@
-jobs/PyCCL_forecast/output/covmat
-jobs/SSC_CMBX/output/covmat
-jobs/SSC_comparison/output/covmat
-jobs/SSC_comparison_updt/output/covmat
-jobs/SSC_comparison_variable_ellmax/output/covmat
-jobs/SSC_comparison_variable_Rl/output/covmat
-jobs/SPV3/output
-jobs/SPV3_magcut_zcut/output/Flagship_2/covmat
-jobs/ISTF/output/cl14may/covmat
-jobs/ISTF_new/output/cl14may
-jobs/ISTF_new/output/cl15gen
-jobs/ISTF/output/covmat
-jobs/SSC_paper_final/output/covmat
-jobs/SPV3/output/Flagship_2/covmat
-jobs/SPV3/output/Flagship_2/pyccl_responses
-
-
 *.fits
 *.pyc
 
@@ -27,10 +10,10 @@ jobs/SPV3/output/Flagship_2/pyccl_responses
 *.iml
 *.iml
 /.vscode/
+/.idea/
 *.xml
 *.xml
-jobs/SPV3/output/Flagship_2/pyccl_responses/LLGL/dpk12_is_number_countsFalse.npy
-jobs/SPV3/output/Flagship_2/pyccl_responses/LLGL/dpk34_is_number_countsTrue.npy
-jobs/SPV3/output/Flagship_2/pyccl_responses/LLLL/dpk12_is_number_countsFalse.npy
-jobs/SPV3/output/Flagship_2/pyccl_responses/LLLL/dpk34_is_number_countsFalse.npy
 tmp/*
+tmp*/   
+.aider*
+tests/benchmarks/*

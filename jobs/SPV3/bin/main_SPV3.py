@@ -502,15 +502,15 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
     bias_fiducials_rows = np.where(bias_fiducials[:, 0] == general_cfg['magcut_source'] / 10)[0]
     galaxy_bias_fit_fiducials = bias_fiducials[bias_fiducials_rows, 1]
     magnification_bias_fit_fiducials = bias_fiducials[bias_fiducials_rows, 2]
-
-    # check that the values in the yml file match the ones in the "gal_mag_fiducial_polynomial_fit" file
+    
+    # check that the values in the yaml file match the ones in the "gal_mag_fiducial_polynomial_fit" file
     gal_bias_fit_fiducials_names = [f'bG{zi:02d}' for zi in range(1, 5)]
     mag_bias_fit_fiducials_names = [f'bM{zi:02d}' for zi in range(1, 5)]
-    galaxy_bias_fit_fiducials_yml = np.array([flat_fid_pars_dict[gal_bias_fit_fiducials_names[zi]] for zi in range(4)])
-    mag_bias_fit_fiducials_yml = np.array([flat_fid_pars_dict[mag_bias_fit_fiducials_names[zi]] for zi in range(4)])
-    np.testing.assert_array_equal(galaxy_bias_fit_fiducials, galaxy_bias_fit_fiducials_yml,
+    galaxy_bias_fit_fiducials_yaml = np.array([flat_fid_pars_dict[gal_bias_fit_fiducials_names[zi]] for zi in range(4)])
+    mag_bias_fit_fiducials_yaml = np.array([flat_fid_pars_dict[mag_bias_fit_fiducials_names[zi]] for zi in range(4)])
+    np.testing.assert_array_equal(galaxy_bias_fit_fiducials, galaxy_bias_fit_fiducials_yaml,
                                   err_msg='galaxy bias fiducials do not match')
-    np.testing.assert_array_equal(magnification_bias_fit_fiducials, mag_bias_fit_fiducials_yml,
+    np.testing.assert_array_equal(magnification_bias_fit_fiducials, mag_bias_fit_fiducials_yaml,
                                   err_msg='magnification bias fiducials do not match')
 
     # some check on the input nuisance values
@@ -524,10 +524,10 @@ for covariance_cfg[covariance_cfg['SSC_code'] + '_cfg']['which_ng_cov'] in (('SS
     dz_shifts_names = [f'dzWL{zi:02d}' for zi in range(1, zbins + 1)]
     dz_shifts = np.array([flat_fid_pars_dict[dz_shifts_names[zi]] for zi in range(zbins)])
     np.testing.assert_array_equal(dz_shifts, dzWL_fiducial,
-                                  err_msg='dzWL shifts do not match with the ones from the yml file')
+                                  err_msg='dzWL shifts do not match with the ones from the yaml file')
 
     if EP_or_ED == 'ED':
-        raise Exception('you should re-check the nz shifts in the yml fiducial for the ED case!!')
+        raise Exception('you should re-check the nz shifts in the yaml fiducial for the ED case!!')
     # for zi in range(1, zbins + 1):
     #     fid_pars_dict['FM_ordered_params'][f'dzWL{zi:02d}'] = dzWL_fiducial[zi - 1].item()
 

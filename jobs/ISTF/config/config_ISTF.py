@@ -20,7 +20,7 @@ import bin.check_specs as utils
 fm_and_cov_suffix = '_cNG_splinedefault'
 
 
-with open(f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yml') as f:
+with open(f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yaml') as f:
     fid_pars_dict = yaml.load(f, Loader=yaml.FullLoader)
 fid_pars_dict_for_fm = fid_pars_dict['FM_ordered_params']  # necessary for FM handling
 
@@ -78,7 +78,7 @@ elif which_input_files == 'SSC_comparison_updated':
     cl_folder = 'SPV3'
 
 general_cfg = {
-    'fid_yaml_path': f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yml',
+    'fid_yaml_path': f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yaml',
 
     'fid_pars_dict': fid_pars_dict,
     'which_input_files': which_input_files,

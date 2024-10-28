@@ -1,0 +1,43 @@
+# This is the environment file for the `spaceborne` conda environment to be used on macOS machines
+
+name: spaceborne
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python>=3.12
+  - matplotlib
+  - numpy
+  - scipy
+  - pandas
+  - healpy
+  - tqdm
+  - pip
+  - pyyaml
+  - astropy
+  - joblib
+  - numba
+  - camb
+  - pyqt
+  - ipympl
+  - cfitsio
+
+  # for CCL:
+  - fftw
+  - gsl
+  - swig
+  - cmake
+  - make
+  - libgfortran-ng
+  - fast-pt
+  # - cfitsio  # not necessary?
+  - pip:
+    - pymaster
+    - cython
+    - getdist
+
+# After installing the environment, run
+# brew install gfortran cmake build-essential autoconf bison
+# pip install git+https://github.com/davidesciotti/CCL.git@master
+# to install the CCL fork used in this project
+

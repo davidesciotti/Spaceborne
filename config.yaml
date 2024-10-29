@@ -245,9 +245,15 @@ covariance_cfg:
         probe: 3x2pt
         which_ng_cov: [SSC] # only SSC available in this case
         load_precomputed_cov: False
-        which_pk_responses: halo_model # halo_model (with PyCCL) or separate_universe (from simulations)
+        which_pk_responses: halo_model_SB # halo_model_SB, halo_model_CCL (with PyCCL) or separate_universe_SB/_vin (from simulations)
         include_b2g: True # whether or not to include the second-order galaxy bias in the GCph responses
         b2g_from_halomodel: True # TODO DELETE THIS in the main branch
+        # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
+        # Can be one of:
+        # - 'from_HOD' (from the Halo Occupation Distribution previously initialized)
+        # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB
+        # Setting this to 'from_HOD' will match perfectly 'halo_model_CCL'
+        which_b1g_in_resp: 'from_HOD'
 
         cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Spaceborne/{which_pk_responses:s}"
         cov_suffix: "_zsteps{z_steps_ssc_integrands:d}_k{k_txt_label:s}_convention{cl_integral_convention:s}_integration{integration_type:s}_{survey_area_deg2:d}deg2_Francis"
@@ -294,7 +300,7 @@ covariance_cfg:
         # z_grid_tkka_max: 3 # used to be 6
         # k_grid_tkka_min: 1.e-5
         # k_grid_tkka_max: 1.e+2
-        z_grid_tkka_steps_SSC: 200 # (z, k) = (50, 100) seems altrady enough
+        z_grid_tkka_steps_SSC: 100 # (z, k) = (50, 100) seems altrady enough
         k_grid_tkka_steps_SSC: 200
         z_grid_tkka_steps_cNG: 100
         k_grid_tkka_steps_cNG: 512
@@ -317,7 +323,7 @@ FM_cfg:
     compute_FM: True
 
     save_FM_txt: False
-    save_FM_dict: True
+    save_FM_dict: False
 
     load_preprocess_derivatives: False
     which_derivatives: Vincenzo # Vincenzo or Spaceborne

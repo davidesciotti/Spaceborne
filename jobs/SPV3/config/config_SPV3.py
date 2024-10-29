@@ -29,7 +29,7 @@ GL_or_LG = 'GL'
 
 
 fm_last_folder = '/jan_2024'
-fm_and_cov_suffix = '_dense_LiFECls_shearFix'
+fm_and_cov_suffix = '_cNG_splinedefault'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 2
@@ -215,7 +215,7 @@ covariance_cfg = {
     'PyCCL_cfg': {
         'probe': '3x2pt',
         # 'cNG' or 'SSC'. Which non-Gaussian covariance terms to compute. Must be a tuple
-        'which_ng_cov': ('SSC', ),
+        'which_ng_cov': ('SSC', 'cNG', ),
         'test_GLGL': False,  # must be set to False for actual 3x2pt runs
         
         'which_pk_for_pyccl': 'PyCCL',  # 'PyCCL' (the one stored in cosmo obj) or 'CLOE' (from input files - to be implemented)

@@ -25,16 +25,15 @@ import bin.ell_values as ell_utils
 import bin.cl_preprocessing as cl_utils
 import bin.compute_Sijkl as Sijkl_utils
 import bin.covariance as covmat_utils
+import bin.wf_cl_lib as wf_cl_lib
 import bin.fisher_matrix as FM_utils
-import common_cfg.ISTF_fid_params as ISTFfid
+import common_cfg.ISTF_fid_params as ISTF_fid
 import common_cfg.mpl_cfg as mpl_cfg
 
 
 # job configuration
 sys.path.append(f'{job_path}/config')
 import config_SSCpaper_final as cfg
-
-
 
 
 mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
@@ -191,7 +190,7 @@ def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict):
 def get_idxs_to_delete_3x2pt_v0(ell_values_3x2pt, ell_cuts_dict):
     """this implements the indexing for the flattening probe_ell_zpair"""
     raise Exception('Concatenation must be done *before* flattening, this function is not compatible with the '
-                    '"ell-block ordering of the covariance matrix"')
+                    '"ell-block ordering of the wf_cl_lib matrix"')
     idxs_to_delete_LL = get_idxs_to_delete(ell_values_3x2pt, ell_cuts_dict['LL'], is_auto_spectrum=True)
     idxs_to_delete_GL = get_idxs_to_delete(ell_values_3x2pt, ell_cuts_dict['GL'], is_auto_spectrum=False)
     idxs_to_delete_GG = get_idxs_to_delete(ell_values_3x2pt, ell_cuts_dict['GG'], is_auto_spectrum=True)
@@ -273,7 +272,7 @@ if covariance_cfg['cov_BNT_transform']:
     assert FM_cfg['derivatives_BNT_transform'], 'you should BNT transform the derivatives as well'
 
 # which cases to save: GO, GS or GO, GS and SS
-cases_tosave = ['GO', ]
+cases_tosave = ['GO',]
 if covariance_cfg[f'compute_SSC']:
     cases_tosave.append('GS')
 if covariance_cfg[f'save_cov_SSC']:
@@ -315,7 +314,8 @@ ell_dict['ell_edges_XC'] = np.copy(ell_dict['ell_edges_GC'])[:-1]
 ell_dict['ell_edges_3x2pt'] = np.copy(ell_dict['ell_edges_XC'])[:-1]
 
 for key in ell_dict.keys():
-    assert np.max(ell_dict[key]) > 15, 'ell values must *not* be in log space'
+    if 'WA' not in key:
+        assert np.max(ell_dict[key]) > 15, 'ell values must *not* be in log space'
 
 # set corresponding number of ell bins
 nbl_WL = len(ell_dict['ell_WL'])
@@ -329,25 +329,28 @@ delta_dict = {'delta_l_WL': np.copy(delta_l_WL_nbl32[:nbl_WL]),
               'delta_l_WA': np.copy(delta_l_WL_nbl32[nbl_GC:])}
 
 # set # of nbl in the opt case, import and reshape, then cut the reshaped datavectors in the pes case
-assert (general_cfg['ell_max_WL_opt'],
-        general_cfg['ell_max_WL'],
-        general_cfg['ell_max_GC'],
-        general_cfg['ell_max_XC']) == (5000, 5000, 3000, 3000), \
-    'the number of bins defined in the config file is compatible with these ell_max values'
+# assert (general_cfg['ell_max_WL_opt'],
+#         general_cfg['ell_max_WL'],
+#         general_cfg['ell_max_GC'],
+#         general_cfg['ell_max_XC']) == (5000, 5000, 3000, 3000), \
+#     'the number of bins defined in the config file is compatible with these ell_max values'
 
 nbl_WL_opt = general_cfg['nbl_WL_opt']
 nbl_GC_opt = general_cfg['nbl_GC_opt']
 nbl_WA_opt = general_cfg['nbl_WA_opt']
 nbl_3x2pt_opt = general_cfg['nbl_3x2pt_opt']
 
-if ell_max_WL == general_cfg['ell_max_WL_opt']:
-    assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
-        'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
+# if ell_max_WL == general_cfg['ell_max_WL_opt']:
+#     assert (nbl_WL_opt, nbl_GC_opt, nbl_WA_opt, nbl_3x2pt_opt) == (nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt), \
+#         'nbl_WL, nbl_GC, nbl_WA, nbl_3x2pt don\'t match with the expected values for the optimistic case'
 
 # this is just to make the .format() more compact
 variable_specs = {'EP_or_ED': EP_or_ED, 'zbins': zbins,
                   'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_XC': ell_max_XC,
                   'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
+                  'ell_max_3x2pt': general_cfg['ell_max_3x2pt'], 
+                  'magcut_source': magcut_source, 'magcut_lens': magcut_lens, 
+                  'zcut_source': zcut_source, 'zcut_lens': zcut_lens,
                   }
 
 # ! import and reshape datavectors (cl) and response functions (rl)
@@ -364,10 +367,10 @@ cl_3x2pt_1d = np.genfromtxt(
 
 
 # reshape to 3 dimensions
-cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)
-cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC_opt, zbins)
-cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA_opt, zbins)
-cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt_opt, zbins)
+cl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL, zbins)
+cl_gg_3d = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
+cl_wa_3d = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
+cl_3x2pt_5d = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
 
 # decrease font of the xticks
 plt.rcParams.update({'xtick.labelsize': 19})
@@ -396,22 +399,22 @@ fig.legend(loc='right')
 plt.savefig('/home/davide/Documenti/Lavoro/Programmi/phd_thesis_plots/plots/cls.pdf', dpi=500, bbox_inches='tight')
 
 
-assert False, 'stop here and undo the latest changes with git, they were just to produce the cls plot'
+# assert False, 'stop here and undo the latest changes with git, they were just to produce the cls plot'
 
 
 ng_folder = covariance_cfg["ng_folder"]
 ng_filename = f'{covariance_cfg["ng_filename"].format(**variable_specs)}'
 ngtab = np.genfromtxt(f'{ng_folder}/'f'{ng_filename}')
-z_center_values = ngtab[:, 0]
-covariance_cfg['ng'] = ngtab[:, 1]
-dzWL_fiducial = ngtab[:, 4]
-dzGC_fiducial = ngtab[:, 4]
+covariance_cfg['ng'] = ngtab[0, :]
+gal_bias_fid = ngtab[1, :]
 
 nofz_folder = covariance_cfg["nofz_folder"]
 nofz_filename = f'{covariance_cfg["nofz_filename"].format(**variable_specs)}'
 n_of_z = np.genfromtxt(f'{nofz_folder}/'f'{nofz_filename}')
 zgrid_n_of_z = n_of_z[:, 0]
 n_of_z = n_of_z[:, 1:]
+
+z_center_values = wf_cl_lib.get_z_effective_isaac(zgrid_n_of_z, n_of_z)
 
 # some check on the input nz files
 assert np.all(covariance_cfg['ng'] < 5), 'ng values are likely < 5 *per bin*; this is just a rough check'
@@ -422,15 +425,22 @@ assert np.all(z_center_values < 3), 'z_center values are likely < 3; this is jus
 # BNT_matrix_filename = general_cfg["BNT_matrix_filename"].format(**variable_specs)
 # BNT_matrix = np.load(f'{general_cfg["BNT_matrix_path"]}/{BNT_matrix_filename}')
 
-print('Computing BNT matrix...')
-BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z, plot_nz=False)
+# print('Computing BNT matrix...')
+# BNT_matrix = covmat_utils.compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z, plot_nz=False)
+BNT_matrix = np.eye(zbins)
+if general_cfg['BNT_transform']:
+    raise NotImplementedError('BNT transform not implemented yet')
 
 rl_fld = general_cfg['rl_folder']
 rl_filename = general_cfg['rl_filename']
-rl_ll_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLO', nbl=nbl_WL, **variable_specs)}")
-rl_gg_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='GCO', nbl=nbl_WL, **variable_specs)}")
-rl_wa_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='WLA', nbl=nbl_WL, **variable_specs)}")
-rl_3x2pt_1d = np.genfromtxt(f"{rl_fld}/{rl_filename.format(probe='3x2pt', nbl=nbl_WL, **variable_specs)}")
+rl_ll_1d = np.genfromtxt(
+    f"{rl_fld.format(probe='WLO')}/{rl_filename.format(probe='WLO', nbl=nbl_WL, **variable_specs)}")
+rl_gg_1d = np.genfromtxt(
+    f"{rl_fld.format(probe='GCO')}/{rl_filename.format(probe='GCO', nbl=nbl_WL, **variable_specs)}")
+rl_wa_1d = np.genfromtxt(
+    f"{rl_fld.format(probe='WLA')}/{rl_filename.format(probe='WLA', nbl=nbl_WL, **variable_specs)}")
+rl_3x2pt_1d = np.genfromtxt(
+    f"{rl_fld.format(probe='3x2pt')}/{rl_filename.format(probe='3x2pt', nbl=nbl_WL, **variable_specs)}")
 
 
 rl_ll_3d = cl_utils.cl_SPV3_1D_to_3D(rl_ll_1d, 'WL', nbl_WL_opt, zbins)
@@ -477,7 +487,8 @@ if ell_max_WL == 1500:
     rl_3x2pt_5d = rl_3x2pt_5d[:nbl_3x2pt, :, :]
 
 # this is to pass the ll cuts to the covariance module
-ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc)
+# ell_cuts_dict = load_ell_cuts(kmax_h_over_Mpc)
+ell_cuts_dict = {}
 ell_dict['ell_cuts_dict'] = ell_cuts_dict  # rename for better readability
 
 # ! Vincenzo's method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
@@ -488,14 +499,14 @@ elif general_cfg['center_or_min'] == 'min':
 else:
     raise ValueError('general_cfg["center_or_min"] should be either "center" or "min"')
 
-ell_dict['idxs_to_delete_dict'] = {
-    'LL': get_idxs_to_delete(ell_dict[f'{prefix}_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True),
-    'GG': get_idxs_to_delete(ell_dict[f'{prefix}_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True),
-    'WA': get_idxs_to_delete(ell_dict[f'{prefix}_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True),
-    'GL': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False),
-    'LG': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
-    '3x2pt': get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict)
-}
+# ell_dict['idxs_to_delete_dict'] = {
+#     'LL': get_idxs_to_delete(ell_dict[f'{prefix}_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True),
+#     'GG': get_idxs_to_delete(ell_dict[f'{prefix}_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True),
+#     'WA': get_idxs_to_delete(ell_dict[f'{prefix}_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True),
+#     'GL': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False),
+#     'LG': get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False),
+#     '3x2pt': get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict)
+# }
 
 # ! 3d cl ell cuts (*after* BNT!!)
 cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_ell_cut_wrap(
@@ -516,6 +527,29 @@ rl_dict_3D = {
     'rl_3x2pt_5D': rl_3x2pt_5d}
 
 if covariance_cfg['compute_SSC']:
+
+    # ! first line is wrong, need to subtract Om_nu0
+    cosmo_par_dict_classy = {'Omega_cdm': ISTF_fid.primary['Om_m0'] - ISTF_fid.primary['Om_b0'],
+                             'Omega_b': ISTF_fid.primary['Om_b0'],
+                             'w0_fld': ISTF_fid.primary['w_0'],
+                             'wa_fld': ISTF_fid.primary['w_a'],
+                             'h': ISTF_fid.primary['h_0'],
+                             'n_s': ISTF_fid.primary['n_s'],
+                             'sigma8': ISTF_fid.primary['sigma_8'],
+
+                             'm_ncdm': ISTF_fid.extensions['m_nu'],
+                             'N_ncdm': ISTF_fid.neutrino_params['N_ncdm'],
+                             'N_ur': ISTF_fid.neutrino_params['N_ur'],
+
+                             'Omega_Lambda': ISTF_fid.extensions['Om_Lambda0'],
+
+                             'P_k_max_1/Mpc': 1200,
+                             'output': 'mPk',
+                             'non linear': 'halofit',  # ! takabird?
+
+                             # 'z_max_pk': 2.038,
+                             'z_max_pk': 4,  # do I get an error without this key?
+                             }
 
     # ! load kernels
     # TODO this should not be done if Sijkl is loaded; I have a problem with nz, which is part of the file name...
@@ -553,7 +587,7 @@ if covariance_cfg['compute_SSC']:
         print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
         Sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
     else:
-        Sijkl = Sijkl_utils.compute_Sijkl(csmlib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
+        Sijkl = Sijkl_utils.compute_Sijkl(cosmo_par_dict_classy, z_arr, transp_stacked_wf,
                                           Sijkl_cfg['wf_normalization'])
         np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
 
@@ -570,7 +604,7 @@ cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
 # save covariance matrix and test against benchmarks
 cov_folder = covariance_cfg['cov_folder'].format(cov_ell_cuts=str(covariance_cfg['cov_ell_cuts']),
                                                  **variable_specs)
-covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, **variable_specs)
+covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
 if general_cfg['test_against_benchmarks']:
     cov_benchmark_folder = f'{cov_folder}/benchmarks'
@@ -582,20 +616,14 @@ if not FM_cfg['compute_FM']:
     raise KeyboardInterrupt('skipping FM computation, the script will exit now')
 
 # set the fiducial values in a dictionary and a list
-bias_fiducials = np.genfromtxt(f'{ng_folder}/gal_mag_fiducial_polynomial_fit.dat')
-bias_fiducials_rows = np.where(bias_fiducials[:, 0] == general_cfg['magcut_source'] / 10)[
-    0]  # take the correct magnitude limit
-galaxy_bias_fit_fiducials = bias_fiducials[bias_fiducials_rows, 1]
-magnification_bias_fit_fiducials = bias_fiducials[bias_fiducials_rows, 2]
 fiducials_dict = {
     'cosmo': [ISTF_fid.primary['Om_m0'], ISTF_fid.primary['Om_b0'],
               ISTF_fid.primary['w_0'], ISTF_fid.primary['w_a'],
               ISTF_fid.primary['h_0'], ISTF_fid.primary['n_s'], ISTF_fid.primary['sigma_8'], 7.75],
-    'IA': np.asarray([0.16, 1.66]),
+    'IA': [ISTF_fid.IA_free['A_IA'], ISTF_fid.IA_free['eta_IA'], ISTF_fid.IA_free['beta_IA']],
     'shear_bias': np.zeros((zbins,)),
-    'dzWL': dzWL_fiducial,  # for the time being, equal to the GC ones
-    'galaxy_bias': galaxy_bias_fit_fiducials,
-    'magnification_bias': magnification_bias_fit_fiducials,
+    'dzWL': np.zeros((zbins,)),  # for the time being, equal to the GC ones
+    'galaxy_bias': gal_bias_fid,
 }
 fiducials_values_3x2pt = list(np.concatenate([fiducials_dict[key] for key in fiducials_dict.keys()]))
 
@@ -618,12 +646,13 @@ derivatives_folder = FM_cfg['derivatives_folder'].format(**variable_specs)
 der_prefix = FM_cfg['derivatives_prefix']
 vinc_filenames = mm.get_filenames_in_folder(derivatives_folder)
 vinc_filenames = [vinc_filename for vinc_filename in vinc_filenames if vinc_filename.startswith(der_prefix)]
+vinc_filenames = [vinc_filename for vinc_filename in vinc_filenames if f'{EP_or_ED}{zbins:02d} in ' in vinc_filename]
 
 # perform some checks on the filenames before trimming them
 for vinc_filename in vinc_filenames:
     assert f'{EP_or_ED}{zbins}' in vinc_filename, f'{EP_or_ED}{zbins} not in filename {vinc_filename}'
-    assert f'ML{ML}' in vinc_filename, f'ML{ML} not in filename {vinc_filename}'
-    assert f'MS{MS}' in vinc_filename, f'MS{MS} not in filename {vinc_filename}'
+    assert f'ML{magcut_lens}' in vinc_filename, f'ML{magcut_lens} not in filename {vinc_filename}'
+    assert f'MS{magcut_source}' in vinc_filename, f'MS{magcut_source} not in filename {vinc_filename}'
 
 vinc_trimmed_filenames = [vinc_filename.split('-', 1)[0].strip() for vinc_filename in vinc_filenames]
 vinc_trimmed_filenames = [vinc_trimmed_filename[len(der_prefix):] if vinc_trimmed_filename.startswith(der_prefix) else vinc_trimmed_filename

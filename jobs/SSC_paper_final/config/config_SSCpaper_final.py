@@ -8,13 +8,14 @@ job_path = Path.cwd().parent
 sys.path.append(f'{project_path}/bin')
 import check_specs as utils
 
-sys.path.append(f'{project_path.parent}/common_data/common_config')
+sys.path.append(f'{project_path}/common_cfg')
 import ISTF_fid_params as ISTFfid
 
 which_forecast = 'SPV3'
 fsky, GL_or_LG, ind_ordering, _ = utils.get_specs(which_forecast)
 
 SPV3_folder = f'{project_path.parent}/common_data/vincenzo/SPV3_07_2022/Flagship_1_restored'
+output_path = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SSC_paper_final/output'
 
 # ! choose the flagship version and whether you want to use the BNT transform
 flagship_version = 1
@@ -54,6 +55,7 @@ general_cfg = {
     'ell_max_WL': 5000,
     'ell_max_GC': 3000,
     'ell_max_XC': 3000,
+    'ell_max_3x2pt': 3000,
     'zbins': 10,
     'zbins_list': None,
     'EP_or_ED': 'EP',
@@ -133,7 +135,7 @@ covariance_cfg = {
     'sigma_eps2': (0.26 * np.sqrt(2)) ** 2,  # ! new
     'ng': None,  # ! the new value is 28.73 (for Flagship_1), but I'm taking the value from the ngbTab files
     'ng_folder': f'{SPV3_folder}/InputNz/Lenses/Flagship',
-    'ng_filename': 'ngbsTab-{EP_or_ED:s}{zbins:02d}.dat',
+    'ng_filename': 'ngbTab-{EP_or_ED:s}{zbins:02d}.dat',
 
     # sources (and lenses) redshift distributions
     'nofz_folder': f'{SPV3_folder}/InputNz/Lenses/Flagship',
@@ -148,7 +150,7 @@ covariance_cfg = {
 
     'save_cov': True,
     'cov_file_format': 'npz',  # or npy
-    'save_cov_dat': False,  # this is the format used by Vincenzo
+    'save_cov_dat': True,  # this is the format used by Vincenzo
 
     'save_cov_2D': True,
     'save_cov_4D': False,
@@ -158,10 +160,17 @@ covariance_cfg = {
     'save_2DCLOE': False,  # outermost loop is on the probes
 
     # ! no folders for ell_cut_center or min
-    'cov_folder': f'{job_path}/output/covmat',
-    'cov_filename': 'covmat_{which_cov:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
+    'cov_folder': f'{output_path}/covmat',
+    'cov_filename': 'covmat_{which_cov:s}_{probe:s}_nbl{nbl:d}_zbins{EP_or_ED:s}{zbins:02d}_{ndim:d}D',
     'cov_filename_vincenzo': 'cm-{probe_vinc:s}-{GOGS_filename:s}-{nbl_WL:d}-{EP_or_ED:s}{zbins:02d}-'
                              'ML{magcut_lens:03d}-ZL{zcut_lens:02d}-MS{magcut_source:03d}-ZS{zcut_source:02d}.dat',
+
+
+    'probe_ordering': (('L', 'L'), ('G', 'L'), ('G', 'G')),
+    'PySSC_cfg': {
+        'which_ng_cov': ('SSC', ),
+        'load_precomputed_cov': False,
+    }
 }
 if ell_cuts:
     covariance_cfg['cov_filename'].replace('_{ndim:d}D', 'kmaxhoverMpc{kmax_h_over_Mpc:.03f}_{ndim:d}D')
@@ -174,19 +183,18 @@ Sijkl_cfg = {
     'nz': None,  # ! is this used?
     'has_IA': True,  # whether to include IA in the WF used to compute Sijkl
 
-    'Sijkl_folder': f'{job_path}/output/sijkl',
+    'Sijkl_folder': f'{output_path}/sijkl',
     'Sijkl_filename': 'sijkl_WF-FS{flagship_version:01d}_nz{nz:d}_zbins{EP_or_ED:s}{zbins:02}_IA{IA_flag:}.npy',
     'use_precomputed_sijkl': True,  # try to load precomputed Sijkl from Sijkl_folder, if it altready exists
 }
 
+
 param_names_dict = {
     'cosmo': ["Om", "Ob", "wz", "wa", "h", "ns", "s8", 'logT_AGN'],
-    'IA': ["Aia", "eIA"],
+    'IA': ["Aia", "eIA", "bIA"],
     'shear_bias': [f'm{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
     'dzWL': [f'dzWL{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
-    'galaxy_bias': [f'bG{zbin_idx:02d}' for zbin_idx in range(1, 5)],
-    'magnification_bias': [f'bM{zbin_idx:02d}' for zbin_idx in range(1, 5)],
-    # 'dzGC': [f'dzGC{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)]
+    'galaxy_bias': [f'b{zbin_idx:02d}' for zbin_idx in range(1, general_cfg['zbins'] + 1)],
 }
 # declare the set of parameters under study
 param_names_3x2pt = list(np.concatenate([param_names_dict[key] for key in param_names_dict.keys()]))
@@ -214,14 +222,16 @@ FM_cfg = {
     'save_FM_dict': True,
 
     'load_preprocess_derivatives': False,
+    # NO DERIVATIVES FOR FS1!!!!!!!! VINCENZO NEVER UPLOEADED THEM
     'derivatives_folder': SPV3_folder + '/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}',
+    # 'derivatives_folder':'/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/BNT/Derivatives/ML245ZL00MS245ZS00/',
     'derivatives_filename': deriv_filename,
     'derivatives_prefix': 'dDVd',
 
     'derivatives_BNT_transform': deriv_BNT_transform,
     'deriv_ell_cuts': deriv_ell_cuts,
 
-    'fm_folder': f'{job_path}/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform}' +
+    'fm_folder': f'{output_path}/Flagship_{flagship_version}/FM/BNT_{BNT_transform}' +
                  '/ell_cuts_{ell_cuts:s}' + ell_cuts_subfolder,
     'FM_txt_filename': FM_txt_filename,
     'FM_dict_filename': FM_dict_filename,

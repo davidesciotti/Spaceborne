@@ -50,13 +50,13 @@ c = 299792.458  # km/s
 #                          'm_ncdm': ISTF.extensions['m_nu'],,
 #                          'N_ncdm': ISTF.neutrino_params['N_ncdm'],
 #                          'N_ur': ISTF.neutrino_params['N_ur'],
-#
+
 #                          'Omega_Lambda': ISTF.extensions['Om_Lambda0'],
-#
+
 #                          'P_k_max_1/Mpc': 1200,
 #                          'output': 'mPk',
 #                          'non linear': 'halofit',  # ! takabird?
-#
+
 #                          # 'z_max_pk': 2.038,
 #                          'z_max_pk': 4,  # do I get an error without this key?
 #                          }

@@ -4,6 +4,7 @@ import multiprocessing
 import sys
 
 import matplotlib
+from tqdm import tqdm
 num_cores = multiprocessing.cpu_count()
 os.environ['OMP_NUM_THREADS'] = '32'
 os.environ['NUMBA_NUM_THREADS'] = '32'
@@ -24,7 +25,7 @@ import yaml
 import pprint
 from copy import deepcopy
 import numpy.testing as npt
-from scipy.interpolate import interp1d, RegularGridInterpolator
+from scipy.interpolate import interp1d, RegularGridInterpolator, CubicSpline
 # from tabulate import tabulate
 
 import spaceborne.ell_utils as ell_utils
@@ -74,7 +75,7 @@ def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
     np.save(f"{folder_name}/sigma2", sigma2)
     np.save(f"{folder_name}/z_grid", z_grid)
     os.system(
-        f"julia --project=. --threads={num_threads} {SB_ROOT}/spaceborne/ssc_integral_julia.jl {folder_name} {integration_type}")
+        f"julia --project=. --threads={num_threads} {SB_ROOT}/spaceborne/julia_integrator.jl {folder_name} {integration_type}")
 
     cov_filename = "cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npy"
 
@@ -816,6 +817,8 @@ if not os.path.exists(oc_path):
 
 nz_src_ascii_filename = covariance_cfg['nz_sources_filename'].replace('.dat', f'_dzshifts{shift_nz}.ascii')
 nz_lns_ascii_filename = covariance_cfg['nz_lenses_filename'].replace('.dat', f'_dzshifts{shift_nz}.ascii')
+nz_src_ascii_filename = nz_src_ascii_filename.format(**variable_specs)
+nz_lns_ascii_filename = nz_lns_ascii_filename.format(**variable_specs)
 nz_src_tosave = np.column_stack((zgrid_nz_src, nz_src))
 nz_lns_tosave = np.column_stack((zgrid_nz_lns, nz_lns))
 np.savetxt(f'{oc_path}/{nz_src_ascii_filename}', nz_src_tosave)
@@ -933,7 +936,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     print('Start SSC computation with Spaceborne...')
 
     # ! 1. Get halo model responses from CCL
-    if covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'halo_model':
+    if covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'halo_model_CCL':
 
         ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
                                        pyccl_cfg=pyccl_cfg)
@@ -978,6 +981,20 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         dPmm_ddeltab = dPmm_ddeltab_hm
         dPgm_ddeltab = dPgm_ddeltab_hm
         dPgg_ddeltab = dPgg_ddeltab_hm
+
+    elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'halo_model_SB':
+
+        which_b1g_in_resp = covariance_cfg['Spaceborne_cfg']['which_b1g_in_resp']
+        resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
+                                                 z_grid=z_grid_ssc_integrands,
+                                                 ccl_obj=ccl_obj)
+        resp_obj.set_hm_resp(k_grid_resp, z_grid_ssc_integrands, which_b1g_in_resp, gal_bias)
+        dPmm_ddeltab = resp_obj.dPmm_ddeltab_hm
+        dPgm_ddeltab = resp_obj.dPgm_ddeltab_hm
+        dPgg_ddeltab = resp_obj.dPgg_ddeltab_hm
+        r_mm_hm = resp_obj.r1_mm_hm
+        r_gm_hm = resp_obj.r1_gm_hm
+        r_gg_hm = resp_obj.r1_gg_hm
 
     # ! from Vincenzo's files
     elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe_vin':
@@ -1025,13 +1042,13 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         dPgg_ddeltab = dPgg_ddeltab_vin
 
     # ! from SpaceborneResponses class
-    elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe_dav':
+    elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe_sb':
 
         resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
                                                  z_grid=z_grid_ssc_integrands,
                                                  ccl_obj=ccl_obj)
         r_mm_sbclass = resp_obj.compute_r1_mm()
-        resp_obj.get_rab_and_dpab_ddeltab(b2g_from_halomodel=True)
+        resp_obj.set_su_resp(b2g_from_halomodel=True)
 
         if covariance_cfg['Spaceborne_cfg']['include_b2g']:
             r_gm_sbclass = resp_obj.r1_gm
@@ -1072,31 +1089,6 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         # plt.ylabel(r'$R_{AB}(k)$')
         # plt.ylim(-5, 5)
         # plt.title(f'z={z_grid_ssc_integrands[z_idx]}')
-
-        # # TODO check counterterms, to be better understood - 0 for lensing, as they should be
-        # bA12 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bA12']
-        # bB12 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bB12']
-        # bA34 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bA34']
-        # bB34 = ccl_obj.responses_dict['G', 'G', 'G', 'G']['bB34']
-
-        # # a is flipped w.r.t. z
-        # bA12 = np.flip(bA12, axis=1)
-        # bB12 = np.flip(bB12, axis=1)
-        # bA34 = np.flip(bA34, axis=1)
-        # bB34 = np.flip(bB34, axis=1)
-
-        # assert bA12.shape == bA34.shape == bB12.shape == bB34.shape, 'counterterms shape mismatch'
-
-        # k_grid_resp_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
-        # a_grid_resp_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
-        # z_grid_resp_hm = cosmo_lib.a_to_z(a_grid_resp_hm)[::-1]
-
-        # plt.plot(z_grid_resp_hm, bA12[0, :], label='bA12', alpha=0.6, ls='--')
-        # plt.plot(z_grid_resp_hm, bB12[0, :], label='bB12', alpha=0.6, ls='--')
-        # plt.plot(z_grid_resp_hm, bA34[0, :], label='bA34', alpha=0.6, ls='--')
-        # plt.plot(z_grid_resp_hm, bB34[0, :], label='bB34', alpha=0.6, ls='--')
-        # plt.plot(z_grid_resp, gal_bias, label='FS2_gal_bias')
-        # plt.legend()
 
     else:
         raise ValueError(
@@ -1139,11 +1131,11 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     z_grid_ssc_integrands_test = deepcopy(z_grid_ssc_integrands)
     while kmax_limber > k_max_resp:
         print(f'kmax_limber > k_max_dPk ({kmax_limber:.2f} {k_txt_label} > {k_max_resp:.2f} {k_txt_label}): '
-              f'Increasing z_min until kmax_limber < k_max_dPk. Alternetively, increase k_max_dPk or decrease ell_max.')
+              f'Increasing z_min until kmax_limber < k_max_dPk. Alternatively, increase k_max_dPk or decrease ell_max.')
         z_grid_ssc_integrands_test = z_grid_ssc_integrands_test[1:]
         kmax_limber = cosmo_lib.get_kmax_limber(
             ell_grid, z_grid_ssc_integrands_test, use_h_units, ccl_obj.cosmo_ccl)
-        print(f'New z_min = {z_grid_ssc_integrands_test[0]:.3f}')
+        print(f'Retrying with z_min = {z_grid_ssc_integrands_test[0]:.3f}')
 
     dPmm_ddeltab_klimb = np.array(
         [dPmm_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
@@ -1155,7 +1147,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         [dPgg_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
             ell_dict['ell_GC']])
 
-    # ! volume element
+    # ! integral prefactor
     cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(z_grid_ssc_integrands,
                                                             covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
                                                             use_h_units=use_h_units,
@@ -1200,6 +1192,8 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         _a, sigma2_b = ccl_obj.sigma2_b_tuple
         sigma2_b = sigma2_b[::-1]
         _z = cosmo_lib.a_to_z(_a)[::-1]
+
+        np.testing.assert_allclose(z_grid_ssc_integrands, _z, atol=0, rtol=1e-8)
 
         if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
             raise NotImplementedError('TODO')
@@ -1313,7 +1307,6 @@ elif covariance_cfg['ng_cov_code'] == 'Spaceborne' and \
 if covariance_cfg['ng_cov_code'] == 'Spaceborne':
     covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 
-print('SSC computed with Spaceborne')
 # TODO integrate this with Spaceborne_covg
 
 # # ! quickly check responses
@@ -2103,7 +2096,6 @@ elif general_cfg['save_outputs_as_test_benchmarks_path'] is False:
     pass
 
 
-
 # ! plot the results directly, as a quick check
 nparams_toplot = 7
 names_params_to_fix = []
@@ -2283,7 +2275,6 @@ for probe in probes:
 path = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM/BNT_False/ell_cuts_False'
 common_str = '_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_13245deg2'
 
-
 fm_dict_of_dicts = {
     # 'SB_su_fullsky': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_separateuniverse_fullcurvedsky.pickle'),
     # 'OC_hp': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_highprecision.pickle'),
@@ -2323,6 +2314,8 @@ mm.compare_fm_constraints(*fm_dict_list, labels=labels,
                           save_fig=False,
                           fig_path='/home/davide/Scrivania/')
 
+assert False, 'stop here'
+
 fisher_matrices = (
     fm_dict_of_dicts['SB_hm_simpker']['FM_3x2pt_GSSC'],
     fm_dict_of_dicts['SB_KEapp_hm_simpker']['FM_3x2pt_GSSC'],
@@ -2331,18 +2324,15 @@ fisher_matrices = (
 )
 fiducials = list(fm_dict_of_dicts['SB_hm_simpker']['fiducial_values_dict'].values())
 # fiducials = (
-    # fm_dict_of_dicts['SB_hm_simpker']['fiducial_values_dict'].values(),
-    # fm_dict_of_dicts['SB_KEapp_hm_simpker']['fiducial_values_dict'].values(),
-    # fm_dict_of_dicts['OC_simpker']['fiducial_values_dict'].values(),
-    # fm_dict_of_dicts['current']['fiducial_values_dict'].values(),
+# fm_dict_of_dicts['SB_hm_simpker']['fiducial_values_dict'].values(),
+# fm_dict_of_dicts['SB_KEapp_hm_simpker']['fiducial_values_dict'].values(),
+# fm_dict_of_dicts['OC_simpker']['fiducial_values_dict'].values(),
+# fm_dict_of_dicts['current']['fiducial_values_dict'].values(),
 # )
 param_names_list = list(fm_dict_of_dicts['SB_hm_simpker']['fiducial_values_dict'].keys())
 param_names_labels_toplot = param_names_list[:8]
-plot_lib.triangle_plot(fisher_matrices, fiducials, title, labels, param_names_list, param_names_labels_toplot, 
-                  param_names_labels_tex=None, rotate_param_labels=False, contour_colors=None, line_colors=None)
-
-
-
+plot_lib.triangle_plot(fisher_matrices, fiducials, title, labels, param_names_list, param_names_labels_toplot,
+                       param_names_labels_tex=None, rotate_param_labels=False, contour_colors=None, line_colors=None)
 
 
 print('Finished in {:.2f} minutes'.format((time.perf_counter() - script_start_time) / 60))

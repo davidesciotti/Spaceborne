@@ -243,7 +243,7 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
     masked_fid_pars_dict_list = []
     uncertainties_dict = {}
     fom_dict = {}
-    legend_x_anchor = 1.3
+    legend_x_anchor = 1.4
 
     assert keys_toplot_in == 'all' or type(keys_toplot_in) == list, 'keys_toplot must be a list or "all"'
     assert colors is None or type(colors) == list, 'colors must be a list or "all"'

@@ -324,12 +324,16 @@ if general_cfg['is_CLOE_run']:
 fsky_check = cosmo_lib.deg2_to_fsky(covariance_cfg['survey_area_deg2'])
 assert np.abs(mm.percent_diff(covariance_cfg['fsky'], fsky_check)) < 1e-5, 'fsky does not match the survey area'
 
-path_res_rob = f'{ROOT}/OneCovariance/check_ssc_integrands/Robert'
-chi = np.load(f'{path_res_rob}/responses_davide_3/chi.npy')
-k_rob = np.load(f'{path_res_rob}/responses_davide_3/k.npy') * h  # (so it's in 1/Mpc)
-z_rob = np.load(f'{path_res_rob}/responses_davide_3/z.npy')
-z_grid_ssc_integrands = z_rob
-k_grid_resp = k_rob
+# path_res_rob = f'{ROOT}/OneCovariance/check_ssc_integrands/Robert'
+# chi = np.load(f'{path_res_rob}/responses_davide_3/chi.npy')
+# k_rob = np.load(f'{path_res_rob}/responses_davide_3/k.npy') * h  # (so it's in 1/Mpc)
+# z_rob = np.load(f'{path_res_rob}/responses_davide_3/z.npy')
+# k_grid_resp = k_rob
+
+# zmin_sb = 0.007
+# zmin_sb_idx = np.argmin(np.abs(z_rob - zmin_sb))
+# z_grid_ssc_integrands = z_rob[zmin_sb_idx:]
+
 
 # TODO delete this arg in save_cov function
 cases_tosave = '_'
@@ -1101,28 +1105,31 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         raise ValueError(
             'which_pk_responses must be either "halo_model" or "separate_universe_vin" or "separate_universe_sb"')
 
-    path_res_rob = f'{ROOT}/OneCovariance/check_ssc_integrands/Robert'
-    chi = np.load(f'{path_res_rob}/responses_davide_3/chi.npy')
-    k_rob = np.load(f'{path_res_rob}/responses_davide_3/k.npy') * h  # (so it's in 1/Mpc)
-    z_rob = np.load(f'{path_res_rob}/responses_davide_3/z.npy')
-    dPmm_ddeltab = np.load(f'{path_res_rob}/responses_davide_3/response_mm.npy') / h**3
-    dPgm_ddeltab = np.load(f'{path_res_rob}/responses_davide_3/response_gm.npy') / h**3
-    dPgg_ddeltab = np.load(f'{path_res_rob}/responses_davide_3/response_gg.npy') / h**3
+    # print('OVERWRITING RESPONSE FUNCTIONS WITH OC ONES')
+    # path_res_rob = f'{ROOT}/OneCovariance/check_ssc_integrands/Robert'
+    # chi = np.load(f'{path_res_rob}/responses_davide_3/chi.npy')
+    # k_rob = np.load(f'{path_res_rob}/responses_davide_3/k.npy') * h  # (so it's in 1/Mpc)
+    # z_rob = np.load(f'{path_res_rob}/responses_davide_3/z.npy')
+    # dPmm_ddeltab = np.load(f'{path_res_rob}/responses_davide_3/response_mm.npy') / h**3
+    # dPgm_ddeltab = np.load(f'{path_res_rob}/responses_davide_3/response_gm.npy') / h**3
+    # dPgg_ddeltab = np.load(f'{path_res_rob}/responses_davide_3/response_gg.npy') / h**3
 
-    # response_mm_func = RegularGridInterpolator((k_rob, z_rob), response_mm)
-    # response_gm_func = RegularGridInterpolator((k_rob, z_rob), response_gm)
-    # response_gg_func = RegularGridInterpolator((k_rob, z_rob), response_gg)
+    # dPmm_ddeltab_func = RegularGridInterpolator((k_rob, z_rob), dPmm_ddeltab)
+    # dPgm_ddeltab_func = RegularGridInterpolator((k_rob, z_rob), dPgm_ddeltab)
+    # dPgg_ddeltab_func = RegularGridInterpolator((k_rob, z_rob), dPgg_ddeltab)
 
-    # # clip k_grid_resp and z_grid_ssc_integrands to avoid interpolation errors
-    # k_mask = np.logical_and(k_rob.min() <= k_grid_resp, k_grid_resp < k_rob.max())
-    # _k_grid_resp = k_grid_resp[k_mask]
-    # z_mask = np.logical_and(z_rob.min() <= z_grid_ssc_integrands, z_grid_ssc_integrands < z_rob.max())
-    # _z_grid_ssc_integrands = z_grid_ssc_integrands[z_mask]
+    # # # clip k_grid_resp and z_grid_ssc_integrands to avoid interpolation errors
+    # # k_mask = np.logical_and(k_rob.min() <= k_grid_resp, k_grid_resp < k_rob.max())
+    # # _k_grid_resp = k_grid_resp[k_mask]
+    # # z_mask = np.logical_and(z_rob.min() <= z_grid_ssc_integrands, z_grid_ssc_integrands < z_rob.max())
+    # # _z_grid_ssc_integrands = z_grid_ssc_integrands[z_mask]
+    
+    # # kk, zz = np.meshgrid(_k_grid_resp, _z_grid_ssc_integrands, indexing='ij')
+    # kk, zz = np.meshgrid(k_grid_resp, z_grid_ssc_integrands, indexing='ij')
 
-    # kk, zz = np.meshgrid(_k_grid_resp, _z_grid_ssc_integrands, indexing='ij')
-    # dPmm_ddeltab = response_mm_func((kk, zz))
-    # dPgm_ddeltab = response_gm_func((kk, zz))
-    # dPgg_ddeltab = response_gg_func((kk, zz))
+    # dPmm_ddeltab = dPmm_ddeltab_func((kk, zz))
+    # dPgm_ddeltab = dPgm_ddeltab_func((kk, zz))
+    # dPgg_ddeltab = dPgg_ddeltab_func((kk, zz))
 
     # assert False, 'stop here'
 
@@ -1211,11 +1218,11 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     z_grid_ssc_integrands_test = deepcopy(z_grid_ssc_integrands)
     while kmax_limber > k_max_resp:
         print(f'kmax_limber > k_max_dPk ({kmax_limber:.2f} {k_txt_label} > {k_max_resp:.2f} {k_txt_label}): '
-              f'Increasing z_min until kmax_limber < k_max_dPk. Alternetively, increase k_max_dPk or decrease ell_max.')
+              f'Increasing z_min until kmax_limber < k_max_dPk. Alternatively, increase k_max_dPk or decrease ell_max.')
         z_grid_ssc_integrands_test = z_grid_ssc_integrands_test[1:]
         kmax_limber = cosmo_lib.get_kmax_limber(
             ell_grid, z_grid_ssc_integrands_test, use_h_units, ccl_obj.cosmo_ccl)
-        print(f'New z_min = {z_grid_ssc_integrands_test[0]:.3f}')
+        print(f'Retrying with z_min = {z_grid_ssc_integrands_test[0]:.3f}')
 
     dPmm_ddeltab_klimb = np.array(
         [dPmm_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
@@ -2393,7 +2400,6 @@ plot_lib.bar_plot(np.array(list(perc_diff_probe.values())), title + r', % diff (
 path = f'{ROOT}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM/BNT_False/ell_cuts_False'
 common_str = '_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_13245deg2'
 
-
 fm_dict_of_dicts = {
     # 'SB_su_fullsky': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_separateuniverse_fullcurvedsky.pickle'),
     # 'OC_hp': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_highprecision.pickle'),
@@ -2410,16 +2416,27 @@ fm_dict_of_dicts = {
     # 'SB_KEapp_hm_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     # 'SB_hm_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     # 'OC_simpker': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly.pickle'),
-
+    
     # 'SB_bgtab': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinal_bgtab_halo_model_SB.pickle'),
     # 'SB_bgHOD': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinal_bgHOD_halo_model_SB.pickle'),
     # 'OC_new': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinalpostpull.pickle'),
     # 'OC_old': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinalprepull.pickle'),
-
+    # 'SB_bgtab_SBres_SBgrid': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_SBres_SBgrid_halo_model_SB.pickle'),
+    # 'SB_bgtab_SBres_OCgrid': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_SBres_OCgrid_halo_model_SB.pickle'),
+    # 'SB_bgtab_OCres_OCgrid': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCres_OCgrid_halo_model_SB.pickle'),
+    # 'SB_bgtab_zmin0.02': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_SBres_zmin0ly_SBres_zmin0.02_halo_model_SB.pickle'),
+    # 'SB_OCres_zmin0.007': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCres_zmin0.007_halo_model_SB.pickle'),
+    
+    'CCL_bgHOD_CCLcheck': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_SBHOD_vsCCL.pickle'),
+    'SB_bgHOD_CCLcheck': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_SBHOD_vsCCL_halo_model_SB.pickle'),
+    'SB_CCLHM_CCLcheck': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_SBHMCCL_vsCCL_halo_model_CCL.pickle'),
+    
     'OC_cNG': mm.load_pickle(f'{path}/FM_GcNG_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_cNGtest2.pickle'),
     'CCL_cNG': mm.load_pickle(f'{path}/FM_GcNG_PyCCL{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_cNGtest2.pickle'),
     'current': fm_dict
 }
+
+
 # TODO I want to check: SB_bgHOD, SB_bgtab, OC_old, OC_new (from develop branch, don't forget to reinstall (I think, actually most likely not))
 # ! something wrong with XC for OC_new I think
 

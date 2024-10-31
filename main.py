@@ -43,6 +43,7 @@ import spaceborne.sigma2_SSC as sigma2_SSC
 import spaceborne.config_checker as config_checker
 import spaceborne.onecovariance_interface as oc_interface
 import spaceborne.responses as responses
+import spaceborne.covariance_class as covariance_class
 
 pp = pprint.PrettyPrinter(indent=4)
 ROOT = os.getenv('ROOT')
@@ -1416,6 +1417,9 @@ general_cfg['cl_gg_3d'] = cl_gg_3d
 # ! compute covariance matrix
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, cl_dict, bnt_matrix, oc_obj)
+
+cov_obj = covariance_class.SpaceborneCovariance(general_cfg, covariance_cfg, ell_dict, cl_dict, ind)
+cov_obj.consistency_checks()
 
 # ! save for CLOE runs
 if covariance_cfg['save_CLOE_benchmark_cov']:

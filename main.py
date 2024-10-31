@@ -1309,73 +1309,6 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
 
 # TODO integrate this with Spaceborne_covg
 
-# # ! quickly check responses
-# import sys
-# sys.path.append('/home/davide/Documenti/Lavoro/Programmi/exact_SSC/bin')
-# import ssc_integrands_SPV3 as sscint
-
-# z_val = 0
-# z_grid_dPk_su = sscint.z_grid_dPk
-# z_idx_hm = np.argmin(np.abs(z_grid_dPk_hm - z_val))
-# z_idx_su = np.argmin(np.abs(z_grid_dPk_su - z_val))
-# z_val_hm = z_grid_dPk_hm[z_idx_hm]
-# z_val_su = z_grid_dPk_su[z_idx_su]
-
-# # dPAB/ddeltab
-# plt.figure()
-# # HM
-# plt.plot(k_grid_dPk_hm, np.abs(dPmm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:blue')
-# plt.plot(k_grid_dPk_hm, np.abs(dPgm_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:orange')
-# plt.plot(k_grid_dPk_hm, np.abs(dPgg_ddeltab_hm[:, z_idx_hm]), ls='-', alpha=0.5, c='tab:green')
-
-# # SU
-# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPmm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:blue')
-# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgm_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:orange')
-# plt.plot(sscint.k_grid_dPk, np.abs(sscint.dPgg_ddeltab[:, z_idx_su]), ls='--', alpha=0.5, c='tab:green')
-
-# plt.xscale('log')
-# plt.yscale('log')
-# plt.xlabel('k [1/Mpc]')
-# plt.ylabel(r'${\rm abs} \; \\partial P_{AB} / \\partial \delta_b$')
-
-# colors = ['tab:blue', 'tab:orange', 'tab:green']
-# labels_a = ['dPmm_ddeltab', 'dPgm_ddeltab', 'dPgg_ddeltab']
-# handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels_a[i]) for i in range(3)]
-# handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
-#               for ls, label in zip(['-', '--'], ['signal', 'error'])]
-# handles = handles_z + handles_ls
-# labels = labels_a + ['Halo model', 'Separate universe']
-# plt.legend(handles, labels)
-# plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
-# plt.tight_layout()
-# plt.show()
-
-# # dlogPAB/ddeltab
-# plt.figure()
-# # HM
-# plt.plot(k_grid_dPk_hm, dPmm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:blue')
-# plt.plot(k_grid_dPk_hm, dPgm_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:orange')
-# plt.plot(k_grid_dPk_hm, dPgg_ddeltab_hm[:, z_idx_hm] / pk_mm_ccl[:, z_idx_hm], ls='-', alpha=0.5, c='tab:green')
-# # SU
-# plt.plot(sscint.k_grid_dPk, sscint.r_mm[:, z_idx_su], ls='--', alpha=0.5, c='tab:blue')
-# plt.plot(sscint.k_grid_dPk, sscint.r_gm[:, z_idx_su], ls='--', alpha=0.5, c='tab:orange')
-# plt.plot(sscint.k_grid_dPk, sscint.r_gg[:, z_idx_su], ls='--', alpha=0.5, c='tab:green')
-
-# plt.xscale('log')
-# plt.xlabel('k [1/Mpc]')
-# plt.ylabel(r'$\\partial {\rm log} P_{AB} / \\partial \delta_b$')
-
-# colors = ['tab:blue', 'tab:orange', 'tab:green']
-# labels_a = ['dPmm_ddeltab/Pmm', 'dPgm_ddeltab/Pgm', 'dPgg_ddeltab/Pgg']
-# handles_z = [plt.Line2D([0], [0], color=colors[i], lw=2, label=labels[i]) for i in range(3)]
-# handles_ls = [plt.Line2D([0], [0], color='k', lw=2, linestyle=ls, label=label)
-#               for ls, label in zip(['-', '--'], ['signal', 'error'])]
-# handles = handles_z + handles_ls
-# labels = labels_a + ['Halo model', 'Separate universe']
-# plt.legend(handles, labels)
-# plt.title(f'z_hm = {z_val_hm:.3f}, z_su = {z_val_su:.3f}')
-# plt.tight_layout()
-# plt.show()
 # ! ========================================== end Spaceborne ===================================================
 
 # ! ========================================== start PyCCL ===================================================
@@ -1401,6 +1334,40 @@ if covariance_cfg['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomputed_
 
         covariance_cfg[f'cov_{which_ng_cov.lower()}_3x2pt_dict_8D_ccl'] = ccl_obj.cov_ng_3x2pt_dict_8D
 
+        if pyccl_cfg['save_cov']:
+
+            _variable_specs = variable_specs.copy()
+            _variable_specs.pop('which_ng_cov')
+            _variable_specs['which_ng_cov'] = which_ng_cov
+
+            cov_path = pyccl_cfg['cov_path'].format(ROOT=ROOT, **_variable_specs)
+            cov_filename = pyccl_cfg['cov_filename'].format(probe_a='{probe_a:s}', probe_b='{probe_b:s}',
+                                                            probe_c='{probe_c:s}', probe_d='{probe_d:s}',
+                                                            nbl=nbl_3x2pt,
+                                                            lmax=ell_max_3x2pt,
+                                                            survey_area_deg2=covariance_cfg['survey_area_deg2'],
+                                                            **_variable_specs)
+
+            ccl_obj.save_cov_blocks(cov_path, cov_filename)
+
+elif covariance_cfg['ng_cov_code'] == 'PyCCL' and pyccl_cfg['load_precomputed_cov']:
+
+    for which_ng_cov in pyccl_cfg['which_ng_cov']:
+
+        _variable_specs = variable_specs.copy()
+        _variable_specs.pop('which_ng_cov')
+        _variable_specs['which_ng_cov'] = which_ng_cov
+
+        cov_path = pyccl_cfg['cov_path'].format(ROOT=ROOT, **_variable_specs)
+        cov_filename = pyccl_cfg['cov_filename'].format(probe_a='{probe_a:s}', probe_b='{probe_b:s}',
+                                                        probe_c='{probe_c:s}', probe_d='{probe_d:s}',
+                                                        nbl=nbl_3x2pt,
+                                                        lmax=ell_max_3x2pt,
+                                                        survey_area_deg2=covariance_cfg['survey_area_deg2'],
+                                                        **_variable_specs)
+
+        ccl_obj.load_cov_blocks(cov_path, cov_filename, probe_ordering)
+        covariance_cfg[f'cov_{which_ng_cov.lower()}_3x2pt_dict_8D_ccl'] = ccl_obj.cov_ng_3x2pt_dict_8D
 
 # for key in ccl_obj.cov_ng_3x2pt_dict_8D.keys():
 #     cov_2d = mm.cov_4D_to_2D(ccl_obj.cov_ng_3x2pt_dict_8D[key])
@@ -2169,6 +2136,7 @@ fom_dict = {}
 uncert_dict = {}
 masked_fm_dict = {}
 masked_fid_pars_dict = {}
+perc_diff_probe = {}
 fm_dict_toplot = deepcopy(fm_dict)
 del fm_dict_toplot['fiducial_values_dict']
 for key in list(fm_dict_toplot.keys()):
@@ -2242,6 +2210,8 @@ for probe in probes:
 
     uncert_array = np.hstack((uncert_array, fom_array.reshape(-1, 1)))
 
+    perc_diff_probe[probe] = np.append(uncert_dict[f'perc_diff_{probe}_G'], fom_dict[f'perc_diff_{probe}_G'])
+
     # label and title stuff
     fom_label = 'FoM/10\nperc_diff' if divide_fom_by_10 else 'FoM'
     param_names_label = param_names_list[:nparams_toplot] + [fom_label] if include_fom else param_names_list[
@@ -2271,6 +2241,11 @@ for probe in probes:
 
     plot_lib.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                       param_names_label=param_names_label, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
+
+# ! % diff for the 3 probes - careful about the plot title
+perc_diff_probe.pop('XC')
+plot_lib.bar_plot(np.array(list(perc_diff_probe.values())), title + r', % diff (G + SSC + cNG)/G', (list(perc_diff_probe.keys())), nparams=nparams_toplot,
+                  param_names_label=param_names_label, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=False)
 
 # ! Print tables
 

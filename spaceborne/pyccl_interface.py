@@ -276,7 +276,6 @@ class PycclClass():
                 cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, mask_wl=cl_mask_norm)
             self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
 
-
         elif which_sigma2_b == 'flat_sky':
             sigma2_b = ccl.covariances.sigma2_B_disc(
                 cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, fsky=fsky)
@@ -420,16 +419,16 @@ class PycclClass():
                         raise ValueError(
                             f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
 
-                    self.tkka_dict[A, B, C, D], self.responses_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
-                                                                                            hmc=self.hmc,
-                                                                                            prof=halo_profile_dict[A],
-                                                                                            prof2=halo_profile_dict[B],
-                                                                                            prof3=halo_profile_dict[C],
-                                                                                            prof4=halo_profile_dict[D],
-                                                                                            extrap_order_lok=1, extrap_order_hik=1,
-                                                                                            use_log=False,
-                                                                                            p_of_k_a=p_of_k_a,
-                                                                                            **additional_args)
+                    self.tkka_dict[A, B, C, D], _ = tkka_func(cosmo=self.cosmo_ccl,
+                                                              hmc=self.hmc,
+                                                              prof=halo_profile_dict[A],
+                                                              prof2=halo_profile_dict[B],
+                                                              prof3=halo_profile_dict[C],
+                                                              prof4=halo_profile_dict[D],
+                                                              extrap_order_lok=1, extrap_order_hik=1,
+                                                              use_log=False,
+                                                              p_of_k_a=p_of_k_a,
+                                                              **additional_args)
 
         print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - tkka_start_time))
 
@@ -486,7 +485,7 @@ class PycclClass():
             for col, (probe_c, probe_d) in enumerate(probe_ordering):
                 if col >= row:
 
-                    print('3x2pt: working on probe combination ', probe_a, probe_b, probe_c, probe_d)
+                    print('CCL 3x2pt cov: working on probe combination ', probe_a, probe_b, probe_c, probe_d)
                     cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
                         self.compute_ng_cov_ccl(which_ng_cov=which_ng_cov,
                                                 kernel_A=kernel_dict[probe_a],
@@ -501,21 +500,8 @@ class PycclClass():
                                                 integration_method=integration_method,
                                                 ))
 
-                    # TODO delete this
-                    # save only the upper triangle blocks
-                    # if pyccl_cfg['save_cov']:
-                    #     cov_path = pyccl_cfg['cov_path']
-                    #     cov_filename_fmt = cov_filename.format(probe_a=probe_a, probe_b=probe_b,
-                    #                                            probe_c=probe_c, probe_d=probe_d)
-
-                    #     nbl_grid_here = len(ell)
-                    #     assert f'nbl{nbl_grid_here}' in cov_filename, \
-                    #         f'cov_filename could be inconsistent with the actual grid used'
-                    #     np.savez_compressed(
-                    #         f'{cov_path}/{cov_filename_fmt}', cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d])
-
                 else:
-                    print('3x2pt: skipping probe combination ', probe_a, probe_b, probe_c, probe_d)
+                    print('CCL 3x2pt cov: skipping probe combination ', probe_a, probe_b, probe_c, probe_d)
                     cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
                         cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b].transpose(1, 0, 3, 2))
 
@@ -534,7 +520,7 @@ class PycclClass():
                     cov_2d = mm.cov_4D_to_2D(self.cov_ng_3x2pt_dict_8D[key])
                     assert np.allclose(cov_2d, cov_2d.T, atol=0, rtol=1e-5)
                     np.testing.assert_allclose(self.cov_ng_3x2pt_dict_8D[key],
-                                            #    np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 2, 3)),
+                                               #    np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 2, 3)),
                                                np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 3, 2)),
                                                rtol=1e-5, atol=0,
                                                err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
@@ -542,3 +528,31 @@ class PycclClass():
                     print(error)
 
         return
+
+    def save_cov_blocks(self, cov_path, cov_filename):
+
+        for (probe_a, probe_b, probe_c, probe_d) in self.cov_ng_3x2pt_dict_8D.keys():
+
+            cov_filename_fmt = cov_filename.format(probe_a=probe_a, probe_b=probe_b,
+                                                   probe_c=probe_c, probe_d=probe_d)
+
+            np.savez_compressed(
+                f'{cov_path}/{cov_filename_fmt}', self.cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d])
+
+    def load_cov_blocks(self, cov_path, cov_filename, probe_ordering):
+
+        self.cov_ng_3x2pt_dict_8D = {}
+
+        for row, (probe_a, probe_b) in enumerate(probe_ordering):
+            for col, (probe_c, probe_d) in enumerate(probe_ordering):
+                if col >= row:
+                    print(probe_a, probe_b, probe_c, probe_d)
+
+                    cov_filename_fmt = cov_filename.format(probe_a=probe_a, probe_b=probe_b,
+                                                           probe_c=probe_c, probe_d=probe_d)
+                    self.cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = np.load(
+                        f'{cov_path}/{cov_filename_fmt}')['arr_0']
+
+                else:
+                    self.cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
+                        self.cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b].transpose(1, 0, 3, 2))

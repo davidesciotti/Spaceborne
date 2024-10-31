@@ -5,7 +5,8 @@ import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 import pyccl as ccl
 import matplotlib as mpl
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+import os
+ROOT = os.getenv("ROOT")
 sys.path.append(f'{ROOT}/Spaceborne')
 import spaceborne.cosmo_lib as csmlib
 import spaceborne.cosmo_lib as cosmo_lib

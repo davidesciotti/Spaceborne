@@ -101,7 +101,7 @@ def ssc_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
     np.save(f"{folder_name}/sigma2", sigma2)
     np.save(f"{folder_name}/z_grid", z_grid)
     os.system(
-        f"julia --project=. --threads={num_threads} spaceborne/ssc_integral_julia.jl {folder_name} {integration_type}")
+        f"julia --project=. --threads={num_threads} spaceborne/julia_integrator.jl {folder_name} {integration_type}")
 
     cov_filename = "cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npy"
 
@@ -151,11 +151,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     ell_max_3x2pt = general_cfg['ell_max_3x2pt']
     zbins = general_cfg['zbins']
     n_probes = general_cfg['n_probes']
-    triu_tril = covariance_cfg['triu_tril']
-    rowcol_major = covariance_cfg['row_col_major']
     ng_cov_code = covariance_cfg['ng_cov_code']
     ng_cov_code_cfg = covariance_cfg[ng_cov_code + '_cfg']
-    which_ng_cov = ng_cov_code_cfg['which_ng_cov']
 
     fsky = covariance_cfg['fsky']
     GL_or_LG = covariance_cfg['GL_or_LG']
@@ -228,19 +225,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     cl_WA_3D = cl_dict_3D['cl_WA_3D']
     cl_3x2pt_5D = cl_dict_3D['cl_3x2pt_5D']
 
-    rl_LL_3D = rl_dict_3D['rl_LL_3D']
-    rl_GG_3D = rl_dict_3D['rl_GG_3D']
-    rl_WA_3D = rl_dict_3D['rl_WA_3D']
-    rl_3x2pt_5D = rl_dict_3D['rl_3x2pt_5D']
-
-    # print settings
-    print(f'\ncheck: \nind_ordering = {triu_tril}, {rowcol_major} \nblock_index = {block_index}\n'
-          f'zbins: {general_cfg["EP_or_ED"]}{zbins}\n'
-          f'nbl_WA: {nbl_WA} nbl_WL: {nbl_WL} nbl_GC:  {nbl_GC}, nbl_3x2pt:  {nbl_3x2pt}\n'
-          f'ell_max_WL = {ell_max_WL} \nell_max_GC = {ell_max_GC}\nGL_or_LG: {GL_or_LG}\n')
-
     # ! ======================================= COMPUTE GAUSS ONLY COVARIANCE =======================================
-
+    start = time.perf_counter()
     # build noise vector
     sigma_eps2 = (covariance_cfg['sigma_eps_i'] * np.sqrt(2))**2
     ng_shear = np.array(covariance_cfg['ngal_lensing'])
@@ -271,38 +257,31 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         noise_WA_5D = bnt_utils.cl_BNT_transform(noise_WA_5D[0, 0, ...], BNT_matrix, 'L', 'L')[None, None, ...]
         noise_3x2pt_5D = bnt_utils.cl_BNT_transform_3x2pt(noise_3x2pt_5D, BNT_matrix)
 
-    start = time.perf_counter()
+    # 5d versions of auto-probe spectra
     cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]
     cl_GG_5D = cl_GG_3D[np.newaxis, np.newaxis, ...]
     cl_WA_5D = cl_WA_3D[np.newaxis, np.newaxis, ...]
-    rl_LL_5d = rl_LL_3D[np.newaxis, np.newaxis, ...]
-    rl_GG_5d = rl_GG_3D[np.newaxis, np.newaxis, ...]
-    rl_WA_5d = rl_WA_3D[np.newaxis, np.newaxis, ...]
-
-    # 5d versions of auto-probe spectra
-    cov_WL_GO_6D = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_WL, delta_l_WL)[0, 0, 0, 0, ...]
-    cov_GC_GO_6D = mm.covariance_einsum(cl_GG_5D, noise_GG_5D, fsky, ell_GC, delta_l_GC)[0, 0, 0, 0, ...]
-    cov_WA_GO_6D = mm.covariance_einsum(cl_WA_5D, noise_WA_5D, fsky, ell_WA, delta_l_WA)[0, 0, 0, 0, ...]
-    cov_3x2pt_GO_10D = mm.covariance_einsum(cl_3x2pt_5D, noise_3x2pt_5D, fsky, ell_3x2pt, delta_l_3x2pt)
+    
+    if covariance_cfg['split_gaussian_cov']:
+        cov_WL_GO_6D_sva, cov_WL_GO_6D_sn, cov_WL_GO_6D_mix = mm.covariance_einsum_split(cl_LL_5D, noise_LL_5D, fsky, ell_WL, delta_l_WL)[0, 0, 0, 0, ...]
+        cov_GC_GO_6D_sva, cov_GC_GO_6D_sn, cov_GC_GO_6D_mix = mm.covariance_einsum_split(cl_GG_5D, noise_GG_5D, fsky, ell_GC, delta_l_GC)[0, 0, 0, 0, ...]
+        cov_WA_GO_6D_sva, cov_WA_GO_6D_sn, cov_WA_GO_6D_mix = mm.covariance_einsum_split(cl_WA_5D, noise_WA_5D, fsky, ell_WA, delta_l_WA)[0, 0, 0, 0, ...]
+        cov_3x2pt_GO_10D_sva, cov_3x2pt_GO_10D_sn, cov_3x2pt_GO_10D_mix = mm.covariance_einsum_split(cl_3x2pt_5D, noise_3x2pt_5D, fsky, ell_3x2pt, delta_l_3x2pt)
+        cov_WL_GO_6D = cov_WL_GO_6D_sva + cov_WL_GO_6D_sn + cov_WL_GO_6D_mix
+        cov_GC_GO_6D = cov_GC_GO_6D_sva + cov_GC_GO_6D_sn + cov_GC_GO_6D_mix
+        cov_WA_GO_6D = cov_WA_GO_6D_sva + cov_WA_GO_6D_sn + cov_WA_GO_6D_mix
+        cov_3x2pt_GO_10D = cov_3x2pt_GO_10D_sva + cov_3x2pt_GO_10D_sn + cov_3x2pt_GO_10D_mix
+    else:        
+        cov_WL_GO_6D = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_WL, delta_l_WL)[0, 0, 0, 0, ...]
+        cov_GC_GO_6D = mm.covariance_einsum(cl_GG_5D, noise_GG_5D, fsky, ell_GC, delta_l_GC)[0, 0, 0, 0, ...]
+        cov_WA_GO_6D = mm.covariance_einsum(cl_WA_5D, noise_WA_5D, fsky, ell_WA, delta_l_WA)[0, 0, 0, 0, ...]
+        cov_3x2pt_GO_10D = mm.covariance_einsum(cl_3x2pt_5D, noise_3x2pt_5D, fsky, ell_3x2pt, delta_l_3x2pt)
+    
     print("Gauss. cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
 
     ######################## COMPUTE SSC COVARIANCE ###############################
 
-    start = time.perf_counter()
-
-    if ng_cov_code == 'PySSC':
-
-        # preprocess Sijkl by expanding the probe dimensions
-        s_ABCD_ijkl = mm.expand_dims_sijkl(Sijkl, zbins)
-        s_LLLL_ijkl = s_ABCD_ijkl[0, 0, 0, 0, ...][np.newaxis, np.newaxis, np.newaxis, np.newaxis, ...]
-        s_GGGG_ijkl = s_ABCD_ijkl[1, 1, 1, 1, ...][np.newaxis, np.newaxis, np.newaxis, np.newaxis, ...]
-
-        # compute 6d SSC
-        cov_WL_SS_6D = mm.covariance_SSC_einsum(cl_LL_5D, rl_LL_5d, s_LLLL_ijkl, fsky)[0, 0, 0, 0, ...]
-        cov_GC_SS_6D = mm.covariance_SSC_einsum(cl_GG_5D, rl_GG_5d, s_GGGG_ijkl, fsky)[0, 0, 0, 0, ...]
-        cov_3x2pt_SS_10D = mm.covariance_SSC_einsum(cl_3x2pt_5D, rl_3x2pt_5D, s_ABCD_ijkl, fsky)
-
-    elif ng_cov_code == 'Spaceborne':
+    if ng_cov_code == 'Spaceborne':
         symmetrize_output_dict = {
             ('L', 'L'): False,
             ('G', 'L'): False,
@@ -344,12 +323,12 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         if covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC',]:
             cov_3x2pt_SS_10D = oc_obj.cov_ssc_oc_3x2pt_10D
 
+        elif covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['cNG',]:
+            cov_3x2pt_SS_10D = oc_obj.cov_cng_oc_3x2pt_10D
+        
         elif covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC', 'cNG']:
             cov_3x2pt_SS_10D = oc_obj.cov_ssc_oc_3x2pt_10D
             cov_3x2pt_SS_10D += oc_obj.cov_cng_oc_3x2pt_10D
-
-        elif covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['cNG',]:
-            cov_3x2pt_SS_10D = oc_obj.cov_cng_oc_3x2pt_10D
 
         else:
             raise ValueError("covariance_cfg['OneCovariance_cfg']['which_ng_cov'] not recognised")
@@ -378,6 +357,13 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_ssc_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_ssc_ccl_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
             cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
 
+        elif covariance_cfg['PyCCL_cfg']['which_ng_cov'] == ['cNG', ]:
+
+            cov_cng_ccl_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
+                covariance_cfg['cov_cng_3x2pt_dict_8D_ccl'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
+            cov_cng_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_cng_ccl_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
+            cov_3x2pt_SS_10D = cov_cng_sb_3x2pt_10D
+        
         elif covariance_cfg['PyCCL_cfg']['which_ng_cov'] == ['SSC', 'cNG']:
 
             cov_ssc_ccl_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
@@ -391,12 +377,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
             cov_3x2pt_SS_10D += cov_cng_sb_3x2pt_10D
 
-        elif covariance_cfg['PyCCL_cfg']['which_ng_cov'] == ['cNG', ]:
-
-            cov_cng_ccl_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
-                covariance_cfg['cov_cng_3x2pt_dict_8D_ccl'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
-            cov_cng_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_cng_ccl_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
-            cov_3x2pt_SS_10D = cov_cng_sb_3x2pt_10D
 
         else:
             raise ValueError("covariance_cfg['PyCCL_cfg']['which_ng_cov'] not recognised")
@@ -404,7 +384,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     else:
         raise NotImplementedError(f'ng_cov_code {ng_cov_code} not implemented')
 
-    print(f'{ng_cov_code} covariance loaded')
 
     # In this case, you just need to slice get the LL, GG and 3x2pt covariance
     # WL slicing unnecessary, since I load with nbl_WL and max_WL but just in case
@@ -525,7 +504,6 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     covs_GS_2D = (cov_WL_GS_2D, cov_GC_GS_2D, cov_3x2pt_GS_2D, cov_WA_GS_2D, cov_XC_GS_2D, cov_2x2pt_GS_2D)
 
     if covariance_cfg['save_cov_SSC']:
-        warnings.warn('this is not correct for exatcSSC and PySSC, the dimensionality reduction is done earlier!')
         warnings.warn('2x2pt MISSING')
         cov_WL_SS_4D = mm.cov_6D_to_4D(cov_WL_SS_6D, nbl_WL, zpairs_auto, ind_auto)
         cov_GC_SS_4D = mm.cov_6D_to_4D(cov_GC_SS_6D, nbl_GC, zpairs_auto, ind_auto)

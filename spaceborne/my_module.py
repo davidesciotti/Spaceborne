@@ -289,7 +289,7 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
         probe = key.split('_')[1]
 
         ylabel = 'rel. unc. [%]'
-        if normalize_by_gauss and not key.endswith('G'):
+        if normalize_by_gauss and not key.endswith('_G'):
             probe = key.split('_')[1]
             ng_cov = key.split('_')[2]
             uncertainties_dict[key] = (uncertainties_dict[key] / uncertainties_dict[f'FM_{probe}_G'] - 1) * 100
@@ -300,7 +300,7 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
 
         n_rows = 2 if len(fm_dict_list) > 1 else 1
         fig, ax = plt.subplots(n_rows, 1, figsize=(10, 5), sharex=True)
-        plt.tight_layout()
+        # plt.tight_layout()
         fig.subplots_adjust(hspace=0)
 
         ax[0].set_title(f'{which_uncertainty} uncertainties, {key}')
@@ -336,7 +336,7 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
         ax[1].grid()
 
         if save_fig:
-            plt.savefig(f'{fig_path}/{key}.pdf', dpi=400)
+            plt.savefig(f'{fig_path}/{key}.png', dpi=400, bbox_inches='tight')
 
 
 def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, which_uncertainty, compare_fms=True, compare_param_covs=True,

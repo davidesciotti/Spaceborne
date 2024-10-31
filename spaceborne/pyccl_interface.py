@@ -486,7 +486,7 @@ class PycclClass():
             for col, (probe_c, probe_d) in enumerate(probe_ordering):
                 if col >= row:
 
-                    print('3x2pt: working on probe combination ', probe_a, probe_b, probe_c, probe_d)
+                    print('CCL 3x2pt cov: working on probe combination ', probe_a, probe_b, probe_c, probe_d)
                     cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
                         self.compute_ng_cov_ccl(which_ng_cov=which_ng_cov,
                                                 kernel_A=kernel_dict[probe_a],
@@ -501,21 +501,8 @@ class PycclClass():
                                                 integration_method=integration_method,
                                                 ))
 
-                    # TODO delete this
-                    # save only the upper triangle blocks
-                    # if pyccl_cfg['save_cov']:
-                    #     cov_path = pyccl_cfg['cov_path']
-                    #     cov_filename_fmt = cov_filename.format(probe_a=probe_a, probe_b=probe_b,
-                    #                                            probe_c=probe_c, probe_d=probe_d)
-
-                    #     nbl_grid_here = len(ell)
-                    #     assert f'nbl{nbl_grid_here}' in cov_filename, \
-                    #         f'cov_filename could be inconsistent with the actual grid used'
-                    #     np.savez_compressed(
-                    #         f'{cov_path}/{cov_filename_fmt}', cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d])
-
                 else:
-                    print('3x2pt: skipping probe combination ', probe_a, probe_b, probe_c, probe_d)
+                    print('CCL 3x2pt cov: skipping probe combination ', probe_a, probe_b, probe_c, probe_d)
                     cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
                         cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b].transpose(1, 0, 3, 2))
 
@@ -542,3 +529,31 @@ class PycclClass():
                     print(error)
 
         return
+
+    def save_cov_blocks(self, cov_path, cov_filename):
+
+        for (probe_a, probe_b, probe_c, probe_d) in self.cov_ng_3x2pt_dict_8D.keys():
+
+            cov_filename_fmt = cov_filename.format(probe_a=probe_a, probe_b=probe_b,
+                                                   probe_c=probe_c, probe_d=probe_d)
+
+            np.savez_compressed(
+                f'{cov_path}/{cov_filename_fmt}', self.cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d])
+
+    def load_cov_blocks(self, cov_path, cov_filename, probe_ordering):
+
+        self.cov_ng_3x2pt_dict_8D = {}
+
+        for row, (probe_a, probe_b) in enumerate(probe_ordering):
+            for col, (probe_c, probe_d) in enumerate(probe_ordering):
+                if col >= row:
+                    print(probe_a, probe_b, probe_c, probe_d)
+
+                    cov_filename_fmt = cov_filename.format(probe_a=probe_a, probe_b=probe_b,
+                                                           probe_c=probe_c, probe_d=probe_d)
+                    self.cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = np.load(
+                        f'{cov_path}/{cov_filename_fmt}')['arr_0']
+
+                else:
+                    self.cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
+                        self.cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b].transpose(1, 0, 3, 2))

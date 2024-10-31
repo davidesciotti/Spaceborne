@@ -299,10 +299,6 @@ covariance_cfg:
         z_grid_tkka_max: 3. # used to be 6
         k_grid_tkka_min: 1.e-5
         k_grid_tkka_max: 1.e+2
-        # z_grid_tkka_min: 0.
-        # z_grid_tkka_max: 3 # used to be 6
-        # k_grid_tkka_min: 1.e-5
-        # k_grid_tkka_max: 1.e+2
         z_grid_tkka_steps_SSC: 100 # (z, k) = (50, 100) seems altrady enough
         k_grid_tkka_steps_SSC: 200
         z_grid_tkka_steps_cNG: 100

@@ -1631,7 +1631,26 @@ if covariance_cfg['load_CLOE_benchmark_cov']:
     del cov_wl_gs_nbl29_2ddav, cov_xc_gs_nbl29_2ddav, cov_gc_gs_nbl29_2ddav, cov_3x2pt_gs_nbl29_2ddav
     gc.collect()
 
-# covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
+if covariance_cfg['save_cov_dict']:
+    cov_folder = covariance_cfg['cov_folder'].format(ROOT=ROOT, **variable_specs)
+    cov_dict_filename = covariance_cfg['cov_dict_filename'].format(**variable_specs, lmax_3x2pt=ell_max_3x2pt)
+    np.savez_compressed(f'{cov_folder}/{cov_dict_filename}', **cov_dict)
+    # covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
+
+if covariance_cfg['test_against_benchmarks']:
+
+    if covariance_cfg['save_cov_dict']:
+        raise ValueError(
+            'save_cov_dict should be False when testing against benchmarks, otherwise the test will always pass')
+
+    cov_dict_bench = np.load(f'{cov_folder}/{cov_dict_filename}')
+
+    # assert keys match
+    assert cov_dict_bench.keys() == cov_dict.keys(), 'benchmanrk fm dict keys do not match with current ones'
+    for key in cov_dict_bench.keys():
+        np.testing.assert_allclose(cov_dict_bench[key], cov_dict[key],
+                                   rtol=1e-3, atol=0), f'{key} benchmarks do not match'
+
 
 # save in .dat for Vincenzo, only in the optimistic case and in 2D
 if covariance_cfg['save_cov_2D_dat']:
@@ -2039,19 +2058,25 @@ if fm_cfg['save_FM_dict']:
     mm.save_pickle(f'{fm_folder}/{fm_dict_filename}', fm_dict)
 
 if fm_cfg['test_against_benchmarks']:
-    saved_fm_path = f'{fm_folder}/{fm_dict_filename}'
-    benchmark_path = f'{fm_folder}/benchmarks/{fm_dict_filename}'
-    fm_dict_bench = mm.load_pickle(saved_fm_path)
-    
+
+    if fm_cfg['save_FM_dict']:
+        raise ValueError(
+            'save_FM_dict should be False when testing against benchmarks, otherwise the test will always pass')
+
+    fm_dict_bench = mm.load_pickle(f'{fm_folder}/{fm_dict_filename}')
+
     # assert keys match
     assert fm_dict_bench.keys() == fm_dict.keys(), 'benchmanrk fm dict keys do not match with current ones'
     for key in fm_dict_bench.keys():
         if key != 'fiducial_values_dict':
-            np.testing.assert_allclose(fm_dict_bench[key], fm_dict[key], rtol=1e-3, atol=0), f'{key} benchmarks do not match'
-    
+            np.testing.assert_allclose(fm_dict_bench[key], fm_dict[key],
+                                       rtol=1e-3, atol=0), f'{key} benchmarks do not match'
+
     key = 'fiducial_values_dict'
-    for key in fm_dict_bench:
-    []
+    for param in fm_dict_bench['fiducial_values_dict']:
+        np.testing.assert_allclose(fm_dict_bench['fiducial_values_dict'][param],
+                                   fm_dict['fiducial_values_dict'][param], rtol=1e-3, atol=0), f'{key} benchmarks do not match'
+
     # mm.compare_param_cov_from_fm_pickles(saved_fm_path, benchmark_path,
     #                                      compare_fms=True, compare_param_covs=True,
     #                                      which_uncertainty='conditional')

@@ -324,7 +324,7 @@ if general_cfg['is_CLOE_run']:
 fsky_check = cosmo_lib.deg2_to_fsky(covariance_cfg['survey_area_deg2'])
 assert np.abs(mm.percent_diff(covariance_cfg['fsky'], fsky_check)) < 1e-5, 'fsky does not match the survey area'
 
-path_res_rob = '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/check_ssc_integrands/Robert'
+path_res_rob = f'{ROOT}/OneCovariance/check_ssc_integrands/Robert'
 chi = np.load(f'{path_res_rob}/responses_davide_3/chi.npy')
 k_rob = np.load(f'{path_res_rob}/responses_davide_3/k.npy') * h  # (so it's in 1/Mpc)
 z_rob = np.load(f'{path_res_rob}/responses_davide_3/z.npy')
@@ -1101,7 +1101,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         raise ValueError(
             'which_pk_responses must be either "halo_model" or "separate_universe_vin" or "separate_universe_sb"')
 
-    path_res_rob = '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/check_ssc_integrands/Robert'
+    path_res_rob = f'{ROOT}/OneCovariance/check_ssc_integrands/Robert'
     chi = np.load(f'{path_res_rob}/responses_davide_3/chi.npy')
     k_rob = np.load(f'{path_res_rob}/responses_davide_3/k.npy') * h  # (so it's in 1/Mpc)
     z_rob = np.load(f'{path_res_rob}/responses_davide_3/z.npy')
@@ -1125,7 +1125,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     # dPgg_ddeltab = response_gg_func((kk, zz))
 
     # assert False, 'stop here'
-    
+
     # which_pk_resp = covariance_cfg["Spaceborne_cfg"]["which_pk_responses"]
     # which_pk = cfg["cosmology"]["other_params"]["camb_extra_parameters"]["camb"]["halofit_version"]
 
@@ -1476,6 +1476,40 @@ if covariance_cfg['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomputed_
 
         covariance_cfg[f'cov_{which_ng_cov.lower()}_3x2pt_dict_8D_ccl'] = ccl_obj.cov_ng_3x2pt_dict_8D
 
+        if pyccl_cfg['save_cov']:
+
+            _variable_specs = variable_specs.copy()
+            _variable_specs.pop('which_ng_cov')
+            _variable_specs['which_ng_cov'] = which_ng_cov
+
+            cov_path = pyccl_cfg['cov_path'].format(ROOT=ROOT, **_variable_specs)
+            cov_filename = pyccl_cfg['cov_filename'].format(probe_a='{probe_a:s}', probe_b='{probe_b:s}',
+                                                            probe_c='{probe_c:s}', probe_d='{probe_d:s}',
+                                                            nbl=nbl_3x2pt,
+                                                            lmax=ell_max_3x2pt,
+                                                            survey_area_deg2=covariance_cfg['survey_area_deg2'],
+                                                            **_variable_specs)
+
+            ccl_obj.save_cov_blocks(cov_path, cov_filename)
+
+elif covariance_cfg['ng_cov_code'] == 'PyCCL' and pyccl_cfg['load_precomputed_cov']:
+
+    for which_ng_cov in pyccl_cfg['which_ng_cov']:
+
+        _variable_specs = variable_specs.copy()
+        _variable_specs.pop('which_ng_cov')
+        _variable_specs['which_ng_cov'] = which_ng_cov
+
+        cov_path = pyccl_cfg['cov_path'].format(ROOT=ROOT, **_variable_specs)
+        cov_filename = pyccl_cfg['cov_filename'].format(probe_a='{probe_a:s}', probe_b='{probe_b:s}',
+                                                        probe_c='{probe_c:s}', probe_d='{probe_d:s}',
+                                                        nbl=nbl_3x2pt,
+                                                        lmax=ell_max_3x2pt,
+                                                        survey_area_deg2=covariance_cfg['survey_area_deg2'],
+                                                        **_variable_specs)
+
+        ccl_obj.load_cov_blocks(cov_path, cov_filename, probe_ordering)
+        covariance_cfg[f'cov_{which_ng_cov.lower()}_3x2pt_dict_8D_ccl'] = ccl_obj.cov_ng_3x2pt_dict_8D
 
 # for key in ccl_obj.cov_ng_3x2pt_dict_8D.keys():
 #     cov_2d = mm.cov_4D_to_2D(ccl_obj.cov_ng_3x2pt_dict_8D[key])
@@ -2176,7 +2210,7 @@ nparams_toplot = 7
 names_params_to_fix = []
 divide_fom_by_10 = True
 include_fom = True
-which_uncertainty = 'conditional'
+which_uncertainty = 'marginal'
 
 fix_dz = False
 fix_shear_bias = False
@@ -2184,6 +2218,7 @@ fix_gal_bias = False
 fix_mag_bias = False
 shear_bias_prior = 5e-4
 dz_prior = np.array(2 * 1e-3 * (1 + np.array(cfg['covariance_cfg']['zbin_centers'])))
+
 
 probes = ['WL', 'GC', 'XC', '3x2pt']
 dz_param_names = [f'dzWL{(zi + 1):02d}' for zi in range(zbins)]
@@ -2208,6 +2243,7 @@ fom_dict = {}
 uncert_dict = {}
 masked_fm_dict = {}
 masked_fid_pars_dict = {}
+perc_diff_probe = {}
 fm_dict_toplot = deepcopy(fm_dict)
 del fm_dict_toplot['fiducial_values_dict']
 for key in list(fm_dict_toplot.keys()):
@@ -2258,7 +2294,7 @@ for probe in probes:
     cases_to_plot = [
         f'FM_{probe}_G',
         f'FM_{probe}_GSSC',
-        # f'FM_{probe}_GSSCcNG',
+        # f'FM_{probe}_GSSC',
 
         f'perc_diff_{probe}_G',
 
@@ -2280,6 +2316,8 @@ for probe in probes:
     fom_array = np.asarray(fom_array)
 
     uncert_array = np.hstack((uncert_array, fom_array.reshape(-1, 1)))
+
+    perc_diff_probe[probe] = np.append(uncert_dict[f'perc_diff_{probe}_G'], fom_dict[f'perc_diff_{probe}_G'])
 
     # label and title stuff
     fom_label = 'FoM/10\nperc_diff' if divide_fom_by_10 else 'FoM'
@@ -2310,6 +2348,11 @@ for probe in probes:
 
     plot_lib.bar_plot(uncert_array[:, :nparams_toplot], title, cases_to_plot, nparams=nparams_toplot,
                       param_names_label=param_names_label, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=divide_fom_by_10_plt)
+
+# ! % diff for the 3 probes - careful about the plot title
+perc_diff_probe.pop('XC')
+plot_lib.bar_plot(np.array(list(perc_diff_probe.values())), title + r', % diff (G + SSC + cNG)/G', (list(perc_diff_probe.keys())), nparams=nparams_toplot,
+                  param_names_label=param_names_label, bar_width=0.13, include_fom=include_fom, divide_fom_by_10_plt=False)
 
 # ! Print tables
 
@@ -2347,7 +2390,7 @@ for probe in probes:
 
 # ! quickly compare two selected FMs
 # TODO this is misleading, understand better why (comparing GSSC, not perc_diff)
-path = '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM/BNT_False/ell_cuts_False'
+path = f'{ROOT}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM/BNT_False/ell_cuts_False'
 common_str = '_zbinsEP03_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_13245deg2'
 
 
@@ -2367,23 +2410,25 @@ fm_dict_of_dicts = {
     # 'SB_KEapp_hm_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     # 'SB_hm_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     # 'OC_simpker': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly.pickle'),
-    
-    'SB_bgtab': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinal_bgtab_halo_model_SB.pickle'),
-    'SB_bgHOD': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinal_bgHOD_halo_model_SB.pickle'),
-    'OC_new': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinalpostpull.pickle'),
-    'OC_old': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinalprepull.pickle'),
-    # 'current': fm_dict
+
+    # 'SB_bgtab': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinal_bgtab_halo_model_SB.pickle'),
+    # 'SB_bgHOD': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinal_bgHOD_halo_model_SB.pickle'),
+    # 'OC_new': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinalpostpull.pickle'),
+    # 'OC_old': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinalprepull.pickle'),
+
+    'OC_cNG': mm.load_pickle(f'{path}/FM_GcNG_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_cNGtest2.pickle'),
+    'CCL_cNG': mm.load_pickle(f'{path}/FM_GcNG_PyCCL{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_cNGtest2.pickle'),
+    'current': fm_dict
 }
 # TODO I want to check: SB_bgHOD, SB_bgtab, OC_old, OC_new (from develop branch, don't forget to reinstall (I think, actually most likely not))
 # ! something wrong with XC for OC_new I think
 
 
-
 labels = list(fm_dict_of_dicts.keys())
 fm_dict_list = list(fm_dict_of_dicts.values())
-keys_toplot_in = ['FM_WL_GSSC', 'FM_GC_GSSC', 'FM_XC_GSSC', 'FM_3x2pt_GSSC']
+keys_toplot_in = ['FM_WL_GcNG', 'FM_GC_GcNG', 'FM_XC_GcNG', 'FM_3x2pt_GcNG']
 # keys_toplot = 'all'
-colors = ['tab:blue', 'tab:green', 'tab:orange', 'tab:red', 'tab:cyan', 'tab:grey', 'tab:olive', 'tab:purple']
+colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:cyan', 'tab:grey', 'tab:olive', 'tab:purple']
 
 reference = 'first_key'
 nparams_toplot_in = 8
@@ -2391,13 +2436,13 @@ normalize_by_gauss = True
 
 mm.compare_fm_constraints(*fm_dict_list, labels=labels,
                           keys_toplot_in=keys_toplot_in,
-                          normalize_by_gauss=True,
-                          which_uncertainty='marginal',
+                          normalize_by_gauss=normalize_by_gauss,
+                          which_uncertainty='conditional',
                           reference=reference,
                           colors=colors,
                           abs_FoM=True,
-                          save_fig=False,
-                          fig_path='/home/davide/Scrivania/')
+                          save_fig=True,
+                          fig_path='.')
 
 assert False, 'stop here'
 

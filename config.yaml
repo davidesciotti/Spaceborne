@@ -204,7 +204,7 @@ covariance_cfg:
     compute_SSC: True # TODO re-implement this
 
     save_cov_2D_npz: False
-    save_cov_2D_dat: True # this is the format used by Vincenzo
+    save_cov_2D_dat: False # this is the format used by Vincenzo
 
     # in cov_dict
     save_cov_2D: False
@@ -220,6 +220,7 @@ covariance_cfg:
 
     test_against_CLOE_benchmarks: False # TODO delete this
     test_against_vincenzo: False # TODO delete this
+    test_against_benchmarks: True
 
     compute_GSSC_condition_number: False
 
@@ -227,6 +228,8 @@ covariance_cfg:
     # TODO change name to cov_path
     cov_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat"
     cov_filename: covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_pk{which_pk:s}_{ndim:d}D{cov_suffix:s}{fm_and_cov_suffix:s}.npz
+    cov_dict_filename: cov_dict_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_pk{which_pk:s}.npz
+    save_cov_dict: False
 
     ng_cov_code: Spaceborne # ! PySSC or PyCCL or Spaceborne or OneCovariance
 
@@ -263,7 +266,7 @@ covariance_cfg:
         k_steps_sigma2: 20_000 # TODO can I lower this? double bessel integral...
         z_min_ssc_integrands: 0.02 # SU responses' kmax allow for z_min = 0.016, at most.
         z_max_ssc_integrands: 3.
-        z_steps_ssc_integrands: 512 # this should be high because I have to trace the spikes in sigma2
+        z_steps_ssc_integrands: 300 # this should be high because I have to trace the spikes in sigma2
 
         load_precomputed_sigma2: False
         sigma2_b_filename: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_{which_sigma2_b:s}_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}.npy"
@@ -340,4 +343,4 @@ FM_cfg:
     fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_source:02d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}_pk{which_pk:s}_{survey_area_deg2:d}deg2{fm_and_cov_suffix:s}_{cl_integral_convention:s}_simpkern{simpkern:s}_sigma2b{which_sigma2_b:s}.pickle
 
     test_against_vincenzo: False # TODO delete this
-    test_against_benchmarks: False # TODO delete this
+    test_against_benchmarks: True # TODO delete this

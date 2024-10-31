@@ -2010,40 +2010,51 @@ if not general_cfg['ell_cuts']:
     # not very nice, i defined the ell_cuts_subfolder above...
     fm_folder = fm_folder.replace(f'/{general_cfg["which_cuts"]}/ell_{center_or_min}', '')
 
+# set fm_dict name
+if (not general_cfg['has_IA']) and (not general_cfg['has_magnification_bias']):
+    simpkern = str(True)
+else:
+    simpkern = str(False)
+
+fm_dict_filename = fm_cfg['fm_dict_filename'].format(
+    **variable_specs, fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'],
+    lmax=ell_max_3x2pt, survey_area_deg2=covariance_cfg['survey_area_deg2'],
+    cl_integral_convention=covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
+    simpkern=simpkern,
+    which_sigma2_b=str(which_sigma2_b))
+
+if covariance_cfg['ng_cov_code'] == 'Spaceborne':
+    resp_filename = covariance_cfg['Spaceborne_cfg']['which_pk_responses']
+
+    if resp_filename == 'halo_model':
+        resp_filename = 'HM'
+    elif resp_filename.startswith('separate_universe'):
+        resp_filename = resp_filename.replace('separate_universe', 'SU')
+
+    fm_dict_filename = fm_dict_filename.replace(
+        '.pickle',
+        f'_{resp_filename}.pickle'
+    )
 if fm_cfg['save_FM_dict']:
-
-    if (not general_cfg['has_IA']) and (not general_cfg['has_magnification_bias']):
-        simpkern = str(True)
-    else:
-        simpkern = str(False)
-
-    fm_dict_filename = fm_cfg['fm_dict_filename'].format(
-        **variable_specs, fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'],
-        lmax=ell_max_3x2pt, survey_area_deg2=covariance_cfg['survey_area_deg2'],
-        cl_integral_convention=covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
-        simpkern=simpkern,
-        which_sigma2_b=str(which_sigma2_b))
-
-    if covariance_cfg['ng_cov_code'] == 'Spaceborne':
-        resp_filename = covariance_cfg['Spaceborne_cfg']['which_pk_responses']
-
-        if resp_filename == 'halo_model':
-            resp_filename = 'HM'
-        elif resp_filename.startswith('separate_universe'):
-            resp_filename = resp_filename.replace('separate_universe', 'SU')
-
-        fm_dict_filename = fm_dict_filename.replace(
-            '.pickle',
-            f'_{resp_filename}.pickle'
-        )
-
     mm.save_pickle(f'{fm_folder}/{fm_dict_filename}', fm_dict)
 
 if fm_cfg['test_against_benchmarks']:
     saved_fm_path = f'{fm_folder}/{fm_dict_filename}'
     benchmark_path = f'{fm_folder}/benchmarks/{fm_dict_filename}'
-    mm.compare_param_cov_from_fm_pickles(saved_fm_path, benchmark_path,
-                                         compare_fms=True, compare_param_covs=True)
+    fm_dict_bench = mm.load_pickle(saved_fm_path)
+    
+    # assert keys match
+    assert fm_dict_bench.keys() == fm_dict.keys(), 'benchmanrk fm dict keys do not match with current ones'
+    for key in fm_dict_bench.keys():
+        if key != 'fiducial_values_dict':
+            np.testing.assert_allclose(fm_dict_bench[key], fm_dict[key], rtol=1e-3, atol=0), f'{key} benchmarks do not match'
+    
+    key = 'fiducial_values_dict'
+    for key in fm_dict_bench:
+    []
+    # mm.compare_param_cov_from_fm_pickles(saved_fm_path, benchmark_path,
+    #                                      compare_fms=True, compare_param_covs=True,
+    #                                      which_uncertainty='conditional')
 
 if fm_cfg['test_against_vincenzo'] and bnt_transform == False:
     fm_vinc_folder = fm_cfg["fm_vinc_folder"].format(**variable_specs, go_gs_vinc='GaussOnly')

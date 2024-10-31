@@ -49,62 +49,6 @@ ROOT = os.getenv('ROOT')
 SB_ROOT = ROOT + '/Spaceborne'
 script_start_time = time.perf_counter()
 
-
-def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-                       ind_auto, ind_cross, cl_integral_prefactor, sigma2, z_grid, integration_type, num_threads=16):
-    """Kernel to compute the 4D integral optimized using Simpson's rule using Julia."""
-
-    suffix = 0
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    folder_name = os.path.join(script_dir, 'tmp')
-    unique_folder_name = folder_name
-
-    # Loop until we find a folder name that does not exist
-    while os.path.exists(unique_folder_name):
-        suffix += 1
-        unique_folder_name = f'{folder_name}{suffix}'
-    os.makedirs(unique_folder_name)
-    folder_name = unique_folder_name
-
-    np.save(f"{folder_name}/d2CLL_dVddeltab", d2CLL_dVddeltab)
-    np.save(f"{folder_name}/d2CGL_dVddeltab", d2CGL_dVddeltab)
-    np.save(f"{folder_name}/d2CGG_dVddeltab", d2CGG_dVddeltab)
-    np.save(f"{folder_name}/ind_auto", ind_auto)
-    np.save(f"{folder_name}/ind_cross", ind_cross)
-    np.save(f"{folder_name}/cl_integral_prefactor", cl_integral_prefactor)
-    np.save(f"{folder_name}/sigma2", sigma2)
-    np.save(f"{folder_name}/z_grid", z_grid)
-    os.system(
-        f"julia --project=. --threads={num_threads} {SB_ROOT}/spaceborne/julia_integrator.jl {folder_name} {integration_type}")
-
-    cov_filename = "cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npy"
-
-    if integration_type == 'trapz-6D':
-        cov_ssc_3x2pt_dict_8D = {}  # it's 10D, actually
-        for probe_a, probe_b in probe_ordering:
-            for probe_c, probe_d in probe_ordering:
-                if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
-                    print(f"Loading {probe_a}{probe_b}{probe_c}{probe_d}")
-                    _cov_filename = cov_filename.format(probe_a=probe_a, probe_b=probe_b,
-                                                        probe_c=probe_c, probe_d=probe_d)
-                    cov_ssc_3x2pt_dict_8D[(probe_a, probe_b, probe_c, probe_d)] = np.load(
-                        f"{folder_name}/{_cov_filename}")
-
-    else:
-        cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
-            path=f'{folder_name}',
-            filename=cov_filename,
-            probe_ordering=probe_ordering)
-
-    os.system(f"rm -rf {folder_name}")
-    return cov_ssc_3x2pt_dict_8D
-
-
-# * ====================================================================================================================
-# * ====================================================================================================================
-# * ====================================================================================================================
-
-
 # ! Set up argument parsing
 # parser = argparse.ArgumentParser(description="Your script description here.")
 # parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
@@ -1228,13 +1172,14 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     # ! 4. Perform the integration calling the Julia module
     print('Performing the SSC integral with Julia...')
     start = time.perf_counter()
-    cov_ssc_3x2pt_dict_8D = SSC_integral_julia(d2CLL_dVddeltab=d2CLL_dVddeltab,
+    cov_ssc_3x2pt_dict_8D = covmat_utils.ssc_integral_julia(d2CLL_dVddeltab=d2CLL_dVddeltab,
                                                d2CGL_dVddeltab=d2CGL_dVddeltab,
                                                d2CGG_dVddeltab=d2CGG_dVddeltab,
                                                ind_auto=ind_auto, ind_cross=ind_cross,
                                                cl_integral_prefactor=cl_integral_prefactor, sigma2=sigma2_b,
                                                z_grid=z_grid_ssc_integrands,
                                                integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
+                                               probe_ordering=probe_ordering,
                                                num_threads=general_cfg['num_threads'])
     print('SSC computed with Julia in {:.2f} s'.format(time.perf_counter() - start))
 
@@ -1463,49 +1408,14 @@ cl_dict_3D = {
     'cl_WA_3D': cl_wa_3d,
     'cl_3x2pt_5D': cl_3x2pt_5d}
 
-rl_dict_3D = {
-    'rl_LL_3D': rl_ll_3d,
-    'rl_GG_3D': rl_gg_3d,
-    'rl_WA_3D': rl_wa_3d,
-    'rl_3x2pt_5D': rl_3x2pt_5d}
-
 # this is again to test against ccl cls
 general_cfg['cl_ll_3d'] = cl_ll_3d
 general_cfg['cl_gl_3d'] = cl_gl_3d
 general_cfg['cl_gg_3d'] = cl_gg_3d
 
-if covariance_cfg['compute_SSC'] and covariance_cfg['ng_cov_code'] == 'PySSC':
-
-    transp_stacked_wf = np.vstack((wf_lensing.T, wf_galaxy.T))
-    # ! compute or load Sijkl
-    nz = z_arr.shape[0]  # get number of z points in nz to name the Sijkl file
-    Sijkl_folder = Sijkl_cfg['Sijkl_folder']
-    assert general_cfg[
-        'cl_BNT_transform'] is False, 'for SSC, at the moment the BNT transform should not be ' \
-        'applied to the cls, but to the covariance matrix (how ' \
-        'should we deal with the responses in the former case?)'
-    Sijkl_filename = Sijkl_cfg['Sijkl_filename'].format(
-        flagship_version=general_cfg['flagship_version'],
-        nz=nz, IA_flag=Sijkl_cfg['has_IA'],
-        **variable_specs)
-
-    # if Sijkl exists, load it; otherwise, compute it and save it
-    if Sijkl_cfg['use_precomputed_sijkl'] and os.path.isfile(f'{Sijkl_folder}/{Sijkl_filename}'):
-        print(f'Sijkl matrix already exists in folder\n{Sijkl_folder}; loading it')
-        Sijkl = np.load(f'{Sijkl_folder}/{Sijkl_filename}')
-    else:
-        Sijkl = Sijkl_utils.compute_Sijkl(cosmo_lib.cosmo_par_dict_classy, z_arr, transp_stacked_wf,
-                                          Sijkl_cfg['wf_normalization'])
-        np.save(f'{Sijkl_folder}/{Sijkl_filename}', Sijkl)
-
-else:
-    warnings.warn('Sijkl is not computed, but set to identity')
-    Sijkl = np.ones((n_probes * zbins, n_probes * zbins, n_probes * zbins, n_probes * zbins))
-
 # ! compute covariance matrix
-# TODO: if already existing, don't compute the covmat, like done above for Sijkl
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                    ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, bnt_matrix, oc_obj)
+                                    ell_dict, delta_dict, cl_dict_3D, bnt_matrix, oc_obj)
 
 # ! save for CLOE runs
 if covariance_cfg['save_CLOE_benchmark_cov']:

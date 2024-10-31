@@ -1,3 +1,21 @@
+"""
+OneCovariance Interface Module
+
+This module provides an interface to the OneCovariance (OC) covariance matrix calculator.
+It handles configuration, execution, and post-processing of covariance calculations for
+cosmic shear, galaxy-galaxy lensing, and galaxy clustering.
+
+Key Features:
+- Configures and executes OneCovariance
+- Manages IO
+- Reshapes covariance matrices between different formats
+- Optimizes ell binning to match target specifications
+- Supports different precision settings for calculations
+- Handles Gaussian, non-Gaussian, and SSC covariance terms
+
+
+"""
+
 import gc
 import os
 import multiprocessing
@@ -24,6 +42,30 @@ from scipy.optimize import minimize_scalar
 class OneCovarianceInterface():
 
     def __init__(self, ROOT, cfg, variable_specs):
+        """
+        Initializes the OneCovarianceInterface class with the provided configuration and variable specifications.
+
+        Args:
+            ROOT (str): The root directory of the project.
+            cfg (dict): The configuration dictionary.
+            variable_specs (dict): The variable specifications dictionary.
+
+        Attributes:
+            cfg (dict): The configuration dictionary.
+            oc_cfg (dict): The OneCovariance configuration dictionary.
+            variable_specs (dict): The variable specifications dictionary.
+            which_gauss_cov_binning (str): The Gaussian covariance binning method to use.
+            zbins (int): The number of redshift bins.
+            nbl_3x2pt (int): The number of ell bins for the 3x2pt analysis.
+            compute_ssc (bool): Whether to compute the super-sample covariance (SSC) term.
+            compute_cng (bool): Whether to compute the connected non-Gaussian covariance term.
+            ROOT (str): The root directory of the project.
+            conda_base_path (str): The base path of the OneCovariance Conda environment.
+            oc_path (str): The path to the OneCovariance output directory.
+            path_to_oc_executable (str): The path to the OneCovariance executable.
+            path_to_config_oc_ini (str): The path to the OneCovariance configuration INI file.
+        """
+
         self.cfg = cfg
         self.oc_cfg = self.cfg['covariance_cfg']['OneCovariance_cfg']
         self.variable_specs = variable_specs
@@ -46,7 +88,7 @@ class OneCovarianceInterface():
             ROOT=self.ROOT, **self.variable_specs)
         self.path_to_oc_executable = cfg['covariance_cfg']['OneCovariance_cfg']['path_to_oc_executable'].format(
             ROOT=ROOT)
-        self.path_to_config_oc_ini = f'{self.oc_path }/input_configs.ini'
+        self.path_to_config_oc_ini = f'{self.oc_path}/input_configs.ini'
 
     def get_conda_base_path(self):
         try:
@@ -92,7 +134,7 @@ class OneCovarianceInterface():
         cfg_onecov_ini['covariance terms']['nongauss'] = str(self.compute_cng)
         cfg_onecov_ini['covariance terms']['ssc'] = str(self.compute_ssc)
         cfg_onecov_ini['output settings']['directory'] = self.oc_path
-        
+
         # [observables]
         cfg_onecov_ini['observables']['cosmic_shear'] = str(True)
         cfg_onecov_ini['observables']['est_shear'] = 'C_ell'
@@ -256,15 +298,15 @@ class OneCovarianceInterface():
         # note use delim_whitespace=True instead of sep='\s+' if this gives compatibility issues
         self.ells_oc_load = pd.read_csv(f'{self.oc_path}/covariance_list.dat',
                                         usecols=['ell1'], sep='\s+')['ell1'].unique()
-        
-        # check if the saved ells are within 1% of the required ones; I think the saved values are truncated to only 
+
+        # check if the saved ells are within 1% of the required ones; I think the saved values are truncated to only
         # 2 decimals, so this is a rough comparison
         try:
             np.testing.assert_allclose(self.new_ells_oc, self.ells_oc_load, atol=0, rtol=1e-2)
         except AssertionError as err:
             print('ell values computed vs loaded for OC are not the same')
             print(err)
-            
+
         cov_ell_indices = {ell_out: idx for idx, ell_out in enumerate(self.ells_oc_load)}
 
         probe_idx_dict = {
@@ -394,15 +436,15 @@ class OneCovarianceInterface():
         variable_specs.pop('which_ng_cov')
         try:
             filename = self.oc_cfg['cov_filename'].format(ROOT=self.ROOT,
-                                                        which_ng_cov=which_ng_cov,
-                                                        probe_a='{probe_a:s}',
-                                                        probe_b='{probe_b:s}',
-                                                        probe_c='{probe_c:s}',
-                                                        probe_d='{probe_d:s}',
-                                                        nbl=variable_specs['nbl_3x2pt'],
-                                                        lmax=variable_specs['ell_max_3x2pt'],
-                                                        which_gauss_cov_binning=which_gauss_cov_binning,
-                                                        **variable_specs)
+                                                          which_ng_cov=which_ng_cov,
+                                                          probe_a='{probe_a:s}',
+                                                          probe_b='{probe_b:s}',
+                                                          probe_c='{probe_c:s}',
+                                                          probe_d='{probe_d:s}',
+                                                          nbl=variable_specs['nbl_3x2pt'],
+                                                          lmax=variable_specs['ell_max_3x2pt'],
+                                                          which_gauss_cov_binning=which_gauss_cov_binning,
+                                                          **variable_specs)
 
             cov_ng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path=self.oc_path,
                                                                     filename=filename,
@@ -411,23 +453,23 @@ class OneCovarianceInterface():
             print(err)
             print('OC: LOADING LMAX=5000 FILES AND CUTTING')
             filename = self.oc_cfg['cov_filename'].format(ROOT=self.ROOT,
-                                            which_ng_cov=which_ng_cov,
-                                            probe_a='{probe_a:s}',
-                                            probe_b='{probe_b:s}',
-                                            probe_c='{probe_c:s}',
-                                            probe_d='{probe_d:s}',
-                                            nbl=32,
-                                            lmax=5000,
-                                            which_gauss_cov_binning=which_gauss_cov_binning,
-                                            **variable_specs)
+                                                          which_ng_cov=which_ng_cov,
+                                                          probe_a='{probe_a:s}',
+                                                          probe_b='{probe_b:s}',
+                                                          probe_c='{probe_c:s}',
+                                                          probe_d='{probe_d:s}',
+                                                          nbl=32,
+                                                          lmax=5000,
+                                                          which_gauss_cov_binning=which_gauss_cov_binning,
+                                                          **variable_specs)
 
             cov_ng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path=self.oc_path,
                                                                     filename=filename,
                                                                     probe_ordering=self.cfg['covariance_cfg']['probe_ordering'])
-            
-            for key in cov_ng_oc_3x2pt_dict_8D.keys():
-                cov_ng_oc_3x2pt_dict_8D[key] = cov_ng_oc_3x2pt_dict_8D[key][:variable_specs['nbl_3x2pt'], :variable_specs['nbl_3x2pt'], ...]
 
+            for key in cov_ng_oc_3x2pt_dict_8D.keys():
+                cov_ng_oc_3x2pt_dict_8D[key] = cov_ng_oc_3x2pt_dict_8D[key][:variable_specs['nbl_3x2pt'],
+                                                                            :variable_specs['nbl_3x2pt'], ...]
 
         # reshape
         if output_type == '8D_dict':
@@ -473,13 +515,13 @@ class OneCovarianceInterface():
         ax[0].plot(target_ell_array, label='target ells (SB)', marker='o', alpha=.6)
         ax[0].plot(self.new_ells_oc, label='ells OC', marker='o', alpha=.6)
         ax[1].plot(mm.percent_diff(target_ell_array, self.new_ells_oc), label='% diff', marker='o')
-        
+
         ax[0].legend()
         ax[1].legend()
         ax[0].set_ylabel('$\\ell$')
         ax[1].set_ylabel('% diff')
         fig.supxlabel('ell idx')
-        
+
     def compute_ells_oc(self, nbl, ell_min, ell_max):
         ell_bin_edges_oc_int = np.unique(np.geomspace(ell_min, ell_max, nbl + 1)).astype(int)
         ells_oc_int = np.exp(.5 * (np.log(ell_bin_edges_oc_int[1:])

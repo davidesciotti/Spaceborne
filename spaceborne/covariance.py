@@ -139,7 +139,7 @@ def get_ellmax_nbl(probe, general_cfg):
     return ell_max, nbl
 
 
-def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, rl_dict_3D, Sijkl, BNT_matrix, oc_obj):
+def compute_cov(general_cfg, covariance_cfg, ell_dict, cl_dict, BNT_matrix, oc_obj):
     """
     This code computes the Gaussian-only, SSC-only and Gaussian+SSC
     covariance matrices, for different ordering options
@@ -194,9 +194,9 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
         raise ValueError('looks like the ell values are in log scale. You should use linear scale instead.')
 
     # load deltas
-    delta_l_WL = delta_dict['delta_l_WL']
-    delta_l_GC = delta_dict['delta_l_GC']
-    delta_l_WA = delta_dict['delta_l_WA']
+    delta_l_WL = ell_dict['delta_l_WL']
+    delta_l_GC = ell_dict['delta_l_GC']
+    delta_l_WA = ell_dict['delta_l_WA']
     delta_l_3x2pt = delta_l_GC
 
     # load set correct output folder, get number of pairs
@@ -220,10 +220,10 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
     covariance_cfg['ind_dict'] = ind_dict
 
     # load Cls and responses
-    cl_LL_3D = cl_dict_3D['cl_LL_3D']
-    cl_GG_3D = cl_dict_3D['cl_GG_3D']
-    cl_WA_3D = cl_dict_3D['cl_WA_3D']
-    cl_3x2pt_5D = cl_dict_3D['cl_3x2pt_5D']
+    cl_LL_3D = cl_dict['cl_LL_3D']
+    cl_GG_3D = cl_dict['cl_GG_3D']
+    cl_WA_3D = cl_dict['cl_WA_3D']
+    cl_3x2pt_5D = cl_dict['cl_3x2pt_5D']
 
     # ! ======================================= COMPUTE GAUSS ONLY COVARIANCE =======================================
     start = time.perf_counter()

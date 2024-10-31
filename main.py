@@ -338,9 +338,9 @@ general_cfg['nbl_3x2pt'] = nbl_3x2pt
 
 assert nbl_WL == nbl_3x2pt == nbl_GC, 'use the same number of bins for the moment'
 
-delta_dict = {'delta_l_WL': np.copy(delta_l_ref_nbl32[:nbl_WL]),
-              'delta_l_GC': np.copy(delta_l_ref_nbl32[:nbl_GC]),
-              'delta_l_WA': np.copy(delta_l_ref_nbl32[nbl_GC:nbl_WL])}
+ell_dict['delta_l_WL'] = np.copy(delta_l_ref_nbl32[:nbl_WL])
+ell_dict['delta_l_GC'] = np.copy(delta_l_ref_nbl32[:nbl_GC])
+ell_dict['delta_l_WA'] = np.copy(delta_l_ref_nbl32[nbl_GC:nbl_WL])
 
 # this is just to make the .format() more compact
 variable_specs = {'EP_or_ED': ep_or_ed,
@@ -1402,7 +1402,7 @@ cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_utils.cl_ell_cut_wrap(
 rl_ll_3d, rl_gg_3d, rl_wa_3d, rl_3x2pt_5d = np.ones_like(cl_ll_3d), np.ones_like(cl_gg_3d), np.ones_like(cl_wa_3d), \
     np.ones_like(cl_3x2pt_5d)
 # store cls and responses in a dictionary
-cl_dict_3D = {
+cl_dict = {
     'cl_LL_3D': cl_ll_3d,
     'cl_GG_3D': cl_gg_3d,
     'cl_WA_3D': cl_wa_3d,
@@ -1415,7 +1415,7 @@ general_cfg['cl_gg_3d'] = cl_gg_3d
 
 # ! compute covariance matrix
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                    ell_dict, delta_dict, cl_dict_3D, bnt_matrix, oc_obj)
+                                    ell_dict, cl_dict, bnt_matrix, oc_obj)
 
 # ! save for CLOE runs
 if covariance_cfg['save_CLOE_benchmark_cov']:

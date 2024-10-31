@@ -159,6 +159,7 @@ covariance_cfg:
     row_col_major: row-major
     block_index: ell
     GL_or_LG: GL
+    split_gaussian_cov: False
 
     # fsky: 0.3563380664078408
     # survey_area_deg2: 14700
@@ -231,7 +232,7 @@ covariance_cfg:
     cov_dict_filename: cov_dict_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_pk{which_pk:s}.npz
     save_cov_dict: False
 
-    ng_cov_code: Spaceborne # ! PySSC or PyCCL or Spaceborne or OneCovariance
+    ng_cov_code: Spaceborne # ! Spaceborne or PyCCL or Spaceborne or OneCovariance
 
     # sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
     # - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only). In this case, the output covmat

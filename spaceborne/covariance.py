@@ -327,7 +327,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
         assert (
             covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC', 'cNG'] or
-            covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC',]
+            covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC',] or
+            covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['cNG',]
         ), "covariance_cfg['OneCovariance_cfg']['which_ng_cov'] not recognised"
 
         if covariance_cfg['OneCovariance_cfg']['use_OneCovariance_Gaussian']:
@@ -340,11 +341,18 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             cov_GC_GO_6D = deepcopy(cov_3x2pt_GO_10D[1, 1, 1, 1, :nbl_GC, :nbl_GC, :, :, :, :])
             cov_3x2pt_GO_10D = deepcopy(cov_3x2pt_GO_10D[:, :, :, :, :nbl_3x2pt, :nbl_3x2pt, :, :, :, :])
 
-        if 'SSC' in covariance_cfg['OneCovariance_cfg']['which_ng_cov']:
+        if covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC',]:
             cov_3x2pt_SS_10D = oc_obj.cov_ssc_oc_3x2pt_10D
 
-        if 'cNG' in covariance_cfg['OneCovariance_cfg']['which_ng_cov']:
+        elif covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['SSC', 'cNG']:
+            cov_3x2pt_SS_10D = oc_obj.cov_ssc_oc_3x2pt_10D
             cov_3x2pt_SS_10D += oc_obj.cov_cng_oc_3x2pt_10D
+
+        elif covariance_cfg['OneCovariance_cfg']['which_ng_cov'] == ['cNG',]:
+            cov_3x2pt_SS_10D = oc_obj.cov_cng_oc_3x2pt_10D
+
+        else:
+            raise ValueError("covariance_cfg['OneCovariance_cfg']['which_ng_cov'] not recognised")
 
     elif ng_cov_code == 'PyCCL':
 
@@ -352,7 +360,8 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
 
         assert (
             (covariance_cfg['PyCCL_cfg']['which_ng_cov'] == ['SSC', 'cNG']) or
-            (covariance_cfg['PyCCL_cfg']['which_ng_cov'] == ['SSC',])
+            (covariance_cfg['PyCCL_cfg']['which_ng_cov'] == ['SSC',]) or
+            (covariance_cfg['PyCCL_cfg']['which_ng_cov'] == ['cNG',])
         ), "covariance_cfg['PyCCL_cfg']['which_ng_cov'] not recognised"
 
         symmetrize_output_dict = {
@@ -362,19 +371,35 @@ def compute_cov(general_cfg, covariance_cfg, ell_dict, delta_dict, cl_dict_3D, r
             ('G', 'G'): False,
         }
 
-        if 'SSC' in covariance_cfg['PyCCL_cfg']['which_ng_cov']:
+        if covariance_cfg['PyCCL_cfg']['which_ng_cov'] == ['SSC',]:
 
             cov_ssc_ccl_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
                 covariance_cfg['cov_ssc_3x2pt_dict_8D_ccl'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
             cov_ssc_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_ssc_ccl_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
             cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
 
-        if 'cNG' in covariance_cfg['PyCCL_cfg']['which_ng_cov']:
+        elif covariance_cfg['PyCCL_cfg']['which_ng_cov'] == ['SSC', 'cNG']:
+
+            cov_ssc_ccl_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
+                covariance_cfg['cov_ssc_3x2pt_dict_8D_ccl'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
+            cov_cng_ccl_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
+                covariance_cfg['cov_cng_3x2pt_dict_8D_ccl'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
+
+            cov_ssc_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_ssc_ccl_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
+            cov_cng_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_cng_ccl_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
+
+            cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
+            cov_3x2pt_SS_10D += cov_cng_sb_3x2pt_10D
+
+        elif covariance_cfg['PyCCL_cfg']['which_ng_cov'] == ['cNG', ]:
 
             cov_cng_ccl_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
                 covariance_cfg['cov_cng_3x2pt_dict_8D_ccl'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
             cov_cng_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_cng_ccl_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
-            cov_3x2pt_SS_10D += cov_cng_sb_3x2pt_10D
+            cov_3x2pt_SS_10D = cov_cng_sb_3x2pt_10D
+
+        else:
+            raise ValueError("covariance_cfg['PyCCL_cfg']['which_ng_cov'] not recognised")
 
     else:
         raise NotImplementedError(f'ng_cov_code {ng_cov_code} not implemented')

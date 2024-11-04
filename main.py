@@ -30,8 +30,6 @@ from scipy.interpolate import interp1d, RegularGridInterpolator, CubicSpline
 
 import spaceborne.ell_utils as ell_utils
 import spaceborne.cl_utils as cl_utils
-import spaceborne.compute_Sijkl as Sijkl_utils
-import spaceborne.covariance as covmat_utils
 import spaceborne.fisher_matrix as fm_utils
 import spaceborne.bnt as bnt_utils
 import spaceborne.my_module as mm
@@ -43,7 +41,7 @@ import spaceborne.sigma2_SSC as sigma2_SSC
 import spaceborne.config_checker as config_checker
 import spaceborne.onecovariance_interface as oc_interface
 import spaceborne.responses as responses
-import spaceborne.covariance_class as covariance_class
+import spaceborne.covariance as sb_cov
 
 pp = pprint.PrettyPrinter(indent=4)
 ROOT = os.getenv('ROOT')
@@ -800,7 +798,7 @@ ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 # cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
 #                                     ell_dict, bnt_matrix, oc_obj, ccl_obj)
 
-cov_obj = covariance_class.SpaceborneCovariance(general_cfg, covariance_cfg, ell_dict, ind, bnt_matrix)
+cov_obj = sb_cov.SpaceborneCovariance(general_cfg, covariance_cfg, ell_dict, ind, bnt_matrix)
 cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=covariance_cfg['split_gaussian_cov'])
 
@@ -809,6 +807,9 @@ cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=covariance_cfg['split_
 if (covariance_cfg['ng_cov_code'] == 'OneCovariance') or \
         ((covariance_cfg['ng_cov_code'] == 'Spaceborne') and
             covariance_cfg['Spaceborne_cfg']['which_cNG'] == 'OneCovariance'):
+            
+    if general_cfg['cl_ell_cuts']:
+        raise NotImplementedError('TODO double check inputs in this case. This case is untested')
 
     start_time = time.perf_counter()
 
@@ -830,9 +831,9 @@ if (covariance_cfg['ng_cov_code'] == 'OneCovariance') or \
     cl_ll_ascii_filename = f'Cell_ll_SPV3_nbl{nbl_3x2pt}'
     cl_gl_ascii_filename = f'Cell_gl_SPV3_nbl{nbl_3x2pt}'
     cl_gg_ascii_filename = f'Cell_gg_SPV3_nbl{nbl_3x2pt}'
-    mm.write_cl_ascii(oc_path, cl_ll_ascii_filename, cl_3x2pt_5d[0, 0, ...], ell_dict['ell_3x2pt'], zbins)
-    mm.write_cl_ascii(oc_path, cl_gl_ascii_filename, cl_3x2pt_5d[1, 0, ...], ell_dict['ell_3x2pt'], zbins)
-    mm.write_cl_ascii(oc_path, cl_gg_ascii_filename, cl_3x2pt_5d[1, 1, ...], ell_dict['ell_3x2pt'], zbins)
+    mm.write_cl_ascii(oc_path, cl_ll_ascii_filename, ccl_obj.cl_3x2pt_5d[0, 0, ...], ell_dict['ell_3x2pt'], zbins)
+    mm.write_cl_ascii(oc_path, cl_gl_ascii_filename, ccl_obj.cl_3x2pt_5d[1, 0, ...], ell_dict['ell_3x2pt'], zbins)
+    mm.write_cl_ascii(oc_path, cl_gg_ascii_filename, ccl_obj.cl_3x2pt_5d[1, 1, ...], ell_dict['ell_3x2pt'], zbins)
 
     gal_bias_ascii_filename = f'{oc_path}/gal_bias_table_{general_cfg["which_forecast"]}.ascii'
     ccl_obj.save_gal_bias_table_ascii(z_grid_ssc_integrands, gal_bias_ascii_filename)
@@ -847,9 +848,7 @@ if (covariance_cfg['ng_cov_code'] == 'OneCovariance') or \
     }
 
     # * 2. compute cov using the onecovariance interface class
-
     print('Start NG cov computation with OneCovariance...')
-
     oc_obj = oc_interface.OneCovarianceInterface(ROOT, cfg, variable_specs)
     oc_obj.ells_sb = ell_dict['ell_3x2pt']
     oc_obj.build_save_oc_ini(ascii_filenames_dict, print_ini=True)
@@ -1197,11 +1196,11 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     # ! 4. Perform the integration calling the Julia module
     print('Performing the SSC integral...')
     start = time.perf_counter()
-    cov_ssc_3x2pt_dict_8D = covmat_utils.ssc_integral_julia(d2CLL_dVddeltab=d2CLL_dVddeltab,
+    cov_ssc_3x2pt_dict_8D = cov_obj.ssc_integral_julia(d2CLL_dVddeltab=d2CLL_dVddeltab,
                                                             d2CGL_dVddeltab=d2CGL_dVddeltab,
                                                             d2CGG_dVddeltab=d2CGG_dVddeltab,
-                                                            ind_auto=ind_auto, ind_cross=ind_cross,
-                                                            cl_integral_prefactor=cl_integral_prefactor, sigma2=sigma2_b,
+                                                            cl_integral_prefactor=cl_integral_prefactor, 
+                                                            sigma2=sigma2_b,
                                                             z_grid=z_grid_ssc_integrands,
                                                             integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
                                                             probe_ordering=probe_ordering,
@@ -1273,8 +1272,6 @@ if covariance_cfg['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomputed_
         ccl_obj.compute_ng_cov_3x2pt(which_ng_cov, ell_dict['ell_3x2pt'], covariance_cfg['fsky'],
                                      integration_method='spline',  # TODO add try block for quad
                                      probe_ordering=probe_ordering, ind_dict=ind_dict)
-
-        # covariance_cfg[f'cov_{which_ng_cov.lower()}_3x2pt_dict_8D_ccl'] = ccl_obj.cov_ng_3x2pt_dict_8D
 
         if pyccl_cfg['save_cov']:
 
@@ -1434,7 +1431,7 @@ cov_dict_filename = covariance_cfg['cov_dict_filename'].format(**variable_specs,
 
 if covariance_cfg['save_cov_dict']:
     np.savez_compressed(f'{cov_folder}/{cov_dict_filename}', **cov_dict)
-    # covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
+    # cov_obj.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
 if covariance_cfg['test_against_benchmarks']:
     if covariance_cfg['save_cov_dict']:

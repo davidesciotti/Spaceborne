@@ -794,10 +794,7 @@ ccl_obj.cl_ll_3d = cl_ll_3d
 ccl_obj.cl_gg_3d = cl_gg_3d
 ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
-# ! compute covariance matrix
-# cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-#                                     ell_dict, bnt_matrix, oc_obj, ccl_obj)
-
+# ! build covariance matrices
 cov_obj = sb_cov.SpaceborneCovariance(general_cfg, covariance_cfg, ell_dict, ind, bnt_matrix)
 cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=covariance_cfg['split_gaussian_cov'])
@@ -1032,7 +1029,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         dPgg_ddeltab = dPgg_ddeltab_vin
 
     # ! from SpaceborneResponses class
-    elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe_sb':
+    elif covariance_cfg['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe_SB':
 
         resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
                                                  z_grid=z_grid_ssc_integrands,
@@ -1051,16 +1048,12 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         dPgm_ddeltab = resp_obj.dPgm_ddeltab
         dPgg_ddeltab = resp_obj.dPgg_ddeltab
 
-        dPmm_ddeltab = resp_obj.dPmm_ddeltab
-        dPgm_ddeltab = resp_obj.dPgm_ddeltab
-        dPgg_ddeltab = resp_obj.dPgg_ddeltab
-
         b1g_hm = resp_obj.b1g_hm
         b2g_hm = resp_obj.b2g_hm
 
     else:
         raise ValueError(
-            'which_pk_responses must be either "halo_model" or "separate_universe_vin" or "separate_universe_dav"')
+            'which_pk_responses must be either "halo_model" or "separate_universe_vin" or "separate_universe_SB"')
 
     # ! 2. prepare integrands (d2CAB_dVddeltab) and volume element
     k_limber = partial(cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
@@ -1266,11 +1259,10 @@ if covariance_cfg['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomputed_
                          mask_path=covariance_cfg['mask_path'])
 
     for which_ng_cov in pyccl_cfg['which_ng_cov']:
-        warnings.warn('HANDLE BETTER THE DIFFERENT COV TERMS')
+        
         ccl_obj.initialize_trispectrum(which_ng_cov, probe_ordering, pyccl_cfg)
-
         ccl_obj.compute_ng_cov_3x2pt(which_ng_cov, ell_dict['ell_3x2pt'], covariance_cfg['fsky'],
-                                     integration_method='spline',  # TODO add try block for quad
+                                     integration_method=pyccl_cfg['cov_integration_method'],  # TODO add try block for quad
                                      probe_ordering=probe_ordering, ind_dict=ind_dict)
 
         if pyccl_cfg['save_cov']:

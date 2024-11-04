@@ -307,6 +307,9 @@ covariance_cfg:
         k_grid_tkka_steps_cNG: 512
 
         n_samples_wf: 1000
+        # (from CCL docs): integration method to be used for the Limber integrals. 
+        # Possibilities: 'qag_quad' (GSL's qag method backed up by quad when it fails) and 'spline' (the integrand is splined and then integrated analytically).
+        cov_integration_method: spline  
 
     OneCovariance_cfg:
         which_ng_cov: ["SSC"]

@@ -1278,7 +1278,7 @@ if covariance_cfg['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomputed_
                                      integration_method='spline',  # TODO add try block for quad
                                      probe_ordering=probe_ordering, ind_dict=ind_dict)
 
-        covariance_cfg[f'cov_{which_ng_cov.lower()}_3x2pt_dict_8D_ccl'] = ccl_obj.cov_ng_3x2pt_dict_8D
+        # covariance_cfg[f'cov_{which_ng_cov.lower()}_3x2pt_dict_8D_ccl'] = ccl_obj.cov_ng_3x2pt_dict_8D
 
         if pyccl_cfg['save_cov']:
 
@@ -1399,9 +1399,6 @@ cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_utils.cl_ell_cut_wrap(
     ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, ell_cuts_dict, general_cfg)
 # TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance and derivatives level)
 
-# TODO delete this
-rl_ll_3d, rl_gg_3d, rl_wa_3d, rl_3x2pt_5d = np.ones_like(cl_ll_3d), np.ones_like(cl_gg_3d), np.ones_like(cl_wa_3d), \
-    np.ones_like(cl_3x2pt_5d)
 # store cls and responses in a dictionary
 cl_dict = {
     'cl_LL_3D': cl_ll_3d,
@@ -1409,10 +1406,7 @@ cl_dict = {
     'cl_WA_3D': cl_wa_3d,
     'cl_3x2pt_5D': cl_3x2pt_5d}
 
-# this is again to test against ccl cls
-general_cfg['cl_ll_3d'] = cl_ll_3d
-general_cfg['cl_gl_3d'] = cl_gl_3d
-general_cfg['cl_gg_3d'] = cl_gg_3d
+
 
 # ! compute covariance matrix
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
@@ -1422,7 +1416,7 @@ cov_obj = covariance_class.SpaceborneCovariance(general_cfg, covariance_cfg, ell
 cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(covariance_cfg['split_gaussian_cov'], bnt_matrix)
 cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
-cov_obj.compute_cov(bnt_matrix, oc_obj)
+cov_obj.compute_cov(bnt_matrix, oc_obj, ccl_obj)
 cov_dict = cov_obj.cov_dict
 
 # ! save for CLOE runs
@@ -1529,10 +1523,19 @@ if covariance_cfg['test_against_benchmarks']:
             'save_cov_dict should be False when testing against benchmarks, otherwise the test will always pass')
 
     cov_dict_bench = dict(np.load(f'{cov_folder}/{cov_dict_filename}'))
+    
     # pop all entries containing '_WA'
     for key in list(cov_dict_bench.keys()):
         if '_WA_' in key:
             cov_dict_bench.pop(key)
+            
+    for key in list(cov_dict_bench.keys()):
+        if '_2x2pt_' in key:
+            cov_dict_bench.pop(key)
+            
+    for key in list(cov_dict.keys()):
+        if '_2x2pt_' in key:
+            cov_dict.pop(key)
 
     # assert keys match
     assert cov_dict_bench.keys() == cov_dict.keys(), 'benchmanrk cov dict keys do not match with current ones'

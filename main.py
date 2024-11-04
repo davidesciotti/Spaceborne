@@ -262,7 +262,7 @@ if general_cfg['is_CLOE_run']:
     assert general_cfg['flat_or_nonflat'] == 'Flat', 'Model must be flat'
     assert covariance_cfg['load_CLOE_benchmark_cov'] is False, 'load_CLOE_benchmark_cov must be False'
     assert z_steps_ssc_integrands == 7000, \
-    'for the actual run, I used z_steps_ssc_integrands == 7000'
+        'for the actual run, I used z_steps_ssc_integrands == 7000'
     assert cfg['covariance_cfg']['OneCovariance_cfg']['precision_settings'] == 'high_precision'
     assert cfg['covariance_cfg']['OneCovariance_cfg']['use_OneCovariance_cNG'] is True, \
         'for the final run you should include the OC cNG term'
@@ -322,7 +322,7 @@ ell_dict['ell_edges_3x2pt'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < 
 ell_dict['ell_edges_XC'] = np.copy(ell_dict['ell_edges_3x2pt'])
 
 for key in ell_dict.keys():
-    assert ell_dict[key].size > 0,  f'ell values for key {key} must be non-empty'
+    assert ell_dict[key].size > 0, f'ell values for key {key} must be non-empty'
     assert np.max(ell_dict[key]) > 15, f'ell values for key {key} must *not* be in log space'
 
 # set the corresponding number of ell bins
@@ -809,7 +809,7 @@ cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=covariance_cfg['split_
 if (covariance_cfg['ng_cov_code'] == 'OneCovariance') or \
         ((covariance_cfg['ng_cov_code'] == 'Spaceborne') and
             covariance_cfg['Spaceborne_cfg']['which_cNG'] == 'OneCovariance'):
-            
+
     start_time = time.perf_counter()
 
     # * 1. save ingredients in ascii format
@@ -845,9 +845,9 @@ if (covariance_cfg['ng_cov_code'] == 'OneCovariance') or \
         'nz_src_ascii_filename': nz_src_ascii_filename,
         'nz_lns_ascii_filename': nz_lns_ascii_filename,
     }
-    
+
     # * 2. compute cov using the onecovariance interface class
-    
+
     print('Start NG cov computation with OneCovariance...')
 
     oc_obj = oc_interface.OneCovarianceInterface(ROOT, cfg, variable_specs)
@@ -1195,7 +1195,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
             np.save(sigma2_b_filename, sigma2_b_dict_tosave, allow_pickle=True)
 
     # ! 4. Perform the integration calling the Julia module
-    print('Performing the SSC integral with Julia...')
+    print('Performing the SSC integral...')
     start = time.perf_counter()
     cov_ssc_3x2pt_dict_8D = covmat_utils.ssc_integral_julia(d2CLL_dVddeltab=d2CLL_dVddeltab,
                                                             d2CGL_dVddeltab=d2CGL_dVddeltab,
@@ -1206,7 +1206,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
                                                             integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
                                                             probe_ordering=probe_ordering,
                                                             num_threads=general_cfg['num_threads'])
-    print('SSC computed with Julia in {:.2f} s'.format(time.perf_counter() - start))
+    print('SSC computed in {:.2f} s'.format(time.perf_counter() - start))
 
     # in the full_curved_sky case only, sigma2_b has to be divided by fsky
     if which_sigma2_b == 'full_curved_sky':
@@ -1248,9 +1248,7 @@ elif covariance_cfg['ng_cov_code'] == 'Spaceborne' and \
     for key in cov_ssc_3x2pt_dict_8D.keys():
         cov_ssc_3x2pt_dict_8D[key] = cov_ssc_3x2pt_dict_8D[key][:nbl_3x2pt, :nbl_3x2pt, ...]
 
-# this is not very elegant, find a better solution
-if covariance_cfg['ng_cov_code'] == 'Spaceborne':
-    covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
+cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
 
 # TODO integrate this with Spaceborne_covg
 # ! ========================================== end Spaceborne ===================================================
@@ -1337,7 +1335,6 @@ elif covariance_cfg['ng_cov_code'] == 'PyCCL' and pyccl_cfg['load_precomputed_co
 
 # ! ========================================== end PyCCL ===================================================
 
-cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
 cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
 cov_dict = cov_obj.cov_dict
 

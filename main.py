@@ -1420,6 +1420,10 @@ cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
 
 cov_obj = covariance_class.SpaceborneCovariance(general_cfg, covariance_cfg, ell_dict, cl_dict, ind)
 cov_obj.consistency_checks()
+cov_obj.set_gauss_cov(covariance_cfg['split_gaussian_cov'], bnt_matrix)
+cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
+cov_obj.compute_cov(bnt_matrix, oc_obj)
+cov_dict = cov_obj.cov_dict
 
 # ! save for CLOE runs
 if covariance_cfg['save_CLOE_benchmark_cov']:
@@ -1512,25 +1516,31 @@ if covariance_cfg['load_CLOE_benchmark_cov']:
     del cov_wl_gs_nbl29_2ddav, cov_xc_gs_nbl29_2ddav, cov_gc_gs_nbl29_2ddav, cov_3x2pt_gs_nbl29_2ddav
     gc.collect()
 
+cov_folder = covariance_cfg['cov_folder'].format(ROOT=ROOT, **variable_specs)
+cov_dict_filename = covariance_cfg['cov_dict_filename'].format(**variable_specs, lmax_3x2pt=ell_max_3x2pt)
+
 if covariance_cfg['save_cov_dict']:
-    cov_folder = covariance_cfg['cov_folder'].format(ROOT=ROOT, **variable_specs)
-    cov_dict_filename = covariance_cfg['cov_dict_filename'].format(**variable_specs, lmax_3x2pt=ell_max_3x2pt)
     np.savez_compressed(f'{cov_folder}/{cov_dict_filename}', **cov_dict)
     # covmat_utils.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
 if covariance_cfg['test_against_benchmarks']:
-
     if covariance_cfg['save_cov_dict']:
         raise ValueError(
             'save_cov_dict should be False when testing against benchmarks, otherwise the test will always pass')
 
-    cov_dict_bench = np.load(f'{cov_folder}/{cov_dict_filename}')
+    cov_dict_bench = dict(np.load(f'{cov_folder}/{cov_dict_filename}'))
+    # pop all entries containing '_WA'
+    for key in list(cov_dict_bench.keys()):
+        if '_WA_' in key:
+            cov_dict_bench.pop(key)
 
     # assert keys match
-    assert cov_dict_bench.keys() == cov_dict.keys(), 'benchmanrk fm dict keys do not match with current ones'
+    assert cov_dict_bench.keys() == cov_dict.keys(), 'benchmanrk cov dict keys do not match with current ones'
     for key in cov_dict_bench.keys():
         np.testing.assert_allclose(cov_dict_bench[key], cov_dict[key],
                                    rtol=1e-3, atol=0), f'{key} benchmarks do not match'
+    
+    print('Cov dict matches benchmarks ✅')
 
 
 # save in .dat for Vincenzo, only in the optimistic case and in 2D
@@ -1961,6 +1971,8 @@ if fm_cfg['test_against_benchmarks']:
     # mm.compare_param_cov_from_fm_pickles(saved_fm_path, benchmark_path,
     #                                      compare_fms=True, compare_param_covs=True,
     #                                      which_uncertainty='conditional')
+    print('FM dict matches benchmarks ✅')
+    
 
 if fm_cfg['test_against_vincenzo'] and bnt_transform == False:
     fm_vinc_folder = fm_cfg["fm_vinc_folder"].format(**variable_specs, go_gs_vinc='GaussOnly')

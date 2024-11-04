@@ -1343,9 +1343,10 @@ ell_dict['idxs_to_delete_dict'] = {
 
 # ! 3d cl ell cuts (*after* BNT!!)
 # TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance and derivatives level)
-cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_dict['ell_WL'], ell_cuts_dict['LL'])
-cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_dict['ell_GC'], ell_cuts_dict['GG'])
-cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt'])
+if general_cfg['cl_ell_cuts']:
+    cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_dict['ell_WL'], ell_cuts_dict['LL'])
+    cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_dict['ell_GC'], ell_cuts_dict['GG'])
+    cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt'])
 
 # re-set cls in the ccl_obj after BNT transform and/or ell cuts
 ccl_obj.cl_ll_3d = cl_ll_3d

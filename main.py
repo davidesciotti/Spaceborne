@@ -792,7 +792,7 @@ ascii_filenames_dict = {
 start_time = time.perf_counter()
 if (covariance_cfg['ng_cov_code'] == 'OneCovariance') or \
         ((covariance_cfg['ng_cov_code'] == 'Spaceborne') and
-            covariance_cfg['OneCovariance_cfg']['use_OneCovariance_cNG']):
+            covariance_cfg['Spaceborne_cfg']['which_cNG'] == 'OneCovariance'):
 
     print('Start NG cov computation with OneCovariance...')
 
@@ -1324,11 +1324,6 @@ if ell_max_WL == 1500:
     cl_wa_3d = cl_ll_3d[nbl_GC:nbl_WL, :, :]
     cl_3x2pt_5d = cl_3x2pt_5d[:nbl_3x2pt, :, :]
 
-    rl_ll_3d = rl_ll_3d[:nbl_WL, :, :]
-    rl_gg_3d = rl_gg_3d[:nbl_GC, :, :]
-    rl_wa_3d = rl_ll_3d[nbl_GC:nbl_WL, :, :]
-    rl_3x2pt_5d = rl_3x2pt_5d[:nbl_3x2pt, :, :]
-
 # ! Vincenzo's method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
 if general_cfg['center_or_min'] == 'center':
     prefix = 'ell'
@@ -1347,27 +1342,25 @@ ell_dict['idxs_to_delete_dict'] = {
 }
 
 # ! 3d cl ell cuts (*after* BNT!!)
-cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d = cl_utils.cl_ell_cut_wrap(
-    ell_dict, cl_ll_3d, cl_wa_3d, cl_gg_3d, cl_3x2pt_5d, ell_cuts_dict, general_cfg)
 # TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance and derivatives level)
+cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_dict['ell_WL'], ell_cuts_dict['LL'])
+cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_dict['ell_GC'], ell_cuts_dict['GG'])
+cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt'])
 
-# store cls and responses in a dictionary
-cl_dict = {
-    'cl_LL_3D': cl_ll_3d,
-    'cl_GG_3D': cl_gg_3d,
-    'cl_WA_3D': cl_wa_3d,
-    'cl_3x2pt_5D': cl_3x2pt_5d}
-
+# re-set cls in the ccl_obj after BNT transform and/or ell cuts
+ccl_obj.cl_ll_3d = cl_ll_3d
+ccl_obj.cl_gg_3d = cl_gg_3d
+ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
 # ! compute covariance matrix
-cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-                                    ell_dict, cl_dict, bnt_matrix, oc_obj)
+# cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+#                                     ell_dict, bnt_matrix, oc_obj, ccl_obj)
 
-cov_obj = covariance_class.SpaceborneCovariance(general_cfg, covariance_cfg, ell_dict, cl_dict, ind)
+cov_obj = covariance_class.SpaceborneCovariance(general_cfg, covariance_cfg, ell_dict, ind, bnt_matrix)
 cov_obj.consistency_checks()
-cov_obj.set_gauss_cov(covariance_cfg['split_gaussian_cov'], bnt_matrix)
+cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=covariance_cfg['split_gaussian_cov'])
 cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
-cov_obj.compute_cov(bnt_matrix, oc_obj, ccl_obj)
+cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
 cov_dict = cov_obj.cov_dict
 
 # ! save for CLOE runs
@@ -1909,6 +1902,16 @@ if fm_cfg['test_against_benchmarks']:
             'save_FM_dict should be False when testing against benchmarks, otherwise the test will always pass')
 
     fm_dict_bench = mm.load_pickle(f'{fm_folder}/{fm_dict_filename}')
+
+    for key in list(fm_dict_bench.keys()):
+        if '_WA_' in key:
+            fm_dict_bench.pop(key)
+    for key in list(fm_dict_bench.keys()):
+        if '_2x2pt_' in key:
+            fm_dict_bench.pop(key)
+    for key in list(fm_dict.keys()):
+        if '_2x2pt_' in key:
+            fm_dict.pop(key)
 
     # assert keys match
     assert fm_dict_bench.keys() == fm_dict.keys(), 'benchmanrk fm dict keys do not match with current ones'

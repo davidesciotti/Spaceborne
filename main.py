@@ -1468,10 +1468,23 @@ if covariance_cfg['test_against_benchmarks']:
             'save_cov_dict should be False when testing against benchmarks, otherwise the test will always pass')
 
     cov_dict_bench = dict(np.load(f'{cov_folder}/{cov_dict_filename}'))
+    _cov_dict = deepcopy(cov_dict)
 
     # pop all entries containing '_WA'
     for key in list(cov_dict_bench.keys()):
         if '_WA_' in key:
+            cov_dict_bench.pop(key)
+
+    for key in list(cov_dict_bench.keys()):
+        # update names
+        if key.endswith('GO_2D'):
+            cov_dict_bench[key.replace('GO_2D', 'g_2D')] = cov_dict_bench[key]
+            cov_dict_bench.pop(key)
+        elif key.endswith('SS_2D'):
+            cov_dict_bench[key.replace('SS_2D', 'ng_2D')] = cov_dict_bench[key]
+            cov_dict_bench.pop(key)
+        elif key.endswith('GS_2D'):
+            cov_dict_bench[key.replace('GS_2D', 'tot_2D')] = cov_dict_bench[key]
             cov_dict_bench.pop(key)
 
     for key in list(cov_dict_bench.keys()):
@@ -1480,12 +1493,12 @@ if covariance_cfg['test_against_benchmarks']:
 
     for key in list(cov_dict.keys()):
         if '_2x2pt_' in key:
-            cov_dict.pop(key)
+            _cov_dict.pop(key)
 
     # assert keys match
-    assert cov_dict_bench.keys() == cov_dict.keys(), 'benchmanrk cov dict keys do not match with current ones'
+    assert cov_dict_bench.keys() == _cov_dict.keys(), 'benchmanrk cov dict keys do not match with current ones'
     for key in cov_dict_bench.keys():
-        np.testing.assert_allclose(cov_dict_bench[key], cov_dict[key],
+        np.testing.assert_allclose(cov_dict_bench[key], _cov_dict[key],
                                    rtol=1e-3, atol=0), f'{key} benchmarks do not match'
 
     print('Cov dict matches benchmarks ✅')

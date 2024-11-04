@@ -73,6 +73,16 @@ cosmology:
                 num_massive_neutrinos: 1
                 dark_energy_model: ppf
 
+    # Halo model configuration using CCL classes (https://ccl.readthedocs.io/en/latest/api/pyccl.halos.html)
+    # Each parameter maps directly to a CCL class, and has exactly its name
+    halo_model:
+        mass_def: MassDef200m
+        concentration: ConcentrationDuffy08
+        mass_function: MassFuncTinker10 
+        halo_bias: HaloBiasTinker10
+        halo_profile_hm: HaloProfileNFW
+        halo_profile_hod: HaloProfileHOD
+
 general_cfg:
     is_CLOE_run: False # True or False; if True, a check on some of the key options will be performed
 

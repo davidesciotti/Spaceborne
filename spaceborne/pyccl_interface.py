@@ -71,13 +71,23 @@ class PycclClass():
         # from https://github.com/LSSTDESC/CCL/blob/4df2a29eca58d7cd171bc1986e059fd35f425d45/benchmarks/test_covariances.py
         # see also https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/tools/covariance_NG.py#L282
 
-        self.mass_def = ccl.halos.MassDef200m
-        self.c_m_relation = ccl.halos.ConcentrationDuffy08(mass_def=self.mass_def)
-        self.hmf = ccl.halos.MassFuncTinker10(mass_def=self.mass_def)
-        self.hbf = ccl.halos.HaloBiasTinker10(mass_def=self.mass_def)
+        hm_cfg = fid_pars_dict['halo_model']
+        self.mass_def = getattr(ccl.halos, hm_cfg['mass_def'])
+        self.c_m_relation = getattr(ccl.halos, hm_cfg['concentration'])(mass_def=self.mass_def)
+        self.hmf = getattr(ccl.halos, hm_cfg['mass_function'])(mass_def=self.mass_def)
+        self.hbf = getattr(ccl.halos, hm_cfg['halo_bias'])(mass_def=self.mass_def)
         self.hmc = ccl.halos.HMCalculator(mass_function=self.hmf, halo_bias=self.hbf, mass_def=self.mass_def)
-        self.halo_profile_nfw = ccl.halos.HaloProfileNFW(mass_def=self.mass_def, concentration=self.c_m_relation)
-        self.halo_profile_hod = ccl.halos.HaloProfileHOD(mass_def=self.mass_def, concentration=self.c_m_relation)
+        self.halo_profile_dm = getattr(ccl.halos, hm_cfg['halo_profile_dm'])(mass_def=self.mass_def, concentration=self.c_m_relation)
+        self.halo_profile_hod = getattr(ccl.halos, hm_cfg['halo_profile_hod'])(mass_def=self.mass_def, concentration=self.c_m_relation)
+
+
+        # self.mass_def = ccl.halos.MassDef200m
+        # self.c_m_relation = ccl.halos.ConcentrationDuffy08(mass_def=self.mass_def)
+        # self.hmf = ccl.halos.MassFuncTinker10(mass_def=self.mass_def)
+        # self.hbf = ccl.halos.HaloBiasTinker10(mass_def=self.mass_def)
+        # self.hmc = ccl.halos.HMCalculator(mass_function=self.hmf, halo_bias=self.hbf, mass_def=self.mass_def)
+        # self.halo_profile_nfw = ccl.halos.HaloProfileNFW(mass_def=self.mass_def, concentration=self.c_m_relation)
+        # self.halo_profile_hod = ccl.halos.HaloProfileHOD(mass_def=self.mass_def, concentration=self.c_m_relation)
 
     def check_specs(self):
         assert self.probe in ['LL', 'GG', '3x2pt'], 'probe must be either LL, GG, or 3x2pt'
@@ -327,7 +337,7 @@ class PycclClass():
         # TODO pk from input files
         # This is the correct way to initialize the trispectrum (I Asked David Alonso about this.)
         halo_profile_dict = {
-            'L': self.halo_profile_nfw,
+            'L': self.halo_profile_dm,
             'G': self.halo_profile_hod,
         }
         prof_2pt_dict = {

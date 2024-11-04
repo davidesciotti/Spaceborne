@@ -261,8 +261,8 @@ if general_cfg['is_CLOE_run']:
     assert general_cfg['which_cls'] == 'CLOE', 'which_cls must be "CLOE"'
     assert general_cfg['flat_or_nonflat'] == 'Flat', 'Model must be flat'
     assert covariance_cfg['load_CLOE_benchmark_cov'] is False, 'load_CLOE_benchmark_cov must be False'
-    # assert z_steps_ssc_integrands == 7000, \
-    # 'for the actual run, I used z_steps_ssc_integrands == 7000'
+    assert z_steps_ssc_integrands == 7000, \
+    'for the actual run, I used z_steps_ssc_integrands == 7000'
     assert cfg['covariance_cfg']['OneCovariance_cfg']['precision_settings'] == 'high_precision'
     assert cfg['covariance_cfg']['OneCovariance_cfg']['use_OneCovariance_cNG'] is True, \
         'for the final run you should include the OC cNG term'
@@ -313,7 +313,6 @@ ell_dict = {}
 ell_dict['ell_WL'] = np.copy(ell_ref_nbl32[ell_ref_nbl32 < ell_max_WL])
 ell_dict['ell_GC'] = np.copy(ell_ref_nbl32[ell_ref_nbl32 < ell_max_GC])
 ell_dict['ell_3x2pt'] = np.copy(ell_ref_nbl32[ell_ref_nbl32 < ell_max_3x2pt])
-ell_dict['ell_WA'] = np.copy(ell_ref_nbl32[(ell_ref_nbl32 > ell_max_GC) & (ell_ref_nbl32 < ell_max_WL)])
 ell_dict['ell_XC'] = np.copy(ell_dict['ell_3x2pt'])
 
 # store edges *except last one for dimensional consistency* in the ell_dict
@@ -321,17 +320,14 @@ ell_dict['ell_edges_WL'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell
 ell_dict['ell_edges_GC'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell_max_GC])[:-1]
 ell_dict['ell_edges_3x2pt'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell_max_3x2pt])[:-1]
 ell_dict['ell_edges_XC'] = np.copy(ell_dict['ell_edges_3x2pt'])
-ell_dict['ell_edges_WA'] = np.copy(
-    ell_edges_ref_nbl32[(ell_edges_ref_nbl32 > ell_max_GC) & (ell_edges_ref_nbl32 < ell_max_WL)])[:-1]
 
 for key in ell_dict.keys():
-    if ell_dict[key].size > 0:  # Check if the array is non-empty
-        assert np.max(ell_dict[key]) > 15, f'ell values for key {key} must *not* be in log space'
+    assert ell_dict[key].size > 0,  f'ell values for key {key} must be non-empty'
+    assert np.max(ell_dict[key]) > 15, f'ell values for key {key} must *not* be in log space'
 
 # set the corresponding number of ell bins
 nbl_WL = len(ell_dict['ell_WL'])
 nbl_GC = len(ell_dict['ell_GC'])
-nbl_WA = len(ell_dict['ell_WA'])
 nbl_3x2pt = nbl_GC
 
 assert len(ell_dict['ell_3x2pt']) == len(ell_dict['ell_XC']) == len(ell_dict['ell_GC']), '3x2pt, XC and GC should '\
@@ -348,14 +344,13 @@ assert nbl_WL == nbl_3x2pt == nbl_GC, 'use the same number of bins for the momen
 
 ell_dict['delta_l_WL'] = np.copy(delta_l_ref_nbl32[:nbl_WL])
 ell_dict['delta_l_GC'] = np.copy(delta_l_ref_nbl32[:nbl_GC])
-ell_dict['delta_l_WA'] = np.copy(delta_l_ref_nbl32[nbl_GC:nbl_WL])
 
 # this is just to make the .format() more compact
 variable_specs = {'EP_or_ED': ep_or_ed,
                   'ep_or_ed': ep_or_ed,
                   'zbins': zbins,
                   'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_3x2pt': ell_max_3x2pt,
-                  'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_WA': nbl_WA, 'nbl_3x2pt': nbl_3x2pt,
+                  'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_3x2pt': nbl_3x2pt,
                   'kmax_h_over_Mpc': kmax_h_over_Mpc, 'center_or_min': center_or_min,
                   'BNT_transform': bnt_transform,
                   'which_ng_cov': which_ng_cov_suffix,
@@ -647,7 +642,6 @@ ccl_obj.cl_gl_3d = ccl_obj.compute_cls(ell_dict['ell_XC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
 ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
-ccl_obj.cl_wa_3d = ccl_obj.cl_ll_3d[nbl_3x2pt:nbl_WL]
 
 ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_3x2pt, zbins, zbins))
 ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[:nbl_3x2pt, :, :]
@@ -663,22 +657,17 @@ if general_cfg['which_cls'] == 'Vincenzo':
         f"{cl_folder.format(probe='WLO')}/{cl_filename.format(probe='WLO', **variable_specs)}")
     cl_gg_1d = np.genfromtxt(
         f"{cl_folder.format(probe='GCO')}/{cl_filename.format(probe='GCO', **variable_specs)}")
-    cl_wa_1d = np.genfromtxt(
-        f"{cl_folder.format(probe='WLA')}/{cl_filename.format(probe='WLA', **variable_specs)}")
     cl_3x2pt_1d = np.genfromtxt(
         f"{cl_folder.format(probe='3x2pt')}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
 
     # ! reshape to 3d
     cl_ll_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
     cl_gg_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_gg_1d, 'GC', nbl_GC, zbins)
-    cl_wa_3d_vinc = np.ones_like(cl_ll_3d_vinc)[:nbl_WA, :, :]
-    # cl_wa_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_wa_1d, 'WA', nbl_WA, zbins)
     cl_3x2pt_5d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_3x2pt_1d, '3x2pt', nbl_3x2pt, zbins)
     cl_gl_3d_vinc = deepcopy(cl_3x2pt_5d_vinc[1, 0, :, :, :])
 
     cl_ll_3d = cl_ll_3d_vinc
     cl_gg_3d = cl_gg_3d_vinc
-    cl_wa_3d = cl_wa_3d_vinc
     cl_gl_3d = cl_gl_3d_vinc
     cl_3x2pt_5d = cl_3x2pt_5d_vinc
 
@@ -702,7 +691,6 @@ elif general_cfg['which_cls'] == 'CLOE':
     cl_ll_3d = mm.cl_2D_to_3D_symmetric(cl_ll_2d, nbl=nbl_WL_opt, zpairs=zpairs_auto, zbins=zbins)
     cl_gl_3d = mm.cl_2D_to_3D_asymmetric(cl_gl_2d, nbl=nbl_WL_opt, zbins=zbins, order='C')
     cl_gg_3d = mm.cl_2D_to_3D_symmetric(cl_gg_2d, nbl=nbl_WL_opt, zpairs=zpairs_auto, zbins=zbins)
-    cl_wa_3d = cl_ll_3d[nbl_3x2pt:nbl_WL]
 
     cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
     cl_gl_3d = cl_gl_3d[:nbl_3x2pt, :, :]
@@ -715,7 +703,7 @@ elif general_cfg['which_cls'] == 'CLOE':
     cl_3x2pt_5d[1, 1, :, :, :] = cl_gg_3d[:nbl_3x2pt, :, :]
 
 elif general_cfg['which_cls'] == 'CCL':
-    cl_ll_3d, cl_gl_3d, cl_gg_3d, cl_wa_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d, ccl_obj.cl_wa_3d
+    cl_ll_3d, cl_gl_3d, cl_gg_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d
     cl_3x2pt_5d = ccl_obj.cl_3x2pt_5d
 
 else:
@@ -760,18 +748,6 @@ mm.compare_arrays(cl_gl_3d[ell_idx, ...], ccl_obj.cl_gl_3d[ell_idx, ...], abs_va
                   name_A=f'{general_cfg["which_cls"]} GL', name_B='CCL GL')
 
 
-
-# check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
-if ell_max_WL == general_cfg['ell_max_WL_opt'] and general_cfg['use_WA']:
-    if not np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :]):
-        rtol = 1e-5
-        # plt.plot(ell_dict['ell_WL'], cl_ll_3d[:, 0, 0])
-        # plt.plot(ell_dict['ell_WL'][nbl_GC:nbl_WL], cl_wa_3d[:, 0, 0])
-        assert (np.allclose(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :], rtol=rtol, atol=0)), \
-            'cl_wa_3d should be obtainable from cl_ll_3d!'
-        print(f'cl_wa_3d and cl_ll_3d[nbl_GC:nbl_WL, :, :] are not exactly equal, but have a relative '
-              f'difference of less than {rtol}')
-
 # ! BNT transform the cls (and responses?) - it's more complex since I also have to transform the noise
 # ! spectra, better to transform directly the covariance matrix
 if general_cfg['cl_BNT_transform']:
@@ -779,7 +755,6 @@ if general_cfg['cl_BNT_transform']:
     assert covariance_cfg['cov_BNT_transform'] is False, \
         'the BNT transform should be applied either to the Cls or to the covariance, not both'
     cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, bnt_matrix, 'L', 'L')
-    cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, bnt_matrix, 'L', 'L')
     cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5d, bnt_matrix)
     warnings.warn('you should probably BNT-transform the responses too!')
 
@@ -791,7 +766,6 @@ if ell_max_WL == 1500:
     assert False, 'you should check this'
     cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
     cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
-    cl_wa_3d = cl_ll_3d[nbl_GC:nbl_WL, :, :]
     cl_3x2pt_5d = cl_3x2pt_5d[:nbl_3x2pt, :, :]
 
 # ! Vincenzo's method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
@@ -805,7 +779,6 @@ else:
 ell_dict['idxs_to_delete_dict'] = {
     'LL': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True, zbins=zbins),
     'GG': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True, zbins=zbins),
-    'WA': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True, zbins=zbins),
     'GL': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False, zbins=zbins),
     'LG': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False, zbins=zbins),
     '3x2pt': ell_utils.get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict, zbins, covariance_cfg)
@@ -1617,7 +1590,6 @@ if fm_cfg['which_derivatives'] == 'Spaceborne':
 
     # reshape to 4D array (instead of dictionaries)
     dC_LL_4D = np.zeros((nbl_3x2pt, zbins, zbins, len(list_params_to_vary)))
-    dC_WA_4D = np.zeros((nbl_WA, zbins, zbins, len(list_params_to_vary)))
     dC_GL_4D = np.zeros((nbl_3x2pt, zbins, zbins, len(list_params_to_vary)))
     dC_GG_4D = np.zeros((nbl_3x2pt, zbins, zbins, len(list_params_to_vary)))
     dC_3x2pt_6D = np.zeros((2, 2, nbl_3x2pt, zbins, zbins, len(list_params_to_vary)))
@@ -1690,7 +1662,6 @@ elif fm_cfg['which_derivatives'] == 'Vincenzo':
             'loading preprocessed derivatives is faster but a bit more dangerous, make sure all the specs are taken into account')
         dC_LL_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_LL_4D.npy')
         dC_GG_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_GG_4D.npy')
-        dC_WA_4D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_WA_4D.npy')
         dC_3x2pt_6D = np.load(f'{derivatives_folder}/reshaped_into_4d_arrays/dC_3x2pt_6D.npy')
 
     elif not fm_cfg['load_preprocess_derivatives']:
@@ -1703,7 +1674,6 @@ elif fm_cfg['which_derivatives'] == 'Vincenzo':
         # separate in 4 different dictionaries and reshape them (no interpolation needed in this case)
         dC_dict_LL_3D = {}
         dC_dict_GG_3D = {}
-        dC_dict_WA_3D = {}
         dC_dict_3x2pt_5D = {}
 
         for key in vinc_filenames:  # loop over these, I already selected ML, MS and so on
@@ -1713,8 +1683,6 @@ elif fm_cfg['which_derivatives'] == 'Vincenzo':
                         dC_dict_1D[key], 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
                 elif 'GCO' in key:
                     dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'GC', nbl_GC, zbins)
-                elif 'WLA' in key:
-                    dC_dict_WA_3D[key] = cl_utils.cl_SPV3_1D_to_3D(dC_dict_1D[key], 'WA', nbl_WA, zbins)
                 elif '3x2pt' in key:
                     dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(
                         dC_dict_1D[key], '3x2pt', nbl_3x2pt, zbins)
@@ -1722,13 +1690,11 @@ elif fm_cfg['which_derivatives'] == 'Vincenzo':
         # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
         dC_LL_4D_vin = fm_utils.dC_dict_to_4D_array(dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix)
         dC_GG_4D_vin = fm_utils.dC_dict_to_4D_array(dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix)
-        # dC_WA_4D_vin = fm_utils.dC_dict_to_4D_array(dC_dict_WA_3D, param_names_3x2pt, nbl_WA, zbins, der_prefix)
-        dC_WA_4D_vin = np.ones((nbl_WA, zbins, zbins, dC_LL_4D_vin.shape[-1]))
         dC_3x2pt_6D_vin = fm_utils.dC_dict_to_4D_array(
             dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins, der_prefix, is_3x2pt=True)
 
         # free up memory
-        del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_WA_3D, dC_dict_3x2pt_5D
+        del dC_dict_1D, dC_dict_LL_3D, dC_dict_GG_3D, dC_dict_3x2pt_5D
         gc.collect()
 
         # save these so they can simply be imported!
@@ -1736,7 +1702,6 @@ elif fm_cfg['which_derivatives'] == 'Vincenzo':
             os.makedirs(f'{derivatives_folder}/reshaped_into_np_arrays')
         np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_LL_4D.npy', dC_LL_4D_vin)
         np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_GG_4D.npy', dC_GG_4D_vin)
-        np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_WA_4D.npy', dC_WA_4D_vin)
         np.save(f'{derivatives_folder}/reshaped_into_np_arrays/dC_3x2pt_6D.npy', dC_3x2pt_6D_vin)
 
 else:
@@ -1851,12 +1816,10 @@ for param in list_params_to_vary:
 
 # store the derivatives arrays in a dictionary
 # deriv_dict_dav = {'dC_LL_4D': dC_LL_4D,
-#                   'dC_WA_4D': dC_WA_4D,
 #                   'dC_GG_4D': dC_GG_4D,
 #                   'dC_3x2pt_6D': dC_3x2pt_6D}
 
 deriv_dict_vin = {'dC_LL_4D': dC_LL_4D_vin,
-                  'dC_WA_4D': dC_WA_4D_vin,
                   'dC_GG_4D': dC_GG_4D_vin,
                   'dC_3x2pt_6D': dC_3x2pt_6D_vin}
 

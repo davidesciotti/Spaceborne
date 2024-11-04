@@ -139,7 +139,7 @@ def get_ellmax_nbl(probe, general_cfg):
     return ell_max, nbl
 
 
-def compute_cov(general_cfg, covariance_cfg, ell_dict, cl_dict, BNT_matrix, oc_obj):
+def compute_cov(general_cfg, covariance_cfg, ell_dict, cl_dict, BNT_matrix, oc_obj, ):
     """
     This code computes the Gaussian-only, SSC-only and Gaussian+SSC
     covariance matrices, for different ordering options

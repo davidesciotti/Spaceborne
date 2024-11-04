@@ -753,6 +753,77 @@ mm.compare_arrays(cl_gl_3d[ell_idx, ...], ccl_obj.cl_gl_3d[ell_idx, ...], abs_va
                   name_A=f'{general_cfg["which_cls"]} GL', name_B='CCL GL')
 
 
+
+# check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
+if ell_max_WL == general_cfg['ell_max_WL_opt'] and general_cfg['use_WA']:
+    if not np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :]):
+        rtol = 1e-5
+        # plt.plot(ell_dict['ell_WL'], cl_ll_3d[:, 0, 0])
+        # plt.plot(ell_dict['ell_WL'][nbl_GC:nbl_WL], cl_wa_3d[:, 0, 0])
+        assert (np.allclose(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :], rtol=rtol, atol=0)), \
+            'cl_wa_3d should be obtainable from cl_ll_3d!'
+        print(f'cl_wa_3d and cl_ll_3d[nbl_GC:nbl_WL, :, :] are not exactly equal, but have a relative '
+              f'difference of less than {rtol}')
+
+# ! BNT transform the cls (and responses?) - it's more complex since I also have to transform the noise
+# ! spectra, better to transform directly the covariance matrix
+if general_cfg['cl_BNT_transform']:
+    print('BNT-transforming the Cls...')
+    assert covariance_cfg['cov_BNT_transform'] is False, \
+        'the BNT transform should be applied either to the Cls or to the covariance, not both'
+    cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, bnt_matrix, 'L', 'L')
+    cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, bnt_matrix, 'L', 'L')
+    cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5d, bnt_matrix)
+    warnings.warn('you should probably BNT-transform the responses too!')
+
+# ! cut datavectors and responses in the pessimistic case; be carful of WA, because it does not start from ell_min
+if ell_max_WL == 1500:
+    warnings.warn(
+        'you are cutting the datavectors and responses in the pessimistic case, but is this compatible '
+        'with the redshift-dependent ell cuts? Yes, this is an old warning; nonetheless, check ')
+    assert False, 'you should check this'
+    cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
+    cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
+    cl_wa_3d = cl_ll_3d[nbl_GC:nbl_WL, :, :]
+    cl_3x2pt_5d = cl_3x2pt_5d[:nbl_3x2pt, :, :]
+
+# ! Vincenzo's method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
+if general_cfg['center_or_min'] == 'center':
+    prefix = 'ell'
+elif general_cfg['center_or_min'] == 'min':
+    prefix = 'ell_edges'
+else:
+    raise ValueError('general_cfg["center_or_min"] should be either "center" or "min"')
+
+ell_dict['idxs_to_delete_dict'] = {
+    'LL': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True, zbins=zbins),
+    'GG': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True, zbins=zbins),
+    'WA': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True, zbins=zbins),
+    'GL': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False, zbins=zbins),
+    'LG': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False, zbins=zbins),
+    '3x2pt': ell_utils.get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict, zbins, covariance_cfg)
+}
+
+# ! 3d cl ell cuts (*after* BNT!!)
+# TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance and derivatives level)
+if general_cfg['cl_ell_cuts']:
+    cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_dict['ell_WL'], ell_cuts_dict['LL'])
+    cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_dict['ell_GC'], ell_cuts_dict['GG'])
+    cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt'])
+
+# re-set cls in the ccl_obj after BNT transform and/or ell cuts
+ccl_obj.cl_ll_3d = cl_ll_3d
+ccl_obj.cl_gg_3d = cl_gg_3d
+ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
+
+# ! compute covariance matrix
+# cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
+#                                     ell_dict, bnt_matrix, oc_obj, ccl_obj)
+
+cov_obj = covariance_class.SpaceborneCovariance(general_cfg, covariance_cfg, ell_dict, ind, bnt_matrix)
+cov_obj.consistency_checks()
+cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=covariance_cfg['split_gaussian_cov'])
+
 # ! ========================================== OneCovariance ===================================================
 # * 1. save ingredients in ascii format
 oc_path = covariance_cfg['OneCovariance_cfg']['onecovariance_folder'].format(ROOT=ROOT, **variable_specs)
@@ -1291,75 +1362,6 @@ elif covariance_cfg['ng_cov_code'] == 'PyCCL' and pyccl_cfg['load_precomputed_co
 
 # ! ========================================== end PyCCL ===================================================
 
-# check that cl_wa is equal to cl_ll in the last nbl_WA_opt bins
-if ell_max_WL == general_cfg['ell_max_WL_opt'] and general_cfg['use_WA']:
-    if not np.array_equal(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :]):
-        rtol = 1e-5
-        # plt.plot(ell_dict['ell_WL'], cl_ll_3d[:, 0, 0])
-        # plt.plot(ell_dict['ell_WL'][nbl_GC:nbl_WL], cl_wa_3d[:, 0, 0])
-        assert (np.allclose(cl_wa_3d, cl_ll_3d[nbl_GC:nbl_WL, :, :], rtol=rtol, atol=0)), \
-            'cl_wa_3d should be obtainable from cl_ll_3d!'
-        print(f'cl_wa_3d and cl_ll_3d[nbl_GC:nbl_WL, :, :] are not exactly equal, but have a relative '
-              f'difference of less than {rtol}')
-
-# ! BNT transform the cls (and responses?) - it's more complex since I also have to transform the noise
-# ! spectra, better to transform directly the covariance matrix
-if general_cfg['cl_BNT_transform']:
-    print('BNT-transforming the Cls...')
-    assert covariance_cfg['cov_BNT_transform'] is False, \
-        'the BNT transform should be applied either to the Cls or to the covariance, not both'
-    cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, bnt_matrix, 'L', 'L')
-    cl_wa_3d = cl_utils.cl_BNT_transform(cl_wa_3d, bnt_matrix, 'L', 'L')
-    cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5d, bnt_matrix)
-    warnings.warn('you should probably BNT-transform the responses too!')
-
-# ! cut datavectors and responses in the pessimistic case; be carful of WA, because it does not start from ell_min
-if ell_max_WL == 1500:
-    warnings.warn(
-        'you are cutting the datavectors and responses in the pessimistic case, but is this compatible '
-        'with the redshift-dependent ell cuts? Yes, this is an old warning; nonetheless, check ')
-    assert False, 'you should check this'
-    cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
-    cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
-    cl_wa_3d = cl_ll_3d[nbl_GC:nbl_WL, :, :]
-    cl_3x2pt_5d = cl_3x2pt_5d[:nbl_3x2pt, :, :]
-
-# ! Vincenzo's method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
-if general_cfg['center_or_min'] == 'center':
-    prefix = 'ell'
-elif general_cfg['center_or_min'] == 'min':
-    prefix = 'ell_edges'
-else:
-    raise ValueError('general_cfg["center_or_min"] should be either "center" or "min"')
-
-ell_dict['idxs_to_delete_dict'] = {
-    'LL': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True, zbins=zbins),
-    'GG': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True, zbins=zbins),
-    'WA': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_WA'], ell_cuts_dict['LL'], is_auto_spectrum=True, zbins=zbins),
-    'GL': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False, zbins=zbins),
-    'LG': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False, zbins=zbins),
-    '3x2pt': ell_utils.get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict, zbins, covariance_cfg)
-}
-
-# ! 3d cl ell cuts (*after* BNT!!)
-# TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance and derivatives level)
-if general_cfg['cl_ell_cuts']:
-    cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_dict['ell_WL'], ell_cuts_dict['LL'])
-    cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_dict['ell_GC'], ell_cuts_dict['GG'])
-    cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt'])
-
-# re-set cls in the ccl_obj after BNT transform and/or ell cuts
-ccl_obj.cl_ll_3d = cl_ll_3d
-ccl_obj.cl_gg_3d = cl_gg_3d
-ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
-
-# ! compute covariance matrix
-# cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
-#                                     ell_dict, bnt_matrix, oc_obj, ccl_obj)
-
-cov_obj = covariance_class.SpaceborneCovariance(general_cfg, covariance_cfg, ell_dict, ind, bnt_matrix)
-cov_obj.consistency_checks()
-cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=covariance_cfg['split_gaussian_cov'])
 cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
 cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
 cov_dict = cov_obj.cov_dict

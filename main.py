@@ -179,6 +179,13 @@ which_pk = general_cfg['which_pk']
 general_cfg['fm_and_cov_suffix'] = general_cfg['fm_and_cov_suffix'].format(which_cls=general_cfg['which_cls'])
 which_sigma2_b = covariance_cfg['which_sigma2_b']
 z_steps_ssc_integrands = covariance_cfg['Spaceborne_cfg']['z_steps_ssc_integrands']
+symmetrize_output_dict = {
+    ('L', 'L'): False,
+    ('G', 'L'): False,
+    ('L', 'G'): False,
+    ('G', 'G'): False,
+}
+
 
 z_grid_ssc_integrands = np.linspace(covariance_cfg['Spaceborne_cfg']['z_min_ssc_integrands'],
                                     covariance_cfg['Spaceborne_cfg']['z_max_ssc_integrands'],
@@ -825,55 +832,50 @@ cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=covariance_cfg['split_gaussian_cov'])
 
 # ! ========================================== OneCovariance ===================================================
-# * 1. save ingredients in ascii format
-oc_path = covariance_cfg['OneCovariance_cfg']['onecovariance_folder'].format(ROOT=ROOT, **variable_specs)
 
-if not os.path.exists(oc_path):
-    os.makedirs(oc_path)
-
-nz_src_ascii_filename = covariance_cfg['nz_sources_filename'].replace('.dat', f'_dzshifts{shift_nz}.ascii')
-nz_lns_ascii_filename = covariance_cfg['nz_lenses_filename'].replace('.dat', f'_dzshifts{shift_nz}.ascii')
-nz_src_ascii_filename = nz_src_ascii_filename.format(**variable_specs)
-nz_lns_ascii_filename = nz_lns_ascii_filename.format(**variable_specs)
-nz_src_tosave = np.column_stack((zgrid_nz_src, nz_src))
-nz_lns_tosave = np.column_stack((zgrid_nz_lns, nz_lns))
-np.savetxt(f'{oc_path}/{nz_src_ascii_filename}', nz_src_tosave)
-np.savetxt(f'{oc_path}/{nz_lns_ascii_filename}', nz_lns_tosave)
-
-cl_ll_ascii_filename = f'Cell_ll_SPV3_nbl{nbl_3x2pt}'
-cl_gl_ascii_filename = f'Cell_gl_SPV3_nbl{nbl_3x2pt}'
-cl_gg_ascii_filename = f'Cell_gg_SPV3_nbl{nbl_3x2pt}'
-mm.write_cl_ascii(oc_path, cl_ll_ascii_filename, cl_3x2pt_5d[0, 0, ...], ell_dict['ell_3x2pt'], zbins)
-mm.write_cl_ascii(oc_path, cl_gl_ascii_filename, cl_3x2pt_5d[1, 0, ...], ell_dict['ell_3x2pt'], zbins)
-mm.write_cl_ascii(oc_path, cl_gg_ascii_filename, cl_3x2pt_5d[1, 1, ...], ell_dict['ell_3x2pt'], zbins)
-
-gal_bias_ascii_filename = f'{oc_path}/gal_bias_table_{general_cfg["which_forecast"]}.ascii'
-ccl_obj.save_gal_bias_table_ascii(z_grid_ssc_integrands, gal_bias_ascii_filename)
-
-ascii_filenames_dict = {
-    'cl_ll_ascii_filename': cl_ll_ascii_filename,
-    'cl_gl_ascii_filename': cl_gl_ascii_filename,
-    'cl_gg_ascii_filename': cl_gg_ascii_filename,
-    'gal_bias_ascii_filename': gal_bias_ascii_filename,
-    'nz_src_ascii_filename': nz_src_ascii_filename,
-    'nz_lns_ascii_filename': nz_lns_ascii_filename,
-}
-
-# * 2. compute cov using the onecovariance interface class
-start_time = time.perf_counter()
 if (covariance_cfg['ng_cov_code'] == 'OneCovariance') or \
         ((covariance_cfg['ng_cov_code'] == 'Spaceborne') and
             covariance_cfg['Spaceborne_cfg']['which_cNG'] == 'OneCovariance'):
+            
+    start_time = time.perf_counter()
 
-    print('Start NG cov computation with OneCovariance...')
+    # * 1. save ingredients in ascii format
+    oc_path = covariance_cfg['OneCovariance_cfg']['onecovariance_folder'].format(ROOT=ROOT, **variable_specs)
 
-    # TODO this should be defined globally...
-    symmetrize_output_dict = {
-        ('L', 'L'): False,
-        ('G', 'L'): False,
-        ('L', 'G'): False,
-        ('G', 'G'): False,
+    if not os.path.exists(oc_path):
+        os.makedirs(oc_path)
+
+    nz_src_ascii_filename = covariance_cfg['nz_sources_filename'].replace('.dat', f'_dzshifts{shift_nz}.ascii')
+    nz_lns_ascii_filename = covariance_cfg['nz_lenses_filename'].replace('.dat', f'_dzshifts{shift_nz}.ascii')
+    nz_src_ascii_filename = nz_src_ascii_filename.format(**variable_specs)
+    nz_lns_ascii_filename = nz_lns_ascii_filename.format(**variable_specs)
+    nz_src_tosave = np.column_stack((zgrid_nz_src, nz_src))
+    nz_lns_tosave = np.column_stack((zgrid_nz_lns, nz_lns))
+    np.savetxt(f'{oc_path}/{nz_src_ascii_filename}', nz_src_tosave)
+    np.savetxt(f'{oc_path}/{nz_lns_ascii_filename}', nz_lns_tosave)
+
+    cl_ll_ascii_filename = f'Cell_ll_SPV3_nbl{nbl_3x2pt}'
+    cl_gl_ascii_filename = f'Cell_gl_SPV3_nbl{nbl_3x2pt}'
+    cl_gg_ascii_filename = f'Cell_gg_SPV3_nbl{nbl_3x2pt}'
+    mm.write_cl_ascii(oc_path, cl_ll_ascii_filename, cl_3x2pt_5d[0, 0, ...], ell_dict['ell_3x2pt'], zbins)
+    mm.write_cl_ascii(oc_path, cl_gl_ascii_filename, cl_3x2pt_5d[1, 0, ...], ell_dict['ell_3x2pt'], zbins)
+    mm.write_cl_ascii(oc_path, cl_gg_ascii_filename, cl_3x2pt_5d[1, 1, ...], ell_dict['ell_3x2pt'], zbins)
+
+    gal_bias_ascii_filename = f'{oc_path}/gal_bias_table_{general_cfg["which_forecast"]}.ascii'
+    ccl_obj.save_gal_bias_table_ascii(z_grid_ssc_integrands, gal_bias_ascii_filename)
+
+    ascii_filenames_dict = {
+        'cl_ll_ascii_filename': cl_ll_ascii_filename,
+        'cl_gl_ascii_filename': cl_gl_ascii_filename,
+        'cl_gg_ascii_filename': cl_gg_ascii_filename,
+        'gal_bias_ascii_filename': gal_bias_ascii_filename,
+        'nz_src_ascii_filename': nz_src_ascii_filename,
+        'nz_lns_ascii_filename': nz_lns_ascii_filename,
     }
+    
+    # * 2. compute cov using the onecovariance interface class
+    
+    print('Start NG cov computation with OneCovariance...')
 
     oc_obj = oc_interface.OneCovarianceInterface(ROOT, cfg, variable_specs)
     oc_obj.ells_sb = ell_dict['ell_3x2pt']

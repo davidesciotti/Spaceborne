@@ -137,15 +137,15 @@ class SpaceborneCovariance():
         cl_GG_5D = cl_GG_3D[np.newaxis, np.newaxis, ...]
 
         if split_gaussian_cov:
-            self.cov_WL_GO_6D_sva, self.cov_WL_GO_6D_sn, self.cov_WL_GO_6D_mix = mm.covariance_einsum_split(
+            self.cov_WL_g_6D_sva, self.cov_WL_g_6D_sn, self.cov_WL_g_6D_mix = mm.covariance_einsum_split(
                 cl_LL_5D, noise_LL_5D, self.fsky, self.ell_WL, delta_l_WL)[0, 0, 0, 0, ...]
-            self.cov_GC_GO_6D_sva, self.cov_GC_GO_6D_sn, self.cov_GC_GO_6D_mix = mm.covariance_einsum_split(
+            self.cov_GC_g_6D_sva, self.cov_GC_g_6D_sn, self.cov_GC_g_6D_mix = mm.covariance_einsum_split(
                 cl_GG_5D, noise_GG_5D, self.fsky, self.ell_GC, delta_l_GC)[0, 0, 0, 0, ...]
-            self.cov_3x2pt_GO_10D_sva, self.cov_3x2pt_GO_10D_sn, self.cov_3x2pt_GO_10D_mix = mm.covariance_einsum_split(
+            self.cov_3x2pt_g_10D_sva, self.cov_3x2pt_g_10D_sn, self.cov_3x2pt_g_10D_mix = mm.covariance_einsum_split(
                 cl_3x2pt_5D, noise_3x2pt_5D, self.fsky, self.ell_3x2pt, delta_l_3x2pt)
-            self.cov_WL_g_6D = self.cov_WL_GO_6D_sva + self.cov_WL_GO_6D_sn + self.cov_WL_GO_6D_mix
-            self.cov_GC_g_6D = self.cov_GC_GO_6D_sva + self.cov_GC_GO_6D_sn + self.cov_GC_GO_6D_mix
-            self.cov_3x2pt_g_10D = self.cov_3x2pt_GO_10D_sva + self.cov_3x2pt_GO_10D_sn + self.cov_3x2pt_GO_10D_mix
+            self.cov_WL_g_6D = self.cov_WL_g_6D_sva + self.cov_WL_g_6D_sn + self.cov_WL_g_6D_mix
+            self.cov_GC_g_6D = self.cov_GC_g_6D_sva + self.cov_GC_g_6D_sn + self.cov_GC_g_6D_mix
+            self.cov_3x2pt_g_10D = self.cov_3x2pt_g_10D_sva + self.cov_3x2pt_g_10D_sn + self.cov_3x2pt_g_10D_mix
 
         else:
             self.cov_WL_g_6D = mm.covariance_einsum(
@@ -188,11 +188,11 @@ class SpaceborneCovariance():
         -------
         dict
             Dictionary containing the computed covariance matrices with keys:
-            - cov_{probe}_GO_2D: Gaussian-only covariance
-            - cov_{probe}_GS_2D: Gaussian+SSC covariance 
-            - cov_{probe}_SS_2D: SSC-only covariance (if save_cov_SSC=True)
+            - cov_{probe}_g_2D: Gaussian-only covariance
+            - cov_{probe}_ng_2D: ng-only covariance (SSC, cNG or the sum of the two)
+            - cov_{probe}_tot_2D: g + ng covariance
             where {probe} can be: WL (weak lensing), GC (galaxy clustering), 
-            3x2pt (joint probes), XC (cross-correlation), 2x2pt
+            3x2pt (WL + XC + GC), XC (cross-correlation), 2x2pt (XC + GC)
         """
 
         self.cov_dict = {}
@@ -425,25 +425,24 @@ class SpaceborneCovariance():
 
             covs_ng_2D = (cov_WL_ng_2D, cov_GC_ng_2D, cov_3x2pt_ng_2D, cov_XC_ng_2D)
 
-            for probe_name, cov_SS_2D in zip(probe_names, covs_ng_2D):
-                self.cov_dict[f'cov_{probe_name}_SS_2D'] = cov_SS_2D  
+            for probe_name, cov_ng_2D in zip(probe_names, covs_ng_2D):
+                self.cov_dict[f'cov_{probe_name}_ng_2D'] = cov_ng_2D  
 
-        for probe_name, cov_GO_2D, cov_GS_2D in zip(probe_names, covs_g_2D,
-                                                    covs_tot_2D):
+        for probe_name, cov_g_2D, cov_tot_2D in zip(probe_names, covs_g_2D, covs_tot_2D):
 
             # save 2D
-            self.cov_dict[f'cov_{probe_name}_GO_2D'] = cov_GO_2D
-            self.cov_dict[f'cov_{probe_name}_GS_2D'] = cov_GS_2D
+            self.cov_dict[f'cov_{probe_name}_g_2D'] = cov_g_2D
+            self.cov_dict[f'cov_{probe_name}_tot_2D'] = cov_tot_2D
 
         # '2DCLOE', i.e. the 'multi-diagonal', non-square blocks ordering, only for 3x2pt
         # note: we found out that this is not actually used in CLOE...
         if self.covariance_cfg['save_2DCLOE']:
-            self.cov_dict[f'cov_3x2pt_GO_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(
-                self.cov_3x2pt_GO_4D, self.zbins, block_index='ell')
-            self.cov_dict[f'cov_3x2pt_SS_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(
+            self.cov_dict[f'cov_3x2pt_g_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(
+                self.cov_3x2pt_g_4D, self.zbins, block_index='ell')
+            self.cov_dict[f'cov_3x2pt_ng_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(
                 cov_3x2pt_ng_4D, self.zbins, block_index='ell')
-            self.cov_dict[f'cov_3x2pt_GS_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(
-                self.cov_3x2pt_GS_4D, self.zbins, block_index='ell')
+            self.cov_dict[f'cov_3x2pt_tot_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(
+                self.cov_3x2pt_tot_4D, self.zbins, block_index='ell')
 
         print('Covariance matrices computed')
 

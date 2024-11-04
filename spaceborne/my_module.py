@@ -205,7 +205,8 @@ def plot_dominant_array_element(arrays_dict, tab_colors, elements_auto, elements
     plt.show()
 
 
-def cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering, symmetrize_output_dict=symmetrize_output_dict):
+def cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering, 
+                             symmetrize_output_dict : bool =symmetrize_output_dict):
     cov_3x2pt_dict_10D = {}
     for probe_A, probe_B in probe_ordering:
         for probe_C, probe_D in probe_ordering:
@@ -2891,10 +2892,26 @@ def cov_6D_to_4D_blocks(cov_6D, nbl, npairs_AB, npairs_CD, ind_AB, ind_CD):
 
 
 # @njit
-def cov_4D_to_6D_blocks(cov_4D, nbl, zbins, ind_ab, ind_cd, symmetrize_output_ab, symmetrize_output_cd):
-    """ reshapes the covariance even for the non-diagonal (hence, non-square) blocks needed to build the 3x2pt.
-    use zpairs_ab = zpairs_cd and ind_ab = ind_cd for the normal routine (valid for auto-covariance
-    LL-LL, GG-GG, GL-GL and LG-LG).
+def cov_4D_to_6D_blocks(cov_4D, nbl, zbins, ind_ab, ind_cd, 
+                        symmetrize_output_ab: bool, symmetrize_output_cd: bool):
+    """
+    Reshapes the 4D covariance matrix to a 6D covariance matrix, even for the cross-probe (non-square) blocks needed
+    to build the 3x2pt covariance.
+    
+    This function can be used for the normal routine (valid for auto-covariance, i.e., LL-LL, GG-GG, GL-GL and LG-LG) 
+    where `zpairs_ab = zpairs_cd` and `ind_ab = ind_cd`.
+    
+    Args:
+        cov_4D (np.ndarray): The 4D covariance matrix.
+        nbl (int): The number of ell bins.
+        zbins (int): The number of redshift bins.
+        ind_ab (np.ndarray): The indices for the first pair of redshift bins.
+        ind_cd (np.ndarray): The indices for the second pair of redshift bins.
+        symmetrize_output_ab (bool): Whether to symmetrize the output cov block for the first pair of probes.
+        symmetrize_output_cd (bool): Whether to symmetrize the output cov block for the second pair of probes.
+    
+    Returns:
+        np.ndarray: The 6D covariance matrix.
     """
 
     assert ind_ab.shape[1] == ind_cd.shape[1], 'ind_ab and ind_cd must have the same number of columns'

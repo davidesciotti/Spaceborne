@@ -1013,28 +1013,6 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         b1g_hm = resp_obj.b1g_hm
         b2g_hm = resp_obj.b2g_hm
 
-        # ! plot for a comparison (you need to remove the 2 above "ifs")
-        # z_idx = 0
-        # k_idx = 0
-        # plt.semilogx(k_grid_resp, r_mm_sbclass[:, z_idx], label=f'r_mm_sbclass includeb2{
-        #              include_b2g}', c='tab:blue', ls='-.')
-        # plt.semilogx(k_grid_resp, r_mm_hm[:, z_idx], label='r_mm_hm', c='tab:blue', ls='-')
-        # plt.semilogx(k_grid_resp, r_mm_vin[:, z_idx], label='r_mm vin', c='tab:blue', ls='--')
-
-        # plt.semilogx(k_grid_resp, r_gm_sbclass[:, z_idx], c='tab:orange', ls='-.')
-        # plt.semilogx(k_grid_resp, r_gm_hm[:, z_idx], c='tab:orange', ls='-')
-        # plt.semilogx(k_grid_resp, r_gm_vin[:, z_idx], c='tab:orange', ls='--')
-
-        # plt.semilogx(k_grid_resp, r_gg_sbclass[:, z_idx], c='tab:green', ls='-.')
-        # plt.semilogx(k_grid_resp, r_gg_hm[:, z_idx], c='tab:green', ls='-')
-        # plt.semilogx(k_grid_resp, r_gg_vin[:, z_idx], c='tab:green', ls='--')
-
-        # plt.legend()
-        # plt.xlabel(f'k {k_txt_label}')
-        # plt.ylabel(r'$R_{AB}(k)$')
-        # plt.ylim(-5, 5)
-        # plt.title(f'z={z_grid_ssc_integrands[z_idx]}')
-
     else:
         raise ValueError(
             'which_pk_responses must be either "halo_model" or "separate_universe_vin" or "separate_universe_dav"')
@@ -1174,14 +1152,14 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     print('Performing the SSC integral with Julia...')
     start = time.perf_counter()
     cov_ssc_3x2pt_dict_8D = covmat_utils.ssc_integral_julia(d2CLL_dVddeltab=d2CLL_dVddeltab,
-                                               d2CGL_dVddeltab=d2CGL_dVddeltab,
-                                               d2CGG_dVddeltab=d2CGG_dVddeltab,
-                                               ind_auto=ind_auto, ind_cross=ind_cross,
-                                               cl_integral_prefactor=cl_integral_prefactor, sigma2=sigma2_b,
-                                               z_grid=z_grid_ssc_integrands,
-                                               integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
-                                               probe_ordering=probe_ordering,
-                                               num_threads=general_cfg['num_threads'])
+                                                            d2CGL_dVddeltab=d2CGL_dVddeltab,
+                                                            d2CGG_dVddeltab=d2CGG_dVddeltab,
+                                                            ind_auto=ind_auto, ind_cross=ind_cross,
+                                                            cl_integral_prefactor=cl_integral_prefactor, sigma2=sigma2_b,
+                                                            z_grid=z_grid_ssc_integrands,
+                                                            integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
+                                                            probe_ordering=probe_ordering,
+                                                            num_threads=general_cfg['num_threads'])
     print('SSC computed with Julia in {:.2f} s'.format(time.perf_counter() - start))
 
     # in the full_curved_sky case only, sigma2_b has to be divided by fsky
@@ -1203,31 +1181,6 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
                                                       probe_c=probe_c, probe_d=probe_d)
             _filename = f'{cov_folder_sb}/{_cov_sb_filename}'
             np.savez_compressed(_filename, cov_ssc_3x2pt_dict_8D[key])
-
-    # ! check SSC INTEGRANDS
-
-    # plt.figure()
-    # z1_idx = 3
-    # ell1_idx, ell2_idx = 28, 28
-    # zpair_AB, zpair_CD = 5, 5
-    # num_col = 4
-    # ind_AB, ind_CD = ind_auto, ind_auto
-    # zi, zj, zk, zl = ind_AB[zpair_AB, num_col - 2], ind_AB[zpair_AB, num_col - 1], \
-    #     ind_CD[zpair_CD, num_col - 2], ind_CD[zpair_CD, num_col - 1]
-    # # plt.plot(z_grid_ssc_integrands, integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD, z1_idx, :], label='total integrand')
-    # plt.plot(z_grid_ssc_integrands, d2CLL_dVddeltab[ell2_idx, zk, zl, :], label='d2CLL_dVddeltab')
-    # plt.plot(z_grid_ssc_integrands, cl_integral_prefactor, label='cl_integral_prefactor')
-    # plt.plot(z_grid_ssc_integrands, sigma2_b[z1_idx, :], label='sigma2_b')
-    # plt.yscale('log')
-    # plt.legend()
-
-    # mm.matshow(integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD], log=True, abs_val=True)
-    # mm.matshow(sigma2_b, log=True, abs_val=True)
-    # plt.plot(z_grid_ssc_integrands, np.diag(sigma2_b), marker='o')
-    # plt.plot(z_grid_ssc_integrands, np.diag(integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD]), marker='o')
-    # plt.yscale('log')
-
-    # plt.plot(z_grid_ssc_integrands, integrand_ssc_spaceborne_py_LLLL[ell1_idx, ell2_idx,zpair_AB, zpair_CD, z1_idx, :], marker='o')
 
 elif covariance_cfg['ng_cov_code'] == 'Spaceborne' and \
         covariance_cfg['Spaceborne_cfg']['load_precomputed_cov']:
@@ -1254,7 +1207,6 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
     covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 
 # TODO integrate this with Spaceborne_covg
-
 # ! ========================================== end Spaceborne ===================================================
 
 # ! ========================================== start PyCCL ===================================================
@@ -1407,7 +1359,6 @@ cl_dict = {
     'cl_3x2pt_5D': cl_3x2pt_5d}
 
 
-
 # ! compute covariance matrix
 cov_dict = covmat_utils.compute_cov(general_cfg, covariance_cfg,
                                     ell_dict, cl_dict, bnt_matrix, oc_obj)
@@ -1523,16 +1474,16 @@ if covariance_cfg['test_against_benchmarks']:
             'save_cov_dict should be False when testing against benchmarks, otherwise the test will always pass')
 
     cov_dict_bench = dict(np.load(f'{cov_folder}/{cov_dict_filename}'))
-    
+
     # pop all entries containing '_WA'
     for key in list(cov_dict_bench.keys()):
         if '_WA_' in key:
             cov_dict_bench.pop(key)
-            
+
     for key in list(cov_dict_bench.keys()):
         if '_2x2pt_' in key:
             cov_dict_bench.pop(key)
-            
+
     for key in list(cov_dict.keys()):
         if '_2x2pt_' in key:
             cov_dict.pop(key)
@@ -1542,7 +1493,7 @@ if covariance_cfg['test_against_benchmarks']:
     for key in cov_dict_bench.keys():
         np.testing.assert_allclose(cov_dict_bench[key], cov_dict[key],
                                    rtol=1e-3, atol=0), f'{key} benchmarks do not match'
-    
+
     print('Cov dict matches benchmarks ✅')
 
 
@@ -1975,7 +1926,7 @@ if fm_cfg['test_against_benchmarks']:
     #                                      compare_fms=True, compare_param_covs=True,
     #                                      which_uncertainty='conditional')
     print('FM dict matches benchmarks ✅')
-    
+
 
 if fm_cfg['test_against_vincenzo'] and bnt_transform == False:
     fm_vinc_folder = fm_cfg["fm_vinc_folder"].format(**variable_specs, go_gs_vinc='GaussOnly')

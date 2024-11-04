@@ -248,6 +248,7 @@ covariance_cfg:
     Spaceborne_cfg:
         probe: 3x2pt
         which_ng_cov: [SSC] # only SSC available in this case
+        which_cNG: null # PyCCL or OneCovariance or null (None)
         load_precomputed_cov: False
         which_pk_responses: halo_model_SB # halo_model_SB, halo_model_CCL (with PyCCL) or separate_universe_SB/_vin (from simulations)
         include_b2g: True # whether or not to include the second-order galaxy bias in the GCph responses
@@ -311,7 +312,6 @@ covariance_cfg:
         which_ng_cov: ["SSC"]
         load_precomputed_cov: False
         use_OneCovariance_Gaussian: False
-        use_OneCovariance_cNG: False
         which_gauss_cov_binning: OneCovariance # 'EC20' or 'OneCovariance'
         precision_settings: high_precision # 'high_precision' or 'default'
         path_to_oc_executable: "{ROOT:s}/OneCovariance/covariance.py"

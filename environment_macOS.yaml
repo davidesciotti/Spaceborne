@@ -10,7 +10,6 @@ dependencies:
   - numpy
   - scipy
   - pandas
-  - healpy
   - tqdm
   - pip
   - pyyaml
@@ -18,6 +17,7 @@ dependencies:
   - joblib
   - numba
   - camb
+  - healpy
   - pyqt
   - ipympl
   - cfitsio
@@ -30,14 +30,12 @@ dependencies:
   - make
   - libgfortran-ng
   - fast-pt
+  - pyccl
   # - cfitsio  # not necessary?
   - pip:
     - pymaster
     - cython
     - getdist
 
-# After installing the environment, run
+# In case of issues with CCL, you can try
 # brew install gfortran cmake build-essential autoconf bison
-# pip install git+https://github.com/davidesciotti/CCL.git@master
-# to install the CCL fork used in this project
-

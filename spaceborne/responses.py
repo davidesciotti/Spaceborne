@@ -98,10 +98,47 @@ class SpaceborneResponses():
         return np.concatenate((low, mid, high), axis=0)
 
     def b2h_of_b1h_fit(self, b1h_ofz):
-        """ second-order galaxy bias from fit in Lazeyras et al. 2016 - note that this formula is actually
-        for b2_halo(b1_halo), I need to test this better"""
+        """ Second-order galaxy bias from fit in Lazeyras et al. 2016"""
         return 0.412 - 2.143 * b1h_ofz + 0.929 * (b1h_ofz ** 2) + 0.008 * (b1h_ofz ** 3)
+    
+    def I_2_1_dav(self, cosmo, k, a, prof):
+        """
+        Computes the I^2_1 halo model integral
+        This function is added to `TargetClass` self.ccl_obj.hmc via monkeypatching to extend CCL 
+        functionality without altering its original source code, allowing a standard installation of CCL.
+        
+        Solves the integral:
 
+        .. math::
+            I^1_1(k,a|u) = \\int dM\\,n(M,a)\\,b(M,a)\\,
+            \\langle u(k,a|M)\\rangle,
+
+        where :math:`n(M,a)` is the halo mass function,
+        :math:`b(M,a)` is the halo bias, and
+        :math:`\\langle u(k,a|M)\\rangle` is the halo profile as a
+        function of scale, scale factor and halo mass.
+
+        Args:
+            cosmo (:class:`~pyccl.cosmology.Cosmology`): a Cosmology object.
+            k (:obj:`float` or `array`): comoving wavenumber.
+            a (:obj:`float`): scale factor.
+            prof (:class:`~pyccl.halos.profiles.profile_base.HaloProfile`):
+                halo profile.
+
+        Returns:
+            (:obj:`float` or `array`): integral values evaluated at each
+            value of ``k``.
+        """
+        self.ccl_obj.hmc._check_mass_def(prof)
+        self.ccl_obj.hmc._get_ingredients(cosmo, a, get_bf=True)
+        
+        # DSmod: replace with 2nd order halo bias
+        self.ccl_obj.hmc._bf = self.b2h_of_b1h_fit(self.ccl_obj.hmc._bf)
+        
+        uk = prof.fourier(cosmo, k, self.ccl_obj.hmc._mass, a).T
+        return self.ccl_obj.hmc._integrate_over_mbf(uk)
+    
+    
     def set_bg_hm(self, z_grid):
         """
         Uses the halo model to compute: 
@@ -109,6 +146,9 @@ class SpaceborneResponses():
             - First-order galaxy bias (b1g_hm)
             - Second-order galaxy bias (b2g_hm)
         """
+        
+        # Attach method to the class via monkeypatching
+        self.ccl_obj.hmc.I_2_1_dav = self.I_2_1_dav
 
         # just some intermediate quantities; this code is not needed but left here for future reference
         # from https://github.com/LSSTDESC/CCLX/blob/master/Halo-mass-function-example.ipynb

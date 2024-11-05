@@ -311,8 +311,7 @@ class SpaceborneResponses():
         self.pknlhm_mm, self.pknlhm_gm, self.pknlhm_gg = [np.zeros((len(a_grid), len(k_grid))) for _ in range(3)]
         
         # set profiles
-        # TODO generalize to user-defined profiles in pyccl_interface?
-        prof_m = self.ccl_obj.halo_profile_nfw
+        prof_m = self.ccl_obj.halo_profile_dm
         prof_g = self.ccl_obj.halo_profile_hod
 
         for a_idx, aa in tqdm(enumerate(a_grid)):

@@ -80,7 +80,7 @@ cosmology:
         concentration: ConcentrationDuffy08
         mass_function: MassFuncTinker10 
         halo_bias: HaloBiasTinker10
-        halo_profile_hm: HaloProfileNFW
+        halo_profile_dm: HaloProfileNFW
         halo_profile_hod: HaloProfileHOD
 
 general_cfg:

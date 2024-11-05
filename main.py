@@ -804,7 +804,7 @@ cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=covariance_cfg['split_
 if (covariance_cfg['ng_cov_code'] == 'OneCovariance') or \
         ((covariance_cfg['ng_cov_code'] == 'Spaceborne') and
             covariance_cfg['Spaceborne_cfg']['which_cNG'] == 'OneCovariance'):
-            
+
     if general_cfg['cl_ell_cuts']:
         raise NotImplementedError('TODO double check inputs in this case. This case is untested')
 
@@ -1190,14 +1190,14 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     print('Performing the SSC integral...')
     start = time.perf_counter()
     cov_ssc_3x2pt_dict_8D = cov_obj.ssc_integral_julia(d2CLL_dVddeltab=d2CLL_dVddeltab,
-                                                            d2CGL_dVddeltab=d2CGL_dVddeltab,
-                                                            d2CGG_dVddeltab=d2CGG_dVddeltab,
-                                                            cl_integral_prefactor=cl_integral_prefactor, 
-                                                            sigma2=sigma2_b,
-                                                            z_grid=z_grid_ssc_integrands,
-                                                            integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
-                                                            probe_ordering=probe_ordering,
-                                                            num_threads=general_cfg['num_threads'])
+                                                       d2CGL_dVddeltab=d2CGL_dVddeltab,
+                                                       d2CGG_dVddeltab=d2CGG_dVddeltab,
+                                                       cl_integral_prefactor=cl_integral_prefactor,
+                                                       sigma2=sigma2_b,
+                                                       z_grid=z_grid_ssc_integrands,
+                                                       integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
+                                                       probe_ordering=probe_ordering,
+                                                       num_threads=general_cfg['num_threads'])
     print('SSC computed in {:.2f} s'.format(time.perf_counter() - start))
 
     # in the full_curved_sky case only, sigma2_b has to be divided by fsky
@@ -1259,10 +1259,11 @@ if covariance_cfg['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomputed_
                          mask_path=covariance_cfg['mask_path'])
 
     for which_ng_cov in pyccl_cfg['which_ng_cov']:
-        
+
         ccl_obj.initialize_trispectrum(which_ng_cov, probe_ordering, pyccl_cfg)
         ccl_obj.compute_ng_cov_3x2pt(which_ng_cov, ell_dict['ell_3x2pt'], covariance_cfg['fsky'],
-                                     integration_method=pyccl_cfg['cov_integration_method'],  # TODO add try block for quad
+                                     # TODO add try block for quad
+                                     integration_method=pyccl_cfg['cov_integration_method'],
                                      probe_ordering=probe_ordering, ind_dict=ind_dict)
 
         if pyccl_cfg['save_cov']:

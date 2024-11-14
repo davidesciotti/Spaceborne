@@ -78,7 +78,7 @@ cosmology:
     halo_model:
         mass_def: MassDef200m
         concentration: ConcentrationDuffy08
-        mass_function: MassFuncTinker10 
+        mass_function: MassFuncTinker10
         halo_bias: HaloBiasTinker10
         halo_profile_dm: HaloProfileNFW
         halo_profile_hod: HaloProfileHOD
@@ -86,9 +86,9 @@ cosmology:
 general_cfg:
     is_CLOE_run: False # True or False; if True, a check on some of the key options will be performed
 
-    ell_min: 10  # minimum ell for 3x2pt
-    ell_max_WL: 3000  # maximum ell for WL
-    ell_max_GC: 3000  # maximum ell for GC
+    ell_min: 10 # minimum ell for 3x2pt
+    ell_max_WL: 3000 # maximum ell for WL
+    ell_max_GC: 3000 # maximum ell for GC
     ell_max_3x2pt: 3000
     zbins: 3
     EP_or_ED: EP # equipopulated or equidistant bins
@@ -112,7 +112,18 @@ general_cfg:
     # kmax_h_over_Mpc_list: [0.37108505, 0.74217011, 1.11325516, 1.48434021, 1.85542526,
     #                                   2.22651032, 2.59759537, 2.96868042, 4.45302063, 7.42170105, 14.84340211]
     kmax_h_over_Mpc_list:
-        [ 0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.]
+        [
+            0.1,
+            0.16681005,
+            0.27825594,
+            0.46415888,
+            0.77426368,
+            1.29154967,
+            2.15443469,
+            3.59381366,
+            5.9948425,
+            10.,
+        ]
     use_h_units: False
 
     BNT_transform: False # ! to be deprecated?
@@ -268,7 +279,7 @@ covariance_cfg:
         # - 'from_HOD' (from the Halo Occupation Distribution previously initialized)
         # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB
         # Setting this to 'from_HOD' will match perfectly 'halo_model_CCL'
-        which_b1g_in_resp: 'from_HOD'
+        which_b1g_in_resp: "from_HOD"
 
         cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Spaceborne/{which_pk_responses:s}"
         cov_suffix: "_zsteps{z_steps_ssc_integrands:d}_k{k_txt_label:s}_convention{cl_integral_convention:s}_integration{integration_type:s}_{survey_area_deg2:d}deg2_Francis"
@@ -317,9 +328,9 @@ covariance_cfg:
         k_grid_tkka_steps_cNG: 512
 
         n_samples_wf: 1000
-        # (from CCL docs): integration method to be used for the Limber integrals. 
+        # (from CCL docs): integration method to be used for the Limber integrals.
         # Possibilities: 'qag_quad' (GSL's qag method backed up by quad when it fails) and 'spline' (the integrand is splined and then integrated analytically).
-        cov_integration_method: spline  
+        cov_integration_method: spline
 
     OneCovariance_cfg:
         which_ng_cov: ["SSC"]

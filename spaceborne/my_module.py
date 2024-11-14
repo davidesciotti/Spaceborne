@@ -23,6 +23,8 @@ import datetime
 from tqdm import tqdm
 import pandas as pd
 from scipy.integrate import simps
+from scipy.interpolate import interp1d, RegularGridInterpolator, CubicSpline
+
 
 symmetrize_output_dict = {
     ('L', 'L'): True,
@@ -30,6 +32,15 @@ symmetrize_output_dict = {
     ('L', 'G'): False,
     ('G', 'G'): True,
 }
+
+def check_interpolate_input_tab(input_tab, z_grid_out, zbins):
+    
+    assert input_tab.shape[1] == zbins + 1, 'The input table should have shape (z_points, zbins + 1)'
+
+    spline = CubicSpline(x=input_tab[:, 0], y=input_tab[:, 1:], axis=0)
+    output_tab = spline(z_grid_out)
+    
+    return output_tab
 
 
 def get_ngal(ngal_in, ep_or_ed, zbins, ep_check_tol):

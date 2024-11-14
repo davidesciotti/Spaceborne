@@ -7,7 +7,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.colors import LogNorm
+from matplotlib.colors import ListedColormap
 import matplotlib.lines as mlines
+
 import numpy as np
 import yaml
 from numba import njit
@@ -20,7 +22,6 @@ import inspect
 import datetime
 from tqdm import tqdm
 import pandas as pd
-from matplotlib.colors import ListedColormap
 
 symmetrize_output_dict = {
     ('L', 'L'): True,
@@ -1493,6 +1494,8 @@ def matshow(array, title="title", log=True, abs_val=False, threshold=None, only_
     plt.colorbar()
     plt.title(title)
     plt.show()
+    
+
 
 
 def get_kv_pairs(path_import, extension='npy'):
@@ -2743,18 +2746,18 @@ def cov_3x2pt_4d_to_10d_dict(cov_3x2pt_4d, zbins, probe_ordering, nbl, ind_copy,
 
     # slice the 4d cov to be able to use cov_4D_to_6D_blocks on the nine separate blocks
     zpairs_sum = zpairs_auto + zpairs_cross
-    cov_vinc_no_bnt_8d_dict = {}
-    cov_vinc_no_bnt_8d_dict['L', 'L', 'L', 'L'] = cov_3x2pt_4d[:, :, :zpairs_auto, :zpairs_auto]
-    cov_vinc_no_bnt_8d_dict['L', 'L', 'G', 'L'] = cov_3x2pt_4d[:, :, :zpairs_auto, zpairs_auto:zpairs_sum]
-    cov_vinc_no_bnt_8d_dict['L', 'L', 'G', 'G'] = cov_3x2pt_4d[:, :, :zpairs_auto, zpairs_sum:]
+    cov_3x2pt_8d_dict = {}
+    cov_3x2pt_8d_dict['L', 'L', 'L', 'L'] = cov_3x2pt_4d[:, :, :zpairs_auto, :zpairs_auto]
+    cov_3x2pt_8d_dict['L', 'L', 'G', 'L'] = cov_3x2pt_4d[:, :, :zpairs_auto, zpairs_auto:zpairs_sum]
+    cov_3x2pt_8d_dict['L', 'L', 'G', 'G'] = cov_3x2pt_4d[:, :, :zpairs_auto, zpairs_sum:]
 
-    cov_vinc_no_bnt_8d_dict['G', 'L', 'L', 'L'] = cov_3x2pt_4d[:, :, zpairs_auto:zpairs_sum, :zpairs_auto]
-    cov_vinc_no_bnt_8d_dict['G', 'L', 'G', 'L'] = cov_3x2pt_4d[:, :, zpairs_auto:zpairs_sum, zpairs_auto:zpairs_sum]
-    cov_vinc_no_bnt_8d_dict['G', 'L', 'G', 'G'] = cov_3x2pt_4d[:, :, zpairs_auto:zpairs_sum, zpairs_sum:]
+    cov_3x2pt_8d_dict['G', 'L', 'L', 'L'] = cov_3x2pt_4d[:, :, zpairs_auto:zpairs_sum, :zpairs_auto]
+    cov_3x2pt_8d_dict['G', 'L', 'G', 'L'] = cov_3x2pt_4d[:, :, zpairs_auto:zpairs_sum, zpairs_auto:zpairs_sum]
+    cov_3x2pt_8d_dict['G', 'L', 'G', 'G'] = cov_3x2pt_4d[:, :, zpairs_auto:zpairs_sum, zpairs_sum:]
 
-    cov_vinc_no_bnt_8d_dict['G', 'G', 'L', 'L'] = cov_3x2pt_4d[:, :, zpairs_sum:, :zpairs_auto]
-    cov_vinc_no_bnt_8d_dict['G', 'G', 'G', 'L'] = cov_3x2pt_4d[:, :, zpairs_sum:, zpairs_auto:zpairs_sum]
-    cov_vinc_no_bnt_8d_dict['G', 'G', 'G', 'G'] = cov_3x2pt_4d[:, :, zpairs_sum:, zpairs_sum:]
+    cov_3x2pt_8d_dict['G', 'G', 'L', 'L'] = cov_3x2pt_4d[:, :, zpairs_sum:, :zpairs_auto]
+    cov_3x2pt_8d_dict['G', 'G', 'G', 'L'] = cov_3x2pt_4d[:, :, zpairs_sum:, zpairs_auto:zpairs_sum]
+    cov_3x2pt_8d_dict['G', 'G', 'G', 'G'] = cov_3x2pt_4d[:, :, zpairs_sum:, zpairs_sum:]
 
     if optimize:
         # this version is only marginally faster, it seems
@@ -2763,15 +2766,15 @@ def cov_3x2pt_4d_to_10d_dict(cov_3x2pt_4d, zbins, probe_ordering, nbl, ind_copy,
         # safer, default value
         cov_4D_to_6D_blocks_func = cov_4D_to_6D_blocks
 
-    cov_vinc_no_bnt_10d_dict = {}
-    for key in cov_vinc_no_bnt_8d_dict.keys():
-        cov_vinc_no_bnt_10d_dict[key] = cov_4D_to_6D_blocks_func(
-            cov_vinc_no_bnt_8d_dict[key], nbl, zbins,
+    cov_3x2pt_10d_dict = {}
+    for key in cov_3x2pt_8d_dict.keys():
+        cov_3x2pt_10d_dict[key] = cov_4D_to_6D_blocks_func(
+            cov_3x2pt_8d_dict[key], nbl, zbins,
             ind_dict[key[0], key[1]], ind_dict[key[2], key[3]],
             symmetrize_output_dict[key[0], key[1]],
             symmetrize_output_dict[key[2], key[3]])
 
-    return cov_vinc_no_bnt_10d_dict
+    return cov_3x2pt_10d_dict
 
 
 # ! to be deprecated

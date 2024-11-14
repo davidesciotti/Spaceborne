@@ -33,7 +33,8 @@ extra_parameters:
         num_massive_neutrinos: 1
         dark_energy_model: ppf
 
-bias:
+C_ell:
+    # TODO delete these altogether?
     bias_function: analytical # 'analytical', 'leporifit', 'pocinofit'
     bias_model: step-wise # 'step-wise', 'constant', 'linint', 'ones', 'polynomial'
     # coefficients for the polynomial galaxy and magnification bias fits
@@ -43,10 +44,13 @@ bias:
     # multiplicative shear bias fiducial parameters
     mult_shear_bias: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
-# boolean flags for redshift-space distortion, magnification bias and intrinsic alignment
-has_rsd: False
-has_magnification_bias: False
-has_IA: False
+    gal_bias_table_filename: './input_main_take2/gal_bias.txt'
+    mag_bias_table_filename: './input_main_take2/mag_bias.txt'  # TODO test this!
+
+    # boolean flags for redshift-space distortion intrinsic alignment
+    has_rsd: False
+    has_IA: False
+    has_magnification_bias: False
 
 # Halo model configuration using CCL classes (https://ccl.readthedocs.io/en/latest/api/pyccl.halos.html)
 # Each parameter maps directly to a CCL class, and has exactly its name

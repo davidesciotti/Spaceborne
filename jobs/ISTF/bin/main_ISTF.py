@@ -37,7 +37,7 @@ import common_cfg.ISTF_fid_params as ISTF_fid
 from jobs.ISTF.config import config_ISTF as cfg
 
 # mpl.use('Agg')
-mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
+#mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 start_time = time.perf_counter()
 
 num_cores = multiprocessing.cpu_count()

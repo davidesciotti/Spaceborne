@@ -22,7 +22,7 @@ sys.path.append('../config')
 import config_SPV3_magcut_zcut as cfg
 
 
-mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
+#mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 
 general_cfg = cfg.general_cfg

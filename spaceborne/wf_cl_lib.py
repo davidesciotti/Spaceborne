@@ -33,7 +33,7 @@ import matplotlib.lines as mlines
 
 
 # update plot pars
-plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
+# plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 
 ###############################################################################

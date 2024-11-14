@@ -23,7 +23,7 @@ import spaceborne.sigma2_SSC as sigma2_SSC
 import common_cfg.mpl_cfg as mpl_cfg
 import spaceborne.mask_fits_to_cl as mask_utils
 
-plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
+# plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 ccl.spline_params['A_SPLINE_NA_PK'] = 240  # gives CAMB error if too high
 ccl.spline_params['K_MAX_SPLINE'] = 300

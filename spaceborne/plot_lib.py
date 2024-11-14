@@ -21,13 +21,13 @@ sys.path.append(f'{ROOT}/Spaceborne/common_cfg')
 import common_cfg.mpl_cfg as mpl_cfg
 
 
-matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
+# matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 param_names_label = mpl_cfg.general_dict['cosmo_labels_TeX']
 ylabel_perc_diff_wrt_mean = mpl_cfg.general_dict['ylabel_perc_diff_wrt_mean']
 ylabel_sigma_relative_fid = mpl_cfg.general_dict['ylabel_sigma_relative_fid']
 # plt.rcParams['axes.axisbelow'] = True
-markersize = mpl_cfg.mpl_rcParams_dict['lines.markersize']
+# markersize = mpl_cfg.mpl_rcParams_dict['lines.markersize']
 
 
 ###############################################################################

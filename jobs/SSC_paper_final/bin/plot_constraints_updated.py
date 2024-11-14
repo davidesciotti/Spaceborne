@@ -15,7 +15,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 
 
 
-mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
+#mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 # mpl.use('qt')
 
 # ! options

@@ -8,7 +8,7 @@ import mpl_cfg
 
 
 
-mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
+#mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 mpl.pyplot.set_cmap('rainbow')
 ep_or_ed = 'EP'

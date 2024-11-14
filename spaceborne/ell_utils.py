@@ -8,24 +8,24 @@ import spaceborne.cosmo_lib as cosmo_lib
 ###############################################################################
 
 
-def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b, cosmo_ccl, zbins, h, general_cfg):
+def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b, cosmo_ccl, zbins, h, ell_cuts_cfg):
     """loads ell_cut values, rescales them and load into a dictionary.
     z_values_a: redshifts at which to compute the ell_max for a given Limber wavenumber, for probe A
     z_values_b: redshifts at which to compute the ell_max for a given Limber wavenumber, for probe B
     """
 
-    kmax_h_over_Mpc_ref = general_cfg['kmax_h_over_Mpc_ref']
+    kmax_h_over_Mpc_ref = ell_cuts_cfg['kmax_h_over_Mpc_ref']
 
     if kmax_h_over_Mpc is None:
         kmax_h_over_Mpc = kmax_h_over_Mpc_ref
 
-    if general_cfg['which_cuts'] == 'Francis':
+    if ell_cuts_cfg['which_cuts'] == 'Francis':
 
         raise Exception('I want the output to be an array, see the standard case. probebly best to split these 2 funcs')
-        assert general_cfg['EP_or_ED'] == 'ED', 'Francis cuts are only available for the ED case'
+        assert ell_cuts_cfg['EP_or_ED'] == 'ED', 'Francis cuts are only available for the ED case'
 
-        ell_cuts_fldr = general_cfg['ell_cuts_folder']
-        ell_cuts_filename = general_cfg['ell_cuts_filename']
+        ell_cuts_fldr = ell_cuts_cfg['ell_cuts_folder']
+        ell_cuts_filename = ell_cuts_cfg['ell_cuts_filename']
 
         ell_cuts_LL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}')
         ell_cuts_GG = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}')
@@ -49,7 +49,7 @@ def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b, cosmo_ccl, zbins, h, 
 
         return ell_cuts_dict
 
-    elif general_cfg['which_cuts'] == 'standard':
+    elif ell_cuts_cfg['which_cuts'] == 'standard':
         # the "Limber", or "standard" cuts
 
         kmax_1_over_Mpc = kmax_h_over_Mpc * h

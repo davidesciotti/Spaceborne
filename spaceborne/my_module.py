@@ -22,6 +22,7 @@ import inspect
 import datetime
 from tqdm import tqdm
 import pandas as pd
+from scipy.integrate import simps
 
 symmetrize_output_dict = {
     ('L', 'L'): True,
@@ -29,6 +30,31 @@ symmetrize_output_dict = {
     ('L', 'G'): False,
     ('G', 'G'): True,
 }
+
+
+def get_ngal(ngal_in, ep_or_ed, zbins, ep_check_tol):
+
+    if isinstance(ngal_in, (int, float)):
+        assert ep_or_ed == 'EP', 'n_gal must be a scalar in the equipopulated (EP) case'
+        ngal_out = ngal_in
+
+    elif type(ngal_in) == list:
+        assert len(ngal_in) == zbins, 'n_gal must be a vector of length zbins'
+        ngal_out = ngal_in
+
+    elif type(ngal_in) == str:
+        nofz = np.genfromtxt(ngal_in)
+        assert nofz.shape[1] == zbins + 1, 'nz must be an array of shape (n_z_points, zbins + 1)'
+        z_nofz = nofz[:, 0]
+        nofz = nofz[:, 1:]
+        ngal_out = simps(y=nofz, x=z_nofz, axis=0)
+
+    if ep_or_ed == 'EP' and not isinstance(ngal_out, (int, float)):
+        for zi in range(zbins):
+            assert np.allclose(ngal_out[0], ngal_out[zi], atol=0, rtol=ep_check_tol), \
+                'n_gal must be the same for all zbins in the equipopulated (EP) case'
+
+    return ngal_out
 
 
 

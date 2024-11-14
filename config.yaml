@@ -2,6 +2,25 @@
 # TODO merge with cfg.yaml from spaceborne_covg
 # TODO add dzGC
 
+
+nz:
+    # paths to source and lens redshift distributions. These must have shape (z_points, zbins + 1)
+    nz_sources_filename: "/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid/nzTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat"
+    nz_lenses_filename: "/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid/nzTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat"
+    
+    # number of galaxies per arcmin**2 for each redshift bin
+    ngal_sources: [8.09216, 8.09215, 8.09215]
+    ngal_lenses: [8.09216, 8.09215, 8.09215]
+
+    shift_nz: True # Vincenzo's kernels are computed using a shifted n(z)!
+    compute_bnt_with_shifted_nz_for_zcuts: False # ! lets test this
+    shift_nz_interpolation_kind: linear
+    normalize_shifted_nz: True
+    nz_gaussian_smoothing: False # does not seem to have a large effect...
+    nz_gaussian_smoothing_sigma: 2
+    include_ia_in_bnt_kernel_for_zcuts: False
+    plot_nz_tocheck: True
+    
 cosmology:
     # these are the parameters varied in the analysis. The ordering is the same used in the FM
     FM_ordered_params:

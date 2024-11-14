@@ -31,33 +31,15 @@ ccl.spline_params['K_MAX_SPLINE'] = 300
 
 class PycclClass():
 
-    def __init__(self, fid_pars_dict):
+    def __init__(self, cosmology_dict, extra_parameters_dict, halo_model_dict):
 
-        # self.zbins = general_cfg['zbins']
-        # self.nz_tuple = general_cfg['nz_tuple']
-        # self.f_sky = covariance_cfg['fsky']
-        # self.ind = covariance_cfg['ind']
-        # self.GL_or_LG = covariance_cfg['GL_or_LG']
-        # self.nbl = len(ell_grid)
+        self.cosmology_dict = cosmology_dict
+        self.extra_parameters_dict = extra_parameters_dict
 
-        # self.pyccl_cfg = covariance_cfg['PyCCL_cfg']
-        # self.n_samples_wf = self.pyccl_cfg['n_samples_wf']
-        # this is needed only for a visual check of the cls, which are not used for SSC anyways
-        # self.has_rsd = general_cfg['has_rsd']
-        # self.has_magnification_bias = general_cfg['has_magnification_bias']
-        # ! settings
-
-        # get number of redshift pairs
-        # self.zpairs_auto, self.zpairs_cross, self.zpairs_3x2pt = mm.get_zpairs(self.zbins)
-        # self.ind_auto = self.ind[:self.zpairs_auto, :]
-        # self.ind_cross = self.ind[self.zpairs_auto:self.zpairs_auto + self.zpairs_cross, :]
-
-        # Create new Cosmology object with a given set of parameters. This keeps track of previously-computed cosmological
-        # functions
-        self.flat_fid_pars_dict = mm.flatten_dict(fid_pars_dict)
-        cosmo_dict_ccl = cosmo_lib.map_keys(self.flat_fid_pars_dict, key_mapping=None)
+        self.flat_fid_pars_dict = mm.flatten_dict(self.cosmology_dict)
+        cosmo_dict_ccl = cosmo_lib.map_keys(self.cosmology_dict, key_mapping=None)
         self.cosmo_ccl = cosmo_lib.instantiate_cosmo_ccl_obj(cosmo_dict_ccl,
-                                                             fid_pars_dict['other_params']['camb_extra_parameters'])
+                                                             self.extra_parameters_dict)
 
         self.gal_bias_func_dict = {
             'analytical': wf_cl_lib.b_of_z_analytical,
@@ -68,26 +50,15 @@ class PycclClass():
         # self.check_specs()   # prolly I don't need these ingredients at all!
 
         # initialize halo model
-        # from https://github.com/LSSTDESC/CCL/blob/4df2a29eca58d7cd171bc1986e059fd35f425d45/benchmarks/test_covariances.py
-        # see also https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/tools/covariance_NG.py#L282
-
-        hm_cfg = fid_pars_dict['halo_model']
-        self.mass_def = getattr(ccl.halos, hm_cfg['mass_def'])
-        self.c_m_relation = getattr(ccl.halos, hm_cfg['concentration'])(mass_def=self.mass_def)
-        self.hmf = getattr(ccl.halos, hm_cfg['mass_function'])(mass_def=self.mass_def)
-        self.hbf = getattr(ccl.halos, hm_cfg['halo_bias'])(mass_def=self.mass_def)
+        self.mass_def = getattr(ccl.halos, halo_model_dict['mass_def'])
+        self.c_m_relation = getattr(ccl.halos, halo_model_dict['concentration'])(mass_def=self.mass_def)
+        self.hmf = getattr(ccl.halos, halo_model_dict['mass_function'])(mass_def=self.mass_def)
+        self.hbf = getattr(ccl.halos, halo_model_dict['halo_bias'])(mass_def=self.mass_def)
         self.hmc = ccl.halos.HMCalculator(mass_function=self.hmf, halo_bias=self.hbf, mass_def=self.mass_def)
-        self.halo_profile_dm = getattr(ccl.halos, hm_cfg['halo_profile_dm'])(mass_def=self.mass_def, concentration=self.c_m_relation)
-        self.halo_profile_hod = getattr(ccl.halos, hm_cfg['halo_profile_hod'])(mass_def=self.mass_def, concentration=self.c_m_relation)
-
-
-        # self.mass_def = ccl.halos.MassDef200m
-        # self.c_m_relation = ccl.halos.ConcentrationDuffy08(mass_def=self.mass_def)
-        # self.hmf = ccl.halos.MassFuncTinker10(mass_def=self.mass_def)
-        # self.hbf = ccl.halos.HaloBiasTinker10(mass_def=self.mass_def)
-        # self.hmc = ccl.halos.HMCalculator(mass_function=self.hmf, halo_bias=self.hbf, mass_def=self.mass_def)
-        # self.halo_profile_nfw = ccl.halos.HaloProfileNFW(mass_def=self.mass_def, concentration=self.c_m_relation)
-        # self.halo_profile_hod = ccl.halos.HaloProfileHOD(mass_def=self.mass_def, concentration=self.c_m_relation)
+        self.halo_profile_dm = getattr(ccl.halos, halo_model_dict['halo_profile_dm'])(
+            mass_def=self.mass_def, concentration=self.c_m_relation)
+        self.halo_profile_hod = getattr(ccl.halos, halo_model_dict['halo_profile_hod'])(
+            mass_def=self.mass_def, concentration=self.c_m_relation)
 
     def check_specs(self):
         assert self.probe in ['LL', 'GG', '3x2pt'], 'probe must be either LL, GG, or 3x2pt'
@@ -285,7 +256,6 @@ class PycclClass():
             sigma2_b = ccl.covariances.sigma2_B_from_mask(
                 cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, mask_wl=cl_mask_norm)
             self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
-
 
         elif which_sigma2_b == 'flat_sky':
             sigma2_b = ccl.covariances.sigma2_B_disc(
@@ -531,7 +501,7 @@ class PycclClass():
                     cov_2d = mm.cov_4D_to_2D(self.cov_ng_3x2pt_dict_8D[key])
                     assert np.allclose(cov_2d, cov_2d.T, atol=0, rtol=1e-5)
                     np.testing.assert_allclose(self.cov_ng_3x2pt_dict_8D[key],
-                                            #    np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 2, 3)),
+                                               #    np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 2, 3)),
                                                np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 3, 2)),
                                                rtol=1e-5, atol=0,
                                                err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')

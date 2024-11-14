@@ -43,6 +43,9 @@ import spaceborne.onecovariance_interface as oc_interface
 import spaceborne.responses as responses
 import spaceborne.covariance as sb_cov
 
+import niceplots.utils as nicepl
+nicepl.initPlot()
+
 pp = pprint.PrettyPrinter(indent=4)
 ROOT = os.getenv('ROOT')
 SB_ROOT = ROOT + '/Spaceborne'
@@ -614,7 +617,7 @@ if general_cfg['check_wf_against_vincenzo']:
     # plot
     for wf_idx in range(len(wf_interp_list)):
         clr = cm.rainbow(np.linspace(0, 1, zbins))
-        fig, ax = plt.subplots(2, 1, sharex=True, figsize=(10, 5), height_ratios=[2, 1])
+        fig, ax = plt.subplots(2, 1, sharex=True, height_ratios=[2, 1])
         plt.tight_layout()
         fig.subplots_adjust(hspace=0)
 
@@ -708,7 +711,7 @@ else:
     raise ValueError(f"general_cfg['which_cls'] = must be in ['Vincenzo', 'CLOE', 'CCL']")
 
 clr = cm.rainbow(np.linspace(0, 1, zbins))
-fig, ax = plt.subplots(2, 3, sharex=True, figsize=(10, 5), height_ratios=[2, 1])
+fig, ax = plt.subplots(2, 3, sharex=True, height_ratios=[2, 1])
 plt.tight_layout()
 fig.subplots_adjust(hspace=0)
 
@@ -1131,6 +1134,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
                                 covariance_cfg['Spaceborne_cfg']['k_steps_sigma2'])
 
     # TODO find best way to handle these conditions, too much nesting
+    ndim_s2b = 1 if covariance_cfg['Spaceborne_cfg']['use_KE_approximation'] else 2
     sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename'].format(
         ROOT=ROOT,
         which_sigma2_b=str(which_sigma2_b),
@@ -1139,7 +1143,8 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         zsteps=z_steps_ssc_integrands,
         log10kmin=covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'],
         log10kmax=covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
-        ksteps=covariance_cfg['Spaceborne_cfg']['k_steps_sigma2']
+        ksteps=covariance_cfg['Spaceborne_cfg']['k_steps_sigma2'],
+        ndim=ndim_s2b,
     )
     if covariance_cfg['Spaceborne_cfg']['use_KE_approximation']:
 
@@ -1158,6 +1163,14 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
 
         if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
             raise NotImplementedError('TODO')
+
+        # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to decrease
+        # the former by fsky (eq. 29 of https://arxiv.org/pdf/1612.05958)
+        sigma2_b_dict_tosave = {
+            'cfg': cfg,
+            'sigma2_b': sigma2_b,
+        }
+        np.save(sigma2_b_filename, sigma2_b_dict_tosave, allow_pickle=True)
 
     else:
 

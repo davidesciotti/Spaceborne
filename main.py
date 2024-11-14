@@ -2,7 +2,6 @@ import argparse
 import os
 import multiprocessing
 import sys
-
 import matplotlib
 from tqdm import tqdm
 num_cores = multiprocessing.cpu_count()
@@ -42,6 +41,9 @@ import spaceborne.config_checker as config_checker
 import spaceborne.onecovariance_interface as oc_interface
 import spaceborne.responses as responses
 import spaceborne.covariance as sb_cov
+
+import niceplots.utils as nicepl
+nicepl.initPlot()
 
 pp = pprint.PrettyPrinter(indent=4)
 ROOT = os.getenv('ROOT')
@@ -614,7 +616,7 @@ if general_cfg['check_wf_against_vincenzo']:
     # plot
     for wf_idx in range(len(wf_interp_list)):
         clr = cm.rainbow(np.linspace(0, 1, zbins))
-        fig, ax = plt.subplots(2, 1, sharex=True, figsize=(10, 5), height_ratios=[2, 1])
+        fig, ax = plt.subplots(2, 1, sharex=True, height_ratios=[2, 1])
         plt.tight_layout()
         fig.subplots_adjust(hspace=0)
 
@@ -708,7 +710,7 @@ else:
     raise ValueError(f"general_cfg['which_cls'] = must be in ['Vincenzo', 'CLOE', 'CCL']")
 
 clr = cm.rainbow(np.linspace(0, 1, zbins))
-fig, ax = plt.subplots(2, 3, sharex=True, figsize=(10, 5), height_ratios=[2, 1])
+fig, ax = plt.subplots(2, 3, sharex=True, height_ratios=[2, 1])
 plt.tight_layout()
 fig.subplots_adjust(hspace=0)
 
@@ -1098,32 +1100,32 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
             ell_grid, z_grid_ssc_integrands_test, use_h_units, ccl_obj.cosmo_ccl)
         print(f'Retrying with z_min = {z_grid_ssc_integrands_test[0]:.3f}')
 
-    dPmm_ddeltab_klimb = np.array(
-        [dPmm_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
-            ell_dict['ell_WL']])
-    dPgm_ddeltab_klimb = np.array(
-        [dPgm_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
-            ell_dict['ell_XC']])
-    dPgg_ddeltab_klimb = np.array(
-        [dPgg_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
-            ell_dict['ell_GC']])
+    # dPmm_ddeltab_klimb = np.array(
+    #     [dPmm_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
+    #         ell_dict['ell_WL']])
+    # dPgm_ddeltab_klimb = np.array(
+    #     [dPgm_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
+    #         ell_dict['ell_XC']])
+    # dPgg_ddeltab_klimb = np.array(
+    #     [dPgg_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
+    #         ell_dict['ell_GC']])
 
-    # ! integral prefactor
-    cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(z_grid_ssc_integrands,
-                                                            covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
-                                                            use_h_units=use_h_units,
-                                                            cosmo_ccl=ccl_obj.cosmo_ccl)
+    # # ! integral prefactor
+    # cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(z_grid_ssc_integrands,
+    #                                                         covariance_cfg['Spaceborne_cfg']['cl_integral_convention'],
+    #                                                         use_h_units=use_h_units,
+    #                                                         cosmo_ccl=ccl_obj.cosmo_ccl)
 
-    # ! observable densities
-    d2CLL_dVddeltab = np.einsum('zi,zj,Lz->Lijz', wf_lensing, wf_lensing, dPmm_ddeltab_klimb)
-    d2CGL_dVddeltab = \
-        np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_lensing, dPgm_ddeltab_klimb) + \
-        np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_lensing, dPmm_ddeltab_klimb)
-    d2CGG_dVddeltab = \
-        np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_delta, dPgg_ddeltab_klimb) + \
-        np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_mu, dPgm_ddeltab_klimb) + \
-        np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_delta, dPgm_ddeltab_klimb) + \
-        np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
+    # # ! observable densities
+    # d2CLL_dVddeltab = np.einsum('zi,zj,Lz->Lijz', wf_lensing, wf_lensing, dPmm_ddeltab_klimb)
+    # d2CGL_dVddeltab = \
+    #     np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_lensing, dPgm_ddeltab_klimb) + \
+    #     np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_lensing, dPmm_ddeltab_klimb)
+    # d2CGG_dVddeltab = \
+    #     np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_delta, dPgg_ddeltab_klimb) + \
+    #     np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_mu, dPgm_ddeltab_klimb) + \
+    #     np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_delta, dPgm_ddeltab_klimb) + \
+    #     np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
 
     # ! 3. Compute/load/save sigma2_b
     k_grid_sigma2 = np.logspace(covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'],
@@ -1131,6 +1133,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
                                 covariance_cfg['Spaceborne_cfg']['k_steps_sigma2'])
 
     # TODO find best way to handle these conditions, too much nesting
+    ndim_s2b = 1 if covariance_cfg['Spaceborne_cfg']['use_KE_approximation'] else 2
     sigma2_b_filename = covariance_cfg['Spaceborne_cfg']['sigma2_b_filename'].format(
         ROOT=ROOT,
         which_sigma2_b=str(which_sigma2_b),
@@ -1139,7 +1142,8 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         zsteps=z_steps_ssc_integrands,
         log10kmin=covariance_cfg['Spaceborne_cfg']['log10_k_min_sigma2'],
         log10kmax=covariance_cfg['Spaceborne_cfg']['log10_k_max_sigma2'],
-        ksteps=covariance_cfg['Spaceborne_cfg']['k_steps_sigma2']
+        ksteps=covariance_cfg['Spaceborne_cfg']['k_steps_sigma2'],
+        ndim=ndim_s2b,
     )
     if covariance_cfg['Spaceborne_cfg']['use_KE_approximation']:
 
@@ -1158,6 +1162,14 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
 
         if covariance_cfg['Spaceborne_cfg']['load_precomputed_sigma2']:
             raise NotImplementedError('TODO')
+
+        # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to decrease
+        # the former by fsky (eq. 29 of https://arxiv.org/pdf/1612.05958)
+        sigma2_b_dict_tosave = {
+            'cfg': cfg,
+            'sigma2_b': sigma2_b,
+        }
+        np.save(sigma2_b_filename, sigma2_b_dict_tosave, allow_pickle=True)
 
     else:
 
@@ -1185,6 +1197,47 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
                 'sigma2_b': sigma2_b,
             }
             np.save(sigma2_b_filename, sigma2_b_dict_tosave, allow_pickle=True)
+
+    # sigma2_b_1d = np.load(
+    #     '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_1D_polar_cap_on_the_fly_zmin1.0e-03_zmax3.0e+00_zsteps300_log10kmin-4.0e+00_log10kmax1.0e+00_ksteps20000.npy', allow_pickle=True).item()['sigma2_b']
+    # sigma2_b_2d = np.load(
+    #     '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_2D_polar_cap_on_the_fly_zmin1.0e-03_zmax3.0e+00_zsteps300_log10kmin-4.0e+00_log10kmax1.0e+00_ksteps20000.npy', allow_pickle=True).item()['sigma2_b']
+
+    # plt.figure()
+    # plt.semilogy(z_grid_ssc_integrands, sigma2_b_1d, label=r'$\sigma^2_{\rm b}(z)$')
+    # for zj in [0.05, 0.1, 0.4, 0.8, 2, 2.5]:
+    #     zj_ix = np.argmin(np.abs(zj - z_grid_ssc_integrands))
+    #     plt.plot(z_grid_ssc_integrands, sigma2_b_2d[:, zj_ix] /
+    #              np.max(sigma2_b_2d[:, zj_ix]), label=r'$\sigma^2_{\rm b}(z)$')
+
+    #     plt.semilogy(z_grid_ssc_integrands, np.diag(sigma2_b_2d), label=r'$\sigma^2_{\rm b}(z)$')
+    # plt.xlabel(r'$z$')
+    # plt.ylabel(r'$\sigma^2_{\rm b}(z)$')
+    # plt.legend()
+
+    import niceplots.utils as nicepl
+    nicepl.initPlot()
+    plt.rc('font', family='serif')  # Set all fonts to serif
+
+
+    # Example redshift values corresponding to each index (replace with your actual redshift values)
+    z_indices = np.arange(len(z_grid_ssc_integrands))[::50]
+    z_values = z_grid_ssc_integrands[z_indices]  # replace with your redshift values
+    z_labels = [f"{z:.1f}" for z in z_values]
+
+    plt.matshow(mm.cov2corr(sigma2_b), cmap='coolwarm', norm=matplotlib.colors.CenteredNorm(0))
+    plt.xlabel('$z_1$')
+    plt.ylabel('$z_2$')
+
+    # Set the tick positions (indices) and labels (redshift values)
+    plt.xticks(ticks=z_indices, labels=z_labels, fontfamily='serif')
+    plt.yticks(ticks=z_indices, labels=z_labels, fontfamily='serif')
+
+    plt.colorbar()
+    plt.savefig('corr_sigma2_b.png', dpi=400, bbox_inches="tight")
+    plt.show()
+
+    assert False, 'stop here'
 
     # ! 4. Perform the integration calling the Julia module
     print('Performing the SSC integral...')
@@ -1241,6 +1294,15 @@ elif covariance_cfg['ng_cov_code'] == 'Spaceborne' and \
         cov_ssc_3x2pt_dict_8D[key] = cov_ssc_3x2pt_dict_8D[key][:nbl_3x2pt, :nbl_3x2pt, ...]
 
 cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
+
+
+cov = cov_obj._cov_8d_dict_to_10d_arr(cov_obj.cov_ssc_sb_3x2pt_dict_8D)
+
+a, b, c, d, zi, zj, zk, zl = 1, 0, 1, 0, 1, 0, 1, 0
+
+mm.matshow(mm.percent_diff(cov[a, b, c, d, :, :, zi, zj, zk, zl], cov[a, b, c, d, :, :, zi, zj, zk, zl].T))
+
+assert False, 'stop here to check symmetry'
 
 # TODO integrate this with Spaceborne_covg
 # ! ========================================== end Spaceborne ===================================================

@@ -406,14 +406,12 @@ def b_of_z_analytical(z):
 
 
 def b_of_z_fs1_leporifit(z):
-    """fit to the linear galaxy bias measured from FS1. This is the fit used in Vincenzo's sscresponses paper,
-    I think... Not super sure which one I should use"""
+    """fit to the linear galaxy bias measured from FS1"""
     return 0.5125 + 1.377 * z + 0.222 * z ** 2 - 0.249 * z ** 3
 
 
 def b_of_z_fs1_pocinofit(z):
-    """fit to the linear galaxy bias measured from FS1. This is the fit that should be used , at least for
-    the responses"""
+    """fit to the linear galaxy bias measured from FS1."""
     a, b, c = 0.81, 2.80, 1.02
     return a * z ** b / (1 + z) + c
 

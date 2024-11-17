@@ -1,3 +1,21 @@
+
+# TODO infer zbins from nz
+# TODO infer EP Ed from nz
+# TODO delete n_probes
+# TODO delete which_cls
+# TODO delete use_h_units? hardocode to False, maybe?
+# TODO delete BNT_transform? as an option here, for sure
+
+# TODO add general description
+# TODO merge with cfg.yaml from spaceborne_covg
+# TODO add dzGC
+# TODO delete dz shifts?
+# TODO hardcode shift_nz_interpolation_kind to spline
+# TODO remove compute_bnt_with_shifted_nz_for_zcuts??
+# TODO remove probe_ordering? LG not tested in a looooong time
+
+
+
 cosmology:
     Om: 0.32
     Ob: 0.05
@@ -41,14 +59,16 @@ halo_model:
 
 C_ell:
     
-    bias_function: analytical # 'analytical', 'leporifit', 'pocinofit'
-    bias_model: step-wise # 'step-wise', 'constant', 'linint', 'ones', 'polynomial'
-    # coefficients for the polynomial galaxy and magnification bias fits
+    which_gal_bias: 'from_input'  # options: 'from_input', 'FS2_poly_fit'
+    which_mag_bias: 'from_input'  # options: 'from_input', 'FS2_poly_fit'
+    # bias_function: analytical # 'analytical', 'leporifit', 'pocinofit'
+    # bias_model: step-wise # 'step-wise', 'constant', 'linint', 'ones', 'polynomial'
+    # coefficients for the polynomial galaxy and magnification bias fits to FS2
     galaxy_bias_fit_coeff: [1.33291, -0.72414, 1.0183, -0.14913]
     magnification_bias_fit_coeff: [-1.50685, 1.35034, 0.08321, 0.04279]
     
-    # multiplicative shear bias fiducial parameters
-    mult_shear_bias: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    # multiplicative shear bias per redshift bin
+    mult_shear_bias: [0, 0, 0]
     
     gal_bias_table_filename: "./input_main_take2/gal_bias.txt"
     mag_bias_table_filename: "./input_main_take2/mag_bias.txt" # TODO test this!
@@ -62,13 +82,7 @@ C_ell:
     non_limber_integration_method: FKEM
 
 
-# TODO delete dz shifts?
-# TODO delete nz_folder
-# TODO delete nuisance_folder
-# TODO delete zbin_centers
-# TODO delete ngal_lensing, ngal_clustering
-# TODO hardcode shift_nz_interpolation_kind to spline
-# TODO remove compute_bnt_with_shifted_nz_for_zcuts??
+
 nz:
     EP_or_ED: EP
 
@@ -255,15 +269,3 @@ misc:
 
     output_folder: "../output"
     use_h_units: False # TODO hardcode!
-
-# TODO infer zbins from nz
-# TODO infer EP Ed from nz
-# TODO delete n_probes
-# TODO delete which_cls
-# TODO delete use_h_units? hardocode to False, maybe?
-# TODO delete BNT_transform? as an option here, for sure
-# TODO delete which_forecast
-
-# TODO add general description
-# TODO merge with cfg.yaml from spaceborne_covg
-# TODO add dzGC

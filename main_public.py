@@ -65,7 +65,6 @@ cfg_check_obj.run_all_checks()
 h = cfg['cosmology']['h']
 galaxy_bias_fit_fiducials = np.array(cfg['C_ell']['galaxy_bias_fit_coeff'])
 magnification_bias_fit_fiducials = np.array(cfg['C_ell']['magnification_bias_fit_coeff'])
-ep_or_ed = cfg['nz']['EP_or_ED']
 ngal_lensing = cfg['nz']['ngal_sources']
 ngal_clustering = cfg['nz']['ngal_lenses']
 dzWL_fiducial = cfg['nz']['dzWL']
@@ -91,6 +90,7 @@ include_ia_in_bnt_kernel_for_zcuts = cfg['BNT']['include_ia_in_bnt_kernel_for_zc
 compute_bnt_with_shifted_nz_for_zcuts = cfg['BNT']['compute_bnt_with_shifted_nz_for_zcuts']
 probe_ordering = cfg['covariance']['probe_ordering']
 GL_OR_LG = probe_ordering[1][0], probe_ordering[1][1]
+EP_OR_ED = cfg['nz']['EP_or_ED']
 
 clr = cm.rainbow(np.linspace(0, 1, zbins))
 use_h_units = False  # TODO decide on this
@@ -211,8 +211,7 @@ ell_dict['delta_l_WL'] = np.copy(delta_l_ref_nbl32[:nbl_WL])
 ell_dict['delta_l_GC'] = np.copy(delta_l_ref_nbl32[:nbl_GC])
 
 # this is just to make the .format() more compact
-variable_specs = {'EP_or_ED': ep_or_ed,
-                  'ep_or_ed': ep_or_ed,
+variable_specs = {'EP_OR_ED': EP_OR_ED,
                   'zbins': zbins,
                   'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_3x2pt': ell_max_3x2pt,
                   'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_3x2pt': nbl_3x2pt,
@@ -264,37 +263,35 @@ ccl_obj.set_nz(nz_full_src=np.hstack((zgrid_nz_src[:, None], nz_src)),
 ccl_obj.check_nz_tuple(zbins)
 ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid_ssc_integrands, has_ia=cfg['C_ell']['has_IA'])
 
-# ! import and interpolate tabulated input galaxy and magnification bias values
-gal_bias_tab_full = np.genfromtxt(cfg['C_ell']['gal_bias_table_filename'])
-gal_bias_tab = mm.check_interpolate_input_tab(gal_bias_tab_full, z_grid_ssc_integrands, zbins)
-ccl_obj.gal_bias_tuple = (z_grid_ssc_integrands, gal_bias_tab)
-ccl_obj.gal_bias_2d = gal_bias_tab
+# ! set galaxy and magnification bias
+if cfg['C_ell']['which_gal_bias'] == 'from_input':
+    gal_bias_tab_full = np.genfromtxt(cfg['C_ell']['gal_bias_table_filename'])
+    gal_bias_tab = mm.check_interpolate_input_tab(gal_bias_tab_full, z_grid_ssc_integrands, zbins)
+    ccl_obj.gal_bias_tuple = (z_grid_ssc_integrands, gal_bias_tab)
+    ccl_obj.gal_bias_2d = gal_bias_tab
+elif cfg['C_ell']['which_gal_bias'] == 'FS2:fit':
+    ccl_obj.set_gal_bias_tuple_spv3(z_grid_lns=z_grid_ssc_integrands,
+                                    magcut_lens=None,
+                                    poly_fit_values=galaxy_bias_fit_fiducials)
+else:
+    raise ValueError('which_gal_bias should be "from_input" or "FS2_fit"')
 
 if cfg['C_ell']['has_magnification_bias']:
-    mag_bias_tab_full = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
-    mag_bias_tab = mm.check_interpolate_input_tab(mag_bias_tab_full, z_grid_ssc_integrands, zbins)
-    ccl_obj.mag_bias_tuple = (z_grid_ssc_integrands, mag_bias_tab)
+
+    if cfg['C_ell']['which_mag_bias'] == 'from_input':
+        mag_bias_tab_full = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
+        mag_bias_tab = mm.check_interpolate_input_tab(mag_bias_tab_full, z_grid_ssc_integrands, zbins)
+        ccl_obj.mag_bias_tuple = (z_grid_ssc_integrands, mag_bias_tab)
+    elif cfg['C_ell']['which_mag_bias'] == 'FS2:fit':
+        ccl_obj.set_mag_bias_tuple(z_grid_lns=z_grid_ssc_integrands,
+                                   has_magnification_bias=cfg['C_ell']['has_magnification_bias'],
+                                   magcut_lens=None,
+                                   poly_fit_values=magnification_bias_fit_fiducials)
+    else:
+        raise ValueError('which_mag_bias should be "from_input" or "FS2_fit"')
+
 else:
     ccl_obj.mag_bias_tuple = None
-
-
-# TODO do we still want to keep this possibility?
-# ccl_obj.set_gal_bias_tuple_spv3(z_grid_lns=z_grid_ssc_integrands,
-#                                 magcut_lens=None,
-#                                 poly_fit_values=galaxy_bias_fit_fiducials)
-
-# elif general_cfg['which_forecast'] == 'ISTF':
-#     bias_func_str = cfg['bias_model']['bias_function']
-#     bias_model = cfg['bias_model']['bias_model']
-#     ccl_obj.set_gal_bias_tuple_istf(z_grid_lns=z_grid_ssc_integrands,
-#                                     bias_function_str=bias_func_str,
-#                                     bias_model=bias_model)
-
-# set magnification bias
-# ccl_obj.set_mag_bias_tuple(z_grid_lns=z_grid_ssc_integrands,
-#                            has_magnification_bias=cfg['C_ell']['has_magnification_bias'],
-#                            magcut_lens=None,
-#                            poly_fit_values=magnification_bias_fit_fiducials)
 
 
 # ! set radial kernel arrays and objects
@@ -363,12 +360,8 @@ ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['PyCCL_cfg']['n_samples_wf']
 ccl_obj.set_kernel_arr(z_grid_wf=z_grid_ssc_integrands,
                        has_magnification_bias=cfg['C_ell']['has_magnification_bias'])
 
-gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias!)'
+gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias)'
 ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
-
-# if general_cfg['which_forecast'] == 'ISTF':
-#     gal_kernel_plt_title = 'galaxy kernel\n(w/ gal bias)'
-#     ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_w_gal_bias_arr
 
 
 # plot
@@ -393,6 +386,21 @@ ccl_obj.cl_gl_3d = ccl_obj.compute_cls(ell_dict['ell_XC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
 ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
+# ! add multiplicative shear bias
+mult_shear_bias = np.array(cfg['C_ell']['mult_shear_bias'])
+assert len(mult_shear_bias) == zbins, 'mult_shear_bias should be a scalar'
+if not np.all(mult_shear_bias == 0):
+    print('applying multiplicative shear bias')
+    print(f'mult_shear_bias = {mult_shear_bias}')
+    for ell_idx, _ in enumerate(ccl_obj.cl_ll_3d.shape[0]):
+        for zi in range(zbins):
+            for zj in range(zbins):
+                ccl_obj.cl_ll_3d[ell_idx, zi, zj] *= (1 + mult_shear_bias[zi]) * (1 + mult_shear_bias[zj])
+
+    for ell_idx, _ in enumerate(ccl_obj.cl_gl_3d.shape[0]):
+        for zi in range(zbins):
+            for zj in range(zbins):
+                ccl_obj.cl_gl_3d[ell_idx, zi, zj] *= (1 + mult_shear_bias[zj])
 
 ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_3x2pt, zbins, zbins))
 ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[:nbl_3x2pt, :, :]
@@ -402,7 +410,6 @@ ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[:nbl_3x2pt, :, :]
 
 cl_ll_3d, cl_gl_3d, cl_gg_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d
 cl_3x2pt_5d = ccl_obj.cl_3x2pt_5d
-
 
 fig, ax = plt.subplots(1, 3)
 plt.tight_layout()
@@ -500,11 +507,13 @@ ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 cov_obj = sb_cov.SpaceborneCovariance(cfg, ell_dict, bnt_matrix)
 cov_obj.set_ind_and_zpairs(ind, zbins)
 cov_obj.cov_terms_list = cov_terms_list
+cov_obj.EP_OR_ED = EP_OR_ED
 cov_obj.symmetrize_output_dict = symmetrize_output_dict
 cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['split_gaussian_cov'])
 
-cov_bench = np.load('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/covmat.npz')
+cov_bench = np.load(
+    '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/covmat.npz')
 assert False, 'stop here for the moment'
 
 
@@ -541,7 +550,7 @@ if (covariance_cfg['ng_cov_code'] == 'OneCovariance') or \
     mm.write_cl_ascii(oc_path, cl_gl_ascii_filename, ccl_obj.cl_3x2pt_5d[1, 0, ...], ell_dict['ell_3x2pt'], zbins)
     mm.write_cl_ascii(oc_path, cl_gg_ascii_filename, ccl_obj.cl_3x2pt_5d[1, 1, ...], ell_dict['ell_3x2pt'], zbins)
 
-    gal_bias_ascii_filename = f'{oc_path}/gal_bias_table_{general_cfg["which_forecast"]}.ascii'
+    gal_bias_ascii_filename = f'{oc_path}/gal_bias_table.ascii'
     ccl_obj.save_gal_bias_table_ascii(z_grid_ssc_integrands, gal_bias_ascii_filename)
 
     ascii_filenames_dict = {

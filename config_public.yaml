@@ -1,7 +1,3 @@
-# TODO add general description
-# TODO merge with cfg.yaml from spaceborne_covg
-# TODO add dzGC
-
 cosmology:
     Om: 0.32
     Ob: 0.05
@@ -33,25 +29,6 @@ extra_parameters:
         num_massive_neutrinos: 1
         dark_energy_model: ppf
 
-C_ell:
-    # TODO delete these altogether?
-    bias_function: analytical # 'analytical', 'leporifit', 'pocinofit'
-    bias_model: step-wise # 'step-wise', 'constant', 'linint', 'ones', 'polynomial'
-    # coefficients for the polynomial galaxy and magnification bias fits
-    galaxy_bias_fit_coeff: [1.33291, -0.72414, 1.0183, -0.14913]
-    magnification_bias_fit_coeff: [-1.50685, 1.35034, 0.08321, 0.04279]
-
-    # multiplicative shear bias fiducial parameters
-    mult_shear_bias: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-
-    gal_bias_table_filename: './input_main_take2/gal_bias.txt'
-    mag_bias_table_filename: './input_main_take2/mag_bias.txt'  # TODO test this!
-
-    # boolean flags for redshift-space distortion intrinsic alignment
-    has_rsd: False
-    has_IA: False
-    has_magnification_bias: False
-
 # Halo model configuration using CCL classes (https://ccl.readthedocs.io/en/latest/api/pyccl.halos.html)
 # Each parameter maps directly to a CCL class, and has exactly its name
 halo_model:
@@ -61,6 +38,29 @@ halo_model:
     halo_bias: HaloBiasTinker10
     halo_profile_dm: HaloProfileNFW
     halo_profile_hod: HaloProfileHOD
+
+C_ell:
+    
+    bias_function: analytical # 'analytical', 'leporifit', 'pocinofit'
+    bias_model: step-wise # 'step-wise', 'constant', 'linint', 'ones', 'polynomial'
+    # coefficients for the polynomial galaxy and magnification bias fits
+    galaxy_bias_fit_coeff: [1.33291, -0.72414, 1.0183, -0.14913]
+    magnification_bias_fit_coeff: [-1.50685, 1.35034, 0.08321, 0.04279]
+    
+    # multiplicative shear bias fiducial parameters
+    mult_shear_bias: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    
+    gal_bias_table_filename: "./input_main_take2/gal_bias.txt"
+    mag_bias_table_filename: "./input_main_take2/mag_bias.txt" # TODO test this!
+    
+    # boolean flags for redshift-space distortion, intrinsic alignment
+    has_rsd: False
+    has_IA: False
+    has_magnification_bias: False
+
+    l_limber: -1
+    non_limber_integration_method: FKEM
+
 
 # TODO delete which_shape_noise
 # TODO delete dz shifts?
@@ -107,14 +107,6 @@ ell_binning:
     nbl_WL_opt: 32 # this is the value from which the various bin cuts are applied, do not change it
     ell_max_WL_opt: 5000 # this is the value from which the various bin cuts are applied, do not change it
 
-# TODO infer zbins from nz
-# TODO infer EP Ed from nz
-# TODO delete n_probes
-# TODO delete which_cls
-# TODO delete use_h_units? hardocode to False, maybe?
-# TODO delete BNT_transform? as an option here, for sure
-# TODO delete which_forecast
-
 ell_cuts:
     apply_ell_cuts: False
     which_cuts: standard
@@ -129,39 +121,55 @@ ell_cuts:
     use_h_units: False
 
 BNT:
-    BNT_transform: False # ! to be deprecated?
+    BNT_transform: False
     cl_BNT_transform: False
     cov_BNT_transform: False
     compute_bnt_with_shifted_nz_for_zcuts: False # ! lets test this
     include_ia_in_bnt_kernel_for_zcuts: False
 
 covariance:
-    n_probes: 2
+    n_probes: 2  # Number of probes considered in the covariance
 
-    G: True
-    SSC: True
-    cNG: True
+    G: True       # Enable/disable the Gaussian covariance term.
+    SSC: True     # Enable/disable the super-sample covariance (SSC) term.
+    cNG: True     # Enable/disable the connected non-Gaussian (cNG) covariance term.
 
-    SSC_code: Spaceborne # Spaceborne, OneCovariance or PyCCL
-    cNG_code: OneCovariance # OneCovariance or PyCCL
+    SSC_code: Spaceborne        # Specifies the code to compute SSC. Options:
+                                # - Spaceborne: Use the Spaceborne implementation.
+                                # - OneCovariance: Use the OneCovariance implementation.
+                                # - PyCCL: Use the PyCCL implementation.
 
-    # ordering-related settings
-    triu_tril: triu
-    row_col_major: row-major
-    block_index: ell
-    GL_or_LG: GL
-    split_gaussian_cov: False
-    covariance_ordering_2D: ell_probe_zpair # TODO restore this
+    cNG_code: OneCovariance     # Specifies the code to compute cNG. Options:
+                                # - OneCovariance: Use the OneCovariance implementation.
+                                # - PyCCL: Use the PyCCL implementation.
 
+    # Ordering-related settings:
+    triu_tril: triu             # Choose whether to use the upper ('triu') or lower ('tril') triangle 
+                                # of the auto-Cl zbins (C_{ij}(\ell)^AA = C_{ji}(\ell)^AA).
+    row_col_major: row-major    # Within the upper or lower triangle, count indices in 
+                                # a row-major or column-major order.
+    block_index: ell            # Determines how blocks are indexed in the covariance matrix:
+                                # - ell: Use the multipole index for block ordering.
+                                # - zpair: Use the zpair index for block ordering.
+    GL_or_LG: GL                # Specifies whether the GGL probe is GCph-WL (GL) or WL-GCph (LG).
+
+    split_gaussian_cov: False   # Whether to split the Gaussian covariance term into the 
+                                # sample variance, noise and mixed terms
+
+    covariance_ordering_2D: ell_probe_zpair  # Determines the ordering of the covariance matrix in 2D:
+                                             # - ell_probe_zpair: Ordered by multipole (ell), then probe type, then redshift pair.
+                                             # TODO: Restore or adjust this as needed.
+
+    sigma_eps_i: 0.26       # ellipticity dispersion *per component* = sigma_eps_i
+                            # total ellipticity dispersion = sigma_eps
+                            # sigma_eps = (sigma_eps_i * np.sqrt(2))
+    
     # fsky: 0.3563380664078408
     # survey_area_deg2: 14700
     fsky: 0.3210678603147902
     survey_area_deg2: 13245
 
-    # ellipticity dispersion *per component* = sigma_eps_i
-    # total ellipticity dispersion = sigma_eps
-    # sigma_eps = (sigma_eps_i * np.sqrt(2))
-    sigma_eps_i: 0.26
+    
 
     # sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
     # - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only). In this case, the output covmat
@@ -246,5 +254,17 @@ misc:
     # save_outputs_as_test_benchmarks_path: ./tests/benchmarks/output_dict.npy
     save_outputs_as_test_benchmarks_path: False
 
-    output_folder: '../output'
-    use_h_units: False  # TODO hardcode!
+    output_folder: "../output"
+    use_h_units: False # TODO hardcode!
+
+# TODO infer zbins from nz
+# TODO infer EP Ed from nz
+# TODO delete n_probes
+# TODO delete which_cls
+# TODO delete use_h_units? hardocode to False, maybe?
+# TODO delete BNT_transform? as an option here, for sure
+# TODO delete which_forecast
+
+# TODO add general description
+# TODO merge with cfg.yaml from spaceborne_covg
+# TODO add dzGC

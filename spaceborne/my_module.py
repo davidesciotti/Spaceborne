@@ -3520,7 +3520,7 @@ def Recast_Sijkl_3x2pt(Sijkl, nzbins):
     return [Sijkl_recast, npairs_full, pairs_full]
 
 
-def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED, which_shape_noise):
+def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED):
     """Builds the noise power spectra.
 
     Parameters
@@ -3607,13 +3607,7 @@ def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED, which
     # create and fill N
     noise_4d = np.zeros((n_probes, n_probes, zbins, zbins))
 
-    if which_shape_noise == 'ISTF':
-        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / n_bar_shear)
-    elif which_shape_noise == 'per_component':
-        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar_shear))
-    else:
-        raise ValueError('which_shape_noise must be ISTF or per_component')
-
+    np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar_shear))
     np.fill_diagonal(noise_4d[1, 1, :, :], 1 / n_bar_clust)
     noise_4d[0, 1, :, :] = 0
     noise_4d[1, 0, :, :] = 0

@@ -59,8 +59,8 @@ halo_model:
 
 C_ell:
     
-    which_gal_bias: 'from_input'  # options: 'from_input', 'FS2_poly_fit'
-    which_mag_bias: 'from_input'  # options: 'from_input', 'FS2_poly_fit'
+    which_gal_bias: 'FS2_polynomial_fit'  # options: 'from_input', 'FS2_poly_fit'
+    which_mag_bias: 'FS2_polynomial_fit'  # options: 'from_input', 'FS2_poly_fit'
     # bias_function: analytical # 'analytical', 'leporifit', 'pocinofit'
     # bias_model: step-wise # 'step-wise', 'constant', 'linint', 'ones', 'polynomial'
     # coefficients for the polynomial galaxy and magnification bias fits to FS2

@@ -89,7 +89,7 @@ bnt_transform = cfg['BNT']['BNT_transform']
 include_ia_in_bnt_kernel_for_zcuts = cfg['BNT']['include_ia_in_bnt_kernel_for_zcuts']
 compute_bnt_with_shifted_nz_for_zcuts = cfg['BNT']['compute_bnt_with_shifted_nz_for_zcuts']
 probe_ordering = cfg['covariance']['probe_ordering']
-GL_OR_LG = probe_ordering[1][0], probe_ordering[1][1]
+GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 EP_OR_ED = cfg['nz']['EP_or_ED']
 
 clr = cm.rainbow(np.linspace(0, 1, zbins))
@@ -269,12 +269,12 @@ if cfg['C_ell']['which_gal_bias'] == 'from_input':
     gal_bias_tab = mm.check_interpolate_input_tab(gal_bias_tab_full, z_grid_ssc_integrands, zbins)
     ccl_obj.gal_bias_tuple = (z_grid_ssc_integrands, gal_bias_tab)
     ccl_obj.gal_bias_2d = gal_bias_tab
-elif cfg['C_ell']['which_gal_bias'] == 'FS2:fit':
+elif cfg['C_ell']['which_gal_bias'] == 'FS2_polynomial_fit':
     ccl_obj.set_gal_bias_tuple_spv3(z_grid_lns=z_grid_ssc_integrands,
                                     magcut_lens=None,
                                     poly_fit_values=galaxy_bias_fit_fiducials)
 else:
-    raise ValueError('which_gal_bias should be "from_input" or "FS2_fit"')
+    raise ValueError('which_gal_bias should be "from_input" or "FS2_polynomial_fit"')
 
 if cfg['C_ell']['has_magnification_bias']:
 
@@ -282,13 +282,13 @@ if cfg['C_ell']['has_magnification_bias']:
         mag_bias_tab_full = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
         mag_bias_tab = mm.check_interpolate_input_tab(mag_bias_tab_full, z_grid_ssc_integrands, zbins)
         ccl_obj.mag_bias_tuple = (z_grid_ssc_integrands, mag_bias_tab)
-    elif cfg['C_ell']['which_mag_bias'] == 'FS2:fit':
+    elif cfg['C_ell']['which_mag_bias'] == 'FS2_polynomial_fit':
         ccl_obj.set_mag_bias_tuple(z_grid_lns=z_grid_ssc_integrands,
                                    has_magnification_bias=cfg['C_ell']['has_magnification_bias'],
                                    magcut_lens=None,
                                    poly_fit_values=magnification_bias_fit_fiducials)
     else:
-        raise ValueError('which_mag_bias should be "from_input" or "FS2_fit"')
+        raise ValueError('which_mag_bias should be "from_input" or "FS2_polynomial_fit"')
 
 else:
     ccl_obj.mag_bias_tuple = None
@@ -374,7 +374,7 @@ for wf_idx in range(len(wf_ccl_list)):
     for zi in range(zbins):
         plt.plot(z_grid_ssc_integrands, wf_ccl_list[wf_idx][:, zi], c=clr[zi], alpha=0.6)
     plt.xlabel('$z$')
-    plt.ylabel('wf')
+    plt.ylabel(r'$W_i^X(z)$')
     plt.suptitle(f'{wf_names_list[wf_idx]}')
     plt.tight_layout()
     plt.show()
@@ -507,13 +507,26 @@ ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 cov_obj = sb_cov.SpaceborneCovariance(cfg, ell_dict, bnt_matrix)
 cov_obj.set_ind_and_zpairs(ind, zbins)
 cov_obj.cov_terms_list = cov_terms_list
+cov_obj.GL_OR_LG = GL_OR_LG
 cov_obj.EP_OR_ED = EP_OR_ED
 cov_obj.symmetrize_output_dict = symmetrize_output_dict
 cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['split_gaussian_cov'])
 
 cov_bench = np.load(
-    '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/covmat.npz')
+    '/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/covmat.npz').items()
+cov_bench = dict(cov_bench)
+print(dict(cov_bench).keys())
+print(cov_obj.cov_dict.keys())
+
+
+
+np.testing.assert_allclose(cov_bench['cov_WL_GO_2D'], cov_obj.cov_WL_g_2D, atol=0, rtol=1e-5)
+np.testing.assert_allclose(cov_bench['cov_GC_GO_2D'], cov_obj.cov_GC_g_2D, atol=0, rtol=1e-5)
+np.testing.assert_allclose(cov_bench['cov_XC_GO_2D'], cov_obj.cov_XC_g_2D, atol=0, rtol=1e-5)
+np.testing.assert_allclose(cov_bench['cov_3x2pt_GO_2D'], cov_obj.cov_3x2pt_g_2D, atol=0, rtol=1e-5)
+
+
 assert False, 'stop here for the moment'
 
 

@@ -17,6 +17,7 @@ ROOT = os.getenv('ROOT')
 class SpaceborneCovariance():
 
     def __init__(self, cfg, ell_dict, bnt_matrix):
+        self.cfg = cfg
         self.covariance_cfg = cfg['covariance']
         self.ell_dict = ell_dict
         self.bnt_matrix = bnt_matrix
@@ -29,7 +30,6 @@ class SpaceborneCovariance():
         # must copy the array! Otherwise, it gets modified and changed at each call
         self.block_index = self.covariance_cfg['block_index']
         self.probe_ordering = self.covariance_cfg['probe_ordering']
-        self.GL_OR_LG = self.probe_ordering[1][0], self.probe_ordering[1][1]
 
         # set ell values
         self.ell_WL, self.nbl_WL = ell_dict['ell_WL'], ell_dict['ell_WL'].shape[0]
@@ -48,12 +48,15 @@ class SpaceborneCovariance():
         self.ind_dict = {('L', 'L'): self.ind_auto,
                          ('G', 'L'): self.ind_cross,
                          ('G', 'G'): self.ind_auto}
+        # self.ind_dict =build_ind_dict(triu_tril, row_col_major, size, GL_OR_LG)  # TODO?
 
     def consistency_checks(self):
         # sanity checks
 
-        assert tuple(self.probe_ordering[0]) == ('L', 'L'), 'the XC probe should be in position 1 (not 0) of the datavector'
-        assert tuple(self.probe_ordering[2]) == ('G', 'G'), 'the XC probe should be in position 1 (not 0) of the datavector'
+        assert tuple(self.probe_ordering[0]) == (
+            'L', 'L'), 'the XC probe should be in position 1 (not 0) of the datavector'
+        assert tuple(self.probe_ordering[2]) == (
+            'G', 'G'), 'the XC probe should be in position 1 (not 0) of the datavector'
 
         if self.ell_WL.max() < 15:  # very rudimental check of whether they're in lin or log scale
             raise ValueError('looks like the ell values are in log scale. You should use linear scale instead.')
@@ -78,6 +81,65 @@ class SpaceborneCovariance():
         assert self.covariance_cfg['cNG_code'] in ['PyCCL', 'OneCovariance'], \
             "covariance_cfg['cNG_code'] not recognised"
 
+    def reshape_cov(self, cov_in, ndim_in, ndim_out, nbl, zpairs=None, ind_probe=None, is_3x2pt=False):
+        """
+        Reshape a covariance matrix between dimensions (6/2D -> 4/2D).
+
+        Parameters
+        ----------
+        cov_in : np.ndarray
+            Input covariance matrix.
+        ndim_in : int
+            Input dimension of the covariance matrix (e.g., 6 or 10).
+        ndim_out : int
+            Desired output dimension of the covariance matrix (e.g., 4 or 2).
+        nbl : int
+            Number of multipole bins.
+        zpairs : int, optional
+            Number of redshift pairs. Required for 6D -> 4D reshaping.
+        ind_probe : np.ndarray, optional
+            Probe index array for 6D -> 4D reshaping.
+        is_3x2pt : bool, optional
+            If True, indicates that the covariance is a 3x2pt covariance.
+
+        Returns
+        -------
+        np.ndarray
+            Reshaped covariance matrix.
+
+        Raises
+        ------
+        ValueError
+            If the combination of ndim_in, ndim_out, and is_3x2pt is not supported.
+        """
+
+        # raise NotImplementedError('Is this function really useful?')
+
+        # Validate inputs
+        if ndim_in not in [6, 10]:
+            raise ValueError(f"Unsupported ndim_in={ndim_in}. Only 6D or 10D supported.")
+        if ndim_out not in [2, 4]:
+            raise ValueError(f"Unsupported ndim_out={ndim_out}. Only 2D or 4D supported.")
+
+        # Reshape logic
+        if ndim_in == 6:
+            
+            assert cov_in.ndim == 6, "Input covariance must be 6D for this operation."
+            assert not is_3x2pt, "input 3x2pt cov should be 10d."
+            cov_out = mm.cov_6D_to_4D(cov_in, nbl, zpairs, ind_probe)
+
+        elif ndim_in == 10:
+            
+            assert cov_in.ndim == 10, "Input covariance must be 10D for this operation."
+            assert is_3x2pt, "input 3x2pt cov should be 10d."
+            cov_out = mm.cov_3x2pt_10D_to_4D(cov_in, self.probe_ordering, nbl, 
+                                             self.zbins, self.ind.copy(), self.GL_OR_LG)
+
+        if ndim_out == 2:
+            cov_out = mm.cov_4D_to_2D(cov_out, block_index=self.block_index)
+
+        return cov_out
+
     def set_gauss_cov(self, ccl_obj, split_gaussian_cov):
 
         start = time.perf_counter()
@@ -97,7 +159,7 @@ class SpaceborneCovariance():
         noise_3x2pt_4D = mm.build_noise(self.zbins, self.n_probes, sigma_eps2=sigma_eps2,
                                         ng_shear=ng_shear,
                                         ng_clust=ng_clust,
-                                        EP_or_ED=self.covariance_cfg['EP_or_ED'])
+                                        EP_or_ED=self.EP_OR_ED)
 
         # create dummy ell axis, the array is just repeated along it
         nbl_max = np.max((self.nbl_WL, self.nbl_GC, self.nbl_3x2pt))
@@ -114,7 +176,7 @@ class SpaceborneCovariance():
         noise_3x2pt_5D = noise_5D[:, :, :self.nbl_3x2pt, :, :]
 
         # bnt-transform the noise spectra if needed
-        if self.covariance_cfg['cl_BNT_transform']:
+        if self.cfg['BNT']['cl_BNT_transform']:
             print('BNT-transforming the noise spectra...')
             noise_LL_5D = bnt_utils.cl_BNT_transform(noise_LL_5D[0, 0, ...], self.bnt_matrix, 'L', 'L')[None, None, ...]
             noise_3x2pt_5D = bnt_utils.cl_BNT_transform_3x2pt(noise_3x2pt_5D, self.bnt_matrix)
@@ -130,9 +192,50 @@ class SpaceborneCovariance():
                 cl_GG_5D, noise_GG_5D, self.fsky, self.ell_GC, delta_l_GC)[0, 0, 0, 0, ...]
             self.cov_3x2pt_g_10D_sva, self.cov_3x2pt_g_10D_sn, self.cov_3x2pt_g_10D_mix = mm.covariance_einsum_split(
                 cl_3x2pt_5D, noise_3x2pt_5D, self.fsky, self.ell_3x2pt, delta_l_3x2pt)
+            
             self.cov_WL_g_6D = self.cov_WL_g_6D_sva + self.cov_WL_g_6D_sn + self.cov_WL_g_6D_mix
             self.cov_GC_g_6D = self.cov_GC_g_6D_sva + self.cov_GC_g_6D_sn + self.cov_GC_g_6D_mix
             self.cov_3x2pt_g_10D = self.cov_3x2pt_g_10D_sva + self.cov_3x2pt_g_10D_sn + self.cov_3x2pt_g_10D_mix
+
+            if self.GL_OR_LG == 'GL':
+                self.cov_XC_g_6D_sva = self.cov_3x2pt_g_10D_sva[1, 0, 1, 0, ...]
+                self.cov_XC_g_6D_sn = self.cov_3x2pt_g_10D_sn[1, 0, 1, 0, ...]
+                self.cov_XC_g_6D_mix = self.cov_3x2pt_g_10D_mix[1, 0, 1, 0, ...]
+            elif self.GL_OR_LG == 'LG':
+                self.cov_XC_g_6D_sva = self.cov_3x2pt_g_10D_sva[0, 1, 0, 1, ...]
+                self.cov_XC_g_6D_sn = self.cov_3x2pt_g_10D_sn[0, 1, 0, 1, ...]
+                self.cov_XC_g_6D_mix = self.cov_3x2pt_g_10D_mix[0, 1, 0, 1, ...]
+            else:
+                raise ValueError('GL_OR_LG must be "GL" or "LG"')
+
+
+            self.cov_WL_g_2D_sva = self.reshape_cov(self.cov_WL_g_6D_sva, 6, 2, self.nbl_WL,
+                                            self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+            self.cov_WL_g_2D_sn = self.reshape_cov(self.cov_WL_g_6D_sn, 6, 2, self.nbl_WL,
+                                                   self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+            self.cov_WL_g_2D_mix = self.reshape_cov(self.cov_WL_g_6D_mix, 6, 2, self.nbl_WL,
+                                                    self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+            
+            self.cov_GC_g_2D_sva = self.reshape_cov(self.cov_GC_g_6D_sva, 6, 2, self.nbl_GC,
+                                            self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+            self.cov_GC_g_2D_sn = self.reshape_cov(self.cov_GC_g_6D_sn, 6, 2, self.nbl_GC,
+                                            self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+            self.cov_GC_g_2D_mix = self.reshape_cov(self.cov_GC_g_6D_mix, 6, 2, self.nbl_GC,
+                                            self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+            
+            self.cov_XC_g_2D_sva = self.reshape_cov(self.cov_XC_g_6D_sva, 6, 2, self.nbl_XC,
+                                            self.zpairs_cross, self.ind_cross, is_3x2pt=False)
+            self.cov_XC_g_2D_sn = self.reshape_cov(self.cov_XC_g_6D_sn, 6, 2, self.nbl_XC,
+                                            self.zpairs_cross, self.ind_cross, is_3x2pt=False)
+            self.cov_XC_g_2D_mix = self.reshape_cov(self.cov_XC_g_6D_mix, 6, 2, self.nbl_XC,
+                                            self.zpairs_cross, self.ind_cross, is_3x2pt=False)
+            
+            self.cov_3x2pt_g_2D_sva = self.reshape_cov(self.cov_3x2pt_g_10D_sva, 10, 2, self.nbl_3x2pt,
+                                                self.zpairs_auto, self.ind, is_3x2pt=True)
+            self.cov_3x2pt_g_2D_mix = self.reshape_cov(self.cov_3x2pt_g_10D_mix, 10, 2, self.nbl_3x2pt,
+                                                self.zpairs_auto, self.ind, is_3x2pt=True)
+            self.cov_3x2pt_g_2D_sn = self.reshape_cov(self.cov_3x2pt_g_10D_sn, 10, 2, self.nbl_3x2pt,
+                                                self.zpairs_auto, self.ind, is_3x2pt=True)
 
         else:
             self.cov_WL_g_6D = mm.covariance_einsum(
@@ -141,6 +244,24 @@ class SpaceborneCovariance():
                 cl_GG_5D, noise_GG_5D, self.fsky, self.ell_GC, delta_l_GC)[0, 0, 0, 0, ...]
             self.cov_3x2pt_g_10D = mm.covariance_einsum(
                 cl_3x2pt_5D, noise_3x2pt_5D, self.fsky, self.ell_3x2pt, delta_l_3x2pt)
+            
+        # this part is in common, the split case also sets the total cov
+        if self.GL_OR_LG == 'GL':
+            self.cov_XC_g_6D = self.cov_3x2pt_g_10D[1, 0, 1, 0, ...]
+        elif self.GL_OR_LG == 'LG':
+            self.cov_XC_g_6D = self.cov_3x2pt_g_10D[0, 1, 0, 1, ...]
+        else:
+            raise ValueError('GL_OR_LG must be "GL" or "LG"')
+
+
+        self.cov_WL_g_2D = self.reshape_cov(self.cov_WL_g_6D, 6, 2, self.nbl_WL,
+                                        self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+        self.cov_GC_g_2D = self.reshape_cov(self.cov_GC_g_6D, 6, 2, self.nbl_GC,
+                                        self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+        self.cov_XC_g_2D = self.reshape_cov(self.cov_XC_g_6D, 6, 2, self.nbl_GC,
+                                        self.zpairs_cross, self.ind_cross, is_3x2pt=False)
+        self.cov_3x2pt_g_2D = self.reshape_cov(self.cov_3x2pt_g_10D, 10, 2, self.nbl_3x2pt,
+                                            self.zpairs_auto, self.ind, is_3x2pt=True)
 
         print("Gauss. cov. matrices computed in %.2f seconds" % (time.perf_counter() - start))
 
@@ -314,7 +435,7 @@ class SpaceborneCovariance():
             cov_XC_ng_6D = cov_3x2pt_ng_10D[0, 1, 0, 1, ...]
             cov_XC_tot_6D = cov_3x2pt_tot_10D[0, 1, 0, 1, ...]
         else:
-            raise ValueError('GL_or_LG must be "GL" or "LG"')
+            raise ValueError('GL_OR_LG must be "GL" or "LG"')
 
         # ! reshape everything to 4D - these are not stored in self to save some memory
         start = time.perf_counter()
@@ -335,6 +456,7 @@ class SpaceborneCovariance():
         cov_XC_tot_4D = mm.cov_6D_to_4D(cov_XC_tot_6D, self.nbl_3x2pt, self.zpairs_cross, self.ind_cross)
         cov_3x2pt_tot_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_tot_10D, self.probe_ordering, self.nbl_3x2pt,
                                                   self.zbins, self.ind.copy(), self.GL_OR_LG)
+
         print('Covariance matrices reshaped (6D -> 4D) in {:.2f} s'.format(time.perf_counter() - start))
 
         cov_2x2pt_g_4D = np.zeros((self.nbl_3x2pt, self.nbl_3x2pt, self.zpairs_cross +
@@ -364,6 +486,34 @@ class SpaceborneCovariance():
         self.cov_3x2pt_tot_2D = mm.cov_4D_to_2D(cov_3x2pt_tot_4D, block_index=self.block_index)
         self.cov_2x2pt_tot_2D = mm.cov_4D_to_2D(cov_2x2pt_tot_4D, block_index=self.block_index)
         print('Covariance matrices reshaped (4D -> 2D) in {:.2f} s'.format(time.perf_counter() - start))
+
+        cov_WL_g_4D_2 = self.reshape_cov(cov_WL_g_6D, 6, 4, self.nbl_WL,
+                                         self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+        cov_GC_g_4D_2 = self.reshape_cov(cov_GC_g_6D, 6, 4, self.nbl_GC,
+                                         self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+        cov_XC_g_4D_2 = self.reshape_cov(cov_XC_g_6D, 6, 4, self.nbl_XC,
+                                         self.zpairs_cross, self.ind_cross, is_3x2pt=False)
+        cov_3x2pt_g_4D_2 = self.reshape_cov(cov_3x2pt_g_10D, 10, 4, self.nbl_3x2pt,
+                                            self.zpairs_auto, self.ind_auto, is_3x2pt=True)
+
+        np.testing.assert_allclose(cov_WL_g_4D, cov_WL_g_4D_2, atol=0, rtol=1e-5)
+        np.testing.assert_allclose(cov_GC_g_4D, cov_GC_g_4D_2, atol=0, rtol=1e-5)
+        np.testing.assert_allclose(cov_XC_g_4D, cov_XC_g_4D_2, atol=0, rtol=1e-5)
+        np.testing.assert_allclose(cov_3x2pt_g_4D, cov_3x2pt_g_4D_2, atol=0, rtol=1e-5)
+
+        cov_WL_g_2D_2 = self.reshape_cov(cov_WL_g_6D, 6, 2, self.nbl_WL,
+                                         self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+        cov_GC_g_2D_2 = self.reshape_cov(cov_GC_g_6D, 6, 2, self.nbl_GC,
+                                         self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+        cov_XC_g_2D_2 = self.reshape_cov(cov_XC_g_6D, 6, 2, self.nbl_XC,
+                                         self.zpairs_cross, self.ind_cross, is_3x2pt=False)
+        cov_3x2pt_g_2D_2 = self.reshape_cov(cov_3x2pt_g_10D, 10, 2, self.nbl_3x2pt,
+                                            self.zpairs_auto, self.ind, is_3x2pt=True)
+
+        np.testing.assert_allclose(self.cov_WL_g_2D, cov_WL_g_2D_2, atol=0, rtol=1e-5)
+        np.testing.assert_allclose(self.cov_GC_g_2D, cov_GC_g_2D_2, atol=0, rtol=1e-5)
+        np.testing.assert_allclose(self.cov_XC_g_2D, cov_XC_g_2D_2, atol=0, rtol=1e-5)
+        np.testing.assert_allclose(self.cov_3x2pt_g_2D, cov_3x2pt_g_2D_2, atol=0, rtol=1e-5)
 
         # ! perform ell cuts on the 2D covs
         if self.covariance_cfg['cov_ell_cuts']:

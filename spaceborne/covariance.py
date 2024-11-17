@@ -16,7 +16,7 @@ ROOT = os.getenv('ROOT')
 
 class SpaceborneCovariance():
 
-    def __init__(self, cfg, ell_dict, ind, bnt_matrix):
+    def __init__(self, cfg, ell_dict, bnt_matrix):
         self.covariance_cfg = cfg['covariance']
         self.ell_dict = ell_dict
         self.bnt_matrix = bnt_matrix
@@ -26,19 +26,22 @@ class SpaceborneCovariance():
         self.ssc_code = self.covariance_cfg['SSC_code']
         self.cng_code = self.covariance_cfg['cNG_code']
         self.fsky = self.covariance_cfg['fsky']
-        self.GL_OR_LG = self.covariance_cfg['GL_or_LG']
         # must copy the array! Otherwise, it gets modified and changed at each call
-        self.ind = self.covariance_cfg['ind'].copy()
         self.block_index = self.covariance_cfg['block_index']
         self.probe_ordering = self.covariance_cfg['probe_ordering']
+        self.GL_OR_LG = self.probe_ordering[1][0], self.probe_ordering[1][1]
 
         # set ell values
         self.ell_WL, self.nbl_WL = ell_dict['ell_WL'], ell_dict['ell_WL'].shape[0]
         self.ell_GC, self.nbl_GC = ell_dict['ell_GC'], ell_dict['ell_GC'].shape[0]
         self.ell_3x2pt, self.nbl_3x2pt = self.ell_GC, self.nbl_GC
 
+        self.cov_dict = {}
+
+    def set_ind_and_zpairs(self, ind, zbins):
         # set indices array
         self.ind = ind
+        self.zbins = zbins
         self.zpairs_auto, self.zpairs_cross, self.zpairs_3x2pt = mm.get_zpairs(self.zbins)
         self.ind_auto = ind[:self.zpairs_auto, :].copy()
         self.ind_cross = ind[self.zpairs_auto:self.zpairs_cross + self.zpairs_auto, :].copy()
@@ -46,28 +49,12 @@ class SpaceborneCovariance():
                          ('G', 'L'): self.ind_cross,
                          ('G', 'G'): self.ind_auto}
 
-        # whether or not to symmetrize the covariance probe blocks when reshaping it from 4D to 6D.
-        # Useful if the 6D cov elements need to be accessed directly, whereas if the cov is again reduced to 4D or 2D
-        # can be set to False for a significant speedup
-        self.symmetrize_output_dict = {
-            ('L', 'L'): False,
-            ('G', 'L'): False,
-            ('L', 'G'): False,
-            ('G', 'G'): False,
-        }
-
-        self.cov_dict = {}
-
     def consistency_checks(self):
         # sanity checks
 
-        assert self.probe_ordering[0] == ('L', 'L'), 'the XC probe should be in position 1 (not 0) of the datavector'
-        assert self.probe_ordering[2] == ('G', 'G'), 'the XC probe should be in position 1 (not 0) of the datavector'
+        assert tuple(self.probe_ordering[0]) == ('L', 'L'), 'the XC probe should be in position 1 (not 0) of the datavector'
+        assert tuple(self.probe_ordering[2]) == ('G', 'G'), 'the XC probe should be in position 1 (not 0) of the datavector'
 
-        if self.general_cfg['nbl_WL'] is None:
-            assert self.nbl_WL == self.general_cfg['nbl'], 'nbl_WL != general_cfg["nbl"], there is a discrepancy'
-        if self.general_cfg['nbl_WL'] is not None:
-            assert self.nbl_WL == self.general_cfg['nbl_WL'], 'nbl_WL != general_cfg["nbl_WL"], there is a discrepancy'
         if self.ell_WL.max() < 15:  # very rudimental check of whether they're in lin or log scale
             raise ValueError('looks like the ell values are in log scale. You should use linear scale instead.')
 
@@ -105,13 +92,12 @@ class SpaceborneCovariance():
 
         # build noise vector
         sigma_eps2 = (self.covariance_cfg['sigma_eps_i'] * np.sqrt(2))**2
-        ng_shear = np.array(self.covariance_cfg['ngal_lensing'])
-        ng_clust = np.array(self.covariance_cfg['ngal_clustering'])
+        ng_shear = np.array(self.cfg['nz']['ngal_sources'])
+        ng_clust = np.array(self.cfg['nz']['ngal_lenses'])
         noise_3x2pt_4D = mm.build_noise(self.zbins, self.n_probes, sigma_eps2=sigma_eps2,
                                         ng_shear=ng_shear,
                                         ng_clust=ng_clust,
-                                        EP_or_ED=self.general_cfg['EP_or_ED'],
-                                        which_shape_noise=self.covariance_cfg['which_shape_noise'])
+                                        EP_or_ED=self.covariance_cfg['EP_or_ED'])
 
         # create dummy ell axis, the array is just repeated along it
         nbl_max = np.max((self.nbl_WL, self.nbl_GC, self.nbl_3x2pt))
@@ -128,7 +114,7 @@ class SpaceborneCovariance():
         noise_3x2pt_5D = noise_5D[:, :, :self.nbl_3x2pt, :, :]
 
         # bnt-transform the noise spectra if needed
-        if self.general_cfg['cl_BNT_transform']:
+        if self.covariance_cfg['cl_BNT_transform']:
             print('BNT-transforming the noise spectra...')
             noise_LL_5D = bnt_utils.cl_BNT_transform(noise_LL_5D[0, 0, ...], self.bnt_matrix, 'L', 'L')[None, None, ...]
             noise_3x2pt_5D = bnt_utils.cl_BNT_transform_3x2pt(noise_3x2pt_5D, self.bnt_matrix)
@@ -176,7 +162,7 @@ class SpaceborneCovariance():
         """
         Combines, reshaped and returns the Gaussian (g), non-Gaussian (ng) and Gaussian+non-Gaussian (tot) covariance matrices 
         for different probe combinations.
-        
+
         Parameters
         ----------
         ccl_obj : object
@@ -184,7 +170,7 @@ class SpaceborneCovariance():
             PyCCL interface object containing cosmology and power spectrum information
         oc_obj : object
             OneCovariance interface object containing OneCovariance covariance terms
-            
+
         Returns
         -------
         dict
@@ -408,9 +394,9 @@ class SpaceborneCovariance():
         probe_names = ('WL', 'GC', '3x2pt', 'XC', '2x2pt')
 
         covs_g_2D = (self.cov_WL_g_2D, self.cov_GC_g_2D, self.cov_3x2pt_g_2D,
-                      self.cov_XC_g_2D, self.cov_2x2pt_g_2D)
+                     self.cov_XC_g_2D, self.cov_2x2pt_g_2D)
         covs_tot_2D = (self.cov_WL_tot_2D, self.cov_GC_tot_2D, self.cov_3x2pt_tot_2D,
-                      self.cov_XC_tot_2D, self.cov_2x2pt_tot_2D)
+                       self.cov_XC_tot_2D, self.cov_2x2pt_tot_2D)
 
         if self.covariance_cfg['save_cov_SSC']:
             cov_WL_ng_4D = mm.cov_6D_to_4D(cov_WL_ng_6D, self.nbl_WL, self.zpairs_auto, self.ind_auto)
@@ -427,7 +413,7 @@ class SpaceborneCovariance():
             covs_ng_2D = (cov_WL_ng_2D, cov_GC_ng_2D, cov_3x2pt_ng_2D, cov_XC_ng_2D)
 
             for probe_name, cov_ng_2D in zip(probe_names, covs_ng_2D):
-                self.cov_dict[f'cov_{probe_name}_ng_2D'] = cov_ng_2D  
+                self.cov_dict[f'cov_{probe_name}_ng_2D'] = cov_ng_2D
 
         for probe_name, cov_g_2D, cov_tot_2D in zip(probe_names, covs_g_2D, covs_tot_2D):
 
@@ -558,21 +544,19 @@ class SpaceborneCovariance():
 
         return self.cov_ssc_sb_3x2pt_dict_8D
 
-    def get_ellmax_nbl(self, probe, general_cfg):
+    def get_ellmax_nbl(self, probe, covariance_cfg):
         if probe == 'LL':
-            ell_max = general_cfg['ell_max_WL']
-            nbl = general_cfg['nbl_WL']
+            ell_max = covariance_cfg['ell_max_WL']
+            nbl = covariance_cfg['nbl_WL']
         elif probe == 'GG':
-            ell_max = general_cfg['ell_max_GC']
-            nbl = general_cfg['nbl_GC']
+            ell_max = covariance_cfg['ell_max_GC']
+            nbl = covariance_cfg['nbl_GC']
         elif probe == '3x2pt':
-            ell_max = general_cfg['ell_max_3x2pt']
-            nbl = general_cfg['nbl_3x2pt']
+            ell_max = covariance_cfg['ell_max_3x2pt']
+            nbl = covariance_cfg['nbl_3x2pt']
         else:
             raise ValueError('probe must be LL or GG or 3x2pt')
         return ell_max, nbl
-
-
 
     def save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs):
         """

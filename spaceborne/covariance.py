@@ -16,22 +16,21 @@ ROOT = os.getenv('ROOT')
 
 class SpaceborneCovariance():
 
-    def __init__(self, general_cfg, covariance_cfg, ell_dict, ind, bnt_matrix):
-        self.general_cfg = general_cfg
-        self.covariance_cfg = covariance_cfg
+    def __init__(self, cfg, ell_dict, ind, bnt_matrix):
+        self.covariance_cfg = cfg['covariance']
         self.ell_dict = ell_dict
         self.bnt_matrix = bnt_matrix
         self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt', }
 
-        self.zbins = general_cfg['zbins']
-        self.n_probes = general_cfg['n_probes']
-        self.ng_cov_code = covariance_cfg['ng_cov_code']
-        self.fsky = covariance_cfg['fsky']
-        self.GL_OR_LG = covariance_cfg['GL_or_LG']
+        self.n_probes = self.covariance_cfg['n_probes']
+        self.ssc_code = self.covariance_cfg['SSC_code']
+        self.cng_code = self.covariance_cfg['cNG_code']
+        self.fsky = self.covariance_cfg['fsky']
+        self.GL_OR_LG = self.covariance_cfg['GL_or_LG']
         # must copy the array! Otherwise, it gets modified and changed at each call
-        self.ind = covariance_cfg['ind'].copy()
-        self.block_index = covariance_cfg['block_index']
-        self.probe_ordering = covariance_cfg['probe_ordering']
+        self.ind = self.covariance_cfg['ind'].copy()
+        self.block_index = self.covariance_cfg['block_index']
+        self.probe_ordering = self.covariance_cfg['probe_ordering']
 
         # set ell values
         self.ell_WL, self.nbl_WL = ell_dict['ell_WL'], ell_dict['ell_WL'].shape[0]
@@ -82,13 +81,15 @@ class SpaceborneCovariance():
         assert np.array_equiv(self.ind[:self.zpairs_auto, 2:], self.ind[-self.zpairs_auto:, 2:])
 
         assert (
-            (self.covariance_cfg[f'{self.ng_cov_code}_cfg']['which_ng_cov'] == ['SSC', 'cNG']) or
-            (self.covariance_cfg[f'{self.ng_cov_code}_cfg']['which_ng_cov'] == ['SSC',]) or
-            (self.covariance_cfg[f'{self.ng_cov_code}_cfg']['which_ng_cov'] == ['cNG',])
-        ), f"covariance_cfg['{self.ng_cov_code}_cfg']['which_ng_cov'] not recognised"
+            (self.cov_terms_list == ['G', 'SSC', 'cNG']) or
+            (self.cov_terms_list == ['G', 'SSC',]) or
+            (self.cov_terms_list == ['G', 'cNG'])
+        ), f"cov_terms_list not recognised"
 
-        assert self.covariance_cfg['Spaceborne_cfg']['which_cNG'] in ['PyCCL', 'OneCovariance', None], \
-            f"covariance_cfg['Spaceborne_cfg']['which_cNG'] not recognised"
+        assert self.covariance_cfg['SSC_code'] in ['Spaceborne', 'PyCCL', 'OneCovariance'], \
+            "covariance_cfg['SSC_code'] not recognised"
+        assert self.covariance_cfg['cNG_code'] in ['PyCCL', 'OneCovariance'], \
+            "covariance_cfg['cNG_code'] not recognised"
 
     def set_gauss_cov(self, ccl_obj, split_gaussian_cov):
 
@@ -207,7 +208,7 @@ class SpaceborneCovariance():
 
             cov_3x2pt_ng_10D = self._cov_8d_dict_to_10d_arr(self.cov_ssc_sb_3x2pt_dict_8D)
 
-            if self.covariance_cfg['Spaceborne_cfg']['which_cNG'] == 'OneCovariance':
+            if self.covariance_cfg['which_cNG'] == 'OneCovariance':
                 print('Adding cNG covariance from OneCovariance...')
 
                 # test that oc_obj.cov_cng_oc_3x2pt_10D is not identically zero
@@ -216,7 +217,7 @@ class SpaceborneCovariance():
 
                 cov_3x2pt_ng_10D += oc_obj.cov_cng_oc_3x2pt_10D
 
-            elif self.covariance_cfg['Spaceborne_cfg']['which_cNG'] == 'PyCCL':
+            elif self.covariance_cfg['which_cNG'] == 'PyCCL':
                 print('Adding cNG covariance from PyCCL...')
 
                 cov_cng_ccl_3x2pt_10D = self._cov_8d_dict_to_10d_arr(ccl_obj.cov_cng_ccl_3x2pt_dict_8D)

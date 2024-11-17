@@ -119,7 +119,7 @@ else:
 
 if not cfg['ell_cuts']['apply_ell_cuts']:
     kmax_h_over_Mpc = cfg['ell_cuts']['kmax_h_over_Mpc_ref']
-    
+
 # ! define grids for the SSC integrands
 z_grid_ssc_integrands = np.linspace(cfg['covariance']['z_min_ssc_integrands'],
                                     cfg['covariance']['z_max_ssc_integrands'],
@@ -324,7 +324,7 @@ plt.ylabel(r'$W_i^{\gamma}(z)$')
 assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically increasing'
 assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically increasing'
 assert np.all(np.diff(z_means_ll_bnt) > 0), ('z_means_ll_bnt should be monotonically increasing '
-                                            '(not a strict condition, valid only if we do not shift the n(z) in this part)')
+                                             '(not a strict condition, valid only if we do not shift the n(z) in this part)')
 
 # 5. compute the ell cuts
 ell_cuts_dict = {}
@@ -443,20 +443,14 @@ np.testing.assert_allclose(ccl_obj.wf_lensing_arr, wf_lensing_arr_test, rtol=1e-
 np.testing.assert_allclose(ccl_obj.wf_galaxy_arr, wf_galaxy_arr_test, rtol=1e-5, atol=0)
 
 print('cl and wf match!!')
-
 assert False, 'stop here for the moment'
-
-# matshow for GL, to make sure it's not LG
-ell_idx = 10
-mm.compare_arrays(cl_gl_3d[ell_idx, ...], ccl_obj.cl_gl_3d[ell_idx, ...], abs_val=True, log_array=True,
-                  name_A=f'{general_cfg["which_cls"]} GL', name_B='CCL GL')
 
 
 # ! BNT transform the cls (and responses?) - it's more complex since I also have to transform the noise
 # ! spectra, better to transform directly the covariance matrix
-if general_cfg['cl_BNT_transform']:
+if cfg['BNT']['cl_BNT_transform']:
     print('BNT-transforming the Cls...')
-    assert covariance_cfg['cov_BNT_transform'] is False, \
+    assert cfg['BNT']['cov_BNT_transform'] is False, \
         'the BNT transform should be applied either to the Cls or to the covariance, not both'
     cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, bnt_matrix, 'L', 'L')
     cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5d, bnt_matrix)
@@ -473,24 +467,24 @@ if ell_max_WL == 1500:
     cl_3x2pt_5d = cl_3x2pt_5d[:nbl_3x2pt, :, :]
 
 # ! Vincenzo's method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
-if general_cfg['center_or_min'] == 'center':
+if cfg['ell_cuts']['center_or_min'] == 'center':
     prefix = 'ell'
-elif general_cfg['center_or_min'] == 'min':
+elif cfg['ell_cuts']['center_or_min'] == 'min':
     prefix = 'ell_edges'
 else:
-    raise ValueError('general_cfg["center_or_min"] should be either "center" or "min"')
+    raise ValueError('cfg["ell_cuts"]["center_or_min"] should be either "center" or "min"')
 
 ell_dict['idxs_to_delete_dict'] = {
     'LL': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True, zbins=zbins),
     'GG': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True, zbins=zbins),
     'GL': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False, zbins=zbins),
     'LG': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False, zbins=zbins),
-    '3x2pt': ell_utils.get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict, zbins, covariance_cfg)
+    '3x2pt': ell_utils.get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict, zbins, cfg['covariance'])
 }
 
 # ! 3d cl ell cuts (*after* BNT!!)
 # TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance and derivatives level)
-if general_cfg['cl_ell_cuts']:
+if cfg['ell_cuts']['cl_ell_cuts']:
     cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_dict['ell_WL'], ell_cuts_dict['LL'])
     cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_dict['ell_GC'], ell_cuts_dict['GG'])
     cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt'])
@@ -501,9 +495,11 @@ ccl_obj.cl_gg_3d = cl_gg_3d
 ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
 # ! build covariance matrices
-cov_obj = sb_cov.SpaceborneCovariance(general_cfg, covariance_cfg, ell_dict, ind, bnt_matrix)
+cov_obj = sb_cov.SpaceborneCovariance(cfg, ell_dict, ind, bnt_matrix)
+cov_obj.zbins = zbins
+cov_obj.cov_terms_list = cov_terms_list
 cov_obj.consistency_checks()
-cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=covariance_cfg['split_gaussian_cov'])
+cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['split_gaussian_cov'])
 
 # ! ========================================== OneCovariance ===================================================
 

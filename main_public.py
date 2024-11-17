@@ -91,6 +91,7 @@ compute_bnt_with_shifted_nz_for_zcuts = cfg['BNT']['compute_bnt_with_shifted_nz_
 probe_ordering = cfg['covariance']['probe_ordering']
 GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 EP_OR_ED = cfg['nz']['EP_or_ED']
+output_path = cfg['misc']['output_path']
 
 clr = cm.rainbow(np.linspace(0, 1, zbins))
 use_h_units = False  # TODO decide on this
@@ -605,42 +606,37 @@ else:
 # ! ========================================== end OneCovariance ===================================================
 
 # ! ========================================== start Spaceborne ===================================================
-_which_pk_resp = cfg['covariance']['Spaceborne_cfg']['which_pk_responses']
+compute_sb_ssc = False
+compute_sb_cng = False
+if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'Spaceborne':
+    compute_sb_ssc = True
+if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'Spaceborne':
+    raise NotImplementedError('Spaceborne cNG not implemented yet')
+    compute_sb_cng = True
+    
+_which_pk_resp = cfg['covariance']['which_pk_responses']
 _which_pk_resp = 'separate_universe' if _which_pk_resp.startswith('separate_universe') else _which_pk_resp
 _which_pk_resp = 'halo_model' if _which_pk_resp.startswith('halo_model') else _which_pk_resp
-cov_folder_sb = cfg['covariance']['Spaceborne_cfg']['cov_path'].format(ROOT=ROOT,
-                                                                       which_pk_responses=_which_pk_resp,
-                                                                       flagship_version=general_cfg['flagship_version'],
-                                                                       cov_ell_cuts=str(
-                                                                           cfg['covariance']['cov_ell_cuts']),
-                                                                       BNT_transform=str(general_cfg['BNT_transform']))
+# cov_folder_sb = cfg['covariance']['cov_path'].format(ROOT=ROOT,
+#                                                                        which_pk_responses=_which_pk_resp,
+#                                                                        flagship_version=2,
+#                                                                        cov_ell_cuts=str(
+#                                                                            cfg['ell_cuts']['cov_ell_cuts']),
+#                                                                        BNT_transform=str(cfg['BNT']['BNT_transform']))
 
-cov_sb_suffix = cfg['covariance']['Spaceborne_cfg']['cov_suffix'].format(
-    z_steps_ssc_integrands=z_steps_ssc_integrands,
-    k_txt_label=k_txt_label,
-    cl_integral_convention=cfg['covariance']['Spaceborne_cfg']['cl_integral_convention'],
-    integration_type=cfg['covariance']['Spaceborne_cfg']['integration_type'],
-    survey_area_deg2=cfg['covariance']['survey_area_deg2'],
-)
+# cov_sb_suffix = cfg['covariance']['cov_suffix'].format(
+#     z_steps_ssc_integrands=z_steps_ssc_integrands,
+#     k_txt_label=k_txt_label,
+#     cl_integral_convention=cfg['covariance']['cl_integral_convention'],
+#     integration_type=cfg['covariance']['integration_type'],
+#     survey_area_deg2=cfg['covariance']['survey_area_deg2'],
+# )
 
-variable_specs.pop('ng_cov_code')
-variable_specs.pop('which_ng_cov')
-cov_sb_filename = cfg['covariance']['cov_filename'].format(ng_cov_code='spaceborne',
-                                                           lmax_3x2pt=general_cfg['ell_max_3x2pt'],
-                                                           probe='{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}',
-                                                           cov_suffix=cov_sb_suffix,
-                                                           which_ng_cov=cov_terms_str.replace('G', ''),
-                                                           fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'],
-                                                           ndim=4,
-                                                           **variable_specs)
-
-variable_specs['ng_cov_code'] = cfg['covariance']['ng_cov_code']
-variable_specs['which_ng_cov'] = cov_terms_str
-include_b2g = cfg['covariance']['Spaceborne_cfg']['include_b2g']
-
-if 'cNG' in cfg['covariance']['Spaceborne_cfg']['which_ng_cov']:
-    raise NotImplementedError('You should review the which_ng_cov arg in the cov_filename formatting above, "SSC" is'
-                              'hardcoded at the moment')
+cov_sb_filename = cfg['covariance']['cov_filename'].format(which_ng_cov='SSC',
+                                                           ng_cov_code='Spaceborne',
+                                                           probe='3x2pt',
+                                                           ndim='{ndim}')
+include_b2g = cfg['covariance']['include_b2g']
 
 # precompute pk_mm, pk_gm and pk_mm, if you want to rescale the responses
 k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid_resp, z_grid_ssc_integrands, use_h_units,
@@ -656,14 +652,14 @@ for zi in range(zbins):
 pk_gm_2d = pk_mm_2d * gal_bias
 pk_gg_2d = pk_mm_2d * gal_bias ** 2
 
-if cfg['covariance']['ng_cov_code'] == 'Spaceborne' and not cfg['covariance']['Spaceborne_cfg']['load_precomputed_cov']:
+if compute_sb_ssc and not cfg['covariance']['load_precomputed_cov']:
     print('Start SSC computation with Spaceborne...')
 
     # ! 1. Get halo model responses from CCL
-    if cfg['covariance']['Spaceborne_cfg']['which_pk_responses'] == 'halo_model_CCL':
+    if cfg['covariance']['which_pk_responses'] == 'halo_model_CCL':
 
         ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
-                                       pyccl_cfg=pyccl_cfg)
+                                       pyccl_cfg=cfg['PyCCL'])
 
         # k and z grids (responses will be interpolated below)
         k_grid_resp_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
@@ -706,9 +702,9 @@ if cfg['covariance']['ng_cov_code'] == 'Spaceborne' and not cfg['covariance']['S
         dPgm_ddeltab = dPgm_ddeltab_hm
         dPgg_ddeltab = dPgg_ddeltab_hm
 
-    elif cfg['covariance']['Spaceborne_cfg']['which_pk_responses'] == 'halo_model_SB':
+    elif cfg['covariance']['which_pk_responses'] == 'halo_model_SB':
 
-        which_b1g_in_resp = cfg['covariance']['Spaceborne_cfg']['which_b1g_in_resp']
+        which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
         resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
                                                  z_grid=z_grid_ssc_integrands,
                                                  ccl_obj=ccl_obj)
@@ -721,7 +717,7 @@ if cfg['covariance']['ng_cov_code'] == 'Spaceborne' and not cfg['covariance']['S
         r_gg_hm = resp_obj.r1_gg_hm
 
     # ! from SpaceborneResponses class
-    elif cfg['covariance']['Spaceborne_cfg']['which_pk_responses'] == 'separate_universe_SB':
+    elif cfg['covariance']['which_pk_responses'] == 'separate_universe_SB':
 
         resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
                                                  z_grid=z_grid_ssc_integrands,
@@ -729,7 +725,7 @@ if cfg['covariance']['ng_cov_code'] == 'Spaceborne' and not cfg['covariance']['S
         r_mm_sbclass = resp_obj.compute_r1_mm()
         resp_obj.set_su_resp(b2g_from_halomodel=True)
 
-        if cfg['covariance']['Spaceborne_cfg']['include_b2g']:
+        if cfg['covariance']['include_b2g']:
             r_gm_sbclass = resp_obj.r1_gm
             r_gg_sbclass = resp_obj.r1_gg
         else:
@@ -752,7 +748,7 @@ if cfg['covariance']['ng_cov_code'] == 'Spaceborne' and not cfg['covariance']['S
     r_of_z_func = partial(cosmo_lib.ccl_comoving_distance, use_h_units=use_h_units, cosmo_ccl=ccl_obj.cosmo_ccl)
 
     # ! divide by r(z)**2 if cl_integral_convention == 'PySSC'
-    if cfg['covariance']['Spaceborne_cfg']['cl_integral_convention'] == 'PySSC':
+    if cfg['covariance']['cl_integral_convention'] == 'PySSC':
         r_of_z_square = r_of_z_func(z_grid_ssc_integrands) ** 2
 
         wf_delta = ccl_obj.wf_delta_arr / r_of_z_square[:, None]
@@ -761,7 +757,7 @@ if cfg['covariance']['ng_cov_code'] == 'Spaceborne' and not cfg['covariance']['S
         wf_mu = ccl_obj.wf_mu_arr / r_of_z_square[:, None]
         wf_lensing = ccl_obj.wf_lensing_arr / r_of_z_square[:, None]
 
-    elif cfg['covariance']['Spaceborne_cfg']['cl_integral_convention'] in ('Euclid', 'Euclid_KE_approximation'):
+    elif cfg['covariance']['cl_integral_convention'] in ('Euclid', 'Euclid_KE_approximation'):
         wf_delta = ccl_obj.wf_delta_arr
         wf_gamma = ccl_obj.wf_gamma_arr
         wf_ia = ccl_obj.wf_ia_arr
@@ -802,7 +798,7 @@ if cfg['covariance']['ng_cov_code'] == 'Spaceborne' and not cfg['covariance']['S
 
     # ! integral prefactor
     cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(z_grid_ssc_integrands,
-                                                            cfg['covariance']['Spaceborne_cfg']['cl_integral_convention'],
+                                                            cfg['covariance']['cl_integral_convention'],
                                                             use_h_units=use_h_units,
                                                             cosmo_ccl=ccl_obj.cosmo_ccl)
     # ! observable densities
@@ -817,24 +813,24 @@ if cfg['covariance']['ng_cov_code'] == 'Spaceborne' and not cfg['covariance']['S
         np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
 
     # ! 3. Compute/load/save sigma2_b
-    k_grid_sigma2 = np.logspace(cfg['covariance']['Spaceborne_cfg']['log10_k_min_sigma2'],
-                                cfg['covariance']['Spaceborne_cfg']['log10_k_max_sigma2'],
-                                cfg['covariance']['Spaceborne_cfg']['k_steps_sigma2'])
+    k_grid_sigma2 = np.logspace(cfg['covariance']['log10_k_min_sigma2'],
+                                cfg['covariance']['log10_k_max_sigma2'],
+                                cfg['covariance']['k_steps_sigma2'])
 
     # TODO find best way to handle these conditions, too much nesting
-    ndim_s2b = 1 if cfg['covariance']['Spaceborne_cfg']['use_KE_approximation'] else 2
-    sigma2_b_filename = cfg['covariance']['Spaceborne_cfg']['sigma2_b_filename'].format(
+    ndim_s2b = 1 if cfg['covariance']['use_KE_approximation'] else 2
+    sigma2_b_filename = cfg['covariance']['sigma2_b_filename'].format(
         ROOT=ROOT,
         which_sigma2_b=str(which_sigma2_b),
-        zmin=cfg['covariance']['Spaceborne_cfg']['z_min_ssc_integrands'],
-        zmax=cfg['covariance']['Spaceborne_cfg']['z_max_ssc_integrands'],
+        zmin=cfg['covariance']['z_min_ssc_integrands'],
+        zmax=cfg['covariance']['z_max_ssc_integrands'],
         zsteps=z_steps_ssc_integrands,
-        log10kmin=cfg['covariance']['Spaceborne_cfg']['log10_k_min_sigma2'],
-        log10kmax=cfg['covariance']['Spaceborne_cfg']['log10_k_max_sigma2'],
-        ksteps=cfg['covariance']['Spaceborne_cfg']['k_steps_sigma2'],
+        log10kmin=cfg['covariance']['log10_k_min_sigma2'],
+        log10kmax=cfg['covariance']['log10_k_max_sigma2'],
+        ksteps=cfg['covariance']['k_steps_sigma2'],
         ndim=ndim_s2b,
     )
-    if cfg['covariance']['Spaceborne_cfg']['use_KE_approximation']:
+    if cfg['covariance']['use_KE_approximation']:
 
         # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
         ccl_obj.set_sigma2_b(z_grid=z_grid_ssc_integrands,
@@ -849,7 +845,7 @@ if cfg['covariance']['ng_cov_code'] == 'Spaceborne' and not cfg['covariance']['S
 
         np.testing.assert_allclose(z_grid_ssc_integrands, _z, atol=0, rtol=1e-8)
 
-        if cfg['covariance']['Spaceborne_cfg']['load_precomputed_sigma2']:
+        if cfg['covariance']['load_precomputed_sigma2']:
             raise NotImplementedError('TODO')
 
         # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to decrease
@@ -862,7 +858,7 @@ if cfg['covariance']['ng_cov_code'] == 'Spaceborne' and not cfg['covariance']['S
 
     else:
 
-        if cfg['covariance']['Spaceborne_cfg']['load_precomputed_sigma2']:
+        if cfg['covariance']['load_precomputed_sigma2']:
             # TODO define a suitable interpolator if the zgrid doesn't match
             sigma2_b_dict = np.load(sigma2_b_filename, allow_pickle=True).item()
             cfg_sigma2_b = sigma2_b_dict['cfg']  # TODO check that the cfg matches the one
@@ -896,9 +892,9 @@ if cfg['covariance']['ng_cov_code'] == 'Spaceborne' and not cfg['covariance']['S
                                                        cl_integral_prefactor=cl_integral_prefactor,
                                                        sigma2=sigma2_b,
                                                        z_grid=z_grid_ssc_integrands,
-                                                       integration_type=cfg['covariance']['Spaceborne_cfg']['integration_type'],
+                                                       integration_type=cfg['covariance']['integration_type'],
                                                        probe_ordering=probe_ordering,
-                                                       num_threads=general_cfg['num_threads'])
+                                                       num_threads=cfg['misc']['num_threads'])
     print('SSC computed in {:.2f} s'.format(time.perf_counter() - start))
 
     # in the full_curved_sky case only, sigma2_b has to be divided by fsky
@@ -918,23 +914,24 @@ if cfg['covariance']['ng_cov_code'] == 'Spaceborne' and not cfg['covariance']['S
         if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
             _cov_sb_filename = cov_sb_filename.format(probe_a=probe_a, probe_b=probe_b,
                                                       probe_c=probe_c, probe_d=probe_d)
-            _filename = f'{cov_folder_sb}/{_cov_sb_filename}'
+            
+            _filename = f'{output_path}/{_cov_sb_filename}'
             np.savez_compressed(_filename, cov_ssc_3x2pt_dict_8D[key])
 
-elif cfg['covariance']['ng_cov_code'] == 'Spaceborne' and \
-        cfg['covariance']['Spaceborne_cfg']['load_precomputed_cov']:
+elif compute_sb_ssc and \
+        cfg['covariance']['load_precomputed_cov']:
 
     try:
         cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
-            path=cov_folder_sb,
+            path=output_path,
             filename=cov_sb_filename,
             probe_ordering=probe_ordering)
     except FileNotFoundError as err:
         print(err)
-        print(f'No covariance file found in {cov_folder_sb}')
+        print(f'No covariance file found in {output_path}')
         print('Retrying with ellmax=5000 and cutting the last bins')
         cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
-            path=cov_folder_sb,
+            path=output_path,
             filename=cov_sb_filename.replace('lmax3000', 'lmax5000'),
             probe_ordering=probe_ordering)
 

@@ -62,7 +62,6 @@ C_ell:
     non_limber_integration_method: FKEM
 
 
-# TODO delete which_shape_noise
 # TODO delete dz shifts?
 # TODO delete nz_folder
 # TODO delete nuisance_folder
@@ -151,11 +150,11 @@ covariance:
     block_index: ell            # Determines how blocks are indexed in the covariance matrix:
                                 # - ell: Use the multipole index for block ordering.
                                 # - zpair: Use the zpair index for block ordering.
-    GL_or_LG: GL                # Specifies whether the GGL probe is GCph-WL (GL) or WL-GCph (LG).
 
     split_gaussian_cov: False   # Whether to split the Gaussian covariance term into the 
                                 # sample variance, noise and mixed terms
 
+    probe_ordering: [['L', 'L'], ['G', 'L'], ['G', 'G']]  # ordering of the different 3x2pt probes in the covariance matrix
     covariance_ordering_2D: ell_probe_zpair  # Determines the ordering of the covariance matrix in 2D:
                                              # - ell_probe_zpair: Ordered by multipole (ell), then probe type, then redshift pair.
                                              # TODO: Restore or adjust this as needed.

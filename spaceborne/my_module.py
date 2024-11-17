@@ -1672,7 +1672,7 @@ def build_full_ind(triu_tril, row_col_major, size):
     return ind
 
 
-def build_ind_dict(triu_tril, row_col_major, size, GL_or_LG):
+def build_ind_dict(triu_tril, row_col_major, size, GL_OR_LG):
 
     ind = build_full_ind(triu_tril, row_col_major, size)
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(size)
@@ -1681,11 +1681,11 @@ def build_ind_dict(triu_tril, row_col_major, size, GL_or_LG):
     ind_dict['L', 'L'] = ind[:zpairs_auto, :]
     ind_dict['G', 'G'] = ind[(zpairs_auto + zpairs_cross):, :]
 
-    if GL_or_LG == 'LG':
+    if GL_OR_LG == 'LG':
         ind_dict['L', 'G'] = ind[zpairs_auto:(zpairs_auto + zpairs_cross), :]
         ind_dict['G', 'L'] = ind_dict['L', 'G'].copy()  # copy and switch columns
         ind_dict['G', 'L'][:, [2, 3]] = ind_dict['G', 'L'][:, [3, 2]]
-    elif GL_or_LG == 'GL':
+    elif GL_OR_LG == 'GL':
         ind_dict['G', 'L'] = ind[zpairs_auto:(zpairs_auto + zpairs_cross), :]
         ind_dict['L', 'G'] = ind_dict['G', 'L'].copy()  # copy and switch columns
         ind_dict['L', 'G'][:, [2, 3]] = ind_dict['L', 'G'][:, [3, 2]]
@@ -2650,7 +2650,7 @@ def cov_SS_6D_blocks(Rl_AB, Cl_AB, Rl_CD, Cl_CD, Sijkl_ABCD, nbl, zbins, fsky):
     return cov_SS_6D
 
 
-def cov_3x2pt_10D_to_4D(cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_or_LG):
+def cov_3x2pt_10D_to_4D(cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_OR_LG):
     """
     Takes the cov_3x2pt_10D dictionary, reshapes each A, B, C, D block separately
     in 4D, then stacks the blocks in the right order to output cov_3x2pt_4D
@@ -2672,10 +2672,10 @@ def cov_3x2pt_10D_to_4D(cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_
     # Check that the cross-correlation is coherent with the probe_ordering list
     # this is a weak check, since I'm assuming that GL or LG will be the second
     # element of the datavector
-    if GL_or_LG == 'GL':
+    if GL_OR_LG == 'GL':
         assert probe_ordering[1][0] == 'G' and probe_ordering[1][1] == 'L', \
             'probe_ordering[1] should be "GL", e.g. [LL, GL, GG]'
-    elif GL_or_LG == 'LG':
+    elif GL_OR_LG == 'LG':
         assert probe_ordering[1][0] == 'L' and probe_ordering[1][1] == 'G', \
             'probe_ordering[1] should be "LG", e.g. [LL, LG, GG]'
 
@@ -2686,11 +2686,11 @@ def cov_3x2pt_10D_to_4D(cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_
     ind_dict = {}
     ind_dict['L', 'L'] = ind_copy[:npairs_auto, :]
     ind_dict['G', 'G'] = ind_copy[(npairs_auto + npairs_cross):, :]
-    if GL_or_LG == 'LG':
+    if GL_OR_LG == 'LG':
         ind_dict['L', 'G'] = ind_copy[npairs_auto:(npairs_auto + npairs_cross), :]
         ind_dict['G', 'L'] = ind_dict['L', 'G'].copy()  # copy and switch columns
         ind_dict['G', 'L'][:, [2, 3]] = ind_dict['G', 'L'][:, [3, 2]]
-    elif GL_or_LG == 'GL':
+    elif GL_OR_LG == 'GL':
         ind_dict['G', 'L'] = ind_copy[npairs_auto:(npairs_auto + npairs_cross), :]
         ind_dict['L', 'G'] = ind_dict['G', 'L'].copy()  # copy and switch columns
         ind_dict['L', 'G'][:, [2, 3]] = ind_dict['L', 'G'][:, [3, 2]]

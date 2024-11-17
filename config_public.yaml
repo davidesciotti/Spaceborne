@@ -35,6 +35,7 @@ intrinsic_alignment:
     eIA: 1.66
     bIA: 0.0
     CIA: 0.0134
+    z_pivot_IA: 0  # TODO implement this
 
 # extra parameters to be passed to CCL cosmo object, eg CAMB extra parameters
 # (see https://ccl.readthedocs.io/en/latest/api/pyccl.cosmology.html#pyccl.cosmology.Cosmology
@@ -194,7 +195,6 @@ covariance:
     which_sigma2_b: polar_cap_on_the_fly
 
     probe: 3x2pt
-    which_ng_cov: [SSC] # only SSC available in this case
     which_cNG: null # PyCCL or OneCovariance or null (None)
     load_precomputed_cov: False
     which_pk_responses: halo_model_SB # halo_model_SB, halo_model_CCL (with PyCCL) or separate_universe_SB/_vin (from simulations)
@@ -223,9 +223,7 @@ covariance:
     use_KE_approximation: False
     integration_type: "simps" # 'simps' or 'simps_KE_approximation' or 'trapz' (which is actually using rectangles)
 
-PyCCL_cfg:
-    # cNG or SSC. Which non-Gaussian covariance terms to compute. Must be a tuple
-    which_ng_cov: [SSC]
+PyCCL:
 
     load_precomputed_cov: False
     save_cov: True
@@ -251,10 +249,8 @@ PyCCL_cfg:
     # Possibilities: 'qag_quad' (GSL's qag method backed up by quad when it fails) and 'spline' (the integrand is splined and then integrated analytically).
     cov_integration_method: spline
 
-OneCovariance_cfg:
-    which_ng_cov: ["SSC"]
+OneCovariance:
     load_precomputed_cov: False
-    use_OneCovariance_Gaussian: False
     which_gauss_cov_binning: OneCovariance # 'EC20' or 'OneCovariance'
     precision_settings: high_precision # 'high_precision' or 'default'
     path_to_oc_executable: "/home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py"

@@ -146,7 +146,7 @@ covariance:
 
     G: True       # Enable/disable the Gaussian covariance term.
     SSC: True     # Enable/disable the super-sample covariance (SSC) term.
-    cNG: True     # Enable/disable the connected non-Gaussian (cNG) covariance term.
+    cNG: False     # Enable/disable the connected non-Gaussian (cNG) covariance term.
 
     SSC_code: Spaceborne        # Specifies the code to compute SSC. Options:
                                 # - Spaceborne: Use the Spaceborne implementation.
@@ -218,10 +218,12 @@ covariance:
     z_steps_ssc_integrands: 300 # this should be high because I have to trace the spikes in sigma2
 
     load_precomputed_sigma2: False
-    sigma2_b_filename: "/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_{ndim:d}D_{which_sigma2_b:s}_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}.npy"
+    sigma2_b_filename: "/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_{ndim}D_{which_sigma2_b:s}_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}.npy"
     cl_integral_convention: Euclid # "Euclid_KE_approximation" or "PySSC" (results are the same) or "Euclid_KE_approximation"
     use_KE_approximation: False
     integration_type: "simps" # 'simps' or 'simps_KE_approximation' or 'trapz' (which is actually using rectangles)
+    cov_filename: covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_{ndim}D.npz
+
 
 PyCCL:
 
@@ -256,12 +258,12 @@ OneCovariance:
     path_to_oc_executable: "/home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py"
 
     onecovariance_folder: "/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/covmat/OneCovariance/EP03-zedMin02-zedMax25-mag245"
-    cov_filename: "cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}_zbinsEP03_Gbinning{which_gauss_cov_binning:s}.npz"
+    # cov_filename: "cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}_zbinsEP03_Gbinning{which_gauss_cov_binning:s}.npz"
 
 misc:
     num_threads: 40 # how many threads to use for the Julia SSC integral with @tturbo
     # save_outputs_as_test_benchmarks_path: ./tests/benchmarks/output_dict.npy
     save_outputs_as_test_benchmarks_path: False
 
-    output_folder: "../output"
+    output_path: "../output"
     use_h_units: False # TODO hardcode!

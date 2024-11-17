@@ -86,14 +86,17 @@ n_probes = cfg['covariance']['n_probes']
 which_sigma2_b = cfg['covariance']['which_sigma2_b']
 z_steps_ssc_integrands = cfg['covariance']['z_steps_ssc_integrands']
 covariance_ordering_2D = cfg['covariance']['covariance_ordering_2D']
-gl_or_lg = cfg['covariance']['GL_or_LG']
 bnt_transform = cfg['BNT']['BNT_transform']
 include_ia_in_bnt_kernel_for_zcuts = cfg['BNT']['include_ia_in_bnt_kernel_for_zcuts']
 compute_bnt_with_shifted_nz_for_zcuts = cfg['BNT']['compute_bnt_with_shifted_nz_for_zcuts']
-probe_ordering = (('L', 'L'), (gl_or_lg[0], gl_or_lg[1]), ('G', 'G'))
+probe_ordering = cfg['covariance']['probe_ordering']
+GL_OR_LG = probe_ordering[1][0], probe_ordering[1][1]
 
 clr = cm.rainbow(np.linspace(0, 1, zbins))
 use_h_units = False  # TODO decide on this
+# whether or not to symmetrize the covariance probe blocks when reshaping it from 4D to 6D.
+# Useful if the 6D cov elements need to be accessed directly, whereas if the cov is again reduced to 4D or 2D
+# can be set to False for a significant speedup
 symmetrize_output_dict = {
     ('L', 'L'): False,
     ('G', 'L'): False,
@@ -443,7 +446,6 @@ np.testing.assert_allclose(ccl_obj.wf_lensing_arr, wf_lensing_arr_test, rtol=1e-
 np.testing.assert_allclose(ccl_obj.wf_galaxy_arr, wf_galaxy_arr_test, rtol=1e-5, atol=0)
 
 print('cl and wf match!!')
-assert False, 'stop here for the moment'
 
 
 # ! BNT transform the cls (and responses?) - it's more complex since I also have to transform the noise
@@ -495,11 +497,16 @@ ccl_obj.cl_gg_3d = cl_gg_3d
 ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
 # ! build covariance matrices
-cov_obj = sb_cov.SpaceborneCovariance(cfg, ell_dict, ind, bnt_matrix)
-cov_obj.zbins = zbins
+cov_obj = sb_cov.SpaceborneCovariance(cfg, ell_dict, bnt_matrix)
+cov_obj.set_ind_and_zpairs(ind, zbins)
 cov_obj.cov_terms_list = cov_terms_list
+cov_obj.symmetrize_output_dict = symmetrize_output_dict
 cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['split_gaussian_cov'])
+
+cov_bench = np.load('/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/covmat.npz')
+assert False, 'stop here for the moment'
+
 
 # ! ========================================== OneCovariance ===================================================
 

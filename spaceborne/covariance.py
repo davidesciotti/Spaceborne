@@ -26,7 +26,7 @@ class SpaceborneCovariance():
         self.n_probes = self.covariance_cfg['n_probes']
         self.ssc_code = self.covariance_cfg['SSC_code']
         self.cng_code = self.covariance_cfg['cNG_code']
-        self.fsky = self.covariance_cfg['fsky']
+        self.fsky = self.cfg['mask']['fsky']
         # must copy the array! Otherwise, it gets modified and changed at each call
         self.block_index = self.covariance_cfg['block_index']
         self.probe_ordering = self.covariance_cfg['probe_ordering']
@@ -116,7 +116,7 @@ class SpaceborneCovariance():
         # raise NotImplementedError('Is this function really useful?')
 
         # Validate inputs
-        if ndim_in not in [6, 10]:
+        if ndim_in not in [6, 10, 4]:
             raise ValueError(f"Unsupported ndim_in={ndim_in}. Only 6D or 10D supported.")
         if ndim_out not in [2, 4]:
             raise ValueError(f"Unsupported ndim_out={ndim_out}. Only 2D or 4D supported.")
@@ -134,6 +134,9 @@ class SpaceborneCovariance():
             assert is_3x2pt, "input 3x2pt cov should be 10d."
             cov_out = mm.cov_3x2pt_10D_to_4D(cov_in, self.probe_ordering, nbl, 
                                              self.zbins, self.ind.copy(), self.GL_OR_LG)
+
+        elif ndim_in == 4:
+            cov_out = cov_in.copy()
 
         if ndim_out == 2:
             cov_out = mm.cov_4D_to_2D(cov_out, block_index=self.block_index)

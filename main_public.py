@@ -846,8 +846,8 @@ if compute_sb_ssc and not cfg['covariance']['load_precomputed_cov']:
         ccl_obj.set_sigma2_b(z_grid=z_grid_ssc_integrands,
                              fsky=cfg['mask']['fsky'],
                              which_sigma2_b=which_sigma2_b,
-                             nside_mask=cfg['covariance']['nside_mask'],
-                             mask_path=cfg['covariance']['mask_path'])
+                             nside_mask=cfg['mask']['nside_mask'],
+                             mask_path=cfg['mask']['mask_path'])
 
         _a, sigma2_b = ccl_obj.sigma2_b_tuple
         sigma2_b = sigma2_b[::-1]

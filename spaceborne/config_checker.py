@@ -23,8 +23,8 @@ class SpaceborneConfigChecker:
             assert not self.cfg['BNT']['cl_BNT_transform'], 'The BNT transform should be applied either to the Cls or to the covariance.'
 
     def check_fsky(self):
-        fsky_check = cosmo_lib.deg2_to_fsky(self.cfg['covariance']['survey_area_deg2'])
-        assert np.abs(mm.percent_diff(self.cfg['covariance']['fsky'],
+        fsky_check = cosmo_lib.deg2_to_fsky(self.cfg['mask']['survey_area_deg2'])
+        assert np.abs(mm.percent_diff(self.cfg['mask']['fsky'],
                       fsky_check)) < 1e-5, 'Fsky does not match the survey area.'
 
     def check_cl_integral_convention(self):

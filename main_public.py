@@ -894,7 +894,7 @@ if compute_sb_ssc and not cfg['covariance']['load_precomputed_cov']:
             np.save(sigma2_b_filename, sigma2_b_dict_tosave, allow_pickle=True)
 
     # ! 4. Perform the integration calling the Julia module
-    print('Performing the SSC integral...')
+    print('Computing the SSC integral...')
     start = time.perf_counter()
     cov_ssc_3x2pt_dict_8D = cov_obj.ssc_integral_julia(d2CLL_dVddeltab=d2CLL_dVddeltab,
                                                        d2CGL_dVddeltab=d2CGL_dVddeltab,
@@ -955,7 +955,12 @@ cov_ssc_WL_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['L','L','L','L']
 cov_ssc_GC_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['G','G','G','G']
 
 cov_ssc_WL_2d = cov_obj.reshape_cov(cov_ssc_WL_4d, 4, 2, nbl_WL, zpairs=zpairs_auto, ind_probe=ind_auto, is_3x2pt=False)
+cov_ssc_GC_2d = cov_obj.reshape_cov(cov_ssc_GC_4d, 4, 2, nbl_GC, zpairs=zpairs_auto, ind_probe=ind_auto, is_3x2pt=False)
+
+mm.compare_arrays(cov_ssc_WL_2d, cov_bench['cov_WL_SS_2D'])
+mm.compare_arrays(cov_ssc_GC_2d, cov_bench['cov_GC_SS_2D'])
 np.testing.assert_allclose(cov_ssc_WL_2d, cov_bench['cov_WL_SS_2D'])
+np.testing.assert_allclose(cov_ssc_GC_2d, cov_bench['cov_GC_SS_2D'])
 # TODO integrate this with Spaceborne_covg
 # ! ========================================== end Spaceborne ===================================================
 

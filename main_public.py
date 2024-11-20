@@ -965,7 +965,7 @@ np.testing.assert_allclose(cov_ssc_GC_2d, cov_bench['cov_GC_SS_2D'])
 # ! ========================================== end Spaceborne ===================================================
 
 # ! ========================================== start PyCCL ===================================================
-if cfg['covariance']['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomputed_cov']:
+if (compute_ccl_ssc or compute_ccl_cng) and not pyccl_cfg['load_precomputed_cov']:
 
     # Note: this z grid has to be larger than the one requested in the trispectrum (z_grid_tkka in the cfg file).
     # You can probaby use the same grid as the one used in the trispectrum, but from my tests is should be
@@ -1001,7 +1001,7 @@ if cfg['covariance']['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomput
 
             ccl_obj.save_cov_blocks(cov_path, cov_filename)
 
-elif cfg['covariance']['ng_cov_code'] == 'PyCCL' and pyccl_cfg['load_precomputed_cov']:
+elif (compute_ccl_ssc or compute_ccl_cng) and pyccl_cfg['load_precomputed_cov']:
 
     for which_ng_cov in pyccl_cfg['which_ng_cov']:
 
@@ -1025,6 +1025,22 @@ elif cfg['covariance']['ng_cov_code'] == 'PyCCL' and pyccl_cfg['load_precomputed
 cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
 cov_dict = cov_obj.cov_dict
 
+for key in cov_dict.keys():
+    
+    print(key)
+    key_bench = key
+    
+    if '2x2pt' not in key:
+    
+        if '_ng_' in key:
+            key_bench = key.replace('_ng_', '_SS_')
+        if '_g_' in key:
+            key_bench = key.replace('_g_', '_GO_')
+        if '_tot_' in key:
+            key_bench = key.replace('_tot_', '_GS_')
+            
+        np.testing.assert_allclose(cov_dict[key], cov_bench[key_bench], atol=0, rtol=1e-6)
+        
 assert False, 'stop here for the moment'
 
 

@@ -257,6 +257,10 @@ OneCovariance:
     onecovariance_folder: "/home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/covmat/OneCovariance/EP03-zedMin02-zedMax25-mag245"
     # cov_filename: "cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}_zbinsEP03_Gbinning{which_gauss_cov_binning:s}.npz"
 
+tests:
+    compute_condition_number: True
+    check_negative_eigenvalues: True
+
 misc:
     num_threads: 40 # how many threads to use for the Julia SSC integral with @tturbo
     # save_outputs_as_test_benchmarks_path: ./tests/benchmarks/output_dict.npy

@@ -56,6 +56,7 @@ script_start_time = time.perf_counter()
 # ! uncomment this if executing from interactive window
 with open('config_public.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
+pyccl_cfg = cfg['PyCCL']
 
 # ! sanity checks on the configs
 cfg_check_obj = config_checker.SpaceborneConfigChecker(cfg)
@@ -527,14 +528,29 @@ np.testing.assert_allclose(cov_bench['cov_GC_GO_2D'], cov_obj.cov_GC_g_2D, atol=
 np.testing.assert_allclose(cov_bench['cov_XC_GO_2D'], cov_obj.cov_XC_g_2D, atol=0, rtol=1e-5)
 np.testing.assert_allclose(cov_bench['cov_3x2pt_GO_2D'], cov_obj.cov_3x2pt_g_2D, atol=0, rtol=1e-5)
 
-
-# ! ========================================== OneCovariance ===================================================
-
+# ! set ng cov terms to compute
 compute_oc_ssc, compute_oc_cng = False, False
+compute_sb_ssc, compute_sb_cng= False, False
+compute_ccl_ssc, compute_ccl_cng= False, False
 if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'OneCovariance':
     compute_oc_ssc = True
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'OneCovariance':
     compute_oc_cng = True
+
+if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'Spaceborne':
+    compute_sb_ssc = True
+if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'Spaceborne':
+    raise NotImplementedError('Spaceborne cNG not implemented yet')
+    compute_sb_cng = True
+    
+if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
+    compute_sb_ssc = True
+if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
+    compute_sb_cng = True
+
+
+# ! ========================================== OneCovariance ===================================================
+
 
 if compute_oc_ssc or compute_oc_cng:
 
@@ -606,13 +622,7 @@ else:
 # ! ========================================== end OneCovariance ===================================================
 
 # ! ========================================== start Spaceborne ===================================================
-compute_sb_ssc = False
-compute_sb_cng = False
-if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'Spaceborne':
-    compute_sb_ssc = True
-if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'Spaceborne':
-    raise NotImplementedError('Spaceborne cNG not implemented yet')
-    compute_sb_cng = True
+
     
 _which_pk_resp = cfg['covariance']['which_pk_responses']
 _which_pk_resp = 'separate_universe' if _which_pk_resp.startswith('separate_universe') else _which_pk_resp
@@ -634,7 +644,7 @@ _which_pk_resp = 'halo_model' if _which_pk_resp.startswith('halo_model') else _w
 
 cov_sb_filename = cfg['covariance']['cov_filename'].format(which_ng_cov='SSC',
                                                            ng_cov_code='Spaceborne',
-                                                           probe='3x2pt',
+                                                           probe='{probe:s}',
                                                            ndim='{ndim}')
 include_b2g = cfg['covariance']['include_b2g']
 
@@ -659,7 +669,7 @@ if compute_sb_ssc and not cfg['covariance']['load_precomputed_cov']:
     if cfg['covariance']['which_pk_responses'] == 'halo_model_CCL':
 
         ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
-                                       pyccl_cfg=cfg['PyCCL'])
+                                       pyccl_cfg=pyccl_cfg)
 
         # k and z grids (responses will be interpolated below)
         k_grid_resp_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
@@ -834,7 +844,7 @@ if compute_sb_ssc and not cfg['covariance']['load_precomputed_cov']:
 
         # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
         ccl_obj.set_sigma2_b(z_grid=z_grid_ssc_integrands,
-                             fsky=cfg['covariance']['fsky'],
+                             fsky=cfg['mask']['fsky'],
                              which_sigma2_b=which_sigma2_b,
                              nside_mask=cfg['covariance']['nside_mask'],
                              mask_path=cfg['covariance']['mask_path'])
@@ -870,9 +880,9 @@ if compute_sb_ssc and not cfg['covariance']['load_precomputed_cov']:
                 k_grid_sigma2=k_grid_sigma2,
                 cosmo_ccl=ccl_obj.cosmo_ccl,
                 which_sigma2_b=which_sigma2_b,
-                area_deg2_in=cfg['covariance']['survey_area_deg2'],
-                nside_mask=cfg['covariance']['nside_mask'],
-                mask_path=cfg['covariance']['mask_path']
+                area_deg2_in=cfg['mask']['survey_area_deg2'],
+                nside_mask=cfg['mask']['nside_mask'],
+                mask_path=cfg['mask']['nside_mask']
             )
 
             # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to divide
@@ -900,7 +910,7 @@ if compute_sb_ssc and not cfg['covariance']['load_precomputed_cov']:
     # in the full_curved_sky case only, sigma2_b has to be divided by fsky
     if which_sigma2_b == 'full_curved_sky':
         for key in cov_ssc_3x2pt_dict_8D.keys():
-            cov_ssc_3x2pt_dict_8D[key] /= cfg['covariance']['fsky']
+            cov_ssc_3x2pt_dict_8D[key] /= cfg['mask']['fsky']
     elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask', 'flat_sky']:
         pass
     else:
@@ -911,9 +921,10 @@ if compute_sb_ssc and not cfg['covariance']['load_precomputed_cov']:
     # TODO fsky suffix in cov name should be added only in this case... or not? the other covariance files don't have this...
     for key in cov_ssc_3x2pt_dict_8D.keys():
         probe_a, probe_b, probe_c, probe_d = key
-        if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
-            _cov_sb_filename = cov_sb_filename.format(probe_a=probe_a, probe_b=probe_b,
-                                                      probe_c=probe_c, probe_d=probe_d)
+        probe = str.join('', (probe_a, probe_b, probe_c, probe_d))
+        if probe not in ['GLLL', 'GGLL', 'GGGL']:
+            _cov_sb_filename = cov_sb_filename.format(probe=probe,
+                                                      ndim=8)
             
             _filename = f'{output_path}/{_cov_sb_filename}'
             np.savez_compressed(_filename, cov_ssc_3x2pt_dict_8D[key])
@@ -940,6 +951,11 @@ elif compute_sb_ssc and \
 
 cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
 
+cov_ssc_WL_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['L','L','L','L']
+cov_ssc_GC_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['G','G','G','G']
+
+cov_ssc_WL_2d = cov_obj.reshape_cov(cov_ssc_WL_4d, 4, 2, nbl_WL, zpairs=zpairs_auto, ind_probe=ind_auto, is_3x2pt=False)
+np.testing.assert_allclose(cov_ssc_WL_2d, cov_bench['cov_WL_SS_2D'])
 # TODO integrate this with Spaceborne_covg
 # ! ========================================== end Spaceborne ===================================================
 
@@ -951,15 +967,15 @@ if cfg['covariance']['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomput
     # zmin_s2b < zmin_s2b_tkka and zmax_s2b =< zmax_s2b_tkka.
     # if zmin=0 it looks like I can have zmin_s2b = zmin_s2b_tkka
     ccl_obj.set_sigma2_b(z_grid=z_default_grid_ccl,
-                         fsky=cfg['covariance']['fsky'],
+                         fsky=cfg['mask']['fsky'],
                          which_sigma2_b=which_sigma2_b,
-                         nside_mask=cfg['covariance']['nside_mask'],
-                         mask_path=cfg['covariance']['mask_path'])
+                         nside_mask=cfg['mask']['nside_mask'],
+                         mask_path=cfg['mask']['mask_path'])
 
     for which_ng_cov in pyccl_cfg['which_ng_cov']:
 
         ccl_obj.initialize_trispectrum(which_ng_cov, probe_ordering, pyccl_cfg)
-        ccl_obj.compute_ng_cov_3x2pt(which_ng_cov, ell_dict['ell_3x2pt'], cfg['covariance']['fsky'],
+        ccl_obj.compute_ng_cov_3x2pt(which_ng_cov, ell_dict['ell_3x2pt'], cfg['mask']['fsky'],
                                      # TODO add try block for quad
                                      integration_method=pyccl_cfg['cov_integration_method'],
                                      probe_ordering=probe_ordering, ind_dict=ind_dict)
@@ -975,7 +991,7 @@ if cfg['covariance']['ng_cov_code'] == 'PyCCL' and not pyccl_cfg['load_precomput
                                                             probe_c='{probe_c:s}', probe_d='{probe_d:s}',
                                                             nbl=nbl_3x2pt,
                                                             lmax=ell_max_3x2pt,
-                                                            survey_area_deg2=cfg['covariance']['survey_area_deg2'],
+                                                            survey_area_deg2=cfg['mask']['survey_area_deg2'],
                                                             **_variable_specs)
 
             ccl_obj.save_cov_blocks(cov_path, cov_filename)

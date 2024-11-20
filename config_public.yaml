@@ -109,6 +109,11 @@ nz:
 mask:
     nside_mask: 1024
     mask_path: path/to/mask.fits
+    # fsky: 0.3563380664078408
+    # survey_area_deg2: 14700
+    fsky: 0.3210678603147902
+    survey_area_deg2: 13245
+
 
 ell_binning:
     ell_min: 10 # minimum ell for 3x2pt
@@ -178,12 +183,6 @@ covariance:
                             # total ellipticity dispersion = sigma_eps
                             # sigma_eps = (sigma_eps_i * np.sqrt(2))
     
-    # fsky: 0.3563380664078408
-    # survey_area_deg2: 14700
-    fsky: 0.3210678603147902
-    survey_area_deg2: 13245
-
-    
 
     # sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
     # - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only). In this case, the output covmat
@@ -194,8 +193,6 @@ covariance:
     #   has to be rescaled by fsky
     which_sigma2_b: polar_cap_on_the_fly
 
-    probe: 3x2pt
-    which_cNG: null # PyCCL or OneCovariance or null (None)
     load_precomputed_cov: False
     which_pk_responses: halo_model_SB # halo_model_SB, halo_model_CCL (with PyCCL) or separate_universe_SB/_vin (from simulations)
     include_b2g: True # whether or not to include the second-order galaxy bias in the GCph responses
@@ -265,5 +262,5 @@ misc:
     # save_outputs_as_test_benchmarks_path: ./tests/benchmarks/output_dict.npy
     save_outputs_as_test_benchmarks_path: False
 
-    output_path: "../output"
+    output_path: "./output"
     use_h_units: False # TODO hardcode!

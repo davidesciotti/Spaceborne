@@ -53,12 +53,6 @@ class SpaceborneConfigChecker:
         assert isinstance(self.cfg['covariance']
                           ['load_precomputed_sigma2'], bool), 'b2g_from_halomodel must be a boolean'
         assert isinstance(self.cfg['nz']['normalize_shifted_nz'], bool), 'b2g_from_halomodel must be a boolean'
-        assert isinstance(self.cfg['misc']['save_outputs_as_test_benchmarks_path'], (str, bool)
-                          ), 'save_outputs_as_test_benchmarks_path must be either a path (str) or a boolean'
-
-        if isinstance(self.cfg['misc']['save_outputs_as_test_benchmarks_path'], bool):
-            assert not self.cfg['misc']['save_outputs_as_test_benchmarks_path'], 'if boolean, '\
-                'save_outputs_as_test_benchmarks_path must be False'
 
     def check_ell_binning(self):
         assert self.cfg['ell_binning']['nbl_WL_opt'] == 32, 'this is used as the reference binning, from which the cuts are made'

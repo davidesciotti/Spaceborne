@@ -16,3 +16,4 @@ tmp/*
 tmp*/   
 output/
 tests/
+misc/test_davide_tri.ipynb

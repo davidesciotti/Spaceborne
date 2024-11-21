@@ -45,14 +45,14 @@ class SpaceborneConfigChecker:
                 'If you\'re not using the KE approximation, you should set "full_curved_sky", "from_input_mask or "polar_cap_on_the_fly"'
 
     def check_types(self):
-        assert isinstance(self.cfg['covariance']['include_b2g'], bool), 'include_b2 must be a boolean'
-        assert isinstance(self.cfg['covariance']['b2g_from_halomodel'],
-                          bool), 'b2g_from_halomodel must be a boolean'
-        assert isinstance(self.cfg['covariance']
-                          ['use_KE_approximation'], bool), 'b2g_from_halomodel must be a boolean'
-        assert isinstance(self.cfg['covariance']
-                          ['load_precomputed_sigma2'], bool), 'b2g_from_halomodel must be a boolean'
-        assert isinstance(self.cfg['nz']['normalize_shifted_nz'], bool), 'b2g_from_halomodel must be a boolean'
+        assert isinstance(self.cfg['covariance']['include_b2g'], bool), \
+            'include_b2 must be a boolean'
+        assert isinstance(self.cfg['covariance']['use_KE_approximation'], bool), \
+            'use_KE_approximation must be a boolean'
+        assert isinstance(self.cfg['covariance']['load_cached_sigma2_b'], bool), \
+            'load_cached_sigma2_b must be a boolean'
+        assert isinstance(self.cfg['nz']['normalize_shifted_nz'], bool), \
+            'b2g_from_halomodel must be a boolean'
 
     def check_ell_binning(self):
         assert self.cfg['ell_binning']['nbl_WL_opt'] == 32, 'this is used as the reference binning, from which the cuts are made'
@@ -80,8 +80,8 @@ class SpaceborneConfigChecker:
     def check_cov(self):
         assert self.cfg['covariance']['ep_or_ed'] in ('EP', 'ED'), 'EP_or_ED must be either EP or ED'
         assert self.cfg['covariance']['triu_tril'] in ('triu', 'tril'), 'triu_tril must be either "triu" or "tril"'
-        assert self.cfg['covariance']['row_col_major'] in ('row-major', 'col-major'), 'row_col_major must be either "row-major" or "col-major"'
-
+        assert self.cfg['covariance']['row_col_major'] in (
+            'row-major', 'col-major'), 'row_col_major must be either "row-major" or "col-major"'
 
     def run_all_checks(self):
         k_txt_label, pk_txt_label = self.check_h_units()

@@ -345,7 +345,7 @@ if not general_cfg['ell_cuts']:
 else:
     general_cfg['ell_cuts_subfolder'] = f'{general_cfg["which_cuts"]}/ell_{general_cfg["center_or_min"]}'
 
-assert general_cfg['nbl_WL_opt'] == 32, 'this is used as the reference binning, from which the cuts are made'
+# assert general_cfg['nbl_WL_opt'] == 32, 'this is used as the reference binning, from which the cuts are made'
 assert general_cfg['ell_max_WL_opt'] == 5000, 'this is used as the reference binning, from which the cuts are made'
 assert n_probes == 2, 'The code can only accept 2 probes at the moment'
 
@@ -722,13 +722,13 @@ if general_cfg['which_cls'] == 'Vincenzo':
     cl_folder = general_cfg['cl_folder'].format(which_pk=general_cfg['which_pk'], ROOT=ROOT, probe='{probe:s}')
     cl_filename = general_cfg['cl_filename']
     cl_ll_1d = np.genfromtxt(
-        f"{cl_folder.format(probe='WLO')}/{cl_filename.format(probe='WLO', **variable_specs)}")
+        f"{cl_folder.format(probe='WLO')}/{cl_filename.format(probe='WLO', nbl=nbl_WL, **variable_specs)}")
     cl_gg_1d = np.genfromtxt(
-        f"{cl_folder.format(probe='GCO')}/{cl_filename.format(probe='GCO', **variable_specs)}")
+        f"{cl_folder.format(probe='GCO')}/{cl_filename.format(probe='GCO', nbl=nbl_GC, **variable_specs)}")
     # cl_wa_1d = np.genfromtxt(
     # f"{cl_folder.format(probe='WLA')}/{cl_filename.format(probe='WLA', **variable_specs)}")
     cl_3x2pt_1d = np.genfromtxt(
-        f"{cl_folder.format(probe='3x2pt')}/{cl_filename.format(probe='3x2pt', **variable_specs)}")
+        f"{cl_folder.format(probe='3x2pt')}/{cl_filename.format(probe='3x2pt', nbl=nbl_3x2pt, **variable_specs)}")
 
     # ! reshape to 3d
     cl_ll_3d_vinc = cl_utils.cl_SPV3_1D_to_3D(cl_ll_1d, 'WL', nbl_WL_opt, zbins)[:nbl_WL, :, :]
@@ -821,7 +821,7 @@ ell_idx = 10
 mm.compare_arrays(cl_gl_3d[ell_idx, ...], ccl_obj.cl_gl_3d[ell_idx, ...], abs_val=True, log_array=True,
                   name_A=f'{general_cfg["which_cls"]} GL', name_B='CCL GL')
 
-assert False, 'stop here to check cl prefactor'
+# assert False, 'stop here to check cl prefactor'
 
 
 # ! ========================================== OneCovariance ===================================================
@@ -917,6 +917,7 @@ cov_sb_filename = covariance_cfg['cov_filename'].format(ng_cov_code='spaceborne'
                                                         lmax_3x2pt=general_cfg['ell_max_3x2pt'],
                                                         probe='{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}',
                                                         cov_suffix=cov_sb_suffix,
+                                                        nbl=nbl_3x2pt,
                                                         which_ng_cov=which_ng_cov_suffix.replace('G', ''),
                                                         fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'],
                                                         ndim=4,
@@ -1510,6 +1511,7 @@ if covariance_cfg['save_cov_2D_dat']:
     cov_filename_vin = covariance_cfg['cov_filename'].format(**var_specs_here, probe='{probe:s}',
                                                              lmax_3x2pt=ell_max_3x2pt, ndim=2,
                                                              cov_suffix='',
+                                                             nbl=nbl_3x2pt,
                                                              which_ng_cov='{which_ng_cov:s}',
                                                              fm_and_cov_suffix=general_cfg['fm_and_cov_suffix'])
     cov_filename_vin = cov_filename_vin.replace('.npz', '')
@@ -1523,7 +1525,7 @@ if covariance_cfg['save_cov_2D_dat']:
                                                          BNT_transform=str(general_cfg['BNT_transform']),
                                                          **var_specs_here)
 
-    mm.matshow(cov_dict[f'cov_3x2pt_GS_2D'], log=True, title='cov for Vincenzo')
+    mm.matshow(cov_dict[f'cov_3x2pt_GS_2D'], log=True, abs_val=True, title='cov for Vincenzo')
     np.savetxt(f'{cov_folder_vin}/{cov_filename_vin.format(which_ng_cov=which_ng_cov_suffix, probe="3x2pt")}.dat',
                cov_dict[f'cov_3x2pt_GS_2D'], fmt='%.7e')
     np.savetxt(f'{cov_folder_vin}/BNT_matrix', bnt_matrix)

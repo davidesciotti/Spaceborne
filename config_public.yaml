@@ -193,10 +193,8 @@ covariance:
     #   has to be rescaled by fsky
     which_sigma2_b: polar_cap_on_the_fly
 
-    load_precomputed_cov: False
     which_pk_responses: halo_model_SB # halo_model_SB, halo_model_CCL (with PyCCL) or separate_universe_SB/_vin (from simulations)
     include_b2g: True # whether or not to include the second-order galaxy bias in the GCph responses
-    b2g_from_halomodel: True # TODO DELETE THIS in the main branch
     # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
     # Can be one of:
     # - 'from_HOD' (from the Halo Occupation Distribution previously initialized)
@@ -207,12 +205,11 @@ covariance:
     load_cached_sigma2_b: False  # bool. Whether to load the previously computed sigma2_b.
     log10_k_min_sigma2: -4
     log10_k_max_sigma2: 1
-    k_steps_sigma2: 20_000 # TODO can I lower this? double bessel integral...
+    k_steps_sigma2: 20_000
     z_min_ssc_integrands: 0.02 # SU responses' kmax allow for z_min = 0.016, at most.
     z_max_ssc_integrands: 3.
     z_steps_ssc_integrands: 300 # this should be high because I have to trace the spikes in sigma2
 
-    load_precomputed_sigma2: False
     cl_integral_convention: Euclid_KE_approximation # "Euclid_KE_approximation" or "PySSC" (results are the same) or "Euclid_KE_approximation"
     use_KE_approximation: True
     integration_type: "simps_KE_approximation" # 'simps' or 'simps_KE_approximation' or 'trapz' (which is actually using rectangles)
@@ -223,31 +220,26 @@ covariance:
 
 PyCCL:
 
-    load_precomputed_cov: False
-    save_cov: True
-    load_precomputed_tkka: False
-    save_hm_responses: True
-    save_tkka: True
+    n_samples_wf: 1000
+    # (from CCL docs): integration method to be used for the Limber integrals.
+    # Possibilities: 'qag_quad' (GSL's qag method backed up by quad when it fails) 
+    # and 'spline' (the integrand is splined and then integrated analytically).
+    # DSnote: note that the former could give errors.
+    cov_integration_method: spline
 
+    load_cached_tkka: False  # TODO restore if there is time
 
-    # z_grid min and max should probably coincide. play around with steps to find the minimum number
     z_grid_tkka_min: 0.
-    z_grid_tkka_max: 3. # used to be 6
+    z_grid_tkka_max: 3.
     k_grid_tkka_min: 1.e-5
     k_grid_tkka_max: 1.e+2
-    z_grid_tkka_steps_SSC: 100 # (z, k) = (50, 100) seems altrady enough
+    z_grid_tkka_steps_SSC: 100
     k_grid_tkka_steps_SSC: 200
     z_grid_tkka_steps_cNG: 100
     k_grid_tkka_steps_cNG: 512
 
-    n_samples_wf: 1000
-    # (from CCL docs): integration method to be used for the Limber integrals.
-    # Possibilities: 'qag_quad' (GSL's qag method backed up by quad when it fails) and 'spline' (the integrand is splined and then integrated analytically).
-    cov_integration_method: spline
 
 OneCovariance:
-    load_precomputed_cov: False
-    which_gauss_cov_binning: OneCovariance # 'EC20' or 'OneCovariance'
     precision_settings: high_precision # 'high_precision' or 'default'
     path_to_oc_executable: "/home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py"
 

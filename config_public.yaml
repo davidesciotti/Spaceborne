@@ -60,8 +60,8 @@ halo_model:
 
 C_ell:
     
-    which_gal_bias: 'FS2_polynomial_fit'  # options: 'from_input', 'FS2_poly_fit'
-    which_mag_bias: 'FS2_polynomial_fit'  # options: 'from_input', 'FS2_poly_fit'
+    which_gal_bias: 'FS2_polynomial_fit'  # options: 'from_input', 'FS2_polynomial_fit'
+    which_mag_bias: 'FS2_polynomial_fit'  # options: 'from_input', 'FS2_polynomial_fit'
     # bias_function: analytical # 'analytical', 'leporifit', 'pocinofit'
     # bias_model: step-wise # 'step-wise', 'constant', 'linint', 'ones', 'polynomial'
     # coefficients for the polynomial galaxy and magnification bias fits to FS2
@@ -265,6 +265,12 @@ misc:
     num_threads: 40 # how many threads to use for the Julia SSC integral with @tturbo
     # save_outputs_as_test_benchmarks_path: ./tests/benchmarks/output_dict.npy
     save_outputs_as_test_benchmarks_path: False
+
+    # some sanity checks on the covariance matrix. These could take a while to run.
+    test_numpy_inversion: False         # test for errors in np.linalg.inv
+    test_condition_number: False        # check if condition number is above 1e10
+    test_cholesky_decomposition: False  # test if cholesky decomposition fails
+    test_symmetry: False                # test if covariance matrix is symmetric (cov = cov.T)
 
     output_path: "./output"
     use_h_units: False # TODO hardcode!

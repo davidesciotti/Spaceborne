@@ -224,7 +224,6 @@ variable_specs = {'EP_OR_ED': EP_OR_ED,
 pp.pprint(variable_specs)
 
 
-
 # ! START SCALE CUTS: for these, we need to:
 # 1. Compute the BNT. This is done with the raw, or unshifted n(z), but only for the purpose of computing the
 #    ell cuts - the rest of the code uses a BNT matrix from the shifted n(z) - see also comment below.
@@ -530,8 +529,8 @@ np.testing.assert_allclose(cov_bench['cov_3x2pt_GO_2D'], cov_obj.cov_3x2pt_g_2D,
 
 # ! set ng cov terms to compute
 compute_oc_ssc, compute_oc_cng = False, False
-compute_sb_ssc, compute_sb_cng= False, False
-compute_ccl_ssc, compute_ccl_cng= False, False
+compute_sb_ssc, compute_sb_cng = False, False
+compute_ccl_ssc, compute_ccl_cng = False, False
 if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'OneCovariance':
     compute_oc_ssc = True
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'OneCovariance':
@@ -542,7 +541,7 @@ if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'Spaceborne':
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'Spaceborne':
     raise NotImplementedError('Spaceborne cNG not implemented yet')
     compute_sb_cng = True
-    
+
 if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
     compute_sb_ssc = True
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
@@ -597,8 +596,8 @@ if compute_oc_ssc or compute_oc_cng:
 
     # * 2. compute cov using the onecovariance interface class
     print('Start NG cov computation with OneCovariance...')
-    oc_obj = oc_interface.OneCovarianceInterface(ROOT, cfg, variable_specs, 
-                                                 do_ssc=compute_oc_ssc,  do_cng=compute_oc_cng)
+    oc_obj = oc_interface.OneCovarianceInterface(ROOT, cfg, variable_specs,
+                                                 do_ssc=compute_oc_ssc, do_cng=compute_oc_cng)
     oc_obj.zbins = zbins
     oc_obj.nbl_3x2pt = nbl_3x2pt
     oc_obj.ells_sb = ell_dict['ell_3x2pt']
@@ -623,7 +622,7 @@ else:
 
 # ! ========================================== start Spaceborne ===================================================
 
-    
+
 _which_pk_resp = cfg['covariance']['which_pk_responses']
 _which_pk_resp = 'separate_universe' if _which_pk_resp.startswith('separate_universe') else _which_pk_resp
 _which_pk_resp = 'halo_model' if _which_pk_resp.startswith('halo_model') else _which_pk_resp
@@ -925,7 +924,7 @@ if compute_sb_ssc and not cfg['covariance']['load_precomputed_cov']:
         if probe not in ['GLLL', 'GGLL', 'GGGL']:
             _cov_sb_filename = cov_sb_filename.format(probe=probe,
                                                       ndim=8)
-            
+
             _filename = f'{output_path}/{_cov_sb_filename}'
             np.savez_compressed(_filename, cov_ssc_3x2pt_dict_8D[key])
 
@@ -951,8 +950,8 @@ elif compute_sb_ssc and \
 
 cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
 
-cov_ssc_WL_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['L','L','L','L']
-cov_ssc_GC_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['G','G','G','G']
+cov_ssc_WL_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['L', 'L', 'L', 'L']
+cov_ssc_GC_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['G', 'G', 'G', 'G']
 
 cov_ssc_WL_2d = cov_obj.reshape_cov(cov_ssc_WL_4d, 4, 2, nbl_WL, zpairs=zpairs_auto, ind_probe=ind_auto, is_3x2pt=False)
 cov_ssc_GC_2d = cov_obj.reshape_cov(cov_ssc_GC_4d, 4, 2, nbl_GC, zpairs=zpairs_auto, ind_probe=ind_auto, is_3x2pt=False)
@@ -1026,22 +1025,20 @@ cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
 cov_dict = cov_obj.cov_dict
 
 for key in cov_dict.keys():
-    
+
     print(key)
     key_bench = key
-    
+
     if '2x2pt' not in key:
-    
+
         if '_ng_' in key:
             key_bench = key.replace('_ng_', '_SS_')
         if '_g_' in key:
             key_bench = key.replace('_g_', '_GO_')
         if '_tot_' in key:
             key_bench = key.replace('_tot_', '_GS_')
-            
+
         np.testing.assert_allclose(cov_dict[key], cov_bench[key_bench], atol=0, rtol=1e-6)
-        
-assert False, 'stop here for the moment'
 
 
 cov_folder = cfg['covariance']['cov_folder'].format(ROOT=ROOT, **variable_specs)
@@ -1051,55 +1048,53 @@ if cfg['covariance']['save_cov_dict']:
     np.savez_compressed(f'{cov_folder}/{cov_dict_filename}', **cov_dict)
     # cov_obj.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
 
-if cfg['covariance']['test_against_benchmarks']:
-    if cfg['covariance']['save_cov_dict']:
-        raise ValueError(
-            'save_cov_dict should be False when testing against benchmarks, otherwise the test will always pass')
-
-    cov_dict_bench = dict(np.load(f'{cov_folder}/{cov_dict_filename}'))
-    _cov_dict = deepcopy(cov_dict)
-
-    # pop all entries containing '_WA'
-    for key in list(cov_dict_bench.keys()):
-        if '_WA_' in key:
-            cov_dict_bench.pop(key)
-
-    for key in list(cov_dict_bench.keys()):
-        # update names
-        if key.endswith('GO_2D'):
-            cov_dict_bench[key.replace('GO_2D', 'g_2D')] = cov_dict_bench[key]
-            cov_dict_bench.pop(key)
-        elif key.endswith('SS_2D'):
-            cov_dict_bench[key.replace('SS_2D', 'ng_2D')] = cov_dict_bench[key]
-            cov_dict_bench.pop(key)
-        elif key.endswith('GS_2D'):
-            cov_dict_bench[key.replace('GS_2D', 'tot_2D')] = cov_dict_bench[key]
-            cov_dict_bench.pop(key)
-
-    for key in list(cov_dict_bench.keys()):
-        if '_2x2pt_' in key:
-            cov_dict_bench.pop(key)
-
-    for key in list(cov_dict.keys()):
-        if '_2x2pt_' in key:
-            _cov_dict.pop(key)
-
-    # assert keys match
-    assert cov_dict_bench.keys() == _cov_dict.keys(), 'benchmanrk cov dict keys do not match with current ones'
-    for key in cov_dict_bench.keys():
-        np.testing.assert_allclose(cov_dict_bench[key], _cov_dict[key],
-                                   rtol=1e-3, atol=0), f'{key} benchmarks do not match'
-
-    print('Cov dict matches benchmarks ✅')
+print('Covariance matrices saved')
 
 
-if cfg['covariance']['compute_GSSC_condition_number']:
+which_cov = 'pino'
 
-    cond_number = np.linalg.cond(cov_dict['cov_3x2pt_GS_2D'])
-    NUMPY_PRECISION = np.finfo(float).eps
-    precision = cond_number * NUMPY_PRECISION
-    print(f'kmax = {kmax_h_over_Mpc}, precision in the inversion of GS covariance = '
-          f'{precision:.2e}, cond number = {cond_number:.2e}')
+if cfg['misc']['test_condition_number']:
+    print(f'Computing {which_cov} condition number...')
+    cond_number = np.linalg.cond(cov_dict[which_cov])
+    print(f'Condition number = {cond_number:.4e}')
+    if cond_number > 1e10:
+        print(f'Warning: Matrix is ill-conditioned (cond_number = {cond_number:.4e} > 1e10), '
+              'numerical stability may be compromised.')
+
+
+if cfg['misc']['test_cholesky_decomposition']:
+    print(f'Performing Cholesky decomposition of {which_cov}...')
+    try:
+        np.linalg.cholesky(cov_dict[which_cov])
+        print('Cholesky decomposition successful')
+    except np.linalg.LinAlgError:
+        print('Cholesky decomposition failed. Consider checking the condition number or symmetry.')
+
+if cfg['misc']['test_numpy_inversion']:
+    print(f'Computing numpy inverse of {which_cov}...')
+    try:
+        inv_cov = np.linalg.inv(cov_dict[which_cov])
+        print('Numpy inversion successful.')
+        # Test correctness of inversion:
+        identity_check = np.allclose(
+            np.dot(cov_dict[which_cov], inv_cov),
+            np.eye(cov_dict[which_cov].shape[0]),
+            atol=0,
+            rtol=1e-7
+        )
+        if identity_check:
+            print('Inverse verified successfully (matrix product is identity). atol=0, rtol=1e-7')
+        else:
+            print('Warning: Inverse verification failed (matrix product deviates from identity). atol=0, rtol=1e-7')
+    except np.linalg.LinAlgError:
+        print('Numpy inversion failed: Matrix is singular or near-singular.')
+
+
+if cfg['misc']['test_symmetry']:
+    if not np.allclose(cov_dict[which_cov], cov_dict[which_cov].T, atol=0, rtol=1e-7):
+        print('Warning: Matrix is not symmetric. atol=0, rtol=1e-7')
+    else:
+        print('Matrix is symmetric. atol=0, rtol=1e-7')
 
 
 print('Finished in {:.2f} minutes'.format((time.perf_counter() - script_start_time) / 60))

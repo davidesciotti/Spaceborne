@@ -65,7 +65,7 @@ class OneCovarianceInterface():
         # TODO import another file??
         # Read the existing reference .ini file
         cfg_onecov_ini = CaseConfigParser()
-        cfg_onecov_ini.read(f'{self.ROOT}/OneCovariance/config_files_dav/config_3x2pt_pure_Cell_dav.ini')
+        cfg_onecov_ini.read(f'{self.ROOT}/Spaceborne/input/config_3x2pt_pure_Cell_general.ini')
         general_cfg = self.cfg['general_cfg']
 
         # set useful lists

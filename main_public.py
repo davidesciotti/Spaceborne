@@ -518,9 +518,6 @@ cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['spl
 
 cov_bench = np.load('./tests/benchmarks/covmat.npz').items()
 cov_bench = dict(cov_bench)
-print(dict(cov_bench).keys())
-print(cov_obj.cov_dict.keys())
-
 
 np.testing.assert_allclose(cov_bench['cov_WL_GO_2D'], cov_obj.cov_WL_g_2D, atol=0, rtol=1e-5)
 np.testing.assert_allclose(cov_bench['cov_GC_GO_2D'], cov_obj.cov_GC_g_2D, atol=0, rtol=1e-5)
@@ -559,7 +556,9 @@ if compute_oc_ssc or compute_oc_cng:
     start_time = time.perf_counter()
 
     # * 1. save ingredients in ascii format
-    oc_path = cfg['OneCovariance']['onecovariance_folder'].format(ROOT=ROOT, **variable_specs)
+    oc_path = f'{output_path}/OneCovariance'
+    if not os.dir.exists(oc_path):
+        os.makedirs(oc_path)
 
     if not os.path.exists(oc_path):
         os.makedirs(oc_path)
@@ -626,20 +625,6 @@ else:
 _which_pk_resp = cfg['covariance']['which_pk_responses']
 _which_pk_resp = 'separate_universe' if _which_pk_resp.startswith('separate_universe') else _which_pk_resp
 _which_pk_resp = 'halo_model' if _which_pk_resp.startswith('halo_model') else _which_pk_resp
-# cov_folder_sb = cfg['covariance']['cov_path'].format(ROOT=ROOT,
-#                                                                        which_pk_responses=_which_pk_resp,
-#                                                                        flagship_version=2,
-#                                                                        cov_ell_cuts=str(
-#                                                                            cfg['ell_cuts']['cov_ell_cuts']),
-#                                                                        BNT_transform=str(cfg['BNT']['BNT_transform']))
-
-# cov_sb_suffix = cfg['covariance']['cov_suffix'].format(
-#     z_steps_ssc_integrands=z_steps_ssc_integrands,
-#     k_txt_label=k_txt_label,
-#     cl_integral_convention=cfg['covariance']['cl_integral_convention'],
-#     integration_type=cfg['covariance']['integration_type'],
-#     survey_area_deg2=cfg['covariance']['survey_area_deg2'],
-# )
 
 cov_sb_filename = cfg['covariance']['cov_filename'].format(which_ng_cov='SSC',
                                                            ng_cov_code='Spaceborne',
@@ -822,58 +807,29 @@ if compute_sb_ssc and not cfg['covariance']['load_precomputed_cov']:
         np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
 
     # ! 3. Compute/load/save sigma2_b
-    k_grid_sigma2 = np.logspace(cfg['covariance']['log10_k_min_sigma2'],
-                                cfg['covariance']['log10_k_max_sigma2'],
-                                cfg['covariance']['k_steps_sigma2'])
-
-    # TODO find best way to handle these conditions, too much nesting
-    ndim_s2b = 1 if cfg['covariance']['use_KE_approximation'] else 2
-    sigma2_b_filename = cfg['covariance']['sigma2_b_filename'].format(
-        ROOT=ROOT,
-        which_sigma2_b=str(which_sigma2_b),
-        zmin=cfg['covariance']['z_min_ssc_integrands'],
-        zmax=cfg['covariance']['z_max_ssc_integrands'],
-        zsteps=z_steps_ssc_integrands,
-        log10kmin=cfg['covariance']['log10_k_min_sigma2'],
-        log10kmax=cfg['covariance']['log10_k_max_sigma2'],
-        ksteps=cfg['covariance']['k_steps_sigma2'],
-        ndim=ndim_s2b,
-    )
-    if cfg['covariance']['use_KE_approximation']:
-
-        # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
-        ccl_obj.set_sigma2_b(z_grid=z_grid_ssc_integrands,
-                             fsky=cfg['mask']['fsky'],
-                             which_sigma2_b=which_sigma2_b,
-                             nside_mask=cfg['mask']['nside_mask'],
-                             mask_path=cfg['mask']['mask_path'])
-
-        _a, sigma2_b = ccl_obj.sigma2_b_tuple
-        sigma2_b = sigma2_b[::-1]
-        _z = cosmo_lib.a_to_z(_a)[::-1]
-
-        np.testing.assert_allclose(z_grid_ssc_integrands, _z, atol=0, rtol=1e-8)
-
-        if cfg['covariance']['load_precomputed_sigma2']:
-            raise NotImplementedError('TODO')
-
-        # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to decrease
-        # the former by fsky (eq. 29 of https://arxiv.org/pdf/1612.05958)
-        sigma2_b_dict_tosave = {
-            'cfg': cfg,
-            'sigma2_b': sigma2_b,
-        }
-        np.save(sigma2_b_filename, sigma2_b_dict_tosave, allow_pickle=True)
-
+    if cfg['covariance']['load_cached_sigma2_b']:
+        sigma2_b = np.load(f'{output_path}/cache/sigma2_b.npy')
+    
     else:
-
-        if cfg['covariance']['load_precomputed_sigma2']:
-            # TODO define a suitable interpolator if the zgrid doesn't match
-            sigma2_b_dict = np.load(sigma2_b_filename, allow_pickle=True).item()
-            cfg_sigma2_b = sigma2_b_dict['cfg']  # TODO check that the cfg matches the one
-            sigma2_b = sigma2_b_dict['sigma2_b']
+        print('Computing sigma2_b...')
+        
+        if cfg['covariance']['use_KE_approximation']:
+            # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
+            ccl_obj.set_sigma2_b(z_grid=z_grid_ssc_integrands,
+                                fsky=cfg['mask']['fsky'],
+                                which_sigma2_b=which_sigma2_b,
+                                nside_mask=cfg['mask']['nside_mask'],
+                                mask_path=cfg['mask']['mask_path'])
+            _a, sigma2_b = ccl_obj.sigma2_b_tuple
+            # quick sanity check on the a/z grid
+            sigma2_b = sigma2_b[::-1]
+            _z = cosmo_lib.a_to_z(_a)[::-1]
+            np.testing.assert_allclose(z_grid_ssc_integrands, _z, atol=0, rtol=1e-8)
+        
         else:
-            print('Computing sigma2_b...')
+            k_grid_sigma2 = np.logspace(cfg['covariance']['log10_k_min_sigma2'],
+                                        cfg['covariance']['log10_k_max_sigma2'],
+                                        cfg['covariance']['k_steps_sigma2'])
             sigma2_b = sigma2_SSC.sigma2_z1z2_wrap(
                 z_grid_ssc_integrands=z_grid_ssc_integrands,
                 k_grid_sigma2=k_grid_sigma2,
@@ -883,14 +839,13 @@ if compute_sb_ssc and not cfg['covariance']['load_precomputed_cov']:
                 nside_mask=cfg['mask']['nside_mask'],
                 mask_path=cfg['mask']['nside_mask']
             )
-
             # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to divide
             # the former by fsky (eq. 29 of https://arxiv.org/pdf/1612.05958)
-            sigma2_b_dict_tosave = {
-                'cfg': cfg,
-                'sigma2_b': sigma2_b,
-            }
-            np.save(sigma2_b_filename, sigma2_b_dict_tosave, allow_pickle=True)
+
+
+    if not cfg['covariance']['load_cached_sigma2_b']:
+        np.save(f'{output_path}/cache/sigma2_b.npy', sigma2_b)
+        np.save(f'{output_path}/cache/zgrid_sigma2_b.npy', z_grid_ssc_integrands)
 
     # ! 4. Perform the integration calling the Julia module
     print('Computing the SSC integral...')
@@ -1026,7 +981,6 @@ cov_dict = cov_obj.cov_dict
 
 for key in cov_dict.keys():
 
-    print(key)
     key_bench = key
 
     if '2x2pt' not in key:
@@ -1039,62 +993,65 @@ for key in cov_dict.keys():
             key_bench = key.replace('_tot_', '_GS_')
 
         np.testing.assert_allclose(cov_dict[key], cov_bench[key_bench], atol=0, rtol=1e-6)
+        print(f'{key} cov matches ✅')
 
 
-cov_folder = cfg['covariance']['cov_folder'].format(ROOT=ROOT, **variable_specs)
-cov_dict_filename = cfg['covariance']['cov_dict_filename'].format(**variable_specs, lmax_3x2pt=ell_max_3x2pt)
 
-if cfg['covariance']['save_cov_dict']:
-    np.savez_compressed(f'{cov_folder}/{cov_dict_filename}', **cov_dict)
-    # cov_obj.save_cov(cov_folder, covariance_cfg, cov_dict, cases_tosave, **variable_specs)
+for which_cov in cov_dict.keys():
+    probe = which_cov.split('_')[1]
+    which_ng_cov = which_cov.split('_')[2]
+    ndim = which_cov.split('_')[3]
+    cov_filename = cfg['covariance']['cov_filename'].format(which_ng_cov=which_ng_cov,
+                                                           probe=probe,
+                                                           ndim=ndim)
 
-print('Covariance matrices saved')
-
-
-which_cov = 'pino'
-
-if cfg['misc']['test_condition_number']:
-    print(f'Computing {which_cov} condition number...')
-    cond_number = np.linalg.cond(cov_dict[which_cov])
-    print(f'Condition number = {cond_number:.4e}')
-    if cond_number > 1e10:
-        print(f'Warning: Matrix is ill-conditioned (cond_number = {cond_number:.4e} > 1e10), '
-              'numerical stability may be compromised.')
+    np.savez_compressed(f'{output_path}/{cov_filename}.npz', **cov_dict)
+print(f'Covariance matrices saved in {output_path}')
 
 
-if cfg['misc']['test_cholesky_decomposition']:
-    print(f'Performing Cholesky decomposition of {which_cov}...')
-    try:
-        np.linalg.cholesky(cov_dict[which_cov])
-        print('Cholesky decomposition successful')
-    except np.linalg.LinAlgError:
-        print('Cholesky decomposition failed. Consider checking the condition number or symmetry.')
 
-if cfg['misc']['test_numpy_inversion']:
-    print(f'Computing numpy inverse of {which_cov}...')
-    try:
-        inv_cov = np.linalg.inv(cov_dict[which_cov])
-        print('Numpy inversion successful.')
-        # Test correctness of inversion:
-        identity_check = np.allclose(
-            np.dot(cov_dict[which_cov], inv_cov),
-            np.eye(cov_dict[which_cov].shape[0]),
-            atol=0,
-            rtol=1e-7
-        )
-        if identity_check:
-            print('Inverse verified successfully (matrix product is identity). atol=0, rtol=1e-7')
+for which_cov in cov_dict.keys():
+    
+    if cfg['misc']['test_condition_number']:
+        print(f'Computing {which_cov} condition number...')
+        cond_number = np.linalg.cond(cov_dict[which_cov])
+        print(f'Condition number = {cond_number:.4e}')
+        if cond_number > 1e10:
+            print(f'Warning: Matrix is ill-conditioned (cond_number = {cond_number:.4e} > 1e10), '
+                'numerical stability may be compromised.')
+
+    if cfg['misc']['test_cholesky_decomposition']:
+        print(f'Performing Cholesky decomposition of {which_cov}...')
+        try:
+            np.linalg.cholesky(cov_dict[which_cov])
+            print('Cholesky decomposition successful')
+        except np.linalg.LinAlgError:
+            print('Cholesky decomposition failed. Consider checking the condition number or symmetry.')
+
+    if cfg['misc']['test_numpy_inversion']:
+        print(f'Computing numpy inverse of {which_cov}...')
+        try:
+            inv_cov = np.linalg.inv(cov_dict[which_cov])
+            print('Numpy inversion successful.')
+            # Test correctness of inversion:
+            identity_check = np.allclose(
+                np.dot(cov_dict[which_cov], inv_cov),
+                np.eye(cov_dict[which_cov].shape[0]),
+                atol=0,
+                rtol=1e-7
+            )
+            if identity_check:
+                print('Inverse verified successfully (matrix product is identity). atol=0, rtol=1e-7')
+            else:
+                print('Warning: Inverse verification failed (matrix product deviates from identity). atol=0, rtol=1e-7')
+        except np.linalg.LinAlgError:
+            print('Numpy inversion failed: Matrix is singular or near-singular.')
+
+    if cfg['misc']['test_symmetry']:
+        if not np.allclose(cov_dict[which_cov], cov_dict[which_cov].T, atol=0, rtol=1e-7):
+            print('Warning: Matrix is not symmetric. atol=0, rtol=1e-7')
         else:
-            print('Warning: Inverse verification failed (matrix product deviates from identity). atol=0, rtol=1e-7')
-    except np.linalg.LinAlgError:
-        print('Numpy inversion failed: Matrix is singular or near-singular.')
-
-
-if cfg['misc']['test_symmetry']:
-    if not np.allclose(cov_dict[which_cov], cov_dict[which_cov].T, atol=0, rtol=1e-7):
-        print('Warning: Matrix is not symmetric. atol=0, rtol=1e-7')
-    else:
-        print('Matrix is symmetric. atol=0, rtol=1e-7')
+            print('Matrix is symmetric. atol=0, rtol=1e-7')
 
 
 print('Finished in {:.2f} minutes'.format((time.perf_counter() - script_start_time) / 60))

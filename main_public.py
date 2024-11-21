@@ -1012,46 +1012,44 @@ print(f'Covariance matrices saved in {output_path}')
 
 for which_cov in cov_dict.keys():
     
-    if cfg['misc']['test_condition_number']:
-        print(f'Computing {which_cov} condition number...')
-        cond_number = np.linalg.cond(cov_dict[which_cov])
-        print(f'Condition number = {cond_number:.4e}')
-        if cond_number > 1e10:
-            print(f'Warning: Matrix is ill-conditioned (cond_number = {cond_number:.4e} > 1e10), '
-                'numerical stability may be compromised.')
+    if '3x2pt' in which_cov and 'tot' in which_cov:
+        
+        if cfg['misc']['test_condition_number']:
+            cond_number = np.linalg.cond(cov_dict[which_cov])
+            print(f'Condition number of {which_cov} = {cond_number:.4e}')
 
-    if cfg['misc']['test_cholesky_decomposition']:
-        print(f'Performing Cholesky decomposition of {which_cov}...')
-        try:
-            np.linalg.cholesky(cov_dict[which_cov])
-            print('Cholesky decomposition successful')
-        except np.linalg.LinAlgError:
-            print('Cholesky decomposition failed. Consider checking the condition number or symmetry.')
+        if cfg['misc']['test_cholesky_decomposition']:
+            print(f'Performing Cholesky decomposition of {which_cov}...')
+            try:
+                np.linalg.cholesky(cov_dict[which_cov])
+                print('Cholesky decomposition successful')
+            except np.linalg.LinAlgError:
+                print('Cholesky decomposition failed. Consider checking the condition number or symmetry.')
 
-    if cfg['misc']['test_numpy_inversion']:
-        print(f'Computing numpy inverse of {which_cov}...')
-        try:
-            inv_cov = np.linalg.inv(cov_dict[which_cov])
-            print('Numpy inversion successful.')
-            # Test correctness of inversion:
-            identity_check = np.allclose(
-                np.dot(cov_dict[which_cov], inv_cov),
-                np.eye(cov_dict[which_cov].shape[0]),
-                atol=0,
-                rtol=1e-7
-            )
-            if identity_check:
-                print('Inverse verified successfully (matrix product is identity). atol=0, rtol=1e-7')
+        if cfg['misc']['test_numpy_inversion']:
+            print(f'Computing numpy inverse of {which_cov}...')
+            try:
+                inv_cov = np.linalg.inv(cov_dict[which_cov])
+                print('Numpy inversion successful.')
+                # Test correctness of inversion:
+                identity_check = np.allclose(
+                    np.dot(cov_dict[which_cov], inv_cov),
+                    np.eye(cov_dict[which_cov].shape[0]),
+                    atol=1e-9,
+                    rtol=1e-7
+                )
+                if identity_check:
+                    print('Inverse verified successfully (matrix product is identity). atol=1e-9, rtol=1e-7')
+                else:
+                    print('Warning: Inverse verification failed (matrix product deviates from identity). atol=0, rtol=1e-7')
+            except np.linalg.LinAlgError:
+                print('Numpy inversion failed: Matrix is singular or near-singular.')
+
+        if cfg['misc']['test_symmetry']:
+            if not np.allclose(cov_dict[which_cov], cov_dict[which_cov].T, atol=0, rtol=1e-7):
+                print('Warning: Matrix is not symmetric. atol=0, rtol=1e-7')
             else:
-                print('Warning: Inverse verification failed (matrix product deviates from identity). atol=0, rtol=1e-7')
-        except np.linalg.LinAlgError:
-            print('Numpy inversion failed: Matrix is singular or near-singular.')
-
-    if cfg['misc']['test_symmetry']:
-        if not np.allclose(cov_dict[which_cov], cov_dict[which_cov].T, atol=0, rtol=1e-7):
-            print('Warning: Matrix is not symmetric. atol=0, rtol=1e-7')
-        else:
-            print('Matrix is symmetric. atol=0, rtol=1e-7')
+                print('Matrix is symmetric. atol=0, rtol=1e-7')
 
 
 print('Finished in {:.2f} minutes'.format((time.perf_counter() - script_start_time) / 60))

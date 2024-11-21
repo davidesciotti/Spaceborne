@@ -56,7 +56,6 @@ class OneCovarianceInterface():
             cfg (dict): The configuration dictionary.
             oc_cfg (dict): The OneCovariance configuration dictionary.
             variable_specs (dict): The variable specifications dictionary.
-            which_gauss_cov_binning (str): The Gaussian covariance binning method to use.
             zbins (int): The number of redshift bins.
             nbl_3x2pt (int): The number of ell bins for the 3x2pt analysis.
             compute_ssc (bool): Whether to compute the super-sample covariance (SSC) term.
@@ -71,20 +70,18 @@ class OneCovarianceInterface():
         self.cfg = cfg
         self.oc_cfg = self.cfg['OneCovariance']
         self.variable_specs = variable_specs
-        self.which_gauss_cov_binning = self.oc_cfg['which_gauss_cov_binning']
 
         # set which cov terms to compute from cfg file
         self.compute_ssc = do_ssc
         self.compute_cng = do_cng
 
         # paths
+        # TODO do we really need ROOT?
         self.ROOT = ROOT
         self.conda_base_path = self.get_conda_base_path()
-        self.oc_path = cfg['OneCovariance']['onecovariance_folder'].format(
-            ROOT=self.ROOT, **self.variable_specs)
         self.path_to_oc_executable = cfg['OneCovariance']['path_to_oc_executable'].format(
             ROOT=ROOT)
-        self.path_to_config_oc_ini = f'{self.oc_path}/input_configs.ini'
+        self.cov_filename = 'cov_OC_{which_ng_cov:s}_{probe_a:s}_{probe_b:s}_{probe_c:s}_{probe_d:s}'
 
     def get_conda_base_path(self):
         try:
@@ -155,16 +152,14 @@ class OneCovarianceInterface():
         cfg_onecov_ini['covELLspace settings']['ell_max_clustering'] = str(self.optimal_ellmax)
 
         # commented out to avoid loading mask file by accident
-        # cfg_onecov_ini['survey specs']['mask_directory'] = '/home/cosmo/davide.sciotti/data/common_data/mask/'
-        # TODO test diff with EC20 binning
-        cfg_onecov_ini['survey specs']['which_cov_binning'] = self.which_gauss_cov_binning
-
+        cfg_onecov_ini['survey specs']['mask_directory'] = str(
+            self.cfg['mask']['mask_path'])  # TODO test this!!
         cfg_onecov_ini['survey specs']['survey_area_lensing_in_deg2'] = str(
-            self.cfg['covariance']['survey_area_deg2'])
+            self.cfg['mask']['survey_area_deg2'])
         cfg_onecov_ini['survey specs']['survey_area_ggl_in_deg2'] = str(
-            self.cfg['covariance']['survey_area_deg2'])
+            self.cfg['mask']['survey_area_deg2'])
         cfg_onecov_ini['survey specs']['survey_area_clust_in_deg2'] = str(
-            self.cfg['covariance']['survey_area_deg2'])
+            self.cfg['mask']['survey_area_deg2'])
         cfg_onecov_ini['survey specs']['n_eff_clust'] = ', '.join(map(str, n_eff_clust_list))
         cfg_onecov_ini['survey specs']['n_eff_lensing'] = ', '.join(map(str, n_eff_lensing_list))
         cfg_onecov_ini['survey specs']['ellipticity_dispersion'] = ', '.join(map(str, ellipticity_dispersion_list))
@@ -394,31 +389,18 @@ class OneCovarianceInterface():
             cov_oc_10d_dict[cov_term][1, 0, 1, 1] = mm.cov_4D_to_6D_blocks(cov_glgg_4d, cov_nbl, self.zbins, ind_cross, ind_auto,
                                                                            symmetrize_output_dict['G', 'L'], symmetrize_output_dict['G', 'G'])
 
-            # partially format cov filename
-            variable_specs = deepcopy(self.variable_specs)
-            variable_specs.pop('which_ng_cov')
-            cov_filename = self.oc_cfg['cov_filename'].format(ROOT=self.ROOT,
-                                                              which_ng_cov='{which_ng_cov:s}',
-                                                              probe_a='{probe_a:s}',
-                                                              probe_b='{probe_b:s}',
-                                                              probe_c='{probe_c:s}',
-                                                              probe_d='{probe_d:s}',
-                                                              nbl=variable_specs['nbl_3x2pt'],
-                                                              lmax=variable_specs['ell_max_3x2pt'],
-                                                              which_gauss_cov_binning=self.which_gauss_cov_binning,
-                                                              **variable_specs)
             np.savez_compressed(
-                f'{self.oc_path}/{cov_filename.format(which_ng_cov=cov_term, probe_a="L", probe_b="L", probe_c="L", probe_d="L")}', cov_llll_4d)
+                f'{self.oc_path}/{self.cov_filename.format(which_ng_cov=cov_term, probe_a="L", probe_b="L", probe_c="L", probe_d="L")}', cov_llll_4d)
             np.savez_compressed(
-                f'{self.oc_path}/{cov_filename.format(which_ng_cov=cov_term, probe_a="L", probe_b="L", probe_c="G", probe_d="L")}', cov_llgl_4d)
+                f'{self.oc_path}/{self.cov_filename.format(which_ng_cov=cov_term, probe_a="L", probe_b="L", probe_c="G", probe_d="L")}', cov_llgl_4d)
             np.savez_compressed(
-                f'{self.oc_path}/{cov_filename.format(which_ng_cov=cov_term, probe_a="L", probe_b="L", probe_c="G", probe_d="G")}', cov_llgg_4d)
+                f'{self.oc_path}/{self.cov_filename.format(which_ng_cov=cov_term, probe_a="L", probe_b="L", probe_c="G", probe_d="G")}', cov_llgg_4d)
             np.savez_compressed(
-                f'{self.oc_path}/{cov_filename.format(which_ng_cov=cov_term, probe_a="G", probe_b="L", probe_c="G", probe_d="L")}', cov_glgl_4d)
+                f'{self.oc_path}/{self.cov_filename.format(which_ng_cov=cov_term, probe_a="G", probe_b="L", probe_c="G", probe_d="L")}', cov_glgl_4d)
             np.savez_compressed(
-                f'{self.oc_path}/{cov_filename.format(which_ng_cov=cov_term, probe_a="G", probe_b="L", probe_c="G", probe_d="G")}', cov_glgg_4d)
+                f'{self.oc_path}/{self.cov_filename.format(which_ng_cov=cov_term, probe_a="G", probe_b="L", probe_c="G", probe_d="G")}', cov_glgg_4d)
             np.savez_compressed(
-                f'{self.oc_path}/{cov_filename.format(which_ng_cov=cov_term, probe_a="G", probe_b="G", probe_c="G", probe_d="G")}', cov_gggg_4d)
+                f'{self.oc_path}/{self.cov_filename.format(which_ng_cov=cov_term, probe_a="G", probe_b="G", probe_c="G", probe_d="G")}', cov_gggg_4d)
 
             del cov_llll_4d, cov_llgl_4d, cov_llgg_4d, cov_glgl_4d, cov_glgg_4d, cov_gggg_4d, cov_ggll_4d, cov_glll_4d, cov_gggl_4d
             gc.collect()
@@ -426,45 +408,14 @@ class OneCovarianceInterface():
     def oc_output_to_dict_or_array(self, which_ng_cov, output_type, ind_dict=None, symmetrize_output_dict=None):
 
         # import
-        which_gauss_cov_binning = self.oc_cfg['which_gauss_cov_binning']
-        variable_specs = deepcopy(self.variable_specs)
-        variable_specs.pop('which_ng_cov')
-        try:
-            filename = self.oc_cfg['cov_filename'].format(ROOT=self.ROOT,
-                                                          which_ng_cov=which_ng_cov,
-                                                          probe_a='{probe_a:s}',
-                                                          probe_b='{probe_b:s}',
-                                                          probe_c='{probe_c:s}',
-                                                          probe_d='{probe_d:s}',
-                                                          nbl=variable_specs['nbl_3x2pt'],
-                                                          lmax=variable_specs['ell_max_3x2pt'],
-                                                          which_gauss_cov_binning=which_gauss_cov_binning,
-                                                          **variable_specs)
-
-            cov_ng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path=self.oc_path,
-                                                                    filename=filename,
-                                                                    probe_ordering=self.cfg['covariance']['probe_ordering'])
-        except FileNotFoundError as err:
-            print(err)
-            print('OC: LOADING LMAX=5000 FILES AND CUTTING')
-            filename = self.oc_cfg['cov_filename'].format(ROOT=self.ROOT,
-                                                          which_ng_cov=which_ng_cov,
-                                                          probe_a='{probe_a:s}',
-                                                          probe_b='{probe_b:s}',
-                                                          probe_c='{probe_c:s}',
-                                                          probe_d='{probe_d:s}',
-                                                          nbl=32,
-                                                          lmax=5000,
-                                                          which_gauss_cov_binning=which_gauss_cov_binning,
-                                                          **variable_specs)
-
-            cov_ng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path=self.oc_path,
-                                                                    filename=filename,
-                                                                    probe_ordering=self.cfg['covariance']['probe_ordering'])
-
-            for key in cov_ng_oc_3x2pt_dict_8D.keys():
-                cov_ng_oc_3x2pt_dict_8D[key] = cov_ng_oc_3x2pt_dict_8D[key][:variable_specs['nbl_3x2pt'],
-                                                                            :variable_specs['nbl_3x2pt'], ...]
+        filename = self.cov_filename.format(which_ng_cov=which_ng_cov,
+                                            probe_a='{probe_a:s}',
+                                            probe_b='{probe_b:s}',
+                                            probe_c='{probe_c:s}',
+                                            probe_d='{probe_d:s}')
+        cov_ng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path=self.oc_path,
+                                                                filename=filename,
+                                                                probe_ordering=self.cfg['covariance']['probe_ordering'])
 
         # reshape
         if output_type == '8D_dict':
@@ -473,7 +424,7 @@ class OneCovarianceInterface():
         elif output_type in ['10D_dict', '10D_array']:
             cov_ng_oc_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
                 cov_3x2pt_dict_8D=cov_ng_oc_3x2pt_dict_8D,
-                nbl=variable_specs['nbl_3x2pt'],
+                nbl=self.variable_specs['nbl_3x2pt'],
                 zbins=self.zbins,
                 ind_dict=ind_dict,
                 probe_ordering=self.cfg['covariance']['probe_ordering'],
@@ -484,7 +435,7 @@ class OneCovarianceInterface():
 
             elif output_type == '10D_array':
                 return mm.cov_10D_dict_to_array(cov_ng_oc_3x2pt_dict_10D,
-                                                nbl=variable_specs['nbl_3x2pt'],
+                                                nbl=self.variable_specs['nbl_3x2pt'],
                                                 zbins=self.zbins,
                                                 n_probes=self.cfg['covariance']['n_probes'])
 

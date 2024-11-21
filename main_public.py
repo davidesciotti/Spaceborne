@@ -557,9 +557,6 @@ if compute_oc_ssc or compute_oc_cng:
 
     # * 1. save ingredients in ascii format
     oc_path = f'{output_path}/OneCovariance'
-    if not os.dir.exists(oc_path):
-        os.makedirs(oc_path)
-
     if not os.path.exists(oc_path):
         os.makedirs(oc_path)
 
@@ -595,13 +592,21 @@ if compute_oc_ssc or compute_oc_cng:
 
     # * 2. compute cov using the onecovariance interface class
     print('Start NG cov computation with OneCovariance...')
+    # initialize object, build cfg file
     oc_obj = oc_interface.OneCovarianceInterface(ROOT, cfg, variable_specs,
                                                  do_ssc=compute_oc_ssc, do_cng=compute_oc_cng)
     oc_obj.zbins = zbins
     oc_obj.nbl_3x2pt = nbl_3x2pt
+    oc_obj.oc_path = oc_path
+    oc_obj.path_to_config_oc_ini = f'{oc_obj.oc_path}/input_configs.ini'
     oc_obj.ells_sb = ell_dict['ell_3x2pt']
     oc_obj.build_save_oc_ini(ascii_filenames_dict, print_ini=True)
-
+    
+    # compute covs
+    oc_obj.call_onecovariance()
+    
+    # reload and store output
+    oc_obj.reshape_oc_output(variable_specs, ind_dict, symmetrize_output_dict)
     oc_obj.cov_g_oc_3x2pt_10D = oc_obj.oc_output_to_dict_or_array(
         'G', '10D_array', ind_dict, symmetrize_output_dict)
     oc_obj.cov_ssc_oc_3x2pt_10D = oc_obj.oc_output_to_dict_or_array(
@@ -858,6 +863,7 @@ if compute_sb_ssc:
     print('SSC computed in {:.2f} s'.format(time.perf_counter() - start))
 
     # in the full_curved_sky case only, sigma2_b has to be divided by fsky
+    # TODO it would make much more sense to divide s2b directly...
     if which_sigma2_b == 'full_curved_sky':
         for key in cov_ssc_3x2pt_dict_8D.keys():
             cov_ssc_3x2pt_dict_8D[key] /= cfg['mask']['fsky']
@@ -866,21 +872,7 @@ if compute_sb_ssc:
     else:
         raise ValueError(f'which_sigma2_b = {which_sigma2_b} not recognized')
 
-    # save the covariance blocks
-    # ! note that these files already account for the sky fraction!!
-    # TODO fsky suffix in cov name should be added only in this case... or not? the other covariance files don't have this...
-    for key in cov_ssc_3x2pt_dict_8D.keys():
-        probe_a, probe_b, probe_c, probe_d = key
-        probe = str.join('', (probe_a, probe_b, probe_c, probe_d))
-        if probe not in ['GLLL', 'GGLL', 'GGGL']:
-            _cov_sb_filename = cov_sb_filename.format(probe=probe,
-                                                      ndim=8)
-
-            _filename = f'{output_path}/{_cov_sb_filename}'
-            np.savez_compressed(_filename, cov_ssc_3x2pt_dict_8D[key])
-
-
-cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
+    cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
 
 cov_ssc_WL_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['L', 'L', 'L', 'L']
 cov_ssc_GC_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['G', 'G', 'G', 'G']

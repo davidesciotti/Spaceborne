@@ -602,10 +602,6 @@ if compute_oc_ssc or compute_oc_cng:
     oc_obj.ells_sb = ell_dict['ell_3x2pt']
     oc_obj.build_save_oc_ini(ascii_filenames_dict, print_ini=True)
 
-    if not cfg['OneCovariance']['load_precomputed_cov']:
-        oc_obj.call_onecovariance()
-        oc_obj.reshape_oc_output(variable_specs, ind_dict, symmetrize_output_dict)
-
     oc_obj.cov_g_oc_3x2pt_10D = oc_obj.oc_output_to_dict_or_array(
         'G', '10D_array', ind_dict, symmetrize_output_dict)
     oc_obj.cov_ssc_oc_3x2pt_10D = oc_obj.oc_output_to_dict_or_array(
@@ -617,7 +613,6 @@ if compute_oc_ssc or compute_oc_cng:
 
 else:
     oc_obj = None
-# ! ========================================== end OneCovariance ===================================================
 
 # ! ========================================== start Spaceborne ===================================================
 
@@ -642,11 +637,12 @@ gal_bias = ccl_obj.gal_bias_2d[:, 0]
 # check that it's the same in each bin
 for zi in range(zbins):
     np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
+# TODO case with different bias in each bin!
 
 pk_gm_2d = pk_mm_2d * gal_bias
 pk_gg_2d = pk_mm_2d * gal_bias ** 2
 
-if compute_sb_ssc and not cfg['covariance']['load_precomputed_cov']:
+if compute_sb_ssc:
     print('Start SSC computation with Spaceborne...')
 
     # ! 1. Get halo model responses from CCL
@@ -883,25 +879,6 @@ if compute_sb_ssc and not cfg['covariance']['load_precomputed_cov']:
             _filename = f'{output_path}/{_cov_sb_filename}'
             np.savez_compressed(_filename, cov_ssc_3x2pt_dict_8D[key])
 
-elif compute_sb_ssc and \
-        cfg['covariance']['load_precomputed_cov']:
-
-    try:
-        cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
-            path=output_path,
-            filename=cov_sb_filename,
-            probe_ordering=probe_ordering)
-    except FileNotFoundError as err:
-        print(err)
-        print(f'No covariance file found in {output_path}')
-        print('Retrying with ellmax=5000 and cutting the last bins')
-        cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
-            path=output_path,
-            filename=cov_sb_filename.replace('lmax3000', 'lmax5000'),
-            probe_ordering=probe_ordering)
-
-    for key in cov_ssc_3x2pt_dict_8D.keys():
-        cov_ssc_3x2pt_dict_8D[key] = cov_ssc_3x2pt_dict_8D[key][:nbl_3x2pt, :nbl_3x2pt, ...]
 
 cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
 
@@ -919,7 +896,7 @@ np.testing.assert_allclose(cov_ssc_GC_2d, cov_bench['cov_GC_SS_2D'])
 # ! ========================================== end Spaceborne ===================================================
 
 # ! ========================================== start PyCCL ===================================================
-if (compute_ccl_ssc or compute_ccl_cng) and not pyccl_cfg['load_precomputed_cov']:
+if (compute_ccl_ssc or compute_ccl_cng):
 
     # Note: this z grid has to be larger than the one requested in the trispectrum (z_grid_tkka in the cfg file).
     # You can probaby use the same grid as the one used in the trispectrum, but from my tests is should be
@@ -939,40 +916,7 @@ if (compute_ccl_ssc or compute_ccl_cng) and not pyccl_cfg['load_precomputed_cov'
                                      integration_method=pyccl_cfg['cov_integration_method'],
                                      probe_ordering=probe_ordering, ind_dict=ind_dict)
 
-        if pyccl_cfg['save_cov']:
 
-            _variable_specs = variable_specs.copy()
-            _variable_specs.pop('which_ng_cov')
-            _variable_specs['which_ng_cov'] = which_ng_cov
-
-            cov_path = pyccl_cfg['cov_path'].format(ROOT=ROOT, **_variable_specs)
-            cov_filename = pyccl_cfg['cov_filename'].format(probe_a='{probe_a:s}', probe_b='{probe_b:s}',
-                                                            probe_c='{probe_c:s}', probe_d='{probe_d:s}',
-                                                            nbl=nbl_3x2pt,
-                                                            lmax=ell_max_3x2pt,
-                                                            survey_area_deg2=cfg['mask']['survey_area_deg2'],
-                                                            **_variable_specs)
-
-            ccl_obj.save_cov_blocks(cov_path, cov_filename)
-
-elif (compute_ccl_ssc or compute_ccl_cng) and pyccl_cfg['load_precomputed_cov']:
-
-    for which_ng_cov in pyccl_cfg['which_ng_cov']:
-
-        _variable_specs = variable_specs.copy()
-        _variable_specs.pop('which_ng_cov')
-        _variable_specs['which_ng_cov'] = which_ng_cov
-
-        cov_path = pyccl_cfg['cov_path'].format(ROOT=ROOT, **_variable_specs)
-        cov_filename = pyccl_cfg['cov_filename'].format(probe_a='{probe_a:s}', probe_b='{probe_b:s}',
-                                                        probe_c='{probe_c:s}', probe_d='{probe_d:s}',
-                                                        nbl=nbl_3x2pt,
-                                                        lmax=ell_max_3x2pt,
-                                                        survey_area_deg2=cfg['covariance']['survey_area_deg2'],
-                                                        **_variable_specs)
-
-        ccl_obj.load_cov_blocks(cov_path, cov_filename, probe_ordering)
-        cfg['covariance'][f'cov_{which_ng_cov.lower()}_3x2pt_dict_8D_ccl'] = ccl_obj.cov_ng_3x2pt_dict_8D
 
 # ! ========================================== end PyCCL ===================================================
 

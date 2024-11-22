@@ -498,29 +498,32 @@ class SpaceborneCovariance():
 
         # # ! reshape everything to 2D
         self.cov_WL_g_2D = self.reshape_cov(cov_WL_g_6D, 6, 2, self.nbl_WL,
-                                         self.zpairs_auto, self.ind_auto, is_3x2pt=False)
-        self.cov_GC_g_2D = self.reshape_cov(cov_GC_g_6D, 6, 2, self.nbl_GC,
-                                         self.zpairs_auto, self.ind_auto, is_3x2pt=False)
-        self.cov_XC_g_2D = self.reshape_cov(cov_XC_g_6D, 6, 2, self.nbl_3x2pt,
-                                         self.zpairs_cross, self.ind_cross, is_3x2pt=False)
-        self.cov_3x2pt_g_2D = self.reshape_cov(cov_3x2pt_g_10D, 10, 2, self.nbl_3x2pt,
-                                            self.zpairs_auto, self.ind, is_3x2pt=True)
+                                            self.zpairs_auto, self.ind_auto, is_3x2pt=False)
         self.cov_WL_ssc_2D = self.reshape_cov(cov_WL_ssc_6D, 6, 2, self.nbl_WL,
-                                           self.zpairs_auto, self.ind_auto, is_3x2pt=False)
-        self.cov_GC_ssc_2D = self.reshape_cov(cov_GC_ssc_6D, 6, 2, self.nbl_GC,
-                                           self.zpairs_auto, self.ind_auto, is_3x2pt=False)
-        self.cov_XC_ssc_2D = self.reshape_cov(cov_XC_ssc_6D, 6, 2, self.nbl_3x2pt,
-                                           self.zpairs_cross, self.ind_cross, is_3x2pt=False)
-        self.cov_3x2pt_ssc_2D = self.reshape_cov(cov_3x2pt_ssc_10D, 10, 2, self.nbl_3x2pt,
-                                              self.zpairs_auto, self.ind, is_3x2pt=True)
+                                              self.zpairs_auto, self.ind_auto, is_3x2pt=False)
         self.cov_WL_cng_2D = self.reshape_cov(cov_WL_cng_6D, 6, 2, self.nbl_WL,
-                                           self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+                                              self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+
+        self.cov_GC_g_2D = self.reshape_cov(cov_GC_g_6D, 6, 2, self.nbl_GC,
+                                            self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+        self.cov_GC_ssc_2D = self.reshape_cov(cov_GC_ssc_6D, 6, 2, self.nbl_GC,
+                                              self.zpairs_auto, self.ind_auto, is_3x2pt=False)
         self.cov_GC_cng_2D = self.reshape_cov(cov_GC_cng_6D, 6, 2, self.nbl_GC,
-                                           self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+                                              self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+
+        self.cov_XC_g_2D = self.reshape_cov(cov_XC_g_6D, 6, 2, self.nbl_3x2pt,
+                                            self.zpairs_cross, self.ind_cross, is_3x2pt=False)
+        self.cov_XC_ssc_2D = self.reshape_cov(cov_XC_ssc_6D, 6, 2, self.nbl_3x2pt,
+                                              self.zpairs_cross, self.ind_cross, is_3x2pt=False)
         self.cov_XC_cng_2D = self.reshape_cov(cov_XC_cng_6D, 6, 2, self.nbl_3x2pt,
-                                           self.zpairs_cross, self.ind_cross, is_3x2pt=False)
+                                              self.zpairs_cross, self.ind_cross, is_3x2pt=False)
+
+        self.cov_3x2pt_g_2D = self.reshape_cov(cov_3x2pt_g_10D, 10, 2, self.nbl_3x2pt,
+                                               self.zpairs_auto, self.ind, is_3x2pt=True)
+        self.cov_3x2pt_ssc_2D = self.reshape_cov(cov_3x2pt_ssc_10D, 10, 2, self.nbl_3x2pt,
+                                                 self.zpairs_auto, self.ind, is_3x2pt=True)
         self.cov_3x2pt_cng_2D = self.reshape_cov(cov_3x2pt_cng_10D, 10, 2, self.nbl_3x2pt,
-                                              self.zpairs_auto, self.ind, is_3x2pt=True)
+                                                 self.zpairs_auto, self.ind, is_3x2pt=True)
 
         # ! perform ell cuts on the 2D covs
         if self.cfg['ell_cuts']['cov_ell_cuts']:

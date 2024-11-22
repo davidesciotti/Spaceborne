@@ -3169,7 +3169,7 @@ def cov_2D_to_4D(cov_2D, nbl, block_index='vincenzo', optimize=True):
 
 
 @njit
-def cov_4D_to_2D(cov_4D, block_index='vincenzo', optimize=True):
+def cov_4D_to_2D(cov_4D, block_index, optimize=True):
     """ new (more elegant) version of cov_4D_to_2D. Also works for 3x2pt. The order
     of the for loops does not affect the result!
 
@@ -3189,8 +3189,8 @@ def cov_4D_to_2D(cov_4D, block_index='vincenzo', optimize=True):
     higher-dimensional array are needed.
     """
 
-    assert block_index in ['ell', 'vincenzo', 'C-style'] + ['ij', 'sylvain', 'F-style'], \
-        'block_index must be "ell", "vincenzo", "C-style" or "ij", "sylvain", "F-style"'
+    assert block_index in ['ell', 'C-style'] + ['zpair', 'F-style'], \
+        'block_index must be "ell", "C-style" or "zpair", "F-style"'
 
     assert cov_4D.ndim == 4, 'the input covariance must be 4-dimensional'
     assert cov_4D.shape[0] == cov_4D.shape[1], 'the first two axes of the input covariance must have the same size'
@@ -3203,16 +3203,16 @@ def cov_4D_to_2D(cov_4D, block_index='vincenzo', optimize=True):
     cov_2D = np.zeros((nbl * zpairs_AB, nbl * zpairs_CD))
 
     if optimize:
-        if block_index in ['ell', 'vincenzo', 'C-style']:
+        if block_index in ['ell', 'C-style']:
             cov_2D.reshape(nbl, zpairs_AB, nbl, zpairs_CD)[:, :, :, :] = cov_4D.transpose(0, 2, 1, 3)
 
-        elif block_index in ['ij', 'sylvain', 'F-style']:
+        elif block_index in ['zpair', 'F-style']:
             cov_2D.reshape(zpairs_AB, nbl, zpairs_CD, nbl)[:, :, :, :] = cov_4D.transpose(2, 0, 3, 1)
         return cov_2D
 
     # I tested that the 2 methods give the same results. This code is kept to remember the
     # block_index * block_size + running_index unpacking
-    if block_index in ['ell', 'vincenzo', 'C-style']:
+    if block_index in ['ell', 'C-style']:
         for l1 in range(nbl):
             for l2 in range(nbl):
                 for ipair in range(zpairs_AB):
@@ -3220,7 +3220,7 @@ def cov_4D_to_2D(cov_4D, block_index='vincenzo', optimize=True):
                         # block_index * block_size + running_index
                         cov_2D[l1 * zpairs_AB + ipair, l2 * zpairs_CD + jpair] = cov_4D[l1, l2, ipair, jpair]
 
-    elif block_index in ['ij', 'sylvain', 'F-style']:
+    elif block_index in ['zpair', 'F-style']:
         for l1 in range(nbl):
             for l2 in range(nbl):
                 for ipair in range(zpairs_AB):

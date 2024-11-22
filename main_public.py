@@ -105,6 +105,7 @@ symmetrize_output_dict = {
     ('G', 'G'): False,
 }
 
+# ! set ng cov terms to compute
 cov_terms_list = []
 if cfg['covariance']['G']:
     cov_terms_list.append("G")
@@ -113,6 +114,25 @@ if cfg['covariance']['SSC']:
 if cfg['covariance']['cNG']:
     cov_terms_list.append("cNG")
 cov_terms_str = ''.join(cov_terms_list)
+
+compute_oc_ssc, compute_oc_cng = False, False
+compute_sb_ssc, compute_sb_cng = False, False
+compute_ccl_ssc, compute_ccl_cng = False, False
+if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'OneCovariance':
+    compute_oc_ssc = True
+if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'OneCovariance':
+    compute_oc_cng = True
+
+if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'Spaceborne':
+    compute_sb_ssc = True
+if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'Spaceborne':
+    raise NotImplementedError('Spaceborne cNG not implemented yet')
+    compute_sb_cng = True
+
+if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
+    compute_ccl_ssc = True
+if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
+    compute_ccl_cng = True
 
 if cfg['misc']['use_h_units']:
     k_txt_label = "hoverMpc"
@@ -454,7 +474,7 @@ np.testing.assert_allclose(ccl_obj.wf_mu_arr, wf_mu_arr_test, rtol=1e-5, atol=0)
 np.testing.assert_allclose(ccl_obj.wf_lensing_arr, wf_lensing_arr_test, rtol=1e-5, atol=0)
 np.testing.assert_allclose(ccl_obj.wf_galaxy_arr, wf_galaxy_arr_test, rtol=1e-5, atol=0)
 
-print('cl and wf match!!')
+print('cl and wf match!! ✅')
 
 
 # ! BNT transform the cls (and responses?) - it's more complex since I also have to transform the noise
@@ -506,7 +526,7 @@ ccl_obj.cl_gg_3d = cl_gg_3d
 ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
 # ! build covariance matrices
-cov_obj = sb_cov.SpaceborneCovariance(cfg, ell_dict, bnt_matrix)
+cov_obj = sb_cov.SpaceborneCovariance(cfg, zbins, ell_dict, bnt_matrix)
 cov_obj.set_ind_and_zpairs(ind, zbins)
 cov_obj.cov_terms_list = cov_terms_list
 cov_obj.GL_OR_LG = GL_OR_LG
@@ -521,27 +541,8 @@ cov_bench = dict(cov_bench)
 np.testing.assert_allclose(cov_bench['cov_WL_GO_2D'], cov_obj.cov_WL_g_2D, atol=0, rtol=1e-5)
 np.testing.assert_allclose(cov_bench['cov_GC_GO_2D'], cov_obj.cov_GC_g_2D, atol=0, rtol=1e-5)
 np.testing.assert_allclose(cov_bench['cov_XC_GO_2D'], cov_obj.cov_XC_g_2D, atol=0, rtol=1e-5)
-np.testing.assert_allclose(cov_bench['cov_3x2pt_GO_2D'], cov_obj.cov_3x2pt_g_2D, atol=0, rtol=1e-5)
-
-# ! set ng cov terms to compute
-compute_oc_ssc, compute_oc_cng = False, False
-compute_sb_ssc, compute_sb_cng = False, False
-compute_ccl_ssc, compute_ccl_cng = False, False
-if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'OneCovariance':
-    compute_oc_ssc = True
-if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'OneCovariance':
-    compute_oc_cng = True
-
-if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'Spaceborne':
-    compute_sb_ssc = True
-if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'Spaceborne':
-    raise NotImplementedError('Spaceborne cNG not implemented yet')
-    compute_sb_cng = True
-
-if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
-    compute_ccl_ssc = True
-if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
-    compute_ccl_cng = True
+if cfg['covariance']['covariance_ordering_2D'] == 'ell_probe_zpair':
+    np.testing.assert_allclose(cov_bench['cov_3x2pt_GO_2D'], cov_obj.cov_3x2pt_g_2D, atol=0, rtol=1e-5)
 
 
 # ! ========================================== OneCovariance ===================================================
@@ -921,20 +922,31 @@ cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
 cov_dict = cov_obj.cov_dict
 
 for key in cov_dict.keys():
+    mm.matshow(cov_dict[key], title=key)
 
-    key_bench = key
+for key_bench in cov_bench.keys():
+    
+    probe = key_bench.split('_')[1]
+    which_ng_cov = key_bench.split('_')[2]
+    
+    excluded_probes = ['2x2pt', 'WA']
+    if cfg['covariance']['covariance_ordering_2D'] == 'ell_probe_zpair':
+        excluded_probes.append('3x2pt')
 
-    if '2x2pt' not in key:
+    if probe not in ['2x2pt', 'WA']:
+        
+        if which_ng_cov == 'GO':
+            which_cov_new = 'g'
+            cov_new = cov_dict[f'cov_{probe}_{which_cov_new}_2D']
+        elif which_ng_cov == 'SS':
+            which_cov_new = 'ssc'
+            cov_new = cov_dict[f'cov_{probe}_{which_cov_new}_2D']
+        if which_ng_cov == 'GS':
+            which_cov_new = 'g'
+            cov_new = cov_dict[f'cov_{probe}_g_2D'] + cov_dict[f'cov_{probe}_ssc_2D'] + cov_dict[f'cov_{probe}_cng_2D']
 
-        if '_ng_' in key:
-            key_bench = key.replace('_ng_', '_SS_')
-        if '_g_' in key:
-            key_bench = key.replace('_g_', '_GO_')
-        if '_tot_' in key:
-            key_bench = key.replace('_tot_', '_GS_')
-
-        np.testing.assert_allclose(cov_dict[key], cov_bench[key_bench], atol=0, rtol=1e-6)
-        print(f'{key} cov matches ✅')
+        np.testing.assert_allclose(cov_new, cov_bench[key_bench], atol=0, rtol=1e-6)
+        print(f'{key_bench} cov matches ✅')
 
 
 for which_cov in cov_dict.keys():

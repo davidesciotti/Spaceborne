@@ -16,8 +16,9 @@ ROOT = os.getenv('ROOT')
 
 class SpaceborneCovariance():
 
-    def __init__(self, cfg, ell_dict, bnt_matrix):
+    def __init__(self, cfg, zbins, ell_dict, bnt_matrix):
         self.cfg = cfg
+        self.zbins = zbins
         self.covariance_cfg = cfg['covariance']
         self.ell_dict = ell_dict
         self.bnt_matrix = bnt_matrix
@@ -31,8 +32,27 @@ class SpaceborneCovariance():
         self.cng_code = self.covariance_cfg['cNG_code']
         self.fsky = self.cfg['mask']['fsky']
         # must copy the array! Otherwise, it gets modified and changed at each call
-        self.block_index = self.covariance_cfg['block_index']
+        self.cov_ordering_2d = self.covariance_cfg['covariance_ordering_2D']
         self.probe_ordering = self.covariance_cfg['probe_ordering']
+
+        if self.cov_ordering_2d == 'probe_ell_zpair':
+            self.block_index = 'ell'
+            self.cov_4D_to_2D_3x2pt_func = mm.cov_4D_to_2DCLOE_3x2pt
+            self.cov_4D_to_2D_3x2pt_func_kw = {'block_index': self.block_index, 'zbins': self.zbins}
+        elif self.cov_ordering_2d == 'probe_zpair_ell':
+            self.block_index = 'zpair'
+            self.cov_4D_to_2D_3x2pt_func = mm.cov_4D_to_2DCLOE_3x2pt
+            self.cov_4D_to_2D_3x2pt_func_kw = {'block_index': self.block_index, 'zbins': self.zbins}
+        elif self.cov_ordering_2d == 'ell_probe_zpair':
+            self.block_index = 'ell'
+            self.cov_4D_to_2D_3x2pt_func = mm.cov_4D_to_2D
+            self.cov_4D_to_2D_3x2pt_func_kw = {'block_index': self.block_index, 'optimize': True}
+        elif self.cov_ordering_2d == 'zpair_probe_ell':
+            self.block_index = 'zpair'
+            self.cov_4D_to_2D_3x2pt_func = mm.cov_4D_to_2D
+            self.cov_4D_to_2D_3x2pt_func_kw = {'block_index': self.block_index, 'optimize': True}
+        else:
+            raise ValueError(f'Unknown 2D cov ordering: {self.cov_ordering_2d}')
 
         # set ell values
         self.ell_WL, self.nbl_WL = ell_dict['ell_WL'], ell_dict['ell_WL'].shape[0]
@@ -142,7 +162,13 @@ class SpaceborneCovariance():
             cov_out = cov_in.copy()
 
         if ndim_out == 2:
-            cov_out = mm.cov_4D_to_2D(cov_out, block_index=self.block_index)
+
+            if is_3x2pt:
+                # the 3x2pt has an additional layer of complexity for the ordering,
+                # as it includes multiple probes
+                cov_out = self.cov_4D_to_2D_3x2pt_func(cov_out, **self.cov_4D_to_2D_3x2pt_func_kw)
+            else:
+                cov_out = mm.cov_4D_to_2D(cov_out, block_index=self.block_index)
 
         return cov_out
 
@@ -324,11 +350,11 @@ class SpaceborneCovariance():
             elif self.ssc_code == 'OneCovariance':
                 cov_3x2pt_ssc_10D = oc_obj.cov_ssc_oc_3x2pt_10D
             assert not np.allclose(cov_3x2pt_ssc_10D, 0, atol=0, rtol=1e-10), \
-                    f'{self.ssc_code} SSC covariance matrix is identically zero'
+                f'{self.ssc_code} SSC covariance matrix is identically zero'
         else:
             print('SSC not requested, setting it to zero')
             cov_3x2pt_ssc_10D = np.zeros_like(cov_3x2pt_g_10D)
-            
+
         if self.include_cng:
             print(f'Including SSC from {self.ssc_code} in total covariance')
             if self.cng_code == 'PyCCL':
@@ -336,11 +362,11 @@ class SpaceborneCovariance():
             elif self.cng_code == 'OneCovariance':
                 cov_3x2pt_cng_10D = oc_obj.cov_cng_oc_3x2pt_10D
             assert not np.allclose(cov_3x2pt_cng_10D, 0, atol=0, rtol=1e-10), \
-                    f'{self.cng_code} cNG covariance matrix is identically zero'
+                f'{self.cng_code} cNG covariance matrix is identically zero'
         else:
             print('cNG term not requested, setting it to zero')
             cov_3x2pt_cng_10D = np.zeros_like(cov_3x2pt_g_10D)
-                
+
         # sum SSC and cNG
         cov_3x2pt_ng_10D = cov_3x2pt_ssc_10D + cov_3x2pt_cng_10D
 
@@ -417,15 +443,13 @@ class SpaceborneCovariance():
 
         # In this case, you just need to slice get the LL, GG and 3x2pt covariance
         # WL slicing unnecessary, since I load with nbl_WL and max_WL but just in case
-        cov_WL_ng_6D = deepcopy(cov_3x2pt_ng_10D[0, 0, 0, 0, :self.nbl_WL, :self.nbl_WL, :, :, :, :])
-        cov_GC_ng_6D = deepcopy(cov_3x2pt_ng_10D[1, 1, 1, 1, :self.nbl_GC, :self.nbl_GC, :, :, :, :])
-        cov_3x2pt_ng_10D = deepcopy(
-            cov_3x2pt_ng_10D[:, :, :, :, :self.nbl_3x2pt, :self.nbl_3x2pt, :, :, :, :])
-
-        # sum g + ng in 6D (or 10D); in princple, this could also be done at the 4D or 2D level
-        cov_WL_tot_6D = cov_WL_g_6D + cov_WL_ng_6D
-        cov_GC_tot_6D = cov_GC_g_6D + cov_GC_ng_6D
-        cov_3x2pt_tot_10D = cov_3x2pt_g_10D + cov_3x2pt_ng_10D
+        cov_WL_ssc_6D = deepcopy(cov_3x2pt_ssc_10D[0, 0, 0, 0, :self.nbl_WL, :self.nbl_WL, :, :, :, :])
+        cov_WL_cng_6D = deepcopy(cov_3x2pt_cng_10D[0, 0, 0, 0, :self.nbl_WL, :self.nbl_WL, :, :, :, :])
+        cov_GC_ssc_6D = deepcopy(cov_3x2pt_ssc_10D[1, 1, 1, 1, :self.nbl_GC, :self.nbl_GC, :, :, :, :])
+        cov_GC_cng_6D = deepcopy(cov_3x2pt_cng_10D[1, 1, 1, 1, :self.nbl_GC, :self.nbl_GC, :, :, :, :])
+        # TODO I think this is unnecessary
+        cov_3x2pt_ssc_10D = deepcopy(cov_3x2pt_ssc_10D[:, :, :, :, :self.nbl_3x2pt, :self.nbl_3x2pt, :, :, :, :])
+        cov_3x2pt_cng_10D = deepcopy(cov_3x2pt_cng_10D[:, :, :, :, :self.nbl_3x2pt, :self.nbl_3x2pt, :, :, :, :])
 
         # ! BNT transform (6/10D covs needed for this implementation)
         if self.cfg['BNT']['cov_BNT_transform']:
@@ -435,120 +459,68 @@ class SpaceborneCovariance():
 
             # turn 3x2pt 10d array to dict for the BNT function
             cov_3x2pt_g_10D_dict = mm.cov_10D_array_to_dict(cov_3x2pt_g_10D, self.probe_ordering)
-            cov_3x2pt_ng_10D_dict = mm.cov_10D_array_to_dict(cov_3x2pt_ng_10D, self.probe_ordering)
-            cov_3x2pt_tot_10D_dict = mm.cov_10D_array_to_dict(cov_3x2pt_tot_10D, self.probe_ordering)
+            cov_3x2pt_ssc_10D_dict = mm.cov_10D_array_to_dict(cov_3x2pt_ssc_10D, self.probe_ordering)
+            cov_3x2pt_cng_10D_dict = mm.cov_10D_array_to_dict(cov_3x2pt_cng_10D, self.probe_ordering)
 
             # BNT-transform WL and 3x2pt g, ng and tot covariances
             X_dict = bnt_utils.build_X_matrix_BNT(self.bnt_matrix)
+            # TODO BNT and scale cuts of G term should go in the gauss cov function!
             cov_WL_g_6D = bnt_utils.cov_BNT_transform(cov_WL_g_6D, X_dict, 'L', 'L', 'L', 'L')
-            cov_WL_ng_6D = bnt_utils.cov_BNT_transform(cov_WL_ng_6D, X_dict, 'L', 'L', 'L', 'L')
-            cov_WL_tot_6D = bnt_utils.cov_BNT_transform(cov_WL_tot_6D, X_dict, 'L', 'L', 'L', 'L')
-
+            cov_WL_ssc_6D = bnt_utils.cov_BNT_transform(cov_WL_ssc_6D, X_dict, 'L', 'L', 'L', 'L')
+            cov_WL_cng_6D = bnt_utils.cov_BNT_transform(cov_WL_cng_6D, X_dict, 'L', 'L', 'L', 'L')
             cov_3x2pt_g_10D_dict = bnt_utils.cov_3x2pt_BNT_transform(cov_3x2pt_g_10D_dict, X_dict)
-            cov_3x2pt_ng_10D_dict = bnt_utils.cov_3x2pt_BNT_transform(cov_3x2pt_ng_10D_dict, X_dict)
-            cov_3x2pt_tot_10D_dict = bnt_utils.cov_3x2pt_BNT_transform(cov_3x2pt_tot_10D_dict, X_dict)
+            cov_3x2pt_ssc_10D_dict = bnt_utils.cov_3x2pt_BNT_transform(cov_3x2pt_ssc_10D_dict, X_dict)
+            cov_3x2pt_cng_10D_dict = bnt_utils.cov_3x2pt_BNT_transform(cov_3x2pt_cng_10D_dict, X_dict)
 
             # revert to 10D arrays - this is not strictly necessary since cov_3x2pt_10D_to_4D accepts both a dictionary and
             # an array as input, but it's done to keep the variable names consistent
+            # ! BNT IS LINEAR, SO BNT(COV_TOT) = \SUM_i BNT(COV_i), but should check
             cov_3x2pt_g_10D = mm.cov_10D_dict_to_array(
                 cov_3x2pt_g_10D_dict, self.nbl_3x2pt, self.zbins, n_probes=2)
-            cov_3x2pt_ng_10D = mm.cov_10D_dict_to_array(
-                cov_3x2pt_ng_10D_dict, self.nbl_3x2pt, self.zbins, n_probes=2)
-            cov_3x2pt_tot_10D = mm.cov_10D_dict_to_array(
-                cov_3x2pt_tot_10D_dict, self.nbl_3x2pt, self.zbins, n_probes=2)
+            cov_3x2pt_ssc_10D = mm.cov_10D_dict_to_array(
+                cov_3x2pt_ssc_10D_dict, self.nbl_3x2pt, self.zbins, n_probes=2)
+            cov_3x2pt_cng_10D = mm.cov_10D_dict_to_array(
+                cov_3x2pt_cng_10D_dict, self.nbl_3x2pt, self.zbins, n_probes=2)
 
             print('Covariance matrices BNT-transformed in {:.2f} s'.format(time.perf_counter() - start_time))
 
         if self.GL_OR_LG == 'GL':
             cov_XC_g_6D = cov_3x2pt_g_10D[1, 0, 1, 0, ...]
-            cov_XC_ng_6D = cov_3x2pt_ng_10D[1, 0, 1, 0, ...]
-            cov_XC_tot_6D = cov_3x2pt_tot_10D[1, 0, 1, 0, ...]
+            cov_XC_ssc_6D = cov_3x2pt_ssc_10D[1, 0, 1, 0, ...]
+            cov_XC_cng_6D = cov_3x2pt_cng_10D[1, 0, 1, 0, ...]
         elif self.GL_OR_LG == 'LG':
             cov_XC_g_6D = cov_3x2pt_g_10D[0, 1, 0, 1, ...]
             # ! I'm doing this in a more exotic way above, for ng
-            cov_XC_ng_6D = cov_3x2pt_ng_10D[0, 1, 0, 1, ...]
-            cov_XC_tot_6D = cov_3x2pt_tot_10D[0, 1, 0, 1, ...]
+            cov_XC_ssc_6D = cov_3x2pt_ssc_10D[0, 1, 0, 1, ...]
+            cov_XC_cng_6D = cov_3x2pt_cng_10D[0, 1, 0, 1, ...]
         else:
             raise ValueError('GL_OR_LG must be "GL" or "LG"')
 
-        # ! reshape everything to 4D - these are not stored in self to save some memory
-        start = time.perf_counter()
-        cov_WL_g_4D = mm.cov_6D_to_4D(cov_WL_g_6D, self.nbl_WL, self.zpairs_auto, self.ind_auto)
-        cov_GC_g_4D = mm.cov_6D_to_4D(cov_GC_g_6D, self.nbl_GC, self.zpairs_auto, self.ind_auto)
-        cov_XC_g_4D = mm.cov_6D_to_4D(cov_XC_g_6D, self.nbl_3x2pt, self.zpairs_cross, self.ind_cross)
-        cov_3x2pt_g_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_g_10D, self.probe_ordering, self.nbl_3x2pt,
-                                                self.zbins, self.ind.copy(), self.GL_OR_LG)
-
-        cov_WL_ng_4D = mm.cov_6D_to_4D(cov_WL_ng_6D, self.nbl_WL, self.zpairs_auto, self.ind_auto)
-        cov_GC_ng_4D = mm.cov_6D_to_4D(cov_GC_ng_6D, self.nbl_GC, self.zpairs_auto, self.ind_auto)
-        cov_XC_ng_4D = mm.cov_6D_to_4D(cov_XC_ng_6D, self.nbl_3x2pt, self.zpairs_cross, self.ind_cross)
-        cov_3x2pt_ng_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_ng_10D, self.probe_ordering, self.nbl_3x2pt,
-                                                 self.zbins, self.ind.copy(), self.GL_OR_LG)
-
-        cov_WL_tot_4D = mm.cov_6D_to_4D(cov_WL_tot_6D, self.nbl_WL, self.zpairs_auto, self.ind_auto)
-        cov_GC_tot_4D = mm.cov_6D_to_4D(cov_GC_tot_6D, self.nbl_GC, self.zpairs_auto, self.ind_auto)
-        cov_XC_tot_4D = mm.cov_6D_to_4D(cov_XC_tot_6D, self.nbl_3x2pt, self.zpairs_cross, self.ind_cross)
-        cov_3x2pt_tot_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_tot_10D, self.probe_ordering, self.nbl_3x2pt,
-                                                  self.zbins, self.ind.copy(), self.GL_OR_LG)
-
-        print('Covariance matrices reshaped (6D -> 4D) in {:.2f} s'.format(time.perf_counter() - start))
-
-        cov_2x2pt_g_4D = np.zeros((self.nbl_3x2pt, self.nbl_3x2pt, self.zpairs_cross +
-                                   self.zpairs_auto, self.zpairs_cross + self.zpairs_auto))
-        cov_2x2pt_tot_4D = np.zeros_like(cov_2x2pt_g_4D)
-        for ell1 in range(self.nbl_3x2pt):
-            for ell2 in range(self.nbl_3x2pt):
-                cov_2x2pt_g_4D[ell1, ell2, :, :] = cov_3x2pt_g_4D[ell1, ell2, self.zpairs_auto:, self.zpairs_auto:]
-                cov_2x2pt_tot_4D[ell1, ell2, :, :] = cov_3x2pt_tot_4D[ell1, ell2, self.zpairs_auto:, self.zpairs_auto:]
-
-        # ! reshape everything to 2D
-        start = time.perf_counter()
-        self.cov_WL_g_2D = mm.cov_4D_to_2D(cov_WL_g_4D, block_index=self.block_index)
-        self.cov_GC_g_2D = mm.cov_4D_to_2D(cov_GC_g_4D, block_index=self.block_index)
-        self.cov_XC_g_2D = mm.cov_4D_to_2D(cov_XC_g_4D, block_index=self.block_index)
-        self.cov_3x2pt_g_2D = mm.cov_4D_to_2D(cov_3x2pt_g_4D, block_index=self.block_index)
-        self.cov_2x2pt_g_2D = mm.cov_4D_to_2D(cov_2x2pt_g_4D, block_index=self.block_index)
-
-        self.cov_WL_ng_2D = mm.cov_4D_to_2D(cov_WL_ng_4D, block_index=self.block_index)
-        self.cov_GC_ng_2D = mm.cov_4D_to_2D(cov_GC_ng_4D, block_index=self.block_index)
-        self.cov_XC_ng_2D = mm.cov_4D_to_2D(cov_XC_ng_4D, block_index=self.block_index)
-        self.cov_3x2pt_ng_2D = mm.cov_4D_to_2D(cov_3x2pt_ng_4D, block_index=self.block_index)
-
-        self.cov_WL_tot_2D = mm.cov_4D_to_2D(cov_WL_tot_4D, block_index=self.block_index)
-        self.cov_GC_tot_2D = mm.cov_4D_to_2D(cov_GC_tot_4D, block_index=self.block_index)
-        self.cov_XC_tot_2D = mm.cov_4D_to_2D(cov_XC_tot_4D, block_index=self.block_index)
-        self.cov_3x2pt_tot_2D = mm.cov_4D_to_2D(cov_3x2pt_tot_4D, block_index=self.block_index)
-        self.cov_2x2pt_tot_2D = mm.cov_4D_to_2D(cov_2x2pt_tot_4D, block_index=self.block_index)
-        print('Covariance matrices reshaped (4D -> 2D) in {:.2f} s'.format(time.perf_counter() - start))
-
-        # TODO delete these checks
-        cov_WL_g_4D_2 = self.reshape_cov(cov_WL_g_6D, 6, 4, self.nbl_WL,
+        # # ! reshape everything to 2D
+        self.cov_WL_g_2D = self.reshape_cov(cov_WL_g_6D, 6, 2, self.nbl_WL,
                                          self.zpairs_auto, self.ind_auto, is_3x2pt=False)
-        cov_GC_g_4D_2 = self.reshape_cov(cov_GC_g_6D, 6, 4, self.nbl_GC,
+        self.cov_GC_g_2D = self.reshape_cov(cov_GC_g_6D, 6, 2, self.nbl_GC,
                                          self.zpairs_auto, self.ind_auto, is_3x2pt=False)
-        cov_XC_g_4D_2 = self.reshape_cov(cov_XC_g_6D, 6, 4, self.nbl_3x2pt,
+        self.cov_XC_g_2D = self.reshape_cov(cov_XC_g_6D, 6, 2, self.nbl_3x2pt,
                                          self.zpairs_cross, self.ind_cross, is_3x2pt=False)
-        cov_3x2pt_g_4D_2 = self.reshape_cov(cov_3x2pt_g_10D, 10, 4, self.nbl_3x2pt,
-                                            self.zpairs_auto, self.ind_auto, is_3x2pt=True)
-
-        np.testing.assert_allclose(cov_WL_g_4D, cov_WL_g_4D_2, atol=0, rtol=1e-5)
-        np.testing.assert_allclose(cov_GC_g_4D, cov_GC_g_4D_2, atol=0, rtol=1e-5)
-        np.testing.assert_allclose(cov_XC_g_4D, cov_XC_g_4D_2, atol=0, rtol=1e-5)
-        np.testing.assert_allclose(cov_3x2pt_g_4D, cov_3x2pt_g_4D_2, atol=0, rtol=1e-5)
-
-        cov_WL_g_2D_2 = self.reshape_cov(cov_WL_g_6D, 6, 2, self.nbl_WL,
-                                         self.zpairs_auto, self.ind_auto, is_3x2pt=False)
-        cov_GC_g_2D_2 = self.reshape_cov(cov_GC_g_6D, 6, 2, self.nbl_GC,
-                                         self.zpairs_auto, self.ind_auto, is_3x2pt=False)
-        cov_XC_g_2D_2 = self.reshape_cov(cov_XC_g_6D, 6, 2, self.nbl_3x2pt,
-                                         self.zpairs_cross, self.ind_cross, is_3x2pt=False)
-        cov_3x2pt_g_2D_2 = self.reshape_cov(cov_3x2pt_g_10D, 10, 2, self.nbl_3x2pt,
+        self.cov_3x2pt_g_2D = self.reshape_cov(cov_3x2pt_g_10D, 10, 2, self.nbl_3x2pt,
                                             self.zpairs_auto, self.ind, is_3x2pt=True)
-
-        np.testing.assert_allclose(self.cov_WL_g_2D, cov_WL_g_2D_2, atol=0, rtol=1e-5)
-        np.testing.assert_allclose(self.cov_GC_g_2D, cov_GC_g_2D_2, atol=0, rtol=1e-5)
-        np.testing.assert_allclose(self.cov_XC_g_2D, cov_XC_g_2D_2, atol=0, rtol=1e-5)
-        np.testing.assert_allclose(self.cov_3x2pt_g_2D, cov_3x2pt_g_2D_2, atol=0, rtol=1e-5)
+        self.cov_WL_ssc_2D = self.reshape_cov(cov_WL_ssc_6D, 6, 2, self.nbl_WL,
+                                           self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+        self.cov_GC_ssc_2D = self.reshape_cov(cov_GC_ssc_6D, 6, 2, self.nbl_GC,
+                                           self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+        self.cov_XC_ssc_2D = self.reshape_cov(cov_XC_ssc_6D, 6, 2, self.nbl_3x2pt,
+                                           self.zpairs_cross, self.ind_cross, is_3x2pt=False)
+        self.cov_3x2pt_ssc_2D = self.reshape_cov(cov_3x2pt_ssc_10D, 10, 2, self.nbl_3x2pt,
+                                              self.zpairs_auto, self.ind, is_3x2pt=True)
+        self.cov_WL_cng_2D = self.reshape_cov(cov_WL_cng_6D, 6, 2, self.nbl_WL,
+                                           self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+        self.cov_GC_cng_2D = self.reshape_cov(cov_GC_cng_6D, 6, 2, self.nbl_GC,
+                                           self.zpairs_auto, self.ind_auto, is_3x2pt=False)
+        self.cov_XC_cng_2D = self.reshape_cov(cov_XC_cng_6D, 6, 2, self.nbl_3x2pt,
+                                           self.zpairs_cross, self.ind_cross, is_3x2pt=False)
+        self.cov_3x2pt_cng_2D = self.reshape_cov(cov_3x2pt_cng_10D, 10, 2, self.nbl_3x2pt,
+                                              self.zpairs_auto, self.ind, is_3x2pt=True)
 
         # ! perform ell cuts on the 2D covs
         if self.cfg['ell_cuts']['cov_ell_cuts']:
@@ -564,57 +536,39 @@ class SpaceborneCovariance():
             self.cov_2x2pt_g_2D = mm.remove_rows_cols_array2D(
                 self.cov_2x2pt_g_2D, self.ell_dict['idxs_to_delete_dict']['2x2pt'])
 
-            self.cov_WL_tot_2D = mm.remove_rows_cols_array2D(
-                self.cov_WL_tot_2D, self.ell_dict['idxs_to_delete_dict']['LL'])
-            self.cov_GC_tot_2D = mm.remove_rows_cols_array2D(
-                self.cov_GC_tot_2D, self.ell_dict['idxs_to_delete_dict']['GG'])
-            self.cov_XC_tot_2D = mm.remove_rows_cols_array2D(
-                self.cov_XC_tot_2D, self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG])
-            self.cov_3x2pt_tot_2D = mm.remove_rows_cols_array2D(
-                self.cov_3x2pt_tot_2D, self.ell_dict['idxs_to_delete_dict']['3x2pt'])
-            self.cov_2x2pt_tot_2D = mm.remove_rows_cols_array2D(
-                self.cov_2x2pt_tot_2D, self.ell_dict['idxs_to_delete_dict']['2x2pt'])
+            self.cov_WL_ssc_2D = mm.remove_rows_cols_array2D(
+                self.cov_WL_ssc_2D, self.ell_dict['idxs_to_delete_dict']['LL'])
+            self.cov_GC_ssc_2D = mm.remove_rows_cols_array2D(
+                self.cov_GC_ssc_2D, self.ell_dict['idxs_to_delete_dict']['GG'])
+            self.cov_XC_ssc_2D = mm.remove_rows_cols_array2D(
+                self.cov_XC_ssc_2D, self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG])
+            self.cov_3x2pt_ssc_2D = mm.remove_rows_cols_array2D(
+                self.cov_3x2pt_ssc_2D, self.ell_dict['idxs_to_delete_dict']['3x2pt'])
+            self.cov_2x2pt_ssc_2D = mm.remove_rows_cols_array2D(
+                self.cov_2x2pt_ssc_2D, self.ell_dict['idxs_to_delete_dict']['2x2pt'])
 
-        ############################### save in dictionary ########################
+            self.cov_WL_cng_2D = mm.remove_rows_cols_array2D(
+                self.cov_WL_cng_2D, self.ell_dict['idxs_to_delete_dict']['LL'])
+            self.cov_GC_cng_2D = mm.remove_rows_cols_array2D(
+                self.cov_GC_cng_2D, self.ell_dict['idxs_to_delete_dict']['GG'])
+            self.cov_XC_cng_2D = mm.remove_rows_cols_array2D(
+                self.cov_XC_cng_2D, self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG])
+            self.cov_3x2pt_cng_2D = mm.remove_rows_cols_array2D(
+                self.cov_3x2pt_cng_2D, self.ell_dict['idxs_to_delete_dict']['3x2pt'])
+            self.cov_2x2pt_cng_2D = mm.remove_rows_cols_array2D(
+                self.cov_2x2pt_cng_2D, self.ell_dict['idxs_to_delete_dict']['2x2pt'])
+
+        # store in dictionary
+        # TODO is this necessaty? I can probably delete!
         probe_names = ('WL', 'GC', '3x2pt', 'XC', '2x2pt')
+        covs_g_2D = (self.cov_WL_g_2D, self.cov_GC_g_2D, self.cov_3x2pt_g_2D, self.cov_XC_g_2D)
+        covs_ssc_2D = (self.cov_WL_ssc_2D, self.cov_GC_ssc_2D, self.cov_3x2pt_ssc_2D, self.cov_XC_ssc_2D)
+        covs_cng_2D = (self.cov_WL_cng_2D, self.cov_GC_cng_2D, self.cov_3x2pt_cng_2D, self.cov_XC_cng_2D)
 
-        covs_g_2D = (self.cov_WL_g_2D, self.cov_GC_g_2D, self.cov_3x2pt_g_2D,
-                     self.cov_XC_g_2D, self.cov_2x2pt_g_2D)
-        covs_tot_2D = (self.cov_WL_tot_2D, self.cov_GC_tot_2D, self.cov_3x2pt_tot_2D,
-                       self.cov_XC_tot_2D, self.cov_2x2pt_tot_2D)
-
-        # TODO remove altogether? I should probably ditch covdict and only use cov_obj...
-        cov_WL_ng_4D = mm.cov_6D_to_4D(cov_WL_ng_6D, self.nbl_WL, self.zpairs_auto, self.ind_auto)
-        cov_GC_ng_4D = mm.cov_6D_to_4D(cov_GC_ng_6D, self.nbl_GC, self.zpairs_auto, self.ind_auto)
-        cov_XC_ng_4D = mm.cov_6D_to_4D(cov_XC_ng_6D, self.nbl_3x2pt, self.zpairs_cross, self.ind_cross)
-        cov_3x2pt_ng_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_ng_10D, self.probe_ordering, self.nbl_3x2pt, self.zbins, self.ind.copy(),
-                                                    self.GL_OR_LG)
-
-        cov_WL_ng_2D = mm.cov_4D_to_2D(cov_WL_ng_4D, block_index=self.block_index)
-        cov_GC_ng_2D = mm.cov_4D_to_2D(cov_GC_ng_4D, block_index=self.block_index)
-        cov_XC_ng_2D = mm.cov_4D_to_2D(cov_XC_ng_4D, block_index=self.block_index)
-        cov_3x2pt_ng_2D = mm.cov_4D_to_2D(cov_3x2pt_ng_4D, block_index=self.block_index)
-
-        covs_ng_2D = (cov_WL_ng_2D, cov_GC_ng_2D, cov_3x2pt_ng_2D, cov_XC_ng_2D)
-
-        for probe_name, cov_ng_2D in zip(probe_names, covs_ng_2D):
-            self.cov_dict[f'cov_{probe_name}_ng_2D'] = cov_ng_2D
-
-        for probe_name, cov_g_2D, cov_tot_2D in zip(probe_names, covs_g_2D, covs_tot_2D):
-
-            # save 2D
+        for probe_name, cov_g_2D, cov_ssc_2D, cov_cng_2D in zip(probe_names, covs_g_2D, covs_ssc_2D, covs_cng_2D):
             self.cov_dict[f'cov_{probe_name}_g_2D'] = cov_g_2D
-            self.cov_dict[f'cov_{probe_name}_tot_2D'] = cov_tot_2D
-
-        # '2DCLOE', i.e. the 'multi-diagonal', non-square blocks ordering, only for 3x2pt
-        # note: we found out that this is not actually used in CLOE...
-        if self.covariance_cfg['covariance_ordering_2D'] == 'probe_ell_zpair':
-            self.cov_dict[f'cov_3x2pt_g_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(
-                self.cov_3x2pt_g_4D, self.zbins, block_index='ell')
-            self.cov_dict[f'cov_3x2pt_ng_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(
-                cov_3x2pt_ng_4D, self.zbins, block_index='ell')
-            self.cov_dict[f'cov_3x2pt_tot_2DCLOE'] = mm.cov_4D_to_2DCLOE_3x2pt(
-                self.cov_3x2pt_tot_4D, self.zbins, block_index='ell')
+            self.cov_dict[f'cov_{probe_name}_ssc_2D'] = cov_ssc_2D
+            self.cov_dict[f'cov_{probe_name}_cng_2D'] = cov_cng_2D
 
         print('Covariance matrices computed')
 

@@ -153,7 +153,7 @@ covariance:
     SSC: True     # Enable/disable the super-sample covariance (SSC) term.
     cNG: False     # Enable/disable the connected non-Gaussian (cNG) covariance term.
 
-    SSC_code: OneCovariance        # Specifies the code to compute SSC. Options:
+    SSC_code: Spaceborne        # Specifies the code to compute SSC. Options:
                                 # - Spaceborne: Use the Spaceborne implementation.
                                 # - OneCovariance: Use the OneCovariance implementation.
                                 # - PyCCL: Use the PyCCL implementation.
@@ -167,16 +167,13 @@ covariance:
                                 # of the auto-Cl zbins (C_{ij}(\ell)^AA = C_{ji}(\ell)^AA).
     row_col_major: row-major    # Within the upper or lower triangle, count indices in 
                                 # a row-major or column-major order.
-    block_index: ell            # Determines how blocks are indexed in the covariance matrix:
-                                # - ell: Use the multipole index for block ordering.
-                                # - zpair: Use the zpair index for block ordering.
-
     split_gaussian_cov: False   # Whether to split the Gaussian covariance term into the 
                                 # sample variance, noise and mixed terms
 
     probe_ordering: [['L', 'L'], ['G', 'L'], ['G', 'G']]  # ordering of the different 3x2pt probes in the covariance matrix
     covariance_ordering_2D: ell_probe_zpair  # Determines the ordering of the covariance matrix in 2D:
                                              # - ell_probe_zpair: Ordered by multipole (ell), then probe type, then redshift pair.
+                                             # - probe_ell_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordeing used by CLOE
                                              # TODO: Restore or adjust this as needed.
 
     sigma_eps_i: 0.26       # ellipticity dispersion *per component* = sigma_eps_i
@@ -240,7 +237,7 @@ PyCCL:
 
 
 OneCovariance:
-    precision_settings: high_precision # 'high_precision' or 'default'
+    precision_settings: default # 'high_precision' or 'default'
     path_to_oc_executable: /home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py
 
 tests:
@@ -256,5 +253,5 @@ misc:
     test_cholesky_decomposition: True  # test if cholesky decomposition fails
     test_symmetry: True                # test if covariance matrix is symmetric (cov = cov.T)
 
-    output_path: ./output
+    output_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/output
     use_h_units: False # TODO hardcode!

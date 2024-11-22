@@ -81,7 +81,7 @@ class OneCovarianceInterface():
         self.conda_base_path = self.get_conda_base_path()
         self.path_to_oc_executable = cfg['OneCovariance']['path_to_oc_executable'].format(
             ROOT=ROOT)
-        self.cov_filename = 'cov_OC_{which_ng_cov:s}_{probe_a:s}_{probe_b:s}_{probe_c:s}_{probe_d:s}'
+        self.cov_filename = 'cov_OC_{which_ng_cov:s}_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}.npz'
 
     def get_conda_base_path(self):
         try:

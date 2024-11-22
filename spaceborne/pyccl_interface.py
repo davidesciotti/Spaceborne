@@ -271,7 +271,7 @@ class PycclClass():
     def initialize_trispectrum(self, which_ng_cov, probe_ordering, pyccl_cfg):
 
         # save_tkka = pyccl_cfg['save_tkka']
-        comp_load_str = 'Loading' if pyccl_cfg['load_precomputed_tkka'] else 'Computing'
+        comp_load_str = 'Loading' if pyccl_cfg['load_cached_tkka'] else 'Computing'
 
         # tkka_folder = f'Tk3D_{which_ng_cov}'
         # tkka_path = f'{pyccl_cfg["cov_path"]}/{tkka_folder}'
@@ -337,7 +337,7 @@ class PycclClass():
                 if col >= row:
                     print(f'{comp_load_str} trispectrum for {which_ng_cov}, probe combination {probe_block}')
 
-                if col >= row and pyccl_cfg['load_precomputed_tkka']:
+                if col >= row and pyccl_cfg['load_cached_tkka']:
 
                     assert False, 'Probably this section must be deleted'
 
@@ -372,7 +372,7 @@ class PycclClass():
                                                                **tk3d_kwargs,
                                                                )
 
-                elif col >= row and not pyccl_cfg['load_precomputed_tkka']:
+                elif col >= row and not pyccl_cfg['load_cached_tkka']:
 
                     # not very nice to put this if-else in the for loop, but A, B, C, D are referenced only here
                     if which_ng_cov == 'SSC':
@@ -487,7 +487,13 @@ class PycclClass():
                         cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b].transpose(1, 0, 3, 2))
 
         self.cov_ng_3x2pt_dict_8D = cov_ng_3x2pt_dict_8D
+        
+        if which_ng_cov == 'SSC':
+            self.cov_ssc_ccl_3x2pt_dict_8D = self.cov_ng_3x2pt_dict_8D
+        if which_ng_cov == 'cNG':
+            self.cov_cng_ccl_3x2pt_dict_8D = self.cov_ng_3x2pt_dict_8D
 
+        
         self.check_cov_blocks_simmetry()
 
         return

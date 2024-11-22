@@ -85,7 +85,6 @@ row_col_major = cfg['covariance']['row_col_major']
 n_probes = cfg['covariance']['n_probes']
 which_sigma2_b = cfg['covariance']['which_sigma2_b']
 z_steps_ssc_integrands = cfg['covariance']['z_steps_ssc_integrands']
-covariance_ordering_2D = cfg['covariance']['covariance_ordering_2D']
 bnt_transform = cfg['BNT']['BNT_transform']
 include_ia_in_bnt_kernel_for_zcuts = cfg['BNT']['include_ia_in_bnt_kernel_for_zcuts']
 compute_bnt_with_shifted_nz_for_zcuts = cfg['BNT']['compute_bnt_with_shifted_nz_for_zcuts']
@@ -540,9 +539,9 @@ if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'Spaceborne':
     compute_sb_cng = True
 
 if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
-    compute_sb_ssc = True
+    compute_ccl_ssc = True
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
-    compute_sb_cng = True
+    compute_ccl_cng = True
 
 
 # ! ========================================== OneCovariance ===================================================
@@ -601,10 +600,10 @@ if compute_oc_ssc or compute_oc_cng:
     oc_obj.path_to_config_oc_ini = f'{oc_obj.oc_path}/input_configs.ini'
     oc_obj.ells_sb = ell_dict['ell_3x2pt']
     oc_obj.build_save_oc_ini(ascii_filenames_dict, print_ini=True)
-    
+
     # compute covs
     oc_obj.call_onecovariance()
-    
+
     # reload and store output
     oc_obj.reshape_oc_output(variable_specs, ind_dict, symmetrize_output_dict)
     oc_obj.cov_g_oc_3x2pt_10D = oc_obj.oc_output_to_dict_or_array(
@@ -810,23 +809,23 @@ if compute_sb_ssc:
     # ! 3. Compute/load/save sigma2_b
     if cfg['covariance']['load_cached_sigma2_b']:
         sigma2_b = np.load(f'{output_path}/cache/sigma2_b.npy')
-    
+
     else:
         print('Computing sigma2_b...')
-        
+
         if cfg['covariance']['use_KE_approximation']:
             # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
             ccl_obj.set_sigma2_b(z_grid=z_grid_ssc_integrands,
-                                fsky=cfg['mask']['fsky'],
-                                which_sigma2_b=which_sigma2_b,
-                                nside_mask=cfg['mask']['nside_mask'],
-                                mask_path=cfg['mask']['mask_path'])
+                                 fsky=cfg['mask']['fsky'],
+                                 which_sigma2_b=which_sigma2_b,
+                                 nside_mask=cfg['mask']['nside_mask'],
+                                 mask_path=cfg['mask']['mask_path'])
             _a, sigma2_b = ccl_obj.sigma2_b_tuple
             # quick sanity check on the a/z grid
             sigma2_b = sigma2_b[::-1]
             _z = cosmo_lib.a_to_z(_a)[::-1]
             np.testing.assert_allclose(z_grid_ssc_integrands, _z, atol=0, rtol=1e-8)
-        
+
         else:
             k_grid_sigma2 = np.logspace(cfg['covariance']['log10_k_min_sigma2'],
                                         cfg['covariance']['log10_k_max_sigma2'],
@@ -842,7 +841,6 @@ if compute_sb_ssc:
             )
             # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to divide
             # the former by fsky (eq. 29 of https://arxiv.org/pdf/1612.05958)
-
 
     if not cfg['covariance']['load_cached_sigma2_b']:
         np.save(f'{output_path}/cache/sigma2_b.npy', sigma2_b)
@@ -874,16 +872,18 @@ if compute_sb_ssc:
 
     cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
 
-cov_ssc_WL_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['L', 'L', 'L', 'L']
-cov_ssc_GC_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['G', 'G', 'G', 'G']
+    cov_ssc_WL_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['L', 'L', 'L', 'L']
+    cov_ssc_GC_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['G', 'G', 'G', 'G']
 
-cov_ssc_WL_2d = cov_obj.reshape_cov(cov_ssc_WL_4d, 4, 2, nbl_WL, zpairs=zpairs_auto, ind_probe=ind_auto, is_3x2pt=False)
-cov_ssc_GC_2d = cov_obj.reshape_cov(cov_ssc_GC_4d, 4, 2, nbl_GC, zpairs=zpairs_auto, ind_probe=ind_auto, is_3x2pt=False)
+    cov_ssc_WL_2d = cov_obj.reshape_cov(cov_ssc_WL_4d, 4, 2, nbl_WL,
+                                        zpairs=zpairs_auto, ind_probe=ind_auto, is_3x2pt=False)
+    cov_ssc_GC_2d = cov_obj.reshape_cov(cov_ssc_GC_4d, 4, 2, nbl_GC,
+                                        zpairs=zpairs_auto, ind_probe=ind_auto, is_3x2pt=False)
 
-mm.compare_arrays(cov_ssc_WL_2d, cov_bench['cov_WL_SS_2D'])
-mm.compare_arrays(cov_ssc_GC_2d, cov_bench['cov_GC_SS_2D'])
-np.testing.assert_allclose(cov_ssc_WL_2d, cov_bench['cov_WL_SS_2D'])
-np.testing.assert_allclose(cov_ssc_GC_2d, cov_bench['cov_GC_SS_2D'])
+    mm.compare_arrays(cov_ssc_WL_2d, cov_bench['cov_WL_SS_2D'])
+    mm.compare_arrays(cov_ssc_GC_2d, cov_bench['cov_GC_SS_2D'])
+    np.testing.assert_allclose(cov_ssc_WL_2d, cov_bench['cov_WL_SS_2D'])
+    np.testing.assert_allclose(cov_ssc_GC_2d, cov_bench['cov_GC_SS_2D'])
 # TODO integrate this with Spaceborne_covg
 # ! ========================================== end Spaceborne ===================================================
 
@@ -900,14 +900,19 @@ if (compute_ccl_ssc or compute_ccl_cng):
                          nside_mask=cfg['mask']['nside_mask'],
                          mask_path=cfg['mask']['mask_path'])
 
-    for which_ng_cov in pyccl_cfg['which_ng_cov']:
+    ccl_ng_cov_terms_list = []
+    if compute_ccl_ssc:
+        ccl_ng_cov_terms_list.append('SSC')
+    if compute_ccl_cng:
+        ccl_ng_cov_terms_list.append('cNG')
+
+    for which_ng_cov in ccl_ng_cov_terms_list:
 
         ccl_obj.initialize_trispectrum(which_ng_cov, probe_ordering, pyccl_cfg)
         ccl_obj.compute_ng_cov_3x2pt(which_ng_cov, ell_dict['ell_3x2pt'], cfg['mask']['fsky'],
                                      # TODO add try block for quad
                                      integration_method=pyccl_cfg['cov_integration_method'],
                                      probe_ordering=probe_ordering, ind_dict=ind_dict)
-
 
 
 # ! ========================================== end PyCCL ===================================================
@@ -932,24 +937,22 @@ for key in cov_dict.keys():
         print(f'{key} cov matches ✅')
 
 
-
 for which_cov in cov_dict.keys():
     probe = which_cov.split('_')[1]
     which_ng_cov = which_cov.split('_')[2]
     ndim = which_cov.split('_')[3]
     cov_filename = cfg['covariance']['cov_filename'].format(which_ng_cov=which_ng_cov,
-                                                           probe=probe,
-                                                           ndim=ndim)
+                                                            probe=probe,
+                                                            ndim=ndim)
 
     np.savez_compressed(f'{output_path}/{cov_filename}.npz', **cov_dict)
 print(f'Covariance matrices saved in {output_path}')
 
 
-
 for which_cov in cov_dict.keys():
-    
+
     if '3x2pt' in which_cov and 'tot' in which_cov:
-        
+
         if cfg['misc']['test_condition_number']:
             cond_number = np.linalg.cond(cov_dict[which_cov])
             print(f'Condition number of {which_cov} = {cond_number:.4e}')

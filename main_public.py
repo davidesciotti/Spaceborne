@@ -619,18 +619,7 @@ if compute_oc_ssc or compute_oc_cng:
 else:
     oc_obj = None
 
-# ! ========================================== start Spaceborne ===================================================
-
-
-_which_pk_resp = cfg['covariance']['which_pk_responses']
-_which_pk_resp = 'separate_universe' if _which_pk_resp.startswith('separate_universe') else _which_pk_resp
-_which_pk_resp = 'halo_model' if _which_pk_resp.startswith('halo_model') else _which_pk_resp
-
-cov_sb_filename = cfg['covariance']['cov_filename'].format(which_ng_cov='SSC',
-                                                           ng_cov_code='Spaceborne',
-                                                           probe='{probe:s}',
-                                                           ndim='{ndim}')
-include_b2g = cfg['covariance']['include_b2g']
+# ! ========================================== Spaceborne ===================================================
 
 # precompute pk_mm, pk_gm and pk_mm, if you want to rescale the responses
 k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid_resp, z_grid_ssc_integrands, use_h_units,
@@ -886,9 +875,8 @@ if compute_sb_ssc:
     np.testing.assert_allclose(cov_ssc_WL_2d, cov_bench['cov_WL_SS_2D'])
     np.testing.assert_allclose(cov_ssc_GC_2d, cov_bench['cov_GC_SS_2D'])
 # TODO integrate this with Spaceborne_covg
-# ! ========================================== end Spaceborne ===================================================
 
-# ! ========================================== start PyCCL ===================================================
+# ! ========================================== PyCCL ===================================================
 if (compute_ccl_ssc or compute_ccl_cng):
 
     # Note: this z grid has to be larger than the one requested in the trispectrum (z_grid_tkka in the cfg file).
@@ -915,8 +903,6 @@ if (compute_ccl_ssc or compute_ccl_cng):
                                      integration_method=pyccl_cfg['cov_integration_method'],
                                      probe_ordering=probe_ordering, ind_dict=ind_dict)
 
-
-# ! ========================================== end PyCCL ===================================================
 
 cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
 cov_dict = cov_obj.cov_dict

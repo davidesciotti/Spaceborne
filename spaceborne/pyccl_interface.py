@@ -504,7 +504,7 @@ class PycclClass():
         for key in self.cov_ng_3x2pt_dict_8D.keys():
             if (key == ('L', 'L', 'L', 'L')) or (key == ('G', 'L', 'G', 'L')) or (key == ('G', 'G', 'G', 'G')):
                 try:
-                    cov_2d = mm.cov_4D_to_2D(self.cov_ng_3x2pt_dict_8D[key])
+                    cov_2d = mm.cov_4D_to_2D(self.cov_ng_3x2pt_dict_8D[key], block_index='ell')
                     assert np.allclose(cov_2d, cov_2d.T, atol=0, rtol=1e-5)
                     np.testing.assert_allclose(self.cov_ng_3x2pt_dict_8D[key],
                                                #    np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 2, 3)),

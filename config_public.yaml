@@ -173,7 +173,7 @@ covariance:
 
     probe_ordering: [["L", "L"], ["G", "L"], ["G", "G"]] # ordering of the different 3x2pt probes in the covariance matrix
     covariance_ordering_2D:
-        ell_probe_zpair # Determines the ordering of the covariance matrix in 2D:
+        probe_ell_zpair # Determines the ordering of the covariance matrix in 2D:
         # - ell_probe_zpair: Ordered by multipole (ell), then probe type, then redshift pair.
         # - probe_ell_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordeing used by CLOE
         # TODO: Restore or adjust this as needed.
@@ -190,9 +190,9 @@ covariance:
     # - null (None): use the flat-sky expression (valid for PyCCL only)
     # - flat_sky: use the flat-sky expression (valud for PyCCL only)
     #   has to be rescaled by fsky
-    which_sigma2_b: polar_cap_on_the_fly
+    which_sigma2_b: full_curved_sky
 
-    which_pk_responses: halo_model_SB # halo_model_SB, halo_model_CCL (with PyCCL) or separate_universe_SB/_vin (from simulations)
+    which_pk_responses: separate_universe_vin # halo_model_SB, halo_model_CCL (with PyCCL) or separate_universe_SB/_vin (from simulations)
     include_b2g: True # whether or not to include the second-order galaxy bias in the GCph responses
     # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
     # Can be one of:
@@ -207,11 +207,11 @@ covariance:
     k_steps_sigma2: 20_000
     z_min_ssc_integrands: 0.02 # SU responses' kmax allow for z_min = 0.016, at most.
     z_max_ssc_integrands: 3.
-    z_steps_ssc_integrands: 300 # this should be high because I have to trace the spikes in sigma2
+    z_steps_ssc_integrands: 7000 # this should be high because I have to trace the spikes in sigma2
 
-    cl_integral_convention: Euclid_KE_approximation # "Euclid_KE_approximation" or "PySSC" (results are the same) or "Euclid_KE_approximation"
-    use_KE_approximation: True
-    integration_type: simps_KE_approximation # 'simps' or 'simps_KE_approximation' or 'trapz' (which is actually using rectangles)
+    cl_integral_convention: Euclid # "Euclid_KE_approximation" or "PySSC" (results are the same) or "Euclid_KE_approximation"
+    use_KE_approximation: False
+    integration_type: simps # 'simps' or 'simps_KE_approximation' or 'trapz' (which is actually using rectangles)
 
     cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz
 # TODO remove trapz, tidy up KE approximation stuff

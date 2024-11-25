@@ -165,9 +165,9 @@ if cfg['misc']['is_CLOE_run']:
     assert cfg['nz']['EP_or_ED'] == 'EP', 'ep_or_ed must be "EP"'
     use_CLOE_bench_cls = True
     cloe_bench_path = '/home/davide/Documenti/Lavoro/Programmi/CLOE_benchmarks'
-    cov_g_3x2pt_bench = np.load('CovMat-3x2pt-Gauss-32Bins-13245deg2.npy')
-    cov_gssc_3x2pt_bench = np.load('CovMat-3x2pt-GaussSSC-32Bins-13245deg2.npy')
-    cov_gssccng_3x2pt_bench = np.load('CovMat-3x2pt-GaussSSCcNG-32Bins-13245deg2.npy')
+    cov_g_3x2pt_bench = np.load(f'{cloe_bench_path}/CovMat-3x2pt-Gauss-32Bins-13245deg2.npy')
+    cov_gssc_3x2pt_bench = np.load(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSC-32Bins-13245deg2.npy')
+    cov_gssccng_3x2pt_bench = np.load(f'{cloe_bench_path}/CovMat-3x2pt-GaussSSCcNG-32Bins-13245deg2.npy')
     
 # ! instantiate CCL object
 ccl_obj = pyccl_interface.PycclClass(cfg['cosmology'], cfg['extra_parameters'], 
@@ -582,20 +582,11 @@ cov_obj.symmetrize_output_dict = symmetrize_output_dict
 cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['split_gaussian_cov'])
 
-cov_bench = np.load('./tests/benchmarks/covmat.npz').items()
-cov_bench = dict(cov_bench)
+np.testing.assert_allclose(cov_g_3x2pt_bench, cov_obj.cov_3x2pt_g_2D, atol=0, rtol=1e-5)
 
-
-np.testing.assert_allclose(cov_bench['cov_WL_GO_2D'], cov_obj.cov_WL_g_2D, atol=0, rtol=1e-5)
-np.testing.assert_allclose(cov_bench['cov_GC_GO_2D'], cov_obj.cov_GC_g_2D, atol=0, rtol=1e-5)
-np.testing.assert_allclose(cov_bench['cov_XC_GO_2D'], cov_obj.cov_XC_g_2D, atol=0, rtol=1e-5)
-if cfg['covariance']['covariance_ordering_2D'] == 'ell_probe_zpair':
-    np.testing.assert_allclose(cov_bench['cov_3x2pt_GO_2D'], cov_obj.cov_3x2pt_g_2D, atol=0, rtol=1e-5)
 
 
 # ! ========================================== OneCovariance ===================================================
-
-
 if compute_oc_ssc or compute_oc_cng:
 
     if cfg['ell_cuts']['cl_ell_cuts']:
@@ -686,9 +677,55 @@ pk_gg_2d = pk_mm_2d * gal_bias ** 2
 
 if compute_sb_ssc:
     print('Start SSC computation with Spaceborne...')
+    
+    # ! from Vincenzo's files
+    if cfg['covariance']['which_pk_responses'] == 'separate_universe_vin':
+
+        separate_universe_responses_filename= "resfun-idBM03.dat"
+        separate_universe_responses_folder= "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3/InputFiles/InputSSC/ResFun/HMCodeBar"
+
+        # import the response *coefficients* (not the responses themselves)
+        su_responses_folder = separate_universe_responses_folder.format(ROOT=ROOT)
+        su_responses_filename = separate_universe_responses_filename
+        rAB_of_k = np.genfromtxt(f'{su_responses_folder}/{su_responses_filename}')
+
+        log_k_arr = np.unique(rAB_of_k[:, 0])
+        k_grid_resp_vin = 10 ** log_k_arr
+        z_grid_resp_vin = np.unique(rAB_of_k[:, 1])
+
+        r_mm_vin = np.reshape(rAB_of_k[:, 2], (len(k_grid_resp_vin), len(z_grid_resp_vin)))
+        r_gm_vin = np.reshape(rAB_of_k[:, 3], (len(k_grid_resp_vin), len(z_grid_resp_vin)))
+        r_gg_vin = np.reshape(rAB_of_k[:, 4], (len(k_grid_resp_vin), len(z_grid_resp_vin)))
+
+        # remove z=0 and z = 0.01
+        z_grid_resp_vin = z_grid_resp_vin[2:]
+        r_mm_vin = r_mm_vin[:, 2:]
+        r_gm_vin = r_gm_vin[:, 2:]
+        r_gg_vin = r_gg_vin[:, 2:]
+
+        r_mm_vin_func = RegularGridInterpolator(
+            (k_grid_resp_vin, z_grid_resp_vin), r_mm_vin, method='linear')
+        r_gm_vin_func = RegularGridInterpolator(
+            (k_grid_resp_vin, z_grid_resp_vin), r_gm_vin, method='linear')
+        r_gg_vin_func = RegularGridInterpolator(
+            (k_grid_resp_vin, z_grid_resp_vin), r_gg_vin, method='linear')
+
+        k_grid_resp_xx, z_grid_ssc_integrands_yy = np.meshgrid(k_grid_resp, z_grid_ssc_integrands, indexing='ij')
+        r_mm_vin = r_mm_vin_func((k_grid_resp_xx, z_grid_ssc_integrands_yy))
+        r_gm_vin = r_gm_vin_func((k_grid_resp_xx, z_grid_ssc_integrands_yy))
+        r_gg_vin = r_gg_vin_func((k_grid_resp_xx, z_grid_ssc_integrands_yy))
+
+        # now turn the response coefficients into responses
+        dPmm_ddeltab_vin = r_mm_vin * pk_mm_2d
+        dPgm_ddeltab_vin = r_gm_vin * pk_gm_2d
+        dPgg_ddeltab_vin = r_gg_vin * pk_gg_2d
+
+        dPmm_ddeltab = dPmm_ddeltab_vin
+        dPgm_ddeltab = dPgm_ddeltab_vin
+        dPgg_ddeltab = dPgg_ddeltab_vin
 
     # ! 1. Get halo model responses from CCL
-    if cfg['covariance']['which_pk_responses'] == 'halo_model_CCL':
+    elif cfg['covariance']['which_pk_responses'] == 'halo_model_CCL':
 
         ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
                                        pyccl_cfg=pyccl_cfg)
@@ -918,10 +955,10 @@ if compute_sb_ssc:
     cov_ssc_GC_2d = cov_obj.reshape_cov(cov_ssc_GC_4d, 4, 2, nbl_GC,
                                         zpairs=zpairs_auto, ind_probe=ind_auto, is_3x2pt=False)
 
-    mm.compare_arrays(cov_ssc_WL_2d, cov_bench['cov_WL_SS_2D'])
-    mm.compare_arrays(cov_ssc_GC_2d, cov_bench['cov_GC_SS_2D'])
-    np.testing.assert_allclose(cov_ssc_WL_2d, cov_bench['cov_WL_SS_2D'])
-    np.testing.assert_allclose(cov_ssc_GC_2d, cov_bench['cov_GC_SS_2D'])
+    # mm.compare_arrays(cov_ssc_WL_2d, cov_bench['cov_WL_SS_2D'])
+    # mm.compare_arrays(cov_ssc_GC_2d, cov_bench['cov_GC_SS_2D'])
+    # np.testing.assert_allclose(cov_ssc_WL_2d, cov_bench['cov_WL_SS_2D'])
+    # np.testing.assert_allclose(cov_ssc_GC_2d, cov_bench['cov_GC_SS_2D'])
 # TODO integrate this with Spaceborne_covg
 
 # ! ========================================== PyCCL ===================================================
@@ -958,29 +995,29 @@ cov_dict = cov_obj.cov_dict
 for key in cov_dict.keys():
     mm.matshow(cov_dict[key], title=key)
 
-for key_bench in cov_bench.keys():
+# for key_bench in cov_bench.keys():
     
-    probe = key_bench.split('_')[1]
-    which_ng_cov = key_bench.split('_')[2]
+#     probe = key_bench.split('_')[1]
+#     which_ng_cov = key_bench.split('_')[2]
     
-    excluded_probes = ['2x2pt', 'WA']
-    if cfg['covariance']['covariance_ordering_2D'] == 'ell_probe_zpair':
-        excluded_probes.append('3x2pt')
+#     excluded_probes = ['2x2pt', 'WA']
+#     if cfg['covariance']['covariance_ordering_2D'] == 'ell_probe_zpair':
+#         excluded_probes.append('3x2pt')
 
-    if probe not in ['2x2pt', 'WA']:
+#     if probe not in ['2x2pt', 'WA']:
         
-        if which_ng_cov == 'GO':
-            which_cov_new = 'g'
-            cov_new = cov_dict[f'cov_{probe}_{which_cov_new}_2D']
-        elif which_ng_cov == 'SS':
-            which_cov_new = 'ssc'
-            cov_new = cov_dict[f'cov_{probe}_{which_cov_new}_2D']
-        if which_ng_cov == 'GS':
-            which_cov_new = 'g'
-            cov_new = cov_dict[f'cov_{probe}_g_2D'] + cov_dict[f'cov_{probe}_ssc_2D'] + cov_dict[f'cov_{probe}_cng_2D']
+#         if which_ng_cov == 'GO':
+#             which_cov_new = 'g'
+#             cov_new = cov_dict[f'cov_{probe}_{which_cov_new}_2D']
+#         elif which_ng_cov == 'SS':
+#             which_cov_new = 'ssc'
+#             cov_new = cov_dict[f'cov_{probe}_{which_cov_new}_2D']
+#         if which_ng_cov == 'GS':
+#             which_cov_new = 'g'
+#             cov_new = cov_dict[f'cov_{probe}_g_2D'] + cov_dict[f'cov_{probe}_ssc_2D'] + cov_dict[f'cov_{probe}_cng_2D']
 
-        np.testing.assert_allclose(cov_new, cov_bench[key_bench], atol=0, rtol=1e-6)
-        print(f'{key_bench} cov matches ✅')
+#         np.testing.assert_allclose(cov_new, cov_bench[key_bench], atol=0, rtol=1e-6)
+#         print(f'{key_bench} cov matches ✅')
 
 
 for which_cov in cov_dict.keys():

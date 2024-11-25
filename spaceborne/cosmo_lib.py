@@ -9,7 +9,7 @@ from astropy.cosmology import w0waCDM
 # from classy import Class
 from numba import njit
 import pyccl as ccl
-from scipy.integrate import simps
+from scipy.integrate import simpson as simps
 import sys
 
 import os

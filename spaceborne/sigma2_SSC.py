@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from joblib import delayed, Parallel
 import multiprocessing as mp
-from scipy.integrate import simps
+from scipy.integrate import simpson as simps
 from scipy.interpolate import RegularGridInterpolator
 from scipy.special import spherical_jn
 import pyccl as ccl

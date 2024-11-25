@@ -3,7 +3,7 @@ import warnings
 import pickle
 import numpy as np
 from matplotlib import pyplot as plt
-from scipy.integrate import simps
+from scipy.integrate import simpson as simps
 from copy import deepcopy
 from scipy.interpolate import UnivariateSpline, interp1d, RectBivariateSpline
 import os

@@ -22,7 +22,7 @@ import inspect
 import datetime
 from tqdm import tqdm
 import pandas as pd
-from scipy.integrate import simps
+from scipy.integrate import simpson as simps
 from scipy.interpolate import interp1d, RegularGridInterpolator, CubicSpline
 
 

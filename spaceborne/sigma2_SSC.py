@@ -25,8 +25,8 @@ import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib
 import spaceborne.mask_fits_to_cl as mask_utils
 
-sys.path.append(f'{ROOT}/PySSC')
-import PySSC
+# sys.path.append(f'{ROOT}/PySSC')
+# import PySSC
 
 start_time = time.perf_counter()
 

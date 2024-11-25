@@ -1,4 +1,3 @@
-
 # TODO infer zbins from nz
 # TODO infer EP Ed from nz
 # TODO delete n_probes
@@ -13,8 +12,6 @@
 # TODO hardcode shift_nz_interpolation_kind to spline
 # TODO remove compute_bnt_with_shifted_nz_for_zcuts??
 # TODO remove probe_ordering? LG not tested in a looooong time
-
-
 
 cosmology:
     Om: 0.32
@@ -35,7 +32,7 @@ intrinsic_alignment:
     eIA: 1.66
     bIA: 0.0
     CIA: 0.0134
-    z_pivot_IA: 0  # TODO implement this
+    z_pivot_IA: 0 # TODO implement this
 
 # extra parameters to be passed to CCL cosmo object, eg CAMB extra parameters
 # (see https://ccl.readthedocs.io/en/latest/api/pyccl.cosmology.html#pyccl.cosmology.Cosmology
@@ -59,45 +56,45 @@ halo_model:
     halo_profile_hod: HaloProfileHOD
 
 C_ell:
-    
-    which_gal_bias: 'FS2_polynomial_fit'  # options: 'from_input', 'FS2_polynomial_fit'
-    which_mag_bias: 'FS2_polynomial_fit'  # options: 'from_input', 'FS2_polynomial_fit'
+    which_gal_bias: "FS2_polynomial_fit" # options: 'from_input', 'FS2_polynomial_fit'
+    which_mag_bias: "FS2_polynomial_fit" # options: 'from_input', 'FS2_polynomial_fit'
     # bias_function: analytical # 'analytical', 'leporifit', 'pocinofit'
     # bias_model: step-wise # 'step-wise', 'constant', 'linint', 'ones', 'polynomial'
     # coefficients for the polynomial galaxy and magnification bias fits to FS2
     galaxy_bias_fit_coeff: [1.33291, -0.72414, 1.0183, -0.14913]
     magnification_bias_fit_coeff: [-1.50685, 1.35034, 0.08321, 0.04279]
-    
+
     # multiplicative shear bias per redshift bin
-    mult_shear_bias: [0, 0, 0]
-    
+    mult_shear_bias: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
     gal_bias_table_filename: ./input_main_take2/gal_bias.txt
     mag_bias_table_filename: ./input_main_take2/mag_bias.txt # TODO test this!
-    
+
     # boolean flags for redshift-space distortion, intrinsic alignment
     has_rsd: False
-    has_IA: False
-    has_magnification_bias: False
+    has_IA: True
+    has_magnification_bias: True
 
+    # TODO implement this
     l_limber: -1
     non_limber_integration_method: FKEM
-
-
 
 nz:
     EP_or_ED: EP
 
     # paths to source and lens redshift distributions. These must have shape (z_points, zbins + 1)
-    nz_sources_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid/nzTab-EP03-zedMin02-zedMax25-mag245.dat
-    nz_lenses_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid/nzTab-EP03-zedMin02-zedMax25-mag245.dat
+    nz_sources_filename: /home/davide/Documenti/Lavoro/Programmi/CLOE_benchmarks/nzTabSPV3.dat
+    nz_lenses_filename: /home/davide/Documenti/Lavoro/Programmi/CLOE_benchmarks/nzTabSPV3.dat
 
     # number of galaxies per arcmin**2 for each redshift bin
-    ngal_sources: [8.09216, 8.09215, 8.09215]
-    ngal_lenses: [8.09216, 8.09215, 8.09215]
+    ngal_sources:
+        [ 1.86742, 1.86744, 1.8674, 1.86743, 1.86741, 1.86742, 1.86742, 1.86742, 1.86744, 1.8674, 1.86742, 1.86742, 1.86742]
+    ngal_lenses:
+        [ 1.86742, 1.86744, 1.8674, 1.86743, 1.86741, 1.86742, 1.86742, 1.86742, 1.86744, 1.8674, 1.86742, 1.86742, 1.86742]
 
     # shift in the redshift distribution per redshift bin
-    dzWL: [-0.008848, 0.051368, 0.059484]
-    dzGC: [-0.008848, 0.051368, 0.059484]
+    dzWL: [-0.025749, 0.022716, -0.026032, 0.012594, 0.019285, 0.008326, 0.038207, 0.002732, 0.034066, 0.049479, 0.06649, 0.000815, 0.04907]
+    dzGC: [-0.025749, 0.022716, -0.026032, 0.012594, 0.019285, 0.008326, 0.038207, 0.002732, 0.034066, 0.049479, 0.06649, 0.000815, 0.04907]
 
     shift_nz: True # Vincenzo's kernels are computed using a shifted n(z)!
     shift_nz_interpolation_kind: linear
@@ -114,12 +111,11 @@ mask:
     fsky: 0.3210678603147902
     survey_area_deg2: 13245
 
-
 ell_binning:
     ell_min: 10 # minimum ell for 3x2pt
-    ell_max_WL: 3000 # maximum ell for WL
-    ell_max_GC: 3000 # maximum ell for GC
-    ell_max_3x2pt: 3000
+    ell_max_WL: 5000 # maximum ell for WL
+    ell_max_GC: 5000 # maximum ell for GC
+    ell_max_3x2pt: 5000
     # the case with the largest range is nbl_WL_opt. This is the reference ell binning from which the cuts are applied;
     # in principle, the other binning should be consistent with this one and should not be hardcoded, as long as
     # lmax=5000, 3000 holds
@@ -147,39 +143,45 @@ BNT:
     include_ia_in_bnt_kernel_for_zcuts: False
 
 covariance:
-    n_probes: 2  # Number of probes considered in the covariance
+    n_probes: 2 # Number of probes considered in the covariance
 
-    G: True       # Enable/disable the Gaussian covariance term.
-    SSC: True     # Enable/disable the super-sample covariance (SSC) term.
-    cNG: False     # Enable/disable the connected non-Gaussian (cNG) covariance term.
+    G: True # Enable/disable the Gaussian covariance term.
+    SSC: True # Enable/disable the super-sample covariance (SSC) term.
+    cNG: False # Enable/disable the connected non-Gaussian (cNG) covariance term.
 
-    SSC_code: Spaceborne        # Specifies the code to compute SSC. Options:
-                                # - Spaceborne: Use the Spaceborne implementation.
-                                # - OneCovariance: Use the OneCovariance implementation.
-                                # - PyCCL: Use the PyCCL implementation.
+    SSC_code:
+        Spaceborne # Specifies the code to compute SSC. Options:
+        # - Spaceborne: Use the Spaceborne implementation.
+        # - OneCovariance: Use the OneCovariance implementation.
+        # - PyCCL: Use the PyCCL implementation.
 
-    cNG_code: OneCovariance     # Specifies the code to compute cNG. Options:
-                                # - OneCovariance: Use the OneCovariance implementation.
-                                # - PyCCL: Use the PyCCL implementation.
+    cNG_code:
+        OneCovariance # Specifies the code to compute cNG. Options:
+        # - OneCovariance: Use the OneCovariance implementation.
+        # - PyCCL: Use the PyCCL implementation.
 
     # Ordering-related settings:
-    triu_tril: triu             # Choose whether to use the upper ('triu') or lower ('tril') triangle 
-                                # of the auto-Cl zbins (C_{ij}(\ell)^AA = C_{ji}(\ell)^AA).
-    row_col_major: row-major    # Within the upper or lower triangle, count indices in 
-                                # a row-major or column-major order.
-    split_gaussian_cov: False   # Whether to split the Gaussian covariance term into the 
-                                # sample variance, noise and mixed terms
+    triu_tril:
+        triu # Choose whether to use the upper ('triu') or lower ('tril') triangle
+        # of the auto-Cl zbins (C_{ij}(\ell)^AA = C_{ji}(\ell)^AA).
+    row_col_major:
+        row-major # Within the upper or lower triangle, count indices in
+        # a row-major or column-major order.
+    split_gaussian_cov:
+        False # Whether to split the Gaussian covariance term into the
+        # sample variance, noise and mixed terms
 
-    probe_ordering: [['L', 'L'], ['G', 'L'], ['G', 'G']]  # ordering of the different 3x2pt probes in the covariance matrix
-    covariance_ordering_2D: ell_probe_zpair  # Determines the ordering of the covariance matrix in 2D:
-                                             # - ell_probe_zpair: Ordered by multipole (ell), then probe type, then redshift pair.
-                                             # - probe_ell_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordeing used by CLOE
-                                             # TODO: Restore or adjust this as needed.
+    probe_ordering: [["L", "L"], ["G", "L"], ["G", "G"]] # ordering of the different 3x2pt probes in the covariance matrix
+    covariance_ordering_2D:
+        ell_probe_zpair # Determines the ordering of the covariance matrix in 2D:
+        # - ell_probe_zpair: Ordered by multipole (ell), then probe type, then redshift pair.
+        # - probe_ell_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordeing used by CLOE
+        # TODO: Restore or adjust this as needed.
 
-    sigma_eps_i: 0.26       # ellipticity dispersion *per component* = sigma_eps_i
-                            # total ellipticity dispersion = sigma_eps
-                            # sigma_eps = (sigma_eps_i * np.sqrt(2))
-    
+    sigma_eps_i:
+        0.26 # ellipticity dispersion *per component* = sigma_eps_i
+        # total ellipticity dispersion = sigma_eps
+        # sigma_eps = (sigma_eps_i * np.sqrt(2))
 
     # sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
     # - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only). In this case, the output covmat
@@ -199,7 +201,7 @@ covariance:
     # Setting this to 'from_HOD' will match perfectly 'halo_model_CCL'
     which_b1g_in_resp: from_HOD
 
-    load_cached_sigma2_b: False  # bool. Whether to load the previously computed sigma2_b.
+    load_cached_sigma2_b: False # bool. Whether to load the previously computed sigma2_b.
     log10_k_min_sigma2: -4
     log10_k_max_sigma2: 1
     k_steps_sigma2: 20_000
@@ -210,21 +212,19 @@ covariance:
     cl_integral_convention: Euclid_KE_approximation # "Euclid_KE_approximation" or "PySSC" (results are the same) or "Euclid_KE_approximation"
     use_KE_approximation: True
     integration_type: simps_KE_approximation # 'simps' or 'simps_KE_approximation' or 'trapz' (which is actually using rectangles)
-    
+
     cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz
 # TODO remove trapz, tidy up KE approximation stuff
 
-
 PyCCL:
-
     n_samples_wf: 1000
     # (from CCL docs): integration method to be used for the Limber integrals.
-    # Possibilities: 'qag_quad' (GSL's qag method backed up by quad when it fails) 
+    # Possibilities: 'qag_quad' (GSL's qag method backed up by quad when it fails)
     # and 'spline' (the integrand is splined and then integrated analytically).
     # DSnote: note that the former could give errors.
     cov_integration_method: spline
 
-    load_cached_tkka: False  # TODO restore if there is time
+    load_cached_tkka: False # TODO restore if there is time
 
     z_grid_tkka_min: 0.
     z_grid_tkka_max: 3.
@@ -235,23 +235,19 @@ PyCCL:
     z_grid_tkka_steps_cNG: 100
     k_grid_tkka_steps_cNG: 512
 
-
 OneCovariance:
-    precision_settings: default # 'high_precision' or 'default'
+    precision_settings: high_precision # 'high_precision' or 'default'
     path_to_oc_executable: /home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py
-
-tests:
-    compute_condition_number: True
-    check_negative_eigenvalues: True
 
 misc:
     num_threads: 40 # how many threads to use for the Julia SSC integral with @tturbo
 
     # some sanity checks on the covariance matrix. These could take a while to run.
-    test_numpy_inversion: True         # test for errors in np.linalg.inv
-    test_condition_number: True        # check if condition number is above 1e10
-    test_cholesky_decomposition: True  # test if cholesky decomposition fails
-    test_symmetry: True                # test if covariance matrix is symmetric (cov = cov.T)
+    test_numpy_inversion: False # test for errors in np.linalg.inv
+    test_condition_number: False # check if condition number is above 1e10
+    test_cholesky_decomposition: False # test if cholesky decomposition fails
+    test_symmetry: False # test if covariance matrix is symmetric (cov = cov.T)
 
     output_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/output
     use_h_units: False # TODO hardcode!
+    is_CLOE_run: True

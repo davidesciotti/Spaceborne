@@ -331,8 +331,8 @@ def W_IA(z_grid):
 
 
 # @njit
-def F_IA(z, eta_IA, beta_IA, lumin_ratio_func):
-    result = (1 + z) ** eta_IA * (lumin_ratio_func(z)) ** beta_IA
+def F_IA(z, eta_IA, beta_IA, z_pivot_IA, lumin_ratio_func):
+    result = ((1 + z)/(1+ z_pivot_IA)) ** eta_IA * (lumin_ratio_func(z)) ** beta_IA
     return result
 
 
@@ -584,11 +584,13 @@ def build_ia_bias_1d_arr(z_grid_out, cosmo_ccl, ia_dict, input_z_grid_lumin_rati
         A_IA = ia_dict['Aia']
         eta_IA = ia_dict['eIA']
         beta_IA = ia_dict['bIA']
+        z_pivot_IA = ia_dict['z_pivot_IA']
         C_IA = ia_dict['CIA']
     except KeyError:
         A_IA = ia_dict['A_IA']
         eta_IA = ia_dict['eta_IA']
         beta_IA = ia_dict['beta_IA']
+        z_pivot_IA = ia_dict['z_pivot_IA']
         C_IA = ia_dict['C_IA']
 
     growth_factor = ccl.growth_factor(cosmo_ccl, a=1 / (1 + z_grid_out))
@@ -610,7 +612,7 @@ def build_ia_bias_1d_arr(z_grid_out, cosmo_ccl, ia_dict, input_z_grid_lumin_rati
                                                   'redshifts!)'
 
     omega_m = cosmo_ccl.cosmo.params.Omega_m
-    F_IA_of_z = F_IA(z_grid_out, eta_IA, beta_IA, input_lumin_ratio_func)
+    F_IA_of_z = F_IA(z_grid_out, eta_IA, beta_IA, z_pivot_IA, input_lumin_ratio_func)
     ia_bias = -1 * A_IA * C_IA * omega_m * F_IA_of_z / growth_factor
 
     if output_F_IA_of_z:

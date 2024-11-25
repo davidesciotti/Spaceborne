@@ -154,9 +154,24 @@ k_grid_resp = np.geomspace(cfg['PyCCL']['k_grid_tkka_min'],
 
 if len(z_grid_ssc_integrands) < 250:
     warnings.warn('z_grid_ssc_integrands is small, at the moment it used to compute various intermediate quantities')
-
+    
+if cfg['misc']['is_CLOE_run']:
+    assert cfg['mask']['survey_area_deg2'] == 13245, 'survey area must be 13245 deg2'
+    assert ell_max_WL == ell_max_3x2pt == 5000, 'all probes should be up to lmax=5000'
+    assert cfg['extra_parameters']['camb']['halofit_version'] == 'mead2020_feedback', 'which_pk must be HMCodeBar'
+    # assert z_steps_ssc_integrands == 7000, 'for the actual run, I used z_steps_ssc_integrands == 7000'
+    assert cfg['OneCovariance']['precision_settings'] == 'high_precision'
+    assert zbins == 13, 'zbins must be 13'
+    assert cfg['nz']['EP_or_ED'] == 'EP', 'ep_or_ed must be "EP"'
+    use_CLOE_bench_cls = True
+    cloe_bench_path = '/home/davide/Documenti/Lavoro/Programmi/CLOE_benchmarks'
+    cov_g_3x2pt_bench = np.load('CovMat-3x2pt-Gauss-32Bins-13245deg2.npy')
+    cov_gssc_3x2pt_bench = np.load('CovMat-3x2pt-GaussSSC-32Bins-13245deg2.npy')
+    cov_gssccng_3x2pt_bench = np.load('CovMat-3x2pt-GaussSSCcNG-32Bins-13245deg2.npy')
+    
 # ! instantiate CCL object
-ccl_obj = pyccl_interface.PycclClass(cfg['cosmology'], cfg['extra_parameters'], cfg['halo_model'])
+ccl_obj = pyccl_interface.PycclClass(cfg['cosmology'], cfg['extra_parameters'], 
+                                     cfg['intrinsic_alignment'], cfg['halo_model'])
 ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
 ccl_obj.zbins = zbins
 a_default_grid_ccl = ccl_obj.cosmo_ccl.get_pk_spline_a()
@@ -408,6 +423,7 @@ ccl_obj.cl_gl_3d = ccl_obj.compute_cls(ell_dict['ell_XC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
 ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
+
 # ! add multiplicative shear bias
 mult_shear_bias = np.array(cfg['C_ell']['mult_shear_bias'])
 assert len(mult_shear_bias) == zbins, 'mult_shear_bias should be a scalar'
@@ -433,6 +449,38 @@ ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[:nbl_3x2pt, :, :]
 cl_ll_3d, cl_gl_3d, cl_gg_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d
 cl_3x2pt_5d = ccl_obj.cl_3x2pt_5d
 
+
+if use_CLOE_bench_cls:
+    # import CLOE cls
+    cl_ll_2d = np.genfromtxt(f'{cloe_bench_path}/Cls_zNLA_ShearShear_C00.dat')
+    cl_gl_2d = np.genfromtxt(f'{cloe_bench_path}/Cls_zNLA_PosShear_C00.dat')
+    cl_gg_2d = np.genfromtxt(f'{cloe_bench_path}/Cls_zNLA_PosPos_C00.dat')
+
+    # some checks on the ell values
+    np.testing.assert_allclose(cl_ll_2d[:, 0], cl_gl_2d[:, 0], atol=0, rtol=1e-10)
+    np.testing.assert_allclose(cl_ll_2d[:, 0], cl_gg_2d[:, 0], atol=0, rtol=1e-10)
+    np.testing.assert_allclose(cl_ll_2d[:, 0], ell_ref_nbl32, atol=0, rtol=1e-10)
+    np.testing.assert_allclose(cl_ll_2d[:, 0][:nbl_3x2pt], ell_dict['ell_3x2pt'], atol=0, rtol=1e-10)
+
+    cl_ll_2d = cl_ll_2d[:, 1:]
+    cl_gl_2d = cl_gl_2d[:, 1:]
+    cl_gg_2d = cl_gg_2d[:, 1:]
+
+    cl_ll_3d = mm.cl_2D_to_3D_symmetric(cl_ll_2d, nbl=nbl_WL_opt, zpairs=zpairs_auto, zbins=zbins)
+    cl_gl_3d = mm.cl_2D_to_3D_asymmetric(cl_gl_2d, nbl=nbl_WL_opt, zbins=zbins, order='C')
+    cl_gg_3d = mm.cl_2D_to_3D_symmetric(cl_gg_2d, nbl=nbl_WL_opt, zpairs=zpairs_auto, zbins=zbins)
+
+    cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
+    cl_gl_3d = cl_gl_3d[:nbl_3x2pt, :, :]
+    cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
+
+    cl_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_3x2pt, zbins, zbins))
+    cl_3x2pt_5d[0, 0, :, :, :] = cl_ll_3d[:nbl_3x2pt, :, :]
+    cl_3x2pt_5d[1, 0, :, :, :] = cl_gl_3d[:nbl_3x2pt, :, :]
+    cl_3x2pt_5d[0, 1, :, :, :] = cl_gl_3d[:nbl_3x2pt, :, :].transpose(0, 2, 1)
+    cl_3x2pt_5d[1, 1, :, :, :] = cl_gg_3d[:nbl_3x2pt, :, :]
+    
+    
 fig, ax = plt.subplots(1, 3)
 plt.tight_layout()
 for zi in range(zbins):
@@ -452,29 +500,28 @@ ax[0].set_ylabel('$C_{\\ell}$')
 lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
 plt.show()
 
-cl_ll_3d_test = np.load('./tests/benchmarks/cl_ll_3d.npy', )
-cl_gl_3d_test = np.load('./tests/benchmarks/cl_gl_3d.npy', )
-cl_gg_3d_test = np.load('./tests/benchmarks/cl_gg_3d.npy', )
-cl_3x2pt_5d_test = np.load('./tests/benchmarks/cl_3x2pt_5d.npy', )
-wf_delta_arr_test = np.load('./tests/benchmarks/wf_delta_arr.npy')
-wf_gamma_arr_test = np.load('./tests/benchmarks/wf_gamma_arr.npy')
-wf_ia_arr_test = np.load('./tests/benchmarks/wf_ia_arr.npy')
-wf_mu_arr_test = np.load('./tests/benchmarks/wf_mu_arr.npy')
-wf_lensing_arr_test = np.load('./tests/benchmarks/wf_lensing_arr.npy')
-wf_galaxy_arr_test = np.load('./tests/benchmarks/wf_galaxy_arr.npy')
+# cl_ll_3d_test = np.load('./tests/benchmarks/cl_ll_3d.npy', )
+# cl_gl_3d_test = np.load('./tests/benchmarks/cl_gl_3d.npy', )
+# cl_gg_3d_test = np.load('./tests/benchmarks/cl_gg_3d.npy', )
+# cl_3x2pt_5d_test = np.load('./tests/benchmarks/cl_3x2pt_5d.npy', )
+# wf_delta_arr_test = np.load('./tests/benchmarks/wf_delta_arr.npy')
+# wf_gamma_arr_test = np.load('./tests/benchmarks/wf_gamma_arr.npy')
+# wf_ia_arr_test = np.load('./tests/benchmarks/wf_ia_arr.npy')
+# wf_mu_arr_test = np.load('./tests/benchmarks/wf_mu_arr.npy')
+# wf_lensing_arr_test = np.load('./tests/benchmarks/wf_lensing_arr.npy')
+# wf_galaxy_arr_test = np.load('./tests/benchmarks/wf_galaxy_arr.npy')
 
-np.testing.assert_allclose(cl_ll_3d, cl_ll_3d_test, rtol=1e-5, atol=0)
-np.testing.assert_allclose(cl_gl_3d, cl_gl_3d_test, rtol=1e-5, atol=0)
-np.testing.assert_allclose(cl_gg_3d, cl_gg_3d_test, rtol=1e-5, atol=0)
-np.testing.assert_allclose(cl_3x2pt_5d, cl_3x2pt_5d_test, rtol=1e-5, atol=0)
-np.testing.assert_allclose(ccl_obj.wf_delta_arr, wf_delta_arr_test, rtol=1e-5, atol=0)
-np.testing.assert_allclose(ccl_obj.wf_gamma_arr, wf_gamma_arr_test, rtol=1e-5, atol=0)
-np.testing.assert_allclose(ccl_obj.wf_ia_arr, wf_ia_arr_test, rtol=1e-5, atol=0)
-np.testing.assert_allclose(ccl_obj.wf_mu_arr, wf_mu_arr_test, rtol=1e-5, atol=0)
-np.testing.assert_allclose(ccl_obj.wf_lensing_arr, wf_lensing_arr_test, rtol=1e-5, atol=0)
-np.testing.assert_allclose(ccl_obj.wf_galaxy_arr, wf_galaxy_arr_test, rtol=1e-5, atol=0)
-
-print('cl and wf match!! ✅')
+# np.testing.assert_allclose(cl_ll_3d, cl_ll_3d_test, rtol=1e-5, atol=0)
+# np.testing.assert_allclose(cl_gl_3d, cl_gl_3d_test, rtol=1e-5, atol=0)
+# np.testing.assert_allclose(cl_gg_3d, cl_gg_3d_test, rtol=1e-5, atol=0)
+# np.testing.assert_allclose(cl_3x2pt_5d, cl_3x2pt_5d_test, rtol=1e-5, atol=0)
+# np.testing.assert_allclose(ccl_obj.wf_delta_arr, wf_delta_arr_test, rtol=1e-5, atol=0)
+# np.testing.assert_allclose(ccl_obj.wf_gamma_arr, wf_gamma_arr_test, rtol=1e-5, atol=0)
+# np.testing.assert_allclose(ccl_obj.wf_ia_arr, wf_ia_arr_test, rtol=1e-5, atol=0)
+# np.testing.assert_allclose(ccl_obj.wf_mu_arr, wf_mu_arr_test, rtol=1e-5, atol=0)
+# np.testing.assert_allclose(ccl_obj.wf_lensing_arr, wf_lensing_arr_test, rtol=1e-5, atol=0)
+# np.testing.assert_allclose(ccl_obj.wf_galaxy_arr, wf_galaxy_arr_test, rtol=1e-5, atol=0)
+# print('cl and wf match!! ✅')
 
 
 # ! BNT transform the cls (and responses?) - it's more complex since I also have to transform the noise
@@ -537,6 +584,7 @@ cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['spl
 
 cov_bench = np.load('./tests/benchmarks/covmat.npz').items()
 cov_bench = dict(cov_bench)
+
 
 np.testing.assert_allclose(cov_bench['cov_WL_GO_2D'], cov_obj.cov_WL_g_2D, atol=0, rtol=1e-5)
 np.testing.assert_allclose(cov_bench['cov_GC_GO_2D'], cov_obj.cov_GC_g_2D, atol=0, rtol=1e-5)

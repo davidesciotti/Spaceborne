@@ -1,278 +1,183 @@
+
+# TODO infer zbins from nz
+# TODO infer EP Ed from nz
+# TODO delete n_probes
+# TODO delete which_cls
+# TODO delete use_h_units? hardocode to False, maybe?
+# TODO delete BNT_transform? as an option here, for sure
+
 # TODO add general description
 # TODO merge with cfg.yaml from spaceborne_covg
 # TODO add dzGC
+# TODO delete dz shifts?
+# TODO hardcode shift_nz_interpolation_kind to spline
+# TODO remove compute_bnt_with_shifted_nz_for_zcuts??
+# TODO remove probe_ordering? LG not tested in a looooong time
+
+cosmology:
+    Om: 0.32
+    Ob: 0.05
+    wz: -1.0
+    wa: 0.0
+    h: 0.6737
+    ns: 0.966
+    s8: 0.816
+    logT: 7.75
+    ODE: 0.68
+    m_nu: 0.06
+    N_eff: 3.046
+    Om_k0: 0
+
+intrinsic_alignment:
+    Aia: 0.16
+    eIA: 1.66
+    bIA: 0.0
+    CIA: 0.0134
+    z_pivot_IA: 0  # TODO implement this
+
+# extra parameters to be passed to CCL cosmo object, eg CAMB extra parameters
+# (see https://ccl.readthedocs.io/en/latest/api/pyccl.cosmology.html#pyccl.cosmology.Cosmology
+# for the different options)
+extra_parameters:
+    camb:
+        halofit_version: mead2020_feedback
+        kmax: 100
+        HMCode_logT_AGN: 7.75
+        num_massive_neutrinos: 1
+        dark_energy_model: ppf
+
+# Halo model configuration using CCL classes (https://ccl.readthedocs.io/en/latest/api/pyccl.halos.html)
+# Each parameter maps directly to a CCL class, and has exactly its name
+halo_model:
+    mass_def: MassDef200m
+    concentration: ConcentrationDuffy08
+    mass_function: MassFuncTinker10
+    halo_bias: HaloBiasTinker10
+    halo_profile_dm: HaloProfileNFW
+    halo_profile_hod: HaloProfileHOD
+
+C_ell:
+    
+    which_gal_bias: 'FS2_polynomial_fit'  # options: 'from_input', 'FS2_polynomial_fit'
+    which_mag_bias: 'FS2_polynomial_fit'  # options: 'from_input', 'FS2_polynomial_fit'
+    # bias_function: analytical # 'analytical', 'leporifit', 'pocinofit'
+    # bias_model: step-wise # 'step-wise', 'constant', 'linint', 'ones', 'polynomial'
+    # coefficients for the polynomial galaxy and magnification bias fits to FS2
+    galaxy_bias_fit_coeff: [1.33291, -0.72414, 1.0183, -0.14913]
+    magnification_bias_fit_coeff: [-1.50685, 1.35034, 0.08321, 0.04279]
+    
+    # multiplicative shear bias per redshift bin
+    mult_shear_bias: [0, 0, 0]
+    
+    gal_bias_table_filename: ./input_main_take2/gal_bias.txt
+    mag_bias_table_filename: ./input_main_take2/mag_bias.txt # TODO test this!
+    
+    # boolean flags for redshift-space distortion, intrinsic alignment
+    has_rsd: False
+    has_IA: False
+    has_magnification_bias: False
+
+    l_limber: -1
+    non_limber_integration_method: FKEM
+
 
 
 nz:
+    EP_or_ED: EP
+
     # paths to source and lens redshift distributions. These must have shape (z_points, zbins + 1)
-    nz_sources_filename: "/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid/nzTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat"
-    nz_lenses_filename: "/home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid/nzTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat"
-    
+    nz_sources_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid/nzTab-EP03-zedMin02-zedMax25-mag245.dat
+    nz_lenses_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid/nzTab-EP03-zedMin02-zedMax25-mag245.dat
+
     # number of galaxies per arcmin**2 for each redshift bin
     ngal_sources: [8.09216, 8.09215, 8.09215]
     ngal_lenses: [8.09216, 8.09215, 8.09215]
 
+    # shift in the redshift distribution per redshift bin
+    dzWL: [-0.008848, 0.051368, 0.059484]
+    dzGC: [-0.008848, 0.051368, 0.059484]
+
     shift_nz: True # Vincenzo's kernels are computed using a shifted n(z)!
-    compute_bnt_with_shifted_nz_for_zcuts: False # ! lets test this
     shift_nz_interpolation_kind: linear
     normalize_shifted_nz: True
     nz_gaussian_smoothing: False # does not seem to have a large effect...
     nz_gaussian_smoothing_sigma: 2
-    include_ia_in_bnt_kernel_for_zcuts: False
     plot_nz_tocheck: True
-    
-cosmology:
-    # these are the parameters varied in the analysis. The ordering is the same used in the FM
-    FM_ordered_params:
-        # where did these come from??
-        # Om: 0.318592238
-        # ODE: 0.68140775651
-        # Ob: 0.05001413
-        Om: 0.32
-        Ob: 0.05
-        wz: -1.0
-        wa: 0.0
-        h: 0.6737 # fiducial value used in CLOE MCMC runs
-        # h: 0.67 # fiducial value used in Vincenzo's files!
-        ns: 0.966
-        s8: 0.816
-        logT: 7.75
-        Aia: 0.16
-        eIA: 1.66
-        # m01: 0.0
-        # m02: 0.0
-        # m03: 0.0
-        # m04: 0.0
-        # m05: 0.0
-        # m06: 0.0
-        # m07: 0.0
-        # m08: 0.0
-        # m09: 0.0
-        # m10: 0.0
-        # m11: 0.0
-        # m12: 0.0
-        # m13: 0.0
-        # dzWL01: -0.025749
-        # dzWL02: 0.022716
-        # dzWL03: -0.026032
-        # dzWL04: 0.012594
-        # dzWL05: 0.019285
-        # dzWL06: 0.008326
-        # dzWL07: 0.038207
-        # dzWL08: 0.002732
-        # dzWL09: 0.034066
-        # dzWL10: 0.049479
-        # dzWL11: 0.06649
-        # dzWL12: 0.000815
-        # dzWL13: 0.04907
-        # coefficients for the polynomial magnification and galaxy bias fits
-        bG01: 1.33291
-        bG02: -0.72414
-        bG03: 1.0183
-        bG04: -0.14913
-        bM01: -1.50685
-        bM02: 1.35034
-        bM03: 0.08321
-        bM04: 0.04279
 
-    # these parameters are not varied in the analysis; their specific ordering is not important
-    # TODO how about logT? below it's fixed, above it's varied
-    other_params:
-        ODE: 0.68
-        m_nu: 0.06
-        N_eff: 3.046
-        bIA: 0.0
-        CIA: 0.0134
-        Om_k0: 0
-        camb_extra_parameters:
-            camb:
-                halofit_version: mead2020_feedback
-                kmax: 100
-                HMCode_logT_AGN: 7.75
-                num_massive_neutrinos: 1
-                dark_energy_model: ppf
-
-    # Halo model configuration using CCL classes (https://ccl.readthedocs.io/en/latest/api/pyccl.halos.html)
-    # Each parameter maps directly to a CCL class, and has exactly its name
-    halo_model:
-        mass_def: MassDef200m
-        concentration: ConcentrationDuffy08
-        mass_function: MassFuncTinker10
-        halo_bias: HaloBiasTinker10
-        halo_profile_dm: HaloProfileNFW
-        halo_profile_hod: HaloProfileHOD
-
-general_cfg:
-    is_CLOE_run: False # True or False; if True, a check on some of the key options will be performed
-
-    ell_min: 10 # minimum ell for 3x2pt
-    ell_max_WL: 3000 # maximum ell for WL
-    ell_max_GC: 3000 # maximum ell for GC
-    ell_max_3x2pt: 3000
-    zbins: 3
-    EP_or_ED: EP # equipopulated or equidistant bins
-    n_probes: 2
-    use_WA: False
-    save_cls_3d: False
-    save_rls_3d: False
-
-    # the case with the largest range is nbl_WL_opt.. This is the reference ell binning from which the cuts are applied;
-    # in principle, the other binning should be consistent with this one and should not be hardcoded, as long as
-    # lmax=5000, 3000 holds
-    nbl_WL_opt: 32 # this is the value from which the various bin cuts are applied, do not change it
-    ell_max_WL_opt: 5000 # this is the value from which the various bin cuts are applied, do not change it
-
-    ell_cuts: False
-    which_cuts: standard
-    center_or_min: center # cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
-    cl_ell_cuts: False
-    kmax_h_over_Mpc_ref: 1.0 # this is used when ell_cuts is False, also...?
-    # kmax_list_1_over_Mpc: (0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, #10.00)),
-    # kmax_h_over_Mpc_list: [0.37108505, 0.74217011, 1.11325516, 1.48434021, 1.85542526,
-    #                                   2.22651032, 2.59759537, 2.96868042, 4.45302063, 7.42170105, 14.84340211]
-    kmax_h_over_Mpc_list:
-        [
-            0.1,
-            0.16681005,
-            0.27825594,
-            0.46415888,
-            0.77426368,
-            1.29154967,
-            2.15443469,
-            3.59381366,
-            5.9948425,
-            10.,
-        ]
-    use_h_units: False
-
-    BNT_transform: False # ! to be deprecated?
-    cl_BNT_transform: False
-
-    # vincenzo's inputs path
-    cl_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/OutputFiles/DataVectors/Noiseless/{which_pk:s}"
-    # cl_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/OutputFiles/DataVectors/Temp/{probe:s}/{which_pk:s}"
-    cl_filename: "dv-{probe:s}-{EP_or_ED:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-idIA{idIA:d}-idB{idB:d}-idM{idM:d}-idR{idR:d}.dat"
-    wf_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputSSC/Windows"
-    wf_filename: "wi{probe:s}-{ep_or_ed:s}{zbins:02d}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{specs:s}.dat"
-    specs: "idIA{idIA:d}-idB{idBM:01d}-idM{idM:d}-idR{idR:d}"
-    check_wf_against_vincenzo: True
-
-    CLOE_benchmarks_path: "{ROOT:s}/CLOE_benchmarks"
-
-    which_cls: CCL # CLOE or Vincenzo or CCL
-
-    has_rsd: False
-    has_magnification_bias: False
-    has_IA: False
-
-    magcut_lens: 245 # valid for GCph
-    magcut_source: 245 # valid for WL
-    zmin_nz_lens: 02 # = 0.2
-    zmin_nz_source: 02 # = 0.2
-    zmax_nz: 25 # = 2.5
-    idIA: 2
-    idB: 3
-    idM: 3
-    idR: 1
-    idBM: 3 # for the SU responses
-
-    which_forecast: SPV3
-    bias_function: analytical # 'analytical', 'leporifit', 'pocinofit'
-    bias_model: step-wise # 'step-wise', 'constant', 'linint', 'ones', 'polynomial'
-
-    CLOE_pk_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputPS/{which_pk:s}/InFiles/{flat_or_nonflat:s}"
-    CLOE_pk_filename: "{CLOE_pk_folder:s}/{param_name:s}/PddVsZedLogK-{param_name:s}_{param_value:.3e}.dat"
-
-    flat_or_nonflat: Flat
-    which_pk: HMCodeBar
-
-    flagship_version: 2 # TODO delete this
-    fm_and_cov_suffix: "" # TODO delete this
-    num_threads: 40 # how many threads to use for the Julia SSC integral with @tturbo
-
-    # save_outputs_as_test_benchmarks_path: ./tests/benchmarks/output_dict.npy
-    save_outputs_as_test_benchmarks_path: False
-
-covariance_cfg:
-    # ordering-related settings
-    triu_tril: triu
-    row_col_major: row-major
-    block_index: ell
-    GL_or_LG: GL
-    split_gaussian_cov: False
-
+mask:
+    mask_path: path/to/mask.fits
+    nside_mask: 1024
     # fsky: 0.3563380664078408
     # survey_area_deg2: 14700
     fsky: 0.3210678603147902
     survey_area_deg2: 13245
 
-    # ellipticity dispersion *per component* = sigma_eps_i
-    # total ellipticity dispersion = sigma_eps
-    # sigma_eps = (sigma_eps_i * np.sqrt(2))
-    sigma_eps_i: 0.26
-    which_shape_noise: per_component # ISTF or per_component
 
-    nz_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid"
-    nz_sources_filename: nzTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
-    nz_lenses_filename: nzTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
+ell_binning:
+    ell_min: 10 # minimum ell for 3x2pt
+    ell_max_WL: 3000 # maximum ell for WL
+    ell_max_GC: 3000 # maximum ell for GC
+    ell_max_3x2pt: 3000
+    # the case with the largest range is nbl_WL_opt. This is the reference ell binning from which the cuts are applied;
+    # in principle, the other binning should be consistent with this one and should not be hardcoded, as long as
+    # lmax=5000, 3000 holds
+    nbl_WL_opt: 32 # this is the value from which the various bin cuts are applied, do not change it
+    ell_max_WL_opt: 5000 # this is the value from which the various bin cuts are applied, do not change it
 
-    nuisance_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzPar"
-    nuisance_filename: ngbsTab-{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}.dat
+ell_cuts:
+    apply_ell_cuts: False
+    which_cuts: standard
+    center_or_min: center # cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
+    cl_ell_cuts: False
+    cov_ell_cuts: False
+    kmax_h_over_Mpc_ref: 1.0 # this is used when ell_cuts is False, also...?
+    # kmax_list_1_over_Mpc: (0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 3.00, 5.00, #10.00)),
+    # kmax_h_over_Mpc_list: [0.37108505, 0.74217011, 1.11325516, 1.48434021, 1.85542526,
+    #                                   2.22651032, 2.59759537, 2.96868042, 4.45302063, 7.42170105, 14.84340211]
+    kmax_h_over_Mpc_list: [0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.]
+    use_h_units: False
 
-    # zbin_centers:
-    #     [ 0.27575, 0.37635, 0.44634, 0.54284, 0.62145, 0.70957, 0.7986, 0.86687, 0.97753, 1.09136, 1.24264, 1.47918, 1.89264]
-
-    # number of galaxies per arcmin**2 for each redshift bin.
-    # ngal_lensing:
-    #     [ 1.86742, 1.86744, 1.8674, 1.86743, 1.86741, 1.86742, 1.86742, 1.86742, 1.86744, 1.8674, 1.86742, 1.86742, 1.86742]
-    # ngal_clustering:
-    #     [ 1.86742, 1.86744, 1.8674, 1.86743, 1.86741, 1.86742, 1.86742, 1.86742, 1.86744, 1.8674, 1.86742, 1.86742, 1.86742]
-
-    shift_nz: True # Vincenzo's kernels are computed using a shifted n(z)!
+BNT:
+    BNT_transform: False
+    cl_BNT_transform: False
+    cov_BNT_transform: False
     compute_bnt_with_shifted_nz_for_zcuts: False # ! lets test this
-    shift_nz_interpolation_kind: linear
-    normalize_shifted_nz: True
-    nz_gaussian_smoothing: False # does not seem to have a large effect...
-    nz_gaussian_smoothing_sigma: 2
     include_ia_in_bnt_kernel_for_zcuts: False
 
-    plot_nz_tocheck: True
+covariance:
+    n_probes: 2  # Number of probes considered in the covariance
 
-    cov_BNT_transform: False
-    cov_ell_cuts: False
+    G: True       # Enable/disable the Gaussian covariance term.
+    SSC: True     # Enable/disable the super-sample covariance (SSC) term.
+    cNG: False     # Enable/disable the connected non-Gaussian (cNG) covariance term.
 
-    compute_covmat: True
-    compute_SSC: True # TODO re-implement this
+    SSC_code: Spaceborne        # Specifies the code to compute SSC. Options:
+                                # - Spaceborne: Use the Spaceborne implementation.
+                                # - OneCovariance: Use the OneCovariance implementation.
+                                # - PyCCL: Use the PyCCL implementation.
 
-    save_cov_2D_npz: False
-    save_cov_2D_dat: False # this is the format used by Vincenzo
+    cNG_code: OneCovariance     # Specifies the code to compute cNG. Options:
+                                # - OneCovariance: Use the OneCovariance implementation.
+                                # - PyCCL: Use the PyCCL implementation.
 
-    # in cov_dict
-    save_cov_2D: False
-    save_cov_4D: False
-    save_cov_6D: False # or 10D for the 3x2pt
-    save_cov_GO: False
-    save_cov_GS: False
-    save_cov_SSC: True
-    save_2DCLOE: False # outermost loop is on the probes
-    covariance_ordering_2D: ell_probe_zpair # TODO restore this
-    load_CLOE_benchmark_cov: False
-    save_CLOE_benchmark_cov: False
+    # Ordering-related settings:
+    triu_tril: triu             # Choose whether to use the upper ('triu') or lower ('tril') triangle 
+                                # of the auto-Cl zbins (C_{ij}(\ell)^AA = C_{ji}(\ell)^AA).
+    row_col_major: row-major    # Within the upper or lower triangle, count indices in 
+                                # a row-major or column-major order.
+    split_gaussian_cov: False   # Whether to split the Gaussian covariance term into the 
+                                # sample variance, noise and mixed terms
 
-    test_against_CLOE_benchmarks: False # TODO delete this
-    test_against_vincenzo: False # TODO delete this
-    test_against_benchmarks: True
+    probe_ordering: [['L', 'L'], ['G', 'L'], ['G', 'G']]  # ordering of the different 3x2pt probes in the covariance matrix
+    covariance_ordering_2D: ell_probe_zpair  # Determines the ordering of the covariance matrix in 2D:
+                                             # - ell_probe_zpair: Ordered by multipole (ell), then probe type, then redshift pair.
+                                             # - probe_ell_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordeing used by CLOE
+                                             # TODO: Restore or adjust this as needed.
 
-    compute_GSSC_condition_number: False
-
-    # ! no folders for ell_cut_center or min
-    # TODO change name to cov_path
-    cov_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat"
-    cov_filename: covmat_{which_ng_cov:s}_{ng_cov_code:s}_{probe:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_pk{which_pk:s}_{ndim:d}D{cov_suffix:s}{fm_and_cov_suffix:s}.npz
-    cov_dict_filename: cov_dict_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_lmax{lmax_3x2pt:d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_lens:02d}_pk{which_pk:s}.npz
-    save_cov_dict: False
-
-    ng_cov_code: Spaceborne # ! Spaceborne or PyCCL or Spaceborne or OneCovariance
+    sigma_eps_i: 0.26       # ellipticity dispersion *per component* = sigma_eps_i
+                            # total ellipticity dispersion = sigma_eps
+                            # sigma_eps = (sigma_eps_i * np.sqrt(2))
+    
 
     # sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
     # - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only). In this case, the output covmat
@@ -282,105 +187,69 @@ covariance_cfg:
     # - flat_sky: use the flat-sky expression (valud for PyCCL only)
     #   has to be rescaled by fsky
     which_sigma2_b: polar_cap_on_the_fly
-    nside_mask: 1024
-    mask_path: path/to/mask.fits
 
-    Spaceborne_cfg:
-        probe: 3x2pt
-        which_ng_cov: [SSC] # only SSC available in this case
-        which_cNG: null # PyCCL or OneCovariance or null (None)
-        load_precomputed_cov: False
-        which_pk_responses: halo_model_SB # halo_model_SB, halo_model_CCL (with PyCCL) or separate_universe_SB/_vin (from simulations)
-        include_b2g: True # whether or not to include the second-order galaxy bias in the GCph responses
-        b2g_from_halomodel: True # TODO DELETE THIS in the main branch
-        # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
-        # Can be one of:
-        # - 'from_HOD' (from the Halo Occupation Distribution previously initialized)
-        # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB
-        # Setting this to 'from_HOD' will match perfectly 'halo_model_CCL'
-        which_b1g_in_resp: "from_HOD"
+    which_pk_responses: halo_model_SB # halo_model_SB, halo_model_CCL (with PyCCL) or separate_universe_SB/_vin (from simulations)
+    include_b2g: True # whether or not to include the second-order galaxy bias in the GCph responses
+    # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
+    # Can be one of:
+    # - 'from_HOD' (from the Halo Occupation Distribution previously initialized)
+    # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB
+    # Setting this to 'from_HOD' will match perfectly 'halo_model_CCL'
+    which_b1g_in_resp: from_HOD
 
-        cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/Spaceborne/{which_pk_responses:s}"
-        cov_suffix: "_zsteps{z_steps_ssc_integrands:d}_k{k_txt_label:s}_convention{cl_integral_convention:s}_integration{integration_type:s}_{survey_area_deg2:d}deg2_Francis"
+    load_cached_sigma2_b: False  # bool. Whether to load the previously computed sigma2_b.
+    log10_k_min_sigma2: -4
+    log10_k_max_sigma2: 1
+    k_steps_sigma2: 20_000
+    z_min_ssc_integrands: 0.02 # SU responses' kmax allow for z_min = 0.016, at most.
+    z_max_ssc_integrands: 3.
+    z_steps_ssc_integrands: 300 # this should be high because I have to trace the spikes in sigma2
 
-        log10_k_min_sigma2: -4
-        log10_k_max_sigma2: 1
-        k_steps_sigma2: 20_000 # TODO can I lower this? double bessel integral...
-        z_min_ssc_integrands: 0.02 # SU responses' kmax allow for z_min = 0.016, at most.
-        z_max_ssc_integrands: 3.
-        z_steps_ssc_integrands: 300 # this should be high because I have to trace the spikes in sigma2
+    cl_integral_convention: Euclid_KE_approximation # "Euclid_KE_approximation" or "PySSC" (results are the same) or "Euclid_KE_approximation"
+    use_KE_approximation: True
+    integration_type: simps_KE_approximation # 'simps' or 'simps_KE_approximation' or 'trapz' (which is actually using rectangles)
+    
+    cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz
+# TODO remove trapz, tidy up KE approximation stuff
 
-        load_precomputed_sigma2: False
-        sigma2_b_filename: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/sigma2_b/sigma2_b_{which_sigma2_b:s}_zmin{zmin:.1e}_zmax{zmax:.1e}_zsteps{zsteps:d}_log10kmin{log10kmin:.1e}_log10kmax{log10kmax:.1e}_ksteps{ksteps:d}.npy"
-        cl_integral_convention: Euclid_KE_approximation # "Euclid" or "PySSC" (results are the same) or "Euclid_KE_approximation"
-        use_KE_approximation: True
-        integration_type: "simps_KE_approximation" # 'simps' or 'simps_KE_approximation' or 'trapz' (which is actually using rectangles)
 
-        separate_universe_responses_filename: "resfun-idBM{idBM:02d}.dat"
-        separate_universe_responses_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputSSC/ResFun/{which_pk:s}"
+PyCCL:
 
-    PyCCL_cfg:
-        probe: 3x2pt
-        # cNG or SSC. Which non-Gaussian covariance terms to compute. Must be a tuple
-        which_ng_cov: [SSC]
-        test_GLGL: False # must be set to False for actual 3x2pt runs
+    n_samples_wf: 1000
+    # (from CCL docs): integration method to be used for the Limber integrals.
+    # Possibilities: 'qag_quad' (GSL's qag method backed up by quad when it fails) 
+    # and 'spline' (the integrand is splined and then integrated analytically).
+    # DSnote: note that the former could give errors.
+    cov_integration_method: spline
 
-        which_pk_for_pyccl: PyCCL # PyCCL (the one stored in cosmo obj) or CLOE
+    load_cached_tkka: False  # TODO restore if there is time
 
-        load_precomputed_cov: False
-        save_cov: True
-        load_precomputed_tkka: False
-        save_hm_responses: True
-        save_tkka: True
+    z_grid_tkka_min: 0.
+    z_grid_tkka_max: 3.
+    k_grid_tkka_min: 1.e-5
+    k_grid_tkka_max: 1.e+2
+    z_grid_tkka_steps_SSC: 100
+    k_grid_tkka_steps_SSC: 200
+    z_grid_tkka_steps_cNG: 100
+    k_grid_tkka_steps_cNG: 512
 
-        cov_path: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version:d}/covmat/PyCCL"
-        cov_suffix: ""
 
-        # z_grid min and max should probably coincide. play around with steps to find the minimum number
-        z_grid_tkka_min: 0.
-        z_grid_tkka_max: 3. # used to be 6
-        k_grid_tkka_min: 1.e-5
-        k_grid_tkka_max: 1.e+2
-        z_grid_tkka_steps_SSC: 100 # (z, k) = (50, 100) seems altrady enough
-        k_grid_tkka_steps_SSC: 200
-        z_grid_tkka_steps_cNG: 100
-        k_grid_tkka_steps_cNG: 512
+OneCovariance:
+    precision_settings: default # 'high_precision' or 'default'
+    path_to_oc_executable: /home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py
 
-        n_samples_wf: 1000
-        # (from CCL docs): integration method to be used for the Limber integrals.
-        # Possibilities: 'qag_quad' (GSL's qag method backed up by quad when it fails) and 'spline' (the integrand is splined and then integrated analytically).
-        cov_integration_method: spline
+tests:
+    compute_condition_number: True
+    check_negative_eigenvalues: True
 
-    OneCovariance_cfg:
-        which_ng_cov: ["SSC"]
-        load_precomputed_cov: False
-        use_OneCovariance_Gaussian: False
-        which_gauss_cov_binning: OneCovariance # 'EC20' or 'OneCovariance'
-        precision_settings: high_precision # 'high_precision' or 'default'
-        path_to_oc_executable: "{ROOT:s}/OneCovariance/covariance.py"
+misc:
+    num_threads: 40 # how many threads to use for the Julia SSC integral with @tturbo
 
-        onecovariance_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/covmat/OneCovariance/{ep_or_ed:s}{zbins:02d}-zedMin{zmin_nz_lens:02d}-zedMax{zmax_nz:02d}-mag{magcut_lens:d}"
-        cov_filename: "cov_{which_ng_cov:s}_onecovariance_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D_nbl{nbl:d}_ellmax{lmax:d}_zbins{EP_or_ED:s}{zbins:02d}_Gbinning{which_gauss_cov_binning:s}.npz"
+    # some sanity checks on the covariance matrix. These could take a while to run.
+    test_numpy_inversion: True         # test for errors in np.linalg.inv
+    test_condition_number: True        # check if condition number is above 1e10
+    test_cholesky_decomposition: True  # test if cholesky decomposition fails
+    test_symmetry: True                # test if covariance matrix is symmetric (cov = cov.T)
 
-FM_cfg:
-    compute_FM: True
-
-    save_FM_txt: False
-    save_FM_dict: False
-
-    load_preprocess_derivatives: False
-    which_derivatives: Vincenzo # Vincenzo or Spaceborne
-    derivatives_folder: "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}" # TODO delete this
-
-    derivatives_filename: dDVd{param_name:s}-{probe:s}-ML{magcut_lens:03d}-MS{magcut_source:03d}-{EP_or_ED:s}{zbins:02d}.dat
-    derivatives_prefix: dDVd
-
-    derivatives_BNT_transform: False
-    deriv_ell_cuts: False
-
-    fm_folder: "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}"
-    fm_txt_filename: fm_txt_filename
-    fm_dict_filename: FM_{which_ng_cov:s}_{ng_cov_code:s}_zbins{EP_or_ED:s}{zbins:02d}_ML{magcut_lens:03d}_ZL{zmin_nz_lens:02d}_MS{magcut_source:03d}_ZS{zmin_nz_source:02d}_idIA{idIA:d}_idB{idB:d}_idM{idM:d}_idR{idR:d}_pk{which_pk:s}_{survey_area_deg2:d}deg2{fm_and_cov_suffix:s}_{cl_integral_convention:s}_simpkern{simpkern:s}_sigma2b{which_sigma2_b:s}.pickle
-
-    test_against_vincenzo: False # TODO delete this
-    test_against_benchmarks: True # TODO delete this
+    output_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/output
+    use_h_units: False # TODO hardcode!

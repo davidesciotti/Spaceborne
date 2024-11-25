@@ -31,10 +31,11 @@ ccl.spline_params['K_MAX_SPLINE'] = 300
 
 class PycclClass():
 
-    def __init__(self, cosmology_dict, extra_parameters_dict, halo_model_dict):
+    def __init__(self, cosmology_dict, extra_parameters_dict, ia_dict, halo_model_dict):
 
         self.cosmology_dict = cosmology_dict
         self.extra_parameters_dict = extra_parameters_dict
+        self.ia_dict = ia_dict
 
         self.flat_fid_pars_dict = mm.flatten_dict(self.cosmology_dict)
         cosmo_dict_ccl = cosmo_lib.map_keys(self.cosmology_dict, key_mapping=None)
@@ -110,7 +111,7 @@ class PycclClass():
 
         if self.has_ia:
             ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(z_grid_src, cosmo_ccl=self.cosmo_ccl,
-                                                        flat_fid_pars_dict=self.flat_fid_pars_dict,
+                                                        ia_dict=self.ia_dict,
                                                         input_z_grid_lumin_ratio=None,
                                                         input_lumin_ratio=None, output_F_IA_of_z=False)
             self.ia_bias_tuple = (z_grid_src, ia_bias_1d)

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from joblib import delayed, Parallel
 import multiprocessing as mp
-from scipy.integrate import simps
+from scipy.integrate import simpson as simps
 from scipy.interpolate import RegularGridInterpolator
 from scipy.special import spherical_jn
 import pyccl as ccl
@@ -24,9 +24,6 @@ sys.path.append(SB_ROOT)
 import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib
 import spaceborne.mask_fits_to_cl as mask_utils
-
-sys.path.append(f'{ROOT}/PySSC')
-import PySSC
 
 start_time = time.perf_counter()
 

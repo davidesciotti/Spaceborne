@@ -564,7 +564,7 @@ def build_galaxy_bias_2d_arr(gal_bias_vs_zmean, zmeans, z_edges, zbins, z_grid, 
     return gal_bias_2d_arr
 
 
-def build_ia_bias_1d_arr(z_grid_out, cosmo_ccl, flat_fid_pars_dict, input_z_grid_lumin_ratio=None,
+def build_ia_bias_1d_arr(z_grid_out, cosmo_ccl, ia_dict, input_z_grid_lumin_ratio=None,
                          input_lumin_ratio=None, output_F_IA_of_z=False):
     """
     None is the default value, in which case we use ISTF fiducial values (or the cosmo object)
@@ -581,15 +581,15 @@ def build_ia_bias_1d_arr(z_grid_out, cosmo_ccl, flat_fid_pars_dict, input_z_grid
     """
 
     try:
-        A_IA = flat_fid_pars_dict['Aia']
-        eta_IA = flat_fid_pars_dict['eIA']
-        beta_IA = flat_fid_pars_dict['bIA']
-        C_IA = flat_fid_pars_dict['CIA']
+        A_IA = ia_dict['Aia']
+        eta_IA = ia_dict['eIA']
+        beta_IA = ia_dict['bIA']
+        C_IA = ia_dict['CIA']
     except KeyError:
-        A_IA = flat_fid_pars_dict['A_IA']
-        eta_IA = flat_fid_pars_dict['eta_IA']
-        beta_IA = flat_fid_pars_dict['beta_IA']
-        C_IA = flat_fid_pars_dict['C_IA']
+        A_IA = ia_dict['A_IA']
+        eta_IA = ia_dict['eta_IA']
+        beta_IA = ia_dict['beta_IA']
+        C_IA = ia_dict['C_IA']
 
     growth_factor = ccl.growth_factor(cosmo_ccl, a=1 / (1 + z_grid_out))
 

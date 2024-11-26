@@ -27,20 +27,14 @@ class SpaceborneConfigChecker:
         assert np.abs(mm.percent_diff(self.cfg['mask']['fsky'],
                       fsky_check)) < 1e-5, 'Fsky does not match the survey area.'
 
-    def check_cl_integral_convention(self):
-        assert self.cfg['covariance']['cl_integral_convention'] in ['PySSC', 'Euclid', 'Euclid_KE_approximation'], \
-            'cl_integral_convention must be "PySSC" or "Euclid" or "Euclid_KE_approximation"'
+    def check_KE_approximation(self):
 
         if self.cfg['covariance']['use_KE_approximation'] and self.cfg['covariance']['SSC_code'] == 'Spaceborne':
-            assert self.cfg['covariance']['cl_integral_convention'] == 'Euclid_KE_approximation'
-            assert self.cfg['covariance']['integration_type'] == 'simps_KE_approximation'
             assert self.cfg['covariance']['which_sigma2_b'] not in [None, 'full_curved_sky'], \
                 'to use the flat-sky sigma2_b, set "flat_sky" in the cfg file. Also, bear in mind that the flat-sky '\
                 'approximation for sigma2_b is likely inappropriate for the large Euclid survey area'
 
         elif not self.cfg['covariance']['use_KE_approximation'] and self.cfg['covariance']['SSC_code'] == 'Spaceborne':
-            assert self.cfg['covariance']['cl_integral_convention'] in ('Euclid', 'PySSC')
-            assert self.cfg['covariance']['integration_type'] in ('simps', 'trapz')
             assert self.cfg['covariance']['which_sigma2_b'] not in [None, 'flat_sky'], \
                 'If you\'re not using the KE approximation, you should set "full_curved_sky", "from_input_mask or "polar_cap_on_the_fly"'
 
@@ -87,7 +81,7 @@ class SpaceborneConfigChecker:
         k_txt_label, pk_txt_label = self.check_h_units()
         self.check_ell_cuts()
         self.check_BNT_transform()
-        self.check_cl_integral_convention()
+        self.check_KE_approximation()
         self.check_fsky()
         self.check_types()
         self.check_ell_binning()

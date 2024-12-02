@@ -96,7 +96,8 @@ output_path = cfg['misc']['output_path']
 clr = cm.rainbow(np.linspace(0, 1, zbins))
 use_h_units = False  # TODO decide on this
 # whether or not to symmetrize the covariance probe blocks when reshaping it from 4D to 6D.
-# Useful if the 6D cov elements need to be accessed directly, whereas if the cov is again reduced to 4D or 2D
+# Useful if the 6D cov elements need to be accessed directly, whereas if the cov is again reduced to 4D or 2D 
+# it doesn't make a difference.
 # can be set to False for a significant speedup
 symmetrize_output_dict = {
     ('L', 'L'): False,

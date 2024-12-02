@@ -31,6 +31,11 @@ dependencies:
   - libgfortran-ng
   - fast-pt
   # - cfitsio  # not necessary?
+
+  # for OneCovariance (optional):
+  - gfortran
+  - pybind11
+
   - pip:
     - pymaster
     - cython

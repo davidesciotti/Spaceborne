@@ -535,7 +535,7 @@ assert wil.shape == wig.shape, 'the GC and WL kernels have different shapes'
 assert wil.shape == (z_arr.shape[0], zbins), 'the kernels have the wrong shape'
 
 import pyccl as ccl
-from scipy.integrate import simps
+from scipy.integrate import simpson as simps
 
 sys.path.append('/home/davide/Documenti/Lavoro/Programmi/common_lib_and_cfg/common_lib')
 import wf_cl_lib

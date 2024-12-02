@@ -2923,11 +2923,12 @@ def cov_6D_to_4D_blocks(cov_6D, nbl, npairs_AB, npairs_CD, ind_AB, ind_CD):
     nc = n_columns_AB  # make the name shorter
 
     cov_4D = np.zeros((nbl, nbl, npairs_AB, npairs_CD))
-    for ell2 in range(nbl):  # ! this is an untested addition; but did it work for ssc too without this additional loop?
-        for ij in range(npairs_AB):
-            for kl in range(npairs_CD):
-                i, j, k, l = ind_AB[ij, nc - 2], ind_AB[ij, nc - 1], ind_CD[kl, nc - 2], ind_CD[kl, nc - 1]
-                cov_4D[:, ell2, ij, kl] = cov_6D[:, ell2, i, j, k, l]
+    for ell1 in range(nbl):  
+        for ell2 in range(nbl): 
+            for ij in range(npairs_AB):
+                for kl in range(npairs_CD):
+                    i, j, k, l = ind_AB[ij, nc - 2], ind_AB[ij, nc - 1], ind_CD[kl, nc - 2], ind_CD[kl, nc - 1]
+                    cov_4D[ell1, ell2, ij, kl] = cov_6D[ell1, ell2, i, j, k, l]
     return cov_4D
 
 
@@ -3119,7 +3120,7 @@ def slice_cl_3x2pt_1D_ell_probe_zpair(cl_3x2pt_1D_ell_probe_zpair, nbl, zbins, p
 
 
 # @njit
-def cov_2D_to_4D(cov_2D, nbl, block_index='vincenzo', optimize=True):
+def cov_2D_to_4D(cov_2D, nbl, block_index='vincenzo', optimize=True, symmetrize=False):
     """ new (more elegant) version of cov_2D_to_4D. Also works for 3x2pt. The order
     of the for loops does not affect the result!
 
@@ -3147,24 +3148,31 @@ def cov_2D_to_4D(cov_2D, nbl, block_index='vincenzo', optimize=True):
         if block_index in ['ell', 'vincenzo', 'C-style']:
             cov_4D = cov_2D.reshape((nbl, zpairs_AB, nbl, zpairs_CD)).transpose((0, 2, 1, 3))
         elif block_index in ['ij', 'sylvain', 'F-style']:
-            cov_4D = cov_2D.reshape((zpairs_AB, nbl, nbl, zpairs_CD)).transpose((1, 2, 0, 3))
-        return cov_4D
+            cov_4D = cov_2D.reshape((zpairs_AB, nbl, zpairs_CD, nbl)).transpose((1, 3, 0, 2))
+ 
+    else:
+        if block_index in ['ell', 'vincenzo', 'C-style']:
+            for l1 in range(nbl):
+                for l2 in range(nbl):
+                    for ipair in range(zpairs_AB):
+                        for jpair in range(zpairs_CD):
+                            # block_index * block_size + running_index
+                            cov_4D[l1, l2, ipair, jpair] = cov_2D[l1 * zpairs_AB + ipair, l2 * zpairs_CD + jpair]
 
-    if block_index in ['ell', 'vincenzo', 'C-style']:
+        elif block_index in ['ij', 'sylvain', 'F-style']:
+            for l1 in range(nbl):
+                for l2 in range(nbl):
+                    for ipair in range(zpairs_AB):
+                        for jpair in range(zpairs_CD):
+                            # block_index * block_size + running_index
+                            cov_4D[l1, l2, ipair, jpair] = cov_2D[ipair * nbl + l1, jpair * nbl + l2]
+                            
+    if symmetrize:
         for l1 in range(nbl):
             for l2 in range(nbl):
-                for ipair in range(zpairs_AB):
-                    for jpair in range(zpairs_CD):
-                        # block_index * block_size + running_index
-                        cov_4D[l1, l2, ipair, jpair] = cov_2D[l1 * zpairs_AB + ipair, l2 * zpairs_CD + jpair]
-
-    elif block_index in ['ij', 'sylvain', 'F-style']:
-        for l1 in range(nbl):
-            for l2 in range(nbl):
-                for ipair in range(zpairs_AB):
-                    for jpair in range(zpairs_CD):
-                        # block_index * block_size + running_index
-                        cov_4D[l1, l2, ipair, jpair] = cov_2D[ipair * nbl + l1, jpair * nbl + l2]
+                # mirror the upper triangle into the lower one
+                cov_4D[l1, l2, :, :] = symmetrize_2d_array(cov_4D[l1, l2, :, :])
+                
     return cov_4D
 
 
@@ -3208,6 +3216,7 @@ def cov_4D_to_2D(cov_4D, block_index, optimize=True):
 
         elif block_index in ['zpair', 'F-style']:
             cov_2D.reshape(zpairs_AB, nbl, zpairs_CD, nbl)[:, :, :, :] = cov_4D.transpose(2, 0, 3, 1)
+            
         return cov_2D
 
     # I tested that the 2 methods give the same results. This code is kept to remember the

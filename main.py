@@ -45,9 +45,6 @@ script_start_time = time.perf_counter()
 # # # Load the configuration file
 # with open(args.config, 'r') as f:
 #     cfg = yaml.safe_load(f)
-# # # this is for the test module
-# with open(args.config, 'r') as f:
-#     original_cfg = yaml.safe_load(f)
 
 # if not args.show_plots:
 #     matplotlib.use('Agg')
@@ -56,11 +53,7 @@ script_start_time = time.perf_counter()
 # ! uncomment this if executing from interactive window
 with open('config.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
-pyccl_cfg = cfg['PyCCL']
 
-# ! sanity checks on the configs
-cfg_check_obj = config_checker.SpaceborneConfigChecker(cfg)
-cfg_check_obj.run_all_checks()
 
 # some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']
@@ -96,8 +89,7 @@ output_path = cfg['misc']['output_path']
 clr = cm.rainbow(np.linspace(0, 1, zbins))
 use_h_units = False  # TODO decide on this
 # whether or not to symmetrize the covariance probe blocks when reshaping it from 4D to 6D.
-# Useful if the 6D cov elements need to be accessed directly, whereas if the cov is again reduced to 4D or 2D 
-# it doesn't make a difference.
+# Useful if the 6D cov elements need to be accessed directly, whereas if the cov is again reduced to 4D or 2D
 # can be set to False for a significant speedup
 symmetrize_output_dict = {
     ('L', 'L'): False,
@@ -135,6 +127,14 @@ if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
     compute_ccl_cng = True
 
+if cfg['covariance']['use_KE_approximation']:
+    cl_integral_convention_ssc = 'Euclid_KE_approximation'
+    ssc_integration_type = 'simps_KE_approximation'
+else:
+    cl_integral_convention_ssc = 'Euclid'
+    ssc_integration_type = 'simps'
+
+
 if cfg['misc']['use_h_units']:
     k_txt_label = "hoverMpc"
     pk_txt_label = "Mpcoverh3"
@@ -153,6 +153,12 @@ k_grid_resp = np.geomspace(cfg['PyCCL']['k_grid_tkka_min'],
                            cfg['PyCCL']['k_grid_tkka_max'],
                            cfg['PyCCL']['k_grid_tkka_steps_SSC'])
 
+
+# ! sanity checks on the configs
+# TODO update this when cfg are done
+cfg_check_obj = config_checker.SpaceborneConfigChecker(cfg)
+cfg_check_obj.run_all_checks()
+
 if len(z_grid_ssc_integrands) < 250:
     warnings.warn('z_grid_ssc_integrands is small, at the moment it used to compute various intermediate quantities')
 
@@ -161,6 +167,7 @@ ccl_obj = pyccl_interface.PycclClass(cfg['cosmology'], cfg['extra_parameters'],
                                      cfg['intrinsic_alignment'], cfg['halo_model'])
 ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
 ccl_obj.zbins = zbins
+ccl_obj.which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
 a_default_grid_ccl = ccl_obj.cosmo_ccl.get_pk_spline_a()
 z_default_grid_ccl = cosmo_lib.a_to_z(a_default_grid_ccl)[::-1]
 # TODO class to access CCL precision parameters
@@ -644,7 +651,7 @@ if compute_sb_ssc:
     if cfg['covariance']['which_pk_responses'] == 'halo_model_CCL':
 
         ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
-                                       pyccl_cfg=pyccl_cfg)
+                                       pyccl_cfg=cfg['PyCCL'])
 
         # k and z grids (responses will be interpolated below)
         k_grid_resp_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
@@ -652,8 +659,8 @@ if compute_sb_ssc:
         # translate a to z and cut the arrays to the maximum redshift of the SU responses (much smaller range!)
         z_grid_resp_hm = cosmo_lib.a_to_z(a_grid_resp_hm)[::-1]
 
-        assert np.allclose(k_grid_resp_hm, k_grid_resp, atol=0, rtol=1e-2), 'CCL and SB k_grids for responses '\
-            'should match'
+        assert np.allclose(k_grid_resp_hm, k_grid_resp, atol=0, rtol=1e-2), \
+            'CCL and SB k_grids for responses should match'
 
         dPmm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
         dPgm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
@@ -671,9 +678,9 @@ if compute_sb_ssc:
                            ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12'], atol=0, rtol=1e-5)
         assert dPmm_ddeltab_hm.shape == dPgm_ddeltab_hm.shape == dPgg_ddeltab_hm.shape, 'dPab_ddeltab_hm shape mismatch'
 
-        dPmm_ddeltab_hm_func = interp1d(x=z_grid_resp_hm, y=dPmm_ddeltab_hm, axis=1, kind='linear')
-        dPgm_ddeltab_hm_func = interp1d(x=z_grid_resp_hm, y=dPgm_ddeltab_hm, axis=1, kind='linear')
-        dPgg_ddeltab_hm_func = interp1d(x=z_grid_resp_hm, y=dPgg_ddeltab_hm, axis=1, kind='linear')
+        dPmm_ddeltab_hm_func = CubicSpline(x=z_grid_resp_hm, y=dPmm_ddeltab_hm, axis=1)
+        dPgm_ddeltab_hm_func = CubicSpline(x=z_grid_resp_hm, y=dPgm_ddeltab_hm, axis=1)
+        dPgg_ddeltab_hm_func = CubicSpline(x=z_grid_resp_hm, y=dPgg_ddeltab_hm, axis=1)
 
         # I do not assign diretly to dPxx_ddeltab to be able to plot later if necessary
         dPmm_ddeltab_hm = dPmm_ddeltab_hm_func(z_grid_ssc_integrands)
@@ -707,6 +714,7 @@ if compute_sb_ssc:
         resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
                                                  z_grid=z_grid_ssc_integrands,
                                                  ccl_obj=ccl_obj)
+        resp_obj.set_su_resp()
         r_mm_sbclass = resp_obj.compute_r1_mm()
         resp_obj.set_su_resp(b2g_from_halomodel=True)
 
@@ -733,7 +741,7 @@ if compute_sb_ssc:
     r_of_z_func = partial(cosmo_lib.ccl_comoving_distance, use_h_units=use_h_units, cosmo_ccl=ccl_obj.cosmo_ccl)
 
     # ! divide by r(z)**2 if cl_integral_convention == 'PySSC'
-    if cfg['covariance']['cl_integral_convention'] == 'PySSC':
+    if cl_integral_convention_ssc == 'PySSC':
         r_of_z_square = r_of_z_func(z_grid_ssc_integrands) ** 2
 
         wf_delta = ccl_obj.wf_delta_arr / r_of_z_square[:, None]
@@ -742,7 +750,7 @@ if compute_sb_ssc:
         wf_mu = ccl_obj.wf_mu_arr / r_of_z_square[:, None]
         wf_lensing = ccl_obj.wf_lensing_arr / r_of_z_square[:, None]
 
-    elif cfg['covariance']['cl_integral_convention'] in ('Euclid', 'Euclid_KE_approximation'):
+    elif cl_integral_convention_ssc in ('Euclid', 'Euclid_KE_approximation'):
         wf_delta = ccl_obj.wf_delta_arr
         wf_gamma = ccl_obj.wf_gamma_arr
         wf_ia = ccl_obj.wf_ia_arr
@@ -783,7 +791,7 @@ if compute_sb_ssc:
 
     # ! integral prefactor
     cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(z_grid_ssc_integrands,
-                                                            cfg['covariance']['cl_integral_convention'],
+                                                            cl_integral_convention_ssc,
                                                             use_h_units=use_h_units,
                                                             cosmo_ccl=ccl_obj.cosmo_ccl)
     # ! observable densities
@@ -846,7 +854,7 @@ if compute_sb_ssc:
                                                        cl_integral_prefactor=cl_integral_prefactor,
                                                        sigma2=sigma2_b,
                                                        z_grid=z_grid_ssc_integrands,
-                                                       integration_type=cfg['covariance']['integration_type'],
+                                                       integration_type=ssc_integration_type,
                                                        probe_ordering=probe_ordering,
                                                        num_threads=cfg['misc']['num_threads'])
     print('SSC computed in {:.2f} s'.format(time.perf_counter() - start))
@@ -898,10 +906,10 @@ if (compute_ccl_ssc or compute_ccl_cng):
 
     for which_ng_cov in ccl_ng_cov_terms_list:
 
-        ccl_obj.initialize_trispectrum(which_ng_cov, probe_ordering, pyccl_cfg)
+        ccl_obj.initialize_trispectrum(which_ng_cov, probe_ordering, cfg['PyCCL'])
         ccl_obj.compute_ng_cov_3x2pt(which_ng_cov, ell_dict['ell_3x2pt'], cfg['mask']['fsky'],
                                      # TODO add try block for quad
-                                     integration_method=pyccl_cfg['cov_integration_method'],
+                                     integration_method=cfg['PyCCL']['cov_integration_method'],
                                      probe_ordering=probe_ordering, ind_dict=ind_dict)
 
 
@@ -944,7 +952,7 @@ for which_cov in cov_dict.keys():
                                                             probe=probe,
                                                             ndim=ndim)
 
-    np.savez_compressed(f'{output_path}/{cov_filename}.npz', **cov_dict)
+    np.savez_compressed(f'{output_path}/{cov_filename}', **cov_dict)
 print(f'Covariance matrices saved in {output_path}')
 
 

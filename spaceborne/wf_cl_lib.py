@@ -23,6 +23,8 @@ import sys
 from tqdm import tqdm
 import os
 ROOT = os.getenv('ROOT')
+ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+
 
 
 import spaceborne.my_module as mm

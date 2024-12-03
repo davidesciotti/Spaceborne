@@ -405,7 +405,7 @@ class OneCovarianceInterface():
             del cov_llll_4d, cov_llgl_4d, cov_llgg_4d, cov_glgl_4d, cov_glgg_4d, cov_gggg_4d, cov_ggll_4d, cov_glll_4d, cov_gggl_4d
             gc.collect()
 
-    def oc_output_to_dict_or_array(self, which_ng_cov, output_type, ind_dict, symmetrize_output_dict=None):
+    def oc_output_to_dict_or_array(self, which_ng_cov, output_type, ind_dict=None, symmetrize_output_dict=None):
 
         # import
         filename = self.cov_filename.format(which_ng_cov=which_ng_cov,

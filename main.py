@@ -1,6 +1,8 @@
 import argparse
+import itertools
 import os
 import multiprocessing
+import re
 import sys
 
 import matplotlib
@@ -45,7 +47,7 @@ import spaceborne.onecovariance_interface as oc_interface
 import spaceborne.responses as responses
 
 pp = pprint.PrettyPrinter(indent=4)
-ROOT = os.getenv('ROOT')
+ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 SB_ROOT = ROOT + '/Spaceborne'
 script_start_time = time.perf_counter()
 
@@ -864,10 +866,10 @@ if (covariance_cfg['ng_cov_code'] == 'OneCovariance') or \
 
     # TODO this should be defined globally...
     symmetrize_output_dict = {
-        ('L', 'L'): False,
+        ('L', 'L'): True,
         ('G', 'L'): False,
         ('L', 'G'): False,
-        ('G', 'G'): False,
+        ('G', 'G'): True,
     }
 
     oc_obj = oc_interface.OneCovarianceInterface(ROOT, cfg, variable_specs)
@@ -1123,7 +1125,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     # # _k_grid_resp = k_grid_resp[k_mask]
     # # z_mask = np.logical_and(z_rob.min() <= z_grid_ssc_integrands, z_grid_ssc_integrands < z_rob.max())
     # # _z_grid_ssc_integrands = z_grid_ssc_integrands[z_mask]
-    
+
     # # kk, zz = np.meshgrid(_k_grid_resp, _z_grid_ssc_integrands, indexing='ij')
     # kk, zz = np.meshgrid(k_grid_resp, z_grid_ssc_integrands, indexing='ij')
 
@@ -2416,7 +2418,7 @@ fm_dict_of_dicts = {
     # 'SB_KEapp_hm_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     # 'SB_hm_simpker': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     # 'OC_simpker': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly.pickle'),
-    
+
     # 'SB_bgtab': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinal_bgtab_halo_model_SB.pickle'),
     # 'SB_bgHOD': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinal_bgHOD_halo_model_SB.pickle'),
     # 'OC_new': mm.load_pickle(f'{path}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCchechfinalpostpull.pickle'),
@@ -2426,13 +2428,13 @@ fm_dict_of_dicts = {
     # 'SB_bgtab_OCres_OCgrid': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCres_OCgrid_halo_model_SB.pickle'),
     # 'SB_bgtab_zmin0.02': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_SBres_zmin0ly_SBres_zmin0.02_halo_model_SB.pickle'),
     # 'SB_OCres_zmin0.007': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_OCres_zmin0.007_halo_model_SB.pickle'),
-    
+
     'CCL_bgHOD_CCLcheck': mm.load_pickle(f'{path}/FM_GSSC_PyCCL{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_SBHOD_vsCCL.pickle'),
     'SB_bgHOD_CCLcheck': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_SBHOD_vsCCL_halo_model_SB.pickle'),
     'SB_CCLHM_CCLcheck': mm.load_pickle(f'{path}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_SBHMCCL_vsCCL_halo_model_CCL.pickle'),
-    
-    'OC_cNG': mm.load_pickle(f'{path}/FM_GcNG_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_cNGtest2.pickle'),
-    'CCL_cNG': mm.load_pickle(f'{path}/FM_GcNG_PyCCL{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_cNGtest2.pickle'),
+
+    # 'OC_cNG': mm.load_pickle(f'{path}/FM_GcNG_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_cNGtest2.pickle'),
+    # 'CCL_cNG': mm.load_pickle(f'{path}/FM_GcNG_PyCCL{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_cNGtest2.pickle'),
     'current': fm_dict
 }
 
@@ -2443,8 +2445,8 @@ fm_dict_of_dicts = {
 
 labels = list(fm_dict_of_dicts.keys())
 fm_dict_list = list(fm_dict_of_dicts.values())
-keys_toplot_in = ['FM_WL_GcNG', 'FM_GC_GcNG', 'FM_XC_GcNG', 'FM_3x2pt_GcNG']
-# keys_toplot = 'all'
+# keys_toplot_in = ['FM_WL_GcNG', 'FM_GC_GcNG', 'FM_XC_GcNG', 'FM_3x2pt_GcNG']
+keys_toplot = 'all'
 colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:cyan', 'tab:grey', 'tab:olive', 'tab:purple']
 
 reference = 'first_key'
@@ -2452,14 +2454,277 @@ nparams_toplot_in = 8
 normalize_by_gauss = True
 
 mm.compare_fm_constraints(*fm_dict_list, labels=labels,
-                          keys_toplot_in=keys_toplot_in,
+                          keys_toplot_in=keys_toplot,
                           normalize_by_gauss=normalize_by_gauss,
                           which_uncertainty='conditional',
                           reference=reference,
                           colors=colors,
                           abs_FoM=True,
-                          save_fig=True,
+                          save_fig=False,
                           fig_path='.')
+
+
+# build the ind array and store it into the covariance dictionary
+ind = mm.build_full_ind('triu', 'row-major', zbins)
+ind_auto = ind[:zpairs_auto, :].copy()
+ind_cross = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
+ind_dict = {('L', 'L'): ind_auto,
+            ('G', 'L'): ind_cross,
+            ('G', 'G'): ind_auto}
+
+# some new tests
+cov_rob_2d_full = np.genfromtxt(f'{oc_path}/covariance_matrix.mat')
+mm.matshow(cov_rob_2d_full, 'cov_mat_2d')
+
+cov_rob_2d_zord = cov_rob_2d_full[(zpairs_auto + zpairs_cross) * nbl_3x2pt:, (zpairs_auto + zpairs_cross) * nbl_3x2pt:]
+mm.matshow(cov_rob_2d_zord, 'cov_ll_2d_zord_mat')
+assert np.allclose(cov_rob_2d_zord, cov_rob_2d_zord.T, atol=0, rtol=1e-5)
+
+# can I recover the zord ordering in this way? yes
+cov_rob_4d = mm.cov_2D_to_4D(cov_rob_2d_zord, nbl_3x2pt, block_index='sylvain', optimize=False)
+cov_rob_6d = mm.cov_4D_to_6D(cov_rob_4d, nbl_3x2pt, zbins, 'LL', ind_auto)
+# * test: different 4D -> 6D functions OK
+_cov_rob_6d = mm.cov_4D_to_6D_blocks(cov_rob_4d, nbl_3x2pt, zbins, ind_auto, ind_auto,
+                                      symmetrize_output_ab=True, symmetrize_output_cd=True)
+np.testing.assert_allclose(cov_rob_6d, _cov_rob_6d, atol=0, rtol=1e-5)
+
+plt.figure()
+plt.semilogy(np.fabs(cov_rob_6d.flatten()))
+plt.semilogy(np.fabs(cov_tot_oc_10d[0, 0, 0, 0].flatten()), alpha=1, ls='-')
+plt.semilogy(np.fabs(oc_obj.cov_oc_10d_dict['tot'][0, 0, 0, 0].flatten()), alpha=0.5, ls='--')
+np.testing.assert_allclose(cov_tot_oc_10d[0, 0, 0, 0], oc_obj.cov_oc_10d_dict['tot'][0, 0, 0, 0])
+
+for zi, zj, zk, zl in itertools.product(range(2), repeat=4):
+    print(zi, zj, zk, zl)
+    np.testing.assert_allclose(cov_tot_oc_10d[zi, zj, zk, zl], oc_obj.cov_oc_10d_dict['tot'][zi, zj, zk, zl])
+    np.testing.assert_allclose(cov_tot_oc_10d[zi, zj, zk, zl], 0)
+    
+    
+
+zi, zj = 0, 2
+mm.compare_arrays(cov_rob_6d[ell1, ell2, zi, zj, :, :],
+                  oc_obj.cov_oc_10d_dict['tot'][0, 0, 0, 0, ell1, ell2, zi, zj, :, :])
+
+cov_ll_2d_zord = mm.cov_4D_to_2D(cov_rob_4d, block_index='ij', optimize=False)
+mm.compare_arrays(cov_ll_2d_zord, cov_rob_2d_zord, 'cov_ll_2d_zord', 'cov_ll_2d_zord_mat')
+
+# TODO do it from 6D??
+cov_ll_2d_ellord = mm.cov_4D_to_2D(cov_rob_4d, block_index='vincenzo', optimize=False)
+mm.matshow(cov_ll_2d_ellord)
+assert np.allclose(cov_ll_2d_ellord, cov_ll_2d_ellord.T, atol=0, rtol=1e-5)
+
+# second try THE SAVED 4D BLOCKS PRODUCE INCORRECT ORDERING - UNSURPRISING SINCE IT'S PROBABLY THE 10D TO BE THE PROBLEM
+cov_ll_4d_v2 = np.load(
+    f'{oc_obj.oc_path}/cov_tot_onecovariance_LLLL_4D_nbl29_ellmax3000_zbinsEP03_GbinningOneCovariance.npz')['arr_0']
+ell1, ell2 = 0, 1
+mm.compare_arrays(cov_rob_4d[ell1, ell2], cov_ll_4d_v2[ell1, ell2])
+
+# for zij in range(zpairs_auto):
+#     for zkl in range(zij):
+#         # flip last 2 axes of cov
+#         cov_ll_4d_v2[:, :, zij, zkl] = cov_ll_4d_v2[:, :, zij, zkl].T
+        
+
+
+cov_ll_2d_zord_v2 = mm.cov_4D_to_2D(cov_ll_4d_v2, block_index='ij', optimize=False)
+cov_ll_2d_ellord_v2 = mm.cov_4D_to_2D(cov_ll_4d_v2, block_index='ell', optimize=False)
+# mirror upper diagonal on the lower one
+cov_ll_2d_ellord_v2 = cov_ll_2d_ellord_v2 + cov_ll_2d_ellord_v2.T - np.diag(np.diag(cov_ll_2d_ellord_v2))
+
+# mm.matshow(cov_ll_2d_zord_v2, 'cov_ll_2d_zord_v2')
+# mm.matshow(cov_ll_2d_ellord_v2, 'cov_ll_2d_ellord_v2')
+mm.compare_arrays(cov_ll_2d_zord, cov_ll_2d_zord_v2)
+# ! these do not match!!
+mm.compare_arrays(cov_ll_2d_zord, cov_ll_2d_zord_v2, 'cov_ll_2d_ellord', 'cov_ll_2d_ellord_v2',
+                  log_diff=False, plot_diff_threshold=1)
+
+cov_ll_2d_ellord = mm.cov_4D_to_2D(cov_ll_4d_v2, block_index='sylvain', optimize=True)
+
+
+cov_rob_6d = oc_obj.cov_oc_10d_dict['tot'][0, 0, 0, 0]
+cov_rob_4d = mm.cov_6D_to_4D_blocks(cov_rob_6d, nbl_3x2pt,
+                                   zpairs_auto, zpairs_auto, ind_auto, ind_auto)
+cov_rob_4d = mm.cov_6D_to_4D(cov_rob_6d, nbl_3x2pt, zpairs_auto, ind_auto)
+cov_ll_2d_ellord_list = mm.cov_4D_to_2D(cov_ll_4d_v2, block_index='vincenzo', optimize=True)
+mm.matshow(cov_ll_2d_ellord)
+mm.compare_arrays(cov_ll_2d_ellord_list, cov_ll_2d_ellord_mat)
+
+
+zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(oc_obj.zbins)
+
+ind_auto = ind_dict['G', 'G']
+ind_cross = ind_dict['G', 'L']
+np.testing.assert_allclose(ind_dict['G', 'G'], ind_dict['L', 'L'], atol=0, rtol=1e-8)
+import pandas as pd
+
+chunk_size = 5000000
+cov_nbl = variable_specs['nbl_3x2pt']
+# column_names = [
+#     '#obs', 'ell1', 'ell2', 's1', 's2', 'tomoi', 'tomoj', 'tomok', 'tomol',
+#     'cov', 'covg sva', 'covg mix', 'covg sn', 'covng', 'covssc',
+# ]
+
+# check that column names are correct
+with open(f'{oc_obj.oc_path}/covariance_list.dat', 'r') as file:
+    header = file.readline().strip()  # Read the first line and strip newline characters
+print('.dat file header: ')
+print(header)
+header_list = re.split('\t', header.strip().replace('\t\t', '\t').replace('\t\t', '\t'))
+
+# assert column_names == header_list, 'column names from .dat file do not match with the expected ones'
+
+column_names = header_list
+
+# ell values actually used in OC; save in oc_obj to be able to compare to the SB ell values
+# note use delim_whitespace=True instead of sep='\s+' if this gives compatibility issues
+oc_obj.ells_oc_load = pd.read_csv(f'{oc_obj.oc_path}/covariance_list.dat',
+                                  usecols=['ell1'], sep='\s+')['ell1'].unique()
+
+# check if the saved ells are within 1% of the required ones; I think the saved values are truncated to only
+# 2 decimals, so this is a rough comparison
+try:
+    np.testing.assert_allclose(oc_obj.new_ells_oc, oc_obj.ells_oc_load, atol=0, rtol=1e-2)
+except AssertionError as err:
+    print('ell values computed vs loaded for OC are not the same')
+    print(err)
+
+cov_ell_indices = {ell_out: idx for idx, ell_out in enumerate(oc_obj.ells_oc_load)}
+
+probe_idx_dict = {
+    'm': 0,
+    'g': 1,
+}
+
+# ! import .list covariance file
+cov_g_oc_10d = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins))
+cov_sva_oc_10d = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins))
+cov_mix_oc_10d = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins))
+cov_sn_oc_10d = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins))
+cov_ssc_oc_10d = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins))
+cov_cng_oc_10d = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins))
+cov_tot_oc_10d = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins))
+cov_g_oc_10d_v2 = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins))
+cov_sva_oc_10d_v2 = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins))
+cov_mix_oc_10d_v2 = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins))
+cov_sn_oc_10d_v2 = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins))
+cov_ssc_oc_10d_v2 = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins))
+cov_cng_oc_10d_v2 = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins))
+cov_tot_oc_10d_v2 = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins, oc_obj.zbins))
+
+print('loading dataframe in chunks...')
+start = time.perf_counter()
+for df_chunk in pd.read_csv(f'{oc_obj.oc_path}/covariance_list.dat', sep='\s+', names=column_names, skiprows=1, chunksize=chunk_size):
+
+    # Vectorize the extraction of probe indices
+    probe_idx_a = df_chunk['#obs'].str[0].map(probe_idx_dict).values
+    probe_idx_b = df_chunk['#obs'].str[1].map(probe_idx_dict).values
+    probe_idx_c = df_chunk['#obs'].str[2].map(probe_idx_dict).values
+    probe_idx_d = df_chunk['#obs'].str[3].map(probe_idx_dict).values
+
+    # Map 'ell' values to their corresponding indices
+    ell1_idx = df_chunk['ell1'].map(cov_ell_indices).values
+    ell2_idx = df_chunk['ell2'].map(cov_ell_indices).values
+
+    # Compute z indices
+    if np.min(df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values) == 1:
+        z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].sub(1).values
+    else:
+        warnings.warn('tomo indices seem to start from 0...')
+        z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values
+
+    # Vectorized assignment to the arrays
+    index_tuple = (probe_idx_a, probe_idx_b, probe_idx_c, probe_idx_d, ell1_idx, ell2_idx,
+                   z_indices[:, 0], z_indices[:, 1], z_indices[:, 2], z_indices[:, 3])
+
+    cov_sva_oc_10d[index_tuple] = df_chunk['covg sva'].values
+    cov_mix_oc_10d[index_tuple] = df_chunk['covg mix'].values
+    cov_sn_oc_10d[index_tuple] = df_chunk['covg sn'].values
+    cov_g_oc_10d[index_tuple] = df_chunk['covg sva'].values + \
+        df_chunk['covg mix'].values + df_chunk['covg sn'].values
+    cov_ssc_oc_10d[index_tuple] = df_chunk['covssc'].values
+    cov_cng_oc_10d[index_tuple] = df_chunk['covng'].values
+    cov_tot_oc_10d[index_tuple] = df_chunk['cov'].values
+
+print(f"df loaded in {time.perf_counter() - start:.2f} seconds")
+
+
+import pandas as pd
+import numpy as np
+import time
+import warnings
+
+
+print('loading dataframe in chunks...')
+start = time.perf_counter()
+
+# # ! do not vectorize
+df_chunk = pd.read_csv(f'{oc_obj.oc_path}/covariance_list.dat', sep='\s+', names=column_names, skiprows=1)
+
+# Row by row processing
+for _, row in tqdm(df_chunk.iterrows()):
+    # Extract probe indices
+    probe_idx_a = probe_idx_dict.get(row['#obs'][0])
+    probe_idx_b = probe_idx_dict.get(row['#obs'][1])
+    probe_idx_c = probe_idx_dict.get(row['#obs'][2])
+    probe_idx_d = probe_idx_dict.get(row['#obs'][3])
+
+    # Extract ell1 and ell2 indices
+    ell1_idx = cov_ell_indices.get(row['ell1'])
+    ell2_idx = cov_ell_indices.get(row['ell2'])
+
+    # Extract z indices (subtract 1 if needed)
+    if np.min(df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values) == 1:
+        z_indices = row[['tomoi', 'tomoj', 'tomok', 'tomol']].sub(1).values
+    else:
+        warnings.warn('tomo indices seem to start from 0...')
+        z_indices = row[['tomoi', 'tomoj', 'tomok', 'tomol']].values
+
+    # Update the covariance arrays
+    cov_sva_oc_10d_v2[probe_idx_a, probe_idx_b, probe_idx_c, probe_idx_d, ell1_idx,
+                      ell2_idx, z_indices[0], z_indices[1], z_indices[2], z_indices[3]] = row['covg sva']
+    cov_mix_oc_10d_v2[probe_idx_a, probe_idx_b, probe_idx_c, probe_idx_d, ell1_idx,
+                      ell2_idx, z_indices[0], z_indices[1], z_indices[2], z_indices[3]] = row['covg mix']
+    cov_sn_oc_10d_v2[probe_idx_a, probe_idx_b, probe_idx_c, probe_idx_d, ell1_idx,
+                     ell2_idx, z_indices[0], z_indices[1], z_indices[2], z_indices[3]] = row['covg sn']
+    cov_g_oc_10d_v2[probe_idx_a, probe_idx_b, probe_idx_c, probe_idx_d, ell1_idx, ell2_idx, z_indices[0],
+                    z_indices[1], z_indices[2], z_indices[3]] = row['covg sva'] + row['covg mix'] + row['covg sn']
+    cov_ssc_oc_10d_v2[probe_idx_a, probe_idx_b, probe_idx_c, probe_idx_d, ell1_idx,
+                      ell2_idx, z_indices[0], z_indices[1], z_indices[2], z_indices[3]] = row['covssc']
+    cov_cng_oc_10d_v2[probe_idx_a, probe_idx_b, probe_idx_c, probe_idx_d, ell1_idx,
+                      ell2_idx, z_indices[0], z_indices[1], z_indices[2], z_indices[3]] = row['covng']
+    cov_tot_oc_10d_v2[probe_idx_a, probe_idx_b, probe_idx_c, probe_idx_d, ell1_idx,
+                      ell2_idx, z_indices[0], z_indices[1], z_indices[2], z_indices[3]] = row['cov']
+
+
+np.testing.assert_allclose(cov_sva_oc_10d_v2, cov_sva_oc_10d)
+np.testing.assert_allclose(cov_mix_oc_10d_v2, cov_mix_oc_10d)
+np.testing.assert_allclose(cov_sn_oc_10d_v2, cov_sn_oc_10d)
+np.testing.assert_allclose(cov_g_oc_10d_v2, cov_g_oc_10d)
+np.testing.assert_allclose(cov_ssc_oc_10d_v2, cov_ssc_oc_10d)
+np.testing.assert_allclose(cov_cng_oc_10d_v2, cov_cng_oc_10d)
+np.testing.assert_allclose(cov_tot_oc_10d_v2, cov_tot_oc_10d)
+
+
+cov_rob_6d = cov_tot_oc_10d_v2[0, 0, 0, 0]
+cov_rob_4d = mm.cov_6D_to_4D_blocks(cov_rob_6d, nbl_3x2pt,
+                                   zpairs_auto, zpairs_auto, ind_auto, ind_auto)
+cov_rob_4d = mm.cov_6D_to_4D(cov_rob_6d, nbl_3x2pt, zpairs_auto, ind_auto)
+cov_ll_2d_ellord = mm.cov_4D_to_2D(cov_rob_4d, block_index='vincenzo', optimize=True)
+mm.matshow(cov_ll_2d_ellord)
+# mm.matshow(cov_ll_6d[0, 0, 0, 0, :, :])
+
+cov_rob_6d = cov_tot_oc_10d[0, 0, 0, 0]
+cov_rob_4d = mm.cov_6D_to_4D_blocks(cov_rob_6d, nbl_3x2pt,
+                                   zpairs_auto, zpairs_auto, ind_auto, ind_auto)
+cov_rob_4d = mm.cov_6D_to_4D(cov_rob_6d, nbl_3x2pt, zpairs_auto, ind_auto)
+cov_ll_2d_ellord = mm.cov_4D_to_2D(cov_rob_4d, block_index='vincenzo', optimize=True)
+mm.matshow(cov_ll_2d_ellord)
+# mm.matshow(cov_ll_6d[0, 0, 0, 0, :, :])
+
+
+end = time.perf_counter()
+print(f"Processing completed in {end - start:.2f} seconds.")
+
 
 assert False, 'stop here'
 

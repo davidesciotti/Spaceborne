@@ -17,3 +17,5 @@ tmp/*
 tmp*/   
 .aider*
 tests/benchmarks/*
+*.png
+output/cache/*

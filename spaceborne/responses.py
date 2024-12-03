@@ -33,6 +33,7 @@ class SpaceborneResponses():
         assert self.use_h_units is False, 'case True should be fine but for now stick to False'
         self.b1_func = self.ccl_obj.gal_bias_func_ofz
 
+    def set_su_resp(self):
         # ! get growth only values - DIMENSIONLESS
         g1_table = np.genfromtxt(f'{ROOT}/Spaceborne/input/Resp_G1_fromsims.dat')
 
@@ -340,8 +341,6 @@ class SpaceborneResponses():
 
             # nonlin P(k) halo model = P1h + P2h = I^0_2(k, k) + (I^1_1)^2 * P_lin(k)
             self.pknlhm_mm[a_idx] = (pklin * i11_m * i11_m + i02_mm) / (norm_prof_m * norm_prof_m)
-            self.pknlhm_gm[a_idx] = (pklin * i11_g * i11_m + i02_gm) / (norm_prof_g * norm_prof_m)
-            self.pknlhm_gg[a_idx] = (pklin * i11_g * i11_g + i02_gg) / (norm_prof_g * norm_prof_g)
 
             # Super-sample covariance response terms
             dPmm_ddeltab[a_idx] = ((47 / 21 - dpklin / 3) * i11_m * i11_m *
@@ -353,16 +352,57 @@ class SpaceborneResponses():
 
             # Set counterterms
             if which_b1g == 'from_HOD':
+
+                # gX Pk is computed with the halo model in this case
+                # i.e. P1h + P2h = I^0_2(k, k) + (I^1_1)^2 * P_lin(k), as above
+                self.pknlhm_gm[a_idx] = (pklin * i11_g * i11_m + i02_gm) / (norm_prof_g * norm_prof_m)
+                self.pknlhm_gg[a_idx] = (pklin * i11_g * i11_g + i02_gg) / (norm_prof_g * norm_prof_g)
+
+                # compute and subtract counterterms
                 b1g = i11_g / norm_prof_g  # this is the same as self.b1g_hm
                 counter_gm = b1g * self.pknlhm_gm[a_idx]
                 counter_gg = 2 * b1g * self.pknlhm_gg[a_idx]
-            elif which_b1g == 'from_input':
-                counter_gm = b1g[a_idx] * self.pknlhm_gm[a_idx]
-                counter_gg = 2 * b1g[a_idx] * self.pknlhm_gg[a_idx]
 
-            # Subtract the bias counter terms
-            dPgm_ddeltab[a_idx] -= counter_gm
-            dPgg_ddeltab[a_idx] -= counter_gg
+                dPgm_ddeltab[a_idx] -= counter_gm
+                dPgg_ddeltab[a_idx] -= counter_gg
+
+            elif which_b1g == 'from_input':
+                # ! old
+                # counter_gm = b1g[a_idx] * self.pknlhm_gm[a_idx]
+                # counter_gg = 2 * b1g[a_idx] * self.pknlhm_gg[a_idx]
+                # dPgm_ddeltab[a_idx] -= counter_gm
+                # dPgg_ddeltab[a_idx] -= counter_gg
+
+                # !new (matches SSC_linear_bias)
+                # this is what is done in SSC_linear_bias, but same result as below
+                # dPmm_ddeltab[a_idx] = (47 / 21 - dpklin / 3) * pklin + i12_mm / norm_prof_m**2
+                # self.pknlhm_mm[a_idx] = pklin + i02_mm / norm_prof_m**2
+
+                # gX Pk in this case is simply b(z) * Pmm or b(z)^2 * Pmm
+                self.pknlhm_gm[a_idx] = b1g[a_idx] * self.pknlhm_mm[a_idx]
+                self.pknlhm_gg[a_idx] = b1g[a_idx]**2 * self.pknlhm_mm[a_idx]
+
+                # CCL implementation matches this
+                # dPgm_ddeltab[a_idx] = dPmm_ddeltab[a_idx] - b1g[a_idx] * self.pknlhm_mm[a_idx]
+                # dPgg_ddeltab[a_idx] = dPmm_ddeltab[a_idx] - 2 * b1g[a_idx] * self.pknlhm_mm[a_idx]
+                # dPgm_ddeltab[a_idx] *= b1g[a_idx]
+                # dPgg_ddeltab[a_idx] *= b1g[a_idx]**2
+
+                # or this (it's an equivalent way to write it - mpre intuitive imo)
+                dPgm_ddeltab[a_idx] = dPmm_ddeltab[a_idx] * b1g[a_idx]
+                dPgg_ddeltab[a_idx] = dPmm_ddeltab[a_idx] * b1g[a_idx]**2
+                # subtract counterterms
+                dPgm_ddeltab[a_idx] -= b1g[a_idx] * self.pknlhm_gm[a_idx]
+                dPgg_ddeltab[a_idx] -= 2 * b1g[a_idx] * self.pknlhm_gg[a_idx]
+
+
+                # this is what I think this equation says, but it doesn't match...
+                # https://ccl.readthedocs.io/en/latest/api/pyccl.halos.pk_4pt.html#pyccl.halos.pk_4pt.halomod_Tk3D_SSC_linear_bias
+                # dPgm_ddeltab[a_idx] = dPmm_ddeltab[a_idx] * b1g[a_idx] - b1g[a_idx] * self.pknlhm_mm[a_idx]
+                # dPgg_ddeltab[a_idx] = dPmm_ddeltab[a_idx] * b1g[a_idx]**2 - 2 * b1g[a_idx] * self.pknlhm_mm[a_idx]
+
+            else:
+                raise ValueError("'which_b1g' must be either 'from_HOD' or 'from_input'")
 
         # transpose to have pk(k, z)
         self.dPmm_ddeltab_hm = dPmm_ddeltab.T

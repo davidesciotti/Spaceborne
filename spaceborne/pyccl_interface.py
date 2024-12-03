@@ -318,6 +318,19 @@ class PycclClass():
             ('L', 'G'): ccl.halos.Profile2pt(),
             ('G', 'G'): ccl.halos.Profile2ptHOD(),
         }
+        is_number_counts_dict = {
+            'L': False,
+            'G': True,
+        }
+        # gal_bias_1d = self.gal_bias_func_ofz(self.z_grid_tkka_SSC)  # no
+        # gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.z_to_a(self.z_grid_tkka_SSC)[::-1])
+        gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.a_to_z(self.a_grid_tkka_SSC))  # ok-ish
+        # gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.a_to_z(self.a_grid_tkka_SSC)[::-1])  # nope
+
+        gal_bias_dict = {
+            'L': np.ones_like(gal_bias_1d),
+            'G': gal_bias_1d,
+        }
 
         # store the trispectrum for the various probes in a dictionary
 
@@ -377,17 +390,46 @@ class PycclClass():
 
                     # not very nice to put this if-else in the for loop, but A, B, C, D are referenced only here
                     if which_ng_cov == 'SSC':
-                        tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
-                        additional_args = {
-                            'prof12_2pt': prof_2pt_dict[A, B],
-                            'prof34_2pt': prof_2pt_dict[C, D],
-                            'lk_arr': logn_k_grid_tkka_SSC,
-                            'a_arr': self.a_grid_tkka_SSC,
-                            'extrap_pk': True,
-                        }
+
+                        if self.which_b1g_in_resp == 'from_HOD':
+                            tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
+                            additional_args = {
+                                'prof': halo_profile_dict[A],
+                                'prof2': halo_profile_dict[B],
+                                'prof3': halo_profile_dict[C],
+                                'prof4': halo_profile_dict[D],
+                                'prof12_2pt': prof_2pt_dict[A, B],
+                                'prof34_2pt': prof_2pt_dict[C, D],
+                                'lk_arr': logn_k_grid_tkka_SSC,
+                                'a_arr': self.a_grid_tkka_SSC,
+                                'extrap_pk': True,
+                            }
+
+                        elif self.which_b1g_in_resp == 'from_input':
+                            tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC_linear_bias
+                            additional_args = {
+                                'prof': halo_profile_dict['L'],  # prof should be HaloProfileNFW
+                                'bias1': gal_bias_dict[A],
+                                'bias2': gal_bias_dict[B],
+                                'bias3': gal_bias_dict[C],
+                                'bias4': gal_bias_dict[D],
+                                'is_number_counts1': is_number_counts_dict[A],
+                                'is_number_counts2': is_number_counts_dict[B],
+                                'is_number_counts3': is_number_counts_dict[C],
+                                'is_number_counts4': is_number_counts_dict[D],
+                                'lk_arr': logn_k_grid_tkka_SSC,
+                                'a_arr': self.a_grid_tkka_SSC,
+                                'extrap_pk': True,
+                            }
+
                     elif which_ng_cov == 'cNG':
+
                         tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
                         additional_args = {
+                            'prof': halo_profile_dict[A],
+                            'prof2': halo_profile_dict[B],
+                            'prof3': halo_profile_dict[C],
+                            'prof4': halo_profile_dict[D],
                             'prof12_2pt': prof_2pt_dict[A, B],
                             'prof13_2pt': prof_2pt_dict[A, C],
                             'prof14_2pt': prof_2pt_dict[A, D],
@@ -403,10 +445,6 @@ class PycclClass():
 
                     self.tkka_dict[A, B, C, D], self.responses_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
                                                                                             hmc=self.hmc,
-                                                                                            prof=halo_profile_dict[A],
-                                                                                            prof2=halo_profile_dict[B],
-                                                                                            prof3=halo_profile_dict[C],
-                                                                                            prof4=halo_profile_dict[D],
                                                                                             extrap_order_lok=1, extrap_order_hik=1,
                                                                                             use_log=False,
                                                                                             p_of_k_a=p_of_k_a,
@@ -488,13 +526,12 @@ class PycclClass():
                         cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b].transpose(1, 0, 3, 2))
 
         self.cov_ng_3x2pt_dict_8D = cov_ng_3x2pt_dict_8D
-        
+
         if which_ng_cov == 'SSC':
             self.cov_ssc_ccl_3x2pt_dict_8D = self.cov_ng_3x2pt_dict_8D
         if which_ng_cov == 'cNG':
             self.cov_cng_ccl_3x2pt_dict_8D = self.cov_ng_3x2pt_dict_8D
 
-        
         self.check_cov_blocks_simmetry()
 
         return

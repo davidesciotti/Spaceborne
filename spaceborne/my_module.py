@@ -3063,7 +3063,7 @@ def slice_cl_3x2pt_1D_ell_probe_zpair(cl_3x2pt_1D_ell_probe_zpair, nbl, zbins, p
 
 
 # @njit
-def cov_2D_to_4D(cov_2D, nbl, block_index='vincenzo', optimize=True, symmetrize=False):
+def cov_2D_to_4D(cov_2D, nbl, block_index='vincenzo', optimize=True):
     """ new (more elegant) version of cov_2D_to_4D. Also works for 3x2pt. The order
     of the for loops does not affect the result!
 
@@ -3110,12 +3110,6 @@ def cov_2D_to_4D(cov_2D, nbl, block_index='vincenzo', optimize=True, symmetrize=
                             # block_index * block_size + running_index
                             cov_4D[l1, l2, ipair, jpair] = cov_2D[ipair * nbl + l1, jpair * nbl + l2]
                             
-    if symmetrize:
-        for l1 in range(nbl):
-            for l2 in range(nbl):
-                # mirror the upper triangle into the lower one
-                cov_4D[l1, l2, :, :] = symmetrize_2d_array(cov_4D[l1, l2, :, :])
-                
     return cov_4D
 
 

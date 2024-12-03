@@ -41,12 +41,12 @@ class OneCovarianceInterface():
 
         # paths
         self.ROOT = ROOT
-        self.conda_base_path = self.get_conda_base_path()
+        self.conda_base_path = '/home/davide/anaconda3/bin/conda'
         self.oc_path = cfg['covariance_cfg']['OneCovariance_cfg']['onecovariance_folder'].format(
             ROOT=self.ROOT, **self.variable_specs)
         self.path_to_oc_executable = cfg['covariance_cfg']['OneCovariance_cfg']['path_to_oc_executable'].format(
             ROOT=ROOT)
-        self.path_to_config_oc_ini = f'{self.oc_path }/input_configs.ini'
+        self.path_to_config_oc_ini = f'{self.oc_path}/input_configs.ini'
 
     def get_conda_base_path(self):
         try:
@@ -92,7 +92,7 @@ class OneCovarianceInterface():
         cfg_onecov_ini['covariance terms']['nongauss'] = str(self.compute_cng)
         cfg_onecov_ini['covariance terms']['ssc'] = str(self.compute_ssc)
         cfg_onecov_ini['output settings']['directory'] = self.oc_path
-        
+
         # [observables]
         cfg_onecov_ini['observables']['cosmic_shear'] = str(True)
         cfg_onecov_ini['observables']['est_shear'] = 'C_ell'
@@ -105,10 +105,10 @@ class OneCovarianceInterface():
         cfg_onecov_ini['observables']['unbiased_clustering'] = str(False)
 
         cfg_onecov_ini['covELLspace settings']['ell_min'] = str(general_cfg['ell_min'])
-        cfg_onecov_ini['covELLspace settings']['ell_bins'] = str(general_cfg['nbl_3x2pt'])
         cfg_onecov_ini['covELLspace settings']['ell_min_lensing'] = str(general_cfg['ell_min'])
-        cfg_onecov_ini['covELLspace settings']['ell_bins_lensing'] = str(general_cfg['nbl_3x2pt'])
         cfg_onecov_ini['covELLspace settings']['ell_min_clustering'] = str(general_cfg['ell_min'])
+        cfg_onecov_ini['covELLspace settings']['ell_bins'] = str(general_cfg['nbl_3x2pt'])
+        cfg_onecov_ini['covELLspace settings']['ell_bins_lensing'] = str(general_cfg['nbl_3x2pt'])
         cfg_onecov_ini['covELLspace settings']['ell_bins_clustering'] = str(general_cfg['nbl_3x2pt'])
         cfg_onecov_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(map(str, mult_shear_bias_list))
 
@@ -206,11 +206,16 @@ class OneCovarianceInterface():
     def call_onecovariance(self):
         """This function runs OneCovariance"""
 
+        # activate_and_run = f"""
+        # source {self.conda_base_path}/activate cov20_env
+        # python {self.path_to_oc_executable} {self.path_to_config_oc_ini}
+        # source {self.conda_base_path}/deactivate
+        # source {self.conda_base_path}/activate spaceborne-dav
+        # """
+
+        # Ensure that conda is initialized before activating the environment
         activate_and_run = f"""
-        source {self.conda_base_path}/activate cov20_env
         python {self.path_to_oc_executable} {self.path_to_config_oc_ini}
-        source {self.conda_base_path}/deactivate
-        source {self.conda_base_path}/activate spaceborne-dav
         """
         # python {self.path_to_oc_executable.replace('covariance.py', 'reshape_cov_list_Cl_callable.py')} {self.path_to_config_oc_ini.replace('input_configs.ini', '')}
 
@@ -233,6 +238,7 @@ class OneCovarianceInterface():
 
         ind_auto = ind_dict['G', 'G']
         ind_cross = ind_dict['G', 'L']
+        np.testing.assert_allclose(ind_dict['G', 'G'], ind_dict['L', 'L'], atol=0, rtol=1e-8)
 
         chunk_size = 5000000
         cov_nbl = variable_specs['nbl_3x2pt']
@@ -256,15 +262,15 @@ class OneCovarianceInterface():
         # note use delim_whitespace=True instead of sep='\s+' if this gives compatibility issues
         self.ells_oc_load = pd.read_csv(f'{self.oc_path}/covariance_list.dat',
                                         usecols=['ell1'], sep='\s+')['ell1'].unique()
-        
-        # check if the saved ells are within 1% of the required ones; I think the saved values are truncated to only 
+
+        # check if the saved ells are within 1% of the required ones; I think the saved values are truncated to only
         # 2 decimals, so this is a rough comparison
         try:
             np.testing.assert_allclose(self.new_ells_oc, self.ells_oc_load, atol=0, rtol=1e-2)
         except AssertionError as err:
             print('ell values computed vs loaded for OC are not the same')
             print(err)
-            
+
         cov_ell_indices = {ell_out: idx for idx, ell_out in enumerate(self.ells_oc_load)}
 
         probe_idx_dict = {
@@ -357,6 +363,8 @@ class OneCovarianceInterface():
             cov_oc_10d_dict[cov_term][1, 0, 1, 1] = mm.cov_4D_to_6D_blocks(cov_glgg_4d, cov_nbl, self.zbins, ind_cross, ind_auto,
                                                                            symmetrize_output_dict['G', 'L'], symmetrize_output_dict['G', 'G'])
 
+            self.cov_oc_10d_dict = cov_oc_10d_dict
+
             # partially format cov filename
             variable_specs = deepcopy(self.variable_specs)
             variable_specs.pop('which_ng_cov')
@@ -394,15 +402,15 @@ class OneCovarianceInterface():
         variable_specs.pop('which_ng_cov')
         try:
             filename = self.oc_cfg['cov_filename'].format(ROOT=self.ROOT,
-                                                        which_ng_cov=which_ng_cov,
-                                                        probe_a='{probe_a:s}',
-                                                        probe_b='{probe_b:s}',
-                                                        probe_c='{probe_c:s}',
-                                                        probe_d='{probe_d:s}',
-                                                        nbl=variable_specs['nbl_3x2pt'],
-                                                        lmax=variable_specs['ell_max_3x2pt'],
-                                                        which_gauss_cov_binning=which_gauss_cov_binning,
-                                                        **variable_specs)
+                                                          which_ng_cov=which_ng_cov,
+                                                          probe_a='{probe_a:s}',
+                                                          probe_b='{probe_b:s}',
+                                                          probe_c='{probe_c:s}',
+                                                          probe_d='{probe_d:s}',
+                                                          nbl=variable_specs['nbl_3x2pt'],
+                                                          lmax=variable_specs['ell_max_3x2pt'],
+                                                          which_gauss_cov_binning=which_gauss_cov_binning,
+                                                          **variable_specs)
 
             cov_ng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path=self.oc_path,
                                                                     filename=filename,
@@ -411,23 +419,23 @@ class OneCovarianceInterface():
             print(err)
             print('OC: LOADING LMAX=5000 FILES AND CUTTING')
             filename = self.oc_cfg['cov_filename'].format(ROOT=self.ROOT,
-                                            which_ng_cov=which_ng_cov,
-                                            probe_a='{probe_a:s}',
-                                            probe_b='{probe_b:s}',
-                                            probe_c='{probe_c:s}',
-                                            probe_d='{probe_d:s}',
-                                            nbl=32,
-                                            lmax=5000,
-                                            which_gauss_cov_binning=which_gauss_cov_binning,
-                                            **variable_specs)
+                                                          which_ng_cov=which_ng_cov,
+                                                          probe_a='{probe_a:s}',
+                                                          probe_b='{probe_b:s}',
+                                                          probe_c='{probe_c:s}',
+                                                          probe_d='{probe_d:s}',
+                                                          nbl=32,
+                                                          lmax=5000,
+                                                          which_gauss_cov_binning=which_gauss_cov_binning,
+                                                          **variable_specs)
 
             cov_ng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path=self.oc_path,
                                                                     filename=filename,
                                                                     probe_ordering=self.cfg['covariance_cfg']['probe_ordering'])
-            
-            for key in cov_ng_oc_3x2pt_dict_8D.keys():
-                cov_ng_oc_3x2pt_dict_8D[key] = cov_ng_oc_3x2pt_dict_8D[key][:variable_specs['nbl_3x2pt'], :variable_specs['nbl_3x2pt'], ...]
 
+            for key in cov_ng_oc_3x2pt_dict_8D.keys():
+                cov_ng_oc_3x2pt_dict_8D[key] = cov_ng_oc_3x2pt_dict_8D[key][:variable_specs['nbl_3x2pt'],
+                                                                            :variable_specs['nbl_3x2pt'], ...]
 
         # reshape
         if output_type == '8D_dict':
@@ -473,13 +481,13 @@ class OneCovarianceInterface():
         ax[0].plot(target_ell_array, label='target ells (SB)', marker='o', alpha=.6)
         ax[0].plot(self.new_ells_oc, label='ells OC', marker='o', alpha=.6)
         ax[1].plot(mm.percent_diff(target_ell_array, self.new_ells_oc), label='% diff', marker='o')
-        
+
         ax[0].legend()
         ax[1].legend()
         ax[0].set_ylabel('$\\ell$')
         ax[1].set_ylabel('% diff')
         fig.supxlabel('ell idx')
-        
+
     def compute_ells_oc(self, nbl, ell_min, ell_max):
         ell_bin_edges_oc_int = np.unique(np.geomspace(ell_min, ell_max, nbl + 1)).astype(int)
         ells_oc_int = np.exp(.5 * (np.log(ell_bin_edges_oc_int[1:])

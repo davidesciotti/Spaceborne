@@ -107,7 +107,6 @@ class OneCovarianceInterface():
         cl_gg_oc_filename = ascii_filenames_dict['cl_gg_ascii_filename']
         nz_src_filename_ascii = ascii_filenames_dict['nz_src_ascii_filename']
         nz_lns_filename_ascii = ascii_filenames_dict['nz_lns_ascii_filename']
-        gal_bias_ascii_filename = ascii_filenames_dict['gal_bias_ascii_filename']
 
         # TODO import another file??
         # Read the existing reference .ini file
@@ -180,7 +179,9 @@ class OneCovarianceInterface():
         cfg_onecov_ini['cosmo']['neff'] = str(self.cfg['cosmology']['N_eff'])
         cfg_onecov_ini['cosmo']['m_nu'] = str(self.cfg['cosmology']['m_nu'])
 
-        cfg_onecov_ini['bias']['bias_files'] = gal_bias_ascii_filename
+        if cfg["covariance"]["which_b1g_in_resp"] == 'from_input':
+            gal_bias_ascii_filename = ascii_filenames_dict['gal_bias_ascii_filename']
+            cfg_onecov_ini['bias']['bias_files'] = gal_bias_ascii_filename
 
         cfg_onecov_ini['IA']['A_IA'] = str(self.cfg['intrinsic_alignment']['Aia'])
         cfg_onecov_ini['IA']['eta_IA'] = str(self.cfg['intrinsic_alignment']['eIA'])
@@ -235,7 +236,7 @@ class OneCovarianceInterface():
         # store in self for good measure
         self.cfg_onecov_ini = cfg_onecov_ini
 
-    def call_onecovariance(self):
+    def _call_onecovariance(self):
         """This function runs OneCovariance"""
 
         activate_and_run = f"""
@@ -248,6 +249,50 @@ class OneCovarianceInterface():
 
         process = subprocess.Popen(activate_and_run, shell=True, executable='/bin/bash')
         process.communicate()
+
+        """This function runs OneCovariance"""
+
+        activate_and_run = f"""
+        source {self.conda_base_path}/activate cov20_env
+        python {self.path_to_oc_executable} {self.path_to_config_oc_ini}
+        source {self.conda_base_path}/deactivate
+        source {self.conda_base_path}/activate spaceborne-dav
+        """
+        # python {self.path_to_oc_executable.replace('covariance.py', 'reshape_cov_list_Cl_callable.py')} {self.path_to_config_oc_ini.replace('input_configs.ini', '')}
+
+        process = subprocess.Popen(activate_and_run, shell=True, executable='/bin/bash')
+        process.communicate()
+        
+    def call_onecovariance(self):
+        """This interface has been written by Robert Reischke"""
+        from onecov.cov_input import Input, FileInput
+        from onecov.cov_ell_space import CovELLSpace
+        from onecov.cov_polyspectra import PolySpectra
+        import platform
+        if len(platform.mac_ver()[0]) > 0 and (platform.processor() == 'arm' or int(platform.mac_ver()[0][:(platform.mac_ver()[0]).find(".")]) > 13):
+            os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+        from onecov.cov_setup import Setup
+
+        print("READING OneCovariance INPUT")
+        print("#############")
+
+        inp = Input()
+
+        covterms, observables, output, cosmo, bias, iA, hod, survey_params, prec = inp.read_input(
+            f"{self.oc_path}/input_configs.ini")
+        fileinp = FileInput(bias)
+        read_in_tables = fileinp.read_input(f"{self.oc_path}/input_configs.ini")
+        setup = Setup(cosmo, bias, survey_params, prec, read_in_tables)
+        ellspace = CovELLSpace(covterms,observables,output,cosmo,bias,iA,hod,survey_params,prec,read_in_tables)
+        ssc = ellspace.covELL_ssc(bias,hod,prec,survey_params,observables['ELLspace'])
+        cng = ellspace.covELL_non_gaussian(covELLspacesettings=observables['ELLspace'],
+                                            output_dict=output,
+                                            bias_dict=bias,
+                                            hod_dict=hod,
+                                            prec=prec,
+                                            tri_tab=read_in_tables['tri'])
+
+
 
     def reshape_oc_output(self, variable_specs, ind_dict, symmetrize_output_dict):
         """

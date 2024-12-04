@@ -73,6 +73,7 @@ class OneCovarianceInterface():
         self.n_probes = cfg['covariance']['n_probes']
 
         # set which cov terms to compute from cfg file
+        self.compute_g = True  # TODO pass this from cfg?
         self.compute_ssc = do_ssc
         self.compute_cng = do_cng
 
@@ -251,19 +252,6 @@ class OneCovarianceInterface():
         process = subprocess.Popen(activate_and_run, shell=True, executable='/bin/bash')
         process.communicate()
 
-        """This function runs OneCovariance"""
-
-        activate_and_run = f"""
-        source {self.conda_base_path}/activate cov20_env
-        python {self.path_to_oc_executable} {self.path_to_config_oc_ini}
-        source {self.conda_base_path}/deactivate
-        source {self.conda_base_path}/activate spaceborne-dav
-        """
-        # python {self.path_to_oc_executable.replace('covariance.py', 'reshape_cov_list_Cl_callable.py')} {self.path_to_config_oc_ini.replace('input_configs.ini', '')}
-
-        process = subprocess.Popen(activate_and_run, shell=True, executable='/bin/bash')
-        process.communicate()
-
     def call_onecovariance(self):
         """This interface was originally created by Robert Reischke"""
         import sys
@@ -316,64 +304,126 @@ class OneCovarianceInterface():
                                                     prec=prec,
                                                     tri_tab=read_in_tables['tri'])
 
-    def reshape_oc_output(self):
-        
-        cov_g_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
-                                cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        cov_sva_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
-                                  cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        cov_mix_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
-                                  cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        cov_sn_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
-                                 cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        cov_ssc_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
-                                  cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        cov_cng_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
-                                  cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        cov_tot_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
-                                  cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
+    def oc_cov_to_10d(self, cov_tuple_in, nbl, compute_cov, is_gauss):
 
-        assert len(self.cov_ssc) == 6, 'For the moment, SSC OC tuple should have 6 entries (for 3 probes)'
-        assert len(self.cov_cng) == 6, 'For the moment, cNG OC tuple should have 6 entries (for 3 probes)'
-        for i in len(self.cov_ssc):
-            assert self.cov_ssc[i].shape == (cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins)
-        for i in len(self.cov_cng):
-            assert self.cov_cng[i].shape == (cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins)
+        if is_gauss:
+            assert len(cov_tuple_in) == 9, 'For the moment, OC cov tuple should have 6 entries (for 3 probes)'
+        else:
+            assert len(cov_tuple_in) == 6, 'For the moment, OC cov tuple should have 6 entries (for 3 probes)'
 
+        cov_10d_out = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+                                nbl, nbl, self.zbins, self.zbins, self.zbins, self.zbins))
+
+        # guard
+        if not compute_cov:
+            return cov_10d_out
+
+        # Ensure covariance shapes are correct
+        for i in range(len(cov_tuple_in)):
+            assert cov_tuple_in[i].shape == (nbl, nbl, 1, 1, self.zbins, self.zbins, self.zbins, self.zbins)
+
+        # Define the order of the tuple for SSC and CNG (they are the same as confirmed)
         # the order of the tuple is gggg, gggm, ggmm, gmgm, mmgm, mmmm (confirmed by Robert)
-        self.cov_ssc_oc_10d[1, 1, 1, 1, :, :, :, :, :, :] = self.cov_ssc[0][:, :, 0, 0, :, :, :, :]
-        self.cov_ssc_oc_10d[1, 1, 1, 0, :, :, :, :, :, :] = self.cov_ssc[1][:, :, 0, 0, :, :, :, :]
-        self.cov_ssc_oc_10d[1, 1, 0, 0, :, :, :, :, :, :] = self.cov_ssc[2][:, :, 0, 0, :, :, :, :]
-        self.cov_ssc_oc_10d[1, 0, 1, 0, :, :, :, :, :, :] = self.cov_ssc[3][:, :, 0, 0, :, :, :, :]
-        self.cov_ssc_oc_10d[0, 0, 1, 0, :, :, :, :, :, :] = self.cov_ssc[4][:, :, 0, 0, :, :, :, :]
-        self.cov_ssc_oc_10d[0, 0, 0, 0, :, :, :, :, :, :] = self.cov_ssc[5][:, :, 0, 0, :, :, :, :]
+        if is_gauss:
+            cov_order = [(1, 1, 1, 1), (1, 1, 1, 0), (1, 1, 0, 0),
+                         (1, 0, 1, 1), (1, 0, 1, 0), (1, 0, 0, 0),
+                         (0, 0, 1, 1), (0, 0, 1, 0), (0, 0, 0, 0)]
+        else:
+            cov_order = [(1, 1, 1, 1), (1, 1, 1, 0), (1, 1, 0, 0), (1, 0, 1, 0), (0, 0, 1, 0), (0, 0, 0, 0)]
 
-        self.cov_cng_oc_10d[1, 1, 1, 1, :, :, :, :, :, :] = self.cov_ssc[0][:, :, 0, 0, :, :, :, :]
-        self.cov_cng_oc_10d[1, 1, 1, 0, :, :, :, :, :, :] = self.cov_ssc[1][:, :, 0, 0, :, :, :, :]
-        self.cov_cng_oc_10d[1, 1, 0, 0, :, :, :, :, :, :] = self.cov_ssc[2][:, :, 0, 0, :, :, :, :]
-        self.cov_cng_oc_10d[1, 0, 1, 0, :, :, :, :, :, :] = self.cov_ssc[3][:, :, 0, 0, :, :, :, :]
-        self.cov_cng_oc_10d[0, 0, 1, 0, :, :, :, :, :, :] = self.cov_ssc[4][:, :, 0, 0, :, :, :, :]
-        self.cov_cng_oc_10d[0, 0, 0, 0, :, :, :, :, :, :] = self.cov_ssc[5][:, :, 0, 0, :, :, :, :]
+        # Update the cov_oc_10d for the given covariance type
+        for idx, (a, b, c, d) in enumerate(cov_order):
+            cov_10d_out[a, b, c, d, :, :, :, :, :, :] = cov_tuple_in[idx][:, :, 0, 0, :, :, :, :]
 
-        # transpose to get the remaining blocks
+        # Transpose to get the remaining blocks
         # ell1 <-> ell2 and zi, zj <-> zk, zl, but ell1 <-> ell2 should have no effect!
-        self.cov_ssc_oc_10d[0, 0, 1, 1, :, :, :, :, :, :] = self.cov_ssc_oc_10d[1,
-                                                                                1, 0, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
-        self.cov_ssc_oc_10d[1, 0, 1, 1, :, :, :, :, :, :] = self.cov_ssc_oc_10d[1,
-                                                                                1, 1, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
-        self.cov_ssc_oc_10d[1, 0, 0, 0, :, :, :, :, :, :] = self.cov_ssc_oc_10d[0,
-                                                                                0, 1, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
+        if not is_gauss:
+            cov_10d_out[0, 0, 1, 1, :, :, :, :, :, :] = np.transpose(cov_10d_out[1, 1, 0, 0, :, :, :, :, :, :],
+                                                                     (1, 0, 4, 5, 2, 3))
+            cov_10d_out[1, 0, 1, 1, :, :, :, :, :, :] = np.transpose(cov_10d_out[1, 1, 1, 0, :, :, :, :, :, :],
+                                                                     (1, 0, 4, 5, 2, 3))
+            cov_10d_out[1, 0, 0, 0, :, :, :, :, :, :] = np.transpose(cov_10d_out[0, 0, 1, 0, :, :, :, :, :, :],
+                                                                     (1, 0, 4, 5, 2, 3))
 
-        self.cov_cng_oc_10d[0, 0, 1, 1, :, :, :, :, :, :] = self.cov_cng_oc_10d[1,
-                                                                                1, 0, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
-        self.cov_cng_oc_10d[1, 0, 1, 1, :, :, :, :, :, :] = self.cov_cng_oc_10d[1,
-                                                                                1, 1, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
-        self.cov_cng_oc_10d[1, 0, 0, 0, :, :, :, :, :, :] = self.cov_cng_oc_10d[0,
-                                                                                0, 1, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
+        return cov_10d_out
 
-        for zi, zj, zk, zl in itertools.product(range(2), repeat=4):
-            np.testing.assert_allclose(self.cov_ssc_oc_10d[zi, zj, zk, zl, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3),
-                                       self.cov_ssc_oc_10d[zi, zj, zk, zl, :, :, :, :, :, :].transpose(0, 1, 4, 5, 2, 3), atol=0, rtol=1e-5)
+    def reshape_set_oc_output(self):
+
+        # TODO handle split_gauss case
+        nbl = self.variable_specs['nbl_3x2pt']
+        self.cov_g_oc_3x2pt_10D = self.oc_cov_to_10d(
+            cov_tuple_in=self.cov_g, nbl=nbl, compute_cov=self.compute_g, is_gauss=True)
+        self.cov_ssc_oc_3x2pt_10D = self.oc_cov_to_10d(
+            cov_tuple_in=self.cov_ssc, nbl=nbl, compute_cov=self.compute_ssc, is_gauss=False)
+        self.cov_cng_oc_3x2pt_10D = self.oc_cov_to_10d(
+            cov_tuple_in=self.cov_cng, nbl=nbl, compute_cov=self.compute_cng, is_gauss=False)
+
+        # self.cov_g_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+        #                               nbl, nbl, self.zbins, self.zbins, self.zbins, self.zbins))
+        # self.cov_sva_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+        #                                 nbl, nbl, self.zbins, self.zbins, self.zbins, self.zbins))
+        # self.cov_mix_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+        #                                 nbl, nbl, self.zbins, self.zbins, self.zbins, self.zbins))
+        # self.cov_sn_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+        #                                nbl, nbl, self.zbins, self.zbins, self.zbins, self.zbins))
+        # self.cov_ssc_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+        #                                 nbl, nbl, self.zbins, self.zbins, self.zbins, self.zbins))
+        # self.cov_cng_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+        #                                 nbl, nbl, self.zbins, self.zbins, self.zbins, self.zbins))
+        # self.cov_tot_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+        #                                 nbl, nbl, self.zbins, self.zbins, self.zbins, self.zbins))
+
+        # assert len(self.cov_g) == 6, 'For the moment, SSC OC tuple should have 6 entries (for 3 probes)'
+        # assert len(self.cov_ssc) == 6, 'For the moment, SSC OC tuple should have 6 entries (for 3 probes)'
+        # assert len(self.cov_cng) == 6, 'For the moment, cNG OC tuple should have 6 entries (for 3 probes)'
+
+        # if self.compute_ssc:
+
+        #     for i in range(len(self.cov_ssc)):
+        #         assert self.cov_ssc[i].shape == (nbl, nbl, 1, 1, self.zbins, self.zbins, self.zbins, self.zbins)
+
+        #     # the order of the tuple is gggg, gggm, ggmm, gmgm, mmgm, mmmm (confirmed by Robert)
+        #     self.cov_ssc_oc_10d[1, 1, 1, 1, :, :, :, :, :, :] = self.cov_ssc[0][:, :, 0, 0, :, :, :, :]
+        #     self.cov_ssc_oc_10d[1, 1, 1, 0, :, :, :, :, :, :] = self.cov_ssc[1][:, :, 0, 0, :, :, :, :]
+        #     self.cov_ssc_oc_10d[1, 1, 0, 0, :, :, :, :, :, :] = self.cov_ssc[2][:, :, 0, 0, :, :, :, :]
+        #     self.cov_ssc_oc_10d[1, 0, 1, 0, :, :, :, :, :, :] = self.cov_ssc[3][:, :, 0, 0, :, :, :, :]
+        #     self.cov_ssc_oc_10d[0, 0, 1, 0, :, :, :, :, :, :] = self.cov_ssc[4][:, :, 0, 0, :, :, :, :]
+        #     self.cov_ssc_oc_10d[0, 0, 0, 0, :, :, :, :, :, :] = self.cov_ssc[5][:, :, 0, 0, :, :, :, :]
+        #     # transpose to get the remaining blocks
+        #     # ell1 <-> ell2 and zi, zj <-> zk, zl, but ell1 <-> ell2 should have no effect!
+        #     self.cov_ssc_oc_10d[0, 0, 1, 1, :, :, :, :, :, :] = self.cov_ssc_oc_10d[1,
+        #                                                                             1, 0, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
+        #     self.cov_ssc_oc_10d[1, 0, 1, 1, :, :, :, :, :, :] = self.cov_ssc_oc_10d[1,
+        #                                                                             1, 1, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
+        #     self.cov_ssc_oc_10d[1, 0, 0, 0, :, :, :, :, :, :] = self.cov_ssc_oc_10d[0,
+        #                                                                             0, 1, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
+
+        # if self.compute_cng:
+
+        #     for i in range(len(self.cov_cng)):
+        #         assert self.cov_cng[i].shape == (nbl, nbl, 1, 1, self.zbins, self.zbins, self.zbins, self.zbins)
+
+        #     # the order of the tuple is gggg, gggm, ggmm, gmgm, mmgm, mmmm (confirmed by Robert)
+        #     self.cov_cng_oc_10d[1, 1, 1, 1, :, :, :, :, :, :] = self.cov_cng[0][:, :, 0, 0, :, :, :, :]
+        #     self.cov_cng_oc_10d[1, 1, 1, 0, :, :, :, :, :, :] = self.cov_cng[1][:, :, 0, 0, :, :, :, :]
+        #     self.cov_cng_oc_10d[1, 1, 0, 0, :, :, :, :, :, :] = self.cov_cng[2][:, :, 0, 0, :, :, :, :]
+        #     self.cov_cng_oc_10d[1, 0, 1, 0, :, :, :, :, :, :] = self.cov_cng[3][:, :, 0, 0, :, :, :, :]
+        #     self.cov_cng_oc_10d[0, 0, 1, 0, :, :, :, :, :, :] = self.cov_cng[4][:, :, 0, 0, :, :, :, :]
+        #     self.cov_cng_oc_10d[0, 0, 0, 0, :, :, :, :, :, :] = self.cov_cng[5][:, :, 0, 0, :, :, :, :]
+
+        #     # transpose to get the remaining blocks
+        #     # ell1 <-> ell2 and zi, zj <-> zk, zl, but ell1 <-> ell2 should have no effect!
+        #     self.cov_cng_oc_10d[0, 0, 1, 1, :, :, :, :, :, :] = self.cov_cng_oc_10d[1,
+        #                                                                             1, 0, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
+        #     self.cov_cng_oc_10d[1, 0, 1, 1, :, :, :, :, :, :] = self.cov_cng_oc_10d[1,
+        #                                                                             1, 1, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
+        #     self.cov_cng_oc_10d[1, 0, 0, 0, :, :, :, :, :, :] = self.cov_cng_oc_10d[0,
+        #                                                                             0, 1, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
+        # # import itertools
+        # for a, b, c, d in itertools.product(range(2), repeat=4):
+        #     np.testing.assert_allclose(self.cov_ssc_oc_10d[a, b, c, d, :, :, :, :, :, :],
+        #                                self.cov_ssc_oc_10d[a, b, c, d, :, :, :, :, :, :].transpose(1, 0, 2, 3, 4, 5),
+        #                                atol=0, rtol=1e-5)
 
     def _reshape_oc_output(self, variable_specs, ind_dict, symmetrize_output_dict):
         """
@@ -531,7 +581,7 @@ class OneCovarianceInterface():
             del cov_llll_4d, cov_llgl_4d, cov_llgg_4d, cov_glgl_4d, cov_glgg_4d, cov_gggg_4d, cov_ggll_4d, cov_glll_4d, cov_gggl_4d
             gc.collect()
 
-    def oc_output_to_dict_or_array(self, which_ng_cov, output_type, ind_dict=None, symmetrize_output_dict=None):
+    def _oc_output_to_dict_or_array(self, which_ng_cov, output_type, ind_dict=None, symmetrize_output_dict=None):
 
         # import
         filename = self.cov_filename.format(which_ng_cov=which_ng_cov,

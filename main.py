@@ -596,7 +596,7 @@ if compute_oc_ssc or compute_oc_cng:
     if cfg["covariance"]["which_b1g_in_resp"] == 'from_input':
         gal_bias_ascii_filename = f'{oc_path}/gal_bias_table.ascii'
         ccl_obj.save_gal_bias_table_ascii(z_grid_ssc_integrands, gal_bias_ascii_filename)
-        ascii_filenames_dict['gal_bias_ascii_filename'] = gal_bias_ascii_filename,
+        ascii_filenames_dict['gal_bias_ascii_filename'] = gal_bias_ascii_filename
     elif cfg["covariance"]["which_b1g_in_resp"] == 'from_HOD':
         warnings.warn('OneCovariance will use the HOD-derived galaxy bias for the Cls and responses')
 
@@ -616,13 +616,16 @@ if compute_oc_ssc or compute_oc_cng:
     oc_obj.call_onecovariance()
 
     # reload and store output
-    oc_obj.reshape_oc_output(variable_specs, ind_dict, symmetrize_output_dict)
-    oc_obj.cov_g_oc_3x2pt_10D = oc_obj.oc_output_to_dict_or_array(
-        'G', '10D_array', ind_dict, symmetrize_output_dict)
-    oc_obj.cov_ssc_oc_3x2pt_10D = oc_obj.oc_output_to_dict_or_array(
-        'SSC', '10D_array', ind_dict, symmetrize_output_dict)
-    oc_obj.cov_cng_oc_3x2pt_10D = oc_obj.oc_output_to_dict_or_array(
-        'cNG', '10D_array', ind_dict, symmetrize_output_dict)
+    oc_obj.reshape_set_oc_output()
+    
+    # old
+    # oc_obj._reshape_oc_output(...)
+    # oc_obj.cov_g_oc_3x2pt_10D = oc_obj.oc_output_to_dict_or_array(
+    #     'G', '10D_array', ind_dict, symmetrize_output_dict)
+    # oc_obj.cov_ssc_oc_3x2pt_10D = oc_obj.oc_output_to_dict_or_array(
+    #     'SSC', '10D_array', ind_dict, symmetrize_output_dict)
+    # oc_obj.cov_cng_oc_3x2pt_10D = oc_obj.oc_output_to_dict_or_array(
+    #     'cNG', '10D_array', ind_dict, symmetrize_output_dict)
 
     print('Time taken to compute OC: {:.2f} m'.format((time.perf_counter() - start_time) / 60))
 
@@ -1053,6 +1056,10 @@ cov_dict = cov_obj.cov_dict
 
 for key in cov_dict.keys():
     mm.matshow(cov_dict[key], title=key)
+    
+for key in cov_dict.keys():
+    np.testing.assert_allclose(cov_dict[key], cov_dict[key].T, 
+                               atol=0, rtol=1e-7, err_msg=f'{key} not symmetric')
 
 for key_bench in cov_bench.keys():
     

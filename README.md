@@ -1,4 +1,4 @@
-# Istallation
+# Installation
 
 Spaceborne's dependencies are handled following modern standards; for this, we use a combination of [conda]([url](https://www.anaconda.com/)) and [Poetry]([url](https://python-poetry.org/)).
 

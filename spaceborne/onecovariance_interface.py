@@ -70,6 +70,7 @@ class OneCovarianceInterface():
         self.cfg = cfg
         self.oc_cfg = self.cfg['OneCovariance']
         self.variable_specs = variable_specs
+        self.n_probes = cfg['covariance']['n_probes']
 
         # set which cov terms to compute from cfg file
         self.compute_ssc = do_ssc
@@ -120,7 +121,7 @@ class OneCovarianceInterface():
         ellipticity_dispersion_list = [self.cfg['covariance']['sigma_eps_i']] * self.zbins
 
         cfg_onecov_ini['covariance terms']['gauss'] = str(True)
-        cfg_onecov_ini['covariance terms']['split_gauss'] = str(True)
+        cfg_onecov_ini['covariance terms']['split_gauss'] = str(False)
         cfg_onecov_ini['covariance terms']['nongauss'] = str(self.compute_cng)
         cfg_onecov_ini['covariance terms']['ssc'] = str(self.compute_ssc)
         cfg_onecov_ini['output settings']['directory'] = self.oc_path
@@ -179,7 +180,7 @@ class OneCovarianceInterface():
         cfg_onecov_ini['cosmo']['neff'] = str(self.cfg['cosmology']['N_eff'])
         cfg_onecov_ini['cosmo']['m_nu'] = str(self.cfg['cosmology']['m_nu'])
 
-        if cfg["covariance"]["which_b1g_in_resp"] == 'from_input':
+        if self.cfg["covariance"]["which_b1g_in_resp"] == 'from_input':
             gal_bias_ascii_filename = ascii_filenames_dict['gal_bias_ascii_filename']
             cfg_onecov_ini['bias']['bias_files'] = gal_bias_ascii_filename
 
@@ -262,9 +263,11 @@ class OneCovarianceInterface():
 
         process = subprocess.Popen(activate_and_run, shell=True, executable='/bin/bash')
         process.communicate()
-        
+
     def call_onecovariance(self):
-        """This interface has been written by Robert Reischke"""
+        """This interface was originally created by Robert Reischke"""
+        import sys
+        sys.path.append(os.path.dirname(self.path_to_oc_executable))
         from onecov.cov_input import Input, FileInput
         from onecov.cov_ell_space import CovELLSpace
         from onecov.cov_polyspectra import PolySpectra
@@ -282,19 +285,97 @@ class OneCovarianceInterface():
             f"{self.oc_path}/input_configs.ini")
         fileinp = FileInput(bias)
         read_in_tables = fileinp.read_input(f"{self.oc_path}/input_configs.ini")
-        setup = Setup(cosmo, bias, survey_params, prec, read_in_tables)
-        ellspace = CovELLSpace(covterms,observables,output,cosmo,bias,iA,hod,survey_params,prec,read_in_tables)
-        ssc = ellspace.covELL_ssc(bias,hod,prec,survey_params,observables['ELLspace'])
-        cng = ellspace.covELL_non_gaussian(covELLspacesettings=observables['ELLspace'],
-                                            output_dict=output,
-                                            bias_dict=bias,
-                                            hod_dict=hod,
-                                            prec=prec,
-                                            tri_tab=read_in_tables['tri'])
+        setup = Setup(cosmo_dict=cosmo,
+                      bias_dict=bias,
+                      survey_params_dict=survey_params,
+                      prec=prec,
+                      read_in_tables=read_in_tables)
+        ellspace = CovELLSpace(cov_dict=covterms,
+                               obs_dict=observables,
+                               output_dict=output,
+                               cosmo_dict=cosmo,
+                               bias_dict=bias,
+                               iA_dict=iA,
+                               hod_dict=hod,
+                               survey_params_dict=survey_params,
+                               prec=prec,
+                               read_in_tables=read_in_tables)
+        self.cov_g = ellspace.covELL_gaussian(
+            covELLspacesettings=observables['ELLspace'],
+            survey_params_dict=survey_params,
+            calc_prefac=True)
+        self.cov_ssc = ellspace.covELL_ssc(bias_dict=bias,
+                                           hod_dict=hod,
+                                           prec=prec,
+                                           survey_params_dict=survey_params,
+                                           covELLspacesettings=observables['ELLspace'])
+        self.cov_cng = ellspace.covELL_non_gaussian(covELLspacesettings=observables['ELLspace'],
+                                                    output_dict=output,
+                                                    bias_dict=bias,
+                                                    hod_dict=hod,
+                                                    prec=prec,
+                                                    tri_tab=read_in_tables['tri'])
 
+    def reshape_oc_output(self):
+        
+        cov_g_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+                                cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
+        cov_sva_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+                                  cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
+        cov_mix_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+                                  cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
+        cov_sn_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+                                 cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
+        cov_ssc_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+                                  cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
+        cov_cng_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+                                  cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
+        cov_tot_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+                                  cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
 
+        assert len(self.cov_ssc) == 6, 'For the moment, SSC OC tuple should have 6 entries (for 3 probes)'
+        assert len(self.cov_cng) == 6, 'For the moment, cNG OC tuple should have 6 entries (for 3 probes)'
+        for i in len(self.cov_ssc):
+            assert self.cov_ssc[i].shape == (cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins)
+        for i in len(self.cov_cng):
+            assert self.cov_cng[i].shape == (cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins)
 
-    def reshape_oc_output(self, variable_specs, ind_dict, symmetrize_output_dict):
+        # the order of the tuple is gggg, gggm, ggmm, gmgm, mmgm, mmmm (confirmed by Robert)
+        self.cov_ssc_oc_10d[1, 1, 1, 1, :, :, :, :, :, :] = self.cov_ssc[0][:, :, 0, 0, :, :, :, :]
+        self.cov_ssc_oc_10d[1, 1, 1, 0, :, :, :, :, :, :] = self.cov_ssc[1][:, :, 0, 0, :, :, :, :]
+        self.cov_ssc_oc_10d[1, 1, 0, 0, :, :, :, :, :, :] = self.cov_ssc[2][:, :, 0, 0, :, :, :, :]
+        self.cov_ssc_oc_10d[1, 0, 1, 0, :, :, :, :, :, :] = self.cov_ssc[3][:, :, 0, 0, :, :, :, :]
+        self.cov_ssc_oc_10d[0, 0, 1, 0, :, :, :, :, :, :] = self.cov_ssc[4][:, :, 0, 0, :, :, :, :]
+        self.cov_ssc_oc_10d[0, 0, 0, 0, :, :, :, :, :, :] = self.cov_ssc[5][:, :, 0, 0, :, :, :, :]
+
+        self.cov_cng_oc_10d[1, 1, 1, 1, :, :, :, :, :, :] = self.cov_ssc[0][:, :, 0, 0, :, :, :, :]
+        self.cov_cng_oc_10d[1, 1, 1, 0, :, :, :, :, :, :] = self.cov_ssc[1][:, :, 0, 0, :, :, :, :]
+        self.cov_cng_oc_10d[1, 1, 0, 0, :, :, :, :, :, :] = self.cov_ssc[2][:, :, 0, 0, :, :, :, :]
+        self.cov_cng_oc_10d[1, 0, 1, 0, :, :, :, :, :, :] = self.cov_ssc[3][:, :, 0, 0, :, :, :, :]
+        self.cov_cng_oc_10d[0, 0, 1, 0, :, :, :, :, :, :] = self.cov_ssc[4][:, :, 0, 0, :, :, :, :]
+        self.cov_cng_oc_10d[0, 0, 0, 0, :, :, :, :, :, :] = self.cov_ssc[5][:, :, 0, 0, :, :, :, :]
+
+        # transpose to get the remaining blocks
+        # ell1 <-> ell2 and zi, zj <-> zk, zl, but ell1 <-> ell2 should have no effect!
+        self.cov_ssc_oc_10d[0, 0, 1, 1, :, :, :, :, :, :] = self.cov_ssc_oc_10d[1,
+                                                                                1, 0, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
+        self.cov_ssc_oc_10d[1, 0, 1, 1, :, :, :, :, :, :] = self.cov_ssc_oc_10d[1,
+                                                                                1, 1, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
+        self.cov_ssc_oc_10d[1, 0, 0, 0, :, :, :, :, :, :] = self.cov_ssc_oc_10d[0,
+                                                                                0, 1, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
+
+        self.cov_cng_oc_10d[0, 0, 1, 1, :, :, :, :, :, :] = self.cov_cng_oc_10d[1,
+                                                                                1, 0, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
+        self.cov_cng_oc_10d[1, 0, 1, 1, :, :, :, :, :, :] = self.cov_cng_oc_10d[1,
+                                                                                1, 1, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
+        self.cov_cng_oc_10d[1, 0, 0, 0, :, :, :, :, :, :] = self.cov_cng_oc_10d[0,
+                                                                                0, 1, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
+
+        for zi, zj, zk, zl in itertools.product(range(2), repeat=4):
+            np.testing.assert_allclose(self.cov_ssc_oc_10d[zi, zj, zk, zl, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3),
+                                       self.cov_ssc_oc_10d[zi, zj, zk, zl, :, :, :, :, :, :].transpose(0, 1, 4, 5, 2, 3), atol=0, rtol=1e-5)
+
+    def _reshape_oc_output(self, variable_specs, ind_dict, symmetrize_output_dict):
         """
         Reshape the output of the OneCovariance (OC) calculation into a dictionary or array format.
 

@@ -368,17 +368,22 @@ class SpaceborneResponses():
 
             elif which_b1g == 'from_input':
                 # ! old
+                # these 2 lines are wrong, in this case the galaxy bias should be taken from the input!
+                # nonetheless, this is the old implementation, I keep it here for reference
+                # self.pknlhm_gm[a_idx] = (pklin * i11_g * i11_m + i02_gm) / (norm_prof_g * norm_prof_m)
+                # self.pknlhm_gg[a_idx] = (pklin * i11_g * i11_g + i02_gg) / (norm_prof_g * norm_prof_g)
                 # counter_gm = b1g[a_idx] * self.pknlhm_gm[a_idx]
                 # counter_gg = 2 * b1g[a_idx] * self.pknlhm_gg[a_idx]
                 # dPgm_ddeltab[a_idx] -= counter_gm
                 # dPgg_ddeltab[a_idx] -= counter_gg
 
                 # !new (matches SSC_linear_bias)
-                # this is what is done in SSC_linear_bias, but same result as below
+                # this is what is done in SSC_linear_bias;
+                # I use the dPmm_ddeltab and pknlhm_mm already computed above, however (no difference)
                 # dPmm_ddeltab[a_idx] = (47 / 21 - dpklin / 3) * pklin + i12_mm / norm_prof_m**2
                 # self.pknlhm_mm[a_idx] = pklin + i02_mm / norm_prof_m**2
 
-                # gX Pk in this case is simply b(z) * Pmm or b(z)^2 * Pmm
+                # gX (= galaxy cross something) Pk in this case is simply b(z) * Pmm or b(z)^2 * Pmm
                 self.pknlhm_gm[a_idx] = b1g[a_idx] * self.pknlhm_mm[a_idx]
                 self.pknlhm_gg[a_idx] = b1g[a_idx]**2 * self.pknlhm_mm[a_idx]
 
@@ -394,12 +399,6 @@ class SpaceborneResponses():
                 # subtract counterterms
                 dPgm_ddeltab[a_idx] -= b1g[a_idx] * self.pknlhm_gm[a_idx]
                 dPgg_ddeltab[a_idx] -= 2 * b1g[a_idx] * self.pknlhm_gg[a_idx]
-
-
-                # this is what I think this equation says, but it doesn't match...
-                # https://ccl.readthedocs.io/en/latest/api/pyccl.halos.pk_4pt.html#pyccl.halos.pk_4pt.halomod_Tk3D_SSC_linear_bias
-                # dPgm_ddeltab[a_idx] = dPmm_ddeltab[a_idx] * b1g[a_idx] - b1g[a_idx] * self.pknlhm_mm[a_idx]
-                # dPgg_ddeltab[a_idx] = dPmm_ddeltab[a_idx] * b1g[a_idx]**2 - 2 * b1g[a_idx] * self.pknlhm_mm[a_idx]
 
             else:
                 raise ValueError("'which_b1g' must be either 'from_HOD' or 'from_input'")

@@ -959,8 +959,8 @@ def percent_diff_mean(array_1, array_2):
     return diff
 
 
-@njit
-def percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
+# @njit
+def _percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
     if eraseNaN:
         diff = np.where(array_1 == array_2, 0, percent_diff(array_1, array_2))
     else:
@@ -971,6 +971,30 @@ def percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
         diff = np.abs(diff)
     return diff
 
+# @njit
+def percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
+    """
+    Calculate the percent difference between two arrays, handling NaN values.
+    """
+    # Handle NaN values
+    if eraseNaN:
+        # Mask where NaN values are present
+        diff = np.ma.masked_where(np.isnan(array_1) | np.isnan(array_2), 
+                                  percent_diff(array_1, array_2))
+    else:
+        diff = percent_diff(array_1, array_2)
+
+    # Handle log transformation
+    if log:
+        # Mask zero differences before taking the log
+        diff = np.ma.masked_where(diff == 0, diff)
+        diff = np.log10(np.ma.abs(diff))  # Masked values will be ignored in the log
+
+    # Handle absolute values
+    if abs_val:
+        diff = np.ma.abs(diff)
+
+    return diff
 
 def diff_threshold_check(diff, threshold):
     boolean = np.any(np.abs(diff) > threshold)
@@ -1108,82 +1132,84 @@ def compare_arrays_v0(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=T
         f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
         f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
     print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
-
-
+    
 def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True, log_array=True, log_diff=False,
                    abs_val=False, plot_diff_threshold=None, white_where_zero=True, plot_diff_hist=False):
 
     if np.array_equal(A, B):
         print(f'{name_A} and {name_B} are equal ✅')
         return
-    else:
-        for rtol in [1e-3, 1e-2, 5e-2]:  # these are NOT percent units
-            if np.allclose(A, B, rtol=rtol, atol=0):
-                print(f'{name_A} and {name_B} are close within relative tolerance of {rtol * 100}%) ✅')
-                return
+    
+    for rtol in [1e-3, 1e-2, 5e-2]:  # these are NOT percent units
+        if np.allclose(A, B, rtol=rtol, atol=0):
+            print(f'{name_A} and {name_B} are close within relative tolerance of {rtol * 100}%) ✅')
+            return
 
-        diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=True)
-        higher_rtol = plot_diff_threshold or 5.0
-        result_emoji = '❌'
-        no_outliers = np.sum(diff_AB > higher_rtol)
-        additional_info = f'\nMax discrepancy: {np.max(diff_AB):.2f}%;' \
-            f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
-            f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
-        print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
+    diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=abs_val)
+    higher_rtol = plot_diff_threshold or 5.0
+    max_diff = np.max(diff_AB)
+    result_emoji = '❌' if max_diff > higher_rtol else '✅'
+    no_outliers = np.sum(diff_AB > higher_rtol)
+    additional_info = f'\nMax discrepancy: {max_diff:.2f}%;' \
+        f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
+        f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
+    print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
 
-        if plot_diff or plot_array:
-            assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
+    if plot_diff or plot_array:
+        assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
 
-        if plot_array:
-            A_toplot, B_toplot = A, B
+    if plot_array:
+        A_toplot, B_toplot = A, B
 
-            if abs_val:
-                A_toplot, B_toplot = np.abs(A), np.abs(B)
-            if log_array:
-                A_toplot, B_toplot = np.log10(A), np.log10(B)
+        if abs_val:
+            A_toplot, B_toplot = np.abs(A), np.abs(B)
+        if log_array:
+            A_toplot, B_toplot = np.log10(A), np.log10(B)
 
-            fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
-            im = ax[0].matshow(A_toplot)
-            ax[0].set_title(f'{name_A}')
-            fig.colorbar(im, ax=ax[0])
+        fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
+        im = ax[0].matshow(A_toplot)
+        ax[0].set_title(f'{name_A}')
+        fig.colorbar(im, ax=ax[0])
 
-            im = ax[1].matshow(B_toplot)
-            ax[1].set_title(f'{name_B}')
-            fig.colorbar(im, ax=ax[1])
-            fig.suptitle(f'log={log_array}, abs={abs_val}')
-            plt.show()
+        im = ax[1].matshow(B_toplot)
+        ax[1].set_title(f'{name_B}')
+        fig.colorbar(im, ax=ax[1])
+        fig.suptitle(f'log={log_array}, abs={abs_val}')
+        plt.show()
 
-        if plot_diff:
-            diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=log_diff, abs_val=abs_val)
+    if plot_diff:
+        diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=False, abs_val=abs_val)
+        diff_BA = percent_diff_nan(B, A, eraseNaN=True, log=False, abs_val=abs_val)
+        
+        if plot_diff_threshold is not None:
+            diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, np.abs(diff_AB))
+            diff_BA = np.ma.masked_where(np.abs(diff_BA) < plot_diff_threshold, np.abs(diff_BA))
 
-            if plot_diff_threshold is not None:
-                # take the log of the threshold if using the log of the precent difference
-                if log_diff:
-                    plot_diff_threshold = np.log10(plot_diff_threshold)
+        if log_diff:
+            diff_AB = np.log10(diff_AB)
+            diff_BA = np.log10(diff_BA)
 
-                diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, np.abs(diff_AB))
+        fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
+        im = ax[0].matshow(diff_AB)
+        ax[0].set_title(f'(A/B - 1) * 100')
+        fig.colorbar(im, ax=ax[0])
 
-            fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
-            im = ax[0].matshow(diff_AB)
-            ax[0].set_title(f'(A/B - 1) * 100')
-            fig.colorbar(im, ax=ax[0])
+        im = ax[1].matshow(diff_BA)
+        ax[1].set_title(f'(B/A - 1) * 100')
+        fig.colorbar(im, ax=ax[1])
 
-            im = ax[1].matshow(diff_AB)
-            ax[1].set_title(f'(A/B - 1) * 100')
-            fig.colorbar(im, ax=ax[1])
+        fig.suptitle(f'log={log_diff}, abs={abs_val}')
+        plt.show()
 
-            fig.suptitle(f'log={log_diff}, abs={abs_val}')
-            plt.show()
-
-            if plot_diff_hist:
-                plt.figure()
-                ax = plt.gca()
-                ymin, ymax = ax.get_ylim()
-                plt.fill_betweenx(y=[0, ymax], x1=-10, x2=10, color='gray', alpha=0.3, label='10%')
-                plt.hist(diff_AB.flatten(), log=True, bins=30)
-                plt.xlabel('% difference')
-                plt.ylabel('counts')
-                plt.legend()
+    if plot_diff_hist:
+        plt.figure()
+        ax = plt.gca()
+        ymin, ymax = ax.get_ylim()
+        plt.fill_betweenx(y=[0, ymax], x1=-10, x2=10, color='gray', alpha=0.3, label='10%')
+        plt.hist(diff_AB.flatten(), log=True, bins=30)
+        plt.xlabel('% difference')
+        plt.ylabel('counts')
+        plt.legend()
 
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):
@@ -1908,8 +1934,8 @@ def symmetrize_2d_array(array_2d):
     assert np.all(triu_elements) == 0 or np.all(tril_elements) == 0, 'neither the upper nor the lower triangle ' \
                                                                      '(excluding the diagonal) are null'
 
-    assert np.any(np.diag(array_2d)) != 0, 'the diagonal elements are all null. ' \
-                                           'This is not necessarily an error, but is suspect'
+    if np.any(np.diag(array_2d)) != 0: 
+        warnings.warn('the diagonal elements are all null')
 
     # symmetrize
     array_2d = np.where(array_2d, array_2d, array_2d.T)
@@ -3318,17 +3344,17 @@ def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='vincenzo'):
     lim_3 = zpairs_3x2pt
 
     # note: I'm writing cov_LG, but there should be no issue with GL; after all, this function is not using the ind file
-    cov_LL_LL = cov_4D_to_2D(cov_4D[:, :, :lim_1, :lim_1], block_index)
-    cov_LL_LG = cov_4D_to_2D(cov_4D[:, :, :lim_1, lim_1:lim_2], block_index)
-    cov_LL_GG = cov_4D_to_2D(cov_4D[:, :, :lim_1, lim_2:lim_3], block_index)
+    cov_LL_LL = cov_4D_to_2D(cov_4D[:, :, :lim_1, :lim_1], block_index, optimize=True)
+    cov_LL_LG = cov_4D_to_2D(cov_4D[:, :, :lim_1, lim_1:lim_2], block_index, optimize=True)
+    cov_LL_GG = cov_4D_to_2D(cov_4D[:, :, :lim_1, lim_2:lim_3], block_index, optimize=True)
 
-    cov_LG_LL = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, :lim_1], block_index)
-    cov_LG_LG = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, lim_1:lim_2], block_index)
-    cov_LG_GG = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, lim_2:lim_3], block_index)
+    cov_LG_LL = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, :lim_1], block_index, optimize=True)
+    cov_LG_LG = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, lim_1:lim_2], block_index, optimize=True)
+    cov_LG_GG = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, lim_2:lim_3], block_index, optimize=True)
 
-    cov_GG_LL = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, :lim_1], block_index)
-    cov_GG_LG = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, lim_1:lim_2], block_index)
-    cov_GG_GG = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, lim_2:lim_3], block_index)
+    cov_GG_LL = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, :lim_1], block_index, optimize=True)
+    cov_GG_LG = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, lim_1:lim_2], block_index, optimize=True)
+    cov_GG_GG = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, lim_2:lim_3], block_index, optimize=True)
 
     # make long rows and stack together
     row_1 = np.hstack((cov_LL_LL, cov_LL_LG, cov_LL_GG))
@@ -3457,7 +3483,7 @@ def cov_4D_to_2DCLOE_3x2pt_bu(cov_4D, nbl, zbins, block_index='vincenzo'):
     return array_2D
 
 
-def cov2corr(covariance):
+def _cov2corr(covariance):
     """ Credit:
     https://gist.github.com/wiso/ce2a9919ded228838703c1c7c7dad13b
     """
@@ -3466,6 +3492,23 @@ def cov2corr(covariance):
     outer_v = np.outer(v, v)
     correlation = covariance / outer_v
     correlation[covariance == 0] = 0
+    return correlation
+
+
+def cov2corr(covariance):
+    """Convert a covariance matrix to a correlation matrix."""
+    v = np.sqrt(np.diag(covariance))
+    outer_v = np.outer(v, v)
+
+    # To prevent division by zero or very small numbers, replace them with a small positive value
+    with np.errstate(divide='ignore', invalid='ignore'):
+        correlation = np.divide(covariance, outer_v)
+        correlation[covariance == 0] = 0  # Ensure zero covariance entries are explicitly zero
+        correlation[~np.isfinite(correlation)] = 0  # Set any NaN or inf values to 0
+
+    # Ensure diagonal elements are exactly 1
+    np.fill_diagonal(correlation, 1)
+
     return correlation
 
 

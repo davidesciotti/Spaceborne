@@ -96,7 +96,8 @@ class SpaceborneCovariance():
         assert (
             (self.cov_terms_list == ['G', 'SSC', 'cNG']) or
             (self.cov_terms_list == ['G', 'SSC',]) or
-            (self.cov_terms_list == ['G', 'cNG'])
+            (self.cov_terms_list == ['G', 'cNG']) or
+            (self.cov_terms_list == ['G',])  # TODO finish testing this?
         ), f"cov_terms_list not recognised"
 
         assert self.ssc_code in ['Spaceborne', 'PyCCL', 'OneCovariance'], \
@@ -219,12 +220,18 @@ class SpaceborneCovariance():
 
         if split_gaussian_cov:
             self.cov_WL_g_6D_sva, self.cov_WL_g_6D_sn, self.cov_WL_g_6D_mix = mm.covariance_einsum_split(
-                cl_LL_5D, noise_LL_5D, self.fsky, self.ell_WL, delta_l_WL)[0, 0, 0, 0, ...]
+                cl_LL_5D, noise_LL_5D, self.fsky, self.ell_WL, delta_l_WL)
             self.cov_GC_g_6D_sva, self.cov_GC_g_6D_sn, self.cov_GC_g_6D_mix = mm.covariance_einsum_split(
-                cl_GG_5D, noise_GG_5D, self.fsky, self.ell_GC, delta_l_GC)[0, 0, 0, 0, ...]
+                cl_GG_5D, noise_GG_5D, self.fsky, self.ell_GC, delta_l_GC)
             self.cov_3x2pt_g_10D_sva, self.cov_3x2pt_g_10D_sn, self.cov_3x2pt_g_10D_mix = mm.covariance_einsum_split(
                 cl_3x2pt_5D, noise_3x2pt_5D, self.fsky, self.ell_3x2pt, delta_l_3x2pt)
-
+            self.cov_WL_g_6D_sva = self.cov_WL_g_6D_sva[0,0, 0, 0, ...]
+            self.cov_WL_g_6D_sn = self.cov_WL_g_6D_sn[0, 0, 0, 0, ...]
+            self.cov_WL_g_6D_mix =  self.cov_WL_g_6D_mix[0, 0, 0, 0, ...]
+            self.cov_GC_g_6D_sva = self.cov_GC_g_6D_sva[0,0, 0, 0, ...]
+            self.cov_GC_g_6D_sn = self.cov_GC_g_6D_sn[0, 0, 0, 0, ...]
+            self.cov_GC_g_6D_mix =  self.cov_GC_g_6D_mix[0, 0, 0, 0, ...]
+            
             self.cov_WL_g_6D = self.cov_WL_g_6D_sva + self.cov_WL_g_6D_sn + self.cov_WL_g_6D_mix
             self.cov_GC_g_6D = self.cov_GC_g_6D_sva + self.cov_GC_g_6D_sn + self.cov_GC_g_6D_mix
             self.cov_3x2pt_g_10D = self.cov_3x2pt_g_10D_sva + self.cov_3x2pt_g_10D_sn + self.cov_3x2pt_g_10D_mix
@@ -254,11 +261,11 @@ class SpaceborneCovariance():
             self.cov_GC_g_2D_mix = self.reshape_cov(self.cov_GC_g_6D_mix, 6, 2, self.nbl_GC,
                                                     self.zpairs_auto, self.ind_auto, is_3x2pt=False)
 
-            self.cov_XC_g_2D_sva = self.reshape_cov(self.cov_XC_g_6D_sva, 6, 2, self.nbl_XC,
+            self.cov_XC_g_2D_sva = self.reshape_cov(self.cov_XC_g_6D_sva, 6, 2, self.nbl_3x2pt,
                                                     self.zpairs_cross, self.ind_cross, is_3x2pt=False)
-            self.cov_XC_g_2D_sn = self.reshape_cov(self.cov_XC_g_6D_sn, 6, 2, self.nbl_XC,
+            self.cov_XC_g_2D_sn = self.reshape_cov(self.cov_XC_g_6D_sn, 6, 2, self.nbl_3x2pt,
                                                    self.zpairs_cross, self.ind_cross, is_3x2pt=False)
-            self.cov_XC_g_2D_mix = self.reshape_cov(self.cov_XC_g_6D_mix, 6, 2, self.nbl_XC,
+            self.cov_XC_g_2D_mix = self.reshape_cov(self.cov_XC_g_6D_mix, 6, 2, self.nbl_3x2pt,
                                                     self.zpairs_cross, self.ind_cross, is_3x2pt=False)
 
             self.cov_3x2pt_g_2D_sva = self.reshape_cov(self.cov_3x2pt_g_10D_sva, 10, 2, self.nbl_3x2pt,

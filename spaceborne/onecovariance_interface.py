@@ -122,7 +122,7 @@ class OneCovarianceInterface():
         ellipticity_dispersion_list = [self.cfg['covariance']['sigma_eps_i']] * self.zbins
 
         cfg_onecov_ini['covariance terms']['gauss'] = str(True)
-        cfg_onecov_ini['covariance terms']['split_gauss'] = str(False)
+        cfg_onecov_ini['covariance terms']['split_gauss'] = str(True)
         cfg_onecov_ini['covariance terms']['nongauss'] = str(self.compute_cng)
         cfg_onecov_ini['covariance terms']['ssc'] = str(self.compute_ssc)
         cfg_onecov_ini['output settings']['directory'] = self.oc_path
@@ -304,12 +304,9 @@ class OneCovarianceInterface():
                                                     prec=prec,
                                                     tri_tab=read_in_tables['tri'])
 
-    def oc_cov_to_10d(self, cov_tuple_in, nbl, compute_cov, is_gauss):
+    def oc_cov_to_10d(self, cov_tuple_in, nbl, compute_cov):
 
-        if is_gauss:
-            assert len(cov_tuple_in) == 9, 'For the moment, OC cov tuple should have 6 entries (for 3 probes)'
-        else:
-            assert len(cov_tuple_in) == 6, 'For the moment, OC cov tuple should have 6 entries (for 3 probes)'
+        assert len(cov_tuple_in) == 6, 'For the moment, OC cov tuple should have 6 entries (for 3 probes)'
 
         cov_10d_out = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
                                 nbl, nbl, self.zbins, self.zbins, self.zbins, self.zbins))
@@ -319,111 +316,59 @@ class OneCovarianceInterface():
             return cov_10d_out
 
         # Ensure covariance shapes are correct
-        for i in range(len(cov_tuple_in)):
-            assert cov_tuple_in[i].shape == (nbl, nbl, 1, 1, self.zbins, self.zbins, self.zbins, self.zbins)
+        for cov in cov_tuple_in:
+            if isinstance(cov, int):
+                assert cov == 0, 'cov must be == 0 if it\'s a single integer'
+            elif isinstance(cov, np.ndarray):
+                assert (cov.shape == (nbl, nbl, 1, 1, self.zbins, self.zbins, self.zbins, self.zbins))
+            else:
+                raise ValueError("cov must be either an integer or a numpy array")
 
-        # Define the order of the tuple for SSC and CNG (they are the same as confirmed)
+        # Update the cov_oc_10d for the given covariance type
         # the order of the tuple is gggg, gggm, ggmm, gmgm, mmgm, mmmm (confirmed by Robert)
-        if is_gauss:
-            cov_order = [(1, 1, 1, 1), (1, 1, 1, 0), (1, 1, 0, 0),
-                         (1, 0, 1, 1), (1, 0, 1, 0), (1, 0, 0, 0),
-                         (0, 0, 1, 1), (0, 0, 1, 0), (0, 0, 0, 0)]
-        else:
-            cov_order = [(1, 1, 1, 1), (1, 1, 1, 0), (1, 1, 0, 0), (1, 0, 1, 0), (0, 0, 1, 0), (0, 0, 0, 0)]
+        cov_order = [(1, 1, 1, 1), (1, 1, 1, 0), (1, 1, 0, 0), (1, 0, 1, 0), (0, 0, 1, 0), (0, 0, 0, 0)]
 
         # Update the cov_oc_10d for the given covariance type
         for idx, (a, b, c, d) in enumerate(cov_order):
-            cov_10d_out[a, b, c, d, :, :, :, :, :, :] = cov_tuple_in[idx][:, :, 0, 0, :, :, :, :]
+            if type(cov_tuple_in[idx]) == np.ndarray:
+                cov_10d_out[a, b, c, d, :, :, :, :, :, :] = deepcopy(cov_tuple_in[idx][:, :, 0, 0, :, :, :, :])
 
         # Transpose to get the remaining blocks
         # ell1 <-> ell2 and zi, zj <-> zk, zl, but ell1 <-> ell2 should have no effect!
-        if not is_gauss:
-            cov_10d_out[0, 0, 1, 1, :, :, :, :, :, :] = np.transpose(cov_10d_out[1, 1, 0, 0, :, :, :, :, :, :],
-                                                                     (1, 0, 4, 5, 2, 3))
-            cov_10d_out[1, 0, 1, 1, :, :, :, :, :, :] = np.transpose(cov_10d_out[1, 1, 1, 0, :, :, :, :, :, :],
-                                                                     (1, 0, 4, 5, 2, 3))
-            cov_10d_out[1, 0, 0, 0, :, :, :, :, :, :] = np.transpose(cov_10d_out[0, 0, 1, 0, :, :, :, :, :, :],
-                                                                     (1, 0, 4, 5, 2, 3))
+        cov_10d_out[0, 0, 1, 1, :, :, :, :, :, :] = deepcopy(np.transpose(cov_10d_out[1, 1, 0, 0, :, :, :, :, :, :],
+                                                                          (1, 0, 4, 5, 2, 3)))
+        cov_10d_out[1, 0, 1, 1, :, :, :, :, :, :] = deepcopy(np.transpose(cov_10d_out[1, 1, 1, 0, :, :, :, :, :, :],
+                                                                          (1, 0, 4, 5, 2, 3)))
+        cov_10d_out[1, 0, 0, 0, :, :, :, :, :, :] = deepcopy(np.transpose(cov_10d_out[0, 0, 1, 0, :, :, :, :, :, :],
+                                                                          (1, 0, 4, 5, 2, 3)))
+
+        # check that the diagonal blocks (only the diagonal!!) are symmetric in ell1, ell2
+        for a, b, c, d in ((0, 0, 0, 0), (1, 0, 1, 0), (1, 1, 1, 1)):
+            np.testing.assert_allclose(cov_10d_out[a, b, c, d, :, :, :, :, :, :],
+                                       cov_10d_out[a, b, c, d, :, :, :, :, :, :].transpose(1, 0, 2, 3, 4, 5),
+                                       atol=0, rtol=1e-3, err_msg='Diagonal blocks should be symmetric in ell1, ell2')
 
         return cov_10d_out
 
     def reshape_set_oc_output(self):
 
-        # TODO handle split_gauss case
         nbl = self.variable_specs['nbl_3x2pt']
-        self.cov_g_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=self.cov_g, nbl=nbl, compute_cov=self.compute_g, is_gauss=True)
+        cov_sva_tuple = [self.cov_g[idx * 3] for idx in range(6)]
+        cov_mix_tuple = [self.cov_g[idx * 3 + 1] for idx in range(6)]
+        cov_sn_tuple = [self.cov_g[idx * 3 + 2] for idx in range(6)]
+
+        self.cov_sva_oc_3x2pt_10D = self.oc_cov_to_10d(
+            cov_tuple_in=cov_sva_tuple, nbl=nbl, compute_cov=self.compute_g)
+        self.cov_mix_oc_3x2pt_10D = self.oc_cov_to_10d(
+            cov_tuple_in=cov_mix_tuple, nbl=nbl, compute_cov=self.compute_g)
+        self.cov_sn_oc_3x2pt_10D = self.oc_cov_to_10d(
+            cov_tuple_in=cov_sn_tuple, nbl=nbl, compute_cov=self.compute_g)
         self.cov_ssc_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=self.cov_ssc, nbl=nbl, compute_cov=self.compute_ssc, is_gauss=False)
+            cov_tuple_in=self.cov_ssc, nbl=nbl, compute_cov=self.compute_ssc)
         self.cov_cng_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=self.cov_cng, nbl=nbl, compute_cov=self.compute_cng, is_gauss=False)
+            cov_tuple_in=self.cov_cng, nbl=nbl, compute_cov=self.compute_cng)
 
-        # self.cov_g_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
-        #                               nbl, nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        # self.cov_sva_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
-        #                                 nbl, nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        # self.cov_mix_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
-        #                                 nbl, nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        # self.cov_sn_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
-        #                                nbl, nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        # self.cov_ssc_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
-        #                                 nbl, nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        # self.cov_cng_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
-        #                                 nbl, nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        # self.cov_tot_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
-        #                                 nbl, nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-
-        # assert len(self.cov_g) == 6, 'For the moment, SSC OC tuple should have 6 entries (for 3 probes)'
-        # assert len(self.cov_ssc) == 6, 'For the moment, SSC OC tuple should have 6 entries (for 3 probes)'
-        # assert len(self.cov_cng) == 6, 'For the moment, cNG OC tuple should have 6 entries (for 3 probes)'
-
-        # if self.compute_ssc:
-
-        #     for i in range(len(self.cov_ssc)):
-        #         assert self.cov_ssc[i].shape == (nbl, nbl, 1, 1, self.zbins, self.zbins, self.zbins, self.zbins)
-
-        #     # the order of the tuple is gggg, gggm, ggmm, gmgm, mmgm, mmmm (confirmed by Robert)
-        #     self.cov_ssc_oc_10d[1, 1, 1, 1, :, :, :, :, :, :] = self.cov_ssc[0][:, :, 0, 0, :, :, :, :]
-        #     self.cov_ssc_oc_10d[1, 1, 1, 0, :, :, :, :, :, :] = self.cov_ssc[1][:, :, 0, 0, :, :, :, :]
-        #     self.cov_ssc_oc_10d[1, 1, 0, 0, :, :, :, :, :, :] = self.cov_ssc[2][:, :, 0, 0, :, :, :, :]
-        #     self.cov_ssc_oc_10d[1, 0, 1, 0, :, :, :, :, :, :] = self.cov_ssc[3][:, :, 0, 0, :, :, :, :]
-        #     self.cov_ssc_oc_10d[0, 0, 1, 0, :, :, :, :, :, :] = self.cov_ssc[4][:, :, 0, 0, :, :, :, :]
-        #     self.cov_ssc_oc_10d[0, 0, 0, 0, :, :, :, :, :, :] = self.cov_ssc[5][:, :, 0, 0, :, :, :, :]
-        #     # transpose to get the remaining blocks
-        #     # ell1 <-> ell2 and zi, zj <-> zk, zl, but ell1 <-> ell2 should have no effect!
-        #     self.cov_ssc_oc_10d[0, 0, 1, 1, :, :, :, :, :, :] = self.cov_ssc_oc_10d[1,
-        #                                                                             1, 0, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
-        #     self.cov_ssc_oc_10d[1, 0, 1, 1, :, :, :, :, :, :] = self.cov_ssc_oc_10d[1,
-        #                                                                             1, 1, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
-        #     self.cov_ssc_oc_10d[1, 0, 0, 0, :, :, :, :, :, :] = self.cov_ssc_oc_10d[0,
-        #                                                                             0, 1, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
-
-        # if self.compute_cng:
-
-        #     for i in range(len(self.cov_cng)):
-        #         assert self.cov_cng[i].shape == (nbl, nbl, 1, 1, self.zbins, self.zbins, self.zbins, self.zbins)
-
-        #     # the order of the tuple is gggg, gggm, ggmm, gmgm, mmgm, mmmm (confirmed by Robert)
-        #     self.cov_cng_oc_10d[1, 1, 1, 1, :, :, :, :, :, :] = self.cov_cng[0][:, :, 0, 0, :, :, :, :]
-        #     self.cov_cng_oc_10d[1, 1, 1, 0, :, :, :, :, :, :] = self.cov_cng[1][:, :, 0, 0, :, :, :, :]
-        #     self.cov_cng_oc_10d[1, 1, 0, 0, :, :, :, :, :, :] = self.cov_cng[2][:, :, 0, 0, :, :, :, :]
-        #     self.cov_cng_oc_10d[1, 0, 1, 0, :, :, :, :, :, :] = self.cov_cng[3][:, :, 0, 0, :, :, :, :]
-        #     self.cov_cng_oc_10d[0, 0, 1, 0, :, :, :, :, :, :] = self.cov_cng[4][:, :, 0, 0, :, :, :, :]
-        #     self.cov_cng_oc_10d[0, 0, 0, 0, :, :, :, :, :, :] = self.cov_cng[5][:, :, 0, 0, :, :, :, :]
-
-        #     # transpose to get the remaining blocks
-        #     # ell1 <-> ell2 and zi, zj <-> zk, zl, but ell1 <-> ell2 should have no effect!
-        #     self.cov_cng_oc_10d[0, 0, 1, 1, :, :, :, :, :, :] = self.cov_cng_oc_10d[1,
-        #                                                                             1, 0, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
-        #     self.cov_cng_oc_10d[1, 0, 1, 1, :, :, :, :, :, :] = self.cov_cng_oc_10d[1,
-        #                                                                             1, 1, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
-        #     self.cov_cng_oc_10d[1, 0, 0, 0, :, :, :, :, :, :] = self.cov_cng_oc_10d[0,
-        #                                                                             0, 1, 0, :, :, :, :, :, :].transpose(1, 0, 4, 5, 2, 3)
-        # # import itertools
-        # for a, b, c, d in itertools.product(range(2), repeat=4):
-        #     np.testing.assert_allclose(self.cov_ssc_oc_10d[a, b, c, d, :, :, :, :, :, :],
-        #                                self.cov_ssc_oc_10d[a, b, c, d, :, :, :, :, :, :].transpose(1, 0, 2, 3, 4, 5),
-        #                                atol=0, rtol=1e-5)
+        self.cov_g_oc_3x2pt_10D = self.cov_sva_oc_3x2pt_10D + self.cov_mix_oc_3x2pt_10D + self.cov_sn_oc_3x2pt_10D
 
     def _reshape_oc_output(self, variable_specs, ind_dict, symmetrize_output_dict):
         """
@@ -444,10 +389,6 @@ class OneCovarianceInterface():
 
         chunk_size = 5000000
         cov_nbl = variable_specs['nbl_3x2pt']
-        # column_names = [
-        #     '#obs', 'ell1', 'ell2', 's1', 's2', 'tomoi', 'tomoj', 'tomok', 'tomol',
-        #     'cov', 'covg sva', 'covg mix', 'covg sn', 'covng', 'covssc',
-        # ]
 
         # check that column names are correct
         with open(f'{self.oc_path}/covariance_list.dat', 'r') as file:
@@ -455,9 +396,6 @@ class OneCovarianceInterface():
         print('.dat file header: ')
         print(header)
         header_list = re.split('\t', header.strip().replace('\t\t', '\t').replace('\t\t', '\t'))
-
-        # assert column_names == header_list, 'column names from .dat file do not match with the expected ones'
-
         column_names = header_list
 
         # ell values actually used in OC; save in self to be able to compare to the SB ell values
@@ -537,49 +475,14 @@ class OneCovarianceInterface():
 
         for cov_term in cov_oc_10d_dict.keys():
 
-            print(f'working on {cov_term}')
+            cov_oc_10d_dict[cov_term][0, 0, 1, 1] = deepcopy(np.transpose(cov_oc_10d_dict[cov_term][1, 1, 0, 0],
+                                                                          (1, 0, 4, 5, 2, 3)))
+            cov_oc_10d_dict[cov_term][1, 0, 0, 0] = deepcopy(np.transpose(cov_oc_10d_dict[cov_term][0, 0, 1, 0],
+                                                                          (1, 0, 4, 5, 2, 3)))
+            cov_oc_10d_dict[cov_term][1, 0, 1, 1] = deepcopy(np.transpose(cov_oc_10d_dict[cov_term][1, 1, 1, 0],
+                                                                          (1, 0, 4, 5, 2, 3)))
 
-            cov_10d = cov_oc_10d_dict[cov_term]
-
-            cov_llll_4d = mm.cov_6D_to_4D_blocks(cov_10d[0, 0, 0, 0, ...], cov_nbl,
-                                                 zpairs_auto, zpairs_auto, ind_auto, ind_auto)
-            cov_llgl_4d = mm.cov_6D_to_4D_blocks(cov_10d[0, 0, 1, 0, ...], cov_nbl,
-                                                 zpairs_auto, zpairs_cross, ind_auto, ind_cross)
-            cov_ggll_4d = mm.cov_6D_to_4D_blocks(cov_10d[1, 1, 0, 0, ...], cov_nbl,
-                                                 zpairs_auto, zpairs_auto, ind_auto, ind_auto)
-            cov_glgl_4d = mm.cov_6D_to_4D_blocks(cov_10d[1, 0, 1, 0, ...], cov_nbl,
-                                                 zpairs_cross, zpairs_cross, ind_cross, ind_cross)
-            cov_gggl_4d = mm.cov_6D_to_4D_blocks(cov_10d[1, 1, 1, 0, ...], cov_nbl,
-                                                 zpairs_auto, zpairs_cross, ind_auto, ind_cross)
-            cov_gggg_4d = mm.cov_6D_to_4D_blocks(cov_10d[1, 1, 1, 1, ...], cov_nbl,
-                                                 zpairs_auto, zpairs_auto, ind_auto, ind_auto)
-
-            cov_llgg_4d = np.transpose(cov_ggll_4d, (1, 0, 3, 2))
-            cov_glll_4d = np.transpose(cov_llgl_4d, (1, 0, 3, 2))
-            cov_glgg_4d = np.transpose(cov_gggl_4d, (1, 0, 3, 2))
-
-            cov_oc_10d_dict[cov_term][0, 0, 1, 1] = mm.cov_4D_to_6D_blocks(cov_llgg_4d, cov_nbl, self.zbins, ind_auto, ind_auto,
-                                                                           symmetrize_output_dict['L', 'L'], symmetrize_output_dict['G', 'G'])
-            cov_oc_10d_dict[cov_term][1, 0, 0, 0] = mm.cov_4D_to_6D_blocks(cov_glll_4d, cov_nbl, self.zbins, ind_cross, ind_auto,
-                                                                           symmetrize_output_dict['G', 'L'], symmetrize_output_dict['L', 'L'])
-            cov_oc_10d_dict[cov_term][1, 0, 1, 1] = mm.cov_4D_to_6D_blocks(cov_glgg_4d, cov_nbl, self.zbins, ind_cross, ind_auto,
-                                                                           symmetrize_output_dict['G', 'L'], symmetrize_output_dict['G', 'G'])
-
-            np.savez_compressed(
-                f'{self.oc_path}/{self.cov_filename.format(which_ng_cov=cov_term, probe_a="L", probe_b="L", probe_c="L", probe_d="L")}', cov_llll_4d)
-            np.savez_compressed(
-                f'{self.oc_path}/{self.cov_filename.format(which_ng_cov=cov_term, probe_a="L", probe_b="L", probe_c="G", probe_d="L")}', cov_llgl_4d)
-            np.savez_compressed(
-                f'{self.oc_path}/{self.cov_filename.format(which_ng_cov=cov_term, probe_a="L", probe_b="L", probe_c="G", probe_d="G")}', cov_llgg_4d)
-            np.savez_compressed(
-                f'{self.oc_path}/{self.cov_filename.format(which_ng_cov=cov_term, probe_a="G", probe_b="L", probe_c="G", probe_d="L")}', cov_glgl_4d)
-            np.savez_compressed(
-                f'{self.oc_path}/{self.cov_filename.format(which_ng_cov=cov_term, probe_a="G", probe_b="L", probe_c="G", probe_d="G")}', cov_glgg_4d)
-            np.savez_compressed(
-                f'{self.oc_path}/{self.cov_filename.format(which_ng_cov=cov_term, probe_a="G", probe_b="G", probe_c="G", probe_d="G")}', cov_gggg_4d)
-
-            del cov_llll_4d, cov_llgl_4d, cov_llgg_4d, cov_glgl_4d, cov_glgg_4d, cov_gggg_4d, cov_ggll_4d, cov_glll_4d, cov_gggl_4d
-            gc.collect()
+        return cov_oc_10d_dict
 
     def _oc_output_to_dict_or_array(self, which_ng_cov, output_type, ind_dict=None, symmetrize_output_dict=None):
 
@@ -619,8 +522,14 @@ class OneCovarianceInterface():
             raise ValueError('output_dict_dim must be 8D or 10D')
 
     def find_optimal_ellmax_oc(self, target_ell_array):
+
+        upper_lim = self.ells_sb[-1] + 300
+        lower_lim = self.ells_sb[-1] - 300
+        if lower_lim < 0:
+            lower_lim = 0
+
         # Perform the minimization
-        result = minimize_scalar(self.objective_function, bounds=[2000, 9000], method='bounded')
+        result = minimize_scalar(self.objective_function, bounds=[lower_lim, upper_lim], method='bounded')
 
         # Check the result
         if result.success:

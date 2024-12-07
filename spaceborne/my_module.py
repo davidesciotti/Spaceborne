@@ -33,6 +33,23 @@ symmetrize_output_dict = {
     ('G', 'G'): True,
 }
 
+
+def mirror_upper_to_lower_vectorized(A):
+    # Check if A is square
+    if A.shape[0] != A.shape[1]:
+        raise ValueError("Input must be a square matrix")
+
+    # Create a copy of the original matrix
+    result = A.copy()
+
+    # Use numpy's triu_indices to get the indices of the upper triangle
+    triu_indices = np.triu_indices_from(A, k=1)
+
+    # Mirror the upper triangular elements to the lower triangle
+    result[(triu_indices[1], triu_indices[0])] = A[triu_indices]
+
+    return result
+
 def check_interpolate_input_tab(input_tab, z_grid_out, zbins):
     
     assert input_tab.shape[1] == zbins + 1, 'The input table should have shape (z_points, zbins + 1)'
@@ -1202,14 +1219,13 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
         plt.show()
 
     if plot_diff_hist:
+        diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=False, abs_val=False)
+        
         plt.figure()
-        ax = plt.gca()
-        ymin, ymax = ax.get_ylim()
-        plt.fill_betweenx(y=[0, ymax], x1=-10, x2=10, color='gray', alpha=0.3, label='10%')
-        plt.hist(diff_AB.flatten(), log=True, bins=30)
+        # plt.axvspan(xmin=-10, xmax=10, color='gray', alpha=0.3, label='10%')
+        plt.hist(diff_AB.flatten(), bins=30, log=True)
         plt.xlabel('% difference')
         plt.ylabel('counts')
-        plt.legend()
 
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):

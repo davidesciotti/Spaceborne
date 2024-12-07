@@ -34,6 +34,46 @@ symmetrize_output_dict = {
 }
 
 
+
+def cov_ggglll_to_llglgg(cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int) -> np.ndarray:
+    """
+    Transforms a covariance matrix from gg-gl-ll format to llglgg format.
+
+    Parameters
+    ----------
+    cov_ggglll_2d : np.ndarray
+        Input covariance matrix in gg-gl-ll format.
+    elem_auto : int
+        Number of auto elements in the covariance matrix.
+    elem_cross : int
+        Number of cross elements in the covariance matrix.
+
+    Returns
+    -------
+    np.ndarray
+        Transformed covariance matrix in mm-gm-gg format.
+    """
+    
+    elem_apc = elem_auto + elem_cross
+
+    cov_gggg_2d = cov_ggglll_2d[:elem_auto, :elem_auto]
+    cov_gggl_2d = cov_ggglll_2d[:elem_auto, elem_auto:elem_apc]
+    cov_ggll_2d = cov_ggglll_2d[:elem_auto, elem_apc:]
+    cov_glgg_2d = cov_ggglll_2d[elem_auto:elem_apc, :elem_auto]
+    cov_glgl_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_auto:elem_apc]
+    cov_glll_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_apc:]
+    cov_llgg_2d = cov_ggglll_2d[elem_apc:, :elem_auto]
+    cov_llgl_2d = cov_ggglll_2d[elem_apc:, elem_auto:elem_apc]
+    cov_llll_2d = cov_ggglll_2d[elem_apc:, elem_apc:]
+
+    row_1 = np.concatenate((cov_llll_2d, cov_llgl_2d, cov_llgg_2d), axis=1)
+    row_2 = np.concatenate((cov_glll_2d, cov_glgl_2d, cov_glgg_2d), axis=1)
+    row_3 = np.concatenate((cov_ggll_2d, cov_gggl_2d, cov_gggg_2d), axis=1)
+
+    cov_llglgg_2d = np.concatenate((row_1, row_2, row_3), axis=0)
+
+    return cov_llglgg_2d
+
 def mirror_upper_to_lower_vectorized(A):
     # Check if A is square
     if A.shape[0] != A.shape[1]:

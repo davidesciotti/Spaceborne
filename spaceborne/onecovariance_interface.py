@@ -71,6 +71,7 @@ class OneCovarianceInterface():
         self.oc_cfg = self.cfg['OneCovariance']
         self.variable_specs = variable_specs
         self.n_probes = cfg['covariance']['n_probes']
+        self.nbl_3x2pt = variable_specs.nbl_3x2pt
 
         # set which cov terms to compute from cfg file
         self.compute_g = True  # TODO pass this from cfg?
@@ -352,25 +353,125 @@ class OneCovarianceInterface():
 
     def reshape_set_oc_output(self):
 
-        nbl = self.variable_specs['nbl_3x2pt']
         cov_sva_tuple = [self.cov_g[idx * 3] for idx in range(6)]
         cov_mix_tuple = [self.cov_g[idx * 3 + 1] for idx in range(6)]
         cov_sn_tuple = [self.cov_g[idx * 3 + 2] for idx in range(6)]
 
         self.cov_sva_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=cov_sva_tuple, nbl=nbl, compute_cov=self.compute_g)
+            cov_tuple_in=cov_sva_tuple, nbl=self.nbl_3x2pt, compute_cov=self.compute_g)
         self.cov_mix_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=cov_mix_tuple, nbl=nbl, compute_cov=self.compute_g)
+            cov_tuple_in=cov_mix_tuple, nbl=self.nbl_3x2pt, compute_cov=self.compute_g)
         self.cov_sn_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=cov_sn_tuple, nbl=nbl, compute_cov=self.compute_g)
+            cov_tuple_in=cov_sn_tuple, nbl=self.nbl_3x2pt, compute_cov=self.compute_g)
         self.cov_ssc_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=self.cov_ssc, nbl=nbl, compute_cov=self.compute_ssc)
+            cov_tuple_in=self.cov_ssc, nbl=self.nbl_3x2pt, compute_cov=self.compute_ssc)
         self.cov_cng_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=self.cov_cng, nbl=nbl, compute_cov=self.compute_cng)
+            cov_tuple_in=self.cov_cng, nbl=self.nbl_3x2pt, compute_cov=self.compute_cng)
 
         self.cov_g_oc_3x2pt_10D = self.cov_sva_oc_3x2pt_10D + self.cov_mix_oc_3x2pt_10D + self.cov_sn_oc_3x2pt_10D
 
-    def _reshape_oc_output(self, variable_specs, ind_dict, symmetrize_output_dict):
+    def load_reshape_oc_mat_file(self):
+
+        self.zpairs_auto, self.zpairs_cross, self.zpairs_3x2pt = mm.get_zpairs(self.zbins)
+        
+        elem_auto = self.zpairs_auto * self.nbl_3x2pt
+        elem_cross = self.zpairs_cross * self.nbl_3x2pt
+
+        if self.compute_g:
+            cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix_gauss.mat')
+            self.cov_mat_g_2d = self.cov_ggglll_to_llglgg(cov_in, elem_auto, elem_cross)
+
+        if self.compute_ssc:
+            cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix_SSC.mat')
+            self.cov_mat_ssc_2d = self.cov_ggglll_to_llglgg(cov_in, elem_auto, elem_cross)
+
+        if self.compute_cng:
+            cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix_NG.mat')
+            self.cov_mat_cng_2d = self.cov_ggglll_to_llglgg(cov_in, elem_auto, elem_cross)
+
+        cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix.mat')
+        self.cov_mat_tot_2d = self.cov_ggglll_to_llglgg(cov_in, elem_auto, elem_cross)
+
+    def output_sanity_check(self, rtol=1e-4):
+        """
+        Checks that the .dat and .mat outputs give consistent results
+        """
+        
+        self.load_reshape_oc_mat_file()
+
+        cov_list_g_4d = mm.cov_3x2pt_10D_to_4D(self.cov_g_oc_10d, self.probe_ordering,
+                                               self.nbl_3x2pt, self.zbins, self.ind, self.GL_OR_LG)
+        cov_list_ssc_4d = mm.cov_3x2pt_10D_to_4D(self.cov_ssc_oc_10d, self.probe_ordering,
+                                                 self.nbl_3x2pt, self.zbins, self.ind, self.GL_OR_LG)
+        cov_list_cng_4d = mm.cov_3x2pt_10D_to_4D(self.cov_cng_oc_10d, self.probe_ordering,
+                                                 self.nbl_3x2pt, self.zbins, self.ind, self.GL_OR_LG)
+        cov_list_tot_4d = mm.cov_3x2pt_10D_to_4D(self.cov_tot_oc_10d, self.probe_ordering,
+                                                 self.nbl_3x2pt, self.zbins, self.ind, self.GL_OR_LG)
+
+        cov_list_g_2d = mm.cov_4D_to_2DCLOE_3x2pt(cov_list_g_4d, self.zbins, block_index='zpair')
+        cov_list_ssc_2d = mm.cov_4D_to_2DCLOE_3x2pt(cov_list_ssc_4d, self.zbins, block_index='zpair')
+        cov_list_cng_2d = mm.cov_4D_to_2DCLOE_3x2pt(cov_list_cng_4d, self.zbins, block_index='zpair')
+        cov_list_tot_2d = mm.cov_4D_to_2DCLOE_3x2pt(cov_list_tot_4d, self.zbins, block_index='zpair')
+
+        if self.compute_g:
+            np.testing.assert_allclose(cov_list_g_2d, self.cov_mat_g_2d, atol=0, rtol=rtol,
+                                       err_msg='Gaussian covariance matrix from .mat file is'
+                                       ' not consistent with .dat output')
+
+        if self.compute_ssc:
+            np.testing.assert_allclose(cov_list_ssc_2d, self.cov_mat_ssc_2d, atol=0, rtol=rtol,
+                                       err_msg='SSC covariance matrix from .mat file is'
+                                       ' not consistent with .dat output')
+
+        if self.compute_cng:
+            np.testing.assert_allclose(cov_list_cng_2d, self.cov_mat_cng_2d, atol=0, rtol=rtol,
+                                       err_msg='cNG covariance matrix from .mat file is'
+                                       ' not consistent with .dat output')
+
+        np.testing.assert_allclose(cov_list_tot_2d, self.cov_mat_tot_2d, atol=0, rtol=rtol,
+                                    err_msg='Gaussian covariance matrix from .mat file is'
+                                    ' not consistent with .dat output')
+
+    def cov_ggglll_to_llglgg(self, cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int) -> np.ndarray:
+        """
+        Transforms a covariance matrix from gg-gl-ll format to llglgg format.
+
+        Parameters
+        ----------
+        cov_ggglll_2d : np.ndarray
+            Input covariance matrix in gg-gl-ll format.
+        elem_auto : int
+            Number of auto elements in the covariance matrix.
+        elem_cross : int
+            Number of cross elements in the covariance matrix.
+
+        Returns
+        -------
+        np.ndarray
+            Transformed covariance matrix in mm-gm-gg format.
+        """
+
+        elem_apc = elem_auto + elem_cross
+
+        cov_gggg_2d = cov_ggglll_2d[:elem_auto, :elem_auto]
+        cov_gggl_2d = cov_ggglll_2d[:elem_auto, elem_auto:elem_apc]
+        cov_ggll_2d = cov_ggglll_2d[:elem_auto, elem_apc:]
+        cov_glgg_2d = cov_ggglll_2d[elem_auto:elem_apc, :elem_auto]
+        cov_glgl_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_auto:elem_apc]
+        cov_glll_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_apc:]
+        cov_llgg_2d = cov_ggglll_2d[elem_apc:, :elem_auto]
+        cov_llgl_2d = cov_ggglll_2d[elem_apc:, elem_auto:elem_apc]
+        cov_llll_2d = cov_ggglll_2d[elem_apc:, elem_apc:]
+
+        row_1 = np.concatenate((cov_llll_2d, cov_llgl_2d, cov_llgg_2d), axis=1)
+        row_2 = np.concatenate((cov_glll_2d, cov_glgl_2d, cov_glgg_2d), axis=1)
+        row_3 = np.concatenate((cov_ggll_2d, cov_gggl_2d, cov_gggg_2d), axis=1)
+
+        cov_llglgg_2d = np.concatenate((row_1, row_2, row_3), axis=0)
+
+        return cov_llglgg_2d
+
+    def load_oc_list_file(self):
         """
         Reshape the output of the OneCovariance (OC) calculation into a dictionary or array format.
 
@@ -382,17 +483,12 @@ class OneCovarianceInterface():
         dictionary and saving the reshaped covariance matrices to compressed numpy files.
         """
 
-        zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(self.zbins)
-
-        ind_auto = ind_dict['G', 'G']
-        ind_cross = ind_dict['G', 'L']
-
         chunk_size = 5000000
-        cov_nbl = variable_specs['nbl_3x2pt']
 
         # check that column names are correct
         with open(f'{self.oc_path}/covariance_list.dat', 'r') as file:
             header = file.readline().strip()  # Read the first line and strip newline characters
+
         print('.dat file header: ')
         print(header)
         header_list = re.split('\t', header.strip().replace('\t\t', '\t').replace('\t\t', '\t'))
@@ -419,13 +515,20 @@ class OneCovarianceInterface():
         }
 
         # ! import .list covariance file
-        cov_g_oc_10d = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        cov_sva_oc_10d = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        cov_mix_oc_10d = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        cov_sn_oc_10d = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        cov_ssc_oc_10d = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        cov_cng_oc_10d = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
-        cov_tot_oc_10d = np.zeros((2, 2, 2, 2, cov_nbl, cov_nbl, self.zbins, self.zbins, self.zbins, self.zbins))
+        self.cov_g_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+                                 self.nbl_3x2pt, self.nbl_3x2pt, self.zbins, self.zbins, self.zbins, self.zbins))
+        self.cov_sva_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+                                   self.nbl_3x2pt, self.nbl_3x2pt, self.zbins, self.zbins, self.zbins, self.zbins))
+        self.cov_mix_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+                                   self.nbl_3x2pt, self.nbl_3x2pt, self.zbins, self.zbins, self.zbins, self.zbins))
+        self.cov_sn_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+                                  self.nbl_3x2pt, self.nbl_3x2pt, self.zbins, self.zbins, self.zbins, self.zbins))
+        self.cov_ssc_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+                                   self.nbl_3x2pt, self.nbl_3x2pt, self.zbins, self.zbins, self.zbins, self.zbins))
+        self.cov_cng_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+                                   self.nbl_3x2pt, self.nbl_3x2pt, self.zbins, self.zbins, self.zbins, self.zbins))
+        self.cov_tot_oc_10d = np.zeros((self.n_probes, self.n_probes, self.n_probes, self.n_probes,
+                                   self.nbl_3x2pt, self.nbl_3x2pt, self.zbins, self.zbins, self.zbins, self.zbins))
 
         print('loading dataframe in chunks...')
         start = time.perf_counter()
@@ -452,25 +555,24 @@ class OneCovarianceInterface():
             index_tuple = (probe_idx_a, probe_idx_b, probe_idx_c, probe_idx_d, ell1_idx, ell2_idx,
                            z_indices[:, 0], z_indices[:, 1], z_indices[:, 2], z_indices[:, 3])
 
-            cov_sva_oc_10d[index_tuple] = df_chunk['covg sva'].values
-            cov_mix_oc_10d[index_tuple] = df_chunk['covg mix'].values
-            cov_sn_oc_10d[index_tuple] = df_chunk['covg sn'].values
-            cov_g_oc_10d[index_tuple] = df_chunk['covg sva'].values + \
+            self.cov_sva_oc_10d[index_tuple] = df_chunk['covg sva'].values
+            self.cov_mix_oc_10d[index_tuple] = df_chunk['covg mix'].values
+            self.cov_sn_oc_10d[index_tuple] = df_chunk['covg sn'].values
+            self.cov_g_oc_10d[index_tuple] = df_chunk['covg sva'].values + \
                 df_chunk['covg mix'].values + df_chunk['covg sn'].values
-            cov_ssc_oc_10d[index_tuple] = df_chunk['covssc'].values
-            cov_cng_oc_10d[index_tuple] = df_chunk['covng'].values
-            cov_tot_oc_10d[index_tuple] = df_chunk['cov'].values
+            self.cov_ssc_oc_10d[index_tuple] = df_chunk['covssc'].values
+            self.cov_cng_oc_10d[index_tuple] = df_chunk['covng'].values
+            self.cov_tot_oc_10d[index_tuple] = df_chunk['cov'].values
 
         print(f"df loaded in {time.perf_counter() - start:.2f} seconds")
 
-        # ! load 2d covs for CLOE runs
-        cov_oc_10d_dict = {'SVA': cov_sva_oc_10d,
-                           'MIX': cov_mix_oc_10d,
-                           'SN': cov_sn_oc_10d,
-                           'G': cov_g_oc_10d,
-                           'SSC': cov_ssc_oc_10d,
-                           'cNG': cov_cng_oc_10d,
-                           'tot': cov_tot_oc_10d,
+        cov_oc_10d_dict = {'SVA': self.cov_sva_oc_10d,
+                           'MIX': self.cov_mix_oc_10d,
+                           'SN': self.cov_sn_oc_10d,
+                           'G': self.cov_g_oc_10d,
+                           'SSC': self.cov_ssc_oc_10d,
+                           'cNG': self.cov_cng_oc_10d,
+                           'tot': self.cov_tot_oc_10d,
                            }
 
         for cov_term in cov_oc_10d_dict.keys():

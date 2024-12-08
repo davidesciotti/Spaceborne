@@ -35,44 +35,6 @@ symmetrize_output_dict = {
 
 
 
-def cov_ggglll_to_llglgg(cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int) -> np.ndarray:
-    """
-    Transforms a covariance matrix from gg-gl-ll format to llglgg format.
-
-    Parameters
-    ----------
-    cov_ggglll_2d : np.ndarray
-        Input covariance matrix in gg-gl-ll format.
-    elem_auto : int
-        Number of auto elements in the covariance matrix.
-    elem_cross : int
-        Number of cross elements in the covariance matrix.
-
-    Returns
-    -------
-    np.ndarray
-        Transformed covariance matrix in mm-gm-gg format.
-    """
-    
-    elem_apc = elem_auto + elem_cross
-
-    cov_gggg_2d = cov_ggglll_2d[:elem_auto, :elem_auto]
-    cov_gggl_2d = cov_ggglll_2d[:elem_auto, elem_auto:elem_apc]
-    cov_ggll_2d = cov_ggglll_2d[:elem_auto, elem_apc:]
-    cov_glgg_2d = cov_ggglll_2d[elem_auto:elem_apc, :elem_auto]
-    cov_glgl_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_auto:elem_apc]
-    cov_glll_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_apc:]
-    cov_llgg_2d = cov_ggglll_2d[elem_apc:, :elem_auto]
-    cov_llgl_2d = cov_ggglll_2d[elem_apc:, elem_auto:elem_apc]
-    cov_llll_2d = cov_ggglll_2d[elem_apc:, elem_apc:]
-
-    row_1 = np.concatenate((cov_llll_2d, cov_llgl_2d, cov_llgg_2d), axis=1)
-    row_2 = np.concatenate((cov_glll_2d, cov_glgl_2d, cov_glgg_2d), axis=1)
-    row_3 = np.concatenate((cov_ggll_2d, cov_gggl_2d, cov_gggg_2d), axis=1)
-
-    cov_llglgg_2d = np.concatenate((row_1, row_2, row_3), axis=0)
-
-    return cov_llglgg_2d
 
 def mirror_upper_to_lower_vectorized(A):
     # Check if A is square
@@ -3378,15 +3340,15 @@ def cov_4D_to_2D_v0(cov_4D, nbl, zpairs_AB, zpairs_CD=None, block_index='vincenz
 
 
 # @njit
-def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='vincenzo'):
+def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='ell'):
     """
     Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE ordering. Note that this is only necessary for
     the 3x2pt probe.
     TODO the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work with other combinations (but it
     TODO will work both for LG and GL)
-    ! important note: block_index = 'vincenzo' means that the overall ordering will be probe_ell_zpair. Setting it to 'zpair'
+    ! important note: block_index = 'ell' means that the overall ordering will be probe_ell_zpair. Setting it to 'zpair'
     ! will give you the ordering probe_zpair_ell. Bottom line: the probe is the outermost loop in any case.
-    ! The ordering used by CLOE is probe_ell_zpair, so block_index = 'vincenzo' is the correct choice.
+    ! The ordering used by CLOE is probe_ell_zpair, so block_index = 'ell' is the correct choice.
     """
 
     warnings.warn(
@@ -3423,7 +3385,7 @@ def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='vincenzo'):
 
 
 # @njit
-def cov_2DCLOE_to_4D_3x2pt(cov_2D, nbl, zbins, block_index='vincenzo'):
+def cov_2DCLOE_to_4D_3x2pt(cov_2D, nbl, zbins, block_index='ell'):
     """
     Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE ordering. Note that this is only necessary for
     the 3x2pt probe.

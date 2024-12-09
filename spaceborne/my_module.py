@@ -3346,14 +3346,11 @@ def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='ell'):
     the 3x2pt probe.
     TODO the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work with other combinations (but it
     TODO will work both for LG and GL)
-    ! important note: block_index = 'ell' means that the overall ordering will be probe_ell_zpair. Setting it to 'zpair'
-    ! will give you the ordering probe_zpair_ell. Bottom line: the probe is the outermost loop in any case.
-    ! The ordering used by CLOE is probe_ell_zpair, so block_index = 'ell' is the correct choice.
+    ! Important note: block_index = 'ell' means that the overall ordering will be probe_ell_zpair. 
+    ! Setting it to 'zpair' will give you the ordering probe_zpair_ell. 
+    ! Bottom line: the probe is the outermost loop in any case.
+    ! The ordering used by CLOE v2 is probe_ell_zpair, so block_index = 'ell' is the correct choice in this case.
     """
-
-    warnings.warn(
-        "the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work with other combinations (but it"
-        " will work both for LG and GL) ")
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
 
@@ -3392,10 +3389,6 @@ def cov_2DCLOE_to_4D_3x2pt(cov_2D, nbl, zbins, block_index='ell'):
     TODO the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work with other combinations (but it
     TODO will work both for LG and GL)
     """
-
-    warnings.warn(
-        "the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work with other combinations (but it"
-        " will work both for LG and GL) ")
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
 

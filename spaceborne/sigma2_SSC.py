@@ -119,11 +119,11 @@ def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b, ell_mask=None,
     def integrand(k): return k ** 2 * ccl.linear_matter_power(cosmo_ccl, k=k, a=1.) * \
         spherical_jn(0, k * r1) * spherical_jn(0, k * r2)
 
-    integral_result = simps(integrand(k_grid_sigma2), k_grid_sigma2)
+    integral_result = simps(y=integrand(k_grid_sigma2), x=k_grid_sigma2)
 
     # different integration methods; simps seems to be the best
     # if integrating_funct == 'simps':
-    #     integral_result = simps(integrand(k_grid_sigma2), k_grid_sigma2)
+    #     integral_result = simps(y=integrand(k_grid_sigma2), x=k_grid_sigma2)
     # elif integrating_funct == 'quad':
     #     integral_result = quad(integrand, k_grid_sigma2[0], k_grid_sigma2[-1])[0]
     # elif integrating_funct == 'quad_vec':
@@ -202,7 +202,7 @@ def sigma2_z2_func_vectorized(z1_arr, z2, k_grid_sigma2, cosmo_ccl, which_sigma2
         return k ** 2 * ccl.linear_matter_power(cosmo_ccl, k=k, a=1.) * \
             spherical_jn(0, k * r1_arr[:, None]) * spherical_jn(0, k * r2)
 
-    integral_result = simps(integrand(k_grid_sigma2), k_grid_sigma2, axis=1)
+    integral_result = simps(y=integrand(k_grid_sigma2), x=k_grid_sigma2, axis=1)
 
     if which_sigma2_b == 'full_curved_sky':
         result = 1 / (2 * np.pi ** 2) * growth_factor_z1_arr * growth_factor_z2 * integral_result

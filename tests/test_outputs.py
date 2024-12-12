@@ -2,112 +2,49 @@ import pytest
 import subprocess
 import numpy as np
 import os
-
 import yaml
 
+def test_main_script(test_cfg_path):
+    # Run the main script with the test config
+    subprocess.run(['python', 'main.py', '--config', test_cfg_path], check=True)
 
-@pytest.fixture
-def load_benchmarks(benchmarks_path):
-    """Load the benchmark output dictionary including cfg."""
-    bench_output_dict = np.load(benchmarks_path, allow_pickle=True).item()
-    return bench_output_dict['original_cfg'], bench_output_dict
+    # Load the benchmark output
+    bench_data = np.load(f'{bench_path}/{bench_name}.npz', allow_pickle=True)
 
+    # Load the test output
+    test_data = np.load(f'{temp_output_filename}', allow_pickle=True)
 
-# @pytest.fixture
-# def generate_output_from_cfg(tmp_path, load_benchmarks):
-#     """Run the script with the loaded cfg and save the results to a temp folder, then delete the
-#     loaded cfg file"""
-#     cfg, _ = load_benchmarks
+    # Compare the outputs
+    for key in bench_data.files:
+        if key not in excluded_keys:
+            print(f"Comparing {key}...")
+            np.testing.assert_allclose(
+                bench_data[key], test_data[key], atol=0, rtol=1e-5,
+            err_msg=f"Mismatch in {key}")
 
-#     # Set the temporary output folder
-#     tmp_dir = tmp_path / "outputs"
-#     tmp_dir.mkdir()
+    print("All outputs match the benchmarks ✅")
+    
+# Paths
+bench_name = 'output_SB_LG' # ! THIS IS THE ONLY THING TO TOUCH
+bench_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench'
+temp_output_filename = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/tmp/test_file.npz'
+temp_output_folder = os.path.dirname(temp_output_filename)
+excluded_keys = ['backup_cfg', 'metadata']
 
-#     # Update the path in cfg for saving outputs
-#     cfg['general_cfg']['save_outputs_as_test_benchmarks_path'] = str(tmp_dir)
+# ! update the cfg file to avoid overwriting the benchmarks
+# Load the benchmark config
+with open(f'{bench_path}/{bench_name}.yaml', "r") as f:
+    cfg = yaml.safe_load(f)
 
-#     # save cfg as yaml file
-#     with open('../test_cfg.yaml', 'w') as f:
-#         f.write(yaml.dump(cfg))
+# Update config for the test run
+cfg['misc']['save_output_as_benchmark'] = True
+cfg['misc']['bench_filename'] = temp_output_filename
+cfg['misc']['output_path'] = temp_output_folder  # just to make sure I don't overwrite any output files
 
-#     # Run your script with the given cfg, using subprocess and saving outputs in temp
-#     result = subprocess.run(
-#         ['python', '../main.py', f'< ./test_cfg.yaml'],
-#         capture_output=True,
-#         text=True
-#     )
+# Save the updated test config
+test_cfg_path = f'{bench_path}/tmp/test_config.yaml'
+with open(test_cfg_path, 'w') as f:
+    yaml.dump(cfg, f)
 
-#     # delete test_cfg.yaml
-#     os.remove('test_cfg.yaml')
-
-#     # Ensure the script ran successfully
-#     assert result.returncode == 0, f"Script failed with error: {result.stderr}"
-
-#     # Load the generated outputs from the temp directory
-#     generated_output_dict = np.load(tmp_dir / 'output_dict.npy', allow_pickle=True).item()
-
-#     return generated_output_dict
-
-@pytest.fixture
-def generate_output_from_cfg(tmp_path, load_benchmarks):
-    """Run the script with the loaded cfg and save the results to a temp folder, then delete the 
-    loaded cfg file."""
-    cfg, _ = load_benchmarks
-
-    # Update the path in cfg for saving outputs in the temp folder
-    cfg['general_cfg']['save_outputs_as_test_benchmarks_path'] = str(tmp_path / 'output_dict.npy')
-
-    # Specify the full path for the test_cfg.yaml file
-    cfg_file_path = tmp_path / 'test_cfg.yaml'  # Save in the temp directory
-
-    # Save cfg as yaml file
-    with open(cfg_file_path, 'w') as f:
-        f.write(yaml.dump(cfg))
-
-    # Run your script with the given cfg, using subprocess and saving outputs in temp
-    result = subprocess.run(
-        ['python', '../main.py', '--config', str(cfg_file_path)],  # Pass the config file as an argument without quotes
-        capture_output=False,
-        text=True
-    )
-
-    print('finished execution of main.py in test_outputs.py')
-
-    # Ensure the script ran successfully
-    assert result.returncode == 0, f"Script failed with error: {result.stderr}"
-
-    # Load the generated outputs from the temp directory
-    generated_output_dict = np.load(tmp_path / 'output_dict.npy', allow_pickle=True).item()
-
-    return generated_output_dict
-
-
-@pytest.mark.parametrize("benchmarks_path", [
-    './benchmarks/output_dict.npy',
-    # You can add more benchmark files if needed
-    # './benchmarks/output_dict_1.npy',
-    # './benchmarks/output_dict_2.npy'
-])
-def test_outputs_match_benchmarks(load_benchmarks, generate_output_from_cfg):
-    """Compare the outputs from the script with the pre-saved benchmarks."""
-    _, bench_output_dict = load_benchmarks
-    generated_output_dict = generate_output_from_cfg
-
-    array_names = ['delta', 'gamma', 'ia', 'mu', 'lensing', 'cl_ll_3d', 'cl_gl_3d', 'cl_gg_3d', 'sigma2_b',
-                   'z_grid_ssc_integrands']
-
-    for name in array_names:
-        np.testing.assert_allclose(
-            generated_output_dict[name], bench_output_dict[name], rtol=1e-5, atol=0)
-
-    for key in generated_output_dict['cov_dict'].keys():
-        np.testing.assert_allclose(
-            generated_output_dict['cov_dict'][key], bench_output_dict['cov_dict'][key], rtol=1e-5, atol=0)
-
-    # for key in generated_output_dict['ell_dict'].keys():
-    #     np.testing.assert_allclose(
-    #         generated_output_dict['ell_dict'][key], bench_output_dict['ell_dict'][key], rtol=1e-5, atol=0)
-
-    for key in generated_output_dict['fm_dict'].keys():
-        np.testing.assert_allclose(
-            generated_output_dict['fm_dict'][key], bench_output_dict['fm_dict'][key], rtol=1e-5, atol=0)
+# ! run the actual test
+test_main_script(test_cfg_path)

@@ -24,6 +24,7 @@ from tqdm import tqdm
 import pandas as pd
 from scipy.integrate import simpson as simps
 from scipy.interpolate import interp1d, RegularGridInterpolator, CubicSpline
+import subprocess
 
 
 symmetrize_output_dict = {
@@ -34,6 +35,21 @@ symmetrize_output_dict = {
 }
 
 
+def get_git_info():
+    try:
+        branch = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            stderr=subprocess.DEVNULL,
+        ).strip().decode('utf-8')
+
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            stderr=subprocess.DEVNULL,
+        ).strip().decode('utf-8')
+
+        return branch, commit
+    except subprocess.CalledProcessError:
+        return None, None
 
 
 def mirror_upper_to_lower_vectorized(A):
@@ -52,13 +68,14 @@ def mirror_upper_to_lower_vectorized(A):
 
     return result
 
+
 def check_interpolate_input_tab(input_tab, z_grid_out, zbins):
-    
+
     assert input_tab.shape[1] == zbins + 1, 'The input table should have shape (z_points, zbins + 1)'
 
     spline = CubicSpline(x=input_tab[:, 0], y=input_tab[:, 1:], axis=0)
     output_tab = spline(z_grid_out)
-    
+
     return output_tab
 
 
@@ -85,7 +102,6 @@ def get_ngal(ngal_in, ep_or_ed, zbins, ep_check_tol):
                 'n_gal must be the same for all zbins in the equipopulated (EP) case'
 
     return ngal_out
-
 
 
 def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
@@ -123,7 +139,6 @@ def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
               y_out_masked.min():.2e}, {y_out_masked.max():.2e}]")
 
     z2d_interp = z2d_func(x_out_masked, y_out_masked)
-
 
     if output_masks:
         return x_out_masked, y_out_masked, z2d_interp, x_mask, y_mask
@@ -262,8 +277,8 @@ def plot_dominant_array_element(arrays_dict, tab_colors, elements_auto, elements
     plt.show()
 
 
-def cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering, 
-                             symmetrize_output_dict : bool =symmetrize_output_dict):
+def cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering,
+                             symmetrize_output_dict: bool = symmetrize_output_dict):
     cov_3x2pt_dict_10D = {}
     for probe_A, probe_B in probe_ordering:
         for probe_C, probe_D in probe_ordering:
@@ -991,6 +1006,8 @@ def _percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False)
     return diff
 
 # @njit
+
+
 def percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
     """
     Calculate the percent difference between two arrays, handling NaN values.
@@ -998,7 +1015,7 @@ def percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
     # Handle NaN values
     if eraseNaN:
         # Mask where NaN values are present
-        diff = np.ma.masked_where(np.isnan(array_1) | np.isnan(array_2), 
+        diff = np.ma.masked_where(np.isnan(array_1) | np.isnan(array_2),
                                   percent_diff(array_1, array_2))
     else:
         diff = percent_diff(array_1, array_2)
@@ -1014,6 +1031,7 @@ def percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
         diff = np.ma.abs(diff)
 
     return diff
+
 
 def diff_threshold_check(diff, threshold):
     boolean = np.any(np.abs(diff) > threshold)
@@ -1151,14 +1169,15 @@ def compare_arrays_v0(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=T
         f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
         f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
     print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
-    
+
+
 def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True, log_array=True, log_diff=False,
                    abs_val=False, plot_diff_threshold=None, white_where_zero=True, plot_diff_hist=False):
 
     if np.array_equal(A, B):
         print(f'{name_A} and {name_B} are equal ✅')
         return
-    
+
     for rtol in [1e-3, 1e-2, 5e-2]:  # these are NOT percent units
         if np.allclose(A, B, rtol=rtol, atol=0):
             print(f'{name_A} and {name_B} are close within relative tolerance of {rtol * 100}%) ✅')
@@ -1199,7 +1218,7 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
     if plot_diff:
         diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=False, abs_val=abs_val)
         diff_BA = percent_diff_nan(B, A, eraseNaN=True, log=False, abs_val=abs_val)
-        
+
         if plot_diff_threshold is not None:
             diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, np.abs(diff_AB))
             diff_BA = np.ma.masked_where(np.abs(diff_BA) < plot_diff_threshold, np.abs(diff_BA))
@@ -1222,7 +1241,7 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
 
     if plot_diff_hist:
         diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=False, abs_val=False)
-        
+
         plt.figure()
         # plt.axvspan(xmin=-10, xmax=10, color='gray', alpha=0.3, label='10%')
         plt.hist(diff_AB.flatten(), bins=30, log=True)
@@ -1575,8 +1594,6 @@ def matshow(array, title="title", log=True, abs_val=False, threshold=None, only_
     plt.colorbar()
     plt.title(title)
     plt.show()
-    
-
 
 
 def get_kv_pairs(path_import, extension='npy'):
@@ -1952,7 +1969,7 @@ def symmetrize_2d_array(array_2d):
     assert np.all(triu_elements) == 0 or np.all(tril_elements) == 0, 'neither the upper nor the lower triangle ' \
                                                                      '(excluding the diagonal) are null'
 
-    if np.any(np.diag(array_2d)) != 0: 
+    if np.any(np.diag(array_2d)) != 0:
         warnings.warn('the diagonal elements are all null')
 
     # symmetrize
@@ -2967,8 +2984,8 @@ def cov_6D_to_4D_blocks(cov_6D, nbl, npairs_AB, npairs_CD, ind_AB, ind_CD):
     nc = n_columns_AB  # make the name shorter
 
     cov_4D = np.zeros((nbl, nbl, npairs_AB, npairs_CD))
-    for ell1 in range(nbl):  
-        for ell2 in range(nbl): 
+    for ell1 in range(nbl):
+        for ell2 in range(nbl):
             for ij in range(npairs_AB):
                 for kl in range(npairs_CD):
                     i, j, k, l = ind_AB[ij, nc - 2], ind_AB[ij, nc - 1], ind_CD[kl, nc - 2], ind_CD[kl, nc - 1]
@@ -2977,15 +2994,15 @@ def cov_6D_to_4D_blocks(cov_6D, nbl, npairs_AB, npairs_CD, ind_AB, ind_CD):
 
 
 # @njit
-def cov_4D_to_6D_blocks(cov_4D, nbl, zbins, ind_ab, ind_cd, 
+def cov_4D_to_6D_blocks(cov_4D, nbl, zbins, ind_ab, ind_cd,
                         symmetrize_output_ab: bool, symmetrize_output_cd: bool):
     """
     Reshapes the 4D covariance matrix to a 6D covariance matrix, even for the cross-probe (non-square) blocks needed
     to build the 3x2pt covariance.
-    
+
     This function can be used for the normal routine (valid for auto-covariance, i.e., LL-LL, GG-GG, GL-GL and LG-LG) 
     where `zpairs_ab = zpairs_cd` and `ind_ab = ind_cd`.
-    
+
     Args:
         cov_4D (np.ndarray): The 4D covariance matrix.
         nbl (int): The number of ell bins.
@@ -2994,7 +3011,7 @@ def cov_4D_to_6D_blocks(cov_4D, nbl, zbins, ind_ab, ind_cd,
         ind_cd (np.ndarray): The indices for the second pair of redshift bins.
         symmetrize_output_ab (bool): Whether to symmetrize the output cov block for the first pair of probes.
         symmetrize_output_cd (bool): Whether to symmetrize the output cov block for the second pair of probes.
-    
+
     Returns:
         np.ndarray: The 6D covariance matrix.
     """
@@ -3193,7 +3210,7 @@ def cov_2D_to_4D(cov_2D, nbl, block_index='vincenzo', optimize=True, symmetrize=
             cov_4D = cov_2D.reshape((nbl, zpairs_AB, nbl, zpairs_CD)).transpose((0, 2, 1, 3))
         elif block_index in ['ij', 'sylvain', 'F-style']:
             cov_4D = cov_2D.reshape((zpairs_AB, nbl, zpairs_CD, nbl)).transpose((1, 3, 0, 2))
- 
+
     else:
         if block_index in ['ell', 'vincenzo', 'C-style']:
             for l1 in range(nbl):
@@ -3210,13 +3227,13 @@ def cov_2D_to_4D(cov_2D, nbl, block_index='vincenzo', optimize=True, symmetrize=
                         for jpair in range(zpairs_CD):
                             # block_index * block_size + running_index
                             cov_4D[l1, l2, ipair, jpair] = cov_2D[ipair * nbl + l1, jpair * nbl + l2]
-                            
+
     if symmetrize:
         for l1 in range(nbl):
             for l2 in range(nbl):
                 # mirror the upper triangle into the lower one
                 cov_4D[l1, l2, :, :] = symmetrize_2d_array(cov_4D[l1, l2, :, :])
-                
+
     return cov_4D
 
 
@@ -3260,7 +3277,7 @@ def cov_4D_to_2D(cov_4D, block_index, optimize=True):
 
         elif block_index in ['zpair', 'F-style']:
             cov_2D.reshape(zpairs_AB, nbl, zpairs_CD, nbl)[:, :, :, :] = cov_4D.transpose(2, 0, 3, 1)
-            
+
         return cov_2D
 
     # I tested that the 2 methods give the same results. This code is kept to remember the

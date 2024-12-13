@@ -33,13 +33,14 @@ symmetrize_output_dict = {
     ('G', 'G'): True,
 }
 
+
 def check_interpolate_input_tab(input_tab, z_grid_out, zbins):
-    
+
     assert input_tab.shape[1] == zbins + 1, 'The input table should have shape (z_points, zbins + 1)'
 
     spline = CubicSpline(x=input_tab[:, 0], y=input_tab[:, 1:], axis=0)
     output_tab = spline(z_grid_out)
-    
+
     return output_tab
 
 
@@ -66,7 +67,6 @@ def get_ngal(ngal_in, ep_or_ed, zbins, ep_check_tol):
                 'n_gal must be the same for all zbins in the equipopulated (EP) case'
 
     return ngal_out
-
 
 
 def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
@@ -97,14 +97,13 @@ def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
     y_out_masked = y_out[y_mask]
 
     if len(x_out_masked) < len(x_out):
-        print(f"x array trimmed: old range [{x_out.min():.2e}, {x_out.max():.2e}], new range [{
-              x_out_masked.min():.2e}, {x_out_masked.max():.2e}]")
+        print(f"x array trimmed: old range [{x_out.min():.2e}, {x_out.max():.2e}], "
+              f"new range [{x_out_masked.min():.2e}, {x_out_masked.max():.2e}]")
     if len(y_out_masked) < len(y_out):
-        print(f"y array trimmed: old range [{y_out.min():.2e}, {y_out.max():.2e}], new range [{
-              y_out_masked.min():.2e}, {y_out_masked.max():.2e}]")
+        print(f"y array trimmed: old range [{y_out.min():.2e}, {y_out.max():.2e}], "
+              f"new range [{y_out_masked.min():.2e}, {y_out_masked.max():.2e}]")
 
     z2d_interp = z2d_func(x_out_masked, y_out_masked)
-
 
     if output_masks:
         return x_out_masked, y_out_masked, z2d_interp, x_mask, y_mask
@@ -198,8 +197,6 @@ def plot_dominant_array_element(arrays_dict, tab_colors, elements_auto, elements
     If no component is dominant (all are zero), the color will be white.
     """
 
-    centers = [elements_auto // 2, elements_auto + elements_cross //
-               2, elements_auto + elements_cross + elements_auto // 2]
     labels = ['WL', 'GGL', 'GCph']
 
     # Stack arrays along a new dimension and calculate the absolute values
@@ -227,24 +224,26 @@ def plot_dominant_array_element(arrays_dict, tab_colors, elements_auto, elements
     cbar = plt.colorbar(im, ticks=cbar_ticks)
     cbar.set_ticklabels(cbar_labels)
 
-    lw = 2
-    plt.axvline(elements_auto, c='k', lw=lw)
-    plt.axvline(elements_auto + elements_cross, c='k', lw=lw)
-    plt.axhline(elements_auto, c='k', lw=lw)
-    plt.axhline(elements_auto + elements_cross, c='k', lw=lw)
-    plt.xticks([])
-    plt.yticks([])
+    # centers = [elements_auto // 2, elements_auto + elements_cross //
+    #            2, elements_auto + elements_cross + elements_auto // 2]
+    # lw = 2
+    # plt.axvline(elements_auto, c='k', lw=lw)
+    # plt.axvline(elements_auto + elements_cross, c='k', lw=lw)
+    # plt.axhline(elements_auto, c='k', lw=lw)
+    # plt.axhline(elements_auto + elements_cross, c='k', lw=lw)
+    # plt.xticks([])
+    # plt.yticks([])
 
-    for idx, label in enumerate(labels):
-        x = centers[idx]
-        plt.text(x, -1.5, label, va='bottom', ha='center')
-        plt.text(-1.5, x, label, va='center', ha='right', rotation='vertical')
+    # for idx, label in enumerate(labels):
+    #     x = centers[idx]
+    #     plt.text(x, -1.5, label, va='bottom', ha='center')
+    #     plt.text(-1.5, x, label, va='center', ha='right', rotation='vertical')
 
     plt.show()
 
 
-def cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering, 
-                             symmetrize_output_dict : bool =symmetrize_output_dict):
+def cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering,
+                             symmetrize_output_dict: bool = symmetrize_output_dict):
     cov_3x2pt_dict_10D = {}
     for probe_A, probe_B in probe_ordering:
         for probe_C, probe_D in probe_ordering:
@@ -1531,8 +1530,6 @@ def matshow(array, title="title", log=True, abs_val=False, threshold=None, only_
     plt.colorbar()
     plt.title(title)
     plt.show()
-    
-
 
 
 def get_kv_pairs(path_import, extension='npy'):
@@ -2932,15 +2929,15 @@ def cov_6D_to_4D_blocks(cov_6D, nbl, npairs_AB, npairs_CD, ind_AB, ind_CD):
 
 
 # @njit
-def cov_4D_to_6D_blocks(cov_4D, nbl, zbins, ind_ab, ind_cd, 
+def cov_4D_to_6D_blocks(cov_4D, nbl, zbins, ind_ab, ind_cd,
                         symmetrize_output_ab: bool, symmetrize_output_cd: bool):
     """
     Reshapes the 4D covariance matrix to a 6D covariance matrix, even for the cross-probe (non-square) blocks needed
     to build the 3x2pt covariance.
-    
+
     This function can be used for the normal routine (valid for auto-covariance, i.e., LL-LL, GG-GG, GL-GL and LG-LG) 
     where `zpairs_ab = zpairs_cd` and `ind_ab = ind_cd`.
-    
+
     Args:
         cov_4D (np.ndarray): The 4D covariance matrix.
         nbl (int): The number of ell bins.
@@ -2949,7 +2946,7 @@ def cov_4D_to_6D_blocks(cov_4D, nbl, zbins, ind_ab, ind_cd,
         ind_cd (np.ndarray): The indices for the second pair of redshift bins.
         symmetrize_output_ab (bool): Whether to symmetrize the output cov block for the first pair of probes.
         symmetrize_output_cd (bool): Whether to symmetrize the output cov block for the second pair of probes.
-    
+
     Returns:
         np.ndarray: The 6D covariance matrix.
     """

@@ -85,6 +85,8 @@ probe_ordering = cfg['covariance']['probe_ordering']
 GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 EP_OR_ED = cfg['nz']['EP_or_ED']
 output_path = cfg['misc']['output_path']
+if not os.path.exists(f'{output_path}/cache'):
+    os.makedirs(f'{output_path}/cache')
 
 clr = cm.rainbow(np.linspace(0, 1, zbins))
 use_h_units = False  # TODO decide on this
@@ -999,7 +1001,7 @@ if compute_sb_ssc:
                                                        integration_type=ssc_integration_type,
                                                        probe_ordering=probe_ordering,
                                                        num_threads=cfg['misc']['num_threads'])
-    print('SSC computed in {:.2f} s'.format(time.perf_counter() - start))
+    print('SSC computed in {:.2f} m'.format((time.perf_counter() - start)/60))
 
     # in the full_curved_sky case only, sigma2_b has to be divided by fsky
     # TODO it would make much more sense to divide s2b directly...
@@ -1087,6 +1089,7 @@ for key in cov_dict.keys():
 
 
 for which_cov in cov_dict.keys():
+    
     probe = which_cov.split('_')[1]
     which_ng_cov = which_cov.split('_')[2]
     ndim = which_cov.split('_')[3]
@@ -1094,7 +1097,7 @@ for which_cov in cov_dict.keys():
                                                             probe=probe,
                                                             ndim=ndim)
 
-    np.savez_compressed(f'{output_path}/{cov_filename}', **cov_dict)
+    np.savez_compressed(f'{output_path}/{cov_filename}', cov_dict[which_cov])
 print(f'Covariance matrices saved in {output_path}')
 
 

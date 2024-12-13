@@ -13,7 +13,8 @@ import yaml
 from joblib import Parallel, delayed
 from matplotlib import cm
 from numba import njit
-from scipy.integrate import quad, quad_vec, simpson, dblquad, simps
+from scipy.integrate import quad, quad_vec, dblquad
+from scipy.integrate import simpson as simps
 from scipy.interpolate import interp1d, interp2d
 from scipy.ndimage import gaussian_filter1d
 from scipy.special import erf
@@ -1505,7 +1506,7 @@ def shift_nz(zgrid_nz, nz_original, dz_shifts, normalize, plot_nz=False, interpo
         n_of_z_shifted[:, zi] = n_of_z_func(z_grid_nz_shifted)
 
     if normalize:
-        integrals = simps(n_of_z_shifted, zgrid_nz, axis=0)
+        integrals = simps(y=n_of_z_shifted, x=zgrid_nz, axis=0)
         n_of_z_shifted /= integrals[None, :]
 
     if plot_nz:

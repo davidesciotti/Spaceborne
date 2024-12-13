@@ -141,16 +141,16 @@ covariance:
     n_probes: 2 # Number of probes considered in the covariance
 
     G: True # Enable/disable the Gaussian covariance term.
-    SSC: True # Enable/disable the super-sample covariance (SSC) term.
-    cNG: False # Enable/disable the connected non-Gaussian (cNG) covariance term.
+    SSC: False # Enable/disable the super-sample covariance (SSC) term.
+    cNG: True # Enable/disable the connected non-Gaussian (cNG) covariance term.
 
-    SSC_code: Spaceborne 
+    SSC_code: PyCCL 
         # Specifies the code to compute SSC. Options:
         # - Spaceborne: Use the Spaceborne implementation.
         # - OneCovariance: Use the OneCovariance implementation.
         # - PyCCL: Use the PyCCL implementation.
 
-    cNG_code: OneCovariance 
+    cNG_code: PyCCL 
         # Specifies the code to compute cNG. Options:
         # - OneCovariance: Use the OneCovariance implementation.
         # - PyCCL: Use the PyCCL implementation.
@@ -208,7 +208,7 @@ covariance:
 
     use_KE_approximation: True
 
-    cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz
+    cov_filename: cov_{probe:s}_{which_ng_cov:s}_{ndim}.npz
 # TODO remove trapz, tidy up KE approximation stuff
 
 PyCCL:
@@ -243,6 +243,6 @@ misc:
     test_cholesky_decomposition: False # test if cholesky decomposition fails
     test_symmetry: False # test if covariance matrix is symmetric (cov = cov.T)
 
-    output_path: /home/cosmo/davide.sciotti/data/Spaceborne/output
+    output_path: /home/cosmo/davide.sciotti/data/Spaceborne/output_CCL_cNG
     use_h_units: False # TODO hardcode!
     is_CLOE_validation_run: True

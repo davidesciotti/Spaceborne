@@ -274,7 +274,7 @@ covariance_cfg:
         z_min_ssc_integrands: 0.02  # SU responses' kmax allow for z_min = 0.016, at most.
         z_max_ssc_integrands: 3.
         z_steps_ssc_integrands: 200 # this should be high because I have to trace the spikes in sigma2
-        R_min_ssc_integrands: 0.  # SU responses' kmax allow for z_min = 0.016, at most.
+        R_min_ssc_integrands: 0.1  # SU responses' kmax allow for z_min = 0.016, at most.
         R_max_ssc_integrands: 1.
         R_steps_ssc_integrands: 100
 

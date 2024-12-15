@@ -132,7 +132,7 @@ def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None,
     return result
 
 def sigma2_sofia(z, R, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None, cl_mask=None):
-    """ Computes the integral in k. The grid is now."""
+    """ Computes the integral in k. The grid is now z-R instead of z1-z2."""
 
     # compute the comoving distance at the given redshifts
     a = csmlib.z_to_a(z)
@@ -151,13 +151,14 @@ def sigma2_sofia(z, R, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None, 
     integral_result = np.zeros((len(chi), len(R)))
 
     for ridx, r in enumerate(tqdm(R)):
-        chi2 = r*chi
+        z_prime = r*z
+        chi2 = ccl.comoving_radial_distance(cosmo_ccl, csmlib.z_to_a(z_prime))
         Bessel2 = spherical_jn(0, k_grid_sigma2 * chi2[:,None])
         integrand = k_grid_sigma2**2 *ccl.linear_matter_power(cosmo_ccl, k=k_grid_sigma2, a=1.)*Bessel1*Bessel2
         integral_result[:, ridx] = simps(integrand, k_grid_sigma2)
-        growth_factor_R = ccl.growth_factor(cosmo_ccl, csmlib.z_to_a(z*r))
-        integral_result[:, ridx] *= growth_factor_z * growth_factor_R 
-        #TODO: i think this is equivalent to what was done before, but double check!
+        growth_factor_R = ccl.growth_factor(cosmo_ccl, csmlib.z_to_a(z_prime))
+        integral_result[:, ridx] *= growth_factor_z * growth_factor_R  
+  
 
 
     # different integration methods; simps seems to be the best

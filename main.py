@@ -650,12 +650,12 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
                 cosmo_ccl=ccl_obj.cosmo_ccl,
                 which_sigma2_B=which_sigma2_B,
                 ell_mask=None, cl_mask=None)
-
+    
         sigma2_b_dict_tosave = {
             'cfg': cfg,
             'sigma2_b': sigma2_b,
         }
-        np.save(f'{sigma2_b_path}/{sigma2_b_filename}', sigma2_b_dict_tosave, allow_pickle=True)
+        np.save(f'davide.npy', sigma2_b, allow_pickle=True)
 
     mm.matshow(sigma2_b, log=True, abs_val=True, title='$\sigma^2_B(z_1, z_2)$')
 
@@ -729,6 +729,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
 print('SSC computed with Spaceborne')
 # TODO integrate this with Spaceborne_covg
 
+#TODO: i copied up to here, next part is visualization!
 symmetrize_output_dict = {
     ('L', 'L'): False,
     ('G', 'L'): False,

@@ -131,6 +131,46 @@ function SSC_integral_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_C
     return (z_step^2) .* result
 end
 
+function SSC_integral_4D_simps_sofia(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array,  R_array::Array)
+    """ This version uses the z-R grid instead of z1-z2.
+    """
+
+    simpson_weights_z = get_simpson_weights(length(z_array))
+    simpson_weights_R = get_simpson_weights(length(R_array))
+    z_step = (last(z_array)-first(z_array)) /(length(z_array)-1)
+    R_step = (last(R_array)-first(R_array)) /(length(R_array)-1)
+    nR = length(R_array)
+
+
+    zpairs_AB = size(ind_AB, 1)
+    zpairs_CD = size(ind_CD, 1)
+    num_col = size(ind_AB, 2)
+
+    result = zeros(nbl, nbl, zpairs_AB, zpairs_CD)
+
+    @tturbo for ell1 in 1:nbl
+        for ell2 in 1:nbl  # this could be further optimized by computing only upper triangular ells (for LLLL, GLGL, GGGG only), but not with tturbo
+            for zij in 1:zpairs_AB
+                for zkl in 1:zpairs_CD
+                    for z_idx in 1:z_steps
+                        for R_idx in 1:nR
+
+                            zi, zj, zk, zl = ind_AB[zij, num_col - 1], ind_AB[zij, num_col], ind_CD[zkl, num_col - 1], ind_CD[zkl, num_col]
+
+                            result[ell1, ell2, zij, zkl] += cl_integral_prefactor[z_idx] * cl_integral_prefactor[R_idx] *
+                            d2ClAB_dVddeltab[ell1, zi, zj, z_idx] *
+                            d2ClCD_dVddeltab[ell2, zk, zl, R_idx] * sigma2[z_idx, R_idx] *
+                            simpson_weights_z[z_idx] * simpson_weights_R[R_idx]
+
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return (z_step*R_step) .* result
+end
+
 
 # function SSC_integral_4D_opmpson_(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
 #     """ this version tries to use the KE approximation, to check its impact on the results.

@@ -63,7 +63,7 @@ savefig(heatmap3, "plots/interpolated_sigma_heatmap.png")
 heatmap4 = heatmap(log10.(abs.(1 .- interpolated_sigma./ my_sigma)))
 savefig(heatmap4, "plots/residuals_heatmap.png")
 
-idx = 100
+idx = 38
 p = plot(z_grid_ssc_integrands, abs.(my_sigma[:,idx]), label="Mine", yscale=:log10)
 plot!(p, z_grid_ssc_integrands, abs.(interpolated_sigma[:,idx]), label="Interpolated") 
 savefig(p, "plots/p.png")

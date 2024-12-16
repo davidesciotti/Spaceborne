@@ -282,7 +282,7 @@ covariance_cfg:
         sigma2_b_path: "/Users/sofiachiarenza/Desktop/PhD_Stuff/Spaceborne/jobs/IO_for_Sofia/sigma2_b"
         sigma2_b_filename: "sigma2_b"
         use_KE_approximation: False # TODO implement this in the Julia module
-        integration_type: 'simps' # 'simps' or 'trapz' (which is actually using rectangles)
+        integration_type: 'sofia' # 'simps' or 'trapz' or 'sofia' (which is actually using rectangles)
 
         separate_universe_responses_filename: 'resfun-idBM{idBM:02d}.dat'
         separate_universe_responses_folder: '/Users/sofiachiarenza/Desktop/PhD_Stuff/Spaceborne/jobs/IO_for_Sofia/SU_responses/'

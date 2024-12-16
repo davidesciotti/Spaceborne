@@ -35,19 +35,19 @@ script_start_time = time.perf_counter()
 
 
 # ! Set up argument parsing
-parser = argparse.ArgumentParser(description="Your script description here.")
-parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
-# parser.add_argument('--show_plots', action='store_true', help='Show plots if specified',  required=False)
-args = parser.parse_args()
-with open(args.config, 'r') as f:
-    cfg = yaml.safe_load(f)
+# parser = argparse.ArgumentParser(description="Your script description here.")
+# parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
+# # parser.add_argument('--show_plots', action='store_true', help='Show plots if specified',  required=False)
+# args = parser.parse_args()
+# with open(args.config, 'r') as f:
+#     cfg = yaml.safe_load(f)
 # if not args.show_plots:
 #     matplotlib.use('Agg')
 
 # ! LOAD CONFIG
 # ! uncomment this if executing from interactive window
-# with open('config.yaml', 'r') as f:
-#     cfg = yaml.safe_load(f)
+with open('config.yaml', 'r') as f:
+    cfg = yaml.safe_load(f)
 
 
 # some convenence variables, just to make things more readable
@@ -460,29 +460,6 @@ ax[0].set_ylabel('$C_{\\ell}$')
 lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
 plt.show()
 
-# cl_ll_3d_test = np.load('./tests/benchmarks/cl_ll_3d.npy', )
-# cl_gl_3d_test = np.load('./tests/benchmarks/cl_gl_3d.npy', )
-# cl_gg_3d_test = np.load('./tests/benchmarks/cl_gg_3d.npy', )
-# cl_3x2pt_5d_test = np.load('./tests/benchmarks/cl_3x2pt_5d.npy', )
-# wf_delta_arr_test = np.load('./tests/benchmarks/wf_delta_arr.npy')
-# wf_gamma_arr_test = np.load('./tests/benchmarks/wf_gamma_arr.npy')
-# wf_ia_arr_test = np.load('./tests/benchmarks/wf_ia_arr.npy')
-# wf_mu_arr_test = np.load('./tests/benchmarks/wf_mu_arr.npy')
-# wf_lensing_arr_test = np.load('./tests/benchmarks/wf_lensing_arr.npy')
-# wf_galaxy_arr_test = np.load('./tests/benchmarks/wf_galaxy_arr.npy')
-
-# np.testing.assert_allclose(cl_ll_3d, cl_ll_3d_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(cl_gl_3d, cl_gl_3d_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(cl_gg_3d, cl_gg_3d_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(cl_3x2pt_5d, cl_3x2pt_5d_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(ccl_obj.wf_delta_arr, wf_delta_arr_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(ccl_obj.wf_gamma_arr, wf_gamma_arr_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(ccl_obj.wf_ia_arr, wf_ia_arr_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(ccl_obj.wf_mu_arr, wf_mu_arr_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(ccl_obj.wf_lensing_arr, wf_lensing_arr_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(ccl_obj.wf_galaxy_arr, wf_galaxy_arr_test, rtol=1e-5, atol=0)
-# print('cl and wf match!! ✅')
-
 
 # ! BNT transform the cls (and responses?) - it's more complex since I also have to transform the noise
 # ! spectra, better to transform directly the covariance matrix
@@ -542,14 +519,6 @@ cov_obj.symmetrize_output_dict = symmetrize_output_dict
 cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['split_gaussian_cov'])
 
-# cov_bench = np.load('./tests/benchmarks/covmat.npz').items()
-# cov_bench = dict(cov_bench)
-
-# np.testing.assert_allclose(cov_bench['cov_WL_GO_2D'], cov_obj.cov_WL_g_2D, atol=0, rtol=1e-5)
-# np.testing.assert_allclose(cov_bench['cov_GC_GO_2D'], cov_obj.cov_GC_g_2D, atol=0, rtol=1e-5)
-# np.testing.assert_allclose(cov_bench['cov_XC_GO_2D'], cov_obj.cov_XC_g_2D, atol=0, rtol=1e-5)
-# if cfg['covariance']['covariance_ordering_2D'] == 'ell_probe_zpair':
-#     np.testing.assert_allclose(cov_bench['cov_3x2pt_GO_2D'], cov_obj.cov_3x2pt_g_2D, atol=0, rtol=1e-5)
 
 
 # ! ========================================== OneCovariance ===================================================
@@ -750,6 +719,8 @@ if compute_sb_ssc:
         z_val = 0.25
         z_idx_sb = np.argmin(np.abs(z_grid_ssc_integrands - z_val))
         z_idx_oc = np.argmin(np.abs(z_grid_resp_oc - z_val))
+
+        # TODO delete in public branch
 
         # ! rstore rob resp comparison
         # response_mm_func = RegularGridInterpolator((k_rob, z_rob), response_mm)
@@ -1023,18 +994,6 @@ if compute_sb_ssc:
 
     cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
 
-    # cov_ssc_WL_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['L', 'L', 'L', 'L']
-    # cov_ssc_GC_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['G', 'G', 'G', 'G']
-
-    # cov_ssc_WL_2d = cov_obj.reshape_cov(cov_ssc_WL_4d, 4, 2, nbl_WL,
-    #                                     zpairs=zpairs_auto, ind_probe=ind_auto, is_3x2pt=False)
-    # cov_ssc_GC_2d = cov_obj.reshape_cov(cov_ssc_GC_4d, 4, 2, nbl_GC,
-    #                                     zpairs=zpairs_auto, ind_probe=ind_auto, is_3x2pt=False)
-
-    # mm.compare_arrays(cov_ssc_WL_2d, cov_bench['cov_WL_SS_2D'])
-    # mm.compare_arrays(cov_ssc_GC_2d, cov_bench['cov_GC_SS_2D'])
-    # np.testing.assert_allclose(cov_ssc_WL_2d, cov_bench['cov_WL_SS_2D'])
-    # np.testing.assert_allclose(cov_ssc_GC_2d, cov_bench['cov_GC_SS_2D'])
 # TODO integrate this with Spaceborne_covg
 
 # ! ========================================== PyCCL ===================================================
@@ -1073,9 +1032,29 @@ for key in cov_dict.keys():
 for key in cov_dict.keys():
     np.testing.assert_allclose(cov_dict[key], cov_dict[key].T,
                                atol=0, rtol=1e-7, err_msg=f'{key} not symmetric')
+    
+# TODO delete in public branch
+cov_dict_load = np.load('../Spaceborne_bench/old_develop/check_g_cov_develop.npz')
 
+np.testing.assert_allclose(cov_dict_load['cov_WL_g_2D'], cov_obj.cov_WL_g_2D, atol=0, rtol=1e-7)
+np.testing.assert_allclose(cov_dict_load['cov_GC_g_2D'], cov_obj.cov_GC_g_2D, atol=0, rtol=1e-7)
+np.testing.assert_allclose(cov_dict_load['cov_XC_g_2D'], cov_obj.cov_XC_g_2D, atol=0, rtol=1e-7)
+np.testing.assert_allclose(cov_dict_load['cov_3x2pt_g_2D'], cov_obj.cov_3x2pt_g_2D, atol=0, rtol=1e-7)
+
+np.testing.assert_allclose(cov_dict_load['cov_WL_ng_2D'], cov_obj.cov_WL_ssc_2D, atol=0, rtol=1e-7)
+np.testing.assert_allclose(cov_dict_load['cov_GC_ng_2D'], cov_obj.cov_GC_ssc_2D, atol=0, rtol=1e-7)
+np.testing.assert_allclose(cov_dict_load['cov_XC_ng_2D'], cov_obj.cov_XC_ssc_2D, atol=0, rtol=1e-7)
+np.testing.assert_allclose(cov_dict_load['cov_3x2pt_ng_2D'], cov_obj.cov_3x2pt_ssc_2D, atol=0, rtol=1e-7)
+
+np.testing.assert_allclose(cov_dict_load['cov_WL_tot_2D'], cov_obj.cov_WL_ssc_2D + cov_obj.cov_WL_g_2D, atol=0, rtol=1e-7)
+np.testing.assert_allclose(cov_dict_load['cov_GC_tot_2D'], cov_obj.cov_GC_ssc_2D + cov_obj.cov_GC_g_2D, atol=0, rtol=1e-7)
+np.testing.assert_allclose(cov_dict_load['cov_XC_tot_2D'], cov_obj.cov_XC_ssc_2D + cov_obj.cov_XC_g_2D, atol=0, rtol=1e-7)
+np.testing.assert_allclose(cov_dict_load['cov_3x2pt_tot_2D'], cov_obj.cov_3x2pt_ssc_2D + cov_obj.cov_3x2pt_g_2D, atol=0, rtol=1e-7)
+
+assert False, 'stop here'
+
+# TODO delete in public branch
 # # ! new test G cov from OC
-
 # # in 10D
 # plt.figure()
 # plt.semilogy(np.abs(cov_obj.cov_3x2pt_g_10D.flatten()))

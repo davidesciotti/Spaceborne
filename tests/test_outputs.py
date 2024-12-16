@@ -25,7 +25,8 @@ def test_main_script(test_cfg_path):
     print("All outputs match the benchmarks ✅")
     
 # Paths
-bench_name = 'output_SB_LG' # ! THIS IS THE ONLY THING TO TOUCH
+bench_name = 'output_SB_LG' # ! THIS IS THE ONLY THING TO CHANGE
+
 bench_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench'
 temp_output_filename = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/tmp/test_file.npz'
 temp_output_folder = os.path.dirname(temp_output_filename)

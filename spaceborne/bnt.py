@@ -2,7 +2,7 @@
 import numpy as np
 import spaceborne.cosmo_lib as csmlib
 import warnings
-from scipy.integrate import simps
+from scipy.integrate import simpson as simps
 import matplotlib.pyplot as plt
 
 def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr, cosmo_ccl, plot_nz=True):

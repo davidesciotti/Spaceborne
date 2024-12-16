@@ -9,7 +9,7 @@ from astropy.cosmology import w0waCDM
 # from classy import Class
 from numba import njit
 import pyccl as ccl
-from scipy.integrate import simps
+from scipy.integrate import simpson as simps
 import sys
 
 import os
@@ -50,13 +50,13 @@ c = 299792.458  # km/s
 #                          'm_ncdm': ISTF.extensions['m_nu'],,
 #                          'N_ncdm': ISTF.neutrino_params['N_ncdm'],
 #                          'N_ur': ISTF.neutrino_params['N_ur'],
-#
+
 #                          'Omega_Lambda': ISTF.extensions['Om_Lambda0'],
-#
+
 #                          'P_k_max_1/Mpc': 1200,
 #                          'output': 'mPk',
 #                          'non linear': 'halofit',  # ! takabird?
-#
+
 #                          # 'z_max_pk': 2.038,
 #                          'z_max_pk': 4,  # do I get an error without this key?
 #                          }
@@ -419,7 +419,7 @@ def cl_integral_prefactor(z, cl_integral_convention, use_h_units, cosmo_ccl):
     - Option 2: Euclid convention. Euclid kernels and integration "prefactor" = dr/dz / r(z)**2 = c/H0 / (E(z)*r(z)**2)
     this is because dr/dz = c/H(z) = c/(H0*E(z))
     - Option 3: Euclid_KE_approximation. In this case you only need one of these prefactors in the integral (since it's
-    a simple integral over distance). The dr_1/r_1^2 * dr_2/r_2^2 of the previous case becomes dr/r**4, in this way
+    a simple integral over distance). The dr_1/r_1^2 * dr_2/r_2^2 of the previous case becomes dr/r**4, in this way 
     """
     r_of_z = ccl_comoving_distance(z, use_h_units=use_h_units, cosmo_ccl=cosmo_ccl)
     a = z_to_a(z)

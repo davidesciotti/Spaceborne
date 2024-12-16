@@ -10,8 +10,12 @@
 *.iml
 *.iml
 /.vscode/
+/.idea/
 *.xml
 *.xml
 tmp/*
 tmp*/   
+.aider*
+tests/benchmarks/*
 output/*
+misc/test_davide_tri.ipynb

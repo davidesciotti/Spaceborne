@@ -7,11 +7,13 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.colors import LogNorm
+from matplotlib.colors import ListedColormap
 import matplotlib.lines as mlines
+
 import numpy as np
 import yaml
 from numba import njit
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, RectBivariateSpline, RegularGridInterpolator
 import scipy
 import pickle
 import itertools
@@ -20,7 +22,10 @@ import inspect
 import datetime
 from tqdm import tqdm
 import pandas as pd
-from matplotlib.colors import ListedColormap
+from scipy.integrate import simpson as simps
+from scipy.interpolate import interp1d, RegularGridInterpolator, CubicSpline
+import subprocess
+
 
 symmetrize_output_dict = {
     ('L', 'L'): True,
@@ -28,6 +33,117 @@ symmetrize_output_dict = {
     ('L', 'G'): False,
     ('G', 'G'): True,
 }
+
+
+def get_git_info():
+    try:
+        branch = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            stderr=subprocess.DEVNULL,
+        ).strip().decode('utf-8')
+
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            stderr=subprocess.DEVNULL,
+        ).strip().decode('utf-8')
+
+        return branch, commit
+    except subprocess.CalledProcessError:
+        return None, None
+
+
+def mirror_upper_to_lower_vectorized(A):
+    # Check if A is square
+    if A.shape[0] != A.shape[1]:
+        raise ValueError("Input must be a square matrix")
+
+    # Create a copy of the original matrix
+    result = A.copy()
+
+    # Use numpy's triu_indices to get the indices of the upper triangle
+    triu_indices = np.triu_indices_from(A, k=1)
+
+    # Mirror the upper triangular elements to the lower triangle
+    result[(triu_indices[1], triu_indices[0])] = A[triu_indices]
+
+    return result
+
+
+def check_interpolate_input_tab(input_tab, z_grid_out, zbins):
+
+    assert input_tab.shape[1] == zbins + 1, 'The input table should have shape (z_points, zbins + 1)'
+
+    spline = CubicSpline(x=input_tab[:, 0], y=input_tab[:, 1:], axis=0)
+    output_tab = spline(z_grid_out)
+
+    return output_tab
+
+
+def get_ngal(ngal_in, ep_or_ed, zbins, ep_check_tol):
+
+    if isinstance(ngal_in, (int, float)):
+        assert ep_or_ed == 'EP', 'n_gal must be a scalar in the equipopulated (EP) case'
+        ngal_out = ngal_in
+
+    elif type(ngal_in) == list:
+        assert len(ngal_in) == zbins, 'n_gal must be a vector of length zbins'
+        ngal_out = ngal_in
+
+    elif type(ngal_in) == str:
+        nofz = np.genfromtxt(ngal_in)
+        assert nofz.shape[1] == zbins + 1, 'nz must be an array of shape (n_z_points, zbins + 1)'
+        z_nofz = nofz[:, 0]
+        nofz = nofz[:, 1:]
+        ngal_out = simps(y=nofz, x=z_nofz, axis=0)
+
+    if ep_or_ed == 'EP' and not isinstance(ngal_out, (int, float)):
+        for zi in range(zbins):
+            assert np.allclose(ngal_out[0], ngal_out[zi], atol=0, rtol=ep_check_tol), \
+                'n_gal must be the same for all zbins in the equipopulated (EP) case'
+
+    return ngal_out
+
+
+def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
+    """
+    Interpolate a 2D array onto a new grid using bicubic spline interpolation.
+
+    Parameters:
+    - x_in (numpy.ndarray): The x-coordinates of the input 2D array.
+    - y_in (numpy.ndarray): The y-coordinates of the input 2D array.
+    - z2d_in (numpy.ndarray): The 2D input array to be interpolated.
+    - x_out (numpy.ndarray): The x-coordinates of the output grid.
+    - y_out (numpy.ndarray): The y-coordinates of the output grid.
+    - output_masks (bool): A boolean flag indicating whether to mask the output array.
+
+    Returns:
+    - x_out_masked (numpy.ndarray): The x-coordinates of the output grid, clipped to avoid interpolation errors.
+    - y_out_masked (numpy.ndarray): The y-coordinates of the output grid, clipped to avoid interpolation errors.
+    - z2d_interp (numpy.ndarray): The interpolated 2D array.
+    - x_mask (numpy.ndarray): A boolean mask indicating which elements of the original x_out array were used.
+    - y_mask (numpy.ndarray): A boolean mask indicating which elements of the original y_out array were used.
+    """
+    z2d_func = RectBivariateSpline(x=x_in, y=y_in, z=z2d_in)
+
+    # clip x and y grids to avoid interpolation errors
+    x_mask = np.logical_and(x_in.min() <= x_out, x_out < x_in.max())
+    y_mask = np.logical_and(y_in.min() <= y_out, y_out < y_in.max())
+    x_out_masked = x_out[x_mask]
+    y_out_masked = y_out[y_mask]
+
+    if len(x_out_masked) < len(x_out):
+        print(f"x array trimmed: old range [{x_out.min():.2e}, {x_out.max():.2e}], new range [{
+              x_out_masked.min():.2e}, {x_out_masked.max():.2e}]")
+    if len(y_out_masked) < len(y_out):
+        print(f"y array trimmed: old range [{y_out.min():.2e}, {y_out.max():.2e}], new range [{
+              y_out_masked.min():.2e}, {y_out_masked.max():.2e}]")
+
+    z2d_interp = z2d_func(x_out_masked, y_out_masked)
+
+    if output_masks:
+        return x_out_masked, y_out_masked, z2d_interp, x_mask, y_mask
+    else:
+        return x_out_masked, y_out_masked, z2d_interp
 
 
 def test_cov_FM(output_path, benchmarks_path, extension):
@@ -161,7 +277,8 @@ def plot_dominant_array_element(arrays_dict, tab_colors, elements_auto, elements
     plt.show()
 
 
-def cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering, symmetrize_output_dict=symmetrize_output_dict):
+def cov_3x2pt_dict_8d_to_10d(cov_3x2pt_dict_8D, nbl, zbins, ind_dict, probe_ordering,
+                             symmetrize_output_dict: bool = symmetrize_output_dict):
     cov_3x2pt_dict_10D = {}
     for probe_A, probe_B in probe_ordering:
         for probe_C, probe_D in probe_ordering:
@@ -199,6 +316,7 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
     masked_fid_pars_dict_list = []
     uncertainties_dict = {}
     fom_dict = {}
+    legend_x_anchor = 1.4
 
     assert keys_toplot_in == 'all' or type(keys_toplot_in) == list, 'keys_toplot must be a list or "all"'
     assert colors is None or type(colors) == list, 'colors must be a list or "all"'
@@ -244,7 +362,7 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
         probe = key.split('_')[1]
 
         ylabel = 'rel. unc. [%]'
-        if normalize_by_gauss and not key.endswith('G'):
+        if normalize_by_gauss and not key.endswith('_G'):
             probe = key.split('_')[1]
             ng_cov = key.split('_')[2]
             uncertainties_dict[key] = (uncertainties_dict[key] / uncertainties_dict[f'FM_{probe}_G'] - 1) * 100
@@ -263,7 +381,7 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
             ax[0].scatter(param_names, uncert, label=f'{labels[i]}', marker='o', c=colors[i], alpha=0.6)
         ax[0].axhline(0, c='k', ls='--')
         ax[0].set_ylabel(ylabel)
-        ax[0].legend(ncol=1, loc='center right', bbox_to_anchor=(1.43, 0.))
+        ax[0].legend(ncol=1, loc='center right', bbox_to_anchor=(legend_x_anchor, 0.))
         ax[0].grid()
 
         start_idx = 0
@@ -287,11 +405,11 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
             ax[1].fill_between((0, nparams_toplot), -10, 10, color='k', alpha=0.1, label='$\\pm 10\\%$')
 
         ax[1].set_ylabel(f'% diff wrt\n{title_str}\n')
-        ax[1].legend(ncol=1, loc='center right', bbox_to_anchor=(1.43, 0.5))
+        ax[1].legend(ncol=1, loc='center right', bbox_to_anchor=(legend_x_anchor, 0.5))
         ax[1].grid()
 
         if save_fig:
-            plt.savefig(f'{fig_path}/{key}.pdf', dpi=400)
+            plt.savefig(f'{fig_path}/{key}.png', dpi=400, bbox_inches='tight')
 
 
 def compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b, which_uncertainty, compare_fms=True, compare_param_covs=True,
@@ -875,8 +993,8 @@ def percent_diff_mean(array_1, array_2):
     return diff
 
 
-@njit
-def percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
+# @njit
+def _percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
     if eraseNaN:
         diff = np.where(array_1 == array_2, 0, percent_diff(array_1, array_2))
     else:
@@ -885,6 +1003,33 @@ def percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
         diff = np.log10(diff)
     if abs_val:
         diff = np.abs(diff)
+    return diff
+
+# @njit
+
+
+def percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
+    """
+    Calculate the percent difference between two arrays, handling NaN values.
+    """
+    # Handle NaN values
+    if eraseNaN:
+        # Mask where NaN values are present
+        diff = np.ma.masked_where(np.isnan(array_1) | np.isnan(array_2),
+                                  percent_diff(array_1, array_2))
+    else:
+        diff = percent_diff(array_1, array_2)
+
+    # Handle log transformation
+    if log:
+        # Mask zero differences before taking the log
+        diff = np.ma.masked_where(diff == 0, diff)
+        diff = np.log10(np.ma.abs(diff))  # Masked values will be ignored in the log
+
+    # Handle absolute values
+    if abs_val:
+        diff = np.ma.abs(diff)
+
     return diff
 
 
@@ -1032,75 +1177,76 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
     if np.array_equal(A, B):
         print(f'{name_A} and {name_B} are equal ✅')
         return
-    else:
-        for rtol in [1e-3, 1e-2, 5e-2]:  # these are NOT percent units
-            if np.allclose(A, B, rtol=rtol, atol=0):
-                print(f'{name_A} and {name_B} are close within relative tolerance of {rtol * 100}%) ✅')
-                return
 
-        diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=True)
-        higher_rtol = plot_diff_threshold or 5.0
-        result_emoji = '❌'
-        no_outliers = np.sum(diff_AB > higher_rtol)
-        additional_info = f'\nMax discrepancy: {np.max(diff_AB):.2f}%;' \
-            f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
-            f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
-        print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
+    for rtol in [1e-3, 1e-2, 5e-2]:  # these are NOT percent units
+        if np.allclose(A, B, rtol=rtol, atol=0):
+            print(f'{name_A} and {name_B} are close within relative tolerance of {rtol * 100}%) ✅')
+            return
 
-        if plot_diff or plot_array:
-            assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
+    diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=abs_val)
+    higher_rtol = plot_diff_threshold or 5.0
+    max_diff = np.max(diff_AB)
+    result_emoji = '❌' if max_diff > higher_rtol else '✅'
+    no_outliers = np.sum(diff_AB > higher_rtol)
+    additional_info = f'\nMax discrepancy: {max_diff:.2f}%;' \
+        f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
+        f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
+    print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
 
-        if plot_array:
-            A_toplot, B_toplot = A, B
+    if plot_diff or plot_array:
+        assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
 
-            if abs_val:
-                A_toplot, B_toplot = np.abs(A), np.abs(B)
-            if log_array:
-                A_toplot, B_toplot = np.log10(A), np.log10(B)
+    if plot_array:
+        A_toplot, B_toplot = A, B
 
-            fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
-            im = ax[0].matshow(A_toplot)
-            ax[0].set_title(f'{name_A}')
-            fig.colorbar(im, ax=ax[0])
+        if abs_val:
+            A_toplot, B_toplot = np.abs(A), np.abs(B)
+        if log_array:
+            A_toplot, B_toplot = np.log10(A), np.log10(B)
 
-            im = ax[1].matshow(B_toplot)
-            ax[1].set_title(f'{name_B}')
-            fig.colorbar(im, ax=ax[1])
-            fig.suptitle(f'log={log_array}, abs={abs_val}')
-            plt.show()
+        fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
+        im = ax[0].matshow(A_toplot)
+        ax[0].set_title(f'{name_A}')
+        fig.colorbar(im, ax=ax[0])
 
-        if plot_diff:
-            diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=log_diff, abs_val=abs_val)
+        im = ax[1].matshow(B_toplot)
+        ax[1].set_title(f'{name_B}')
+        fig.colorbar(im, ax=ax[1])
+        fig.suptitle(f'log={log_array}, abs={abs_val}')
+        plt.show()
 
-            if plot_diff_threshold is not None:
-                # take the log of the threshold if using the log of the precent difference
-                if log_diff:
-                    plot_diff_threshold = np.log10(plot_diff_threshold)
+    if plot_diff:
+        diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=False, abs_val=abs_val)
+        diff_BA = percent_diff_nan(B, A, eraseNaN=True, log=False, abs_val=abs_val)
 
-                diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, np.abs(diff_AB))
+        if plot_diff_threshold is not None:
+            diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, np.abs(diff_AB))
+            diff_BA = np.ma.masked_where(np.abs(diff_BA) < plot_diff_threshold, np.abs(diff_BA))
 
-            fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
-            im = ax[0].matshow(diff_AB)
-            ax[0].set_title(f'(A/B - 1) * 100')
-            fig.colorbar(im, ax=ax[0])
+        if log_diff:
+            diff_AB = np.log10(diff_AB)
+            diff_BA = np.log10(diff_BA)
 
-            im = ax[1].matshow(diff_AB)
-            ax[1].set_title(f'(A/B - 1) * 100')
-            fig.colorbar(im, ax=ax[1])
+        fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
+        im = ax[0].matshow(diff_AB)
+        ax[0].set_title(f'(A/B - 1) * 100')
+        fig.colorbar(im, ax=ax[0])
 
-            fig.suptitle(f'log={log_diff}, abs={abs_val}')
-            plt.show()
+        im = ax[1].matshow(diff_BA)
+        ax[1].set_title(f'(B/A - 1) * 100')
+        fig.colorbar(im, ax=ax[1])
 
-            if plot_diff_hist:
-                plt.figure()
-                ax = plt.gca()
-                ymin, ymax = ax.get_ylim()
-                plt.fill_betweenx(y=[0, ymax], x1=-10, x2=10, color='gray', alpha=0.3, label='10%')
-                plt.hist(diff_AB.flatten(), log=True, bins=30)
-                plt.xlabel('% difference')
-                plt.ylabel('counts')
-                plt.legend()
+        fig.suptitle(f'log={log_diff}, abs={abs_val}')
+        plt.show()
 
+    if plot_diff_hist:
+        diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=False, abs_val=False)
+
+        plt.figure()
+        # plt.axvspan(xmin=-10, xmax=10, color='gray', alpha=0.3, label='10%')
+        plt.hist(diff_AB.flatten(), bins=30, log=True)
+        plt.xlabel('% difference')
+        plt.ylabel('counts')
 
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):
@@ -1587,7 +1733,7 @@ def build_full_ind(triu_tril, row_col_major, size):
     return ind
 
 
-def build_ind_dict(triu_tril, row_col_major, size, GL_or_LG):
+def build_ind_dict(triu_tril, row_col_major, size, GL_OR_LG):
 
     ind = build_full_ind(triu_tril, row_col_major, size)
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(size)
@@ -1596,11 +1742,11 @@ def build_ind_dict(triu_tril, row_col_major, size, GL_or_LG):
     ind_dict['L', 'L'] = ind[:zpairs_auto, :]
     ind_dict['G', 'G'] = ind[(zpairs_auto + zpairs_cross):, :]
 
-    if GL_or_LG == 'LG':
+    if GL_OR_LG == 'LG':
         ind_dict['L', 'G'] = ind[zpairs_auto:(zpairs_auto + zpairs_cross), :]
         ind_dict['G', 'L'] = ind_dict['L', 'G'].copy()  # copy and switch columns
         ind_dict['G', 'L'][:, [2, 3]] = ind_dict['G', 'L'][:, [3, 2]]
-    elif GL_or_LG == 'GL':
+    elif GL_OR_LG == 'GL':
         ind_dict['G', 'L'] = ind[zpairs_auto:(zpairs_auto + zpairs_cross), :]
         ind_dict['L', 'G'] = ind_dict['G', 'L'].copy()  # copy and switch columns
         ind_dict['L', 'G'][:, [2, 3]] = ind_dict['L', 'G'][:, [3, 2]]
@@ -1823,8 +1969,8 @@ def symmetrize_2d_array(array_2d):
     assert np.all(triu_elements) == 0 or np.all(tril_elements) == 0, 'neither the upper nor the lower triangle ' \
                                                                      '(excluding the diagonal) are null'
 
-    assert np.any(np.diag(array_2d)) != 0, 'the diagonal elements are all null. ' \
-                                           'This is not necessarily an error, but is suspect'
+    if np.any(np.diag(array_2d)) != 0:
+        warnings.warn('the diagonal elements are all null')
 
     # symmetrize
     array_2d = np.where(array_2d, array_2d, array_2d.T)
@@ -1959,6 +2105,7 @@ def compute_FM_2D_optimized(nbl, npairs, nparams_tot, cov_2D_inv, D_2D):
 
 def compute_FoM(FM, w0wa_idxs):
     cov_param = np.linalg.inv(FM)
+    # cov_param_reduced = cov_param[start:stop, start:stop]
     cov_param_reduced = cov_param[np.ix_(w0wa_idxs, w0wa_idxs)]
 
     FM_reduced = np.linalg.inv(cov_param_reduced)
@@ -2562,7 +2709,7 @@ def cov_SS_6D_blocks(Rl_AB, Cl_AB, Rl_CD, Cl_CD, Sijkl_ABCD, nbl, zbins, fsky):
     return cov_SS_6D
 
 
-def cov_3x2pt_10D_to_4D(cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_or_LG):
+def cov_3x2pt_10D_to_4D(cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_OR_LG):
     """
     Takes the cov_3x2pt_10D dictionary, reshapes each A, B, C, D block separately
     in 4D, then stacks the blocks in the right order to output cov_3x2pt_4D
@@ -2584,10 +2731,10 @@ def cov_3x2pt_10D_to_4D(cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_
     # Check that the cross-correlation is coherent with the probe_ordering list
     # this is a weak check, since I'm assuming that GL or LG will be the second
     # element of the datavector
-    if GL_or_LG == 'GL':
+    if GL_OR_LG == 'GL':
         assert probe_ordering[1][0] == 'G' and probe_ordering[1][1] == 'L', \
             'probe_ordering[1] should be "GL", e.g. [LL, GL, GG]'
-    elif GL_or_LG == 'LG':
+    elif GL_OR_LG == 'LG':
         assert probe_ordering[1][0] == 'L' and probe_ordering[1][1] == 'G', \
             'probe_ordering[1] should be "LG", e.g. [LL, LG, GG]'
 
@@ -2598,11 +2745,11 @@ def cov_3x2pt_10D_to_4D(cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_
     ind_dict = {}
     ind_dict['L', 'L'] = ind_copy[:npairs_auto, :]
     ind_dict['G', 'G'] = ind_copy[(npairs_auto + npairs_cross):, :]
-    if GL_or_LG == 'LG':
+    if GL_OR_LG == 'LG':
         ind_dict['L', 'G'] = ind_copy[npairs_auto:(npairs_auto + npairs_cross), :]
         ind_dict['G', 'L'] = ind_dict['L', 'G'].copy()  # copy and switch columns
         ind_dict['G', 'L'][:, [2, 3]] = ind_dict['G', 'L'][:, [3, 2]]
-    elif GL_or_LG == 'GL':
+    elif GL_OR_LG == 'GL':
         ind_dict['G', 'L'] = ind_copy[npairs_auto:(npairs_auto + npairs_cross), :]
         ind_dict['L', 'G'] = ind_dict['G', 'L'].copy()  # copy and switch columns
         ind_dict['L', 'G'][:, [2, 3]] = ind_dict['L', 'G'][:, [3, 2]]
@@ -2695,18 +2842,18 @@ def cov_3x2pt_4d_to_10d_dict(cov_3x2pt_4d, zbins, probe_ordering, nbl, ind_copy,
 
     # slice the 4d cov to be able to use cov_4D_to_6D_blocks on the nine separate blocks
     zpairs_sum = zpairs_auto + zpairs_cross
-    cov_vinc_no_bnt_8d_dict = {}
-    cov_vinc_no_bnt_8d_dict['L', 'L', 'L', 'L'] = cov_3x2pt_4d[:, :, :zpairs_auto, :zpairs_auto]
-    cov_vinc_no_bnt_8d_dict['L', 'L', 'G', 'L'] = cov_3x2pt_4d[:, :, :zpairs_auto, zpairs_auto:zpairs_sum]
-    cov_vinc_no_bnt_8d_dict['L', 'L', 'G', 'G'] = cov_3x2pt_4d[:, :, :zpairs_auto, zpairs_sum:]
+    cov_3x2pt_8d_dict = {}
+    cov_3x2pt_8d_dict['L', 'L', 'L', 'L'] = cov_3x2pt_4d[:, :, :zpairs_auto, :zpairs_auto]
+    cov_3x2pt_8d_dict['L', 'L', 'G', 'L'] = cov_3x2pt_4d[:, :, :zpairs_auto, zpairs_auto:zpairs_sum]
+    cov_3x2pt_8d_dict['L', 'L', 'G', 'G'] = cov_3x2pt_4d[:, :, :zpairs_auto, zpairs_sum:]
 
-    cov_vinc_no_bnt_8d_dict['G', 'L', 'L', 'L'] = cov_3x2pt_4d[:, :, zpairs_auto:zpairs_sum, :zpairs_auto]
-    cov_vinc_no_bnt_8d_dict['G', 'L', 'G', 'L'] = cov_3x2pt_4d[:, :, zpairs_auto:zpairs_sum, zpairs_auto:zpairs_sum]
-    cov_vinc_no_bnt_8d_dict['G', 'L', 'G', 'G'] = cov_3x2pt_4d[:, :, zpairs_auto:zpairs_sum, zpairs_sum:]
+    cov_3x2pt_8d_dict['G', 'L', 'L', 'L'] = cov_3x2pt_4d[:, :, zpairs_auto:zpairs_sum, :zpairs_auto]
+    cov_3x2pt_8d_dict['G', 'L', 'G', 'L'] = cov_3x2pt_4d[:, :, zpairs_auto:zpairs_sum, zpairs_auto:zpairs_sum]
+    cov_3x2pt_8d_dict['G', 'L', 'G', 'G'] = cov_3x2pt_4d[:, :, zpairs_auto:zpairs_sum, zpairs_sum:]
 
-    cov_vinc_no_bnt_8d_dict['G', 'G', 'L', 'L'] = cov_3x2pt_4d[:, :, zpairs_sum:, :zpairs_auto]
-    cov_vinc_no_bnt_8d_dict['G', 'G', 'G', 'L'] = cov_3x2pt_4d[:, :, zpairs_sum:, zpairs_auto:zpairs_sum]
-    cov_vinc_no_bnt_8d_dict['G', 'G', 'G', 'G'] = cov_3x2pt_4d[:, :, zpairs_sum:, zpairs_sum:]
+    cov_3x2pt_8d_dict['G', 'G', 'L', 'L'] = cov_3x2pt_4d[:, :, zpairs_sum:, :zpairs_auto]
+    cov_3x2pt_8d_dict['G', 'G', 'G', 'L'] = cov_3x2pt_4d[:, :, zpairs_sum:, zpairs_auto:zpairs_sum]
+    cov_3x2pt_8d_dict['G', 'G', 'G', 'G'] = cov_3x2pt_4d[:, :, zpairs_sum:, zpairs_sum:]
 
     if optimize:
         # this version is only marginally faster, it seems
@@ -2715,15 +2862,15 @@ def cov_3x2pt_4d_to_10d_dict(cov_3x2pt_4d, zbins, probe_ordering, nbl, ind_copy,
         # safer, default value
         cov_4D_to_6D_blocks_func = cov_4D_to_6D_blocks
 
-    cov_vinc_no_bnt_10d_dict = {}
-    for key in cov_vinc_no_bnt_8d_dict.keys():
-        cov_vinc_no_bnt_10d_dict[key] = cov_4D_to_6D_blocks_func(
-            cov_vinc_no_bnt_8d_dict[key], nbl, zbins,
+    cov_3x2pt_10d_dict = {}
+    for key in cov_3x2pt_8d_dict.keys():
+        cov_3x2pt_10d_dict[key] = cov_4D_to_6D_blocks_func(
+            cov_3x2pt_8d_dict[key], nbl, zbins,
             ind_dict[key[0], key[1]], ind_dict[key[2], key[3]],
             symmetrize_output_dict[key[0], key[1]],
             symmetrize_output_dict[key[2], key[3]])
 
-    return cov_vinc_no_bnt_10d_dict
+    return cov_3x2pt_10d_dict
 
 
 # ! to be deprecated
@@ -2835,8 +2982,8 @@ def cov_6D_to_4D_blocks(cov_6D, nbl, npairs_AB, npairs_CD, ind_AB, ind_CD):
     nc = n_columns_AB  # make the name shorter
 
     cov_4D = np.zeros((nbl, nbl, npairs_AB, npairs_CD))
-    for ell1 in range(nbl):  
-        for ell2 in range(nbl): 
+    for ell1 in range(nbl):
+        for ell2 in range(nbl):
             for ij in range(npairs_AB):
                 for kl in range(npairs_CD):
                     i, j, k, l = ind_AB[ij, nc - 2], ind_AB[ij, nc - 1], ind_CD[kl, nc - 2], ind_CD[kl, nc - 1]
@@ -2845,10 +2992,26 @@ def cov_6D_to_4D_blocks(cov_6D, nbl, npairs_AB, npairs_CD, ind_AB, ind_CD):
 
 
 # @njit
-def cov_4D_to_6D_blocks(cov_4D, nbl, zbins, ind_ab, ind_cd, symmetrize_output_ab, symmetrize_output_cd):
-    """ reshapes the covariance even for the non-diagonal (hence, non-square) blocks needed to build the 3x2pt.
-    use zpairs_ab = zpairs_cd and ind_ab = ind_cd for the normal routine (valid for auto-covariance
-    LL-LL, GG-GG, GL-GL and LG-LG).
+def cov_4D_to_6D_blocks(cov_4D, nbl, zbins, ind_ab, ind_cd,
+                        symmetrize_output_ab: bool, symmetrize_output_cd: bool):
+    """
+    Reshapes the 4D covariance matrix to a 6D covariance matrix, even for the cross-probe (non-square) blocks needed
+    to build the 3x2pt covariance.
+
+    This function can be used for the normal routine (valid for auto-covariance, i.e., LL-LL, GG-GG, GL-GL and LG-LG) 
+    where `zpairs_ab = zpairs_cd` and `ind_ab = ind_cd`.
+
+    Args:
+        cov_4D (np.ndarray): The 4D covariance matrix.
+        nbl (int): The number of ell bins.
+        zbins (int): The number of redshift bins.
+        ind_ab (np.ndarray): The indices for the first pair of redshift bins.
+        ind_cd (np.ndarray): The indices for the second pair of redshift bins.
+        symmetrize_output_ab (bool): Whether to symmetrize the output cov block for the first pair of probes.
+        symmetrize_output_cd (bool): Whether to symmetrize the output cov block for the second pair of probes.
+
+    Returns:
+        np.ndarray: The 6D covariance matrix.
     """
 
     assert ind_ab.shape[1] == ind_cd.shape[1], 'ind_ab and ind_cd must have the same number of columns'
@@ -3045,7 +3208,7 @@ def cov_2D_to_4D(cov_2D, nbl, block_index='vincenzo', optimize=True, symmetrize=
             cov_4D = cov_2D.reshape((nbl, zpairs_AB, nbl, zpairs_CD)).transpose((0, 2, 1, 3))
         elif block_index in ['ij', 'sylvain', 'F-style']:
             cov_4D = cov_2D.reshape((zpairs_AB, nbl, zpairs_CD, nbl)).transpose((1, 3, 0, 2))
- 
+
     else:
         if block_index in ['ell', 'vincenzo', 'C-style']:
             for l1 in range(nbl):
@@ -3062,18 +3225,16 @@ def cov_2D_to_4D(cov_2D, nbl, block_index='vincenzo', optimize=True, symmetrize=
                         for jpair in range(zpairs_CD):
                             # block_index * block_size + running_index
                             cov_4D[l1, l2, ipair, jpair] = cov_2D[ipair * nbl + l1, jpair * nbl + l2]
-                            
     if symmetrize:
         for l1 in range(nbl):
             for l2 in range(nbl):
                 # mirror the upper triangle into the lower one
                 cov_4D[l1, l2, :, :] = symmetrize_2d_array(cov_4D[l1, l2, :, :])
-                
     return cov_4D
 
 
 @njit
-def cov_4D_to_2D(cov_4D, block_index='vincenzo', optimize=True):
+def cov_4D_to_2D(cov_4D, block_index, optimize=True):
     """ new (more elegant) version of cov_4D_to_2D. Also works for 3x2pt. The order
     of the for loops does not affect the result!
 
@@ -3093,8 +3254,8 @@ def cov_4D_to_2D(cov_4D, block_index='vincenzo', optimize=True):
     higher-dimensional array are needed.
     """
 
-    assert block_index in ['ell', 'vincenzo', 'C-style'] + ['ij', 'sylvain', 'F-style'], \
-        'block_index must be "ell", "vincenzo", "C-style" or "ij", "sylvain", "F-style"'
+    assert block_index in ['ell', 'C-style'] + ['zpair', 'F-style'], \
+        'block_index must be "ell", "C-style" or "zpair", "F-style"'
 
     assert cov_4D.ndim == 4, 'the input covariance must be 4-dimensional'
     assert cov_4D.shape[0] == cov_4D.shape[1], 'the first two axes of the input covariance must have the same size'
@@ -3107,17 +3268,16 @@ def cov_4D_to_2D(cov_4D, block_index='vincenzo', optimize=True):
     cov_2D = np.zeros((nbl * zpairs_AB, nbl * zpairs_CD))
 
     if optimize:
-        if block_index in ['ell', 'vincenzo', 'C-style']:
+        if block_index in ['ell', 'C-style']:
             cov_2D.reshape(nbl, zpairs_AB, nbl, zpairs_CD)[:, :, :, :] = cov_4D.transpose(0, 2, 1, 3)
 
-        elif block_index in ['ij', 'sylvain', 'F-style']:
+        elif block_index in ['zpair', 'F-style']:
             cov_2D.reshape(zpairs_AB, nbl, zpairs_CD, nbl)[:, :, :, :] = cov_4D.transpose(2, 0, 3, 1)
-            
         return cov_2D
 
     # I tested that the 2 methods give the same results. This code is kept to remember the
     # block_index * block_size + running_index unpacking
-    if block_index in ['ell', 'vincenzo', 'C-style']:
+    if block_index in ['ell', 'C-style']:
         for l1 in range(nbl):
             for l2 in range(nbl):
                 for ipair in range(zpairs_AB):
@@ -3125,7 +3285,7 @@ def cov_4D_to_2D(cov_4D, block_index='vincenzo', optimize=True):
                         # block_index * block_size + running_index
                         cov_2D[l1 * zpairs_AB + ipair, l2 * zpairs_CD + jpair] = cov_4D[l1, l2, ipair, jpair]
 
-    elif block_index in ['ij', 'sylvain', 'F-style']:
+    elif block_index in ['zpair', 'F-style']:
         for l1 in range(nbl):
             for l2 in range(nbl):
                 for ipair in range(zpairs_AB):
@@ -3192,20 +3352,17 @@ def cov_4D_to_2D_v0(cov_4D, nbl, zpairs_AB, zpairs_CD=None, block_index='vincenz
 
 
 # @njit
-def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='vincenzo'):
+def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='ell'):
     """
     Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE ordering. Note that this is only necessary for
     the 3x2pt probe.
     TODO the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work with other combinations (but it
     TODO will work both for LG and GL)
-    ! important note: block_index = 'vincenzo' means that the overall ordering will be probe_ell_zpair. Setting it to 'zpair'
-    ! will give you the ordering probe_zpair_ell. Bottom line: the probe is the outermost loop in any case.
-    ! The ordering used by CLOE is probe_ell_zpair, so block_index = 'vincenzo' is the correct choice.
+    ! Important note: block_index = 'ell' means that the overall ordering will be probe_ell_zpair. 
+    ! Setting it to 'zpair' will give you the ordering probe_zpair_ell. 
+    ! Bottom line: the probe is the outermost loop in any case.
+    ! The ordering used by CLOE v2 is probe_ell_zpair, so block_index = 'ell' is the correct choice in this case.
     """
-
-    warnings.warn(
-        "the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work with other combinations (but it"
-        " will work both for LG and GL) ")
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
 
@@ -3214,17 +3371,17 @@ def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='vincenzo'):
     lim_3 = zpairs_3x2pt
 
     # note: I'm writing cov_LG, but there should be no issue with GL; after all, this function is not using the ind file
-    cov_LL_LL = cov_4D_to_2D(cov_4D[:, :, :lim_1, :lim_1], block_index)
-    cov_LL_LG = cov_4D_to_2D(cov_4D[:, :, :lim_1, lim_1:lim_2], block_index)
-    cov_LL_GG = cov_4D_to_2D(cov_4D[:, :, :lim_1, lim_2:lim_3], block_index)
+    cov_LL_LL = cov_4D_to_2D(cov_4D[:, :, :lim_1, :lim_1], block_index, optimize=True)
+    cov_LL_LG = cov_4D_to_2D(cov_4D[:, :, :lim_1, lim_1:lim_2], block_index, optimize=True)
+    cov_LL_GG = cov_4D_to_2D(cov_4D[:, :, :lim_1, lim_2:lim_3], block_index, optimize=True)
 
-    cov_LG_LL = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, :lim_1], block_index)
-    cov_LG_LG = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, lim_1:lim_2], block_index)
-    cov_LG_GG = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, lim_2:lim_3], block_index)
+    cov_LG_LL = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, :lim_1], block_index, optimize=True)
+    cov_LG_LG = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, lim_1:lim_2], block_index, optimize=True)
+    cov_LG_GG = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, lim_2:lim_3], block_index, optimize=True)
 
-    cov_GG_LL = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, :lim_1], block_index)
-    cov_GG_LG = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, lim_1:lim_2], block_index)
-    cov_GG_GG = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, lim_2:lim_3], block_index)
+    cov_GG_LL = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, :lim_1], block_index, optimize=True)
+    cov_GG_LG = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, lim_1:lim_2], block_index, optimize=True)
+    cov_GG_GG = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, lim_2:lim_3], block_index, optimize=True)
 
     # make long rows and stack together
     row_1 = np.hstack((cov_LL_LL, cov_LL_LG, cov_LL_GG))
@@ -3237,17 +3394,13 @@ def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='vincenzo'):
 
 
 # @njit
-def cov_2DCLOE_to_4D_3x2pt(cov_2D, nbl, zbins, block_index='vincenzo'):
+def cov_2DCLOE_to_4D_3x2pt(cov_2D, nbl, zbins, block_index='ell'):
     """
     Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE ordering. Note that this is only necessary for
     the 3x2pt probe.
     TODO the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work with other combinations (but it
     TODO will work both for LG and GL)
     """
-
-    warnings.warn(
-        "the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work with other combinations (but it"
-        " will work both for LG and GL) ")
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
 
@@ -3353,7 +3506,7 @@ def cov_4D_to_2DCLOE_3x2pt_bu(cov_4D, nbl, zbins, block_index='vincenzo'):
     return array_2D
 
 
-def cov2corr(covariance):
+def _cov2corr(covariance):
     """ Credit:
     https://gist.github.com/wiso/ce2a9919ded228838703c1c7c7dad13b
     """
@@ -3362,6 +3515,23 @@ def cov2corr(covariance):
     outer_v = np.outer(v, v)
     correlation = covariance / outer_v
     correlation[covariance == 0] = 0
+    return correlation
+
+
+def cov2corr(covariance):
+    """Convert a covariance matrix to a correlation matrix."""
+    v = np.sqrt(np.diag(covariance))
+    outer_v = np.outer(v, v)
+
+    # To prevent division by zero or very small numbers, replace them with a small positive value
+    with np.errstate(divide='ignore', invalid='ignore'):
+        correlation = np.divide(covariance, outer_v)
+        correlation[covariance == 0] = 0  # Ensure zero covariance entries are explicitly zero
+        correlation[~np.isfinite(correlation)] = 0  # Set any NaN or inf values to 0
+
+    # Ensure diagonal elements are exactly 1
+    np.fill_diagonal(correlation, 1)
+
     return correlation
 
 
@@ -3425,7 +3595,7 @@ def Recast_Sijkl_3x2pt(Sijkl, nzbins):
     return [Sijkl_recast, npairs_full, pairs_full]
 
 
-def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED, which_shape_noise):
+def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED):
     """Builds the noise power spectra.
 
     Parameters
@@ -3512,13 +3682,7 @@ def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED, which
     # create and fill N
     noise_4d = np.zeros((n_probes, n_probes, zbins, zbins))
 
-    if which_shape_noise == 'ISTF':
-        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / n_bar_shear)
-    elif which_shape_noise == 'per_component':
-        np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar_shear))
-    else:
-        raise ValueError('which_shape_noise must be ISTF or per_component')
-
+    np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar_shear))
     np.fill_diagonal(noise_4d[1, 1, :, :], 1 / n_bar_clust)
     noise_4d[0, 1, :, :] = 0
     noise_4d[1, 0, :, :] = 0

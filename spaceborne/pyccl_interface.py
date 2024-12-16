@@ -23,7 +23,7 @@ import spaceborne.sigma2_SSC as sigma2_SSC
 import common_cfg.mpl_cfg as mpl_cfg
 import spaceborne.mask_fits_to_cl as mask_utils
 
-plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
+# plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 ccl.spline_params['A_SPLINE_NA_PK'] = 240  # gives CAMB error if too high
 ccl.spline_params['K_MAX_SPLINE'] = 300
@@ -31,33 +31,16 @@ ccl.spline_params['K_MAX_SPLINE'] = 300
 
 class PycclClass():
 
-    def __init__(self, fid_pars_dict):
+    def __init__(self, cosmology_dict, extra_parameters_dict, ia_dict, halo_model_dict):
 
-        # self.zbins = general_cfg['zbins']
-        # self.nz_tuple = general_cfg['nz_tuple']
-        # self.f_sky = covariance_cfg['fsky']
-        # self.ind = covariance_cfg['ind']
-        # self.GL_or_LG = covariance_cfg['GL_or_LG']
-        # self.nbl = len(ell_grid)
+        self.cosmology_dict = cosmology_dict
+        self.extra_parameters_dict = extra_parameters_dict
+        self.ia_dict = ia_dict
 
-        # self.pyccl_cfg = covariance_cfg['PyCCL_cfg']
-        # self.n_samples_wf = self.pyccl_cfg['n_samples_wf']
-        # this is needed only for a visual check of the cls, which are not used for SSC anyways
-        # self.has_rsd = general_cfg['has_rsd']
-        # self.has_magnification_bias = general_cfg['has_magnification_bias']
-        # ! settings
-
-        # get number of redshift pairs
-        # self.zpairs_auto, self.zpairs_cross, self.zpairs_3x2pt = mm.get_zpairs(self.zbins)
-        # self.ind_auto = self.ind[:self.zpairs_auto, :]
-        # self.ind_cross = self.ind[self.zpairs_auto:self.zpairs_auto + self.zpairs_cross, :]
-
-        # Create new Cosmology object with a given set of parameters. This keeps track of previously-computed cosmological
-        # functions
-        self.flat_fid_pars_dict = mm.flatten_dict(fid_pars_dict)
-        cosmo_dict_ccl = cosmo_lib.map_keys(self.flat_fid_pars_dict, key_mapping=None)
+        self.flat_fid_pars_dict = mm.flatten_dict(self.cosmology_dict)
+        cosmo_dict_ccl = cosmo_lib.map_keys(self.cosmology_dict, key_mapping=None)
         self.cosmo_ccl = cosmo_lib.instantiate_cosmo_ccl_obj(cosmo_dict_ccl,
-                                                             fid_pars_dict['other_params']['camb_extra_parameters'])
+                                                             self.extra_parameters_dict)
 
         self.gal_bias_func_dict = {
             'analytical': wf_cl_lib.b_of_z_analytical,
@@ -68,16 +51,15 @@ class PycclClass():
         # self.check_specs()   # prolly I don't need these ingredients at all!
 
         # initialize halo model
-        # from https://github.com/LSSTDESC/CCL/blob/4df2a29eca58d7cd171bc1986e059fd35f425d45/benchmarks/test_covariances.py
-        # see also https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/tools/covariance_NG.py#L282
-
-        self.mass_def = ccl.halos.MassDef200m
-        self.c_m_relation = ccl.halos.ConcentrationDuffy08(mass_def=self.mass_def)
-        self.hmf = ccl.halos.MassFuncTinker10(mass_def=self.mass_def)
-        self.hbf = ccl.halos.HaloBiasTinker10(mass_def=self.mass_def)
+        self.mass_def = getattr(ccl.halos, halo_model_dict['mass_def'])
+        self.c_m_relation = getattr(ccl.halos, halo_model_dict['concentration'])(mass_def=self.mass_def)
+        self.hmf = getattr(ccl.halos, halo_model_dict['mass_function'])(mass_def=self.mass_def)
+        self.hbf = getattr(ccl.halos, halo_model_dict['halo_bias'])(mass_def=self.mass_def)
         self.hmc = ccl.halos.HMCalculator(mass_function=self.hmf, halo_bias=self.hbf, mass_def=self.mass_def)
-        self.halo_profile_nfw = ccl.halos.HaloProfileNFW(mass_def=self.mass_def, concentration=self.c_m_relation)
-        self.halo_profile_hod = ccl.halos.HaloProfileHOD(mass_def=self.mass_def, concentration=self.c_m_relation)
+        self.halo_profile_dm = getattr(ccl.halos, halo_model_dict['halo_profile_dm'])(
+            mass_def=self.mass_def, concentration=self.c_m_relation)
+        self.halo_profile_hod = getattr(ccl.halos, halo_model_dict['halo_profile_hod'])(
+            mass_def=self.mass_def, concentration=self.c_m_relation)
 
     def check_specs(self):
         assert self.probe in ['LL', 'GG', '3x2pt'], 'probe must be either LL, GG, or 3x2pt'
@@ -129,7 +111,7 @@ class PycclClass():
 
         if self.has_ia:
             ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(z_grid_src, cosmo_ccl=self.cosmo_ccl,
-                                                        flat_fid_pars_dict=self.flat_fid_pars_dict,
+                                                        ia_dict=self.ia_dict,
                                                         input_z_grid_lumin_ratio=None,
                                                         input_lumin_ratio=None, output_F_IA_of_z=False)
             self.ia_bias_tuple = (z_grid_src, ia_bias_1d)
@@ -259,6 +241,7 @@ class PycclClass():
         elif which_sigma2_b == 'from_input_mask':
             mask = hp.read_map(mask_path)
 
+        # normalize the mask and pass it to sigma2_B_from_mask
         if which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
             hp.mollview(mask, coord=['C', 'E'], title='polar cap generated on-the fly', cmap='inferno_r')
             cl_mask = hp.anafast(mask)
@@ -269,14 +252,8 @@ class PycclClass():
             print(f'fsky from mask: {fsky_mask:.4f}')
             assert np.fabs(fsky_mask / fsky) < 1.01, 'fsky_in is not the same as the fsky of the mask'
 
-        if which_sigma2_b == 'from_input_mask':
             # normalization has been checked from https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
             # and is the same as CSST paper https://zenodo.org/records/7813033
-            sigma2_b = ccl.covariances.sigma2_B_from_mask(
-                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, mask_wl=cl_mask_norm, p_of_k_a='delta_matter:delta_matter')
-            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
-
-        elif which_sigma2_b == 'polar_cap_on_the_fly':
             sigma2_b = ccl.covariances.sigma2_B_from_mask(
                 cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, mask_wl=cl_mask_norm)
             self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
@@ -295,7 +272,7 @@ class PycclClass():
     def initialize_trispectrum(self, which_ng_cov, probe_ordering, pyccl_cfg):
 
         # save_tkka = pyccl_cfg['save_tkka']
-        comp_load_str = 'Loading' if pyccl_cfg['load_precomputed_tkka'] else 'Computing'
+        comp_load_str = 'Loading' if pyccl_cfg['load_cached_tkka'] else 'Computing'
 
         # tkka_folder = f'Tk3D_{which_ng_cov}'
         # tkka_path = f'{pyccl_cfg["cov_path"]}/{tkka_folder}'
@@ -331,7 +308,7 @@ class PycclClass():
         # TODO pk from input files
         # This is the correct way to initialize the trispectrum (I Asked David Alonso about this.)
         halo_profile_dict = {
-            'L': self.halo_profile_nfw,
+            'L': self.halo_profile_dm,
             'G': self.halo_profile_hod,
         }
         prof_2pt_dict = {
@@ -340,6 +317,19 @@ class PycclClass():
             ('G', 'L'): ccl.halos.Profile2pt(),
             ('L', 'G'): ccl.halos.Profile2pt(),
             ('G', 'G'): ccl.halos.Profile2ptHOD(),
+        }
+        is_number_counts_dict = {
+            'L': False,
+            'G': True,
+        }
+        # gal_bias_1d = self.gal_bias_func_ofz(self.z_grid_tkka_SSC)  # no
+        # gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.z_to_a(self.z_grid_tkka_SSC)[::-1])
+        gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.a_to_z(self.a_grid_tkka_SSC))  # ok-ish
+        # gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.a_to_z(self.a_grid_tkka_SSC)[::-1])  # nope
+
+        gal_bias_dict = {
+            'L': np.ones_like(gal_bias_1d),
+            'G': gal_bias_1d,
         }
 
         # store the trispectrum for the various probes in a dictionary
@@ -361,7 +351,7 @@ class PycclClass():
                 if col >= row:
                     print(f'{comp_load_str} trispectrum for {which_ng_cov}, probe combination {probe_block}')
 
-                if col >= row and pyccl_cfg['load_precomputed_tkka']:
+                if col >= row and pyccl_cfg['load_cached_tkka']:
 
                     assert False, 'Probably this section must be deleted'
 
@@ -396,21 +386,50 @@ class PycclClass():
                                                                **tk3d_kwargs,
                                                                )
 
-                elif col >= row and not pyccl_cfg['load_precomputed_tkka']:
+                elif col >= row and not pyccl_cfg['load_cached_tkka']:
 
                     # not very nice to put this if-else in the for loop, but A, B, C, D are referenced only here
                     if which_ng_cov == 'SSC':
-                        tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
-                        additional_args = {
-                            'prof12_2pt': prof_2pt_dict[A, B],
-                            'prof34_2pt': prof_2pt_dict[C, D],
-                            'lk_arr': logn_k_grid_tkka_SSC,
-                            'a_arr': self.a_grid_tkka_SSC,
-                            'extrap_pk': True,
-                        }
+
+                        if self.which_b1g_in_resp == 'from_HOD':
+                            tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
+                            additional_args = {
+                                'prof': halo_profile_dict[A],
+                                'prof2': halo_profile_dict[B],
+                                'prof3': halo_profile_dict[C],
+                                'prof4': halo_profile_dict[D],
+                                'prof12_2pt': prof_2pt_dict[A, B],
+                                'prof34_2pt': prof_2pt_dict[C, D],
+                                'lk_arr': logn_k_grid_tkka_SSC,
+                                'a_arr': self.a_grid_tkka_SSC,
+                                'extrap_pk': True,
+                            }
+
+                        elif self.which_b1g_in_resp == 'from_input':
+                            tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC_linear_bias
+                            additional_args = {
+                                'prof': halo_profile_dict['L'],  # prof should be HaloProfileNFW
+                                'bias1': gal_bias_dict[A],
+                                'bias2': gal_bias_dict[B],
+                                'bias3': gal_bias_dict[C],
+                                'bias4': gal_bias_dict[D],
+                                'is_number_counts1': is_number_counts_dict[A],
+                                'is_number_counts2': is_number_counts_dict[B],
+                                'is_number_counts3': is_number_counts_dict[C],
+                                'is_number_counts4': is_number_counts_dict[D],
+                                'lk_arr': logn_k_grid_tkka_SSC,
+                                'a_arr': self.a_grid_tkka_SSC,
+                                'extrap_pk': True,
+                            }
+
                     elif which_ng_cov == 'cNG':
+
                         tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
                         additional_args = {
+                            'prof': halo_profile_dict[A],
+                            'prof2': halo_profile_dict[B],
+                            'prof3': halo_profile_dict[C],
+                            'prof4': halo_profile_dict[D],
                             'prof12_2pt': prof_2pt_dict[A, B],
                             'prof13_2pt': prof_2pt_dict[A, C],
                             'prof14_2pt': prof_2pt_dict[A, D],
@@ -426,10 +445,6 @@ class PycclClass():
 
                     self.tkka_dict[A, B, C, D], self.responses_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
                                                                                             hmc=self.hmc,
-                                                                                            prof=halo_profile_dict[A],
-                                                                                            prof2=halo_profile_dict[B],
-                                                                                            prof3=halo_profile_dict[C],
-                                                                                            prof4=halo_profile_dict[D],
                                                                                             extrap_order_lok=1, extrap_order_hik=1,
                                                                                             use_log=False,
                                                                                             p_of_k_a=p_of_k_a,
@@ -490,7 +505,7 @@ class PycclClass():
             for col, (probe_c, probe_d) in enumerate(probe_ordering):
                 if col >= row:
 
-                    print('3x2pt: working on probe combination ', probe_a, probe_b, probe_c, probe_d)
+                    print('CCL 3x2pt cov: working on probe combination ', probe_a, probe_b, probe_c, probe_d)
                     cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
                         self.compute_ng_cov_ccl(which_ng_cov=which_ng_cov,
                                                 kernel_A=kernel_dict[probe_a],
@@ -505,25 +520,17 @@ class PycclClass():
                                                 integration_method=integration_method,
                                                 ))
 
-                    # TODO delete this
-                    # save only the upper triangle blocks
-                    # if pyccl_cfg['save_cov']:
-                    #     cov_path = pyccl_cfg['cov_path']
-                    #     cov_filename_fmt = cov_filename.format(probe_a=probe_a, probe_b=probe_b,
-                    #                                            probe_c=probe_c, probe_d=probe_d)
-
-                    #     nbl_grid_here = len(ell)
-                    #     assert f'nbl{nbl_grid_here}' in cov_filename, \
-                    #         f'cov_filename could be inconsistent with the actual grid used'
-                    #     np.savez_compressed(
-                    #         f'{cov_path}/{cov_filename_fmt}', cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d])
-
                 else:
-                    print('3x2pt: skipping probe combination ', probe_a, probe_b, probe_c, probe_d)
+                    print('CCL 3x2pt cov: skipping probe combination ', probe_a, probe_b, probe_c, probe_d)
                     cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
                         cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b].transpose(1, 0, 3, 2))
 
         self.cov_ng_3x2pt_dict_8D = cov_ng_3x2pt_dict_8D
+
+        if which_ng_cov == 'SSC':
+            self.cov_ssc_ccl_3x2pt_dict_8D = self.cov_ng_3x2pt_dict_8D
+        if which_ng_cov == 'cNG':
+            self.cov_cng_ccl_3x2pt_dict_8D = self.cov_ng_3x2pt_dict_8D
 
         self.check_cov_blocks_simmetry()
 
@@ -535,10 +542,10 @@ class PycclClass():
         for key in self.cov_ng_3x2pt_dict_8D.keys():
             if (key == ('L', 'L', 'L', 'L')) or (key == ('G', 'L', 'G', 'L')) or (key == ('G', 'G', 'G', 'G')):
                 try:
-                    cov_2d = mm.cov_4D_to_2D(self.cov_ng_3x2pt_dict_8D[key])
+                    cov_2d = mm.cov_4D_to_2D(self.cov_ng_3x2pt_dict_8D[key], block_index='ell')
                     assert np.allclose(cov_2d, cov_2d.T, atol=0, rtol=1e-5)
                     np.testing.assert_allclose(self.cov_ng_3x2pt_dict_8D[key],
-                                            #    np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 2, 3)),
+                                               #    np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 2, 3)),
                                                np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 3, 2)),
                                                rtol=1e-5, atol=0,
                                                err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2')
@@ -546,3 +553,31 @@ class PycclClass():
                     print(error)
 
         return
+
+    def save_cov_blocks(self, cov_path, cov_filename):
+
+        for (probe_a, probe_b, probe_c, probe_d) in self.cov_ng_3x2pt_dict_8D.keys():
+
+            cov_filename_fmt = cov_filename.format(probe_a=probe_a, probe_b=probe_b,
+                                                   probe_c=probe_c, probe_d=probe_d)
+
+            np.savez_compressed(
+                f'{cov_path}/{cov_filename_fmt}', self.cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d])
+
+    def load_cov_blocks(self, cov_path, cov_filename, probe_ordering):
+
+        self.cov_ng_3x2pt_dict_8D = {}
+
+        for row, (probe_a, probe_b) in enumerate(probe_ordering):
+            for col, (probe_c, probe_d) in enumerate(probe_ordering):
+                if col >= row:
+                    print(probe_a, probe_b, probe_c, probe_d)
+
+                    cov_filename_fmt = cov_filename.format(probe_a=probe_a, probe_b=probe_b,
+                                                           probe_c=probe_c, probe_d=probe_d)
+                    self.cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = np.load(
+                        f'{cov_path}/{cov_filename_fmt}')['arr_0']
+
+                else:
+                    self.cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
+                        self.cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b].transpose(1, 0, 3, 2))

@@ -24,7 +24,7 @@ import common_cfg.mpl_cfg as mpl_cfg
 sys.path.append(f'{SB_ROOT}/jobs/config')
 import jobs.SPV3.config.config_SPV3 as cfg
 
-mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
+#mpl.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 # Display all columns
 pd.set_option('display.max_columns', None)

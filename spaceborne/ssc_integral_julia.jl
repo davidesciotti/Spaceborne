@@ -1,6 +1,7 @@
 using NPZ
 using LoopVectorization
 using YAML
+using DataInterpolations
 
 function SSC_integral_6D_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
     """ "brute-force" implementation, returns a 6D array. many args are unnecessary, but I keep the same format for a 
@@ -121,7 +122,6 @@ function SSC_integral_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_C
                             d2ClAB_dVddeltab[ell1, zi, zj, z1_idx] *
                             d2ClCD_dVddeltab[ell2, zk, zl, z2_idx] * sigma2[z1_idx, z2_idx] *
                             simpson_weights[z1_idx] * simpson_weights[z2_idx]
-
                         end
                     end
                 end
@@ -133,18 +133,42 @@ end
 
 function SSC_integral_4D_simps_sofia(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array,  R_array::Array)
     """ This version uses the z-R grid instead of z1-z2.
-    """
+    """ 
 
     simpson_weights_z = get_simpson_weights(length(z_array))
     simpson_weights_R = get_simpson_weights(length(R_array))
-    z_step = (last(z_array)-first(z_array)) /(length(z_array)-1)
-    R_step = (last(R_array)-first(R_array)) /(length(R_array)-1)
+    z_step = (last(z_array)-first(z_array)) / (length(z_array)-1)
+    R_step = (last(R_array)-first(R_array)) / (length(R_array)-1)
     nR = length(R_array)
 
 
     zpairs_AB = size(ind_AB, 1)
     zpairs_CD = size(ind_CD, 1)
     num_col = size(ind_AB, 2)
+
+    prefactor_interpolator = AkimaInterpolation(cl_integral_prefactor, z_array, extrapolate=true)
+    cl_integral_prefactor_R = zeros(length(z_array), length(R_array))
+
+    for (ridx, r) in enumerate(R_array)
+        cl_integral_prefactor_R[:, ridx] = prefactor_interpolator.(z_array*r)
+    end
+
+    d2ClAB_dVddeltab_R = zeros(32,5,5,length(z_array), length(R_array))
+    d2ClCD_dVddeltab_R = zeros(32,5,5,length(z_array), length(R_array))
+
+    for l in 1:32
+        for a in 1:5
+            for b in 1:5
+                for (ridx, r) in enumerate(R_array)
+                    interp_AB = AkimaInterpolation(d2ClAB_dVddeltab[l,a,b,:], z_array, extrapolate=true)
+                    d2ClAB_dVddeltab_R[l,a,b,:,ridx] = interp_AB.(z_array*r)
+
+                    interp_CD = AkimaInterpolation(d2ClCD_dVddeltab[l,a,b,:], z_array, extrapolate=true)
+                    d2ClCD_dVddeltab_R[l,a,b,:,ridx] = interp_CD.(z_array*r)
+                end
+            end
+        end
+    end
 
     result = zeros(nbl, nbl, zpairs_AB, zpairs_CD)
 
@@ -157,9 +181,9 @@ function SSC_integral_4D_simps_sofia(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB,
 
                             zi, zj, zk, zl = ind_AB[zij, num_col - 1], ind_AB[zij, num_col], ind_CD[zkl, num_col - 1], ind_CD[zkl, num_col]
 
-                            result[ell1, ell2, zij, zkl] += cl_integral_prefactor[z_idx] * cl_integral_prefactor[R_idx] *
-                            d2ClAB_dVddeltab[ell1, zi, zj, z_idx] *
-                            d2ClCD_dVddeltab[ell2, zk, zl, R_idx] * sigma2[z_idx, R_idx] *
+                            result[ell1, ell2, zij, zkl] += z_array[z_idx]*cl_integral_prefactor[z_idx] * cl_integral_prefactor_R[z_idx, R_idx] *
+                            ( d2ClAB_dVddeltab[ell1, zi, zj, z_idx] * d2ClCD_dVddeltab_R[ell2, zk, zl, z_idx, R_idx]+
+                              d2ClCD_dVddeltab[ell2, zk, zl, z_idx] * d2ClAB_dVddeltab_R[ell1, zi, zj, z_idx, R_idx]) * sigma2[z_idx, R_idx] *
                             simpson_weights_z[z_idx] * simpson_weights_R[R_idx]
 
                         end
@@ -220,7 +244,7 @@ d2CLL_dVddeltab = npzread("./$(folder_name)/d2CLL_dVddeltab.npy")
 d2CGL_dVddeltab = npzread("./$(folder_name)/d2CGL_dVddeltab.npy")
 d2CGG_dVddeltab = npzread("./$(folder_name)/d2CGG_dVddeltab.npy")
 sigma2          = npzread("./$(folder_name)/sigma2.npy")
-z_grid = npzread("./$(folder_name)/z_grid.npy") #previously z_integrands
+z_grid = npzread("./$(folder_name)/z_grid.npy") 
 cl_integral_prefactor = npzread("./$(folder_name)/cl_integral_prefactor.npy")
 ind_auto = npzread("./$(folder_name)/ind_auto.npy")
 ind_cross = npzread("./$(folder_name)/ind_cross.npy")
@@ -254,7 +278,16 @@ println("*****************")
 @assert size(d2CLL_dVddeltab) == (nbl, zbins, zbins, z_steps)
 @assert size(d2CGL_dVddeltab) == (nbl, zbins, zbins, z_steps)
 @assert size(d2CGG_dVddeltab) == (nbl, zbins, zbins, z_steps)
-@assert size(sigma2) == (z_steps, z_steps)
+if integration_type == "sofia"
+    r_grid = npzread("./$(folder_name)/r_grid.npy") 
+    r_steps = length(r_grid)
+    @assert length(r_grid) == r_steps
+    @assert size(sigma2) == (z_steps, r_steps)
+else 
+    @assert size(sigma2) == (z_steps, z_steps)
+end
+
+
 @assert size(cl_integral_prefactor) == (z_steps,)
 @assert size(ind_auto) == (zbins*(zbins+1)/2, num_col)
 @assert size(ind_cross) == (zbins^2, num_col)
@@ -273,6 +306,8 @@ elseif integration_type == "simps"
     ssc_integral_4d_func = SSC_integral_4D_simps
 elseif integration_type == "trapz-6D"
     ssc_integral_4d_func = SSC_integral_6D_trapz
+elseif integration_type == "sofia"
+    ssc_integral_4d_func = SSC_integral_4D_simps_sofia
 else
     error("Integration type not recognized")
 end
@@ -292,17 +327,32 @@ for row in 1:length(probe_combinations)
         if col >= row  # upper triangle and diagonal
             println("Computing cov_SSC_$(probe_A)$(probe_B)_$(probe_C)$(probe_D), zbins = $(zbins)")
 
-            cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)] =
-            @time ssc_integral_4d_func(
-                d2Cl_dVddeltab_dict[probe_A, probe_B],
-                d2Cl_dVddeltab_dict[probe_C, probe_D],
-                ind_dict[probe_A, probe_B],
-                ind_dict[probe_C, probe_D],
-                nbl, z_steps, cl_integral_prefactor, 
-                sigma2, z_grid)
+            if integration_type == "sofia"
+                cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)] =
+                @time ssc_integral_4d_func(
+                    d2Cl_dVddeltab_dict[probe_A, probe_B],
+                    d2Cl_dVddeltab_dict[probe_C, probe_D],
+                    ind_dict[probe_A, probe_B],
+                    ind_dict[probe_C, probe_D],
+                    nbl, z_steps, cl_integral_prefactor, 
+                    sigma2, z_grid, r_grid)
 
-            # save
-            npzwrite("./$(folder_name)/cov_SSC_spaceborne_$(probe_A)$(probe_B)$(probe_C)$(probe_D)_4D.npy", cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)])
+                # save
+                npzwrite("./$(folder_name)/cov_SSC_spaceborne_$(probe_A)$(probe_B)$(probe_C)$(probe_D)_4D.npy", cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)])
+            else 
+                cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)] =
+                @time ssc_integral_4d_func(
+                    d2Cl_dVddeltab_dict[probe_A, probe_B],
+                    d2Cl_dVddeltab_dict[probe_C, probe_D],
+                    ind_dict[probe_A, probe_B],
+                    ind_dict[probe_C, probe_D],
+                    nbl, z_steps, cl_integral_prefactor, 
+                    sigma2, z_grid)
+
+                # save
+                npzwrite("./$(folder_name)/cov_SSC_spaceborne_$(probe_A)$(probe_B)$(probe_C)$(probe_D)_4D.npy", cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)])
+            end
+
 
             # free memory
             delete!(cov_ssc_dict_8d, (probe_A, probe_B, probe_C, probe_D))

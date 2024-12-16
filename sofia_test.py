@@ -38,8 +38,53 @@ import spaceborne.config_checker as config_checker
 ROOT = '/Users/sofiachiarenza/Desktop/PhD_Stuff'
 script_start_time = time.perf_counter()
 
-#copied the same import as main.py
-#Now read the same input file: 
+def SSC_integral_julia(d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
+                       ind_auto, ind_cross, cl_integral_prefactor, sigma2, z_grid, r_grid, integration_type, num_threads=16):
+    """Kernel to compute the 4D integral optimized using Simpson's rule using Julia."""
+
+    suffix = 0
+    folder_name = 'tmp'
+    unique_folder_name = folder_name
+
+    # Loop until we find a folder name that does not exist
+    while os.path.exists(unique_folder_name):
+        suffix += 1
+        unique_folder_name = f'{folder_name}{suffix}'
+    os.makedirs(unique_folder_name)
+    folder_name = unique_folder_name
+
+    np.save(f"{folder_name}/d2CLL_dVddeltab", d2CLL_dVddeltab)
+    np.save(f"{folder_name}/d2CGL_dVddeltab", d2CGL_dVddeltab)
+    np.save(f"{folder_name}/d2CGG_dVddeltab", d2CGG_dVddeltab)
+    np.save(f"{folder_name}/ind_auto", ind_auto)
+    np.save(f"{folder_name}/ind_cross", ind_cross)
+    np.save(f"{folder_name}/cl_integral_prefactor", cl_integral_prefactor)
+    np.save(f"{folder_name}/sigma2", sigma2)
+    np.save(f"{folder_name}/z_grid", z_grid)
+    np.save(f"{folder_name}/r_grid", r_grid)
+    os.system(
+        f"julia --project=. --threads={num_threads} spaceborne/ssc_integral_julia.jl {folder_name} {integration_type}")
+
+    cov_filename = "cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npy"
+
+    if integration_type == 'trapz-6D':
+        cov_ssc_3x2pt_dict_8D = {}  # it's 10D, actually
+        for probe_a, probe_b in probe_ordering:
+            for probe_c, probe_d in probe_ordering:
+                if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
+                    print(f"Loading {probe_a}{probe_b}{probe_c}{probe_d}")
+                    cov_ssc_3x2pt_dict_8D[(probe_a, probe_b, probe_c, probe_d)] = np.load(
+                        f"{folder_name}/{cov_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}")
+
+    else:
+        cov_ssc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(
+            path=f'{folder_name}',
+            filename=cov_filename,
+            probe_ordering=probe_ordering)
+
+    os.system(f"rm -rf {folder_name}")
+    return cov_ssc_3x2pt_dict_8D
+
 
 with open('sofia_config.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
@@ -465,7 +510,6 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     print(np.shape(sigma2_b))
     #plt.imshow(np.flip(sigma2_b, axis=(0, 1)).T, aspect='equal', cmap='viridis')
     mm.matshow(np.flip(sigma2_b, axis=(0, 1)).T, log=True, abs_val=True, title='$\sigma^2_B(z, Rz)$')
-    #TODO: capire come plottare bene sta roba, mi manca Julia :(((((
 
     sigma2_davide = np.load("davide.npy")
 
@@ -552,6 +596,10 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
         np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_delta, dPgm_ddeltab_klimb) + \
         np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
     
+    #print("Shape of d2CLL_dVddeltab: ", np.shape(d2CLL_dVddeltab))
+    #print("Shape of d2CGL_dVddeltab: ", np.shape(d2CGL_dVddeltab))
+    #print("Shape of d2CGG_dVddeltab: ", np.shape(d2CGG_dVddeltab))
+    
     # ! 4. Perform the integration calling the Julia module
     print('Performing the 2D integral in Julia...')
     start = time.perf_counter()
@@ -560,7 +608,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
                                                d2CGG_dVddeltab=d2CGG_dVddeltab,
                                                ind_auto=ind_auto, ind_cross=ind_cross,
                                                cl_integral_prefactor=cl_integral_prefactor, sigma2=sigma2_b,
-                                               z_grid=z_grid_ssc_integrands,
+                                               z_grid=z_grid_ssc_integrands, r_grid=R_grid_ssc_integrands, 
                                                integration_type=covariance_cfg['Spaceborne_cfg']['integration_type'],
                                                num_threads=general_cfg['num_threads'])
     print('SSC computed with Julia in {:.2f} s'.format(time.perf_counter() - start))
@@ -591,6 +639,26 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne':
     covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'] = cov_ssc_3x2pt_dict_8D
 
 print('SSC successfully computed with Spaceborne!')
+
+symmetrize_output_dict = {
+    ('L', 'L'): False,
+    ('G', 'L'): False,
+    ('L', 'G'): False,
+    ('G', 'G'): False,
+}
+cov_ssc_sb_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
+    covariance_cfg['cov_ssc_3x2pt_dict_8D_sb'], nbl_3x2pt, zbins, ind_dict, probe_ordering, symmetrize_output_dict)
+cov_ssc_sb_3x2pt_10D = mm.cov_10D_dict_to_array(cov_ssc_sb_3x2pt_dict_10D, nbl_3x2pt, zbins, n_probes)
+cov_3x2pt_SS_10D = cov_ssc_sb_3x2pt_10D
+
+cov_3x2pt_SS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SS_10D, probe_ordering, nbl_3x2pt, zbins, ind.copy(), GL_or_LG)
+
+# to see the individual covariance blocks
+cov_3x2pt_SS_2D = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SS_4D, block_index='ell', zbins=zbins)
+
+mm.matshow(cov_3x2pt_SS_2D, log=True, abs_val=True, title='SSC 2D')
+
+assert False, 'I am not an error, stop here for now :)'
 
 
     

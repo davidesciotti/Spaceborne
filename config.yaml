@@ -68,8 +68,8 @@ C_ell:
     # multiplicative shear bias per redshift bin
     mult_shear_bias: [0, 0, 0]
     
-    gal_bias_table_filename: ./input_main_take2/gal_bias.txt
-    mag_bias_table_filename: ./input_main_take2/mag_bias.txt # TODO test this!
+    gal_bias_table_filename: ./input/gal_bias.txt
+    mag_bias_table_filename: ./input/mag_bias.txt # TODO test this!
     
     # boolean flags for redshift-space distortion, intrinsic alignment
     has_rsd: False

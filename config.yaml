@@ -183,9 +183,9 @@ covariance:
         #   has to be rescaled by fsky
 
     # TODO demove halo_model_CCL in public version! otherwise, fork needed
-    which_pk_responses: halo_model_CCL
+    which_pk_responses: halo_model_SB
         # halo_model_SB, halo_model_CCL (with PyCCL) or separate_universe_SB/_vin (from simulations)
-    which_b1g_in_resp: from_input
+    which_b1g_in_resp: from_HOD
         # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
         # Can be one of:
         # - 'from_HOD' (from the Halo Occupation Distribution previously initialized)
@@ -202,7 +202,7 @@ covariance:
     z_max_ssc_integrands: 3.
     z_steps_ssc_integrands: 300 # this should be high because I have to trace the spikes in sigma2
 
-    use_KE_approximation: False
+    use_KE_approximation: True
 
     cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz
 # TODO remove trapz, tidy up KE approximation stuff

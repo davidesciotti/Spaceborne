@@ -1,3 +1,4 @@
+import glob
 import pytest
 import subprocess
 import numpy as np
@@ -6,13 +7,13 @@ import yaml
 
 def test_main_script(test_cfg_path):
     # Run the main script with the test config
-    subprocess.run(['python', 'main.py', '--config', test_cfg_path], check=True)
+    subprocess.run([f'python', main_script_path, '--config', test_cfg_path], check=True)
 
     # Load the benchmark output
     bench_data = np.load(f'{bench_path}/{bench_name}.npz', allow_pickle=True)
 
     # Load the test output
-    test_data = np.load(f'{temp_output_filename}', allow_pickle=True)
+    test_data = np.load(f'{temp_output_filename}.npz', allow_pickle=True)
 
     # Compare the outputs
     for key in bench_data.files:
@@ -25,10 +26,11 @@ def test_main_script(test_cfg_path):
     print("All outputs match the benchmarks ✅")
     
 # Paths
-bench_name = 'output_SB_LG' # ! THIS IS THE ONLY THING TO CHANGE
+bench_name = 'output_SB_KE' # ! THIS IS THE ONLY THING TO CHANGE
 
 bench_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench'
-temp_output_filename = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/tmp/test_file.npz'
+main_script_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/main.py'
+temp_output_filename = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/tmp/test_file'
 temp_output_folder = os.path.dirname(temp_output_filename)
 excluded_keys = ['backup_cfg', 'metadata']
 
@@ -49,3 +51,8 @@ with open(test_cfg_path, 'w') as f:
 
 # ! run the actual test
 test_main_script(test_cfg_path)
+
+# delete the output test files in tmp folder
+for file_path in glob.glob(f"{temp_output_folder}/*"):
+    if os.path.isfile(file_path):
+        os.remove(file_path)

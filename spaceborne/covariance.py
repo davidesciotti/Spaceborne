@@ -23,6 +23,7 @@ class SpaceborneCovariance():
         self.ell_dict = ell_dict
         self.bnt_matrix = bnt_matrix
         self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt', }
+        self.jl_integrator_path = cfg['misc']['path_to_jl_integrator']
 
         self.n_probes = self.covariance_cfg['n_probes']
         # 'include' instead of 'compute' because it might be loaded from file
@@ -668,7 +669,7 @@ class SpaceborneCovariance():
         np.save(f"{folder_name}/sigma2", sigma2)
         np.save(f"{folder_name}/z_grid", z_grid)
         os.system(
-            f"julia --project=. --threads={num_threads} spaceborne/julia_integrator.jl {folder_name} {integration_type}")
+            f"julia --project=. --threads={num_threads} {self.jl_integrator_path} {folder_name} {integration_type}")
 
         cov_filename = "cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npy"
 

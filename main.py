@@ -747,6 +747,7 @@ cov_3x2pt_SS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SS_10D, probe_ordering, nbl_3
 cov_3x2pt_SS_2D = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SS_4D, block_index='ell', zbins=zbins)
 
 mm.matshow(cov_3x2pt_SS_2D, log=True, abs_val=True, title='SSC 2D')
+np.save("cov_original.npy", cov_3x2pt_SS_2D)
 
 assert False, 'I am not an error, stop here for now :)'
 

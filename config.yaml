@@ -247,4 +247,5 @@ misc:
     use_h_units: False # TODO hardcode!
     save_output_as_benchmark: True  # for testing purposes
     bench_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/output_SB_LG  # for testing purposes
+    path_to_jl_integrator: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/spaceborne/julia_integrator.jl
 

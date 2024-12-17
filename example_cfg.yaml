@@ -273,7 +273,7 @@ covariance_cfg:
         k_steps_sigma2: 20_000 # TODO can I lower this? double bessel integral...
         z_min_ssc_integrands: 0.02  # SU responses' kmax allow for z_min = 0.016, at most.
         z_max_ssc_integrands: 3.
-        z_steps_ssc_integrands: 200 # this should be high because I have to trace the spikes in sigma2
+        z_steps_ssc_integrands: 1200 # this should be high because I have to trace the spikes in sigma2
 
         load_precomputed_sigma2: False
         sigma2_b_path: "/Users/sofiachiarenza/Desktop/PhD_Stuff/Spaceborne/jobs/IO_for_Sofia/sigma2_b"

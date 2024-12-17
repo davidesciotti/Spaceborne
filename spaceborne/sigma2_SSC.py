@@ -131,7 +131,7 @@ def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None,
 
     return result
 
-def sigma2_sofia(z, R, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None, cl_mask=None):
+def sigma2_sofia_vec(z, R, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None, cl_mask=None):
     """ Computes the integral in k. The grid is now z-R instead of z1-z2."""
 
     # compute the comoving distance at the given redshifts
@@ -170,6 +170,39 @@ def sigma2_sofia(z, R, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None, 
     #     integral_result = quad_vec(integrand, k_grid_sigma2[0], k_grid_sigma2[-1])[0]
     # else:
     #     raise ValueError('sigma2_integrating_function must be either "simps" or "quad" or "quad_vec"')
+
+    if which_sigma2_B == 'full-curved-sky':
+        result = 1 / (2 * np.pi ** 2) * integral_result
+    elif which_sigma2_B == 'mask':
+        fsky = np.sqrt(cl_mask[0] / (4 * np.pi))
+        result = 1 / (4 * np.pi * fsky)**2 * np.sum((2 * ell_mask + 1) * cl_mask * 2 /
+                                                    np.pi * integral_result)
+    else:
+        raise ValueError('which_sigma2_B must be either "full-curved-sky" or "mask"')
+
+    return result
+
+def sigma2_sofia(z, R, k_grid_sigma2, cosmo_ccl, which_sigma2_B, ell_mask=None, cl_mask=None):
+    """ Computes the integral in k. The grid is now z-R instead of z1-z2."""
+
+    integral_result = np.zeros((len(z), len(R)))
+
+    for (z_idx, z_value) in enumerate(tqdm(z)):
+        a = csmlib.z_to_a(z_value)
+        # in Mpc
+        r = ccl.comoving_radial_distance(cosmo_ccl, a)
+        growth_factor_z = ccl.growth_factor(cosmo_ccl, a)
+        Bessel1 = spherical_jn(0, k_grid_sigma2 * r)
+
+        for r_idx, r_value in enumerate(R):
+            z_prime = r_value*z_value
+            r2 = ccl.comoving_radial_distance(cosmo_ccl, csmlib.z_to_a(z_prime))
+            Bessel2 = spherical_jn(0, k_grid_sigma2 * r2)
+            integrand = k_grid_sigma2**2 *ccl.linear_matter_power(cosmo_ccl, k=k_grid_sigma2, a=1.)*Bessel1*Bessel2
+            integral_result[z_idx, r_idx] = simps(integrand, k_grid_sigma2)
+            growth_factor_R = ccl.growth_factor(cosmo_ccl, csmlib.z_to_a(z_prime))
+            integral_result[z_idx, r_idx] *= growth_factor_z * growth_factor_R
+  
 
     if which_sigma2_B == 'full-curved-sky':
         result = 1 / (2 * np.pi ** 2) * integral_result

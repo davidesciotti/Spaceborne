@@ -513,7 +513,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
 
     sigma2_davide = np.load("davide.npy")
 
-    plt.figure()
+    """plt.figure()
     plt.semilogy(z_grid_ssc_integrands, sigma2_b[:,-1], label="Me")
     plt.semilogy(z_grid_ssc_integrands, np.diag(sigma2_davide), label="Davide")
     plt.xlabel('$z$')
@@ -531,7 +531,7 @@ if covariance_cfg['ng_cov_code'] == 'Spaceborne' and not covariance_cfg['Spacebo
     plt.plot(R_grid_ssc_integrands[1:], sigma2_b[50,1:])
     plt.xlabel('$R$')
     plt.title(f'R_cut at fixed z ={z_grid_ssc_integrands[50]}')
-    plt.show()
+    plt.show()"""
 
 
     print("sigma2 is ready, now we need to set up for the outer integrals...")
@@ -657,6 +657,7 @@ cov_3x2pt_SS_4D = mm.cov_3x2pt_10D_to_4D(cov_3x2pt_SS_10D, probe_ordering, nbl_3
 cov_3x2pt_SS_2D = mm.cov_4D_to_2DCLOE_3x2pt(cov_3x2pt_SS_4D, block_index='ell', zbins=zbins)
 
 mm.matshow(cov_3x2pt_SS_2D, log=True, abs_val=True, title='SSC 2D')
+np.save("cov_sofia.npy", cov_3x2pt_SS_2D)
 
 assert False, 'I am not an error, stop here for now :)'
 

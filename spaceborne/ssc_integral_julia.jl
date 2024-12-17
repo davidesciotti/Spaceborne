@@ -169,7 +169,7 @@ function SSC_integral_4D_simps_sofia(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB,
             end
         end
     end
-
+    
     result = zeros(nbl, nbl, zpairs_AB, zpairs_CD)
 
     @tturbo for ell1 in 1:nbl

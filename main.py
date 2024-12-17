@@ -35,19 +35,19 @@ script_start_time = time.perf_counter()
 
 
 # ! Set up argument parsing
-# parser = argparse.ArgumentParser(description="Your script description here.")
-# parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
-# # parser.add_argument('--show_plots', action='store_true', help='Show plots if specified',  required=False)
-# args = parser.parse_args()
-# with open(args.config, 'r') as f:
-#     cfg = yaml.safe_load(f)
+parser = argparse.ArgumentParser(description="Your script description here.")
+parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
+# parser.add_argument('--show_plots', action='store_true', help='Show plots if specified',  required=False)
+args = parser.parse_args()
+with open(args.config, 'r') as f:
+    cfg = yaml.safe_load(f)
 # if not args.show_plots:
 #     matplotlib.use('Agg')
 
 # ! LOAD CONFIG
 # ! uncomment this if executing from interactive window
-with open('config.yaml', 'r') as f:
-    cfg = yaml.safe_load(f)
+# with open('config.yaml', 'r') as f:
+#     cfg = yaml.safe_load(f)
 
 
 # some convenence variables, just to make things more readable
@@ -1034,7 +1034,13 @@ for key in cov_dict.keys():
                                atol=0, rtol=1e-7, err_msg=f'{key} not symmetric')
     
 # TODO delete in public branch
-cov_dict_load = np.load('../Spaceborne_bench/old_develop/check_g_cov_develop.npz')
+with open('/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/old_develop/check_g_develop_config.yaml', 'r') as f:
+    cfg_test_develop = yaml.safe_load(f)
+
+# compare dictionaries
+
+    
+cov_dict_load = np.load('/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/old_develop/check_g_cov_develop.npz')
 
 np.testing.assert_allclose(cov_dict_load['cov_WL_g_2D'], cov_obj.cov_WL_g_2D, atol=0, rtol=1e-7)
 np.testing.assert_allclose(cov_dict_load['cov_GC_g_2D'], cov_obj.cov_GC_g_2D, atol=0, rtol=1e-7)
@@ -1050,8 +1056,6 @@ np.testing.assert_allclose(cov_dict_load['cov_WL_tot_2D'], cov_obj.cov_WL_ssc_2D
 np.testing.assert_allclose(cov_dict_load['cov_GC_tot_2D'], cov_obj.cov_GC_ssc_2D + cov_obj.cov_GC_g_2D, atol=0, rtol=1e-7)
 np.testing.assert_allclose(cov_dict_load['cov_XC_tot_2D'], cov_obj.cov_XC_ssc_2D + cov_obj.cov_XC_g_2D, atol=0, rtol=1e-7)
 np.testing.assert_allclose(cov_dict_load['cov_3x2pt_tot_2D'], cov_obj.cov_3x2pt_ssc_2D + cov_obj.cov_3x2pt_g_2D, atol=0, rtol=1e-7)
-
-assert False, 'stop here'
 
 # TODO delete in public branch
 # # ! new test G cov from OC

@@ -41,8 +41,8 @@ script_start_time = time.perf_counter()
 # args = parser.parse_args()
 # with open(args.config, 'r') as f:
 #     cfg = yaml.safe_load(f)
-# if not args.show_plots:
-#     matplotlib.use('Agg')
+# # if not args.show_plots:
+# #     matplotlib.use('Agg')
 
 # ! LOAD CONFIG
 # ! uncomment this if executing from interactive window
@@ -415,18 +415,18 @@ ccl_obj.cl_ll_3d = ccl_obj.compute_cls(ell_dict['ell_WL'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, 'spline')
 ccl_obj.cl_gl_3d = ccl_obj.compute_cls(ell_dict['ell_XC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
-ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,                                       
+ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
 
 # oc needs finer sampling to avoid issues
 nbl_3x2pt_oc = 500
 ells_3x2pt_oc = np.geomspace(cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_3x2pt'], nbl_3x2pt_oc)
 cl_ll_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
-                                       ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, 'spline')
+                                  ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, 'spline')
 cl_gl_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
-                                       ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
+                                  ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
 cl_gg_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
-                                       ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
+                                  ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
 
 # ! add multiplicative shear bias
 # ! THIS SHOULD NOT BE DONE FOR THE OC Cls!! mult shear bias values are passed in the .ini file
@@ -444,7 +444,7 @@ if not np.all(mult_shear_bias == 0):
         for zi in range(zbins):
             for zj in range(zbins):
                 ccl_obj.cl_gl_3d[ell_idx, zi, zj] *= (1 + mult_shear_bias[zj])
-                
+
 ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_3x2pt, zbins, zbins))
 ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[:nbl_3x2pt, :, :]
 ccl_obj.cl_3x2pt_5d[1, 0, :, :, :] = ccl_obj.cl_gl_3d[:nbl_3x2pt, :, :]
@@ -603,11 +603,11 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     oc_obj.call_oc_from_bash()
     oc_obj.process_cov_from_list_file()
     oc_obj.output_sanity_check(rtol=1e-4)  # .dat vs .mat
-    
+
     # This is an alternative method to call OC (more convoluted and more maintanable).
     # I keep the code for optional consistency checks
     if cfg['OneCovariance']['consistency_checks']:
-        
+
         # store in temp variables for later check
         check_cov_sva_oc_3x2pt_10D = oc_obj.cov_sva_oc_3x2pt_10D
         check_cov_mix_oc_3x2pt_10D = oc_obj.cov_mix_oc_3x2pt_10D
@@ -628,6 +628,8 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 
     print('Time taken to compute OC: {:.2f} m'.format((time.perf_counter() - start_time) / 60))
 
+else:
+    oc_obj = None
 
 # ! ========================================== Spaceborne ===================================================
 
@@ -1044,98 +1046,19 @@ if (compute_ccl_ssc or compute_ccl_cng):
 cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
 cov_dict = cov_obj.cov_dict
 
+# ! ========================================== plot & tests ================================================
 for key in cov_dict.keys():
     mm.matshow(cov_dict[key], title=key)
 
 for key in cov_dict.keys():
     np.testing.assert_allclose(cov_dict[key], cov_dict[key].T,
                                atol=0, rtol=1e-7, err_msg=f'{key} not symmetric')
-    
-# TODO delete in public branch
-with open('/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/old_develop/config_develop_check.yaml', 'r') as f:
-    cfg_test_develop = yaml.safe_load(f)
-    
-
-# compare dictionaries
-# cfg_test_develop == cfg
-
-    
-cov_dict_load = np.load('/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/old_develop/check_cov_develop.npz')
-
-# np.testing.assert_allclose(cov_dict_load['cov_WL_g_2D'], cov_obj.cov_WL_g_2D, atol=0, rtol=1e-7)
-# np.testing.assert_allclose(cov_dict_load['cov_GC_g_2D'], cov_obj.cov_GC_g_2D, atol=0, rtol=1e-7)
-# np.testing.assert_allclose(cov_dict_load['cov_XC_g_2D'], cov_obj.cov_XC_g_2D, atol=0, rtol=1e-7)
-# np.testing.assert_allclose(cov_dict_load['cov_3x2pt_g_2D'], cov_obj.cov_3x2pt_g_2D, atol=0, rtol=1e-7)
-
-# np.testing.assert_allclose(cov_dict_load['cov_WL_ng_2D'], cov_obj.cov_WL_ssc_2D, atol=0, rtol=1e-7)
-# np.testing.assert_allclose(cov_dict_load['cov_GC_ng_2D'], cov_obj.cov_GC_ssc_2D, atol=0, rtol=1e-7)
-# np.testing.assert_allclose(cov_dict_load['cov_XC_ng_2D'], cov_obj.cov_XC_ssc_2D, atol=0, rtol=1e-7)
-# np.testing.assert_allclose(cov_dict_load['cov_3x2pt_ng_2D'], cov_obj.cov_3x2pt_ssc_2D, atol=0, rtol=1e-7)
-
-# np.testing.assert_allclose(cov_dict_load['cov_WL_tot_2D'], cov_obj.cov_WL_ssc_2D + cov_obj.cov_WL_g_2D, atol=0, rtol=1e-7)
-# np.testing.assert_allclose(cov_dict_load['cov_GC_tot_2D'], cov_obj.cov_GC_ssc_2D + cov_obj.cov_GC_g_2D, atol=0, rtol=1e-7)
-# np.testing.assert_allclose(cov_dict_load['cov_XC_tot_2D'], cov_obj.cov_XC_ssc_2D + cov_obj.cov_XC_g_2D, atol=0, rtol=1e-7)
-# np.testing.assert_allclose(cov_dict_load['cov_3x2pt_tot_2D'], cov_obj.cov_3x2pt_ssc_2D + cov_obj.cov_3x2pt_g_2D, atol=0, rtol=1e-7)
-
-# TODO delete in public branch
-# ! new test G cov from OC
-
-# in 2D
-sb_3x2pt_g_2d = cov_obj.cov_3x2pt_g_2D
-sb_3x2pt_g_2d_sva = cov_obj.cov_3x2pt_g_2D_sva
-sb_3x2pt_g_2d_sn = cov_obj.cov_3x2pt_g_2D_sn
-sb_3x2pt_g_2d_mix = cov_obj.cov_3x2pt_g_2D_mix
-oc_3x2pt_g_4d = mm.cov_3x2pt_10D_to_4D(oc_obj.cov_g_oc_3x2pt_10D, probe_ordering,
-                                       nbl_3x2pt, zbins, ind.copy(), GL_OR_LG)
-oc_3x2pt_g_4d_sva = mm.cov_3x2pt_10D_to_4D(oc_obj.cov_sva_oc_3x2pt_10D, probe_ordering,
-                                           nbl_3x2pt, zbins, ind.copy(), GL_OR_LG)
-oc_3x2pt_g_4d_sn = mm.cov_3x2pt_10D_to_4D(oc_obj.cov_sn_oc_3x2pt_10D, probe_ordering,
-                                          nbl_3x2pt, zbins, ind.copy(), GL_OR_LG)
-oc_3x2pt_g_4d_mix = mm.cov_3x2pt_10D_to_4D(oc_obj.cov_mix_oc_3x2pt_10D, probe_ordering,
-                                           nbl_3x2pt, zbins, ind.copy(), GL_OR_LG)
-
-cov_sb_2d = sb_3x2pt_g_2d
-cov_oc_4d = oc_3x2pt_g_4d
-# cov_oc_4d_2 = oc2_3x2pt_g_4d_sn
-cov_oc_2d = mm.cov_4D_to_2DCLOE_3x2pt(cov_oc_4d, zbins, block_index='zpair')
-# cov_oc2_2d = mm.cov_4D_to_2DCLOE_3x2pt(cov_oc_4d_2, zbins, block_index='ell')
-
-mm.compare_arrays(cov_sb_2d, cov_oc_2d, 'cov_sb_2d', 'cov_oc_2d', plot_diff_threshold=1,
-                  abs_val=True, log_diff=False)
-
-fig, ax = plt.subplots(2, 1, sharex=True, height_ratios=[2, 1], )
-fig.subplots_adjust(hspace=0)
-ax[0].semilogy(np.diag(np.abs(cov_sb_2d)), label='sb')
-ax[0].semilogy(np.diag(np.abs(cov_oc_2d)), label='oc')
-ax[0].legend()
-ax[0].set_ylabel('diag')
-ax[1].plot(mm.percent_diff(np.diag(cov_sb_2d), np.diag(cov_oc_2d)), label='% diff')
-ax[1].set_ylabel('% diff')
-fig.suptitle('SN')
-
-
-cov_g_2d_oc_mat = oc_obj.cov_mat_g_2d
-cov_g_2d_sb = cov_obj.reshape_cov(cov_obj.cov_3x2pt_g_10D, 10, 2, 20, zpairs=None, ind_probe=None, is_3x2pt=True)
-cov_g_2d_oc_list = cov_obj.reshape_cov(oc_obj.cov_g_oc_3x2pt_10D, 10, 2, 20, zpairs=None, ind_probe=None, is_3x2pt=True)
-
-mm.compare_arrays(cov_g_2d_oc_mat, cov_g_2d_sb, 'cov_g_2d_oc_mat', 'cov_g_2d_sb')
-mm.compare_arrays(cov_g_2d_oc_list, cov_g_2d_sb, 'cov_g_2d_oc_list', 'cov_g_2d_sb')
-
-mm.compare_funcs(None, np.abs(cov_obj.cov_3x2pt_g_10D.flatten()), 
-              np.abs(oc_obj.cov_g_oc_3x2pt_10D.flatten()), '10d sb', '10d oc', [True, False])
-mm.compare_funcs(None, np.diag(cov_g_2d_oc_mat), np.diag(cov_g_2d_sb), 'diag oc', 'diag sb', logscale_y=[True, False])
-mm.compare_funcs(None, np.diag(cov_oc_2d), np.diag(cov_g_2d_sb), 'cov_oc_2d oc', 'diag sb', logscale_y=[True, False])
-
-
-
-assert False, 'stop here'
-
 
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.dump(cfg, yaml_file, default_flow_style=False)
 
 if cfg['misc']['save_output_as_benchmark']:
-    
+
     import datetime
     branch, commit = mm.get_git_info()
     metadata = {
@@ -1143,11 +1066,11 @@ if cfg['misc']['save_output_as_benchmark']:
         'branch': branch,
         'commit': commit,
     }
-    
+
     bench_filename = cfg['misc']['bench_filename']
-    if os.path.exists(bench_filename):
+    if os.path.exists(f'{bench_filename}.npz'):
         raise ValueError('You are trying to overwrite a benchmark file. Please rename the file or delete the existing one.')
-    
+
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
         yaml.dump(cfg, yaml_file, default_flow_style=False)
 
@@ -1185,7 +1108,6 @@ if cfg['misc']['save_output_as_benchmark']:
                         cov_3x2pt_cng_2D=cov_dict['cov_3x2pt_cng_2D'],
                         metadata=metadata,
                         )
-
 
 
 # for key_bench in cov_bench.keys():

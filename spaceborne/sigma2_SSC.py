@@ -1,14 +1,9 @@
-from functools import partial
 import logging
 import sys
 import time
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-from joblib import delayed, Parallel
-import multiprocessing as mp
 from scipy.integrate import simpson as simps
-from scipy.interpolate import RegularGridInterpolator
 from scipy.special import spherical_jn
 import pyccl as ccl
 from tqdm import tqdm

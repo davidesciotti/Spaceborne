@@ -24,7 +24,6 @@ ROOT = os.getenv('ROOT')
 import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib
 import spaceborne.pyccl_interface as pyccl_interface
-import common_cfg.ISTF_fid_params as ISTF
 import matplotlib.lines as mlines
 
 
@@ -103,7 +102,6 @@ def growth_factor_integrand(x, gamma, Om0, cosmo_astropy):
 def growth_factor(z, gamma, Om0, cosmo_astropy):
     integral = quad(growth_factor_integrand, 0, z, args=(gamma, Om0, cosmo_astropy))[0]
     return np.exp(-integral)
-
 
 
 def b_of_z_analytical(z):

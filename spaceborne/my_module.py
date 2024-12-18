@@ -35,6 +35,66 @@ symmetrize_output_dict = {
 }
 
 
+mpl_rcParams_dict = {
+    'lines.linewidth': 1.5,
+    'font.size': 17,
+    'axes.labelsize': 'large',
+    'axes.titlesize': 'large',
+    'xtick.labelsize': 'large',
+    'ytick.labelsize': 'large',
+    #  'mathtext.fontset': 'stix',
+    #  'font.family': 'STIXGeneral',
+    'figure.figsize': (15, 10),
+    'lines.markersize': 8,
+    # 'axes.grid': True,
+    # 'figure.constrained_layout.use': False,
+    # 'axes.axisbelow': True
+}
+
+mpl_other_dict = {
+    'cosmo_labels_TeX': ["$\\Omega_{{\\rm m},0}$", "$\\Omega_{{\\rm b},0}$", "$w_0$", "$w_a$", "$h$", "$n_{\\rm s}$",
+                         "$\\sigma_8$", "${\\rm log}_{10}(T_{\\rm AGN}/{\\rm K})$"],
+    'IA_labels_TeX': ['$A_{\\rm IA}$', '$\\eta_{\\rm IA}$', '$\\beta_{\\rm IA}$'],
+    'galaxy_bias_labels_TeX': build_labels_TeX(zbins)[0],
+    'shear_bias_labels_TeX': build_labels_TeX(zbins)[1],
+    'zmean_shift_labels_TeX': build_labels_TeX(zbins)[2],
+
+    'cosmo_labels': ['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8', 'logT'],
+    'IA_labels': ['AIA', 'etaIA', 'betaIA'],
+    'galaxy_bias_labels': build_labels(zbins)[0],
+    'shear_bias_labels': build_labels(zbins)[1],
+    'zmean_shift_labels': build_labels(zbins)[2],
+
+    'ylabel_perc_diff_wrt_mean': "$ \\bar{\\sigma}_\\alpha^i / \\bar{\\sigma}^{\\; m}_\\alpha -1 $ [%]",
+    'ylabel_sigma_relative_fid': '$ \\sigma_\\alpha/ \\theta^{fid}_\\alpha $ [%]',
+    'dpi': 500,
+    
+    'pic_format': 'pdf',
+    'h_over_mpc_tex': '$h\\,{\\rm Mpc}^{-1}$',
+    'kmax_tex': '$k_{\\rm max}$',
+    'kmax_star_tex': '$k_{\\rm max}^\\star$',
+}
+
+
+
+def compare_funcs(x, y_a, y_b, name_a='A', name_b='B'):
+    
+    if x == None:
+        x = np.arange(len(y_a))
+    
+    fig, ax = plt.subplots(2, 1, sharex=True, height_ratios=[2, 1], )
+    fig.subplots_adjust(hspace=0)
+    
+    ax[0].plot(x, y_a, label=name_a)
+    ax[0].plot(x, y_b, label=name_b)
+    ax[0].legend()
+
+    
+    ax[1].plot(x, percent_diff(y_a, y_b))
+    ax[1].set_ylabel('A/B [%]')
+
+
+
 def get_git_info():
     try:
         branch = subprocess.check_output(

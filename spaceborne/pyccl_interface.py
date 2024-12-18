@@ -3,27 +3,15 @@
 
 from functools import partial
 import time
-import warnings
-import matplotlib
-import matplotlib.pyplot as plt
-from pyccl.errors import CCLError
 import numpy as np
 import pyccl as ccl
-import os
-import sys
-from matplotlib import cm
 from tqdm import tqdm
 import healpy as hp
-from scipy.interpolate import interp1d
 
 import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as cosmo_lib
 import spaceborne.wf_cl_lib as wf_cl_lib
-import spaceborne.sigma2_SSC as sigma2_SSC
-import common_cfg.mpl_cfg as mpl_cfg
 import spaceborne.mask_fits_to_cl as mask_utils
-
-# plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 ccl.spline_params['A_SPLINE_NA_PK'] = 240  # gives CAMB error if too high
 ccl.spline_params['K_MAX_SPLINE'] = 300

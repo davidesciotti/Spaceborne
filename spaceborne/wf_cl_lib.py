@@ -2,23 +2,19 @@ import warnings
 from copy import deepcopy
 
 import scipy
-import sys
 import time
 import os
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pyccl as ccl
-import yaml
 from joblib import Parallel, delayed
 from matplotlib import cm
 from numba import njit
 from scipy.integrate import quad, quad_vec, dblquad
 from scipy.integrate import simpson as simps
-from scipy.interpolate import interp1d, interp2d
+from scipy.interpolate import interp1d
 from scipy.ndimage import gaussian_filter1d
 from scipy.special import erf
-from functools import partial
 import sys
 from tqdm import tqdm
 import os
@@ -29,22 +25,8 @@ import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as csmlib
 import spaceborne.pyccl_interface as pyccl_interface
 import common_cfg.ISTF_fid_params as ISTF
-import common_cfg.mpl_cfg as mpl_cfg
 import matplotlib.lines as mlines
 
-
-# update plot pars
-# plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
-
-
-###############################################################################
-###############################################################################
-###############################################################################
-
-
-# fiducial_pars_dict_nested = mm.read_yaml(
-#     f'{ROOT}/Spaceborne/common_cfg/ISTF_fiducial_params.yaml')
-# fiducial_pars_dict = mm.flatten_dict(fiducial_pars_dict_nested)
 
 c = 299792.458  # km/s
 
@@ -58,30 +40,6 @@ dav_to_vinc_par_names = {
     'wz': 'w0',
 }
 
-# gamma = ISTF.extensions['gamma']
-
-# z_edges = ISTF.photoz_bins['all_zbin_edges']
-# z_median = ISTF.photoz_bins['z_median']
-# zbins = ISTF.photoz_bins['zbins']
-# z_minus = ISTF.photoz_bins['z_minus']
-# z_plus = ISTF.photoz_bins['z_plus']
-
-# z_0 = z_median / np.sqrt(2)
-# z_min = z_edges[0]
-# # z_max = cfg.z_max
-# sqrt2 = np.sqrt(2)
-
-# f_out = ISTF.photoz_pdf['f_out']
-# c_in, z_in, sigma_in = ISTF.photoz_pdf['c_b'], ISTF.photoz_pdf['z_b'], ISTF.photoz_pdf['sigma_b']
-# c_out, z_out, sigma_out = ISTF.photoz_pdf['c_o'], ISTF.photoz_pdf['z_o'], ISTF.photoz_pdf['sigma_o']
-
-# simps_z_step_size = 1e-4
-
-# n_gal = ISTF.other_survey_specs['n_gal']
-
-# z_max_cl = cfg.z_max_cl
-# z_grid = np.linspace(z_min, z_max_cl, cfg.zsteps_cl)
-# # use_h_units = cfg.use_h_units
 
 def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors):
 
@@ -108,7 +66,7 @@ def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors):
 
 
 @njit
-def pph(z_p, z):
+def pph(z_p, z, c_in, z_in, sigma_in, c_out, z_out, sigma_out, f_out):
     first_addendum = (1 - f_out) / (np.sqrt(2 * np.pi) * sigma_in * (1 + z)) * \
         np.exp(-0.5 * ((z - c_in * z_p - z_in) / (sigma_in * (1 + z))) ** 2)
     second_addendum = f_out / (np.sqrt(2 * np.pi) * sigma_out * (1 + z)) * \
@@ -117,218 +75,12 @@ def pph(z_p, z):
 
 
 @njit
-def n_of_z(z):
+def n_of_z(z, z_0, n_gal):
     return n_gal * (z / z_0) ** 2 * np.exp(-(z / z_0) ** (3 / 2))
     # return  (z / z_0) ** 2 * np.exp(-(z / z_0) ** (3 / 2))
 
 
-################################## niz_unnorm_quad(z) ##############################################
 
-
-# # ! load or compute niz_unnorm_quad(z)
-# # TODO re-compute and check niz_unnorm_quad(z), maybe compute it with scipy.special.erf
-# if cfg.load_external_niz:
-#     n_bar = np.genfromtxt(f"{ROOT}/cl_v2/output/n_bar.txt")
-
-#     niz_import = np.genfromtxt(f'{cfg.niz_path}/{cfg.niz_filename}')
-#     # store and remove the redshift values, ie the 1st column
-#     z_values_from_nz = niz_import[:, 0]
-#     niz_import = niz_import[:, 1:]
-
-#     assert niz_import.shape[1] == zbins, "niz_import.shape[1] should be == zbins"
-
-#     # normalization array
-#     n_bar = simps(niz_import, z_values_from_nz, axis=0)
-#     if not np.allclose(n_bar, np.ones(zbins), rtol=0.01, atol=0):
-#         print('It looks like the input niz_unnorm_quad(z) are not normalized (they differ from 1 by more than 1%)')
-
-
-def n_i_old(z, i):
-    n_i_interp = interp1d(niz_import[:, 0], niz_import[:, i + 1], kind="linear")
-    result_array = n_i_interp(z)  # z is considered as an array
-    result = result_array.item()  # otherwise it would be a 0d array
-    return result
-
-
-# zbin_idx_array = np.asarray(range(zbins))
-# assert zbin_idx_array.dtype == 'int64', "zbin_idx_array.dtype should be 'int64'"
-# niz_import_cpy = niz_import.copy()  # remove redshift column
-# note: this is NOT an interpolation in i, which are just the bin indices and will NOT differ from the values 0, 1, 2
-# ... 9. The purpose is just to have a 2D vectorized callable.
-# niz = interp2d(zbin_idx_array, z_values_from_nz, niz_import_cpy, kind="linear")
-# note: the normalization of n_of_z(z) should be unimportant, here I compute a ratio
-# where n_of_z(z) is present both at the numerator and denominator!
-
-def n_i(z, i):
-    """with quad. normalized"""
-    def integrand(z_p, z): return n_of_z(z) * pph(z_p, z)
-    numerator = quad(integrand, z_minus[i], z_plus[i], args=z)[0]
-    denominator = dblquad(integrand, z_min, z_max, z_minus[i], z_plus[i])[0]
-    return numerator / denominator
-
-
-def niz_unnormalized_quad(z, zbin_idx, pph=pph):
-    """with quad - 0.620401143 s, faster than quadvec..."""
-    assert type(zbin_idx) == int, 'zbin_idx must be an integer'
-    return n_of_z(z) * quad(pph, z_minus[zbin_idx], z_plus[zbin_idx], args=(z))[0]
-
-
-def niz_unnormalized_simps(z_grid, zbin_idx, pph=pph, zp_points=500):
-    """numerator of Eq. (112) of ISTF, with simpson integration
-    Not too fast (3.0980 s for 500 z_p points)"""
-
-    # SIMPSON WITH DIFFERENT POSSIBLE GRIDS:
-    # intantiate a grid for simpson integration which passes through all the bin edges (which are the integration limits!)
-    # equal number of points per bin
-    zp_points_per_bin = int(zp_points / zbins)
-    zp_bin_grid = np.zeros((zbins, zp_points_per_bin))
-    for i in range(zbins):
-        zp_bin_grid[i, :] = np.linspace(z_edges[i], z_edges[i + 1], zp_points_per_bin)
-
-    # more pythonic way of instantiating the same grid
-    # zp_bin_grid = np.linspace(z_min, z_max, zp_points)
-    # zp_bin_grid = np.append(zp_bin_grid, z_edges)  # add bin edges
-    # zp_bin_grid = np.sort(zp_bin_grid)
-    # zp_bin_grid = np.unique(zp_bin_grid)  # remove duplicates (first and last edges were already included)
-    # zp_bin_grid = np.tile(zp_bin_grid, (zbins, 1))  # repeat the grid for each bin (in each row)
-    # for i in range(zbins):  # remove all the points below the bin edge
-    #     zp_bin_grid[i, :] = np.where(zp_bin_grid[i, :] > z_edges[i], zp_bin_grid[i, :], 0)
-
-    assert type(zbin_idx) == int, 'zbin_idx must be an integer'  # TODO check if these slow down the code using scalene
-    niz_unnorm_integrand = np.array([pph(zp_bin_grid[zbin_idx, :], z) for z in z_grid])
-    niz_unnorm_integral = simps(y=niz_unnorm_integrand, x=zp_bin_grid[zbin_idx, :], axis=1)
-    niz_unnorm_integral *= n_of_z(z_grid)
-    return niz_unnorm_integral
-
-
-def niz_unnormalized_simps_fullgrid(z_grid, zbin_idx, pph=pph):
-    """numerator of Eq. (112) of ISTF, with simpson integration and "global" grid"""
-    warnings.warn('this function needs very high number of samples;'
-                  ' the zp_bin_grid sampling should perform better')
-    assert type(zbin_idx) == int, 'zbin_idx must be an integer'
-
-    # alternative: equispaced grid with z_edges added (does *not* work well, needs a lot of samples!!)
-    zp_grid = np.linspace(z_min, z_max, 4000)
-    zp_grid = np.concatenate((z_edges, zp_grid))
-    zp_grid = np.unique(zp_grid)
-    zp_grid = np.sort(zp_grid)
-
-    # indices of z_edges in zp_grid:
-    z_edges_idxs = np.array([np.where(zp_grid == z_edges[i])[0][0] for i in range(z_edges.shape[0])])
-
-    z_minus = z_edges_idxs[zbin_idx]
-    z_plus = z_edges_idxs[zbin_idx + 1]
-    niz_unnorm_integrand = np.array([pph(zp_grid[z_minus:z_plus], z) for z in z_grid])
-    niz_unnorm_integral = simps(y=niz_unnorm_integrand, x=zp_grid[z_minus:z_plus], axis=1)
-    return niz_unnorm_integral * n_of_z(z_grid)
-
-
-def niz_unnormalized_quadvec(z, zbin_idx, pph=pph):
-    """
-    :param z: float, does not accept an array. Same as above, but with quad_vec.
-    ! the difference is that the integrand can be a vector-valued function (in this case in z_p),
-    so it's supposedly faster? -> no, it's slower - 5.5253 s
-    """
-    assert type(zbin_idx) == int, 'zbin_idx must be an integer'
-    niz_unnorm = quad_vec(quad_integrand, z_minus[zbin_idx], z_plus[zbin_idx], args=(z, pph))[0]
-    return niz_unnorm
-
-
-def niz_normalization_quad(niz_unnormalized_func, zbin_idx, pph=pph):
-    assert type(zbin_idx) == int, 'zbin_idx must be an integer'
-    return quad(niz_unnormalized_func, z_min, z_max, args=(zbin_idx, pph))[0]
-
-
-def normalize_niz_simps(niz_unnorm_arr, z_grid):
-    """ much more convenient; uses simps, and accepts as input an array of shape (zbins, z_points)"""
-    norm_factor = simps(niz_unnorm_arr, z_grid)
-    niz_norm = (niz_unnorm_arr.T / norm_factor).T
-    return niz_norm
-
-
-def niz_normalized(z, zbin_idx):
-    """this is a wrapper function which normalizes the result.
-    The if-else is needed not to compute the normalization for each z, but only once for each zbin_idx
-    Note that the niz_unnormalized_quadvec function is not vectorized in z (its 1st argument)
-    """
-    warnings.warn("this function should be deprecated")
-    warnings.warn('or add possibility to choose pph')
-    if type(z) == float or type(z) == int:
-        return niz_unnormalized_quadvec(z, zbin_idx) / niz_normalization_quad(zbin_idx, niz_unnormalized_quadvec)
-
-    elif type(z) == np.ndarray:
-        niz_unnormalized_arr = np.asarray([niz_unnormalized_quadvec(z_value, zbin_idx) for z_value in z])
-        return niz_unnormalized_arr / niz_normalization_quad(zbin_idx, niz_unnormalized_quadvec)
-
-    else:
-        raise TypeError('z must be a float, an int or a numpy array')
-
-
-def niz_unnormalized_analytical(z, zbin_idx, z_edges):
-    """the one used by Stefano in the PyCCL notebook
-    by far the fastest, 0.009592 s"""
-
-    assert zbin_idx < 10, 'this is the analytical function used in ISTF, it does not work for zbins != 10'
-    addendum_1 = erf((z - z_out - c_out * z_edges[zbin_idx]) / (sqrt2 * (1 + z) * sigma_out))
-    addendum_2 = erf((z - z_out - c_out * z_edges[zbin_idx + 1]) / (sqrt2 * (1 + z) * sigma_out))
-    addendum_3 = erf((z - z_in - c_in * z_edges[zbin_idx]) / (sqrt2 * (1 + z) * sigma_in))
-    addendum_4 = erf((z - z_in - c_in * z_edges[zbin_idx + 1]) / (sqrt2 * (1 + z) * sigma_in))
-
-    result = n_of_z(z) / (2 * c_out * c_in) * \
-        (c_in * f_out * (addendum_1 - addendum_2) + c_out * (1 - f_out) * (addendum_3 - addendum_4))
-    return result
-
-
-################################## end niz ##############################################
-
-
-# @njit
-def wil_tilde_integrand_old(z_prime, z, i):
-    return n_i_old(z_prime, i) * (1 - csmlib.r_tilde(z) / csmlib.r_tilde(z_prime))
-
-
-def wil_tilde_old(z, i):
-    # integrate in z_prime, it must be the first argument
-    result = quad(wil_tilde_integrand_old, z, z_max, args=(z, i))
-    return result[0]
-
-
-def wil_tilde_integrand_vec(z_prime, z):
-    """
-    vectorized version of wil_tilde_integrand, useful to fill up the computation of the integrand array for the simpson
-    integration
-    """
-
-    # redshift distribution
-    niz_unnormalized = np.asarray([niz_unnormalized_analytical(z_prime, zbin_idx) for zbin_idx in range(zbins)])
-    niz_normalized_arr = normalize_niz_simps(niz_unnormalized, z_prime)
-
-    # return niz(zbin_idx_array, z_prime).T * (1 - csmlib.r_tilde(z) / csmlib.r_tilde(z_prime))  # old, with interpolator
-    return niz_normalized_arr * (1 - csmlib.r_tilde(z) / csmlib.r_tilde(z_prime))
-
-
-def wil_tilde_new(z):
-    # version with quad vec, very slow, I don't know why.
-    # It is the zbin_idx_array that is vectorized, because z_prime is integrated over
-    return quad_vec(wil_tilde_integrand_vec, z, z_max, args=(z, zbin_idx_array))[0]
-
-
-def wil_noIA_IST(z, wil_tilde_array):
-    return ((3 / 2) * (H0 / c) * Om0 * (1 + z) * csmlib.r_tilde(z) * wil_tilde_array.T).T
-
-
-# IA
-# @njit
-def W_IA(z_grid):
-    warnings.warn("what about the normalization?")
-    warnings.warn("different niz for sources and lenses?")
-
-    # redshift distribution
-    niz_unnormalized = np.asarray([niz_unnormalized_analytical(z_grid, zbin_idx) for zbin_idx in range(zbins)])
-    niz_normalized_arr = normalize_niz_simps(niz_unnormalized, z_grid)
-
-    # return (H0 / c) * niz(zbin_idx_array, z_grid).T * csmlib.E(z_grid)  # ! old, with interpolator
-    return (H0 / c) * niz_normalized_arr * csmlib.E(z_grid)
 
 
 # @njit
@@ -353,51 +105,6 @@ def growth_factor(z, gamma, Om0, cosmo_astropy):
     return np.exp(-integral)
 
 
-# @njit
-# def IA_term_old(z, i):
-#     return (A_IA * C_IA * Om0 * F_IA(z)) / growth_factor(z) * W_IA(z, i)
-
-# @njit
-def IA_term(z_grid, growth_factor_arr, A_IA, C_IA, Om0):
-    """new version, vectorized"""
-    return ((A_IA * C_IA * Om0 * F_IA(z_grid)) / growth_factor_arr * W_IA(z_grid)).T
-
-
-# @njit
-def wil_IA_IST(z_grid, wil_tilde_array, growth_factor_arr):
-    return wil_noIA_IST(z_grid, wil_tilde_array) - IA_term(z_grid, growth_factor_arr)
-
-
-def wil_final(z_grid, which_wf):
-    # precompute growth factor
-    growth_factor_arr = np.asarray([growth_factor(z) for z in z_grid])
-
-    # fill simpson integrand
-    zpoints_simps = 700
-    z_prime_array = np.linspace(z_min, z_max, zpoints_simps)
-    integrand = np.zeros((z_prime_array.size, z_grid.size, zbins))
-    for z_idx, z_val in enumerate(z_grid):
-        # output order of wil_tilde_integrand_vec is: z_prime, i
-        integrand[:, z_idx, :] = wil_tilde_integrand_vec(z_prime_array, z_val).T
-
-    # integrate with simpson to obtain wil_tilde
-    wil_tilde_array = np.zeros((z_grid.size, zbins))
-    for z_idx, z_val in enumerate(z_grid):
-        # take the closest value to the desired z - less than 0.1% difference with the desired z
-        z_prime_idx = np.argmin(np.abs(z_prime_array - z_val))
-        wil_tilde_array[z_idx, :] = simpson(integrand[z_prime_idx:, z_idx, :], z_prime_array[z_prime_idx:], axis=0)
-
-    if which_wf == 'with_IA':
-        return wil_IA_IST(z_grid, wil_tilde_array, growth_factor_arr)
-    elif which_wf == 'without_IA':
-        return wil_noIA_IST(z_grid, wil_tilde_array)
-    elif which_wf == 'IA_only':
-        return W_IA(z_grid).T
-    else:
-        raise ValueError('which_wf must be "with_IA", "without_IA" or "IA_only"')
-
-
-###################### wig ###########################
 
 def b_of_z_analytical(z):
     """simple analytical prescription for the linear galaxy bias:
@@ -621,60 +328,6 @@ def build_ia_bias_1d_arr(z_grid_out, cosmo_ccl, ia_dict, input_z_grid_lumin_rati
 
     return ia_bias
 
-
-def wig_IST(z_grid, which_wf, zbins=10, gal_bias_2d_array=None, bias_model='step-wise'):
-    """
-    Computes the photometri Galaxy Clustering kernel, which is equal to the Intrinsic Alignment kernel if the sources
-    and lenses distributions are equal. The kernel is computed on a grid of redshifts z_grid, and is a 2d array of
-    shape (len(z_grid), zbins). The kernel is computed for each redshift bin, and the bias is assumed to be constant
-    :param bias_model:
-    :param z_grid:
-    :param which_wf:
-    :param zbins:
-    :param gal_bias_2d_array:
-    :return:
-    """
-
-    if gal_bias_2d_array is None:
-        z_values = ISTF.photoz_bins['z_mean']
-        bias_values = np.asarray([b_of_z_analytical(z) for z in z_values])
-        gal_bias_2d_array = build_galaxy_bias_2d_arr(bias_values, z_values, zbins, z_grid, bias_model)
-
-    assert gal_bias_2d_array.shape == (len(z_grid), zbins), 'gal_bias_2d_array must have shape (len(z_grid), zbins)'
-
-    # TODO There is probably room for optimization here, no need to use the callable for niz, just use the array...
-    # something like this (but it's already normalized...)
-    # result = (niz_analytical_arr_norm / n_bar[zbin_idx_array]).T * H0 * csmlib.E(z_grid) / c
-
-    # result = (niz(zbin_idx_array, z_grid) / n_bar[zbin_idx_array]).T * H0 * csmlib.E(z_grid) / c
-    result = W_IA(z_grid).T  # it's the same! unless the sources are different
-
-    if which_wf == 'with_galaxy_bias':
-        result *= gal_bias_2d_array
-        return result
-    elif which_wf == 'without_galaxy_bias':
-        return result
-    elif which_wf == 'galaxy_bias_only':
-        return gal_bias_2d_array
-    else:
-        raise ValueError('which_wf must be "with_galaxy_bias", "without_galaxy_bias" or "galaxy_bias_only"')
-
-
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-
-
-# def instantiate_ISTFfid_PyCCL_cosmo_obj():
-#     Om_m0, Om_b0, Om_nu0 = ISTF.primary['Om_m0'], ISTF.primary['Om_b0'], ISTF.neutrino_params['Om_nu0']
-#     Om_Lambda0 = ISTF.extensions['Om_Lambda0']
-#     Om_c0 = Om_m0 - Om_b0 - Om_nu0
-#     Om_k0 = csmlib.get_omega_k0(Om_m0, Om_Lambda0)
-#
-#     cosmo_ccl = ccl.Cosmology(Omega_c=Om_c0, Omega_b=ISTF.primary['Om_b0'], w0=ISTF.primary['w_0'],
-#                               wa=ISTF.primary['w_a'], h=ISTF.primary['h_0'], sigma8=ISTF.primary['sigma_8'],
-#                               n_s=ISTF.primary['n_s'], m_nu=ISTF.extensions['m_nu'], Omega_k=Om_k0)
-#     return cosmo_ccl
 
 
 def wf_ccl(z_grid, probe, which_wf, flat_fid_pars_dict, cosmo_ccl, dndz_tuple, ia_bias_tuple=None, gal_bias_tuple=None,

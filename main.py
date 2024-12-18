@@ -35,19 +35,19 @@ script_start_time = time.perf_counter()
 
 
 # ! Set up argument parsing
-parser = argparse.ArgumentParser(description="Your script description here.")
-parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
-# parser.add_argument('--show_plots', action='store_true', help='Show plots if specified',  required=False)
-args = parser.parse_args()
-with open(args.config, 'r') as f:
-    cfg = yaml.safe_load(f)
+# parser = argparse.ArgumentParser(description="Your script description here.")
+# parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
+# # parser.add_argument('--show_plots', action='store_true', help='Show plots if specified',  required=False)
+# args = parser.parse_args()
+# with open(args.config, 'r') as f:
+#     cfg = yaml.safe_load(f)
 # if not args.show_plots:
 #     matplotlib.use('Agg')
 
 # ! LOAD CONFIG
 # ! uncomment this if executing from interactive window
-# with open('config.yaml', 'r') as f:
-#     cfg = yaml.safe_load(f)
+with open('config.yaml', 'r') as f:
+    cfg = yaml.safe_load(f)
 
 
 # some convenence variables, just to make things more readable
@@ -583,21 +583,24 @@ if compute_oc_ssc or compute_oc_cng:
     oc_obj.build_save_oc_ini(ascii_filenames_dict, print_ini=True)
 
     # compute covs
-    oc_obj.call_oc_from_class()
-    oc_obj.process_cov_from_class()
-
+    oc_obj.call_oc_from_bash()
+    oc_obj.process_cov_from_list_file()
+    oc_obj.output_sanity_check(rtol=1e-4)  # .dat vs .mat
+    
     # This is an alternative method to call OC (more convoluted and more maintanable).
     # I keep the code for optional consistency checks
     if cfg['OneCovariance']['consistency_checks']:
+        
+        # store in temp variables for later check
         check_cov_sva_oc_3x2pt_10D = oc_obj.cov_sva_oc_3x2pt_10D
         check_cov_mix_oc_3x2pt_10D = oc_obj.cov_mix_oc_3x2pt_10D
         check_cov_sn_oc_3x2pt_10D = oc_obj.cov_sn_oc_3x2pt_10D
         check_cov_ssc_oc_3x2pt_10D = oc_obj.cov_ssc_oc_3x2pt_10D
         check_cov_cng_oc_3x2pt_10D = oc_obj.cov_cng_oc_3x2pt_10D
 
-        oc_obj.call_oc_from_bash()
-        oc_obj.process_cov_from_list_file()
-        oc_obj.output_sanity_check(rtol=1e-4)
+        oc_obj.call_oc_from_class()
+        oc_obj.process_cov_from_class()
+
         # a more strict relative tolerance will make this test fail,
         # the number of digits in the .dat and .mat files is lower
         np.testing.assert_allclose(check_cov_sva_oc_3x2pt_10D, oc_obj.cov_sva_oc_3x2pt_10D, atol=0, rtol=1e-3)
@@ -1034,68 +1037,74 @@ for key in cov_dict.keys():
                                atol=0, rtol=1e-7, err_msg=f'{key} not symmetric')
     
 # TODO delete in public branch
-with open('/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/old_develop/check_g_develop_config.yaml', 'r') as f:
+with open('/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/old_develop/config_develop_check.yaml', 'r') as f:
     cfg_test_develop = yaml.safe_load(f)
+    
 
 # compare dictionaries
+# cfg_test_develop == cfg
 
     
-cov_dict_load = np.load('/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/old_develop/check_g_cov_develop.npz')
+cov_dict_load = np.load('/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/old_develop/check_cov_develop.npz')
 
-np.testing.assert_allclose(cov_dict_load['cov_WL_g_2D'], cov_obj.cov_WL_g_2D, atol=0, rtol=1e-7)
-np.testing.assert_allclose(cov_dict_load['cov_GC_g_2D'], cov_obj.cov_GC_g_2D, atol=0, rtol=1e-7)
-np.testing.assert_allclose(cov_dict_load['cov_XC_g_2D'], cov_obj.cov_XC_g_2D, atol=0, rtol=1e-7)
-np.testing.assert_allclose(cov_dict_load['cov_3x2pt_g_2D'], cov_obj.cov_3x2pt_g_2D, atol=0, rtol=1e-7)
+# np.testing.assert_allclose(cov_dict_load['cov_WL_g_2D'], cov_obj.cov_WL_g_2D, atol=0, rtol=1e-7)
+# np.testing.assert_allclose(cov_dict_load['cov_GC_g_2D'], cov_obj.cov_GC_g_2D, atol=0, rtol=1e-7)
+# np.testing.assert_allclose(cov_dict_load['cov_XC_g_2D'], cov_obj.cov_XC_g_2D, atol=0, rtol=1e-7)
+# np.testing.assert_allclose(cov_dict_load['cov_3x2pt_g_2D'], cov_obj.cov_3x2pt_g_2D, atol=0, rtol=1e-7)
 
-np.testing.assert_allclose(cov_dict_load['cov_WL_ng_2D'], cov_obj.cov_WL_ssc_2D, atol=0, rtol=1e-7)
-np.testing.assert_allclose(cov_dict_load['cov_GC_ng_2D'], cov_obj.cov_GC_ssc_2D, atol=0, rtol=1e-7)
-np.testing.assert_allclose(cov_dict_load['cov_XC_ng_2D'], cov_obj.cov_XC_ssc_2D, atol=0, rtol=1e-7)
-np.testing.assert_allclose(cov_dict_load['cov_3x2pt_ng_2D'], cov_obj.cov_3x2pt_ssc_2D, atol=0, rtol=1e-7)
+# np.testing.assert_allclose(cov_dict_load['cov_WL_ng_2D'], cov_obj.cov_WL_ssc_2D, atol=0, rtol=1e-7)
+# np.testing.assert_allclose(cov_dict_load['cov_GC_ng_2D'], cov_obj.cov_GC_ssc_2D, atol=0, rtol=1e-7)
+# np.testing.assert_allclose(cov_dict_load['cov_XC_ng_2D'], cov_obj.cov_XC_ssc_2D, atol=0, rtol=1e-7)
+# np.testing.assert_allclose(cov_dict_load['cov_3x2pt_ng_2D'], cov_obj.cov_3x2pt_ssc_2D, atol=0, rtol=1e-7)
 
-np.testing.assert_allclose(cov_dict_load['cov_WL_tot_2D'], cov_obj.cov_WL_ssc_2D + cov_obj.cov_WL_g_2D, atol=0, rtol=1e-7)
-np.testing.assert_allclose(cov_dict_load['cov_GC_tot_2D'], cov_obj.cov_GC_ssc_2D + cov_obj.cov_GC_g_2D, atol=0, rtol=1e-7)
-np.testing.assert_allclose(cov_dict_load['cov_XC_tot_2D'], cov_obj.cov_XC_ssc_2D + cov_obj.cov_XC_g_2D, atol=0, rtol=1e-7)
-np.testing.assert_allclose(cov_dict_load['cov_3x2pt_tot_2D'], cov_obj.cov_3x2pt_ssc_2D + cov_obj.cov_3x2pt_g_2D, atol=0, rtol=1e-7)
+# np.testing.assert_allclose(cov_dict_load['cov_WL_tot_2D'], cov_obj.cov_WL_ssc_2D + cov_obj.cov_WL_g_2D, atol=0, rtol=1e-7)
+# np.testing.assert_allclose(cov_dict_load['cov_GC_tot_2D'], cov_obj.cov_GC_ssc_2D + cov_obj.cov_GC_g_2D, atol=0, rtol=1e-7)
+# np.testing.assert_allclose(cov_dict_load['cov_XC_tot_2D'], cov_obj.cov_XC_ssc_2D + cov_obj.cov_XC_g_2D, atol=0, rtol=1e-7)
+# np.testing.assert_allclose(cov_dict_load['cov_3x2pt_tot_2D'], cov_obj.cov_3x2pt_ssc_2D + cov_obj.cov_3x2pt_g_2D, atol=0, rtol=1e-7)
 
 # TODO delete in public branch
-# # ! new test G cov from OC
-# # in 10D
-# plt.figure()
-# plt.semilogy(np.abs(cov_obj.cov_3x2pt_g_10D.flatten()))
-# plt.semilogy(np.abs(oc_obj.cov_g_oc_3x2pt_10D.flatten()))
+# ! new test G cov from OC
+# in 10D
+mm.compare_funcs(None, np.log10(np.abs(cov_obj.cov_3x2pt_g_10D.flatten())), 
+              np.log10(np.abs(oc_obj.cov_g_oc_3x2pt_10D.flatten())), 'sb', 'oc')
 
-# # in 2D
-# sb_3x2pt_g_2d = cov_obj.cov_3x2pt_g_2D
-# sb_3x2pt_g_2d_sva = cov_obj.cov_3x2pt_g_2D_sva
-# sb_3x2pt_g_2d_sn = cov_obj.cov_3x2pt_g_2D_sn
-# sb_3x2pt_g_2d_mix = cov_obj.cov_3x2pt_g_2D_mix
-# oc_3x2pt_g_4d = mm.cov_3x2pt_10D_to_4D(oc_obj.cov_g_oc_3x2pt_10D, probe_ordering,
-#                                        nbl_3x2pt, zbins, ind.copy(), GL_OR_LG)
-# oc_3x2pt_g_4d_sva = mm.cov_3x2pt_10D_to_4D(oc_obj.cov_sva_oc_3x2pt_10D, probe_ordering,
-#                                            nbl_3x2pt, zbins, ind.copy(), GL_OR_LG)
-# oc_3x2pt_g_4d_sn = mm.cov_3x2pt_10D_to_4D(oc_obj.cov_sn_oc_3x2pt_10D, probe_ordering,
-#                                           nbl_3x2pt, zbins, ind.copy(), GL_OR_LG)
-# oc_3x2pt_g_4d_mix = mm.cov_3x2pt_10D_to_4D(oc_obj.cov_mix_oc_3x2pt_10D, probe_ordering,
-#                                            nbl_3x2pt, zbins, ind.copy(), GL_OR_LG)
+# in 2D
+sb_3x2pt_g_2d = cov_obj.cov_3x2pt_g_2D
+sb_3x2pt_g_2d_sva = cov_obj.cov_3x2pt_g_2D_sva
+sb_3x2pt_g_2d_sn = cov_obj.cov_3x2pt_g_2D_sn
+sb_3x2pt_g_2d_mix = cov_obj.cov_3x2pt_g_2D_mix
+oc_3x2pt_g_4d = mm.cov_3x2pt_10D_to_4D(oc_obj.cov_g_oc_3x2pt_10D, probe_ordering,
+                                       nbl_3x2pt, zbins, ind.copy(), GL_OR_LG)
+oc_3x2pt_g_4d_sva = mm.cov_3x2pt_10D_to_4D(oc_obj.cov_sva_oc_3x2pt_10D, probe_ordering,
+                                           nbl_3x2pt, zbins, ind.copy(), GL_OR_LG)
+oc_3x2pt_g_4d_sn = mm.cov_3x2pt_10D_to_4D(oc_obj.cov_sn_oc_3x2pt_10D, probe_ordering,
+                                          nbl_3x2pt, zbins, ind.copy(), GL_OR_LG)
+oc_3x2pt_g_4d_mix = mm.cov_3x2pt_10D_to_4D(oc_obj.cov_mix_oc_3x2pt_10D, probe_ordering,
+                                           nbl_3x2pt, zbins, ind.copy(), GL_OR_LG)
 
-# cov_sb_2d = sb_3x2pt_g_2d_sva
-# cov_oc_4d = oc_3x2pt_g_4d_sva
-# # cov_oc_4d_2 = oc2_3x2pt_g_4d_sn
-# cov_oc_2d = mm.cov_4D_to_2DCLOE_3x2pt(cov_oc_4d, zbins, block_index='ell')
-# # cov_oc2_2d = mm.cov_4D_to_2DCLOE_3x2pt(cov_oc_4d_2, zbins, block_index='ell')
+cov_sb_2d = sb_3x2pt_g_2d_sva
+cov_oc_4d = oc_3x2pt_g_4d_sva
+# cov_oc_4d_2 = oc2_3x2pt_g_4d_sn
+cov_oc_2d = mm.cov_4D_to_2DCLOE_3x2pt(cov_oc_4d, zbins, block_index='ell')
+# cov_oc2_2d = mm.cov_4D_to_2DCLOE_3x2pt(cov_oc_4d_2, zbins, block_index='ell')
 
-# mm.compare_arrays(cov_sb_2d, cov_oc_2d, 'cov_sb_2d', 'cov_oc_2d', plot_diff_threshold=1,
-#                   abs_val=True, log_diff=False)
+mm.compare_arrays(cov_sb_2d, cov_oc_2d, 'cov_sb_2d', 'cov_oc_2d', plot_diff_threshold=1,
+                  abs_val=True, log_diff=False)
 
-# fig, ax = plt.subplots(2, 1, sharex=True, height_ratios=[2, 1], )
-# fig.subplots_adjust(hspace=0)
-# ax[0].semilogy(np.diag(np.abs(cov_sb_2d)), label='sb')
-# ax[0].semilogy(np.diag(np.abs(cov_oc_2d)), label='oc')
-# ax[0].legend()
-# ax[0].set_ylabel('diag')
-# ax[1].plot(mm.percent_diff(np.diag(cov_sb_2d), np.diag(cov_oc_2d)), label='% diff')
-# ax[1].set_ylabel('% diff')
-# fig.suptitle('SN')
+fig, ax = plt.subplots(2, 1, sharex=True, height_ratios=[2, 1], )
+fig.subplots_adjust(hspace=0)
+ax[0].semilogy(np.diag(np.abs(cov_sb_2d)), label='sb')
+ax[0].semilogy(np.diag(np.abs(cov_oc_2d)), label='oc')
+ax[0].legend()
+ax[0].set_ylabel('diag')
+ax[1].plot(mm.percent_diff(np.diag(cov_sb_2d), np.diag(cov_oc_2d)), label='% diff')
+ax[1].set_ylabel('% diff')
+fig.suptitle('SN')
+
+mm.matshow(oc_obj.cov_mat_g_2d)
+mm.matshow(cov_obj.reshape_cov(cov_obj.cov_3x2pt_g_10D, 10, 2, 20, zpairs=None, ind_probe=None, is_3x2pt=True))
+
+assert False, 'stop here'
 
 
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:

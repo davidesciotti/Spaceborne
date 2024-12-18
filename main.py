@@ -106,9 +106,11 @@ if cfg['covariance']['cNG']:
     cov_terms_list.append("cNG")
 cov_terms_str = ''.join(cov_terms_list)
 
-compute_oc_ssc, compute_oc_cng = False, False
+compute_oc_g, compute_oc_ssc, compute_oc_cng = False, False, False
 compute_sb_ssc, compute_sb_cng = False, False
 compute_ccl_ssc, compute_ccl_cng = False, False
+if cfg['covariance']['G'] and cfg['covariance']['G_code'] == 'OneCovariance':
+    compute_oc_g = True
 if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'OneCovariance':
     compute_oc_ssc = True
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'OneCovariance':
@@ -413,10 +415,21 @@ ccl_obj.cl_ll_3d = ccl_obj.compute_cls(ell_dict['ell_WL'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, 'spline')
 ccl_obj.cl_gl_3d = ccl_obj.compute_cls(ell_dict['ell_XC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
-ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
+ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,                                       
+                                       ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
+
+# oc needs finer sampling to avoid issues
+nbl_3x2pt_oc = 500
+ells_3x2pt_oc = np.geomspace(cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_3x2pt'], nbl_3x2pt_oc)
+cl_ll_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
+                                       ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, 'spline')
+cl_gl_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
+                                       ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
+cl_gg_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
 
 # ! add multiplicative shear bias
+# ! THIS SHOULD NOT BE DONE FOR THE OC Cls!! mult shear bias values are passed in the .ini file
 mult_shear_bias = np.array(cfg['C_ell']['mult_shear_bias'])
 assert len(mult_shear_bias) == zbins, 'mult_shear_bias should be a scalar'
 if not np.all(mult_shear_bias == 0):
@@ -431,7 +444,7 @@ if not np.all(mult_shear_bias == 0):
         for zi in range(zbins):
             for zj in range(zbins):
                 ccl_obj.cl_gl_3d[ell_idx, zi, zj] *= (1 + mult_shear_bias[zj])
-
+                
 ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_3x2pt, zbins, zbins))
 ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[:nbl_3x2pt, :, :]
 ccl_obj.cl_3x2pt_5d[1, 0, :, :, :] = ccl_obj.cl_gl_3d[:nbl_3x2pt, :, :]
@@ -441,23 +454,23 @@ ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[:nbl_3x2pt, :, :]
 cl_ll_3d, cl_gl_3d, cl_gg_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d
 cl_3x2pt_5d = ccl_obj.cl_3x2pt_5d
 
+cl_3x2pt_5d_oc = np.zeros((n_probes, n_probes, nbl_3x2pt_oc, zbins, zbins))
+cl_3x2pt_5d_oc[0, 0, :, :, :] = cl_ll_3d_oc
+cl_3x2pt_5d_oc[1, 0, :, :, :] = cl_gl_3d_oc
+cl_3x2pt_5d_oc[0, 1, :, :, :] = cl_gl_3d_oc.transpose(0, 2, 1)
+cl_3x2pt_5d_oc[1, 1, :, :, :] = cl_gg_3d_oc
+
 fig, ax = plt.subplots(1, 3)
 plt.tight_layout()
 for zi in range(zbins):
     zj = zi
-    ax[0].loglog(ell_dict['ell_WL'], cl_ll_3d[:, zi, zj][:nbl_WL], ls="-", c=clr[zi], alpha=0.6)
-    ax[0].loglog(ell_dict['ell_WL'], ccl_obj.cl_ll_3d[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
-
-    ax[1].loglog(ell_dict['ell_XC'], cl_gl_3d[:, zi, zj][:nbl_3x2pt], ls="-", c=clr[zi], alpha=0.6)
-    ax[1].loglog(ell_dict['ell_XC'], ccl_obj.cl_gl_3d[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
-
-    ax[2].loglog(ell_dict['ell_GC'], cl_gg_3d[:, zi, zj][:nbl_GC], ls="-", c=clr[zi], alpha=0.6)
-    ax[2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+    ax[0].loglog(ell_dict['ell_WL'], ccl_obj.cl_ll_3d[:, zi, zj], c=clr[zi])
+    ax[1].loglog(ell_dict['ell_XC'], ccl_obj.cl_gl_3d[:, zi, zj], c=clr[zi])
+    ax[2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], c=clr[zi])
 ax[0].set_xlabel('$\\ell$')
 ax[1].set_xlabel('$\\ell$')
 ax[2].set_xlabel('$\\ell$')
 ax[0].set_ylabel('$C_{\\ell}$')
-lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
 plt.show()
 
 
@@ -470,6 +483,9 @@ if cfg['BNT']['cl_BNT_transform']:
     cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, bnt_matrix, 'L', 'L')
     cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5d, bnt_matrix)
     warnings.warn('you should probably BNT-transform the responses too!')
+    if compute_oc_g or compute_oc_ssc or compute_oc_cng:
+        raise NotImplementedError('You should cut also the OC Cls')
+
 
 # ! cut datavectors and responses in the pessimistic case; be carful of WA, because it does not start from ell_min
 if ell_max_WL == 1500:
@@ -503,6 +519,8 @@ if cfg['ell_cuts']['cl_ell_cuts']:
     cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_dict['ell_WL'], ell_cuts_dict['LL'])
     cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_dict['ell_GC'], ell_cuts_dict['GG'])
     cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt'])
+    if compute_oc_g or compute_oc_ssc or compute_oc_cng:
+        raise NotImplementedError('You should cut also the OC Cls')
 
 # re-set cls in the ccl_obj after BNT transform and/or ell cuts
 ccl_obj.cl_ll_3d = cl_ll_3d
@@ -520,9 +538,8 @@ cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['split_gaussian_cov'])
 
 
-
 # ! ========================================== OneCovariance ===================================================
-if compute_oc_ssc or compute_oc_cng:
+if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 
     if cfg['ell_cuts']['cl_ell_cuts']:
         raise NotImplementedError('TODO double check inputs in this case. This case is untested')
@@ -545,12 +562,12 @@ if compute_oc_ssc or compute_oc_cng:
     np.savetxt(f'{oc_path}/{nz_src_ascii_filename}', nz_src_tosave)
     np.savetxt(f'{oc_path}/{nz_lns_ascii_filename}', nz_lns_tosave)
 
-    cl_ll_ascii_filename = f'Cell_ll_nbl{nbl_3x2pt}'
-    cl_gl_ascii_filename = f'Cell_gl_nbl{nbl_3x2pt}'
-    cl_gg_ascii_filename = f'Cell_gg_nbl{nbl_3x2pt}'
-    mm.write_cl_ascii(oc_path, cl_ll_ascii_filename, ccl_obj.cl_3x2pt_5d[0, 0, ...], ell_dict['ell_3x2pt'], zbins)
-    mm.write_cl_ascii(oc_path, cl_gl_ascii_filename, ccl_obj.cl_3x2pt_5d[1, 0, ...], ell_dict['ell_3x2pt'], zbins)
-    mm.write_cl_ascii(oc_path, cl_gg_ascii_filename, ccl_obj.cl_3x2pt_5d[1, 1, ...], ell_dict['ell_3x2pt'], zbins)
+    cl_ll_ascii_filename = f'Cell_ll_nbl{nbl_3x2pt_oc}'
+    cl_gl_ascii_filename = f'Cell_gl_nbl{nbl_3x2pt_oc}'
+    cl_gg_ascii_filename = f'Cell_gg_nbl{nbl_3x2pt_oc}'
+    mm.write_cl_ascii(oc_path, cl_ll_ascii_filename, cl_3x2pt_5d_oc[0, 0, ...], ells_3x2pt_oc, zbins)
+    mm.write_cl_ascii(oc_path, cl_gl_ascii_filename, cl_3x2pt_5d_oc[1, 0, ...], ells_3x2pt_oc, zbins)
+    mm.write_cl_ascii(oc_path, cl_gg_ascii_filename, cl_3x2pt_5d_oc[1, 1, ...], ells_3x2pt_oc, zbins)
 
     ascii_filenames_dict = {
         'cl_ll_ascii_filename': cl_ll_ascii_filename,
@@ -611,8 +628,6 @@ if compute_oc_ssc or compute_oc_cng:
 
     print('Time taken to compute OC: {:.2f} m'.format((time.perf_counter() - start_time) / 60))
 
-else:
-    oc_obj = None
 
 # ! ========================================== Spaceborne ===================================================
 
@@ -1064,9 +1079,6 @@ cov_dict_load = np.load('/home/davide/Documenti/Lavoro/Programmi/Spaceborne_benc
 
 # TODO delete in public branch
 # ! new test G cov from OC
-# in 10D
-mm.compare_funcs(None, np.log10(np.abs(cov_obj.cov_3x2pt_g_10D.flatten())), 
-              np.log10(np.abs(oc_obj.cov_g_oc_3x2pt_10D.flatten())), 'sb', 'oc')
 
 # in 2D
 sb_3x2pt_g_2d = cov_obj.cov_3x2pt_g_2D
@@ -1082,10 +1094,10 @@ oc_3x2pt_g_4d_sn = mm.cov_3x2pt_10D_to_4D(oc_obj.cov_sn_oc_3x2pt_10D, probe_orde
 oc_3x2pt_g_4d_mix = mm.cov_3x2pt_10D_to_4D(oc_obj.cov_mix_oc_3x2pt_10D, probe_ordering,
                                            nbl_3x2pt, zbins, ind.copy(), GL_OR_LG)
 
-cov_sb_2d = sb_3x2pt_g_2d_sva
-cov_oc_4d = oc_3x2pt_g_4d_sva
+cov_sb_2d = sb_3x2pt_g_2d
+cov_oc_4d = oc_3x2pt_g_4d
 # cov_oc_4d_2 = oc2_3x2pt_g_4d_sn
-cov_oc_2d = mm.cov_4D_to_2DCLOE_3x2pt(cov_oc_4d, zbins, block_index='ell')
+cov_oc_2d = mm.cov_4D_to_2DCLOE_3x2pt(cov_oc_4d, zbins, block_index='zpair')
 # cov_oc2_2d = mm.cov_4D_to_2DCLOE_3x2pt(cov_oc_4d_2, zbins, block_index='ell')
 
 mm.compare_arrays(cov_sb_2d, cov_oc_2d, 'cov_sb_2d', 'cov_oc_2d', plot_diff_threshold=1,
@@ -1101,8 +1113,20 @@ ax[1].plot(mm.percent_diff(np.diag(cov_sb_2d), np.diag(cov_oc_2d)), label='% dif
 ax[1].set_ylabel('% diff')
 fig.suptitle('SN')
 
-mm.matshow(oc_obj.cov_mat_g_2d)
-mm.matshow(cov_obj.reshape_cov(cov_obj.cov_3x2pt_g_10D, 10, 2, 20, zpairs=None, ind_probe=None, is_3x2pt=True))
+
+cov_g_2d_oc_mat = oc_obj.cov_mat_g_2d
+cov_g_2d_sb = cov_obj.reshape_cov(cov_obj.cov_3x2pt_g_10D, 10, 2, 20, zpairs=None, ind_probe=None, is_3x2pt=True)
+cov_g_2d_oc_list = cov_obj.reshape_cov(oc_obj.cov_g_oc_3x2pt_10D, 10, 2, 20, zpairs=None, ind_probe=None, is_3x2pt=True)
+
+mm.compare_arrays(cov_g_2d_oc_mat, cov_g_2d_sb, 'cov_g_2d_oc_mat', 'cov_g_2d_sb')
+mm.compare_arrays(cov_g_2d_oc_list, cov_g_2d_sb, 'cov_g_2d_oc_list', 'cov_g_2d_sb')
+
+mm.compare_funcs(None, np.abs(cov_obj.cov_3x2pt_g_10D.flatten()), 
+              np.abs(oc_obj.cov_g_oc_3x2pt_10D.flatten()), '10d sb', '10d oc', [True, False])
+mm.compare_funcs(None, np.diag(cov_g_2d_oc_mat), np.diag(cov_g_2d_sb), 'diag oc', 'diag sb', logscale_y=[True, False])
+mm.compare_funcs(None, np.diag(cov_oc_2d), np.diag(cov_g_2d_sb), 'cov_oc_2d oc', 'diag sb', logscale_y=[True, False])
+
+
 
 assert False, 'stop here'
 

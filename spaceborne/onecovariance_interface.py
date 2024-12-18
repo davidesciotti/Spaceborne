@@ -140,10 +140,10 @@ class OneCovarianceInterface():
         cfg_onecov_ini['observables']['unbiased_clustering'] = str(False)
 
         cfg_onecov_ini['covELLspace settings']['ell_min'] = str(self.variable_specs['ell_min'])
-        cfg_onecov_ini['covELLspace settings']['ell_bins'] = str(self.variable_specs['nbl_3x2pt'])
         cfg_onecov_ini['covELLspace settings']['ell_min_lensing'] = str(self.variable_specs['ell_min'])
-        cfg_onecov_ini['covELLspace settings']['ell_bins_lensing'] = str(self.variable_specs['nbl_3x2pt'])
         cfg_onecov_ini['covELLspace settings']['ell_min_clustering'] = str(self.variable_specs['ell_min'])
+        cfg_onecov_ini['covELLspace settings']['ell_bins'] = str(self.variable_specs['nbl_3x2pt'])
+        cfg_onecov_ini['covELLspace settings']['ell_bins_lensing'] = str(self.variable_specs['nbl_3x2pt'])
         cfg_onecov_ini['covELLspace settings']['ell_bins_clustering'] = str(self.variable_specs['nbl_3x2pt'])
         cfg_onecov_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(map(str, mult_shear_bias_list))
 
@@ -557,7 +557,8 @@ class OneCovarianceInterface():
             self.cov_cng_oc_3x2pt_10D[index_tuple] = df_chunk['covng'].values
             self.cov_tot_oc_3x2pt_10D[index_tuple] = df_chunk['cov'].values
 
-        covs_10d = [self.cov_sva_oc_3x2pt_10D, self.cov_mix_oc_3x2pt_10D, self.cov_sn_oc_3x2pt_10D, self.cov_g_oc_3x2pt_10D,
+        covs_10d = [self.cov_sva_oc_3x2pt_10D, self.cov_mix_oc_3x2pt_10D, self.cov_sn_oc_3x2pt_10D, 
+                    self.cov_g_oc_3x2pt_10D,
                     self.cov_ssc_oc_3x2pt_10D, self.cov_cng_oc_3x2pt_10D, self.cov_tot_oc_3x2pt_10D]
 
         for cov_10d in covs_10d:

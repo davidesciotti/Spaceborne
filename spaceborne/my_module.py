@@ -77,6 +77,7 @@ mpl_other_dict = {
 
 
 
+
 def compare_funcs(x, y_a, y_b, name_a='A', name_b='B'):
     
     if x == None:
@@ -183,7 +184,9 @@ def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
     - x_mask (numpy.ndarray): A boolean mask indicating which elements of the original x_out array were used.
     - y_mask (numpy.ndarray): A boolean mask indicating which elements of the original y_out array were used.
     """
+    
     z2d_func = RectBivariateSpline(x=x_in, y=y_in, z=z2d_in)
+    
 
     # clip x and y grids to avoid interpolation errors
     x_mask = np.logical_and(x_in.min() <= x_out, x_out < x_in.max())
@@ -198,6 +201,12 @@ def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
         print(f"y array trimmed: old range [{y_out.min():.2e}, {y_out.max():.2e}], new range [{
               y_out_masked.min():.2e}, {y_out_masked.max():.2e}]")
 
+    # with RegularGridInterpolator:
+    # TODO untested
+    # z2d_func = RegularGridInterpolator((x_in, y_in), z2d_in, method='linear')
+    # xx, yy = np.meshgrid(x_out_masked, y_out_masked)
+    # z2d_interp = z2d_interp((xx, yy)).T
+    
     z2d_interp = z2d_func(x_out_masked, y_out_masked)
 
     if output_masks:

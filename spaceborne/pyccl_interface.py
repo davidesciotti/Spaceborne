@@ -3,27 +3,15 @@
 
 from functools import partial
 import time
-import warnings
-import matplotlib
-import matplotlib.pyplot as plt
-from pyccl.errors import CCLError
 import numpy as np
 import pyccl as ccl
-import os
-import sys
-from matplotlib import cm
 from tqdm import tqdm
 import healpy as hp
-from scipy.interpolate import interp1d
 
 import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as cosmo_lib
 import spaceborne.wf_cl_lib as wf_cl_lib
-import spaceborne.sigma2_SSC as sigma2_SSC
-import common_cfg.mpl_cfg as mpl_cfg
 import spaceborne.mask_fits_to_cl as mask_utils
-
-# plt.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
 ccl.spline_params['A_SPLINE_NA_PK'] = 240  # gives CAMB error if too high
 ccl.spline_params['K_MAX_SPLINE'] = 300
@@ -317,19 +305,6 @@ class PycclClass():
             ('G', 'L'): ccl.halos.Profile2pt(),
             ('L', 'G'): ccl.halos.Profile2pt(),
             ('G', 'G'): ccl.halos.Profile2ptHOD(),
-        }
-        is_number_counts_dict = {
-            'L': False,
-            'G': True,
-        }
-        # gal_bias_1d = self.gal_bias_func_ofz(self.z_grid_tkka_SSC)  # no
-        # gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.z_to_a(self.z_grid_tkka_SSC)[::-1])  
-        gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.a_to_z(self.a_grid_tkka_SSC))  # ok-ish
-        # gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.a_to_z(self.a_grid_tkka_SSC)[::-1])  # nope
-
-        gal_bias_dict = {
-            'L': np.ones_like(gal_bias_1d),
-            'G': gal_bias_1d,
         }
 
         # store the trispectrum for the various probes in a dictionary

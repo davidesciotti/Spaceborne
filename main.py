@@ -31,23 +31,18 @@ import spaceborne.covariance as sb_cov
 
 pp = pprint.PrettyPrinter(indent=4)
 ROOT = os.getenv('ROOT')
-SB_ROOT = ROOT + '/Spaceborne'
 script_start_time = time.perf_counter()
 
 
 # ! Set up argument parsing
 # parser = argparse.ArgumentParser(description="Your script description here.")
 # parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
-# parser.add_argument('--show_plots', action='store_true', help='Show plots if specified')
-
+# # parser.add_argument('--show_plots', action='store_true', help='Show plots if specified',  required=False)
 # args = parser.parse_args()
-
-# # # Load the configuration file
 # with open(args.config, 'r') as f:
 #     cfg = yaml.safe_load(f)
-
-# if not args.show_plots:
-#     matplotlib.use('Agg')
+# # if not args.show_plots:
+# #     matplotlib.use('Agg')
 
 # ! LOAD CONFIG
 # ! uncomment this if executing from interactive window
@@ -85,8 +80,9 @@ probe_ordering = cfg['covariance']['probe_ordering']
 GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 EP_OR_ED = cfg['nz']['EP_or_ED']
 output_path = cfg['misc']['output_path']
+
 if not os.path.exists(f'{output_path}/cache'):
-    os.makedirs(f'{output_path}/cache')
+    os.mkdir(f'{output_path}/cache')
 
 clr = cm.rainbow(np.linspace(0, 1, zbins))
 use_h_units = False  # TODO decide on this
@@ -110,9 +106,11 @@ if cfg['covariance']['cNG']:
     cov_terms_list.append("cNG")
 cov_terms_str = ''.join(cov_terms_list)
 
-compute_oc_ssc, compute_oc_cng = False, False
+compute_oc_g, compute_oc_ssc, compute_oc_cng = False, False, False
 compute_sb_ssc, compute_sb_cng = False, False
 compute_ccl_ssc, compute_ccl_cng = False, False
+if cfg['covariance']['G'] and cfg['covariance']['G_code'] == 'OneCovariance':
+    compute_oc_g = True
 if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'OneCovariance':
     compute_oc_ssc = True
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'OneCovariance':
@@ -128,7 +126,7 @@ if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
     compute_ccl_ssc = True
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
     compute_ccl_cng = True
-    
+
 if cfg['covariance']['use_KE_approximation']:
     cl_integral_convention_ssc = 'Euclid_KE_approximation'
     ssc_integration_type = 'simps_KE_approximation'
@@ -438,7 +436,18 @@ ccl_obj.cl_gl_3d = ccl_obj.compute_cls(ell_dict['ell_XC'], ccl_obj.p_of_k_a,
 ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
 
+# oc needs finer sampling to avoid issues
+nbl_3x2pt_oc = 500
+ells_3x2pt_oc = np.geomspace(cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_3x2pt'], nbl_3x2pt_oc)
+cl_ll_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
+                                  ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, 'spline')
+cl_gl_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
+                                  ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
+cl_gg_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
+                                  ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
+
 # ! add multiplicative shear bias
+# ! THIS SHOULD NOT BE DONE FOR THE OC Cls!! mult shear bias values are passed in the .ini file
 mult_shear_bias = np.array(cfg['C_ell']['mult_shear_bias'])
 assert len(mult_shear_bias) == zbins, 'mult_shear_bias should be a scalar'
 if not np.all(mult_shear_bias == 0):
@@ -459,6 +468,12 @@ ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[:nbl_3x2pt, :, :]
 ccl_obj.cl_3x2pt_5d[1, 0, :, :, :] = ccl_obj.cl_gl_3d[:nbl_3x2pt, :, :]
 ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[:nbl_3x2pt, :, :].transpose(0, 2, 1)
 ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[:nbl_3x2pt, :, :]
+
+cl_3x2pt_5d_oc = np.zeros((n_probes, n_probes, nbl_3x2pt_oc, zbins, zbins))
+cl_3x2pt_5d_oc[0, 0, :, :, :] = cl_ll_3d_oc
+cl_3x2pt_5d_oc[1, 0, :, :, :] = cl_gl_3d_oc
+cl_3x2pt_5d_oc[0, 1, :, :, :] = cl_gl_3d_oc.transpose(0, 2, 1)
+cl_3x2pt_5d_oc[1, 1, :, :, :] = cl_gg_3d_oc
 
 cl_ll_3d, cl_gl_3d, cl_gg_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d
 cl_3x2pt_5d = ccl_obj.cl_3x2pt_5d
@@ -499,43 +514,19 @@ fig, ax = plt.subplots(1, 3)
 plt.tight_layout()
 for zi in range(zbins):
     zj = zi
-    ax[0].loglog(ell_dict['ell_WL'], cl_ll_3d[:, zi, zj][:nbl_WL], ls="-", c=clr[zi], alpha=0.6)
-    ax[0].loglog(ell_dict['ell_WL'], ccl_obj.cl_ll_3d[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
-
-    ax[1].loglog(ell_dict['ell_XC'], cl_gl_3d[:, zi, zj][:nbl_3x2pt], ls="-", c=clr[zi], alpha=0.6)
-    ax[1].loglog(ell_dict['ell_XC'], ccl_obj.cl_gl_3d[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
-
-    ax[2].loglog(ell_dict['ell_GC'], cl_gg_3d[:, zi, zj][:nbl_GC], ls="-", c=clr[zi], alpha=0.6)
-    ax[2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], ls=":", c=clr[zi], alpha=0.6)
+    ax[0].loglog(ell_dict['ell_WL'], ccl_obj.cl_ll_3d[:, zi, zj], c=clr[zi])
+    ax[1].loglog(ell_dict['ell_XC'], ccl_obj.cl_gl_3d[:, zi, zj], c=clr[zi])
+    ax[2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], c=clr[zi])
 ax[0].set_xlabel('$\\ell$')
 ax[1].set_xlabel('$\\ell$')
 ax[2].set_xlabel('$\\ell$')
 ax[0].set_ylabel('$C_{\\ell}$')
-lines = [plt.Line2D([], [], color='k', linestyle=ls) for ls in ['-', ':']]
 plt.show()
 
-# cl_ll_3d_test = np.load('./tests/benchmarks/cl_ll_3d.npy', )
-# cl_gl_3d_test = np.load('./tests/benchmarks/cl_gl_3d.npy', )
-# cl_gg_3d_test = np.load('./tests/benchmarks/cl_gg_3d.npy', )
-# cl_3x2pt_5d_test = np.load('./tests/benchmarks/cl_3x2pt_5d.npy', )
-# wf_delta_arr_test = np.load('./tests/benchmarks/wf_delta_arr.npy')
-# wf_gamma_arr_test = np.load('./tests/benchmarks/wf_gamma_arr.npy')
-# wf_ia_arr_test = np.load('./tests/benchmarks/wf_ia_arr.npy')
-# wf_mu_arr_test = np.load('./tests/benchmarks/wf_mu_arr.npy')
-# wf_lensing_arr_test = np.load('./tests/benchmarks/wf_lensing_arr.npy')
-# wf_galaxy_arr_test = np.load('./tests/benchmarks/wf_galaxy_arr.npy')
-
-# np.testing.assert_allclose(cl_ll_3d, cl_ll_3d_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(cl_gl_3d, cl_gl_3d_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(cl_gg_3d, cl_gg_3d_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(cl_3x2pt_5d, cl_3x2pt_5d_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(ccl_obj.wf_delta_arr, wf_delta_arr_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(ccl_obj.wf_gamma_arr, wf_gamma_arr_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(ccl_obj.wf_ia_arr, wf_ia_arr_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(ccl_obj.wf_mu_arr, wf_mu_arr_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(ccl_obj.wf_lensing_arr, wf_lensing_arr_test, rtol=1e-5, atol=0)
-# np.testing.assert_allclose(ccl_obj.wf_galaxy_arr, wf_galaxy_arr_test, rtol=1e-5, atol=0)
-# print('cl and wf match!! ✅')
+# matshow for GL, to make sure it's not LG
+ell_idx = 10
+mm.compare_arrays(cl_gl_3d[ell_idx, ...], ccl_obj.cl_gl_3d[ell_idx, ...], abs_val=True, log_array=True,
+                  name_A=f'{general_cfg["which_cls"]} GL', name_B='CCL GL')
 
 
 # ! BNT transform the cls (and responses?) - it's more complex since I also have to transform the noise
@@ -547,6 +538,9 @@ if cfg['BNT']['cl_BNT_transform']:
     cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, bnt_matrix, 'L', 'L')
     cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5d, bnt_matrix)
     warnings.warn('you should probably BNT-transform the responses too!')
+    if compute_oc_g or compute_oc_ssc or compute_oc_cng:
+        raise NotImplementedError('You should cut also the OC Cls')
+
 
 # ! cut datavectors and responses in the pessimistic case; be carful of WA, because it does not start from ell_min
 if ell_max_WL == 1500:
@@ -580,6 +574,8 @@ if cfg['ell_cuts']['cl_ell_cuts']:
     cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_dict['ell_WL'], ell_cuts_dict['LL'])
     cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_dict['ell_GC'], ell_cuts_dict['GG'])
     cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt'])
+    if compute_oc_g or compute_oc_ssc or compute_oc_cng:
+        raise NotImplementedError('You should cut also the OC Cls')
 
 # re-set cls in the ccl_obj after BNT transform and/or ell cuts
 ccl_obj.cl_ll_3d = cl_ll_3d
@@ -596,11 +592,9 @@ cov_obj.symmetrize_output_dict = symmetrize_output_dict
 cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['split_gaussian_cov'])
 
-np.testing.assert_allclose(cov_g_3x2pt_bench, cov_obj.cov_3x2pt_g_2D, atol=0, rtol=1e-5)
-
 
 # ! ========================================== OneCovariance ===================================================
-if compute_oc_ssc or compute_oc_cng:
+if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 
     if cfg['ell_cuts']['cl_ell_cuts']:
         raise NotImplementedError('TODO double check inputs in this case. This case is untested')
@@ -623,24 +617,27 @@ if compute_oc_ssc or compute_oc_cng:
     np.savetxt(f'{oc_path}/{nz_src_ascii_filename}', nz_src_tosave)
     np.savetxt(f'{oc_path}/{nz_lns_ascii_filename}', nz_lns_tosave)
 
-    cl_ll_ascii_filename = f'Cell_ll_SPV3_nbl{nbl_3x2pt}'
-    cl_gl_ascii_filename = f'Cell_gl_SPV3_nbl{nbl_3x2pt}'
-    cl_gg_ascii_filename = f'Cell_gg_SPV3_nbl{nbl_3x2pt}'
-    mm.write_cl_ascii(oc_path, cl_ll_ascii_filename, ccl_obj.cl_3x2pt_5d[0, 0, ...], ell_dict['ell_3x2pt'], zbins)
-    mm.write_cl_ascii(oc_path, cl_gl_ascii_filename, ccl_obj.cl_3x2pt_5d[1, 0, ...], ell_dict['ell_3x2pt'], zbins)
-    mm.write_cl_ascii(oc_path, cl_gg_ascii_filename, ccl_obj.cl_3x2pt_5d[1, 1, ...], ell_dict['ell_3x2pt'], zbins)
-
-    gal_bias_ascii_filename = f'{oc_path}/gal_bias_table.ascii'
-    ccl_obj.save_gal_bias_table_ascii(z_grid_ssc_integrands, gal_bias_ascii_filename)
+    cl_ll_ascii_filename = f'Cell_ll_nbl{nbl_3x2pt_oc}'
+    cl_gl_ascii_filename = f'Cell_gl_nbl{nbl_3x2pt_oc}'
+    cl_gg_ascii_filename = f'Cell_gg_nbl{nbl_3x2pt_oc}'
+    mm.write_cl_ascii(oc_path, cl_ll_ascii_filename, cl_3x2pt_5d_oc[0, 0, ...], ells_3x2pt_oc, zbins)
+    mm.write_cl_ascii(oc_path, cl_gl_ascii_filename, cl_3x2pt_5d_oc[1, 0, ...], ells_3x2pt_oc, zbins)
+    mm.write_cl_ascii(oc_path, cl_gg_ascii_filename, cl_3x2pt_5d_oc[1, 1, ...], ells_3x2pt_oc, zbins)
 
     ascii_filenames_dict = {
         'cl_ll_ascii_filename': cl_ll_ascii_filename,
         'cl_gl_ascii_filename': cl_gl_ascii_filename,
         'cl_gg_ascii_filename': cl_gg_ascii_filename,
-        'gal_bias_ascii_filename': gal_bias_ascii_filename,
         'nz_src_ascii_filename': nz_src_ascii_filename,
         'nz_lns_ascii_filename': nz_lns_ascii_filename,
     }
+
+    if cfg["covariance"]["which_b1g_in_resp"] == 'from_input':
+        gal_bias_ascii_filename = f'{oc_path}/gal_bias_table.ascii'
+        ccl_obj.save_gal_bias_table_ascii(z_grid_ssc_integrands, gal_bias_ascii_filename)
+        ascii_filenames_dict['gal_bias_ascii_filename'] = gal_bias_ascii_filename
+    elif cfg["covariance"]["which_b1g_in_resp"] == 'from_HOD':
+        warnings.warn('OneCovariance will use the HOD-derived galaxy bias for the Cls and responses')
 
     # * 2. compute cov using the onecovariance interface class
     print('Start NG cov computation with OneCovariance...')
@@ -648,6 +645,9 @@ if compute_oc_ssc or compute_oc_cng:
     oc_obj = oc_interface.OneCovarianceInterface(ROOT, cfg, variable_specs,
                                                  do_ssc=compute_oc_ssc, do_cng=compute_oc_cng)
     oc_obj.zbins = zbins
+    oc_obj.ind = ind
+    oc_obj.probe_ordering = probe_ordering
+    oc_obj.GL_OR_LG = GL_OR_LG
     oc_obj.nbl_3x2pt = nbl_3x2pt
     oc_obj.oc_path = oc_path
     oc_obj.path_to_config_oc_ini = f'{oc_obj.oc_path}/input_configs.ini'
@@ -655,16 +655,31 @@ if compute_oc_ssc or compute_oc_cng:
     oc_obj.build_save_oc_ini(ascii_filenames_dict, print_ini=True)
 
     # compute covs
-    oc_obj.call_onecovariance()
+    oc_obj.call_oc_from_bash()
+    oc_obj.process_cov_from_list_file()
+    oc_obj.output_sanity_check(rtol=1e-4)  # .dat vs .mat
 
-    # reload and store output
-    oc_obj.reshape_oc_output(variable_specs, ind_dict, symmetrize_output_dict)
-    oc_obj.cov_g_oc_3x2pt_10D = oc_obj.oc_output_to_dict_or_array(
-        'G', '10D_array', ind_dict, symmetrize_output_dict)
-    oc_obj.cov_ssc_oc_3x2pt_10D = oc_obj.oc_output_to_dict_or_array(
-        'SSC', '10D_array', ind_dict, symmetrize_output_dict)
-    oc_obj.cov_cng_oc_3x2pt_10D = oc_obj.oc_output_to_dict_or_array(
-        'cNG', '10D_array', ind_dict, symmetrize_output_dict)
+    # This is an alternative method to call OC (more convoluted and more maintanable).
+    # I keep the code for optional consistency checks
+    if cfg['OneCovariance']['consistency_checks']:
+
+        # store in temp variables for later check
+        check_cov_sva_oc_3x2pt_10D = oc_obj.cov_sva_oc_3x2pt_10D
+        check_cov_mix_oc_3x2pt_10D = oc_obj.cov_mix_oc_3x2pt_10D
+        check_cov_sn_oc_3x2pt_10D = oc_obj.cov_sn_oc_3x2pt_10D
+        check_cov_ssc_oc_3x2pt_10D = oc_obj.cov_ssc_oc_3x2pt_10D
+        check_cov_cng_oc_3x2pt_10D = oc_obj.cov_cng_oc_3x2pt_10D
+
+        oc_obj.call_oc_from_class()
+        oc_obj.process_cov_from_class()
+
+        # a more strict relative tolerance will make this test fail,
+        # the number of digits in the .dat and .mat files is lower
+        np.testing.assert_allclose(check_cov_sva_oc_3x2pt_10D, oc_obj.cov_sva_oc_3x2pt_10D, atol=0, rtol=1e-3)
+        np.testing.assert_allclose(check_cov_mix_oc_3x2pt_10D, oc_obj.cov_mix_oc_3x2pt_10D, atol=0, rtol=1e-3)
+        np.testing.assert_allclose(check_cov_sn_oc_3x2pt_10D, oc_obj.cov_sn_oc_3x2pt_10D, atol=0, rtol=1e-3)
+        np.testing.assert_allclose(check_cov_ssc_oc_3x2pt_10D, oc_obj.cov_ssc_oc_3x2pt_10D, atol=0, rtol=1e-3)
+        np.testing.assert_allclose(check_cov_cng_oc_3x2pt_10D, oc_obj.cov_cng_oc_3x2pt_10D, atol=0, rtol=1e-3)
 
     print('Time taken to compute OC: {:.2f} m'.format((time.perf_counter() - start_time) / 60))
 
@@ -738,7 +753,7 @@ if compute_sb_ssc:
         dPgg_ddeltab = dPgg_ddeltab_vin
 
     # ! 1. Get halo model responses from CCL
-    elif cfg['covariance']['which_pk_responses'] == 'halo_model_CCL':
+    if cfg['covariance']['which_pk_responses'] == 'halo_model_CCL':
 
         ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
                                        pyccl_cfg=cfg['PyCCL'])
@@ -784,7 +799,7 @@ if compute_sb_ssc:
         dPgm_ddeltab = dPgm_ddeltab_hm
         dPgg_ddeltab = dPgg_ddeltab_hm
 
-        # ! start tests 
+        # ! start tests
         resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
                                                  z_grid=z_grid_ssc_integrands,
                                                  ccl_obj=ccl_obj)
@@ -806,21 +821,101 @@ if compute_sb_ssc:
             dPmm_ddeltab_sb = dPmm_ddeltab_sb_input
             dPgm_ddeltab_sb = dPgm_ddeltab_sb_input
             dPgg_ddeltab_sb = dPgg_ddeltab_sb_input
+            # TODO last dimensions??
         elif cfg["covariance"]["which_b1g_in_resp"] == 'from_HOD':
             dPmm_ddeltab_sb = dPmm_ddeltab_sb_HOD
             dPgm_ddeltab_sb = dPgm_ddeltab_sb_HOD
             dPgg_ddeltab_sb = dPgg_ddeltab_sb_HOD
 
-        z_val = -1
-        z_idx = np.argmin(np.abs(z_grid_ssc_integrands - z_val))
+        dPmm_ddeltab_oc = np.load(
+            '/home/davide/Documenti/Lavoro/Programmi/ISTNL_paper/OC_validation/response_mm.npy') / h**3
+        dPgm_ddeltab_oc = np.load(
+            '/home/davide/Documenti/Lavoro/Programmi/ISTNL_paper/OC_validation/response_gm.npy')[:, :, 0] / h**3
+        dPgg_ddeltab_oc = np.load(
+            '/home/davide/Documenti/Lavoro/Programmi/ISTNL_paper/OC_validation/response_gg.npy')[:, :, 0, 0] / h**3
+        k_grid_resp_oc = np.load('/home/davide/Documenti/Lavoro/Programmi/ISTNL_paper/OC_validation/k.npy') * h
+        chi_grid_resp_oc = np.load('/home/davide/Documenti/Lavoro/Programmi/ISTNL_paper/OC_validation/chi.npy') / h
+        z_grid_resp_oc = np.load('/home/davide/Documenti/Lavoro/Programmi/ISTNL_paper/OC_validation/z.npy')
+
+        z_val = 0.25
+        z_idx_sb = np.argmin(np.abs(z_grid_ssc_integrands - z_val))
+        z_idx_oc = np.argmin(np.abs(z_grid_resp_oc - z_val))
+
+        # TODO delete in public branch
+
+        # ! rstore rob resp comparison
+        # response_mm_func = RegularGridInterpolator((k_rob, z_rob), response_mm)
+        # response_gm_func = RegularGridInterpolator((k_rob, z_rob), response_gm)
+        # response_gg_func = RegularGridInterpolator((k_rob, z_rob), response_gg)
+        # # clip k_grid_resp and z_grid_ssc_integrands to avoid interpolation errors
+        # k_mask = np.logical_and(k_rob.min() <= k_grid_resp, k_grid_resp < k_rob.max())
+        # _k_grid_resp = k_grid_resp[k_mask]
+        # z_mask = np.logical_and(z_rob.min() <= z_grid_ssc_integrands, z_grid_ssc_integrands < z_rob.max())
+        # _z_grid_ssc_integrands = z_grid_ssc_integrands[z_mask]
+        # kk, zz = np.meshgrid(_k_grid_resp, _z_grid_ssc_integrands, indexing='ij')
+        # dPmm_ddeltab = response_mm_func((kk, zz))
+        # dPgm_ddeltab = response_gm_func((kk, zz))
+        # dPgg_ddeltab = response_gg_func((kk, zz))
+        # assert False, 'stop here'
+
+        # which_pk_resp = covariance_cfg["Spaceborne_cfg"]["which_pk_responses"]
+        # which_pk = cfg["cosmology"]["other_params"]["camb_extra_parameters"]["camb"]["halofit_version"]
+        # fig, ax = plt.subplots(2, 1, sharex=True, figsize=(10, 10), height_ratios=[2, 1])
+        # # plt.tight_layout()
+        # fig.subplots_adjust(hspace=0)
+        # z_val = 0.02
+        # z_ix_rob = np.argmin(np.abs(_z_grid_ssc_integrands - z_val))
+        # z_ix_dav = np.argmin(np.abs(z_grid_ssc_integrands - z_val))
+        # # ax[0].loglog(_k_grid_resp, response_mm_interp[:, z_ix_rob], label=f'OC mm', c='tab:blue')
+        # # ax[0].loglog(_k_grid_resp, np.fabs(response_gm_interp)[:, z_ix_rob], label=f'OC abs(gm)', c='tab:orange')
+        # ax[0].loglog(_k_grid_resp, np.fabs(response_gg_interp)[:, z_ix_rob], label=f'OC bgtab abs(gg)', c='tab:orange')
+        # # ax[0].loglog(k_grid_resp, dPmm_ddeltab[:, z_ix_dav], label=f'CCL mm', ls='--', c='tab:blue')
+        # # ax[0].loglog(k_grid_resp, np.fabs(dPgm_ddeltab)[:, z_ix_dav], label=f'CCL abs(gm)', ls='--', c='tab:orange')
+        # ax[0].loglog(k_grid_resp, np.fabs(dPgg_ddeltab)[:, z_ix_dav], label=f'CCL bgHOD abs(gg)', ls='--', c='tab:blue')
+        # # ax[0].loglog(k_grid_resp, dPmm_ddeltab_dav[:, z_ix_dav], label=f'Dav mm', ls=':', c='tab:blue')
+        # # ax[0].loglog(k_grid_resp, np.fabs(dPgm_ddeltab_dav)[:, z_ix_dav], label=f'Dav abs(gm)', ls=':', c='tab:orange')
+        # ax[0].loglog(k_grid_resp, np.fabs(dPgg_ddeltab_dav)[:, z_ix_dav], label=f'CCL bgtab abs(gg)', ls=':', c='tab:green')
+        # # ax[1].plot(_k_grid_resp, mm.percent_diff(dPmm_ddeltab[k_mask, z_ix_dav],
+        # #            response_mm_interp[:, z_ix_rob]), c='tab:blue')
+        # # ax[1].plot(_k_grid_resp, mm.percent_diff(dPgm_ddeltab[k_mask, z_ix_dav],
+        # #            response_gm_interp[:, z_ix_rob]), c='tab:orange')
+        # # ax[1].plot(_k_grid_resp, mm.percent_diff(dPgg_ddeltab[k_mask, z_ix_dav],
+        # #            response_gg_interp[:, z_ix_rob]), c='tab:green')
+        # ax[1].plot(_k_grid_resp, mm.percent_diff(dPmm_ddeltab[k_mask, z_ix_dav],
+        #            dPmm_ddeltab_dav[k_mask, z_ix_dav]), c='tab:blue')
+        # ax[1].plot(_k_grid_resp, mm.percent_diff(dPgm_ddeltab[k_mask, z_ix_dav],
+        #            dPgm_ddeltab_dav[k_mask, z_ix_dav]), c='tab:orange')
+        # ax[1].plot(_k_grid_resp, mm.percent_diff(dPgg_ddeltab[k_mask, z_ix_dav],
+        #            dPgg_ddeltab_dav[k_mask, z_ix_dav]), c='tab:green')
+        # ax[0].set_title(f'z_rob={_z_grid_ssc_integrands[z_ix_rob]} \nz_dav={
+        #                 z_grid_ssc_integrands[z_ix_dav]}\n {which_pk_resp}, pk {which_pk}')
+        # ax[0].set_ylabel('dPmm/ddeltab [Mpc**3]')
+        # ax[0].legend()
+        # ax[1].set_xlabel('k [1/Mpc]')
+        # ax[1].set_ylabel('dav/rob - 1 [%]')
+        # ax[1].axhspan(-10, 10, color='gray', alpha=0.2, label='$\\pm 10 \\%$')
+        # ax[1].set_ylim(-100, 100)
+        # ax[1].legend()
+        # # plt.savefig(f'{path_res_rob}/resp_mm_comparison_{which_pk_resp}_pk{which_pk}_v3.png')
+        # plt.show()
+        # ! rstore rob resp comparison
 
         plt.figure()
-        plt.loglog(k_grid_resp_hm, np.fabs(dPmm_ddeltab_hm[:, z_idx]), label='mm_ccl', c='tab:blue')
-        plt.loglog(k_grid_resp_hm, np.fabs(dPgm_ddeltab_hm[:, z_idx]), label='gm_ccl', c='tab:orange')
-        plt.loglog(k_grid_resp_hm, np.fabs(dPgg_ddeltab_hm[:, z_idx]), label='gg_ccl', c='tab:green')
-        plt.loglog(k_grid_resp_hm, np.fabs(dPmm_ddeltab_sb[:, z_idx]), label='mm_sb', c='tab:blue', ls='--')
-        plt.loglog(k_grid_resp_hm, np.fabs(dPgm_ddeltab_sb[:, z_idx]), label='gm_sb', c='tab:orange', ls='--')
-        plt.loglog(k_grid_resp_hm, np.fabs(dPgg_ddeltab_sb[:, z_idx]), label='gg_sb', c='tab:green', ls='--')
+        plt.loglog(k_grid_resp_hm, np.fabs(dPmm_ddeltab_hm[:, z_idx_sb]), label='mm_ccl', c='tab:blue')
+        plt.loglog(k_grid_resp_hm, np.fabs(dPgm_ddeltab_hm[:, z_idx_sb]), label='gm_ccl', c='tab:orange')
+        plt.loglog(k_grid_resp_hm, np.fabs(dPgg_ddeltab_hm[:, z_idx_sb]), label='gg_ccl', c='tab:green')
+        plt.loglog(k_grid_resp_hm, np.fabs(dPmm_ddeltab_sb[:, z_idx_sb]),
+                   label='mm_sb', c='tab:blue', ls='--', alpha=.5)
+        plt.loglog(k_grid_resp_hm, np.fabs(dPgm_ddeltab_sb[:, z_idx_sb]),
+                   label='gm_sb', c='tab:orange', ls='--', alpha=.5)
+        plt.loglog(k_grid_resp_hm, np.fabs(dPgg_ddeltab_sb[:, z_idx_sb]),
+                   label='gg_sb', c='tab:green', ls='--', alpha=.5)
+        plt.loglog(k_grid_resp_oc, np.fabs(dPmm_ddeltab_oc.T[:, z_idx_oc]),
+                   label='mm_oc from_input', c='tab:blue', ls=':', alpha=.5)
+        plt.loglog(k_grid_resp_oc, np.fabs(dPgm_ddeltab_oc.T[:, z_idx_oc]),
+                   label='gm_oc from_input', c='tab:orange', ls=':', alpha=.5)
+        plt.loglog(k_grid_resp_oc, np.fabs(dPgg_ddeltab_oc.T[:, z_idx_oc]),
+                   label='gg_oc from_input', c='tab:green', ls=':', alpha=.5)
 
         # plt.semilogx(k_grid_resp_hm, dPmm_ddeltab_sb_input[:, z_idx], label='mm_sb input', c='tab:blue', ls=':')
         # plt.semilogx(k_grid_resp_hm, dPgm_ddeltab_sb_input[:, z_idx], label='gm_sb input', c='tab:orange', ls=':')
@@ -831,13 +926,18 @@ if compute_sb_ssc:
         # plt.semilogx(k_grid_resp_hm, dPgg_ddeltab_sb_HOD[:, z_idx], label='gg_sb HOD', c='tab:green', ls='--')
 
         plt.xlabel('k [1/Mpc]')
+        plt.ylabel('dPAB/ddeltab [Mpc^3]')
         plt.legend()
-        plt.title('which b1g: ' + cfg["covariance"]["which_b1g_in_resp"])
+        plt.title(f'which b1g:  {cfg["covariance"]["which_b1g_in_resp"]}\n'
+                  f'z_oc: {z_grid_resp_oc[z_idx_oc]:.3f}\n'
+                  f'z_sb: {z_grid_ssc_integrands[z_idx_sb]:.3f}\n'
+                  'old sb from_input implementation'
+                  )
         # plt.ylim([-3, 12])
         plt.show()
+        # assert False, 'stop here to check responses'
         # ! end tests
 
-        
     elif cfg['covariance']['which_pk_responses'] == 'halo_model_SB':
 
         which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
@@ -1015,18 +1115,6 @@ if compute_sb_ssc:
 
     cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
 
-    cov_ssc_WL_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['L', 'L', 'L', 'L']
-    cov_ssc_GC_4d = cov_obj.cov_ssc_sb_3x2pt_dict_8D['G', 'G', 'G', 'G']
-
-    cov_ssc_WL_2d = cov_obj.reshape_cov(cov_ssc_WL_4d, 4, 2, nbl_WL,
-                                        zpairs=zpairs_auto, ind_probe=ind_auto, is_3x2pt=False)
-    cov_ssc_GC_2d = cov_obj.reshape_cov(cov_ssc_GC_4d, 4, 2, nbl_GC,
-                                        zpairs=zpairs_auto, ind_probe=ind_auto, is_3x2pt=False)
-
-    # mm.compare_arrays(cov_ssc_WL_2d, cov_bench['cov_WL_SS_2D'])
-    # mm.compare_arrays(cov_ssc_GC_2d, cov_bench['cov_GC_SS_2D'])
-    # np.testing.assert_allclose(cov_ssc_WL_2d, cov_bench['cov_WL_SS_2D'])
-    # np.testing.assert_allclose(cov_ssc_GC_2d, cov_bench['cov_GC_SS_2D'])
 # TODO integrate this with Spaceborne_covg
 
 # ! ========================================== PyCCL ===================================================
@@ -1052,16 +1140,76 @@ if (compute_ccl_ssc or compute_ccl_cng):
 
         ccl_obj.initialize_trispectrum(which_ng_cov, probe_ordering, cfg['PyCCL'])
         ccl_obj.compute_ng_cov_3x2pt(which_ng_cov, ell_dict['ell_3x2pt'], cfg['mask']['fsky'],
-                                     # TODO add try block for quad
                                      integration_method=cfg['PyCCL']['cov_integration_method'],
                                      probe_ordering=probe_ordering, ind_dict=ind_dict)
 
-
+# ! ========================================== combine covariance terms ================================================
 cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
 cov_dict = cov_obj.cov_dict
 
+# ! ========================================== plot & tests ================================================
 for key in cov_dict.keys():
     mm.matshow(cov_dict[key], title=key)
+
+for key in cov_dict.keys():
+    np.testing.assert_allclose(cov_dict[key], cov_dict[key].T,
+                               atol=0, rtol=1e-7, err_msg=f'{key} not symmetric')
+
+with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
+    yaml.dump(cfg, yaml_file, default_flow_style=False)
+
+if cfg['misc']['save_output_as_benchmark']:
+
+    import datetime
+    branch, commit = mm.get_git_info()
+    metadata = {
+        "timestamp": datetime.datetime.now().isoformat(),
+        'branch': branch,
+        'commit': commit,
+    }
+
+    bench_filename = cfg['misc']['bench_filename']
+    if os.path.exists(f'{bench_filename}.npz'):
+        raise ValueError('You are trying to overwrite a benchmark file. Please rename the file or delete the existing one.')
+
+    with open(f'{bench_filename}.yaml', 'w') as yaml_file:
+        yaml.dump(cfg, yaml_file, default_flow_style=False)
+
+    np.savez_compressed(bench_filename,
+                        backup_cfg=cfg,
+                        z_grid_ssc_integrands=z_grid_ssc_integrands,
+                        k_grid_resp=k_grid_resp,
+                        wf_delta=ccl_obj.wf_delta_arr,
+                        wf_gamma=ccl_obj.wf_gamma_arr,
+                        wf_ia=ccl_obj.wf_ia_arr,
+                        wf_mu=ccl_obj.wf_mu_arr,
+                        wf_lensing_arr=ccl_obj.wf_lensing_arr,
+                        cl_ll_3d=ccl_obj.cl_ll_3d,
+                        cl_gl_3d=ccl_obj.cl_gl_3d,
+                        cl_gg_3d=ccl_obj.cl_gg_3d,
+                        cl_3x2pt_5d=ccl_obj.cl_3x2pt_5d,
+                        sigma2_b=sigma2_b,
+                        dPmm_ddeltab=dPmm_ddeltab,
+                        dPgm_ddeltab=dPgm_ddeltab,
+                        dPgg_ddeltab=dPgg_ddeltab,
+                        d2CLL_dVddeltab=d2CLL_dVddeltab,
+                        d2CGL_dVddeltab=d2CGL_dVddeltab,
+                        d2CGG_dVddeltab=d2CGG_dVddeltab,
+                        cov_WL_g_2D=cov_dict['cov_WL_g_2D'],
+                        cov_GC_g_2D=cov_dict['cov_GC_g_2D'],
+                        cov_XC_g_2D=cov_dict['cov_XC_g_2D'],
+                        cov_3x2pt_g_2D=cov_dict['cov_3x2pt_g_2D'],
+                        cov_WL_ssc_2D=cov_dict['cov_WL_ssc_2D'],
+                        cov_GC_ssc_2D=cov_dict['cov_GC_ssc_2D'],
+                        cov_XC_ssc_2D=cov_dict['cov_XC_ssc_2D'],
+                        cov_3x2pt_ssc_2D=cov_dict['cov_3x2pt_ssc_2D'],
+                        cov_WL_cng_2D=cov_dict['cov_WL_cng_2D'],
+                        cov_GC_cng_2D=cov_dict['cov_GC_cng_2D'],
+                        cov_XC_cng_2D=cov_dict['cov_XC_cng_2D'],
+                        cov_3x2pt_cng_2D=cov_dict['cov_3x2pt_cng_2D'],
+                        metadata=metadata,
+                        )
+
 
 # for key_bench in cov_bench.keys():
 
@@ -1089,7 +1237,6 @@ for key in cov_dict.keys():
 
 
 for which_cov in cov_dict.keys():
-    
     probe = which_cov.split('_')[1]
     which_ng_cov = which_cov.split('_')[2]
     ndim = which_cov.split('_')[3]
@@ -1097,9 +1244,8 @@ for which_cov in cov_dict.keys():
                                                             probe=probe,
                                                             ndim=ndim)
 
-    np.savez_compressed(f'{output_path}/{cov_filename}', cov_dict[which_cov])
+    np.savez_compressed(f'{output_path}/{cov_filename}', **cov_dict)
 print(f'Covariance matrices saved in {output_path}')
-
 
 for which_cov in cov_dict.keys():
 

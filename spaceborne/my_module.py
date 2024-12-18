@@ -24,6 +24,7 @@ from tqdm import tqdm
 import pandas as pd
 from scipy.integrate import simpson as simps
 from scipy.interpolate import interp1d, RegularGridInterpolator, CubicSpline
+import subprocess
 
 
 symmetrize_output_dict = {
@@ -32,6 +33,105 @@ symmetrize_output_dict = {
     ('L', 'G'): False,
     ('G', 'G'): True,
 }
+
+
+mpl_rcParams_dict = {
+    'lines.linewidth': 1.5,
+    'font.size': 17,
+    'axes.labelsize': 'large',
+    'axes.titlesize': 'large',
+    'xtick.labelsize': 'large',
+    'ytick.labelsize': 'large',
+    #  'mathtext.fontset': 'stix',
+    #  'font.family': 'STIXGeneral',
+    'figure.figsize': (15, 10),
+    'lines.markersize': 8,
+    # 'axes.grid': True,
+    # 'figure.constrained_layout.use': False,
+    # 'axes.axisbelow': True
+}
+
+mpl_other_dict = {
+    'cosmo_labels_TeX': ["$\\Omega_{{\\rm m},0}$", "$\\Omega_{{\\rm b},0}$", "$w_0$", "$w_a$", "$h$", "$n_{\\rm s}$",
+                         "$\\sigma_8$", "${\\rm log}_{10}(T_{\\rm AGN}/{\\rm K})$"],
+    'IA_labels_TeX': ['$A_{\\rm IA}$', '$\\eta_{\\rm IA}$', '$\\beta_{\\rm IA}$'],
+    # 'galaxy_bias_labels_TeX': build_labels_TeX(zbins)[0],
+    # 'shear_bias_labels_TeX': build_labels_TeX(zbins)[1],
+    # 'zmean_shift_labels_TeX': build_labels_TeX(zbins)[2],
+
+    'cosmo_labels': ['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8', 'logT'],
+    'IA_labels': ['AIA', 'etaIA', 'betaIA'],
+    # 'galaxy_bias_labels': build_labels(zbins)[0],
+    # 'shear_bias_labels': build_labels(zbins)[1],
+    # 'zmean_shift_labels': build_labels(zbins)[2],
+
+    'ylabel_perc_diff_wrt_mean': "$ \\bar{\\sigma}_\\alpha^i / \\bar{\\sigma}^{\\; m}_\\alpha -1 $ [%]",
+    'ylabel_sigma_relative_fid': '$ \\sigma_\\alpha/ \\theta^{fid}_\\alpha $ [%]',
+    'dpi': 500,
+    
+    'pic_format': 'pdf',
+    'h_over_mpc_tex': '$h\\,{\\rm Mpc}^{-1}$',
+    'kmax_tex': '$k_{\\rm max}$',
+    'kmax_star_tex': '$k_{\\rm max}^\\star$',
+}
+
+
+
+
+def compare_funcs(x, y_a, y_b, name_a='A', name_b='B', logscale_y=[False, False]):
+    
+    if x == None:
+        x = np.arange(len(y_a))
+    
+    fig, ax = plt.subplots(2, 1, sharex=True, height_ratios=[2, 1], )
+    fig.subplots_adjust(hspace=0)
+    
+    ax[0].plot(x, y_a, label=name_a)
+    ax[0].plot(x, y_b, label=name_b, ls='--')
+    ax[0].legend()
+
+    
+    ax[1].plot(x, percent_diff(y_a, y_b))
+    ax[1].set_ylabel('A/B [%]')
+    
+    for i in range(2):
+        if logscale_y[i]:
+            ax[i].set_yscale('log')
+
+
+
+def get_git_info():
+    try:
+        branch = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            stderr=subprocess.DEVNULL,
+        ).strip().decode('utf-8')
+
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            stderr=subprocess.DEVNULL,
+        ).strip().decode('utf-8')
+
+        return branch, commit
+    except subprocess.CalledProcessError:
+        return None, None
+
+
+def mirror_upper_to_lower_vectorized(A):
+    # Check if A is square
+    if A.shape[0] != A.shape[1]:
+        raise ValueError("Input must be a square matrix")
+
+    # Create a copy of the original matrix
+    result = A.copy()
+
+    # Use numpy's triu_indices to get the indices of the upper triangle
+    triu_indices = np.triu_indices_from(A, k=1)
+
+    # Mirror the upper triangular elements to the lower triangle
+    result[(triu_indices[1], triu_indices[0])] = A[triu_indices]
+
+    return result
 
 
 def check_interpolate_input_tab(input_tab, z_grid_out, zbins):
@@ -88,7 +188,9 @@ def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
     - x_mask (numpy.ndarray): A boolean mask indicating which elements of the original x_out array were used.
     - y_mask (numpy.ndarray): A boolean mask indicating which elements of the original y_out array were used.
     """
+    
     z2d_func = RectBivariateSpline(x=x_in, y=y_in, z=z2d_in)
+    
 
     # clip x and y grids to avoid interpolation errors
     x_mask = np.logical_and(x_in.min() <= x_out, x_out < x_in.max())
@@ -100,9 +202,15 @@ def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
         print(f"x array trimmed: old range [{x_out.min():.2e}, {x_out.max():.2e}], "
               f"new range [{x_out_masked.min():.2e}, {x_out_masked.max():.2e}]")
     if len(y_out_masked) < len(y_out):
-        print(f"y array trimmed: old range [{y_out.min():.2e}, {y_out.max():.2e}], "
-              f"new range [{y_out_masked.min():.2e}, {y_out_masked.max():.2e}]")
+        print(f"y array trimmed: old range [{y_out.min():.2e}, {y_out.max():.2e}], new range [{
+              y_out_masked.min():.2e}, {y_out_masked.max():.2e}]")
 
+    # with RegularGridInterpolator:
+    # TODO untested
+    # z2d_func = RegularGridInterpolator((x_in, y_in), z2d_in, method='linear')
+    # xx, yy = np.meshgrid(x_out_masked, y_out_masked)
+    # z2d_interp = z2d_interp((xx, yy)).T
+    
     z2d_interp = z2d_func(x_out_masked, y_out_masked)
 
     if output_masks:
@@ -958,8 +1066,8 @@ def percent_diff_mean(array_1, array_2):
     return diff
 
 
-@njit
-def percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
+# @njit
+def _percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
     if eraseNaN:
         diff = np.where(array_1 == array_2, 0, percent_diff(array_1, array_2))
     else:
@@ -968,6 +1076,33 @@ def percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
         diff = np.log10(diff)
     if abs_val:
         diff = np.abs(diff)
+    return diff
+
+# @njit
+
+
+def percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
+    """
+    Calculate the percent difference between two arrays, handling NaN values.
+    """
+    # Handle NaN values
+    if eraseNaN:
+        # Mask where NaN values are present
+        diff = np.ma.masked_where(np.isnan(array_1) | np.isnan(array_2),
+                                  percent_diff(array_1, array_2))
+    else:
+        diff = percent_diff(array_1, array_2)
+
+    # Handle log transformation
+    if log:
+        # Mask zero differences before taking the log
+        diff = np.ma.masked_where(diff == 0, diff)
+        diff = np.log10(np.ma.abs(diff))  # Masked values will be ignored in the log
+
+    # Handle absolute values
+    if abs_val:
+        diff = np.ma.abs(diff)
+
     return diff
 
 
@@ -1115,74 +1250,76 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
     if np.array_equal(A, B):
         print(f'{name_A} and {name_B} are equal ✅')
         return
-    else:
-        for rtol in [1e-3, 1e-2, 5e-2]:  # these are NOT percent units
-            if np.allclose(A, B, rtol=rtol, atol=0):
-                print(f'{name_A} and {name_B} are close within relative tolerance of {rtol * 100}%) ✅')
-                return
 
-        diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=True)
-        higher_rtol = plot_diff_threshold or 5.0
-        result_emoji = '❌'
-        no_outliers = np.sum(diff_AB > higher_rtol)
-        additional_info = f'\nMax discrepancy: {np.max(diff_AB):.2f}%;' \
-            f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
-            f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
-        print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
+    for rtol in [1e-3, 1e-2, 5e-2]:  # these are NOT percent units
+        if np.allclose(A, B, rtol=rtol, atol=0):
+            print(f'{name_A} and {name_B} are close within relative tolerance of {rtol * 100}%) ✅')
+            return
 
-        if plot_diff or plot_array:
-            assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
+    diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=abs_val)
+    higher_rtol = plot_diff_threshold or 5.0
+    max_diff = np.max(diff_AB)
+    result_emoji = '❌' if max_diff > higher_rtol else '✅'
+    no_outliers = np.sum(diff_AB > higher_rtol)
+    additional_info = f'\nMax discrepancy: {max_diff:.2f}%;' \
+        f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
+        f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
+    print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
 
-        if plot_array:
-            A_toplot, B_toplot = A, B
+    if plot_diff or plot_array:
+        assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
 
-            if abs_val:
-                A_toplot, B_toplot = np.abs(A), np.abs(B)
-            if log_array:
-                A_toplot, B_toplot = np.log10(A), np.log10(B)
+    if plot_array:
+        A_toplot, B_toplot = A, B
 
-            fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
-            im = ax[0].matshow(A_toplot)
-            ax[0].set_title(f'{name_A}')
-            fig.colorbar(im, ax=ax[0])
+        if abs_val:
+            A_toplot, B_toplot = np.abs(A), np.abs(B)
+        if log_array:
+            A_toplot, B_toplot = np.log10(A), np.log10(B)
 
-            im = ax[1].matshow(B_toplot)
-            ax[1].set_title(f'{name_B}')
-            fig.colorbar(im, ax=ax[1])
-            fig.suptitle(f'log={log_array}, abs={abs_val}')
-            plt.show()
+        fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
+        im = ax[0].matshow(A_toplot)
+        ax[0].set_title(f'{name_A}')
+        fig.colorbar(im, ax=ax[0])
 
-        if plot_diff:
-            diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=log_diff, abs_val=abs_val)
+        im = ax[1].matshow(B_toplot)
+        ax[1].set_title(f'{name_B}')
+        fig.colorbar(im, ax=ax[1])
+        fig.suptitle(f'log={log_array}, abs={abs_val}')
+        plt.show()
 
-            if plot_diff_threshold is not None:
-                # take the log of the threshold if using the log of the precent difference
-                if log_diff:
-                    plot_diff_threshold = np.log10(plot_diff_threshold)
+    if plot_diff:
+        diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=False, abs_val=abs_val)
+        diff_BA = percent_diff_nan(B, A, eraseNaN=True, log=False, abs_val=abs_val)
 
-                diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, np.abs(diff_AB))
+        if plot_diff_threshold is not None:
+            diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, np.abs(diff_AB))
+            diff_BA = np.ma.masked_where(np.abs(diff_BA) < plot_diff_threshold, np.abs(diff_BA))
 
-            fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
-            im = ax[0].matshow(diff_AB)
-            ax[0].set_title(f'(A/B - 1) * 100')
-            fig.colorbar(im, ax=ax[0])
+        if log_diff:
+            diff_AB = np.log10(diff_AB)
+            diff_BA = np.log10(diff_BA)
 
-            im = ax[1].matshow(diff_AB)
-            ax[1].set_title(f'(A/B - 1) * 100')
-            fig.colorbar(im, ax=ax[1])
+        fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
+        im = ax[0].matshow(diff_AB)
+        ax[0].set_title(f'(A/B - 1) * 100')
+        fig.colorbar(im, ax=ax[0])
 
-            fig.suptitle(f'log={log_diff}, abs={abs_val}')
-            plt.show()
+        im = ax[1].matshow(diff_BA)
+        ax[1].set_title(f'(B/A - 1) * 100')
+        fig.colorbar(im, ax=ax[1])
 
-            if plot_diff_hist:
-                plt.figure()
-                ax = plt.gca()
-                ymin, ymax = ax.get_ylim()
-                plt.fill_betweenx(y=[0, ymax], x1=-10, x2=10, color='gray', alpha=0.3, label='10%')
-                plt.hist(diff_AB.flatten(), log=True, bins=30)
-                plt.xlabel('% difference')
-                plt.ylabel('counts')
-                plt.legend()
+        fig.suptitle(f'log={log_diff}, abs={abs_val}')
+        plt.show()
+
+    if plot_diff_hist:
+        diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=False, abs_val=False)
+
+        plt.figure()
+        # plt.axvspan(xmin=-10, xmax=10, color='gray', alpha=0.3, label='10%')
+        plt.hist(diff_AB.flatten(), bins=30, log=True)
+        plt.xlabel('% difference')
+        plt.ylabel('counts')
 
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):
@@ -1905,8 +2042,8 @@ def symmetrize_2d_array(array_2d):
     assert np.all(triu_elements) == 0 or np.all(tril_elements) == 0, 'neither the upper nor the lower triangle ' \
                                                                      '(excluding the diagonal) are null'
 
-    assert np.any(np.diag(array_2d)) != 0, 'the diagonal elements are all null. ' \
-                                           'This is not necessarily an error, but is suspect'
+    if np.any(np.diag(array_2d)) != 0:
+        warnings.warn('the diagonal elements are all null')
 
     # symmetrize
     array_2d = np.where(array_2d, array_2d, array_2d.T)
@@ -2040,8 +2177,6 @@ def compute_FM_2D_optimized(nbl, npairs, nparams_tot, cov_2D_inv, D_2D):
 
 
 def compute_FoM(FM, w0wa_idxs):
-    start = w0wa_idxs[0]
-    stop = w0wa_idxs[1] + 1
     cov_param = np.linalg.inv(FM)
     # cov_param_reduced = cov_param[start:stop, start:stop]
     cov_param_reduced = cov_param[np.ix_(w0wa_idxs, w0wa_idxs)]
@@ -2920,8 +3055,8 @@ def cov_6D_to_4D_blocks(cov_6D, nbl, npairs_AB, npairs_CD, ind_AB, ind_CD):
     nc = n_columns_AB  # make the name shorter
 
     cov_4D = np.zeros((nbl, nbl, npairs_AB, npairs_CD))
-    for ell1 in range(nbl):  
-        for ell2 in range(nbl): 
+    for ell1 in range(nbl):
+        for ell2 in range(nbl):
             for ij in range(npairs_AB):
                 for kl in range(npairs_CD):
                     i, j, k, l = ind_AB[ij, nc - 2], ind_AB[ij, nc - 1], ind_CD[kl, nc - 2], ind_CD[kl, nc - 1]
@@ -3146,7 +3281,7 @@ def cov_2D_to_4D(cov_2D, nbl, block_index='vincenzo', optimize=True, symmetrize=
             cov_4D = cov_2D.reshape((nbl, zpairs_AB, nbl, zpairs_CD)).transpose((0, 2, 1, 3))
         elif block_index in ['ij', 'sylvain', 'F-style']:
             cov_4D = cov_2D.reshape((zpairs_AB, nbl, zpairs_CD, nbl)).transpose((1, 3, 0, 2))
- 
+
     else:
         if block_index in ['ell', 'vincenzo', 'C-style']:
             for l1 in range(nbl):
@@ -3163,13 +3298,11 @@ def cov_2D_to_4D(cov_2D, nbl, block_index='vincenzo', optimize=True, symmetrize=
                         for jpair in range(zpairs_CD):
                             # block_index * block_size + running_index
                             cov_4D[l1, l2, ipair, jpair] = cov_2D[ipair * nbl + l1, jpair * nbl + l2]
-                            
     if symmetrize:
         for l1 in range(nbl):
             for l2 in range(nbl):
                 # mirror the upper triangle into the lower one
                 cov_4D[l1, l2, :, :] = symmetrize_2d_array(cov_4D[l1, l2, :, :])
-                
     return cov_4D
 
 
@@ -3293,20 +3426,17 @@ def cov_4D_to_2D_v0(cov_4D, nbl, zpairs_AB, zpairs_CD=None, block_index='vincenz
 
 
 # @njit
-def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='vincenzo'):
+def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='ell'):
     """
     Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE ordering. Note that this is only necessary for
     the 3x2pt probe.
     TODO the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work with other combinations (but it
     TODO will work both for LG and GL)
-    ! important note: block_index = 'vincenzo' means that the overall ordering will be probe_ell_zpair. Setting it to 'zpair'
-    ! will give you the ordering probe_zpair_ell. Bottom line: the probe is the outermost loop in any case.
-    ! The ordering used by CLOE is probe_ell_zpair, so block_index = 'vincenzo' is the correct choice.
+    ! Important note: block_index = 'ell' means that the overall ordering will be probe_ell_zpair. 
+    ! Setting it to 'zpair' will give you the ordering probe_zpair_ell. 
+    ! Bottom line: the probe is the outermost loop in any case.
+    ! The ordering used by CLOE v2 is probe_ell_zpair, so block_index = 'ell' is the correct choice in this case.
     """
-
-    warnings.warn(
-        "the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work with other combinations (but it"
-        " will work both for LG and GL) ")
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
 
@@ -3315,17 +3445,17 @@ def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='vincenzo'):
     lim_3 = zpairs_3x2pt
 
     # note: I'm writing cov_LG, but there should be no issue with GL; after all, this function is not using the ind file
-    cov_LL_LL = cov_4D_to_2D(cov_4D[:, :, :lim_1, :lim_1], block_index)
-    cov_LL_LG = cov_4D_to_2D(cov_4D[:, :, :lim_1, lim_1:lim_2], block_index)
-    cov_LL_GG = cov_4D_to_2D(cov_4D[:, :, :lim_1, lim_2:lim_3], block_index)
+    cov_LL_LL = cov_4D_to_2D(cov_4D[:, :, :lim_1, :lim_1], block_index, optimize=True)
+    cov_LL_LG = cov_4D_to_2D(cov_4D[:, :, :lim_1, lim_1:lim_2], block_index, optimize=True)
+    cov_LL_GG = cov_4D_to_2D(cov_4D[:, :, :lim_1, lim_2:lim_3], block_index, optimize=True)
 
-    cov_LG_LL = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, :lim_1], block_index)
-    cov_LG_LG = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, lim_1:lim_2], block_index)
-    cov_LG_GG = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, lim_2:lim_3], block_index)
+    cov_LG_LL = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, :lim_1], block_index, optimize=True)
+    cov_LG_LG = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, lim_1:lim_2], block_index, optimize=True)
+    cov_LG_GG = cov_4D_to_2D(cov_4D[:, :, lim_1:lim_2, lim_2:lim_3], block_index, optimize=True)
 
-    cov_GG_LL = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, :lim_1], block_index)
-    cov_GG_LG = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, lim_1:lim_2], block_index)
-    cov_GG_GG = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, lim_2:lim_3], block_index)
+    cov_GG_LL = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, :lim_1], block_index, optimize=True)
+    cov_GG_LG = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, lim_1:lim_2], block_index, optimize=True)
+    cov_GG_GG = cov_4D_to_2D(cov_4D[:, :, lim_2:lim_3, lim_2:lim_3], block_index, optimize=True)
 
     # make long rows and stack together
     row_1 = np.hstack((cov_LL_LL, cov_LL_LG, cov_LL_GG))
@@ -3338,17 +3468,13 @@ def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='vincenzo'):
 
 
 # @njit
-def cov_2DCLOE_to_4D_3x2pt(cov_2D, nbl, zbins, block_index='vincenzo'):
+def cov_2DCLOE_to_4D_3x2pt(cov_2D, nbl, zbins, block_index='ell'):
     """
     Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE ordering. Note that this is only necessary for
     the 3x2pt probe.
     TODO the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work with other combinations (but it
     TODO will work both for LG and GL)
     """
-
-    warnings.warn(
-        "the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work with other combinations (but it"
-        " will work both for LG and GL) ")
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
 
@@ -3454,7 +3580,7 @@ def cov_4D_to_2DCLOE_3x2pt_bu(cov_4D, nbl, zbins, block_index='vincenzo'):
     return array_2D
 
 
-def cov2corr(covariance):
+def _cov2corr(covariance):
     """ Credit:
     https://gist.github.com/wiso/ce2a9919ded228838703c1c7c7dad13b
     """
@@ -3463,6 +3589,23 @@ def cov2corr(covariance):
     outer_v = np.outer(v, v)
     correlation = covariance / outer_v
     correlation[covariance == 0] = 0
+    return correlation
+
+
+def cov2corr(covariance):
+    """Convert a covariance matrix to a correlation matrix."""
+    v = np.sqrt(np.diag(covariance))
+    outer_v = np.outer(v, v)
+
+    # To prevent division by zero or very small numbers, replace them with a small positive value
+    with np.errstate(divide='ignore', invalid='ignore'):
+        correlation = np.divide(covariance, outer_v)
+        correlation[covariance == 0] = 0  # Ensure zero covariance entries are explicitly zero
+        correlation[~np.isfinite(correlation)] = 0  # Set any NaN or inf values to 0
+
+    # Ensure diagonal elements are exactly 1
+    np.fill_diagonal(correlation, 1)
+
     return correlation
 
 

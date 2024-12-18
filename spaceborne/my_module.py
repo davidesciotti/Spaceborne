@@ -55,15 +55,15 @@ mpl_other_dict = {
     'cosmo_labels_TeX': ["$\\Omega_{{\\rm m},0}$", "$\\Omega_{{\\rm b},0}$", "$w_0$", "$w_a$", "$h$", "$n_{\\rm s}$",
                          "$\\sigma_8$", "${\\rm log}_{10}(T_{\\rm AGN}/{\\rm K})$"],
     'IA_labels_TeX': ['$A_{\\rm IA}$', '$\\eta_{\\rm IA}$', '$\\beta_{\\rm IA}$'],
-    'galaxy_bias_labels_TeX': build_labels_TeX(zbins)[0],
-    'shear_bias_labels_TeX': build_labels_TeX(zbins)[1],
-    'zmean_shift_labels_TeX': build_labels_TeX(zbins)[2],
+    # 'galaxy_bias_labels_TeX': build_labels_TeX(zbins)[0],
+    # 'shear_bias_labels_TeX': build_labels_TeX(zbins)[1],
+    # 'zmean_shift_labels_TeX': build_labels_TeX(zbins)[2],
 
     'cosmo_labels': ['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8', 'logT'],
     'IA_labels': ['AIA', 'etaIA', 'betaIA'],
-    'galaxy_bias_labels': build_labels(zbins)[0],
-    'shear_bias_labels': build_labels(zbins)[1],
-    'zmean_shift_labels': build_labels(zbins)[2],
+    # 'galaxy_bias_labels': build_labels(zbins)[0],
+    # 'shear_bias_labels': build_labels(zbins)[1],
+    # 'zmean_shift_labels': build_labels(zbins)[2],
 
     'ylabel_perc_diff_wrt_mean': "$ \\bar{\\sigma}_\\alpha^i / \\bar{\\sigma}^{\\; m}_\\alpha -1 $ [%]",
     'ylabel_sigma_relative_fid': '$ \\sigma_\\alpha/ \\theta^{fid}_\\alpha $ [%]',
@@ -78,7 +78,7 @@ mpl_other_dict = {
 
 
 
-def compare_funcs(x, y_a, y_b, name_a='A', name_b='B'):
+def compare_funcs(x, y_a, y_b, name_a='A', name_b='B', logscale_y=[False, False]):
     
     if x == None:
         x = np.arange(len(y_a))
@@ -87,12 +87,16 @@ def compare_funcs(x, y_a, y_b, name_a='A', name_b='B'):
     fig.subplots_adjust(hspace=0)
     
     ax[0].plot(x, y_a, label=name_a)
-    ax[0].plot(x, y_b, label=name_b)
+    ax[0].plot(x, y_b, label=name_b, ls='--')
     ax[0].legend()
 
     
     ax[1].plot(x, percent_diff(y_a, y_b))
     ax[1].set_ylabel('A/B [%]')
+    
+    for i in range(2):
+        if logscale_y[i]:
+            ax[i].set_yscale('log')
 
 
 

@@ -857,7 +857,7 @@ if compute_sb_ssc:
                                                        integration_type=ssc_integration_type,
                                                        probe_ordering=probe_ordering,
                                                        num_threads=cfg['misc']['num_threads'])
-    print('SSC computed in {:.2f} m'.format((time.perf_counter() - start)/60))
+    print('SSC computed in {:.2f} m'.format((time.perf_counter() - start) / 60))
 
     # in the full_curved_sky case only, sigma2_b has to be divided by fsky
     # TODO it would make much more sense to divide s2b directly...
@@ -916,6 +916,18 @@ with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
 
 if cfg['misc']['save_output_as_benchmark']:
 
+    if (
+        cfg['covariance']['SSC_code'] in ['PyCCL', 'OneCovariance'] or
+        cfg['covariance']['cNG_code'] in ['PyCCL', 'OneCovariance']
+    ):
+        sigma2_b = None
+        dPmm_ddeltab = None
+        dPgm_ddeltab = None
+        dPgg_ddeltab = None
+        d2CLL_dVddeltab = None
+        d2CGL_dVddeltab = None
+        d2CGG_dVddeltab = None
+
     import datetime
     branch, commit = mm.get_git_info()
     metadata = {
@@ -967,31 +979,6 @@ if cfg['misc']['save_output_as_benchmark']:
                         )
 
 
-# for key_bench in cov_bench.keys():
-
-#     probe = key_bench.split('_')[1]
-#     which_ng_cov = key_bench.split('_')[2]
-
-#     excluded_probes = ['2x2pt', 'WA']
-#     if cfg['covariance']['covariance_ordering_2D'] == 'ell_probe_zpair':
-#         excluded_probes.append('3x2pt')
-
-#     if probe not in ['2x2pt', 'WA']:
-
-#         if which_ng_cov == 'GO':
-#             which_cov_new = 'g'
-#             cov_new = cov_dict[f'cov_{probe}_{which_cov_new}_2D']
-#         elif which_ng_cov == 'SS':
-#             which_cov_new = 'ssc'
-#             cov_new = cov_dict[f'cov_{probe}_{which_cov_new}_2D']
-#         if which_ng_cov == 'GS':
-#             which_cov_new = 'g'
-#             cov_new = cov_dict[f'cov_{probe}_g_2D'] + cov_dict[f'cov_{probe}_ssc_2D'] + cov_dict[f'cov_{probe}_cng_2D']
-
-#         np.testing.assert_allclose(cov_new, cov_bench[key_bench], atol=0, rtol=1e-6)
-#         print(f'{key_bench} cov matches ✅')
-
-
 for which_cov in cov_dict.keys():
     probe = which_cov.split('_')[1]
     which_ng_cov = which_cov.split('_')[2]
@@ -1001,6 +988,7 @@ for which_cov in cov_dict.keys():
                                                             ndim=ndim)
 
     np.savez_compressed(f'{output_path}/{cov_filename}', **cov_dict)
+
 print(f'Covariance matrices saved in {output_path}')
 
 for which_cov in cov_dict.keys():

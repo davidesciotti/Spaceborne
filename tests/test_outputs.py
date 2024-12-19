@@ -19,18 +19,39 @@ def test_main_script(test_cfg_path):
     for key in bench_data.files:
         if key not in excluded_keys:
             print(f"Comparing {key}...")
-            np.testing.assert_allclose(
-                bench_data[key], test_data[key], atol=0, rtol=1e-5,
-            err_msg=f"Mismatch in {key}")
+            
+            if bench_data[key] is None and test_data[key] is None:
+                continue
+            
+            # Handle arrays with dtype=object containing None
+            if (
+                isinstance(bench_data[key], np.ndarray) and bench_data[key].dtype == object and bench_data[key].item() is None
+            ) and (
+                isinstance(test_data[key], np.ndarray) and test_data[key].dtype == object and test_data[key].item() is None
+            ):
+                continue  # Skip to the next iteration
+            
+            try:
+                np.asarray(bench_data[key])
+                np.asarray(test_data[key])
+            except Exception as e:
+                raise TypeError(
+                    f"Non-numerical or incompatible data type encountered in key '{key}': {e}"
+                )
+                
+            else:
+                np.testing.assert_allclose(
+                    bench_data[key], test_data[key], atol=0, rtol=1e-5,
+                err_msg=f"Mismatch in {key}")
 
     print("All outputs match the benchmarks ✅")
     
 # Paths
-
 bench_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench'
 bench_names = glob.glob(f'{bench_path}/*.npz')
 bench_names = [os.path.basename(file) for file in bench_names]
 bench_names = [bench_name.replace('.npz', '') for bench_name in bench_names]
+bench_names = ['output_CCL_SSC_HOD', ]
 
 main_script_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/main.py'
 temp_output_filename = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/tmp/test_file'

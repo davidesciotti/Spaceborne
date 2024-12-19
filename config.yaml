@@ -157,13 +157,13 @@ covariance:
     cNG: False # Enable/disable the connected non-Gaussian (cNG) covariance term.
 
     G_code: Spaceborne
-    SSC_code: Spaceborne 
+    SSC_code: OneCovariance 
         # Specifies the code to compute SSC. Options:
         # - Spaceborne: Use the Spaceborne implementation.
         # - OneCovariance: Use the OneCovariance implementation.
         # - PyCCL: Use the PyCCL implementation.
 
-    cNG_code: PyCCL 
+    cNG_code: OneCovariance 
         # Specifies the code to compute cNG. Options:
         # - OneCovariance: Use the OneCovariance implementation.
         # - PyCCL: Use the PyCCL implementation.
@@ -257,7 +257,7 @@ misc:
     test_cholesky_decomposition: False # test if cholesky decomposition fails
     test_symmetry: False # test if covariance matrix is symmetric (cov = cov.T)
 
-    output_path: /home/cosmo/davide.sciotti/data/Spaceborne/output_CCL_cNG
+    output_path: /home/cosmo/davide.sciotti/data/CLOE_ISTNL/covs_for_paper/output_OC_SSC
     use_h_units: False # TODO hardcode!
     is_CLOE_validation_run: True
     path_to_jl_integrator: /home/cosmo/davide.sciotti/data/Spaceborne/spaceborne/julia_integrator.jl

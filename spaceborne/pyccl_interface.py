@@ -306,6 +306,19 @@ class PycclClass():
             ('L', 'G'): ccl.halos.Profile2pt(),
             ('G', 'G'): ccl.halos.Profile2ptHOD(),
         }
+        is_number_counts_dict = {
+            'L': False,
+            'G': True,
+        }
+        # gal_bias_1d = self.gal_bias_func_ofz(self.z_grid_tkka_SSC)  # no
+        # gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.z_to_a(self.z_grid_tkka_SSC)[::-1])
+        gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.a_to_z(self.a_grid_tkka_SSC))  # ok-ish
+        # gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.a_to_z(self.a_grid_tkka_SSC)[::-1])  # nope
+
+        gal_bias_dict = {
+            'L': np.ones_like(gal_bias_1d),
+            'G': gal_bias_1d,
+        }
 
         # store the trispectrum for the various probes in a dictionary
 

@@ -33,7 +33,7 @@ class SpaceborneResponses():
         assert self.use_h_units is False, 'case True should be fine but for now stick to False'
         self.b1_func = self.ccl_obj.gal_bias_func_ofz
 
-    def set_su_resp(self):
+    def set_g1mm_su_resp(self):
         # ! get growth only values - DIMENSIONLESS
         g1_table = np.genfromtxt(f'{ROOT}/Spaceborne/input/Resp_G1_fromsims.dat')
 
@@ -198,12 +198,13 @@ class SpaceborneResponses():
         self.r1_mm = 1 - 1 / 3 * dlogpkmm_dlogk + \
             self.g1_tot_func(k_array=self.k_grid, z=self.z_grid, g1_interp=g1_interp, g1_extrap=self.g1_extrap_func)
 
-        # if self.plot_r1mm_func:
-        # self.plot_r1mm_func()
-
         return self.r1_mm
 
-    def set_su_resp(self, b2g_from_halomodel):
+    def set_su_resp(self, b2g_from_halomodel: bool, include_b2g: bool):
+
+        assert isinstance(b2g_from_halomodel, bool), "b2g_from_halomodel should be a boolean"
+        assert isinstance(include_b2g, bool), "include_b2g should be a boolean"
+
         # galaxy bias (I broadcast it to be able to multiply/sum it with r1_mm and pk_mm)
         # I loop to check the impact (and the correctness) of b2
         b1_arr = self.b1_func(self.z_grid)
@@ -220,7 +221,7 @@ class SpaceborneResponses():
 
         self.b2_arr_null = np.zeros(self.b2_arr.shape)
 
-        # ! compute dPk/ddelta_b (not the projected ones!)
+        # compute dPk/ddelta_b (not the projected ones!)
         term1 = 1 / self.b1_arr
         term2 = self.b2_arr - self.b1_arr ** 2
         term2_nob2 = self.b2_arr_null - self.b1_arr ** 2
@@ -232,14 +233,16 @@ class SpaceborneResponses():
         self.dPgm_ddeltab_nob2 = (self.r1_mm + term1 * term2_nob2) * self.pk_mm
         self.dPgg_ddeltab_nob2 = (self.r1_mm + 2 * term1 * term2_nob2) * self.pk_mm
 
-        # ! compute r1_AB (again, not the projected ones)
+        # compute r1_AB (again, not the projected ones)
         self.pk_gg = self.pk_mm * self.b1_arr ** 2
         self.pk_gm = self.pk_mm * self.b1_arr
-        self.r1_gm = self.dPgm_ddeltab / self.pk_gm
-        self.r1_gg = self.dPgg_ddeltab / self.pk_gg
 
-        self.r1_gm_nob2 = self.dPgm_ddeltab_nob2 / self.pk_gm
-        self.r1_gg_nob2 = self.dPgg_ddeltab_nob2 / self.pk_gg
+        if include_b2g:
+            self.r1_gm = self.dPgm_ddeltab / self.pk_gm
+            self.r1_gg = self.dPgg_ddeltab / self.pk_gg
+        else:
+            self.r1_gm = self.dPgm_ddeltab_nob2 / self.pk_gm
+            self.r1_gg = self.dPgg_ddeltab_nob2 / self.pk_gg
 
     def set_hm_resp(self, k_grid, z_grid, which_b1g, b1g):
         """

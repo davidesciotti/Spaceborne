@@ -718,16 +718,12 @@ if compute_sb_ssc:
         resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
                                                  z_grid=z_grid_ssc_integrands,
                                                  ccl_obj=ccl_obj)
-        resp_obj.set_su_resp()
+        resp_obj.set_g1mm_su_resp()
         r_mm_sbclass = resp_obj.compute_r1_mm()
-        resp_obj.set_su_resp(b2g_from_halomodel=True)
+        resp_obj.set_su_resp(b2g_from_halomodel=True, include_b2g=cfg['covariance']['include_b2g'])
 
-        if cfg['covariance']['include_b2g']:
-            r_gm_sbclass = resp_obj.r1_gm
-            r_gg_sbclass = resp_obj.r1_gg
-        else:
-            r_gm_sbclass = resp_obj.r1_gm_nob2
-            r_gg_sbclass = resp_obj.r1_gg_nob2
+        r_gm_sbclass = resp_obj.r1_gm
+        r_gg_sbclass = resp_obj.r1_gg
 
         dPmm_ddeltab = resp_obj.dPmm_ddeltab
         dPgm_ddeltab = resp_obj.dPgm_ddeltab
@@ -861,7 +857,7 @@ if compute_sb_ssc:
                                                        integration_type=ssc_integration_type,
                                                        probe_ordering=probe_ordering,
                                                        num_threads=cfg['misc']['num_threads'])
-    print('SSC computed in {:.2f} s'.format(time.perf_counter() - start))
+    print('SSC computed in {:.2f} m'.format((time.perf_counter() - start)/60))
 
     # in the full_curved_sky case only, sigma2_b has to be divided by fsky
     # TODO it would make much more sense to divide s2b directly...

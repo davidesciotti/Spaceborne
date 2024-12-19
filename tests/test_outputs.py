@@ -26,33 +26,39 @@ def test_main_script(test_cfg_path):
     print("All outputs match the benchmarks ✅")
     
 # Paths
-bench_name = 'output_SB_KE' # ! THIS IS THE ONLY THING TO CHANGE
 
 bench_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench'
+bench_names = glob.glob(f'{bench_path}/*.npz')
+bench_names = [os.path.basename(file) for file in bench_names]
+bench_names = [bench_name.replace('.npz', '') for bench_name in bench_names]
+
 main_script_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/main.py'
 temp_output_filename = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/tmp/test_file'
 temp_output_folder = os.path.dirname(temp_output_filename)
 excluded_keys = ['backup_cfg', 'metadata']
 
-# ! update the cfg file to avoid overwriting the benchmarks
-# Load the benchmark config
-with open(f'{bench_path}/{bench_name}.yaml', "r") as f:
-    cfg = yaml.safe_load(f)
+for bench_name in bench_names:
+    print(f'Testing {bench_name}...')
+    
+    # ! update the cfg file to avoid overwriting the benchmarks
+    # Load the benchmark config
+    with open(f'{bench_path}/{bench_name}.yaml', "r") as f:
+        cfg = yaml.safe_load(f)
 
-# Update config for the test run
-cfg['misc']['save_output_as_benchmark'] = True
-cfg['misc']['bench_filename'] = temp_output_filename
-cfg['misc']['output_path'] = temp_output_folder  # just to make sure I don't overwrite any output files
+    # Update config for the test run
+    cfg['misc']['save_output_as_benchmark'] = True
+    cfg['misc']['bench_filename'] = temp_output_filename
+    cfg['misc']['output_path'] = temp_output_folder  # just to make sure I don't overwrite any output files
 
-# Save the updated test config
-test_cfg_path = f'{bench_path}/tmp/test_config.yaml'
-with open(test_cfg_path, 'w') as f:
-    yaml.dump(cfg, f)
+    # Save the updated test config
+    test_cfg_path = f'{bench_path}/tmp/test_config.yaml'
+    with open(test_cfg_path, 'w') as f:
+        yaml.dump(cfg, f)
 
-# ! run the actual test
-test_main_script(test_cfg_path)
+    # ! run the actual test
+    test_main_script(test_cfg_path)
 
-# delete the output test files in tmp folder
-for file_path in glob.glob(f"{temp_output_folder}/*"):
-    if os.path.isfile(file_path):
-        os.remove(file_path)
+    # delete the output test files in tmp folder
+    for file_path in glob.glob(f"{temp_output_folder}/*"):
+        if os.path.isfile(file_path):
+            os.remove(file_path)

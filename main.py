@@ -930,7 +930,7 @@ if compute_sb_ssc:
                   )
         # plt.ylim([-3, 12])
         plt.show()
-        # assert False, 'stop here to check responses'
+        assert False, 'stop here to check responses'
         # ! end tests
 
     elif cfg['covariance']['which_pk_responses'] == 'halo_model_SB':

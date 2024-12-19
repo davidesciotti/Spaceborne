@@ -153,10 +153,11 @@ covariance:
     n_probes: 2 # Number of probes considered in the covariance
 
     G: True # Enable/disable the Gaussian covariance term.
-    SSC: False # Enable/disable the super-sample covariance (SSC) term.
-    cNG: True # Enable/disable the connected non-Gaussian (cNG) covariance term.
+    SSC: True # Enable/disable the super-sample covariance (SSC) term.
+    cNG: False # Enable/disable the connected non-Gaussian (cNG) covariance term.
 
-    SSC_code: PyCCL 
+    G_code: Spaceborne
+    SSC_code: Spaceborne 
         # Specifies the code to compute SSC. Options:
         # - Spaceborne: Use the Spaceborne implementation.
         # - OneCovariance: Use the OneCovariance implementation.
@@ -258,3 +259,4 @@ misc:
     output_path: /home/cosmo/davide.sciotti/data/Spaceborne/output_CCL_cNG
     use_h_units: False # TODO hardcode!
     is_CLOE_validation_run: True
+    path_to_jl_integrator: /home/cosmo/davide.sciotti/data/Spaceborne/spaceborne/julia_integrator.jl

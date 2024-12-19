@@ -199,8 +199,8 @@ def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
     y_out_masked = y_out[y_mask]
 
     if len(x_out_masked) < len(x_out):
-        print(f"x array trimmed: old range [{x_out.min():.2e}, {x_out.max():.2e}], new range [{
-              x_out_masked.min():.2e}, {x_out_masked.max():.2e}]")
+        print(f"x array trimmed: old range [{x_out.min():.2e}, {x_out.max():.2e}], "
+              f"new range [{x_out_masked.min():.2e}, {x_out_masked.max():.2e}]")
     if len(y_out_masked) < len(y_out):
         print(f"y array trimmed: old range [{y_out.min():.2e}, {y_out.max():.2e}], new range [{
               y_out_masked.min():.2e}, {y_out_masked.max():.2e}]")

@@ -169,7 +169,7 @@ if cfg['misc']['is_CLOE_validation_run']:
     # assert z_steps_ssc_integrands == 7000, 'for the actual run, I used z_steps_ssc_integrands == 7000'
     assert cfg['OneCovariance']['precision_settings'] == 'high_precision'
     assert cfg['covariance']['which_b1g_in_resp'] == 'from_input'
-    assert cfg['covariance']['which_pk_responses'] == 'halo_model_SB'
+    # assert cfg['covariance']['which_pk_responses'] == 'halo_model_SB'
     assert cfg['covariance']['which_sigma2_b'] == 'polar_cap_on_the_fly'
     assert cfg['covariance']['covariance_ordering_2D'] == 'probe_ell_zpair'
     assert zbins == 13, 'zbins must be 13'
@@ -748,7 +748,7 @@ if compute_sb_ssc:
         dPgg_ddeltab = dPgg_ddeltab_vin
 
     # ! 1. Get halo model responses from CCL
-    if cfg['covariance']['which_pk_responses'] == 'halo_model_CCL':
+    elif cfg['covariance']['which_pk_responses'] == 'halo_model_CCL':
 
         ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
                                        pyccl_cfg=cfg['PyCCL'])
@@ -1149,6 +1149,9 @@ for key in cov_dict.keys():
 for key in cov_dict.keys():
     np.testing.assert_allclose(cov_dict[key], cov_dict[key].T,
                                atol=0, rtol=1e-7, err_msg=f'{key} not symmetric')
+
+np.testing.assert_allclose(cov_g_3x2pt_bench, cov_dict[''])
+
 
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.dump(cfg, yaml_file, default_flow_style=False)

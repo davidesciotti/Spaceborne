@@ -140,15 +140,15 @@ covariance:
 
     G: True       # Enable/disable the Gaussian covariance term.
     SSC: True     # Enable/disable the super-sample covariance (SSC) term.
-    cNG: True     # Enable/disable the connected non-Gaussian (cNG) covariance term.
+    cNG: False     # Enable/disable the connected non-Gaussian (cNG) covariance term.
 
     G_code: Spaceborne       # Specifies the code to compute G. Options:
                                 # [Spaceborne, OneCovariance]
 
-    SSC_code: PyCCL        # Specifies the code to compute SSC. Options:
+    SSC_code: Spaceborne        # Specifies the code to compute SSC. Options:
                                 # [Spaceborne, OneCovariance, PyCCL]
 
-    cNG_code: OneCovariance     # Specifies the code to compute cNG. Options:
+    cNG_code: PyCCL     # Specifies the code to compute cNG. Options:
                                 # [OneCovariance, PyCCL]
 
     # Ordering-related settings:
@@ -245,7 +245,7 @@ misc:
 
     output_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/output
     use_h_units: False # TODO hardcode!
-    save_output_as_benchmark: True  # for testing purposes
-    bench_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/output_CCL_SSCcNG_input  # for testing purposes
+    save_output_as_benchmark: False  # for testing purposes
+    bench_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/output_CCL_cNG  # for testing purposes
     path_to_jl_integrator: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/spaceborne/julia_integrator.jl
 

@@ -523,11 +523,6 @@ ax[2].set_xlabel('$\\ell$')
 ax[0].set_ylabel('$C_{\\ell}$')
 plt.show()
 
-# matshow for GL, to make sure it's not LG
-ell_idx = 10
-mm.compare_arrays(cl_gl_3d[ell_idx, ...], ccl_obj.cl_gl_3d[ell_idx, ...], abs_val=True, log_array=True,
-                  name_A=f'{general_cfg["which_cls"]} GL', name_B='CCL GL')
-
 
 # ! BNT transform the cls (and responses?) - it's more complex since I also have to transform the noise
 # ! spectra, better to transform directly the covariance matrix

@@ -33,6 +33,9 @@ class SpaceborneResponses():
         assert self.use_h_units is False, 'case True should be fine but for now stick to False'
         self.b1_func = self.ccl_obj.gal_bias_func_ofz
 
+        # Attach method to the class via monkeypatching
+        self.ccl_obj.hmc.I_2_1_dav = self.I_2_1_dav
+
     def set_g1mm_su_resp(self):
         # ! get growth only values - DIMENSIONLESS
         g1_table = np.genfromtxt(f'{ROOT}/Spaceborne/input/Resp_G1_fromsims.dat')
@@ -128,6 +131,8 @@ class SpaceborneResponses():
             (:obj:`float` or `array`): integral values evaluated at each
             value of ``k``.
         """
+        original_bf = self.ccl_obj.hmc._bf  # Backup the original `_bf`
+        
         self.ccl_obj.hmc._check_mass_def(prof)
         self.ccl_obj.hmc._get_ingredients(cosmo, a, get_bf=True)
 
@@ -135,7 +140,14 @@ class SpaceborneResponses():
         self.ccl_obj.hmc._bf = self.b2h_of_b1h_fit(self.ccl_obj.hmc._bf)
 
         uk = prof.fourier(cosmo, k, self.ccl_obj.hmc._mass, a).T
-        return self.ccl_obj.hmc._integrate_over_mbf(uk)
+        
+        result = self.ccl_obj.hmc._integrate_over_mbf(uk)
+        
+        # restore state
+        self.ccl_obj.hmc._bf = original_bf
+
+        return result
+        
 
     def set_bg_hm(self, z_grid):
         """
@@ -144,9 +156,6 @@ class SpaceborneResponses():
             - First-order galaxy bias (b1g_hm)
             - Second-order galaxy bias (b2g_hm)
         """
-
-        # Attach method to the class via monkeypatching
-        self.ccl_obj.hmc.I_2_1_dav = self.I_2_1_dav
 
         # just some intermediate quantities; this code is not needed but left here for future reference
         # from https://github.com/LSSTDESC/CCLX/blob/master/Halo-mass-function-example.ipynb
@@ -168,6 +177,7 @@ class SpaceborneResponses():
         # TODO b1g we use (e.g., the FS2 bias)
         # ! IMPORTANT: this function sets self._bf to be the 2nd order halo bias, so it's probably better to
         # ! call b1g afterwards to re-set it to b1h as it should.
+        # ! Note: I added self.ccl_obj.hmc._bf = original_bf to restore the state and it seems to be working
         b2g_hm = np.array([self.ccl_obj.hmc.I_2_1_dav(cosmo=self.cosmo_ccl, k=1e-10,
                                                       a=cosmo_lib.z_to_a(z), prof=self.ccl_obj.halo_profile_hod) for z in z_grid])
 
@@ -244,7 +254,7 @@ class SpaceborneResponses():
             self.r1_gm = self.dPgm_ddeltab_nob2 / self.pk_gm
             self.r1_gg = self.dPgg_ddeltab_nob2 / self.pk_gg
 
-    def set_hm_resp(self, k_grid, z_grid, which_b1g, b1g):
+    def set_hm_resp(self, k_grid, z_grid, which_b1g, b1g, include_terasawa_terms):
         """
         Compute the power spectra response terms from the halo model.
 
@@ -345,12 +355,25 @@ class SpaceborneResponses():
             # nonlin P(k) halo model = P1h + P2h = I^0_2(k, k) + (I^1_1)^2 * P_lin(k)
             self.pknlhm_mm[a_idx] = (pklin * i11_m * i11_m + i02_mm) / (norm_prof_m * norm_prof_m)
 
+            if include_terasawa_terms:
+                # ! very careful, as calling these functions could change the internal state of the halo model
+                # ! (I am manually restoring hmc._bf but this may not be enough)
+                i21_m = self.ccl_obj.hmc.I_2_1_dav(self.ccl_obj.cosmo_ccl, k_grid, aa, prof=prof_m)
+                i21_g = self.ccl_obj.hmc.I_2_1_dav(self.ccl_obj.cosmo_ccl, k_grid, aa, prof=prof_g)
+                trsw_mm = 2 * i21_m / i11_m
+                trsw_gm = i21_g / i11_g + i21_m / i11_m
+                trsw_gg = 2 * i21_g / i11_g
+            else:
+                trsw_mm = 0
+                trsw_gm = 0
+                trsw_gg = 0
+
             # Super-sample covariance response terms
-            dPmm_ddeltab[a_idx] = ((47 / 21 - dpklin / 3) * i11_m * i11_m *
+            dPmm_ddeltab[a_idx] = ((47 / 21 + trsw_mm - dpklin / 3) * i11_m * i11_m *
                                    pklin + i12_mm) / (norm_prof_m * norm_prof_m)
-            dPgm_ddeltab[a_idx] = ((47 / 21 - dpklin / 3) * i11_g * i11_m *
+            dPgm_ddeltab[a_idx] = ((47 / 21 + trsw_gm - dpklin / 3) * i11_g * i11_m *
                                    pklin + i12_gm) / (norm_prof_g * norm_prof_m)
-            dPgg_ddeltab[a_idx] = ((47 / 21 - dpklin / 3) * i11_g * i11_g *
+            dPgg_ddeltab[a_idx] = ((47 / 21 + trsw_gg - dpklin / 3) * i11_g * i11_g *
                                    pklin + i12_gg) / (norm_prof_g * norm_prof_g)
 
             # Set counterterms

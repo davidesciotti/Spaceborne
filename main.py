@@ -701,10 +701,13 @@ if compute_sb_ssc:
     elif cfg['covariance']['which_pk_responses'] == 'halo_model_SB':
 
         which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
+        include_terasawa_terms = cfg['covariance']['include_terasawa_terms']
         resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
                                                  z_grid=z_grid_ssc_integrands,
                                                  ccl_obj=ccl_obj)
-        resp_obj.set_hm_resp(k_grid_resp, z_grid_ssc_integrands, which_b1g_in_resp, gal_bias)
+        resp_obj.set_hm_resp(k_grid_resp, z_grid_ssc_integrands, 
+                             which_b1g_in_resp, gal_bias, 
+                             include_terasawa_terms=include_terasawa_terms)
         dPmm_ddeltab = resp_obj.dPmm_ddeltab_hm
         dPgm_ddeltab = resp_obj.dPgm_ddeltab_hm
         dPgg_ddeltab = resp_obj.dPgg_ddeltab_hm
@@ -720,7 +723,8 @@ if compute_sb_ssc:
                                                  ccl_obj=ccl_obj)
         resp_obj.set_g1mm_su_resp()
         r_mm_sbclass = resp_obj.compute_r1_mm()
-        resp_obj.set_su_resp(b2g_from_halomodel=True, include_b2g=cfg['covariance']['include_b2g'])
+        resp_obj.set_su_resp(b2g_from_halomodel=True, 
+                             include_b2g=cfg['covariance']['include_b2g'])
 
         r_gm_sbclass = resp_obj.r1_gm
         r_gg_sbclass = resp_obj.r1_gg

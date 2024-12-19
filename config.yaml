@@ -199,7 +199,7 @@ covariance:
         #   has to be rescaled by fsky
 
     # TODO demove halo_model_CCL in public version! otherwise, fork needed
-    which_pk_responses: halo_model_SB 
+    which_pk_responses: halo_model_CCL 
         # halo_model_SB, halo_model_CCL (with PyCCL) or separate_universe_SB/_vin (from simulations)
     which_b1g_in_resp: from_input
         # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
@@ -216,7 +216,7 @@ covariance:
     k_steps_sigma2: 20_000
     z_min_ssc_integrands: 0.02 # SU responses' kmax allow for z_min = 0.016, at most.
     z_max_ssc_integrands: 3.
-    z_steps_ssc_integrands: 3000 # this should be high because I have to trace the spikes in sigma2
+    z_steps_ssc_integrands: 200 # this should be high because I have to trace the spikes in sigma2
 
     use_KE_approximation: True
 

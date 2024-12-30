@@ -3,14 +3,10 @@ import warnings
 from copy import deepcopy
 from glob import glob
 import camb
-import os
 import numpy as np
-from astropy.cosmology import w0waCDM
-# from classy import Class
 from numba import njit
 import pyccl as ccl
 from scipy.integrate import simpson as simps
-import sys
 
 import os
 import spaceborne.sb_lib as sl
@@ -27,58 +23,10 @@ import spaceborne.sb_lib as sl
 #     cl_GL_3D /= prefactor
 
 
-# TODO create function to compute pk from CAMB, hoping it accepts a vectorized k or z
-# TODO check that the modifications to calculate_power don't break anything, I switched the order
-#  of the arguments z and k in the output numpy array
+# TODO create function to compute pk from CAMB, with a vectorized k or z
 
 
 c = 299792.458  # km/s
-
-
-# ! example of how to instantiate a cosmo_astropy object
-# cosmo_astropy = w0waCDM(H0=H0, Om0=Om0, Ode0=Ode0, w0=w0, wa=wa, Neff=Neff, m_nu=m_nu, Ob0=Ob0)
-
-# ! example of how to instantiate a cosmo_class object
-# cosmo_par_dict_classy = {'Omega_cdm': Oc0,
-#                          'Omega_b': Ob0,
-#                          'w0_fld': w0,
-#                          'wa_fld': wa,
-#                          'h': h,
-#                          'n_s': n_s,
-#                          'sigma8': sigma_8,
-
-#                          'm_ncdm': ISTF.extensions['m_nu'],,
-#                          'N_ncdm': ISTF.neutrino_params['N_ncdm'],
-#                          'N_ur': ISTF.neutrino_params['N_ur'],
-
-#                          'Omega_Lambda': ISTF.extensions['Om_Lambda0'],
-
-#                          'P_k_max_1/Mpc': 1200,
-#                          'output': 'mPk',
-#                          'non linear': 'halofit',  # ! takabird?
-
-#                          # 'z_max_pk': 2.038,
-#                          'z_max_pk': 4,  # do I get an error without this key?
-#                          }
-
-
-# old dictionary for CLASS
-# cosmo_par_dict_classy = {
-#     'Omega_b': Ob0,
-#     'Omega_cdm': Oc0,
-#     'n_s': n_s,
-#     'sigma8': sigma_8,
-#     'h': h,
-#     'output': 'mPk',
-#     'z_pk': '0, 0.5, 1, 2, 3',
-#     'P_k_max_h/Mpc': 70,
-#     'non linear': 'halofit'}
-
-
-# this makes the import quite slow!!
-# cosmo_classy = Class()
-# cosmo_classy.set(cosmo_par_dict_classy)
-# cosmo_classy.compute()
 
 
 def map_keys(input_dict, key_mapping):
@@ -191,57 +139,6 @@ def get_kmax_limber(ell_grid, z_grid, use_h_units, cosmo_ccl):
     return np.max(k_limber_list)
 
 
-# @njit
-# def E(z):
-#     result = np.sqrt(Om0 * (1 + z) ** 3 + Ode0 + Ok0 * (1 + z) ** 2)
-#     return result
-
-# old, "manual", slowwwww
-# def r_tilde(z):
-#     # r(z) = c/H0 * int_0*z dz/E(z); I don't include the prefactor c/H0 so as to
-#     # have r_tilde(z)
-#     result = quad(inv_E, 0, z)[0]  # integrate 1/E(z) from 0 to z
-#     return result
-
-#
-# def r(z):
-#     result = c / H0 * quad(inv_E, 0, z)[0]
-#     return result
-
-
-def Pk_with_classy_clustertlkt(cosmo_class, z_array, k_array, use_h_units, Pk_kind='nonlinear', argument_type='arrays'):
-    print('Warning: this function takes as input k in 1/Mpc and returns it in the specified units')
-
-    if Pk_kind == 'nonlinear':
-        classy_Pk = cosmo_class.pk
-    elif Pk_kind == 'linear':
-        classy_Pk = cosmo_class.pk_lin
-    else:
-        raise ValueError('Pk_kind must be either "nonlinear" or "linear"')
-
-    if argument_type == 'scalar':
-        Pk = classy_Pk(k_array, z_array)  # k_array and z_array are not arrays, but scalars!
-
-    elif argument_type == 'arrays':
-        num_k = k_array.size
-
-        Pk = np.zeros((len(z_array), num_k))
-        for z_idx, z_val in enumerate(z_array):
-            Pk[z_idx, :] = np.array([classy_Pk(ki, z_val) for ki in k_array])
-    else:
-        raise ValueError('argument_type must be either "scalar" or "arrays"')
-
-    # NOTE: You will need to convert these to h/Mpc and (Mpc/h)^3
-    # to use in the toolkit. To do this you would do:
-    if use_h_units:
-        warnings.warn('take h from cosmo_classy, very easy')
-        k_array /= h
-        Pk *= h ** 3
-
-    # return also k_array, to have it in the correct h scaling
-    return k_array, Pk
-
-
 def pk_from_ccl(k_array, z_array, use_h_units, cosmo_ccl, pk_kind='nonlinear'):
     """ ! * the input k_array must be in 1/Mpc * .
     If use_h_units is True, the output pk_2d is in (Mpc/h)^3, and k_array is in h/Mpc.
@@ -305,53 +202,6 @@ def calculate_power(k, z, cosmo_classy, use_h_units=True, Pk_kind='nonlinear'):
     return k / k_scale, pk * Pk_scale
 
 
-def get_external_Pk(h, whos_Pk='vincenzo', Pk_kind='nonlinear', use_h_units=True):
-    if whos_Pk == 'vincenzo':
-        z_column = 1
-        k_column = 0  # in [1/Mpc]
-        Pnl_column = 2  # in [Mpc^3]
-        Plin_column = 3  # in [Mpc^3]
-        extension = 'dat'
-
-    elif whos_Pk == 'stefano':
-        z_column = 0
-        k_column = 1  # in [h/Mpc]
-        Pnl_column = 3  # in [Mpc^3/h^3]
-        Plin_column = 2  # in [Mpc^3/h^3]
-        extension = 'txt'
-    else:
-        raise ValueError('whos_Pk must be either stefano or vincenzo')
-
-    if Pk_kind == 'linear':
-        Pk_column = Plin_column
-    elif Pk_kind == 'nonlinear':
-        Pk_column = Pnl_column
-    else:
-        raise ValueError(f'Pk_kind must be either "linear" or "nonlinear"')
-
-    Pkfile = np.genfromtxt(glob(f'/home/davide/Documenti/Lavoro/Programmi/common_data/Pk/Pk_{whos_Pk}.*')[0])
-    z_array = np.unique(Pkfile[:, z_column])
-    k_array = np.unique(Pkfile[:, k_column])
-    Pk = Pkfile[:, Pk_column].reshape(z_array.size, k_array.size)  # / h ** 3
-
-    if whos_Pk == 'vincenzo':
-        k_array = 10 ** k_array
-        Pk = 10 ** Pk
-
-    # h scaling
-    if use_h_units is True:  # i.e. if you want k [h/Mpc], and P(k,z) [Mpc^3/h^3]
-        if whos_Pk == 'vincenzo':
-            k_array /= h
-            Pk *= h ** 3
-    elif use_h_units is False:
-        if whos_Pk == 'stefano':  # i.e. if you want k [1/Mpc], and P(k,z) [Mpc^3]
-            k_array *= h
-            Pk /= h ** 3
-
-    # flip, the redshift array is ordered from high to low
-    pk = np.flip(Pk, axis=0)
-
-    return z_array, k_array, pk
 
 
 # def pk_camb():
@@ -387,14 +237,11 @@ def a_to_z(a):
     return 1 / a - 1
 
 
-def growth_factor_pyccl(z, cosmo_ccl):
+def growth_factor_ccl(z, cosmo_ccl):
     return ccl.growth_factor(cosmo_ccl, z_to_a(z))
 
 
 def deg2_to_fsky(survey_area_deg2):
-    # deg2_in_sphere = 41252.96  # deg^2 in a spere
-    # return survey_area_deg2 / deg2_in_sphere
-
     f_sky = survey_area_deg2 * (np.pi / 180) ** 2 / (4 * np.pi)
     return f_sky
 
@@ -511,13 +358,6 @@ def instantiate_cosmo_ccl_obj(fiducial_pars_dict, extra_parameters):
     return cosmo_ccl
 
 
-def project_pk_helper(key, pab_k_z_interp_func_dict, wf_dict, z_grid, ell_grid, cl_integral_convention, use_h_units,
-                      cosmo_ccl):
-    print('computing cls for probe combination', key)
-    probe_a = wf_dict[key[0]]
-    probe_b = wf_dict[key[1]]
-    return key, project_pk(pab_k_z_interp_func_dict[key], probe_a, probe_b, z_grid, ell_grid,
-                           cl_integral_convention, use_h_units, cosmo_ccl)
 
 
 def project_pk(pab_k_z_interp_func, kernel_a, kernel_b, z_grid, ell_grid, cl_integral_convention, use_h_units,
@@ -580,7 +420,7 @@ def ell_prefactor_mag(ell):
 
 
 def reshape_pk_vincenzo_to_2d(filename):
-    # Import and reshape P(k,z) from the input used bu Vincenzo
+    # Import and reshape P(k,z) from the input used by Vincenzo
     pk = np.genfromtxt(filename)
     z_grid_pk = np.unique(pk[:, 0])
     k_grid_pk = 10 ** np.unique(pk[:, 1])
@@ -589,6 +429,7 @@ def reshape_pk_vincenzo_to_2d(filename):
 
 
 def sigma8_to_As(pars, extra_args):
+    """This function has been written by Matteo Martinelli"""
     params = deepcopy(pars)
 
     if 'As' in params:

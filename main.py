@@ -81,6 +81,8 @@ GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 EP_OR_ED = cfg['nz']['EP_or_ED']
 output_path = cfg['misc']['output_path']
 
+if not os.path.exists(output_path):
+    raise FileNotFoundError(f"Output path {output_path} does not exist. Please create it before running the script.")    
 if not os.path.exists(f'{output_path}/cache'):
     os.mkdir(f'{output_path}/cache')
 

@@ -1656,7 +1656,8 @@ def matshow(array, title="title", log=True, abs_val=False, threshold=None, only_
         array = np.abs(array)
         title = 'abs ' + title
     if log:  # take the log
-        array = np.log10(array)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            array = np.log10(array)
         title = 'log10 ' + title
 
     if threshold is not None:
@@ -2269,7 +2270,7 @@ def covariance_einsum(cl_5d, noise_5d, f_sky, ell_values, delta_ell, return_only
     example code to compute auto probe data and spectra, if needed
     cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]
     noise_LL_5D = noise_3x2pt_5D[0, 0, ...][np.newaxis, np.newaxis, ...]
-    cov_WL_6D = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_values, delta_ell)[0, 0, 0, 0, ...]
+    cov_WL_6D = sl.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_values, delta_ell)[0, 0, 0, 0, ...]
     """
 
     assert cl_5d.shape[0] == 1 or cl_5d.shape[0] == 2, 'This funcion only works with 1 or two probes'
@@ -2330,7 +2331,7 @@ def covariance_einsum_split(cl_5d, noise_5d, f_sky, ell_values, delta_ell, retur
     example code to compute auto probe data and spectra, if needed
     cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]
     noise_LL_5D = noise_3x2pt_5D[0, 0, ...][np.newaxis, np.newaxis, ...]
-    cov_WL_6D = mm.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_values, delta_ell)[0, 0, 0, 0, ...]
+    cov_WL_6D = sl.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_values, delta_ell)[0, 0, 0, 0, ...]
     """
 
     assert cl_5d.shape[0] == 1 or cl_5d.shape[0] == 2, 'This funcion only works with 1 or two probes'

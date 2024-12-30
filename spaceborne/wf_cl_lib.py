@@ -21,7 +21,7 @@ import os
 ROOT = os.getenv('ROOT')
 
 
-import spaceborne.my_module as mm
+import spaceborne.sb_lib as sl
 import spaceborne.cosmo_lib as csmlib
 import spaceborne.pyccl_interface as pyccl_interface
 import matplotlib.lines as mlines
@@ -644,7 +644,7 @@ def get_cl_3D_array(wf_A, wf_B, ell_values):
         for ell_idx, ell_val in enumerate(ell_values):
             for zi, zj in zip(np.triu_indices(zbins)[0], np.triu_indices(zbins)[1]):
                 cl_3D[ell_idx, zi, zj] = cl_quad(wf_A, wf_B, ell_val, zi, zj)
-            cl_3D[ell_idx, :, :] = mm.symmetrize_2d_array(cl_3D[ell_idx, :, :])
+            cl_3D[ell_idx, :, :] = sl.symmetrize_2d_array(cl_3D[ell_idx, :, :])
     elif not is_auto_spectrum:
         for ell_idx, ell_val in enumerate(ell_values):
             cl_3D[ell_idx, :, :] = np.array([[cl_quad(wf_A, wf_B, ell_val, zi, zj)
@@ -673,7 +673,7 @@ def cl_PyCCL(wf_A, wf_B, ell, zbins, p_of_k_a, cosmo, limber_integration_method=
             cl_3D[:, zi, zj] = ccl.angular_cl(cosmo, wf_A[zi], wf_B[zj], ell, p_of_k_a=p_of_k_a,
                                               limber_integration_method=limber_integration_method)
         for ell in range(nbl):
-            cl_3D[ell, :, :] = mm.symmetrize_2d_array(cl_3D[ell, :, :])
+            cl_3D[ell, :, :] = sl.symmetrize_2d_array(cl_3D[ell, :, :])
 
     elif not is_auto_spectrum:
         # be very careful with the order of the zi, zj loops: you have to revert them in NESTED list comprehensions to
@@ -708,7 +708,7 @@ def stem(cl_4d, variations_arr, zbins, nbl, percent_tolerance=1):
                 fitted_y_values = angular_coefficient * variations_arr_cpy + intercept
 
                 # check % difference
-                perc_diffs = mm.percent_diff(cl_4d_cpy[:, ell, zi, zj], fitted_y_values)
+                perc_diffs = sl.percent_diff(cl_4d_cpy[:, ell, zi, zj], fitted_y_values)
 
                 # as long as any element has a percent deviation greater than 1%, remove first and last values
                 while np.any(np.abs(perc_diffs) > percent_tolerance):
@@ -721,7 +721,7 @@ def stem(cl_4d, variations_arr, zbins, nbl, percent_tolerance=1):
                     fitted_y_values = angular_coefficient * variations_arr_cpy + intercept
 
                     # test again
-                    perc_diffs = mm.percent_diff(cl_4d_cpy[:, ell, zi, zj], fitted_y_values)
+                    perc_diffs = sl.percent_diff(cl_4d_cpy[:, ell, zi, zj], fitted_y_values)
 
                     # breakpoint()
                     # plt.figure()

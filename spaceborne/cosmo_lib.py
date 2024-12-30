@@ -13,7 +13,7 @@ from scipy.integrate import simpson as simps
 import sys
 
 import os
-import spaceborne.my_module as mm
+import spaceborne.sb_lib as sl
 
 # ! prefactor for limber and curved-sky corrections
 # prefactor = np.array(
@@ -377,7 +377,7 @@ def get_external_Pk(h, whos_Pk='vincenzo', Pk_kind='nonlinear', use_h_units=True
 def z_to_a(z):
     # these lines flip the array to have it monothonically increasing, breaking the correspondance between z and a!!!
     # be careful
-    # if mm.is_increasing(z):
+    # if sl.is_increasing(z):
     #     result = 1. / (1 + z)
     #     return result[::-1]
     return 1. / (1 + z)
@@ -476,7 +476,7 @@ def instantiate_cosmo_ccl_obj(fiducial_pars_dict, extra_parameters):
     # extra_parameters = {"camb": {"halofit_version": "mead2020_feedback",
     #                              "HMCode_logT_AGN": 7.75}}
 
-    fiducial_pars_dict = mm.flatten_dict(fiducial_pars_dict)  # flatten the dictionary if it's nested
+    fiducial_pars_dict = sl.flatten_dict(fiducial_pars_dict)  # flatten the dictionary if it's nested
 
     Omega_nu = get_omega_nu0(fiducial_pars_dict['m_nu'],
                              fiducial_pars_dict['h'],

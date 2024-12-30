@@ -19,7 +19,7 @@ from scipy.interpolate import interp1d, RegularGridInterpolator, CubicSpline
 import spaceborne.ell_utils as ell_utils
 import spaceborne.cl_utils as cl_utils
 import spaceborne.bnt as bnt_utils
-import spaceborne.my_module as mm
+import spaceborne.sb_lib as sl
 import spaceborne.cosmo_lib as cosmo_lib
 import spaceborne.wf_cl_lib as wf_cl_lib
 import spaceborne.pyccl_interface as pyccl_interface
@@ -175,8 +175,8 @@ z_default_grid_ccl = cosmo_lib.a_to_z(a_default_grid_ccl)[::-1]
 # TODO class to access CCL precision parameters
 
 # build the ind array and store it into the covariance dictionary
-zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
-ind = mm.build_full_ind(triu_tril, row_col_major, zbins)
+zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
+ind = sl.build_full_ind(triu_tril, row_col_major, zbins)
 ind_auto = ind[:zpairs_auto, :].copy()
 ind_cross = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
 ind_dict = {('L', 'L'): ind_auto,
@@ -299,7 +299,7 @@ ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid_ssc_integrands, has_ia=cfg['C_ell'][
 # ! set galaxy and magnification bias
 if cfg['C_ell']['which_gal_bias'] == 'from_input':
     gal_bias_tab_full = np.genfromtxt(cfg['C_ell']['gal_bias_table_filename'])
-    gal_bias_tab = mm.check_interpolate_input_tab(gal_bias_tab_full, z_grid_ssc_integrands, zbins)
+    gal_bias_tab = sl.check_interpolate_input_tab(gal_bias_tab_full, z_grid_ssc_integrands, zbins)
     ccl_obj.gal_bias_tuple = (z_grid_ssc_integrands, gal_bias_tab)
     ccl_obj.gal_bias_2d = gal_bias_tab
 elif cfg['C_ell']['which_gal_bias'] == 'FS2_polynomial_fit':
@@ -313,7 +313,7 @@ if cfg['C_ell']['has_magnification_bias']:
 
     if cfg['C_ell']['which_mag_bias'] == 'from_input':
         mag_bias_tab_full = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
-        mag_bias_tab = mm.check_interpolate_input_tab(mag_bias_tab_full, z_grid_ssc_integrands, zbins)
+        mag_bias_tab = sl.check_interpolate_input_tab(mag_bias_tab_full, z_grid_ssc_integrands, zbins)
         ccl_obj.mag_bias_tuple = (z_grid_ssc_integrands, mag_bias_tab)
     elif cfg['C_ell']['which_mag_bias'] == 'FS2_polynomial_fit':
         ccl_obj.set_mag_bias_tuple(z_grid_lns=z_grid_ssc_integrands,
@@ -567,9 +567,9 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     cl_ll_ascii_filename = f'Cell_ll_nbl{nbl_3x2pt_oc}'
     cl_gl_ascii_filename = f'Cell_gl_nbl{nbl_3x2pt_oc}'
     cl_gg_ascii_filename = f'Cell_gg_nbl{nbl_3x2pt_oc}'
-    mm.write_cl_ascii(oc_path, cl_ll_ascii_filename, cl_3x2pt_5d_oc[0, 0, ...], ells_3x2pt_oc, zbins)
-    mm.write_cl_ascii(oc_path, cl_gl_ascii_filename, cl_3x2pt_5d_oc[1, 0, ...], ells_3x2pt_oc, zbins)
-    mm.write_cl_ascii(oc_path, cl_gg_ascii_filename, cl_3x2pt_5d_oc[1, 1, ...], ells_3x2pt_oc, zbins)
+    sl.write_cl_ascii(oc_path, cl_ll_ascii_filename, cl_3x2pt_5d_oc[0, 0, ...], ells_3x2pt_oc, zbins)
+    sl.write_cl_ascii(oc_path, cl_gl_ascii_filename, cl_3x2pt_5d_oc[1, 0, ...], ells_3x2pt_oc, zbins)
+    sl.write_cl_ascii(oc_path, cl_gg_ascii_filename, cl_3x2pt_5d_oc[1, 1, ...], ells_3x2pt_oc, zbins)
 
     ascii_filenames_dict = {
         'cl_ll_ascii_filename': cl_ll_ascii_filename,
@@ -911,7 +911,7 @@ cov_dict = cov_obj.cov_dict
 
 # ! ========================================== plot & tests ================================================
 for key in cov_dict.keys():
-    mm.matshow(cov_dict[key], title=key)
+    sl.matshow(cov_dict[key], title=key)
 
 for key in cov_dict.keys():
     np.testing.assert_allclose(cov_dict[key], cov_dict[key].T,
@@ -935,7 +935,7 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGG_dVddeltab = None
 
     import datetime
-    branch, commit = mm.get_git_info()
+    branch, commit = sl.get_git_info()
     metadata = {
         "timestamp": datetime.datetime.now().isoformat(),
         'branch': branch,

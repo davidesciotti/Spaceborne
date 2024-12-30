@@ -18,7 +18,7 @@ SB_ROOT = f'{ROOT}/Spaceborne'
 
 sys.path.append(SB_ROOT)
 import spaceborne.plot_lib as plot_lib
-import spaceborne.my_module as mm
+import spaceborne.sb_lib as sl
 import common_cfg.mpl_cfg as mpl_cfg
 
 sys.path.append(f'{SB_ROOT}/jobs/config')
@@ -146,8 +146,8 @@ assert not use_Wadd, 'import of Wadd not implemented yet'
 # fm_pickle_path_a = '{ROOT}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_sb_rightgrids_highres.pickle'
 # fm_pickle_path_b = '{ROOT}/common_data/Spaceborne/jobs/SPV3/output/Flagship_2/FM/BNT_False/ell_cuts_False/jan_2024/FM_GSSC_PyCCL_zbinsEP13_ML245_ZL02_MS245_ZS02_idIA2_idB3_idM3_idR1_pkHMCodeBar_sigma2_mask_rightgrids_lowres.pickle'
 
-# fm_dict_a = mm.load_pickle(fm_pickle_path_a)
-# fm_dict_b = mm.load_pickle(fm_pickle_path_b)
+# fm_dict_a = sl.load_pickle(fm_pickle_path_a)
+# fm_dict_b = sl.load_pickle(fm_pickle_path_b)
 
 # # check that the keys match
 # assert fm_dict_a.keys() == fm_dict_b.keys()
@@ -155,7 +155,7 @@ assert not use_Wadd, 'import of Wadd not implemented yet'
 # # check if the dictionaries contained in the key 'fiducial_values_dict' match
 # assert fm_dict_a['fiducial_values_dict'] == fm_dict_b['fiducial_values_dict'], 'fiducial values do not match!'
 
-# mm.compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b)
+# sl.compare_param_cov_from_fm_pickles(fm_pickle_path_a, fm_pickle_path_b)
 
 for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
     for probe in probes:
@@ -203,10 +203,10 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
                                                                                                     f'_kmaxhoverMpc{kmax_h_over_Mpc:.03f}{filename_suffix}.pickle')
 
                                                         if check_if_just_created:
-                                                            assert mm.is_file_created_in_last_x_hours(
+                                                            assert sl.is_file_created_in_last_x_hours(
                                                                 f'{fm_path}/{fm_pickle_name}', 0.1), 'file has not been created recently'
 
-                                                        fm_dict = mm.load_pickle(f'{fm_path}/{fm_pickle_name}')
+                                                        fm_dict = sl.load_pickle(f'{fm_path}/{fm_pickle_name}')
 
                                                         fm = fm_dict[f'FM_{probe}_{which_cov_term}']
 
@@ -263,7 +263,7 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
                                                         names_params_to_fix += mag_bias_param_names
                                                         mag_bias_perc_prior = None
 
-                                                    fm, fiducials_dict = mm.mask_fm_v2(fm, fiducials_dict, names_params_to_fix,
+                                                    fm, fiducials_dict = sl.mask_fm_v2(fm, fiducials_dict, names_params_to_fix,
                                                                                        remove_null_rows_cols=True)
 
                                                     param_names = list(fiducials_dict.keys())
@@ -272,7 +272,7 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
                                                     # ! add prior on shear and/or gal bias
                                                     if shear_bias_prior != None and probe in ['WL', 'XC', '3x2pt']:
                                                         shear_bias_prior_values = np.array([shear_bias_prior] * zbins)
-                                                        fm = mm.add_prior_to_fm(fm, fiducials_dict, shear_bias_param_names,
+                                                        fm = sl.add_prior_to_fm(fm, fiducials_dict, shear_bias_param_names,
                                                                                 shear_bias_prior_values)
 
                                                     if gal_bias_perc_prior != None and probe in ['GC', 'XC', '3x2pt']:
@@ -284,11 +284,11 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
                                                         gal_bias_fid_values = np.array(list(fiducials_dict.values()))[
                                                             gal_bias_idxs]
                                                         gal_bias_prior_values = gal_bias_perc_prior * gal_bias_fid_values / 100
-                                                        fm = mm.add_prior_to_fm(fm, fiducials_dict, gal_bias_param_names,
+                                                        fm = sl.add_prior_to_fm(fm, fiducials_dict, gal_bias_param_names,
                                                                                 gal_bias_prior_values)
 
                                                     if not fix_dz:
-                                                        fm = mm.add_prior_to_fm(
+                                                        fm = sl.add_prior_to_fm(
                                                             fm, fiducials_dict, dz_param_names, dz_prior)
 
                                                     # ! triangle plot
@@ -310,19 +310,19 @@ for ng_cov_code, filename_suffix in zip(codes_to_compare, filename_suffix_list):
                                                     #         plot_lib.contour_plot_chainconsumer(cov, trimmed_fid_dict)
 
                                                     # ! compute uncertainties from fm
-                                                    uncert_fm = mm.uncertainties_fm_v2(fm, fiducials_dict,
+                                                    uncert_fm = sl.uncertainties_fm_v2(fm, fiducials_dict,
                                                                                        which_uncertainty='marginal',
                                                                                        normalize=True,
                                                                                        percent_units=True)[:num_params_tokeep]
 
                                                     # compute the FoM
                                                     w0wa_idxs = param_names.index('wz'), param_names.index('wa')
-                                                    fom = mm.compute_FoM(fm, w0wa_idxs)
+                                                    fom = sl.compute_FoM(fm, w0wa_idxs)
 
                                                     # ! this piece of code is for the foc of the different cases
-                                                    corr_mat = mm.cov2corr(
+                                                    corr_mat = sl.cov2corr(
                                                         np.linalg.inv(fm))[:num_params_tokeep, :num_params_tokeep]
-                                                    foc = mm.figure_of_correlation(corr_mat)
+                                                    foc = sl.figure_of_correlation(corr_mat)
                                                     if plor_corr_matrix and which_cov_term == 'G' and BNT_transform is False and \
                                                             ell_cuts is False and fix_dz is True and fix_shear_bias is False and \
                                                             kmax_h_over_Mpc == kmax_h_over_Mpc_list[-1] and which_pk:
@@ -394,10 +394,10 @@ for probe_toplot in probes:
     ]
 
     # append percent differences to df
-    fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
+    fm_uncert_df_toplot = sl.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
                                              'GSSC', num_string_columns)
     if 'GSSCcNG' in which_cov_term_list:
-        fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
+        fm_uncert_df_toplot = sl.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
                                                  'GSSCcNG', num_string_columns)
 
     # check that the G term is the same, all other entries being the same
@@ -538,10 +538,10 @@ fm_uncert_df_toplot = fm_uncert_df[
 ]
 
 # append percent differences to df
-fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
+fm_uncert_df_toplot = sl.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
                                          'GSSC', num_string_columns)
 if 'GSSCcNG' in which_cov_term_list:
-    fm_uncert_df_toplot = mm.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
+    fm_uncert_df_toplot = sl.compare_df_keys(fm_uncert_df_toplot, 'which_cov_term', 'G',
                                              'GSSCcNG', num_string_columns)
 
 
@@ -738,7 +738,7 @@ plt.show()
 
 assert False, 'stop here'
 
-# mm.plot_correlation_matrix(correlation_dict['HMCode2020'] / correlation_dict['TakaBird'], cosmo_params_tex,
+# sl.plot_correlation_matrix(correlation_dict['HMCode2020'] / correlation_dict['TakaBird'], cosmo_params_tex,
 #    title='HMCodeBar/TakaBird')
 if save_plots:
     plt.savefig(f'{ROOT}/phd_thesis_plots/plots/correlation_matrix.pdf',
@@ -752,7 +752,7 @@ if save_plots:
 #                         (fm_uncert_df['kmax_h_over_Mpc'] == kmax_h_over_Mpc_list[-1])].iloc[:,
 #                                                                                             num_string_columns:].values
 # diff = (df_true / df_false - 1) * 100
-# mm.matshow(diff, log=True, title=f'difference between ell_cuts True, kmax = {kmax_h_over_Mpc_list[-1]:.2f} and False')
+# sl.matshow(diff, log=True, title=f'difference between ell_cuts True, kmax = {kmax_h_over_Mpc_list[-1]:.2f} and False')
 
 # ! plot FoM pk_ref vs kmax
 probe_toplot = '3x2pt'
@@ -772,11 +772,11 @@ reduced_df = fm_uncert_df[
 ]
 fom_g = reduced_df[(fm_uncert_df['which_cov_term'] == 'G')]['FoM'].values
 fom_ng = reduced_df[(fm_uncert_df['which_cov_term'] == 'GSSC')]['FoM'].values
-fom_diff = np.abs(mm.percent_diff(fom_ng, fom_g))
+fom_diff = np.abs(sl.percent_diff(fom_ng, fom_g))
 
 
 # find kmax for a given FoM (400)
-kmax_fom400_gs_diff_10 = mm.find_inverse_from_array(kmax_h_over_Mpc_list[:5], fom_diff[:5], 10)
+kmax_fom400_gs_diff_10 = sl.find_inverse_from_array(kmax_h_over_Mpc_list[:5], fom_diff[:5], 10)
 
 
 labelsize = 22  # Smaller label size
@@ -877,15 +877,15 @@ stdev_fom_vs_kmax_notb = reduced_unc_df_notb.std().values
 perc_deviation_vs_kmax_notb = stdev_fom_vs_kmax_notb / mean_fom_vs_kmax_notb * 100
 
 # ! cutting the values above which the trend is no longer monothonic
-kmax_perc_deviation = mm.find_inverse_from_array(kmax_h_over_Mpc_list[:6], perc_deviation_vs_kmax[:6],
+kmax_perc_deviation = sl.find_inverse_from_array(kmax_h_over_Mpc_list[:6], perc_deviation_vs_kmax[:6],
                                                  target_perc_dispersion)
-kmax_perc_deviation_notb = mm.find_inverse_from_array(kmax_h_over_Mpc_list[:6], perc_deviation_vs_kmax_notb[:6],
+kmax_perc_deviation_notb = sl.find_inverse_from_array(kmax_h_over_Mpc_list[:6], perc_deviation_vs_kmax_notb[:6],
                                                       target_perc_dispersion)
 
-kmax_fom400_tb = mm.find_inverse_from_array(kmax_h_over_Mpc_list,
+kmax_fom400_tb = sl.find_inverse_from_array(kmax_h_over_Mpc_list,
                                             cosmo_params_df_dav[cosmo_params_df_dav['which_pk'] == 'TakaBird'][
                                                 'FoM'].values, fom_redbook)
-fom_kmax082_notb = mm.find_inverse_from_array(mean_fom_vs_kmax_notb, kmax_h_over_Mpc_list, kmax_perc_deviation_notb)
+fom_kmax082_notb = sl.find_inverse_from_array(mean_fom_vs_kmax_notb, kmax_h_over_Mpc_list, kmax_perc_deviation_notb)
 
 print(f'kmax_fom400_tb = {kmax_fom400_tb:.2f} {h_over_mpc_tex} for lmax = 3000. P. Taylor finds 0.7!!; make sure youre '
       f'fixing shear bias and dz for a fair comparison')
@@ -953,7 +953,7 @@ go_gs_df = fm_uncert_df[
     (fm_uncert_df['center_or_min'] == center_or_min_plt)
 ]
 
-go_gs_df = mm.compare_df_keys(go_gs_df, 'which_cov_term',
+go_gs_df = sl.compare_df_keys(go_gs_df, 'which_cov_term',
                               which_cov_term_list[0], which_cov_term_list[1], num_string_columns)
 
 cosmo_params_tex_plusfom = cosmo_params_tex + ['FoM']
@@ -967,7 +967,7 @@ plt.legend()
 plt.show()
 #
 # # find kmax for a given FoM (400)
-# kmax_fom_400 = mm.find_inverse_from_array(kmax_h_over_Mpc_list, fom_values, fom_redbook)
+# kmax_fom_400 = sl.find_inverse_from_array(kmax_h_over_Mpc_list, fom_values, fom_redbook)
 #
 # title_plot = '3$\\times$2pt' if probe_toplot == '3x2pt' else None
 # plt.figure()

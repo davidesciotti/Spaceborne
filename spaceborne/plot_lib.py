@@ -15,7 +15,7 @@ import os
 ROOT = os.getenv('ROOT')
 
 sys.path.append(f'{ROOT}/Spaceborne/bin')
-import spaceborne.my_module as mm
+import spaceborne.sb_lib as sl
 
 sys.path.append(f'{ROOT}/Spaceborne/common_cfg')
 import common_cfg.mpl_cfg as mpl_cfg
@@ -383,7 +383,7 @@ IST['GC_opt'] = np.array((0, 0, 0, 0, 0, 0, 0))
 # xxx occhio a ga e mn
 
 def plot_FM_constr(FM, label, uncert_kind='relative'):
-    rel_uncert = mm.uncertainties_FM(FM)[:7]
+    rel_uncert = sl.uncertainties_FM(FM)[:7]
     plt.plot(range(7), rel_uncert * 100, "--", marker='o', label=label, markersize=markersize)
 
 
@@ -419,7 +419,7 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
     ell_max_XC = ell_max_GC
     ########################### import ######################################
 
-    # output_folder = mm.get_output_folder(ind_ordering, which_forecast)
+    # output_folder = sl.get_output_folder(ind_ordering, which_forecast)
 
     # OPTIONS
     # XXX
@@ -456,11 +456,11 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
     # sylvain XXX renamed, careful!
     # XXX pay attention to the folder you're importing
     folder = project_path.parent / "common_data/sylvain/FM/common_ell_and_deltas/latest_downloads/renamed"
-    FM_sylv_may = dict(mm.get_kv_pairs(folder, "txt"))
+    FM_sylv_may = dict(sl.get_kv_pairs(folder, "txt"))
 
     # vincenzo may: to check whose GC is correct
     folder = project_path.parent / "common_data/vincenzo/14may/FishMat/EP10"
-    FM_vinc_may = dict(mm.get_kv_pairs(folder, "dat"))
+    FM_vinc_may = dict(sl.get_kv_pairs(folder, "dat"))
 
     ######################## COMPUTE UNCERTAINTIES ###############################
     probe_name = probe
@@ -502,11 +502,11 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
     nbl = general_config['nbl']  # back to correct number of bins
 
     # uncertainties
-    uncert_dav_G = mm.uncertainties_FM(FM_dav_G)[:7]
-    uncert_dav_SSC = mm.uncertainties_FM(FM_dav_SSC)[:7]
+    uncert_dav_G = sl.uncertainties_FM(FM_dav_G)[:7]
+    uncert_dav_SSC = sl.uncertainties_FM(FM_dav_SSC)[:7]
 
-    uncert_sylv_G = mm.uncertainties_FM(FM_sylv_G)[:7]
-    uncert_sylv_SSC = mm.uncertainties_FM(FM_sylv_SSC)[:7]
+    uncert_sylv_G = sl.uncertainties_FM(FM_sylv_G)[:7]
+    uncert_sylv_SSC = sl.uncertainties_FM(FM_sylv_SSC)[:7]
 
     # if which_forecast != 'sylvain':
     # SEYFERT
@@ -514,8 +514,8 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
     # FM_SEYF_G = FM_dav_may[f"FM_{probe}_G_lmax{probe_ell_max}{ell_max}_nbl{nbl}_SEYFERT"]
     # FM_SEYF_SSC = FM_dav_may[f"FM_{probe}_G+SSC_lmax{probe_ell_max}{ell_max}_nbl{nbl}_SEYFERT"]
     # uncertainties
-    # uncert_SEYF_G   = mm.uncertainties_FM(FM_SEYF_G)[:7]
-    # uncert_SEYF_SSC = mm.uncertainties_FM(FM_SEYF_SSC)[:7]
+    # uncert_SEYF_G   = sl.uncertainties_FM(FM_SEYF_G)[:7]
+    # uncert_SEYF_SSC = sl.uncertainties_FM(FM_SEYF_SSC)[:7]
     # else:
     #     uncert_SEYF_G = np.zeros(7)
     #     uncert_SEYF_SSC = np.zeros(7)
@@ -524,8 +524,8 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
     # FM_2DCLOE_G = np.genfromtxt(path / f'output/FM/{output_folder}/{Cij_folder}/FM_2DCLOE_G.txt')
     # FM_2DCLOE_GpSSC = np.genfromtxt(path / f'output/FM/{output_folder}/{Cij_folder}/FM_2DCLOE_G+SSC.txt')
     # # uncertainties
-    # uncert_2DCLOE_G =  mm.uncertainties_FM(FM_2DCLOE_G)[:7]
-    # uncert_2DCLOE_GpSSC =  mm.uncertainties_FM(FM_2DCLOE_GpSSC)[:7]
+    # uncert_2DCLOE_G =  sl.uncertainties_FM(FM_2DCLOE_G)[:7]
+    # uncert_2DCLOE_GpSSC =  sl.uncertainties_FM(FM_2DCLOE_GpSSC)[:7]
 
     ################################## COMPUTE AND PLOT ###########################
 
@@ -549,8 +549,8 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
 
         mean = (sylv + dav) / 2
         # mean = (SEYF + dav)/2 ; print('attention, using SEYF instead of sylvain')
-        diff_dav = mm.percent_diff(dav, mean)
-        diff_sylv = mm.percent_diff(sylv, mean)
+        diff_dav = sl.percent_diff(dav, mean)
+        diff_sylv = sl.percent_diff(sylv, mean)
 
         # plt.plot(range(7), diff_dav, "o--", label = f"davide {GO_or_GS}")
         # plt.plot(range(7), diff_sylv, "o--", label = f"sylvain {GO_or_GS}")
@@ -585,13 +585,13 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
 
         # noSSC vs SSC, dav vs sylv
 
-        diff_dav = mm.percent_diff(uncert_dav_SSC, uncert_dav_G)
-        diff_sylv = mm.percent_diff(uncert_sylv_SSC, uncert_sylv_G)
+        diff_dav = sl.percent_diff(uncert_dav_SSC, uncert_dav_G)
+        diff_sylv = sl.percent_diff(uncert_sylv_SSC, uncert_sylv_G)
 
         # mean = (diff_dav + diff_sylv)/2
 
-        # diff_dav  = mm.percent_diff(diff_dav, mean) # XXX careful
-        # diff_sylv = mm.percent_diff(diff_sylv, mean)
+        # diff_dav  = sl.percent_diff(diff_dav, mean) # XXX careful
+        # diff_sylv = sl.percent_diff(diff_sylv, mean)
 
         plt.plot(range(7), diff_dav, "o-", label=f"davide {probe}")
         plt.plot(range(7), diff_sylv, "o--", label=f"sylvain {probe}")
@@ -603,17 +603,17 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
 
     elif which_plot == "bar_plot":
         # davide
-        diff = mm.percent_diff(uncert_dav_SSC, uncert_dav_G)
+        diff = sl.percent_diff(uncert_dav_SSC, uncert_dav_G)
         bar_plot(uncert_dav_G, uncert_dav_SSC, diff)
         # sylvain, just to check - GC is different, remember! we agree on the
         # relative errors in the G and G + SSC cases, not on the % uncertainty increase!
-        # diff = mm.percent_diff(uncert_sylv_SSC, uncert_sylv_G)
+        # diff = sl.percent_diff(uncert_sylv_SSC, uncert_sylv_G)
         # bar_plot(uncert_sylv_G, uncert_sylv_SSC, diff)
 
     elif which_plot == "SSC_degradation":
         # noSSC vs SSC
-        diff_dav = mm.percent_diff(uncert_dav_SSC, uncert_dav_G)
-        diff_sylv = mm.percent_diff(uncert_sylv_SSC, uncert_sylv_G)
+        diff_dav = sl.percent_diff(uncert_dav_SSC, uncert_dav_G)
+        diff_sylv = sl.percent_diff(uncert_sylv_SSC, uncert_sylv_G)
 
         plt.plot(range(7), diff_dav, "o-", label=f"{probe}")
         # plt.plot(range(7), diff_sylv, "o--", label = f"sylvain {probe}")
@@ -657,14 +657,14 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
     # plot(uncert_GCph_3000, style = "o--")
 
     # FOM
-    FoM = mm.compute_FoM(FM_dav_G)
+    FoM = sl.compute_FoM(FM_dav_G)
     print(f'FoM davide G {probe}:\t{FoM:.2f}')
-    FoM = mm.compute_FoM(FM_dav_SSC)
+    FoM = sl.compute_FoM(FM_dav_SSC)
     print(f'FoM davide GpSSC {probe}:\t{FoM:.2f}')
 
-    FoM = mm.compute_FoM(FM_sylv_G)
+    FoM = sl.compute_FoM(FM_sylv_G)
     print(f'FoM sylvain G {probe}:\t{FoM:.2f}')
-    FoM = mm.compute_FoM(FM_sylv_SSC)
+    FoM = sl.compute_FoM(FM_sylv_SSC)
     print(f'FoM sylvain GpSSC {probe}:\t{FoM:.2f}')
 
     """
@@ -678,12 +678,12 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
     for (probe, ell_max) in zip(probes, (ell_max_WL, ell_max_GC, ell_max_XC)):
         
         print(probe, ell_max)
-        fom = mm.compute_FoM(FM_dav_may[f"FM_{probe}_lmax{probe}{ell_max}_nbl{nbl}"])
-        fom = mm.compute_FoM(FM_sylv_may["FM_WL_lmax5000_ellDavide_gauss"])
+        fom = sl.compute_FoM(FM_dav_may[f"FM_{probe}_lmax{probe}{ell_max}_nbl{nbl}"])
+        fom = sl.compute_FoM(FM_sylv_may["FM_WL_lmax5000_ellDavide_gauss"])
     
     
         print(f'fom G {probe}, nbl = {nbl}, l_max = {ell_max}, dav:', fom)
-        fom_SSC = mm.compute_FoM(FM_dav_may[f"FM_{probe}_SSC_lmax{probe}{ell_max}_nbl{nbl}"])
+        fom_SSC = sl.compute_FoM(FM_dav_may[f"FM_{probe}_SSC_lmax{probe}{ell_max}_nbl{nbl}"])
         print(f'fom G+SSC {probe}, nbl = {nbl}, l_max = {ell_max}, dav:', fom_SSC)
         perc_decrease = (fom/fom_SSC-1)*100
         print(perc_decrease)
@@ -763,10 +763,10 @@ def plot_FM(general_config, covariance_config, plot_config, FM_dict):
     array2 = uncert_sylv_G_may
     
     mean = (array1 + array2)/2
-    diff_array1 = mm.percent_diff(array1, mean)
-    diff_array2 = mm.percent_diff(array2, mean)
-    plt.plot(range(7), diff_array1, "o--", label = mm.namestr(array1, globals()))
-    plt.plot(range(7), diff_array2, "o--", label = mm.namestr(array2, globals()))
+    diff_array1 = sl.percent_diff(array1, mean)
+    diff_array2 = sl.percent_diff(array2, mean)
+    plt.plot(range(7), diff_array1, "o--", label = sl.namestr(array1, globals()))
+    plt.plot(range(7), diff_array2, "o--", label = sl.namestr(array2, globals()))
     
     plt.legend()
     

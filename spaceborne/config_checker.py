@@ -1,5 +1,5 @@
 import spaceborne.cosmo_lib as cosmo_lib
-import spaceborne.my_module as mm
+import spaceborne.sb_lib as sl
 import numpy as np
 
 
@@ -24,7 +24,7 @@ class SpaceborneConfigChecker:
 
     def check_fsky(self):
         fsky_check = cosmo_lib.deg2_to_fsky(self.cfg['mask']['survey_area_deg2'])
-        assert np.abs(mm.percent_diff(self.cfg['mask']['fsky'],
+        assert np.abs(sl.percent_diff(self.cfg['mask']['fsky'],
                       fsky_check)) < 1e-5, 'Fsky does not match the survey area.'
 
     def check_KE_approximation(self):

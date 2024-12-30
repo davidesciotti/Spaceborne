@@ -34,7 +34,7 @@ from copy import deepcopy
 import pandas as pd
 
 import spaceborne.ell_utils as ell_utils
-import spaceborne.my_module as mm
+import spaceborne.sb_lib as sl
 import subprocess
 from scipy.optimize import minimize_scalar
 
@@ -374,7 +374,7 @@ class OneCovarianceInterface():
 
     def process_cov_from_mat_file(self):
 
-        self.zpairs_auto, self.zpairs_cross, self.zpairs_3x2pt = mm.get_zpairs(self.zbins)
+        self.zpairs_auto, self.zpairs_cross, self.zpairs_3x2pt = sl.get_zpairs(self.zbins)
 
         elem_auto = self.zpairs_auto * self.nbl_3x2pt
         elem_cross = self.zpairs_cross * self.nbl_3x2pt
@@ -401,19 +401,19 @@ class OneCovarianceInterface():
 
         self.process_cov_from_mat_file()
 
-        cov_list_g_4d = mm.cov_3x2pt_10D_to_4D(self.cov_g_oc_3x2pt_10D, self.probe_ordering,
+        cov_list_g_4d = sl.cov_3x2pt_10D_to_4D(self.cov_g_oc_3x2pt_10D, self.probe_ordering,
                                                self.nbl_3x2pt, self.zbins, self.ind, self.GL_OR_LG)
-        cov_list_ssc_4d = mm.cov_3x2pt_10D_to_4D(self.cov_ssc_oc_3x2pt_10D, self.probe_ordering,
+        cov_list_ssc_4d = sl.cov_3x2pt_10D_to_4D(self.cov_ssc_oc_3x2pt_10D, self.probe_ordering,
                                                  self.nbl_3x2pt, self.zbins, self.ind, self.GL_OR_LG)
-        cov_list_cng_4d = mm.cov_3x2pt_10D_to_4D(self.cov_cng_oc_3x2pt_10D, self.probe_ordering,
+        cov_list_cng_4d = sl.cov_3x2pt_10D_to_4D(self.cov_cng_oc_3x2pt_10D, self.probe_ordering,
                                                  self.nbl_3x2pt, self.zbins, self.ind, self.GL_OR_LG)
-        cov_list_tot_4d = mm.cov_3x2pt_10D_to_4D(self.cov_tot_oc_3x2pt_10D, self.probe_ordering,
+        cov_list_tot_4d = sl.cov_3x2pt_10D_to_4D(self.cov_tot_oc_3x2pt_10D, self.probe_ordering,
                                                  self.nbl_3x2pt, self.zbins, self.ind, self.GL_OR_LG)
 
-        cov_list_g_2d = mm.cov_4D_to_2DCLOE_3x2pt(cov_list_g_4d, self.zbins, block_index='zpair')
-        cov_list_ssc_2d = mm.cov_4D_to_2DCLOE_3x2pt(cov_list_ssc_4d, self.zbins, block_index='zpair')
-        cov_list_cng_2d = mm.cov_4D_to_2DCLOE_3x2pt(cov_list_cng_4d, self.zbins, block_index='zpair')
-        cov_list_tot_2d = mm.cov_4D_to_2DCLOE_3x2pt(cov_list_tot_4d, self.zbins, block_index='zpair')
+        cov_list_g_2d = sl.cov_4D_to_2DCLOE_3x2pt(cov_list_g_4d, self.zbins, block_index='zpair')
+        cov_list_ssc_2d = sl.cov_4D_to_2DCLOE_3x2pt(cov_list_ssc_4d, self.zbins, block_index='zpair')
+        cov_list_cng_2d = sl.cov_4D_to_2DCLOE_3x2pt(cov_list_cng_4d, self.zbins, block_index='zpair')
+        cov_list_tot_2d = sl.cov_4D_to_2DCLOE_3x2pt(cov_list_tot_4d, self.zbins, block_index='zpair')
 
         if self.compute_g:
             np.testing.assert_allclose(cov_list_g_2d, self.cov_mat_g_2d, atol=0, rtol=rtol,
@@ -578,7 +578,7 @@ class OneCovarianceInterface():
                                             probe_b='{probe_b:s}',
                                             probe_c='{probe_c:s}',
                                             probe_d='{probe_d:s}')
-        cov_ng_oc_3x2pt_dict_8D = mm.load_cov_from_probe_blocks(path=self.oc_path,
+        cov_ng_oc_3x2pt_dict_8D = sl.load_cov_from_probe_blocks(path=self.oc_path,
                                                                 filename=filename,
                                                                 probe_ordering=self.cfg['covariance']['probe_ordering'])
 
@@ -587,7 +587,7 @@ class OneCovarianceInterface():
             return cov_ng_oc_3x2pt_dict_8D
 
         elif output_type in ['10D_dict', '10D_array']:
-            cov_ng_oc_3x2pt_dict_10D = mm.cov_3x2pt_dict_8d_to_10d(
+            cov_ng_oc_3x2pt_dict_10D = sl.cov_3x2pt_dict_8d_to_10d(
                 cov_3x2pt_dict_8D=cov_ng_oc_3x2pt_dict_8D,
                 nbl=self.variable_specs['nbl_3x2pt'],
                 zbins=self.zbins,
@@ -599,7 +599,7 @@ class OneCovarianceInterface():
                 return cov_ng_oc_3x2pt_dict_10D
 
             elif output_type == '10D_array':
-                return mm.cov_10D_dict_to_array(cov_ng_oc_3x2pt_dict_10D,
+                return sl.cov_10D_dict_to_array(cov_ng_oc_3x2pt_dict_10D,
                                                 nbl=self.variable_specs['nbl_3x2pt'],
                                                 zbins=self.zbins,
                                                 n_probes=self.cfg['covariance']['n_probes'])
@@ -632,7 +632,7 @@ class OneCovarianceInterface():
         fig.subplots_adjust(hspace=0)
         ax[0].plot(target_ell_array, label='target ells (SB)', marker='o', alpha=.6)
         ax[0].plot(self.new_ells_oc, label='ells OC', marker='o', alpha=.6)
-        ax[1].plot(mm.percent_diff(target_ell_array, self.new_ells_oc), label='% diff', marker='o')
+        ax[1].plot(sl.percent_diff(target_ell_array, self.new_ells_oc), label='% diff', marker='o')
         ax[0].legend()
         ax[1].legend()
         ax[0].set_ylabel('$\\ell$')
@@ -650,5 +650,5 @@ class OneCovarianceInterface():
                                        ell_min=float(self.variable_specs['ell_min']),
                                        ell_max=ell_max)
         ssd = np.sum((self.ells_sb - ells_oc) ** 2)
-        # ssd = np.sum(mm.percent_diff(self.ells_sb, ells_oc)**2)  # TODO test this
+        # ssd = np.sum(sl.percent_diff(self.ells_sb, ells_oc)**2)  # TODO test this
         return ssd

@@ -8,7 +8,7 @@ import pyccl as ccl
 from tqdm import tqdm
 import healpy as hp
 
-import spaceborne.my_module as mm
+import spaceborne.sb_lib as sl
 import spaceborne.cosmo_lib as cosmo_lib
 import spaceborne.wf_cl_lib as wf_cl_lib
 import spaceborne.mask_fits_to_cl as mask_utils
@@ -25,7 +25,7 @@ class PycclClass():
         self.extra_parameters_dict = extra_parameters_dict
         self.ia_dict = ia_dict
 
-        self.flat_fid_pars_dict = mm.flatten_dict(self.cosmology_dict)
+        self.flat_fid_pars_dict = sl.flatten_dict(self.cosmology_dict)
         cosmo_dict_ccl = cosmo_lib.map_keys(self.cosmology_dict, key_mapping=None)
         self.cosmo_ccl = cosmo_lib.instantiate_cosmo_ccl_obj(cosmo_dict_ccl,
                                                              self.extra_parameters_dict)
@@ -64,7 +64,7 @@ class PycclClass():
 
     def pk_obj_from_file(self, pk_filename, plot_pk_z0):
 
-        k_grid_Pk, z_grid_Pk, pk_mm_2d = mm.pk_vinc_file_to_2d_npy(pk_filename, plot_pk_z0=plot_pk_z0)
+        k_grid_Pk, z_grid_Pk, pk_mm_2d = sl.pk_vinc_file_to_2d_npy(pk_filename, plot_pk_z0=plot_pk_z0)
         pk_flipped_in_z = np.flip(pk_mm_2d, axis=1)
         scale_factor_grid_pk = cosmo_lib.z_to_a(z_grid_Pk)[::-1]  # flip it
         p_of_k_a = ccl.pk2d.Pk2D(a_arr=scale_factor_grid_pk, lk_arr=np.log(k_grid_Pk),
@@ -530,7 +530,7 @@ class PycclClass():
         for key in self.cov_ng_3x2pt_dict_8D.keys():
             if (key == ('L', 'L', 'L', 'L')) or (key == ('G', 'L', 'G', 'L')) or (key == ('G', 'G', 'G', 'G')):
                 try:
-                    cov_2d = mm.cov_4D_to_2D(self.cov_ng_3x2pt_dict_8D[key], block_index='ell')
+                    cov_2d = sl.cov_4D_to_2D(self.cov_ng_3x2pt_dict_8D[key], block_index='ell')
                     assert np.allclose(cov_2d, cov_2d.T, atol=0, rtol=1e-5)
                     np.testing.assert_allclose(self.cov_ng_3x2pt_dict_8D[key],
                                                #    np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 2, 3)),

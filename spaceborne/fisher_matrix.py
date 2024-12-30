@@ -7,7 +7,7 @@ import scipy
 from matplotlib import pyplot as plt
 import sys
 import os
-import spaceborne.my_module as mm
+import spaceborne.sb_lib as sl
 import spaceborne.cl_utils as cl_utils
 
 
@@ -57,7 +57,7 @@ def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
     dC_3D = np.zeros((nbl, zpairs, nparams_tot))
     for ell in range(nbl):
         for alf in range(nparams_tot):
-            dC_3D[ell, :, alf] = mm.array_2D_to_1D_ind(dC_4D[ell, :, :, alf], zpairs, ind)
+            dC_3D[ell, :, alf] = sl.array_2D_to_1D_ind(dC_4D[ell, :, :, alf], zpairs, ind)
     return dC_3D
 
 
@@ -157,7 +157,7 @@ def compute_FM(cfg, ell_dict, cov_dict, deriv_dict, BNT_matrix=None):
     else:
         raise ValueError("block_index should be either 'ell', 'vincenzo', 'C-style', 'ij', 'sylvain' or 'F-style'")
 
-    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
 
     if GL_or_LG == 'LG':
         print('\nAttention! switching columns in the ind array (for the XC part)')
@@ -341,7 +341,7 @@ def save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=False, save_dict=
 
     if save_dict:
         FM_dict_filename = FM_cfg['FM_dict_filename'].format(**save_specs)
-        mm.save_pickle(f'{fm_folder}/{FM_dict_filename}.pickle', FM_dict)
+        sl.save_pickle(f'{fm_folder}/{FM_dict_filename}.pickle', FM_dict)
 
     else:
         print('No Fisher matrix saved')
@@ -349,13 +349,13 @@ def save_FM(fm_folder, FM_dict, FM_cfg, cases_tosave, save_txt=False, save_dict=
 
 # old way to compute the FM, slow - legacy code
 # # COMPUTE FM GO
-# FM_WL_GO = mm.compute_FM_2D(nbl_WL, zpairs_auto, nparams_tot, cov_WL_GO_2D_inv, dC_LL_2D)
-# FM_GC_GO = mm.compute_FM_2D(nbl_GC, zpairs_auto, nparams_tot, cov_GC_GO_2D_inv, dC_GG_2D)
-# FM_WA_GO = mm.compute_FM_2D(nbl_WA, zpairs_auto, nparams_tot, cov_WA_GO_2D_inv, dC_WA_2D)
-# FM_3x2pt_GO = mm.compute_FM_2D(nbl_3x2pt, zpairs_3x2pt, nparams_tot, cov_3x2pt_GO_2D_inv, dC_3x2pt_2D)
+# FM_WL_GO = sl.compute_FM_2D(nbl_WL, zpairs_auto, nparams_tot, cov_WL_GO_2D_inv, dC_LL_2D)
+# FM_GC_GO = sl.compute_FM_2D(nbl_GC, zpairs_auto, nparams_tot, cov_GC_GO_2D_inv, dC_GG_2D)
+# FM_WA_GO = sl.compute_FM_2D(nbl_WA, zpairs_auto, nparams_tot, cov_WA_GO_2D_inv, dC_WA_2D)
+# FM_3x2pt_GO = sl.compute_FM_2D(nbl_3x2pt, zpairs_3x2pt, nparams_tot, cov_3x2pt_GO_2D_inv, dC_3x2pt_2D)
 #
 # # COMPUTE FM GS
-# FM_WL_GS = mm.compute_FM_2D(nbl_WL, zpairs_auto, nparams_tot, cov_WL_GS_2D_inv, dC_LL_2D)
-# FM_GC_GS = mm.compute_FM_2D(nbl_GC, zpairs_auto, nparams_tot, cov_GC_GS_2D_inv, dC_GG_2D)
-# FM_WA_GS = mm.compute_FM_2D(nbl_WA, zpairs_auto, nparams_tot, cov_WA_GS_2D_inv, dC_WA_2D)
-# FM_3x2pt_GS = mm.compute_FM_2D(nbl_3x2pt, zpairs_3x2pt, nparams_tot, cov_3x2pt_GS_2D_inv, dC_3x2pt_2D)
+# FM_WL_GS = sl.compute_FM_2D(nbl_WL, zpairs_auto, nparams_tot, cov_WL_GS_2D_inv, dC_LL_2D)
+# FM_GC_GS = sl.compute_FM_2D(nbl_GC, zpairs_auto, nparams_tot, cov_GC_GS_2D_inv, dC_GG_2D)
+# FM_WA_GS = sl.compute_FM_2D(nbl_WA, zpairs_auto, nparams_tot, cov_WA_GS_2D_inv, dC_WA_2D)
+# FM_3x2pt_GS = sl.compute_FM_2D(nbl_3x2pt, zpairs_3x2pt, nparams_tot, cov_3x2pt_GS_2D_inv, dC_3x2pt_2D)

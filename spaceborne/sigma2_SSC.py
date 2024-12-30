@@ -16,7 +16,7 @@ SB_ROOT = f'{ROOT}/Spaceborne'
 
 # project modules
 sys.path.append(SB_ROOT)
-import spaceborne.my_module as mm
+import spaceborne.sb_lib as sl
 import spaceborne.cosmo_lib as csmlib
 import spaceborne.mask_fits_to_cl as mask_utils
 
@@ -207,7 +207,7 @@ def plot_sigma2(sigma2_arr, z_grid_sigma2):
     font_size = 18
     plt.rcParams.update({'font.size': font_size})
     plt.rcParams["legend.fontsize"] = font_size
-    mm.matshow(sigma2_arr, log=True, abs_val=True, title='$\\sigma^2(z_1, z_2)$')
+    sl.matshow(sigma2_arr, log=True, abs_val=True, title='$\\sigma^2(z_1, z_2)$')
 
     # z_steps_sigma2 = len(z_grid_sigma2)
     # plt.savefig(f'../output/plots/sigma2_spikes_zsteps{z_steps_sigma2}.pdf', dpi=500, bbox_inches='tight')

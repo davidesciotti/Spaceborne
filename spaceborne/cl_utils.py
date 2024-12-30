@@ -1,6 +1,6 @@
 import warnings
 import numpy as np
-import spaceborne.my_module as mm
+import spaceborne.sb_lib as sl
 
 
 def build_3x2pt_datavector_5D(dv_LLfor3x2pt_3D, dv_GL_3D, dv_GG_3D, nbl, zbins, n_probes=2):
@@ -16,7 +16,7 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
     """This function reshapes the SPV3 cls, which have a different format wrt the usual input files, from 1 to 3
     dimensions (5 dimensions for the 3x2pt case)"""
 
-    zpairs_auto, zpairs_cross, zpairs_3x2pt = mm.get_zpairs(zbins)
+    zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
 
     # the checks on zpairs in the if statements can only be done for the optimistic case, since these are the only
     # datavectors I have (from which I can obtain the pessimistic ones simply by removing some ell bins).
@@ -41,11 +41,11 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
             print(f'There are 0 bins for Wadd in this case, cl_wa will be empty')
 
     if probe != '3x2pt':
-        cl_3d = mm.cl_1D_to_3D(cl_1d, nbl, zbins, is_symmetric=is_symmetric)
+        cl_3d = sl.cl_1D_to_3D(cl_1d, nbl, zbins, is_symmetric=is_symmetric)
 
         # if cl is not a cross-spectrum, symmetrize
         if probe != 'XC':
-            cl_3d = mm.fill_3D_symmetric_array(cl_3d, nbl, zbins)
+            cl_3d = sl.fill_3D_symmetric_array(cl_3d, nbl, zbins)
         return cl_3d
 
     elif probe == '3x2pt':
@@ -57,9 +57,9 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
         cl_gg_3x2pt_2d = cl_2d[:, zpairs_auto + zpairs_cross:]
 
         # reshape them individually - the symmetrization is done within the function
-        cl_ll_3x2pt_3d = mm.cl_2D_to_3D_symmetric(cl_ll_3x2pt_2d, nbl=nbl, zpairs=zpairs_auto, zbins=zbins)
-        cl_gl_3x2pt_3d = mm.cl_2D_to_3D_asymmetric(cl_gl_3x2pt_2d, nbl=nbl, zbins=zbins, order='C')
-        cl_gg_3x2pt_3d = mm.cl_2D_to_3D_symmetric(cl_gg_3x2pt_2d, nbl=nbl, zpairs=zpairs_auto, zbins=zbins)
+        cl_ll_3x2pt_3d = sl.cl_2D_to_3D_symmetric(cl_ll_3x2pt_2d, nbl=nbl, zpairs=zpairs_auto, zbins=zbins)
+        cl_gl_3x2pt_3d = sl.cl_2D_to_3D_asymmetric(cl_gl_3x2pt_2d, nbl=nbl, zbins=zbins, order='C')
+        cl_gg_3x2pt_3d = sl.cl_2D_to_3D_symmetric(cl_gg_3x2pt_2d, nbl=nbl, zpairs=zpairs_auto, zbins=zbins)
 
         # use them to populate the datavector
         cl_3x2pt = np.zeros((2, 2, nbl, zbins, zbins))

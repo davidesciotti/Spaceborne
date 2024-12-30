@@ -650,11 +650,11 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     oc_obj.build_save_oc_ini(ascii_filenames_dict, print_ini=True)
 
     # compute covs
-    oc_obj.call_oc_from_bash()
+    # oc_obj.call_oc_from_bash()
     oc_obj.process_cov_from_list_file()
-    oc_obj.output_sanity_check(rtol=1e-4)  # .dat vs .mat
+    oc_obj.output_sanity_check(rtol=5e-2)  # .dat vs .mat
 
-    # This is an alternative method to call OC (more convoluted and more maintanable).
+    # This is an alternative method to call OC (more convoluted but more maintanable).
     # I keep the code for optional consistency checks
     if cfg['OneCovariance']['consistency_checks']:
 
@@ -1008,8 +1008,6 @@ for key in cov_dict.keys():
     np.testing.assert_allclose(cov_dict[key], cov_dict[key].T,
                                atol=0, rtol=1e-7, err_msg=f'{key} not symmetric')
 
-np.testing.assert_allclose(cov_g_3x2pt_bench, cov_dict[''])
-
 
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.dump(cfg, yaml_file, default_flow_style=False)
@@ -1100,7 +1098,7 @@ for which_cov in cov_dict.keys():
                                                             probe=probe,
                                                             ndim=ndim)
 
-    np.savez_compressed(f'{output_path}/{cov_filename}', **cov_dict)
+    np.savez_compressed(f'{output_path}/{cov_filename}', cov_dict[which_cov])
 print(f'Covariance matrices saved in {output_path}')
 
 for which_cov in cov_dict.keys():

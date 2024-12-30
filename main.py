@@ -10,11 +10,10 @@ import time
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import warnings
-import gc
 import yaml
 import pprint
 from copy import deepcopy
-from scipy.interpolate import interp1d, RegularGridInterpolator, CubicSpline
+from scipy.interpolate import RegularGridInterpolator, CubicSpline
 
 import spaceborne.ell_utils as ell_utils
 import spaceborne.cl_utils as cl_utils

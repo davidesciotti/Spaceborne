@@ -247,7 +247,7 @@ PyCCL:
 OneCovariance:
     precision_settings: high_precision # 'high_precision' or 'default'
     path_to_oc_executable: /home/cosmo/davide.sciotti/data/OneCovariance/covariance.py
-
+    consistency_checks: False
 misc:
     num_threads: 30 # how many threads to use for the Julia SSC integral with @tturbo
 
@@ -261,3 +261,4 @@ misc:
     use_h_units: False # TODO hardcode!
     is_CLOE_validation_run: True
     path_to_jl_integrator: /home/cosmo/davide.sciotti/data/Spaceborne/spaceborne/julia_integrator.jl
+    save_output_as_benchmark: False

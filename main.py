@@ -500,18 +500,18 @@ if ell_max_WL == 1500:
 
 # ! Vincenzo's method for cl_ell_cuts: get the idxs to delete for the flattened 1d cls
 if cfg['ell_cuts']['center_or_min'] == 'center':
-    prefix = 'ell'
+    ell_prefix = 'ell'
 elif cfg['ell_cuts']['center_or_min'] == 'min':
-    prefix = 'ell_edges'
+    ell_prefix = 'ell_edges'
 else:
     raise ValueError('cfg["ell_cuts"]["center_or_min"] should be either "center" or "min"')
 
 ell_dict['idxs_to_delete_dict'] = {
-    'LL': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True, zbins=zbins),
-    'GG': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True, zbins=zbins),
-    'GL': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False, zbins=zbins),
-    'LG': ell_utils.get_idxs_to_delete(ell_dict[f'{prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False, zbins=zbins),
-    '3x2pt': ell_utils.get_idxs_to_delete_3x2pt(ell_dict[f'{prefix}_3x2pt'], ell_cuts_dict, zbins, cfg['covariance'])
+    'LL': ell_utils.get_idxs_to_delete(ell_dict[f'{ell_prefix}_WL'], ell_cuts_dict['LL'], is_auto_spectrum=True, zbins=zbins),
+    'GG': ell_utils.get_idxs_to_delete(ell_dict[f'{ell_prefix}_GC'], ell_cuts_dict['GG'], is_auto_spectrum=True, zbins=zbins),
+    'GL': ell_utils.get_idxs_to_delete(ell_dict[f'{ell_prefix}_XC'], ell_cuts_dict['GL'], is_auto_spectrum=False, zbins=zbins),
+    'LG': ell_utils.get_idxs_to_delete(ell_dict[f'{ell_prefix}_XC'], ell_cuts_dict['LG'], is_auto_spectrum=False, zbins=zbins),
+    '3x2pt': ell_utils.get_idxs_to_delete_3x2pt(ell_dict[f'{ell_prefix}_3x2pt'], ell_cuts_dict, zbins, cfg['covariance'])
 }
 
 # ! 3d cl ell cuts (*after* BNT!!)

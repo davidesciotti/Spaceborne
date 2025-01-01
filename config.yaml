@@ -120,7 +120,6 @@ ell_binning:
 
 ell_cuts:
     apply_ell_cuts: False
-    which_cuts: standard
     center_or_min: center # cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
     cl_ell_cuts: False
     cov_ell_cuts: False

@@ -1,72 +1,28 @@
 import numpy as np
-import spaceborne.cl_utils as cl_utils
-import warnings
-import spaceborne.cosmo_lib as cosmo_lib
-
-###############################################################################
-############# CODE TO CREATE THE ELL VALUES ###################################
-###############################################################################
+from spaceborne import cosmo_lib
 
 
-def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b, cosmo_ccl, zbins, h, ell_cuts_cfg):
+def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b, cosmo_ccl, zbins, h, kmax_h_over_Mpc_ref):
     """loads ell_cut values, rescales them and load into a dictionary.
     z_values_a: redshifts at which to compute the ell_max for a given Limber wavenumber, for probe A
     z_values_b: redshifts at which to compute the ell_max for a given Limber wavenumber, for probe B
     """
 
-    kmax_h_over_Mpc_ref = ell_cuts_cfg['kmax_h_over_Mpc_ref']
-
     if kmax_h_over_Mpc is None:
         kmax_h_over_Mpc = kmax_h_over_Mpc_ref
 
-    if ell_cuts_cfg['which_cuts'] == 'Francis':
+    kmax_1_over_Mpc = kmax_h_over_Mpc * h
 
-        raise Exception('I want the output to be an array, see the standard case. probebly best to split these 2 funcs')
-        assert ell_cuts_cfg['EP_or_ED'] == 'ED', 'Francis cuts are only available for the ED case'
+    ell_cuts_array = np.zeros((zbins, zbins))
+    for zi, zval_i in enumerate(z_values_a):
+        for zj, zval_j in enumerate(z_values_b):
+            r_of_zi = cosmo_lib.ccl_comoving_distance(zval_i, use_h_units=False, cosmo_ccl=cosmo_ccl)
+            r_of_zj = cosmo_lib.ccl_comoving_distance(zval_j, use_h_units=False, cosmo_ccl=cosmo_ccl)
+            ell_cut_i = kmax_1_over_Mpc * r_of_zi - 1 / 2
+            ell_cut_j = kmax_1_over_Mpc * r_of_zj - 1 / 2
+            ell_cuts_array[zi, zj] = np.min((ell_cut_i, ell_cut_j))
 
-        ell_cuts_fldr = ell_cuts_cfg['ell_cuts_folder']
-        ell_cuts_filename = ell_cuts_cfg['ell_cuts_filename']
-
-        ell_cuts_LL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="WL", **variable_specs)}')
-        ell_cuts_GG = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="GC", **variable_specs)}')
-        warnings.warn('I am not sure this ell_cut file is for GL, the filename is "XC"')
-        ell_cuts_GL = np.genfromtxt(f'{ell_cuts_fldr}/{ell_cuts_filename.format(probe="XC", **variable_specs)}')
-        ell_cuts_LG = ell_cuts_GL.T
-
-        # ! linearly rescale ell cuts
-        warnings.warn('is this the issue with the BNT? kmax_h_over_Mpc_ref is 1, I think...')
-        ell_cuts_LL *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
-        ell_cuts_GG *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
-        ell_cuts_GL *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
-        ell_cuts_LG *= kmax_h_over_Mpc / kmax_h_over_Mpc_ref
-
-        ell_cuts_dict = {
-            'LL': ell_cuts_LL,
-            'GG': ell_cuts_GG,
-            'GL': ell_cuts_GL,
-            'LG': ell_cuts_LG
-        }
-
-        return ell_cuts_dict
-
-    elif ell_cuts_cfg['which_cuts'] == 'standard':
-        # the "Limber", or "standard" cuts
-
-        kmax_1_over_Mpc = kmax_h_over_Mpc * h
-
-        ell_cuts_array = np.zeros((zbins, zbins))
-        for zi, zval_i in enumerate(z_values_a):
-            for zj, zval_j in enumerate(z_values_b):
-                r_of_zi = cosmo_lib.ccl_comoving_distance(zval_i, use_h_units=False, cosmo_ccl=cosmo_ccl)
-                r_of_zj = cosmo_lib.ccl_comoving_distance(zval_j, use_h_units=False, cosmo_ccl=cosmo_ccl)
-                ell_cut_i = kmax_1_over_Mpc * r_of_zi - 1 / 2
-                ell_cut_j = kmax_1_over_Mpc * r_of_zj - 1 / 2
-                ell_cuts_array[zi, zj] = np.min((ell_cut_i, ell_cut_j))
-
-        return ell_cuts_array
-
-    else:
-        raise Exception('which_cuts must be either "Francis" or "standard"')
+    return ell_cuts_array
 
 
 def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum, zbins):

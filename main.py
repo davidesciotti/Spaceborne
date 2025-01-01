@@ -15,23 +15,22 @@ import pprint
 from copy import deepcopy
 from scipy.interpolate import RegularGridInterpolator, CubicSpline
 
-import spaceborne.ell_utils as ell_utils
-import spaceborne.cl_utils as cl_utils
-import spaceborne.bnt as bnt_utils
-import spaceborne.sb_lib as sl
-import spaceborne.cosmo_lib as cosmo_lib
-import spaceborne.wf_cl_lib as wf_cl_lib
-import spaceborne.pyccl_interface as pyccl_interface
-import spaceborne.sigma2_SSC as sigma2_SSC
-import spaceborne.config_checker as config_checker
-import spaceborne.onecovariance_interface as oc_interface
-import spaceborne.responses as responses
-import spaceborne.covariance as sb_cov
+from spaceborne import ell_utils
+from spaceborne import cl_utils
+from spaceborne import bnt
+from spaceborne import sb_lib as sl
+from spaceborne import cosmo_lib
+from spaceborne import wf_cl_lib
+from spaceborne import pyccl_interface
+from spaceborne import sigma2_SSC
+from spaceborne import config_checker
+from spaceborne import onecovariance_interface as oc_interface
+from spaceborne import responses
+from spaceborne import covariance as sb_cov
 
 pp = pprint.PrettyPrinter(indent=4)
 ROOT = os.getenv('ROOT')
 script_start_time = time.perf_counter()
-
 
 # ! Set up argument parsing
 # parser = argparse.ArgumentParser(description="Your script description here.")
@@ -47,7 +46,6 @@ script_start_time = time.perf_counter()
 # ! uncomment this if executing from interactive window
 with open('config.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
-
 
 # some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']
@@ -286,7 +284,7 @@ if compute_bnt_with_shifted_nz_for_zcuts:
                                 plot_nz=False, interpolation_kind=shift_nz_interpolation_kind,
                                 bounds_error=False, fill_value=0)
 
-bnt_matrix = bnt_utils.compute_BNT_matrix(
+bnt_matrix = bnt.compute_BNT_matrix(
     zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
 
 # 2. compute the kernels for the un-shifted n(z) (for consistency)
@@ -360,14 +358,17 @@ assert np.all(np.diff(z_means_ll_bnt) > 0), ('z_means_ll_bnt should be monotonic
 
 # 5. compute the ell cuts
 ell_cuts_dict = {}
-ell_cuts_dict['LL'] = ell_utils.load_ell_cuts(
-    kmax_h_over_Mpc, z_means_ll_bnt, z_means_ll_bnt, ccl_obj.cosmo_ccl, zbins, h, cfg['ell_cuts'])
-ell_cuts_dict['GG'] = ell_utils.load_ell_cuts(
-    kmax_h_over_Mpc, z_means_gg, z_means_gg, ccl_obj.cosmo_ccl, zbins, h, cfg['ell_cuts'])
-ell_cuts_dict['GL'] = ell_utils.load_ell_cuts(
-    kmax_h_over_Mpc, z_means_gg, z_means_ll_bnt, ccl_obj.cosmo_ccl, zbins, h, cfg['ell_cuts'])
-ell_cuts_dict['LG'] = ell_utils.load_ell_cuts(
-    kmax_h_over_Mpc, z_means_ll_bnt, z_means_gg, ccl_obj.cosmo_ccl, zbins, h, cfg['ell_cuts'])
+ellcuts_kw = {
+    'kmax_h_over_Mpc': kmax_h_over_Mpc, 
+    'cosmo_ccl': ccl_obj.cosmo_ccl, 
+    'zbins': zbins, 
+    'h': h, 
+    'kmax_h_over_Mpc_ref': cfg['ell_cuts']['kmax_h_over_Mpc_ref'],
+}
+ell_cuts_dict['LL'] = ell_utils.load_ell_cuts(z_values_a=z_means_ll_bnt, z_values_b=z_means_ll_bnt, **ellcuts_kw)
+ell_cuts_dict['GG'] = ell_utils.load_ell_cuts(z_values_a=z_means_gg, z_values_b=z_means_gg, **ellcuts_kw)
+ell_cuts_dict['GL'] = ell_utils.load_ell_cuts(z_values_a=z_means_gg, z_values_b=z_means_ll_bnt, **ellcuts_kw)
+ell_cuts_dict['LG'] = ell_utils.load_ell_cuts(z_values_a=z_means_ll_bnt, z_values_b=z_means_gg, **ellcuts_kw)
 ell_dict['ell_cuts_dict'] = ell_cuts_dict  # this is to pass the ell cuts to the covariance module
 # ! END SCALE CUTS
 
@@ -379,9 +380,8 @@ if shift_nz:
                                 plot_nz=False, interpolation_kind=shift_nz_interpolation_kind)
     # * this is important: the BNT matrix I use for the rest of the code (so not to compute the ell cuts) is instead
     # * consistent with the shifted n(z) used to compute the kernels
-    bnt_matrix = bnt_utils.compute_BNT_matrix(
+    bnt_matrix = bnt.compute_BNT_matrix(
         zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
-
 
 wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
 
@@ -994,7 +994,7 @@ for which_cov in cov_dict.keys():
 
     np.savez_compressed(f'{output_path}/{cov_filename}', **cov_dict)
 
-print(f'Covariance matrices saved in {output_path}')
+print(f'Covariance matrices saved in {output_path}\n')
 
 for which_cov in cov_dict.keys():
 

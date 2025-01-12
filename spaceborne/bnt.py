@@ -1,11 +1,11 @@
 
-import numpy as np
-import spaceborne.cosmo_lib as csmlib
 import warnings
+import numpy as np
 from scipy.integrate import simpson as simps
 import matplotlib.pyplot as plt
+from spaceborne import cosmo_lib as csmlib
 
-def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr, cosmo_ccl, plot_nz=True):
+def compute_bnt_matrix(zbins, zgrid_n_of_z, n_of_z_arr, cosmo_ccl, plot_nz=True):
     """
     Computes the BNT matrix. This function has been slightly modified from Santiago Casas' implementation in CLOE.
     
@@ -62,35 +62,35 @@ def compute_BNT_matrix(zbins, zgrid_n_of_z, n_of_z_arr, cosmo_ccl, plot_nz=True)
 
 
 
-def cl_BNT_transform(cl_3D, BNT_matrix, probe_A, probe_B):
-    assert cl_3D.ndim == 3, 'cl_3D must be 3D'
-    assert BNT_matrix.ndim == 2, 'BNT_matrix must be 2D'
-    assert cl_3D.shape[1] == BNT_matrix.shape[0], 'the number of ell bins in cl_3D and BNT_matrix must be the same'
+def cl_bnt_transform(cl_3d, bnt_matrix, probe_A, probe_B):
+    assert cl_3d.ndim == 3, 'cl_3d must be 3D'
+    assert bnt_matrix.ndim == 2, 'bnt_matrix must be 2D'
+    assert cl_3d.shape[1] == bnt_matrix.shape[0], 'the number of ell bins in cl_3d and bnt_matrix must be the same'
 
-    BNT_transform_dict = {
-        'L': BNT_matrix,
-        'G': np.eye(BNT_matrix.shape[0]),
+    bnt_transform_dict = {
+        'L': bnt_matrix,
+        'G': np.eye(bnt_matrix.shape[0]),
     }
 
-    cl_3D_BNT = np.zeros(cl_3D.shape)
-    for ell_idx in range(cl_3D.shape[0]):
-        cl_3D_BNT[ell_idx, :, :] = BNT_transform_dict[probe_A] @ \
-            cl_3D[ell_idx, :, :] @ \
-            BNT_transform_dict[probe_B].T
+    cl_bnt_3d = np.zeros(cl_3d.shape)
+    for ell_idx in range(cl_3d.shape[0]):
+        cl_bnt_3d[ell_idx, :, :] = bnt_transform_dict[probe_A] @ \
+            cl_3d[ell_idx, :, :] @ \
+            bnt_transform_dict[probe_B].T
 
-    return cl_3D_BNT
+    return cl_bnt_3d
 
 
-def cl_BNT_transform_3x2pt(cl_3x2pt_5D, BNT_matrix):
+def cl_bnt_transform_3x2pt(cl_3x2pt_5d, bnt_matrix):
     """wrapper function to quickly implement the cl (or derivatives) BNT transform for the 3x2pt datavector"""
 
-    cl_3x2pt_5D_BNT = np.zeros(cl_3x2pt_5D.shape)
-    cl_3x2pt_5D_BNT[0, 0, :, :, :] = cl_BNT_transform(cl_3x2pt_5D[0, 0, :, :, :], BNT_matrix, 'L', 'L')
-    cl_3x2pt_5D_BNT[0, 1, :, :, :] = cl_BNT_transform(cl_3x2pt_5D[0, 1, :, :, :], BNT_matrix, 'L', 'G')
-    cl_3x2pt_5D_BNT[1, 0, :, :, :] = cl_BNT_transform(cl_3x2pt_5D[1, 0, :, :, :], BNT_matrix, 'G', 'L')
-    cl_3x2pt_5D_BNT[1, 1, :, :, :] = cl_3x2pt_5D[1, 1, :, :, :]  # no need to transform the GG part
+    cl_3x2pt_bnt_5d = np.zeros(cl_3x2pt_5d.shape)
+    cl_3x2pt_bnt_5d[0, 0, :, :, :] = cl_bnt_transform(cl_3x2pt_5d[0, 0, :, :, :], bnt_matrix, 'L', 'L')
+    cl_3x2pt_bnt_5d[0, 1, :, :, :] = cl_bnt_transform(cl_3x2pt_5d[0, 1, :, :, :], bnt_matrix, 'L', 'G')
+    cl_3x2pt_bnt_5d[1, 0, :, :, :] = cl_bnt_transform(cl_3x2pt_5d[1, 0, :, :, :], bnt_matrix, 'G', 'L')
+    cl_3x2pt_bnt_5d[1, 1, :, :, :] = cl_3x2pt_5d[1, 1, :, :, :]  # no need to transform the GG part
 
-    return cl_3x2pt_5D_BNT
+    return cl_3x2pt_bnt_5d
 
 
 def get_ell_cuts_indices(ell_values, ell_cuts_2d_array, zbins):
@@ -107,36 +107,36 @@ def get_ell_cuts_indices(ell_values, ell_cuts_2d_array, zbins):
     return ell_idxs_tocut
 
 
-def build_X_matrix_BNT(BNT_matrix):
+def build_x_matrix_bnt(bnt_matrix):
     """
     Builds the X matrix for the BNT transform, according to eq.
-    :param BNT_matrix:
+    :param bnt_matrix:
     :return:
     """
     X = {}
-    delta_kron = np.eye(BNT_matrix.shape[0])
-    X['L', 'L'] = np.einsum('ae, bf -> aebf', BNT_matrix, BNT_matrix)
+    delta_kron = np.eye(bnt_matrix.shape[0])
+    X['L', 'L'] = np.einsum('ae, bf -> aebf', bnt_matrix, bnt_matrix)
     X['G', 'G'] = np.einsum('ae, bf -> aebf', delta_kron, delta_kron)
-    X['G', 'L'] = np.einsum('ae, bf -> aebf', delta_kron, BNT_matrix)
-    X['L', 'G'] = np.einsum('ae, bf -> aebf', BNT_matrix, delta_kron)
+    X['G', 'L'] = np.einsum('ae, bf -> aebf', delta_kron, bnt_matrix)
+    X['L', 'G'] = np.einsum('ae, bf -> aebf', bnt_matrix, delta_kron)
     return X
 
 
-def cov_BNT_transform(cov_noBNT_6D, X_dict, probe_A, probe_B, probe_C, probe_D, optimize=True):
+def cov_bnt_transform(cov_nobnt_6D, X_dict, probe_A, probe_B, probe_C, probe_D, optimize=True):
     """same as above, but only for one probe (i.e., LL or GL: GG is not modified by the BNT)"""
-    cov_BNT_6D = np.einsum('aebf, cgdh, LMefgh -> LMabcd', X_dict[probe_A, probe_B], X_dict[probe_C, probe_D],
-                           cov_noBNT_6D, optimize=optimize)
-    return cov_BNT_6D
+    cov_bnt_6D = np.einsum('aebf, cgdh, LMefgh -> LMabcd', X_dict[probe_A, probe_B], X_dict[probe_C, probe_D],
+                           cov_nobnt_6D, optimize=optimize)
+    return cov_bnt_6D
 
 
-def cov_3x2pt_BNT_transform(cov_3x2pt_dict_10D, X_dict, optimize=True):
+def cov_3x2pt_bnt_transform(cov_3x2pt_dict_10D, X_dict, optimize=True):
     """in np.einsum below, L and M are the ell1, ell2 indices, which are not touched by the BNT transform"""
 
-    cov_3x2pt_BNT_dict_10D = {}
+    cov_3x2pt_bnt_dict_10D = {}
 
     for probe_A, probe_B, probe_C, probe_D in cov_3x2pt_dict_10D.keys():
-        cov_3x2pt_BNT_dict_10D[probe_A, probe_B, probe_C, probe_D] = cov_BNT_transform(
+        cov_3x2pt_bnt_dict_10D[probe_A, probe_B, probe_C, probe_D] = cov_bnt_transform(
             cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D], X_dict, probe_A, probe_B, probe_C, probe_D,
             optimize=optimize)
 
-    return cov_3x2pt_BNT_dict_10D
+    return cov_3x2pt_bnt_dict_10D

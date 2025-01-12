@@ -213,8 +213,8 @@ class SpaceborneCovariance():
         # bnt-transform the noise spectra if needed
         if self.cfg['BNT']['cl_BNT_transform']:
             print('BNT-transforming the noise spectra...')
-            noise_LL_5D = bnt_utils.cl_BNT_transform(noise_LL_5D[0, 0, ...], self.bnt_matrix, 'L', 'L')[None, None, ...]
-            noise_3x2pt_5D = bnt_utils.cl_BNT_transform_3x2pt(noise_3x2pt_5D, self.bnt_matrix)
+            noise_LL_5D = bnt_utils.cl_bnt_transform(noise_LL_5D[0, 0, ...], self.bnt_matrix, 'L', 'L')[None, None, ...]
+            noise_3x2pt_5D = bnt_utils.cl_bnt_transform_3x2pt(noise_3x2pt_5D, self.bnt_matrix)
 
         # reshape auto-probe spectra to 5D
         cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]
@@ -473,14 +473,14 @@ class SpaceborneCovariance():
             cov_3x2pt_cng_10D_dict = sl.cov_10D_array_to_dict(self.cov_3x2pt_cng_10D, self.probe_ordering)
 
             # BNT-transform WL and 3x2pt g, ng and tot covariances
-            X_dict = bnt_utils.build_X_matrix_BNT(self.bnt_matrix)
+            X_dict = bnt_utils.build_x_matrix_bnt(self.bnt_matrix)
             # TODO BNT and scale cuts of G term should go in the gauss cov function!
-            self.cov_WL_g_6D = bnt_utils.cov_BNT_transform(self.cov_WL_g_6D, X_dict, 'L', 'L', 'L', 'L')
-            cov_WL_ssc_6D = bnt_utils.cov_BNT_transform(cov_WL_ssc_6D, X_dict, 'L', 'L', 'L', 'L')
-            cov_WL_cng_6D = bnt_utils.cov_BNT_transform(cov_WL_cng_6D, X_dict, 'L', 'L', 'L', 'L')
-            cov_3x2pt_g_10D_dict = bnt_utils.cov_3x2pt_BNT_transform(cov_3x2pt_g_10D_dict, X_dict)
-            cov_3x2pt_ssc_10D_dict = bnt_utils.cov_3x2pt_BNT_transform(cov_3x2pt_ssc_10D_dict, X_dict)
-            cov_3x2pt_cng_10D_dict = bnt_utils.cov_3x2pt_BNT_transform(cov_3x2pt_cng_10D_dict, X_dict)
+            self.cov_WL_g_6D = bnt_utils.cov_bnt_transform(self.cov_WL_g_6D, X_dict, 'L', 'L', 'L', 'L')
+            cov_WL_ssc_6D = bnt_utils.cov_bnt_transform(cov_WL_ssc_6D, X_dict, 'L', 'L', 'L', 'L')
+            cov_WL_cng_6D = bnt_utils.cov_bnt_transform(cov_WL_cng_6D, X_dict, 'L', 'L', 'L', 'L')
+            cov_3x2pt_g_10D_dict = bnt_utils.cov_3x2pt_bnt_transform(cov_3x2pt_g_10D_dict, X_dict)
+            cov_3x2pt_ssc_10D_dict = bnt_utils.cov_3x2pt_bnt_transform(cov_3x2pt_ssc_10D_dict, X_dict)
+            cov_3x2pt_cng_10D_dict = bnt_utils.cov_3x2pt_bnt_transform(cov_3x2pt_cng_10D_dict, X_dict)
 
             # revert to 10D arrays - this is not strictly necessary since cov_3x2pt_10D_to_4D accepts both a dictionary and
             # an array as input, but it's done to keep the variable names consistent

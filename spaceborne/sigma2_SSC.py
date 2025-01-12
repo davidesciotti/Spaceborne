@@ -1,5 +1,3 @@
-import logging
-import sys
 import time
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,9 +9,6 @@ import healpy as hp
 from spaceborne import sb_lib as sl
 from spaceborne import cosmo_lib
 from spaceborne import mask_utils
-
-start_time = time.perf_counter()
-
 
 # TODO finish implementing this function and test if if needed
 # def sigma2_flatsky(z1, z2, k_perp_grid, k_par_grid, cosmo_ccl, Omega_S, theta_S):
@@ -48,51 +43,6 @@ start_time = time.perf_counter()
 #     sigma2 = 1 / (2 * np.pi**2) * growth_factor_z1 * growth_factor_z2 * integral_result / Omega_S**2
 
 #     return sigma2
-
-
-def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b, ell_mask=None, cl_mask=None):
-    """ Computes the integral in k. The rest is in another function, to vectorize the call to the growth_factor.
-    Note that the 1/Omega_S^2 factors are missing in this function!! This is consistent with the definitio given in
-    mine and Fabien's paper."""
-
-    # compute the comoving distance at the given redshifts
-    a1 = cosmo_lib.z_to_a(z1)
-    a2 = cosmo_lib.z_to_a(z2)
-
-    # in Mpc
-    r1 = ccl.comoving_radial_distance(cosmo_ccl, a1)
-    r2 = ccl.comoving_radial_distance(cosmo_ccl, a2)
-
-    # compute the growth factors at the given redshifts
-    growth_factor_z1 = ccl.growth_factor(cosmo_ccl, a1)
-    growth_factor_z2 = ccl.growth_factor(cosmo_ccl, a2)
-
-    # define the integrand as a function of k
-    def integrand(k): return k ** 2 * ccl.linear_matter_power(cosmo_ccl, k=k, a=1.) * \
-        spherical_jn(0, k * r1) * spherical_jn(0, k * r2)
-
-    integral_result = simps(y=integrand(k_grid_sigma2), x=k_grid_sigma2)
-
-    # different integration methods; simps seems to be the best
-    # if integrating_funct == 'simps':
-    #     integral_result = simps(y=integrand(k_grid_sigma2), x=k_grid_sigma2)
-    # elif integrating_funct == 'quad':
-    #     integral_result = quad(integrand, k_grid_sigma2[0], k_grid_sigma2[-1])[0]
-    # elif integrating_funct == 'quad_vec':
-    #     integral_result = quad_vec(integrand, k_grid_sigma2[0], k_grid_sigma2[-1])[0]
-    # else:
-    #     raise ValueError('sigma2_integrating_function must be either "simps" or "quad" or "quad_vec"')
-
-    if which_sigma2_b == 'full_curved_sky':
-        result = 1 / (2 * np.pi ** 2) * growth_factor_z1 * growth_factor_z2 * integral_result
-    elif which_sigma2_b == 'mask':
-        fsky = np.sqrt(cl_mask[0] / (4 * np.pi))
-        result = 1 / (4 * np.pi * fsky)**2 * np.sum((2 * ell_mask + 1) * cl_mask * 2 /
-                                                    np.pi * growth_factor_z1 * growth_factor_z2 * integral_result)
-    else:
-        raise ValueError('which_sigma2_b must be either "full_curved_sky" or "mask"')
-
-    return result
 
 
 def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigma2_b,
@@ -201,66 +151,11 @@ def plot_sigma2(sigma2_arr, z_grid_sigma2):
     plt.rcParams["legend.fontsize"] = font_size
     sl.matshow(sigma2_arr, log=True, abs_val=True, title='$\\sigma^2(z_1, z_2)$')
 
-    # z_steps_sigma2 = len(z_grid_sigma2)
-    # plt.savefig(f'../output/plots/sigma2_spikes_zsteps{z_steps_sigma2}.pdf', dpi=500, bbox_inches='tight')
-    # plt.savefig(f'../output/plots/sigma2_matshow_zsteps{z_steps_sigma2}.pdf', dpi=500, bbox_inches='tight')
 
-
-def compute_sigma2(z_grid_sigma2, k_grid_sigma2, which_sigma2_b, cosmo_ccl, parallel=True, vectorize=False):
-    print(f'computing sigma^2(z_1, z_2) for SSC...')
-
-    if parallel:
-        # ! parallelize with ray
-        # start_time = time.perf_counter()
-        # sigma2_func_remote = ray.remote(sigma2_func)
-        # remote_calls = []
-        # for z1 in tqdm(z_grid_sigma2):
-        #     for z2 in z_grid_sigma2:
-        #         remote_calls.append(sigma2_func_remote.remote(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b))
-        # # Get the results from the remote function calls
-        # sigma2_arr = ray.get(remote_calls)
-
-        # ! with joblib
-        # sigma2_arr = Parallel(n_jobs=-1, backend='loky')(delayed(sigma2_func)(
-        # z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b) for z1 in tqdm(z_grid_sigma2) for z2 in z_grid_sigma2)
-
-        # ! with pool.map
-        # Share cosmo_ccl object using custom SharedCosmology
-        # shm_cosmo_ccl = SharedCosmology([cosmo_ccl])
-
-        # with mp.Pool() as pool:
-        #     sigma2_arr = pool.starmap(
-        #         partial(sigma2_func, k_grid_sigma2=k_grid_sigma2, cosmo_ccl=shm_cosmo_ccl[0], which_sigma2_b=which_sigma2_b),
-        #         [(z1, z2) for z1 in z_grid_sigma2 for z2 in z_grid_sigma2]
-        #     )
-
-        # reshape result
-        sigma2_arr = np.array(sigma2_arr).reshape((len(z_grid_sigma2), len(z_grid_sigma2)))
-        print(f'sigma2 computed in: {(time.perf_counter() - start_time):.2f} s')
-
-    # ! serial version
-    else:
-        sigma2_arr = np.zeros((len(z_grid_sigma2), len(z_grid_sigma2)))
-
-        if not vectorize:
-            for z1_idx, z1 in enumerate(tqdm(z_grid_sigma2)):
-                for z2_idx, z2 in enumerate(z_grid_sigma2):
-                    sigma2_arr[z1_idx, z2_idx] = sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b)
-        elif vectorize:
-            for z2_idx, z2 in enumerate(tqdm(z_grid_sigma2)):
-                sigma2_arr[:, z2_idx] = sigma2_z2_func_vectorized(
-                    z_grid_sigma2, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b, None, None)
-
-    return sigma2_arr
-
-
-def sigma2_pyssc(z_arr, classy_cosmo_params):
+def sigma2_pyssc(z_arr, classy_cosmo_param_dict):
+    """ 
+    Compute sigma2 with PySSC. This is just for comparison, it is not used in the code.
+    Note that zmin=1e-3 as zmin gives errors in classy, probably need to increse pk_max
+    """
     import PySSC
-    """ Compute sigma2 with PySSC. This is just for comparison, it is not used in the code."""
-    if classy_cosmo_params is None:
-        logging.info('Using default classy cosmo params from cosmo_lib')
-        classy_cosmo_params = cosmo_lib.cosmo_par_dict_classy
-    if z_arr is None:
-        # ! 1e-3 as zmin gives errors in classy, probably need to increse pk_max
-        z_arr = np.linspace(1e-2, 3, 300)
-    return PySSC.sigma2_fullsky(z_arr, cosmo_params=classy_cosmo_params, cosmo_Class=None)
+    return PySSC.sigma2_fullsky(z_arr, cosmo_params=classy_cosmo_param_dict, cosmo_Class=None)

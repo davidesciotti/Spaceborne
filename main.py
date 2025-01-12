@@ -743,29 +743,6 @@ if compute_sb_ssc:
             'which_pk_responses must be either "halo_model" or "separate_universe_SB"')
 
     # ! 2. prepare integrands (d2CAB_dVddeltab) and volume element
-    k_limber = partial(cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
-    r_of_z_func = partial(cosmo_lib.ccl_comoving_distance, use_h_units=use_h_units, cosmo_ccl=ccl_obj.cosmo_ccl)
-
-    # ! divide by r(z)**2 if cl_integral_convention == 'PySSC'
-    if cl_integral_convention_ssc == 'PySSC':
-        r_of_z_square = r_of_z_func(z_grid_ssc_integrands) ** 2
-
-        wf_delta = ccl_obj.wf_delta_arr / r_of_z_square[:, None]
-        wf_gamma = ccl_obj.wf_gamma_arr / r_of_z_square[:, None]
-        wf_ia = ccl_obj.wf_ia_arr / r_of_z_square[:, None]
-        wf_mu = ccl_obj.wf_mu_arr / r_of_z_square[:, None]
-        wf_lensing = ccl_obj.wf_lensing_arr / r_of_z_square[:, None]
-
-    elif cl_integral_convention_ssc in ('Euclid', 'Euclid_KE_approximation'):
-        wf_delta = ccl_obj.wf_delta_arr
-        wf_gamma = ccl_obj.wf_gamma_arr
-        wf_ia = ccl_obj.wf_ia_arr
-        wf_mu = ccl_obj.wf_mu_arr
-        wf_lensing = ccl_obj.wf_lensing_arr
-
-    else:
-        raise ValueError('cl_integral_convention must be either "PySSC" or "Euclid" or "Euclid_KE_approximation')
-
     # ! compute the Pk responses(k, z) in k_limber and z_grid_ssc_integrands
     dPmm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_ssc_integrands), dPmm_ddeltab, method='linear')
     dPgm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_ssc_integrands), dPgm_ddeltab, method='linear')
@@ -784,6 +761,8 @@ if compute_sb_ssc:
         kmax_limber = cosmo_lib.get_kmax_limber(
             ell_grid, z_grid_ssc_integrands_test, use_h_units, ccl_obj.cosmo_ccl)
         print(f'Retrying with z_min = {z_grid_ssc_integrands_test[0]:.3f}')
+    
+    k_limber = partial(cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
 
     dPmm_ddeltab_klimb = np.array(
         [dPmm_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
@@ -801,6 +780,12 @@ if compute_sb_ssc:
                                                             use_h_units=use_h_units,
                                                             cosmo_ccl=ccl_obj.cosmo_ccl)
     # ! observable densities
+    wf_delta = ccl_obj.wf_delta_arr
+    wf_gamma = ccl_obj.wf_gamma_arr
+    wf_ia = ccl_obj.wf_ia_arr
+    wf_mu = ccl_obj.wf_mu_arr
+    wf_lensing = ccl_obj.wf_lensing_arr
+
     d2CLL_dVddeltab = np.einsum('zi,zj,Lz->Lijz', wf_lensing, wf_lensing, dPmm_ddeltab_klimb)
     d2CGL_dVddeltab = \
         np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_lensing, dPgm_ddeltab_klimb) + \

@@ -260,7 +260,7 @@ def cl_integral_prefactor(z, cl_integral_convention, use_h_units, cosmo_ccl):
 
     Equating the two above equations gives W_pyssc = W_euc / r(z)**2, so:
 
-    - Option 1: PySSC convention. Euclid kernels divided by r(z)**2 and integration "prefactor" = r(z)**2 * dr/dz
+    - Option 1: PySSC convention (deprecated). Euclid kernels divided by r(z)**2 and integration "prefactor" = r(z)**2 * dr/dz
     - Option 2: Euclid convention. Euclid kernels and integration "prefactor" = dr/dz / r(z)**2 = c/H0 / (E(z)*r(z)**2)
     this is because dr/dz = c/H(z) = c/(H0*E(z))
     - Option 3: Euclid_KE_approximation. In this case you only need one of these prefactors in the integral (since it's
@@ -273,6 +273,7 @@ def cl_integral_prefactor(z, cl_integral_convention, use_h_units, cosmo_ccl):
     # dr_dz = np.gradient(r_of_z, z)
 
     if cl_integral_convention == 'PySSC':
+        raise ValueError('PySSC integral convention is deprecated')
         cl_integral_prefactor = r_of_z ** 2 * dr_dz  # this is dV/dz
     elif cl_integral_convention == 'Euclid':
         cl_integral_prefactor = 1 / r_of_z ** 2 * dr_dz  # this is not dV/dz! that's why I don't write dV in the function name

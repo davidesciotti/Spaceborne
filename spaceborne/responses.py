@@ -7,8 +7,7 @@ import pyccl as ccl
 import matplotlib as mpl
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 sys.path.append(f'{ROOT}/Spaceborne')
-import spaceborne.cosmo_lib as csmlib
-import spaceborne.cosmo_lib as cosmo_lib
+from spaceborne import cosmo_lib
 
 
 class SpaceborneResponses():
@@ -196,7 +195,7 @@ class SpaceborneResponses():
 
         # ! nonlinear pk and its derivative
         # TODO extract direcly from cosmo object
-        self.k_grid, self.pk_mm = csmlib.pk_from_ccl(k_array=self.k_grid, z_array=self.z_grid,
+        self.k_grid, self.pk_mm = cosmo_lib.pk_from_ccl(k_array=self.k_grid, z_array=self.z_grid,
                                                      use_h_units=self.use_h_units, cosmo_ccl=self.cosmo_ccl,
                                                      pk_kind='nonlinear')
 

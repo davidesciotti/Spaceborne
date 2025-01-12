@@ -4,28 +4,25 @@ from copy import deepcopy
 import scipy
 import time
 import os
-import matplotlib.pyplot as plt
 import numpy as np
 import pyccl as ccl
 from joblib import Parallel, delayed
+import matplotlib.pyplot as plt
 from matplotlib import cm
+import matplotlib.lines as mlines
 from numba import njit
-from scipy.integrate import quad, quad_vec, dblquad
+from scipy.integrate import quad
 from scipy.integrate import simpson as simps
 from scipy.interpolate import interp1d
 from scipy.ndimage import gaussian_filter1d
-from scipy.special import erf
-import sys
 from tqdm import tqdm
 import os
+
+from spaceborne import sb_lib as sl
+from spaceborne import cosmo_lib
+from spaceborne import pyccl_interface
+
 ROOT = os.getenv('ROOT')
-
-
-import spaceborne.sb_lib as sl
-import spaceborne.cosmo_lib as csmlib
-import spaceborne.pyccl_interface as pyccl_interface
-import matplotlib.lines as mlines
-
 
 c = 299792.458  # km/s
 
@@ -91,7 +88,7 @@ def F_IA(z, eta_IA, beta_IA, z_pivot_IA, lumin_ratio_func):
 # use formula 23 of ISTF paper for Om(z)
 # @njit
 def Om(z, Om0, cosmo_astropy):
-    return Om0 * (1 + z) ** 3 / csmlib.E(z, cosmo_astropy) ** 2
+    return Om0 * (1 + z) ** 3 / cosmo_lib.E(z, cosmo_astropy) ** 2
 
 
 # @njit
@@ -352,7 +349,7 @@ def wf_ccl(z_grid, probe, which_wf, flat_fid_pars_dict, cosmo_ccl, dndz_tuple, i
 
     zbins = dndz_tuple[1].shape[1]
 
-    a_arr = csmlib.z_to_a(z_grid)
+    a_arr = cosmo_lib.z_to_a(z_grid)
     comoving_distance = ccl.comoving_radial_distance(cosmo_ccl, a_arr)
 
     if probe == 'lensing':
@@ -474,7 +471,7 @@ def wf_galaxy_ccl(z_grid, which_wf, fiducial_params, cosmo, gal_bias_2d_array=No
     if return_PyCCL_object:
         return wig
 
-    a_arr = csmlib.z_to_a(z_grid)
+    a_arr = cosmo_lib.z_to_a(z_grid)
     chi = ccl.comoving_radial_distance(cosmo, a_arr)
     wig_nobias_PyCCL_arr = np.asarray([wig[zbin_idx].get_kernel(chi) for zbin_idx in range(zbins)])
 
@@ -565,29 +562,29 @@ def wf_lensing_ccl(z_grid, which_wf, cosmo, fid_pars_dict, dndz=None,
 ################################################# cl_quad computation #######################################################
 
 # TODO these contain cosmology dependence...
-# cosmo_classy = csmlib.cosmo_classy
-# cosmo_astropy = csmlib.cosmo_astropy
-# k_grid, pk = csmlib.calculate_power(k_grid, z_grid, cosmo_classy, use_h_units=use_h_units)
+# cosmo_classy = cosmo_lib.cosmo_classy
+# cosmo_astropy = cosmo_lib.cosmo_astropy
+# k_grid, pk = cosmo_lib.calculate_power(k_grid, z_grid, cosmo_classy, use_h_units=use_h_units)
 
 # wrapper functions, just to shorten the names
-# pk_nonlin_wrap = partial(csmlib.calculate_power, cosmo_classy=cosmo_classy, use_h_units=use_h_units,
+# pk_nonlin_wrap = partial(cosmo_lib.calculate_power, cosmo_classy=cosmo_classy, use_h_units=use_h_units,
 #                          Pk_kind='nonlinear')  # TODO update this
-# kl_wrap = partial(csmlib.k_limber, use_h_units=use_h_units, cosmo_astropy=cosmo_astropy)
+# kl_wrap = partial(cosmo_lib.k_limber, use_h_units=use_h_units, cosmo_astropy=cosmo_astropy)
 
 
 # these are no longer needed, since I can use partial
 # def pk_wrap(k_ell, z, cosmo_classy=cosmo_classy, use_h_units=use_h_units, Pk_kind='nonlinear'):
 #     """just a wrapper function to set some args to default values"""
-#     return csmlib.calculate_power(k_ell, z, cosmo_classy, use_h_units=use_h_units, Pk_kind=Pk_kind)
+#     return cosmo_lib.calculate_power(k_ell, z, cosmo_classy, use_h_units=use_h_units, Pk_kind=Pk_kind)
 
 
 # def kl_wrap(ell, z, use_h_units=use_h_units):
 #     """another simple wrapper function, so as not to have to rewrite use_h_units=use_h_units"""
-#     return csmlib.k_limber(ell, z, use_h_units=use_h_units)
+#     return cosmo_lib.k_limber(ell, z, use_h_units=use_h_units)
 
 
 def K_ij(z, wf_A, wf_B, i: int, j: int):
-    return wf_A(z, j) * wf_B(z, i) / (csmlib.E(z) * csmlib.r(z) ** 2)
+    return wf_A(z, j) * wf_B(z, i) / (cosmo_lib.E(z) * cosmo_lib.r(z) ** 2)
 
 
 def cl_partial_integrand(z, wf_A, wf_B, i: int, j: int, ell):
@@ -612,7 +609,7 @@ def sum_cl_partial_integral(wf_A, wf_B, i: int, j: int, ell):
 
 ###### OLD BIAS ##################
 def cl_integrand(z, wf_A, wf_B, zi, zj, ell):
-    return ((wf_A(z)[zi] * wf_B(z)[zj]) / (csmlib.E(z) * csmlib.r(z) ** 2)) * pk_nonlin_wrap(kl_wrap(ell, z), z)
+    return ((wf_A(z)[zi] * wf_B(z)[zj]) / (cosmo_lib.E(z) * cosmo_lib.r(z) ** 2)) * pk_nonlin_wrap(kl_wrap(ell, z), z)
 
 
 def cl_quad(wf_A, wf_B, ell, zi, zj):
@@ -807,12 +804,12 @@ def cl_parallel_helper_old(param_to_vary, variation_idx, varied_fiducials, fiduc
             if np.abs(varied_fiducials['Om_k0']) < 1e-8:
                 varied_fiducials['Om_k0'] = 0
 
-        varied_fiducials['Om_nu0'] = csmlib.get_omega_nu0(varied_fiducials['m_nu'], varied_fiducials['h'],
+        varied_fiducials['Om_nu0'] = cosmo_lib.get_omega_nu0(varied_fiducials['m_nu'], varied_fiducials['h'],
                                                           n_ur=None, n_eff=varied_fiducials['N_eff'],
                                                           n_ncdm=None,
                                                           neutrino_mass_fac=None, g_factor=None)
 
-        cosmo_ccl = csmlib.instantiate_cosmo_ccl_obj(varied_fiducials, extra_parameters)
+        cosmo_ccl = cosmo_lib.instantiate_cosmo_ccl_obj(varied_fiducials, extra_parameters)
         assert (varied_fiducials[
             'Om_m0'] / cosmo_ccl.cosmo.params.Omega_m - 1) < 1e-7, 'Om_m0 is not the same as the one in the fiducial model'
 
@@ -1004,7 +1001,7 @@ def cl_derivatives_helper(name_par_tovary, varied_fid_pars_dict, cl_LL, cl_GL, c
     # if 'm_nu' in list_params_to_vary:
     # m_nu = varied_fid_pars_dict['m_nu'] if 'm_nu' in list_params_to_vary else fid_pars_dict['other_params']['m_nu']
     # N_eff = varied_fid_pars_dict['N_eff'] if 'N_eff' in list_params_to_vary else fid_pars_dict['other_params']['N_eff']
-    # varied_fid_pars_dict['Om_nu0'] = csmlib.get_omega_nu0(m_nu=m_nu, h=varied_fid_pars_dict['h'],
+    # varied_fid_pars_dict['Om_nu0'] = cosmo_lib.get_omega_nu0(m_nu=m_nu, h=varied_fid_pars_dict['h'],
     #                                                       n_eff=N_eff)
 
     # check that the other parameters are still equal to the fiducials

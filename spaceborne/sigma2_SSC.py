@@ -16,9 +16,9 @@ SB_ROOT = f'{ROOT}/Spaceborne'
 
 # project modules
 sys.path.append(SB_ROOT)
-import spaceborne.sb_lib as sl
-import spaceborne.cosmo_lib as csmlib
-import spaceborne.mask_utils
+from spaceborne import sb_lib as sl
+from spaceborne import cosmo_lib
+from spaceborne import mask_utils
 
 start_time = time.perf_counter()
 
@@ -64,8 +64,8 @@ def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b, ell_mask=None,
     mine and Fabien's paper."""
 
     # compute the comoving distance at the given redshifts
-    a1 = csmlib.z_to_a(z1)
-    a2 = csmlib.z_to_a(z2)
+    a1 = cosmo_lib.z_to_a(z1)
+    a2 = cosmo_lib.z_to_a(z2)
 
     # in Mpc
     r1 = ccl.comoving_radial_distance(cosmo_ccl, a1)
@@ -106,7 +106,7 @@ def sigma2_func(z1, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b, ell_mask=None,
 def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigma2_b,
                      area_deg2_in, nside_mask, mask_path):
 
-    fsky_in = csmlib.deg2_to_fsky(area_deg2_in)
+    fsky_in = cosmo_lib.deg2_to_fsky(area_deg2_in)
     if which_sigma2_b == 'full_curved_sky':
         ell_mask = None
         cl_mask = None
@@ -148,8 +148,8 @@ def sigma2_z2_func_vectorized(z1_arr, z2, k_grid_sigma2, cosmo_ccl, which_sigma2
     Vectorized version of sigma2_func in z1.
     """
 
-    a1_arr = csmlib.z_to_a(z1_arr)
-    a2 = csmlib.z_to_a(z2)
+    a1_arr = cosmo_lib.z_to_a(z1_arr)
+    a2 = cosmo_lib.z_to_a(z2)
 
     r1_arr = ccl.comoving_radial_distance(cosmo_ccl, a1_arr)
     r2 = ccl.comoving_radial_distance(cosmo_ccl, a2)
@@ -267,7 +267,7 @@ def sigma2_pyssc(z_arr, classy_cosmo_params):
     """ Compute sigma2 with PySSC. This is just for comparison, it is not used in the code."""
     if classy_cosmo_params is None:
         logging.info('Using default classy cosmo params from cosmo_lib')
-        classy_cosmo_params = csmlib.cosmo_par_dict_classy
+        classy_cosmo_params = cosmo_lib.cosmo_par_dict_classy
     if z_arr is None:
         # ! 1e-3 as zmin gives errors in classy, probably need to increse pk_max
         z_arr = np.linspace(1e-2, 3, 300)

@@ -1,7 +1,5 @@
-import bz2
 from copy import deepcopy
 import json
-import sys
 import warnings
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -9,17 +7,16 @@ from matplotlib.gridspec import GridSpec
 from matplotlib.colors import LogNorm
 from matplotlib.colors import ListedColormap
 import matplotlib.lines as mlines
-
 import numpy as np
 import yaml
 from numba import njit
-import scipy
 import pickle
 import itertools
 import os
 import inspect
 import datetime
 import pandas as pd
+import scipy
 from scipy.integrate import simpson as simps
 from scipy.interpolate import interp1d, CubicSpline
 import subprocess
@@ -999,11 +996,13 @@ def load_pickle(filename):
 
 
 def save_compressed_pickle(title, data):
+    import bz2
     with bz2.BZ2File(title + '.pbz2', 'wb') as handle:
         pickle.dump(data, handle)
 
 
 def load_compressed_pickle(file):
+    import bz2
     data = bz2.BZ2File(file, 'rb')
     data = pickle.load(data)
     return data

@@ -29,7 +29,6 @@ from spaceborne import responses
 from spaceborne import covariance as sb_cov
 
 pp = pprint.PrettyPrinter(indent=4)
-ROOT = os.getenv('ROOT')
 script_start_time = time.perf_counter()
 
 # ! Set up argument parsing
@@ -588,8 +587,10 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     # * 2. compute cov using the onecovariance interface class
     print('Start NG cov computation with OneCovariance...')
     # initialize object, build cfg file
-    oc_obj = oc_interface.OneCovarianceInterface(ROOT, cfg, variable_specs,
-                                                 do_ssc=compute_oc_ssc, do_cng=compute_oc_cng)
+    oc_obj = oc_interface.OneCovarianceInterface(cfg, variable_specs,
+                                                 do_g=compute_oc_g,
+                                                 do_ssc=compute_oc_ssc, 
+                                                 do_cng=compute_oc_cng)
     oc_obj.zbins = zbins
     oc_obj.ind = ind
     oc_obj.probe_ordering = probe_ordering

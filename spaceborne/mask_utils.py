@@ -1,15 +1,14 @@
 
 import copy
-from matplotlib import pyplot as plt
-import numpy as np
-from astropy.io import fits
-import healpy as hp
 import sys
-
 import os
+import numpy as np
+from matplotlib import pyplot as plt
+import healpy as hp
+from spaceborne import cosmo_lib
+
 ROOT = os.getenv('ROOT')
 sys.path.append(f'{ROOT}/Spaceborne')
-import spaceborne.cosmo_lib as cosmo_lib
 
 
 def get_mask_quantities(clmask=None, mask=None, mask2=None, verbose=True):

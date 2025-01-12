@@ -1,6 +1,5 @@
-import warnings
 import numpy as np
-import spaceborne.sb_lib as sl
+from spaceborne import sb_lib as sl
 
 
 def build_3x2pt_datavector_5D(dv_LLfor3x2pt_3D, dv_GL_3D, dv_GG_3D, nbl, zbins, n_probes=2):

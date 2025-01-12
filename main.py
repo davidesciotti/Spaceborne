@@ -284,7 +284,7 @@ if compute_bnt_with_shifted_nz_for_zcuts:
                                 plot_nz=False, interpolation_kind=shift_nz_interpolation_kind,
                                 bounds_error=False, fill_value=0)
 
-bnt_matrix = bnt.compute_BNT_matrix(
+bnt_matrix = bnt.compute_bnt_matrix(
     zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
 
 # 2. compute the kernels for the un-shifted n(z) (for consistency)
@@ -380,7 +380,7 @@ if shift_nz:
                                 plot_nz=False, interpolation_kind=shift_nz_interpolation_kind)
     # * this is important: the BNT matrix I use for the rest of the code (so not to compute the ell cuts) is instead
     # * consistent with the shifted n(z) used to compute the kernels
-    bnt_matrix = bnt.compute_BNT_matrix(
+    bnt_matrix = bnt.compute_bnt_matrix(
         zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False)
 
 wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)

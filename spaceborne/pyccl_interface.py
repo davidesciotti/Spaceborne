@@ -54,15 +54,7 @@ class PycclClass():
         assert self.GL_or_LG == 'GL', 'you should update ind_cross (used in ind_dict) for GL, but we work with GL...'
         assert self.has_rsd == False, 'RSD not validated yet...'
 
-    # fanstastic collection of notebooks: https://github.com/LSSTDESC/CCLX
-    # notebook for mass_relations: https://github.com/LSSTDESC/CCLX/blob/master/Halo-mass-function-example.ipynb
-    # Cl notebook: https://github.com/LSSTDESC/CCL/blob/v2.0.1/examples/3x2demo.ipynb
-    # HALO MODEL PRESCRIPTIONS:
-    # KiDS1000 Methodology: https://www.pure.ed.ac.uk/ws/portalfiles/portal/188893969/2007.01844v2.pdf, after (E.10)
-    # Krause2017: https://arxiv.org/pdf/1601.05779.pdf
-
     def pk_obj_from_file(self, pk_filename, plot_pk_z0):
-
         k_grid_Pk, z_grid_Pk, pk_mm_2d = sl.pk_vinc_file_to_2d_npy(pk_filename, plot_pk_z0=plot_pk_z0)
         pk_flipped_in_z = np.flip(pk_mm_2d, axis=1)
         scale_factor_grid_pk = cosmo_lib.z_to_a(z_grid_Pk)[::-1]  # flip it
@@ -78,7 +70,7 @@ class PycclClass():
         self.nz_src = nz_full_src[:, 1:]
         self.nz_lns = nz_full_lns[:, 1:]
 
-        # define tuple
+        # set tuple
         self.nz_src_tuple = (self.zgrid_nz_src, self.nz_src)
         self.nz_lns_tuple = (self.zgrid_nz_lns, self.nz_lns)
 

@@ -39,12 +39,11 @@ from spaceborne import sb_lib as sl
 
 class OneCovarianceInterface():
 
-    def __init__(self, ROOT, cfg, variable_specs, do_ssc, do_cng):
+    def __init__(self, cfg, variable_specs, do_g, do_ssc, do_cng):
         """
         Initializes the OneCovarianceInterface class with the provided configuration and variable specifications.
 
         Args:
-            ROOT (str): The root directory of the project.
             cfg (dict): The configuration dictionary.
             variable_specs (dict): The variable specifications dictionary.
             do_ssc (bools): Whether to compute the SSC term.
@@ -58,7 +57,6 @@ class OneCovarianceInterface():
             nbl_3x2pt (int): The number of ell bins for the 3x2pt analysis.
             compute_ssc (bool): Whether to compute the super-sample covariance (SSC) term.
             compute_cng (bool): Whether to compute the connected non-Gaussian covariance term.
-            ROOT (str): The root directory of the project.
             conda_base_path (str): The base path of the OneCovariance Conda environment.
             oc_path (str): The path to the OneCovariance output directory.
             path_to_oc_executable (str): The path to the OneCovariance executable.
@@ -72,16 +70,14 @@ class OneCovarianceInterface():
         self.nbl_3x2pt = variable_specs['nbl_3x2pt']
 
         # set which cov terms to compute from cfg file
-        self.compute_g = True  # TODO pass this from cfg?
+        self.compute_g = do_g  # TODO pass this from cfg?
         self.compute_ssc = do_ssc
         self.compute_cng = do_cng
 
-        # paths
-        # TODO do we really need ROOT?
-        self.ROOT = ROOT
+        # paths and filenems
         self.conda_base_path = self.get_conda_base_path()
-        self.path_to_oc_executable = cfg['OneCovariance']['path_to_oc_executable'].format(
-            ROOT=ROOT)
+        self.path_to_oc_executable = cfg['OneCovariance']['path_to_oc_executable']
+        self.path_to_oc_ini = cfg['OneCovariance']['path_to_oc_ini']
         self.cov_filename = 'cov_OC_{which_ng_cov:s}_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}.npz'
 
     def get_conda_base_path(self):
@@ -109,10 +105,9 @@ class OneCovarianceInterface():
         nz_src_filename_ascii = ascii_filenames_dict['nz_src_ascii_filename']
         nz_lns_filename_ascii = ascii_filenames_dict['nz_lns_ascii_filename']
 
-        # TODO import another file??
-        # Read the existing reference .ini file
+        # Read the .ini file selected in cfg
         cfg_onecov_ini = CaseConfigParser()
-        cfg_onecov_ini.read(f'{self.ROOT}/Spaceborne/input/config_3x2pt_pure_Cell_general.ini')
+        cfg_onecov_ini.read(self.path_to_oc_ini)
 
         # set useful lists
         mult_shear_bias_list = np.array(self.cfg['C_ell']['mult_shear_bias'])

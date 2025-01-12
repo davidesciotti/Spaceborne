@@ -8,14 +8,6 @@ from scipy.special import spherical_jn
 import pyccl as ccl
 from tqdm import tqdm
 import healpy as hp
-
-
-import os
-ROOT = os.getenv('ROOT')
-SB_ROOT = f'{ROOT}/Spaceborne'
-
-# project modules
-sys.path.append(SB_ROOT)
 from spaceborne import sb_lib as sl
 from spaceborne import cosmo_lib
 from spaceborne import mask_utils

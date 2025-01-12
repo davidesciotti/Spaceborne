@@ -8,8 +8,6 @@ from scipy.interpolate import RectBivariateSpline
 from spaceborne import sb_lib as sl
 from spaceborne import bnt as bnt_utils
 
-ROOT = os.getenv('ROOT')
-
 
 class SpaceborneCovariance():
 

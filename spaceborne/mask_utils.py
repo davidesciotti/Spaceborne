@@ -7,9 +7,6 @@ from matplotlib import pyplot as plt
 import healpy as hp
 from spaceborne import cosmo_lib
 
-ROOT = os.getenv('ROOT')
-sys.path.append(f'{ROOT}/Spaceborne')
-
 
 def get_mask_quantities(clmask=None, mask=None, mask2=None, verbose=True):
     """Auxiliary routine to compute different mask quantities (ell,Cl,fsky) for partial sky Sij routines.

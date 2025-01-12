@@ -6,7 +6,6 @@
 # TODO delete dz shifts?
 # TODO hardcode shift_nz_interpolation_kind to spline
 # TODO remove compute_bnt_with_shifted_nz_for_zcuts??
-# TODO remove probe_ordering? LG not tested in a looooong time
 
 cosmology:
     Om: 0.32

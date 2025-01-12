@@ -18,7 +18,7 @@ SB_ROOT = f'{ROOT}/Spaceborne'
 sys.path.append(SB_ROOT)
 import spaceborne.sb_lib as sl
 import spaceborne.cosmo_lib as csmlib
-import spaceborne.mask_fits_to_cl as mask_utils
+import spaceborne.mask_utils
 
 start_time = time.perf_counter()
 

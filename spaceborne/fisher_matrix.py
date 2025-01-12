@@ -1,14 +1,10 @@
-from copy import deepcopy
 import gc
 import time
 import warnings
 import numpy as np
 import scipy
-from matplotlib import pyplot as plt
-import sys
-import os
-import spaceborne.sb_lib as sl
-import spaceborne.cl_utils as cl_utils
+from spaceborne import sb_lib as sl
+from spaceborne import cl_utils as cl_utils
 
 
 # def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum):

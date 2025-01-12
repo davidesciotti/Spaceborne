@@ -1,15 +1,13 @@
 import time
 import warnings
 from copy import deepcopy
-from glob import glob
 import camb
 import numpy as np
 from numba import njit
 import pyccl as ccl
 from scipy.integrate import simpson as simps
+from spaceborne import sb_lib as sl
 
-import os
-import spaceborne.sb_lib as sl
 
 # ! prefactor for limber and curved-sky corrections
 # prefactor = np.array(

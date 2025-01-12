@@ -1,15 +1,12 @@
 import time
-import warnings
 import pickle
 import numpy as np
-from matplotlib import pyplot as plt
-from scipy.integrate import simpson as simps
-from copy import deepcopy
-from scipy.interpolate import UnivariateSpline, interp1d, RectBivariateSpline
 import os
-
-import spaceborne.sb_lib as sl
-import spaceborne.bnt as bnt_utils
+from copy import deepcopy
+from scipy.integrate import simpson as simps
+from scipy.interpolate import RectBivariateSpline
+from spaceborne import sb_lib as sl
+from spaceborne import bnt as bnt_utils
 
 ROOT = os.getenv('ROOT')
 
@@ -227,13 +224,13 @@ class SpaceborneCovariance():
                 cl_GG_5D, noise_GG_5D, self.fsky, self.ell_GC, delta_l_GC)
             self.cov_3x2pt_g_10D_sva, self.cov_3x2pt_g_10D_sn, self.cov_3x2pt_g_10D_mix = sl.covariance_einsum_split(
                 cl_3x2pt_5D, noise_3x2pt_5D, self.fsky, self.ell_3x2pt, delta_l_3x2pt)
-            self.cov_WL_g_6D_sva = self.cov_WL_g_6D_sva[0,0, 0, 0, ...]
+            self.cov_WL_g_6D_sva = self.cov_WL_g_6D_sva[0, 0, 0, 0, ...]
             self.cov_WL_g_6D_sn = self.cov_WL_g_6D_sn[0, 0, 0, 0, ...]
-            self.cov_WL_g_6D_mix =  self.cov_WL_g_6D_mix[0, 0, 0, 0, ...]
-            self.cov_GC_g_6D_sva = self.cov_GC_g_6D_sva[0,0, 0, 0, ...]
+            self.cov_WL_g_6D_mix = self.cov_WL_g_6D_mix[0, 0, 0, 0, ...]
+            self.cov_GC_g_6D_sva = self.cov_GC_g_6D_sva[0, 0, 0, 0, ...]
             self.cov_GC_g_6D_sn = self.cov_GC_g_6D_sn[0, 0, 0, 0, ...]
-            self.cov_GC_g_6D_mix =  self.cov_GC_g_6D_mix[0, 0, 0, 0, ...]
-            
+            self.cov_GC_g_6D_mix = self.cov_GC_g_6D_mix[0, 0, 0, 0, ...]
+
             self.cov_WL_g_6D = self.cov_WL_g_6D_sva + self.cov_WL_g_6D_sn + self.cov_WL_g_6D_mix
             self.cov_GC_g_6D = self.cov_GC_g_6D_sva + self.cov_GC_g_6D_sn + self.cov_GC_g_6D_mix
             self.cov_3x2pt_g_10D = self.cov_3x2pt_g_10D_sva + self.cov_3x2pt_g_10D_sn + self.cov_3x2pt_g_10D_mix
@@ -345,11 +342,12 @@ class SpaceborneCovariance():
         self.cov_dict = {}
 
         if self.g_code == 'OneCovariance':
-            raise NotImplementedError("OneCovariance g term not yet implemented: split terms and probe-specific ell binning missing")
+            raise NotImplementedError(
+                "OneCovariance g term not yet implemented: split terms and probe-specific ell binning missing")
             self.cov_WL_g_6D = oc_obj.cov_g_oc_3x2pt_10D[0, 0, 0, 0]
             self.cov_GC_g_6D = oc_obj.cov_g_oc_3x2pt_10D[1, 1, 1, 1]
             self.cov_3x2pt_g_10D = oc_obj.cov_g_oc_3x2pt_10D
-            
+
         # ! construct 10D total 3x2pt NG (SSC + NG) covariance matrix depending on chosen cov and terms
         if self.include_ssc:
             print(f'Including SSC from {self.ssc_code} in total covariance')
@@ -458,8 +456,10 @@ class SpaceborneCovariance():
         cov_GC_ssc_6D = deepcopy(self.cov_3x2pt_ssc_10D[1, 1, 1, 1, :self.nbl_GC, :self.nbl_GC, :, :, :, :])
         cov_GC_cng_6D = deepcopy(self.cov_3x2pt_cng_10D[1, 1, 1, 1, :self.nbl_GC, :self.nbl_GC, :, :, :, :])
         # TODO I think this is unnecessary
-        self.cov_3x2pt_ssc_10D = deepcopy(self.cov_3x2pt_ssc_10D[:, :, :, :, :self.nbl_3x2pt, :self.nbl_3x2pt, :, :, :, :])
-        self.cov_3x2pt_cng_10D = deepcopy(self.cov_3x2pt_cng_10D[:, :, :, :, :self.nbl_3x2pt, :self.nbl_3x2pt, :, :, :, :])
+        self.cov_3x2pt_ssc_10D = deepcopy(
+            self.cov_3x2pt_ssc_10D[:, :, :, :, :self.nbl_3x2pt, :self.nbl_3x2pt, :, :, :, :])
+        self.cov_3x2pt_cng_10D = deepcopy(
+            self.cov_3x2pt_cng_10D[:, :, :, :, :self.nbl_3x2pt, :self.nbl_3x2pt, :, :, :, :])
 
         # ! BNT transform (6/10D covs needed for this implementation)
         if self.cfg['BNT']['cov_BNT_transform']:

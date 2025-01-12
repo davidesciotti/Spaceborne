@@ -1,6 +1,6 @@
-import spaceborne.cosmo_lib as cosmo_lib
-import spaceborne.sb_lib as sl
 import numpy as np
+from spaceborne import cosmo_lib
+from spaceborne import sb_lib as sl
 
 
 class SpaceborneConfigChecker:

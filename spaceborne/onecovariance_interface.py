@@ -16,9 +16,9 @@ Key Features:
 
 """
 
-import gc
 import os
 import multiprocessing
+import subprocess
 import re
 num_cores = multiprocessing.cpu_count()
 os.environ['OMP_NUM_THREADS'] = '32'
@@ -32,11 +32,9 @@ import configparser
 import warnings
 from copy import deepcopy
 import pandas as pd
-
-import spaceborne.ell_utils as ell_utils
-import spaceborne.sb_lib as sl
-import subprocess
 from scipy.optimize import minimize_scalar
+
+from spaceborne import sb_lib as sl
 
 
 class OneCovarianceInterface():

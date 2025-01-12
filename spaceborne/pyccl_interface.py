@@ -7,11 +7,10 @@ import numpy as np
 import pyccl as ccl
 from tqdm import tqdm
 import healpy as hp
-
-import spaceborne.sb_lib as sl
-import spaceborne.cosmo_lib as cosmo_lib
-import spaceborne.wf_cl_lib as wf_cl_lib
-import spaceborne.mask_fits_to_cl as mask_utils
+from spaceborne import sb_lib as sl
+from spaceborne import cosmo_lib
+from spaceborne import wf_cl_lib
+from spaceborne import mask_utils
 
 ccl.spline_params['A_SPLINE_NA_PK'] = 240  # gives CAMB error if too high
 ccl.spline_params['K_MAX_SPLINE'] = 300

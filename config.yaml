@@ -1,8 +1,4 @@
-# TODO infer zbins from nz
 # TODO infer EP Ed from nz
-# TODO delete n_probes
-# TODO delete which_cls
-# TODO delete use_h_units? hardocode to False, maybe?
 # TODO delete BNT_transform? as an option here, for sure
 
 # TODO add general description
@@ -125,7 +121,6 @@ ell_cuts:
     cov_ell_cuts: False
     kmax_h_over_Mpc_ref: 1.0 # this is used when ell_cuts is False, also...?
     kmax_h_over_Mpc_list: [0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.]
-    use_h_units: False
 
 BNT:
     BNT_transform: False
@@ -230,8 +225,9 @@ PyCCL:
 
 
 OneCovariance:
-    precision_settings: default # 'high_precision' or 'default'
+    precision_settings: default # 'high_precision' or 'default'  # TODO delete this
     path_to_oc_executable: /home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py
+    path_to_oc_ini: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/input/config_3x2pt_pure_Cell_general.ini
     consistency_checks: False
 
 misc:
@@ -244,8 +240,13 @@ misc:
     test_symmetry: True                # test if covariance matrix is symmetric (cov = cov.T)
 
     output_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/output
-    use_h_units: False # TODO hardcode!
     save_output_as_benchmark: False  # for testing purposes
     bench_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/output_CCL_cNG  # for testing purposes
     path_to_jl_integrator: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/spaceborne/julia_integrator.jl
 
+# TODO finish implementing this
+# CCL precision parameters as described in [...]
+CCL_precision:
+    spline_params:
+        A_SPLINE_NA_PK: 240  # gives CAMB error if too high
+        K_MAX_SPLINE: 300

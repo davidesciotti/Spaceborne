@@ -15,12 +15,15 @@ class SpaceborneConfigChecker:
 
     def check_ell_cuts(self):
         if self.cfg['ell_cuts']['apply_ell_cuts']:
-            assert self.cfg['BNT']['BNT_transform'], 'You should BNT transform if you want to apply ell cuts.'
             assert self.cfg['ell_cuts']['which_cuts'] == 'standard', 'Other types of cuts not finished to implement'
 
     def check_BNT_transform(self):
         if self.cfg['BNT']['cov_BNT_transform']:
-            assert not self.cfg['BNT']['cl_BNT_transform'], 'The BNT transform should be applied either to the Cls or to the covariance.'
+            assert not self.cfg['BNT']['cl_BNT_transform'], 'The BNT transform should be applied either to the Cls ' \
+                'or to the covariance.'
+        if self.cfg['BNT']['cl_BNT_transform']:
+            assert not self.cfg['BNT']['cov_BNT_transform'], 'The BNT transform should be applied either to the Cls ' \
+                'or to the covariance.'
 
     def check_fsky(self):
         fsky_check = cosmo_lib.deg2_to_fsky(self.cfg['mask']['survey_area_deg2'])

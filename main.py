@@ -69,7 +69,6 @@ row_col_major = cfg['covariance']['row_col_major']
 n_probes = cfg['covariance']['n_probes']
 which_sigma2_b = cfg['covariance']['which_sigma2_b']
 z_steps_ssc_integrands = cfg['covariance']['z_steps_ssc_integrands']
-bnt_transform = cfg['BNT']['BNT_transform']
 include_ia_in_bnt_kernel_for_zcuts = cfg['BNT']['include_ia_in_bnt_kernel_for_zcuts']
 compute_bnt_with_shifted_nz_for_zcuts = cfg['BNT']['compute_bnt_with_shifted_nz_for_zcuts']
 probe_ordering = cfg['covariance']['probe_ordering']
@@ -243,7 +242,6 @@ variable_specs = {'EP_OR_ED': EP_OR_ED,
                   'zbins': zbins,
                   'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_3x2pt': ell_max_3x2pt,
                   'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_3x2pt': nbl_3x2pt,
-                  'BNT_transform': bnt_transform,
                   'which_ng_cov': cov_terms_str,
                   'ell_min': cfg['ell_binning']['ell_min'],
                   }

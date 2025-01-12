@@ -1,5 +1,4 @@
 # TODO infer EP Ed from nz
-# TODO delete BNT_transform? as an option here, for sure
 
 # TODO add general description
 # TODO merge with cfg.yaml from spaceborne_covg
@@ -123,7 +122,6 @@ ell_cuts:
     kmax_h_over_Mpc_list: [0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.]
 
 BNT:
-    BNT_transform: False
     cl_BNT_transform: False
     cov_BNT_transform: False
     compute_bnt_with_shifted_nz_for_zcuts: False # ! lets test this
@@ -204,8 +202,8 @@ covariance:
 
 
 PyCCL:
-
-    n_samples_wf: 1000
+    n_samples_wf: 1000  
+        # (from CCL docs): [TODO link] number of points over which to compute the radial kernels (weight functions)
     cov_integration_method: spline
         # (from CCL docs): integration method to be used for the Limber integrals.
         # Possibilities: 'qag_quad' (GSL's qag method backed up by quad when it fails)

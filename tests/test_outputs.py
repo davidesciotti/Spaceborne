@@ -46,12 +46,14 @@ def test_main_script(test_cfg_path):
 
     print("All outputs match the benchmarks ✅")
     
-# Paths
+# Path
 bench_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench'
+# run all tests...
 bench_names = glob.glob(f'{bench_path}/*.npz')
 bench_names = [os.path.basename(file) for file in bench_names]
 bench_names = [bench_name.replace('.npz', '') for bench_name in bench_names]
-bench_names = ['output_CCL_SSC_HOD', ]
+# ... or run specific tests
+# bench_names = ['output_CCL_SSC_HOD', ]
 
 main_script_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/main.py'
 temp_output_filename = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/tmp/test_file'

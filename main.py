@@ -50,8 +50,6 @@ with open('config.yaml', 'r') as f:
 h = cfg['cosmology']['h']
 galaxy_bias_fit_fiducials = np.array(cfg['C_ell']['galaxy_bias_fit_coeff'])
 magnification_bias_fit_fiducials = np.array(cfg['C_ell']['magnification_bias_fit_coeff'])
-ngal_lensing = cfg['nz']['ngal_sources']
-ngal_clustering = cfg['nz']['ngal_lenses']
 dzWL_fiducial = cfg['nz']['dzWL']
 dzGC_fiducial = cfg['nz']['dzGC']
 shift_nz_interpolation_kind = cfg['nz']['shift_nz_interpolation_kind']
@@ -59,7 +57,7 @@ nz_gaussian_smoothing = cfg['nz']['nz_gaussian_smoothing']  # does not seem to h
 nz_gaussian_smoothing_sigma = cfg['nz']['nz_gaussian_smoothing_sigma']
 shift_nz = cfg['nz']['shift_nz']
 normalize_shifted_nz = cfg['nz']['normalize_shifted_nz']
-zbins = len(ngal_lensing)
+zbins = len(cfg['nz']['ngal_lenses'])  # this has the same length as ngal_sources, as checked below
 ell_max_WL = cfg['ell_binning']['ell_max_WL']
 ell_max_GC = cfg['ell_binning']['ell_max_GC']
 ell_max_3x2pt = cfg['ell_binning']['ell_max_3x2pt']
@@ -75,14 +73,18 @@ probe_ordering = cfg['covariance']['probe_ordering']
 GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 EP_OR_ED = cfg['nz']['EP_or_ED']
 output_path = cfg['misc']['output_path']
+clr = cm.rainbow(np.linspace(0, 1, zbins))
 
 if not os.path.exists(output_path):
     raise FileNotFoundError(f"Output path {output_path} does not exist. Please create it before running the script.")    
 if not os.path.exists(f'{output_path}/cache'):
     os.mkdir(f'{output_path}/cache')
 
-clr = cm.rainbow(np.linspace(0, 1, zbins))
-use_h_units = False  # TODO decide on this
+# ! START HARDCODED OPTIONS/PARAMETERS
+use_h_units = False  # whether or not to normalize Megaparsecs by little h
+# number of ell bins over which to compute the Cls passed to OC for the Gaussian covariance computation
+nbl_3x2pt_oc = 500  
+
 # whether or not to symmetrize the covariance probe blocks when reshaping it from 4D to 6D.
 # Useful if the 6D cov elements need to be accessed directly, whereas if the cov is again reduced to 4D or 2D
 # can be set to False for a significant speedup
@@ -92,8 +94,9 @@ symmetrize_output_dict = {
     ('L', 'G'): False,
     ('G', 'G'): False,
 }
+# ! END HARDCODED OPTIONS/PARAMETERS
 
-# ! set ng cov terms to compute
+# ! set non-gaussian cov terms to compute
 cov_terms_list = []
 if cfg['covariance']['G']:
     cov_terms_list.append("G")
@@ -130,7 +133,6 @@ if cfg['covariance']['use_KE_approximation']:
 else:
     cl_integral_convention_ssc = 'Euclid'
     ssc_integration_type = 'simps'
-
 
 if use_h_units:
     k_txt_label = "hoverMpc"
@@ -185,7 +187,6 @@ ind_dict = {('L', 'L'): ind_auto,
 # - `nz_full`: nz table including a column for the z values
 # - `nz`:      nz table excluding a column for the z values
 # - `nz_original`: nz table as imported (it may be subjected to shifts later on)
-
 nz_src_tab_full = np.genfromtxt(cfg["nz"]["nz_sources_filename"])
 nz_lns_tab_full = np.genfromtxt(cfg["nz"]["nz_lenses_filename"])
 zgrid_nz_src = nz_src_tab_full[:, 0]
@@ -212,10 +213,11 @@ ell_dict['ell_GC'] = np.copy(ell_ref_nbl32[ell_ref_nbl32 < ell_max_GC])
 ell_dict['ell_3x2pt'] = np.copy(ell_ref_nbl32[ell_ref_nbl32 < ell_max_3x2pt])
 ell_dict['ell_XC'] = np.copy(ell_dict['ell_3x2pt'])
 
+# TODO why not save all edges??
 # store edges *except last one for dimensional consistency* in the ell_dict
-ell_dict['ell_edges_WL'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell_max_WL])[:-1]
-ell_dict['ell_edges_GC'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell_max_GC])[:-1]
-ell_dict['ell_edges_3x2pt'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell_max_3x2pt])[:-1]
+ell_dict['ell_edges_WL'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell_max_WL])
+ell_dict['ell_edges_GC'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell_max_GC])
+ell_dict['ell_edges_3x2pt'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell_max_3x2pt])
 ell_dict['ell_edges_XC'] = np.copy(ell_dict['ell_edges_3x2pt'])
 
 for key in ell_dict.keys():
@@ -417,7 +419,6 @@ ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
 
 # oc needs finer sampling to avoid issues
-nbl_3x2pt_oc = 500
 ells_3x2pt_oc = np.geomspace(cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_3x2pt'], nbl_3x2pt_oc)
 cl_ll_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
                                   ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, 'spline')

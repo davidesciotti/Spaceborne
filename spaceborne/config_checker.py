@@ -77,6 +77,8 @@ class SpaceborneConfigChecker:
     def check_cov(self):
         assert self.cfg['covariance']['ep_or_ed'] in ('EP', 'ED'), 'EP_or_ED must be either EP or ED'
         assert self.cfg['covariance']['triu_tril'] in ('triu', 'tril'), 'triu_tril must be either "triu" or "tril"'
+        assert self.cfg['covariance']['probe_ordering'] == [["L", "L"], ["G", "L"], ["G", "G"]], \
+            'Other probe orderings not tested at the moment'
         assert self.cfg['covariance']['row_col_major'] in (
             'row-major', 'col-major'), 'row_col_major must be either "row-major" or "col-major"'
 

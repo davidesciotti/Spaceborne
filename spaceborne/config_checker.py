@@ -78,7 +78,6 @@ class SpaceborneConfigChecker:
             'row-major', 'col-major'), 'row_col_major must be either "row-major" or "col-major"'
 
     def run_all_checks(self):
-        k_txt_label, pk_txt_label = self.check_h_units()
         self.check_ell_cuts()
         self.check_BNT_transform()
         self.check_KE_approximation()
@@ -88,4 +87,3 @@ class SpaceborneConfigChecker:
         self.check_misc()
         self.check_nz()
         self.check_cosmo()
-        return k_txt_label, pk_txt_label

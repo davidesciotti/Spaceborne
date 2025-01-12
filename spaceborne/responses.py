@@ -27,9 +27,7 @@ class SpaceborneResponses():
 
         self.ccl_obj = ccl_obj
         self.cosmo_ccl = ccl_obj.cosmo_ccl
-        self.use_h_units = cfg['misc']['use_h_units']
         self.h = cfg['cosmology']['h']
-        assert self.use_h_units is False, 'case True should be fine but for now stick to False'
         self.b1_func = self.ccl_obj.gal_bias_func_ofz
 
         # Attach method to the class via monkeypatching

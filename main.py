@@ -133,7 +133,7 @@ else:
     ssc_integration_type = 'simps'
 
 
-if cfg['misc']['use_h_units']:
+if use_h_units:
     k_txt_label = "hoverMpc"
     pk_txt_label = "Mpcoverh3"
 else:
@@ -707,6 +707,7 @@ if compute_sb_ssc:
         resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
                                                  z_grid=z_grid_ssc_integrands,
                                                  ccl_obj=ccl_obj)
+        resp_obj.use_h_units = use_h_units
         resp_obj.set_hm_resp(k_grid_resp, z_grid_ssc_integrands, 
                              which_b1g_in_resp, gal_bias, 
                              include_terasawa_terms=include_terasawa_terms)
@@ -723,6 +724,7 @@ if compute_sb_ssc:
         resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
                                                  z_grid=z_grid_ssc_integrands,
                                                  ccl_obj=ccl_obj)
+        resp_obj.use_h_units = use_h_units
         resp_obj.set_g1mm_su_resp()
         r_mm_sbclass = resp_obj.compute_r1_mm()
         resp_obj.set_su_resp(b2g_from_halomodel=True, 

@@ -76,14 +76,14 @@ output_path = cfg['misc']['output_path']
 clr = cm.rainbow(np.linspace(0, 1, zbins))
 
 if not os.path.exists(output_path):
-    raise FileNotFoundError(f"Output path {output_path} does not exist. Please create it before running the script.")    
+    raise FileNotFoundError(f"Output path {output_path} does not exist. Please create it before running the script.")
 if not os.path.exists(f'{output_path}/cache'):
     os.mkdir(f'{output_path}/cache')
 
 # ! START HARDCODED OPTIONS/PARAMETERS
 use_h_units = False  # whether or not to normalize Megaparsecs by little h
 # number of ell bins over which to compute the Cls passed to OC for the Gaussian covariance computation
-nbl_3x2pt_oc = 500  
+nbl_3x2pt_oc = 500
 
 # whether or not to symmetrize the covariance probe blocks when reshaping it from 4D to 6D.
 # Useful if the 6D cov elements need to be accessed directly, whereas if the cov is again reduced to 4D or 2D
@@ -239,15 +239,29 @@ assert nbl_WL == nbl_3x2pt == nbl_GC, 'use the same number of bins for the momen
 ell_dict['delta_l_WL'] = np.copy(delta_l_ref_nbl32[:nbl_WL])
 ell_dict['delta_l_GC'] = np.copy(delta_l_ref_nbl32[:nbl_GC])
 
-# this is just to make the .format() more compact
-variable_specs = {'EP_OR_ED': EP_OR_ED,
-                  'zbins': zbins,
-                  'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_3x2pt': ell_max_3x2pt,
-                  'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_3x2pt': nbl_3x2pt,
-                  'which_ng_cov': cov_terms_str,
-                  'ell_min': cfg['ell_binning']['ell_min'],
-                  }
-pp.pprint(variable_specs)
+# provate cfg dictionary. This serves a couple different purposeses:
+# 1. To store and pass hardcoded parameters in a convenient way
+# 2. To make the .format() more compact
+pvt_cfg = {
+    'EP_OR_ED': EP_OR_ED,
+    'zbins': zbins,
+    'ind': ind,
+    'probe_ordering': probe_ordering,
+    'ell_min': cfg['ell_binning']['ell_min'],
+    'ell_max_WL': ell_max_WL, 'ell_max_GC': ell_max_GC, 'ell_max_3x2pt': ell_max_3x2pt,
+    'nbl_WL': nbl_WL, 'nbl_GC': nbl_GC, 'nbl_3x2pt': nbl_3x2pt,
+    'which_ng_cov': cov_terms_str,
+    'cov_terms_list': cov_terms_list,
+    'GL_OR_LG': GL_OR_LG,
+    'EP_OR_ED': EP_OR_ED,
+    'symmetrize_output_dict': symmetrize_output_dict,
+    'use_h_units': use_h_units,
+    'z_grid_ssc_integrands': z_grid_ssc_integrands,
+    'ells_sb': ell_dict['ell_3x2pt'],
+}
+
+# TODO delete this? maybe I still want to print some of these options...
+# pp.pprint(pvt_cfg)
 
 
 # ! START SCALE CUTS: for these, we need to:
@@ -358,10 +372,10 @@ assert np.all(np.diff(z_means_ll_bnt) > 0), ('z_means_ll_bnt should be monotonic
 # 5. compute the ell cuts
 ell_cuts_dict = {}
 ellcuts_kw = {
-    'kmax_h_over_Mpc': kmax_h_over_Mpc, 
-    'cosmo_ccl': ccl_obj.cosmo_ccl, 
-    'zbins': zbins, 
-    'h': h, 
+    'kmax_h_over_Mpc': kmax_h_over_Mpc,
+    'cosmo_ccl': ccl_obj.cosmo_ccl,
+    'zbins': zbins,
+    'h': h,
     'kmax_h_over_Mpc_ref': cfg['ell_cuts']['kmax_h_over_Mpc_ref'],
 }
 ell_cuts_dict['LL'] = ell_utils.load_ell_cuts(z_values_a=z_means_ll_bnt, z_values_b=z_means_ll_bnt, **ellcuts_kw)
@@ -527,15 +541,11 @@ ccl_obj.cl_gg_3d = cl_gg_3d
 ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
 # ! build covariance matrices
-cov_obj = sb_cov.SpaceborneCovariance(cfg, zbins, ell_dict, bnt_matrix)
+cov_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_dict, bnt_matrix)
 cov_obj.set_ind_and_zpairs(ind, zbins)
-cov_obj.cov_terms_list = cov_terms_list
-cov_obj.GL_OR_LG = GL_OR_LG
-cov_obj.EP_OR_ED = EP_OR_ED
 cov_obj.symmetrize_output_dict = symmetrize_output_dict
 cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['split_gaussian_cov'])
-
 
 # ! ========================================== OneCovariance ===================================================
 if compute_oc_g or compute_oc_ssc or compute_oc_cng:
@@ -552,8 +562,8 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 
     nz_src_ascii_filename = cfg['nz']['nz_sources_filename'].replace('.dat', f'_dzshifts{shift_nz}.ascii')
     nz_lns_ascii_filename = cfg['nz']['nz_lenses_filename'].replace('.dat', f'_dzshifts{shift_nz}.ascii')
-    nz_src_ascii_filename = nz_src_ascii_filename.format(**variable_specs)
-    nz_lns_ascii_filename = nz_lns_ascii_filename.format(**variable_specs)
+    nz_src_ascii_filename = nz_src_ascii_filename.format(**pvt_cfg)
+    nz_lns_ascii_filename = nz_lns_ascii_filename.format(**pvt_cfg)
     nz_src_ascii_filename = os.path.basename(nz_src_ascii_filename)
     nz_lns_ascii_filename = os.path.basename(nz_lns_ascii_filename)
     nz_src_tosave = np.column_stack((zgrid_nz_src, nz_src))
@@ -586,15 +596,10 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     # * 2. compute cov using the onecovariance interface class
     print('Start NG cov computation with OneCovariance...')
     # initialize object, build cfg file
-    oc_obj = oc_interface.OneCovarianceInterface(cfg, variable_specs,
+    oc_obj = oc_interface.OneCovarianceInterface(cfg, pvt_cfg,
                                                  do_g=compute_oc_g,
-                                                 do_ssc=compute_oc_ssc, 
+                                                 do_ssc=compute_oc_ssc,
                                                  do_cng=compute_oc_cng)
-    oc_obj.zbins = zbins
-    oc_obj.ind = ind
-    oc_obj.probe_ordering = probe_ordering
-    oc_obj.GL_OR_LG = GL_OR_LG
-    oc_obj.nbl_3x2pt = nbl_3x2pt
     oc_obj.oc_path = oc_path
     oc_obj.path_to_config_oc_ini = f'{oc_obj.oc_path}/input_configs.ini'
     oc_obj.ells_sb = ell_dict['ell_3x2pt']
@@ -707,8 +712,8 @@ if compute_sb_ssc:
                                                  z_grid=z_grid_ssc_integrands,
                                                  ccl_obj=ccl_obj)
         resp_obj.use_h_units = use_h_units
-        resp_obj.set_hm_resp(k_grid_resp, z_grid_ssc_integrands, 
-                             which_b1g_in_resp, gal_bias, 
+        resp_obj.set_hm_resp(k_grid_resp, z_grid_ssc_integrands,
+                             which_b1g_in_resp, gal_bias,
                              include_terasawa_terms=include_terasawa_terms)
         dPmm_ddeltab = resp_obj.dPmm_ddeltab_hm
         dPgm_ddeltab = resp_obj.dPgm_ddeltab_hm
@@ -726,7 +731,7 @@ if compute_sb_ssc:
         resp_obj.use_h_units = use_h_units
         resp_obj.set_g1mm_su_resp()
         r_mm_sbclass = resp_obj.compute_r1_mm()
-        resp_obj.set_su_resp(b2g_from_halomodel=True, 
+        resp_obj.set_su_resp(b2g_from_halomodel=True,
                              include_b2g=cfg['covariance']['include_b2g'])
 
         r_gm_sbclass = resp_obj.r1_gm
@@ -762,7 +767,7 @@ if compute_sb_ssc:
         kmax_limber = cosmo_lib.get_kmax_limber(
             ell_grid, z_grid_ssc_integrands_test, use_h_units, ccl_obj.cosmo_ccl)
         print(f'Retrying with z_min = {z_grid_ssc_integrands_test[0]:.3f}')
-    
+
     k_limber = partial(cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
 
     dPmm_ddeltab_klimb = np.array(

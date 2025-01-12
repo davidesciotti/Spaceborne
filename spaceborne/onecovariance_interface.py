@@ -39,20 +39,21 @@ from spaceborne import sb_lib as sl
 
 class OneCovarianceInterface():
 
-    def __init__(self, cfg, variable_specs, do_g, do_ssc, do_cng):
+    def __init__(self, cfg, pvt_cfg, do_g, do_ssc, do_cng):
         """
-        Initializes the OneCovarianceInterface class with the provided configuration and variable specifications.
+        Initializes the OneCovarianceInterface class with the provided configuration and private configuration 
+        dictionaries.
 
         Args:
             cfg (dict): The configuration dictionary.
-            variable_specs (dict): The variable specifications dictionary.
+            pvt_cfg (dict): The private specifications dictionary.
             do_ssc (bools): Whether to compute the SSC term.
             do_cng (bool): Whether to compute the connected non-Gaussian covariance term.
 
         Attributes:
             cfg (dict): The configuration dictionary.
             oc_cfg (dict): The OneCovariance configuration dictionary.
-            variable_specs (dict): The variable specifications dictionary.
+            pvt_cfg (dict): The private specifications dictionary.
             zbins (int): The number of redshift bins.
             nbl_3x2pt (int): The number of ell bins for the 3x2pt analysis.
             compute_ssc (bool): Whether to compute the super-sample covariance (SSC) term.
@@ -65,9 +66,13 @@ class OneCovarianceInterface():
 
         self.cfg = cfg
         self.oc_cfg = self.cfg['OneCovariance']
-        self.variable_specs = variable_specs
+        self.pvt_cfg = pvt_cfg
         self.n_probes = cfg['covariance']['n_probes']
-        self.nbl_3x2pt = variable_specs['nbl_3x2pt']
+        self.nbl_3x2pt = pvt_cfg['nbl_3x2pt']
+        self.zbins = pvt_cfg['zbins']
+        self.ind = pvt_cfg['ind']
+        self.probe_ordering = pvt_cfg['probe_ordering']
+        self.GL_OR_LG = pvt_cfg['GL_OR_LG']
 
         # set which cov terms to compute from cfg file
         self.compute_g = do_g  # TODO pass this from cfg?
@@ -132,12 +137,12 @@ class OneCovarianceInterface():
         cfg_onecov_ini['observables']['cross_terms'] = str(True)
         cfg_onecov_ini['observables']['unbiased_clustering'] = str(False)
 
-        cfg_onecov_ini['covELLspace settings']['ell_min'] = str(self.variable_specs['ell_min'])
-        cfg_onecov_ini['covELLspace settings']['ell_min_lensing'] = str(self.variable_specs['ell_min'])
-        cfg_onecov_ini['covELLspace settings']['ell_min_clustering'] = str(self.variable_specs['ell_min'])
-        cfg_onecov_ini['covELLspace settings']['ell_bins'] = str(self.variable_specs['nbl_3x2pt'])
-        cfg_onecov_ini['covELLspace settings']['ell_bins_lensing'] = str(self.variable_specs['nbl_3x2pt'])
-        cfg_onecov_ini['covELLspace settings']['ell_bins_clustering'] = str(self.variable_specs['nbl_3x2pt'])
+        cfg_onecov_ini['covELLspace settings']['ell_min'] = str(self.pvt_cfg['ell_min'])
+        cfg_onecov_ini['covELLspace settings']['ell_min_lensing'] = str(self.pvt_cfg['ell_min'])
+        cfg_onecov_ini['covELLspace settings']['ell_min_clustering'] = str(self.pvt_cfg['ell_min'])
+        cfg_onecov_ini['covELLspace settings']['ell_bins'] = str(self.pvt_cfg['nbl_3x2pt'])
+        cfg_onecov_ini['covELLspace settings']['ell_bins_lensing'] = str(self.pvt_cfg['nbl_3x2pt'])
+        cfg_onecov_ini['covELLspace settings']['ell_bins_clustering'] = str(self.pvt_cfg['nbl_3x2pt'])
         cfg_onecov_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(map(str, mult_shear_bias_list))
 
         # find best ell_max for OC, since it uses a slightly different recipe
@@ -582,7 +587,7 @@ class OneCovarianceInterface():
         elif output_type in ['10D_dict', '10D_array']:
             cov_ng_oc_3x2pt_dict_10D = sl.cov_3x2pt_dict_8d_to_10d(
                 cov_3x2pt_dict_8D=cov_ng_oc_3x2pt_dict_8D,
-                nbl=self.variable_specs['nbl_3x2pt'],
+                nbl=self.pvt_cfg['nbl_3x2pt'],
                 zbins=self.zbins,
                 ind_dict=ind_dict,
                 probe_ordering=self.cfg['covariance']['probe_ordering'],
@@ -593,7 +598,7 @@ class OneCovarianceInterface():
 
             elif output_type == '10D_array':
                 return sl.cov_10D_dict_to_array(cov_ng_oc_3x2pt_dict_10D,
-                                                nbl=self.variable_specs['nbl_3x2pt'],
+                                                nbl=self.pvt_cfg['nbl_3x2pt'],
                                                 zbins=self.zbins,
                                                 n_probes=self.cfg['covariance']['n_probes'])
 
@@ -617,8 +622,8 @@ class OneCovarianceInterface():
         else:
             print("Optimization failed.")
 
-        self.new_ells_oc = self.compute_ells_oc(nbl=int(self.variable_specs['nbl_3x2pt']),
-                                                ell_min=float(self.variable_specs['ell_min']),
+        self.new_ells_oc = self.compute_ells_oc(nbl=int(self.pvt_cfg['nbl_3x2pt']),
+                                                ell_min=float(self.pvt_cfg['ell_min']),
                                                 ell_max=self.optimal_ellmax)
 
         fig, ax = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
@@ -639,8 +644,8 @@ class OneCovarianceInterface():
         return ells_oc_int
 
     def objective_function(self, ell_max):
-        ells_oc = self.compute_ells_oc(nbl=int(self.variable_specs['nbl_3x2pt']),
-                                       ell_min=float(self.variable_specs['ell_min']),
+        ells_oc = self.compute_ells_oc(nbl=int(self.pvt_cfg['nbl_3x2pt']),
+                                       ell_min=float(self.pvt_cfg['ell_min']),
                                        ell_max=ell_max)
         ssd = np.sum((self.ells_sb - ells_oc) ** 2)
         # ssd = np.sum(sl.percent_diff(self.ells_sb, ells_oc)**2)  # TODO test this

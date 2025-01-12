@@ -11,14 +11,18 @@ from spaceborne import bnt as bnt_utils
 
 class SpaceborneCovariance():
 
-    def __init__(self, cfg, zbins, ell_dict, bnt_matrix):
+    def __init__(self, cfg, pvt_cfg, ell_dict, bnt_matrix):
         self.cfg = cfg
-        self.zbins = zbins
         self.covariance_cfg = cfg['covariance']
         self.ell_dict = ell_dict
         self.bnt_matrix = bnt_matrix
         self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt', }
         self.jl_integrator_path = cfg['misc']['path_to_jl_integrator']
+        
+        self.zbins = pvt_cfg['zbins']
+        self.cov_terms_list = pvt_cfg['cov_terms_list']
+        self.GL_OR_LG = pvt_cfg['GL_OR_LG']
+        self.EP_OR_ED = pvt_cfg['EP_OR_ED']
 
         self.n_probes = self.covariance_cfg['n_probes']
         # 'include' instead of 'compute' because it might be loaded from file

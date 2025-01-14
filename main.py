@@ -638,7 +638,9 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     print('Start NG cov computation with OneCovariance...')
     # initialize object, build cfg file
     oc_obj = oc_interface.OneCovarianceInterface(ROOT, cfg, variable_specs,
-                                                 do_ssc=compute_oc_ssc, do_cng=compute_oc_cng)
+                                                 compute_g=compute_oc_g, 
+                                                 compute_ssc=compute_oc_ssc, 
+                                                 compute_cng=compute_oc_cng)
     oc_obj.zbins = zbins
     oc_obj.ind = ind
     oc_obj.probe_ordering = probe_ordering
@@ -650,7 +652,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     oc_obj.build_save_oc_ini(ascii_filenames_dict, print_ini=True)
 
     # compute covs
-    # oc_obj.call_oc_from_bash()
+    oc_obj.call_oc_from_bash()
     oc_obj.process_cov_from_list_file()
     oc_obj.output_sanity_check(rtol=5e-2)  # .dat vs .mat
 

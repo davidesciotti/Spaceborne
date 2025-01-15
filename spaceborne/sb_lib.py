@@ -18,7 +18,7 @@ import datetime
 import pandas as pd
 import scipy
 from scipy.integrate import simpson as simps
-from scipy.interpolate import interp1d, CubicSpline
+from scipy.interpolate import interp1d, CubicSpline, RectBivariateSpline
 import subprocess
 
 

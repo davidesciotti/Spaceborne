@@ -653,7 +653,7 @@ def get_cl_3D_array(wf_A, wf_B, ell_values):
     return cl_3D
 
 
-def cl_PyCCL(wf_A, wf_B, ell, zbins, p_of_k_a, cosmo, limber_integration_method='qag_quad'):
+def cl_PyCCL(wf_A, wf_B, ell, zbins, p_of_k_a, cosmo, cl_ccl_kwargs: dict):
 
     is_auto_spectrum = False
     if wf_A == wf_B:
@@ -668,7 +668,7 @@ def cl_PyCCL(wf_A, wf_B, ell, zbins, p_of_k_a, cosmo, limber_integration_method=
         cl_3D = np.zeros((nbl, zbins, zbins))
         for zi, zj in zip(np.triu_indices(zbins)[0], np.triu_indices(zbins)[1]):
             cl_3D[:, zi, zj] = ccl.angular_cl(cosmo, wf_A[zi], wf_B[zj], ell, p_of_k_a=p_of_k_a,
-                                              limber_integration_method=limber_integration_method)
+                                              **cl_ccl_kwargs)
         for ell in range(nbl):
             cl_3D[ell, :, :] = sl.symmetrize_2d_array(cl_3D[ell, :, :])
 
@@ -676,7 +676,7 @@ def cl_PyCCL(wf_A, wf_B, ell, zbins, p_of_k_a, cosmo, limber_integration_method=
         # be very careful with the order of the zi, zj loops: you have to revert them in NESTED list comprehensions to
         # have zi as first axis and zj as second axis (the code below is tested and works)
         cl_3D = np.array([[ccl.angular_cl(cosmo, wf_A[zi], wf_B[zj], ell, p_of_k_a=p_of_k_a,
-                                          limber_integration_method=limber_integration_method)
+                                          **cl_ccl_kwargs)
                            for zj in range(zbins)]
                           for zi in range(zbins)]
                          ).transpose(2, 0, 1)  # transpose to have ell as first axis

@@ -172,11 +172,11 @@ class PycclClass():
     def set_ell_grid(self, ell_grid):
         self.ell_grid = ell_grid
 
-    def compute_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, limber_integration_method):
+    def compute_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, cl_ccl_kwargs: dict):
 
         cl_ab_3d = wf_cl_lib.cl_PyCCL(kernel_a, kernel_b, ell_grid, self.zbins,
                                       p_of_k_a=p_of_k_a, cosmo=self.cosmo_ccl,
-                                      limber_integration_method=limber_integration_method)
+                                      cl_ccl_kwargs=cl_ccl_kwargs)
 
         return cl_ab_3d
 

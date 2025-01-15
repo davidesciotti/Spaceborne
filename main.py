@@ -164,14 +164,18 @@ if len(z_grid_ssc_integrands) < 250:
 # ! instantiate CCL object
 ccl_obj = pyccl_interface.PycclClass(cfg['cosmology'], cfg['extra_parameters'],
                                      cfg['intrinsic_alignment'], cfg['halo_model'],
-                                     cfg['CCL_precision']['spline_params'], 
-                                     cfg['CCL_precision']['gsl_params'])
+                                     cfg['PyCCL']['spline_params'], 
+                                     cfg['PyCCL']['gsl_params'])
 ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
 ccl_obj.zbins = zbins
 ccl_obj.which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
 a_default_grid_ccl = ccl_obj.cosmo_ccl.get_pk_spline_a()
 z_default_grid_ccl = cosmo_lib.a_to_z(a_default_grid_ccl)[::-1]
-# TODO class to access CCL precision parameters
+if cfg['C_ell']['cl_CCL_kwargs'] is not None:
+    cl_ccl_kwargs = cfg['C_ell']['cl_CCL_kwargs']
+else:
+    cl_ccl_kwargs = {}
+    
 
 # build the ind array and store it into the covariance dictionary
 zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
@@ -428,20 +432,20 @@ for wf_idx in range(len(wf_ccl_list)):
 
 # compute cls
 ccl_obj.cl_ll_3d = ccl_obj.compute_cls(ell_dict['ell_WL'], ccl_obj.p_of_k_a,
-                                       ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, 'spline')
+                                       ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, cl_ccl_kwargs)
 ccl_obj.cl_gl_3d = ccl_obj.compute_cls(ell_dict['ell_XC'], ccl_obj.p_of_k_a,
-                                       ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
+                                       ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, cl_ccl_kwargs)
 ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
-                                       ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
+                                       ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, cl_ccl_kwargs)
 
 # oc needs finer sampling to avoid issues
 ells_3x2pt_oc = np.geomspace(cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_3x2pt'], nbl_3x2pt_oc)
 cl_ll_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
-                                  ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, 'spline')
+                                  ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, cl_ccl_kwargs)
 cl_gl_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
-                                  ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, 'spline')
+                                  ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, cl_ccl_kwargs)
 cl_gg_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
-                                  ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, 'spline')
+                                  ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, cl_ccl_kwargs)
 
 # ! add multiplicative shear bias
 # ! THIS SHOULD NOT BE DONE FOR THE OC Cls!! mult shear bias values are passed in the .ini file

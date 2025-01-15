@@ -163,7 +163,9 @@ if len(z_grid_ssc_integrands) < 250:
 
 # ! instantiate CCL object
 ccl_obj = pyccl_interface.PycclClass(cfg['cosmology'], cfg['extra_parameters'],
-                                     cfg['intrinsic_alignment'], cfg['halo_model'])
+                                     cfg['intrinsic_alignment'], cfg['halo_model'],
+                                     cfg['CCL_precision']['spline_params'], 
+                                     cfg['CCL_precision']['gsl_params'])
 ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
 ccl_obj.zbins = zbins
 ccl_obj.which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']

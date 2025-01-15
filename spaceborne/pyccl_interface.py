@@ -12,17 +12,23 @@ from spaceborne import cosmo_lib
 from spaceborne import wf_cl_lib
 from spaceborne import mask_utils
 
-ccl.spline_params['A_SPLINE_NA_PK'] = 240  # gives CAMB error if too high
-ccl.spline_params['K_MAX_SPLINE'] = 300
-
 
 class PycclClass():
 
-    def __init__(self, cosmology_dict, extra_parameters_dict, ia_dict, halo_model_dict):
+    def __init__(self, cosmology_dict: dict, extra_parameters_dict: dict, ia_dict: dict,
+                 halo_model_dict: dict, spline_params: dict | None, gsl_params: dict | None):
 
         self.cosmology_dict = cosmology_dict
         self.extra_parameters_dict = extra_parameters_dict
         self.ia_dict = ia_dict
+
+        if spline_params is not None:
+            for key in spline_params.keys():
+                ccl.spline_params[key] = spline_params[key]
+
+        if gsl_params is not None:
+            for key in gsl_params.keys():
+                ccl.gsl_params[key] = gsl_params[key]
 
         self.flat_fid_pars_dict = sl.flatten_dict(self.cosmology_dict)
         cosmo_dict_ccl = cosmo_lib.map_keys(self.cosmology_dict, key_mapping=None)

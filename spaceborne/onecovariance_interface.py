@@ -555,7 +555,7 @@ class OneCovarianceInterface():
             self.cov_cng_oc_3x2pt_10D[index_tuple] = df_chunk['covng'].values
             self.cov_tot_oc_3x2pt_10D[index_tuple] = df_chunk['cov'].values
 
-        covs_10d = [self.cov_sva_oc_3x2pt_10D, self.cov_mix_oc_3x2pt_10D, self.cov_sn_oc_3x2pt_10D, 
+        covs_10d = [self.cov_sva_oc_3x2pt_10D, self.cov_mix_oc_3x2pt_10D, self.cov_sn_oc_3x2pt_10D,
                     self.cov_g_oc_3x2pt_10D,
                     self.cov_ssc_oc_3x2pt_10D, self.cov_cng_oc_3x2pt_10D, self.cov_tot_oc_3x2pt_10D]
 
@@ -650,3 +650,40 @@ class OneCovarianceInterface():
         ssd = np.sum((self.ells_sb - ells_oc) ** 2)
         # ssd = np.sum(sl.percent_diff(self.ells_sb, ells_oc)**2)  # TODO test this
         return ssd
+
+    def get_oc_responses(self, ini_filename, h):
+
+        import sys
+        sys.path.append('/home/davide/Documenti/Lavoro/Programmi/OneCovariance')
+        from onecov.cov_input import Input, FileInput
+        from onecov.cov_ell_space import CovELLSpace
+        from onecov.cov_polyspectra import PolySpectra
+        import os
+        import platform
+        if len(platform.mac_ver()[0]) > 0 and (platform.processor() == 'arm' or int(platform.mac_ver()[0][:(platform.mac_ver()[0]).find(".")]) > 13):
+            os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+        from onecov.cov_setup import Setup
+
+        inp = Input()
+        covterms, observables, output, cosmo, bias, iA, hod, survey_params, prec = inp.read_input(
+            ini_filename)
+        covterms['gauss'] = True  # in principle it could be False, but I get an error
+        covterms['ssc'] = True
+        covterms['nongauss'] = False
+        fileinp = FileInput(bias)
+        read_in_tables = fileinp.read_input(ini_filename)
+        setup = Setup(cosmo, bias, survey_params, prec, read_in_tables)
+        ellspace = CovELLSpace(covterms, observables, output, cosmo, bias,
+                               iA, hod, survey_params, prec, read_in_tables)
+        ssc = ellspace.covELL_ssc(bias, hod, prec, survey_params, observables['ELLspace'])
+
+        # all these results are *not* in h units
+        resp_dict = {
+            'dPmm_ddeltab': ellspace.aux_response_mm[:, :, 0] / h**3,
+            'dPgm_ddeltab': ellspace.aux_response_gm[:, :, 0] / h**3,
+            'dPgg_ddeltab': ellspace.aux_response_gg[:, :, 0] / h**3,
+            'k_1Mpc': ellspace.mass_func.k * h,
+            'z': ellspace.los_z,
+        }
+
+        return resp_dict

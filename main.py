@@ -28,24 +28,31 @@ from spaceborne import onecovariance_interface as oc_interface
 from spaceborne import responses
 from spaceborne import covariance as sb_cov
 
+warnings.filterwarnings(
+    "ignore",
+    message="FigureCanvasAgg is non-interactive, and thus cannot be shown",
+    category=UserWarning,
+    module="matplotlib"
+)
+
 pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 
 # ! Set up argument parsing
-# parser = argparse.ArgumentParser(description="Your script description here.")
-# parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
-# parser.add_argument('--show_plots', action='store_true', help='Show plots if specified',  required=False)
-# args = parser.parse_args()
-# with open(args.config, 'r') as f:
-#     cfg = yaml.safe_load(f)
-# if not args.show_plots:
-#     import matplotlib
-#     matplotlib.use('Agg')
-
-# ! LOAD CONFIG
-# ! uncomment this if executing from interactive window
-with open('config.yaml', 'r') as f:
+parser = argparse.ArgumentParser(description="Your script description here.")
+parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
+parser.add_argument('--show_plots', action='store_true', help='Show plots if specified',  required=False)
+args = parser.parse_args()
+with open(args.config, 'r') as f:
     cfg = yaml.safe_load(f)
+if not args.show_plots:
+    import matplotlib
+    matplotlib.use('Agg')
+
+# # ! LOAD CONFIG
+# # ! uncomment this if executing from interactive window
+# with open('config.yaml', 'r') as f:
+#     cfg = yaml.safe_load(f)
 
 # some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']
@@ -707,7 +714,8 @@ if compute_sb_ssc:
 
     else:
         raise ValueError(
-            'which_pk_responses must be either "halo_model" or "separate_universe"')
+            'which_pk_responses must be either "halo_model" or "separate_universe". '
+            f' Got {cfg["covariance"]["which_pk_responses"]}.')
 
     # ! 2. prepare integrands (d2CAB_dVddeltab) and volume element
     # ! compute the Pk responses(k, z) in k_limber and z_grid_ssc_integrands
@@ -874,10 +882,7 @@ with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
 
 if cfg['misc']['save_output_as_benchmark']:
 
-    if (
-        cfg['covariance']['SSC_code'] in ['PyCCL', 'OneCovariance'] or
-        cfg['covariance']['cNG_code'] in ['PyCCL', 'OneCovariance']
-    ):
+    if not compute_sb_ssc:
         sigma2_b = None
         dPmm_ddeltab = None
         dPgm_ddeltab = None

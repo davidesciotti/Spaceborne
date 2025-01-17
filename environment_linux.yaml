@@ -13,16 +13,15 @@ dependencies:
   - tqdm
   - pip
   - pyyaml
-  - astropy
   - joblib
   - numba
-  - camb
+  - camb>=1.5.0
   - gcc
   - healpy
   - pyqt
   - ipympl
   - cfitsio
-
+  
   # for CCL:
   - fftw
   - gsl
@@ -33,12 +32,17 @@ dependencies:
   - libgfortran-ng
   - libstdcxx-ng
   - fast-pt
-  - pyccl
-  # - cfitsio  # not necessary?
+  - pyccl>=3.1.0
+
+  # required by OneCovariance (optional, comment out if you 
+  # don't want to use it)
+  - gfortran
+  - pybind11
+
   - pip:
     - pymaster
     - cython
     - getdist
 
-# In case of issues with CCL, you can try
+# In case of issues with CCL, you can try running
 # $ sudo apt-get install gfortran cmake build-essential autoconf bison

@@ -15,6 +15,7 @@ conda activate spaceborne
 Replace `<platform>` with either `linux` or `macOS`, depending on your operating system.
 Some of the depenencies may be remove in case you do not plan to use some interfaces, such as 
 `OneCovariance` 
+
 ---
 
 ## 2. Install Spaceborne

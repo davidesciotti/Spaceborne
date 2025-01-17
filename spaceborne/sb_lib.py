@@ -71,6 +71,31 @@ mpl_other_dict = {
 }
 
 
+def nz_fits_to_txt(fits_filename):
+    """
+    Converts the official SGS-like fits file to the usual (z, nz) format.
+
+    Parameters
+    ----------
+    fits_filename : str
+        The full path and filename of the fits file to be converted.
+    """
+
+    import euclidlib as el
+
+    z, nz = el.photo.redshift_distributions(fits_filename)
+
+    nz_arr = np.zeros((len(z), len(nz) + 1))
+    nz_arr[:, 0] = z
+
+    plt.figure()
+    for bin in nz:
+        plt.plot(z, nz[bin])
+        nz_arr[:, bin] = nz[bin]
+
+    return nz_arr
+
+
 def compare_funcs(x, y_a, y_b, name_a='A', name_b='B', logscale_y=[False, False]):
 
     if x == None:

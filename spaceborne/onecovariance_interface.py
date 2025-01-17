@@ -199,6 +199,10 @@ class OneCovarianceInterface():
         cfg_onecov_ini['tabulated inputs files']['Cgg_file'] = f'{cl_gg_oc_filename}.ascii'
 
         cfg_onecov_ini['misc']['num_cores'] = str(self.cfg['misc']['num_threads'])
+        cfg_onecov_ini['trispec evaluation']['log10k_min'] = str(self.cfg['covariance']['log10_k_min'])
+        cfg_onecov_ini['trispec evaluation']['log10k_max'] = str(self.cfg['covariance']['log10_k_max'])
+        cfg_onecov_ini['powspec evaluation']['log10k_min'] = str(self.cfg['covariance']['log10_k_min'])
+        cfg_onecov_ini['powspec evaluation']['log10k_max'] = str(self.cfg['covariance']['log10_k_max'])
 
         # ! precision settings
         if self.oc_cfg['precision_settings'] == 'high_precision':

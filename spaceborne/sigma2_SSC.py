@@ -45,7 +45,7 @@ from spaceborne import mask_utils
 #     return sigma2
 
 
-def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigma2_b,
+def sigma2_z1z2_wrap(z_grid, k_grid_sigma2, cosmo_ccl, which_sigma2_b,
                      area_deg2_in, nside_mask, mask_path):
 
     fsky_in = cosmo_lib.deg2_to_fsky(area_deg2_in)
@@ -69,10 +69,10 @@ def sigma2_z1z2_wrap(z_grid_ssc_integrands, k_grid_sigma2, cosmo_ccl, which_sigm
         print(f'fsky from mask: {fsky_mask:.4f}')
         assert np.abs(fsky_mask / fsky_in) < 1.01, 'fsky_in is not the same as the fsky of the mask'
 
-    sigma2_b = np.zeros((len(z_grid_ssc_integrands), len(z_grid_ssc_integrands)))
-    for z2_idx, z2 in enumerate(tqdm(z_grid_ssc_integrands)):
+    sigma2_b = np.zeros((len(z_grid), len(z_grid)))
+    for z2_idx, z2 in enumerate(tqdm(z_grid)):
         sigma2_b[:, z2_idx] = sigma2_z2_func_vectorized(
-            z1_arr=z_grid_ssc_integrands,
+            z1_arr=z_grid,
             z2=z2,
             k_grid_sigma2=k_grid_sigma2,
             cosmo_ccl=cosmo_ccl,

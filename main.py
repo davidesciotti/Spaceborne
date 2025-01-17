@@ -67,7 +67,6 @@ triu_tril = cfg['covariance']['triu_tril']
 row_col_major = cfg['covariance']['row_col_major']
 n_probes = cfg['covariance']['n_probes']
 which_sigma2_b = cfg['covariance']['which_sigma2_b']
-z_steps_ssc_integrands = cfg['covariance']['z_steps_ssc_integrands']
 include_ia_in_bnt_kernel_for_zcuts = cfg['BNT']['include_ia_in_bnt_kernel_for_zcuts']
 compute_bnt_with_shifted_nz_for_zcuts = cfg['BNT']['compute_bnt_with_shifted_nz_for_zcuts']
 probe_ordering = cfg['covariance']['probe_ordering']
@@ -85,6 +84,7 @@ if not os.path.exists(f'{output_path}/cache'):
 use_h_units = False  # whether or not to normalize Megaparsecs by little h
 # number of ell bins over which to compute the Cls passed to OC for the Gaussian covariance computation
 nbl_3x2pt_oc = 500
+k_steps_sigma2 = 20_000
 
 # whether or not to symmetrize the covariance probe blocks when reshaping it from 4D to 6D.
 # Useful if the 6D cov elements need to be accessed directly, whereas if the cov is again reduced to 4D or 2D
@@ -145,28 +145,20 @@ else:
 if not cfg['ell_cuts']['apply_ell_cuts']:
     kmax_h_over_Mpc = cfg['ell_cuts']['kmax_h_over_Mpc_ref']
 
-# ! define grids for the SSC integrands
-z_grid_ssc_integrands = np.linspace(cfg['covariance']['z_min_ssc_integrands'],
-                                    cfg['covariance']['z_max_ssc_integrands'],
-                                    cfg['covariance']['z_steps_ssc_integrands'])
-k_grid_resp = np.geomspace(cfg['PyCCL']['k_grid_tkka_min'],
-                           cfg['PyCCL']['k_grid_tkka_max'],
-                           cfg['PyCCL']['k_grid_tkka_steps_SSC'])
-
 
 # ! sanity checks on the configs
 # TODO update this when cfg are done
 cfg_check_obj = config_checker.SpaceborneConfigChecker(cfg)
 cfg_check_obj.run_all_checks()
 
-if len(z_grid_ssc_integrands) < 250:
-    warnings.warn('z_grid_ssc_integrands is small, at the moment it used to compute various intermediate quantities')
-
 # ! instantiate CCL object
-ccl_obj = pyccl_interface.PycclClass(cfg['cosmology'], cfg['extra_parameters'],
-                                     cfg['intrinsic_alignment'], cfg['halo_model'],
+ccl_obj = pyccl_interface.PycclClass(cfg['cosmology'],
+                                     cfg['extra_parameters'],
+                                     cfg['intrinsic_alignment'],
+                                     cfg['halo_model'],
                                      cfg['PyCCL']['spline_params'],
                                      cfg['PyCCL']['gsl_params'])
+# set other useful attributes
 ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
 ccl_obj.zbins = zbins
 ccl_obj.which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
@@ -177,6 +169,38 @@ if cfg['C_ell']['cl_CCL_kwargs'] is not None:
 else:
     cl_ccl_kwargs = {}
 
+# ! define k and z grids used throughout the code (k is in 1/Mpc)
+# TODO zmin and zmax should be inferred from the nz tables!!
+# TODO not necessarily true for all the different zsteps
+z_grid = np.linspace(cfg['covariance']['z_min'],
+                     cfg['covariance']['z_max'],
+                     cfg['covariance']['z_steps'])
+z_grid_trisp = np.linspace(cfg['covariance']['z_min'],
+                     cfg['covariance']['z_max'],
+                     cfg['covariance']['z_steps_trisp'])
+k_grid = np.logspace(cfg['covariance']['log10_k_min'],
+                     cfg['covariance']['log10_k_max'],
+                     cfg['covariance']['k_steps'])
+# in this case we need finer k binning because of the bessel functions
+k_grid_sigma2_b = np.logspace(cfg['covariance']['log10_k_min'],
+                              cfg['covariance']['log10_k_max'],
+                              k_steps_sigma2)
+if len(z_grid) < 250:
+    warnings.warn('z_grid is small, at the moment it used to compute various intermediate quantities')
+
+# ! do the same for CCL - i.e., set the above in the ccl_obj with little variations (e.g. a instead of z)
+ccl_obj.z_grid_tkka_SSC = z_grid_trisp
+ccl_obj.z_grid_tkka_cNG = z_grid_trisp
+ccl_obj.a_grid_tkka_SSC = cosmo_lib.z_to_a(z_grid_trisp)[::-1]
+ccl_obj.a_grid_tkka_cNG = cosmo_lib.z_to_a(z_grid_trisp)[::-1]
+ccl_obj.logn_k_grid_tkka_SSC = np.log(k_grid)
+ccl_obj.logn_k_grid_tkka_cNG = np.log(k_grid)
+
+# check that the grid is in ascending order
+assert np.all(np.diff(ccl_obj.a_grid_tkka_SSC) > 0), 'a_grid_tkka_SSC is not in ascending order!'
+assert np.all(np.diff(ccl_obj.a_grid_tkka_cNG) > 0), 'a_grid_tkka_cNG is not in ascending order!'
+assert np.all(np.diff(z_grid) > 0), 'z grid is not in ascending order!'
+assert np.all(np.diff(z_grid_trisp) > 0), 'z grid is not in ascending order!'
 
 # build the ind array and store it into the covariance dictionary
 zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
@@ -263,7 +287,7 @@ pvt_cfg = {
     'EP_OR_ED': EP_OR_ED,
     'symmetrize_output_dict': symmetrize_output_dict,
     'use_h_units': use_h_units,
-    'z_grid_ssc_integrands': z_grid_ssc_integrands,
+    'z_grid': z_grid,
     'ells_sb': ell_dict['ell_3x2pt'],
 }
 
@@ -311,16 +335,16 @@ bnt_matrix = bnt.compute_bnt_matrix(
 ccl_obj.set_nz(nz_full_src=np.hstack((zgrid_nz_src[:, None], nz_src)),
                nz_full_lns=np.hstack((zgrid_nz_lns[:, None], nz_lns)))
 ccl_obj.check_nz_tuple(zbins)
-ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid_ssc_integrands, has_ia=cfg['C_ell']['has_IA'])
+ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid, has_ia=cfg['C_ell']['has_IA'])
 
 # ! set galaxy and magnification bias
 if cfg['C_ell']['which_gal_bias'] == 'from_input':
     gal_bias_tab_full = np.genfromtxt(cfg['C_ell']['gal_bias_table_filename'])
-    gal_bias_tab = sl.check_interpolate_input_tab(gal_bias_tab_full, z_grid_ssc_integrands, zbins)
-    ccl_obj.gal_bias_tuple = (z_grid_ssc_integrands, gal_bias_tab)
+    gal_bias_tab = sl.check_interpolate_input_tab(gal_bias_tab_full, z_grid, zbins)
+    ccl_obj.gal_bias_tuple = (z_grid, gal_bias_tab)
     ccl_obj.gal_bias_2d = gal_bias_tab
 elif cfg['C_ell']['which_gal_bias'] == 'FS2_polynomial_fit':
-    ccl_obj.set_gal_bias_tuple_spv3(z_grid_lns=z_grid_ssc_integrands,
+    ccl_obj.set_gal_bias_tuple_spv3(z_grid_lns=z_grid,
                                     magcut_lens=None,
                                     poly_fit_values=galaxy_bias_fit_fiducials)
 else:
@@ -330,10 +354,10 @@ if cfg['C_ell']['has_magnification_bias']:
 
     if cfg['C_ell']['which_mag_bias'] == 'from_input':
         mag_bias_tab_full = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
-        mag_bias_tab = sl.check_interpolate_input_tab(mag_bias_tab_full, z_grid_ssc_integrands, zbins)
-        ccl_obj.mag_bias_tuple = (z_grid_ssc_integrands, mag_bias_tab)
+        mag_bias_tab = sl.check_interpolate_input_tab(mag_bias_tab_full, z_grid, zbins)
+        ccl_obj.mag_bias_tuple = (z_grid, mag_bias_tab)
     elif cfg['C_ell']['which_mag_bias'] == 'FS2_polynomial_fit':
-        ccl_obj.set_mag_bias_tuple(z_grid_lns=z_grid_ssc_integrands,
+        ccl_obj.set_mag_bias_tuple(z_grid_lns=z_grid,
                                    has_magnification_bias=cfg['C_ell']['has_magnification_bias'],
                                    magcut_lens=None,
                                    poly_fit_values=magnification_bias_fit_fiducials)
@@ -346,7 +370,7 @@ else:
 
 # ! set radial kernel arrays and objects
 ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['PyCCL']['n_samples_wf'])
-ccl_obj.set_kernel_arr(z_grid_wf=z_grid_ssc_integrands,
+ccl_obj.set_kernel_arr(z_grid_wf=z_grid,
                        has_magnification_bias=cfg['C_ell']['has_magnification_bias'])
 
 gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias!)'
@@ -356,15 +380,15 @@ ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 wf_gamma_ccl_bnt = (bnt_matrix @ ccl_obj.wf_gamma_arr.T).T
 
 # 4. compute the z means
-z_means_ll = wf_cl_lib.get_z_means(z_grid_ssc_integrands, ccl_obj.wf_gamma_arr)
-z_means_gg = wf_cl_lib.get_z_means(z_grid_ssc_integrands, ccl_obj.wf_galaxy_arr)
-z_means_ll_bnt = wf_cl_lib.get_z_means(z_grid_ssc_integrands, wf_gamma_ccl_bnt)
+z_means_ll = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_gamma_arr)
+z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
+z_means_ll_bnt = wf_cl_lib.get_z_means(z_grid, wf_gamma_ccl_bnt)
 
 plt.figure()
 for zi in range(zbins):
-    plt.plot(z_grid_ssc_integrands, ccl_obj.wf_gamma_arr[:, zi], ls='-', c=clr[zi],
+    plt.plot(z_grid, ccl_obj.wf_gamma_arr[:, zi], ls='-', c=clr[zi],
              alpha=0.6, label='wf_gamma_ccl' if zi == 0 else None)
-    plt.plot(z_grid_ssc_integrands, wf_gamma_ccl_bnt[:, zi], ls='--', c=clr[zi],
+    plt.plot(z_grid, wf_gamma_ccl_bnt[:, zi], ls='--', c=clr[zi],
              alpha=0.6, label='wf_gamma_ccl_bnt' if zi == 0 else None)
     plt.axvline(z_means_ll_bnt[zi], ls=':', c=clr[zi])
 plt.legend()
@@ -409,7 +433,7 @@ wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr
 ccl_obj.set_nz(nz_full_src=np.hstack((zgrid_nz_src[:, None], nz_src)),
                nz_full_lns=np.hstack((zgrid_nz_lns[:, None], nz_lns)))
 ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['PyCCL']['n_samples_wf'])
-ccl_obj.set_kernel_arr(z_grid_wf=z_grid_ssc_integrands,
+ccl_obj.set_kernel_arr(z_grid_wf=z_grid,
                        has_magnification_bias=cfg['C_ell']['has_magnification_bias'])
 
 gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias)'
@@ -424,7 +448,7 @@ wf_ccl_list = [ccl_obj.wf_delta_arr, ccl_obj.wf_gamma_arr, ccl_obj.wf_ia_arr, cc
 plt.figure()
 for wf_idx in range(len(wf_ccl_list)):
     for zi in range(zbins):
-        plt.plot(z_grid_ssc_integrands, wf_ccl_list[wf_idx][:, zi], c=clr[zi], alpha=0.6)
+        plt.plot(z_grid, wf_ccl_list[wf_idx][:, zi], c=clr[zi], alpha=0.6)
     plt.xlabel('$z$')
     plt.ylabel(r'$W_i^X(z)$')
     plt.suptitle(f'{wf_names_list[wf_idx]}')
@@ -595,7 +619,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 
     if cfg["covariance"]["which_b1g_in_resp"] == 'from_input':
         gal_bias_ascii_filename = f'{oc_path}/gal_bias_table.ascii'
-        ccl_obj.save_gal_bias_table_ascii(z_grid_ssc_integrands, gal_bias_ascii_filename)
+        ccl_obj.save_gal_bias_table_ascii(z_grid, gal_bias_ascii_filename)
         ascii_filenames_dict['gal_bias_ascii_filename'] = gal_bias_ascii_filename
     elif cfg["covariance"]["which_b1g_in_resp"] == 'from_HOD':
         warnings.warn('OneCovariance will use the HOD-derived galaxy bias for the Cls and responses')
@@ -647,7 +671,7 @@ else:
 # ! ========================================== Spaceborne ===================================================
 
 # precompute pk_mm, pk_gm and pk_mm, if you want to rescale the responses
-k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid_resp, z_grid_ssc_integrands, use_h_units,
+k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid, z_grid, use_h_units,
                                           ccl_obj.cosmo_ccl, pk_kind='nonlinear')
 
 # compute P_gm, P_gg
@@ -662,18 +686,18 @@ pk_gm_2d = pk_mm_2d * gal_bias
 pk_gg_2d = pk_mm_2d * gal_bias ** 2
 
 if compute_sb_ssc:
-    
+
     print('Start SSC computation with Spaceborne...')
 
     if cfg['covariance']['which_pk_responses'] == 'halo_model':
 
         which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
         include_terasawa_terms = cfg['covariance']['include_terasawa_terms']
-        resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
-                                                 z_grid=z_grid_ssc_integrands,
+        resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid,
+                                                 z_grid=z_grid_trisp,
                                                  ccl_obj=ccl_obj)
         resp_obj.use_h_units = use_h_units
-        resp_obj.set_hm_resp(k_grid_resp, z_grid_ssc_integrands,
+        resp_obj.set_hm_resp(k_grid, z_grid,
                              which_b1g_in_resp, gal_bias,
                              include_terasawa_terms=include_terasawa_terms)
         dPmm_ddeltab = resp_obj.dPmm_ddeltab_hm
@@ -686,8 +710,8 @@ if compute_sb_ssc:
     # ! from SpaceborneResponses class
     elif cfg['covariance']['which_pk_responses'] == 'separate_universe':
 
-        resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid_resp,
-                                                 z_grid=z_grid_ssc_integrands,
+        resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid,
+                                                 z_grid=z_grid_trisp,
                                                  ccl_obj=ccl_obj)
         resp_obj.use_h_units = use_h_units
         resp_obj.set_g1mm_su_resp()
@@ -710,39 +734,39 @@ if compute_sb_ssc:
             'which_pk_responses must be either "halo_model" or "separate_universe"')
 
     # ! 2. prepare integrands (d2CAB_dVddeltab) and volume element
-    # ! compute the Pk responses(k, z) in k_limber and z_grid_ssc_integrands
-    dPmm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_ssc_integrands), dPmm_ddeltab, method='linear')
-    dPgm_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_ssc_integrands), dPgm_ddeltab, method='linear')
-    dPgg_ddeltab_interp = RegularGridInterpolator((k_grid_resp, z_grid_ssc_integrands), dPgg_ddeltab, method='linear')
+    # ! compute the Pk responses(k, z) in k_limber and z_grid
+    dPmm_ddeltab_interp = RegularGridInterpolator((k_grid, z_grid), dPmm_ddeltab, method='linear')
+    dPgm_ddeltab_interp = RegularGridInterpolator((k_grid, z_grid), dPgm_ddeltab, method='linear')
+    dPgg_ddeltab_interp = RegularGridInterpolator((k_grid, z_grid), dPgg_ddeltab, method='linear')
 
-    # ! test k_max_limber vs k_max_dPk and adjust z_min_ssc_integrands accordingly
-    k_max_resp = np.max(k_grid_resp)
+    # ! test k_max_limber vs k_max_dPk and adjust z_min accordingly
+    k_max_resp = np.max(k_grid)
     ell_grid = ell_dict['ell_3x2pt']
-    kmax_limber = cosmo_lib.get_kmax_limber(ell_grid, z_grid_ssc_integrands, use_h_units, ccl_obj.cosmo_ccl)
+    kmax_limber = cosmo_lib.get_kmax_limber(ell_grid, z_grid, use_h_units, ccl_obj.cosmo_ccl)
 
-    z_grid_ssc_integrands_test = deepcopy(z_grid_ssc_integrands)
+    z_grid_test = deepcopy(z_grid)
     while kmax_limber > k_max_resp:
         print(f'kmax_limber > k_max_dPk ({kmax_limber:.2f} {k_txt_label} > {k_max_resp:.2f} {k_txt_label}): '
               f'Increasing z_min until kmax_limber < k_max_dPk. Alternatively, increase k_max_dPk or decrease ell_max.')
-        z_grid_ssc_integrands_test = z_grid_ssc_integrands_test[1:]
+        z_grid_test = z_grid_test[1:]
         kmax_limber = cosmo_lib.get_kmax_limber(
-            ell_grid, z_grid_ssc_integrands_test, use_h_units, ccl_obj.cosmo_ccl)
-        print(f'Retrying with z_min = {z_grid_ssc_integrands_test[0]:.3f}')
+            ell_grid, z_grid_test, use_h_units, ccl_obj.cosmo_ccl)
+        print(f'Retrying with z_min = {z_grid_test[0]:.3f}')
 
     k_limber = partial(cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
 
     dPmm_ddeltab_klimb = np.array(
-        [dPmm_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
+        [dPmm_ddeltab_interp((k_limber(ell_val, z_grid), z_grid)) for ell_val in
             ell_dict['ell_WL']])
     dPgm_ddeltab_klimb = np.array(
-        [dPgm_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
+        [dPgm_ddeltab_interp((k_limber(ell_val, z_grid), z_grid)) for ell_val in
             ell_dict['ell_XC']])
     dPgg_ddeltab_klimb = np.array(
-        [dPgg_ddeltab_interp((k_limber(ell_val, z_grid_ssc_integrands), z_grid_ssc_integrands)) for ell_val in
+        [dPgg_ddeltab_interp((k_limber(ell_val, z_grid), z_grid)) for ell_val in
             ell_dict['ell_GC']])
 
     # ! integral prefactor
-    cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(z_grid_ssc_integrands,
+    cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(z_grid,
                                                             cl_integral_convention_ssc,
                                                             use_h_units=use_h_units,
                                                             cosmo_ccl=ccl_obj.cosmo_ccl)
@@ -772,7 +796,7 @@ if compute_sb_ssc:
 
         if cfg['covariance']['use_KE_approximation']:
             # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
-            ccl_obj.set_sigma2_b(z_grid=z_grid_ssc_integrands,
+            ccl_obj.set_sigma2_b(z_grid=z_grid,
                                  fsky=cfg['mask']['fsky'],
                                  which_sigma2_b=which_sigma2_b,
                                  nside_mask=cfg['mask']['nside_mask'],
@@ -781,15 +805,12 @@ if compute_sb_ssc:
             # quick sanity check on the a/z grid
             sigma2_b = sigma2_b[::-1]
             _z = cosmo_lib.a_to_z(_a)[::-1]
-            np.testing.assert_allclose(z_grid_ssc_integrands, _z, atol=0, rtol=1e-8)
+            np.testing.assert_allclose(z_grid, _z, atol=0, rtol=1e-8)
 
         else:
-            k_grid_sigma2 = np.logspace(cfg['covariance']['log10_k_min_sigma2'],
-                                        cfg['covariance']['log10_k_max_sigma2'],
-                                        cfg['covariance']['k_steps_sigma2'])
             sigma2_b = sigma2_SSC.sigma2_z1z2_wrap(
-                z_grid_ssc_integrands=z_grid_ssc_integrands,
-                k_grid_sigma2=k_grid_sigma2,
+                z_grid=z_grid,
+                k_grid_sigma2=k_grid_sigma2_b,
                 cosmo_ccl=ccl_obj.cosmo_ccl,
                 which_sigma2_b=which_sigma2_b,
                 area_deg2_in=cfg['mask']['survey_area_deg2'],
@@ -801,7 +822,7 @@ if compute_sb_ssc:
 
     if not cfg['covariance']['load_cached_sigma2_b']:
         np.save(f'{output_path}/cache/sigma2_b.npy', sigma2_b)
-        np.save(f'{output_path}/cache/zgrid_sigma2_b.npy', z_grid_ssc_integrands)
+        np.save(f'{output_path}/cache/zgrid_sigma2_b.npy', z_grid)
 
     # ! 4. Perform the integration calling the Julia module
     print('Computing the SSC integral...')
@@ -811,7 +832,7 @@ if compute_sb_ssc:
                                                        d2CGG_dVddeltab=d2CGG_dVddeltab,
                                                        cl_integral_prefactor=cl_integral_prefactor,
                                                        sigma2=sigma2_b,
-                                                       z_grid=z_grid_ssc_integrands,
+                                                       z_grid=z_grid,
                                                        integration_type=ssc_integration_type,
                                                        probe_ordering=probe_ordering,
                                                        num_threads=cfg['misc']['num_threads'])
@@ -903,8 +924,8 @@ if cfg['misc']['save_output_as_benchmark']:
 
     np.savez_compressed(bench_filename,
                         backup_cfg=cfg,
-                        z_grid_ssc_integrands=z_grid_ssc_integrands,
-                        k_grid_resp=k_grid_resp,
+                        z_grid_ssc_integrands=z_grid,
+                        k_grid_resp=k_grid,
                         wf_delta=ccl_obj.wf_delta_arr,
                         wf_gamma=ccl_obj.wf_gamma_arr,
                         wf_ia=ccl_obj.wf_ia_arr,

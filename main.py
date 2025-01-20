@@ -678,23 +678,23 @@ else:
 
 # ! ========================================== Spaceborne ===================================================
 
-# # precompute pk_mm, pk_gm and pk_mm, if you want to rescale the responses
-# k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid, z_grid_trisp, use_h_units,
-#                                           ccl_obj.cosmo_ccl, pk_kind='nonlinear')
-# # compute P_gm, P_gg
-gal_bias = ccl_obj.gal_bias_2d[:, 0]
-
-# # check that it's the same in each bin
-# for zi in range(zbins):
-#     np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
-# # TODO case with different bias in each bin!
-
-# pk_gm_2d = pk_mm_2d * gal_bias
-# pk_gg_2d = pk_mm_2d * gal_bias ** 2
 
 if compute_sb_ssc:
 
     print('Start SSC computation with Spaceborne...')
+
+    # precompute pk_mm, pk_gm and pk_mm, in case you want to rescale the responses to get R_mm, R_gm, R_gg
+    k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid, z_grid_trisp, use_h_units,
+                                              ccl_obj.cosmo_ccl, pk_kind='nonlinear')
+    
+    # Needed to compute P_gm, P_gg, and for the responses from an input bias
+    gal_bias = ccl_obj.gal_bias_2d[:, 0]
+    # # check that it's the same in each bin
+    for zi in range(zbins):
+        np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
+    
+    pk_gm_2d = pk_mm_2d * gal_bias
+    pk_gg_2d = pk_mm_2d * gal_bias ** 2
 
     # ! 1. Get halo model responses from CCL
     if cfg['covariance']['which_pk_responses'] == 'halo_model_CCL':
@@ -713,37 +713,26 @@ if compute_sb_ssc:
         assert np.allclose(z_grid_resp_hm, z_grid_trisp, atol=0, rtol=1e-2), \
             'CCL and SB z_grids for trispectrum should match'
 
-        dPmm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
-        dPgm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
-        dPgg_ddeltab_hm = ccl_obj.responses_dict['G', 'G', 'G', 'G']['dpk12']
+        dPmm_ddeltab = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
+        dPgm_ddeltab = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
+        dPgg_ddeltab = ccl_obj.responses_dict['G', 'G', 'G', 'G']['dpk12']
 
         # a is flipped w.r.t. z
-        dPmm_ddeltab_hm = np.flip(dPmm_ddeltab_hm, axis=1)
-        dPgm_ddeltab_hm = np.flip(dPgm_ddeltab_hm, axis=1)
-        dPgg_ddeltab_hm = np.flip(dPgg_ddeltab_hm, axis=1)
+        dPmm_ddeltab = np.flip(dPmm_ddeltab, axis=1)
+        dPgm_ddeltab = np.flip(dPgm_ddeltab, axis=1)
+        dPgg_ddeltab = np.flip(dPgg_ddeltab, axis=1)
+        
+        r_mm = dPmm_ddeltab / pk_mm_2d
+        r_gm = dPgm_ddeltab / pk_gm_2d
+        r_gg = dPgg_ddeltab / pk_gg_2d
 
         # quick sanity check
         assert np.allclose(ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34'],
                            ccl_obj.responses_dict['G', 'L', 'G', 'G']['dpk12'], atol=0, rtol=1e-5)
         assert np.allclose(ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk34'],
                            ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12'], atol=0, rtol=1e-5)
-        assert dPmm_ddeltab_hm.shape == dPgm_ddeltab_hm.shape == dPgg_ddeltab_hm.shape, 'dPab_ddeltab_hm shape mismatch'
+        assert dPmm_ddeltab.shape == dPgm_ddeltab.shape == dPgg_ddeltab.shape, 'dPab_ddeltab_hm shape mismatch'
 
-        # dPmm_ddeltab_hm_func = CubicSpline(x=z_grid_resp_hm, y=dPmm_ddeltab_hm, axis=1)
-        # dPgm_ddeltab_hm_func = CubicSpline(x=z_grid_resp_hm, y=dPgm_ddeltab_hm, axis=1)
-        # dPgg_ddeltab_hm_func = CubicSpline(x=z_grid_resp_hm, y=dPgg_ddeltab_hm, axis=1)
-
-        # # I do not assign diretly to dPxx_ddeltab to be able to plot later if necessary
-        # dPmm_ddeltab_hm = dPmm_ddeltab_hm_func(z_grid)
-        # dPgm_ddeltab_hm = dPgm_ddeltab_hm_func(z_grid)
-        # dPgg_ddeltab_hm = dPgg_ddeltab_hm_func(z_grid)
-        # r_mm_hm = dPmm_ddeltab_hm / pk_mm_2d
-        # r_gm_hm = dPgm_ddeltab_hm / pk_gm_2d
-        # r_gg_hm = dPgg_ddeltab_hm / pk_gg_2d
-
-        dPmm_ddeltab = dPmm_ddeltab_hm
-        dPgm_ddeltab = dPgm_ddeltab_hm
-        dPgg_ddeltab = dPgg_ddeltab_hm
 
     elif cfg['covariance']['which_pk_responses'] == 'halo_model_SB':
 
@@ -759,9 +748,9 @@ if compute_sb_ssc:
         dPmm_ddeltab = resp_obj.dPmm_ddeltab_hm
         dPgm_ddeltab = resp_obj.dPgm_ddeltab_hm
         dPgg_ddeltab = resp_obj.dPgg_ddeltab_hm
-        r_mm_hm = resp_obj.r1_mm_hm
-        r_gm_hm = resp_obj.r1_gm_hm
-        r_gg_hm = resp_obj.r1_gg_hm
+        r_mm = resp_obj.r1_mm_hm
+        r_gm = resp_obj.r1_gm_hm
+        r_gg = resp_obj.r1_gg_hm
 
     # ! from SpaceborneResponses class
     elif cfg['covariance']['which_pk_responses'] == 'separate_universe':
@@ -771,19 +760,18 @@ if compute_sb_ssc:
                                                  ccl_obj=ccl_obj)
         resp_obj.use_h_units = use_h_units
         resp_obj.set_g1mm_su_resp()
-        r_mm_sbclass = resp_obj.compute_r1_mm()
+        r_mm = resp_obj.compute_r1_mm()
         resp_obj.set_su_resp(b2g_from_halomodel=True,
                              include_b2g=cfg['covariance']['include_b2g'])
-
-        r_gm_sbclass = resp_obj.r1_gm
-        r_gg_sbclass = resp_obj.r1_gg
+        r_gm = resp_obj.r1_gm
+        r_gg = resp_obj.r1_gg
+        b1g_hm = resp_obj.b1g_hm
+        b2g_hm = resp_obj.b2g_hm
 
         dPmm_ddeltab = resp_obj.dPmm_ddeltab
         dPgm_ddeltab = resp_obj.dPgm_ddeltab
         dPgg_ddeltab = resp_obj.dPgg_ddeltab
 
-        b1g_hm = resp_obj.b1g_hm
-        b2g_hm = resp_obj.b2g_hm
 
     else:
         raise ValueError(

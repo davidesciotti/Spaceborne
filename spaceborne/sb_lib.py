@@ -104,11 +104,11 @@ def compare_funcs(x, y_a, y_b, name_a='A', name_b='B', logscale_y=[False, False]
     fig, ax = plt.subplots(2, 1, sharex=True, height_ratios=[2, 1], )
     fig.subplots_adjust(hspace=0)
 
-    ax[0].plot(x, y_a, label=name_a)
-    ax[0].plot(x, y_b, label=name_b, ls='--')
+    ax[0].plot(x, y_a, label=name_a, marker='.')
+    ax[0].plot(x, y_b, label=name_b, ls='--', marker='.')
     ax[0].legend()
 
-    ax[1].plot(x, percent_diff(y_a, y_b))
+    ax[1].plot(x, percent_diff(y_a, y_b), marker='.')
     ax[1].set_ylabel('A/B [%]')
 
     for i in range(2):
@@ -1227,9 +1227,10 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
 
         plt.figure()
         # plt.axvspan(xmin=-10, xmax=10, color='gray', alpha=0.3, label='10%')
-        plt.hist(diff_AB.flatten(), bins=30, log=True)
+        plt.hist(diff_AB.flatten(), bins=30, log=True, density=True)
         plt.xlabel('% difference')
-        plt.ylabel('counts')
+        # plt.ylabel('counts')
+        plt.ylabel('frequency')
 
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):

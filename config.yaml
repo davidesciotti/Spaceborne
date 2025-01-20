@@ -250,8 +250,8 @@ misc:
     test_symmetry: True # test if covariance matrix is symmetric (cov = cov.T)
 
     output_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/output
-    save_output_as_benchmark: False # for testing purposes
-    bench_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/output_CCL_cNG # for testing purposes
+    save_output_as_benchmark: True # for testing purposes
+    bench_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/output_SB_KE_respSBHOD # for testing purposes
     path_to_jl_integrator: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/spaceborne/julia_integrator.jl
 
 CCL_precision:

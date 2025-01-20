@@ -5,6 +5,8 @@ import numpy as np
 import os
 import yaml
 
+from spaceborne import sb_lib as sl
+
 
 def test_main_script(test_cfg_path):
     # Run the main script with the test config
@@ -60,6 +62,13 @@ def test_main_script(test_cfg_path):
                     print(f"{key} matches the benchmark ✅")
                 except AssertionError as err:
                     print(err)
+                    
+    #         if key == 'cov_3x2pt_ssc_2D':
+    #             sl.compare_arrays(bench_data[key], test_data[key], plot_diff_hist=True, plot_diff_threshold=5)
+    #             sl.compare_funcs(None, bench_data[key].flatten(), test_data[key].flatten(), logscale_y=[False, False])
+                
+    # assert False
+                
 
 
 
@@ -70,7 +79,7 @@ bench_names = glob.glob(f'{bench_path}/*.npz')
 bench_names = [os.path.basename(file) for file in bench_names]
 bench_names = [bench_name.replace('.npz', '') for bench_name in bench_names]
 # ... or run specific tests
-bench_names = ['output_SB_KE_respCCLHOD_newgrids', ]
+bench_names = ['output_SB_KE_respCCLHOD_newgrids_100steps', ]
 
 main_script_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/main.py'
 temp_output_filename = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/tmp/test_file'

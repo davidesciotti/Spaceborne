@@ -41,19 +41,11 @@ def test_main_script(test_cfg_path):
                 isinstance(bench_data[key], np.ndarray) and
                 bench_data[key].dtype == object and
                 bench_data[key].item() is None
-                isinstance(bench_data[key], np.ndarray) and
-                bench_data[key].dtype == object and
-                bench_data[key].item() is None
             ) and (
                 isinstance(test_data[key], np.ndarray) and
                 test_data[key].dtype == object and
                 test_data[key].item() is None
-                isinstance(test_data[key], np.ndarray) and
-                test_data[key].dtype == object and
-                test_data[key].item() is None
             ):
-                continue
-
                 continue
 
             try:

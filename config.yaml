@@ -207,7 +207,7 @@ covariance:
     z_min: 0.02 # SU responses' kmax allow for z_min = 0.016, at most.
     z_max: 3.
     z_steps: 300 # number of z steps used for the NG covariance projection. Should be quite high, of order 3000
-    z_steps_trisp: 300  # number of z steps used to compute the trispectrum - around 100 should be enough
+    z_steps_trisp: 100  # number of z steps used to compute the trispectrum - around 100 should be enough
 
     use_KE_approximation: True
 
@@ -251,7 +251,7 @@ misc:
 
     output_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/output
     save_output_as_benchmark: True # for testing purposes
-    bench_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/output_SB_KE_respCCLHOD_newgrids # for testing purposes
+    bench_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/output_SB_KE_respCCLHOD_newgrids_100steps # for testing purposes
     path_to_jl_integrator: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/spaceborne/julia_integrator.jl
 
 CCL_precision:

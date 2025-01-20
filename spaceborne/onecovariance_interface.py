@@ -203,28 +203,39 @@ class OneCovarianceInterface():
         cfg_onecov_ini['trispec evaluation']['log10k_max'] = str(self.cfg['covariance']['log10_k_max'])
         cfg_onecov_ini['powspec evaluation']['log10k_min'] = str(self.cfg['covariance']['log10_k_min'])
         cfg_onecov_ini['powspec evaluation']['log10k_max'] = str(self.cfg['covariance']['log10_k_max'])
+        cfg_onecov_ini['trispec evaluation']['log10k_bins'] = str(self.cfg['covariance']['k_steps'])
+        
+        np.testing.assert_allclose(np.diff(self.z_grid_trisp_sb)[0], np.diff(self.z_grid_trisp_sb), 
+                                   atol=0, rtol=1e-7, err_msg='The redshift grid is not uniform.')
+        delta_z = np.diff(self.z_grid_trisp_sb)[0]
+        cfg_onecov_ini['covELLspace settings']['delta_z'] = str(delta_z)
+        cfg_onecov_ini['covELLspace settings']['tri_delta_z'] = str(delta_z)
 
         # ! precision settings
         if self.oc_cfg['precision_settings'] == 'high_precision':
-            delta_z = 0.04
-            tri_delta_z = 0.25
-            integration_steps = 1000
+            
+            # TODO integration_steps is similar to len(z_grid), but OC works in log space 
+            # TODO + it would signficantly slow down the code if using SB values (e.g. 3000)
+            # TODO so I leave it like this for the
+            integration_steps = 1000  
             m_bins = 1500  # 900 or 1500
-            log10k_bins = 200  # 150 or 200
+            
+            # 20-01-2025 I set these dinamically above
+            # log10k_bins = 200  # 150 or 200
+            # tri_delta_z = 0.25
+            # delta_z = 0.04
+        
         elif self.oc_cfg['precision_settings'] == 'default':  # these are the default values, used by Robert as well
-            delta_z = 0.08
-            tri_delta_z = 0.5
+            # delta_z = 0.08
+            # tri_delta_z = 0.5
             integration_steps = 500
             m_bins = 900
-            log10k_bins = 100
+            # log10k_bins = 100
         else:
             raise ValueError(f"Unknown precision settings: {self.oc_cfg['precision_settings']}")
 
-        cfg_onecov_ini['covELLspace settings']['delta_z'] = str(delta_z)
-        cfg_onecov_ini['covELLspace settings']['tri_delta_z'] = str(tri_delta_z)
-        cfg_onecov_ini['covELLspace settings']['integration_steps'] = str(integration_steps)
         cfg_onecov_ini['halomodel evaluation']['m_bins'] = str(m_bins)
-        cfg_onecov_ini['trispec evaluation']['log10k_bins'] = str(log10k_bins)
+        cfg_onecov_ini['covELLspace settings']['integration_steps'] = str(integration_steps)
 
         # print the updated ini
         if print_ini:

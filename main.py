@@ -30,9 +30,8 @@ from spaceborne import covariance as sb_cov
 
 warnings.filterwarnings(
     "ignore",
-    message="FigureCanvasAgg is non-interactive, and thus cannot be shown",
-    category=UserWarning,
-    module="matplotlib"
+    message=".*FigureCanvasAgg is non-interactive, and thus cannot be shown.*",
+    category=UserWarning
 )
 
 pp = pprint.PrettyPrinter(indent=4)
@@ -672,7 +671,54 @@ if compute_sb_ssc:
     
     print('Start SSC computation with Spaceborne...')
 
-    if cfg['covariance']['which_pk_responses'] == 'halo_model':
+ # ! 1. Get halo model responses from CCL
+    if cfg['covariance']['which_pk_responses'] == 'halo_model_CCL':
+
+        ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
+                                       pyccl_cfg=cfg['PyCCL'])
+
+        # k and z grids (responses will be interpolated below)
+        k_grid_resp_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
+        a_grid_resp_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
+        # translate a to z and cut the arrays to the maximum redshift of the SU responses (much smaller range!)
+        z_grid_resp_hm = cosmo_lib.a_to_z(a_grid_resp_hm)[::-1]
+
+        assert np.allclose(k_grid_resp_hm, k_grid_resp, atol=0, rtol=1e-2), \
+            'CCL and SB k_grids for responses should match'
+
+        dPmm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
+        dPgm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
+        dPgg_ddeltab_hm = ccl_obj.responses_dict['G', 'G', 'G', 'G']['dpk12']
+
+        # a is flipped w.r.t. z
+        dPmm_ddeltab_hm = np.flip(dPmm_ddeltab_hm, axis=1)
+        dPgm_ddeltab_hm = np.flip(dPgm_ddeltab_hm, axis=1)
+        dPgg_ddeltab_hm = np.flip(dPgg_ddeltab_hm, axis=1)
+
+        # quick sanity check
+        assert np.allclose(ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34'],
+                           ccl_obj.responses_dict['G', 'L', 'G', 'G']['dpk12'], atol=0, rtol=1e-5)
+        assert np.allclose(ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk34'],
+                           ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12'], atol=0, rtol=1e-5)
+        assert dPmm_ddeltab_hm.shape == dPgm_ddeltab_hm.shape == dPgg_ddeltab_hm.shape, 'dPab_ddeltab_hm shape mismatch'
+
+        dPmm_ddeltab_hm_func = CubicSpline(x=z_grid_resp_hm, y=dPmm_ddeltab_hm, axis=1)
+        dPgm_ddeltab_hm_func = CubicSpline(x=z_grid_resp_hm, y=dPgm_ddeltab_hm, axis=1)
+        dPgg_ddeltab_hm_func = CubicSpline(x=z_grid_resp_hm, y=dPgg_ddeltab_hm, axis=1)
+
+        # I do not assign diretly to dPxx_ddeltab to be able to plot later if necessary
+        dPmm_ddeltab_hm = dPmm_ddeltab_hm_func(z_grid_ssc_integrands)
+        dPgm_ddeltab_hm = dPgm_ddeltab_hm_func(z_grid_ssc_integrands)
+        dPgg_ddeltab_hm = dPgg_ddeltab_hm_func(z_grid_ssc_integrands)
+        r_mm_hm = dPmm_ddeltab_hm / pk_mm_2d
+        r_gm_hm = dPgm_ddeltab_hm / pk_gm_2d
+        r_gg_hm = dPgg_ddeltab_hm / pk_gg_2d
+
+        dPmm_ddeltab = dPmm_ddeltab_hm
+        dPgm_ddeltab = dPgm_ddeltab_hm
+        dPgg_ddeltab = dPgg_ddeltab_hm
+
+    elif cfg['covariance']['which_pk_responses'] == 'halo_model_SB':
 
         which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
         include_terasawa_terms = cfg['covariance']['include_terasawa_terms']

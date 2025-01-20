@@ -38,20 +38,20 @@ pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 
 # ! Set up argument parsing
-# parser = argparse.ArgumentParser(description="Your script description here.")
-# parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
-# parser.add_argument('--show_plots', action='store_true', help='Show plots if specified',  required=False)
-# args = parser.parse_args()
-# with open(args.config, 'r') as f:
-#     cfg = yaml.safe_load(f)
-# if not args.show_plots:
-#     import matplotlib
-#     matplotlib.use('Agg')
+parser = argparse.ArgumentParser(description="Your script description here.")
+parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
+parser.add_argument('--show_plots', action='store_true', help='Show plots if specified',  required=False)
+args = parser.parse_args()
+with open(args.config, 'r') as f:
+    cfg = yaml.safe_load(f)
+if not args.show_plots:
+    import matplotlib
+    matplotlib.use('Agg')
 
 # ! LOAD CONFIG
 # ! uncomment this if executing from interactive window
-with open('config.yaml', 'r') as f:
-    cfg = yaml.safe_load(f)
+# with open('config.yaml', 'r') as f:
+#     cfg = yaml.safe_load(f)
 
 # some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']
@@ -676,20 +676,19 @@ else:
 
 # ! ========================================== Spaceborne ===================================================
 
-# precompute pk_mm, pk_gm and pk_mm, if you want to rescale the responses
-k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid, z_grid, use_h_units,
-                                          ccl_obj.cosmo_ccl, pk_kind='nonlinear')
-
-# compute P_gm, P_gg
+# # precompute pk_mm, pk_gm and pk_mm, if you want to rescale the responses
+# k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid, z_grid_trisp, use_h_units,
+#                                           ccl_obj.cosmo_ccl, pk_kind='nonlinear')
+# # compute P_gm, P_gg
 gal_bias = ccl_obj.gal_bias_2d[:, 0]
 
-# check that it's the same in each bin
-for zi in range(zbins):
-    np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
-# TODO case with different bias in each bin!
+# # check that it's the same in each bin
+# for zi in range(zbins):
+#     np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
+# # TODO case with different bias in each bin!
 
-pk_gm_2d = pk_mm_2d * gal_bias
-pk_gg_2d = pk_mm_2d * gal_bias ** 2
+# pk_gm_2d = pk_mm_2d * gal_bias
+# pk_gg_2d = pk_mm_2d * gal_bias ** 2
 
 if compute_sb_ssc:
 
@@ -708,7 +707,9 @@ if compute_sb_ssc:
         z_grid_resp_hm = cosmo_lib.a_to_z(a_grid_resp_hm)[::-1]
 
         assert np.allclose(k_grid_resp_hm, k_grid, atol=0, rtol=1e-2), \
-            'CCL and SB k_grids for responses should match'
+            'CCL and SB k_grids for trispectrum should match'
+        assert np.allclose(z_grid_resp_hm, z_grid_trisp, atol=0, rtol=1e-2), \
+            'CCL and SB z_grids for trispectrum should match'
 
         dPmm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
         dPgm_ddeltab_hm = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
@@ -726,17 +727,17 @@ if compute_sb_ssc:
                            ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12'], atol=0, rtol=1e-5)
         assert dPmm_ddeltab_hm.shape == dPgm_ddeltab_hm.shape == dPgg_ddeltab_hm.shape, 'dPab_ddeltab_hm shape mismatch'
 
-        dPmm_ddeltab_hm_func = CubicSpline(x=z_grid_resp_hm, y=dPmm_ddeltab_hm, axis=1)
-        dPgm_ddeltab_hm_func = CubicSpline(x=z_grid_resp_hm, y=dPgm_ddeltab_hm, axis=1)
-        dPgg_ddeltab_hm_func = CubicSpline(x=z_grid_resp_hm, y=dPgg_ddeltab_hm, axis=1)
+        # dPmm_ddeltab_hm_func = CubicSpline(x=z_grid_resp_hm, y=dPmm_ddeltab_hm, axis=1)
+        # dPgm_ddeltab_hm_func = CubicSpline(x=z_grid_resp_hm, y=dPgm_ddeltab_hm, axis=1)
+        # dPgg_ddeltab_hm_func = CubicSpline(x=z_grid_resp_hm, y=dPgg_ddeltab_hm, axis=1)
 
-        # I do not assign diretly to dPxx_ddeltab to be able to plot later if necessary
-        dPmm_ddeltab_hm = dPmm_ddeltab_hm_func(z_grid)
-        dPgm_ddeltab_hm = dPgm_ddeltab_hm_func(z_grid)
-        dPgg_ddeltab_hm = dPgg_ddeltab_hm_func(z_grid)
-        r_mm_hm = dPmm_ddeltab_hm / pk_mm_2d
-        r_gm_hm = dPgm_ddeltab_hm / pk_gm_2d
-        r_gg_hm = dPgg_ddeltab_hm / pk_gg_2d
+        # # I do not assign diretly to dPxx_ddeltab to be able to plot later if necessary
+        # dPmm_ddeltab_hm = dPmm_ddeltab_hm_func(z_grid)
+        # dPgm_ddeltab_hm = dPgm_ddeltab_hm_func(z_grid)
+        # dPgg_ddeltab_hm = dPgg_ddeltab_hm_func(z_grid)
+        # r_mm_hm = dPmm_ddeltab_hm / pk_mm_2d
+        # r_gm_hm = dPgm_ddeltab_hm / pk_gm_2d
+        # r_gg_hm = dPgg_ddeltab_hm / pk_gg_2d
 
         dPmm_ddeltab = dPmm_ddeltab_hm
         dPgm_ddeltab = dPgm_ddeltab_hm
@@ -787,10 +788,6 @@ if compute_sb_ssc:
             'which_pk_responses must be either "halo_model" or "separate_universe"')
 
     # ! 2. prepare integrands (d2CAB_dVddeltab) and volume element
-    # ! compute the Pk responses(k, z) in k_limber and z_grid
-    dPmm_ddeltab_interp = RegularGridInterpolator((k_grid, z_grid), dPmm_ddeltab, method='linear')
-    dPgm_ddeltab_interp = RegularGridInterpolator((k_grid, z_grid), dPgm_ddeltab, method='linear')
-    dPgg_ddeltab_interp = RegularGridInterpolator((k_grid, z_grid), dPgg_ddeltab, method='linear')
 
     # ! test k_max_limber vs k_max_dPk and adjust z_min accordingly
     k_max_resp = np.max(k_grid)
@@ -805,6 +802,11 @@ if compute_sb_ssc:
         kmax_limber = cosmo_lib.get_kmax_limber(
             ell_grid, z_grid_test, use_h_units, ccl_obj.cosmo_ccl)
         print(f'Retrying with z_min = {z_grid_test[0]:.3f}')
+
+    # ! compute the Pk responses(k, z) in k_limber and z_grid
+    dPmm_ddeltab_interp = RegularGridInterpolator((k_grid, z_grid_trisp), dPmm_ddeltab, method='linear')
+    dPgm_ddeltab_interp = RegularGridInterpolator((k_grid, z_grid_trisp), dPgm_ddeltab, method='linear')
+    dPgg_ddeltab_interp = RegularGridInterpolator((k_grid, z_grid_trisp), dPgg_ddeltab, method='linear')
 
     k_limber = partial(cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
 

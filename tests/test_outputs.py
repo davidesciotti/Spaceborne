@@ -26,16 +26,21 @@ def test_main_script(test_cfg_path):
             # ! to be understood a bit better, siamg2b is not Nonw in benchmarks for CCL case...
             # if bench_data[key] is None and test_data[key] is None:
             if test_data[key] is None:
-                print("test_data[key] is None")
+                print(f"test_data[{key}] is None")
                 continue
-            
+
             if (test_data[key].dtype == 'O' and
-                test_data[key].item() is None):
-                print("test_data[key].item() is None")
+                    test_data[key].item() is None):
+                print(f'test_data[{key}].dtype == "O" and ' 
+                      f'test_data[{key}].item() is None)')
                 continue
+
 
             # Handle arrays with dtype=object containing None
             if (
+                isinstance(bench_data[key], np.ndarray) and
+                bench_data[key].dtype == object and
+                bench_data[key].item() is None
                 isinstance(bench_data[key], np.ndarray) and
                 bench_data[key].dtype == object and
                 bench_data[key].item() is None
@@ -43,7 +48,12 @@ def test_main_script(test_cfg_path):
                 isinstance(test_data[key], np.ndarray) and
                 test_data[key].dtype == object and
                 test_data[key].item() is None
+                isinstance(test_data[key], np.ndarray) and
+                test_data[key].dtype == object and
+                test_data[key].item() is None
             ):
+                continue
+
                 continue
 
             try:
@@ -53,6 +63,7 @@ def test_main_script(test_cfg_path):
                 raise TypeError(
                     f"Non-numerical or incompatible data type encountered in key '{key}': {e}"
                 )
+
 
             else:
                 try:
@@ -94,8 +105,17 @@ if os.path.exists(f'{temp_output_filename}.npz'):
     else:
         os.remove(f'{temp_output_filename}.npz')
 
+if os.path.exists(f'{temp_output_filename}.npz'):
+    print(f'{temp_output_filename}.npz already exists, most likely from a previous failed test. Do you want to overwrite it?')
+    if input('y/n: ') != 'y':
+        print('Exiting...')
+        exit()
+    else:
+        os.remove(f'{temp_output_filename}.npz')
+
 for bench_name in bench_names:
     print(f'Testing {bench_name}...')
+
 
     # ! update the cfg file to avoid overwriting the benchmarks
     # Load the benchmark config
@@ -119,3 +139,4 @@ for bench_name in bench_names:
     for file_path in glob.glob(f"{temp_output_folder}/*"):
         if os.path.isfile(file_path):
             os.remove(file_path)
+

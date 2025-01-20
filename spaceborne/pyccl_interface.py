@@ -265,26 +265,6 @@ class PycclClass():
         # k_z_str = f'zmin{pyccl_cfg["z_grid_tkka_min"]:.1f}_zmax{pyccl_cfg["z_grid_tkka_max"]:.1f}_zsteps{pyccl_cfg[f"z_grid_tkka_steps_{which_ng_cov}"]:d}_' \
         # f'kmin{pyccl_cfg["k_grid_tkka_min"]:.1e}_kmax{pyccl_cfg["k_grid_tkka_max"]:.1e}_ksteps{pyccl_cfg[f"k_grid_tkka_steps_{which_ng_cov}"]:d}'
 
-        self.a_grid_tkka_SSC = np.linspace(
-            cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
-            cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
-            pyccl_cfg['z_grid_tkka_steps_SSC'])
-
-        self.z_grid_tkka_SSC = cosmo_lib.a_to_z(self.a_grid_tkka_SSC)[::-1]
-
-        logn_k_grid_tkka_SSC = np.log(np.geomspace(pyccl_cfg['k_grid_tkka_min'],
-                                                   pyccl_cfg['k_grid_tkka_max'],
-                                                   pyccl_cfg['k_grid_tkka_steps_SSC']))
-
-        a_grid_tkka_cNG = np.linspace(
-            cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
-            cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
-            pyccl_cfg['z_grid_tkka_steps_cNG'])
-
-        logn_k_grid_tkka_cNG = np.log(np.geomspace(pyccl_cfg['k_grid_tkka_min'],
-                                                   pyccl_cfg['k_grid_tkka_max'],
-                                                   pyccl_cfg['k_grid_tkka_steps_cNG']))
-
         # or, to set to the default:
         # a_grid_tkka = None
         # logn_k_grid_tkka = None
@@ -322,12 +302,15 @@ class PycclClass():
         # the default pk must be passed to yhe Tk3D functions as None, not as 'delta_matter:delta_matter'
         p_of_k_a = None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
 
-        if self.a_grid_tkka_SSC is not None and logn_k_grid_tkka_SSC is not None and which_ng_cov == 'SSC':
-            print(f'SSC tkka: z points = {self.a_grid_tkka_SSC.size}, k points = {logn_k_grid_tkka_SSC.size}')
-        if a_grid_tkka_cNG is not None and logn_k_grid_tkka_cNG is not None and which_ng_cov == 'cNG':
-            print(f'cNG tkka: z points = {a_grid_tkka_cNG.size}, k points = {logn_k_grid_tkka_cNG.size}')
+        if self.a_grid_tkka_SSC is not None and self.logn_k_grid_tkka_SSC is not None and which_ng_cov == 'SSC':
+            print(f'SSC trispectrum: z points = {self.a_grid_tkka_SSC.size}, k points = {
+                  self.logn_k_grid_tkka_SSC.size}')
+        if self.a_grid_tkka_cNG is not None and self.logn_k_grid_tkka_cNG is not None and which_ng_cov == 'cNG':
+            print(f'cNG trispectrum: z points = {self.a_grid_tkka_cNG.size}, k points = {
+                  self.logn_k_grid_tkka_cNG.size}')
 
         self.tkka_dict = {}
+        self.responses_dict = {}
         self.responses_dict = {}
         for row, (A, B) in tqdm(enumerate(probe_ordering)):
             for col, (C, D) in enumerate(probe_ordering):
@@ -385,7 +368,7 @@ class PycclClass():
                                 'prof4': halo_profile_dict[D],
                                 'prof12_2pt': prof_2pt_dict[A, B],
                                 'prof34_2pt': prof_2pt_dict[C, D],
-                                'lk_arr': logn_k_grid_tkka_SSC,
+                                'lk_arr': self.logn_k_grid_tkka_SSC,
                                 'a_arr': self.a_grid_tkka_SSC,
                                 'extrap_pk': True,
                             }
@@ -402,7 +385,7 @@ class PycclClass():
                                 'is_number_counts2': is_number_counts_dict[B],
                                 'is_number_counts3': is_number_counts_dict[C],
                                 'is_number_counts4': is_number_counts_dict[D],
-                                'lk_arr': logn_k_grid_tkka_SSC,
+                                'lk_arr': self.logn_k_grid_tkka_SSC,
                                 'a_arr': self.a_grid_tkka_SSC,
                                 'extrap_pk': True,
                             }
@@ -421,8 +404,8 @@ class PycclClass():
                             'prof24_2pt': prof_2pt_dict[B, D],
                             'prof32_2pt': prof_2pt_dict[C, B],
                             'prof34_2pt': prof_2pt_dict[C, D],
-                            'lk_arr': logn_k_grid_tkka_cNG,
-                            'a_arr': a_grid_tkka_cNG,
+                            'lk_arr': self.logn_k_grid_tkka_cNG,
+                            'a_arr': self.a_grid_tkka_cNG,
                         }
                     else:
                         raise ValueError(

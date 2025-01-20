@@ -217,7 +217,7 @@ class OneCovarianceInterface():
             # TODO integration_steps is similar to len(z_grid), but OC works in log space 
             # TODO + it would signficantly slow down the code if using SB values (e.g. 3000)
             # TODO so I leave it like this for the
-            integration_steps = 1000  
+            integration_steps = 1000
             m_bins = 1500  # 900 or 1500
             
             # 20-01-2025 I set these dinamically above

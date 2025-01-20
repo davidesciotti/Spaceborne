@@ -303,11 +303,14 @@ class PycclClass():
         p_of_k_a = None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
 
         if self.a_grid_tkka_SSC is not None and self.logn_k_grid_tkka_SSC is not None and which_ng_cov == 'SSC':
-            print(f'SSC trispectrum: z points = {self.a_grid_tkka_SSC.size}, k points = {self.logn_k_grid_tkka_SSC.size}')
+            print(f'SSC trispectrum: z points = {self.a_grid_tkka_SSC.size}, k points = {
+                  self.logn_k_grid_tkka_SSC.size}')
         if self.a_grid_tkka_cNG is not None and self.logn_k_grid_tkka_cNG is not None and which_ng_cov == 'cNG':
-            print(f'cNG trispectrum: z points = {self.a_grid_tkka_cNG.size}, k points = {self.logn_k_grid_tkka_cNG.size}')
+            print(f'cNG trispectrum: z points = {self.a_grid_tkka_cNG.size}, k points = {
+                  self.logn_k_grid_tkka_cNG.size}')
 
         self.tkka_dict = {}
+        self.responses_dict = {}
         for row, (A, B) in tqdm(enumerate(probe_ordering)):
             for col, (C, D) in enumerate(probe_ordering):
                 probe_block = A + B + C + D
@@ -407,12 +410,12 @@ class PycclClass():
                         raise ValueError(
                             f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
 
-                    self.tkka_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
-                                                           hmc=self.hmc,
-                                                           extrap_order_lok=1, extrap_order_hik=1,
-                                                           use_log=False,
-                                                           p_of_k_a=p_of_k_a,
-                                                           **additional_args)
+                    self.tkka_dict[A, B, C, D], self.responses_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
+                                                                                            hmc=self.hmc,
+                                                                                            extrap_order_lok=1, extrap_order_hik=1,
+                                                                                            use_log=False,
+                                                                                            p_of_k_a=p_of_k_a,
+                                                                                            **additional_args)
 
         print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - tkka_start_time))
 

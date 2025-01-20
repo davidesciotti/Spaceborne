@@ -181,7 +181,7 @@ covariance:
     #   has to be rescaled by fsky
 
     # TODO demove halo_model_CCL in public version! otherwise, fork needed
-    which_pk_responses: halo_model # 'halo_model' or 'separate_universe'
+    which_pk_responses: halo_model_SB # 'halo_model' or 'separate_universe'
 
     which_b1g_in_resp: from_HOD
     # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.

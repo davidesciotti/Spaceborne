@@ -38,20 +38,20 @@ pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 
 # ! Set up argument parsing
-parser = argparse.ArgumentParser(description="Your script description here.")
-parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
-parser.add_argument('--show_plots', action='store_true', help='Show plots if specified',  required=False)
-args = parser.parse_args()
-with open(args.config, 'r') as f:
-    cfg = yaml.safe_load(f)
-if not args.show_plots:
-    import matplotlib
-    matplotlib.use('Agg')
+# parser = argparse.ArgumentParser(description="Your script description here.")
+# parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
+# parser.add_argument('--show_plots', action='store_true', help='Show plots if specified',  required=False)
+# args = parser.parse_args()
+# with open(args.config, 'r') as f:
+#     cfg = yaml.safe_load(f)
+# if not args.show_plots:
+#     import matplotlib
+#     matplotlib.use('Agg')
 
 # ! LOAD CONFIG
 # ! uncomment this if executing from interactive window
-# with open('config.yaml', 'r') as f:
-#     cfg = yaml.safe_load(f)
+with open('config.yaml', 'r') as f:
+    cfg = yaml.safe_load(f)
 
 # some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']

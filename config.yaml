@@ -181,7 +181,7 @@ covariance:
     #   has to be rescaled by fsky
 
     # TODO demove halo_model_CCL in public version! otherwise, fork needed
-    which_pk_responses: halo_model_SB # 'halo_model' or 'separate_universe'
+    which_pk_responses: halo_model_CCL # 'halo_model' or 'separate_universe'
 
     which_b1g_in_resp: from_HOD
     # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
@@ -251,7 +251,7 @@ misc:
 
     output_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/output
     save_output_as_benchmark: True # for testing purposes
-    bench_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/output_SB_KE_respSBHOD_newgrids # for testing purposes
+    bench_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/output_SB_KE_respCCLHOD_newgrids # for testing purposes
     path_to_jl_integrator: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/spaceborne/julia_integrator.jl
 
 CCL_precision:

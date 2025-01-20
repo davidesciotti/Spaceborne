@@ -195,6 +195,7 @@ if len(z_grid) < 250:
     warnings.warn('z_grid is small, at the moment it used to compute various intermediate quantities')
 
 # ! do the same for CCL - i.e., set the above in the ccl_obj with little variations (e.g. a instead of z)
+# TODO I leave the option to use a grid for the CCL, but I am not sure if it is needed
 ccl_obj.z_grid_tkka_SSC = z_grid_trisp
 ccl_obj.z_grid_tkka_cNG = z_grid_trisp
 ccl_obj.a_grid_tkka_SSC = cosmo_lib.z_to_a(z_grid_trisp)[::-1]

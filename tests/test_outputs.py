@@ -70,7 +70,7 @@ bench_names = glob.glob(f'{bench_path}/*.npz')
 bench_names = [os.path.basename(file) for file in bench_names]
 bench_names = [bench_name.replace('.npz', '') for bench_name in bench_names]
 # ... or run specific tests
-bench_names = ['output_SB_KE_respSBHOD_newgrids', ]
+bench_names = ['output_SB_KE_respCCLHOD_newgrids', ]
 
 main_script_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/main.py'
 temp_output_filename = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/tmp/test_file'

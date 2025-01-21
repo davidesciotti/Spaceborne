@@ -11,21 +11,15 @@ from getdist.gaussian_mixtures import GaussianND
 from matplotlib import cm
 
 
-import os
-ROOT = os.getenv('ROOT')
+from spaceborne import sb_lib as sl
 
-sys.path.append(f'{ROOT}/Spaceborne/bin')
-import spaceborne.sb_lib as sl
-
-sys.path.append(f'{ROOT}/Spaceborne/common_cfg')
-import common_cfg.mpl_cfg as mpl_cfg
 
 
 # matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
-param_names_label = mpl_cfg.general_dict['cosmo_labels_TeX']
-ylabel_perc_diff_wrt_mean = mpl_cfg.general_dict['ylabel_perc_diff_wrt_mean']
-ylabel_sigma_relative_fid = mpl_cfg.general_dict['ylabel_sigma_relative_fid']
+param_names_label = sl.mpl_other_dict['cosmo_labels_TeX']
+ylabel_perc_diff_wrt_mean = sl.mpl_other_dict['ylabel_perc_diff_wrt_mean']
+ylabel_sigma_relative_fid = sl.mpl_other_dict['ylabel_sigma_relative_fid']
 # plt.rcParams['axes.axisbelow'] = True
 # markersize = mpl_cfg.mpl_rcParams_dict['lines.markersize']
 
@@ -161,7 +155,7 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
         ylabel = ylabel_sigma_relative_fid
 
     if figsize is None:
-        figsize = mpl_cfg.mpl_rcParams_dict['figure.figsize']
+        figsize = (12, 8)
 
     if grey_bars:
         bar_color = ['grey' for _ in range(no_cases)]

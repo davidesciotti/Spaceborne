@@ -431,6 +431,7 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
         masked_fid_pars_dict_list.append(masked_fid_pars_dict)
 
     # compute reference uncertainties
+    print(key, masked_fid_pars_dict_list[0].keys())
     for key in keys_toplot:
         nparams_toplot = nparams_toplot_in
         param_names = list(masked_fid_pars_dict_list[0][key].keys())[:nparams_toplot]

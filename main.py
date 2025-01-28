@@ -1,13 +1,12 @@
 import argparse
 import gc
 import os
-import multiprocessing
 from tqdm import tqdm
-# num_cores = multiprocessing.cpu_count()
-# os.environ['OMP_NUM_THREADS'] = str(16)
+from pathlib import Path
+import time
+
 from functools import partial
 import numpy as np
-import time
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import warnings
@@ -28,6 +27,11 @@ from spaceborne import config_checker
 from spaceborne import onecovariance_interface as oc_interface
 from spaceborne import responses
 from spaceborne import covariance as sb_cov
+
+# Get the current script's directory
+current_dir = Path(__file__).resolve().parent
+parent_dir = current_dir.parent
+
 
 warnings.filterwarnings(
     "ignore",
@@ -175,6 +179,11 @@ if cfg['C_ell']['cl_CCL_kwargs'] is not None:
     cl_ccl_kwargs = cfg['C_ell']['cl_CCL_kwargs']
 else:
     cl_ccl_kwargs = {}
+
+if cfg['intrinsic_alignment']['lumin_ratio_filename'] is not None:
+    ccl_obj.lumin_ratio_2d_arr = np.genfromtxt(cfg['intrinsic_alignment']['lumin_ratio_filename'])
+else:
+    ccl_obj.lumin_ratio_2d_arr = None
 
 # ! define k and z grids used throughout the code (k is in 1/Mpc)
 # TODO zmin and zmax should be inferred from the nz tables!!

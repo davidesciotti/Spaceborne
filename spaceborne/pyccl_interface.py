@@ -97,8 +97,9 @@ class PycclClass():
         if self.has_ia:
             ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(z_grid_src, cosmo_ccl=self.cosmo_ccl,
                                                         ia_dict=self.ia_dict,
-                                                        input_z_grid_lumin_ratio=None,
-                                                        input_lumin_ratio=None, output_F_IA_of_z=False)
+                                                        lumin_ratio_2d_arr=self.lumin_ratio_2d_arr,
+                                                        output_F_IA_of_z=False)
+
             self.ia_bias_tuple = (z_grid_src, ia_bias_1d)
 
         else:
@@ -410,14 +411,13 @@ class PycclClass():
                     else:
                         raise ValueError(
                             f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
-                        
+
                     self.tkka_dict[A, B, C, D], self.responses_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
                                                                                             hmc=self.hmc,
                                                                                             extrap_order_lok=1, extrap_order_hik=1,
                                                                                             use_log=False,
                                                                                             p_of_k_a=p_of_k_a,
                                                                                             **additional_args)
-
 
         print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - tkka_start_time))
 

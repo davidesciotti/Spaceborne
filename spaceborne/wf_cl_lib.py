@@ -326,31 +326,68 @@ def _build_ia_bias_1d_arr(z_grid_out, cosmo_ccl, ia_dict, input_z_grid_lumin_rat
 
 def build_ia_bias_1d_arr(z_grid_out, cosmo_ccl, ia_dict, lumin_ratio_2d_arr, output_F_IA_of_z=False):
     """
-    None is the default value, in which case we use ISTF fiducial values (or the cosmo object)
-    :param input_z_grid_lumin_ratio:
-    :param input_lumin_ratio:
-    :param z_grid_out: the redshift grid on which the IA bias is evaluated (which can be different from the one used for
-    the luminosity ratio, which are stored in z_grid_lumin_ratio! Note the presence of the interpolator)
-    :param cosmo:
-    :param A_IA:
-    :param C_IA:
-    :param eta_IA:
-    :param beta_IA:
-    :return:
+    Computes the intrinsic alignment (IA) bias as a function of redshift.
+
+    This function evaluates the IA bias on a given redshift grid based on the 
+    cosmology, intrinsic alignment parameters, and an optional luminosity ratio.
+    If no luminosity ratio is provided, the bias assumes a constant luminosity 
+    ratio (and requires `beta_IA = 0`).
+
+    Parameters
+    ----------
+    z_grid_out : array_like
+        The redshift grid on which the IA bias is evaluated. This grid can differ
+        from the one used for the luminosity ratio, as interpolation is performed.
+
+    cosmo_ccl : pyccl.Cosmology
+        The cosmology object from `pyccl`, which provides the cosmological
+        parameters and growth factor.
+
+    ia_dict : dict
+        A dictionary containing intrinsic alignment parameters. The required keys are:
+        - `Aia`: Amplitude of the IA bias.
+        - `eIA`: Redshift dependence of the IA bias.
+        - `bIA`: Luminosity dependence of the IA bias.
+        - `z_pivot_IA`: Pivot redshift for scaling the IA bias.
+        - `CIA`: Normalization constant for the IA bias.
+
+    lumin_ratio_2d_arr : array_like or None
+        A 2D array of shape (N, 2) representing the luminosity ratio. The first column
+        contains the redshift grid, and the second column contains the luminosity ratio.
+        If `None`, the luminosity ratio is assumed to be constant (1), and `beta_IA` must be 0.
+
+    output_F_IA_of_z : bool, optional
+        If `True`, the function returns the IA bias along with the computed F_IA(z)
+        function. Default is `False`.
+
+    Returns
+    -------
+    ia_bias : array_like
+        The intrinsic alignment bias evaluated on `z_grid_out`.
+
+    F_IA_of_z : array_like, optional
+        The computed F_IA(z) function, returned only if `output_F_IA_of_z=True`.
+
+    Raises
+    ------
+    AssertionError
+        If `beta_IA != 0` and no luminosity ratio is provided.
+        If the growth factor length does not match the redshift grid length.
+    
+
+    Notes
+    -----
+    - The IA bias is computed as (notice the negative sign!):
+      .. math::
+         \text{IA Bias} = - A_\text{IA} C_\text{IA} \Omega_m \frac{F_\text{IA}(z)}{\text{Growth Factor}}
+    - The growth factor is evaluated using the `pyccl.growth_factor` function.
     """
 
-    try:
-        A_IA = ia_dict['Aia']
-        eta_IA = ia_dict['eIA']
-        beta_IA = ia_dict['bIA']
-        z_pivot_IA = ia_dict['z_pivot_IA']
-        C_IA = ia_dict['CIA']
-    except KeyError:
-        A_IA = ia_dict['A_IA']
-        eta_IA = ia_dict['eta_IA']
-        beta_IA = ia_dict['beta_IA']
-        z_pivot_IA = ia_dict['z_pivot_IA']
-        C_IA = ia_dict['C_IA']
+    A_IA = ia_dict['Aia']
+    eta_IA = ia_dict['eIA']
+    beta_IA = ia_dict['bIA']
+    z_pivot_IA = ia_dict['z_pivot_IA']
+    C_IA = ia_dict['CIA']
 
     growth_factor = ccl.growth_factor(cosmo_ccl, a=1 / (1 + z_grid_out))
 

@@ -26,6 +26,7 @@ intrinsic_alignment:
     bIA: 0.0
     CIA: 0.0134
     z_pivot_IA: 0
+    lumin_ratio_filename: null  # null if not used, otherwise path to the file (e.g. ./input/scaledmeanlum-E2Sa.dat)
 
 # extra parameters to be passed to CCL cosmo object, eg CAMB extra parameters
 # (see https://ccl.readthedocs.io/en/latest/api/pyccl.cosmology.html#pyccl.cosmology.Cosmology
@@ -79,8 +80,8 @@ nz:
     EP_or_ED: EP
 
     # paths to source and lens redshift distributions. These must have shape (z_points, zbins + 1)
-    nz_sources_filename: .../nzTab-EP03-zedMin02-zedMax25-mag245.dat
-    nz_lenses_filename: .../nzTab-EP03-zedMin02-zedMax25-mag245.dat
+    nz_sources_filename: ./input/nzTab-EP03-zedMin02-zedMax25-mag245.dat
+    nz_lenses_filename: ./input/nzTab-EP03-zedMin02-zedMax25-mag245.dat
 
     # number of galaxies per arcmin**2 for each redshift bin
     ngal_sources: [8.09216, 8.09215, 8.09215]
@@ -98,7 +99,7 @@ nz:
     plot_nz_tocheck: True # TODO delete this
 
 mask:
-    mask_path: path/to/mask.fits
+    mask_path: .../mask.fits
     nside_mask: 1024
     fsky: 0.3210678603147902
     survey_area_deg2: 13245
@@ -236,8 +237,8 @@ PyCCL:
 
 OneCovariance:
     precision_settings: default # 'high_precision' or 'default'  # TODO delete this
-    path_to_oc_executable: .../OneCovariance/covariance.py
-    path_to_oc_ini: .../Spaceborne/input/config_3x2pt_pure_Cell_general.ini
+    path_to_oc_executable: /home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py
+    path_to_oc_ini: ./input/config_3x2pt_pure_Cell_general.ini
     consistency_checks: False
 
 misc:
@@ -249,9 +250,9 @@ misc:
     test_cholesky_decomposition: True # test if cholesky decomposition fails
     test_symmetry: True # test if covariance matrix is symmetric (cov = cov.T)
 
-    output_path: .../Spaceborne/output
+    output_path: ./output
     save_output_as_benchmark: True # for testing purposes
-    bench_filename: .../Spaceborne_bench/output_SB_KE_respCCLHOD_newgrids_100steps # for testing purposes
-    path_to_jl_integrator: .../Spaceborne/spaceborne/julia_integrator.jl
+    bench_filename: ../Spaceborne_bench/output_SB_KE_respCCLHOD_newgrids_100steps # for testing purposes
+    path_to_jl_integrator: ./spaceborne/julia_integrator.jl
 
 CCL_precision:

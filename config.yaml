@@ -79,8 +79,8 @@ nz:
     EP_or_ED: EP
 
     # paths to source and lens redshift distributions. These must have shape (z_points, zbins + 1)
-    nz_sources_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid/nzTab-EP03-zedMin02-zedMax25-mag245.dat
-    nz_lenses_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/InputFiles/InputNz/NzFid/nzTab-EP03-zedMin02-zedMax25-mag245.dat
+    nz_sources_filename: .../nzTab-EP03-zedMin02-zedMax25-mag245.dat
+    nz_lenses_filename: .../nzTab-EP03-zedMin02-zedMax25-mag245.dat
 
     # number of galaxies per arcmin**2 for each redshift bin
     ngal_sources: [8.09216, 8.09215, 8.09215]
@@ -236,8 +236,8 @@ PyCCL:
 
 OneCovariance:
     precision_settings: default # 'high_precision' or 'default'  # TODO delete this
-    path_to_oc_executable: /home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py
-    path_to_oc_ini: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/input/config_3x2pt_pure_Cell_general.ini
+    path_to_oc_executable: .../OneCovariance/covariance.py
+    path_to_oc_ini: .../Spaceborne/input/config_3x2pt_pure_Cell_general.ini
     consistency_checks: False
 
 misc:
@@ -249,9 +249,9 @@ misc:
     test_cholesky_decomposition: True # test if cholesky decomposition fails
     test_symmetry: True # test if covariance matrix is symmetric (cov = cov.T)
 
-    output_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/output
+    output_path: .../Spaceborne/output
     save_output_as_benchmark: True # for testing purposes
-    bench_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/output_SB_KE_respCCLHOD_newgrids_100steps # for testing purposes
-    path_to_jl_integrator: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/spaceborne/julia_integrator.jl
+    bench_filename: .../Spaceborne_bench/output_SB_KE_respCCLHOD_newgrids_100steps # for testing purposes
+    path_to_jl_integrator: .../Spaceborne/spaceborne/julia_integrator.jl
 
 CCL_precision:

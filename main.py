@@ -3,8 +3,8 @@ import gc
 import os
 import multiprocessing
 from tqdm import tqdm
-num_cores = multiprocessing.cpu_count()
-os.environ['OMP_NUM_THREADS'] = str(num_cores)
+# num_cores = multiprocessing.cpu_count()
+# os.environ['OMP_NUM_THREADS'] = str(16)
 from functools import partial
 import numpy as np
 import time

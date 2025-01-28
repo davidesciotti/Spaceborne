@@ -20,11 +20,6 @@ import os
 import multiprocessing
 import subprocess
 import re
-num_cores = multiprocessing.cpu_count()
-os.environ['OMP_NUM_THREADS'] = '32'
-os.environ['NUMBA_NUM_THREADS'] = '32'
-os.environ['NUMBA_PARALLEL_DIAGNOSTICS'] = '4'
-
 from matplotlib import pyplot as plt
 import numpy as np
 import time

@@ -266,64 +266,6 @@ def build_galaxy_bias_2d_arr(gal_bias_vs_zmean, zmeans, z_edges, zbins, z_grid, 
     return gal_bias_2d_arr
 
 
-def _build_ia_bias_1d_arr(z_grid_out, cosmo_ccl, ia_dict, input_z_grid_lumin_ratio=None,
-                         input_lumin_ratio=None, output_F_IA_of_z=False, lumin_ratio_filename=None):
-    """
-    None is the default value, in which case we use ISTF fiducial values (or the cosmo object)
-    :param input_z_grid_lumin_ratio:
-    :param input_lumin_ratio:
-    :param z_grid_out: the redshift grid on which the IA bias is evaluated (which can be different from the one used for
-    the luminosity ratio, which are stored in z_grid_lumin_ratio! Note the presence of the interpolator)
-    :param cosmo:
-    :param A_IA:
-    :param C_IA:
-    :param eta_IA:
-    :param beta_IA:
-    :return:
-    """
-
-    try:
-        A_IA = ia_dict['Aia']
-        eta_IA = ia_dict['eIA']
-        beta_IA = ia_dict['bIA']
-        z_pivot_IA = ia_dict['z_pivot_IA']
-        C_IA = ia_dict['CIA']
-    except KeyError:
-        A_IA = ia_dict['A_IA']
-        eta_IA = ia_dict['eta_IA']
-        beta_IA = ia_dict['beta_IA']
-        z_pivot_IA = ia_dict['z_pivot_IA']
-        C_IA = ia_dict['C_IA']
-
-    growth_factor = ccl.growth_factor(cosmo_ccl, a=1 / (1 + z_grid_out))
-
-    if input_lumin_ratio is None and input_z_grid_lumin_ratio is None:
-        # in this case, take the defaults
-        lumin_ratio_file = np.genfromtxt(
-            '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/input/scaledmeanlum-E2Sa.dat')
-        input_z_grid_lumin_ratio = lumin_ratio_file[:, 0]
-        input_lumin_ratio = lumin_ratio_file[:, 1]
-
-    if (input_lumin_ratio is None) ^ (input_z_grid_lumin_ratio is None):
-        raise ValueError('both input_lumin_ratio and input_z_grid_lumin_ratio must be either None or not None')
-
-    lumin_ratio_func = scipy.interpolate.interp1d(input_z_grid_lumin_ratio, input_lumin_ratio, kind='linear',
-                                                        fill_value='extrapolate')
-
-    assert len(growth_factor) == len(z_grid_out), 'growth_factor must have the same length ' \
-                                                  'as z_grid (it must be computed in these ' \
-                                                  'redshifts!)'
-
-    omega_m = cosmo_ccl.cosmo.params.Omega_m
-    F_IA_of_z = F_IA(z_grid_out, eta_IA, beta_IA, z_pivot_IA, lumin_ratio_func)
-    ia_bias = -1 * A_IA * C_IA * omega_m * F_IA_of_z / growth_factor
-
-    if output_F_IA_of_z:
-        return (ia_bias, F_IA_of_z)
-
-    return ia_bias
-
-
 def build_ia_bias_1d_arr(z_grid_out, cosmo_ccl, ia_dict, lumin_ratio_2d_arr, output_F_IA_of_z=False):
     """
     Computes the intrinsic alignment (IA) bias as a function of redshift.
@@ -373,7 +315,7 @@ def build_ia_bias_1d_arr(z_grid_out, cosmo_ccl, ia_dict, lumin_ratio_2d_arr, out
     AssertionError
         If `beta_IA != 0` and no luminosity ratio is provided.
         If the growth factor length does not match the redshift grid length.
-    
+
 
     Notes
     -----
@@ -417,13 +359,13 @@ def get_luminosity_ratio_interpolator(lumin_ratio_2d_arr):
     :return: Interpolator function for luminosity ratio.
     """
     if lumin_ratio_2d_arr is None:
-        func = lambda z: 1  # Default to constant luminosity ratio
-    
+        def func(z): return 1  # Default to constant luminosity ratio
+
     elif isinstance(lumin_ratio_2d_arr, np.ndarray) and lumin_ratio_2d_arr.shape[1] == 2:
         func = scipy.interpolate.interp1d(x=lumin_ratio_2d_arr[:, 0],
                                           y=lumin_ratio_2d_arr[:, 1],
                                           kind="linear", fill_value="extrapolate")
-    
+
     else:
         raise ValueError("lumin_ratio_2d_arr must be a 2D numpy array with two columns or None.")
 

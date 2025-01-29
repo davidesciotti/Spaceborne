@@ -61,8 +61,10 @@ C_ell:
     # multiplicative shear bias per redshift bin
     mult_shear_bias: [0, 0, 0]
 
-    gal_bias_table_filename: ./input/gal_bias.txt
-    mag_bias_table_filename: ./input/mag_bias.txt # TODO test this!
+    # input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
+    # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
+    gal_bias_table_filename: ./input/gal_bias.txt 
+    mag_bias_table_filename: ./input/mag_bias.txt  # TODO test this!
 
     # boolean flags for redshift-space distortion, intrinsic alignment
     has_rsd: False
@@ -77,17 +79,17 @@ C_ell:
         non_limber_integration_method: FKEM  
 
 nz:
-    EP_or_ED: EP
+    EP_or_ED: EP  # Type: str. Options: [EP, ED] Equipopulated or Equidistant redshift bins
 
-    # paths to source and lens redshift distributions. These must have shape (z_points, zbins + 1)
-    nz_sources_filename: ./input/nzTab-EP03-zedMin02-zedMax25-mag245.dat
-    nz_lenses_filename: ./input/nzTab-EP03-zedMin02-zedMax25-mag245.dat
+    # Type: str. Paths to source and lens redshift distributions. These must have shape (z_points, zbins + 1)
+    nz_sources_filename: ./input/nzTab-EP03-zedMin02-zedMax25-mag245.dat  # str
+    nz_lenses_filename: ./input/nzTab-EP03-zedMin02-zedMax25-mag245.dat  # str
 
-    # number of galaxies per arcmin**2 for each redshift bin
+    # Type: list. Number of galaxies per arcmin**2 for each redshift bin. Should be of len(zbins)
     ngal_sources: [8.09216, 8.09215, 8.09215]
     ngal_lenses: [8.09216, 8.09215, 8.09215]
 
-    # shift in the redshift distribution per redshift bin
+    # Type: list. Shift in the redshift distribution per redshift bin. Should be of len(zbins)
     dzWL: [-0.008848, 0.051368, 0.059484]
     dzGC: [-0.008848, 0.051368, 0.059484]
 
@@ -167,13 +169,12 @@ covariance:
     # sample variance, noise and mixed terms
 
     sigma_eps_i: 0.26
-    # ellipticity dispersion *per component* = sigma_eps_i.
-    # We have:
+    # Type: float. Ellipticity dispersion *per component* = sigma_eps_i.
     # total ellipticity dispersion = sigma_eps
     # sigma_eps = (sigma_eps_i * np.sqrt(2))
 
     which_sigma2_b: polar_cap_on_the_fly
-    # sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
+    # Type: str | None. Sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
     # - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only). In this case, the output covmat
     # - from_input_mask: input a mask with path specified by mask_path
     # - polar_cap_on_the_fly: generate a polar cap during the run, with nside specified by nside

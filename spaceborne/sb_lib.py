@@ -150,10 +150,22 @@ def mirror_upper_to_lower_vectorized(A):
     return result
 
 
-def check_interpolate_input_tab(input_tab, z_grid_out, zbins):
+def check_interpolate_input_tab(input_tab: np.ndarray, z_grid_out: np.ndarray, zbins: int):
+    """
+    Interpolates the input table over the 0th dimension using a cubic spline 
+    and returns the interpolated values on the specified grid.
 
+    Parameters:
+    - input_tab (numpy.ndarray): The input table with shape (z_points, zbins + 1).
+    - z_grid_out (numpy.ndarray): The output grid for interpolation.
+    - zbins (int): The number of redshift bins.
+
+    Returns:
+    - output_tab (numpy.ndarray): The interpolated table with shape (len(z_grid_out), zbins).
+    """
     assert input_tab.shape[1] == zbins + 1, 'The input table should have shape (z_points, zbins + 1)'
 
+    # Perform cubic spline interpolation
     spline = CubicSpline(x=input_tab[:, 0], y=input_tab[:, 1:], axis=0)
     output_tab = spline(z_grid_out)
 

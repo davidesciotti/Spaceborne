@@ -82,7 +82,7 @@ bench_names = glob.glob(f'{bench_path}/*.npz')
 bench_names = [os.path.basename(file) for file in bench_names]
 bench_names = [bench_name.replace('.npz', '') for bench_name in bench_names]
 # ... or run specific tests
-bench_names = ['output_SB_KE_respCCLHOD_newgrids_100steps', ]
+bench_names = ['output_GSpaceborne_SSCSpaceborne_cNGNone_KETrue_respseparate_universe_b1gfrom_HOD', ]
 
 main_script_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/main.py'
 temp_output_filename = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/tmp/test_file'
@@ -107,7 +107,6 @@ if os.path.exists(f'{temp_output_filename}.npz'):
 
 for bench_name in bench_names:
     print(f'Testing {bench_name}...')
-
 
     # ! update the cfg file to avoid overwriting the benchmarks
     # Load the benchmark config

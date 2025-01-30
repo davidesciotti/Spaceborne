@@ -106,12 +106,12 @@ class PycclClass():
             self.ia_bias_tuple = None
 
     def set_gal_bias_tuple_spv3(self, z_grid_lns, magcut_lens, poly_fit_values):
-        
+
         # 1. set galaxy bias function (i.e., the callable)
         _gal_bias_func = self.gal_bias_func_dict['fs2_fit']
         self.gal_bias_func = partial(_gal_bias_func, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values)
-        
-        # construct the 2d array & tuple; this is mainly to ensure compatibility with 
+
+        # construct the 2d array & tuple; this is mainly to ensure compatibility with
         # # the wf_ccl function. In this case, the same array is given for each bin (each column)
         gal_bias_1d = self.gal_bias_func(z_grid_lns)
         self.gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
@@ -307,11 +307,11 @@ class PycclClass():
         p_of_k_a = None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
 
         if self.a_grid_tkka_SSC is not None and self.logn_k_grid_tkka_SSC is not None and which_ng_cov == 'SSC':
-            print(f'SSC trispectrum: z points = {self.a_grid_tkka_SSC.size}, k points = {
-                  self.logn_k_grid_tkka_SSC.size}')
+            print(f'SSC trispectrum: z points = {self.a_grid_tkka_SSC.size}, '
+                  f'k points = {self.logn_k_grid_tkka_SSC.size}')
         if self.a_grid_tkka_cNG is not None and self.logn_k_grid_tkka_cNG is not None and which_ng_cov == 'cNG':
-            print(f'cNG trispectrum: z points = {self.a_grid_tkka_cNG.size}, k points = {
-                  self.logn_k_grid_tkka_cNG.size}')
+            print(f'cNG trispectrum: z points = {self.a_grid_tkka_cNG.size}, '
+                  f'k points = {self.logn_k_grid_tkka_cNG.size}')
 
         self.tkka_dict = {}
         for row, (A, B) in tqdm(enumerate(probe_ordering)):

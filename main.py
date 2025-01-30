@@ -32,7 +32,6 @@ from spaceborne import covariance as sb_cov
 current_dir = Path(__file__).resolve().parent
 parent_dir = current_dir.parent
 
-
 warnings.filterwarnings(
     "ignore",
     message=".*FigureCanvasAgg is non-interactive, and thus cannot be shown.*",

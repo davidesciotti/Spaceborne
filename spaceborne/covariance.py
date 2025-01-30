@@ -17,7 +17,6 @@ class SpaceborneCovariance():
         self.ell_dict = ell_dict
         self.bnt_matrix = bnt_matrix
         self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt', }
-        self.jl_integrator_path = cfg['misc']['path_to_jl_integrator']
         
         self.zbins = pvt_cfg['zbins']
         self.cov_terms_list = pvt_cfg['cov_terms_list']

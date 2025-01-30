@@ -183,7 +183,7 @@ covariance:
     #   has to be rescaled by fsky
 
     # TODO demove halo_model_CCL in public version! otherwise, fork needed
-    which_pk_responses: halo_model_SB # 'halo_model' or 'separate_universe'
+    which_pk_responses: halo_model # 'halo_model' or 'separate_universe'
 
     which_b1g_in_resp: from_HOD
     # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
@@ -208,7 +208,7 @@ covariance:
     
     z_min: 0.02 # SU responses' kmax allow for z_min = 0.016, at most.
     z_max: 3.
-    z_steps: 300 # number of z steps used for the NG covariance projection. Should be quite high, of order 3000
+    z_steps: 300 # number of z steps used for the NG covariance projection. Should be quite high, something like 5000
     z_steps_trisp: 100  # number of z steps used to compute the trispectrum - around 100 should be enough
 
     use_KE_approximation: True

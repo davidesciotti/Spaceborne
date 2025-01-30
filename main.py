@@ -709,44 +709,7 @@ if compute_sb_ssc:
     pk_gm_2d = pk_mm_2d * gal_bias
     pk_gg_2d = pk_mm_2d * gal_bias ** 2
 
-    # ! 1. Get halo model responses from CCL
-    if cfg['covariance']['which_pk_responses'] == 'halo_model_CCL':
-
-        ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
-                                       pyccl_cfg=cfg['PyCCL'])
-
-        # k and z grids (responses will be interpolated below)
-        k_grid_resp_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
-        a_grid_resp_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
-        # translate a to z and cut the arrays to the maximum redshift of the SU responses (much smaller range!)
-        z_grid_resp_hm = cosmo_lib.a_to_z(a_grid_resp_hm)[::-1]
-
-        assert np.allclose(k_grid_resp_hm, k_grid, atol=0, rtol=1e-2), \
-            'CCL and SB k_grids for trispectrum should match'
-        assert np.allclose(z_grid_resp_hm, z_grid_trisp, atol=0, rtol=1e-2), \
-            'CCL and SB z_grids for trispectrum should match'
-
-        dPmm_ddeltab = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
-        dPgm_ddeltab = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
-        dPgg_ddeltab = ccl_obj.responses_dict['G', 'G', 'G', 'G']['dpk12']
-
-        # a is flipped w.r.t. z
-        dPmm_ddeltab = np.flip(dPmm_ddeltab, axis=1)
-        dPgm_ddeltab = np.flip(dPgm_ddeltab, axis=1)
-        dPgg_ddeltab = np.flip(dPgg_ddeltab, axis=1)
-
-        r_mm = dPmm_ddeltab / pk_mm_2d
-        r_gm = dPgm_ddeltab / pk_gm_2d
-        r_gg = dPgg_ddeltab / pk_gg_2d
-
-        # quick sanity check
-        assert np.allclose(ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34'],
-                           ccl_obj.responses_dict['G', 'L', 'G', 'G']['dpk12'], atol=0, rtol=1e-5)
-        assert np.allclose(ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk34'],
-                           ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12'], atol=0, rtol=1e-5)
-        assert dPmm_ddeltab.shape == dPgm_ddeltab.shape == dPgg_ddeltab.shape, 'dPab_ddeltab_hm shape mismatch'
-
-    elif cfg['covariance']['which_pk_responses'] == 'halo_model_SB':
+    if cfg['covariance']['which_pk_responses'] == 'halo_model':
 
         which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
         include_terasawa_terms = cfg['covariance']['include_terasawa_terms']

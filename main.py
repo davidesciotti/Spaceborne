@@ -91,8 +91,7 @@ if not os.path.exists(f'{output_path}/cache'):
 
 # ! START HARDCODED OPTIONS/PARAMETERS
 use_h_units = False  # whether or not to normalize Megaparsecs by little h
-# number of ell bins over which to compute the Cls passed to OC for the Gaussian covariance computation
-nbl_3x2pt_oc = 500
+nbl_3x2pt_oc = 500  # number of ell bins over which to compute the Cls passed to OC for the Gaussian covariance computation
 k_steps_sigma2 = 20_000
 
 # whether or not to symmetrize the covariance probe blocks when reshaping it from 4D to 6D.
@@ -352,10 +351,10 @@ ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid, has_ia=cfg['C_ell']['has_IA'])
 
 # ! set galaxy and magnification bias
 if cfg['C_ell']['which_gal_bias'] == 'from_input':
-    gal_bias_tab_full = np.genfromtxt(cfg['C_ell']['gal_bias_table_filename'])
-    gal_bias_tab = sl.check_interpolate_input_tab(gal_bias_tab_full, z_grid, zbins)
-    ccl_obj.gal_bias_tuple = (z_grid, gal_bias_tab)
-    ccl_obj.gal_bias_2d = gal_bias_tab
+    gal_bias_input = np.genfromtxt(cfg['C_ell']['gal_bias_table_filename'])
+    ccl_obj.gal_bias_2d, ccl_obj.gal_bias_func = sl.check_interpolate_input_tab(gal_bias_input, z_grid, zbins)
+    ccl_obj.gal_bias_tuple = (z_grid, ccl_obj.gal_bias_2d)
+    
 elif cfg['C_ell']['which_gal_bias'] == 'FS2_polynomial_fit':
     ccl_obj.set_gal_bias_tuple_spv3(z_grid_lns=z_grid,
                                     magcut_lens=None,
@@ -364,11 +363,10 @@ else:
     raise ValueError('which_gal_bias should be "from_input" or "FS2_polynomial_fit"')
 
 if cfg['C_ell']['has_magnification_bias']:
-
     if cfg['C_ell']['which_mag_bias'] == 'from_input':
-        mag_bias_tab_full = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
-        mag_bias_tab = sl.check_interpolate_input_tab(mag_bias_tab_full, z_grid, zbins)
-        ccl_obj.mag_bias_tuple = (z_grid, mag_bias_tab)
+        mag_bias_input = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
+        ccl_obj.mag_bias_2d, ccl_obj.mag_bias_func = sl.check_interpolate_input_tab(mag_bias_input, z_grid, zbins)
+        ccl_obj.mag_bias_tuple = (z_grid, ccl_obj.mag_bias_2d)
     elif cfg['C_ell']['which_mag_bias'] == 'FS2_polynomial_fit':
         ccl_obj.set_mag_bias_tuple(z_grid_lns=z_grid,
                                    has_magnification_bias=cfg['C_ell']['has_magnification_bias'],
@@ -376,10 +374,8 @@ if cfg['C_ell']['has_magnification_bias']:
                                    poly_fit_values=magnification_bias_fit_fiducials)
     else:
         raise ValueError('which_mag_bias should be "from_input" or "FS2_polynomial_fit"')
-
 else:
-    ccl_obj.mag_bias_tuple = None
-
+    ccl_obj.mag_bias_tuple = None 
 
 # ! set radial kernel arrays and objects
 ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['PyCCL']['n_samples_wf'])
@@ -397,16 +393,16 @@ z_means_ll = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_gamma_arr)
 z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
 z_means_ll_bnt = wf_cl_lib.get_z_means(z_grid, wf_gamma_ccl_bnt)
 
-plt.figure()
-for zi in range(zbins):
-    plt.plot(z_grid, ccl_obj.wf_gamma_arr[:, zi], ls='-', c=clr[zi],
-             alpha=0.6, label='wf_gamma_ccl' if zi == 0 else None)
-    plt.plot(z_grid, wf_gamma_ccl_bnt[:, zi], ls='--', c=clr[zi],
-             alpha=0.6, label='wf_gamma_ccl_bnt' if zi == 0 else None)
-    plt.axvline(z_means_ll_bnt[zi], ls=':', c=clr[zi])
-plt.legend()
-plt.xlabel('$z$')
-plt.ylabel(r'$W_i^{\gamma}(z)$')
+# plt.figure()
+# for zi in range(zbins):
+#     plt.plot(z_grid, ccl_obj.wf_gamma_arr[:, zi], ls='-', c=clr[zi],
+#              alpha=0.6, label='wf_gamma_ccl' if zi == 0 else None)
+#     plt.plot(z_grid, wf_gamma_ccl_bnt[:, zi], ls='--', c=clr[zi],
+#              alpha=0.6, label='wf_gamma_ccl_bnt' if zi == 0 else None)
+#     plt.axvline(z_means_ll_bnt[zi], ls=':', c=clr[zi])
+# plt.legend()
+# plt.xlabel('$z$')
+# plt.ylabel(r'$W_i^{\gamma}(z)$')
 
 assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically increasing'
 assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically increasing'
@@ -700,8 +696,7 @@ if compute_sb_ssc:
     for zi in range(zbins):
         np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
     # interpolate with a spline on the trispectrum z grid
-    gal_bias_spline = CubicSpline(z_grid, gal_bias)
-    gal_bias = gal_bias_spline(z_grid_trisp)
+    gal_bias = ccl_obj.gal_bias_func(z_grid_trisp)
 
     pk_gm_2d = pk_mm_2d * gal_bias
     pk_gg_2d = pk_mm_2d * gal_bias ** 2

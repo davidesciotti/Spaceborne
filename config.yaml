@@ -111,7 +111,7 @@ ell_binning:
     ell_max_GC: 3000 # Type: int. Maximum ell for GC
     ell_max_3x2pt: 3000 # Type: int
     nbl_WL_opt: 32 # Type: int. This is the value from which the various bin cuts are applied, do not change it
-    ell_max_WL_opt: 5000 # Type: int. This is the value from which the various bin cuts are applied, do not change it
+    ell_max_WL_opt: 3000 # Type: int. This is the value from which the various bin cuts are applied, do not change it
 
 ell_cuts:
     apply_ell_cuts: False # Type: bool

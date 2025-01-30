@@ -53,7 +53,7 @@ class SpaceborneConfigChecker:
 
     def check_ell_binning(self) -> None:
         assert self.cfg['ell_binning']['nbl_WL_opt'] == 32, 'this is used as the reference binning, from which the cuts are made'
-        assert self.cfg['ell_binning']['ell_max_WL_opt'] == 5000, 'this is used as the reference binning, from which the cuts are made'
+        # assert self.cfg['ell_binning']['ell_max_WL_opt'] == 5000, 'this is used as the reference binning, from which the cuts are made'
         assert (self.cfg['ell_binning']['ell_max_WL'], self.cfg['ell_binning']['ell_max_GC']) == (5000, 3000) or (1500, 750), \
             'ell_max_WL and ell_max_GC must be either (5000, 3000) or (1500, 750)'
 

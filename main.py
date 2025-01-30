@@ -246,7 +246,9 @@ nz_unshifted_lns = nz_lns
 # ! compute ell values, ell bins and delta ell
 # compute ell and delta ell values in the reference (optimistic) case
 ell_ref_nbl32, delta_l_ref_nbl32, ell_edges_ref_nbl32 = (
-    ell_utils.compute_ells(cfg['ell_binning']['nbl_WL_opt'], cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_WL_opt'],
+    ell_utils.compute_ells(nbl=cfg['ell_binning']['nbl_WL_opt'], 
+                           ell_min=cfg['ell_binning']['ell_min'], 
+                           ell_max=cfg['ell_binning']['ell_max_WL_opt'],
                            recipe='ISTF', output_ell_bin_edges=True))
 
 # perform the cuts (not the redshift-dependent ones!) on the ell centers and edges
@@ -281,6 +283,14 @@ assert nbl_WL == nbl_3x2pt == nbl_GC, 'use the same number of bins for the momen
 # delta_ell values, needed for gaussian covariance (if binned in this way)
 ell_dict['delta_l_WL'] = np.copy(delta_l_ref_nbl32[:nbl_WL])
 ell_dict['delta_l_GC'] = np.copy(delta_l_ref_nbl32[:nbl_GC])
+
+# save ell values to .txt file
+# fmt = '%20.4e'
+header = 'ell_ref, delta_ell_ref, ell_lower_edges_ref, ell_upper_edges_ref, ell_WL, ell_GC, ell_3x2pt'
+ells_2d_save = np.column_stack((ell_ref_nbl32, delta_l_ref_nbl32, ell_edges_ref_nbl32[:-1], ell_edges_ref_nbl32[1:], 
+                                ell_dict['ell_WL'], ell_dict['ell_GC'], ell_dict['ell_3x2pt']))
+np.savetxt(f"{cfg['misc']['output_path']}/ell_values.txt", ells_2d_save, header=header)
+
 
 # provate cfg dictionary. This serves a couple different purposeses:
 # 1. To store and pass hardcoded parameters in a convenient way

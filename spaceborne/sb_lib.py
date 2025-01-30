@@ -151,7 +151,7 @@ def mirror_upper_to_lower_vectorized(A):
     return result
 
 
-def check_interpolate_input_tab(input_tab: np.ndarray, z_grid_out: np.ndarray, zbins: int):
+def check_interpolate_input_tab(input_tab: np.ndarray, z_grid_out: np.ndarray, zbins: int) -> tuple:
     """
     Interpolates the input table over the 0th dimension using a cubic spline 
     and returns the interpolated values on the specified grid.
@@ -170,7 +170,7 @@ def check_interpolate_input_tab(input_tab: np.ndarray, z_grid_out: np.ndarray, z
     spline = CubicSpline(x=input_tab[:, 0], y=input_tab[:, 1:], axis=0)
     output_tab = spline(z_grid_out)
 
-    return output_tab
+    return output_tab, spline
 
 @deprecated(reason="ep_or_ed option has been deprecated")
 def get_ngal(ngal_in, ep_or_ed, zbins, ep_check_tol):

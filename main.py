@@ -945,7 +945,7 @@ if cfg['misc']['save_output_as_benchmark']:
         g_code=cfg['covariance']['G_code'],
         ssc_code=cfg['covariance']['SSC_code'] if cfg['covariance']['SSC'] else 'None',
         cng_code=cfg['covariance']['cNG_code'] if cfg['covariance']['cNG'] else 'None',
-        use_KE=cfg['covariance']['use_KE_approximation'],
+        use_KE=str(cfg['covariance']['use_KE_approximation']),
         which_pk_responses=cfg['covariance']['which_pk_responses'],
         which_b1g_in_resp=cfg['covariance']['which_b1g_in_resp']
     )

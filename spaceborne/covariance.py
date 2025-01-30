@@ -576,11 +576,17 @@ class SpaceborneCovariance():
         covs_g_2D = (self.cov_WL_g_2D, self.cov_GC_g_2D, self.cov_3x2pt_g_2D, self.cov_XC_g_2D)
         covs_ssc_2D = (self.cov_WL_ssc_2D, self.cov_GC_ssc_2D, self.cov_3x2pt_ssc_2D, self.cov_XC_ssc_2D)
         covs_cng_2D = (self.cov_WL_cng_2D, self.cov_GC_cng_2D, self.cov_3x2pt_cng_2D, self.cov_XC_cng_2D)
+        covs_tot_2D = (self.cov_WL_g_2D + self.cov_WL_ssc_2D + self.cov_WL_cng_2D,
+                       self.cov_GC_g_2D + self.cov_GC_ssc_2D + self.cov_GC_cng_2D,
+                       self.cov_3x2pt_g_2D + self.cov_3x2pt_ssc_2D + self.cov_3x2pt_cng_2D,
+                       self.cov_XC_g_2D + self.cov_XC_ssc_2D + self.cov_XC_cng_2D)
 
-        for probe_name, cov_g_2D, cov_ssc_2D, cov_cng_2D in zip(probe_names, covs_g_2D, covs_ssc_2D, covs_cng_2D):
+        for probe_name, cov_g_2D, cov_ssc_2D, cov_cng_2D, cov_tot_2D in \
+            zip(probe_names, covs_g_2D, covs_ssc_2D, covs_cng_2D, covs_tot_2D):
             self.cov_dict[f'cov_{probe_name}_g_2D'] = cov_g_2D
             self.cov_dict[f'cov_{probe_name}_ssc_2D'] = cov_ssc_2D
             self.cov_dict[f'cov_{probe_name}_cng_2D'] = cov_cng_2D
+            self.cov_dict[f'cov_{probe_name}_tot_2D'] = cov_tot_2D
 
         print('Covariance matrices computed')
 

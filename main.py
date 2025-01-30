@@ -589,6 +589,7 @@ ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
 # ! build covariance matrices
 cov_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_dict, bnt_matrix)
+cov_obj.jl_integrator_path = './spaceborne/julia_integrator.jl'
 cov_obj.set_ind_and_zpairs(ind, zbins)
 cov_obj.symmetrize_output_dict = symmetrize_output_dict
 cov_obj.consistency_checks()
@@ -906,6 +907,21 @@ for key in cov_dict.keys():
     np.testing.assert_allclose(cov_dict[key], cov_dict[key].T,
                                atol=0, rtol=1e-7, err_msg=f'{key} not symmetric')
 
+for which_cov in cov_dict.keys():
+    probe = which_cov.split('_')[1]
+    which_ng_cov = which_cov.split('_')[2]
+    ndim = which_cov.split('_')[3]
+    cov_filename = cfg['covariance']['cov_filename'].format(which_ng_cov=which_ng_cov,
+                                                            probe=probe,
+                                                            ndim=ndim)
+
+    if cov_filename.endswith('.npz'):
+        save_func = np.savez_compressed
+    elif cov_filename.endswith('.npy'):
+        save_func = np.save
+    
+    save_func(f'{output_path}/{cov_filename}', cov_dict[which_cov])
+
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.dump(cfg, yaml_file, default_flow_style=False)
 
@@ -970,16 +986,6 @@ if cfg['misc']['save_output_as_benchmark']:
                         metadata=metadata,
                         )
 
-
-for which_cov in cov_dict.keys():
-    probe = which_cov.split('_')[1]
-    which_ng_cov = which_cov.split('_')[2]
-    ndim = which_cov.split('_')[3]
-    cov_filename = cfg['covariance']['cov_filename'].format(which_ng_cov=which_ng_cov,
-                                                            probe=probe,
-                                                            ndim=ndim)
-
-    np.savez_compressed(f'{output_path}/{cov_filename}', **cov_dict)
 
 print(f'Covariance matrices saved in {output_path}\n')
 

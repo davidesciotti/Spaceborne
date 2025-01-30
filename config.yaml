@@ -52,7 +52,8 @@ C_ell:
     which_gal_bias: "FS2_polynomial_fit" # Type: str. Options: ['from_input', 'FS2_polynomial_fit']
     which_mag_bias: "FS2_polynomial_fit" # Type: str. Options: ['from_input', 'FS2_polynomial_fit']
     
-    # coefficients for the polynomial galaxy and magnification bias fits to FS2
+    # coefficients for the polynomial galaxy and magnification bias fits to FS2.
+    # These are ignored if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
     galaxy_bias_fit_coeff: [1.33291, -0.72414, 1.0183, -0.14913] # Type: list[float]
     magnification_bias_fit_coeff: [-1.50685, 1.35034, 0.08321, 0.04279] # Type: list[float]
 

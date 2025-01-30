@@ -81,7 +81,6 @@ include_ia_in_bnt_kernel_for_zcuts = cfg['BNT']['include_ia_in_bnt_kernel_for_zc
 compute_bnt_with_shifted_nz_for_zcuts = cfg['BNT']['compute_bnt_with_shifted_nz_for_zcuts']
 probe_ordering = cfg['covariance']['probe_ordering']
 GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
-EP_OR_ED = cfg['nz']['EP_or_ED']
 output_path = cfg['misc']['output_path']
 clr = cm.rainbow(np.linspace(0, 1, zbins))
 
@@ -290,7 +289,6 @@ ell_dict['delta_l_GC'] = np.copy(delta_l_ref_nbl32[:nbl_GC])
 # 1. To store and pass hardcoded parameters in a convenient way
 # 2. To make the .format() more compact
 pvt_cfg = {
-    'EP_OR_ED': EP_OR_ED,
     'zbins': zbins,
     'ind': ind,
     'probe_ordering': probe_ordering,
@@ -300,7 +298,6 @@ pvt_cfg = {
     'which_ng_cov': cov_terms_str,
     'cov_terms_list': cov_terms_list,
     'GL_OR_LG': GL_OR_LG,
-    'EP_OR_ED': EP_OR_ED,
     'symmetrize_output_dict': symmetrize_output_dict,
     'use_h_units': use_h_units,
     'z_grid': z_grid,
@@ -944,7 +941,15 @@ if cfg['misc']['save_output_as_benchmark']:
         'commit': commit,
     }
 
-    bench_filename = cfg['misc']['bench_filename']
+    bench_filename = cfg['misc']['bench_filename'].format(
+        g_code=cfg['covariance']['G_code'],
+        ssc_code=cfg['covariance']['SSC_code'] if cfg['covariance']['SSC'] else 'None',
+        cng_code=cfg['covariance']['cNG_code'] if cfg['covariance']['cNG'] else 'None',
+        use_KE=cfg['covariance']['use_KE_approximation'],
+        which_pk_responses=cfg['covariance']['which_pk_responses'],
+        which_b1g_in_resp=cfg['covariance']['which_b1g_in_resp']
+    )
+    
     if os.path.exists(f'{bench_filename}.npz'):
         raise ValueError('You are trying to overwrite a benchmark file. Please rename the file or delete the existing one.')
 

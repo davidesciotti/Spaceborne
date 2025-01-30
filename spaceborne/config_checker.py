@@ -75,7 +75,6 @@ class SpaceborneConfigChecker:
                 'Value mismatch for logT_AGN in the parameters definition')
 
     def check_cov(self) -> None:
-        assert self.cfg['covariance']['ep_or_ed'] in ('EP', 'ED'), 'EP_or_ED must be either EP or ED'
         assert self.cfg['covariance']['triu_tril'] in ('triu', 'tril'), 'triu_tril must be either "triu" or "tril"'
         assert self.cfg['covariance']['probe_ordering'] == [["L", "L"], ["G", "L"], ["G", "G"]], \
             'Other probe orderings not tested at the moment'

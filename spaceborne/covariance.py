@@ -21,7 +21,6 @@ class SpaceborneCovariance():
         self.zbins = pvt_cfg['zbins']
         self.cov_terms_list = pvt_cfg['cov_terms_list']
         self.GL_OR_LG = pvt_cfg['GL_OR_LG']
-        self.EP_OR_ED = pvt_cfg['EP_OR_ED']
 
         self.n_probes = self.covariance_cfg['n_probes']
         # 'include' instead of 'compute' because it might be loaded from file
@@ -191,8 +190,7 @@ class SpaceborneCovariance():
         ng_clust = np.array(self.cfg['nz']['ngal_lenses'])
         noise_3x2pt_4D = sl.build_noise(self.zbins, self.n_probes, sigma_eps2=sigma_eps2,
                                         ng_shear=ng_shear,
-                                        ng_clust=ng_clust,
-                                        EP_or_ED=self.EP_OR_ED)
+                                        ng_clust=ng_clust)
 
         # create dummy ell axis, the array is just repeated along it
         nbl_max = np.max((self.nbl_WL, self.nbl_GC, self.nbl_3x2pt))

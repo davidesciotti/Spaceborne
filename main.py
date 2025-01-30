@@ -285,11 +285,52 @@ ell_dict['delta_l_WL'] = np.copy(delta_l_ref_nbl32[:nbl_WL])
 ell_dict['delta_l_GC'] = np.copy(delta_l_ref_nbl32[:nbl_GC])
 
 # save ell values to .txt file
-# fmt = '%20.4e'
 header = 'ell_ref, delta_ell_ref, ell_lower_edges_ref, ell_upper_edges_ref, ell_WL, ell_GC, ell_3x2pt'
-ells_2d_save = np.column_stack((ell_ref_nbl32, delta_l_ref_nbl32, ell_edges_ref_nbl32[:-1], ell_edges_ref_nbl32[1:], 
-                                ell_dict['ell_WL'], ell_dict['ell_GC'], ell_dict['ell_3x2pt']))
-np.savetxt(f"{cfg['misc']['output_path']}/ell_values.txt", ells_2d_save, header=header)
+
+# Gather all arrays
+arrays = [
+    ell_ref_nbl32,
+    delta_l_ref_nbl32,
+    ell_edges_ref_nbl32[:-1],  # Lower edges (length 4)
+    ell_edges_ref_nbl32[1:],   # Upper edges (length 4)
+    ell_dict['ell_WL'],
+    ell_dict['ell_GC'],
+    ell_dict['ell_3x2pt']
+]
+
+# Find maximum length
+max_length = max(len(arr) for arr in arrays)
+
+# Pad shorter arrays with NaNs
+padded_arrays = []
+for arr in arrays:
+    if len(arr) < max_length:
+        padded = np.full(max_length, np.nan)
+        padded[:len(arr)] = arr
+    else:
+        padded = arr
+    padded_arrays.append(padded)
+
+# Combine into a 2D array
+ells_2d_save = np.column_stack(padded_arrays)
+
+# Custom formatter: Replace NaNs with '-'
+def custom_format(value):
+    if np.isnan(value):
+        return f"{'-':<25}"  # Left-aligned placeholder
+    return f"{value:<25.4e}"  # Left-aligned scientific notation
+
+# Save with aligned columns
+header = (
+    f"# {'ell_ref':<23}{'delta_ell_ref':<25}{'ell_lower_edges_ref':<25}"
+    f"{'ell_upper_edges_ref':<25}{'ell_WL':<25}{'ell_GC':<25}{'ell_3x2pt':<25}"
+)
+
+with open(f"{cfg['misc']['output_path']}/ell_values.txt", "w") as f:
+    f.write(header + "\n")
+    for row in ells_2d_save:
+        formatted_row = "".join([custom_format(val) for val in row])
+        f.write(formatted_row + "\n")
 
 
 # provate cfg dictionary. This serves a couple different purposeses:

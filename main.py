@@ -243,8 +243,6 @@ nz_lns = nz_lns_tab_full[:, 1:]
 nz_unshifted_src = nz_src
 nz_unshifted_lns = nz_lns
 
-wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
-
 # ! compute ell values, ell bins and delta ell
 # compute ell and delta ell values in the reference (optimistic) case
 ell_ref_nbl32, delta_l_ref_nbl32, ell_edges_ref_nbl32 = (

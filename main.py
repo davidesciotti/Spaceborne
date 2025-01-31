@@ -14,7 +14,7 @@ import warnings
 import yaml
 import pprint
 from copy import deepcopy
-from scipy.interpolate import RegularGridInterpolator, CubicSpline
+from scipy.interpolate import CubicSpline, RectBivariateSpline
 
 from spaceborne import ell_utils
 from spaceborne import cl_utils
@@ -781,19 +781,29 @@ if compute_sb_ssc:
             ell_grid, z_grid_test, use_h_units, ccl_obj.cosmo_ccl)
         print(f'Retrying with z_min = {z_grid_test[0]:.3f}')
 
-    # ! compute the Pk responses(k, z) in k_limber and z_grid
-    dPmm_ddeltab_interp = RegularGridInterpolator((k_grid, z_grid_trisp), dPmm_ddeltab, method='linear')
-    dPgm_ddeltab_interp = RegularGridInterpolator((k_grid, z_grid_trisp), dPgm_ddeltab, method='linear')
-    dPgg_ddeltab_interp = RegularGridInterpolator((k_grid, z_grid_trisp), dPgg_ddeltab, method='linear')
+    # Step 1: Define the splines
+    dPmm_ddeltab_spline = RectBivariateSpline(k_grid, z_grid_trisp, dPmm_ddeltab, kx=3, ky=3)
+    dPgm_ddeltab_spline = RectBivariateSpline(k_grid, z_grid_trisp, dPgm_ddeltab, kx=3, ky=3)
+    dPgg_ddeltab_spline = RectBivariateSpline(k_grid, z_grid_trisp, dPgg_ddeltab, kx=3, ky=3)
 
+    # Step 2: Define k_limber function
     k_limber = partial(cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
 
-    dPmm_ddeltab_klimb = np.array([dPmm_ddeltab_interp((k_limber(ell_val, z_grid), z_grid))
-                                   for ell_val in ell_dict['ell_WL']])
-    dPgm_ddeltab_klimb = np.array([dPgm_ddeltab_interp((k_limber(ell_val, z_grid), z_grid))
-                                   for ell_val in ell_dict['ell_XC']])
-    dPgg_ddeltab_klimb = np.array([dPgg_ddeltab_interp((k_limber(ell_val, z_grid), z_grid))
-                                   for ell_val in ell_dict['ell_GC']])
+    # Step 3: Evaluate using the spline
+    dPmm_ddeltab_klimb = np.array([
+        dPmm_ddeltab_spline(k_limber(ell_val, z_grid), z_grid, grid=False)
+        for ell_val in ell_dict['ell_WL']
+    ])
+
+    dPgm_ddeltab_klimb = np.array([
+        dPgm_ddeltab_spline(k_limber(ell_val, z_grid), z_grid, grid=False)
+        for ell_val in ell_dict['ell_XC']
+    ])
+
+    dPgg_ddeltab_klimb = np.array([
+        dPgg_ddeltab_spline(k_limber(ell_val, z_grid), z_grid, grid=False)
+        for ell_val in ell_dict['ell_GC']
+    ])
 
     # ! integral prefactor
     cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(z_grid,
@@ -1149,7 +1159,7 @@ fm_cfg = {
     'GL_or_LG': 'GL',
     'compute_FM': True,
     'save_FM_txt': False,
-    'save_FM_dict': False,
+    'save_FM_dict': True,
     'load_preprocess_derivatives': False,
     'which_derivatives': 'Vincenzo',  # Vincenzo or Spaceborne,
     'derivatives_folder': "{ROOT:s}/common_data/vincenzo/SPV3_07_2022/LiFEforSPV3_may24/OutputFiles/DataVecDers/{flat_or_nonflat:s}/{which_pk:s}/{EP_or_ED:s}{zbins:02d}",
@@ -1159,7 +1169,7 @@ fm_cfg = {
     'deriv_ell_cuts': False,
     'fm_folder': "{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}",
     'fm_txt_filename': 'fm_txt_filename',
-    'fm_dict_filename': "FM_dict_test.pickle",
+    'fm_dict_filename': "FM_dict_linear_luminr.pickle",
     'test_against_vincenzo': False,
     'test_against_benchmarks': False,
     'FM_ordered_params': FM_ordered_params,
@@ -1523,7 +1533,7 @@ fm_dict_of_dicts = {
     # 'SB_KEapp_hm_simpker': sl.load_pickle(f'{fm_folder}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     # 'SB_hm_simpker': sl.load_pickle(f'{fm_folder}/FM_GSSC_Spaceborne{common_str}_Euclid_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     # 'OC_simpker': sl.load_pickle(f'{fm_folder}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly.pickle'),
-    'test': sl.load_pickle(f'{fm_folder}/FM_dict_test.pickle'),
+    'test': sl.load_pickle(f'{fm_folder}/FM_dict_spline_luminr.pickle'),
     'current': fm_dict,
 }
 

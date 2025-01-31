@@ -149,6 +149,15 @@ covariance:
     # loop corresponding to the leftmost index.
     # - ell_probe_zpair: Ordered by multipole (ell), then probe type, then redshift pair.
     # - probe_ell_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordering used by CLOE
+    save_full_cov: True # Type: bool.
+    # Whether to save the full 6D (10D) covariance matrix, without to any indices compression or reshaping. 
+    # In the case of the single probes, this is an array of shape
+    # (ellbins, ellbins, zbins, zbins, zbins, zbins).
+    # In the 3x2pt case, this is an array of shape
+    # (n_probes, n_probes, n_probes, n_probes, ellbins, ellbins, zbins, zbins, zbins, zbins), 
+    # with nbl the number of probes. The probe index is by default 0 for WL, 1 for GC.
+    # Keep in mind that the arrays will likely be quite large. 
+    
     split_gaussian_cov: True # Type: bool
     # Whether to split the Gaussian covariance term into the
     # sample variance, noise and mixed terms

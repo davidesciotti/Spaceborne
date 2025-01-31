@@ -1,5 +1,6 @@
 import argparse
 import gc
+import itertools
 import os
 from tqdm import tqdm
 from pathlib import Path
@@ -247,8 +248,8 @@ nz_unshifted_lns = nz_lns
 # ! compute ell values, ell bins and delta ell
 # compute ell and delta ell values in the reference (optimistic) case
 ell_ref_nbl32, delta_l_ref_nbl32, ell_edges_ref_nbl32 = (
-    ell_utils.compute_ells(nbl=cfg['ell_binning']['nbl_WL_opt'], 
-                           ell_min=cfg['ell_binning']['ell_min'], 
+    ell_utils.compute_ells(nbl=cfg['ell_binning']['nbl_WL_opt'],
+                           ell_min=cfg['ell_binning']['ell_min'],
                            ell_max=cfg['ell_binning']['ell_max_WL_opt'],
                            recipe='ISTF', output_ell_bin_edges=True))
 
@@ -284,55 +285,7 @@ assert nbl_WL == nbl_3x2pt == nbl_GC, 'use the same number of bins for the momen
 # delta_ell values, needed for gaussian covariance (if binned in this way)
 ell_dict['delta_l_WL'] = np.copy(delta_l_ref_nbl32[:nbl_WL])
 ell_dict['delta_l_GC'] = np.copy(delta_l_ref_nbl32[:nbl_GC])
-
-# save ell values to .txt file
-header = 'ell_ref, delta_ell_ref, ell_lower_edges_ref, ell_upper_edges_ref, ell_WL, ell_GC, ell_3x2pt'
-
-# Gather all arrays
-arrays = [
-    ell_ref_nbl32,
-    delta_l_ref_nbl32,
-    ell_edges_ref_nbl32[:-1],  # Lower edges (length 4)
-    ell_edges_ref_nbl32[1:],   # Upper edges (length 4)
-    ell_dict['ell_WL'],
-    ell_dict['ell_GC'],
-    ell_dict['ell_3x2pt']
-]
-
-# Find maximum length
-max_length = max(len(arr) for arr in arrays)
-
-# Pad shorter arrays with NaNs
-padded_arrays = []
-for arr in arrays:
-    if len(arr) < max_length:
-        padded = np.full(max_length, np.nan)
-        padded[:len(arr)] = arr
-    else:
-        padded = arr
-    padded_arrays.append(padded)
-
-# Combine into a 2D array
-ells_2d_save = np.column_stack(padded_arrays)
-
-# Custom formatter: Replace NaNs with '-'
-def custom_format(value):
-    if np.isnan(value):
-        return f"{'-':<25}"  # Left-aligned placeholder
-    return f"{value:<25.4e}"  # Left-aligned scientific notation
-
-# Save with aligned columns
-header = (
-    f"# {'ell_ref':<23}{'delta_ell_ref':<25}{'ell_lower_edges_ref':<25}"
-    f"{'ell_upper_edges_ref':<25}{'ell_WL':<25}{'ell_GC':<25}{'ell_3x2pt':<25}"
-)
-
-with open(f"{cfg['misc']['output_path']}/ell_values.txt", "w") as f:
-    f.write(header + "\n")
-    for row in ells_2d_save:
-        formatted_row = "".join([custom_format(val) for val in row])
-        f.write(formatted_row + "\n")
-
+ell_dict['delta_l_3x2pt'] = np.copy(delta_l_ref_nbl32[:nbl_3x2pt])
 
 # provate cfg dictionary. This serves a couple different purposeses:
 # 1. To store and pass hardcoded parameters in a convenient way
@@ -404,7 +357,7 @@ if cfg['C_ell']['which_gal_bias'] == 'from_input':
     gal_bias_input = np.genfromtxt(cfg['C_ell']['gal_bias_table_filename'])
     ccl_obj.gal_bias_2d, ccl_obj.gal_bias_func = sl.check_interpolate_input_tab(gal_bias_input, z_grid, zbins)
     ccl_obj.gal_bias_tuple = (z_grid, ccl_obj.gal_bias_2d)
-    
+
 elif cfg['C_ell']['which_gal_bias'] == 'FS2_polynomial_fit':
     ccl_obj.set_gal_bias_tuple_spv3(z_grid_lns=z_grid,
                                     magcut_lens=None,
@@ -425,7 +378,7 @@ if cfg['C_ell']['has_magnification_bias']:
     else:
         raise ValueError('which_mag_bias should be "from_input" or "FS2_polynomial_fit"')
 else:
-    ccl_obj.mag_bias_tuple = None 
+    ccl_obj.mag_bias_tuple = None
 
 # ! set radial kernel arrays and objects
 ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['PyCCL']['n_samples_wf'])
@@ -769,7 +722,6 @@ if compute_sb_ssc:
         r_gm = resp_obj.r1_gm_hm
         r_gg = resp_obj.r1_gg_hm
 
-    # ! from SpaceborneResponses class
     elif cfg['covariance']['which_pk_responses'] == 'separate_universe':
 
         resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid,
@@ -956,16 +908,58 @@ for which_cov in cov_dict.keys():
     cov_filename = cfg['covariance']['cov_filename'].format(which_ng_cov=which_ng_cov,
                                                             probe=probe,
                                                             ndim=ndim)
+    cov_filename = cov_filename.replace('_g_', '_G_')
+    cov_filename = cov_filename.replace('_ssc_', '_SSC_')
+    cov_filename = cov_filename.replace('_cng_', '_cNG_')
+    cov_filename = cov_filename.replace('_tot_', '_TOT_')
 
     if cov_filename.endswith('.npz'):
         save_func = np.savez_compressed
     elif cov_filename.endswith('.npy'):
         save_func = np.save
-    
+
     save_func(f'{output_path}/{cov_filename}', cov_dict[which_cov])
 
+    if cfg['covariance']['save_full_cov']:
+        unique_probe_comb = [
+            [0, 0, 0, 0], [0, 0, 1, 0], [0, 0, 1, 1],
+            [1, 0, 1, 0], [1, 0, 1, 1], [1, 1, 1, 1]]
+        probename_dict = {
+            0: 'L',
+            1: 'G'}
+        for a, b, c, d in unique_probe_comb:
+            abcd_str = f'{probename_dict[a]}{probename_dict[b]}{probename_dict[c]}{probename_dict[d]}'
+            cov_tot_6d = cov_obj.cov_3x2pt_g_10D[a, b, c, d, ...] + cov_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...] + \
+                cov_obj.cov_3x2pt_cng_10D[a, b, c, d, ...]
+            save_func(f'{output_path}/cov_{abcd_str}_G_6D', cov_obj.cov_3x2pt_g_10D[a, b, c, d, ...])
+            save_func(f'{output_path}/cov_{abcd_str}_SSC_6D', cov_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...])
+            save_func(f'{output_path}/cov_{abcd_str}_cNG_6D', cov_obj.cov_3x2pt_cng_10D[a, b, c, d, ...])
+            save_func(f'{output_path}/cov_{abcd_str}_TOT_6D', cov_tot_6d)
+
+
+# save cfg file
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.dump(cfg, yaml_file, default_flow_style=False)
+
+header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']    
+
+ells_2d_save = np.column_stack((
+    ell_ref_nbl32,
+    delta_l_ref_nbl32,
+    ell_edges_ref_nbl32[:-1],
+    ell_edges_ref_nbl32[1:], 
+))
+
+sl.savetxt_aligned(f'{output_path}/ell_values_ref.txt', ells_2d_save, header_list)
+
+for probe in ['WL', 'GC', '3x2pt']:
+    ells_2d_save = np.column_stack((
+        ell_dict[f'ell_{probe}'],
+        ell_dict[f'delta_l_{probe}'],
+        ell_dict[f'ell_edges_{probe}'][:-1],
+        ell_dict[f'ell_edges_{probe}'][1:], 
+    ))
+    sl.savetxt_aligned(f'{output_path}/ell_values_{probe}.txt', ells_2d_save, header_list)
 
 if cfg['misc']['save_output_as_benchmark']:
 
@@ -994,7 +988,7 @@ if cfg['misc']['save_output_as_benchmark']:
         which_pk_responses=cfg['covariance']['which_pk_responses'],
         which_b1g_in_resp=cfg['covariance']['which_b1g_in_resp']
     )
-    
+
     if os.path.exists(f'{bench_filename}.npz'):
         raise ValueError('You are trying to overwrite a benchmark file. Please rename the file or delete the existing one.')
 

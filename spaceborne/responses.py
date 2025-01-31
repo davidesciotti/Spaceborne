@@ -126,7 +126,7 @@ class SpaceborneResponses():
             (:obj:`float` or `array`): integral values evaluated at each
             value of ``k``.
         """
-         # Backup the original `_bf`. To do this, I first need to call `_get_ingredients`
+        # Backup the original `_bf`. To do this, I first need to call `_get_ingredients`
         self.ccl_obj.hmc._get_ingredients(cosmo, a, get_bf=True)
         original_bf = self.ccl_obj.hmc._bf 
 

@@ -1653,20 +1653,6 @@ def show_keys(arrays_dict):
         print(key)
 
 
-def cl_interpolator(cl_2D, zpairs, new_ell_values, nbl, kind='linear'):
-    original_ell_values = cl_2D[:, 0]
-
-    # switch to linear scale, the "15" is arbitrary
-    if original_ell_values.max() < 15:
-        original_ell_values = 10 ** original_ell_values
-    if new_ell_values.max() < 15:
-        new_ell_values = 10 ** new_ell_values
-
-    cl_interpolated = np.zeros((nbl, zpairs))
-    for zpair_idx in range(zpairs):
-        f = interp1d(original_ell_values, cl_2D[:, zpair_idx + 1], kind=kind)
-        cl_interpolated[:, zpair_idx] = f(new_ell_values)
-    return cl_interpolated
 
 
 @njit

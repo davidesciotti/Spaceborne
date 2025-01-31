@@ -72,6 +72,19 @@ mpl_other_dict = {
 }
 
 
+def savetxt_aligned(filename, array_2d, header_list, col_width=25, decimals=8):
+    
+    header = ''
+    for i in range(len(header_list)):
+        offset = 2 if i == 0 else 0
+        string = f"{header_list[i]:<{col_width - offset}}"
+        header += string
+    
+    # header = ''.join([f"{header_list[i]:<{col_width - 2}}" for i in range(len(header_list))])
+    fmt = [f'%-{col_width}.{decimals}f'] * len(array_2d[0])
+    np.savetxt(filename, array_2d, header=header, fmt=fmt, delimiter='')
+
+
 def nz_fits_to_txt(fits_filename):
     """
     Converts the official SGS-like fits file to the usual (z, nz) format.

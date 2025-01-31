@@ -63,7 +63,6 @@ galaxy_bias_fit_fiducials = np.array(cfg['C_ell']['galaxy_bias_fit_coeff'])
 magnification_bias_fit_fiducials = np.array(cfg['C_ell']['magnification_bias_fit_coeff'])
 dzWL_fiducial = cfg['nz']['dzWL']
 dzGC_fiducial = cfg['nz']['dzGC']
-shift_nz_interpolation_kind = cfg['nz']['shift_nz_interpolation_kind']
 nz_gaussian_smoothing = cfg['nz']['nz_gaussian_smoothing']  # does not seem to have a large effect...
 nz_gaussian_smoothing_sigma = cfg['nz']['nz_gaussian_smoothing_sigma']
 shift_nz = cfg['nz']['shift_nz']
@@ -93,6 +92,8 @@ if not os.path.exists(f'{output_path}/cache'):
 use_h_units = False  # whether or not to normalize Megaparsecs by little h
 nbl_3x2pt_oc = 500  # number of ell bins over which to compute the Cls passed to OC for the Gaussian covariance computation
 k_steps_sigma2 = 20_000
+shift_nz_interpolation_kind = 'linear'  # TODO this should be spline
+
 
 # whether or not to symmetrize the covariance probe blocks when reshaping it from 4D to 6D.
 # Useful if the 6D cov elements need to be accessed directly, whereas if the cov is again reduced to 4D or 2D
@@ -183,8 +184,8 @@ else:
     ccl_obj.lumin_ratio_2d_arr = None
 
 # ! define k and z grids used throughout the code (k is in 1/Mpc)
-# TODO zmin and zmax should be inferred from the nz tables!!
-# TODO not necessarily true for all the different zsteps
+# TODO should zmin and zmax be inferred from the nz tables?
+# TODO -> not necessarily true for all the different zsteps
 z_grid = np.linspace(cfg['covariance']['z_min'],
                      cfg['covariance']['z_max'],
                      cfg['covariance']['z_steps'])

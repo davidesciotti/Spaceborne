@@ -1,9 +1,4 @@
-# TODO infer EP Ed from nz, or better delete it altogether
 # TODO add general description
-# TODO merge with cfg.yaml from spaceborne_covg
-# TODO add dzGC
-# TODO delete dz shifts?
-# TODO hardcode shift_nz_interpolation_kind to spline
 # TODO remove compute_bnt_with_shifted_nz_for_zcuts??
 cosmology:
     Om: 0.32        # Type: float. Matter density parameter
@@ -78,8 +73,6 @@ C_ell:
         non_limber_integration_method: FKEM # Type: str
 
 nz:
-    EP_or_ED: EP  # Type: str. Options: [EP, ED] Equipopulated or Equidistant redshift bins
-
     # Type: str. Paths to source and lens redshift distributions. These must have shape (z_points, zbins + 1)
     nz_sources_filename: ./input/nzTab-EP03-zedMin02-zedMax25-mag245.dat
     nz_lenses_filename: ./input/nzTab-EP03-zedMin02-zedMax25-mag245.dat
@@ -88,12 +81,14 @@ nz:
     ngal_sources: [8.09216, 8.09215, 8.09215]
     ngal_lenses: [8.09216, 8.09215, 8.09215]
 
+    shift_nz: True # Type: bool. 
+    # Whether or not to apply per-bin shifts to the 
+    # redshift distributions.
+    
     # Type: list[float]. Shift in the redshift distribution per redshift bin. Should be of len(zbins)
     dzWL: [-0.008848, 0.051368, 0.059484]
     dzGC: [-0.008848, 0.051368, 0.059484]
 
-    shift_nz: True # Type: bool
-    shift_nz_interpolation_kind: linear # Type: str # TODO delete this
     normalize_shifted_nz: True # Type: bool # TODO delete this
     nz_gaussian_smoothing: False # Type: bool # TODO delete this
     nz_gaussian_smoothing_sigma: 2 # Type: int # TODO delete this
@@ -172,7 +167,6 @@ covariance:
     # - flat_sky: use the flat-sky expression (valid for PyCCL only)
     #   has to be rescaled by fsky
 
-    # TODO demove halo_model_CCL in public version! otherwise, fork needed
     which_pk_responses: halo_model # Type: str. Options: ['halo_model', 'separate_universe']
 
     which_b1g_in_resp: from_HOD # Type: str. Options: ['from_HOD', 'from_input']

@@ -262,9 +262,12 @@ ell_dict['ell_XC'] = np.copy(ell_dict['ell_3x2pt'])
 
 # TODO why not save all edges??
 # store edges *except last one for dimensional consistency* in the ell_dict
-ell_dict['ell_edges_WL'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell_max_WL])
-ell_dict['ell_edges_GC'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell_max_GC])
-ell_dict['ell_edges_3x2pt'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell_max_3x2pt])
+mask_wl = (ell_edges_ref_nbl32 < ell_max_WL) | np.isclose(ell_edges_ref_nbl32, ell_max_WL, atol=0, rtol=1e-5)
+mask_gc = (ell_edges_ref_nbl32 < ell_max_GC) | np.isclose(ell_edges_ref_nbl32, ell_max_GC, atol=0, rtol=1e-5)
+mask_3x2pt = (ell_edges_ref_nbl32 < ell_max_3x2pt) | np.isclose(ell_edges_ref_nbl32, ell_max_3x2pt, atol=0, rtol=1e-5)
+ell_dict['ell_edges_WL'] = np.copy(ell_edges_ref_nbl32[mask_wl])
+ell_dict['ell_edges_GC'] = np.copy(ell_edges_ref_nbl32[mask_gc])
+ell_dict['ell_edges_3x2pt'] = np.copy(ell_edges_ref_nbl32[mask_3x2pt])
 ell_dict['ell_edges_XC'] = np.copy(ell_dict['ell_edges_3x2pt'])
 
 for key in ell_dict.keys():

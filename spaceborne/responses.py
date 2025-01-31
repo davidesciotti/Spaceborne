@@ -14,14 +14,7 @@ class SpaceborneResponses():
 
         # grids over which to compute the responses
         self.k_grid = k_grid
-        self.k_min = k_grid.min()
-        self.k_max = k_grid.max()
-        self.k_steps = len(k_grid)
-
         self.z_grid = z_grid
-        self.z_min = z_grid.min()
-        self.z_max = z_grid.max()
-        self.z_steps = len(z_grid)
 
         self.ccl_obj = ccl_obj
         self.cosmo_ccl = ccl_obj.cosmo_ccl

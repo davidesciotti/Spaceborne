@@ -782,7 +782,7 @@ def plot_correlation_matrix(correlation_matrix, labels, title):
 
 
 def find_inverse_from_array(input_x, input_y, desired_y, interpolation_kind='linear'):
-    import pynverse
+    from pynverse import inversefunc
     input_y_func = interp1d(input_x, input_y, kind=interpolation_kind)
     desired_y = inversefunc(input_y_func, y_values=desired_y, domain=(input_x[0], input_x[-1]))
     return desired_y
@@ -1681,17 +1681,17 @@ def generate_ind(triu_tril_square, row_col_major, size):
     if triu_tril_square == 'triu':
         if row_col_major == 'row-major':
             ind = [(i, j) for i in range(size) for j in range(i, size)]
-        elif 'col-major':
+        elif row_col_major == 'col-major':
             ind = [(j, i) for i in range(size) for j in range(i + 1)]
     elif triu_tril_square == 'tril':
         if row_col_major == 'row-major':
             ind = [(i, j) for i in range(size) for j in range(i + 1)]
-        elif 'col-major':
+        elif row_col_major == 'col-major':
             ind = [(j, i) for i in range(size) for j in range(i, size)]
     elif triu_tril_square == 'full_square':
         if row_col_major == 'row-major':
             ind = [(i, j) for i in range(size) for j in range(size)]
-        elif 'col-major':
+        elif row_col_major == 'col-major':
             ind = [(j, i) for i in range(size) for j in range(size)]
 
     return np.asarray(ind)
@@ -2593,17 +2593,6 @@ def check_symmetric(array_2d, exact, rtol=1e-05):
     else:
         return np.allclose(array_2d, array_2d.T, rtol=rtol, atol=0)
 
-
-@njit
-# reshape from 3 to 4 dimensions
-def array_3D_to_4D(cov_3D, nbl, npairs):
-    print('XXX THIS FUNCTION ONLY WORKS FOR GAUSS-ONLY COVARIANCE')
-    cov_4D = np.zeros((nbl, nbl, npairs, npairs))
-    for ell in range(nbl):
-        for p in range(npairs):
-            for q in range(npairs):
-                cov_4D[ell, ell, p, q] = cov_3D[ell, p, q]
-    return cov_4D
 
 
 def slice_cov_3x2pt_2D_ell_probe_zpair(cov_2D_ell_probe_zpair, nbl, zbins, probe):

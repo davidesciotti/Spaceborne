@@ -20,6 +20,7 @@ import scipy
 from scipy.integrate import simpson as simps
 from scipy.interpolate import interp1d, CubicSpline, RectBivariateSpline
 import subprocess
+from deprecated import deprecated
 
 
 symmetrize_output_dict = {
@@ -69,6 +70,19 @@ mpl_other_dict = {
     'kmax_tex': '$k_{\\rm max}$',
     'kmax_star_tex': '$k_{\\rm max}^\\star$',
 }
+
+
+def savetxt_aligned(filename, array_2d, header_list, col_width=25, decimals=8):
+    
+    header = ''
+    for i in range(len(header_list)):
+        offset = 2 if i == 0 else 0
+        string = f"{header_list[i]:<{col_width - offset}}"
+        header += string
+    
+    # header = ''.join([f"{header_list[i]:<{col_width - 2}}" for i in range(len(header_list))])
+    fmt = [f'%-{col_width}.{decimals}f'] * len(array_2d[0])
+    np.savetxt(filename, array_2d, header=header, fmt=fmt, delimiter='')
 
 
 def nz_fits_to_txt(fits_filename):
@@ -150,16 +164,28 @@ def mirror_upper_to_lower_vectorized(A):
     return result
 
 
-def check_interpolate_input_tab(input_tab, z_grid_out, zbins):
+def check_interpolate_input_tab(input_tab: np.ndarray, z_grid_out: np.ndarray, zbins: int) -> tuple:
+    """
+    Interpolates the input table over the 0th dimension using a cubic spline 
+    and returns the interpolated values on the specified grid.
 
+    Parameters:
+    - input_tab (numpy.ndarray): The input table with shape (z_points, zbins + 1).
+    - z_grid_out (numpy.ndarray): The output grid for interpolation.
+    - zbins (int): The number of redshift bins.
+
+    Returns:
+    - output_tab (numpy.ndarray): The interpolated table with shape (len(z_grid_out), zbins).
+    """
     assert input_tab.shape[1] == zbins + 1, 'The input table should have shape (z_points, zbins + 1)'
 
+    # Perform cubic spline interpolation
     spline = CubicSpline(x=input_tab[:, 0], y=input_tab[:, 1:], axis=0)
     output_tab = spline(z_grid_out)
 
-    return output_tab
+    return output_tab, spline
 
-
+@deprecated(reason="ep_or_ed option has been deprecated")
 def get_ngal(ngal_in, ep_or_ed, zbins, ep_check_tol):
 
     if isinstance(ngal_in, (int, float)):
@@ -2916,7 +2942,7 @@ def cov2corr(covariance):
     return correlation
 
 
-def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED):
+def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust):
     """Builds the noise power spectra.
 
     Parameters
@@ -2942,8 +2968,6 @@ def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED):
         This will assume equipopulated bins. 
         If an array, galaxy number density, per arcmin^2, per redshift bin. 
         Must have length zbins.
-    EP_or_ED : str, optional
-        Whether bins are equipopulated ('EP') or equidistant ('ED').
     which_shape_noise : str
         Which shape noise to use. 
         'ISTF' for the "incorrect" shape noise (used in ISTF paper), for backwars-compatibility.
@@ -2970,35 +2994,17 @@ def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, EP_or_ED):
 
     conversion_factor = (180 / np.pi * 60)**2  # deg^2 to arcmin^2
 
-    assert isinstance(ng_shear, (int, float, np.ndarray)), 'ng_shear should be int, float or an array'
-    assert isinstance(ng_clust, (int, float, np.ndarray)), 'ng_shear should be int, float or an array'
-    # this may be relaxed in the future...
-    assert type(ng_shear) == type(ng_clust), 'ng_shear and ng_clust should be the same type)'
-
-    # if ng is a scalar, n_bar will be ng/zbins and the bins have to be equipopulated
-    if np.isscalar(ng_shear) and np.isscalar(ng_clust):
-        assert ng_shear > 0, 'ng_shear should be positive'
-        assert ng_clust > 0, 'ng_clust should be positive'
-        assert EP_or_ED == 'EP', 'if ng is a scalar (not a vector), the bins should be equipopulated'
-        # assert ng > 20, 'ng should roughly be > 20 (this check is meant to make sure that ng is the cumulative galaxy ' \
-        #                 'density, not the galaxy density in each bin)'
-        n_bar_shear = ng_shear / zbins * conversion_factor
-        n_bar_clust = ng_clust / zbins * conversion_factor
+    assert isinstance(ng_shear, np.ndarray), 'ng_shear should an array'
+    assert isinstance(ng_clust, np.ndarray), 'ng_clust should an array'
+    assert np.all(ng_shear > 0), 'ng_shear should be positive'
+    assert np.all(ng_clust > 0), 'ng_clust should be positive'
 
     # if ng is an array, n_bar == ng (this is a slight misnomer, since ng is the cumulative galaxy density, while
     # n_bar the galaxy density in each bin). In this case, if the bins are quipopulated, the n_bar array should
     # have all entries almost identical.
-    else:
-        assert np.all(ng_shear > 0), 'ng_shear should be positive'
-        # assert np.sum(ng_shear) > 20, 'ng should roughly be > 20 (this check is meant to make sure that ng is the cumulative galaxy ' \
-        #                 'density, not the galaxy density in each bin)'
-        if EP_or_ED == 'EP':
-            assert np.allclose(np.ones_like(ng_shear) * ng_shear[0], ng_shear, rtol=0.05,
-                               atol=0), 'if ng_shear is a vector and the bins are equipopulated, ' \
-                                        'the value in each bin should be the same (or very similar)'
-
-        n_bar_shear = ng_shear * conversion_factor
-        n_bar_clust = ng_clust * conversion_factor
+    
+    n_bar_shear = ng_shear * conversion_factor
+    n_bar_clust = ng_clust * conversion_factor
 
     # create and fill N
     noise_4d = np.zeros((n_probes, n_probes, zbins, zbins))

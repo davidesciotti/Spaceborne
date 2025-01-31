@@ -17,12 +17,10 @@ class SpaceborneCovariance():
         self.ell_dict = ell_dict
         self.bnt_matrix = bnt_matrix
         self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt', }
-        self.jl_integrator_path = cfg['misc']['path_to_jl_integrator']
         
         self.zbins = pvt_cfg['zbins']
         self.cov_terms_list = pvt_cfg['cov_terms_list']
         self.GL_OR_LG = pvt_cfg['GL_OR_LG']
-        self.EP_OR_ED = pvt_cfg['EP_OR_ED']
 
         self.n_probes = self.covariance_cfg['n_probes']
         # 'include' instead of 'compute' because it might be loaded from file
@@ -192,8 +190,7 @@ class SpaceborneCovariance():
         ng_clust = np.array(self.cfg['nz']['ngal_lenses'])
         noise_3x2pt_4D = sl.build_noise(self.zbins, self.n_probes, sigma_eps2=sigma_eps2,
                                         ng_shear=ng_shear,
-                                        ng_clust=ng_clust,
-                                        EP_or_ED=self.EP_OR_ED)
+                                        ng_clust=ng_clust)
 
         # create dummy ell axis, the array is just repeated along it
         nbl_max = np.max((self.nbl_WL, self.nbl_GC, self.nbl_3x2pt))
@@ -579,11 +576,17 @@ class SpaceborneCovariance():
         covs_g_2D = (self.cov_WL_g_2D, self.cov_GC_g_2D, self.cov_3x2pt_g_2D, self.cov_XC_g_2D)
         covs_ssc_2D = (self.cov_WL_ssc_2D, self.cov_GC_ssc_2D, self.cov_3x2pt_ssc_2D, self.cov_XC_ssc_2D)
         covs_cng_2D = (self.cov_WL_cng_2D, self.cov_GC_cng_2D, self.cov_3x2pt_cng_2D, self.cov_XC_cng_2D)
+        covs_tot_2D = (self.cov_WL_g_2D + self.cov_WL_ssc_2D + self.cov_WL_cng_2D,
+                       self.cov_GC_g_2D + self.cov_GC_ssc_2D + self.cov_GC_cng_2D,
+                       self.cov_3x2pt_g_2D + self.cov_3x2pt_ssc_2D + self.cov_3x2pt_cng_2D,
+                       self.cov_XC_g_2D + self.cov_XC_ssc_2D + self.cov_XC_cng_2D)
 
-        for probe_name, cov_g_2D, cov_ssc_2D, cov_cng_2D in zip(probe_names, covs_g_2D, covs_ssc_2D, covs_cng_2D):
+        for probe_name, cov_g_2D, cov_ssc_2D, cov_cng_2D, cov_tot_2D in \
+            zip(probe_names, covs_g_2D, covs_ssc_2D, covs_cng_2D, covs_tot_2D):
             self.cov_dict[f'cov_{probe_name}_g_2D'] = cov_g_2D
             self.cov_dict[f'cov_{probe_name}_ssc_2D'] = cov_ssc_2D
             self.cov_dict[f'cov_{probe_name}_cng_2D'] = cov_cng_2D
+            self.cov_dict[f'cov_{probe_name}_tot_2D'] = cov_tot_2D
 
         print('Covariance matrices computed')
 

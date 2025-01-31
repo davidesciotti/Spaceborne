@@ -1,13 +1,13 @@
 import argparse
 import gc
+import itertools
 import os
-import multiprocessing
 from tqdm import tqdm
-num_cores = multiprocessing.cpu_count()
-os.environ['OMP_NUM_THREADS'] = str(num_cores)
+from pathlib import Path
+import time
+
 from functools import partial
 import numpy as np
-import time
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import warnings
@@ -29,6 +29,10 @@ from spaceborne import onecovariance_interface as oc_interface
 from spaceborne import responses
 from spaceborne import covariance as sb_cov
 
+# Get the current script's directory
+current_dir = Path(__file__).resolve().parent
+parent_dir = current_dir.parent
+
 warnings.filterwarnings(
     "ignore",
     message=".*FigureCanvasAgg is non-interactive, and thus cannot be shown.*",
@@ -41,7 +45,7 @@ script_start_time = time.perf_counter()
 # ! Set up argument parsing
 # parser = argparse.ArgumentParser(description="Your script description here.")
 # parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
-# parser.add_argument('--show_plots', action='store_true', help='Show plots if specified',  required=False)
+# parser.add_argument('--show_plots', action='store_true', help='Show plots if specified', required=False)
 # args = parser.parse_args()
 # with open(args.config, 'r') as f:
 #     cfg = yaml.safe_load(f)
@@ -49,8 +53,8 @@ script_start_time = time.perf_counter()
 #     import matplotlib
 #     matplotlib.use('Agg')
 
-# ! LOAD CONFIG
-# ! uncomment this if executing from interactive window
+# # ! LOAD CONFIG
+# # ! uncomment this if executing from interactive window
 with open('config.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
 
@@ -60,7 +64,6 @@ galaxy_bias_fit_fiducials = np.array(cfg['C_ell']['galaxy_bias_fit_coeff'])
 magnification_bias_fit_fiducials = np.array(cfg['C_ell']['magnification_bias_fit_coeff'])
 dzWL_fiducial = cfg['nz']['dzWL']
 dzGC_fiducial = cfg['nz']['dzGC']
-shift_nz_interpolation_kind = cfg['nz']['shift_nz_interpolation_kind']
 nz_gaussian_smoothing = cfg['nz']['nz_gaussian_smoothing']  # does not seem to have a large effect...
 nz_gaussian_smoothing_sigma = cfg['nz']['nz_gaussian_smoothing_sigma']
 shift_nz = cfg['nz']['shift_nz']
@@ -78,7 +81,6 @@ include_ia_in_bnt_kernel_for_zcuts = cfg['BNT']['include_ia_in_bnt_kernel_for_zc
 compute_bnt_with_shifted_nz_for_zcuts = cfg['BNT']['compute_bnt_with_shifted_nz_for_zcuts']
 probe_ordering = cfg['covariance']['probe_ordering']
 GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
-EP_OR_ED = cfg['nz']['EP_or_ED']
 output_path = cfg['misc']['output_path']
 clr = cm.rainbow(np.linspace(0, 1, zbins))
 
@@ -89,9 +91,10 @@ if not os.path.exists(f'{output_path}/cache'):
 
 # ! START HARDCODED OPTIONS/PARAMETERS
 use_h_units = False  # whether or not to normalize Megaparsecs by little h
-# number of ell bins over which to compute the Cls passed to OC for the Gaussian covariance computation
-nbl_3x2pt_oc = 500
+nbl_3x2pt_oc = 500  # number of ell bins over which to compute the Cls passed to OC for the Gaussian covariance computation
 k_steps_sigma2 = 20_000
+shift_nz_interpolation_kind = 'linear'  # TODO this should be spline
+
 
 # whether or not to symmetrize the covariance probe blocks when reshaping it from 4D to 6D.
 # Useful if the 6D cov elements need to be accessed directly, whereas if the cov is again reduced to 4D or 2D
@@ -176,9 +179,14 @@ if cfg['C_ell']['cl_CCL_kwargs'] is not None:
 else:
     cl_ccl_kwargs = {}
 
+if cfg['intrinsic_alignment']['lumin_ratio_filename'] is not None:
+    ccl_obj.lumin_ratio_2d_arr = np.genfromtxt(cfg['intrinsic_alignment']['lumin_ratio_filename'])
+else:
+    ccl_obj.lumin_ratio_2d_arr = None
+
 # ! define k and z grids used throughout the code (k is in 1/Mpc)
-# TODO zmin and zmax should be inferred from the nz tables!!
-# TODO not necessarily true for all the different zsteps
+# TODO should zmin and zmax be inferred from the nz tables?
+# TODO -> not necessarily true for all the different zsteps
 z_grid = np.linspace(cfg['covariance']['z_min'],
                      cfg['covariance']['z_max'],
                      cfg['covariance']['z_steps'])
@@ -237,12 +245,12 @@ nz_lns = nz_lns_tab_full[:, 1:]
 nz_unshifted_src = nz_src
 nz_unshifted_lns = nz_lns
 
-wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
-
 # ! compute ell values, ell bins and delta ell
 # compute ell and delta ell values in the reference (optimistic) case
 ell_ref_nbl32, delta_l_ref_nbl32, ell_edges_ref_nbl32 = (
-    ell_utils.compute_ells(cfg['ell_binning']['nbl_WL_opt'], cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_WL_opt'],
+    ell_utils.compute_ells(nbl=cfg['ell_binning']['nbl_WL_opt'],
+                           ell_min=cfg['ell_binning']['ell_min'],
+                           ell_max=cfg['ell_binning']['ell_max_WL_opt'],
                            recipe='ISTF', output_ell_bin_edges=True))
 
 # perform the cuts (not the redshift-dependent ones!) on the ell centers and edges
@@ -254,9 +262,12 @@ ell_dict['ell_XC'] = np.copy(ell_dict['ell_3x2pt'])
 
 # TODO why not save all edges??
 # store edges *except last one for dimensional consistency* in the ell_dict
-ell_dict['ell_edges_WL'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell_max_WL])
-ell_dict['ell_edges_GC'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell_max_GC])
-ell_dict['ell_edges_3x2pt'] = np.copy(ell_edges_ref_nbl32[ell_edges_ref_nbl32 < ell_max_3x2pt])
+mask_wl = (ell_edges_ref_nbl32 < ell_max_WL) | np.isclose(ell_edges_ref_nbl32, ell_max_WL, atol=0, rtol=1e-5)
+mask_gc = (ell_edges_ref_nbl32 < ell_max_GC) | np.isclose(ell_edges_ref_nbl32, ell_max_GC, atol=0, rtol=1e-5)
+mask_3x2pt = (ell_edges_ref_nbl32 < ell_max_3x2pt) | np.isclose(ell_edges_ref_nbl32, ell_max_3x2pt, atol=0, rtol=1e-5)
+ell_dict['ell_edges_WL'] = np.copy(ell_edges_ref_nbl32[mask_wl])
+ell_dict['ell_edges_GC'] = np.copy(ell_edges_ref_nbl32[mask_gc])
+ell_dict['ell_edges_3x2pt'] = np.copy(ell_edges_ref_nbl32[mask_3x2pt])
 ell_dict['ell_edges_XC'] = np.copy(ell_dict['ell_edges_3x2pt'])
 
 for key in ell_dict.keys():
@@ -277,12 +288,12 @@ assert nbl_WL == nbl_3x2pt == nbl_GC, 'use the same number of bins for the momen
 # delta_ell values, needed for gaussian covariance (if binned in this way)
 ell_dict['delta_l_WL'] = np.copy(delta_l_ref_nbl32[:nbl_WL])
 ell_dict['delta_l_GC'] = np.copy(delta_l_ref_nbl32[:nbl_GC])
+ell_dict['delta_l_3x2pt'] = np.copy(delta_l_ref_nbl32[:nbl_3x2pt])
 
 # provate cfg dictionary. This serves a couple different purposeses:
 # 1. To store and pass hardcoded parameters in a convenient way
 # 2. To make the .format() more compact
 pvt_cfg = {
-    'EP_OR_ED': EP_OR_ED,
     'zbins': zbins,
     'ind': ind,
     'probe_ordering': probe_ordering,
@@ -292,7 +303,6 @@ pvt_cfg = {
     'which_ng_cov': cov_terms_str,
     'cov_terms_list': cov_terms_list,
     'GL_OR_LG': GL_OR_LG,
-    'EP_OR_ED': EP_OR_ED,
     'symmetrize_output_dict': symmetrize_output_dict,
     'use_h_units': use_h_units,
     'z_grid': z_grid,
@@ -347,10 +357,10 @@ ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid, has_ia=cfg['C_ell']['has_IA'])
 
 # ! set galaxy and magnification bias
 if cfg['C_ell']['which_gal_bias'] == 'from_input':
-    gal_bias_tab_full = np.genfromtxt(cfg['C_ell']['gal_bias_table_filename'])
-    gal_bias_tab = sl.check_interpolate_input_tab(gal_bias_tab_full, z_grid, zbins)
-    ccl_obj.gal_bias_tuple = (z_grid, gal_bias_tab)
-    ccl_obj.gal_bias_2d = gal_bias_tab
+    gal_bias_input = np.genfromtxt(cfg['C_ell']['gal_bias_table_filename'])
+    ccl_obj.gal_bias_2d, ccl_obj.gal_bias_func = sl.check_interpolate_input_tab(gal_bias_input, z_grid, zbins)
+    ccl_obj.gal_bias_tuple = (z_grid, ccl_obj.gal_bias_2d)
+
 elif cfg['C_ell']['which_gal_bias'] == 'FS2_polynomial_fit':
     ccl_obj.set_gal_bias_tuple_spv3(z_grid_lns=z_grid,
                                     magcut_lens=None,
@@ -359,11 +369,10 @@ else:
     raise ValueError('which_gal_bias should be "from_input" or "FS2_polynomial_fit"')
 
 if cfg['C_ell']['has_magnification_bias']:
-
     if cfg['C_ell']['which_mag_bias'] == 'from_input':
-        mag_bias_tab_full = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
-        mag_bias_tab = sl.check_interpolate_input_tab(mag_bias_tab_full, z_grid, zbins)
-        ccl_obj.mag_bias_tuple = (z_grid, mag_bias_tab)
+        mag_bias_input = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
+        ccl_obj.mag_bias_2d, ccl_obj.mag_bias_func = sl.check_interpolate_input_tab(mag_bias_input, z_grid, zbins)
+        ccl_obj.mag_bias_tuple = (z_grid, ccl_obj.mag_bias_2d)
     elif cfg['C_ell']['which_mag_bias'] == 'FS2_polynomial_fit':
         ccl_obj.set_mag_bias_tuple(z_grid_lns=z_grid,
                                    has_magnification_bias=cfg['C_ell']['has_magnification_bias'],
@@ -371,10 +380,8 @@ if cfg['C_ell']['has_magnification_bias']:
                                    poly_fit_values=magnification_bias_fit_fiducials)
     else:
         raise ValueError('which_mag_bias should be "from_input" or "FS2_polynomial_fit"')
-
 else:
     ccl_obj.mag_bias_tuple = None
-
 
 # ! set radial kernel arrays and objects
 ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['PyCCL']['n_samples_wf'])
@@ -392,16 +399,16 @@ z_means_ll = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_gamma_arr)
 z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
 z_means_ll_bnt = wf_cl_lib.get_z_means(z_grid, wf_gamma_ccl_bnt)
 
-plt.figure()
-for zi in range(zbins):
-    plt.plot(z_grid, ccl_obj.wf_gamma_arr[:, zi], ls='-', c=clr[zi],
-             alpha=0.6, label='wf_gamma_ccl' if zi == 0 else None)
-    plt.plot(z_grid, wf_gamma_ccl_bnt[:, zi], ls='--', c=clr[zi],
-             alpha=0.6, label='wf_gamma_ccl_bnt' if zi == 0 else None)
-    plt.axvline(z_means_ll_bnt[zi], ls=':', c=clr[zi])
-plt.legend()
-plt.xlabel('$z$')
-plt.ylabel(r'$W_i^{\gamma}(z)$')
+# plt.figure()
+# for zi in range(zbins):
+#     plt.plot(z_grid, ccl_obj.wf_gamma_arr[:, zi], ls='-', c=clr[zi],
+#              alpha=0.6, label='wf_gamma_ccl' if zi == 0 else None)
+#     plt.plot(z_grid, wf_gamma_ccl_bnt[:, zi], ls='--', c=clr[zi],
+#              alpha=0.6, label='wf_gamma_ccl_bnt' if zi == 0 else None)
+#     plt.axvline(z_means_ll_bnt[zi], ls=':', c=clr[zi])
+# plt.legend()
+# plt.xlabel('$z$')
+# plt.ylabel(r'$W_i^{\gamma}(z)$')
 
 assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically increasing'
 assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically increasing'
@@ -581,6 +588,7 @@ ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
 # ! build covariance matrices
 cov_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_dict, bnt_matrix)
+cov_obj.jl_integrator_path = './spaceborne/julia_integrator.jl'
 cov_obj.set_ind_and_zpairs(ind, zbins)
 cov_obj.symmetrize_output_dict = symmetrize_output_dict
 cov_obj.consistency_checks()
@@ -700,44 +708,22 @@ if compute_sb_ssc:
     pk_gm_2d = pk_mm_2d * gal_bias
     pk_gg_2d = pk_mm_2d * gal_bias ** 2
 
-    # ! 1. Get halo model responses from CCL
-    if cfg['covariance']['which_pk_responses'] == 'halo_model_CCL':
+    # precompute pk_mm, pk_gm and pk_mm, in case you want to rescale the responses to get R_mm, R_gm, R_gg
+    k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid, z_grid_trisp, use_h_units,
+                                              ccl_obj.cosmo_ccl, pk_kind='nonlinear')
 
-        ccl_obj.initialize_trispectrum(which_ng_cov='SSC', probe_ordering=probe_ordering,
-                                       pyccl_cfg=cfg['PyCCL'])
+    # Needed to compute P_gm, P_gg, and for the responses from an input bias
+    gal_bias = ccl_obj.gal_bias_2d[:, 0]
+    # # check that it's the same in each bin
+    for zi in range(zbins):
+        np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
+    # interpolate with a spline on the trispectrum z grid
+    gal_bias = ccl_obj.gal_bias_func(z_grid_trisp)
 
-        # k and z grids (responses will be interpolated below)
-        k_grid_resp_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['k_1overMpc']
-        a_grid_resp_hm = ccl_obj.responses_dict['L', 'L', 'L', 'L']['a_arr']
-        # translate a to z and cut the arrays to the maximum redshift of the SU responses (much smaller range!)
-        z_grid_resp_hm = cosmo_lib.a_to_z(a_grid_resp_hm)[::-1]
+    pk_gm_2d = pk_mm_2d * gal_bias
+    pk_gg_2d = pk_mm_2d * gal_bias ** 2
 
-        assert np.allclose(k_grid_resp_hm, k_grid, atol=0, rtol=1e-2), \
-            'CCL and SB k_grids for trispectrum should match'
-        assert np.allclose(z_grid_resp_hm, z_grid_trisp, atol=0, rtol=1e-2), \
-            'CCL and SB z_grids for trispectrum should match'
-
-        dPmm_ddeltab = ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12']
-        dPgm_ddeltab = ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34']
-        dPgg_ddeltab = ccl_obj.responses_dict['G', 'G', 'G', 'G']['dpk12']
-
-        # a is flipped w.r.t. z
-        dPmm_ddeltab = np.flip(dPmm_ddeltab, axis=1)
-        dPgm_ddeltab = np.flip(dPgm_ddeltab, axis=1)
-        dPgg_ddeltab = np.flip(dPgg_ddeltab, axis=1)
-
-        r_mm = dPmm_ddeltab / pk_mm_2d
-        r_gm = dPgm_ddeltab / pk_gm_2d
-        r_gg = dPgg_ddeltab / pk_gg_2d
-
-        # quick sanity check
-        assert np.allclose(ccl_obj.responses_dict['L', 'L', 'G', 'L']['dpk34'],
-                           ccl_obj.responses_dict['G', 'L', 'G', 'G']['dpk12'], atol=0, rtol=1e-5)
-        assert np.allclose(ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk34'],
-                           ccl_obj.responses_dict['L', 'L', 'L', 'L']['dpk12'], atol=0, rtol=1e-5)
-        assert dPmm_ddeltab.shape == dPgm_ddeltab.shape == dPgg_ddeltab.shape, 'dPab_ddeltab_hm shape mismatch'
-
-    elif cfg['covariance']['which_pk_responses'] == 'halo_model_SB':
+    if cfg['covariance']['which_pk_responses'] == 'halo_model':
 
         which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
         include_terasawa_terms = cfg['covariance']['include_terasawa_terms']
@@ -755,7 +741,6 @@ if compute_sb_ssc:
         r_gm = resp_obj.r1_gm_hm
         r_gg = resp_obj.r1_gg_hm
 
-    # ! from SpaceborneResponses class
     elif cfg['covariance']['which_pk_responses'] == 'separate_universe':
 
         resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid,
@@ -777,7 +762,8 @@ if compute_sb_ssc:
 
     else:
         raise ValueError(
-            'which_pk_responses must be either "halo_model" or "separate_universe"')
+            'which_pk_responses must be either "halo_model" or "separate_universe". '
+            f' Got {cfg["covariance"]["which_pk_responses"]}.')
 
     # ! 2. prepare integrands (d2CAB_dVddeltab) and volume element
 
@@ -934,8 +920,65 @@ for key in cov_dict.keys():
     np.testing.assert_allclose(cov_dict[key], cov_dict[key].T,
                                atol=0, rtol=1e-7, err_msg=f'{key} not symmetric')
 
+for which_cov in cov_dict.keys():
+    probe = which_cov.split('_')[1]
+    which_ng_cov = which_cov.split('_')[2]
+    ndim = which_cov.split('_')[3]
+    cov_filename = cfg['covariance']['cov_filename'].format(which_ng_cov=which_ng_cov,
+                                                            probe=probe,
+                                                            ndim=ndim)
+    cov_filename = cov_filename.replace('_g_', '_G_')
+    cov_filename = cov_filename.replace('_ssc_', '_SSC_')
+    cov_filename = cov_filename.replace('_cng_', '_cNG_')
+    cov_filename = cov_filename.replace('_tot_', '_TOT_')
+
+    if cov_filename.endswith('.npz'):
+        save_func = np.savez_compressed
+    elif cov_filename.endswith('.npy'):
+        save_func = np.save
+
+    save_func(f'{output_path}/{cov_filename}', cov_dict[which_cov])
+
+    if cfg['covariance']['save_full_cov']:
+        unique_probe_comb = [
+            [0, 0, 0, 0], [0, 0, 1, 0], [0, 0, 1, 1],
+            [1, 0, 1, 0], [1, 0, 1, 1], [1, 1, 1, 1]]
+        probename_dict = {
+            0: 'L',
+            1: 'G'}
+        for a, b, c, d in unique_probe_comb:
+            abcd_str = f'{probename_dict[a]}{probename_dict[b]}{probename_dict[c]}{probename_dict[d]}'
+            cov_tot_6d = cov_obj.cov_3x2pt_g_10D[a, b, c, d, ...] + cov_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...] + \
+                cov_obj.cov_3x2pt_cng_10D[a, b, c, d, ...]
+            save_func(f'{output_path}/cov_{abcd_str}_G_6D', cov_obj.cov_3x2pt_g_10D[a, b, c, d, ...])
+            save_func(f'{output_path}/cov_{abcd_str}_SSC_6D', cov_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...])
+            save_func(f'{output_path}/cov_{abcd_str}_cNG_6D', cov_obj.cov_3x2pt_cng_10D[a, b, c, d, ...])
+            save_func(f'{output_path}/cov_{abcd_str}_TOT_6D', cov_tot_6d)
+
+
+# save cfg file
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.dump(cfg, yaml_file, default_flow_style=False)
+
+header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']    
+
+ells_2d_save = np.column_stack((
+    ell_ref_nbl32,
+    delta_l_ref_nbl32,
+    ell_edges_ref_nbl32[:-1],
+    ell_edges_ref_nbl32[1:], 
+))
+
+sl.savetxt_aligned(f'{output_path}/ell_values_ref.txt', ells_2d_save, header_list)
+
+for probe in ['WL', 'GC', '3x2pt']:
+    ells_2d_save = np.column_stack((
+        ell_dict[f'ell_{probe}'],
+        ell_dict[f'delta_l_{probe}'],
+        ell_dict[f'ell_edges_{probe}'][:-1],
+        ell_dict[f'ell_edges_{probe}'][1:], 
+    ))
+    sl.savetxt_aligned(f'{output_path}/ell_values_{probe}.txt', ells_2d_save, header_list)
 
 if cfg['misc']['save_output_as_benchmark']:
 
@@ -956,7 +999,15 @@ if cfg['misc']['save_output_as_benchmark']:
         'commit': commit,
     }
 
-    bench_filename = cfg['misc']['bench_filename']
+    bench_filename = cfg['misc']['bench_filename'].format(
+        g_code=cfg['covariance']['G_code'],
+        ssc_code=cfg['covariance']['SSC_code'] if cfg['covariance']['SSC'] else 'None',
+        cng_code=cfg['covariance']['cNG_code'] if cfg['covariance']['cNG'] else 'None',
+        use_KE=str(cfg['covariance']['use_KE_approximation']),
+        which_pk_responses=cfg['covariance']['which_pk_responses'],
+        which_b1g_in_resp=cfg['covariance']['which_b1g_in_resp']
+    )
+
     if os.path.exists(f'{bench_filename}.npz'):
         raise ValueError('You are trying to overwrite a benchmark file. Please rename the file or delete the existing one.')
 
@@ -998,16 +1049,6 @@ if cfg['misc']['save_output_as_benchmark']:
                         metadata=metadata,
                         )
 
-
-for which_cov in cov_dict.keys():
-    probe = which_cov.split('_')[1]
-    which_ng_cov = which_cov.split('_')[2]
-    ndim = which_cov.split('_')[3]
-    cov_filename = cfg['covariance']['cov_filename'].format(which_ng_cov=which_ng_cov,
-                                                            probe=probe,
-                                                            ndim=ndim)
-
-    np.savez_compressed(f'{output_path}/{cov_filename}', **cov_dict)
 
 print(f'Covariance matrices saved in {output_path}\n')
 

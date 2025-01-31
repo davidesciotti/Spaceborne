@@ -5,8 +5,6 @@ import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 import pyccl as ccl
 import matplotlib as mpl
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
-sys.path.append(f'{ROOT}/Spaceborne')
 from spaceborne import cosmo_lib
 
 
@@ -28,14 +26,14 @@ class SpaceborneResponses():
         self.ccl_obj = ccl_obj
         self.cosmo_ccl = ccl_obj.cosmo_ccl
         self.h = cfg['cosmology']['h']
-        self.b1_func = self.ccl_obj.gal_bias_func_ofz
+        self.b1_func = self.ccl_obj.gal_bias_func
 
         # Attach method to the class via monkeypatching
         self.ccl_obj.hmc.I_2_1_dav = self.I_2_1_dav
 
     def set_g1mm_su_resp(self):
         # ! get growth only values - DIMENSIONLESS
-        g1_table = np.genfromtxt(f'{ROOT}/Spaceborne/input/Resp_G1_fromsims.dat')
+        g1_table = np.genfromtxt('./input/Resp_G1_fromsims.dat')
 
         # take k and z values (the latter from the header), k is in [h/Mpc]
         self.k_grid_g1 = g1_table[:, 0]
@@ -128,23 +126,24 @@ class SpaceborneResponses():
             (:obj:`float` or `array`): integral values evaluated at each
             value of ``k``.
         """
-        original_bf = self.ccl_obj.hmc._bf  # Backup the original `_bf`
-        
-        self.ccl_obj.hmc._check_mass_def(prof)
+        # Backup the original `_bf`. To do this, I first need to call `_get_ingredients`
+        self.ccl_obj.hmc._get_ingredients(cosmo, a, get_bf=True)
+        original_bf = self.ccl_obj.hmc._bf 
+
+        # Verify that internal & external mass definitions are consistent.
+        self.ccl_obj.hmc._check_mass_def(prof)  
         self.ccl_obj.hmc._get_ingredients(cosmo, a, get_bf=True)
 
         # DSmod: replace with 2nd order halo bias
         self.ccl_obj.hmc._bf = self.b2h_of_b1h_fit(self.ccl_obj.hmc._bf)
 
         uk = prof.fourier(cosmo, k, self.ccl_obj.hmc._mass, a).T
-        
         result = self.ccl_obj.hmc._integrate_over_mbf(uk)
-        
+
         # restore state
         self.ccl_obj.hmc._bf = original_bf
 
         return result
-        
 
     def set_bg_hm(self, z_grid):
         """
@@ -194,8 +193,8 @@ class SpaceborneResponses():
         # ! nonlinear pk and its derivative
         # TODO extract direcly from cosmo object
         self.k_grid, self.pk_mm = cosmo_lib.pk_from_ccl(k_array=self.k_grid, z_array=self.z_grid,
-                                                     use_h_units=self.use_h_units, cosmo_ccl=self.cosmo_ccl,
-                                                     pk_kind='nonlinear')
+                                                        use_h_units=self.use_h_units, cosmo_ccl=self.cosmo_ccl,
+                                                        pk_kind='nonlinear')
 
         dpkmm_dk = np.gradient(self.pk_mm, self.k_grid, axis=0)
         # I broadcast k_grid as k_grid[:, None] here and below to have the correct shape (k_points, 1)
@@ -374,6 +373,7 @@ class SpaceborneResponses():
                                    pklin + i12_gg) / (norm_prof_g * norm_prof_g)
 
             # Set counterterms
+            # TODO the HOD galaxy bias sould probably be used also in the rest of the code!
             if which_b1g == 'from_HOD':
 
                 # gX Pk is computed with the halo model in this case

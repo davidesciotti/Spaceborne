@@ -97,27 +97,31 @@ class PycclClass():
         if self.has_ia:
             ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(z_grid_src, cosmo_ccl=self.cosmo_ccl,
                                                         ia_dict=self.ia_dict,
-                                                        input_z_grid_lumin_ratio=None,
-                                                        input_lumin_ratio=None, output_F_IA_of_z=False)
+                                                        lumin_ratio_2d_arr=self.lumin_ratio_2d_arr,
+                                                        output_F_IA_of_z=False)
+
             self.ia_bias_tuple = (z_grid_src, ia_bias_1d)
 
         else:
             self.ia_bias_tuple = None
 
     def set_gal_bias_tuple_spv3(self, z_grid_lns, magcut_lens, poly_fit_values):
-        gal_bias_func = self.gal_bias_func_dict['fs2_fit']
-        self.gal_bias_func_ofz = partial(gal_bias_func, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values)
-        gal_bias_1d = self.gal_bias_func_ofz(z_grid_lns)
 
-        # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
+        # 1. set galaxy bias function (i.e., the callable)
+        _gal_bias_func = self.gal_bias_func_dict['fs2_fit']
+        self.gal_bias_func = partial(_gal_bias_func, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values)
+
+        # construct the 2d array & tuple; this is mainly to ensure compatibility with
+        # # the wf_ccl function. In this case, the same array is given for each bin (each column)
+        gal_bias_1d = self.gal_bias_func(z_grid_lns)
         self.gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
         self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
 
     def set_gal_bias_tuple_istf(self, z_grid_lns, bias_function_str, bias_model):
-        gal_bias_func = self.gal_bias_func_dict[bias_function_str]
+        self.gal_bias_func = self.gal_bias_func_dict[bias_function_str]
         # TODO it's probably better to pass directly the zbin(_lns) centers and edges, rather than nesting them in a cfg file...
         z_means_lns = np.array([self.flat_fid_pars_dict[f'zmean{zbin:02d}_photo'] for zbin in range(1, self.zbins + 1)])
-        gal_bias_1d = gal_bias_func(z_means_lns)
+        gal_bias_1d = self.gal_bias_func(z_means_lns)
 
         z_edges_lns = np.array([self.flat_fid_pars_dict[f'zedge{zbin:02d}_photo'] for zbin in range(1, self.zbins + 2)])
         self.gal_bias_2d = wf_cl_lib.build_galaxy_bias_2d_arr(
@@ -133,8 +137,8 @@ class PycclClass():
         if has_magnification_bias:
             # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
             mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(z_grid_lns, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values)
-            mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), self.zbins, axis=0).T
-            self.mag_bias_tuple = (z_grid_lns, mag_bias_2d)
+            self.mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), self.zbins, axis=0).T
+            self.mag_bias_tuple = (z_grid_lns, self.mag_bias_2d)
         else:
             # this is the correct way to set the magnification bias values so that the actual bias is 1, ant the corresponding
             # wf_mu is zero (which is, in theory, the case mag_bias_tuple=None, which however causes pyccl to crash!)
@@ -287,10 +291,10 @@ class PycclClass():
             'L': False,
             'G': True,
         }
-        # gal_bias_1d = self.gal_bias_func_ofz(self.z_grid_tkka_SSC)  # no
-        # gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.z_to_a(self.z_grid_tkka_SSC)[::-1])
-        gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.a_to_z(self.a_grid_tkka_SSC))  # ok-ish
-        # gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.a_to_z(self.a_grid_tkka_SSC)[::-1])  # nope
+        # gal_bias_1d = self.gal_bias_func(self.z_grid_tkka_SSC)  # no
+        # gal_bias_1d = self.gal_bias_func(cosmo_lib.z_to_a(self.z_grid_tkka_SSC)[::-1])
+        gal_bias_1d = self.gal_bias_func(cosmo_lib.a_to_z(self.a_grid_tkka_SSC))  # ok-ish
+        # gal_bias_1d = self.gal_bias_func(cosmo_lib.a_to_z(self.a_grid_tkka_SSC)[::-1])  # nope
 
         gal_bias_dict = {
             'L': np.ones_like(gal_bias_1d),
@@ -303,14 +307,13 @@ class PycclClass():
         p_of_k_a = None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
 
         if self.a_grid_tkka_SSC is not None and self.logn_k_grid_tkka_SSC is not None and which_ng_cov == 'SSC':
-            print(f'SSC trispectrum: z points = {self.a_grid_tkka_SSC.size}, k points = {
-                  self.logn_k_grid_tkka_SSC.size}')
+            print(f'SSC trispectrum: z points = {self.a_grid_tkka_SSC.size}, '
+                  f'k points = {self.logn_k_grid_tkka_SSC.size}')
         if self.a_grid_tkka_cNG is not None and self.logn_k_grid_tkka_cNG is not None and which_ng_cov == 'cNG':
-            print(f'cNG trispectrum: z points = {self.a_grid_tkka_cNG.size}, k points = {
-                  self.logn_k_grid_tkka_cNG.size}')
+            print(f'cNG trispectrum: z points = {self.a_grid_tkka_cNG.size}, '
+                  f'k points = {self.logn_k_grid_tkka_cNG.size}')
 
         self.tkka_dict = {}
-        self.responses_dict = {}
         for row, (A, B) in tqdm(enumerate(probe_ordering)):
             for col, (C, D) in enumerate(probe_ordering):
                 probe_block = A + B + C + D
@@ -410,12 +413,12 @@ class PycclClass():
                         raise ValueError(
                             f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
 
-                    self.tkka_dict[A, B, C, D], self.responses_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
-                                                                                            hmc=self.hmc,
-                                                                                            extrap_order_lok=1, extrap_order_hik=1,
-                                                                                            use_log=False,
-                                                                                            p_of_k_a=p_of_k_a,
-                                                                                            **additional_args)
+                    self.tkka_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
+                                                           hmc=self.hmc,
+                                                           extrap_order_lok=1, extrap_order_hik=1,
+                                                           use_log=False,
+                                                           p_of_k_a=p_of_k_a,
+                                                           **additional_args)
 
         print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - tkka_start_time))
 

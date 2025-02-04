@@ -93,17 +93,14 @@ def cov_g_sva_real(
         # Evaluate the needed power spectra
         return ell * kmu * knu * (c_ik * c_jl + c_il * c_jk)
 
-    # create integrand and perform integration with simps
-
     # start = time.perf_counter()
-    # integrand = integrand_func(ell_values)  # integrand is quite ugly in ell space
-    # integral = simps(y=integrand, x=ell_values)
+    integrand = integrand_func(ell_values)  # integrand is very oscillatory in ell space...
+    integral = simps(y=integrand, x=ell_values)
     # print(f"simps time: {time.perf_counter() - start}")
 
     # integrate with quad and compare
     # start = time.perf_counter()
-    integral = quad_vec(integrand_func, ell_values[0], ell_values[-1])[0]
-    
+    # integral = quad_vec(integrand_func, ell_values[0], ell_values[-1])[0]
     # print(f"quad time: {time.perf_counter() - start}")
 
     # Finally multiply the prefactor
@@ -116,11 +113,13 @@ def cov_g_sva_real(
 # and we want the covariance between Xi^(i,j)_mu for bin i,j and Xi^(k,l)_nu for bin k,l.
 mu, nu = 0, 0   # e.g. Xi_+ (mu=0) and Xi_- (mu=2) in some notations
 zbins = 3
-survey_area_sq_deg = 2500
-Amax = survey_area_sq_deg * (np.pi / 180)**2  # TODO looks like this should be the units
+survey_area_deg2 = 2500
+deg2torad2 =  (180 / np.pi)**2 
+Amax = survey_area_deg2 / deg2torad2
 
 ell_min = 2
-ell_max = 50_000
+ell_max = 100_000
+nbl = 500
 theta_min_arcmin = 50
 theta_max_arcmin = 300
 n_theta_edges = 21
@@ -136,7 +135,9 @@ theta_edges = np.deg2rad(theta_edges)  # * 60 because it's in arcmin above
 theta_centers = (theta_edges[:-1] + theta_edges[1:]) / 2.0
 theta_bins = len(theta_centers)
 
-ell_values = np.arange(ell_min, ell_max)
+# * basically no difference between the two recipes below! (The one above is obviously much slower)
+# ell_values = np.arange(ell_min, ell_max)
+ell_values = np.geomspace(ell_min, ell_max, nbl)
 
 # quick and dirty cls computation
 cosmo = ccl.Cosmology(Omega_c=0.27, Omega_b=0.05, h=0.67,
@@ -199,12 +200,13 @@ c_il = cl_gg_3d[:, zi, zl]
 c_jk = cl_gg_3d[:, zj, zk]
 
 print('Computing real-space Gaussian SVA covariance...')
+
+
 def compute_cov_element(theta_1, theta_2, zi, zj, zk, zl):
     thetal_i = theta_edges[theta_1]
     thetau_i = theta_edges[theta_1 + 1]
     thetal_j = theta_edges[theta_2]
     thetau_j = theta_edges[theta_2 + 1]
-
     return theta_1, theta_2, zi, zj, zk, zl, cov_g_sva_real(thetal_i, thetau_i, mu,
                                                             thetal_j, thetau_j, nu,
                                                             zi, zj, zk, zl,
@@ -216,16 +218,15 @@ start = time.time()
 results = Parallel(n_jobs=-1)(delayed(compute_cov_element)(theta_1, theta_2, zi, zj, zk, zl)
                               for theta_1 in tqdm(range(theta_bins))
                               for theta_2 in range(theta_bins)
-                            #   for zi in range(zbins)
-                            #   for zj in range(zbins)
-                            #   for zk in range(zbins)
-                            #   for zl in range(zbins)
+                              #   for zi in range(zbins)
+                              #   for zj in range(zbins)
+                              #   for zk in range(zbins)
+                              #   for zl in range(zbins)
                               )
 
 for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
     cov_sva_real[theta_1, theta_2, zi, zj, zk, zl] = cov_value
 print(f'... Done in: {(time.time() - start):.2f} s')
-
 
 
 # test agains OC: save cls
@@ -321,7 +322,6 @@ covs_10d = [cov_sva_oc_3x2pt_10D, cov_mix_oc_3x2pt_10D, cov_sn_oc_3x2pt_10D,
             # cov_ssc_oc_3x2pt_10D, cov_cng_oc_3x2pt_10D, cov_tot_oc_3x2pt_10D
             ]
 
-  
 
 for cov_10d in covs_10d:
 
@@ -338,12 +338,14 @@ zi, zj, zk, zl = 0, 0, 0, 0
 sl.matshow(cov_sva_real[:, :, zi, zj, zk, zl])
 sl.matshow(cov_oc_sva_6d[:, :, zi, zj, zk, zl])
 
+sl.compare_arrays(cov_sva_real[:, :, zi, zj, zk, zl], cov_oc_sva_6d[:, :, zi, zj, zk, zl])
+
 from scipy.interpolate import CubicSpline
 cov_oc_spline = CubicSpline(thetas_oc_load_rad, np.diag(cov_oc_sva_6d[:, :, zi, zj, zk, zl]))
 
-sl.compare_funcs(theta_centers, 
-                 np.diag(cov_sva_real[:, :, zi, zj, zk, zl]), 
-                 cov_oc_spline(theta_centers), 
+sl.compare_funcs(theta_centers,
+                 np.diag(cov_sva_real[:, :, zi, zj, zk, zl]),
+                 cov_oc_spline(theta_centers),
                  name_a='SB', name_b='OC', logscale_y=[False, False])
 
 plt.figure()

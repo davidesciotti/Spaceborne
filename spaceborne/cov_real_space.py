@@ -40,7 +40,7 @@ def b_mu(x, mu):
         # be careful with x=0!
         return (x - 8.0 / x) * j1(x) - 8.0 * j2(x)
     else:
-        raise ValueError("mu must be one of {0,2,4} in this simplified example.")
+        raise ValueError("mu must be one of {0,2,4}.")
 
 
 def k_mu(ell, thetal, thetau, mu):
@@ -100,7 +100,7 @@ def cov_g_sva_real(thetal_i, thetau_i, mu, thetal_j, thetau_j, nu, Amax, ell_val
     return cov_val
 
 
-def compute_cov_element(theta_1, theta_2, zi, zj, zk, zl, probe_a, probe_b):
+def compute_cov_element(theta_1, theta_2, zi, zj, zk, zl, probe_a_ix, probe_b_ix, mu, nu):
 
     thetal_i = theta_edges[theta_1]
     thetau_i = theta_edges[theta_1 + 1]
@@ -116,10 +116,27 @@ def compute_cov_element(theta_1, theta_2, zi, zj, zk, zl, probe_a, probe_b):
     return theta_1, theta_2, zi, zj, zk, zl, cov_g_sva_real(thetal_i, thetau_i, mu,
                                                             thetal_j, thetau_j, nu,
                                                             Amax, ell_values,
-                                                            cl_in[probe_a, :, zi, zk],
-                                                            cl_in[probe_a, :, zj, zl],
-                                                            cl_in[probe_b, :, zi, zl],
-                                                            cl_in[probe_b, :, zj, zk])
+                                                            # cl_in[3, :, zi, zk],
+                                                            # cl_in[0, :, zj, zl],
+                                                            # cl_in[3, :, zi, zl],
+                                                            # cl_in[0, :, zj, zk],
+                                                            cl_in[3, :, zi, zk],
+                                                            cl_in[0, :, zj, zl],
+                                                            cl_in[2, :, zi, zl],
+                                                            cl_in[2, ...].transpose(0, 2, 1)[:, zj, zk],
+                                                            )
+
+def pick_probe_index(i, k, is_lens):
+    i_lens = is_lens[i]
+    k_lens = is_lens[k]
+    if i_lens and k_lens:
+        return 3  # 'gg' block in cl_in
+    elif (i_lens and not k_lens) or (k_lens and not i_lens):
+        return 2  # 'gm' block 
+    else:
+        # source–source (shear–shear)
+        # might want 'xip' or 'xim'
+        return 0
 
 
 # Example usage:
@@ -142,33 +159,52 @@ cov_list_name = 'covariance_list_3x2_rcf'
 triu_tril = 'triu'
 row_col_major = 'row-major'
 
-probe = 'ximxim'
+probe_a_str = 'gm'
+probe_b_str = 'gm'
+probe = probe_a_str + probe_b_str
 
 probe_idx_dict = {
-    'xipxip': (0, 0),
-    'xipxim': (0, 1),
-
-    'ximxim': (1, 1),
-
-    'gmgm': (2, 2),
+    'xipxip': (0, 0), # * ok
+    'xipxim': (0, 1), # ! no
+    'ximxim': (1, 1), # * ok
+    'gmgm': (2, 2), # ! no
     'gmxim': (2, 1),
     'gmxip': (2, 0),
-
-    'gggg': (3, 3),
-    'ggxim': (3, 1),
-    'gggm': (3, 2),
-    'ggxip': (3, 0),
+    'gggg': (3, 3), # * ok
+    'ggxim': (3, 1), # ! no
+    'gggm': (3, 2), # ! no
+    'ggxip': (3, 0), # ! no
 }
 
-# * xipxip ok
-# * gggg ok
-# * ximxim ok
+_probe_idx_dict_short = {
+    'xip': 0,
+    'xim': 1, 
+    'gm': 2,
+    'gg': 3,
+}
+
+mu_dict = {
+    'gg': 0, 
+    'gm': 2,
+    'xip': 0, 
+    'xim': 4, 
+}
+
+
+
+# Total bins = 7, for example
+
+is_lens_bin = []
+for zi in range(zbins**2):
+    for zj in range(zbins):
+        if zi <= zj:
+            is_lens_bin.append(True) 
+        else:
+            is_lens_bin.append(False)
 
 
 # theta_edges = np.arange(0.1, 2.5, 0.1)  # TODO in degrees; loosely based on Duret for BAO, refine!
-theta_edges = np.linspace(theta_min_arcmin / 60, theta_max_arcmin / 60,
-                          n_theta_edges)  # TODO this is what I do in OC at the moment
-# TODO is rad correct? I think this should be the arg of the bessel functions
+theta_edges = np.linspace(theta_min_arcmin / 60, theta_max_arcmin / 60, n_theta_edges) 
 theta_edges = np.deg2rad(theta_edges)  # * 60 because it's in arcmin above
 theta_centers = (theta_edges[:-1] + theta_edges[1:]) / 2.0
 theta_bins = len(theta_centers)
@@ -236,21 +272,32 @@ for zi in tqdm(range(zbins)):
         cl_ll_3d[:, zi, zj] = ccl.angular_cl(cosmo, wl_ker[zi], wl_ker[zj], ell_values,
                                              limber_integration_method='spline')
 
-if probe == 'xipxip':
-    mu, nu = 0, 0
-elif probe == 'ximxim':
-    mu, nu = 4, 4
-elif probe == 'gmgm':
-    mu, nu = 2, 2
-elif probe == 'gggg':
-    mu, nu = 0, 0
 
-cl_in = np.zeros((n_probes, len(ell_values), zbins, zbins))
-cl_in[0, ...] = cl_ll_3d
-cl_in[1, ...] = cl_ll_3d
+# 0 = 
+cl_in = np.zeros((n_probes, n_probes, len(ell_values), zbins, zbins))
+cl_in[0, 0, ...] = cl_ll_3d
+cl_in[0, 1, ...] = cl_ll_3d
+cl_in[1, 0, ...] = cl_ll_3d
+cl_in[1, 1, ...] = cl_ll_3d
+
+cl_in[2, 0, ...] = cl_gl_3d
+cl_in[2, 1, ...] = cl_gl_3d
+cl_in[2, 2, ...] = cl_gl_3d
+cl_in[0, 2, ...] = cl_gl_3d.transpose(0, 2, 1)
+cl_in[1, 2, ...] = cl_gl_3d.transpose(0, 2, 1)
+
 cl_in[2, ...] = cl_gl_3d
 cl_in[3, ...] = cl_gg_3d
 
+
+    'xip': 0,
+    'xim': 1, 
+    'gm': 2,
+    'gg': 3,
+}
+
+
+mu, nu = mu_dict[probe_a_str], mu_dict[probe_b_str]
 probe_a, probe_b = probe_idx_dict[probe]
 
 # Compute covariance:
@@ -259,7 +306,8 @@ print('Computing real-space Gaussian SVA covariance...')
 
 
 start = time.time()
-results = Parallel(n_jobs=-1)(delayed(compute_cov_element)(theta_1, theta_2, zi, zj, zk, zl, probe_a, probe_b)
+results = Parallel(n_jobs=-1)(delayed(compute_cov_element)(theta_1, theta_2, zi, zj, zk, zl, 
+                                                           probe_a, probe_b, mu, nu)
                               for theta_1 in tqdm(range(theta_bins))
                               for theta_2 in range(theta_bins)
                               for zi in range(zbins)
@@ -376,27 +424,34 @@ cov_sb_sva_4d = sl.cov_6D_to_4D(cov_sb_sva_6d, theta_bins, zpairs_auto, ind_auto
 cov_oc_sva_2d = sl.cov_4D_to_2D(cov_oc_sva_4d, block_index='ell')
 cov_sb_sva_2d = sl.cov_4D_to_2D(cov_sb_sva_4d, block_index='ell')
 
-sl.compare_arrays(cov_oc_sva_2d, cov_sb_sva_2d, abs_val=True, plot_diff_threshold=5, plot_diff_hist=True)
+sl.compare_arrays(cov_sb_sva_2d, cov_oc_sva_2d, 
+                  'cov_sb_sva_2d', 'cov_oc_sva_2d',
+                  abs_val=True, plot_diff_threshold=5, plot_diff_hist=True)
 
 zi, zj, zk, zl = 0, 0, 0, 0
 
-sl.compare_arrays(cov_sb_sva_6d[:, :, zi, zj, zk, zl], cov_oc_sva_6d[:, :, zi, zj, zk, zl])
 
 from scipy.interpolate import CubicSpline
 cov_oc_spline = CubicSpline(thetas_oc_load_rad, np.diag(cov_oc_sva_6d[:, :, zi, zj, zk, zl]))
 
 sl.compare_funcs(theta_centers,
-                 np.diag(cov_sb_sva_6d[:, :, zi, zj, zk, zl]),
-                 cov_oc_spline(theta_centers),
+                 np.abs(np.diag(cov_sb_sva_6d[:, :, zi, zj, zk, zl])),
+                 np.abs(cov_oc_spline(theta_centers)),
                  name_a='SB',
                  name_b='OC',
-                 logscale_y=[False, False])
+                 logscale_y=[True, False])
+sl.compare_funcs(None,
+                 np.abs(np.diag(cov_sb_sva_2d)),
+                 np.abs(np.diag(cov_oc_sva_2d)),
+                 name_a='SB',
+                 name_b='OC',
+                 logscale_y=[True, False])
 
 plt.figure()
 plt.plot(theta_centers, np.diag(cov_sb_sva_6d[:, :, zi, zj, zk, zl]), marker='.', label='sb')
 plt.plot(thetas_oc_load_rad, np.diag(cov_oc_sva_6d[:, :, zi, zj, zk, zl]), marker='.', label='oc')
 plt.xlabel(r'$\theta$ [rad]')
-plt.ylabel(r'diag cov ww')
+plt.ylabel(f'diag cov {probe}')
 plt.legend()
 
 # TODO double check ngal, it's totally random at the moment; same for sigma_eps

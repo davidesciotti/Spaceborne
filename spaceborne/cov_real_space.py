@@ -68,12 +68,8 @@ def C_ab(lval, a, b):
     return amp / (1.0 + lval**2)
 
 
-def cov_g_sva_real(
-    thetal_i, thetau_i, mu, thetal_j, thetau_j, nu,
-    zi, zj, zk, zl,  # tomography / field indices
-    Amax,  # mock "A_{max, mu, nu}" factor
-    ell_values, c_ik, c_jl, c_il, c_jk
-):
+def cov_g_sva_real(thetal_i, thetau_i, mu, thetal_j, thetau_j, nu, Amax, ell_values,
+                   c_ik, c_jl, c_il, c_jk):
     """
     Computes the Gaussian real-space covariance term, Eq. (E.1),
 
@@ -93,28 +89,45 @@ def cov_g_sva_real(
         # Evaluate the needed power spectra
         return ell * kmu * knu * (c_ik * c_jl + c_il * c_jk)
 
-    # start = time.perf_counter()
     integrand = integrand_func(ell_values)  # integrand is very oscillatory in ell space...
     integral = simps(y=integrand, x=ell_values)
-    # print(f"simps time: {time.perf_counter() - start}")
 
     # integrate with quad and compare
-    # start = time.perf_counter()
     # integral = quad_vec(integrand_func, ell_values[0], ell_values[-1])[0]
-    # print(f"quad time: {time.perf_counter() - start}")
 
     # Finally multiply the prefactor
     cov_val = integral / (2.0 * np.pi * Amax)
     return cov_val
 
 
+def compute_cov_element(theta_1, theta_2, zi, zj, zk, zl, probe_a, probe_b):
+
+    thetal_i = theta_edges[theta_1]
+    thetau_i = theta_edges[theta_1 + 1]
+    thetal_j = theta_edges[theta_2]
+    thetau_j = theta_edges[theta_2 + 1]
+
+    # TODO add DIFFERENT cls as arg
+    # c_ik = cl_gg_3d[:, zi, zk]
+    # c_jl = cl_gg_3d[:, zj, zl]
+    # c_il = cl_gg_3d[:, zi, zl]
+    # c_jk = cl_gg_3d[:, zj, zk]
+
+    return theta_1, theta_2, zi, zj, zk, zl, cov_g_sva_real(thetal_i, thetau_i, mu,
+                                                            thetal_j, thetau_j, nu,
+                                                            Amax, ell_values,
+                                                            cl_in[probe_a, :, zi, zk],
+                                                            cl_in[probe_a, :, zj, zl],
+                                                            cl_in[probe_b, :, zi, zl],
+                                                            cl_in[probe_b, :, zj, zk])
+
+
 # Example usage:
 # Suppose we have two angular bins: [thetal_i, thetau_i] and [thetal_j, thetau_j]
 # and we want the covariance between Xi^(i,j)_mu for bin i,j and Xi^(k,l)_nu for bin k,l.
-mu, nu = 0, 0   # e.g. Xi_+ (mu=0) and Xi_- (mu=2) in some notations
 zbins = 3
 survey_area_deg2 = 2500
-deg2torad2 =  (180 / np.pi)**2 
+deg2torad2 = (180 / np.pi)**2
 Amax = survey_area_deg2 / deg2torad2
 
 ell_min = 2
@@ -123,9 +136,34 @@ nbl = 500
 theta_min_arcmin = 50
 theta_max_arcmin = 300
 n_theta_edges = 21
-n_probes = 2
+n_probes = 4
 df_chunk_size = 50000
 cov_list_name = 'covariance_list_3x2_rcf'
+triu_tril = 'triu'
+row_col_major = 'row-major'
+
+probe = 'ximxim'
+
+probe_idx_dict = {
+    'xipxip': (0, 0),
+    'xipxim': (0, 1),
+
+    'ximxim': (1, 1),
+
+    'gmgm': (2, 2),
+    'gmxim': (2, 1),
+    'gmxip': (2, 0),
+
+    'gggg': (3, 3),
+    'ggxim': (3, 1),
+    'gggm': (3, 2),
+    'ggxip': (3, 0),
+}
+
+# * xipxip ok
+# * gggg ok
+# * ximxim ok
+
 
 # theta_edges = np.arange(0.1, 2.5, 0.1)  # TODO in degrees; loosely based on Duret for BAO, refine!
 theta_edges = np.linspace(theta_min_arcmin / 60, theta_max_arcmin / 60,
@@ -134,6 +172,14 @@ theta_edges = np.linspace(theta_min_arcmin / 60, theta_max_arcmin / 60,
 theta_edges = np.deg2rad(theta_edges)  # * 60 because it's in arcmin above
 theta_centers = (theta_edges[:-1] + theta_edges[1:]) / 2.0
 theta_bins = len(theta_centers)
+
+zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
+ind = sl.build_full_ind(triu_tril, row_col_major, zbins)
+ind_auto = ind[:zpairs_auto, :].copy()
+ind_cross = ind[zpairs_auto:zpairs_cross + zpairs_auto, :].copy()
+ind_dict = {('L', 'L'): ind_auto,
+            ('G', 'L'): ind_cross,
+            ('G', 'G'): ind_auto}
 
 # * basically no difference between the two recipes below! (The one above is obviously much slower)
 # ell_values = np.arange(ell_min, ell_max)
@@ -190,42 +236,40 @@ for zi in tqdm(range(zbins)):
         cl_ll_3d[:, zi, zj] = ccl.angular_cl(cosmo, wl_ker[zi], wl_ker[zj], ell_values,
                                              limber_integration_method='spline')
 
+if probe == 'xipxip':
+    mu, nu = 0, 0
+elif probe == 'ximxim':
+    mu, nu = 4, 4
+elif probe == 'gmgm':
+    mu, nu = 2, 2
+elif probe == 'gggg':
+    mu, nu = 0, 0
+
+cl_in = np.zeros((n_probes, len(ell_values), zbins, zbins))
+cl_in[0, ...] = cl_ll_3d
+cl_in[1, ...] = cl_ll_3d
+cl_in[2, ...] = cl_gl_3d
+cl_in[3, ...] = cl_gg_3d
+
+probe_a, probe_b = probe_idx_dict[probe]
+
 # Compute covariance:
-zi, zj, zk, zl = 0, 0, 0, 0  # dummy field indices (e.g. lens bin 0, lens bin 1, etc.)
-
-cov_sva_real = np.zeros((theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-c_ik = cl_gg_3d[:, zi, zk]
-c_jl = cl_gg_3d[:, zj, zl]
-c_il = cl_gg_3d[:, zi, zl]
-c_jk = cl_gg_3d[:, zj, zk]
-
+cov_sb_sva_6d = np.zeros((theta_bins, theta_bins, zbins, zbins, zbins, zbins))
 print('Computing real-space Gaussian SVA covariance...')
 
 
-def compute_cov_element(theta_1, theta_2, zi, zj, zk, zl):
-    thetal_i = theta_edges[theta_1]
-    thetau_i = theta_edges[theta_1 + 1]
-    thetal_j = theta_edges[theta_2]
-    thetau_j = theta_edges[theta_2 + 1]
-    return theta_1, theta_2, zi, zj, zk, zl, cov_g_sva_real(thetal_i, thetau_i, mu,
-                                                            thetal_j, thetau_j, nu,
-                                                            zi, zj, zk, zl,
-                                                            Amax, ell_values,
-                                                            c_ik, c_jl, c_il, c_jk)
-
-
 start = time.time()
-results = Parallel(n_jobs=-1)(delayed(compute_cov_element)(theta_1, theta_2, zi, zj, zk, zl)
+results = Parallel(n_jobs=-1)(delayed(compute_cov_element)(theta_1, theta_2, zi, zj, zk, zl, probe_a, probe_b)
                               for theta_1 in tqdm(range(theta_bins))
                               for theta_2 in range(theta_bins)
-                              #   for zi in range(zbins)
-                              #   for zj in range(zbins)
-                              #   for zk in range(zbins)
-                              #   for zl in range(zbins)
+                              for zi in range(zbins)
+                              for zj in range(zbins)
+                              for zk in range(zbins)
+                              for zl in range(zbins)
                               )
 
 for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
-    cov_sva_real[theta_1, theta_2, zi, zj, zk, zl] = cov_value
+    cov_sb_sva_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
 print(f'... Done in: {(time.time() - start):.2f} s')
 
 
@@ -238,8 +282,8 @@ sl.write_cl_ascii(oc_path, cl_ll_ascii_filename, cl_ll_3d, ell_values, zbins)
 sl.write_cl_ascii(oc_path, cl_gl_ascii_filename, cl_gl_3d, ell_values, zbins)
 sl.write_cl_ascii(oc_path, cl_gg_ascii_filename, cl_gg_3d, ell_values, zbins)
 
-# now load and reshape output
 
+# now load and reshape output
 # set df column names
 with open(f'{oc_path}/{cov_list_name}.dat', 'r') as file:
     header = file.readline().strip()  # Read the first line and strip newline characters
@@ -262,25 +306,21 @@ thetas_oc_load_rad = np.deg2rad(thetas_oc_load / 60)
 
 cov_theta_indices = {ell_out: idx for idx, ell_out in enumerate(thetas_oc_load)}
 
-probe_idx_dict = {
-    'm': 0,
-    'g': 1,
-}
 
 # ! import .list covariance file
-cov_g_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
+cov_g_oc_3x2pt_10D = np.zeros((n_probes, n_probes,
                                theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-cov_sva_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
+cov_sva_oc_3x2pt_10D = np.zeros((n_probes, n_probes,
                                  theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-cov_mix_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
+cov_mix_oc_3x2pt_10D = np.zeros((n_probes, n_probes,
                                  theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-cov_sn_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
+cov_sn_oc_3x2pt_10D = np.zeros((n_probes, n_probes,
                                 theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-# cov_ssc_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
+# cov_ssc_oc_3x2pt_10D = np.zeros((n_probes, n_probes,
 #                                  theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-# cov_cng_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
+# cov_cng_oc_3x2pt_10D = np.zeros((n_probes, n_probes,
 #                                  theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-# cov_tot_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
+# cov_tot_oc_3x2pt_10D = np.zeros((n_probes, n_probes,
 #                                  theta_bins, theta_bins, zbins, zbins, zbins, zbins))
 
 print(f'Loading OneCovariance output from {cov_list_name}.dat file...')
@@ -288,10 +328,8 @@ start = time.perf_counter()
 for df_chunk in pd.read_csv(f'{oc_path}/{cov_list_name}.dat', sep='\s+', names=column_names, skiprows=1, chunksize=df_chunk_size):
 
     # Vectorize the extraction of probe indices
-    probe_idx_a = df_chunk['#obs'].str[0].map(probe_idx_dict).values
-    probe_idx_b = df_chunk['#obs'].str[1].map(probe_idx_dict).values
-    probe_idx_c = df_chunk['#obs'].str[2].map(probe_idx_dict).values
-    probe_idx_d = df_chunk['#obs'].str[3].map(probe_idx_dict).values
+    probe_idx = df_chunk['#obs'].str[:].map(probe_idx_dict).values
+    probe_idx_arr = np.array(probe_idx.tolist())  # now shape is (N, 4)
 
     # Map 'ell' values to their corresponding indices
     theta1_idx = df_chunk['theta1'].map(cov_theta_indices).values
@@ -305,7 +343,7 @@ for df_chunk in pd.read_csv(f'{oc_path}/{cov_list_name}.dat', sep='\s+', names=c
         z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values
 
     # Vectorized assignment to the arrays
-    index_tuple = (probe_idx_a, probe_idx_b, probe_idx_c, probe_idx_d, theta1_idx, theta2_idx,
+    index_tuple = (probe_idx_arr[:, 0], probe_idx_arr[:, 1], theta1_idx, theta2_idx,
                    z_indices[:, 0], z_indices[:, 1], z_indices[:, 2], z_indices[:, 3])
 
     cov_sva_oc_3x2pt_10D[index_tuple] = df_chunk['covg sva'].values
@@ -322,43 +360,48 @@ covs_10d = [cov_sva_oc_3x2pt_10D, cov_mix_oc_3x2pt_10D, cov_sn_oc_3x2pt_10D,
             # cov_ssc_oc_3x2pt_10D, cov_cng_oc_3x2pt_10D, cov_tot_oc_3x2pt_10D
             ]
 
-
-for cov_10d in covs_10d:
-
-    cov_10d[0, 0, 1, 1] = deepcopy(np.transpose(cov_10d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3)))
-    cov_10d[1, 0, 0, 0] = deepcopy(np.transpose(cov_10d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3)))
-    cov_10d[1, 0, 1, 1] = deepcopy(np.transpose(cov_10d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3)))
+# for cov_10d in covs_10d:
+#     cov_10d[0, 0, 1, 1] = deepcopy(np.transpose(cov_10d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3)))
+#     cov_10d[1, 0, 0, 0] = deepcopy(np.transpose(cov_10d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3)))
+#     cov_10d[1, 0, 1, 1] = deepcopy(np.transpose(cov_10d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3)))
 
 print(f"OneCovariance output loaded in {time.perf_counter() - start:.2f} seconds")
+# =============================================================================================
 
+probe_ix = probe_idx_dict[probe]
+cov_oc_sva_6d = cov_sva_oc_3x2pt_10D[probe_ix[0], probe_ix[1], ...]
 
-cov_oc_sva_6d = cov_sva_oc_3x2pt_10D[1, 1, 1, 1, ...]
+cov_oc_sva_4d = sl.cov_6D_to_4D(cov_oc_sva_6d, theta_bins, zpairs_auto, ind_auto)
+cov_sb_sva_4d = sl.cov_6D_to_4D(cov_sb_sva_6d, theta_bins, zpairs_auto, ind_auto)
+cov_oc_sva_2d = sl.cov_4D_to_2D(cov_oc_sva_4d, block_index='ell')
+cov_sb_sva_2d = sl.cov_4D_to_2D(cov_sb_sva_4d, block_index='ell')
+
+sl.compare_arrays(cov_oc_sva_2d, cov_sb_sva_2d, abs_val=True, plot_diff_threshold=5, plot_diff_hist=True)
 
 zi, zj, zk, zl = 0, 0, 0, 0
-sl.matshow(cov_sva_real[:, :, zi, zj, zk, zl])
-sl.matshow(cov_oc_sva_6d[:, :, zi, zj, zk, zl])
 
-sl.compare_arrays(cov_sva_real[:, :, zi, zj, zk, zl], cov_oc_sva_6d[:, :, zi, zj, zk, zl])
+sl.compare_arrays(cov_sb_sva_6d[:, :, zi, zj, zk, zl], cov_oc_sva_6d[:, :, zi, zj, zk, zl])
 
 from scipy.interpolate import CubicSpline
 cov_oc_spline = CubicSpline(thetas_oc_load_rad, np.diag(cov_oc_sva_6d[:, :, zi, zj, zk, zl]))
 
 sl.compare_funcs(theta_centers,
-                 np.diag(cov_sva_real[:, :, zi, zj, zk, zl]),
+                 np.diag(cov_sb_sva_6d[:, :, zi, zj, zk, zl]),
                  cov_oc_spline(theta_centers),
-                 name_a='SB', name_b='OC', logscale_y=[False, False])
+                 name_a='SB',
+                 name_b='OC',
+                 logscale_y=[False, False])
 
 plt.figure()
-plt.plot(theta_centers, np.diag(cov_sva_real[:, :, zi, zj, zk, zl]), marker='.', label='sb')
+plt.plot(theta_centers, np.diag(cov_sb_sva_6d[:, :, zi, zj, zk, zl]), marker='.', label='sb')
 plt.plot(thetas_oc_load_rad, np.diag(cov_oc_sva_6d[:, :, zi, zj, zk, zl]), marker='.', label='oc')
 plt.xlabel(r'$\theta$ [rad]')
 plt.ylabel(r'diag cov ww')
 plt.legend()
 
 # TODO double check ngal, it's totally random at the moment; same for sigma_eps
-# TODO galaxy bias in cls?
-# TODO cross.z bins & other probes
+# TODO other probes
 # TODO probably ell range as well
-# integration? quad?
+# TODO integration? quad?
 
 print(f"Done.")

@@ -110,9 +110,10 @@ def nz_fits_to_txt(fits_filename):
     return nz_arr
 
 
-def compare_funcs(x, y_a, y_b, name_a='A', name_b='B', logscale_y=[False, False]):
+def compare_funcs(x, y_a, y_b, name_a='A', name_b='B', logscale_y=[False, False],
+                  title=None):
 
-    if x == None:
+    if x is None:
         x = np.arange(len(y_a))
 
     fig, ax = plt.subplots(2, 1, sharex=True, height_ratios=[2, 1], )
@@ -123,11 +124,14 @@ def compare_funcs(x, y_a, y_b, name_a='A', name_b='B', logscale_y=[False, False]
     ax[0].legend()
 
     ax[1].plot(x, percent_diff(y_a, y_b), marker='.')
-    ax[1].set_ylabel('A/B [%]')
+    ax[1].set_ylabel('A/B - 1 [%]')
 
     for i in range(2):
         if logscale_y[i]:
             ax[i].set_yscale('log')
+            
+    if title is not None:
+        fig.suptitle(title)
 
 
 def get_git_info():

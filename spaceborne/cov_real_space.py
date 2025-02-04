@@ -100,43 +100,65 @@ def cov_g_sva_real(thetal_i, thetau_i, mu, thetal_j, thetau_j, nu, Amax, ell_val
     return cov_val
 
 
-def compute_cov_element(theta_1, theta_2, zi, zj, zk, zl, probe_a_ix, probe_b_ix, mu, nu):
+def compute_cov_element(theta_1, theta_2, zi, zj, zk, zl, mu, nu, cl_5d,
+                        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix):
 
     thetal_i = theta_edges[theta_1]
     thetau_i = theta_edges[theta_1 + 1]
     thetal_j = theta_edges[theta_2]
     thetau_j = theta_edges[theta_2 + 1]
 
-    # TODO add DIFFERENT cls as arg
-    # c_ik = cl_gg_3d[:, zi, zk]
-    # c_jl = cl_gg_3d[:, zj, zl]
-    # c_il = cl_gg_3d[:, zi, zl]
-    # c_jk = cl_gg_3d[:, zj, zk]
-
     return theta_1, theta_2, zi, zj, zk, zl, cov_g_sva_real(thetal_i, thetau_i, mu,
                                                             thetal_j, thetau_j, nu,
                                                             Amax, ell_values,
+                                                            cl_5d[probe_a_ix, probe_c_ix, :, zi, zk],
+                                                            cl_5d[probe_b_ix, probe_d_ix, :, zj, zl],
+                                                            cl_5d[probe_a_ix, probe_d_ix, :, zi, zl],
+                                                            cl_5d[probe_b_ix, probe_c_ix, :, zj, zk],
                                                             # cl_in[3, :, zi, zk],
                                                             # cl_in[0, :, zj, zl],
-                                                            # cl_in[3, :, zi, zl],
-                                                            # cl_in[0, :, zj, zk],
-                                                            cl_in[3, :, zi, zk],
-                                                            cl_in[0, :, zj, zl],
-                                                            cl_in[2, :, zi, zl],
-                                                            cl_in[2, ...].transpose(0, 2, 1)[:, zj, zk],
+                                                            # cl_in[2, :, zi, zl],
+                                                            # cl_in[2, ...].transpose(0, 2, 1)[:, zj, zk],
                                                             )
 
-def pick_probe_index(i, k, is_lens):
-    i_lens = is_lens[i]
-    k_lens = is_lens[k]
-    if i_lens and k_lens:
-        return 3  # 'gg' block in cl_in
-    elif (i_lens and not k_lens) or (k_lens and not i_lens):
-        return 2  # 'gm' block 
+
+def split_probe_name(full_probe_name):
+    """
+    Splits a full probe name (e.g., 'gmxim') into two component probes.
+
+    Possible probe names are 'xip', 'xim', 'gg', 'gm'.
+
+    Args:
+        full_probe_name (str): A string containing two probe types concatenated.
+
+    Returns:
+        tuple: A tuple of two strings representing the split probes.
+
+    Raises:
+        ValueError: If the input string does not contain exactly two valid probes.
+    """
+    valid_probes = {'xip', 'xim', 'gg', 'gm'}
+
+    # Try splitting at each possible position
+    for i in range(2, len(full_probe_name)):
+        first, second = full_probe_name[:i], full_probe_name[i:]
+        if first in valid_probes and second in valid_probes:
+            return first, second
+
+    raise ValueError(f"Invalid probe name: {full_probe_name}. Expected two of {valid_probes} concatenated.")
+
+
+def split_probe_ix(probe_ix):
+    if probe_ix == 0:
+        return 0, 0
+    elif probe_ix == 1:
+        return 0, 0
+    elif probe_ix == 2:
+        return 1, 0
+    elif probe_ix == 3:
+        return 1, 1
     else:
-        # source–source (shear–shear)
-        # might want 'xip' or 'xim'
-        return 0
+        raise ValueError(f"Invalid probe index: {probe_ix}. Expected 0, 1, 2, or 3.")
 
 
 # Example usage:
@@ -159,52 +181,39 @@ cov_list_name = 'covariance_list_3x2_rcf'
 triu_tril = 'triu'
 row_col_major = 'row-major'
 
-probe_a_str = 'gm'
-probe_b_str = 'gm'
-probe = probe_a_str + probe_b_str
+probe = 'ggxip'
+probe_a_str, probe_b_str = split_probe_name(probe)
+
 
 probe_idx_dict = {
-    'xipxip': (0, 0), # * ok
-    'xipxim': (0, 1), # ! no
-    'ximxim': (1, 1), # * ok
-    'gmgm': (2, 2), # ! no
-    'gmxim': (2, 1),
-    'gmxip': (2, 0),
-    'gggg': (3, 3), # * ok
-    'ggxim': (3, 1), # ! no
-    'gggm': (3, 2), # ! no
-    'ggxip': (3, 0), # ! no
+    'xipxip': (0, 0, 0, 0),  # * 1% ok
+    'xipxim': (0, 0, 1, 1),  # not very good in lower left corner of 2d plot, possibly not worrysome
+    'ximxim': (1, 1, 1, 1),  # * 5% ok
+    'gmgm': (2, 0, 2, 0),  # * 1% ok
+    'gmxim': (2, 0, 1, 1),  # ! ok, but only if I transpse my cov
+    'gmxip': (2, 0, 0, 0),  # ! ok, but only if I transpse my cov
+    'gggg': (2, 2, 2, 2),  # * mostly ok
+    'ggxim': (2, 2, 1, 1),  # not very good in lower left corner of 2d plot, possibly not worrysome
+    'gggm': (2, 2, 2, 0),  # * mostly ok
+    'ggxip': (2, 2, 0, 0),  # * mostly ok
 }
 
 _probe_idx_dict_short = {
     'xip': 0,
-    'xim': 1, 
-    'gm': 2,
-    'gg': 3,
+    'xim': 1,
+    'g': 2,
 }
 
 mu_dict = {
-    'gg': 0, 
+    'gg': 0,
     'gm': 2,
-    'xip': 0, 
-    'xim': 4, 
+    'xip': 0,
+    'xim': 4,
 }
 
 
-
-# Total bins = 7, for example
-
-is_lens_bin = []
-for zi in range(zbins**2):
-    for zj in range(zbins):
-        if zi <= zj:
-            is_lens_bin.append(True) 
-        else:
-            is_lens_bin.append(False)
-
-
 # theta_edges = np.arange(0.1, 2.5, 0.1)  # TODO in degrees; loosely based on Duret for BAO, refine!
-theta_edges = np.linspace(theta_min_arcmin / 60, theta_max_arcmin / 60, n_theta_edges) 
+theta_edges = np.linspace(theta_min_arcmin / 60, theta_max_arcmin / 60, n_theta_edges)
 theta_edges = np.deg2rad(theta_edges)  # * 60 because it's in arcmin above
 theta_centers = (theta_edges[:-1] + theta_edges[1:]) / 2.0
 theta_bins = len(theta_centers)
@@ -273,32 +282,22 @@ for zi in tqdm(range(zbins)):
                                              limber_integration_method='spline')
 
 
-# 0 = 
-cl_in = np.zeros((n_probes, n_probes, len(ell_values), zbins, zbins))
-cl_in[0, 0, ...] = cl_ll_3d
-cl_in[0, 1, ...] = cl_ll_3d
-cl_in[1, 0, ...] = cl_ll_3d
-cl_in[1, 1, ...] = cl_ll_3d
+cl_5d = np.zeros((n_probes, n_probes, len(ell_values), zbins, zbins))
+cl_5d[0, 0, ...] = cl_ll_3d
+cl_5d[0, 1, ...] = cl_ll_3d
+cl_5d[0, 2, ...] = cl_gl_3d.transpose(0, 2, 1)
 
-cl_in[2, 0, ...] = cl_gl_3d
-cl_in[2, 1, ...] = cl_gl_3d
-cl_in[2, 2, ...] = cl_gl_3d
-cl_in[0, 2, ...] = cl_gl_3d.transpose(0, 2, 1)
-cl_in[1, 2, ...] = cl_gl_3d.transpose(0, 2, 1)
+cl_5d[1, 0, ...] = cl_ll_3d
+cl_5d[1, 1, ...] = cl_ll_3d
+cl_5d[1, 2, ...] = cl_gl_3d.transpose(0, 2, 1)
 
-cl_in[2, ...] = cl_gl_3d
-cl_in[3, ...] = cl_gg_3d
-
-
-    'xip': 0,
-    'xim': 1, 
-    'gm': 2,
-    'gg': 3,
-}
+cl_5d[2, 0, ...] = cl_gl_3d
+cl_5d[2, 1, ...] = cl_gl_3d
+cl_5d[2, 2, ...] = cl_gg_3d
 
 
 mu, nu = mu_dict[probe_a_str], mu_dict[probe_b_str]
-probe_a, probe_b = probe_idx_dict[probe]
+probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = probe_idx_dict[probe]
 
 # Compute covariance:
 cov_sb_sva_6d = np.zeros((theta_bins, theta_bins, zbins, zbins, zbins, zbins))
@@ -306,8 +305,10 @@ print('Computing real-space Gaussian SVA covariance...')
 
 
 start = time.time()
-results = Parallel(n_jobs=-1)(delayed(compute_cov_element)(theta_1, theta_2, zi, zj, zk, zl, 
-                                                           probe_a, probe_b, mu, nu)
+results = Parallel(n_jobs=-1)(delayed(compute_cov_element)(theta_1, theta_2, zi, zj, zk, zl,
+                                                           mu, nu, cl_5d,
+                                                           probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
+                                                           )
                               for theta_1 in tqdm(range(theta_bins))
                               for theta_2 in range(theta_bins)
                               for zi in range(zbins)
@@ -356,19 +357,19 @@ cov_theta_indices = {ell_out: idx for idx, ell_out in enumerate(thetas_oc_load)}
 
 
 # ! import .list covariance file
-cov_g_oc_3x2pt_10D = np.zeros((n_probes, n_probes,
+cov_g_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
                                theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-cov_sva_oc_3x2pt_10D = np.zeros((n_probes, n_probes,
+cov_sva_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
                                  theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-cov_mix_oc_3x2pt_10D = np.zeros((n_probes, n_probes,
+cov_mix_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
                                  theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-cov_sn_oc_3x2pt_10D = np.zeros((n_probes, n_probes,
+cov_sn_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
                                 theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-# cov_ssc_oc_3x2pt_10D = np.zeros((n_probes, n_probes,
+# cov_ssc_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
 #                                  theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-# cov_cng_oc_3x2pt_10D = np.zeros((n_probes, n_probes,
+# cov_cng_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
 #                                  theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-# cov_tot_oc_3x2pt_10D = np.zeros((n_probes, n_probes,
+# cov_tot_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
 #                                  theta_bins, theta_bins, zbins, zbins, zbins, zbins))
 
 print(f'Loading OneCovariance output from {cov_list_name}.dat file...')
@@ -391,7 +392,8 @@ for df_chunk in pd.read_csv(f'{oc_path}/{cov_list_name}.dat', sep='\s+', names=c
         z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values
 
     # Vectorized assignment to the arrays
-    index_tuple = (probe_idx_arr[:, 0], probe_idx_arr[:, 1], theta1_idx, theta2_idx,
+    index_tuple = (probe_idx_arr[:, 0], probe_idx_arr[:, 1], probe_idx_arr[:, 2], probe_idx_arr[:, 3],
+                   theta1_idx, theta2_idx,
                    z_indices[:, 0], z_indices[:, 1], z_indices[:, 2], z_indices[:, 3])
 
     cov_sva_oc_3x2pt_10D[index_tuple] = df_chunk['covg sva'].values
@@ -416,20 +418,18 @@ covs_10d = [cov_sva_oc_3x2pt_10D, cov_mix_oc_3x2pt_10D, cov_sn_oc_3x2pt_10D,
 print(f"OneCovariance output loaded in {time.perf_counter() - start:.2f} seconds")
 # =============================================================================================
 
-probe_ix = probe_idx_dict[probe]
-cov_oc_sva_6d = cov_sva_oc_3x2pt_10D[probe_ix[0], probe_ix[1], ...]
+cov_oc_sva_6d = cov_sva_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...]
 
 cov_oc_sva_4d = sl.cov_6D_to_4D(cov_oc_sva_6d, theta_bins, zpairs_auto, ind_auto)
 cov_sb_sva_4d = sl.cov_6D_to_4D(cov_sb_sva_6d, theta_bins, zpairs_auto, ind_auto)
 cov_oc_sva_2d = sl.cov_4D_to_2D(cov_oc_sva_4d, block_index='ell')
 cov_sb_sva_2d = sl.cov_4D_to_2D(cov_sb_sva_4d, block_index='ell')
 
-sl.compare_arrays(cov_sb_sva_2d, cov_oc_sva_2d, 
+sl.compare_arrays(cov_sb_sva_2d, cov_oc_sva_2d,
                   'cov_sb_sva_2d', 'cov_oc_sva_2d',
                   abs_val=True, plot_diff_threshold=5, plot_diff_hist=True)
 
 zi, zj, zk, zl = 0, 0, 0, 0
-
 
 from scipy.interpolate import CubicSpline
 cov_oc_spline = CubicSpline(thetas_oc_load_rad, np.diag(cov_oc_sva_6d[:, :, zi, zj, zk, zl]))
@@ -439,20 +439,29 @@ sl.compare_funcs(theta_centers,
                  np.abs(cov_oc_spline(theta_centers)),
                  name_a='SB',
                  name_b='OC',
-                 logscale_y=[True, False])
+                 logscale_y=[True, False],
+                 title=f'{probe}, block cov diag, zijkl = {zi} {zj} {zk} {zl}')
 sl.compare_funcs(None,
                  np.abs(np.diag(cov_sb_sva_2d)),
                  np.abs(np.diag(cov_oc_sva_2d)),
                  name_a='SB',
                  name_b='OC',
-                 logscale_y=[True, False])
+                 logscale_y=[True, False],
+                 title=f'{probe}, total cov diag')
+sl.compare_funcs(None,
+                 np.abs(cov_sb_sva_2d.flatten()),
+                 np.abs(cov_oc_sva_2d.flatten()),
+                 name_a='SB',
+                 name_b='OC',
+                 logscale_y=[True, False],
+                 title=f'{probe}, total cov flat')
 
-plt.figure()
-plt.plot(theta_centers, np.diag(cov_sb_sva_6d[:, :, zi, zj, zk, zl]), marker='.', label='sb')
-plt.plot(thetas_oc_load_rad, np.diag(cov_oc_sva_6d[:, :, zi, zj, zk, zl]), marker='.', label='oc')
-plt.xlabel(r'$\theta$ [rad]')
-plt.ylabel(f'diag cov {probe}')
-plt.legend()
+# plt.figure()
+# plt.plot(theta_centers, np.diag(cov_sb_sva_6d[:, :, zi, zj, zk, zl]), marker='.', label='sb')
+# plt.plot(thetas_oc_load_rad, np.diag(cov_oc_sva_6d[:, :, zi, zj, zk, zl]), marker='.', label='oc')
+# plt.xlabel(r'$\theta$ [rad]')
+# plt.ylabel(f'diag cov {probe}')
+# plt.legend()
 
 # TODO double check ngal, it's totally random at the moment; same for sigma_eps
 # TODO other probes

@@ -84,6 +84,74 @@ def sigma2_z1z2_wrap(z_grid, k_grid_sigma2, cosmo_ccl, which_sigma2_b,
 
     return sigma2_b
 
+def sigma2_zR_wrap(z, R, k_grid_sigma2, cosmo_ccl, which_sigma2_b, area_deg2_in, nside_mask, mask_path):
+    """ Computes the integral in k. The grid is now z-R instead of z1-z2."""
+    
+    #TODO: the next section is copied from the above function, in old spaceborne only sull_curved_sky was implemented... 
+    fsky_in = cosmo_lib.deg2_to_fsky(area_deg2_in)
+    if which_sigma2_b == 'full_curved_sky':
+        ell_mask = None
+        cl_mask = None
+        fsky_mask = None  # not needed in this case, the whole covariance is normalized at the end of the computation
+
+    elif which_sigma2_b == 'polar_cap_on_the_fly':
+        mask = mask_utils.generate_polar_cap(area_deg2_in, nside_mask)
+
+    elif which_sigma2_b == 'from_input_mask':
+        mask = hp.read_map(mask_path)
+
+    if which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
+        hp.mollview(mask, coord=['C', 'E'], title='polar cap generated on-the fly', cmap='inferno_r')
+        cl_mask = hp.anafast(mask)
+        ell_mask = np.arange(len(cl_mask))
+        # quick check
+        fsky_mask = np.sqrt(cl_mask[0] / (4 * np.pi))
+        print(f'fsky from mask: {fsky_mask:.4f}')
+        assert np.abs(fsky_mask / fsky_in) < 1.01, 'fsky_in is not the same as the fsky of the mask'
+
+    integral_result = np.zeros((len(z), len(R)))
+
+    for (z_idx, z_value) in enumerate(tqdm(z)):
+        a = cosmo_lib.z_to_a(z_value)
+        # in Mpc
+        r = ccl.comoving_radial_distance(cosmo_ccl, a)
+        growth_factor_z = ccl.growth_factor(cosmo_ccl, a)
+        Bessel1 = spherical_jn(0, k_grid_sigma2 * r)
+
+        for r_idx, r_value in enumerate(R):
+            z_prime = r_value*z_value
+            r2 = ccl.comoving_radial_distance(cosmo_ccl, cosmo_lib.z_to_a(z_prime))
+            Bessel2 = spherical_jn(0, k_grid_sigma2 * r2)
+            integrand = k_grid_sigma2**2 *ccl.linear_matter_power(cosmo_ccl, k=k_grid_sigma2, a=1.)*Bessel1*Bessel2
+            integral_result[z_idx, r_idx] = simps(integrand, k_grid_sigma2)
+            growth_factor_R = ccl.growth_factor(cosmo_ccl, cosmo_lib.z_to_a(z_prime))
+            integral_result[z_idx, r_idx] *= growth_factor_z * growth_factor_R
+  
+
+    if which_sigma2_b == 'full_curved_sky':
+        result = 1 / (2 * np.pi ** 2) * integral_result
+
+    elif which_sigma2_b == 'polar_cap_on_the_fly' or which_sigma2_b == 'from_input_mask':
+
+        partial_summand = np.zeros((len(z), len(R), len(ell_mask)))
+        # NOTE: you should include a 2/np.pi factor, see Eq. (26) of https://arxiv.org/pdf/1612.05958, or Champaghe et al 2017
+        #TODO: commentare i growth factor come nell'altro caso è corretto?
+        ell_factor = (2 * ell_mask + 1) * cl_mask * 2 / np.pi #* growth_factor_z1_arr[:, None] * growth_factor_z2
+        ell_factor = ell_factor[None, None, :]  # Shape: (1, 1, 3072)
+        integral_result = integral_result[:, :, None] # Shape: (z, R, 1)
+        partial_summand = integral_result * ell_factor
+        result = np.sum(partial_summand, axis=2)
+        one_over_omega_s_squared = 1 / (4 * np.pi * fsky_mask)**2
+        result *= one_over_omega_s_squared
+
+        # F. Lacasa:
+        # np.sum((2*ell+1)*cl_mask*Cl_XY[ipair,jpair,:])/(4*pi*fsky)**2
+    else:
+        raise ValueError(
+            'which_sigma2_b must be either "full_curved_sky" or "polar_cap_on_the_fly" or "from_input_mask"')
+
+    return result
+
 
 def sigma2_z2_func_vectorized(z1_arr, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b, ell_mask, cl_mask, fsky_mask):
     """

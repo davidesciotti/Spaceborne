@@ -206,7 +206,7 @@ covariance:
     R_max: 1.
     R_steps: 200
 
-    use_KE_approximation: True # Type: bool
+    use_KE_approximation: False # Type: bool
 
     cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str. 
     # Name of the output covariance file. Change to '.npy' to save as npy file.

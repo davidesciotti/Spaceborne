@@ -311,6 +311,7 @@ pvt_cfg = {
     'symmetrize_output_dict': symmetrize_output_dict,
     'use_h_units': use_h_units,
     'z_grid': z_grid,
+    'R_grid': R_grid, #TODO: modified here, is it necessary??
     'ells_sb': ell_dict['ell_3x2pt'],
 }
 
@@ -493,6 +494,7 @@ ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, cl_ccl_kwargs)
 
 # oc needs finer sampling to avoid issues
+#TODO: for Blast, compare to my ccl usage!!
 ells_3x2pt_oc = np.geomspace(cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_3x2pt'], nbl_3x2pt_oc)
 cl_ll_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
                                   ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, cl_ccl_kwargs)
@@ -846,8 +848,18 @@ if compute_sb_ssc:
             np.testing.assert_allclose(z_grid, _z, atol=0, rtol=1e-8)
 
         else:
-            sigma2_b = sigma2_SSC.sigma2_z1z2_wrap(
+            """sigma2_b = sigma2_SSC.sigma2_z1z2_wrap(
                 z_grid=z_grid,
+                k_grid_sigma2=k_grid_sigma2_b,
+                cosmo_ccl=ccl_obj.cosmo_ccl,
+                which_sigma2_b=which_sigma2_b,
+                area_deg2_in=cfg['mask']['survey_area_deg2'],
+                nside_mask=cfg['mask']['nside_mask'],
+                mask_path=cfg['mask']['nside_mask']
+            )"""
+            sigma2_b = sigma2_SSC.sigma2_zR_wrap(
+                z=z_grid,
+                R = R_grid,
                 k_grid_sigma2=k_grid_sigma2_b,
                 cosmo_ccl=ccl_obj.cosmo_ccl,
                 which_sigma2_b=which_sigma2_b,
@@ -858,9 +870,14 @@ if compute_sb_ssc:
             # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to divide
             # the former by fsky (eq. 29 of https://arxiv.org/pdf/1612.05958)
 
+    #TODO: changed the file names to preserve the other ones, maybe implement an if to check which grid 
+    #is used for the integration (z1-z2 or z-R)
     if not cfg['covariance']['load_cached_sigma2_b']:
-        np.save(f'{output_path}/cache/sigma2_b.npy', sigma2_b)
+        np.save(f'{output_path}/cache/sigma2_b_new.npy', sigma2_b)
         np.save(f'{output_path}/cache/zgrid_sigma2_b.npy', z_grid)
+        np.save(f'{output_path}/cache/Rgrid_sigma2_b.npy', R_grid)
+        
+    assert False, "Implemented the new coordinates for sigma2_b. Stop here for now and check the new output!!!"
 
     # ! 4. Perform the integration calling the Julia module
     print('Computing the SSC integral...')

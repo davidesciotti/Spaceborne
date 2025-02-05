@@ -125,6 +125,7 @@ def compare_funcs(x, y_a, y_b, name_a='A', name_b='B', logscale_y=[False, False]
 
     ax[1].plot(x, percent_diff(y_a, y_b), marker='.')
     ax[1].set_ylabel('A/B - 1 [%]')
+    ax[1].axhspan(-10, 10, alpha=0.2, color='gray')
 
     for i in range(2):
         if logscale_y[i]:

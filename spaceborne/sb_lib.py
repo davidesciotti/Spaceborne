@@ -110,9 +110,10 @@ def nz_fits_to_txt(fits_filename):
     return nz_arr
 
 
-def compare_funcs(x, y_a, y_b, name_a='A', name_b='B', logscale_y=[False, False]):
+def compare_funcs(x, y_a, y_b, name_a='A', name_b='B', logscale_y=[False, False],
+                  title=None):
 
-    if x == None:
+    if x is None:
         x = np.arange(len(y_a))
 
     fig, ax = plt.subplots(2, 1, sharex=True, height_ratios=[2, 1], )
@@ -123,11 +124,15 @@ def compare_funcs(x, y_a, y_b, name_a='A', name_b='B', logscale_y=[False, False]
     ax[0].legend()
 
     ax[1].plot(x, percent_diff(y_a, y_b), marker='.')
-    ax[1].set_ylabel('A/B [%]')
+    ax[1].set_ylabel('A/B - 1 [%]')
+    ax[1].axhspan(-10, 10, alpha=0.2, color='gray')
 
     for i in range(2):
         if logscale_y[i]:
             ax[i].set_yscale('log')
+            
+    if title is not None:
+        fig.suptitle(title)
 
 
 def get_git_info():
@@ -782,7 +787,7 @@ def plot_correlation_matrix(correlation_matrix, labels, title):
 
 
 def find_inverse_from_array(input_x, input_y, desired_y, interpolation_kind='linear'):
-    import pynverse
+    from pynverse import inversefunc
     input_y_func = interp1d(input_x, input_y, kind=interpolation_kind)
     desired_y = inversefunc(input_y_func, y_values=desired_y, domain=(input_x[0], input_x[-1]))
     return desired_y
@@ -1653,20 +1658,6 @@ def show_keys(arrays_dict):
         print(key)
 
 
-def cl_interpolator(cl_2D, zpairs, new_ell_values, nbl, kind='linear'):
-    original_ell_values = cl_2D[:, 0]
-
-    # switch to linear scale, the "15" is arbitrary
-    if original_ell_values.max() < 15:
-        original_ell_values = 10 ** original_ell_values
-    if new_ell_values.max() < 15:
-        new_ell_values = 10 ** new_ell_values
-
-    cl_interpolated = np.zeros((nbl, zpairs))
-    for zpair_idx in range(zpairs):
-        f = interp1d(original_ell_values, cl_2D[:, zpair_idx + 1], kind=kind)
-        cl_interpolated[:, zpair_idx] = f(new_ell_values)
-    return cl_interpolated
 
 
 @njit
@@ -1695,17 +1686,17 @@ def generate_ind(triu_tril_square, row_col_major, size):
     if triu_tril_square == 'triu':
         if row_col_major == 'row-major':
             ind = [(i, j) for i in range(size) for j in range(i, size)]
-        elif 'col-major':
+        elif row_col_major == 'col-major':
             ind = [(j, i) for i in range(size) for j in range(i + 1)]
     elif triu_tril_square == 'tril':
         if row_col_major == 'row-major':
             ind = [(i, j) for i in range(size) for j in range(i + 1)]
-        elif 'col-major':
+        elif row_col_major == 'col-major':
             ind = [(j, i) for i in range(size) for j in range(i, size)]
     elif triu_tril_square == 'full_square':
         if row_col_major == 'row-major':
             ind = [(i, j) for i in range(size) for j in range(size)]
-        elif 'col-major':
+        elif row_col_major == 'col-major':
             ind = [(j, i) for i in range(size) for j in range(size)]
 
     return np.asarray(ind)
@@ -2607,17 +2598,6 @@ def check_symmetric(array_2d, exact, rtol=1e-05):
     else:
         return np.allclose(array_2d, array_2d.T, rtol=rtol, atol=0)
 
-
-@njit
-# reshape from 3 to 4 dimensions
-def array_3D_to_4D(cov_3D, nbl, npairs):
-    print('XXX THIS FUNCTION ONLY WORKS FOR GAUSS-ONLY COVARIANCE')
-    cov_4D = np.zeros((nbl, nbl, npairs, npairs))
-    for ell in range(nbl):
-        for p in range(npairs):
-            for q in range(npairs):
-                cov_4D[ell, ell, p, q] = cov_3D[ell, p, q]
-    return cov_4D
 
 
 def slice_cov_3x2pt_2D_ell_probe_zpair(cov_2D_ell_probe_zpair, nbl, zbins, probe):

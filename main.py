@@ -1092,7 +1092,7 @@ for which_cov in cov_dict.keys():
 
 
 #  TODO This section has been temporarily restored, to be deleted in public branch
-
+assert False, 'The code below has been temporarily restored, to be deleted soon'
 FM_ordered_params = {
     'Om': 0.32,
     'Ob': 0.05,

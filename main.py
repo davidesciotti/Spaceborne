@@ -701,6 +701,7 @@ if compute_sb_ssc:
     # # check that it's the same in each bin
     for zi in range(zbins):
         np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
+
     # interpolate with a spline on the trispectrum z grid
     gal_bias_spline = CubicSpline(z_grid, gal_bias)
     gal_bias = gal_bias_spline(z_grid_trisp)
@@ -708,20 +709,6 @@ if compute_sb_ssc:
     pk_gm_2d = pk_mm_2d * gal_bias
     pk_gg_2d = pk_mm_2d * gal_bias ** 2
 
-    # precompute pk_mm, pk_gm and pk_mm, in case you want to rescale the responses to get R_mm, R_gm, R_gg
-    k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid, z_grid_trisp, use_h_units,
-                                              ccl_obj.cosmo_ccl, pk_kind='nonlinear')
-
-    # Needed to compute P_gm, P_gg, and for the responses from an input bias
-    gal_bias = ccl_obj.gal_bias_2d[:, 0]
-    # # check that it's the same in each bin
-    for zi in range(zbins):
-        np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
-    # interpolate with a spline on the trispectrum z grid
-    gal_bias = ccl_obj.gal_bias_func(z_grid_trisp)
-
-    pk_gm_2d = pk_mm_2d * gal_bias
-    pk_gg_2d = pk_mm_2d * gal_bias ** 2
 
     if cfg['covariance']['which_pk_responses'] == 'halo_model':
 

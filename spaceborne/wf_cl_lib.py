@@ -42,7 +42,7 @@ def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors):
     assert nz_src.shape[1] == nz_lns.shape[1], 'number of zbins is not the same'
     zbins = nz_src.shape[1]
 
-    _, ax = plt.subplots(2, 1, sharex=True)
+    fig, ax = plt.subplots(2, 1, sharex=True)
     colors = cm.rainbow(np.linspace(0, 1, zbins))
     for zi in range(zbins):
         ax[0].plot(zgrid_nz_src, nz_src[:, zi], c=colors[zi], label=r'$z_{%d}$' % (zi + 1))
@@ -59,6 +59,12 @@ def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors):
         ax[1].set_xlabel('$z$')
         ax[1].set_ylabel(r'$n_i(z) \; {\rm lenses}$')
     ax[1].legend(ncol=2)
+    
+    fig.suptitle("Source and Lens Redshift Distribution", fontsize=16)
+    plt.savefig("./output/plots/nz_src_lns_plot.png", dpi=300)
+
+    # Close the plot to free memory
+    plt.close(fig)
 
 
 @njit

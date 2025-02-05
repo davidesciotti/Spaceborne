@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 import sys
+import re
 from pathlib import Path
 import pandas as pd
 import getdist
@@ -105,12 +106,16 @@ def bar_plot_old(uncert_gauss, uncert_SSC, difference):
     plt.savefig(fname=f'bar_plot_{probe}.png', dpi=300, figsize=[16, 9])
 
 
+
 def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, nparams=7, param_names_label=None,
              second_axis=False, no_second_axis_bars=0, superimpose_bars=False, show_markers=False, ylabel=None,
              include_fom=False, figsize=None, grey_bars=False, alpha=1):
     """
     data: usually the percent uncertainties, but could also be the percent difference
     """
+
+    # Ensure the output directory exists
+    output_dir = "./output/plots/"
 
     no_cases = data.shape[0]
     no_params = data.shape[1]
@@ -119,27 +124,21 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
     marker_colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
     markers = markers[:no_cases]
     marker_colors = marker_colors[:no_cases]
-    # zorders = np.arange(no_cases)  # this is because I want to revert this in the case of superimposed bars
-    zorders = np.arange(1, no_cases + 1)  # this is because I want to revert this in the case of superimposed bars
+    zorders = np.arange(1, no_cases + 1)
 
-    # colors = cm.Paired(np.linspace(0, 1, data.shape[1]))
-
-    # Set position of bar on x-axis
     bar_centers = np.zeros(data.shape)
 
-    if data.ndim == 1:  # just one vector
+    if data.ndim == 1:
         data = data[None, :]
         bar_centers = np.arange(no_params)
         bar_centers = bar_centers[None, :]
-    elif data.ndim != 1 and not superimpose_bars:
+    elif not superimpose_bars:
         for bar_idx in range(no_cases):
             if bar_idx == 0:
                 bar_centers[bar_idx, :] = np.arange(no_params) - bar_width
             else:
                 bar_centers[bar_idx, :] = [x + bar_idx * bar_width for x in bar_centers[0]]
-
-    # in this case, I simply define the bar centers to be the same
-    elif data.ndim != 1 and superimpose_bars:
+    else:
         zorders = zorders[::-1]
         bar_centers = np.arange(no_params)
         bar_centers = bar_centers[None, :]
@@ -163,8 +162,6 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
         bar_color = None
 
     if second_axis:
-
-        # this check is quite obsolete...
         assert no_cases == 3, "data must have 3 rows to display the second axis"
 
         fig, ax = plt.subplots(figsize=figsize)
@@ -175,14 +172,11 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
             ax.bar(bar_centers[bar_idx, :], data[bar_idx, :], width=bar_width, edgecolor='grey',
                    label=label_list[bar_idx])
 
-        # Add some text for labels, title and custom x-axis tick labels, etc.
         ax.set_ylabel(ylabel_sigma_relative_fid)
         ax.set_title(title)
         ax.set_xticks(range(nparams), param_names_label)
 
-        # second axis
         ax2 = ax.twinx()
-        # ax2.set_ylabel('(GS/GO - 1) $\\times$ 100', color='g')
         ax2.set_ylabel('% uncertainty increase')
         for bar_idx in range(1, no_second_axis_bars + 1):
             ax2.bar(bar_centers[-bar_idx, :], data[-bar_idx, :], width=bar_width, edgecolor='grey',
@@ -190,9 +184,14 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
         ax2.tick_params(axis='y')
 
         fig.legend(loc="upper right", bbox_to_anchor=(1, 1), bbox_transform=ax.transAxes)
+
+        # Save the plot
+        plot_filename = os.path.join(output_dir, f"{title.replace(' ', '_').lower()}_bar_plot.png")
+        plt.savefig(plot_filename, dpi=300)
+        plt.close(fig)
+
         return
 
-    # elif not second_axis:
     plt.figure(figsize=figsize)
     plt.grid(zorder=0)
     plt.rcParams['axes.axisbelow'] = True
@@ -209,7 +208,19 @@ def bar_plot(data, title, label_list, divide_fom_by_10_plt, bar_width=0.18, npar
     plt.xticks(range(nparams), param_names_label)
     plt.title(title)
     plt.legend()
-    plt.show()
+
+    # Sanitize the title for a valid filename
+    safe_title = title.replace('$', '').replace('\\', '').replace('{', '').replace('}', '')
+    safe_title = safe_title.replace(',', '').replace('=', '_')  # Replace `=` with `_` for clarity
+    safe_title = safe_title.replace('\n', '_')  # Replace newline with underscore
+    safe_title = re.sub(r'\s+', '_', safe_title)  # Replace multiple spaces with a single underscore
+
+    plot_filename = f"./output/plots/{safe_title.lower()}_bar_plot.png"
+
+    # Save the figure
+    plt.savefig(plot_filename, dpi=300)
+    plt.close()
+
 
 
 def triangle_plot_old(fm_backround, fm_foreground, fiducials, title, label_background, label_foreground,

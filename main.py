@@ -58,7 +58,7 @@ script_start_time = time.perf_counter()
 with open('config.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
 
-# some convenence variables, just to make things more readable
+# some convenience variables, just to make things more readable
 h = cfg['cosmology']['h']
 galaxy_bias_fit_fiducials = np.array(cfg['C_ell']['galaxy_bias_fit_coeff'])
 magnification_bias_fit_fiducials = np.array(cfg['C_ell']['magnification_bias_fit_coeff'])
@@ -200,6 +200,11 @@ k_grid = np.logspace(cfg['covariance']['log10_k_min'],
 k_grid_sigma2_b = np.logspace(cfg['covariance']['log10_k_min'],
                               cfg['covariance']['log10_k_max'],
                               k_steps_sigma2)
+#Variable for SSC integral reparametrization
+#TODO: a linear grid is not optimal, chebyshev points and clenshaw curtis would be much more efficient.
+R_grid = np.linspace(cfg['covariance']['R_min'],
+                                    cfg['covariance']['R_max'],
+                                    cfg['covariance']['R_steps'])
 if len(z_grid) < 250:
     warnings.warn('z_grid is small, at the moment it used to compute various intermediate quantities')
 

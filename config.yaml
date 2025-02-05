@@ -201,6 +201,10 @@ covariance:
     z_max: 3.0 # Type: float
     z_steps: 300 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 5000
     z_steps_trisp: 100  # Type: int. Number of z steps used to compute the trispectrum - around 100 should be enough
+    #Variable needed for the reparametrization of the integral
+    R_min: 0.1  #TODO: check this lower limit!
+    R_max: 1.
+    R_steps: 200
 
     use_KE_approximation: True # Type: bool
 

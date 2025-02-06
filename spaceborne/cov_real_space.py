@@ -99,55 +99,66 @@ def cov_g_sva_real_helper(theta_i_ix, theta_j_ix, zi, zj, zk, zl, mu, nu, cl_5d,
                                                                   cl_5d[probe_b_ix, probe_c_ix, :, zj, zk],
                                                                   )
 
+
 def cov_g_mix_real(thetal_i, thetau_i, mu, thetal_j, thetau_j, nu, ell_values,
                    cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zi, zj, zk, zl):
-
 
     def integrand_func(ell, cl_ij):
         kmu = k_mu(ell, thetal_i, thetau_i, mu)
         knu = k_mu(ell, thetal_j, thetau_j, nu)
         return ell * kmu * knu * cl_ij
-    
-    
+
+    # I write the indices as in Robert's paper
+    def get_prefac(probe_b_ix, probe_d_ix, zj, zn):
+        prefac = get_delta_tomo(probe_b_ix, probe_d_ix)[zj, zn] * \
+            t_mix(probe_b_ix, zbins, sigma_eps_i)[zj] /\
+            (2 * np.pi * n_eff_2d[probe_b_ix, zj] * srtoarcmin2 *
+             np.max((survey_area_sr, survey_area_sr)))
+        return prefac
+
     # TODO generalize to different survey areas (max(Aij, Akl))
-    prefac = \
-        get_delta_tomo(probe_b_ix, probe_d_ix)[zj, zl] * \
-        t_mix(probe_b_ix, zbins, sigma_eps_i)[zj] /\
-        (2 * np.pi * n_eff_2d[probe_b_ix, zj] * deg2toarcmin2 *
-         np.max((survey_area_sr, survey_area_sr)))
+    # prefac = \
+    #     get_delta_tomo(probe_b_ix, probe_d_ix)[zj, zl] * \
+    #     t_mix(probe_b_ix, zbins, sigma_eps_i)[zj] /\
+    #     (2 * np.pi * n_eff_2d[probe_b_ix, zj] * deg2toarcmin2 *
+    #      np.max((survey_area_sr, survey_area_sr)))
+    prefac = get_prefac(probe_b_ix, probe_d_ix, zj, zl)
     integrand = integrand_func(ell_values, cl_5d[probe_a_ix, probe_c_ix, :, zi, zk])
     integral = simps(y=integrand, x=ell_values)
     addendum_1 = prefac * integral
 
     # *
 
-    prefac = \
-        get_delta_tomo(probe_c_ix, probe_a_ix)[zk, zi] * \
-        t_mix(probe_c_ix, zbins, sigma_eps_i)[zk] /\
-        (2 * np.pi * n_eff_2d[probe_c_ix, zk] * deg2toarcmin2 *
-         np.max((survey_area_sr, survey_area_sr)))
+    # prefac = \
+    #     get_delta_tomo(probe_c_ix, probe_a_ix)[zk, zi] * \
+    #     t_mix(probe_c_ix, zbins, sigma_eps_i)[zk] /\
+    #     (2 * np.pi * n_eff_2d[probe_c_ix, zk] * deg2toarcmin2 *
+    #      np.max((survey_area_sr, survey_area_sr)))
+    prefac = get_prefac(probe_c_ix, probe_a_ix, zk, zi)
     integrand = integrand_func(ell_values, cl_5d[probe_b_ix, probe_d_ix, :, zj, zl])
     integral = simps(y=integrand, x=ell_values)
     addendum_2 = prefac * integral
 
     # *
 
-    prefac = \
-        get_delta_tomo(probe_d_ix, probe_b_ix)[zl, zj] * \
-        t_mix(probe_d_ix, zbins, sigma_eps_i)[zl] /\
-        (2 * np.pi * n_eff_2d[probe_d_ix, zl] * deg2toarcmin2 *
-         np.max((survey_area_sr, survey_area_sr)))
+    # prefac = \
+    #     get_delta_tomo(probe_d_ix, probe_b_ix)[zl, zj] * \
+    #     t_mix(probe_d_ix, zbins, sigma_eps_i)[zl] /\
+    #     (2 * np.pi * n_eff_2d[probe_d_ix, zl] * deg2toarcmin2 *
+    #      np.max((survey_area_sr, survey_area_sr)))
+    prefac = get_prefac(probe_d_ix, probe_b_ix, zl, zj)
     integrand = integrand_func(ell_values, cl_5d[probe_c_ix, probe_a_ix, :, zk, zi])
     integral = simps(y=integrand, x=ell_values)
     addendum_3 = prefac * integral
 
     # *
 
-    prefac = \
-        get_delta_tomo(probe_a_ix, probe_c_ix)[zi, zk] * \
-        t_mix(probe_a_ix, zbins, sigma_eps_i)[zi] /\
-        (2 * np.pi * n_eff_2d[probe_a_ix, zi] * deg2toarcmin2 *
-         np.max((survey_area_sr, survey_area_sr)))
+    # prefac = \
+    #     get_delta_tomo(probe_a_ix, probe_c_ix)[zi, zk] * \
+    #     t_mix(probe_a_ix, zbins, sigma_eps_i)[zi] /\
+    #     (2 * np.pi * n_eff_2d[probe_a_ix, zi] * deg2toarcmin2 *
+    #      np.max((survey_area_sr, survey_area_sr)))
+    prefac = get_prefac(probe_a_ix, probe_c_ix, zi, zk)
     integrand = integrand_func(ell_values, cl_5d[probe_d_ix, probe_b_ix, :, zl, zj])
     integral = simps(y=integrand, x=ell_values)
     addendum_4 = prefac * integral
@@ -165,13 +176,13 @@ def cov_g_mix_real_helper(theta_i_ix, theta_j_ix, zi, zj, zk, zl, mu, nu, cl_5d,
     thetau_i = theta_edges[theta_i_ix + 1]
     thetal_j = theta_edges[theta_j_ix]
     thetau_j = theta_edges[theta_j_ix + 1]
-    
+
     return theta_i_ix, theta_j_ix, zi, zj, zk, zl, cov_g_mix_real(thetal_i, thetau_i, mu,
                                                                   thetal_j, thetau_j, nu,
                                                                   ell_values,
-                                                                  cl_5d, 
-                                                                  probe_a_ix, probe_b_ix, 
-                                                                  probe_c_ix, probe_d_ix, 
+                                                                  cl_5d,
+                                                                  probe_a_ix, probe_b_ix,
+                                                                  probe_c_ix, probe_d_ix,
                                                                   zi, zj, zk, zl
                                                                   )
 
@@ -233,8 +244,8 @@ def t_mix(probe_a_ix, zbins, sigma_eps_i):
 
 
 def get_npair(thetau_i, thetal_i, survey_area_sr, n_eff_i, n_eff_j):
-    n_eff_i *= deg2toarcmin2
-    n_eff_j *= deg2toarcmin2
+    n_eff_i *= srtoarcmin2
+    n_eff_j *= srtoarcmin2
     return np.pi * (thetau_i**2 - thetal_i**2) * survey_area_sr * n_eff_i * n_eff_j
 
 
@@ -291,7 +302,7 @@ def split_probe_ix(probe_ix):
 zbins = 3
 survey_area_deg2 = 2500
 deg2torad2 = (180 / np.pi)**2
-deg2toarcmin2 = (180 / np.pi * 60)**2
+srtoarcmin2 = (180 / np.pi * 60)**2
 survey_area_sr = survey_area_deg2 / deg2torad2
 
 ell_min = 2
@@ -313,12 +324,12 @@ sigma_eps_i = np.array([0.26, 0.26, 0.26])
 sigma_eps_tot = sigma_eps_i * np.sqrt(2)
 munu_vals = (0, 2, 4)
 
-probe = 'xipxip'
+probe = 'gggg'
 probe_a_str, probe_b_str = split_probe_name(probe)
 
 
 probe_idx_dict = {
-    'xipxip': (0, 0, 0, 0),  # * SVA 1% ok; SN 0.1% ok
+    'xipxip': (0, 0, 0, 0),  # * SVA 1% ok; SN 0.1% ok; MIX 100% for cross-zpair
     'xipxim': (0, 0, 1, 1),  # not SVA very good in lower left corner of 2d plot, possibly not worrysome; SN ok (0)
     'ximxim': (1, 1, 1, 1),  # * SVA 5% ok; SN 0.1% ok
     'gmgm': (2, 0, 2, 0),  # * SVA 1% ok; SN 0.1% ok
@@ -492,11 +503,11 @@ start = time.time()
 #     (2 * np.pi * n_eff_lens[None, None, None, :, None, None] * deg2toarcmin2 *
 #         np.max((survey_area_sr, survey_area_sr)))
 
-    
+
 results = Parallel(n_jobs=-1)(delayed(cov_g_mix_real_helper)(theta_1, theta_2, zi, zj, zk, zl,
-                                                               mu, nu, cl_5d,
-                                                               probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                                                               )
+                                                             mu, nu, cl_5d,
+                                                             probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
+                                                             )
                               for theta_1 in tqdm(range(theta_bins))
                               for theta_2 in range(theta_bins)
                               for zi in range(zbins)
@@ -506,14 +517,13 @@ results = Parallel(n_jobs=-1)(delayed(cov_g_mix_real_helper)(theta_1, theta_2, z
                               )
 
 cov_g_mix_real_helper(theta_1, theta_2, zi, zj, zk, zl,
-                                                               mu, nu, cl_5d,
-                                                               probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                                                               )
+                      mu, nu, cl_5d,
+                      probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
+                      )
 
 for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
     cov_sb_mix_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
 print(f'... Done in: {(time.time() - start):.2f} s')
-
 
 
 # ! ======================================= ONECOVARIANCE ==================================================
@@ -618,8 +628,8 @@ cov_sb_6d = cov_sb_mix_6d
 
 cov_oc_4d = sl.cov_6D_to_4D(cov_oc_6d, theta_bins, zpairs_auto, ind_auto)
 cov_sb_4d = sl.cov_6D_to_4D(cov_sb_6d, theta_bins, zpairs_auto, ind_auto)
-cov_oc_2d = sl.cov_4D_to_2D(cov_oc_4d, block_index='ell')
-cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='ell')
+cov_oc_2d = sl.cov_4D_to_2D(cov_oc_4d, block_index='zpair')
+cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='zpair')
 
 sl.compare_arrays(cov_sb_2d, cov_oc_2d,
                   'cov_sb_2d', 'cov_oc_2d',

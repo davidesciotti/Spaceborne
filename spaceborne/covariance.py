@@ -652,7 +652,7 @@ class SpaceborneCovariance():
         return binned_cov
 
     def ssc_integral_julia(self, d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab,
-                           cl_integral_prefactor, sigma2, z_grid, integration_type,
+                           cl_integral_prefactor, sigma2, z_grid, R_grid, integration_type,
                            probe_ordering, num_threads=16):
         """Kernel to compute the 4D integral optimized using Simpson's rule using Julia."""
 
@@ -675,6 +675,7 @@ class SpaceborneCovariance():
         np.save(f"{folder_name}/cl_integral_prefactor", cl_integral_prefactor)
         np.save(f"{folder_name}/sigma2", sigma2)
         np.save(f"{folder_name}/z_grid", z_grid)
+        np.save(f"{folder_name}/R_grid", R_grid)
         os.system(
             f"julia --project=. --threads={num_threads} {self.jl_integrator_path} {folder_name} {integration_type}")
 

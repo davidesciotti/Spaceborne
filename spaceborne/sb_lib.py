@@ -1,5 +1,6 @@
 from copy import deepcopy
 import json
+import re
 import warnings
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -1582,7 +1583,8 @@ def matshow(array, title="title", log=True, abs_val=False, threshold=None, only_
     :return:
     """
 
-    if only_show_nans:
+    #commented to make the title also filename appropriate
+    """if only_show_nans:
         warnings.warn('only_show_nans is True, better switch off log and abs_val for the moment')
         # Set non-NaN elements to 0 and NaN elements to 1
         array = np.where(np.isnan(array), 1, 0)
@@ -1599,12 +1601,20 @@ def matshow(array, title="title", log=True, abs_val=False, threshold=None, only_
 
     if threshold is not None:
         array = np.ma.masked_where(array < threshold, array)
-        title += f" \n(masked below {threshold} \\%)"
+        title += f" \n(masked below {threshold} \\%)"""
 
     plt.matshow(array, **matshow_kwargs)
     plt.colorbar()
     plt.title(title)
-    plt.show()
+    
+    safe_title = title.replace('$', '').replace('\\', '').replace('{', '').replace('}', '')
+    safe_title = safe_title.replace(',', '').replace('=', '_')  # Replace `=` with `_` for clarity
+    safe_title = safe_title.replace('\n', '_')  # Replace newline with underscore
+    safe_title = re.sub(r'\s+', '_', safe_title)  # Replace multiple spaces with a single underscore
+    plot_filename = f"./output/plots/{safe_title.lower()}.png"
+    # Save the figure
+    plt.savefig(plot_filename, dpi=300)
+    plt.close()
 
 
 def get_kv_pairs(path_import, extension='npy'):

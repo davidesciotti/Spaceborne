@@ -143,7 +143,8 @@ if cfg['covariance']['use_KE_approximation']:
     ssc_integration_type = 'simps_KE_approximation'
 else:
     cl_integral_convention_ssc = 'Euclid'
-    ssc_integration_type = 'simps'
+    #ssc_integration_type = 'simps'
+    ssc_integration_type = 'simps_zR'
 
 if use_h_units:
     k_txt_label = "hoverMpc"
@@ -877,7 +878,6 @@ if compute_sb_ssc:
         np.save(f'{output_path}/cache/zgrid_sigma2_b.npy', z_grid)
         np.save(f'{output_path}/cache/Rgrid_sigma2_b.npy', R_grid)
         
-    assert False, "Implemented the new coordinates for sigma2_b. Stop here for now and check the new output!!!"
 
     # ! 4. Perform the integration calling the Julia module
     print('Computing the SSC integral...')
@@ -888,6 +888,7 @@ if compute_sb_ssc:
                                                        cl_integral_prefactor=cl_integral_prefactor,
                                                        sigma2=sigma2_b,
                                                        z_grid=z_grid,
+                                                       R_grid=R_grid,
                                                        integration_type=ssc_integration_type,
                                                        probe_ordering=probe_ordering,
                                                        num_threads=cfg['misc']['num_threads'])
@@ -961,8 +962,10 @@ for which_cov in cov_dict.keys():
         save_func = np.savez_compressed
     elif cov_filename.endswith('.npy'):
         save_func = np.save
+    
+    output_path_cov = "./output/zR_covs"
 
-    save_func(f'{output_path}/{cov_filename}', cov_dict[which_cov])
+    save_func(f'{output_path_cov}/{cov_filename}', cov_dict[which_cov])
 
     if cfg['covariance']['save_full_cov']:
         unique_probe_comb = [
@@ -975,14 +978,14 @@ for which_cov in cov_dict.keys():
             abcd_str = f'{probename_dict[a]}{probename_dict[b]}{probename_dict[c]}{probename_dict[d]}'
             cov_tot_6d = cov_obj.cov_3x2pt_g_10D[a, b, c, d, ...] + cov_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...] + \
                 cov_obj.cov_3x2pt_cng_10D[a, b, c, d, ...]
-            save_func(f'{output_path}/cov_{abcd_str}_G_6D', cov_obj.cov_3x2pt_g_10D[a, b, c, d, ...])
-            save_func(f'{output_path}/cov_{abcd_str}_SSC_6D', cov_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...])
-            save_func(f'{output_path}/cov_{abcd_str}_cNG_6D', cov_obj.cov_3x2pt_cng_10D[a, b, c, d, ...])
-            save_func(f'{output_path}/cov_{abcd_str}_TOT_6D', cov_tot_6d)
+            save_func(f'{output_path_cov}/cov_{abcd_str}_G_6D', cov_obj.cov_3x2pt_g_10D[a, b, c, d, ...])
+            save_func(f'{output_path_cov}/cov_{abcd_str}_SSC_6D', cov_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...])
+            save_func(f'{output_path_cov}/cov_{abcd_str}_cNG_6D', cov_obj.cov_3x2pt_cng_10D[a, b, c, d, ...])
+            save_func(f'{output_path_cov}/cov_{abcd_str}_TOT_6D', cov_tot_6d)
 
 
 # save cfg file
-with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
+with open(f'{output_path_cov}/run_config.yaml', 'w') as yaml_file:
     yaml.dump(cfg, yaml_file, default_flow_style=False)
 
 header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']    
@@ -994,7 +997,7 @@ ells_2d_save = np.column_stack((
     ell_edges_ref_nbl32[1:], 
 ))
 
-sl.savetxt_aligned(f'{output_path}/ell_values_ref.txt', ells_2d_save, header_list)
+sl.savetxt_aligned(f'{output_path_cov}/ell_values_ref.txt', ells_2d_save, header_list)
 
 for probe in ['WL', 'GC', '3x2pt']:
     ells_2d_save = np.column_stack((
@@ -1003,7 +1006,7 @@ for probe in ['WL', 'GC', '3x2pt']:
         ell_dict[f'ell_edges_{probe}'][:-1],
         ell_dict[f'ell_edges_{probe}'][1:], 
     ))
-    sl.savetxt_aligned(f'{output_path}/ell_values_{probe}.txt', ells_2d_save, header_list)
+    sl.savetxt_aligned(f'{output_path_cov}/ell_values_{probe}.txt', ells_2d_save, header_list)
 
 if cfg['misc']['save_output_as_benchmark']:
 
@@ -1075,7 +1078,7 @@ if cfg['misc']['save_output_as_benchmark']:
                         )
 
 
-print(f'Covariance matrices saved in {output_path}\n')
+print(f'Covariance matrices saved in {output_path_cov}\n')
 
 for which_cov in cov_dict.keys():
 
@@ -1118,7 +1121,7 @@ for which_cov in cov_dict.keys():
             else:
                 print('Matrix is symmetric. atol=0, rtol=1e-7')
                 
-
+assert False, "Stop here, at this point you should have computed and saved covariances!!"
 print("=================== Fisher Matrix part========================")           
 #============== Fisher Matrix test part =====================================================================================
 

@@ -1,6 +1,7 @@
 using NPZ
 using LoopVectorization
 using YAML
+using DataInterpolations
 
 function SSC_integral_6D_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
     """ "brute-force" implementation, returns a 6D array. many args are unnecessary, but I keep the same format for a 
@@ -169,6 +170,72 @@ function SSC_integral_KE_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, in
     return result .* z_step
 end
 
+function SSC_integral_4D_simps_zR(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array,  R_array::Array)
+    """ This version uses the z-R grid instead of z1-z2.
+    """ 
+
+    simpson_weights_z = get_simpson_weights(length(z_array))
+    simpson_weights_R = get_simpson_weights(length(R_array))
+    z_step = (last(z_array)-first(z_array)) / (length(z_array)-1)
+    R_step = (last(R_array)-first(R_array)) / (length(R_array)-1)
+    nR = length(R_array)
+
+
+    zpairs_AB = size(ind_AB, 1)
+    zpairs_CD = size(ind_CD, 1)
+    num_col = size(ind_AB, 2)
+
+    prefactor_interpolator = AkimaInterpolation(cl_integral_prefactor, z_array, extrapolation= ExtrapolationType.Extension)
+    cl_integral_prefactor_R = zeros(length(z_array), length(R_array))
+
+    for (ridx, r) in enumerate(R_array)
+        cl_integral_prefactor_R[:, ridx] = prefactor_interpolator.(z_array*r)
+    end
+
+    #TODO: horrible hard coding of the numbers
+    #same in the for loop below
+    d2ClAB_dVddeltab_R = zeros(29,3,3,length(z_array), length(R_array))
+    d2ClCD_dVddeltab_R = zeros(29,3,3,length(z_array), length(R_array))
+
+    for l in 1:29
+        for a in 1:3
+            for b in 1:3
+                for (ridx, r) in enumerate(R_array)
+                    interp_AB = AkimaInterpolation(d2ClAB_dVddeltab[l,a,b,:], z_array, extrapolation= ExtrapolationType.Extension)
+                    d2ClAB_dVddeltab_R[l,a,b,:,ridx] = interp_AB.(z_array*r)
+
+                    interp_CD = AkimaInterpolation(d2ClCD_dVddeltab[l,a,b,:], z_array, extrapolation= ExtrapolationType.Extension)
+                    d2ClCD_dVddeltab_R[l,a,b,:,ridx] = interp_CD.(z_array*r)
+                end
+            end
+        end
+    end
+    
+    result = zeros(nbl, nbl, zpairs_AB, zpairs_CD)
+
+    @tturbo for ell1 in 1:nbl
+        for ell2 in 1:nbl  # this could be further optimized by computing only upper triangular ells (for LLLL, GLGL, GGGG only), but not with tturbo
+            for zij in 1:zpairs_AB
+                for zkl in 1:zpairs_CD
+                    for z_idx in 1:z_steps
+                        for R_idx in 1:nR
+
+                            zi, zj, zk, zl = ind_AB[zij, num_col - 1], ind_AB[zij, num_col], ind_CD[zkl, num_col - 1], ind_CD[zkl, num_col]
+
+                            result[ell1, ell2, zij, zkl] += z_array[z_idx]*cl_integral_prefactor[z_idx] * cl_integral_prefactor_R[z_idx, R_idx] *
+                            ( d2ClAB_dVddeltab[ell1, zi, zj, z_idx] * d2ClCD_dVddeltab_R[ell2, zk, zl, z_idx, R_idx]+
+                              d2ClCD_dVddeltab[ell2, zk, zl, z_idx] * d2ClAB_dVddeltab_R[ell1, zi, zj, z_idx, R_idx]) * sigma2[z_idx, R_idx] *
+                            simpson_weights_z[z_idx] * simpson_weights_R[R_idx]
+
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return (z_step*R_step) .* result
+end
+
 
 # function SSC_integral_4D_opmpson_(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
 #     """ this version tries to use the KE approximation, to check its impact on the results.
@@ -219,6 +286,7 @@ d2CGL_dVddeltab = npzread("$(folder_name)/d2CGL_dVddeltab.npy")
 d2CGG_dVddeltab = npzread("$(folder_name)/d2CGG_dVddeltab.npy")
 sigma2          = npzread("$(folder_name)/sigma2.npy")
 z_grid = npzread("$(folder_name)/z_grid.npy") #previously z_integrands
+R_grid = npzread("$(folder_name)/R_grid.npy") 
 cl_integral_prefactor = npzread("$(folder_name)/cl_integral_prefactor.npy")
 ind_auto = npzread("$(folder_name)/ind_auto.npy")
 ind_cross = npzread("$(folder_name)/ind_cross.npy")
@@ -274,6 +342,8 @@ elseif integration_type == "simps_KE_approximation"
     ssc_integral_4d_func = SSC_integral_KE_4D_simps
 elseif integration_type == "trapz-6D"
     ssc_integral_4d_func = SSC_integral_6D_trapz
+elseif integration_type == "simps_zR"
+    ssc_integral_4d_func = SSC_integral_4D_simps_zR
 else
     error("Integration type not recognized")
 end
@@ -300,7 +370,7 @@ for row in 1:length(probe_combinations)
                 ind_dict[probe_A, probe_B],
                 ind_dict[probe_C, probe_D],
                 nbl, z_steps, cl_integral_prefactor, 
-                sigma2, z_grid)
+                sigma2, z_grid, R_grid)
 
             # save
             npzwrite("$(folder_name)/cov_SSC_spaceborne_$(probe_A)$(probe_B)$(probe_C)$(probe_D)_4D.npy", cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)])

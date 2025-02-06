@@ -697,7 +697,7 @@ if compute_sb_ssc:
         for zi in range(zbins):
             np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
         # in case b(z) is equal in each bin, we can use the first one
-        gal_bias_spline = CubicSpline(ccl_obj.gal_bias_tuple[0], ccl_obj.gal_bias_2d[:, 0])
+        gal_bias = CubicSpline(ccl_obj.gal_bias_tuple[0], ccl_obj.gal_bias_2d[:, 0])(z_grid_trisp)
         
     except AssertionError:
         
@@ -708,22 +708,23 @@ if compute_sb_ssc:
         gal_bias_zi = []
         z_means = wf_cl_lib.get_z_means(zgrid_nz_lns, nz_lns)
         for zi in range(zbins):
+            # find value of galaxy bias input array in the z_means values
             gal_bias_zi_spline = CubicSpline(x=ccl_obj.gal_bias_tuple[0],
                                           y=ccl_obj.gal_bias_tuple[1][:, zi])
-
             gal_bias_zi.append(gal_bias_zi_spline(z_means[zi]))
 
-        gal_bias_spline = CubicSpline(x=z_means, y=gal_bias_zi)
-        
-        plt.plot(ccl_obj.gal_bias_tuple[0], ccl_obj.gal_bias_tuple[1][:, zi])
-        plt.plot(ccl_obj.gal_bias_tuple[0], gal_bias_spline(ccl_obj.gal_bias_tuple[0]))
+        gal_bias = np.interp(z_grid_trisp, z_means, gal_bias_zi)
+
+        colors = plt.cm.plasma(np.linspace(0, 1, zbins))
         for zi in range(zbins):
-            plt.axvline(z_means[zi], ymin=0, ymax=4, color='k', ls='--')
-            plt.plot(ccl_obj.gal_bias_tuple[0], np.ones_like(ccl_obj.gal_bias_tuple[0]) * gal_bias_zi[zi])
+            plt.axvline(z_means[zi], ymin=0, ymax=4, ls='--', c=colors[zi])
+            # plt.plot(ccl_obj.gal_bias_tuple[0], np.ones_like(ccl_obj.gal_bias_tuple[0]) * gal_bias_zi[zi], c=colors[zi])
+            plt.plot(ccl_obj.gal_bias_tuple[0], np.ones_like(ccl_obj.gal_bias_tuple[0]) * gal_bias_zi[zi], c=colors[zi])
+        plt.plot(z_grid_trisp, gal_bias)
+        plt.ylim(0, 5)
+        plt.show()
 
-    # interpolate with a spline on the trispectrum z grid
-    gal_bias = gal_bias_spline(z_grid_trisp)
-
+    # assert False, 'stop here'
     # precompute pk_mm, pk_gm and pk_mm, in case you want to rescale the responses to get R_mm, R_gm, R_gg
     # k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid, z_grid_trisp, use_h_units,
                                             #   ccl_obj.cosmo_ccl, pk_kind='nonlinear')
@@ -735,6 +736,7 @@ if compute_sb_ssc:
         which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
         include_terasawa_terms = cfg['covariance']['include_terasawa_terms']
         resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid,
+                                                 
                                                  z_grid=z_grid_trisp,
                                                  ccl_obj=ccl_obj)
         resp_obj.use_h_units = use_h_units

@@ -693,16 +693,21 @@ if compute_sb_ssc:
     print('Start SSC computation with Spaceborne...')
 
     try:
-        
+
         for zi in range(zbins):
             np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
-        # in case b(z) is equal in each bin, we can use the first one
+        # in case b(z) is equal in each bin, we can simply use the first one
         gal_bias = CubicSpline(ccl_obj.gal_bias_tuple[0], ccl_obj.gal_bias_2d[:, 0])(z_grid_trisp)
-        
+
     except AssertionError:
-        
-        print('Galaxy bias is not the same in each redshift bin; constructing a b(z) by interpolating'
-              'the values of the b_i(z) table provided in the mean redshift of the lens n_i(z)')
+
+        print('Galaxy bias is not the same in each redshift bin; constructing a unique b(z) by '
+              'linearly interpolating the values of the b_i(z) table provided in the mean redshift '
+              'of the lens n_i(z).')
+
+        # test that the bias is constant in each bin (not necessarily with the same value in all bins)
+        for zi in range(zbins):
+            np.testing.assert_allclose(ccl_obj.gal_bias_2d[0, zi], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
 
         # in this case, we take the mean z values from nz_lns and interpolate b(z) from b_i(z_means)
         gal_bias_zi = []
@@ -710,24 +715,29 @@ if compute_sb_ssc:
         for zi in range(zbins):
             # find value of galaxy bias input array in the z_means values
             gal_bias_zi_spline = CubicSpline(x=ccl_obj.gal_bias_tuple[0],
-                                          y=ccl_obj.gal_bias_tuple[1][:, zi])
+                                             y=ccl_obj.gal_bias_tuple[1][:, zi])
             gal_bias_zi.append(gal_bias_zi_spline(z_means[zi]))
 
         gal_bias = np.interp(z_grid_trisp, z_means, gal_bias_zi)
 
-        colors = plt.cm.plasma(np.linspace(0, 1, zbins))
-        for zi in range(zbins):
-            plt.axvline(z_means[zi], ymin=0, ymax=4, ls='--', c=colors[zi])
-            # plt.plot(ccl_obj.gal_bias_tuple[0], np.ones_like(ccl_obj.gal_bias_tuple[0]) * gal_bias_zi[zi], c=colors[zi])
-            plt.plot(ccl_obj.gal_bias_tuple[0], np.ones_like(ccl_obj.gal_bias_tuple[0]) * gal_bias_zi[zi], c=colors[zi])
-        plt.plot(z_grid_trisp, gal_bias)
-        plt.ylim(0, 5)
-        plt.show()
+        # colors = plt.cm.plasma(np.linspace(0, 1, zbins))
+        # for zi in range(zbins):
+        #     plt.axvline(z_means[zi], ymin=0, ymax=4, ls='--', c=colors[zi])
+        #     # plt.plot(ccl_obj.gal_bias_tuple[0], np.ones_like(ccl_obj.gal_bias_tuple[0]) * gal_bias_zi[zi], c=colors[zi])
+        #     plt.plot(ccl_obj.gal_bias_tuple[0], np.ones_like(ccl_obj.gal_bias_tuple[0]) * gal_bias_zi[zi], c=colors[zi])
+        # plt.plot(z_grid_trisp, gal_bias)
+        # plt.ylim(0, 5)
+        # plt.show()
+
+    except AssertionError:
+
+        raise NotImplementedError('Galaxy bias is neither the same in all bins, nor constant in each redshift bin. '
+                                  'Case not implemented yet.')
 
     # assert False, 'stop here'
     # precompute pk_mm, pk_gm and pk_mm, in case you want to rescale the responses to get R_mm, R_gm, R_gg
     # k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid, z_grid_trisp, use_h_units,
-                                            #   ccl_obj.cosmo_ccl, pk_kind='nonlinear')
+        #   ccl_obj.cosmo_ccl, pk_kind='nonlinear')
     # pk_gm_2d = pk_mm_2d * gal_bias
     # pk_gg_2d = pk_mm_2d * gal_bias ** 2
 
@@ -736,7 +746,6 @@ if compute_sb_ssc:
         which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
         include_terasawa_terms = cfg['covariance']['include_terasawa_terms']
         resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid,
-                                                 
                                                  z_grid=z_grid_trisp,
                                                  ccl_obj=ccl_obj)
         resp_obj.use_h_units = use_h_units

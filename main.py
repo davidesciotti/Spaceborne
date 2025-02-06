@@ -692,23 +692,43 @@ if compute_sb_ssc:
 
     print('Start SSC computation with Spaceborne...')
 
-    # precompute pk_mm, pk_gm and pk_mm, in case you want to rescale the responses to get R_mm, R_gm, R_gg
-    k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid, z_grid_trisp, use_h_units,
-                                              ccl_obj.cosmo_ccl, pk_kind='nonlinear')
+    try:
+        
+        for zi in range(zbins):
+            np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
+        # in case b(z) is equal in each bin, we can use the first one
+        gal_bias_spline = CubicSpline(ccl_obj.gal_bias_tuple[0], ccl_obj.gal_bias_2d[:, 0])
+        
+    except AssertionError:
+        
+        print('Galaxy bias is not the same in each redshift bin; constructing a b(z) by interpolating'
+              'the values of the b_i(z) table provided in the mean redshift of the lens n_i(z)')
 
-    # Needed to compute P_gm, P_gg, and for the responses from an input bias
-    gal_bias = ccl_obj.gal_bias_2d[:, 0]
-    # # check that it's the same in each bin
-    for zi in range(zbins):
-        np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
+        # in this case, we take the mean z values from nz_lns and interpolate b(z) from b_i(z_means)
+        gal_bias_zi = []
+        z_means = wf_cl_lib.get_z_means(zgrid_nz_lns, nz_lns)
+        for zi in range(zbins):
+            gal_bias_zi_spline = CubicSpline(x=ccl_obj.gal_bias_tuple[0],
+                                          y=ccl_obj.gal_bias_tuple[1][:, zi])
+
+            gal_bias_zi.append(gal_bias_zi_spline(z_means[zi]))
+
+        gal_bias_spline = CubicSpline(x=z_means, y=gal_bias_zi)
+        
+        plt.plot(ccl_obj.gal_bias_tuple[0], ccl_obj.gal_bias_tuple[1][:, zi])
+        plt.plot(ccl_obj.gal_bias_tuple[0], gal_bias_spline(ccl_obj.gal_bias_tuple[0]))
+        for zi in range(zbins):
+            plt.axvline(z_means[zi], ymin=0, ymax=4, color='k', ls='--')
+            plt.plot(ccl_obj.gal_bias_tuple[0], np.ones_like(ccl_obj.gal_bias_tuple[0]) * gal_bias_zi[zi])
 
     # interpolate with a spline on the trispectrum z grid
-    gal_bias_spline = CubicSpline(z_grid, gal_bias)
     gal_bias = gal_bias_spline(z_grid_trisp)
 
-    pk_gm_2d = pk_mm_2d * gal_bias
-    pk_gg_2d = pk_mm_2d * gal_bias ** 2
-
+    # precompute pk_mm, pk_gm and pk_mm, in case you want to rescale the responses to get R_mm, R_gm, R_gg
+    # k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid, z_grid_trisp, use_h_units,
+                                            #   ccl_obj.cosmo_ccl, pk_kind='nonlinear')
+    # pk_gm_2d = pk_mm_2d * gal_bias
+    # pk_gg_2d = pk_mm_2d * gal_bias ** 2
 
     if cfg['covariance']['which_pk_responses'] == 'halo_model':
 
@@ -957,13 +977,13 @@ for which_cov in cov_dict.keys():
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.dump(cfg, yaml_file, default_flow_style=False)
 
-header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']    
+header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']
 
 ells_2d_save = np.column_stack((
     ell_ref_nbl32,
     delta_l_ref_nbl32,
     ell_edges_ref_nbl32[:-1],
-    ell_edges_ref_nbl32[1:], 
+    ell_edges_ref_nbl32[1:],
 ))
 
 sl.savetxt_aligned(f'{output_path}/ell_values_ref.txt', ells_2d_save, header_list)
@@ -973,7 +993,7 @@ for probe in ['WL', 'GC', '3x2pt']:
         ell_dict[f'ell_{probe}'],
         ell_dict[f'delta_l_{probe}'],
         ell_dict[f'ell_edges_{probe}'][:-1],
-        ell_dict[f'ell_edges_{probe}'][1:], 
+        ell_dict[f'ell_edges_{probe}'][1:],
     ))
     sl.savetxt_aligned(f'{output_path}/ell_values_{probe}.txt', ells_2d_save, header_list)
 

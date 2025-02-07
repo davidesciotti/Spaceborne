@@ -57,6 +57,10 @@ script_start_time = time.perf_counter()
 # # ! uncomment this if executing from interactive window
 with open('config.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
+    
+#SSC_integration_method = cfg['covariance']['SSC_integration_method']
+#I tried to make it work from config but i get weird bugs that i don't understand
+SSC_integration_method = "z_z" #"z_z"or "z_R"
 
 # some convenience variables, just to make things more readable
 h = cfg['cosmology']['h']
@@ -138,13 +142,16 @@ if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
     compute_ccl_cng = True
 
+
 if cfg['covariance']['use_KE_approximation']:
     cl_integral_convention_ssc = 'Euclid_KE_approximation'
     ssc_integration_type = 'simps_KE_approximation'
 else:
     cl_integral_convention_ssc = 'Euclid'
-    #ssc_integration_type = 'simps'
-    ssc_integration_type = 'simps_zR'
+    if SSC_integration_method == "z_z":
+        ssc_integration_type = 'simps'
+    if SSC_integration_method == "z_R":
+        ssc_integration_type = 'simps_zR'
 
 if use_h_units:
     k_txt_label = "hoverMpc"
@@ -848,35 +855,42 @@ if compute_sb_ssc:
             _z = cosmo_lib.a_to_z(_a)[::-1]
             np.testing.assert_allclose(z_grid, _z, atol=0, rtol=1e-8)
 
-        else:
-            """sigma2_b = sigma2_SSC.sigma2_z1z2_wrap(
-                z_grid=z_grid,
-                k_grid_sigma2=k_grid_sigma2_b,
-                cosmo_ccl=ccl_obj.cosmo_ccl,
-                which_sigma2_b=which_sigma2_b,
-                area_deg2_in=cfg['mask']['survey_area_deg2'],
-                nside_mask=cfg['mask']['nside_mask'],
-                mask_path=cfg['mask']['nside_mask']
-            )"""
+        elif SSC_integration_method == "z_z":
+            sigma2_b = sigma2_SSC.sigma2_z1z2_wrap(
+                    z_grid=z_grid,
+                    k_grid_sigma2=k_grid_sigma2_b,
+                    cosmo_ccl=ccl_obj.cosmo_ccl,
+                    which_sigma2_b=which_sigma2_b,
+                    area_deg2_in=cfg['mask']['survey_area_deg2'],
+                    nside_mask=cfg['mask']['nside_mask'],
+                    mask_path=cfg['mask']['nside_mask']
+                )
+        elif SSC_integration_method == "z_R":
             sigma2_b = sigma2_SSC.sigma2_zR_wrap(
-                z=z_grid,
-                R = R_grid,
-                k_grid_sigma2=k_grid_sigma2_b,
-                cosmo_ccl=ccl_obj.cosmo_ccl,
-                which_sigma2_b=which_sigma2_b,
-                area_deg2_in=cfg['mask']['survey_area_deg2'],
-                nside_mask=cfg['mask']['nside_mask'],
-                mask_path=cfg['mask']['nside_mask']
-            )
+                    z=z_grid,
+                    R = R_grid,
+                    k_grid_sigma2=k_grid_sigma2_b,
+                    cosmo_ccl=ccl_obj.cosmo_ccl,
+                    which_sigma2_b=which_sigma2_b,
+                    area_deg2_in=cfg['mask']['survey_area_deg2'],
+                    nside_mask=cfg['mask']['nside_mask'],
+                    mask_path=cfg['mask']['nside_mask']
+                )
             # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to divide
             # the former by fsky (eq. 29 of https://arxiv.org/pdf/1612.05958)
 
     #TODO: changed the file names to preserve the other ones, maybe implement an if to check which grid 
     #is used for the integration (z1-z2 or z-R)
-    if not cfg['covariance']['load_cached_sigma2_b']:
-        np.save(f'{output_path}/cache/sigma2_b_new.npy', sigma2_b)
-        np.save(f'{output_path}/cache/zgrid_sigma2_b.npy', z_grid)
-        np.save(f'{output_path}/cache/Rgrid_sigma2_b.npy', R_grid)
+    if SSC_integration_method == "z_R":
+        if not cfg['covariance']['load_cached_sigma2_b']:
+            np.save(f'{output_path}/cache/sigma2_b_new.npy', sigma2_b)
+            np.save(f'{output_path}/cache/zgrid_sigma2_b.npy', z_grid)
+            np.save(f'{output_path}/cache/Rgrid_sigma2_b.npy', R_grid)
+            
+    if SSC_integration_method == "z_z":
+        if not cfg['covariance']['load_cached_sigma2_b']:
+            np.save(f'{output_path}/cache/sigma2_b.npy', sigma2_b)
+            np.save(f'{output_path}/cache/zgrid_sigma2_b.npy', z_grid)
         
 
     # ! 4. Perform the integration calling the Julia module
@@ -963,7 +977,11 @@ for which_cov in cov_dict.keys():
     elif cov_filename.endswith('.npy'):
         save_func = np.save
     
-    output_path_cov = "./output/zR_covs"
+    if SSC_integration_method == "z_R":
+        output_path_cov = "./output/zR_covs"
+        
+    if SSC_integration_method == "z_z":
+        output_path_cov = "./output/zz_covs"
 
     save_func(f'{output_path_cov}/{cov_filename}', cov_dict[which_cov])
 
@@ -1121,8 +1139,8 @@ for which_cov in cov_dict.keys():
             else:
                 print('Matrix is symmetric. atol=0, rtol=1e-7')
                 
-assert False, "Stop here, at this point you should have computed and saved covariances!!"
-print("=================== Fisher Matrix part========================")           
+#assert False, "Stop here, at this point you should have computed and saved covariances!!"
+print("=================== Fisher Matrix ========================")           
 #============== Fisher Matrix test part =====================================================================================
 
 FM_ordered_params = {
@@ -1193,9 +1211,9 @@ fm_cfg = {
     'derivatives_prefix': 'dDVd',
     'derivatives_BNT_transform': False,
     'deriv_ell_cuts': False,
-    'fm_folder': f"./output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}",
+    'fm_folder': f"./output/Fishers",
     'fm_txt_filename': 'fm_txt_filename',
-    'fm_dict_filename': "FM_dict_test.pickle",
+    'fm_dict_filename': "FM_dict.pickle",
     'test_against_vincenzo': False,
     'test_against_benchmarks': False,
     'FM_ordered_params': FM_ordered_params,
@@ -1209,6 +1227,7 @@ fm_cfg = {
 from spaceborne import fisher_matrix as fm_utils
 magcut_lens = 245  # valid for GCph
 magcut_source = 245  # valid for WL
+#TODO: are those zmin-zmax values reasonable????
 zmin_nz_lens = 2  # = 0.2
 zmin_nz_source = 2  # = 0.2
 zmax_nz = 25  # = 2.5
@@ -1230,7 +1249,10 @@ list_params_to_vary = [param for param in FM_ordered_params.keys() if param != '
 # Vincenzo's derivatives
 der_prefix = fm_cfg['derivatives_prefix']
 derivatives_folder = fm_cfg['derivatives_folder']#.format(**variable_specs, ROOT=ROOT)
-fm_dict_filename = fm_cfg['fm_dict_filename']#.format(**variable_specs, ROOT=ROOT)
+if SSC_integration_method == "z_z":
+    fm_dict_filename = 'FM_dict_zz.pickle' #.format(**variable_specs, ROOT=ROOT)
+if SSC_integration_method == "z_R":
+    fm_dict_filename = 'FM_dict_zR.pickle'
 # ! get vincenzo's derivatives' parameters, to check that they match with the yaml file
 # check the parameter names in the derivatives folder, to see whether I'm setting the correct ones in the config file
 vinc_filenames = sl.get_filenames_in_folder(derivatives_folder)
@@ -1356,7 +1378,7 @@ else:
     
 from spaceborne import plot_lib
 
-fm_dict_filename = fm_cfg['fm_dict_filename']
+#fm_dict_filename = fm_cfg['fm_dict_filename']
 if fm_cfg['save_FM_dict']:
     sl.save_pickle(f'{fm_folder}/{fm_dict_filename}', fm_dict)
 
@@ -1558,7 +1580,7 @@ fm_dict_of_dicts = {
     # 'SB_KEapp_hm_simpker': sl.load_pickle(f'{fm_folder}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     # 'SB_hm_simpker': sl.load_pickle(f'{fm_folder}/FM_GSSC_Spaceborne{common_str}_Euclid_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     # 'OC_simpker': sl.load_pickle(f'{fm_folder}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly.pickle'),
-    'test': sl.load_pickle(f'{fm_folder}/{fm_cfg['fm_dict_filename']}'),
+    'test': sl.load_pickle(f'{fm_folder}/FM_dict_zz.pickle'),
     'current': fm_dict,
 }
 
@@ -1583,7 +1605,7 @@ sl.compare_fm_constraints(*fm_dict_list, labels=labels,
                           save_fig=True,
                           fig_path='./output/plots')
 
-"""assert False, 'stop here'
+assert False, 'stop here'
 
 fisher_matrices = (
     fm_dict_of_dicts['SB_hm_simpker']['FM_3x2pt_GSSC'],
@@ -1601,6 +1623,6 @@ fiducials = list(fm_dict_of_dicts['SB_hm_simpker']['fiducial_values_dict'].value
 param_names_list = list(fm_dict_of_dicts['SB_hm_simpker']['fiducial_values_dict'].keys())
 param_names_labels_toplot = param_names_list[:8]
 plot_lib.triangle_plot(fisher_matrices, fiducials, title, labels, param_names_list, param_names_labels_toplot,
-                       param_names_labels_tex=None, rotate_param_labels=False, contour_colors=None, line_colors=None)"""
+                       param_names_labels_tex=None, rotate_param_labels=False, contour_colors=None, line_colors=None)
 
 print('Finished in {:.2f} minutes'.format((time.perf_counter() - script_start_time) / 60))

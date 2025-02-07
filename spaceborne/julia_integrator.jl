@@ -95,7 +95,7 @@ function SSC_integral_4D_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_C
     return (dz^2) .* result
 end
 
-function SSC_integral_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
+function SSC_integral_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array, R_array::Array)#I know I don' need R, but otherwise the function is badly called later
     """ this version takes advantage of the symmetries between redshift pairs.
     """
 

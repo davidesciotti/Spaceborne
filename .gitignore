@@ -26,3 +26,5 @@ Project.toml
 *.ipynb_checkpoints/*
 spaceborne/.ipynb_checkpoints/*
 sigma_comparison.jl
+submit_*
+log/*

@@ -105,6 +105,12 @@ symmetrize_output_dict = {
     ('L', 'G'): False,
     ('G', 'G'): False,
 }
+unique_probe_comb = [
+    [0, 0, 0, 0], [0, 0, 1, 0], [0, 0, 1, 1],
+    [1, 0, 1, 0], [1, 0, 1, 1], [1, 1, 1, 1]]
+probename_dict = {
+    0: 'L',
+    1: 'G'}
 # ! END HARDCODED OPTIONS/PARAMETERS
 
 # ! set non-gaussian cov terms to compute
@@ -183,6 +189,9 @@ if cfg['intrinsic_alignment']['lumin_ratio_filename'] is not None:
     ccl_obj.lumin_ratio_2d_arr = np.genfromtxt(cfg['intrinsic_alignment']['lumin_ratio_filename'])
 else:
     ccl_obj.lumin_ratio_2d_arr = None
+
+# define k_limber function
+k_limber_func = partial(cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
 
 # ! define k and z grids used throughout the code (k is in 1/Mpc)
 # TODO should zmin and zmax be inferred from the nz tables?
@@ -454,6 +463,12 @@ ccl_obj.set_kernel_arr(z_grid_wf=z_grid,
 gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias)'
 ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 
+# convenience variables
+wf_delta = ccl_obj.wf_delta_arr
+wf_gamma = ccl_obj.wf_gamma_arr
+wf_ia = ccl_obj.wf_ia_arr
+wf_mu = ccl_obj.wf_mu_arr
+wf_lensing = ccl_obj.wf_lensing_arr
 
 # plot
 wf_names_list = ['delta', 'gamma', 'ia', 'magnification', 'lensing', gal_kernel_plt_title]
@@ -477,15 +492,6 @@ ccl_obj.cl_gl_3d = ccl_obj.compute_cls(ell_dict['ell_XC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, cl_ccl_kwargs)
 ccl_obj.cl_gg_3d = ccl_obj.compute_cls(ell_dict['ell_GC'], ccl_obj.p_of_k_a,
                                        ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, cl_ccl_kwargs)
-
-# oc needs finer sampling to avoid issues
-ells_3x2pt_oc = np.geomspace(cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_3x2pt'], nbl_3x2pt_oc)
-cl_ll_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
-                                  ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, cl_ccl_kwargs)
-cl_gl_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
-                                  ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, cl_ccl_kwargs)
-cl_gg_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
-                                  ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, cl_ccl_kwargs)
 
 # ! add multiplicative shear bias
 # ! THIS SHOULD NOT BE DONE FOR THE OC Cls!! mult shear bias values are passed in the .ini file
@@ -513,11 +519,6 @@ ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[:nbl_3x2pt, :, :]
 cl_ll_3d, cl_gl_3d, cl_gg_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d
 cl_3x2pt_5d = ccl_obj.cl_3x2pt_5d
 
-cl_3x2pt_5d_oc = np.zeros((n_probes, n_probes, nbl_3x2pt_oc, zbins, zbins))
-cl_3x2pt_5d_oc[0, 0, :, :, :] = cl_ll_3d_oc
-cl_3x2pt_5d_oc[1, 0, :, :, :] = cl_gl_3d_oc
-cl_3x2pt_5d_oc[0, 1, :, :, :] = cl_gl_3d_oc.transpose(0, 2, 1)
-cl_3x2pt_5d_oc[1, 1, :, :, :] = cl_gg_3d_oc
 
 fig, ax = plt.subplots(1, 3)
 plt.tight_layout()
@@ -617,6 +618,20 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     nz_lns_tosave = np.column_stack((zgrid_nz_lns, nz_lns))
     np.savetxt(f'{oc_path}/{nz_src_ascii_filename}', nz_src_tosave)
     np.savetxt(f'{oc_path}/{nz_lns_ascii_filename}', nz_lns_tosave)
+
+    # oc needs finer ell sampling to avoid issues with ell bin edges
+    ells_3x2pt_oc = np.geomspace(cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_3x2pt'], nbl_3x2pt_oc)
+    cl_ll_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
+                                      ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, cl_ccl_kwargs)
+    cl_gl_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
+                                      ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, cl_ccl_kwargs)
+    cl_gg_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
+                                      ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, cl_ccl_kwargs)
+    cl_3x2pt_5d_oc = np.zeros((n_probes, n_probes, nbl_3x2pt_oc, zbins, zbins))
+    cl_3x2pt_5d_oc[0, 0, :, :, :] = cl_ll_3d_oc
+    cl_3x2pt_5d_oc[1, 0, :, :, :] = cl_gl_3d_oc
+    cl_3x2pt_5d_oc[0, 1, :, :, :] = cl_gl_3d_oc.transpose(0, 2, 1)
+    cl_3x2pt_5d_oc[1, 1, :, :, :] = cl_gg_3d_oc
 
     cl_ll_ascii_filename = f'Cell_ll_nbl{nbl_3x2pt_oc}'
     cl_gl_ascii_filename = f'Cell_gl_nbl{nbl_3x2pt_oc}'
@@ -804,22 +819,19 @@ if compute_sb_ssc:
     dPgm_ddeltab_spline = RectBivariateSpline(k_grid, z_grid_trisp, dPgm_ddeltab, kx=3, ky=3)
     dPgg_ddeltab_spline = RectBivariateSpline(k_grid, z_grid_trisp, dPgg_ddeltab, kx=3, ky=3)
 
-    # Step 2: Define k_limber function
-    k_limber = partial(cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units)
-
     # Step 3: Evaluate using the spline
     dPmm_ddeltab_klimb = np.array([
-        dPmm_ddeltab_spline(k_limber(ell_val, z_grid), z_grid, grid=False)
+        dPmm_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
         for ell_val in ell_dict['ell_WL']
     ])
 
     dPgm_ddeltab_klimb = np.array([
-        dPgm_ddeltab_spline(k_limber(ell_val, z_grid), z_grid, grid=False)
+        dPgm_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
         for ell_val in ell_dict['ell_XC']
     ])
 
     dPgg_ddeltab_klimb = np.array([
-        dPgg_ddeltab_spline(k_limber(ell_val, z_grid), z_grid, grid=False)
+        dPgg_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
         for ell_val in ell_dict['ell_GC']
     ])
 
@@ -829,12 +841,6 @@ if compute_sb_ssc:
                                                             use_h_units=use_h_units,
                                                             cosmo_ccl=ccl_obj.cosmo_ccl)
     # ! observable densities
-    wf_delta = ccl_obj.wf_delta_arr
-    wf_gamma = ccl_obj.wf_gamma_arr
-    wf_ia = ccl_obj.wf_ia_arr
-    wf_mu = ccl_obj.wf_mu_arr
-    wf_lensing = ccl_obj.wf_lensing_arr
-
     d2CLL_dVddeltab = np.einsum('zi,zj,Lz->Lijz', wf_lensing, wf_lensing, dPmm_ddeltab_klimb)
     d2CGL_dVddeltab = \
         np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_lensing, dPgm_ddeltab_klimb) + \
@@ -932,9 +938,92 @@ if (compute_ccl_ssc or compute_ccl_cng):
     for which_ng_cov in ccl_ng_cov_terms_list:
 
         ccl_obj.initialize_trispectrum(which_ng_cov, probe_ordering, cfg['PyCCL'])
-        ccl_obj.compute_ng_cov_3x2pt(which_ng_cov, ell_dict['ell_3x2pt'], cfg['mask']['fsky'],
-                                     integration_method=cfg['PyCCL']['cov_integration_method'],
-                                     probe_ordering=probe_ordering, ind_dict=ind_dict)
+        # ccl_obj.compute_ng_cov_3x2pt(which_ng_cov, ell_dict['ell_3x2pt'], cfg['mask']['fsky'],
+        #                              integration_method=cfg['PyCCL']['cov_integration_method'],
+        #                              probe_ordering=probe_ordering, ind_dict=ind_dict)
+
+        k_test = np.logspace(-4, 2, 50)
+        a_test = np.linspace(0, 1, 40)
+        trisp_func = ccl_obj.tkka_dict['L', 'L', 'L', 'L']
+        trisp_arr = trisp_func(k_test, a_test)
+
+        colors = plt.cm.rainbow(np.linspace(0, 1, len(a_test)))
+        for a, _ in enumerate(a_test):
+            plt.loglog(k_test, np.diag(trisp_arr[a, :, :]), color=colors[a], label=f'a={a_test[a]:.2f}')
+
+        # this may be correct, since the ki, kj combinations are computed by default when k is a vector...
+        # * NOTE: trisp is symmetric in k1, k2
+        trisp_klimb = np.zeros((n_probes, n_probes, n_probes, n_probes, nbl_3x2pt, nbl_3x2pt, len(z_grid)))
+        for a_ix, b_ix, c_ix, d_ix in unique_probe_comb:
+            a_str, b_str = probename_dict[a_ix], probename_dict[b_ix]
+            c_str, d_str = probename_dict[c_ix], probename_dict[d_ix]
+            for z_ix, z in enumerate(z_grid):
+                trisp_klimb[a_ix, b_ix, c_ix, d_ix, :, :, z_ix] = \
+                    ccl_obj.tkka_dict[a_str, b_str, c_str, d_str](
+                        k_limber_func(ell_dict['ell_3x2pt'], z),
+                        cosmo_lib.z_to_a(z))
+
+        # trisp_klimb = np.flip(trisp_klimb, axis=-1)
+
+        # TODO I think this is not very precise...
+        wf_wl = wf_gamma + wf_ia + wf_lensing
+        wf_gc = wf_delta + wf_mu
+        wf_general = np.array([wf_wl, wf_gc])
+
+        # no comoving distance norm
+        # maybe I don't need einsum ebbasta...
+
+        import pyccl as ccl
+        from scipy.integrate import simpson as simps
+        r_of_z = cosmo_lib.ccl_comoving_distance(z_grid, use_h_units=use_h_units, cosmo_ccl=ccl_obj.cosmo_ccl)
+        a = cosmo_lib.z_to_a(z_grid)
+        h_of_z = ccl.background.h_over_h0(ccl_obj.cosmo_ccl, a) * ccl_obj.cosmo_ccl.cosmo.params.h * 100
+        dr_dz = cosmo_lib.c / h_of_z
+        dr_r6 = 1 / r_of_z ** 6 * dr_dz
+
+        # A, B, C, D: probes
+        # L, M: multipoles \ell1, \ell2
+        # i, j, k, l: redshift indices
+        # z: z_grid (or \chi) index
+        # TODO where is the galaxy bias? in the trisp? In the wf?
+
+        # I loop over probes to save memory (and to parallelize?)
+        print('Computing cNG cov with Spaceborne...')
+        cov_cng_10d = np.zeros((n_probes, n_probes, n_probes, n_probes,
+                               nbl_3x2pt, nbl_3x2pt, zbins, zbins, zbins, zbins))
+        cov_cng_10d_2 = np.zeros((n_probes, n_probes, n_probes, n_probes,
+                               nbl_3x2pt, nbl_3x2pt, zbins, zbins, zbins, zbins))
+        prefac = 1 / (4 * np.pi * cfg['mask']['fsky'])
+        
+        def compute_cov_ng_block(a_ix, b_ix, c_ix, d_ix):
+            # * NOTE I could not parallelize (not even with 2 cores) because of memory issues
+            integrand = np.einsum('z, zi, zj, zk, zl, LMz -> LMijklz', dr_r6,
+                                  wf_general[a_ix, ...], wf_general[b_ix, ...],
+                                  wf_general[c_ix, ...], wf_general[d_ix, ...],
+                                  trisp_klimb[a_ix, b_ix, c_ix, d_ix, ...])
+            integrand *= prefac
+            return simps(y=integrand, x=z_grid, axis=-1)
+
+        for a_ix, b_ix, c_ix, d_ix in tqdm(unique_probe_comb):
+            cov_cng_10d_2[a_ix, b_ix, c_ix, d_ix, ...] = compute_cov_ng_block(a_ix, b_ix, c_ix, d_ix) 
+            
+        np.testing.assert_allclose(cov_cng_10d, cov_cng_10d_2, atol=0, rtol=1e-5)
+            
+        # np.save('cov_cng_4d', ccl_obj.cov_cng_ccl_3x2pt_dict_8D['L', 'L', 'L', 'L'][...])
+
+        cov_cng_sb_6d = cov_cng_10d[1, 1, 1, 1, ...]
+        cov_cng_ccl_4d = ccl_obj.cov_cng_ccl_3x2pt_dict_8D['G', 'G', 'G', 'G'][...]
+
+        cov_cng_sb_4d = sl.cov_6D_to_4D(cov_cng_sb_6d, nbl_3x2pt, zpairs_auto, ind_auto)
+        cov_cng_ccl_2d = sl.cov_4D_to_2D(cov_cng_ccl_4d, 'ell')
+        cov_cng_sb_2d = sl.cov_4D_to_2D(cov_cng_sb_4d, 'ell')
+
+        sl.compare_arrays(cov_cng_sb_2d, cov_cng_ccl_2d, 'cov_cng_sb_2d', 'cov_cng_ccl_2d', 
+                          abs_val=True, log_diff=True, plot_diff_threshold=10)
+        sl.compare_funcs(None, np.diag(cov_cng_sb_2d),
+                         np.diag(cov_cng_ccl_2d), logscale_y=[True, False])
+
+        assert False, 'stop here'
 
 # ! ========================================== combine covariance terms ================================================
 cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
@@ -968,12 +1057,6 @@ for which_cov in cov_dict.keys():
     save_func(f'{output_path}/{cov_filename}', cov_dict[which_cov])
 
     if cfg['covariance']['save_full_cov']:
-        unique_probe_comb = [
-            [0, 0, 0, 0], [0, 0, 1, 0], [0, 0, 1, 1],
-            [1, 0, 1, 0], [1, 0, 1, 1], [1, 1, 1, 1]]
-        probename_dict = {
-            0: 'L',
-            1: 'G'}
         for a, b, c, d in unique_probe_comb:
             abcd_str = f'{probename_dict[a]}{probename_dict[b]}{probename_dict[c]}{probename_dict[d]}'
             cov_tot_6d = cov_obj.cov_3x2pt_g_10D[a, b, c, d, ...] + cov_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...] + \

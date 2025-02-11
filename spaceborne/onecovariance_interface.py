@@ -41,7 +41,7 @@ from scipy.optimize import minimize_scalar
 
 class OneCovarianceInterface():
 
-    def __init__(self, ROOT, cfg, variable_specs, do_ssc, do_cng):
+    def __init__(self, ROOT, cfg, variable_specs, compute_g, compute_ssc, compute_cng):
         """
         Initializes the OneCovarianceInterface class with the provided configuration and variable specifications.
 
@@ -74,9 +74,9 @@ class OneCovarianceInterface():
         self.nbl_3x2pt = variable_specs['nbl_3x2pt']
 
         # set which cov terms to compute from cfg file
-        self.compute_g = True  # TODO pass this from cfg?
-        self.compute_ssc = do_ssc
-        self.compute_cng = do_cng
+        self.compute_g = compute_g
+        self.compute_ssc = compute_ssc
+        self.compute_cng = compute_cng
 
         # paths
         # TODO do we really need ROOT?
@@ -122,7 +122,7 @@ class OneCovarianceInterface():
         n_eff_lensing_list = self.cfg['nz']['ngal_sources']
         ellipticity_dispersion_list = [self.cfg['covariance']['sigma_eps_i']] * self.zbins
 
-        cfg_onecov_ini['covariance terms']['gauss'] = str(True)
+        cfg_onecov_ini['covariance terms']['gauss'] = str(self.compute_g)
         cfg_onecov_ini['covariance terms']['split_gauss'] = str(True)
         cfg_onecov_ini['covariance terms']['nongauss'] = str(self.compute_cng)
         cfg_onecov_ini['covariance terms']['ssc'] = str(self.compute_ssc)
@@ -388,7 +388,7 @@ class OneCovarianceInterface():
             self.cov_mat_ssc_2d = self.cov_ggglll_to_llglgg(cov_in, elem_auto, elem_cross)
 
         if self.compute_cng:
-            cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix_NG.mat')
+            cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix_nongauss.mat')
             self.cov_mat_cng_2d = self.cov_ggglll_to_llglgg(cov_in, elem_auto, elem_cross)
 
         cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix.mat')

@@ -107,7 +107,7 @@ if cfg['covariance']['cNG']:
 cov_terms_str = ''.join(cov_terms_list)
 
 compute_oc_g, compute_oc_ssc, compute_oc_cng = False, False, False
-compute_sb_ssc, compute_sb_cng = False, False
+compute_sb_ssc, compute_sb_cng = False, False  # TODO implement compute_sb_g
 compute_ccl_ssc, compute_ccl_cng = False, False
 if cfg['covariance']['G'] and cfg['covariance']['G_code'] == 'OneCovariance':
     compute_oc_g = True
@@ -638,7 +638,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     print('Start NG cov computation with OneCovariance...')
     # initialize object, build cfg file
     oc_obj = oc_interface.OneCovarianceInterface(ROOT, cfg, variable_specs,
-                                                 compute_g=compute_oc_g, 
+                                                 compute_g=True,  # ! I believe setting this to False may cause issues
                                                  compute_ssc=compute_oc_ssc, 
                                                  compute_cng=compute_oc_cng)
     oc_obj.zbins = zbins

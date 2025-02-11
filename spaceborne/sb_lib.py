@@ -20,7 +20,6 @@ import scipy
 from scipy.integrate import simpson as simps
 from scipy.interpolate import interp1d, CubicSpline, RectBivariateSpline
 import subprocess
-from deprecated import deprecated
 
 
 symmetrize_output_dict = {
@@ -190,7 +189,7 @@ def check_interpolate_input_tab(input_tab: np.ndarray, z_grid_out: np.ndarray, z
 
     return output_tab, spline
 
-@deprecated(reason="ep_or_ed option has been deprecated")
+# @deprecated(reason="ep_or_ed option has been deprecated")
 def get_ngal(ngal_in, ep_or_ed, zbins, ep_check_tol):
 
     if isinstance(ngal_in, (int, float)):

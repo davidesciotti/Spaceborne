@@ -872,14 +872,26 @@ if compute_sb_ssc:
             np.testing.assert_allclose(z_grid, _z, atol=0, rtol=1e-8)
 
         else:
-            sigma2_b = sigma2_SSC.sigma2_z1z2_wrap(
+            
+            # check if pathos is installed
+            try:
+                import pathos
+                print('pathos is installed. Using parallel processing to compute sigma2_b.')
+                parallel = True
+            except ImportError:
+                print('pathos is not installed. Using serial processing to compute sigma2_b.')
+                parallel = False
+            
+            sigma2_b_2 = sigma2_SSC.sigma2_z1z2_wrap_parallel(
                 z_grid=z_grid,
                 k_grid_sigma2=k_grid_sigma2_b,
                 cosmo_ccl=ccl_obj.cosmo_ccl,
                 which_sigma2_b=which_sigma2_b,
                 area_deg2_in=cfg['mask']['survey_area_deg2'],
                 nside_mask=cfg['mask']['nside_mask'],
-                mask_path=cfg['mask']['nside_mask']
+                mask_path=cfg['mask']['nside_mask'],
+                n_jobs=cfg['misc']['num_threads'],
+                parallel=parallel,
             )
             # Note: if you want to compare sigma2 with full_curved_sky against polar_cap_on_the_fly, remember to divide
             # the former by fsky (eq. 29 of https://arxiv.org/pdf/1612.05958)
@@ -901,7 +913,29 @@ if compute_sb_ssc:
                                                        probe_ordering=probe_ordering,
                                                        num_threads=cfg['misc']['num_threads'])
     print('SSC computed in {:.2f} m'.format((time.perf_counter() - start) / 60))
+    
+    start = time.perf_counter()
+    cov_ssc_3x2pt_dict_8D_2 = cov_obj.ssc_integral_julia(d2CLL_dVddeltab=d2CLL_dVddeltab,
+                                                       d2CGL_dVddeltab=d2CGL_dVddeltab,
+                                                       d2CGG_dVddeltab=d2CGG_dVddeltab,
+                                                       cl_integral_prefactor=cl_integral_prefactor,
+                                                       sigma2=sigma2_b,
+                                                       z_grid=z_grid,
+                                                       integration_type='SSC_integral_4D_simps_reparam',
+                                                       probe_ordering=probe_ordering,
+                                                       num_threads=cfg['misc']['num_threads'])
+    print('SSC computed in {:.2f} m'.format((time.perf_counter() - start) / 60))
+    
+    for key in cov_ssc_3x2pt_dict_8D.keys():
+        print(key)
+        cov_old_2d = sl.cov_4D_to_2D(cov_ssc_3x2pt_dict_8D[key], 'ell')
+        cov_new_2d = sl.cov_4D_to_2D(cov_ssc_3x2pt_dict_8D_2[key], 'ell')
+        sl.compare_arrays(cov_old_2d, cov_new_2d, key, key, )
+        # sl.compare_arrays(cov_old_2d, cov_old_2d.T, )
+        np.testing.assert_allclose(cov_ssc_3x2pt_dict_8D[key], cov_ssc_3x2pt_dict_8D_2[key], atol=0, rtol=1e-7)
 
+
+    assert False, 'stop here'
     # in the full_curved_sky case only, sigma2_b has to be divided by fsky
     # TODO it would make much more sense to divide s2b directly...
     if which_sigma2_b == 'full_curved_sky':

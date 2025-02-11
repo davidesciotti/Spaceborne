@@ -9,6 +9,7 @@ import healpy as hp
 from spaceborne import sb_lib as sl
 from spaceborne import cosmo_lib
 from spaceborne import mask_utils
+from pathos.multiprocessing import ProcessingPool as Pool
 
 # TODO finish implementing this function and test if if needed
 # def sigma2_flatsky(z1, z2, k_perp_grid, k_par_grid, cosmo_ccl, Omega_S, theta_S):
@@ -44,6 +45,14 @@ from spaceborne import mask_utils
 
 #     return sigma2
 
+# This is defined globally since
+COSMO_CCL = None
+
+
+def init_cosmo(cosmo):
+    global COSMO_CCL
+    COSMO_CCL = cosmo
+
 
 def sigma2_z1z2_wrap(z_grid, k_grid_sigma2, cosmo_ccl, which_sigma2_b,
                      area_deg2_in, nside_mask, mask_path):
@@ -69,6 +78,7 @@ def sigma2_z1z2_wrap(z_grid, k_grid_sigma2, cosmo_ccl, which_sigma2_b,
         print(f'fsky from mask: {fsky_mask:.4f}')
         assert np.abs(fsky_mask / fsky_in) < 1.01, 'fsky_in is not the same as the fsky of the mask'
 
+    start = time.perf_counter()
     sigma2_b = np.zeros((len(z_grid), len(z_grid)))
     for z2_idx, z2 in enumerate(tqdm(z_grid)):
         sigma2_b[:, z2_idx] = sigma2_z2_func_vectorized(
@@ -81,8 +91,97 @@ def sigma2_z1z2_wrap(z_grid, k_grid_sigma2, cosmo_ccl, which_sigma2_b,
             cl_mask=cl_mask,
             fsky_mask=fsky_in
         )
+    print(f'done in {time.perf_counter() - start} s')
 
     return sigma2_b
+
+
+def sigma2_z1z2_wrap_parallel(z_grid: np.ndarray, k_grid_sigma2: np.ndarray, cosmo_ccl: ccl.Cosmology, 
+                              which_sigma2_b: str, area_deg2_in: float | int, nside_mask: int, mask_path: str, 
+                              n_jobs: int, parallel: bool = True) -> np.ndarray:
+    """
+    Parallelized version of sigma2_z1z2_wrap using joblib.
+    """
+    fsky_in = cosmo_lib.deg2_to_fsky(area_deg2_in)
+
+    # Handle mask-related computations
+    if which_sigma2_b == 'full_curved_sky':
+        ell_mask = None
+        cl_mask = None
+        fsky_mask = None  # Not needed in this case
+
+    elif which_sigma2_b == 'polar_cap_on_the_fly':
+        mask = mask_utils.generate_polar_cap(area_deg2_in, nside_mask)
+
+    elif which_sigma2_b == 'from_input_mask':
+        mask = hp.read_map(mask_path)
+
+    if which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
+        hp.mollview(mask, coord=['C', 'E'], title='polar cap generated on-the fly', cmap='inferno_r')
+        cl_mask = hp.anafast(mask)
+        ell_mask = np.arange(len(cl_mask))
+        # Quick check
+        fsky_mask = np.sqrt(cl_mask[0] / (4 * np.pi))
+        print(f'fsky from mask: {fsky_mask:.4f}')
+        assert np.abs(fsky_mask / fsky_in) < 1.01, 'fsky_in is not the same as the fsky of the mask'
+
+    print('Computing sigma^2_b(z_1, z_2). This may take a while...')
+    start = time.perf_counter()
+    if parallel:
+        # Create a list of arguments—one per z2 value in z_grid
+        # Build the argument list without cosmo_ccl:
+        arg_list = [
+            (z2, z_grid, k_grid_sigma2, which_sigma2_b, ell_mask, cl_mask, fsky_in)
+            for z2 in z_grid
+        ]
+
+        # Create a Pathos ProcessingPool and initialize each worker:
+        start = time.perf_counter()
+        pool = Pool(n_jobs, initializer=init_cosmo, initargs=(cosmo_ccl,))
+        sigma2_b_list = pool.map(pool_compute_sigma2_b, arg_list)
+
+        # Convert the list of results to a numpy array and transpose
+        sigma2_b = np.array(sigma2_b_list).T
+
+    else:
+        sigma2_b = np.zeros((len(z_grid), len(z_grid)))
+        for z2_idx, z2 in enumerate(tqdm(z_grid)):
+            sigma2_b[:, z2_idx] = sigma2_z2_func_vectorized(
+                z1_arr=z_grid,
+                z2=z2,
+                k_grid_sigma2=k_grid_sigma2,
+                cosmo_ccl=cosmo_ccl,
+                which_sigma2_b=which_sigma2_b,
+                ell_mask=ell_mask,
+                cl_mask=cl_mask,
+                fsky_mask=fsky_in
+            )
+    print(f'done in {time.perf_counter() - start} s')
+
+    return sigma2_b
+
+
+def compute_sigma2_b(z2, z_grid, k_grid_sigma2, which_sigma2_b, ell_mask, cl_mask, fsky_in):
+    """
+    Wrapper for sigma2_z2_func_vectorized without the cosmo_ccl argument.
+    """
+    return sigma2_z2_func_vectorized(
+        z1_arr=z_grid,
+        z2=z2,
+        k_grid_sigma2=k_grid_sigma2,
+        cosmo_ccl=COSMO_CCL,
+        which_sigma2_b=which_sigma2_b,
+        ell_mask=ell_mask,
+        cl_mask=cl_mask,
+        fsky_mask=fsky_in
+    )
+
+
+def pool_compute_sigma2_b(args):
+    """
+    Helper function to be used with pathos processing pool
+    """
+    return compute_sigma2_b(*args)
 
 
 def sigma2_z2_func_vectorized(z1_arr, z2, k_grid_sigma2, cosmo_ccl, which_sigma2_b, ell_mask, cl_mask, fsky_mask):

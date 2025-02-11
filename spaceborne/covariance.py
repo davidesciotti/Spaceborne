@@ -17,7 +17,7 @@ class SpaceborneCovariance():
         self.ell_dict = ell_dict
         self.bnt_matrix = bnt_matrix
         self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt', }
-        
+
         self.zbins = pvt_cfg['zbins']
         self.cov_terms_list = pvt_cfg['cov_terms_list']
         self.GL_OR_LG = pvt_cfg['GL_OR_LG']
@@ -582,7 +582,7 @@ class SpaceborneCovariance():
                        self.cov_XC_g_2D + self.cov_XC_ssc_2D + self.cov_XC_cng_2D)
 
         for probe_name, cov_g_2D, cov_ssc_2D, cov_cng_2D, cov_tot_2D in \
-            zip(probe_names, covs_g_2D, covs_ssc_2D, covs_cng_2D, covs_tot_2D):
+                zip(probe_names, covs_g_2D, covs_ssc_2D, covs_cng_2D, covs_tot_2D):
             self.cov_dict[f'cov_{probe_name}_g_2D'] = cov_g_2D
             self.cov_dict[f'cov_{probe_name}_ssc_2D'] = cov_ssc_2D
             self.cov_dict[f'cov_{probe_name}_cng_2D'] = cov_cng_2D
@@ -687,7 +687,8 @@ class SpaceborneCovariance():
                     if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
                         print(f"Loading {probe_a}{probe_b}{probe_c}{probe_d}")
                         cov_ssc_sb_3x2pt_dict_8D[(probe_a, probe_b, probe_c, probe_d)] = np.load(
-                            f"{folder_name}/{cov_filename.format(probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d)}")
+                            f"{folder_name}/{cov_filename.format(probe_a=probe_a, probe_b=probe_b,
+                                                                 probe_c=probe_c, probe_d=probe_d)}")
 
         else:
             cov_ssc_sb_3x2pt_dict_8D = sl.load_cov_from_probe_blocks(

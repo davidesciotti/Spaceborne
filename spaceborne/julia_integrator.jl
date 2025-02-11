@@ -2,6 +2,30 @@ using NPZ
 using LoopVectorization
 using YAML
 using DataInterpolations
+using FastTransforms
+using FastChebInterp
+
+#TODO: dropping here Blast functions for Clenshaw-Curtis integration
+
+function get_clencurt_weights(min::Number, max::Number, N::Number)
+    CC_obj = FastTransforms.chebyshevmoments1(Float64, N)
+    w = FastTransforms.clenshawcurtisweights(CC_obj)
+    w = (max - min) / 2 * w
+
+    return w
+end
+
+function get_clencurt_weights_R_integration(N::Int)
+
+    w = get_clencurt_weights(-1, 1, N)
+
+    index = div(N + 3, 2) 
+    w = w[index:end]
+    w[1]/=2 #TODO: investigate if there are better solutions, this is not the analytic solution.
+
+    return w
+end
+
 
 function SSC_integral_6D_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
     """ "brute-force" implementation, returns a 6D array. many args are unnecessary, but I keep the same format for a 
@@ -175,10 +199,10 @@ function SSC_integral_4D_simps_zR(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, in
     """ 
 
     simpson_weights_z = get_simpson_weights(length(z_array))
-    simpson_weights_R = get_simpson_weights(length(R_array))
     z_step = (last(z_array)-first(z_array)) / (length(z_array)-1)
-    R_step = (last(R_array)-first(R_array)) / (length(R_array)-1)
+    
     nR = length(R_array)
+    w_R = get_clencurt_weights_R_integration(2*nR+1)
 
 
     zpairs_AB = size(ind_AB, 1)
@@ -225,7 +249,7 @@ function SSC_integral_4D_simps_zR(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, in
                             result[ell1, ell2, zij, zkl] += z_array[z_idx]*cl_integral_prefactor[z_idx] * cl_integral_prefactor_R[z_idx, R_idx] *
                             ( d2ClAB_dVddeltab[ell1, zi, zj, z_idx] * d2ClCD_dVddeltab_R[ell2, zk, zl, z_idx, R_idx]+
                               d2ClCD_dVddeltab[ell2, zk, zl, z_idx] * d2ClAB_dVddeltab_R[ell1, zi, zj, z_idx, R_idx]) * sigma2[z_idx, R_idx] *
-                            simpson_weights_z[z_idx] * simpson_weights_R[R_idx]
+                            simpson_weights_z[z_idx] * w_R[R_idx]
 
                         end
                     end
@@ -233,7 +257,7 @@ function SSC_integral_4D_simps_zR(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, in
             end
         end
     end
-    return (z_step*R_step) .* result
+    return z_step .* result
 end
 
 

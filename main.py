@@ -209,10 +209,22 @@ k_grid_sigma2_b = np.logspace(cfg['covariance']['log10_k_min'],
                               cfg['covariance']['log10_k_max'],
                               k_steps_sigma2)
 #Variable for SSC integral reparametrization
-#TODO: a linear grid is not optimal, chebyshev points and clenshaw curtis would be much more efficient.
-R_grid = np.linspace(cfg['covariance']['R_min'],
-                                    cfg['covariance']['R_max'],
-                                    cfg['covariance']['R_steps'])
+#Only defining the number of points
+nR = cfg['covariance']['nR'] 
+
+#TODO: dropping the functions here, decide in which module they belong
+#TODO: check that this is the same as the julia R = chebpoints(96, -1, 1)
+def chebpoints(order, lb, ub):
+    if order < 0:
+        raise ValueError("order must be non-negative")
+    
+    i = np.arange(order + 1)  # Indices from 0 to order
+    x = lb + (1 + np.cos(i * np.pi / order)) * (ub - lb) * 0.5
+    return x
+
+R_grid = chebpoints(nR, -1, 1)
+R_grid = np.flip(R_grid[R_grid>0])
+
 if len(z_grid) < 250:
     warnings.warn('z_grid is small, at the moment it used to compute various intermediate quantities')
 
@@ -1580,7 +1592,7 @@ fm_dict_of_dicts = {
     # 'SB_KEapp_hm_simpker': sl.load_pickle(f'{fm_folder}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     # 'SB_hm_simpker': sl.load_pickle(f'{fm_folder}/FM_GSSC_Spaceborne{common_str}_Euclid_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     # 'OC_simpker': sl.load_pickle(f'{fm_folder}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly.pickle'),
-    'test': sl.load_pickle(f'{fm_folder}/FM_dict_zz.pickle'),
+    'test': sl.load_pickle(f'{fm_folder}/FM_dict_zR.pickle'),
     'current': fm_dict,
 }
 

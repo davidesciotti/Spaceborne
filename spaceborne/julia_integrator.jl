@@ -94,8 +94,10 @@ function SSC_integral_4D_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_C
     return (dz^2) .* result
 end
 
-function SSC_integral_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array, is_auto)
+function SSC_integral_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, 
+    cl_integral_prefactor, sigma2, z_array::Array, is_auto)
     """ this version takes advantage of the symmetries between redshift pairs.
+    is_auto is not used, but it is kept for consistency with the SSC_integral_4D_simps_reparam function.
     """
 
     simpson_weights = get_simpson_weights(length(z_array))
@@ -134,7 +136,9 @@ end
 
 function SSC_integral_4D_simps_reparam(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, 
     cl_integral_prefactor, sigma2, z_array::Array, is_auto::Bool)
-    """ this version takes advantage of the symmetries between redshift pairs.
+    """ this version takes advantage of the symmetries between redshift pairs AND ell pairs (for the auto-blocks).
+    It has been validated against the original implementation, but the performance gain is not significant 
+    (it actually seems slower...). 
     """
 
     simpson_weights = get_simpson_weights(length(z_array))

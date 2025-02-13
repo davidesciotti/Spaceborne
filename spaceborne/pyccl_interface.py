@@ -7,10 +7,6 @@ import numpy as np
 import pyccl as ccl
 from tqdm import tqdm
 import healpy as hp
-from joblib import Parallel, delayed
-from pathos.multiprocessing import ProcessingPool as Pool
-from functools import partial
-
 
 import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as cosmo_lib
@@ -19,6 +15,13 @@ import spaceborne.mask_fits_to_cl as mask_utils
 
 ccl.spline_params['A_SPLINE_NA_PK'] = 240  # gives CAMB error if too high
 ccl.spline_params['K_MAX_SPLINE'] = 300
+
+# fanstastic collection of notebooks: https://github.com/LSSTDESC/CCLX
+# notebook for mass_relations: https://github.com/LSSTDESC/CCLX/blob/master/Halo-mass-function-example.ipynb
+# Cl notebook: https://github.com/LSSTDESC/CCL/blob/v2.0.1/examples/3x2demo.ipynb
+# HALO MODEL PRESCRIPTIONS:
+# KiDS1000 Methodology: https://www.pure.ed.ac.uk/ws/portalfiles/portal/188893969/2007.01844v2.pdf, after (E.10)
+# Krause2017: https://arxiv.org/pdf/1601.05779.pdf
 
 
 class PycclClass():
@@ -54,17 +57,11 @@ class PycclClass():
             mass_def=self.mass_def, concentration=self.c_m_relation)
 
     def check_specs(self):
+
         assert self.probe in ['LL', 'GG', '3x2pt'], 'probe must be either LL, GG, or 3x2pt'
         assert self.which_ng_cov in ['SSC', 'cNG'], 'which_ng_cov must be either SSC or cNG'
         assert self.GL_or_LG == 'GL', 'you should update ind_cross (used in ind_dict) for GL, but we work with GL...'
         assert self.has_rsd == False, 'RSD not validated yet...'
-
-    # fanstastic collection of notebooks: https://github.com/LSSTDESC/CCLX
-    # notebook for mass_relations: https://github.com/LSSTDESC/CCLX/blob/master/Halo-mass-function-example.ipynb
-    # Cl notebook: https://github.com/LSSTDESC/CCL/blob/v2.0.1/examples/3x2demo.ipynb
-    # HALO MODEL PRESCRIPTIONS:
-    # KiDS1000 Methodology: https://www.pure.ed.ac.uk/ws/portalfiles/portal/188893969/2007.01844v2.pdf, after (E.10)
-    # Krause2017: https://arxiv.org/pdf/1601.05779.pdf
 
     def pk_obj_from_file(self, pk_filename, plot_pk_z0):
 
@@ -112,6 +109,7 @@ class PycclClass():
             self.ia_bias_tuple = None
 
     def set_gal_bias_tuple_spv3(self, z_grid_lns, magcut_lens, poly_fit_values):
+
         gal_bias_func = self.gal_bias_func_dict['fs2_fit']
         self.gal_bias_func_ofz = partial(gal_bias_func, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values)
         gal_bias_1d = self.gal_bias_func_ofz(z_grid_lns)
@@ -121,6 +119,7 @@ class PycclClass():
         self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
 
     def set_gal_bias_tuple_istf(self, z_grid_lns, bias_function_str, bias_model):
+
         gal_bias_func = self.gal_bias_func_dict[bias_function_str]
         # TODO it's probably better to pass directly the zbin(_lns) centers and edges, rather than nesting them in a cfg file...
         z_means_lns = np.array([self.flat_fid_pars_dict[f'zmean{zbin:02d}_photo'] for zbin in range(1, self.zbins + 1)])
@@ -132,11 +131,13 @@ class PycclClass():
         self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
 
     def save_gal_bias_table_ascii(self, z_grid_lns, filename):
+
         assert filename.endswith('.ascii'), 'filename must end with.ascii'
         gal_bias_table = np.hstack((z_grid_lns.reshape(-1, 1), self.gal_bias_2d))
         np.savetxt(filename, gal_bias_table)
 
     def set_mag_bias_tuple(self, z_grid_lns, has_magnification_bias, magcut_lens, poly_fit_values):
+
         if has_magnification_bias:
             # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
             mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(z_grid_lns, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values)
@@ -271,12 +272,12 @@ class PycclClass():
 
         # k_z_str = f'zmin{pyccl_cfg["z_grid_tkka_min"]:.1f}_zmax{pyccl_cfg["z_grid_tkka_max"]:.1f}_zsteps{pyccl_cfg[f"z_grid_tkka_steps_{which_ng_cov}"]:d}_' \
         # f'kmin{pyccl_cfg["k_grid_tkka_min"]:.1e}_kmax{pyccl_cfg["k_grid_tkka_max"]:.1e}_ksteps{pyccl_cfg[f"k_grid_tkka_steps_{which_ng_cov}"]:d}'
-        
+
         self.a_grid_tkka_SSC = None
         self.logn_k_grid_tkka_SSC = None
         self.a_grid_tkka_cNG = None
         self.logn_k_grid_tkka_cNG = None
-        
+
         if self.a_grid_tkka_SSC is not None and which_ng_cov == 'SSC':
             self.a_grid_tkka_SSC = np.linspace(
                 cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
@@ -284,72 +285,42 @@ class PycclClass():
                 pyccl_cfg['z_grid_tkka_steps_SSC'])
             self.z_grid_tkka_SSC = cosmo_lib.a_to_z(self.a_grid_tkka_SSC)[::-1]
             print(f'SSC trisp: z points = {self.a_grid_tkka_SSC.size}')
-            
-        if  self.logn_k_grid_tkka_SSC is not None and which_ng_cov == 'SSC':
+
+        if self.logn_k_grid_tkka_SSC is not None and which_ng_cov == 'SSC':
             self.logn_k_grid_tkka_SSC = np.log(np.geomspace(pyccl_cfg['k_grid_tkka_min'],
-                                                    pyccl_cfg['k_grid_tkka_max'],
-                                                    pyccl_cfg['k_grid_tkka_steps_SSC']))
+                                                            pyccl_cfg['k_grid_tkka_max'],
+                                                            pyccl_cfg['k_grid_tkka_steps_SSC']))
             print(f'SSC trisp: k points = {self.logn_k_grid_tkka_SSC.size}')
-            
+
         if self.a_grid_tkka_cNG is not None and which_ng_cov == 'cNG':
             self.a_grid_tkka_cNG = np.linspace(
                 cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
                 cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
                 pyccl_cfg['z_grid_tkka_steps_cNG'])
             print(f'cNG trisp: z points = {self.a_grid_tkka_cNG.size}')
-        
+
         if self.logn_k_grid_tkka_cNG is not None and which_ng_cov == 'cNG':
             self.logn_k_grid_tkka_cNG = np.log(np.geomspace(pyccl_cfg['k_grid_tkka_min'],
-                                                    pyccl_cfg['k_grid_tkka_max'],
-                                                    pyccl_cfg['k_grid_tkka_steps_cNG']))
+                                                            pyccl_cfg['k_grid_tkka_max'],
+                                                            pyccl_cfg['k_grid_tkka_steps_cNG']))
             print(f'cNG trisp: k points = {self.logn_k_grid_tkka_cNG.size}')
-
 
         # or, to set to the default:
         # a_grid_tkka = None
         # logn_k_grid_tkka = None
 
-        tkka_start_time = time.perf_counter()
-        # TODO pk from input files
-        # This is the correct way to initialize the trispectrum (I Asked David Alonso about this.)
-        self.halo_profile_dict = {
-            'L': self.halo_profile_dm,
-            'G': self.halo_profile_hod,
-        }
-        self.prof_2pt_dict = {
-            # see again https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
-            ('L', 'L'): ccl.halos.Profile2pt(),
-            ('G', 'L'): ccl.halos.Profile2pt(),
-            ('L', 'G'): ccl.halos.Profile2pt(),
-            ('G', 'G'): ccl.halos.Profile2ptHOD(),
-        }
-        self.is_number_counts_dict = {
-            'L': False,
-            'G': True,
-        }
-        
-        # TODO this is horrible, restore
-        a_grid_galbias = np.linspace(
-                cosmo_lib.z_to_a(0.),
-                cosmo_lib.z_to_a(3.),
-                pyccl_cfg['z_grid_tkka_steps_SSC'])
-        gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.a_to_z(a_grid_galbias))
-
-        self.gal_bias_dict = {
-            'L': np.ones_like(gal_bias_1d),
-            'G': gal_bias_1d,
-        }
-
-        # store the trispectrum for the various probes in a dictionary
+        self.set_dicts_for_trisp(pyccl_cfg['z_grid_tkka_steps_SSC'])
 
         # the default pk must be passed to yhe Tk3D functions as None, not as 'delta_matter:delta_matter'
         p_of_k_a = None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
 
         self.tkka_dict = {}
         self.responses_dict = {}
+        
+        tkka_start_time = time.perf_counter()
         for row, (A, B) in tqdm(enumerate(probe_ordering)):
             for col, (C, D) in enumerate(probe_ordering):
-                
+
                 probe_block = A + B + C + D
 
                 if col >= row:
@@ -396,7 +367,7 @@ class PycclClass():
 
                     self.tkka_dict[A, B, C, D], self.responses_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
                                                                                             hmc=self.hmc,
-                                                                                            extrap_order_lok=1, 
+                                                                                            extrap_order_lok=1,
                                                                                             extrap_order_hik=1,
                                                                                             use_log=False,
                                                                                             p_of_k_a=p_of_k_a,
@@ -405,7 +376,7 @@ class PycclClass():
         print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - tkka_start_time))
 
         return
-    
+
     def get_tkka_func(self, A, B, C, D, which_ng_cov):
 
         if which_ng_cov == 'SSC':
@@ -461,9 +432,40 @@ class PycclClass():
         else:
             raise ValueError(
                 f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
-            
-        return tkka_func, additional_args
 
+        return tkka_func, additional_args
+    
+    def set_dicts_for_trisp(self, z_grid_tkka_steps_SSC):
+        
+        # TODO pk from input files
+        # This is the correct way to initialize the trispectrum (I Asked David Alonso about this.)
+        self.halo_profile_dict = {
+            'L': self.halo_profile_dm,
+            'G': self.halo_profile_hod,
+        }
+        self.prof_2pt_dict = {
+            # see again https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
+            ('L', 'L'): ccl.halos.Profile2pt(),
+            ('G', 'L'): ccl.halos.Profile2pt(),
+            ('L', 'G'): ccl.halos.Profile2pt(),
+            ('G', 'G'): ccl.halos.Profile2ptHOD(),
+        }
+        self.is_number_counts_dict = {
+            'L': False,
+            'G': True,
+        }
+
+        # TODO this is horrible, restore
+        a_grid_galbias = np.linspace(
+            cosmo_lib.z_to_a(0.),
+            cosmo_lib.z_to_a(3.),
+            z_grid_tkka_steps_SSC)
+        gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.a_to_z(a_grid_galbias))
+
+        self.gal_bias_dict = {
+            'L': np.ones_like(gal_bias_1d),
+            'G': gal_bias_1d,
+        }
 
     def compute_ng_cov_ccl(self, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka, f_sky,
                            ind_AB, ind_CD, integration_method):

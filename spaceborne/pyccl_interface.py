@@ -7,6 +7,10 @@ import numpy as np
 import pyccl as ccl
 from tqdm import tqdm
 import healpy as hp
+from joblib import Parallel, delayed
+from pathos.multiprocessing import ProcessingPool as Pool
+from functools import partial
+
 
 import spaceborne.my_module as mm
 import spaceborne.cosmo_lib as cosmo_lib
@@ -267,26 +271,39 @@ class PycclClass():
 
         # k_z_str = f'zmin{pyccl_cfg["z_grid_tkka_min"]:.1f}_zmax{pyccl_cfg["z_grid_tkka_max"]:.1f}_zsteps{pyccl_cfg[f"z_grid_tkka_steps_{which_ng_cov}"]:d}_' \
         # f'kmin{pyccl_cfg["k_grid_tkka_min"]:.1e}_kmax{pyccl_cfg["k_grid_tkka_max"]:.1e}_ksteps{pyccl_cfg[f"k_grid_tkka_steps_{which_ng_cov}"]:d}'
+        
+        self.a_grid_tkka_SSC = None
+        self.logn_k_grid_tkka_SSC = None
+        self.a_grid_tkka_cNG = None
+        self.logn_k_grid_tkka_cNG = None
+        
+        if self.a_grid_tkka_SSC is not None and which_ng_cov == 'SSC':
+            self.a_grid_tkka_SSC = np.linspace(
+                cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
+                cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
+                pyccl_cfg['z_grid_tkka_steps_SSC'])
+            self.z_grid_tkka_SSC = cosmo_lib.a_to_z(self.a_grid_tkka_SSC)[::-1]
+            print(f'SSC trisp: z points = {self.a_grid_tkka_SSC.size}')
+            
+        if  self.logn_k_grid_tkka_SSC is not None and which_ng_cov == 'SSC':
+            self.logn_k_grid_tkka_SSC = np.log(np.geomspace(pyccl_cfg['k_grid_tkka_min'],
+                                                    pyccl_cfg['k_grid_tkka_max'],
+                                                    pyccl_cfg['k_grid_tkka_steps_SSC']))
+            print(f'SSC trisp: k points = {self.logn_k_grid_tkka_SSC.size}')
+            
+        if self.a_grid_tkka_cNG is not None and which_ng_cov == 'cNG':
+            self.a_grid_tkka_cNG = np.linspace(
+                cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
+                cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
+                pyccl_cfg['z_grid_tkka_steps_cNG'])
+            print(f'cNG trisp: z points = {self.a_grid_tkka_cNG.size}')
+        
+        if self.logn_k_grid_tkka_cNG is not None and which_ng_cov == 'cNG':
+            self.logn_k_grid_tkka_cNG = np.log(np.geomspace(pyccl_cfg['k_grid_tkka_min'],
+                                                    pyccl_cfg['k_grid_tkka_max'],
+                                                    pyccl_cfg['k_grid_tkka_steps_cNG']))
+            print(f'cNG trisp: k points = {self.logn_k_grid_tkka_cNG.size}')
 
-        self.a_grid_tkka_SSC = np.linspace(
-            cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
-            cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
-            pyccl_cfg['z_grid_tkka_steps_SSC'])
-
-        self.z_grid_tkka_SSC = cosmo_lib.a_to_z(self.a_grid_tkka_SSC)[::-1]
-
-        logn_k_grid_tkka_SSC = np.log(np.geomspace(pyccl_cfg['k_grid_tkka_min'],
-                                                   pyccl_cfg['k_grid_tkka_max'],
-                                                   pyccl_cfg['k_grid_tkka_steps_SSC']))
-
-        a_grid_tkka_cNG = np.linspace(
-            cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_max']),
-            cosmo_lib.z_to_a(pyccl_cfg['z_grid_tkka_min']),
-            pyccl_cfg['z_grid_tkka_steps_cNG'])
-
-        logn_k_grid_tkka_cNG = np.log(np.geomspace(pyccl_cfg['k_grid_tkka_min'],
-                                                   pyccl_cfg['k_grid_tkka_max'],
-                                                   pyccl_cfg['k_grid_tkka_steps_cNG']))
 
         # or, to set to the default:
         # a_grid_tkka = None
@@ -295,27 +312,30 @@ class PycclClass():
         tkka_start_time = time.perf_counter()
         # TODO pk from input files
         # This is the correct way to initialize the trispectrum (I Asked David Alonso about this.)
-        halo_profile_dict = {
+        self.halo_profile_dict = {
             'L': self.halo_profile_dm,
             'G': self.halo_profile_hod,
         }
-        prof_2pt_dict = {
+        self.prof_2pt_dict = {
             # see again https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
             ('L', 'L'): ccl.halos.Profile2pt(),
             ('G', 'L'): ccl.halos.Profile2pt(),
             ('L', 'G'): ccl.halos.Profile2pt(),
             ('G', 'G'): ccl.halos.Profile2ptHOD(),
         }
-        is_number_counts_dict = {
+        self.is_number_counts_dict = {
             'L': False,
             'G': True,
         }
-        # gal_bias_1d = self.gal_bias_func_ofz(self.z_grid_tkka_SSC)  # no
-        # gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.z_to_a(self.z_grid_tkka_SSC)[::-1])
-        gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.a_to_z(self.a_grid_tkka_SSC))  # ok-ish
-        # gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.a_to_z(self.a_grid_tkka_SSC)[::-1])  # nope
+        
+        # TODO this is horrible, restore
+        a_grid_galbias = np.linspace(
+                cosmo_lib.z_to_a(0.),
+                cosmo_lib.z_to_a(3.),
+                pyccl_cfg['z_grid_tkka_steps_SSC'])
+        gal_bias_1d = self.gal_bias_func_ofz(cosmo_lib.a_to_z(a_grid_galbias))
 
-        gal_bias_dict = {
+        self.gal_bias_dict = {
             'L': np.ones_like(gal_bias_1d),
             'G': gal_bias_1d,
         }
@@ -325,15 +345,11 @@ class PycclClass():
         # the default pk must be passed to yhe Tk3D functions as None, not as 'delta_matter:delta_matter'
         p_of_k_a = None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
 
-        if self.a_grid_tkka_SSC is not None and logn_k_grid_tkka_SSC is not None and which_ng_cov == 'SSC':
-            print(f'SSC tkka: z points = {self.a_grid_tkka_SSC.size}, k points = {logn_k_grid_tkka_SSC.size}')
-        if a_grid_tkka_cNG is not None and logn_k_grid_tkka_cNG is not None and which_ng_cov == 'cNG':
-            print(f'cNG tkka: z points = {a_grid_tkka_cNG.size}, k points = {logn_k_grid_tkka_cNG.size}')
-
         self.tkka_dict = {}
         self.responses_dict = {}
         for row, (A, B) in tqdm(enumerate(probe_ordering)):
             for col, (C, D) in enumerate(probe_ordering):
+                
                 probe_block = A + B + C + D
 
                 if col >= row:
@@ -376,64 +392,12 @@ class PycclClass():
 
                 elif col >= row and not pyccl_cfg['load_cached_tkka']:
 
-                    # not very nice to put this if-else in the for loop, but A, B, C, D are referenced only here
-                    if which_ng_cov == 'SSC':
-
-                        if self.which_b1g_in_resp == 'from_HOD':
-                            tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
-                            additional_args = {
-                                'prof': halo_profile_dict[A],
-                                'prof2': halo_profile_dict[B],
-                                'prof3': halo_profile_dict[C],
-                                'prof4': halo_profile_dict[D],
-                                'prof12_2pt': prof_2pt_dict[A, B],
-                                'prof34_2pt': prof_2pt_dict[C, D],
-                                'lk_arr': logn_k_grid_tkka_SSC,
-                                'a_arr': self.a_grid_tkka_SSC,
-                                'extrap_pk': True,
-                            }
-
-                        elif self.which_b1g_in_resp == 'from_input':
-                            tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC_linear_bias
-                            additional_args = {
-                                'prof': halo_profile_dict['L'],  # prof should be HaloProfileNFW
-                                'bias1': gal_bias_dict[A],
-                                'bias2': gal_bias_dict[B],
-                                'bias3': gal_bias_dict[C],
-                                'bias4': gal_bias_dict[D],
-                                'is_number_counts1': is_number_counts_dict[A],
-                                'is_number_counts2': is_number_counts_dict[B],
-                                'is_number_counts3': is_number_counts_dict[C],
-                                'is_number_counts4': is_number_counts_dict[D],
-                                'lk_arr': logn_k_grid_tkka_SSC,
-                                'a_arr': self.a_grid_tkka_SSC,
-                                'extrap_pk': True,
-                            }
-
-                    elif which_ng_cov == 'cNG':
-
-                        tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
-                        additional_args = {
-                            'prof': halo_profile_dict[A],
-                            'prof2': halo_profile_dict[B],
-                            'prof3': halo_profile_dict[C],
-                            'prof4': halo_profile_dict[D],
-                            'prof12_2pt': prof_2pt_dict[A, B],
-                            'prof13_2pt': prof_2pt_dict[A, C],
-                            'prof14_2pt': prof_2pt_dict[A, D],
-                            'prof24_2pt': prof_2pt_dict[B, D],
-                            'prof32_2pt': prof_2pt_dict[C, B],
-                            'prof34_2pt': prof_2pt_dict[C, D],
-                            'lk_arr': logn_k_grid_tkka_cNG,
-                            'a_arr': a_grid_tkka_cNG,
-                        }
-                    else:
-                        raise ValueError(
-                            f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
+                    tkka_func, additional_args = self.get_tkka_func(A, B, C, D, which_ng_cov)
 
                     self.tkka_dict[A, B, C, D], self.responses_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
                                                                                             hmc=self.hmc,
-                                                                                            extrap_order_lok=1, extrap_order_hik=1,
+                                                                                            extrap_order_lok=1, 
+                                                                                            extrap_order_hik=1,
                                                                                             use_log=False,
                                                                                             p_of_k_a=p_of_k_a,
                                                                                             **additional_args)
@@ -441,6 +405,65 @@ class PycclClass():
         print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - tkka_start_time))
 
         return
+    
+    def get_tkka_func(self, A, B, C, D, which_ng_cov):
+
+        if which_ng_cov == 'SSC':
+
+            if self.which_b1g_in_resp == 'from_HOD':
+                tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
+                additional_args = {
+                    'prof': self.halo_profile_dict[A],
+                    'prof2': self.halo_profile_dict[B],
+                    'prof3': self.halo_profile_dict[C],
+                    'prof4': self.halo_profile_dict[D],
+                    'prof12_2pt': self.prof_2pt_dict[A, B],
+                    'prof34_2pt': self.prof_2pt_dict[C, D],
+                    'lk_arr': self.logn_k_grid_tkka_SSC,
+                    'a_arr': self.a_grid_tkka_SSC,
+                    'extrap_pk': True,
+                }
+
+            elif self.which_b1g_in_resp == 'from_input':
+                tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC_linear_bias
+                additional_args = {
+                    'prof': self.halo_profile_dict['L'],  # prof should be HaloProfileNFW
+                    'bias1': self.gal_bias_dict[A],
+                    'bias2': self.gal_bias_dict[B],
+                    'bias3': self.gal_bias_dict[C],
+                    'bias4': self.gal_bias_dict[D],
+                    'is_number_counts1': self.is_number_counts_dict[A],
+                    'is_number_counts2': self.is_number_counts_dict[B],
+                    'is_number_counts3': self.is_number_counts_dict[C],
+                    'is_number_counts4': self.is_number_counts_dict[D],
+                    'lk_arr': self.logn_k_grid_tkka_SSC,
+                    'a_arr': self.a_grid_tkka_SSC,
+                    'extrap_pk': True,
+                }
+
+        elif which_ng_cov == 'cNG':
+
+            tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
+            additional_args = {
+                'prof': self.halo_profile_dict[A],
+                'prof2': self.halo_profile_dict[B],
+                'prof3': self.halo_profile_dict[C],
+                'prof4': self.halo_profile_dict[D],
+                'prof12_2pt': self.prof_2pt_dict[A, B],
+                'prof13_2pt': self.prof_2pt_dict[A, C],
+                'prof14_2pt': self.prof_2pt_dict[A, D],
+                'prof24_2pt': self.prof_2pt_dict[B, D],
+                'prof32_2pt': self.prof_2pt_dict[C, B],
+                'prof34_2pt': self.prof_2pt_dict[C, D],
+                'lk_arr': self.logn_k_grid_tkka_cNG,
+                'a_arr': self.a_grid_tkka_cNG,
+            }
+        else:
+            raise ValueError(
+                f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
+            
+        return tkka_func, additional_args
+
 
     def compute_ng_cov_ccl(self, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka, f_sky,
                            ind_AB, ind_CD, integration_method):

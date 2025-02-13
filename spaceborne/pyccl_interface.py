@@ -61,6 +61,7 @@ class PycclClass():
         assert self.has_rsd == False, 'RSD not validated yet...'
 
     def pk_obj_from_file(self, pk_filename, plot_pk_z0):
+
         k_grid_Pk, z_grid_Pk, pk_mm_2d = sl.pk_vinc_file_to_2d_npy(pk_filename, plot_pk_z0=plot_pk_z0)
         pk_flipped_in_z = np.flip(pk_mm_2d, axis=1)
         scale_factor_grid_pk = cosmo_lib.z_to_a(z_grid_Pk)[::-1]  # flip it
@@ -118,6 +119,7 @@ class PycclClass():
         self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
 
     def set_gal_bias_tuple_istf(self, z_grid_lns, bias_function_str, bias_model):
+
         self.gal_bias_func = self.gal_bias_func_dict[bias_function_str]
         # TODO it's probably better to pass directly the zbin(_lns) centers and edges, rather than nesting them in a cfg file...
         z_means_lns = np.array([self.flat_fid_pars_dict[f'zmean{zbin:02d}_photo'] for zbin in range(1, self.zbins + 1)])
@@ -129,11 +131,13 @@ class PycclClass():
         self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
 
     def save_gal_bias_table_ascii(self, z_grid_lns, filename):
+
         assert filename.endswith('.ascii'), 'filename must end with.ascii'
         gal_bias_table = np.hstack((z_grid_lns.reshape(-1, 1), self.gal_bias_2d))
         np.savetxt(filename, gal_bias_table)
 
     def set_mag_bias_tuple(self, z_grid_lns, has_magnification_bias, magcut_lens, poly_fit_values):
+
         if has_magnification_bias:
             # this is only to ensure compatibility with wf_ccl function. In reality, the same array is given for each bin
             mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(z_grid_lns, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values)
@@ -273,35 +277,7 @@ class PycclClass():
         # a_grid_tkka = None
         # logn_k_grid_tkka = None
 
-        tkka_start_time = time.perf_counter()
-        # TODO pk from input files
-        # This is the correct way to initialize the trispectrum (I Asked David Alonso about this.)
-        halo_profile_dict = {
-            'L': self.halo_profile_dm,
-            'G': self.halo_profile_hod,
-        }
-        prof_2pt_dict = {
-            # see again https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
-            ('L', 'L'): ccl.halos.Profile2pt(),
-            ('G', 'L'): ccl.halos.Profile2pt(),
-            ('L', 'G'): ccl.halos.Profile2pt(),
-            ('G', 'G'): ccl.halos.Profile2ptHOD(),
-        }
-        is_number_counts_dict = {
-            'L': False,
-            'G': True,
-        }
-        # gal_bias_1d = self.gal_bias_func(self.z_grid_tkka_SSC)  # no
-        # gal_bias_1d = self.gal_bias_func(cosmo_lib.z_to_a(self.z_grid_tkka_SSC)[::-1])
-        gal_bias_1d = self.gal_bias_func(cosmo_lib.a_to_z(self.a_grid_tkka_SSC))  # ok-ish
-        # gal_bias_1d = self.gal_bias_func(cosmo_lib.a_to_z(self.a_grid_tkka_SSC)[::-1])  # nope
-
-        gal_bias_dict = {
-            'L': np.ones_like(gal_bias_1d),
-            'G': gal_bias_1d,
-        }
-
-        # store the trispectrum for the various probes in a dictionary
+        self.set_dicts_for_trisp()
 
         # the default pk must be passed to yhe Tk3D functions as None, not as 'delta_matter:delta_matter'
         p_of_k_a = None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
@@ -314,8 +290,12 @@ class PycclClass():
                   f'k points = {self.logn_k_grid_tkka_cNG.size}')
 
         self.tkka_dict = {}
+        self.responses_dict = {}
+
+        tkka_start_time = time.perf_counter()
         for row, (A, B) in tqdm(enumerate(probe_ordering)):
             for col, (C, D) in enumerate(probe_ordering):
+
                 probe_block = A + B + C + D
 
                 if col >= row:
@@ -358,60 +338,7 @@ class PycclClass():
 
                 elif col >= row and not pyccl_cfg['load_cached_tkka']:
 
-                    # not very nice to put this if-else in the for loop, but A, B, C, D are referenced only here
-                    if which_ng_cov == 'SSC':
-
-                        if self.which_b1g_in_resp == 'from_HOD':
-                            tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
-                            additional_args = {
-                                'prof': halo_profile_dict[A],
-                                'prof2': halo_profile_dict[B],
-                                'prof3': halo_profile_dict[C],
-                                'prof4': halo_profile_dict[D],
-                                'prof12_2pt': prof_2pt_dict[A, B],
-                                'prof34_2pt': prof_2pt_dict[C, D],
-                                'lk_arr': self.logn_k_grid_tkka_SSC,
-                                'a_arr': self.a_grid_tkka_SSC,
-                                'extrap_pk': True,
-                            }
-
-                        elif self.which_b1g_in_resp == 'from_input':
-                            tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC_linear_bias
-                            additional_args = {
-                                'prof': halo_profile_dict['L'],  # prof should be HaloProfileNFW
-                                'bias1': gal_bias_dict[A],
-                                'bias2': gal_bias_dict[B],
-                                'bias3': gal_bias_dict[C],
-                                'bias4': gal_bias_dict[D],
-                                'is_number_counts1': is_number_counts_dict[A],
-                                'is_number_counts2': is_number_counts_dict[B],
-                                'is_number_counts3': is_number_counts_dict[C],
-                                'is_number_counts4': is_number_counts_dict[D],
-                                'lk_arr': self.logn_k_grid_tkka_SSC,
-                                'a_arr': self.a_grid_tkka_SSC,
-                                'extrap_pk': True,
-                            }
-
-                    elif which_ng_cov == 'cNG':
-
-                        tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
-                        additional_args = {
-                            'prof': halo_profile_dict[A],
-                            'prof2': halo_profile_dict[B],
-                            'prof3': halo_profile_dict[C],
-                            'prof4': halo_profile_dict[D],
-                            'prof12_2pt': prof_2pt_dict[A, B],
-                            'prof13_2pt': prof_2pt_dict[A, C],
-                            'prof14_2pt': prof_2pt_dict[A, D],
-                            'prof24_2pt': prof_2pt_dict[B, D],
-                            'prof32_2pt': prof_2pt_dict[C, B],
-                            'prof34_2pt': prof_2pt_dict[C, D],
-                            'lk_arr': self.logn_k_grid_tkka_cNG,
-                            'a_arr': self.a_grid_tkka_cNG,
-                        }
-                    else:
-                        raise ValueError(
-                            f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
+                    tkka_func, additional_args = self.get_tkka_func(A, B, C, D, which_ng_cov)
 
                     self.tkka_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
                                                            hmc=self.hmc,
@@ -423,6 +350,93 @@ class PycclClass():
         print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - tkka_start_time))
 
         return
+
+    def get_tkka_func(self, A, B, C, D, which_ng_cov):
+
+        if which_ng_cov == 'SSC':
+
+            if self.which_b1g_in_resp == 'from_HOD':
+                tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
+                additional_args = {
+                    'prof': self.halo_profile_dict[A],
+                    'prof2': self.halo_profile_dict[B],
+                    'prof3': self.halo_profile_dict[C],
+                    'prof4': self.halo_profile_dict[D],
+                    'prof12_2pt': self.prof_2pt_dict[A, B],
+                    'prof34_2pt': self.prof_2pt_dict[C, D],
+                    'lk_arr': self.logn_k_grid_tkka_SSC,
+                    'a_arr': self.a_grid_tkka_SSC,
+                    'extrap_pk': True,
+                }
+
+            elif self.which_b1g_in_resp == 'from_input':
+                tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC_linear_bias
+                additional_args = {
+                    'prof': self.halo_profile_dict['L'],  # prof should be HaloProfileNFW
+                    'bias1': self.gal_bias_dict[A],
+                    'bias2': self.gal_bias_dict[B],
+                    'bias3': self.gal_bias_dict[C],
+                    'bias4': self.gal_bias_dict[D],
+                    'is_number_counts1': self.is_number_counts_dict[A],
+                    'is_number_counts2': self.is_number_counts_dict[B],
+                    'is_number_counts3': self.is_number_counts_dict[C],
+                    'is_number_counts4': self.is_number_counts_dict[D],
+                    'lk_arr': self.logn_k_grid_tkka_SSC,
+                    'a_arr': self.a_grid_tkka_SSC,
+                    'extrap_pk': True,
+                }
+
+        elif which_ng_cov == 'cNG':
+
+            tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
+            additional_args = {
+                'prof': self.halo_profile_dict[A],
+                'prof2': self.halo_profile_dict[B],
+                'prof3': self.halo_profile_dict[C],
+                'prof4': self.halo_profile_dict[D],
+                'prof12_2pt': self.prof_2pt_dict[A, B],
+                'prof13_2pt': self.prof_2pt_dict[A, C],
+                'prof14_2pt': self.prof_2pt_dict[A, D],
+                'prof24_2pt': self.prof_2pt_dict[B, D],
+                'prof32_2pt': self.prof_2pt_dict[C, B],
+                'prof34_2pt': self.prof_2pt_dict[C, D],
+                'lk_arr': self.logn_k_grid_tkka_cNG,
+                'a_arr': self.a_grid_tkka_cNG,
+            }
+        else:
+            raise ValueError(
+                f"Invalid value for which_ng_cov. It is {which_ng_cov}, must be 'SSC' or 'cNG'.")
+
+        return tkka_func, additional_args
+
+    def set_dicts_for_trisp(self):
+
+        gal_bias_1d = self.gal_bias_func(cosmo_lib.a_to_z(self.a_grid_tkka_SSC))
+        
+        # TODO pk from input files
+        # This is the correct way to initialize the trispectrum (I Asked David Alonso about this.)
+        self.halo_profile_dict = {
+            'L': self.halo_profile_dm,
+            'G': self.halo_profile_hod,
+        }
+        
+        self.prof_2pt_dict = {
+            # see again https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
+            ('L', 'L'): ccl.halos.Profile2pt(),
+            ('G', 'L'): ccl.halos.Profile2pt(),
+            ('L', 'G'): ccl.halos.Profile2pt(),
+            ('G', 'G'): ccl.halos.Profile2ptHOD(),
+        }
+        
+        self.is_number_counts_dict = {
+            'L': False,
+            'G': True,
+        }
+
+        self.gal_bias_dict = {
+            'L': np.ones_like(gal_bias_1d),
+            'G': gal_bias_1d,
+        }
 
     def compute_ng_cov_ccl(self, which_ng_cov, kernel_A, kernel_B, kernel_C, kernel_D, ell, tkka, f_sky,
                            ind_AB, ind_CD, integration_method):

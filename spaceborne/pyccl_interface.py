@@ -240,9 +240,9 @@ class PycclClass():
             cl_mask = hp.anafast(mask)
             ell_mask = np.arange(len(cl_mask))
             cl_mask_norm = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * fsky)**2
+            
             # quick check
             fsky_mask = np.sqrt(cl_mask[0] / (4 * np.pi))
-            print(f'fsky from mask: {fsky_mask:.4f}')
             assert np.fabs(fsky_mask / fsky) < 1.01, 'fsky_in is not the same as the fsky of the mask'
 
             # normalization has been checked from https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py

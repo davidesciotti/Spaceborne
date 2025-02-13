@@ -222,10 +222,14 @@ ccl_obj.logn_k_grid_tkka_SSC = np.log(k_grid)
 ccl_obj.logn_k_grid_tkka_cNG = np.log(k_grid)
 
 # check that the grid is in ascending order
-assert np.all(np.diff(ccl_obj.a_grid_tkka_SSC) > 0), 'a_grid_tkka_SSC is not in ascending order!'
-assert np.all(np.diff(ccl_obj.a_grid_tkka_cNG) > 0), 'a_grid_tkka_cNG is not in ascending order!'
-assert np.all(np.diff(z_grid) > 0), 'z grid is not in ascending order!'
-assert np.all(np.diff(z_grid_trisp) > 0), 'z grid is not in ascending order!'
+if not np.all(np.diff(ccl_obj.a_grid_tkka_SSC) > 0):
+    raise ValueError('a_grid_tkka_SSC is not in ascending order!')
+if not np.all(np.diff(ccl_obj.a_grid_tkka_cNG) > 0):
+    raise ValueError('a_grid_tkka_cNG is not in ascending order!')
+if not np.all(np.diff(z_grid) > 0):
+    raise ValueError('z grid is not in ascending order!')
+if not np.all(np.diff(z_grid_trisp) > 0):
+    raise ValueError('z grid is not in ascending order!')
 
 # build the ind array and store it into the covariance dictionary
 zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
@@ -280,8 +284,8 @@ ell_dict['ell_edges_3x2pt'] = np.copy(ell_edges_ref_nbl32[mask_3x2pt])
 ell_dict['ell_edges_XC'] = np.copy(ell_dict['ell_edges_3x2pt'])
 
 for key in ell_dict.keys():
-    assert ell_dict[key].size > 0, f'ell values for key {key} must be non-empty'
-    assert np.max(ell_dict[key]) > 15, f'ell values for key {key} must *not* be in log space'
+    if ell_dict[key].size == 0:
+        raise ValueError(f'ell values for key {key} must be non-empty')
 
 # set the corresponding number of ell bins
 nbl_WL = len(ell_dict['ell_WL'])

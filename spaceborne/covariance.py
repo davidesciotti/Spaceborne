@@ -686,9 +686,10 @@ class SpaceborneCovariance():
                 for probe_c, probe_d in probe_ordering:
                     if str.join('', (probe_a, probe_b, probe_c, probe_d)) not in ['GLLL', 'GGLL', 'GGGL']:
                         print(f"Loading {probe_a}{probe_b}{probe_c}{probe_d}")
+                        _cov_filename = cov_filename.format(probe_a=probe_a, probe_b=probe_b,
+                                                            probe_c=probe_c, probe_d=probe_d)
                         cov_ssc_sb_3x2pt_dict_8D[(probe_a, probe_b, probe_c, probe_d)] = np.load(
-                            f"{folder_name}/{cov_filename.format(probe_a=probe_a, probe_b=probe_b,
-                                                                 probe_c=probe_c, probe_d=probe_d)}")
+                            f"{folder_name}/{_cov_filename}")
 
         else:
             cov_ssc_sb_3x2pt_dict_8D = sl.load_cov_from_probe_blocks(

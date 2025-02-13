@@ -231,7 +231,8 @@ end
 
 
 
-function SSC_integral_KE_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
+function SSC_integral_KE_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, 
+    cl_integral_prefactor, sigma2, z_array::Array, is_auto::Bool)
     """ this version takes advantage of the symmetries between redshift pairs, and implements the KE approximation
     (see )
     """

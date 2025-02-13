@@ -127,6 +127,7 @@ def sigma2_z1z2_wrap_parallel(z_grid: np.ndarray, k_grid_sigma2: np.ndarray, cos
 
     print('Computing sigma^2_b(z_1, z_2). This may take a while...')
     start = time.perf_counter()
+    
     if parallel:
         # Create a list of arguments—one per z2 value in z_grid
         # Build the argument list without cosmo_ccl:
@@ -156,6 +157,7 @@ def sigma2_z1z2_wrap_parallel(z_grid: np.ndarray, k_grid_sigma2: np.ndarray, cos
                 cl_mask=cl_mask,
                 fsky_mask=fsky_in
             )
+    
     print(f'done in {time.perf_counter() - start} s')
 
     return sigma2_b

@@ -1,4 +1,10 @@
-![sb_logo](https://github.com/user-attachments/assets/6c5d9280-70b2-4f66-8bfb-c513317aea06)
+# Spaceborne
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/6c5d9280-70b2-4f66-8bfb-c513317aea06" width="300">
+</p>
+
+<!-- ![sb_logo](https://github.com/user-attachments/assets/6c5d9280-70b2-4f66-8bfb-c513317aea06) -->
 
 # Installation
 

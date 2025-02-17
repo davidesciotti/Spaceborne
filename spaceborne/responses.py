@@ -121,10 +121,10 @@ class SpaceborneResponses():
         """
         # Backup the original `_bf`. To do this, I first need to call `_get_ingredients`
         self.ccl_obj.hmc._get_ingredients(cosmo, a, get_bf=True)
-        original_bf = self.ccl_obj.hmc._bf 
+        original_bf = self.ccl_obj.hmc._bf
 
         # Verify that internal & external mass definitions are consistent.
-        self.ccl_obj.hmc._check_mass_def(prof)  
+        self.ccl_obj.hmc._check_mass_def(prof)
         self.ccl_obj.hmc._get_ingredients(cosmo, a, get_bf=True)
 
         # DSmod: replace with 2nd order halo bias
@@ -209,39 +209,32 @@ class SpaceborneResponses():
         b1_arr = self.b1_func(self.z_grid)
         self.b1_arr = b1_arr[None, :]
 
-        if b2g_from_halomodel:
-            # in this case, use hm integrals to compute b2g from b2h,
-            # itself computed using the Lazeyras 2016 b2h(b1h) fit
-            self.set_bg_hm(self.z_grid)
-            self.b2_arr = self.b2g_hm[None, :]
-        else:
-            # in this case use the Lazeyras 2016 fit, but approximating b2g \sim b2h(b1g)
-            self.b2_arr = self.b2h_of_b1h_fit(b1_arr)[None, :]
+        if include_b2g:
+            if b2g_from_halomodel:
+                # in this case, use hm integrals to compute b2g from b2h,
+                # itself computed using the Lazeyras 2016 b2h(b1h) fit
+                self.set_bg_hm(self.z_grid)
+                self.b2_arr = self.b2g_hm[None, :]
+            else:
+                # in this case use the Lazeyras 2016 fit, but approximating b2g \sim b2h(b1g)
+                self.b2_arr = self.b2h_of_b1h_fit(b1_arr)[None, :]
 
-        self.b2_arr_null = np.zeros(self.b2_arr.shape)
+        else:
+            self.b2_arr = np.zeros_like(self.b1_arr)
 
         # compute dPk/ddelta_b (not the projected ones!)
         term1 = 1 / self.b1_arr
         term2 = self.b2_arr - self.b1_arr ** 2
-        term2_nob2 = self.b2_arr_null - self.b1_arr ** 2
-
         self.dPmm_ddeltab = self.r1_mm * self.pk_mm
         self.dPgm_ddeltab = (self.r1_mm + term1 * term2) * self.pk_mm
         self.dPgg_ddeltab = (self.r1_mm + 2 * term1 * term2) * self.pk_mm
-
-        self.dPgm_ddeltab_nob2 = (self.r1_mm + term1 * term2_nob2) * self.pk_mm
-        self.dPgg_ddeltab_nob2 = (self.r1_mm + 2 * term1 * term2_nob2) * self.pk_mm
 
         # compute r1_AB (again, not the projected ones)
         self.pk_gg = self.pk_mm * self.b1_arr ** 2
         self.pk_gm = self.pk_mm * self.b1_arr
 
-        if include_b2g:
-            self.r1_gm = self.dPgm_ddeltab / self.pk_gm
-            self.r1_gg = self.dPgg_ddeltab / self.pk_gg
-        else:
-            self.r1_gm = self.dPgm_ddeltab_nob2 / self.pk_gm
-            self.r1_gg = self.dPgg_ddeltab_nob2 / self.pk_gg
+        self.r1_gm = self.dPgm_ddeltab / self.pk_gm
+        self.r1_gg = self.dPgg_ddeltab / self.pk_gg
 
     def set_hm_resp(self, k_grid, z_grid, which_b1g, b1g, include_terasawa_terms):
         """
@@ -299,8 +292,8 @@ class SpaceborneResponses():
         # perform some checks on the input shapes
         assert which_b1g in ['from_HOD', 'from_input'], '"which_b1g" must be either "from_HOD" or "from_input"'
         if which_b1g == 'from_input':
-            assert b1g.shape == z_grid.shape, 'b1g must have the same shape as z_grid'
-            assert b1g.ndim == 1, "b1g must be a 1D array"
+            assert b1g.shape[0] == len(z_grid), 'b1g must have the same shape as z_grid'
+            assert b1g.ndim == 2, "b1g must be a 1D array"
 
         pk2d = self.ccl_obj.cosmo_ccl.parse_pk(None)
         a_grid = cosmo_lib.z_to_a(z_grid)

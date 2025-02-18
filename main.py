@@ -1071,6 +1071,11 @@ if cfg['misc']['save_output_as_benchmark']:
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
         yaml.dump(cfg, yaml_file, default_flow_style=False)
 
+
+    _ell_dict = deepcopy(ell_dict)
+    _ell_dict.pop('ell_cuts_dict')
+    _ell_dict.pop('idxs_to_delete_dict')
+    
     np.savez_compressed(bench_filename,
                         backup_cfg=cfg,
                         ind=ind,
@@ -1080,13 +1085,7 @@ if cfg['misc']['save_output_as_benchmark']:
                         k_grid_sigma2_b=k_grid_sigma2_b,
                         nz_src=nz_src,
                         nz_lns=nz_lns,
-                        # ell_wl=ell_dict['ell_WL'],
-                        # ell_gc=ell_dict['ell_GC'],
-                        # ell_3x2pt=ell_dict['ell_3x2pt'],
-                        # ell_edges_wl=ell_dict['ell_edges_WL'],
-                        # ell_edges_gc=ell_dict['ell_edges_GC'],
-                        # ell_edges_3x2pt=ell_dict['ell_edges_3x2pt'],
-                        **ell_dict,
+                        **_ell_dict,
                         nbl_WL=nbl_WL,
                         nbl_GC=nbl_GC,
                         nbl_3x2pt=nbl_3x2pt,
@@ -1108,18 +1107,7 @@ if cfg['misc']['save_output_as_benchmark']:
                         d2CLL_dVddeltab=d2CLL_dVddeltab,
                         d2CGL_dVddeltab=d2CGL_dVddeltab,
                         d2CGG_dVddeltab=d2CGG_dVddeltab,
-                        cov_WL_g_2D=cov_dict['cov_WL_g_2D'],
-                        cov_GC_g_2D=cov_dict['cov_GC_g_2D'],
-                        cov_XC_g_2D=cov_dict['cov_XC_g_2D'],
-                        cov_3x2pt_g_2D=cov_dict['cov_3x2pt_g_2D'],
-                        cov_WL_ssc_2D=cov_dict['cov_WL_ssc_2D'],
-                        cov_GC_ssc_2D=cov_dict['cov_GC_ssc_2D'],
-                        cov_XC_ssc_2D=cov_dict['cov_XC_ssc_2D'],
-                        cov_3x2pt_ssc_2D=cov_dict['cov_3x2pt_ssc_2D'],
-                        cov_WL_cng_2D=cov_dict['cov_WL_cng_2D'],
-                        cov_GC_cng_2D=cov_dict['cov_GC_cng_2D'],
-                        cov_XC_cng_2D=cov_dict['cov_XC_cng_2D'],
-                        cov_3x2pt_cng_2D=cov_dict['cov_3x2pt_cng_2D'],
+                        **cov_dict,
                         metadata=metadata,
                         )
 

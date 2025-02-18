@@ -1,10 +1,11 @@
-# Spaceborne
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/6c5d9280-70b2-4f66-8bfb-c513317aea06" width="300">
+  <img src="https://github.com/user-attachments/assets/1e156ecb-75d5-4004-b768-cbd8edab7940" width="300">
 </p>
 
 <!-- ![sb_logo](https://github.com/user-attachments/assets/6c5d9280-70b2-4f66-8bfb-c513317aea06) -->
+
+# Spaceborne
 
 # Installation
 

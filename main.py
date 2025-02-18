@@ -385,9 +385,11 @@ ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid, has_ia=cfg['C_ell']['has_IA'])
 # ! set galaxy and magnification bias
 if cfg['C_ell']['which_gal_bias'] == 'from_input':
     gal_bias_input = np.genfromtxt(cfg['C_ell']['gal_bias_table_filename'])
-    ccl_obj.gal_bias_2d, ccl_obj.gal_bias_func = sl.check_interpolate_input_tab(gal_bias_input, z_grid, zbins)
+    ccl_obj.gal_bias_2d, ccl_obj.gal_bias_func = sl.check_interpolate_input_tab(
+        input_tab=gal_bias_input, z_grid_out=z_grid, zbins=zbins)
     ccl_obj.gal_bias_tuple = (z_grid, ccl_obj.gal_bias_2d)
 
+# TODO the alternative should be the HOD gal bias already set in the responses class!!
 elif cfg['C_ell']['which_gal_bias'] == 'FS2_polynomial_fit':
     ccl_obj.set_gal_bias_tuple_spv3(z_grid_lns=z_grid,
                                     magcut_lens=None,
@@ -409,6 +411,7 @@ if cfg['C_ell']['has_magnification_bias']:
         raise ValueError('which_mag_bias should be "from_input" or "FS2_polynomial_fit"')
 else:
     ccl_obj.mag_bias_tuple = None
+
 
 # ! set radial kernel arrays and objects
 ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['PyCCL']['n_samples_wf'])
@@ -724,65 +727,24 @@ if compute_sb_ssc:
 
     print('Start SSC computation with Spaceborne...')
 
-    try:
-
-        for zi in range(zbins):
-            np.testing.assert_allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
-        # in case b(z) is equal in each bin, we can simply use the first one
-        gal_bias = CubicSpline(ccl_obj.gal_bias_tuple[0], ccl_obj.gal_bias_2d[:, 0])(z_grid_trisp)
-
-    except AssertionError:
-
-        print('Galaxy bias is not the same in each redshift bin; constructing a unique b(z) by '
-              'linearly interpolating the values of the b_i(z) table provided in the mean redshift '
-              'of the lens n_i(z).')
-
-        # test that the bias is constant in each bin (not necessarily with the same value in all bins)
-        for zi in range(zbins):
-            np.testing.assert_allclose(ccl_obj.gal_bias_2d[0, zi], ccl_obj.gal_bias_2d[:, zi], atol=0, rtol=1e-5)
-
-        # in this case, we take the mean z values from nz_lns and interpolate b(z) from b_i(z_means)
-        gal_bias_zi = []
-        z_means = wf_cl_lib.get_z_means(zgrid_nz_lns, nz_lns)
-        for zi in range(zbins):
-            # find value of galaxy bias input array in the z_means values
-            gal_bias_zi_spline = CubicSpline(x=ccl_obj.gal_bias_tuple[0],
-                                             y=ccl_obj.gal_bias_tuple[1][:, zi])
-            gal_bias_zi.append(gal_bias_zi_spline(z_means[zi]))
-
-        gal_bias = np.interp(z_grid_trisp, z_means, gal_bias_zi)
-
-        # colors = plt.cm.plasma(np.linspace(0, 1, zbins))
-        # for zi in range(zbins):
-        #     plt.axvline(z_means[zi], ymin=0, ymax=4, ls='--', c=colors[zi])
-        #     # plt.plot(ccl_obj.gal_bias_tuple[0], np.ones_like(ccl_obj.gal_bias_tuple[0]) * gal_bias_zi[zi], c=colors[zi])
-        #     plt.plot(ccl_obj.gal_bias_tuple[0], np.ones_like(ccl_obj.gal_bias_tuple[0]) * gal_bias_zi[zi], c=colors[zi])
-        # plt.plot(z_grid_trisp, gal_bias)
-        # plt.ylim(0, 5)
-        # plt.show()
-
-    except AssertionError:
-
-        raise NotImplementedError('Galaxy bias is neither the same in all bins, nor constant in each redshift bin. '
-                                  'Case not implemented yet.')
-
     # assert False, 'stop here'
     # precompute pk_mm, pk_gm and pk_mm, in case you want to rescale the responses to get R_mm, R_gm, R_gg
     # k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid, z_grid_trisp, use_h_units,
-        #   ccl_obj.cosmo_ccl, pk_kind='nonlinear')
+    #   ccl_obj.cosmo_ccl, pk_kind='nonlinear')
     # pk_gm_2d = pk_mm_2d * gal_bias
     # pk_gg_2d = pk_mm_2d * gal_bias ** 2
+
+    resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid,
+                                             z_grid=z_grid_trisp,
+                                             ccl_obj=ccl_obj)
+    resp_obj.use_h_units = use_h_units
 
     if cfg['covariance']['which_pk_responses'] == 'halo_model':
 
         which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
         include_terasawa_terms = cfg['covariance']['include_terasawa_terms']
-        resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid,
-                                                 z_grid=z_grid_trisp,
-                                                 ccl_obj=ccl_obj)
-        resp_obj.use_h_units = use_h_units
         resp_obj.set_hm_resp(k_grid, z_grid_trisp,
-                             which_b1g_in_resp, gal_bias,
+                             which_b1g_in_resp, ccl_obj.gal_bias_func(z_grid_trisp)[:, 0],
                              include_terasawa_terms=include_terasawa_terms)
         dPmm_ddeltab = resp_obj.dPmm_ddeltab_hm
         dPgm_ddeltab = resp_obj.dPgm_ddeltab_hm
@@ -791,12 +753,36 @@ if compute_sb_ssc:
         r_gm = resp_obj.r1_gm_hm
         r_gg = resp_obj.r1_gg_hm
 
+        resp_obj.zbins = zbins
+        resp_obj.set_hm_resp_bias2d(k_grid, z_grid_trisp,
+                                    which_b1g_in_resp, ccl_obj.gal_bias_func,
+                                    include_terasawa_terms=include_terasawa_terms)
+        dPmm_ddeltab_2 = resp_obj.dPmm_ddeltab_hm
+        dPgm_ddeltab_2 = resp_obj.dPgm_ddeltab_hm
+        dPgg_ddeltab_2 = resp_obj.dPgg_ddeltab_hm
+        r_mm_2 = resp_obj.r1_mm_hm
+        r_gm_2 = resp_obj.r1_gm_hm
+        r_gg_2 = resp_obj.r1_gg_hm
+
+        np.testing.assert_allclose(dPmm_ddeltab, dPmm_ddeltab_2[:, :, 0], atol=0, rtol=1e-5)
+        np.testing.assert_allclose(dPgm_ddeltab, dPgm_ddeltab_2[:, :, 0], atol=0, rtol=1e-5)
+        np.testing.assert_allclose(dPgg_ddeltab, dPgg_ddeltab_2[:, :, 0], atol=0, rtol=1e-5)
+        np.testing.assert_allclose(r_mm, r_mm_2[:, :, 0], atol=0, rtol=1e-5)
+        np.testing.assert_allclose(r_gm, r_gm_2[:, :, 0], atol=0, rtol=1e-5)
+        np.testing.assert_allclose(r_gg, r_gg_2[:, :, 0], atol=0, rtol=1e-5)
+
+        for zi in range(zbins):
+            np.testing.assert_allclose(dPmm_ddeltab_2[:, :, 0], dPmm_ddeltab_2[:, :, zi], atol=0, rtol=1e-5)
+            np.testing.assert_allclose(dPgm_ddeltab_2[:, :, 0], dPgm_ddeltab_2[:, :, zi], atol=0, rtol=1e-5)
+            np.testing.assert_allclose(dPgg_ddeltab_2[:, :, 0], dPgg_ddeltab_2[:, :, zi], atol=0, rtol=1e-5)
+            np.testing.assert_allclose(r_mm_2[:, :, 0], r_mm_2[:, :, zi], atol=0, rtol=1e-5)
+            np.testing.assert_allclose(r_gm_2[:, :, 0], r_gm_2[:, :, zi], atol=0, rtol=1e-5)
+            np.testing.assert_allclose(r_gg_2[:, :, 0], r_gg_2[:, :, zi], atol=0, rtol=1e-5)
+
+        assert False, 'tests successful, stop here'
+
     elif cfg['covariance']['which_pk_responses'] == 'separate_universe':
 
-        resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid,
-                                                 z_grid=z_grid_trisp,
-                                                 ccl_obj=ccl_obj)
-        resp_obj.use_h_units = use_h_units
         resp_obj.set_g1mm_su_resp()
         r_mm = resp_obj.compute_r1_mm()
         resp_obj.set_su_resp(b2g_from_halomodel=True,
@@ -858,6 +844,8 @@ if compute_sb_ssc:
                                                             use_h_units=use_h_units,
                                                             cosmo_ccl=ccl_obj.cosmo_ccl)
     # ! observable densities
+    # z: z_grid index (for the radial projection)
+    # i, j: zbin index
     d2CLL_dVddeltab = np.einsum('zi,zj,Lz->Lijz', wf_lensing, wf_lensing, dPmm_ddeltab_klimb)
     d2CGL_dVddeltab = \
         np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_lensing, dPgm_ddeltab_klimb) + \
@@ -1071,11 +1059,10 @@ if cfg['misc']['save_output_as_benchmark']:
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
         yaml.dump(cfg, yaml_file, default_flow_style=False)
 
-
     _ell_dict = deepcopy(ell_dict)
     _ell_dict.pop('ell_cuts_dict')
     _ell_dict.pop('idxs_to_delete_dict')
-    
+
     np.savez_compressed(bench_filename,
                         backup_cfg=cfg,
                         ind=ind,

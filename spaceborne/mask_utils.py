@@ -121,7 +121,7 @@ def generate_polar_cap(area_deg2, nside):
 
     # Expected sky fraction
     fsky_expected = cosmo_lib.deg2_to_fsky(area_deg2)
-    print(f"Expected f_sky: {fsky_expected}")
+    print(f"Requested f_sky: {fsky_expected:.4f}")
 
     # Convert the area to radians squared for the angular radius calculation
     area_rad2 = area_deg2 * (np.pi / 180)**2
@@ -132,7 +132,7 @@ def generate_polar_cap(area_deg2, nside):
 
     # Convert the angular radius to degrees for visualization
     theta_cap_deg = np.degrees(theta_cap_rad)
-    print(f"Angular radius of the cap in degrees: {theta_cap_deg}")
+    print(f"Angular radius of the cap in degrees: {theta_cap_deg:.4f}")
 
     # Vector pointing to the North Pole (θ=0, φ can be anything since θ=0 defines the pole)
     vec = hp.ang2vec(0, 0)
@@ -144,7 +144,7 @@ def generate_polar_cap(area_deg2, nside):
 
     # Calculate the actual sky fraction of the generated mask
     fsky_actual = np.sum(mask) / len(mask)
-    print(f"Actual f_sky from the mask: {fsky_actual:.4f}")
+    print(f"Measured f_sky from the mask: {fsky_actual:.4f}")
 
     return mask
 

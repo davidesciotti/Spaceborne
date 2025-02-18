@@ -199,10 +199,10 @@ covariance:
     
     z_min: 0.02 # Type: float. SU responses' kmax allow for z_min = 0.016, at most.
     z_max: 3.0 # Type: float
-    z_steps: 700 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 5000
+    z_steps: 300 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 5000
     z_steps_trisp: 100  # Type: int. Number of z steps used to compute the trispectrum - around 100 should be enough
 
-    use_KE_approximation: False # Type: bool
+    use_KE_approximation: True # Type: bool
 
     cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str. 
     # Name of the output covariance file. Change to '.npy' to save as npy file.
@@ -243,5 +243,5 @@ misc:
     test_symmetry: True # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
     output_path: ./output # Type: str
-    save_output_as_benchmark: False # Type: bool. For testing purposes
-    bench_filename: ../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s} # Type: str. For testing purposes
+    save_output_as_benchmark: True # Type: bool. For testing purposes
+    bench_filename: ../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_moreoutputs # Type: str. For testing purposes

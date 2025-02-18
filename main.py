@@ -3,6 +3,7 @@ import gc
 import itertools
 import os
 from tqdm import tqdm
+import sys
 from pathlib import Path
 import time
 
@@ -42,21 +43,34 @@ warnings.filterwarnings(
 pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 
-# ! Set up argument parsing
-parser = argparse.ArgumentParser(description="Your script description here.")
-parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
-parser.add_argument('--show_plots', action='store_true', help='Show plots if specified', required=False)
-args = parser.parse_args()
-with open(args.config, 'r') as f:
-    cfg = yaml.safe_load(f)
-if not args.show_plots:
-    import matplotlib
-    matplotlib.use('Agg')
 
-# ! LOAD CONFIG
-# ! uncomment this if executing from interactive window
-# with open('config.yaml', 'r') as f:
-#     cfg = yaml.safe_load(f)
+def load_config():
+    # Check if we're running in a Jupyter environment (or interactive mode)
+    if "ipykernel_launcher.py" in sys.argv[0]:
+        # Running interactively, so use default config file
+        config_path = 'config.yaml'
+
+    else:
+        parser = argparse.ArgumentParser(description="Spaceborne")
+        parser.add_argument('--config', type=str, help='Path to the configuration file',
+                            required=False, default='config.yaml')
+        parser.add_argument('--show_plots', action='store_true', help='Show plots if specified', required=False)
+        args = parser.parse_args()
+        config_path = args.config
+
+    # Only switch to Agg if not running interactively and --show_plots is not specified.
+    if "ipykernel_launcher.py" not in sys.argv[0] and not ('--show_plots' in sys.argv):
+        import matplotlib
+        matplotlib.use('Agg')
+
+    with open(config_path, 'r') as f:
+        cfg = yaml.safe_load(f)
+
+    return cfg
+
+
+cfg = load_config()
+
 
 # some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']
@@ -875,7 +889,7 @@ if compute_sb_ssc:
             np.testing.assert_allclose(z_grid, _z, atol=0, rtol=1e-8)
 
         else:
-            
+
             # check if pathos is installed
             try:
                 import pathos
@@ -884,7 +898,7 @@ if compute_sb_ssc:
             except ImportError:
                 print('pathos is not installed. Using serial processing to compute sigma2_b.')
                 parallel = False
-            
+
             sigma2_b = sigma2_SSC.sigma2_z1z2_wrap_parallel(
                 z_grid=z_grid,
                 k_grid_sigma2=k_grid_sigma2_b,
@@ -916,7 +930,7 @@ if compute_sb_ssc:
                                                        probe_ordering=probe_ordering,
                                                        num_threads=cfg['misc']['num_threads'])
     print('SSC computed in {:.2f} m'.format((time.perf_counter() - start) / 60))
-    
+
     # in the full_curved_sky case only, sigma2_b has to be divided by fsky
     # TODO it would make much more sense to divide s2b directly...
     if which_sigma2_b == 'full_curved_sky':
@@ -1066,17 +1080,18 @@ if cfg['misc']['save_output_as_benchmark']:
                         k_grid_sigma2_b=k_grid_sigma2_b,
                         nz_src=nz_src,
                         nz_lns=nz_lns,
-                        ell_wl=ell_dict['ell_WL'],
-                        ell_gc=ell_dict['ell_GC'],
-                        ell_3x2pt=ell_dict['ell_3x2pt'],
-                        ell_edges_wl=ell_dict['ell_edges_WL'],
-                        ell_edges_gc=ell_dict['ell_edges_GC'],
-                        ell_edges_3x2pt=ell_dict['ell_edges_3x2pt'],
+                        # ell_wl=ell_dict['ell_WL'],
+                        # ell_gc=ell_dict['ell_GC'],
+                        # ell_3x2pt=ell_dict['ell_3x2pt'],
+                        # ell_edges_wl=ell_dict['ell_edges_WL'],
+                        # ell_edges_gc=ell_dict['ell_edges_GC'],
+                        # ell_edges_3x2pt=ell_dict['ell_edges_3x2pt'],
+                        **ell_dict,
                         nbl_WL=nbl_WL,
                         nbl_GC=nbl_GC,
                         nbl_3x2pt=nbl_3x2pt,
-                        gal_bias_2d = ccl_obj.gal_bias_2d,
-                        mag_bias_2d = ccl_obj.mag_bias_2d,
+                        gal_bias_2d=ccl_obj.gal_bias_2d,
+                        mag_bias_2d=ccl_obj.mag_bias_2d,
                         wf_delta=ccl_obj.wf_delta_arr,
                         wf_gamma=ccl_obj.wf_gamma_arr,
                         wf_ia=ccl_obj.wf_ia_arr,

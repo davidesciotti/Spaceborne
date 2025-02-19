@@ -109,8 +109,8 @@ def nz_fits_to_txt(fits_filename):
     return nz_arr
 
 
-def compare_funcs(x, y_a, y_b, name_a='A', name_b='B', logscale_y=[False, False],
-                  title=None):
+def compare_funcs(x, y_a, y_b, name_a='A', name_b='B', logscale_y=[False, False], logscale_x=False,
+                  title=None, ylim_diff=None):
 
     if x is None:
         x = np.arange(len(y_a))
@@ -129,7 +129,14 @@ def compare_funcs(x, y_a, y_b, name_a='A', name_b='B', logscale_y=[False, False]
     for i in range(2):
         if logscale_y[i]:
             ax[i].set_yscale('log')
-            
+
+    if logscale_x:
+        for i in range(2):
+            ax[i].set_xscale('log')
+
+    if ylim_diff is not None:
+        ax[1].set_ylim(ylim_diff)
+
     if title is not None:
         fig.suptitle(title)
 

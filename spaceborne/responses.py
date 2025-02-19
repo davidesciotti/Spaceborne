@@ -387,6 +387,7 @@ class SpaceborneResponses():
                 
                 # ! note that in this case also the mm term (both dPmm_ddeltab and pknlhm_mm) is computed
                 # ! in CCL in a slightly different way
+                # TODO are terasawa terms implemented correctly in this case?
                 dPmm_ddeltab[a_idx] = (47 / 21 + trsw_mm - dpklin / 3) * pklin + i12_mm / norm_prof_m**2
 
                 # gX (= galaxy cross something) Pk in this case is simply b(z) * Pmm or b(z)^2 * Pmm

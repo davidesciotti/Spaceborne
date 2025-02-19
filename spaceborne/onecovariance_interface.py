@@ -687,11 +687,15 @@ class OneCovarianceInterface():
                                iA, hod, survey_params, prec, read_in_tables)
         ssc = ellspace.covELL_ssc(bias, hod, prec, survey_params, observables['ELLspace'])
 
+        dPmm_ddeltab = ellspace.aux_response_mm[:, :, 0] / h**3
+        dPgm_ddeltab = ellspace.aux_response_gm[:, :, 0] / h**3
+        dPgg_ddeltab = ellspace.aux_response_gg[:, :, 0] / h**3
+
         # all these results are *not* in h units
         resp_dict = {
-            'dPmm_ddeltab': ellspace.aux_response_mm[:, :, 0] / h**3,
-            'dPgm_ddeltab': ellspace.aux_response_gm[:, :, 0] / h**3,
-            'dPgg_ddeltab': ellspace.aux_response_gg[:, :, 0] / h**3,
+            'dPmm_ddeltab': dPmm_ddeltab.T,
+            'dPgm_ddeltab': dPgm_ddeltab.T,
+            'dPgg_ddeltab': dPgg_ddeltab.T,
             'k_1Mpc': ellspace.mass_func.k * h,
             'z': ellspace.los_z,
         }

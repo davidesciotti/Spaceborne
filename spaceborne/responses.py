@@ -334,9 +334,6 @@ class SpaceborneResponses():
             i02_gg = self.ccl_obj.hmc.I_0_2(self.ccl_obj.cosmo_ccl, k_grid, aa, prof=prof_g,
                                             prof2=prof_g, prof_2pt=ccl.halos.Profile2ptHOD())
 
-            # nonlin P(k) halo model = P1h + P2h = I^0_2(k, k) + (I^1_1)^2 * P_lin(k)
-            self.pknlhm_mm[a_idx] = (pklin * i11_m * i11_m + i02_mm) / (norm_prof_m * norm_prof_m)
-
             if include_terasawa_terms:
                 # ! very careful, as calling these functions could change the internal state of the halo model
                 # ! (I am manually restoring hmc._bf but this may not be enough)
@@ -350,20 +347,21 @@ class SpaceborneResponses():
                 trsw_gm = 0
                 trsw_gg = 0
 
-            # Super-sample covariance response terms
-            dPmm_ddeltab[a_idx] = ((47 / 21 + trsw_mm - dpklin / 3) * i11_m * i11_m *
-                                   pklin + i12_mm) / (norm_prof_m * norm_prof_m)
-            dPgm_ddeltab[a_idx] = ((47 / 21 + trsw_gm - dpklin / 3) * i11_g * i11_m *
-                                   pklin + i12_gm) / (norm_prof_g * norm_prof_m)
-            dPgg_ddeltab[a_idx] = ((47 / 21 + trsw_gg - dpklin / 3) * i11_g * i11_g *
-                                   pklin + i12_gg) / (norm_prof_g * norm_prof_g)
-
-            # Set counterterms
             # TODO the HOD galaxy bias sould probably be used also in the rest of the code!
+            # this case is equivalent to the halomod_Tk3D_SSC function
             if which_b1g == 'from_HOD':
 
-                # gX Pk is computed with the halo model in this case
-                # i.e. P1h + P2h = I^0_2(k, k) + (I^1_1)^2 * P_lin(k), as above
+                # Super-sample covariance response terms
+                dPmm_ddeltab[a_idx] = ((47 / 21 + trsw_mm - dpklin / 3) * i11_m * i11_m *
+                                    pklin + i12_mm) / (norm_prof_m * norm_prof_m)
+                dPgm_ddeltab[a_idx] = ((47 / 21 + trsw_gm - dpklin / 3) * i11_g * i11_m *
+                                    pklin + i12_gm) / (norm_prof_g * norm_prof_m)
+                dPgg_ddeltab[a_idx] = ((47 / 21 + trsw_gg - dpklin / 3) * i11_g * i11_g *
+                                    pklin + i12_gg) / (norm_prof_g * norm_prof_g)
+
+                # gX (= galaxy cross something) Pk are computed with the halo model in this case; remember that
+                # halo morel nonlin P(k) = P1h + P2h = I^0_2(k, k) + (I^1_1)^2 * P_lin(k)
+                self.pknlhm_mm[a_idx] = (pklin * i11_m * i11_m + i02_mm) / (norm_prof_m * norm_prof_m)
                 self.pknlhm_gm[a_idx] = (pklin * i11_g * i11_m + i02_gm) / (norm_prof_g * norm_prof_m)
                 self.pknlhm_gg[a_idx] = (pklin * i11_g * i11_g + i02_gg) / (norm_prof_g * norm_prof_g)
 
@@ -375,6 +373,7 @@ class SpaceborneResponses():
                 dPgm_ddeltab[a_idx] -= counter_gm
                 dPgg_ddeltab[a_idx] -= counter_gg
 
+            # this case is equivalent to the halomod_Tk3D_SSC_linear_bias function
             elif which_b1g == 'from_input':
                 # ! old
                 # these 2 lines are wrong, in this case the galaxy bias should be taken from the input!
@@ -386,26 +385,25 @@ class SpaceborneResponses():
                 # dPgm_ddeltab[a_idx] -= counter_gm
                 # dPgg_ddeltab[a_idx] -= counter_gg
 
-                # !new (matches SSC_linear_bias)
-                # this is what is done in SSC_linear_bias;
-                # I use the dPmm_ddeltab and pknlhm_mm already computed above, however (no difference)
-                # dPmm_ddeltab[a_idx] = (47 / 21 - dpklin / 3) * pklin + i12_mm / norm_prof_m**2
-                # self.pknlhm_mm[a_idx] = pklin + i02_mm / norm_prof_m**2
+                # ! note that in this case also the mm term (both dPmm_ddeltab and pknlhm_mm) is computed
+                # ! in CCL in a slightly different way
+                # TODO are terasawa terms implemented correctly in this case?
+                dPmm_ddeltab[a_idx] = (47 / 21 + trsw_mm - dpklin / 3) * pklin + i12_mm / norm_prof_m**2
 
                 # gX (= galaxy cross something) Pk in this case is simply b(z) * Pmm or b(z)^2 * Pmm
+                self.pknlhm_mm[a_idx] = pklin + i02_mm / norm_prof_m**2
                 self.pknlhm_gm[a_idx] = b1g[a_idx] * self.pknlhm_mm[a_idx]
                 self.pknlhm_gg[a_idx] = b1g[a_idx]**2 * self.pknlhm_mm[a_idx]
 
-                # CCL implementation matches this
+                # * CCL implementation matches this
                 # dPgm_ddeltab[a_idx] = dPmm_ddeltab[a_idx] - b1g[a_idx] * self.pknlhm_mm[a_idx]
                 # dPgg_ddeltab[a_idx] = dPmm_ddeltab[a_idx] - 2 * b1g[a_idx] * self.pknlhm_mm[a_idx]
                 # dPgm_ddeltab[a_idx] *= b1g[a_idx]
                 # dPgg_ddeltab[a_idx] *= b1g[a_idx]**2
 
-                # or this (it's an equivalent way to write it - mpre intuitive imo)
+                # * or this (it's an equivalent way to write it - more intuitive imo)
                 dPgm_ddeltab[a_idx] = dPmm_ddeltab[a_idx] * b1g[a_idx]
                 dPgg_ddeltab[a_idx] = dPmm_ddeltab[a_idx] * b1g[a_idx]**2
-                # subtract counterterms
                 dPgm_ddeltab[a_idx] -= b1g[a_idx] * self.pknlhm_gm[a_idx]
                 dPgg_ddeltab[a_idx] -= 2 * b1g[a_idx] * self.pknlhm_gg[a_idx]
 
@@ -485,16 +483,18 @@ class SpaceborneResponses():
             # these checks are quite redundant...
             assert b1g_2d.shape[0] == len(z_grid), 'b1g must have the same shape as z_grid'
             assert b1g_2d.ndim == 2, "b1g must be a 2D array"
-            # broadcast to same shape as pk
+            # broadcast to same shape as pk, ie [zsteps, ksteps, zbins]
             b1g_3d = b1g_2d[:, None, :]
+            b1g_4d = b1g_2d[:, None, :, None]
 
         pk2d = self.ccl_obj.cosmo_ccl.parse_pk(None)
         a_grid = cosmo_lib.z_to_a(z_grid)
 
         # Initialize arrays for dPmm, dPgm, dPgg and hm nonlinear pks
-        dPmm_ddeltab, dPgm_ddeltab, dPgg_ddeltab = [np.zeros((len(a_grid), len(k_grid), self.zbins)) for _ in range(3)]
+        dPmm_ddeltab, dPgm_ddeltab, dPgg_ddeltab = [
+            np.zeros((len(a_grid), len(k_grid), self.zbins, self.zbins)) for _ in range(3)]
         self.pknlhm_mm, self.pknlhm_gm, self.pknlhm_gg = [
-            np.zeros((len(a_grid), len(k_grid), self.zbins)) for _ in range(3)]
+            np.zeros((len(a_grid), len(k_grid), self.zbins, self.zbins)) for _ in range(3)]
 
         # set profiles
         prof_m = self.ccl_obj.halo_profile_dm
@@ -528,9 +528,6 @@ class SpaceborneResponses():
             i02_gg = self.ccl_obj.hmc.I_0_2(self.ccl_obj.cosmo_ccl, k_grid, aa, prof=prof_g,
                                             prof2=prof_g, prof_2pt=ccl.halos.Profile2ptHOD())
 
-            # nonlin P(k) halo model = P1h + P2h = I^0_2(k, k) + (I^1_1)^2 * P_lin(k)
-            _pknlhm_mm = (pklin * i11_m * i11_m + i02_mm) / (norm_prof_m * norm_prof_m)
-            self.pknlhm_mm[a_idx, :, :] = _pknlhm_mm[:, None]
 
             if include_terasawa_terms:
                 # ! very careful, as calling these functions could change the internal state of the halo model
@@ -545,40 +542,42 @@ class SpaceborneResponses():
                 trsw_gm = 0
                 trsw_gg = 0
 
-            # finally, compute response terms (with proper broadcasting)
-            _dPmm_ddeltab = ((47 / 21 + trsw_mm - dpklin / 3) * i11_m * i11_m *
-                             pklin + i12_mm) / (norm_prof_m * norm_prof_m)
-            _dPgm_ddeltab = ((47 / 21 + trsw_gm - dpklin / 3) * i11_g * i11_m *
-                             pklin + i12_gm) / (norm_prof_g * norm_prof_m)
-            _dPgg_ddeltab = ((47 / 21 + trsw_gg - dpklin / 3) * i11_g * i11_g *
-                             pklin + i12_gg) / (norm_prof_g * norm_prof_g)
-            dPmm_ddeltab[a_idx, :, :] = _dPmm_ddeltab[:, None]
-            dPgm_ddeltab[a_idx, :, :] = _dPgm_ddeltab[:, None]
-            dPgg_ddeltab[a_idx, :, :] = _dPgg_ddeltab[:, None]
-
-            # Set counterterms
             # TODO the HOD galaxy bias sould probably be used also in the rest of the code!
+            # this case is equivalent to the halomod_Tk3D_SSC function
             if which_b1g == 'from_HOD':
+
+                # finally, compute response terms (with proper broadcasting)
+                _dPmm_ddeltab = ((47 / 21 + trsw_mm - dpklin / 3) * i11_m * i11_m *
+                                pklin + i12_mm) / (norm_prof_m * norm_prof_m)
+                _dPgm_ddeltab = ((47 / 21 + trsw_gm - dpklin / 3) * i11_g * i11_m *
+                                pklin + i12_gm) / (norm_prof_g * norm_prof_m)
+                _dPgg_ddeltab = ((47 / 21 + trsw_gg - dpklin / 3) * i11_g * i11_g *
+                                pklin + i12_gg) / (norm_prof_g * norm_prof_g)
+                dPmm_ddeltab[a_idx, :, :, :] = _dPmm_ddeltab[:, None, None]
+                dPgm_ddeltab[a_idx, :, :, :] = _dPgm_ddeltab[:, None, None]
+                dPgg_ddeltab[a_idx, :, :, :] = _dPgg_ddeltab[:, None, None]
 
                 # gX Pk is computed with the halo model in this case
                 # i.e. P1h + P2h = I^0_2(k, k) + (I^1_1)^2 * P_lin(k), as above
+                # nonlin P(k) halo model = P1h + P2h = I^0_2(k, k) + (I^1_1)^2 * P_lin(k)
+                _pknlhm_mm = (pklin * i11_m * i11_m + i02_mm) / (norm_prof_m * norm_prof_m)
                 _pknlhm_gm = (pklin * i11_g * i11_m + i02_gm) / (norm_prof_g * norm_prof_m)
                 _pknlhm_gg = (pklin * i11_g * i11_g + i02_gg) / (norm_prof_g * norm_prof_g)
-                self.pknlhm_gm[a_idx, :, :] = _pknlhm_gm[:, None]
-                self.pknlhm_gg[a_idx, :, :] = _pknlhm_gg[:, None]
+                self.pknlhm_mm[a_idx, :, :, :] = _pknlhm_mm[:, None, None]
+                self.pknlhm_gm[a_idx, :, :, :] = _pknlhm_gm[:, None, None]
+                self.pknlhm_gg[a_idx, :, :, :] = _pknlhm_gg[:, None, None]
 
-                # compute and subtract counterterms
+                # compute and subtract counterterms; in this case the galaxy bias is equal in all bins
                 _b1g_of_k = i11_g / norm_prof_g  # this is the same as self.b1g_hm
-                b1g_2d = _b1g_of_k[:, None]
-                counter_gm = b1g_2d * self.pknlhm_gm[a_idx, :, :]
-                counter_gg = 2 * b1g_2d * self.pknlhm_gg[a_idx, :, :]
+                counter_gm = _b1g_of_k[:, None, None] * self.pknlhm_gm[a_idx, :, :, :]
+                counter_gg = 2 * _b1g_of_k[:, None, None] * self.pknlhm_gg[a_idx, :, :, :]
 
-                dPgm_ddeltab[a_idx, :, :] -= counter_gm
-                dPgg_ddeltab[a_idx, :, :] -= counter_gg
+                dPgm_ddeltab[a_idx, :, :, :] -= counter_gm
+                dPgg_ddeltab[a_idx, :, :, :] -= counter_gg
 
             elif which_b1g == 'from_input':
 
-                # ! old
+                # ! old, discarded
                 # these 2 lines are wrong, in this case the galaxy bias should be taken from the input!
                 # nonetheless, this is the old implementation, I keep it here for reference
                 # self.pknlhm_gm[a_idx] = (pklin * i11_g * i11_m + i02_gm) / (norm_prof_g * norm_prof_m)
@@ -593,34 +592,46 @@ class SpaceborneResponses():
                 # I use the dPmm_ddeltab and pknlhm_mm already computed above, however (no difference)
                 # dPmm_ddeltab[a_idx] = (47 / 21 - dpklin / 3) * pklin + i12_mm / norm_prof_m**2
                 # self.pknlhm_mm[a_idx] = pklin + i02_mm / norm_prof_m**2
+                _dPmm_ddeltab = (47 / 21 + trsw_mm - dpklin / 3) * pklin + i12_mm / norm_prof_m**2
+                dPmm_ddeltab[a_idx, :, :, :] = _dPmm_ddeltab[:, None, None]
 
                 # gX (= galaxy cross something) Pk in this case is simply b(z) * Pmm or b(z)^2 * Pmm
-                self.pknlhm_gm[a_idx, :, :] = b1g_3d[a_idx, :, :] * self.pknlhm_mm[a_idx, :, :]
-                self.pknlhm_gg[a_idx, :, :] = b1g_3d[a_idx, :, :]**2 * self.pknlhm_mm[a_idx, :, :]
+                _pknlhm_mm = pklin + i02_mm / norm_prof_m**2
+                self.pknlhm_mm[a_idx, :, :, :] = _pknlhm_mm[:, None, None]
+                self.pknlhm_gm[a_idx, :, :, :] = b1g_4d[a_idx, :, :, :] * self.pknlhm_mm[a_idx, :, :, :]
+                # this is b^2(z)*P_mm(k, z)
+                for zi in range(self.zbins):
+                    for zj in range(self.zbins):
+                        self.pknlhm_gg[a_idx, :, zi, zj] = \
+                            self.pknlhm_mm[a_idx, :, zi, zj]* b1g_3d[a_idx, :, zi] * b1g_3d[a_idx, :, zj] 
 
-                # CCL implementation matches this
-                # dPgm_ddeltab[a_idx, :, :] = dPmm_ddeltab[a_idx, :, :] - b1g[a_idx, :, :] * self.pknlhm_mm[a_idx, :, :]
-                # dPgg_ddeltab[a_idx, :, :] = dPmm_ddeltab[a_idx, :, :] - 2 * b1g[a_idx, :, :] * self.pknlhm_mm[a_idx, :, :]
-                # dPgm_ddeltab[a_idx, :, :] *= b1g[a_idx, :, :]
-                # dPgg_ddeltab[a_idx, :, :] *= b1g[a_idx, :, :]**2
+                # * CCL implementation matches this
+                dPgm_ddeltab[a_idx, :, :, :] = dPmm_ddeltab[a_idx, :, :, :] - b1g_4d[a_idx, :, :, :] * self.pknlhm_mm[a_idx, :, :, :]
+                dPgg_ddeltab[a_idx, :, :, :] = dPmm_ddeltab[a_idx, :, :, :] - 2 * b1g_4d[a_idx, :, :, :] * self.pknlhm_mm[a_idx, :, :, :]
+                dPgm_ddeltab[a_idx, :, :, :] *= b1g_4d[a_idx, :, :, :]
+                for zi in range(self.zbins):
+                    for zj in range(self.zbins):
+                        dPgg_ddeltab[a_idx, :, zi, zj] *= b1g_3d[a_idx, :, zi]* b1g_3d[a_idx, :, zj]
 
-                # or this (it's an equivalent way to write it - mpre intuitive imo)
-                dPgm_ddeltab[a_idx, :, :] = dPmm_ddeltab[a_idx, :, :] * b1g_3d[a_idx, :, :]
-                dPgg_ddeltab[a_idx, :, :] = dPmm_ddeltab[a_idx, :, :] * b1g_3d[a_idx, :, :]**2
-                # subtract counterterms
-                dPgm_ddeltab[a_idx, :, :] -= b1g_3d[a_idx, :, :] * self.pknlhm_gm[a_idx, :, :]
-                dPgg_ddeltab[a_idx, :, :] -= 2 * b1g_3d[a_idx, :, :] * self.pknlhm_gg[a_idx, :, :]
+                # * or this (it's an equivalent way to write it - more intuitive imo)
+                dPgm_ddeltab[a_idx, :, :, :] = dPmm_ddeltab[a_idx, :, :, :] * b1g_4d[a_idx, :, :, :]
+                for zi in range(self.zbins):
+                    for zj in range(self.zbins):
+                        dPgg_ddeltab[a_idx, :, zi, zj] = \
+                            dPmm_ddeltab[a_idx, :, zi, zj] * b1g_3d[a_idx, :, zi] * b1g_3d[a_idx, :, zj]
+                dPgm_ddeltab[a_idx, :, :, :] -= b1g_4d[a_idx, :, :, :] * self.pknlhm_gm[a_idx, :, :, :]
+                dPgg_ddeltab[a_idx, :, :, :] -= 2 * b1g_4d[a_idx, :, :, :] * self.pknlhm_gg[a_idx, :, :, :]
 
             else:
                 raise ValueError("'which_b1g' must be either 'from_HOD' or 'from_input'")
 
         # transpose to have pk(k, z)
-        self.dPmm_ddeltab_hm = dPmm_ddeltab.transpose(1, 0, 2)
-        self.dPgm_ddeltab_hm = dPgm_ddeltab.transpose(1, 0, 2)
-        self.dPgg_ddeltab_hm = dPgg_ddeltab.transpose(1, 0, 2)
-        self.pknlhm_mm = self.pknlhm_mm.transpose(1, 0, 2)
-        self.pknlhm_gm = self.pknlhm_gm.transpose(1, 0, 2)
-        self.pknlhm_gg = self.pknlhm_gg.transpose(1, 0, 2)
+        self.dPmm_ddeltab_hm = dPmm_ddeltab.transpose(1, 0, 2, 3)
+        self.dPgm_ddeltab_hm = dPgm_ddeltab.transpose(1, 0, 2, 3)
+        self.dPgg_ddeltab_hm = dPgg_ddeltab.transpose(1, 0, 2, 3)
+        self.pknlhm_mm = self.pknlhm_mm.transpose(1, 0, 2, 3)
+        self.pknlhm_gm = self.pknlhm_gm.transpose(1, 0, 2, 3)
+        self.pknlhm_gg = self.pknlhm_gg.transpose(1, 0, 2, 3)
 
         self.r1_mm_hm = self.dPmm_ddeltab_hm / self.pknlhm_mm
         self.r1_gm_hm = self.dPgm_ddeltab_hm / self.pknlhm_gm

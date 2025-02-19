@@ -751,57 +751,31 @@ if compute_sb_ssc:
 
         which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
         include_terasawa_terms = cfg['covariance']['include_terasawa_terms']
-        resp_obj.set_hm_resp(k_grid, z_grid_trisp,
-                             which_b1g_in_resp, ccl_obj.gal_bias_func(z_grid_trisp)[:, 0],
-                             include_terasawa_terms=include_terasawa_terms)
-        dPmm_ddeltab = resp_obj.dPmm_ddeltab_hm
-        dPgm_ddeltab = resp_obj.dPgm_ddeltab_hm
-        dPgg_ddeltab = resp_obj.dPgg_ddeltab_hm
-        r_mm = resp_obj.r1_mm_hm
-        r_gm = resp_obj.r1_gm_hm
-        r_gg = resp_obj.r1_gg_hm
-
-        dPmm_ddeltab_1 = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
-        dPgm_ddeltab_1 = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
-        dPgg_ddeltab_1 = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
         gal_bias_2d_trisp = ccl_obj.gal_bias_func(z_grid_trisp)
 
+        dPmm_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
+        dPgm_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
+        dPgg_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
+        # TODO this can be made more efficient - eg by having a "if_bias_equal_all_bins" flag
         for zi in range(zbins):
             for zj in range(zbins):
-                resp_obj.set_hm_resp_bias1d(k_grid, z_grid_trisp,
-                                            which_b1g_in_resp,
-                                            b1g_zi=gal_bias_2d_trisp[:, zi], b1g_zj=gal_bias_2d_trisp[:,  zj],
-                                            include_terasawa_terms=include_terasawa_terms)
-                dPmm_ddeltab_1[:, :, zi, zj] = resp_obj.dPmm_ddeltab_hm
-                dPgm_ddeltab_1[:, :, zi, zj] = resp_obj.dPgm_ddeltab_hm
-                dPgg_ddeltab_1[:, :, zi, zj] = resp_obj.dPgg_ddeltab_hm
+                resp_obj.set_hm_resp(k_grid=k_grid,
+                                     z_grid=z_grid_trisp,
+                                     which_b1g=which_b1g_in_resp,
+                                     b1g_zi=gal_bias_2d_trisp[:, zi],
+                                     b1g_zj=gal_bias_2d_trisp[:, zj],
+                                     include_terasawa_terms=include_terasawa_terms)
+                dPmm_ddeltab[:, :, zi, zj] = resp_obj.dPmm_ddeltab_hm
+                dPgm_ddeltab[:, :, zi, zj] = resp_obj.dPgm_ddeltab_hm
+                dPgg_ddeltab[:, :, zi, zj] = resp_obj.dPgg_ddeltab_hm
                 # TODO check these
-                r_mm_1 = resp_obj.r1_mm_hm
-                r_gm_1 = resp_obj.r1_gm_hm
-                r_gg_1 = resp_obj.r1_gg_hm
-        
-        dPmm_ddeltab_1 = dPmm_ddeltab_1[:, :, 0, 0]
-        dPgm_ddeltab_1 = dPgm_ddeltab_1[:, :, :, 0]
+                r_mm = resp_obj.r1_mm_hm
+                r_gm = resp_obj.r1_gm_hm
+                r_gg = resp_obj.r1_gg_hm
 
-        np.testing.assert_allclose(dPmm_ddeltab, dPmm_ddeltab_1, atol=0, rtol=1e-5)
-        np.testing.assert_allclose(dPgm_ddeltab, dPgm_ddeltab_1[:, :, 0], atol=0, rtol=1e-5)
-        np.testing.assert_allclose(dPgg_ddeltab, dPgg_ddeltab_1[:, :, 0, 0], atol=0, rtol=1e-5)
-        # np.testing.assert_allclose(r_mm, r_mm_1[:, :, 0, 0], atol=0, rtol=1e-5)
-        # np.testing.assert_allclose(r_gm, r_gm_1[:, :, 0, 0], atol=0, rtol=1e-5)
-        # np.testing.assert_allclose(r_gg, r_gg_1[:, :, 0, 0], atol=0, rtol=1e-5)
-
-        if cfg['covariance']['which_b1g_in_resp'] == 'from_HOD':
-            for zi in range(zbins):
-                for zj in range(zbins):
-                    np.testing.assert_allclose(dPmm_ddeltab_1[:, :, 0, 0],
-                                               dPmm_ddeltab_1[:, :, zi, zj], atol=0, rtol=1e-5)
-                    np.testing.assert_allclose(dPgm_ddeltab_1[:, :, 0, 0],
-                                               dPgm_ddeltab_1[:, :, zi, zj], atol=0, rtol=1e-5)
-                    np.testing.assert_allclose(dPgg_ddeltab_1[:, :, 0, 0],
-                                               dPgg_ddeltab_1[:, :, zi, zj], atol=0, rtol=1e-5)
-                    np.testing.assert_allclose(r_mm_1[:, :, 0, 0], r_mm_1[:, :, zi, zj], atol=0, rtol=1e-5)
-                    np.testing.assert_allclose(r_gm_1[:, :, 0, 0], r_gm_1[:, :, zi, zj], atol=0, rtol=1e-5)
-                    np.testing.assert_allclose(r_gg_1[:, :, 0, 0], r_gg_1[:, :, zi, zj], atol=0, rtol=1e-5)
+        # reduce dimensionality
+        dPmm_ddeltab = dPmm_ddeltab[:, :, 0, 0]
+        dPgm_ddeltab = dPgm_ddeltab[:, :, :, 0]
 
     elif cfg['covariance']['which_pk_responses'] == 'separate_universe':
 
@@ -840,50 +814,27 @@ if compute_sb_ssc:
         print(f'Retrying with z_min = {z_grid_test[0]:.3f}')
 
     dPmm_ddeltab_spline = RectBivariateSpline(k_grid, z_grid_trisp, dPmm_ddeltab, kx=3, ky=3)
-    dPgm_ddeltab_spline = RectBivariateSpline(k_grid, z_grid_trisp, dPgm_ddeltab, kx=3, ky=3)
-    dPgg_ddeltab_spline = RectBivariateSpline(k_grid, z_grid_trisp, dPgg_ddeltab, kx=3, ky=3)
-
     dPmm_ddeltab_klimb = np.array([
         dPmm_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
         for ell_val in ell_dict['ell_WL']
     ])
 
-    dPgm_ddeltab_klimb = np.array([
-        dPgm_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
-        for ell_val in ell_dict['ell_XC']
-    ])
-
-    dPgg_ddeltab_klimb = np.array([
-        dPgg_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
-        for ell_val in ell_dict['ell_GC']
-    ])
-
-    dPmm_ddeltab_spline_1 = RectBivariateSpline(k_grid, z_grid_trisp, dPmm_ddeltab_1, kx=3, ky=3)
-    dPmm_ddeltab_klimb_1 = np.array([
-        dPmm_ddeltab_spline_1(k_limber_func(ell_val, z_grid), z_grid, grid=False)
-        for ell_val in ell_dict['ell_WL']
-    ])
-    
-    dPgm_ddeltab_klimb_1 = np.zeros((len(ell_dict['ell_XC']), len(z_grid), zbins))
-    dPgg_ddeltab_klimb_1 = np.zeros((len(ell_dict['ell_GC']), len(z_grid), zbins, zbins))
-    
+    dPgm_ddeltab_klimb = np.zeros((len(ell_dict['ell_XC']), len(z_grid), zbins))
     for zi in range(zbins):
-            dPgm_ddeltab_spline_1 = RectBivariateSpline(k_grid, z_grid_trisp, dPgm_ddeltab_1[:, :, zi], kx=3, ky=3)
-            dPgm_ddeltab_klimb_1[:, :, zi] = np.array([
-                dPgm_ddeltab_spline_1(k_limber_func(ell_val, z_grid), z_grid, grid=False)
-                for ell_val in ell_dict['ell_XC']
-            ])
-    
+        dPgm_ddeltab_spline = RectBivariateSpline(k_grid, z_grid_trisp, dPgm_ddeltab[:, :, zi], kx=3, ky=3)
+        dPgm_ddeltab_klimb[:, :, zi] = np.array([
+            dPgm_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
+            for ell_val in ell_dict['ell_XC']
+        ])
+
+    dPgg_ddeltab_klimb = np.zeros((len(ell_dict['ell_GC']), len(z_grid), zbins, zbins))
     for zi in range(zbins):
         for zj in range(zbins):
-            dPgg_ddeltab_spline_1 = RectBivariateSpline(k_grid, z_grid_trisp, dPgg_ddeltab_1[:, :, zi, zj], kx=3, ky=3)
-            dPgg_ddeltab_klimb_1[:, :, zi, zj] = np.array([
-                dPgg_ddeltab_spline_1(k_limber_func(ell_val, z_grid), z_grid, grid=False)
+            dPgg_ddeltab_spline = RectBivariateSpline(k_grid, z_grid_trisp, dPgg_ddeltab[:, :, zi, zj], kx=3, ky=3)
+            dPgg_ddeltab_klimb[:, :, zi, zj] = np.array([
+                dPgg_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
                 for ell_val in ell_dict['ell_GC']
             ])
-
-
-
 
     # ! integral prefactor
     cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(z_grid,
@@ -895,142 +846,13 @@ if compute_sb_ssc:
     # i, j: zbin index
     d2CLL_dVddeltab = np.einsum('zi,zj,Lz->Lijz', wf_lensing, wf_lensing, dPmm_ddeltab_klimb)
     d2CGL_dVddeltab = \
-        np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_lensing, dPgm_ddeltab_klimb) + \
+        np.einsum('zi,zj,Lzi->Lijz', wf_delta, wf_lensing, dPgm_ddeltab_klimb) + \
         np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_lensing, dPmm_ddeltab_klimb)
     d2CGG_dVddeltab = \
-        np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_delta, dPgg_ddeltab_klimb) + \
-        np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_mu, dPgm_ddeltab_klimb) + \
-        np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_delta, dPgm_ddeltab_klimb) + \
+        np.einsum('zi,zj,Lzij->Lijz', wf_delta, wf_delta, dPgg_ddeltab_klimb) + \
+        np.einsum('zi,zj,Lzi->Lijz', wf_delta, wf_mu, dPgm_ddeltab_klimb) + \
+        np.einsum('zi,zj,Lzj->Lijz', wf_mu, wf_delta, dPgm_ddeltab_klimb) + \
         np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
-
-    d2CLL_dVddeltab_1 = np.einsum('zi,zj,Lz->Lijz', wf_lensing, wf_lensing, dPmm_ddeltab_klimb_1)
-    d2CGL_dVddeltab_1 = \
-        np.einsum('zi,zj,Lzi->Lijz', wf_delta, wf_lensing, dPgm_ddeltab_klimb_1) + \
-        np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_lensing, dPmm_ddeltab_klimb_1)
-    d2CGG_dVddeltab_1 = \
-        np.einsum('zi,zj,Lzij->Lijz', wf_delta, wf_delta, dPgg_ddeltab_klimb_1) + \
-        np.einsum('zi,zj,Lzi->Lijz', wf_delta, wf_mu, dPgm_ddeltab_klimb_1) + \
-        np.einsum('zi,zj,Lzj->Lijz', wf_mu, wf_delta, dPgm_ddeltab_klimb_1) + \
-        np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb_1)
-
-    np.testing.assert_allclose(d2CLL_dVddeltab[:, 0, 0, :], d2CLL_dVddeltab_1[:, 0, 0, :], rtol=1e-10, atol=0)
-    np.testing.assert_allclose(d2CGL_dVddeltab[:, 0, 0, :], d2CGL_dVddeltab_1[:, 0, 0, :], rtol=1e-10, atol=0)
-    np.testing.assert_allclose(d2CGG_dVddeltab[:, 0, 0, :], d2CGG_dVddeltab_1[:, 0, 0, :], rtol=1e-10, atol=0)
-    # np.testing.assert_allclose(d2CLL_dVddeltab, d2CLL_dVddeltab_2, rtol=1e-10, atol=0)
-    # np.testing.assert_allclose(d2CGL_dVddeltab, d2CGL_dVddeltab_2, rtol=1e-10, atol=0)
-    # np.testing.assert_allclose(d2CGG_dVddeltab, d2CGG_dVddeltab_2, rtol=1e-10, atol=0)
-
-    ccl_obj.initialize_trispectrum('SSC', probe_ordering, cfg['PyCCL'])
-
-    resp_obj.set_bg_hm(z_grid_trisp)
-    b1g_hm = resp_obj.b1g_hm
-
-    # # * 1. save ingredients in ascii format
-    oc_path = f'{output_path}/OneCovariance'
-    if not os.path.exists(oc_path):
-        os.makedirs(oc_path)
-
-    nz_src_ascii_filename = cfg['nz']['nz_sources_filename'].replace('.dat', f'_dzshifts{shift_nz}.ascii')
-    nz_lns_ascii_filename = cfg['nz']['nz_lenses_filename'].replace('.dat', f'_dzshifts{shift_nz}.ascii')
-    nz_src_ascii_filename = nz_src_ascii_filename.format(**pvt_cfg)
-    nz_lns_ascii_filename = nz_lns_ascii_filename.format(**pvt_cfg)
-    nz_src_ascii_filename = os.path.basename(nz_src_ascii_filename)
-    nz_lns_ascii_filename = os.path.basename(nz_lns_ascii_filename)
-    nz_src_tosave = np.column_stack((zgrid_nz_src, nz_src))
-    nz_lns_tosave = np.column_stack((zgrid_nz_lns, nz_lns))
-    np.savetxt(f'{oc_path}/{nz_src_ascii_filename}', nz_src_tosave)
-    np.savetxt(f'{oc_path}/{nz_lns_ascii_filename}', nz_lns_tosave)
-
-    # oc needs finer ell sampling to avoid issues with ell bin edges
-    ells_3x2pt_oc = np.geomspace(cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_3x2pt'], nbl_3x2pt_oc)
-    cl_ll_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
-                                      ccl_obj.wf_lensing_obj, ccl_obj.wf_lensing_obj, cl_ccl_kwargs)
-    cl_gl_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
-                                      ccl_obj.wf_galaxy_obj, ccl_obj.wf_lensing_obj, cl_ccl_kwargs)
-    cl_gg_3d_oc = ccl_obj.compute_cls(ells_3x2pt_oc, ccl_obj.p_of_k_a,
-                                      ccl_obj.wf_galaxy_obj, ccl_obj.wf_galaxy_obj, cl_ccl_kwargs)
-    cl_3x2pt_5d_oc = np.zeros((n_probes, n_probes, nbl_3x2pt_oc, zbins, zbins))
-    cl_3x2pt_5d_oc[0, 0, :, :, :] = cl_ll_3d_oc
-    cl_3x2pt_5d_oc[1, 0, :, :, :] = cl_gl_3d_oc
-    cl_3x2pt_5d_oc[0, 1, :, :, :] = cl_gl_3d_oc.transpose(0, 2, 1)
-    cl_3x2pt_5d_oc[1, 1, :, :, :] = cl_gg_3d_oc
-
-    cl_ll_ascii_filename = f'Cell_ll_nbl{nbl_3x2pt_oc}'
-    cl_gl_ascii_filename = f'Cell_gl_nbl{nbl_3x2pt_oc}'
-    cl_gg_ascii_filename = f'Cell_gg_nbl{nbl_3x2pt_oc}'
-    sl.write_cl_ascii(oc_path, cl_ll_ascii_filename, cl_3x2pt_5d_oc[0, 0, ...], ells_3x2pt_oc, zbins)
-    sl.write_cl_ascii(oc_path, cl_gl_ascii_filename, cl_3x2pt_5d_oc[1, 0, ...], ells_3x2pt_oc, zbins)
-    sl.write_cl_ascii(oc_path, cl_gg_ascii_filename, cl_3x2pt_5d_oc[1, 1, ...], ells_3x2pt_oc, zbins)
-
-    ascii_filenames_dict = {
-        'cl_ll_ascii_filename': cl_ll_ascii_filename,
-        'cl_gl_ascii_filename': cl_gl_ascii_filename,
-        'cl_gg_ascii_filename': cl_gg_ascii_filename,
-        'nz_src_ascii_filename': nz_src_ascii_filename,
-        'nz_lns_ascii_filename': nz_lns_ascii_filename,
-    }
-
-    if cfg["covariance"]["which_b1g_in_resp"] == 'from_input':
-        gal_bias_ascii_filename = f'{oc_path}/gal_bias_table.ascii'
-        ccl_obj.save_gal_bias_table_ascii(z_grid, gal_bias_ascii_filename)
-        ascii_filenames_dict['gal_bias_ascii_filename'] = gal_bias_ascii_filename
-    elif cfg["covariance"]["which_b1g_in_resp"] == 'from_HOD':
-        warnings.warn('OneCovariance will use the HOD-derived galaxy bias for the Cls and responses')
-
-    oc_obj = oc_interface.OneCovarianceInterface(cfg, pvt_cfg,
-                                                 do_g=compute_oc_g,
-                                                 do_ssc=compute_oc_ssc,
-                                                 do_cng=compute_oc_cng)
-    oc_obj.oc_path = oc_path
-    oc_obj.z_grid_trisp_sb = z_grid_trisp
-    oc_obj.path_to_config_oc_ini = f'{oc_obj.oc_path}/input_configs.ini'
-    oc_obj.ells_sb = ell_dict['ell_3x2pt']
-    oc_obj.build_save_oc_ini(ascii_filenames_dict, print_ini=True)
-
-    resp_dict_oc, ellspace =  oc_obj.get_oc_responses(f'{oc_obj.oc_path}/input_configs.ini', h)
-
-    zi, zj = 2, 0
-    for probe in ['LL', 'GL', 'GG']:
-
-        if probe == 'LL':
-            key = ('L', 'L', 'L', 'L')
-            dPAB_ddeltab_SB = dPmm_ddeltab
-            dPAB_ddeltab_SB_1 = dPmm_ddeltab_1
-            dPAB_ddeltab_OC = resp_dict_oc['dPmm_ddeltab']        
-        elif probe == 'GL':
-            key = ('G', 'L', 'G', 'L')
-            dPAB_ddeltab_SB = dPgm_ddeltab
-            dPAB_ddeltab_SB_1 = dPgm_ddeltab_1[:, :, zi]
-            dPAB_ddeltab_OC = resp_dict_oc['dPgm_ddeltab'][zi, :, :]        
-        elif probe == 'GG':
-            key = ('G', 'G', 'G', 'G')
-            dPAB_ddeltab_SB = dPgg_ddeltab
-            dPAB_ddeltab_SB_1 = dPgg_ddeltab_1[:, :, zi, zj]
-            dPAB_ddeltab_OC = resp_dict_oc['dPgg_ddeltab'][zi, zj, :, :]        
-
-        a_arr, lk_arr1, lk_arr2, tk_arrays = ccl_obj.tkka_dict[key].get_spline_arrays()
-
-        dPAB_ddeltab_SB_spline = RectBivariateSpline(k_grid, z_grid_trisp, dPAB_ddeltab_SB)
-        dPAB_ddeltab_SB_1_spline = RectBivariateSpline(k_grid, z_grid_trisp, dPAB_ddeltab_SB_1)
-        dPAB_ddeltab_OC_spline = RectBivariateSpline(resp_dict_oc['k_1Mpc'], resp_dict_oc['z'], dPAB_ddeltab_OC)
-        
-        a_ix = -1
-        z_val = cosmo_lib.a_to_z(a_arr[a_ix])
-        dPAB_ddeltab_SB = dPAB_ddeltab_SB_spline(np.exp(lk_arr1), z_val)[:, 0]
-        dPAB_ddeltab_SB_1 = dPAB_ddeltab_SB_1_spline(np.exp(lk_arr1), z_val)[:, 0]
-        dPAB_ddeltab_OC = dPAB_ddeltab_OC_spline(np.exp(lk_arr1), z_val)[:, 0]
-        dPAB_ddeltab_CCL = tk_arrays[0][a_ix, :]
-
-
-        sl.compare_funcs(np.exp(lk_arr1),dPAB_ddeltab_SB,dPAB_ddeltab_OC,
-                         logscale_y=[False, False], logscale_x=True, ylim_diff=(-20, 20), 
-                         title=f'{probe} SB {cfg["covariance"]["which_b1g_in_resp"]}')
-        sl.compare_funcs(np.exp(lk_arr1),dPAB_ddeltab_SB_1,dPAB_ddeltab_OC,
-                         logscale_y=[False, False], logscale_x=True, ylim_diff=(-20, 20), 
-                         title=f'{probe} SB 1 {cfg["covariance"]["which_b1g_in_resp"]}')
-
-
-    assert False, 'stop here'
 
     # ! 3. Compute/load/save sigma2_b
     if cfg['covariance']['load_cached_sigma2_b']:

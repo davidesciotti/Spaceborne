@@ -31,8 +31,8 @@ from spaceborne import responses
 from spaceborne import covariance as sb_cov
 
 # Get the current script's directory
-current_dir = Path(__file__).resolve().parent
-parent_dir = current_dir.parent
+# current_dir = Path(__file__).resolve().parent
+# parent_dir = current_dir.parent
 
 warnings.filterwarnings(
     "ignore",
@@ -389,6 +389,7 @@ if cfg['C_ell']['which_gal_bias'] == 'from_input':
         input_tab=gal_bias_input, z_grid_out=z_grid, zbins=zbins)
     ccl_obj.gal_bias_tuple = (z_grid, ccl_obj.gal_bias_2d)
 
+
 # TODO the alternative should be the HOD gal bias already set in the responses class!!
 elif cfg['C_ell']['which_gal_bias'] == 'FS2_polynomial_fit':
     ccl_obj.set_gal_bias_tuple_spv3(z_grid_lns=z_grid,
@@ -411,6 +412,13 @@ if cfg['C_ell']['has_magnification_bias']:
         raise ValueError('which_mag_bias should be "from_input" or "FS2_polynomial_fit"')
 else:
     ccl_obj.mag_bias_tuple = None
+
+plt.figure()
+for zi in range(zbins):
+    plt.plot(z_grid, ccl_obj.gal_bias_2d[:, zi], label=r'$z_{%d}$' % zi)
+plt.xlabel(r'$z$')
+plt.ylabel(r'$b_{g}(z)$')
+plt.legend()
 
 
 # ! set radial kernel arrays and objects
@@ -485,7 +493,7 @@ gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias)'
 ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 
 # convenience variables
-wf_delta = ccl_obj.wf_delta_arr
+wf_delta = ccl_obj.wf_delta_arr  # no bias here either, of course!
 wf_gamma = ccl_obj.wf_gamma_arr
 wf_ia = ccl_obj.wf_ia_arr
 wf_mu = ccl_obj.wf_mu_arr
@@ -764,22 +772,25 @@ if compute_sb_ssc:
         r_gm_2 = resp_obj.r1_gm_hm
         r_gg_2 = resp_obj.r1_gg_hm
 
-        np.testing.assert_allclose(dPmm_ddeltab, dPmm_ddeltab_2[:, :, 0], atol=0, rtol=1e-5)
-        np.testing.assert_allclose(dPgm_ddeltab, dPgm_ddeltab_2[:, :, 0], atol=0, rtol=1e-5)
-        np.testing.assert_allclose(dPgg_ddeltab, dPgg_ddeltab_2[:, :, 0], atol=0, rtol=1e-5)
-        np.testing.assert_allclose(r_mm, r_mm_2[:, :, 0], atol=0, rtol=1e-5)
-        np.testing.assert_allclose(r_gm, r_gm_2[:, :, 0], atol=0, rtol=1e-5)
-        np.testing.assert_allclose(r_gg, r_gg_2[:, :, 0], atol=0, rtol=1e-5)
+        np.testing.assert_allclose(dPmm_ddeltab, dPmm_ddeltab_2[:, :, 0, 0], atol=0, rtol=1e-5)
+        np.testing.assert_allclose(dPgm_ddeltab, dPgm_ddeltab_2[:, :, 0, 0], atol=0, rtol=1e-5)
+        np.testing.assert_allclose(dPgg_ddeltab, dPgg_ddeltab_2[:, :, 0, 0], atol=0, rtol=1e-5)
+        np.testing.assert_allclose(r_mm, r_mm_2[:, :, 0, 0], atol=0, rtol=1e-5)
+        np.testing.assert_allclose(r_gm, r_gm_2[:, :, 0, 0], atol=0, rtol=1e-5)
+        np.testing.assert_allclose(r_gg, r_gg_2[:, :, 0, 0], atol=0, rtol=1e-5)
 
-        for zi in range(zbins):
-            np.testing.assert_allclose(dPmm_ddeltab_2[:, :, 0], dPmm_ddeltab_2[:, :, zi], atol=0, rtol=1e-5)
-            np.testing.assert_allclose(dPgm_ddeltab_2[:, :, 0], dPgm_ddeltab_2[:, :, zi], atol=0, rtol=1e-5)
-            np.testing.assert_allclose(dPgg_ddeltab_2[:, :, 0], dPgg_ddeltab_2[:, :, zi], atol=0, rtol=1e-5)
-            np.testing.assert_allclose(r_mm_2[:, :, 0], r_mm_2[:, :, zi], atol=0, rtol=1e-5)
-            np.testing.assert_allclose(r_gm_2[:, :, 0], r_gm_2[:, :, zi], atol=0, rtol=1e-5)
-            np.testing.assert_allclose(r_gg_2[:, :, 0], r_gg_2[:, :, zi], atol=0, rtol=1e-5)
-
-        assert False, 'tests successful, stop here'
+        if cfg['covariance']['which_b1g_in_resp'] == 'from_HOD':
+            for zi in range(zbins):
+                for zj in range(zbins):
+                    np.testing.assert_allclose(dPmm_ddeltab_2[:, :, 0, 0],
+                                               dPmm_ddeltab_2[:, :, zi, zj], atol=0, rtol=1e-5)
+                    np.testing.assert_allclose(dPgm_ddeltab_2[:, :, 0, 0],
+                                               dPgm_ddeltab_2[:, :, zi, zj], atol=0, rtol=1e-5)
+                    np.testing.assert_allclose(dPgg_ddeltab_2[:, :, 0, 0],
+                                               dPgg_ddeltab_2[:, :, zi, zj], atol=0, rtol=1e-5)
+                    np.testing.assert_allclose(r_mm_2[:, :, 0, 0], r_mm_2[:, :, zi, zj], atol=0, rtol=1e-5)
+                    np.testing.assert_allclose(r_gm_2[:, :, 0, 0], r_gm_2[:, :, zi, zj], atol=0, rtol=1e-5)
+                    np.testing.assert_allclose(r_gg_2[:, :, 0, 0], r_gg_2[:, :, zi, zj], atol=0, rtol=1e-5)
 
     elif cfg['covariance']['which_pk_responses'] == 'separate_universe':
 
@@ -817,12 +828,10 @@ if compute_sb_ssc:
             ell_grid, z_grid_test, use_h_units, ccl_obj.cosmo_ccl)
         print(f'Retrying with z_min = {z_grid_test[0]:.3f}')
 
-    # Step 1: Define the splines
     dPmm_ddeltab_spline = RectBivariateSpline(k_grid, z_grid_trisp, dPmm_ddeltab, kx=3, ky=3)
     dPgm_ddeltab_spline = RectBivariateSpline(k_grid, z_grid_trisp, dPgm_ddeltab, kx=3, ky=3)
     dPgg_ddeltab_spline = RectBivariateSpline(k_grid, z_grid_trisp, dPgg_ddeltab, kx=3, ky=3)
 
-    # Step 3: Evaluate using the spline
     dPmm_ddeltab_klimb = np.array([
         dPmm_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
         for ell_val in ell_dict['ell_WL']
@@ -837,6 +846,30 @@ if compute_sb_ssc:
         dPgg_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
         for ell_val in ell_dict['ell_GC']
     ])
+
+    dPmm_ddeltab_klimb_2 = np.zeros((nbl_WL, len(z_grid), zbins, zbins))
+    dPgm_ddeltab_klimb_2 = np.zeros((len(ell_dict['ell_XC']), len(z_grid), zbins, zbins))
+    dPgg_ddeltab_klimb_2 = np.zeros((nbl_GC, len(z_grid), zbins, zbins))
+    for zi in range(zbins):
+        for zj in range(zbins):
+            dPmm_ddeltab_spline_2 = RectBivariateSpline(k_grid, z_grid_trisp, dPmm_ddeltab_2[:, :, zi, zj], kx=3, ky=3)
+            dPgm_ddeltab_spline_2 = RectBivariateSpline(k_grid, z_grid_trisp, dPgm_ddeltab_2[:, :, zi, zj], kx=3, ky=3)
+            dPgg_ddeltab_spline_2 = RectBivariateSpline(k_grid, z_grid_trisp, dPgg_ddeltab_2[:, :, zi, zj], kx=3, ky=3)
+
+            dPmm_ddeltab_klimb_2[:, :, zi, zj] = np.array([
+                dPmm_ddeltab_spline_2(k_limber_func(ell_val, z_grid), z_grid, grid=False)
+                for ell_val in ell_dict['ell_WL']
+            ])
+
+            dPgm_ddeltab_klimb_2[:, :, zi, zj] = np.array([
+                dPgm_ddeltab_spline_2(k_limber_func(ell_val, z_grid), z_grid, grid=False)
+                for ell_val in ell_dict['ell_XC']
+            ])
+
+            dPgg_ddeltab_klimb_2[:, :, zi, zj] = np.array([
+                dPgg_ddeltab_spline_2(k_limber_func(ell_val, z_grid), z_grid, grid=False)
+                for ell_val in ell_dict['ell_GC']
+            ])
 
     # ! integral prefactor
     cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(z_grid,
@@ -855,6 +888,62 @@ if compute_sb_ssc:
         np.einsum('zi,zj,Lz->Lijz', wf_delta, wf_mu, dPgm_ddeltab_klimb) + \
         np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_delta, dPgm_ddeltab_klimb) + \
         np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
+
+    dPgm_ddeltab_klimb_2 = dPgm_ddeltab_klimb_2[:, :, :, 0]
+    d2CLL_dVddeltab_2 = np.einsum('zi,zj,Lzij->Lijz', wf_lensing, wf_lensing, dPmm_ddeltab_klimb_2)
+    d2CGL_dVddeltab_2 = \
+        np.einsum('zi,zj,Lzi->Lijz', wf_delta, wf_lensing, dPgm_ddeltab_klimb_2) + \
+        np.einsum('zi,zj,Lzij->Lijz', wf_mu, wf_lensing, dPmm_ddeltab_klimb_2)
+    d2CGG_dVddeltab_2 = \
+        np.einsum('zi,zj,Lzij->Lijz', wf_delta, wf_delta, dPgg_ddeltab_klimb_2) + \
+        np.einsum('zi,zj,Lzi->Lijz', wf_delta, wf_mu, dPgm_ddeltab_klimb_2) + \
+        np.einsum('zi,zj,Lzj->Lijz', wf_mu, wf_delta, dPgm_ddeltab_klimb_2) + \
+        np.einsum('zi,zj,Lzij->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb_2)
+
+    np.testing.assert_allclose(d2CLL_dVddeltab[:, 0, 0, :], d2CLL_dVddeltab_2[:, 0, 0, :], rtol=1e-10, atol=0)
+    np.testing.assert_allclose(d2CGL_dVddeltab[:, 0, 0, :], d2CGL_dVddeltab_2[:, 0, 0, :], rtol=1e-10, atol=0)
+    np.testing.assert_allclose(d2CGG_dVddeltab[:, 0, 0, :], d2CGG_dVddeltab_2[:, 0, 0, :], rtol=1e-10, atol=0)
+    np.testing.assert_allclose(d2CLL_dVddeltab, d2CLL_dVddeltab_2, rtol=1e-10, atol=0)
+    np.testing.assert_allclose(d2CGL_dVddeltab, d2CGL_dVddeltab_2, rtol=1e-10, atol=0)
+    np.testing.assert_allclose(d2CGG_dVddeltab, d2CGG_dVddeltab_2, rtol=1e-10, atol=0)
+
+    ccl_obj.initialize_trispectrum('SSC', probe_ordering, cfg['PyCCL'])
+
+    for probe in ['LL', 'GL', 'GG']:
+
+        if probe == 'LL':
+            key = ('L', 'L', 'L', 'L')
+            dPAB_ddeltab_SB = dPmm_ddeltab
+            dPAB_ddeltab_SB_2 = dPmm_ddeltab_2[:, :, 0, 0]
+        elif probe == 'GL':
+            key = ('G', 'L', 'G', 'L')
+            dPAB_ddeltab_SB = dPgm_ddeltab
+            dPAB_ddeltab_SB_2 = dPgm_ddeltab_2[:, :, 0, 0]
+        elif probe == 'GG':
+            key = ('G', 'G', 'G', 'G')
+            dPAB_ddeltab_SB = dPgg_ddeltab
+            dPAB_ddeltab_SB_2 = dPgg_ddeltab_2[:, :, 0, 0]
+
+        a_arr, lk_arr1, lk_arr2, tk_arrays = ccl_obj.tkka_dict[key].get_spline_arrays()
+
+        dPAB_ddeltab_SB_spline = RectBivariateSpline(k_grid, z_grid_trisp, dPAB_ddeltab_SB)
+        dPAB_ddeltab_SB_2_spline = RectBivariateSpline(k_grid, z_grid_trisp, dPAB_ddeltab_SB_2)
+
+        a_ix = -1
+        z_val = cosmo_lib.a_to_z(a_arr[a_ix])
+        dPAB_ddeltab_SB = dPAB_ddeltab_SB_spline(np.exp(lk_arr1), z_val)[:, 0]
+        dPAB_ddeltab_SB_2 = dPAB_ddeltab_SB_2_spline(np.exp(lk_arr1), z_val)[:, 0]
+        dPAB_ddeltab_CCL = tk_arrays[0][a_ix, :]
+
+        sl.compare_funcs(np.exp(lk_arr1), np.abs(dPAB_ddeltab_SB), np.abs(dPAB_ddeltab_CCL),
+                         logscale_y=[True, False], logscale_x=True, ylim_diff=(-20, 20), 
+                         title=f'{probe} {cfg["covariance"]["which_b1g_in_resp"]}')
+        sl.compare_funcs(np.exp(lk_arr1), np.abs(dPAB_ddeltab_SB_2), np.abs(dPAB_ddeltab_CCL),
+                         logscale_y=[True, False], logscale_x=True, ylim_diff=(-20, 20), 
+                         title=f'{probe} {cfg["covariance"]["which_b1g_in_resp"]}')
+
+
+    assert False, 'stop here'
 
     # ! 3. Compute/load/save sigma2_b
     if cfg['covariance']['load_cached_sigma2_b']:

@@ -236,7 +236,7 @@ class SpaceborneResponses():
         self.r1_gm = self.dPgm_ddeltab / self.pk_gm
         self.r1_gg = self.dPgg_ddeltab / self.pk_gg
 
-    def set_hm_resp(self, k_grid, z_grid, which_b1g, b1g, include_terasawa_terms):
+    def set_hm_resp(self, k_grid, z_grid, which_b1g, b1g_zi, b1g_zj, include_terasawa_terms):
         """
         Compute the power spectra response terms from the halo model.
 
@@ -291,8 +291,8 @@ class SpaceborneResponses():
 
         # perform some checks on the input shapes
         assert which_b1g in ['from_HOD', 'from_input'], '"which_b1g" must be either "from_HOD" or "from_input"'
-        if which_b1g == 'from_input':
-            assert b1g.shape[0] == len(z_grid), 'b1g must have the same shape as z_grid'
+        for b1g in [b1g_zi, b1g_zj]:
+            assert len(b1g) == len(z_grid), 'b1g must have the same shape as z_grid'
             assert b1g.ndim == 1, "b1g must be a 1D array"
 
         pk2d = self.ccl_obj.cosmo_ccl.parse_pk(None)
@@ -353,11 +353,11 @@ class SpaceborneResponses():
 
                 # Super-sample covariance response terms
                 dPmm_ddeltab[a_idx] = ((47 / 21 + trsw_mm - dpklin / 3) * i11_m * i11_m *
-                                    pklin + i12_mm) / (norm_prof_m * norm_prof_m)
+                                       pklin + i12_mm) / (norm_prof_m * norm_prof_m)
                 dPgm_ddeltab[a_idx] = ((47 / 21 + trsw_gm - dpklin / 3) * i11_g * i11_m *
-                                    pklin + i12_gm) / (norm_prof_g * norm_prof_m)
+                                       pklin + i12_gm) / (norm_prof_g * norm_prof_m)
                 dPgg_ddeltab[a_idx] = ((47 / 21 + trsw_gg - dpklin / 3) * i11_g * i11_g *
-                                    pklin + i12_gg) / (norm_prof_g * norm_prof_g)
+                                       pklin + i12_gg) / (norm_prof_g * norm_prof_g)
 
                 # gX (= galaxy cross something) Pk are computed with the halo model in this case; remember that
                 # halo morel nonlin P(k) = P1h + P2h = I^0_2(k, k) + (I^1_1)^2 * P_lin(k)
@@ -366,10 +366,10 @@ class SpaceborneResponses():
                 self.pknlhm_gg[a_idx] = (pklin * i11_g * i11_g + i02_gg) / (norm_prof_g * norm_prof_g)
 
                 # compute and subtract counterterms
-                b1g = i11_g / norm_prof_g  # this is the same as self.b1g_hm
+                # this is the same as self.b1g_hm; in this case, there is a single b(z) function
+                b1g = i11_g / norm_prof_g
                 counter_gm = b1g * self.pknlhm_gm[a_idx]
                 counter_gg = 2 * b1g * self.pknlhm_gg[a_idx]
-
                 dPgm_ddeltab[a_idx] -= counter_gm
                 dPgg_ddeltab[a_idx] -= counter_gg
 
@@ -384,7 +384,7 @@ class SpaceborneResponses():
                 # counter_gg = 2 * b1g[a_idx] * self.pknlhm_gg[a_idx]
                 # dPgm_ddeltab[a_idx] -= counter_gm
                 # dPgg_ddeltab[a_idx] -= counter_gg
-                
+
                 # ! note that in this case also the mm term (both dPmm_ddeltab and pknlhm_mm) is computed
                 # ! in CCL in a slightly different way
                 # TODO are terasawa terms implemented correctly in this case?
@@ -392,20 +392,20 @@ class SpaceborneResponses():
 
                 # gX (= galaxy cross something) Pk in this case is simply b(z) * Pmm or b(z)^2 * Pmm
                 self.pknlhm_mm[a_idx] = pklin + i02_mm / norm_prof_m**2
-                self.pknlhm_gm[a_idx] = b1g[a_idx] * self.pknlhm_mm[a_idx]
-                self.pknlhm_gg[a_idx] = b1g[a_idx]**2 * self.pknlhm_mm[a_idx]
+                self.pknlhm_gm[a_idx] = b1g_zi[a_idx] * self.pknlhm_mm[a_idx]
+                self.pknlhm_gg[a_idx] = b1g_zi[a_idx] * b1g_zj[a_idx] * self.pknlhm_mm[a_idx]
 
                 # * CCL implementation matches this
-                # dPgm_ddeltab[a_idx] = dPmm_ddeltab[a_idx] - b1g[a_idx] * self.pknlhm_mm[a_idx]
-                # dPgg_ddeltab[a_idx] = dPmm_ddeltab[a_idx] - 2 * b1g[a_idx] * self.pknlhm_mm[a_idx]
-                # dPgm_ddeltab[a_idx] *= b1g[a_idx]
-                # dPgg_ddeltab[a_idx] *= b1g[a_idx]**2
+                # dPgm_ddeltab[a_idx] = dPmm_ddeltab[a_idx] - b1g_zi[a_idx] * self.pknlhm_mm[a_idx]
+                # dPgg_ddeltab[a_idx] = dPmm_ddeltab[a_idx] - (b1g_zi[a_idx] + b1g_zj[a_idx]) * self.pknlhm_mm[a_idx]
+                # dPgm_ddeltab[a_idx] *= b1g_zi[a_idx]
+                # dPgg_ddeltab[a_idx] *= b1g_zi[a_idx] * b1g_zj[a_idx]
 
                 # * or this (it's an equivalent way to write it - more intuitive imo)
-                dPgm_ddeltab[a_idx] = dPmm_ddeltab[a_idx] * b1g[a_idx]
-                dPgg_ddeltab[a_idx] = dPmm_ddeltab[a_idx] * b1g[a_idx]**2
-                dPgm_ddeltab[a_idx] -= b1g[a_idx] * self.pknlhm_gm[a_idx]
-                dPgg_ddeltab[a_idx] -= 2 * b1g[a_idx] * self.pknlhm_gg[a_idx]
+                dPgm_ddeltab[a_idx] = dPmm_ddeltab[a_idx] * b1g_zi[a_idx]
+                dPgg_ddeltab[a_idx] = dPmm_ddeltab[a_idx] * b1g_zi[a_idx] * b1g_zj[a_idx]
+                dPgm_ddeltab[a_idx] -= b1g_zi[a_idx] * self.pknlhm_gm[a_idx]
+                dPgg_ddeltab[a_idx] -= (b1g_zi[a_idx] + b1g_zj[a_idx]) * self.pknlhm_gg[a_idx]
 
             else:
                 raise ValueError("'which_b1g' must be either 'from_HOD' or 'from_input'")

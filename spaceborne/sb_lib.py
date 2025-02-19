@@ -133,10 +133,10 @@ def compare_funcs(x, y_a, y_b, name_a='A', name_b='B', logscale_y=[False, False]
     if logscale_x:
         for i in range(2):
             ax[i].set_xscale('log')
-            
+
     if ylim_diff is not None:
         ax[1].set_ylim(ylim_diff)
-            
+
     if title is not None:
         fig.suptitle(title)
 

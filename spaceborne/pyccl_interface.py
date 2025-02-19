@@ -342,7 +342,8 @@ class PycclClass():
 
                     self.tkka_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
                                                            hmc=self.hmc,
-                                                           extrap_order_lok=1, extrap_order_hik=1,
+                                                           extrap_order_lok=1, 
+                                                           extrap_order_hik=1,
                                                            use_log=False,
                                                            p_of_k_a=p_of_k_a,
                                                            **additional_args)

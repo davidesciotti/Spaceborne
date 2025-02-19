@@ -44,7 +44,7 @@ halo_model:
     halo_profile_hod: HaloProfileHOD # Type: str
 
 C_ell:
-    which_gal_bias: "FS2_polynomial_fit" # Type: str. Options: ['from_input', 'FS2_polynomial_fit']
+    which_gal_bias: "from_input" # Type: str. Options: ['from_input', 'FS2_polynomial_fit']
     which_mag_bias: "FS2_polynomial_fit" # Type: str. Options: ['from_input', 'FS2_polynomial_fit']
     
     # coefficients for the polynomial galaxy and magnification bias fits to FS2.
@@ -178,16 +178,18 @@ covariance:
 
     which_pk_responses: halo_model # Type: str. Options: ['halo_model', 'separate_universe']
 
-    which_b1g_in_resp: from_HOD # Type: str. Options: ['from_HOD', 'from_input']
+    which_b1g_in_resp: from_input # Type: str. Options: ['from_HOD', 'from_input']
     # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
     # Can be one of:
     # - 'from_HOD' (from the Halo Occupation Distribution previously initialized)
     # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB
+    # TODO probably the FS2 fit option can be deleted altogether
+    # TODO use the HOD bias in the whole code!!
 
     include_b2g: True # Type: bool
     # Whether or not to include the second-order galaxy bias in the GCph SU responses
     
-    include_terasawa_terms: True # Type: bool
+    include_terasawa_terms: False # Type: bool
     # Whether or not to include the additional terms of Terasawa et al [arXiv:2310.13330] in the halo model responses
 
     load_cached_sigma2_b: False # Type: bool. Whether to load the previously computed sigma2_b.
@@ -243,5 +245,5 @@ misc:
     test_symmetry: True # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
     output_path: ./output # Type: str
-    save_output_as_benchmark: True # Type: bool. For testing purposes
+    save_output_as_benchmark: False # Type: bool. For testing purposes
     bench_filename: ../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_moreoutputs_dict # Type: str. For testing purposes

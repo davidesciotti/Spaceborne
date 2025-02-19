@@ -65,11 +65,6 @@ def test_main_script(test_cfg_path):
                 except AssertionError as err:
                     print(err)
                     
-    #         if key == 'cov_3x2pt_ssc_2D':
-    #             sl.compare_arrays(bench_data[key], test_data[key], plot_diff_hist=True, plot_diff_threshold=5)
-    #             sl.compare_funcs(None, bench_data[key].flatten(), test_data[key].flatten(), logscale_y=[False, False])
-                
-    # assert False
                 
 
 
@@ -81,7 +76,7 @@ bench_names = glob.glob(f'{bench_path}/*.npz')
 bench_names = [os.path.basename(file) for file in bench_names]
 bench_names = [bench_name.replace('.npz', '') for bench_name in bench_names]
 # ... or run specific tests
-bench_names = ['output_GSpaceborne_SSCSpaceborne_cNGNone_KETrue_resphalo_model_b1gfrom_HOD_moreoutputs_dict', ]
+bench_names = ['output_GSpaceborne_SSCSpaceborne_cNGNone_KETrue_resphalo_model_b1gfrom_input_biascheck', ]
 
 main_script_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/main.py'
 temp_output_filename = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/tmp/test_file'

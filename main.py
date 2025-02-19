@@ -398,6 +398,12 @@ elif cfg['C_ell']['which_gal_bias'] == 'FS2_polynomial_fit':
 else:
     raise ValueError('which_gal_bias should be "from_input" or "FS2_polynomial_fit"')
 
+if np.all([np.allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi]) for zi in range(zbins)]):
+    single_b_of_z = True
+else:
+    single_b_of_z = False
+
+
 if cfg['C_ell']['has_magnification_bias']:
     if cfg['C_ell']['which_mag_bias'] == 'from_input':
         mag_bias_input = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
@@ -735,13 +741,6 @@ if compute_sb_ssc:
 
     print('Start SSC computation with Spaceborne...')
 
-    # assert False, 'stop here'
-    # precompute pk_mm, pk_gm and pk_mm, in case you want to rescale the responses to get R_mm, R_gm, R_gg
-    # k_array, pk_mm_2d = cosmo_lib.pk_from_ccl(k_grid, z_grid_trisp, use_h_units,
-    #   ccl_obj.cosmo_ccl, pk_kind='nonlinear')
-    # pk_gm_2d = pk_mm_2d * gal_bias
-    # pk_gg_2d = pk_mm_2d * gal_bias ** 2
-
     resp_obj = responses.SpaceborneResponses(cfg=cfg, k_grid=k_grid,
                                              z_grid=z_grid_trisp,
                                              ccl_obj=ccl_obj)
@@ -752,26 +751,49 @@ if compute_sb_ssc:
         which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
         include_terasawa_terms = cfg['covariance']['include_terasawa_terms']
         gal_bias_2d_trisp = ccl_obj.gal_bias_func(z_grid_trisp)
+        if gal_bias_2d_trisp.ndim == 1:
+            assert single_b_of_z, "Galaxy bias should be a single function of redshift for all bins, "
+            "there seems to be some inconsistency"
+            gal_bias_2d_trisp = np.tile(gal_bias_2d_trisp[:, None], zbins)
 
         dPmm_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
         dPgm_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
         dPgg_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
         # TODO this can be made more efficient - eg by having a "if_bias_equal_all_bins" flag
-        for zi in range(zbins):
-            for zj in range(zbins):
-                resp_obj.set_hm_resp(k_grid=k_grid,
-                                     z_grid=z_grid_trisp,
-                                     which_b1g=which_b1g_in_resp,
-                                     b1g_zi=gal_bias_2d_trisp[:, zi],
-                                     b1g_zj=gal_bias_2d_trisp[:, zj],
-                                     include_terasawa_terms=include_terasawa_terms)
-                dPmm_ddeltab[:, :, zi, zj] = resp_obj.dPmm_ddeltab_hm
-                dPgm_ddeltab[:, :, zi, zj] = resp_obj.dPgm_ddeltab_hm
-                dPgg_ddeltab[:, :, zi, zj] = resp_obj.dPgg_ddeltab_hm
-                # TODO check these
-                r_mm = resp_obj.r1_mm_hm
-                r_gm = resp_obj.r1_gm_hm
-                r_gg = resp_obj.r1_gg_hm
+        
+        if single_b_of_z:
+            resp_obj.set_hm_resp(k_grid=k_grid,
+                        z_grid=z_grid_trisp,
+                        which_b1g=which_b1g_in_resp,
+                        b1g_zi=gal_bias_2d_trisp[:, 0],
+                        b1g_zj=gal_bias_2d_trisp[:, 0],
+                        include_terasawa_terms=include_terasawa_terms)
+            for zi in range(zbins):
+                for zj in range(zbins):
+                    dPmm_ddeltab[:, :, zi, zj] = resp_obj.dPmm_ddeltab_hm
+                    dPgm_ddeltab[:, :, zi, zj] = resp_obj.dPgm_ddeltab_hm
+                    dPgg_ddeltab[:, :, zi, zj] = resp_obj.dPgg_ddeltab_hm
+                    # TODO check these
+                    r_mm = resp_obj.r1_mm_hm
+                    r_gm = resp_obj.r1_gm_hm
+                    r_gg = resp_obj.r1_gg_hm
+            
+        else:
+            for zi in range(zbins):
+                for zj in range(zbins):
+                    resp_obj.set_hm_resp(k_grid=k_grid,
+                                        z_grid=z_grid_trisp,
+                                        which_b1g=which_b1g_in_resp,
+                                        b1g_zi=gal_bias_2d_trisp[:, zi],
+                                        b1g_zj=gal_bias_2d_trisp[:, zj],
+                                        include_terasawa_terms=include_terasawa_terms)
+                    dPmm_ddeltab[:, :, zi, zj] = resp_obj.dPmm_ddeltab_hm
+                    dPgm_ddeltab[:, :, zi, zj] = resp_obj.dPgm_ddeltab_hm
+                    dPgg_ddeltab[:, :, zi, zj] = resp_obj.dPgg_ddeltab_hm
+                    # TODO check these
+                    r_mm = resp_obj.r1_mm_hm
+                    r_gm = resp_obj.r1_gm_hm
+                    r_gg = resp_obj.r1_gg_hm
 
         # reduce dimensionality
         dPmm_ddeltab = dPmm_ddeltab[:, :, 0, 0]

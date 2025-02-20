@@ -1,4 +1,5 @@
 from copy import deepcopy
+import itertools
 import re
 import warnings
 import numpy as np
@@ -117,47 +118,26 @@ def cov_g_mix_real(thetal_i, thetau_i, mu, thetal_j, thetau_j, nu, ell_values,
         return prefac
 
     # TODO generalize to different survey areas (max(Aij, Akl))
-    # prefac = \
-    #     get_delta_tomo(probe_b_ix, probe_d_ix)[zj, zl] * \
-    #     t_mix(probe_b_ix, zbins, sigma_eps_i)[zj] /\
-    #     (2 * np.pi * n_eff_2d[probe_b_ix, zj] * deg2toarcmin2 *
-    #      np.max((survey_area_sr, survey_area_sr)))
+    # TODO sigma_eps_i should be a vector of length zbins
     prefac = get_prefac(probe_b_ix, probe_d_ix, zj, zl)
     integrand = integrand_func(ell_values, cl_5d[probe_a_ix, probe_c_ix, :, zi, zk])
     integral = simps(y=integrand, x=ell_values)
     addendum_1 = prefac * integral
 
-    # *
-
-    # prefac = \
-    #     get_delta_tomo(probe_c_ix, probe_a_ix)[zk, zi] * \
-    #     t_mix(probe_c_ix, zbins, sigma_eps_i)[zk] /\
-    #     (2 * np.pi * n_eff_2d[probe_c_ix, zk] * deg2toarcmin2 *
-    #      np.max((survey_area_sr, survey_area_sr)))
+    # leverage simmetry to optimize the computation?
+    # if zi == zj == zk == zl:
+    #     return 2 * addendum_1
+    
     prefac = get_prefac(probe_c_ix, probe_a_ix, zk, zi)
     integrand = integrand_func(ell_values, cl_5d[probe_b_ix, probe_d_ix, :, zj, zl])
     integral = simps(y=integrand, x=ell_values)
     addendum_2 = prefac * integral
 
-    # *
-
-    # prefac = \
-    #     get_delta_tomo(probe_d_ix, probe_b_ix)[zl, zj] * \
-    #     t_mix(probe_d_ix, zbins, sigma_eps_i)[zl] /\
-    #     (2 * np.pi * n_eff_2d[probe_d_ix, zl] * deg2toarcmin2 *
-    #      np.max((survey_area_sr, survey_area_sr)))
     prefac = get_prefac(probe_d_ix, probe_b_ix, zl, zj)
     integrand = integrand_func(ell_values, cl_5d[probe_c_ix, probe_a_ix, :, zk, zi])
     integral = simps(y=integrand, x=ell_values)
     addendum_3 = prefac * integral
 
-    # *
-
-    # prefac = \
-    #     get_delta_tomo(probe_a_ix, probe_c_ix)[zi, zk] * \
-    #     t_mix(probe_a_ix, zbins, sigma_eps_i)[zi] /\
-    #     (2 * np.pi * n_eff_2d[probe_a_ix, zi] * deg2toarcmin2 *
-    #      np.max((survey_area_sr, survey_area_sr)))
     prefac = get_prefac(probe_a_ix, probe_c_ix, zi, zk)
     integrand = integrand_func(ell_values, cl_5d[probe_d_ix, probe_b_ix, :, zl, zj])
     integral = simps(y=integrand, x=ell_values)
@@ -305,7 +285,7 @@ deg2torad2 = (180 / np.pi)**2
 srtoarcmin2 = (180 / np.pi * 60)**2
 survey_area_sr = survey_area_deg2 / deg2torad2
 
-ell_min = 2
+ell_min = 1
 ell_max = 100_000
 nbl = 500
 theta_min_arcmin = 50
@@ -324,9 +304,10 @@ sigma_eps_i = np.array([0.26, 0.26, 0.26])
 sigma_eps_tot = sigma_eps_i * np.sqrt(2)
 munu_vals = (0, 2, 4)
 
-probe = 'gggg'
-probe_a_str, probe_b_str = split_probe_name(probe)
+term = 'mix'
+probe = 'gmxip'
 
+probe_a_str, probe_b_str = split_probe_name(probe)
 
 probe_idx_dict = {
     'xipxip': (0, 0, 0, 0),  # * SVA 1% ok; SN 0.1% ok; MIX 100% for cross-zpair
@@ -446,84 +427,82 @@ cov_sb_sva_6d = np.zeros((theta_bins, theta_bins, zbins, zbins, zbins, zbins))
 cov_sb_sn_6d = np.zeros((theta_bins, theta_bins, zbins, zbins, zbins, zbins))
 cov_sb_mix_6d = np.zeros((theta_bins, theta_bins, zbins, zbins, zbins, zbins))
 
-print('Computing real-space Gaussian SVA covariance...')
-start = time.time()
-results = Parallel(n_jobs=-1)(delayed(cov_g_sva_real_helper)(theta_1, theta_2, zi, zj, zk, zl,
-                                                             mu, nu, cl_5d,
-                                                             probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                                                             )
-                              for theta_1 in tqdm(range(theta_bins))
-                              for theta_2 in range(theta_bins)
-                              for zi in range(zbins)
-                              for zj in range(zbins)
-                              for zk in range(zbins)
-                              for zl in range(zbins)
-                              )
+if term == 'sva':
+    print('Computing real-space Gaussian SVA covariance...')
+    start = time.time()
+    results = Parallel(n_jobs=-1)(delayed(cov_g_sva_real_helper)(theta_1, theta_2, zi, zj, zk, zl,
+                                                                mu, nu, cl_5d,
+                                                                probe_a_ix, probe_b_ix,
+                                                                probe_c_ix, probe_d_ix,
+                                                                )
+                                for theta_1 in tqdm(range(theta_bins))
+                                for theta_2 in range(theta_bins)
+                                for zi in range(zbins)
+                                for zj in range(zbins)
+                                for zk in range(zbins)
+                                for zl in range(zbins)
+                                )
 
-for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
-    cov_sb_sva_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
-print(f'... Done in: {(time.time() - start):.2f} s')
+    for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
+        cov_sb_sva_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
+    print(f'... Done in: {(time.time() - start):.2f} s')
 
+elif term == 'sn':
+    print('Computing real-space Gaussian SN covariance...')
+    start = time.time()
 
-print('Computing real-space Gaussian SN covariance...')
-start = time.time()
-
-# TODO generalize to different n(z)
-npair_arr = np.zeros((theta_bins, zbins, zbins))
-for theta_ix in range(theta_bins):
-    for zi in range(zbins):
-        for zj in range(zbins):
-            thetal_i = theta_edges[theta_ix]
-            thetau_i = theta_edges[theta_ix + 1]
-            npair_arr[theta_ix, zi, zj] = get_npair(thetau_i, thetal_i,
-                                                    survey_area_sr,
-                                                    n_eff_lens[zi], n_eff_lens[zj])
-
-
-delta_theta = np.eye(theta_bins)
-t_arr = t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i)
-
-cov_sb_sn_6d = \
-    delta_theta[:, :, None, None, None, None] * \
-    (get_delta_tomo(probe_a_ix, probe_c_ix)[None, None, :, None, :, None] *
-     get_delta_tomo(probe_b_ix, probe_d_ix)[None, None, None, :, None, :] +
-     get_delta_tomo(probe_a_ix, probe_d_ix)[None, None, :, None, None, :] *
-     get_delta_tomo(probe_b_ix, probe_c_ix)[None, None, None, :, :, None]) * \
-    t_arr[None, None, :, None, :, None] / \
-    npair_arr[None, :, :, :, None, None]
-print(f'... Done in: {(time.time() - start):.2f} s')
+    # TODO generalize to different n(z)
+    npair_arr = np.zeros((theta_bins, zbins, zbins))
+    for theta_ix in range(theta_bins):
+        for zi in range(zbins):
+            for zj in range(zbins):
+                thetal_i = theta_edges[theta_ix]
+                thetau_i = theta_edges[theta_ix + 1]
+                npair_arr[theta_ix, zi, zj] = get_npair(thetau_i, thetal_i,
+                                                        survey_area_sr,
+                                                        n_eff_lens[zi], n_eff_lens[zj])
 
 
-print('Computing real-space Gaussian MIX covariance...')
-start = time.time()
+    delta_theta = np.eye(theta_bins)
+    t_arr = t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i)
 
-# TODO max between different effective areas
-# prefac = get_delta_tomo(probe_b_ix, probe_d_ix)[None, None, None, :, None, :] *\
-#     t_mix(probe_b_ix, zbins, sigma_eps_i)[None, None, None, :, None, None] /\
-#     (2 * np.pi * n_eff_lens[None, None, None, :, None, None] * deg2toarcmin2 *
-#         np.max((survey_area_sr, survey_area_sr)))
+    cov_sb_sn_6d = \
+        delta_theta[:, :, None, None, None, None] * \
+        (get_delta_tomo(probe_a_ix, probe_c_ix)[None, None, :, None, :, None] *
+        get_delta_tomo(probe_b_ix, probe_d_ix)[None, None, None, :, None, :] +
+        get_delta_tomo(probe_a_ix, probe_d_ix)[None, None, :, None, None, :] *
+        get_delta_tomo(probe_b_ix, probe_c_ix)[None, None, None, :, :, None]) * \
+        t_arr[None, None, :, None, :, None] / \
+        npair_arr[None, :, :, :, None, None]
+    print(f'... Done in: {(time.time() - start):.2f} s')
+
+elif term == 'mix':
+    print('Computing real-space Gaussian MIX covariance...')
+    start = time.time()
+
+    # TODO max between different effective areas
+    # prefac = get_delta_tomo(probe_b_ix, probe_d_ix)[None, None, None, :, None, :] *\
+    #     t_mix(probe_b_ix, zbins, sigma_eps_i)[None, None, None, :, None, None] /\
+    #     (2 * np.pi * n_eff_lens[None, None, None, :, None, None] * deg2toarcmin2 *
+    #         np.max((survey_area_sr, survey_area_sr)))
 
 
-results = Parallel(n_jobs=-1)(delayed(cov_g_mix_real_helper)(theta_1, theta_2, zi, zj, zk, zl,
-                                                             mu, nu, cl_5d,
-                                                             probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                                                             )
-                              for theta_1 in tqdm(range(theta_bins))
-                              for theta_2 in range(theta_bins)
-                              for zi in range(zbins)
-                              for zj in range(zbins)
-                              for zk in range(zbins)
-                              for zl in range(zbins)
-                              )
+    results = Parallel(n_jobs=-1)(delayed(cov_g_mix_real_helper)(theta_1, theta_2, zi, zj, zk, zl,
+                                                                mu, nu, cl_5d,
+                                                                probe_a_ix, probe_b_ix,
+                                                                probe_c_ix, probe_d_ix,
+                                                                )
+                                for theta_1 in tqdm(range(theta_bins))
+                                for theta_2 in range(theta_bins)
+                                for zi in range(zbins)
+                                for zj in range(zbins)
+                                for zk in range(zbins)
+                                for zl in range(zbins)
+                                )
 
-cov_g_mix_real_helper(theta_1, theta_2, zi, zj, zk, zl,
-                      mu, nu, cl_5d,
-                      probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                      )
-
-for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
-    cov_sb_mix_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
-print(f'... Done in: {(time.time() - start):.2f} s')
+    for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
+        cov_sb_mix_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
+    print(f'... Done in: {(time.time() - start):.2f} s')
 
 
 # ! ======================================= ONECOVARIANCE ==================================================
@@ -622,9 +601,25 @@ covs_10d = [cov_sva_oc_3x2pt_10D, cov_mix_oc_3x2pt_10D, cov_sn_oc_3x2pt_10D,
 print(f"OneCovariance output loaded in {time.perf_counter() - start:.2f} seconds")
 # ! =============================================================================================
 
-
-cov_oc_6d = cov_mix_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...]
-cov_sb_6d = cov_sb_mix_6d
+if term == 'sva':
+    cov_oc_6d = cov_sva_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...]
+    cov_sb_6d = cov_sb_sva_6d
+elif term == 'sn':
+    cov_oc_6d = cov_sn_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...]
+    cov_sb_6d = cov_sb_sn_6d
+elif term == 'mix':
+    cov_oc_6d = cov_mix_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...]
+    cov_sb_6d = cov_sb_mix_6d
+    
+    
+for probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix in itertools.product(range(n_probes), repeat=4):
+    if np.allclose(cov_mix_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...], 0, atol=1e-20, rtol=1e-10):
+        print(f'block {probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix} cov_oc_6d is zero')
+    else:
+        print(f'block {probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix}  cov_oc_6d is not zero')
+        
+if np.allclose(cov_sb_6d, 0, atol=1e-20, rtol=1e-10):
+    print('cov_sb_6d is zero')
 
 cov_oc_4d = sl.cov_6D_to_4D(cov_oc_6d, theta_bins, zpairs_auto, ind_auto)
 cov_sb_4d = sl.cov_6D_to_4D(cov_sb_6d, theta_bins, zpairs_auto, ind_auto)
@@ -660,7 +655,8 @@ sl.compare_funcs(None,
                  name_a='SB',
                  name_b='OC',
                  logscale_y=[True, False],
-                 title=f'{probe}, total cov flat')
+                 title=f'{probe}, total cov flat',
+                 ylim_diff=[-110, 110])
 
 # plt.figure()
 # plt.plot(theta_centers, np.diag(cov_sb_6d[:, :, zi, zj, zk, zl]), marker='.', label='sb')

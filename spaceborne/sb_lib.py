@@ -1207,7 +1207,10 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
     diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=abs_val)
     higher_rtol = plot_diff_threshold or 5.0
     max_diff = np.max(diff_AB)
-    result_emoji = '❌' if max_diff > higher_rtol else '✅'
+    if max_diff > higher_rtol or np.isnan(max_diff):
+        result_emoji = '❌'
+    else:
+        result_emoji = '✅'
     no_outliers = np.sum(diff_AB > higher_rtol)
     additional_info = f'\nMax discrepancy: {max_diff:.2f}%;' \
         f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \

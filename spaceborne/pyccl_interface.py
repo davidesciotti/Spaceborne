@@ -240,7 +240,7 @@ class PycclClass():
             cl_mask = hp.anafast(mask)
             ell_mask = np.arange(len(cl_mask))
             cl_mask_norm = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * fsky)**2
-            
+
             # quick check
             fsky_mask = np.sqrt(cl_mask[0] / (4 * np.pi))
             assert np.fabs(fsky_mask / fsky) < 1.01, 'fsky_in is not the same as the fsky of the mask'
@@ -342,7 +342,7 @@ class PycclClass():
 
                     self.tkka_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
                                                            hmc=self.hmc,
-                                                           extrap_order_lok=1, 
+                                                           extrap_order_lok=1,
                                                            extrap_order_hik=1,
                                                            use_log=False,
                                                            p_of_k_a=p_of_k_a,
@@ -413,14 +413,14 @@ class PycclClass():
     def set_dicts_for_trisp(self):
 
         gal_bias_1d = self.gal_bias_func(cosmo_lib.a_to_z(self.a_grid_tkka_SSC))
-        
+
         # TODO pk from input files
         # This is the correct way to initialize the trispectrum (I Asked David Alonso about this.)
         self.halo_profile_dict = {
             'L': self.halo_profile_dm,
             'G': self.halo_profile_hod,
         }
-        
+
         self.prof_2pt_dict = {
             # see again https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
             ('L', 'L'): ccl.halos.Profile2pt(),
@@ -428,7 +428,7 @@ class PycclClass():
             ('L', 'G'): ccl.halos.Profile2pt(),
             ('G', 'G'): ccl.halos.Profile2ptHOD(),
         }
-        
+
         self.is_number_counts_dict = {
             'L': False,
             'G': True,

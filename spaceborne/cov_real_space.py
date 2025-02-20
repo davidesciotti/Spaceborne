@@ -13,6 +13,51 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from spaceborne import sb_lib as sl
 from joblib import Parallel, delayed
+from mcfit import mcfit, kernels
+from pyfftlog.pyfftlog import fhti, fht
+
+
+def fftlog_integrate(ell_values, integrand_vals, mu=0, q=1, lowring=True):
+    """
+    Compute the integral I = ∫ dℓ f(ℓ) using an FFTLog–based Hankel transform.
+
+    Parameters
+    ----------
+    ell_values : array_like
+        Logarithmically spaced ℓ values (the integration variable).
+    integrand_vals : array_like
+        Values of the function f(ℓ) sampled at ell_values.
+    mu : float, optional
+        Order of the Bessel kernel used in the FFTLog transform.
+        (This should roughly match the asymptotic behavior of your integrand.)
+    q : float, optional
+        Tilt parameter that shifts power between f and the kernel.
+    lowring : bool, optional
+        Whether to enforce the “low–ringing” condition.
+
+    Returns
+    -------
+    result : complex
+        The FFTLog–based transformed value corresponding to the integration.
+        (Typically you may take the real part or a specific grid point.)
+    """
+    N = len(ell_values)
+    # Assume ell_values is logarithmically spaced: compute the log spacing dx.
+    dx = np.log(ell_values[-1] / ell_values[0]) / (N - 1)
+    # Set up the FFTLog transform.
+    # fhti returns three quantities: the recommended “frequency” grid kr,
+    # the spacing in ln k (dlnk), and a normalization factor f0.
+    kr, dlnk, f0 = fhti(ell_values[0], dx, N, q, mu, lowring)
+    # Compute the Hankel transform (using the standard routine fht)
+    F = fht(integrand_vals, kr, dlnk, q, mu, lowring)
+    # Depending on your conventions the integrated value is contained in F[0].
+    return F[0]
+
+
+# def fftlog_integrate(ell_values, integrand_vals, mu=0, q=1):
+#     transformer = mcfit(ell_values, kernels.Mellin_BesselJ(mu), q=q, lowring=True)
+#     y, G = transformer(integrand_vals, extrap=True)
+#     return G[0]
 
 
 def j0(x):
@@ -102,12 +147,23 @@ def cov_g_sva_real_helper(theta_i_ix, theta_j_ix, zi, zj, zk, zl, mu, nu, cl_5d,
 
 
 def cov_g_mix_real(thetal_i, thetau_i, mu, thetal_j, thetau_j, nu, ell_values,
-                   cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zi, zj, zk, zl):
+                   cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zi, zj, zk, zl,
+                   integration_method='simps'):
 
     def integrand_func(ell, cl_ij):
         kmu = k_mu(ell, thetal_i, thetau_i, mu)
         knu = k_mu(ell, thetal_j, thetau_j, nu)
         return ell * kmu * knu * cl_ij
+
+    def integrand_func_perm(ell, cl_5d):
+        kmu = k_mu(ell, thetal_i, thetau_i, mu)
+        knu = k_mu(ell, thetal_j, thetau_j, nu)
+        return ell * kmu * knu * (
+            cl_5d[probe_a_ix, probe_c_ix, :, zi, zk] +
+            cl_5d[probe_b_ix, probe_d_ix, :, zj, zl] +
+            cl_5d[probe_a_ix, probe_d_ix, :, zi, zl] +
+            cl_5d[probe_b_ix, probe_c_ix, :, zj, zk]
+        )
 
     # I write the indices as in Robert's paper
     def get_prefac(probe_b_ix, probe_d_ix, zj, zn):
@@ -119,31 +175,61 @@ def cov_g_mix_real(thetal_i, thetau_i, mu, thetal_j, thetau_j, nu, ell_values,
 
     # TODO generalize to different survey areas (max(Aij, Akl))
     # TODO sigma_eps_i should be a vector of length zbins
-    prefac = get_prefac(probe_b_ix, probe_d_ix, zj, zl)
-    integrand = integrand_func(ell_values, cl_5d[probe_a_ix, probe_c_ix, :, zi, zk])
-    integral = simps(y=integrand, x=ell_values)
-    addendum_1 = prefac * integral
+    # my guess: cyclic permutation
+    # prefac_1 = get_prefac(probe_b_ix, probe_d_ix, zj, zl)
+    # prefac_2 = get_prefac(probe_c_ix, probe_a_ix, zk, zi)
+    # prefac_3 = get_prefac(probe_d_ix, probe_b_ix, zl, zj)
+    # prefac_4 = get_prefac(probe_a_ix, probe_c_ix, zi, zk)
 
+    # as done in the SVA function
+    prefac_1 = get_prefac(probe_a_ix, probe_c_ix, zi, zk)
+    prefac_2 = get_prefac(probe_b_ix, probe_d_ix, zj, zl)
+    prefac_3 = get_prefac(probe_a_ix, probe_d_ix, zi, zl)
+    prefac_4 = get_prefac(probe_b_ix, probe_c_ix, zj, zk)
+
+    if integration_method in ['simps', 'fft']:
+
+        # my guess: cyclic permutation
+        # integrand_1 = integrand_func(ell_values, cl_5d[probe_a_ix, probe_c_ix, :, zi, zk])
+        # integrand_2 = integrand_func(ell_values, cl_5d[probe_b_ix, probe_d_ix, :, zj, zl])
+        # integrand_3 = integrand_func(ell_values, cl_5d[probe_c_ix, probe_a_ix, :, zk, zi])
+        # integrand_4 = integrand_func(ell_values, cl_5d[probe_d_ix, probe_b_ix, :, zl, zj])
+
+        # as done in the SVA function
+        integrand_1 = integrand_func(ell_values, cl_5d[probe_a_ix, probe_c_ix, :, zi, zk])
+        integrand_2 = integrand_func(ell_values, cl_5d[probe_b_ix, probe_d_ix, :, zj, zl])
+        integrand_3 = integrand_func(ell_values, cl_5d[probe_a_ix, probe_d_ix, :, zi, zl])
+        integrand_4 = integrand_func(ell_values, cl_5d[probe_b_ix, probe_c_ix, :, zj, zk])
+
+        if integration_method == 'simps':
+            integral_1 = simps(y=integrand_1, x=ell_values)
+            integral_2 = simps(y=integrand_2, x=ell_values)
+            integral_3 = simps(y=integrand_3, x=ell_values)
+            integral_4 = simps(y=integrand_4, x=ell_values)
+
+        elif integration_method == 'fft':
+            # Tune the FFTLog parameters mu_fft and q_fft as needed.
+            mu_fft = 0  # for example
+            q_fft = 1   # for example
+            integral_1 = fftlog_integrate(ell_values, integrand_1, mu=mu, q=q_fft)
+            integral_2 = fftlog_integrate(ell_values, integrand_2, mu=mu, q=q_fft)
+            integral_3 = fftlog_integrate(ell_values, integrand_3, mu=mu, q=q_fft)
+            integral_4 = fftlog_integrate(ell_values, integrand_4, mu=mu, q=q_fft)
+
+    elif integration_method == 'quad':
+        integral_1 = quad_vec(integrand_func, ell_values[0], ell_values[-1],
+                              args=(cl_5d[probe_a_ix, probe_c_ix, :, zi, zk],))[0]
+        integral_2 = quad_vec(integrand_func, ell_values[0], ell_values[-1],
+                              args=(cl_5d[probe_b_ix, probe_d_ix, :, zj, zl],))[0]
+        integral_3 = quad_vec(integrand_func, ell_values[0], ell_values[-1],
+                              args=(cl_5d[probe_c_ix, probe_a_ix, :, zk, zi],))[0]
+        integral_4 = quad_vec(integrand_func, ell_values[0], ell_values[-1],
+                              args=(cl_5d[probe_d_ix, probe_b_ix, :, zl, zj],))[0]
     # leverage simmetry to optimize the computation?
-    # if zi == zj == zk == zl:
-    #     return 2 * addendum_1
-    
-    prefac = get_prefac(probe_c_ix, probe_a_ix, zk, zi)
-    integrand = integrand_func(ell_values, cl_5d[probe_b_ix, probe_d_ix, :, zj, zl])
-    integral = simps(y=integrand, x=ell_values)
-    addendum_2 = prefac * integral
+    # if zi == zj == zk == zl and probe_a_ix == probe_b_ix == probe_c_ix == probe_d_ix:
+    #     return 4 * integral_1 * prefac_1
 
-    prefac = get_prefac(probe_d_ix, probe_b_ix, zl, zj)
-    integrand = integrand_func(ell_values, cl_5d[probe_c_ix, probe_a_ix, :, zk, zi])
-    integral = simps(y=integrand, x=ell_values)
-    addendum_3 = prefac * integral
-
-    prefac = get_prefac(probe_a_ix, probe_c_ix, zi, zk)
-    integrand = integrand_func(ell_values, cl_5d[probe_d_ix, probe_b_ix, :, zl, zj])
-    integral = simps(y=integrand, x=ell_values)
-    addendum_4 = prefac * integral
-
-    return addendum_1 + addendum_2 + addendum_3 + addendum_4
+    return prefac_1 * integral_1 + prefac_2 * integral_2 + prefac_3 * integral_3 + prefac_4 * integral_4
 
 
 def cov_g_mix_real_helper(theta_i_ix, theta_j_ix, zi, zj, zk, zl, mu, nu, cl_5d,
@@ -163,8 +249,8 @@ def cov_g_mix_real_helper(theta_i_ix, theta_j_ix, zi, zj, zk, zl, mu, nu, cl_5d,
                                                                   cl_5d,
                                                                   probe_a_ix, probe_b_ix,
                                                                   probe_c_ix, probe_d_ix,
-                                                                  zi, zj, zk, zl
-                                                                  )
+                                                                  zi, zj, zk, zl,
+                                                                  integration_method='simps')
 
 
 def _get_t_munu(mu, nu, sigma_eps_tot):
@@ -305,7 +391,7 @@ sigma_eps_tot = sigma_eps_i * np.sqrt(2)
 munu_vals = (0, 2, 4)
 
 term = 'mix'
-probe = 'gmxip'
+probe = 'ximxim'
 
 probe_a_str, probe_b_str = split_probe_name(probe)
 
@@ -431,17 +517,17 @@ if term == 'sva':
     print('Computing real-space Gaussian SVA covariance...')
     start = time.time()
     results = Parallel(n_jobs=-1)(delayed(cov_g_sva_real_helper)(theta_1, theta_2, zi, zj, zk, zl,
-                                                                mu, nu, cl_5d,
-                                                                probe_a_ix, probe_b_ix,
-                                                                probe_c_ix, probe_d_ix,
-                                                                )
-                                for theta_1 in tqdm(range(theta_bins))
-                                for theta_2 in range(theta_bins)
-                                for zi in range(zbins)
-                                for zj in range(zbins)
-                                for zk in range(zbins)
-                                for zl in range(zbins)
-                                )
+                                                                 mu, nu, cl_5d,
+                                                                 probe_a_ix, probe_b_ix,
+                                                                 probe_c_ix, probe_d_ix,
+                                                                 )
+                                  for theta_1 in tqdm(range(theta_bins))
+                                  for theta_2 in range(theta_bins)
+                                  for zi in range(zbins)
+                                  for zj in range(zbins)
+                                  for zk in range(zbins)
+                                  for zl in range(zbins)
+                                  )
 
     for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
         cov_sb_sva_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
@@ -462,16 +548,15 @@ elif term == 'sn':
                                                         survey_area_sr,
                                                         n_eff_lens[zi], n_eff_lens[zj])
 
-
     delta_theta = np.eye(theta_bins)
     t_arr = t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i)
 
     cov_sb_sn_6d = \
         delta_theta[:, :, None, None, None, None] * \
         (get_delta_tomo(probe_a_ix, probe_c_ix)[None, None, :, None, :, None] *
-        get_delta_tomo(probe_b_ix, probe_d_ix)[None, None, None, :, None, :] +
-        get_delta_tomo(probe_a_ix, probe_d_ix)[None, None, :, None, None, :] *
-        get_delta_tomo(probe_b_ix, probe_c_ix)[None, None, None, :, :, None]) * \
+         get_delta_tomo(probe_b_ix, probe_d_ix)[None, None, None, :, None, :] +
+         get_delta_tomo(probe_a_ix, probe_d_ix)[None, None, :, None, None, :] *
+         get_delta_tomo(probe_b_ix, probe_c_ix)[None, None, None, :, :, None]) * \
         t_arr[None, None, :, None, :, None] / \
         npair_arr[None, :, :, :, None, None]
     print(f'... Done in: {(time.time() - start):.2f} s')
@@ -486,19 +571,18 @@ elif term == 'mix':
     #     (2 * np.pi * n_eff_lens[None, None, None, :, None, None] * deg2toarcmin2 *
     #         np.max((survey_area_sr, survey_area_sr)))
 
-
     results = Parallel(n_jobs=-1)(delayed(cov_g_mix_real_helper)(theta_1, theta_2, zi, zj, zk, zl,
-                                                                mu, nu, cl_5d,
-                                                                probe_a_ix, probe_b_ix,
-                                                                probe_c_ix, probe_d_ix,
-                                                                )
-                                for theta_1 in tqdm(range(theta_bins))
-                                for theta_2 in range(theta_bins)
-                                for zi in range(zbins)
-                                for zj in range(zbins)
-                                for zk in range(zbins)
-                                for zl in range(zbins)
-                                )
+                                                                 mu, nu, cl_5d,
+                                                                 probe_a_ix, probe_b_ix,
+                                                                 probe_c_ix, probe_d_ix,
+                                                                 )
+                                  for theta_1 in tqdm(range(theta_bins))
+                                  for theta_2 in range(theta_bins)
+                                  for zi in range(zbins)
+                                  for zj in range(zbins)
+                                  for zk in range(zbins)
+                                  for zl in range(zbins)
+                                  )
 
     for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
         cov_sb_mix_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
@@ -610,14 +694,14 @@ elif term == 'sn':
 elif term == 'mix':
     cov_oc_6d = cov_mix_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...]
     cov_sb_6d = cov_sb_mix_6d
-    
-    
+
+
 for probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix in itertools.product(range(n_probes), repeat=4):
     if np.allclose(cov_mix_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...], 0, atol=1e-20, rtol=1e-10):
         print(f'block {probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix} cov_oc_6d is zero')
     else:
         print(f'block {probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix}  cov_oc_6d is not zero')
-        
+
 if np.allclose(cov_sb_6d, 0, atol=1e-20, rtol=1e-10):
     print('cov_sb_6d is zero')
 

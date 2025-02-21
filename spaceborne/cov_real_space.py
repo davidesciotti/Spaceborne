@@ -1,4 +1,5 @@
 from copy import deepcopy
+from functools import partial
 import itertools
 import re
 import warnings
@@ -16,6 +17,11 @@ from joblib import Parallel, delayed
 from mcfit import mcfit, kernels
 from pyfftlog.pyfftlog import fhti, fht
 
+warnings.filterwarnings(
+    "ignore",
+    message=".*invalid escape sequence*",
+    category=SyntaxWarning
+)
 
 def fftlog_integrate(ell_values, integrand_vals, mu=0, q=1, lowring=True):
     """
@@ -154,16 +160,13 @@ def cov_g_mix_real(thetal_i, thetau_i, mu, thetal_j, thetau_j, nu, ell_values,
         kmu = k_mu(ell, thetal_i, thetau_i, mu)
         knu = k_mu(ell, thetal_j, thetau_j, nu)
         return ell * kmu * knu * cl_ij
-
-    def integrand_func_perm(ell, cl_5d):
+    
+    def integrand_scalar(ell, cl_ij):
+        # Interpolate the value of cl_ij at the current ell value:
+        cl_val = np.interp(ell, ell_values, cl_ij)
         kmu = k_mu(ell, thetal_i, thetau_i, mu)
         knu = k_mu(ell, thetal_j, thetau_j, nu)
-        return ell * kmu * knu * (
-            cl_5d[probe_a_ix, probe_c_ix, :, zi, zk] +
-            cl_5d[probe_b_ix, probe_d_ix, :, zj, zl] +
-            cl_5d[probe_a_ix, probe_d_ix, :, zi, zl] +
-            cl_5d[probe_b_ix, probe_c_ix, :, zj, zk]
-        )
+        return ell * kmu * knu * cl_val
 
     # I write the indices as in Robert's paper
     def get_prefac(probe_b_ix, probe_d_ix, zj, zn):
@@ -217,14 +220,19 @@ def cov_g_mix_real(thetal_i, thetau_i, mu, thetal_j, thetau_j, nu, ell_values,
             integral_4 = fftlog_integrate(ell_values, integrand_4, mu=mu, q=q_fft)
 
     elif integration_method == 'quad':
-        integral_1 = quad_vec(integrand_func, ell_values[0], ell_values[-1],
+        
+        integral_1 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
                               args=(cl_5d[probe_a_ix, probe_c_ix, :, zi, zk],))[0]
-        integral_2 = quad_vec(integrand_func, ell_values[0], ell_values[-1],
+        integral_2 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
                               args=(cl_5d[probe_b_ix, probe_d_ix, :, zj, zl],))[0]
-        integral_3 = quad_vec(integrand_func, ell_values[0], ell_values[-1],
-                              args=(cl_5d[probe_c_ix, probe_a_ix, :, zk, zi],))[0]
-        integral_4 = quad_vec(integrand_func, ell_values[0], ell_values[-1],
-                              args=(cl_5d[probe_d_ix, probe_b_ix, :, zl, zj],))[0]
+        integral_3 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
+                              args=(cl_5d[probe_a_ix, probe_d_ix, :, zi, zl],))[0]
+        integral_4 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
+                              args=(cl_5d[probe_b_ix, probe_c_ix, :, zj, zk],))[0]
+    
+    else: 
+        raise ValueError(f'integration_method {integration_method} not recognized.')
+    
     # leverage simmetry to optimize the computation?
     # if zi == zj == zk == zl and probe_a_ix == probe_b_ix == probe_c_ix == probe_d_ix:
     #     return 4 * integral_1 * prefac_1
@@ -232,16 +240,20 @@ def cov_g_mix_real(thetal_i, thetau_i, mu, thetal_j, thetau_j, nu, ell_values,
     return prefac_1 * integral_1 + prefac_2 * integral_2 + prefac_3 * integral_3 + prefac_4 * integral_4
 
 
-def cov_g_mix_real_helper(theta_i_ix, theta_j_ix, zi, zj, zk, zl, mu, nu, cl_5d,
-                          probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix):
+def cov_g_mix_real_helper(theta_i_ix, theta_j_ix, zij, zkl, ind_ab, ind_cd, mu, nu, cl_5d,
+                          probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, integration_method):
     """
     Note: do not confuse the i, j in theta_i, theta_j with zi, zj; they are completely independent indices
     """
 
+    print(f'{theta_i_ix = }')
     thetal_i = theta_edges[theta_i_ix]
     thetau_i = theta_edges[theta_i_ix + 1]
     thetal_j = theta_edges[theta_j_ix]
     thetau_j = theta_edges[theta_j_ix + 1]
+    
+    zi, zj = ind_ab[zij, :]
+    zk, zl = ind_cd[zkl, :]
 
     return theta_i_ix, theta_j_ix, zi, zj, zk, zl, cov_g_mix_real(thetal_i, thetau_i, mu,
                                                                   thetal_j, thetau_j, nu,
@@ -250,7 +262,7 @@ def cov_g_mix_real_helper(theta_i_ix, theta_j_ix, zi, zj, zk, zl, mu, nu, cl_5d,
                                                                   probe_a_ix, probe_b_ix,
                                                                   probe_c_ix, probe_d_ix,
                                                                   zi, zj, zk, zl,
-                                                                  integration_method='simps')
+                                                                  integration_method=integration_method)
 
 
 def _get_t_munu(mu, nu, sigma_eps_tot):
@@ -382,6 +394,7 @@ df_chunk_size = 50000
 cov_list_name = 'covariance_list_3x2_rcf'
 triu_tril = 'triu'
 row_col_major = 'row-major'  # unit: is gal/arcmin^2
+n_jobs = -1  # leave one thread free?
 
 n_eff_lens = np.array([0.6, 0.6, 0.6])
 n_eff_src = np.array([0.6, 0.6, 0.6])
@@ -391,12 +404,13 @@ sigma_eps_tot = sigma_eps_i * np.sqrt(2)
 munu_vals = (0, 2, 4)
 
 term = 'mix'
-probe = 'ximxim'
+probe = 'gggg'
+integration_method = 'simps'
 
 probe_a_str, probe_b_str = split_probe_name(probe)
 
 probe_idx_dict = {
-    'xipxip': (0, 0, 0, 0),  # * SVA 1% ok; SN 0.1% ok; MIX 100% for cross-zpair
+    'xipxip': (0, 0, 0, 0),  # * SVA 1% ok; SN 0.1% ok; MIX ok for auto-pairs
     'xipxim': (0, 0, 1, 1),  # not SVA very good in lower left corner of 2d plot, possibly not worrysome; SN ok (0)
     'ximxim': (1, 1, 1, 1),  # * SVA 5% ok; SN 0.1% ok
     'gmgm': (2, 0, 2, 0),  # * SVA 1% ok; SN 0.1% ok
@@ -516,7 +530,7 @@ cov_sb_mix_6d = np.zeros((theta_bins, theta_bins, zbins, zbins, zbins, zbins))
 if term == 'sva':
     print('Computing real-space Gaussian SVA covariance...')
     start = time.time()
-    results = Parallel(n_jobs=-1)(delayed(cov_g_sva_real_helper)(theta_1, theta_2, zi, zj, zk, zl,
+    results = Parallel(n_jobs=n_jobs)(delayed(cov_g_sva_real_helper)(theta_1, theta_2, zi, zj, zk, zl,
                                                                  mu, nu, cl_5d,
                                                                  probe_a_ix, probe_b_ix,
                                                                  probe_c_ix, probe_d_ix,
@@ -571,23 +585,39 @@ elif term == 'mix':
     #     (2 * np.pi * n_eff_lens[None, None, None, :, None, None] * deg2toarcmin2 *
     #         np.max((survey_area_sr, survey_area_sr)))
 
-    results = Parallel(n_jobs=-1)(delayed(cov_g_mix_real_helper)(theta_1, theta_2, zi, zj, zk, zl,
+    # TODO test this better, especially for cross-terms
+    # TODO off-diagonal zij blocks still don't match, I think it's just a 
+    if probe_a_ix == probe_b_ix:
+        ind_ab = ind_auto[:, 2:]
+    else:
+        ind_ab = ind_cross[:, 2:]
+        
+    if probe_c_ix == probe_d_ix:
+        ind_cd = ind_auto[:, 2:]
+    else:
+        ind_cd = ind_cross[:, 2:]
+
+    zpairs_ab = ind_ab.shape[0]
+    zpairs_cd = ind_cd.shape[0]
+
+    # TODO compare a bit better with quad, I get very close results...
+    results = Parallel(n_jobs=n_jobs)(delayed(cov_g_mix_real_helper)(theta_1, theta_2, zij, zkl,
+                                                                 ind_ab, ind_cd,
                                                                  mu, nu, cl_5d,
                                                                  probe_a_ix, probe_b_ix,
                                                                  probe_c_ix, probe_d_ix,
-                                                                 )
+                                                                 integration_method=integration_method)
                                   for theta_1 in tqdm(range(theta_bins))
                                   for theta_2 in range(theta_bins)
-                                  for zi in range(zbins)
-                                  for zj in range(zbins)
-                                  for zk in range(zbins)
-                                  for zl in range(zbins)
+                                  for zij in range(zpairs_ab)[:1]
+                                  for zkl in range(zpairs_cd)[:1]
                                   )
 
     for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
         cov_sb_mix_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
     print(f'... Done in: {(time.time() - start):.2f} s')
-
+    
+ 
 
 # ! ======================================= ONECOVARIANCE ==================================================
 # test agains OC: save cls
@@ -696,23 +726,24 @@ elif term == 'mix':
     cov_sb_6d = cov_sb_mix_6d
 
 
-for probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix in itertools.product(range(n_probes), repeat=4):
-    if np.allclose(cov_mix_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...], 0, atol=1e-20, rtol=1e-10):
-        print(f'block {probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix} cov_oc_6d is zero')
-    else:
-        print(f'block {probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix}  cov_oc_6d is not zero')
+# for probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix in itertools.product(range(n_probes), repeat=4):
+#     if np.allclose(cov_mix_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...], 0, atol=1e-20, rtol=1e-10):
+#         print(f'block {probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix} cov_oc_6d is zero')
+#     else:
+#         print(f'block {probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix}  cov_oc_6d is not zero')
 
 if np.allclose(cov_sb_6d, 0, atol=1e-20, rtol=1e-10):
     print('cov_sb_6d is zero')
 
-cov_oc_4d = sl.cov_6D_to_4D(cov_oc_6d, theta_bins, zpairs_auto, ind_auto)
-cov_sb_4d = sl.cov_6D_to_4D(cov_sb_6d, theta_bins, zpairs_auto, ind_auto)
+cov_oc_4d = sl.cov_6D_to_4D(cov_oc_6d, theta_bins, zpairs_cross, ind_cross)
+cov_sb_4d = sl.cov_6D_to_4D(cov_sb_6d, theta_bins, zpairs_cross, ind_cross)
 cov_oc_2d = sl.cov_4D_to_2D(cov_oc_4d, block_index='zpair')
 cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='zpair')
 
 sl.compare_arrays(cov_sb_2d, cov_oc_2d,
                   'cov_sb_2d', 'cov_oc_2d',
-                  abs_val=True, plot_diff_threshold=5, plot_diff_hist=True)
+                  abs_val=True, plot_diff_threshold=10,
+                  plot_diff_hist=True)
 
 zi, zj, zk, zl = 0, 0, 0, 0
 

@@ -72,13 +72,13 @@ mpl_other_dict = {
 
 
 def savetxt_aligned(filename, array_2d, header_list, col_width=25, decimals=8):
-    
+
     header = ''
     for i in range(len(header_list)):
         offset = 2 if i == 0 else 0
         string = f"{header_list[i]:<{col_width - offset}}"
         header += string
-    
+
     # header = ''.join([f"{header_list[i]:<{col_width - 2}}" for i in range(len(header_list))])
     fmt = [f'%-{col_width}.{decimals}f'] * len(array_2d[0])
     np.savetxt(filename, array_2d, header=header, fmt=fmt, delimiter='')
@@ -109,20 +109,26 @@ def nz_fits_to_txt(fits_filename):
     return nz_arr
 
 
-def compare_funcs(x, y_a, y_b, name_a='A', name_b='B', logscale_y=[False, False], logscale_x=False,
+def compare_funcs(x, y_tuple: dict, logscale_y=[False, False], logscale_x=False,
                   title=None, ylim_diff=None):
 
+    names = list(y_tuple.keys())
+    y_tuple = list(y_tuple.values())
+    colors = plt.get_cmap("tab10").colors  # Get tab colors
+
+
     if x is None:
-        x = np.arange(len(y_a))
+        x = np.arange(len(y_tuple[0]))
 
     fig, ax = plt.subplots(2, 1, sharex=True, height_ratios=[2, 1], )
     fig.subplots_adjust(hspace=0)
 
-    ax[0].plot(x, y_a, label=name_a, marker='.')
-    ax[0].plot(x, y_b, label=name_b, ls='--', marker='.')
+    for i, y in enumerate(y_tuple):
+        ax[0].plot(x, y, label=names[i], marker='.', c=colors[i])
     ax[0].legend()
 
-    ax[1].plot(x, percent_diff(y_a, y_b), marker='.')
+    for i in range(1, len(y_tuple)):
+        ax[1].plot(x, percent_diff(y_tuple[i], y_tuple[0]), marker='.',  c=colors[i])
     ax[1].set_ylabel('A/B - 1 [%]')
     ax[1].axhspan(-10, 10, alpha=0.2, color='gray')
 
@@ -197,6 +203,8 @@ def check_interpolate_input_tab(input_tab: np.ndarray, z_grid_out: np.ndarray, z
     return output_tab, spline
 
 # @deprecated(reason="ep_or_ed option has been deprecated")
+
+
 def get_ngal(ngal_in, ep_or_ed, zbins, ep_check_tol):
 
     if isinstance(ngal_in, (int, float)):
@@ -1667,8 +1675,6 @@ def show_keys(arrays_dict):
         print(key)
 
 
-
-
 @njit
 def symmetrize_Cl(Cl, nbl, zbins):
     for ell in range(nbl):
@@ -2608,7 +2614,6 @@ def check_symmetric(array_2d, exact, rtol=1e-05):
         return np.allclose(array_2d, array_2d.T, rtol=rtol, atol=0)
 
 
-
 def slice_cov_3x2pt_2D_ell_probe_zpair(cov_2D_ell_probe_zpair, nbl, zbins, probe):
     """ Slices the 2-dimensional 3x2pt covariance ordered as a block-diagonal matrix in ell, probe and zpair
     (unpacked in this order)"""
@@ -2991,7 +2996,7 @@ def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust):
     # if ng is an array, n_bar == ng (this is a slight misnomer, since ng is the cumulative galaxy density, while
     # n_bar the galaxy density in each bin). In this case, if the bins are quipopulated, the n_bar array should
     # have all entries almost identical.
-    
+
     n_bar_shear = ng_shear * conversion_factor
     n_bar_clust = ng_clust * conversion_factor
 

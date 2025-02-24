@@ -659,22 +659,10 @@ cov_sb_gfromsva_6d = np.zeros((theta_bins, theta_bins, zbins, zbins, zbins, zbin
 
 
 if term == 'sva':
+    
     print('Computing real-space Gaussian SVA covariance...')
-
     start = time.time()
-    # raise ValueError('cov_g_sva_real func has been modified, careful!')
-    # results = Parallel(n_jobs=n_jobs)(delayed(cov_g_sva_real_helper)(theta_1, theta_2, zi, zj, zk, zl,
-    #                                                                  mu, nu, cl_5d,
-    #                                                                  probe_a_ix, probe_b_ix,
-    #                                                                  probe_c_ix, probe_d_ix,
-    #                                                                  )
-    #                                   for theta_1 in tqdm(range(theta_bins))
-    #                                   for theta_2 in range(theta_bins)
-    #                                   for zi in range(zbins)
-    #                                   for zj in range(zbins)
-    #                                   for zk in range(zbins)
-    #                                   for zl in range(zbins)
-    #                                   )
+    
     kwargs = {
         'func': cov_g_sva_real,
         'probe_a_ix': probe_a_ix,

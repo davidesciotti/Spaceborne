@@ -758,16 +758,25 @@ elif term == 'gauss_ell':
 
     print('Projecting ell-space Gaussian covariance...')
     start = time.time()
-
-    ell1_values = ell_values
-    ell2_values = ell_values
-    results = Parallel(n_jobs=n_jobs)(delayed(project_ellspace_cov_helper)(theta_1, theta_2,
-                                                                           mu, nu, zij, zkl, ind_ab, ind_cd,
-                                                                           Amax,
-                                                                           ell1_values, ell2_values,
-                                                                           cov_ell)
-                                      for theta_1 in tqdm(range(theta_bins))
-                                      for theta_2 in range(theta_bins)
+    
+    # TODO use just one helper function, except for project_ellspace_cov_vec_helper
+    kwargs = {
+        'func': project_ellspace_cov,
+        'Amax': Amax,
+        'ell1_values': ell_values,
+        'ell2_values': ell_values,
+        'cov_ell': cov_ell,
+    }
+    results = Parallel(n_jobs=n_jobs)(delayed(cov_parallel_helper)(theta_1_ix=theta_1_ix,
+                                                                   theta_2_ix=theta_2_ix,
+                                                                   mu=mu, nu=nu,
+                                                                   zij=zij, zkl=zkl,
+                                                                   ind_ab=ind_ab,
+                                                                   ind_cd=ind_cd,
+                                                                   **kwargs
+                                                                   )
+                                      for theta_1_ix in tqdm(range(theta_bins))
+                                      for theta_2_ix in range(theta_bins)
                                       for zij in range(zpairs_ab)[:1]
                                       for zkl in range(zpairs_cd)[:1]
                                       )
@@ -793,10 +802,10 @@ elif term == 'gauss_ell':
                                                                      )
                                       for theta_1 in tqdm(range(theta_bins))
                                       for theta_2 in range(theta_bins)
-                                      for zi in range(zbins)[:1]
-                                      for zj in range(zbins)[:1]
-                                      for zk in range(zbins)[:1]
-                                      for zl in range(zbins)[:1]
+                                      for zi in range(zbins)
+                                      for zj in range(zbins)
+                                      for zk in range(zbins)
+                                      for zl in range(zbins)
                                       )
 
     for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:

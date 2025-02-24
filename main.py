@@ -60,7 +60,7 @@ with open('config.yaml', 'r') as f:
     
 #SSC_integration_method = cfg['covariance']['SSC_integration_method']
 #I tried to make it work from config but i get weird bugs that i don't understand
-SSC_integration_method = "z_z" #"z_z"or "z_R"
+SSC_integration_method = "z_R" #"z_z"or "z_R"
 
 # some convenience variables, just to make things more readable
 h = cfg['cosmology']['h']
@@ -1592,7 +1592,7 @@ fm_dict_of_dicts = {
     # 'SB_KEapp_hm_simpker': sl.load_pickle(f'{fm_folder}/FM_GSSC_Spaceborne{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     # 'SB_hm_simpker': sl.load_pickle(f'{fm_folder}/FM_GSSC_Spaceborne{common_str}_Euclid_simpkernTrue_sigma2bpolar_cap_on_the_fly_HM.pickle'),
     # 'OC_simpker': sl.load_pickle(f'{fm_folder}/FM_GSSC_OneCovariance{common_str}_Euclid_KE_approximation_simpkernTrue_sigma2bpolar_cap_on_the_fly.pickle'),
-    'test': sl.load_pickle(f'{fm_folder}/FM_dict_zR.pickle'),
+    'test': sl.load_pickle(f'{fm_folder}/FM_dict_zz.pickle'),
     'current': fm_dict,
 }
 

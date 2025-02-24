@@ -4,6 +4,7 @@ using YAML
 using DataInterpolations
 using FastTransforms
 using FastChebInterp
+using ProgressMeter
 
 #TODO: dropping here Blast functions for Clenshaw-Curtis integration
 
@@ -133,11 +134,11 @@ function SSC_integral_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_C
 
     result = zeros(nbl, nbl, zpairs_AB, zpairs_CD)
 
-    @tturbo for ell1 in 1:nbl
+    for ell1 in 1:nbl
         for ell2 in 1:nbl  # this could be further optimized by computing only upper triangular ells (for LLLL, GLGL, GGGG only), but not with tturbo
             for zij in 1:zpairs_AB
                 for zkl in 1:zpairs_CD
-                    for z1_idx in 1:z_steps
+                    @showprogress Threads.@threads for z1_idx in 1:z_steps
                         for z2_idx in 1:z_steps
 
                             zi, zj, zk, zl = ind_AB[zij, num_col - 1], ind_AB[zij, num_col], ind_CD[zkl, num_col - 1], ind_CD[zkl, num_col]
@@ -237,12 +238,12 @@ function SSC_integral_4D_simps_zR(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, in
     
     result = zeros(nbl, nbl, zpairs_AB, zpairs_CD)
 
-    @tturbo for ell1 in 1:nbl
+    @showprogress for ell1 in 1:nbl
         for ell2 in 1:nbl  # this could be further optimized by computing only upper triangular ells (for LLLL, GLGL, GGGG only), but not with tturbo
             for zij in 1:zpairs_AB
                 for zkl in 1:zpairs_CD
                     for z_idx in 1:z_steps
-                        for R_idx in 1:nR
+                        Threads.@threads for R_idx in 1:nR
 
                             zi, zj, zk, zl = ind_AB[zij, num_col - 1], ind_AB[zij, num_col], ind_CD[zkl, num_col - 1], ind_CD[zkl, num_col]
 

@@ -193,7 +193,7 @@ def project_ellspace_cov_vec_helper(theta_1_ix, theta_2_ix, mu, nu, Amax,
                                                                ell1_values, ell2_values, cov_ell)
 
 
-def cov_parallel_helper(theta_1_ix, theta_2_ix, mu, nu, zij, zkl, ind_ab, ind_cd, Amax,
+def cov_parallel_helper(theta_1_ix, theta_2_ix, mu, nu, zij, zkl, ind_ab, ind_cd,
                         func, **kwargs):
 
     theta_1_l = theta_edges[theta_1_ix]
@@ -211,7 +211,6 @@ def cov_parallel_helper(theta_1_ix, theta_2_ix, mu, nu, zij, zkl, ind_ab, ind_cd
                                                         theta_2_u=theta_2_u,
                                                         nu=nu,
                                                         zi=zi, zj=zj, zk=zk, zl=zl,
-                                                        Amax=Amax,
                                                         **kwargs)
 
 
@@ -246,25 +245,6 @@ def cov_g_sva_real(theta_1_l, theta_1_u, mu,
     # Finally multiply the prefactor
     cov_elem = integral / (2.0 * np.pi * Amax)
     return cov_elem
-
-
-def cov_g_sva_real_helper(theta_1_ix, theta_2_ix, zi, zj, zk, zl, mu, nu, cl_5d,
-                          probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix):
-
-    theta_1_l = theta_edges[theta_1_ix]
-    theta_1_u = theta_edges[theta_1_ix + 1]
-    theta_2_l = theta_edges[theta_2_ix]
-    theta_2_u = theta_edges[theta_2_ix + 1]
-
-    return theta_1_ix, theta_2_ix, zi, zj, zk, zl, cov_g_sva_real(theta_1_l, theta_1_u, mu,
-                                                                  theta_2_l, theta_2_u, nu,
-                                                                  survey_area_sr, ell_values,
-                                                                  cl_5d[probe_a_ix, probe_c_ix, :, zi, zk],
-                                                                  cl_5d[probe_b_ix, probe_d_ix, :, zj, zl],
-                                                                  cl_5d[probe_a_ix, probe_d_ix, :, zi, zl],
-                                                                  cl_5d[probe_b_ix, probe_c_ix, :, zj, zk],
-                                                                  )
-
 
 def cov_g_mix_real(theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu, ell_values,
                    cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zi, zj, zk, zl,
@@ -331,27 +311,6 @@ def cov_g_mix_real(theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu, ell_value
     #     return 4 * integral_1 * prefac_1
 
     return prefac_1 * integral_1 + prefac_2 * integral_2 + prefac_3 * integral_3 + prefac_4 * integral_4
-
-
-def cov_g_mix_real_helper(theta_1_ix, theta_2_ix, zij, zkl, ind_ab, ind_cd, mu, nu, cl_5d,
-                          probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, integration_method):
-
-    theta_1_l = theta_edges[theta_1_ix]
-    theta_1_u = theta_edges[theta_1_ix + 1]
-    theta_2_l = theta_edges[theta_2_ix]
-    theta_2_u = theta_edges[theta_2_ix + 1]
-
-    zi, zj = ind_ab[zij, :]
-    zk, zl = ind_cd[zkl, :]
-
-    return theta_1_ix, theta_2_ix, zi, zj, zk, zl, cov_g_mix_real(theta_1_l, theta_1_u, mu,
-                                                                  theta_2_l, theta_2_u, nu,
-                                                                  ell_values,
-                                                                  cl_5d,
-                                                                  probe_a_ix, probe_b_ix,
-                                                                  probe_c_ix, probe_d_ix,
-                                                                  zi, zj, zk, zl,
-                                                                  integration_method=integration_method)
 
 
 def _get_t_munu(mu, nu, sigma_eps_tot):
@@ -494,7 +453,7 @@ sigma_eps_i = np.array([0.26, 0.26, 0.26])
 sigma_eps_tot = sigma_eps_i * np.sqrt(2)
 munu_vals = (0, 2, 4)
 
-term = 'sva'
+term = 'mix'
 probe = 'gggg'
 integration_method = 'simps'
 
@@ -724,6 +683,7 @@ if term == 'sva':
         'probe_d_ix': probe_d_ix,
         'cl_5d': cl_5d,
         'ell_values': ell_values,
+        'Amax': Amax,
     }
     results = Parallel(n_jobs=n_jobs)(delayed(cov_parallel_helper)(theta_1_ix=theta_1_ix,
                                                                    theta_2_ix=theta_2_ix,
@@ -731,7 +691,6 @@ if term == 'sva':
                                                                    zij=zij, zkl=zkl,
                                                                    ind_ab=ind_ab,
                                                                    ind_cd=ind_cd,
-                                                                   Amax=Amax,
                                                                    **kwargs
                                                                    )
                                       for theta_1_ix in tqdm(range(theta_bins))
@@ -742,6 +701,7 @@ if term == 'sva':
 
     for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
         cov_sb_sva_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
+        
     print(f'... Done in: {(time.time() - start):.2f} s')
 
 elif term == 'sn':
@@ -776,15 +736,26 @@ elif term == 'mix':
     print('Computing real-space Gaussian MIX covariance...')
     start = time.time()
 
-    # TODO compare a bit better with quad, I get very close results...
-    results = Parallel(n_jobs=n_jobs)(delayed(cov_g_mix_real_helper)(theta_1, theta_2, zij, zkl,
-                                                                     ind_ab, ind_cd,
-                                                                     mu, nu, cl_5d,
-                                                                     probe_a_ix, probe_b_ix,
-                                                                     probe_c_ix, probe_d_ix,
-                                                                     integration_method=integration_method)
-                                      for theta_1 in tqdm(range(theta_bins))
-                                      for theta_2 in range(theta_bins)
+    kwargs = {
+        'func': cov_g_mix_real,
+        'probe_a_ix': probe_a_ix,
+        'probe_b_ix': probe_b_ix,
+        'probe_c_ix': probe_c_ix,
+        'probe_d_ix': probe_d_ix,
+        'cl_5d': cl_5d,
+        'ell_values': ell_values,
+        'integration_method': integration_method,
+    }
+    results = Parallel(n_jobs=n_jobs)(delayed(cov_parallel_helper)(theta_1_ix=theta_1_ix,
+                                                                   theta_2_ix=theta_2_ix,
+                                                                   mu=mu, nu=nu,
+                                                                   zij=zij, zkl=zkl,
+                                                                   ind_ab=ind_ab,
+                                                                   ind_cd=ind_cd,
+                                                                   **kwargs
+                                                                   )
+                                      for theta_1_ix in tqdm(range(theta_bins))
+                                      for theta_2_ix in range(theta_bins)
                                       for zij in range(zpairs_ab)[:1]
                                       for zkl in range(zpairs_cd)[:1]
                                       )
@@ -792,6 +763,7 @@ elif term == 'mix':
     for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
         cov_sb_mix_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
     print(f'... Done in: {(time.time() - start):.2f} s')
+
 
 
 elif term == 'gauss_ell':

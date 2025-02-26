@@ -9,7 +9,7 @@ from spaceborne import sb_lib as sl
 
 def test_main_script(test_cfg_path):
     # Run the main script with the test config
-    subprocess.run([f'python', main_script_path, '--config', test_cfg_path], check=True)
+    subprocess.run(['python', main_script_path, '--config', test_cfg_path], check=True)
 
     # Load the benchmark output
     bench_data = np.load(f'{bench_path}/{bench_name}.npz', allow_pickle=True)

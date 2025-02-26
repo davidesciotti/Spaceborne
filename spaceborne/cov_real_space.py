@@ -540,7 +540,7 @@ term = 'mix'
 probe = 'gmxim'
 integration_method = 'simps'
 
-
+# the comments on the right are outdated, btw
 probe_idx_dict = {
     'xipxip': (0, 0, 0, 0),  # * SVA 1% ok; SN 0.1% ok; MIX ok for auto-pairs
     'xipxim': (0, 0, 0, 0),  # not SVA very good in lower left corner of 2d plot, possibly not worrysome; SN ok (0)
@@ -575,8 +575,8 @@ mu_dict = {
     'xim': 4,
 }
 
-for probe in probe_idx_dict.keys():
-# for probe in (probe,):
+# for probe in probe_idx_dict.keys():
+for probe in (probe,):
 
     twoprobe_a_str, twoprobe_b_str = split_probe_name(probe)
     twoprobe_a_ix, twoprobe_b_ix = probe_idx_dict_short[twoprobe_a_str],  probe_idx_dict_short[twoprobe_b_str]
@@ -1021,13 +1021,15 @@ for probe in probe_idx_dict.keys():
     if np.allclose(cov_sb_6d, 0, atol=1e-20, rtol=1e-10):
         print('cov_sb_6d is zero')
 
-    cov_oc_4d = sl.cov_6D_to_4D(cov_oc_6d, theta_bins, zpairs_auto, ind_auto)
-    cov_sb_4d = sl.cov_6D_to_4D(cov_sb_6d, theta_bins, zpairs_auto, ind_auto)
+    # cov_oc_4d = sl.cov_6D_to_4D(cov_oc_6d, theta_bins, zpairs_cross, ind_cross)
+    # cov_sb_4d = sl.cov_6D_to_4D(cov_sb_6d, theta_bins, zpairs_cross, ind_cross)
+    cov_oc_4d = sl.cov_6D_to_4D_blocks(cov_oc_6d, theta_bins, zpairs_ab, zpairs_cd, ind_ab, ind_cd)
+    cov_sb_4d = sl.cov_6D_to_4D_blocks(cov_sb_6d, theta_bins, zpairs_ab, zpairs_cd, ind_ab, ind_cd)
     # cov_sb_vec_4d = sl.cov_6D_to_4D(cov_sb_vec_6d, theta_bins, zpairs_auto, ind_auto)
     # cov_sb_gfromsva_4d = sl.cov_6D_to_4D(cov_sb_gfromsva_6d, theta_bins, zpairs_auto, ind_auto)
 
-    cov_oc_2d = sl.cov_4D_to_2D(cov_oc_4d, block_index='zpair')
-    cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='zpair')
+    cov_oc_2d = sl.cov_4D_to_2D(cov_oc_4d, block_index='zpair', optimize=True)
+    cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='zpair', optimize=True)
     # cov_sb_vec_2d = sl.cov_4D_to_2D(cov_sb_vec_4d, block_index='zpair')
     # cov_sb_gfromsva_2d = sl.cov_4D_to_2D(cov_sb_gfromsva_4d, block_index='zpair')
 
@@ -1052,20 +1054,21 @@ for probe in probe_idx_dict.keys():
 
     cov_oc_spline = CubicSpline(thetas_oc_load_rad, np.diag(cov_oc_6d[:, :, zi, zj, zk, zl]))
 
-    # comapre total diag
-    sl.compare_funcs(None,
-                     {
-                         'OC': np.abs(np.diag(cov_oc_2d)),
-                         'SB': np.abs(np.diag(cov_sb_2d)),
-                         #  'SB_VEC': np.abs(np.diag(cov_sb_vec_2d)),
-                         #  'SB_split_sum': np.abs(np.diag(cov_sb_vec_2d)),  # TODO
-                         #  'SB_fromsva': np.abs(np.diag(cov_sb_gfromsva_2d)),
-                         #  'OC_SUM': np.abs(np.diag(cov_oc_sum_2d)),
-                     },
-                     logscale_y=[True, False],
-                     #  ylim_diff=[-20, 20],
-                     title=f'{term}, {probe}, total cov diag')
-    # plt.savefig(f'{term}_{probe}_total_cov_diag.png')
+    # compare total diag
+    if cov_oc_2d.shape[0] == cov_oc_2d.shape[1]:
+        sl.compare_funcs(None,
+                        {
+                            'OC': np.abs(np.diag(cov_oc_2d)),
+                            'SB': np.abs(np.diag(cov_sb_2d)),
+                            #  'SB_VEC': np.abs(np.diag(cov_sb_vec_2d)),
+                            #  'SB_split_sum': np.abs(np.diag(cov_sb_vec_2d)),  # TODO
+                            #  'SB_fromsva': np.abs(np.diag(cov_sb_gfromsva_2d)),
+                            #  'OC_SUM': np.abs(np.diag(cov_oc_sum_2d)),
+                        },
+                        logscale_y=[True, False],
+                        #  ylim_diff=[-20, 20],
+                        title=f'{term}, {probe}, total cov diag')
+        # plt.savefig(f'{term}_{probe}_total_cov_diag.png')
 
     # compare flattened matrix
     sl.compare_funcs(None,

@@ -412,17 +412,16 @@ def t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i):
         for zj in range(zbins):
 
             # xipxip or ximxim
-            if (probe_a_ix == probe_b_ix == probe_c_ix == probe_d_ix == 0 or
-                    probe_a_ix == probe_b_ix == probe_c_ix == probe_d_ix == 1):
+            if (probe_a_ix == probe_b_ix == probe_c_ix == probe_d_ix == 0):
                 t_munu[zi, zj] = 2 * sigma_eps_i[zi]**2 * sigma_eps_i[zj]**2
 
-            elif probe_a_ix == probe_b_ix == probe_c_ix == probe_d_ix == 2:  # gggg
+            elif probe_a_ix == probe_b_ix == probe_c_ix == probe_d_ix == 1:  # gggg
                 t_munu[zi, zj] = 1
 
-            elif (((probe_a_ix in [0, 1] and probe_b_ix == 2) or
-                   (probe_b_ix in [0, 1] and probe_a_ix == 2)) and
-                  ((probe_c_ix in [0, 1] and probe_d_ix == 2) or
-                   (probe_d_ix in [0, 1] and probe_c_ix == 2))
+            elif (((probe_a_ix == 0 and probe_b_ix == 1) or
+                   (probe_b_ix == 0 and probe_a_ix == 1)) and
+                  ((probe_c_ix == 0 and probe_d_ix == 1) or
+                   (probe_d_ix == 0 and probe_c_ix == 1))
                   ):
                 t_munu[zi, zi] = sigma_eps_i[zi]**2
 
@@ -437,11 +436,11 @@ def t_mix(probe_a_ix, zbins, sigma_eps_i):
     t_munu = np.zeros(zbins)
 
     # xipxip or ximxim
-    if probe_a_ix == 0 or probe_a_ix == 1:
+    if probe_a_ix == 0:
         t_munu = sigma_eps_i**2
 
     # gggg
-    elif probe_a_ix == 2:
+    elif probe_a_ix == 1:
         t_munu = np.ones(zbins)
 
     return t_munu
@@ -529,27 +528,30 @@ n_eff_src = np.array([0.6, 0.6, 0.6])
 # TODO rerun OC with more realistic values, i.e.
 # n_eff_lens = np.array([8.09216, 8.09215, 8.09215])
 # n_eff_src = np.array([8.09216, 8.09215, 8.09215])
+
 n_eff_2d = np.row_stack((n_eff_lens, n_eff_lens, n_eff_src))  # in this way the indices correspond to xip, xim, g
 sigma_eps_i = np.array([0.26, 0.26, 0.26])
 sigma_eps_tot = sigma_eps_i * np.sqrt(2)
 munu_vals = (0, 2, 4)
+n_probes_rs = 4  # real space
+n_probes_hs = 2  # harmonic space
 
-term = 'sva'
-probe = 'gggg'
+term = 'mix'
+probe = 'gmxim'
 integration_method = 'simps'
 
 
 probe_idx_dict = {
     'xipxip': (0, 0, 0, 0),  # * SVA 1% ok; SN 0.1% ok; MIX ok for auto-pairs
-    'xipxim': (0, 0, 1, 1),  # not SVA very good in lower left corner of 2d plot, possibly not worrysome; SN ok (0)
-    'ximxim': (1, 1, 1, 1),  # * SVA 5% ok; SN 0.1% ok
-    'gmgm': (2, 0, 2, 0),  # * SVA 1% ok; SN 0.1% ok
-    'gmxim': (2, 0, 1, 1),  # ! SVA ok, but only if I transpse my cov; SN ok (0);
-    'gmxip': (2, 0, 0, 0),  # ! SVA ok, but only if I transpse my cov; SN ok (0);
-    'gggg': (2, 2, 2, 2),  # * SVA mostly ok; SN ok;
-    'ggxim': (2, 2, 1, 1),  # not SVA very good in lower left corner of 2d plot, possibly not worrysome; SN ok (0);
-    'gggm': (2, 2, 2, 0),  # * SVA mostly ok; SN ok (0);
-    'ggxip': (2, 2, 0, 0),  # * SVA mostly ok; SN ok (0);
+    'xipxim': (0, 0, 0, 0),  # not SVA very good in lower left corner of 2d plot, possibly not worrysome; SN ok (0)
+    'ximxim': (0, 0, 0, 0),  # * SVA 5% ok; SN 0.1% ok
+    'gmgm': (1, 0, 1, 0),  # * SVA 1% ok; SN 0.1% ok
+    'gmxim': (1, 0, 0, 0),  # ! SVA ok, but only if I transpse my cov; SN ok (0);
+    'gmxip': (1, 0, 0, 0),  # ! SVA ok, but only if I transpse my cov; SN ok (0);
+    'gggg': (1, 1, 1, 1),  # * SVA mostly ok; SN ok;
+    'ggxim': (1, 1, 0, 0),  # not SVA very good in lower left corner of 2d plot, possibly not worrysome; SN ok (0);
+    'gggm': (1, 1, 1, 0),  # * SVA mostly ok; SN ok (0);
+    'ggxip': (1, 1, 0, 0),  # * SVA mostly ok; SN ok (0);
 }
 
 # ! THE PROBLEM IS FOR SURE IN HOW THE PROBE IDXS ARE "COMRPESSED" 
@@ -559,6 +561,12 @@ probe_idx_dict_short = {
     'gg': 2,  # w
     'gm': 3,  # \gamma_t
 }  # TODO should I invert the indices for gg and gm? is there a smarter mapping? probably not...
+
+probe_idx_dict_short_oc = {}
+for key in probe_idx_dict.keys():
+    probe_a_str, probe_b_str = split_probe_name(key)
+    probe_idx_dict_short_oc[probe_a_str + probe_b_str] = (probe_idx_dict_short[probe_a_str], probe_idx_dict_short[probe_b_str])
+    
 
 mu_dict = {
     'gg': 0,
@@ -644,18 +652,21 @@ for probe in probe_idx_dict.keys():
             cl_ll_3d[:, zi, zj] = ccl.angular_cl(cosmo, wl_ker[zi], wl_ker[zj], ell_values,
                                                  limber_integration_method='spline')
 
-    cl_5d = np.zeros((3, 3, len(ell_values), zbins, zbins))
+    cl_5d = np.zeros((n_probes_hs, n_probes_hs, len(ell_values), zbins, zbins))
+    # cl_5d[0, 0, ...] = cl_ll_3d
+    # cl_5d[0, 1, ...] = cl_ll_3d
+    # cl_5d[0, 2, ...] = cl_gl_3d.transpose(0, 2, 1)
+    # cl_5d[1, 0, ...] = cl_ll_3d
+    # cl_5d[1, 1, ...] = cl_ll_3d
+    # cl_5d[1, 2, ...] = cl_gl_3d.transpose(0, 2, 1)
+    # cl_5d[2, 0, ...] = cl_gl_3d
+    # cl_5d[2, 1, ...] = cl_gl_3d
+    # cl_5d[2, 2, ...] = cl_gg_3d
+    
     cl_5d[0, 0, ...] = cl_ll_3d
-    cl_5d[0, 1, ...] = cl_ll_3d
-    cl_5d[0, 2, ...] = cl_gl_3d.transpose(0, 2, 1)
-
-    cl_5d[1, 0, ...] = cl_ll_3d
-    cl_5d[1, 1, ...] = cl_ll_3d
-    cl_5d[1, 2, ...] = cl_gl_3d.transpose(0, 2, 1)
-
-    cl_5d[2, 0, ...] = cl_gl_3d
-    cl_5d[2, 1, ...] = cl_gl_3d
-    cl_5d[2, 2, ...] = cl_gg_3d
+    cl_5d[1, 0, ...] = cl_gl_3d
+    cl_5d[0, 1, ...] = cl_gl_3d.transpose(0, 2, 1)
+    cl_5d[1, 1, ...] = cl_gg_3d
 
     # TODO test this better, especially for cross-terms
     # TODO off-diagonal zij blocks still don't match, I think it's just a
@@ -927,19 +938,19 @@ for probe in probe_idx_dict.keys():
     cov_theta_indices = {ell_out: idx for idx, ell_out in enumerate(thetas_oc_load)}
 
     # ! import .list covariance file
-    cov_g_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
+    cov_g_oc_3x2pt_8D = np.zeros((n_probes_rs, n_probes_rs,
                                    theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-    cov_sva_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
+    cov_sva_oc_3x2pt_8D = np.zeros((n_probes_rs, n_probes_rs,
                                     theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-    cov_mix_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
+    cov_mix_oc_3x2pt_8D = np.zeros((n_probes_rs, n_probes_rs,
                                     theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-    cov_sn_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
+    cov_sn_oc_3x2pt_8D = np.zeros((n_probes_rs, n_probes_rs,
                                     theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-    cov_ssc_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
+    cov_ssc_oc_3x2pt_8D = np.zeros((n_probes_rs, n_probes_rs,
                                     theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-    # cov_cng_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
+    # cov_cng_oc_3x2pt_8D = np.zeros((n_probes_realspace, n_probes_realspace,
     #                                  theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-    # cov_tot_oc_3x2pt_10D = np.zeros((n_probes, n_probes, n_probes, n_probes,
+    # cov_tot_oc_3x2pt_8D = np.zeros((n_probes_realspace, n_probes_realspace,
     #                                  theta_bins, theta_bins, zbins, zbins, zbins, zbins))
 
     print(f'Loading OneCovariance output from {cov_list_name}.dat file...')
@@ -947,7 +958,7 @@ for probe in probe_idx_dict.keys():
     for df_chunk in pd.read_csv(f'{oc_path}/{cov_list_name}.dat', sep='\s+', names=column_names, skiprows=1, chunksize=df_chunk_size):
 
         # Vectorize the extraction of probe indices
-        probe_idx = df_chunk['#obs'].str[:].map(probe_idx_dict).values
+        probe_idx = df_chunk['#obs'].str[:].map(probe_idx_dict_short_oc).values
         probe_idx_arr = np.array(probe_idx.tolist())  # now shape is (N, 4)
 
         # Map 'ell' values to their corresponding indices
@@ -962,42 +973,42 @@ for probe in probe_idx_dict.keys():
             z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values
 
         # Vectorized assignment to the arrays
-        index_tuple = (probe_idx_arr[:, 0], probe_idx_arr[:, 1], probe_idx_arr[:, 2], probe_idx_arr[:, 3],
+        index_tuple = (probe_idx_arr[:, 0], probe_idx_arr[:, 1],
                        theta1_idx, theta2_idx,
                        z_indices[:, 0], z_indices[:, 1], z_indices[:, 2], z_indices[:, 3])
 
-        cov_sva_oc_3x2pt_10D[index_tuple] = df_chunk['covg sva'].values
-        cov_mix_oc_3x2pt_10D[index_tuple] = df_chunk['covg mix'].values
-        cov_sn_oc_3x2pt_10D[index_tuple] = df_chunk['covg sn'].values
-        cov_g_oc_3x2pt_10D[index_tuple] = df_chunk['covg sva'].values + \
+        cov_sva_oc_3x2pt_8D[index_tuple] = df_chunk['covg sva'].values
+        cov_mix_oc_3x2pt_8D[index_tuple] = df_chunk['covg mix'].values
+        cov_sn_oc_3x2pt_8D[index_tuple] = df_chunk['covg sn'].values
+        cov_g_oc_3x2pt_8D[index_tuple] = df_chunk['covg sva'].values + \
             df_chunk['covg mix'].values + df_chunk['covg sn'].values
-        cov_ssc_oc_3x2pt_10D[index_tuple] = df_chunk['covssc'].values
-        # cov_cng_oc_3x2pt_10D[index_tuple] = df_chunk['covng'].values
-        # cov_tot_oc_3x2pt_10D[index_tuple] = df_chunk['cov'].values
+        cov_ssc_oc_3x2pt_8D[index_tuple] = df_chunk['covssc'].values
+        # cov_cng_oc_3x2pt_8D[index_tuple] = df_chunk['covng'].values
+        # cov_tot_oc_3x2pt_8D[index_tuple] = df_chunk['cov'].values
 
-    covs_10d = [cov_sva_oc_3x2pt_10D, cov_mix_oc_3x2pt_10D, cov_sn_oc_3x2pt_10D,
-                cov_g_oc_3x2pt_10D, cov_ssc_oc_3x2pt_10D,
-                # cov_cng_oc_3x2pt_10D, cov_tot_oc_3x2pt_10D
+    covs_8d = [cov_sva_oc_3x2pt_8D, cov_mix_oc_3x2pt_8D, cov_sn_oc_3x2pt_8D,
+                cov_g_oc_3x2pt_8D, cov_ssc_oc_3x2pt_8D,
+                # cov_cng_oc_3x2pt_8D, cov_tot_oc_3x2pt_8D
                 ]
 
-    # for cov_10d in covs_10d:
-    #     cov_10d[0, 0, 1, 1] = deepcopy(np.transpose(cov_10d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3)))
-    #     cov_10d[1, 0, 0, 0] = deepcopy(np.transpose(cov_10d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3)))
-    #     cov_10d[1, 0, 1, 1] = deepcopy(np.transpose(cov_10d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3)))
+    # for cov_8d in covs_8d:
+    #     cov_8d[0, 0, 1, 1] = deepcopy(np.transpose(cov_8d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3)))
+    #     cov_8d[1, 0, 0, 0] = deepcopy(np.transpose(cov_8d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3)))
+    #     cov_8d[1, 0, 1, 1] = deepcopy(np.transpose(cov_8d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3)))
 
     # ! =============================================================================================
 
     if term == 'sva':
-        cov_oc_6d = cov_sva_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...]
+        cov_oc_6d = cov_sva_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
         cov_sb_6d = cov_sb_sva_6d
     elif term == 'sn':
-        cov_oc_6d = cov_sn_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...]
+        cov_oc_6d = cov_sn_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
         cov_sb_6d = cov_sb_sn_6d
     elif term == 'mix':
-        cov_oc_6d = cov_mix_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...]
+        cov_oc_6d = cov_mix_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
         cov_sb_6d = cov_sb_mix_6d
     elif term == 'gauss_ell':
-        cov_oc_6d = cov_g_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...]
+        cov_oc_6d = cov_g_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
         cov_sb_6d = cov_sb_g_6d
         cov_sb_vec_6d = cov_sb_g_vec_6d
 
@@ -1066,7 +1077,7 @@ for probe in probe_idx_dict.keys():
                      },
                      logscale_y=[True, False],
                      title=f'{term}, {probe}, total cov flat',
-                    #  ylim_diff=[-110, 110])
+                     ylim_diff=[-110, 110]
     )
     # plt.savefig(f'{term}_{probe}_total_cov_flat.png')
 

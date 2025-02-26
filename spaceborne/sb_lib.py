@@ -1568,36 +1568,6 @@ def add_prior_to_fm(fm, fiducials_dict, prior_param_names, prior_param_values):
     return fm + prior_fm
 
 
-def uncertainties_FM(FM, nparams, fiducials=None, which_uncertainty='marginal', normalize=True):
-    """
-    returns relative *percentage!* error
-    """
-
-    if which_uncertainty == 'marginal':
-        FM_inv = np.linalg.inv(FM)
-        sigma_FM = np.sqrt(np.diag(FM_inv))[:nparams] * 100
-    elif which_uncertainty == 'conditional':
-        sigma_FM = np.sqrt(1 / np.diag(FM))[:nparams] * 100
-    else:
-        raise ValueError('which_uncertainty must be either "marginal" or "conditional"')
-
-    if normalize:
-        fiducials = np.asarray(fiducials)  # turn list into array to make np.where work
-
-        assert fiducials.shape[0] == nparams, 'the fiducial must have the same length as the number of parameters'
-
-        if fiducials is None:
-            assert False, 'you should definetly provide fiducial values!'
-            print('No fiducial values provided, using the ISTF values (for flat w0waCDM cosmology and no extensions)')
-            fiducials = np.asarray(list(ISTF_fid.primary.values())[:7])
-
-        # if the fiducial for is 0, substitute with 1 to avoid division by zero; if it's -1, take the absolute value
-        fiducials = np.where(fiducials == 0, 1, fiducials)
-        fiducials = np.where(fiducials == -1, 1, fiducials)
-        sigma_FM /= fiducials
-
-    return sigma_FM
-
 
 def uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal', normalize=True, percent_units=True):
     """

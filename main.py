@@ -28,6 +28,15 @@ from spaceborne import covariance as sb_cov
 from spaceborne import onecovariance_interface as oc_interface
 from spaceborne import sb_lib as sl
 
+try:
+    import pyfiglet
+    text = "Spaceborne"
+    ascii_art =  pyfiglet.figlet_format(text, font="slant")
+    print(ascii_art)
+except ImportError:
+    pass
+
+
 # Get the current script's directory
 # current_dir = Path(__file__).resolve().parent
 # parent_dir = current_dir.parent

@@ -43,6 +43,7 @@ dependencies:
     - pymaster
     - cython
     - getdist
+    - pyfiglet # for the fancy ascii art, not really needed
 
 # In case of issues with CCL, you can try running
 # $ sudo apt-get install gfortran cmake build-essential autoconf bison

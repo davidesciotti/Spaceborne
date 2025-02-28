@@ -385,7 +385,7 @@ for row in 1:length(probe_combinations)
         probe_C, probe_D = probe_combinations[col]
 
         if col >= row  # upper triangle and diagonal
-            println("Computing SSC covariance block $(probe_A)$(probe_B)_$(probe_C)$(probe_D)"); flush(STDOUT)
+            println("Computing SSC covariance block $(probe_A)$(probe_B)_$(probe_C)$(probe_D)"); flush(stdout)
 
             cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)] =
             @time ssc_integral_4d_func(

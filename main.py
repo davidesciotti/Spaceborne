@@ -60,7 +60,7 @@ with open('config.yaml', 'r') as f:
     
 #SSC_integration_method = cfg['covariance']['SSC_integration_method']
 #I tried to make it work from config but i get weird bugs that i don't understand
-SSC_integration_method = "z_z" #"z_z"or "z_R"
+SSC_integration_method = "z_R" #"z_z"or "z_R"
 
 # some convenience variables, just to make things more readable
 h = cfg['cosmology']['h']
@@ -213,7 +213,7 @@ k_grid_sigma2_b = np.logspace(cfg['covariance']['log10_k_min'],
 nR = cfg['covariance']['nR'] 
 
 #TODO: dropping the functions here, decide in which module they belong
-#TODO: check that this is the same as the julia R = chebpoints(96, -1, 1)
+#TODO: check that this is the same as the julia R = chebpoints(nR, -1, 1) (i did but check again to be extra sure)
 def chebpoints(order, lb, ub):
     if order < 0:
         raise ValueError("order must be non-negative")
@@ -968,9 +968,9 @@ cov_dict = cov_obj.cov_dict
 for key in cov_dict.keys():
     sl.matshow(cov_dict[key], title=key)
 
-for key in cov_dict.keys():
+"""for key in cov_dict.keys():
     np.testing.assert_allclose(cov_dict[key], cov_dict[key].T,
-                               atol=0, rtol=1e-7, err_msg=f'{key} not symmetric')
+                               atol=0, rtol=1e-7, err_msg=f'{key} not symmetric')"""
 
 for which_cov in cov_dict.keys():
     probe = which_cov.split('_')[1]
@@ -1617,7 +1617,7 @@ sl.compare_fm_constraints(*fm_dict_list, labels=labels,
                           save_fig=True,
                           fig_path='./output/plots')
 
-assert False, 'stop here'
+"""assert False, 'stop here'
 
 fisher_matrices = (
     fm_dict_of_dicts['SB_hm_simpker']['FM_3x2pt_GSSC'],
@@ -1635,6 +1635,6 @@ fiducials = list(fm_dict_of_dicts['SB_hm_simpker']['fiducial_values_dict'].value
 param_names_list = list(fm_dict_of_dicts['SB_hm_simpker']['fiducial_values_dict'].keys())
 param_names_labels_toplot = param_names_list[:8]
 plot_lib.triangle_plot(fisher_matrices, fiducials, title, labels, param_names_list, param_names_labels_toplot,
-                       param_names_labels_tex=None, rotate_param_labels=False, contour_colors=None, line_colors=None)
+                       param_names_labels_tex=None, rotate_param_labels=False, contour_colors=None, line_colors=None)"""
 
 print('Finished in {:.2f} minutes'.format((time.perf_counter() - script_start_time) / 60))

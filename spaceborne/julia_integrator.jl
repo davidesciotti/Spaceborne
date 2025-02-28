@@ -195,7 +195,7 @@ function SSC_integral_KE_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, in
     return result .* z_step
 end
 
-"""function SSC_integral_4D_simps_zR(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array,  R_array::Array)
+function SSC_integral_4D_simps_zR(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array,  R_array::Array)
 
     simpson_weights_z = get_simpson_weights(length(z_array))
     z_step = (last(z_array)-first(z_array)) / (length(z_array)-1)
@@ -236,7 +236,7 @@ end
     
     result = zeros(nbl, nbl, zpairs_AB, zpairs_CD)
 
-    @showprogress for ell1 in 1:nbl
+    for ell1 in 1:nbl
         for ell2 in 1:nbl  # this could be further optimized by computing only upper triangular ells (for LLLL, GLGL, GGGG only), but not with tturbo
             for zij in 1:zpairs_AB
                 for zkl in 1:zpairs_CD
@@ -256,65 +256,6 @@ end
             end
         end
     end
-    return z_step .* result
-end"""
-
-#Function that i asked chatgpt to optimize 
-
-function SSC_integral_4D_simps_zR(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array,  R_array::Array)
-    """ Optimized version with precomputed interpolations and better threading. """
-
-    simpson_weights_z = get_simpson_weights(length(z_array))
-    z_step = (last(z_array) - first(z_array)) / (length(z_array) - 1)
-
-    nR = length(R_array)
-    w_R = get_clencurt_weights_R_integration(2*nR+1)
-
-    zpairs_AB = size(ind_AB, 1)
-    zpairs_CD = size(ind_CD, 1)
-    num_col = size(ind_AB, 2)
-
-    # Precompute interpolated cl_integral_prefactor_R
-    prefactor_interpolator = AkimaInterpolation(cl_integral_prefactor, z_array, extrapolation=ExtrapolationType.Extension)
-    cl_integral_prefactor_R = [prefactor_interpolator(z * r) for z in z_array, r in R_array]  # Faster than loop
-
-    # Precompute interpolated d2ClAB_dVddeltab_R and d2ClCD_dVddeltab_R
-    d2ClAB_dVddeltab_R = zeros(29,3,3,length(z_array), length(R_array))
-    d2ClCD_dVddeltab_R = zeros(29,3,3,length(z_array), length(R_array))
-
-    for l in 1:29, a in 1:3, b in 1:3
-        interp_AB = AkimaInterpolation(d2ClAB_dVddeltab[l,a,b,:], z_array, extrapolation=ExtrapolationType.Extension)
-        interp_CD = AkimaInterpolation(d2ClCD_dVddeltab[l,a,b,:], z_array, extrapolation=ExtrapolationType.Extension)
-        for (ridx, r) in enumerate(R_array)
-            d2ClAB_dVddeltab_R[l,a,b,:,ridx] = interp_AB.(z_array * r)
-            d2ClCD_dVddeltab_R[l,a,b,:,ridx] = interp_CD.(z_array * r)
-        end
-    end
-
-    result = zeros(nbl, nbl, zpairs_AB, zpairs_CD)
-
-    println("Starting computation...")
-
-    @inbounds @showprogress for ell1 in 1:nbl, ell2 in 1:nbl, zij in 1:zpairs_AB, zkl in 1:zpairs_CD
-
-        zi, zj, zk, zl = ind_AB[zij, num_col - 1], ind_AB[zij, num_col], ind_CD[zkl, num_col - 1], ind_CD[zkl, num_col]
-
-        # Use a thread-local variable for safe accumulation
-        local_result = 0.0
-
-        Threads.@threads for z_idx in 1:z_steps
-            for R_idx in 1:nR
-                local_result += z_array[z_idx] * cl_integral_prefactor[z_idx] * cl_integral_prefactor_R[z_idx, R_idx] *
-                ( d2ClAB_dVddeltab[ell1, zi, zj, z_idx] * d2ClCD_dVddeltab_R[ell2, zk, zl, z_idx, R_idx] +
-                  d2ClCD_dVddeltab[ell2, zk, zl, z_idx] * d2ClAB_dVddeltab_R[ell1, zi, zj, z_idx, R_idx]) *
-                sigma2[z_idx, R_idx] * simpson_weights_z[z_idx] * w_R[R_idx]
-            end
-        end
-
-        # Reduce safely
-        result[ell1, ell2, zij, zkl] += local_result
-    end
-
     return z_step .* result
 end
 
@@ -444,7 +385,7 @@ for row in 1:length(probe_combinations)
         probe_C, probe_D = probe_combinations[col]
 
         if col >= row  # upper triangle and diagonal
-            println("Computing SSC covariance block $(probe_A)$(probe_B)_$(probe_C)$(probe_D)")
+            println("Computing SSC covariance block $(probe_A)$(probe_B)_$(probe_C)$(probe_D)"); flush(STDOUT)
 
             cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)] =
             @time ssc_integral_4d_func(

@@ -1,11 +1,16 @@
 import numpy as np
+
 from spaceborne import cosmo_lib
 
 
-def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b, cosmo_ccl, zbins, h, kmax_h_over_Mpc_ref):
+def load_ell_cuts(
+    kmax_h_over_Mpc, z_values_a, z_values_b, cosmo_ccl, zbins, h, kmax_h_over_Mpc_ref
+):
     """loads ell_cut values, rescales them and load into a dictionary.
-    z_values_a: redshifts at which to compute the ell_max for a given Limber wavenumber, for probe A
-    z_values_b: redshifts at which to compute the ell_max for a given Limber wavenumber, for probe B
+    z_values_a: redshifts at which to compute the ell_max for a given Limber 
+    wavenumber, for probe A
+    z_values_b: redshifts at which to compute the ell_max for a given Limber 
+    wavenumber, for probe B
     """
 
     if kmax_h_over_Mpc is None:
@@ -16,8 +21,12 @@ def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b, cosmo_ccl, zbins, h, 
     ell_cuts_array = np.zeros((zbins, zbins))
     for zi, zval_i in enumerate(z_values_a):
         for zj, zval_j in enumerate(z_values_b):
-            r_of_zi = cosmo_lib.ccl_comoving_distance(zval_i, use_h_units=False, cosmo_ccl=cosmo_ccl)
-            r_of_zj = cosmo_lib.ccl_comoving_distance(zval_j, use_h_units=False, cosmo_ccl=cosmo_ccl)
+            r_of_zi = cosmo_lib.ccl_comoving_distance(
+                zval_i, use_h_units=False, cosmo_ccl=cosmo_ccl
+            )
+            r_of_zj = cosmo_lib.ccl_comoving_distance(
+                zval_j, use_h_units=False, cosmo_ccl=cosmo_ccl
+            )
             ell_cut_i = kmax_1_over_Mpc * r_of_zi - 1 / 2
             ell_cut_j = kmax_1_over_Mpc * r_of_zj - 1 / 2
             ell_cuts_array[zi, zj] = np.min((ell_cut_i, ell_cut_j))
@@ -26,7 +35,8 @@ def load_ell_cuts(kmax_h_over_Mpc, z_values_a, z_values_b, cosmo_ccl, zbins, h, 
 
 
 def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum, zbins):
-    """ ell_values can be the bin center or the bin lower edge; Francis suggests the second option is better"""
+    """ell_values can be the bin center or the bin lower edge; Francis 
+    suggests the second option is better"""
 
     if is_auto_spectrum:
         idxs_to_delete = []
@@ -54,10 +64,16 @@ def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum, zbins):
 
 
 def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict, zbins, covariance_cfg):
-    """this function tries to implement the indexing for the flattening ell_probe_zpair"""
+    """this function tries to implement the indexing for the 
+    flattening ell_probe_zpair"""
 
-    if (covariance_cfg['triu_tril'], covariance_cfg['row_col_major']) != ('triu', 'row-major'):
-        raise Exception('This function is only implemented for the triu, row-major case')
+    if (covariance_cfg['triu_tril'], covariance_cfg['row_col_major']) != (
+        'triu',
+        'row-major',
+    ):
+        raise Exception(
+            'This function is only implemented for the triu, row-major case'
+        )
 
     idxs_to_delete_3x2pt = []
     count = 0
@@ -84,20 +100,34 @@ def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict, zbins, covariance_
     return list(idxs_to_delete_3x2pt)
 
 
-def get_idxs_to_delete_3x2pt_v0(ell_values_3x2pt, ell_cuts_dict):
+def get_idxs_to_delete_3x2pt_v0(
+    ell_values_3x2pt, ell_cuts_dict, nbl_3x2pt, zpairs_auto, zpairs_cross
+):
     """this implements the indexing for the flattening probe_ell_zpair"""
-    raise Exception('Concatenation must be done *before* flattening, this function is not compatible with the '
-                    '"ell-block ordering of the covariance matrix"')
-    idxs_to_delete_LL = get_idxs_to_delete(ell_values_3x2pt, ell_cuts_dict['LL'], is_auto_spectrum=True)
-    idxs_to_delete_GL = get_idxs_to_delete(ell_values_3x2pt, ell_cuts_dict['GL'], is_auto_spectrum=False)
-    idxs_to_delete_GG = get_idxs_to_delete(ell_values_3x2pt, ell_cuts_dict['GG'], is_auto_spectrum=True)
+    raise Exception(
+        'Concatenation must be done *before* flattening, this function '
+        'is not compatible with the '
+        '"ell-block ordering of the covariance matrix"'
+    )
+    idxs_to_delete_LL = get_idxs_to_delete(
+        ell_values_3x2pt, ell_cuts_dict['LL'], is_auto_spectrum=True
+    )
+    idxs_to_delete_GL = get_idxs_to_delete(
+        ell_values_3x2pt, ell_cuts_dict['GL'], is_auto_spectrum=False
+    )
+    idxs_to_delete_GG = get_idxs_to_delete(
+        ell_values_3x2pt, ell_cuts_dict['GG'], is_auto_spectrum=True
+    )
 
-    # when concatenating, we need to add the offset from the stacking of the 3 datavectors
-    # when concatenating, we need to add the offset from the stacking of the 3 datavectors
-    idxs_to_delete_3x2pt = np.concatenate((
-        np.array(idxs_to_delete_LL),
-        nbl_3x2pt * zpairs_auto + np.array(idxs_to_delete_GL),
-        nbl_3x2pt * (zpairs_auto + zpairs_cross) + np.array(idxs_to_delete_GG)))
+    # when concatenating, we need to add the offset from the 
+    # stacking of the 3 datavectors
+    idxs_to_delete_3x2pt = np.concatenate(
+        (
+            np.array(idxs_to_delete_LL),
+            nbl_3x2pt * zpairs_auto + np.array(idxs_to_delete_GL),
+            nbl_3x2pt * (zpairs_auto + zpairs_cross) + np.array(idxs_to_delete_GG),
+        )
+    )
 
     # check if the array is monotonically increasing
     assert np.all(np.diff(idxs_to_delete_3x2pt) > 0)
@@ -122,13 +152,15 @@ def generate_ell_and_deltas(general_config):
     delta_dict = {}
 
     # XC has the same ell values as GC
-    ell_max_XC = ell_max_GC
-    ell_max_WA = ell_max_XC
+    # ell_max_XC = ell_max_GC
+    # ell_max_WA = ell_max_XC
 
     # creating nbl ell values logarithmically equi-spaced between 10 and ell_max
     ell_WL = np.logspace(np.log10(ell_min), np.log10(ell_max_WL), nbl + 1)  # WL
     ell_GC = np.logspace(np.log10(ell_min), np.log10(ell_max_GC), nbl + 1)  # GC
-    ell_3x2pt = np.logspace(np.log10(ell_min), np.log10(ell_max_3x2pt), nbl + 1)  # 3x2pt
+    ell_3x2pt = np.logspace(
+        np.log10(ell_min), np.log10(ell_max_3x2pt), nbl + 1
+    )  # 3x2pt
 
     # central values of each bin
     l_centr_WL = (ell_WL[1:] + ell_WL[:-1]) / 2
@@ -141,7 +173,9 @@ def generate_ell_and_deltas(general_config):
     # FIXME: this is a very bad way to implement use_WA = False. I'm computing it anyway
     # for some random values.
     else:
-        ell_WA = np.log10(np.asarray(l_centr_WL[np.where(l_centr_WL > ell_max_3x2pt / 2)]))
+        ell_WA = np.log10(
+            np.asarray(l_centr_WL[np.where(l_centr_WL > ell_max_3x2pt / 2)])
+        )
     nbl_WA = ell_WA.shape[0]
 
     # generate the deltas
@@ -161,16 +195,20 @@ def generate_ell_and_deltas(general_config):
     ell_3x2pt = logarithm_3x2pt
 
     if use_WA and np.any(l_centr_WL == ell_max_GC):
-        # check in the unlikely case that one element of l_centr_WL is == ell_max_GC. Anyway, the recipe
+        # check in the unlikely case that one element of l_centr_WL is == ell_max_GC. 
+        # Anyway, the recipe
         # says (l_centr_WL > ell_max_GC, NOT >=).
-        print('warning: one element of l_centr_WL is == ell_max_GC; the recipe says to take only\
-        the elements >, but you may want to double check what to do in this case')
+        print(
+            'warning: one element of l_centr_WL is == ell_max_GC; the recipe says '
+            'to take only the elements >, but you may want to double check what '
+            'to do in this case'
+        )
 
     # save the values
-    ell_dict['ell_WL'] = 10 ** ell_WL
-    ell_dict['ell_GC'] = 10 ** ell_GC
-    ell_dict['ell_WA'] = 10 ** ell_WA
-    ell_dict['ell_3x2pt'] = 10 ** ell_3x2pt
+    ell_dict['ell_WL'] = 10**ell_WL
+    ell_dict['ell_GC'] = 10**ell_GC
+    ell_dict['ell_WA'] = 10**ell_WA
+    ell_dict['ell_3x2pt'] = 10**ell_3x2pt
 
     delta_dict['delta_l_WL'] = delta_l_WL
     delta_dict['delta_l_GC'] = delta_l_GC
@@ -180,7 +218,9 @@ def generate_ell_and_deltas(general_config):
     return ell_dict, delta_dict
 
 
-def compute_ells(nbl: int, ell_min: int, ell_max: int, recipe, output_ell_bin_edges: bool = False):
+def compute_ells(
+    nbl: int, ell_min: int, ell_max: int, recipe, output_ell_bin_edges: bool = False
+):
     """Compute the ell values and the bin widths for a given recipe.
 
     Parameters
@@ -211,7 +251,7 @@ def compute_ells(nbl: int, ell_min: int, ell_max: int, recipe, output_ell_bin_ed
         deltas = np.diff(ell_bin_edges)
     elif recipe == 'ISTNL':
         ell_bin_edges = np.linspace(np.log(ell_min), np.log(ell_max), nbl + 1)
-        ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.
+        ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.0
         ells = np.exp(ells)
         deltas = np.diff(np.exp(ell_bin_edges))
     else:

@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import yaml
 from scipy.interpolate import RectBivariateSpline
-
 from spaceborne import (
     bnt,
     cl_utils,
@@ -160,10 +159,7 @@ unique_probe_comb = [
     [1, 0, 1, 1],
     [1, 1, 1, 1],
 ]
-probename_dict = {
-    0: 'L',
-    1: 'G',
-}
+probename_dict = {0: 'L', 1: 'G'}
 # ! END HARDCODED OPTIONS/PARAMETERS
 
 # ! set non-gaussian cov terms to compute
@@ -255,11 +251,11 @@ k_limber_func = partial(
 # ! define k and z grids used throughout the code (k is in 1/Mpc)
 # TODO should zmin and zmax be inferred from the nz tables?
 # TODO -> not necessarily true for all the different zsteps
-z_grid = np.linspace(
+z_grid = np.linspace(  # fmt: skip
     cfg['covariance']['z_min'], 
     cfg['covariance']['z_max'], 
     cfg['covariance']['z_steps']
-)
+)  # fmt: skip
 z_grid_trisp = np.linspace(
     cfg['covariance']['z_min'],
     cfg['covariance']['z_max'],
@@ -271,15 +267,16 @@ k_grid = np.logspace(
     cfg['covariance']['k_steps'],
 )
 # in this case we need finer k binning because of the bessel functions
-k_grid_sigma2_b = np.logspace(
+k_grid_sigma2_b = np.logspace(  # fmt: skip
     cfg['covariance']['log10_k_min'], 
     cfg['covariance']['log10_k_max'], 
     k_steps_sigma2
-)
+)  # fmt: skip
 if len(z_grid) < 250:
     warnings.warn(
         'z_grid is small, at the moment it used to compute various '
-        'intermediate quantities'
+        'intermediate quantities',
+        stacklevel=2,
     )
 
 # ! do the same for CCL - i.e., set the above in the ccl_obj with little variations
@@ -409,7 +406,7 @@ nbl_GC = len(ell_dict['ell_GC'])
 nbl_3x2pt = nbl_GC
 
 # checks
-for key in ell_dict.keys():
+for key in ell_dict:
     if ell_dict[key].size == 0:
         raise ValueError(f'ell values for key {key} must be non-empty')
 
@@ -663,7 +660,8 @@ if shift_nz:
         plot_nz=False,
         interpolation_kind=shift_nz_interpolation_kind,
     )
-    # * this is important: the BNT matrix I use for the rest of the code (so not to compute the ell cuts) is instead
+    # * this is important: the BNT matrix I use for the rest of the code (so not to
+    # * compute the ell cuts) is instead
     # * consistent with the shifted n(z) used to compute the kernels
     bnt_matrix = bnt.compute_bnt_matrix(
         zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False
@@ -743,7 +741,8 @@ ccl_obj.cl_gg_3d = ccl_obj.compute_cls(
 )
 
 # ! add multiplicative shear bias
-# ! THIS SHOULD NOT BE DONE FOR THE OC Cls!! mult shear bias values are passed in the .ini file
+# ! THIS SHOULD NOT BE DONE FOR THE OC Cls!! mult shear bias values are passed
+# ! in the .ini file
 mult_shear_bias = np.array(cfg['C_ell']['mult_shear_bias'])
 assert len(mult_shear_bias) == zbins, (
     'mult_shear_bias should be a vector of length zbins'
@@ -794,11 +793,12 @@ plt.show()
 if cfg['BNT']['cl_BNT_transform']:
     print('BNT-transforming the Cls...')
     assert cfg['BNT']['cov_BNT_transform'] is False, (
-        'the BNT transform should be applied either to the Cls or to the covariance, not both'
+        'the BNT transform should be applied either to the Cls or to the covariance, '
+        'not both'
     )
     cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, bnt_matrix, 'L', 'L')
     cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5d, bnt_matrix)
-    warnings.warn('you should probably BNT-transform the responses too!')
+    warnings.warn('you should probably BNT-transform the responses too!', stacklevel=2)
     if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         raise NotImplementedError('You should cut also the OC Cls')
 
@@ -812,7 +812,7 @@ if ell_max_WL == 1500:
         'old warning; nonetheless, check ',
         stacklevel=2,
     )
-    assert False, 'you should check this'
+    raise ValueError('you should check this')
     cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
     cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
     cl_3x2pt_5d = cl_3x2pt_5d[:nbl_3x2pt, :, :]
@@ -971,7 +971,8 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     elif cfg['covariance']['which_b1g_in_resp'] == 'from_HOD':
         warnings.warn(
             'OneCovariance will use the HOD-derived galaxy bias '
-            'for the Cls and responses'
+            'for the Cls and responses',
+            stacklevel=2,
         )
 
     # * 2. compute cov using the onecovariance interface class
@@ -1022,11 +1023,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
             check_cov_cng_oc_3x2pt_10D, oc_obj.cov_cng_oc_3x2pt_10D, atol=0, rtol=1e-3
         )
 
-    print(
-        'Time taken to compute OC: {:.2f} m'.format(
-            (time.perf_counter() - start_time) / 60
-        )
-    )
+    print(f'Time taken to compute OC: {(time.perf_counter() - start_time) / 60:.2f} m')
 
 else:
     oc_obj = None
@@ -1056,7 +1053,8 @@ if compute_sb_ssc:
         dPmm_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
         dPgm_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
         dPgg_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
-        # TODO this can be made more efficient - eg by having a "if_bias_equal_all_bins" flag
+        # TODO this can be made more efficient - eg by having a
+        # TODO "if_bias_equal_all_bins" flag
 
         if single_b_of_z:
             resp_obj.set_hm_resp(
@@ -1281,7 +1279,7 @@ if compute_sb_ssc:
     # in the full_curved_sky case only, sigma2_b has to be divided by fsky
     # TODO it would make much more sense to divide s2b directly...
     if which_sigma2_b == 'full_curved_sky':
-        for key in cov_ssc_3x2pt_dict_8D.keys():
+        for key in cov_ssc_3x2pt_dict_8D:
             cov_ssc_3x2pt_dict_8D[key] /= cfg['mask']['fsky']
     elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask', 'flat_sky']:
         pass
@@ -1292,7 +1290,7 @@ if compute_sb_ssc:
 
 # TODO integrate this with Spaceborne_covg
 
-# ! ========================================== PyCCL ===================================================
+# ! ========================================== PyCCL ===================================
 if compute_ccl_ssc or compute_ccl_cng:
     # Note: this z grid has to be larger than the one requested in the trispectrum
     # (z_grid_tkka in the cfg file). You can probaby use the same grid as the
@@ -1324,15 +1322,15 @@ if compute_ccl_ssc or compute_ccl_cng:
             ind_dict=ind_dict,
         )
 
-# ! ========================================== combine covariance terms ================================================
+# ! ========================================== combine covariance terms ================
 cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
 cov_dict = cov_obj.cov_dict
 
-# ! ========================================== plot & tests ================================================
-for key in cov_dict.keys():
+# ! ========================================== plot & tests ============================
+for key in cov_dict:
     sl.matshow(cov_dict[key], title=key)
 
-for key in cov_dict.keys():
+for key in cov_dict:
     np.testing.assert_allclose(
         cov_dict[key],
         cov_dict[key].T,
@@ -1341,7 +1339,7 @@ for key in cov_dict.keys():
         err_msg=f'{key} not symmetric',
     )
 
-for which_cov in cov_dict.keys():
+for which_cov in cov_dict:
     probe = which_cov.split('_')[1]
     which_ng_cov = which_cov.split('_')[2]
     ndim = which_cov.split('_')[3]
@@ -1495,7 +1493,7 @@ if cfg['misc']['save_output_as_benchmark']:
 
 print(f'Covariance matrices saved in {output_path}\n')
 
-for which_cov in cov_dict.keys():
+for which_cov in cov_dict:
     if '3x2pt' in which_cov and 'tot' in which_cov:
         if cfg['misc']['test_condition_number']:
             cond_number = np.linalg.cond(cov_dict[which_cov])

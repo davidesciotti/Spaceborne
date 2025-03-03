@@ -573,7 +573,7 @@ n_probes_rs = 4  # real space
 n_probes_hs = 2  # harmonic space
 
 term = 'sva'
-probe = 'gggg'
+probe = 'gmxip'
 integration_method = 'simps'
 
 # the comments on the right are outdated, btw
@@ -610,8 +610,8 @@ for key in probe_idx_dict:
 
 mu_dict = {'gg': 0, 'gm': 2, 'xip': 0, 'xim': 4}
 
-for probe in probe_idx_dict:
-    # for probe in (probe,):
+# for probe in probe_idx_dict:
+for probe in (probe,):
 
     twoprobe_a_str, twoprobe_b_str = split_probe_name(probe)
     twoprobe_a_ix, twoprobe_b_ix = (
@@ -855,40 +855,23 @@ for probe in probe_idx_dict:
         start = time.time()
 
         # compute ell-space G cov al volo
-        cl_5d_2probes = np.zeros((2, 2, len(ell_values), zbins, zbins))
-        cl_5d_2probes[0, 0, ...] = cl_ll_3d
-        cl_5d_2probes[0, 1, ...] = cl_gl_3d.transpose(0, 2, 1)
-        cl_5d_2probes[1, 0, ...] = cl_gl_3d
-        cl_5d_2probes[1, 1, ...] = cl_ll_3d
-
         # build noise vector
         noise_3x2pt_4D = sl.build_noise(
             zbins,
-            n_probes=2,
+            n_probes=n_probes_hs,
             sigma_eps2=(sigma_eps_i * np.sqrt(2)) ** 2,
             ng_shear=n_eff_src,
             ng_clust=n_eff_lens,
         )
 
         # create dummy ell axis, the array is just repeated along it
-        noise_5d_2dprobes = np.zeros((2, 2, nbl, zbins, zbins))
+        noise_5d = np.zeros((n_probes_hs, n_probes_hs, nbl, zbins, zbins))
         for probe_A in (0, 1):
             for probe_B in (0, 1):
                 for ell_idx in range(nbl):
-                    noise_5d_2dprobes[probe_A, probe_B, ell_idx, :, :] = noise_3x2pt_4D[
+                    noise_5d[probe_A, probe_B, ell_idx, :, :] = noise_3x2pt_4D[
                         probe_A, probe_B, ...
                     ]
-
-        noise_5d = np.zeros((2, 2, len(ell_values), zbins, zbins))
-        noise_5d[0, 0, ...] = noise_5d_2dprobes[0, 0, ...]
-        noise_5d[0, 1, ...] = noise_5d_2dprobes[0, 0, ...]
-        noise_5d[0, 2, ...] = noise_5d_2dprobes[0, 1, ...]
-        noise_5d[1, 0, ...] = noise_5d_2dprobes[0, 0, ...]
-        noise_5d[1, 1, ...] = noise_5d_2dprobes[0, 0, ...]
-        noise_5d[1, 2, ...] = noise_5d_2dprobes[0, 1, ...]
-        noise_5d[2, 0, ...] = noise_5d_2dprobes[1, 0, ...]
-        noise_5d[2, 1, ...] = noise_5d_2dprobes[1, 0, ...]
-        noise_5d[2, 2, ...] = noise_5d_2dprobes[1, 1, ...]
 
         # ! choose between this
         delta_ell = np.diff(ell_values)
@@ -899,12 +882,10 @@ for probe in probe_idx_dict:
         _fsky = 1
         delta_ell = np.ones_like(delta_ell)
 
-        cov_ell = sl.covariance_einsum(
-            cl_5d_2probes, noise_5d_2dprobes, _fsky, ell_values, delta_ell
-        )
+        cov_ell = sl.covariance_einsum(cl_5d, noise_5d, _fsky, ell_values, delta_ell)
         cov_ell_diag = sl.covariance_einsum(
-            cl_5d_2probes,
-            noise_5d_2dprobes,
+            cl_5d,
+            noise_5d,
             _fsky,
             ell_values,
             delta_ell,
@@ -960,17 +941,26 @@ for probe in probe_idx_dict:
         for theta_1, theta_2, cov_value in results:
             cov_sb_g_vec_6d[theta_1, theta_2, :, :, :, :] = cov_value
 
-        # results = Parallel(n_jobs=n_jobs)(delayed(cov_g_sva_real_helper)(theta_1, theta_2, zi, zj, zk, zl,
-        #                                                                  mu, nu, cl_5d + noise_5d,
-        #                                                                  *probe_tuple_old,
-        #                                                                  )
-        #                                   for theta_1 in tqdm(range(theta_bins))
-        #                                   for theta_2 in range(theta_bins)
-        #                                   for zi in range(zbins)
-        #                                   for zj in range(zbins)
-        #                                   for zk in range(zbins)
-        #                                   for zl in range(zbins)
-        #                                   )
+        # results = Parallel(n_jobs=n_jobs)(
+        #     delayed(cov_g_sva_real_helper)(
+        #         theta_1,
+        #         theta_2,
+        #         zi,
+        #         zj,
+        #         zk,
+        #         zl,
+        #         mu,
+        #         nu,
+        #         cl_5d + noise_5d,
+        #         *probe_tuple_old,
+        #     )
+        #     for theta_1 in tqdm(range(theta_bins))
+        #     for theta_2 in range(theta_bins)
+        #     for zi in range(zbins)
+        #     for zj in range(zbins)
+        #     for zk in range(zbins)
+        #     for zl in range(zbins)
+        # )
 
         for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
             cov_sb_gfromsva_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
@@ -1115,11 +1105,22 @@ for probe in probe_idx_dict:
         cov_sb_6d = cov_sb_g_6d
         cov_sb_vec_6d = cov_sb_g_vec_6d
 
-    # for probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix in itertools.product(range(n_probes), repeat=4):
-    #     if np.allclose(cov_mix_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...], 0, atol=1e-20, rtol=1e-10):
-    #         print(f'block {probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix} cov_oc_6d is zero')
+    # for probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix in itertools.product(
+    #     range(n_probes), repeat=4
+    # ):
+    #     if np.allclose(
+    #         cov_mix_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...],
+    #         0,
+    #         atol=1e-20,
+    #         rtol=1e-10,
+    #     ):
+    #         print(
+    #             f'block {probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix} cov_oc_6d is zero'
+    #         )
     #     else:
-    #         print(f'block {probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix}  cov_oc_6d is not zero')
+    #         print(
+    #             f'block {probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix}  cov_oc_6d is not zero'
+    #         )
 
     if np.allclose(cov_sb_6d, 0, atol=1e-20, rtol=1e-10):
         print('cov_sb_6d is zero')
@@ -1202,8 +1203,16 @@ for probe in probe_idx_dict:
     # plt.savefig(f'{term}_{probe}_total_cov_flat.png')
 
     # plt.figure()
-    # plt.plot(theta_centers, np.diag(cov_sb_6d[:, :, zi, zj, zk, zl]), marker='.', label='sb')
-    # plt.plot(thetas_oc_load_rad, np.diag(cov_oc_sva_6d[:, :, zi, zj, zk, zl]), marker='.', label='oc')
+    # plt.plot(
+    #     theta_centers, np.diag(cov_sb_6d[:, :, zi, zj, zk, zl]), marker='.', 
+    #     label='sb'
+    # )
+    # plt.plot(
+    #     thetas_oc_load_rad,
+    #     np.diag(cov_oc_sva_6d[:, :, zi, zj, zk, zl]),
+    #     marker='.',
+    #     label='oc',
+    # )
     # plt.xlabel(r'$\theta$ [rad]')
     # plt.ylabel(f'diag cov {probe}')
     # plt.legend()

@@ -20,7 +20,7 @@ $ conda env create -f environment.yaml
 $ conda activate spaceborne
 ```
 
-`Spaceborne` uses `CCL` as the backend library for many cosmological calculations. Some installation issues have been found with its Python wrapper `pyccl`; in case of problems with this package, please refer to the official [instructions](https://github.com/LSSTDESC/CCL). To facilitate the process, however, its main dependencies - `Swig` and `CMake` - have already been included in the environment, so *after* creating and activating it, a simple 
+`Spaceborne` uses `CCL` as the backend library for many cosmological calculations. Some installation issues have been found with its Python wrapper `pyccl`; in case of problems with this package, please refer to the official [instructions](https://ccl.readthedocs.io/en/latest/source/installation.html) (see also the CCL [GitHub page](https://github.com/LSSTDESC/CCL)). To facilitate the process, however, its main dependencies - `Swig` and `CMake` - have already been included in the environment, so *after* creating and activating it, a simple 
 
 ```bash
 $ conda install -c conda-forge pyccl

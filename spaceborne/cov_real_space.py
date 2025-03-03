@@ -8,7 +8,6 @@ from joblib import Parallel, delayed
 from scipy.integrate import quad_vec
 from scipy.integrate import simpson as simps
 from scipy.interpolate import CubicSpline
-from scipy.special import jv
 from tqdm import tqdm
 
 import pyccl as ccl
@@ -29,16 +28,6 @@ warnings.filterwarnings(
 )
 
 
-def j0(x):
-    return jv(0, x)
-
-
-def j1(x):
-    return jv(1, x)
-
-
-def j2(x):
-    return jv(2, x)
 
 
 def b_mu(x, mu):
@@ -49,12 +38,12 @@ def b_mu(x, mu):
     \int_{\theta_l}^{\theta_u} d\theta \theta J_\mu(\ell \theta)
     """
     if mu == 0:
-        return x * j1(x)
+        return x * sl.j1(x)
     elif mu == 2:
-        return -x * j1(x) - 2.0 * j0(x)
+        return -x * sl.j1(x) - 2.0 * sl.j0(x)
     elif mu == 4:
         # be careful with x=0!
-        return (x - 8.0 / x) * j1(x) - 8.0 * j2(x)
+        return (x - 8.0 / x) * sl.j1(x) - 8.0 * sl.j2(x)
     else:
         raise ValueError('mu must be one of {0,2,4}.')
 

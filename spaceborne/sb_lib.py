@@ -18,6 +18,7 @@ import datetime
 import pandas as pd
 import scipy
 from scipy.integrate import simpson as simps
+from scipy.special import jv
 from scipy.interpolate import interp1d, CubicSpline, RectBivariateSpline
 import subprocess
 
@@ -69,6 +70,20 @@ mpl_other_dict = {
     'kmax_tex': '$k_{\\rm max}$',
     'kmax_star_tex': '$k_{\\rm max}^\\star$',
 }
+
+
+
+def j0(x):
+    return jv(0, x)
+
+
+def j1(x):
+    return jv(1, x)
+
+
+def j2(x):
+    return jv(2, x)
+
 
 
 def import_cls(cl_tab_in: np.ndarray):
@@ -1135,10 +1150,11 @@ def percent_diff(array_1, array_2, abs_value=False):
     if abs_value:
         return np.abs(diff)
     else:
-        return diff.item() if diff.size == 1 else diff  # Convert back to scalar if necessary
+        # Convert back to scalar if necessary
+        return diff.item() if diff.size == 1 else diff  
 
 
-@njit
+# @njit
 def percent_diff_mean(array_1, array_2):
     """
     result is in "percent" units
@@ -1697,7 +1713,7 @@ def show_keys(arrays_dict):
         print(key)
 
 
-@njit
+# @njit
 def symmetrize_Cl(Cl, nbl, zbins):
     for ell in range(nbl):
         for i in range(zbins):
@@ -1882,7 +1898,7 @@ def cl_3D_to_2D_or_1D(cl_3D, ind, is_auto_spectrum, use_triu_row_major, convert_
     return cl_2D.flatten(order=order)
 
 
-@njit
+# @njit
 def cl_1D_to_3D(cl_1d, nbl: int, zbins: int, is_symmetric: bool):
     """ This is used to unpack Vincenzo's files for SPV3
     Still to be thoroughly checked."""
@@ -2224,7 +2240,7 @@ def cov_10D_array_to_dict(cov_10D_array, probe_ordering):
     return cov_10D_dict
 
 
-@njit
+# @njit
 def build_3x2pt_dict(array_3x2pt):
     dict_3x2pt = {}
     if array_3x2pt.ndim == 5:
@@ -2458,7 +2474,7 @@ def cov_4D_to_6D(cov_4D, nbl, zbins, probe, ind):
     return cov_6D
 
 
-@njit
+# @njit
 def cov_6D_to_4D(cov_6D, nbl, zpairs, ind):
     """transform the cov from shape (nbl, nbl, zbins, zbins, zbins, zbins)
     to (nbl, nbl, zpairs, zpairs)"""
@@ -2494,7 +2510,7 @@ def cov_6D_to_4D_optim(cov_6D, nbl, zpairs, ind):
     return cov_4D
 
 
-@njit
+# @njit
 def cov_6D_to_4D_blocks(cov_6D, nbl, npairs_AB, npairs_CD, ind_AB, ind_CD):
     """ reshapes the covariance even for the non-diagonal (hence, non-square) blocks needed to build the 3x2pt.
     use npairs_AB = npairs_CD and ind_AB = ind_CD for the normal routine (valid for auto-covariance 
@@ -2755,7 +2771,7 @@ def cov_2D_to_4D(cov_2D, nbl, block_index, optimize=True, symmetrize=False):
     return cov_4D
 
 
-@njit
+# @njit
 def cov_4D_to_2D(cov_4D, block_index, optimize=True):
     """ 
     Reshapes the covariance from 4D to 2D. Also works for 3x2pt. The order

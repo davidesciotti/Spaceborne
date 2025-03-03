@@ -33,6 +33,19 @@ $ pip install pyccl
 ```
 should do the job.
 
+If the problem persists, you can try with
+
+```bash
+$ sudo apt-get install gfortran cmake build-essential autoconf bison
+```
+
+on Linux and 
+
+```bash
+$ brew install gfortran cmake build-essential autoconf bison
+```
+
+on OSX. The installation on Windows machines is not supported.
 
 ---
 

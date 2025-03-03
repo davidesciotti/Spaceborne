@@ -1,21 +1,20 @@
 import time
 import warnings
 from copy import deepcopy
-import camb
-import numpy as np
-from numba import njit
-import pyccl as ccl
-from scipy.integrate import simpson as simps
-from spaceborne import sb_lib as sl
 
+import numpy as np
+from scipy.integrate import simpson as simps
+
+import pyccl as ccl
+from spaceborne import sb_lib as sl
 
 # ! prefactor for limber and curved-sky corrections
 # prefactor = np.array(
 #     [np.sqrt(math.factorial(int(ell) + 2) / math.factorial(int(ell) - 2)) * (2 / (2 * ell + 1)) ** 2
 #      for ell in ell_grid])
-#
+
 # prefactor = prefactor.reshape((-1, 1, 1))
-#
+
 # if divide_cls_by_prefactor:
 #     cl_LL_3D /= prefactor ** 2
 #     cl_GL_3D /= prefactor
@@ -72,7 +71,6 @@ def map_keys(input_dict, key_mapping):
     return new_dict
 
 
-@njit
 def inv_E(z, Om0, Ode0, Ok0):
     result = 1 / np.sqrt(Om0 * (1 + z) ** 3 + Ode0 + Ok0 * (1 + z) ** 2)
     return result

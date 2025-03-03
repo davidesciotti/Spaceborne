@@ -9,13 +9,11 @@ from matplotlib.colors import ListedColormap
 import matplotlib.lines as mlines
 import numpy as np
 import yaml
-from numba import njit
 import pickle
 import itertools
 import os
 import inspect
 import datetime
-import pandas as pd
 import scipy
 from scipy.integrate import simpson as simps
 from scipy.special import jv
@@ -692,6 +690,8 @@ def compare_df_keys(dataframe, key_to_compare, value_a, value_b, num_string_colu
     :param num_string_columns: number of columns containing only strings or various options, such as whether to fix a certain prior or not...
     :return:
     """
+    import pandas as pd
+    
     df_A = dataframe[dataframe[key_to_compare] == value_a]
     df_B = dataframe[dataframe[key_to_compare] == value_b]
     arr_A = df_A.iloc[:, num_string_columns:].select_dtypes('number').values

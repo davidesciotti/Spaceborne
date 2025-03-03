@@ -10,7 +10,6 @@ from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import matplotlib.lines as mlines
-from numba import njit
 from scipy.integrate import quad
 from scipy.integrate import simpson as simps
 from scipy.interpolate import interp1d

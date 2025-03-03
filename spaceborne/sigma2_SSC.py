@@ -9,7 +9,6 @@ import healpy as hp
 from spaceborne import sb_lib as sl
 from spaceborne import cosmo_lib
 from spaceborne import mask_utils
-from pathos.multiprocessing import ProcessingPool as Pool
 
 # TODO finish implementing this function and test if if needed
 # def sigma2_flatsky(z1, z2, k_perp_grid, k_par_grid, cosmo_ccl, Omega_S, theta_S):
@@ -129,6 +128,8 @@ def sigma2_z1z2_wrap_parallel(z_grid: np.ndarray, k_grid_sigma2: np.ndarray, cos
     start = time.perf_counter()
     
     if parallel:
+        from pathos.multiprocessing import ProcessingPool as Pool
+        
         # Create a list of arguments—one per z2 value in z_grid
         # Build the argument list without cosmo_ccl:
         arg_list = [

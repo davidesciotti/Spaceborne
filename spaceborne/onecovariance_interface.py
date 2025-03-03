@@ -26,7 +26,6 @@ import time
 import configparser
 import warnings
 from copy import deepcopy
-import pandas as pd
 from scipy.optimize import minimize_scalar
 
 from spaceborne import sb_lib as sl
@@ -488,6 +487,8 @@ class OneCovarianceInterface():
         The function also performs some additional processing, such as symmetrizing the output
         dictionary.
         """
+        
+        import pandas as pd
 
         # set df column names
         with open(f'{self.oc_path}/covariance_list.dat', 'r') as file:

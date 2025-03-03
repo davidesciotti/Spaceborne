@@ -28,8 +28,6 @@ warnings.filterwarnings(
 )
 
 
-
-
 def b_mu(x, mu):
     """
     Implements the piecewise definition of the bracketed term b_mu(x)
@@ -610,15 +608,11 @@ for key in probe_idx_dict:
     )
 
 
-mu_dict = {
-    'gg': 0,
-    'gm': 2,
-    'xip': 0,
-    'xim': 4,
-}
+mu_dict = {'gg': 0, 'gm': 2, 'xip': 0, 'xim': 4}
 
 for probe in probe_idx_dict:
     # for probe in (probe,):
+
     twoprobe_a_str, twoprobe_b_str = split_probe_name(probe)
     twoprobe_a_ix, twoprobe_b_ix = (
         probe_idx_dict_short[twoprobe_a_str],
@@ -632,9 +626,8 @@ for probe in probe_idx_dict:
         theta_min_arcmin / 60, theta_max_arcmin / 60, n_theta_edges
     )
     theta_edges = np.deg2rad(theta_edges)
-    theta_centers = (
-        theta_edges[:-1] + theta_edges[1:]
-    ) / 2.0  # TODO in principle this could be changed
+    # TODO in principle this could be changed
+    theta_centers = (theta_edges[:-1] + theta_edges[1:]) / 2.0
     theta_bins = len(theta_centers)
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
@@ -681,9 +674,7 @@ for probe in probe_idx_dict:
 
     wl_ker = [
         ccl.WeakLensingTracer(
-            cosmo=cosmo,
-            dndz=(nz_sources[:, 0], nz_sources[:, zi + 1]),
-            ia_bias=None,
+            cosmo=cosmo, dndz=(nz_sources[:, 0], nz_sources[:, zi + 1]), ia_bias=None
         )
         for zi in range(zbins)
     ]

@@ -18,3 +18,5 @@ tmp*/
 *.npy
 *.npz
 *.pdf
+nersc/*
+output/*

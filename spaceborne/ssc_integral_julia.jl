@@ -153,12 +153,12 @@ function SSC_integral_4D_simps_sofia(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB,
         cl_integral_prefactor_R[:, ridx] = prefactor_interpolator.(z_array*r)
     end
 
-    d2ClAB_dVddeltab_R = zeros(32,5,5,length(z_array), length(R_array))
-    d2ClCD_dVddeltab_R = zeros(32,5,5,length(z_array), length(R_array))
+    d2ClAB_dVddeltab_R = zeros(32,3,3,length(z_array), length(R_array))
+    d2ClCD_dVddeltab_R = zeros(32,3,3,length(z_array), length(R_array))
 
     for l in 1:32
-        for a in 1:5
-            for b in 1:5
+        for a in 1:3
+            for b in 1:3
                 for (ridx, r) in enumerate(R_array)
                     interp_AB = AkimaInterpolation(d2ClAB_dVddeltab[l,a,b,:], z_array, extrapolate=true)
                     d2ClAB_dVddeltab_R[l,a,b,:,ridx] = interp_AB.(z_array*r)

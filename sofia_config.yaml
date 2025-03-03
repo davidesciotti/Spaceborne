@@ -78,7 +78,7 @@ general_cfg:
     ell_max_WL: 5000
     ell_max_GC: 5000
     ell_max_3x2pt: 5000
-    zbins: 5
+    zbins: 3
     EP_or_ED: EP # equipopulated or equidistant bins
     n_probes: 2
     save_cls_3d: False
@@ -273,10 +273,10 @@ covariance_cfg:
         k_steps_sigma2: 20_000 # TODO can I lower this? double bessel integral...
         z_min_ssc_integrands: 0.02  # SU responses' kmax allow for z_min = 0.016, at most.
         z_max_ssc_integrands: 3.
-        z_steps_ssc_integrands: 1200 # this should be high because I have to trace the spikes in sigma2
+        z_steps_ssc_integrands: 1000 # this should be high because I have to trace the spikes in sigma2
         R_min_ssc_integrands: 0.1  # SU responses' kmax allow for z_min = 0.016, at most.
         R_max_ssc_integrands: 1.
-        R_steps_ssc_integrands: 200
+        R_steps_ssc_integrands: 300
 
         load_precomputed_sigma2: False
         sigma2_b_path: "/Users/sofiachiarenza/Desktop/PhD_Stuff/Spaceborne/jobs/IO_for_Sofia/sigma2_b"

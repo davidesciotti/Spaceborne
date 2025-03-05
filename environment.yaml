@@ -13,7 +13,7 @@ dependencies:
   - pip
   - pyyaml
   - joblib
-  - healpy
+  - healpy>=1.18.0
   - swig  # needed by PyCCL
   - cmake  # needed by PyCCL
 

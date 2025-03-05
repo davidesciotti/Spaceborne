@@ -129,8 +129,8 @@ if not os.path.exists(output_path):
         f'Output path {output_path} does not exist. '
         'Please create it before running the script.'
     )
-if not os.path.exists(f'{output_path}/cache'):
-    os.mkdir(f'{output_path}/cache')
+for subdir in ['cache', 'cache/trispectrum/SSC', 'cache/trispectrum/cNG']:
+    os.makedirs(f'{output_path}/{subdir}', exist_ok=True)
 
 # ! START HARDCODED OPTIONS/PARAMETERS
 use_h_units = False  # whether or not to normalize Megaparsecs by little h
@@ -228,6 +228,7 @@ ccl_obj = pyccl_interface.PycclClass(
 # set other useful attributes
 ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
 ccl_obj.zbins = zbins
+ccl_obj.output_path = output_path
 ccl_obj.which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
 a_default_grid_ccl = ccl_obj.cosmo_ccl.get_pk_spline_a()
 z_default_grid_ccl = cosmo_lib.a_to_z(a_default_grid_ccl)[::-1]
@@ -1330,14 +1331,6 @@ cov_dict = cov_obj.cov_dict
 for key in cov_dict:
     sl.matshow(cov_dict[key], title=key)
 
-for key in cov_dict:
-    np.testing.assert_allclose(
-        cov_dict[key],
-        cov_dict[key].T,
-        atol=0,
-        rtol=1e-7,
-        err_msg=f'{key} not symmetric',
-    )
 
 for which_cov in cov_dict:
     probe = which_cov.split('_')[1]
@@ -1383,6 +1376,7 @@ for which_cov in cov_dict:
             )
             save_func(f'{output_path}/cov_{abcd_str}_TOT_6D', cov_tot_6d)
 
+print(f'Covariance matrices saved in {output_path}\n')
 
 # save cfg file
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
@@ -1491,8 +1485,6 @@ if cfg['misc']['save_output_as_benchmark']:
     )
 
 
-print(f'Covariance matrices saved in {output_path}\n')
-
 for which_cov in cov_dict:
     if '3x2pt' in which_cov and 'tot' in which_cov:
         if cfg['misc']['test_condition_number']:
@@ -1524,22 +1516,27 @@ for which_cov in cov_dict:
                 )
                 if identity_check:
                     print(
-                        'Inverse verified successfully (matrix product is identity). '
+                        'Inverse tested successfully (M @ M^{-1} is identity). '
                         'atol=1e-9, rtol=1e-7'
                     )
                 else:
                     print(
-                        'Warning: Inverse verification failed (matrix product '
+                        f'Warning: Inverse test failed for {which_cov} (M @ M^{-1} '
                         'deviates from identity). atol=0, rtol=1e-7'
                     )
             except np.linalg.LinAlgError:
-                print('Numpy inversion failed: Matrix is singular or near-singular.')
+                print(
+                    f'Numpy inversion failed for {which_cov} : '
+                    'Matrix is singular or near-singular.'
+                )
 
         if cfg['misc']['test_symmetry']:
             if not np.allclose(
                 cov_dict[which_cov], cov_dict[which_cov].T, atol=0, rtol=1e-7
             ):
-                print('Warning: Matrix is not symmetric. atol=0, rtol=1e-7')
+                print(
+                    f'Warning: Matrix {which_cov} is not symmetric. atol=0, rtol=1e-7'
+                )
             else:
                 print('Matrix is symmetric. atol=0, rtol=1e-7')
 

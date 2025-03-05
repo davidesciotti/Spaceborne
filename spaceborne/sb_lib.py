@@ -69,7 +69,14 @@ mpl_other_dict = {
     'kmax_star_tex': '$k_{\\rm max}^\\star$',
 }
 
+def matshow_vcenter(matrix, vcenter=0):
+    """Plots a matrix with a 0-centered, asymmetric colorbar."""
+    from matplotlib.colors import TwoSlopeNorm
 
+    plt.matshow(matrix, cmap="RdBu_r", norm=TwoSlopeNorm(vcenter=vcenter))
+    plt.colorbar()
+    plt.show()
+    
 
 def j0(x):
     return jv(0, x)
@@ -1631,19 +1638,23 @@ def build_labels(zbins):
     return [galaxy_bias_label, shear_bias_label, zmean_shift_label]
 
 
-def matshow(array, title="title", log=True, abs_val=False, threshold=None, only_show_nans=False, matshow_kwargs={}):
+def matshow(array, title="title", log=True, abs_val=False, threshold=None, 
+            only_show_nans=False, matshow_kwargs: dict=None):
     """
     :param array:
     :param title:
     :param log:
     :param abs_val:
-    :param threshold: if None, do not mask the values; otherwise, keep only the elements above the threshold
-    (i.e., mask the ones below the threshold)
+    :param threshold: if None, do not mask the values; otherwise, 
+    keep only the elements above the threshold (i.e., mask the ones below the threshold)
     :return:
     """
 
+    if matshow_kwargs is None:
+        matshow_kwargs = {}
     if only_show_nans:
-        warnings.warn('only_show_nans is True, better switch off log and abs_val for the moment')
+        warnings.warn('only_show_nans is True, better switch off log and abs_val'
+                      ' for the moment', stacklevel=2)
         # Set non-NaN elements to 0 and NaN elements to 1
         array = np.where(np.isnan(array), 1, 0)
         title += ' (only NaNs shown)'

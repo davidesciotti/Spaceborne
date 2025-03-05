@@ -373,7 +373,7 @@ class PycclClass:
 
         self.set_dicts_for_trisp()
 
-        # the default pk must be passed to yhe Tk3D functions as None, not as 
+        # the default pk must be passed to the Tk3D functions as None, not as 
         # 'delta_matter:delta_matter'
         p_of_k_a = (
             None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
@@ -412,54 +412,54 @@ class PycclClass:
                         f'probe combination {probe_block}'
                     )
 
-                # if col >= row and pyccl_cfg['load_cached_tkka']:
-                #     assert False, 'Probably this section must be deleted'
+                if col >= row and pyccl_cfg['load_cached_tkka']:
+                    assert False, 'Probably this section must be deleted'
 
-                #     save_tkka = False
+                    save_tkka = False
 
-                #     a_arr = np.load(
-                #         f'{tkka_path}/a_arr_tkka_{probe_block}_{k_z_str}.npy'
-                #     )
-                #     k1_arr = np.load(
-                #         f'{tkka_path}/k1_arr_tkka_{probe_block}_{k_z_str}.npy'
-                #     )
-                #     k2_arr = np.load(
-                #         f'{tkka_path}/k2_arr_tkka_{probe_block}_{k_z_str}.npy'
-                #     )
-                #     if which_ng_cov == 'SSC':
-                #         pk1_arr_tkka = np.load(
-                #             f'{tkka_path}/pk1_arr_tkka_{probe_block}_{k_z_str}.npy'
-                #         )
-                #         pk2_arr_tkka = np.load(
-                #             f'{tkka_path}/pk2_arr_tkka_{probe_block}_{k_z_str}.npy'
-                #         )
-                #         tk3d_kwargs = {
-                #             'tkk_arr': None,
-                #             'pk1_arr': pk1_arr_tkka,
-                #             'pk2_arr': pk2_arr_tkka,
-                #         }
-                #     elif which_ng_cov == 'cNG':
-                #         tkk_arr = np.load(
-                #             f'{tkka_path}/tkk_arr_{probe_block}_{k_z_str}.npy'
-                #         )
-                #         tk3d_kwargs = {
-                #             'tkk_arr': tkk_arr,
-                #             'pk1_arr': None,
-                #             'pk2_arr': None,
-                #         }
+                    a_arr = np.load(
+                        f'{tkka_path}/a_arr_tkka_{probe_block}_{k_z_str}.npy'
+                    )
+                    k1_arr = np.load(
+                        f'{tkka_path}/k1_arr_tkka_{probe_block}_{k_z_str}.npy'
+                    )
+                    k2_arr = np.load(
+                        f'{tkka_path}/k2_arr_tkka_{probe_block}_{k_z_str}.npy'
+                    )
+                    if which_ng_cov == 'SSC':
+                        pk1_arr_tkka = np.load(
+                            f'{tkka_path}/pk1_arr_tkka_{probe_block}_{k_z_str}.npy'
+                        )
+                        pk2_arr_tkka = np.load(
+                            f'{tkka_path}/pk2_arr_tkka_{probe_block}_{k_z_str}.npy'
+                        )
+                        tk3d_kwargs = {
+                            'tkk_arr': None,
+                            'pk1_arr': pk1_arr_tkka,
+                            'pk2_arr': pk2_arr_tkka,
+                        }
+                    elif which_ng_cov == 'cNG':
+                        tkk_arr = np.load(
+                            f'{tkka_path}/tkk_arr_{probe_block}_{k_z_str}.npy'
+                        )
+                        tk3d_kwargs = {
+                            'tkk_arr': tkk_arr,
+                            'pk1_arr': None,
+                            'pk2_arr': None,
+                        }
 
-                #     assert np.array_equal(k1_arr, k2_arr), (
-                #         'k1_arr and k2_arr must be equal'
-                #     )
+                    assert np.array_equal(k1_arr, k2_arr), (
+                        'k1_arr and k2_arr must be equal'
+                    )
 
-                #     self.tkka_dict[A, B, C, D] = ccl.tk3d.Tk3D(
-                #         a_arr=a_arr,
-                #         lk_arr=k1_arr,
-                #         is_logt=False,
-                #         extrap_order_lok=1,
-                #         extrap_order_hik=1,
-                #         **tk3d_kwargs,
-                #     )
+                    self.tkka_dict[A, B, C, D] = ccl.tk3d.Tk3D(
+                        a_arr=a_arr,
+                        lk_arr=k1_arr,
+                        is_logt=False,
+                        extrap_order_lok=1,
+                        extrap_order_hik=1,
+                        **tk3d_kwargs,
+                    )
 
                 elif col >= row and not pyccl_cfg['load_cached_tkka']:
                     tkka_func, additional_args = self.get_tkka_func(

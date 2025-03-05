@@ -103,6 +103,7 @@ nz:
     # redshift distributions.
     
     # Type: list[float]. Shift in the redshift distribution per redshift bin. Should be of len(zbins)
+    # TODO probably remove this...
     dzWL: [-0.008848, 0.051368, 0.059484]
     dzGC: [-0.008848, 0.051368, 0.059484]
 
@@ -118,6 +119,7 @@ mask:
     survey_area_deg2: 13245 # Type: int
 
 ell_binning:
+    binning_type: 'log'  # Type: str. Options: ['log', 'binned']
     ell_min: 10 # Type: int. Minimum ell for 3x2pt
     ell_max_WL: 3000 # Type: int. Maximum ell for WL
     ell_max_GC: 3000 # Type: int. Maximum ell for GC

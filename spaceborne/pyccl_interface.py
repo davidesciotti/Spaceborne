@@ -361,7 +361,7 @@ class PycclClass:
         # some setup
         comp_load_str = 'Loading' if pyccl_cfg['load_cached_tkka'] else 'Computing'
         tkka_path = f'{self.output_path}/cache/trispectrum/{which_ng_cov}'
-        k_z_str = 'mariopino'  # tODO implement this properly
+        k_z_str = self._print_grid_info(which_ng_cov)
 
         # the default pk must be passed to the Tk3D functions as None, not as
         # 'delta_matter:delta_matter'
@@ -369,35 +369,13 @@ class PycclClass:
             None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
         )
 
-        # k_z_str = f'zmin{pyccl_cfg["z_grid_tkka_min"]:.1f}_zmax{pyccl_cfg["z_grid_tkka_max"]:.1f}_zsteps{pyccl_cfg[f"z_grid_tkka_steps_{which_ng_cov}"]:d}_' \
-        # f'kmin{pyccl_cfg["k_grid_tkka_min"]:.1e}_kmax{pyccl_cfg["k_grid_tkka_max"]:.1e}_ksteps{pyccl_cfg[f"k_grid_tkka_steps_{which_ng_cov}"]:d}'
         # TODO get default grids info when passing a, k = None
-
         # or, to set to the default:
         # a_grid_tkka = None
         # logn_k_grid_tkka = None
 
         # set relevant dictionaries with the different probe combinations as keys
         self.set_dicts_for_trisp()
-
-        if (
-            self.a_grid_tkka_SSC is not None
-            and self.logn_k_grid_tkka_SSC is not None
-            and which_ng_cov == 'SSC'
-        ):
-            print(
-                f'SSC trispectrum: z points = {self.a_grid_tkka_SSC.size}, '
-                f'k points = {self.logn_k_grid_tkka_SSC.size}'
-            )
-        if (
-            self.a_grid_tkka_cNG is not None
-            and self.logn_k_grid_tkka_cNG is not None
-            and which_ng_cov == 'cNG'
-        ):
-            print(
-                f'cNG trispectrum: z points = {self.a_grid_tkka_cNG.size}, '
-                f'k points = {self.logn_k_grid_tkka_cNG.size}'
-            )
 
         self.tkka_dict = {}
         tkka_start_time = time.perf_counter()
@@ -415,96 +393,91 @@ class PycclClass:
                 )
 
                 if pyccl_cfg['load_cached_tkka']:
-                    # load a, ln(k1), ln(k2)
-                    a_arr = np.load(f'{tkka_path}/a_arr_{k_z_str}.npy')
-                    lk1_arr = np.load(f'{tkka_path}/lnk1_arr_{k_z_str}.npy')
-                    lk2_arr = np.load(f'{tkka_path}/lnk2_arr_{k_z_str}.npy')
-                    assert np.array_equal(lk1_arr, lk2_arr), (
-                        'lk1_arr and lk2_arr must be equal'
-                    )
-
-                    # load the probe responses (2 arrays) or the trispectrum (1 array)
-                    if which_ng_cov == 'SSC':
-                        pk1_arr_tkka = np.load(
-                            f'{tkka_path}/pk1_arr_{probe_block}_{k_z_str}.npy'
-                        )
-                        pk2_arr_tkka = np.load(
-                            f'{tkka_path}/pk2_arr_{probe_block}_{k_z_str}.npy'
-                        )
-                        tk3d_kwargs = {
-                            'tkk_arr': None,
-                            'pk1_arr': pk1_arr_tkka,
-                            'pk2_arr': pk2_arr_tkka,
-                        }
-                    elif which_ng_cov == 'cNG':
-                        tkk_arr = np.load(
-                            f'{tkka_path}/trisp_{probe_block}_{k_z_str}.npy'
-                        )
-                        tk3d_kwargs = {
-                            'tkk_arr': tkk_arr,
-                            'pk1_arr': None,
-                            'pk2_arr': None,
-                        }
-
-                    self.tkka_dict[A, B, C, D] = ccl.tk3d.Tk3D(
-                        a_arr=a_arr,
-                        lk_arr=lk1_arr,
-                        is_logt=False,
-                        extrap_order_lok=1,
-                        extrap_order_hik=1,
-                        **tk3d_kwargs,
+                    tkka_abcd = self._load_and_set_tkka(
+                        which_ng_cov, tkka_path, k_z_str, probe_block
                     )
 
                 else:
-                    # choose function to compute trispectrum and the ngcov-specific args
-                    tkka_func, additional_args = self.get_tkka_func(
-                        A, B, C, D, which_ng_cov
+                    tkka_abcd = self._compute_and_save_tkka(
+                        which_ng_cov, tkka_path, k_z_str, probe_block, p_of_k_a
                     )
 
-                    # compute the trispectrum
-                    self.tkka_dict[A, B, C, D] = tkka_func(
-                        cosmo=self.cosmo_ccl,
-                        hmc=self.hmc,
-                        extrap_order_lok=1,
-                        extrap_order_hik=1,
-                        use_log=False,
-                        p_of_k_a=p_of_k_a,
-                        **additional_args,
-                    )
-
-                    # retrieve a, ln(k1), ln(k2), tkka
-                    a_arr, lk1_arr, lk2_arr, tk_arrays = self.tkka_dict[
-                        A, B, C, D
-                    ].get_spline_arrays()
-
-                    # save a and k grids
-                    np.save(f'{tkka_path}/a_arr_{k_z_str}.npy', a_arr)
-                    np.save(f'{tkka_path}/lnk1_arr_{k_z_str}.npy', lk1_arr)
-                    np.save(f'{tkka_path}/lnk2_arr_{k_z_str}.npy', lk2_arr)
-
-                    # save the probe responses (2 arrays) or the trispectrum (1 array)
-                    if which_ng_cov == 'SSC':
-                        pk1_arr_tkka = tk_arrays[0]
-                        pk2_arr_tkka = tk_arrays[1]
-                        np.save(
-                            f'{tkka_path}/pk1_arr_{probe_block}_{k_z_str}.npy',
-                            pk1_arr_tkka,
-                        )
-                        np.save(
-                            f'{tkka_path}/pk2_arr_{probe_block}_{k_z_str}.npy',
-                            pk2_arr_tkka,
-                        )
-
-                    elif which_ng_cov == 'cNG':
-                        tkk_arr = tk_arrays[0]
-                        np.save(
-                            f'{tkka_path}/trisp_{probe_block}_{k_z_str}.npy',
-                            tkk_arr,
-                        )
+                self.tkka_dict[A, B, C, D] = tkka_abcd
 
         print(f'trispectrum computed in {time.perf_counter() - tkka_start_time:.2f} s')
 
         return
+
+    def _compute_and_save_tkka(
+        self, which_ng_cov, tkka_path, k_z_str, probe_block, p_of_k_a
+    ):
+        A, B, C, D = probe_block
+        tkka_func, additional_args = self.get_tkka_func(A, B, C, D, which_ng_cov)
+        tkka_abcd = tkka_func(
+            cosmo=self.cosmo_ccl,
+            hmc=self.hmc,
+            extrap_order_lok=1,
+            extrap_order_hik=1,
+            use_log=False,
+            p_of_k_a=p_of_k_a,
+            **additional_args,
+        )
+
+        a_arr, lk1_arr, lk2_arr, tk_arrays = tkka_abcd.get_spline_arrays()
+        np.save(f'{tkka_path}/a_arr_{k_z_str}.npy', a_arr)
+        np.save(f'{tkka_path}/lnk1_arr_{k_z_str}.npy', lk1_arr)
+        np.save(f'{tkka_path}/lnk2_arr_{k_z_str}.npy', lk2_arr)
+
+        if which_ng_cov == 'SSC':
+            np.save(f'{tkka_path}/pk1_arr_{probe_block}_{k_z_str}.npy', tk_arrays[0])
+            np.save(f'{tkka_path}/pk2_arr_{probe_block}_{k_z_str}.npy', tk_arrays[1])
+        elif which_ng_cov == 'cNG':
+            np.save(f'{tkka_path}/trisp_{probe_block}_{k_z_str}.npy', tk_arrays[0])
+
+        return tkka_abcd
+
+    def _load_and_set_tkka(self, which_ng_cov, tkka_path, k_z_str, probe_block):
+        a_arr = np.load(f'{tkka_path}/a_arr_{k_z_str}.npy')
+        lk1_arr = np.load(f'{tkka_path}/lnk1_arr_{k_z_str}.npy')
+        lk2_arr = np.load(f'{tkka_path}/lnk2_arr_{k_z_str}.npy')
+        (
+            np.testing.assert_allclose(lk1_arr, lk2_arr, atol=0, rtol=1e-9),
+            ('k1_arr and lk2_arr different'),
+        )
+
+        if which_ng_cov == 'SSC':
+            pk1_arr = np.load(f'{tkka_path}/pk1_arr_{probe_block}_{k_z_str}.npy')
+            pk2_arr = np.load(f'{tkka_path}/pk2_arr_{probe_block}_{k_z_str}.npy')
+            tk3d_kwargs = {'tkk_arr': None, 'pk1_arr': pk1_arr, 'pk2_arr': pk2_arr}
+        elif which_ng_cov == 'cNG':
+            tkk_arr = np.load(f'{tkka_path}/trisp_{probe_block}_{k_z_str}.npy')
+            tk3d_kwargs = {'tkk_arr': tkk_arr, 'pk1_arr': None, 'pk2_arr': None}
+
+        tkka_abcd = ccl.tk3d.Tk3D(
+            a_arr=a_arr,
+            lk_arr=lk1_arr,
+            is_logt=False,
+            extrap_order_lok=1,
+            extrap_order_hik=1,
+            **tk3d_kwargs,
+        )
+
+        return tkka_abcd
+
+    def _print_grid_info(self, which_ng_cov):
+        a_grid = getattr(self, f'a_grid_tkka_{which_ng_cov}', None)
+        logn_k_grid = getattr(self, f'logn_k_grid_tkka_{which_ng_cov}', None)
+        if a_grid is not None and logn_k_grid is not None:
+            print(
+                f'{which_ng_cov} trispectrum: z points = {a_grid.size}, '
+                f'k points = {logn_k_grid.size}'
+            )
+        k_z_str = (
+            f'amin{a_grid.min():.2f}_amax{a_grid.max():.2f}'
+            f'_asteps{a_grid.size}_lnkmin{logn_k_grid.min():.2f}'
+            f'_lnkmax{logn_k_grid.max():.2f}_ksteps{logn_k_grid.size}'
+        )
+        return k_z_str
 
     def get_tkka_func(self, A, B, C, D, which_ng_cov):
         if which_ng_cov == 'SSC':

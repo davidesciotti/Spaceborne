@@ -143,7 +143,7 @@ class PycclClass:
         )
 
         # construct the 2d array & tuple; this is mainly to ensure compatibility with
-        # # the wf_ccl function. In this case, the same array is given for each bin 
+        # # the wf_ccl function. In this case, the same array is given for each bin
         # (each column)
         gal_bias_1d = self.gal_bias_func(z_grid_lns)
         self.gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
@@ -151,7 +151,7 @@ class PycclClass:
 
     def set_gal_bias_tuple_istf(self, z_grid_lns, bias_function_str, bias_model):
         self.gal_bias_func = self.gal_bias_func_dict[bias_function_str]
-        # TODO it's probably better to pass directly the zbin(_lns) centers and edges, 
+        # TODO it's probably better to pass directly the zbin(_lns) centers and edges,
         # TODO rather than nesting them in a cfg file...
         z_means_lns = np.array(
             [
@@ -187,7 +187,7 @@ class PycclClass:
         self, z_grid_lns, has_magnification_bias, magcut_lens, poly_fit_values
     ):
         if has_magnification_bias:
-            # this is only to ensure compatibility with wf_ccl function. In reality, 
+            # this is only to ensure compatibility with wf_ccl function. In reality,
             # the same array is given for each bin
             mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(
                 z_grid_lns, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values
@@ -197,9 +197,9 @@ class PycclClass:
             ).T
             self.mag_bias_tuple = (z_grid_lns, self.mag_bias_2d)
         else:
-            # this is the correct way to set the magnification bias values so that the 
+            # this is the correct way to set the magnification bias values so that the
             # actual bias is 1, ant the corresponding
-            # wf_mu is zero (which is, in theory, the case mag_bias_tuple=None, which 
+            # wf_mu is zero (which is, in theory, the case mag_bias_tuple=None, which
             # however causes pyccl to crash!)
             # mag_bias_2d = (np.ones_like(gal_bias_2d) * + 2) / 5
             # mag_bias_tuple = (zgrid_nz, mag_bias_2d)
@@ -293,10 +293,10 @@ class PycclClass:
             else np.zeros_like(self.wf_delta_arr)
         )
 
-        # in the case of ISTF, the galaxt bias is bin-per-bin and is therefore included 
+        # in the case of ISTF, the galaxt bias is bin-per-bin and is therefore included
         # in the kernels. Add it here
         # for a fair comparison with vincenzo's kernels, in the plot.
-        # * Note that the galaxy bias is included in the wf_ccl_obj in any way, both in 
+        # * Note that the galaxy bias is included in the wf_ccl_obj in any way, both in
         # * ISTF and SPV3 cases! It must
         # * in fact be passed to the angular_cov_SSC function
         self.wf_galaxy_wo_gal_bias_arr = self.wf_delta_arr + self.wf_mu_arr
@@ -334,7 +334,7 @@ class PycclClass:
                 'fsky_in is not the same as the fsky of the mask'
             )
 
-            # normalization has been checked from 
+            # normalization has been checked from
             # https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
             # and is the same as CSST paper https://zenodo.org/records/7813033
             sigma2_b = ccl.covariances.sigma2_B_from_mask(
@@ -358,26 +358,27 @@ class PycclClass:
             )
 
     def initialize_trispectrum(self, which_ng_cov, probe_ordering, pyccl_cfg):
-        # save_tkka = pyccl_cfg['save_tkka']
+        # some setup
         comp_load_str = 'Loading' if pyccl_cfg['load_cached_tkka'] else 'Computing'
+        tkka_path = f'{self.output_path}/cache/trispectrum/{which_ng_cov}'
+        k_z_str = 'mariopino'  # tODO implement this properly
 
-        # tkka_folder = f'Tk3D_{which_ng_cov}'
-        # tkka_path = f'{pyccl_cfg["cov_path"]}/{tkka_folder}'
+        # the default pk must be passed to the Tk3D functions as None, not as
+        # 'delta_matter:delta_matter'
+        p_of_k_a = (
+            None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
+        )
 
         # k_z_str = f'zmin{pyccl_cfg["z_grid_tkka_min"]:.1f}_zmax{pyccl_cfg["z_grid_tkka_max"]:.1f}_zsteps{pyccl_cfg[f"z_grid_tkka_steps_{which_ng_cov}"]:d}_' \
         # f'kmin{pyccl_cfg["k_grid_tkka_min"]:.1e}_kmax{pyccl_cfg["k_grid_tkka_max"]:.1e}_ksteps{pyccl_cfg[f"k_grid_tkka_steps_{which_ng_cov}"]:d}'
+        # TODO get default grids info when passing a, k = None
 
         # or, to set to the default:
         # a_grid_tkka = None
         # logn_k_grid_tkka = None
 
+        # set relevant dictionaries with the different probe combinations as keys
         self.set_dicts_for_trisp()
-
-        # the default pk must be passed to the Tk3D functions as None, not as 
-        # 'delta_matter:delta_matter'
-        p_of_k_a = (
-            None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
-        )
 
         if (
             self.a_grid_tkka_SSC is not None
@@ -399,39 +400,36 @@ class PycclClass:
             )
 
         self.tkka_dict = {}
-        self.responses_dict = {}
-
         tkka_start_time = time.perf_counter()
         for row, (A, B) in tqdm(enumerate(probe_ordering)):
             for col, (C, D) in enumerate(probe_ordering):
+                # skip the lower triangle of the matrix
+                if col < row:
+                    continue
+
                 probe_block = A + B + C + D
 
-                if col >= row:
-                    print(
-                        f'{comp_load_str} trispectrum for {which_ng_cov}, '
-                        f'probe combination {probe_block}'
+                print(
+                    f'{comp_load_str} trispectrum for {which_ng_cov}, '
+                    f'probe combination {probe_block}'
+                )
+
+                if pyccl_cfg['load_cached_tkka']:
+                    # load a, ln(k1), ln(k2)
+                    a_arr = np.load(f'{tkka_path}/a_arr_{k_z_str}.npy')
+                    lk1_arr = np.load(f'{tkka_path}/lnk1_arr_{k_z_str}.npy')
+                    lk2_arr = np.load(f'{tkka_path}/lnk2_arr_{k_z_str}.npy')
+                    assert np.array_equal(lk1_arr, lk2_arr), (
+                        'lk1_arr and lk2_arr must be equal'
                     )
 
-                if col >= row and pyccl_cfg['load_cached_tkka']:
-                    assert False, 'Probably this section must be deleted'
-
-                    save_tkka = False
-
-                    a_arr = np.load(
-                        f'{tkka_path}/a_arr_tkka_{probe_block}_{k_z_str}.npy'
-                    )
-                    k1_arr = np.load(
-                        f'{tkka_path}/k1_arr_tkka_{probe_block}_{k_z_str}.npy'
-                    )
-                    k2_arr = np.load(
-                        f'{tkka_path}/k2_arr_tkka_{probe_block}_{k_z_str}.npy'
-                    )
+                    # load the probe responses (2 arrays) or the trispectrum (1 array)
                     if which_ng_cov == 'SSC':
                         pk1_arr_tkka = np.load(
-                            f'{tkka_path}/pk1_arr_tkka_{probe_block}_{k_z_str}.npy'
+                            f'{tkka_path}/pk1_arr_{probe_block}_{k_z_str}.npy'
                         )
                         pk2_arr_tkka = np.load(
-                            f'{tkka_path}/pk2_arr_tkka_{probe_block}_{k_z_str}.npy'
+                            f'{tkka_path}/pk2_arr_{probe_block}_{k_z_str}.npy'
                         )
                         tk3d_kwargs = {
                             'tkk_arr': None,
@@ -440,7 +438,7 @@ class PycclClass:
                         }
                     elif which_ng_cov == 'cNG':
                         tkk_arr = np.load(
-                            f'{tkka_path}/tkk_arr_{probe_block}_{k_z_str}.npy'
+                            f'{tkka_path}/trisp_{probe_block}_{k_z_str}.npy'
                         )
                         tk3d_kwargs = {
                             'tkk_arr': tkk_arr,
@@ -448,24 +446,22 @@ class PycclClass:
                             'pk2_arr': None,
                         }
 
-                    assert np.array_equal(k1_arr, k2_arr), (
-                        'k1_arr and k2_arr must be equal'
-                    )
-
                     self.tkka_dict[A, B, C, D] = ccl.tk3d.Tk3D(
                         a_arr=a_arr,
-                        lk_arr=k1_arr,
+                        lk_arr=lk1_arr,
                         is_logt=False,
                         extrap_order_lok=1,
                         extrap_order_hik=1,
                         **tk3d_kwargs,
                     )
 
-                elif col >= row and not pyccl_cfg['load_cached_tkka']:
+                else:
+                    # choose function to compute trispectrum and the ngcov-specific args
                     tkka_func, additional_args = self.get_tkka_func(
                         A, B, C, D, which_ng_cov
                     )
 
+                    # compute the trispectrum
                     self.tkka_dict[A, B, C, D] = tkka_func(
                         cosmo=self.cosmo_ccl,
                         hmc=self.hmc,
@@ -476,9 +472,37 @@ class PycclClass:
                         **additional_args,
                     )
 
-        print(
-            f'trispectrum computed in {time.perf_counter() - tkka_start_time:.2f} s'
-        )
+                    # retrieve a, ln(k1), ln(k2), tkka
+                    a_arr, lk1_arr, lk2_arr, tk_arrays = self.tkka_dict[
+                        A, B, C, D
+                    ].get_spline_arrays()
+
+                    # save a and k grids
+                    np.save(f'{tkka_path}/a_arr_{k_z_str}.npy', a_arr)
+                    np.save(f'{tkka_path}/lnk1_arr_{k_z_str}.npy', lk1_arr)
+                    np.save(f'{tkka_path}/lnk2_arr_{k_z_str}.npy', lk2_arr)
+
+                    # save the probe responses (2 arrays) or the trispectrum (1 array)
+                    if which_ng_cov == 'SSC':
+                        pk1_arr_tkka = tk_arrays[0]
+                        pk2_arr_tkka = tk_arrays[1]
+                        np.save(
+                            f'{tkka_path}/pk1_arr_{probe_block}_{k_z_str}.npy',
+                            pk1_arr_tkka,
+                        )
+                        np.save(
+                            f'{tkka_path}/pk2_arr_{probe_block}_{k_z_str}.npy',
+                            pk2_arr_tkka,
+                        )
+
+                    elif which_ng_cov == 'cNG':
+                        tkk_arr = tk_arrays[0]
+                        np.save(
+                            f'{tkka_path}/trisp_{probe_block}_{k_z_str}.npy',
+                            tkk_arr,
+                        )
+
+        print(f'trispectrum computed in {time.perf_counter() - tkka_start_time:.2f} s')
 
         return
 
@@ -535,17 +559,18 @@ class PycclClass:
             }
         else:
             raise ValueError(
-                f"Invalid value for which_ng_cov. It is {which_ng_cov}, "
+                f'Invalid value for which_ng_cov. It is {which_ng_cov}, '
                 "must be 'SSC' or 'cNG'."
             )
 
         return tkka_func, additional_args
 
     def set_dicts_for_trisp(self):
+        # tODO pass this? make sure to be consistent
         gal_bias_1d = self.gal_bias_func(cosmo_lib.a_to_z(self.a_grid_tkka_SSC))
 
         # TODO pk from input files
-        # This is the correct way to initialize the trispectrum 
+        # This is the correct way to initialize the trispectrum
         # (I Asked David Alonso about this.)
         self.halo_profile_dict = {
             'L': self.halo_profile_dm,
@@ -589,7 +614,7 @@ class PycclClass:
         nbl = len(ell)
 
         start_time = time.perf_counter()
-        # switch between the two functions, which are identical except for the 
+        # switch between the two functions, which are identical except for the
         # sigma2_b argument
         if which_ng_cov == 'SSC':
             ccl_ng_cov_func = ccl.covariances.angular_cl_cov_SSC
@@ -685,7 +710,7 @@ class PycclClass:
         return
 
     def check_cov_blocks_simmetry(self):
-        # Test if cov is symmetric in ell1, ell2 (only for the diagonal covariance 
+        # Test if cov is symmetric in ell1, ell2 (only for the diagonal covariance
         # blocks: the off-diagonal need *not* to be symmetric in ell1, ell2)
         for key in self.cov_ng_3x2pt_dict_8D:
             if (

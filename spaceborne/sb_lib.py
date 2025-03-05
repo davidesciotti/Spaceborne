@@ -1309,8 +1309,9 @@ def compare_arrays(A, B, name_A='A', name_B='B',
 
     # If plotting arrays, prepare data and plot in first row.
     if plot_array:
+        A_toplot, B_toplot = A.copy(), B.copy()
         if abs_val:
-            A_toplot, B_toplot = np.abs(A), np.abs(B)
+            A_toplot, B_toplot = np.abs(A_toplot), np.abs(B_toplot)
         if log_array:
             A_toplot, B_toplot = np.log10(A_toplot), np.log10(B_toplot)
 

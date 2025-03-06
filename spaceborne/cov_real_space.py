@@ -374,20 +374,6 @@ def cov_g_mix_real_new(  # fmt: skip
     # permutations should be performed as done in the SVA function
 
     if integration_method == 'simps':
-        # integrand = integrand_func(ell_values,
-        #                            cl_5d[probe_a_ix, probe_c_ix, :, zi, zk] *
-        #                            get_prefac(probe_b_ix, probe_d_ix, zj, zl) +
-
-        #                            cl_5d[probe_b_ix, probe_d_ix, :, zj, zl] *
-        #                            get_prefac(probe_a_ix, probe_c_ix, zi, zk) +
-
-        #                            cl_5d[probe_a_ix, probe_d_ix, :, zi, zl] *
-        #                            get_prefac(probe_b_ix, probe_c_ix, zj, zk) +
-
-        #                            cl_5d[probe_b_ix, probe_c_ix, :, zj, zk] *
-        #                            get_prefac(probe_a_ix, probe_d_ix, zi, zl)
-        #                            )
-
         integrand = integrand_func(
             ell_values,
             cl_5d[probe_a_ix, probe_c_ix, :, zi, zk]
@@ -573,7 +559,7 @@ n_probes_rs = 4  # real space
 n_probes_hs = 2  # harmonic space
 
 term = 'sva'
-probe = 'gmxip'
+probe = 'gmxim'
 integration_method = 'simps'
 
 # the comments on the right are outdated, btw
@@ -612,7 +598,6 @@ mu_dict = {'gg': 0, 'gm': 2, 'xip': 0, 'xim': 4}
 
 # for probe in probe_idx_dict:
 for probe in (probe,):
-
     twoprobe_a_str, twoprobe_b_str = split_probe_name(probe)
     twoprobe_a_ix, twoprobe_b_ix = (
         probe_idx_dict_short[twoprobe_a_str],
@@ -628,7 +613,7 @@ for probe in (probe,):
     theta_edges = np.deg2rad(theta_edges)
     # TODO in principle this could be changed
     theta_centers = (theta_edges[:-1] + theta_edges[1:]) / 2.0
-    theta_bins = len(theta_centers)
+    nbt = len(theta_centers)  # nbt = number theta bins
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
     ind = sl.build_full_ind(triu_tril, row_col_major, zbins)
@@ -694,45 +679,26 @@ for probe in (probe,):
     # for zi in range(zbins):
     #     plt.plot(wl_ker[zi].get_kernel()[1][0], wl_ker[zi].get_kernel()[0][0])
 
-    cl_gg_3d = np.zeros((len(ell_values), zbins, zbins))
-    cl_gl_3d = np.zeros((len(ell_values), zbins, zbins))
-    cl_ll_3d = np.zeros((len(ell_values), zbins, zbins))
+    cl_gg_3d = np.zeros((nbl, zbins, zbins))
+    cl_gl_3d = np.zeros((nbl, zbins, zbins))
+    cl_ll_3d = np.zeros((nbl, zbins, zbins))
     print('Computing Cls...')
     for zi in tqdm(range(zbins)):
         for zj in range(zbins):
-            cl_gg_3d[:, zi, zj] = ccl.angular_cl(
-                cosmo,
-                gc_ker[zi],
-                gc_ker[zj],
-                ell_values,
-                limber_integration_method='spline',
-            )
-            cl_gl_3d[:, zi, zj] = ccl.angular_cl(
-                cosmo,
-                gc_ker[zi],
-                wl_ker[zj],
-                ell_values,
-                limber_integration_method='spline',
-            )
-            cl_ll_3d[:, zi, zj] = ccl.angular_cl(
-                cosmo,
-                wl_ker[zi],
-                wl_ker[zj],
-                ell_values,
-                limber_integration_method='spline',
-            )
+            cl_gg_3d[:, zi, zj] = ccl.angular_cl(  # fmt: skip
+                cosmo, gc_ker[zi], gc_ker[zj], ell_values, 
+                limber_integration_method='spline'
+            )  # fmt: skip
+            cl_gl_3d[:, zi, zj] = ccl.angular_cl(  # fmt: skip
+                cosmo, gc_ker[zi], wl_ker[zj], ell_values, 
+                limber_integration_method='spline'
+            )  # fmt: skip
+            cl_ll_3d[:, zi, zj] = ccl.angular_cl(  # fmt: skip
+                cosmo, wl_ker[zi], wl_ker[zj], ell_values, 
+                limber_integration_method='spline'
+            )  # fmt: skip
 
     cl_5d = np.zeros((n_probes_hs, n_probes_hs, len(ell_values), zbins, zbins))
-    # cl_5d[0, 0, ...] = cl_ll_3d
-    # cl_5d[0, 1, ...] = cl_ll_3d
-    # cl_5d[0, 2, ...] = cl_gl_3d.transpose(0, 2, 1)
-    # cl_5d[1, 0, ...] = cl_ll_3d
-    # cl_5d[1, 1, ...] = cl_ll_3d
-    # cl_5d[1, 2, ...] = cl_gl_3d.transpose(0, 2, 1)
-    # cl_5d[2, 0, ...] = cl_gl_3d
-    # cl_5d[2, 1, ...] = cl_gl_3d
-    # cl_5d[2, 2, ...] = cl_gg_3d
-
     cl_5d[0, 0, ...] = cl_ll_3d
     cl_5d[1, 0, ...] = cl_gl_3d
     cl_5d[0, 1, ...] = cl_gl_3d.transpose(0, 2, 1)
@@ -743,16 +709,20 @@ for probe in (probe,):
     ind_ab = ind_auto[:, 2:] if probe_a_ix == probe_b_ix else ind_cross[:, 2:]
     ind_cd = ind_auto[:, 2:] if probe_c_ix == probe_d_ix else ind_cross[:, 2:]
 
-    zpairs_ab = ind_ab.shape[0]
-    zpairs_cd = ind_cd.shape[0]
+    zpairs_ab = zpairs_auto if probe_a_ix == probe_b_ix else zpairs_cross
+    zpairs_cd = zpairs_auto if probe_c_ix == probe_d_ix else zpairs_cross
+
+    # jsut a check
+    assert zpairs_ab == ind_ab.shape[0], 'zpairs-ind inconsistency'
+    assert zpairs_cd == ind_cd.shape[0], 'zpairs-ind inconsistency'
 
     # Compute covariance:
-    cov_sb_sva_6d = np.zeros((theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-    cov_sb_sn_6d = np.zeros((theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-    cov_sb_mix_6d = np.zeros((theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-    cov_sb_g_6d = np.zeros((theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-    cov_sb_g_vec_6d = np.zeros((theta_bins, theta_bins, zbins, zbins, zbins, zbins))
-    cov_sb_gfromsva_6d = np.zeros((theta_bins, theta_bins, zbins, zbins, zbins, zbins))
+    cov_sb_sva_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
+    cov_sb_sn_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
+    cov_sb_mix_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
+    cov_sb_g_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
+    cov_sb_g_vec_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
+    cov_sb_gfromsva_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
 
     if term == 'sva':
         print('Computing real-space Gaussian SVA covariance...')
@@ -774,13 +744,14 @@ for probe in (probe,):
                 func=cov_g_sva_real,  
                 **kwargs,  
             )  
-            for theta_1_ix in tqdm(range(theta_bins))
-            for theta_2_ix in range(theta_bins)
+            for theta_1_ix in tqdm(range(nbt))
+            for theta_2_ix in range(nbt)
             for zij in range(zpairs_ab)
             for zkl in range(zpairs_cd)
         )  # fmt: skip
 
         for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
+            print(theta_1, theta_2, zi, zj, zk, zl)
             cov_sb_sva_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
 
         print(f'... Done in: {(time.time() - start):.2f} s')
@@ -790,8 +761,8 @@ for probe in (probe,):
         start = time.time()
 
         # TODO generalize to different n(z)
-        npair_arr = np.zeros((theta_bins, zbins, zbins))
-        for theta_ix in range(theta_bins):
+        npair_arr = np.zeros((nbt, zbins, zbins))
+        for theta_ix in range(nbt):
             for zi in range(zbins):
                 for zj in range(zbins):
                     theta_1_l = theta_edges[theta_ix]
@@ -804,7 +775,7 @@ for probe in (probe,):
                         n_eff_lens[zj],
                     )
 
-        delta_theta = np.eye(theta_bins)
+        delta_theta = np.eye(nbt)
         t_arr = t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i)
 
         cov_sb_sn_6d = (
@@ -840,8 +811,8 @@ for probe in (probe,):
                 zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd, func=cov_g_mix_real_new,
                 **kwargs,
             )
-            for theta_1_ix in tqdm(range(theta_bins))
-            for theta_2_ix in range(theta_bins)
+            for theta_1_ix in tqdm(range(nbt))
+            for theta_2_ix in range(nbt)
             for zij in range(zpairs_ab)
             for zkl in range(zpairs_cd)
         )  # fmt: skip
@@ -921,8 +892,8 @@ for probe in (probe,):
                 zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd,
                 **kwargs,
             )
-            for theta_1_ix in tqdm(range(theta_bins))
-            for theta_2_ix in range(theta_bins)
+            for theta_1_ix in tqdm(range(nbt))
+            for theta_2_ix in range(nbt)
             for zij in range(zpairs_ab)
             for zkl in range(zpairs_cd)
         )  # fmt: skip
@@ -934,8 +905,8 @@ for probe in (probe,):
             delayed(project_ellspace_cov_vec_helper)(
                 theta_1, theta_2, mu, nu, Amax, ell_values, ell_values, cov_ell_diag
             )
-            for theta_1 in tqdm(range(theta_bins))
-            for theta_2 in range(theta_bins)
+            for theta_1 in tqdm(range(nbt))
+            for theta_2 in range(nbt)
         )
 
         for theta_1, theta_2, cov_value in results:
@@ -1009,19 +980,19 @@ for probe in (probe,):
 
     # ! import .list covariance file
     cov_g_oc_3x2pt_8D = np.zeros(
-        (n_probes_rs, n_probes_rs, theta_bins, theta_bins, zbins, zbins, zbins, zbins)
+        (n_probes_rs, n_probes_rs, nbt, nbt, zbins, zbins, zbins, zbins)
     )
     cov_sva_oc_3x2pt_8D = np.zeros(
-        (n_probes_rs, n_probes_rs, theta_bins, theta_bins, zbins, zbins, zbins, zbins)
+        (n_probes_rs, n_probes_rs, nbt, nbt, zbins, zbins, zbins, zbins)
     )
     cov_mix_oc_3x2pt_8D = np.zeros(
-        (n_probes_rs, n_probes_rs, theta_bins, theta_bins, zbins, zbins, zbins, zbins)
+        (n_probes_rs, n_probes_rs, nbt, nbt, zbins, zbins, zbins, zbins)
     )
     cov_sn_oc_3x2pt_8D = np.zeros(
-        (n_probes_rs, n_probes_rs, theta_bins, theta_bins, zbins, zbins, zbins, zbins)
+        (n_probes_rs, n_probes_rs, nbt, nbt, zbins, zbins, zbins, zbins)
     )
     cov_ssc_oc_3x2pt_8D = np.zeros(
-        (n_probes_rs, n_probes_rs, theta_bins, theta_bins, zbins, zbins, zbins, zbins)
+        (n_probes_rs, n_probes_rs, nbt, nbt, zbins, zbins, zbins, zbins)
     )
     # cov_cng_oc_3x2pt_8D = np.zeros((n_probes_realspace, n_probes_realspace,
     #                                  theta_bins, theta_bins,
@@ -1128,10 +1099,10 @@ for probe in (probe,):
     # cov_oc_4d = sl.cov_6D_to_4D(cov_oc_6d, theta_bins, zpairs_cross, ind_cross)
     # cov_sb_4d = sl.cov_6D_to_4D(cov_sb_6d, theta_bins, zpairs_cross, ind_cross)
     cov_oc_4d = sl.cov_6D_to_4D_blocks(
-        cov_oc_6d, theta_bins, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+        cov_oc_6d, nbt, zpairs_ab, zpairs_cd, ind_ab, ind_cd
     )
     cov_sb_4d = sl.cov_6D_to_4D_blocks(
-        cov_sb_6d, theta_bins, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+        cov_sb_6d, nbt, zpairs_ab, zpairs_cd, ind_ab, ind_cd
     )
     # cov_sb_vec_4d = sl.cov_6D_to_4D(cov_sb_vec_6d, theta_bins, zpairs_auto, ind_auto)
     # cov_sb_gfromsva_4d = sl.cov_6D_to_4D(cov_sb_gfromsva_6d,
@@ -1204,7 +1175,7 @@ for probe in (probe,):
 
     # plt.figure()
     # plt.plot(
-    #     theta_centers, np.diag(cov_sb_6d[:, :, zi, zj, zk, zl]), marker='.', 
+    #     theta_centers, np.diag(cov_sb_6d[:, :, zi, zj, zk, zl]), marker='.',
     #     label='sb'
     # )
     # plt.plot(

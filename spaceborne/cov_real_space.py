@@ -559,10 +559,12 @@ n_probes_rs = 4  # real space
 n_probes_hs = 2  # harmonic space
 
 term = 'sva'
-probe = 'gmxim'
+_probe = 'gmxim'
 integration_method = 'simps'
 
-# the comments on the right are outdated, btw
+mu_dict = {'gg': 0, 'gm': 2, 'xip': 0, 'xim': 4}
+
+# ! careful: in this representation, xipxip and ximxim (eg) have the same indices!!
 probe_idx_dict = {
     'xipxip': (0, 0, 0, 0),
     'xipxim': (0, 0, 0, 0),
@@ -576,14 +578,13 @@ probe_idx_dict = {
     'ggxip': (1, 1, 0, 0),
 }
 
-# ! THE PROBLEM IS FOR SURE IN HOW THE PROBE IDXS ARE "COMRPESSED"
 probe_idx_dict_short = {
     'xip': 0,
     'xim': 1,
     'gg': 2,  # w
     'gm': 3,  # \gamma_t
 }  # TODO should I invert the indices for gg and gm? is
-# TODOthere a smarter mapping? probably not...
+# TODO there a smarter mapping? probably not...
 
 probe_idx_dict_short_oc = {}
 for key in probe_idx_dict:
@@ -594,10 +595,8 @@ for key in probe_idx_dict:
     )
 
 
-mu_dict = {'gg': 0, 'gm': 2, 'xip': 0, 'xim': 4}
-
 # for probe in probe_idx_dict:
-for probe in (probe,):
+for probe in (_probe,):
     twoprobe_a_str, twoprobe_b_str = split_probe_name(probe)
     twoprobe_a_ix, twoprobe_b_ix = (
         probe_idx_dict_short[twoprobe_a_str],
@@ -724,6 +723,89 @@ for probe in (probe,):
     cov_sb_g_vec_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
     cov_sb_gfromsva_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
 
+    # ! LEVIN LEVIN LEVINx_length = 100
+    import pylevin as levin
+    from scipy import integrate
+
+    ell1_ix = 0
+    zij = 0
+    zkl = 0
+    theta_1_ix = 0
+    theta_2_ix = 0
+    theta_1_l = theta_edges[theta_1_ix]
+    theta_1_u = theta_edges[theta_1_ix + 1]
+    theta_2_l = theta_edges[theta_2_ix]
+    theta_2_u = theta_edges[theta_2_ix + 1]
+
+    zi, zj = ind_ab[zij, :]
+    zk, zl = ind_cd[zkl, :]
+    c_ik = cl_5d[probe_a_ix, probe_c_ix, :, zi, zk]
+    c_jl = cl_5d[probe_b_ix, probe_d_ix, :, zj, zl]
+    c_il = cl_5d[probe_a_ix, probe_d_ix, :, zi, zl]
+    c_jk = cl_5d[probe_b_ix, probe_c_ix, :, zj, zk]
+
+    integrand = ell_values * (c_ik * c_jl + c_il * c_jk)
+    integrand /= 2.0 * np.pi * Amax
+    integrand = integrand[:, None]
+    # integrand = cov_ell[*probe_idx_dict[probe], ell1_ix, ...]  # TODO
+
+    t0 = time.time()
+
+    # integrand shape must be (len(x), N). N is the number of integrals (2)
+    # x_length = 100
+    # x = np.geomspace(1e-5, 100, x_length)  # define support
+    x_length = nbl
+    x = ell_values
+
+    N = 1
+    f_of_x = integrand
+
+    integral_type = 1  # single cilyndrical bessel
+    N_thread = 8  # Number of threads used for hyperthreading
+    logx = True  # Tells the code to create a logarithmic spline in x for f(x)  # TODO
+    logy = True  # Tells the code to create a logarithmic spline in y for y = f(x)  # TODO
+    # Constructor of the class
+    lp_single = levin.pylevin(
+        type=integral_type,
+        x=ell_values,
+        integrand=integrand,
+        logx=logx,
+        logy=logy,
+        nthread=N_thread,
+    )
+
+    # accuracy settings
+    n_sub = 10  # number of collocation points in each bisection
+    n_bisec_max = 32  # maximum number of bisections used
+    rel_acc = 1e-4  # relative accuracy target
+    # should the bessel functions be calculated with boost instead of GSL,
+    # higher accuracy at high Bessel orders
+    boost_bessel = True
+    verbose = False  # should the code talk to you?
+
+    lp_single.set_levin(
+        n_col_in=n_sub,
+        maximum_number_bisections_in=n_bisec_max,
+        relative_accuracy_in=rel_acc,
+        super_accurate=boost_bessel,
+        verbose=verbose,
+    )
+
+    diagonal = False
+    M = nbt  # number of arguments at which the integrals are evaluated
+    result_levin = np.zeros((M, N))  # allocate the result
+
+    t0 = time.time()
+    lp_single.levin_integrate_bessel_single(
+        x_min=ell_values[0] * np.ones(nbt),
+        x_max=ell_values[-1] * np.ones(nbt),
+        k=theta_centers,
+        ell=(nu * np.ones(nbt)).astype(int),  # !mu or nu, careful
+        diagonal=diagonal,
+        result=result_levin,
+    )
+    print('Levin took', time.time() - t0, 's')
+
     if term == 'sva':
         print('Computing real-space Gaussian SVA covariance...')
         start = time.time()
@@ -751,7 +833,6 @@ for probe in (probe,):
         )  # fmt: skip
 
         for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
-            print(theta_1, theta_2, zi, zj, zk, zl)
             cov_sb_sva_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
 
         print(f'... Done in: {(time.time() - start):.2f} s')
@@ -863,15 +944,8 @@ for probe in (probe,):
             return_only_diagonal_ells=True,
         )
 
-        if probe == 'gggg':
-            probe_tuple_old = (1, 1, 1, 1)
-        elif probe == 'xipxip':
-            probe_tuple_old = (0, 0, 0, 0)
-        else:
-            raise ValueError('not implemented yet')
-
-        cov_ell = cov_ell[probe_tuple_old]
-        cov_ell_diag = cov_ell_diag[probe_tuple_old]
+        cov_ell = cov_ell[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
+        cov_ell_diag = cov_ell_diag[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
 
         # remove ell-dep prefactor from Gaussian cov
         cov_ell_diag *= (2 * ell_values + 1)[:, None, None, None, None]
@@ -979,27 +1053,14 @@ for probe in (probe,):
     cov_theta_indices = {ell_out: idx for idx, ell_out in enumerate(thetas_oc_load)}
 
     # ! import .list covariance file
-    cov_g_oc_3x2pt_8D = np.zeros(
-        (n_probes_rs, n_probes_rs, nbt, nbt, zbins, zbins, zbins, zbins)
-    )
-    cov_sva_oc_3x2pt_8D = np.zeros(
-        (n_probes_rs, n_probes_rs, nbt, nbt, zbins, zbins, zbins, zbins)
-    )
-    cov_mix_oc_3x2pt_8D = np.zeros(
-        (n_probes_rs, n_probes_rs, nbt, nbt, zbins, zbins, zbins, zbins)
-    )
-    cov_sn_oc_3x2pt_8D = np.zeros(
-        (n_probes_rs, n_probes_rs, nbt, nbt, zbins, zbins, zbins, zbins)
-    )
-    cov_ssc_oc_3x2pt_8D = np.zeros(
-        (n_probes_rs, n_probes_rs, nbt, nbt, zbins, zbins, zbins, zbins)
-    )
-    # cov_cng_oc_3x2pt_8D = np.zeros((n_probes_realspace, n_probes_realspace,
-    #                                  theta_bins, theta_bins,
-    # zbins, zbins, zbins, zbins))
-    # cov_tot_oc_3x2pt_8D = np.zeros((n_probes_realspace, n_probes_realspace,
-    #                                  theta_bins, theta_bins,
-    # zbins, zbins, zbins, zbins))
+    shape = (n_probes_rs, n_probes_rs, nbt, nbt, zbins, zbins, zbins, zbins)
+    cov_g_oc_3x2pt_8D = np.zeros(shape)
+    cov_sva_oc_3x2pt_8D = np.zeros(shape)
+    cov_mix_oc_3x2pt_8D = np.zeros(shape)
+    cov_sn_oc_3x2pt_8D = np.zeros(shape)
+    cov_ssc_oc_3x2pt_8D = np.zeros(shape)
+    # cov_cng_oc_3x2pt_8D = np.zeros(shape)
+    # cov_tot_oc_3x2pt_8D = np.zeros(shape)
 
     print(f'Loading OneCovariance output from {cov_list_name}.dat file...')
     start = time.perf_counter()

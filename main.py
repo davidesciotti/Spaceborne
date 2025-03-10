@@ -137,6 +137,7 @@ use_h_units = False  # whether or not to normalize Megaparsecs by little h
 nbl_3x2pt_oc = 500  # number of ell bins over which to compute the Cls passed to OC
 # for the Gaussian covariance computation
 k_steps_sigma2 = 20_000
+k_steps_sigma2_levin = 400
 shift_nz_interpolation_kind = 'linear'  # TODO this should be spline
 
 
@@ -272,6 +273,11 @@ k_grid_sigma2_b = np.logspace(  # fmt: skip
     cfg['covariance']['log10_k_min'], 
     cfg['covariance']['log10_k_max'], 
     k_steps_sigma2
+)  # fmt: skip
+k_grid_sigma2_b_levin = np.logspace(  # fmt: skip
+    cfg['covariance']['log10_k_min'], 
+    cfg['covariance']['log10_k_max'], 
+    k_steps_sigma2_levin
 )  # fmt: skip
 if len(z_grid) < 250:
     warnings.warn(
@@ -1251,11 +1257,48 @@ if compute_sb_ssc:
                 nside_mask=cfg['mask']['nside_mask'],
                 mask_path=cfg['mask']['nside_mask'],
                 n_jobs=cfg['misc']['num_threads'],
-                parallel=parallel,
+                parallel=False,
+                integration_scheme='simps',
+            )
+            # TODOTODOTODO RESTORE PARALLEL=PARALLEL
+            sigma2_b_levin = sigma2_SSC.sigma2_z1z2_wrap_parallel(
+                z_grid=z_grid,
+                k_grid_sigma2=k_grid_sigma2_b_levin,
+                cosmo_ccl=ccl_obj.cosmo_ccl,
+                which_sigma2_b=which_sigma2_b,
+                area_deg2_in=cfg['mask']['survey_area_deg2'],
+                nside_mask=cfg['mask']['nside_mask'],
+                mask_path=cfg['mask']['nside_mask'],
+                n_jobs=cfg['misc']['num_threads'],
+                parallel=False,
+                integration_scheme='levin',
             )
             # Note: if you want to compare sigma2 with full_curved_sky against
             # polar_cap_on_the_fly, remember to divide
             # the former by fsky (eq. 29 of https://arxiv.org/pdf/1612.05958)
+
+            plt.figure()
+            plt.semilogy(z_grid, np.diag(sigma2_b), label='simps')
+            plt.semilogy(z_grid, np.diag(sigma2_b_levin), ls='--', label='levin')
+            plt.legend()
+            plt.xlabel('z')
+            plt.ylabel('sigma2_b')
+            plt.show()
+
+            z_ix = 50
+            plt.figure()
+            plt.plot(z_grid, sigma2_b[z_ix, :], label='simps')
+            plt.plot(z_grid, sigma2_b_levin[z_ix, :], ls='--', label='levin')
+            plt.legend()
+            plt.xlabel('z')
+            plt.ylabel('sigma2_b')
+            plt.show()
+
+            sl.compare_arrays(
+                sigma2_b, sigma2_b_levin, abs_val=True, plot_diff_threshold=5
+            )
+
+            raise Exception('stop here')
 
     if not cfg['covariance']['load_cached_sigma2_b']:
         np.save(f'{output_path}/cache/sigma2_b.npy', sigma2_b)
@@ -1330,7 +1373,6 @@ cov_dict = cov_obj.cov_dict
 # ! ========================================== plot & tests ============================
 for key in cov_dict:
     sl.matshow(cov_dict[key], title=key)
-
 
 for which_cov in cov_dict:
     probe = which_cov.split('_')[1]

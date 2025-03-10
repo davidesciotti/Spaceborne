@@ -398,14 +398,11 @@ def sigma2_z2_func_vectorized(
         integral_result = simps(y=integrand(k_grid_sigma2), x=k_grid_sigma2, axis=1)
     elif integration_scheme == 'levin':
         # integrand shape must be (len(x), N). N is the number of integrals (2)
-        k_grid_sigma2_levin = k_grid_sigma2[::100]
-        integrand = k_grid_sigma2_levin**2 * ccl.linear_matter_power(
-            cosmo_ccl, k=k_grid_sigma2_levin, a=1.0
+        integrand = k_grid_sigma2**2 * ccl.linear_matter_power(
+            cosmo_ccl, k=k_grid_sigma2, a=1.0
         )
         integrand = integrand[:, None]
-        integral_result = integrate_levin(
-            r1_arr, r2, integrand, k_grid_sigma2_levin, n_jobs
-        )
+        integral_result = integrate_levin(r1_arr, r2, integrand, k_grid_sigma2, n_jobs)
         integral_result = integral_result[:, 0]
 
     if which_sigma2_b == 'full_curved_sky':
@@ -448,7 +445,7 @@ def sigma2_z2_func_vectorized(
 
 
 def integrate_levin(r1_arr, r2, integrand, k_grid_sigma2, n_jobs):
-    """This can probably be further optimized by not instantiating 
+    """This can probably be further optimized by not instantiating
     the class at evey value of r2"""
     import pylevin as levin
 

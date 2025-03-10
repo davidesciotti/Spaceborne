@@ -3,7 +3,7 @@ name = "Spaceborne"
 readme = "README.md"
 version = "0.1.0"
 #license = "MIT License"
-description = "Code to compute the harmonic-space Gaussian and non-Gaussian covariances for the 3x2pt photometrix survey."
+description = "Code to compute the harmonic-space Gaussian and non-Gaussian covariances for the 3x2pt photometric survey."
 authors = ["davidesciotti <84071067+davidesciotti@users.noreply.github.com>"]
 
 

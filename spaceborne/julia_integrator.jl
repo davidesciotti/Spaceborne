@@ -94,8 +94,10 @@ function SSC_integral_4D_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_C
     return (dz^2) .* result
 end
 
-function SSC_integral_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
+function SSC_integral_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, 
+    cl_integral_prefactor, sigma2, z_array::Array, is_auto)
     """ this version takes advantage of the symmetries between redshift pairs.
+    is_auto is not used, but it is kept for consistency with the SSC_integral_4D_simps_reparam function.
     """
 
     simpson_weights = get_simpson_weights(length(z_array))
@@ -132,14 +134,111 @@ function SSC_integral_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_C
 end
 
 
-function SSC_integral_KE_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
+function SSC_integral_4D_simps_reparam(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, 
+    cl_integral_prefactor, sigma2, z_array::Array, is_auto::Bool)
+    """ this version takes advantage of the symmetries between redshift pairs AND ell pairs (for the auto-blocks).
+    It has been validated against the original implementation, but the performance gain is not significant 
+    (it actually seems slower...). 
+    """
+
+    simpson_weights = get_simpson_weights(length(z_array))
+    z_step = (last(z_array)-first(z_array)) /(length(z_array)-1)
+
+
+    zpairs_AB = size(ind_AB, 1)
+    zpairs_CD = size(ind_CD, 1)
+    num_col = size(ind_AB, 2)
+
+    result = zeros(nbl, nbl, zpairs_AB, zpairs_CD)
+
+    # Number of unique (ℓ₁, ℓ₂) pairs with ℓ₁ ≤ ℓ₂.
+    ell_pairs = div(nbl * (nbl + 1), 2)
+
+    # Precompute mapping arrays: for each k = 1:ell_pairs, store the corresponding (ℓ₁, ℓ₂)
+    ell1_array = Vector{Int}(undef, ell_pairs)
+    ell2_array = Vector{Int}(undef, ell_pairs)
+    k = 1
+    for i in 1:nbl
+        for j in i:nbl
+            ell1_array[k] = i
+            ell2_array[k] = j
+            k += 1
+        end
+    end
+
+    if is_auto
+        # Loop over the unique ell pairs using a single index k.
+        @tturbo for k in 1:ell_pairs
+            # Retrieve ℓ₁ and ℓ₂ corresponding to this flattened index.
+            ell1 = ell1_array[k]
+            ell2 = ell2_array[k]            
+            for zij in 1:zpairs_AB
+                for zkl in 1:zpairs_CD
+                    for z1_idx in 1:z_steps
+                        for z2_idx in 1:z_steps
+
+                            zi, zj, zk, zl = ind_AB[zij, num_col - 1], ind_AB[zij, num_col], ind_CD[zkl, num_col - 1], ind_CD[zkl, num_col]
+
+                            result[ell1, ell2, zij, zkl] += cl_integral_prefactor[z1_idx] * cl_integral_prefactor[z2_idx] *
+                            d2ClAB_dVddeltab[ell1, zi, zj, z1_idx] *
+                            d2ClCD_dVddeltab[ell2, zk, zl, z2_idx] * sigma2[z1_idx, z2_idx] *
+                            simpson_weights[z1_idx] * simpson_weights[z2_idx]
+
+                        end
+                    end
+                end
+            end
+        end
+
+        # ! ONLY THE AUTO-BLOCKS ARE DIAGONAL IN ELL1, ELL2! 
+        # # Post-process: symmetrize the result to fill in the lower triangle.
+        for ell1 in 1:nbl
+            for ell2 in ell1+1:nbl
+                for zij in 1:zpairs_AB
+                    for zkl in 1:zpairs_CD
+                        result[ell2, ell1, zkl, zij] = result[ell1, ell2, zij, zkl]
+                    end
+                end
+            end
+        end
+    
+    else
+        @tturbo for ell1 in 1:nbl
+            for ell2 in 1:nbl  
+                for zij in 1:zpairs_AB
+                    for zkl in 1:zpairs_CD
+                        for z1_idx in 1:z_steps
+                            for z2_idx in 1:z_steps
+    
+                                zi, zj, zk, zl = ind_AB[zij, num_col - 1], ind_AB[zij, num_col], ind_CD[zkl, num_col - 1], ind_CD[zkl, num_col]
+    
+                                result[ell1, ell2, zij, zkl] += cl_integral_prefactor[z1_idx] * cl_integral_prefactor[z2_idx] *
+                                d2ClAB_dVddeltab[ell1, zi, zj, z1_idx] *
+                                d2ClCD_dVddeltab[ell2, zk, zl, z2_idx] * sigma2[z1_idx, z2_idx] *
+                                simpson_weights[z1_idx] * simpson_weights[z2_idx]
+    
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return (z_step^2) .* result
+end
+
+
+
+
+function SSC_integral_KE_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, 
+    cl_integral_prefactor, sigma2, z_array::Array, is_auto::Bool)
     """ this version takes advantage of the symmetries between redshift pairs, and implements the KE approximation
     (see )
     """
 
     simpson_weights = get_simpson_weights(length(z_array))
     z_step = (last(z_array)-first(z_array)) /(length(z_array)-1)
-
 
     zpairs_AB = size(ind_AB, 1)
     zpairs_CD = size(ind_CD, 1)
@@ -272,6 +371,8 @@ elseif integration_type == "simps"
     ssc_integral_4d_func = SSC_integral_4D_simps
 elseif integration_type == "simps_KE_approximation"
     ssc_integral_4d_func = SSC_integral_KE_4D_simps
+elseif integration_type == "SSC_integral_4D_simps_reparam"
+    ssc_integral_4d_func = SSC_integral_4D_simps_reparam
 elseif integration_type == "trapz-6D"
     ssc_integral_4d_func = SSC_integral_6D_trapz
 else
@@ -289,6 +390,12 @@ for row in 1:length(probe_combinations)
 
         probe_A, probe_B = probe_combinations[row]
         probe_C, probe_D = probe_combinations[col]
+        
+        if probe_A == probe_B == probe_C == probe_D
+            is_auto = true
+        else
+            is_auto = false
+        end
 
         if col >= row  # upper triangle and diagonal
             println("Computing SSC covariance block $(probe_A)$(probe_B)_$(probe_C)$(probe_D)")
@@ -300,7 +407,7 @@ for row in 1:length(probe_combinations)
                 ind_dict[probe_A, probe_B],
                 ind_dict[probe_C, probe_D],
                 nbl, z_steps, cl_integral_prefactor, 
-                sigma2, z_grid)
+                sigma2, z_grid, is_auto)
 
             # save
             npzwrite("$(folder_name)/cov_SSC_spaceborne_$(probe_A)$(probe_B)$(probe_C)$(probe_D)_4D.npy", cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)])

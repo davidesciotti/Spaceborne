@@ -9,18 +9,16 @@ from matplotlib.colors import ListedColormap
 import matplotlib.lines as mlines
 import numpy as np
 import yaml
-from numba import njit
 import pickle
 import itertools
 import os
 import inspect
 import datetime
-import pandas as pd
 import scipy
 from scipy.integrate import simpson as simps
+from scipy.special import jv
 from scipy.interpolate import interp1d, CubicSpline, RectBivariateSpline
 import subprocess
-from deprecated import deprecated
 
 
 symmetrize_output_dict = {
@@ -71,15 +69,57 @@ mpl_other_dict = {
     'kmax_star_tex': '$k_{\\rm max}^\\star$',
 }
 
+def matshow_vcenter(matrix, vcenter=0):
+    """Plots a matrix with a 0-centered, asymmetric colorbar."""
+    from matplotlib.colors import TwoSlopeNorm
+
+    plt.matshow(matrix, cmap="RdBu_r", norm=TwoSlopeNorm(vcenter=vcenter))
+    plt.colorbar()
+    plt.show()
+    
+
+def j0(x):
+    return jv(0, x)
+
+
+def j1(x):
+    return jv(1, x)
+
+
+def j2(x):
+    return jv(2, x)
+
+
+
+def import_cls(cl_tab_in: np.ndarray):
+
+    assert cl_tab_in.shape[1] == 4, 'input cls should have 4 columns'
+    assert np.min(cl_tab_in[:, 1]) == 0, 'tomographic redshift indices should start from 0'
+    assert np.min(cl_tab_in[:, 2]) == 0, 'tomographic redshift indices should start from 0'
+    assert np.max(cl_tab_in[:, 1]) == np.max(cl_tab_in[:, 2]), 'tomographic redshift indices should be \
+        the same for both z_i and z_j'
+
+    zbins = int(np.max(cl_tab_in[:, 1]) + 1)
+    ell_values = np.unique(cl_tab_in[:, 0])
+
+    cl_3d = np.zeros((len(ell_values), zbins, zbins))
+
+    for row in range(cl_tab_in.shape[0]):
+        ell_val, zi, zj = cl_tab_in[row, 0], int(cl_tab_in[row, 1]), int(cl_tab_in[row, 2])
+        ell_ix = np.where(ell_values == ell_val)[0][0]
+        cl_3d[ell_ix, zi, zj] = cl_tab_in[row, 3]
+
+    return ell_values, cl_3d
+
 
 def savetxt_aligned(filename, array_2d, header_list, col_width=25, decimals=8):
-    
+
     header = ''
     for i in range(len(header_list)):
         offset = 2 if i == 0 else 0
         string = f"{header_list[i]:<{col_width - offset}}"
         header += string
-    
+
     # header = ''.join([f"{header_list[i]:<{col_width - 2}}" for i in range(len(header_list))])
     fmt = [f'%-{col_width}.{decimals}f'] * len(array_2d[0])
     np.savetxt(filename, array_2d, header=header, fmt=fmt, delimiter='')
@@ -110,29 +150,45 @@ def nz_fits_to_txt(fits_filename):
     return nz_arr
 
 
-def compare_funcs(x, y_a, y_b, name_a='A', name_b='B', logscale_y=[False, False],
-                  title=None):
+def compare_funcs(x, y_tuple: dict, logscale_y=[False, False], logscale_x=False,
+                  title=None, ylim_diff=None):
+
+    names = list(y_tuple.keys())
+    y_tuple = list(y_tuple.values())
+    colors = plt.get_cmap("tab10").colors  # Get tab colors
 
     if x is None:
-        x = np.arange(len(y_a))
+        x = np.arange(len(y_tuple[0]))
 
     fig, ax = plt.subplots(2, 1, sharex=True, height_ratios=[2, 1], )
     fig.subplots_adjust(hspace=0)
 
-    ax[0].plot(x, y_a, label=name_a, marker='.')
-    ax[0].plot(x, y_b, label=name_b, ls='--', marker='.')
+    for i, y in enumerate(y_tuple):
+        ls = '--' if i > 0 else '-'
+        # alpha = 0.8 if i > 0 else 1
+        ax[0].plot(x, y, label=names[i], c=colors[i], ls=ls)
     ax[0].legend()
 
-    ax[1].plot(x, percent_diff(y_a, y_b), marker='.')
+    for i in range(1, len(y_tuple)):
+        ax[1].plot(x, percent_diff(y_tuple[i], y_tuple[0]), c=colors[i], ls='-')
     ax[1].set_ylabel('A/B - 1 [%]')
     ax[1].axhspan(-10, 10, alpha=0.2, color='gray')
 
     for i in range(2):
         if logscale_y[i]:
             ax[i].set_yscale('log')
-            
+
+    if logscale_x:
+        for i in range(2):
+            ax[i].set_xscale('log')
+
+    if ylim_diff is not None:
+        ax[1].set_ylim(ylim_diff)
+
     if title is not None:
         fig.suptitle(title)
+
+    plt.show()
 
 
 def get_git_info():
@@ -190,18 +246,20 @@ def check_interpolate_input_tab(input_tab: np.ndarray, z_grid_out: np.ndarray, z
 
     return output_tab, spline
 
-@deprecated(reason="ep_or_ed option has been deprecated")
+# @deprecated(reason="ep_or_ed option has been deprecated")
+
+
 def get_ngal(ngal_in, ep_or_ed, zbins, ep_check_tol):
 
     if isinstance(ngal_in, (int, float)):
         assert ep_or_ed == 'EP', 'n_gal must be a scalar in the equipopulated (EP) case'
         ngal_out = ngal_in
 
-    elif type(ngal_in) == list:
+    elif type(ngal_in) is list:
         assert len(ngal_in) == zbins, 'n_gal must be a vector of length zbins'
         ngal_out = ngal_in
 
-    elif type(ngal_in) == str:
+    elif type(ngal_in) is str:
         nofz = np.genfromtxt(ngal_in)
         assert nofz.shape[1] == zbins + 1, 'nz must be an array of shape (n_z_points, zbins + 1)'
         z_nofz = nofz[:, 0]
@@ -425,7 +483,16 @@ def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
                     # Format the line with appropriate spacing
                     file.write(f"{ell_val:.3f}\t{zi + 1}\t{zj + 1}\t{value:.10e}\n")
 
-    print(f"Data has been written to {ascii_folder}/{ascii_filename}")
+
+def write_cl_tab(ascii_folder, ascii_filename, cl_3d, ells, zbins):
+
+    with open(f'{ascii_folder}/{ascii_filename}', 'w') as file:
+        file.write(f'#ell\t\tzi\tzj\t{ascii_filename}\n')
+        for ell_idx, ell_val in enumerate(ells):
+            for zi in range(zbins):
+                for zj in range(zbins):
+                    value = cl_3d[ell_idx, zi, zj]
+                    file.write(f"{ell_val:.3f}\t\t{zi}\t{zj}\t{value:.10e}\n")
 
 
 def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_gauss, which_uncertainty,
@@ -437,8 +504,8 @@ def compare_fm_constraints(*fm_dict_list, labels, keys_toplot_in, normalize_by_g
     fom_dict = {}
     legend_x_anchor = 1.4
 
-    assert keys_toplot_in == 'all' or type(keys_toplot_in) == list, 'keys_toplot must be a list or "all"'
-    assert colors is None or type(colors) == list, 'colors must be a list or "all"'
+    assert keys_toplot_in == 'all' or type(keys_toplot_in) is list, 'keys_toplot must be a list or "all"'
+    assert colors is None or type(colors) is list, 'colors must be a list or "all"'
 
     colors = plt.rcParams['axes.prop_cycle'].by_key()['color'] if colors is None else colors
 
@@ -630,6 +697,8 @@ def compare_df_keys(dataframe, key_to_compare, value_a, value_b, num_string_colu
     :param num_string_columns: number of columns containing only strings or various options, such as whether to fix a certain prior or not...
     :return:
     """
+    import pandas as pd
+    
     df_A = dataframe[dataframe[key_to_compare] == value_a]
     df_B = dataframe[dataframe[key_to_compare] == value_b]
     arr_A = df_A.iloc[:, num_string_columns:].select_dtypes('number').values
@@ -763,12 +832,12 @@ def plot_correlation_matrix(correlation_matrix, labels, title):
     fig, ax = plt.subplots(figsize=(10, 8))
 
     # Using the RdBu_r colormap for the heatmap
-    cax = ax.matshow(correlation_matrix, cmap='RdBu_r', vmin=-1, vmax=1)
+    # cax = ax.matshow(correlation_matrix, cmap='RdBu_r', vmin=-1, vmax=1)
     # cax = ax.matshow(correlation_matrix, cmap='RdBu_r')
     # cax = ax.matshow(correlation_matrix, cmap='viridis')
 
     # Display color bar
-    cbar = fig.colorbar(cax)
+    # cbar = fig.colorbar(cax)
 
     # Set labels
     # ax.set_xticks(np.arange(len(labels)))
@@ -1072,16 +1141,27 @@ def read_yaml(filename):
     return config
 
 
-@njit
+# @njit
 def percent_diff(array_1, array_2, abs_value=False):
+
+    array_1 = np.atleast_1d(array_1)  # Ensure array-like behavior
+    array_2 = np.atleast_1d(array_2)
+
     diff = (array_1 / array_2 - 1) * 100
+
+    # avoid nans
+    both_zeros = np.logical_and(array_1 == 0, array_2 == 0)
+
+    diff[both_zeros] = 0
+
     if abs_value:
         return np.abs(diff)
     else:
-        return diff
+        # Convert back to scalar if necessary
+        return diff.item() if diff.size == 1 else diff  
 
 
-@njit
+# @njit
 def percent_diff_mean(array_1, array_2):
     """
     result is in "percent" units
@@ -1186,8 +1266,11 @@ def get_var_name(var):
     return [var_name for var_name, var_val in callers_local_vars if var_val is var]
 
 
-def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True, log_array=True, log_diff=False,
-                   abs_val=False, plot_diff_threshold=None, white_where_zero=True, plot_diff_hist=False):
+def compare_arrays(A, B, name_A='A', name_B='B',
+                   plot_diff=True, plot_array=True,
+                   log_array=True, log_diff=False,
+                   abs_val=False, plot_diff_threshold=None,
+                   white_where_zero=True, plot_diff_hist=False):
 
     if np.array_equal(A, B):
         print(f'{name_A} and {name_B} are equal ✅')
@@ -1201,68 +1284,78 @@ def compare_arrays(A, B, name_A='A', name_B='B', plot_diff=True, plot_array=True
     diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=abs_val)
     higher_rtol = plot_diff_threshold or 5.0
     max_diff = np.max(diff_AB)
-    result_emoji = '❌' if max_diff > higher_rtol else '✅'
+    result_emoji = '❌' if max_diff > higher_rtol or np.isnan(max_diff) else '✅'
     no_outliers = np.sum(diff_AB > higher_rtol)
-    additional_info = f'\nMax discrepancy: {max_diff:.2f}%;' \
-        f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}' \
-        f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
+    additional_info = (f'\nMax discrepancy: {max_diff:.2f}%;'
+                       f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}'
+                       f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}')
     print(f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}')
 
-    if plot_diff or plot_array:
-        assert A.ndim == 2 and B.ndim == 2, 'plotting is only implemented for 2D arrays'
+    # Check that arrays are 2D if any plotting is requested.
+    if (plot_diff or plot_array):
+        assert A.ndim == 2 and B.ndim == 2, 'Plotting is only implemented for 2D arrays'
 
+    # Determine number of rows:
+    nrows = (1 if plot_array else 0) + (1 if plot_diff else 0)
+    ncols = 2  # Always show 2 panels per row
+
+    fig, ax = plt.subplots(nrows, ncols, figsize=(17, 7 * nrows), constrained_layout=True)
+
+    # Ensure ax is always 2D
+    if nrows == 1:
+        ax = np.expand_dims(ax, axis=0)  # Convert row array to 2D
+    if ncols == 1:
+        ax = np.expand_dims(ax, axis=1)  # Convert column array to 2D
+
+    # If plotting arrays, prepare data and plot in first row.
     if plot_array:
-        A_toplot, B_toplot = A, B
-
+        A_toplot, B_toplot = A.copy(), B.copy()
         if abs_val:
-            A_toplot, B_toplot = np.abs(A), np.abs(B)
+            A_toplot, B_toplot = np.abs(A_toplot), np.abs(B_toplot)
         if log_array:
-            A_toplot, B_toplot = np.log10(A), np.log10(B)
+            A_toplot, B_toplot = np.log10(A_toplot), np.log10(B_toplot)
 
-        fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
-        im = ax[0].matshow(A_toplot)
-        ax[0].set_title(f'{name_A}')
-        fig.colorbar(im, ax=ax[0])
+        im = ax[0, 0].matshow(A_toplot)
+        ax[0, 0].set_title(f'{name_A}')
+        fig.colorbar(im, ax=ax[0, 0])
 
-        im = ax[1].matshow(B_toplot)
-        ax[1].set_title(f'{name_B}')
-        fig.colorbar(im, ax=ax[1])
-        fig.suptitle(f'log={log_array}, abs={abs_val}')
-        plt.show()
+        im = ax[0, 1].matshow(B_toplot)
+        ax[0, 1].set_title(f'{name_B}')
+        fig.colorbar(im, ax=ax[0, 1])
 
+    # If plotting differences, prepare diff data and plot in next row.
     if plot_diff:
         diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=False, abs_val=abs_val)
         diff_BA = percent_diff_nan(B, A, eraseNaN=True, log=False, abs_val=abs_val)
 
         if plot_diff_threshold is not None:
-            diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, np.abs(diff_AB))
-            diff_BA = np.ma.masked_where(np.abs(diff_BA) < plot_diff_threshold, np.abs(diff_BA))
+            # Mask out small differences (set them to white via the colormap's "bad" color)
+            diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, diff_AB)
+            diff_BA = np.ma.masked_where(np.abs(diff_BA) < plot_diff_threshold, diff_BA)
 
         if log_diff:
-            diff_AB = np.log10(diff_AB)
-            diff_BA = np.log10(diff_BA)
+            # Replace nonpositive with nan to avoid -inf
+            diff_AB = np.log10(np.abs(diff_AB))
+            diff_BA = np.log10(np.abs(diff_BA))
 
-        fig, ax = plt.subplots(1, 2, figsize=(17, 7), constrained_layout=True)
-        im = ax[0].matshow(diff_AB)
-        ax[0].set_title(f'(A/B - 1) * 100')
-        fig.colorbar(im, ax=ax[0])
+        im = ax[1, 0].matshow(diff_AB)
+        ax[1, 0].set_title('(A/B - 1) * 100')
+        fig.colorbar(im, ax=ax[1, 0])
 
-        im = ax[1].matshow(diff_BA)
-        ax[1].set_title(f'(B/A - 1) * 100')
-        fig.colorbar(im, ax=ax[1])
+        im = ax[1, 1].matshow(diff_BA)
+        ax[1, 1].set_title('(B/A - 1) * 100')
+        fig.colorbar(im, ax=ax[1, 1])
 
-        fig.suptitle(f'log={log_diff}, abs={abs_val}')
-        plt.show()
+    fig.suptitle(f'log_array={log_array}, abs_val={abs_val}, log_diff={log_diff}')
+    plt.show()
 
     if plot_diff_hist:
         diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=False, abs_val=False)
-
         plt.figure()
-        # plt.axvspan(xmin=-10, xmax=10, color='gray', alpha=0.3, label='10%')
         plt.hist(diff_AB.flatten(), bins=30, log=True, density=True)
         plt.xlabel('% difference')
-        # plt.ylabel('counts')
         plt.ylabel('frequency')
+        plt.show()
 
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):
@@ -1499,36 +1592,6 @@ def add_prior_to_fm(fm, fiducials_dict, prior_param_names, prior_param_values):
     return fm + prior_fm
 
 
-def uncertainties_FM(FM, nparams, fiducials=None, which_uncertainty='marginal', normalize=True):
-    """
-    returns relative *percentage!* error
-    """
-
-    if which_uncertainty == 'marginal':
-        FM_inv = np.linalg.inv(FM)
-        sigma_FM = np.sqrt(np.diag(FM_inv))[:nparams] * 100
-    elif which_uncertainty == 'conditional':
-        sigma_FM = np.sqrt(1 / np.diag(FM))[:nparams] * 100
-    else:
-        raise ValueError('which_uncertainty must be either "marginal" or "conditional"')
-
-    if normalize:
-        fiducials = np.asarray(fiducials)  # turn list into array to make np.where work
-
-        assert fiducials.shape[0] == nparams, 'the fiducial must have the same length as the number of parameters'
-
-        if fiducials is None:
-            assert False, 'you should definetly provide fiducial values!'
-            print('No fiducial values provided, using the ISTF values (for flat w0waCDM cosmology and no extensions)')
-            fiducials = np.asarray(list(ISTF_fid.primary.values())[:7])
-
-        # if the fiducial for is 0, substitute with 1 to avoid division by zero; if it's -1, take the absolute value
-        fiducials = np.where(fiducials == 0, 1, fiducials)
-        fiducials = np.where(fiducials == -1, 1, fiducials)
-        sigma_FM /= fiducials
-
-    return sigma_FM
-
 
 def uncertainties_fm_v2(fm, fiducials_dict, which_uncertainty='marginal', normalize=True, percent_units=True):
     """
@@ -1576,19 +1639,23 @@ def build_labels(zbins):
     return [galaxy_bias_label, shear_bias_label, zmean_shift_label]
 
 
-def matshow(array, title="title", log=True, abs_val=False, threshold=None, only_show_nans=False, matshow_kwargs={}):
+def matshow(array, title="title", log=True, abs_val=False, threshold=None, 
+            only_show_nans=False, matshow_kwargs: dict=None):
     """
     :param array:
     :param title:
     :param log:
     :param abs_val:
-    :param threshold: if None, do not mask the values; otherwise, keep only the elements above the threshold
-    (i.e., mask the ones below the threshold)
+    :param threshold: if None, do not mask the values; otherwise, 
+    keep only the elements above the threshold (i.e., mask the ones below the threshold)
     :return:
     """
 
+    if matshow_kwargs is None:
+        matshow_kwargs = {}
     if only_show_nans:
-        warnings.warn('only_show_nans is True, better switch off log and abs_val for the moment')
+        warnings.warn('only_show_nans is True, better switch off log and abs_val'
+                      ' for the moment', stacklevel=2)
         # Set non-NaN elements to 0 and NaN elements to 1
         array = np.where(np.isnan(array), 1, 0)
         title += ' (only NaNs shown)'
@@ -1658,9 +1725,7 @@ def show_keys(arrays_dict):
         print(key)
 
 
-
-
-@njit
+# @njit
 def symmetrize_Cl(Cl, nbl, zbins):
     for ell in range(nbl):
         for i in range(zbins):
@@ -1845,7 +1910,7 @@ def cl_3D_to_2D_or_1D(cl_3D, ind, is_auto_spectrum, use_triu_row_major, convert_
     return cl_2D.flatten(order=order)
 
 
-@njit
+# @njit
 def cl_1D_to_3D(cl_1d, nbl: int, zbins: int, is_symmetric: bool):
     """ This is used to unpack Vincenzo's files for SPV3
     Still to be thoroughly checked."""
@@ -2187,7 +2252,7 @@ def cov_10D_array_to_dict(cov_10D_array, probe_ordering):
     return cov_10D_dict
 
 
-@njit
+# @njit
 def build_3x2pt_dict(array_3x2pt):
     dict_3x2pt = {}
     if array_3x2pt.ndim == 5:
@@ -2421,7 +2486,7 @@ def cov_4D_to_6D(cov_4D, nbl, zbins, probe, ind):
     return cov_6D
 
 
-@njit
+# @njit
 def cov_6D_to_4D(cov_6D, nbl, zpairs, ind):
     """transform the cov from shape (nbl, nbl, zbins, zbins, zbins, zbins)
     to (nbl, nbl, zpairs, zpairs)"""
@@ -2457,7 +2522,7 @@ def cov_6D_to_4D_optim(cov_6D, nbl, zpairs, ind):
     return cov_4D
 
 
-@njit
+# @njit
 def cov_6D_to_4D_blocks(cov_6D, nbl, npairs_AB, npairs_CD, ind_AB, ind_CD):
     """ reshapes the covariance even for the non-diagonal (hence, non-square) blocks needed to build the 3x2pt.
     use npairs_AB = npairs_CD and ind_AB = ind_CD for the normal routine (valid for auto-covariance 
@@ -2466,6 +2531,7 @@ def cov_6D_to_4D_blocks(cov_6D, nbl, npairs_AB, npairs_CD, ind_AB, ind_CD):
     """
     assert ind_AB.shape[0] == npairs_AB, 'ind_AB.shape[0] != npairs_AB'
     assert ind_CD.shape[0] == npairs_CD, 'ind_CD.shape[0] != npairs_CD'
+    assert cov_6D.shape[0] == cov_6D.shape[1] == nbl, 'number of angular bins does not match first two cov axes'
 
     # this is to ensure compatibility with both 4-columns and 2-columns ind arrays (dictionary)
     # the penultimante element is the first index, the last one the second index (see s - 1, s - 2 below)
@@ -2599,7 +2665,6 @@ def check_symmetric(array_2d, exact, rtol=1e-05):
         return np.allclose(array_2d, array_2d.T, rtol=rtol, atol=0)
 
 
-
 def slice_cov_3x2pt_2D_ell_probe_zpair(cov_2D_ell_probe_zpair, nbl, zbins, probe):
     """ Slices the 2-dimensional 3x2pt covariance ordered as a block-diagonal matrix in ell, probe and zpair
     (unpacked in this order)"""
@@ -2718,7 +2783,7 @@ def cov_2D_to_4D(cov_2D, nbl, block_index, optimize=True, symmetrize=False):
     return cov_4D
 
 
-@njit
+# @njit
 def cov_4D_to_2D(cov_4D, block_index, optimize=True):
     """ 
     Reshapes the covariance from 4D to 2D. Also works for 3x2pt. The order
@@ -2982,7 +3047,7 @@ def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust):
     # if ng is an array, n_bar == ng (this is a slight misnomer, since ng is the cumulative galaxy density, while
     # n_bar the galaxy density in each bin). In this case, if the bins are quipopulated, the n_bar array should
     # have all entries almost identical.
-    
+
     n_bar_shear = ng_shear * conversion_factor
     n_bar_clust = ng_clust * conversion_factor
 

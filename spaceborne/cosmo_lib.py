@@ -1,21 +1,21 @@
 import time
 import warnings
 from copy import deepcopy
-import camb
-import numpy as np
-from numba import njit
-import pyccl as ccl
-from scipy.integrate import simpson as simps
-from spaceborne import sb_lib as sl
 
+import numpy as np
+from scipy.integrate import simpson as simps
+
+import pyccl as ccl
+from spaceborne import sb_lib as sl
 
 # ! prefactor for limber and curved-sky corrections
 # prefactor = np.array(
-#     [np.sqrt(math.factorial(int(ell) + 2) / math.factorial(int(ell) - 2)) * (2 / (2 * ell + 1)) ** 2
+#     [np.sqrt(math.factorial(int(ell) + 2) / math.factorial(int(ell) - 2)) * \
+# (2 / (2 * ell + 1)) ** 2
 #      for ell in ell_grid])
-#
+
 # prefactor = prefactor.reshape((-1, 1, 1))
-#
+
 # if divide_cls_by_prefactor:
 #     cl_LL_3D /= prefactor ** 2
 #     cl_GL_3D /= prefactor
@@ -46,7 +46,8 @@ def map_keys(input_dict, key_mapping):
         with additional keys from the original dictionary.
     """
 
-    # Mapping between flat_fid_pars_dict keys and instantiate_cosmo_ccl_obj expected keys
+    # Mapping between flat_fid_pars_dict keys and instantiate_cosmo_ccl_obj
+    # expected keys
     if key_mapping is None:
         key_mapping = {
             'Om': 'Om_m0',
@@ -58,7 +59,7 @@ def map_keys(input_dict, key_mapping):
             'ns': 'n_s',
             's8': 'sigma_8',
             'm_nu': 'm_nu',
-            'N_eff': 'N_eff'
+            'N_eff': 'N_eff',
         }
 
     new_dict = {}
@@ -72,7 +73,6 @@ def map_keys(input_dict, key_mapping):
     return new_dict
 
 
-@njit
 def inv_E(z, Om0, Ode0, Ok0):
     result = 1 / np.sqrt(Om0 * (1 + z) ** 3 + Ode0 + Ok0 * (1 + z) ** 2)
     return result
@@ -87,7 +87,7 @@ def H(z, cosmo_astropy):
 
 
 def r(z, cosmo_astropy):
-    """ in Mpc, NOT Mpc/h"""
+    """in Mpc, NOT Mpc/h"""
     return cosmo_astropy.comoving_distance(z).value
 
 
@@ -102,7 +102,9 @@ def astropy_comoving_distance(z, use_h_units, cosmo_astropy):
 def ccl_comoving_distance(z, use_h_units, cosmo_ccl):
     a = z_to_a(z)
     if use_h_units:
-        return ccl.comoving_radial_distance(cosmo_ccl, a) * cosmo_ccl.cosmo.params.h  # Mpc/h
+        return (
+            ccl.comoving_radial_distance(cosmo_ccl, a) * cosmo_ccl.cosmo.params.h
+        )  # Mpc/h
     else:
         return ccl.comoving_radial_distance(cosmo_ccl, a)  # Mpc
 
@@ -116,21 +118,21 @@ def ang_diam_dist(z, cosmo_astropy):
 
 
 def k_limber(ell, z, use_h_units, cosmo_ccl):
-    """ this function is vectorized in ell OR z, but not both at the same time. To vectorize in both, use
-    something like meshgrid:
+    """this function is vectorized in ell OR z, but not both at the same time.
+    To vectorize in both, use something like meshgrid:
     zz, ll = np.meshgrid(z_grid_sigma2, ell_WL)
     kl_array_mesh = k_limber(zz, ell=ll, cosmo_ccl=cosmo_ccl, use_h_units=use_h_units)
 
     """
-    assert type(use_h_units) == bool, 'use_h_units must be True or False'
+    assert isinstance(use_h_units, bool), 'use_h_units must be True or False'
 
-    # astropy gives values in Mpc, so I call ccl_comoving_distance to have the correct values in both cases (h_units
-    # or not)
+    # astropy gives values in Mpc, so I call ccl_comoving_distance to have the
+    # correct values in both cases (h_units or not)
     return (ell + 0.5) / ccl_comoving_distance(z, use_h_units, cosmo_ccl)
 
 
 def get_kmax_limber(ell_grid, z_grid, use_h_units, cosmo_ccl):
-    """ returns the maximum k_limber value for a given ell_grid and z_grid"""
+    """returns the maximum k_limber value for a given ell_grid and z_grid"""
     k_limber_list = []
     for z in z_grid:
         k_limber_list.append(k_limber(ell_grid, z, use_h_units, cosmo_ccl))
@@ -138,9 +140,10 @@ def get_kmax_limber(ell_grid, z_grid, use_h_units, cosmo_ccl):
 
 
 def pk_from_ccl(k_array, z_array, use_h_units, cosmo_ccl, pk_kind='nonlinear'):
-    """ ! * the input k_array must be in 1/Mpc * .
+    """! * the input k_array must be in 1/Mpc * .
     If use_h_units is True, the output pk_2d is in (Mpc/h)^3, and k_array is in h/Mpc.
-    If use_h_units is False, the output pk_2d is in Mpc^3, and k_array is in 1/Mpc (so it is returned unchanged)"""
+    If use_h_units is False, the output pk_2d is in Mpc^3, and k_array is in 1/Mpc
+    (so it is returned unchanged)"""
 
     if pk_kind == 'nonlinear':
         ccl_pk_func = ccl.nonlin_matter_power
@@ -150,11 +153,13 @@ def pk_from_ccl(k_array, z_array, use_h_units, cosmo_ccl, pk_kind='nonlinear'):
         raise ValueError('pk_kind must be either "linear" or "nonlinear"')
 
     z_array = np.atleast_1d(z_array)
-    pk_2d = np.array([ccl_pk_func(cosmo_ccl, k_array, a=1 / (1 + zval)) for zval in z_array]).T
+    pk_2d = np.array(
+        [ccl_pk_func(cosmo_ccl, k_array, a=1 / (1 + zval)) for zval in z_array]
+    ).T
 
     h = cosmo_ccl.cosmo.params.h
     if use_h_units:
-        pk_2d *= h ** 3
+        pk_2d *= h**3
         k_array /= h
 
     return k_array, pk_2d
@@ -162,8 +167,10 @@ def pk_from_ccl(k_array, z_array, use_h_units, cosmo_ccl, pk_kind='nonlinear'):
 
 def calculate_power(k, z, cosmo_classy, use_h_units=True, Pk_kind='nonlinear'):
     """
-    The input k is always assumed to be in 1/Mpc, as classy_Pk does. The output k is then rescaled if use_h_units is
-    True, so that it is in h/Mpc. The same is done for Pk: if use_h_units is True, the output Pk is rescaled to have
+    The input k is always assumed to be in 1/Mpc, as classy_Pk does. The output k is
+    then rescaled if use_h_units is
+    True, so that it is in h/Mpc. The same is done for Pk: if use_h_units is True, the
+    output Pk is rescaled to have
     it in (Mpc/h)^3. If use_h_units is False, the output Pk is in Mpc^3.
     """
 
@@ -171,14 +178,11 @@ def calculate_power(k, z, cosmo_classy, use_h_units=True, Pk_kind='nonlinear'):
         k_scale = cosmo_classy.h()
         Pk_scale = cosmo_classy.h() ** 3
     else:
-        k_scale = 1.
-        Pk_scale = 1.
+        k_scale = 1.0
+        Pk_scale = 1.0
 
     # nice way to avoid the if-elif-else statement
-    classy_Pk = {
-        'nonlinear': cosmo_classy.pk,
-        'linear': cosmo_classy.pk_lin
-    }
+    classy_Pk = {'nonlinear': cosmo_classy.pk, 'linear': cosmo_classy.pk_lin}
 
     if np.isscalar(k):
         k = np.array([k])
@@ -189,17 +193,12 @@ def calculate_power(k, z, cosmo_classy, use_h_units=True, Pk_kind='nonlinear'):
     # for ki, k in enumerate(k_array):
     #     for zi, z in enumerate(z_array):
     # the argument of classy_Pk must be in units of 1/Mpc?
-    pk = np.array([[classy_Pk[Pk_kind](k_val, z_val)
-                    for z_val in z]
-                   for k_val in k]
-                  )
+    pk = np.array([[classy_Pk[Pk_kind](k_val, z_val) for z_val in z] for k_val in k])
 
     if pk.shape == (1, 1):
         pk = pk[0, 0]
 
     return k / k_scale, pk * Pk_scale
-
-
 
 
 # def pk_camb():
@@ -219,16 +218,18 @@ def calculate_power(k, z, cosmo_classy, use_h_units=True, Pk_kind='nonlinear'):
 #     # Non-Linear spectra (Halofit)
 #     pars.NonLinear = model.NonLinear_both
 #     results.calc_power_spectra(pars)
-#     kh_nonlin, z_nonlin, pk_nonlin = results.get_matter_power_spectrum(minkh=k_min, maxkh=1, npoints=200)
+#     kh_nonlin, z_nonlin, pk_nonlin = results.get_matter_power_spectrum(minkh=k_min,
+# maxkh=1, npoints=200)
 
 
 def z_to_a(z):
-    # these lines flip the array to have it monothonically increasing, breaking the correspondance between z and a!!!
+    # these lines flip the array to have it monothonically increasing, breaking the
+    # correspondance between z and a!!!
     # be careful
     # if sl.is_increasing(z):
     #     result = 1. / (1 + z)
     #     return result[::-1]
-    return 1. / (1 + z)
+    return 1.0 / (1 + z)
 
 
 def a_to_z(a):
@@ -249,22 +250,30 @@ def fsky_to_deg2(f_sky):
 
 
 def cl_integral_prefactor(z, cl_integral_convention, use_h_units, cosmo_ccl):
-    """ this is the integration "prefactor" for the cl integral, without the dz, which is "added"
+    """this is the integration "prefactor" for the cl integral, without the dz, 
+    which is "added"
     afterwards in the actual integration, for example when using simps or trapz.
 
     note that this is not the volume element, but the collection of prefactors:
-    PySSC: Cl = \int dV W^A_pyssc W^B_pyssc Pk = \int dz * dr/dz * r(z)**2 * W^A_pyssc * W^B_pyssc * Pk
-    Euclid: Cl = \int dz * c/(H0*E(z)*r(z)**2) * W^A_euc * W^B_euc * Pk = \int dz * dr/dz * 1/r(z)**2 * W^A_euc * W^B_euc * Pk
+    PySSC: Cl = \int dV W^A_pyssc W^B_pyssc Pk = \
+        \int dz * dr/dz * r(z)**2 * \W^A_pyssc * W^B_pyssc * Pk  
+    Euclid: Cl = \int dz * c/(H0*E(z)*r(z)**2) * W^A_euc * W^B_euc * Pk = \
+        \int dz * dr/dz * 1/r(z)**2 * W^A_euc * W^B_euc * Pk
 
-    This function is simply returning the terms after dz and excluding the kernels and the Pk (which is *not* d^2Cl/dVddeltab)
+    This function is simply returning the terms after dz and excluding the kernels and 
+    the Pk (which is *not* d^2Cl/dVddeltab)
 
     Equating the two above equations gives W_pyssc = W_euc / r(z)**2, so:
 
-    - Option 1: PySSC convention (deprecated). Euclid kernels divided by r(z)**2 and integration "prefactor" = r(z)**2 * dr/dz
-    - Option 2: Euclid convention. Euclid kernels and integration "prefactor" = dr/dz / r(z)**2 = c/H0 / (E(z)*r(z)**2)
+    - Option 1: PySSC convention (deprecated). Euclid kernels divided by r(z)**2 and 
+    integration "prefactor" = r(z)**2 * dr/dz
+    - Option 2: Euclid convention. Euclid kernels and integration 
+    "prefactor" = dr/dz / r(z)**2 = c/H0 / (E(z)*r(z)**2)
     this is because dr/dz = c/H(z) = c/(H0*E(z))
-    - Option 3: Euclid_KE_approximation. In this case you only need one of these prefactors in the integral (since it's
-    a simple integral over distance). The dr_1/r_1^2 * dr_2/r_2^2 of the previous case becomes dr/r**4, in this way 
+    - Option 3: Euclid_KE_approximation. In this case you only need one of these 
+    prefactors in the integral (since it's
+    a simple integral over distance). The dr_1/r_1^2 * dr_2/r_2^2 of the previous 
+    case becomes dr/r**4, in this way
     """
     r_of_z = ccl_comoving_distance(z, use_h_units=use_h_units, cosmo_ccl=cosmo_ccl)
     a = z_to_a(z)
@@ -274,11 +283,15 @@ def cl_integral_prefactor(z, cl_integral_convention, use_h_units, cosmo_ccl):
 
     if cl_integral_convention == 'PySSC':
         raise ValueError('PySSC integral convention is deprecated')
-        cl_integral_prefactor = r_of_z ** 2 * dr_dz  # this is dV/dz
+        cl_integral_prefactor = r_of_z**2 * dr_dz  # this is dV/dz
     elif cl_integral_convention == 'Euclid':
-        cl_integral_prefactor = 1 / r_of_z ** 2 * dr_dz  # this is not dV/dz! that's why I don't write dV in the function name
+        cl_integral_prefactor = (
+            1 / r_of_z**2 * dr_dz
+        )  # this is not dV/dz! that's why I don't write dV in the function name
     elif cl_integral_convention == 'Euclid_KE_approximation':
-        cl_integral_prefactor = 1 / r_of_z ** 4 * dr_dz  # this is not dV/dz! that's why I don't write dV in the function name
+        cl_integral_prefactor = (
+            1 / r_of_z**4 * dr_dz
+        )  # this is not dV/dz! that's why I don't write dV in the function name
     else:
         raise ValueError('cl_integral_convention must be either "Euclid" or "PySSC"')
     return cl_integral_prefactor
@@ -287,7 +300,8 @@ def cl_integral_prefactor(z, cl_integral_convention, use_h_units, cosmo_ccl):
 def get_omega_nu0(m_nu, h, n_eff=3.046, neutrino_mass_fac=94.07):
     """
     Calculate the neutrino mass density parameter (Omega_nu h^2).
-    Look in https://arxiv.org/pdf/2207.05766.pdf for a comment on the difference between the factors 93.14eV and 94.07eV
+    Look in https://arxiv.org/pdf/2207.05766.pdf for a comment on the difference
+    between the factors 93.14eV and 94.07eV
 
     Parameters:
     # m_nu : float
@@ -305,14 +319,18 @@ def get_omega_nu0(m_nu, h, n_eff=3.046, neutrino_mass_fac=94.07):
     """
     # n_eff = n_ur + n_ncdm  # masless + massive neutrinos
     g_factor = n_eff / 3
-    omega_nu0 = m_nu / (neutrino_mass_fac * g_factor ** 0.75 * h ** 2)
+    omega_nu0 = m_nu / (neutrino_mass_fac * g_factor**0.75 * h**2)
     return omega_nu0
 
 
 def get_omega_k0(omega_m0, omega_Lambda0):
     omega_k0 = 1 - omega_m0 - omega_Lambda0
     if np.abs(omega_k0) < 1e-10:
-        warnings.warn("Omega_k is very small but not exactly 0, probably due to numerical errors. Setting it to 0")
+        warnings.warn(
+            'Omega_k is very small but not exactly 0, probably due to numerical '
+            'errors. Setting it to 0',
+            stacklevel=2,
+        )
         omega_k0 = 0
     return omega_k0
 
@@ -322,48 +340,66 @@ def instantiate_cosmo_ccl_obj(fiducial_pars_dict, extra_parameters):
     # extra_parameters = {"camb": {"halofit_version": "mead2020_feedback",
     #                              "HMCode_logT_AGN": 7.75}}
 
-    fiducial_pars_dict = sl.flatten_dict(fiducial_pars_dict)  # flatten the dictionary if it's nested
+    fiducial_pars_dict = sl.flatten_dict(
+        fiducial_pars_dict
+    )  # flatten the dictionary if it's nested
 
-    Omega_nu = get_omega_nu0(fiducial_pars_dict['m_nu'],
-                             fiducial_pars_dict['h'],
-                             n_eff=fiducial_pars_dict['N_eff'])
-    Omega_c = (fiducial_pars_dict['Om_m0'] - fiducial_pars_dict['Om_b0'] - Omega_nu)
+    Omega_nu = get_omega_nu0(
+        fiducial_pars_dict['m_nu'],
+        fiducial_pars_dict['h'],
+        n_eff=fiducial_pars_dict['N_eff'],
+    )
+    Omega_c = fiducial_pars_dict['Om_m0'] - fiducial_pars_dict['Om_b0'] - Omega_nu
 
-    if 'Om_k0' in fiducial_pars_dict.keys():
+    if 'Om_k0' in fiducial_pars_dict:
         Omega_k = fiducial_pars_dict['Om_k0']
     else:
-        Omega_k = get_omega_k0(omega_m0=fiducial_pars_dict['Om_m0'], omega_Lambda0=fiducial_pars_dict['Om_Lambda0'])
+        Omega_k = get_omega_k0(
+            omega_m0=fiducial_pars_dict['Om_m0'],
+            omega_Lambda0=fiducial_pars_dict['Om_Lambda0'],
+        )
 
     if extra_parameters is None:
         try:
-            extra_parameters = fiducial_pars_dict['other_params']['camb_extra_parameters']
+            extra_parameters = fiducial_pars_dict['other_params'][
+                'camb_extra_parameters'
+            ]
         except KeyError:
             print('No extra parameters passed to CAMB in instantiate_cosmo_ccl_obj')
 
-    cosmo_ccl = ccl.Cosmology(Omega_c=Omega_c,
-                              Omega_b=fiducial_pars_dict['Om_b0'],
-                              w0=fiducial_pars_dict['w_0'],
-                              wa=fiducial_pars_dict['w_a'],
-                              h=fiducial_pars_dict['h'],
-                              sigma8=fiducial_pars_dict['sigma_8'],
-                              n_s=fiducial_pars_dict['n_s'],
-                              m_nu=fiducial_pars_dict['m_nu'],
-                              Omega_k=Omega_k,
-                              baryonic_effects=None,
-                              mass_split='single',
-                              matter_power_spectrum='camb',
-                              extra_parameters=extra_parameters)
+    cosmo_ccl = ccl.Cosmology(
+        Omega_c=Omega_c,
+        Omega_b=fiducial_pars_dict['Om_b0'],
+        w0=fiducial_pars_dict['w_0'],
+        wa=fiducial_pars_dict['w_a'],
+        h=fiducial_pars_dict['h'],
+        sigma8=fiducial_pars_dict['sigma_8'],
+        n_s=fiducial_pars_dict['n_s'],
+        m_nu=fiducial_pars_dict['m_nu'],
+        Omega_k=Omega_k,
+        baryonic_effects=None,
+        mass_split='single',
+        matter_power_spectrum='camb',
+        extra_parameters=extra_parameters,
+    )
 
     return cosmo_ccl
 
 
-
-
-def project_pk(pab_k_z_interp_func, kernel_a, kernel_b, z_grid, ell_grid, cl_integral_convention, use_h_units,
-               cosmo_ccl):
+def project_pk(
+    pab_k_z_interp_func,
+    kernel_a,
+    kernel_b,
+    z_grid,
+    ell_grid,
+    cl_integral_convention,
+    use_h_units,
+    cosmo_ccl,
+):
     """
     Project the pk to get the cls, or the pk responses to get the projected responses.
-    ! Remember, if you use cl_integral_convention = PySSC you must normalize the kernels properly, it is not enough to
+    ! Remember, if you use cl_integral_convention = PySSC you must normalize the kernels
+    properly, it is not enough to
     ! pass the approptiate cl_integral_convention to csmlib.cl_integral_prefactor!
     :param pab_k_z_interp_func:
     :param kernel_a:
@@ -372,12 +408,14 @@ def project_pk(pab_k_z_interp_func, kernel_a, kernel_b, z_grid, ell_grid, cl_int
     """
 
     # Compute prefactors
-    cl_integral_prefactor_arr = cl_integral_prefactor(z_grid, cl_integral_convention,
-                                                      use_h_units=use_h_units,
-                                                      cosmo_ccl=cosmo_ccl)
+    cl_integral_prefactor_arr = cl_integral_prefactor(
+        z_grid, cl_integral_convention, use_h_units=use_h_units, cosmo_ccl=cosmo_ccl
+    )
 
     # Generate the projection operator
-    projection_operator = np.einsum('o, oi, oj-> oij', cl_integral_prefactor_arr, kernel_a, kernel_b)
+    projection_operator = np.einsum(
+        'o, oi, oj-> oij', cl_integral_prefactor_arr, kernel_a, kernel_b
+    )
 
     # Initialize pab_kl_z_arr
     pab_kl_z_arr = np.zeros((ell_grid.size, z_grid.size))
@@ -386,7 +424,9 @@ def project_pk(pab_k_z_interp_func, kernel_a, kernel_b, z_grid, ell_grid, cl_int
     start_time = time.time()
     for zgrid_idx, zgrid_val in enumerate(z_grid):
         # Vectorized k_limber over all ell for this z
-        kl_values = k_limber(ell_grid, zgrid_val, use_h_units=use_h_units, cosmo_ccl=cosmo_ccl)
+        kl_values = k_limber(
+            ell_grid, zgrid_val, use_h_units=use_h_units, cosmo_ccl=cosmo_ccl
+        )
 
         # Vectorized evaluation of the pk and pk responses for this z
         pab_kl_z_arr[:, zgrid_idx] = pab_k_z_interp_func((kl_values, zgrid_val))
@@ -404,10 +444,10 @@ def project_pk(pab_k_z_interp_func, kernel_a, kernel_b, z_grid, ell_grid, cl_int
 def ell_prefactor_gamma_and_ia(ell):
     """
     From Kilbinger, M., Heymans, C., Asgari, M., et al. 2017, MNRAS, 472, 2126.
-    Taken from CLOE. Formula is 
-    (ell + 2)!/(ell-2)! * (2/(2*ell+1))**4 
+    Taken from CLOE. Formula is
+    (ell + 2)!/(ell-2)! * (2/(2*ell+1))**4
     """
-    result = np.sqrt((ell + 2.0) * (ell + 1.0) * ell * (ell - 1.0)) / (ell + 0.5)**2
+    result = np.sqrt((ell + 2.0) * (ell + 1.0) * ell * (ell - 1.0)) / (ell + 0.5) ** 2
     return result
 
 
@@ -415,7 +455,7 @@ def ell_prefactor_mag(ell):
     """
     Taken from CLOE.
     """
-    return ell * (ell + 1) / (ell + 0.5)**2
+    return ell * (ell + 1) / (ell + 0.5) ** 2
 
 
 def reshape_pk_vincenzo_to_2d(filename):
@@ -429,6 +469,8 @@ def reshape_pk_vincenzo_to_2d(filename):
 
 def sigma8_to_As(pars, extra_args):
     """This function has been written by Matteo Martinelli"""
+    import camb
+
     params = deepcopy(pars)
 
     if 'As' in params:
@@ -442,10 +484,12 @@ def sigma8_to_As(pars, extra_args):
 
     params['WantTransfer'] = True
     params.update(extra_args)
-    pars = camb.set_params(**{key: val for key, val in params.items() if key != 'sigma8'})
-    pars.set_matter_power(redshifts=[0.], kmax=2.0)
+    pars = camb.set_params(
+        **{key: val for key, val in params.items() if key != 'sigma8'}
+    )
+    pars.set_matter_power(redshifts=[0.0], kmax=2.0)
     results = camb.get_results(pars)
     ini_sig8 = np.array(results.get_sigma8())[-1]
-    final_As = ini_As * (final_sig8 / ini_sig8) ** 2.
+    final_As = ini_As * (final_sig8 / ini_sig8) ** 2.0
 
     return final_As

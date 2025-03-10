@@ -10,7 +10,6 @@ from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import matplotlib.lines as mlines
-from numba import njit
 from scipy.integrate import quad
 from scipy.integrate import simpson as simps
 from scipy.interpolate import interp1d
@@ -61,7 +60,7 @@ def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors):
     ax[1].legend(ncol=2)
 
 
-@njit
+# @njit
 def pph(z_p, z, c_in, z_in, sigma_in, c_out, z_out, sigma_out, f_out):
     first_addendum = (1 - f_out) / (np.sqrt(2 * np.pi) * sigma_in * (1 + z)) * \
         np.exp(-0.5 * ((z - c_in * z_p - z_in) / (sigma_in * (1 + z))) ** 2)
@@ -70,7 +69,7 @@ def pph(z_p, z, c_in, z_in, sigma_in, c_out, z_out, sigma_out, f_out):
     return first_addendum + second_addendum
 
 
-@njit
+# @njit
 def n_of_z(z, z_0, n_gal):
     return n_gal * (z / z_0) ** 2 * np.exp(-(z / z_0) ** (3 / 2))
     # return  (z / z_0) ** 2 * np.exp(-(z / z_0) ** (3 / 2))

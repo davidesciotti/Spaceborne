@@ -1,0 +1,25 @@
+# This is the environment file for the `spaceborne` conda environment to be used on Linux machines
+
+name: spaceborne
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python>=3.12
+  - matplotlib
+  - numpy
+  - scipy
+  - tqdm
+  - pip
+  - pyyaml
+  - joblib
+  - healpy>=1.18.0
+  - swig  # needed by PyCCL
+  - cmake  # needed by PyCCL
+
+  - pip:
+    # pathos is needed to parallelize the computations involving non-pickleable objects.
+    # It can be ignored, in which case the code will run serially
+    - pathos  
+    - pymaster
+    - pyfiglet # for the fancy ascii art, not strictly necessary

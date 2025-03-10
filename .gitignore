@@ -21,3 +21,4 @@ output/*
 misc/test_davide_tri.ipynb
 input/nzTab-EP03-zedMin02-zedMax25-mag245.dat
 tests/realspace_test/*
+my_scripts

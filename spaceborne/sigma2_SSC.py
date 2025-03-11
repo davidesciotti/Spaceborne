@@ -11,6 +11,13 @@ import pyccl as ccl
 from spaceborne import cosmo_lib, mask_utils
 from spaceborne import sb_lib as sl
 
+# * pylevin hyperparameters
+n_sub = 12  # number of collocation points in each bisection
+n_bisec_max = 32  # maximum number of bisections used
+rel_acc = 1e-5  # relative accuracy target
+boost_bessel = True  # should the bessel functions be calculated with boost instead of GSL, higher accuracy at high Bessel orders
+verbose = False  # should the code talk to you?
+
 # TODO finish implementing this function and test if if needed
 # def sigma2_flatsky(z1, z2, k_perp_grid, k_par_grid, cosmo_ccl, Omega_S, theta_S):
 #     """Compute the flatsky variance between two redshifts z1 and z2 for a cosmology given by cosmo_ccl."""
@@ -174,7 +181,7 @@ def sigma2_z1z2_wrap_parallel(
     print('Computing sigma^2_b(z_1, z_2). This may take a while...')
     start = time.perf_counter()
 
-    if parallel:
+    if parallel and integration_scheme == 'simps':
         from pathos.multiprocessing import ProcessingPool as Pool
 
         # Create a list of arguments—one per z2 value in z_grid
@@ -192,7 +199,7 @@ def sigma2_z1z2_wrap_parallel(
         # Convert the list of results to a numpy array and transpose
         sigma2_b = np.array(sigma2_b_list).T
 
-    else:
+    elif parallel and integration_scheme == 'levin':
         sigma2_b = np.zeros((len(z_grid), len(z_grid)))
         for z2_idx, z2 in enumerate(tqdm(z_grid)):
             sigma2_b[:, z2_idx] = sigma2_z2_func_vectorized(
@@ -208,17 +215,18 @@ def sigma2_z1z2_wrap_parallel(
                 n_jobs=n_jobs,
             )
 
+    elif not parallel and integration_scheme == 'levin':
         # vectorized - parallel must be False, no for loop - still to be tested
-        # sigma2_b_levin_arr = sigma2_b_levin(
-        #     z_grid,
-        #     z_grid,
-        #     k_grid_sigma2,
-        #     cosmo_ccl,
-        #     which_sigma2_b,
-        #     ell_mask,
-        #     cl_mask,
-        #     fsky_mask,
-        # )
+        sigma2_b = sigma2_b_levin(
+            z_grid,
+            z_grid,
+            k_grid_sigma2,
+            cosmo_ccl,
+            which_sigma2_b,
+            ell_mask,
+            cl_mask,
+            fsky_mask,
+        )
 
     print(f'done in {time.perf_counter() - start} s')
 
@@ -257,6 +265,9 @@ def sigma2_b_levin(  # fmt: skip
     """
     In this version, I try to vectorize in zi, z2. It still doesn't work, though.
     """
+    
+    if not np.all(z1_arr == z2_arr):
+        raise ValueError('z1_arr and z2_arr must be the same')
 
     a1_arr = cosmo_lib.z_to_a(z1_arr)
     a2_arr = cosmo_lib.z_to_a(z2_arr)
@@ -267,20 +278,18 @@ def sigma2_b_levin(  # fmt: skip
     growth_factor_z1_arr = ccl.growth_factor(cosmo_ccl, a1_arr)
     growth_factor_z2_arr = ccl.growth_factor(cosmo_ccl, a2_arr)
 
-    k_grid_sigma2_levin = k_grid_sigma2[::100]
-    plin = ccl.linear_matter_power(cosmo_ccl, k=k_grid_sigma2_levin, a=1.0)
+    plin = ccl.linear_matter_power(cosmo_ccl, k=k_grid_sigma2, a=1.0)
 
     integrand = (
-        k_grid_sigma2_levin[:, None, None] ** 2
+        k_grid_sigma2[:, None, None] ** 2
         * plin[:, None, None]
         * growth_factor_z1_arr[None, :, None]
         * growth_factor_z2_arr[None, None, :]
     )
 
-    integrand = integrand[:, 0, :]
-
     import pylevin as levin
 
+    """
     # Constructor of the class
     integral_type = 2  # double spherical
     N_thread = 16  # Number of threads used for hyperthreading  # TODO increase
@@ -288,7 +297,7 @@ def sigma2_b_levin(  # fmt: skip
     logy = True  # Tells the code to create a logarithmic spline in y for y = f(x)
     lp_double = levin.pylevin(
         type=integral_type,
-        x=k_grid_sigma2_levin,
+        x=k_grid_sigma2,
         integrand=integrand,
         logx=logx,
         logy=logy,
@@ -296,13 +305,8 @@ def sigma2_b_levin(  # fmt: skip
     )
 
     # accuracy settings
-    n_sub = 10  # number of collocation points in each bisection
-    n_bisec_max = 32  # maximum number of bisections used
-    rel_acc = 1e-4  # relative accuracy target
     # should the bessel functions be calculated with boost instead of GSL,
     # higher accuracy at high Bessel orders
-    boost_bessel = True
-    verbose = False  # should the code talk to you?
     lp_double.set_levin(
         n_col_in=n_sub,
         maximum_number_bisections_in=n_bisec_max,
@@ -313,8 +317,10 @@ def sigma2_b_levin(  # fmt: skip
 
     M = len(r1_arr)  # number of arguments at which the integrals are evaluated
     N = len(r2_arr)
-    result_levin = np.zeros((M, N))  # allocate the result
-    diagonal = False
+    N = 1  # number of integrals to be calculated
+    diagonal = False  # If diagonal == True it must have shape (N).
+
+    result_levin = np.zeros((N,)) if diagonal else np.zeros((M, N))
 
     lp_double.levin_integrate_bessel_double(
         x_min=k_grid_sigma2[0] * np.ones(M),
@@ -326,8 +332,51 @@ def sigma2_b_levin(  # fmt: skip
         diagonal=diagonal,
         result=result_levin,
     )
+    """
 
-    integral_result = result_levin
+    # Robert's implementation
+
+    integral_type = 2
+    N_thread = 16  # Number of threads used for hyperthreading
+    logx = True  # Tells the code to create a logarithmic spline in x for f(x)
+    logy = True  # Tells the code to create a logarithmic spline in y for y = f(x)
+
+
+    N_z = len(r1_arr)
+    result_levin = np.zeros(N_z)
+    lower_limit = k_grid_sigma2[0] * np.ones(N_z)
+    upper_limit = k_grid_sigma2[-1] * np.ones(N_z)
+    ell = np.zeros(N_z).astype(int)
+    diagonals_only = True
+
+    result = np.zeros((N_z, N_z))
+
+    t0 = time.time()
+    for i_chi_1, chi_1 in tqdm(enumerate(r1_arr)):
+        lp = levin.pylevin(
+            integral_type,
+            k_grid_sigma2,
+            integrand[:, i_chi_1, i_chi_1:],
+            logx,
+            logy,
+            N_thread,
+        )
+        lp.set_levin(n_sub, n_bisec_max, rel_acc, boost_bessel, verbose)
+        lp.levin_integrate_bessel_double(
+            lower_limit[i_chi_1:],
+            upper_limit[i_chi_1:],
+            chi_1 * np.ones_like(r1_arr[i_chi_1:]),
+            r2_arr[i_chi_1:],
+            ell[i_chi_1:],
+            ell[i_chi_1:],
+            diagonals_only,
+            result_levin[i_chi_1:],
+        )
+        result[i_chi_1, i_chi_1:] = result_levin[i_chi_1:]
+        result[i_chi_1:, i_chi_1] = result_levin[i_chi_1:]
+    print('Levin took', time.time() - t0, 's')
+
+    integral_result = result
 
     if which_sigma2_b == 'full_curved_sky':
         result = 1 / (2 * np.pi**2) * integral_result
@@ -464,13 +513,6 @@ def integrate_levin(r1_arr, r2, integrand, k_grid_sigma2, n_jobs):
     )
 
     # accuracy settings
-    n_sub = 10  # number of collocation points in each bisection
-    n_bisec_max = 32  # maximum number of bisections used
-    rel_acc = 1e-4  # relative accuracy target
-    # should the bessel functions be calculated with boost instead of GSL,
-    # higher accuracy at high Bessel orders
-    boost_bessel = True
-    verbose = False  # should the code talk to you?
     lp_double.set_levin(
         n_col_in=n_sub,
         maximum_number_bisections_in=n_bisec_max,

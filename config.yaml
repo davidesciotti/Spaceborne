@@ -153,8 +153,8 @@ covariance:
     n_probes: 2 # Number of probes considered in the covariance
 
     G: True # Enable/disable the Gaussian covariance term.
-    SSC: True # Enable/disable the super-sample covariance (SSC) term.
-    cNG: False # Enable/disable the connected non-Gaussian (cNG) covariance term.
+    SSC: False # Enable/disable the super-sample covariance (SSC) term.
+    cNG: True # Enable/disable the connected non-Gaussian (cNG) covariance term.
 
     G_code: Spaceborne
     SSC_code: OneCovariance 
@@ -163,7 +163,7 @@ covariance:
         # - OneCovariance: Use the OneCovariance implementation.
         # - PyCCL: Use the PyCCL implementation.
 
-    cNG_code: OneCovariance 
+    cNG_code: PyCCL 
         # Specifies the code to compute cNG. Options:
         # - OneCovariance: Use the OneCovariance implementation.
         # - PyCCL: Use the PyCCL implementation.
@@ -235,29 +235,32 @@ PyCCL:
 
     load_cached_tkka: False # TODO restore if there is time
 
-    z_grid_tkka_min: 0.
+    z_grid_tkka_min: 0.2
     z_grid_tkka_max: 3.
     k_grid_tkka_min: 1.e-5
     k_grid_tkka_max: 1.e+2
     z_grid_tkka_steps_SSC: 300
     k_grid_tkka_steps_SSC: 512
     z_grid_tkka_steps_cNG: 100
-    k_grid_tkka_steps_cNG: 512
+    k_grid_tkka_steps_cNG: 700
+    z_grid_tkka_steps_cNG: null
+    k_grid_tkka_steps_cNG: null
 
 OneCovariance:
     precision_settings: high_precision # 'high_precision' or 'default'
     path_to_oc_executable: /home/cosmo/davide.sciotti/data/OneCovariance/covariance.py
     consistency_checks: False
+    
 misc:
-    num_threads: 30 # how many threads to use for the Julia SSC integral with @tturbo
+    num_threads: 40 # how many threads to use for the Julia SSC integral with @tturbo
 
     # some sanity checks on the covariance matrix. These could take a while to run.
-    test_numpy_inversion: False # test for errors in np.linalg.inv
-    test_condition_number: False # check if condition number is above 1e10
-    test_cholesky_decomposition: False # test if cholesky decomposition fails
-    test_symmetry: False # test if covariance matrix is symmetric (cov = cov.T)
+    test_numpy_inversion: True # test for errors in np.linalg.inv
+    test_condition_number: True # check if condition number is above 1e10
+    test_cholesky_decomposition: True # test if cholesky decomposition fails
+    test_symmetry: True # test if covariance matrix is symmetric (cov = cov.T)
 
-    output_path: /home/cosmo/davide.sciotti/data/CLOE_ISTNL/covs_for_paper/output_OC_SSC
+    output_path: /home/cosmo/davide.sciotti/data/CLOE_ISTNL/covs_for_paper/output_CCL_cNG_v2
     use_h_units: False # TODO hardcode!
     is_CLOE_validation_run: True
     path_to_jl_integrator: /home/cosmo/davide.sciotti/data/Spaceborne/spaceborne/julia_integrator.jl

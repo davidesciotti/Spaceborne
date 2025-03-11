@@ -188,7 +188,7 @@ def compare_funcs(x, y_tuple: dict, logscale_y=[False, False], logscale_x=False,
     if title is not None:
         fig.suptitle(title)
 
-    plt.show()
+    
 
 
 def get_git_info():
@@ -2987,7 +2987,7 @@ def cov2corr(covariance):
     return correlation
 
 
-def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust):
+def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, is_noiseless: bool = False):
     """Builds the noise power spectra.
 
     Parameters
@@ -3013,11 +3013,9 @@ def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust):
         This will assume equipopulated bins. 
         If an array, galaxy number density, per arcmin^2, per redshift bin. 
         Must have length zbins.
-    which_shape_noise : str
-        Which shape noise to use. 
-        'ISTF' for the "incorrect" shape noise (used in ISTF paper), for backwars-compatibility.
-        'per_component' for the correct shape noise, taking into account EE-only noise.
-
+    is_noiseless : bool, optional
+        If True, returns array of zeros of the right shape.
+    
     Returns
     -------
     noise_4d : ndarray, shape (n_probes, n_probes, zbins, zbins)
@@ -3053,6 +3051,9 @@ def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust):
 
     # create and fill N
     noise_4d = np.zeros((n_probes, n_probes, zbins, zbins))
+    
+    if is_noiseless:
+        return noise_4d
 
     np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar_shear))
     np.fill_diagonal(noise_4d[1, 1, :, :], 1 / n_bar_clust)

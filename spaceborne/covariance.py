@@ -13,7 +13,7 @@ class SpaceborneCovariance():
 
     def __init__(self, cfg, pvt_cfg, ell_dict, bnt_matrix):
         self.cfg = cfg
-        self.covariance_cfg = cfg['covariance']
+        self.cov_cfg = cfg['covariance']
         self.ell_dict = ell_dict
         self.bnt_matrix = bnt_matrix
         self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt', }
@@ -22,17 +22,17 @@ class SpaceborneCovariance():
         self.cov_terms_list = pvt_cfg['cov_terms_list']
         self.GL_OR_LG = pvt_cfg['GL_OR_LG']
 
-        self.n_probes = self.covariance_cfg['n_probes']
+        self.n_probes = self.cov_cfg['n_probes']
         # 'include' instead of 'compute' because it might be loaded from file
-        self.include_ssc = self.covariance_cfg['SSC']
-        self.include_cng = self.covariance_cfg['cNG']
-        self.g_code = self.covariance_cfg['G_code']
-        self.ssc_code = self.covariance_cfg['SSC_code']
-        self.cng_code = self.covariance_cfg['cNG_code']
+        self.include_ssc = self.cov_cfg['SSC']
+        self.include_cng = self.cov_cfg['cNG']
+        self.g_code = self.cov_cfg['G_code']
+        self.ssc_code = self.cov_cfg['SSC_code']
+        self.cng_code = self.cov_cfg['cNG_code']
         self.fsky = self.cfg['mask']['fsky']
         # must copy the array! Otherwise, it gets modified and changed at each call
-        self.cov_ordering_2d = self.covariance_cfg['covariance_ordering_2D']
-        self.probe_ordering = self.covariance_cfg['probe_ordering']
+        self.cov_ordering_2d = self.cov_cfg['covariance_ordering_2D']
+        self.probe_ordering = self.cov_cfg['probe_ordering']
 
         if self.cov_ordering_2d == 'probe_ell_zpair':
             self.block_index = 'ell'
@@ -185,12 +185,13 @@ class SpaceborneCovariance():
         delta_l_3x2pt = delta_l_GC
 
         # build noise vector
-        sigma_eps2 = (self.covariance_cfg['sigma_eps_i'] * np.sqrt(2))**2
+        sigma_eps2 = (self.cov_cfg['sigma_eps_i'] * np.sqrt(2))**2
         ng_shear = np.array(self.cfg['nz']['ngal_sources'])
         ng_clust = np.array(self.cfg['nz']['ngal_lenses'])
         noise_3x2pt_4D = sl.build_noise(self.zbins, self.n_probes, sigma_eps2=sigma_eps2,
                                         ng_shear=ng_shear,
-                                        ng_clust=ng_clust)
+                                        ng_clust=ng_clust,
+                                        is_noiseless=self.cov_cfg['noiseless_spectra'])
 
         # create dummy ell axis, the array is just repeated along it
         nbl_max = np.max((self.nbl_WL, self.nbl_GC, self.nbl_3x2pt))

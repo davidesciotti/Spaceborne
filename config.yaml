@@ -186,6 +186,9 @@ covariance:
     # Ellipticity dispersion *per component* = sigma_eps_i.
     # total ellipticity dispersion = sigma_eps
     # sigma_eps = (sigma_eps_i * np.sqrt(2))
+    noiseless_spectra: False # Type: bool
+    # Whether to include the noise power spectra in the computation of the 
+    # Gaussian covariance matrix.
 
     which_sigma2_b: polar_cap_on_the_fly # Type: str | None
     # Sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:

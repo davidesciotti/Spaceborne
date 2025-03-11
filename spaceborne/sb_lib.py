@@ -2987,7 +2987,7 @@ def cov2corr(covariance):
     return correlation
 
 
-def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust):
+def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, is_noiseless: bool = False):
     """Builds the noise power spectra.
 
     Parameters
@@ -3053,6 +3053,9 @@ def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust):
 
     # create and fill N
     noise_4d = np.zeros((n_probes, n_probes, zbins, zbins))
+
+    if is_noiseless:
+        return noise_4d
 
     np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar_shear))
     np.fill_diagonal(noise_4d[1, 1, :, :], 1 / n_bar_clust)

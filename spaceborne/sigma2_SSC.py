@@ -145,7 +145,6 @@ def sigma2_z1z2_wrap_parallel(
         # Convert the list of results to a numpy array and transpose
         sigma2_b = np.array(sigma2_b_list).T
 
-    # davide's implementation
     elif not parallel and integration_scheme == 'simps':
         sigma2_b = np.zeros((len(z_grid), len(z_grid)))
         for z2_idx, z2 in enumerate(tqdm(z_grid)):
@@ -421,8 +420,6 @@ def integrate_levin(r1_arr, r2, integrand, k_grid_sigma2, n_jobs):
     # Constructor of the class
     integral_type = 2  # double spherical
     N_thread = n_jobs  # Number of threads used for hyperthreading  # TODO increase
-    logx = True  # Tells the code to create a logarithmic spline in x for f(x)
-    logy = True  # Tells the code to create a logarithmic spline in y for y = f(x)
     diagonal = False
     lp_double = levin.pylevin(
         type=integral_type,

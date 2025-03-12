@@ -257,6 +257,10 @@ OneCovariance:
 
 misc:
     num_threads: 40 # Type: int. How many threads to use for the Julia SSC integral with @tturbo
+    levin_batch_size: 100 # Type: int. How many integrals to compute at once for the 
+    # numerical integration of the sigma^2_b(z_1, z_2) function with pylevin. 
+    # IMPORTANT NOTE: in case of memory issues, (i.e., if you notice the code crashing
+    # while computing sigma2_b), decrease this or num_threads.
 
     # some sanity checks on the covariance matrix. These could take a while to run.
     test_numpy_inversion: True # Type: bool. Test for errors in np.linalg.inv

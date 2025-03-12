@@ -498,7 +498,7 @@ def sigma2_b_levin_batched(
     Returns
     -------
     np.ndarray
-        Array of sigma2_b values.
+        2D array of sigma2_b values, of shape (len(z_grid), len(z_grid)).
     """
 
     a_arr = cosmo_lib.z_to_a(z_grid)

@@ -6,6 +6,7 @@ import time
 import warnings
 from copy import deepcopy
 from functools import partial
+from importlib.util import find_spec
 
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
@@ -1230,19 +1231,10 @@ if compute_sb_ssc:
             np.testing.assert_allclose(z_grid, _z, atol=0, rtol=1e-8)
 
         else:
-            try:
-                import pylevin as levin
-
-                integration_scheme = 'levin'
-            except ImportError:
-                integration_scheme = 'simps'
-
-            try:
-                import pathos
-
-                parallel = True
-            except ImportError:
-                parallel = False
+            # depending on the modules installed, integrate with levin or simpson
+            # (in the latter case, in parallel or not)
+            integration_scheme = 'levin' if find_spec('pylevin') else 'simps'
+            parallel = bool(find_spec('pathos'))
 
             sigma2_b = sigma2_SSC.sigma2_z1z2_wrap_parallel(
                 z_grid=z_grid,
@@ -1256,7 +1248,6 @@ if compute_sb_ssc:
                 parallel=parallel,
                 integration_scheme=integration_scheme,
             )
-
     if not cfg['covariance']['load_cached_sigma2_b']:
         np.save(f'{output_path}/cache/sigma2_b.npy', sigma2_b)
         np.save(f'{output_path}/cache/zgrid_sigma2_b.npy', z_grid)

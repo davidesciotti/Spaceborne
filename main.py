@@ -1270,92 +1270,92 @@ if compute_sb_ssc:
                 parallel=True,
                 integration_scheme='simps',
             )
-            # # TODOTODOTODO RESTORE PARALLEL=PARALLEL
-            sigma2_b_levin_rob = sigma2_SSC.sigma2_z1z2_wrap_parallel(
-                z_grid=z_grid,
-                k_grid_sigma2=k_grid_sigma2_b_levin,
-                cosmo_ccl=ccl_obj.cosmo_ccl,
-                which_sigma2_b=which_sigma2_b,
-                area_deg2_in=cfg['mask']['survey_area_deg2'],
-                nside_mask=cfg['mask']['nside_mask'],
-                mask_path=cfg['mask']['nside_mask'],
-                n_jobs=cfg['misc']['num_threads'],
-                parallel=True,
-                integration_scheme='levin',
-            )
+            # # # TODOTODOTODO RESTORE PARALLEL=PARALLEL
+            # sigma2_b_levin_rob = sigma2_SSC.sigma2_z1z2_wrap_parallel(
+            #     z_grid=z_grid,
+            #     k_grid_sigma2=k_grid_sigma2_b_levin,
+            #     cosmo_ccl=ccl_obj.cosmo_ccl,
+            #     which_sigma2_b=which_sigma2_b,
+            #     area_deg2_in=cfg['mask']['survey_area_deg2'],
+            #     nside_mask=cfg['mask']['nside_mask'],
+            #     mask_path=cfg['mask']['nside_mask'],
+            #     n_jobs=cfg['misc']['num_threads'],
+            #     parallel=True,
+            #     integration_scheme='levin',
+            # )
 
             # now this is the batched version
-            sigma2_b_levin_dav = sigma2_SSC.sigma2_z1z2_wrap_parallel(
-                z_grid=z_grid,
-                k_grid_sigma2=k_grid_sigma2_b_levin,
-                cosmo_ccl=ccl_obj.cosmo_ccl,
-                which_sigma2_b=which_sigma2_b,
-                area_deg2_in=cfg['mask']['survey_area_deg2'],
-                nside_mask=cfg['mask']['nside_mask'],
-                mask_path=cfg['mask']['nside_mask'],
-                n_jobs=cfg['misc']['num_threads'],
-                parallel=False,
-                integration_scheme='levin',
-            )
+            # sigma2_b = sigma2_SSC.sigma2_z1z2_wrap_parallel(
+            #     z_grid=z_grid,
+            #     k_grid_sigma2=k_grid_sigma2_b_levin,
+            #     cosmo_ccl=ccl_obj.cosmo_ccl,
+            #     which_sigma2_b=which_sigma2_b,
+            #     area_deg2_in=cfg['mask']['survey_area_deg2'],
+            #     nside_mask=cfg['mask']['nside_mask'],
+            #     mask_path=cfg['mask']['nside_mask'],
+            #     n_jobs=cfg['misc']['num_threads'],
+            #     parallel=False,
+            #     integration_scheme='levin',
+            # )
             # Note: if you want to compare sigma2 with full_curved_sky against
             # polar_cap_on_the_fly, remember to divide
             # the former by fsky (eq. 29 of https://arxiv.org/pdf/1612.05958)
 
-            sl.compare_funcs(
-                z_grid,
-                {
-                    'simps': np.diag(sigma2_b),
-                    'levin rob': np.diag(sigma2_b_levin_rob),
-                    'levin dav': np.diag(sigma2_b_levin_dav),
-                },
-                logscale_y=(True, False),
-            )
-            plt.xlabel('z')
-            plt.show()
+            # sl.compare_funcs(
+            #     z_grid,
+            #     {
+            #         'simps': np.diag(sigma2_b),
+            #         'levin rob': np.diag(sigma2_b_levin_rob),
+            #         'levin dav': np.diag(sigma2_b_levin_dav),
+            #     },
+            #     logscale_y=(True, False),
+            # )
+            # plt.xlabel('z')
+            # plt.show()
 
-            z_ix = sigma2_b.shape[0] // 2
-            sl.compare_funcs(
-                z_grid,
-                {
-                    'simps': sigma2_b[z_ix, :],
-                    'levin rob': sigma2_b_levin_rob[z_ix, :],
-                    'levin dav': sigma2_b_levin_dav[z_ix, :],
-                },
-                logscale_y=(False, False),
-                ylim_diff=(-50, 50),
-            )
-            plt.xlabel('z')
-            plt.show()
+            # z_ix = sigma2_b.shape[0] // 2
+            # sl.compare_funcs(
+            #     z_grid,
+            #     {
+            #         'simps': sigma2_b[z_ix, :],
+            #         'levin rob': sigma2_b_levin_rob[z_ix, :],
+            #         'levin dav': sigma2_b_levin_dav[z_ix, :],
+            #     },
+            #     logscale_y=(False, False),
+            #     ylim_diff=(-50, 50),
+            # )
+            # plt.xlabel('z')
+            # plt.show()
             
-            sl.compare_funcs(
-                z_grid,
-                {
-                    'levin rob': sigma2_b_levin_rob[z_ix, :],
-                    'levin dav': sigma2_b_levin_dav[z_ix, :],
-                },
-                logscale_y=(False, False),
-                ylim_diff=(-50, 50),
-            )
-            plt.xlabel('z')
-            plt.show()
+            # sl.compare_funcs(
+            #     z_grid,
+            #     {
+            #         'levin rob': sigma2_b_levin_rob[z_ix, :],
+            #         'levin dav': sigma2_b_levin_dav[z_ix, :],
+            #     },
+            #     logscale_y=(False, False),
+            #     ylim_diff=(-50, 50),
+            # )
+            # plt.xlabel('z')
+            # plt.show()
 
-            sl.compare_arrays(
-                sigma2_b, sigma2_b_levin_rob, abs_val=True, plot_diff_threshold=5
-            )
-            sl.compare_arrays(
-                sigma2_b_levin_dav,
-                sigma2_b_levin_rob,
-                abs_val=True,
-                plot_diff_threshold=5,
-            )
+            # sl.compare_arrays(
+            #     sigma2_b, sigma2_b_levin_rob, abs_val=True, plot_diff_threshold=5
+            # )
+            # sl.compare_arrays(
+            #     sigma2_b_levin_dav,
+            #     sigma2_b_levin_rob,
+            #     abs_val=True,
+            #     plot_diff_threshold=5,
+            # )
 
-            np.testing.assert_allclose(
-                sigma2_b_levin_dav, sigma2_b_levin_rob, atol=0, rtol=1e-4
-            )
+            # np.testing.assert_allclose(
+            #     sigma2_b_levin_dav, sigma2_b_levin_rob, atol=0, rtol=1e-4
+            # )
             
-            sl.matshow(sigma2_b_levin_dav/sigma2_b_levin_rob, log=False)
+            # sl.matshow(sigma2_b_levin_dav/sigma2_b_levin_rob, log=False)
 
-            raise Exception
+            # raise Exception
 
     if not cfg['covariance']['load_cached_sigma2_b']:
         np.save(f'{output_path}/cache/sigma2_b.npy', sigma2_b)
@@ -1707,7 +1707,7 @@ fm_cfg = {
     'deriv_ell_cuts': False,
     'fm_folder': '{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}',
     'fm_txt_filename': 'fm_txt_filename',
-    'fm_dict_filename': f'FM_dict_sigma2b_{integration_scheme:s}_500steps.pickle',
+    'fm_dict_filename': f'FM_dict_sigma2b_simpsdav.pickle',
     'test_against_vincenzo': False,
     'test_against_benchmarks': False,
     'FM_ordered_params': FM_ordered_params,
@@ -2141,8 +2141,8 @@ plot_lib.bar_plot(
 # TODO this is misleading, understand better why (comparing GSSC, not perc_diff)
 
 fm_dict_of_dicts = {
-    'test': sl.load_pickle(f'{fm_folder}/FM_dict_sigma2b_levin_500steps.pickle'),
-    'test': sl.load_pickle(f'{fm_folder}/FM_dict_sigma2b_simps_500steps.pickle'),
+    'simps': sl.load_pickle(f'{fm_folder}/FM_dict_sigma2b_simpsdav.pickle'),
+    'levin': sl.load_pickle(f'{fm_folder}/FM_dict_sigma2b_levindav.pickle'),
     # 'current': fm_dict,
 }
 

@@ -241,6 +241,7 @@ def sigma2_z1z2_wrap_parallel(
             ell_mask=ell_mask,
             cl_mask=cl_mask,
             fsky_mask=fsky_mask,
+            n_jobs=n_jobs,
             batch_size=100_000,
         )
 
@@ -279,7 +280,7 @@ def pool_compute_sigma2_b(args):
 
 def sigma2_b_levin(  # fmt: skip
     z1_arr, z2_arr, k_grid_sigma2, cosmo_ccl, which_sigma2_b, 
-    ell_mask, cl_mask, fsky_mask,
+    ell_mask, cl_mask, fsky_mask, n_jobs
 ):  # fmt: skip
     """
     In this version, I try to vectorize in zi, z2. It still doesn't work, though.
@@ -309,7 +310,7 @@ def sigma2_b_levin(  # fmt: skip
     import pylevin as levin
 
     integral_type = 2  # double spherical
-    N_thread = 16  # Number of threads used for hyperthreading  # TODO increase
+    N_thread = n_jobs  # Number of threads used for hyperthreading  # TODO increase
 
     # My implementation
     """
@@ -469,6 +470,7 @@ def sigma2_b_levin_batched(
     ell_mask: np.ndarray,
     cl_mask: np.ndarray,
     fsky_mask: float,
+    n_jobs: int,
     batch_size: int = 100_000,
 ) -> np.ndarray:
     """
@@ -492,6 +494,8 @@ def sigma2_b_levin_batched(
         Array containing the angular power spectrum of the mask.
     fsky_mask : float
         Fraction of sky covered by the mask.
+    n_jobs : int
+        Number of threads to use for the computation in parallel.
     batch_size : int, optional
         Batch size for the computation. Default is 100_000.
 
@@ -507,7 +511,7 @@ def sigma2_b_levin_batched(
     plin = ccl.linear_matter_power(cosmo_ccl, k=k_grid, a=1.0)
 
     integral_type = 2  # double spherical
-    N_thread = 16  # Number of threads used for hyperthreading
+    N_thread = n_jobs  # Number of threads used for hyperthreading
 
     zsteps = len(r_arr)
     triu_ix = np.triu_indices(zsteps)

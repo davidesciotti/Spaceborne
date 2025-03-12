@@ -90,6 +90,7 @@ def sigma2_z1z2_wrap_parallel(
     n_jobs: int,
     parallel: bool = True,
     integration_scheme: str = 'simps',
+    batch_size: int = 1_000,
 ) -> np.ndarray:
     """
     Parallelized version of sigma2_z1z2_wrap using joblib.
@@ -145,7 +146,7 @@ def sigma2_z1z2_wrap_parallel(
         # Convert the list of results to a numpy array and transpose
         sigma2_b = np.array(sigma2_b_list).T
 
-    elif not parallel and integration_scheme == 'simps':
+    elif not parallel and integration_scheme in  ['simps', 'levin_dav']:
         sigma2_b = np.zeros((len(z_grid), len(z_grid)))
         for z2_idx, z2 in enumerate(tqdm(z_grid)):
             sigma2_b[:, z2_idx] = sigma2_z2_func_vectorized(
@@ -171,7 +172,7 @@ def sigma2_z1z2_wrap_parallel(
             cl_mask=cl_mask,
             fsky_mask=fsky_mask,
             n_jobs=n_jobs,
-            batch_size=100_000,
+            batch_size=batch_size,
         )
 
     else:
@@ -216,7 +217,7 @@ def sigma2_b_levin_batched(
     cl_mask: np.ndarray,
     fsky_mask: float,
     n_jobs: int,
-    batch_size: int = 100_000,
+    batch_size: int,
 ) -> np.ndarray:
     """
     Compute sigma2_b using the Levin integration method. The computation leverages the
@@ -294,7 +295,7 @@ def sigma2_b_levin_batched(
             ell,
             ell,
             result_flat[batch_indices],
-        )
+        )        
 
     # Assemble symmetric result matrix
     result_matrix = np.zeros((zsteps, zsteps))
@@ -419,14 +420,14 @@ def integrate_levin(r1_arr, r2, integrand, k_grid_sigma2, n_jobs):
 
     # Constructor of the class
     integral_type = 2  # double spherical
-    N_thread = n_jobs  # Number of threads used for hyperthreading  # TODO increase
+    N_thread = n_jobs  # Number of threads used for hyperthreading 
     diagonal = False
     lp_double = levin.pylevin(
         type=integral_type,
         x=k_grid_sigma2,
         integrand=integrand,
-        logx=logx,  # TODO do I need to set these to True?
-        logy=logy,  # TODO do I need to set these to True?
+        logx=logx,
+        logy=logy,
         nthread=N_thread,
         diagonal=diagonal,
     )

@@ -1270,8 +1270,7 @@ if compute_sb_ssc:
                 parallel=True,
                 integration_scheme='simps',
             )
-            raise Exception
-            # TODOTODOTODO RESTORE PARALLEL=PARALLEL
+            # # TODOTODOTODO RESTORE PARALLEL=PARALLEL
             sigma2_b_levin_rob = sigma2_SSC.sigma2_z1z2_wrap_parallel(
                 z_grid=z_grid,
                 k_grid_sigma2=k_grid_sigma2_b_levin,
@@ -1285,6 +1284,7 @@ if compute_sb_ssc:
                 integration_scheme='levin',
             )
 
+            # now this is the batched version
             sigma2_b_levin_dav = sigma2_SSC.sigma2_z1z2_wrap_parallel(
                 z_grid=z_grid,
                 k_grid_sigma2=k_grid_sigma2_b_levin,
@@ -1297,7 +1297,6 @@ if compute_sb_ssc:
                 parallel=False,
                 integration_scheme='levin',
             )
-
             # Note: if you want to compare sigma2 with full_curved_sky against
             # polar_cap_on_the_fly, remember to divide
             # the former by fsky (eq. 29 of https://arxiv.org/pdf/1612.05958)
@@ -1313,7 +1312,7 @@ if compute_sb_ssc:
             )
             plt.xlabel('z')
             plt.show()
-            
+
             z_ix = sigma2_b.shape[0] // 2
             sl.compare_funcs(
                 z_grid,
@@ -1327,7 +1326,18 @@ if compute_sb_ssc:
             )
             plt.xlabel('z')
             plt.show()
-
+            
+            sl.compare_funcs(
+                z_grid,
+                {
+                    'levin rob': sigma2_b_levin_rob[z_ix, :],
+                    'levin dav': sigma2_b_levin_dav[z_ix, :],
+                },
+                logscale_y=(False, False),
+                ylim_diff=(-50, 50),
+            )
+            plt.xlabel('z')
+            plt.show()
 
             sl.compare_arrays(
                 sigma2_b, sigma2_b_levin_rob, abs_val=True, plot_diff_threshold=5
@@ -1338,6 +1348,12 @@ if compute_sb_ssc:
                 abs_val=True,
                 plot_diff_threshold=5,
             )
+
+            np.testing.assert_allclose(
+                sigma2_b_levin_dav, sigma2_b_levin_rob, atol=0, rtol=1e-4
+            )
+            
+            sl.matshow(sigma2_b_levin_dav/sigma2_b_levin_rob, log=False)
 
             raise Exception
 

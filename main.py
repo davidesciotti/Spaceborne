@@ -1247,6 +1247,7 @@ if compute_sb_ssc:
                 n_jobs=cfg['misc']['num_threads'],
                 parallel=parallel,
                 integration_scheme=integration_scheme,
+                batch_size=cfg['misc']['levin_batch_size'],
             )
     if not cfg['covariance']['load_cached_sigma2_b']:
         np.save(f'{output_path}/cache/sigma2_b.npy', sigma2_b)

@@ -10,14 +10,13 @@ from tqdm import tqdm
 import pyccl as ccl
 from spaceborne import cosmo_lib, mask_utils
 from spaceborne import sb_lib as sl
-import pylevin as levin
-
 
 # * pylevin hyperparameters
 n_sub = 12  # number of collocation points in each bisection
 n_bisec_max = 32  # maximum number of bisections used
 rel_acc = 1e-5  # relative accuracy target
-boost_bessel = True  # should the bessel functions be calculated with boost instead of GSL, higher accuracy at high Bessel orders
+boost_bessel = True  # should the bessel functions be calculated with boost
+# instead of GSL, higher accuracy at high Bessel orders
 verbose = False  # should the code talk to you?
 logx = True  # Tells the code to create a logarithmic spline in x for f(x)
 logy = True  # Tells the code to create a logarithmic spline in y for y = f(x)
@@ -71,70 +70,13 @@ logy = True  # Tells the code to create a logarithmic spline in y for y = f(x)
 #     return sigma2
 
 
-# This is defined globally since
+# This is defined globally because of parallelization issues
 COSMO_CCL = None
 
 
 def init_cosmo(cosmo):
     global COSMO_CCL
     COSMO_CCL = cosmo
-
-
-def sigma2_z1z2_wrap(
-    z_grid,
-    k_grid_sigma2,
-    cosmo_ccl,
-    which_sigma2_b,
-    area_deg2_in,
-    nside_mask,
-    mask_path,
-):
-    fsky_in = cosmo_lib.deg2_to_fsky(area_deg2_in)
-    if which_sigma2_b == 'full_curved_sky':
-        ell_mask = None
-        cl_mask = None
-        # fsky_mask is not needed in this case, the whole covariance
-        # is normalized at the end of the computation
-        fsky_mask = None
-
-    elif which_sigma2_b == 'polar_cap_on_the_fly':
-        mask = mask_utils.generate_polar_cap(area_deg2_in, nside_mask)
-
-    elif which_sigma2_b == 'from_input_mask':
-        mask = hp.read_map(mask_path)
-
-    if which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
-        hp.mollview(
-            mask,
-            coord=['C', 'E'],
-            title='polar cap generated on-the fly',
-            cmap='inferno_r',
-        )
-        cl_mask = hp.anafast(mask)
-        ell_mask = np.arange(len(cl_mask))
-        # quick check
-        fsky_mask = np.sqrt(cl_mask[0] / (4 * np.pi))
-        print(f'fsky from mask: {fsky_mask:.4f}')
-        assert np.abs(fsky_mask / fsky_in) < 1.01, (
-            'fsky_in is not the same as the fsky of the mask'
-        )
-
-    start = time.perf_counter()
-    sigma2_b = np.zeros((len(z_grid), len(z_grid)))
-    for z2_idx, z2 in enumerate(tqdm(z_grid)):
-        sigma2_b[:, z2_idx] = sigma2_z2_func_vectorized(
-            z1_arr=z_grid,
-            z2=z2,
-            k_grid_sigma2=k_grid_sigma2,
-            cosmo_ccl=cosmo_ccl,
-            which_sigma2_b=which_sigma2_b,
-            ell_mask=ell_mask,
-            cl_mask=cl_mask,
-            fsky_mask=fsky_in,
-        )
-    print(f'done in {time.perf_counter() - start} s')
-
-    return sigma2_b
 
 
 def sigma2_z1z2_wrap_parallel(
@@ -204,7 +146,7 @@ def sigma2_z1z2_wrap_parallel(
         sigma2_b = np.array(sigma2_b_list).T
 
     # davide's implementation
-    elif parallel and integration_scheme == 'levin':
+    elif not parallel and integration_scheme == 'simps':
         sigma2_b = np.zeros((len(z_grid), len(z_grid)))
         for z2_idx, z2 in enumerate(tqdm(z_grid)):
             sigma2_b[:, z2_idx] = sigma2_z2_func_vectorized(
@@ -220,19 +162,7 @@ def sigma2_z1z2_wrap_parallel(
                 n_jobs=n_jobs,
             )
 
-    # robert's implementation
-    # vectorized - parallel must be False, no for loop - still to be tested
-    elif not parallel and integration_scheme == 'levin':
-        # sigma2_b = sigma2_b_levin(
-        #     z_grid,
-        #     z_grid,
-        #     k_grid_sigma2,
-        #     cosmo_ccl,
-        #     which_sigma2_b,
-        #     ell_mask,
-        #     cl_mask,
-        #     fsky_mask,
-        # )
+    elif integration_scheme == 'levin':
         sigma2_b = sigma2_b_levin_batched(
             z_grid=z_grid,
             k_grid=k_grid_sigma2,
@@ -257,7 +187,7 @@ def compute_sigma2_b(
     z2, z_grid, k_grid_sigma2, which_sigma2_b, ell_mask, cl_mask, fsky_in
 ):
     """
-    Wrapper for sigma2_z2_func_vectorized without the cosmo_ccl argument.
+    Wrapper for sigma2_z2_func_vectorized without the unpickleable cosmo_ccl argument.
     """
     return sigma2_z2_func_vectorized(
         z1_arr=z_grid,
@@ -276,190 +206,6 @@ def pool_compute_sigma2_b(args):
     Helper function to be used with pathos processing pool
     """
     return compute_sigma2_b(*args)
-
-
-def sigma2_b_levin(  # fmt: skip
-    z1_arr, z2_arr, k_grid_sigma2, cosmo_ccl, which_sigma2_b, 
-    ell_mask, cl_mask, fsky_mask, n_jobs
-):  # fmt: skip
-    """
-    In this version, I try to vectorize in zi, z2. It still doesn't work, though.
-    """
-
-    if not np.all(z1_arr == z2_arr):
-        raise ValueError('z1_arr and z2_arr must be the same')
-
-    a1_arr = cosmo_lib.z_to_a(z1_arr)
-    a2_arr = cosmo_lib.z_to_a(z2_arr)
-
-    r1_arr = ccl.comoving_radial_distance(cosmo_ccl, a1_arr)
-    r2_arr = ccl.comoving_radial_distance(cosmo_ccl, a2_arr)
-
-    growth_factor_z1_arr = ccl.growth_factor(cosmo_ccl, a1_arr)
-    growth_factor_z2_arr = ccl.growth_factor(cosmo_ccl, a2_arr)
-
-    plin = ccl.linear_matter_power(cosmo_ccl, k=k_grid_sigma2, a=1.0)
-
-    integrand = (
-        k_grid_sigma2[:, None, None] ** 2
-        * plin[:, None, None]
-        * growth_factor_z1_arr[None, :, None]
-        * growth_factor_z2_arr[None, None, :]
-    )
-
-    import pylevin as levin
-
-    integral_type = 2  # double spherical
-    N_thread = n_jobs  # Number of threads used for hyperthreading  # TODO increase
-
-    # My implementation
-    """
-    # Constructor of the class
-    lp_double = levin.pylevin(
-        type=integral_type,
-        x=k_grid_sigma2,
-        integrand=integrand,
-        logx=logx,
-        logy=logy,
-        nthread=N_thread,
-    )
-
-    # accuracy settings
-    # should the bessel functions be calculated with boost instead of GSL,
-    # higher accuracy at high Bessel orders
-    lp_double.set_levin(
-        n_col_in=n_sub,
-        maximum_number_bisections_in=n_bisec_max,
-        relative_accuracy_in=rel_acc,
-        super_accurate=boost_bessel,
-        verbose=verbose,
-    )
-
-    M = len(r1_arr)  # number of arguments at which the integrals are evaluated
-    N = len(r2_arr)
-    N = 1  # number of integrals to be calculated
-    diagonal = False  # If diagonal == True it must have shape (N).
-
-    result_levin = np.zeros((N,)) if diagonal else np.zeros((M, N))
-
-    lp_double.levin_integrate_bessel_double(
-        x_min=k_grid_sigma2[0] * np.ones(M),
-        x_max=k_grid_sigma2[-1] * np.ones(M),
-        k_1=r1_arr,
-        k_2=r2_arr,
-        ell_1=(0 * np.ones(M)).astype(int),
-        ell_2=(0 * np.ones(M)).astype(int),
-        diagonal=diagonal,
-        result=result_levin,
-    )
-    """
-
-    # Robert's implementation
-    """
-    N_z = len(r1_arr)
-    result_levin = np.zeros(N_z)
-    lower_limit = k_grid_sigma2[0] * np.ones(N_z)
-    upper_limit = k_grid_sigma2[-1] * np.ones(N_z)
-    ell = np.zeros(N_z).astype(int)
-    diagonals_only = True
-
-    result = np.zeros((N_z, N_z))
-
-    t0 = time.time()
-    for i_chi_1, chi_1 in tqdm(enumerate(r1_arr)):
-        lp = levin.pylevin(
-            integral_type,
-            k_grid_sigma2,
-            integrand[:, i_chi_1, i_chi_1:],
-            logx,
-            logy,
-            N_thread,
-        )
-        lp.set_levin(n_sub, n_bisec_max, rel_acc, boost_bessel, verbose)
-        lp.levin_integrate_bessel_double(
-            lower_limit[i_chi_1:],
-            upper_limit[i_chi_1:],
-            chi_1 * np.ones_like(r1_arr[i_chi_1:]),
-            r2_arr[i_chi_1:],
-            ell[i_chi_1:],
-            ell[i_chi_1:],
-            diagonals_only,
-            result_levin[i_chi_1:],
-        )
-        result[i_chi_1, i_chi_1:] = result_levin[i_chi_1:]
-        result[i_chi_1:, i_chi_1] = result_levin[i_chi_1:]
-    print('Levin took', time.time() - t0, 's')
-    """
-
-    # Robert's implementation, double vec
-
-    N_z = len(r1_arr)
-    triu_indices = np.triu_indices(N_z)
-    n_upper = len(triu_indices[0])  # Number of unique integrals to compute
-
-    # Extract the corresponding integrand slices: shape becomes (nk, n_upper)
-    triu_integrand = integrand[:, triu_indices[0], triu_indices[1]]
-
-    # Build evaluation arrays for chi:
-    chi1_flat = r1_arr[triu_indices[0]]  # shape (n_upper,)
-    chi2_flat = r2_arr[triu_indices[1]]  # shape (n_upper,)
-
-    # Define integration limits and orders for each integral
-    lower_limit = k_grid_sigma2[0] * np.ones(n_upper)
-    upper_limit = k_grid_sigma2[-1] * np.ones(n_upper)
-    ell = np.zeros(n_upper, dtype=int)
-
-    lower_limit = np.array(lower_limit).reshape(-1, 1)
-    upper_limit = np.array(upper_limit).reshape(-1, 1)
-    chi1_flat = np.array(chi1_flat).reshape(-1, 1)
-    chi2_flat = np.array(chi2_flat).reshape(-1, 1)
-    ell = np.array(ell, dtype=np.int32).reshape(-1, 1)
-    result_flat = np.zeros(n_upper)
-
-    # Create the pylevin instance with the flattened integrand
-    lp = levin.pylevin(
-        integral_type, k_grid_sigma2, triu_integrand, logx, logy, N_thread, True
-    )
-    lp.set_levin(n_sub, n_bisec_max, rel_acc, boost_bessel, verbose)
-
-    t0 = time.time()
-    lp.levin_integrate_bessel_double(
-        lower_limit, upper_limit, chi1_flat, chi2_flat, ell, ell, result_flat
-    )
-    print('Levin took', time.time() - t0, 's')
-
-    # Assemble the full symmetric matrix from the upper-triangular results
-    result_matrix = np.zeros((N_z, N_z))
-    result_matrix[triu_indices] = result_flat
-    # Fill in the lower triangle by symmetry
-    result_matrix = result_matrix + result_matrix.T - np.diag(np.diag(result_matrix))
-
-    integral_result = result_matrix
-
-    if which_sigma2_b == 'full_curved_sky':
-        result = 1 / (2 * np.pi**2) * integral_result
-
-    elif (
-        which_sigma2_b == 'polar_cap_on_the_fly' or which_sigma2_b == 'from_input_mask'
-    ):
-        # partial_summand = np.zeros((len(z1_arr), len(z1_arr), len(ell_mask)))
-        # NOTE: you should include a 2/np.pi factor, see Eq. (26)
-        # of https://arxiv.org/pdf/1612.05958, or Champaghe et al 2017
-        partial_summand = (2 * ell_mask + 1) * cl_mask * 2 / np.pi
-        partial_summand = integral_result[:, :, None] * partial_summand[None, None, :]
-        result = np.sum(partial_summand, axis=-1)
-        one_over_omega_s_squared = 1 / (4 * np.pi * fsky_mask) ** 2
-        result *= one_over_omega_s_squared
-
-        # F. Lacasa:
-        # np.sum((2*ell+1)*cl_mask*Cl_XY[ipair,jpair,:])/(4*pi*fsky)**2
-    else:
-        raise ValueError(
-            'which_sigma2_b must be either "full_curved_sky" or '
-            '"polar_cap_on_the_fly" or "from_input_mask"'
-        )
-
-    return result
 
 
 def sigma2_b_levin_batched(
@@ -504,6 +250,8 @@ def sigma2_b_levin_batched(
     np.ndarray
         2D array of sigma2_b values, of shape (len(z_grid), len(z_grid)).
     """
+
+    import pylevin as levin
 
     a_arr = cosmo_lib.z_to_a(z_grid)
     r_arr = ccl.comoving_radial_distance(cosmo_ccl, a_arr)
@@ -614,6 +362,10 @@ def sigma2_z2_func_vectorized(
     if integration_scheme == 'simps':
         integral_result = simps(y=integrand(k_grid_sigma2), x=k_grid_sigma2, axis=1)
     elif integration_scheme == 'levin':
+        raise NotImplementedError(
+            'This implementation works, but is not vectorized;'
+            ' you should use sigma2_b_levin_batched instead'
+        )
         # integrand shape must be (len(x), N). N is the number of integrals (2)
         integrand = k_grid_sigma2**2 * ccl.linear_matter_power(
             cosmo_ccl, k=k_grid_sigma2, a=1.0
@@ -719,9 +471,7 @@ def plot_sigma2(sigma2_arr, z_grid_sigma2):
         z1_idx = np.argmin(np.abs(z_grid_sigma2 - z_test))
         z_1 = z_grid_sigma2[z1_idx]
 
-        plt.plot(
-            z_grid_sigma2, sigma2_arr[z1_idx, :], label='$z_1={:.2f}$ '.format(z_1)
-        )
+        plt.plot(z_grid_sigma2, sigma2_arr[z1_idx, :], label=f'$z_1={z_1:.2f}$ ')
         plt.axvline(z_1, color='k', ls='--', label='$z_1$')
     plt.xlabel('$z_2$')
     plt.ylabel('$\\sigma^2(z_1, z_2)$')  # sigma2 is dimensionless!

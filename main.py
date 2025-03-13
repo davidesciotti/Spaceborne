@@ -282,6 +282,11 @@ if len(z_grid) < 250:
         stacklevel=2,
     )
 
+zgrid_str = (
+    f'zmin{cfg["covariance"]["z_min"]}_zmax{cfg["covariance"]["z_max"]}'
+    f'_zsteps{cfg["covariance"]["z_steps"]}'
+)
+
 # ! do the same for CCL - i.e., set the above in the ccl_obj with little variations
 # ! (e.g. a instead of z)
 # TODO I leave the option to use a grid for the CCL, but I am not sure if it is needed
@@ -1207,7 +1212,7 @@ if compute_sb_ssc:
 
     # ! 3. Compute/load/save sigma2_b
     if cfg['covariance']['load_cached_sigma2_b']:
-        sigma2_b = np.load(f'{output_path}/cache/sigma2_b.npy')
+        sigma2_b = np.load(f'{output_path}/cache/sigma2_b_{zgrid_str}.npy')
 
     else:
         if cfg['covariance']['use_KE_approximation']:
@@ -1251,8 +1256,8 @@ if compute_sb_ssc:
             )
 
     if not cfg['covariance']['load_cached_sigma2_b']:
-        np.save(f'{output_path}/cache/sigma2_b.npy', sigma2_b)
-        np.save(f'{output_path}/cache/zgrid_sigma2_b.npy', z_grid)
+        np.save(f'{output_path}/cache/sigma2_b_{zgrid_str}.npy', sigma2_b)
+        np.save(f'{output_path}/cache/zgrid_sigma2_b_{zgrid_str}.npy', z_grid)
 
     # ! 4. Perform the integration calling the Julia module
     print('Computing the SSC integral...')

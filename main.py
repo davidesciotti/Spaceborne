@@ -1243,7 +1243,7 @@ if compute_sb_ssc:
                 which_sigma2_b=which_sigma2_b,
                 area_deg2_in=cfg['mask']['survey_area_deg2'],
                 nside_mask=cfg['mask']['nside_mask'],
-                mask_path=cfg['mask']['nside_mask'],
+                mask_path=cfg['mask']['mask_path'],
                 n_jobs=cfg['misc']['num_threads'],
                 parallel=parallel,
                 integration_scheme=integration_scheme,

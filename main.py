@@ -1250,9 +1250,9 @@ if compute_sb_ssc:
                 nside_mask=cfg['mask']['nside_mask'],
                 mask_path=cfg['mask']['mask_path'],
                 n_jobs=cfg['misc']['num_threads'],
-                parallel=parallel,
                 integration_scheme=integration_scheme,
                 batch_size=cfg['misc']['levin_batch_size'],
+                parallel=parallel,
             )
 
     if not cfg['covariance']['load_cached_sigma2_b']:

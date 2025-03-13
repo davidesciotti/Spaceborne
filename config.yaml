@@ -162,7 +162,7 @@ covariance:
     # a row-major or column-major order.
     probe_ordering: [["L", "L"], ["G", "L"], ["G", "G"]] # Type: list[list[str]]
     # ordering of the different 3x2pt probes in the covariance matrix
-    covariance_ordering_2D: probe_ell_zpair # Type: str. 
+    covariance_ordering_2D: ell_probe_zpair # Type: str.
     # Options: [ell_probe_zpair, probe_ell_zpair, probe_zpair_ell, zpair_probe_ell]
     # Determines the ordering of the covariance matrix in 2D, with the outermost 
     # loop corresponding to the leftmost index.
@@ -224,7 +224,7 @@ covariance:
     z_steps: 300 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 5000
     z_steps_trisp: 50  # Type: int. Number of z steps used to compute the trispectrum - around 100 should be enough
 
-    use_KE_approximation: False # Type: bool
+    use_KE_approximation: True # Type: bool
 
     cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str. 
     # Name of the output covariance file. Change to '.npy' to save as npy file.

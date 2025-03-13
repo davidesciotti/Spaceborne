@@ -1316,11 +1316,11 @@ if compute_ccl_ssc or compute_ccl_cng:
             ind_dict=ind_dict,
         )
 
-# ! ========================================== combine covariance terms ================
+# ! ========================== combine covariance terms ================================
 cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
 cov_dict = cov_obj.cov_dict
 
-# ! ========================================== plot & tests ============================
+# ! ============================ plot & tests ==========================================
 for key in cov_dict:
     sl.matshow(cov_dict[key], title=key)
 

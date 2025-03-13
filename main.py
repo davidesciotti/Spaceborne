@@ -270,15 +270,10 @@ k_grid = np.logspace(
     cfg['covariance']['k_steps'],
 )
 # in this case we need finer k binning because of the bessel functions
-k_grid_sigma2_b = np.logspace(  # fmt: skip
+k_grid_s2b_simps = np.logspace(  # fmt: skip
     cfg['covariance']['log10_k_min'], 
     cfg['covariance']['log10_k_max'], 
     k_steps_sigma2
-)  # fmt: skip
-k_grid_sigma2_b_levin = np.logspace(  # fmt: skip
-    cfg['covariance']['log10_k_min'], 
-    cfg['covariance']['log10_k_max'], 
-    k_steps_sigma2_levin
 )  # fmt: skip
 if len(z_grid) < 250:
     warnings.warn(
@@ -1236,9 +1231,14 @@ if compute_sb_ssc:
             integration_scheme = 'levin' if find_spec('pylevin') else 'simps'
             parallel = bool(find_spec('pathos'))
 
+            if integration_scheme == 'levin':
+                k_grid_s2b = k_grid
+            elif integration_scheme == 'simps':
+                k_grid_s2b = k_grid_s2b_simps
+
             sigma2_b = sigma2_SSC.sigma2_z1z2_wrap_parallel(
                 z_grid=z_grid,
-                k_grid_sigma2=k_grid_sigma2_b,
+                k_grid_sigma2=k_grid_s2b,
                 cosmo_ccl=ccl_obj.cosmo_ccl,
                 which_sigma2_b=which_sigma2_b,
                 area_deg2_in=cfg['mask']['survey_area_deg2'],
@@ -1249,6 +1249,7 @@ if compute_sb_ssc:
                 integration_scheme=integration_scheme,
                 batch_size=cfg['misc']['levin_batch_size'],
             )
+
     if not cfg['covariance']['load_cached_sigma2_b']:
         np.save(f'{output_path}/cache/sigma2_b.npy', sigma2_b)
         np.save(f'{output_path}/cache/zgrid_sigma2_b.npy', z_grid)
@@ -1446,7 +1447,7 @@ if cfg['misc']['save_output_as_benchmark']:
         z_grid=z_grid,
         z_grid_trisp=z_grid_trisp,
         k_grid=k_grid,
-        k_grid_sigma2_b=k_grid_sigma2_b,
+        k_grid_sigma2_b=k_grid_s2b_simps,
         nz_src=nz_src,
         nz_lns=nz_lns,
         **_ell_dict,

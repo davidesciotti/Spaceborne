@@ -14,12 +14,16 @@ dependencies:
   - pyyaml
   - joblib
   - healpy>=1.18.0
-  - swig  # needed by PyCCL
-  - cmake  # needed by PyCCL
+  - camb
+
+  # these are needed by PyCCL
+  - swig
+  - cmake
 
   - pip:
     # pathos is needed to parallelize the computations involving non-pickleable objects.
-    # It can be ignored, in which case the code will run serially
+    # It can be ignored, in which some functions will run serially
     - pathos  
     - pymaster
+    - pylevin
     - pyfiglet # for the fancy ascii art, not strictly necessary

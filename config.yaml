@@ -162,7 +162,7 @@ covariance:
     # a row-major or column-major order.
     probe_ordering: [["L", "L"], ["G", "L"], ["G", "G"]] # Type: list[list[str]]
     # ordering of the different 3x2pt probes in the covariance matrix
-    covariance_ordering_2D: ell_probe_zpair # Type: str. 
+    covariance_ordering_2D: ell_probe_zpair # Type: str.
     # Options: [ell_probe_zpair, probe_ell_zpair, probe_zpair_ell, zpair_probe_ell]
     # Determines the ordering of the covariance matrix in 2D, with the outermost 
     # loop corresponding to the leftmost index.
@@ -239,7 +239,7 @@ PyCCL:
     # and 'spline' (the integrand is splined and then integrated analytically).
     # DSnote: note that the former could give errors.
 
-    load_cached_tkka: False # Type: bool # TODO restore if there is time
+    load_cached_tkka: False # Type: bool
 
     n_samples_wf: 1000 # Type: int
     # (from CCL docs): number of points over which to compute the radial kernels (weight functions).
@@ -260,6 +260,10 @@ OneCovariance:
 
 misc:
     num_threads: 40 # Type: int. How many threads to use for the Julia SSC integral with @tturbo
+    levin_batch_size: 1000 # Type: int. How many integrals to compute at once for the 
+    # numerical integration of the sigma^2_b(z_1, z_2) function with pylevin. 
+    # IMPORTANT NOTE: in case of memory issues, (i.e., if you notice the code crashing
+    # while computing sigma2_b), decrease this or num_threads.
 
     # some sanity checks on the covariance matrix. These could take a while to run.
     test_numpy_inversion: True # Type: bool. Test for errors in np.linalg.inv

@@ -88,9 +88,9 @@ def sigma2_z1z2_wrap_parallel(
     nside_mask: int,
     mask_path: str,
     n_jobs: int,
+    integration_scheme: str,
+    batch_size: int,
     parallel: bool = True,
-    integration_scheme: str = 'simps',
-    batch_size: int = 1_000,
 ) -> np.ndarray:
     """
     Parallelized version of sigma2_z1z2_wrap using joblib.
@@ -146,7 +146,7 @@ def sigma2_z1z2_wrap_parallel(
         # Convert the list of results to a numpy array and transpose
         sigma2_b = np.array(sigma2_b_list).T
 
-    elif not parallel and integration_scheme in  ['simps', 'levin_dav']:
+    elif not parallel and integration_scheme == 'simps':
         sigma2_b = np.zeros((len(z_grid), len(z_grid)))
         for z2_idx, z2 in enumerate(tqdm(z_grid)):
             sigma2_b[:, z2_idx] = sigma2_z2_func_vectorized(

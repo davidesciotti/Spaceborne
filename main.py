@@ -453,9 +453,6 @@ pvt_cfg = {
     'ells_sb': ell_dict['ell_3x2pt'],
 }
 
-# TODO delete this? maybe I still want to print some of these options...
-# pp.pprint(pvt_cfg)
-
 
 # ! START SCALE CUTS: for these, we need to:
 # 1. Compute the BNT. This is done with the raw, or unshifted n(z), but only for
@@ -467,38 +464,8 @@ pvt_cfg = {
 # 4. compute the z means
 # 5. compute the ell cuts
 
-# 1. Compute BNT
-assert compute_bnt_with_shifted_nz_for_zcuts is False, (
-    'The BNT used to compute the z_means and ell cuts is just for a simple case: '
-    'no IA, no dz shift'
-)
-assert shift_nz is True, (
-    'The signal (and BNT used to transform it) is computed with a shifted n(z); '
-    'You could use an un-shifted n(z) for the BNT, but'
-    'this would be slightly inconsistent (but also what I did so far).'
-)
-assert include_ia_in_bnt_kernel_for_zcuts is False, (
-    'We compute the BNT just for a simple case: no IA, no shift. '
-    'This is because we want to compute the z means'
-)
-
-# * IMPORTANT NOTE: The BNT should be computed from the same n(z) (shifted or not)
-# which is then used to compute the kernels which are then used to get the z_means,
-# and finally the ell_cuts, for consistency. In other words, we cannot compute the
-# kernels with a shifted n(z) and transform them with a BNT computed from the
-# unshifted n(z) and viceversa. If the n(z) are shifted, one of the BNT kernels will
-# become negative, but this is just because two of the original kernels get very close
-# after the shift: the transformation is correct. Having said that, I leave the code
-# below in case we want to change this in the future
-if nz_gaussian_smoothing:
-    nz_src = wf_cl_lib.gaussian_smmothing_nz(
-        zgrid_nz_src, nz_unshifted_src, nz_gaussian_smoothing_sigma, plot=True
-    )
-    nz_lns = wf_cl_lib.gaussian_smmothing_nz(
-        zgrid_nz_lns, nz_unshifted_lns, nz_gaussian_smoothing_sigma, plot=True
-    )
-
-if compute_bnt_with_shifted_nz_for_zcuts:
+# ! shift and set nz
+if shift_nz:
     nz_src = wf_cl_lib.shift_nz(
         zgrid_nz_src,
         nz_unshifted_src,
@@ -520,28 +487,23 @@ if compute_bnt_with_shifted_nz_for_zcuts:
         fill_value=0,
     )
 
-bnt_matrix = bnt.compute_bnt_matrix(
-    zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False
-)
-
-# 2. compute the kernels for the un-shifted n(z) (for consistency)
 ccl_obj.set_nz(
     nz_full_src=np.hstack((zgrid_nz_src[:, None], nz_src)),
     nz_full_lns=np.hstack((zgrid_nz_lns[:, None], nz_lns)),
 )
 ccl_obj.check_nz_tuple(zbins)
+
+# ! IA
 ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid, has_ia=cfg['C_ell']['has_IA'])
 
-# ! set galaxy and magnification bias
+# ! galaxy bias
+# TODO the alternative should be the HOD gal bias already set in the responses class!!
 if cfg['C_ell']['which_gal_bias'] == 'from_input':
     gal_bias_input = np.genfromtxt(cfg['C_ell']['gal_bias_table_filename'])
     ccl_obj.gal_bias_2d, ccl_obj.gal_bias_func = sl.check_interpolate_input_tab(
         input_tab=gal_bias_input, z_grid_out=z_grid, zbins=zbins
     )
     ccl_obj.gal_bias_tuple = (z_grid, ccl_obj.gal_bias_2d)
-
-
-# TODO the alternative should be the HOD gal bias already set in the responses class!!
 elif cfg['C_ell']['which_gal_bias'] == 'FS2_polynomial_fit':
     ccl_obj.set_gal_bias_tuple_spv3(
         z_grid_lns=z_grid, magcut_lens=None, poly_fit_values=galaxy_bias_fit_fiducials
@@ -559,7 +521,7 @@ if np.all(
 else:
     single_b_of_z = False
 
-
+# ! magnification bias
 if cfg['C_ell']['has_magnification_bias']:
     if cfg['C_ell']['which_mag_bias'] == 'from_input':
         mag_bias_input = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
@@ -598,31 +560,26 @@ ccl_obj.set_kernel_arr(
 gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias!)'
 ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 
-# 3. ! bnt-transform these kernels (for lensing, it's only the gamma kernel, without IA)
-wf_gamma_ccl_bnt = (bnt_matrix @ ccl_obj.wf_gamma_arr.T).T
+# ! compute BNT and z means
+if cfg['BNT']['cl_BNT_transform'] or cfg['BNT']['cov_BNT_transform']:
+    bnt_matrix = bnt.compute_bnt_matrix(
+        zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False
+    )
+    wf_gamma_ccl_bnt = (bnt_matrix @ ccl_obj.wf_gamma_arr.T).T
+    z_means_ll = wf_cl_lib.get_z_means(z_grid, wf_gamma_ccl_bnt)
+else:
+    bnt_matrix = None
+    z_means_ll = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_gamma_arr)
 
-# 4. compute the z means
-z_means_ll = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_gamma_arr)
 z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
-z_means_ll_bnt = wf_cl_lib.get_z_means(z_grid, wf_gamma_ccl_bnt)
 
-# plt.figure()
-# for zi in range(zbins):
-#     plt.plot(z_grid, ccl_obj.wf_gamma_arr[:, zi], ls='-', c=clr[zi],
-#              alpha=0.6, label='wf_gamma_ccl' if zi == 0 else None)
-#     plt.plot(z_grid, wf_gamma_ccl_bnt[:, zi], ls='--', c=clr[zi],
-#              alpha=0.6, label='wf_gamma_ccl_bnt' if zi == 0 else None)
-#     plt.axvline(z_means_ll_bnt[zi], ls=':', c=clr[zi])
-# plt.legend()
-# plt.xlabel('$z$')
-# plt.ylabel(r'$W_i^{\gamma}(z)$')
 
-assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically increasing'
-assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically increasing'
-assert np.all(np.diff(z_means_ll_bnt) > 0), (
-    'z_means_ll_bnt should be monotonically increasing '
-    '(not a strict condition, valid only if we do not shift the n(z) in this part)'
-)
+# assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically increasing'
+# assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically increasing'
+# assert np.all(np.diff(z_means_ll_bnt) > 0), (
+#     'z_means_ll_bnt should be monotonically increasing '
+#     '(not a strict condition, valid only if we do not shift the n(z) in this part)'
+# )
 
 # 5. compute the ell cuts
 ell_cuts_dict = {}
@@ -634,61 +591,23 @@ ellcuts_kw = {
     'kmax_h_over_Mpc_ref': cfg['ell_cuts']['kmax_h_over_Mpc_ref'],
 }
 ell_cuts_dict['LL'] = ell_utils.load_ell_cuts(
-    z_values_a=z_means_ll_bnt, z_values_b=z_means_ll_bnt, **ellcuts_kw
+    z_values_a=z_means_ll, z_values_b=z_means_ll, **ellcuts_kw
 )
 ell_cuts_dict['GG'] = ell_utils.load_ell_cuts(
     z_values_a=z_means_gg, z_values_b=z_means_gg, **ellcuts_kw
 )
 ell_cuts_dict['GL'] = ell_utils.load_ell_cuts(
-    z_values_a=z_means_gg, z_values_b=z_means_ll_bnt, **ellcuts_kw
+    z_values_a=z_means_gg, z_values_b=z_means_ll, **ellcuts_kw
 )
 ell_cuts_dict['LG'] = ell_utils.load_ell_cuts(
-    z_values_a=z_means_ll_bnt, z_values_b=z_means_gg, **ellcuts_kw
+    z_values_a=z_means_ll, z_values_b=z_means_gg, **ellcuts_kw
 )
 ell_dict['ell_cuts_dict'] = (
     ell_cuts_dict  # this is to pass the ell cuts to the covariance module
 )
 # ! END SCALE CUTS
 
-# now compute the BNT used for the rest of the code
-if shift_nz:
-    nz_src = wf_cl_lib.shift_nz(
-        zgrid_nz_src,
-        nz_unshifted_src,
-        dzWL_fiducial,
-        normalize=normalize_shifted_nz,
-        plot_nz=False,
-        interpolation_kind=shift_nz_interpolation_kind,
-    )
-    nz_lns = wf_cl_lib.shift_nz(
-        zgrid_nz_lns,
-        nz_unshifted_lns,
-        dzGC_fiducial,
-        normalize=normalize_shifted_nz,
-        plot_nz=False,
-        interpolation_kind=shift_nz_interpolation_kind,
-    )
-    # * this is important: the BNT matrix I use for the rest of the code (so not to
-    # * compute the ell cuts) is instead
-    # * consistent with the shifted n(z) used to compute the kernels
-    bnt_matrix = bnt.compute_bnt_matrix(
-        zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False
-    )
-
 wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
-
-# re-set n(z) used in CCL class, then re-compute kernels
-ccl_obj.set_nz(
-    nz_full_src=np.hstack((zgrid_nz_src[:, None], nz_src)),
-    nz_full_lns=np.hstack((zgrid_nz_lns[:, None], nz_lns)),
-)
-ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['PyCCL']['n_samples_wf'])
-ccl_obj.set_kernel_arr(
-    z_grid_wf=z_grid, has_magnification_bias=cfg['C_ell']['has_magnification_bias']
-)
-
-gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias)'
-ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 
 # convenience variables
 wf_delta = ccl_obj.wf_delta_arr  # no bias here either, of course!

@@ -757,7 +757,7 @@ n_probes_rs = 4  # real space
 n_probes_hs = 2  # harmonic space
 
 term = 'sva'
-_probe = 'xipxip'
+_probe = 'gggg'
 integration_method = 'levin'
 
 mu_dict = {'gg': 0, 'gm': 2, 'xip': 0, 'xim': 4}
@@ -969,7 +969,9 @@ for probe in (_probe,):
             cl_5d[probe_b_ix, probe_c_ix],
         )
         integrand = a + b
+        # take the ell1, ell2 diagonal and put it back to the 0th axis
         integrand = np.diagonal(integrand, axis1=0, axis2=1).transpose(4, 0, 1, 2, 3)
+        # flatten the integrand to [ells, whatever]
         integrand = integrand.reshape(nbl, -1)
 
         integrand = integrand * ell_values[:, None]
@@ -997,154 +999,21 @@ for probe in (_probe,):
         M = nbt**2  # number of arguments at which the integrals are evaluated
         N = integrand.shape[-1]
         result_levin = np.zeros((M, N))  # allocate the result
-        # result_levin = np.zeros(N,)  # allocate the result
-        
-        t0 = time.time()
+        X, Y = np.meshgrid(theta_centers, theta_centers, indexing='ij')
+        theta1_flat = X.reshape(nbt**2)
+        theta2_flat = Y.reshape(nbt**2)
+
         lp.levin_integrate_bessel_double(
-            x_min=ell_values[0] * np.ones(nbt),
-            x_max=ell_values[-1] * np.ones(nbt),
-            k_1=theta_centers,
-            k_2=theta_centers,
-            ell_1=(mu * np.ones(nbt)).astype(int),  # !mu or nu, careful
-            ell_2=(nu * np.ones(nbt)).astype(int),  # !mu or nu, careful
+            x_min=ell_values[0] * np.ones(M),
+            x_max=ell_values[-1] * np.ones(M),
+            k_1=theta1_flat,
+            k_2=theta2_flat,
+            ell_1=(mu * np.ones(M)).astype(int),
+            ell_2=(nu * np.ones(M)).astype(int),
             result=result_levin,
         )
 
         cov_sva_sb_6d = result_levin.reshape(nbt, nbt, zbins, zbins, zbins, zbins)
-
-        print('Levin took', time.time() - t0, 's')
-
-
-
-
-def sigma2_b_levin_batched(
-    z_grid: np.ndarray,
-    k_grid: np.ndarray,
-    cosmo_ccl: ccl.Cosmology,
-    which_sigma2_b: str,
-    ell_mask: np.ndarray,
-    cl_mask: np.ndarray,
-    fsky_mask: float,
-    n_jobs: int,
-    batch_size: int,
-) -> np.ndarray:
-    """
-    Compute sigma2_b using the Levin integration method. The computation leverages the
-    symmetry in z1, z2 to reduce the number of integrals
-    (only the upper triangle of the z1, z2 matrix is actually computed).
-
-    Parameters
-    ----------
-    z_grid : np.ndarray
-        Array of redshifts.
-    k_grid : np.ndarray
-        Array of wavenumbers [1/Mpc].
-    cosmo_ccl : ccl.Cosmology
-        Cosmological parameters.
-    which_sigma2_b : str
-        Type of sigma2_b to compute.
-    ell_mask : np.ndarray
-        Array of multipoles at which the mask is evaluated.
-    cl_mask : np.ndarray
-        Array containing the angular power spectrum of the mask.
-    fsky_mask : float
-        Fraction of sky covered by the mask.
-    n_jobs : int
-        Number of threads to use for the computation in parallel.
-    batch_size : int, optional
-        Batch size for the computation. Default is 100_000.
-
-    Returns
-    -------
-    np.ndarray
-        2D array of sigma2_b values, of shape (len(z_grid), len(z_grid)).
-    """
-
-    import pylevin as levin
-
-    a_arr = cosmo_lib.z_to_a(z_grid)
-    r_arr = ccl.comoving_radial_distance(cosmo_ccl, a_arr)
-    growth_factor_arr = ccl.growth_factor(cosmo_ccl, a_arr)
-    plin = ccl.linear_matter_power(cosmo_ccl, k=k_grid, a=1.0)
-
-    integral_type = 2  # double spherical
-    N_thread = n_jobs  # Number of threads used for hyperthreading
-
-    zsteps = len(r_arr)
-    triu_ix = np.triu_indices(zsteps)
-    n_upper = len(triu_ix[0])  # number of unique integrals to compute
-
-    result_flat = np.zeros(n_upper)
-
-    for i in tqdm(range(0, n_upper, batch_size), desc='Batches'):
-        batch_indices = slice(i, i + batch_size)
-        r1_batch = r_arr[triu_ix[0][batch_indices]]
-        r2_batch = r_arr[triu_ix[1][batch_indices]]
-        integrand_batch = (
-            k_grid[:, None] ** 2
-            * plin[:, None]
-            * growth_factor_arr[None, triu_ix[0][batch_indices]]
-            * growth_factor_arr[None, triu_ix[1][batch_indices]]
-        )
-
-        lp = levin.pylevin(
-            integral_type, k_grid, integrand_batch, logx, logy, N_thread, True
-        )
-        lp.set_levin(n_sub, n_bisec_max, rel_acc, boost_bessel, verbose)
-
-        lower_limit = k_grid[0] * np.ones(len(r1_batch))
-        upper_limit = k_grid[-1] * np.ones(len(r1_batch))
-        ell = np.zeros(len(r1_batch), dtype=int)
-
-        lp.levin_integrate_bessel_double(
-            lower_limit,
-            upper_limit,
-            r1_batch,
-            r2_batch,
-            ell,
-            ell,
-            result_flat[batch_indices],
-        )        
-
-    # Assemble symmetric result matrix
-    result_matrix = np.zeros((zsteps, zsteps))
-    result_matrix[triu_ix] = result_flat
-    result_matrix = result_matrix + result_matrix.T - np.diag(np.diag(result_matrix))
-
-    if which_sigma2_b == 'full_curved_sky':
-        result = 1 / (2 * np.pi**2) * result_matrix
-
-    elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
-        partial_summand = (2 * ell_mask + 1) * cl_mask * 2 / np.pi
-        partial_summand = result_matrix[:, :, None] * partial_summand[None, None, :]
-        result = np.sum(partial_summand, axis=-1)
-        one_over_omega_s_squared = 1 / (4 * np.pi * fsky_mask) ** 2
-        result *= one_over_omega_s_squared
-    else:
-        raise ValueError(
-            'which_sigma2_b must be either "full_curved_sky" or '
-            '"polar_cap_on_the_fly" or "from_input_mask"'
-        )
-
-    return result
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     elif term == 'sn':
         print('Computing real-space Gaussian SN covariance...')

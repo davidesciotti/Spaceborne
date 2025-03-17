@@ -820,39 +820,9 @@ def figure_of_correlation(correl_matrix):
 
     return foc
 
-
-def plot_correlation_matrix(correlation_matrix, labels, title):
-    """
-    Plots a heatmap of the given correlation matrix with provided labels.
-
-    Parameters:
-    - correlation_matrix (2D numpy array): The correlation matrix to be plotted.
-    - labels (list): List of parameter names for labeling the axes.
-    """
-    fig, ax = plt.subplots(figsize=(10, 8))
-
-    # Using the RdBu_r colormap for the heatmap
-    # cax = ax.matshow(correlation_matrix, cmap='RdBu_r', vmin=-1, vmax=1)
-    # cax = ax.matshow(correlation_matrix, cmap='RdBu_r')
-    # cax = ax.matshow(correlation_matrix, cmap='viridis')
-
-    # Display color bar
-    # cbar = fig.colorbar(cax)
-
-    # Set labels
-    # ax.set_xticks(np.arange(len(labels)))
-    # ax.set_yticks(np.arange(len(labels)))
-    # ax.set_xticklabels(labels)
-    # ax.set_yticklabels(labels)
-
-    # Rotate x-axis labels for better clarity
-    # plt.xticks()
-
-    # Set the title
-    ax.set_title(title, loc='center', rotation=0)
-
-    # Display the plot
-    plt.show()
+def plot_correlation_matrix(correlation_matrix):
+    plt.matshow(correlation_matrix, cmap='RdBu_r', vmin=-1, vmax=1)
+    plt.colorbar()
 
 
 def find_inverse_from_array(input_x, input_y, desired_y, interpolation_kind='linear'):

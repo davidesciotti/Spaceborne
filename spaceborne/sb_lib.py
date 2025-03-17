@@ -150,11 +150,11 @@ def nz_fits_to_txt(fits_filename):
     return nz_arr
 
 
-def compare_funcs(x, y_tuple: dict, logscale_y=[False, False], logscale_x=False,
+def compare_funcs(x, y: dict, logscale_y=[False, False], logscale_x=False,
                   title=None, ylim_diff=None):
 
-    names = list(y_tuple.keys())
-    y_tuple = list(y_tuple.values())
+    names = list(y.keys())
+    y_tuple = list(y.values())
     colors = plt.get_cmap("tab10").colors  # Get tab colors
 
     if x is None:
@@ -3052,9 +3052,6 @@ def build_noise(zbins, n_probes, sigma_eps2, ng_shear, ng_clust, is_noiseless: b
     # create and fill N
     noise_4d = np.zeros((n_probes, n_probes, zbins, zbins))
     
-    if is_noiseless:
-        return noise_4d
-
     if is_noiseless:
         return noise_4d
 

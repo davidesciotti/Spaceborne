@@ -1,7 +1,7 @@
-from copy import deepcopy
 import re
 import time
 import warnings
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
@@ -10,6 +10,7 @@ from scipy.integrate import quad_vec
 from scipy.integrate import simpson as simps
 from scipy.interpolate import CubicSpline
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 import pyccl as ccl
 from spaceborne import sb_lib as sl
@@ -711,7 +712,7 @@ diagonal = False
 # accuracy settings
 n_sub = 10  # number of collocation points in each bisection
 n_bisec_max = 32  # maximum number of bisections used
-rel_acc = 1e-4  # relative accuracy target  # TODO decrease to 1e-5
+rel_acc = 1e-5  # relative accuracy target  # TODO decrease to 1e-5
 # should the bessel functions be calculated with boost instead of GSL,
 # higher accuracy at high Bessel orders
 boost_bessel = True
@@ -732,7 +733,6 @@ nbl = 500
 theta_min_arcmin = 50
 theta_max_arcmin = 300
 n_theta_edges = 21
-n_probes = 4
 df_chunk_size = 50000
 cov_list_name = 'covariance_list_3x2_rcf'
 cov_hs_list_name = 'covariance_list_3x2_cl'
@@ -755,10 +755,13 @@ sigma_eps_tot = sigma_eps_i * np.sqrt(2)
 munu_vals = (0, 2, 4)
 n_probes_rs = 4  # real space
 n_probes_hs = 2  # harmonic space
+cov_sb_8d = np.zeros((n_probes_rs, n_probes_rs,  # fmt: skip
+                       n_theta_edges-1, n_theta_edges-1,  # fmt: skip
+                       zbins, zbins, zbins, zbins))  # fmt: skip
 
 term = 'sva'
-_probe = 'gggg'
-integration_method = 'levin'
+_probe = 'gggm'
+integration_method = 'simps'
 
 mu_dict = {'gg': 0, 'gm': 2, 'xip': 0, 'xim': 4}
 
@@ -778,11 +781,17 @@ probe_idx_dict = {
 
 # TODO Should I invert the indices for gg and gm?
 # TODO Is there a smarter mapping? probably not...
+# probe_idx_dict_short = {
+#     'xip': 0,
+#     'xim': 1,
+#     'gg': 2,  # w
+#     'gm': 3,  # \gamma_t
+# }
 probe_idx_dict_short = {
-    'xip': 0,
-    'xim': 1,
-    'gg': 2,  # w
-    'gm': 3,  # \gamma_t
+    'gg': 0,  # w
+    'gm': 1,  # \gamma_t
+    'xip': 2,
+    'xim': 3,
 }
 
 
@@ -797,6 +806,8 @@ for key in probe_idx_dict:
 
 # for probe in probe_idx_dict:
 for probe in (_probe,):
+
+    print(f'\n***** Working on probe {probe} *****\n')
     twoprobe_a_str, twoprobe_b_str = split_probe_name(probe)
     twoprobe_a_ix, twoprobe_b_ix = (
         probe_idx_dict_short[twoprobe_a_str],
@@ -953,6 +964,7 @@ for probe in (_probe,):
         )  # fmt: skip
 
         for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
+            # print(zi, zj, zk, zl)
             cov_sva_sb_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
 
         print(f'... Done in: {(time.time() - start):.2f} s')
@@ -1350,6 +1362,7 @@ for probe in (_probe,):
     #         np.transpose(cov_8d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3))
     #     )
 
+
     # ! ================================================================================
 
     if term == 'sva':
@@ -1389,8 +1402,12 @@ for probe in (_probe,):
     if np.allclose(cov_sb_6d, 0, atol=1e-20, rtol=1e-10):
         print('cov_sb_6d is zero')
 
+    cov_sb_8d[twoprobe_a_ix, twoprobe_b_ix, ...] = cov_sb_6d
+
     # cov_oc_4d = sl.cov_6D_to_4D(cov_oc_6d, theta_bins, zpairs_cross, ind_cross)
     # cov_sb_4d = sl.cov_6D_to_4D(cov_sb_6d, theta_bins, zpairs_cross, ind_cross)
+    zpairs_ab, zpairs_cd = zpairs_cross, zpairs_cross
+    ind_ab, ind_cd = ind_cross, ind_cross
     cov_oc_4d = sl.cov_6D_to_4D_blocks(
         cov_oc_6d, nbt, zpairs_ab, zpairs_cd, ind_ab, ind_cd
     )
@@ -1447,7 +1464,7 @@ for probe in (_probe,):
             },
             logscale_y=[True, False],
             ylim_diff=[-110, 110],
-            title=f'{term}, {probe}, total cov diag',
+            title=f'{term}, {probe}, {integration_method}, total cov diag',
         )
         # plt.savefig(f'{term}_{probe}_total_cov_diag.png')
 
@@ -1461,7 +1478,7 @@ for probe in (_probe,):
             #  'SB_fromsva': np.abs(cov_sb_gfromsva_2d.flatten()),
         },
         logscale_y=[True, False],
-        title=f'{term}, {probe}, total cov flat',
+        title=f'{term}, {probe}, {integration_method}, total cov flat',
         ylim_diff=[-110, 110],
     )
 
@@ -1476,7 +1493,7 @@ for probe in (_probe,):
             #  'SB_fromsva': np.abs(cov_sb_gfromsva_2d.flatten()),
         },
         logscale_y=[False, False],
-        title=f'{term}, {probe}, cov_6d[:, 0, 0, 0, 0, 0]',
+        title=f'{term}, {probe}, {integration_method}, cov_6d[:, 0, 0, 0, 0, 0]',
         ylim_diff=[-110, 110],
     )
     # plt.savefig(f'{term}_{probe}_total_cov_flat.png')
@@ -1500,5 +1517,209 @@ for probe in (_probe,):
     # TODO other probes
     # TODO probably ell range as well
     # TODO integration? quad?
+
+
+# construct full 2D cov
+cov_sb_2d_dict = {}
+for probe in probe_idx_dict:
+    twoprobe_ab_str, twoprobe_cd_str = split_probe_name(probe)
+    twoprobe_ab_ix, twoprobe_cd_ix = (
+        probe_idx_dict_short[twoprobe_ab_str],
+        probe_idx_dict_short[twoprobe_cd_str],
+    )
+
+    print(probe, twoprobe_ab_str, twoprobe_cd_str, twoprobe_ab_ix, twoprobe_cd_ix)
+
+    zpairs_ab = zpairs_cross if twoprobe_ab_ix == 1 else zpairs_auto
+    zpairs_cd = zpairs_cross if twoprobe_cd_ix == 1 else zpairs_auto
+    ind_ab = ind_cross if twoprobe_ab_ix == 1 else ind_auto
+    ind_cd = ind_cross if twoprobe_cd_ix == 1 else ind_auto
+
+    cov_sb_4d = np.zeros((nbt, nbt, zpairs_ab, zpairs_cd))
+    cov_sb_2d = np.zeros((nbt * zpairs_ab, nbt * zpairs_cd))
+
+    cov_sb_4d = sl.cov_6D_to_4D_blocks(
+        cov_sb_8d[twoprobe_ab_ix, twoprobe_cd_ix],
+        nbt,
+        zpairs_ab,
+        zpairs_cd,
+        ind_ab,
+        ind_cd,
+    )
+    cov_sb_2d_dict[probe] = sl.cov_4D_to_2D(
+        cov_sb_4d, block_index='zpair', optimize=True
+    )
+
+row_1 = np.hstack(
+    (
+        cov_sb_2d_dict['gggg'],
+        cov_sb_2d_dict['gggm'],
+        cov_sb_2d_dict['ggxip'],
+        cov_sb_2d_dict['ggxim'],
+    )
+)
+row_2 = np.hstack(
+    (
+        cov_sb_2d_dict['gggm'].T,
+        cov_sb_2d_dict['gmgm'],
+        cov_sb_2d_dict['gmxip'],
+        cov_sb_2d_dict['gmxim'],
+    )
+)
+row_3 = np.hstack(
+    (
+        cov_sb_2d_dict['ggxip'].T,
+        cov_sb_2d_dict['gmxip'].T,
+        cov_sb_2d_dict['xipxip'],
+        cov_sb_2d_dict['xipxim'],
+    )
+)
+row_4 = np.hstack(
+    (
+        cov_sb_2d_dict['ggxim'].T,
+        cov_sb_2d_dict['gmxim'].T,
+        cov_sb_2d_dict['xipxim'].T,
+        cov_sb_2d_dict['ximxim'],
+    )
+)
+
+cov_sb_full_2d = np.vstack((row_1, row_2, row_3, row_4))
+
+sl.plot_correlation_matrix(sl.cov2corr(cov_sb_full_2d))
+plt.title('correlation matrix')
+
+# TODO compare G tot against Robert
+# cov_g_oc_mat = np.genfromtxt('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests/realspace_test/covariance_matrix_3x2_rcf_gauss.mat')
+
+# TODO study these and adapt to real space, current solution (see above) is a bit messy
+def cov_3x2pt_10D_to_4D(cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_OR_LG):
+    """
+    Takes the cov_3x2pt_10D dictionary, reshapes each A, B, C, D block separately
+    in 4D, then stacks the blocks in the right order to output cov_3x2pt_4D
+    (which is not a dictionary but a numpy array)
+
+    probe_ordering: e.g. ['L', 'L'], ['G', 'L'], ['G', 'G']]
+    """
+
+    # if it's an array, convert to dictionary for the function to work
+    if type(cov_3x2pt_10D) == np.ndarray:
+        cov_3x2pt_dict_10D = cov_10D_array_to_dict(cov_3x2pt_10D, probe_ordering)
+    elif type(cov_3x2pt_10D) == dict:
+        cov_3x2pt_dict_10D = cov_3x2pt_10D
+    else:
+        raise ValueError('cov_3x2pt_10D must be either a dictionary or an array')
+
+    ind_copy = ind_copy.copy()  # just to ensure the input ind file is not changed
+
+    # Check that the cross-correlation is coherent with the probe_ordering list
+    # this is a weak check, since I'm assuming that GL or LG will be the second
+    # element of the datavector
+    if GL_OR_LG == 'GL':
+        assert probe_ordering[1][0] == 'G' and probe_ordering[1][1] == 'L', (
+            'probe_ordering[1] should be "GL", e.g. [LL, GL, GG]'
+        )
+    elif GL_OR_LG == 'LG':
+        assert probe_ordering[1][0] == 'L' and probe_ordering[1][1] == 'G', (
+            'probe_ordering[1] should be "LG", e.g. [LL, LG, GG]'
+        )
+
+    # get npairs
+    npairs_auto, npairs_cross, npairs_3x2pt = get_zpairs(zbins)
+
+    # construct the ind dict
+    ind_dict = {}
+    ind_dict['L', 'L'] = ind_copy[:npairs_auto, :]
+    ind_dict['G', 'G'] = ind_copy[(npairs_auto + npairs_cross) :, :]
+    if GL_OR_LG == 'LG':
+        ind_dict['L', 'G'] = ind_copy[npairs_auto : (npairs_auto + npairs_cross), :]
+        ind_dict['G', 'L'] = ind_dict['L', 'G'].copy()  # copy and switch columns
+        ind_dict['G', 'L'][:, [2, 3]] = ind_dict['G', 'L'][:, [3, 2]]
+    elif GL_OR_LG == 'GL':
+        ind_dict['G', 'L'] = ind_copy[npairs_auto : (npairs_auto + npairs_cross), :]
+        ind_dict['L', 'G'] = ind_dict['G', 'L'].copy()  # copy and switch columns
+        ind_dict['L', 'G'][:, [2, 3]] = ind_dict['L', 'G'][:, [3, 2]]
+
+    # construct the npairs dict
+    npairs_dict = {}
+    npairs_dict['L', 'L'] = npairs_auto
+    npairs_dict['L', 'G'] = npairs_cross
+    npairs_dict['G', 'L'] = npairs_cross
+    npairs_dict['G', 'G'] = npairs_auto
+
+    # initialize the 4D dictionary and list of probe combinations
+    cov_3x2pt_dict_4D = {}
+    combinations = []
+
+    # make each block 4D and store it with the right 'A', 'B', 'C, 'D' key
+    for A, B in probe_ordering:
+        for C, D in probe_ordering:
+            combinations.append([A, B, C, D])
+            cov_3x2pt_dict_4D[A, B, C, D] = cov_6D_to_4D_blocks(
+                cov_3x2pt_dict_10D[A, B, C, D],
+                nbl,
+                npairs_dict[A, B],
+                npairs_dict[C, D],
+                ind_dict[A, B],
+                ind_dict[C, D],
+            )
+
+    # concatenate the rows to construct the final matrix
+    cov_3x2pt_4D = cov_3x2pt_8D_dict_to_4D(
+        cov_3x2pt_dict_4D, probe_ordering, combinations
+    )
+
+    return cov_3x2pt_4D
+
+
+def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, probe_ordering, combinations=None):
+    """
+    Convert a dictionary of 4D blocks into a single 4D array. This is the same code as in the last part of the function above.
+    :param cov_3x2pt_8D_dict: Dictionary of 4D covariance blocks
+    :param probe_ordering: tuple of tuple probes, e.g., (('L', 'L'), ('G', 'L'), ('G', 'G'))
+    :combinations: list of combinations to use, e.g., [['L', 'L', 'L', 'L'], ['L', 'L', 'L', 'G'], ...]
+    :return: 4D covariance array
+    """
+
+    # if combinations is not provided, construct it
+    if combinations is None:
+        combinations = []
+        for A, B in probe_ordering:
+            for C, D in probe_ordering:
+                combinations.append([A, B, C, D])
+
+    for key in cov_3x2pt_8D_dict.keys():
+        assert cov_3x2pt_8D_dict[key].ndim == 4, (
+            f'covariance matrix {key} has ndim={cov_3x2pt_8D_dict[key].ndim} instead '
+            f'of 4'
+        )
+
+    # check that the number of combinations is correct
+    assert len(combinations) == len(list(cov_3x2pt_8D_dict.keys())), (
+        f'number of combinations ({len(combinations)}) does not match the number of blocks in the input dictionary '
+        f'({len(list(cov_3x2pt_8D_dict.keys()))})'
+    )
+
+    # check that the combinations are correct
+    for i, combination in enumerate(combinations):
+        assert tuple(combination) in list(cov_3x2pt_8D_dict.keys()), (
+            f'combination {combination} not found in the input dictionary'
+        )
+
+    # take the correct combinations (stored in 'combinations') and construct
+    # lists which will be converted to arrays
+    row_1_list = [cov_3x2pt_8D_dict[A, B, C, D] for A, B, C, D in combinations[:3]]
+    row_2_list = [cov_3x2pt_8D_dict[A, B, C, D] for A, B, C, D in combinations[3:6]]
+    row_3_list = [cov_3x2pt_8D_dict[A, B, C, D] for A, B, C, D in combinations[6:9]]
+
+    # concatenate the lists to make rows
+    row_1 = np.concatenate(row_1_list, axis=3)
+    row_2 = np.concatenate(row_2_list, axis=3)
+    row_3 = np.concatenate(row_3_list, axis=3)
+
+    # concatenate the rows to construct the final matrix
+    cov_3x2pt_4D = np.concatenate((row_1, row_2, row_3), axis=2)
+
+    return cov_3x2pt_4D
+
 
 print('Done.')

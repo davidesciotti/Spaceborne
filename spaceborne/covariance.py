@@ -265,16 +265,8 @@ class SpaceborneCovariance:
         )
 
         # create dummy ell axis, the array is just repeated along it
-        nbl_max = np.max((self.nbl_WL, self.nbl_GC, self.nbl_3x2pt))
-        noise_5D = np.zeros(
-            (self.n_probes, self.n_probes, nbl_max, self.zbins, self.zbins)
-        )
-        for probe_A in (0, 1):
-            for probe_B in (0, 1):
-                for ell_idx in range(self.nbl_WL):
-                    noise_5D[probe_A, probe_B, ell_idx, :, :] = noise_3x2pt_4D[
-                        probe_A, probe_B, ...
-                    ]
+        nbl_max = max(self.nbl_WL, self.nbl_GC, self.nbl_3x2pt)
+        noise_5D = np.repeat(noise_3x2pt_4D[:, :, np.newaxis, :, :], nbl_max, axis=2)
 
         # the ell axis is a dummy one for the noise, is just needs to be of the
         # same length as the corresponding cl one
@@ -1101,7 +1093,7 @@ class SpaceborneCovariance:
         probe_ordering,
         num_threads=16,
     ):
-        """Kernel to compute the 4D integral optimized using Simpson's rule using 
+        """Kernel to compute the 4D integral optimized using Simpson's rule using
         Julia."""
 
         suffix = 0
@@ -1228,7 +1220,7 @@ class SpaceborneCovariance:
                         )  # save in .npy or .npz
 
                     # in this case, 3x2pt is saved in 10D as a dictionary
-                    # TODO these pickle files are too heavy, probably it's best to 
+                    # TODO these pickle files are too heavy, probably it's best to
                     # revert to npz
                     if ndim == 6:
                         cov_3x2pt_filename = covariance_cfg['cov_filename'].format(

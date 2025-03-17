@@ -1,3 +1,4 @@
+from copy import deepcopy
 import re
 import time
 import warnings
@@ -20,11 +21,13 @@ from spaceborne import sb_lib as sl
 # realspace_test/config_3x2pt_rcf.ini
 
 warnings.filterwarnings(
-    'ignore', message=r'.*invalid escape sequence*', category=SyntaxWarning
+    'ignore', message=r'.*invalid escape sequence.*', category=SyntaxWarning
 )
 
 warnings.filterwarnings(
-    'ignore', message=r'.*invalid value encountered in divide*', category=RuntimeWarning
+    'ignore',
+    message=r'.*invalid value encountered in divide.*',
+    category=RuntimeWarning,
 )
 
 
@@ -117,7 +120,7 @@ def project_ellspace_cov_vec_1d(  # fmt: skip
 
 
 def project_ellspace_cov(  # fmt: skip
-    theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,         
+    theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu, 
     zi, zj, zk, zl,                                             
     Amax, ell1_values, ell2_values, cov_ell,                    
 ):  # fmt: skip
@@ -517,9 +520,202 @@ def split_probe_ix(probe_ix):
         raise ValueError(f'Invalid probe index: {probe_ix}. Expected 0, 1, 2, or 3.')
 
 
+def integrate_cov_levin(cov_2d, mu, ell, theta_centers, n_jobs):
+    """
+    cov_2d must have the first axis corresponding to the ell values),
+    the second to the flattened remaining dimensions"""
+    import pylevin as levin
+
+    integral_type = 1  # single cilyndrical bessel
+
+    integrand = ell[:, None] * cov_2d
+
+    # Constructor of the class
+    lp = levin.pylevin(
+        type=integral_type,
+        x=ell,
+        integrand=integrand,
+        logx=logx,
+        logy=logy,
+        nthread=n_jobs,
+        diagonal=False,
+    )
+
+    lp.set_levin(
+        n_col_in=n_sub,
+        maximum_number_bisections_in=n_bisec_max,
+        relative_accuracy_in=rel_acc,
+        super_accurate=boost_bessel,
+        verbose=verbose,
+    )
+
+    # N is the number of integrals to be computed
+    # M is the number of arguments at which the integrals are evaluated
+    N = integrand.shape[1]
+    M = nbt
+    result_levin = np.zeros((M, N))  # allocate the result
+
+    lp.levin_integrate_bessel_single(
+        x_min=ell[0] * np.ones(nbt),
+        x_max=ell[-1] * np.ones(nbt),
+        k=theta_centers,
+        ell=(mu * np.ones(nbt)).astype(int),
+        result=result_levin,
+    )
+
+    return result_levin
+
+
+def oc_cov_list_to_array(oc_output_path):
+    probe_idx_dict_ell = {
+        'm': 0,
+        'g': 1,
+    }
+
+    # set df column names
+    with open(oc_output_path) as file:
+        header = (
+            file.readline().strip()
+        )  # Read the first line and strip newline characters
+    header_list = re.split(
+        '\t', header.strip().replace('\t\t', '\t').replace('\t\t', '\t')
+    )
+    column_names = header_list
+
+    print('Loading OC ell and z values...')
+    data = pd.read_csv(oc_output_path, usecols=['ell1', 'tomoi'], sep='\s+')
+    ells_oc_load = data['ell1'].unique()
+    tomoi_oc_load = data['tomoi'].unique()
+
+    cov_ell_indices = {ell_out: idx for idx, ell_out in enumerate(ells_oc_load)}
+    # SB tomographic indices start from 0
+    subtract_one = False
+    if min(tomoi_oc_load) == 1:
+        subtract_one = True
+
+    # import .list covariance file
+    shape = (n_probes_hs, n_probes_hs, n_probes_hs, n_probes_hs, # fmt: skip
+            nbl, nbl, zbins, zbins, zbins, zbins)  # fmt: skip
+    cov_g_oc_3x2pt_10D = np.zeros(shape)
+    cov_sva_oc_3x2pt_10D = np.zeros(shape)
+    cov_mix_oc_3x2pt_10D = np.zeros(shape)
+    cov_sn_oc_3x2pt_10D = np.zeros(shape)
+    cov_ssc_oc_3x2pt_10D = np.zeros(shape)
+    # cov_cng_oc_3x2pt_10D = np.zeros(shape)
+    # cov_tot_oc_3x2pt_10D = np.zeros(shape)
+
+    print(f'Loading OneCovariance output from \n{oc_output_path}')
+    for df_chunk in pd.read_csv(
+        oc_output_path,
+        sep='\s+',
+        names=column_names,
+        skiprows=1,
+        chunksize=df_chunk_size,
+    ):
+        probe_idx_a = df_chunk['#obs'].str[0].map(probe_idx_dict_ell).values
+        probe_idx_b = df_chunk['#obs'].str[1].map(probe_idx_dict_ell).values
+        probe_idx_c = df_chunk['#obs'].str[2].map(probe_idx_dict_ell).values
+        probe_idx_d = df_chunk['#obs'].str[3].map(probe_idx_dict_ell).values
+
+        # Map 'ell' values to their corresponding indices
+        ell1_idx = df_chunk['ell1'].map(cov_ell_indices).values
+        ell2_idx = df_chunk['ell2'].map(cov_ell_indices).values
+
+        # Compute z indices
+        if subtract_one:
+            z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].sub(1).values
+        else:
+            z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values
+
+        # Vectorized assignment to the arrays
+        index_tuple = (  # fmt: skip
+            probe_idx_a, probe_idx_b, probe_idx_c, probe_idx_d,
+            ell1_idx, ell2_idx, 
+            z_indices[:, 0], z_indices[:, 1], z_indices[:, 2], z_indices[:, 3],
+        )  # fmt: skip
+
+        cov_sva_oc_3x2pt_10D[index_tuple] = df_chunk['covg sva'].values
+        cov_mix_oc_3x2pt_10D[index_tuple] = df_chunk['covg mix'].values
+        cov_sn_oc_3x2pt_10D[index_tuple] = df_chunk['covg sn'].values
+        cov_g_oc_3x2pt_10D[index_tuple] = (
+            df_chunk['covg sva'].values
+            + df_chunk['covg mix'].values
+            + df_chunk['covg sn'].values
+        )
+        cov_ssc_oc_3x2pt_10D[index_tuple] = df_chunk['covssc'].values
+        # cov_cng_oc_3x2pt_10D[index_tuple] = df_chunk['covng'].values
+        # cov_tot_oc_3x2pt_10D[index_tuple] = df_chunk['cov'].values
+
+    covs_10d = [
+        cov_sva_oc_3x2pt_10D,
+        cov_mix_oc_3x2pt_10D,
+        cov_sn_oc_3x2pt_10D,
+        cov_g_oc_3x2pt_10D,
+        cov_ssc_oc_3x2pt_10D,
+        # cov_cng_oc_3x2pt_10D,
+        # cov_tot_oc_3x2pt_10D
+    ]
+
+    for cov_10d in covs_10d:
+        cov_10d[0, 0, 1, 1] = deepcopy(
+            np.transpose(cov_10d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3))
+        )
+        cov_10d[1, 0, 0, 0] = deepcopy(
+            np.transpose(cov_10d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3))
+        )
+        cov_10d[1, 0, 1, 1] = deepcopy(
+            np.transpose(cov_10d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3))
+        )
+
+    return covs_10d
+
+
+def integrate_double_bessel(cov_hs, mu, nu, ells, thetas, n_jobs):
+    # First integration: for each fixed ell1, integrate over ell2.
+    partial_results = []
+    for ell1_ix in tqdm(range(nbl)):
+        # Extract the 2D slice for fixed ell1.
+        cov_hs_2d = cov_hs[ell1_ix, ...].reshape(nbl, -1)
+        partial_int = integrate_cov_levin(cov_hs_2d, nu, ells, thetas, n_jobs)
+        partial_results.append(partial_int)
+
+    # Stack partial results along the ell1 direction.
+    partial_results = np.stack(partial_results, axis=0)
+
+    # Second integration: integrate over ell1.
+    nbt = partial_results.shape[1]
+    flattened_size = partial_results.shape[2]
+    final_result = np.zeros((nbt, nbt, flattened_size))
+
+    for theta_idx in tqdm(range(nbt)):
+        # For fixed theta from the first integration, extract the integrand:
+        integrand_second = partial_results[:, theta_idx, :]
+        final_int = integrate_cov_levin(integrand_second, mu, ells, thetas, n_jobs)
+        final_result[:, theta_idx, :] = final_int
+
+    cov_rs_6d = final_result.reshape(nbt, nbt, zbins, zbins, zbins, zbins)
+    cov_rs_6d *= 1 / (4 * np.pi**2)  # TODO Amax still missing
+
+    return cov_rs_6d
+
+
 # ! ====================================================================================
 # ! ====================================================================================
 # ! ====================================================================================
+
+# levin bessel settings
+logx = True
+logy = True
+diagonal = False
+
+# accuracy settings
+n_sub = 10  # number of collocation points in each bisection
+n_bisec_max = 32  # maximum number of bisections used
+rel_acc = 1e-4  # relative accuracy target  # TODO decrease to 1e-5
+# should the bessel functions be calculated with boost instead of GSL,
+# higher accuracy at high Bessel orders
+boost_bessel = True
+verbose = False  # should the code talk to you?
 
 
 zbins = 3
@@ -539,9 +735,11 @@ n_theta_edges = 21
 n_probes = 4
 df_chunk_size = 50000
 cov_list_name = 'covariance_list_3x2_rcf'
+cov_hs_list_name = 'covariance_list_3x2_cl'
 triu_tril = 'triu'
 row_col_major = 'row-major'  # unit: is gal/arcmin^2
 n_jobs = -1  # leave one thread free?
+n_jobs_lv = 8  # might cause memory issues if too high
 
 n_eff_lens = np.array([0.6, 0.6, 0.6])
 n_eff_src = np.array([0.6, 0.6, 0.6])
@@ -559,8 +757,8 @@ n_probes_rs = 4  # real space
 n_probes_hs = 2  # harmonic space
 
 term = 'sva'
-_probe = 'gmxim'
-integration_method = 'simps'
+_probe = 'xipxip'
+integration_method = 'levin'
 
 mu_dict = {'gg': 0, 'gm': 2, 'xip': 0, 'xim': 4}
 
@@ -578,13 +776,15 @@ probe_idx_dict = {
     'ggxip': (1, 1, 0, 0),
 }
 
+# TODO Should I invert the indices for gg and gm?
+# TODO Is there a smarter mapping? probably not...
 probe_idx_dict_short = {
     'xip': 0,
     'xim': 1,
     'gg': 2,  # w
     'gm': 3,  # \gamma_t
-}  # TODO should I invert the indices for gg and gm? is
-# TODO there a smarter mapping? probably not...
+}
+
 
 probe_idx_dict_short_oc = {}
 for key in probe_idx_dict:
@@ -657,9 +857,9 @@ for probe in (_probe,):
     z_nz_sources = nz_sources[:, 0]
 
     wl_ker = [
-        ccl.WeakLensingTracer(
+        ccl.WeakLensingTracer(  # fmt: skip
             cosmo=cosmo, dndz=(nz_sources[:, 0], nz_sources[:, zi + 1]), ia_bias=None
-        )
+        )  # fmt: skip
         for zi in range(zbins)
     ]
     gc_ker = [
@@ -672,7 +872,7 @@ for probe in (_probe,):
         for zi in range(zbins)
     ]
 
-    # plot as a function of comoving distance (just because it's faster)
+    # plot as a function of comoving distance (just because it's quicker)
     # for zi in range(zbins):
     #     plt.plot(gc_ker[zi].get_kernel()[1][0], gc_ker[zi].get_kernel()[0][0])
     # for zi in range(zbins):
@@ -711,102 +911,22 @@ for probe in (_probe,):
     zpairs_ab = zpairs_auto if probe_a_ix == probe_b_ix else zpairs_cross
     zpairs_cd = zpairs_auto if probe_c_ix == probe_d_ix else zpairs_cross
 
-    # jsut a check
+    # jsut a sanity check
     assert zpairs_ab == ind_ab.shape[0], 'zpairs-ind inconsistency'
     assert zpairs_cd == ind_cd.shape[0], 'zpairs-ind inconsistency'
 
     # Compute covariance:
-    cov_sb_sva_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
-    cov_sb_sn_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
-    cov_sb_mix_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
-    cov_sb_g_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
-    cov_sb_g_vec_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
-    cov_sb_gfromsva_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
+    cov_sva_sb_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
+    cov_sn_sb_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
+    cov_mix_sb_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
+    cov_g_sb_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
+    cov_g_vec_sb_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
+    cov_gfromsva_sb_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
 
-    # ! LEVIN LEVIN LEVINx_length = 100
+    # ! LEVIN SVA, to be tidied up
     import pylevin as levin
-    from scipy import integrate
 
-    ell1_ix = 0
-    zij = 0
-    zkl = 0
-    theta_1_ix = 0
-    theta_2_ix = 0
-    theta_1_l = theta_edges[theta_1_ix]
-    theta_1_u = theta_edges[theta_1_ix + 1]
-    theta_2_l = theta_edges[theta_2_ix]
-    theta_2_u = theta_edges[theta_2_ix + 1]
-
-    zi, zj = ind_ab[zij, :]
-    zk, zl = ind_cd[zkl, :]
-    c_ik = cl_5d[probe_a_ix, probe_c_ix, :, zi, zk]
-    c_jl = cl_5d[probe_b_ix, probe_d_ix, :, zj, zl]
-    c_il = cl_5d[probe_a_ix, probe_d_ix, :, zi, zl]
-    c_jk = cl_5d[probe_b_ix, probe_c_ix, :, zj, zk]
-
-    integrand = ell_values * (c_ik * c_jl + c_il * c_jk)
-    integrand /= 2.0 * np.pi * Amax
-    integrand = integrand[:, None]
-    # integrand = cov_ell[*probe_idx_dict[probe], ell1_ix, ...]  # TODO
-
-    t0 = time.time()
-
-    # integrand shape must be (len(x), N). N is the number of integrals (2)
-    # x_length = 100
-    # x = np.geomspace(1e-5, 100, x_length)  # define support
-    x_length = nbl
-    x = ell_values
-
-    N = 1
-    f_of_x = integrand
-
-    integral_type = 1  # single cilyndrical bessel
-    N_thread = 8  # Number of threads used for hyperthreading
-    logx = True  # Tells the code to create a logarithmic spline in x for f(x)  # TODO
-    logy = True  # Tells the code to create a logarithmic spline in y for y = f(x)  # TODO
-    # Constructor of the class
-    lp_single = levin.pylevin(
-        type=integral_type,
-        x=ell_values,
-        integrand=integrand,
-        logx=logx,
-        logy=logy,
-        nthread=N_thread,
-    )
-
-    # accuracy settings
-    n_sub = 10  # number of collocation points in each bisection
-    n_bisec_max = 32  # maximum number of bisections used
-    rel_acc = 1e-4  # relative accuracy target
-    # should the bessel functions be calculated with boost instead of GSL,
-    # higher accuracy at high Bessel orders
-    boost_bessel = True
-    verbose = False  # should the code talk to you?
-
-    lp_single.set_levin(
-        n_col_in=n_sub,
-        maximum_number_bisections_in=n_bisec_max,
-        relative_accuracy_in=rel_acc,
-        super_accurate=boost_bessel,
-        verbose=verbose,
-    )
-
-    diagonal = False
-    M = nbt  # number of arguments at which the integrals are evaluated
-    result_levin = np.zeros((M, N))  # allocate the result
-
-    t0 = time.time()
-    lp_single.levin_integrate_bessel_single(
-        x_min=ell_values[0] * np.ones(nbt),
-        x_max=ell_values[-1] * np.ones(nbt),
-        k=theta_centers,
-        ell=(nu * np.ones(nbt)).astype(int),  # !mu or nu, careful
-        diagonal=diagonal,
-        result=result_levin,
-    )
-    print('Levin took', time.time() - t0, 's')
-
-    if term == 'sva':
+    if term == 'sva' and integration_method == 'simps':
         print('Computing real-space Gaussian SVA covariance...')
         start = time.time()
 
@@ -833,9 +953,198 @@ for probe in (_probe,):
         )  # fmt: skip
 
         for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
-            cov_sb_sva_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
+            cov_sva_sb_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
 
         print(f'... Done in: {(time.time() - start):.2f} s')
+
+    elif term == 'sva' and integration_method == 'levin':
+        a = np.einsum(
+            'Lik,Mjl->LMijkl',
+            cl_5d[probe_a_ix, probe_c_ix],
+            cl_5d[probe_b_ix, probe_d_ix],
+        )
+        b = np.einsum(
+            'Lil,Mjk->LMijkl',
+            cl_5d[probe_a_ix, probe_d_ix],
+            cl_5d[probe_b_ix, probe_c_ix],
+        )
+        integrand = a + b
+        integrand = np.diagonal(integrand, axis1=0, axis2=1).transpose(4, 0, 1, 2, 3)
+        integrand = integrand.reshape(nbl, -1)
+
+        integrand = integrand * ell_values[:, None]
+        integrand /= 2.0 * np.pi * Amax
+
+        # Constructor of the class
+        lp = levin.pylevin(
+            type=3,
+            x=ell_values,
+            integrand=integrand,
+            logx=logx,
+            logy=logy,
+            nthread=n_jobs_lv,
+            diagonal=False,
+        )
+
+        lp.set_levin(
+            n_col_in=n_sub,
+            maximum_number_bisections_in=n_bisec_max,
+            relative_accuracy_in=rel_acc,
+            super_accurate=boost_bessel,
+            verbose=verbose,
+        )
+
+        M = nbt**2  # number of arguments at which the integrals are evaluated
+        N = integrand.shape[-1]
+        result_levin = np.zeros((M, N))  # allocate the result
+        # result_levin = np.zeros(N,)  # allocate the result
+        
+        t0 = time.time()
+        lp.levin_integrate_bessel_double(
+            x_min=ell_values[0] * np.ones(nbt),
+            x_max=ell_values[-1] * np.ones(nbt),
+            k_1=theta_centers,
+            k_2=theta_centers,
+            ell_1=(mu * np.ones(nbt)).astype(int),  # !mu or nu, careful
+            ell_2=(nu * np.ones(nbt)).astype(int),  # !mu or nu, careful
+            result=result_levin,
+        )
+
+        cov_sva_sb_6d = result_levin.reshape(nbt, nbt, zbins, zbins, zbins, zbins)
+
+        print('Levin took', time.time() - t0, 's')
+
+
+
+
+def sigma2_b_levin_batched(
+    z_grid: np.ndarray,
+    k_grid: np.ndarray,
+    cosmo_ccl: ccl.Cosmology,
+    which_sigma2_b: str,
+    ell_mask: np.ndarray,
+    cl_mask: np.ndarray,
+    fsky_mask: float,
+    n_jobs: int,
+    batch_size: int,
+) -> np.ndarray:
+    """
+    Compute sigma2_b using the Levin integration method. The computation leverages the
+    symmetry in z1, z2 to reduce the number of integrals
+    (only the upper triangle of the z1, z2 matrix is actually computed).
+
+    Parameters
+    ----------
+    z_grid : np.ndarray
+        Array of redshifts.
+    k_grid : np.ndarray
+        Array of wavenumbers [1/Mpc].
+    cosmo_ccl : ccl.Cosmology
+        Cosmological parameters.
+    which_sigma2_b : str
+        Type of sigma2_b to compute.
+    ell_mask : np.ndarray
+        Array of multipoles at which the mask is evaluated.
+    cl_mask : np.ndarray
+        Array containing the angular power spectrum of the mask.
+    fsky_mask : float
+        Fraction of sky covered by the mask.
+    n_jobs : int
+        Number of threads to use for the computation in parallel.
+    batch_size : int, optional
+        Batch size for the computation. Default is 100_000.
+
+    Returns
+    -------
+    np.ndarray
+        2D array of sigma2_b values, of shape (len(z_grid), len(z_grid)).
+    """
+
+    import pylevin as levin
+
+    a_arr = cosmo_lib.z_to_a(z_grid)
+    r_arr = ccl.comoving_radial_distance(cosmo_ccl, a_arr)
+    growth_factor_arr = ccl.growth_factor(cosmo_ccl, a_arr)
+    plin = ccl.linear_matter_power(cosmo_ccl, k=k_grid, a=1.0)
+
+    integral_type = 2  # double spherical
+    N_thread = n_jobs  # Number of threads used for hyperthreading
+
+    zsteps = len(r_arr)
+    triu_ix = np.triu_indices(zsteps)
+    n_upper = len(triu_ix[0])  # number of unique integrals to compute
+
+    result_flat = np.zeros(n_upper)
+
+    for i in tqdm(range(0, n_upper, batch_size), desc='Batches'):
+        batch_indices = slice(i, i + batch_size)
+        r1_batch = r_arr[triu_ix[0][batch_indices]]
+        r2_batch = r_arr[triu_ix[1][batch_indices]]
+        integrand_batch = (
+            k_grid[:, None] ** 2
+            * plin[:, None]
+            * growth_factor_arr[None, triu_ix[0][batch_indices]]
+            * growth_factor_arr[None, triu_ix[1][batch_indices]]
+        )
+
+        lp = levin.pylevin(
+            integral_type, k_grid, integrand_batch, logx, logy, N_thread, True
+        )
+        lp.set_levin(n_sub, n_bisec_max, rel_acc, boost_bessel, verbose)
+
+        lower_limit = k_grid[0] * np.ones(len(r1_batch))
+        upper_limit = k_grid[-1] * np.ones(len(r1_batch))
+        ell = np.zeros(len(r1_batch), dtype=int)
+
+        lp.levin_integrate_bessel_double(
+            lower_limit,
+            upper_limit,
+            r1_batch,
+            r2_batch,
+            ell,
+            ell,
+            result_flat[batch_indices],
+        )        
+
+    # Assemble symmetric result matrix
+    result_matrix = np.zeros((zsteps, zsteps))
+    result_matrix[triu_ix] = result_flat
+    result_matrix = result_matrix + result_matrix.T - np.diag(np.diag(result_matrix))
+
+    if which_sigma2_b == 'full_curved_sky':
+        result = 1 / (2 * np.pi**2) * result_matrix
+
+    elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
+        partial_summand = (2 * ell_mask + 1) * cl_mask * 2 / np.pi
+        partial_summand = result_matrix[:, :, None] * partial_summand[None, None, :]
+        result = np.sum(partial_summand, axis=-1)
+        one_over_omega_s_squared = 1 / (4 * np.pi * fsky_mask) ** 2
+        result *= one_over_omega_s_squared
+    else:
+        raise ValueError(
+            'which_sigma2_b must be either "full_curved_sky" or '
+            '"polar_cap_on_the_fly" or "from_input_mask"'
+        )
+
+    return result
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     elif term == 'sn':
         print('Computing real-space Gaussian SN covariance...')
@@ -859,7 +1168,7 @@ for probe in (_probe,):
         delta_theta = np.eye(nbt)
         t_arr = t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i)
 
-        cov_sb_sn_6d = (
+        cov_sn_sb_6d = (
             delta_theta[:, :, None, None, None, None]
             * (
                 get_delta_tomo(probe_a_ix, probe_c_ix)[None, None, :, None, :, None]
@@ -899,7 +1208,7 @@ for probe in (_probe,):
         )  # fmt: skip
 
         for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
-            cov_sb_mix_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
+            cov_mix_sb_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
         print(f'... Done in: {(time.time() - start):.2f} s')
 
     elif term == 'gauss_ell':
@@ -948,11 +1257,12 @@ for probe in (_probe,):
         cov_ell_diag = cov_ell_diag[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
 
         # remove ell-dep prefactor from Gaussian cov
-        cov_ell_diag *= (2 * ell_values + 1)[:, None, None, None, None]
-        for ell1_ix, ell1 in enumerate(ell_values):
-            cov_ell[ell1_ix, ell1_ix, ...] *= 2 * ell1 + 1
+        # cov_ell_diag *= (2 * ell_values + 1)[:, None, None, None, None]
+        # for ell1_ix, ell1 in enumerate(ell_values):
+        #     cov_ell[ell1_ix, ell1_ix, ...] *= 2 * ell1 + 1
 
         # TODO use just one helper function, except for project_ellspace_cov_vec_helper
+        """
         kwargs = {
             'func': project_ellspace_cov,
             'Amax': Amax,
@@ -985,6 +1295,8 @@ for probe in (_probe,):
 
         for theta_1, theta_2, cov_value in results:
             cov_sb_g_vec_6d[theta_1, theta_2, :, :, :, :] = cov_value
+    
+        """
 
         # results = Parallel(n_jobs=n_jobs)(
         #     delayed(cov_g_sva_real_helper)(
@@ -1007,10 +1319,63 @@ for probe in (_probe,):
         #     for zl in range(zbins)
         # )
 
-        for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
-            cov_sb_gfromsva_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
+        # for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
+        #     cov_sb_gfromsva_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
 
-        print(f'... Done in: {(time.time() - start):.2f} s')
+        # result_levin = np.zeros((nbt, nbt, zbins**4))
+        # partial_integral = np.zeros((nbl, nbt, zbins**4))
+
+        # n_jobs = 1
+        # for ell1_ix, _ in enumerate(ell_values):
+        #     cov_ell_2d = cov_ell[ell1_ix, ...].reshape(nbl, -1)
+        #      # integrate in ell2
+        #     partial_integral[ell1_ix, ...] = integrate_cov_levin(cov_ell_2d, nu, ell_values, n_jobs)
+        #     integral = integrate_cov_levin(partial_integral[ell1_ix, ...], mu, ell_values, n_jobs)
+
+    elif term == 'ssc':
+        covs_oc_path = (
+            '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests/realspace_test'
+        )
+        warnings.warn('HS covs loaded from file', stacklevel=2)
+        # get OC SSC in ell space
+        # covs_oc_hs = oc_cov_list_to_array(f'{covs_path}/{cov_hs_list_name}.dat')
+        # (
+        #     cov_sva_oc_3x2pt_10D,
+        #     cov_mix_oc_3x2pt_10D,
+        #     cov_sn_oc_3x2pt_10D,
+        #     cov_g_oc_3x2pt_10D,
+        #     cov_ssc_oc_3x2pt_10D,
+        # ) = covs_oc_hs
+
+        # np.savez(
+        #     f'{covs_path}/covs_oc_10D.npz',
+        #     cov_sva_oc_3x2pt_10D=cov_sva_oc_3x2pt_10D,
+        #     cov_mix_oc_3x2pt_10D=cov_mix_oc_3x2pt_10D,
+        #     cov_sn_oc_3x2pt_10D=cov_sn_oc_3x2pt_10D,
+        #     cov_g_oc_3x2pt_10D=cov_g_oc_3x2pt_10D,
+        #     cov_ssc_oc_3x2pt_10D=cov_ssc_oc_3x2pt_10D,
+        # )
+
+        covs_oc_hs_npz = np.load(f'{covs_oc_path}/covs_oc_10D.npz')
+        cov_sva_oc_3x2pt_10D = covs_oc_hs_npz['cov_sva_oc_3x2pt_10D']
+        cov_mix_oc_3x2pt_10D = covs_oc_hs_npz['cov_mix_oc_3x2pt_10D']
+        cov_sn_oc_3x2pt_10D = covs_oc_hs_npz['cov_sn_oc_3x2pt_10D']
+        cov_g_oc_3x2pt_10D = covs_oc_hs_npz['cov_g_oc_3x2pt_10D']
+        cov_ssc_oc_3x2pt_10D = covs_oc_hs_npz['cov_ssc_oc_3x2pt_10D']
+
+        # project it to real space using Levin
+        cov_ssc_oc_hs_6d = cov_ssc_oc_3x2pt_10D[
+            probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...
+        ]
+
+        cov_ssc_sb_6d = integrate_double_bessel(
+            cov_hs=cov_ssc_oc_hs_6d,
+            mu=mu,
+            nu=nu,
+            ells=ell_values,
+            thetas=theta_centers,
+            n_jobs=n_jobs_lv,
+        )
 
     # ! ======================================= ONECOVARIANCE ==========================
     oc_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests/realspace_test'
@@ -1031,26 +1396,19 @@ for probe in (_probe,):
     )
     column_names = header_list
 
-    # ell values actually used in OC; save in self to be able to compare to the SB ell
-    # values
-    # note use delim_whitespace=True instead of sep='\s+' if this gives
-    # compatibility issues
-    thetas_oc_load = pd.read_csv(
-        f'{oc_path}/{cov_list_name}.dat', usecols=['theta1'], sep='\s+'
-    )['theta1'].unique()
+    data = pd.read_csv(
+        f'{oc_path}/{cov_list_name}.dat', usecols=['theta1', 'tomoi'], sep='\s+'
+    )
+
+    thetas_oc_load = data['theta1'].unique()
     thetas_oc_load_rad = np.deg2rad(thetas_oc_load / 60)
-
-    # check if the saved ells are within 1% of the required ones; I think the saved
-    # values are truncated to only 2 decimals, so this is a rough comparison
-    # (rtol is 1%)
-    # try:
-    #     np.testing.assert_allclose(
-    # theta_centers*60, thetas_oc_load, atol=0, rtol=1e-2)
-    # except AssertionError as err:
-    #     print('ell values computed vs loaded for OC are not the same')
-    #     print(err)
-
     cov_theta_indices = {ell_out: idx for idx, ell_out in enumerate(thetas_oc_load)}
+
+    # SB tomographic indices start from 0
+    tomoi_oc_load = data['tomoi'].unique()
+    subtract_one = False
+    if min(tomoi_oc_load) == 1:
+        subtract_one = True
 
     # ! import .list covariance file
     shape = (n_probes_rs, n_probes_rs, nbt, nbt, zbins, zbins, zbins, zbins)
@@ -1080,10 +1438,9 @@ for probe in (_probe,):
         theta2_idx = df_chunk['theta2'].map(cov_theta_indices).values
 
         # Compute z indices
-        if np.min(df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values) == 1:
+        if subtract_one:
             z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].sub(1).values
         else:
-            warnings.warn('tomo indices seem to start from 0...', stacklevel=2)
             z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values
 
         # Vectorized assignment to the arrays
@@ -1114,28 +1471,34 @@ for probe in (_probe,):
     ]
 
     # for cov_8d in covs_8d:
-    #     cov_8d[0, 0, 1, 1] = deepcopy(np.transpose(cov_8d[1, 1, 0, 0],
-    # (1, 0, 4, 5, 2, 3)))
-    #     cov_8d[1, 0, 0, 0] = deepcopy(np.transpose(cov_8d[0, 0, 1, 0],
-    # (1, 0, 4, 5, 2, 3)))
-    #     cov_8d[1, 0, 1, 1] = deepcopy(np.transpose(cov_8d[1, 1, 1, 0],
-    # (1, 0, 4, 5, 2, 3)))
+    #     cov_8d[0, 0, 1, 1] = deepcopy(
+    #         np.transpose(cov_8d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3))
+    #     )
+    #     cov_8d[1, 0, 0, 0] = deepcopy(
+    #         np.transpose(cov_8d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3))
+    #     )
+    #     cov_8d[1, 0, 1, 1] = deepcopy(
+    #         np.transpose(cov_8d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3))
+    #     )
 
     # ! ================================================================================
 
     if term == 'sva':
         cov_oc_6d = cov_sva_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
-        cov_sb_6d = cov_sb_sva_6d
+        cov_sb_6d = cov_sva_sb_6d
     elif term == 'sn':
         cov_oc_6d = cov_sn_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
-        cov_sb_6d = cov_sb_sn_6d
+        cov_sb_6d = cov_sn_sb_6d
     elif term == 'mix':
         cov_oc_6d = cov_mix_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
-        cov_sb_6d = cov_sb_mix_6d
+        cov_sb_6d = cov_mix_sb_6d
     elif term == 'gauss_ell':
         cov_oc_6d = cov_g_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
-        cov_sb_6d = cov_sb_g_6d
-        cov_sb_vec_6d = cov_sb_g_vec_6d
+        cov_sb_6d = cov_g_sb_6d
+        cov_sb_vec_6d = cov_g_vec_sb_6d
+    elif term == 'ssc':
+        cov_oc_6d = cov_ssc_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+        cov_sb_6d = cov_ssc_sb_6d
 
     # for probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix in itertools.product(
     #     range(n_probes), repeat=4
@@ -1214,7 +1577,7 @@ for probe in (_probe,):
                 #  'OC_SUM': np.abs(np.diag(cov_oc_sum_2d)),
             },
             logscale_y=[True, False],
-            #  ylim_diff=[-20, 20],
+            ylim_diff=[-110, 110],
             title=f'{term}, {probe}, total cov diag',
         )
         # plt.savefig(f'{term}_{probe}_total_cov_diag.png')
@@ -1230,6 +1593,21 @@ for probe in (_probe,):
         },
         logscale_y=[True, False],
         title=f'{term}, {probe}, total cov flat',
+        ylim_diff=[-110, 110],
+    )
+
+    zi, zj, zk, zl = 0, 0, 0, 0
+    theta_2_ix = 17
+    sl.compare_funcs(
+        None,
+        {
+            'OC': np.abs(cov_oc_6d[:, theta_2_ix, zi, zj, zk, zl]),
+            'SB': np.abs(cov_sb_6d[:, theta_2_ix, zi, zj, zk, zl]),
+            #  'SB_VEC': np.abs(cov_sb_vec_2d.flatten()),
+            #  'SB_fromsva': np.abs(cov_sb_gfromsva_2d.flatten()),
+        },
+        logscale_y=[False, False],
+        title=f'{term}, {probe}, cov_6d[:, 0, 0, 0, 0, 0]',
         ylim_diff=[-110, 110],
     )
     # plt.savefig(f'{term}_{probe}_total_cov_flat.png')

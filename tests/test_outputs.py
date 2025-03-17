@@ -76,7 +76,7 @@ bench_names = [os.path.basename(file) for file in bench_names]
 bench_names = [bench_name.replace('.npz', '') for bench_name in bench_names]
 # ... or run specific tests
 bench_names = [
-    'output_GSpaceborne_SSCNone_cNGNone_KETrue_resphalo_model_b1gfrom_input_ruff',
+    'output_GSpaceborne_SSCSpaceborne_cNGNone_KEFalse_resphalo_model_b1gfrom_input_deleteBNT',
 ]
 
 main_script_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/main.py'
@@ -85,6 +85,9 @@ temp_output_filename = (
 )
 temp_output_folder = os.path.dirname(temp_output_filename)
 excluded_keys = ['backup_cfg', 'metadata']
+
+# set the working directory to the main script path
+%cd main_script_path.rstrip('/main.py')
 
 if os.path.exists(f'{temp_output_filename}.npz'):
     print(

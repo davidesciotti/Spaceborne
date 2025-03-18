@@ -770,8 +770,8 @@ ell_max = 100_000
 nbl = 500
 theta_min_arcmin = 50
 theta_max_arcmin = 300
-n_theta_edges = 21
-# n_theta_edges_coarse = 1
+n_theta_edges = 51
+n_theta_edges_coarse = 21
 df_chunk_size = 50000
 cov_list_name = 'covariance_list_3x2_rcf'
 cov_hs_list_name = 'covariance_list_3x2_cl'
@@ -779,6 +779,14 @@ triu_tril = 'triu'
 row_col_major = 'row-major'  # unit: is gal/arcmin^2
 n_jobs = -1  # leave one thread free?
 n_jobs_lv = 8  # might cause memory issues if too high
+
+theta_edges_coarse = np.linspace(
+    theta_min_arcmin / 60, theta_max_arcmin / 60, n_theta_edges_coarse
+)
+theta_edges_coarse = np.deg2rad(theta_edges_coarse)
+theta_centers_coarse = (theta_edges_coarse[:-1] + theta_edges_coarse[1:]) / 2.0
+nbt_coarse = len(theta_centers_coarse)  # nbt = number theta bins
+
 
 n_eff_lens = np.array([0.6, 0.6, 0.6])
 n_eff_src = np.array([0.6, 0.6, 0.6])
@@ -795,12 +803,12 @@ munu_vals = (0, 2, 4)
 n_probes_rs = 4  # real space
 n_probes_hs = 2  # harmonic space
 cov_sb_8d = np.zeros((n_probes_rs, n_probes_rs,  # fmt: skip
-                       n_theta_edges-1, n_theta_edges-1,  # fmt: skip
+                       n_theta_edges_coarse-1, n_theta_edges_coarse-1,  # fmt: skip
                        zbins, zbins, zbins, zbins))  # fmt: skip
 
 term = 'mix'
-_probe = 'xipxip'
-integration_method = 'levin'
+_probe = 'xipxim'
+integration_method = 'simps'
 
 mu_dict = {'gg': 0, 'gm': 2, 'xip': 0, 'xim': 4}
 
@@ -818,14 +826,7 @@ probe_idx_dict = {
     'ggxip': (1, 1, 0, 0),
 }
 
-# TODO Should I invert the indices for gg and gm?
-# TODO Is there a smarter mapping? probably not...
-# probe_idx_dict_short = {
-#     'xip': 0,
-#     'xim': 1,
-#     'gg': 2,  # w
-#     'gm': 3,  # \gamma_t
-# }
+
 probe_idx_dict_short = {
     'gg': 0,  # w
     'gm': 1,  # \gamma_t
@@ -969,7 +970,6 @@ for probe in (_probe,):
     cov_sn_sb_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
     cov_mix_sb_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
     cov_g_sb_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
-    cov_g_vec_sb_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
     cov_gfromsva_sb_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
 
     # ! LEVIN SVA, to be tidied up
@@ -1346,7 +1346,8 @@ for probe in (_probe,):
 
     thetas_oc_load = data['theta1'].unique()
     thetas_oc_load_rad = np.deg2rad(thetas_oc_load / 60)
-    cov_theta_indices = {ell_out: idx for idx, ell_out in enumerate(thetas_oc_load)}
+    cov_theta_indices = {theta_out: idx for idx, theta_out in enumerate(thetas_oc_load)}
+    nbt_oc = len(thetas_oc_load)
 
     # sl.compare_funcs(
     #     None,
@@ -1362,7 +1363,7 @@ for probe in (_probe,):
         subtract_one = True
 
     # ! import .list covariance file
-    shape = (n_probes_rs, n_probes_rs, nbt, nbt, zbins, zbins, zbins, zbins)
+    shape = (n_probes_rs, n_probes_rs, nbt_oc, nbt_oc, zbins, zbins, zbins, zbins)
     cov_g_oc_3x2pt_8D = np.zeros(shape)
     cov_sva_oc_3x2pt_8D = np.zeros(shape)
     cov_mix_oc_3x2pt_8D = np.zeros(shape)
@@ -1446,7 +1447,6 @@ for probe in (_probe,):
     elif term == 'gauss_ell':
         cov_oc_6d = cov_g_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
         cov_sb_6d = cov_g_sb_6d
-        cov_sb_vec_6d = cov_g_vec_sb_6d
     elif term == 'ssc':
         cov_oc_6d = cov_ssc_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
         cov_sb_6d = cov_ssc_sb_6d
@@ -1468,20 +1468,36 @@ for probe in (_probe,):
     #             f'block {probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix}  cov_oc_6d is not zero'
     #         )
 
-    if np.allclose(cov_sb_6d, 0, atol=1e-20, rtol=1e-10):
-        print('cov_sb_6d is zero')
+    # ! bin sb cov 2d
+    if nbt_coarse != nbt:
+        cov_sb_6d_binned = np.zeros(
+            (nbt_coarse, nbt_coarse, zbins, zbins, zbins, zbins)
+        )
+        for zi in range(zbins):
+            for zj in range(zbins):
+                for zk in range(zbins):
+                    for zl in range(zbins):
+                        cov_sb_6d_binned[:, :, zi, zj, zk, zl] = sl.bin_2d_matrix(
+                            cov_sb_6d[:, :, zi, zj, zk, zl],
+                            theta_centers,
+                            theta_centers_coarse,
+                            theta_edges_coarse,
+                            weights_in=None,
+                        )
 
-    cov_sb_8d[twoprobe_a_ix, twoprobe_b_ix, ...] = cov_sb_6d
+        cov_sb_6d = cov_sb_6d_binned
+        cov_sb_8d[twoprobe_a_ix, twoprobe_b_ix, ...] = cov_sb_6d
 
     # cov_oc_4d = sl.cov_6D_to_4D(cov_oc_6d, theta_bins, zpairs_cross, ind_cross)
     # cov_sb_4d = sl.cov_6D_to_4D(cov_sb_6d, theta_bins, zpairs_cross, ind_cross)
     zpairs_ab, zpairs_cd = zpairs_cross, zpairs_cross
     ind_ab, ind_cd = ind_cross, ind_cross
+
     cov_oc_4d = sl.cov_6D_to_4D_blocks(
-        cov_oc_6d, nbt, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+        cov_oc_6d, nbt_oc, zpairs_ab, zpairs_cd, ind_ab, ind_cd
     )
     cov_sb_4d = sl.cov_6D_to_4D_blocks(
-        cov_sb_6d, nbt, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+        cov_sb_6d, nbt_coarse, zpairs_ab, zpairs_cd, ind_ab, ind_cd
     )
     # cov_sb_vec_4d = sl.cov_6D_to_4D(cov_sb_vec_6d, theta_bins, zpairs_auto, ind_auto)
     # cov_sb_gfromsva_4d = sl.cov_6D_to_4D(cov_sb_gfromsva_6d,
@@ -1502,22 +1518,6 @@ for probe in (_probe,):
         plot_diff_threshold=10,
         plot_diff_hist=False,
     )
-    # plt.savefig(f'{term}_{probe}_total_covs.png')
-
-    # sl.compare_arrays(cov_sb_2d, cov_sb_vec_2d,
-    #                   'cov_sb_2d', 'cov_sb_vec_6d',
-    #                   abs_val=True, plot_diff_threshold=10,
-    #                   plot_diff_hist=False)
-    # sl.compare_arrays(cov_sb_vec_2d, cov_oc_2d,
-    #                   'cov_sb_vec_2d', 'cov_oc_2d',
-    #                   abs_val=True, plot_diff_threshold=10,
-    #                   plot_diff_hist=False)
-
-    zi, zj, zk, zl = 0, 0, 0, 0
-
-    cov_oc_spline = CubicSpline(
-        thetas_oc_load_rad, np.diag(cov_oc_6d[:, :, zi, zj, zk, zl])
-    )
 
     # compare total diag
     if cov_oc_2d.shape[0] == cov_oc_2d.shape[1]:
@@ -1526,7 +1526,6 @@ for probe in (_probe,):
             {
                 'OC': np.abs(np.diag(cov_oc_2d)),
                 'SB': np.abs(np.diag(cov_sb_2d)),
-                #  'SB_VEC': np.abs(np.diag(cov_sb_vec_2d)),
                 #  'SB_split_sum': np.abs(np.diag(cov_sb_vec_2d)),  # TODO
                 #  'SB_fromsva': np.abs(np.diag(cov_sb_gfromsva_2d)),
                 #  'OC_SUM': np.abs(np.diag(cov_oc_sum_2d)),
@@ -1562,7 +1561,7 @@ for probe in (_probe,):
             #  'SB_fromsva': np.abs(cov_sb_gfromsva_2d.flatten()),
         },
         logscale_y=[False, False],
-        title=f'{term}, {probe}, {integration_method}, cov_6d[:, 0, 0, 0, 0, 0]',
+        title=f'{term}, {probe}, {integration_method}, cov_6d[:, {zi, zj, zk, zl}]',
         ylim_diff=[-110, 110],
     )
     # plt.savefig(f'{term}_{probe}_total_cov_flat.png')
@@ -1607,7 +1606,7 @@ for probe in probe_idx_dict:
 
     cov_sb_4d = sl.cov_6D_to_4D_blocks(
         cov_sb_8d[twoprobe_ab_ix, twoprobe_cd_ix],
-        nbt,
+        nbt_coarse,
         zpairs_ab,
         zpairs_cd,
         ind_ab,

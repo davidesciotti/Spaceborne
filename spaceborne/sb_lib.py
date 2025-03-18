@@ -220,7 +220,7 @@ def j2(x):
 
 
 
-def import_cls(cl_tab_in: np.ndarray):
+def import_cl_tab(cl_tab_in: np.ndarray):
 
     assert cl_tab_in.shape[1] == 4, 'input cls should have 4 columns'
     assert np.min(cl_tab_in[:, 1]) == 0, 'tomographic redshift indices should start from 0'

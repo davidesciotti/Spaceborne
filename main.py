@@ -12,7 +12,8 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
-from scipy.interpolate import RectBivariateSpline
+from scipy.interpolate import RectBivariateSpline, CubicSpline
+
 from spaceborne import (
     bnt,
     cl_utils,
@@ -689,6 +690,46 @@ if not np.all(mult_shear_bias == 0):
             for zj in range(zbins):
                 ccl_obj.cl_gl_3d[ell_idx, zi, zj] *= 1 + mult_shear_bias[zj]
 
+
+if cfg['C_ell']['use_input_cls']:
+    print('Using input Cls')
+    cl_ll_tab = np.genfromtxt(cfg['C_ell']['cl_LL_path'])
+    cl_gl_tab = np.genfromtxt(cfg['C_ell']['cl_GL_path'])
+    cl_gg_tab = np.genfromtxt(cfg['C_ell']['cl_GG_path'])
+
+    ells_WL, cl_ll_3d = sl.import_cl_tab(cl_ll_tab)
+    ells_XC, cl_gl_3d = sl.import_cl_tab(cl_gl_tab)
+    ells_GC, cl_gg_3d = sl.import_cl_tab(cl_gg_tab)
+
+    if not np.allclose(ells_WL, ell_dict['ell_WL'], atol=0, rtol=1e-5):
+        cl_ll_3d_spline = CubicSpline(ells_WL, cl_ll_3d, axis=0)
+        cl_ll_3d = cl_ll_3d_spline(ell_dict['ell_WL'])
+
+    if not np.allclose(ells_XC, ell_dict['ell_XC'], atol=0, rtol=1e-5):
+        cl_gl_3d_spline = CubicSpline(ells_WL, cl_gl_3d, axis=0)
+        cl_gl_3d = cl_gl_3d_spline(ell_dict['ell_XC'])
+
+    if not np.allclose(ells_GC, ell_dict['ell_GC'], atol=0, rtol=1e-5):
+        cl_gg_3d_spline = CubicSpline(ells_WL, cl_gg_3d, axis=0)
+        cl_gg_3d = cl_gg_3d_spline(ell_dict['ell_GC'])
+        
+    fig, ax = plt.subplots(1, 3)
+    plt.tight_layout()
+    for zi in range(zbins):
+        zj = zi
+        ax[0].loglog(ell_dict['ell_WL'], ccl_obj.cl_ll_3d[:, zi, zj], c=clr[zi])
+        ax[0].loglog(ells_WL, cl_ll_3d[:, zi, zj], c=clr[zi])
+        ax[1].loglog(ell_dict['ell_XC'], ccl_obj.cl_gl_3d[:, zi, zj], c=clr[zi])
+        ax[2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], c=clr[zi])
+    ax[0].set_xlabel('$\\ell$')
+    ax[1].set_xlabel('$\\ell$')
+    ax[2].set_xlabel('$\\ell$')
+    ax[0].set_ylabel('$C_{\\ell}$')
+    plt.show()
+    
+    ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d = cl_ll_3d, cl_gl_3d, cl_gg_3d 
+
+
 ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_3x2pt, zbins, zbins))
 ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[:nbl_3x2pt, :, :]
 ccl_obj.cl_3x2pt_5d[1, 0, :, :, :] = ccl_obj.cl_gl_3d[:nbl_3x2pt, :, :]
@@ -699,7 +740,6 @@ ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[:nbl_3x2pt, :, :]
 
 cl_ll_3d, cl_gl_3d, cl_gg_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d
 cl_3x2pt_5d = ccl_obj.cl_3x2pt_5d
-
 
 fig, ax = plt.subplots(1, 3)
 plt.tight_layout()

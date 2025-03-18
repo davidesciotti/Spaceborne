@@ -45,7 +45,7 @@ halo_model:
 
 C_ell:
 
-    use_input_cls: true  
+    use_input_cls: False  
     # Type: bool. Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
     # note: if the non-Gaussian covariance is requested, the code will compute intermediate quantities
     # such as the radial kernels for lensing and clustering. The user should make sure that the cosmology 

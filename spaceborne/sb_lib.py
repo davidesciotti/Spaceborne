@@ -69,6 +69,135 @@ mpl_other_dict = {
     'kmax_star_tex': '$k_{\\rm max}^\\star$',
 }
 
+
+# # Gaussian covariance binning
+# def bin_cov_gauss(cov, ell_values, theta_edges, fsky):
+#     binned_cov = np.zeros((len(theta_edges) - 1, len(theta_edges) - 1))
+#     for i in range(len(theta_edges) - 1):
+#         for j in range(len(theta_edges) - 1):
+#             ell_min_1, ell_max_1 = theta_edges[i], theta_edges[i + 1]
+#             ell_min_2, ell_max_2 = theta_edges[j], theta_edges[j + 1]
+#             overlapping_ells = np.intersect1d(
+#                 np.arange(ell_min_1, ell_max_1),
+#                 np.arange(ell_min_2, ell_max_2)
+#             )
+#             if len(overlapping_ells) == 0:
+#                 continue
+#             spline = UnivariateSpline(ell_values, np.diag(cov), k=1, s=0)
+#             binned_cov[i, j] = 1 / fsky / np.sum((2 * overlapping_ells + 1) / spline(overlapping_ells))
+#     return binned_cov
+
+# # Non-Gaussian covariance binning
+# def bin_cov_nongauss(cov, ell_values, theta_edges, area):
+#     binned_cov = np.zeros((len(theta_edges) - 1, len(theta_edges) - 1))
+#     spline = RegularGridInterpolator((ell_values, ell_values), np.log(cov), bounds_error=False, fill_value=None)
+#     for i in range(len(theta_edges) - 1):
+#         ell_min_1, ell_max_1 = theta_edges[i], theta_edges[i + 1]
+#         area1 = np.pi * (ell_max_1**2 - ell_min_1**2)
+#         ell_grid_1 = np.geomspace(ell_min_1, ell_max_1, 10)
+#         for j in range(len(theta_edges) - 1):
+#             ell_min_2, ell_max_2 = theta_edges[j], theta_edges[j + 1]
+#             area2 = np.pi * (ell_max_2**2 - ell_min_2**2)
+#             ell_grid_2 = np.geomspace(ell_min_2, ell_max_2, 10)
+#             ell1, ell2 = np.meshgrid(ell_grid_1, ell_grid_2, indexing='ij')
+#             result = simps(simps(np.exp(spline((ell1, ell2)) * ell1 * ell2, ell_grid_2), ell_grid_1))
+#             result /= (area1 * area2)
+#             result *= 4 * np.pi**2 / area
+#             binned_cov[i, j] = result
+#     return binned_cov
+    
+
+def bin_2d_matrix(cov, ells_in, ells_out, ells_out_edges, weights_in):
+    assert cov.shape[0] == cov.shape[1] == len(ells_in), (
+        'ells_in must be the same length as the covariance matrix'
+    )
+    assert len(ells_out) == len(ells_out_edges) - 1, (
+        'ells_out must be the same length as the number of edges - 1'
+    )
+
+    binned_cov = np.zeros((len(ells_out), len(ells_out)))
+    cov_interp_func = RectBivariateSpline(ells_in, ells_in, cov)
+
+    ells_edges_low = ells_out_edges[:-1]
+    ells_edges_high = ells_out_edges[1:]
+    
+    if weights_in is None:
+        weights_in = np.ones_like(ells_in)
+
+    # Loop over the output bins
+    for ell1_idx, _ in enumerate(ells_out):
+        for ell2_idx, _ in enumerate(ells_out):
+            # Get ell min/max for the current bins
+            ell1_min = ells_edges_low[ell1_idx]
+            ell1_max = ells_edges_high[ell1_idx]
+            ell2_min = ells_edges_low[ell2_idx]
+            ell2_max = ells_edges_high[ell2_idx]
+
+            # isolate the relevant ranges of ell values from the original ells_in grid
+            
+            ell1_in_ix = np.where((ell1_min <= ells_in) & (ells_in < ell1_max))[0]
+            ell2_in_ix = np.where((ell2_min <= ells_in) & (ells_in < ell2_max))[0]
+            # ell1_in = ells_in[ell1_in_ix]
+            # ell2_in = ells_in[ell2_in_ix]
+            
+            # mask the covariance to the relevant block
+            cov_masked = cov[np.ix_(ell1_in_ix, ell2_in_ix)]
+
+            # this equals the number of ell values within a bin in the unweighted case,
+            # and delta_ell in the unweighted, unbinned case
+            weights1_in = weights_in[ell1_in_ix]
+            weights2_in = weights_in[ell2_in_ix]
+
+
+            # Option 1a: use the original grid for integration and the ell values
+            # as weights
+            # ells1_in_xx, ells2_in_yy = np.meshgrid(ell1_in, ell2_in, indexing='ij')
+            # partial_integral = simps(y=cov_masked * ells1_in_xx * ells2_in_yy,
+            # x=ell2_in, axis=1)
+            # integral = simps(y=partial_integral, x=ell1_in)
+            # binned_cov[ell1_idx, ell2_idx] = integral / (
+            # np.sum(ell1_in) * np.sum(ell2_in)
+            # )
+
+            weights1_in_xx, weights2_in_yy = np.meshgrid(
+                weights1_in, weights2_in, indexing='ij'
+            )
+            partial_sum = np.sum(cov_masked * weights1_in_xx * weights2_in_yy, axis=1)
+            total_sum = np.sum(partial_sum, axis=0)
+            binned_cov[ell1_idx, ell2_idx] = total_sum / (
+                np.sum(weights1_in) * np.sum(weights2_in)
+            )
+            
+            # Option 1b: use the original grid for integration and no weights
+            # partial_integral = simps(y=cov_masked, x=ell2_in, axis=1)
+            # integral = simps(y=partial_integral, x=ell1_in)
+            # binned_cov[ell1_idx, ell2_idx] = integral / (n_ell1 * n_ell2)
+
+            # # Option 2: create fine grids for integration over the ell ranges
+            # (GIVES GOOD RESULTS ONLY FOR nsteps=delta_ell!)
+            # ell_fine_1 = np.linspace(ell1_min, ell1_max, 50)
+            # ell_fine_2 = np.linspace(ell2_min, ell2_max, 50)
+
+            # # Evaluate the spline on the fine grids
+            # ell1_fine_xx, ell2_fine_yy = np.meshgrid(
+            #     ell_fine_1, ell_fine_2, indexing='ij'
+            # )
+            # cov_interp_vals = cov_interp_func(ell_fine_1, ell_fine_2)
+
+            # # Perform simps integration over the ell ranges
+            # partial_integral = simps(
+            #     y=cov_interp_vals * ell1_fine_xx * ell2_fine_yy,
+            #     x=ell_fine_2,
+            #     axis=1,
+            # )
+            # integral = simps(y=partial_integral, x=ell_fine_1)
+            # # Normalize by the bin areas
+            # binned_cov[ell1_idx, ell2_idx] = integral / (
+            #     np.sum(ell_fine_1) * np.sum(ell_fine_2)
+            # )
+
+    return binned_cov
+
 def matshow_vcenter(matrix, vcenter=0):
     """Plots a matrix with a 0-centered, asymmetric colorbar."""
     from matplotlib.colors import TwoSlopeNorm
@@ -151,7 +280,7 @@ def nz_fits_to_txt(fits_filename):
 
 
 def compare_funcs(x, y: dict, logscale_y=[False, False], logscale_x=False,
-                  title=None, ylim_diff=None):
+                  title=None, ylim_diff=None, plt_kw={}):
 
     names = list(y.keys())
     y_tuple = list(y.values())
@@ -166,11 +295,11 @@ def compare_funcs(x, y: dict, logscale_y=[False, False], logscale_x=False,
     for i, y in enumerate(y_tuple):
         ls = '--' if i > 0 else '-'
         # alpha = 0.8 if i > 0 else 1
-        ax[0].plot(x, y, label=names[i], c=colors[i], ls=ls)
+        ax[0].plot(x, y, label=names[i], c=colors[i], ls=ls, **plt_kw)
     ax[0].legend()
 
     for i in range(1, len(y_tuple)):
-        ax[1].plot(x, percent_diff(y_tuple[i], y_tuple[0]), c=colors[i], ls='-')
+        ax[1].plot(x, percent_diff(y_tuple[i], y_tuple[0]), c=colors[i], ls='-', **plt_kw)
     ax[1].set_ylabel('A/B - 1 [%]')
     ax[1].axhspan(-10, 10, alpha=0.2, color='gray')
 

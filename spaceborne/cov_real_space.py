@@ -292,7 +292,7 @@ def cov_g_mix_real(   # fmt: skip
     prefac_3 = get_prefac(probe_a_ix, probe_d_ix, zi, zl)
     prefac_4 = get_prefac(probe_b_ix, probe_c_ix, zj, zk)
 
-    if integration_method in ['simps', 'fft']:
+    if integration_method == 'simps':
         # as done in the SVA function
         integrand_1 = integrand_func(
             ell_values, cl_5d[probe_a_ix, probe_c_ix, :, zi, zk]
@@ -307,11 +307,10 @@ def cov_g_mix_real(   # fmt: skip
             ell_values, cl_5d[probe_b_ix, probe_c_ix, :, zj, zk]
         )
 
-        if integration_method == 'simps':
-            integral_1 = simps(y=integrand_1, x=ell_values)
-            integral_2 = simps(y=integrand_2, x=ell_values)
-            integral_3 = simps(y=integrand_3, x=ell_values)
-            integral_4 = simps(y=integrand_4, x=ell_values)
+        integral_1 = simps(y=integrand_1, x=ell_values)
+        integral_2 = simps(y=integrand_2, x=ell_values)
+        integral_3 = simps(y=integrand_3, x=ell_values)
+        integral_4 = simps(y=integrand_4, x=ell_values)
 
     elif integration_method == 'quad':
         integral_1 = quad_vec(
@@ -342,10 +341,6 @@ def cov_g_mix_real(   # fmt: skip
     else:
         raise ValueError(f'integration_method {integration_method} not recognized.')
 
-    # TODO leverage simmetry to optimize the computation?
-    # if zi == zj == zk == zl and probe_a_ix == probe_b_ix == probe_c_ix == probe_d_ix:
-    #     return 4 * integral_1 * prefac_1
-
     return (
         prefac_1 * integral_1
         + prefac_2 * integral_2
@@ -365,18 +360,18 @@ def cov_g_mix_real_new(  # fmt: skip
         knu = k_mu(ell, theta_2_l, theta_2_u, nu)
         return (1 / (2 * np.pi * Amax)) * ell * kmu * knu * inner_integrand
 
-    def get_prefac(probe_b_ix, probe_d_ix, zj, zl):
+    def get_prefac(probe_a_ix, probe_b_ix, zi, zj):
         prefac = (
-            get_delta_tomo(probe_b_ix, probe_d_ix)[zj, zl]
-            * t_mix(probe_b_ix, zbins, sigma_eps_i)[zj]
-            / (n_eff_2d[probe_b_ix, zj] * srtoarcmin2)
+            get_delta_tomo(probe_a_ix, probe_b_ix)[zi, zj]
+            * t_mix(probe_a_ix, zbins, sigma_eps_i)[zi]
+            / (n_eff_2d[probe_a_ix, zi] * srtoarcmin2)
         )
         return prefac
 
     # TODO generalize to different survey areas (max(Aij, Akl))
     # TODO sigma_eps_i should be a vector of length zbins
-    # permutations should be performed as done in the SVA function
 
+    # permutations should be performed as done in the SVA function
     if integration_method == 'simps':
         integrand = integrand_func(
             ell_values,
@@ -405,10 +400,6 @@ def cov_g_mix_real_new(  # fmt: skip
 
     else:
         raise ValueError(f'integration_method {integration_method} not recognized.')
-
-    # TODO leverage simmetry to optimize the computation?
-    # if zi == zj == zk == zl and probe_a_ix == probe_b_ix == probe_c_ix == probe_d_ix:
-    #     return 4 * integral_1 * prefac_1
 
     return integral
 
@@ -700,6 +691,53 @@ def integrate_double_bessel(cov_hs, mu, nu, ells, thetas, n_jobs):
     return cov_rs_6d
 
 
+def levin_double_wrapper(integrand, x_values, bessel_args, bessel_type, ell_1, ell_2):
+    assert integrand.ndim == 2, 'the integrand must be 2D'
+    assert integrand.shape[0] == len(x_values), (
+        'integrand and x_values must have the same first dimension'
+    )
+    # number of integrals to perform
+    N = integrand.shape[-1]
+    # number of arguments at which the integrals are evaluated
+    M = len(bessel_args) ** 2  # tODO this might change in the future!
+
+    # Constructor of the class
+    lp = levin.pylevin(
+        type=bessel_type,
+        x=x_values,
+        integrand=integrand,
+        logx=logx,
+        logy=logy,
+        nthread=n_jobs_lv,
+        diagonal=False,
+    )
+
+    lp.set_levin(
+        n_col_in=n_sub,
+        maximum_number_bisections_in=n_bisec_max,
+        relative_accuracy_in=rel_acc,
+        super_accurate=boost_bessel,
+        verbose=verbose,
+    )
+
+    result_levin = np.zeros((M, N))  # allocate the result
+    X, Y = np.meshgrid(bessel_args, bessel_args, indexing='ij')
+    theta1_flat = X.reshape(M)
+    theta2_flat = Y.reshape(M)
+
+    lp.levin_integrate_bessel_double(
+        x_min=x_values[0] * np.ones(M),
+        x_max=x_values[-1] * np.ones(M),
+        k_1=theta1_flat,
+        k_2=theta2_flat,
+        ell_1=(ell_1 * np.ones(M)).astype(int),
+        ell_2=(ell_2 * np.ones(M)).astype(int),
+        result=result_levin,
+    )
+
+    return result_levin
+
+
 # ! ====================================================================================
 # ! ====================================================================================
 # ! ====================================================================================
@@ -733,6 +771,7 @@ nbl = 500
 theta_min_arcmin = 50
 theta_max_arcmin = 300
 n_theta_edges = 21
+# n_theta_edges_coarse = 1
 df_chunk_size = 50000
 cov_list_name = 'covariance_list_3x2_rcf'
 cov_hs_list_name = 'covariance_list_3x2_cl'
@@ -759,9 +798,9 @@ cov_sb_8d = np.zeros((n_probes_rs, n_probes_rs,  # fmt: skip
                        n_theta_edges-1, n_theta_edges-1,  # fmt: skip
                        zbins, zbins, zbins, zbins))  # fmt: skip
 
-term = 'sva'
-_probe = 'gggm'
-integration_method = 'simps'
+term = 'mix'
+_probe = 'xipxip'
+integration_method = 'levin'
 
 mu_dict = {'gg': 0, 'gm': 2, 'xip': 0, 'xim': 4}
 
@@ -806,7 +845,6 @@ for key in probe_idx_dict:
 
 # for probe in probe_idx_dict:
 for probe in (_probe,):
-
     print(f'\n***** Working on probe {probe} *****\n')
     twoprobe_a_str, twoprobe_b_str = split_probe_name(probe)
     twoprobe_a_ix, twoprobe_b_ix = (
@@ -937,7 +975,7 @@ for probe in (_probe,):
     # ! LEVIN SVA, to be tidied up
     import pylevin as levin
 
-    if term == 'sva' and integration_method == 'simps':
+    if term == 'sva' and integration_method in ['simps', 'quad']:
         print('Computing real-space Gaussian SVA covariance...')
         start = time.time()
 
@@ -971,58 +1009,28 @@ for probe in (_probe,):
 
     elif term == 'sva' and integration_method == 'levin':
         a = np.einsum(
-            'Lik,Mjl->LMijkl',
+            'Lik,Ljl->Lijkl',
             cl_5d[probe_a_ix, probe_c_ix],
             cl_5d[probe_b_ix, probe_d_ix],
         )
         b = np.einsum(
-            'Lil,Mjk->LMijkl',
+            'Lil,Ljk->Lijkl',
             cl_5d[probe_a_ix, probe_d_ix],
             cl_5d[probe_b_ix, probe_c_ix],
         )
         integrand = a + b
-        # take the ell1, ell2 diagonal and put it back to the 0th axis
-        integrand = np.diagonal(integrand, axis1=0, axis2=1).transpose(4, 0, 1, 2, 3)
         # flatten the integrand to [ells, whatever]
         integrand = integrand.reshape(nbl, -1)
-
-        integrand = integrand * ell_values[:, None]
+        integrand *= ell_values[:, None]
         integrand /= 2.0 * np.pi * Amax
 
-        # Constructor of the class
-        lp = levin.pylevin(
-            type=3,
-            x=ell_values,
-            integrand=integrand,
-            logx=logx,
-            logy=logy,
-            nthread=n_jobs_lv,
-            diagonal=False,
-        )
-
-        lp.set_levin(
-            n_col_in=n_sub,
-            maximum_number_bisections_in=n_bisec_max,
-            relative_accuracy_in=rel_acc,
-            super_accurate=boost_bessel,
-            verbose=verbose,
-        )
-
-        M = nbt**2  # number of arguments at which the integrals are evaluated
-        N = integrand.shape[-1]
-        result_levin = np.zeros((M, N))  # allocate the result
-        X, Y = np.meshgrid(theta_centers, theta_centers, indexing='ij')
-        theta1_flat = X.reshape(nbt**2)
-        theta2_flat = Y.reshape(nbt**2)
-
-        lp.levin_integrate_bessel_double(
-            x_min=ell_values[0] * np.ones(M),
-            x_max=ell_values[-1] * np.ones(M),
-            k_1=theta1_flat,
-            k_2=theta2_flat,
-            ell_1=(mu * np.ones(M)).astype(int),
-            ell_2=(nu * np.ones(M)).astype(int),
-            result=result_levin,
+        result_levin = levin_double_wrapper(
+            integrand,
+            x_values=ell_values,
+            bessel_args=theta_centers,
+            bessel_type=3,
+            ell_1=mu,
+            ell_2=nu,
         )
 
         cov_sva_sb_6d = result_levin.reshape(nbt, nbt, zbins, zbins, zbins, zbins)
@@ -1062,7 +1070,7 @@ for probe in (_probe,):
         )
         print(f'... Done in: {(time.time() - start):.2f} s')
 
-    elif term == 'mix':
+    elif term == 'mix' and integration_method == 'simps':
         print('Computing real-space Gaussian MIX covariance...')
         start = time.time()
 
@@ -1091,6 +1099,61 @@ for probe in (_probe,):
         for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
             cov_mix_sb_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
         print(f'... Done in: {(time.time() - start):.2f} s')
+
+    elif term == 'mix' and integration_method == 'levin':
+
+        def _get_mix_prefac(probe_b_ix, probe_d_ix, zj, zl):
+            prefac = (
+                get_delta_tomo(probe_b_ix, probe_d_ix)[zj, zl]
+                * t_mix(probe_b_ix, zbins, sigma_eps_i)[zj]
+                / (n_eff_2d[probe_b_ix, zj] * srtoarcmin2)
+            )
+            return prefac
+
+        prefac = np.zeros((n_probes_hs, n_probes_hs, zbins, zbins))
+        for _probe_a_ix in range(n_probes_hs):
+            for _probe_b_ix in range(n_probes_hs):
+                for _zi in range(zbins):
+                    for _zj in range(zbins):
+                        prefac[_probe_a_ix, _probe_b_ix, _zi, _zj] = _get_mix_prefac(
+                            _probe_a_ix, _probe_b_ix, _zi, _zj
+                        )
+
+        a = np.einsum(
+            'jl,Lik->Lijkl',
+            prefac[probe_b_ix, probe_d_ix],
+            cl_5d[probe_a_ix, probe_c_ix],
+        )
+        b = np.einsum(
+            'ik,Ljl->Lijkl',
+            prefac[probe_a_ix, probe_c_ix],
+            cl_5d[probe_b_ix, probe_d_ix],
+        )
+        c = np.einsum(
+            'jk,Lil->Lijkl',
+            prefac[probe_b_ix, probe_c_ix],
+            cl_5d[probe_a_ix, probe_d_ix],
+        )
+        d = np.einsum(
+            'il,Ljk->Lijkl',
+            prefac[probe_a_ix, probe_d_ix],
+            cl_5d[probe_b_ix, probe_c_ix],
+        )
+        integrand = a + b + c + d
+        integrand = integrand.reshape(nbl, -1)
+        integrand *= ell_values[:, None]
+        integrand /= 2 * np.pi * Amax
+
+        result_levin = levin_double_wrapper(
+            integrand,
+            x_values=ell_values,
+            bessel_args=theta_centers,
+            bessel_type=3,
+            ell_1=mu,
+            ell_2=nu,
+        )
+
+        cov_mix_sb_6d = result_levin.reshape(nbt, nbt, zbins, zbins, zbins, zbins)
 
     elif term == 'gauss_ell':
         print('Projecting ell-space Gaussian covariance...')
@@ -1285,6 +1348,13 @@ for probe in (_probe,):
     thetas_oc_load_rad = np.deg2rad(thetas_oc_load / 60)
     cov_theta_indices = {ell_out: idx for idx, ell_out in enumerate(thetas_oc_load)}
 
+    # sl.compare_funcs(
+    #     None,
+    #     {'thetas_oc': thetas_oc_load_rad,
+    #      'thetas_sb': theta_centers},
+    #     plt_kw={'marker': '.'},
+    # )
+
     # SB tomographic indices start from 0
     tomoi_oc_load = data['tomoi'].unique()
     subtract_one = False
@@ -1361,7 +1431,6 @@ for probe in (_probe,):
     #     cov_8d[1, 0, 1, 1] = deepcopy(
     #         np.transpose(cov_8d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3))
     #     )
-
 
     # ! ================================================================================
 
@@ -1528,8 +1597,6 @@ for probe in probe_idx_dict:
         probe_idx_dict_short[twoprobe_cd_str],
     )
 
-    print(probe, twoprobe_ab_str, twoprobe_cd_str, twoprobe_ab_ix, twoprobe_cd_ix)
-
     zpairs_ab = zpairs_cross if twoprobe_ab_ix == 1 else zpairs_auto
     zpairs_cd = zpairs_cross if twoprobe_cd_ix == 1 else zpairs_auto
     ind_ab = ind_cross if twoprobe_ab_ix == 1 else ind_auto
@@ -1590,6 +1657,7 @@ plt.title('correlation matrix')
 
 # TODO compare G tot against Robert
 # cov_g_oc_mat = np.genfromtxt('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests/realspace_test/covariance_matrix_3x2_rcf_gauss.mat')
+
 
 # TODO study these and adapt to real space, current solution (see above) is a bit messy
 def cov_3x2pt_10D_to_4D(cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_OR_LG):

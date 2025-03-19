@@ -699,7 +699,8 @@ def levin_double_wrapper(integrand, x_values, bessel_args, bessel_type, ell_1, e
     # number of integrals to perform
     N = integrand.shape[-1]
     # number of arguments at which the integrals are evaluated
-    M = len(bessel_args) ** 2  # tODO this might change in the future!
+    # tODO this might change in the future?
+    M = len(bessel_args) ** 2
 
     # Constructor of the class
     lp = levin.pylevin(
@@ -770,7 +771,7 @@ ell_max = 100_000
 nbl = 500
 theta_min_arcmin = 50
 theta_max_arcmin = 300
-n_theta_edges = 51
+n_theta_edges = 21
 n_theta_edges_coarse = 21
 df_chunk_size = 50000
 cov_list_name = 'covariance_list_3x2_rcf'
@@ -806,10 +807,6 @@ cov_sb_8d = np.zeros((n_probes_rs, n_probes_rs,  # fmt: skip
                        n_theta_edges_coarse-1, n_theta_edges_coarse-1,  # fmt: skip
                        zbins, zbins, zbins, zbins))  # fmt: skip
 
-term = 'mix'
-_probe = 'xipxim'
-integration_method = 'simps'
-
 mu_dict = {'gg': 0, 'gm': 2, 'xip': 0, 'xim': 4}
 
 # ! careful: in this representation, xipxip and ximxim (eg) have the same indices!!
@@ -843,9 +840,110 @@ for key in probe_idx_dict:
         probe_idx_dict_short[probe_b_str],
     )
 
+term = 'gauss_ell'
+_probe = 'xipxim'
+integration_method = 'levin'
+probes_toloop = probe_idx_dict
 
-# for probe in probe_idx_dict:
-for probe in (_probe,):
+assert integration_method in ['simps', 'levin'], 'integration method not implemented'
+
+theta_edges = np.linspace(theta_min_arcmin / 60, theta_max_arcmin / 60, n_theta_edges)
+theta_edges = np.deg2rad(theta_edges)
+# TODO in principle this could be changed
+theta_centers = (theta_edges[:-1] + theta_edges[1:]) / 2.0
+nbt = len(theta_centers)  # nbt = number theta bins
+
+zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
+ind = sl.build_full_ind(triu_tril, row_col_major, zbins)
+ind_auto = ind[:zpairs_auto, :].copy()
+ind_cross = ind[zpairs_auto : zpairs_cross + zpairs_auto, :].copy()
+ind_dict = {('L', 'L'): ind_auto, ('G', 'L'): ind_cross, ('G', 'G'): ind_auto}
+
+# * basically no difference between the two recipes below!
+# * (The one above is obviously much slower)
+# ell_values = np.arange(ell_min, ell_max)
+ell_values = np.geomspace(ell_min, ell_max, nbl)
+
+# quick and dirty cls computation
+cosmo = ccl.Cosmology(
+    Omega_c=0.27,
+    Omega_b=0.05,
+    h=0.67,
+    A_s=2.1e-9,
+    n_s=0.966,
+    m_nu=0.06,
+    w0=-1.0,
+    Neff=3.046,
+    extra_parameters={
+        'camb': {'halofit_version': 'mead2020_feedback', 'HMCode_logT_AGN': 7.75}
+    },
+)
+
+# bias_values = [1.1440270903053593, 1.209969007589984, 1.3354449071064036,
+#                1.4219803534945, 1.5275589801638865, 1.9149796097338934]
+# # create an array with the bias values in each column, and the first
+# bias_2d = np.tile(bias_values, reps=(len(z_nz_lenses), 1))
+# bias_2d = np.column_stack((z_nz_lenses, bias_2d))
+oc_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/output/OneCovariance'
+nz_lenses = np.genfromtxt(
+    f'{oc_path}/nzTab-EP03-zedMin02-zedMax25-mag245_dzshiftsTrue.ascii'
+)
+nz_sources = np.genfromtxt(
+    f'{oc_path}/nzTab-EP03-zedMin02-zedMax25-mag245_dzshiftsTrue.ascii'
+)
+bias_2d = np.genfromtxt(f'{oc_path}/gal_bias_table.ascii')
+z_nz_lenses = nz_lenses[:, 0]
+z_nz_sources = nz_sources[:, 0]
+
+wl_ker = [
+    ccl.WeakLensingTracer(  # fmt: skip
+        cosmo=cosmo, dndz=(nz_sources[:, 0], nz_sources[:, zi + 1]), ia_bias=None
+    )  # fmt: skip
+    for zi in range(zbins)
+]
+gc_ker = [
+    ccl.NumberCountsTracer(
+        cosmo=cosmo,
+        has_rsd=False,
+        dndz=(nz_lenses[:, 0], nz_lenses[:, zi + 1]),
+        bias=(bias_2d[:, 0], bias_2d[:, zi + 1]),
+    )
+    for zi in range(zbins)
+]
+
+# plot as a function of comoving distance (just because it's quicker)
+# for zi in range(zbins):
+#     plt.plot(gc_ker[zi].get_kernel()[1][0], gc_ker[zi].get_kernel()[0][0])
+# for zi in range(zbins):
+#     plt.plot(wl_ker[zi].get_kernel()[1][0], wl_ker[zi].get_kernel()[0][0])
+
+cl_gg_3d = np.zeros((nbl, zbins, zbins))
+cl_gl_3d = np.zeros((nbl, zbins, zbins))
+cl_ll_3d = np.zeros((nbl, zbins, zbins))
+print('Computing Cls...')
+for zi in tqdm(range(zbins)):
+    for zj in range(zbins):
+        cl_gg_3d[:, zi, zj] = ccl.angular_cl(  # fmt: skip
+            cosmo, gc_ker[zi], gc_ker[zj], ell_values, 
+            limber_integration_method='spline'
+        )  # fmt: skip
+        cl_gl_3d[:, zi, zj] = ccl.angular_cl(  # fmt: skip
+            cosmo, gc_ker[zi], wl_ker[zj], ell_values, 
+            limber_integration_method='spline'
+        )  # fmt: skip
+        cl_ll_3d[:, zi, zj] = ccl.angular_cl(  # fmt: skip
+            cosmo, wl_ker[zi], wl_ker[zj], ell_values, 
+            limber_integration_method='spline'
+        )  # fmt: skip
+
+cl_5d = np.zeros((n_probes_hs, n_probes_hs, len(ell_values), zbins, zbins))
+cl_5d[0, 0, ...] = cl_ll_3d
+cl_5d[1, 0, ...] = cl_gl_3d
+cl_5d[0, 1, ...] = cl_gl_3d.transpose(0, 2, 1)
+cl_5d[1, 1, ...] = cl_gg_3d
+
+
+for probe in probes_toloop:
     print(f'\n***** Working on probe {probe} *****\n')
     twoprobe_a_str, twoprobe_b_str = split_probe_name(probe)
     twoprobe_a_ix, twoprobe_b_ix = (
@@ -855,103 +953,6 @@ for probe in (_probe,):
 
     mu, nu = mu_dict[twoprobe_a_str], mu_dict[twoprobe_b_str]
     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = probe_idx_dict[probe]
-
-    theta_edges = np.linspace(
-        theta_min_arcmin / 60, theta_max_arcmin / 60, n_theta_edges
-    )
-    theta_edges = np.deg2rad(theta_edges)
-    # TODO in principle this could be changed
-    theta_centers = (theta_edges[:-1] + theta_edges[1:]) / 2.0
-    nbt = len(theta_centers)  # nbt = number theta bins
-
-    zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
-    ind = sl.build_full_ind(triu_tril, row_col_major, zbins)
-    ind_auto = ind[:zpairs_auto, :].copy()
-    ind_cross = ind[zpairs_auto : zpairs_cross + zpairs_auto, :].copy()
-    ind_dict = {('L', 'L'): ind_auto, ('G', 'L'): ind_cross, ('G', 'G'): ind_auto}
-
-    # * basically no difference between the two recipes below!
-    # * (The one above is obviously much slower)
-    # ell_values = np.arange(ell_min, ell_max)
-    ell_values = np.geomspace(ell_min, ell_max, nbl)
-
-    # quick and dirty cls computation
-    cosmo = ccl.Cosmology(
-        Omega_c=0.27,
-        Omega_b=0.05,
-        h=0.67,
-        A_s=2.1e-9,
-        n_s=0.966,
-        m_nu=0.06,
-        w0=-1.0,
-        Neff=3.046,
-        extra_parameters={
-            'camb': {'halofit_version': 'mead2020_feedback', 'HMCode_logT_AGN': 7.75}
-        },
-    )
-
-    # bias_values = [1.1440270903053593, 1.209969007589984, 1.3354449071064036,
-    #                1.4219803534945, 1.5275589801638865, 1.9149796097338934]
-    # # create an array with the bias values in each column, and the first
-    # bias_2d = np.tile(bias_values, reps=(len(z_nz_lenses), 1))
-    # bias_2d = np.column_stack((z_nz_lenses, bias_2d))
-    oc_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/output/OneCovariance'
-    nz_lenses = np.genfromtxt(
-        f'{oc_path}/nzTab-EP03-zedMin02-zedMax25-mag245_dzshiftsTrue.ascii'
-    )
-    nz_sources = np.genfromtxt(
-        f'{oc_path}/nzTab-EP03-zedMin02-zedMax25-mag245_dzshiftsTrue.ascii'
-    )
-    bias_2d = np.genfromtxt(f'{oc_path}/gal_bias_table.ascii')
-    z_nz_lenses = nz_lenses[:, 0]
-    z_nz_sources = nz_sources[:, 0]
-
-    wl_ker = [
-        ccl.WeakLensingTracer(  # fmt: skip
-            cosmo=cosmo, dndz=(nz_sources[:, 0], nz_sources[:, zi + 1]), ia_bias=None
-        )  # fmt: skip
-        for zi in range(zbins)
-    ]
-    gc_ker = [
-        ccl.NumberCountsTracer(
-            cosmo=cosmo,
-            has_rsd=False,
-            dndz=(nz_lenses[:, 0], nz_lenses[:, zi + 1]),
-            bias=(bias_2d[:, 0], bias_2d[:, zi + 1]),
-        )
-        for zi in range(zbins)
-    ]
-
-    # plot as a function of comoving distance (just because it's quicker)
-    # for zi in range(zbins):
-    #     plt.plot(gc_ker[zi].get_kernel()[1][0], gc_ker[zi].get_kernel()[0][0])
-    # for zi in range(zbins):
-    #     plt.plot(wl_ker[zi].get_kernel()[1][0], wl_ker[zi].get_kernel()[0][0])
-
-    cl_gg_3d = np.zeros((nbl, zbins, zbins))
-    cl_gl_3d = np.zeros((nbl, zbins, zbins))
-    cl_ll_3d = np.zeros((nbl, zbins, zbins))
-    print('Computing Cls...')
-    for zi in tqdm(range(zbins)):
-        for zj in range(zbins):
-            cl_gg_3d[:, zi, zj] = ccl.angular_cl(  # fmt: skip
-                cosmo, gc_ker[zi], gc_ker[zj], ell_values, 
-                limber_integration_method='spline'
-            )  # fmt: skip
-            cl_gl_3d[:, zi, zj] = ccl.angular_cl(  # fmt: skip
-                cosmo, gc_ker[zi], wl_ker[zj], ell_values, 
-                limber_integration_method='spline'
-            )  # fmt: skip
-            cl_ll_3d[:, zi, zj] = ccl.angular_cl(  # fmt: skip
-                cosmo, wl_ker[zi], wl_ker[zj], ell_values, 
-                limber_integration_method='spline'
-            )  # fmt: skip
-
-    cl_5d = np.zeros((n_probes_hs, n_probes_hs, len(ell_values), zbins, zbins))
-    cl_5d[0, 0, ...] = cl_ll_3d
-    cl_5d[1, 0, ...] = cl_gl_3d
-    cl_5d[0, 1, ...] = cl_gl_3d.transpose(0, 2, 1)
-    cl_5d[1, 1, ...] = cl_gg_3d
 
     # TODO test this better, especially for cross-terms
     # TODO off-diagonal zij blocks still don't match, I think it's just a
@@ -1187,18 +1188,20 @@ for probe in (_probe,):
         _fsky = 1
         delta_ell = np.ones_like(delta_ell)
 
-        cov_ell = sl.covariance_einsum(cl_5d, noise_5d, _fsky, ell_values, delta_ell)
-        cov_ell_diag = sl.covariance_einsum(
-            cl_5d,
-            noise_5d,
-            _fsky,
-            ell_values,
-            delta_ell,
-            return_only_diagonal_ells=True,
+        cov_g_hs_10d = sl.covariance_einsum(
+            cl_5d, noise_5d, _fsky, ell_values, delta_ell
         )
+        # cov_ell_diag = sl.covariance_einsum(
+        #     cl_5d,
+        #     noise_5d,
+        #     _fsky,
+        #     ell_values,
+        #     delta_ell,
+        #     return_only_diagonal_ells=True,
+        # )
 
-        cov_ell = cov_ell[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
-        cov_ell_diag = cov_ell_diag[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
+        cov_g_hs_6d = cov_g_hs_10d[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
+        # cov_ell_diag = cov_ell_diag[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
 
         # remove ell-dep prefactor from Gaussian cov
         # cov_ell_diag *= (2 * ell_values + 1)[:, None, None, None, None]
@@ -1275,6 +1278,15 @@ for probe in (_probe,):
         #      # integrate in ell2
         #     partial_integral[ell1_ix, ...] = integrate_cov_levin(cov_ell_2d, nu, ell_values, n_jobs)
         #     integral = integrate_cov_levin(partial_integral[ell1_ix, ...], mu, ell_values, n_jobs)
+
+        cov_g_sb_6d = integrate_double_bessel(
+            cov_hs=cov_g_hs_6d,
+            mu=mu,
+            nu=nu,
+            ells=ell_values,
+            thetas=theta_centers,
+            n_jobs=n_jobs_lv,
+        )
 
     elif term == 'ssc':
         covs_oc_path = (
@@ -1655,138 +1667,20 @@ sl.plot_correlation_matrix(sl.cov2corr(cov_sb_full_2d))
 plt.title('correlation matrix')
 
 # TODO compare G tot against Robert
-# cov_g_oc_mat = np.genfromtxt('/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests/realspace_test/covariance_matrix_3x2_rcf_gauss.mat')
+cov_g_oc_mat = np.genfromtxt(
+    '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests'
+    '/realspace_test/covariance_matrix_3x2_rcf_gauss.mat'
+)
 
-
-# TODO study these and adapt to real space, current solution (see above) is a bit messy
-def cov_3x2pt_10D_to_4D(cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_OR_LG):
-    """
-    Takes the cov_3x2pt_10D dictionary, reshapes each A, B, C, D block separately
-    in 4D, then stacks the blocks in the right order to output cov_3x2pt_4D
-    (which is not a dictionary but a numpy array)
-
-    probe_ordering: e.g. ['L', 'L'], ['G', 'L'], ['G', 'G']]
-    """
-
-    # if it's an array, convert to dictionary for the function to work
-    if type(cov_3x2pt_10D) == np.ndarray:
-        cov_3x2pt_dict_10D = cov_10D_array_to_dict(cov_3x2pt_10D, probe_ordering)
-    elif type(cov_3x2pt_10D) == dict:
-        cov_3x2pt_dict_10D = cov_3x2pt_10D
-    else:
-        raise ValueError('cov_3x2pt_10D must be either a dictionary or an array')
-
-    ind_copy = ind_copy.copy()  # just to ensure the input ind file is not changed
-
-    # Check that the cross-correlation is coherent with the probe_ordering list
-    # this is a weak check, since I'm assuming that GL or LG will be the second
-    # element of the datavector
-    if GL_OR_LG == 'GL':
-        assert probe_ordering[1][0] == 'G' and probe_ordering[1][1] == 'L', (
-            'probe_ordering[1] should be "GL", e.g. [LL, GL, GG]'
-        )
-    elif GL_OR_LG == 'LG':
-        assert probe_ordering[1][0] == 'L' and probe_ordering[1][1] == 'G', (
-            'probe_ordering[1] should be "LG", e.g. [LL, LG, GG]'
-        )
-
-    # get npairs
-    npairs_auto, npairs_cross, npairs_3x2pt = get_zpairs(zbins)
-
-    # construct the ind dict
-    ind_dict = {}
-    ind_dict['L', 'L'] = ind_copy[:npairs_auto, :]
-    ind_dict['G', 'G'] = ind_copy[(npairs_auto + npairs_cross) :, :]
-    if GL_OR_LG == 'LG':
-        ind_dict['L', 'G'] = ind_copy[npairs_auto : (npairs_auto + npairs_cross), :]
-        ind_dict['G', 'L'] = ind_dict['L', 'G'].copy()  # copy and switch columns
-        ind_dict['G', 'L'][:, [2, 3]] = ind_dict['G', 'L'][:, [3, 2]]
-    elif GL_OR_LG == 'GL':
-        ind_dict['G', 'L'] = ind_copy[npairs_auto : (npairs_auto + npairs_cross), :]
-        ind_dict['L', 'G'] = ind_dict['G', 'L'].copy()  # copy and switch columns
-        ind_dict['L', 'G'][:, [2, 3]] = ind_dict['L', 'G'][:, [3, 2]]
-
-    # construct the npairs dict
-    npairs_dict = {}
-    npairs_dict['L', 'L'] = npairs_auto
-    npairs_dict['L', 'G'] = npairs_cross
-    npairs_dict['G', 'L'] = npairs_cross
-    npairs_dict['G', 'G'] = npairs_auto
-
-    # initialize the 4D dictionary and list of probe combinations
-    cov_3x2pt_dict_4D = {}
-    combinations = []
-
-    # make each block 4D and store it with the right 'A', 'B', 'C, 'D' key
-    for A, B in probe_ordering:
-        for C, D in probe_ordering:
-            combinations.append([A, B, C, D])
-            cov_3x2pt_dict_4D[A, B, C, D] = cov_6D_to_4D_blocks(
-                cov_3x2pt_dict_10D[A, B, C, D],
-                nbl,
-                npairs_dict[A, B],
-                npairs_dict[C, D],
-                ind_dict[A, B],
-                ind_dict[C, D],
-            )
-
-    # concatenate the rows to construct the final matrix
-    cov_3x2pt_4D = cov_3x2pt_8D_dict_to_4D(
-        cov_3x2pt_dict_4D, probe_ordering, combinations
-    )
-
-    return cov_3x2pt_4D
-
-
-def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, probe_ordering, combinations=None):
-    """
-    Convert a dictionary of 4D blocks into a single 4D array. This is the same code as in the last part of the function above.
-    :param cov_3x2pt_8D_dict: Dictionary of 4D covariance blocks
-    :param probe_ordering: tuple of tuple probes, e.g., (('L', 'L'), ('G', 'L'), ('G', 'G'))
-    :combinations: list of combinations to use, e.g., [['L', 'L', 'L', 'L'], ['L', 'L', 'L', 'G'], ...]
-    :return: 4D covariance array
-    """
-
-    # if combinations is not provided, construct it
-    if combinations is None:
-        combinations = []
-        for A, B in probe_ordering:
-            for C, D in probe_ordering:
-                combinations.append([A, B, C, D])
-
-    for key in cov_3x2pt_8D_dict.keys():
-        assert cov_3x2pt_8D_dict[key].ndim == 4, (
-            f'covariance matrix {key} has ndim={cov_3x2pt_8D_dict[key].ndim} instead '
-            f'of 4'
-        )
-
-    # check that the number of combinations is correct
-    assert len(combinations) == len(list(cov_3x2pt_8D_dict.keys())), (
-        f'number of combinations ({len(combinations)}) does not match the number of blocks in the input dictionary '
-        f'({len(list(cov_3x2pt_8D_dict.keys()))})'
-    )
-
-    # check that the combinations are correct
-    for i, combination in enumerate(combinations):
-        assert tuple(combination) in list(cov_3x2pt_8D_dict.keys()), (
-            f'combination {combination} not found in the input dictionary'
-        )
-
-    # take the correct combinations (stored in 'combinations') and construct
-    # lists which will be converted to arrays
-    row_1_list = [cov_3x2pt_8D_dict[A, B, C, D] for A, B, C, D in combinations[:3]]
-    row_2_list = [cov_3x2pt_8D_dict[A, B, C, D] for A, B, C, D in combinations[3:6]]
-    row_3_list = [cov_3x2pt_8D_dict[A, B, C, D] for A, B, C, D in combinations[6:9]]
-
-    # concatenate the lists to make rows
-    row_1 = np.concatenate(row_1_list, axis=3)
-    row_2 = np.concatenate(row_2_list, axis=3)
-    row_3 = np.concatenate(row_3_list, axis=3)
-
-    # concatenate the rows to construct the final matrix
-    cov_3x2pt_4D = np.concatenate((row_1, row_2, row_3), axis=2)
-
-    return cov_3x2pt_4D
+sl.compare_arrays(
+    cov_g_oc_mat,
+    cov_sb_full_2d,
+    'Robert',
+    'Mine',
+)
+# TODO study funcs below and adapt to real space,
+# current solution (see above) is a bit messy
+# cov_3x2pt_10D_to_4D cov_3x2pt_8D_dict_to_4D
 
 
 print('Done.')

@@ -1,16 +1,16 @@
+import itertools
 import re
 import time
 import warnings
 from copy import deepcopy
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 from scipy.integrate import quad_vec
 from scipy.integrate import simpson as simps
-from scipy.interpolate import CubicSpline
 from tqdm import tqdm
-import matplotlib.pyplot as plt
 
 import pyccl as ccl
 from spaceborne import sb_lib as sl
@@ -739,6 +739,43 @@ def levin_double_wrapper(integrand, x_values, bessel_args, bessel_type, ell_1, e
     return result_levin
 
 
+def stack_cov_blocks(cov_2d_dict):
+    row_1 = np.hstack(
+        (
+            cov_sb_2d_dict['gggg'],
+            cov_sb_2d_dict['gggm'],
+            cov_sb_2d_dict['ggxip'],
+            cov_sb_2d_dict['ggxim'],
+        )
+    )
+    row_2 = np.hstack(
+        (
+            cov_sb_2d_dict['gggm'].T,
+            cov_sb_2d_dict['gmgm'],
+            cov_sb_2d_dict['gmxip'],
+            cov_sb_2d_dict['gmxim'],
+        )
+    )
+    row_3 = np.hstack(
+        (
+            cov_sb_2d_dict['ggxip'].T,
+            cov_sb_2d_dict['gmxip'].T,
+            cov_sb_2d_dict['xipxip'],
+            cov_sb_2d_dict['xipxim'],
+        )
+    )
+    row_4 = np.hstack(
+        (
+            cov_sb_2d_dict['ggxim'].T,
+            cov_sb_2d_dict['gmxim'].T,
+            cov_sb_2d_dict['xipxim'].T,
+            cov_sb_2d_dict['ximxim'],
+        )
+    )
+
+    return np.vstack((row_1, row_2, row_3, row_4))
+
+
 # ! ====================================================================================
 # ! ====================================================================================
 # ! ====================================================================================
@@ -840,10 +877,10 @@ for key in probe_idx_dict:
         probe_idx_dict_short[probe_b_str],
     )
 
-term = 'gauss_ell'
-_probe = 'xipxim'
-integration_method = 'levin'
+term = 'sva'
+integration_method = 'simps'
 probes_toloop = probe_idx_dict
+# probes_toloop = ['xipxim', ]
 
 assert integration_method in ['simps', 'levin'], 'integration method not implemented'
 
@@ -1288,7 +1325,7 @@ for probe in probes_toloop:
             n_jobs=n_jobs_lv,
         )
 
-    elif term == 'ssc':
+    elif term in ['ssc', 'cng']:
         covs_oc_path = (
             '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests/realspace_test'
         )
@@ -1318,14 +1355,20 @@ for probe in probes_toloop:
         cov_sn_oc_3x2pt_10D = covs_oc_hs_npz['cov_sn_oc_3x2pt_10D']
         cov_g_oc_3x2pt_10D = covs_oc_hs_npz['cov_g_oc_3x2pt_10D']
         cov_ssc_oc_3x2pt_10D = covs_oc_hs_npz['cov_ssc_oc_3x2pt_10D']
+        cov_cng_oc_3x2pt_10D = covs_oc_hs_npz['cov_ng_oc_3x2pt_10D']
+
+        if term == 'ssc':
+            cov_ng_oc_3x2pt_10D = cov_ssc_oc_3x2pt_10D
+        elif term == 'cng':
+            cov_ng_oc_3x2pt_10D = cov_cng_oc_3x2pt_10D
 
         # project it to real space using Levin
-        cov_ssc_oc_hs_6d = cov_ssc_oc_3x2pt_10D[
+        cov_ng_oc_hs_6d = cov_ng_oc_3x2pt_10D[
             probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...
         ]
 
-        cov_ssc_sb_6d = integrate_double_bessel(
-            cov_hs=cov_ssc_oc_hs_6d,
+        cov_ng_sb_6d = integrate_double_bessel(
+            cov_hs=cov_ng_oc_hs_6d,
             mu=mu,
             nu=nu,
             ells=ell_values,
@@ -1381,7 +1424,7 @@ for probe in probes_toloop:
     cov_mix_oc_3x2pt_8D = np.zeros(shape)
     cov_sn_oc_3x2pt_8D = np.zeros(shape)
     cov_ssc_oc_3x2pt_8D = np.zeros(shape)
-    # cov_cng_oc_3x2pt_8D = np.zeros(shape)
+    cov_cng_oc_3x2pt_8D = np.zeros(shape)
     # cov_tot_oc_3x2pt_8D = np.zeros(shape)
 
     print(f'Loading OneCovariance output from {cov_list_name}.dat file...')
@@ -1422,7 +1465,7 @@ for probe in probes_toloop:
             + df_chunk['covg sn'].values
         )
         cov_ssc_oc_3x2pt_8D[index_tuple] = df_chunk['covssc'].values
-        # cov_cng_oc_3x2pt_8D[index_tuple] = df_chunk['covng'].values
+        cov_cng_oc_3x2pt_8D[index_tuple] = df_chunk['covng'].values
         # cov_tot_oc_3x2pt_8D[index_tuple] = df_chunk['cov'].values
 
     covs_8d = [
@@ -1431,7 +1474,8 @@ for probe in probes_toloop:
         cov_sn_oc_3x2pt_8D,
         cov_g_oc_3x2pt_8D,
         cov_ssc_oc_3x2pt_8D,
-        # cov_cng_oc_3x2pt_8D, cov_tot_oc_3x2pt_8D
+        cov_cng_oc_3x2pt_8D,
+        # cov_tot_oc_3x2pt_8D
     ]
 
     # for cov_8d in covs_8d:
@@ -1461,7 +1505,10 @@ for probe in probes_toloop:
         cov_sb_6d = cov_g_sb_6d
     elif term == 'ssc':
         cov_oc_6d = cov_ssc_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
-        cov_sb_6d = cov_ssc_sb_6d
+        cov_sb_6d = cov_ng_sb_6d
+    elif term == 'ssc':
+        cov_oc_6d = cov_cng_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+        cov_cng_6d = cov_ng_sb_6d
 
     # for probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix in itertools.product(
     #     range(n_probes), repeat=4
@@ -1485,20 +1532,19 @@ for probe in probes_toloop:
         cov_sb_6d_binned = np.zeros(
             (nbt_coarse, nbt_coarse, zbins, zbins, zbins, zbins)
         )
-        for zi in range(zbins):
-            for zj in range(zbins):
-                for zk in range(zbins):
-                    for zl in range(zbins):
-                        cov_sb_6d_binned[:, :, zi, zj, zk, zl] = sl.bin_2d_matrix(
-                            cov_sb_6d[:, :, zi, zj, zk, zl],
-                            theta_centers,
-                            theta_centers_coarse,
-                            theta_edges_coarse,
-                            weights_in=None,
-                        )
+        zijkl_comb = itertools.product(range(zbins), repeat=4)
+        for zi, zj, zk, zl in zijkl_comb:
+            cov_sb_6d_binned[:, :, zi, zj, zk, zl] = sl.bin_2d_matrix(
+                cov_sb_6d[:, :, zi, zj, zk, zl],
+                theta_centers,
+                theta_centers_coarse,
+                theta_edges_coarse,
+                weights_in=None,
+            )
 
         cov_sb_6d = cov_sb_6d_binned
-        cov_sb_8d[twoprobe_a_ix, twoprobe_b_ix, ...] = cov_sb_6d
+
+    cov_sb_8d[twoprobe_a_ix, twoprobe_b_ix, ...] = cov_sb_6d
 
     # cov_oc_4d = sl.cov_6D_to_4D(cov_oc_6d, theta_bins, zpairs_cross, ind_cross)
     # cov_sb_4d = sl.cov_6D_to_4D(cov_sb_6d, theta_bins, zpairs_cross, ind_cross)
@@ -1601,6 +1647,7 @@ for probe in probes_toloop:
 
 # construct full 2D cov
 cov_sb_2d_dict = {}
+cov_oc_2d_dict = {}
 for probe in probe_idx_dict:
     twoprobe_ab_str, twoprobe_cd_str = split_probe_name(probe)
     twoprobe_ab_ix, twoprobe_cd_ix = (
@@ -1613,8 +1660,18 @@ for probe in probe_idx_dict:
     ind_ab = ind_cross if twoprobe_ab_ix == 1 else ind_auto
     ind_cd = ind_cross if twoprobe_cd_ix == 1 else ind_auto
 
-    cov_sb_4d = np.zeros((nbt, nbt, zpairs_ab, zpairs_cd))
-    cov_sb_2d = np.zeros((nbt * zpairs_ab, nbt * zpairs_cd))
+    if term == 'sva':
+        cov_oc_6d = cov_sva_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+    elif term == 'sn':
+        cov_oc_6d = cov_sn_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+    elif term == 'mix':
+        cov_oc_6d = cov_mix_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+    elif term == 'gauss_ell':
+        cov_oc_6d = cov_g_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+    elif term == 'ssc':
+        cov_oc_6d = cov_ssc_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+    elif term == 'ssc':
+        cov_oc_6d = cov_cng_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
 
     cov_sb_4d = sl.cov_6D_to_4D_blocks(
         cov_sb_8d[twoprobe_ab_ix, twoprobe_cd_ix],
@@ -1624,60 +1681,51 @@ for probe in probe_idx_dict:
         ind_ab,
         ind_cd,
     )
+    cov_oc_4d = sl.cov_6D_to_4D_blocks(
+        cov_oc_6d,
+        nbt_coarse,
+        zpairs_ab,
+        zpairs_cd,
+        ind_ab,
+        ind_cd,
+    )
     cov_sb_2d_dict[probe] = sl.cov_4D_to_2D(
         cov_sb_4d, block_index='zpair', optimize=True
     )
-
-row_1 = np.hstack(
-    (
-        cov_sb_2d_dict['gggg'],
-        cov_sb_2d_dict['gggm'],
-        cov_sb_2d_dict['ggxip'],
-        cov_sb_2d_dict['ggxim'],
+    cov_oc_2d_dict[probe] = sl.cov_4D_to_2D(
+        cov_oc_4d, block_index='zpair', optimize=True
     )
-)
-row_2 = np.hstack(
-    (
-        cov_sb_2d_dict['gggm'].T,
-        cov_sb_2d_dict['gmgm'],
-        cov_sb_2d_dict['gmxip'],
-        cov_sb_2d_dict['gmxim'],
-    )
-)
-row_3 = np.hstack(
-    (
-        cov_sb_2d_dict['ggxip'].T,
-        cov_sb_2d_dict['gmxip'].T,
-        cov_sb_2d_dict['xipxip'],
-        cov_sb_2d_dict['xipxim'],
-    )
-)
-row_4 = np.hstack(
-    (
-        cov_sb_2d_dict['ggxim'].T,
-        cov_sb_2d_dict['gmxim'].T,
-        cov_sb_2d_dict['xipxim'].T,
-        cov_sb_2d_dict['ximxim'],
-    )
-)
 
-cov_sb_full_2d = np.vstack((row_1, row_2, row_3, row_4))
 
-sl.plot_correlation_matrix(sl.cov2corr(cov_sb_full_2d))
-plt.title('correlation matrix')
+cov_sb_full_2d = stack_cov_blocks(cov_sb_2d_dict)
+cov_oc_full_2d = stack_cov_blocks(cov_oc_2d_dict)
 
-# TODO compare G tot against Robert
-cov_g_oc_mat = np.genfromtxt(
-    '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests'
-    '/realspace_test/covariance_matrix_3x2_rcf_gauss.mat'
-)
+corr_sb_full_2d = sl.cov2corr(cov_sb_full_2d)
+corr_oc_full_2d = sl.cov2corr(cov_oc_full_2d)
+
+# sl.plot_correlation_matrix(sl.cov2corr(corr_sb_full_2d))
+# sl.plot_correlation_matrix(sl.cov2corr(corr_oc_full_2d))
 
 sl.compare_arrays(
-    cov_g_oc_mat,
-    cov_sb_full_2d,
-    'Robert',
-    'Mine',
+    corr_sb_full_2d,
+    corr_oc_full_2d,
+    'OC',
+    'SB',
 )
+plt.title('correlation matrix')
+
+# compare G tot against OC
+# cov_g_oc_mat = np.genfromtxt(
+#     '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests'
+#     '/realspace_test/covariance_matrix_3x2_rcf_gauss.mat'
+# )
+
+# sl.compare_arrays(
+#     cov_g_oc_mat,
+#     cov_sb_full_2d,
+#     'OC',
+#     'SB',
+# )
 # TODO study funcs below and adapt to real space,
 # current solution (see above) is a bit messy
 # cov_3x2pt_10D_to_4D cov_3x2pt_8D_dict_to_4D

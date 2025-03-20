@@ -1669,9 +1669,7 @@ for probe in probe_idx_dict:
     elif term == 'ssc':
         cov_oc_6d = cov_cng_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
 
-    warnings.warn(
-        'I am manually transposing the OC blocks!!'
-    )
+    warnings.warn('I am manually transposing the OC blocks!!')
     if probe in ['gmxip', 'gmxim']:
         cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)
 
@@ -1737,12 +1735,24 @@ plt.title('eigenvalues')
 
 # ! this file has been overwritten with the ellspace cov
 # compare G tot against OC
+if term == 'ssc':
+    string = 'SSC'
+elif term == 'cng':
+    string = 'NG'
+elif term == 'gauss_ell':
+    string = 'Gauss'
+    warnings.warn(
+        'Comparin against the whole Gauss .mat file. You requested', stacklevel=2
+    )
+
 cov_oc_mat = np.genfromtxt(
     '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests'
-    '/realspace_test/covariance_matrix_3x2_rcf_v2_SSC.mat'
+    f'/realspace_test/covariance_matrix_3x2_rcf_v2_{string}.mat'
 )
 
-sl.compare_arrays(cov_sb_full_2d, cov_g_oc_mat, log_diff=True, plot_diff_threshold=10)
+sl.compare_arrays(
+    cov_sb_full_2d, cov_oc_mat, 'SB', 'OC', log_diff=False, plot_diff_threshold=10
+)
 # TODO study funcs below and adapt to real space,
 # current solution (see above) is a bit messy
 # cov_3x2pt_10D_to_4D cov_3x2pt_8D_dict_to_4D

@@ -742,34 +742,34 @@ def levin_double_wrapper(integrand, x_values, bessel_args, bessel_type, ell_1, e
 def stack_cov_blocks(cov_2d_dict):
     row_1 = np.hstack(
         (
-            cov_sb_2d_dict['gggg'],
-            cov_sb_2d_dict['gggm'],
-            cov_sb_2d_dict['ggxip'],
-            cov_sb_2d_dict['ggxim'],
+            cov_2d_dict['gggg'],
+            cov_2d_dict['gggm'],
+            cov_2d_dict['ggxip'],
+            cov_2d_dict['ggxim'],
         )
     )
     row_2 = np.hstack(
         (
-            cov_sb_2d_dict['gggm'].T,
-            cov_sb_2d_dict['gmgm'],
-            cov_sb_2d_dict['gmxip'],
-            cov_sb_2d_dict['gmxim'],
+            cov_2d_dict['gggm'].T,
+            cov_2d_dict['gmgm'],
+            cov_2d_dict['gmxip'],
+            cov_2d_dict['gmxim'],
         )
     )
     row_3 = np.hstack(
         (
-            cov_sb_2d_dict['ggxip'].T,
-            cov_sb_2d_dict['gmxip'].T,
-            cov_sb_2d_dict['xipxip'],
-            cov_sb_2d_dict['xipxim'],
+            cov_2d_dict['ggxip'].T,
+            cov_2d_dict['gmxip'].T,
+            cov_2d_dict['xipxip'],
+            cov_2d_dict['xipxim'],
         )
     )
     row_4 = np.hstack(
         (
-            cov_sb_2d_dict['ggxim'].T,
-            cov_sb_2d_dict['gmxim'].T,
-            cov_sb_2d_dict['xipxim'].T,
-            cov_sb_2d_dict['ximxim'],
+            cov_2d_dict['ggxim'].T,
+            cov_2d_dict['gmxim'].T,
+            cov_2d_dict['xipxim'].T,
+            cov_2d_dict['ximxim'],
         )
     )
 
@@ -811,7 +811,7 @@ theta_max_arcmin = 300
 n_theta_edges = 21
 n_theta_edges_coarse = 21
 df_chunk_size = 50000
-cov_list_name = 'covariance_list_3x2_rcf'
+cov_list_name = 'covariance_list_3x2_rcf_v2'
 cov_hs_list_name = 'covariance_list_3x2_cl'
 triu_tril = 'triu'
 row_col_major = 'row-major'  # unit: is gal/arcmin^2
@@ -825,12 +825,8 @@ theta_edges_coarse = np.deg2rad(theta_edges_coarse)
 theta_centers_coarse = (theta_edges_coarse[:-1] + theta_edges_coarse[1:]) / 2.0
 nbt_coarse = len(theta_centers_coarse)  # nbt = number theta bins
 
-
-n_eff_lens = np.array([0.6, 0.6, 0.6])
-n_eff_src = np.array([0.6, 0.6, 0.6])
-# TODO rerun OC with more realistic values, i.e.
-# n_eff_lens = np.array([8.09216, 8.09215, 8.09215])
-# n_eff_src = np.array([8.09216, 8.09215, 8.09215])
+n_eff_lens = np.array([8.09216, 8.09215, 8.09215])
+n_eff_src = np.array([8.09216, 8.09215, 8.09215])
 
 n_eff_2d = np.row_stack(
     (n_eff_lens, n_eff_lens, n_eff_src)
@@ -877,8 +873,8 @@ for key in probe_idx_dict:
         probe_idx_dict_short[probe_b_str],
     )
 
-term = 'sva'
-integration_method = 'simps'
+term = 'ssc'
+integration_method = 'levin'
 probes_toloop = probe_idx_dict
 # probes_toloop = ['xipxim', ]
 
@@ -906,7 +902,7 @@ cosmo = ccl.Cosmology(
     Omega_c=0.27,
     Omega_b=0.05,
     h=0.67,
-    A_s=2.1e-9,
+    sigma8=0.816,
     n_s=0.966,
     m_nu=0.06,
     w0=-1.0,
@@ -1355,7 +1351,7 @@ for probe in probes_toloop:
         cov_sn_oc_3x2pt_10D = covs_oc_hs_npz['cov_sn_oc_3x2pt_10D']
         cov_g_oc_3x2pt_10D = covs_oc_hs_npz['cov_g_oc_3x2pt_10D']
         cov_ssc_oc_3x2pt_10D = covs_oc_hs_npz['cov_ssc_oc_3x2pt_10D']
-        cov_cng_oc_3x2pt_10D = covs_oc_hs_npz['cov_ng_oc_3x2pt_10D']
+        # cov_cng_oc_3x2pt_10D = covs_oc_hs_npz['cov_ng_oc_3x2pt_10D']
 
         if term == 'ssc':
             cov_ng_oc_3x2pt_10D = cov_ssc_oc_3x2pt_10D
@@ -1645,7 +1641,7 @@ for probe in probes_toloop:
     # TODO integration? quad?
 
 
-# construct full 2D cov
+# ! construct full 2D cov and compare correlation matrix
 cov_sb_2d_dict = {}
 cov_oc_2d_dict = {}
 for probe in probe_idx_dict:
@@ -1673,6 +1669,12 @@ for probe in probe_idx_dict:
     elif term == 'ssc':
         cov_oc_6d = cov_cng_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
 
+    warnings.warn(
+        'I am manually transposing the OC blocks!!'
+    )
+    if probe in ['gmxip', 'gmxim']:
+        cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)
+
     cov_sb_4d = sl.cov_6D_to_4D_blocks(
         cov_sb_8d[twoprobe_ab_ix, twoprobe_cd_ix],
         nbt_coarse,
@@ -1689,6 +1691,7 @@ for probe in probe_idx_dict:
         ind_ab,
         ind_cd,
     )
+
     cov_sb_2d_dict[probe] = sl.cov_4D_to_2D(
         cov_sb_4d, block_index='zpair', optimize=True
     )
@@ -1705,27 +1708,41 @@ corr_oc_full_2d = sl.cov2corr(cov_oc_full_2d)
 
 # sl.plot_correlation_matrix(sl.cov2corr(corr_sb_full_2d))
 # sl.plot_correlation_matrix(sl.cov2corr(corr_oc_full_2d))
-
+sl.compare_arrays(
+    cov_sb_full_2d,
+    cov_oc_full_2d,
+    'cov SB',
+    'cov OC',
+    log_diff=True,
+    plot_diff_threshold=10,
+)
 sl.compare_arrays(
     corr_sb_full_2d,
     corr_oc_full_2d,
-    'OC',
-    'SB',
+    'corr SB',
+    'corr OC',
+    log_array=False,
+    log_diff=True,
+    plot_diff_threshold=10,
 )
-plt.title('correlation matrix')
 
+eig_sb = np.linalg.eigvals(cov_sb_full_2d)
+eig_oc = np.linalg.eigvals(cov_oc_full_2d)
+
+plt.figure()
+plt.semilogy(eig_sb, label='SB')
+plt.semilogy(eig_oc, label='OC')
+plt.legend()
+plt.title('eigenvalues')
+
+# ! this file has been overwritten with the ellspace cov
 # compare G tot against OC
-# cov_g_oc_mat = np.genfromtxt(
-#     '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests'
-#     '/realspace_test/covariance_matrix_3x2_rcf_gauss.mat'
-# )
+cov_oc_mat = np.genfromtxt(
+    '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests'
+    '/realspace_test/covariance_matrix_3x2_rcf_v2_SSC.mat'
+)
 
-# sl.compare_arrays(
-#     cov_g_oc_mat,
-#     cov_sb_full_2d,
-#     'OC',
-#     'SB',
-# )
+sl.compare_arrays(cov_sb_full_2d, cov_g_oc_mat, log_diff=True, plot_diff_threshold=10)
 # TODO study funcs below and adapt to real space,
 # current solution (see above) is a bit messy
 # cov_3x2pt_10D_to_4D cov_3x2pt_8D_dict_to_4D

@@ -520,7 +520,7 @@ def integrate_cov_levin(cov_2d, mu, ell, theta_centers, n_jobs):
 
     integral_type = 1  # single cilyndrical bessel
 
-    integrand = ell[:, None] * cov_2d
+    integrand = cov_2d
 
     # Constructor of the class
     lp = levin.pylevin(
@@ -663,12 +663,14 @@ def oc_cov_list_to_array(oc_output_path):
 
 
 def integrate_double_bessel(cov_hs, mu, nu, ells, thetas, n_jobs):
+    # the multiplication by ell1, ell2 is done inside this function
+
     # First integration: for each fixed ell1, integrate over ell2.
     partial_results = []
     for ell1_ix in tqdm(range(nbl)):
         # Extract the 2D slice for fixed ell1.
-        cov_hs_2d = cov_hs[ell1_ix, ...].reshape(nbl, -1)
-        partial_int = integrate_cov_levin(cov_hs_2d, nu, ells, thetas, n_jobs)
+        integrand = cov_hs[ell1_ix, ...].reshape(nbl, -1) * ells[:, None]
+        partial_int = integrate_cov_levin(integrand, nu, ells, thetas, n_jobs)
         partial_results.append(partial_int)
 
     # Stack partial results along the ell1 direction.
@@ -681,12 +683,11 @@ def integrate_double_bessel(cov_hs, mu, nu, ells, thetas, n_jobs):
 
     for theta_idx in tqdm(range(nbt)):
         # For fixed theta from the first integration, extract the integrand:
-        integrand_second = partial_results[:, theta_idx, :]
+        integrand_second = partial_results[:, theta_idx, :] * ells[:, None]
         final_int = integrate_cov_levin(integrand_second, mu, ells, thetas, n_jobs)
         final_result[:, theta_idx, :] = final_int
 
     cov_rs_6d = final_result.reshape(nbt, nbt, zbins, zbins, zbins, zbins)
-    cov_rs_6d *= 1 / (4 * np.pi**2)  # TODO Amax still missing
 
     return cov_rs_6d
 
@@ -776,6 +777,17 @@ def stack_cov_blocks(cov_2d_dict):
     return np.vstack((row_1, row_2, row_3, row_4))
 
 
+def twopcf_wrapper(zi, zj, ell_grid, theta_grid, cl_3D, correlation_type, method):
+    return ccl.correlation(
+        cosmo=cosmo,
+        ell=ell_grid,
+        C_ell=cl_3D[:, zi, zj],
+        theta=theta_grid,
+        method=method,
+        type=correlation_type,
+    )
+
+
 # ! ====================================================================================
 # ! ====================================================================================
 # ! ====================================================================================
@@ -800,8 +812,9 @@ survey_area_deg2 = 2500
 deg2torad2 = (180 / np.pi) ** 2
 srtoarcmin2 = (180 / np.pi * 60) ** 2
 survey_area_sr = survey_area_deg2 / deg2torad2
-fsky = 4 * np.pi / survey_area_sr
+fsky = survey_area_sr / 4 * np.pi
 Amax = max((survey_area_sr, survey_area_sr))
+covs_oc_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests/realspace_test'
 
 ell_min = 1
 ell_max = 100_000
@@ -817,6 +830,7 @@ triu_tril = 'triu'
 row_col_major = 'row-major'  # unit: is gal/arcmin^2
 n_jobs = -1  # leave one thread free?
 n_jobs_lv = 8  # might cause memory issues if too high
+tpcf_ingr_method = 'fftlog'
 
 theta_edges_coarse = np.linspace(
     theta_min_arcmin / 60, theta_max_arcmin / 60, n_theta_edges_coarse
@@ -876,7 +890,7 @@ for key in probe_idx_dict:
 term = 'ssc'
 integration_method = 'levin'
 probes_toloop = probe_idx_dict
-# probes_toloop = ['xipxim', ]
+# probes_toloop = ['xipxim']
 
 assert integration_method in ['simps', 'levin'], 'integration method not implemented'
 
@@ -1003,7 +1017,6 @@ for probe in probes_toloop:
     cov_sva_sb_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
     cov_sn_sb_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
     cov_mix_sb_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
-    cov_g_sb_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
     cov_gfromsva_sb_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
 
     # ! LEVIN SVA, to be tidied up
@@ -1215,11 +1228,11 @@ for probe in probes_toloop:
         # ! choose between this
         delta_ell = np.diff(ell_values)
         delta_ell = np.concatenate(((delta_ell[0],), delta_ell))
-        # _fsky = fsky
+        _fsky = fsky
 
         # ! or this
-        _fsky = 1
-        delta_ell = np.ones_like(delta_ell)
+        # _fsky = 1.0
+        # delta_ell = np.ones_like(delta_ell)
 
         cov_g_hs_10d = sl.covariance_einsum(
             cl_5d, noise_5d, _fsky, ell_values, delta_ell
@@ -1312,6 +1325,16 @@ for probe in probes_toloop:
         #     partial_integral[ell1_ix, ...] = integrate_cov_levin(cov_ell_2d, nu, ell_values, n_jobs)
         #     integral = integrate_cov_levin(partial_integral[ell1_ix, ...], mu, ell_values, n_jobs)
 
+        covs_oc_hs_npz = np.load(f'{covs_oc_path}/covs_oc_10D.npz')
+        cov_sva_oc_3x2pt_10D = covs_oc_hs_npz['cov_sva_oc_3x2pt_10D']
+        cov_mix_oc_3x2pt_10D = covs_oc_hs_npz['cov_mix_oc_3x2pt_10D']
+        cov_sn_oc_3x2pt_10D = covs_oc_hs_npz['cov_sn_oc_3x2pt_10D']
+        cov_g_oc_3x2pt_10D = covs_oc_hs_npz['cov_g_oc_3x2pt_10D']
+
+        cov_g_hs_6d = cov_g_oc_3x2pt_10D[
+            probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...
+        ]
+
         cov_g_sb_6d = integrate_double_bessel(
             cov_hs=cov_g_hs_6d,
             mu=mu,
@@ -1320,11 +1343,10 @@ for probe in probes_toloop:
             thetas=theta_centers,
             n_jobs=n_jobs_lv,
         )
+        norm = 4 * np.pi**2
+        cov_g_sb_6d /= norm
 
     elif term in ['ssc', 'cng']:
-        covs_oc_path = (
-            '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests/realspace_test'
-        )
         warnings.warn('HS covs loaded from file', stacklevel=2)
         # get OC SSC in ell space
         # covs_oc_hs = oc_cov_list_to_array(f'{covs_path}/{cov_hs_list_name}.dat')
@@ -1346,17 +1368,15 @@ for probe in probes_toloop:
         # )
 
         covs_oc_hs_npz = np.load(f'{covs_oc_path}/covs_oc_10D.npz')
-        cov_sva_oc_3x2pt_10D = covs_oc_hs_npz['cov_sva_oc_3x2pt_10D']
-        cov_mix_oc_3x2pt_10D = covs_oc_hs_npz['cov_mix_oc_3x2pt_10D']
-        cov_sn_oc_3x2pt_10D = covs_oc_hs_npz['cov_sn_oc_3x2pt_10D']
-        cov_g_oc_3x2pt_10D = covs_oc_hs_npz['cov_g_oc_3x2pt_10D']
         cov_ssc_oc_3x2pt_10D = covs_oc_hs_npz['cov_ssc_oc_3x2pt_10D']
         # cov_cng_oc_3x2pt_10D = covs_oc_hs_npz['cov_ng_oc_3x2pt_10D']
 
         if term == 'ssc':
             cov_ng_oc_3x2pt_10D = cov_ssc_oc_3x2pt_10D
+            norm = 4 * np.pi**2
         elif term == 'cng':
             cov_ng_oc_3x2pt_10D = cov_cng_oc_3x2pt_10D
+            norm = 4 * np.pi**2 * Amax
 
         # project it to real space using Levin
         cov_ng_oc_hs_6d = cov_ng_oc_3x2pt_10D[
@@ -1371,6 +1391,7 @@ for probe in probes_toloop:
             thetas=theta_centers,
             n_jobs=n_jobs_lv,
         )
+        cov_ng_sb_6d /= norm  # TODO Amax still missing
 
     # ! ======================================= ONECOVARIANCE ==========================
     oc_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests/realspace_test'
@@ -1699,16 +1720,16 @@ for probe in probe_idx_dict:
 
 
 cov_sb_full_2d = stack_cov_blocks(cov_sb_2d_dict)
-cov_oc_full_2d = stack_cov_blocks(cov_oc_2d_dict)
+cov_oc_list_2d = stack_cov_blocks(cov_oc_2d_dict)
 
 corr_sb_full_2d = sl.cov2corr(cov_sb_full_2d)
-corr_oc_full_2d = sl.cov2corr(cov_oc_full_2d)
+corr_oc_full_2d = sl.cov2corr(cov_oc_list_2d)
 
 # sl.plot_correlation_matrix(sl.cov2corr(corr_sb_full_2d))
 # sl.plot_correlation_matrix(sl.cov2corr(corr_oc_full_2d))
 sl.compare_arrays(
     cov_sb_full_2d,
-    cov_oc_full_2d,
+    cov_oc_list_2d,
     'cov SB',
     'cov OC',
     log_diff=True,
@@ -1724,23 +1745,14 @@ sl.compare_arrays(
     plot_diff_threshold=10,
 )
 
-eig_sb = np.linalg.eigvals(cov_sb_full_2d)
-eig_oc = np.linalg.eigvals(cov_oc_full_2d)
-
-plt.figure()
-plt.semilogy(eig_sb, label='SB')
-plt.semilogy(eig_oc, label='OC')
-plt.legend()
-plt.title('eigenvalues')
-
 # ! this file has been overwritten with the ellspace cov
 # compare G tot against OC
 if term == 'ssc':
     string = 'SSC'
 elif term == 'cng':
     string = 'NG'
-elif term == 'gauss_ell':
-    string = 'Gauss'
+elif term in ['gauss_ell', 'sva', 'mix']:
+    string = 'gauss'
     warnings.warn(
         'Comparin against the whole Gauss .mat file. You requested', stacklevel=2
     )
@@ -1751,11 +1763,116 @@ cov_oc_mat = np.genfromtxt(
 )
 
 sl.compare_arrays(
-    cov_sb_full_2d, cov_oc_mat, 'SB', 'OC', log_diff=False, plot_diff_threshold=10
+    cov_sb_full_2d, cov_oc_mat, 'SB', 'OC mat', log_diff=False, plot_diff_threshold=10
+)
+sl.compare_arrays(
+    cov_oc_list_2d,
+    cov_oc_mat,
+    'OC list',
+    'OC mat',
+    log_diff=True,
+    plot_diff_threshold=10,
 )
 # TODO study funcs below and adapt to real space,
 # current solution (see above) is a bit messy
 # cov_3x2pt_10D_to_4D cov_3x2pt_8D_dict_to_4D
+
+
+eig_sb = np.linalg.eigvals(cov_sb_full_2d)
+eig_oc = np.linalg.eigvals(cov_oc_list_2d)
+eig_oc_mat = np.linalg.eigvals(cov_oc_mat)
+
+plt.figure()
+plt.semilogy(eig_sb, label='SB')
+plt.semilogy(eig_oc, label='OC list')
+plt.semilogy(eig_oc_mat, label='OC mat')
+plt.legend()
+plt.title('eigenvalues')
+
+# perform a chi2 test
+print('Computing 2PCF...')
+
+xip_3d = np.zeros((nbt, zbins, zbins))
+xim_3d = np.zeros((nbt, zbins, zbins))
+w_3d = np.zeros((nbt, zbins, zbins))
+gammat_3d = np.zeros((nbt, zbins, zbins))
+
+zij_comb = itertools.product(range(zbins), repeat=2)
+for zi, zj in zij_comb:
+    xip_3d[:, zi, zj] = twopcf_wrapper(
+        zi, zj, ell_values, theta_centers, cl_ll_3d, 'GG+', tpcf_ingr_method
+    )
+    xim_3d[:, zi, zj] = twopcf_wrapper(
+        zi, zj, ell_values, theta_centers, cl_ll_3d, 'GG-', tpcf_ingr_method
+    )
+    w_3d[:, zi, zj] = twopcf_wrapper(
+        zi, zj, ell_values, theta_centers, cl_gg_3d, 'NN', tpcf_ingr_method
+    )
+    gammat_3d[:, zi, zj] = twopcf_wrapper(
+        zi, zj, ell_values, theta_centers, cl_gl_3d, 'NG', tpcf_ingr_method
+    )
+
+# flatten to construct datavector
+xip_2D = sl.Cl_3D_to_2D_symmetric(xip_3d, nbt, zpairs_auto, zbins)
+xim_2D = sl.Cl_3D_to_2D_symmetric(xim_3d, nbt, zpairs_auto, zbins)
+w_2D = sl.Cl_3D_to_2D_symmetric(w_3d, nbt, zpairs_auto, zbins)
+gammat_2D = sl.Cl_3D_to_2D_asymmetric(gammat_3d)
+
+# the order we are using is zpair_ell, so I need to transpose
+xip_1d = xip_2D.T.flatten()
+xim_1d = xim_2D.T.flatten()
+w_1d = w_2D.T.flatten()
+gammat_1d = gammat_2D.T.flatten()
+
+# generate samples
+nreal = 1_000
+dv_fid = np.hstack([w_1d, gammat_1d, xip_1d, xim_1d])
+dv_sampled = np.random.multivariate_normal(dv_fid, cov_oc_mat, size=nreal)
+
+# check that the dv and cov follow the same ordering
+plt.semilogy(dv_fid, label='dv_fid')
+plt.semilogy(dv_sampled[0], label='dv_sampled')
+plt.semilogy(np.diag(cov_oc_mat), label='Covariance diagonal')
+plt.semilogy(np.var(dv_sampled, axis=0), label='Sample variance')
+plt.legend()
+plt.show()
+
+# this is another check: re-compute covariance from the samples and plot corr matrix
+cov_sampled = np.cov(dv_sampled, rowvar=False)
+sl.plot_correlation_matrix(sl.cov2corr(cov_sampled))
+
+# compute the chi2
+cov_sb_inv = np.linalg.inv(cov_sb_full_2d)
+cov_oc_list_inv = np.linalg.inv(cov_oc_list_2d)
+cov_oc_mat_inv = np.linalg.inv(cov_oc_mat)
+delta_dv = dv_sampled - dv_fid  # Shape: (nreal, data_dim)
+
+chi2_sb = np.einsum('ij,jk,ik->i', delta_dv, cov_sb_inv, delta_dv)
+chi2_oc_list = np.einsum('ij,jk,ik->i', delta_dv, cov_oc_list_inv, delta_dv)
+chi2_oc_mat = np.einsum('ij,jk,ik->i', delta_dv, cov_oc_mat_inv, delta_dv)
+
+# theoretical chi2 distribution
+# Define the range of chi-squared values for the theoretical curve
+dof = dv_fid.shape[0]
+# chi2_th = np.random.chisquare(df=dof, size=10000)  # nmt chi2 values
+chi2_values = np.linspace(np.min(chi2_oc_mat), np.max(chi2_oc_mat), 1000)
+from scipy.stats import chi2
+
+chi2_pdf = chi2.pdf(chi2_values, df=dof)
+
+
+plt.figure()
+# plt.hist(chi2_oc_list, bins=20, density=True, histtype='step', label='oc_list cov')
+plt.hist(chi2_oc_mat, bins=20, density=True, histtype='step', label='oc_mat cov')
+plt.hist(chi2_sb, bins=20, density=True, histtype='step', label='sb cov')
+plt.plot(
+    chi2_values,
+    chi2_pdf,
+    label=f'Theory $\chi^2$ (dof={dof})',
+    color='k',
+    linestyle='--',
+)
+plt.legend()
 
 
 print('Done.')

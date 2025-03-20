@@ -12,8 +12,7 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
-from scipy.interpolate import RectBivariateSpline, CubicSpline
-
+from scipy.interpolate import CubicSpline, RectBivariateSpline
 from spaceborne import (
     bnt,
     cl_utils,
@@ -678,14 +677,14 @@ assert len(mult_shear_bias) == zbins, (
 if not np.all(mult_shear_bias == 0):
     print('applying multiplicative shear bias')
     print(f'mult_shear_bias = {mult_shear_bias}')
-    for ell_idx, _ in enumerate(ccl_obj.cl_ll_3d.shape[0]):
+    for ell_idx in range(ccl_obj.cl_ll_3d.shape[0]):
         for zi in range(zbins):
             for zj in range(zbins):
                 ccl_obj.cl_ll_3d[ell_idx, zi, zj] *= (1 + mult_shear_bias[zi]) * (
                     1 + mult_shear_bias[zj]
                 )
 
-    for ell_idx, _ in enumerate(ccl_obj.cl_gl_3d.shape[0]):
+    for ell_idx in range(ccl_obj.cl_gl_3d.shape[0]):
         for zi in range(zbins):
             for zj in range(zbins):
                 ccl_obj.cl_gl_3d[ell_idx, zi, zj] *= 1 + mult_shear_bias[zj]
@@ -706,26 +705,12 @@ if cfg['C_ell']['use_input_cls']:
         cl_ll_3d = cl_ll_3d_spline(ell_dict['ell_WL'])
 
     if not np.allclose(ells_XC, ell_dict['ell_XC'], atol=0, rtol=1e-5):
-        cl_gl_3d_spline = CubicSpline(ells_WL, cl_gl_3d, axis=0)
+        cl_gl_3d_spline = CubicSpline(ells_XC, cl_gl_3d, axis=0)
         cl_gl_3d = cl_gl_3d_spline(ell_dict['ell_XC'])
 
     if not np.allclose(ells_GC, ell_dict['ell_GC'], atol=0, rtol=1e-5):
-        cl_gg_3d_spline = CubicSpline(ells_WL, cl_gg_3d, axis=0)
+        cl_gg_3d_spline = CubicSpline(ells_GC, cl_gg_3d, axis=0)
         cl_gg_3d = cl_gg_3d_spline(ell_dict['ell_GC'])
-        
-    fig, ax = plt.subplots(1, 3)
-    plt.tight_layout()
-    for zi in range(zbins):
-        zj = zi
-        ax[0].loglog(ell_dict['ell_WL'], ccl_obj.cl_ll_3d[:, zi, zj], c=clr[zi])
-        ax[0].loglog(ells_WL, cl_ll_3d[:, zi, zj], c=clr[zi])
-        ax[1].loglog(ell_dict['ell_XC'], ccl_obj.cl_gl_3d[:, zi, zj], c=clr[zi])
-        ax[2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], c=clr[zi])
-    ax[0].set_xlabel('$\\ell$')
-    ax[1].set_xlabel('$\\ell$')
-    ax[2].set_xlabel('$\\ell$')
-    ax[0].set_ylabel('$C_{\\ell}$')
-    plt.show()
     
     ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d = cl_ll_3d, cl_gl_3d, cl_gg_3d 
 

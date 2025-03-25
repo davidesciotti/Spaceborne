@@ -112,9 +112,10 @@ mpl_other_dict = {
 #     return binned_cov
 
 
-def bin_2d_matrix(
-    cov, ells_in, ells_out, ells_out_edges, weights_in, which_binning='sum'
-):
+def bin_2d_matrix(  # fmt: skip
+    cov, ells_in, ells_out, ells_out_edges, weights_in, which_binning='sum', 
+    interpolate = True
+):  # fmt: skip
     assert cov.shape[0] == cov.shape[1] == len(ells_in), (
         'ells_in must be the same length as the covariance matrix'
     )
@@ -137,6 +138,8 @@ def bin_2d_matrix(
     assert len(weights_in) == len(ells_in), (
         'weights_in must be the same length as ells_in'
     )
+    
+    assert type(interpolate) is bool, 'interpolate must be a boolean'
 
     # Loop over the output bins
     for ell1_idx, _ in enumerate(ells_out):
@@ -169,22 +172,20 @@ def bin_2d_matrix(
                 partial_sum = np.sum(
                     cov_masked * weights1_in_xx * weights2_in_yy, axis=1
                 )
-                total_sum = np.sum(partial_sum, axis=0)
-                binned_cov[ell1_idx, ell2_idx] = total_sum / (
-                    np.sum(weights1_in) * np.sum(weights2_in)
-                )
-            elif which_binning == 'integral':
-                raise NotImplementedError('Integral binning not implemented yet')
-                # with interpolation
-                # partial_integral = simps(
-                #     y=cov_masked * weights1_in_xx * weights2_in_yy, x=ell2_in, axis=1
-                # )
-                # total_integral = simps(y=partial_integral, x=ell1_in, axis=0)
-                # binned_cov[ell1_idx, ell2_idx] = total_integral / (
-                #     simps(y=weights1_in, x=ell1_in) * simps(y=weights2_in, x=ell2_in)
-                # )
+                total = np.sum(partial_sum, axis=0)
+                norm1 = np.sum(weights1_in)
+                norm2 = np.sum(weights2_in)
                 
-                # without interpolation
+            elif which_binning == 'integral' and not interpolate:
+                partial_integral = simps(
+                    y=cov_masked * weights1_in_xx * weights2_in_yy, x=ell2_in, axis=1
+                )
+                total = simps(y=partial_integral, x=ell1_in, axis=0)
+                norm1 = simps(y=weights1_in, x=ell1_in)
+                norm2 = simps(y=weights2_in, x=ell2_in)
+
+
+            elif which_binning == 'integral' and interpolate:
                 # Interpolate the covariance matrix to a finer grid if necessary
                 ell1_fine = np.linspace(ell1_min, ell1_max, num=100)
                 ell2_fine = np.linspace(ell2_min, ell2_max, num=100)
@@ -196,16 +197,16 @@ def bin_2d_matrix(
 
                 # Perform the double integral
                 partial_integral = simps(
-                    y=cov_interp * weights1_fine[:, None] * weights2_fine[None, :], 
-                    x=ell2_fine, axis=1
+                    y=cov_interp * weights1_fine[:, None] * weights2_fine[None, :],
+                    x=ell2_fine,
+                    axis=1,
                 )
-                total_integral = simps(y=partial_integral, x=ell1_fine, axis=0)
-
-                # Normalization
+                total = simps(y=partial_integral, x=ell1_fine, axis=0)
                 norm1 = simps(y=weights1_fine, x=ell1_fine)
                 norm2 = simps(y=weights2_fine, x=ell2_fine)
-                binned_cov[ell1_idx, ell2_idx] = total_integral / (norm1 * norm2)
                 
+            binned_cov[ell1_idx, ell2_idx] = total / (norm1 * norm2)
+
     return binned_cov
 
 

@@ -847,14 +847,13 @@ logy = True
 diagonal = False
 
 # accuracy settings
-n_sub = 10  # number of collocation points in each bisection
-n_bisec_max = 32  # maximum number of bisections used
-rel_acc = 1e-5  # relative accuracy target  # TODO decrease to 1e-5
+n_sub = 8  # number of collocation points in each bisection  # default 8
+n_bisec_max = 100  # maximum number of bisections used  # default 32
+rel_acc = 1e-4  # relative accuracy target  # default 1e-4
 # should the bessel functions be calculated with boost instead of GSL,
 # higher accuracy at high Bessel orders
 boost_bessel = True
-verbose = False  # should the code talk to you?
-
+verbose = True  # should the code talk to you?
 
 zbins = 3
 survey_area_deg2 = 2500
@@ -870,7 +869,7 @@ ell_max = 100_000
 nbl = 500
 theta_min_arcmin = 50
 theta_max_arcmin = 300
-n_theta_edges = 21
+n_theta_edges = 151
 n_theta_edges_coarse = 21
 df_chunk_size = 50000
 cov_list_name = 'covariance_list_3x2_rcf_v2'
@@ -878,7 +877,7 @@ cov_hs_list_name = 'covariance_list_3x2_cl'
 triu_tril = 'triu'
 row_col_major = 'row-major'  # unit: is gal/arcmin^2
 n_jobs = -1  # leave one thread free?
-n_jobs_lv = 8  # might cause memory issues if too high
+n_jobs_lv = 16  # might cause memory issues if too high
 tpcf_ingr_method = 'fftlog'
 
 theta_edges_coarse = np.linspace(
@@ -934,7 +933,6 @@ split_g_dict = {
     'sva': 0,
     'sn': 1,
     'mix': 2,
-    'ssc': 3,
 }
 
 
@@ -947,12 +945,10 @@ for key in probe_idx_dict:
     )
 
 terms_toloop = ['sva', 'sn', 'mix']
-terms_toloop = [
-    'sn',
-]
-integration_method = 'simps'
+terms_toloop = ['mix']
+integration_method = 'levin'
 probes_toloop = probe_idx_dict
-# probes_toloop = ['gmxim']
+probes_toloop = ['gggm']
 
 assert integration_method in ['simps', 'levin'], 'integration method not implemented'
 
@@ -1053,7 +1049,10 @@ cl_5d[1, 1, ...] = cl_gg_3d
 
 for probe, term in itertools.product(probes_toloop, terms_toloop):
     print(f'\n***** Working on probe {probe} and term {term} *****\n')
-    split_g_ix = split_g_dict[term]
+
+    # TODO check I'm not messing up anything here...
+    split_g_ix = split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
+
     twoprobe_a_str, twoprobe_b_str = split_probe_name(probe)
     twoprobe_a_ix, twoprobe_b_ix = (
         probe_idx_dict_short[twoprobe_a_str],
@@ -1102,7 +1101,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
                 theta_1_ix=theta_1_ix, theta_2_ix=theta_2_ix, mu=mu, nu=nu,  
                 zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd,  
                 func=cov_g_sva_real,  
-                **kwargs,  
+                **kwargs,
             )  
             for theta_1_ix in tqdm(range(nbt))
             for theta_2_ix in range(nbt)
@@ -1267,7 +1266,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         _fsky = fsky
 
         # ! or this
-        # _fsky = 1.0
+        _fsky = 1.0
         # delta_ell = np.ones_like(delta_ell)
 
         cov_hs_10d_sva, cov_hs_10d_sn, cov_hs_10d_mix = sl.covariance_einsum_split(
@@ -1281,9 +1280,6 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         #     delta_ell,
         #     return_only_diagonal_ells=True,
         # )
-
-        cov_hs_sva_6d = cov_hs_10d_sva[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
-        cov_hs_mix_6d = cov_hs_10d_mix[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
 
         # cov_ell_diag = cov_ell_diag[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
 
@@ -1364,14 +1360,18 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         #     integral = integrate_cov_levin(partial_integral[ell1_ix, ...], mu, ell_values, n_jobs)
 
         covs_oc_hs_npz = np.load(f'{covs_oc_path}/covs_oc_10D.npz')
-        cov_sva_oc_3x2pt_10D = covs_oc_hs_npz['cov_sva_oc_3x2pt_10D']
-        cov_mix_oc_3x2pt_10D = covs_oc_hs_npz['cov_mix_oc_3x2pt_10D']
-        cov_sn_oc_3x2pt_10D = covs_oc_hs_npz['cov_sn_oc_3x2pt_10D']
-        cov_g_oc_3x2pt_10D = covs_oc_hs_npz['cov_g_oc_3x2pt_10D']
+        cov_sva_oc_hs_10D = covs_oc_hs_npz['cov_sva_oc_3x2pt_10D']
+        cov_mix_oc_hs_10D = covs_oc_hs_npz['cov_mix_oc_3x2pt_10D']
+        cov_sn_oc_hs_10D = covs_oc_hs_npz['cov_sn_oc_3x2pt_10D']
+        cov_g_oc_hs_10D = covs_oc_hs_npz['cov_g_oc_3x2pt_10D']
+
+        cov_sn_sb_6d = cov_sn_real(
+            probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
+        )
 
         cov_g_hs_6d = (
-            cov_sva_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...]
-            + cov_mix_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...]
+            cov_hs_10d_sva[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
+            + cov_hs_10d_mix[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
         )
 
         cov_g_sb_6d = integrate_double_bessel(
@@ -1384,6 +1384,9 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         )
         norm = 4 * np.pi**2
         cov_g_sb_6d /= norm
+        cov_g_sb_6d += (
+            cov_sn_sb_6d  # diagonal is noise.dominated, you won't see much of a diff
+        )
 
     elif term in ['ssc', 'cng']:
         warnings.warn('HS covs loaded from file', stacklevel=2)
@@ -1596,7 +1599,16 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
                 theta_centers_coarse,
                 theta_edges_coarse,
                 weights_in=None,
+                which_binning='integral',
             )
+
+        # plot the diag and flatten the redshift indices
+        # zi, zj, zk, zl = 0, 1, 2, 1
+        # plt.figure()
+        # plt.plot(theta_centers, np.diagonal(cov_sb_6d, axis1=0, axis2=1)[zi, zj, zk, zl], marker='')
+        # plt.plot(theta_centers_coarse, np.diagonal(cov_sb_6d_binned, axis1=0, axis2=1)[zi, zj, zk, zl], marker='')
+        # plt.show()
+        # assert False, 'stop here to check binning'
 
         cov_sb_6d = cov_sb_6d_binned
 
@@ -1622,6 +1634,13 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
     # cov_sb_vec_2d = sl.cov_4D_to_2D(cov_sb_vec_4d, block_index='zpair')
     # cov_sb_gfromsva_2d = sl.cov_4D_to_2D(cov_sb_gfromsva_4d, block_index='zpair')
 
+    if probe in ['gmxip', 'gmxim']:
+        warnings.warn(
+            '!!! TRANSPOSING OC COV!!!!!',
+            stacklevel=2,
+        )
+        cov_oc_2d = cov_oc_2d.T
+
     sl.compare_arrays(
         cov_sb_2d,
         cov_oc_2d,
@@ -1633,22 +1652,26 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         plot_diff_hist=False,
     )
 
+    fine_bin_str = 'coarse' if nbt_coarse == nbt else 'fine'
+    common_title = f'{term}, {probe}, {integration_method} theta_bins {nbt}'
+
     # compare total diag
-    if cov_oc_2d.shape[0] == cov_oc_2d.shape[1]:
-        sl.compare_funcs(
-            None,
-            {
-                'OC': np.abs(np.diag(cov_oc_2d)),
-                'SB': np.abs(np.diag(cov_sb_2d)),
-                #  'SB_split_sum': np.abs(np.diag(cov_sb_vec_2d)),  # TODO
-                #  'SB_fromsva': np.abs(np.diag(cov_sb_gfromsva_2d)),
-                #  'OC_SUM': np.abs(np.diag(cov_oc_sum_2d)),
-            },
-            logscale_y=[True, False],
-            ylim_diff=[-110, 110],
-            title=f'{term}, {probe}, {integration_method}, total cov diag',
-        )
-        # plt.savefig(f'{term}_{probe}_total_cov_diag.png')
+    # if cov_oc_2d.shape[0] == cov_oc_2d.shape[1]:
+    sl.compare_funcs(
+        None,
+        {
+            'OC': np.abs(np.diag(cov_oc_2d)),
+            'SB': np.abs(np.diag(cov_sb_2d)),
+            # 'SB/OC': np.abs(np.diag(cov_sb_2d / cov_oc_2d)),
+            #  'SB_split_sum': np.abs(np.diag(cov_sb_vec_2d)),  # TODO
+            #  'SB_fromsva': np.abs(np.diag(cov_sb_gfromsva_2d)),
+            #  'OC_SUM': np.abs(np.diag(cov_oc_sum_2d)),
+        },
+        logscale_y=[True, False],
+        ylim_diff=[-110, 110],
+        title=f'{common_title}, total cov diag',
+    )
+    # plt.savefig(f'{common_title}, total cov diag.png')
 
     # compare flattened matrix
     sl.compare_funcs(
@@ -1656,13 +1679,15 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         {
             'OC': np.abs(cov_oc_2d.flatten()),
             'SB': np.abs(cov_sb_2d.flatten()),
+            # 'SB/OC': np.abs(cov_sb_2d.flatten()) / np.abs(cov_oc_2d.flatten()),
             #  'SB_VEC': np.abs(cov_sb_vec_2d.flatten()),
             #  'SB_fromsva': np.abs(cov_sb_gfromsva_2d.flatten()),
         },
         logscale_y=[True, False],
-        title=f'{term}, {probe}, {integration_method}, total cov flat',
+        title=f'{common_title}, total cov flat',
         ylim_diff=[-110, 110],
     )
+    # plt.savefig(f'{common_title}, total cov flat.png')
 
     zi, zj, zk, zl = 0, 0, 0, 0
     theta_2_ix = 17
@@ -1707,8 +1732,9 @@ cov_oc_2d_dict = {}
 cov_sb_full_2d = []
 for term in terms_toloop:
     for probe in probe_idx_dict:
-        split_g_ix = split_g_dict[term]
-        term_oc = 'gauss' if len(terms_toloop) > 1 else term
+        split_g_ix = split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
+
+        term_oc = 'gauss' if (len(terms_toloop) > 1 or term == 'gauss_ell') else term
 
         twoprobe_ab_str, twoprobe_cd_str = split_probe_name(probe)
         twoprobe_ab_ix, twoprobe_cd_ix = (

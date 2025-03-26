@@ -17,6 +17,7 @@ from tqdm import tqdm
 import pyccl as ccl
 from spaceborne import sb_lib as sl
 
+
 warnings.filterwarnings(
     'ignore', message=r'.*invalid escape sequence.*', category=SyntaxWarning
 )
@@ -858,7 +859,7 @@ survey_area_deg2 = 2500
 deg2torad2 = (180 / np.pi) ** 2
 srtoarcmin2 = (180 / np.pi * 60) ** 2
 survey_area_sr = survey_area_deg2 / deg2torad2
-fsky = survey_area_sr / 4 * np.pi
+fsky = survey_area_sr / (4 * np.pi)
 Amax = max((survey_area_sr, survey_area_sr))
 covs_oc_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests/realspace_test'
 
@@ -1116,9 +1117,8 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         print(f'... Done in: {(time.time() - start):.2f} s')
 
     elif term == 'sva' and integration_method == 'levin':
-        
         start = time.perf_counter()
-        
+
         a = np.einsum(
             'Lik,Ljl->Lijkl',
             cl_5d[probe_a_ix, probe_c_ix],
@@ -1130,7 +1130,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
             cl_5d[probe_b_ix, probe_c_ix],
         )
         integrand = a + b
-        
+
         integrand = sl.cov_6D_to_4D_blocks(
             cov_6D=integrand,
             nbl=nbl,
@@ -1139,8 +1139,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
             ind_AB=ind_ab,
             ind_CD=ind_cd,
         )
-        
-        
+
         # flatten the integrand to [ells, whatever]
         integrand = integrand.reshape(nbl, -1)
         integrand *= ell_values[:, None]
@@ -1154,7 +1153,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
             ell_1=mu,
             ell_2=nu,
         )
-        
+
         print(f'... Done in: {(time.perf_counter() - start):.2f} s')
 
         cov_sva_sb_4d = result_levin.reshape(nbt, nbt, zpairs_ab, zpairs_cd)
@@ -1319,12 +1318,22 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         _fsky = fsky
 
         # ! or this
-        _fsky = 1.0
+        # _fsky = 1.0
         # delta_ell = np.ones_like(delta_ell)
 
-        cov_hs_10d_sva, cov_hs_10d_sn, cov_hs_10d_mix = sl.covariance_einsum_split(
-            cl_5d, noise_5d, _fsky, ell_values, delta_ell
+        # with sl.timer('covariance_einsum_v3 %.3f s '):
+        cov_sva_sb_hs_10D, cov_sn_sb_hs_10D, cov_mix_sb_hs_10D = (
+            sl.covariance_einsum(
+                cl_5d,
+                noise_5d,
+                _fsky,
+                ell_values,
+                delta_ell,
+                split_terms=True,
+                return_only_diagonal_ells=True,
+            )
         )
+
         # cov_ell_diag = sl.covariance_einsum(
         #     cl_5d,
         #     noise_5d,
@@ -1417,14 +1426,14 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         cov_mix_oc_hs_10D = covs_oc_hs_npz['cov_mix_oc_3x2pt_10D']
         cov_sn_oc_hs_10D = covs_oc_hs_npz['cov_sn_oc_3x2pt_10D']
         cov_g_oc_hs_10D = covs_oc_hs_npz['cov_g_oc_3x2pt_10D']
-
+        
         cov_sn_sb_6d = cov_sn_real(
             probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
         )
 
         cov_g_hs_6d = (
-            cov_hs_10d_sva[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
-            + cov_hs_10d_mix[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
+            cov_sva_sb_hs_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
+            + cov_mix_sb_hs_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
         )
 
         cov_g_sb_6d = integrate_double_bessel(

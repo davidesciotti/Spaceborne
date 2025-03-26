@@ -7,20 +7,15 @@ from copy import deepcopy
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.stats import chi2
+import pylevin as levin
 from joblib import Parallel, delayed
 from scipy.integrate import quad_vec
 from scipy.integrate import simpson as simps
+from scipy.stats import chi2
 from tqdm import tqdm
 
 import pyccl as ccl
 from spaceborne import sb_lib as sl
-
-# To run onecov to test this script, do
-# conda activate spaceborne-dav
-# cd OneCovariance
-# python covariance.py /home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests/\
-# realspace_test/config_3x2pt_rcf.ini
 
 warnings.filterwarnings(
     'ignore', message=r'.*invalid escape sequence.*', category=SyntaxWarning
@@ -104,10 +99,10 @@ def project_ellspace_cov_vec_1d(  # fmt: skip
     def integrand_func(ell1, ell2, cov_ell_diag):
         # Vectorized computation of k_mu and k_nu
         kmu = k_mu(ell1, theta_1_l, theta_1_u, mu)
-        knu = k_mu(ell1, theta_2_l, theta_2_u, nu)
+        knu = k_mu(ell2, theta_2_l, theta_2_u, nu)
 
         # Compute the integrand
-        part_product = ell1**2 * kmu * knu
+        part_product = ell1 * ell2 * kmu * knu
         integrand = part_product[:, None, None, None, None] * cov_ell_diag
         return integrand
 
@@ -121,7 +116,7 @@ def project_ellspace_cov_vec_1d(  # fmt: skip
     return cov_elem
 
 
-def project_ellspace_cov(  # fmt: skip
+def project_hs_cov_simps(  # fmt: skip
     theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu, 
     zi, zj, zk, zl,                                             
     Amax, ell1_values, ell2_values, cov_ell,                    
@@ -180,7 +175,7 @@ def project_ellspace_cov_helper(    # fmt: skip
     zk, zl = ind_cd[zkl, :]
 
     return (theta_1_ix, theta_2_ix, zi, zj, zk, zl,  # fmt: skip
-        project_ellspace_cov( 
+        project_hs_cov_simps( 
             theta_1_l, theta_1_u, mu, 
             theta_2_l, theta_2_u, nu, 
             zi, zj, zk, zl, 
@@ -837,6 +832,9 @@ def regularize_by_eigenvalue_cutoff(cov, threshold=1e-14):
     return cov_inv
 
 
+# import matplotlib
+# matplotlib.use('Agg')
+
 # ! ====================================================================================
 # ! ====================================================================================
 # ! ====================================================================================
@@ -848,8 +846,8 @@ diagonal = False
 
 # accuracy settings
 n_sub = 8  # number of collocation points in each bisection  # default 8
-n_bisec_max = 100  # maximum number of bisections used  # default 32
-rel_acc = 1e-4  # relative accuracy target  # default 1e-4
+n_bisec_max = 80  # maximum number of bisections used  # default 32
+rel_acc = 5e-4  # relative accuracy target  # default 1e-4
 # should the bessel functions be calculated with boost instead of GSL,
 # higher accuracy at high Bessel orders
 boost_bessel = True
@@ -866,10 +864,10 @@ covs_oc_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests/realspa
 
 ell_min = 1
 ell_max = 100_000
-nbl = 500
+nbl = 200
 theta_min_arcmin = 50
 theta_max_arcmin = 300
-n_theta_edges = 151
+n_theta_edges = 101
 n_theta_edges_coarse = 21
 df_chunk_size = 50000
 cov_list_name = 'covariance_list_3x2_rcf_v2'
@@ -945,10 +943,10 @@ for key in probe_idx_dict:
     )
 
 terms_toloop = ['sva', 'sn', 'mix']
-terms_toloop = ['mix']
+terms_toloop = ['sva']
 integration_method = 'levin'
 probes_toloop = probe_idx_dict
-probes_toloop = ['gggm']
+# probes_toloop = ['gggm']
 
 assert integration_method in ['simps', 'levin'], 'integration method not implemented'
 
@@ -1048,18 +1046,21 @@ cl_5d[0, 1, ...] = cl_gl_3d.transpose(0, 2, 1)
 cl_5d[1, 1, ...] = cl_gg_3d
 
 for probe, term in itertools.product(probes_toloop, terms_toloop):
-    print(f'\n***** Working on probe {probe} and term {term} *****\n')
+    print(
+        f'\n***** probe {probe} - term {term} - '
+        f'integration {integration_method} - theta bins {nbt} *****\n'
+    )
 
     # TODO check I'm not messing up anything here...
     split_g_ix = split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
 
-    twoprobe_a_str, twoprobe_b_str = split_probe_name(probe)
-    twoprobe_a_ix, twoprobe_b_ix = (
-        probe_idx_dict_short[twoprobe_a_str],
-        probe_idx_dict_short[twoprobe_b_str],
+    twoprobe_ab_str, twoprobe_cd_str = split_probe_name(probe)
+    twoprobe_ab_ix, twoprobe_cd_ix = (
+        probe_idx_dict_short[twoprobe_ab_str],
+        probe_idx_dict_short[twoprobe_cd_str],
     )
 
-    mu, nu = mu_dict[twoprobe_a_str], mu_dict[twoprobe_b_str]
+    mu, nu = mu_dict[twoprobe_ab_str], mu_dict[twoprobe_cd_str]
     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = probe_idx_dict[probe]
 
     # TODO test this better, especially for cross-terms
@@ -1081,7 +1082,6 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
     cov_gfromsva_sb_6d = np.zeros((nbt, nbt, zbins, zbins, zbins, zbins))
 
     # ! LEVIN SVA, to be tidied up
-    import pylevin as levin
 
     if term == 'sva' and integration_method in ['simps', 'quad']:
         print('Computing real-space Gaussian SVA covariance...')
@@ -1116,6 +1116,9 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         print(f'... Done in: {(time.time() - start):.2f} s')
 
     elif term == 'sva' and integration_method == 'levin':
+        
+        start = time.perf_counter()
+        
         a = np.einsum(
             'Lik,Ljl->Lijkl',
             cl_5d[probe_a_ix, probe_c_ix],
@@ -1127,6 +1130,17 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
             cl_5d[probe_b_ix, probe_c_ix],
         )
         integrand = a + b
+        
+        integrand = sl.cov_6D_to_4D_blocks(
+            cov_6D=integrand,
+            nbl=nbl,
+            npairs_AB=zpairs_ab,
+            npairs_CD=zpairs_cd,
+            ind_AB=ind_ab,
+            ind_CD=ind_cd,
+        )
+        
+        
         # flatten the integrand to [ells, whatever]
         integrand = integrand.reshape(nbl, -1)
         integrand *= ell_values[:, None]
@@ -1140,8 +1154,19 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
             ell_1=mu,
             ell_2=nu,
         )
+        
+        print(f'... Done in: {(time.perf_counter() - start):.2f} s')
 
-        cov_sva_sb_6d = result_levin.reshape(nbt, nbt, zbins, zbins, zbins, zbins)
+        cov_sva_sb_4d = result_levin.reshape(nbt, nbt, zpairs_ab, zpairs_cd)
+        cov_sva_sb_6d = sl.cov_4D_to_6D_blocks(
+            cov_sva_sb_4d,
+            nbl=nbt,
+            zbins=zbins,
+            ind_ab=ind_ab,
+            ind_cd=ind_cd,
+            symmetrize_output_ab=False,
+            symmetrize_output_cd=False,
+        )
 
     elif term == 'sn':
         print('Computing real-space Gaussian SN covariance...')
@@ -1153,7 +1178,6 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         print(f'... Done in: {(time.time() - start):.2f} s')
 
     elif term == 'mix' and integration_method == 'simps':
-        print('Computing real-space Gaussian MIX covariance...')
         start = time.time()
 
         kwargs = {
@@ -1183,6 +1207,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         print(f'... Done in: {(time.time() - start):.2f} s')
 
     elif term == 'mix' and integration_method == 'levin':
+        start = time.time()
 
         def _get_mix_prefac(probe_b_ix, probe_d_ix, zj, zl):
             prefac = (
@@ -1221,21 +1246,49 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
             prefac[probe_a_ix, probe_d_ix],
             cl_5d[probe_b_ix, probe_c_ix],
         )
-        integrand = a + b + c + d
-        integrand = integrand.reshape(nbl, -1)
-        integrand *= ell_values[:, None]
-        integrand /= 2 * np.pi * Amax
+        integrand_5d = a + b + c + d
+
+        # compress integrand selecting only unique zpairs
+        assert ind_ab.shape[1] == 2, (
+            "ind_ab must have two columns, maybe you didn't cut it"
+        )
+        assert ind_cd.shape[1] == 2, (
+            "ind_cd must have two columns, maybe you didn't cut it"
+        )
+
+        integrand_3d = sl.cov_6D_to_4D_blocks(
+            cov_6D=integrand_5d,
+            nbl=nbl,
+            npairs_AB=zpairs_ab,
+            npairs_CD=zpairs_cd,
+            ind_AB=ind_ab,
+            ind_CD=ind_cd,
+        )
+
+        integrand_2d = integrand_3d.reshape(nbl, -1)
+        integrand_2d *= ell_values[:, None]
+        integrand_2d /= 2 * np.pi * Amax
 
         result_levin = levin_double_wrapper(
-            integrand,
+            integrand_2d,
             x_values=ell_values,
             bessel_args=theta_centers,
             bessel_type=3,
             ell_1=mu,
             ell_2=nu,
         )
+        print(f'... Done in: {(time.time() - start):.2f} s')
 
-        cov_mix_sb_6d = result_levin.reshape(nbt, nbt, zbins, zbins, zbins, zbins)
+        cov_mix_sb_4d = result_levin.reshape(nbt, nbt, zpairs_ab, zpairs_cd)
+        cov_mix_sb_6d = sl.cov_4D_to_6D_blocks(
+            cov_mix_sb_4d,
+            nbl=nbt,
+            zbins=zbins,
+            ind_ab=ind_ab,
+            ind_cd=ind_cd,
+            symmetrize_output_ab=False,
+            symmetrize_output_cd=False,
+        )
 
     elif term == 'gauss_ell':
         print('Projecting ell-space Gaussian covariance...')
@@ -1612,7 +1665,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
 
         cov_sb_6d = cov_sb_6d_binned
 
-    cov_sb_dict_8d[split_g_ix, twoprobe_a_ix, twoprobe_b_ix, ...] = cov_sb_6d
+    cov_sb_dict_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix, ...] = cov_sb_6d
 
     # cov_oc_4d = sl.cov_6D_to_4D(cov_oc_6d, theta_bins, zpairs_cross, ind_cross)
     # cov_sb_4d = sl.cov_6D_to_4D(cov_sb_6d, theta_bins, zpairs_cross, ind_cross)
@@ -1724,7 +1777,6 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
     # TODO other probes
     # TODO probably ell range as well
     # TODO integration? quad?
-    continue
 
 # ! construct full 2D cov and compare correlation matrix
 cov_sb_2d_dict = {}

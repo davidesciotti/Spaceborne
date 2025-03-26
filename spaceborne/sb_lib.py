@@ -138,7 +138,7 @@ def bin_2d_matrix(  # fmt: skip
     assert len(weights_in) == len(ells_in), (
         'weights_in must be the same length as ells_in'
     )
-    
+
     assert type(interpolate) is bool, 'interpolate must be a boolean'
 
     # Loop over the output bins
@@ -175,7 +175,7 @@ def bin_2d_matrix(  # fmt: skip
                 total = np.sum(partial_sum, axis=0)
                 norm1 = np.sum(weights1_in)
                 norm2 = np.sum(weights2_in)
-                
+
             elif which_binning == 'integral' and not interpolate:
                 partial_integral = simps(
                     y=cov_masked * weights1_in_xx * weights2_in_yy, x=ell2_in, axis=1
@@ -183,7 +183,6 @@ def bin_2d_matrix(  # fmt: skip
                 total = simps(y=partial_integral, x=ell1_in, axis=0)
                 norm1 = simps(y=weights1_in, x=ell1_in)
                 norm2 = simps(y=weights2_in, x=ell2_in)
-
 
             elif which_binning == 'integral' and interpolate:
                 # Interpolate the covariance matrix to a finer grid if necessary
@@ -204,7 +203,7 @@ def bin_2d_matrix(  # fmt: skip
                 total = simps(y=partial_integral, x=ell1_fine, axis=0)
                 norm1 = simps(y=weights1_fine, x=ell1_fine)
                 norm2 = simps(y=weights2_fine, x=ell2_fine)
-                
+
             binned_cov[ell1_idx, ell2_idx] = total / (norm1 * norm2)
 
     return binned_cov
@@ -3068,43 +3067,58 @@ def cov_6D_to_4D_optim(cov_6D, nbl, zpairs, ind):
 
 # @njit
 def cov_6D_to_4D_blocks(cov_6D, nbl, npairs_AB, npairs_CD, ind_AB, ind_CD):
-    """reshapes the covariance even for the non-diagonal (hence, non-square) blocks needed to build the 3x2pt.
-    use npairs_AB = npairs_CD and ind_AB = ind_CD for the normal routine (valid for auto-covariance
-    LL-LL, GG-GG, GL-GL and LG-LG). n_columns is used to determine whether the ind array has 2 or 4 columns
+    """reshapes the covariance even for the non-diagonal (hence, non-square) blocks
+    needed to build the 3x2pt. Use npairs_AB = npairs_CD and ind_AB = ind_CD for the
+    normal routine (valid for auto-covariance LL-LL, GG-GG, GL-GL and LG-LG).
+    n_columns is used to determine whether the ind array has 2 or 4 columns
     (if it's given in the form of a dictionary or not)
     """
     assert ind_AB.shape[0] == npairs_AB, 'ind_AB.shape[0] != npairs_AB'
     assert ind_CD.shape[0] == npairs_CD, 'ind_CD.shape[0] != npairs_CD'
-    assert cov_6D.shape[0] == cov_6D.shape[1] == nbl, (
-        'number of angular bins does not match first two cov axes'
+    assert (cov_6D.shape[0] == cov_6D.shape[1] == nbl) or (cov_6D.shape[0] == nbl), (
+        'number of angular bins does not match first two cov axes or the first axis'
     )
 
-    # this is to ensure compatibility with both 4-columns and 2-columns ind arrays (dictionary)
-    # the penultimante element is the first index, the last one the second index (see s - 1, s - 2 below)
-    n_columns_AB = ind_AB.shape[
-        1
-    ]  # of columns: this is to understand the format of the file
+    # this is to ensure compatibility with both 4-columns and 2-columns ind arrays
+    # (dictionary)the penultimante element is the first index, the last one the
+    # second index (see s - 1, s - 2 below)
+    # number of columns: this is to understand the format of the file
+    n_columns_AB = ind_AB.shape[1]
     n_columns_CD = ind_CD.shape[1]
 
     # check
     assert n_columns_AB == n_columns_CD, (
         'ind_AB and ind_CD must have the same number of columns'
     )
-    nc = n_columns_AB  # make the name shorter
+    ncol = n_columns_AB  # make the name shorter
 
-    cov_4D = np.zeros((nbl, nbl, npairs_AB, npairs_CD))
-    for ell1 in range(nbl):
-        for ell2 in range(nbl):
-            for ij in range(npairs_AB):
-                for kl in range(npairs_CD):
-                    i, j, k, l = (
-                        ind_AB[ij, nc - 2],
-                        ind_AB[ij, nc - 1],
-                        ind_CD[kl, nc - 2],
-                        ind_CD[kl, nc - 1],
-                    )
-                    cov_4D[ell1, ell2, ij, kl] = cov_6D[ell1, ell2, i, j, k, l]
-    return cov_4D
+    if cov_6D.shape[0] == cov_6D.shape[1] == nbl:
+        cov_out = np.zeros((nbl, nbl, npairs_AB, npairs_CD))
+        for ell1 in range(nbl):
+            for ell2 in range(nbl):
+                for ij in range(npairs_AB):
+                    for kl in range(npairs_CD):
+                        zi, zj, zk, zl = (
+                            ind_AB[ij, ncol - 2],
+                            ind_AB[ij, ncol - 1],
+                            ind_CD[kl, ncol - 2],
+                            ind_CD[kl, ncol - 1],
+                        )
+                        cov_out[ell1, ell2, ij, kl] = cov_6D[ell1, ell2, zi, zj, zk, zl]
+
+    if cov_6D.shape[0] != cov_6D.shape[1]:
+        cov_out = np.zeros((nbl, npairs_AB, npairs_CD))
+        for ij in range(npairs_AB):
+            for kl in range(npairs_CD):
+                zi, zj, zk, zl = (
+                    ind_AB[ij, ncol - 2],
+                    ind_AB[ij, ncol - 1],
+                    ind_CD[kl, ncol - 2],
+                    ind_CD[kl, ncol - 1],
+                )
+                cov_out[:, ij, kl] = cov_6D[:, zi, zj, zk, zl]
+
+    return cov_out
 
 
 # @njit

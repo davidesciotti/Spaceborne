@@ -711,8 +711,8 @@ if cfg['C_ell']['use_input_cls']:
     if not np.allclose(ells_GC, ell_dict['ell_GC'], atol=0, rtol=1e-5):
         cl_gg_3d_spline = CubicSpline(ells_GC, cl_gg_3d, axis=0)
         cl_gg_3d = cl_gg_3d_spline(ell_dict['ell_GC'])
-    
-    ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d = cl_ll_3d, cl_gl_3d, cl_gg_3d 
+
+    ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d = cl_ll_3d, cl_gl_3d, cl_gg_3d
 
 
 ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_3x2pt, zbins, zbins))
@@ -835,7 +835,7 @@ cov_obj.set_gauss_cov(
     ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['split_gaussian_cov']
 )
 
-# ! ========================================== OneCovariance ===========================
+# ! =================================== OneCovariance ==================================
 if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     if cfg['ell_cuts']['cl_ell_cuts']:
         raise NotImplementedError(

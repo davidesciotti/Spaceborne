@@ -290,22 +290,41 @@ class SpaceborneCovariance:
 
         if split_gaussian_cov:
             self.cov_WL_g_6D_sva, self.cov_WL_g_6D_sn, self.cov_WL_g_6D_mix = (
-                sl.covariance_einsum_split(
-                    cl_LL_5D, noise_LL_5D, self.fsky, self.ell_WL, delta_l_WL
+                sl.covariance_einsum(
+                    cl_LL_5D,
+                    noise_LL_5D,
+                    self.fsky,
+                    self.ell_WL,
+                    delta_l_WL,
+                    split_terms=split_gaussian_cov,
+                    return_only_diagonal_ells=False,
                 )
             )
             self.cov_GC_g_6D_sva, self.cov_GC_g_6D_sn, self.cov_GC_g_6D_mix = (
-                sl.covariance_einsum_split(
-                    cl_GG_5D, noise_GG_5D, self.fsky, self.ell_GC, delta_l_GC
+                sl.covariance_einsum(
+                    cl_GG_5D,
+                    noise_GG_5D,
+                    self.fsky,
+                    self.ell_GC,
+                    delta_l_GC,
+                    split_terms=split_gaussian_cov,
+                    return_only_diagonal_ells=False,
                 )
             )
             (
                 self.cov_3x2pt_g_10D_sva,
                 self.cov_3x2pt_g_10D_sn,
                 self.cov_3x2pt_g_10D_mix,
-            ) = sl.covariance_einsum_split(
-                cl_3x2pt_5D, noise_3x2pt_5D, self.fsky, self.ell_3x2pt, delta_l_3x2pt
+            ) = sl.covariance_einsum(
+                cl_3x2pt_5D,
+                noise_3x2pt_5D,
+                self.fsky,
+                self.ell_3x2pt,
+                delta_l_3x2pt,
+                split_terms=split_gaussian_cov,
+                return_only_diagonal_ells=False,
             )
+
             self.cov_WL_g_6D_sva = self.cov_WL_g_6D_sva[0, 0, 0, 0, ...]
             self.cov_WL_g_6D_sn = self.cov_WL_g_6D_sn[0, 0, 0, 0, ...]
             self.cov_WL_g_6D_mix = self.cov_WL_g_6D_mix[0, 0, 0, 0, ...]
@@ -450,13 +469,31 @@ class SpaceborneCovariance:
 
         else:
             self.cov_WL_g_6D = sl.covariance_einsum(
-                cl_LL_5D, noise_LL_5D, self.fsky, self.ell_WL, delta_l_WL
+                cl_LL_5D,
+                noise_LL_5D,
+                self.fsky,
+                self.ell_WL,
+                delta_l_WL,
+                split_terms=split_gaussian_cov,
+                return_only_diagonal_ells=False,
             )[0, 0, 0, 0, ...]
             self.cov_GC_g_6D = sl.covariance_einsum(
-                cl_GG_5D, noise_GG_5D, self.fsky, self.ell_GC, delta_l_GC
+                cl_GG_5D,
+                noise_GG_5D,
+                self.fsky,
+                self.ell_GC,
+                delta_l_GC,
+                split_terms=split_gaussian_cov,
+                return_only_diagonal_ells=False,
             )[0, 0, 0, 0, ...]
             self.cov_3x2pt_g_10D = sl.covariance_einsum(
-                cl_3x2pt_5D, noise_3x2pt_5D, self.fsky, self.ell_3x2pt, delta_l_3x2pt
+                cl_3x2pt_5D,
+                noise_3x2pt_5D,
+                self.fsky,
+                self.ell_3x2pt,
+                delta_l_3x2pt,
+                split_terms=split_gaussian_cov,
+                return_only_diagonal_ells=False,
             )
 
         # this part is in common, the split case also sets the total cov

@@ -2510,7 +2510,7 @@ def get_zpairs(zbins):
     return zpairs_auto, zpairs_cross, zpairs_3x2pt
 
 
-def covariance_einsum(
+def _covariance_einsum(
     cl_5d, noise_5d, f_sky, ell_values, delta_ell, return_only_diagonal_ells=False
 ):
     """
@@ -2624,7 +2624,7 @@ def cov_g_terms_helper(a, b, mix: bool, prefactor, return_only_diagonal_ells):
     return cov
 
 
-def covariance_einsum_v3(
+def covariance_einsum(
     cl_5d,
     noise_5d,
     f_sky,
@@ -2674,7 +2674,7 @@ def covariance_einsum_v3(
     return cov_sva, cov_sn, cov_mix
 
 
-def covariance_einsum_split(
+def _covariance_einsum_split(
     cl_5d, noise_5d, f_sky, ell_values, delta_ell, return_only_diagonal_ells=False
 ):
     """

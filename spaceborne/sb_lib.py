@@ -1,25 +1,26 @@
-from copy import deepcopy
-import json
-import warnings
-from pathlib import Path
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-from matplotlib.colors import LogNorm
-from matplotlib.colors import ListedColormap
-import matplotlib.lines as mlines
-import numpy as np
-import yaml
-import pickle
-import itertools
-import os
-import inspect
+import contextlib
 import datetime
-import scipy
-from scipy.integrate import simpson as simps
-from scipy.special import jv
-from scipy.interpolate import interp1d, CubicSpline, RectBivariateSpline
+import inspect
+import itertools
+import json
+import os
+import pickle
 import subprocess
+import time
+import warnings
+from copy import deepcopy
+from pathlib import Path
 
+import matplotlib.lines as mlines
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy
+import yaml
+from matplotlib.colors import ListedColormap, LogNorm
+from matplotlib.gridspec import GridSpec
+from scipy.integrate import simpson as simps
+from scipy.interpolate import CubicSpline, RectBivariateSpline, interp1d
+from scipy.special import jv
 
 symmetrize_output_dict = {
     ('L', 'L'): True,
@@ -110,6 +111,16 @@ mpl_other_dict = {
 #             result *= 4 * np.pi**2 / area
 #             binned_cov[i, j] = result
 #     return binned_cov
+
+
+@contextlib.contextmanager
+def timer(msg):
+    start = time.perf_counter()
+    try:
+        yield
+    finally:
+        stop = time.perf_counter()
+        print(msg % (stop - start), flush=True)
 
 
 def bin_2d_matrix(  # fmt: skip
@@ -267,7 +278,9 @@ def savetxt_aligned(filename, array_2d, header_list, col_width=25, decimals=8):
         string = f'{header_list[i]:<{col_width - offset}}'
         header += string
 
-    # header = ''.join([f"{header_list[i]:<{col_width - 2}}" for i in range(len(header_list))])
+    # header = ''.join(
+    # [f'{header_list[i]:<{col_width - 2}}' for i in range(len(header_list))]
+    # )
     fmt = [f'%-{col_width}.{decimals}f'] * len(array_2d[0])
     np.savetxt(filename, array_2d, header=header, fmt=fmt, delimiter='')
 
@@ -300,12 +313,14 @@ def nz_fits_to_txt(fits_filename):
 def compare_funcs(
     x,
     y: dict,
-    logscale_y=[False, False],
+    logscale_y=(False, False),
     logscale_x=False,
     title=None,
     ylim_diff=None,
-    plt_kw={},
+    plt_kw=None,
 ):
+    plt_kw = {} if plt_kw is None else plt_kw
+
     names = list(y.keys())
     y_tuple = list(y.values())
     colors = plt.get_cmap('tab10').colors  # Get tab colors
@@ -404,7 +419,8 @@ def check_interpolate_input_tab(
     - zbins (int): The number of redshift bins.
 
     Returns:
-    - output_tab (numpy.ndarray): The interpolated table with shape (len(z_grid_out), zbins).
+    - output_tab (numpy.ndarray): The interpolated table with shape
+    (len(z_grid_out), zbins).
     """
     assert input_tab.shape[1] == zbins + 1, (
         'The input table should have shape (z_points, zbins + 1)'
@@ -415,9 +431,6 @@ def check_interpolate_input_tab(
     output_tab = spline(z_grid_out)
 
     return output_tab, spline
-
-
-# @deprecated(reason="ep_or_ed option has been deprecated")
 
 
 def get_ngal(ngal_in, ep_or_ed, zbins, ep_check_tol):
@@ -460,11 +473,15 @@ def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
     - output_masks (bool): A boolean flag indicating whether to mask the output array.
 
     Returns:
-    - x_out_masked (numpy.ndarray): The x-coordinates of the output grid, clipped to avoid interpolation errors.
-    - y_out_masked (numpy.ndarray): The y-coordinates of the output grid, clipped to avoid interpolation errors.
+    - x_out_masked (numpy.ndarray): The x-coordinates of the output grid,
+    clipped to avoid interpolation errors.
+    - y_out_masked (numpy.ndarray): The y-coordinates of the output grid,
+    clipped to avoid interpolation errors.
     - z2d_interp (numpy.ndarray): The interpolated 2D array.
-    - x_mask (numpy.ndarray): A boolean mask indicating which elements of the original x_out array were used.
-    - y_mask (numpy.ndarray): A boolean mask indicating which elements of the original y_out array were used.
+    - x_mask (numpy.ndarray): A boolean mask indicating which elements of the
+    original x_out array were used.
+    - y_mask (numpy.ndarray): A boolean mask indicating which elements of the
+    original y_out array were used.
     """
 
     z2d_func = RectBivariateSpline(x=x_in, y=y_in, z=z2d_in)
@@ -514,13 +531,13 @@ def test_cov_FM(output_path, benchmarks_path, extension):
     )
 
     if extension == 'npz':
-        for key in old_dict.keys():
+        for key in old_dict:
             try:
                 np.array_equal(old_dict[key]['arr_0'], new_dict[key]['arr_0'])
             except AssertionError:
                 f'The file {benchmarks_path}/{key}.{extension} is different ❌'
     else:
-        for key in old_dict.keys():
+        for key in old_dict:
             try:
                 np.array_equal(old_dict[key], new_dict[key])
             except AssertionError:
@@ -578,7 +595,8 @@ def zpair_from_zidx(zidx, ind):
     """Return the zpair corresponding to the zidx for a given ind array.
     To be thoroughly tested, but quite straightforward"""
     assert ind.shape[1] == 2, (
-        'ind array must have shape (n, 2), maybe you are passing the full ind file instead of ind_auto/ind_cross'
+        'ind array must have shape (n, 2), maybe you are passing the full '
+        'ind file instead of ind_auto/ind_cross'
     )
     return np.where((ind == [zidx, zidx]).all(axis=1))[0][0]
 
@@ -587,7 +605,8 @@ def plot_dominant_array_element(
     arrays_dict, tab_colors, elements_auto, elements_cross, elements_3x2pt
 ):
     """
-    Plot 2D arrays from a dictionary, highlighting the dominant component in each element.
+    Plot 2D arrays from a dictionary, highlighting the dominant
+    component in each element.
     Colors are assigned based on the array with the dominant component at each position.
     If no component is dominant (all are zero), the color will be white.
     """
@@ -876,7 +895,7 @@ def compare_param_cov_from_fm_pickles(
     )
 
     # check that the values match
-    for key in fm_dict_a.keys():
+    for key in fm_dict_a:
         if key != 'fiducial_values_dict' and 'WA' not in key:
             print('Comparing ', key)
 
@@ -968,12 +987,14 @@ def block_diag(array_3d):
 
 def compare_df_keys(dataframe, key_to_compare, value_a, value_b, num_string_columns):
     """
-    This function compares two rows of a dataframe and returns a new row with the percentage difference between the two
+    This function compares two rows of a dataframe and returns a new row with the
+    percentage difference between the two
     :param dataframe:
     :param key_to_compare:
     :param value_a:
     :param value_b:
-    :param num_string_columns: number of columns containing only strings or various options, such as whether to fix a certain prior or not...
+    :param num_string_columns: number of columns containing only strings or
+    various options, such as whether to fix a certain prior or not...
     :return:
     """
     import pandas as pd
@@ -985,7 +1006,8 @@ def compare_df_keys(dataframe, key_to_compare, value_a, value_b, num_string_colu
 
     if arr_A.shape[0] != arr_B.shape[0]:
         raise ValueError(
-            f'Cannot compare groups with different sizes: {arr_A.shape[0]} vs {arr_B.shape[0]}'
+            'Cannot compare groups with different sizes: '
+            f'{arr_A.shape[0]} vs {arr_B.shape[0]}'
         )
 
     perc_diff_df = df_A.copy()
@@ -1043,16 +1065,20 @@ def can_be_pickled(obj):
 
 def load_cov_from_probe_blocks(path, filename, probe_ordering):
     """
-    Load the covariance matrix from the probe blocks in 4D. The blocks are stored in a dictionary with keys
-    corresponding to the probes in the order specified in probe_ordering. The symmetrization of the blocks is done
+    Load the covariance matrix from the probe blocks in 4D.
+    The blocks are stored in a dictionary with keys
+    corresponding to the probes in the order specified in probe_ordering.
+    The symmetrization of the blocks is done
     while loading, so only 6 blocks need to be actually stored.
     :param path: Path to the folder containing the covariance blocks.
-    :param filename: Filename of the covariance blocks. The filename should contain the placeholders {probe_A},
+    :param filename: Filename of the covariance blocks.
+    The filename should contain the placeholders {probe_A},
     {probe_B}, {probe_C}, {probe_D} which will be replaced with the actual probe names.
     :param probe_ordering: Probe ordering tuple
     :return:
 
-    YOU SHOULD USE deepcopy, otherwise the different blocks become correlated (and you e.g. divide twice by fsky)
+    YOU SHOULD USE deepcopy, otherwise the different blocks become correlated
+    (and you e.g. divide twice by fsky)
     """
     cov_ssc_dict_8D = {}
     for row, (probe_a, probe_b) in enumerate(probe_ordering):
@@ -1077,7 +1103,7 @@ def load_cov_from_probe_blocks(path, filename, probe_ordering):
                     )
                 )
 
-    for key in cov_ssc_dict_8D.keys():
+    for key in cov_ssc_dict_8D:
         assert cov_ssc_dict_8D[key].ndim == 4, (
             f'covariance matrix {key} has ndim={cov_ssc_dict_8D[key].ndim} instead of 4'
         )
@@ -1148,7 +1174,8 @@ def add_ls_legend(ls_dict):
 
 
 def save_correlation_matrix_plot(matrix1, matrix2, labels):
-    """Yet to be fully tested. Plot the positive and negative values with different colorbars
+    """Yet to be fully tested. Plot the positive and negative values with different
+    colorbars
     TODO make it only for one matrix!"""
 
     fig = plt.figure(figsize=(16, 6))
@@ -1181,8 +1208,8 @@ def save_correlation_matrix_plot(matrix1, matrix2, labels):
     ax1.set_yticklabels(labels)
 
     # Plot Gaussian + SSC matrix
-    im2a = ax2.imshow(matrix2_pos, cmap=cmap_pos, norm=LogNorm())
-    im2b = ax2.imshow(matrix2_neg, cmap=cmap_neg, norm=LogNorm())
+    # im2a = ax2.imshow(matrix2_pos, cmap=cmap_pos, norm=LogNorm())
+    # im2b = ax2.imshow(matrix2_neg, cmap=cmap_neg, norm=LogNorm())
 
     ax2.set_title('Gaussian + SSC')
     ax2.set_xticks(np.arange(len(labels)))
@@ -1191,18 +1218,19 @@ def save_correlation_matrix_plot(matrix1, matrix2, labels):
     ax2.set_yticklabels(labels)
 
     # Add colorbars
-    cbar_pos = fig.colorbar(im2a, cax=cbar_ax_pos, orientation='vertical')
-    cbar_neg = fig.colorbar(im2b, cax=cbar_ax_neg, orientation='vertical')
+    # cbar_pos = fig.colorbar(im2a, cax=cbar_ax_pos, orientation='vertical')
+    # cbar_neg = fig.colorbar(im2b, cax=cbar_ax_neg, orientation='vertical')
 
     plt.tight_layout()
     plt.show()
 
 
 def table_to_3d_array(file_path, is_auto_spectrum):
-    """convert CLOE .dat files format to 3d arrays, following the indexing in the header"""
+    """convert CLOE .dat files format to 3d arrays, following the indexing
+    in the header"""
 
     # Read the header and data from the file
-    with open(file_path, 'r') as f:
+    with open(file_path) as f:
         header = f.readline().strip().split('\t')
 
     cl_2d = np.genfromtxt(file_path)
@@ -1276,7 +1304,8 @@ def get_filenames_in_folder(folder_path):
 def test_folder_content(
     output_path, benchmarks_path, extension, verbose=False, rtol=1e-10
 ):
-    """Test if the files in the output folder are equal to the benchmark files and list the discrepancies.
+    """Test if the files in the output folder are equal to the benchmark files and
+    list the discrepancies.
 
     Parameters:
     output_path (str): The path to the folder containing the output files.
@@ -1370,7 +1399,8 @@ def test_folder_content(
     num_discrepancies = num_comparisons - num_matches
 
     print(
-        f'\nSummary: {num_comparisons} files compared, {num_matches} matches, {num_discrepancies} discrepancies.\n'
+        f'\nSummary: {num_comparisons} files compared, {num_matches} '
+        f'matches, {num_discrepancies} discrepancies.\n'
     )
 
     return discrepancies
@@ -1378,7 +1408,8 @@ def test_folder_content(
 
 def import_files(folder_path, extension):
     """
-    Imports all files with a specific extension from a folder and stores their contents in a dictionary.
+    Imports all files with a specific extension from a folder and stores their
+    contents in a dictionary.
 
     Parameters:
     folder_path (str): The path to the folder from which to import files.
@@ -1524,7 +1555,8 @@ def diff_threshold_check(diff, threshold):
 
 def compute_smape(vec_true, vec_test, cov_mat=None):
     """
-    Computes the SMAPE (Symmetric Mean Absolute Percentage Error) for a given 1D array with weighted elements
+    Computes the SMAPE (Symmetric Mean Absolute Percentage Error) for a given 1D
+    array with weighted elements
 
     Args:
         vec_true (np.array): array of true values
@@ -1534,7 +1566,7 @@ def compute_smape(vec_true, vec_test, cov_mat=None):
     Returns:
         float: SMAPE value
     """
-    if type(vec_true) == np.ndarray and type(vec_test) == np.ndarray:
+    if isinstance(vec_true, np.ndarray) and isinstance(vec_test, np.ndarray):
         assert len(vec_true) == len(vec_test), 'Arrays must have the same length'
         assert vec_true.ndim == 1 and vec_test.ndim == 1, 'arrays must be 1D'
 
@@ -1560,10 +1592,12 @@ def compute_diff_sigma(vec_true, vec_test, sigma):
     Args:
     - vec_true (numpy.ndarray): A numpy array representing the first vector.
     - vec_test (numpy.ndarray): A numpy array representing the second vector.
-    - sigma (numpy.ndarray): A numpy array representing the vector of standard deviations.
+    - sigma (numpy.ndarray): A numpy array representing the
+    vector of standard deviations.
 
     Returns:
-    - A numpy array representing the element-wise difference between vec_true and vec_test,
+    - A numpy array representing the element-wise difference between vec_true and
+    vec_test,
       divided by sigma.
     """
     diff = np.abs(vec_true - vec_test)
@@ -1596,7 +1630,8 @@ def compare_arrays(
     for rtol in [1e-3, 1e-2, 5e-2]:  # these are NOT percent units
         if np.allclose(A, B, rtol=rtol, atol=0):
             print(
-                f'{name_A} and {name_B} are close within relative tolerance of {rtol * 100}%) ✅'
+                f'{name_A} and {name_B} are close within relative tolerance '
+                f'of {rtol * 100}%) ✅'
             )
             return
 
@@ -1608,10 +1643,12 @@ def compare_arrays(
     additional_info = (
         f'\nMax discrepancy: {max_diff:.2f}%;'
         f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}'
-        f'\nFraction of elements with discrepancy > {higher_rtol}%: {no_outliers / diff_AB.size:.5f}'
+        f'\nFraction of elements with discrepancy > {higher_rtol}%: '
+        f'{no_outliers / diff_AB.size:.5f}'
     )
     print(
-        f'Are {name_A} and {name_B} different by less than {higher_rtol}%? {result_emoji} {additional_info}'
+        f'Are {name_A} and {name_B} different by less than {higher_rtol}%? '
+        f'{result_emoji} {additional_info}'
     )
 
     # Check that arrays are 2D if any plotting is requested.
@@ -1654,7 +1691,8 @@ def compare_arrays(
         diff_BA = percent_diff_nan(B, A, eraseNaN=True, log=False, abs_val=abs_val)
 
         if plot_diff_threshold is not None:
-            # Mask out small differences (set them to white via the colormap's "bad" color)
+            # Mask out small differences (set them to white via the colormap's
+            # "bad" color)
             diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, diff_AB)
             diff_BA = np.ma.masked_where(np.abs(diff_BA) < plot_diff_threshold, diff_BA)
 
@@ -1685,16 +1723,14 @@ def compare_arrays(
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):
     """
-    Compare the content of 2 folders. The files in folder A should be a subset of the files in folder B.
+    Compare the content of 2 folders. The files in folder A should be a subset of
+    the files in folder B.
     """
     dict_A = dict(get_kv_pairs(path_A, filetype))
     dict_B = dict(get_kv_pairs(path_B, filetype))
 
-    for key in dict_A.keys():
-        if np.array_equal(dict_A[key], dict_B[key]):
-            result_emoji = '✅'
-        else:
-            result_emoji = '❌'
+    for key in dict_A:
+        result_emoji = '✅' if np.array_equal(dict_A[key], dict_B[key]) else '❌'
         print(f'is {key} equal in both folders? {result_emoji}')
 
 
@@ -1729,7 +1765,8 @@ def find_null_rows_cols_2D(array):
         # print('The input array has no null rows/columns')
         return None
     else:
-        # print(f'The input array had null rows and columns at indices {null_rows_idxs}')
+        # print(f'The input array had null rows and columns '
+        # f'at indices {null_rows_idxs}')
         return null_rows_idxs
 
 
@@ -1741,11 +1778,13 @@ def remove_rows_cols_array2D(array, rows_idxs_to_remove):
     :return: array without null rows and columns
     """
     if rows_idxs_to_remove is None:
-        warnings.warn('null_rows_idxs is None, returning the input array')
+        warnings.warn('null_rows_idxs is None, returning the input array', stacklevel=2)
         return array
 
     if len(rows_idxs_to_remove) == 0:
-        warnings.warn('null_rows_idxs is empty, returning the input array')
+        warnings.warn(
+            'null_rows_idxs is empty, returning the input array', stacklevel=2
+        )
         return array
 
     assert array.ndim == 2, (
@@ -1761,7 +1800,8 @@ def remove_null_rows_cols_2D(array_2d: np.ndarray):
     Remove null rows and columns from a 2D numpy array.
 
     Args:
-        array_2d (numpy.ndarray): The 2D numpy array to remove null rows and columns from.
+        array_2d (numpy.ndarray): The 2D numpy array to remove null rows and columns
+        from.
 
     Returns:
         numpy.ndarray: The 2D numpy array with null rows and columns removed.
@@ -1777,7 +1817,8 @@ def remove_null_rows_cols_2D(array_2d: np.ndarray):
 
 def mask_FM_null_rowscols(FM, params, fid):
     """
-    Mask the Fisher matrix, fiducial values and parameter list deleting the null rows and columns
+    Mask the Fisher matrix, fiducial values and parameter list deleting the null rows
+    and columns
     :param FM: Fisher Matrix, 2D numpy array
     :return: masked FM, fiducial values and parameter list
     """
@@ -1797,7 +1838,8 @@ def mask_FM_null_rowscols(FM, params, fid):
 
 def mask_fm_null_rowscols_v2(fm, fiducials_dict):
     """
-    Mask the Fisher matrix, fiducial values and parameter list deleting the null rows and columns
+    Mask the Fisher matrix, fiducial values and parameter list deleting the null rows
+    and columns
     :param FM: Fisher Matrix, 2D numpy array
     :return: masked FM, fiducial values and parameter list
     """
@@ -1834,11 +1876,11 @@ def mask_FM(
     :return:
     """
 
-    if type(param_names_dict) == list or type(param_names_dict) == np.ndarray:
+    if isinstance(param_names_dict, (list, np.ndarray)):
         param_names_dict = {'_': param_names_dict}
-    if type(fiducials_dict) == list or type(fiducials_dict) == np.ndarray:
+    if isinstance(fiducials_dict, (list, np.ndarray)):
         fiducials_dict = {'_': fiducials_dict}
-    if type(params_tofix_dict) == list or type(params_tofix_dict) == np.ndarray:
+    if isinstance(params_tofix_dict, (list, np.ndarray)):
         params_tofix_dict = {'_': params_tofix_dict}
 
     # join param_names_dict.values() into single list
@@ -1848,7 +1890,7 @@ def mask_FM(
     # TODO - add option to fix specific parameter
     # TODO  - test this!!
     idx_todelete = []
-    for key in params_tofix_dict.keys():
+    for key in params_tofix_dict:
         if params_tofix_dict[key]:
             _param_names_list = param_names_dict[key]
             param_idxs = [
@@ -1902,7 +1944,7 @@ def mask_fm_v2(
         # update fiducials_dict
         fiducials_dict = {
             key: fiducials_dict[key]
-            for key in fiducials_dict.keys()
+            for key in fiducials_dict
             if key not in names_params_to_fix
         }
 
@@ -1934,7 +1976,8 @@ def fix_params_in_fm(fm, names_params_to_fix, fiducials_dict):
 
 
 def add_prior_to_fm(fm, fiducials_dict, prior_param_names, prior_param_values):
-    """adds a FM of priors (with elements 1/sigma in the correct positions) to the input FM"""
+    """adds a FM of priors (with elements 1/sigma in the correct positions) to the
+    input FM"""
     fm = deepcopy(fm)
     fiducials_dict = deepcopy(fiducials_dict)
 
@@ -1946,7 +1989,9 @@ def add_prior_to_fm(fm, fiducials_dict, prior_param_names, prior_param_values):
     for prior_param_name in prior_param_names:
         if prior_param_name not in fid_param_names:
             warnings.warn(
-                f'Prior parameter {prior_param_names} not found in fiducial parameters dict!'
+                f'Prior parameter {prior_param_names} not found in fiducial parameters'
+                ' dict!',
+                stacklevel=2,
             )
             return fm
 
@@ -1971,7 +2016,8 @@ def uncertainties_fm_v2(
     param_values = np.array(list(fiducials_dict.values()))
 
     assert len(param_names) == param_values.shape[0] == fm.shape[0] == fm.shape[1], (
-        'param_names and param_values must have the same length and be equal to the number of rows and columns of fm'
+        'param_names and param_values must have the same length and be equal to the '
+        'number of rows and columns of fm'
     )
 
     if which_uncertainty == 'marginal':
@@ -1983,7 +2029,8 @@ def uncertainties_fm_v2(
         raise ValueError('which_uncertainty must be either "marginal" or "conditional"')
 
     if normalize:
-        # if the fiducial for is 0, substitute with 1 to avoid division by zero; if it's -1, take the absolute value
+        # if the fiducial for is 0, substitute with 1 to avoid division by zero;
+        # if it's -1, take the absolute value
         param_values = np.where(param_values == 0, 1, param_values)
         param_values = np.where(param_values < 0, np.abs(param_values), param_values)
         # normalize to get the relative uncertainties
@@ -1996,9 +2043,9 @@ def uncertainties_fm_v2(
 
 
 def build_labels_TeX(zbins):
-    galaxy_bias_label = ['$b_{%i}$' % (i + 1) for i in range(zbins)]
-    shear_bias_label = ['$m_{%i}$' % (i + 1) for i in range(zbins)]
-    zmean_shift_label = ['$dz_{%i}$' % (i + 1) for i in range(zbins)]
+    galaxy_bias_label = [f'$b_{{{i + 1}}}$' for i in range(zbins)]
+    shear_bias_label = [f'$m_{{{i + 1}}}$' for i in range(zbins)]
+    zmean_shift_label = [f'$dz_{{{i + 1}}}$' for i in range(zbins)]
     return [galaxy_bias_label, shear_bias_label, zmean_shift_label]
 
 
@@ -2122,10 +2169,12 @@ def symmetrize_Cl(Cl, nbl, zbins):
 def generate_ind(triu_tril_square, row_col_major, size):
     """
     Generates a list of indices for the upper triangular part of a matrix
-    :param triu_tril_square: str. if 'triu', returns the indices for the upper triangular part of the matrix.
+    :param triu_tril_square: str. if 'triu', returns the indices for the upper
+    triangular part of the matrix.
     If 'tril', returns the indices for the lower triangular part of the matrix
     If 'full_square', returns the indices for the whole matrix
-    :param row_col_major: str. if True, the indices are returned in row-major order; otherwise, in column-major order
+    :param row_col_major: str. if True, the indices are returned in row-major order;
+    otherwise, in column-major order
     :param size: int. size of the matrix to take the indices of
     :return: list of indices
     """
@@ -2279,11 +2328,13 @@ def Cl_3D_to_2D_asymmetric(Cl_3D):
 def cl_3D_to_2D_or_1D(
     cl_3D, ind, is_auto_spectrum, use_triu_row_major, convert_to_2D, block_index
 ):
-    """reshape from (nbl, zbins, zbins) to (nbl, zpairs), according to the ordering given in the ind file
+    """reshape from (nbl, zbins, zbins) to (nbl, zpairs), according to the
+    ordering given in the ind file
     (valid for asymmetric Cij, i.e. C_XC)
     """
 
-    # warnings.warn('finish this function!! (old warning, I dont remember exactly what is missing...)')
+    # warnings.warn('finish this function!! (old warning, I dont remember
+    # exactly what is missing...)')
     assert cl_3D.ndim == 3, 'cl_3D must be a 3D array'
     assert cl_3D.shape[1] == cl_3D.shape[2], (
         'cl_3D must be a square array of shape (nbl, zbins, zbins)'
@@ -2348,7 +2399,8 @@ def symmetrize_2d_array(array_2d):
     if check_symmetric(array_2d, exact=True):
         return array_2d
 
-    # there is an implicit "else" here, since the function returns array_2d if the array is symmetric
+    # there is an implicit "else" here, since the function returns array_2d if
+    # the array is symmetric
     assert array_2d.ndim == 2, 'array must be square'
     size = array_2d.shape[0]
 
@@ -2360,13 +2412,13 @@ def symmetrize_2d_array(array_2d):
     )
 
     if np.any(np.diag(array_2d)) != 0:
-        warnings.warn('the diagonal elements are all null')
+        warnings.warn('the diagonal elements are all null', stacklevel=2)
 
     # symmetrize
     array_2d = np.where(array_2d, array_2d, array_2d.T)
     # check
     if not check_symmetric(array_2d, exact=False):
-        warnings.warn('check failed: the array is not symmetric')
+        warnings.warn('check failed: the array is not symmetric', stacklevel=2)
 
     return array_2d
 
@@ -2397,7 +2449,8 @@ def array_2D_to_1D_ind(array_2D, zpairs, ind):
 
 # @njit
 def compute_FM_3D(nbl, npairs, nParams, cov_inv, D_3D):
-    """Compute FM using 3D datavector - 2D + the cosmological parameter axis - and 3D covariance matrix (working but
+    """Compute FM using 3D datavector - 2D + the cosmological parameter
+    axis - and 3D covariance matrix (working but
     deprecated in favor of compute_FM_2D)"""
     b = np.zeros((nbl, npairs, nParams))
     FM = np.zeros((nParams, nParams))
@@ -2411,7 +2464,8 @@ def compute_FM_3D(nbl, npairs, nParams, cov_inv, D_3D):
 
 # @njit
 def compute_FM_2D(nbl, npairs, nparams_tot, cov_2D_inv, D_2D):
-    """Compute FM using 2D datavector - 1D + the cosmological parameter axis - and 2D covariance matrix"""
+    """Compute FM using 2D datavector - 1D + the cosmological parameter
+    axis - and 2D covariance matrix"""
     b = np.zeros((nbl * npairs, nparams_tot))
     FM = np.zeros((nparams_tot, nparams_tot))
     for alf in range(nparams_tot):
@@ -2422,8 +2476,9 @@ def compute_FM_2D(nbl, npairs, nparams_tot, cov_2D_inv, D_2D):
 
 
 def compute_FM_2D_optimized(nbl, npairs, nparams_tot, cov_2D_inv, D_2D):
-    """Compute FM using 2D datavector - 1D + the cosmological parameter axis - and 2D covariance matrix"""
-    warnings.warn('deprecate this?')
+    """Compute FM using 2D datavector - 1D + the cosmological parameter
+    axis - and 2D covariance matrix"""
+    warnings.warn('deprecate this?', stacklevel=2)
     b = np.zeros((nbl * npairs, nparams_tot))
     FM = np.zeros((nparams_tot, nparams_tot))
     for alf in range(nparams_tot):
@@ -2460,7 +2515,8 @@ def covariance_einsum(
 ):
     """
     computes the 10-dimensional covariance matrix, of shape
-    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins). The 5-th axis is added only if
+    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins).
+    The 5-th axis is added only if
     return_only_diagonal_ells is True. *for the single-probe case, n_probes = 1*
 
     In np.einsum, the indices have the following meaning:
@@ -2468,7 +2524,8 @@ def covariance_einsum(
         L, M = ell, ell_prime
         i, j, k, l = redshift bin indices
 
-    cl_5d must have shape = (n_probes, n_probes, nbl, zbins, zbins) = (A, B, L, i, j), same as noise_5d
+    cl_5d must have shape = (n_probes, n_probes, nbl, zbins, zbins) = (A, B, L, i, j),
+    same as noise_5d
 
     :param cl_5d:
     :param noise_5d:
@@ -2477,12 +2534,14 @@ def covariance_einsum(
     :param delta_ell:
     :param return_only_diagonal_ells:
     :return: 10-dimensional numpy array of shape
-    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins), containing the covariance.
+    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins),
+    containing the covariance.
 
     example code to compute auto probe data and spectra, if needed
     cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]
     noise_LL_5D = noise_3x2pt_5D[0, 0, ...][np.newaxis, np.newaxis, ...]
-    cov_WL_6D = sl.covariance_einsum(cl_LL_5D, noise_LL_5D, fsky, ell_values, delta_ell)[0, 0, 0, 0, ...]
+    cov_WL_6D = sl.covariance_einsum(
+        cl_LL_5D, noise_LL_5D, fsky, ell_values, delta_ell)[0, 0, 0, 0, ...]
     """
 
     assert cl_5d.shape[0] == 1 or cl_5d.shape[0] == 2, (
@@ -2502,11 +2561,6 @@ def covariance_einsum(
     nbl = cl_5d.shape[2]
 
     prefactor = 1 / ((2 * ell_values + 1) * f_sky * delta_ell)
-
-    # considering ells off-diagonal (wrong for Gauss: I am not implementing the delta)
-    # term_1 = np.einsum('ACLik, BDMjl -> ABCDLMijkl', cl_5d + noise_5d, cl_5d + noise_5d)
-    # term_2 = np.einsum('ADLil, BCMjk -> ABCDLMijkl', cl_5d + noise_5d, cl_5d + noise_5d)
-    # cov_10d = np.einsum('ABCDLMijkl, L -> ABCDLMijkl', term_1 + term_2, prefactor)
 
     # considering only ell diagonal
     term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', cl_5d + noise_5d, cl_5d + noise_5d)
@@ -2530,6 +2584,94 @@ def covariance_einsum(
     ]
 
     return cov_10d
+
+
+def cov_g_terms_helper(a, b, mix: bool, prefactor, return_only_diagonal_ells):
+    """Helper function to compute covariance terms."""
+    if return_only_diagonal_ells:
+        if mix:
+            term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', a, b)
+            term_2 = np.einsum('ACLik, BDLjl -> ABCDLijkl', b, a)
+            term_3 = np.einsum('ADLil, BCLjk -> ABCDLijkl', a, b)
+            term_4 = np.einsum('ADLil, BCLjk -> ABCDLijkl', b, a)
+
+        else:
+            term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', a, b)
+            term_2 = np.einsum('ADLil, BCLjk -> ABCDLijkl', a, b)
+            term_3 = 0
+            term_4 = 0
+
+        cov = np.einsum(
+            'ABCDLijkl, L -> ABCDLijkl', term_1 + term_2 + term_3 + term_4, prefactor
+        )
+
+    else:
+        if mix:
+            term_1 = np.einsum('ACLik, BDMjl -> ABCDLMijkl', a, b)
+            term_2 = np.einsum('ACLik, BDMjl -> ABCDLMijkl', b, a)
+            term_3 = np.einsum('ADLil, BCMjk -> ABCDLMijkl', a, b)
+            term_4 = np.einsum('ADLil, BCMjk -> ABCDLMijkl', b, a)
+
+        else:
+            term_1 = np.einsum('ACLik, BDMjl -> ABCDLMijkl', a, b)
+            term_2 = np.einsum('ADLil, BCMjk -> ABCDLMijkl', a, b)
+            term_3 = 0
+            term_4 = 0
+
+        cov = np.einsum(
+            'ABCDLMijkl, LM -> ABCDLMijkl', term_1 + term_2 + term_3 + term_4, prefactor
+        )
+    return cov
+
+
+def covariance_einsum_v3(
+    cl_5d,
+    noise_5d,
+    f_sky,
+    ell_values,
+    delta_ell,
+    split_terms,
+    return_only_diagonal_ells=False,
+):
+    """
+    Optimized version to avoid repeated code in the covariance calculation.
+    """
+
+    assert cl_5d.shape[0] in [1, 2], 'This function only works with 1 or 2 probes'
+    assert cl_5d.shape[0] == cl_5d.shape[1], (
+        'cl_5d must have shape (n_probes, n_probes, nbl, zbins, zbins)'
+    )
+    assert cl_5d.shape[-1] == cl_5d.shape[-2], (
+        'cl_5d must have shape (n_probes, n_probes, nbl, zbins, zbins)'
+    )
+    assert noise_5d.shape == cl_5d.shape, 'noise_5d must have the same shape as cl_5d'
+
+    # Prefactor setup
+    prefactor = 1 / ((2 * ell_values + 1) * f_sky * delta_ell)
+    if not return_only_diagonal_ells:
+        prefactor = np.diag(prefactor)
+
+    clplusn_5d = cl_5d + noise_5d
+
+    # Compute total covariance without splitting terms
+    if not split_terms:
+        cov = cov_g_terms_helper(
+            clplusn_5d, clplusn_5d, False, prefactor, return_only_diagonal_ells
+        )
+        return cov
+
+    # Split terms
+    cov_sva = cov_g_terms_helper(
+        cl_5d, cl_5d, False, prefactor, return_only_diagonal_ells
+    )
+    cov_sn = cov_g_terms_helper(
+        noise_5d, noise_5d, False, prefactor, return_only_diagonal_ells
+    )
+    cov_mix = cov_g_terms_helper(
+        cl_5d, noise_5d, True, prefactor, return_only_diagonal_ells
+    )
+
+    return cov_sva, cov_sn, cov_mix
 
 
 def covariance_einsum_split(
@@ -2960,7 +3102,7 @@ def cov_3x2pt_4d_to_10d_dict(
         cov_4D_to_6D_blocks_func = cov_4D_to_6D_blocks
 
     cov_3x2pt_10d_dict = {}
-    for key in cov_3x2pt_8d_dict.keys():
+    for key in cov_3x2pt_8d_dict:
         cov_3x2pt_10d_dict[key] = cov_4D_to_6D_blocks_func(
             cov_3x2pt_8d_dict[key],
             nbl,
@@ -3106,7 +3248,7 @@ def cov_6D_to_4D_blocks(cov_6D, nbl, npairs_AB, npairs_CD, ind_AB, ind_CD):
                         )
                         cov_out[ell1, ell2, ij, kl] = cov_6D[ell1, ell2, zi, zj, zk, zl]
 
-    if cov_6D.shape[0] != cov_6D.shape[1]:
+    elif cov_6D.shape[0] != cov_6D.shape[1]:
         cov_out = np.zeros((nbl, npairs_AB, npairs_CD))
         for ij in range(npairs_AB):
             for kl in range(npairs_CD):

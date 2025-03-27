@@ -3423,7 +3423,7 @@ def check_symmetric(array_2d, exact, rtol=1e-05):
     """
     # """check if the matrix is symmetric, either exactly or within a tolerance
     # """
-    assert exact is bool, 'parameter "exact" must be either True or False'
+    assert isinstance(exact, bool), 'parameter "exact" must be either True or False'
     assert array_2d.ndim == 2, 'the array is not square'
     if exact:
         return np.array_equal(array_2d, array_2d.T)

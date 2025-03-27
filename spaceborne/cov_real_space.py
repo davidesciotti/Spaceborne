@@ -944,10 +944,10 @@ for key in probe_idx_dict:
     )
 
 terms_toloop = ['sva', 'sn', 'mix']
-terms_toloop = ['sva']
+terms_toloop = ['gauss_ell']
 integration_method = 'levin'
 probes_toloop = probe_idx_dict
-# probes_toloop = ['gggm']
+probes_toloop = ['gggm']
 
 assert integration_method in ['simps', 'levin'], 'integration method not implemented'
 
@@ -1111,7 +1111,6 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         )  # fmt: skip
 
         for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
-            # print(zi, zj, zk, zl)
             cov_sva_sb_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
 
         print(f'... Done in: {(time.time() - start):.2f} s')

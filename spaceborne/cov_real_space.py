@@ -544,11 +544,11 @@ def split_probe_ix(probe_ix):
         raise ValueError(f'Invalid probe index: {probe_ix}. Expected 0, 1, 2, or 3.')
 
 
-def integrate_cov_levin(cov_2d, mu, ell, theta_centers, n_jobs):
+def integrate_bessel_single_wrapper(cov_2d, mu, ell, theta_centers, n_jobs):
     """
     cov_2d must have the first axis corresponding to the ell values),
     the second to the flattened remaining dimensions"""
-    import pylevin as levin
+    assert cov_2d.ndim == 2, 'the input integrand must be 2D'
 
     integral_type = 1  # single cilyndrical bessel
 
@@ -694,7 +694,7 @@ def oc_cov_list_to_array(oc_output_path):
     return covs_10d
 
 
-def integrate_double_bessel(cov_hs, mu, nu, ells, thetas, n_jobs):
+def dl1dl2_bessel_wrapper(cov_hs, mu, nu, ells, thetas, n_jobs):
     # the multiplication by ell1, ell2 is done inside this function
 
     # First integration: for each fixed ell1, integrate over ell2.
@@ -702,7 +702,9 @@ def integrate_double_bessel(cov_hs, mu, nu, ells, thetas, n_jobs):
     for ell1_ix in tqdm(range(nbl)):
         # Extract the 2D slice for fixed ell1.
         integrand = cov_hs[ell1_ix, ...].reshape(nbl, -1) * ells[:, None]
-        partial_int = integrate_cov_levin(integrand, nu, ells, thetas, n_jobs)
+        partial_int = integrate_bessel_single_wrapper(
+            integrand, nu, ells, thetas, n_jobs
+        )
         partial_results.append(partial_int)
 
     # Stack partial results along the ell1 direction.
@@ -716,7 +718,9 @@ def integrate_double_bessel(cov_hs, mu, nu, ells, thetas, n_jobs):
     for theta_idx in tqdm(range(nbt)):
         # For fixed theta from the first integration, extract the integrand:
         integrand_second = partial_results[:, theta_idx, :] * ells[:, None]
-        final_int = integrate_cov_levin(integrand_second, mu, ells, thetas, n_jobs)
+        final_int = integrate_bessel_single_wrapper(
+            integrand_second, mu, ells, thetas, n_jobs
+        )
         final_result[:, theta_idx, :] = final_int
 
     cov_rs_6d = final_result.reshape(nbt, nbt, zbins, zbins, zbins, zbins)
@@ -724,7 +728,9 @@ def integrate_double_bessel(cov_hs, mu, nu, ells, thetas, n_jobs):
     return cov_rs_6d
 
 
-def levin_double_wrapper(integrand, x_values, bessel_args, bessel_type, ell_1, ell_2):
+def integrate_bessel_double_wrapper(
+    integrand, x_values, bessel_args, bessel_type, ell_1, ell_2
+):
     assert integrand.ndim == 2, 'the integrand must be 2D'
     assert integrand.shape[0] == len(x_values), (
         'integrand and x_values must have the same first dimension'
@@ -1144,7 +1150,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         integrand *= ell_values[:, None]
         integrand /= 2.0 * np.pi * Amax
 
-        result_levin = levin_double_wrapper(
+        result_levin = integrate_bessel_double_wrapper(
             integrand,
             x_values=ell_values,
             bessel_args=theta_centers,
@@ -1267,7 +1273,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         integrand_2d *= ell_values[:, None]
         integrand_2d /= 2 * np.pi * Amax
 
-        result_levin = levin_double_wrapper(
+        result_levin = integrate_bessel_double_wrapper(
             integrand_2d,
             x_values=ell_values,
             bessel_args=theta_centers,
@@ -1318,19 +1324,17 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
 
         # ! or this
         # _fsky = 1.0
-        # delta_ell = np.ones_like(delta_ell)
+        delta_ell = np.ones_like(delta_ell)
 
         # with sl.timer('covariance_einsum_v3 %.3f s '):
-        cov_sva_sb_hs_10D, cov_sn_sb_hs_10D, cov_mix_sb_hs_10D = (
-            sl.covariance_einsum(
-                cl_5d,
-                noise_5d,
-                _fsky,
-                ell_values,
-                delta_ell,
-                split_terms=True,
-                return_only_diagonal_ells=True,
-            )
+        cov_sva_sb_hs_10D, cov_sn_sb_hs_10D, cov_mix_sb_hs_10D = sl.covariance_einsum(
+            cl_5d,
+            noise_5d,
+            _fsky,
+            ell_values,
+            delta_ell,
+            split_terms=True,
+            return_only_diagonal_ells=True,
         )
 
         # cov_ell_diag = sl.covariance_einsum(
@@ -1425,7 +1429,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         cov_mix_oc_hs_10D = covs_oc_hs_npz['cov_mix_oc_3x2pt_10D']
         cov_sn_oc_hs_10D = covs_oc_hs_npz['cov_sn_oc_3x2pt_10D']
         cov_g_oc_hs_10D = covs_oc_hs_npz['cov_g_oc_3x2pt_10D']
-        
+
         cov_sn_sb_6d = cov_sn_real(
             probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
         )
@@ -1435,18 +1439,22 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
             + cov_mix_sb_hs_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
         )
 
-        cov_g_sb_6d = integrate_double_bessel(
-            cov_hs=cov_g_hs_6d,
-            mu=mu,
-            nu=nu,
-            ells=ell_values,
-            thetas=theta_centers,
-            n_jobs=n_jobs_lv,
+        cov_g_sb_6d = integrate_bessel_double_wrapper(
+            integrand=cov_g_hs_6d.reshape(nbl, -1)
+            * ell_values[:, None]
+            * ell_values[:, None],
+            x_values=ell_values,
+            bessel_args=theta_centers,
+            bessel_type=3,
+            ell_1=mu,
+            ell_2=nu,
         )
+        cov_g_sb_6d = cov_g_sb_6d.reshape(nbt, nbt, zbins, zbins, zbins, zbins)
+
         norm = 4 * np.pi**2
         cov_g_sb_6d /= norm
         cov_g_sb_6d += (
-            cov_sn_sb_6d  # diagonal is noise.dominated, you won't see much of a diff
+            cov_sn_sb_6d  # diagonal is noise-dominated, you won't see much of a diff
         )
 
     elif term in ['ssc', 'cng']:
@@ -1486,7 +1494,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
             probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...
         ]
 
-        cov_ng_sb_6d = integrate_double_bessel(
+        cov_ng_sb_6d = dl1dl2_bessel_wrapper(
             cov_hs=cov_ng_oc_hs_6d,
             mu=mu,
             nu=nu,

@@ -694,8 +694,51 @@ def oc_cov_list_to_array(oc_output_path):
     return covs_10d
 
 
-def dl1dl2_bessel_wrapper(cov_hs, mu, nu, ells, thetas, n_jobs):
-    # the multiplication by ell1, ell2 is done inside this function
+def dl1dl2_bessel_wrapper(
+    cov_hs: np.ndarray,
+    mu: int,
+    nu: int,
+    ells: np.ndarray,
+    thetas: np.ndarray,
+    n_jobs: int,
+):
+    """
+    Wrapper function to compute the double Bessel integral of the form
+    \int d\ell_1 * \ell_1 * J_mu(\theta_1 \ell_1) *
+    \int d\ell_2 * \ell_2 * J_nu(\theta_2 \ell_2) *
+    integrand(\ell_1, \ell_2)
+
+    Note that the multiplication by \ell_1, \ell_2 is done inside this function.
+
+    Parameters
+    ----------
+    cov_hs: np.ndarray
+        The input covariance matrix in harmonic space. The first two dimensions
+        correspond to the ell bins for the two integrations, ie (nbl, nbl, ...)
+    mu: int
+        The order of the Bessel function for the first integration.
+    nu: int
+        The order of the Bessel function for the second integration.
+    ells: np.ndarray
+        The array of ell values corresponding to the harmonic space covariance.
+    thetas: np.ndarray of shape (theta_bins)
+        The array of theta values (in radians) for the real-space covariance.
+    n_jobs: int
+        The number of parallel jobs to use for the Bessel integration.
+
+    Returns
+    -------
+    cov_rs_6d: np.ndarray
+        The projected covariance matrix in real space. The first two dimensions
+        correspond to the theta bins, and the remaining dimensions correspond to
+        the tomographic bin indices.
+    """
+
+    nbl = len(ells)
+
+    assert cov_hs.shape[0] == cov_hs.shape[1] == nbl, (
+        'cov_hs shape must be (ell_bins, ell_bins, ...)'
+    )
 
     # First integration: for each fixed ell1, integrate over ell2.
     partial_results = []
@@ -874,7 +917,7 @@ ell_max = 100_000
 nbl = 200
 theta_min_arcmin = 50
 theta_max_arcmin = 300
-n_theta_edges = 101
+n_theta_edges = 51
 n_theta_edges_coarse = 21
 df_chunk_size = 50000
 cov_list_name = 'covariance_list_3x2_rcf_v2'
@@ -1906,14 +1949,7 @@ cov_oc_mat = np.genfromtxt(
 sl.compare_arrays(
     cov_sb_full_2d, cov_oc_mat, 'SB', 'OC mat', log_diff=False, plot_diff_threshold=10
 )
-sl.compare_arrays(
-    cov_oc_list_2d,
-    cov_oc_mat,
-    'OC list',
-    'OC mat',
-    log_diff=True,
-    plot_diff_threshold=10,
-)
+
 
 sl.compare_funcs(
     None,

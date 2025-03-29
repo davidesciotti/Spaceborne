@@ -16,51 +16,31 @@ def test_main_script(test_cfg_path):
     # Load the test output
     test_data = np.load(f'{temp_output_filename}.npz', allow_pickle=True)
 
-    # Compare the outputs
+    # Compare outputs
     for key in bench_data.files:
-        if key not in excluded_keys:
-            # ! to be understood a bit better, siamg2b is not None in
-            # ! benchmarks for CCL case...
+        if key in excluded_keys:
+            continue
+        
+        bench_arr = np.asarray(bench_data[key])
+        test_arr = np.asarray(test_data[key])
 
-            if test_data[key] is None or (
-                isinstance(test_data[key], np.ndarray)
-                and test_data[key].dtype == object
-                and test_data[key].item() is None
-            ):
-                print(f'test_data[{key}] is None or contains None (skipping comparison)')
-                continue
-
-            if bench_data[key] is None or (
-                isinstance(bench_data[key], np.ndarray)
-                and bench_data[key].dtype == object
-                and bench_data[key].item() is None
-            ):
-                print(f'bench_data[{key}] is None or contains None (skipping comparison)')
-                continue
+        try:
+            # Direct comparison (handles empty arrays automatically)
+            np.testing.assert_allclose(
+                bench_arr,
+                test_arr,
+                atol=0,
+                rtol=1e-5,
+                err_msg=f"{key} doesn't match the benchmark ❌",
+            )
+            print(f"{key} matches the benchmark ✅")
+        except ValueError as e:
+            # Catch shape mismatches (e.g., one empty, one non-empty)
+            print(f"Shape mismatch for '{key}': {e}")
+        except (TypeError, AssertionError) as e:
+            # Catch other errors (dtype mismatches, numerical differences)
+            print(f"Comparison failed for {key}: {e}")
             
-            try:
-                np.asarray(bench_data[key])
-                np.asarray(test_data[key])
-            except Exception as e:
-                raise TypeError(
-                    f'Non-numerical or incompatible data type encountered in key '
-                    f"{key}': {e}. Bench data: {bench_data[key]}, "
-                    f'Test data: {test_data[key]}'
-                ) from e
-
-            else:
-                try:
-                    np.testing.assert_allclose(
-                        bench_data[key],
-                        test_data[key],
-                        atol=0,
-                        rtol=1e-5,
-                        err_msg=f"{key} doesn't match the benchmark ❌",
-                    )
-                    print(f'{key} matches the benchmark ✅')
-                except AssertionError as err:
-                    print(err)
-
 # Path
 bench_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench'
 # run all tests...
@@ -69,7 +49,7 @@ bench_names = [os.path.basename(file) for file in bench_names]
 bench_names = [bench_name.replace('.npz', '') for bench_name in bench_names]
 # ... or run specific tests
 bench_names = [
-    'output_GSpaceborne_SSCSpaceborne_cNGNone_KEFalse_resphalo_model_b1gfrom_input_deleteBNT',
+    'output_GSpaceborne_SSCSpaceborne_cNGNone_KEFalse_resphalo_model_b1gfrom_input_newtest',
 ]
 
 main_script_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/main.py'

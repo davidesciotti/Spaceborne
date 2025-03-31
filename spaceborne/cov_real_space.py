@@ -47,6 +47,72 @@ def b_mu(x, mu):
         raise ValueError('mu must be one of {0,2,4}.')
 
 
+def kmu_nobessel(ell, thetal, thetau, mu):
+    """
+    Returns the prefactors and corresponding Bessel orders for given mu and nu,
+    including the subtraction of bin edges (b_mu(ell * theta_u) - b_mu(ell * theta_l)).
+
+    Parameters
+    ----------
+    mu, nu : int
+        Orders of the kernel.
+    ell : float or array
+        Multipole values.
+    theta_l, theta_u : float
+        Lower and upper bin edges.
+
+    Returns
+    -------
+    list of tuples
+        Each tuple contains (prefactor, bessel_order_mu, bessel_order_nu).
+    """
+
+    def b_mu_nobessel(x, mu):
+        """
+        Implements the piecewise definition of the bracketed term b_mu(x)
+        from Eq. (E.2) in Joachimi et al. (2008).
+        These are just the results of
+        \int_{\theta_l}^{\theta_u} d\theta \theta J_\mu(\ell \theta)
+        """
+        if mu == 0:
+            return x * sl.j1(x)
+        elif mu == 2:
+            return -x * sl.j1(x) - 2.0 * sl.j0(x)
+        elif mu == 4:
+            # be careful with x=0!
+            return (x - 8.0 / x) * sl.j1(x) - 8.0 * sl.j2(x)
+        else:
+            raise ValueError('mu must be one of {0,2,4}.')
+
+    def b_mu_nobessel(mu):
+        """Returns (prefactor, bessel_order) pairs for a given mu."""
+        if mu == 0:
+            return [(1.0, 1)]  # x J1(x)
+        elif mu == 2:
+            return [(-1.0, 1), (-2.0, 0)]  # -x J1(x) - 2 J0(x)
+        elif mu == 4:
+            return [(1.0, 1), (-8.0, 2)]  # (x - 8/x) J1(x) - 8 J2(x)
+        else:
+            raise ValueError('mu must be one of {0,2,4}.')
+
+    # Compute b_mu at both bin edges
+    b_mu = b_mu(ell * theta, mu)
+    b_nu = b_mu(ell * theta, nu)
+
+    # Compute all possible combinations of terms
+    combined_terms = []
+    for pref_mu, j_mu in b_mu_nobessel(mu):
+        for pref_nu, j_nu in b_mu_nobessel(nu):
+            prefactor = (
+                (pref_mu * pref_nu)
+                * (b_mu_upper - b_mu_lower)
+                * (b_nu_upper - b_nu_lower)
+            )
+            combined_terms.append((prefactor, j_mu, j_nu))
+
+    return combined_terms
+
+
 def k_mu(ell, thetal, thetau, mu):
     """
     Computes the kernel K_mu(ell * theta_i) in Eq. (E.2):
@@ -202,7 +268,7 @@ def project_ellspace_cov_vec_helper(
     )  # fmt: skip
 
 
-def cov_sn_real(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
+def cov_sn_rs(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
     # TODO generalize to different n(z)
     npair_arr = np.zeros((nbt, zbins, zbins))
     for theta_ix in range(nbt):
@@ -258,7 +324,7 @@ def cov_parallel_helper(
     )  # fmt: skip
 
 
-def cov_g_sva_real(  # fmt: skip
+def cov_sva_rs(  # fmt: skip
     theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,  
     zi, zj, zk, zl, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,  
     cl_5d, Amax, ell_values  
@@ -289,7 +355,7 @@ def cov_g_sva_real(  # fmt: skip
     return cov_elem
 
 
-def cov_g_mix_real(   # fmt: skip
+def cov_mix_rs(   # fmt: skip
     theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,  
     ell_values, cl_5d,   
     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zi, zj, zk, zl,  
@@ -544,11 +610,11 @@ def split_probe_ix(probe_ix):
         raise ValueError(f'Invalid probe index: {probe_ix}. Expected 0, 1, 2, or 3.')
 
 
-def integrate_cov_levin(cov_2d, mu, ell, theta_centers, n_jobs):
+def integrate_bessel_single_wrapper(cov_2d, mu, ell, theta_centers, n_jobs):
     """
     cov_2d must have the first axis corresponding to the ell values),
     the second to the flattened remaining dimensions"""
-    import pylevin as levin
+    assert cov_2d.ndim == 2, 'the input integrand must be 2D'
 
     integral_type = 1  # single cilyndrical bessel
 
@@ -694,15 +760,60 @@ def oc_cov_list_to_array(oc_output_path):
     return covs_10d
 
 
-def integrate_double_bessel(cov_hs, mu, nu, ells, thetas, n_jobs):
-    # the multiplication by ell1, ell2 is done inside this function
+def dl1dl2_bessel_wrapper(
+    cov_hs: np.ndarray,
+    mu: int,
+    nu: int,
+    ells: np.ndarray,
+    thetas: np.ndarray,
+    n_jobs: int,
+):
+    """
+    Wrapper function to compute the double Bessel integral of the form
+    \int d\ell_1 * \ell_1 * J_mu(\theta_1 \ell_1) *
+    \int d\ell_2 * \ell_2 * J_nu(\theta_2 \ell_2) *
+    integrand(\ell_1, \ell_2)
+
+    Note that the multiplication by \ell_1, \ell_2 is done inside this function.
+
+    Parameters
+    ----------
+    cov_hs: np.ndarray
+        The input covariance matrix in harmonic space. The first two dimensions
+        correspond to the ell bins for the two integrations, ie (nbl, nbl, ...)
+    mu: int
+        The order of the Bessel function for the first integration.
+    nu: int
+        The order of the Bessel function for the second integration.
+    ells: np.ndarray
+        The array of ell values corresponding to the harmonic space covariance.
+    thetas: np.ndarray of shape (theta_bins)
+        The array of theta values (in radians) for the real-space covariance.
+    n_jobs: int
+        The number of parallel jobs to use for the Bessel integration.
+
+    Returns
+    -------
+    cov_rs_6d: np.ndarray
+        The projected covariance matrix in real space. The first two dimensions
+        correspond to the theta bins, and the remaining dimensions correspond to
+        the tomographic bin indices.
+    """
+
+    nbl = len(ells)
+
+    assert cov_hs.shape[0] == cov_hs.shape[1] == nbl, (
+        'cov_hs shape must be (ell_bins, ell_bins, ...)'
+    )
 
     # First integration: for each fixed ell1, integrate over ell2.
     partial_results = []
     for ell1_ix in tqdm(range(nbl)):
         # Extract the 2D slice for fixed ell1.
         integrand = cov_hs[ell1_ix, ...].reshape(nbl, -1) * ells[:, None]
-        partial_int = integrate_cov_levin(integrand, nu, ells, thetas, n_jobs)
+        partial_int = integrate_bessel_single_wrapper(
+            integrand, nu, ells, thetas, n_jobs
+        )
         partial_results.append(partial_int)
 
     # Stack partial results along the ell1 direction.
@@ -716,7 +827,9 @@ def integrate_double_bessel(cov_hs, mu, nu, ells, thetas, n_jobs):
     for theta_idx in tqdm(range(nbt)):
         # For fixed theta from the first integration, extract the integrand:
         integrand_second = partial_results[:, theta_idx, :] * ells[:, None]
-        final_int = integrate_cov_levin(integrand_second, mu, ells, thetas, n_jobs)
+        final_int = integrate_bessel_single_wrapper(
+            integrand_second, mu, ells, thetas, n_jobs
+        )
         final_result[:, theta_idx, :] = final_int
 
     cov_rs_6d = final_result.reshape(nbt, nbt, zbins, zbins, zbins, zbins)
@@ -724,7 +837,9 @@ def integrate_double_bessel(cov_hs, mu, nu, ells, thetas, n_jobs):
     return cov_rs_6d
 
 
-def levin_double_wrapper(integrand, x_values, bessel_args, bessel_type, ell_1, ell_2):
+def integrate_bessel_double_wrapper(
+    integrand, x_values, bessel_args, bessel_type, ell_1, ell_2
+):
     assert integrand.ndim == 2, 'the integrand must be 2D'
     assert integrand.shape[0] == len(x_values), (
         'integrand and x_values must have the same first dimension'
@@ -868,7 +983,7 @@ ell_max = 100_000
 nbl = 200
 theta_min_arcmin = 50
 theta_max_arcmin = 300
-n_theta_edges = 101
+n_theta_edges = 51
 n_theta_edges_coarse = 21
 df_chunk_size = 50000
 cov_list_name = 'covariance_list_3x2_rcf_v2'
@@ -944,7 +1059,7 @@ for key in probe_idx_dict:
     )
 
 terms_toloop = ['sva', 'sn', 'mix']
-terms_toloop = ['gauss_ell']
+terms_toloop = ['sva']
 integration_method = 'levin'
 probes_toloop = probe_idx_dict
 probes_toloop = ['gggm']
@@ -1101,7 +1216,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
             delayed(cov_parallel_helper)(  
                 theta_1_ix=theta_1_ix, theta_2_ix=theta_2_ix, mu=mu, nu=nu,  
                 zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd,  
-                func=cov_g_sva_real,  
+                func=cov_sva_rs,  
                 **kwargs,
             )  
             for theta_1_ix in tqdm(range(nbt))
@@ -1130,6 +1245,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         )
         integrand = a + b
 
+        # remove repeated zi, zj combinations
         integrand = sl.cov_6D_to_4D_blocks(
             cov_6D=integrand,
             nbl=nbl,
@@ -1144,7 +1260,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         integrand *= ell_values[:, None]
         integrand /= 2.0 * np.pi * Amax
 
-        result_levin = levin_double_wrapper(
+        result_levin = integrate_bessel_double_wrapper(
             integrand,
             x_values=ell_values,
             bessel_args=theta_centers,
@@ -1170,9 +1286,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         print('Computing real-space Gaussian SN covariance...')
         start = time.time()
 
-        cov_sn_sb_6d = cov_sn_real(
-            probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
-        )
+        cov_sn_sb_6d = cov_sn_rs(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu)
         print(f'... Done in: {(time.time() - start):.2f} s')
 
     elif term == 'mix' and integration_method == 'simps':
@@ -1267,7 +1381,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         integrand_2d *= ell_values[:, None]
         integrand_2d /= 2 * np.pi * Amax
 
-        result_levin = levin_double_wrapper(
+        result_levin = integrate_bessel_double_wrapper(
             integrand_2d,
             x_values=ell_values,
             bessel_args=theta_centers,
@@ -1302,151 +1416,52 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
             ng_clust=n_eff_lens,
         )
 
-        # create dummy ell axis, the array is just repeated along it
-        noise_5d = np.zeros((n_probes_hs, n_probes_hs, nbl, zbins, zbins))
-        for probe_A in (0, 1):
-            for probe_B in (0, 1):
-                for ell_idx in range(nbl):
-                    noise_5d[probe_A, probe_B, ell_idx, :, :] = noise_3x2pt_4D[
-                        probe_A, probe_B, ...
-                    ]
+        # expand the noise array along the ell axis
+        noise_5d = np.repeat(noise_3x2pt_4D[:, :, None, :, :], nbl, axis=2)
 
-        # ! choose between this
-        delta_ell = np.diff(ell_values)
-        delta_ell = np.concatenate(((delta_ell[0],), delta_ell))
-        _fsky = fsky
-
-        # ! or this
-        # _fsky = 1.0
-        # delta_ell = np.ones_like(delta_ell)
+        # ! no delta_ell!!
+        delta_ell = np.ones_like(ell_values + 1)
 
         # with sl.timer('covariance_einsum_v3 %.3f s '):
-        cov_sva_sb_hs_10D, cov_sn_sb_hs_10D, cov_mix_sb_hs_10D = (
-            sl.covariance_einsum(
-                cl_5d,
-                noise_5d,
-                _fsky,
-                ell_values,
-                delta_ell,
-                split_terms=True,
-                return_only_diagonal_ells=True,
-            )
+        cov_sva_sb_hs_10D, cov_sn_sb_hs_10D, cov_mix_sb_hs_10D = sl.covariance_einsum(
+            cl_5d,
+            noise_5d,
+            fsky,
+            ell_values,
+            delta_ell,
+            split_terms=True,
+            return_only_diagonal_ells=True,
         )
-
-        # cov_ell_diag = sl.covariance_einsum(
-        #     cl_5d,
-        #     noise_5d,
-        #     _fsky,
-        #     ell_values,
-        #     delta_ell,
-        #     return_only_diagonal_ells=True,
-        # )
-
-        # cov_ell_diag = cov_ell_diag[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
-
-        # remove ell-dep prefactor from Gaussian cov
-        # cov_ell_diag *= (2 * ell_values + 1)[:, None, None, None, None]
-        # for ell1_ix, ell1 in enumerate(ell_values):
-        #     cov_ell[ell1_ix, ell1_ix, ...] *= 2 * ell1 + 1
-
-        # TODO use just one helper function, except for project_ellspace_cov_vec_helper
-        """
-        kwargs = {
-            'func': project_ellspace_cov,
-            'Amax': Amax,
-            'ell1_values': ell_values,
-            'ell2_values': ell_values,
-            'cov_ell': cov_ell,
-        }
-        results = Parallel(n_jobs=n_jobs)(  # fmt: skip
-            delayed(cov_parallel_helper)(
-                theta_1_ix=theta_1_ix, theta_2_ix=theta_2_ix, mu=mu, nu=nu,
-                zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd,
-                **kwargs,
-            )
-            for theta_1_ix in tqdm(range(nbt))
-            for theta_2_ix in range(nbt)
-            for zij in range(zpairs_ab)
-            for zkl in range(zpairs_cd)
-        )  # fmt: skip
-
-        for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
-            cov_sb_g_6d[theta_1, theta_2, :, :, :, :] = cov_value
-
-        results = Parallel(n_jobs=n_jobs)(
-            delayed(project_ellspace_cov_vec_helper)(
-                theta_1, theta_2, mu, nu, Amax, ell_values, ell_values, cov_ell_diag
-            )
-            for theta_1 in tqdm(range(nbt))
-            for theta_2 in range(nbt)
-        )
-
-        for theta_1, theta_2, cov_value in results:
-            cov_sb_g_vec_6d[theta_1, theta_2, :, :, :, :] = cov_value
-    
-        """
-
-        # results = Parallel(n_jobs=n_jobs)(
-        #     delayed(cov_g_sva_real_helper)(
-        #         theta_1,
-        #         theta_2,
-        #         zi,
-        #         zj,
-        #         zk,
-        #         zl,
-        #         mu,
-        #         nu,
-        #         cl_5d + noise_5d,
-        #         *probe_tuple_old,
-        #     )
-        #     for theta_1 in tqdm(range(theta_bins))
-        #     for theta_2 in range(theta_bins)
-        #     for zi in range(zbins)
-        #     for zj in range(zbins)
-        #     for zk in range(zbins)
-        #     for zl in range(zbins)
-        # )
-
-        # for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
-        #     cov_sb_gfromsva_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
-
-        # result_levin = np.zeros((nbt, nbt, zbins**4))
-        # partial_integral = np.zeros((nbl, nbt, zbins**4))
-
-        # n_jobs = 1
-        # for ell1_ix, _ in enumerate(ell_values):
-        #     cov_ell_2d = cov_ell[ell1_ix, ...].reshape(nbl, -1)
-        #      # integrate in ell2
-        #     partial_integral[ell1_ix, ...] = integrate_cov_levin(cov_ell_2d, nu, ell_values, n_jobs)
-        #     integral = integrate_cov_levin(partial_integral[ell1_ix, ...], mu, ell_values, n_jobs)
 
         covs_oc_hs_npz = np.load(f'{covs_oc_path}/covs_oc_10D.npz')
         cov_sva_oc_hs_10D = covs_oc_hs_npz['cov_sva_oc_3x2pt_10D']
         cov_mix_oc_hs_10D = covs_oc_hs_npz['cov_mix_oc_3x2pt_10D']
         cov_sn_oc_hs_10D = covs_oc_hs_npz['cov_sn_oc_3x2pt_10D']
         cov_g_oc_hs_10D = covs_oc_hs_npz['cov_g_oc_3x2pt_10D']
-        
-        cov_sn_sb_6d = cov_sn_real(
-            probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
-        )
+
+        cov_sn_sb_6d = cov_sn_rs(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu)
 
         cov_g_hs_6d = (
             cov_sva_sb_hs_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
             + cov_mix_sb_hs_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
         )
 
-        cov_g_sb_6d = integrate_double_bessel(
-            cov_hs=cov_g_hs_6d,
-            mu=mu,
-            nu=nu,
-            ells=ell_values,
-            thetas=theta_centers,
-            n_jobs=n_jobs_lv,
+        cov_g_sb_6d = integrate_bessel_double_wrapper(
+            integrand=cov_g_hs_6d.reshape(nbl, -1)
+            * ell_values[:, None]
+            * ell_values[:, None],
+            x_values=ell_values,
+            bessel_args=theta_centers,
+            bessel_type=3,
+            ell_1=mu,
+            ell_2=nu,
         )
+        cov_g_sb_6d = cov_g_sb_6d.reshape(nbt, nbt, zbins, zbins, zbins, zbins)
+
         norm = 4 * np.pi**2
         cov_g_sb_6d /= norm
         cov_g_sb_6d += (
-            cov_sn_sb_6d  # diagonal is noise.dominated, you won't see much of a diff
+            cov_sn_sb_6d  # diagonal is noise-dominated, you won't see much of a diff
         )
 
     elif term in ['ssc', 'cng']:
@@ -1486,7 +1501,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
             probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...
         ]
 
-        cov_ng_sb_6d = integrate_double_bessel(
+        cov_ng_sb_6d = dl1dl2_bessel_wrapper(
             cov_hs=cov_ng_oc_hs_6d,
             mu=mu,
             nu=nu,
@@ -1661,24 +1676,12 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
                 theta_edges_coarse,
                 weights_in=None,
                 which_binning='integral',
+                interpolate=True,
             )
-
-        # plot the diag and flatten the redshift indices
-        # zi, zj, zk, zl = 0, 1, 2, 1
-        # plt.figure()
-        # plt.plot(theta_centers, np.diagonal(cov_sb_6d, axis1=0, axis2=1)[zi, zj, zk, zl], marker='')
-        # plt.plot(theta_centers_coarse, np.diagonal(cov_sb_6d_binned, axis1=0, axis2=1)[zi, zj, zk, zl], marker='')
-        # plt.show()
-        # assert False, 'stop here to check binning'
 
         cov_sb_6d = cov_sb_6d_binned
 
     cov_sb_dict_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix, ...] = cov_sb_6d
-
-    # cov_oc_4d = sl.cov_6D_to_4D(cov_oc_6d, theta_bins, zpairs_cross, ind_cross)
-    # cov_sb_4d = sl.cov_6D_to_4D(cov_sb_6d, theta_bins, zpairs_cross, ind_cross)
-    zpairs_ab, zpairs_cd = zpairs_cross, zpairs_cross
-    ind_ab, ind_cd = ind_cross, ind_cross
 
     cov_oc_4d = sl.cov_6D_to_4D_blocks(
         cov_oc_6d, nbt_oc, zpairs_ab, zpairs_cd, ind_ab, ind_cd
@@ -1696,10 +1699,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
     # cov_sb_gfromsva_2d = sl.cov_4D_to_2D(cov_sb_gfromsva_4d, block_index='zpair')
 
     if probe in ['gmxip', 'gmxim']:
-        warnings.warn(
-            '!!! TRANSPOSING OC COV!!!!!',
-            stacklevel=2,
-        )
+        warnings.warn('!!! TRANSPOSING OC COV!!!!!', stacklevel=2)
         cov_oc_2d = cov_oc_2d.T
 
     sl.compare_arrays(
@@ -1868,15 +1868,6 @@ sl.compare_arrays(
     log_diff=True,
     plot_diff_threshold=10,
 )
-sl.compare_arrays(
-    corr_sb_full_2d,
-    corr_oc_full_2d,
-    'corr SB',
-    'corr OC',
-    log_array=False,
-    log_diff=True,
-    plot_diff_threshold=10,
-)
 
 # ! this file has been overwritten with the ellspace cov
 # compare G tot against OC
@@ -1898,14 +1889,7 @@ cov_oc_mat = np.genfromtxt(
 sl.compare_arrays(
     cov_sb_full_2d, cov_oc_mat, 'SB', 'OC mat', log_diff=False, plot_diff_threshold=10
 )
-sl.compare_arrays(
-    cov_oc_list_2d,
-    cov_oc_mat,
-    'OC list',
-    'OC mat',
-    log_diff=True,
-    plot_diff_threshold=10,
-)
+
 
 sl.compare_funcs(
     None,

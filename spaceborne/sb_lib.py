@@ -1623,6 +1623,8 @@ def compare_arrays(
     white_where_zero=True,
     plot_diff_hist=False,
 ):
+    fontsize = 25
+
     if np.array_equal(A, B):
         print(f'{name_A} and {name_B} are equal ✅')
         return
@@ -1678,11 +1680,11 @@ def compare_arrays(
             A_toplot, B_toplot = np.log10(A_toplot), np.log10(B_toplot)
 
         im = ax[0, 0].matshow(A_toplot)
-        ax[0, 0].set_title(f'{name_A}')
+        ax[0, 0].set_title(f'{name_A}', fontsize=fontsize)
         fig.colorbar(im, ax=ax[0, 0])
 
         im = ax[0, 1].matshow(B_toplot)
-        ax[0, 1].set_title(f'{name_B}')
+        ax[0, 1].set_title(f'{name_B}', fontsize=fontsize)
         fig.colorbar(im, ax=ax[0, 1])
 
     # If plotting differences, prepare diff data and plot in next row.
@@ -1702,14 +1704,17 @@ def compare_arrays(
             diff_BA = np.log10(np.abs(diff_BA))
 
         im = ax[1, 0].matshow(diff_AB)
-        ax[1, 0].set_title('(A/B - 1) * 100')
+        ax[1, 0].set_title('(A/B - 1) * 100', fontsize=fontsize)
         fig.colorbar(im, ax=ax[1, 0])
 
         im = ax[1, 1].matshow(diff_BA)
-        ax[1, 1].set_title('(B/A - 1) * 100')
+        ax[1, 1].set_title('(B/A - 1) * 100', fontsize=fontsize)
         fig.colorbar(im, ax=ax[1, 1])
 
-    fig.suptitle(f'log_array={log_array}, abs_val={abs_val}, log_diff={log_diff}')
+    fig.suptitle(
+        f'log_array={log_array}, abs_val={abs_val}, log_diff={log_diff}',
+        fontsize=fontsize,
+    )
     plt.show()
 
     if plot_diff_hist:
@@ -2572,7 +2577,7 @@ def _covariance_einsum(
             'return_only_diagonal_ells is True, the array will be 9-dimensional, '
             'potentially causing '
             'problems when reshaping or summing to cov_SSC arrays',
-            stacklevel=2
+            stacklevel=2,
         )
         return cov_9d
 
@@ -2690,7 +2695,7 @@ def _covariance_einsum_split(
         L, M = ell, ell_prime
         i, j, k, l = redshift bin indices
 
-    cl_5d must have shape = (n_probes, n_probes, nbl, zbins, zbins) = (A, B, L, i, j), 
+    cl_5d must have shape = (n_probes, n_probes, nbl, zbins, zbins) = (A, B, L, i, j),
     same as noise_5d
 
     :param cl_5d:
@@ -2700,7 +2705,7 @@ def _covariance_einsum_split(
     :param delta_ell:
     :param return_only_diagonal_ells:
     :return: 10-dimensional numpy array of shape
-    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins), 
+    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins),
     containing the covariance.
 
     example code to compute auto probe data and spectra, if needed
@@ -2730,9 +2735,9 @@ def _covariance_einsum_split(
 
     # considering ells off-diagonal (wrong for Gauss: I am not implementing the delta)
     # term_1 = np.einsum(
-        # 'ACLik, BDMjl -> ABCDLMijkl', cl_5d + noise_5d, cl_5d + noise_5d)
+    # 'ACLik, BDMjl -> ABCDLMijkl', cl_5d + noise_5d, cl_5d + noise_5d)
     # term_2 = np.einsum(
-        # 'ADLil, BCMjk -> ABCDLMijkl', cl_5d + noise_5d, cl_5d + noise_5d)
+    # 'ADLil, BCMjk -> ABCDLMijkl', cl_5d + noise_5d, cl_5d + noise_5d)
     # cov_10d = np.einsum('ABCDLMijkl, L -> ABCDLMijkl', term_1 + term_2, prefactor)
 
     # considering only ell diagonal
@@ -2788,7 +2793,7 @@ def _covariance_einsum_split(
 def covariance_SSC_einsum(cl_5d, rl_5d, s_ABCD_ijkl, fsky, optimize='greedy'):
     """
     computes the 10-dimensional covariance matrix, of shape
-    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins). 
+    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins).
     The 5-th axis is added only if
     return_only_diagonal_ells is True. *for the single-probe case, n_probes = 1*
 
@@ -2797,7 +2802,7 @@ def covariance_SSC_einsum(cl_5d, rl_5d, s_ABCD_ijkl, fsky, optimize='greedy'):
         L, M = ell, ell_prime
         i, j, k, l = redshift bin indices
 
-    cl_5d must have shape = (n_probes, n_probes, nbl, zbins, zbins) = (A, B, L, i, j), 
+    cl_5d must have shape = (n_probes, n_probes, nbl, zbins, zbins) = (A, B, L, i, j),
     same as rl_5d
 
     :param cl_5d:
@@ -2805,7 +2810,7 @@ def covariance_SSC_einsum(cl_5d, rl_5d, s_ABCD_ijkl, fsky, optimize='greedy'):
     :param noise_5d:
     :param fsky:
     :return: 10-dimensional numpy array of shape
-    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins), 
+    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins),
     containing the covariance.
     """
 
@@ -2915,7 +2920,7 @@ def build_3x2pt_array(cl_LL_3D, cl_GG_3D, cl_GL_3D, n_probes, nbl, zbins):
     warnings.warn(
         'shape is (n_probes, n_probes, nbl, zbins, zbins), NOT '
         '(nbl, n_probes, n_probes, zbins, zbins)',
-        stacklevel=2
+        stacklevel=2,
     )
     assert cl_LL_3D.shape == (nbl, zbins, zbins), (
         f'cl_LL_3D.shape = {cl_LL_3D.shape}, should be (nbl, zbins, zbins)'
@@ -3015,12 +3020,12 @@ def cov_3x2pt_10D_to_4D(cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_
 
 def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, probe_ordering, combinations=None):
     """
-    Convert a dictionary of 4D blocks into a single 4D array. This is the same code as 
+    Convert a dictionary of 4D blocks into a single 4D array. This is the same code as
     in the last part of the function above.
     :param cov_3x2pt_8D_dict: Dictionary of 4D covariance blocks
-    :param probe_ordering: tuple of tuple probes, 
+    :param probe_ordering: tuple of tuple probes,
     e.g., (('L', 'L'), ('G', 'L'), ('G', 'G'))
-    :combinations: list of combinations to use, 
+    :combinations: list of combinations to use,
     e.g., [['L', 'L', 'L', 'L'], ['L', 'L', 'L', 'G'], ...]
     :return: 4D covariance array
     """
@@ -3294,11 +3299,11 @@ def cov_4D_to_6D_blocks(
     symmetrize_output_cd: bool,
 ):
     """
-    Reshapes the 4D covariance matrix to a 6D covariance matrix, even for the 
+    Reshapes the 4D covariance matrix to a 6D covariance matrix, even for the
     cross-probe (non-square) blocks needed
     to build the 3x2pt covariance.
 
-    This function can be used for the normal routine (valid for auto-covariance, 
+    This function can be used for the normal routine (valid for auto-covariance,
     i.e., LL-LL, GG-GG, GL-GL and LG-LG)
     where `zpairs_ab = zpairs_cd` and `ind_ab = ind_cd`.
 
@@ -3308,9 +3313,9 @@ def cov_4D_to_6D_blocks(
         zbins (int): The number of redshift bins.
         ind_ab (np.ndarray): The indices for the first pair of redshift bins.
         ind_cd (np.ndarray): The indices for the second pair of redshift bins.
-        symmetrize_output_ab (bool): Whether to symmetrize the output cov block 
+        symmetrize_output_ab (bool): Whether to symmetrize the output cov block
         for the first pair of probes.
-        symmetrize_output_cd (bool): Whether to symmetrize the output cov block 
+        symmetrize_output_cd (bool): Whether to symmetrize the output cov block
         for the second pair of probes.
 
     Returns:
@@ -3423,7 +3428,7 @@ def check_symmetric(array_2d, exact, rtol=1e-05):
     """
     # """check if the matrix is symmetric, either exactly or within a tolerance
     # """
-    assert exact is bool, 'parameter "exact" must be either True or False'
+    assert isinstance(exact, bool), 'parameter "exact" must be either True or False'
     assert array_2d.ndim == 2, 'the array is not square'
     if exact:
         return np.array_equal(array_2d, array_2d.T)
@@ -3432,7 +3437,7 @@ def check_symmetric(array_2d, exact, rtol=1e-05):
 
 
 def slice_cov_3x2pt_2D_ell_probe_zpair(cov_2D_ell_probe_zpair, nbl, zbins, probe):
-    """Slices the 2-dimensional 3x2pt covariance ordered as a block-diagonal 
+    """Slices the 2-dimensional 3x2pt covariance ordered as a block-diagonal
     matrix in ell, probe and zpair
     (unpacked in this order)"""
 
@@ -3502,13 +3507,13 @@ def cov_2D_to_4D(cov_2D, nbl, block_index, optimize=True, symmetrize=False):
     of the for loops does not affect the result!
 
     Ordeting convention:
-    - whether to use zpair or ell as the outermost index (determined by the 
+    - whether to use zpair or ell as the outermost index (determined by the
     ordering of the for loops)
       This is going to be the index of the blocks in the 2D covariance matrix.
 
-    Note: this reshaping does not change the number of elements, we just go 
+    Note: this reshaping does not change the number of elements, we just go
     from [nbl, nbl, zpairs, zpairs] to
-    [nbl*zpairs, nbl*zpairs]; hence no symmetrization or other methods to "fill in" 
+    [nbl*zpairs, nbl*zpairs]; hence no symmetrization or other methods to "fill in"
     the missing elements in the
     higher-dimensional array are needed.
     """
@@ -3570,22 +3575,22 @@ def cov_4D_to_2D(cov_4D, block_index, optimize=True):
     of the for loops does not affect the result!
 
     Ordeting convention:
-    - whether to use ij or ell as the outermost index (determined by the ordering of 
+    - whether to use ij or ell as the outermost index (determined by the ordering of
     the for loops).
       This is going to be the index of the blocks in the 2D covariance matrix.
 
-    this function can also convert to 2D non-square blocks; this is needed to build 
+    this function can also convert to 2D non-square blocks; this is needed to build
     the 3x2pt_2D according to CLOE's
-    ordering (which is not actually Cloe's ordering...); it is sufficient to pass a 
+    ordering (which is not actually Cloe's ordering...); it is sufficient to pass a
     zpairs_CD != zpairs_AB value
     (by default zpairs_CD == zpairs_AB). This is not necessary in the above function
      (unless you want to reshape the
     individual blocks) because also in the 3x2pt case I am reshaping a square matrix
      (of size [nbl*zpairs, nbl*zpairs])
 
-    Note: this reshaping does not change the number of elements, we just go from 
+    Note: this reshaping does not change the number of elements, we just go from
     [nbl, nbl, zpairs, zpairs] to
-    [nbl*zpairs, nbl*zpairs]; hence no symmetrization or other methods to "fill in" 
+    [nbl*zpairs, nbl*zpairs]; hence no symmetrization or other methods to "fill in"
     the missing elements in the
     higher-dimensional array are needed.
     """
@@ -3618,7 +3623,7 @@ def cov_4D_to_2D(cov_4D, block_index, optimize=True):
             )
         return cov_2D
 
-    # I tested that the 2 methods give the same results. 
+    # I tested that the 2 methods give the same results.
     # This code is kept to remember the
     # block_index * block_size + running_index unpacking
     if block_index in ['ell', 'C-style']:
@@ -3647,17 +3652,17 @@ def cov_4D_to_2D(cov_4D, block_index, optimize=True):
 # @njit
 def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='ell'):
     """
-    Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE ordering. 
+    Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE ordering.
     Note that this is only necessary for
     the 3x2pt probe.
-    TODO the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work 
+    TODO the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work
     with other combinations (but it
     TODO will work both for LG and GL)
-    ! Important note: block_index = 'ell' means that the overall ordering will 
+    ! Important note: block_index = 'ell' means that the overall ordering will
     ! be probe_ell_zpair.
     ! Setting it to 'zpair' will give you the ordering probe_zpair_ell.
     ! Bottom line: the probe is the outermost loop in any case.
-    ! The ordering used by CLOE v2 is probe_ell_zpair, so block_index = 'ell' is 
+    ! The ordering used by CLOE v2 is probe_ell_zpair, so block_index = 'ell' is
     ! the correct choice in this case.
     """
 
@@ -3709,23 +3714,23 @@ def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='ell'):
 # @njit
 def cov_2DCLOE_to_4D_3x2pt(cov_2D, nbl, zbins, block_index='ell'):
     """
-    Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE ordering. 
+    Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE ordering.
     Note that this is only necessary for
     the 3x2pt probe.
-    TODO the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work 
+    TODO the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work
     with other combinations (but it
     TODO will work both for LG and GL)
     """
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
 
-    # now I'm reshaping the full block diagonal matrix, not just the sub-blocks 
+    # now I'm reshaping the full block diagonal matrix, not just the sub-blocks
     # (cov_2D_to_4D works for both cases)
     lim_1 = zpairs_auto * nbl
     lim_2 = (zpairs_cross + zpairs_auto) * nbl
     lim_3 = zpairs_3x2pt * nbl
 
-    # note: I'm writing cov_LG, but there should be no issue with GL; after all, 
+    # note: I'm writing cov_LG, but there should be no issue with GL; after all,
     # this function is not using the ind file
     cov_LL_LL = cov_2D_to_4D(cov_2D[:lim_1, :lim_1], nbl, block_index)
     cov_LL_LG = cov_2D_to_4D(cov_2D[:lim_1, lim_1:lim_2], nbl, block_index)
@@ -3739,7 +3744,7 @@ def cov_2DCLOE_to_4D_3x2pt(cov_2D, nbl, zbins, block_index='ell'):
     cov_GG_LG = cov_2D_to_4D(cov_2D[lim_2:lim_3, lim_1:lim_2], nbl, block_index)
     cov_GG_GG = cov_2D_to_4D(cov_2D[lim_2:lim_3, lim_2:lim_3], nbl, block_index)
 
-    # here it is a little more difficult to visualize the stacking, 
+    # here it is a little more difficult to visualize the stacking,
     # but the probes are concatenated
     # along the 2 zpair_3x2pt-long axes
     cov_4D = np.zeros((nbl, nbl, zpairs_3x2pt, zpairs_3x2pt))
@@ -3764,11 +3769,11 @@ def cov_2DCLOE_to_4D_3x2pt(cov_2D, nbl, zbins, block_index='ell'):
 
 
 def cov_2d_dav_to_cloe(cov_2d_dav, nbl, zbins, block_index_in, block_index_out):
-    """convert a 2D covariance matrix from the davide convention to the CLOE 
+    """convert a 2D covariance matrix from the davide convention to the CLOE
     convention, that is, from the probe being
     unraveled in the first for loop to the probe being unraveled in the second for loop.
     example: from ell_probe_zpair (my convention) to probe_ell_zpair (CLOE).
-    The zpairs <-> ell ordering is decided by 'block_idex' (setting the first, 
+    The zpairs <-> ell ordering is decided by 'block_idex' (setting the first,
     or outermost, of the two)"""
     cov_4D = cov_2D_to_4D(cov_2d_dav, nbl, block_index=block_index_in, optimize=True)
     cov_2d_cloe = cov_4D_to_2DCLOE_3x2pt(
@@ -3778,11 +3783,11 @@ def cov_2d_dav_to_cloe(cov_2d_dav, nbl, zbins, block_index_in, block_index_out):
 
 
 def cov_2d_cloe_to_dav(cov_2d_cloe, nbl, zbins, block_index_in, block_index_out):
-    """convert a 2D covariance matrix from the CLOE convention to the davide 
+    """convert a 2D covariance matrix from the CLOE convention to the davide
     convention, that is, from the probe being
     unraveled in the second for loop to the probe being unraveled in the first for loop.
     example: from probe_ell_zpair (CLOE) to ell_probe_zpair (my convention).
-    The zpairs <-> ell ordering is decided by 'block_idex' (setting the first, 
+    The zpairs <-> ell ordering is decided by 'block_idex' (setting the first,
     or outermost, of the two)"""
     cov_4D = cov_2DCLOE_to_4D_3x2pt(cov_2d_cloe, nbl, zbins, block_index=block_index_in)
     cov_2d_dav = cov_4D_to_2D(cov_4D, block_index=block_index_out, optimize=True)
@@ -3876,9 +3881,9 @@ def build_noise(
     assert np.all(ng_shear > 0), 'ng_shear should be positive'
     assert np.all(ng_clust > 0), 'ng_clust should be positive'
 
-    # if ng is an array, n_bar == ng (this is a slight misnomer, since ng is the 
+    # if ng is an array, n_bar == ng (this is a slight misnomer, since ng is the
     # cumulative galaxy density, while
-    # n_bar the galaxy density in each bin). In this case, if the bins are 
+    # n_bar the galaxy density in each bin). In this case, if the bins are
     # quipopulated, the n_bar array should
     # have all entries almost identical.
 

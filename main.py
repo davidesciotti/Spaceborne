@@ -1349,14 +1349,23 @@ for probe in ['WL', 'GC', '3x2pt']:
     )
 
 if cfg['misc']['save_output_as_benchmark']:
+    
+    # some of the test quantities are not defined in some cases
     if not compute_sb_ssc:
-        sigma2_b = None
-        dPmm_ddeltab = None
-        dPgm_ddeltab = None
-        dPgg_ddeltab = None
-        d2CLL_dVddeltab = None
-        d2CGL_dVddeltab = None
-        d2CGG_dVddeltab = None
+        sigma2_b = np.array([])
+        dPmm_ddeltab = np.array([])
+        dPgm_ddeltab = np.array([])
+        dPgg_ddeltab = np.array([])
+        d2CLL_dVddeltab = np.array([])
+        d2CGL_dVddeltab = np.array([])
+        d2CGG_dVddeltab = np.array([])
+    # better to work with empty arrays than None
+    if bnt_matrix is None:
+        _bnt_matrix = np.array([])
+    # I don't fully remember why I don't save these
+    _ell_dict = deepcopy(ell_dict)
+    _ell_dict.pop('ell_cuts_dict')
+    _ell_dict.pop('idxs_to_delete_dict')
 
     import datetime
 
@@ -1385,9 +1394,6 @@ if cfg['misc']['save_output_as_benchmark']:
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
         yaml.dump(cfg, yaml_file, default_flow_style=False)
 
-    _ell_dict = deepcopy(ell_dict)
-    _ell_dict.pop('ell_cuts_dict')
-    _ell_dict.pop('idxs_to_delete_dict')
 
     np.savez_compressed(
         bench_filename,
@@ -1403,6 +1409,7 @@ if cfg['misc']['save_output_as_benchmark']:
         nbl_WL=nbl_WL,
         nbl_GC=nbl_GC,
         nbl_3x2pt=nbl_3x2pt,
+        bnt_matrix=_bnt_matrix,
         gal_bias_2d=ccl_obj.gal_bias_2d,
         mag_bias_2d=ccl_obj.mag_bias_2d,
         wf_delta=ccl_obj.wf_delta_arr,

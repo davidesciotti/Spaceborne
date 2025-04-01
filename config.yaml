@@ -241,8 +241,8 @@ PyCCL:
     k_grid_tkka_max: 1.e+2
     z_grid_tkka_steps_SSC: 300
     k_grid_tkka_steps_SSC: 512
-    z_grid_tkka_steps_cNG: 20
-    k_grid_tkka_steps_cNG: 50
+    z_grid_tkka_steps_cNG: 50
+    k_grid_tkka_steps_cNG: 200
     # z_grid_tkka_steps_cNG: null
     # k_grid_tkka_steps_cNG: null
 

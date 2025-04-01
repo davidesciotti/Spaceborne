@@ -273,10 +273,10 @@ class PycclClass():
         # k_z_str = f'zmin{pyccl_cfg["z_grid_tkka_min"]:.1f}_zmax{pyccl_cfg["z_grid_tkka_max"]:.1f}_zsteps{pyccl_cfg[f"z_grid_tkka_steps_{which_ng_cov}"]:d}_' \
         # f'kmin{pyccl_cfg["k_grid_tkka_min"]:.1e}_kmax{pyccl_cfg["k_grid_tkka_max"]:.1e}_ksteps{pyccl_cfg[f"k_grid_tkka_steps_{which_ng_cov}"]:d}'
 
-        self.a_grid_tkka_SSC = None
-        self.logn_k_grid_tkka_SSC = None
-        self.a_grid_tkka_cNG = None
-        self.logn_k_grid_tkka_cNG = None
+        self.a_grid_tkka_SSC = 'ciao'
+        self.logn_k_grid_tkka_SSC = 'ciao'
+        self.a_grid_tkka_cNG = 'ciao'
+        self.logn_k_grid_tkka_cNG = 'ciao'
 
         if self.a_grid_tkka_SSC is not None and which_ng_cov == 'SSC':
             self.a_grid_tkka_SSC = np.linspace(
@@ -365,14 +365,13 @@ class PycclClass():
                 elif col >= row and not pyccl_cfg['load_cached_tkka']:
 
                     tkka_func, additional_args = self.get_tkka_func(A, B, C, D, which_ng_cov)
-
-                    self.tkka_dict[A, B, C, D], self.responses_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
-                                                                                            hmc=self.hmc,
-                                                                                            extrap_order_lok=1,
-                                                                                            extrap_order_hik=1,
-                                                                                            use_log=False,
-                                                                                            p_of_k_a=p_of_k_a,
-                                                                                            **additional_args)
+                    self.tkka_dict[A, B, C, D] = tkka_func(cosmo=self.cosmo_ccl,
+                                                            hmc=self.hmc,
+                                                            extrap_order_lok=1,
+                                                            extrap_order_hik=1,
+                                                            use_log=False,
+                                                            p_of_k_a=p_of_k_a,
+                                                            **additional_args)
 
         print('trispectrum computed in {:.2f} seconds'.format(time.perf_counter() - tkka_start_time))
 

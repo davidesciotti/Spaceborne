@@ -1,5 +1,4 @@
 # TODO add general description
-# TODO remove compute_bnt_with_shifted_nz_for_zcuts??
 cosmology:
     Om: 0.32        # Type: float. Matter density parameter
     Ob: 0.05        # Type: float. Baryon density parameter
@@ -136,10 +135,9 @@ ell_cuts:
     kmax_h_over_Mpc_list: [0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.] # Type: list[float]
 
 BNT:
+    # Whether or not to apply the BNT transform to che Cls and/or covariance matrices.
     cl_BNT_transform: False # Type: bool
     cov_BNT_transform: False # Type: bool
-    compute_bnt_with_shifted_nz_for_zcuts: False # Type: bool. Lets test this
-    include_ia_in_bnt_kernel_for_zcuts: False # Type: bool
 
 covariance:
     n_probes: 2 # Type: int. Number of probes considered in the covariance
@@ -239,8 +237,8 @@ PyCCL:
     # and 'spline' (the integrand is splined and then integrated analytically).
     # DSnote: note that the former could give errors.
 
-    load_cached_tkka: False # Type: bool
-
+    load_cached_tkka: False # Type: bool. 
+    # Whether or not to load the previously computed trispectrum.
     n_samples_wf: 1000 # Type: int
     # (from CCL docs): number of points over which to compute the radial kernels (weight functions).
     # See e.g. documentation of https://ccl.readthedocs.io/en/latest/api/pyccl.tracers.html#pyccl.tracers.NumberCountsTracer

@@ -116,10 +116,6 @@ triu_tril = cfg['covariance']['triu_tril']
 row_col_major = cfg['covariance']['row_col_major']
 n_probes = cfg['covariance']['n_probes']
 which_sigma2_b = cfg['covariance']['which_sigma2_b']
-include_ia_in_bnt_kernel_for_zcuts = cfg['BNT']['include_ia_in_bnt_kernel_for_zcuts']
-compute_bnt_with_shifted_nz_for_zcuts = cfg['BNT'][
-    'compute_bnt_with_shifted_nz_for_zcuts'
-]
 probe_ordering = cfg['covariance']['probe_ordering']
 GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 output_path = cfg['misc']['output_path']

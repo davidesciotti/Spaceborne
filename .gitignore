@@ -19,3 +19,4 @@ tmp*/
 output/*
 misc/test_davide_tri.ipynb
 tests/realspace_test/*
+tests/benchmark_configs/*

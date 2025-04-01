@@ -1,46 +1,25 @@
-import warnings
 import numpy as np
-from scipy.interpolate import interp1d
 import itertools
 import os
 import time
-import matplotlib.pyplot as plt
-from scipy.interpolate import RectBivariateSpline, CubicSpline
-from scipy.integrate import simpson as simps
 import pymaster as nmt
 import healpy as hp
 from tqdm import tqdm
 from spaceborne import sb_lib as sl
 from spaceborne import constants
-import itertools
-import os
-import time
 from copy import deepcopy
 
-import matplotlib.pyplot as plt
-import numpy as np
-import utils
 import yaml
-from matplotlib import cm
-from scipy.stats import chi2
-from tqdm import tqdm
-
-import healpy as hp
-import pyccl as ccl
-import pymaster as nmt
 
 
 DEG2_IN_SPHERE = constants.DEG2_IN_SPHERE
 DR1_DATE = constants.DR1_DATE
 
 
-
-
-
-
-def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl, cw, w00, w02, w22,
-                             coupled=False, ells_in=None, ells_out=None,
-                             ells_out_edges=None, which_binning=None, weights=None):
+def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl, 
+                     cw, w00, w02, w22,
+                     coupled=False, ells_in=None, ells_out=None,
+                     ells_out_edges=None, which_binning=None, weights=None):
     """
     Unified function to compute Gaussian covariance using NaMaster.
     
@@ -910,7 +889,7 @@ with open(f'{ROOT}/Spaceborne_covg/config/example_config_namaster.yaml') as file
     cfg = yaml.safe_load(file)
 
 survey_area_deg2 = cfg['survey_area_deg2']  # deg^2
-fsky = survey_area_deg2 / utils.DEG2_IN_SPHERE
+fsky = survey_area_deg2 / constants.DEG2_IN_SPHERE
 
 zbins = cfg['zbins']
 ell_min = cfg['ell_min']
@@ -957,7 +936,7 @@ if cfg['read_mask']:
     if mask_path.endswith('footprint-gal-12.fits'):
         mask = hp.read_map(mask_path)
         mask = np.where(  # fmt: skip
-            np.logical_and(mask <= utils.DR1_DATE, mask >= 0.0), 1.0, 0,
+            np.logical_and(mask <= constants.DR1_DATE, mask >= 0.0), 1.0, 0,
         )  # fmt: skip
         # Save the actual DR1 mask to a new FITS file
         # output_path = mask_path.replace(".fits", "_DR1.fits")
@@ -970,25 +949,25 @@ if cfg['read_mask']:
 
 else:
     # mask = utils.generate_polar_cap(area_deg2=survey_area_deg2, nside=cfg['nside'])
-    mask = utils.generate_survey_mask(
-        area_deg2=survey_area_deg2, nside=cfg['nside'], shape=cfg['mask_shape']
+    mask = sl.generate_polar_cap(
+        area_deg2=survey_area_deg2, nside=cfg['nside']
     )
 
 fsky = np.mean(mask**2)
-survey_area_deg2 = fsky * utils.DEG2_IN_SPHERE
+survey_area_deg2 = fsky * DEG2_IN_SPHERE
 
 if fsky == 1:
     np.testing.assert_allclose(mask, np.ones_like(mask), atol=0, rtol=1e-6)
 
 # apodize
 hp.mollview(mask, title='before apodization', cmap='inferno_r')
-if cfg['apodize_mask'] and int(survey_area_deg2) != int(utils.DEG2_IN_SPHERE):
+if cfg['apodize_mask'] and int(survey_area_deg2) != int(DEG2_IN_SPHERE):
     mask = nmt.mask_apodization(mask, aposize=cfg['aposize'], apotype='Smooth')
     hp.mollview(mask, title='after apodization', cmap='inferno_r')
 
 # recompute after apodizing
 fsky = np.mean(mask**2)
-survey_area_deg2 = fsky * utils.DEG2_IN_SPHERE
+survey_area_deg2 = fsky * DEG2_IN_SPHERE
 
 npix = hp.nside2npix(nside)
 pix_area = 4 * np.pi
@@ -1150,7 +1129,7 @@ else:
     # cl_LL_4covsb = cl_LL_unbinned[:, :zbins_use, :zbins_use]
 
 # the noise is needed also for the SIM and NMT covs
-noise_3x2pt_4d = utils.build_noise(
+noise_3x2pt_4d = sl.build_noise(
     zbins_use,
     n_probes,
     sigma_eps2=sigma_eps2,
@@ -1182,7 +1161,7 @@ cl_bb_4covsim = np.zeros_like(cl_tt_4covsim)
 
 # ! NAMASTER covariance
 if cfg['spin0']:
-    cov_nmt_10d = utils.nmt_gaussian_cov_spin0(
+    cov_nmt_10d = nmt_gaussian_cov_spin0(
         cl_tt=cl_tt_4covnmt,
         cl_te=cl_te_4covnmt,
         cl_ee=cl_ee_4covnmt,
@@ -1199,7 +1178,7 @@ if cfg['spin0']:
     )
 
 else:
-    cov_nmt_10d = utils.nmt_gaussian_cov(
+    cov_nmt_10d = nmt_gaussian_cov(
         cl_tt=cl_tt_4covnmt,
         cl_te=cl_te_4covnmt,
         cl_ee=cl_ee_4covnmt,

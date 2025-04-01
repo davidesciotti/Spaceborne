@@ -290,22 +290,41 @@ class SpaceborneCovariance:
 
         if split_gaussian_cov:
             self.cov_WL_g_6D_sva, self.cov_WL_g_6D_sn, self.cov_WL_g_6D_mix = (
-                sl.covariance_einsum_split(
-                    cl_LL_5D, noise_LL_5D, self.fsky, self.ell_WL, delta_l_WL
+                sl.covariance_einsum(
+                    cl_LL_5D,
+                    noise_LL_5D,
+                    self.fsky,
+                    self.ell_WL,
+                    delta_l_WL,
+                    split_terms=split_gaussian_cov,
+                    return_only_diagonal_ells=False,
                 )
             )
             self.cov_GC_g_6D_sva, self.cov_GC_g_6D_sn, self.cov_GC_g_6D_mix = (
-                sl.covariance_einsum_split(
-                    cl_GG_5D, noise_GG_5D, self.fsky, self.ell_GC, delta_l_GC
+                sl.covariance_einsum(
+                    cl_GG_5D,
+                    noise_GG_5D,
+                    self.fsky,
+                    self.ell_GC,
+                    delta_l_GC,
+                    split_terms=split_gaussian_cov,
+                    return_only_diagonal_ells=False,
                 )
             )
             (
                 self.cov_3x2pt_g_10D_sva,
                 self.cov_3x2pt_g_10D_sn,
                 self.cov_3x2pt_g_10D_mix,
-            ) = sl.covariance_einsum_split(
-                cl_3x2pt_5D, noise_3x2pt_5D, self.fsky, self.ell_3x2pt, delta_l_3x2pt
+            ) = sl.covariance_einsum(
+                cl_3x2pt_5D,
+                noise_3x2pt_5D,
+                self.fsky,
+                self.ell_3x2pt,
+                delta_l_3x2pt,
+                split_terms=split_gaussian_cov,
+                return_only_diagonal_ells=False,
             )
+
             self.cov_WL_g_6D_sva = self.cov_WL_g_6D_sva[0, 0, 0, 0, ...]
             self.cov_WL_g_6D_sn = self.cov_WL_g_6D_sn[0, 0, 0, 0, ...]
             self.cov_WL_g_6D_mix = self.cov_WL_g_6D_mix[0, 0, 0, 0, ...]
@@ -450,13 +469,31 @@ class SpaceborneCovariance:
 
         else:
             self.cov_WL_g_6D = sl.covariance_einsum(
-                cl_LL_5D, noise_LL_5D, self.fsky, self.ell_WL, delta_l_WL
+                cl_LL_5D,
+                noise_LL_5D,
+                self.fsky,
+                self.ell_WL,
+                delta_l_WL,
+                split_terms=split_gaussian_cov,
+                return_only_diagonal_ells=False,
             )[0, 0, 0, 0, ...]
             self.cov_GC_g_6D = sl.covariance_einsum(
-                cl_GG_5D, noise_GG_5D, self.fsky, self.ell_GC, delta_l_GC
+                cl_GG_5D,
+                noise_GG_5D,
+                self.fsky,
+                self.ell_GC,
+                delta_l_GC,
+                split_terms=split_gaussian_cov,
+                return_only_diagonal_ells=False,
             )[0, 0, 0, 0, ...]
             self.cov_3x2pt_g_10D = sl.covariance_einsum(
-                cl_3x2pt_5D, noise_3x2pt_5D, self.fsky, self.ell_3x2pt, delta_l_3x2pt
+                cl_3x2pt_5D,
+                noise_3x2pt_5D,
+                self.fsky,
+                self.ell_3x2pt,
+                delta_l_3x2pt,
+                split_terms=split_gaussian_cov,
+                return_only_diagonal_ells=False,
             )
 
         # this part is in common, the split case also sets the total cov
@@ -1006,80 +1043,6 @@ class SpaceborneCovariance:
         print('Covariance matrices computed')
 
         return self.cov_dict
-
-    def bin_2d_matrix(self, cov, ells_in, ells_out, ells_out_edges):
-        assert cov.shape[0] == cov.shape[1] == len(ells_in), (
-            'ells_in must be the same length as the covariance matrix'
-        )
-        assert len(ells_out) == len(ells_out_edges) - 1, (
-            'ells_out must be the same length as the number of edges - 1'
-        )
-
-        binned_cov = np.zeros((len(ells_out), len(ells_out)))
-        cov_interp_func = RectBivariateSpline(ells_in, ells_in, cov)
-
-        ells_edges_low = ells_out_edges[:-1]
-        ells_edges_high = ells_out_edges[1:]
-
-        # Loop over the output bins
-        for ell1_idx, _ in enumerate(ells_out):
-            for ell2_idx, _ in enumerate(ells_out):
-                # Get ell min/max for the current bins
-                ell1_min = ells_edges_low[ell1_idx]
-                ell1_max = ells_edges_high[ell1_idx]
-                ell2_min = ells_edges_low[ell2_idx]
-                ell2_max = ells_edges_high[ell2_idx]
-
-                # isolate the relevant ranges of ell values from the original ells_in grid
-                ell1_in = ells_in[(ell1_min <= ells_in) & (ells_in < ell1_max)]
-                ell2_in = ells_in[(ell2_min <= ells_in) & (ells_in < ell2_max)]
-
-                # mask the covariance to the relevant block
-                cov_masked = cov[np.ix_(ell1_in, ell2_in)]
-
-                # Calculate the bin widths
-                delta_ell_1 = ell1_max - ell1_min
-                delta_ell_2 = ell2_max - ell2_min
-
-                # Option 1a: use the original grid for integration and the ell values
-                # as weights
-                # ells1_in_xx, ells2_in_yy = np.meshgrid(ell1_in, ell2_in, indexing='ij')
-                # partial_integral = simps(y=cov_masked * ells1_in_xx * ells2_in_yy,
-                # x=ell2_in, axis=1)
-                # integral = simps(y=partial_integral, x=ell1_in)
-                # binned_cov[ell1_idx, ell2_idx] = integral / (
-                # np.sum(ell1_in) * np.sum(ell2_in)
-                # )
-
-                # Option 1b: use the original grid for integration and no weights
-                partial_integral = simps(y=cov_masked, x=ell2_in, axis=1)
-                integral = simps(y=partial_integral, x=ell1_in)
-                binned_cov[ell1_idx, ell2_idx] = integral / (delta_ell_1 * delta_ell_2)
-
-                # # Option 2: create fine grids for integration over the ell ranges
-                # (GIVES GOOD RESULTS ONLY FOR nsteps=delta_ell!)
-                # ell_fine_1 = np.linspace(ell1_min, ell1_max, 50)
-                # ell_fine_2 = np.linspace(ell2_min, ell2_max, 50)
-
-                # # Evaluate the spline on the fine grids
-                # ell1_fine_xx, ell2_fine_yy = np.meshgrid(
-                #     ell_fine_1, ell_fine_2, indexing='ij'
-                # )
-                # cov_interp_vals = cov_interp_func(ell_fine_1, ell_fine_2)
-
-                # # Perform simps integration over the ell ranges
-                # partial_integral = simps(
-                #     y=cov_interp_vals * ell1_fine_xx * ell2_fine_yy,
-                #     x=ell_fine_2,
-                #     axis=1,
-                # )
-                # integral = simps(y=partial_integral, x=ell_fine_1)
-                # # Normalize by the bin areas
-                # binned_cov[ell1_idx, ell2_idx] = integral / (
-                #     np.sum(ell_fine_1) * np.sum(ell_fine_2)
-                # )
-
-        return binned_cov
 
     def ssc_integral_julia(
         self,

@@ -5,25 +5,40 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - python>=3.12
+  - python>=3.9
   - matplotlib
   - numpy
-  - scipy
+  - scipy<=1.14
   - tqdm
   - pip
   - pyyaml
   - joblib
-  - healpy>=1.18.0
+  # - healpy>=1.18.0
+  - healpy
   - camb
 
-  # these are needed by PyCCL
+  # PyCCL depenedencies
   - swig
   - cmake
+
+  # pymaster dependencies
+  - cfitsio
+  - fftw
+  
+  # pylevin dependencies
+  - gsl=2.5
+  - gxx_linux-64
+  - gfortran
+  - pybind11
+  - boost
 
   - pip:
     # pathos is needed to parallelize the computations involving non-pickleable objects.
     # It can be ignored, in which case some functions will run serially
     - pathos  
     - pymaster
+    - pyccl
     - pylevin
     - pyfiglet # for the fancy ascii art, not strictly necessary
+
+

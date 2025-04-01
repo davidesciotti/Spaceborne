@@ -12,7 +12,7 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
-from scipy.interpolate import RectBivariateSpline
+from scipy.interpolate import CubicSpline, RectBivariateSpline
 from spaceborne import (
     bnt,
     cl_utils,
@@ -677,17 +677,43 @@ assert len(mult_shear_bias) == zbins, (
 if not np.all(mult_shear_bias == 0):
     print('applying multiplicative shear bias')
     print(f'mult_shear_bias = {mult_shear_bias}')
-    for ell_idx, _ in enumerate(ccl_obj.cl_ll_3d.shape[0]):
+    for ell_idx in range(ccl_obj.cl_ll_3d.shape[0]):
         for zi in range(zbins):
             for zj in range(zbins):
                 ccl_obj.cl_ll_3d[ell_idx, zi, zj] *= (1 + mult_shear_bias[zi]) * (
                     1 + mult_shear_bias[zj]
                 )
 
-    for ell_idx, _ in enumerate(ccl_obj.cl_gl_3d.shape[0]):
+    for ell_idx in range(ccl_obj.cl_gl_3d.shape[0]):
         for zi in range(zbins):
             for zj in range(zbins):
                 ccl_obj.cl_gl_3d[ell_idx, zi, zj] *= 1 + mult_shear_bias[zj]
+
+
+if cfg['C_ell']['use_input_cls']:
+    print('Using input Cls')
+    cl_ll_tab = np.genfromtxt(cfg['C_ell']['cl_LL_path'])
+    cl_gl_tab = np.genfromtxt(cfg['C_ell']['cl_GL_path'])
+    cl_gg_tab = np.genfromtxt(cfg['C_ell']['cl_GG_path'])
+
+    ells_WL, cl_ll_3d = sl.import_cl_tab(cl_ll_tab)
+    ells_XC, cl_gl_3d = sl.import_cl_tab(cl_gl_tab)
+    ells_GC, cl_gg_3d = sl.import_cl_tab(cl_gg_tab)
+
+    if not np.allclose(ells_WL, ell_dict['ell_WL'], atol=0, rtol=1e-5):
+        cl_ll_3d_spline = CubicSpline(ells_WL, cl_ll_3d, axis=0)
+        cl_ll_3d = cl_ll_3d_spline(ell_dict['ell_WL'])
+
+    if not np.allclose(ells_XC, ell_dict['ell_XC'], atol=0, rtol=1e-5):
+        cl_gl_3d_spline = CubicSpline(ells_XC, cl_gl_3d, axis=0)
+        cl_gl_3d = cl_gl_3d_spline(ell_dict['ell_XC'])
+
+    if not np.allclose(ells_GC, ell_dict['ell_GC'], atol=0, rtol=1e-5):
+        cl_gg_3d_spline = CubicSpline(ells_GC, cl_gg_3d, axis=0)
+        cl_gg_3d = cl_gg_3d_spline(ell_dict['ell_GC'])
+
+    ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d = cl_ll_3d, cl_gl_3d, cl_gg_3d
+
 
 ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_3x2pt, zbins, zbins))
 ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[:nbl_3x2pt, :, :]
@@ -699,7 +725,6 @@ ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[:nbl_3x2pt, :, :]
 
 cl_ll_3d, cl_gl_3d, cl_gg_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d
 cl_3x2pt_5d = ccl_obj.cl_3x2pt_5d
-
 
 fig, ax = plt.subplots(1, 3)
 plt.tight_layout()
@@ -810,7 +835,7 @@ cov_obj.set_gauss_cov(
     ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['split_gaussian_cov']
 )
 
-# ! ========================================== OneCovariance ===========================
+# ! =================================== OneCovariance ==================================
 if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     if cfg['ell_cuts']['cl_ell_cuts']:
         raise NotImplementedError(
@@ -1324,14 +1349,25 @@ for probe in ['WL', 'GC', '3x2pt']:
     )
 
 if cfg['misc']['save_output_as_benchmark']:
+    
+    # some of the test quantities are not defined in some cases
     if not compute_sb_ssc:
-        sigma2_b = None
-        dPmm_ddeltab = None
-        dPgm_ddeltab = None
-        dPgg_ddeltab = None
-        d2CLL_dVddeltab = None
-        d2CGL_dVddeltab = None
-        d2CGG_dVddeltab = None
+        sigma2_b = np.array([])
+        dPmm_ddeltab = np.array([])
+        dPgm_ddeltab = np.array([])
+        dPgg_ddeltab = np.array([])
+        d2CLL_dVddeltab = np.array([])
+        d2CGL_dVddeltab = np.array([])
+        d2CGG_dVddeltab = np.array([])
+        
+    # better to work with empty arrays than None
+    if bnt_matrix is None:
+        _bnt_matrix = np.array([])
+        
+    # I don't fully remember why I don't save these
+    _ell_dict = deepcopy(ell_dict)
+    _ell_dict.pop('ell_cuts_dict')
+    _ell_dict.pop('idxs_to_delete_dict')    
 
     import datetime
 
@@ -1360,9 +1396,6 @@ if cfg['misc']['save_output_as_benchmark']:
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
         yaml.dump(cfg, yaml_file, default_flow_style=False)
 
-    _ell_dict = deepcopy(ell_dict)
-    _ell_dict.pop('ell_cuts_dict')
-    _ell_dict.pop('idxs_to_delete_dict')
 
     np.savez_compressed(
         bench_filename,
@@ -1378,6 +1411,7 @@ if cfg['misc']['save_output_as_benchmark']:
         nbl_WL=nbl_WL,
         nbl_GC=nbl_GC,
         nbl_3x2pt=nbl_3x2pt,
+        bnt_matrix=_bnt_matrix,
         gal_bias_2d=ccl_obj.gal_bias_2d,
         mag_bias_2d=ccl_obj.mag_bias_2d,
         wf_delta=ccl_obj.wf_delta_arr,

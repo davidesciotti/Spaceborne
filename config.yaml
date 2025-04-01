@@ -45,7 +45,7 @@ halo_model:
 
 C_ell:
 
-    use_input_cls: true  
+    use_input_cls: False  
     # Type: bool. Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
     # note: if the non-Gaussian covariance is requested, the code will compute intermediate quantities
     # such as the radial kernels for lensing and clustering. The user should make sure that the cosmology 
@@ -145,8 +145,8 @@ covariance:
     n_probes: 2 # Type: int. Number of probes considered in the covariance
 
     G: True # Type: bool. Enable/disable the Gaussian covariance term.
-    SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
-    cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+    SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
+    cNG: True # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
     # Which code to use for the different covariance terms
     G_code: Spaceborne # Type: str. Options: [Spaceborne, OneCovariance]
@@ -220,12 +220,12 @@ covariance:
     # k grid used for power spectrum and trispectrum computation
     log10_k_min: -5  # Type: float 
     log10_k_max: 2  # Type: float
-    k_steps: 200  # Type: int
+    k_steps: 50  # Type: int
     
     z_min: 0.02 # Type: float. SU responses' kmax allow for z_min = 0.016, at most.
     z_max: 3.0 # Type: float
     z_steps: 100 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 5000
-    z_steps_trisp: 50  # Type: int. Number of z steps used to compute the trispectrum - around 100 should be enough
+    z_steps_trisp: 20  # Type: int. Number of z steps used to compute the trispectrum - around 100 should be enough
 
     use_KE_approximation: False # Type: bool
 
@@ -272,5 +272,5 @@ misc:
     test_symmetry: True # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
     output_path: ./output # Type: str
-    save_output_as_benchmark: True # Type: bool. For testing purposes
-    bench_filename: ../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_prelevin # Type: str. For testing purposes
+    save_output_as_benchmark: False # Type: bool. For testing purposes
+    bench_filename: ../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_newtest # Type: str. For testing purposes

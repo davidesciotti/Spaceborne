@@ -241,10 +241,10 @@ PyCCL:
     k_grid_tkka_max: 1.e+2
     z_grid_tkka_steps_SSC: 300
     k_grid_tkka_steps_SSC: 512
-    z_grid_tkka_steps_cNG: 100
-    k_grid_tkka_steps_cNG: 700
-    z_grid_tkka_steps_cNG: null
-    k_grid_tkka_steps_cNG: null
+    z_grid_tkka_steps_cNG: 20
+    k_grid_tkka_steps_cNG: 50
+    # z_grid_tkka_steps_cNG: null
+    # k_grid_tkka_steps_cNG: null
 
 OneCovariance:
     precision_settings: high_precision # 'high_precision' or 'default'
@@ -252,7 +252,7 @@ OneCovariance:
     consistency_checks: False
     
 misc:
-    num_threads: 40 # how many threads to use for the Julia SSC integral with @tturbo
+    num_threads: 50 # how many threads to use for the Julia SSC integral with @tturbo
 
     # some sanity checks on the covariance matrix. These could take a while to run.
     test_numpy_inversion: True # test for errors in np.linalg.inv
@@ -260,7 +260,7 @@ misc:
     test_cholesky_decomposition: True # test if cholesky decomposition fails
     test_symmetry: True # test if covariance matrix is symmetric (cov = cov.T)
 
-    output_path: /home/cosmo/davide.sciotti/data/CLOE_ISTNL/covs_for_paper/output_CCL_cNG_v2
+    output_path: /home/cosmo/davide.sciotti/data/CLOE_ISTNL/covs_for_paper/output_CCL_cNG_v3.2
     use_h_units: False # TODO hardcode!
     is_CLOE_validation_run: True
     path_to_jl_integrator: /home/cosmo/davide.sciotti/data/Spaceborne/spaceborne/julia_integrator.jl

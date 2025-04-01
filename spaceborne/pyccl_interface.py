@@ -306,6 +306,7 @@ class PycclClass():
             print(f'cNG trisp: k points = {self.logn_k_grid_tkka_cNG.size}')
 
         # or, to set to the default:
+        # warnings.warn('using default grids for trispectrum!!)
         # a_grid_tkka = None
         # logn_k_grid_tkka = None
 

@@ -1359,13 +1359,15 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CLL_dVddeltab = np.array([])
         d2CGL_dVddeltab = np.array([])
         d2CGG_dVddeltab = np.array([])
+        
     # better to work with empty arrays than None
     if bnt_matrix is None:
         _bnt_matrix = np.array([])
+        
     # I don't fully remember why I don't save these
     _ell_dict = deepcopy(ell_dict)
     _ell_dict.pop('ell_cuts_dict')
-    _ell_dict.pop('idxs_to_delete_dict')
+    _ell_dict.pop('idxs_to_delete_dict')    
 
     import datetime
 

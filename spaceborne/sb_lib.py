@@ -123,7 +123,7 @@ def timer(msg):
         print(msg % (stop - start), flush=True)
 
 
-def bin_2d_matrix(  # fmt: skip
+def bin_2d_array(  # fmt: skip
     cov, ells_in, ells_out, ells_out_edges, weights_in, which_binning='sum', 
     interpolate = True
 ):  # fmt: skip
@@ -218,6 +218,86 @@ def bin_2d_matrix(  # fmt: skip
             binned_cov[ell1_idx, ell2_idx] = total / (norm1 * norm2)
 
     return binned_cov
+
+
+def bin_1d_array(ells_in, ells_out, ells_out_edges, cls_in, weights, which_binning, ells_eff=None):
+    """
+    Bin the input power spectrum into the output bins.
+    :param ells_in: array of input ells
+    :param ells_out: array of output ells
+    :param cls_in: array of input power spectrum
+    :param weights: array of weights for the input power spectrum
+    :return: array of binned power spectrum
+    """
+
+    weights_was_none = False
+    if weights is None:
+        weights = np.ones_like(ells_in)
+        weights_was_none = True
+    if len(ells_in) != len(cls_in):
+        raise ValueError('ells_in and cls_in must have the same length')
+    if len(ells_in) != len(weights):
+        raise ValueError('ells_in and weights must have the same length')
+    if np.any(ells_out < ells_in[0]) or np.any(ells_out > ells_in[-1]):
+        raise ValueError('ells_out must be within the range of ells_in')
+    if np.any(ells_out[1:] < ells_out[:-1]):
+        raise ValueError('ells_out must be monotonically increasing')
+
+    assert len(cls_in) == len(ells_in), "ells_in must be the same length as the covariance matrix"
+    assert len(ells_out) == len(ells_out_edges) - 1, "ells_out must be the same length as the number of edges - 1"
+
+    binned_cls = np.zeros(len(ells_out))
+    spline = CubicSpline(ells_in, cls_in)
+
+    ells_edges_low = ells_out_edges[:-1]
+    ells_edges_high = ells_out_edges[1:]
+
+    # Loop over the output bins
+    for ell_idx in range(len(ells_out)):
+
+        # Get ell min/max for the current bins
+        ell_min = ells_edges_low[ell_idx]
+        ell_max = ells_edges_high[ell_idx]
+
+        # this mask returns a bool array True at the ells_in indices satisfying the condition
+        ell_bool_mask = (ell_min <= ells_in) & (ells_in < ell_max)
+        ell_masked_idxs = np.nonzero(ell_bool_mask)[0]
+
+        # isolate the relevant ranges of ell values from the original ells_in grid, weights and cov
+        ells_in_masked = ells_in[ell_masked_idxs]
+        cls_masked = cls_in[ell_masked_idxs]
+
+        if weights.shape == (len(ells_eff), len(ells_in)):
+            ells_eff_idx = np.argmin(np.abs(ells_eff - ells_out[ell_idx]))
+            weights_masked = weights[ells_eff_idx, ell_masked_idxs]
+        elif weights.shape == (len(ells_in),):
+            weights_masked = weights[ell_masked_idxs]
+
+        # Calculate the bin widths
+        if weights_was_none:
+            delta_ell = ell_max - ell_min
+            assert delta_ell == np.sum(weights_masked), "The weights must sum to the bin width"
+
+        # Option 1: use the original grid for integration and no weights
+        if which_binning == 'integral':
+            integral = simps(y=cls_masked * weights_masked, x=ells_in_masked)
+            binned_cls[ell_idx] = integral / np.sum(weights_masked)
+
+        elif which_binning == 'sum':
+            binned_cls[ell_idx] = np.sum(cls_masked * weights_masked) / np.sum(weights_masked)
+
+        else:
+            raise ValueError('which_binning should be "sum" or "integral"')
+
+        # # Option 2: create fine grids for integration over the ell ranges (GIVES GOOD RESULTS ONLY FOR nsteps=delta_ell!)
+        # ell_fine = np.linspace(ell_min, ell_max, 50)
+        # cls_interp = spline(ell_fine)
+
+        # # Perform simps integration over the ell ranges
+        # integral = simps(y=cls_interp * ell_fine, x=ell_fine)
+        # binned_cls[ell_idx] = integral / (np.sum(ell_fine))
+
+    return binned_cls
 
 
 def matshow_vcenter(matrix, vcenter=0):

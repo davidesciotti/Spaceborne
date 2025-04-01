@@ -1669,7 +1669,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         )
         zijkl_comb = itertools.product(range(zbins), repeat=4)
         for zi, zj, zk, zl in zijkl_comb:
-            cov_sb_6d_binned[:, :, zi, zj, zk, zl] = sl.bin_2d_matrix(
+            cov_sb_6d_binned[:, :, zi, zj, zk, zl] = sl.bin_2d_array(
                 cov_sb_6d[:, :, zi, zj, zk, zl],
                 theta_centers,
                 theta_centers_coarse,

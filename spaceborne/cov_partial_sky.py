@@ -8,9 +8,10 @@ from tqdm import tqdm
 from spaceborne import sb_lib as sl
 from spaceborne import constants
 from copy import deepcopy
+import warnings
 
 import yaml
-
+import pyccl as ccl
 
 DEG2_IN_SPHERE = constants.DEG2_IN_SPHERE
 DR1_DATE = constants.DR1_DATE
@@ -727,7 +728,7 @@ def compute_master(f_a, f_b, wsp):
 
 
 def produce_correlated_maps(
-    cl_TT, cl_EE, cl_BB, cl_TE, cl_EB, cl_TB, nreal, nside, zbins_use
+    cl_TT, cl_EE, cl_BB, cl_TE, cl_EB, cl_TB, nreal, nside, zbins
 ):
     print(f'Generating {nreal} maps for nside {nside}...')
 
@@ -738,7 +739,7 @@ def produce_correlated_maps(
         cl_TE=cl_TE,
         cl_EB=cl_EB,
         cl_TB=cl_TB,
-        zbins=zbins_use,
+        zbins=zbins,
         spectra_types=['T', 'E', 'B'],
     )
 
@@ -747,7 +748,7 @@ def produce_correlated_maps(
 
     for _ in tqdm(range(nreal)):
         corr_alms_tot = hp.synalm(cl_ring_big_list, lmax=lmax, new=True)
-        assert len(corr_alms_tot) == zbins_use * 3, 'wrong number of alms'
+        assert len(corr_alms_tot) == zbins * 3, 'wrong number of alms'
 
         # extract alm for TT, EE, BB
         corr_alms = corr_alms_tot[::3]
@@ -878,11 +879,221 @@ def get_lmid(ells, k):
     return 0.5 * (ells[k:] + ells[:-k])
 
 
-cov_blocks_names_all = (  # fmt: skip
-    'LLLL', 'LLGL', 'LLGG',
-    'GLLL', 'GLGL', 'GLGG',
-    'GGLL', 'GGGL', 'GGGG',
-)  # fmt: skip
+def compute_unbinned_cls(ccl_obj, ells, kernel_a, kernel_b, cl_ccl_kwargs):
+    cl_3d = ccl_obj.compute_cls(
+        ells,
+        ccl_obj.p_of_k_a,
+        kernel_a,
+        kernel_b,
+        cl_ccl_kwargs,
+    )
+    return cl_3d
+
+
+class NmtCov:
+    def __init__(
+        self, cfg: dict, pvt_cfg: dict, ccl_obj: ccl.Cosmology, mask: np.ndarray
+    ):
+        self.cfg = cfg
+        self.pvt_cfg = pvt_cfg
+        self.ccl_obj = ccl_obj
+        self.lmax_3x2pt = cfg['ell_binning']['ell_max_3x2pt']
+        self.mask = mask
+        self.NSIDE = cfg['mask']['nside']
+
+        self.cov_blocks_names_all = (  # fmt: skip
+            'LLLL', 'LLGL', 'LLGG',
+            'GLLL', 'GLGL', 'GLGG',
+            'GGLL', 'GGGL', 'GGGG',
+        )  # fmt: skip
+
+        # check on lmax and NSIDE
+        for probe in ('WL', 'GC', '3x2pt'):
+            _lmax = self.ell_dict[f'ell_max_{probe}']
+            if _lmax < 3 * self.NSIDE:
+                warnings.warn(
+                    f'lmax = {_lmax} and NSIDE = {self.NSIDE};'
+                    'you should set lmax and NSIDE such that lmax < 3 * NSIDE',
+                    stacklevel=2,
+                )
+
+    def compute_nmt_3x2pt_cov(self):
+        # 1. ell binning
+        # TODO different ell ranges for different probes?
+
+        # TODO this should probably be done in the ell_utils module (upgrade to a class?)
+        if cfg['ell_binning']['binning_type'] == 'linear':
+            bin_obj = linear_binning(ell_max, ell_min, ells_per_band)
+        elif cfg['ell_binning']['binning_type'] == 'log':
+            bin_obj = log_binning(ell_max, ell_min, nell_bins)
+        else:
+            raise ValueError('binning_type must be either "linear" or "log"')
+
+        self.ells_eff = bin_obj.get_effective_ells()  # get effective ells per bandpower
+        nbl_eff = len(ells_eff)
+
+        # notice that bin_obj.get_ell_list(nbl_eff) is out of bounds
+        ells_eff_edges = np.array([bin_obj.get_ell_list(i)[0] for i in range(nbl_eff)])
+        ells_eff_edges = np.append(
+            ells_eff_edges, bin_obj.get_ell_list(nbl_eff - 1)[-1] + 1
+        )  # careful f the +1!
+        lmin_eff = ells_eff_edges[0]
+        lmax_eff = bin_obj.lmax
+
+        ells_unb = np.arange(lmax_eff + 1)
+        nbl_unb = len(ells_unb)
+        assert nbl_unb == lmax_eff + 1, 'nbl_tot does not match lmax_eff + 1'
+        ells_bpw = ells_unb[lmin_eff : lmax_eff + 1]
+        delta_ells_bpw = np.diff(
+            np.array([bin_obj.get_ell_list(i)[0] for i in range(nbl_eff)])
+        )
+        # assert np.all(delta_ells_bpw == ells_per_band), 'delta_ell from bpw does not match ells_per_band'
+
+        # ! create nmt field from the mask (there will be no maps associated to the fields)
+        # TODO maks=None (as in the example) or maps=[mask]? I think None
+        start_time = time.perf_counter()
+        print('computing coupling coefficients...')
+        f0_mask = nmt.NmtField(mask=mask, maps=None, spin=0, lite=True, lmax=lmax_eff)
+        f2_mask = nmt.NmtField(mask=mask, maps=None, spin=2, lite=True, lmax=lmax_eff)
+        w00 = nmt.NmtWorkspace()
+        w02 = nmt.NmtWorkspace()
+        w22 = nmt.NmtWorkspace()
+        w00.compute_coupling_matrix(f0_mask, f0_mask, bin_obj)
+        w02.compute_coupling_matrix(f0_mask, f2_mask, bin_obj)
+        w22.compute_coupling_matrix(f2_mask, f2_mask, bin_obj)
+        print(f'...done in {(time.perf_counter() - start_time):.2f}s')
+
+        # 2. compute unbinned cls
+        cl_GG_unb = self.ccl_obj.compute_cls(
+            ells_unb,
+            self.ccl_obj.p_of_k_a,
+            self.ccl_obj.wf_galaxy_obj,
+            self.ccl_obj.wf_galaxy_obj,
+            self.cl_ccl_kwargs,
+        )
+        cl_GL_unb = self.ccl_obj.compute_cls(
+            ells_unb,
+            self.ccl_obj.p_of_k_a,
+            self.ccl_obj.wf_galaxy_obj,
+            self.ccl_obj.wf_lensing_obj,
+            self.cl_ccl_kwargs,
+        )
+        cl_LL_unb = self.ccl_obj.compute_cls(
+            ells_unb,
+            self.ccl_obj.p_of_k_a,
+            self.ccl_obj.wf_lensing_obj,
+            self.ccl_obj.wf_lensing_obj,
+            self.cl_ccl_kwargs,
+        )
+        cl_BB_unb = np.zeros_like(cl_LL_unb)
+        cl_TB_unb = np.zeros_like(cl_LL_unb)
+        cl_EB_unb = np.zeros_like(cl_LL_unb)
+
+        # ! Let's now compute the Gaussian estimate of the covariance!
+        start_time = time.perf_counter()
+        cw = nmt.NmtCovarianceWorkspace()
+        print('Computing cov workspace coupling coefficients...')
+        cw.compute_coupling_coefficients(f0_mask, f0_mask, f0_mask, f0_mask)
+        print(f'...one in {(time.perf_counter() - start_time):.2f} s...')
+
+        if cfg['namaster']['use_INKA']:
+            cl_GG_4covnmt = np.zeros_like(cl_GG_unb)
+            cl_GL_4covnmt = np.zeros_like(cl_GL_unb)
+            cl_LL_4covnmt = np.zeros_like(cl_LL_unb)
+
+            z_combinations = list(itertools.product(range(zbins), repeat=2))
+            for zi, zj in z_combinations:
+                list_GG = [cl_GG_unb[:, zi, zj]]
+                list_GL = [
+                    cl_GL_unb[:, zi, zj],
+                    np.zeros_like(cl_GL_unb[:, zi, zj]),
+                ]
+                list_LL = [
+                    cl_LL_unb[:, zi, zj],
+                    np.zeros_like(cl_LL_unb[:, zi, zj]),
+                    np.zeros_like(cl_LL_unb[:, zi, zj]),
+                    np.zeros_like(cl_LL_unb[:, zi, zj]),
+                ]
+
+                cl_GG_4covnmt[:, zi, zj] = w00.couple_cell(list_GG)[0] / fsky
+                cl_GL_4covnmt[:, zi, zj] = w02.couple_cell(list_GL)[0] / fsky
+                cl_LL_4covnmt[:, zi, zj] = w22.couple_cell(list_LL)[0] / fsky
+
+        else:
+            cl_GG_4covnmt = cl_GG_unb
+            cl_GL_4covnmt = cl_GL_unb
+            cl_LL_4covnmt = cl_LL_unb
+
+        # the noise is needed also for the SIM and NMT covs
+        noise_3x2pt_4d = sl.build_noise(
+            self.zbins,
+            self.n_probes,
+            sigma_eps2=sigma_eps2,
+            ng_shear=self.ng_shear,
+            ng_clust=self.ng_clust,
+            is_noiseless=self.cov_cfg['noiseless_spectra'],
+        )
+
+        noise_3x2pt_5d = np.zeros(
+            (n_probes, n_probes, ells_unb, zbins, zbins)
+        )
+        for probe_A in (0, 1):
+            for probe_B in (0, 1):
+                for ell_idx in range(ells_unb):
+                    noise_3x2pt_5d[probe_A, probe_B, ell_idx, :, :] = noise_3x2pt_4d[
+                        probe_A, probe_B, ...
+                    ]
+
+        cl_tt_4covnmt = cl_GG_4covnmt + noise_3x2pt_5d[1, 1, :, :, :]
+        cl_te_4covnmt = cl_GL_4covnmt + noise_3x2pt_5d[1, 0, :, :, :]
+        cl_ee_4covnmt = cl_LL_4covnmt + noise_3x2pt_5d[0, 0, :, :, :]
+        cl_tb_4covnmt = np.zeros_like(cl_tt_4covnmt)
+        cl_eb_4covnmt = np.zeros_like(cl_tt_4covnmt)
+        cl_bb_4covnmt = np.zeros_like(cl_tt_4covnmt)
+
+
+        # ! NAMASTER covariance
+        if cfg['spin0']:
+            cov_nmt_10d = nmt_gaussian_cov_spin0(
+                cl_tt=cl_tt_4covnmt,
+                cl_te=cl_te_4covnmt,
+                cl_ee=cl_ee_4covnmt,
+                zbins=zbins,
+                nbl=nbl_eff,
+                cw=cw,
+                w00=w00,
+                coupled=cfg['coupled'],
+                ells_in=ells_unb,
+                ells_out=ells_eff,
+                ells_out_edges=ells_eff_edges,
+                weights=None,
+                which_binning='sum',
+            )
+
+        else:
+            cov_nmt_10d = nmt_gaussian_cov(
+                cl_tt=cl_tt_4covnmt,
+                cl_te=cl_te_4covnmt,
+                cl_ee=cl_ee_4covnmt,
+                cl_tb=cl_tb_4covnmt,
+                cl_eb=cl_eb_4covnmt,
+                cl_bb=cl_bb_4covnmt,
+                zbins=zbins,
+                nbl=nbl_eff,
+                cw=cw,
+                w00=w00,
+                w02=w02,
+                w22=w22,
+                coupled=cfg['coupled'],
+                ells_in=ells_unb,
+                ells_out=ells_eff,
+                ells_out_edges=ells_eff_edges,
+                weights=None,
+                which_binning='sum',
+            )
+            
+        return cov_nmt_10d
+
 
 # ! settings
 # import the yaml config file
@@ -903,12 +1114,7 @@ sigma_eps = cfg['sigma_eps_i'] * np.sqrt(2)
 sigma_eps2 = sigma_eps**2
 
 EP_or_ED = cfg['EP_or_ED']
-GL_or_LG = 'GL'
-triu_tril = cfg['triu_tril']
-row_col_major = cfg['row_col_major']
-covariance_ordering_2D = cfg['covariance_ordering_2D']
 
-part_sky = cfg['part_sky']
 workspace_path = cfg['workspace_path']
 mask_path = cfg['mask_path'].format(ROOT=ROOT)
 
@@ -924,8 +1130,6 @@ print('Computing the partial-sky covariance with NaMaster')
 ells_unbinned = np.arange(5000)
 ells_per_band = cfg['ells_per_band']
 nside = cfg['nside']
-nreal = cfg['nreal']
-zbins_use = cfg['zbins_use']
 coupled = cfg['coupled']
 use_INKA = cfg['use_INKA']
 which_cls = cfg['which_cls']
@@ -1036,9 +1240,9 @@ print(f'...done in {(time.perf_counter() - start_time):.2f}s')
 
 
 # cut and bin the theory
-cl_GG_unbinned = deepcopy(cl_GG_unbinned[: lmax_eff + 1, :zbins_use, :zbins_use])
-cl_GL_unbinned = deepcopy(cl_GL_unbinned[: lmax_eff + 1, :zbins_use, :zbins_use])
-cl_LL_unbinned = deepcopy(cl_LL_unbinned[: lmax_eff + 1, :zbins_use, :zbins_use])
+cl_GG_unbinned = deepcopy(cl_GG_unbinned[: lmax_eff + 1, :zbins, :zbins])
+cl_GL_unbinned = deepcopy(cl_GL_unbinned[: lmax_eff + 1, :zbins, :zbins])
+cl_LL_unbinned = deepcopy(cl_LL_unbinned[: lmax_eff + 1, :zbins, :zbins])
 cl_BB_unbinned = np.zeros_like(cl_LL_unbinned)
 cl_TB_unbinned = np.zeros_like(cl_LL_unbinned)
 cl_EB_unbinned = np.zeros_like(cl_LL_unbinned)
@@ -1077,15 +1281,15 @@ nbl_4covnmt = nbl_eff
 ells_4covsb = ells_tot
 nbl_4covsb = len(ells_4covsb)
 delta_ells_4covsb = np.ones(nbl_4covsb)  # since it's unbinned
-cl_GG_4covsb = cl_GG_unbinned[:, :zbins_use, :zbins_use]
-cl_GL_4covsb = cl_GL_unbinned[:, :zbins_use, :zbins_use]
-cl_LL_4covsb = cl_LL_unbinned[:, :zbins_use, :zbins_use]
+cl_GG_4covsb = cl_GG_unbinned[:, :zbins, :zbins]
+cl_GL_4covsb = cl_GL_unbinned[:, :zbins, :zbins]
+cl_LL_4covsb = cl_LL_unbinned[:, :zbins, :zbins]
 
 if use_INKA:
     cl_GG_4covnmt = np.zeros_like(cl_GG_unbinned)
     cl_GL_4covnmt = np.zeros_like(cl_GL_unbinned)
     cl_LL_4covnmt = np.zeros_like(cl_LL_unbinned)
-    z_combinations = list(itertools.product(range(zbins_use), repeat=2))
+    z_combinations = list(itertools.product(range(zbins), repeat=2))
     for zi, zj in z_combinations:
         list_GG = [cl_GG_unbinned[:, zi, zj]]
         list_GL = [cl_GL_unbinned[:, zi, zj], np.zeros_like(cl_GL_unbinned[:, zi, zj])]
@@ -1101,27 +1305,27 @@ if use_INKA:
         cl_LL_4covnmt[:, zi, zj] = w22.couple_cell(list_LL)[0] / fsky
 
     # TODO not super sure about this
-    # cl_GG_4covsb = pcl_GG_nmt[:, :zbins_use, :zbins_use] / fsky
-    # cl_GL_4covsb = pcl_GL_nmt[:, :zbins_use, :zbins_use] / fsky
-    # cl_LL_4covsb = pcl_LL_nmt[:, :zbins_use, :zbins_use] / fsky
+    # cl_GG_4covsb = pcl_GG_nmt[:, :zbins, :zbins] / fsky
+    # cl_GL_4covsb = pcl_GL_nmt[:, :zbins, :zbins] / fsky
+    # cl_LL_4covsb = pcl_LL_nmt[:, :zbins, :zbins] / fsky
 else:
     cl_GG_4covnmt = cl_GG_unbinned
     cl_GL_4covnmt = cl_GL_unbinned
     cl_LL_4covnmt = cl_LL_unbinned
-    # cl_GG_4covsb = cl_GG_unbinned[:, :zbins_use, :zbins_use]
-    # cl_GL_4covsb = cl_GL_unbinned[:, :zbins_use, :zbins_use]
-    # cl_LL_4covsb = cl_LL_unbinned[:, :zbins_use, :zbins_use]
+    # cl_GG_4covsb = cl_GG_unbinned[:, :zbins, :zbins]
+    # cl_GL_4covsb = cl_GL_unbinned[:, :zbins, :zbins]
+    # cl_LL_4covsb = cl_LL_unbinned[:, :zbins, :zbins]
 
 # the noise is needed also for the SIM and NMT covs
 noise_3x2pt_4d = sl.build_noise(
-    zbins_use,
+    zbins,
     n_probes,
     sigma_eps2=sigma_eps2,
     ng_shear=n_gal_shear,
     ng_clust=n_gal_clustering,
     EP_or_ED=EP_or_ED,
 )
-noise_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_4covsb, zbins_use, zbins_use))
+noise_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_4covsb, zbins, zbins))
 for probe_A in (0, 1):
     for probe_B in (0, 1):
         for ell_idx in range(nbl_4covsb):
@@ -1149,7 +1353,7 @@ if cfg['spin0']:
         cl_tt=cl_tt_4covnmt,
         cl_te=cl_te_4covnmt,
         cl_ee=cl_ee_4covnmt,
-        zbins=zbins_use,
+        zbins=zbins,
         nbl=nbl_eff,
         cw=cw,
         w00=w00,
@@ -1169,7 +1373,7 @@ else:
         cl_tb=cl_tb_4covnmt,
         cl_eb=cl_eb_4covnmt,
         cl_bb=cl_bb_4covnmt,
-        zbins=zbins_use,
+        zbins=zbins,
         nbl=nbl_eff,
         cw=cw,
         w00=w00,

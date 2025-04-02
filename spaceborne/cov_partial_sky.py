@@ -16,14 +16,14 @@ DEG2_IN_SPHERE = constants.DEG2_IN_SPHERE
 DR1_DATE = constants.DR1_DATE
 
 
-def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl, 
+def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,   # fmt: skip
                      cw, w00, w02, w22,
                      coupled=False, ells_in=None, ells_out=None,
-                     ells_out_edges=None, which_binning=None, weights=None):
+                     ells_out_edges=None, which_binning=None, weights=None):  # fmt: skip
     """
     Unified function to compute Gaussian covariance using NaMaster.
-    
-    
+
+
     # NOTE: the order of the arguments (in particular for the cls) is the following
     # spin_a1, spin_a2, spin_b1, spin_b2,
     # cla1b1, cla1b2, cla2b1, cla2b2
@@ -31,7 +31,7 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,
     # [cl_te, cl_tb] - > TE=0, TB=1
     # covar_TT_TE = covar_00_02[:, 0, :, 0]x
     # covar_TT_TB = covar_00_02[:, 0, :, 1]
-    
+
     Parameters:
     - cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb: Input power spectra.
     - zbins: Number of redshift bins.
@@ -43,15 +43,16 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,
     - which_binning: Binning method for coupled covariance.
     - weights: Weights for binning.
     """
-    
+
     cl_et = cl_te.transpose(0, 2, 1)
-    cl_bt = cl_tb.transpose(0, 2, 1)   
+    cl_bt = cl_tb.transpose(0, 2, 1)
     cl_be = cl_eb.transpose(0, 2, 1)
-    
+
     for cl in [cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb]:
-        assert cl.shape[0] == cl_tt.shape[0], \
-        'input cls have different number of ell bins'
-    
+        assert cl.shape[0] == cl_tt.shape[0], (
+            'input cls have different number of ell bins'
+        )
+
     nell = cl_tt.shape[0] if coupled else nbl
 
     print('Computing partial-sky Gaussian covariance with NaMaster...')
@@ -71,7 +72,6 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,
 
     z_combinations = list(itertools.product(range(zbins), repeat=4))
     for zi, zj, zk, zl in tqdm(z_combinations):
-
         covar_00_00 = nmt.gaussian_covariance(cw,  # fmt: skip
                                               0, 0, 0, 0,
                                               cl_00_list(zi, zk),
@@ -164,25 +164,34 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,
 
         if coupled:
             # in this case, the nmt output is unbinned
-            cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = \
-                sl.bin_2d_array(covar_EE_EE, ells_in, ells_out, ells_out_edges, which_binning, weights)
-            cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = \
-                sl.bin_2d_array(covar_TE_EE, ells_in, ells_out, ells_out_edges, which_binning, weights)
-            cov_nmt_10d_arr[1, 0, 1, 0, :, :, zi, zj, zk, zl] = \
-                sl.bin_2d_array(covar_TE_TE, ells_in, ells_out, ells_out_edges, which_binning, weights)
-            cov_nmt_10d_arr[1, 1, 0, 0, :, :, zi, zj, zk, zl] = \
-                sl.bin_2d_array(covar_TT_EE, ells_in, ells_out, ells_out_edges, which_binning, weights)
-            cov_nmt_10d_arr[1, 1, 1, 0, :, :, zi, zj, zk, zl] = \
-                sl.bin_2d_array(covar_TT_TE, ells_in, ells_out, ells_out_edges, which_binning, weights)
-            cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = \
-                sl.bin_2d_array(covar_TT_TT, ells_in, ells_out, ells_out_edges, which_binning, weights)
+            cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
+                covar_EE_EE, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
+            cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
+                covar_TE_EE, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
+            cov_nmt_10d_arr[1, 0, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
+                covar_TE_TE, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
+            cov_nmt_10d_arr[1, 1, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
+                covar_TT_EE, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
+            cov_nmt_10d_arr[1, 1, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
+                covar_TT_TE, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
+            cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
+                covar_TT_TT, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
             # the remaining blocks can be filled in by symmetry (with zi, zj <-> zk, zl)
-            cov_nmt_10d_arr[0, 0, 1, 0, :, :, zk, zl, zi, zj] = \
-                sl.bin_2d_array(covar_TE_EE.T, ells_in, ells_out, ells_out_edges, which_binning, weights)
-            cov_nmt_10d_arr[0, 0, 1, 1, :, :, zk, zl, zi, zj] = \
-                sl.bin_2d_array(covar_TT_EE.T, ells_in, ells_out, ells_out_edges, which_binning, weights)
-            cov_nmt_10d_arr[1, 0, 1, 1, :, :, zk, zl, zi, zj] = \
-                sl.bin_2d_array(covar_TT_TE.T, ells_in, ells_out, ells_out_edges, which_binning, weights)
+            cov_nmt_10d_arr[0, 0, 1, 0, :, :, zk, zl, zi, zj] = sl.bin_2d_array(
+                covar_TE_EE.T, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
+            cov_nmt_10d_arr[0, 0, 1, 1, :, :, zk, zl, zi, zj] = sl.bin_2d_array(
+                covar_TT_EE.T, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
+            cov_nmt_10d_arr[1, 0, 1, 1, :, :, zk, zl, zi, zj] = sl.bin_2d_array(
+                covar_TT_TE.T, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
         else:
             cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_EE_EE
             cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_TE_EE
@@ -197,9 +206,10 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,
 
     return cov_nmt_10d_arr
 
-def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw, w00, coupled, ells_in, ells_out,
-                             ells_out_edges, which_binning, weights):
 
+def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
+                           w00, coupled, ells_in, ells_out,
+                             ells_out_edges, which_binning, weights):  # fmt: skip
     cl_et = cl_te.transpose(0, 2, 1)
 
     print('Computing spin-0 partial-sky Gaussian covariance with NaMaster...')
@@ -207,7 +217,6 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw, w00, coupled, el
 
     z_combinations = list(itertools.product(range(zbins), repeat=4))
     for zi, zj, zk, zl in tqdm(z_combinations):
-
         covar_00_00 = nmt.gaussian_covariance(cw,  # fmt: skip
                                               0, 0, 0, 0, 
                                               [cl_tt[:, zi, zk]],  # TT
@@ -297,36 +306,36 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw, w00, coupled, el
                                               coupled=coupled,
                                               wa=w00, wb=w00)  # fmt: skip
         covar_EE_TT = covar_22_00
-        
+
         if coupled:
-            cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = \
-                    sl.bin_2d_array(covar_EE_EE, ells_in, ells_out, ells_out_edges, 
-                    which_binning, weights)
-            cov_nmt_10d_arr[0, 0, 1, 0, :, :, zi, zj, zk, zl] = \
-                    sl.bin_2d_array(covar_EE_TE, ells_in, ells_out, ells_out_edges, 
-                    which_binning, weights)
-            cov_nmt_10d_arr[0, 0, 1, 1, :, :, zi, zj, zk, zl] = \
-                    sl.bin_2d_array(covar_EE_TT, ells_in, ells_out, ells_out_edges, 
-                    which_binning, weights)
-            cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = \
-                    sl.bin_2d_array(covar_TE_EE, ells_in, ells_out, ells_out_edges, 
-                    which_binning, weights)
-            cov_nmt_10d_arr[1, 0, 1, 0, :, :, zi, zj, zk, zl] = \
-                    sl.bin_2d_array(covar_TE_TE, ells_in, ells_out, ells_out_edges, 
-                    which_binning, weights)
-            cov_nmt_10d_arr[1, 1, 0, 0, :, :, zi, zj, zk, zl] = \
-                    sl.bin_2d_array(covar_TT_EE, ells_in, ells_out, ells_out_edges, 
-                    which_binning, weights)
-            cov_nmt_10d_arr[1, 1, 1, 0, :, :, zi, zj, zk, zl] = \
-                    sl.bin_2d_array(covar_TT_TE, ells_in, ells_out, ells_out_edges, 
-                    which_binning, weights)
-            cov_nmt_10d_arr[1, 0, 1, 1, :, :, zi, zj, zk, zl] = \
-                    sl.bin_2d_array(covar_TE_TT, ells_in, ells_out, ells_out_edges, 
-                    which_binning, weights)
-            cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = \
-                    sl.bin_2d_array(covar_TT_TT, ells_in, ells_out, ells_out_edges, 
-                    which_binning, weights)
-        
+            cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
+                covar_EE_EE, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
+            cov_nmt_10d_arr[0, 0, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
+                covar_EE_TE, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
+            cov_nmt_10d_arr[0, 0, 1, 1, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
+                covar_EE_TT, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
+            cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
+                covar_TE_EE, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
+            cov_nmt_10d_arr[1, 0, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
+                covar_TE_TE, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
+            cov_nmt_10d_arr[1, 1, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
+                covar_TT_EE, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
+            cov_nmt_10d_arr[1, 1, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
+                covar_TT_TE, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
+            cov_nmt_10d_arr[1, 0, 1, 1, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
+                covar_TE_TT, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
+            cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
+                covar_TT_TT, ells_in, ells_out, ells_out_edges, which_binning, weights
+            )
+
         else:
             cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_EE_EE
             cov_nmt_10d_arr[0, 0, 1, 0, :, :, zi, zj, zk, zl] = covar_EE_TE
@@ -338,11 +347,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw, w00, coupled, el
             cov_nmt_10d_arr[1, 0, 1, 1, :, :, zi, zj, zk, zl] = covar_TE_TT
             cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = covar_TT_TT
 
-
-
     return cov_nmt_10d_arr
-
-
 
 
 def linear_lmin_binning(NSIDE, lmin, bw):
@@ -438,18 +443,20 @@ def coupling_matrix(bin_scheme, mask, wkspce_name):
     fmask = nmt.NmtField(mask, [mask])  # nmt field with only the mask
     w = nmt.NmtWorkspace()
     if os.path.isfile(wkspce_name):
-        print('Mixing matrix has already been calculated and is in the workspace file : ', wkspce_name, '. Read it.')
+        print(
+            'Mixing matrix has already been calculated and is in the workspace file : ',
+            f'{wkspce_name}. Read it.',
+        )
         w.read_from(wkspce_name)
     else:
-        print('The file : ', wkspce_name, ' does not exists. Calculating the mixing matrix and writing it.')
+        print(
+            f'The file : {wkspce_name}',
+            ' does not exists. Calculating the mixing matrix and writing it.',
+        )
         w.compute_coupling_matrix(fmask, fmask, bin_scheme)
         w.write_to(wkspce_name)
     print('Done computing the mixing matrix. It took ', time.time() - start, 's.')
     return w
-
-
-
-
 
 
 def sample_covariance( # fmt: skip
@@ -843,9 +850,6 @@ def pcls_from_maps(corr_maps_gg, corr_maps_ll, zi, zj, mask, coupled_cls, which_
     return np.array(pseudo_cl_tt), np.array(pseudo_cl_te), np.array(pseudo_cl_ee)
 
 
-
-
-
 def linear_binning(lmax, lmin, bw, w=None):
     nbl = (lmax - lmin) // bw + 1
     bins = np.linspace(lmin, lmax + 1, nbl + 1)
@@ -868,7 +872,6 @@ def log_binning(lmax, lmin, nbl, w=None):
     b = nmt.NmtBin(bpws=i, ells=ell, weights=w, lmax=lmax)
 
     return b
-
 
 
 def get_lmid(ells, k):
@@ -949,9 +952,7 @@ if cfg['read_mask']:
 
 else:
     # mask = utils.generate_polar_cap(area_deg2=survey_area_deg2, nside=cfg['nside'])
-    mask = sl.generate_polar_cap(
-        area_deg2=survey_area_deg2, nside=cfg['nside']
-    )
+    mask = sl.generate_polar_cap(area_deg2=survey_area_deg2, nside=cfg['nside'])
 
 fsky = np.mean(mask**2)
 survey_area_deg2 = fsky * DEG2_IN_SPHERE
@@ -1016,9 +1017,7 @@ ells_tot = np.arange(lmax_eff + 1)
 nbl_tot = len(ells_tot)
 assert nbl_tot == lmax_eff + 1, 'nbl_tot does not match lmax_eff + 1'
 ells_bpw = ells_tot[lmin_eff : lmax_eff + 1]
-delta_ells_bpw = np.diff(
-    np.array([bin_obj.get_ell_list(i)[0] for i in range(nbl_eff)])
-)
+delta_ells_bpw = np.diff(np.array([bin_obj.get_ell_list(i)[0] for i in range(nbl_eff)]))
 # assert np.all(delta_ells_bpw == ells_per_band), 'delta_ell from bpw does not match ells_per_band'
 
 # ! create nmt field from the mask (there will be no maps associated to the fields)
@@ -1036,7 +1035,6 @@ w22.compute_coupling_matrix(f2_mask, f2_mask, bin_obj)
 print(f'...done in {(time.perf_counter() - start_time):.2f}s')
 
 
-
 # cut and bin the theory
 cl_GG_unbinned = deepcopy(cl_GG_unbinned[: lmax_eff + 1, :zbins_use, :zbins_use])
 cl_GL_unbinned = deepcopy(cl_GL_unbinned[: lmax_eff + 1, :zbins_use, :zbins_use])
@@ -1044,9 +1042,6 @@ cl_LL_unbinned = deepcopy(cl_LL_unbinned[: lmax_eff + 1, :zbins_use, :zbins_use]
 cl_BB_unbinned = np.zeros_like(cl_LL_unbinned)
 cl_TB_unbinned = np.zeros_like(cl_LL_unbinned)
 cl_EB_unbinned = np.zeros_like(cl_LL_unbinned)
-
-
-
 
 
 # ! COMPUTE AND COMPARE DIFFERENT VERSIONS OF THE Cls
@@ -1093,28 +1088,17 @@ if use_INKA:
     z_combinations = list(itertools.product(range(zbins_use), repeat=2))
     for zi, zj in z_combinations:
         list_GG = [cl_GG_unbinned[:, zi, zj]]
-        list_GL = [cl_GL_unbinned[:, zi, zj],
-                   np.zeros_like(cl_GL_unbinned[:, zi, zj])]
-        list_LL = [cl_LL_unbinned[:, zi, zj],
-                   np.zeros_like(cl_LL_unbinned[:, zi, zj]),
-                   np.zeros_like(cl_LL_unbinned[:, zi, zj]),
-                   np.zeros_like(cl_LL_unbinned[:, zi, zj])]
-        
-        cl_GG_4covnmt[:, zi, zj] = (
-            w00.couple_cell(list_GG)[0] / fsky
-        )
-        cl_GL_4covnmt[:, zi, zj] = (
-            w02.couple_cell(
-                list_GL
-            )[0]
-            / fsky
-        )
-        cl_LL_4covnmt[:, zi, zj] = (
-            w22.couple_cell(
-                list_LL
-            )[0]
-            / fsky
-        )
+        list_GL = [cl_GL_unbinned[:, zi, zj], np.zeros_like(cl_GL_unbinned[:, zi, zj])]
+        list_LL = [
+            cl_LL_unbinned[:, zi, zj],
+            np.zeros_like(cl_LL_unbinned[:, zi, zj]),
+            np.zeros_like(cl_LL_unbinned[:, zi, zj]),
+            np.zeros_like(cl_LL_unbinned[:, zi, zj]),
+        ]
+
+        cl_GG_4covnmt[:, zi, zj] = w00.couple_cell(list_GG)[0] / fsky
+        cl_GL_4covnmt[:, zi, zj] = w02.couple_cell(list_GL)[0] / fsky
+        cl_LL_4covnmt[:, zi, zj] = w22.couple_cell(list_LL)[0] / fsky
 
     # TODO not super sure about this
     # cl_GG_4covsb = pcl_GG_nmt[:, :zbins_use, :zbins_use] / fsky

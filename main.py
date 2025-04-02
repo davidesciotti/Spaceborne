@@ -692,24 +692,9 @@ if cfg['C_ell']['use_input_cls']:
 # ! add multiplicative shear bias
 # ! THIS SHOULD NOT BE DONE FOR THE OC Cls!! mult shear bias values are passed
 # ! in the .ini file
-mult_shear_bias = np.array(cfg['C_ell']['mult_shear_bias'])
-assert len(mult_shear_bias) == zbins, (
-    'mult_shear_bias should be a vector of length zbins'
+ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d = pyccl_interface.apply_mult_shear_bias(
+    ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, np.array(cfg['C_ell']['mult_shear_bias']), zbins
 )
-if not np.all(mult_shear_bias == 0):
-    print('applying multiplicative shear bias')
-    print(f'mult_shear_bias = {mult_shear_bias}')
-    for ell_idx in range(ccl_obj.cl_ll_3d.shape[0]):
-        for zi in range(zbins):
-            for zj in range(zbins):
-                ccl_obj.cl_ll_3d[ell_idx, zi, zj] *= (1 + mult_shear_bias[zi]) * (
-                    1 + mult_shear_bias[zj]
-                )
-
-    for ell_idx in range(ccl_obj.cl_gl_3d.shape[0]):
-        for zi in range(zbins):
-            for zj in range(zbins):
-                ccl_obj.cl_gl_3d[ell_idx, zi, zj] *= 1 + mult_shear_bias[zj]
 
 ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_3x2pt, zbins, zbins))
 ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[:nbl_3x2pt, :, :]
@@ -1161,7 +1146,7 @@ if compute_sb_ssc:
                 z_grid=z_grid,
                 fsky=cfg['mask']['fsky'],
                 which_sigma2_b=which_sigma2_b,
-                nside_mask=cfg['mask']['nside_mask'],
+                nside_mask=cfg['mask']['nside'],
                 mask_path=cfg['mask']['mask_path'],
             )
             _a, sigma2_b = ccl_obj.sigma2_b_tuple
@@ -1187,7 +1172,7 @@ if compute_sb_ssc:
                 cosmo_ccl=ccl_obj.cosmo_ccl,
                 which_sigma2_b=which_sigma2_b,
                 area_deg2_in=cfg['mask']['survey_area_deg2'],
-                nside_mask=cfg['mask']['nside_mask'],
+                nside_mask=cfg['mask']['nside'],
                 mask_path=cfg['mask']['mask_path'],
                 n_jobs=cfg['misc']['num_threads'],
                 integration_scheme=integration_scheme,
@@ -1240,7 +1225,7 @@ if compute_ccl_ssc or compute_ccl_cng:
         z_grid=z_default_grid_ccl,
         fsky=cfg['mask']['fsky'],
         which_sigma2_b=which_sigma2_b,
-        nside_mask=cfg['mask']['nside_mask'],
+        nside_mask=cfg['mask']['nside'],
         mask_path=cfg['mask']['mask_path'],
     )
 
@@ -1345,7 +1330,6 @@ for probe in ['WL', 'GC', '3x2pt']:
     )
 
 if cfg['misc']['save_output_as_benchmark']:
-    
     # some of the test quantities are not defined in some cases
     if not compute_sb_ssc:
         sigma2_b = np.array([])
@@ -1355,15 +1339,15 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CLL_dVddeltab = np.array([])
         d2CGL_dVddeltab = np.array([])
         d2CGG_dVddeltab = np.array([])
-        
+
     # better to work with empty arrays than None
     if bnt_matrix is None:
         _bnt_matrix = np.array([])
-        
+
     # I don't fully remember why I don't save these
     _ell_dict = deepcopy(ell_dict)
     _ell_dict.pop('ell_cuts_dict')
-    _ell_dict.pop('idxs_to_delete_dict')    
+    _ell_dict.pop('idxs_to_delete_dict')
 
     import datetime
 
@@ -1391,7 +1375,6 @@ if cfg['misc']['save_output_as_benchmark']:
 
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
         yaml.dump(cfg, yaml_file, default_flow_style=False)
-
 
     np.savez_compressed(
         bench_filename,

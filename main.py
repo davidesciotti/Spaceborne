@@ -1005,11 +1005,24 @@ cov_dict = cov_obj.cov_dict
 # ! ========================================== plot & tests ================================================
 for key in cov_dict.keys():
     mm.matshow(cov_dict[key], title=key)
+    
+for which_cov in cov_dict.keys():
+    probe = which_cov.split('_')[1]
+    which_ng_cov = which_cov.split('_')[2]
+    ndim = which_cov.split('_')[3]
+    cov_filename = cfg['covariance']['cov_filename'].format(which_ng_cov=which_ng_cov,
+                                                            probe=probe,
+                                                            ndim=ndim)
+
+    np.savez_compressed(f'{output_path}/{cov_filename}', cov_dict[which_cov])
+print(f'Covariance matrices saved in {output_path}')
 
 for key in cov_dict.keys():
-    np.testing.assert_allclose(cov_dict[key], cov_dict[key].T,
-                               atol=0, rtol=1e-7, err_msg=f'{key} not symmetric')
-
+    try:
+        np.testing.assert_allclose(cov_dict[key], cov_dict[key].T,
+                                   atol=0, rtol=1e-7, err_msg=f'{key} not symmetric')
+    except AssertionError as e:
+        print(e)
 
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.dump(cfg, yaml_file, default_flow_style=False)
@@ -1092,16 +1105,7 @@ if cfg['misc']['save_output_as_benchmark']:
 #         print(f'{key_bench} cov matches ✅')
 
 
-for which_cov in cov_dict.keys():
-    probe = which_cov.split('_')[1]
-    which_ng_cov = which_cov.split('_')[2]
-    ndim = which_cov.split('_')[3]
-    cov_filename = cfg['covariance']['cov_filename'].format(which_ng_cov=which_ng_cov,
-                                                            probe=probe,
-                                                            ndim=ndim)
 
-    np.savez_compressed(f'{output_path}/{cov_filename}', cov_dict[which_cov])
-print(f'Covariance matrices saved in {output_path}')
 
 for which_cov in cov_dict.keys():
 

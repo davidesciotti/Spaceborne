@@ -663,28 +663,6 @@ ccl_obj.cl_gg_3d = ccl_obj.compute_cls(
     cl_ccl_kwargs,
 )
 
-# ! add multiplicative shear bias
-# ! THIS SHOULD NOT BE DONE FOR THE OC Cls!! mult shear bias values are passed
-# ! in the .ini file
-mult_shear_bias = np.array(cfg['C_ell']['mult_shear_bias'])
-assert len(mult_shear_bias) == zbins, (
-    'mult_shear_bias should be a vector of length zbins'
-)
-if not np.all(mult_shear_bias == 0):
-    print('applying multiplicative shear bias')
-    print(f'mult_shear_bias = {mult_shear_bias}')
-    for ell_idx in range(ccl_obj.cl_ll_3d.shape[0]):
-        for zi in range(zbins):
-            for zj in range(zbins):
-                ccl_obj.cl_ll_3d[ell_idx, zi, zj] *= (1 + mult_shear_bias[zi]) * (
-                    1 + mult_shear_bias[zj]
-                )
-
-    for ell_idx in range(ccl_obj.cl_gl_3d.shape[0]):
-        for zi in range(zbins):
-            for zj in range(zbins):
-                ccl_obj.cl_gl_3d[ell_idx, zi, zj] *= 1 + mult_shear_bias[zj]
-
 
 if cfg['C_ell']['use_input_cls']:
     print('Using input Cls')
@@ -710,6 +688,28 @@ if cfg['C_ell']['use_input_cls']:
 
     ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d = cl_ll_3d, cl_gl_3d, cl_gg_3d
 
+
+# ! add multiplicative shear bias
+# ! THIS SHOULD NOT BE DONE FOR THE OC Cls!! mult shear bias values are passed
+# ! in the .ini file
+mult_shear_bias = np.array(cfg['C_ell']['mult_shear_bias'])
+assert len(mult_shear_bias) == zbins, (
+    'mult_shear_bias should be a vector of length zbins'
+)
+if not np.all(mult_shear_bias == 0):
+    print('applying multiplicative shear bias')
+    print(f'mult_shear_bias = {mult_shear_bias}')
+    for ell_idx in range(ccl_obj.cl_ll_3d.shape[0]):
+        for zi in range(zbins):
+            for zj in range(zbins):
+                ccl_obj.cl_ll_3d[ell_idx, zi, zj] *= (1 + mult_shear_bias[zi]) * (
+                    1 + mult_shear_bias[zj]
+                )
+
+    for ell_idx in range(ccl_obj.cl_gl_3d.shape[0]):
+        for zi in range(zbins):
+            for zj in range(zbins):
+                ccl_obj.cl_gl_3d[ell_idx, zi, zj] *= 1 + mult_shear_bias[zj]
 
 ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_3x2pt, zbins, zbins))
 ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[:nbl_3x2pt, :, :]

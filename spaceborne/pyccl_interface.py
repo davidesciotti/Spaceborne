@@ -12,6 +12,30 @@ from spaceborne import cosmo_lib, mask_utils, wf_cl_lib
 from spaceborne import sb_lib as sl
 
 
+def apply_mult_shear_bias(cl_ll_3d, cl_gl_3d, mult_shear_bias, zbins):
+    assert len(mult_shear_bias) == zbins, (
+        'mult_shear_bias should be a vector of length zbins'
+    )
+
+    if np.all(mult_shear_bias == 0):
+        return cl_ll_3d, cl_gl_3d
+
+    print('Applying multiplicative shear bias')
+    for ell_idx in range(cl_ll_3d.shape[0]):
+        for zi in range(zbins):
+            for zj in range(zbins):
+                cl_ll_3d[ell_idx, zi, zj] *= (1 + mult_shear_bias[zi]) * (
+                    1 + mult_shear_bias[zj]
+                )
+
+    for ell_idx in range(cl_gl_3d.shape[0]):
+        for zi in range(zbins):
+            for zj in range(zbins):
+                cl_gl_3d[ell_idx, zi, zj] *= 1 + mult_shear_bias[zj]
+
+    return cl_ll_3d, cl_gl_3d
+
+
 class PycclClass:
     def __init__(
         self,
@@ -385,7 +409,7 @@ class PycclClass:
                     continue
 
                 probe_block = A + B + C + D
-                
+
                 start = time.perf_counter()
 
                 print(
@@ -405,7 +429,7 @@ class PycclClass:
 
                 self.tkka_dict[A, B, C, D] = tkka_abcd
 
-                print(f'done in {(time.perf_counter() - start)/60:.2f} m')
+                print(f'done in {(time.perf_counter() - start) / 60:.2f} m')
 
         return
 

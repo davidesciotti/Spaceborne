@@ -369,7 +369,7 @@ class SpaceborneCovariance():
             self.cov_3x2pt_ssc_10D = np.zeros_like(self.cov_3x2pt_g_10D)
 
         if self.include_cng:
-            print(f'Including SSC from {self.ssc_code} in total covariance')
+            print(f'Including cNG from {self.ssc_code} in total covariance')
             if self.cng_code == 'PyCCL':
                 self.cov_3x2pt_cng_10D = self._cov_8d_dict_to_10d_arr(ccl_obj.cov_cng_ccl_3x2pt_dict_8D)
             elif self.cng_code == 'OneCovariance':

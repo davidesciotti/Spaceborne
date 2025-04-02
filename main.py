@@ -110,8 +110,6 @@ zbins = len(
 )  # this has the same length as ngal_sources, as checked below
 ell_max_WL = cfg['ell_binning']['ell_max_WL']
 ell_max_GC = cfg['ell_binning']['ell_max_GC']
-ell_max_3x2pt = cfg['ell_binning']['ell_max_3x2pt']
-nbl_WL_opt = cfg['ell_binning']['nbl_WL_opt']
 triu_tril = cfg['covariance']['triu_tril']
 row_col_major = cfg['covariance']['row_col_major']
 n_probes = cfg['covariance']['n_probes']
@@ -334,74 +332,105 @@ nz_unshifted_lns = nz_lns
 # TODO _WL_opt should be called "ref"
 ell_dict = {}
 if cfg['ell_binning']['binning_type'] == 'unbinned':
-    ell_dict['ell_WL'] = np.arange(
-        cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_WL'] + 1
+    ell_dict['ells_WL'] = np.arange(
+        cfg['ell_binning']['ell_min_WL'], cfg['ell_binning']['ell_max_WL'] + 1
     )
-    ell_dict['ell_GC'] = np.arange(
-        cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_GC'] + 1
-    )
-    ell_dict['ell_3x2pt'] = np.arange(
-        cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_3x2pt'] + 1
-    )
-    ell_dict['ell_XC'] = np.arange(
-        cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_3x2pt'] + 1
+    ell_dict['ells_GC'] = np.arange(
+        cfg['ell_binning']['ell_min_GC'], cfg['ell_binning']['ell_max_GC'] + 1
     )
 
     # delta_ell values, needed for gaussian covariance (if binned in this way)
-    ell_dict['delta_l_WL'] = np.ones(len(ell_dict['ell_WL']))
-    ell_dict['delta_l_GC'] = np.ones(len(ell_dict['ell_GC']))
-    ell_dict['delta_l_3x2pt'] = np.ones(len(ell_dict['ell_3x2pt']))
+    ell_dict['delta_l_WL'] = np.ones(len(ell_dict['ells_WL']))
+    ell_dict['delta_l_GC'] = np.ones(len(ell_dict['ells_GC']))
 
     # TODO this is a bit sloppy
     ell_dict['ell_edges_WL'] = np.arange(
-        cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_WL'] + 2
+        cfg['ell_binning']['ell_min_WL'], cfg['ell_binning']['ell_max_WL'] + 2
     )
     ell_dict['ell_edges_GC'] = np.arange(
-        cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_GC'] + 2
-    )
-    ell_dict['ell_edges_3x2pt'] = np.arange(
-        cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_3x2pt'] + 2
-    )
-    ell_dict['ell_edges_XC'] = np.arange(
-        cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_3x2pt'] + 2
+        cfg['ell_binning']['ell_min_GC'], cfg['ell_binning']['ell_max_GC'] + 2
     )
 
-else:
+elif cfg['ell_binning']['binning_type'] == 'log':
     # compute ell and delta ell values in the reference (optimistic) case
-    ell_ref_nbl32, delta_l_ref_nbl32, ell_edges_ref_nbl32 = ell_utils.compute_ells(
-        nbl=cfg['ell_binning']['nbl_WL_opt'],
-        ell_min=cfg['ell_binning']['ell_min'],
-        ell_max=cfg['ell_binning']['ell_max_WL_opt'],
+    ell_dict['ells_WL'], ell_dict['delta_l_WL'], ell_dict['ell_edges_WL'] = (
+        ell_utils.compute_ells(
+            nbl=cfg['ell_binning']['ell_bins_WL'],
+            ell_min=cfg['ell_binning']['ell_min_WL'],
+            ell_max=cfg['ell_binning']['ell_max_WL'],
+            recipe='ISTF',
+            output_ell_bin_edges=True,
+        )
+    )
+
+    ell_dict['ells_GC'], ell_dict['delta_l_GC'], ell_dict['ell_edges_GC'] = (
+        ell_utils.compute_ells(
+            nbl=cfg['ell_binning']['ell_bins_GC'],
+            ell_min=cfg['ell_binning']['ell_min_GC'],
+            ell_max=cfg['ell_binning']['ell_max_GC'],
+            recipe='ISTF',
+            output_ell_bin_edges=True,
+        )
+    )
+
+
+elif cfg['ell_binning']['binning_type'] == 'ref_cut':
+    # TODO this is only done for backwards-compatibility reasons
+    ells_ref, delta_l_ref, ell_edges_ref = ell_utils.compute_ells(
+        nbl=cfg['ell_binning']['ell_bins_ref'],
+        ell_min=cfg['ell_binning']['ell_min_ref'],
+        ell_max=cfg['ell_binning']['ell_max_ref'],
         recipe='ISTF',
         output_ell_bin_edges=True,
     )
 
-    # perform the cuts (not the redshift-dependent ones!) on the ell centers and edges
-    ell_dict['ell_WL'] = np.copy(ell_ref_nbl32[ell_ref_nbl32 < ell_max_WL])
-    ell_dict['ell_GC'] = np.copy(ell_ref_nbl32[ell_ref_nbl32 < ell_max_GC])
-    ell_dict['ell_3x2pt'] = np.copy(ell_ref_nbl32[ell_ref_nbl32 < ell_max_3x2pt])
-    ell_dict['ell_XC'] = np.copy(ell_dict['ell_3x2pt'])
+    ell_dict['ells_WL'] = np.copy(ells_ref[ells_ref < ell_max_WL])
+    ell_dict['ells_GC'] = np.copy(ells_ref[ells_ref < ell_max_GC])
 
     # TODO why not save all edges??
     # store edges *except last one for dimensional consistency* in the ell_dict
-    mask_wl = (ell_edges_ref_nbl32 < ell_max_WL) | np.isclose(
-        ell_edges_ref_nbl32, ell_max_WL, atol=0, rtol=1e-5
+    edge_mask_wl = (ell_edges_ref < ell_max_WL) | np.isclose(
+        ell_edges_ref, ell_max_WL, atol=0, rtol=1e-5
     )
-    mask_gc = (ell_edges_ref_nbl32 < ell_max_GC) | np.isclose(
-        ell_edges_ref_nbl32, ell_max_GC, atol=0, rtol=1e-5
+    edge_mask_gc = (ell_edges_ref < ell_max_GC) | np.isclose(
+        ell_edges_ref, ell_max_GC, atol=0, rtol=1e-5
     )
-    mask_3x2pt = (ell_edges_ref_nbl32 < ell_max_3x2pt) | np.isclose(
-        ell_edges_ref_nbl32, ell_max_3x2pt, atol=0, rtol=1e-5
-    )
-    ell_dict['ell_edges_WL'] = np.copy(ell_edges_ref_nbl32[mask_wl])
-    ell_dict['ell_edges_GC'] = np.copy(ell_edges_ref_nbl32[mask_gc])
-    ell_dict['ell_edges_3x2pt'] = np.copy(ell_edges_ref_nbl32[mask_3x2pt])
-    ell_dict['ell_edges_XC'] = np.copy(ell_dict['ell_edges_3x2pt'])
+
+    ell_dict['ell_edges_WL'] = np.copy(ell_edges_ref[edge_mask_wl])
+    ell_dict['ell_edges_GC'] = np.copy(ell_edges_ref[edge_mask_gc])
 
     # delta_ell values, needed for gaussian covariance (if binned in this way)
-    ell_dict['delta_l_WL'] = np.copy(delta_l_ref_nbl32[: len(ell_dict['ell_WL'])])
-    ell_dict['delta_l_GC'] = np.copy(delta_l_ref_nbl32[: len(ell_dict['ell_GC'])])
-    ell_dict['delta_l_3x2pt'] = np.copy(delta_l_ref_nbl32[: len(ell_dict['ell_3x2pt'])])
+    ell_dict['delta_l_WL'] = np.copy(delta_l_ref[: len(ell_dict['ells_WL'])])
+    ell_dict['delta_l_GC'] = np.copy(delta_l_ref[: len(ell_dict['ells_GC'])])
+else:
+    raise ValueError
+
+
+ell_dict['ells_XC'] = np.copy(ell_dict['ells_GC'])
+ell_dict['delta_l_XC'] = np.copy(ell_dict['delta_l_GC'])
+ell_dict['ell_edges_XC'] = np.copy(ell_dict['ell_edges_GC'])
+
+ell_dict['nbl_WL'] = len(ell_dict['ells_WL'])
+ell_dict['nbl_GC'] = len(ell_dict['ells_GC'])
+ell_dict['nbl_XC'] = ell_dict['nbl_GC']
+
+ell_bin_obj = ell_utils.EllBinning(cfg)
+ell_bin_obj.build_ell_bins()
+
+# compare all entries of the ell_dict with the ones in ell_bin_obj
+for key in ell_dict:
+    print(key)
+    (
+        np.testing.assert_allclose(
+            ell_dict[key], getattr(ell_bin_obj, key), rtol=1e-10, atol=0
+        ),
+        f'ell values in ell_dict and ell_bin_obj for key {key} do not match',
+    )
+
+
+assert False, 'stop here '
+
+# TOdO add linear binning option?
 
 
 # set the corresponding number of ell bins

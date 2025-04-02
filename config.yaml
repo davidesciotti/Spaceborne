@@ -127,13 +127,19 @@ namaster:
     workspace_path: ... # Type: str. Path to the workspace, if already computed
 
 ell_binning:
-    binning_type: 'log'  # Type: str. Options: ['log', 'binned']
-    ell_min: 10 # Type: int. Minimum ell for 3x2pt
-    ell_max_WL: 3000 # Type: int. Maximum ell for WL
+    binning_type: 'ref_cut'  # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
+    
+    ell_min_WL: 10 # Type: int. Minimum ell for WL
+    ell_max_WL: 3500 # Type: int. Maximum ell for WL
+    ell_bins_WL: 10 # Type: int. Number of bins for WL. Not used in the 'unbinned' and 'ref_cut' cases
+    
+    ell_min_GC: 20 # Type: int. Minimum ell for GC
     ell_max_GC: 3000 # Type: int. Maximum ell for GC
-    ell_max_3x2pt: 3000 # Type: int
-    nbl_WL_opt: 32 # Type: int. This is the value from which the various bin cuts are applied, do not change it
-    ell_max_WL_opt: 5000 # Type: int. This is the value from which the various bin cuts are applied, do not change it
+    ell_bins_GC: 32 # Type: int. Number of bins for GC. Not used in the 'unbinned' and 'ref_cut' cases
+
+    ell_min_ref: 10 # Type: int. Minimum ell for reference case
+    ell_max_ref: 5000 # Type: int. Maximum ell for reference case
+    ell_bins_ref: 32 # Type: int. Number of bins for reference case
 
 ell_cuts:
     apply_ell_cuts: False # Type: bool

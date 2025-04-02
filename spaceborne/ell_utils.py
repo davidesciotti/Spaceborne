@@ -7,9 +7,9 @@ def load_ell_cuts(
     kmax_h_over_Mpc, z_values_a, z_values_b, cosmo_ccl, zbins, h, kmax_h_over_Mpc_ref
 ):
     """loads ell_cut values, rescales them and load into a dictionary.
-    z_values_a: redshifts at which to compute the ell_max for a given Limber 
+    z_values_a: redshifts at which to compute the ell_max for a given Limber
     wavenumber, for probe A
-    z_values_b: redshifts at which to compute the ell_max for a given Limber 
+    z_values_b: redshifts at which to compute the ell_max for a given Limber
     wavenumber, for probe B
     """
 
@@ -35,7 +35,7 @@ def load_ell_cuts(
 
 
 def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum, zbins):
-    """ell_values can be the bin center or the bin lower edge; Francis 
+    """ell_values can be the bin center or the bin lower edge; Francis
     suggests the second option is better"""
 
     if is_auto_spectrum:
@@ -64,7 +64,7 @@ def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum, zbins):
 
 
 def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict, zbins, covariance_cfg):
-    """this function tries to implement the indexing for the 
+    """this function tries to implement the indexing for the
     flattening ell_probe_zpair"""
 
     if (covariance_cfg['triu_tril'], covariance_cfg['row_col_major']) != (
@@ -119,7 +119,7 @@ def get_idxs_to_delete_3x2pt_v0(
         ell_values_3x2pt, ell_cuts_dict['GG'], is_auto_spectrum=True
     )
 
-    # when concatenating, we need to add the offset from the 
+    # when concatenating, we need to add the offset from the
     # stacking of the 3 datavectors
     idxs_to_delete_3x2pt = np.concatenate(
         (
@@ -195,7 +195,7 @@ def generate_ell_and_deltas(general_config):
     ell_3x2pt = logarithm_3x2pt
 
     if use_WA and np.any(l_centr_WL == ell_max_GC):
-        # check in the unlikely case that one element of l_centr_WL is == ell_max_GC. 
+        # check in the unlikely case that one element of l_centr_WL is == ell_max_GC.
         # Anyway, the recipe
         # says (l_centr_WL > ell_max_GC, NOT >=).
         print(
@@ -247,8 +247,9 @@ def compute_ells(
     """
     if recipe == 'ISTF':
         ell_bin_edges = np.logspace(np.log10(ell_min), np.log10(ell_max), nbl + 1)
-        ells = (ell_bin_edges[1:] + ell_bin_edges[:-1]) / 2
+        ells = (ell_bin_edges[1:] + ell_bin_edges[:-1]) / 2.0
         deltas = np.diff(ell_bin_edges)
+
     elif recipe == 'ISTNL':
         ell_bin_edges = np.linspace(np.log(ell_min), np.log(ell_max), nbl + 1)
         ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.0
@@ -261,3 +262,118 @@ def compute_ells(
         return ells, deltas, ell_bin_edges
 
     return ells, deltas
+
+
+class EllBinning:
+    """
+    Handles the setup of ell bins based on configuration.
+
+    Calculates and stores ell bin centers, edges, and widths for different
+    probe combinations (WL, GC, XC, 3x2pt) based on the specified
+    binning type and cuts.
+    """
+
+    def __init__(self, cfg: dict):
+        """
+        Initializes the EllBinning object.
+
+        Args:
+            config: The 'ell_binning' section of the main configuration dictionary.
+        """
+        self.binning_type = cfg['ell_binning']['binning_type']
+
+        self.ell_min_WL = cfg['ell_binning']['ell_min_WL']
+        self.ell_max_WL = cfg['ell_binning']['ell_max_WL']
+        self.nbl_WL = cfg['ell_binning']['ell_bins_WL']
+
+        self.ell_min_GC = cfg['ell_binning']['ell_min_GC']
+        self.ell_max_GC = cfg['ell_binning']['ell_max_GC']
+        self.nbl_GC = cfg['ell_binning']['ell_bins_GC']
+
+        self.ell_min_ref = cfg['ell_binning']['ell_min_ref']
+        self.ell_max_ref = cfg['ell_binning']['ell_max_ref']
+        self.nbl_ref = cfg['ell_binning']['ell_bins_ref']
+
+    def build_ell_bins(self):
+        """
+        Builds ell bins based on the specified configuration.
+        """
+        # TODO namster binning here??
+
+        if self.binning_type == 'unbinned':
+            self.ells_WL = np.arange(self.ell_min_WL, self.ell_max_WL + 1)
+            self.ells_GC = np.arange(self.ell_min_GC, self.ell_max_GC + 1)
+
+            self.delta_l_WL = np.ones_like(self.ells_WL)
+            self.delta_l_GC = np.ones_like(self.ells_GC)
+
+            # TODO this is a bit sloppy
+            self.ell_edges_WL = np.arange(self.ell_min_WL, self.ell_max_WL + 2)
+            self.ell_edges_GC = np.arange(self.ell_min_GC, self.ell_max_GC + 2)
+
+        elif self.binning_type == 'log':
+            self.ells_WL, self.delta_l_WL, self.ell_edges_WL = compute_ells(
+                nbl=self.nbl_WL,
+                ell_min=self.ell_min_WL,
+                ell_max=self.ell_max_WL,
+                recipe='ISTF',
+                output_ell_bin_edges=True,
+            )
+
+            self.ells_GC, self.delta_l_GC, self.ell_edges_GC = compute_ells(
+                nbl=self.nbl_GC,
+                ell_min=self.ell_min_GC,
+                ell_max=self.ell_max_GC,
+                recipe='ISTF',
+                output_ell_bin_edges=True,
+            )
+
+        elif self.binning_type == 'ref_cut':
+            # TODO this is only done for backwards-compatibility reasons
+            self.ells_ref, self.delta_l_ref, self.ell_edges_ref = compute_ells(
+                nbl=self.nbl_ref,
+                ell_min=self.ell_min_ref,
+                ell_max=self.ell_max_ref,
+                recipe='ISTF',
+                output_ell_bin_edges=True,
+            )
+
+            self.ells_WL = np.copy(self.ells_ref[self.ells_ref < self.ell_max_WL])
+            self.ells_GC = np.copy(self.ells_ref[self.ells_ref < self.ell_max_GC])
+
+            # TODO why not save all edges??
+            # store edges *except last one for dimensional consistency* in the ell_dict
+            edge_mask_wl = (self.ell_edges_ref < self.ell_max_WL) | np.isclose(
+                self.ell_edges_ref, self.ell_max_WL, atol=0, rtol=1e-5
+            )
+            edge_mask_gc = (self.ell_edges_ref < self.ell_max_GC) | np.isclose(
+                self.ell_edges_ref, self.ell_max_GC, atol=0, rtol=1e-5
+            )
+
+            self.ell_edges_WL = np.copy(self.ell_edges_ref[edge_mask_wl])
+            self.ell_edges_GC = np.copy(self.ell_edges_ref[edge_mask_gc])
+
+            self.delta_l_WL = np.copy(self.delta_l_ref[: len(self.ells_WL)])
+            self.delta_l_GC = np.copy(self.delta_l_ref[: len(self.ells_GC)])
+            
+        else:
+            raise ValueError(f'binning_type {self.binning_type} not recognized.')
+
+        # XC follows GC
+        self.ells_XC = np.copy(self.ells_GC)
+        self.ell_edges_XC = np.copy(self.ell_edges_GC)
+        self.delta_l_XC = np.copy(self.delta_l_GC)
+
+        # set nbl
+        self.nbl_WL = len(self.ells_WL)
+        self.nbl_GC = len(self.ells_GC)
+        self.nbl_XC = len(self.ells_XC)
+
+        self._validate_bins()
+
+    def _validate_bins(self):
+        """Perform sanity checks on the generated bins."""
+        for probe in ['WL', 'GC', 'XC']:
+            ells = getattr(self, f'ells_{probe}')
+            if ells is None or ells.size == 0:
+                raise ValueError(f'ell values for probe {probe} are empty.')

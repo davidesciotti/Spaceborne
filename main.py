@@ -108,8 +108,6 @@ normalize_shifted_nz = cfg['nz']['normalize_shifted_nz']
 zbins = len(
     cfg['nz']['ngal_lenses']
 )  # this has the same length as ngal_sources, as checked below
-ell_max_WL = cfg['ell_binning']['ell_max_WL']
-ell_max_GC = cfg['ell_binning']['ell_max_GC']
 triu_tril = cfg['covariance']['triu_tril']
 row_col_major = cfg['covariance']['row_col_major']
 n_probes = cfg['covariance']['n_probes']
@@ -327,133 +325,8 @@ nz_lns = nz_lns_tab_full[:, 1:]
 nz_unshifted_src = nz_src
 nz_unshifted_lns = nz_lns
 
-# ! compute ell values, ell bins and delta ell
-# TODO add option to import ell values
-# TODO _WL_opt should be called "ref"
-ell_dict = {}
-if cfg['ell_binning']['binning_type'] == 'unbinned':
-    ell_dict['ells_WL'] = np.arange(
-        cfg['ell_binning']['ell_min_WL'], cfg['ell_binning']['ell_max_WL'] + 1
-    )
-    ell_dict['ells_GC'] = np.arange(
-        cfg['ell_binning']['ell_min_GC'], cfg['ell_binning']['ell_max_GC'] + 1
-    )
-
-    # delta_ell values, needed for gaussian covariance (if binned in this way)
-    ell_dict['delta_l_WL'] = np.ones(len(ell_dict['ells_WL']))
-    ell_dict['delta_l_GC'] = np.ones(len(ell_dict['ells_GC']))
-
-    # TODO this is a bit sloppy
-    ell_dict['ell_edges_WL'] = np.arange(
-        cfg['ell_binning']['ell_min_WL'], cfg['ell_binning']['ell_max_WL'] + 2
-    )
-    ell_dict['ell_edges_GC'] = np.arange(
-        cfg['ell_binning']['ell_min_GC'], cfg['ell_binning']['ell_max_GC'] + 2
-    )
-
-elif cfg['ell_binning']['binning_type'] == 'log':
-    # compute ell and delta ell values in the reference (optimistic) case
-    ell_dict['ells_WL'], ell_dict['delta_l_WL'], ell_dict['ell_edges_WL'] = (
-        ell_utils.compute_ells(
-            nbl=cfg['ell_binning']['ell_bins_WL'],
-            ell_min=cfg['ell_binning']['ell_min_WL'],
-            ell_max=cfg['ell_binning']['ell_max_WL'],
-            recipe='ISTF',
-            output_ell_bin_edges=True,
-        )
-    )
-
-    ell_dict['ells_GC'], ell_dict['delta_l_GC'], ell_dict['ell_edges_GC'] = (
-        ell_utils.compute_ells(
-            nbl=cfg['ell_binning']['ell_bins_GC'],
-            ell_min=cfg['ell_binning']['ell_min_GC'],
-            ell_max=cfg['ell_binning']['ell_max_GC'],
-            recipe='ISTF',
-            output_ell_bin_edges=True,
-        )
-    )
-
-
-elif cfg['ell_binning']['binning_type'] == 'ref_cut':
-    # TODO this is only done for backwards-compatibility reasons
-    ells_ref, delta_l_ref, ell_edges_ref = ell_utils.compute_ells(
-        nbl=cfg['ell_binning']['ell_bins_ref'],
-        ell_min=cfg['ell_binning']['ell_min_ref'],
-        ell_max=cfg['ell_binning']['ell_max_ref'],
-        recipe='ISTF',
-        output_ell_bin_edges=True,
-    )
-
-    ell_dict['ells_WL'] = np.copy(ells_ref[ells_ref < ell_max_WL])
-    ell_dict['ells_GC'] = np.copy(ells_ref[ells_ref < ell_max_GC])
-
-    # TODO why not save all edges??
-    # store edges *except last one for dimensional consistency* in the ell_dict
-    edge_mask_wl = (ell_edges_ref < ell_max_WL) | np.isclose(
-        ell_edges_ref, ell_max_WL, atol=0, rtol=1e-5
-    )
-    edge_mask_gc = (ell_edges_ref < ell_max_GC) | np.isclose(
-        ell_edges_ref, ell_max_GC, atol=0, rtol=1e-5
-    )
-
-    ell_dict['ell_edges_WL'] = np.copy(ell_edges_ref[edge_mask_wl])
-    ell_dict['ell_edges_GC'] = np.copy(ell_edges_ref[edge_mask_gc])
-
-    # delta_ell values, needed for gaussian covariance (if binned in this way)
-    ell_dict['delta_l_WL'] = np.copy(delta_l_ref[: len(ell_dict['ells_WL'])])
-    ell_dict['delta_l_GC'] = np.copy(delta_l_ref[: len(ell_dict['ells_GC'])])
-else:
-    raise ValueError
-
-
-ell_dict['ells_XC'] = np.copy(ell_dict['ells_GC'])
-ell_dict['delta_l_XC'] = np.copy(ell_dict['delta_l_GC'])
-ell_dict['ell_edges_XC'] = np.copy(ell_dict['ell_edges_GC'])
-
-ell_dict['nbl_WL'] = len(ell_dict['ells_WL'])
-ell_dict['nbl_GC'] = len(ell_dict['ells_GC'])
-ell_dict['nbl_XC'] = ell_dict['nbl_GC']
-
-ell_bin_obj = ell_utils.EllBinning(cfg)
-ell_bin_obj.build_ell_bins()
-
-# compare all entries of the ell_dict with the ones in ell_bin_obj
-for key in ell_dict:
-    print(key)
-    (
-        np.testing.assert_allclose(
-            ell_dict[key], getattr(ell_bin_obj, key), rtol=1e-10, atol=0
-        ),
-        f'ell values in ell_dict and ell_bin_obj for key {key} do not match',
-    )
-
-
-assert False, 'stop here '
-
-# TOdO add linear binning option?
-
-
-# set the corresponding number of ell bins
-nbl_WL = len(ell_dict['ell_WL'])
-nbl_GC = len(ell_dict['ell_GC'])
-nbl_3x2pt = nbl_GC
-
-# checks
-for key in ell_dict:
-    if ell_dict[key].size == 0:
-        raise ValueError(f'ell values for key {key} must be non-empty')
-
-assert (
-    len(ell_dict['ell_3x2pt']) == len(ell_dict['ell_XC']) == len(ell_dict['ell_GC'])
-), '3x2pt, XC and GC should  have the same number of ell bins'
-assert np.all(ell_dict['ell_3x2pt'] == ell_dict['ell_XC']), (
-    '3x2pt and XC should have the same ell values'
-)
-assert np.all(ell_dict['ell_3x2pt'] == ell_dict['ell_GC']), (
-    '3x2pt and GC should have the same ell values'
-)
-assert nbl_WL == nbl_3x2pt == nbl_GC, 'use the same number of bins for the moment'
-
+ell_obj = ell_utils.EllBinning(cfg)
+ell_obj.build_ell_bins()
 
 # provate cfg dictionary. This serves a couple different purposeses:
 # 1. To store and pass hardcoded parameters in a convenient way
@@ -462,20 +335,12 @@ pvt_cfg = {
     'zbins': zbins,
     'ind': ind,
     'probe_ordering': probe_ordering,
-    'ell_min': cfg['ell_binning']['ell_min'],
-    'ell_max_WL': ell_max_WL,
-    'ell_max_GC': ell_max_GC,
-    'ell_max_3x2pt': ell_max_3x2pt,
-    'nbl_WL': nbl_WL,
-    'nbl_GC': nbl_GC,
-    'nbl_3x2pt': nbl_3x2pt,
     'which_ng_cov': cov_terms_str,
     'cov_terms_list': cov_terms_list,
     'GL_OR_LG': GL_OR_LG,
     'symmetrize_output_dict': symmetrize_output_dict,
     'use_h_units': use_h_units,
     'z_grid': z_grid,
-    'ells_sb': ell_dict['ell_3x2pt'],
 }
 
 
@@ -607,29 +472,30 @@ z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
 # )
 
 # 5. compute the ell cuts
-ell_cuts_dict = {}
-ellcuts_kw = {
-    'kmax_h_over_Mpc': kmax_h_over_Mpc,
-    'cosmo_ccl': ccl_obj.cosmo_ccl,
-    'zbins': zbins,
-    'h': h,
-    'kmax_h_over_Mpc_ref': cfg['ell_cuts']['kmax_h_over_Mpc_ref'],
-}
-ell_cuts_dict['LL'] = ell_utils.load_ell_cuts(
-    z_values_a=z_means_ll, z_values_b=z_means_ll, **ellcuts_kw
-)
-ell_cuts_dict['GG'] = ell_utils.load_ell_cuts(
-    z_values_a=z_means_gg, z_values_b=z_means_gg, **ellcuts_kw
-)
-ell_cuts_dict['GL'] = ell_utils.load_ell_cuts(
-    z_values_a=z_means_gg, z_values_b=z_means_ll, **ellcuts_kw
-)
-ell_cuts_dict['LG'] = ell_utils.load_ell_cuts(
-    z_values_a=z_means_ll, z_values_b=z_means_gg, **ellcuts_kw
-)
-ell_dict['ell_cuts_dict'] = (
-    ell_cuts_dict  # this is to pass the ell cuts to the covariance module
-)
+# TODO need to adapt this to the class structure
+# ell_cuts_dict = {}
+# ellcuts_kw = {
+#     'kmax_h_over_Mpc': kmax_h_over_Mpc,
+#     'cosmo_ccl': ccl_obj.cosmo_ccl,
+#     'zbins': zbins,
+#     'h': h,
+#     'kmax_h_over_Mpc_ref': cfg['ell_cuts']['kmax_h_over_Mpc_ref'],
+# }
+# ell_cuts_dict['LL'] = ell_utils.load_ell_cuts(
+#     z_values_a=z_means_ll, z_values_b=z_means_ll, **ellcuts_kw
+# )
+# ell_cuts_dict['GG'] = ell_utils.load_ell_cuts(
+#     z_values_a=z_means_gg, z_values_b=z_means_gg, **ellcuts_kw
+# )
+# ell_cuts_dict['GL'] = ell_utils.load_ell_cuts(
+#     z_values_a=z_means_gg, z_values_b=z_means_ll, **ellcuts_kw
+# )
+# ell_cuts_dict['LG'] = ell_utils.load_ell_cuts(
+#     z_values_a=z_means_ll, z_values_b=z_means_gg, **ellcuts_kw
+# )
+# ell_dict['ell_cuts_dict'] = (
+#     ell_cuts_dict  # this is to pass the ell cuts to the covariance module
+# )
 # ! END SCALE CUTS
 
 wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
@@ -671,21 +537,21 @@ for wf_idx in range(len(wf_ccl_list)):
 
 # compute cls
 ccl_obj.cl_ll_3d = ccl_obj.compute_cls(
-    ell_dict['ell_WL'],
+    ell_obj.ells_WL,
     ccl_obj.p_of_k_a,
     ccl_obj.wf_lensing_obj,
     ccl_obj.wf_lensing_obj,
     cl_ccl_kwargs,
 )
 ccl_obj.cl_gl_3d = ccl_obj.compute_cls(
-    ell_dict['ell_XC'],
+    ell_obj.ells_XC,
     ccl_obj.p_of_k_a,
     ccl_obj.wf_galaxy_obj,
     ccl_obj.wf_lensing_obj,
     cl_ccl_kwargs,
 )
 ccl_obj.cl_gg_3d = ccl_obj.compute_cls(
-    ell_dict['ell_GC'],
+    ell_obj.ells_GC,
     ccl_obj.p_of_k_a,
     ccl_obj.wf_galaxy_obj,
     ccl_obj.wf_galaxy_obj,
@@ -703,19 +569,20 @@ if cfg['C_ell']['use_input_cls']:
     ells_XC, cl_gl_3d = sl.import_cl_tab(cl_gl_tab)
     ells_GC, cl_gg_3d = sl.import_cl_tab(cl_gg_tab)
 
-    if not np.allclose(ells_WL, ell_dict['ell_WL'], atol=0, rtol=1e-5):
+    if not np.allclose(ells_WL, ell_obj.ells_WL, atol=0, rtol=1e-5):
         cl_ll_3d_spline = CubicSpline(ells_WL, cl_ll_3d, axis=0)
-        cl_ll_3d = cl_ll_3d_spline(ell_dict['ell_WL'])
+        cl_ll_3d = cl_ll_3d_spline(ell_obj.ells_WL)
 
-    if not np.allclose(ells_XC, ell_dict['ell_XC'], atol=0, rtol=1e-5):
+    if not np.allclose(ells_XC, ell_obj.ells_XC, atol=0, rtol=1e-5):
         cl_gl_3d_spline = CubicSpline(ells_XC, cl_gl_3d, axis=0)
-        cl_gl_3d = cl_gl_3d_spline(ell_dict['ell_XC'])
+        cl_gl_3d = cl_gl_3d_spline(ell_obj.ells_XC)
 
-    if not np.allclose(ells_GC, ell_dict['ell_GC'], atol=0, rtol=1e-5):
+    if not np.allclose(ells_GC, ell_obj.ells_GC, atol=0, rtol=1e-5):
         cl_gg_3d_spline = CubicSpline(ells_GC, cl_gg_3d, axis=0)
-        cl_gg_3d = cl_gg_3d_spline(ell_dict['ell_GC'])
+        cl_gg_3d = cl_gg_3d_spline(ell_obj.ells_GC)
 
     ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d = cl_ll_3d, cl_gl_3d, cl_gg_3d
+
 
 
 # ! add multiplicative shear bias
@@ -725,24 +592,24 @@ ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d = pyccl_interface.apply_mult_shear_bias(
     ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, np.array(cfg['C_ell']['mult_shear_bias']), zbins
 )
 
-ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_3x2pt, zbins, zbins))
-ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[:nbl_3x2pt, :, :]
-ccl_obj.cl_3x2pt_5d[1, 0, :, :, :] = ccl_obj.cl_gl_3d[:nbl_3x2pt, :, :]
-ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[:nbl_3x2pt, :, :].transpose(
-    0, 2, 1
-)
-ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[:nbl_3x2pt, :, :]
+# ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_3x2pt, zbins, zbins))
+# ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[:nbl_3x2pt, :, :]
+# ccl_obj.cl_3x2pt_5d[1, 0, :, :, :] = ccl_obj.cl_gl_3d[:nbl_3x2pt, :, :]
+# ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[:nbl_3x2pt, :, :].transpose(
+#     0, 2, 1
+# )
+# ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[:nbl_3x2pt, :, :]
 
-cl_ll_3d, cl_gl_3d, cl_gg_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d
-cl_3x2pt_5d = ccl_obj.cl_3x2pt_5d
+# cl_ll_3d, cl_gl_3d, cl_gg_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d
+# cl_3x2pt_5d = ccl_obj.cl_3x2pt_5d
 
 fig, ax = plt.subplots(1, 3)
 plt.tight_layout()
 for zi in range(zbins):
     zj = zi
-    ax[0].loglog(ell_dict['ell_WL'], ccl_obj.cl_ll_3d[:, zi, zj], c=clr[zi])
-    ax[1].loglog(ell_dict['ell_XC'], ccl_obj.cl_gl_3d[:, zi, zj], c=clr[zi])
-    ax[2].loglog(ell_dict['ell_GC'], ccl_obj.cl_gg_3d[:, zi, zj], c=clr[zi])
+    ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_ll_3d[:, zi, zj], c=clr[zi], marker='.')
+    ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_gl_3d[:, zi, zj], c=clr[zi], marker='.')
+    ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_gg_3d[:, zi, zj], c=clr[zi], marker='.')
 ax[0].set_xlabel('$\\ell$')
 ax[1].set_xlabel('$\\ell$')
 ax[2].set_xlabel('$\\ell$')
@@ -788,55 +655,55 @@ else:
         'cfg["ell_cuts"]["center_or_min"] should be either "center" or "min"'
     )
 
-ell_dict['idxs_to_delete_dict'] = {
-    'LL': ell_utils.get_idxs_to_delete(
-        ell_dict[f'{ell_prefix}_WL'],
-        ell_cuts_dict['LL'],
-        is_auto_spectrum=True,
-        zbins=zbins,
-    ),
-    'GG': ell_utils.get_idxs_to_delete(
-        ell_dict[f'{ell_prefix}_GC'],
-        ell_cuts_dict['GG'],
-        is_auto_spectrum=True,
-        zbins=zbins,
-    ),
-    'GL': ell_utils.get_idxs_to_delete(
-        ell_dict[f'{ell_prefix}_XC'],
-        ell_cuts_dict['GL'],
-        is_auto_spectrum=False,
-        zbins=zbins,
-    ),
-    'LG': ell_utils.get_idxs_to_delete(
-        ell_dict[f'{ell_prefix}_XC'],
-        ell_cuts_dict['LG'],
-        is_auto_spectrum=False,
-        zbins=zbins,
-    ),
-    '3x2pt': ell_utils.get_idxs_to_delete_3x2pt(
-        ell_dict[f'{ell_prefix}_3x2pt'], ell_cuts_dict, zbins, cfg['covariance']
-    ),
-}
+# ell_dict['idxs_to_delete_dict'] = {
+#     'LL': ell_utils.get_idxs_to_delete(
+#         ell_dict[f'{ell_prefix}_WL'],
+#         ell_cuts_dict['LL'],
+#         is_auto_spectrum=True,
+#         zbins=zbins,
+#     ),
+#     'GG': ell_utils.get_idxs_to_delete(
+#         ell_dict[f'{ell_prefix}_GC'],
+#         ell_cuts_dict['GG'],
+#         is_auto_spectrum=True,
+#         zbins=zbins,
+#     ),
+#     'GL': ell_utils.get_idxs_to_delete(
+#         ell_dict[f'{ell_prefix}_XC'],
+#         ell_cuts_dict['GL'],
+#         is_auto_spectrum=False,
+#         zbins=zbins,
+#     ),
+#     'LG': ell_utils.get_idxs_to_delete(
+#         ell_dict[f'{ell_prefix}_XC'],
+#         ell_cuts_dict['LG'],
+#         is_auto_spectrum=False,
+#         zbins=zbins,
+#     ),
+#     '3x2pt': ell_utils.get_idxs_to_delete_3x2pt(
+#         ell_dict[f'{ell_prefix}_3x2pt'], ell_cuts_dict, zbins, cfg['covariance']
+#     ),
+# }
 
 # ! 3d cl ell cuts (*after* BNT!!)
 # TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance
 # TODO and derivatives level)
-if cfg['ell_cuts']['cl_ell_cuts']:
-    cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_dict['ell_WL'], ell_cuts_dict['LL'])
-    cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_dict['ell_GC'], ell_cuts_dict['GG'])
-    cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(
-        cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt']
-    )
-    if compute_oc_g or compute_oc_ssc or compute_oc_cng:
-        raise NotImplementedError('You should cut also the OC Cls')
+# if cfg['ell_cuts']['cl_ell_cuts']:
+#     cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_obj.ells_WL, ell_cuts_dict['LL'])
+#     cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_obj.ells_GC, ell_cuts_dict['GG'])
+#     cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(
+#         cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt']
+#     )
+#     if compute_oc_g or compute_oc_ssc or compute_oc_cng:
+#         raise NotImplementedError('You should cut also the OC Cls')
 
 # re-set cls in the ccl_obj after BNT transform and/or ell cuts
-ccl_obj.cl_ll_3d = cl_ll_3d
-ccl_obj.cl_gg_3d = cl_gg_3d
-ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
+# ccl_obj.cl_ll_3d = cl_ll_3d
+# ccl_obj.cl_gg_3d = cl_gg_3d
+# ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
 # ! build covariance matrices
-cov_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_dict, bnt_matrix)
+cov_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_obj, bnt_matrix)
 cov_obj.jl_integrator_path = './spaceborne/julia_integrator.jl'
 cov_obj.set_ind_and_zpairs(ind, zbins)
 cov_obj.symmetrize_output_dict = symmetrize_output_dict
@@ -946,7 +813,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     oc_obj.oc_path = oc_path
     oc_obj.z_grid_trisp_sb = z_grid_trisp
     oc_obj.path_to_config_oc_ini = f'{oc_obj.oc_path}/input_configs.ini'
-    oc_obj.ells_sb = ell_dict['ell_3x2pt']
+    oc_obj.ells_sb = ell_obj.ells_3x2pt
     oc_obj.build_save_oc_ini(ascii_filenames_dict, print_ini=True)
 
     # compute covs
@@ -1110,11 +977,11 @@ if compute_sb_ssc:
     dPmm_ddeltab_klimb = np.array(
         [
             dPmm_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
-            for ell_val in ell_dict['ell_WL']
+            for ell_val in ell_obj.ells_WL
         ]
     )
 
-    dPgm_ddeltab_klimb = np.zeros((len(ell_dict['ell_XC']), len(z_grid), zbins))
+    dPgm_ddeltab_klimb = np.zeros((len(ell_obj.ells_XC), len(z_grid), zbins))
     for zi in range(zbins):
         dPgm_ddeltab_spline = RectBivariateSpline(
             k_grid, z_grid_trisp, dPgm_ddeltab[:, :, zi], kx=3, ky=3
@@ -1122,11 +989,11 @@ if compute_sb_ssc:
         dPgm_ddeltab_klimb[:, :, zi] = np.array(
             [
                 dPgm_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
-                for ell_val in ell_dict['ell_XC']
+                for ell_val in ell_obj.ells_XC
             ]
         )
 
-    dPgg_ddeltab_klimb = np.zeros((len(ell_dict['ell_GC']), len(z_grid), zbins, zbins))
+    dPgg_ddeltab_klimb = np.zeros((len(ell_obj.ells_GC), len(z_grid), zbins, zbins))
     for zi in range(zbins):
         for zj in range(zbins):
             dPgg_ddeltab_spline = RectBivariateSpline(
@@ -1137,7 +1004,7 @@ if compute_sb_ssc:
                     dPgg_ddeltab_spline(
                         k_limber_func(ell_val, z_grid), z_grid, grid=False
                     )
-                    for ell_val in ell_dict['ell_GC']
+                    for ell_val in ell_obj.ells_GC
                 ]
             )
 

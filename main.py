@@ -228,8 +228,12 @@ ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
 ccl_obj.zbins = zbins
 ccl_obj.output_path = output_path
 ccl_obj.which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
+
+# get ccl default a and k grids
 a_default_grid_ccl = ccl_obj.cosmo_ccl.get_pk_spline_a()
 z_default_grid_ccl = cosmo_lib.a_to_z(a_default_grid_ccl)[::-1]
+lk_default_grid_ccl = ccl_obj.cosmo_ccl.get_pk_spline_lk()
+
 if cfg['C_ell']['cl_CCL_kwargs'] is not None:
     cl_ccl_kwargs = cfg['C_ell']['cl_CCL_kwargs']
 else:
@@ -286,10 +290,10 @@ zgrid_str = (
 # ! do the same for CCL - i.e., set the above in the ccl_obj with little variations
 # ! (e.g. a instead of z)
 # TODO I leave the option to use a grid for the CCL, but I am not sure if it is needed
-ccl_obj.z_grid_tkka_SSC = z_grid_trisp
-ccl_obj.z_grid_tkka_cNG = z_grid_trisp
-ccl_obj.a_grid_tkka_SSC = cosmo_lib.z_to_a(z_grid_trisp)[::-1]
-ccl_obj.a_grid_tkka_cNG = cosmo_lib.z_to_a(z_grid_trisp)[::-1]
+z_grid_tkka_SSC = z_grid_trisp
+z_grid_tkka_cNG = z_grid_trisp
+ccl_obj.a_grid_tkka_SSC = cosmo_lib.z_to_a(z_grid_tkka_SSC)[::-1]
+ccl_obj.a_grid_tkka_cNG = cosmo_lib.z_to_a(z_grid_tkka_cNG)[::-1]
 ccl_obj.logn_k_grid_tkka_SSC = np.log(k_grid)
 ccl_obj.logn_k_grid_tkka_cNG = np.log(k_grid)
 
@@ -302,6 +306,12 @@ if not np.all(np.diff(z_grid) > 0):
     raise ValueError('z grid is not in ascending order!')
 if not np.all(np.diff(z_grid_trisp) > 0):
     raise ValueError('z grid is not in ascending order!')
+
+if cfg['PyCCL']['use_default_k_a_grids']:
+    ccl_obj.a_grid_tkka_SSC = a_default_grid_ccl
+    ccl_obj.a_grid_tkka_cNG = a_default_grid_ccl
+    ccl_obj.logn_k_grid_tkka_SSC = lk_default_grid_ccl
+    ccl_obj.logn_k_grid_tkka_cNG = lk_default_grid_ccl
 
 # build the ind array and store it into the covariance dictionary
 zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
@@ -1215,19 +1225,21 @@ if compute_sb_ssc:
 # TODO integrate this with Spaceborne_covg
 
 # ! ========================================== PyCCL ===================================
-if compute_ccl_ssc or compute_ccl_cng:
+if compute_ccl_ssc:
     # Note: this z grid has to be larger than the one requested in the trispectrum
     # (z_grid_tkka in the cfg file). You can probaby use the same grid as the
     # one used in the trispectrum, but from my tests is should be
     # zmin_s2b < zmin_s2b_tkka and zmax_s2b =< zmax_s2b_tkka.
     # if zmin=0 it looks like I can have zmin_s2b = zmin_s2b_tkka
     ccl_obj.set_sigma2_b(
-        z_grid=z_default_grid_ccl,
+        z_grid=z_default_grid_ccl,  # TODO can I not just pass z_grid here?
         fsky=cfg['mask']['fsky'],
         which_sigma2_b=which_sigma2_b,
         nside_mask=cfg['mask']['nside'],
         mask_path=cfg['mask']['mask_path'],
     )
+    
+if compute_ccl_ssc or compute_ccl_cng:
 
     ccl_ng_cov_terms_list = []
     if compute_ccl_ssc:
@@ -1412,7 +1424,21 @@ if cfg['misc']['save_output_as_benchmark']:
         **cov_dict,
         metadata=metadata,
     )
+    
+cov = cov_dict['cov_3x2pt_cng_2D']
+cov_inv = np.linalg.inv(cov)
 
+# test simmetry
+sl.compare_arrays(cov, cov.T, 'cov', 'cov.T', abs_val=True, log_diff=False, plot_diff_threshold=1e-2)
+
+identity = cov @ cov_inv
+identity_true = np.eye(cov.shape[0])
+
+mask = np.abs(identity) < 1e-4
+masked_identity = np.ma.masked_where(mask, identity)
+sl.matshow(masked_identity, abs_val=True, title='cov @ cov_inv\n mask below 1e-1', log=True)
+
+plt.semilogy(np.linalg.eigvals(cov))
 
 for which_cov in cov_dict:
     if '3x2pt' in which_cov and 'tot' in which_cov:

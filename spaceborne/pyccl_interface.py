@@ -490,13 +490,19 @@ class PycclClass:
         return tkka_abcd
 
     def _print_grid_info(self, which_ng_cov):
+        
+        # get grids
         a_grid = getattr(self, f'a_grid_tkka_{which_ng_cov}', None)
         logn_k_grid = getattr(self, f'logn_k_grid_tkka_{which_ng_cov}', None)
+
+        # print info
         if a_grid is not None and logn_k_grid is not None:
             print(
                 f'{which_ng_cov} trispectrum: z points = {a_grid.size}, '
                 f'k points = {logn_k_grid.size}'
             )
+            
+        # set string
         k_a_str = (
             f'amin{a_grid.min():.2f}_amax{a_grid.max():.2f}'
             f'_asteps{a_grid.size}_lnkmin{logn_k_grid.min():.2f}'

@@ -1792,7 +1792,8 @@ def compare_arrays(
         fig.colorbar(im, ax=ax[1, 1])
 
     fig.suptitle(
-        f'log_array={log_array}, abs_val={abs_val}, log_diff={log_diff}',
+        f'log_array={log_array}, abs_val={abs_val}, log_diff={log_diff}\n'
+        f'plot_diff_threshold={plot_diff_threshold}%',
         fontsize=fontsize,
     )
     plt.show()
@@ -2182,7 +2183,7 @@ def matshow(
 
     if threshold is not None:
         array = np.ma.masked_where(array < threshold, array)
-        title += f' \n(masked below {threshold} \\%)'
+        title += f' \n(masked below {threshold} %)'
 
     plt.matshow(array, **matshow_kwargs)
     plt.colorbar()

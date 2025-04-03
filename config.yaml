@@ -152,13 +152,13 @@ covariance:
     n_probes: 2 # Type: int. Number of probes considered in the covariance
 
     G: True # Type: bool. Enable/disable the Gaussian covariance term.
-    SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
+    SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
     cNG: True # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
     # Which code to use for the different covariance terms
     G_code: Spaceborne # Type: str. Options: [Spaceborne, OneCovariance]
     SSC_code: Spaceborne # Type: str. Options: [Spaceborne, OneCovariance, PyCCL]
-    cNG_code: PyCCL # Type: str. Options: [OneCovariance, PyCCL]
+    cNG_code: OneCovariance # Type: str. Options: [OneCovariance, PyCCL]
 
     # -- Ordering-related settings --
     # Choose whether to use the upper ('triu') or lower ('tril') triangle
@@ -177,7 +177,7 @@ covariance:
     # - probe_ell_zpair: Ordered by probe type, then multipole (ell), then redshift pair. 
     # The latter is the ordering used by CLOE v2
     # Options: [ell_probe_zpair, probe_ell_zpair, probe_zpair_ell, zpair_probe_ell]
-    covariance_ordering_2D: ell_probe_zpair # Type: str.
+    covariance_ordering_2D: probe_ell_zpair # Type: str.
     
     # Whether to save the full 6D (10D) covariance matrix, without to any indices compression or reshaping. 
     # In the case of the single probes, this is an array of shape
@@ -232,7 +232,7 @@ covariance:
     # k grid used for power spectrum and trispectrum computation
     log10_k_min: -5  # Type: float 
     log10_k_max: 2  # Type: float
-    k_steps: 50  # Type: int
+    k_steps: 100  # Type: int
     
     z_min: 0.02 # Type: float. SU responses' kmax allow for z_min = 0.016, at most.
     z_max: 3.0 # Type: float
@@ -246,13 +246,15 @@ covariance:
 
 PyCCL:
     # (from CCL docs): integration method to be used for the Limber integrals.
-    # Possibilities: 'qag_quad' (GSL's qag method backed up by quad when it fails)
-    # and 'spline' (the integrand is splined and then integrated analytically).
+    # Options: 
+    # - 'qag_quad' (GSL's qag method backed up by quad when it fails)
+    # - 'spline' (the integrand is splined and then integrated analytically).
     # DSnote: note that the former could give errors.
     cov_integration_method: spline # Type: str
 
     # Whether or not to load the previously computed trispectrum.
-    load_cached_tkka: False # Type: bool. 
+    load_cached_tkka: True # Type: bool. 
+    use_default_k_a_grids: False
     
     # (from CCL docs): number of points over which to compute the radial kernels (weight functions).
     # See e.g. documentation of https://ccl.readthedocs.io/en/latest/api/pyccl.tracers.html#pyccl.tracers.NumberCountsTracer

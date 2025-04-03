@@ -444,7 +444,7 @@ class PycclClass:
             extrap_order_lok=1,
             extrap_order_hik=1,
             use_log=False,
-            p_of_k_a=p_of_k_a,
+            p_of_k_a=None,
             **additional_args,
         )
 

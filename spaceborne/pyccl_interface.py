@@ -490,7 +490,6 @@ class PycclClass:
         return tkka_abcd
 
     def _print_grid_info(self, which_ng_cov):
-        
         # get grids
         a_grid = getattr(self, f'a_grid_tkka_{which_ng_cov}', None)
         logn_k_grid = getattr(self, f'logn_k_grid_tkka_{which_ng_cov}', None)
@@ -501,7 +500,7 @@ class PycclClass:
                 f'{which_ng_cov} trispectrum: z points = {a_grid.size}, '
                 f'k points = {logn_k_grid.size}'
             )
-            
+
         # set string
         k_a_str = (
             f'amin{a_grid.min():.2f}_amax{a_grid.max():.2f}'
@@ -689,14 +688,11 @@ class PycclClass:
                     )
 
                 else:
-                    print(
+                    print(  # fmt: skip
                         'CCL 3x2pt cov: skipping probe combination ',
-                        probe_a,
-                        probe_b,
-                        probe_c,
-                        probe_d,
-                    )
-                    cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
+                        probe_a, probe_b, probe_c, probe_d
+                    )  # fmt: skip
+                    cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = np.copy(
                         cov_ng_3x2pt_dict_8D[
                             probe_c, probe_d, probe_a, probe_b
                         ].transpose(1, 0, 3, 2)

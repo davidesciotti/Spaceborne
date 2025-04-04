@@ -51,12 +51,15 @@ warnings.filterwarnings(
 pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 
+# use the _dev config in the develop branch!
+_config_path = 'config_dev.yaml' if os.path.exists('config_dev.yaml') else 'config.yaml'
+
 
 def load_config():
     # Check if we're running in a Jupyter environment (or interactive mode)
     if 'ipykernel_launcher.py' in sys.argv[0]:
         # Running interactively, so use default config file
-        config_path = 'config.yaml'
+        config_path = _config_path
 
     else:
         parser = argparse.ArgumentParser(description='Spaceborne')
@@ -65,7 +68,7 @@ def load_config():
             type=str,
             help='Path to the configuration file',
             required=False,
-            default='config.yaml',
+            default=_config_path,
         )
         parser.add_argument(
             '--show_plots',

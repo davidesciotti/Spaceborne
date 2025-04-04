@@ -1,3 +1,4 @@
+# TODO add general description
 cosmology:
     Om: 0.32        # Type: float. Matter density parameter
     Ob: 0.05        # Type: float. Baryon density parameter
@@ -56,12 +57,13 @@ C_ell:
     # with `ell` the ell value, zi the i-th tomographic bin index, and zj the j-th tomographic bin index.
     # The Cls are then splined along the \ell axis and interpolated over the \ell values specified in the "ell_binning"
     # section of this cfg file.
-    cl_LL_path: ./input/cl_ll.txt # Type: str. Path to the shear-shear angular PS. 
-    cl_GL_path: ./input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS. 
-    cl_GG_path: ./input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS. 
+    cl_LL_path: ... # Type: str. Path to the shear-shear angular PS. 
+    cl_GL_path: ... # Type: str. Path to the galaxy-shear angular PS. 
+    cl_GG_path: ... # Type: str. Path to the galaxy-galaxy angular PS. 
 
-    which_gal_bias: "from_input" # Type: str. Options: ['from_input', 'FS2_polynomial_fit']
-    which_mag_bias: "from_input" # Type: str. Options: ['from_input', 'FS2_polynomial_fit']
+    # TODO just remove this option!
+    which_gal_bias: "FS2_polynomial_fit" # Type: str. Options: ['from_input', 'FS2_polynomial_fit']
+    which_mag_bias: "FS2_polynomial_fit" # Type: str. Options: ['from_input', 'FS2_polynomial_fit']
     
     # coefficients for the polynomial galaxy and magnification bias fits to FS2.
     # These are ignored if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
@@ -73,7 +75,7 @@ C_ell:
 
     # input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
     # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-    gal_bias_table_filename: ./input/gal_bias.txt # Type: str
+    gal_bias_table_filename: ./input/gal_bias_3bins.txt # Type: str
     mag_bias_table_filedname: ./input/mag_bias.txt # Type: str
 
     # boolean flags for redshift-space distortion, intrinsic alignment
@@ -90,8 +92,8 @@ C_ell:
 
 nz:
     # Type: str. Paths to source and lens redshift distributions. These must have shape (z_points, zbins + 1)
-    nz_sources_filename: ./input/nzTab.txt
-    nz_lenses_filename: ./input/nzTab.txt
+    nz_sources_filename: ./input/nzTab-EP03-zedMin02-zedMax25-mag245.dat
+    nz_lenses_filename: ./input/nzTab-EP03-zedMin02-zedMax25-mag245.dat
 
     # Type: list[float]. Number of galaxies per arcmin**2 for each redshift bin. Should be of len(zbins)
     ngal_sources: [8.09216, 8.09215, 8.09215]
@@ -104,6 +106,11 @@ nz:
     # TODO probably remove this...
     dzWL: [-0.008848, 0.051368, 0.059484]
     dzGC: [-0.008848, 0.051368, 0.059484]
+
+    normalize_shifted_nz: True # Type: bool # TODO delete this
+    nz_gaussian_smoothing: False # Type: bool # TODO delete this
+    nz_gaussian_smoothing_sigma: 2 # Type: int # TODO delete this
+    plot_nz_tocheck: True # Type: bool # TODO delete this
 
 mask:
     mask_path: .../mask.fits # Type: str
@@ -181,7 +188,7 @@ covariance:
     # Keep in mind that the arrays will likely be quite large. 
     save_full_cov: True # Type: bool.
     
-    split_gaussian_cov: False # Type: bool
+    split_gaussian_cov: True # Type: bool
     # Whether to split the Gaussian covariance term into the
     # sample variance, noise and mixed terms
 
@@ -212,7 +219,7 @@ covariance:
     # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB
     # TODO probably the FS2 fit option can be deleted altogether
     # TODO use the HOD bias in the whole code!!
-    which_b1g_in_resp: from_HOD # Type: str. Options: ['from_HOD', 'from_input']
+    which_b1g_in_resp: from_input # Type: str. Options: ['from_HOD', 'from_input']
 
     # Whether or not to include the second-order galaxy bias in the GCph SU responses
     include_b2g: True # Type: bool
@@ -220,17 +227,17 @@ covariance:
     # Whether or not to include the additional terms of Terasawa et al [arXiv:2310.13330] in the halo model responses
     include_terasawa_terms: False # Type: bool
 
-    load_cached_sigma2_b: True # Type: bool. Whether to load the previously computed sigma2_b.
+    load_cached_sigma2_b: False # Type: bool. Whether to load the previously computed sigma2_b.
     
     # k grid used for power spectrum and trispectrum computation
     log10_k_min: -5  # Type: float 
     log10_k_max: 2  # Type: float
-    k_steps: 200  # Type: int
+    k_steps: 100  # Type: int
     
     z_min: 0.02 # Type: float. SU responses' kmax allow for z_min = 0.016, at most.
     z_max: 3.0 # Type: float
-    z_steps: 7000 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 5000
-    z_steps_trisp: 50  # Type: int. Number of z steps used to compute the trispectrum - around 100 should be enough
+    z_steps: 100 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 5000
+    z_steps_trisp: 20  # Type: int. Number of z steps used to compute the trispectrum - around 100 should be enough
 
     use_KE_approximation: False # Type: bool
 
@@ -275,10 +282,10 @@ misc:
     levin_batch_size: 1000 # Type: int. How many integrals to compute at once for the 
 
     # some sanity checks on the covariance matrix. These could take a while to run.
-    test_numpy_inversion: False # Type: bool. Test for errors in np.linalg.inv
-    test_condition_number: False # Type: bool. Check if condition number is above 1e10
-    test_cholesky_decomposition: False # Type: bool. Test if cholesky decomposition fails
-    test_symmetry: False # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
+    test_numpy_inversion: True # Type: bool. Test for errors in np.linalg.inv
+    test_condition_number: True # Type: bool. Check if condition number is above 1e10
+    test_cholesky_decomposition: True # Type: bool. Test if cholesky decomposition fails
+    test_symmetry: True # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
     output_path: ./output # Type: str
     save_output_as_benchmark: False # Type: bool. For testing purposes

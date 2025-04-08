@@ -5,6 +5,7 @@
 # from the environment for the first two.
 SPHINXOPTS    ?=
 SPHINXBUILD   ?= sphinx-build
+# SPHINXBUILD   ?= /home/davide/anaconda3/envs/spaceborne-dav/bin/sphinx-build  # Replace with your actual path
 SOURCEDIR     = source
 BUILDDIR      = build
 
@@ -18,3 +19,5 @@ help:
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
 %: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+
+

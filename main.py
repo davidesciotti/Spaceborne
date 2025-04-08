@@ -97,29 +97,15 @@ galaxy_bias_fit_fiducials = np.array(cfg['C_ell']['galaxy_bias_fit_coeff'])
 magnification_bias_fit_fiducials = np.array(
     cfg['C_ell']['magnification_bias_fit_coeff']
 )
-dzWL_fiducial = cfg['nz']['dzWL']
-dzGC_fiducial = cfg['nz']['dzGC']
-nz_gaussian_smoothing = cfg['nz'][
-    'nz_gaussian_smoothing'
-]  # does not seem to have a large effect...
-nz_gaussian_smoothing_sigma = cfg['nz']['nz_gaussian_smoothing_sigma']
-shift_nz = cfg['nz']['shift_nz']
-normalize_shifted_nz = cfg['nz']['normalize_shifted_nz']
-zbins = len(
-    cfg['nz']['ngal_lenses']
-)  # this has the same length as ngal_sources, as checked below
+# this has the same length as ngal_sources, as checked below
+zbins = len(cfg['nz']['ngal_lenses'])
 ell_max_WL = cfg['ell_binning']['ell_max_WL']
 ell_max_GC = cfg['ell_binning']['ell_max_GC']
 ell_max_3x2pt = cfg['ell_binning']['ell_max_3x2pt']
 nbl_WL_opt = cfg['ell_binning']['nbl_WL_opt']
 triu_tril = cfg['covariance']['triu_tril']
 row_col_major = cfg['covariance']['row_col_major']
-n_probes = cfg['covariance']['n_probes']
 which_sigma2_b = cfg['covariance']['which_sigma2_b']
-include_ia_in_bnt_kernel_for_zcuts = cfg['BNT']['include_ia_in_bnt_kernel_for_zcuts']
-compute_bnt_with_shifted_nz_for_zcuts = cfg['BNT'][
-    'compute_bnt_with_shifted_nz_for_zcuts'
-]
 probe_ordering = cfg['covariance']['probe_ordering']
 GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 output_path = cfg['misc']['output_path']
@@ -162,7 +148,51 @@ unique_probe_comb = [
     [1, 1, 1, 1],
 ]
 probename_dict = {0: 'L', 1: 'G'}
+
+# these are configs which should not be visible to the user
+cfg['OneCovariance'] = {}
+cfg['ell_cuts'] = {}
+cfg['covariance']['n_probes'] = 2
+cfg['covariance']['G_code'] = 'Spaceborne'
+cfg['covariance']['SSC_code'] = 'Spaceborne'
+cfg['covariance']['cNG_code'] = 'PyCCL'
+cfg['BNT']['compute_bnt_with_shifted_nz_for_zcuts']: False
+cfg['BNT']['include_ia_in_bnt_kernel_for_zcuts']: False
+cfg['OneCovariance']['precision_settings'] = 'default'
+cfg['OneCovariance']['path_to_oc_executable'] = '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py'  # fmt: skip
+cfg['OneCovariance']['path_to_oc_ini'] = './input/config_3x2pt_pure_Cell_general.ini'
+cfg['OneCovariance']['consistency_checks'] = False
+cfg['misc']['save_output_as_benchmark'] = False
+cfg['misc']['bench_filename'] = (
+    '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_newtest'
+)
+cfg['ell_cuts']['apply_ell_cuts'] = False  # Type: bool
+cfg['ell_cuts']['center_or_min'] = (
+    'center'  # Type: str. Cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
+)
+cfg['ell_cuts']['cl_ell_cuts'] = False  # Type: bool
+cfg['ell_cuts']['cov_ell_cuts'] = False  # Type: bool
+cfg['ell_cuts']['kmax_h_over_Mpc_ref'] = (
+    1.0  # Type: float. This is used when ell_cuts is False, also...?
+)
+cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.0,] # fmt: skip
+cfg['nz']['shift_nz'] = False 
+cfg['nz']['dzWL'] = [-0.008848, 0.051368, 0.059484]
+cfg['nz']['dzGC'] = [-0.008848, 0.051368, 0.059484]
+cfg['nz']['normalize_shifted_nz'] = True 
+cfg['nz']['nz_gaussian_smoothing'] = False 
+cfg['nz']['nz_gaussian_smoothing_sigma'] = 2 
+cfg['nz']['plot_nz_tocheck'] = True 
+
 # ! END HARDCODED OPTIONS/PARAMETERS
+
+# some of the configs have been defined here...
+dzWL_fiducial = cfg['nz']['dzWL']
+dzGC_fiducial = cfg['nz']['dzGC']
+shift_nz = cfg['nz']['shift_nz']
+normalize_shifted_nz = cfg['nz']['normalize_shifted_nz']
+n_probes = cfg['covariance']['n_probes']
+
 
 # ! set non-gaussian cov terms to compute
 cov_terms_list = []
@@ -1349,7 +1379,6 @@ for probe in ['WL', 'GC', '3x2pt']:
     )
 
 if cfg['misc']['save_output_as_benchmark']:
-    
     # some of the test quantities are not defined in some cases
     if not compute_sb_ssc:
         sigma2_b = np.array([])
@@ -1359,15 +1388,15 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CLL_dVddeltab = np.array([])
         d2CGL_dVddeltab = np.array([])
         d2CGG_dVddeltab = np.array([])
-        
+
     # better to work with empty arrays than None
     if bnt_matrix is None:
         _bnt_matrix = np.array([])
-        
+
     # I don't fully remember why I don't save these
     _ell_dict = deepcopy(ell_dict)
     _ell_dict.pop('ell_cuts_dict')
-    _ell_dict.pop('idxs_to_delete_dict')    
+    _ell_dict.pop('idxs_to_delete_dict')
 
     import datetime
 
@@ -1395,7 +1424,6 @@ if cfg['misc']['save_output_as_benchmark']:
 
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
         yaml.dump(cfg, yaml_file, default_flow_style=False)
-
 
     np.savez_compressed(
         bench_filename,

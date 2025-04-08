@@ -131,7 +131,6 @@ k_steps_sigma2 = 20_000
 k_steps_sigma2_levin = 300
 shift_nz_interpolation_kind = 'linear'  # TODO this should be spline
 
-
 # whether or not to symmetrize the covariance probe blocks when
 # reshaping it from 4D to 6D.
 # Useful if the 6D cov elements need to be accessed directly, whereas if

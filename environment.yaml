@@ -2,8 +2,9 @@
 
 name: spaceborne
 channels:
-  - defaults
   - conda-forge
+  - defaults
+channel_priority: strict
 dependencies:
   - python>=3.9
   - matplotlib

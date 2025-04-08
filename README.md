@@ -6,6 +6,8 @@
 <!-- ![sb_logo](https://github.com/user-attachments/assets/6c5d9280-70b2-4f66-8bfb-c513317aea06) -->
 
 # Spaceborne
+---
+[![Documentation Status](https://readthedocs.org/projects/spaceborne/badge/?version=latest)](https://spaceborne.readthedocs.io/en/latest/?badge=latest)
 
 # Installation
 
@@ -13,12 +15,14 @@ We recommend using Spaceborne in a dedicated Conda environment. This ensures all
 
 ## 1. Create the environment and install dependencies
 
-In the root folder of the Spaceborne repository, run
+In the root folder of the Spaceborne repository, run:
 
 ```bash
 $ conda env create -f environment.yaml
 $ conda activate spaceborne
 ```
+
+🐍 note: using `mamba` instead of `conda` in the first line will significantly speed up the environment creation. To install `mamba`, run `conda install mamba` in your `base` environment)
 
 `Spaceborne` uses `CCL` as the backend library for many cosmological calculations. Some installation issues have been found with its Python wrapper `pyccl`; in case of problems with this package, please refer to the official [instructions](https://ccl.readthedocs.io/en/latest/source/installation.html) (see also the CCL [GitHub page](https://github.com/LSSTDESC/CCL)). To facilitate the process, however, its main dependencies - `Swig` and `CMake` - have already been included in the environment, so *after* creating and activating it, a simple 
 

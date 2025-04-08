@@ -2,8 +2,9 @@
 
 name: spaceborne
 channels:
-  - defaults
   - conda-forge
+  - defaults
+channel_priority: strict
 dependencies:
   - python>=3.9
   - matplotlib
@@ -34,7 +35,7 @@ dependencies:
 
   - pip:
     # pathos is needed to parallelize the computations involving non-pickleable objects.
-    # It can be ignored, in which some functions will run serially
+    # It can be ignored, in which case some functions will run serially
     - pathos  
     - pymaster
     - pyccl

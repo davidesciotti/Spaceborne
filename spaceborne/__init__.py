@@ -10,6 +10,5 @@ from . import config_checker
 from . import sigma2_SSC 
 from . import wf_cl_lib 
 from . import ell_utils 
-from . import fisher_matrix 
 from . import onecovariance_interface 
 

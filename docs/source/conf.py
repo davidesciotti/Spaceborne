@@ -24,6 +24,13 @@ extensions = [
 templates_path = ['_templates']
 exclude_patterns = []
 
+# Napoleon settings (adjust if needed)
+napoleon_google_docstring = False # Set to False if primarily using NumPy
+napoleon_numpy_docstring = True
+napoleon_include_init_with_doc = True # Often useful to include __init__ docstrings
+napoleon_include_private_with_doc = False
+napoleon_include_special_with_doc = True
+
 
 
 # -- Options for HTML output -------------------------------------------------

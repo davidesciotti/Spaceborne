@@ -6,13 +6,12 @@ version: 2
 
 # Set the OS, Python version, and other tools you might need
 build:
-  os: ubuntu-22.04  # Consider using 22.04 for stability unless 24.04 is needed
+  os: ubuntu-22.04
   tools:
-    python: "3.12"  # Consider using 3.11 or 3.12 unless 3.13 is strictly needed
+    python: "3.12"
 
 # Build documentation in the "docs/" directory with Sphinx
 sphinx:
-   # CORRECTED PATH: Point to conf.py inside the 'source' directory
    configuration: docs/source/conf.py
 
 # Optionally, but recommended,
@@ -22,6 +21,5 @@ python:
    install:
    # Install documentation build dependencies
    - requirements: docs/requirements.txt
-   # ADDED: Install the project itself so autodoc can import it
    - method: pip
      path: .

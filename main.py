@@ -22,6 +22,7 @@ from spaceborne import (
     pyccl_interface,
     responses,
     sigma2_SSC,
+    constants,
     wf_cl_lib,
 )
 from spaceborne import covariance as sb_cov
@@ -186,7 +187,7 @@ cfg['nz']['normalize_shifted_nz'] = True
 cfg['nz']['nz_gaussian_smoothing'] = False 
 cfg['nz']['nz_gaussian_smoothing_sigma'] = 2 
 cfg['nz']['plot_nz_tocheck'] = True 
-
+cfg['mask']['fsky'] = cfg['mask']['survey_area_deg2'] / constants.DEG2_IN_SPHERE
 # ! END HARDCODED OPTIONS/PARAMETERS
 
 # some of the configs have been defined here...

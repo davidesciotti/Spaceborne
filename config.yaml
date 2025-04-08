@@ -51,15 +51,16 @@ C_ell:
     # The Cls are then splined along the \ell axis and interpolated over the \ell values specified in the "ell_binning"
     # section of this cfg file.
     use_input_cls: False  # Type: bool
-    cl_LL_path: ... # Type: str. Path to the shear-shear angular PS. 
-    cl_GL_path: ... # Type: str. Path to the galaxy-shear angular PS. 
-    cl_GG_path: ... # Type: str. Path to the galaxy-galaxy angular PS. 
+
+    cl_LL_path: ./input/cl_ll.txt # Type: str. Path to the shear-shear angular PS. 
+    cl_GL_path: ./input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS. 
+    cl_GG_path: ./input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS. 
 
     # Which galaxy and magnification bias to use. Options:
     # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
     # - 'FS2_polynomial_fit': use the third-order polynomial fits to the galaxy and magnification bias from Flagship 2.
-    #   The actual values of these coefficients can be changed by modifying the values of 
-    #   'galaxy_bias_fit_coeff' and 'magnification_bias_fit_coeff'.
+    #                         The actual values of these coefficients can be changed by modifying the values of 
+    #                         'galaxy_bias_fit_coeff' and 'magnification_bias_fit_coeff'.
     which_gal_bias: "FS2_polynomial_fit" # Type: str.
     which_mag_bias: "FS2_polynomial_fit" # Type: str.
     
@@ -80,7 +81,7 @@ C_ell:
     has_IA: True # Type: bool. Enable/disable intrinsic alignment.
     has_magnification_bias: True # Type: bool. Enable/disable magnification bias.
 
-    # keyword arguments for CCL Cl calculation (excluding `p_of_k_a`), described in
+    # Keyword arguments for CCL Cl calculation (excluding `p_of_k_a`), described in
     # https://ccl.readthedocs.io/en/latest/api/pyccl.cosmology.html#pyccl.cosmology.Cosmology.angular_cl
     cl_CCL_kwargs:
         l_limber: -1 # Type: int
@@ -88,12 +89,12 @@ C_ell:
         non_limber_integration_method: FKEM # Type: str
 
 nz:
-    # Type: str. Paths to source (for WL) and lens (for GCph) redshift distributions.
+    # Paths to source (for WL) and lens (for GCph) redshift distributions.
     # These must have shape (z_points, zbins + 1)
-    nz_sources_filename: ./input/nzTab.txt
-    nz_lenses_filename: ./input/nzTab.txt
+    nz_sources_filename: ./input/nzTab.txt  # Type: str
+    nz_lenses_filename: ./input/nzTab.txt  # Type: str
 
-    # Type: list[float]. Number of galaxies per arcmin**2 for each redshift bin. 
+    # Number of galaxies per arcmin**2 for each redshift bin. 
     # Should be of len(zbins)
     ngal_sources: [8.09216, 8.09215, 8.09215]  # Type: list[float]
     ngal_lenses: [8.09216, 8.09215, 8.09215]  # Type: list[float]
@@ -101,7 +102,6 @@ nz:
 mask:
     mask_path: .../mask.fits # Type: str
     nside: 1024 # Type: int
-    fsky: 0.3210678603147902 # Type: float
     survey_area_deg2: 13245 # Type: int
     apodize: False # Type: bool
     aposize: 0.1 # Type: float. Apodization scale in deg
@@ -130,21 +130,25 @@ covariance:
     SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
     cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
-    # -- Ordering-related settings --
     # Choose whether to use the upper ('triu') or lower ('tril') triangle
     # of the auto-probe (LL, GG) zbins (C_{ij}(\ell)^AA = C_{ji}(\ell)^AA).
     triu_tril: triu # Type: str. Options: ['triu', 'tril']
+    
     # Within the upper or lower triangle, count indices in
     # a row-major or column-major order.
     row_col_major: row-major # Type: str. Options: ['row-major', 'column-major']
+    
     # ordering of the different 3x2pt probes in the covariance matrix
     probe_ordering: [["L", "L"], ["G", "L"], ["G", "G"]] # Type: list[list[str]]
-    # Options: [ell_probe_zpair, probe_ell_zpair, probe_zpair_ell, zpair_probe_ell]
+    
     # Determines the ordering of the covariance matrix in 2D, with the outermost 
-    # loop corresponding to the leftmost index. Examples:
+    # loop corresponding to the leftmost index.
+    # Options: [ell_probe_zpair, probe_ell_zpair, probe_zpair_ell, zpair_probe_ell]
+    # Examples:
     # - ell_probe_zpair: Ordered by multipole (ell), then probe type, then redshift pair.
     # - probe_ell_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordering used by CLOE
     covariance_ordering_2D: ell_probe_zpair # Type: str.
+    
     # Whether to save the full 6D (10D) covariance matrix, without to any indices compression or reshaping. 
     # In the case of the single probes, this is an array of shape
     # (ellbins, ellbins, zbins, zbins, zbins, zbins).
@@ -152,7 +156,7 @@ covariance:
     # (n_probes, n_probes, n_probes, n_probes, ellbins, ellbins, zbins, zbins, zbins, zbins), 
     # with nbl the number of probes. The probe index is by default 0 for WL, 1 for GC.
     # Keep in mind that the arrays will likely be quite large. 
-    save_full_cov: True # Type: bool.
+    save_full_cov: True # Type: bool
     
     # Whether to split the Gaussian covariance term into the
     # sample variance, noise and mixed terms
@@ -163,6 +167,7 @@ covariance:
     # total ellipticity dispersion = sigma_eps
     # sigma_eps = (sigma_eps_i * np.sqrt(2))
     sigma_eps_i: 0.26 # Type: float
+    
     # Whether to include the noise power spectra in the computation of the 
     # Gaussian covariance matrix.
     noiseless_spectra: False # Type: bool

@@ -10,17 +10,6 @@ cosmology:
     m_nu: 0.06      # Type: float
     N_eff: 3.046    # Type: float
     Om_k0: 0        # Type: float
-    Om: 0.32        # Type: float
-    Ob: 0.05        # Type: float
-    wz: -1.0        # Type: float
-    wa: 0.0         # Type: float
-    h: 0.6737       # Type: float
-    ns: 0.966       # Type: float
-    s8: 0.816       # Type: float
-    ODE: 0.68       # Type: float
-    m_nu: 0.06      # Type: float
-    N_eff: 3.046    # Type: float
-    Om_k0: 0        # Type: float
 
 intrinsic_alignment:
     Aia: 0.16       # Type: float

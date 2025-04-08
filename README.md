@@ -6,6 +6,8 @@
 <!-- ![sb_logo](https://github.com/user-attachments/assets/6c5d9280-70b2-4f66-8bfb-c513317aea06) -->
 
 # Spaceborne
+---
+[![Documentation Status](https://readthedocs.org/projects/spaceborne/badge/?version=latest)](https://spaceborne.readthedocs.io/en/latest/?badge=latest)
 
 # Installation
 

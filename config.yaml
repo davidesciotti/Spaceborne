@@ -1,16 +1,15 @@
 cosmology:
-    Om: 0.32        # Type: float. Matter density parameter
-    Ob: 0.05        # Type: float. Baryon density parameter
-    wz: -1.0        # Type: float. Dark energy equation of state parameter
-    wa: 0.0         # Type: float. Evolution of dark energy equation of state parameter
-    h: 0.6737       # Type: float. Dimensionless Hubble parameter
-    ns: 0.966       # Type: float. Scalar spectral index
-    s8: 0.816       # Type: float. Amplitude of matter fluctuations
-    logT: 7.75      # Type: float. AGN feedback temperature
-    ODE: 0.68       # Type: float. Dark energy density parameter
-    m_nu: 0.06      # Type: float. Sum of neutrino masses
-    N_eff: 3.046    # Type: float. Effective number of relativistic species
-    Om_k0: 0        # Type: float. Curvature density parameter
+    Om: 0.32        # Type: float
+    Ob: 0.05        # Type: float
+    wz: -1.0        # Type: float
+    wa: 0.0         # Type: float
+    h: 0.6737       # Type: float
+    ns: 0.966       # Type: float
+    s8: 0.816       # Type: float
+    ODE: 0.68       # Type: float
+    m_nu: 0.06      # Type: float
+    N_eff: 3.046    # Type: float
+    Om_k0: 0        # Type: float
 
 intrinsic_alignment:
     Aia: 0.16       # Type: float
@@ -42,7 +41,6 @@ halo_model:
     halo_profile_hod: HaloProfileHOD # Type: str
 
 C_ell:
-
     # Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
     # note: if the non-Gaussian covariance is requested, the code will compute intermediate quantities
     # such as the radial kernels for lensing and clustering. The user should make sure that the cosmology 

@@ -140,6 +140,11 @@ class Mask:
         # 3. get mask spectrum and/or fsky
         if hasattr(self, 'mask'):
             self.ell_mask, self.cl_mask, self.fsky = get_mask_cl(self.mask)
+            # normalization has been checked from
+            # https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
+            # and is the same as CSST paper https://zenodo.org/records/7813033
+            self.cl_mask_norm = self.cl_mask * (2 * self.ell_mask + 1) / (4 * np.pi * self.fsky) ** 2
+            
 
         else:
             print(

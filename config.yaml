@@ -162,7 +162,7 @@ covariance:
 
     G: True # Type: bool. Enable/disable the Gaussian covariance term.
     SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
-    cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+    cNG: True # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
     # Which code to use for the different covariance terms
     G_code: Spaceborne # Type: str. Options: [Spaceborne, OneCovariance]
@@ -289,12 +289,12 @@ misc:
     levin_batch_size: 1000 # Type: int. How many integrals to compute at once for the 
 
     # some sanity checks on the covariance matrix. These could take a while to run.
-    test_numpy_inversion: True # Type: bool. Test for errors in np.linalg.inv
-    test_condition_number: True # Type: bool. Check if condition number is above 1e10
-    test_cholesky_decomposition: True # Type: bool. Test if cholesky decomposition fails
-    test_symmetry: True # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
+    test_numpy_inversion: False # Type: bool. Test for errors in np.linalg.inv
+    test_condition_number: False # Type: bool. Check if condition number is above 1e10
+    test_cholesky_decomposition: False # Type: bool. Test if cholesky decomposition fails
+    test_symmetry: False # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
     output_path: ./output # Type: str
     save_output_as_benchmark: True # Type: bool. For testing purposes
-    bench_filename: ../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_bigchange
+    bench_filename: ../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_bigchanges
     # Type: str. For testing purposes

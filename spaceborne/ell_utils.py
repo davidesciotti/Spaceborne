@@ -363,11 +363,18 @@ class EllBinning:
         self.ells_XC = np.copy(self.ells_GC)
         self.ell_edges_XC = np.copy(self.ell_edges_GC)
         self.delta_l_XC = np.copy(self.delta_l_GC)
+        
+        # 3x2pt as well
+        # TODO change this to be more general
+        self.ells_3x2pt = np.copy(self.ells_GC)
+        self.ell_edges_3x2pt = np.copy(self.ell_edges_GC)
+        self.delta_l_3x2pt = np.copy(self.delta_l_GC)
 
         # set nbl
         self.nbl_WL = len(self.ells_WL)
         self.nbl_GC = len(self.ells_GC)
         self.nbl_XC = len(self.ells_XC)
+        self.nbl_3x2pt = len(self.ells_3x2pt)
 
         self._validate_bins()
 

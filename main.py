@@ -1257,7 +1257,7 @@ if cfg['misc']['save_output_as_benchmark']:
         _bnt_matrix = np.array([])
 
     # I don't fully remember why I don't save these
-    _ell_dict = deepcopy(ell_obj.__dict__)
+    _ell_dict = vars(ell_obj)
     # _ell_dict.pop('ell_cuts_dict')
     # _ell_dict.pop('idxs_to_delete_dict')
 

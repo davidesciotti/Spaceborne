@@ -18,6 +18,7 @@ from spaceborne import (
     cl_utils,
     config_checker,
     cosmo_lib,
+    mask_utils,
     ell_utils,
     pyccl_interface,
     responses,
@@ -306,7 +307,21 @@ ind_auto = ind[:zpairs_auto, :].copy()
 ind_cross = ind[zpairs_auto : zpairs_cross + zpairs_auto, :].copy()
 ind_dict = {('L', 'L'): ind_auto, ('G', 'L'): ind_cross, ('G', 'G'): ind_auto}
 
-# ! Import redshift distributions
+# ! ====================================================================================
+# ! ====================================================================================
+# ! ====================================================================================
+# ! ================================= BEGIN MAIN BODY ==================================
+
+# ! 1. Mask
+mask_obj = mask_utils.Mask(cfg['mask'])
+mask_obj.process()
+cfg['mask']['fsky'] = mask_obj.fsky
+if hasattr(mask_obj, 'mask'):
+    import healpy as hp
+    hp.mollview(mask_obj.mask, cmap='inferno_r')
+
+
+# ! 2. Redshift distributions
 # The shape of these input files should be `(zpoints, zbins + 1)`, with `zpoints` the
 # number of points over which the distribution is measured and zbins the number of
 # redshift bins. The first column should contain the redshifts values.
@@ -325,10 +340,11 @@ nz_lns = nz_lns_tab_full[:, 1:]
 nz_unshifted_src = nz_src
 nz_unshifted_lns = nz_lns
 
+# ! 3. \ell binning
 ell_obj = ell_utils.EllBinning(cfg)
 ell_obj.build_ell_bins()
 
-# provate cfg dictionary. This serves a couple different purposeses:
+# private cfg dictionary. This serves a couple different purposeses:
 # 1. To store and pass hardcoded parameters in a convenient way
 # 2. To make the .format() more compact
 pvt_cfg = {
@@ -580,9 +596,18 @@ if cfg['C_ell']['use_input_cls']:
     if not np.allclose(ells_GC, ell_obj.ells_GC, atol=0, rtol=1e-5):
         cl_gg_3d_spline = CubicSpline(ells_GC, cl_gg_3d, axis=0)
         cl_gg_3d = cl_gg_3d_spline(ell_obj.ells_GC)
+        
+    warnings.warn('finish checking this, in particular the delta_ells')
+    delta_l_WL = np.diff(ells_WL)
+    delta_l_GL = np.diff(ells_XC)
+    delta_l_GC = np.diff(ells_GC)
+    
+    # fill the delta_ell à la CosmoSIS
+    delta_l_WL = np.insert(delta_l_WL, 0, delta_l_WL[0])
+    delta_l_GL = np.insert(delta_l_GL, 0, delta_l_GL[0])
+    delta_l_GC = np.insert(delta_l_GC, 0, delta_l_GC[0])
 
     ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d = cl_ll_3d, cl_gl_3d, cl_gg_3d
-
 
 
 # ! add multiplicative shear bias
@@ -591,17 +616,14 @@ if cfg['C_ell']['use_input_cls']:
 ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d = pyccl_interface.apply_mult_shear_bias(
     ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, np.array(cfg['C_ell']['mult_shear_bias']), zbins
 )
-
-# ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, nbl_3x2pt, zbins, zbins))
-# ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[:nbl_3x2pt, :, :]
-# ccl_obj.cl_3x2pt_5d[1, 0, :, :, :] = ccl_obj.cl_gl_3d[:nbl_3x2pt, :, :]
-# ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[:nbl_3x2pt, :, :].transpose(
-#     0, 2, 1
-# )
-# ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[:nbl_3x2pt, :, :]
-
-# cl_ll_3d, cl_gl_3d, cl_gg_3d = ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d
-# cl_3x2pt_5d = ccl_obj.cl_3x2pt_5d
+# TODO this simple cut will not work for different binning schemes!
+ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, ell_obj.nbl_3x2pt, zbins, zbins))
+ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[:ell_obj.nbl_3x2pt, :, :]
+ccl_obj.cl_3x2pt_5d[1, 0, :, :, :] = ccl_obj.cl_gl_3d[:ell_obj.nbl_3x2pt, :, :]
+ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[:ell_obj.nbl_3x2pt, :, :].transpose(
+    0, 2, 1
+)
+ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[:ell_obj.nbl_3x2pt, :, :]
 
 fig, ax = plt.subplots(1, 3)
 plt.tight_layout()
@@ -634,7 +656,7 @@ if cfg['BNT']['cl_BNT_transform']:
 
 # ! cut datavectors and responses in the pessimistic case; be carful of WA,
 # ! because it does not start from ell_min
-if ell_max_WL == 1500:
+if ell_obj.ell_max_WL == 1500:
     warnings.warn(
         'you are cutting the datavectors and responses in the pessimistic case, but is '
         'this compatible with the redshift-dependent ell cuts? Yes, this is an '
@@ -642,9 +664,9 @@ if ell_max_WL == 1500:
         stacklevel=2,
     )
     raise ValueError('you should check this')
-    cl_ll_3d = cl_ll_3d[:nbl_WL, :, :]
-    cl_gg_3d = cl_gg_3d[:nbl_GC, :, :]
-    cl_3x2pt_5d = cl_3x2pt_5d[:nbl_3x2pt, :, :]
+    cl_ll_3d = cl_ll_3d[:ell_obj.nbl_WL, :, :]
+    cl_gg_3d = cl_gg_3d[:ell_obj.nbl_GC, :, :]
+    cl_3x2pt_5d = cl_3x2pt_5d[:ell_obj.nbl_3x2pt, :, :]
 
 if cfg['ell_cuts']['center_or_min'] == 'center':
     ell_prefix = 'ell'
@@ -952,7 +974,7 @@ if compute_sb_ssc:
 
     # ! test k_max_limber vs k_max_dPk and adjust z_min accordingly
     k_max_resp = np.max(k_grid)
-    ell_grid = ell_dict['ell_3x2pt']
+    ell_grid = ell_obj.ells_GC
     kmax_limber = cosmo_lib.get_kmax_limber(
         ell_grid, z_grid, use_h_units, ccl_obj.cosmo_ccl
     )
@@ -1040,10 +1062,8 @@ if compute_sb_ssc:
             # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
             ccl_obj.set_sigma2_b(
                 z_grid=z_grid,
-                fsky=cfg['mask']['fsky'],
                 which_sigma2_b=which_sigma2_b,
-                nside_mask=cfg['mask']['nside'],
-                mask_path=cfg['mask']['mask_path'],
+                mask_obj=mask_obj,
             )
             _a, sigma2_b = ccl_obj.sigma2_b_tuple
             # quick sanity check on the a/z grid
@@ -1067,14 +1087,12 @@ if compute_sb_ssc:
                 k_grid_sigma2=k_grid_s2b,
                 cosmo_ccl=ccl_obj.cosmo_ccl,
                 which_sigma2_b=which_sigma2_b,
-                area_deg2_in=cfg['mask']['survey_area_deg2'],
-                nside_mask=cfg['mask']['nside'],
-                mask_path=cfg['mask']['mask_path'],
+                mask_obj=mask_obj,
                 n_jobs=cfg['misc']['num_threads'],
                 integration_scheme=integration_scheme,
                 batch_size=cfg['misc']['levin_batch_size'],
                 parallel=parallel,
-            )
+            )            
 
     if not cfg['covariance']['load_cached_sigma2_b']:
         np.save(f'{output_path}/cache/sigma2_b_{zgrid_str}.npy', sigma2_b)
@@ -1119,10 +1137,8 @@ if compute_ccl_ssc or compute_ccl_cng:
     # if zmin=0 it looks like I can have zmin_s2b = zmin_s2b_tkka
     ccl_obj.set_sigma2_b(
         z_grid=z_default_grid_ccl,
-        fsky=cfg['mask']['fsky'],
         which_sigma2_b=which_sigma2_b,
-        nside_mask=cfg['mask']['nside'],
-        mask_path=cfg['mask']['mask_path'],
+        mask_obj=mask_obj,
     )
 
     ccl_ng_cov_terms_list = []
@@ -1135,7 +1151,7 @@ if compute_ccl_ssc or compute_ccl_cng:
         ccl_obj.initialize_trispectrum(which_ng_cov, probe_ordering, cfg['PyCCL'])
         ccl_obj.compute_ng_cov_3x2pt(
             which_ng_cov,
-            ell_dict['ell_3x2pt'],
+            ell_obj.ells_GC,
             cfg['mask']['fsky'],
             integration_method=cfg['PyCCL']['cov_integration_method'],
             probe_ordering=probe_ordering,
@@ -1215,10 +1231,10 @@ header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']
 for probe in ['WL', 'GC', '3x2pt']:
     ells_2d_save = np.column_stack(
         (
-            ell_dict[f'ell_{probe}'],
-            ell_dict[f'delta_l_{probe}'],
-            ell_dict[f'ell_edges_{probe}'][:-1],
-            ell_dict[f'ell_edges_{probe}'][1:],
+            getattr(ell_obj, f'ells_{probe}'),
+            getattr(ell_obj, f'delta_l_{probe}'),
+            getattr(ell_obj, f'ell_edges_{probe}')[:-1],
+            getattr(ell_obj, f'ell_edges_{probe}')[1:],
         )
     )
     sl.savetxt_aligned(
@@ -1241,9 +1257,9 @@ if cfg['misc']['save_output_as_benchmark']:
         _bnt_matrix = np.array([])
 
     # I don't fully remember why I don't save these
-    _ell_dict = deepcopy(ell_dict)
-    _ell_dict.pop('ell_cuts_dict')
-    _ell_dict.pop('idxs_to_delete_dict')
+    _ell_dict = deepcopy(ell_obj.__dict__)
+    # _ell_dict.pop('ell_cuts_dict')
+    # _ell_dict.pop('idxs_to_delete_dict')
 
     import datetime
 
@@ -1283,9 +1299,9 @@ if cfg['misc']['save_output_as_benchmark']:
         nz_src=nz_src,
         nz_lns=nz_lns,
         **_ell_dict,
-        nbl_WL=nbl_WL,
-        nbl_GC=nbl_GC,
-        nbl_3x2pt=nbl_3x2pt,
+        nbl_WL=ell_obj.nbl_WL,
+        nbl_GC=ell_obj.nbl_GC,
+        nbl_3x2pt=ell_obj.nbl_3x2pt,
         bnt_matrix=_bnt_matrix,
         gal_bias_2d=ccl_obj.gal_bias_2d,
         mag_bias_2d=ccl_obj.mag_bias_2d,

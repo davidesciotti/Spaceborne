@@ -315,7 +315,6 @@ ind_dict = {('L', 'L'): ind_auto, ('G', 'L'): ind_cross, ('G', 'G'): ind_auto}
 # ! 1. Mask
 mask_obj = mask_utils.Mask(cfg['mask'])
 mask_obj.process()
-cfg['mask']['fsky'] = mask_obj.fsky
 if hasattr(mask_obj, 'mask'):
     import healpy as hp
     hp.mollview(mask_obj.mask, cmap='inferno_r')
@@ -1118,7 +1117,7 @@ if compute_sb_ssc:
     # TODO it would make much more sense to divide s2b directly...
     if which_sigma2_b == 'full_curved_sky':
         for key in cov_ssc_3x2pt_dict_8D:
-            cov_ssc_3x2pt_dict_8D[key] /= cfg['mask']['fsky']
+            cov_ssc_3x2pt_dict_8D[key] /= mask_obj.fsky
     elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask', 'flat_sky']:
         pass
     else:
@@ -1152,7 +1151,7 @@ if compute_ccl_ssc or compute_ccl_cng:
         ccl_obj.compute_ng_cov_3x2pt(
             which_ng_cov,
             ell_obj.ells_GC,
-            cfg['mask']['fsky'],
+            mask_obj.fsky,
             integration_method=cfg['PyCCL']['cov_integration_method'],
             probe_ordering=probe_ordering,
             ind_dict=ind_dict,

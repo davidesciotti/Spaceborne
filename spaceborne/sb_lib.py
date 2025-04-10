@@ -113,6 +113,25 @@ mpl_other_dict = {
 #     return binned_cov
 
 
+def is_main_branch():
+    """Check if the current Git branch is 'main'"""
+    try:
+        # Get the current branch name
+        result = subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        current_branch = result.stdout.strip()
+        
+        # Return True if branch is 'main', False otherwise
+        return current_branch == 'main'
+    except subprocess.SubprocessError:
+        # If there's an error (e.g., not in a git repo), default to False
+        print("Warning: Could not determine Git branch. Assuming not main branch.")
+        return False
+    
 @contextlib.contextmanager
 def timer(msg):
     start = time.perf_counter()

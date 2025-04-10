@@ -53,8 +53,7 @@ pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 
 # use the _dev config in the develop branch!
-# _config_path = 'config_dev.yaml' if os.path.exists('config_dev.yaml') else 'config.yaml'
-_config_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench//output_GSpaceborne_SSCSpaceborne_cNGPyCCL_KETrue_resphalo_model_b1gfrom_input_bigchanges.yaml'
+_config_path = 'config_dev.yaml' if os.path.exists('config_dev.yaml') else 'config.yaml'
 
 
 def load_config():
@@ -178,13 +177,19 @@ cfg['ell_cuts']['kmax_h_over_Mpc_ref'] = (
     1.0  # Type: float. This is used when ell_cuts is False, also...?
 )
 cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.0,]  # fmt: skip
+
+# if in main branch, set this to False
 cfg['nz']['shift_nz'] = True
+if sl.is_main_branch(): 
+    cfg['nz']['shift_nz'] = False
+    
 cfg['nz']['dzWL'] = [-0.008848, 0.051368, 0.059484]
 cfg['nz']['dzGC'] = [-0.008848, 0.051368, 0.059484]
 cfg['nz']['normalize_shifted_nz'] = True
 cfg['nz']['nz_gaussian_smoothing'] = False
 cfg['nz']['nz_gaussian_smoothing_sigma'] = 2
 cfg['nz']['plot_nz_tocheck'] = True
+if cfg['nz']['shift_nz']:warnings.warn('nz is currently being shifted!!', stacklevel=2)
 # ! END HARDCODED OPTIONS/PARAMETERS
 
 # some of the configs have been defined here...
@@ -365,6 +370,7 @@ mask_obj = mask_utils.Mask(cfg['mask'])
 mask_obj.process()
 if hasattr(mask_obj, 'mask'):
     import healpy as hp
+
     hp.mollview(mask_obj.mask, cmap='inferno_r')
 
 
@@ -643,12 +649,12 @@ if cfg['C_ell']['use_input_cls']:
     if not np.allclose(ells_GC, ell_obj.ells_GC, atol=0, rtol=1e-5):
         cl_gg_3d_spline = CubicSpline(ells_GC, cl_gg_3d, axis=0)
         cl_gg_3d = cl_gg_3d_spline(ell_obj.ells_GC)
-        
+
     warnings.warn('finish checking this, in particular the delta_ells')
     delta_l_WL = np.diff(ells_WL)
     delta_l_GL = np.diff(ells_XC)
     delta_l_GC = np.diff(ells_GC)
-    
+
     # fill the delta_ell à la CosmoSIS
     delta_l_WL = np.insert(delta_l_WL, 0, delta_l_WL[0])
     delta_l_GL = np.insert(delta_l_GL, 0, delta_l_GL[0])
@@ -665,12 +671,12 @@ ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d = pyccl_interface.apply_mult_shear_bias(
 )
 # TODO this simple cut will not work for different binning schemes!
 ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, ell_obj.nbl_3x2pt, zbins, zbins))
-ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[:ell_obj.nbl_3x2pt, :, :]
-ccl_obj.cl_3x2pt_5d[1, 0, :, :, :] = ccl_obj.cl_gl_3d[:ell_obj.nbl_3x2pt, :, :]
-ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[:ell_obj.nbl_3x2pt, :, :].transpose(
-    0, 2, 1
-)
-ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[:ell_obj.nbl_3x2pt, :, :]
+ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[: ell_obj.nbl_3x2pt, :, :]
+ccl_obj.cl_3x2pt_5d[1, 0, :, :, :] = ccl_obj.cl_gl_3d[: ell_obj.nbl_3x2pt, :, :]
+ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[
+    : ell_obj.nbl_3x2pt, :, :
+].transpose(0, 2, 1)
+ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[: ell_obj.nbl_3x2pt, :, :]
 
 fig, ax = plt.subplots(1, 3)
 plt.tight_layout()
@@ -711,9 +717,9 @@ if ell_obj.ell_max_WL == 1500:
         stacklevel=2,
     )
     raise ValueError('you should check this')
-    cl_ll_3d = cl_ll_3d[:ell_obj.nbl_WL, :, :]
-    cl_gg_3d = cl_gg_3d[:ell_obj.nbl_GC, :, :]
-    cl_3x2pt_5d = cl_3x2pt_5d[:ell_obj.nbl_3x2pt, :, :]
+    cl_ll_3d = cl_ll_3d[: ell_obj.nbl_WL, :, :]
+    cl_gg_3d = cl_gg_3d[: ell_obj.nbl_GC, :, :]
+    cl_3x2pt_5d = cl_3x2pt_5d[: ell_obj.nbl_3x2pt, :, :]
 
 if cfg['ell_cuts']['center_or_min'] == 'center':
     ell_prefix = 'ell'
@@ -1139,7 +1145,7 @@ if compute_sb_ssc:
                 integration_scheme=integration_scheme,
                 batch_size=cfg['misc']['levin_batch_size'],
                 parallel=parallel,
-            )            
+            )
 
     if not cfg['covariance']['load_cached_sigma2_b']:
         np.save(f'{output_path}/cache/sigma2_b_{zgrid_str}.npy', sigma2_b)
@@ -2163,5 +2169,3 @@ plot_lib.triangle_plot(
 print(
     'Finished in {:.2f} minutes'.format((time.perf_counter() - script_start_time) / 60)
 )
-
-

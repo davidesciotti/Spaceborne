@@ -1,3 +1,5 @@
+
+
 """
 this code snippet can be appended at the end of main.py for a quick and dirty FM
 estimation. It is not intended to be used for a serious analysis.
@@ -66,7 +68,7 @@ fm_cfg = {
     'deriv_ell_cuts': False,
     'fm_folder': '{ROOT:s}/common_data/Spaceborne/jobs/SPV3/output/Flagship_{flagship_version}/FM/BNT_{BNT_transform:s}/ell_cuts_{ell_cuts:s}',
     'fm_txt_filename': 'fm_txt_filename',
-    'fm_dict_filename': f'FM_dict_sigma2b_simpsdav.pickle',
+    'fm_dict_filename': f'FM_dict_sigma2b_bigchanges.pickle',
     'test_against_vincenzo': False,
     'test_against_benchmarks': False,
     'FM_ordered_params': FM_ordered_params,
@@ -77,7 +79,8 @@ fm_cfg = {
 }
 
 
-from spaceborne import fisher_matrix as fm_utils
+param_names_3x2pt = [param for param in FM_ordered_params.keys() if param != 'ODE']
+nparams_tot = len(param_names_3x2pt)
 
 flat_or_nonflat = 'Flat'
 magcut_lens = 245  # valid for GCph
@@ -222,13 +225,13 @@ elif not fm_cfg['load_preprocess_derivatives']:
                 )
 
     # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
-    dC_LL_4D_vin = fm_utils.dC_dict_to_4D_array(
+    dC_LL_4D_vin = sl.dC_dict_to_4D_array(
         dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix
     )
-    dC_GG_4D_vin = fm_utils.dC_dict_to_4D_array(
+    dC_GG_4D_vin = sl.dC_dict_to_4D_array(
         dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix
     )
-    dC_3x2pt_6D_vin = fm_utils.dC_dict_to_4D_array(
+    dC_3x2pt_6D_vin = sl.dC_dict_to_4D_array(
         dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins, der_prefix, is_3x2pt=True
     )
 
@@ -250,18 +253,141 @@ deriv_dict_vin = {
     'dC_3x2pt_6D': dC_3x2pt_6D_vin,
 }
 
-# ! ==================================== compute and save fisher matrix ================================================
-fm_dict_vin = fm_utils.compute_FM(
-    cfg['covariance'], fm_cfg, ell_dict, cov_dict, deriv_dict_vin, bnt_matrix
+
+print('Starting covariance matrix inversion...')
+start_time = time.perf_counter()
+cov_WL_GO_2D_inv = np.linalg.inv(cov_dict['cov_WL_g_2D'])
+cov_GC_GO_2D_inv = np.linalg.inv(cov_dict['cov_GC_g_2D'])
+cov_XC_GO_2D_inv = np.linalg.inv(cov_dict['cov_XC_g_2D'])
+cov_3x2pt_GO_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_g_2D'])
+cov_WL_tot_2D_inv = np.linalg.inv(cov_dict['cov_WL_tot_2D'])
+cov_GC_tot_2D_inv = np.linalg.inv(cov_dict['cov_GC_tot_2D'])
+cov_XC_tot_2D_inv = np.linalg.inv(cov_dict['cov_XC_tot_2D'])
+cov_3x2pt_tot_2D_inv = np.linalg.inv(cov_dict['cov_3x2pt_tot_2D'])
+print('done in %.2f seconds' % (time.perf_counter() - start_time))
+
+
+# load reshaped derivatives, with shape (nbl, zbins, zbins, nparams)
+dC_LL_4D = deriv_dict_vin['dC_LL_4D']
+dC_GG_4D = deriv_dict_vin['dC_GG_4D']
+dC_3x2pt_6D = deriv_dict_vin['dC_3x2pt_6D']
+
+
+dC_LLfor3x2pt_4D = dC_3x2pt_6D[0, 0, :, :, :, :]
+dC_XCfor3x2pt_4D = dC_3x2pt_6D[0, 1, :, :, :, :]
+dC_GGfor3x2pt_4D = dC_3x2pt_6D[1, 1, :, :, :, :]
+
+# flatten z indices, obviously following the ordering given in ind
+# separate the ind for the different probes
+dC_LL_3D = sl.dC_4D_to_3D(dC_LL_4D, nbl_WL, zpairs_auto, nparams_tot, ind_auto)
+dC_GG_3D = sl.dC_4D_to_3D(dC_GG_4D, nbl_GC, zpairs_auto, nparams_tot, ind_auto)
+dC_LLfor3x2pt_3D = sl.dC_4D_to_3D(
+    dC_LLfor3x2pt_4D, nbl_3x2pt, zpairs_auto, nparams_tot, ind_auto
+)
+dC_XCfor3x2pt_3D = sl.dC_4D_to_3D(
+    dC_XCfor3x2pt_4D, nbl_3x2pt, zpairs_cross, nparams_tot, ind_cross
+)
+dC_GGfor3x2pt_3D = sl.dC_4D_to_3D(
+    dC_GGfor3x2pt_4D, nbl_3x2pt, zpairs_auto, nparams_tot, ind_auto
 )
 
-# TODO finish testing derivatives
-# fm_dict_dav = fm_utils.compute_FM(cfg, ell_dict, cov_dict, deriv_dict_dav, bnt_matrix)
-# fm_dict_vin_modified = {key + '_vin': value for key, value in fm_dict_vin.items()}
-# del fm_dict_vin_modified['fiducial_values_dict_vin']
-# fm_dict = {**fm_dict_dav, **fm_dict_vin_modified}
+# concatenate the flattened components of the 3x2pt datavector
+dC_3x2pt_3D = np.concatenate(
+    (dC_LLfor3x2pt_3D, dC_XCfor3x2pt_3D, dC_GGfor3x2pt_3D), axis=1
+)
 
-fm_dict = fm_dict_vin
+
+# collapse ell and zpair - ATTENTION: np.reshape, like ndarray.flatten, accepts an 'ordering' parameter, which works
+# in the same way not with the old datavector, which was ordered in a different way...
+block_index = 'ell'
+if block_index in ['ell', 'vincenzo', 'C-style']:
+    which_flattening = 'C'
+elif block_index in ['ij', 'sylvain', 'F-style']:
+    which_flattening = 'F'
+else:
+    raise ValueError(
+        "block_index should be either 'ell', 'vincenzo', 'C-style', 'ij', 'sylvain' or 'F-style'"
+    )
+
+dC_LL_2D = np.reshape(
+    dC_LL_3D, (nbl_WL * zpairs_auto, nparams_tot), order=which_flattening
+)
+dC_GG_2D = np.reshape(
+    dC_GG_3D, (nbl_GC * zpairs_auto, nparams_tot), order=which_flattening
+)
+dC_XC_2D = np.reshape(
+    dC_XCfor3x2pt_3D, (nbl_3x2pt * zpairs_cross, nparams_tot), order=which_flattening
+)
+dC_3x2pt_2D = np.reshape(
+    dC_3x2pt_3D, (nbl_3x2pt * zpairs_3x2pt, nparams_tot), order=which_flattening
+)
+
+# ! cut the *flattened* derivatives vector
+# if FM_cfg['deriv_ell_cuts']:
+#     print('Performing the ell cuts on the derivatives...')
+#     dC_LL_2D = np.delete(dC_LL_2D, ell_dict['idxs_to_delete_dict']['LL'], axis=0)
+#     dC_GG_2D = np.delete(dC_GG_2D, ell_dict['idxs_to_delete_dict']['GG'], axis=0)
+#     dC_WA_2D = np.delete(dC_WA_2D, ell_dict['idxs_to_delete_dict']['WA'], axis=0)
+#     dC_XC_2D = np.delete(dC_XC_2D, ell_dict['idxs_to_delete_dict'][GL_or_LG], axis=0)
+#     dC_3x2pt_2D = np.delete(dC_3x2pt_2D, ell_dict['idxs_to_delete_dict']['3x2pt'], axis=0)
+#     # raise ValueError('the above cuts are correct, but I should be careful when defining the 2x2pt datavector/covmat,\
+#         # as n_elem_ll will be lower because of the cuts...')
+
+# # if the ell cuts removed all WA bins (which is in fact the case)
+# if dC_WA_2D.shape[0] == 0:
+#     dC_WA_2D = np.ones((nbl_WA * zpairs_auto, nparams_tot))
+
+######################### COMPUTE FM #####################################
+
+start = time.perf_counter()
+FM_WL_GO = np.einsum(
+    'ia,ik,kb->ab', dC_LL_2D, cov_WL_GO_2D_inv, dC_LL_2D, optimize='optimal'
+)
+FM_GC_GO = np.einsum(
+    'ia,ik,kb->ab', dC_GG_2D, cov_GC_GO_2D_inv, dC_GG_2D, optimize='optimal'
+)
+FM_XC_GO = np.einsum(
+    'ia,ik,kb->ab', dC_XC_2D, cov_XC_GO_2D_inv, dC_XC_2D, optimize='optimal'
+)
+FM_3x2pt_GO = np.einsum(
+    'ia,ik,kb->ab', dC_3x2pt_2D, cov_3x2pt_GO_2D_inv, dC_3x2pt_2D, optimize='optimal'
+)
+print(f'GO FM done in {(time.perf_counter() - start):.2f} s')
+
+start = time.perf_counter()
+FM_WL_GS = np.einsum(
+    'ia,ik,kb->ab', dC_LL_2D, cov_WL_tot_2D_inv, dC_LL_2D, optimize='optimal'
+)
+FM_GC_GS = np.einsum(
+    'ia,ik,kb->ab', dC_GG_2D, cov_GC_tot_2D_inv, dC_GG_2D, optimize='optimal'
+)
+FM_XC_GS = np.einsum(
+    'ia,ik,kb->ab', dC_XC_2D, cov_XC_tot_2D_inv, dC_XC_2D, optimize='optimal'
+)
+FM_3x2pt_GS = np.einsum(
+    'ia,ik,kb->ab', dC_3x2pt_2D, cov_3x2pt_tot_2D_inv, dC_3x2pt_2D, optimize='optimal'
+)
+print(f'GS FM done in {(time.perf_counter() - start):.2f} s')
+
+
+# store the matrices in the dictionary
+probe_names = ['WL', 'GC', 'XC', '3x2pt']
+FMs_GO = [FM_WL_GO, FM_GC_GO, FM_XC_GO, FM_3x2pt_GO]
+FMs_GS = [FM_WL_GS, FM_GC_GS, FM_XC_GS, FM_3x2pt_GS]
+
+
+FM_dict = {}
+for probe_name, FM_GO, FM_GS in zip(probe_names, FMs_GO, FMs_GS):
+    FM_dict[f'FM_{probe_name}_G'] = FM_GO
+    FM_dict[f'FM_{probe_name}_TOT'] = FM_GS
+
+print('FMs computed in %.2f seconds' % (time.perf_counter() - start))
+
+
+# ! ==================================== compute and save fisher matrix ================================================
+
+
+fm_dict = FM_dict
 
 # ordered fiducial parameters entering the FM
 fm_dict['fiducial_values_dict'] = fm_cfg['FM_ordered_params']
@@ -359,7 +485,7 @@ for key in list(fm_dict_toplot.keys()):
 # compute percent diff btw Gauss and G+SSC, using the respective Gaussian covariance
 for probe in probes:
     key_a = f'FM_{probe}_G'
-    key_b = f'FM_{probe}_Gtot'
+    key_b = f'FM_{probe}_TOT'
 
     uncert_dict[f'perc_diff_{probe}_G'] = sl.percent_diff(
         uncert_dict[key_b], uncert_dict[key_a]
@@ -373,7 +499,7 @@ for probe in probes:
 
     cases_to_plot = [
         f'FM_{probe}_G',
-        f'FM_{probe}_Gtot',
+        f'FM_{probe}_TOT',
         # f'FM_{probe}_GSSCcNG',
         f'perc_diff_{probe}_G',
         #  f'FM_{probe}_{which_ng_cov_suffix}',
@@ -500,7 +626,7 @@ plot_lib.bar_plot(
 # TODO this is misleading, understand better why (comparing GSSC, not perc_diff)
 
 fm_dict_of_dicts = {
-    'simps': sl.load_pickle(f'{fm_folder}/FM_dict_sigma2b_simpsdav.pickle'),
+    'develop': sl.load_pickle(f'{fm_folder}/FM_dict_sigma2b_bigchanges.pickle'),
     'levin': sl.load_pickle(f'{fm_folder}/FM_dict_sigma2b_levindav.pickle'),
     # 'current': fm_dict,
 }
@@ -508,7 +634,7 @@ fm_dict_of_dicts = {
 
 labels = list(fm_dict_of_dicts.keys())
 fm_dict_list = list(fm_dict_of_dicts.values())
-keys_toplot_in = ['FM_WL_Gtot', 'FM_GC_Gtot', 'FM_XC_Gtot', 'FM_3x2pt_Gtot']
+keys_toplot_in = ['FM_WL_TOT', 'FM_GC_TOT', 'FM_XC_TOT', 'FM_3x2pt_TOT']
 # keys_toplot = 'all'
 colors = [
     'tab:blue',

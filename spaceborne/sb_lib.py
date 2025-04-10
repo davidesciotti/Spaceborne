@@ -2532,6 +2532,50 @@ def compute_FM_3D(nbl, npairs, nParams, cov_inv, D_3D):
                 FM[alf, bet] = FM[alf, bet] + (D_3D[elle, :, alf] @ b[elle, :, bet])
     return FM
 
+def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
+    """expand the zpair indices into zi, zj, according to the ind ordering as usual"""
+
+    dC_3D = np.zeros((nbl, zpairs, nparams_tot))
+    for ell in range(nbl):
+        for alf in range(nparams_tot):
+            dC_3D[ell, :, alf] = array_2D_to_1D_ind(dC_4D[ell, :, :, alf], zpairs, ind)
+    return dC_3D
+
+
+def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, derivatives_prefix, is_3x2pt=False, n_probes=2):
+    """
+    :param param_names: filename of the parameter, e.g. 'Om'; dCldOm = d(C(l))/d(Om)
+    :param dC_dict_3D:
+    :param nbl:
+    :param zbins:
+    :param obs_name: filename of the observable, e.g. 'Cl'; dCldOm = d(C(l))/d(Om)
+    :param is_3x2pt: whether to will the 5D derivatives vector
+    :param n_probes:
+    :return:
+    """
+    # param_names should be params_tot in all cases, because when the derivative dows not exist
+    # in dC_dict_3D the output array will remain null
+    if is_3x2pt:
+        dC_4D = np.zeros((n_probes, n_probes, nbl, zbins, zbins, len(param_names)))
+    else:
+        dC_4D = np.zeros((nbl, zbins, zbins, len(param_names)))
+
+    if not dC_dict_3D:
+        warnings.warn('The input dictionary is empty')
+
+    no_derivative_counter = 0
+    for idx, param_name in enumerate(param_names):
+        for key, value in dC_dict_3D.items():
+            if f'{derivatives_prefix}{param_name}' in key:
+                dC_4D[..., idx] = value
+
+        # a check, if the derivative wrt the param is not in the folder at all
+        if not any(f'{derivatives_prefix}{param_name}' in key for key in dC_dict_3D.keys()):
+            print(f'Derivative {derivatives_prefix}{param_name} not found; setting the corresponding FM entry to zero')
+            no_derivative_counter += 1
+        if no_derivative_counter == len(param_names):
+            raise ImportError('No derivative found for any of the parameters in the input dictionary')
+    return dC_4D
 
 # @njit
 def compute_FM_2D(nbl, npairs, nparams_tot, cov_2D_inv, D_2D):

@@ -189,7 +189,8 @@ cfg['nz']['normalize_shifted_nz'] = True
 cfg['nz']['nz_gaussian_smoothing'] = False
 cfg['nz']['nz_gaussian_smoothing_sigma'] = 2
 cfg['nz']['plot_nz_tocheck'] = True
-if cfg['nz']['shift_nz']:warnings.warn('nz is currently being shifted!!', stacklevel=2)
+if cfg['nz']['shift_nz']:
+    warnings.warn('nz is currently being shifted!!', stacklevel=2)
 # ! END HARDCODED OPTIONS/PARAMETERS
 
 # some of the configs have been defined here...

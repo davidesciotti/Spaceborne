@@ -12,10 +12,11 @@ from spaceborne import sb_lib as sl
 
 
 class SpaceborneCovariance:
-    def __init__(self, cfg, pvt_cfg, ell_dict, bnt_matrix):
+    def __init__(self, cfg, pvt_cfg, ell_obj, bnt_matrix):
         self.cfg = cfg
         self.cov_cfg = cfg['covariance']
-        self.ell_dict = ell_dict
+        self.ell_dict = {}
+        self.ell_obj = ell_obj
         self.bnt_matrix = bnt_matrix
         self.probe_names_dict = {
             'LL': 'WL',
@@ -38,6 +39,7 @@ class SpaceborneCovariance:
         # must copy the array! Otherwise, it gets modified and changed at each call
         self.cov_ordering_2d = self.cov_cfg['covariance_ordering_2D']
         self.probe_ordering = self.cov_cfg['probe_ordering']
+        self.use_nmt = self.cfg['namaster']['use_namaster']
 
         if self.cov_ordering_2d == 'probe_ell_zpair':
             self.block_index = 'ell'
@@ -70,10 +72,27 @@ class SpaceborneCovariance:
         else:
             raise ValueError(f'Unknown 2D cov ordering: {self.cov_ordering_2d}')
 
-        # set ell values
-        self.ell_WL, self.nbl_WL = ell_dict['ell_WL'], ell_dict['ell_WL'].shape[0]
-        self.ell_GC, self.nbl_GC = ell_dict['ell_GC'], ell_dict['ell_GC'].shape[0]
-        self.ell_3x2pt, self.nbl_3x2pt = self.ell_GC, self.nbl_GC
+        # set ell, delta_l values
+        self.ells_WL, self.nbl_WL, self.delta_l_WL = (
+            ell_obj.ells_WL,
+            ell_obj.nbl_WL,
+            ell_obj.delta_l_WL,
+        )
+        self.ells_GC, self.nbl_GC, self.delta_l_GC = (
+            ell_obj.ells_GC,
+            ell_obj.nbl_GC,
+            ell_obj.delta_l_GC,
+        )
+        self.ells_XC, self.nbl_XC, self.delta_l_XC = (
+            ell_obj.ells_XC,
+            ell_obj.nbl_XC,
+            ell_obj.delta_l_XC,
+        )
+        self.ells_3x2pt, self.nbl_3x2pt, self.delta_l_3x2pt = (
+            ell_obj.ells_3x2pt,
+            ell_obj.nbl_3x2pt,
+            ell_obj.delta_l_3x2pt,
+        )
 
         self.cov_dict = {}
 
@@ -107,7 +126,7 @@ class SpaceborneCovariance:
         )
 
         if (
-            self.ell_WL.max() < 15
+            self.ells_WL.max() < 15
         ):  # very rudimental check of whether they're in lin or log scale
             raise ValueError(
                 'looks like the ell values are in log scale. '
@@ -247,10 +266,6 @@ class SpaceborneCovariance:
         cl_GG_3D = ccl_obj.cl_gg_3d
         cl_3x2pt_5D = ccl_obj.cl_3x2pt_5d
 
-        delta_l_WL = self.ell_dict['delta_l_WL']
-        delta_l_GC = self.ell_dict['delta_l_GC']
-        delta_l_3x2pt = delta_l_GC
-
         # build noise vector
         sigma_eps2 = (self.cov_cfg['sigma_eps_i'] * np.sqrt(2)) ** 2
         ng_shear = np.array(self.cfg['nz']['ngal_sources'])
@@ -294,8 +309,8 @@ class SpaceborneCovariance:
                     cl_LL_5D,
                     noise_LL_5D,
                     self.fsky,
-                    self.ell_WL,
-                    delta_l_WL,
+                    self.ells_WL,
+                    self.delta_l_WL,
                     split_terms=split_gaussian_cov,
                     return_only_diagonal_ells=False,
                 )
@@ -305,8 +320,8 @@ class SpaceborneCovariance:
                     cl_GG_5D,
                     noise_GG_5D,
                     self.fsky,
-                    self.ell_GC,
-                    delta_l_GC,
+                    self.ells_GC,
+                    self.delta_l_GC,
                     split_terms=split_gaussian_cov,
                     return_only_diagonal_ells=False,
                 )
@@ -319,8 +334,8 @@ class SpaceborneCovariance:
                 cl_3x2pt_5D,
                 noise_3x2pt_5D,
                 self.fsky,
-                self.ell_3x2pt,
-                delta_l_3x2pt,
+                self.ells_3x2pt,
+                self.delta_l_3x2pt,
                 split_terms=split_gaussian_cov,
                 return_only_diagonal_ells=False,
             )
@@ -472,8 +487,8 @@ class SpaceborneCovariance:
                 cl_LL_5D,
                 noise_LL_5D,
                 self.fsky,
-                self.ell_WL,
-                delta_l_WL,
+                self.ells_WL,
+                self.delta_l_WL,
                 split_terms=split_gaussian_cov,
                 return_only_diagonal_ells=False,
             )[0, 0, 0, 0, ...]
@@ -481,8 +496,8 @@ class SpaceborneCovariance:
                 cl_GG_5D,
                 noise_GG_5D,
                 self.fsky,
-                self.ell_GC,
-                delta_l_GC,
+                self.ells_GC,
+                self.delta_l_GC,
                 split_terms=split_gaussian_cov,
                 return_only_diagonal_ells=False,
             )[0, 0, 0, 0, ...]
@@ -490,11 +505,16 @@ class SpaceborneCovariance:
                 cl_3x2pt_5D,
                 noise_3x2pt_5D,
                 self.fsky,
-                self.ell_3x2pt,
-                delta_l_3x2pt,
+                self.ells_3x2pt,
+                self.delta_l_3x2pt,
                 split_terms=split_gaussian_cov,
                 return_only_diagonal_ells=False,
             )
+
+        # elif self.use_nmt:
+        #     from spaceborne import cov_partial_sky
+        #     nmt_obj = cov_partial_sky.NmtCov(self.cfg, self.pvt_cfg, ccl_obj, self.mask_obj)
+        #     nmt_obj.compute_covariance()
 
         # this part is in common, the split case also sets the total cov
         if self.GL_OR_LG == 'GL':

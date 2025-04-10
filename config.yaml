@@ -100,26 +100,35 @@ nz:
     ngal_lenses: [8.09216, 8.09215, 8.09215]  # Type: list[float]
 
 mask:
-    mask_path: .../mask.fits # Type: str
+    load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
+    mask_path: ../input/mask.fits # Type: str. Path to the mask file
+    generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
     nside: 1024 # Type: int
     survey_area_deg2: 13245 # Type: int
     apodize: False # Type: bool
     aposize: 0.1 # Type: float. Apodization scale in deg
 
 namaster:
+    use_namaster: True # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
     coupled_cov: False # Type: bool. Whether to compute the (Gaussian) covariance of the coupled or decoupled Cls
     spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
     use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
     workspace_path: ... # Type: str. Path to the workspace, if already computed
 
 ell_binning:
-    binning_type: 'log'  # Type: str. Options: ['log', 'binned']
-    ell_min: 10 # Type: int. Minimum ell for 3x2pt
+    binning_type: 'ref_cut'  # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
+    
+    ell_min_WL: 10 # Type: int. Minimum ell for WL
     ell_max_WL: 3000 # Type: int. Maximum ell for WL
+    ell_bins_WL: 29 # Type: int. Number of bins for WL. Not used in the 'unbinned' and 'ref_cut' cases
+    
+    ell_min_GC: 10 # Type: int. Minimum ell for GC
     ell_max_GC: 3000 # Type: int. Maximum ell for GC
-    ell_max_3x2pt: 3000 # Type: int
-    nbl_WL_opt: 32 # Type: int. This is the value from which the various bin cuts are applied, do not change it
-    ell_max_WL_opt: 5000 # Type: int. This is the value from which the various bin cuts are applied, do not change it
+    ell_bins_GC: 29 # Type: int. Number of bins for GC. Not used in the 'unbinned' and 'ref_cut' cases
+
+    ell_min_ref: 10 # Type: int. Minimum ell for reference case
+    ell_max_ref: 5000 # Type: int. Maximum ell for reference case
+    ell_bins_ref: 32 # Type: int. Number of bins for reference case
 
 BNT:
     cl_BNT_transform: False # Type: bool
@@ -209,7 +218,7 @@ covariance:
     z_steps: 7000 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 7000
     z_steps_trisp: 50  # Type: int. Number of z steps used to compute the trispectrum - around 50 should be enough
 
-    use_KE_approximation: False # Type: bool
+    use_KE_approximation: True # Type: bool
 
     # Name of the output covariance file. Change to '.npy' to save as npy file.
     cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str. 
@@ -247,6 +256,10 @@ misc:
     levin_batch_size: 1000 # Type: int. 
 
     # some sanity checks on the covariance matrix. These could take a while to run.
+    test_numpy_inversion: False # Type: bool. Test for errors in np.linalg.inv
+    test_condition_number: False # Type: bool. Check if condition number is above 1e10
+    test_cholesky_decomposition: False # Type: bool. Test if cholesky decomposition fails
+    test_symmetry: False # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
     test_numpy_inversion: False # Type: bool. Test for errors in np.linalg.inv
     test_condition_number: False # Type: bool. Check if condition number is above 1e10
     test_cholesky_decomposition: False # Type: bool. Test if cholesky decomposition fails

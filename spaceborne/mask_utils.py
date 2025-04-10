@@ -1,80 +1,17 @@
-import copy
+import os
 
 import healpy as hp
 import numpy as np
-from matplotlib import pyplot as plt
 
 from spaceborne import cosmo_lib
+from spaceborne import constants
 
 
-def get_mask_quantities(clmask=None, mask=None, mask2=None, verbose=True):
-    """Auxiliary routine to compute different mask quantities (ell,Cl,fsky) for 
-    partial sky Sij routines.
-
-    Parameters
-    ----------
-    clmask : str or numpy.ndarray, default None
-        Array or path to fits file containing the angular power spectrum of the mask.
-        To be used when the observable(s) have a single mask.
-
-    mask : str or numpy.ndarray, default None
-        Array or path to fits file containing the mask in healpix form.
-        PySSC will use hp to compute the mask power spectrum.
-        It is faster to directly give clmask if you have it (particularly when calling 
-        PySSC several times).
-        To be used when the observable(s) have a single mask.
-
-    mask2 : str or numpy.ndarray, default None
-        Array or path to fits file containing a potential second mask in healpix form.
-        In the case where you want the covariance between observables measured on 
-        different areas of the sky.
-        PySSC will use hp to compute the mask cross-spectrum.
-        Again, it is faster to directly give clmask if you have it.
-        If mask is set and mask2 is None, PySSC assumes that all observables share the 
-        same mask.
-
-    verbose : bool, default False
-        Verbosity of the routine.
-
-    Returns
-    -------
-    tuple
-        ell, cl_mask, fsky
-    """
-    if mask is None:  # User gives Cl(mask)
-        if verbose:
-            print('Using given Cls')
-        if isinstance(clmask, str):
-            cl_mask = hp.fitsfunc.read_cl(str(clmask))
-        elif isinstance(clmask, np.ndarray):
-            cl_mask = clmask
-        ell = np.arange(len(cl_mask))
-        lmaxofcl = ell.max()
-    else:  # User gives mask as a map
-        if verbose:
-            print('Using given mask map')
-        if isinstance(mask, str):
-            map_mask = hp.read_map(mask, dtype=np.float64)
-        elif isinstance(mask, np.ndarray):
-            map_mask = mask
-        nside = hp.pixelfunc.get_nside(map_mask)
-        lmaxofcl = 2 * nside
-        if mask2 is None:
-            map_mask2 = copy.copy(map_mask)
-        else:
-            if isinstance(mask2, str):
-                map_mask2 = hp.read_map(mask2, dtype=np.float64)
-            elif isinstance(mask2, np.ndarray):
-                map_mask2 = mask2
-        cl_mask = hp.anafast(map_mask, map2=map_mask2, lmax=lmaxofcl)
-        ell = np.arange(lmaxofcl + 1)
-
-    # Compute fsky from the mask
-    fsky = np.sqrt(cl_mask[0] / (4 * np.pi))
-    if verbose:
-        print(f'f_sky = {fsky:.4f}')
-
-    return ell, cl_mask, fsky
+def get_mask_cl(mask: np.ndarray) -> tuple:
+    cl_mask = hp.anafast(mask)
+    ell_mask = np.arange(len(cl_mask))
+    fsky_mask = np.sqrt(cl_mask[0] / (4 * np.pi))
+    return ell_mask, cl_mask, fsky_mask
 
 
 def find_lmax(ell, cl_mask, var_tol=0.05, debug=False):
@@ -92,7 +29,7 @@ def find_lmax(ell, cl_mask, var_tol=0.05, debug=False):
         power spectrum of the mask at the supplied multipoles of shape (nell,).
     var_tol : float, default 0.05
          Float that drives the target precision for the sum over angular multipoles.
-         Default is 5%. Lowering it means increasing the number of multipoles 
+         Default is 5%. Lowering it means increasing the number of multipoles
          thus increasing computational time.
 
     Returns
@@ -125,13 +62,9 @@ def find_lmax(ell, cl_mask, var_tol=0.05, debug=False):
     return lmax
 
 
-def generate_polar_cap(area_deg2, nside):
-    
+def generate_polar_cap_func(area_deg2, nside):
     fsky_expected = cosmo_lib.deg2_to_fsky(area_deg2)
-    print(
-        f'Generating a polar cap mask with area {area_deg2} deg^2 '
-        f'(fsky = {fsky_expected:.4f}) and resolution nside {nside}'
-    )
+    print(f'Generating a polar cap mask with area {area_deg2} deg^2 and nside {nside}')
 
     # Convert the area to radians squared for the angular radius calculation
     area_rad2 = area_deg2 * (np.pi / 180) ** 2
@@ -144,7 +77,7 @@ def generate_polar_cap(area_deg2, nside):
     theta_cap_deg = np.degrees(theta_cap_rad)
     print(f'Angular radius of the cap: {theta_cap_deg:.4f} deg')
 
-    # Vector pointing to the North Pole (θ=0, φ can be anything since 
+    # Vector pointing to the North Pole (θ=0, φ can be anything since
     # θ=0 defines the pole)
     vec = hp.ang2vec(0, 0)
     pixels_in_cap = hp.query_disc(nside, vec, theta_cap_rad)
@@ -160,123 +93,66 @@ def generate_polar_cap(area_deg2, nside):
     return mask
 
 
-def mask_path_to_cl(mask_path, plot_title, coord=('C', 'E')):
-    mask = hp.read_map(mask_path)
-    hp.mollview(mask, coord=coord, title=plot_title, cmap='inferno_r')
-    ell_mask, cl_mask, fsky = get_mask_quantities(
-        clmask=None, mask=mask, mask2=None, verbose=True
-    )
-    nside = hp.get_nside(mask)
-    print(f'nside = {nside}')
-    return ell_mask, cl_mask, fsky, nside
+class Mask:
+    def __init__(self, mask_cfg):
+        self.load_mask = mask_cfg['load_mask']
+        self.mask_path = mask_cfg['mask_path']
+        self.nside = mask_cfg['nside']
+        self.survey_area_deg2 = mask_cfg['survey_area_deg2']
+        self.apodize = mask_cfg['apodize']
+        self.aposize = float(mask_cfg['aposize'])
+        self.generate_polar_cap = mask_cfg['generate_polar_cap']
 
+    def load_mask_func(self):
+        if not os.path.exists(self.mask_path):
+            raise FileNotFoundError(f'{self.mask_path} does not exist.')
 
-def save_masks(mask_path):
-    # ! settings
-    area_deg2 = 14700
-    # area_deg2 = 15000
-    # nside = 4096
-    nside = 2048
-    coord = ['C', 'E']
-    # ! end settings
+        print(f'Loading mask file from {self.mask_path}')
+        if self.mask_path.endswith('.fits'):
+            self.mask = hp.read_map(self.mask_path)
+        elif self.mask_path.endswith('.npy'):
+            self.mask = np.load(self.mask_path)
 
-    # note: generate new mask with
+    def process(self):
+        # 1. load or generate mask
 
-    # Path to the FITS files
-    mask_lowres_path = f'{mask_path}/mask_circular_1pole_15000deg2.fits'
-    mask_circular_path = (
-        f'{mask_path}/mask_circular_1pole_{area_deg2:d}deg2_nside{nside}.fits'
-    )
-    mask_dr1_path = f'{mask_path}/euclid_dr1_mask.fits'
-    mask_q1_path = f'{mask_path}/euclid_q1_mask.fits'
+        # check they are not both True
+        if self.load_mask and self.generate_polar_cap:
+            raise ValueError(
+                'Please choose whether to load or generate the mask, not both.'
+            )
 
-    # * note: to generate new mask:
-    mask = generate_polar_cap(30000, nside)
-    hp.mollview(mask, coord=coord, title='mask', cmap='inferno_r')
-    ell_mask, cl_mask, fsky = get_mask_quantities(
-        clmask=None, mask=mask, mask2=None, verbose=True
-    )
+        if self.load_mask:
+            self.load_mask_func()
 
-    # * note: get the mask with
-    # mask = hp.read_map(mask_path)
-    # compute the area in steradians with
-    # area_ster = mask.sum()*hp.nside2pixarea(nside)
-    # and in square degrees with
-    # area_deg2 = mask.sum()*hp.nside2pixarea(nside, degrees=True)
+        elif self.generate_polar_cap:
+            self.mask = generate_polar_cap_func(self.survey_area_deg2, self.nside)
 
-    # TODO understand why the plot is different, it's probably vec = hp.ang2vec(0, 0)
+        # 2. apodize
+        if hasattr(self, 'mask') and self.apodize:
+            print(f'Apodizing mask with aposize = {self.aposize} deg')
+            import pymaster as nmt
 
-    # compute Cl(mask) and fsky computed from user input (mask(s) or clmask)
-    ell_mask_circular, cl_mask_circular, fsky_circular, nside_circular = (
-        mask_path_to_cl(mask_circular_path, 'pole highres', coord=coord)
-    )
-    ell_mask_dr1, cl_mask_dr1, fsky_dr1, nside_dr1 = mask_path_to_cl(
-        mask_dr1_path, 'dr1', coord=coord
-    )
-    ell_mask_q1, cl_mask_q1, fsky_q1, nside_q1 = mask_path_to_cl(
-        mask_q1_path, 'q1', coord=coord
-    )
-    ell_mask_q1, cl_mask_q1, fsky_q1, nside_q1 = mask_path_to_cl(
-        mask_q1_path, 'q1', coord=coord
-    )
-    ell_mask_circ_5deg2, cl_mask_circ_5deg2, fsky_circ_5deg2, nside_circ_5deg2 = (
-        mask_path_to_cl(mask_circ_5deg2_path, '5deg2', coord=coord)
-    )
+            # Ensure the mask is float64 before apodization
+            self.mask = self.mask.astype('float64', copy=False)
+            self.mask = nmt.mask_apodization(self.mask, aposize=self.aposize)
 
-    area_deg2_circular = int(cosmo_lib.fsky_to_deg2(fsky_circular))
-    area_deg2_dr1 = int(cosmo_lib.fsky_to_deg2(fsky_dr1))
-    area_deg2_q1 = int(cosmo_lib.fsky_to_deg2(fsky_q1))
+        # 3. get mask spectrum and/or fsky
+        if hasattr(self, 'mask'):
+            self.ell_mask, self.cl_mask, self.fsky = get_mask_cl(self.mask)
+            # normalization has been checked from
+            # https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
+            # and is the same as CSST paper https://zenodo.org/records/7813033
+            self.cl_mask_norm = self.cl_mask * (2 * self.ell_mask + 1) / (4 * np.pi * self.fsky) ** 2
+            
 
-    area_deg2_circular = 14700 if area_deg2_circular == 14701 else area_deg2_circular
+        else:
+            print(
+                'No mask provided or requested. The covariance terms will be '
+                'rescaled by 1/fsky'
+            )
+            self.ell_mask = None
+            self.cl_mask = None
+            self.fsky = self.survey_area_deg2 / constants.DEG2_IN_SPHERE
 
-    plt.figure()
-    plt.loglog(
-        ell_mask_circular,
-        cl_mask_circular,
-        ls='--',
-        label=f'high res, fsky = {fsky_circular}',
-        alpha=0.5,
-    )
-    plt.loglog(
-        ell_mask_dr1, cl_mask_dr1, ls='--', label=f'dr1, fsky = {fsky_dr1}', alpha=0.5
-    )
-    plt.loglog(
-        ell_mask_q1, cl_mask_q1, ls='--', label=f'q1, fsky = {fsky_q1}', alpha=0.5
-    )
-    plt.xlabel(r'$\ell$')
-    plt.ylabel(r'$C_\ell^{mask}$')
-    plt.legend()
-
-    np.save(
-        f'{mask_path}/ell_circular_1pole_{area_deg2_circular:d}deg2_nside{nside_circular}.npy',
-        ell_mask_circular,
-    )
-    np.save(
-        f'{mask_path}/Cell_circular_1pole_{area_deg2_circular:d}deg2_nside{nside_circular}.npy',
-        cl_mask_circular,
-    )
-
-    np.save(
-        f'{mask_path}/ell_DR1_{area_deg2_dr1:d}deg2_nside{nside_dr1}.npy', ell_mask_dr1
-    )
-    np.save(
-        f'{mask_path}/Cell_DR1_{area_deg2_dr1:d}deg2_nside{nside_dr1}.npy', cl_mask_dr1
-    )
-
-    np.save(f'{mask_path}/ell_Q1_{area_deg2_q1:d}deg2_nside{nside_q1}.npy', ell_mask_q1)
-    np.save(f'{mask_path}/Cell_Q1_{area_deg2_q1:d}deg2_nside{nside_q1}.npy', cl_mask_q1)
-
-    np.save(
-        f'{mask_path}/ell_circular_1pole_5deg2_nside{nside}.npy', ell_mask_circ_5deg2
-    )
-    np.save(
-        f'{mask_path}/Cell_circular_1pole_5deg2_nside{nside}.npy', cl_mask_circ_5deg2
-    )
-
-    # ! csst mask, very slow to load (more than 3 GB)
-    # mask_csst_full = mask_csst_npz['map_area_only']
-    # map_csst_nobright = mask_csst_npz['map_remove_bright']
-    # ell_csst = mask_csst_npz['l']
-    # cl_mask_csst = mask_csst_npz['Cmask']
-    # cl_mask_csst = hp.anafast(mask_csst_full)  # should give the same as above?
-    # hp.mollview(mask_csst_full, coord=coord, cmap='inferno_r')
+        print(f'fsky = {self.fsky:.4f}')

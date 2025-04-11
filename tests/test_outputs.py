@@ -46,7 +46,6 @@ def test_main_script(test_cfg_path):
     
     print(f'Keys not in common: {set(keys_test) ^ set(keys_bench)}')
 
-
     # Compare outputs
     for key in common_keys:
         if key in excluded_keys:

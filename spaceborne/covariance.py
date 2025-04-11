@@ -35,7 +35,6 @@ class SpaceborneCovariance:
         self.g_code = self.cov_cfg['G_code']
         self.ssc_code = self.cov_cfg['SSC_code']
         self.cng_code = self.cov_cfg['cNG_code']
-        self.fsky = self.cfg['mask']['fsky']
         # must copy the array! Otherwise, it gets modified and changed at each call
         self.cov_ordering_2d = self.cov_cfg['covariance_ordering_2D']
         self.probe_ordering = self.cov_cfg['probe_ordering']

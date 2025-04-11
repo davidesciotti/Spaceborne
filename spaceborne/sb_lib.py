@@ -815,9 +815,10 @@ def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
                     file.write(f'{ell_val:.3f}\t{zi + 1}\t{zj + 1}\t{value:.10e}\n')
 
 
-def write_cl_tab(ascii_folder, ascii_filename, cl_3d, ells, zbins):
-    with open(f'{ascii_folder}/{ascii_filename}', 'w') as file:
-        file.write(f'#ell\t\tzi\tzj\t{ascii_filename}\n')
+def write_cl_tab(folder, filename, cl_3d, ells, zbins):
+    """Write the Cls in the SB txt format."""
+    with open(f'{folder}/{filename}.txt', 'w') as file:
+        file.write(f'#ell\t\tzi\tzj\t{filename}\n')
         for ell_idx, ell_val in enumerate(ells):
             for zi in range(zbins):
                 for zj in range(zbins):

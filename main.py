@@ -55,6 +55,7 @@ script_start_time = time.perf_counter()
 # use the _dev config in the develop branch!
 _config_path = 'config.yaml' if os.path.exists('config.yaml') else 'example_config.yaml'
 
+
 def load_config():
     # Check if we're running in a Jupyter environment (or interactive mode)
     if 'ipykernel_launcher.py' in sys.argv[0]:
@@ -500,7 +501,7 @@ else:
 
 plt.figure()
 for zi in range(zbins):
-    plt.plot(z_grid, ccl_obj.gal_bias_2d[:, zi], label=f'$z_{{{zi}}}$')
+    plt.plot(z_grid, ccl_obj.gal_bias_2d[:, zi], label=f'$z_{{{zi}}}$', c=clr[zi])
 plt.xlabel(r'$z$')
 plt.ylabel(r'$b_{g}(z)$')
 plt.legend()
@@ -622,10 +623,6 @@ ccl_obj.cl_gg_3d = ccl_obj.compute_cls(
     ccl_obj.wf_galaxy_obj,
     cl_ccl_kwargs,
 )
-
-sl.write_cl_tab('./input', 'cl_ll', ccl_obj.cl_ll_3d, ell_obj.ells_WL, zbins)
-sl.write_cl_tab('./input', 'cl_gl', ccl_obj.cl_gl_3d, ell_obj.ells_XC, zbins)
-sl.write_cl_tab('./input', 'cl_gg', ccl_obj.cl_gg_3d, ell_obj.ells_GC, zbins)
 
 
 if cfg['C_ell']['use_input_cls']:
@@ -1410,40 +1407,6 @@ if cfg['misc']['save_output_as_benchmark']:
         **cov_dict,
         metadata=metadata,
     )
-
-cov = (
-    cov_dict['cov_3x2pt_g_2D']
-    + cov_dict['cov_3x2pt_ssc_2D']
-    + cov_dict['cov_3x2pt_cng_2D']
-)
-cov_inv = np.linalg.inv(cov)
-
-# test simmetry
-sl.compare_arrays(
-    cov, cov.T, 'cov', 'cov.T', abs_val=True, log_diff=False, plot_diff_threshold=1
-)
-
-identity = cov @ cov_inv
-identity_true = np.eye(cov.shape[0])
-
-tol = 1e-4
-mask = np.abs(identity) < tol
-masked_identity = np.ma.masked_where(mask, identity)
-sl.matshow(
-    masked_identity, abs_val=True, title=f'cov @ cov_inv\n mask below {tol}', log=True
-)
-
-sl.compare_arrays(
-    cov @ cov_inv,
-    cov_inv @ cov,
-    'cov @ cov_inv',
-    'cov_inv @ cov',
-    abs_val=True,
-    log_diff=True,
-    plot_diff_threshold=1,
-)
-
-plt.semilogy(np.linalg.eigvals(cov))
 
 for which_cov in cov_dict:
     if '3x2pt' in which_cov and 'tot' in which_cov:

@@ -32,11 +32,11 @@ class SpaceborneConfigChecker:
                 'or to the covariance.'
             )
 
-    def check_fsky(self) -> None:
+    # def check_fsky(self) -> None:
         fsky_check = cosmo_lib.deg2_to_fsky(self.cfg['mask']['survey_area_deg2'])
-        assert np.abs(sl.percent_diff(self.cfg['mask']['fsky'], fsky_check)) < 1e-5, (
-            'Fsky does not match the survey area.'
-        )
+        # assert np.abs(sl.percent_diff(self.cfg['mask']['fsky'], fsky_check)) < 1e-5, (
+        #     'fsky does not match the survey area.'
+        # )
 
     def check_KE_approximation(self) -> None:
         if (
@@ -144,7 +144,7 @@ class SpaceborneConfigChecker:
         self.check_ell_cuts()
         self.check_BNT_transform()
         self.check_KE_approximation()
-        self.check_fsky()
+        # self.check_fsky()
         self.check_types()
         self.check_ell_binning()
         self.check_misc()

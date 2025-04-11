@@ -180,9 +180,9 @@ cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [0.1, 0.16681005, 0.27825594, 0.464158
 
 # if in main branch, set this to False
 cfg['nz']['shift_nz'] = True
-if sl.is_main_branch(): 
+if sl.is_main_branch():
     cfg['nz']['shift_nz'] = False
-    
+
 cfg['nz']['dzWL'] = [-0.008848, 0.051368, 0.059484]
 cfg['nz']['dzGC'] = [-0.008848, 0.051368, 0.059484]
 cfg['nz']['normalize_shifted_nz'] = True

@@ -260,9 +260,5 @@ misc:
     test_condition_number: False # Type: bool. Check if condition number is above 1e10
     test_cholesky_decomposition: False # Type: bool. Test if cholesky decomposition fails
     test_symmetry: False # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
-    test_numpy_inversion: False # Type: bool. Test for errors in np.linalg.inv
-    test_condition_number: False # Type: bool. Check if condition number is above 1e10
-    test_cholesky_decomposition: False # Type: bool. Test if cholesky decomposition fails
-    test_symmetry: False # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
     output_path: ./output # Type: str. Path to the output directory

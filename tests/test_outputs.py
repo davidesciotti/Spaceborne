@@ -1,5 +1,24 @@
 """
-To run these tests, pay attention to the hardcoded configs in the main.py!!!
+To run these tests: 
+1.  Decide on a branch/commit/version you wish to use as benchmark. 
+    Then, set `save_output_as_benchmark` to `True` in the config file and choose a 
+    unique benchmark filename. Note that these options are in main.py, as of now. 
+    Also, pay attention to all of the hardcoded configs in main.py, they need to match 
+    between the different versions you're testing.
+2.  Make sure there's no FM-related section at the end of main.py, the code has to finish 
+    without errors.
+3.  Run the code to generate the benchmark file and the associate yaml cfg file.
+4.  Switch branch (for example) and make sure the hardcoded options in main.py are 
+    consistent with the benchmark version.
+5.  Open this script and make sure you indicate the relevant benchmark file name 
+    in the `bench_names` list, then run it.
+6.  If some configs are missing, check the benchmark .yaml file and manually paste them
+    there, rather than adding hardcoded options in main.py.
+    
+Note:   if all checks are run, the content of the tmp folder is deleted, preventing you 
+        to inspect the output files in more detail. In this case, simply stop the script
+        at the end of test_main_script func, eg with 
+        `assert False, 'stop here'`
 """
 
 import glob
@@ -23,6 +42,7 @@ def test_main_script(test_cfg_path):
     keys_test = test_data.files
     keys_bench = bench_data.files
     common_keys = list(set(keys_test) & set(keys_bench))
+    common_keys.sort()
 
 
     # Compare outputs
@@ -71,6 +91,10 @@ def test_main_script(test_cfg_path):
             except (TypeError, AssertionError) as e:
                 # Catch other errors (dtype mismatches, numerical differences)
                 print(f'Comparison failed for {key}: {e}')
+                
+    # example of the Note above
+    # assert False, 'stop here'
+    # sl.compare_arrays(bench_data['cov_3x2pt_tot_2D'], test_data['cov_3x2pt_tot_2D'], plot_diff_threshold=1, plot_diff_hist=True)
 
 
 # Path
@@ -82,7 +106,7 @@ bench_names = [os.path.basename(file) for file in bench_names]
 bench_names = [bench_name.replace('.npz', '') for bench_name in bench_names]
 # ... or run specific tests
 bench_names = [
-    'output_GSpaceborne_SSCSpaceborne_cNGPyCCL_KETrue_resphalo_model_b1gfrom_input_bigchanges',
+    'output_GSpaceborne_SSCSpaceborne_cNGPyCCL_KEFalse_resphalo_model_b1gfrom_HOD_devmerge',
 ]
 
 main_script_path = f'{ROOT}/Spaceborne/main.py'

@@ -229,6 +229,9 @@ PyCCL:
 
     # Whether or not to load the previously computed trispectrum.
     load_cached_tkka: True # Type: bool.
+
+    # Whether or not to use the default k and a grids used in CCL. 
+    # Setting this to True will make the computation of the cNG trispectrum much slower.
     use_default_k_a_grids: False
 
     # (from CCL docs): number of points over which to compute the radial kernels (weight functions).

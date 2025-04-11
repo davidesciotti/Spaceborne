@@ -43,6 +43,8 @@ def test_main_script(test_cfg_path):
     keys_bench = bench_data.files
     common_keys = list(set(keys_test) & set(keys_bench))
     common_keys.sort()
+    
+    print(f'Keys not in common: {set(keys_test) ^ set(keys_bench)}')
 
 
     # Compare outputs

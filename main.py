@@ -103,12 +103,6 @@ magnification_bias_fit_fiducials = np.array(
 )
 # this has the same length as ngal_sources, as checked below
 zbins = len(cfg['nz']['ngal_lenses'])
-ell_max_WL = cfg['ell_binning']['ell_max_WL']
-ell_max_GC = cfg['ell_binning']['ell_max_GC']
-ell_max_3x2pt = cfg['ell_binning']['ell_max_3x2pt']
-nbl_WL_opt = cfg['ell_binning']['nbl_WL_opt']
-triu_tril = cfg['covariance']['triu_tril']
-row_col_major = cfg['covariance']['row_col_major']
 which_sigma2_b = cfg['covariance']['which_sigma2_b']
 probe_ordering = cfg['covariance']['probe_ordering']
 GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
@@ -163,10 +157,10 @@ cfg['OneCovariance']['precision_settings'] = 'default'
 cfg['OneCovariance']['path_to_oc_executable'] = '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py'  # fmt: skip
 cfg['OneCovariance']['path_to_oc_ini'] = './input/config_3x2pt_pure_Cell_general.ini'
 cfg['OneCovariance']['consistency_checks'] = False
-# cfg['misc']['save_output_as_benchmark'] = False
-# cfg['misc']['bench_filename'] = (
-# '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_newtest'
-# )
+cfg['misc']['save_output_as_benchmark'] = False
+cfg['misc']['bench_filename'] = (
+'../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_newtest'
+)
 cfg['ell_cuts']['apply_ell_cuts'] = False  # Type: bool
 cfg['ell_cuts']['center_or_min'] = (
     'center'  # Type: str. Cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
@@ -356,7 +350,9 @@ if cfg['PyCCL']['use_default_k_a_grids']:
 
 # build the ind array and store it into the covariance dictionary
 zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
-ind = sl.build_full_ind(triu_tril, row_col_major, zbins)
+ind = sl.build_full_ind(
+    cfg['covariance']['triu_tril'], cfg['covariance']['row_col_major'], zbins
+)
 ind_auto = ind[:zpairs_auto, :].copy()
 ind_cross = ind[zpairs_auto : zpairs_cross + zpairs_auto, :].copy()
 ind_dict = {('L', 'L'): ind_auto, ('G', 'L'): ind_cross, ('G', 'G'): ind_auto}
@@ -628,6 +624,10 @@ ccl_obj.cl_gg_3d = ccl_obj.compute_cls(
     cl_ccl_kwargs,
 )
 
+sl.write_cl_tab('./input', 'cl_ll', ccl_obj.cl_ll_3d, ell_obj.ells_WL, zbins)
+sl.write_cl_tab('./input', 'cl_gl', ccl_obj.cl_gl_3d, ell_obj.ells_XC, zbins)
+sl.write_cl_tab('./input', 'cl_gg', ccl_obj.cl_gg_3d, ell_obj.ells_GC, zbins)
+
 
 if cfg['C_ell']['use_input_cls']:
     print('Using input Cls')
@@ -635,33 +635,34 @@ if cfg['C_ell']['use_input_cls']:
     cl_gl_tab = np.genfromtxt(cfg['C_ell']['cl_GL_path'])
     cl_gg_tab = np.genfromtxt(cfg['C_ell']['cl_GG_path'])
 
-    ells_WL, cl_ll_3d = sl.import_cl_tab(cl_ll_tab)
-    ells_XC, cl_gl_3d = sl.import_cl_tab(cl_gl_tab)
-    ells_GC, cl_gg_3d = sl.import_cl_tab(cl_gg_tab)
+    ells_WL_in, cl_ll_3d_in = sl.import_cl_tab(cl_ll_tab)
+    ells_XC_in, cl_gl_3d_in = sl.import_cl_tab(cl_gl_tab)
+    ells_GC_in, cl_gg_3d_in = sl.import_cl_tab(cl_gg_tab)
 
-    if not np.allclose(ells_WL, ell_obj.ells_WL, atol=0, rtol=1e-5):
-        cl_ll_3d_spline = CubicSpline(ells_WL, cl_ll_3d, axis=0)
-        cl_ll_3d = cl_ll_3d_spline(ell_obj.ells_WL)
+    if not np.allclose(ells_WL_in, ell_obj.ells_WL, atol=0, rtol=1e-5):
+        cl_ll_3d_spline = CubicSpline(ells_WL_in, cl_ll_3d_in, axis=0)
+        cl_ll_3d_in = cl_ll_3d_spline(ell_obj.ells_WL)
 
-    if not np.allclose(ells_XC, ell_obj.ells_XC, atol=0, rtol=1e-5):
-        cl_gl_3d_spline = CubicSpline(ells_XC, cl_gl_3d, axis=0)
-        cl_gl_3d = cl_gl_3d_spline(ell_obj.ells_XC)
+    if not np.allclose(ells_XC_in, ell_obj.ells_XC, atol=0, rtol=1e-5):
+        cl_gl_3d_spline = CubicSpline(ells_XC_in, cl_gl_3d_in, axis=0)
+        cl_gl_3d_in = cl_gl_3d_spline(ell_obj.ells_XC)
 
-    if not np.allclose(ells_GC, ell_obj.ells_GC, atol=0, rtol=1e-5):
-        cl_gg_3d_spline = CubicSpline(ells_GC, cl_gg_3d, axis=0)
-        cl_gg_3d = cl_gg_3d_spline(ell_obj.ells_GC)
+    if not np.allclose(ells_GC_in, ell_obj.ells_GC, atol=0, rtol=1e-5):
+        cl_gg_3d_spline = CubicSpline(ells_GC_in, cl_gg_3d_in, axis=0)
+        cl_gg_3d_in = cl_gg_3d_spline(ell_obj.ells_GC)
 
-    warnings.warn('finish checking this, in particular the delta_ells')
-    delta_l_WL = np.diff(ells_WL)
-    delta_l_GL = np.diff(ells_XC)
-    delta_l_GC = np.diff(ells_GC)
+    # save the sb cls for the plot below
+    cl_ll_3d_sb = ccl_obj.cl_ll_3d
+    cl_gl_3d_sb = ccl_obj.cl_gl_3d
+    cl_gg_3d_sb = ccl_obj.cl_gg_3d
+    cl_ll_3d_sb, cl_gl_3d_sb = pyccl_interface.apply_mult_shear_bias(
+        cl_ll_3d_sb, cl_gl_3d_sb, np.array(cfg['C_ell']['mult_shear_bias']), zbins
+    )
 
-    # fill the delta_ell à la CosmoSIS
-    delta_l_WL = np.insert(delta_l_WL, 0, delta_l_WL[0])
-    delta_l_GL = np.insert(delta_l_GL, 0, delta_l_GL[0])
-    delta_l_GC = np.insert(delta_l_GC, 0, delta_l_GC[0])
-
-    ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d = cl_ll_3d, cl_gl_3d, cl_gg_3d
+    # assign them to ccl_obj
+    ccl_obj.cl_ll_3d = cl_ll_3d_in
+    ccl_obj.cl_gl_3d = cl_gl_3d_in
+    ccl_obj.cl_gg_3d = cl_gg_3d_in
 
 
 # ! add multiplicative shear bias
@@ -679,13 +680,45 @@ ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[
 ].transpose(0, 2, 1)
 ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[: ell_obj.nbl_3x2pt, :, :]
 
-fig, ax = plt.subplots(1, 3)
+fig, ax = plt.subplots(1, 3, figsize=(12, 4))
 plt.tight_layout()
 for zi in range(zbins):
     zj = zi
-    ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_ll_3d[:, zi, zj], c=clr[zi], marker='.')
-    ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_gl_3d[:, zi, zj], c=clr[zi], marker='.')
-    ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_gg_3d[:, zi, zj], c=clr[zi], marker='.')
+    ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_ll_3d[:, zi, zj], c=clr[zi], ls='-')
+    ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_gl_3d[:, zi, zj], c=clr[zi], ls='-')
+    ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_gg_3d[:, zi, zj], c=clr[zi], ls='-')
+
+if cfg['C_ell']['use_input_cls']:
+    for zi in range(zbins):
+        zj = zi
+        kw = dict(c=clr[zi], ls='', marker='.')
+        ax[0].loglog(ell_obj.ells_WL, cl_ll_3d_sb[:, zi, zj], **kw)
+        ax[1].loglog(ell_obj.ells_XC, cl_gl_3d_sb[:, zi, zj], **kw)
+        ax[2].loglog(ell_obj.ells_GC, cl_gg_3d_sb[:, zi, zj], **kw)
+    # Add style legend only to middle plot
+    style_legend = ax[1].legend(
+        handles=[
+            plt.Line2D([], [], color='gray', ls='-', label='SB'),
+            plt.Line2D([], [], color='gray', ls='', marker='.', label='Input'),
+        ],
+        loc='upper right',
+        fontsize=8,
+        frameon=False,
+    )
+    ax[1].add_artist(style_legend)  # Preserve after adding z-bin legend
+
+
+ax[2].legend(
+    [f'$z_{{{zi}}}$' for zi in range(zbins)],
+    loc='upper right',
+    fontsize=8,
+    frameon=False,
+)
+
+
+ax[0].set_title('LL')
+ax[1].set_title('GL')
+ax[2].set_title('GG')
 ax[0].set_xlabel('$\\ell$')
 ax[1].set_xlabel('$\\ell$')
 ax[2].set_xlabel('$\\ell$')
@@ -781,6 +814,7 @@ else:
 # ! build covariance matrices
 cov_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_obj, bnt_matrix)
 cov_obj.jl_integrator_path = './spaceborne/julia_integrator.jl'
+cov_obj.fsky = mask_obj.fsky
 cov_obj.set_ind_and_zpairs(ind, zbins)
 cov_obj.symmetrize_output_dict = symmetrize_output_dict
 cov_obj.consistency_checks()
@@ -1683,26 +1717,26 @@ elif not fm_cfg['load_preprocess_derivatives']:
         if not key.startswith('dDVddzGC'):
             if 'WLO' in key:
                 dC_dict_LL_3D[key] = cl_utils.cl_SPV3_1D_to_3D(
-                    dC_dict_1D[key], 'WL', nbl_WL_opt, zbins
-                )[:nbl_WL, :, :]
+                    dC_dict_1D[key], 'WL', cfg['ell_binning']['ell_bins_ref'], zbins
+                )[:ell_obj.nbl_WL, :, :]
             elif 'GCO' in key:
                 dC_dict_GG_3D[key] = cl_utils.cl_SPV3_1D_to_3D(
-                    dC_dict_1D[key], 'GC', nbl_GC, zbins
+                    dC_dict_1D[key], 'GC', ell_obj.nbl_GC, zbins
                 )
             elif '3x2pt' in key:
                 dC_dict_3x2pt_5D[key] = cl_utils.cl_SPV3_1D_to_3D(
-                    dC_dict_1D[key], '3x2pt', nbl_3x2pt, zbins
+                    dC_dict_1D[key], '3x2pt', ell_obj.nbl_3x2pt, zbins
                 )
 
     # turn the dictionaries of derivatives into npy array of shape (nbl, zbins, zbins, nparams)
     dC_LL_4D_vin = sl.dC_dict_to_4D_array(
-        dC_dict_LL_3D, param_names_3x2pt, nbl_WL, zbins, der_prefix
+        dC_dict_LL_3D, param_names_3x2pt, ell_obj.nbl_WL, zbins, der_prefix
     )
     dC_GG_4D_vin = sl.dC_dict_to_4D_array(
-        dC_dict_GG_3D, param_names_3x2pt, nbl_GC, zbins, der_prefix
+        dC_dict_GG_3D, param_names_3x2pt, ell_obj.nbl_GC, zbins, der_prefix
     )
     dC_3x2pt_6D_vin = sl.dC_dict_to_4D_array(
-        dC_dict_3x2pt_5D, param_names_3x2pt, nbl_3x2pt, zbins, der_prefix, is_3x2pt=True
+        dC_dict_3x2pt_5D, param_names_3x2pt, ell_obj.nbl_3x2pt, zbins, der_prefix, is_3x2pt=True
     )
 
     # free up memory

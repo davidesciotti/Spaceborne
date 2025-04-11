@@ -97,7 +97,7 @@ $ julia -e 'using Pkg; Pkg.add("LoopVectorization"); Pkg.add("YAML"); Pkg.add("N
 
 # Running the Code
 
-All the available options and configurations can be found, along with their explanation, in the `config.yaml` file. To run `Spaceborne` *with the configuration specified in the* `Spaceborne/config.yaml` *file*, simply execute the following command:
+All the available options and configurations can be found, along with their explanation, in the `example_config.yaml` file. To run `Spaceborne` *with the configuration specified in the* `Spaceborne/example_config.yaml` *file*, simply execute the following command:
 
 ```bash
 $ python main.py

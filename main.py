@@ -156,15 +156,14 @@ cfg['covariance']['n_probes'] = 2
 cfg['covariance']['G_code'] = 'Spaceborne'
 cfg['covariance']['SSC_code'] = 'Spaceborne'
 cfg['covariance']['cNG_code'] = 'PyCCL'
-cfg['BNT']['compute_bnt_with_shifted_nz_for_zcuts']: False
-cfg['BNT']['include_ia_in_bnt_kernel_for_zcuts']: False
+cfg['mask']['nside_mask'] = 1024
 cfg['OneCovariance']['precision_settings'] = 'default'
 cfg['OneCovariance']['path_to_oc_executable'] = '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py'  # fmt: skip
 cfg['OneCovariance']['path_to_oc_ini'] = './input/config_3x2pt_pure_Cell_general.ini'
 cfg['OneCovariance']['consistency_checks'] = False
 cfg['misc']['save_output_as_benchmark'] = False
 cfg['misc']['bench_filename'] = (
-    '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_newtest'
+    '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_devmerge'
 )
 cfg['ell_cuts']['apply_ell_cuts'] = False  # Type: bool
 cfg['ell_cuts']['center_or_min'] = (
@@ -575,7 +574,7 @@ else:
 
 plt.figure()
 for zi in range(zbins):
-    plt.plot(z_grid, ccl_obj.gal_bias_2d[:, zi], label=f'$z_{{{zi}}}$')
+    plt.plot(z_grid, ccl_obj.gal_bias_2d[:, zi], label=f'$z_{{{zi}}}$', c=clr[zi])
 plt.xlabel(r'$z$')
 plt.ylabel(r'$b_{g}(z)$')
 plt.legend()

@@ -50,7 +50,7 @@ C_ell:
     # with `ell` the ell value, zi the i-th tomographic bin index, and zj the j-th tomographic bin index.
     # The Cls are then splined along the \ell axis and interpolated over the \ell values specified in the "ell_binning"
     # section of this cfg file.
-    use_input_cls: False  # Type: bool
+    use_input_cls: True  # Type: bool
 
     cl_LL_path: ./input/cl_ll.txt # Type: str. Path to the shear-shear angular PS. 
     cl_GL_path: ./input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS. 
@@ -211,14 +211,14 @@ covariance:
     # k grid used for power spectrum and trispectrum computation
     log10_k_min: -5  # Type: float 
     log10_k_max: 2  # Type: float
-    k_steps: 100  # Type: int
+    k_steps: 100  # Type: int. Around 100 should be enough
     
     z_min: 0.02 # Type: float. SU responses' kmax allow for z_min = 0.016, at most.
     z_max: 3.0 # Type: float
-    z_steps: 100 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 5000
-    z_steps_trisp: 20  # Type: int. Number of z steps used to compute the trispectrum - around 100 should be enough
+    z_steps: 100 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 7000
+    z_steps_trisp: 20  # Type: int. Number of z steps used to compute the trispectrum - around 50 should be enough
 
-    use_KE_approximation: True # Type: bool
+    use_KE_approximation: True # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
 
     # Name of the output covariance file. Change to '.npy' to save as npy file.
     cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str. 

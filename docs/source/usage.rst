@@ -5,7 +5,10 @@ Usage
 Running the Code
 ================
 
-All the available options and configurations can be found, along with their explanation, in the ``example_config.yaml`` file. To run `Spaceborne` **using this configuration file**, simply run:
+All the available options and configurations can be found, along with their explanation, 
+in the ``example_config.yaml`` file. Type hints for all of the different options are 
+included in the comments. To run `Spaceborne` **using this configuration file**, 
+simply run:
 
 .. code-block:: bash
    
@@ -51,10 +54,21 @@ operations for later use. In particular, these are the survey covariance
 
 .. code-block:: yaml
 
-   cfg['covariance']['load_cached_sigma2_b']: False
-   cfg['PyCCL']['load_cached_tkka']: False 
+   covariance:
+      load_cached_sigma2_b: False
+      
+   PyCCL:
+      load_cached_tkka: False 
 
 to avoid running into errors (the files do not exist yet). If you rerun the code 
 **with consistent settings**, you can load these in later runs changing the 
 configurations above to ``True``. The code will not check the consistency of, 
 say, the cosmological parameters you used to compute the cached quantities.
+
+Note that these and other expensive operations are run in parallel, so the code will 
+run faster simply by increasing the number of threads used:
+
+.. code-block:: yaml
+
+   misc:
+      num_threads: 40

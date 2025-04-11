@@ -246,7 +246,7 @@ PyCCL:
     gsl_params: null # Type: dict | None
 
 misc:
-    num_threads: 40 # Type: int. How many threads to use for the Julia SSC integral with @tturbo
+    num_threads: 40 # Type: int. How many threads to use for the parallel computations
 
     # How many integrals to compute at once for the  numerical integration of
     # the sigma^2_b(z_1, z_2) function with pylevin. 

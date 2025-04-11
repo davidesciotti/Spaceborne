@@ -50,7 +50,7 @@ C_ell:
     # with `ell` the ell value, zi the i-th tomographic bin index, and zj the j-th tomographic bin index.
     # The Cls are then splined along the \ell axis and interpolated over the \ell values specified in the "ell_binning"
     # section of this cfg file.
-    use_input_cls: True  # Type: bool
+    use_input_cls: False  # Type: bool
 
     cl_LL_path: ./input/cl_ll.txt # Type: str. Path to the shear-shear angular PS. 
     cl_GL_path: ./input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS. 

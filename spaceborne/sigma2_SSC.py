@@ -79,7 +79,7 @@ def init_cosmo(cosmo):
     COSMO_CCL = cosmo
 
 
-def sigma2_z1z2_wrap_parallel(
+def sigma2_z1z2_wrap_parallel_old(
     z_grid: np.ndarray,
     k_grid_sigma2: np.ndarray,
     cosmo_ccl: ccl.Cosmology,
@@ -104,7 +104,7 @@ def sigma2_z1z2_wrap_parallel(
         fsky_mask = None  # Not needed in this case
 
     elif which_sigma2_b == 'polar_cap_on_the_fly':
-        mask = mask_utils.generate_polar_cap(area_deg2_in, nside_mask)
+        mask = mask_utils.generate_polar_cap_func(area_deg2_in, nside_mask)
 
     elif which_sigma2_b == 'from_input_mask':
         mask = hp.read_map(mask_path)
@@ -171,6 +171,79 @@ def sigma2_z1z2_wrap_parallel(
             ell_mask=ell_mask,
             cl_mask=cl_mask,
             fsky_mask=fsky_mask,
+            n_jobs=n_jobs,
+            batch_size=batch_size,
+        )
+
+    else:
+        raise ValueError('Invalid combination of "parallel" and "integration_scheme". ')
+
+    print(f'done in {time.perf_counter() - start} s')
+
+    return sigma2_b
+
+def sigma2_z1z2_wrap_parallel(
+    z_grid: np.ndarray,
+    k_grid_sigma2: np.ndarray,
+    cosmo_ccl: ccl.Cosmology,
+    which_sigma2_b: str,
+    mask_obj,
+    n_jobs: int,
+    integration_scheme: str,
+    batch_size: int,
+    parallel: bool = True,
+) -> np.ndarray:
+    """
+    Parallelized version of sigma2_z1z2_wrap using joblib.
+    """
+   
+    print('Computing sigma^2_b(z_1, z_2). This may take a while...')
+    start = time.perf_counter()
+
+    if parallel and integration_scheme == 'simps':
+        from pathos.multiprocessing import ProcessingPool as Pool
+
+        # Create a list of arguments—one per z2 value in z_grid
+        # Build the argument list without cosmo_ccl:
+        arg_list = [
+            (z2, z_grid, k_grid_sigma2, which_sigma2_b, 
+             mask_obj.ell_mask, mask_obj.cl_mask, mask_obj.fsky)
+            for z2 in z_grid
+        ]
+
+        # Create a Pathos ProcessingPool and initialize each worker:
+        start = time.perf_counter()
+        pool = Pool(n_jobs, initializer=init_cosmo, initargs=(cosmo_ccl,))
+        sigma2_b_list = pool.map(pool_compute_sigma2_b, arg_list)
+
+        # Convert the list of results to a numpy array and transpose
+        sigma2_b = np.array(sigma2_b_list).T
+
+    elif not parallel and integration_scheme == 'simps':
+        sigma2_b = np.zeros((len(z_grid), len(z_grid)))
+        for z2_idx, z2 in enumerate(tqdm(z_grid)):
+            sigma2_b[:, z2_idx] = sigma2_z2_func_vectorized(
+                z1_arr=z_grid,
+                z2=z2,
+                k_grid_sigma2=k_grid_sigma2,
+                cosmo_ccl=cosmo_ccl,
+                which_sigma2_b=which_sigma2_b,
+                ell_mask=mask_obj.ell_mask,
+                cl_mask=mask_obj.cl_mask,
+                fsky_mask=mask_obj.fsky,
+                integration_scheme=integration_scheme,
+                n_jobs=n_jobs,
+            )
+
+    elif integration_scheme == 'levin':
+        sigma2_b = sigma2_b_levin_batched(
+            z_grid=z_grid,
+            k_grid=k_grid_sigma2,
+            cosmo_ccl=cosmo_ccl,
+            which_sigma2_b=which_sigma2_b,
+            ell_mask=mask_obj.ell_mask,
+            cl_mask=mask_obj.cl_mask,
+            fsky_mask=mask_obj.fsky,
             n_jobs=n_jobs,
             batch_size=batch_size,
         )

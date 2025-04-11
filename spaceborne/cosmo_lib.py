@@ -7,6 +7,7 @@ from scipy.integrate import simpson as simps
 
 import pyccl as ccl
 from spaceborne import sb_lib as sl
+from spaceborne import constants
 
 # ! prefactor for limber and curved-sky corrections
 # prefactor = np.array(
@@ -24,7 +25,7 @@ from spaceborne import sb_lib as sl
 # TODO create function to compute pk from CAMB, with a vectorized k or z
 
 
-c = 299792.458  # km/s
+c = constants.SPEED_OF_LIGHT
 
 
 def map_keys(input_dict, key_mapping):

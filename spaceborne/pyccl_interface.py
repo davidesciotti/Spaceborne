@@ -12,6 +12,30 @@ from spaceborne import cosmo_lib, mask_utils, wf_cl_lib
 from spaceborne import sb_lib as sl
 
 
+def apply_mult_shear_bias(cl_ll_3d, cl_gl_3d, mult_shear_bias, zbins):
+    assert len(mult_shear_bias) == zbins, (
+        'mult_shear_bias should be a vector of length zbins'
+    )
+
+    if np.all(mult_shear_bias == 0):
+        return cl_ll_3d, cl_gl_3d
+
+    print('Applying multiplicative shear bias')
+    for ell_idx in range(cl_ll_3d.shape[0]):
+        for zi in range(zbins):
+            for zj in range(zbins):
+                cl_ll_3d[ell_idx, zi, zj] *= (1 + mult_shear_bias[zi]) * (
+                    1 + mult_shear_bias[zj]
+                )
+
+    for ell_idx in range(cl_gl_3d.shape[0]):
+        for zi in range(zbins):
+            for zj in range(zbins):
+                cl_gl_3d[ell_idx, zi, zj] *= 1 + mult_shear_bias[zj]
+
+    return cl_ll_3d, cl_gl_3d
+
+
 class PycclClass:
     def __init__(
         self,
@@ -306,12 +330,15 @@ class PycclClass:
 
     # ! ================================================================================
 
-    def set_sigma2_b(self, z_grid, fsky, which_sigma2_b, nside_mask, mask_path=None):
+    # TODO deprecate this func
+    def set_sigma2_b_old(
+        self, z_grid, fsky, which_sigma2_b, nside_mask, mask_path=None
+    ):
         self.a_grid_sigma2_b = cosmo_lib.z_to_a(z_grid)[::-1]
         area_deg2 = fsky * 4 * np.pi * (180 / np.pi) ** 2
 
         if which_sigma2_b == 'polar_cap_on_the_fly':
-            mask = mask_utils.generate_polar_cap(area_deg2, nside_mask)
+            mask = mask_utils.generate_polar_cap_func(area_deg2, nside_mask)
 
         elif which_sigma2_b == 'from_input_mask':
             mask = hp.read_map(mask_path)
@@ -357,6 +384,34 @@ class PycclClass:
                 '"polar_cap_on_the_fly" or None'
             )
 
+    def set_sigma2_b(self, z_grid, which_sigma2_b, mask_obj):
+        print(mask_obj.fsky)
+        self.a_grid_sigma2_b = cosmo_lib.z_to_a(z_grid)[::-1]
+
+        # normalize the mask and pass it to sigma2_B_from_mask
+        if which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
+            sigma2_b = ccl.covariances.sigma2_B_from_mask(
+                cosmo=self.cosmo_ccl,
+                a_arr=self.a_grid_sigma2_b,
+                mask_wl=mask_obj.cl_mask_norm,
+            )
+            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
+
+        elif which_sigma2_b == 'flat_sky':
+            sigma2_b = ccl.covariances.sigma2_B_disc(
+                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, fsky=mask_obj.fsky
+            )
+            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
+
+        elif which_sigma2_b is None:
+            self.sigma2_b_tuple = None
+
+        else:
+            raise ValueError(
+                'which_sigma2_b must be either "from_input_mask", '
+                '"polar_cap_on_the_fly" or None'
+            )
+
     def initialize_trispectrum(self, which_ng_cov, probe_ordering, pyccl_cfg):
         # some setup
         comp_load_str = 'Loading' if pyccl_cfg['load_cached_tkka'] else 'Computing'
@@ -385,7 +440,7 @@ class PycclClass:
                     continue
 
                 probe_block = A + B + C + D
-                
+
                 start = time.perf_counter()
 
                 print(
@@ -405,7 +460,7 @@ class PycclClass:
 
                 self.tkka_dict[A, B, C, D] = tkka_abcd
 
-                print(f'done in {(time.perf_counter() - start)/60:.2f} m')
+                print(f'done in {(time.perf_counter() - start) / 60:.2f} m')
 
         return
 
@@ -466,13 +521,18 @@ class PycclClass:
         return tkka_abcd
 
     def _print_grid_info(self, which_ng_cov):
+        # get grids
         a_grid = getattr(self, f'a_grid_tkka_{which_ng_cov}', None)
         logn_k_grid = getattr(self, f'logn_k_grid_tkka_{which_ng_cov}', None)
+
+        # print info
         if a_grid is not None and logn_k_grid is not None:
             print(
                 f'{which_ng_cov} trispectrum: z points = {a_grid.size}, '
                 f'k points = {logn_k_grid.size}'
             )
+
+        # set string
         k_a_str = (
             f'amin{a_grid.min():.2f}_amax{a_grid.max():.2f}'
             f'_asteps{a_grid.size}_lnkmin{logn_k_grid.min():.2f}'
@@ -659,14 +719,11 @@ class PycclClass:
                     )
 
                 else:
-                    print(
+                    print(  # fmt: skip
                         'CCL 3x2pt cov: skipping probe combination ',
-                        probe_a,
-                        probe_b,
-                        probe_c,
-                        probe_d,
-                    )
-                    cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
+                        probe_a, probe_b, probe_c, probe_d
+                    )  # fmt: skip
+                    cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = np.copy(
                         cov_ng_3x2pt_dict_8D[
                             probe_c, probe_d, probe_a, probe_b
                         ].transpose(1, 0, 3, 2)

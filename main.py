@@ -159,7 +159,7 @@ cfg['OneCovariance']['path_to_oc_ini'] = './input/config_3x2pt_pure_Cell_general
 cfg['OneCovariance']['consistency_checks'] = False
 cfg['misc']['save_output_as_benchmark'] = False
 cfg['misc']['bench_filename'] = (
-'../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_newtest'
+    '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_newtest'
 )
 cfg['ell_cuts']['apply_ell_cuts'] = False  # Type: bool
 cfg['ell_cuts']['center_or_min'] = (
@@ -1301,6 +1301,11 @@ print(f'Covariance matrices saved in {output_path}\n')
 # save cfg file
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.dump(cfg, yaml_file, default_flow_style=False)
+    
+# save cls
+sl.write_cl_tab('./output', 'cl_ll', ccl_obj.cl_ll_3d, ell_obj.ells_WL, zbins)
+sl.write_cl_tab('./output', 'cl_gl', ccl_obj.cl_gl_3d, ell_obj.ells_XC, zbins)
+sl.write_cl_tab('./output', 'cl_gg', ccl_obj.cl_gg_3d, ell_obj.ells_GC, zbins)
 
 # save ell values
 header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']

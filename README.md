@@ -55,14 +55,14 @@ on OSX. The installation on Windows machines is not supported.
 
 ## 2. Install Spaceborne
 
-### Option A: Using `pip`
+<!-- ### Option A: Using `pip` -->
 
 To install Spaceborne directly:
 
 ```bash
 $ pip install .
 ```
-
+<!-- 
 ### Option B: Using Poetry
 
 [Poetry](https://python-poetry.org/) is an alternative package manager. To use it:
@@ -74,7 +74,7 @@ $ pip install .
 2. Install Spaceborne:
    ```bash
    $ poetry install
-   ```
+   ``` -->
 
 ---
 

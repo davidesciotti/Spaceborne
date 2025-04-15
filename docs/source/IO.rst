@@ -50,7 +50,7 @@ configuration file.
    * second column: index of the i-th redshift bin
    * third column: index of the j-th redshift bin
    * fourth column: :math:`C_{ij}(\ell)` value
-   
+
    
    .. figure:: images/cls.png
       :align: center
@@ -236,3 +236,12 @@ and edges). These can be found in the ``ell_values_<probe>.txt`` files.
 
 The :math:`C_{ij}(\ell)` are also saved as plain ``.txt`` files, with the same format as
 for the input (see point 2 of :ref:`Inputs` section).
+
+
++++++++++++++++++++
+``run_config.yaml``
++++++++++++++++++++
+
+The last output of the code is the ``run_config.yaml`` file, which contains the configurations
+used to run the code. This can be useful to reproduce the same run in the future, 
+as well as to have a reference of the exact settings used.

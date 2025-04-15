@@ -7,14 +7,15 @@ Running the Code
 
 All the available options and configurations can be found, along with their explanation, 
 in the ``example_config.yaml`` file. Type hints for all of the different options are 
-included in the comments. To run `Spaceborne` **using this configuration file**, 
-simply run:
+included in the comments. To run ``Spaceborne`` **using this configuration file**, 
+activate the previously created ``spaceborne`` environment and simply run:
 
 .. code-block:: bash
    
    $ python main.py
 
-If you want to use a configuration file with a different name and/or path, you can do it with
+If you want to use a configuration file with a different name and/or path, you can 
+do it with
 
 .. code-block:: bash
    

@@ -1,5 +1,5 @@
 # docs/requirements.txt
-sphinx
+sphinx>=4.0.0
 sphinx-rtd-theme
 numpydoc
 # Add napoleon if you enabled it via sphinx.ext.napoleon

@@ -93,7 +93,3 @@ therefore needs to be installed for the code to run.
   the pseudo-:math:`C_\ell` framework (see `1809.09603 <https://arxiv.org/abs/1809.09603>`_).
 
 
-
-
-
-

@@ -1,6 +1,6 @@
 # docs/requirements.txt
 sphinx
 sphinx-rtd-theme
-numpyydoc
+numpydoc
 # Add napoleon if you enabled it via sphinx.ext.napoleon
 # Add myst-parser if using Markdown

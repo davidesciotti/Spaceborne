@@ -16,6 +16,22 @@ then run
    $ conda activate spaceborne
    $ pip install .
 
+
+``Spaceborne`` leverages the `julia language <https://julialang.org/>`_ for 
+computationally intensive tasks. 
+We recommend installing ``Julia`` via `juliaup <https://github.com/JuliaLang/juliaup>`_:
+
+.. code-block:: bash
+
+   $ curl -fsSL https://install.julialang.org | sh  # Install juliaup
+   $ juliaup default 1.10                           # Install Julia version 1.10
+
+Then, install the required ``Julia`` packages:
+
+..  code-block:: bash
+
+   $ julia -e 'using Pkg; Pkg.add("LoopVectorization"); Pkg.add("YAML"); Pkg.add("NPZ")'
+
 and you are ready to go!
 
 Notes
@@ -62,7 +78,7 @@ therefore needs to be installed for the code to run.
 * ``CCL``. The code relies heavily on the ``CCL`` library for the computation of the background 
   evolution, radial kernels, angular power spectra, halo model, and connected trispectrum.
   This is the main dependency of the code, and it is mandatory to run it.
-* ``CLOE``. [TO BE DEVELOPED]. Alternatively, the code can use the ``CLOE`` library as 
+* ``CLOE``. [WORK IN PROGRESS]. Alternatively, the code can use the ``CLOE`` library as 
   a backend for the calculation of the background evolution, radial kernels and 
   angular power spectra. Note that also in this case, the halo mode quantities and 
   connected trispectra will still be computed with ``CCL``.

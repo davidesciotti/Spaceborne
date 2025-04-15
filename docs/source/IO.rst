@@ -39,7 +39,7 @@ configuration file.
          lumin_ratio_filename: null
 
 
-2. :math:`\boldsymbol{C_{ij}(\ell)}` :ref:`cls`
+2. :math:`\boldsymbol{C_{ij}(\ell)}`
 
    The input :math:`C_{ij}(\ell)` can be provided as an external input to 
    compute the Gaussian
@@ -214,10 +214,13 @@ the ``save_full_cov`` key to ``True`` in the configuration file.
 
 .. |pic2| image:: images/corr_3x2pt_tot_2D_probe_zpair_ell.png
    :width: 49%
-   
+
 |pic1| |pic2|
-*Further examples of of the 2D orerings, this time displaying the correlation matrix.
-*
+
+.. raw:: html
+
+   <p style="text-align: center; font-style: italic;">Further examples of the 
+   2D orderings, this time displaying the correlation matrix.</p>
 
 +++++++++++++++++++
 :math:`\ell` values
@@ -235,7 +238,7 @@ and edges). These can be found in the ``ell_values_<probe>.txt`` files.
 ++++++++++++++++++++
 
 The :math:`C_{ij}(\ell)` are also saved as plain ``.txt`` files, with the same format as
-for the input (see point 2 of :ref:`Inputs` section).
+for the input (see point 2 of "Inputs" section).
 
 
 +++++++++++++++++++

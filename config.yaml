@@ -57,7 +57,7 @@ C_ell:
     # - 'FS2_polynomial_fit': use the third-order polynomial fits to the galaxy and magnification bias from Flagship 2.
     #                         The actual values of these coefficients can be changed by modifying the values of 
     #                         'galaxy_bias_fit_coeff' and 'magnification_bias_fit_coeff'.
-    which_gal_bias: "FS2_polynomial_fit" # Type: str.
+    which_gal_bias: "FS2_polynomial_fit" # Type: str.  # TODO change to "polynomial"
     which_mag_bias: "FS2_polynomial_fit" # Type: str.
     
     # Coefficients of the third-order polynomial galaxy and magnification bias
@@ -67,7 +67,7 @@ C_ell:
     # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
     # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
     gal_bias_table_filename: ./input/gal_bias.txt # Type: str
-    mag_bias_table_filedname: ./input/mag_bias.txt # Type: str
+    mag_bias_table_filename: ./input/mag_bias.txt # Type: str
     
     # Multiplicative shear bias per redshift bin
     mult_shear_bias: [0.0, 0.0, 0.0] # Type: list[float]
@@ -97,7 +97,7 @@ nz:
 
 mask:
     load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
-    mask_path: ../input/mask.fits # Type: str. Path to the mask file
+    mask_path: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
     generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
     nside: 1024 # Type: int
     survey_area_deg2: 13245 # Type: int
@@ -154,13 +154,9 @@ covariance:
     # - probe_ell_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordering used by CLOE
     covariance_ordering_2D: ell_probe_zpair # Type: str.
     
-    # Whether to save the full 6D (10D) covariance matrix, without to any indices compression or reshaping. 
+    # Whether to save the full 6D covariance matrix, without to any indices compression or reshaping. 
     # In the case of the single probes, this is an array of shape
     # (ellbins, ellbins, zbins, zbins, zbins, zbins).
-    # In the 3x2pt case, this is an array of shape
-    # (n_probes, n_probes, n_probes, n_probes, ellbins, ellbins, zbins, zbins, zbins, zbins), 
-    # with nbl the number of probes. The probe index is by default 0 for WL, 1 for GC.
-    # Keep in mind that the arrays will likely be quite large. 
     save_full_cov: True # Type: bool
     
     # Whether to split the Gaussian covariance term into the
@@ -186,6 +182,7 @@ covariance:
     #   has to be rescaled by fsky
     which_sigma2_b: polar_cap_on_the_fly # Type: str | None
 
+    # TODO SU input file???
     which_pk_responses: halo_model # Type: str. Options: ['halo_model', 'separate_universe']
 
     # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
@@ -214,7 +211,7 @@ covariance:
     z_steps: 100 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 7000
     z_steps_trisp: 20  # Type: int. Number of z steps used to compute the trispectrum - around 50 should be enough
 
-    use_KE_approximation: False # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
+    use_KE_approximation: True # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
 
     # Name of the output covariance file. Change to '.npy' to save as npy file.
     cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str. 

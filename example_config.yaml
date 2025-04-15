@@ -71,7 +71,7 @@ C_ell:
     # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
     # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
     gal_bias_table_filename: ./input/gal_bias.txt # Type: str
-    mag_bias_table_filedname: ./input/mag_bias.txt # Type: str
+    mag_bias_table_filename: ./input/mag_bias.txt # Type: str
     
     # Multiplicative shear bias per redshift bin
     mult_shear_bias: [0.0, 0.0, 0.0] # Type: list[float]

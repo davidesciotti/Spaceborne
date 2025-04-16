@@ -177,7 +177,7 @@ covariance:
     # - flat_sky: use the flat-sky expression (valid for PyCCL only)
     #   has to be rescaled by fsky
 
-    which_pk_responses: separate_universe # Type: str. Options: ['halo_model', 'separate_universe']
+    which_pk_responses: halo_model # Type: str. Options: ['halo_model', 'separate_universe']
 
     which_b1g_in_resp: from_HOD # Type: str. Options: ['from_HOD', 'from_input']
     # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.

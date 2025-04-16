@@ -1188,7 +1188,7 @@ if compute_sb_ssc:
                 integration_scheme=integration_scheme,
                 batch_size=cfg['misc']['levin_batch_size'],
                 parallel=parallel,
-            )"""
+        )"""
         elif SSC_integration_method == "z_z":
             sigma2_b = sigma2_SSC.sigma2_z1z2_wrap(
                     z_grid=z_grid,

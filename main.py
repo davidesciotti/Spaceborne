@@ -102,7 +102,6 @@ with open('config.yaml', 'r') as f:
 #I tried to make it work from config but i get weird bugs that i don't understand
 SSC_integration_method = "z_R" #"z_z"or "z_R"
 
-
 # some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']
 galaxy_bias_fit_fiducials = np.array(cfg['C_ell']['galaxy_bias_fit_coeff'])
@@ -301,6 +300,9 @@ k_limber_func = partial(
 # ! define k and z grids used throughout the code (k is in 1/Mpc)
 # TODO should zmin and zmax be inferred from the nz tables?
 # TODO -> not necessarily true for all the different zsteps
+R_grid = np.linspace(cfg['covariance']['R_min'],
+                                    cfg['covariance']['R_max'],
+                                    cfg['covariance']['R_steps'])
 z_grid = np.linspace(  # fmt: skip
     cfg['covariance']['z_min'], 
     cfg['covariance']['z_max'], 

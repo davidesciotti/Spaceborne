@@ -251,3 +251,26 @@ misc:
     output_path: ./output # Type: str
     save_output_as_benchmark: False # Type: bool. For testing purposes
     bench_filename: ../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s} # Type: str. For testing purposes
+    
+PyCCL:
+    # (from CCL docs): integration method to be used for the Limber integrals.
+    # Options:
+    # - 'qag_quad' (GSL's qag method backed up by quad when it fails)
+    # - 'spline' (the integrand is splined and then integrated analytically).
+    # DSnote: note that the former could give errors.
+    cov_integration_method: spline # Type: str
+
+    # Whether or not to load the previously computed trispectrum.
+    load_cached_tkka: True # Type: bool.
+    use_default_k_a_grids: False
+
+    # (from CCL docs): number of points over which to compute the radial kernels (weight functions).
+    # See e.g. documentation of https://ccl.readthedocs.io/en/latest/api/pyccl.tracers.html#pyccl.tracers.NumberCountsTracer
+    n_samples_wf: 1000 # Type: int
+
+    # precision parameters for splines and numerical integration, described in
+    # https://ccl.readthedocs.io/en/latest/source/notation_and_other_cosmological_conventions.html#controlling-splines-and-numerical-accuracy.
+    spline_params: # Type: dict | None
+        A_SPLINE_NA_PK: 240 # Type: int
+        K_MAX_SPLINE: 300 # Type: int
+    gsl_params: null # Type: dict | None

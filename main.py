@@ -1172,7 +1172,7 @@ if compute_sb_ssc:
         elif SSC_integration_method == "z_z":
             sigma2_b = sigma2_SSC.sigma2_z1z2_wrap(
                     z_grid=z_grid,
-                    k_grid_sigma2=k_grid_sigma2_b,
+                    k_grid_sigma2=k_grid_s2b_simps,
                     cosmo_ccl=ccl_obj.cosmo_ccl,
                     which_sigma2_b=which_sigma2_b,
                     area_deg2_in=cfg['mask']['survey_area_deg2'],
@@ -1183,7 +1183,7 @@ if compute_sb_ssc:
             sigma2_b = sigma2_SSC.sigma2_zR_wrap(
                     z=z_grid,
                     R = R_grid,
-                    k_grid_sigma2=k_grid_sigma2_b,
+                    k_grid_sigma2=k_grid_s2b_simps,
                     cosmo_ccl=ccl_obj.cosmo_ccl,
                     which_sigma2_b=which_sigma2_b,
                     area_deg2_in=cfg['mask']['survey_area_deg2'],

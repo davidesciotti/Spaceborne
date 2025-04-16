@@ -298,3 +298,51 @@ ell_binning:
     ell_min_ref: 10 # Type: int. Minimum ell for reference case
     ell_max_ref: 5000 # Type: int. Maximum ell for reference case
     ell_bins_ref: 32 # Type: int. Number of bins for reference case
+    
+C_ell:
+    # Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
+    # Note: if the non-Gaussian covariance is requested, the code will compute intermediate quantities
+    # such as the radial kernels for lensing and clustering. The user should make sure that the cosmology
+    # and n(z) used to generate the input Cls and the ones specified in this cfg file are compatible.
+    # The Cls should be passed in a .txt, .dat or .ascii file with columns corresponding to
+    # ell, zi, zj, Cl[ell, zi, zj]
+    # with `ell` the ell value, zi the i-th tomographic bin index, and zj the j-th tomographic bin index.
+    # The Cls are then splined along the \ell axis and interpolated over the \ell values specified in the "ell_binning"
+    # section of this cfg file.
+    use_input_cls: False  # Type: bool
+
+    cl_LL_path: ./input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
+    cl_GL_path: ./input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
+    cl_GG_path: ./input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+
+    # Which galaxy and magnification bias to use. Options:
+    # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
+    # - 'FS2_polynomial_fit': use the third-order polynomial fits to the galaxy and magnification bias from Flagship 2.
+    #                         The actual values of these coefficients can be changed by modifying the values of
+    #                         'galaxy_bias_fit_coeff' and 'magnification_bias_fit_coeff'.
+    which_gal_bias: "FS2_polynomial_fit" # Type: str.
+    which_mag_bias: "FS2_polynomial_fit" # Type: str.
+    
+    # Coefficients of the third-order polynomial galaxy and magnification bias
+    galaxy_bias_fit_coeff: [1.33291, -0.72414, 1.0183, -0.14913] # Type: list[float]
+    magnification_bias_fit_coeff: [-1.50685, 1.35034, 0.08321, 0.04279] # Type: list[float]
+
+    # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
+    # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
+    gal_bias_table_filename: ./input/gal_bias.txt # Type: str
+    mag_bias_table_filename: ./input/mag_bias.txt # Type: str
+    
+    # Multiplicative shear bias per redshift bin
+    mult_shear_bias: [0.0, 0.0, 0.0] # Type: list[float]
+
+    # Boolean flags for redshift-space distortions, intrinsic alignment and magnification bias
+    has_rsd: False # Type: bool. Enable/disable redshift-space distortions.
+    has_IA: True # Type: bool. Enable/disable intrinsic alignment.
+    has_magnification_bias: True # Type: bool. Enable/disable magnification bias.
+
+    # Keyword arguments for CCL Cl calculation (excluding `p_of_k_a`), described in
+    # https://ccl.readthedocs.io/en/latest/api/pyccl.cosmology.html#pyccl.cosmology.Cosmology.angular_cl
+    cl_CCL_kwargs:
+        l_limber: -1 # Type: int
+        limber_integration_method: spline # Type: str
+        non_limber_integration_method: FKEM # Type: str

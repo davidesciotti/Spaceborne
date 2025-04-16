@@ -12,7 +12,7 @@ from spaceborne import sb_lib as sl
 
 
 class SpaceborneCovariance:
-    def __init__(self, cfg, pvt_cfg, ell_obj, bnt_matrix):
+    def __init__(self, cfg, pvt_cfg, ell_obj, nmt_cov_obj, bnt_matrix):
         self.cfg = cfg
         self.cov_cfg = cfg['covariance']
         self.ell_dict = {}
@@ -27,6 +27,9 @@ class SpaceborneCovariance:
         self.zbins = pvt_cfg['zbins']
         self.cov_terms_list = pvt_cfg['cov_terms_list']
         self.GL_OR_LG = pvt_cfg['GL_OR_LG']
+        self.fsky = pvt_cfg['fsky']
+        self.jl_integrator_path = pvt_cfg['jl_integrator_path']
+        self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
 
         self.n_probes = self.cov_cfg['n_probes']
         # 'include' instead of 'compute' because it might be loaded from file
@@ -39,6 +42,7 @@ class SpaceborneCovariance:
         self.cov_ordering_2d = self.cov_cfg['covariance_ordering_2D']
         self.probe_ordering = self.cov_cfg['probe_ordering']
         self.use_nmt = self.cfg['namaster']['use_namaster']
+        self.nmt_cov_obj = nmt_cov_obj
 
         if self.cov_ordering_2d == 'probe_ell_zpair':
             self.block_index = 'ell'
@@ -510,10 +514,17 @@ class SpaceborneCovariance:
                 return_only_diagonal_ells=False,
             )
 
-        # elif self.use_nmt:
-        #     from spaceborne import cov_partial_sky
-        #     nmt_obj = cov_partial_sky.NmtCov(self.cfg, self.pvt_cfg, ccl_obj, self.mask_obj)
-        #     nmt_obj.compute_covariance()
+        if self.use_nmt:
+            
+            # noise vector doesn't have to be recomputed, but repeated a larger number 
+            # of times
+            noise_3x2pt_unb_5d = np.repeat(
+                noise_3x2pt_4D[:, :, np.newaxis, :, :],
+                self.nmt_cov_obj.nbl_3x2pt_unb,
+                axis=2,
+            )
+            self.nmt_cov_obj.noise_3x2pt_unb_5d = noise_3x2pt_unb_5d
+            self.cov_3x2pt_g_10D = self.nmt_cov_obj.build_psky_cov()
 
         # this part is in common, the split case also sets the total cov
         if self.GL_OR_LG == 'GL':

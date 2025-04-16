@@ -1176,8 +1176,8 @@ if compute_sb_ssc:
                     cosmo_ccl=ccl_obj.cosmo_ccl,
                     which_sigma2_b=which_sigma2_b,
                     area_deg2_in=cfg['mask']['survey_area_deg2'],
-                    nside_mask=cfg['mask']['nside_mask'],
-                    mask_path=cfg['mask']['nside_mask']
+                    nside_mask=cfg['mask']['nside'],
+                    mask_path=cfg['mask']['mask_path']
                 )
         elif SSC_integration_method == "z_R":
             sigma2_b = sigma2_SSC.sigma2_zR_wrap(
@@ -1187,8 +1187,8 @@ if compute_sb_ssc:
                     cosmo_ccl=ccl_obj.cosmo_ccl,
                     which_sigma2_b=which_sigma2_b,
                     area_deg2_in=cfg['mask']['survey_area_deg2'],
-                    nside_mask=cfg['mask']['nside_mask'],
-                    mask_path=cfg['mask']['nside_mask']
+                    nside_mask=cfg['mask']['nside'],
+                    mask_path=cfg['mask']['mask_path']
             )
 
     if SSC_integration_method == "z_R":

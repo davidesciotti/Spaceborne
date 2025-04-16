@@ -567,7 +567,7 @@ def sigma2_pyssc(z_arr, classy_cosmo_param_dict):
     )
     
     
-    def sigma2_zR_wrap(z, R, k_grid_sigma2, cosmo_ccl, which_sigma2_b, area_deg2_in, nside_mask, mask_path):
+def sigma2_zR_wrap(z, R, k_grid_sigma2, cosmo_ccl, which_sigma2_b, area_deg2_in, nside_mask, mask_path):
     """ Computes the integral in k. The grid is now z-R instead of z1-z2."""
     
     #TODO: the next section is copied from the above function, in old spaceborne only sull_curved_sky was implemented...

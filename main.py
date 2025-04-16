@@ -312,8 +312,8 @@ k_grid_s2b_simps = np.logspace(  # fmt: skip
 )  # fmt: skip
 if len(z_grid) < 250:
     warnings.warn(
-        'z_grid is small, at the moment it used to compute various '
-        'intermediate quantities',
+        'the number of steps in the redshift grid is small, '
+        'you may want to consider increasing it',
         stacklevel=2,
     )
 
@@ -400,6 +400,8 @@ ell_obj.build_ell_bins()
 pvt_cfg = {
     'zbins': zbins,
     'ind': ind,
+    'n_probes': n_probes,
+    'fsky': mask_obj.fsky,
     'probe_ordering': probe_ordering,
     'which_ng_cov': cov_terms_str,
     'cov_terms_list': cov_terms_list,
@@ -407,6 +409,7 @@ pvt_cfg = {
     'symmetrize_output_dict': symmetrize_output_dict,
     'use_h_units': use_h_units,
     'z_grid': z_grid,
+    'jl_integrator_path': './spaceborne/julia_integrator.jl',
 }
 
 
@@ -626,6 +629,10 @@ ccl_obj.cl_gg_3d = ccl_obj.compute_cls(
 
 
 if cfg['C_ell']['use_input_cls']:
+    # TODO NMT here you should ask the user for unbinned cls
+    if cfg['namaster']['use_namaster']:
+        raise NotImplementedError('Make sure to pass unbinned cls')
+
     print('Using input Cls')
     cl_ll_tab = np.genfromtxt(cfg['C_ell']['cl_LL_path'])
     cl_gl_tab = np.genfromtxt(cfg['C_ell']['cl_GL_path'])
@@ -676,18 +683,20 @@ ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[
 ].transpose(0, 2, 1)
 ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[: ell_obj.nbl_3x2pt, :, :]
 
-fig, ax = plt.subplots(1, 3, figsize=(12, 4))
+
+fig, ax = plt.subplots(1, 3, figsize=(13, 4))
 plt.tight_layout()
 for zi in range(zbins):
     zj = zi
-    ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_ll_3d[:, zi, zj], c=clr[zi], ls='-')
-    ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_gl_3d[:, zi, zj], c=clr[zi], ls='-')
-    ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_gg_3d[:, zi, zj], c=clr[zi], ls='-')
+    kw = dict(c=clr[zi], ls='-', marker='.')
+    ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_ll_3d[:, zi, zj], **kw)
+    ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_gl_3d[:, zi, zj], **kw)
+    ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_gg_3d[:, zi, zj], **kw)
 
 if cfg['C_ell']['use_input_cls']:
     for zi in range(zbins):
         zj = zi
-        kw = dict(c=clr[zi], ls='', marker='.')
+        kw = dict(c=clr[zi], ls='', marker='x')
         ax[0].loglog(ell_obj.ells_WL, cl_ll_3d_sb[:, zi, zj], **kw)
         ax[1].loglog(ell_obj.ells_XC, cl_gl_3d_sb[:, zi, zj], **kw)
         ax[2].loglog(ell_obj.ells_GC, cl_gg_3d_sb[:, zi, zj], **kw)
@@ -695,10 +704,10 @@ if cfg['C_ell']['use_input_cls']:
     style_legend = ax[1].legend(
         handles=[
             plt.Line2D([], [], color='gray', ls='-', label='SB'),
-            plt.Line2D([], [], color='gray', ls='', marker='.', label='Input'),
+            plt.Line2D([], [], color='gray', ls='', marker='x', label='Input'),
         ],
         loc='upper right',
-        fontsize=8,
+        fontsize=16,
         frameon=False,
     )
     ax[1].add_artist(style_legend)  # Preserve after adding z-bin legend
@@ -707,10 +716,9 @@ if cfg['C_ell']['use_input_cls']:
 ax[2].legend(
     [f'$z_{{{zi}}}$' for zi in range(zbins)],
     loc='upper right',
-    fontsize=8,
+    fontsize=16,
     frameon=False,
 )
-
 
 ax[0].set_title('LL')
 ax[1].set_title('GL')
@@ -719,8 +727,15 @@ ax[0].set_xlabel('$\\ell$')
 ax[1].set_xlabel('$\\ell$')
 ax[2].set_xlabel('$\\ell$')
 ax[0].set_ylabel('$C_{\\ell}$')
+# increase font size
+for axi in ax:
+    for item in (
+        [axi.title, axi.xaxis.label, axi.yaxis.label]
+        + axi.get_xticklabels()
+        + axi.get_yticklabels()
+    ):
+        item.set_fontsize(16)
 plt.show()
-
 
 # ! BNT transform the cls (and responses?) - it's more complex since I also have to
 # ! transform the noise spectra, better to transform directly the covariance matrix
@@ -807,12 +822,62 @@ else:
 # ccl_obj.cl_gg_3d = cl_gg_3d
 # ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
+if cfg['namaster']['use_namaster']:
+    from spaceborne import cov_partial_sky
+
+    # initialize nmt_cov_obj and set a couple useful attributes
+    nmt_cov_obj = cov_partial_sky.NmtCov(cfg, pvt_cfg, ccl_obj, ell_obj, mask_obj)
+
+    # recompute Cls ell by ell
+    ell_max_3x2pt = ell_obj.ell_edges_3x2pt[-1]
+    ells_3x2pt_unb = np.arange(ell_max_3x2pt + 1)
+    nbl_3x2pt_unb = len(ells_3x2pt_unb)
+    assert nbl_3x2pt_unb == ell_max_3x2pt + 1, (
+        'nbl_tot does not match ell_max_3x2pt + 1'
+    )
+
+    # set unbinned ells in nmt_cov_obj
+    nmt_cov_obj.ells_3x2pt_unb = ells_3x2pt_unb
+    nmt_cov_obj.nbl_3x2pt_unb = nbl_3x2pt_unb
+
+    cl_ll_unb_3d = ccl_obj.compute_cls(
+        ells_3x2pt_unb,
+        ccl_obj.p_of_k_a,
+        ccl_obj.wf_lensing_obj,
+        ccl_obj.wf_lensing_obj,
+        cl_ccl_kwargs,
+    )
+    cl_gl_unb_3d = ccl_obj.compute_cls(
+        ells_3x2pt_unb,
+        ccl_obj.p_of_k_a,
+        ccl_obj.wf_galaxy_obj,
+        ccl_obj.wf_lensing_obj,
+        cl_ccl_kwargs,
+    )
+    cl_gg_unb_3d = ccl_obj.compute_cls(
+        ells_3x2pt_unb,
+        ccl_obj.p_of_k_a,
+        ccl_obj.wf_galaxy_obj,
+        ccl_obj.wf_galaxy_obj,
+        cl_ccl_kwargs,
+    )
+
+    # don't forget to apply mult shear bias
+    cl_ll_unb_3d, cl_gl_unb_3d = pyccl_interface.apply_mult_shear_bias(
+        cl_ll_unb_3d, cl_gl_unb_3d, np.array(cfg['C_ell']['mult_shear_bias']), zbins
+    )
+
+    nmt_cov_obj.cl_ll_unb_3d = cl_ll_unb_3d
+    nmt_cov_obj.cl_gl_unb_3d = cl_gl_unb_3d
+    nmt_cov_obj.cl_gg_unb_3d = cl_gg_unb_3d
+
+else:
+    nmt_cov_obj = None
+
+
 # ! build covariance matrices
-cov_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_obj, bnt_matrix)
-cov_obj.jl_integrator_path = './spaceborne/julia_integrator.jl'
-cov_obj.fsky = mask_obj.fsky
+cov_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_obj, nmt_cov_obj, bnt_matrix)
 cov_obj.set_ind_and_zpairs(ind, zbins)
-cov_obj.symmetrize_output_dict = symmetrize_output_dict
 cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(
     ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['split_gaussian_cov']
@@ -1301,7 +1366,7 @@ print(f'Covariance matrices saved in {output_path}\n')
 # save cfg file
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.dump(cfg, yaml_file, default_flow_style=False)
-    
+
 # save cls
 sl.write_cl_tab('./output', 'cl_ll', ccl_obj.cl_ll_3d, ell_obj.ells_WL, zbins)
 sl.write_cl_tab('./output', 'cl_gl', ccl_obj.cl_gl_3d, ell_obj.ells_XC, zbins)

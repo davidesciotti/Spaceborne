@@ -274,3 +274,12 @@ PyCCL:
         A_SPLINE_NA_PK: 240 # Type: int
         K_MAX_SPLINE: 300 # Type: int
     gsl_params: null # Type: dict | None
+    
+mask:
+    load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
+    mask_path: ../input/mask.fits # Type: str. Path to the mask file
+    generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
+    nside: 1024 # Type: int
+    survey_area_deg2: 13245 # Type: int
+    apodize: False # Type: bool
+    aposize: 0.1 # Type: float. Apodization scale in deg

@@ -1167,28 +1167,6 @@ if compute_sb_ssc:
             _z = cosmo_lib.a_to_z(_a)[::-1]
             np.testing.assert_allclose(z_grid, _z, atol=0, rtol=1e-8)
 
-        """else:
-            # depending on the modules installed, integrate with levin or simpson
-            # (in the latter case, in parallel or not)
-            integration_scheme = 'levin' if find_spec('pylevin') else 'simps'
-            parallel = bool(find_spec('pathos'))
-
-            if integration_scheme == 'levin':
-                k_grid_s2b = k_grid
-            elif integration_scheme == 'simps':
-                k_grid_s2b = k_grid_s2b_simps
-
-            sigma2_b = sigma2_SSC.sigma2_z1z2_wrap_parallel(
-                z_grid=z_grid,
-                k_grid_sigma2=k_grid_s2b,
-                cosmo_ccl=ccl_obj.cosmo_ccl,
-                which_sigma2_b=which_sigma2_b,
-                mask_obj=mask_obj,
-                n_jobs=cfg['misc']['num_threads'],
-                integration_scheme=integration_scheme,
-                batch_size=cfg['misc']['levin_batch_size'],
-                parallel=parallel,
-        )"""
         elif SSC_integration_method == "z_z":
             sigma2_b = sigma2_SSC.sigma2_z1z2_wrap(
                     z_grid=z_grid,
@@ -1209,11 +1187,8 @@ if compute_sb_ssc:
                     area_deg2_in=cfg['mask']['survey_area_deg2'],
                     nside_mask=cfg['mask']['nside_mask'],
                     mask_path=cfg['mask']['nside_mask']
-                )
+            )
 
-    """if not cfg['covariance']['load_cached_sigma2_b']:
-        np.save(f'{output_path}/cache/sigma2_b_{zgrid_str}.npy', sigma2_b)
-        np.save(f'{output_path}/cache/zgrid_sigma2_b_{zgrid_str}.npy', z_grid)"""
     if SSC_integration_method == "z_R":
         if not cfg['covariance']['load_cached_sigma2_b']:
             np.save(f'{output_path}/cache/sigma2_b_new.npy', sigma2_b)

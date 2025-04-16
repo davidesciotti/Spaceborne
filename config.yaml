@@ -150,7 +150,8 @@ covariance:
     # - ell_probe_zpair: Ordered by multipole (ell), then probe type, then redshift pair.
     # - probe_ell_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordering used by CLOE
     save_full_cov: True # Type: bool.
-    # Whether to save the full 6D (10D) covariance matrix, without to any indices compression or reshaping. 
+    noiseless_spectra: False
+    # Whether to save the full 6D (10D) covariance matrix, without to any indices compression or reshaping.
     # In the case of the single probes, this is an array of shape
     # (ellbins, ellbins, zbins, zbins, zbins, zbins).
     # In the 3x2pt case, this is an array of shape

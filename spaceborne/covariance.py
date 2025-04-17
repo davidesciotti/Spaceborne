@@ -1071,6 +1071,7 @@ class SpaceborneCovariance:
         cl_integral_prefactor,
         sigma2,
         z_grid,
+        R_grid,
         integration_type,
         probe_ordering,
         num_threads=16,
@@ -1097,6 +1098,7 @@ class SpaceborneCovariance:
         np.save(f'{folder_name}/cl_integral_prefactor', cl_integral_prefactor)
         np.save(f'{folder_name}/sigma2', sigma2)
         np.save(f'{folder_name}/z_grid', z_grid)
+        np.save(f'{folder_name}/R_grid', R_grid)
         os.system(
             f'julia --project=. --threads={num_threads} {self.jl_integrator_path} {folder_name} {integration_type}'
         )

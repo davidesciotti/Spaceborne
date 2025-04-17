@@ -1,6 +1,33 @@
 using NPZ
 using LoopVectorization
 using YAML
+using DataInterpolations
+using FastTransforms
+using FastChebInterp
+using ProgressMeter
+
+function get_cheb_grid(n_cheb, xmin, xmax)
+    return chebpoints(n_cheb, xmin, xmax)
+end
+
+function get_clencurt_weights(min::Number, max::Number, N::Number)
+    CC_obj = FastTransforms.chebyshevmoments1(Float64, N)
+    w = FastTransforms.clenshawcurtisweights(CC_obj)
+    w = (max - min) / 2 * w
+
+    return w
+end
+
+function get_clencurt_weights_R_integration(N::Int)
+
+    w = get_clencurt_weights(-1, 1, N)
+
+    index = div(N + 3, 2) 
+    w = w[index:end]
+    w[1]/=2 #TODO: investigate if there are better solutions, this is not the analytic solution.
+
+    return w
+end
 
 function SSC_integral_6D_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
     """ "brute-force" implementation, returns a 6D array. many args are unnecessary, but I keep the same format for a 

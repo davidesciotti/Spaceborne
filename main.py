@@ -229,6 +229,10 @@ if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
 #TODO: changed here
 if cfg['covariance']['do_cheb']:
     ssc_integration_type = 'cheby'
+    if cfg['covariance']['use_KE_approximation']:
+        cl_integral_convention_ssc = 'Euclid_KE_approximation'
+    else:
+        cl_integral_convention_ssc = 'Euclid'
 else:
     if cfg['covariance']['use_KE_approximation']:
         cl_integral_convention_ssc = 'Euclid_KE_approximation'

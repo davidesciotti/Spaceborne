@@ -95,7 +95,7 @@ function SSC_integral_4D_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_C
 end
 
 function SSC_integral_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, 
-    cl_integral_prefactor, sigma2, z_array::Array, is_auto)
+    cl_integral_prefactor, sigma2, z_array::Array, R_array::Array, is_auto)
     """ this version takes advantage of the symmetries between redshift pairs.
     is_auto is not used, but it is kept for consistency with the SSC_integral_4D_simps_reparam function.
     """

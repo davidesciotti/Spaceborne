@@ -7,7 +7,6 @@ import warnings
 from copy import deepcopy
 from functools import partial
 from importlib.util import find_spec
-
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
@@ -100,7 +99,7 @@ with open('config.yaml', 'r') as f:
     
 #SSC_integration_method = cfg['covariance']['SSC_integration_method']
 #I tried to make it work from config but i get weird bugs that i don't understand
-SSC_integration_method = "z_R" #"z_z"or "z_R"
+SSC_integration_method = "z_z" #"z_z"or "z_R"
 
 # some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']

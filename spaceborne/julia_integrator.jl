@@ -25,7 +25,7 @@ function get_clencurt_weights_R_integration(N::Int)
     return w
 end
 
-function SSC_integral_6D_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
+function SSC_integral_6D_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array, R_array::Array)
     """ "brute-force" implementation, returns a 6D array. many args are unnecessary, but I keep the same format for a 
     more agile comparison against the other functions
     """
@@ -84,7 +84,7 @@ function get_simpson_weights(n::Int)
 end
 
 
-function SSC_integral_4D_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
+function SSC_integral_4D_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array, R_array::Array)
     """ this version takes advantage of the symmetries between redshift pairs.
     """
 
@@ -118,7 +118,7 @@ function SSC_integral_4D_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_C
 end
 
 function SSC_integral_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, 
-    cl_integral_prefactor, sigma2, z_array::Array, is_auto)
+    cl_integral_prefactor, sigma2, z_array::Array, R_array::Array, is_auto)
     """ this version takes advantage of the symmetries between redshift pairs.
     is_auto is not used, but it is kept for consistency with the SSC_integral_4D_simps_reparam function.
     """
@@ -158,7 +158,7 @@ end
 
 
 function SSC_integral_4D_simps_reparam(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, 
-    cl_integral_prefactor, sigma2, z_array::Array, is_auto::Bool)
+    cl_integral_prefactor, sigma2, z_array::Array, R_array::Array, is_auto::Bool)
     """ this version takes advantage of the symmetries between redshift pairs AND ell pairs (for the auto-blocks).
     It has been validated against the original implementation, but the performance gain is not significant 
     (it actually seems slower...). 
@@ -255,7 +255,7 @@ end
 
 
 function SSC_integral_KE_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, 
-    cl_integral_prefactor, sigma2, z_array::Array, is_auto::Bool)
+    cl_integral_prefactor, sigma2, z_array::Array, R_array::Array, is_auto::Bool)
     """ this version takes advantage of the symmetries between redshift pairs, and implements the KE approximation
     (see )
     """
@@ -291,7 +291,7 @@ function SSC_integral_KE_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, in
     return result .* z_step
 end
 
-function SSC_integral_4D_cheby_zR(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array,  R_array::Array)
+function SSC_integral_4D_cheby_zR(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array,  R_array::Array, is_auto::Bool)
 
     simpson_weights_z = get_simpson_weights(length(z_array))
     z_step = (last(z_array)-first(z_array)) / (length(z_array)-1)
@@ -496,7 +496,7 @@ for row in 1:length(probe_combinations)
                 ind_dict[probe_A, probe_B],
                 ind_dict[probe_C, probe_D],
                 nbl, z_steps, cl_integral_prefactor, 
-                sigma2, z_grid, is_auto)
+                sigma2, z_grid, R_grid, is_auto)
 
             # save
             npzwrite("$(folder_name)/cov_SSC_spaceborne_$(probe_A)$(probe_B)$(probe_C)$(probe_D)_4D.npy", cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)])

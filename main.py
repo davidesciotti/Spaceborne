@@ -226,6 +226,7 @@ if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
     compute_ccl_cng = True
 
+#TODO: this will need to be modified adding the chebyshev integration
 if cfg['covariance']['use_KE_approximation']:
     cl_integral_convention_ssc = 'Euclid_KE_approximation'
     ssc_integration_type = 'simps_KE_approximation'
@@ -294,6 +295,18 @@ z_grid = np.linspace(  # fmt: skip
     cfg['covariance']['z_max'], 
     cfg['covariance']['z_steps']
 )  # fmt: skip
+#TODO: modified here!
+R_steps = cfg['covariance']['R_steps']
+def chebpoints(order, lb, ub):
+    if order < 0:
+        raise ValueError("order must be non-negative")
+    
+    i = np.arange(order + 1)  # Indices from 0 to order
+    x = lb + (1 + np.cos(i * np.pi / order)) * (ub - lb) * 0.5
+    return x
+
+R_grid = chebpoints(2*R_steps, -1, 1)
+R_grid = np.flip(R_grid[R_grid>0])
 z_grid_trisp = np.linspace(
     cfg['covariance']['z_min'],
     cfg['covariance']['z_max'],
@@ -407,8 +420,8 @@ pvt_cfg = {
     'symmetrize_output_dict': symmetrize_output_dict,
     'use_h_units': use_h_units,
     'z_grid': z_grid,
+    'R_grid': R_grid, #TODO: added here
 }
-
 
 # ! START SCALE CUTS: for these, we need to:
 # 1. Compute the BNT. This is done with the raw, or unshifted n(z), but only for
@@ -1158,29 +1171,53 @@ if compute_sb_ssc:
         else:
             # depending on the modules installed, integrate with levin or simpson
             # (in the latter case, in parallel or not)
-            integration_scheme = 'levin' if find_spec('pylevin') else 'simps'
-            parallel = bool(find_spec('pathos'))
+            #TODO: will need to modify here to add chebyshevs
 
-            if integration_scheme == 'levin':
-                k_grid_s2b = k_grid
-            elif integration_scheme == 'simps':
+            if cfg['covariance']['do_cheb'] == False:
+                integration_scheme = 'levin' if find_spec('pylevin') else 'simps'
+                parallel = bool(find_spec('pathos'))
+
+                if integration_scheme == 'levin':
+                    k_grid_s2b = k_grid
+                elif integration_scheme == 'simps':
+                    k_grid_s2b = k_grid_s2b_simps
+
+                sigma2_b = sigma2_SSC.sigma2_z1z2_wrap_parallel(
+                    z_grid=z_grid,
+                    k_grid_sigma2=k_grid_s2b,
+                    cosmo_ccl=ccl_obj.cosmo_ccl,
+                    which_sigma2_b=which_sigma2_b,
+                    mask_obj=mask_obj,
+                    n_jobs=cfg['misc']['num_threads'],
+                    integration_scheme=integration_scheme,
+                    batch_size=cfg['misc']['levin_batch_size'],
+                    parallel=parallel,
+                )
+            else: #Do integration in z-R variables
                 k_grid_s2b = k_grid_s2b_simps
+                sigma2_b = sigma2_SSC.sigma2_zR_wrap(
+                    z=z_grid,
+                    R=R_grid,
+                    k_grid_sigma2=k_grid_s2b,
+                    cosmo_ccl=ccl_obj.cosmo_ccl,
+                    which_sigma2_b=which_sigma2_b,
+                    area_deg2_in=cfg['mask']['survey_area_deg2'],
+                    nside_mask=cfg['mask']['nside'],
+                    mask_path=cfg['mask']['mask_path']
+                )
 
-            sigma2_b = sigma2_SSC.sigma2_z1z2_wrap_parallel(
-                z_grid=z_grid,
-                k_grid_sigma2=k_grid_s2b,
-                cosmo_ccl=ccl_obj.cosmo_ccl,
-                which_sigma2_b=which_sigma2_b,
-                mask_obj=mask_obj,
-                n_jobs=cfg['misc']['num_threads'],
-                integration_scheme=integration_scheme,
-                batch_size=cfg['misc']['levin_batch_size'],
-                parallel=parallel,
-            )
+
 
     if not cfg['covariance']['load_cached_sigma2_b']:
-        np.save(f'{output_path}/cache/sigma2_b_{zgrid_str}.npy', sigma2_b)
-        np.save(f'{output_path}/cache/zgrid_sigma2_b_{zgrid_str}.npy', z_grid)
+        if cfg['covariance']['do_cheb']:
+            np.save(f'{output_path}/cache/sigma2_b_zR.npy', sigma2_b)
+            np.save(f'{output_path}/cache/z_grid.npy', z_grid)
+            np.save(f'{output_path}/cache/R_grid.npy', R_grid)
+        else:
+            np.save(f'{output_path}/cache/sigma2_b_z1z2.npy', sigma2_b)
+            np.save(f'{output_path}/cache/zgrid_sigma2_b_{zgrid_str}.npy', z_grid)
+
+    assert False
 
     # ! 4. Perform the integration calling the Julia module
     print('Computing the SSC integral...')

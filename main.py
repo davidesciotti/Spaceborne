@@ -226,13 +226,16 @@ if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
     compute_ccl_cng = True
 
-#TODO: this will need to be modified adding the chebyshev integration
-if cfg['covariance']['use_KE_approximation']:
-    cl_integral_convention_ssc = 'Euclid_KE_approximation'
-    ssc_integration_type = 'simps_KE_approximation'
+#TODO: changed here
+if cfg['covariance']['do_cheb']:
+    ssc_integration_type = 'cheby'
 else:
-    cl_integral_convention_ssc = 'Euclid'
-    ssc_integration_type = 'simps'
+    if cfg['covariance']['use_KE_approximation']:
+        cl_integral_convention_ssc = 'Euclid_KE_approximation'
+        ssc_integration_type = 'simps_KE_approximation'
+    else:
+        cl_integral_convention_ssc = 'Euclid'
+        ssc_integration_type = 'simps'
 
 if use_h_units:
     k_txt_label = 'hoverMpc'
@@ -1217,7 +1220,6 @@ if compute_sb_ssc:
             np.save(f'{output_path}/cache/sigma2_b_z1z2.npy', sigma2_b)
             np.save(f'{output_path}/cache/zgrid_sigma2_b_{zgrid_str}.npy', z_grid)
 
-    assert False
 
     # ! 4. Perform the integration calling the Julia module
     print('Computing the SSC integral...')
@@ -1229,6 +1231,7 @@ if compute_sb_ssc:
         cl_integral_prefactor=cl_integral_prefactor,
         sigma2=sigma2_b,
         z_grid=z_grid,
+        R_grid=R_grid,
         integration_type=ssc_integration_type,
         probe_ordering=probe_ordering,
         num_threads=cfg['misc']['num_threads'],
@@ -1246,6 +1249,12 @@ if compute_sb_ssc:
         raise ValueError(f'which_sigma2_b = {which_sigma2_b} not recognized')
 
     cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
+
+    if cfg['covariance']['do_cheb']:
+        np.save(f'{output_path}/cache/SSC_cov_zR.npy', cov_ssc_3x2pt_dict_8D)
+    else:
+        np.save(f'{output_path}/cache/SSC_cov_z1z2.npy', cov_ssc_3x2pt_dict_8D)
+
 
 # TODO integrate this with Spaceborne_covg
 

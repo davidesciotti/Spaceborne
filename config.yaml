@@ -94,12 +94,6 @@ nz:
     nz_gaussian_smoothing_sigma: 2 # Type: int # TODO delete this
     plot_nz_tocheck: True # Type: bool # TODO delete this
 
-mask:
-    mask_path: .../mask.fits # Type: str
-    nside_mask: 1024 # Type: int
-    fsky: 0.3210678603147902 # Type: float
-    survey_area_deg2: 13245 # Type: int
-
 ell_binning:
     ell_min: 10 # Type: int. Minimum ell for 3x2pt
     ell_max_WL: 5000 # Type: int. Maximum ell for WL
@@ -200,14 +194,14 @@ covariance:
     
     z_min: 0.02 # Type: float. SU responses' kmax allow for z_min = 0.016, at most.
     z_max: 3.0 # Type: float
-    z_steps: 700 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 5000
+    z_steps: 200 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 5000
     z_steps_trisp: 100  # Type: int. Number of z steps used to compute the trispectrum - around 100 should be enough
     SSC_integration_method: z_z #z-R or z-z
     #Variable needed for the reparametrization of the integral
     nR: 500
     R_min: 0.1  #TODO: check this lower limit!
     R_max: 1.
-    R_steps: 500
+    R_steps: 100
 
     use_KE_approximation: False # Type: bool
 
@@ -284,6 +278,10 @@ mask:
     survey_area_deg2: 13245 # Type: int
     apodize: False # Type: bool
     aposize: 0.1 # Type: float. Apodization scale in deg
+    mask_path: .../mask.fits # Type: str
+    nside_mask: 1024 # Type: int
+    fsky: 0.3210678603147902 # Type: float
+    survey_area_deg2: 13245 # Type: int
     
 ell_binning:
     binning_type: 'ref_cut'  # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']

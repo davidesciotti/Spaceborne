@@ -158,7 +158,7 @@ covariance:
     # Which code to use for the different covariance terms
     G_code: Spaceborne # Type: str. Options: [Spaceborne, OneCovariance]
     SSC_code: Spaceborne # Type: str. Options: [Spaceborne, OneCovariance, PyCCL]
-    cNG_code: OneCovariance # Type: str. Options: [OneCovariance, PyCCL]
+    cNG_code: PyCCL # Type: str. Options: [OneCovariance, PyCCL]
 
     # -- Ordering-related settings --
     # Choose whether to use the upper ('triu') or lower ('tril') triangle
@@ -232,7 +232,7 @@ covariance:
     # k grid used for power spectrum and trispectrum computation
     log10_k_min: -5  # Type: float 
     log10_k_max: 2  # Type: float
-    k_steps: 100  # Type: int
+    k_steps: 40  # Type: int
     
     z_min: 0.02 # Type: float. SU responses' kmax allow for z_min = 0.016, at most.
     z_max: 3.0 # Type: float
@@ -253,7 +253,7 @@ PyCCL:
     cov_integration_method: spline # Type: str
 
     # Whether or not to load the previously computed trispectrum.
-    load_cached_tkka: True # Type: bool. 
+    load_cached_tkka: False # Type: bool. 
     use_default_k_a_grids: False
     
     # (from CCL docs): number of points over which to compute the radial kernels (weight functions).
@@ -269,7 +269,7 @@ PyCCL:
 
 OneCovariance:
     precision_settings: default # Type: str. Options: ['high_precision', 'default'] # TODO delete this
-    path_to_oc_executable: /home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py # Type: str
+    path_to_oc_executable: ../OneCovariance/covariance.py # Type: str
     path_to_oc_ini: ./input/config_3x2pt_pure_Cell_general.ini # Type: str
     consistency_checks: False # Type: bool
 

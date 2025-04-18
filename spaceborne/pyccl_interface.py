@@ -330,12 +330,15 @@ class PycclClass:
 
     # ! ================================================================================
 
-    def set_sigma2_b(self, z_grid, fsky, which_sigma2_b, nside_mask, mask_path=None):
+    # TODO deprecate this func
+    def set_sigma2_b_old(
+        self, z_grid, fsky, which_sigma2_b, nside_mask, mask_path=None
+    ):
         self.a_grid_sigma2_b = cosmo_lib.z_to_a(z_grid)[::-1]
         area_deg2 = fsky * 4 * np.pi * (180 / np.pi) ** 2
 
         if which_sigma2_b == 'polar_cap_on_the_fly':
-            mask = mask_utils.generate_polar_cap(area_deg2, nside_mask)
+            mask = mask_utils.generate_polar_cap_func(area_deg2, nside_mask)
 
         elif which_sigma2_b == 'from_input_mask':
             mask = hp.read_map(mask_path)
@@ -369,6 +372,34 @@ class PycclClass:
         elif which_sigma2_b == 'flat_sky':
             sigma2_b = ccl.covariances.sigma2_B_disc(
                 cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, fsky=fsky
+            )
+            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
+
+        elif which_sigma2_b is None:
+            self.sigma2_b_tuple = None
+
+        else:
+            raise ValueError(
+                'which_sigma2_b must be either "from_input_mask", '
+                '"polar_cap_on_the_fly" or None'
+            )
+
+    def set_sigma2_b(self, z_grid, which_sigma2_b, mask_obj):
+        print(mask_obj.fsky)
+        self.a_grid_sigma2_b = cosmo_lib.z_to_a(z_grid)[::-1]
+
+        # normalize the mask and pass it to sigma2_B_from_mask
+        if which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
+            sigma2_b = ccl.covariances.sigma2_B_from_mask(
+                cosmo=self.cosmo_ccl,
+                a_arr=self.a_grid_sigma2_b,
+                mask_wl=mask_obj.cl_mask_norm,
+            )
+            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
+
+        elif which_sigma2_b == 'flat_sky':
+            sigma2_b = ccl.covariances.sigma2_B_disc(
+                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, fsky=mask_obj.fsky
             )
             self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
 

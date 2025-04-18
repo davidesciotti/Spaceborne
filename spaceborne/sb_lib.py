@@ -113,6 +113,25 @@ mpl_other_dict = {
 #     return binned_cov
 
 
+def is_main_branch():
+    """Check if the current Git branch is 'main'"""
+    try:
+        # Get the current branch name
+        result = subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        current_branch = result.stdout.strip()
+        
+        # Return True if branch is 'main', False otherwise
+        return current_branch == 'main'
+    except subprocess.SubprocessError:
+        # If there's an error (e.g., not in a git repo), default to False
+        print("Warning: Could not determine Git branch. Assuming not main branch.")
+        return False
+    
 @contextlib.contextmanager
 def timer(msg):
     start = time.perf_counter()
@@ -220,9 +239,11 @@ def bin_2d_array(  # fmt: skip
     return binned_cov
 
 
-def bin_1d_array(ells_in, ells_out, ells_out_edges, cls_in, weights, which_binning, ells_eff=None):
-    """
-    Bin the input power spectrum into the output bins.
+def bin_1d_array(
+    ells_in, ells_out, ells_out_edges, cls_in, weights, which_binning, ells_eff=None
+):
+    """Bin the input power spectrum into the output bins.
+
     :param ells_in: array of input ells
     :param ells_out: array of output ells
     :param cls_in: array of input power spectrum
@@ -243,8 +264,12 @@ def bin_1d_array(ells_in, ells_out, ells_out_edges, cls_in, weights, which_binni
     if np.any(ells_out[1:] < ells_out[:-1]):
         raise ValueError('ells_out must be monotonically increasing')
 
-    assert len(cls_in) == len(ells_in), "ells_in must be the same length as the covariance matrix"
-    assert len(ells_out) == len(ells_out_edges) - 1, "ells_out must be the same length as the number of edges - 1"
+    assert len(cls_in) == len(ells_in), (
+        'ells_in must be the same length as the covariance matrix'
+    )
+    assert len(ells_out) == len(ells_out_edges) - 1, (
+        'ells_out must be the same length as the number of edges - 1'
+    )
 
     binned_cls = np.zeros(len(ells_out))
     spline = CubicSpline(ells_in, cls_in)
@@ -254,7 +279,6 @@ def bin_1d_array(ells_in, ells_out, ells_out_edges, cls_in, weights, which_binni
 
     # Loop over the output bins
     for ell_idx in range(len(ells_out)):
-
         # Get ell min/max for the current bins
         ell_min = ells_edges_low[ell_idx]
         ell_max = ells_edges_high[ell_idx]
@@ -276,7 +300,9 @@ def bin_1d_array(ells_in, ells_out, ells_out_edges, cls_in, weights, which_binni
         # Calculate the bin widths
         if weights_was_none:
             delta_ell = ell_max - ell_min
-            assert delta_ell == np.sum(weights_masked), "The weights must sum to the bin width"
+            assert delta_ell == np.sum(weights_masked), (
+                'The weights must sum to the bin width'
+            )
 
         # Option 1: use the original grid for integration and no weights
         if which_binning == 'integral':
@@ -284,7 +310,9 @@ def bin_1d_array(ells_in, ells_out, ells_out_edges, cls_in, weights, which_binni
             binned_cls[ell_idx] = integral / np.sum(weights_masked)
 
         elif which_binning == 'sum':
-            binned_cls[ell_idx] = np.sum(cls_masked * weights_masked) / np.sum(weights_masked)
+            binned_cls[ell_idx] = np.sum(cls_masked * weights_masked) / np.sum(
+                weights_masked
+            )
 
         else:
             raise ValueError('which_binning should be "sum" or "integral"')
@@ -366,8 +394,7 @@ def savetxt_aligned(filename, array_2d, header_list, col_width=25, decimals=8):
 
 
 def nz_fits_to_txt(fits_filename):
-    """
-    Converts the official SGS-like fits file to the usual (z, nz) format.
+    """Converts the official SGS-like fits file to the usual (z, nz) format.
 
     Parameters
     ----------
@@ -489,8 +516,7 @@ def mirror_upper_to_lower_vectorized(A):
 def check_interpolate_input_tab(
     input_tab: np.ndarray, z_grid_out: np.ndarray, zbins: int
 ) -> tuple:
-    """
-    Interpolates the input table over the 0th dimension using a cubic spline
+    """Interpolates the input table over the 0th dimension using a cubic spline
     and returns the interpolated values on the specified grid.
 
     Parameters:
@@ -541,8 +567,8 @@ def get_ngal(ngal_in, ep_or_ed, zbins, ep_check_tol):
 
 
 def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
-    """
-    Interpolate a 2D array onto a new grid using bicubic spline interpolation.
+    """Interpolate a 2D array onto a new grid using bicubic spline
+    interpolation.
 
     Parameters:
     - x_in (numpy.ndarray): The x-coordinates of the input 2D array.
@@ -598,7 +624,8 @@ def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
 
 
 def test_cov_FM(output_path, benchmarks_path, extension):
-    """tests that the outputs do not change between the old and the new version"""
+    """Tests that the outputs do not change between the old and the new
+    version."""
     old_dict = dict(get_kv_pairs(benchmarks_path, extension))
     new_dict = dict(get_kv_pairs(output_path, extension))
 
@@ -627,8 +654,7 @@ def test_cov_FM(output_path, benchmarks_path, extension):
 
 
 def regularize_covariance(cov_matrix, lambda_reg=1e-5):
-    """
-    Regularizes the covariance matrix by adding lambda * I.
+    """Regularizes the covariance matrix by adding lambda * I.
 
     Parameters:
     - cov_matrix: Original covariance matrix (numpy.ndarray)
@@ -644,9 +670,7 @@ def regularize_covariance(cov_matrix, lambda_reg=1e-5):
 
 
 def get_simpson_weights(n):
-    """
-    Function written by Marco Bonici
-    """
+    """Function written by Marco Bonici."""
     number_intervals = (n - 1) // 2
     weight_array = np.zeros(n)
     if n == number_intervals * 2 + 1:
@@ -673,7 +697,9 @@ def get_simpson_weights(n):
 
 def zpair_from_zidx(zidx, ind):
     """Return the zpair corresponding to the zidx for a given ind array.
-    To be thoroughly tested, but quite straightforward"""
+
+    To be thoroughly tested, but quite straightforward
+    """
     assert ind.shape[1] == 2, (
         'ind array must have shape (n, 2), maybe you are passing the full '
         'ind file instead of ind_auto/ind_cross'
@@ -684,11 +710,12 @@ def zpair_from_zidx(zidx, ind):
 def plot_dominant_array_element(
     arrays_dict, tab_colors, elements_auto, elements_cross, elements_3x2pt
 ):
-    """
-    Plot 2D arrays from a dictionary, highlighting the dominant
-    component in each element.
-    Colors are assigned based on the array with the dominant component at each position.
-    If no component is dominant (all are zero), the color will be white.
+    """Plot 2D arrays from a dictionary, highlighting the dominant component in
+    each element.
+
+    Colors are assigned based on the array with the dominant component
+    at each position. If no component is dominant (all are zero), the
+    color will be white.
     """
 
     centers = [
@@ -788,9 +815,10 @@ def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
                     file.write(f'{ell_val:.3f}\t{zi + 1}\t{zj + 1}\t{value:.10e}\n')
 
 
-def write_cl_tab(ascii_folder, ascii_filename, cl_3d, ells, zbins):
-    with open(f'{ascii_folder}/{ascii_filename}', 'w') as file:
-        file.write(f'#ell\t\tzi\tzj\t{ascii_filename}\n')
+def write_cl_tab(folder, filename, cl_3d, ells, zbins):
+    """Write the Cls in the SB txt format."""
+    with open(f'{folder}/{filename}.txt', 'w') as file:
+        file.write(f'#ell\t\tzi\tzj\t{filename}\n')
         for ell_idx, ell_val in enumerate(ells):
             for zi in range(zbins):
                 for zj in range(zbins):
@@ -1032,8 +1060,7 @@ def compare_param_cov_from_fm_pickles(
 
 
 def is_file_created_in_last_x_hours(file_path, hours):
-    """
-    Check if the specified file was created in the last 24 hours.
+    """Check if the specified file was created in the last 24 hours.
 
     Parameters:
     file_path (str): The path to the file.
@@ -1058,18 +1085,15 @@ def is_file_created_in_last_x_hours(file_path, hours):
 
 
 def block_diag(array_3d):
-    """
-    Useful for visualizing nbl, zbins, zbins arrays at a glance
-    """
+    """Useful for visualizing nbl, zbins, zbins arrays at a glance."""
     nbl = array_3d.shape[0]
     return scipy.linalg.block_diag(*[array_3d[ell, :, :] for ell in range(nbl)])
 
 
 def compare_df_keys(dataframe, key_to_compare, value_a, value_b, num_string_columns):
-    """
-    This function compares two rows of a dataframe and returns a new row with the
-    percentage difference between the two
-    :param dataframe:
+    """This function compares two rows of a dataframe and returns a new row
+    with the percentage difference between the two :param dataframe:
+
     :param key_to_compare:
     :param value_a:
     :param value_b:
@@ -1108,10 +1132,11 @@ def compare_df_keys(dataframe, key_to_compare, value_a, value_b, num_string_colu
 
 def contour_FoM_calculator(sample, param1, param2, sigma_level=1):
     """This function has been written by Santiago Casas.
-    Computes  the FoM from getDist samples.
-    add()sample is a getDist sample object, you need as well the shapely
-    package to compute polygons. The function returns the 1sigma FoM,
-    but in principle you could compute 2-, or 3-sigma "FoMs"
+
+    Computes  the FoM from getDist samples. add()sample is a getDist
+    sample object, you need as well the shapely package to compute
+    polygons. The function returns the 1sigma FoM, but in principle you
+    could compute 2-, or 3-sigma "FoMs"
     """
     from shapely.geometry import Polygon
 
@@ -1144,21 +1169,17 @@ def can_be_pickled(obj):
 
 
 def load_cov_from_probe_blocks(path, filename, probe_ordering):
-    """
-    Load the covariance matrix from the probe blocks in 4D.
-    The blocks are stored in a dictionary with keys
-    corresponding to the probes in the order specified in probe_ordering.
-    The symmetrization of the blocks is done
-    while loading, so only 6 blocks need to be actually stored.
-    :param path: Path to the folder containing the covariance blocks.
-    :param filename: Filename of the covariance blocks.
-    The filename should contain the placeholders {probe_A},
-    {probe_B}, {probe_C}, {probe_D} which will be replaced with the actual probe names.
-    :param probe_ordering: Probe ordering tuple
-    :return:
+    """Load the covariance matrix from the probe blocks in 4D. The blocks are
+    stored in a dictionary with keys corresponding to the probes in the order
+    specified in probe_ordering. The symmetrization of the blocks is done while
+    loading, so only 6 blocks need to be actually stored. :param path: Path to
+    the folder containing the covariance blocks. :param filename: Filename of
+    the covariance blocks. The filename should contain the placeholders
+    {probe_A}, {probe_B}, {probe_C}, {probe_D} which will be replaced with the
+    actual probe names. :param probe_ordering: Probe ordering tuple :return:
 
-    YOU SHOULD USE deepcopy, otherwise the different blocks become correlated
-    (and you e.g. divide twice by fsky)
+    YOU SHOULD USE deepcopy, otherwise the different blocks become
+    correlated (and you e.g. divide twice by fsky)
     """
     cov_ssc_dict_8D = {}
     for row, (probe_a, probe_b) in enumerate(probe_ordering):
@@ -1192,8 +1213,7 @@ def load_cov_from_probe_blocks(path, filename, probe_ordering):
 
 
 def save_dict_to_file(dict_data, file_path, indent=4):
-    """
-    Save a dictionary to a text file in a nicely formatted way.
+    """Save a dictionary to a text file in a nicely formatted way.
 
     Parameters:
     dict_data (dict): The dictionary to be saved.
@@ -1205,8 +1225,8 @@ def save_dict_to_file(dict_data, file_path, indent=4):
 
 
 def figure_of_correlation(correl_matrix):
-    """
-    Compute the Figure of Correlation (FoC) from the correlation matrix correl_matrix.
+    """Compute the Figure of Correlation (FoC) from the correlation matrix
+    correl_matrix.
 
     Parameters:
     - correl_matrix (2D numpy array): The correlation matrix.
@@ -1238,8 +1258,7 @@ def find_inverse_from_array(input_x, input_y, desired_y, interpolation_kind='lin
 
 
 def add_ls_legend(ls_dict):
-    """
-    Add a legend for line styles.
+    """Add a legend for line styles.
 
     Parameters
     ----------
@@ -1254,9 +1273,11 @@ def add_ls_legend(ls_dict):
 
 
 def save_correlation_matrix_plot(matrix1, matrix2, labels):
-    """Yet to be fully tested. Plot the positive and negative values with different
-    colorbars
-    TODO make it only for one matrix!"""
+    """Yet to be fully tested.
+
+    Plot the positive and negative values with different colorbars TODO
+    make it only for one matrix!
+    """
 
     fig = plt.figure(figsize=(16, 6))
     gs = GridSpec(1, 5, width_ratios=[6, 0.3, 6, 0.3, 0.3])
@@ -1306,8 +1327,8 @@ def save_correlation_matrix_plot(matrix1, matrix2, labels):
 
 
 def table_to_3d_array(file_path, is_auto_spectrum):
-    """convert CLOE .dat files format to 3d arrays, following the indexing
-    in the header"""
+    """Convert CLOE .dat files format to 3d arrays, following the indexing in
+    the header."""
 
     # Read the header and data from the file
     with open(file_path) as f:
@@ -1384,8 +1405,8 @@ def get_filenames_in_folder(folder_path):
 def test_folder_content(
     output_path, benchmarks_path, extension, verbose=False, rtol=1e-10
 ):
-    """Test if the files in the output folder are equal to the benchmark files and
-    list the discrepancies.
+    """Test if the files in the output folder are equal to the benchmark files
+    and list the discrepancies.
 
     Parameters:
     output_path (str): The path to the folder containing the output files.
@@ -1487,9 +1508,8 @@ def test_folder_content(
 
 
 def import_files(folder_path, extension):
-    """
-    Imports all files with a specific extension from a folder and stores their
-    contents in a dictionary.
+    """Imports all files with a specific extension from a folder and stores
+    their contents in a dictionary.
 
     Parameters:
     folder_path (str): The path to the folder from which to import files.
@@ -1554,7 +1574,10 @@ def load_compressed_pickle(file):
 
 
 def read_yaml(filename):
-    """A function to read YAML file. filename must include the path and the extension"""
+    """A function to read YAML file.
+
+    filename must include the path and the extension
+    """
     with open(filename) as f:
         config = yaml.safe_load(f)
     return config
@@ -1581,9 +1604,7 @@ def percent_diff(array_1, array_2, abs_value=False):
 
 # @njit
 def percent_diff_mean(array_1, array_2):
-    """
-    result is in "percent" units
-    """
+    """Result is in "percent" units."""
     mean = (array_1 + array_2) / 2.0
     diff = (array_1 / mean - 1) * 100
     return diff
@@ -1603,9 +1624,8 @@ def _percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False)
 
 
 def percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
-    """
-    Calculate the percent difference between two arrays, handling NaN values.
-    """
+    """Calculate the percent difference between two arrays, handling NaN
+    values."""
     # Handle NaN values
     if eraseNaN:
         # Mask where NaN values are present
@@ -1634,9 +1654,8 @@ def diff_threshold_check(diff, threshold):
 
 
 def compute_smape(vec_true, vec_test, cov_mat=None):
-    """
-    Computes the SMAPE (Symmetric Mean Absolute Percentage Error) for a given 1D
-    array with weighted elements
+    """Computes the SMAPE (Symmetric Mean Absolute Percentage Error) for a
+    given 1D array with weighted elements.
 
     Args:
         vec_true (np.array): array of true values
@@ -1665,9 +1684,8 @@ def compute_smape(vec_true, vec_test, cov_mat=None):
 
 
 def compute_diff_sigma(vec_true, vec_test, sigma):
-    """
-    Compute the element-wise difference between two vectors vec_true and vec_test,
-    and divide it by sigma.
+    """Compute the element-wise difference between two vectors vec_true and
+    vec_test, and divide it by sigma.
 
     Args:
     - vec_true (numpy.ndarray): A numpy array representing the first vector.
@@ -1808,9 +1826,9 @@ def compare_arrays(
 
 
 def compare_folder_content(path_A: str, path_B: str, filetype: str):
-    """
-    Compare the content of 2 folders. The files in folder A should be a subset of
-    the files in folder B.
+    """Compare the content of 2 folders.
+
+    The files in folder A should be a subset of the files in folder B.
     """
     dict_A = dict(get_kv_pairs(path_A, filetype))
     dict_B = dict(get_kv_pairs(path_B, filetype))
@@ -1821,7 +1839,10 @@ def compare_folder_content(path_A: str, path_B: str, filetype: str):
 
 
 def namestr(obj, namespace):
-    """does not work with slices!!! (why?)"""
+    """Does not work with slices!!!
+
+    (why?)
+    """
     return [name for name in namespace if namespace[name] is obj][0]
 
 
@@ -1857,9 +1878,10 @@ def find_null_rows_cols_2D(array):
 
 
 def remove_rows_cols_array2D(array, rows_idxs_to_remove):
-    """
-    Removes the *same* rows and columns from an array
-    :param array: numpy.ndarray. input 2D array
+    """Removes the *same* rows and columns from an array :param array:
+    numpy.ndarray.
+
+    input 2D array
     :param rows_idxs_to_remove: list. rows (and columns) to delete
     :return: array without null rows and columns
     """
@@ -1882,8 +1904,7 @@ def remove_rows_cols_array2D(array, rows_idxs_to_remove):
 
 
 def remove_null_rows_cols_2D(array_2d: np.ndarray):
-    """
-    Remove null rows and columns from a 2D numpy array.
+    """Remove null rows and columns from a 2D numpy array.
 
     Args:
         array_2d (numpy.ndarray): The 2D numpy array to remove null rows and columns
@@ -1902,12 +1923,9 @@ def remove_null_rows_cols_2D(array_2d: np.ndarray):
 
 
 def mask_FM_null_rowscols(FM, params, fid):
-    """
-    Mask the Fisher matrix, fiducial values and parameter list deleting the null rows
-    and columns
-    :param FM: Fisher Matrix, 2D numpy array
-    :return: masked FM, fiducial values and parameter list
-    """
+    """Mask the Fisher matrix, fiducial values and parameter list deleting the
+    null rows and columns :param FM: Fisher Matrix, 2D numpy array :return:
+    masked FM, fiducial values and parameter list."""
     null_idx = find_null_rows_cols_2D(FM)
 
     if null_idx is None:
@@ -1923,12 +1941,9 @@ def mask_FM_null_rowscols(FM, params, fid):
 
 
 def mask_fm_null_rowscols_v2(fm, fiducials_dict):
-    """
-    Mask the Fisher matrix, fiducial values and parameter list deleting the null rows
-    and columns
-    :param FM: Fisher Matrix, 2D numpy array
-    :return: masked FM, fiducial values and parameter list
-    """
+    """Mask the Fisher matrix, fiducial values and parameter list deleting the
+    null rows and columns :param FM: Fisher Matrix, 2D numpy array :return:
+    masked FM, fiducial values and parameter list."""
     param_names = list(fiducials_dict.keys())
     param_values = list(fiducials_dict.values())
 
@@ -1952,9 +1967,9 @@ def mask_fm_null_rowscols_v2(fm, fiducials_dict):
 def mask_FM(
     FM, param_names_dict, fiducials_dict, params_tofix_dict, remove_null_rows_cols=True
 ):
-    """
-    Trim the Fisher matrix to remove null rows/columns and/or fix nuisance parameters
-    :param FM:
+    """Trim the Fisher matrix to remove null rows/columns and/or fix nuisance
+    parameters :param FM:
+
     :param remaining_param_names_list:
     :param fid:
     :param n_cosmo_params:
@@ -2015,9 +2030,8 @@ def mask_fm_v2(
     names_params_to_fix: list,
     remove_null_rows_cols: bool,
 ):
-    """
-    Trim the Fisher matrix to remove null rows/columns and/or fix nuisance parameters
-    """
+    """Trim the Fisher matrix to remove null rows/columns and/or fix nuisance
+    parameters."""
     fm = deepcopy(fm)
     fiducials_dict = deepcopy(fiducials_dict)
 
@@ -2062,8 +2076,8 @@ def fix_params_in_fm(fm, names_params_to_fix, fiducials_dict):
 
 
 def add_prior_to_fm(fm, fiducials_dict, prior_param_names, prior_param_values):
-    """adds a FM of priors (with elements 1/sigma in the correct positions) to the
-    input FM"""
+    """Adds a FM of priors (with elements 1/sigma in the correct positions) to
+    the input FM."""
     fm = deepcopy(fm)
     fiducials_dict = deepcopy(fiducials_dict)
 
@@ -2094,9 +2108,7 @@ def add_prior_to_fm(fm, fiducials_dict, prior_param_names, prior_param_values):
 def uncertainties_fm_v2(
     fm, fiducials_dict, which_uncertainty='marginal', normalize=True, percent_units=True
 ):
-    """
-    returns relative 1-sigma error
-    """
+    """Returns relative 1-sigma error."""
 
     param_names = list(fiducials_dict.keys())
     param_values = np.array(list(fiducials_dict.values()))
@@ -2192,10 +2204,10 @@ def matshow(
 
 
 def get_kv_pairs(path_import, extension='npy'):
-    """
-    Load txt or dat files in dictionary.
-    To use it, wrap it in "dict(), e.g.:
-        loaded_dict = dict(get_kv_pairs(path_import, filetype="dat"))
+    """Load txt or dat files in dictionary.
+
+    To use it, wrap it in "dict(), e.g.:     loaded_dict =
+    dict(get_kv_pairs(path_import, filetype="dat"))
     """
     if extension == 'npy' or extension == 'npz':
         load_function = np.load
@@ -2211,10 +2223,10 @@ def get_kv_pairs(path_import, extension='npy'):
 
 
 def get_kv_pairs_v2(path_import, extension='npy'):
-    """
-    Load npy, npz, txt, or dat files in dictionary.
-    To use it, wrap it in "dict(), e.g.:
-        loaded_dict = dict(get_kv_pairs(path_import, filetype="dat"))
+    """Load npy, npz, txt, or dat files in dictionary.
+
+    To use it, wrap it in "dict(), e.g.:     loaded_dict =
+    dict(get_kv_pairs(path_import, filetype="dat"))
     """
     if extension == 'npy' or extension == 'npz':
         load_function = np.load
@@ -2253,14 +2265,15 @@ def symmetrize_Cl(Cl, nbl, zbins):
 
 
 def generate_ind(triu_tril_square, row_col_major, size):
-    """
-    Generates a list of indices for the upper triangular part of a matrix
-    :param triu_tril_square: str. if 'triu', returns the indices for the upper
-    triangular part of the matrix.
-    If 'tril', returns the indices for the lower triangular part of the matrix
-    If 'full_square', returns the indices for the whole matrix
-    :param row_col_major: str. if True, the indices are returned in row-major order;
-    otherwise, in column-major order
+    """Generates a list of indices for the upper triangular part of a matrix
+    :param triu_tril_square: str.
+
+    if 'triu', returns the indices for the upper triangular part of the
+    matrix. If 'tril', returns the indices for the lower triangular part
+    of the matrix If 'full_square', returns the indices for the whole
+    matrix
+    :param row_col_major: str. if True, the indices are returned in row-
+        major order; otherwise, in column-major order
     :param size: int. size of the matrix to take the indices of
     :return: list of indices
     """
@@ -2291,9 +2304,7 @@ def generate_ind(triu_tril_square, row_col_major, size):
 
 
 def build_full_ind(triu_tril, row_col_major, size):
-    """
-    Builds the good old ind file
-    """
+    """Builds the good old ind file."""
 
     assert triu_tril in ['triu', 'tril'], 'triu_tril must be either "triu" or "tril"'
     assert row_col_major in ['row-major', 'col-major'], (
@@ -2345,9 +2356,8 @@ def build_ind_dict(triu_tril, row_col_major, size, GL_OR_LG):
 
 # CHECK FOR DUPLICATES
 def cl_2D_to_3D_symmetric(Cl_2D, nbl, zpairs, zbins):
-    """reshape from (nbl, zpairs) to (nbl, zbins, zbins) according to
-    upper traigular ordering 0-th rows filled first, then second from i to 10...
-    """
+    """Reshape from (nbl, zpairs) to (nbl, zbins, zbins) according to upper
+    traigular ordering 0-th rows filled first, then second from i to 10..."""
     assert Cl_2D.shape == (nbl, zpairs), (
         f'cl_2d must have shape (nbl, zpairs) = ({nbl}, {zpairs})'
     )
@@ -2364,9 +2374,8 @@ def cl_2D_to_3D_symmetric(Cl_2D, nbl, zpairs, zbins):
 
 
 def cl_2D_to_3D_asymmetric(Cl_2D, nbl, zbins, order):
-    """reshape from (nbl, npairs) to (nbl, zbins, zbins), rows first
-    (valid for asymmetric Cij, i.e. C_XC)
-    """
+    """Reshape from (nbl, npairs) to (nbl, zbins, zbins), rows first (valid for
+    asymmetric Cij, i.e. C_XC)"""
     assert order in ['row-major', 'col-major', 'C', 'F'], (
         'order must be either "row-major", "C" (equivalently), or'
         '"col-major", "F" (equivalently)'
@@ -2382,9 +2391,8 @@ def cl_2D_to_3D_asymmetric(Cl_2D, nbl, zbins, order):
 
 
 def Cl_3D_to_2D_symmetric(Cl_3D, nbl, npairs, zbins=10):
-    """reshape from (nbl, zbins, zbins) to (nbl, npairs)  according to
-    upper traigular ordering 0-th rows filled first, then second from i to 10...
-    """
+    """Reshape from (nbl, zbins, zbins) to (nbl, npairs)  according to upper
+    traigular ordering 0-th rows filled first, then second from i to 10..."""
     triu_idx = np.triu_indices(zbins)
     Cl_2D = np.zeros((nbl, npairs))
     for ell in range(nbl):
@@ -2394,9 +2402,8 @@ def Cl_3D_to_2D_symmetric(Cl_3D, nbl, npairs, zbins=10):
 
 
 def Cl_3D_to_2D_asymmetric(Cl_3D):
-    """reshape from (nbl, zbins, zbins) to (nbl, npairs), rows first
-    (valid for asymmetric Cij, i.e. C_XC)
-    """
+    """Reshape from (nbl, zbins, zbins) to (nbl, npairs), rows first (valid for
+    asymmetric Cij, i.e. C_XC)"""
     assert Cl_3D.ndim == 3, 'Cl_3D must be a 3D array'
 
     nbl = Cl_3D.shape[0]
@@ -2414,10 +2421,8 @@ def Cl_3D_to_2D_asymmetric(Cl_3D):
 def cl_3D_to_2D_or_1D(
     cl_3D, ind, is_auto_spectrum, use_triu_row_major, convert_to_2D, block_index
 ):
-    """reshape from (nbl, zbins, zbins) to (nbl, zpairs), according to the
-    ordering given in the ind file
-    (valid for asymmetric Cij, i.e. C_XC)
-    """
+    """Reshape from (nbl, zbins, zbins) to (nbl, zpairs), according to the
+    ordering given in the ind file (valid for asymmetric Cij, i.e. C_XC)"""
 
     # warnings.warn('finish this function!! (old warning, I dont remember
     # exactly what is missing...)')
@@ -2456,8 +2461,8 @@ def cl_3D_to_2D_or_1D(
 
 # @njit
 def cl_1D_to_3D(cl_1d, nbl: int, zbins: int, is_symmetric: bool):
-    """This is used to unpack Vincenzo's files for SPV3
-    Still to be thoroughly checked."""
+    """This is used to unpack Vincenzo's files for SPV3 Still to be thoroughly
+    checked."""
 
     cl_3d = np.zeros((nbl, zbins, zbins))
     p = 0
@@ -2479,7 +2484,7 @@ def cl_1D_to_3D(cl_1d, nbl: int, zbins: int, is_symmetric: bool):
 
 # @njit
 def symmetrize_2d_array(array_2d):
-    """mirror the lower/upper triangle"""
+    """Mirror the lower/upper triangle."""
 
     # if already symmetric, do nothing
     if check_symmetric(array_2d, exact=True):
@@ -2510,7 +2515,7 @@ def symmetrize_2d_array(array_2d):
 
 
 def fill_3D_symmetric_array(array_3D, nbl, zbins):
-    """mirror the lower/upper triangle"""
+    """Mirror the lower/upper triangle."""
     assert array_3D.shape == (nbl, zbins, zbins), (
         'shape of input array must be (nbl, zbins, zbins)'
     )
@@ -2523,7 +2528,7 @@ def fill_3D_symmetric_array(array_3D, nbl, zbins):
 
 
 def array_2D_to_1D_ind(array_2D, zpairs, ind):
-    """unpack according to "ind" ordering, same as for the Cls"""
+    """Unpack according to "ind" ordering, same as for the Cls."""
     assert ind.shape[0] == zpairs, 'ind must have lenght zpairs'
 
     array_1D = np.zeros(zpairs)
@@ -2547,6 +2552,50 @@ def compute_FM_3D(nbl, npairs, nParams, cov_inv, D_3D):
                 FM[alf, bet] = FM[alf, bet] + (D_3D[elle, :, alf] @ b[elle, :, bet])
     return FM
 
+def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
+    """expand the zpair indices into zi, zj, according to the ind ordering as usual"""
+
+    dC_3D = np.zeros((nbl, zpairs, nparams_tot))
+    for ell in range(nbl):
+        for alf in range(nparams_tot):
+            dC_3D[ell, :, alf] = array_2D_to_1D_ind(dC_4D[ell, :, :, alf], zpairs, ind)
+    return dC_3D
+
+
+def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, derivatives_prefix, is_3x2pt=False, n_probes=2):
+    """
+    :param param_names: filename of the parameter, e.g. 'Om'; dCldOm = d(C(l))/d(Om)
+    :param dC_dict_3D:
+    :param nbl:
+    :param zbins:
+    :param obs_name: filename of the observable, e.g. 'Cl'; dCldOm = d(C(l))/d(Om)
+    :param is_3x2pt: whether to will the 5D derivatives vector
+    :param n_probes:
+    :return:
+    """
+    # param_names should be params_tot in all cases, because when the derivative dows not exist
+    # in dC_dict_3D the output array will remain null
+    if is_3x2pt:
+        dC_4D = np.zeros((n_probes, n_probes, nbl, zbins, zbins, len(param_names)))
+    else:
+        dC_4D = np.zeros((nbl, zbins, zbins, len(param_names)))
+
+    if not dC_dict_3D:
+        warnings.warn('The input dictionary is empty')
+
+    no_derivative_counter = 0
+    for idx, param_name in enumerate(param_names):
+        for key, value in dC_dict_3D.items():
+            if f'{derivatives_prefix}{param_name}' in key:
+                dC_4D[..., idx] = value
+
+        # a check, if the derivative wrt the param is not in the folder at all
+        if not any(f'{derivatives_prefix}{param_name}' in key for key in dC_dict_3D.keys()):
+            print(f'Derivative {derivatives_prefix}{param_name} not found; setting the corresponding FM entry to zero')
+            no_derivative_counter += 1
+        if no_derivative_counter == len(param_names):
+            raise ImportError('No derivative found for any of the parameters in the input dictionary')
+    return dC_4D
 
 # @njit
 def compute_FM_2D(nbl, npairs, nparams_tot, cov_2D_inv, D_2D):
@@ -2579,6 +2628,52 @@ def compute_FM_2D_optimized(nbl, npairs, nparams_tot, cov_2D_inv, D_2D):
     return FM
 
 
+
+def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
+    """expand the zpair indices into zi, zj, according to the ind ordering as usual"""
+
+    dC_3D = np.zeros((nbl, zpairs, nparams_tot))
+    for ell in range(nbl):
+        for alf in range(nparams_tot):
+            dC_3D[ell, :, alf] = array_2D_to_1D_ind(dC_4D[ell, :, :, alf], zpairs, ind)
+    return dC_3D
+
+
+def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, derivatives_prefix, is_3x2pt=False, n_probes=2):
+    """
+    :param param_names: filename of the parameter, e.g. 'Om'; dCldOm = d(C(l))/d(Om)
+    :param dC_dict_3D:
+    :param nbl:
+    :param zbins:
+    :param obs_name: filename of the observable, e.g. 'Cl'; dCldOm = d(C(l))/d(Om)
+    :param is_3x2pt: whether to will the 5D derivatives vector
+    :param n_probes:
+    :return:
+    """
+    # param_names should be params_tot in all cases, because when the derivative dows not exist
+    # in dC_dict_3D the output array will remain null
+    if is_3x2pt:
+        dC_4D = np.zeros((n_probes, n_probes, nbl, zbins, zbins, len(param_names)))
+    else:
+        dC_4D = np.zeros((nbl, zbins, zbins, len(param_names)))
+
+    if not dC_dict_3D:
+        warnings.warn('The input dictionary is empty')
+
+    no_derivative_counter = 0
+    for idx, param_name in enumerate(param_names):
+        for key, value in dC_dict_3D.items():
+            if f'{derivatives_prefix}{param_name}' in key:
+                dC_4D[..., idx] = value
+
+        # a check, if the derivative wrt the param is not in the folder at all
+        if not any(f'{derivatives_prefix}{param_name}' in key for key in dC_dict_3D.keys()):
+            print(f'Derivative {derivatives_prefix}{param_name} not found; setting the corresponding FM entry to zero')
+            no_derivative_counter += 1
+        if no_derivative_counter == len(param_names):
+            raise ImportError('No derivative found for any of the parameters in the input dictionary')
+    return dC_4D
+
 def compute_FoM(FM, w0wa_idxs):
     cov_param = np.linalg.inv(FM)
     # cov_param_reduced = cov_param[start:stop, start:stop]
@@ -2599,11 +2694,10 @@ def get_zpairs(zbins):
 def _covariance_einsum(
     cl_5d, noise_5d, f_sky, ell_values, delta_ell, return_only_diagonal_ells=False
 ):
-    """
-    computes the 10-dimensional covariance matrix, of shape
-    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins).
-    The 5-th axis is added only if
-    return_only_diagonal_ells is True. *for the single-probe case, n_probes = 1*
+    """Computes the 10-dimensional covariance matrix, of shape (n_probes,
+    n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins). The
+    5-th axis is added only if return_only_diagonal_ells is True. *for the
+    single-probe case, n_probes = 1*
 
     In np.einsum, the indices have the following meaning:
         A, B, C, D = probe identifier. 0 for WL, 1 for GCph
@@ -2721,9 +2815,8 @@ def covariance_einsum(
     split_terms,
     return_only_diagonal_ells=False,
 ):
-    """
-    Optimized version to avoid repeated code in the covariance calculation.
-    """
+    """Optimized version to avoid repeated code in the covariance
+    calculation."""
 
     assert cl_5d.shape[0] in [1, 2], 'This function only works with 1 or 2 probes'
     assert cl_5d.shape[0] == cl_5d.shape[1], (
@@ -2765,11 +2858,10 @@ def covariance_einsum(
 def _covariance_einsum_split(
     cl_5d, noise_5d, f_sky, ell_values, delta_ell, return_only_diagonal_ells=False
 ):
-    """
-    computes the 10-dimensional covariance matrix, of shape
-    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins).
-    The 5-th axis is added only if
-    return_only_diagonal_ells is True. *for the single-probe case, n_probes = 1*
+    """Computes the 10-dimensional covariance matrix, of shape (n_probes,
+    n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins). The
+    5-th axis is added only if return_only_diagonal_ells is True. *for the
+    single-probe case, n_probes = 1*
 
     In np.einsum, the indices have the following meaning:
         A, B, C, D = probe identifier. 0 for WL, 1 for GCph
@@ -2841,7 +2933,7 @@ def _covariance_einsum_split(
     if return_only_diagonal_ells:
         warnings.warn(
             'return_only_diagonal_ells is True, the array will be 9-dimensional',
-            stacklevel=2
+            stacklevel=2,
         )
         return cov_9d_sva, cov_9d_sn, cov_9d_mix
 
@@ -2872,27 +2964,25 @@ def _covariance_einsum_split(
 
 
 def covariance_SSC_einsum(cl_5d, rl_5d, s_ABCD_ijkl, fsky, optimize='greedy'):
-    """
-    computes the 10-dimensional covariance matrix, of shape
-    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins).
-    The 5-th axis is added only if
-    return_only_diagonal_ells is True. *for the single-probe case, n_probes = 1*
+    """Computes the 10-dimensional covariance matrix, of shape (n_probes,
+    n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins). The
+    5-th axis is added only if return_only_diagonal_ells is True. *for the
+    single-probe case, n_probes = 1*
 
-    In np.einsum, the indices have the following meaning:
-        A, B, C, D = probe identifier. 0 for WL, 1 for GCph
-        L, M = ell, ell_prime
-        i, j, k, l = redshift bin indices
+    In np.einsum, the indices have the following meaning:     A, B, C, D
+    = probe identifier. 0 for WL, 1 for GCph     L, M = ell, ell_prime
+    i, j, k, l = redshift bin indices
 
-    cl_5d must have shape = (n_probes, n_probes, nbl, zbins, zbins) = (A, B, L, i, j),
-    same as rl_5d
+    cl_5d must have shape = (n_probes, n_probes, nbl, zbins, zbins) =
+    (A, B, L, i, j), same as rl_5d
 
     :param cl_5d:
     :param rl_5d:
     :param noise_5d:
     :param fsky:
-    :return: 10-dimensional numpy array of shape
-    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins),
-    containing the covariance.
+    :return: 10-dimensional numpy array of shape (n_probes, n_probes,
+        n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins),
+        containing the covariance.
     """
 
     assert cl_5d.shape[0] == 1 or cl_5d.shape[0] == 2, (
@@ -2937,10 +3027,10 @@ def covariance_SSC_einsum(cl_5d, rl_5d, s_ABCD_ijkl, fsky, optimize='greedy'):
 
 
 def cov_10D_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
-    """transforms a dictionary of "shape" [(A, B, C, D)][
-        nbl, nbl, zbins, zbins, zbins, zbins] (where A, B, C, D is a
-    tuple of strings, each one being either 'L' or 'G') to a numpy array of shape
-    (n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)"""
+    """Transforms a dictionary of "shape" [(A, B, C, D)][ nbl, nbl, zbins,
+    zbins, zbins, zbins] (where A, B, C, D is a tuple of strings, each one
+    being either 'L' or 'G') to a numpy array of shape (n_probes, n_probes,
+    n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)"""
 
     assert n_probes == 2, (
         'if more than 2 probes are used, the probe_dict must be changed '
@@ -2959,10 +3049,10 @@ def cov_10D_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
 
 
 def cov_10D_array_to_dict(cov_10D_array, probe_ordering):
-    """transforms a dictionary of "shape" [(A, B, C, D)][
-        nbl, nbl, zbins, zbins, zbins, zbins] (where A, B, C, D is a
-    tuple of strings, each one being either 'L' or 'G') to a numpy array of shape
-    (n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)"""
+    """Transforms a dictionary of "shape" [(A, B, C, D)][ nbl, nbl, zbins,
+    zbins, zbins, zbins] (where A, B, C, D is a tuple of strings, each one
+    being either 'L' or 'G') to a numpy array of shape (n_probes, n_probes,
+    n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)"""
 
     cov_10D_dict = {}
     probe_dict = {'L': 0, 'G': 1}
@@ -3021,10 +3111,9 @@ def build_3x2pt_array(cl_LL_3D, cl_GG_3D, cl_GL_3D, n_probes, nbl, zbins):
 
 
 def cov_3x2pt_10D_to_4D(cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_OR_LG):
-    """
-    Takes the cov_3x2pt_10D dictionary, reshapes each A, B, C, D block separately
-    in 4D, then stacks the blocks in the right order to output cov_3x2pt_4D
-    (which is not a dictionary but a numpy array)
+    """Takes the cov_3x2pt_10D dictionary, reshapes each A, B, C, D block
+    separately in 4D, then stacks the blocks in the right order to output
+    cov_3x2pt_4D (which is not a dictionary but a numpy array)
 
     probe_ordering: e.g. ['L', 'L'], ['G', 'L'], ['G', 'G']]
     """
@@ -3100,8 +3189,9 @@ def cov_3x2pt_10D_to_4D(cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_
 
 
 def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, probe_ordering, combinations=None):
-    """
-    Convert a dictionary of 4D blocks into a single 4D array. This is the same code as
+    """Convert a dictionary of 4D blocks into a single 4D array.
+
+    This is the same code as
     in the last part of the function above.
     :param cov_3x2pt_8D_dict: Dictionary of 4D covariance blocks
     :param probe_ordering: tuple of tuple probes,
@@ -3224,11 +3314,12 @@ def cov_3x2pt_4d_to_10d_dict(
 
 # @njit
 def cov_4D_to_6D(cov_4D, nbl, zbins, probe, ind):
-    """transform the cov from shape (nbl, nbl, npairs, npairs)
-    to (nbl, nbl, zbins, zbins, zbins, zbins). Not valid for 3x2pt, the total
-    shape of the matrix is (nbl, nbl, zbins, zbins, zbins, zbins), not big
-    enough to store 3 probes. Use cov_4D functions or cov_6D as a dictionary
-    instead,
+    """Transform the cov from shape (nbl, nbl, npairs, npairs) to (nbl, nbl,
+    zbins, zbins, zbins, zbins).
+
+    Not valid for 3x2pt, the total shape of the matrix is (nbl, nbl,
+    zbins, zbins, zbins, zbins), not big enough to store 3 probes. Use
+    cov_4D functions or cov_6D as a dictionary instead,
     """
     # TODO deprecate this in favor of cov_4D_to_6D_blocks
 
@@ -3273,8 +3364,8 @@ def cov_4D_to_6D(cov_4D, nbl, zbins, probe, ind):
 
 # @njit
 def cov_6D_to_4D(cov_6D, nbl, zpairs, ind):
-    """transform the cov from shape (nbl, nbl, zbins, zbins, zbins, zbins)
-    to (nbl, nbl, zpairs, zpairs)"""
+    """Transform the cov from shape (nbl, nbl, zbins, zbins, zbins, zbins) to
+    (nbl, nbl, zpairs, zpairs)"""
     assert ind.shape[0] == zpairs, (
         "ind.shape[0] != zpairs: maybe you're passing the whole ind file "
         'instead of ind[:zpairs, :] - or similia'
@@ -3295,8 +3386,8 @@ def cov_6D_to_4D(cov_6D, nbl, zpairs, ind):
 
 # TODO finish this
 def cov_6D_to_4D_optim(cov_6D, nbl, zpairs, ind):
-    """transform the cov from shape (nbl, nbl, zbins, zbins, zbins, zbins)
-    to (nbl, nbl, zpairs, zpairs)"""
+    """Transform the cov from shape (nbl, nbl, zbins, zbins, zbins, zbins) to
+    (nbl, nbl, zpairs, zpairs)"""
     assert ind.shape[0] == zpairs, (
         "ind.shape[0] != zpairs: maybe you're passing the whole ind file "
         'instead of ind[:zpairs, :] - or similia'
@@ -3315,11 +3406,13 @@ def cov_6D_to_4D_optim(cov_6D, nbl, zpairs, ind):
 
 # @njit
 def cov_6D_to_4D_blocks(cov_6D, nbl, npairs_AB, npairs_CD, ind_AB, ind_CD):
-    """reshapes the covariance even for the non-diagonal (hence, non-square) blocks
-    needed to build the 3x2pt. Use npairs_AB = npairs_CD and ind_AB = ind_CD for the
-    normal routine (valid for auto-covariance LL-LL, GG-GG, GL-GL and LG-LG).
-    n_columns is used to determine whether the ind array has 2 or 4 columns
-    (if it's given in the form of a dictionary or not)
+    """Reshapes the covariance even for the non-diagonal (hence, non-square)
+    blocks needed to build the 3x2pt.
+
+    Use npairs_AB = npairs_CD and ind_AB = ind_CD for the normal routine
+    (valid for auto-covariance LL-LL, GG-GG, GL-GL and LG-LG). n_columns
+    is used to determine whether the ind array has 2 or 4 columns (if
+    it's given in the form of a dictionary or not)
     """
     assert ind_AB.shape[0] == npairs_AB, 'ind_AB.shape[0] != npairs_AB'
     assert ind_CD.shape[0] == npairs_CD, 'ind_CD.shape[0] != npairs_CD'
@@ -3379,10 +3472,8 @@ def cov_4D_to_6D_blocks(
     symmetrize_output_ab: bool,
     symmetrize_output_cd: bool,
 ):
-    """
-    Reshapes the 4D covariance matrix to a 6D covariance matrix, even for the
-    cross-probe (non-square) blocks needed
-    to build the 3x2pt covariance.
+    """Reshapes the 4D covariance matrix to a 6D covariance matrix, even for
+    the cross-probe (non-square) blocks needed to build the 3x2pt covariance.
 
     This function can be used for the normal routine (valid for auto-covariance,
     i.e., LL-LL, GG-GG, GL-GL and LG-LG)
@@ -3519,8 +3610,7 @@ def check_symmetric(array_2d, exact, rtol=1e-05):
 
 def slice_cov_3x2pt_2D_ell_probe_zpair(cov_2D_ell_probe_zpair, nbl, zbins, probe):
     """Slices the 2-dimensional 3x2pt covariance ordered as a block-diagonal
-    matrix in ell, probe and zpair
-    (unpacked in this order)"""
+    matrix in ell, probe and zpair (unpacked in this order)"""
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
     ell_block_size = zpairs_3x2pt
@@ -3551,8 +3641,7 @@ def slice_cov_3x2pt_2D_ell_probe_zpair(cov_2D_ell_probe_zpair, nbl, zbins, probe
 
 def slice_cl_3x2pt_1D_ell_probe_zpair(cl_3x2pt_1D_ell_probe_zpair, nbl, zbins, probe):
     """Slices the 2-dimensional 3x2pt covariance ordered as a block-diagonal
-    matrix in ell, probe and zpair
-    (unpacked in this order)"""
+    matrix in ell, probe and zpair (unpacked in this order)"""
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
     ell_block_size = zpairs_3x2pt
@@ -3583,8 +3672,7 @@ def slice_cl_3x2pt_1D_ell_probe_zpair(cl_3x2pt_1D_ell_probe_zpair, nbl, zbins, p
 
 # @njit
 def cov_2D_to_4D(cov_2D, nbl, block_index, optimize=True, symmetrize=False):
-    """
-    Reshapes the covariance from 2D to 4D. Also works for 3x2pt. The order
+    """Reshapes the covariance from 2D to 4D. Also works for 3x2pt. The order
     of the for loops does not affect the result!
 
     Ordeting convention:
@@ -3651,8 +3739,7 @@ def cov_2D_to_4D(cov_2D, nbl, block_index, optimize=True, symmetrize=False):
 
 # @njit
 def cov_4D_to_2D(cov_4D, block_index, optimize=True):
-    """
-    Reshapes the covariance from 4D to 2D. Also works for 3x2pt. The order
+    """Reshapes the covariance from 4D to 2D. Also works for 3x2pt. The order
     of the for loops does not affect the result!
 
     Ordeting convention:
@@ -3732,19 +3819,17 @@ def cov_4D_to_2D(cov_4D, block_index, optimize=True):
 
 # @njit
 def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='ell'):
-    """
-    Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE ordering.
-    Note that this is only necessary for
-    the 3x2pt probe.
-    TODO the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work
-    with other combinations (but it
-    TODO will work both for LG and GL)
-    ! Important note: block_index = 'ell' means that the overall ordering will
-    ! be probe_ell_zpair.
-    ! Setting it to 'zpair' will give you the ordering probe_zpair_ell.
-    ! Bottom line: the probe is the outermost loop in any case.
-    ! The ordering used by CLOE v2 is probe_ell_zpair, so block_index = 'ell' is
-    ! the correct choice in this case.
+    """Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE
+    ordering.
+
+    Note that this is only necessary for the 3x2pt probe. TODO the probe
+    ordering (LL, LG/GL, GG) is hardcoded, this function won't work with
+    other combinations (but it TODO will work both for LG and GL) !
+    Important note: block_index = 'ell' means that the overall ordering
+    will ! be probe_ell_zpair. ! Setting it to 'zpair' will give you the
+    ordering probe_zpair_ell. ! Bottom line: the probe is the outermost
+    loop in any case. ! The ordering used by CLOE v2 is probe_ell_zpair,
+    so block_index = 'ell' is ! the correct choice in this case.
     """
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
@@ -3794,13 +3879,12 @@ def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='ell'):
 
 # @njit
 def cov_2DCLOE_to_4D_3x2pt(cov_2D, nbl, zbins, block_index='ell'):
-    """
-    Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE ordering.
-    Note that this is only necessary for
-    the 3x2pt probe.
-    TODO the probe ordering (LL, LG/GL, GG) is hardcoded, this function won't work
-    with other combinations (but it
-    TODO will work both for LG and GL)
+    """Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE
+    ordering.
+
+    Note that this is only necessary for the 3x2pt probe. TODO the probe
+    ordering (LL, LG/GL, GG) is hardcoded, this function won't work with
+    other combinations (but it TODO will work both for LG and GL)
     """
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
@@ -3850,12 +3934,14 @@ def cov_2DCLOE_to_4D_3x2pt(cov_2D, nbl, zbins, block_index='ell'):
 
 
 def cov_2d_dav_to_cloe(cov_2d_dav, nbl, zbins, block_index_in, block_index_out):
-    """convert a 2D covariance matrix from the davide convention to the CLOE
-    convention, that is, from the probe being
-    unraveled in the first for loop to the probe being unraveled in the second for loop.
+    """Convert a 2D covariance matrix from the davide convention to the CLOE
+    convention, that is, from the probe being unraveled in the first for loop
+    to the probe being unraveled in the second for loop.
+
     example: from ell_probe_zpair (my convention) to probe_ell_zpair (CLOE).
     The zpairs <-> ell ordering is decided by 'block_idex' (setting the first,
-    or outermost, of the two)"""
+    or outermost, of the two)
+    """
     cov_4D = cov_2D_to_4D(cov_2d_dav, nbl, block_index=block_index_in, optimize=True)
     cov_2d_cloe = cov_4D_to_2DCLOE_3x2pt(
         cov_4D, zbins=zbins, block_index=block_index_out
@@ -3864,12 +3950,14 @@ def cov_2d_dav_to_cloe(cov_2d_dav, nbl, zbins, block_index_in, block_index_out):
 
 
 def cov_2d_cloe_to_dav(cov_2d_cloe, nbl, zbins, block_index_in, block_index_out):
-    """convert a 2D covariance matrix from the CLOE convention to the davide
-    convention, that is, from the probe being
-    unraveled in the second for loop to the probe being unraveled in the first for loop.
+    """Convert a 2D covariance matrix from the CLOE convention to the davide
+    convention, that is, from the probe being unraveled in the second for loop
+    to the probe being unraveled in the first for loop.
+
     example: from probe_ell_zpair (CLOE) to ell_probe_zpair (my convention).
     The zpairs <-> ell ordering is decided by 'block_idex' (setting the first,
-    or outermost, of the two)"""
+    or outermost, of the two)
+    """
     cov_4D = cov_2DCLOE_to_4D_3x2pt(cov_2d_cloe, nbl, zbins, block_index=block_index_in)
     cov_2d_dav = cov_4D_to_2D(cov_4D, block_index=block_index_out, optimize=True)
     return cov_2d_dav
@@ -3906,8 +3994,13 @@ def cov2corr(covariance):
 
 
 def build_noise(
-    zbins, n_probes, sigma_eps2, ng_shear, ng_clust, is_noiseless: bool = False
-):
+    zbins: int,
+    n_probes: int,
+    sigma_eps2: float,
+    ng_shear: int | float | np.ndarray,
+    ng_clust: int | float | np.ndarray,
+    is_noiseless: bool = False,
+) -> np.ndarray:
     """Builds the noise power spectra.
 
     Parameters
@@ -3938,8 +4031,8 @@ def build_noise(
 
     Returns
     -------
-    noise_4d : ndarray, shape (n_probes, n_probes, zbins, zbins)
-        Noise power spectra matrices
+    noise_4d : np.ndarray
+        Noise power spectra matrices of shape (n_probes, n_probes, zbins, zbins)
 
     Notes
     -----
@@ -3947,7 +4040,6 @@ def build_noise(
         N_LL = sigma_eps^2 / (2 * n_bar)
         N_GG = 1 / n_bar
         N_GL = N_LG = 0
-
     """
 
     if isinstance(ng_shear, list):

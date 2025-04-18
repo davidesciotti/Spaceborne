@@ -44,6 +44,10 @@ C_ell:
     # Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
     # Note: if the non-Gaussian covariance is requested, the code will compute intermediate quantities
     # such as the radial kernels for lensing and clustering. The user should make sure that the cosmology 
+    # and n(z) used to generate the input Cls and the ones specified in this cfg file are compatible.
+    # The Cls should be passed in a .txt, .dat or .ascii file with columns corresponding to 
+    # ell, zi, zj, Cl[ell, zi, zj]
+    # with `ell` the ell value, zi the i-th tomographic bin index, and zj the j-th tomographic bin index.
     # The Cls are then splined along the \ell axis and interpolated over the \ell values specified in the "ell_binning"
     # section of this cfg file.
     use_input_cls: False  # Type: bool
@@ -57,7 +61,7 @@ C_ell:
     # - 'FS2_polynomial_fit': use the third-order polynomial fits to the galaxy and magnification bias from Flagship 2.
     #                         The actual values of these coefficients can be changed by modifying the values of 
     #                         'galaxy_bias_fit_coeff' and 'magnification_bias_fit_coeff'.
-    which_gal_bias: "FS2_polynomial_fit" # Type: str.  # TODO change to "polynomial"
+    which_gal_bias: "FS2_polynomial_fit" # Type: str.
     which_mag_bias: "FS2_polynomial_fit" # Type: str.
     
     # Coefficients of the third-order polynomial galaxy and magnification bias
@@ -87,8 +91,8 @@ C_ell:
 nz:
     # Paths to source (for WL) and lens (for GCph) redshift distributions.
     # These must have shape (z_points, zbins + 1)
-    nz_sources_filename: ./input/nzTab-EP03-zedMin02-zedMax25-mag245.dat
-    nz_lenses_filename: ./input/nzTab-EP03-zedMin02-zedMax25-mag245.dat
+    nz_sources_filename: ./input/nzTab.txt  # Type: str
+    nz_lenses_filename: ./input/nzTab.txt  # Type: str
 
     # Number of galaxies per arcmin**2 for each redshift bin. 
     # Should be of len(zbins)
@@ -97,7 +101,7 @@ nz:
 
 mask:
     load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
-    mask_path: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
+    mask_path: ../input/mask.fits # Type: str. Path to the mask file
     generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
     nside: 1024 # Type: int
     survey_area_deg2: 13245 # Type: int
@@ -154,9 +158,13 @@ covariance:
     # - probe_ell_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordering used by CLOE
     covariance_ordering_2D: ell_probe_zpair # Type: str.
     
-    # Whether to save the full 6D covariance matrix, without to any indices compression or reshaping. 
+    # Whether to save the full 6D (10D) covariance matrix, without to any indices compression or reshaping. 
     # In the case of the single probes, this is an array of shape
     # (ellbins, ellbins, zbins, zbins, zbins, zbins).
+    # In the 3x2pt case, this is an array of shape
+    # (n_probes, n_probes, n_probes, n_probes, ellbins, ellbins, zbins, zbins, zbins, zbins), 
+    # with nbl the number of probes. The probe index is by default 0 for WL, 1 for GC.
+    # Keep in mind that the arrays will likely be quite large. 
     save_full_cov: True # Type: bool
     
     # Whether to split the Gaussian covariance term into the
@@ -182,7 +190,6 @@ covariance:
     #   has to be rescaled by fsky
     which_sigma2_b: polar_cap_on_the_fly # Type: str | None
 
-    # TODO SU input file???
     which_pk_responses: halo_model # Type: str. Options: ['halo_model', 'separate_universe']
 
     # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
@@ -204,14 +211,14 @@ covariance:
     # k grid used for power spectrum and trispectrum computation
     log10_k_min: -5  # Type: float 
     log10_k_max: 2  # Type: float
-    k_steps: 100  # Type: int. Around 100 should be enough
+    k_steps: 200  # Type: int. Around 100 should be enough
     
     z_min: 0.02 # Type: float. SU responses' kmax allow for z_min = 0.016, at most.
     z_max: 3.0 # Type: float
-    z_steps: 100 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 7000
-    z_steps_trisp: 20  # Type: int. Number of z steps used to compute the trispectrum - around 50 should be enough
+    z_steps: 7000 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 7000
+    z_steps_trisp: 50  # Type: int. Number of z steps used to compute the trispectrum - around 50 should be enough
 
-    use_KE_approximation: True # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
+    use_KE_approximation: False # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
 
     # Name of the output covariance file. Change to '.npy' to save as npy file.
     cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str. 
@@ -226,9 +233,6 @@ PyCCL:
 
     # Whether or not to load the previously computed trispectrum.
     load_cached_tkka: True # Type: bool.
-
-    # Whether or not to use the default k and a grids used in CCL. 
-    # Setting this to True will make the computation of the cNG trispectrum much slower.
     use_default_k_a_grids: False
 
     # (from CCL docs): number of points over which to compute the radial kernels (weight functions).
@@ -243,7 +247,7 @@ PyCCL:
     gsl_params: null # Type: dict | None
 
 misc:
-    num_threads: 40 # Type: int. How many threads to use for the parallel computations
+    num_threads: 40 # Type: int. How many threads to use for the Julia SSC integral with @tturbo
 
     # How many integrals to compute at once for the  numerical integration of
     # the sigma^2_b(z_1, z_2) function with pylevin. 

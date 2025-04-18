@@ -35,7 +35,7 @@ dependencies:
 
   - pip:
     # pathos is needed to parallelize the computations involving non-pickleable objects.
-    # It can be ignored, in which some functions will run serially
+    # It can be ignored, in which case some functions will run serially
     - pathos  
     - pymaster
     - pyccl

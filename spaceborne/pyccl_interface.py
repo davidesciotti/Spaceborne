@@ -424,7 +424,7 @@ class PycclClass:
 
                 else:
                     tkka_abcd = self._compute_and_save_tkka(
-                        which_ng_cov, tkka_path, k_a_str, probe_block, p_of_k_a
+                        which_ng_cov, tkka_path, k_a_str, probe_block, p_of_k_a=None
                     )
 
                 self.tkka_dict[A, B, C, D] = tkka_abcd
@@ -444,7 +444,7 @@ class PycclClass:
             extrap_order_lok=1,
             extrap_order_hik=1,
             use_log=False,
-            p_of_k_a=None,
+            p_of_k_a=p_of_k_a,
             **additional_args,
         )
 
@@ -528,9 +528,8 @@ class PycclClass:
             elif self.which_b1g_in_resp == 'from_input':
                 tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC_linear_bias
                 additional_args = {
-                    'prof': self.halo_profile_dict[
-                        'L'
-                    ],  # prof should be HaloProfileNFW
+                    # prof should be HaloProfileNFW, in this case
+                    'prof': self.halo_profile_dict['L'],
                     'bias1': self.gal_bias_dict[A],
                     'bias2': self.gal_bias_dict[B],
                     'bias3': self.gal_bias_dict[C],
@@ -559,7 +558,9 @@ class PycclClass:
                 'prof34_2pt': self.prof_2pt_dict[C, D],
                 'lk_arr': self.logn_k_grid_tkka_cNG,
                 'a_arr': self.a_grid_tkka_cNG,
+                'separable_growth': False,
             }
+
         else:
             raise ValueError(
                 f'Invalid value for which_ng_cov. It is {which_ng_cov}, '
@@ -572,16 +573,13 @@ class PycclClass:
         # tODO pass this? make sure to be consistent
         gal_bias_1d = self.gal_bias_func(cosmo_lib.a_to_z(self.a_grid_tkka_SSC))
 
-        # TODO pk from input files
-        # This is the correct way to initialize the trispectrum
-        # (I Asked David Alonso about this.)
         self.halo_profile_dict = {
             'L': self.halo_profile_dm,
             'G': self.halo_profile_hod,
         }
 
         self.prof_2pt_dict = {
-            # see again https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
+            # see https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
             ('L', 'L'): ccl.halos.Profile2pt(),
             ('G', 'L'): ccl.halos.Profile2pt(),
             ('L', 'G'): ccl.halos.Profile2pt(),

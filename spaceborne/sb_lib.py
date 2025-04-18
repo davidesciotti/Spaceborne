@@ -121,17 +121,18 @@ def is_main_branch():
             ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
         current_branch = result.stdout.strip()
-        
+
         # Return True if branch is 'main', False otherwise
         return current_branch == 'main'
     except subprocess.SubprocessError:
         # If there's an error (e.g., not in a git repo), default to False
-        print("Warning: Could not determine Git branch. Assuming not main branch.")
+        print('Warning: Could not determine Git branch. Assuming not main branch.')
         return False
-    
+
+
 @contextlib.contextmanager
 def timer(msg):
     start = time.perf_counter()
@@ -2552,6 +2553,7 @@ def compute_FM_3D(nbl, npairs, nParams, cov_inv, D_3D):
                 FM[alf, bet] = FM[alf, bet] + (D_3D[elle, :, alf] @ b[elle, :, bet])
     return FM
 
+
 def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
     """expand the zpair indices into zi, zj, according to the ind ordering as usual"""
 
@@ -2562,7 +2564,9 @@ def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
     return dC_3D
 
 
-def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, derivatives_prefix, is_3x2pt=False, n_probes=2):
+def dC_dict_to_4D_array(
+    dC_dict_3D, param_names, nbl, zbins, derivatives_prefix, is_3x2pt=False, n_probes=2
+):
     """
     :param param_names: filename of the parameter, e.g. 'Om'; dCldOm = d(C(l))/d(Om)
     :param dC_dict_3D:
@@ -2590,12 +2594,19 @@ def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, derivatives_prefix,
                 dC_4D[..., idx] = value
 
         # a check, if the derivative wrt the param is not in the folder at all
-        if not any(f'{derivatives_prefix}{param_name}' in key for key in dC_dict_3D.keys()):
-            print(f'Derivative {derivatives_prefix}{param_name} not found; setting the corresponding FM entry to zero')
+        if not any(
+            f'{derivatives_prefix}{param_name}' in key for key in dC_dict_3D.keys()
+        ):
+            print(
+                f'Derivative {derivatives_prefix}{param_name} not found; setting the corresponding FM entry to zero'
+            )
             no_derivative_counter += 1
         if no_derivative_counter == len(param_names):
-            raise ImportError('No derivative found for any of the parameters in the input dictionary')
+            raise ImportError(
+                'No derivative found for any of the parameters in the input dictionary'
+            )
     return dC_4D
+
 
 # @njit
 def compute_FM_2D(nbl, npairs, nparams_tot, cov_2D_inv, D_2D):
@@ -2628,7 +2639,6 @@ def compute_FM_2D_optimized(nbl, npairs, nparams_tot, cov_2D_inv, D_2D):
     return FM
 
 
-
 def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
     """expand the zpair indices into zi, zj, according to the ind ordering as usual"""
 
@@ -2639,7 +2649,9 @@ def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
     return dC_3D
 
 
-def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, derivatives_prefix, is_3x2pt=False, n_probes=2):
+def dC_dict_to_4D_array(
+    dC_dict_3D, param_names, nbl, zbins, derivatives_prefix, is_3x2pt=False, n_probes=2
+):
     """
     :param param_names: filename of the parameter, e.g. 'Om'; dCldOm = d(C(l))/d(Om)
     :param dC_dict_3D:
@@ -2667,12 +2679,19 @@ def dC_dict_to_4D_array(dC_dict_3D, param_names, nbl, zbins, derivatives_prefix,
                 dC_4D[..., idx] = value
 
         # a check, if the derivative wrt the param is not in the folder at all
-        if not any(f'{derivatives_prefix}{param_name}' in key for key in dC_dict_3D.keys()):
-            print(f'Derivative {derivatives_prefix}{param_name} not found; setting the corresponding FM entry to zero')
+        if not any(
+            f'{derivatives_prefix}{param_name}' in key for key in dC_dict_3D.keys()
+        ):
+            print(
+                f'Derivative {derivatives_prefix}{param_name} not found; setting the corresponding FM entry to zero'
+            )
             no_derivative_counter += 1
         if no_derivative_counter == len(param_names):
-            raise ImportError('No derivative found for any of the parameters in the input dictionary')
+            raise ImportError(
+                'No derivative found for any of the parameters in the input dictionary'
+            )
     return dC_4D
+
 
 def compute_FoM(FM, w0wa_idxs):
     cov_param = np.linalg.inv(FM)
@@ -3997,8 +4016,8 @@ def build_noise(
     zbins: int,
     n_probes: int,
     sigma_eps2: float,
-    ng_shear: int | float | np.ndarray,
-    ng_clust: int | float | np.ndarray,
+    ng_shear,
+    ng_clust,
     is_noiseless: bool = False,
 ) -> np.ndarray:
     """Builds the noise power spectra.

@@ -7,6 +7,35 @@ from scipy.interpolate import CubicSpline, RegularGridInterpolator
 from spaceborne import cosmo_lib
 from spaceborne import sb_lib as sl
 
+
+
+
+# SECOND TEST - 18/04/2025
+# check CCL trispectrum
+trisp_path = '/home/cosmo/davide.sciotti/data/Spaceborne/output/cache/trispectrum/cNG'
+ka_str = 'amin0.25_amax0.98_asteps50_lnkmin-11.51_lnkmax4.61_ksteps200'
+a_grid = np.load(f'{trisp_path}/a_arr_{ka_str}.npy')
+lnk_grid = np.load(f'{trisp_path}/lnk1_arr_{ka_str}.npy')
+trisp_LLLL = np.load(f'{trisp_path}/trisp_LLLL_{ka_str}.npy')
+trisp_LLGL = np.load(f'{trisp_path}/trisp_LLGL_{ka_str}.npy')
+trisp_LLGG = np.load(f'{trisp_path}/trisp_LLGG_{ka_str}.npy')
+trisp_GLGL = np.load(f'{trisp_path}/trisp_GLGL_{ka_str}.npy')
+trisp_GLGG = np.load(f'{trisp_path}/trisp_GLGG_{ka_str}.npy')
+trisp_GGGG = np.load(f'{trisp_path}/trisp_GGGG_{ka_str}.npy')
+
+a_ix = 0
+plt.figure()
+plt.semilogy(lnk_grid, np.diag(trisp_LLLL[a_ix]), label='LLLL')
+plt.semilogy(lnk_grid, np.diag(trisp_LLGL[a_ix]), label='LLGL')
+plt.semilogy(lnk_grid, np.diag(trisp_LLGG[a_ix]), label='LLGG')
+plt.semilogy(lnk_grid, np.diag(trisp_GLGL[a_ix]), label='GLGL')
+plt.semilogy(lnk_grid, np.diag(trisp_GLGG[a_ix]), label='GLGG')
+plt.semilogy(lnk_grid, np.diag(trisp_GGGG[a_ix]), label='GGGG')
+plt.legend()
+plt.show()
+# END SECOND TEST
+
+
 tkka_path = (
     '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/output/cache/trispectrum/cNG'
 )

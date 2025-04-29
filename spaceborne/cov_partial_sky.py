@@ -919,10 +919,6 @@ class NmtCov:
 
         # ! create nmt field from the mask (there will be no maps associated to the fields)
         # TODO maks=None (as in the example) or maps=[mask]? I think None
-        start_time = time.perf_counter()
-        print('computing coupling coefficients...')
-        
-        breakpoint()
         f0_mask = nmt.NmtField(
             mask=self.mask_obj.mask, maps=None, spin=0, lite=True, lmax=lmax_eff
         )
@@ -935,7 +931,6 @@ class NmtCov:
         w00.compute_coupling_matrix(f0_mask, f0_mask, b)
         w02.compute_coupling_matrix(f0_mask, f2_mask, b)
         w22.compute_coupling_matrix(f2_mask, f2_mask, b)
-        print(f'...done in {(time.perf_counter() - start_time):.2f}s')
 
         # if you want to use the iNKA, the cls to be passed are the coupled ones
         # divided by fsky

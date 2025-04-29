@@ -2502,8 +2502,8 @@ def symmetrize_2d_array(array_2d):
         'neither the upper nor the lower triangle (excluding the diagonal) are null'
     )
 
-    if np.any(np.diag(array_2d)) != 0:
-        warnings.warn('the diagonal elements are all null', stacklevel=2)
+    # if np.any(np.diag(array_2d)) != 0:
+        # warnings.warn('the diagonal elements are all null', stacklevel=2)
 
     # symmetrize
     array_2d = np.where(array_2d, array_2d, array_2d.T)

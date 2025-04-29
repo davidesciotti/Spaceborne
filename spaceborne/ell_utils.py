@@ -412,7 +412,7 @@ class EllBinning:
                 recipe='ISTF',
                 output_ell_bin_edges=True,
             )
-            
+
         elif self.binning_type == 'lin':
             self.ells_WL, self.delta_l_WL, self.ell_edges_WL = compute_ells(
                 nbl=self.nbl_WL,
@@ -468,25 +468,23 @@ class EllBinning:
             # this function requires int edges!
             self.ell_edges_WL = self.ell_edges_WL.astype(int)
             self.ell_edges_GC = self.ell_edges_GC.astype(int)
-            
-            # TODO unsure about this; however, in this way 
+
+            # TODO unsure about this; however, in this way
             _ell_edges_WL = np.copy(self.ell_edges_WL)
             _ell_edges_GC = np.copy(self.ell_edges_GC)
             _ell_edges_WL[-1] += 1
             _ell_edges_GC[-1] += 1
-            
+
             self.nmt_bin_obj_WL = nmt.NmtBin.from_edges(
-                _ell_edges_WL[:-1], 
-                _ell_edges_WL[1:]
+                _ell_edges_WL[:-1], _ell_edges_WL[1:]
             )
             self.nmt_bin_obj_GC = nmt.NmtBin.from_edges(
-                _ell_edges_GC[:-1], 
-                _ell_edges_GC[1:]
+                _ell_edges_GC[:-1], _ell_edges_GC[1:]
             )
 
             self.ells_WL = self.nmt_bin_obj_WL.get_effective_ells()
             self.ells_GC = self.nmt_bin_obj_GC.get_effective_ells()
-            
+
             self.delta_l_WL = np.diff(self.ell_edges_WL)
             self.delta_l_GC = np.diff(self.ell_edges_GC)
 
@@ -510,8 +508,26 @@ class EllBinning:
         self._validate_bins()
 
     def _validate_bins(self):
-        """Perform sanity checks on the generated bins."""
         for probe in ['WL', 'GC', 'XC']:
             ells = getattr(self, f'ells_{probe}')
+            
             if ells is None or ells.size == 0:
                 raise ValueError(f'ell values for probe {probe} are empty.')
+            
+            if not isinstance(ells, np.ndarray):
+                raise TypeError(f'ell values for probe {probe} must be a numpy array, got {type(ells)} instead.')
+            
+            if ells.ndim != 1:
+                raise ValueError(f'ell values for probe {probe} must be a 1D array, got {ells.ndim}D array.')
+            
+            if not np.all(np.isfinite(ells)):
+                raise ValueError(f'ell values for probe {probe} contain NaN or Inf.')
+            
+            if not np.all(ells >= 0):
+                raise ValueError(f'ell values for probe {probe} must be non-negative.')
+            
+            if not np.all(np.diff(ells) >= 0):
+                raise ValueError(f'ell values for probe {probe} must be sorted in non-decreasing order.')
+            
+            if not np.issubdtype(ells.dtype, np.number):
+                raise TypeError(f'ell values for probe {probe} must be of numeric type.')

@@ -517,10 +517,10 @@ class SpaceborneCovariance:
         if self.use_nmt:
             
             # noise vector doesn't have to be recomputed, but repeated a larger number 
-            # of times
+            # of times (ell by ell)
             noise_3x2pt_unb_5d = np.repeat(
                 noise_3x2pt_4D[:, :, np.newaxis, :, :],
-                self.nmt_cov_obj.nbl_3x2pt_unb,
+                repeats=self.nmt_cov_obj.nbl_3x2pt_unb,
                 axis=2,
             )
             self.nmt_cov_obj.noise_3x2pt_unb_5d = noise_3x2pt_unb_5d

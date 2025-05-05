@@ -875,14 +875,14 @@ class NmtCov:
             if _lmax < 3 * self.mask_obj.nside:
                 warnings.warn(
                     f'lmax = {_lmax} and NSIDE = {self.mask_obj.nside}; '
-                    'you should set lmax and NSIDE such that lmax < 3 * NSIDE',
+                    'you should probably increase NSIDE or decrease lmax'
+                    '(such that e.g. lmax < 3 * NSIDE)',
                     stacklevel=2,
                 )
 
     def build_psky_cov(self):
-        # 1. ell binning
-
         # TODO again, here I'm using 3x2pt = GC
+        # 1. ell binning
         # shorten names for brevity
         b = self.ell_obj.nmt_bin_obj_GC
         fsky = self.mask_obj.fsky
@@ -890,23 +890,22 @@ class NmtCov:
 
         ells_eff = self.ell_obj.ells_3x2pt
         nbl_eff = self.ell_obj.nbl_3x2pt
-        lmin_eff = self.ell_obj.ell_edges_3x2pt[0]
-        lmax_eff = self.ell_obj.ell_edges_3x2pt[-1]
         ells_eff_edges = self.ell_obj.ell_edges_3x2pt
+        ell_min_eff = self.ell_obj.ell_min_3x2pt
+        ell_max_eff = self.ell_obj.ell_max_3x2pt
 
         # notice that bin_obj.get_ell_list(nbl_eff) is out of bounds
         # ells_eff_edges = np.array([b.get_ell_list(i)[0] for i in range(nbl_eff)])
         # ells_eff_edges = np.append(
         #     ells_eff_edges, b.get_ell_list(nbl_eff - 1)[-1] + 1
         # )  # careful f the +1!
-        # lmin_eff = ells_eff_edges[0]
-        # lmax_eff = b.lmax
-
-        ells_unb = np.arange(lmax_eff + 1)
+        # ell_min_eff = ells_eff_edges[0]
+        
+        ells_unb = np.arange(ell_max_eff + 1)
         nbl_unb = len(ells_unb)
-        assert nbl_unb == lmax_eff + 1, 'nbl_tot does not match lmax_eff + 1'
+        assert nbl_unb == ell_max_eff + 1, 'nbl_tot does not match lmax_eff + 1'
 
-        # ells_bpw = ells_unb[lmin_eff : lmax_eff + 1]
+        # ells_bpw = ells_unb[ell_min_eff : lmax_eff + 1]
         # delta_ells_bpw = np.diff(
         # np.array([b.get_ell_list(i)[0] for i in range(nbl_eff)])
         # )
@@ -920,10 +919,10 @@ class NmtCov:
         # ! create nmt field from the mask (there will be no maps associated to the fields)
         # TODO maks=None (as in the example) or maps=[mask]? I think None
         f0_mask = nmt.NmtField(
-            mask=self.mask_obj.mask, maps=None, spin=0, lite=True, lmax=lmax_eff
+            mask=self.mask_obj.mask, maps=None, spin=0, lite=True, lmax=ell_max_eff
         )
         f2_mask = nmt.NmtField(
-            mask=self.mask_obj.mask, maps=None, spin=2, lite=True, lmax=lmax_eff
+            mask=self.mask_obj.mask, maps=None, spin=2, lite=True, lmax=ell_max_eff
         )
         w00 = nmt.NmtWorkspace()
         w02 = nmt.NmtWorkspace()
@@ -966,8 +965,13 @@ class NmtCov:
         cw = nmt.NmtCovarianceWorkspace()
         print('Computing cov workspace coupling coefficients...')
         cw.compute_coupling_coefficients(f0_mask, f0_mask, f0_mask, f0_mask)
-        print(f'...done in {(time.perf_counter() - start_time):.2f} s...')
+        print(f'...done in {(time.perf_counter() - start_time):.2f} s')
 
+
+        np.save('./output/cl_ee_4covnmt.npy', cl_ee_4covnmt)
+        np.save('./output/cl_te_4covnmt.npy', cl_te_4covnmt)
+        np.save('./output/cl_tt_4covnmt.npy', cl_tt_4covnmt)
+        
         if nmt_cfg['spin0']:
             cov_nmt_10d = nmt_gaussian_cov_spin0(
                 cl_tt=cl_tt_4covnmt,

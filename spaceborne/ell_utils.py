@@ -469,17 +469,12 @@ class EllBinning:
             self.ell_edges_WL = self.ell_edges_WL.astype(int)
             self.ell_edges_GC = self.ell_edges_GC.astype(int)
 
-            # TODO unsure about this; however, in this way
-            _ell_edges_WL = np.copy(self.ell_edges_WL)
-            _ell_edges_GC = np.copy(self.ell_edges_GC)
-            _ell_edges_WL[-1] += 1
-            _ell_edges_GC[-1] += 1
 
             self.nmt_bin_obj_WL = nmt.NmtBin.from_edges(
-                _ell_edges_WL[:-1], _ell_edges_WL[1:]
+                self.ell_edges_WL[:-1], self.ell_edges_WL[1:]
             )
             self.nmt_bin_obj_GC = nmt.NmtBin.from_edges(
-                _ell_edges_GC[:-1], _ell_edges_GC[1:]
+                self.ell_edges_GC[:-1], self.ell_edges_GC[1:]
             )
 
             self.ells_WL = self.nmt_bin_obj_WL.get_effective_ells()
@@ -488,16 +483,29 @@ class EllBinning:
             self.delta_l_WL = np.diff(self.ell_edges_WL)
             self.delta_l_GC = np.diff(self.ell_edges_GC)
 
+            self.ell_min_WL = self.nmt_bin_obj_WL.get_ell_min(0)
+            self.ell_max_WL = self.nmt_bin_obj_WL.lmax
+            self.ell_min_GC = self.nmt_bin_obj_GC.get_ell_min(0)
+            self.ell_max_GC = self.nmt_bin_obj_GC.lmax
+            
+            # test that ell_max retrieved with the two methods coincide
+            assert self.nmt_bin_obj_WL.lmax == self.nmt_bin_obj_WL.get_ell_max(self.nbl_WL - 1)
+            assert self.nmt_bin_obj_GC.lmax == self.nmt_bin_obj_GC.get_ell_max(self.nbl_GC - 1)
+
         # XC follows GC
         self.ells_XC = np.copy(self.ells_GC)
         self.ell_edges_XC = np.copy(self.ell_edges_GC)
         self.delta_l_XC = np.copy(self.delta_l_GC)
+        self.ell_min_XC = np.copy(self.ell_min_GC)
+        self.ell_max_XC = np.copy(self.ell_max_GC)
 
         # 3x2pt as well
         # TODO change this to be more general
         self.ells_3x2pt = np.copy(self.ells_GC)
         self.ell_edges_3x2pt = np.copy(self.ell_edges_GC)
         self.delta_l_3x2pt = np.copy(self.delta_l_GC)
+        self.ell_min_3x2pt = np.copy(self.ell_min_GC)
+        self.ell_max_3x2pt = np.copy(self.ell_max_GC)
 
         # set nbl
         self.nbl_WL = len(self.ells_WL)
@@ -510,24 +518,32 @@ class EllBinning:
     def _validate_bins(self):
         for probe in ['WL', 'GC', 'XC']:
             ells = getattr(self, f'ells_{probe}')
-            
+
             if ells is None or ells.size == 0:
                 raise ValueError(f'ell values for probe {probe} are empty.')
-            
+
             if not isinstance(ells, np.ndarray):
-                raise TypeError(f'ell values for probe {probe} must be a numpy array, got {type(ells)} instead.')
-            
+                raise TypeError(
+                    f'ell values for probe {probe} must be a numpy array, got {type(ells)} instead.'
+                )
+
             if ells.ndim != 1:
-                raise ValueError(f'ell values for probe {probe} must be a 1D array, got {ells.ndim}D array.')
-            
+                raise ValueError(
+                    f'ell values for probe {probe} must be a 1D array, got {ells.ndim}D array.'
+                )
+
             if not np.all(np.isfinite(ells)):
                 raise ValueError(f'ell values for probe {probe} contain NaN or Inf.')
-            
+
             if not np.all(ells >= 0):
                 raise ValueError(f'ell values for probe {probe} must be non-negative.')
-            
+
             if not np.all(np.diff(ells) >= 0):
-                raise ValueError(f'ell values for probe {probe} must be sorted in non-decreasing order.')
-            
+                raise ValueError(
+                    f'ell values for probe {probe} must be sorted in non-decreasing order.'
+                )
+
             if not np.issubdtype(ells.dtype, np.number):
-                raise TypeError(f'ell values for probe {probe} must be of numeric type.')
+                raise TypeError(
+                    f'ell values for probe {probe} must be of numeric type.'
+                )

@@ -218,20 +218,20 @@ cfg['misc']['bench_filename'] = (
     '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_newtest'
 )
 cfg['ell_cuts']['apply_ell_cuts'] = False  # Type: bool
-cfg['ell_cuts']['center_or_min'] = (
-    'center'  # Type: str. Cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
-)
+# Type: str. Cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
+cfg['ell_cuts']['center_or_min'] = 'center'
 cfg['ell_cuts']['cl_ell_cuts'] = False  # Type: bool
 cfg['ell_cuts']['cov_ell_cuts'] = False  # Type: bool
-cfg['ell_cuts']['kmax_h_over_Mpc_ref'] = (
-    1.0  # Type: float. This is used when ell_cuts is False, also...?
-)
+# Type: float. This is used when ell_cuts is False, also...?
+cfg['ell_cuts']['kmax_h_over_Mpc_ref'] = 1.0
 cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.0,]  # fmt: skip
 
 # if in main branch, set this to False
 cfg['nz']['shift_nz'] = True
 if sl.is_main_branch():
     cfg['nz']['shift_nz'] = False
+if cfg['nz']['shift_nz']:
+    warnings.warn('nz is currently being shifted!!', stacklevel=2)
 
 cfg['nz']['dzWL'] = [-0.008848, 0.051368, 0.059484]
 cfg['nz']['dzGC'] = [-0.008848, 0.051368, 0.059484]
@@ -239,8 +239,6 @@ cfg['nz']['normalize_shifted_nz'] = True
 cfg['nz']['nz_gaussian_smoothing'] = False
 cfg['nz']['nz_gaussian_smoothing_sigma'] = 2
 cfg['nz']['plot_nz_tocheck'] = True
-if cfg['nz']['shift_nz']:
-    warnings.warn('nz is currently being shifted!!', stacklevel=2)
 # ! END HARDCODED OPTIONS/PARAMETERS
 
 # some of the configs have been defined here...
@@ -434,24 +432,25 @@ pvt_cfg = {
 # ! ================================= BEGIN MAIN BODY ==================================
 # ! ====================================================================================
 
-# ! === \ell binning ===
+
+# ! ===================================== \ells ========================================
 ell_obj = ell_utils.EllBinning(cfg)
 ell_obj.build_ell_bins()
 
 
-# ! === Mask ===
+# ! ===================================== Mask =========================================
 mask_obj = mask_utils.Mask(cfg['mask'])
 mask_obj.process()
 if hasattr(mask_obj, 'mask'):
     import healpy as hp
 
     hp.mollview(mask_obj.mask, cmap='inferno_r', title='Mask - Mollweide view')
-    
+
 # add fsky to pvt_cfg
 pvt_cfg['fsky'] = mask_obj.fsky
 
 
-# ! === n(z) ===
+# ! ===================================== n(z) =========================================
 # The shape of these input files should be `(zpoints, zbins + 1)`, with `zpoints` the
 # number of points over which the distribution is measured and zbins the number of
 # redshift bins. The first column should contain the redshifts values.
@@ -523,6 +522,7 @@ else:
 # two-dimensional", for shape consistency
 single_b_of_z = np.allclose(ccl_obj.gal_bias_2d, ccl_obj.gal_bias_2d[:, [0]])
 
+
 # ! ============================ Magnification bias ====================================
 if cfg['C_ell']['has_magnification_bias']:
     if cfg['C_ell']['which_mag_bias'] == 'from_input':
@@ -553,7 +553,7 @@ plt.ylabel(r'$b_{g}(z)$')
 plt.legend()
 
 
-# ! === Radial kernels ===
+# ! ============================ Radial kernels ========================================
 ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['PyCCL']['n_samples_wf'])
 ccl_obj.set_kernel_arr(
     z_grid_wf=z_grid, has_magnification_bias=cfg['C_ell']['has_magnification_bias']
@@ -562,7 +562,8 @@ ccl_obj.set_kernel_arr(
 gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias!)'
 ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 
-# ! === BNT and z means ===
+
+# ! ================================= BNT and z means ==================================
 if cfg['BNT']['cl_BNT_transform'] or cfg['BNT']['cov_BNT_transform']:
     bnt_matrix = bnt.compute_bnt_matrix(
         zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False
@@ -583,7 +584,7 @@ z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
 #     '(not a strict condition, valid only if we do not shift the n(z) in this part)'
 # )
 
-# ! === ell cuts ===
+# ! ===================================== \ell cuts ====================================
 # TODO need to adapt this to the class structure
 # ell_cuts_dict = {}
 # ellcuts_kw = {
@@ -646,7 +647,8 @@ for wf_idx in range(len(wf_ccl_list)):
     plt.tight_layout()
     plt.show()
 
-# ! === Cls ===
+
+# ! ======================================== Cls =======================================
 ccl_obj.cl_ll_3d = ccl_obj.compute_cls(
     ell_obj.ells_WL,
     ccl_obj.p_of_k_a,
@@ -710,7 +712,7 @@ if cfg['C_ell']['use_input_cls']:
     ccl_obj.cl_gg_3d = cl_gg_3d_in
 
 
-# ! === Multiplicative shear bias ===
+# ! ============================ Multiplicative shear bias =============================
 # ! THIS SHOULD NOT BE DONE FOR THE OC Cls!! mult shear bias values are passed
 # ! in the .ini file
 ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d = pyccl_interface.apply_mult_shear_bias(
@@ -800,6 +802,8 @@ else:
 # ccl_obj.cl_gg_3d = cl_gg_3d
 # ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
+# ! ============================= Unbinned Cls for nmt cov =============================
+
 if cfg['namaster']['use_namaster']:
     from spaceborne import cov_partial_sky
 
@@ -807,7 +811,7 @@ if cfg['namaster']['use_namaster']:
     nmt_cov_obj = cov_partial_sky.NmtCov(cfg, pvt_cfg, ccl_obj, ell_obj, mask_obj)
 
     # recompute Cls ell by ell
-    ell_max_3x2pt = ell_obj.ell_edges_3x2pt[-1]
+    ell_max_3x2pt = ell_obj.ell_max_3x2pt
     ells_3x2pt_unb = np.arange(ell_max_3x2pt + 1)
     nbl_3x2pt_unb = len(ells_3x2pt_unb)
     assert nbl_3x2pt_unb == ell_max_3x2pt + 1, (
@@ -853,7 +857,7 @@ else:
     nmt_cov_obj = None
 
 
-# ! build covariance matrices
+# !  =============================== Build Gaussian covs ===============================
 cov_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_obj, nmt_cov_obj, bnt_matrix)
 cov_obj.set_ind_and_zpairs(ind, zbins)
 cov_obj.consistency_checks()
@@ -1006,12 +1010,10 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 else:
     oc_obj = None
 
-# ! ========================================== Spaceborne ==============================
-
-
 if compute_sb_ssc:
     print('Start SSC computation with Spaceborne...')
 
+    # ! ================================= Probe responses ==============================
     resp_obj = responses.SpaceborneResponses(
         cfg=cfg, k_grid=k_grid, z_grid=z_grid_trisp, ccl_obj=ccl_obj
     )
@@ -1109,9 +1111,8 @@ if compute_sb_ssc:
             f' Got {cfg["covariance"]["which_pk_responses"]}.'
         )
 
-    # ! 2. prepare integrands (d2CAB_dVddeltab) and volume element
-
-    # ! test k_max_limber vs k_max_dPk and adjust z_min accordingly
+    # ! prepare integrands (d2CAB_dVddeltab) and volume element
+    # ! - test k_max_limber vs k_max_dPk and adjust z_min accordingly
     k_max_resp = np.max(k_grid)
     ell_grid = ell_obj.ells_GC
     kmax_limber = cosmo_lib.get_kmax_limber(
@@ -1192,7 +1193,7 @@ if compute_sb_ssc:
         + np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
     )
 
-    # ! 3. Compute/load/save sigma2_b
+    # ! =================================== sigma^2_b ==================================
     if cfg['covariance']['load_cached_sigma2_b']:
         sigma2_b = np.load(f'{output_path}/cache/sigma2_b_{zgrid_str}.npy')
 
@@ -1265,7 +1266,6 @@ if compute_sb_ssc:
 
     cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
 
-# TODO integrate this with Spaceborne_covg
 
 # ! ========================================== PyCCL ===================================
 if compute_ccl_ssc:
@@ -1299,9 +1299,11 @@ if compute_ccl_ssc or compute_ccl_cng:
             ind_dict=ind_dict,
         )
 
-# ! ========================== combine covariance terms ================================
+
+# ! ========================== Combine covariance terms ================================
 cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
 cov_dict = cov_obj.cov_dict
+
 
 # ! ============================ plot & tests ==========================================
 for key in cov_dict:

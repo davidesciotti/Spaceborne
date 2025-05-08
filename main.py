@@ -1366,6 +1366,7 @@ sl.write_cl_tab('./output', 'cl_gg', ccl_obj.cl_gg_3d, ell_obj.ells_GC, zbins)
 np.save('./output/cl_ll_3d.npy', cl_ll_unb_3d)
 np.save('./output/cl_gl_3d.npy', cl_gl_unb_3d)
 np.save('./output/cl_gg_3d.npy', cl_gg_unb_3d)
+np.save('./output/noise_3x2pt_5d.npy', cov_obj.nmt_cov_obj.noise_3x2pt_unb_5d)
 
 # save ell values
 header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']

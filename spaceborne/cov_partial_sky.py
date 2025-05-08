@@ -967,10 +967,10 @@ class NmtCov:
         cw.compute_coupling_coefficients(f0_mask, f0_mask, f0_mask, f0_mask)
         print(f'...done in {(time.perf_counter() - start_time):.2f} s')
 
-
-        np.save('./output/cl_ee_4covnmt.npy', cl_ee_4covnmt)
-        np.save('./output/cl_te_4covnmt.npy', cl_te_4covnmt)
-        np.save('./output/cl_tt_4covnmt.npy', cl_tt_4covnmt)
+        np.save('./output/cl_ee_4covnmt.npy', cl_ll_4covnmt)
+        np.save('./output/cl_te_4covnmt.npy', cl_gl_4covnmt)
+        np.save('./output/cl_tt_4covnmt.npy', cl_gg_4covnmt)
+        np.save('./output/noise_3x2pt_5d.npy', self.noise_3x2pt_unb_5d)
         
         if nmt_cfg['spin0']:
             cov_nmt_10d = nmt_gaussian_cov_spin0(

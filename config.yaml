@@ -182,7 +182,7 @@ covariance:
     #   has to be rescaled by fsky
     which_sigma2_b: polar_cap_on_the_fly # Type: str | None
 
-    # TODO SU input file???
+    # TODO SU input file
     which_pk_responses: halo_model # Type: str. Options: ['halo_model', 'separate_universe']
 
     # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
@@ -190,7 +190,7 @@ covariance:
     # - 'from_HOD' (from the Halo Occupation Distribution previously initialized)
     # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB
     # TODO probably the FS2 fit option can be deleted altogether
-    # TODO use the HOD bias in the whole code!!
+    # TODO use the HOD bias in the whole code
     which_b1g_in_resp: from_HOD # Type: str. Options: ['from_HOD', 'from_input']
 
     # Whether or not to include the second-order galaxy bias in the GCph SU responses
@@ -199,6 +199,10 @@ covariance:
     # Whether or not to include the additional terms of Terasawa et al [arXiv:2310.13330] in the halo model responses
     include_terasawa_terms: False # Type: bool
 
+    # Integration scheme used for the sigma2_b computation. Options:
+    # - 'simps': uses simpson integration. This is faster but less accurate
+    # - 'levin': uses levin integration. This is slower but more accurate
+    sigma2_b_integration_scheme: levin # Type: str. 
     load_cached_sigma2_b: False # Type: bool. Whether to load the previously computed sigma2_b.
     
     # k grid used for power spectrum and trispectrum computation
@@ -208,10 +212,10 @@ covariance:
     
     z_min: 0.02 # Type: float. SU responses' kmax allow for z_min = 0.016, at most.
     z_max: 3.0 # Type: float
-    z_steps: 100 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 7000
-    z_steps_trisp: 20  # Type: int. Number of z steps used to compute the trispectrum - around 50 should be enough
+    z_steps: 500 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 7000
+    z_steps_trisp: 100  # Type: int. Number of z steps used to compute the trispectrum - around 50 should be enough
 
-    use_KE_approximation: True # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
+    use_KE_approximation: False # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
 
     # Name of the output covariance file. Change to '.npy' to save as npy file.
     cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str. 
@@ -243,7 +247,7 @@ PyCCL:
     gsl_params: null # Type: dict | None
 
 misc:
-    num_threads: 40 # Type: int. How many threads to use for the parallel computations
+    num_threads: 8 # Type: int. How many threads to use for the parallel computations
 
     # How many integrals to compute at once for the  numerical integration of
     # the sigma^2_b(z_1, z_2) function with pylevin. 

@@ -729,8 +729,8 @@ if cfg['BNT']['cl_BNT_transform']:
         'the BNT transform should be applied either to the Cls or to the covariance, '
         'not both'
     )
-    cl_ll_3d = cl_utils.cl_BNT_transform(cl_ll_3d, bnt_matrix, 'L', 'L')
-    cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(cl_3x2pt_5d, bnt_matrix)
+    cl_ll_3d = cl_utils.cl_BNT_transform(ccl_obj.cl_ll_3d, bnt_matrix, 'L', 'L')
+    cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(ccl_obj.cl_3x2pt_5d, bnt_matrix)
     warnings.warn('you should probably BNT-transform the responses too!', stacklevel=2)
     if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         raise NotImplementedError('You should cut also the OC Cls')

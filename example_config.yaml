@@ -101,7 +101,7 @@ nz:
 
 mask:
     load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
-    mask_path: ../input/mask.fits # Type: str. Path to the mask file
+    mask_path: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
     generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
     nside: 1024 # Type: int
     survey_area_deg2: 13245 # Type: int
@@ -158,20 +158,14 @@ covariance:
     # - probe_ell_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordering used by CLOE
     covariance_ordering_2D: ell_probe_zpair # Type: str.
     
-    # Whether to save the full 6D (10D) covariance matrix, without to any indices compression or reshaping. 
-    # In the case of the single probes, this is an array of shape
+    # Whether to save the full 6D covariance matrix, without to any indices compression or reshaping.     # In the case of the single probes, this is an array of shape
     # (ellbins, ellbins, zbins, zbins, zbins, zbins).
-    # In the 3x2pt case, this is an array of shape
-    # (n_probes, n_probes, n_probes, n_probes, ellbins, ellbins, zbins, zbins, zbins, zbins), 
-    # with nbl the number of probes. The probe index is by default 0 for WL, 1 for GC.
-    # Keep in mind that the arrays will likely be quite large. 
     save_full_cov: True # Type: bool
     
     # Whether to split the Gaussian covariance term into the
     # sample variance, noise and mixed terms
     split_gaussian_cov: False # Type: bool
 
-    # TODO make sigma_eps_i a vector
     # Ellipticity dispersion *per component* = sigma_eps_i.
     # total ellipticity dispersion = sigma_eps
     # sigma_eps = (sigma_eps_i * np.sqrt(2))
@@ -196,8 +190,6 @@ covariance:
     # Can be one of:
     # - 'from_HOD' (from the Halo Occupation Distribution previously initialized)
     # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB
-    # TODO probably the FS2 fit option can be deleted altogether
-    # TODO use the HOD bias in the whole code!!
     which_b1g_in_resp: from_HOD # Type: str. Options: ['from_HOD', 'from_input']
 
     # Whether or not to include the second-order galaxy bias in the GCph SU responses
@@ -206,6 +198,10 @@ covariance:
     # Whether or not to include the additional terms of Terasawa et al [arXiv:2310.13330] in the halo model responses
     include_terasawa_terms: False # Type: bool
 
+    # Integration scheme used for the sigma2_b computation. Options:
+    # - 'simps': uses simpson integration. This is faster but less accurate
+    # - 'levin': uses levin integration. This is slower but more accurate
+    sigma2_b_integration_scheme: levin # Type: str. 
     load_cached_sigma2_b: False # Type: bool. Whether to load the previously computed sigma2_b.
     
     # k grid used for power spectrum and trispectrum computation
@@ -233,6 +229,9 @@ PyCCL:
 
     # Whether or not to load the previously computed trispectrum.
     load_cached_tkka: True # Type: bool.
+
+    # Whether or not to use the default k and a grids used in CCL. 
+    # Setting this to True will make the computation of the cNG trispectrum much slower.
     use_default_k_a_grids: False
 
     # (from CCL docs): number of points over which to compute the radial kernels (weight functions).
@@ -247,7 +246,7 @@ PyCCL:
     gsl_params: null # Type: dict | None
 
 misc:
-    num_threads: 40 # Type: int. How many threads to use for the Julia SSC integral with @tturbo
+    num_threads: 40 # Type: int. How many threads to use for the parallel computations
 
     # How many integrals to compute at once for the  numerical integration of
     # the sigma^2_b(z_1, z_2) function with pylevin. 

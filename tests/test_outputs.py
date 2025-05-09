@@ -1,23 +1,29 @@
 """
-To run these tests: 
-1.  Decide on a branch/commit/version you wish to use as benchmark. 
-    Then, set `save_output_as_benchmark` to `True` in the config file and choose a 
-    unique benchmark filename. Note that these options are in main.py, as of now. 
-    Also, pay attention to all of the hardcoded configs in main.py, they need to match 
+To run these tests:
+1.  Decide on a branch/commit/version you wish to use as benchmark.
+    Then, set `save_output_as_benchmark` to `True` in the config file and choose a
+    unique benchmark filename. *Note that these options are in main.py, as of now*.
+    Also, pay attention to all of the hardcoded configs in main.py, they need to match
     between the different versions you're testing.
-2.  Make sure there's no FM-related section at the end of main.py, the code has to finish 
+2.  Make sure there's no FM-related section at the end of main.py, the code has to finish
     without errors.
-3.  Run the code to generate the benchmark file and the associate yaml cfg file.
-4.  Switch branch (for example) and make sure the hardcoded options in main.py are 
+3.  Run the code to generate the benchmark file and the associated yaml cfg file.
+4.  Switch branch (for example) and make sure the hardcoded options in main.py are
     consistent with the benchmark version.
-5.  Open this script and make sure you indicate the relevant benchmark file name 
+4.1 In particular, in main.py, comment out the lines
+        cfg['misc']['save_output_as_benchmark'] = ...
+        cfg['misc']['bench_filename'] = ...
+        if sl.is_main_branch():
+            cfg['nz']['shift_nz'] = False
+4.2 If you're testing the main branch, don't worry about config/example_config separation
+5.  Open this script and make sure you indicate the relevant benchmark file name
     in the `bench_names` list, then run it.
 6.  If some configs are missing, check the benchmark .yaml file and manually paste them
     there, rather than adding hardcoded options in main.py.
-    
-Note:   if all checks are run, the content of the tmp folder is deleted, preventing you 
+
+Note:   if all checks are run, the content of the tmp folder is deleted, preventing you
         to inspect the output files in more detail. In this case, simply stop the script
-        at the end of test_main_script func, eg with 
+        at the end of test_main_script func, eg with
         `assert False, 'stop here'`
 """
 
@@ -43,9 +49,10 @@ def test_main_script(test_cfg_path):
     keys_bench = bench_data.files
     common_keys = list(set(keys_test) & set(keys_bench))
     common_keys.sort()
-    
+
     print(f'Keys not in common: {set(keys_test) ^ set(keys_bench)}')
 
+    print('\n')
     # Compare outputs
     for key in common_keys:
         if key in excluded_keys:
@@ -92,7 +99,7 @@ def test_main_script(test_cfg_path):
             except (TypeError, AssertionError) as e:
                 # Catch other errors (dtype mismatches, numerical differences)
                 print(f'Comparison failed for {key}: {e}')
-                
+
     # example of the Note above
     # assert False, 'stop here'
     # sl.compare_arrays(bench_data['cov_3x2pt_tot_2D'], test_data['cov_3x2pt_tot_2D'], plot_diff_threshold=1, plot_diff_hist=True)
@@ -107,7 +114,7 @@ bench_names = [os.path.basename(file) for file in bench_names]
 bench_names = [bench_name.replace('.npz', '') for bench_name in bench_names]
 # ... or run specific tests
 bench_names = [
-    'output_GSpaceborne_SSCSpaceborne_cNGPyCCL_KEFalse_resphalo_model_b1gfrom_HOD_devmerge',
+    'output_GSpaceborne_SSCSpaceborne_cNGPyCCL_KEFalse_resphalo_model_b1gfrom_HOD_devmerge2',
 ]
 
 main_script_path = f'{ROOT}/Spaceborne/main.py'
@@ -120,8 +127,10 @@ excluded_keys = ['backup_cfg', 'metadata']
 os.chdir(os.path.dirname(main_script_path))
 
 if os.path.exists(f'{temp_output_filename}.npz'):
-    message = f'{temp_output_filename}.npz already exists, most likely '
-    'from a previous failed test. Do you want to overwrite it? y/n: '
+    message = (
+        f'{temp_output_filename}.npz already exists, most likely '
+        'from a previous failed test. Do you want to overwrite it? y/n: '
+    )
     if input(message) != 'y':
         print('Exiting...')
         exit()

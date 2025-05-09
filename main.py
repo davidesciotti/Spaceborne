@@ -157,19 +157,18 @@ cfg['OneCovariance']['precision_settings'] = 'default'
 cfg['OneCovariance']['path_to_oc_executable'] = '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py'  # fmt: skip
 cfg['OneCovariance']['path_to_oc_ini'] = './input/config_3x2pt_pure_Cell_general.ini'
 cfg['OneCovariance']['consistency_checks'] = False
-cfg['misc']['save_output_as_benchmark'] = False
+cfg['misc']['save_output_as_benchmark'] = True
 cfg['misc']['bench_filename'] = (
-    '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_newtest'
+    '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}'
+    '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_devmerge2'
 )
 cfg['ell_cuts']['apply_ell_cuts'] = False  # Type: bool
-cfg['ell_cuts']['center_or_min'] = (
-    'center'  # Type: str. Cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
-)
+# Type: str. Cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
+cfg['ell_cuts']['center_or_min'] = 'center'
 cfg['ell_cuts']['cl_ell_cuts'] = False  # Type: bool
 cfg['ell_cuts']['cov_ell_cuts'] = False  # Type: bool
-cfg['ell_cuts']['kmax_h_over_Mpc_ref'] = (
-    1.0  # Type: float. This is used when ell_cuts is False, also...?
-)
+# Type: float. This is used when ell_cuts is False, also...?
+cfg['ell_cuts']['kmax_h_over_Mpc_ref'] = 1.0
 cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.0,]  # fmt: skip
 
 # if in main branch, set this to False

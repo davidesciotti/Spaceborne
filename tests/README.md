@@ -24,4 +24,4 @@ Note: The code is very fast if you set something like
 1. In main.py, set `cfg['misc']['save_output_as_benchmark']: False`
 2. In main.py, make sure that we take the cfg path as command-line input (i.e., uncomment the argparse bit at the beginning)
 3. In tests/test_outputs.py, set the desired bench filename
-3. Run tests/test_outputs.py
+4. Run tests/test_outputs.py

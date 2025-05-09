@@ -529,7 +529,7 @@ class OneCovarianceInterface:
             )
 
         if self.compute_cng:
-            cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix_NG.mat')
+            cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix_nongauss.mat')
             self.cov_mat_cng_2d = self.cov_ggglll_to_llglgg(
                 cov_in, elem_auto, elem_cross
             )

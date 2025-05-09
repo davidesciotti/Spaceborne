@@ -13,5 +13,5 @@
 # Steps to run the tests
 
 1. Set `cfg['misc']['save_output_as_benchmark']: False`
-2. In main.py, make sure that we take the cfg path as command-line input (i.e., unceomment the argparse bit at the beginning)
+2. In main.py, make sure that we take the cfg path as command-line input (i.e., uncomment the argparse bit at the beginning)
 3. Run tests/test_outputs.py

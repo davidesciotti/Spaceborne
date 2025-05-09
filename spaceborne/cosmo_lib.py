@@ -341,9 +341,8 @@ def instantiate_cosmo_ccl_obj(fiducial_pars_dict, extra_parameters):
     # extra_parameters = {"camb": {"halofit_version": "mead2020_feedback",
     #                              "HMCode_logT_AGN": 7.75}}
 
-    fiducial_pars_dict = sl.flatten_dict(
-        fiducial_pars_dict
-    )  # flatten the dictionary if it's nested
+    # flatten the dictionary if it's nested
+    fiducial_pars_dict = sl.flatten_dict(fiducial_pars_dict)
 
     Omega_nu = get_omega_nu0(
         fiducial_pars_dict['m_nu'],

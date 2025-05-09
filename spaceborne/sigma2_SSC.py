@@ -485,6 +485,166 @@ def sigma2_z2_func_vectorized(
 
     return result
 
+def sigma2_z2_func_vectorized_simplified(
+    z_min,
+    z_max,
+    N_u=50,
+    N_v=50,
+    v_log_min=1e-4,
+    k_grid_sigma2=None,
+    cosmo_ccl=None,
+    which_sigma2_b='full_curved_sky',
+    ell_mask=None,
+    cl_mask=None,
+    fsky_mask=None,
+    integration_scheme='simps',
+    # n_jobs is not used in this simplified version as it's vectorized
+):
+    """
+    Computes sigma^2_b(z1, z2) for (z1, z2) by sampling points
+    clustered near the diagonal z1 ~ z2, and then symmetrizes
+    the result into a 2D grid.
+
+    Returns:
+        tuple: A tuple containing:
+            - z_vals (np.ndarray): The unique z values that define the axes
+                                   of the symmetrized 2D grid.
+            - sigma2_b_2d (np.ndarray): A 2D array of sigma^2_b(z1, z2)
+                                   symmetrized for z1 and z2 values
+                                   found in the clustered sampling.
+    """
+
+    if integration_scheme != 'simps':
+        raise NotImplementedError('Only simps integration supported in this version.')
+
+    u_vals = np.linspace(z_min, z_max, N_u)
+
+    z1_list = []
+    z2_list = []
+    sigma2_list = []
+
+    # Loop through u values. Calculations for each (z1, z2) pair derived
+    # from a single u are vectorized over the v dimension.
+    for u in tqdm(u_vals, desc="Processing u values"):
+        # Determine v_max for the current u slice.
+        # v = z1 - z2. z1 = u + v/2, z2 = u - v/2.
+        # z_min <= u + v/2 <= z_max  => 2(z_min - u) <= v <= 2(z_max - u)
+        # z_min <= u - v/2 <= z_max  => 2(u - z_max) <= -v <= 2(u - z_min) => 2(u - z_min) >= v >= 2(u - z_max)
+        # For v >= 0 (upper triangle z1 >= z2), the maximum v is min(2(z_max - u), 2(u - z_min)).
+        v_max = 2 * min(u - z_min, z_max - u)
+
+        # If v_max is too small, skip this u slice as it generates no points
+        # with v >= v_log_min.
+        if v_max <= v_log_min:
+            continue
+
+        # Generate v values logarithmically between v_log_min and v_max for this u slice.
+        v_vals = np.concatenate((np.array([0]), np.logspace(np.log10(v_log_min), np.log10(v_max), N_v)))
+
+        # Compute the corresponding z1 and z2 pairs for this u slice.
+        z1_u = u + 0.5 * v_vals
+        z2_u = u - 0.5 * v_vals
+
+        # Apply mask to keep only pairs within the [z_min, z_max] range.
+        mask_u = (z1_u >= z_min) & (z1_u <= z_max) & (z2_u >= z_min) & (z2_u <= z_max)
+        z1_u_masked = z1_u[mask_u]
+        z2_u_masked = z2_u[mask_u]
+
+        # If no valid pairs remain after masking, skip to the next u slice.
+        if len(z1_u_masked) == 0:
+            continue
+
+        # --- Start of Vectorized calculation for the current u slice ---
+
+        # Compute cosmological quantities for all valid pairs in this u slice.
+        # These functions from ccl and cosmo_lib are assumed to be vectorized.
+        a1_u = cosmo_lib.z_to_a(z1_u_masked)
+        a2_u = cosmo_lib.z_to_a(z2_u_masked)
+        r1_u = ccl.comoving_radial_distance(cosmo_ccl, a1_u)
+        r2_u = ccl.comoving_radial_distance(cosmo_ccl, a2_u)
+        D1_u = ccl.growth_factor(cosmo_ccl, a1_u)
+        D2_u = ccl.growth_factor(cosmo_ccl, a2_u)
+
+        # Compute the integrand for the k-integral.
+        # The integrand has shape (n_k, n_pairs_in_u_slice).
+        # k_grid_sigma2[:, None] has shape (n_k, 1)
+        # r1_u and r2_u have shape (n_pairs_in_u_slice,)
+        # Broadcasting handles the multiplication correctly.
+        j0_1_u = spherical_jn(0, k_grid_sigma2[:, None] * r1_u[None, :])
+        j0_2_u = spherical_jn(0, k_grid_sigma2[:, None] * r2_u[None, :])
+
+        # Pk has shape (n_k,). Pk[:, None] has shape (n_k, 1) for broadcasting.
+        Pk = ccl.linear_matter_power(cosmo_ccl, k=k_grid_sigma2, a=1.0)
+        integrand_u = k_grid_sigma2[:, None]**2 * Pk[:, None] * j0_1_u * j0_2_u
+
+        # Integrate over k using Simpson's rule.
+        # The integration is performed along axis 0 (the k axis).
+        integral_u = simps(integrand_u, x=k_grid_sigma2, axis=0) # shape (n_pairs_in_u_slice,)
+
+        # Calculate sigma2_b based on the integration result and the selected mode.
+        if which_sigma2_b == 'full_curved_sky':
+            # Full sky formula. D1_u, D2_u, integral_u all have shape (n_pairs_in_u_slice,).
+            sigma2_u = (1 / (2 * np.pi**2)) * D1_u * D2_u * integral_u
+
+        elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
+            # Partial-sky computation involving summation over ell.
+            # ell_mask, cl_mask have shape (n_ell,).
+            # We need to broadcast D1_u, D2_u, integral_u (shape (n_pairs,))
+            # and ell_mask, cl_mask (shape (n_ell,)) for the summation.
+            # Reshape D1_u, D2_u, integral_u to (1, n_pairs_in_u_slice)
+            # Reshape (2 * ell_mask + 1) * cl_mask to (n_ell, 1)
+            summand_u = (
+                (2 * ell_mask[:, None] + 1) # shape (n_ell, 1)
+                * cl_mask[:, None]         # shape (n_ell, 1)
+                * (2 / np.pi)
+                * D1_u[None, :]            # shape (1, n_pairs_in_u_slice)
+                * D2_u[None, :]            # shape (1, n_pairs_in_u_slice)
+                * integral_u[None, :]      # shape (1, n_pairs_in_u_slice)
+            ) # Resulting shape (n_ell, n_pairs_in_u_slice)
+
+            # Sum over the ell axis (axis 0) to get result for each pair.
+            result_u = np.sum(summand_u, axis=0) # shape (n_pairs_in_u_slice,)
+            sigma2_u = result_u * (1 / (4 * np.pi * fsky_mask))**2
+
+        else:
+            raise ValueError('Invalid which_sigma2_b value.')
+
+        # --- End of Vectorized calculation for the current u slice ---
+
+        # Append the results from this u slice to the overall lists.
+        z1_list.append(z1_u_masked)
+        z2_list.append(z2_u_masked)
+        sigma2_list.append(sigma2_u)
+
+    # Concatenate all results from the u slices into final flattened arrays.
+    z1_all = np.concatenate(z1_list)
+    z2_all = np.concatenate(z2_list)
+    sigma2_all = np.concatenate(sigma2_list)
+
+    # --- Symmetrize into a 2D grid ---
+    # Get the unique z values from the sampled points to define the grid axes.
+    z_vals = np.unique(np.concatenate([z1_all, z2_all]))
+    Nz = len(z_vals)
+
+    # Initialize the 2D grid with zeros.
+    sigma2_b_2d = np.zeros((Nz, Nz))
+
+    # Create a mapping from z value to its index in the z_vals array.
+    z_to_idx = {z: i for i, z in enumerate(z_vals)}
+
+    # Populate the 2D grid using the computed sigma2_b values.
+    # Since we computed for the upper triangle (z1 >= z2) and sigma^2_b is
+    # symmetric, we populate both (i, j) and (j, i) for each (z1, z2) pair.
+    for zz1, zz2, val in zip(z1_all, z2_all, sigma2_all):
+        i = z_to_idx[zz1]
+        j = z_to_idx[zz2]
+        sigma2_b_2d[i, j] = val
+        # Symmetrize: sigma2_b(z1, z2) = sigma2_b(z2, z1)
+        if i != j: # Avoid setting the diagonal twice
+             sigma2_b_2d[j, i] = val
+
+    return z1_all, z2_all, sigma2_b_2d # Return both z_vals and the symmetrized 2D array
+
 
 def integrate_levin(r1_arr, r2, integrand, k_grid_sigma2, n_jobs):
     """This can probably be further optimized by not instantiating

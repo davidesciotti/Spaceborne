@@ -1,3 +1,5 @@
+[MOST UP-TO-DATE INSTRUCTIONS ARE IN Spaceborne/tests/test_outputs.py]
+
 
 # Steps to save benchmark files
 

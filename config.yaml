@@ -44,6 +44,10 @@ C_ell:
     # Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
     # Note: if the non-Gaussian covariance is requested, the code will compute intermediate quantities
     # such as the radial kernels for lensing and clustering. The user should make sure that the cosmology 
+    # and n(z) used to generate the input Cls and the ones specified in this cfg file are compatible.
+    # The Cls should be passed in a .txt, .dat or .ascii file with columns corresponding to 
+    # ell, zi, zj, Cl[ell, zi, zj]
+    # with `ell` the ell value, zi the i-th tomographic bin index, and zj the j-th tomographic bin index.
     # The Cls are then splined along the \ell axis and interpolated over the \ell values specified in the "ell_binning"
     # section of this cfg file.
     use_input_cls: False  # Type: bool

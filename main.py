@@ -513,7 +513,7 @@ ccl_obj.set_kernel_arr(
     z_grid_wf=z_grid, has_magnification_bias=cfg['C_ell']['has_magnification_bias']
 )
 
-gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias!)'
+gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias)'
 ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 
 # ! compute BNT and z means
@@ -1158,12 +1158,12 @@ if compute_sb_ssc:
         else:
             # depending on the modules installed, integrate with levin or simpson
             # (in the latter case, in parallel or not)
-            integration_scheme = 'levin' if find_spec('pylevin') else 'simps'
+            s2b_integration_scheme = cfg['covariance']['sigma2_b_integration_scheme']
             parallel = bool(find_spec('pathos'))
 
-            if integration_scheme == 'levin':
+            if s2b_integration_scheme == 'levin':
                 k_grid_s2b = k_grid
-            elif integration_scheme == 'simps':
+            elif s2b_integration_scheme == 'simps':
                 k_grid_s2b = k_grid_s2b_simps
 
             sigma2_b = sigma2_SSC.sigma2_z1z2_wrap_parallel(
@@ -1173,7 +1173,7 @@ if compute_sb_ssc:
                 which_sigma2_b=which_sigma2_b,
                 mask_obj=mask_obj,
                 n_jobs=cfg['misc']['num_threads'],
-                integration_scheme=integration_scheme,
+                integration_scheme=s2b_integration_scheme,
                 batch_size=cfg['misc']['levin_batch_size'],
                 parallel=parallel,
             )
@@ -1301,7 +1301,7 @@ print(f'Covariance matrices saved in {output_path}\n')
 # save cfg file
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.dump(cfg, yaml_file, default_flow_style=False)
-    
+
 # save cls
 sl.write_cl_tab('./output', 'cl_ll', ccl_obj.cl_ll_3d, ell_obj.ells_WL, zbins)
 sl.write_cl_tab('./output', 'cl_gl', ccl_obj.cl_gl_3d, ell_obj.ells_XC, zbins)

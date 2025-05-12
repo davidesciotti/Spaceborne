@@ -1234,7 +1234,6 @@ if compute_sb_ssc:
                 parallel=parallel,
             )
 
-    if not cfg['covariance']['load_cached_sigma2_b']:
         np.save(f'{output_path}/cache/sigma2_b_{zgrid_str}.npy', sigma2_b)
         np.save(f'{output_path}/cache/zgrid_sigma2_b_{zgrid_str}.npy', z_grid)
 

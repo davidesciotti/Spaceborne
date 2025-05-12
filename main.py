@@ -52,9 +52,6 @@ warnings.filterwarnings(
 pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 
-# use the _dev config in the develop branch!
-_config_path = 'config.yaml' if os.path.exists('config.yaml') else 'example_config.yaml'
-
 
 def load_config():
     # Check if we're running in a Jupyter environment (or interactive mode)
@@ -92,8 +89,67 @@ def load_config():
     return cfg
 
 
-cfg = load_config()
+def plot_cls():
+    fig, ax = plt.subplots(1, 3, figsize=(13, 4))
+    plt.tight_layout()
+    for zi in range(zbins):
+        zj = zi
+        kw = dict(c=clr[zi], ls='-', marker='.')
+        ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_ll_3d[:, zi, zj], **kw)
+        ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_gl_3d[:, zi, zj], **kw)
+        ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_gg_3d[:, zi, zj], **kw)
 
+    if cfg['C_ell']['use_input_cls']:
+        for zi in range(zbins):
+            zj = zi
+            kw = dict(c=clr[zi], ls='', marker='x')
+            ax[0].loglog(ell_obj.ells_WL, cl_ll_3d_sb[:, zi, zj], **kw)
+            ax[1].loglog(ell_obj.ells_XC, cl_gl_3d_sb[:, zi, zj], **kw)
+            ax[2].loglog(ell_obj.ells_GC, cl_gg_3d_sb[:, zi, zj], **kw)
+        # Add style legend only to middle plot
+        style_legend = ax[1].legend(
+            handles=[
+                plt.Line2D([], [], color='gray', ls='-', label='SB'),
+                plt.Line2D([], [], color='gray', ls='', marker='x', label='Input'),
+            ],
+            loc='upper right',
+            fontsize=16,
+            frameon=False,
+        )
+        ax[1].add_artist(style_legend)  # Preserve after adding z-bin legend
+
+    ax[2].legend(
+        [f'$z_{{{zi}}}$' for zi in range(zbins)],
+        loc='upper right',
+        fontsize=16,
+        frameon=False,
+    )
+
+    ax[0].set_title('LL')
+    ax[1].set_title('GL')
+    ax[2].set_title('GG')
+    ax[0].set_xlabel('$\\ell$')
+    ax[1].set_xlabel('$\\ell$')
+    ax[2].set_xlabel('$\\ell$')
+    ax[0].set_ylabel('$C_{\\ell}$')
+    # increase font size
+    for axi in ax:
+        for item in (
+            [axi.title, axi.xaxis.label, axi.yaxis.label]
+            + axi.get_xticklabels()
+            + axi.get_yticklabels()
+        ):
+            item.set_fontsize(16)
+    plt.show()
+
+
+# ! ====================================================================================
+# ! ================================== PREPARATION =====================================
+# ! ====================================================================================
+
+# use the _dev config in the develop branch!
+_config_path = 'config.yaml' if os.path.exists('config.yaml') else 'example_config.yaml'
+cfg = load_config()
 
 # some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']
@@ -175,6 +231,8 @@ cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [0.1, 0.16681005, 0.27825594, 0.464158
 cfg['nz']['shift_nz'] = True
 if sl.is_main_branch():
     cfg['nz']['shift_nz'] = False
+if cfg['nz']['shift_nz']:
+    warnings.warn('nz is currently being shifted!!', stacklevel=2)
 
 cfg['nz']['dzWL'] = [-0.008848, 0.051368, 0.059484]
 cfg['nz']['dzGC'] = [-0.008848, 0.051368, 0.059484]
@@ -182,8 +240,6 @@ cfg['nz']['normalize_shifted_nz'] = True
 cfg['nz']['nz_gaussian_smoothing'] = False
 cfg['nz']['nz_gaussian_smoothing_sigma'] = 2
 cfg['nz']['plot_nz_tocheck'] = True
-if cfg['nz']['shift_nz']:
-    warnings.warn('nz is currently being shifted!!', stacklevel=2)
 # ! END HARDCODED OPTIONS/PARAMETERS
 
 # some of the configs have been defined here...
@@ -311,8 +367,8 @@ k_grid_s2b_simps = np.logspace(  # fmt: skip
 )  # fmt: skip
 if len(z_grid) < 250:
     warnings.warn(
-        'z_grid is small, at the moment it used to compute various '
-        'intermediate quantities',
+        'the number of steps in the redshift grid is small, '
+        'you may want to consider increasing it',
         stacklevel=2,
     )
 
@@ -356,21 +412,46 @@ ind_auto = ind[:zpairs_auto, :].copy()
 ind_cross = ind[zpairs_auto : zpairs_cross + zpairs_auto, :].copy()
 ind_dict = {('L', 'L'): ind_auto, ('G', 'L'): ind_cross, ('G', 'G'): ind_auto}
 
-# ! ====================================================================================
-# ! ====================================================================================
+# private cfg dictionary. This serves a couple different purposeses:
+# 1. To store and pass hardcoded parameters in a convenient way
+# 2. To make the .format() more compact
+pvt_cfg = {
+    'zbins': zbins,
+    'ind': ind,
+    'n_probes': n_probes,
+    'probe_ordering': probe_ordering,
+    'which_ng_cov': cov_terms_str,
+    'cov_terms_list': cov_terms_list,
+    'GL_OR_LG': GL_OR_LG,
+    'symmetrize_output_dict': symmetrize_output_dict,
+    'use_h_units': use_h_units,
+    'z_grid': z_grid,
+    'jl_integrator_path': './spaceborne/julia_integrator.jl',
+}
+
 # ! ====================================================================================
 # ! ================================= BEGIN MAIN BODY ==================================
+# ! ====================================================================================
 
-# ! 1. Mask
+
+# ! ===================================== \ells ========================================
+ell_obj = ell_utils.EllBinning(cfg)
+ell_obj.build_ell_bins()
+
+
+# ! ===================================== Mask =========================================
 mask_obj = mask_utils.Mask(cfg['mask'])
 mask_obj.process()
 if hasattr(mask_obj, 'mask'):
     import healpy as hp
 
-    hp.mollview(mask_obj.mask, cmap='inferno_r')
+    hp.mollview(mask_obj.mask, cmap='inferno_r', title='Mask - Mollweide view')
+
+# add fsky to pvt_cfg
+pvt_cfg['fsky'] = mask_obj.fsky
 
 
-# ! 2. Redshift distributions
+# ! ===================================== n(z) =========================================
 # The shape of these input files should be `(zpoints, zbins + 1)`, with `zpoints` the
 # number of points over which the distribution is measured and zbins the number of
 # redshift bins. The first column should contain the redshifts values.
@@ -385,41 +466,10 @@ zgrid_nz_lns = nz_lns_tab_full[:, 0]
 nz_src = nz_src_tab_full[:, 1:]
 nz_lns = nz_lns_tab_full[:, 1:]
 
-# nz may be subjected to a shift
+# nz may be subjected to a shift: save the original arrays
 nz_unshifted_src = nz_src
 nz_unshifted_lns = nz_lns
 
-# ! 3. \ell binning
-ell_obj = ell_utils.EllBinning(cfg)
-ell_obj.build_ell_bins()
-
-# private cfg dictionary. This serves a couple different purposeses:
-# 1. To store and pass hardcoded parameters in a convenient way
-# 2. To make the .format() more compact
-pvt_cfg = {
-    'zbins': zbins,
-    'ind': ind,
-    'probe_ordering': probe_ordering,
-    'which_ng_cov': cov_terms_str,
-    'cov_terms_list': cov_terms_list,
-    'GL_OR_LG': GL_OR_LG,
-    'symmetrize_output_dict': symmetrize_output_dict,
-    'use_h_units': use_h_units,
-    'z_grid': z_grid,
-}
-
-
-# ! START SCALE CUTS: for these, we need to:
-# 1. Compute the BNT. This is done with the raw, or unshifted n(z), but only for
-# the purpose of computing the ell cuts - the rest of the code uses a BNT matrix
-# from the shifted n(z) - see also comment below.
-# 2. compute the kernels for the un-shifted n(z) (for consistency)
-# 3. bnt-transform these kernels (for lensing, it's only the gamma kernel),
-# and use these to:
-# 4. compute the z means
-# 5. compute the ell cuts
-
-# ! shift and set nz
 if shift_nz:
     nz_src = wf_cl_lib.shift_nz(
         zgrid_nz_src,
@@ -448,10 +498,12 @@ ccl_obj.set_nz(
 )
 ccl_obj.check_nz_tuple(zbins)
 
-# ! IA
+
+# ! ========================================= IA =======================================
 ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid, has_ia=cfg['C_ell']['has_IA'])
 
-# ! galaxy bias
+
+# ! =================================== Galaxy bias ====================================
 # TODO the alternative should be the HOD gal bias already set in the responses class!!
 if cfg['C_ell']['which_gal_bias'] == 'from_input':
     gal_bias_input = np.genfromtxt(cfg['C_ell']['gal_bias_table_filename'])
@@ -466,17 +518,13 @@ elif cfg['C_ell']['which_gal_bias'] == 'FS2_polynomial_fit':
 else:
     raise ValueError('which_gal_bias should be "from_input" or "FS2_polynomial_fit"')
 
-if np.all(
-    [
-        np.allclose(ccl_obj.gal_bias_2d[:, 0], ccl_obj.gal_bias_2d[:, zi])
-        for zi in range(zbins)
-    ]
-):
-    single_b_of_z = True
-else:
-    single_b_of_z = False
+# Check if the galaxy bias is the same in all bins
+# Note: the [0] (inside square brackets) means "select column 0 but keep the array
+# two-dimensional", for shape consistency
+single_b_of_z = np.allclose(ccl_obj.gal_bias_2d, ccl_obj.gal_bias_2d[:, [0]])
 
-# ! magnification bias
+
+# ! ============================ Magnification bias ====================================
 if cfg['C_ell']['has_magnification_bias']:
     if cfg['C_ell']['which_mag_bias'] == 'from_input':
         mag_bias_input = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
@@ -506,7 +554,7 @@ plt.ylabel(r'$b_{g}(z)$')
 plt.legend()
 
 
-# ! set radial kernel arrays and objects
+# ! ============================ Radial kernels ========================================
 ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['PyCCL']['n_samples_wf'])
 ccl_obj.set_kernel_arr(
     z_grid_wf=z_grid, has_magnification_bias=cfg['C_ell']['has_magnification_bias']
@@ -515,7 +563,8 @@ ccl_obj.set_kernel_arr(
 gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias)'
 ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 
-# ! compute BNT and z means
+
+# ! ================================= BNT and z means ==================================
 if cfg['BNT']['cl_BNT_transform'] or cfg['BNT']['cov_BNT_transform']:
     bnt_matrix = bnt.compute_bnt_matrix(
         zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False
@@ -536,7 +585,7 @@ z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
 #     '(not a strict condition, valid only if we do not shift the n(z) in this part)'
 # )
 
-# 5. compute the ell cuts
+# ! ===================================== \ell cuts ====================================
 # TODO need to adapt this to the class structure
 # ell_cuts_dict = {}
 # ellcuts_kw = {
@@ -561,7 +610,6 @@ z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
 # ell_dict['ell_cuts_dict'] = (
 #     ell_cuts_dict  # this is to pass the ell cuts to the covariance module
 # )
-# ! END SCALE CUTS
 
 wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
 
@@ -600,7 +648,8 @@ for wf_idx in range(len(wf_ccl_list)):
     plt.tight_layout()
     plt.show()
 
-# compute cls
+
+# ! ======================================== Cls =======================================
 ccl_obj.cl_ll_3d = ccl_obj.compute_cls(
     ell_obj.ells_WL,
     ccl_obj.p_of_k_a,
@@ -625,6 +674,10 @@ ccl_obj.cl_gg_3d = ccl_obj.compute_cls(
 
 
 if cfg['C_ell']['use_input_cls']:
+    # TODO NMT here you should ask the user for unbinned cls
+    if cfg['namaster']['use_namaster']:
+        raise NotImplementedError('Make sure to pass unbinned cls')
+
     print('Using input Cls')
     cl_ll_tab = np.genfromtxt(cfg['C_ell']['cl_LL_path'])
     cl_gl_tab = np.genfromtxt(cfg['C_ell']['cl_GL_path'])
@@ -660,7 +713,7 @@ if cfg['C_ell']['use_input_cls']:
     ccl_obj.cl_gg_3d = cl_gg_3d_in
 
 
-# ! add multiplicative shear bias
+# ! ============================ Multiplicative shear bias =============================
 # ! THIS SHOULD NOT BE DONE FOR THE OC Cls!! mult shear bias values are passed
 # ! in the .ini file
 ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d = pyccl_interface.apply_mult_shear_bias(
@@ -674,51 +727,7 @@ ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[
     : ell_obj.nbl_3x2pt, :, :
 ].transpose(0, 2, 1)
 ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[: ell_obj.nbl_3x2pt, :, :]
-
-fig, ax = plt.subplots(1, 3, figsize=(12, 4))
-plt.tight_layout()
-for zi in range(zbins):
-    zj = zi
-    ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_ll_3d[:, zi, zj], c=clr[zi], ls='-')
-    ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_gl_3d[:, zi, zj], c=clr[zi], ls='-')
-    ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_gg_3d[:, zi, zj], c=clr[zi], ls='-')
-
-if cfg['C_ell']['use_input_cls']:
-    for zi in range(zbins):
-        zj = zi
-        kw = dict(c=clr[zi], ls='', marker='.')
-        ax[0].loglog(ell_obj.ells_WL, cl_ll_3d_sb[:, zi, zj], **kw)
-        ax[1].loglog(ell_obj.ells_XC, cl_gl_3d_sb[:, zi, zj], **kw)
-        ax[2].loglog(ell_obj.ells_GC, cl_gg_3d_sb[:, zi, zj], **kw)
-    # Add style legend only to middle plot
-    style_legend = ax[1].legend(
-        handles=[
-            plt.Line2D([], [], color='gray', ls='-', label='SB'),
-            plt.Line2D([], [], color='gray', ls='', marker='.', label='Input'),
-        ],
-        loc='upper right',
-        fontsize=8,
-        frameon=False,
-    )
-    ax[1].add_artist(style_legend)  # Preserve after adding z-bin legend
-
-
-ax[2].legend(
-    [f'$z_{{{zi}}}$' for zi in range(zbins)],
-    loc='upper right',
-    fontsize=8,
-    frameon=False,
-)
-
-
-ax[0].set_title('LL')
-ax[1].set_title('GL')
-ax[2].set_title('GG')
-ax[0].set_xlabel('$\\ell$')
-ax[1].set_xlabel('$\\ell$')
-ax[2].set_xlabel('$\\ell$')
-ax[0].set_ylabel('$C_{\\ell}$')
-plt.show()
+plot_cls()
 
 
 # ! BNT transform the cls (and responses?) - it's more complex since I also have to
@@ -735,20 +744,6 @@ if cfg['BNT']['cl_BNT_transform']:
     if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         raise NotImplementedError('You should cut also the OC Cls')
 
-
-# ! cut datavectors and responses in the pessimistic case; be carful of WA,
-# ! because it does not start from ell_min
-if ell_obj.ell_max_WL == 1500:
-    warnings.warn(
-        'you are cutting the datavectors and responses in the pessimistic case, but is '
-        'this compatible with the redshift-dependent ell cuts? Yes, this is an '
-        'old warning; nonetheless, check ',
-        stacklevel=2,
-    )
-    raise ValueError('you should check this')
-    cl_ll_3d = cl_ll_3d[: ell_obj.nbl_WL, :, :]
-    cl_gg_3d = cl_gg_3d[: ell_obj.nbl_GC, :, :]
-    cl_3x2pt_5d = cl_3x2pt_5d[: ell_obj.nbl_3x2pt, :, :]
 
 if cfg['ell_cuts']['center_or_min'] == 'center':
     ell_prefix = 'ell'
@@ -806,12 +801,64 @@ else:
 # ccl_obj.cl_gg_3d = cl_gg_3d
 # ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
-# ! build covariance matrices
-cov_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_obj, bnt_matrix)
-cov_obj.jl_integrator_path = './spaceborne/julia_integrator.jl'
-cov_obj.fsky = mask_obj.fsky
+# ! ============================= Unbinned Cls for nmt cov =============================
+
+if cfg['namaster']['use_namaster']:
+    from spaceborne import cov_partial_sky
+
+    # initialize nmt_cov_obj and set a couple useful attributes
+    nmt_cov_obj = cov_partial_sky.NmtCov(cfg, pvt_cfg, ccl_obj, ell_obj, mask_obj)
+
+    # recompute Cls ell by ell
+    ell_max_3x2pt = ell_obj.ell_max_3x2pt
+    ells_3x2pt_unb = np.arange(ell_max_3x2pt + 1)
+    nbl_3x2pt_unb = len(ells_3x2pt_unb)
+    assert nbl_3x2pt_unb == ell_max_3x2pt + 1, (
+        'nbl_tot does not match ell_max_3x2pt + 1'
+    )
+
+    # set unbinned ells in nmt_cov_obj
+    nmt_cov_obj.ells_3x2pt_unb = ells_3x2pt_unb
+    nmt_cov_obj.nbl_3x2pt_unb = nbl_3x2pt_unb
+
+    cl_ll_unb_3d = ccl_obj.compute_cls(
+        ells_3x2pt_unb,
+        ccl_obj.p_of_k_a,
+        ccl_obj.wf_lensing_obj,
+        ccl_obj.wf_lensing_obj,
+        cl_ccl_kwargs,
+    )
+    cl_gl_unb_3d = ccl_obj.compute_cls(
+        ells_3x2pt_unb,
+        ccl_obj.p_of_k_a,
+        ccl_obj.wf_galaxy_obj,
+        ccl_obj.wf_lensing_obj,
+        cl_ccl_kwargs,
+    )
+    cl_gg_unb_3d = ccl_obj.compute_cls(
+        ells_3x2pt_unb,
+        ccl_obj.p_of_k_a,
+        ccl_obj.wf_galaxy_obj,
+        ccl_obj.wf_galaxy_obj,
+        cl_ccl_kwargs,
+    )
+
+    # don't forget to apply mult shear bias
+    cl_ll_unb_3d, cl_gl_unb_3d = pyccl_interface.apply_mult_shear_bias(
+        cl_ll_unb_3d, cl_gl_unb_3d, np.array(cfg['C_ell']['mult_shear_bias']), zbins
+    )
+
+    nmt_cov_obj.cl_ll_unb_3d = cl_ll_unb_3d
+    nmt_cov_obj.cl_gl_unb_3d = cl_gl_unb_3d
+    nmt_cov_obj.cl_gg_unb_3d = cl_gg_unb_3d
+
+else:
+    nmt_cov_obj = None
+
+
+# !  =============================== Build Gaussian covs ===============================
+cov_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_obj, nmt_cov_obj, bnt_matrix)
 cov_obj.set_ind_and_zpairs(ind, zbins)
-cov_obj.symmetrize_output_dict = symmetrize_output_dict
 cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(
     ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['split_gaussian_cov']
@@ -962,26 +1009,27 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 else:
     oc_obj = None
 
-# ! ========================================== Spaceborne ==============================
-
-
 if compute_sb_ssc:
     print('Start SSC computation with Spaceborne...')
 
+    # ! ================================= Probe responses ==============================
     resp_obj = responses.SpaceborneResponses(
         cfg=cfg, k_grid=k_grid, z_grid=z_grid_trisp, ccl_obj=ccl_obj
     )
     resp_obj.use_h_units = use_h_units
 
     if cfg['covariance']['which_pk_responses'] == 'halo_model':
+        # convenience variables
         which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
         include_terasawa_terms = cfg['covariance']['include_terasawa_terms']
+
+        # recompute galaxy bias on the z grid used to compute the responses/trispectrum
         gal_bias_2d_trisp = ccl_obj.gal_bias_func(z_grid_trisp)
         if gal_bias_2d_trisp.ndim == 1:
             assert single_b_of_z, (
                 'Galaxy bias should be a single function of redshift for all bins, '
+                'there seems to be some inconsistency'
             )
-            'there seems to be some inconsistency'
             gal_bias_2d_trisp = np.tile(gal_bias_2d_trisp[:, None], zbins)
 
         dPmm_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
@@ -991,6 +1039,7 @@ if compute_sb_ssc:
         # TODO "if_bias_equal_all_bins" flag
 
         if single_b_of_z:
+            # compute dPAB/ddelta_b
             resp_obj.set_hm_resp(
                 k_grid=k_grid,
                 z_grid=z_grid_trisp,
@@ -999,15 +1048,23 @@ if compute_sb_ssc:
                 b1g_zj=gal_bias_2d_trisp[:, 0],
                 include_terasawa_terms=include_terasawa_terms,
             )
-            for zi in range(zbins):
-                for zj in range(zbins):
-                    dPmm_ddeltab[:, :, zi, zj] = resp_obj.dPmm_ddeltab_hm
-                    dPgm_ddeltab[:, :, zi, zj] = resp_obj.dPgm_ddeltab_hm
-                    dPgg_ddeltab[:, :, zi, zj] = resp_obj.dPgg_ddeltab_hm
-                    # TODO check these
-                    r_mm = resp_obj.r1_mm_hm
-                    r_gm = resp_obj.r1_gm_hm
-                    r_gg = resp_obj.r1_gg_hm
+
+            # reshape appropriately
+            _dPmm_ddeltab_hm = resp_obj.dPmm_ddeltab_hm[:, :, None, None]
+            _dPgm_ddeltab_hm = resp_obj.dPgm_ddeltab_hm[:, :, None, None]
+            _dPgg_ddeltab_hm = resp_obj.dPgg_ddeltab_hm[:, :, None, None]
+
+            dPmm_ddeltab = np.repeat(_dPmm_ddeltab_hm, zbins, axis=2)
+            dPmm_ddeltab = np.repeat(dPmm_ddeltab, zbins, axis=3)
+            dPgm_ddeltab = np.repeat(_dPgm_ddeltab_hm, zbins, axis=2)
+            dPgm_ddeltab = np.repeat(dPgm_ddeltab, zbins, axis=3)
+            dPgg_ddeltab = np.repeat(_dPgg_ddeltab_hm, zbins, axis=2)
+            dPgg_ddeltab = np.repeat(dPgg_ddeltab, zbins, axis=3)
+
+            # # TODO check these
+            # r_mm = resp_obj.r1_mm_hm
+            # r_gm = resp_obj.r1_gm_hm
+            # r_gg = resp_obj.r1_gg_hm
 
         else:
             for zi in range(zbins):
@@ -1023,12 +1080,12 @@ if compute_sb_ssc:
                     dPmm_ddeltab[:, :, zi, zj] = resp_obj.dPmm_ddeltab_hm
                     dPgm_ddeltab[:, :, zi, zj] = resp_obj.dPgm_ddeltab_hm
                     dPgg_ddeltab[:, :, zi, zj] = resp_obj.dPgg_ddeltab_hm
-                    # TODO check these
-                    r_mm = resp_obj.r1_mm_hm
-                    r_gm = resp_obj.r1_gm_hm
-                    r_gg = resp_obj.r1_gg_hm
+                    # # TODO check these
+                    # r_mm = resp_obj.r1_mm_hm
+                    # r_gm = resp_obj.r1_gm_hm
+                    # r_gg = resp_obj.r1_gg_hm
 
-        # reduce dimensionality
+        # for mm and gm there are redundant axes: reduce dimensionality
         dPmm_ddeltab = dPmm_ddeltab[:, :, 0, 0]
         dPgm_ddeltab = dPgm_ddeltab[:, :, :, 0]
 
@@ -1053,9 +1110,8 @@ if compute_sb_ssc:
             f' Got {cfg["covariance"]["which_pk_responses"]}.'
         )
 
-    # ! 2. prepare integrands (d2CAB_dVddeltab) and volume element
-
-    # ! test k_max_limber vs k_max_dPk and adjust z_min accordingly
+    # ! prepare integrands (d2CAB_dVddeltab) and volume element
+    # ! - test k_max_limber vs k_max_dPk and adjust z_min accordingly
     k_max_resp = np.max(k_grid)
     ell_grid = ell_obj.ells_GC
     kmax_limber = cosmo_lib.get_kmax_limber(
@@ -1136,7 +1192,7 @@ if compute_sb_ssc:
         + np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
     )
 
-    # ! 3. Compute/load/save sigma2_b
+    # ! =================================== sigma^2_b ==================================
     if cfg['covariance']['load_cached_sigma2_b']:
         sigma2_b = np.load(f'{output_path}/cache/sigma2_b_{zgrid_str}.npy')
 
@@ -1177,7 +1233,6 @@ if compute_sb_ssc:
                 parallel=parallel,
             )
 
-    if not cfg['covariance']['load_cached_sigma2_b']:
         np.save(f'{output_path}/cache/sigma2_b_{zgrid_str}.npy', sigma2_b)
         np.save(f'{output_path}/cache/zgrid_sigma2_b_{zgrid_str}.npy', z_grid)
 
@@ -1209,7 +1264,6 @@ if compute_sb_ssc:
 
     cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
 
-# TODO integrate this with Spaceborne_covg
 
 # ! ========================================== PyCCL ===================================
 if compute_ccl_ssc:
@@ -1243,9 +1297,11 @@ if compute_ccl_ssc or compute_ccl_cng:
             ind_dict=ind_dict,
         )
 
-# ! ========================== combine covariance terms ================================
+
+# ! ========================== Combine covariance terms ================================
 cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
 cov_dict = cov_obj.cov_dict
+
 
 # ! ============================ plot & tests ==========================================
 for key in cov_dict:
@@ -1305,6 +1361,10 @@ with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
 sl.write_cl_tab('./output', 'cl_ll', ccl_obj.cl_ll_3d, ell_obj.ells_WL, zbins)
 sl.write_cl_tab('./output', 'cl_gl', ccl_obj.cl_gl_3d, ell_obj.ells_XC, zbins)
 sl.write_cl_tab('./output', 'cl_gg', ccl_obj.cl_gg_3d, ell_obj.ells_GC, zbins)
+np.save('./output/cl_ll_3d.npy', cl_ll_unb_3d)
+np.save('./output/cl_gl_3d.npy', cl_gl_unb_3d)
+np.save('./output/cl_gg_3d.npy', cl_gg_unb_3d)
+np.save('./output/noise_3x2pt_5d.npy', cov_obj.nmt_cov_obj.noise_3x2pt_unb_5d)
 
 # save ell values
 header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']

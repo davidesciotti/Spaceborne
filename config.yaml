@@ -106,10 +106,10 @@ mask:
 
 namaster:
     use_namaster: True # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
-    coupled_cov: False # Type: bool. Whether to compute the (Gaussian) covariance of the coupled or decoupled Cls
+    coupled_cov: True # Type: bool. Whether to compute the (Gaussian) covariance of the coupled or decoupled Cls
     spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
     use_INKA: False # Type: bool. Whether to use the improved Narrow Kernel Approximation
-    workspace_path: ... # Type: str. Path to the workspace, if already computed
+    workspace_path: ... # Type: str. Path to the workspace, if already computed # TODO
 
 ell_binning:
     binning_type: 'lin'  # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']

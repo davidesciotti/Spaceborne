@@ -25,7 +25,7 @@ To run these tests:
 Note:  if all checks are run, the content of the tmp folder is deleted, preventing you
        to inspect the output files in more detail. In this case, simply stop the script
        at the end of test_main_script func, eg with
-       `assert False, 'stop here'`
+       `assert False, 'stop here'
 """
 
 import glob
@@ -115,7 +115,7 @@ bench_names = [os.path.basename(file) for file in bench_names]
 bench_names = [bench_name.replace('.npz', '') for bench_name in bench_names]
 # ... or run specific tests
 bench_names = [
-    'output_GSpaceborne_SSCSpaceborne_cNGPyCCL_KEFalse_resphalo_model_b1gfrom_HOD_devmerge2',
+    'output_GSpaceborne_SSCSpaceborne_cNGNone_KETrue_resphalo_model_b1gfrom_HOD_pskymerge_refcut',
 ]
 
 main_script_path = f'{ROOT}/Spaceborne/main.py'

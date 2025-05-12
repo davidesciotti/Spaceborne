@@ -161,35 +161,44 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,   # f
         covar_BB_BE = covar_22_22[:, 3, :, 2]
         covar_BB_BB = covar_22_22[:, 3, :, 3]
 
+        common_kw = {
+            'ells_in': ells_in,
+            'ells_out': ells_out,
+            'ells_out_edges': ells_out_edges,
+            'weights_in': weights,
+            'which_binning': which_binning,
+            'interpolate': True,
+        }
+
         if coupled:
             # in this case, the nmt output is unbinned
             cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_EE_EE, ells_in, ells_out, ells_out_edges, which_binning, weights
+                cov=covar_EE_EE, **common_kw
             )
             cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TE_EE, ells_in, ells_out, ells_out_edges, which_binning, weights
+                cov=covar_TE_EE, **common_kw
             )
             cov_nmt_10d_arr[1, 0, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TE_TE, ells_in, ells_out, ells_out_edges, which_binning, weights
+                cov=covar_TE_TE, **common_kw
             )
             cov_nmt_10d_arr[1, 1, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TT_EE, ells_in, ells_out, ells_out_edges, which_binning, weights
+                cov=covar_TT_EE, **common_kw
             )
             cov_nmt_10d_arr[1, 1, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TT_TE, ells_in, ells_out, ells_out_edges, which_binning, weights
+                cov=covar_TT_TE, **common_kw
             )
             cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TT_TT, ells_in, ells_out, ells_out_edges, which_binning, weights
+                cov=covar_TT_TT, **common_kw
             )
             # the remaining blocks can be filled in by symmetry (with zi, zj <-> zk, zl)
             cov_nmt_10d_arr[0, 0, 1, 0, :, :, zk, zl, zi, zj] = sl.bin_2d_array(
-                covar_TE_EE.T, ells_in, ells_out, ells_out_edges, which_binning, weights
+                cov=covar_TE_EE.T, **common_kw
             )
             cov_nmt_10d_arr[0, 0, 1, 1, :, :, zk, zl, zi, zj] = sl.bin_2d_array(
-                covar_TT_EE.T, ells_in, ells_out, ells_out_edges, which_binning, weights
+                cov=covar_TT_EE.T, **common_kw
             )
             cov_nmt_10d_arr[1, 0, 1, 1, :, :, zk, zl, zi, zj] = sl.bin_2d_array(
-                covar_TT_TE.T, ells_in, ells_out, ells_out_edges, which_binning, weights
+                cov=covar_TT_TE.T, **common_kw
             )
         else:
             cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_EE_EE
@@ -900,7 +909,7 @@ class NmtCov:
         #     ells_eff_edges, b.get_ell_list(nbl_eff - 1)[-1] + 1
         # )  # careful f the +1!
         # ell_min_eff = ells_eff_edges[0]
-        
+
         ells_unb = np.arange(ell_max_eff + 1)
         nbl_unb = len(ells_unb)
         assert nbl_unb == ell_max_eff + 1, 'nbl_tot does not match lmax_eff + 1'
@@ -918,6 +927,7 @@ class NmtCov:
 
         # ! create nmt field from the mask (there will be no maps associated to the fields)
         # TODO maks=None (as in the example) or maps=[mask]? I think None
+
         f0_mask = nmt.NmtField(
             mask=self.mask_obj.mask, maps=None, spin=0, lite=True, lmax=ell_max_eff
         )
@@ -931,12 +941,20 @@ class NmtCov:
         w02.compute_coupling_matrix(f0_mask, f2_mask, b)
         w22.compute_coupling_matrix(f2_mask, f2_mask, b)
 
+        os.makedirs('./output/cache/nmt', exist_ok=True)
+        w00.write_to('./output/cache/nmt/w00_workspace.fits')
+        w02.write_to('./output/cache/nmt/w02_workspace.fits')
+        w22.write_to('./output/cache/nmt/w22_workspace.fits')
+
         # if you want to use the iNKA, the cls to be passed are the coupled ones
         # divided by fsky
         if nmt_cfg['use_INKA']:
             z_combinations = list(itertools.product(range(self.zbins), repeat=2))
             for zi, zj in z_combinations:
-                list_GG = [self.cl_gg_unb_3d[:, zi, zj]]
+                #
+                list_GG = [
+                    self.cl_gg_unb_3d[:, zi, zj],
+                ]
                 list_GL = [
                     self.cl_gl_unb_3d[:, zi, zj],
                     np.zeros_like(self.cl_gl_unb_3d[:, zi, zj]),
@@ -967,11 +985,12 @@ class NmtCov:
         cw.compute_coupling_coefficients(f0_mask, f0_mask, f0_mask, f0_mask)
         print(f'...done in {(time.perf_counter() - start_time):.2f} s')
 
+        np.save('./output/mask.npy', self.mask_obj.mask)
         np.save('./output/cl_ee_4covnmt.npy', cl_ll_4covnmt)
         np.save('./output/cl_te_4covnmt.npy', cl_gl_4covnmt)
         np.save('./output/cl_tt_4covnmt.npy', cl_gg_4covnmt)
         np.save('./output/noise_3x2pt_5d.npy', self.noise_3x2pt_unb_5d)
-        
+
         if nmt_cfg['spin0']:
             cov_nmt_10d = nmt_gaussian_cov_spin0(
                 cl_tt=cl_tt_4covnmt,

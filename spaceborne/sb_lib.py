@@ -3991,9 +3991,9 @@ def cov2corr(covariance):
 def build_noise(
     zbins: int,
     n_probes: int,
-    sigma_eps2: float,
-    ng_shear: int | float | np.ndarray,
-    ng_clust: int | float | np.ndarray,
+    sigma_eps2: list | tuple | np.ndarray,
+    ng_shear: list | tuple | np.ndarray,
+    ng_clust: list | tuple | np.ndarray,
     is_noiseless: bool = False,
 ) -> np.ndarray:
     """Builds the noise power spectra.
@@ -4004,18 +4004,18 @@ def build_noise(
         Number of redshift bins.
     n_probes : int
         Number of probes.
-    sigma_eps2 : float
+    sigma_eps2 : list | tuple | np.ndarray
         Square of the *total* ellipticity dispersion.
         sigma_eps2 = sigma_eps ** 2, with
         sigma_eps = sigma_eps_i * sqrt(2),
         sigma_eps_i being the ellipticity dispersion *per component*
-    ng_shear : int, float or numpy.ndarray
+    ng_shear : list | tuple | np.ndarray
         Galaxy density of sources, relevant for cosmic shear
         If a scalar, cumulative galaxy density number density, per arcmin^2.
         This will assume equipopulated bins.
         If an array, galaxy number density, per arcmin^2, per redshift bin.
         Must have length zbins.
-    ng_clust : int, float or numpy.ndarray
+    ng_clust : list | tuple | np.ndarray
         Galaxy density of lenses, relevant for galaxy clustering
         If a scalar, cumulative galaxy density number density, per arcmin^2.
         This will assume equipopulated bins.
@@ -4037,18 +4037,25 @@ def build_noise(
         N_GL = N_LG = 0
     """
 
-    # assert ng_xx is  a list, tuple or np.ndarray
-    assert isinstance(ng_shear, (list, tuple, np.ndarray)), (
-        'ng_shear should be a list, tuple or np.ndarray'
-    )
-    assert isinstance(ng_clust, (list, tuple, np.ndarray)), (
-        'ng_shear should be a list, tuple or np.ndarray'
-    )
+    # assert appropriate inputs are list, tuple or np.ndarray
+    for var, name in zip(
+        [ng_shear, ng_clust, ],
+        ['ng_shear', 'ng_clust', ],
+    ):
+    #     [ng_shear, ng_clust, sigma_eps2],
+    #     ['ng_shear', 'ng_clust', 'sigma_eps2'],
+    # ):
+        assert isinstance(var, (list, tuple, np.ndarray)), (
+            f'{name} should be a list, tuple or np.ndarray'
+        )
 
-    if isinstance(ng_shear, list):
+    # convert to np arrays if needed
+    if isinstance(ng_shear, (list, tuple)):
         ng_shear = np.array(ng_shear)
-    if isinstance(ng_clust, list):
+    if isinstance(ng_clust, (list, tuple)):
         ng_clust = np.array(ng_clust)
+    # if isinstance(ng_clust, (list, tuple)):
+        # sigma_eps2 = np.array(sigma_eps2)
 
     conversion_factor = (180 / np.pi * 60) ** 2  # deg^2 to arcmin^2
 

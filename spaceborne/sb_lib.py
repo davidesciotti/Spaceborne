@@ -113,6 +113,31 @@ mpl_other_dict = {
 #     return binned_cov
 
 
+
+def build_probe_list(probes, include_cross_terms=False):
+    """
+    Return the list of probe combinations to compute.
+
+    Parameters
+    ----------
+    probes : list[str]
+        List of individual probes to include, e.g. ['LL', 'GL', 'GG'].
+    include_cross_terms : bool
+        If True, include cross-combinations between different probes.
+
+    Returns
+    -------
+    list[str]
+        List of probe combinations, e.g. ['LLLL', 'LLGL', ...]
+    """
+    if not include_cross_terms:
+        return [p + p for p in probes]
+
+    # Sort to ensure consistent ordering
+    # probes = sorted(probes)
+    return [p1 + p2 for p1, p2 in itertools.combinations_with_replacement(probes, 2)]
+
+
 def is_main_branch():
     """Check if the current Git branch is 'main'"""
     try:

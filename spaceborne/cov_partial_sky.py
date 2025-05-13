@@ -315,33 +315,42 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
                                               wa=w00, wb=w00)  # fmt: skip
         covar_EE_TT = covar_22_00
 
+        common_kw = {
+            'ells_in': ells_in,
+            'ells_out': ells_out,
+            'ells_out_edges': ells_out_edges,
+            'weights_in': weights,
+            'which_binning': which_binning,
+            'interpolate': True,
+        }
+
         if coupled:
             cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_EE_EE, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_EE_EE, **common_kw
             )
             cov_nmt_10d_arr[0, 0, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_EE_TE, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_EE_TE, **common_kw
             )
             cov_nmt_10d_arr[0, 0, 1, 1, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_EE_TT, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_EE_TT, **common_kw
             )
             cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TE_EE, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_TE_EE, **common_kw
             )
             cov_nmt_10d_arr[1, 0, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TE_TE, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_TE_TE, **common_kw
             )
             cov_nmt_10d_arr[1, 1, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TT_EE, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_TT_EE, **common_kw
             )
             cov_nmt_10d_arr[1, 1, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TT_TE, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_TT_TE, **common_kw
             )
             cov_nmt_10d_arr[1, 0, 1, 1, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TE_TT, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_TE_TT, **common_kw
             )
             cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TT_TT, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_TT_TT, **common_kw
             )
 
         else:
@@ -990,9 +999,10 @@ class NmtCov:
         cw.compute_coupling_coefficients(f0_mask, f0_mask, f0_mask, f0_mask)
         print(f'...done in {(time.perf_counter() - start_time):.2f} s')
 
-    
+        # mask is needed before all the checks
+        np.save('./output/mask', self.mask_obj.mask)
         np.savez(
-            f'./output/ingredients_new',
+            './output/ingredients_new',
             cl_tt=cl_tt_4covnmt,
             cl_te=cl_te_4covnmt,
             cl_ee=cl_ee_4covnmt,
@@ -1010,7 +1020,7 @@ class NmtCov:
             noise_3x2pt_5d=self.noise_3x2pt_unb_5d,
             mask=self.mask_obj.mask,
         )
-        
+
         if nmt_cfg['spin0']:
             cov_nmt_10d = nmt_gaussian_cov_spin0(
                 cl_tt=cl_tt_4covnmt,

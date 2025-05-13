@@ -479,12 +479,13 @@ def coupling_matrix(bin_scheme, mask, wkspce_name):
 def sample_covariance( # fmt: skip
     cl_GG_unbinned, cl_LL_unbinned, cl_GL_unbinned, 
     cl_BB_unbinned, cl_EB_unbinned, cl_TB_unbinned, 
-    nbl, zbins, mask, nside, nreal, coupled_cls, which_cls, lmax=None,
+    nbl, zbins, mask, nside, nreal, coupled_cls, which_cls, nmt_bin_obj, lmax=None,
+    n_probes=2
 ):  # fmt: skip
     if lmax is None:
         lmax = 3 * nside - 1
 
-    SEEDVALUE = np.arange(nreal)
+    # SEEDVALUE = np.arange(nreal)
 
     # TODO use only independent z pairs
     cov_sim_10d = np.zeros(
@@ -515,7 +516,7 @@ def sample_covariance( # fmt: skip
     zijkl_combinations = list(itertools.product(range(zbins), repeat=4))
 
     for i in tqdm(range(nreal)):
-        np.random.seed(SEEDVALUE[i])
+        # np.random.seed(SEEDVALUE[i])
 
         # * 1. produce correlated alms
         corr_alms_tot = hp.synalm(cl_ring_big_list, lmax=lmax, new=True)
@@ -549,9 +550,9 @@ def sample_covariance( # fmt: skip
             )
 
             if len(sim_cl_GG_ij) != nbl:
-                sim_cl_GG[i, :, zi, zj] = b.bin_cell(sim_cl_GG_ij)
-                sim_cl_GL[i, :, zi, zj] = b.bin_cell(sim_cl_GL_ij)
-                sim_cl_LL[i, :, zi, zj] = b.bin_cell(sim_cl_LL_ij)
+                sim_cl_GG[i, :, zi, zj] = nmt_bin_obj.bin_cell(sim_cl_GG_ij)
+                sim_cl_GL[i, :, zi, zj] = nmt_bin_obj.bin_cell(sim_cl_GL_ij)
+                sim_cl_LL[i, :, zi, zj] = nmt_bin_obj.bin_cell(sim_cl_LL_ij)
             else:
                 sim_cl_GG[i, :, zi, zj] = sim_cl_GG_ij
                 sim_cl_GL[i, :, zi, zj] = sim_cl_GL_ij
@@ -902,7 +903,7 @@ class NmtCov:
         # TODO again, here I'm using 3x2pt = GC
         # 1. ell binning
         # shorten names for brevity
-        b = self.ell_obj.nmt_bin_obj_GC
+        nmt_bin_obj = self.ell_obj.nmt_bin_obj_GC
         fsky = self.mask_obj.fsky
         nmt_cfg = self.cfg['namaster']
 
@@ -946,19 +947,14 @@ class NmtCov:
         w00 = nmt.NmtWorkspace()
         w02 = nmt.NmtWorkspace()
         w22 = nmt.NmtWorkspace()
-        w00.compute_coupling_matrix(f0_mask, f0_mask, b)
-        w02.compute_coupling_matrix(f0_mask, f2_mask, b)
-        w22.compute_coupling_matrix(f2_mask, f2_mask, b)
+        w00.compute_coupling_matrix(f0_mask, f0_mask, nmt_bin_obj)
+        w02.compute_coupling_matrix(f0_mask, f2_mask, nmt_bin_obj)
+        w22.compute_coupling_matrix(f2_mask, f2_mask, nmt_bin_obj)
 
         os.makedirs('./output/cache/nmt', exist_ok=True)
         w00.write_to('./output/cache/nmt/w00_workspace.fits')
         w02.write_to('./output/cache/nmt/w02_workspace.fits')
         w22.write_to('./output/cache/nmt/w22_workspace.fits')
-
-        # these are inputs for the other branch of the code!!
-        np.save('./output/cl_tt_unb.npy', self.cl_gg_unb_3d)
-        np.save('./output/cl_te_unb.npy', self.cl_gl_unb_3d)
-        np.save('./output/cl_ee_unb.npy', self.cl_ll_unb_3d)
 
         # if you want to use the iNKA, the cls to be passed are the coupled ones
         # divided by fsky
@@ -999,43 +995,72 @@ class NmtCov:
         cw.compute_coupling_coefficients(f0_mask, f0_mask, f0_mask, f0_mask)
         print(f'...done in {(time.perf_counter() - start_time):.2f} s')
 
-        if nmt_cfg['spin0']:
-            cov_nmt_10d = nmt_gaussian_cov_spin0(
-                cl_tt=cl_tt_4covnmt,
-                cl_te=cl_te_4covnmt,
-                cl_ee=cl_ee_4covnmt,
-                zbins=self.zbins,
+        if nmt_cfg['use_namaster']:
+            if nmt_cfg['spin0']:
+                cov_10d_out = nmt_gaussian_cov_spin0(
+                    cl_tt=cl_tt_4covnmt,
+                    cl_te=cl_te_4covnmt,
+                    cl_ee=cl_ee_4covnmt,
+                    zbins=self.zbins,
+                    nbl=nbl_eff,
+                    cw=cw,
+                    w00=w00,
+                    coupled=nmt_cfg['coupled_cov'],
+                    ells_in=ells_unb,
+                    ells_out=ells_eff,
+                    ells_out_edges=ells_eff_edges,
+                    weights=None,
+                    which_binning='sum',
+                )
+
+            elif not nmt_cfg['spin0']:
+                cov_10d_out = nmt_gaussian_cov(
+                    cl_tt=cl_tt_4covnmt,
+                    cl_te=cl_te_4covnmt,
+                    cl_ee=cl_ee_4covnmt,
+                    cl_tb=cl_tb_4covnmt,
+                    cl_eb=cl_eb_4covnmt,
+                    cl_bb=cl_bb_4covnmt,
+                    zbins=self.zbins,
+                    nbl=nbl_eff,
+                    cw=cw,
+                    w00=w00,
+                    w02=w02,
+                    w22=w22,
+                    coupled=nmt_cfg['coupled_cov'],
+                    ells_in=ells_unb,
+                    ells_out=ells_eff,
+                    ells_out_edges=ells_eff_edges,
+                    weights=None,
+                    which_binning='sum',
+                )
+
+        elif self.cfg['sample_covariance']['compute_sample_cov']:
+            cl_tt_4covsim = self.cl_gg_unb_3d + self.noise_3x2pt_unb_5d[1, 1, :, :, :]
+            cl_te_4covsim = self.cl_gl_unb_3d + self.noise_3x2pt_unb_5d[1, 0, :, :, :]
+            cl_ee_4covsim = self.cl_ll_unb_3d + self.noise_3x2pt_unb_5d[0, 0, :, :, :]
+            cl_tb_4covsim = np.zeros_like(cl_tt_4covsim)
+            cl_eb_4covsim = np.zeros_like(cl_tt_4covsim)
+            cl_bb_4covsim = np.zeros_like(cl_tt_4covsim)
+
+            result = sample_covariance(
+                cl_GG_unbinned=cl_tt_4covsim,
+                cl_LL_unbinned=cl_ee_4covsim,
+                cl_GL_unbinned=cl_te_4covsim,
+                cl_BB_unbinned=cl_bb_4covsim,
+                cl_EB_unbinned=cl_eb_4covsim,
+                cl_TB_unbinned=cl_tb_4covsim,
                 nbl=nbl_eff,
-                cw=cw,
-                w00=w00,
-                coupled=nmt_cfg['coupled_cov'],
-                ells_in=ells_unb,
-                ells_out=ells_eff,
-                ells_out_edges=ells_eff_edges,
-                weights=None,
-                which_binning='sum',
+                zbins=self.zbins,
+                mask=self.mask_obj.mask,
+                nside=self.mask_obj.nside,
+                nreal=self.cfg['sample_covariance']['nreal'],
+                coupled_cls=nmt_cfg['coupled_cov'],
+                which_cls=self.cfg['sample_covariance']['which_cls'],
+                nmt_bin_obj=self.nmt_bin_obj,
+                lmax=ell_max_eff,
             )
 
-        else:
-            cov_nmt_10d = nmt_gaussian_cov(
-                cl_tt=cl_tt_4covnmt,
-                cl_te=cl_te_4covnmt,
-                cl_ee=cl_ee_4covnmt,
-                cl_tb=cl_tb_4covnmt,
-                cl_eb=cl_eb_4covnmt,
-                cl_bb=cl_bb_4covnmt,
-                zbins=self.zbins,
-                nbl=nbl_eff,
-                cw=cw,
-                w00=w00,
-                w02=w02,
-                w22=w22,
-                coupled=nmt_cfg['coupled_cov'],
-                ells_in=ells_unb,
-                ells_out=ells_eff,
-                ells_out_edges=ells_eff_edges,
-                weights=None,
-                which_binning='sum',
-            )
+            cov_10d_out, self.sim_cl_GG, self.sim_cl_GL, self.sim_cl_LL = result
 
-        return cov_nmt_10d
+        return cov_10d_out

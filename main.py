@@ -701,7 +701,10 @@ ccl_obj.cl_gg_3d = ccl_obj.compute_cls(
 
 if cfg['C_ell']['use_input_cls']:
     # TODO NMT here you should ask the user for unbinned cls
-    if cfg['namaster']['use_namaster']:
+    if (
+        cfg['namaster']['use_namaster']
+        or cfg['sample_covariance']['compute_sample_cov']
+    ):
         raise NotImplementedError('Make sure to pass unbinned cls')
 
     print('Using input Cls')
@@ -827,9 +830,8 @@ else:
 # ccl_obj.cl_gg_3d = cl_gg_3d
 # ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
-# ! ============================= Unbinned Cls for nmt cov =============================
-
-if cfg['namaster']['use_namaster']:
+# ! =========================== Unbinned Cls for nmt/sample cov ========================
+if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_cov']:
     from spaceborne import cov_partial_sky
 
     # initialize nmt_cov_obj and set a couple useful attributes

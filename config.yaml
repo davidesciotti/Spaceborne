@@ -40,6 +40,12 @@ halo_model:
     halo_profile_dm: HaloProfileNFW # Type: str
     halo_profile_hod: HaloProfileHOD # Type: str
 
+probe_selection:
+    LL: True  # Type: str. Whether to compute the weak lensing ('LL') covariance
+    GL: True  # Type: str. Whether to compute the galaxy-galaxy lensing ('GL') covariance
+    GG: True  # Type: str. Whether to compute the photometric clustering ('GG') covariance
+    cross_terms: True  # Type: str. Whether to compute the cross-terms between the selected probes
+
 C_ell:
     # Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
     # Note: if the non-Gaussian covariance is requested, the code will compute intermediate quantities
@@ -114,6 +120,11 @@ namaster:
     spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
     use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
     workspace_path: ... # Type: str. Path to the workspace, if already computed
+
+sample_covariance:
+    compute_sample_cov: True  # Type: bool
+    which_cls: healpy  # Type: str. Options: 'namaster' or 'healpy'
+    nreal: 2 # Type: int. Number of realizations for the sample covariance matrix
 
 ell_binning:
     binning_type: 'ref_cut'  # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']

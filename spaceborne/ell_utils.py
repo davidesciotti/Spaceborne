@@ -384,6 +384,8 @@ class EllBinning:
         #     # [self.nmt_bin_obj.get_ell_list(i)[0] for i in range(self.nbl_eff)]
         #     # )
         #     # )
+        
+        
 
         if self.binning_type == 'unbinned':
             self.ells_WL = np.arange(self.ell_min_WL, self.ell_max_WL + 1)
@@ -513,10 +515,9 @@ class EllBinning:
         self.nbl_XC = len(self.ells_XC)
         self.nbl_3x2pt = len(self.ells_3x2pt)
 
-        self._validate_bins()
 
     def _validate_bins(self):
-        for probe in ['WL', 'GC', 'XC']:
+        for probe in ['WL', 'GC', 'XC', '3x2pt']:
             ells = getattr(self, f'ells_{probe}')
 
             if ells is None or ells.size == 0:

@@ -315,33 +315,42 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
                                               wa=w00, wb=w00)  # fmt: skip
         covar_EE_TT = covar_22_00
 
+        common_kw = {
+            'ells_in': ells_in,
+            'ells_out': ells_out,
+            'ells_out_edges': ells_out_edges,
+            'weights_in': weights,
+            'which_binning': which_binning,
+            'interpolate': True,
+        }
+
         if coupled:
             cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_EE_EE, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_EE_EE, **common_kw
             )
             cov_nmt_10d_arr[0, 0, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_EE_TE, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_EE_TE, **common_kw
             )
             cov_nmt_10d_arr[0, 0, 1, 1, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_EE_TT, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_EE_TT, **common_kw
             )
             cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TE_EE, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_TE_EE, **common_kw
             )
             cov_nmt_10d_arr[1, 0, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TE_TE, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_TE_TE, **common_kw
             )
             cov_nmt_10d_arr[1, 1, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TT_EE, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_TT_EE, **common_kw
             )
             cov_nmt_10d_arr[1, 1, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TT_TE, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_TT_TE, **common_kw
             )
             cov_nmt_10d_arr[1, 0, 1, 1, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TE_TT, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_TE_TT, **common_kw
             )
             cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TT_TT, ells_in, ells_out, ells_out_edges, which_binning, weights
+                covar_TT_TT, **common_kw
             )
 
         else:
@@ -945,6 +954,11 @@ class NmtCov:
         w00.write_to('./output/cache/nmt/w00_workspace.fits')
         w02.write_to('./output/cache/nmt/w02_workspace.fits')
         w22.write_to('./output/cache/nmt/w22_workspace.fits')
+
+        # these are inputs for the other branch of the code!!
+        np.save('./output/cl_tt_unb.npy', self.cl_gg_unb_3d)
+        np.save('./output/cl_te_unb.npy', self.cl_gl_unb_3d)
+        np.save('./output/cl_ee_unb.npy', self.cl_ll_unb_3d)
 
         # if you want to use the iNKA, the cls to be passed are the coupled ones
         # divided by fsky

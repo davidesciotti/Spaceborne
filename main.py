@@ -160,7 +160,7 @@ magnification_bias_fit_fiducials = np.array(
 # this has the same length as ngal_sources, as checked below
 zbins = len(cfg['nz']['ngal_lenses'])
 which_sigma2_b = cfg['covariance']['which_sigma2_b']
-probe_ordering = cfg['covariance']['probe_ordering']
+probe_ordering = cfg['covariance']['probe_ordering']  # TODO deprecate this
 GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 output_path = cfg['misc']['output_path']
 clr = cm.rainbow(np.linspace(0, 1, zbins))
@@ -442,6 +442,8 @@ pvt_cfg = {
     'ind': ind,
     'n_probes': n_probes,
     'probe_ordering': probe_ordering,
+    'probe_comb_names': probe_comb_names,
+    'probe_comb_idxs': probe_comb_idxs,
     'which_ng_cov': cov_terms_str,
     'cov_terms_list': cov_terms_list,
     'GL_OR_LG': GL_OR_LG,

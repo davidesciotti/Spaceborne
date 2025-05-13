@@ -1,15 +1,15 @@
 cosmology:
-    Om: 0.32        # Type: float
-    Ob: 0.05        # Type: float
-    wz: -1.0        # Type: float
-    wa: 0.0         # Type: float
-    h: 0.6737       # Type: float
-    ns: 0.966       # Type: float
-    s8: 0.816       # Type: float
-    ODE: 0.68       # Type: float
-    m_nu: 0.06      # Type: float
-    N_eff: 3.046    # Type: float
-    Om_k0: 0        # Type: float
+    Om: 0.32        # Type: float. Total matter density parameter Omega_m, at z=0
+    Ob: 0.05        # Type: float. Baryonic density parameter Omega_b, at z=0
+    wz: -1.0        # Type: float. Dark energy equation of state parameter (w0)
+    wa: 0.0         # Type: float. Evolution of the dark energy equation of state parameter
+    h: 0.6737       # Type: float. Dimensionless Hubble parameter (H0 / 100)
+    ns: 0.966       # Type: float. Scalar spectral index of the primordial power spectrum
+    s8: 0.816       # Type: float. Amplitude of matter density fluctuations on 8 Mpc/h scales
+    ODE: 0.68       # Type: float. Dark energy density parameter Omega_DE, at z=0
+    m_nu: 0.06      # Type: float. Total mass of neutrinos in eV
+    N_eff: 3.046    # Type: float. Effective number of relativistic species
+    Om_k0: 0        # Type: float. Curvature density parameter Omega_k, at z=0
 
 intrinsic_alignment:
     Aia: 0.16       # Type: float
@@ -39,6 +39,12 @@ halo_model:
     halo_bias: HaloBiasTinker10 # Type: str
     halo_profile_dm: HaloProfileNFW # Type: str
     halo_profile_hod: HaloProfileHOD # Type: str
+
+probe_selection:
+    LL: True  # Type: str. Whether to compute the weak lensing ('LL') covariance
+    GL: True  # Type: str. Whether to compute the galaxy-galaxy lensing ('GL') covariance
+    GG: True  # Type: str. Whether to compute the photometric clustering ('GG') covariance
+    cross_terms: True  # Type: str. Whether to compute the cross-terms between the selected probes
 
 C_ell:
     # Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
@@ -116,11 +122,11 @@ ell_binning:
     
     ell_min_WL: 10 # Type: int. Minimum ell for WL
     ell_max_WL: 1024 # Type: int. Maximum ell for WL
-    ell_bins_WL: 10 # Type: int. Number of bins for WL. Not used in the 'unbinned' and 'ref_cut' cases
+    ell_bins_WL: 3 # Type: int. Number of bins for WL. Not used in the 'unbinned' and 'ref_cut' cases
     
     ell_min_GC: 10 # Type: int. Minimum ell for GC
     ell_max_GC: 1024 # Type: int. Maximum ell for GC
-    ell_bins_GC: 10 # Type: int. Number of bins for GC. Not used in the 'unbinned' and 'ref_cut' cases
+    ell_bins_GC: 3 # Type: int. Number of bins for GC. Not used in the 'unbinned' and 'ref_cut' cases
 
     ell_min_ref: 10 # Type: int. Minimum ell for reference case
     ell_max_ref: 5000 # Type: int. Maximum ell for reference case

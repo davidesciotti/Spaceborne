@@ -113,6 +113,31 @@ mpl_other_dict = {
 #     return binned_cov
 
 
+
+def build_probe_list(probes, include_cross_terms=False):
+    """
+    Return the list of probe combinations to compute.
+
+    Parameters
+    ----------
+    probes : list[str]
+        List of individual probes to include, e.g. ['LL', 'GL', 'GG'].
+    include_cross_terms : bool
+        If True, include cross-combinations between different probes.
+
+    Returns
+    -------
+    list[str]
+        List of probe combinations, e.g. ['LLLL', 'LLGL', ...]
+    """
+    if not include_cross_terms:
+        return [p + p for p in probes]
+
+    # Sort to ensure consistent ordering
+    # probes = sorted(probes)
+    return [p1 + p2 for p1, p2 in itertools.combinations_with_replacement(probes, 2)]
+
+
 def is_main_branch():
     """Check if the current Git branch is 'main'"""
     try:
@@ -1684,6 +1709,36 @@ def compute_smape(vec_true, vec_test, cov_mat=None):
     return 100 * np.mean(numerator / denominator)  # the output is already a precentage
 
 
+def smape(y_true, y_pred):
+    """
+    Compute the point-by-point Symmetric Mean Absolute Percentage Error (SMAPE)
+    between two arrays of the same shape.
+
+    Parameters
+    ----------
+    y_true : array_like
+        Reference or true values.
+    y_pred : array_like
+        Predicted or test values.
+
+    Returns
+    -------
+    smape : ndarray
+        Array of SMAPE values in percentage (same shape as inputs).
+    """
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+
+    numerator = np.abs(y_true - y_pred)
+    denominator = 0.5 * (np.abs(y_true) + np.abs(y_pred))
+
+    with np.errstate(divide='ignore', invalid='ignore'):
+        smape = 100 * numerator / denominator
+        smape[denominator == 0] = 0.0  # Define SMAPE as 0 if denominator is 0
+
+    return smape
+
+
 def compute_diff_sigma(vec_true, vec_test, sigma):
     """Compute the element-wise difference between two vectors vec_true and
     vec_test, and divide it by sigma.
@@ -2503,8 +2558,8 @@ def symmetrize_2d_array(array_2d):
         'neither the upper nor the lower triangle (excluding the diagonal) are null'
     )
 
-    if np.any(np.diag(array_2d)) != 0:
-        warnings.warn('the diagonal elements are all null', stacklevel=2)
+    # if np.any(np.diag(array_2d)) != 0:
+    # warnings.warn('the diagonal elements are all null', stacklevel=2)
 
     # symmetrize
     array_2d = np.where(array_2d, array_2d, array_2d.T)
@@ -2637,60 +2692,6 @@ def compute_FM_2D_optimized(nbl, npairs, nparams_tot, cov_2D_inv, D_2D):
     b = np.einsum('ij,jk->ik', cov_2D_inv, D_2D)
     FM = np.einsum('ij,jk->ik', D_2D, b)
     return FM
-
-
-def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
-    """expand the zpair indices into zi, zj, according to the ind ordering as usual"""
-
-    dC_3D = np.zeros((nbl, zpairs, nparams_tot))
-    for ell in range(nbl):
-        for alf in range(nparams_tot):
-            dC_3D[ell, :, alf] = array_2D_to_1D_ind(dC_4D[ell, :, :, alf], zpairs, ind)
-    return dC_3D
-
-
-def dC_dict_to_4D_array(
-    dC_dict_3D, param_names, nbl, zbins, derivatives_prefix, is_3x2pt=False, n_probes=2
-):
-    """
-    :param param_names: filename of the parameter, e.g. 'Om'; dCldOm = d(C(l))/d(Om)
-    :param dC_dict_3D:
-    :param nbl:
-    :param zbins:
-    :param obs_name: filename of the observable, e.g. 'Cl'; dCldOm = d(C(l))/d(Om)
-    :param is_3x2pt: whether to will the 5D derivatives vector
-    :param n_probes:
-    :return:
-    """
-    # param_names should be params_tot in all cases, because when the derivative dows not exist
-    # in dC_dict_3D the output array will remain null
-    if is_3x2pt:
-        dC_4D = np.zeros((n_probes, n_probes, nbl, zbins, zbins, len(param_names)))
-    else:
-        dC_4D = np.zeros((nbl, zbins, zbins, len(param_names)))
-
-    if not dC_dict_3D:
-        warnings.warn('The input dictionary is empty')
-
-    no_derivative_counter = 0
-    for idx, param_name in enumerate(param_names):
-        for key, value in dC_dict_3D.items():
-            if f'{derivatives_prefix}{param_name}' in key:
-                dC_4D[..., idx] = value
-
-        # a check, if the derivative wrt the param is not in the folder at all
-        if not any(
-            f'{derivatives_prefix}{param_name}' in key for key in dC_dict_3D.keys()
-        ):
-            print(
-                f'Derivative {derivatives_prefix}{param_name} not found; setting the corresponding FM entry to zero'
-            )
-            no_derivative_counter += 1
-        if no_derivative_counter == len(param_names):
-            raise ImportError(
-                'No derivative found for any of the parameters in the input dictionary'
-            )
-    return dC_4D
 
 
 def compute_FoM(FM, w0wa_idxs):
@@ -4015,9 +4016,9 @@ def cov2corr(covariance):
 def build_noise(
     zbins: int,
     n_probes: int,
-    sigma_eps2: float,
-    ng_shear,
-    ng_clust,
+    sigma_eps2: list | tuple | np.ndarray,
+    ng_shear: list | tuple | np.ndarray,
+    ng_clust: list | tuple | np.ndarray,
     is_noiseless: bool = False,
 ) -> np.ndarray:
     """Builds the noise power spectra.
@@ -4028,18 +4029,18 @@ def build_noise(
         Number of redshift bins.
     n_probes : int
         Number of probes.
-    sigma_eps2 : float
+    sigma_eps2 : list | tuple | np.ndarray
         Square of the *total* ellipticity dispersion.
         sigma_eps2 = sigma_eps ** 2, with
         sigma_eps = sigma_eps_i * sqrt(2),
         sigma_eps_i being the ellipticity dispersion *per component*
-    ng_shear : int, float or numpy.ndarray
+    ng_shear : list | tuple | np.ndarray
         Galaxy density of sources, relevant for cosmic shear
         If a scalar, cumulative galaxy density number density, per arcmin^2.
         This will assume equipopulated bins.
         If an array, galaxy number density, per arcmin^2, per redshift bin.
         Must have length zbins.
-    ng_clust : int, float or numpy.ndarray
+    ng_clust : list | tuple | np.ndarray
         Galaxy density of lenses, relevant for galaxy clustering
         If a scalar, cumulative galaxy density number density, per arcmin^2.
         This will assume equipopulated bins.
@@ -4061,15 +4062,28 @@ def build_noise(
         N_GL = N_LG = 0
     """
 
-    if isinstance(ng_shear, list):
+    # assert appropriate inputs are list, tuple or np.ndarray
+    for var, name in zip(
+        [ng_shear, ng_clust, ],
+        ['ng_shear', 'ng_clust', ],
+    ):
+    #     [ng_shear, ng_clust, sigma_eps2],
+    #     ['ng_shear', 'ng_clust', 'sigma_eps2'],
+    # ):
+        assert isinstance(var, (list, tuple, np.ndarray)), (
+            f'{name} should be a list, tuple or np.ndarray'
+        )
+
+    # convert to np arrays if needed
+    if isinstance(ng_shear, (list, tuple)):
         ng_shear = np.array(ng_shear)
-    if isinstance(ng_clust, list):
+    if isinstance(ng_clust, (list, tuple)):
         ng_clust = np.array(ng_clust)
+    # if isinstance(ng_clust, (list, tuple)):
+        # sigma_eps2 = np.array(sigma_eps2)
 
     conversion_factor = (180 / np.pi * 60) ** 2  # deg^2 to arcmin^2
 
-    assert isinstance(ng_shear, np.ndarray), 'ng_shear should an array'
-    assert isinstance(ng_clust, np.ndarray), 'ng_clust should an array'
     assert np.all(ng_shear > 0), 'ng_shear should be positive'
     assert np.all(ng_clust > 0), 'ng_clust should be positive'
 

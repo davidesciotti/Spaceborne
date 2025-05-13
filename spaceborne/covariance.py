@@ -12,7 +12,7 @@ from spaceborne import sb_lib as sl
 
 
 class SpaceborneCovariance:
-    def __init__(self, cfg, pvt_cfg, ell_obj, bnt_matrix):
+    def __init__(self, cfg, pvt_cfg, ell_obj, nmt_cov_obj, bnt_matrix):
         self.cfg = cfg
         self.cov_cfg = cfg['covariance']
         self.ell_dict = {}
@@ -27,6 +27,9 @@ class SpaceborneCovariance:
         self.zbins = pvt_cfg['zbins']
         self.cov_terms_list = pvt_cfg['cov_terms_list']
         self.GL_OR_LG = pvt_cfg['GL_OR_LG']
+        self.fsky = pvt_cfg['fsky']
+        self.jl_integrator_path = pvt_cfg['jl_integrator_path']
+        self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
 
         self.n_probes = self.cov_cfg['n_probes']
         # 'include' instead of 'compute' because it might be loaded from file
@@ -39,6 +42,7 @@ class SpaceborneCovariance:
         self.cov_ordering_2d = self.cov_cfg['covariance_ordering_2D']
         self.probe_ordering = self.cov_cfg['probe_ordering']
         self.use_nmt = self.cfg['namaster']['use_namaster']
+        self.nmt_cov_obj = nmt_cov_obj
 
         if self.cov_ordering_2d == 'probe_ell_zpair':
             self.block_index = 'ell'
@@ -149,20 +153,9 @@ class SpaceborneCovariance:
 
         assert (
             (self.cov_terms_list == ['G', 'SSC', 'cNG'])
-            or (
-                self.cov_terms_list
-                == [
-                    'G',
-                    'SSC',
-                ]
-            )
+            or (self.cov_terms_list == ['G', 'SSC'])
             or (self.cov_terms_list == ['G', 'cNG'])
-            or (
-                self.cov_terms_list
-                == [
-                    'G',
-                ]
-            )  # TODO finish testing this?
+            or (self.cov_terms_list == ['G'])  # TODO finish testing this?
         ), 'cov_terms_list not recognised'
 
         assert self.ssc_code in ['Spaceborne', 'PyCCL', 'OneCovariance'], (
@@ -510,10 +503,16 @@ class SpaceborneCovariance:
                 return_only_diagonal_ells=False,
             )
 
-        # elif self.use_nmt:
-        #     from spaceborne import cov_partial_sky
-        #     nmt_obj = cov_partial_sky.NmtCov(self.cfg, self.pvt_cfg, ccl_obj, self.mask_obj)
-        #     nmt_obj.compute_covariance()
+        if self.use_nmt:
+            # noise vector doesn't have to be recomputed, but repeated a larger number
+            # of times (ell by ell)
+            noise_3x2pt_unb_5d = np.repeat(
+                noise_3x2pt_4D[:, :, np.newaxis, :, :],
+                repeats=self.nmt_cov_obj.nbl_3x2pt_unb,
+                axis=2,
+            )
+            self.nmt_cov_obj.noise_3x2pt_unb_5d = noise_3x2pt_unb_5d
+            self.cov_3x2pt_g_10D = self.nmt_cov_obj.build_psky_cov()
 
         # this part is in common, the split case also sets the total cov
         if self.GL_OR_LG == 'GL':
@@ -860,117 +859,43 @@ class SpaceborneCovariance:
             raise ValueError('GL_OR_LG must be "GL" or "LG"')
 
         # # ! reshape everything to 2D
-        self.cov_WL_g_2D = self.reshape_cov(
-            self.cov_WL_g_6D,
-            6,
-            2,
-            self.nbl_WL,
-            self.zpairs_auto,
-            self.ind_auto,
-            is_3x2pt=False,
-        )
-        self.cov_WL_ssc_2D = self.reshape_cov(
-            cov_WL_ssc_6D,
-            6,
-            2,
-            self.nbl_WL,
-            self.zpairs_auto,
-            self.ind_auto,
-            is_3x2pt=False,
-        )
-        self.cov_WL_cng_2D = self.reshape_cov(
-            cov_WL_cng_6D,
-            6,
-            2,
-            self.nbl_WL,
-            self.zpairs_auto,
-            self.ind_auto,
-            is_3x2pt=False,
-        )
+        reshape_args = [  # fmt: skip
+            # WL
+            ('cov_WL_g_2D', self.cov_WL_g_6D, 6, self.nbl_WL, self.zpairs_auto, self.ind_auto, False),
+            ('cov_WL_ssc_2D', cov_WL_ssc_6D, 6, self.nbl_WL, self.zpairs_auto, self.ind_auto, False),
+            ('cov_WL_cng_2D', cov_WL_cng_6D, 6, self.nbl_WL, self.zpairs_auto, self.ind_auto, False),
+            
+            # GC
+            ('cov_GC_g_2D', self.cov_GC_g_6D, 6, self.nbl_GC, self.zpairs_auto, self.ind_auto, False),
+            ('cov_GC_ssc_2D', cov_GC_ssc_6D, 6, self.nbl_GC, self.zpairs_auto, self.ind_auto, False),
+            ('cov_GC_cng_2D', cov_GC_cng_6D, 6, self.nbl_GC, self.zpairs_auto, self.ind_auto, False),
+            
+            # XC
+            ('cov_XC_g_2D', cov_XC_g_6D, 6, self.nbl_3x2pt, self.zpairs_cross, self.ind_cross, False),
+            ('cov_XC_ssc_2D', cov_XC_ssc_6D, 6, self.nbl_3x2pt, self.zpairs_cross, self.ind_cross, False),
+            ('cov_XC_cng_2D', cov_XC_cng_6D, 6, self.nbl_3x2pt, self.zpairs_cross, self.ind_cross, False),
+            
+            # 3x2pt
+            ('cov_3x2pt_g_2D', self.cov_3x2pt_g_10D, 10, self.nbl_3x2pt, self.zpairs_auto, self.ind, True),
+            ('cov_3x2pt_ssc_2D', self.cov_3x2pt_ssc_10D,10, self.nbl_3x2pt, self.zpairs_auto, self.ind, True),
+            ('cov_3x2pt_cng_2D', self.cov_3x2pt_cng_10D,10, self.nbl_3x2pt, self.zpairs_auto, self.ind, True)
+        ]  # fmt: skip
 
-        self.cov_GC_g_2D = self.reshape_cov(
-            self.cov_GC_g_6D,
-            6,
-            2,
-            self.nbl_GC,
-            self.zpairs_auto,
-            self.ind_auto,
-            is_3x2pt=False,
-        )
-        self.cov_GC_ssc_2D = self.reshape_cov(
-            cov_GC_ssc_6D,
-            6,
-            2,
-            self.nbl_GC,
-            self.zpairs_auto,
-            self.ind_auto,
-            is_3x2pt=False,
-        )
-        self.cov_GC_cng_2D = self.reshape_cov(
-            cov_GC_cng_6D,
-            6,
-            2,
-            self.nbl_GC,
-            self.zpairs_auto,
-            self.ind_auto,
-            is_3x2pt=False,
-        )
-
-        self.cov_XC_g_2D = self.reshape_cov(
-            cov_XC_g_6D,
-            6,
-            2,
-            self.nbl_3x2pt,
-            self.zpairs_cross,
-            self.ind_cross,
-            is_3x2pt=False,
-        )
-        self.cov_XC_ssc_2D = self.reshape_cov(
-            cov_XC_ssc_6D,
-            6,
-            2,
-            self.nbl_3x2pt,
-            self.zpairs_cross,
-            self.ind_cross,
-            is_3x2pt=False,
-        )
-        self.cov_XC_cng_2D = self.reshape_cov(
-            cov_XC_cng_6D,
-            6,
-            2,
-            self.nbl_3x2pt,
-            self.zpairs_cross,
-            self.ind_cross,
-            is_3x2pt=False,
-        )
-
-        self.cov_3x2pt_g_2D = self.reshape_cov(
-            self.cov_3x2pt_g_10D,
-            10,
-            2,
-            self.nbl_3x2pt,
-            self.zpairs_auto,
-            self.ind,
-            is_3x2pt=True,
-        )
-        self.cov_3x2pt_ssc_2D = self.reshape_cov(
-            self.cov_3x2pt_ssc_10D,
-            10,
-            2,
-            self.nbl_3x2pt,
-            self.zpairs_auto,
-            self.ind,
-            is_3x2pt=True,
-        )
-        self.cov_3x2pt_cng_2D = self.reshape_cov(
-            self.cov_3x2pt_cng_10D,
-            10,
-            2,
-            self.nbl_3x2pt,
-            self.zpairs_auto,
-            self.ind,
-            is_3x2pt=True,
-        )
+        # Loop over and assign
+        for name, cov, ndim_in, _nbl, _zpairs, ind_probe, is_3x2pt in reshape_args:
+            setattr(
+                self,
+                name,
+                self.reshape_cov(
+                    cov_in=cov,
+                    ndim_in=ndim_in,
+                    ndim_out=2,
+                    nbl=_nbl,
+                    zpairs=_zpairs,
+                    ind_probe=ind_probe,
+                    is_3x2pt=is_3x2pt,
+                ),
+            )
 
         # ! perform ell cuts on the 2D covs
         if self.cfg['ell_cuts']['cov_ell_cuts']:

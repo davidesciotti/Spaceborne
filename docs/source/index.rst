@@ -7,7 +7,7 @@
    :width: 30%
    :align: center
 
-Welcome to Spaceborne Documentation!
+Welcome to Spaceborne documentation!
 ====================================
 
 Spaceborne is a Python package for the computation of the covariance matrix of
@@ -35,3 +35,4 @@ Features
    Usage
    IO
    Tips
+

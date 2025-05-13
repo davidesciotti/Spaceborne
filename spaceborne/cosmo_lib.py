@@ -305,7 +305,7 @@ def get_omega_nu0(m_nu, h, n_eff=3.046, neutrino_mass_fac=94.07):
     between the factors 93.14eV and 94.07eV
 
     Parameters:
-    # m_nu : float
+    m_nu : float
         Total neutrino mass (sum of the masses of the neutrino species).
     h : float
         Reduced Hubble constant.

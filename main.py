@@ -192,31 +192,27 @@ symmetrize_output_dict = {
     ('L', 'G'): False,
     ('G', 'G'): False,
 }
-unique_probe_comb = [
-    [0, 0, 0, 0],
-    [0, 0, 1, 0],
-    [0, 0, 1, 1],
-    [1, 0, 1, 0],
-    [1, 0, 1, 1],
-    [1, 1, 1, 1],
-]
 probename_dict = {0: 'L', 1: 'G'}
+probename_dict_inv = {'L': 0, 'G': 1}
 
 # these are configs which should not be visible to the user
-cfg['OneCovariance'] = {}
-cfg['ell_cuts'] = {}
 cfg['covariance']['n_probes'] = 2
 cfg['covariance']['G_code'] = 'Spaceborne'
 cfg['covariance']['SSC_code'] = 'Spaceborne'
 cfg['covariance']['cNG_code'] = 'PyCCL'
+
+cfg['OneCovariance'] = {}
 cfg['OneCovariance']['precision_settings'] = 'default'
 cfg['OneCovariance']['path_to_oc_executable'] = '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py'  # fmt: skip
 cfg['OneCovariance']['path_to_oc_ini'] = './input/config_3x2pt_pure_Cell_general.ini'
 cfg['OneCovariance']['consistency_checks'] = False
+
 cfg['misc']['save_output_as_benchmark'] = False
 cfg['misc']['bench_filename'] = (
     '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_newtest'
 )
+
+cfg['ell_cuts'] = {}
 cfg['ell_cuts']['apply_ell_cuts'] = False  # Type: bool
 # Type: str. Cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
 cfg['ell_cuts']['center_or_min'] = 'center'
@@ -247,6 +243,33 @@ dzGC_fiducial = cfg['nz']['dzGC']
 shift_nz = cfg['nz']['shift_nz']
 normalize_shifted_nz = cfg['nz']['normalize_shifted_nz']
 n_probes = cfg['covariance']['n_probes']
+
+
+# ! probe selection
+probe_comb_names = []
+if cfg['probe_selection']['LL']:
+    probe_comb_names.append('LL')
+if cfg['probe_selection']['GL']:
+    probe_comb_names.append('GL')
+if cfg['probe_selection']['GG']:
+    probe_comb_names.append('GG')
+
+probe_comb_names = sl.build_probe_list(
+    probe_comb_names, include_cross_terms=cfg['probe_selection']['cross_terms']
+)
+
+probe_comb_idxs = [
+    [0, 0, 0, 0],
+    [0, 0, 1, 0],
+    [0, 0, 1, 1],
+    [1, 0, 1, 0],
+    [1, 0, 1, 1],
+    [1, 1, 1, 1],
+]
+
+probe_comb_idxs = [
+    [probename_dict_inv[idx] for idx in comb] for comb in probe_comb_names
+]
 
 
 # ! set non-gaussian cov terms to compute
@@ -436,6 +459,7 @@ pvt_cfg = {
 # ! ===================================== \ells ========================================
 ell_obj = ell_utils.EllBinning(cfg)
 ell_obj.build_ell_bins()
+ell_obj._validate_bins()
 
 
 # ! ===================================== Mask =========================================
@@ -1328,7 +1352,7 @@ for which_cov in cov_dict:
     save_func(f'{output_path}/{cov_filename}', cov_dict[which_cov])
 
     if cfg['covariance']['save_full_cov']:
-        for a, b, c, d in unique_probe_comb:
+        for a, b, c, d in probe_comb_idxs:
             abcd_str = (
                 f'{probename_dict[a]}{probename_dict[b]}'
                 f'{probename_dict[c]}{probename_dict[d]}'

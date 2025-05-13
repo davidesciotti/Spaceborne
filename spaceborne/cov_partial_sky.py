@@ -946,6 +946,11 @@ class NmtCov:
         w02.write_to('./output/cache/nmt/w02_workspace.fits')
         w22.write_to('./output/cache/nmt/w22_workspace.fits')
 
+        # these are inputs for the other branch of the code!!
+        np.save('./output/cl_tt_unb.npy', self.cl_gg_unb_3d)
+        np.save('./output/cl_te_unb.npy', self.cl_gl_unb_3d)
+        np.save('./output/cl_ee_unb.npy', self.cl_ll_unb_3d)
+
         # if you want to use the iNKA, the cls to be passed are the coupled ones
         # divided by fsky
         if nmt_cfg['use_INKA']:
@@ -985,12 +990,27 @@ class NmtCov:
         cw.compute_coupling_coefficients(f0_mask, f0_mask, f0_mask, f0_mask)
         print(f'...done in {(time.perf_counter() - start_time):.2f} s')
 
-        np.save('./output/mask.npy', self.mask_obj.mask)
-        np.save('./output/cl_ee_4covnmt.npy', cl_ll_4covnmt)
-        np.save('./output/cl_te_4covnmt.npy', cl_gl_4covnmt)
-        np.save('./output/cl_tt_4covnmt.npy', cl_gg_4covnmt)
-        np.save('./output/noise_3x2pt_5d.npy', self.noise_3x2pt_unb_5d)
-
+    
+        np.savez(
+            f'./output/ingredients_new',
+            cl_tt=cl_tt_4covnmt,
+            cl_te=cl_te_4covnmt,
+            cl_ee=cl_ee_4covnmt,
+            cl_tb=cl_tb_4covnmt,
+            cl_eb=cl_eb_4covnmt,
+            cl_bb=cl_bb_4covnmt,
+            zbins=self.zbins,
+            nbl=nbl_eff,
+            coupled=nmt_cfg['coupled_cov'],
+            ells_in=ells_unb,
+            ells_out=ells_eff,
+            ells_out_edges=ells_eff_edges,
+            weights=None,
+            which_binning='sum',
+            noise_3x2pt_5d=self.noise_3x2pt_unb_5d,
+            mask=self.mask_obj.mask,
+        )
+        
         if nmt_cfg['spin0']:
             cov_nmt_10d = nmt_gaussian_cov_spin0(
                 cl_tt=cl_tt_4covnmt,

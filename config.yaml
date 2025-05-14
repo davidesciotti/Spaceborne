@@ -109,7 +109,7 @@ mask:
     load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
     mask_path: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
     generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
-    nside: 1024 # Type: int
+    nside: 512 # Type: int
     survey_area_deg2: 13245 # Type: int
     apodize: False # Type: bool
     aposize: 0.1 # Type: float. Apodization scale in deg
@@ -123,19 +123,19 @@ namaster:
 
 sample_covariance:
     compute_sample_cov: True  # Type: bool
-    which_cls: healpy  # Type: str. Options: 'namaster' or 'healpy'
+    which_cls: namaster  # Type: str. Options: 'namaster' or 'healpy'
     nreal: 2 # Type: int. Number of realizations for the sample covariance matrix
 
 ell_binning:
-    binning_type: 'ref_cut'  # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
+    binning_type: 'lin'  # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
     
     ell_min_WL: 10 # Type: int. Minimum ell for WL
-    ell_max_WL: 3000 # Type: int. Maximum ell for WL
-    ell_bins_WL: 29 # Type: int. Number of bins for WL. Not used in the 'unbinned' and 'ref_cut' cases
+    ell_max_WL: 1000 # Type: int. Maximum ell for WL
+    ell_bins_WL: 10 # Type: int. Number of bins for WL. Not used in the 'unbinned' and 'ref_cut' cases
     
     ell_min_GC: 10 # Type: int. Minimum ell for GC
-    ell_max_GC: 3000 # Type: int. Maximum ell for GC
-    ell_bins_GC: 29 # Type: int. Number of bins for GC. Not used in the 'unbinned' and 'ref_cut' cases
+    ell_max_GC: 1000 # Type: int. Maximum ell for GC
+    ell_bins_GC: 10 # Type: int. Number of bins for GC. Not used in the 'unbinned' and 'ref_cut' cases
 
     ell_min_ref: 10 # Type: int. Minimum ell for reference case
     ell_max_ref: 5000 # Type: int. Maximum ell for reference case
@@ -187,15 +187,6 @@ covariance:
     # Whether to include the noise power spectra in the computation of the 
     # Gaussian covariance matrix.
     noiseless_spectra: False # Type: bool
-
-    # Sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
-    # - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only). In this case, the output covmat
-    # - from_input_mask: input a mask with path specified by mask_path
-    # - polar_cap_on_the_fly: generate a polar cap during the run, with nside specified by nside
-    # - null (None): use the flat-sky expression (valid for PyCCL only)
-    # - flat_sky: use the flat-sky expression (valid for PyCCL only)
-    #   has to be rescaled by fsky
-    which_sigma2_b: polar_cap_on_the_fly # Type: str | None
 
     # TODO SU input file
     which_pk_responses: halo_model # Type: str. Options: ['halo_model', 'separate_universe']

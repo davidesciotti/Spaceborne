@@ -267,16 +267,6 @@ if cfg['probe_selection']['GG']:
 probe_comb_names = sl.build_probe_list(
     probe_comb_names, include_cross_terms=cfg['probe_selection']['cross_terms']
 )
-
-probe_comb_idxs = [
-    [0, 0, 0, 0],
-    [0, 0, 1, 0],
-    [0, 0, 1, 1],
-    [1, 0, 1, 0],
-    [1, 0, 1, 1],
-    [1, 1, 1, 1],
-]
-
 probe_comb_idxs = [
     [probename_dict_inv[idx] for idx in comb] for comb in probe_comb_names
 ]

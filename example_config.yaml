@@ -40,6 +40,12 @@ halo_model:
     halo_profile_dm: HaloProfileNFW # Type: str
     halo_profile_hod: HaloProfileHOD # Type: str
 
+probe_selection:
+    LL: True  # Type: str. Whether to compute the weak lensing ('LL') covariance
+    GL: True  # Type: str. Whether to compute the galaxy-galaxy lensing ('GL') covariance
+    GG: True  # Type: str. Whether to compute the photometric clustering ('GG') covariance
+    cross_terms: True  # Type: str. Whether to compute the cross-terms between the selected probes
+
 C_ell:
     # Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
     # Note: if the non-Gaussian covariance is requested, the code will compute intermediate quantities

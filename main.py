@@ -148,7 +148,7 @@ def plot_cls():
 # ! ====================================================================================
 
 # use the _dev config in the develop branch!
-_config_path = 'config.yaml' if os.path.exists('config.yaml') else 'example_config.yaml'
+_config_path = '/home/cosmo/davide.sciotti/data/common_data/cov_sb_for_marco/example_config.yaml'
 cfg = load_config()
 
 # some convenence variables, just to make things more readable
@@ -224,11 +224,11 @@ cfg['ell_cuts']['kmax_h_over_Mpc_ref'] = 1.0
 cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.0,]  # fmt: skip
 
 # if in main branch, set this to False
-cfg['nz']['shift_nz'] = True
-if sl.is_main_branch():
-    cfg['nz']['shift_nz'] = False
-if cfg['nz']['shift_nz']:
-    warnings.warn('nz is currently being shifted!!', stacklevel=2)
+# cfg['nz']['shift_nz'] = True
+# if sl.is_main_branch():
+cfg['nz']['shift_nz'] = False
+# if cfg['nz']['shift_nz']:
+#     warnings.warn('nz is currently being shifted!!', stacklevel=2)
 
 cfg['nz']['dzWL'] = [-0.008848, 0.051368, 0.059484]
 cfg['nz']['dzGC'] = [-0.008848, 0.051368, 0.059484]
@@ -239,8 +239,8 @@ cfg['nz']['plot_nz_tocheck'] = True
 # ! END HARDCODED OPTIONS/PARAMETERS
 
 # some of the configs have been defined here...
-dzWL_fiducial = cfg['nz']['dzWL']
-dzGC_fiducial = cfg['nz']['dzGC']
+# dzWL_fiducial = cfg['nz']['dzWL']
+# dzGC_fiducial = cfg['nz']['dzGC']
 shift_nz = cfg['nz']['shift_nz']
 normalize_shifted_nz = cfg['nz']['normalize_shifted_nz']
 n_probes = cfg['covariance']['n_probes']

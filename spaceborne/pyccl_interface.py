@@ -448,12 +448,21 @@ class PycclClass:
                     f'probe combination {probe_block}'
                 )
 
+                # Attempt to load from cache, fall back to computing if necessary
+                tkka_abcd = None
                 if pyccl_cfg['load_cached_tkka']:
-                    tkka_abcd = self._load_and_set_tkka(
-                        which_ng_cov, tkka_path, k_a_str, probe_block
-                    )
+                    try:
+                        tkka_abcd = self._load_and_set_tkka(
+                            which_ng_cov, tkka_path, k_a_str, probe_block
+                        )
+                    except FileNotFoundError as e:
+                        print(
+                            'No trispectra files found in the cache. '
+                            'Proceeding to compute them. Error message:\n'
+                        )
+                        print(e)
 
-                else:
+                if tkka_abcd is None:
                     tkka_abcd = self._compute_and_save_tkka(
                         which_ng_cov, tkka_path, k_a_str, probe_block, p_of_k_a=None
                     )

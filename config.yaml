@@ -109,7 +109,7 @@ mask:
     load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
     mask_path: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
     generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
-    nside: 512 # Type: int
+    nside: 256 # Type: int
     survey_area_deg2: 13245 # Type: int
     apodize: False # Type: bool
     aposize: 0.1 # Type: float. Apodization scale in deg
@@ -123,18 +123,26 @@ namaster:
 
 sample_covariance:
     compute_sample_cov: True  # Type: bool
-    which_cls: namaster  # Type: str. Options: 'namaster' or 'healpy'
-    nreal: 2 # Type: int. Number of realizations for the sample covariance matrix
+    # Which code to use to compute the coupled Cls on the masked maps. The results are 
+    # essentially equivalent, but 'namaster' is a bit faster.
+    # In case the decoupled (sample) covariance is requested, in both cases the 
+    # workspace.decouple_cell() function will be used. 
+    # Documentation: 
+    # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
+    # Options: ['namaster', 'healpy']. 
+    which_cls: namaster  # Type: str. 
+    nreal: 5000 # Type: int. Number of realizations for the sample covariance matrix
+    fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
 
 ell_binning:
     binning_type: 'lin'  # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
     
     ell_min_WL: 10 # Type: int. Minimum ell for WL
-    ell_max_WL: 1000 # Type: int. Maximum ell for WL
+    ell_max_WL: 500 # Type: int. Maximum ell for WL
     ell_bins_WL: 10 # Type: int. Number of bins for WL. Not used in the 'unbinned' and 'ref_cut' cases
     
     ell_min_GC: 10 # Type: int. Minimum ell for GC
-    ell_max_GC: 1000 # Type: int. Maximum ell for GC
+    ell_max_GC: 500 # Type: int. Maximum ell for GC
     ell_bins_GC: 10 # Type: int. Number of bins for GC. Not used in the 'unbinned' and 'ref_cut' cases
 
     ell_min_ref: 10 # Type: int. Minimum ell for reference case
@@ -147,8 +155,8 @@ BNT:
 
 covariance:
     G: True # Type: bool. Enable/disable the Gaussian covariance term.
-    SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
-    cNG: True # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+    SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
+    cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
     # Choose whether to use the upper ('triu') or lower ('tril') triangle
     # of the auto-probe (LL, GG) zbins (C_{ij}(\ell)^AA = C_{ji}(\ell)^AA).
@@ -267,4 +275,4 @@ misc:
     test_cholesky_decomposition: False # Type: bool. Test if cholesky decomposition fails
     test_symmetry: False # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
-    output_path: ./output # Type: str. Path to the output directory
+    output_path: ./output/nmt_cov_test # Type: str. Path to the output directory

@@ -22,3 +22,4 @@ tests/realspace_test/*
 tests/benchmark_configs/*
 tests/bench_set/*
 docs/build/
+_config.yaml

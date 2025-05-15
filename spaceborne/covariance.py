@@ -42,6 +42,7 @@ class SpaceborneCovariance:
         self.cov_ordering_2d = self.cov_cfg['covariance_ordering_2D']
         self.probe_ordering = self.cov_cfg['probe_ordering']
         self.use_nmt = self.cfg['namaster']['use_namaster']
+        self.do_sample_cov = self.cfg['sample_covariance']['compute_sample_cov']
         self.nmt_cov_obj = nmt_cov_obj
 
         if self.cov_ordering_2d == 'probe_ell_zpair':
@@ -120,6 +121,12 @@ class SpaceborneCovariance:
 
     def consistency_checks(self):
         # sanity checks
+        
+        assert not (self.use_nmt and self.do_sample_cov), (
+            'either cfg["namaster"]["use_namaster"] or '
+            'cfg["sample_covariance"]["compute_sample_cov"] should be True, '
+            'not both (but they can both be False)'
+        )
 
         assert tuple(self.probe_ordering[0]) == ('L', 'L'), (
             'the XC probe should be in position 1 (not 0) of the datavector'
@@ -503,7 +510,7 @@ class SpaceborneCovariance:
                 return_only_diagonal_ells=False,
             )
 
-        if self.use_nmt:
+        if self.use_nmt or self.do_sample_cov:
             # noise vector doesn't have to be recomputed, but repeated a larger number
             # of times (ell by ell)
             noise_3x2pt_unb_5d = np.repeat(

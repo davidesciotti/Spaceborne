@@ -334,6 +334,7 @@ class EllBinning:
         self.nbl_ref = cfg['ell_binning']['ell_bins_ref']
 
         self.use_namaster = cfg['namaster']['use_namaster']
+        self.do_sample_cov = cfg['sample_covariance']['compute_sample_cov']
 
     def build_ell_bins(self):
         """
@@ -463,7 +464,7 @@ class EllBinning:
         else:
             raise ValueError(f'binning_type {self.binning_type} not recognized.')
 
-        if self.use_namaster:
+        if self.use_namaster or self.do_sample_cov:
             # TODO what about WL?
             import pymaster as nmt
 

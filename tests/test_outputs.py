@@ -16,7 +16,7 @@ To run these tests:
            # if sl.is_main_branch():
            #     cfg['nz']['shift_nz'] = False
     4.2  If you're testing the main branch, don't worry about 
-         config/example_config separation
+         config/example_config separation (UPDATE 15/05/2025: I removed example_config)
 5.  Open this script and make sure you indicate the relevant benchmark file name
     in the `bench_names` list, then run it.
 6.  If some configs are missing, check the benchmark .yaml file and manually paste them

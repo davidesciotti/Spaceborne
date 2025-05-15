@@ -53,7 +53,7 @@ pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 
 
-def load_config():
+def load_config(_config_path):
     # Check if we're running in a Jupyter environment (or interactive mode)
     if 'ipykernel_launcher.py' in sys.argv[0]:
         # Running interactively, so use default config file
@@ -148,8 +148,9 @@ def plot_cls():
 # ! ====================================================================================
 
 # use the _dev config in the develop branch!
-_config_path = 'config.yaml' if os.path.exists('config.yaml') else 'example_config.yaml'
-cfg = load_config()
+
+_config_path = 'config.yaml' if os.path.exists('config.yaml') else None
+cfg = load_config(_config_path)
 
 # some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']
@@ -207,10 +208,10 @@ cfg['OneCovariance']['path_to_oc_executable'] = '/home/davide/Documenti/Lavoro/P
 cfg['OneCovariance']['path_to_oc_ini'] = './input/config_3x2pt_pure_Cell_general.ini'
 cfg['OneCovariance']['consistency_checks'] = False
 
-cfg['misc']['save_output_as_benchmark'] = False
+cfg['misc']['save_output_as_benchmark'] = True
 cfg['misc']['bench_filename'] = (
     '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}'
-    '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_devmerge2'
+    '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_devmerge3'
 )
 
 cfg['ell_cuts'] = {}

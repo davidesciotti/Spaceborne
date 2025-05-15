@@ -160,7 +160,6 @@ magnification_bias_fit_fiducials = np.array(
 )
 # this has the same length as ngal_sources, as checked below
 zbins = len(cfg['nz']['ngal_lenses'])
-which_sigma2_b = cfg['covariance']['which_sigma2_b']
 probe_ordering = cfg['covariance']['probe_ordering']  # TODO deprecate this
 GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 output_path = cfg['misc']['output_path']
@@ -237,6 +236,15 @@ cfg['nz']['normalize_shifted_nz'] = True
 cfg['nz']['nz_gaussian_smoothing'] = False
 cfg['nz']['nz_gaussian_smoothing_sigma'] = 2
 cfg['nz']['plot_nz_tocheck'] = True
+
+# Sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
+# - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only). In this case, the output covmat
+# - from_input_mask: input a mask with path specified by mask_path
+# - polar_cap_on_the_fly: generate a polar cap during the run, with nside specified by nside
+# - null (None): use the flat-sky expression (valid for PyCCL only)
+# - flat_sky: use the flat-sky expression (valid for PyCCL only)
+#   has to be rescaled by fsky
+cfg['covariance']['which_sigma2_b'] = 'from_input_mask'  # Type: str | None
 # ! END HARDCODED OPTIONS/PARAMETERS
 
 # some of the configs have been defined here...
@@ -245,6 +253,7 @@ dzGC_fiducial = cfg['nz']['dzGC']
 shift_nz = cfg['nz']['shift_nz']
 normalize_shifted_nz = cfg['nz']['normalize_shifted_nz']
 n_probes = cfg['covariance']['n_probes']
+which_sigma2_b = cfg['covariance']['which_sigma2_b']
 
 
 # ! probe selection
@@ -259,16 +268,6 @@ if cfg['probe_selection']['GG']:
 probe_comb_names = sl.build_probe_list(
     probe_comb_names, include_cross_terms=cfg['probe_selection']['cross_terms']
 )
-
-probe_comb_idxs = [
-    [0, 0, 0, 0],
-    [0, 0, 1, 0],
-    [0, 0, 1, 1],
-    [1, 0, 1, 0],
-    [1, 0, 1, 1],
-    [1, 1, 1, 1],
-]
-
 probe_comb_idxs = [
     [probename_dict_inv[idx] for idx in comb] for comb in probe_comb_names
 ]
@@ -702,7 +701,10 @@ ccl_obj.cl_gg_3d = ccl_obj.compute_cls(
 
 if cfg['C_ell']['use_input_cls']:
     # TODO NMT here you should ask the user for unbinned cls
-    if cfg['namaster']['use_namaster']:
+    if (
+        cfg['namaster']['use_namaster']
+        or cfg['sample_covariance']['compute_sample_cov']
+    ):
         raise NotImplementedError('Make sure to pass unbinned cls')
 
     print('Using input Cls')
@@ -828,9 +830,8 @@ else:
 # ccl_obj.cl_gg_3d = cl_gg_3d
 # ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
-# ! ============================= Unbinned Cls for nmt cov =============================
-
-if cfg['namaster']['use_namaster']:
+# ! =========================== Unbinned Cls for nmt/sample cov ========================
+if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_cov']:
     from spaceborne import cov_partial_sky
 
     # initialize nmt_cov_obj and set a couple useful attributes

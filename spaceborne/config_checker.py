@@ -110,9 +110,17 @@ class SpaceborneConfigChecker:
         assert (
             len(self.cfg['nz']['ngal_sources'])
             == len(self.cfg['nz']['ngal_lenses'])
-            == len(self.cfg['nz']['dzWL'])
-            == len(self.cfg['nz']['dzGC'])
         )
+        assert isinstance(self.cfg['nz']['ngal_sources'], list), (
+            'n_gal_shear must be a list'
+        )
+        assert isinstance(self.cfg['nz']['ngal_lenses'], list), (
+            'n_gal_clust must be a list'
+        )
+        if self.cfg['nz']['shift_nz']:
+            assert len(self.cfg['nz']['dzWL']) == len(self.cfg['nz']['ngal_sources'])
+            assert len(self.cfg['nz']['dzWL']) == len(self.cfg['nz']['ngal_lenses'])
+
         assert isinstance(self.cfg['nz']['ngal_sources'], list), (
             'n_gal_shear must be a list'
         )

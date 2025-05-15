@@ -1,15 +1,21 @@
+# Example configuration file for Spaceborne. A further explanation of the different 
+# options can be found in the official documentation, at https://spaceborne.readthedocs.io/en/latest/
+# The type of the different values is given in the comments, and is checked at runtime.
+# Note: When not on the same line, comments always refer to the option/section immediately below.
+# Note: `None` is `null` in YAML
+
 cosmology:
-    Om: 0.32        # Type: float
-    Ob: 0.05        # Type: float
-    wz: -1.0        # Type: float
-    wa: 0.0         # Type: float
-    h: 0.6737       # Type: float
-    ns: 0.966       # Type: float
-    s8: 0.816       # Type: float
-    ODE: 0.68       # Type: float
-    m_nu: 0.06      # Type: float
-    N_eff: 3.046    # Type: float
-    Om_k0: 0        # Type: float
+    Om: 0.32        # Type: float. Total matter density parameter Omega_m, at z=0
+    Ob: 0.05        # Type: float. Baryonic density parameter Omega_b, at z=0
+    wz: -1.0        # Type: float. Dark energy equation of state parameter (w0)
+    wa: 0.0         # Type: float. Evolution of the dark energy equation of state parameter
+    h: 0.6737       # Type: float. Dimensionless Hubble parameter (H0 / 100)
+    ns: 0.966       # Type: float. Scalar spectral index of the primordial power spectrum
+    s8: 0.816       # Type: float. Amplitude of matter density fluctuations on 8 Mpc/h scales
+    ODE: 0.68       # Type: float. Dark energy density parameter Omega_DE, at z=0
+    m_nu: 0.06      # Type: float. Total mass of neutrinos in eV
+    N_eff: 3.046    # Type: float. Effective number of relativistic species
+    Om_k0: 0        # Type: float. Curvature density parameter Omega_k, at z=0
 
 intrinsic_alignment:
     Aia: 0.16       # Type: float
@@ -67,7 +73,7 @@ C_ell:
     # - 'FS2_polynomial_fit': use the third-order polynomial fits to the galaxy and magnification bias from Flagship 2.
     #                         The actual values of these coefficients can be changed by modifying the values of 
     #                         'galaxy_bias_fit_coeff' and 'magnification_bias_fit_coeff'.
-    which_gal_bias: "FS2_polynomial_fit" # Type: str.
+    which_gal_bias: "FS2_polynomial_fit" # Type: str.  # TODO change to "polynomial"
     which_mag_bias: "FS2_polynomial_fit" # Type: str.
     
     # Coefficients of the third-order polynomial galaxy and magnification bias
@@ -99,7 +105,6 @@ nz:
     # These must have shape (z_points, zbins + 1)
     nz_sources_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat  # Type: str
     nz_lenses_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat  # Type: str
-
     # Number of galaxies per arcmin**2 for each redshift bin. 
     # Should be of len(zbins)
     ngal_sources: [8.09216, 8.09215, 8.09215]  # Type: list[float]
@@ -109,7 +114,9 @@ mask:
     load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
     mask_path: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
     generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
-    nside: 1024 # Type: int
+    # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
+    # If null (None), the nside of the input mask will be used, without up/downgrading.
+    nside: 256 # Type: int | None. 
     survey_area_deg2: 13245 # Type: int
     apodize: False # Type: bool
     aposize: 0.1 # Type: float. Apodization scale in deg
@@ -121,24 +128,37 @@ namaster:
     use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
     workspace_path: ... # Type: str. Path to the workspace, if already computed
 
+sample_covariance:
+    compute_sample_cov: True  # Type: bool
+    # Which code to use to compute the coupled Cls on the masked maps. The results are 
+    # essentially equivalent, but 'namaster' is a bit faster.
+    # In case the decoupled (sample) covariance is requested, in both cases the 
+    # workspace.decouple_cell() function will be used. 
+    # Documentation: 
+    # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
+    # Options: ['namaster', 'healpy']. 
+    which_cls: namaster  # Type: str. 
+    nreal: 5000 # Type: int. Number of realizations for the sample covariance matrix
+    fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
+
 ell_binning:
-    binning_type: 'ref_cut'  # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
+    binning_type: 'lin'  # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
     
     ell_min_WL: 10 # Type: int. Minimum ell for WL
-    ell_max_WL: 3000 # Type: int. Maximum ell for WL
-    ell_bins_WL: 29 # Type: int. Number of bins for WL. Not used in the 'unbinned' and 'ref_cut' cases
+    ell_max_WL: 500 # Type: int. Maximum ell for WL
+    ell_bins_WL: 10 # Type: int. Number of bins for WL. Not used in the 'unbinned' and 'ref_cut' cases
     
     ell_min_GC: 10 # Type: int. Minimum ell for GC
-    ell_max_GC: 3000 # Type: int. Maximum ell for GC
-    ell_bins_GC: 29 # Type: int. Number of bins for GC. Not used in the 'unbinned' and 'ref_cut' cases
+    ell_max_GC: 500 # Type: int. Maximum ell for GC
+    ell_bins_GC: 10 # Type: int. Number of bins for GC. Not used in the 'unbinned' and 'ref_cut' cases
 
     ell_min_ref: 10 # Type: int. Minimum ell for reference case
     ell_max_ref: 5000 # Type: int. Maximum ell for reference case
     ell_bins_ref: 32 # Type: int. Number of bins for reference case
 
 BNT:
-    cl_BNT_transform: False # Type: bool
-    cov_BNT_transform: False # Type: bool
+    cl_BNT_transform: False # Type: bool. Whether to BNT-transform the Cls
+    cov_BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
 
 covariance:
     G: True # Type: bool. Enable/disable the Gaussian covariance term.
@@ -164,7 +184,8 @@ covariance:
     # - probe_ell_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordering used by CLOE
     covariance_ordering_2D: ell_probe_zpair # Type: str.
     
-    # Whether to save the full 6D covariance matrix, without to any indices compression or reshaping.     # In the case of the single probes, this is an array of shape
+    # Whether to save the full 6D covariance matrix, without to any indices compression or reshaping. 
+    # In the case of the single probes, this is an array of shape
     # (ellbins, ellbins, zbins, zbins, zbins, zbins).
     save_full_cov: True # Type: bool
     
@@ -172,6 +193,7 @@ covariance:
     # sample variance, noise and mixed terms
     split_gaussian_cov: False # Type: bool
 
+    # TODO make sigma_eps_i a vector
     # Ellipticity dispersion *per component* = sigma_eps_i.
     # total ellipticity dispersion = sigma_eps
     # sigma_eps = (sigma_eps_i * np.sqrt(2))
@@ -181,21 +203,15 @@ covariance:
     # Gaussian covariance matrix.
     noiseless_spectra: False # Type: bool
 
-    # Sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
-    # - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only). In this case, the output covmat
-    # - from_input_mask: input a mask with path specified by mask_path
-    # - polar_cap_on_the_fly: generate a polar cap during the run, with nside specified by nside
-    # - null (None): use the flat-sky expression (valid for PyCCL only)
-    # - flat_sky: use the flat-sky expression (valid for PyCCL only)
-    #   has to be rescaled by fsky
-    which_sigma2_b: polar_cap_on_the_fly # Type: str | None
-
+    # TODO SU input file
     which_pk_responses: halo_model # Type: str. Options: ['halo_model', 'separate_universe']
 
     # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
     # Can be one of:
     # - 'from_HOD' (from the Halo Occupation Distribution previously initialized)
     # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB
+    # TODO probably the FS2 fit option can be deleted altogether
+    # TODO use the HOD bias in the whole code
     which_b1g_in_resp: from_HOD # Type: str. Options: ['from_HOD', 'from_input']
 
     # Whether or not to include the second-order galaxy bias in the GCph SU responses
@@ -213,7 +229,7 @@ covariance:
     # k grid used for power spectrum and trispectrum computation
     log10_k_min: -5  # Type: float 
     log10_k_max: 2  # Type: float
-    k_steps: 200  # Type: int. Around 100 should be enough
+    k_steps: 20  # Type: int. Around 100 should be enough
     
     z_min: 0.02 # Type: float. SU responses' kmax allow for z_min = 0.016, at most.
     z_max: 3.0 # Type: float
@@ -252,7 +268,7 @@ PyCCL:
     gsl_params: null # Type: dict | None
 
 misc:
-    num_threads: 40 # Type: int. How many threads to use for the parallel computations
+    num_threads: 8 # Type: int. How many threads to use for the parallel computations
 
     # How many integrals to compute at once for the  numerical integration of
     # the sigma^2_b(z_1, z_2) function with pylevin. 

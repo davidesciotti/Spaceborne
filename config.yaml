@@ -5,17 +5,17 @@
 # Note: `None` is `null` in YAML
 
 cosmology:
-    Om: 0.32        # Type: float
-    Ob: 0.05        # Type: float
-    wz: -1.0        # Type: float
-    wa: 0.0         # Type: float
-    h: 0.6737       # Type: float
-    ns: 0.966       # Type: float
-    s8: 0.816       # Type: float
-    ODE: 0.68       # Type: float
-    m_nu: 0.06      # Type: float
-    N_eff: 3.046    # Type: float
-    Om_k0: 0        # Type: float
+    Om: 0.32        # Type: float. Total matter density parameter Omega_m, at z=0
+    Ob: 0.05        # Type: float. Baryonic density parameter Omega_b, at z=0
+    wz: -1.0        # Type: float. Dark energy equation of state parameter (w0)
+    wa: 0.0         # Type: float. Evolution of the dark energy equation of state parameter
+    h: 0.6737       # Type: float. Dimensionless Hubble parameter (H0 / 100)
+    ns: 0.966       # Type: float. Scalar spectral index of the primordial power spectrum
+    s8: 0.816       # Type: float. Amplitude of matter density fluctuations on 8 Mpc/h scales
+    ODE: 0.68       # Type: float. Dark energy density parameter Omega_DE, at z=0
+    m_nu: 0.06      # Type: float. Total mass of neutrinos in eV
+    N_eff: 3.046    # Type: float. Effective number of relativistic species
+    Om_k0: 0        # Type: float. Curvature density parameter Omega_k, at z=0
 
 intrinsic_alignment:
     Aia: 0.16       # Type: float
@@ -158,8 +158,8 @@ ell_binning:
     ell_bins_ref: 32 # Type: int. Number of bins for reference case
 
 BNT:
-    cl_BNT_transform: False # Type: bool
-    cov_BNT_transform: False # Type: bool
+    cl_BNT_transform: False # Type: bool. Whether to BNT-transform the Cls
+    cov_BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
 
 covariance:
     G: True # Type: bool. Enable/disable the Gaussian covariance term.

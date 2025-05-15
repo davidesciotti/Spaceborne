@@ -129,7 +129,7 @@ namaster:
     workspace_path: ... # Type: str. Path to the workspace, if already computed
 
 sample_covariance:
-    compute_sample_cov: True  # Type: bool
+    compute_sample_cov: False  # Type: bool
     # Which code to use to compute the coupled Cls on the masked maps. The results are 
     # essentially equivalent, but 'namaster' is a bit faster.
     # In case the decoupled (sample) covariance is requested, in both cases the 

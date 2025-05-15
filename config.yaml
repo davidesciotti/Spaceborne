@@ -1,15 +1,21 @@
+# Example configuration file for Spaceborne. A further explanation of the different 
+# options can be found in the official documentation, at https://spaceborne.readthedocs.io/en/latest/
+# The type of the different values is given in the comments, and is checked at runtime.
+# Note: When not on the same line, comments always refer to the option/section immediately below.
+# Note: `None` is `null` in YAML
+
 cosmology:
-    Om: 0.32        # Type: float
-    Ob: 0.05        # Type: float
-    wz: -1.0        # Type: float
-    wa: 0.0         # Type: float
-    h: 0.6737       # Type: float
-    ns: 0.966       # Type: float
-    s8: 0.816       # Type: float
-    ODE: 0.68       # Type: float
-    m_nu: 0.06      # Type: float
-    N_eff: 3.046    # Type: float
-    Om_k0: 0        # Type: float
+    Om: 0.32        # Type: float. Total matter density parameter Omega_m, at z=0
+    Ob: 0.05        # Type: float. Baryonic density parameter Omega_b, at z=0
+    wz: -1.0        # Type: float. Dark energy equation of state parameter (w0)
+    wa: 0.0         # Type: float. Evolution of the dark energy equation of state parameter
+    h: 0.6737       # Type: float. Dimensionless Hubble parameter (H0 / 100)
+    ns: 0.966       # Type: float. Scalar spectral index of the primordial power spectrum
+    s8: 0.816       # Type: float. Amplitude of matter density fluctuations on 8 Mpc/h scales
+    ODE: 0.68       # Type: float. Dark energy density parameter Omega_DE, at z=0
+    m_nu: 0.06      # Type: float. Total mass of neutrinos in eV
+    N_eff: 3.046    # Type: float. Effective number of relativistic species
+    Om_k0: 0        # Type: float. Curvature density parameter Omega_k, at z=0
 
 intrinsic_alignment:
     Aia: 0.16       # Type: float
@@ -99,7 +105,6 @@ nz:
     # These must have shape (z_points, zbins + 1)
     nz_sources_filename: ./input/nzTab.txt  # Type: str
     nz_lenses_filename: ./input/nzTab.txt  # Type: str
-
     # Number of galaxies per arcmin**2 for each redshift bin. 
     # Should be of len(zbins)
     ngal_sources: [8.09216, 8.09215, 8.09215]  # Type: list[float]
@@ -109,7 +114,9 @@ mask:
     load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
     mask_path: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
     generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
-    nside: 1024 # Type: int
+    # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
+    # If null (None), the nside of the input mask will be used, without up/downgrading.
+    nside: 1024 # Type: int | None. 
     survey_area_deg2: 13245 # Type: int
     apodize: False # Type: bool
     aposize: 0.1 # Type: float. Apodization scale in deg
@@ -120,6 +127,19 @@ namaster:
     spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
     use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
     workspace_path: ... # Type: str. Path to the workspace, if already computed
+
+sample_covariance:
+    compute_sample_cov: False  # Type: bool
+    # Which code to use to compute the coupled Cls on the masked maps. The results are 
+    # essentially equivalent, but 'namaster' is a bit faster.
+    # In case the decoupled (sample) covariance is requested, in both cases the 
+    # workspace.decouple_cell() function will be used. 
+    # Documentation: 
+    # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
+    # Options: ['namaster', 'healpy']. 
+    which_cls: namaster  # Type: str. 
+    nreal: 5000 # Type: int. Number of realizations for the sample covariance matrix
+    fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
 
 ell_binning:
     binning_type: 'ref_cut'  # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
@@ -137,8 +157,8 @@ ell_binning:
     ell_bins_ref: 32 # Type: int. Number of bins for reference case
 
 BNT:
-    cl_BNT_transform: False # Type: bool
-    cov_BNT_transform: False # Type: bool
+    cl_BNT_transform: False # Type: bool. Whether to BNT-transform the Cls
+    cov_BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
 
 covariance:
     G: True # Type: bool. Enable/disable the Gaussian covariance term.
@@ -164,7 +184,8 @@ covariance:
     # - probe_ell_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordering used by CLOE
     covariance_ordering_2D: ell_probe_zpair # Type: str.
     
-    # Whether to save the full 6D covariance matrix, without to any indices compression or reshaping.     # In the case of the single probes, this is an array of shape
+    # Whether to save the full 6D covariance matrix, without to any indices compression or reshaping. 
+    # In the case of the single probes, this is an array of shape
     # (ellbins, ellbins, zbins, zbins, zbins, zbins).
     save_full_cov: True # Type: bool
     
@@ -180,15 +201,6 @@ covariance:
     # Whether to include the noise power spectra in the computation of the 
     # Gaussian covariance matrix.
     noiseless_spectra: False # Type: bool
-
-    # Sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
-    # - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only). In this case, the output covmat
-    # - from_input_mask: input a mask with path specified by mask_path
-    # - polar_cap_on_the_fly: generate a polar cap during the run, with nside specified by nside
-    # - null (None): use the flat-sky expression (valid for PyCCL only)
-    # - flat_sky: use the flat-sky expression (valid for PyCCL only)
-    #   has to be rescaled by fsky
-    which_sigma2_b: polar_cap_on_the_fly # Type: str | None
 
     which_pk_responses: halo_model # Type: str. Options: ['halo_model', 'separate_universe']
 

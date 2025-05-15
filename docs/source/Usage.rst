@@ -6,7 +6,7 @@ Running the Code
 ================
 
 All the available options and configurations can be found, along with their explanation, 
-in the ``example_config.yaml`` file. Type hints for all of the different options are 
+in the ``config.yaml`` file. Type hints for all of the different options are 
 included in the comments. To run ``Spaceborne`` **using this configuration file**, 
 activate the previously created ``spaceborne`` environment and simply run:
 

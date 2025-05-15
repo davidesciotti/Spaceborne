@@ -73,7 +73,7 @@ C_ell:
     # - 'FS2_polynomial_fit': use the third-order polynomial fits to the galaxy and magnification bias from Flagship 2.
     #                         The actual values of these coefficients can be changed by modifying the values of 
     #                         'galaxy_bias_fit_coeff' and 'magnification_bias_fit_coeff'.
-    which_gal_bias: "FS2_polynomial_fit" # Type: str.  # TODO change to "polynomial"
+    which_gal_bias: "FS2_polynomial_fit" # Type: str.
     which_mag_bias: "FS2_polynomial_fit" # Type: str.
     
     # Coefficients of the third-order polynomial galaxy and magnification bias
@@ -103,8 +103,8 @@ C_ell:
 nz:
     # Paths to source (for WL) and lens (for GCph) redshift distributions.
     # These must have shape (z_points, zbins + 1)
-    nz_sources_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat  # Type: str
-    nz_lenses_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat  # Type: str
+    nz_sources_filename: ./input/nzTab.txt  # Type: str
+    nz_lenses_filename: ./input/nzTab.txt  # Type: str
     # Number of galaxies per arcmin**2 for each redshift bin. 
     # Should be of len(zbins)
     ngal_sources: [8.09216, 8.09215, 8.09215]  # Type: list[float]
@@ -116,7 +116,7 @@ mask:
     generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
     # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
     # If null (None), the nside of the input mask will be used, without up/downgrading.
-    nside: 256 # Type: int | None. 
+    nside: 1024 # Type: int | None. 
     survey_area_deg2: 13245 # Type: int
     apodize: False # Type: bool
     aposize: 0.1 # Type: float. Apodization scale in deg
@@ -142,15 +142,15 @@ sample_covariance:
     fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
 
 ell_binning:
-    binning_type: 'lin'  # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
+    binning_type: 'ref_cut'  # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
     
     ell_min_WL: 10 # Type: int. Minimum ell for WL
-    ell_max_WL: 500 # Type: int. Maximum ell for WL
-    ell_bins_WL: 10 # Type: int. Number of bins for WL. Not used in the 'unbinned' and 'ref_cut' cases
+    ell_max_WL: 3000 # Type: int. Maximum ell for WL
+    ell_bins_WL: 29 # Type: int. Number of bins for WL. Not used in the 'unbinned' and 'ref_cut' cases
     
     ell_min_GC: 10 # Type: int. Minimum ell for GC
-    ell_max_GC: 500 # Type: int. Maximum ell for GC
-    ell_bins_GC: 10 # Type: int. Number of bins for GC. Not used in the 'unbinned' and 'ref_cut' cases
+    ell_max_GC: 3000 # Type: int. Maximum ell for GC
+    ell_bins_GC: 29 # Type: int. Number of bins for GC. Not used in the 'unbinned' and 'ref_cut' cases
 
     ell_min_ref: 10 # Type: int. Minimum ell for reference case
     ell_max_ref: 5000 # Type: int. Maximum ell for reference case
@@ -163,7 +163,7 @@ BNT:
 covariance:
     G: True # Type: bool. Enable/disable the Gaussian covariance term.
     SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
-    cNG: True # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+    cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
     # Choose whether to use the upper ('triu') or lower ('tril') triangle
     # of the auto-probe (LL, GG) zbins (C_{ij}(\ell)^AA = C_{ji}(\ell)^AA).
@@ -193,7 +193,6 @@ covariance:
     # sample variance, noise and mixed terms
     split_gaussian_cov: False # Type: bool
 
-    # TODO make sigma_eps_i a vector
     # Ellipticity dispersion *per component* = sigma_eps_i.
     # total ellipticity dispersion = sigma_eps
     # sigma_eps = (sigma_eps_i * np.sqrt(2))
@@ -203,15 +202,12 @@ covariance:
     # Gaussian covariance matrix.
     noiseless_spectra: False # Type: bool
 
-    # TODO SU input file
     which_pk_responses: halo_model # Type: str. Options: ['halo_model', 'separate_universe']
 
     # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
     # Can be one of:
     # - 'from_HOD' (from the Halo Occupation Distribution previously initialized)
     # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB
-    # TODO probably the FS2 fit option can be deleted altogether
-    # TODO use the HOD bias in the whole code
     which_b1g_in_resp: from_HOD # Type: str. Options: ['from_HOD', 'from_input']
 
     # Whether or not to include the second-order galaxy bias in the GCph SU responses
@@ -229,11 +225,11 @@ covariance:
     # k grid used for power spectrum and trispectrum computation
     log10_k_min: -5  # Type: float 
     log10_k_max: 2  # Type: float
-    k_steps: 20  # Type: int. Around 100 should be enough
+    k_steps: 200  # Type: int. Around 100 should be enough
     
     z_min: 0.02 # Type: float. SU responses' kmax allow for z_min = 0.016, at most.
     z_max: 3.0 # Type: float
-    z_steps: 100 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 7000
+    z_steps: 7000 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 7000
     z_steps_trisp: 50  # Type: int. Number of z steps used to compute the trispectrum - around 50 should be enough
 
     use_KE_approximation: False # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
@@ -268,7 +264,7 @@ PyCCL:
     gsl_params: null # Type: dict | None
 
 misc:
-    num_threads: 8 # Type: int. How many threads to use for the parallel computations
+    num_threads: 40 # Type: int. How many threads to use for the parallel computations
 
     # How many integrals to compute at once for the  numerical integration of
     # the sigma^2_b(z_1, z_2) function with pylevin. 

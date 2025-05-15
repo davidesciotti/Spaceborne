@@ -124,6 +124,14 @@ class Mask:
 
         if self.load_mask:
             self.load_mask_func()
+            self.nside_mask = hp.get_nside(self.mask)
+
+        if self.load_mask and self.nside is not None and self.nside != self.nside_mask:
+            print(
+                f'Changing mask resolution from nside '
+                f'{self.nside_mask} to nside {self.nside}'
+            )
+            self.mask = hp.ud_grade(map_in=self.mask, nside_out=self.nside)
 
         elif self.generate_polar_cap:
             self.mask = generate_polar_cap_func(self.survey_area_deg2, self.nside)
@@ -143,7 +151,9 @@ class Mask:
             # normalization has been checked from
             # https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
             # and is the same as CSST paper https://zenodo.org/records/7813033
-            self.cl_mask_norm = self.cl_mask * (2 * self.ell_mask + 1) / (4 * np.pi * self.fsky) ** 2
+            self.cl_mask_norm = (
+                self.cl_mask * (2 * self.ell_mask + 1) / (4 * np.pi * self.fsky) ** 2
+            )
 
         else:
             print(

@@ -1,7 +1,8 @@
 # Example configuration file for Spaceborne. A further explanation of the different 
 # options can be found in the official documentation, at https://spaceborne.readthedocs.io/en/latest/
 # The type of the different values is given in the comments, and is checked at runtime.
-# When not on the same line, comments always refer to the option/section immediately below.
+# Note: When not on the same line, comments always refer to the option/section immediately below.
+# Note: `None` is `null` in YAML
 
 cosmology:
     Om: 0.32        # Type: float
@@ -114,7 +115,8 @@ mask:
     load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
     mask_path: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
     generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
-    # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask
+    # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
+    # If null (None), the nside of the input mask will be used, without up/downgrading.
     nside: 256 # Type: int | None. 
     survey_area_deg2: 13245 # Type: int
     apodize: False # Type: bool

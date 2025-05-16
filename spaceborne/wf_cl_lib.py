@@ -1084,8 +1084,9 @@ def gaussian_smmothing_nz(zgrid_nz, nz_original, nz_gaussian_smoothing_sigma, pl
     return nz_smooth
 
 
-def shift_nz(zgrid_nz, nz_original, dz_shifts, normalize, plot_nz=False, interpolation_kind='linear', clip_min=0,
-             clip_max=3, bounds_error=False, fill_value=0):
+def shift_nz(zgrid_nz, nz_original, dz_shifts, normalize, plot_nz=False, 
+             interpolation_kind='linear', clip_min=0,
+             clip_max=3, bounds_error=False, fill_value=0, plt_title=''):
     print(f'Shifting n(z), clipping between redshifts {clip_min} and {clip_max}')
 
     zbins = nz_original.shape[1]
@@ -1120,6 +1121,7 @@ def shift_nz(zgrid_nz, nz_original, dz_shifts, normalize, plot_nz=False, interpo
         plt.legend(handles=legend_elements)
         plt.xlabel('$z$')
         plt.ylabel('$n_i(z)$')
+        plt.title(plt_title)
 
     return n_of_z_shifted
 

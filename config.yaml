@@ -46,6 +46,7 @@ halo_model:
     halo_profile_dm: HaloProfileNFW # Type: str
     halo_profile_hod: HaloProfileHOD # Type: str
 
+# [NOTE: NOT IMPLEMENTED YET]
 probe_selection:
     LL: True  # Type: str. Whether to compute the weak lensing ('LL') covariance
     GL: True  # Type: str. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -111,6 +112,13 @@ nz:
     ngal_sources: [8.09216, 8.09215, 8.09215]  # Type: list[float]
     ngal_lenses: [8.09216, 8.09215, 8.09215]  # Type: list[float]
 
+    shift_nz: True  # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
+    dzWL: [-0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for WL (sources). Should be of len(zbins)
+    dzGC: [-0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of len(zbins)
+    normalize_shifted_nz: True  # Type: bool. Whether to normalize the shifted n(z) distributions
+    clip_zmin: 0  # Type: float. Minimum redshift to clip (cut) the shifted n_i(z) distributions
+    clip_zmax: 3  # Type: float. Maximum redshift to clip (cut) the shifted n_i(z) distributions
+
 mask:
     load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
     mask_path: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
@@ -130,7 +138,7 @@ namaster:
     workspace_path: ... # Type: str. Path to the workspace, if already computed
 
 sample_covariance:
-    compute_sample_cov: True  # Type: bool
+    compute_sample_cov: False  # Type: bool
     # Which code to use to compute the coupled Cls on the masked maps. The results are 
     # essentially equivalent, but 'namaster' is a bit faster.
     # In case the decoupled (sample) covariance is requested, in both cases the 

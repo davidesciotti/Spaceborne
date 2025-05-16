@@ -152,7 +152,7 @@ def plot_cls():
 _config_path = 'config.yaml' if os.path.exists('config.yaml') else None
 cfg = load_config(_config_path)
 
-# some convenence variables, just to make things more readable
+# ! set some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']
 galaxy_bias_fit_fiducials = np.array(cfg['C_ell']['galaxy_bias_fit_coeff'])
 magnification_bias_fit_fiducials = np.array(
@@ -164,7 +164,9 @@ probe_ordering = cfg['covariance']['probe_ordering']  # TODO deprecate this
 GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 output_path = cfg['misc']['output_path']
 clr = cm.rainbow(np.linspace(0, 1, zbins))
+shift_nz = cfg['nz']['shift_nz']
 
+# ! check/create paths
 if not os.path.exists(output_path):
     raise FileNotFoundError(
         f'Output path {output_path} does not exist. '
@@ -223,20 +225,6 @@ cfg['ell_cuts']['cov_ell_cuts'] = False  # Type: bool
 cfg['ell_cuts']['kmax_h_over_Mpc_ref'] = 1.0
 cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.0,]  # fmt: skip
 
-# if in main branch, set this to False
-cfg['nz']['shift_nz'] = True
-if sl.is_main_branch():
-    cfg['nz']['shift_nz'] = False
-if cfg['nz']['shift_nz']:
-    warnings.warn('nz is currently being shifted!!', stacklevel=2)
-
-cfg['nz']['dzWL'] = [-0.008848, 0.051368, 0.059484]
-cfg['nz']['dzGC'] = [-0.008848, 0.051368, 0.059484]
-cfg['nz']['normalize_shifted_nz'] = True
-cfg['nz']['nz_gaussian_smoothing'] = False
-cfg['nz']['nz_gaussian_smoothing_sigma'] = 2
-cfg['nz']['plot_nz_tocheck'] = True
-
 # Sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
 # - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only). In this case, the output covmat
 # - from_input_mask: input a mask with path specified by mask_path
@@ -247,14 +235,9 @@ cfg['nz']['plot_nz_tocheck'] = True
 cfg['covariance']['which_sigma2_b'] = 'from_input_mask'  # Type: str | None
 # ! END HARDCODED OPTIONS/PARAMETERS
 
-# some of the configs have been defined here...
-dzWL_fiducial = cfg['nz']['dzWL']
-dzGC_fiducial = cfg['nz']['dzGC']
-shift_nz = cfg['nz']['shift_nz']
-normalize_shifted_nz = cfg['nz']['normalize_shifted_nz']
+# convenence settings that have been hardcoded
 n_probes = cfg['covariance']['n_probes']
 which_sigma2_b = cfg['covariance']['which_sigma2_b']
-
 
 # ! probe selection
 probe_comb_names = []
@@ -271,7 +254,6 @@ probe_comb_names = sl.build_probe_list(
 probe_comb_idxs = [
     [probename_dict_inv[idx] for idx in comb] for comb in probe_comb_names
 ]
-
 
 # ! set non-gaussian cov terms to compute
 cov_terms_list = []
@@ -388,7 +370,7 @@ k_grid_s2b_simps = np.logspace(  # fmt: skip
     cfg['covariance']['log10_k_max'], 
     k_steps_sigma2
 )  # fmt: skip
-if len(z_grid) < 250:
+if len(z_grid) < 1000:
     warnings.warn(
         'the number of steps in the redshift grid is small, '
         'you may want to consider increasing it',
@@ -500,22 +482,28 @@ if shift_nz:
     nz_src = wf_cl_lib.shift_nz(
         zgrid_nz_src,
         nz_unshifted_src,
-        dzWL_fiducial,
-        normalize=normalize_shifted_nz,
-        plot_nz=False,
+        cfg['nz']['dzWL'],
+        normalize=cfg['nz']['normalize_shifted_nz'],
+        plot_nz=True,
         interpolation_kind=shift_nz_interpolation_kind,
         bounds_error=False,
         fill_value=0,
+        clip_min=cfg['nz']['clip_zmin'],
+        clip_max=cfg['nz']['clip_zmax'],
+        plt_title='$n_i(z)$ sources shifts ',
     )
     nz_lns = wf_cl_lib.shift_nz(
         zgrid_nz_lns,
         nz_unshifted_lns,
-        dzGC_fiducial,
-        normalize=normalize_shifted_nz,
-        plot_nz=False,
+        cfg['nz']['dzGC'],
+        normalize=cfg['nz']['normalize_shifted_nz'],
+        plot_nz=True,
         interpolation_kind=shift_nz_interpolation_kind,
         bounds_error=False,
         fill_value=0,
+        clip_min=cfg['nz']['clip_zmin'],
+        clip_max=cfg['nz']['clip_zmax'],
+        plt_title='$n_i(z)$ lenses shifts ',
     )
 
 ccl_obj.set_nz(
@@ -524,6 +512,7 @@ ccl_obj.set_nz(
 )
 ccl_obj.check_nz_tuple(zbins)
 
+wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
 
 # ! ========================================= IA =======================================
 ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid, has_ia=cfg['C_ell']['has_IA'])
@@ -636,8 +625,6 @@ z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
 # ell_dict['ell_cuts_dict'] = (
 #     ell_cuts_dict  # this is to pass the ell cuts to the covariance module
 # )
-
-wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
 
 # convenience variables
 wf_delta = ccl_obj.wf_delta_arr  # no bias here either, of course!

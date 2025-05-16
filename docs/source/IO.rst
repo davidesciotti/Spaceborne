@@ -71,10 +71,9 @@ configuration file.
 
         C_ell:
            use_input_cls: True     
-
-              cl_LL_path: ./input/cl_ll.txt # shear-shear 
-              cl_GL_path: ./input/cl_gl.txt # galaxy-shear 
-              cl_GG_path: ./input/cl_gg.txt # galaxy-galaxy 
+           cl_LL_path: ./input/cl_ll.txt # shear-shear 
+           cl_GL_path: ./input/cl_gl.txt # galaxy-shear 
+           cl_GG_path: ./input/cl_gg.txt # galaxy-galaxy 
 
 
 3. **Galaxy and magnification bias**. 
@@ -113,18 +112,20 @@ configuration file.
    The mask can be provided in ``.fits`` or ``.npy`` format. Additionally, the code
    offert the possibility to generata a circular footprint covering the survey area 
    and with the ``nside`` specified in the configuration file. The mask can also be 
-   apodized, in which case make sure you have ``NaMaster`` installed.
-
+   apodized, in which case make sure you have ``NaMaster`` installed. 
+   Note that if ``nside`` is not None, it will also be used to adjust the resolution of 
+   the input mask, either upgrading or downgrading it as needed.
+ 
    .. code-block:: yaml
 
       mask:
-         load_mask: False
-         mask_path: ../input/mask.fits
-         generate_polar_cap: True
-         nside: 1024
-         survey_area_deg2: 13245
-         apodize: False
-         aposize: 0.1
+         load_mask: False 
+         mask_path: ../input/mask.fits 
+         generate_polar_cap: True 
+         nside: 1024 
+         survey_area_deg2: 13245 
+         apodize: False 
+         aposize: 0.1 
 
 
 =======

@@ -10,8 +10,7 @@ from spaceborne import constants
 def get_mask_cl(mask: np.ndarray) -> tuple:
     cl_mask = hp.anafast(mask)
     ell_mask = np.arange(len(cl_mask))
-    # fsky_mask = np.sqrt(cl_mask[0] / (4 * np.pi))
-    fsky_mask = np.mean(mask**2)
+    fsky_mask = np.mean(mask**2)  # TODO 2 different masks
     return ell_mask, cl_mask, fsky_mask
 
 
@@ -118,14 +117,16 @@ class Mask:
         # 1. load or generate mask
 
         # check they are not both True
-        if self.load_mask and self.generate_polar_cap:
-            raise ValueError(
-                'Please choose whether to load or generate the mask, not both.'
-            )
+        assert self.load_mask or self.generate_polar_cap, (
+            'Please choose whether to load or generate the mask, not both.'
+        )
 
         if self.load_mask:
             self.load_mask_func()
             self.nside_mask = hp.get_nside(self.mask)
+
+        elif self.generate_polar_cap:
+            self.mask = generate_polar_cap_func(self.survey_area_deg2, self.nside)
 
         if self.load_mask and self.nside is not None and self.nside != self.nside_mask:
             print(
@@ -133,9 +134,6 @@ class Mask:
                 f'{self.nside_mask} to nside {self.nside}'
             )
             self.mask = hp.ud_grade(map_in=self.mask, nside_out=self.nside)
-
-        elif self.generate_polar_cap:
-            self.mask = generate_polar_cap_func(self.survey_area_deg2, self.nside)
 
         # 2. apodize
         if hasattr(self, 'mask') and self.apodize:
@@ -146,23 +144,22 @@ class Mask:
             self.mask = self.mask.astype('float64', copy=False)
             self.mask = nmt.mask_apodization(self.mask, aposize=self.aposize)
 
-        # 3. get mask spectrum and/or fsky
-        if hasattr(self, 'mask'):
-            self.ell_mask, self.cl_mask, self.fsky = get_mask_cl(self.mask)
-            # normalization has been checked from
-            # https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
-            # and is the same as CSST paper https://zenodo.org/records/7813033
-            self.cl_mask_norm = (
-                self.cl_mask * (2 * self.ell_mask + 1) / (4 * np.pi * self.fsky) ** 2
-            )
+        # 3. get mask spectrum and fsky
+        self.ell_mask, self.cl_mask, self.fsky = get_mask_cl(self.mask)
+        # normalization has been checked from
+        # https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
+        # and is the same as CSST paper https://zenodo.org/records/7813033
+        self.cl_mask_norm = (
+            self.cl_mask * (2 * self.ell_mask + 1) / (4 * np.pi * self.fsky) ** 2
+        )
 
-        else:
-            print(
-                'No mask provided or requested. The covariance terms will be '
-                'rescaled by 1/fsky'
-            )
-            self.ell_mask = None
-            self.cl_mask = None
-            self.fsky = self.survey_area_deg2 / constants.DEG2_IN_SPHERE
+        # else:
+        #     print(
+        #         'No mask provided or requested. The covariance terms will be '
+        #         'rescaled by 1/fsky'
+        #     )
+        #     self.ell_mask = None
+        #     self.cl_mask = None
+        #     self.fsky = self.survey_area_deg2 / constants.DEG2_IN_SPHERE
 
         print(f'fsky = {self.fsky:.4f}')

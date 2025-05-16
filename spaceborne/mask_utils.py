@@ -10,7 +10,8 @@ from spaceborne import constants
 def get_mask_cl(mask: np.ndarray) -> tuple:
     cl_mask = hp.anafast(mask)
     ell_mask = np.arange(len(cl_mask))
-    fsky_mask = np.sqrt(cl_mask[0] / (4 * np.pi))
+    # fsky_mask = np.sqrt(cl_mask[0] / (4 * np.pi))
+    fsky_mask = np.mean(mask**2)
     return ell_mask, cl_mask, fsky_mask
 
 

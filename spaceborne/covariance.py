@@ -1,3 +1,4 @@
+import itertools
 import os
 import pickle
 import time
@@ -12,7 +13,7 @@ from spaceborne import sb_lib as sl
 
 
 class SpaceborneCovariance:
-    def __init__(self, cfg, pvt_cfg, ell_obj, nmt_cov_obj, bnt_matrix):
+    def __init__(self, cfg, pvt_cfg, ell_obj, nmt_obj, bnt_matrix):
         self.cfg = cfg
         self.cov_cfg = cfg['covariance']
         self.ell_dict = {}
@@ -43,7 +44,7 @@ class SpaceborneCovariance:
         self.probe_ordering = self.cov_cfg['probe_ordering']
         self.use_nmt = self.cfg['namaster']['use_namaster']
         self.do_sample_cov = self.cfg['sample_covariance']['compute_sample_cov']
-        self.nmt_cov_obj = nmt_cov_obj
+        self.nmt_obj = nmt_obj
 
         if self.cov_ordering_2d == 'probe_ell_zpair':
             self.block_index = 'ell'
@@ -121,7 +122,7 @@ class SpaceborneCovariance:
 
     def consistency_checks(self):
         # sanity checks
-        
+
         assert not (self.use_nmt and self.do_sample_cov), (
             'either cfg["namaster"]["use_namaster"] or '
             'cfg["sample_covariance"]["compute_sample_cov"] should be True, '
@@ -515,11 +516,11 @@ class SpaceborneCovariance:
             # of times (ell by ell)
             noise_3x2pt_unb_5d = np.repeat(
                 noise_3x2pt_4D[:, :, np.newaxis, :, :],
-                repeats=self.nmt_cov_obj.nbl_3x2pt_unb,
+                repeats=self.nmt_obj.nbl_3x2pt_unb,
                 axis=2,
             )
-            self.nmt_cov_obj.noise_3x2pt_unb_5d = noise_3x2pt_unb_5d
-            self.cov_3x2pt_g_10D = self.nmt_cov_obj.build_psky_cov()
+            self.nmt_obj.noise_3x2pt_unb_5d = noise_3x2pt_unb_5d
+            self.cov_3x2pt_g_10D = self.nmt_obj.build_psky_cov()
 
         # this part is in common, the split case also sets the total cov
         if self.GL_OR_LG == 'GL':
@@ -864,6 +865,45 @@ class SpaceborneCovariance:
             cov_XC_cng_6D = self.cov_3x2pt_cng_10D[0, 1, 0, 1, ...]
         else:
             raise ValueError('GL_OR_LG must be "GL" or "LG"')
+
+        if self.cfg['namaster']['coupled_cov']:
+            print('Coupling the non-Gaussian covariance...')
+            from spaceborne import cov_partial_sky
+
+            # capital letters are for ell, ell'
+            cov_WL_ssc_6D = cov_partial_sky.couple_cov_6d(
+                self.nmt_obj.mcm_ee_binned, cov_WL_ssc_6D, self.nmt_obj.mcm_ee_binned.T
+            )
+            cov_WL_cng_6D = cov_partial_sky.couple_cov_6d(
+                self.nmt_obj.mcm_ee_binned, cov_WL_cng_6D, self.nmt_obj.mcm_ee_binned.T
+            )
+            cov_GC_ssc_6D = cov_partial_sky.couple_cov_6d(
+                self.nmt_obj.mcm_tt_binned, cov_GC_ssc_6D, self.nmt_obj.mcm_tt_binned.T
+            )
+            cov_GC_cng_6D = cov_partial_sky.couple_cov_6d(
+                self.nmt_obj.mcm_tt_binned, cov_GC_cng_6D, self.nmt_obj.mcm_tt_binned.T
+            )
+            cov_XC_ssc_6D = cov_partial_sky.couple_cov_6d(
+                self.nmt_obj.mcm_te_binned, cov_XC_ssc_6D, self.nmt_obj.mcm_te_binned.T
+            )
+            cov_XC_cng_6D = cov_partial_sky.couple_cov_6d(
+                self.nmt_obj.mcm_te_binned, cov_XC_cng_6D, self.nmt_obj.mcm_te_binned.T
+            )
+
+            mcm_3x2pt_arr = np.zeros((2, 2, self.nbl_3x2pt, self.nbl_3x2pt))
+            mcm_3x2pt_arr[0, 0] = self.nmt_obj.mcm_ee_binned
+            mcm_3x2pt_arr[1, 0] = self.nmt_obj.mcm_te_binned
+            mcm_3x2pt_arr[0, 1] = (
+                self.nmt_obj.mcm_te_binned.T
+            )  # TODO not super sure about this
+            mcm_3x2pt_arr[1, 1] = self.nmt_obj.mcm_tt_binned
+
+            for a, b, c, d in itertools.product(range(2), repeat=4):
+                self.cov_3x2pt_ssc_10D[a, b, c, d] = cov_partial_sky.couple_cov_6d(
+                    mcm_3x2pt_arr[a, b],
+                    self.cov_3x2pt_ssc_10D[a, b, c, d],
+                    mcm_3x2pt_arr[c, d].T,
+                )
 
         # # ! reshape everything to 2D
         reshape_args = [  # fmt: skip

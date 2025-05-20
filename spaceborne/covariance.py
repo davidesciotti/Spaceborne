@@ -866,37 +866,38 @@ class SpaceborneCovariance:
         else:
             raise ValueError('GL_OR_LG must be "GL" or "LG"')
 
-        if self.cfg['namaster']['coupled_cov']:
+        if self.cov_cfg['coupled_cov']:
             print('Coupling the non-Gaussian covariance...')
             from spaceborne import cov_partial_sky
 
-            # capital letters are for ell, ell'
-            cov_WL_ssc_6D = cov_partial_sky.couple_cov_6d(
-                self.nmt_obj.mcm_ee_binned, cov_WL_ssc_6D, self.nmt_obj.mcm_ee_binned.T
+            # construct mcm array for better probe handling (especially for 3x2pt)
+            mcm_3x2pt_arr = np.zeros(
+                (self.n_probes, self.n_probes, self.nbl_3x2pt, self.nbl_3x2pt)
             )
-            cov_WL_cng_6D = cov_partial_sky.couple_cov_6d(
-                self.nmt_obj.mcm_ee_binned, cov_WL_cng_6D, self.nmt_obj.mcm_ee_binned.T
-            )
-            cov_GC_ssc_6D = cov_partial_sky.couple_cov_6d(
-                self.nmt_obj.mcm_tt_binned, cov_GC_ssc_6D, self.nmt_obj.mcm_tt_binned.T
-            )
-            cov_GC_cng_6D = cov_partial_sky.couple_cov_6d(
-                self.nmt_obj.mcm_tt_binned, cov_GC_cng_6D, self.nmt_obj.mcm_tt_binned.T
-            )
-            cov_XC_ssc_6D = cov_partial_sky.couple_cov_6d(
-                self.nmt_obj.mcm_te_binned, cov_XC_ssc_6D, self.nmt_obj.mcm_te_binned.T
-            )
-            cov_XC_cng_6D = cov_partial_sky.couple_cov_6d(
-                self.nmt_obj.mcm_te_binned, cov_XC_cng_6D, self.nmt_obj.mcm_te_binned.T
-            )
-
-            mcm_3x2pt_arr = np.zeros((2, 2, self.nbl_3x2pt, self.nbl_3x2pt))
             mcm_3x2pt_arr[0, 0] = self.nmt_obj.mcm_ee_binned
             mcm_3x2pt_arr[1, 0] = self.nmt_obj.mcm_te_binned
-            mcm_3x2pt_arr[0, 1] = (
-                self.nmt_obj.mcm_te_binned.T
-            )  # TODO not super sure about this
+            # TODO not super sure about te line below
+            mcm_3x2pt_arr[0, 1] = self.nmt_obj.mcm_te_binned.T
             mcm_3x2pt_arr[1, 1] = self.nmt_obj.mcm_tt_binned
+
+            cov_WL_ssc_6D = cov_partial_sky.couple_cov_6d(
+                mcm_3x2pt_arr[0, 0], cov_WL_ssc_6D, mcm_3x2pt_arr[0, 0].T
+            )
+            cov_WL_cng_6D = cov_partial_sky.couple_cov_6d(
+                mcm_3x2pt_arr[0, 0], cov_WL_cng_6D, mcm_3x2pt_arr[0, 0].T
+            )
+            cov_GC_ssc_6D = cov_partial_sky.couple_cov_6d(
+                mcm_3x2pt_arr[1, 1], cov_GC_ssc_6D, mcm_3x2pt_arr[1, 1].T
+            )
+            cov_GC_cng_6D = cov_partial_sky.couple_cov_6d(
+                mcm_3x2pt_arr[1, 1], cov_GC_cng_6D, mcm_3x2pt_arr[1, 1].T
+            )
+            cov_XC_ssc_6D = cov_partial_sky.couple_cov_6d(
+                mcm_3x2pt_arr[1, 0], cov_XC_ssc_6D, mcm_3x2pt_arr[1, 0].T
+            )
+            cov_XC_cng_6D = cov_partial_sky.couple_cov_6d(
+                mcm_3x2pt_arr[1, 0], cov_XC_cng_6D, mcm_3x2pt_arr[1, 0].T
+            )
 
             for a, b, c, d in itertools.product(range(2), repeat=4):
                 self.cov_3x2pt_ssc_10D[a, b, c, d] = cov_partial_sky.couple_cov_6d(
@@ -904,6 +905,12 @@ class SpaceborneCovariance:
                     self.cov_3x2pt_ssc_10D[a, b, c, d],
                     mcm_3x2pt_arr[c, d].T,
                 )
+                self.cov_3x2pt_cng_10D[a, b, c, d] = cov_partial_sky.couple_cov_6d(
+                    mcm_3x2pt_arr[a, b],
+                    self.cov_3x2pt_cng_10D[a, b, c, d],
+                    mcm_3x2pt_arr[c, d].T,
+                )
+            print('...done')
 
         # # ! reshape everything to 2D
         reshape_args = [  # fmt: skip

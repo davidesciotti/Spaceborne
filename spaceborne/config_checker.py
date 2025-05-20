@@ -32,7 +32,7 @@ class SpaceborneConfigChecker:
                 'or to the covariance.'
             )
 
-    # def check_fsky(self) -> None:
+        # def check_fsky(self) -> None:
         fsky_check = cosmo_lib.deg2_to_fsky(self.cfg['mask']['survey_area_deg2'])
         # assert np.abs(sl.percent_diff(self.cfg['mask']['fsky'], fsky_check)) < 1e-5, (
         #     'fsky does not match the survey area.'
@@ -107,10 +107,7 @@ class SpaceborneConfigChecker:
         assert np.all(self.cfg['nz']['dzWL'] == self.cfg['nz']['dzGC']), (
             'dzWL and dzGC shifts do not match'
         )
-        assert (
-            len(self.cfg['nz']['ngal_sources'])
-            == len(self.cfg['nz']['ngal_lenses'])
-        )
+        assert len(self.cfg['nz']['ngal_sources']) == len(self.cfg['nz']['ngal_lenses'])
         assert isinstance(self.cfg['nz']['ngal_sources'], list), (
             'n_gal_shear must be a list'
         )
@@ -148,8 +145,20 @@ class SpaceborneConfigChecker:
             'row_col_major must be either "row-major" or "col-major"'
         )
 
+    def check_nmt(self) -> None:
+        if self.cfg['covariance']['coupled_cov'] and self.cfg['covariance']['G']:
+            assert (
+                self.cfg['namaster']['use_namaster']
+                or self.cfg['sample_covariance']['compute_sample_cov']
+            ), (
+                'if the coupled Gaussian covariance is requested either '
+                'cfg["namaster"]["use_namaster"] or '
+                'cfg["sample_covariance"]["compute_sample_cov"] must be True'
+            )
+
     def run_all_checks(self) -> None:
         self.check_ell_cuts()
+        self.check_nmt()
         self.check_BNT_transform()
         self.check_KE_approximation()
         # self.check_fsky()

@@ -385,8 +385,6 @@ class EllBinning:
         #     # [self.nmt_bin_obj.get_ell_list(i)[0] for i in range(self.nbl_eff)]
         #     # )
         #     # )
-        
-        
 
         if self.binning_type == 'unbinned':
             self.ells_WL = np.arange(self.ell_min_WL, self.ell_max_WL + 1)
@@ -472,7 +470,6 @@ class EllBinning:
             self.ell_edges_WL = self.ell_edges_WL.astype(int)
             self.ell_edges_GC = self.ell_edges_GC.astype(int)
 
-
             self.nmt_bin_obj_WL = nmt.NmtBin.from_edges(
                 self.ell_edges_WL[:-1], self.ell_edges_WL[1:]
             )
@@ -490,10 +487,14 @@ class EllBinning:
             self.ell_max_WL = self.nmt_bin_obj_WL.lmax
             self.ell_min_GC = self.nmt_bin_obj_GC.get_ell_min(0)
             self.ell_max_GC = self.nmt_bin_obj_GC.lmax
-            
+
             # test that ell_max retrieved with the two methods coincide
-            assert self.nmt_bin_obj_WL.lmax == self.nmt_bin_obj_WL.get_ell_max(self.nbl_WL - 1)
-            assert self.nmt_bin_obj_GC.lmax == self.nmt_bin_obj_GC.get_ell_max(self.nbl_GC - 1)
+            assert self.nmt_bin_obj_WL.lmax == self.nmt_bin_obj_WL.get_ell_max(
+                self.nbl_WL - 1
+            )
+            assert self.nmt_bin_obj_GC.lmax == self.nmt_bin_obj_GC.get_ell_max(
+                self.nbl_GC - 1
+            )
 
         # XC follows GC
         self.ells_XC = np.copy(self.ells_GC)
@@ -515,7 +516,6 @@ class EllBinning:
         self.nbl_GC = len(self.ells_GC)
         self.nbl_XC = len(self.ells_XC)
         self.nbl_3x2pt = len(self.ells_3x2pt)
-
 
     def _validate_bins(self):
         for probe in ['WL', 'GC', 'XC', '3x2pt']:

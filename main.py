@@ -69,7 +69,7 @@ def load_config(_config_path):
             default=_config_path,
         )
         parser.add_argument(
-            '--show_plots',
+            '--show-plots',
             action='store_true',
             help='Show plots if specified',
             required=False,
@@ -77,8 +77,8 @@ def load_config(_config_path):
         args = parser.parse_args()
         config_path = args.config
 
-    # Only switch to Agg if not running interactively and --show_plots is not specified.
-    if 'ipykernel_launcher.py' not in sys.argv[0] and '--show_plots' not in sys.argv:
+    # Only switch to Agg if not running interactively and --show-plots is not specified.
+    if 'ipykernel_launcher.py' not in sys.argv[0] and '--show-plots' not in sys.argv:
         import matplotlib
 
         matplotlib.use('Agg')
@@ -147,7 +147,7 @@ def plot_cls():
 # ! ================================== PREPARATION =====================================
 # ! ====================================================================================
 
-_config_path = '/home/cosmo/davide.sciotti/data/common_data/cov_sb_for_marco/example_config.yaml'
+_config_path = '/home/cosmo/davide.sciotti/data/common_data/cov_sb_for_marco/config_marco.yaml'
 # _config_path = 'config.yaml' if os.path.exists('config.yaml') else None
 cfg = load_config(_config_path)
 
@@ -444,7 +444,6 @@ pvt_cfg = {
 ell_obj = ell_utils.EllBinning(cfg)
 ell_obj.build_ell_bins()
 ell_obj._validate_bins()
-
 
 # ! ===================================== Mask =========================================
 mask_obj = mask_utils.Mask(cfg['mask'])
@@ -820,8 +819,8 @@ else:
 if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_cov']:
     from spaceborne import cov_partial_sky
 
-    # initialize nmt_cov_obj and set a couple useful attributes
-    nmt_cov_obj = cov_partial_sky.NmtCov(cfg, pvt_cfg, ccl_obj, ell_obj, mask_obj)
+    # initialize nmt_obj and set a couple useful attributes
+    nmt_obj = cov_partial_sky.NmtCov(cfg, pvt_cfg, ccl_obj, ell_obj, mask_obj)
 
     # recompute Cls ell by ell
     ell_max_3x2pt = ell_obj.ell_max_3x2pt
@@ -831,9 +830,9 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
         'nbl_tot does not match ell_max_3x2pt + 1'
     )
 
-    # set unbinned ells in nmt_cov_obj
-    nmt_cov_obj.ells_3x2pt_unb = ells_3x2pt_unb
-    nmt_cov_obj.nbl_3x2pt_unb = nbl_3x2pt_unb
+    # set unbinned ells in nmt_obj
+    nmt_obj.ells_3x2pt_unb = ells_3x2pt_unb
+    nmt_obj.nbl_3x2pt_unb = nbl_3x2pt_unb
 
     cl_ll_unb_3d = ccl_obj.compute_cls(
         ells_3x2pt_unb,
@@ -862,16 +861,18 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
         cl_ll_unb_3d, cl_gl_unb_3d, np.array(cfg['C_ell']['mult_shear_bias']), zbins
     )
 
-    nmt_cov_obj.cl_ll_unb_3d = cl_ll_unb_3d
-    nmt_cov_obj.cl_gl_unb_3d = cl_gl_unb_3d
-    nmt_cov_obj.cl_gg_unb_3d = cl_gg_unb_3d
+    nmt_obj.cl_ll_unb_3d = cl_ll_unb_3d
+    nmt_obj.cl_gl_unb_3d = cl_gl_unb_3d
+    nmt_obj.cl_gg_unb_3d = cl_gg_unb_3d
 
 else:
-    nmt_cov_obj = None
+    nmt_obj = None
+
+
 
 
 # !  =============================== Build Gaussian covs ===============================
-cov_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_obj, nmt_cov_obj, bnt_matrix)
+cov_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_obj, nmt_obj, bnt_matrix)
 cov_obj.set_ind_and_zpairs(ind, zbins)
 cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(

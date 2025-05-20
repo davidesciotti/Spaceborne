@@ -1145,6 +1145,7 @@ class NmtCov:
 
         self.zbins = pvt_cfg['zbins']
         self.n_probes = pvt_cfg['n_probes']
+        self.coupled_cov = cfg['covariance']['coupled_cov']
 
         self.cov_blocks_names_all = (  # fmt: skip
             'LLLL', 'LLGL', 'LLGG',
@@ -1221,7 +1222,7 @@ class NmtCov:
         # if the coupled covariance is required, I'll later need to convolve the
         # non-Gaussian terms. For this, I'll need the binned mode coupling matrices
         # (mcm), which I store in self
-        if nmt_cfg['coupled_cov']:
+        if self.coupled_cov:
             # extract only the relevant blocks
             mcm_tt_unb = w00.get_coupling_matrix()[:nbl_unb, :nbl_unb]
             mcm_te_unb = w02.get_coupling_matrix()[:nbl_unb, :nbl_unb]
@@ -1272,7 +1273,7 @@ class NmtCov:
         print(f'...done in {(time.perf_counter() - start_time):.2f} s')
 
         if nmt_cfg['use_namaster']:
-            coupled_str = 'coupled' if nmt_cfg['coupled_cov'] else 'decoupled'
+            coupled_str = 'coupled' if self.coupled_cov else 'decoupled'
             spin0_str = ' spin0' if nmt_cfg['spin0'] else ''
             start_time = time.perf_counter()
             print(
@@ -1289,7 +1290,7 @@ class NmtCov:
                     nbl=nbl_eff,
                     cw=cw,
                     w00=w00,
-                    coupled=nmt_cfg['coupled_cov'],
+                    coupled=self.coupled_cov,
                     ells_in=ells_unb,
                     ells_out=ells_eff,
                     ells_out_edges=ells_eff_edges,
@@ -1311,7 +1312,7 @@ class NmtCov:
                     w00=w00,
                     w02=w02,
                     w22=w22,
-                    coupled=nmt_cfg['coupled_cov'],
+                    coupled=self.coupled_cov,
                     ells_in=ells_unb,
                     ells_out=ells_eff,
                     ells_out_edges=ells_eff_edges,
@@ -1341,7 +1342,7 @@ class NmtCov:
                 mask=self.mask_obj.mask,
                 nside=self.mask_obj.nside,
                 nreal=self.cfg['sample_covariance']['nreal'],
-                coupled_cls=nmt_cfg['coupled_cov'],
+                coupled_cls=self.coupled_cov,
                 which_cls=self.cfg['sample_covariance']['which_cls'],
                 nmt_bin_obj=nmt_bin_obj,
                 lmax=ell_max_eff,

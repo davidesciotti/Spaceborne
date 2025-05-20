@@ -1252,7 +1252,7 @@ if compute_sb_ssc:
         np.save(f'{output_path}/cache/zgrid_sigma2_b_{zgrid_str}.npy', z_grid)
 
     # ! 4. Perform the integration calling the Julia module
-    print('Computing the SSC integral...')
+    print('Computing the SSC...')
     start = time.perf_counter()
     cov_ssc_3x2pt_dict_8D = cov_obj.ssc_integral_julia(
         d2CLL_dVddeltab=d2CLL_dVddeltab,

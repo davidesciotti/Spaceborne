@@ -15,6 +15,35 @@ DEG2_IN_SPHERE = constants.DEG2_IN_SPHERE
 DR1_DATE = constants.DR1_DATE
 
 
+def couple_cov_6d(
+    mcm_ab: np.ndarray, cov_abcd_6d: np.ndarray, mcm_cd: np.ndarray
+) -> np.ndarray:
+    cov_abcd_6d_coupled = np.einsum(
+        'XW, WZijkl, ZY -> XYijkl',
+        mcm_ab,
+        cov_abcd_6d,
+        mcm_cd,
+    )
+
+    return cov_abcd_6d_coupled
+
+
+def bin_mcm(mbm_unbinned: np.ndarray, nmt_bin_obj) -> np.ndarray:
+    """Simple function to bin the mode coupling matrix. Adapted from
+    https://namaster.readthedocs.io/en/latest/1BasicFunctionality.html
+    """
+    mcm_binned_rows = np.array([nmt_bin_obj.bin_cell(row) for row in mbm_unbinned])
+
+    # nmt_bin_obj.get_nell_list() gives the list of delta_ell,
+    # aka how many multipoles in each ell bin
+    mcm_binned = (
+        np.array([nmt_bin_obj.bin_cell(col) for col in mcm_binned_rows.T]).T
+        * nmt_bin_obj.get_nell_list()
+    )
+
+    return mcm_binned
+
+
 def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,   # fmt: skip
                      cw, w00, w02, w22,
                      coupled=False, ells_in=None, ells_out=None,
@@ -566,7 +595,8 @@ def sample_covariance_old( # fmt: skip
     # * 3. compute sample covariance
     for zi, zj, zk, zl in tqdm(zijkl_combinations):
         # ! compute the sample covariance
-        # you could also cut the mixed cov terms, but for cross-redshifts it becomes a bit tricky
+        # you could also cut the mixed cov terms, but for cross-redshifts
+        # it becomes a bit tricky
         kwargs = dict(rowvar=False, bias=False)
         cov_sim_10d[0, 0, 0, 0, :, :, zi, zj, zk, zl] = np.cov(
             sim_cl_LL[:, :, zi, zj], sim_cl_LL[:, :, zk, zl], **kwargs
@@ -603,7 +633,7 @@ def pcls_from_maps_old(  # fmt: skip
     corr_maps_gg, corr_maps_ll, zi, zj, f0, f2, mask, coupled_cls, which_cls, fsky, 
     w00, w02, w22, lmax_eff,
 ):  # fmt: skip
-    # both healpy anafast and nmt.compute_coupled_cell return the coupled cls. 
+    # both healpy anafast and nmt.compute_coupled_cell return the coupled cls.
     # Dividing by fsky gives a rough
     # approximation of the true Cls
 
@@ -688,13 +718,16 @@ def sample_covariance( # fmt: skip
     cl_GG_unbinned, cl_LL_unbinned, cl_GL_unbinned, 
     cl_BB_unbinned, cl_EB_unbinned, cl_TB_unbinned, 
     nbl, zbins, mask, nside, nreal, coupled_cls, which_cls, nmt_bin_obj, 
-    fsky, w00, w02, w22, lmax=None, n_probes=2, fix_seed=True
+    w00, w02, w22, lmax=None, n_probes=2, fix_seed=True, n_iter=None, lite=True,
 ):  # fmt: skip
     if lmax is None:
         lmax = 3 * nside - 1
 
     if fix_seed:
         SEEDVALUE = np.arange(nreal)
+
+    # NmtField kwargs
+    nmt_field_kw = dict(n_iter=n_iter, lite=lite, lmax=lmax)
 
     # TODO use only independent z pairs
     cov_sim_10d = np.zeros(
@@ -744,18 +777,20 @@ def sample_covariance( # fmt: skip
         ]
 
         if which_cls == 'namaster':
-            kw = dict(n_iter=None, lite=True)
-            f0 = np.array([nmt.NmtField(mask, [map_T], **kw) for map_T in corr_maps_gg])
+            f0 = np.array(
+                [nmt.NmtField(mask, [map_T], **nmt_field_kw) for map_T in corr_maps_gg]
+            )
             f2 = np.array(
                 [
-                    nmt.NmtField(mask, [map_Q, map_U], **kw)
+                    nmt.NmtField(mask, [map_Q, map_U], **nmt_field_kw)
                     for (map_Q, map_U) in corr_maps_ll
                 ]
             )
         else:
             f0, f2 = None, None
 
-        # * 2. compute and bin simulated cls for all zbin combinations, using input correlated maps
+        # * 2. compute and bin simulated cls for all zbin combinations,
+        # * using input correlated maps
         for zi, zj in zij_combinations:
             sim_cl_GG_ij, sim_cl_GL_ij, sim_cl_LL_ij = pcls_from_maps(
                 corr_maps_gg=corr_maps_gg,
@@ -767,7 +802,6 @@ def sample_covariance( # fmt: skip
                 mask=mask,
                 coupled_cls=coupled_cls,
                 which_cls=which_cls,
-                fsky=fsky,
                 w00=w00,
                 w02=w02,
                 w22=w22,
@@ -824,7 +858,7 @@ def sample_covariance( # fmt: skip
 
 
 def pcls_from_maps(  # fmt: skip
-    corr_maps_gg, corr_maps_ll, zi, zj, f0, f2, mask, coupled_cls, which_cls, fsky, 
+    corr_maps_gg, corr_maps_ll, zi, zj, f0, f2, mask, coupled_cls, which_cls, 
     w00, w02, w22, lmax_eff,
 ):  # fmt: skip
     """
@@ -894,7 +928,8 @@ def pcls_from_maps(  # fmt: skip
             cl_tt_out = pcl_tt
             cl_te_out = pcl_te
             cl_ee_out = pcl_ee
-        # return decoupled cls, again via namaster (the MASTER estimator uses the same deconvolution!)
+        # return decoupled cls, again via namaster (the MASTER estimator uses the
+        # same deconvolution!)
         else:
             stack_te = np.vstack((pcl_te, pcl_tb))
             stack_ee = np.vstack((pcl_ee, pcl_eb, pcl_be, pcl_bb))
@@ -1120,11 +1155,10 @@ class NmtCov:
         # check on lmax and NSIDE
         for probe in ('WL', 'GC'):
             _lmax = getattr(self.ell_obj, f'ell_max_{probe}')
-            if _lmax < 3 * self.mask_obj.nside:
+            if _lmax >= 3 * self.mask_obj.nside - 1:
                 warnings.warn(
-                    f'lmax = {_lmax} and NSIDE = {self.mask_obj.nside}; '
-                    'you should probably increase NSIDE or decrease lmax '
-                    '(such that e.g. lmax < 3 * NSIDE)',
+                    f'lmax = {_lmax} >= 3 * NSIDE = {self.mask_obj.nside} - 1'
+                    'you should probably increase NSIDE or decrease lmax ',
                     stacklevel=2,
                 )
 
@@ -1178,10 +1212,25 @@ class NmtCov:
         w02.compute_coupling_matrix(f0_mask, f2_mask, nmt_bin_obj)
         w22.compute_coupling_matrix(f2_mask, f2_mask, nmt_bin_obj)
 
+        # store in cache for later reuse, if required (TODO)
         os.makedirs('./output/cache/nmt', exist_ok=True)
         w00.write_to('./output/cache/nmt/w00_workspace.fits')
         w02.write_to('./output/cache/nmt/w02_workspace.fits')
         w22.write_to('./output/cache/nmt/w22_workspace.fits')
+
+        # if the coupled covariance is required, I'll later need to convolve the
+        # non-Gaussian terms. For this, I'll need the binned mode coupling matrices
+        # (mcm), which I store in self
+        if nmt_cfg['coupled_cov']:
+            # extract only the relevant blocks
+            mcm_tt_unb = w00.get_coupling_matrix()[:nbl_unb, :nbl_unb]
+            mcm_te_unb = w02.get_coupling_matrix()[:nbl_unb, :nbl_unb]
+            mcm_ee_unb = w22.get_coupling_matrix()[:nbl_unb, :nbl_unb]
+
+            # bin (and store in self)
+            self.mcm_tt_binned = bin_mcm(mcm_tt_unb, nmt_bin_obj)
+            self.mcm_te_binned = bin_mcm(mcm_te_unb, nmt_bin_obj)
+            self.mcm_ee_binned = bin_mcm(mcm_ee_unb, nmt_bin_obj)
 
         # if you want to use the iNKA, the cls to be passed are the coupled ones
         # divided by fsky
@@ -1296,11 +1345,12 @@ class NmtCov:
                 which_cls=self.cfg['sample_covariance']['which_cls'],
                 nmt_bin_obj=nmt_bin_obj,
                 lmax=ell_max_eff,
-                fsky=fsky,
                 w00=w00,
                 w02=w02,
                 w22=w22,
                 fix_seed=self.cfg['sample_covariance']['fix_seed'],
+                n_iter=None,
+                lite=True,
             )
 
             cov_10d_out, self.sim_cl_GG, self.sim_cl_GL, self.sim_cl_LL = result

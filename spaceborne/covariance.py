@@ -876,8 +876,7 @@ class SpaceborneCovariance:
             )
             mcm_3x2pt_arr[0, 0] = self.nmt_obj.mcm_ee_binned
             mcm_3x2pt_arr[1, 0] = self.nmt_obj.mcm_te_binned
-            # TODO not super sure about te line below
-            mcm_3x2pt_arr[0, 1] = self.nmt_obj.mcm_te_binned.T
+            mcm_3x2pt_arr[0, 1] = self.nmt_obj.mcm_et_binned
             mcm_3x2pt_arr[1, 1] = self.nmt_obj.mcm_tt_binned
 
             cov_WL_ssc_6D = cov_partial_sky.couple_cov_6d(

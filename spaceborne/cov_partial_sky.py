@@ -18,6 +18,12 @@ DR1_DATE = constants.DR1_DATE
 def couple_cov_6d(
     mcm_ab: np.ndarray, cov_abcd_6d: np.ndarray, mcm_cd: np.ndarray
 ) -> np.ndarray:
+    
+    if mcm_ab.shape[1] != cov_abcd_6d.shape[0]:
+        raise ValueError('mcm_ab and cov_abcd_6d have incompatible dimensions')
+    if mcm_cd.shape[0] != cov_abcd_6d.shape[1]:
+        raise ValueError('mcm_cd and cov_abcd_6d have incompatible dimensions')
+
     cov_abcd_6d_coupled = np.einsum(
         'XW, WZijkl, ZY -> XYijkl',
         mcm_ab,
@@ -1223,13 +1229,18 @@ class NmtCov:
         # non-Gaussian terms. For this, I'll need the binned mode coupling matrices
         # (mcm), which I store in self
         if self.coupled_cov:
+            w20 = nmt.NmtWorkspace()
+            w20.compute_coupling_matrix(f2_mask, f0_mask, nmt_bin_obj)
+            
             # extract only the relevant blocks
             mcm_tt_unb = w00.get_coupling_matrix()[:nbl_unb, :nbl_unb]
+            mcm_et_unb = w20.get_coupling_matrix()[:nbl_unb, :nbl_unb]
             mcm_te_unb = w02.get_coupling_matrix()[:nbl_unb, :nbl_unb]
             mcm_ee_unb = w22.get_coupling_matrix()[:nbl_unb, :nbl_unb]
 
             # bin (and store in self)
             self.mcm_tt_binned = bin_mcm(mcm_tt_unb, nmt_bin_obj)
+            self.mcm_et_binned = bin_mcm(mcm_et_unb, nmt_bin_obj)
             self.mcm_te_binned = bin_mcm(mcm_te_unb, nmt_bin_obj)
             self.mcm_ee_binned = bin_mcm(mcm_ee_unb, nmt_bin_obj)
 
@@ -1350,7 +1361,7 @@ class NmtCov:
                 w02=w02,
                 w22=w22,
                 fix_seed=self.cfg['sample_covariance']['fix_seed'],
-                n_iter=None,
+                n_iter=0,
                 lite=True,
             )
 

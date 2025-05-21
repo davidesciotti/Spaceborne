@@ -22,9 +22,6 @@ from spaceborne import constants
 #     cl_GL_3D /= prefactor
 
 
-# TODO create function to compute pk from CAMB, with a vectorized k or z
-
-
 c = constants.SPEED_OF_LIGHT
 
 
@@ -74,32 +71,6 @@ def map_keys(input_dict, key_mapping):
     return new_dict
 
 
-def inv_E(z, Om0, Ode0, Ok0):
-    result = 1 / np.sqrt(Om0 * (1 + z) ** 3 + Ode0 + Ok0 * (1 + z) ** 2)
-    return result
-
-
-def E(z, cosmo_astropy):
-    return cosmo_astropy.H(z).value / cosmo_astropy.H0.value
-
-
-def H(z, cosmo_astropy):
-    return cosmo_astropy.H(z).value
-
-
-def r(z, cosmo_astropy):
-    """in Mpc, NOT Mpc/h"""
-    return cosmo_astropy.comoving_distance(z).value
-
-
-def astropy_comoving_distance(z, use_h_units, cosmo_astropy):
-    h = cosmo_astropy.h
-    if use_h_units:
-        return cosmo_astropy.comoving_distance(z).value * h  # Mpc/h
-    else:
-        return cosmo_astropy.comoving_distance(z).value  # Mpc
-
-
 def ccl_comoving_distance(z, use_h_units, cosmo_ccl):
     a = z_to_a(z)
     if use_h_units:
@@ -108,14 +79,6 @@ def ccl_comoving_distance(z, use_h_units, cosmo_ccl):
         )  # Mpc/h
     else:
         return ccl.comoving_radial_distance(cosmo_ccl, a)  # Mpc
-
-
-def r_tilde(z, cosmo_astropy):
-    return cosmo_astropy.H0.value / c * r(z, cosmo_astropy)
-
-
-def ang_diam_dist(z, cosmo_astropy):
-    return cosmo_astropy.angular_diameter_distance(z).value
 
 
 def k_limber(ell, z, use_h_units, cosmo_ccl):
@@ -164,63 +127,6 @@ def pk_from_ccl(k_array, z_array, use_h_units, cosmo_ccl, pk_kind='nonlinear'):
         k_array /= h
 
     return k_array, pk_2d
-
-
-def calculate_power(k, z, cosmo_classy, use_h_units=True, Pk_kind='nonlinear'):
-    """
-    The input k is always assumed to be in 1/Mpc, as classy_Pk does. The output k is
-    then rescaled if use_h_units is
-    True, so that it is in h/Mpc. The same is done for Pk: if use_h_units is True, the
-    output Pk is rescaled to have
-    it in (Mpc/h)^3. If use_h_units is False, the output Pk is in Mpc^3.
-    """
-
-    if use_h_units:
-        k_scale = cosmo_classy.h()
-        Pk_scale = cosmo_classy.h() ** 3
-    else:
-        k_scale = 1.0
-        Pk_scale = 1.0
-
-    # nice way to avoid the if-elif-else statement
-    classy_Pk = {'nonlinear': cosmo_classy.pk, 'linear': cosmo_classy.pk_lin}
-
-    if np.isscalar(k):
-        k = np.array([k])
-    if np.isscalar(z):
-        z = np.array([z])
-
-    # Pk = np.zeros((len(k_array), len(z_array)))
-    # for ki, k in enumerate(k_array):
-    #     for zi, z in enumerate(z_array):
-    # the argument of classy_Pk must be in units of 1/Mpc?
-    pk = np.array([[classy_Pk[Pk_kind](k_val, z_val) for z_val in z] for k_val in k])
-
-    if pk.shape == (1, 1):
-        pk = pk[0, 0]
-
-    return k / k_scale, pk * Pk_scale
-
-
-# def pk_camb():
-#     # Now get matter power spectra and sigma8 at redshift 0 and 0.8
-#     pars = camb.CAMBparams()
-#     pars.set_cosmology(H0=67.5, ombh2=0.022, omch2=0.122)
-#     pars.InitPower.set_params(ns=0.965)
-#     # Note non-linear corrections couples to smaller scales than you want
-#     pars.set_matter_power(redshifts=[0., 0.8], kmax=2.0)
-#
-#     # Linear spectra
-#     pars.NonLinear = model.NonLinear_none
-#     results = camb.get_results(pars)
-#     kh, z, pk = results.get_matter_power_spectrum(minkh=k_min, maxkh=1, npoints=200)
-#     s8 = np.array(results.get_sigma8())
-#
-#     # Non-Linear spectra (Halofit)
-#     pars.NonLinear = model.NonLinear_both
-#     results.calc_power_spectra(pars)
-#     kh_nonlin, z_nonlin, pk_nonlin = results.get_matter_power_spectrum(minkh=k_min,
-# maxkh=1, npoints=200)
 
 
 def z_to_a(z):

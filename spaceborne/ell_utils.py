@@ -491,9 +491,13 @@ class EllBinning:
             # test that ell_max retrieved with the two methods coincide
             assert self.nmt_bin_obj_WL.lmax == self.nmt_bin_obj_WL.get_ell_max(
                 self.nbl_WL - 1
+            ), (
+                'ell_max from nmt_bin_obj_WL does not match ell_max from get_ell_max'
             )
             assert self.nmt_bin_obj_GC.lmax == self.nmt_bin_obj_GC.get_ell_max(
                 self.nbl_GC - 1
+            ), (
+                'ell_max from nmt_bin_obj_GC does not match ell_max from get_ell_max'
             )
 
         # XC follows GC

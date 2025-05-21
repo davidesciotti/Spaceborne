@@ -113,7 +113,6 @@ mpl_other_dict = {
 #     return binned_cov
 
 
-
 def build_probe_list(probes, include_cross_terms=False):
     """
     Return the list of probe combinations to compute.
@@ -565,33 +564,6 @@ def check_interpolate_input_tab(
     return output_tab, spline
 
 
-def get_ngal(ngal_in, ep_or_ed, zbins, ep_check_tol):
-    if isinstance(ngal_in, (int, float)):
-        assert ep_or_ed == 'EP', 'n_gal must be a scalar in the equipopulated (EP) case'
-        ngal_out = ngal_in
-
-    elif type(ngal_in) is list:
-        assert len(ngal_in) == zbins, 'n_gal must be a vector of length zbins'
-        ngal_out = ngal_in
-
-    elif type(ngal_in) is str:
-        nofz = np.genfromtxt(ngal_in)
-        assert nofz.shape[1] == zbins + 1, (
-            'nz must be an array of shape (n_z_points, zbins + 1)'
-        )
-        z_nofz = nofz[:, 0]
-        nofz = nofz[:, 1:]
-        ngal_out = simps(y=nofz, x=z_nofz, axis=0)
-
-    if ep_or_ed == 'EP' and not isinstance(ngal_out, (int, float)):
-        for zi in range(zbins):
-            assert np.allclose(ngal_out[0], ngal_out[zi], atol=0, rtol=ep_check_tol), (
-                'n_gal must be the same for all zbins in the equipopulated (EP) case'
-            )
-
-    return ngal_out
-
-
 def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
     """Interpolate a 2D array onto a new grid using bicubic spline
     interpolation.
@@ -647,36 +619,6 @@ def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
         return x_out_masked, y_out_masked, z2d_interp, x_mask, y_mask
     else:
         return x_out_masked, y_out_masked, z2d_interp
-
-
-def test_cov_FM(output_path, benchmarks_path, extension):
-    """Tests that the outputs do not change between the old and the new
-    version."""
-    old_dict = dict(get_kv_pairs(benchmarks_path, extension))
-    new_dict = dict(get_kv_pairs(output_path, extension))
-
-    # check if the dictionaries are empty
-    assert len(old_dict) > 0, 'No files in the benchmarks path ❌'
-    assert len(new_dict) > 0, 'No files in the output path ❌'
-
-    assert old_dict.keys() == new_dict.keys(), (
-        'The number of files or their names has changed ❌'
-    )
-
-    if extension == 'npz':
-        for key in old_dict:
-            try:
-                np.array_equal(old_dict[key]['arr_0'], new_dict[key]['arr_0'])
-            except AssertionError:
-                f'The file {benchmarks_path}/{key}.{extension} is different ❌'
-    else:
-        for key in old_dict:
-            try:
-                np.array_equal(old_dict[key], new_dict[key])
-            except AssertionError:
-                f'The file {benchmarks_path}/{key}.{extension} is different ❌'
-
-    print('tests passed successfully: the outputs are the same as the benchmarks ✅')
 
 
 def regularize_covariance(cov_matrix, lambda_reg=1e-5):
@@ -892,7 +834,7 @@ def compare_fm_constraints(
         keys_toplot = [key for key in keys_toplot if not key.startswith('FM_2x2pt_')]
 
         for key in keys_toplot:
-            masked_fm_dict[key], masked_fid_pars_dict[key] = mask_fm_v2(
+            masked_fm_dict[key], masked_fid_pars_dict[key] = mask_fisher(
                 fm_dict[key],
                 fm_dict['fiducial_values_dict'],
                 names_params_to_fix=[],
@@ -1004,110 +946,6 @@ def compare_fm_constraints(
 
         if save_fig:
             plt.savefig(f'{fig_path}/{key}.png', dpi=400, bbox_inches='tight')
-
-
-def compare_param_cov_from_fm_pickles(
-    fm_pickle_path_a,
-    fm_pickle_path_b,
-    which_uncertainty,
-    compare_fms=True,
-    compare_param_covs=True,
-    plot=True,
-    n_params_toplot=10,
-):
-    fm_dict_a = load_pickle(fm_pickle_path_a)
-    fm_dict_b = load_pickle(fm_pickle_path_b)
-    masked_fm_dict_a, masked_fid_pars_dict_a = {}, {}
-    masked_fm_dict_b, masked_fid_pars_dict_b = {}, {}
-
-    # check that the keys match
-    assert fm_dict_a.keys() == fm_dict_b.keys()
-
-    # check if the dictionaries contained in the key 'fiducial_values_dict' match
-    assert fm_dict_a['fiducial_values_dict'] == fm_dict_b['fiducial_values_dict'], (
-        'fiducial values do not match!'
-    )
-
-    # check that the values match
-    for key in fm_dict_a:
-        if key != 'fiducial_values_dict' and 'WA' not in key:
-            print('Comparing ', key)
-
-            masked_fm_dict_a[key], masked_fid_pars_dict_a[key] = mask_fm_v2(
-                fm_dict_a[key],
-                fm_dict_a['fiducial_values_dict'],
-                names_params_to_fix=[],
-                remove_null_rows_cols=True,
-            )
-            masked_fm_dict_b[key], masked_fid_pars_dict_b[key] = mask_fm_v2(
-                fm_dict_b[key],
-                fm_dict_b['fiducial_values_dict'],
-                names_params_to_fix=[],
-                remove_null_rows_cols=True,
-            )
-
-            cov_a = np.linalg.inv(masked_fm_dict_a[key])
-            cov_b = np.linalg.inv(masked_fm_dict_b[key])
-
-            if compare_fms:
-                compare_arrays(
-                    masked_fm_dict_a[key],
-                    masked_fm_dict_b[key],
-                    'FM_A',
-                    'FM_B',
-                    plot_diff_threshold=5,
-                )
-
-            if compare_param_covs:
-                compare_arrays(cov_a, cov_b, 'cov_A', 'cov_B', plot_diff_threshold=5)
-
-            if plot:
-                param_names = list(masked_fid_pars_dict_a[key].keys())[:n_params_toplot]
-                uncert_a = uncertainties_fm_v2(
-                    masked_fm_dict_a[key],
-                    fiducials_dict=masked_fid_pars_dict_a[key],
-                    which_uncertainty=which_uncertainty,
-                    normalize=True,
-                )[:n_params_toplot]
-                uncert_b = uncertainties_fm_v2(
-                    masked_fm_dict_b[key],
-                    fiducials_dict=masked_fid_pars_dict_b[key],
-                    which_uncertainty=which_uncertainty,
-                    normalize=True,
-                )[:n_params_toplot]
-                diff = percent_diff(uncert_a, uncert_b)
-
-                plt.figure()
-                plt.title(f'Marginalised uncertainties, {key}')
-                plt.plot(param_names, uncert_a, label='FM_A')
-                plt.plot(param_names, uncert_b, ls='--', label='FM_B')
-                plt.plot(param_names, diff, label='percent diff')
-                plt.legend()
-
-
-def is_file_created_in_last_x_hours(file_path, hours):
-    """Check if the specified file was created in the last 24 hours.
-
-    Parameters:
-    file_path (str): The path to the file.
-
-    Returns:
-    bool: True if the file was created in the last 24 hours, False otherwise.
-    """
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"No such file: '{file_path}'")
-
-    # Get the current time
-    now = datetime.datetime.now()
-
-    # Get the file creation time
-    creation_time = datetime.datetime.fromtimestamp(os.path.getctime(file_path))
-
-    # Calculate the time difference
-    time_diff = now - creation_time
-
-    # Check if the difference is less than or equal to 24 hours
-    return time_diff <= datetime.timedelta(hours=hours)
 
 
 def block_diag(array_3d):
@@ -1902,11 +1740,6 @@ def namestr(obj, namespace):
     return [name for name in namespace if namespace[name] is obj][0]
 
 
-def plot_FM(array, style='.-'):
-    name = namestr(array, globals())
-    plt.plot(range(7), array, style, label=name)
-
-
 def find_null_rows_cols_2D(array):
     """
     :param array:
@@ -2020,67 +1853,7 @@ def mask_fm_null_rowscols_v2(fm, fiducials_dict):
     return fm, fiducials_dict
 
 
-def mask_FM(
-    FM, param_names_dict, fiducials_dict, params_tofix_dict, remove_null_rows_cols=True
-):
-    """Trim the Fisher matrix to remove null rows/columns and/or fix nuisance
-    parameters :param FM:
-
-    :param remaining_param_names_list:
-    :param fid:
-    :param n_cosmo_params:
-    :param kwargs:
-    :return:
-    """
-
-    if isinstance(param_names_dict, (list, np.ndarray)):
-        param_names_dict = {'_': param_names_dict}
-    if isinstance(fiducials_dict, (list, np.ndarray)):
-        fiducials_dict = {'_': fiducials_dict}
-    if isinstance(params_tofix_dict, (list, np.ndarray)):
-        params_tofix_dict = {'_': params_tofix_dict}
-
-    # join param_names_dict.values() into single list
-    all_param_names_list = list(itertools.chain(*list(param_names_dict.values())))
-    all_fiducials_list = list(itertools.chain(*list(fiducials_dict.values())))
-
-    # TODO - add option to fix specific parameter
-    # TODO  - test this!!
-    idx_todelete = []
-    for key in params_tofix_dict:
-        if params_tofix_dict[key]:
-            _param_names_list = param_names_dict[key]
-            param_idxs = [
-                all_param_names_list.index(param_name)
-                for param_name in _param_names_list
-            ]
-            idx_todelete.append(param_idxs)
-
-    # make a continuous list
-    # idx_todelete = np.flatten(idx_todelete.flatten())
-    idx_todelete = list(itertools.chain(*idx_todelete))
-
-    if idx_todelete:
-        FM = np.delete(FM, idx_todelete, axis=0)
-        FM = np.delete(FM, idx_todelete, axis=1)
-        remaining_param_names_list = np.delete(all_param_names_list, idx_todelete)
-        remaining_fiducials_list = np.delete(all_fiducials_list, idx_todelete)
-    else:
-        remaining_param_names_list = all_param_names_list
-        remaining_fiducials_list = all_fiducials_list
-
-    # remove remaining null rows_cols
-    if remove_null_rows_cols:
-        FM, remaining_param_names_list, remaining_fiducials_list = (
-            mask_FM_null_rowscols(
-                FM, remaining_param_names_list, remaining_fiducials_list
-            )
-        )
-
-    return FM, list(remaining_param_names_list), list(remaining_fiducials_list)
-
-
-def mask_fm_v2(
+def mask_fisher(
     fm: np.ndarray,
     fiducials_dict: dict,
     names_params_to_fix: list,
@@ -2594,21 +2367,6 @@ def array_2D_to_1D_ind(array_2D, zpairs, ind):
     return array_1D
 
 
-# @njit
-def compute_FM_3D(nbl, npairs, nParams, cov_inv, D_3D):
-    """Compute FM using 3D datavector - 2D + the cosmological parameter
-    axis - and 3D covariance matrix (working but
-    deprecated in favor of compute_FM_2D)"""
-    b = np.zeros((nbl, npairs, nParams))
-    FM = np.zeros((nParams, nParams))
-    for alf in range(nParams):
-        for bet in range(nParams):
-            for elle in range(nbl):
-                b[elle, :, bet] = cov_inv[elle, :, :] @ D_3D[elle, :, bet]
-                FM[alf, bet] = FM[alf, bet] + (D_3D[elle, :, alf] @ b[elle, :, bet])
-    return FM
-
-
 def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
     """expand the zpair indices into zi, zj, according to the ind ordering as usual"""
 
@@ -2663,37 +2421,6 @@ def dC_dict_to_4D_array(
     return dC_4D
 
 
-# @njit
-def compute_FM_2D(nbl, npairs, nparams_tot, cov_2D_inv, D_2D):
-    """Compute FM using 2D datavector - 1D + the cosmological parameter
-    axis - and 2D covariance matrix"""
-    b = np.zeros((nbl * npairs, nparams_tot))
-    FM = np.zeros((nparams_tot, nparams_tot))
-    for alf in range(nparams_tot):
-        for bet in range(nparams_tot):
-            b[:, bet] = cov_2D_inv[:, :] @ D_2D[:, bet]
-            FM[alf, bet] = D_2D[:, alf] @ b[:, bet]
-    return FM
-
-
-def compute_FM_2D_optimized(nbl, npairs, nparams_tot, cov_2D_inv, D_2D):
-    """Compute FM using 2D datavector - 1D + the cosmological parameter
-    axis - and 2D covariance matrix"""
-    warnings.warn('deprecate this?', stacklevel=2)
-    b = np.zeros((nbl * npairs, nparams_tot))
-    FM = np.zeros((nparams_tot, nparams_tot))
-    for alf in range(nparams_tot):
-        for bet in range(nparams_tot):
-            b[:, bet] = cov_2D_inv[:, :] @ D_2D[:, bet]
-            FM[alf, bet] = D_2D[:, alf] @ b[:, bet]
-
-    # do it with np.einsum in one line
-    # FM = np.einsum('ij,ik,jk->ij', D_2D, b, cov_2D_inv)
-    b = np.einsum('ij,jk->ik', cov_2D_inv, D_2D)
-    FM = np.einsum('ij,jk->ik', D_2D, b)
-    return FM
-
-
 def compute_FoM(FM, w0wa_idxs):
     cov_param = np.linalg.inv(FM)
     # cov_param_reduced = cov_param[start:stop, start:stop]
@@ -2709,83 +2436,6 @@ def get_zpairs(zbins):
     zpairs_cross = zbins**2
     zpairs_3x2pt = 2 * zpairs_auto + zpairs_cross
     return zpairs_auto, zpairs_cross, zpairs_3x2pt
-
-
-def _covariance_einsum(
-    cl_5d, noise_5d, f_sky, ell_values, delta_ell, return_only_diagonal_ells=False
-):
-    """Computes the 10-dimensional covariance matrix, of shape (n_probes,
-    n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins). The
-    5-th axis is added only if return_only_diagonal_ells is True. *for the
-    single-probe case, n_probes = 1*
-
-    In np.einsum, the indices have the following meaning:
-        A, B, C, D = probe identifier. 0 for WL, 1 for GCph
-        L, M = ell, ell_prime
-        i, j, k, l = redshift bin indices
-
-    cl_5d must have shape = (n_probes, n_probes, nbl, zbins, zbins) = (A, B, L, i, j),
-    same as noise_5d
-
-    :param cl_5d:
-    :param noise_5d:
-    :param f_sky:
-    :param ell_values:
-    :param delta_ell:
-    :param return_only_diagonal_ells:
-    :return: 10-dimensional numpy array of shape
-    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins),
-    containing the covariance.
-
-    example code to compute auto probe data and spectra, if needed
-    cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]
-    noise_LL_5D = noise_3x2pt_5D[0, 0, ...][np.newaxis, np.newaxis, ...]
-    cov_WL_6D = sl.covariance_einsum(
-        cl_LL_5D, noise_LL_5D, fsky, ell_values, delta_ell)[0, 0, 0, 0, ...]
-    """
-
-    assert cl_5d.shape[0] == 1 or cl_5d.shape[0] == 2, (
-        'This funcion only works with 1 or two probes'
-    )
-    assert cl_5d.shape[0] == cl_5d.shape[1], (
-        'cl_5d must be an array of shape (n_probes, n_probes, nbl, zbins, zbins)'
-    )
-    assert cl_5d.shape[-1] == cl_5d.shape[-2], (
-        'cl_5d must be an array of shape (n_probes, n_probes, nbl, zbins, zbins)'
-    )
-    assert noise_5d.shape == cl_5d.shape, (
-        'noise_5d must have shape the same shape as cl_5d, although there '
-        'is no ell dependence'
-    )
-
-    nbl = cl_5d.shape[2]
-
-    prefactor = 1 / ((2 * ell_values + 1) * f_sky * delta_ell)
-
-    # considering only ell diagonal
-    term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', cl_5d + noise_5d, cl_5d + noise_5d)
-    term_2 = np.einsum('ADLil, BCLjk -> ABCDLijkl', cl_5d + noise_5d, cl_5d + noise_5d)
-    cov_9d = np.einsum('ABCDLijkl, L -> ABCDLijkl', term_1 + term_2, prefactor)
-
-    if return_only_diagonal_ells:
-        warnings.warn(
-            'return_only_diagonal_ells is True, the array will be 9-dimensional, '
-            'potentially causing '
-            'problems when reshaping or summing to cov_SSC arrays',
-            stacklevel=2,
-        )
-        return cov_9d
-
-    n_probes = cov_9d.shape[0]
-    zbins = cov_9d.shape[-1]
-    cov_10d = np.zeros(
-        (n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
-    )
-    cov_10d[:, :, :, :, np.arange(nbl), np.arange(nbl), ...] = cov_9d[
-        :, :, :, :, np.arange(nbl), ...
-    ]
-
-    return cov_10d
 
 
 def cov_g_terms_helper(a, b, mix: bool, prefactor, return_only_diagonal_ells):
@@ -2873,177 +2523,6 @@ def covariance_einsum(
     )
 
     return cov_sva, cov_sn, cov_mix
-
-
-def _covariance_einsum_split(
-    cl_5d, noise_5d, f_sky, ell_values, delta_ell, return_only_diagonal_ells=False
-):
-    """Computes the 10-dimensional covariance matrix, of shape (n_probes,
-    n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins). The
-    5-th axis is added only if return_only_diagonal_ells is True. *for the
-    single-probe case, n_probes = 1*
-
-    In np.einsum, the indices have the following meaning:
-        A, B, C, D = probe identifier. 0 for WL, 1 for GCph
-        L, M = ell, ell_prime
-        i, j, k, l = redshift bin indices
-
-    cl_5d must have shape = (n_probes, n_probes, nbl, zbins, zbins) = (A, B, L, i, j),
-    same as noise_5d
-
-    :param cl_5d:
-    :param noise_5d:
-    :param f_sky:
-    :param ell_values:
-    :param delta_ell:
-    :param return_only_diagonal_ells:
-    :return: 10-dimensional numpy array of shape
-    (n_probes, n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins),
-    containing the covariance.
-
-    example code to compute auto probe data and spectra, if needed
-    cl_LL_5D = cl_LL_3D[np.newaxis, np.newaxis, ...]
-    noise_LL_5D = noise_3x2pt_5D[0, 0, ...][np.newaxis, np.newaxis, ...]
-    cov_WL_6D = sl.covariance_einsum(
-        cl_LL_5D, noise_LL_5D, fsky, ell_values, delta_ell)[0, 0, 0, 0, ...]
-    """
-
-    assert cl_5d.shape[0] == 1 or cl_5d.shape[0] == 2, (
-        'This funcion only works with 1 or two probes'
-    )
-    assert cl_5d.shape[0] == cl_5d.shape[1], (
-        'cl_5d must be an array of shape (n_probes, n_probes, nbl, zbins, zbins)'
-    )
-    assert cl_5d.shape[-1] == cl_5d.shape[-2], (
-        'cl_5d must be an array of shape (n_probes, n_probes, nbl, zbins, zbins)'
-    )
-    assert noise_5d.shape == cl_5d.shape, (
-        'noise_5d must have shape the same shape as cl_5d, although there '
-        'is no ell dependence'
-    )
-
-    nbl = cl_5d.shape[2]
-
-    prefactor = 1 / ((2 * ell_values + 1) * f_sky * delta_ell)
-
-    # considering ells off-diagonal (wrong for Gauss: I am not implementing the delta)
-    # term_1 = np.einsum(
-    # 'ACLik, BDMjl -> ABCDLMijkl', cl_5d + noise_5d, cl_5d + noise_5d)
-    # term_2 = np.einsum(
-    # 'ADLil, BCMjk -> ABCDLMijkl', cl_5d + noise_5d, cl_5d + noise_5d)
-    # cov_10d = np.einsum('ABCDLMijkl, L -> ABCDLMijkl', term_1 + term_2, prefactor)
-
-    # considering only ell diagonal
-    term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', cl_5d, cl_5d)
-    term_2 = np.einsum('ADLil, BCLjk -> ABCDLijkl', cl_5d, cl_5d)
-    cov_9d_sva = np.einsum('ABCDLijkl, L -> ABCDLijkl', term_1 + term_2, prefactor)
-
-    term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', noise_5d, noise_5d)
-    term_2 = np.einsum('ADLil, BCLjk -> ABCDLijkl', noise_5d, noise_5d)
-    cov_9d_sn = np.einsum('ABCDLijkl, L -> ABCDLijkl', term_1 + term_2, prefactor)
-
-    term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', cl_5d, noise_5d)
-    term_2 = np.einsum('ACLik, BDLjl -> ABCDLijkl', noise_5d, cl_5d)
-    term_3 = np.einsum('ADLil, BCLjk -> ABCDLijkl', cl_5d, noise_5d)
-    term_4 = np.einsum('ADLil, BCLjk -> ABCDLijkl', noise_5d, cl_5d)
-    cov_9d_mix = np.einsum(
-        'ABCDLijkl, L -> ABCDLijkl', term_1 + term_2 + term_3 + term_4, prefactor
-    )
-
-    if return_only_diagonal_ells:
-        warnings.warn(
-            'return_only_diagonal_ells is True, the array will be 9-dimensional',
-            stacklevel=2,
-        )
-        return cov_9d_sva, cov_9d_sn, cov_9d_mix
-
-    n_probes = cov_9d_sva.shape[0]
-    zbins = cov_9d_sva.shape[-1]
-
-    cov_10d_sva = np.zeros(
-        (n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
-    )
-    cov_10d_sn = np.zeros(
-        (n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
-    )
-    cov_10d_mix = np.zeros(
-        (n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
-    )
-
-    cov_10d_sva[:, :, :, :, np.arange(nbl), np.arange(nbl), ...] = cov_9d_sva[
-        :, :, :, :, np.arange(nbl), ...
-    ]
-    cov_10d_sn[:, :, :, :, np.arange(nbl), np.arange(nbl), ...] = cov_9d_sn[
-        :, :, :, :, np.arange(nbl), ...
-    ]
-    cov_10d_mix[:, :, :, :, np.arange(nbl), np.arange(nbl), ...] = cov_9d_mix[
-        :, :, :, :, np.arange(nbl), ...
-    ]
-
-    return cov_10d_sva, cov_10d_sn, cov_10d_mix
-
-
-def covariance_SSC_einsum(cl_5d, rl_5d, s_ABCD_ijkl, fsky, optimize='greedy'):
-    """Computes the 10-dimensional covariance matrix, of shape (n_probes,
-    n_probes, n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins). The
-    5-th axis is added only if return_only_diagonal_ells is True. *for the
-    single-probe case, n_probes = 1*
-
-    In np.einsum, the indices have the following meaning:     A, B, C, D
-    = probe identifier. 0 for WL, 1 for GCph     L, M = ell, ell_prime
-    i, j, k, l = redshift bin indices
-
-    cl_5d must have shape = (n_probes, n_probes, nbl, zbins, zbins) =
-    (A, B, L, i, j), same as rl_5d
-
-    :param cl_5d:
-    :param rl_5d:
-    :param noise_5d:
-    :param fsky:
-    :return: 10-dimensional numpy array of shape (n_probes, n_probes,
-        n_probes, n_probes, nbl, (nbl), zbins, zbins, zbins, zbins),
-        containing the covariance.
-    """
-
-    assert cl_5d.shape[0] == 1 or cl_5d.shape[0] == 2, (
-        'This funcion only works with 1 or two probes'
-    )
-    assert cl_5d.shape[0] == cl_5d.shape[1], (
-        'cl_5d must be an array of shape (n_probes, n_probes, nbl, zbins, zbins)'
-    )
-    assert cl_5d.shape[-1] == cl_5d.shape[-2], (
-        'cl_5d must be an array of shape (n_probes, n_probes, nbl, zbins, zbins)'
-    )
-    assert cl_5d.shape == rl_5d.shape, 'cl_5d and rl_5d must have the same shape'
-
-    zbins = cl_5d.shape[-1]
-
-    assert s_ABCD_ijkl.shape == (
-        cl_5d.shape[0],
-        cl_5d.shape[0],
-        cl_5d.shape[0],
-        cl_5d.shape[0],
-        zbins,
-        zbins,
-        zbins,
-        zbins,
-    ), (
-        's_ABCD_ijkl must have shape (cl_5d.shape[0], cl_5d.shape[0], cl_5d.shape[0], '
-        'cl_5d.shape[0], zbins, zbins, zbins, zbins) = '
-        f'{(cl_5d.shape[0], cl_5d.shape[0], cl_5d.shape[0], cl_5d.shape[0], zbins, zbins, zbins, zbins)}'
-    )
-
-    cov_SSC_10d = np.einsum(
-        'ABLij, ABLij, CDMkl, CDMkl, ABCDijkl -> ABCDLMijkl',
-        rl_5d,
-        cl_5d,
-        rl_5d,
-        cl_5d,
-        s_ABCD_ijkl,
-        optimize=optimize,
-    )
-
-    return cov_SSC_10d / fsky
 
 
 def cov_10D_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
@@ -4064,12 +3543,18 @@ def build_noise(
 
     # assert appropriate inputs are list, tuple or np.ndarray
     for var, name in zip(
-        [ng_shear, ng_clust, ],
-        ['ng_shear', 'ng_clust', ],
+        [
+            ng_shear,
+            ng_clust,
+        ],
+        [
+            'ng_shear',
+            'ng_clust',
+        ],
     ):
-    #     [ng_shear, ng_clust, sigma_eps2],
-    #     ['ng_shear', 'ng_clust', 'sigma_eps2'],
-    # ):
+        #     [ng_shear, ng_clust, sigma_eps2],
+        #     ['ng_shear', 'ng_clust', 'sigma_eps2'],
+        # ):
         assert isinstance(var, (list, tuple, np.ndarray)), (
             f'{name} should be a list, tuple or np.ndarray'
         )
@@ -4080,7 +3565,7 @@ def build_noise(
     if isinstance(ng_clust, (list, tuple)):
         ng_clust = np.array(ng_clust)
     # if isinstance(ng_clust, (list, tuple)):
-        # sigma_eps2 = np.array(sigma_eps2)
+    # sigma_eps2 = np.array(sigma_eps2)
 
     conversion_factor = (180 / np.pi * 60) ** 2  # deg^2 to arcmin^2
 

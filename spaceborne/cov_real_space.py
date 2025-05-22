@@ -4,20 +4,16 @@ import time
 import warnings
 from copy import deepcopy
 
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
+import pyccl as ccl
 import pylevin as levin
 from joblib import Parallel, delayed
 from scipy.integrate import quad_vec
 from scipy.integrate import simpson as simps
-from scipy.stats import chi2
 from tqdm import tqdm
 
-import pyccl as ccl
-from spaceborne import sb_lib as sl
 from spaceborne import constants
-
+from spaceborne import sb_lib as sl
 
 warnings.filterwarnings(
     'ignore', message=r'.*invalid escape sequence.*', category=SyntaxWarning
@@ -266,27 +262,6 @@ def project_ellspace_cov_vec_helper(
             theta_2_l, theta_2_u, nu,  
             Amax, ell1_values, ell2_values, cov_ell,  
         ),  
-    )  # fmt: skip
-
-
-def cov_parallel_helper(
-    theta_1_ix, theta_2_ix, mu, nu, zij, zkl, ind_ab, ind_cd, func, **kwargs
-):
-    theta_1_l = self.theta_edges[theta_1_ix]
-    theta_1_u = self.theta_edges[theta_1_ix + 1]
-    theta_2_l = self.theta_edges[theta_2_ix]
-    theta_2_u = self.theta_edges[theta_2_ix + 1]
-
-    zi, zj = ind_ab[zij, :]
-    zk, zl = ind_cd[zkl, :]
-
-    return (  # fmt: skip
-        theta_1_ix, theta_2_ix, zi, zj, zk, zl, func( 
-            theta_1_l=theta_1_l, theta_1_u=theta_1_u, mu=mu, 
-            theta_2_l=theta_2_l, theta_2_u=theta_2_u, nu=nu, 
-            zi=zi, zj=zj, zk=zk, zl=zl, 
-            **kwargs, 
-        ), 
     )  # fmt: skip
 
 
@@ -1172,6 +1147,132 @@ class CovRealSpace:
         else:
             return np.zeros((self.zbins, self.zbins))
 
+    def sva_levin_wrapper(
+        self,
+        probe_a_ix,
+        probe_b_ix,
+        probe_c_ix,
+        probe_d_ix,
+        zpairs_ab,
+        zpairs_cd,
+        ind_ab,
+        ind_cd,
+        mu,
+        nu,
+    ):
+        a = np.einsum(
+            'Lik,Ljl->Lijkl',
+            self.cl_5d[probe_a_ix, probe_c_ix],
+            self.cl_5d[probe_b_ix, probe_d_ix],
+        )
+        b = np.einsum(
+            'Lil,Ljk->Lijkl',
+            self.cl_5d[probe_a_ix, probe_d_ix],
+            self.cl_5d[probe_b_ix, probe_c_ix],
+        )
+        integrand = a + b
+
+        # remove repeated zi, zj combinations
+        integrand = sl.cov_6D_to_4D_blocks(
+            cov_6D=integrand,
+            nbl=self.nbl,
+            npairs_AB=zpairs_ab,
+            npairs_CD=zpairs_cd,
+            ind_AB=ind_ab,
+            ind_CD=ind_cd,
+        )
+
+        # flatten the integrand to [ells, whatever]
+        integrand = integrand.reshape(self.nbl, -1)
+        integrand *= self.ell_values[:, None]
+        integrand /= 2.0 * np.pi * self.amax
+
+        result_levin = integrate_bessel_double_wrapper(
+            integrand,
+            x_values=self.ell_values,
+            bessel_args=self.theta_centers,
+            bessel_type=3,
+            ell_1=mu,
+            ell_2=nu,
+            n_jobs=self.n_jobs,
+            **self.levin_prec_kw,
+        )
+
+        cov_sva_sb_4d = result_levin.reshape(self.nbt, self.nbt, zpairs_ab, zpairs_cd)
+        cov_sva_sb_6d = sl.cov_4D_to_6D_blocks(
+            cov_sva_sb_4d,
+            nbl=self.nbt,
+            zbins=self.zbins,
+            ind_ab=ind_ab,
+            ind_cd=ind_cd,
+            symmetrize_output_ab=False,
+            symmetrize_output_cd=False,
+        )
+
+        return cov_sva_sb_6d
+
+    def sva_simps_wrapper(
+        self,
+        probe_a_ix,
+        probe_b_ix,
+        probe_c_ix,
+        probe_d_ix,
+        zpairs_ab,
+        zpairs_cd,
+        ind_ab,
+        ind_cd,
+        mu,
+        nu,
+    ):
+        cov_sva_sb_6d = np.zeros(self.cov_rs_6d_shape)
+
+        kwargs = {
+            'probe_a_ix': probe_a_ix,
+            'probe_b_ix': probe_b_ix,
+            'probe_c_ix': probe_c_ix,
+            'probe_d_ix': probe_d_ix,
+            'cl_5d': self.cl_5d,
+            'ell_values': self.ell_values,
+            'Amax': self.amax,
+        }
+        results = Parallel(n_jobs=self.n_jobs)(  # fmt: skip
+            delayed(self.cov_parallel_helper)(  
+                theta_1_ix=theta_1_ix, theta_2_ix=theta_2_ix, mu=mu, nu=nu,  
+                zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd,  
+                func=cov_sva_rs,  
+                **kwargs,
+            )  
+            for theta_1_ix in tqdm(range(self.nbt))
+            for theta_2_ix in range(self.nbt)
+            for zij in range(zpairs_ab)
+            for zkl in range(zpairs_cd)
+        )  # fmt: skip
+
+        for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
+            cov_sva_sb_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
+
+        return cov_sva_sb_6d
+
+    def cov_parallel_helper(
+        self, theta_1_ix, theta_2_ix, mu, nu, zij, zkl, ind_ab, ind_cd, func, **kwargs
+    ):
+        theta_1_l = self.theta_edges[theta_1_ix]
+        theta_1_u = self.theta_edges[theta_1_ix + 1]
+        theta_2_l = self.theta_edges[theta_2_ix]
+        theta_2_u = self.theta_edges[theta_2_ix + 1]
+
+        zi, zj = ind_ab[zij, :]
+        zk, zl = ind_cd[zkl, :]
+
+        return (  # fmt: skip
+            theta_1_ix, theta_2_ix, zi, zj, zk, zl, func( 
+                theta_1_l=theta_1_l, theta_1_u=theta_1_u, mu=mu, 
+                theta_2_l=theta_2_l, theta_2_u=theta_2_u, nu=nu, 
+                zi=zi, zj=zj, zk=zk, zl=zl, 
+                **kwargs, 
+            ), 
+        )  # fmt: skip
+
     def compute_realspace_cov(self):
         for probe, term in itertools.product(self.probes_toloop, self.terms_toloop):
             print(
@@ -1214,105 +1315,37 @@ class CovRealSpace:
             assert zpairs_cd == ind_cd.shape[0], 'zpairs-ind inconsistency'
 
             # Compute covariance:
-            shape = (self.nbt, self.nbt, self.zbins, self.zbins, self.zbins, self.zbins)
-            cov_sva_sb_6d = np.zeros(shape)
-            cov_sn_sb_6d = np.zeros(shape)
-            cov_mix_sb_6d = np.zeros(shape)
+            self.cov_rs_6d_shape = (  # fmt: skip
+                self.nbt, self.nbt, self.zbins, self.zbins, self.zbins, self.zbins
+            )  # fmt: skip
+            self.cov_sn_sb_6d = np.zeros(self.cov_rs_6d_shape)
+            self.cov_mix_sb_6d = np.zeros(self.cov_rs_6d_shape)
 
             # ! LEVIN SVA, to be tidied up
 
-            if term == 'sva' and self.integration_method in ['simps', 'quad']:
+            if term == 'sva':
                 print('Computing real-space Gaussian SVA covariance...')
-                start = time.time()
-
-                kwargs = {
-                    'probe_a_ix': probe_a_ix,
-                    'probe_b_ix': probe_b_ix,
-                    'probe_c_ix': probe_c_ix,
-                    'probe_d_ix': probe_d_ix,
-                    'cl_5d': self.cl_5d,
-                    'ell_values': self.ell_values,
-                    'Amax': self.amax,
-                }
-                results = Parallel(n_jobs=self.n_jobs)(  # fmt: skip
-                    delayed(cov_parallel_helper)(  
-                        theta_1_ix=theta_1_ix, theta_2_ix=theta_2_ix, mu=mu, nu=nu,  
-                        zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd,  
-                        func=cov_sva_rs,  
-                        **kwargs,
-                    )  
-                    for theta_1_ix in tqdm(range(self.nbt))
-                    for theta_2_ix in range(self.nbt)
-                    for zij in range(zpairs_ab)
-                    for zkl in range(zpairs_cd)
-                )  # fmt: skip
-
-                for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
-                    cov_sva_sb_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
-
-                print(f'...done in: {(time.time() - start):.2f} s')
-
-            elif term == 'sva' and self.integration_method == 'levin':
                 start = time.perf_counter()
 
-                a = np.einsum(
-                    'Lik,Ljl->Lijkl',
-                    self.cl_5d[probe_a_ix, probe_c_ix],
-                    self.cl_5d[probe_b_ix, probe_d_ix],
-                )
-                b = np.einsum(
-                    'Lil,Ljk->Lijkl',
-                    self.cl_5d[probe_a_ix, probe_d_ix],
-                    self.cl_5d[probe_b_ix, probe_c_ix],
-                )
-                integrand = a + b
+                if self.integration_method in ['simps', 'quad']:
+                    self.cov_sva_sb_6d = self.sva_simps_wrapper(  # fmt: skip
+                        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
+                        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
+                    )  # fmt: skip
 
-                # remove repeated zi, zj combinations
-                integrand = sl.cov_6D_to_4D_blocks(
-                    cov_6D=integrand,
-                    nbl=self.nbl,
-                    npairs_AB=zpairs_ab,
-                    npairs_CD=zpairs_cd,
-                    ind_AB=ind_ab,
-                    ind_CD=ind_cd,
-                )
+                elif self.integration_method == 'levin':
+                    self.cov_sva_sb_6d = self.sva_levin_wrapper(  # fmt: skip
+                        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, 
+                        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+                    )  # fmt: skip
 
-                # flatten the integrand to [ells, whatever]
-                integrand = integrand.reshape(self.nbl, -1)
-                integrand *= self.ell_values[:, None]
-                integrand /= 2.0 * np.pi * self.amax
-
-                result_levin = integrate_bessel_double_wrapper(
-                    integrand,
-                    x_values=self.ell_values,
-                    bessel_args=self.theta_centers,
-                    bessel_type=3,
-                    ell_1=mu,
-                    ell_2=nu,
-                    n_jobs=self.n_jobs,
-                    **self.levin_prec_kw,
-                )
-
-                print(f'...done in: {(time.perf_counter() - start):.2f} s')
-
-                cov_sva_sb_4d = result_levin.reshape(
-                    self.nbt, self.nbt, zpairs_ab, zpairs_cd
-                )
-                cov_sva_sb_6d = sl.cov_4D_to_6D_blocks(
-                    cov_sva_sb_4d,
-                    nbl=self.nbt,
-                    zbins=self.zbins,
-                    ind_ab=ind_ab,
-                    ind_cd=ind_cd,
-                    symmetrize_output_ab=False,
-                    symmetrize_output_cd=False,
-                )
+                print(f'...done in: {(time.time() - start):.2f} s')
 
             elif term == 'sn':
                 print('Computing real-space Gaussian SN covariance...')
                 start = time.time()
 
-                cov_sn_sb_6d = self.cov_sn_rs(
+                self.cov_sn_sb_6d = self.cov_sn_rs(
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
                 )
                 print(f'... done in: {(time.time() - start):.2f} s')
@@ -1331,9 +1364,10 @@ class CovRealSpace:
                     'integration_method': self.integration_method,
                 }
                 results = Parallel(n_jobs=self.n_jobs)(  # fmt: skip
-                    delayed(cov_parallel_helper)(
+                    delayed(self.cov_parallel_helper)(
                         theta_1_ix=theta_1_ix, theta_2_ix=theta_2_ix, mu=mu, nu=nu,
-                        zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd, func=cov_g_mix_real_new,
+                        zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd, 
+                        func=cov_g_mix_real_new,
                         **kwargs,
                     )
                     for theta_1_ix in tqdm(range(self.nbt))
@@ -1343,7 +1377,7 @@ class CovRealSpace:
                 )  # fmt: skip
 
                 for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
-                    cov_mix_sb_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
+                    self.cov_mix_sb_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
                 print(f'... Done in: {(time.time() - start):.2f} s')
 
             elif term == 'mix' and self.integration_method == 'levin':
@@ -1426,7 +1460,7 @@ class CovRealSpace:
                 cov_mix_sb_4d = result_levin.reshape(
                     self.nbt, self.nbt, zpairs_ab, zpairs_cd
                 )
-                cov_mix_sb_6d = sl.cov_4D_to_6D_blocks(
+                self.cov_mix_sb_6d = sl.cov_4D_to_6D_blocks(
                     cov_mix_sb_4d,
                     nbl=self.nbt,
                     zbins=self.zbins,
@@ -1468,7 +1502,7 @@ class CovRealSpace:
                     )
                 )
 
-                cov_sn_sb_6d = self.cov_sn_rs(
+                self.cov_sn_sb_6d = self.cov_sn_rs(
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
                 )
 
@@ -1477,7 +1511,7 @@ class CovRealSpace:
                     + cov_mix_sb_hs_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
                 )
 
-                cov_g_sb_6d = integrate_bessel_double_wrapper(
+                self.cov_g_sb_6d = integrate_bessel_double_wrapper(
                     integrand=cov_g_hs_6d.reshape(self.nbl, -1)
                     * self.ell_values[:, None]
                     * self.ell_values[:, None],
@@ -1489,13 +1523,15 @@ class CovRealSpace:
                     n_jobs=self.n_jobs,
                     **self.levin_prec_kw,
                 )
-                cov_g_sb_6d = cov_g_sb_6d.reshape(
+                self.cov_g_sb_6d = self.cov_g_sb_6d.reshape(
                     self.nbt, self.nbt, self.zbins, self.zbins, self.zbins, self.zbins
                 )
 
                 norm = 4 * np.pi**2
-                cov_g_sb_6d /= norm
-                cov_g_sb_6d += cov_sn_sb_6d  # diagonal is noise-dominated, you won't see much of a diff
+                self.cov_g_sb_6d /= norm
+                self.cov_g_sb_6d += (
+                    self.cov_sn_sb_6d
+                )  # diagonal is noise-dominated, you won't see much of a diff
 
             elif term in ['ssc', 'cng']:
                 warnings.warn('HS covs loaded from file', stacklevel=2)
@@ -1838,10 +1874,8 @@ class CovRealSpace:
             # plt.ylabel(f'diag cov {probe}')
             # plt.legend()
 
-            # TODO double check ngal, it's totally random at the moment; same for sigma_eps
             # TODO other probes
             # TODO probably ell range as well
-            # TODO integration? quad?
 
         # ! construct full 2D cov and compare correlation matrix
         cov_sb_2d_dict = {}

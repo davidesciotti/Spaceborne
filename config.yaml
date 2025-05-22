@@ -104,13 +104,15 @@ C_ell:
 nz:
     # Paths to source (for WL) and lens (for GCph) redshift distributions.
     # These must have shape (z_points, zbins + 1)
-    nz_sources_filename: ./input/nzTab.txt  # Type: str
-    nz_lenses_filename: ./input/nzTab.txt  # Type: str
+    nz_sources_filename: ./input/nzTab-EP03-zedMin02-zedMax25-mag245.dat  # Type: str
+    nz_lenses_filename: ./input/nzTab-EP03-zedMin02-zedMax25-mag245.dat  # Type: str
+    
     # Number of galaxies per arcmin**2 for each redshift bin. 
     # Should be of len(zbins)
     ngal_sources: [8.09216, 8.09215, 8.09215]  # Type: list[float]
     ngal_lenses: [8.09216, 8.09215, 8.09215]  # Type: list[float]
 
+    # settings for the per-bin shifts of the redshift distributions
     shift_nz: True  # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
     dzWL: [-0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for WL (sources). Should be of len(zbins)
     dzGC: [-0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of len(zbins)
@@ -205,7 +207,7 @@ covariance:
     # Ellipticity dispersion *per component* = sigma_eps_i.
     # total ellipticity dispersion = sigma_eps
     # sigma_eps = (sigma_eps_i * np.sqrt(2))
-    sigma_eps_i: 0.26 # Type: float
+    sigma_eps_i: [0.26, 0.26, 0.26] # Type: list[float]
     
     # Whether to include the noise power spectra in the computation of the 
     # Gaussian covariance matrix.
@@ -214,7 +216,7 @@ covariance:
     which_pk_responses: halo_model # Type: str. Options: ['halo_model', 'separate_universe']
 
     # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
-    # Can be one of:
+    #  Options:
     # - 'from_HOD' (from the Halo Occupation Distribution previously initialized)
     # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB
     which_b1g_in_resp: from_HOD # Type: str. Options: ['from_HOD', 'from_input']
@@ -245,6 +247,14 @@ covariance:
 
     # Name of the output covariance file. Change to '.npy' to save as npy file.
     cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str. 
+
+cov_real_space:
+    do_real_space: True
+    # theta binning for the real-space covariance matrix
+    theta_min_arcmin: 50
+    theta_max_arcmin: 300
+    theta_bins: 50
+
 
 PyCCL:
     # (from CCL docs): integration method to be used for the Limber integrals.
@@ -288,3 +298,31 @@ misc:
     test_symmetry: False # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
     output_path: ./output # Type: str. Path to the output directory
+
+precision:
+
+    # Integration method for the covariance projection to real space. Options:
+    # - 'simps': uses simpson integration. This is faster but less accurate
+    # - 'levin': uses levin integration. This is slower but more accurate
+    cov_realspace_integration_method: 'levin'  # Type: str.
+
+    # Precision settings for pylevin. See the official documentation for more details:
+    # https://levin-bessel.readthedocs.io/en/latest/index.html
+    # https://github.com/rreischke/levin_bessel/blob/main/tutorial/levin_tutorial.ipynb
+    n_sub: 8  # number of collocation points in each bisection  # default 8
+    n_bisec_max: 80  # maximum number of bisections used  # default 32
+    rel_acc: 5.e-4  # relative accuracy target  # default 1e-4
+    # should the bessel functions be calculated with boost instead of GSL,
+    # higher accuracy at high Bessel orders
+    boost_bessel: True
+
+    # ell binning used for the projection of the covariance from harmonic space to real space.
+    # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
+    ell_min: 1
+    ell_max: 100_000
+    ell_bins: 200
+
+
+
+
+

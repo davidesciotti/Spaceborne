@@ -1,3 +1,13 @@
+"""
+This module contains functions to compute the covariance matrix in real space.
+Nomenclature of the functions/variables:
+hs = harmonic space
+rs = real space
+sva = sample variance
+sn = sampling noise
+mix = mixed term
+"""
+
 import itertools
 import re
 import time
@@ -387,28 +397,7 @@ def cov_mix_rs(   # fmt: skip
         + prefac_4 * integral_4
     )
 
-
-def cov_g_mix_real_new(  # fmt: skip
-    theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,  
-    ell_values, cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,  
-    zi, zj, zk, zl, Amax,  
-    integration_method='simps',  
-):  # fmt: skip
-    def integrand_func(ell, inner_integrand):
-        kmu = k_mu(ell, theta_1_l, theta_1_u, mu)
-        knu = k_mu(ell, theta_2_l, theta_2_u, nu)
-        return (1 / (2 * np.pi * Amax)) * ell * kmu * knu * inner_integrand
-
-    def get_prefac(probe_a_ix, probe_b_ix, zi, zj):
-        prefac = (
-            get_delta_tomo(probe_a_ix, probe_b_ix)[zi, zj]
-            * t_mix(probe_a_ix, zbins, sigma_eps_i)[zi]
-            / (n_eff_2d[probe_a_ix, zi] * self.srtoarcmin2)
-        )
-        return prefac
-
     # TODO generalize to different survey areas (max(Aij, Akl))
-    # TODO sigma_eps_i should be a vector of length zbins
 
     # permutations should be performed as done in the SVA function
     if integration_method == 'simps':
@@ -742,6 +731,8 @@ def dl1dl2_bessel_wrapper(
 
     nbl = len(ells)
 
+    breakpoint()
+
     assert cov_hs.shape[0] == cov_hs.shape[1] == nbl, (
         'cov_hs shape must be (ell_bins, ell_bins, ...)'
     )
@@ -908,6 +899,7 @@ class CovRealSpace:
         self._set_neff_and_sigma_eps()
         self._set_levin_bessel_precision()
         self._set_probe_names_idxs()
+        self._set_terms_toloop()
 
         # other miscellaneous settings
         self.n_jobs = self.cfg['misc']['num_threads']
@@ -919,6 +911,10 @@ class CovRealSpace:
         assert self.integration_method in ['simps', 'levin'], (
             'integration method not implemented'
         )
+        
+        self.cov_rs_6d_shape = (  # fmt: skip
+            self.nbt, self.nbt, self.zbins, self.zbins, self.zbins, self.zbins
+            )  # fmt: skip
 
     def _set_survey_info(self):
         self.survey_area_deg2 = self.mask_obj.survey_area_deg2
@@ -934,9 +930,11 @@ class CovRealSpace:
         #     cfg['precision']['ell_min'], cfg['precision']['ell_max']
         # )
 
-        self.nbl = self.cfg['precision']['ell_bins']
+        self.nbl = self.cfg['precision']['ell_bins_rs']
         self.ell_values = np.geomspace(
-            self.cfg['precision']['ell_min'], self.cfg['precision']['ell_max'], self.nbl
+            self.cfg['precision']['ell_min_rs'],
+            self.cfg['precision']['ell_max_rs'],
+            self.nbl,
         )
 
     def _set_theta_binning(self):
@@ -1026,8 +1024,48 @@ class CovRealSpace:
                 self.probe_idx_dict_short[probe_b_str],
             )
 
-        self.terms_toloop = ['sva', 'sn', 'mix']
         self.probes_toloop = self.probe_idx_dict
+
+    def _set_terms_toloop(self):
+        self.terms_toloop = []
+        if self.cfg['covariance']['G']:
+            self.terms_toloop.extend(('sva', 'sn', 'mix'))
+        if self.cfg['covariance']['SSC']:
+            self.terms_toloop.append('ssc')
+        if self.cfg['covariance']['cNG']:
+            self.terms_toloop.append('cng')
+
+    def set_probes_toloop(self, probe_comb_idxs: list):
+        """
+        Sets the list of probes to loop over. This method is public since it needs the
+        probe_comb_idxs, passed from the main.
+
+        probe_comb_idxs: list of lists
+            containts the indices of the harmonic space probes
+        """
+        raise NotImplementedError('This method is not implemented yet. ')
+
+        probe_idx_dict_reversed = {
+            (0, 0, 0, 0): ('xipxip', 'xipxim', 'ximxim'),
+            (1, 0, 1, 0): ('gmgm',),
+            (1, 0, 0, 0): ('gmxim', 'gmxip'),
+            (1, 1, 0, 0): ('ggxim', 'ggxip'),
+            (1, 1, 1, 1): ('gggg',),
+            (1, 1, 1, 0): ('gggm',),
+        }
+
+        self.probes_toloop = []
+
+        for probe_comb in probe_comb_idxs:
+            probe_comb = tuple(probe_comb)
+            if probe_comb in probe_idx_dict_reversed:
+                self.probes_toloop.extend(probe_idx_dict_reversed[probe_comb])
+            else:
+                raise ValueError(
+                    f'Invalid probe combination: {probe_comb}. '
+                    f'Expected one of {list(probe_idx_dict_reversed.keys())}.'
+                )
+        breakpoint()
 
     def set_ind_and_zpairs(self, ind, zbins):
         # set indices array
@@ -1119,7 +1157,7 @@ class CovRealSpace:
             probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, self.zbins, self.sigma_eps_i
         )
 
-        cov_sn_sb_6d = (
+        cov_sn_rs_6d = (
             delta_mu_nu
             * delta_theta[:, :, None, None, None, None]
             * (
@@ -1139,7 +1177,7 @@ class CovRealSpace:
             * t_arr[None, None, :, None, :, None]
             / npair_arr[None, :, :, :, None, None]
         )
-        return cov_sn_sb_6d
+        return cov_sn_rs_6d
 
     def get_delta_tomo(self, probe_a_ix, probe_b_ix):
         if probe_a_ix == probe_b_ix:
@@ -1198,9 +1236,9 @@ class CovRealSpace:
             **self.levin_prec_kw,
         )
 
-        cov_sva_sb_4d = result_levin.reshape(self.nbt, self.nbt, zpairs_ab, zpairs_cd)
-        cov_sva_sb_6d = sl.cov_4D_to_6D_blocks(
-            cov_sva_sb_4d,
+        cov_sva_rs_4d = result_levin.reshape(self.nbt, self.nbt, zpairs_ab, zpairs_cd)
+        cov_sva_rs_6d = sl.cov_4D_to_6D_blocks(
+            cov_sva_rs_4d,
             nbl=self.nbt,
             zbins=self.zbins,
             ind_ab=ind_ab,
@@ -1209,22 +1247,13 @@ class CovRealSpace:
             symmetrize_output_cd=False,
         )
 
-        return cov_sva_sb_6d
+        return cov_sva_rs_6d
 
-    def sva_simps_wrapper(
-        self,
-        probe_a_ix,
-        probe_b_ix,
-        probe_c_ix,
-        probe_d_ix,
-        zpairs_ab,
-        zpairs_cd,
-        ind_ab,
-        ind_cd,
-        mu,
-        nu,
-    ):
-        cov_sva_sb_6d = np.zeros(self.cov_rs_6d_shape)
+    def sva_simps_wrapper(  # fmt: skip
+        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
+        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+    ):  # fmt: skip
+        cov_sva_rs_6d = np.zeros(self.cov_rs_6d_shape)
 
         kwargs = {
             'probe_a_ix': probe_a_ix,
@@ -1249,9 +1278,131 @@ class CovRealSpace:
         )  # fmt: skip
 
         for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
-            cov_sva_sb_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
+            cov_sva_rs_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
 
-        return cov_sva_sb_6d
+        return cov_sva_rs_6d
+
+    def mix_simps_wrapper(  # fmt: skip
+        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, 
+        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+        ):  # fmt: skip
+        cov_mix_rs_6d = np.zeros(self.cov_rs_6d_shape)
+
+        kwargs = {
+            'probe_a_ix': probe_a_ix,
+            'probe_b_ix': probe_b_ix,
+            'probe_c_ix': probe_c_ix,
+            'probe_d_ix': probe_d_ix,
+            'cl_5d': self.cl_5d,
+            'ell_values': self.ell_values,
+            'Amax': self.amax,
+            'integration_method': self.integration_method,
+        }
+        results = Parallel(n_jobs=self.n_jobs)(  # fmt: skip
+            delayed(self.cov_parallel_helper)(
+                theta_1_ix=theta_1_ix, theta_2_ix=theta_2_ix, mu=mu, nu=nu,
+                zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd, 
+                func=self.cov_g_mix_real_new,
+                **kwargs,
+            )
+            for theta_1_ix in tqdm(range(self.nbt))
+            for theta_2_ix in range(self.nbt)
+            for zij in range(zpairs_ab)
+            for zkl in range(zpairs_cd)
+        )  # fmt: skip
+
+        for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
+            cov_mix_rs_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
+
+        return cov_mix_rs_6d
+
+    def mix_levin_wrapper(  # fmt: skip
+        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
+        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+    ):  # fmt: skip
+        def _get_mix_prefac(probe_b_ix, probe_d_ix, zj, zl):
+            prefac = (
+                self.get_delta_tomo(probe_b_ix, probe_d_ix)[zj, zl]
+                * t_mix(probe_b_ix, self.zbins, self.sigma_eps_i)[zj]
+                / (self.n_eff_2d[probe_b_ix, zj] * self.srtoarcmin2)
+            )
+            return prefac
+
+        prefac = np.zeros((self.n_probes_hs, self.n_probes_hs, self.zbins, self.zbins))
+        for _probe_a_ix in range(self.n_probes_hs):
+            for _probe_b_ix in range(self.n_probes_hs):
+                for _zi in range(self.zbins):
+                    for _zj in range(self.zbins):
+                        prefac[_probe_a_ix, _probe_b_ix, _zi, _zj] = _get_mix_prefac(
+                            _probe_a_ix, _probe_b_ix, _zi, _zj
+                        )
+
+        a = np.einsum(
+            'jl,Lik->Lijkl',
+            prefac[probe_b_ix, probe_d_ix],
+            self.cl_5d[probe_a_ix, probe_c_ix],
+        )
+        b = np.einsum(
+            'ik,Ljl->Lijkl',
+            prefac[probe_a_ix, probe_c_ix],
+            self.cl_5d[probe_b_ix, probe_d_ix],
+        )
+        c = np.einsum(
+            'jk,Lil->Lijkl',
+            prefac[probe_b_ix, probe_c_ix],
+            self.cl_5d[probe_a_ix, probe_d_ix],
+        )
+        d = np.einsum(
+            'il,Ljk->Lijkl',
+            prefac[probe_a_ix, probe_d_ix],
+            self.cl_5d[probe_b_ix, probe_c_ix],
+        )
+        integrand_5d = a + b + c + d
+
+        # compress integrand selecting only unique zpairs
+        assert ind_ab.shape[1] == 2, (
+            "ind_ab must have two columns, maybe you didn't cut it"
+        )
+        assert ind_cd.shape[1] == 2, (
+            "ind_cd must have two columns, maybe you didn't cut it"
+        )
+
+        integrand_3d = sl.cov_6D_to_4D_blocks(
+            cov_6D=integrand_5d,
+            nbl=self.nbl,
+            npairs_AB=zpairs_ab,
+            npairs_CD=zpairs_cd,
+            ind_AB=ind_ab,
+            ind_CD=ind_cd,
+        )
+
+        integrand_2d = integrand_3d.reshape(self.nbl, -1)
+        integrand_2d *= self.ell_values[:, None]
+        integrand_2d /= 2 * np.pi * self.amax
+
+        result_levin = integrate_bessel_double_wrapper(
+            integrand_2d,
+            x_values=self.ell_values,
+            bessel_args=self.theta_centers,
+            bessel_type=3,
+            ell_1=mu,
+            ell_2=nu,
+            n_jobs=self.n_jobs,
+            **self.levin_prec_kw,
+        )
+
+        cov_mix_rs_4d = result_levin.reshape(self.nbt, self.nbt, zpairs_ab, zpairs_cd)
+        cov_mix_rs_6d = sl.cov_4D_to_6D_blocks(
+            cov_mix_rs_4d,
+            nbl=self.nbt,
+            zbins=self.zbins,
+            ind_ab=ind_ab,
+            ind_cd=ind_cd,
+            symmetrize_output_ab=False,
+            symmetrize_output_cd=False,
+        )
+
+        return cov_mix_rs_6d
 
     def cov_parallel_helper(
         self, theta_1_ix, theta_2_ix, mu, nu, zij, zkl, ind_ab, ind_cd, func, **kwargs
@@ -1273,7 +1424,70 @@ class CovRealSpace:
             ), 
         )  # fmt: skip
 
-    def compute_realspace_cov(self):
+    def cov_g_mix_real_new(  # fmt: skip
+        self, theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,  
+        ell_values, cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,  
+        zi, zj, zk, zl, Amax,  
+        integration_method='simps',  
+    ):  # fmt: skip
+        def integrand_func(ell, inner_integrand):
+            kmu = k_mu(ell, theta_1_l, theta_1_u, mu)
+            knu = k_mu(ell, theta_2_l, theta_2_u, nu)
+            return (1 / (2 * np.pi * Amax)) * ell * kmu * knu * inner_integrand
+
+        def get_prefac(probe_a_ix, probe_b_ix, zi, zj):
+            prefac = (
+                self.get_delta_tomo(probe_a_ix, probe_b_ix)[zi, zj]
+                * t_mix(probe_a_ix, self.zbins, self.sigma_eps_i)[zi]
+                / (self.n_eff_2d[probe_a_ix, zi] * self.srtoarcmin2)
+            )
+            return prefac
+
+    def combine_terms_and_probes(self):
+        self.cov_rs_4d_dict = {}
+        self.cov_rs_2d_dict = {}
+        self.cov_rs_full_2d = []
+        for term in self.terms_toloop:
+            for probe in self.probe_idx_dict:
+                split_g_ix = (
+                    self.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
+                )
+
+                twoprobe_ab_str, twoprobe_cd_str = split_probe_name(probe)
+                twoprobe_ab_ix, twoprobe_cd_ix = (
+                    self.probe_idx_dict_short[twoprobe_ab_str],
+                    self.probe_idx_dict_short[twoprobe_cd_str],
+                )
+
+                zpairs_ab = (
+                    self.zpairs_cross if twoprobe_ab_ix == 1 else self.zpairs_auto
+                )
+                zpairs_cd = (
+                    self.zpairs_cross if twoprobe_cd_ix == 1 else self.zpairs_auto
+                )
+                ind_ab = self.ind_cross if twoprobe_ab_ix == 1 else self.ind_auto
+                ind_cd = self.ind_cross if twoprobe_cd_ix == 1 else self.ind_auto
+
+                self.cov_rs_4d_dict[probe] = sl.cov_6D_to_4D_blocks(
+                    self.cov_sb_dict_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix],
+                    self.nbt,
+                    zpairs_ab,
+                    zpairs_cd,
+                    ind_ab,
+                    ind_cd,
+                )
+                self.cov_rs_2d_dict[probe] = sl.cov_4D_to_2D(
+                    self.cov_rs_4d_dict[probe], block_index='zpair', optimize=True
+                )
+
+            self.cov_rs_full_2d.append(stack_cov_blocks(self.cov_rs_2d_dict))
+
+    def compute_realspace_cov(self, cov_obj):
+        """
+        Computes the real space covariance matrix for the terms (sva, mix, sn, ssc, cng)
+        and probes specfied
+        """
+        
         for probe, term in itertools.product(self.probes_toloop, self.terms_toloop):
             print(
                 f'\n***** probe {probe} - term {term} - '
@@ -1315,159 +1529,35 @@ class CovRealSpace:
             assert zpairs_cd == ind_cd.shape[0], 'zpairs-ind inconsistency'
 
             # Compute covariance:
-            self.cov_rs_6d_shape = (  # fmt: skip
-                self.nbt, self.nbt, self.zbins, self.zbins, self.zbins, self.zbins
-            )  # fmt: skip
-            self.cov_sn_sb_6d = np.zeros(self.cov_rs_6d_shape)
-            self.cov_mix_sb_6d = np.zeros(self.cov_rs_6d_shape)
-
-            # ! LEVIN SVA, to be tidied up
-
             if term == 'sva':
-                print('Computing real-space Gaussian SVA covariance...')
-                start = time.perf_counter()
-
                 if self.integration_method in ['simps', 'quad']:
-                    self.cov_sva_sb_6d = self.sva_simps_wrapper(  # fmt: skip
+                    self.cov_sva_rs_6d = self.sva_simps_wrapper(  # fmt: skip
                         probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
                         zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
                     )  # fmt: skip
 
                 elif self.integration_method == 'levin':
-                    self.cov_sva_sb_6d = self.sva_levin_wrapper(  # fmt: skip
+                    self.cov_sva_rs_6d = self.sva_levin_wrapper(  # fmt: skip
                         probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, 
                         zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
                     )  # fmt: skip
 
-                print(f'...done in: {(time.time() - start):.2f} s')
+            elif term == 'mix':
+                if self.integration_method == 'simps':
+                    self.cov_mix_rs_6d = self.mix_simps_wrapper(  # fmt: skip
+                        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, 
+                        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
+                    )  # fmt: skip
+
+                elif self.integration_method == 'levin':
+                    self.cov_mix_rs_6d = self.mix_levin_wrapper(  # fmt: skip
+                        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
+                        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+                    )  # fmt: skip
 
             elif term == 'sn':
-                print('Computing real-space Gaussian SN covariance...')
-                start = time.time()
-
-                self.cov_sn_sb_6d = self.cov_sn_rs(
+                self.cov_sn_rs_6d = self.cov_sn_rs(
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
-                )
-                print(f'... done in: {(time.time() - start):.2f} s')
-
-            elif term == 'mix' and self.integration_method == 'simps':
-                start = time.time()
-
-                kwargs = {
-                    'probe_a_ix': probe_a_ix,
-                    'probe_b_ix': probe_b_ix,
-                    'probe_c_ix': probe_c_ix,
-                    'probe_d_ix': probe_d_ix,
-                    'cl_5d': self.cl_5d,
-                    'ell_values': self.ell_values,
-                    'Amax': self.amax,
-                    'integration_method': self.integration_method,
-                }
-                results = Parallel(n_jobs=self.n_jobs)(  # fmt: skip
-                    delayed(self.cov_parallel_helper)(
-                        theta_1_ix=theta_1_ix, theta_2_ix=theta_2_ix, mu=mu, nu=nu,
-                        zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd, 
-                        func=cov_g_mix_real_new,
-                        **kwargs,
-                    )
-                    for theta_1_ix in tqdm(range(self.nbt))
-                    for theta_2_ix in range(self.nbt)
-                    for zij in range(zpairs_ab)
-                    for zkl in range(zpairs_cd)
-                )  # fmt: skip
-
-                for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
-                    self.cov_mix_sb_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
-                print(f'... Done in: {(time.time() - start):.2f} s')
-
-            elif term == 'mix' and self.integration_method == 'levin':
-                start = time.time()
-
-                def _get_mix_prefac(probe_b_ix, probe_d_ix, zj, zl):
-                    prefac = (
-                        self.get_delta_tomo(probe_b_ix, probe_d_ix)[zj, zl]
-                        * t_mix(probe_b_ix, self.zbins, self.sigma_eps_i)[zj]
-                        / (self.n_eff_2d[probe_b_ix, zj] * self.srtoarcmin2)
-                    )
-                    return prefac
-
-                prefac = np.zeros(
-                    (self.n_probes_hs, self.n_probes_hs, self.zbins, self.zbins)
-                )
-                for _probe_a_ix in range(self.n_probes_hs):
-                    for _probe_b_ix in range(self.n_probes_hs):
-                        for _zi in range(self.zbins):
-                            for _zj in range(self.zbins):
-                                prefac[_probe_a_ix, _probe_b_ix, _zi, _zj] = (
-                                    _get_mix_prefac(_probe_a_ix, _probe_b_ix, _zi, _zj)
-                                )
-
-                a = np.einsum(
-                    'jl,Lik->Lijkl',
-                    prefac[probe_b_ix, probe_d_ix],
-                    self.cl_5d[probe_a_ix, probe_c_ix],
-                )
-                b = np.einsum(
-                    'ik,Ljl->Lijkl',
-                    prefac[probe_a_ix, probe_c_ix],
-                    self.cl_5d[probe_b_ix, probe_d_ix],
-                )
-                c = np.einsum(
-                    'jk,Lil->Lijkl',
-                    prefac[probe_b_ix, probe_c_ix],
-                    self.cl_5d[probe_a_ix, probe_d_ix],
-                )
-                d = np.einsum(
-                    'il,Ljk->Lijkl',
-                    prefac[probe_a_ix, probe_d_ix],
-                    self.cl_5d[probe_b_ix, probe_c_ix],
-                )
-                integrand_5d = a + b + c + d
-
-                # compress integrand selecting only unique zpairs
-                assert ind_ab.shape[1] == 2, (
-                    "ind_ab must have two columns, maybe you didn't cut it"
-                )
-                assert ind_cd.shape[1] == 2, (
-                    "ind_cd must have two columns, maybe you didn't cut it"
-                )
-
-                integrand_3d = sl.cov_6D_to_4D_blocks(
-                    cov_6D=integrand_5d,
-                    nbl=self.nbl,
-                    npairs_AB=zpairs_ab,
-                    npairs_CD=zpairs_cd,
-                    ind_AB=ind_ab,
-                    ind_CD=ind_cd,
-                )
-
-                integrand_2d = integrand_3d.reshape(self.nbl, -1)
-                integrand_2d *= self.ell_values[:, None]
-                integrand_2d /= 2 * np.pi * self.amax
-
-                result_levin = integrate_bessel_double_wrapper(
-                    integrand_2d,
-                    x_values=self.ell_values,
-                    bessel_args=self.theta_centers,
-                    bessel_type=3,
-                    ell_1=mu,
-                    ell_2=nu,
-                    n_jobs=self.n_jobs,
-                    **self.levin_prec_kw,
-                )
-                print(f'... Done in: {(time.time() - start):.2f} s')
-
-                cov_mix_sb_4d = result_levin.reshape(
-                    self.nbt, self.nbt, zpairs_ab, zpairs_cd
-                )
-                self.cov_mix_sb_6d = sl.cov_4D_to_6D_blocks(
-                    cov_mix_sb_4d,
-                    nbl=self.nbt,
-                    zbins=self.zbins,
-                    ind_ab=ind_ab,
-                    ind_cd=ind_cd,
-                    symmetrize_output_ab=False,
-                    symmetrize_output_cd=False,
                 )
 
             elif term == 'gauss_ell':
@@ -1502,7 +1592,7 @@ class CovRealSpace:
                     )
                 )
 
-                self.cov_sn_sb_6d = self.cov_sn_rs(
+                self.cov_sn_rs_6d = self.cov_sn_rs(
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
                 )
 
@@ -1511,7 +1601,7 @@ class CovRealSpace:
                     + cov_mix_sb_hs_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
                 )
 
-                self.cov_g_sb_6d = integrate_bessel_double_wrapper(
+                self.cov_g_rs_6d = integrate_bessel_double_wrapper(
                     integrand=cov_g_hs_6d.reshape(self.nbl, -1)
                     * self.ell_values[:, None]
                     * self.ell_values[:, None],
@@ -1523,55 +1613,58 @@ class CovRealSpace:
                     n_jobs=self.n_jobs,
                     **self.levin_prec_kw,
                 )
-                self.cov_g_sb_6d = self.cov_g_sb_6d.reshape(
+                self.cov_g_rs_6d = self.cov_g_rs_6d.reshape(
                     self.nbt, self.nbt, self.zbins, self.zbins, self.zbins, self.zbins
                 )
 
                 norm = 4 * np.pi**2
-                self.cov_g_sb_6d /= norm
-                self.cov_g_sb_6d += (
-                    self.cov_sn_sb_6d
+                self.cov_g_rs_6d /= norm
+                self.cov_g_rs_6d += (
+                    self.cov_sn_rs_6d
                 )  # diagonal is noise-dominated, you won't see much of a diff
 
+            # elif term in ['ssc', 'cng']:
+            # warnings.warn('HS covs loaded from file', stacklevel=2)
+            # get OC SSC in ell space
+            # covs_oc_hs = oc_cov_list_to_array(f'{covs_path}/{cov_hs_list_name}.dat')
+            # (
+            #     cov_sva_oc_3x2pt_10D,
+            #     cov_mix_oc_3x2pt_10D,
+            #     cov_sn_oc_3x2pt_10D,
+            #     cov_g_oc_3x2pt_10D,
+            #     cov_ssc_oc_3x2pt_10D,
+            # ) = covs_oc_hs
+
+            # np.savez(
+            #     f'{covs_path}/covs_oc_10D.npz',
+            #     cov_sva_oc_3x2pt_10D=cov_sva_oc_3x2pt_10D,
+            #     cov_mix_oc_3x2pt_10D=cov_mix_oc_3x2pt_10D,
+            #     cov_sn_oc_3x2pt_10D=cov_sn_oc_3x2pt_10D,
+            #     cov_g_oc_3x2pt_10D=cov_g_oc_3x2pt_10D,
+            #     cov_ssc_oc_3x2pt_10D=cov_ssc_oc_3x2pt_10D,
+            # )
+
+            # covs_oc_hs_npz = np.load(f'{covs_oc_path}/covs_oc_10D.npz')
+            # cov_ssc_oc_3x2pt_10D = covs_oc_hs_npz['cov_ssc_oc_3x2pt_10D']
+            # cov_cng_oc_3x2pt_10D = covs_oc_hs_npz['cov_ng_oc_3x2pt_10D']
+
             elif term in ['ssc', 'cng']:
-                warnings.warn('HS covs loaded from file', stacklevel=2)
-                # get OC SSC in ell space
-                # covs_oc_hs = oc_cov_list_to_array(f'{covs_path}/{cov_hs_list_name}.dat')
-                # (
-                #     cov_sva_oc_3x2pt_10D,
-                #     cov_mix_oc_3x2pt_10D,
-                #     cov_sn_oc_3x2pt_10D,
-                #     cov_g_oc_3x2pt_10D,
-                #     cov_ssc_oc_3x2pt_10D,
-                # ) = covs_oc_hs
+                # set normalization depending on the term
+                norm = 4 * np.pi**2
+                if term == 'cng':
+                    norm *= self.amax
 
-                # np.savez(
-                #     f'{covs_path}/covs_oc_10D.npz',
-                #     cov_sva_oc_3x2pt_10D=cov_sva_oc_3x2pt_10D,
-                #     cov_mix_oc_3x2pt_10D=cov_mix_oc_3x2pt_10D,
-                #     cov_sn_oc_3x2pt_10D=cov_sn_oc_3x2pt_10D,
-                #     cov_g_oc_3x2pt_10D=cov_g_oc_3x2pt_10D,
-                #     cov_ssc_oc_3x2pt_10D=cov_ssc_oc_3x2pt_10D,
-                # )
+                cov_ng_hs_10d = getattr(cov_obj, f'cov_3x2pt_{term}_10D')
 
-                covs_oc_hs_npz = np.load(f'{covs_oc_path}/covs_oc_10D.npz')
-                cov_ssc_oc_3x2pt_10D = covs_oc_hs_npz['cov_ssc_oc_3x2pt_10D']
-                # cov_cng_oc_3x2pt_10D = covs_oc_hs_npz['cov_ng_oc_3x2pt_10D']
-
-                if term == 'ssc':
-                    cov_ng_oc_3x2pt_10D = cov_ssc_oc_3x2pt_10D
-                    norm = 4 * np.pi**2
-                elif term == 'cng':
-                    cov_ng_oc_3x2pt_10D = cov_cng_oc_3x2pt_10D
-                    norm = 4 * np.pi**2 * self.amax
-
-                # project it to real space using Levin
-                cov_ng_oc_hs_6d = cov_ng_oc_3x2pt_10D[
+                # project hs nf cov to real space using Levin
+                cov_ng_hs_6d = cov_ng_hs_10d[
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...
                 ]
 
-                cov_ng_sb_6d = dl1dl2_bessel_wrapper(
-                    cov_hs=cov_ng_oc_hs_6d,
+                breakpoint()
+
+                cov_ng_rs_6d = dl1dl2_bessel_wrapper(
+                    cov_hs=cov_ng_hs_6d,
                     mu=mu,
                     nu=nu,
                     ells=self.ell_values,
@@ -1580,7 +1673,12 @@ class CovRealSpace:
                     n_jobs=self.n_jobs,
                     levin_prec_kw=self.levin_prec_kw,
                 )
-                cov_ng_sb_6d /= norm  # TODO Amax still missing (?)
+                cov_ng_rs_6d /= norm
+
+                setattr(self, f'cov_{term}_rs_6d', cov_ng_rs_6d)
+                
+            self.cov_sb_dict_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix, ...] = getattr(self, f'cov_{term}_rs_6d')
+            
 
             """
             # ! ======================================= ONECOVARIANCE ==========================

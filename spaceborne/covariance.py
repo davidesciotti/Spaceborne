@@ -267,7 +267,7 @@ class SpaceborneCovariance:
         cl_3x2pt_5D = ccl_obj.cl_3x2pt_5d
 
         # build noise vector
-        sigma_eps2 = (self.cov_cfg['sigma_eps_i'] * np.sqrt(2)) ** 2
+        sigma_eps2 = (np.array(self.cov_cfg['sigma_eps_i']) * np.sqrt(2)) ** 2
         ng_shear = np.array(self.cfg['nz']['ngal_sources'])
         ng_clust = np.array(self.cfg['nz']['ngal_lenses'])
         noise_3x2pt_4D = sl.build_noise(

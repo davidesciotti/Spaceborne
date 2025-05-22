@@ -464,7 +464,7 @@ class PycclClass:
 
                 if tkka_abcd is None:
                     tkka_abcd = self._compute_and_save_tkka(
-                        which_ng_cov, tkka_path, k_a_str, probe_block, p_of_k_a=None
+                        which_ng_cov, tkka_path, k_a_str, probe_block, p_of_k_a=p_of_k_a
                     )
 
                 self.tkka_dict[A, B, C, D] = tkka_abcd

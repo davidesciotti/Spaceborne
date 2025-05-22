@@ -147,8 +147,7 @@ def plot_cls():
 # ! ================================== PREPARATION =====================================
 # ! ====================================================================================
 
-_config_path = '/home/cosmo/davide.sciotti/data/common_data/cov_sb_for_marco/config_marco.yaml'
-# _config_path = 'config.yaml' if os.path.exists('config.yaml') else None
+_config_path = 'config.yaml' if os.path.exists('config.yaml') else None
 cfg = load_config(_config_path)
 
 # ! set some convenence variables, just to make things more readable
@@ -869,6 +868,17 @@ else:
     nmt_obj = None
 
 
+# ! =============== real space cov, put here for simplicity for the moment ==============
+if cfg['cov_real_space']['do_real_space']:
+    from spaceborne import cov_real_space
+
+    # initialize cov_rs_obj and set a couple useful attributes
+    cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj)
+    cov_rs_obj.set_ind_and_zpairs(ind, zbins)
+    cov_rs_obj.set_cls(ccl_obj=ccl_obj, cl_ccl_kwargs=cl_ccl_kwargs)
+    cov_rs_obj.compute_realspace_cov()
+
+    assert False, 'stop here'
 
 
 # !  =============================== Build Gaussian covs ===============================

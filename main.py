@@ -43,6 +43,7 @@ except ImportError:
 # current_dir = Path(__file__).resolve().parent
 # parent_dir = current_dir.parent
 
+
 warnings.filterwarnings(
     'ignore',
     message='.*FigureCanvasAgg is non-interactive, and thus cannot be shown.*',
@@ -160,8 +161,6 @@ magnification_bias_fit_fiducials = np.array(
 )
 # this has the same length as ngal_sources, as checked below
 zbins = len(cfg['nz']['ngal_lenses'])
-probe_ordering = cfg['covariance']['probe_ordering']  # TODO deprecate this
-GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 output_path = cfg['misc']['output_path']
 clr = cm.rainbow(np.linspace(0, 1, zbins))
 shift_nz = cfg['nz']['shift_nz']
@@ -209,7 +208,7 @@ cfg['OneCovariance']['path_to_oc_executable'] = '/home/davide/Documenti/Lavoro/P
 cfg['OneCovariance']['path_to_oc_ini'] = './input/config_3x2pt_pure_Cell_general.ini'
 cfg['OneCovariance']['consistency_checks'] = False
 
-cfg['misc']['save_output_as_benchmark'] = True
+cfg['misc']['save_output_as_benchmark'] = False
 cfg['misc']['bench_filename'] = (
     '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}'
     '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_devmerge3'
@@ -233,6 +232,16 @@ cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [0.1, 0.16681005, 0.27825594, 0.464158
 # - flat_sky: use the flat-sky expression (valid for PyCCL only)
 #   has to be rescaled by fsky
 cfg['covariance']['which_sigma2_b'] = 'from_input_mask'  # Type: str | None
+
+# ordering of the different 3x2pt probes in the covariance matrix
+cfg['covariance']['probe_ordering'] = [
+    ['L', 'L'],
+    ['G', 'L'],
+    ['G', 'G'],
+]  # Type: list[list[str]]
+
+probe_ordering = cfg['covariance']['probe_ordering']  # TODO deprecate this
+GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 # ! END HARDCODED OPTIONS/PARAMETERS
 
 # convenence settings that have been hardcoded
@@ -249,7 +258,7 @@ if cfg['probe_selection']['GG']:
     probe_comb_names.append('GG')
 
 probe_comb_names = sl.build_probe_list(
-    probe_comb_names, include_cross_terms=cfg['probe_selection']['cross_terms']
+    probe_comb_names, include_cross_terms=cfg['probe_selection']['cross_cov']
 )
 probe_comb_idxs = [
     [probename_dict_inv[idx] for idx in comb] for comb in probe_comb_names
@@ -565,7 +574,7 @@ plt.figure()
 for zi in range(zbins):
     plt.plot(z_grid, ccl_obj.gal_bias_2d[:, zi], label=f'$z_{{{zi}}}$', c=clr[zi])
 plt.xlabel(r'$z$')
-plt.ylabel(r'$b_{g}(z)$')
+plt.ylabel(r'$b_{g, i}(z)$')
 plt.legend()
 
 
@@ -637,7 +646,7 @@ wf_lensing = ccl_obj.wf_lensing_arr
 wf_names_list = [
     'delta',
     'gamma',
-    'ia',
+    'IA',
     'magnification',
     'lensing',
     gal_kernel_plt_title,
@@ -743,6 +752,7 @@ ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[
     : ell_obj.nbl_3x2pt, :, :
 ].transpose(0, 2, 1)
 ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[: ell_obj.nbl_3x2pt, :, :]
+
 plot_cls()
 
 
@@ -1025,8 +1035,6 @@ else:
     oc_obj = None
 
 if compute_sb_ssc:
-    print('Start SSC computation with Spaceborne...')
-
     # ! ================================= Probe responses ==============================
     resp_obj = responses.SpaceborneResponses(
         cfg=cfg, k_grid=k_grid, z_grid=z_grid_trisp, ccl_obj=ccl_obj
@@ -1252,7 +1260,6 @@ if compute_sb_ssc:
         np.save(f'{output_path}/cache/zgrid_sigma2_b_{zgrid_str}.npy', z_grid)
 
     # ! 4. Perform the integration calling the Julia module
-    print('Computing the SSC integral...')
     start = time.perf_counter()
     cov_ssc_3x2pt_dict_8D = cov_obj.ssc_integral_julia(
         d2CLL_dVddeltab=d2CLL_dVddeltab,
@@ -1319,8 +1326,17 @@ cov_dict = cov_obj.cov_dict
 
 
 # ! ============================ plot & tests ==========================================
-for key in cov_dict:
-    sl.matshow(cov_dict[key], title=key)
+with np.errstate(invalid='ignore', divide='ignore'):
+    for key in cov_dict:
+        fig, ax = plt.subplots(1, 2, figsize=(10, 6))
+        ax[0].matshow(np.log10(cov_dict[key]))
+        ax[1].matshow(sl.cov2corr(cov_dict[key]), vmin=-1, vmax=1, cmap='RdBu_r')
+
+        plt.colorbar(ax[0].images[0], ax=ax[0], shrink=0.8)
+        plt.colorbar(ax[1].images[0], ax=ax[1], shrink=0.8)
+        ax[0].set_title('log10 cov')
+        ax[1].set_title('corr')
+        fig.suptitle(f'{key.replace("cov_", "")}', y=0.9)
 
 for which_cov in cov_dict:
     probe = which_cov.split('_')[1]

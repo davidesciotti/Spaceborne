@@ -198,7 +198,7 @@ covariance:
     # total ellipticity dispersion = sigma_eps
     # sigma_eps = (sigma_eps_i * np.sqrt(2))
     # Should be of length 'zbins'
-    sigma_eps_i: [0.26, 0.26, 0.26] # Type: float
+    sigma_eps_i: [0.26, 0.26, 0.26] # Type: list[float]
     
     # Whether to include the noise power spectra in the computation of the 
     # Gaussian covariance matrix.

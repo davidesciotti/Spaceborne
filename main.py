@@ -1389,9 +1389,9 @@ with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.dump(cfg, yaml_file, default_flow_style=False)
 
 # save cls
-sl.write_cl_tab('./output', 'cl_ll', ccl_obj.cl_ll_3d, ell_obj.ells_WL, zbins)
-sl.write_cl_tab('./output', 'cl_gl', ccl_obj.cl_gl_3d, ell_obj.ells_XC, zbins)
-sl.write_cl_tab('./output', 'cl_gg', ccl_obj.cl_gg_3d, ell_obj.ells_GC, zbins)
+sl.write_cl_tab(output_path, 'cl_ll', ccl_obj.cl_ll_3d, ell_obj.ells_WL, zbins)
+sl.write_cl_tab(output_path, 'cl_gl', ccl_obj.cl_gl_3d, ell_obj.ells_XC, zbins)
+sl.write_cl_tab(output_path, 'cl_gg', ccl_obj.cl_gg_3d, ell_obj.ells_GC, zbins)
 
 # save ell values
 header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']
@@ -1553,5 +1553,6 @@ for which_cov in cov_dict:
                 )
             else:
                 print('Matrix is symmetric. atol=0, rtol=1e-7')
+
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')

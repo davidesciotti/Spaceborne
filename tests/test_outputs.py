@@ -13,8 +13,6 @@ To run these tests:
     4.1  In particular, in main.py, comment out the lines:
            # cfg['misc']['save_output_as_benchmark'] = ...
            # cfg['misc']['bench_filename'] = ...
-           # if sl.is_main_branch():
-           #     cfg['nz']['shift_nz'] = False
     4.2  If you're testing the main branch, don't worry about 
          config/example_config separation (UPDATE 15/05/2025: I removed example_config)
 5.  Open this script and make sure you indicate the relevant benchmark file name
@@ -115,7 +113,7 @@ bench_names = [os.path.basename(file) for file in bench_names]
 bench_names = [bench_name.replace('.npz', '') for bench_name in bench_names]
 # ... or run specific tests
 bench_names = [
-    'output_GSpaceborne_SSCSpaceborne_cNGNone_KETrue_resphalo_model_b1gfrom_HOD_pskymerge_refcut',
+    'output_GSpaceborne_SSCSpaceborne_cNGNone_KETrue_resphalo_model_b1gfrom_HOD_DEMOmerge',
 ]
 
 main_script_path = f'{ROOT}/Spaceborne/main.py'

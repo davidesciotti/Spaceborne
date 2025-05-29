@@ -70,7 +70,7 @@ def load_config(_config_path):
             default=_config_path,
         )
         parser.add_argument(
-            '--show_plots',
+            '--show-plots',
             action='store_true',
             help='Show plots if specified',
             required=False,
@@ -78,8 +78,8 @@ def load_config(_config_path):
         args = parser.parse_args()
         config_path = args.config
 
-    # Only switch to Agg if not running interactively and --show_plots is not specified.
-    if 'ipykernel_launcher.py' not in sys.argv[0] and '--show_plots' not in sys.argv:
+    # Only switch to Agg if not running interactively and --show-plots is not specified.
+    if 'ipykernel_launcher.py' not in sys.argv[0] and '--show-plots' not in sys.argv:
         import matplotlib
 
         matplotlib.use('Agg')
@@ -147,7 +147,6 @@ def plot_cls():
 # ! ====================================================================================
 # ! ================================== PREPARATION =====================================
 # ! ====================================================================================
-
 
 cfg = load_config('config.yaml')
 
@@ -711,8 +710,8 @@ if cfg['C_ell']['use_input_cls']:
     ells_GC_in, cl_gg_3d_in = sl.import_cl_tab(cl_gg_tab)
 
     for _ells in [  # fmt: skip
-        ells_WL_in, ell_obj.ells_WL, 
-        ells_XC_in, ell_obj.ells_XC, 
+        ells_WL_in, ell_obj.ells_WL,
+        ells_XC_in, ell_obj.ells_XC,
         ells_GC_in, ell_obj.ells_GC,
     ]:  # fmt: skip
         assert np.all(np.diff(_ells)) > 0, 'ells are not sorted'
@@ -836,7 +835,7 @@ else:
 if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_cov']:
     from spaceborne import cov_partial_sky
 
-    # initialize nmt_cov_obj and set a couple useful attributes
+    # initialize nmt_obj and set a couple useful attributes
     nmt_cov_obj = cov_partial_sky.NmtCov(cfg, pvt_cfg, ccl_obj, ell_obj, mask_obj)
 
     # recompute Cls ell by ell
@@ -847,7 +846,7 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
         'nbl_tot does not match ell_max_3x2pt + 1'
     )
 
-    # set unbinned ells in nmt_cov_obj
+    # set unbinned ells in nmt_obj
     nmt_cov_obj.ells_3x2pt_unb = ells_3x2pt_unb
     nmt_cov_obj.nbl_3x2pt_unb = nbl_3x2pt_unb
 

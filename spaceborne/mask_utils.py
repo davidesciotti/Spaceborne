@@ -4,7 +4,6 @@ import healpy as hp
 import numpy as np
 
 from spaceborne import cosmo_lib
-from spaceborne import constants
 
 
 def get_mask_cl(mask: np.ndarray) -> tuple:
@@ -130,8 +129,8 @@ class Mask:
 
         if self.load_mask and self.nside is not None and self.nside != self.nside_mask:
             print(
-                f'Changing mask resolution from nside '
-                f'{self.nside_mask} to nside {self.nside}'
+                f'Changing mask resolution from nside = '
+                f'{self.nside_mask} to nside = {self.nside}'
             )
             self.mask = hp.ud_grade(map_in=self.mask, nside_out=self.nside)
 

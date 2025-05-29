@@ -1,6 +1,28 @@
-using NPZ
-using LoopVectorization
-using YAML
+using Pkg
+
+# List of packages to check and potentially install
+required_packages = ["NPZ", "LoopVectorization", "YAML"]
+
+for pkg_name in required_packages
+    try
+        # attempts to load the package; convert the string to a symbol using Meta
+        eval(Meta.parse("using $pkg_name"))
+        println("Package '$pkg_name' is loaded.")
+    catch e
+        # If 'using' fails, it means the package isn't available or there's an error.
+        println("Error loading package '$pkg_name': $e")
+        println("Attempting to install '$pkg_name'...")
+        try
+            Pkg.add(pkg_name)
+            println("Package '$pkg_name' installed successfully. Retrying load...")
+            # After successful installation, try loading again
+            eval(Meta.parse("using $pkg_name"))
+            println("Package '$pkg_name' loaded after installation.")
+        catch install_e
+            println("Failed to install and load package '$pkg_name': $install_e")
+        end
+    end
+end
 
 function SSC_integral_6D_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, cl_integral_prefactor, sigma2, z_array::Array)
     """ "brute-force" implementation, returns a 6D array. many args are unnecessary, but I keep the same format for a 

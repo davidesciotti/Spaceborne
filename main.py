@@ -797,6 +797,15 @@ else:
 #     ),
 # }
 
+
+# cov_rs_2d_full = np.hstack((cov_obj.cov_rs_obj.cov_rs_2d_dict[xipxip, xipxim, xipxip]))
+
+# for _, cov in cov_obj.cov_rs_obj.cov_rs_full_2d:
+#     print(_)
+#     sl.plot_correlation_matrix(corr_dav)
+#     plt.title(_)
+
+
 # ! 3d cl ell cuts (*after* BNT!!)
 # TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance
 # TODO and derivatives level)
@@ -868,7 +877,7 @@ else:
     nmt_obj = None
 
 
-# ! =============== real space cov, put here for simplicity for the moment ==============
+# ! =============== Init real space cov object, put here for simplicity for the moment ==============
 if cfg['cov_real_space']['do_real_space']:
     from spaceborne import cov_real_space
 
@@ -876,13 +885,12 @@ if cfg['cov_real_space']['do_real_space']:
     cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj)
     cov_rs_obj.set_ind_and_zpairs(ind, zbins)
     cov_rs_obj.set_cls(ccl_obj=ccl_obj, cl_ccl_kwargs=cl_ccl_kwargs)
-    cov_rs_obj.compute_realspace_cov()
-
-    assert False, 'stop here'
 
 
 # !  =============================== Build Gaussian covs ===============================
-cov_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_obj, nmt_obj, bnt_matrix)
+cov_obj = sb_cov.SpaceborneCovariance(
+    cfg, pvt_cfg, ell_obj, nmt_obj, bnt_matrix, cov_rs_obj
+)
 cov_obj.set_ind_and_zpairs(ind, zbins)
 cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(
@@ -1549,3 +1557,24 @@ for which_cov in cov_dict:
                 print('Matrix is symmetric. atol=0, rtol=1e-7')
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')
+
+
+cov_rob = np.genfromtxt(
+    '/home/davide/Documenti/Lavoro/Programmi/!archive/Spaceborne_bu/realspace_test/covariance_matrix_3x2_rcf_v2_gauss.mat'
+)
+corr_dav = sl.cov2corr(cov_obj.cov_rs_obj.cov_rs_full_2d)
+corr_rob = sl.cov2corr(cov_rob)
+sl.compare_arrays(corr_rob, corr_dav, log_array=False)
+
+sl.plot_correlation_matrix(corr_rob)
+
+elem_auto_rs = cfg['cov_real_space']['theta_bins'] * zpairs_auto
+elem_cross_rs = cfg['cov_real_space']['theta_bins'] * zpairs_cross
+elem_apc_rs = elem_auto_rs + elem_cross_rs
+plt.axvline(elem_auto_rs, color='k', ls='--')
+plt.axhline(elem_auto_rs, color='k', ls='--')
+plt.axhline(elem_apc_rs, color='k', ls='--')
+plt.axhline(elem_apc_rs, color='k', ls='--')
+plt.title('corr RS tot')
+
+assert False, 'stop here to compare G against Robert'

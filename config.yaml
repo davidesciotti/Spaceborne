@@ -171,7 +171,7 @@ BNT:
 
 covariance:
     G: True # Type: bool. Enable/disable the Gaussian covariance term.
-    SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
+    SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
     cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
     coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
@@ -249,11 +249,11 @@ covariance:
     cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str. 
 
 cov_real_space:
-    do_real_space: True
+    do_real_space: True  # Type: bool. Whether to compute the 
     # theta binning for the real-space covariance matrix
     theta_min_arcmin: 50
     theta_max_arcmin: 300
-    theta_bins: 50
+    theta_bins: 20
 
 
 PyCCL:
@@ -304,7 +304,7 @@ precision:
     # Integration method for the covariance projection to real space. Options:
     # - 'simps': uses simpson integration. This is faster but less accurate
     # - 'levin': uses levin integration. This is slower but more accurate
-    cov_realspace_integration_method: 'levin'  # Type: str.
+    cov_realspace_integration_method: 'simps'  # Type: str.
 
     # Precision settings for pylevin. See the official documentation for more details:
     # https://levin-bessel.readthedocs.io/en/latest/index.html
@@ -318,9 +318,9 @@ precision:
 
     # ell binning used for the projection of the covariance from harmonic space to real space.
     # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
-    ell_min: 1
-    ell_max: 100_000
-    ell_bins: 200
+    ell_min_rs: 1
+    ell_max_rs: 100_000
+    ell_bins_rs: 200
 
 
 

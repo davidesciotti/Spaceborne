@@ -3481,13 +3481,9 @@ def cov2corr(covariance):
 
     with np.errstate(divide='ignore', invalid='ignore'):
         correlation = np.divide(covariance, outer_v)
-        correlation[covariance == 0] = (
-            0  # Ensure zero covariance entries are explicitly zero
-        )
-        correlation[~np.isfinite(correlation)] = 0  # Set any NaN or inf values to 0
-
-    # Ensure diagonal elements are exactly 1
-    # np.fill_diagonal(correlation, 1)
+         # Ensure zero covariance entries are explicitly zero
+        correlation[covariance == 0] = 0
+        # correlation[~np.isfinite(correlation)] = 0  # Set any NaN or inf values to 0
 
     return correlation
 

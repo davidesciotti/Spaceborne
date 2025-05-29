@@ -227,7 +227,7 @@ test_g_space['nz']['shift_nz'] = (True, False)
 test_g_space['covariance']['G'] = True
 test_g_space['covariance']['SSC'] = False
 test_g_space['covariance']['cNG'] = False
-test_g_space['covariance']['noiseless_spectra'] = (True, False)
+test_g_space['covariance']['no_sampling_noise'] = (True, False)
 
 
 test_ssc_space = {

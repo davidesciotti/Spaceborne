@@ -43,6 +43,7 @@ except ImportError:
 # current_dir = Path(__file__).resolve().parent
 # parent_dir = current_dir.parent
 
+
 warnings.filterwarnings(
     'ignore',
     message='.*FigureCanvasAgg is non-interactive, and thus cannot be shown.*',
@@ -147,8 +148,7 @@ def plot_cls():
 # ! ================================== PREPARATION =====================================
 # ! ====================================================================================
 
-_config_path = 'config.yaml' if os.path.exists('config.yaml') else None
-cfg = load_config(_config_path)
+cfg = load_config('config.yaml')
 
 # ! set some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']
@@ -158,8 +158,6 @@ magnification_bias_fit_fiducials = np.array(
 )
 # this has the same length as ngal_sources, as checked below
 zbins = len(cfg['nz']['ngal_lenses'])
-probe_ordering = cfg['covariance']['probe_ordering']  # TODO deprecate this
-GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 output_path = cfg['misc']['output_path']
 clr = cm.rainbow(np.linspace(0, 1, zbins))
 shift_nz = cfg['nz']['shift_nz']
@@ -231,6 +229,16 @@ cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [0.1, 0.16681005, 0.27825594, 0.464158
 # - flat_sky: use the flat-sky expression (valid for PyCCL only)
 #   has to be rescaled by fsky
 cfg['covariance']['which_sigma2_b'] = 'from_input_mask'  # Type: str | None
+
+# ordering of the different 3x2pt probes in the covariance matrix
+cfg['covariance']['probe_ordering'] = [
+    ['L', 'L'],
+    ['G', 'L'],
+    ['G', 'G'],
+]  # Type: list[list[str]]
+
+probe_ordering = cfg['covariance']['probe_ordering']  # TODO deprecate this
+GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 # ! END HARDCODED OPTIONS/PARAMETERS
 
 # convenence settings that have been hardcoded
@@ -247,7 +255,7 @@ if cfg['probe_selection']['GG']:
     probe_comb_names.append('GG')
 
 probe_comb_names = sl.build_probe_list(
-    probe_comb_names, include_cross_terms=cfg['probe_selection']['cross_terms']
+    probe_comb_names, include_cross_terms=cfg['probe_selection']['cross_cov']
 )
 probe_comb_idxs = [
     [probename_dict_inv[idx] for idx in comb] for comb in probe_comb_names
@@ -444,6 +452,7 @@ ell_obj = ell_utils.EllBinning(cfg)
 ell_obj.build_ell_bins()
 ell_obj._validate_bins()
 
+
 # ! ===================================== Mask =========================================
 mask_obj = mask_utils.Mask(cfg['mask'])
 mask_obj.process()
@@ -562,7 +571,7 @@ plt.figure()
 for zi in range(zbins):
     plt.plot(z_grid, ccl_obj.gal_bias_2d[:, zi], label=f'$z_{{{zi}}}$', c=clr[zi])
 plt.xlabel(r'$z$')
-plt.ylabel(r'$b_{g}(z)$')
+plt.ylabel(r'$b_{g, i}(z)$')
 plt.legend()
 
 
@@ -634,7 +643,7 @@ wf_lensing = ccl_obj.wf_lensing_arr
 wf_names_list = [
     'delta',
     'gamma',
-    'ia',
+    'IA',
     'magnification',
     'lensing',
     gal_kernel_plt_title,
@@ -700,6 +709,13 @@ if cfg['C_ell']['use_input_cls']:
     ells_XC_in, cl_gl_3d_in = sl.import_cl_tab(cl_gl_tab)
     ells_GC_in, cl_gg_3d_in = sl.import_cl_tab(cl_gg_tab)
 
+    for _ells in [  # fmt: skip
+        ells_WL_in, ell_obj.ells_WL,
+        ells_XC_in, ell_obj.ells_XC,
+        ells_GC_in, ell_obj.ells_GC,
+    ]:  # fmt: skip
+        assert np.all(np.diff(_ells)) > 0, 'ells are not sorted'
+
     if not np.allclose(ells_WL_in, ell_obj.ells_WL, atol=0, rtol=1e-5):
         cl_ll_3d_spline = CubicSpline(ells_WL_in, cl_ll_3d_in, axis=0)
         cl_ll_3d_in = cl_ll_3d_spline(ell_obj.ells_WL)
@@ -740,6 +756,7 @@ ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[
     : ell_obj.nbl_3x2pt, :, :
 ].transpose(0, 2, 1)
 ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[: ell_obj.nbl_3x2pt, :, :]
+
 plot_cls()
 
 
@@ -828,7 +845,7 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
     from spaceborne import cov_partial_sky
 
     # initialize nmt_obj and set a couple useful attributes
-    nmt_obj = cov_partial_sky.NmtCov(cfg, pvt_cfg, ccl_obj, ell_obj, mask_obj)
+    nmt_cov_obj = cov_partial_sky.NmtCov(cfg, pvt_cfg, ccl_obj, ell_obj, mask_obj)
 
     # recompute Cls ell by ell
     ell_max_3x2pt = ell_obj.ell_max_3x2pt
@@ -839,8 +856,8 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
     )
 
     # set unbinned ells in nmt_obj
-    nmt_obj.ells_3x2pt_unb = ells_3x2pt_unb
-    nmt_obj.nbl_3x2pt_unb = nbl_3x2pt_unb
+    nmt_cov_obj.ells_3x2pt_unb = ells_3x2pt_unb
+    nmt_cov_obj.nbl_3x2pt_unb = nbl_3x2pt_unb
 
     cl_ll_unb_3d = ccl_obj.compute_cls(
         ells_3x2pt_unb,
@@ -869,9 +886,9 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
         cl_ll_unb_3d, cl_gl_unb_3d, np.array(cfg['C_ell']['mult_shear_bias']), zbins
     )
 
-    nmt_obj.cl_ll_unb_3d = cl_ll_unb_3d
-    nmt_obj.cl_gl_unb_3d = cl_gl_unb_3d
-    nmt_obj.cl_gg_unb_3d = cl_gg_unb_3d
+    nmt_cov_obj.cl_ll_unb_3d = cl_ll_unb_3d
+    nmt_cov_obj.cl_gl_unb_3d = cl_gl_unb_3d
+    nmt_cov_obj.cl_gg_unb_3d = cl_gg_unb_3d
 
 else:
     nmt_obj = None
@@ -1043,8 +1060,6 @@ else:
     oc_obj = None
 
 if compute_sb_ssc:
-    print('Start SSC computation with Spaceborne...')
-
     # ! ================================= Probe responses ==============================
     resp_obj = responses.SpaceborneResponses(
         cfg=cfg, k_grid=k_grid, z_grid=z_grid_trisp, ccl_obj=ccl_obj
@@ -1270,7 +1285,6 @@ if compute_sb_ssc:
         np.save(f'{output_path}/cache/zgrid_sigma2_b_{zgrid_str}.npy', z_grid)
 
     # ! 4. Perform the integration calling the Julia module
-    print('Computing the SSC...')
     start = time.perf_counter()
     cov_ssc_3x2pt_dict_8D = cov_obj.ssc_integral_julia(
         d2CLL_dVddeltab=d2CLL_dVddeltab,
@@ -1337,8 +1351,17 @@ cov_dict = cov_obj.cov_dict
 
 
 # ! ============================ plot & tests ==========================================
-for key in cov_dict:
-    sl.matshow(cov_dict[key], title=key)
+with np.errstate(invalid='ignore', divide='ignore'):
+    for key in cov_dict:
+        fig, ax = plt.subplots(1, 2, figsize=(10, 6))
+        ax[0].matshow(np.log10(cov_dict[key]))
+        ax[1].matshow(sl.cov2corr(cov_dict[key]), vmin=-1, vmax=1, cmap='RdBu_r')
+
+        plt.colorbar(ax[0].images[0], ax=ax[0], shrink=0.8)
+        plt.colorbar(ax[1].images[0], ax=ax[1], shrink=0.8)
+        ax[0].set_title('log10 cov')
+        ax[1].set_title('corr')
+        fig.suptitle(f'{key.replace("cov_", "")}', y=0.9)
 
 for which_cov in cov_dict:
     probe = which_cov.split('_')[1]
@@ -1356,6 +1379,10 @@ for which_cov in cov_dict:
         save_func = np.savez_compressed
     elif cov_filename.endswith('.npy'):
         save_func = np.save
+    else:
+        raise ValueError(
+            f'the extension for cov_filename = {cov_filename} should be .npz or .npy'
+        )
 
     save_func(f'{output_path}/{cov_filename}', cov_dict[which_cov])
 
@@ -1391,9 +1418,9 @@ with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.dump(cfg, yaml_file, default_flow_style=False)
 
 # save cls
-sl.write_cl_tab('./output', 'cl_ll', ccl_obj.cl_ll_3d, ell_obj.ells_WL, zbins)
-sl.write_cl_tab('./output', 'cl_gl', ccl_obj.cl_gl_3d, ell_obj.ells_XC, zbins)
-sl.write_cl_tab('./output', 'cl_gg', ccl_obj.cl_gg_3d, ell_obj.ells_GC, zbins)
+sl.write_cl_tab(output_path, 'cl_ll', ccl_obj.cl_ll_3d, ell_obj.ells_WL, zbins)
+sl.write_cl_tab(output_path, 'cl_gl', ccl_obj.cl_gl_3d, ell_obj.ells_XC, zbins)
+sl.write_cl_tab(output_path, 'cl_gg', ccl_obj.cl_gg_3d, ell_obj.ells_GC, zbins)
 
 # save ell values
 header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']

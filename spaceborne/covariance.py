@@ -1,12 +1,9 @@
 import itertools
 import os
-import pickle
 import time
 from copy import deepcopy
 
 import numpy as np
-from scipy.integrate import simpson as simps
-from scipy.interpolate import RectBivariateSpline
 
 from spaceborne import bnt as bnt_utils
 from spaceborne import sb_lib as sl
@@ -279,7 +276,7 @@ class SpaceborneCovariance:
             sigma_eps2=sigma_eps2,
             ng_shear=ng_shear,
             ng_clust=ng_clust,
-            is_noiseless=self.cov_cfg['noiseless_spectra'],
+            is_noiseless=self.cov_cfg['no_sampling_noise'],
         )
 
         # create dummy ell axis, the array is just repeated along it
@@ -519,11 +516,11 @@ class SpaceborneCovariance:
             # of times (ell by ell)
             noise_3x2pt_unb_5d = np.repeat(
                 noise_3x2pt_4D[:, :, np.newaxis, :, :],
-                repeats=self.nmt_obj.nbl_3x2pt_unb,
+                repeats=self.nmt_cov_obj.nbl_3x2pt_unb,
                 axis=2,
             )
-            self.nmt_obj.noise_3x2pt_unb_5d = noise_3x2pt_unb_5d
-            self.cov_3x2pt_g_10D = self.nmt_obj.build_psky_cov()
+            self.nmt_cov_obj.noise_3x2pt_unb_5d = noise_3x2pt_unb_5d
+            self.cov_3x2pt_g_10D = self.nmt_cov_obj.build_psky_cov()
 
         if self.do_real_space:
         
@@ -641,7 +638,7 @@ class SpaceborneCovariance:
         # ! construct 10D total 3x2pt NG (SSC + NG) covariance matrix depending
         # ! on chosen cov and terms
         if self.include_ssc:
-            print(f'Including SSC from {self.ssc_code} in total covariance')
+            print('Including SSC in total covariance')
             if self.ssc_code == 'Spaceborne':
                 self.cov_3x2pt_ssc_10D = self._cov_8d_dict_to_10d_arr(
                     self.cov_ssc_sb_3x2pt_dict_8D
@@ -660,7 +657,7 @@ class SpaceborneCovariance:
             self.cov_3x2pt_ssc_10D = np.zeros_like(self.cov_3x2pt_g_10D)
 
         if self.include_cng:
-            print(f'Including SSC from {self.ssc_code} in total covariance')
+            print('Including cNG in total covariance')
             if self.cng_code == 'PyCCL':
                 self.cov_3x2pt_cng_10D = self._cov_8d_dict_to_10d_arr(
                     ccl_obj.cov_cng_ccl_3x2pt_dict_8D
@@ -889,10 +886,10 @@ class SpaceborneCovariance:
             mcm_3x2pt_arr = np.zeros(
                 (self.n_probes, self.n_probes, self.nbl_3x2pt, self.nbl_3x2pt)
             )
-            mcm_3x2pt_arr[0, 0] = self.nmt_obj.mcm_ee_binned
-            mcm_3x2pt_arr[1, 0] = self.nmt_obj.mcm_te_binned
-            mcm_3x2pt_arr[0, 1] = self.nmt_obj.mcm_et_binned
-            mcm_3x2pt_arr[1, 1] = self.nmt_obj.mcm_tt_binned
+            mcm_3x2pt_arr[0, 0] = self.nmt_cov_obj.mcm_ee_binned
+            mcm_3x2pt_arr[1, 0] = self.nmt_cov_obj.mcm_te_binned
+            mcm_3x2pt_arr[0, 1] = self.nmt_cov_obj.mcm_et_binned
+            mcm_3x2pt_arr[1, 1] = self.nmt_cov_obj.mcm_tt_binned
 
             cov_WL_ssc_6D = cov_partial_sky.couple_cov_6d(
                 mcm_3x2pt_arr[0, 0], cov_WL_ssc_6D, mcm_3x2pt_arr[0, 0].T

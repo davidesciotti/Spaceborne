@@ -147,8 +147,7 @@ def plot_cls():
 # ! ================================== PREPARATION =====================================
 # ! ====================================================================================
 
-_config_path = '/home/cosmo/davide.sciotti/data/common_data/cov_sb_for_marco/config_marco.yaml'
-# _config_path = 'config.yaml' if os.path.exists('config.yaml') else None
+_config_path = 'config.yaml' if os.path.exists('config.yaml') else None
 cfg = load_config(_config_path)
 
 # ! set some convenence variables, just to make things more readable

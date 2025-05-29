@@ -42,18 +42,19 @@ def print_cfg_onecov_ini(cfg_onecov_ini):
         print()  # Add a blank line for readability between sections
 
 
-def oc_cov_list_to_array(oc_output_path, n_probes_hs, nbl, zbins, df_chunk_size=50_000):
+def oc_cov_list_to_array_rs(
+    oc_output_covlist_path,
+    n_probes_rs,
+    nbt,
+    probe_idx_dict_short_oc,
+    zbins,
+    df_chunk_size=5_000_000,
+):
+    import pandas as pd
     import re
 
-    import pandas as pd
-
-    probe_idx_dict_ell = {
-        'm': 0,
-        'g': 1,
-    }
-
     # set df column names
-    with open(oc_output_path) as file:
+    with open(f'{oc_output_covlist_path}.dat') as file:
         header = (
             file.readline().strip()
         )  # Read the first line and strip newline characters
@@ -62,44 +63,55 @@ def oc_cov_list_to_array(oc_output_path, n_probes_hs, nbl, zbins, df_chunk_size=
     )
     column_names = header_list
 
-    print('Loading OC ell and z values...')
-    data = pd.read_csv(oc_output_path, usecols=['ell1', 'tomoi'], sep='\s+')
-    ells_oc_load = data['ell1'].unique()
-    tomoi_oc_load = data['tomoi'].unique()
+    data = pd.read_csv(
+        f'{oc_output_covlist_path}.dat', usecols=['theta1', 'tomoi'], sep='\s+'
+    )
 
-    cov_ell_indices = {ell_out: idx for idx, ell_out in enumerate(ells_oc_load)}
+    thetas_oc_load = data['theta1'].unique()
+    thetas_oc_load_rad = np.deg2rad(thetas_oc_load / 60)
+    cov_theta_indices = {theta_out: idx for idx, theta_out in enumerate(thetas_oc_load)}
+    nbt_oc = len(thetas_oc_load)
+
     # SB tomographic indices start from 0
+    tomoi_oc_load = data['tomoi'].unique()
     subtract_one = False
     if min(tomoi_oc_load) == 1:
         subtract_one = True
 
-    # import .list covariance file
-    shape = (n_probes_hs, n_probes_hs, n_probes_hs, n_probes_hs, # fmt: skip
-            nbl, nbl, zbins, zbins, zbins, zbins)  # fmt: skip
-    cov_g_oc_3x2pt_10D = np.zeros(shape)
-    cov_sva_oc_3x2pt_10D = np.zeros(shape)
-    cov_mix_oc_3x2pt_10D = np.zeros(shape)
-    cov_sn_oc_3x2pt_10D = np.zeros(shape)
-    cov_ssc_oc_3x2pt_10D = np.zeros(shape)
-    # cov_cng_oc_3x2pt_10D = np.zeros(shape)
-    # cov_tot_oc_3x2pt_10D = np.zeros(shape)
+    # ! import .list covariance file
+    shape = (
+        n_probes_rs,
+        n_probes_rs,
+        nbt_oc,
+        nbt_oc,
+        zbins,
+        zbins,
+        zbins,
+        zbins,
+    )
+    cov_g_oc_3x2pt_8D = np.zeros(shape)
+    cov_sva_oc_3x2pt_8D = np.zeros(shape)
+    cov_mix_oc_3x2pt_8D = np.zeros(shape)
+    cov_sn_oc_3x2pt_8D = np.zeros(shape)
+    cov_ssc_oc_3x2pt_8D = np.zeros(shape)
+    cov_cng_oc_3x2pt_8D = np.zeros(shape)
+    # cov_tot_oc_3x2pt_8D = np.zeros(shape)
 
-    print(f'Loading OneCovariance output from \n{oc_output_path}')
+    print(f'Loading OneCovariance output from {oc_output_covlist_path}.dat file...')
     for df_chunk in pd.read_csv(
-        oc_output_path,
+        f'{oc_output_covlist_path}.dat',
         sep='\s+',
         names=column_names,
         skiprows=1,
         chunksize=df_chunk_size,
     ):
-        probe_idx_a = df_chunk['#obs'].str[0].map(probe_idx_dict_ell).values
-        probe_idx_b = df_chunk['#obs'].str[1].map(probe_idx_dict_ell).values
-        probe_idx_c = df_chunk['#obs'].str[2].map(probe_idx_dict_ell).values
-        probe_idx_d = df_chunk['#obs'].str[3].map(probe_idx_dict_ell).values
+        # Vectorize the extraction of probe indices
+        probe_idx = df_chunk['#obs'].str[:].map(probe_idx_dict_short_oc).values
+        probe_idx_arr = np.array(probe_idx.tolist())  # now shape is (N, 4)
 
         # Map 'ell' values to their corresponding indices
-        ell1_idx = df_chunk['ell1'].map(cov_ell_indices).values
-        ell2_idx = df_chunk['ell2'].map(cov_ell_indices).values
+        theta1_idx = df_chunk['theta1'].map(cov_theta_indices).values
+        theta2_idx = df_chunk['theta2'].map(cov_theta_indices).values
 
         # Compute z indices
         if subtract_one:
@@ -109,45 +121,44 @@ def oc_cov_list_to_array(oc_output_path, n_probes_hs, nbl, zbins, df_chunk_size=
 
         # Vectorized assignment to the arrays
         index_tuple = (  # fmt: skip
-            probe_idx_a, probe_idx_b, probe_idx_c, probe_idx_d,
-            ell1_idx, ell2_idx, 
+            probe_idx_arr[:, 0], probe_idx_arr[:, 1], theta1_idx, theta2_idx,
             z_indices[:, 0], z_indices[:, 1], z_indices[:, 2], z_indices[:, 3],
         )  # fmt: skip
 
-        cov_sva_oc_3x2pt_10D[index_tuple] = df_chunk['covg sva'].values
-        cov_mix_oc_3x2pt_10D[index_tuple] = df_chunk['covg mix'].values
-        cov_sn_oc_3x2pt_10D[index_tuple] = df_chunk['covg sn'].values
-        cov_g_oc_3x2pt_10D[index_tuple] = (
+        cov_sva_oc_3x2pt_8D[index_tuple] = df_chunk['covg sva'].values
+        cov_mix_oc_3x2pt_8D[index_tuple] = df_chunk['covg mix'].values
+        cov_sn_oc_3x2pt_8D[index_tuple] = df_chunk['covg sn'].values
+        cov_g_oc_3x2pt_8D[index_tuple] = (
             df_chunk['covg sva'].values
             + df_chunk['covg mix'].values
             + df_chunk['covg sn'].values
         )
-        cov_ssc_oc_3x2pt_10D[index_tuple] = df_chunk['covssc'].values
-        # cov_cng_oc_3x2pt_10D[index_tuple] = df_chunk['covng'].values
-        # cov_tot_oc_3x2pt_10D[index_tuple] = df_chunk['cov'].values
+        cov_ssc_oc_3x2pt_8D[index_tuple] = df_chunk['covssc'].values
+        cov_cng_oc_3x2pt_8D[index_tuple] = df_chunk['covng'].values
+        # cov_tot_oc_3x2pt_8D[index_tuple] = df_chunk['cov'].values
 
-    covs_10d = [
-        cov_sva_oc_3x2pt_10D,
-        cov_mix_oc_3x2pt_10D,
-        cov_sn_oc_3x2pt_10D,
-        cov_g_oc_3x2pt_10D,
-        cov_ssc_oc_3x2pt_10D,
-        # cov_cng_oc_3x2pt_10D,
-        # cov_tot_oc_3x2pt_10D
+    covs_8d = [
+        cov_sva_oc_3x2pt_8D,
+        cov_mix_oc_3x2pt_8D,
+        cov_sn_oc_3x2pt_8D,
+        cov_g_oc_3x2pt_8D,
+        cov_ssc_oc_3x2pt_8D,
+        cov_cng_oc_3x2pt_8D,
+        # cov_tot_oc_3x2pt_8D
     ]
 
-    for cov_10d in covs_10d:
-        cov_10d[0, 0, 1, 1] = deepcopy(
-            np.transpose(cov_10d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3))
+    for cov_8d in covs_8d:
+        cov_8d[0, 0, 1, 1] = deepcopy(
+            np.transpose(cov_8d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3))
         )
-        cov_10d[1, 0, 0, 0] = deepcopy(
-            np.transpose(cov_10d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3))
+        cov_8d[1, 0, 0, 0] = deepcopy(
+            np.transpose(cov_8d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3))
         )
-        cov_10d[1, 0, 1, 1] = deepcopy(
-            np.transpose(cov_10d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3))
+        cov_8d[1, 0, 1, 1] = deepcopy(
+            np.transpose(cov_8d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3))
         )
 
-    return covs_10d
+    return covs_8d
 
 
 class OneCovarianceInterface:
@@ -476,7 +487,7 @@ class OneCovarianceInterface:
                 self.cov_rs_cfg['theta_bins']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_type_lensing'] = 'lin'
-            
+
             cfg_oc_ini['covTHETAspace settings']['theta_min'] = str(
                 self.cov_rs_cfg['theta_min_arcmin']
             )
@@ -484,7 +495,7 @@ class OneCovarianceInterface:
                 self.cov_rs_cfg['theta_max_arcmin']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_type'] = 'lin'
-            
+
             cfg_oc_ini['covTHETAspace settings']['xi_pp'] = str(True)
             cfg_oc_ini['covTHETAspace settings']['xi_mm'] = str(True)
             cfg_oc_ini['covTHETAspace settings']['theta_accuracy'] = str(1e-3)

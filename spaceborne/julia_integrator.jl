@@ -360,6 +360,7 @@ ind_cross = ind_cross .+ 1
 # this is for the 3x2pt covariance
 probe_combinations = (("L", "L"), ("G", "L"), ("G", "G"))
 
+println("\n*** Computing SSC ****")
 println("specs:")
 println("nbl: ", nbl)
 println("zbins: ", zbins)

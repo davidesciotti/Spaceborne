@@ -148,10 +148,8 @@ def plot_cls():
 # ! ================================== PREPARATION =====================================
 # ! ====================================================================================
 
-# use the _dev config in the develop branch!
 
-_config_path = 'config.yaml' if os.path.exists('config.yaml') else None
-cfg = load_config(_config_path)
+cfg = load_config('config.yaml')
 
 # ! set some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']
@@ -711,6 +709,13 @@ if cfg['C_ell']['use_input_cls']:
     ells_WL_in, cl_ll_3d_in = sl.import_cl_tab(cl_ll_tab)
     ells_XC_in, cl_gl_3d_in = sl.import_cl_tab(cl_gl_tab)
     ells_GC_in, cl_gg_3d_in = sl.import_cl_tab(cl_gg_tab)
+
+    for _ells in [  # fmt: skip
+        ells_WL_in, ell_obj.ells_WL, 
+        ells_XC_in, ell_obj.ells_XC, 
+        ells_GC_in, ell_obj.ells_GC,
+    ]:  # fmt: skip
+        assert np.all(np.diff(_ells)) > 0, 'ells are not sorted'
 
     if not np.allclose(ells_WL_in, ell_obj.ells_WL, atol=0, rtol=1e-5):
         cl_ll_3d_spline = CubicSpline(ells_WL_in, cl_ll_3d_in, axis=0)
@@ -1354,6 +1359,10 @@ for which_cov in cov_dict:
         save_func = np.savez_compressed
     elif cov_filename.endswith('.npy'):
         save_func = np.save
+    else:
+        raise ValueError(
+            f'the extension for cov_filename = {cov_filename} should be .npz or .npy'
+        )
 
     save_func(f'{output_path}/{cov_filename}', cov_dict[which_cov])
 

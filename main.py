@@ -148,8 +148,7 @@ def plot_cls():
 # ! ================================== PREPARATION =====================================
 # ! ====================================================================================
 
-_config_path = 'config.yaml' if os.path.exists('config.yaml') else None
-cfg = load_config(_config_path)
+cfg = load_config('config.yaml')
 
 # ! set some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']

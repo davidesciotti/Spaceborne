@@ -207,10 +207,6 @@ class OneCovarianceInterface:
         # paths and filenems
         self.conda_base_path = self.get_conda_base_path()
         self.path_to_oc_executable = cfg['OneCovariance']['path_to_oc_executable']
-        self.path_to_oc_ini = cfg['OneCovariance']['path_to_oc_ini']
-        self.cov_filename = (
-            'cov_OC_{which_ng_cov:s}_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}.npz'
-        )
 
     def get_conda_base_path(self):
         try:
@@ -249,9 +245,7 @@ class OneCovarianceInterface:
         mult_shear_bias_list = np.array(self.cfg['C_ell']['mult_shear_bias'])
         n_eff_clust_list = self.cfg['nz']['ngal_lenses']
         n_eff_lensing_list = self.cfg['nz']['ngal_sources']
-        ellipticity_dispersion_list = [
-            self.cfg['covariance']['sigma_eps_i']
-        ] * self.zbins
+        ellipticity_dispersion_list = self.cfg['covariance']['sigma_eps_i']
 
         # set headers
         cfg_oc_ini['covariance terms'] = {}
@@ -302,11 +296,10 @@ class OneCovarianceInterface:
         # ! [output settings]
         cov_oc_fname = self.cfg['OneCovariance']['oc_output_filename']
         cfg_oc_ini['output settings']['directory'] = self.oc_path
-        cfg_oc_ini['output settings']['file'] = (
-            f'{cov_oc_fname}_list.dat',
-            f'{cov_oc_fname}_matrix.mat',
+        cfg_oc_ini['output settings']['file'] = ', '.join(
+            [f'{cov_oc_fname}_list.dat', f'{cov_oc_fname}_matrix.mat']
         )
-        cfg_oc_ini['output settings']['style'] = 'list', 'matrix'
+        cfg_oc_ini['output settings']['style'] = ', '.join(['list', 'matrix'])
         cfg_oc_ini['output settings']['list_style_spatial_first'] = str(True)
         cfg_oc_ini['output settings']['corrmatrix_plot'] = (
             f'{cov_oc_fname}_corrplot.pdf'
@@ -318,7 +311,6 @@ class OneCovarianceInterface:
         cfg_oc_ini['output settings']['use_tex'] = str(False)
 
         # ! [covELLspace settings]
-
         np.testing.assert_allclose(
             np.diff(self.z_grid_trisp_sb)[0],
             np.diff(self.z_grid_trisp_sb),
@@ -336,9 +328,9 @@ class OneCovarianceInterface:
         cfg_oc_ini['covELLspace settings']['limber'] = str(True)
         cfg_oc_ini['covELLspace settings']['nglimber'] = str(True)
         cfg_oc_ini['covELLspace settings']['delta_z'] = str(delta_z)
-        cfg_oc_ini['covELLspace settings']['tri_delta_z'] = str(delta_z)
-        # ! PRECISION PARAMETER MODIFIED IN THE PAST (500 -> 1000)
-        cfg_oc_ini['covELLspace settings']['integration_steps'] = str(500)  
+        cfg_oc_ini['covELLspace settings']['tri_delta_z'] = str(0.5)
+        # * PRECISION PARAMETER MODIFIED IN THE PAST (500 -> 1000)
+        cfg_oc_ini['covELLspace settings']['integration_steps'] = str(500)
         cfg_oc_ini['covELLspace settings']['nz_interpolation_polynom_order'] = str(1)
         cfg_oc_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(
             map(str, mult_shear_bias_list)
@@ -460,7 +452,7 @@ class OneCovarianceInterface:
         cfg_oc_ini['hod']['logn_sigma_c_cen'] = str(0.35)
         cfg_oc_ini['hod']['modsch_logmref_sat'] = str(13.0)
         cfg_oc_ini['hod']['modsch_alpha_s_sat'] = str(-0.858)
-        cfg_oc_ini['hod']['modsch_b_sat'] = str(-0.024), str(1.149)
+        cfg_oc_ini['hod']['modsch_b_sat'] = ', '.join([str(-0.024), str(1.149)])
 
         # ! [covTHETAspace settings]
         if self.which_obs == 'real_space':
@@ -495,13 +487,16 @@ class OneCovarianceInterface:
         ):
             warnings.warn('Only Tinker10 supported by OC at the moment', stacklevel=2)
 
-        # ! PRECISION PARAMETER MODIFIED IN THE PAST (900 -> 1500)
+        # * PRECISION PARAMETER MODIFIED IN THE PAST (900 -> 1500)
         cfg_oc_ini['halomodel evaluation']['m_bins'] = str(900)
         cfg_oc_ini['halomodel evaluation']['log10m_min'] = str(6)
         cfg_oc_ini['halomodel evaluation']['log10m_max'] = str(18)
         cfg_oc_ini['halomodel evaluation']['hmf_model'] = 'Tinker10'
         cfg_oc_ini['halomodel evaluation']['mdef_model'] = 'SOMean'
-        cfg_oc_ini['halomodel evaluation']['mdef_params'] = 'overdensity', str(200)
+        cfg_oc_ini['halomodel evaluation']['mdef_params'] = ', '.join(
+            ['overdensity', str(200)]
+        )
+
         cfg_oc_ini['halomodel evaluation']['disable_mass_conversion'] = str(True)
         cfg_oc_ini['halomodel evaluation']['delta_c'] = str(1.686)
         cfg_oc_ini['halomodel evaluation']['transfer_model'] = 'CAMB'
@@ -553,10 +548,10 @@ class OneCovarianceInterface:
         # TODO + it would signficantly slow down the code if using SB values
         # TODO (e.g. 3000)
         # TODO so I leave it like this for the time being
-       
+
         # print the updated ini
         if print_ini:
-            self.print_cfg_onecov_ini(cfg_oc_ini)
+            print_cfg_onecov_ini(cfg_oc_ini)
 
         # Save the updated configuration to a new .ini file
         with open(f'{self.oc_path}/input_configs.ini', 'w') as configfile:

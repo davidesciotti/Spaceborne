@@ -8,13 +8,12 @@ To run these tests:
 2.  Make sure there's no FM-related section at the end of main.py, the code has to finish
     without errors.
 3.  Run the code to generate the benchmark file and the associated yaml cfg file.
+----------------------------------------------------------------------------------------
 4.  Switch branch (for example) and make sure the hardcoded options in main.py are
     consistent with the benchmark version.
     4.1  In particular, in main.py, comment out the lines:
            # cfg['misc']['save_output_as_benchmark'] = ...
            # cfg['misc']['bench_filename'] = ...
-           # if sl.is_main_branch():
-           #     cfg['nz']['shift_nz'] = False
     4.2  If you're testing the main branch, don't worry about 
          config/example_config separation (UPDATE 15/05/2025: I removed example_config)
 5.  Open this script and make sure you indicate the relevant benchmark file name

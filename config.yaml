@@ -139,24 +139,6 @@ mask:
     apodize: False # Type: bool
     aposize: 0.1 # Type: float. Apodization scale in deg
 
-namaster:
-    use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
-    spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
-    use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
-    workspace_path: ... # Type: str. Path to the workspace, if already computed
-
-sample_covariance:
-    compute_sample_cov: False  # Type: bool
-    # Which code to use to compute the coupled Cls on the masked maps. The results are 
-    # essentially equivalent, but 'namaster' is a bit faster.
-    # In case the decoupled (sample) covariance is requested, in both cases the 
-    # workspace.decouple_cell() function will be used. 
-    # Documentation: 
-    # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
-    # Options: ['namaster', 'healpy']. 
-    which_cls: namaster  # Type: str. 
-    nreal: 5000 # Type: int. Number of realizations for the sample covariance matrix
-    fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
 
 ell_binning:
     binning_type: 'ref_cut'  # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
@@ -260,11 +242,6 @@ covariance:
 
 namaster:
     use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
-
-    # Whether to compute the (Gaussian) covariance of the coupled or decoupled Cls.
-    # Note: the coupling is applied coherently to all covariance terms, not only the Gaussian one.
-    coupled_cov: False # Type: bool.
-
     spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
     use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation (recommended)
     workspace_path: ... # Type: str. Path to the workspace, if already computed

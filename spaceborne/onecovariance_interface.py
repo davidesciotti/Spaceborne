@@ -294,15 +294,15 @@ class OneCovarianceInterface:
         cfg_oc_ini['observables']['unbiased_clustering'] = str(False)
 
         # ! [output settings]
-        cov_oc_fname = self.cfg['OneCovariance']['oc_output_filename']
+        self.cov_oc_fname = self.cfg['OneCovariance']['oc_output_filename']
         cfg_oc_ini['output settings']['directory'] = self.oc_path
         cfg_oc_ini['output settings']['file'] = ', '.join(
-            [f'{cov_oc_fname}_list.dat', f'{cov_oc_fname}_matrix.mat']
+            [f'{self.cov_oc_fname}_list.dat', f'{self.cov_oc_fname}_matrix.mat']
         )
         cfg_oc_ini['output settings']['style'] = ', '.join(['list', 'matrix'])
         cfg_oc_ini['output settings']['list_style_spatial_first'] = str(True)
         cfg_oc_ini['output settings']['corrmatrix_plot'] = (
-            f'{cov_oc_fname}_corrplot.pdf'
+            f'{self.cov_oc_fname}_corrplot.pdf'
         )
         cfg_oc_ini['output settings']['save_configs'] = 'save_configs.ini'
         cfg_oc_ini['output settings']['save_Cells'] = str(True)
@@ -476,6 +476,15 @@ class OneCovarianceInterface:
                 self.cov_rs_cfg['theta_bins']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_type_lensing'] = 'lin'
+            
+            cfg_oc_ini['covTHETAspace settings']['theta_min'] = str(
+                self.cov_rs_cfg['theta_min_arcmin']
+            )
+            cfg_oc_ini['covTHETAspace settings']['theta_max'] = str(
+                self.cov_rs_cfg['theta_max_arcmin']
+            )
+            cfg_oc_ini['covTHETAspace settings']['theta_type'] = 'lin'
+            
             cfg_oc_ini['covTHETAspace settings']['xi_pp'] = str(True)
             cfg_oc_ini['covTHETAspace settings']['xi_mm'] = str(True)
             cfg_oc_ini['covTHETAspace settings']['theta_accuracy'] = str(1e-3)
@@ -914,7 +923,7 @@ class OneCovarianceInterface:
 
         return cov_llglgg_2d
 
-    def process_cov_from_list_file(self, df_chunk_size=5000000):
+    def process_cov_from_list_file(self, df_chunk_size=5_000_000):
         """
         Import and reshape the output of the OneCovariance (OC) .dat
         (aka "list") file into a set of 10d arrays.
@@ -927,7 +936,7 @@ class OneCovarianceInterface:
         import pandas as pd
 
         # set df column names
-        with open(f'{self.oc_path}/covariance_list.dat') as file:
+        with open(f'{self.oc_path}/{self.cov_oc_fname}_list.dat') as file:
             header = (
                 file.readline().strip()
             )  # Read the first line and strip newline characters
@@ -941,7 +950,7 @@ class OneCovarianceInterface:
         # note use delim_whitespace=True instead of sep='\s+' if this gives
         # compatibility issues
         self.ells_oc_load = pd.read_csv(
-            f'{self.oc_path}/covariance_list.dat', usecols=['ell1'], sep='\s+'
+            f'{self.oc_path}/{self.cov_oc_fname}_list.dat', usecols=['ell1'], sep='\s+'
         )['ell1'].unique()
 
         # check if the saved ells are within 1% of the required ones;

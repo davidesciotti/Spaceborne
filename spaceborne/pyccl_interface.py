@@ -385,7 +385,6 @@ class PycclClass:
             )
 
     def set_sigma2_b(self, z_grid, which_sigma2_b, mask_obj):
-        print(mask_obj.fsky)
         self.a_grid_sigma2_b = cosmo_lib.z_to_a(z_grid)[::-1]
 
         # normalize the mask and pass it to sigma2_B_from_mask

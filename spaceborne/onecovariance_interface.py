@@ -243,7 +243,7 @@ class OneCovarianceInterface:
 
         # Read the .ini file selected in cfg
         cfg_oc_ini = CaseConfigParser()
-        cfg_oc_ini.read(self.path_to_oc_ini)
+        # cfg_oc_ini.read(self.path_to_oc_ini)
 
         # set useful lists
         mult_shear_bias_list = np.array(self.cfg['C_ell']['mult_shear_bias'])
@@ -253,13 +253,31 @@ class OneCovarianceInterface:
             self.cfg['covariance']['sigma_eps_i']
         ] * self.zbins
 
+        # set headers
+        cfg_oc_ini['covariance terms'] = {}
+        cfg_oc_ini['observables'] = {}
+        cfg_oc_ini['output settings'] = {}
+        cfg_oc_ini['covELLspace settings'] = {}
+        cfg_oc_ini['covTHETAspace settings'] = {}  # For real_space case
+        cfg_oc_ini['survey specs'] = {}
+        cfg_oc_ini['redshift'] = {}
+        cfg_oc_ini['cosmo'] = {}
+        cfg_oc_ini['bias'] = {}
+        cfg_oc_ini['IA'] = {}
+        cfg_oc_ini['hod'] = {}
+        cfg_oc_ini['halomodel evaluation'] = {}
+        cfg_oc_ini['powspec evaluation'] = {}
+        cfg_oc_ini['trispec evaluation'] = {}
+        cfg_oc_ini['tabulated inputs files'] = {}
+        cfg_oc_ini['misc'] = {}
+
+        # ! [covariance terms]
         cfg_oc_ini['covariance terms']['gauss'] = str(True)
         cfg_oc_ini['covariance terms']['split_gauss'] = str(True)
         cfg_oc_ini['covariance terms']['nongauss'] = str(self.compute_cng)
         cfg_oc_ini['covariance terms']['ssc'] = str(self.compute_ssc)
-        cfg_oc_ini['output settings']['directory'] = self.oc_path
 
-        # [observables]
+        # ! [observables]
         if self.which_obs == 'harmonic_space':
             est_shear = 'C_ell'
             est_ggl = 'C_ell'
@@ -281,7 +299,54 @@ class OneCovarianceInterface:
         cfg_oc_ini['observables']['cross_terms'] = str(True)
         cfg_oc_ini['observables']['unbiased_clustering'] = str(False)
 
-        # ! \ell binning: this differs between the harmonic and real space cases!
+        # ! [output settings]
+        cov_oc_fname = self.cfg['OneCovariance']['oc_output_filename']
+        cfg_oc_ini['output settings']['directory'] = self.oc_path
+        cfg_oc_ini['output settings']['file'] = (
+            f'{cov_oc_fname}_list.dat',
+            f'{cov_oc_fname}_matrix.mat',
+        )
+        cfg_oc_ini['output settings']['style'] = 'list', 'matrix'
+        cfg_oc_ini['output settings']['list_style_spatial_first'] = str(True)
+        cfg_oc_ini['output settings']['corrmatrix_plot'] = (
+            f'{cov_oc_fname}_corrplot.pdf'
+        )
+        cfg_oc_ini['output settings']['save_configs'] = 'save_configs.ini'
+        cfg_oc_ini['output settings']['save_Cells'] = str(True)
+        cfg_oc_ini['output settings']['save_trispectra'] = str(False)
+        cfg_oc_ini['output settings']['save_alms'] = str(True)
+        cfg_oc_ini['output settings']['use_tex'] = str(False)
+
+        # ! [covELLspace settings]
+
+        np.testing.assert_allclose(
+            np.diff(self.z_grid_trisp_sb)[0],
+            np.diff(self.z_grid_trisp_sb),
+            atol=0,
+            rtol=1e-7,
+            err_msg='The redshift grid is not uniform.',
+        )
+        delta_z = np.diff(self.z_grid_trisp_sb)[0]
+
+        ell_binning_type = self.cfg['ell_binning']['binning_type']
+        if self.cfg['ell_binning']['binning_type'] == 'ref_cut':
+            ell_binning_type = 'log'
+
+        # settings common to both observables
+        cfg_oc_ini['covELLspace settings']['limber'] = str(True)
+        cfg_oc_ini['covELLspace settings']['nglimber'] = str(True)
+        cfg_oc_ini['covELLspace settings']['delta_z'] = str(delta_z)
+        cfg_oc_ini['covELLspace settings']['tri_delta_z'] = str(delta_z)
+        # ! PRECISION PARAMETER MODIFIED IN THE PAST (500 -> 1000)
+        cfg_oc_ini['covELLspace settings']['integration_steps'] = str(500)  
+        cfg_oc_ini['covELLspace settings']['nz_interpolation_polynom_order'] = str(1)
+        cfg_oc_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(
+            map(str, mult_shear_bias_list)
+        )
+        cfg_oc_ini['covELLspace settings']['ell_type_clustering'] = ell_binning_type
+        cfg_oc_ini['covELLspace settings']['ell_type_lensing'] = ell_binning_type
+
+        # settings specific to both observables
         if self.which_obs == 'harmonic_space':
             cfg_oc_ini['covELLspace settings']['ell_min'] = str(
                 self.pvt_cfg['ell_min_3x2pt']
@@ -313,6 +378,92 @@ class OneCovarianceInterface:
             )
 
         elif self.which_obs == 'real_space':
+            cfg_oc_ini['covELLspace settings']['ell_min'] = str(
+                self.cfg['precision']['ell_min_rs']
+            )
+            cfg_oc_ini['covELLspace settings']['ell_max'] = str(
+                self.cfg['precision']['ell_max_rs']
+            )
+            cfg_oc_ini['covELLspace settings']['ell_bins'] = str(
+                self.cfg['precision']['ell_bins_rs']
+            )
+            cfg_oc_ini['covELLspace settings']['ell_type'] = 'log'
+
+        # ! [survey specs]
+        # commented out to avoid loading mask file by accident
+        cfg_oc_ini['survey specs']['mask_directory'] = str(
+            self.cfg['mask']['mask_path']
+        )  # TODO test this!!
+        cfg_oc_ini['survey specs']['survey_area_lensing_in_deg2'] = str(
+            self.cfg['mask']['survey_area_deg2']
+        )
+        cfg_oc_ini['survey specs']['survey_area_ggl_in_deg2'] = str(
+            self.cfg['mask']['survey_area_deg2']
+        )
+        cfg_oc_ini['survey specs']['survey_area_clust_in_deg2'] = str(
+            self.cfg['mask']['survey_area_deg2']
+        )
+        cfg_oc_ini['survey specs']['n_eff_clust'] = ', '.join(
+            map(str, n_eff_clust_list)
+        )
+        cfg_oc_ini['survey specs']['n_eff_lensing'] = ', '.join(
+            map(str, n_eff_lensing_list)
+        )
+        cfg_oc_ini['survey specs']['ellipticity_dispersion'] = ', '.join(
+            map(str, ellipticity_dispersion_list)
+        )
+
+        # ! [redshift]
+        cfg_oc_ini['redshift']['z_directory'] = self.oc_path
+        # TODO re-check that the OC documentation is correct
+        cfg_oc_ini['redshift']['zclust_file'] = nz_lns_filename_ascii
+        cfg_oc_ini['redshift']['zlens_file'] = nz_src_filename_ascii
+        cfg_oc_ini['redshift']['value_loc_in_clustbin'] = 'mid'
+        cfg_oc_ini['redshift']['value_loc_in_lensbin'] = 'mid'
+
+        # ! [cosmo]
+        cfg_oc_ini['cosmo']['h'] = str(self.cfg['cosmology']['h'])
+        cfg_oc_ini['cosmo']['ns'] = str(self.cfg['cosmology']['ns'])
+        cfg_oc_ini['cosmo']['omega_m'] = str(self.cfg['cosmology']['Om'])
+        cfg_oc_ini['cosmo']['omega_b'] = str(self.cfg['cosmology']['Ob'])
+        cfg_oc_ini['cosmo']['omega_de'] = str(self.cfg['cosmology']['ODE'])
+        cfg_oc_ini['cosmo']['sigma8'] = str(self.cfg['cosmology']['s8'])
+        cfg_oc_ini['cosmo']['w0'] = str(self.cfg['cosmology']['wz'])
+        cfg_oc_ini['cosmo']['wa'] = str(self.cfg['cosmology']['wa'])
+        cfg_oc_ini['cosmo']['neff'] = str(self.cfg['cosmology']['N_eff'])
+        cfg_oc_ini['cosmo']['m_nu'] = str(self.cfg['cosmology']['m_nu'])
+        cfg_oc_ini['cosmo']['tcmb0'] = str(2.7255)
+
+        # ! [bias]
+        if self.cfg['covariance']['which_b1g_in_resp'] == 'from_input':
+            gal_bias_ascii_filename = ascii_filenames_dict['gal_bias_ascii_filename']
+            cfg_oc_ini['bias']['bias_files'] = gal_bias_ascii_filename
+
+        # ! [IA]
+        cfg_oc_ini['IA']['A_IA'] = str(self.cfg['intrinsic_alignment']['Aia'])
+        cfg_oc_ini['IA']['eta_IA'] = str(self.cfg['intrinsic_alignment']['eIA'])
+        cfg_oc_ini['IA']['z_pivot_IA'] = str(
+            self.cfg['intrinsic_alignment']['z_pivot_IA']
+        )
+
+        # ! [hod]
+        cfg_oc_ini['hod']['model_mor_cen'] = 'double_powerlaw'
+        cfg_oc_ini['hod']['model_mor_sat'] = 'double_powerlaw'
+        cfg_oc_ini['hod']['dpow_logm0_cen'] = str(10.51)
+        cfg_oc_ini['hod']['dpow_logm1_cen'] = str(11.38)
+        cfg_oc_ini['hod']['dpow_a_cen'] = str(7.096)
+        cfg_oc_ini['hod']['dpow_b_cen'] = str(0.2)
+        cfg_oc_ini['hod']['dpow_norm_cen'] = str(1.0)
+        cfg_oc_ini['hod']['dpow_norm_sat'] = str(0.56)
+        cfg_oc_ini['hod']['model_scatter_cen'] = 'lognormal'
+        cfg_oc_ini['hod']['model_scatter_sat'] = 'modschechter'
+        cfg_oc_ini['hod']['logn_sigma_c_cen'] = str(0.35)
+        cfg_oc_ini['hod']['modsch_logmref_sat'] = str(13.0)
+        cfg_oc_ini['hod']['modsch_alpha_s_sat'] = str(-0.858)
+        cfg_oc_ini['hod']['modsch_b_sat'] = str(-0.024), str(1.149)
+
+        # ! [covTHETAspace settings]
+        if self.which_obs == 'real_space':
             cfg_oc_ini['covTHETAspace settings']['theta_min_clustering'] = str(
                 self.cov_rs_cfg['theta_min_arcmin']
             )
@@ -338,87 +489,30 @@ class OneCovarianceInterface:
             cfg_oc_ini['covTHETAspace settings']['theta_accuracy'] = str(1e-3)
             cfg_oc_ini['covTHETAspace settings']['integration_intervals'] = str(40)
 
-            cfg_oc_ini['covELLspace settings']['ell_max'] = str(
-                self.cfg['precision']['ell_max_rs']
-            )
-            cfg_oc_ini['covELLspace settings']['ell_bins'] = str(
-                self.cfg['precision']['ell_bins_rs']
-            )
-            cfg_oc_ini['covELLspace settings']['ell_min'] = str(
-                self.cfg['precision']['ell_min_rs']
-            )
-            cfg_oc_ini['covELLspace settings']['ell_type'] = 'log'
+        # ! [halomodel evaluation]
+        if ('Tinker10' not in self.cfg['halo_model']['mass_function']) or (
+            'Tinker10' not in self.cfg['halo_model']['halo_bias']
+        ):
+            warnings.warn('Only Tinker10 supported by OC at the moment', stacklevel=2)
 
-        cfg_oc_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(
-            map(str, mult_shear_bias_list)
-        )
-        # commented out to avoid loading mask file by accident
-        cfg_oc_ini['survey specs']['mask_directory'] = str(
-            self.cfg['mask']['mask_path']
-        )  # TODO test this!!
-        cfg_oc_ini['survey specs']['survey_area_lensing_in_deg2'] = str(
-            self.cfg['mask']['survey_area_deg2']
-        )
-        cfg_oc_ini['survey specs']['survey_area_ggl_in_deg2'] = str(
-            self.cfg['mask']['survey_area_deg2']
-        )
-        cfg_oc_ini['survey specs']['survey_area_clust_in_deg2'] = str(
-            self.cfg['mask']['survey_area_deg2']
-        )
-        cfg_oc_ini['survey specs']['n_eff_clust'] = ', '.join(
-            map(str, n_eff_clust_list)
-        )
-        cfg_oc_ini['survey specs']['n_eff_lensing'] = ', '.join(
-            map(str, n_eff_lensing_list)
-        )
-        cfg_oc_ini['survey specs']['ellipticity_dispersion'] = ', '.join(
-            map(str, ellipticity_dispersion_list)
-        )
+        # ! PRECISION PARAMETER MODIFIED IN THE PAST (900 -> 1500)
+        cfg_oc_ini['halomodel evaluation']['m_bins'] = str(900)
+        cfg_oc_ini['halomodel evaluation']['log10m_min'] = str(6)
+        cfg_oc_ini['halomodel evaluation']['log10m_max'] = str(18)
+        cfg_oc_ini['halomodel evaluation']['hmf_model'] = 'Tinker10'
+        cfg_oc_ini['halomodel evaluation']['mdef_model'] = 'SOMean'
+        cfg_oc_ini['halomodel evaluation']['mdef_params'] = 'overdensity', str(200)
+        cfg_oc_ini['halomodel evaluation']['disable_mass_conversion'] = str(True)
+        cfg_oc_ini['halomodel evaluation']['delta_c'] = str(1.686)
+        cfg_oc_ini['halomodel evaluation']['transfer_model'] = 'CAMB'
+        cfg_oc_ini['halomodel evaluation']['small_k_damping_for1h'] = 'damped'
 
-        cfg_oc_ini['redshift']['z_directory'] = self.oc_path
-        # TODO re-check that the OC documentation is correct
-        cfg_oc_ini['redshift']['zclust_file'] = nz_lns_filename_ascii
-        cfg_oc_ini['redshift']['zlens_file'] = nz_src_filename_ascii
-
-        cfg_oc_ini['cosmo']['h'] = str(self.cfg['cosmology']['h'])
-        cfg_oc_ini['cosmo']['ns'] = str(self.cfg['cosmology']['ns'])
-        cfg_oc_ini['cosmo']['omega_m'] = str(self.cfg['cosmology']['Om'])
-        cfg_oc_ini['cosmo']['omega_b'] = str(self.cfg['cosmology']['Ob'])
-        cfg_oc_ini['cosmo']['omega_de'] = str(self.cfg['cosmology']['ODE'])
-        cfg_oc_ini['cosmo']['sigma8'] = str(self.cfg['cosmology']['s8'])
-        cfg_oc_ini['cosmo']['w0'] = str(self.cfg['cosmology']['wz'])
-        cfg_oc_ini['cosmo']['wa'] = str(self.cfg['cosmology']['wa'])
-        cfg_oc_ini['cosmo']['neff'] = str(self.cfg['cosmology']['N_eff'])
-        cfg_oc_ini['cosmo']['m_nu'] = str(self.cfg['cosmology']['m_nu'])
-
-        if self.cfg['covariance']['which_b1g_in_resp'] == 'from_input':
-            gal_bias_ascii_filename = ascii_filenames_dict['gal_bias_ascii_filename']
-            cfg_oc_ini['bias']['bias_files'] = gal_bias_ascii_filename
-
-        cfg_oc_ini['IA']['A_IA'] = str(self.cfg['intrinsic_alignment']['Aia'])
-        cfg_oc_ini['IA']['eta_IA'] = str(self.cfg['intrinsic_alignment']['eIA'])
-        cfg_oc_ini['IA']['z_pivot_IA'] = str(
-            self.cfg['intrinsic_alignment']['z_pivot_IA']
-        )
-
+        # ! [powspec evaluation]
         cfg_oc_ini['powspec evaluation']['non_linear_model'] = str(
             self.cfg['extra_parameters']['camb']['halofit_version']
         )
         cfg_oc_ini['powspec evaluation']['HMCode_logT_AGN'] = str(
             self.cfg['extra_parameters']['camb']['HMCode_logT_AGN']
-        )
-
-        cfg_oc_ini['tabulated inputs files']['Cell_directory'] = self.oc_path
-        cfg_oc_ini['tabulated inputs files']['Cmm_file'] = f'{cl_ll_oc_filename}.ascii'
-        cfg_oc_ini['tabulated inputs files']['Cgm_file'] = f'{cl_gl_oc_filename}.ascii'
-        cfg_oc_ini['tabulated inputs files']['Cgg_file'] = f'{cl_gg_oc_filename}.ascii'
-
-        cfg_oc_ini['misc']['num_cores'] = str(self.cfg['misc']['num_threads'])
-        cfg_oc_ini['trispec evaluation']['log10k_min'] = str(
-            self.cfg['covariance']['log10_k_min']
-        )
-        cfg_oc_ini['trispec evaluation']['log10k_max'] = str(
-            self.cfg['covariance']['log10_k_max']
         )
         cfg_oc_ini['powspec evaluation']['log10k_min'] = str(
             self.cfg['covariance']['log10_k_min']
@@ -426,59 +520,43 @@ class OneCovarianceInterface:
         cfg_oc_ini['powspec evaluation']['log10k_max'] = str(
             self.cfg['covariance']['log10_k_max']
         )
-        cfg_oc_ini['trispec evaluation']['log10k_bins'] = str(
+        cfg_oc_ini['powspec evaluation']['log10k_bins'] = str(
             self.cfg['covariance']['k_steps']
         )
 
-        np.testing.assert_allclose(
-            np.diff(self.z_grid_trisp_sb)[0],
-            np.diff(self.z_grid_trisp_sb),
-            atol=0,
-            rtol=1e-7,
-            err_msg='The redshift grid is not uniform.',
+        # ! [trispec evaluation]
+        cfg_oc_ini['trispec evaluation']['log10k_min'] = str(
+            self.cfg['covariance']['log10_k_min']
         )
-        delta_z = np.diff(self.z_grid_trisp_sb)[0]
-        cfg_oc_ini['covELLspace settings']['delta_z'] = str(delta_z)
-        cfg_oc_ini['covELLspace settings']['tri_delta_z'] = str(delta_z)
+        cfg_oc_ini['trispec evaluation']['log10k_max'] = str(
+            self.cfg['covariance']['log10_k_max']
+        )
+        cfg_oc_ini['trispec evaluation']['log10k_bins'] = str(
+            self.cfg['covariance']['k_steps']
+        )
+        cfg_oc_ini['trispec evaluation']['matter_klim'] = str(0.001)
+        cfg_oc_ini['trispec evaluation']['matter_mulim'] = str(0.001)
+        cfg_oc_ini['trispec evaluation']['small_k_damping_for1h'] = 'damped'
+        cfg_oc_ini['trispec evaluation']['lower_calc_limit'] = str(1e-200)
 
-        # ! precision settings
-        if self.oc_cfg['precision_settings'] == 'high_precision':
-            # TODO integration_steps is similar to len(z_grid), but OC works in
-            # TODO log space
-            # TODO + it would signficantly slow down the code if using SB values
-            # TODO (e.g. 3000)
-            # TODO so I leave it like this for the time being
-            integration_steps = 1000
-            m_bins = 1500  # 900 or 1500
+        # ! [tabulated inputs files]
+        cfg_oc_ini['tabulated inputs files']['Cell_directory'] = self.oc_path
+        cfg_oc_ini['tabulated inputs files']['Cmm_file'] = f'{cl_ll_oc_filename}.ascii'
+        cfg_oc_ini['tabulated inputs files']['Cgm_file'] = f'{cl_gl_oc_filename}.ascii'
+        cfg_oc_ini['tabulated inputs files']['Cgg_file'] = f'{cl_gg_oc_filename}.ascii'
 
-            # 20-01-2025 I set these dinamically above
-            # log10k_bins = 200  # 150 or 200
-            # tri_delta_z = 0.25
-            # delta_z = 0.04
+        # ! [misc]
+        cfg_oc_ini['misc']['num_cores'] = str(self.cfg['misc']['num_threads'])
 
-        elif (
-            self.oc_cfg['precision_settings'] == 'default'
-        ):  # these are the default values, used by Robert as well
-            # delta_z = 0.08
-            # tri_delta_z = 0.5
-            integration_steps = 500
-            m_bins = 900
-            # log10k_bins = 100
-        else:
-            raise ValueError(
-                f'Unknown precision settings: {self.oc_cfg["precision_settings"]}'
-            )
-
-        cfg_oc_ini['halomodel evaluation']['m_bins'] = str(m_bins)
-        cfg_oc_ini['covELLspace settings']['integration_steps'] = str(integration_steps)
-
+        # TODO integration_steps is similar to len(z_grid), but OC works in
+        # TODO log space
+        # TODO + it would signficantly slow down the code if using SB values
+        # TODO (e.g. 3000)
+        # TODO so I leave it like this for the time being
+       
         # print the updated ini
         if print_ini:
-            for section in cfg_oc_ini.sections():
-                print(f'[{section}]')
-                for key, value in cfg_oc_ini[section].items():
-                    print(f'{key} = {value}')
-                print()
+            self.print_cfg_onecov_ini(cfg_oc_ini)
 
         # Save the updated configuration to a new .ini file
         with open(f'{self.oc_path}/input_configs.ini', 'w') as configfile:

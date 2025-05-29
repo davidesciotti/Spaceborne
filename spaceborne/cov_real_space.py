@@ -583,7 +583,9 @@ def integrate_bessel_single_wrapper(  # fmt: skip
     return result_levin
 
 
-def oc_cov_list_to_array(oc_output_path):
+def oc_cov_list_to_array(oc_output_path, n_probes_hs, nbl, zbins, df_chunk_size=50_000):
+    import pandas as pd
+
     probe_idx_dict_ell = {
         'm': 0,
         'g': 1,
@@ -911,7 +913,7 @@ class CovRealSpace:
         assert self.integration_method in ['simps', 'levin'], (
             'integration method not implemented'
         )
-        
+
         self.cov_rs_6d_shape = (  # fmt: skip
             self.nbt, self.nbt, self.zbins, self.zbins, self.zbins, self.zbins
             )  # fmt: skip
@@ -978,7 +980,7 @@ class CovRealSpace:
         self.n_probes_rs = 4  # real space
         self.n_probes_hs = 2  # harmonic space
         self.n_split_terms = 3
-        self.cov_sb_dict_8d = np.zeros(  # fmt: skip
+        self.cov_rs_dict_8d = np.zeros(  # fmt: skip
             (self.n_split_terms, self.n_probes_rs, self.n_probes_rs, 
             self.nbt, self.nbt,
             self.zbins,  self.zbins,  self.zbins,  self.zbins,
@@ -1469,7 +1471,7 @@ class CovRealSpace:
                 ind_cd = self.ind_cross if twoprobe_cd_ix == 1 else self.ind_auto
 
                 self.cov_rs_4d_dict[probe] = sl.cov_6D_to_4D_blocks(
-                    self.cov_sb_dict_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix],
+                    self.cov_rs_dict_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix],
                     self.nbt,
                     zpairs_ab,
                     zpairs_cd,
@@ -1480,22 +1482,510 @@ class CovRealSpace:
                     self.cov_rs_4d_dict[probe], block_index='zpair', optimize=True
                 )
 
-            self.cov_rs_full_2d.append(stack_cov_blocks(self.cov_rs_2d_dict))
+            # self.cov_rs_full_2d.append(stack_cov_blocks(self.cov_rs_2d_dict))
+            
+        self.cov_rs_full_2d = stack_cov_blocks(self.cov_rs_2d_dict)
+        # self.cov_rs_full_2d = np.vst
 
-    def compute_realspace_cov(self, cov_obj):
+    def compute_realspace_cov(self, cov_obj, probe, term):
         """
         Computes the real space covariance matrix for the terms (sva, mix, sn, ssc, cng)
         and probes specfied
         """
-        
-        for probe, term in itertools.product(self.probes_toloop, self.terms_toloop):
-            print(
-                f'\n***** probe {probe} - term {term} - '
-                f'integration {self.integration_method} - theta bins {self.nbt} *****\n'
+
+        # TODO check I'm not messing up anything here...
+        split_g_ix = self.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
+
+        twoprobe_ab_str, twoprobe_cd_str = split_probe_name(probe)
+        twoprobe_ab_ix, twoprobe_cd_ix = (
+            self.probe_idx_dict_short[twoprobe_ab_str],
+            self.probe_idx_dict_short[twoprobe_cd_str],
+        )
+
+        mu, nu = self.mu_dict[twoprobe_ab_str], self.mu_dict[twoprobe_cd_str]
+        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = self.probe_idx_dict[probe]
+
+        # TODO test this better, especially for cross-terms
+        # TODO off-diagonal zij blocks still don't match, I think it's just a
+        ind_ab = (  # fmt: skip
+            self.ind_auto[:, 2:] if probe_a_ix == probe_b_ix
+            else self.ind_cross[:, 2:]
+        )  # fmt: skip
+        ind_cd = (  # fmt: skip
+            self.ind_auto[:, 2:] if probe_c_ix == probe_d_ix
+            else self.ind_cross[:, 2:]
+        )  # fmt: skip
+
+        zpairs_ab = self.zpairs_auto if probe_a_ix == probe_b_ix else self.zpairs_cross
+        zpairs_cd = self.zpairs_auto if probe_c_ix == probe_d_ix else self.zpairs_cross
+
+        # jsut a sanity check
+        assert zpairs_ab == ind_ab.shape[0], 'zpairs-ind inconsistency'
+        assert zpairs_cd == ind_cd.shape[0], 'zpairs-ind inconsistency'
+
+        # Compute covariance:
+        if term == 'sva':
+            if self.integration_method in ['simps', 'quad']:
+                self.cov_sva_rs_6d = self.sva_simps_wrapper(  # fmt: skip
+                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
+                    zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
+                )  # fmt: skip
+
+            elif self.integration_method == 'levin':
+                self.cov_sva_rs_6d = self.sva_levin_wrapper(  # fmt: skip
+                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, 
+                    zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+                )  # fmt: skip
+
+        elif term == 'mix':
+            if self.integration_method == 'simps':
+                self.cov_mix_rs_6d = self.mix_simps_wrapper(  # fmt: skip
+                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, 
+                    zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
+                )  # fmt: skip
+
+            elif self.integration_method == 'levin':
+                self.cov_mix_rs_6d = self.mix_levin_wrapper(  # fmt: skip
+                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
+                    zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+                )  # fmt: skip
+
+        elif term == 'sn':
+            self.cov_sn_rs_6d = self.cov_sn_rs(
+                probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
             )
 
-            # TODO check I'm not messing up anything here...
-            split_g_ix = self.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
+        elif term == 'gauss_ell':
+            print('Projecting ell-space Gaussian covariance...')
+            start = time.time()
+
+            # compute ell-space G cov al volo
+            # build noise vector
+            noise_3x2pt_4D = sl.build_noise(
+                self.zbins,
+                n_probes=self.n_probes_hs,
+                sigma_eps2=(self.sigma_eps_i * np.sqrt(2)) ** 2,
+                ng_shear=self.n_eff_src,
+                ng_clust=self.n_eff_lens,
+            )
+
+            # expand the noise array along the ell axis
+            noise_5d = np.repeat(noise_3x2pt_4D[:, :, None, :, :], self.nbl, axis=2)
+
+            # ! no delta_ell!!
+            delta_ell = np.ones_like(self.ell_values + 1)
+
+            cov_sva_sb_hs_10D, cov_sn_sb_hs_10D, cov_mix_sb_hs_10D = (
+                sl.covariance_einsum(
+                    self.cl_5d,
+                    noise_5d,
+                    self.fsky,
+                    self.ell_values,
+                    delta_ell,
+                    split_terms=True,
+                    return_only_diagonal_ells=True,
+                )
+            )
+
+            self.cov_sn_rs_6d = self.cov_sn_rs(
+                probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
+            )
+
+            cov_g_hs_6d = (
+                cov_sva_sb_hs_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
+                + cov_mix_sb_hs_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
+            )
+
+            self.cov_g_rs_6d = integrate_bessel_double_wrapper(
+                integrand=cov_g_hs_6d.reshape(self.nbl, -1)
+                * self.ell_values[:, None]
+                * self.ell_values[:, None],
+                x_values=self.ell_values,
+                bessel_args=self.theta_centers,
+                bessel_type=3,
+                ell_1=mu,
+                ell_2=nu,
+                n_jobs=self.n_jobs,
+                **self.levin_prec_kw,
+            )
+            self.cov_g_rs_6d = self.cov_g_rs_6d.reshape(
+                self.nbt, self.nbt, self.zbins, self.zbins, self.zbins, self.zbins
+            )
+
+            norm = 4 * np.pi**2
+            self.cov_g_rs_6d /= norm
+            self.cov_g_rs_6d += (
+                self.cov_sn_rs_6d
+            )  # diagonal is noise-dominated, you won't see much of a diff
+
+        # elif term in ['ssc', 'cng']:
+        # warnings.warn('HS covs loaded from file', stacklevel=2)
+        # get OC SSC in ell space
+        # covs_oc_hs = oc_cov_list_to_array(f'{covs_path}/{cov_hs_list_name}.dat')
+        # (
+        #     cov_sva_oc_3x2pt_10D,
+        #     cov_mix_oc_3x2pt_10D,
+        #     cov_sn_oc_3x2pt_10D,
+        #     cov_g_oc_3x2pt_10D,
+        #     cov_ssc_oc_3x2pt_10D,
+        # ) = covs_oc_hs
+
+        # np.savez(
+        #     f'{covs_path}/covs_oc_10D.npz',
+        #     cov_sva_oc_3x2pt_10D=cov_sva_oc_3x2pt_10D,
+        #     cov_mix_oc_3x2pt_10D=cov_mix_oc_3x2pt_10D,
+        #     cov_sn_oc_3x2pt_10D=cov_sn_oc_3x2pt_10D,
+        #     cov_g_oc_3x2pt_10D=cov_g_oc_3x2pt_10D,
+        #     cov_ssc_oc_3x2pt_10D=cov_ssc_oc_3x2pt_10D,
+        # )
+
+        # covs_oc_hs_npz = np.load(f'{covs_oc_path}/covs_oc_10D.npz')
+        # cov_ssc_oc_3x2pt_10D = covs_oc_hs_npz['cov_ssc_oc_3x2pt_10D']
+        # cov_cng_oc_3x2pt_10D = covs_oc_hs_npz['cov_ng_oc_3x2pt_10D']
+
+        elif term in ['ssc', 'cng']:
+            # set normalization depending on the term
+            norm = 4 * np.pi**2
+            if term == 'cng':
+                norm *= self.amax
+
+            cov_ng_hs_10d = getattr(cov_obj, f'cov_3x2pt_{term}_10D')
+
+            # project hs nf cov to real space using pylevin
+            cov_ng_hs_6d = cov_ng_hs_10d[
+                probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...
+            ]
+
+            breakpoint()
+
+            cov_ng_rs_6d = dl1dl2_bessel_wrapper(
+                cov_hs=cov_ng_hs_6d,
+                mu=mu,
+                nu=nu,
+                ells=self.ell_values,
+                thetas=self.theta_centers,
+                zbins=self.zbins,
+                n_jobs=self.n_jobs,
+                levin_prec_kw=self.levin_prec_kw,
+            )
+            cov_ng_rs_6d /= norm
+
+            setattr(self, f'cov_{term}_rs_6d', cov_ng_rs_6d)
+
+        self.cov_rs_dict_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix, ...] = (
+            getattr(self, f'cov_{term}_rs_6d')
+        )
+
+        """
+        # ! ======================================= ONECOVARIANCE ==========================
+        oc_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests/realspace_test'
+        cl_ll_ascii_filename = 'Cell_ll_realsp'
+        cl_gl_ascii_filename = 'Cell_gl_realsp'
+        cl_gg_ascii_filename = 'Cell_gg_realsp'
+        sl.write_cl_ascii(
+            oc_path, cl_ll_ascii_filename, cl_ll_3d, self.ell_values, zbins
+        )
+        sl.write_cl_ascii(
+            oc_path, cl_gl_ascii_filename, cl_gl_3d, self.ell_values, zbins
+        )
+        sl.write_cl_ascii(
+            oc_path, cl_gg_ascii_filename, cl_gg_3d, self.ell_values, zbins
+        )
+
+        # set df column names
+        with open(f'{oc_path}/{cov_list_name}.dat') as file:
+            header = (
+                file.readline().strip()
+            )  # Read the first line and strip newline characters
+        header_list = re.split(
+            '\t', header.strip().replace('\t\t', '\t').replace('\t\t', '\t')
+        )
+        column_names = header_list
+
+        data = pd.read_csv(
+            f'{oc_path}/{cov_list_name}.dat', usecols=['theta1', 'tomoi'], sep='\s+'
+        )
+
+        thetas_oc_load = data['theta1'].unique()
+        thetas_oc_load_rad = np.deg2rad(thetas_oc_load / 60)
+        cov_theta_indices = {
+            theta_out: idx for idx, theta_out in enumerate(thetas_oc_load)
+        }
+        nbt_oc = len(thetas_oc_load)
+
+        # sl.compare_funcs(
+        #     None,
+        #     {'thetas_oc': thetas_oc_load_rad,
+        #      'thetas_sb': theta_centers},
+        #     plt_kw={'marker': '.'},
+        # )
+
+        # SB tomographic indices start from 0
+        tomoi_oc_load = data['tomoi'].unique()
+        subtract_one = False
+        if min(tomoi_oc_load) == 1:
+            subtract_one = True
+
+        # ! import .list covariance file
+        shape = (
+            n_probes_rs,
+            n_probes_rs,
+            nbt_oc,
+            nbt_oc,
+            zbins,
+            zbins,
+            zbins,
+            zbins,
+        )
+        cov_g_oc_3x2pt_8D = np.zeros(shape)
+        cov_sva_oc_3x2pt_8D = np.zeros(shape)
+        cov_mix_oc_3x2pt_8D = np.zeros(shape)
+        cov_sn_oc_3x2pt_8D = np.zeros(shape)
+        cov_ssc_oc_3x2pt_8D = np.zeros(shape)
+        cov_cng_oc_3x2pt_8D = np.zeros(shape)
+        # cov_tot_oc_3x2pt_8D = np.zeros(shape)
+
+        print(f'Loading OneCovariance output from {cov_list_name}.dat file...')
+        start = time.perf_counter()
+        for df_chunk in pd.read_csv(
+            f'{oc_path}/{cov_list_name}.dat',
+            sep='\s+',
+            names=column_names,
+            skiprows=1,
+            chunksize=df_chunk_size,
+        ):
+            # Vectorize the extraction of probe indices
+            probe_idx = df_chunk['#obs'].str[:].map(probe_idx_dict_short_oc).values
+            probe_idx_arr = np.array(probe_idx.tolist())  # now shape is (N, 4)
+
+            # Map 'ell' values to their corresponding indices
+            theta1_idx = df_chunk['theta1'].map(cov_theta_indices).values
+            theta2_idx = df_chunk['theta2'].map(cov_theta_indices).values
+
+            # Compute z indices
+            if subtract_one:
+                z_indices = (
+                    df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].sub(1).values
+                )
+            else:
+                z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values
+
+            # Vectorized assignment to the arrays
+            index_tuple = (  # fmt: skip
+                probe_idx_arr[:, 0], probe_idx_arr[:, 1], theta1_idx, theta2_idx,
+                z_indices[:, 0], z_indices[:, 1], z_indices[:, 2], z_indices[:, 3],
+            )  # fmt: skip
+
+            cov_sva_oc_3x2pt_8D[index_tuple] = df_chunk['covg sva'].values
+            cov_mix_oc_3x2pt_8D[index_tuple] = df_chunk['covg mix'].values
+            cov_sn_oc_3x2pt_8D[index_tuple] = df_chunk['covg sn'].values
+            cov_g_oc_3x2pt_8D[index_tuple] = (
+                df_chunk['covg sva'].values
+                + df_chunk['covg mix'].values
+                + df_chunk['covg sn'].values
+            )
+            cov_ssc_oc_3x2pt_8D[index_tuple] = df_chunk['covssc'].values
+            cov_cng_oc_3x2pt_8D[index_tuple] = df_chunk['covng'].values
+            # cov_tot_oc_3x2pt_8D[index_tuple] = df_chunk['cov'].values
+
+        covs_8d = [
+            cov_sva_oc_3x2pt_8D,
+            cov_mix_oc_3x2pt_8D,
+            cov_sn_oc_3x2pt_8D,
+            cov_g_oc_3x2pt_8D,
+            cov_ssc_oc_3x2pt_8D,
+            cov_cng_oc_3x2pt_8D,
+            # cov_tot_oc_3x2pt_8D
+        ]
+
+        # for cov_8d in covs_8d:
+        #     cov_8d[0, 0, 1, 1] = deepcopy(
+        #         np.transpose(cov_8d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3))
+        #     )
+        #     cov_8d[1, 0, 0, 0] = deepcopy(
+        #         np.transpose(cov_8d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3))
+        #     )
+        #     cov_8d[1, 0, 1, 1] = deepcopy(
+        #         np.transpose(cov_8d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3))
+        #     )
+
+        # ! ================================================================================
+
+        if term == 'sva':
+            cov_oc_6d = cov_sva_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+            cov_sb_6d = cov_sva_sb_6d
+        elif term == 'sn':
+            cov_oc_6d = cov_sn_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+            cov_sb_6d = cov_sn_sb_6d
+        elif term == 'mix':
+            cov_oc_6d = cov_mix_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+            cov_sb_6d = cov_mix_sb_6d
+        elif term == 'gauss_ell':
+            cov_oc_6d = cov_g_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+            cov_sb_6d = cov_g_sb_6d
+        elif term == 'ssc':
+            cov_oc_6d = cov_ssc_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+            cov_sb_6d = cov_ng_sb_6d
+        elif term == 'ssc':
+            cov_oc_6d = cov_cng_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+            cov_cng_6d = cov_ng_sb_6d
+
+        # for probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix in itertools.product(
+        #     range(n_probes), repeat=4
+        # ):
+        #     if np.allclose(
+        #         cov_mix_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...],
+        #         0,
+        #         atol=1e-20,
+        #         rtol=1e-10,
+        #     ):
+        #         print(
+        #             f'block {probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix} cov_oc_6d is zero'
+        #         )
+        #     else:
+        #         print(
+        #             f'block {probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix}  cov_oc_6d is not zero'
+        #         )
+
+        # ! bin sb cov 2d
+        if nbt_coarse != self.nbt:
+            cov_sb_6d_binned = np.zeros(
+                (nbt_coarse, nbt_coarse, zbins, zbins, zbins, zbins)
+            )
+            zijkl_comb = itertools.product(range(zbins), repeat=4)
+            for zi, zj, zk, zl in zijkl_comb:
+                cov_sb_6d_binned[:, :, zi, zj, zk, zl] = sl.bin_2d_array(
+                    cov_sb_6d[:, :, zi, zj, zk, zl],
+                    self.theta_centers,
+                    theta_centers_coarse,
+                    theta_edges_coarse,
+                    weights_in=None,
+                    which_binning='integral',
+                    interpolate=True,
+                )
+
+            cov_sb_6d = cov_sb_6d_binned
+
+        cov_sb_dict_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix, ...] = cov_sb_6d
+
+        cov_oc_4d = sl.cov_6D_to_4D_blocks(
+            cov_oc_6d, nbt_oc, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+        )
+        cov_sb_4d = sl.cov_6D_to_4D_blocks(
+            cov_sb_6d, nbt_coarse, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+        )
+        # cov_sb_vec_4d = sl.cov_6D_to_4D(cov_sb_vec_6d, theta_bins, zpairs_auto, self.ind_auto)
+        # cov_sb_gfromsva_4d = sl.cov_6D_to_4D(cov_sb_gfromsva_6d,
+        # theta_bins, zpairs_auto, self.ind_auto)
+
+        cov_oc_2d = sl.cov_4D_to_2D(cov_oc_4d, block_index='zpair', optimize=True)
+        cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='zpair', optimize=True)
+        # cov_sb_vec_2d = sl.cov_4D_to_2D(cov_sb_vec_4d, block_index='zpair')
+        # cov_sb_gfromsva_2d = sl.cov_4D_to_2D(cov_sb_gfromsva_4d, block_index='zpair')
+
+        if probe in ['gmxip', 'gmxim']:
+            warnings.warn('!!! TRANSPOSING OC COV!!!!!', stacklevel=2)
+            cov_oc_2d = cov_oc_2d.T
+
+        sl.compare_arrays(
+            cov_sb_2d,
+            cov_oc_2d,
+            'cov_sb_2d',
+            'cov_oc_2d',
+            log_diff=True,
+            abs_val=True,
+            plot_diff_threshold=10,
+            plot_diff_hist=False,
+        )
+
+        fine_bin_str = 'coarse' if nbt_coarse == self.nbt else 'fine'
+        common_title = (
+            f'{term}, {probe}, {self.integration_method} theta_bins {self.nbt}'
+        )
+
+        # compare total diag
+        # if cov_oc_2d.shape[0] == cov_oc_2d.shape[1]:
+        sl.compare_funcs(
+            None,
+            {
+                'OC': np.abs(np.diag(cov_oc_2d)),
+                'SB': np.abs(np.diag(cov_sb_2d)),
+                # 'SB/OC': np.abs(np.diag(cov_sb_2d / cov_oc_2d)),
+                #  'SB_split_sum': np.abs(np.diag(cov_sb_vec_2d)),  # TODO
+                #  'SB_fromsva': np.abs(np.diag(cov_sb_gfromsva_2d)),
+                #  'OC_SUM': np.abs(np.diag(cov_oc_sum_2d)),
+            },
+            logscale_y=[True, False],
+            ylim_diff=[-110, 110],
+            title=f'{common_title}, total cov diag',
+        )
+        # plt.savefig(f'{common_title}, total cov diag.png')
+
+        # compare flattened matrix
+        sl.compare_funcs(
+            None,
+            {
+                'OC': np.abs(cov_oc_2d.flatten()),
+                'SB': np.abs(cov_sb_2d.flatten()),
+                # 'SB/OC': np.abs(cov_sb_2d.flatten()) / np.abs(cov_oc_2d.flatten()),
+                #  'SB_VEC': np.abs(cov_sb_vec_2d.flatten()),
+                #  'SB_fromsva': np.abs(cov_sb_gfromsva_2d.flatten()),
+            },
+            logscale_y=[True, False],
+            title=f'{common_title}, total cov flat',
+            ylim_diff=[-110, 110],
+        )
+        # plt.savefig(f'{common_title}, total cov flat.png')
+
+        zi, zj, zk, zl = 0, 0, 0, 0
+        theta_2_ix = 17
+        sl.compare_funcs(
+            None,
+            {
+                'OC': np.abs(cov_oc_6d[:, theta_2_ix, zi, zj, zk, zl]),
+                'SB': np.abs(cov_sb_6d[:, theta_2_ix, zi, zj, zk, zl]),
+                #  'SB_VEC': np.abs(cov_sb_vec_2d.flatten()),
+                #  'SB_fromsva': np.abs(cov_sb_gfromsva_2d.flatten()),
+            },
+            logscale_y=[False, False],
+            title=f'{term}, {probe}, {self.integration_method}, cov_6d[:, {zi, zj, zk, zl}]',
+            ylim_diff=[-110, 110],
+        )
+        # plt.savefig(f'{term}_{probe}_total_cov_flat.png')
+
+        # plt.figure()
+        # plt.plot(
+        #     theta_centers, np.diag(cov_sb_6d[:, :, zi, zj, zk, zl]), marker='.',
+        #     label='sb'
+        # )
+        # plt.plot(
+        #     thetas_oc_load_rad,
+        #     np.diag(cov_oc_sva_6d[:, :, zi, zj, zk, zl]),
+        #     marker='.',
+        #     label='oc',
+        # )
+        # plt.xlabel(r'$\theta$ [rad]')
+        # plt.ylabel(f'diag cov {probe}')
+        # plt.legend()
+
+        # TODO other probes
+        # TODO probably ell range as well
+
+    # ! construct full 2D cov and compare correlation matrix
+    cov_sb_2d_dict = {}
+    cov_oc_2d_dict = {}
+    cov_sb_full_2d = []
+    for term in self.terms_toloop:
+        for probe in self.probe_idx_dict:
+            split_g_ix = (
+                self.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
+            )
+
+            term_oc = (
+                'gauss'
+                if (len(self.terms_toloop) > 1 or term == 'gauss_ell')
+                else term
+            )
 
             twoprobe_ab_str, twoprobe_cd_str = split_probe_name(probe)
             twoprobe_ab_ix, twoprobe_cd_ix = (
@@ -1503,772 +1993,278 @@ class CovRealSpace:
                 self.probe_idx_dict_short[twoprobe_cd_str],
             )
 
-            mu, nu = self.mu_dict[twoprobe_ab_str], self.mu_dict[twoprobe_cd_str]
-            probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = self.probe_idx_dict[probe]
-
-            # TODO test this better, especially for cross-terms
-            # TODO off-diagonal zij blocks still don't match, I think it's just a
-            ind_ab = (  # fmt: skip
-                self.ind_auto[:, 2:] if probe_a_ix == probe_b_ix
-                else self.ind_cross[:, 2:]
-            )  # fmt: skip
-            ind_cd = (  # fmt: skip
-                self.ind_auto[:, 2:] if probe_c_ix == probe_d_ix
-                else self.ind_cross[:, 2:]
-            )  # fmt: skip
-
             zpairs_ab = (
-                self.zpairs_auto if probe_a_ix == probe_b_ix else self.zpairs_cross
+                self.zpairs_cross if twoprobe_ab_ix == 1 else self.zpairs_auto
             )
             zpairs_cd = (
-                self.zpairs_auto if probe_c_ix == probe_d_ix else self.zpairs_cross
+                self.zpairs_cross if twoprobe_cd_ix == 1 else self.zpairs_auto
             )
+            ind_ab = self.ind_cross if twoprobe_ab_ix == 1 else self.ind_auto
+            ind_cd = self.ind_cross if twoprobe_cd_ix == 1 else self.ind_auto
 
-            # jsut a sanity check
-            assert zpairs_ab == ind_ab.shape[0], 'zpairs-ind inconsistency'
-            assert zpairs_cd == ind_cd.shape[0], 'zpairs-ind inconsistency'
-
-            # Compute covariance:
-            if term == 'sva':
-                if self.integration_method in ['simps', 'quad']:
-                    self.cov_sva_rs_6d = self.sva_simps_wrapper(  # fmt: skip
-                        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
-                    )  # fmt: skip
-
-                elif self.integration_method == 'levin':
-                    self.cov_sva_rs_6d = self.sva_levin_wrapper(  # fmt: skip
-                        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, 
-                        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-                    )  # fmt: skip
-
-            elif term == 'mix':
-                if self.integration_method == 'simps':
-                    self.cov_mix_rs_6d = self.mix_simps_wrapper(  # fmt: skip
-                        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, 
-                        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
-                    )  # fmt: skip
-
-                elif self.integration_method == 'levin':
-                    self.cov_mix_rs_6d = self.mix_levin_wrapper(  # fmt: skip
-                        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-                    )  # fmt: skip
-
-            elif term == 'sn':
-                self.cov_sn_rs_6d = self.cov_sn_rs(
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
-                )
-
-            elif term == 'gauss_ell':
-                print('Projecting ell-space Gaussian covariance...')
-                start = time.time()
-
-                # compute ell-space G cov al volo
-                # build noise vector
-                noise_3x2pt_4D = sl.build_noise(
-                    self.zbins,
-                    n_probes=self.n_probes_hs,
-                    sigma_eps2=(self.sigma_eps_i * np.sqrt(2)) ** 2,
-                    ng_shear=self.n_eff_src,
-                    ng_clust=self.n_eff_lens,
-                )
-
-                # expand the noise array along the ell axis
-                noise_5d = np.repeat(noise_3x2pt_4D[:, :, None, :, :], self.nbl, axis=2)
-
-                # ! no delta_ell!!
-                delta_ell = np.ones_like(self.ell_values + 1)
-
-                cov_sva_sb_hs_10D, cov_sn_sb_hs_10D, cov_mix_sb_hs_10D = (
-                    sl.covariance_einsum(
-                        self.cl_5d,
-                        noise_5d,
-                        self.fsky,
-                        self.ell_values,
-                        delta_ell,
-                        split_terms=True,
-                        return_only_diagonal_ells=True,
-                    )
-                )
-
-                self.cov_sn_rs_6d = self.cov_sn_rs(
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
-                )
-
-                cov_g_hs_6d = (
-                    cov_sva_sb_hs_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
-                    + cov_mix_sb_hs_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
-                )
-
-                self.cov_g_rs_6d = integrate_bessel_double_wrapper(
-                    integrand=cov_g_hs_6d.reshape(self.nbl, -1)
-                    * self.ell_values[:, None]
-                    * self.ell_values[:, None],
-                    x_values=self.ell_values,
-                    bessel_args=self.theta_centers,
-                    bessel_type=3,
-                    ell_1=mu,
-                    ell_2=nu,
-                    n_jobs=self.n_jobs,
-                    **self.levin_prec_kw,
-                )
-                self.cov_g_rs_6d = self.cov_g_rs_6d.reshape(
-                    self.nbt, self.nbt, self.zbins, self.zbins, self.zbins, self.zbins
-                )
-
-                norm = 4 * np.pi**2
-                self.cov_g_rs_6d /= norm
-                self.cov_g_rs_6d += (
-                    self.cov_sn_rs_6d
-                )  # diagonal is noise-dominated, you won't see much of a diff
-
-            # elif term in ['ssc', 'cng']:
-            # warnings.warn('HS covs loaded from file', stacklevel=2)
-            # get OC SSC in ell space
-            # covs_oc_hs = oc_cov_list_to_array(f'{covs_path}/{cov_hs_list_name}.dat')
-            # (
-            #     cov_sva_oc_3x2pt_10D,
-            #     cov_mix_oc_3x2pt_10D,
-            #     cov_sn_oc_3x2pt_10D,
-            #     cov_g_oc_3x2pt_10D,
-            #     cov_ssc_oc_3x2pt_10D,
-            # ) = covs_oc_hs
-
-            # np.savez(
-            #     f'{covs_path}/covs_oc_10D.npz',
-            #     cov_sva_oc_3x2pt_10D=cov_sva_oc_3x2pt_10D,
-            #     cov_mix_oc_3x2pt_10D=cov_mix_oc_3x2pt_10D,
-            #     cov_sn_oc_3x2pt_10D=cov_sn_oc_3x2pt_10D,
-            #     cov_g_oc_3x2pt_10D=cov_g_oc_3x2pt_10D,
-            #     cov_ssc_oc_3x2pt_10D=cov_ssc_oc_3x2pt_10D,
-            # )
-
-            # covs_oc_hs_npz = np.load(f'{covs_oc_path}/covs_oc_10D.npz')
-            # cov_ssc_oc_3x2pt_10D = covs_oc_hs_npz['cov_ssc_oc_3x2pt_10D']
-            # cov_cng_oc_3x2pt_10D = covs_oc_hs_npz['cov_ng_oc_3x2pt_10D']
-
-            elif term in ['ssc', 'cng']:
-                # set normalization depending on the term
-                norm = 4 * np.pi**2
-                if term == 'cng':
-                    norm *= self.amax
-
-                cov_ng_hs_10d = getattr(cov_obj, f'cov_3x2pt_{term}_10D')
-
-                # project hs nf cov to real space using Levin
-                cov_ng_hs_6d = cov_ng_hs_10d[
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...
+            if term_oc == 'sva':
+                cov_oc_6d = cov_sva_oc_3x2pt_8D[
+                    *probe_idx_dict_short_oc[probe], ...
                 ]
-
-                breakpoint()
-
-                cov_ng_rs_6d = dl1dl2_bessel_wrapper(
-                    cov_hs=cov_ng_hs_6d,
-                    mu=mu,
-                    nu=nu,
-                    ells=self.ell_values,
-                    thetas=self.theta_centers,
-                    zbins=self.zbins,
-                    n_jobs=self.n_jobs,
-                    levin_prec_kw=self.levin_prec_kw,
-                )
-                cov_ng_rs_6d /= norm
-
-                setattr(self, f'cov_{term}_rs_6d', cov_ng_rs_6d)
-                
-            self.cov_sb_dict_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix, ...] = getattr(self, f'cov_{term}_rs_6d')
-            
-
-            """
-            # ! ======================================= ONECOVARIANCE ==========================
-            oc_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests/realspace_test'
-            cl_ll_ascii_filename = 'Cell_ll_realsp'
-            cl_gl_ascii_filename = 'Cell_gl_realsp'
-            cl_gg_ascii_filename = 'Cell_gg_realsp'
-            sl.write_cl_ascii(
-                oc_path, cl_ll_ascii_filename, cl_ll_3d, self.ell_values, zbins
-            )
-            sl.write_cl_ascii(
-                oc_path, cl_gl_ascii_filename, cl_gl_3d, self.ell_values, zbins
-            )
-            sl.write_cl_ascii(
-                oc_path, cl_gg_ascii_filename, cl_gg_3d, self.ell_values, zbins
-            )
-
-            # set df column names
-            with open(f'{oc_path}/{cov_list_name}.dat') as file:
-                header = (
-                    file.readline().strip()
-                )  # Read the first line and strip newline characters
-            header_list = re.split(
-                '\t', header.strip().replace('\t\t', '\t').replace('\t\t', '\t')
-            )
-            column_names = header_list
-
-            data = pd.read_csv(
-                f'{oc_path}/{cov_list_name}.dat', usecols=['theta1', 'tomoi'], sep='\s+'
-            )
-
-            thetas_oc_load = data['theta1'].unique()
-            thetas_oc_load_rad = np.deg2rad(thetas_oc_load / 60)
-            cov_theta_indices = {
-                theta_out: idx for idx, theta_out in enumerate(thetas_oc_load)
-            }
-            nbt_oc = len(thetas_oc_load)
-
-            # sl.compare_funcs(
-            #     None,
-            #     {'thetas_oc': thetas_oc_load_rad,
-            #      'thetas_sb': theta_centers},
-            #     plt_kw={'marker': '.'},
-            # )
-
-            # SB tomographic indices start from 0
-            tomoi_oc_load = data['tomoi'].unique()
-            subtract_one = False
-            if min(tomoi_oc_load) == 1:
-                subtract_one = True
-
-            # ! import .list covariance file
-            shape = (
-                n_probes_rs,
-                n_probes_rs,
-                nbt_oc,
-                nbt_oc,
-                zbins,
-                zbins,
-                zbins,
-                zbins,
-            )
-            cov_g_oc_3x2pt_8D = np.zeros(shape)
-            cov_sva_oc_3x2pt_8D = np.zeros(shape)
-            cov_mix_oc_3x2pt_8D = np.zeros(shape)
-            cov_sn_oc_3x2pt_8D = np.zeros(shape)
-            cov_ssc_oc_3x2pt_8D = np.zeros(shape)
-            cov_cng_oc_3x2pt_8D = np.zeros(shape)
-            # cov_tot_oc_3x2pt_8D = np.zeros(shape)
-
-            print(f'Loading OneCovariance output from {cov_list_name}.dat file...')
-            start = time.perf_counter()
-            for df_chunk in pd.read_csv(
-                f'{oc_path}/{cov_list_name}.dat',
-                sep='\s+',
-                names=column_names,
-                skiprows=1,
-                chunksize=df_chunk_size,
-            ):
-                # Vectorize the extraction of probe indices
-                probe_idx = df_chunk['#obs'].str[:].map(probe_idx_dict_short_oc).values
-                probe_idx_arr = np.array(probe_idx.tolist())  # now shape is (N, 4)
-
-                # Map 'ell' values to their corresponding indices
-                theta1_idx = df_chunk['theta1'].map(cov_theta_indices).values
-                theta2_idx = df_chunk['theta2'].map(cov_theta_indices).values
-
-                # Compute z indices
-                if subtract_one:
-                    z_indices = (
-                        df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].sub(1).values
-                    )
-                else:
-                    z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values
-
-                # Vectorized assignment to the arrays
-                index_tuple = (  # fmt: skip
-                    probe_idx_arr[:, 0], probe_idx_arr[:, 1], theta1_idx, theta2_idx,
-                    z_indices[:, 0], z_indices[:, 1], z_indices[:, 2], z_indices[:, 3],
-                )  # fmt: skip
-
-                cov_sva_oc_3x2pt_8D[index_tuple] = df_chunk['covg sva'].values
-                cov_mix_oc_3x2pt_8D[index_tuple] = df_chunk['covg mix'].values
-                cov_sn_oc_3x2pt_8D[index_tuple] = df_chunk['covg sn'].values
-                cov_g_oc_3x2pt_8D[index_tuple] = (
-                    df_chunk['covg sva'].values
-                    + df_chunk['covg mix'].values
-                    + df_chunk['covg sn'].values
-                )
-                cov_ssc_oc_3x2pt_8D[index_tuple] = df_chunk['covssc'].values
-                cov_cng_oc_3x2pt_8D[index_tuple] = df_chunk['covng'].values
-                # cov_tot_oc_3x2pt_8D[index_tuple] = df_chunk['cov'].values
-
-            covs_8d = [
-                cov_sva_oc_3x2pt_8D,
-                cov_mix_oc_3x2pt_8D,
-                cov_sn_oc_3x2pt_8D,
-                cov_g_oc_3x2pt_8D,
-                cov_ssc_oc_3x2pt_8D,
-                cov_cng_oc_3x2pt_8D,
-                # cov_tot_oc_3x2pt_8D
-            ]
-
-            # for cov_8d in covs_8d:
-            #     cov_8d[0, 0, 1, 1] = deepcopy(
-            #         np.transpose(cov_8d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3))
-            #     )
-            #     cov_8d[1, 0, 0, 0] = deepcopy(
-            #         np.transpose(cov_8d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3))
-            #     )
-            #     cov_8d[1, 0, 1, 1] = deepcopy(
-            #         np.transpose(cov_8d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3))
-            #     )
-
-            # ! ================================================================================
-
-            if term == 'sva':
-                cov_oc_6d = cov_sva_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
-                cov_sb_6d = cov_sva_sb_6d
-            elif term == 'sn':
+            elif term_oc == 'sn':
                 cov_oc_6d = cov_sn_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
-                cov_sb_6d = cov_sn_sb_6d
-            elif term == 'mix':
-                cov_oc_6d = cov_mix_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
-                cov_sb_6d = cov_mix_sb_6d
-            elif term == 'gauss_ell':
+            elif term_oc == 'mix':
+                cov_oc_6d = cov_mix_oc_3x2pt_8D[
+                    *probe_idx_dict_short_oc[probe], ...
+                ]
+            elif term_oc == 'gauss':
                 cov_oc_6d = cov_g_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
-                cov_sb_6d = cov_g_sb_6d
-            elif term == 'ssc':
-                cov_oc_6d = cov_ssc_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
-                cov_sb_6d = cov_ng_sb_6d
-            elif term == 'ssc':
-                cov_oc_6d = cov_cng_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
-                cov_cng_6d = cov_ng_sb_6d
+            elif term_oc == 'ssc':
+                cov_oc_6d = cov_ssc_oc_3x2pt_8D[
+                    *probe_idx_dict_short_oc[probe], ...
+                ]
+            elif term_oc == 'ssc':
+                cov_oc_6d = cov_cng_oc_3x2pt_8D[
+                    *probe_idx_dict_short_oc[probe], ...
+                ]
+            else:
+                raise ValueError(f'Unknown term {term_oc}')
 
-            # for probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix in itertools.product(
-            #     range(n_probes), repeat=4
-            # ):
-            #     if np.allclose(
-            #         cov_mix_oc_3x2pt_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...],
-            #         0,
-            #         atol=1e-20,
-            #         rtol=1e-10,
-            #     ):
-            #         print(
-            #             f'block {probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix} cov_oc_6d is zero'
-            #         )
-            #     else:
-            #         print(
-            #             f'block {probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix}  cov_oc_6d is not zero'
-            #         )
-
-            # ! bin sb cov 2d
-            if nbt_coarse != self.nbt:
-                cov_sb_6d_binned = np.zeros(
-                    (nbt_coarse, nbt_coarse, zbins, zbins, zbins, zbins)
-                )
-                zijkl_comb = itertools.product(range(zbins), repeat=4)
-                for zi, zj, zk, zl in zijkl_comb:
-                    cov_sb_6d_binned[:, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                        cov_sb_6d[:, :, zi, zj, zk, zl],
-                        self.theta_centers,
-                        theta_centers_coarse,
-                        theta_edges_coarse,
-                        weights_in=None,
-                        which_binning='integral',
-                        interpolate=True,
-                    )
-
-                cov_sb_6d = cov_sb_6d_binned
-
-            cov_sb_dict_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix, ...] = cov_sb_6d
-
-            cov_oc_4d = sl.cov_6D_to_4D_blocks(
-                cov_oc_6d, nbt_oc, zpairs_ab, zpairs_cd, ind_ab, ind_cd
-            )
-            cov_sb_4d = sl.cov_6D_to_4D_blocks(
-                cov_sb_6d, nbt_coarse, zpairs_ab, zpairs_cd, ind_ab, ind_cd
-            )
-            # cov_sb_vec_4d = sl.cov_6D_to_4D(cov_sb_vec_6d, theta_bins, zpairs_auto, self.ind_auto)
-            # cov_sb_gfromsva_4d = sl.cov_6D_to_4D(cov_sb_gfromsva_6d,
-            # theta_bins, zpairs_auto, self.ind_auto)
-
-            cov_oc_2d = sl.cov_4D_to_2D(cov_oc_4d, block_index='zpair', optimize=True)
-            cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='zpair', optimize=True)
-            # cov_sb_vec_2d = sl.cov_4D_to_2D(cov_sb_vec_4d, block_index='zpair')
-            # cov_sb_gfromsva_2d = sl.cov_4D_to_2D(cov_sb_gfromsva_4d, block_index='zpair')
-
+            warnings.warn('I am manually transposing the OC blocks!!', stacklevel=2)
             if probe in ['gmxip', 'gmxim']:
-                warnings.warn('!!! TRANSPOSING OC COV!!!!!', stacklevel=2)
-                cov_oc_2d = cov_oc_2d.T
+                cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)
 
-            sl.compare_arrays(
-                cov_sb_2d,
-                cov_oc_2d,
-                'cov_sb_2d',
-                'cov_oc_2d',
-                log_diff=True,
-                abs_val=True,
-                plot_diff_threshold=10,
-                plot_diff_hist=False,
+            cov_sb_4d = sl.cov_6D_to_4D_blocks(
+                cov_sb_dict_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix],
+                nbt_coarse,
+                zpairs_ab,
+                zpairs_cd,
+                ind_ab,
+                ind_cd,
+            )
+            cov_oc_4d = sl.cov_6D_to_4D_blocks(
+                cov_oc_6d,
+                nbt_coarse,
+                zpairs_ab,
+                zpairs_cd,
+                ind_ab,
+                ind_cd,
             )
 
-            fine_bin_str = 'coarse' if nbt_coarse == self.nbt else 'fine'
-            common_title = (
-                f'{term}, {probe}, {self.integration_method} theta_bins {self.nbt}'
+            cov_sb_2d_dict[probe] = sl.cov_4D_to_2D(
+                cov_sb_4d, block_index='zpair', optimize=True
+            )
+            cov_oc_2d_dict[probe] = sl.cov_4D_to_2D(
+                cov_oc_4d, block_index='zpair', optimize=True
             )
 
-            # compare total diag
-            # if cov_oc_2d.shape[0] == cov_oc_2d.shape[1]:
-            sl.compare_funcs(
-                None,
-                {
-                    'OC': np.abs(np.diag(cov_oc_2d)),
-                    'SB': np.abs(np.diag(cov_sb_2d)),
-                    # 'SB/OC': np.abs(np.diag(cov_sb_2d / cov_oc_2d)),
-                    #  'SB_split_sum': np.abs(np.diag(cov_sb_vec_2d)),  # TODO
-                    #  'SB_fromsva': np.abs(np.diag(cov_sb_gfromsva_2d)),
-                    #  'OC_SUM': np.abs(np.diag(cov_oc_sum_2d)),
-                },
-                logscale_y=[True, False],
-                ylim_diff=[-110, 110],
-                title=f'{common_title}, total cov diag',
-            )
-            # plt.savefig(f'{common_title}, total cov diag.png')
+        cov_sb_full_2d.append(stack_cov_blocks(cov_sb_2d_dict))
 
-            # compare flattened matrix
-            sl.compare_funcs(
-                None,
-                {
-                    'OC': np.abs(cov_oc_2d.flatten()),
-                    'SB': np.abs(cov_sb_2d.flatten()),
-                    # 'SB/OC': np.abs(cov_sb_2d.flatten()) / np.abs(cov_oc_2d.flatten()),
-                    #  'SB_VEC': np.abs(cov_sb_vec_2d.flatten()),
-                    #  'SB_fromsva': np.abs(cov_sb_gfromsva_2d.flatten()),
-                },
-                logscale_y=[True, False],
-                title=f'{common_title}, total cov flat',
-                ylim_diff=[-110, 110],
-            )
-            # plt.savefig(f'{common_title}, total cov flat.png')
+    cov_sb_full_2d = np.sum(np.array(cov_sb_full_2d), axis=0)
+    cov_oc_list_2d = stack_cov_blocks(cov_oc_2d_dict)
 
-            zi, zj, zk, zl = 0, 0, 0, 0
-            theta_2_ix = 17
-            sl.compare_funcs(
-                None,
-                {
-                    'OC': np.abs(cov_oc_6d[:, theta_2_ix, zi, zj, zk, zl]),
-                    'SB': np.abs(cov_sb_6d[:, theta_2_ix, zi, zj, zk, zl]),
-                    #  'SB_VEC': np.abs(cov_sb_vec_2d.flatten()),
-                    #  'SB_fromsva': np.abs(cov_sb_gfromsva_2d.flatten()),
-                },
-                logscale_y=[False, False],
-                title=f'{term}, {probe}, {self.integration_method}, cov_6d[:, {zi, zj, zk, zl}]',
-                ylim_diff=[-110, 110],
-            )
-            # plt.savefig(f'{term}_{probe}_total_cov_flat.png')
+    corr_sb_full_2d = sl.cov2corr(cov_sb_full_2d)
+    corr_oc_full_2d = sl.cov2corr(cov_oc_list_2d)
 
-            # plt.figure()
-            # plt.plot(
-            #     theta_centers, np.diag(cov_sb_6d[:, :, zi, zj, zk, zl]), marker='.',
-            #     label='sb'
-            # )
-            # plt.plot(
-            #     thetas_oc_load_rad,
-            #     np.diag(cov_oc_sva_6d[:, :, zi, zj, zk, zl]),
-            #     marker='.',
-            #     label='oc',
-            # )
-            # plt.xlabel(r'$\theta$ [rad]')
-            # plt.ylabel(f'diag cov {probe}')
-            # plt.legend()
+    # sl.plot_correlation_matrix(sl.cov2corr(corr_sb_full_2d))
+    # sl.plot_correlation_matrix(sl.cov2corr(corr_oc_full_2d))
+    sl.compare_arrays(
+        cov_sb_full_2d,
+        cov_oc_list_2d,
+        'cov SB',
+        'cov OC',
+        log_diff=True,
+        plot_diff_threshold=10,
+    )
 
-            # TODO other probes
-            # TODO probably ell range as well
-
-        # ! construct full 2D cov and compare correlation matrix
-        cov_sb_2d_dict = {}
-        cov_oc_2d_dict = {}
-        cov_sb_full_2d = []
-        for term in self.terms_toloop:
-            for probe in self.probe_idx_dict:
-                split_g_ix = (
-                    self.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
-                )
-
-                term_oc = (
-                    'gauss'
-                    if (len(self.terms_toloop) > 1 or term == 'gauss_ell')
-                    else term
-                )
-
-                twoprobe_ab_str, twoprobe_cd_str = split_probe_name(probe)
-                twoprobe_ab_ix, twoprobe_cd_ix = (
-                    self.probe_idx_dict_short[twoprobe_ab_str],
-                    self.probe_idx_dict_short[twoprobe_cd_str],
-                )
-
-                zpairs_ab = (
-                    self.zpairs_cross if twoprobe_ab_ix == 1 else self.zpairs_auto
-                )
-                zpairs_cd = (
-                    self.zpairs_cross if twoprobe_cd_ix == 1 else self.zpairs_auto
-                )
-                ind_ab = self.ind_cross if twoprobe_ab_ix == 1 else self.ind_auto
-                ind_cd = self.ind_cross if twoprobe_cd_ix == 1 else self.ind_auto
-
-                if term_oc == 'sva':
-                    cov_oc_6d = cov_sva_oc_3x2pt_8D[
-                        *probe_idx_dict_short_oc[probe], ...
-                    ]
-                elif term_oc == 'sn':
-                    cov_oc_6d = cov_sn_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
-                elif term_oc == 'mix':
-                    cov_oc_6d = cov_mix_oc_3x2pt_8D[
-                        *probe_idx_dict_short_oc[probe], ...
-                    ]
-                elif term_oc == 'gauss':
-                    cov_oc_6d = cov_g_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
-                elif term_oc == 'ssc':
-                    cov_oc_6d = cov_ssc_oc_3x2pt_8D[
-                        *probe_idx_dict_short_oc[probe], ...
-                    ]
-                elif term_oc == 'ssc':
-                    cov_oc_6d = cov_cng_oc_3x2pt_8D[
-                        *probe_idx_dict_short_oc[probe], ...
-                    ]
-                else:
-                    raise ValueError(f'Unknown term {term_oc}')
-
-                warnings.warn('I am manually transposing the OC blocks!!', stacklevel=2)
-                if probe in ['gmxip', 'gmxim']:
-                    cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)
-
-                cov_sb_4d = sl.cov_6D_to_4D_blocks(
-                    cov_sb_dict_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix],
-                    nbt_coarse,
-                    zpairs_ab,
-                    zpairs_cd,
-                    ind_ab,
-                    ind_cd,
-                )
-                cov_oc_4d = sl.cov_6D_to_4D_blocks(
-                    cov_oc_6d,
-                    nbt_coarse,
-                    zpairs_ab,
-                    zpairs_cd,
-                    ind_ab,
-                    ind_cd,
-                )
-
-                cov_sb_2d_dict[probe] = sl.cov_4D_to_2D(
-                    cov_sb_4d, block_index='zpair', optimize=True
-                )
-                cov_oc_2d_dict[probe] = sl.cov_4D_to_2D(
-                    cov_oc_4d, block_index='zpair', optimize=True
-                )
-
-            cov_sb_full_2d.append(stack_cov_blocks(cov_sb_2d_dict))
-
-        cov_sb_full_2d = np.sum(np.array(cov_sb_full_2d), axis=0)
-        cov_oc_list_2d = stack_cov_blocks(cov_oc_2d_dict)
-
-        corr_sb_full_2d = sl.cov2corr(cov_sb_full_2d)
-        corr_oc_full_2d = sl.cov2corr(cov_oc_list_2d)
-
-        # sl.plot_correlation_matrix(sl.cov2corr(corr_sb_full_2d))
-        # sl.plot_correlation_matrix(sl.cov2corr(corr_oc_full_2d))
-        sl.compare_arrays(
-            cov_sb_full_2d,
-            cov_oc_list_2d,
-            'cov SB',
-            'cov OC',
-            log_diff=True,
-            plot_diff_threshold=10,
+    # ! this file has been overwritten with the ellspace cov
+    # compare G tot against OC
+    if term == 'ssc':
+        string = 'SSC'
+    elif term == 'cng':
+        string = 'NG'
+    elif term in ['gauss_ell', 'sva', 'mix']:
+        string = 'gauss'
+        warnings.warn(
+            'Comparin against the whole Gauss .mat file. You requested',
+            stacklevel=2,
         )
 
-        # ! this file has been overwritten with the ellspace cov
-        # compare G tot against OC
-        if term == 'ssc':
-            string = 'SSC'
-        elif term == 'cng':
-            string = 'NG'
-        elif term in ['gauss_ell', 'sva', 'mix']:
-            string = 'gauss'
-            warnings.warn(
-                'Comparin against the whole Gauss .mat file. You requested',
-                stacklevel=2,
-            )
+    cov_oc_mat = np.genfromtxt(
+        '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests'
+        f'/realspace_test/covariance_matrix_3x2_rcf_v2_{string}.mat'
+    )
 
-        cov_oc_mat = np.genfromtxt(
-            '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests'
-            f'/realspace_test/covariance_matrix_3x2_rcf_v2_{string}.mat'
+    sl.compare_arrays(
+        cov_sb_full_2d,
+        cov_oc_mat,
+        'SB',
+        'OC mat',
+        log_diff=False,
+        plot_diff_threshold=10,
+    )
+
+    sl.compare_funcs(
+        None,
+        {
+            'cov_sb_full_2d': np.diag(cov_sb_full_2d),
+            'cov_oc_mat': np.diag(cov_oc_mat),
+        },
+        logscale_y=[True, False],
+    )
+    plt.suptitle(f'{term}, {self.integration_method} - total cov diag')
+    plt.xlabel('cov idx')
+    # plt.ylabel('diag cov')
+    # TODO study funcs below and adapt to real space,
+    # current solution (see above) is a bit messy
+    # cov_3x2pt_10D_to_4D cov_3x2pt_8D_dict_to_4D
+
+    eig_sb = np.linalg.eigvals(cov_sb_full_2d)
+    eig_oc_list = np.linalg.eigvals(cov_oc_list_2d)
+    eig_oc_mat = np.linalg.eigvals(cov_oc_mat)
+
+    eig_threshold = 4e-15
+    regularise = True
+
+    plt.figure()
+    plt.semilogy(eig_sb, label='SB')
+    # plt.semilogy(eig_oc_list, label='OC list')
+    plt.semilogy(eig_oc_mat, label='OC mat')
+    plt.axhline(eig_threshold, c='k', ls='--', label='threshold')
+    plt.legend()
+    plt.xlabel('eigenvalue index')
+    plt.title('eigenvalues')
+
+    # perform a chi2 test
+    print('Computing 2PCF...')
+
+    xip_3d = np.zeros((self.nbt, zbins, zbins))
+    xim_3d = np.zeros((self.nbt, zbins, zbins))
+    w_3d = np.zeros((self.nbt, zbins, zbins))
+    gammat_3d = np.zeros((self.nbt, zbins, zbins))
+
+    zij_comb = itertools.product(range(zbins), repeat=2)
+    for zi, zj in zij_comb:
+        xip_3d[:, zi, zj] = twopcf_wrapper(
+            zi,
+            zj,
+            self.ell_values,
+            self.theta_centers,
+            cl_ll_3d,
+            'GG+',
+            self.tpcf_ingr_method,
+        )
+        xim_3d[:, zi, zj] = twopcf_wrapper(
+            zi,
+            zj,
+            self.ell_values,
+            self.theta_centers,
+            cl_ll_3d,
+            'GG-',
+            self.tpcf_ingr_method,
+        )
+        w_3d[:, zi, zj] = twopcf_wrapper(
+            zi,
+            zj,
+            self.ell_values,
+            self.theta_centers,
+            cl_gg_3d,
+            'NN',
+            self.tpcf_ingr_method,
+        )
+        gammat_3d[:, zi, zj] = twopcf_wrapper(
+            zi,
+            zj,
+            self.ell_values,
+            self.theta_centers,
+            cl_gl_3d,
+            'NG',
+            self.tpcf_ingr_method,
         )
 
-        sl.compare_arrays(
-            cov_sb_full_2d,
-            cov_oc_mat,
-            'SB',
-            'OC mat',
-            log_diff=False,
-            plot_diff_threshold=10,
-        )
+    # flatten to construct datavector
+    xip_2D = sl.Cl_3D_to_2D_symmetric(xip_3d, self.nbt, self.zpairs_auto, zbins)
+    xim_2D = sl.Cl_3D_to_2D_symmetric(xim_3d, self.nbt, self.zpairs_auto, zbins)
+    w_2D = sl.Cl_3D_to_2D_symmetric(w_3d, self.nbt, self.zpairs_auto, zbins)
+    gammat_2D = sl.Cl_3D_to_2D_asymmetric(gammat_3d)
 
-        sl.compare_funcs(
-            None,
-            {
-                'cov_sb_full_2d': np.diag(cov_sb_full_2d),
-                'cov_oc_mat': np.diag(cov_oc_mat),
-            },
-            logscale_y=[True, False],
-        )
-        plt.suptitle(f'{term}, {self.integration_method} - total cov diag')
-        plt.xlabel('cov idx')
-        # plt.ylabel('diag cov')
-        # TODO study funcs below and adapt to real space,
-        # current solution (see above) is a bit messy
-        # cov_3x2pt_10D_to_4D cov_3x2pt_8D_dict_to_4D
+    # the order we are using is zpair_ell, so I need to transpose
+    xip_1d = xip_2D.T.flatten()
+    xim_1d = xim_2D.T.flatten()
+    w_1d = w_2D.T.flatten()
+    gammat_1d = gammat_2D.T.flatten()
 
-        eig_sb = np.linalg.eigvals(cov_sb_full_2d)
-        eig_oc_list = np.linalg.eigvals(cov_oc_list_2d)
-        eig_oc_mat = np.linalg.eigvals(cov_oc_mat)
+    # invert covs
+    cov_sb_inv = np.linalg.inv(cov_sb_full_2d)
+    # cov_oc_list_inv = np.linalg.inv(cov_oc_list_2d)
+    cov_oc_mat_inv = np.linalg.inv(cov_oc_mat)
 
-        eig_threshold = 4e-15
-        regularise = True
+    if regularise:
+        # ! regularize opt. A: add small value to the diagonal of the cov
+        # reg = 0.09e-14
+        # cov_sb_reg_inv = np.linalg.inv(cov_sb_full_2d + reg * np.eye(cov_sb_full_2d.shape[0]))
+        # cov_oc_mat_inv = np.linalg.inv(cov_oc_mat + reg * np.eye(cov_oc_mat.shape[0]))
 
-        plt.figure()
-        plt.semilogy(eig_sb, label='SB')
-        # plt.semilogy(eig_oc_list, label='OC list')
-        plt.semilogy(eig_oc_mat, label='OC mat')
-        plt.axhline(eig_threshold, c='k', ls='--', label='threshold')
-        plt.legend()
-        plt.xlabel('eigenvalue index')
-        plt.title('eigenvalues')
+        # ! regularize opt. B: eigenvalue cutoff
+        cov_sb_inv = regularize_by_eigenvalue_cutoff(cov_sb_full_2d, eig_threshold)
+        cov_oc_mat_inv = regularize_by_eigenvalue_cutoff(cov_oc_mat, eig_threshold)
+        # cov_oc_mat = np.linalg.inv(cov_oc_mat_inv)
 
-        # perform a chi2 test
-        print('Computing 2PCF...')
+    # generate samples
+    nreal = 5_000
+    dv_fid = np.hstack([w_1d, gammat_1d, xip_1d, xim_1d])
+    dv_sampled = np.random.multivariate_normal(dv_fid, cov_oc_mat, size=nreal)
+    delta_dv = dv_sampled - dv_fid  # Shape: (nreal, data_dim)
 
-        xip_3d = np.zeros((self.nbt, zbins, zbins))
-        xim_3d = np.zeros((self.nbt, zbins, zbins))
-        w_3d = np.zeros((self.nbt, zbins, zbins))
-        gammat_3d = np.zeros((self.nbt, zbins, zbins))
+    # check that the dv and cov follow the same ordering
+    # plt.figure()
+    # plt.semilogy(dv_fid, label='dv_fid')
+    # plt.semilogy(dv_sampled[0], label='dv_sampled', ls='--')
+    # plt.semilogy(np.diag(cov_oc_mat), label='cov diagonal')
+    # plt.semilogy(np.var(dv_sampled, axis=0), label='sample variance', ls='--')
+    # plt.legend()
+    # plt.show()
 
-        zij_comb = itertools.product(range(zbins), repeat=2)
-        for zi, zj in zij_comb:
-            xip_3d[:, zi, zj] = twopcf_wrapper(
-                zi,
-                zj,
-                self.ell_values,
-                self.theta_centers,
-                cl_ll_3d,
-                'GG+',
-                self.tpcf_ingr_method,
-            )
-            xim_3d[:, zi, zj] = twopcf_wrapper(
-                zi,
-                zj,
-                self.ell_values,
-                self.theta_centers,
-                cl_ll_3d,
-                'GG-',
-                self.tpcf_ingr_method,
-            )
-            w_3d[:, zi, zj] = twopcf_wrapper(
-                zi,
-                zj,
-                self.ell_values,
-                self.theta_centers,
-                cl_gg_3d,
-                'NN',
-                self.tpcf_ingr_method,
-            )
-            gammat_3d[:, zi, zj] = twopcf_wrapper(
-                zi,
-                zj,
-                self.ell_values,
-                self.theta_centers,
-                cl_gl_3d,
-                'NG',
-                self.tpcf_ingr_method,
-            )
+    # this is another check: re-compute covariance from the samples and plot corr matrix
+    # cov_sampled = np.cov(dv_sampled, rowvar=False)
+    # sl.compare_arrays(
+    #     cov_sampled,
+    #     cov_oc_mat,
+    #     'cov sampled (ordering check)',
+    #     'cov oc mat',
+    #     plot_diff=False,
+    # )
 
-        # flatten to construct datavector
-        xip_2D = sl.Cl_3D_to_2D_symmetric(xip_3d, self.nbt, self.zpairs_auto, zbins)
-        xim_2D = sl.Cl_3D_to_2D_symmetric(xim_3d, self.nbt, self.zpairs_auto, zbins)
-        w_2D = sl.Cl_3D_to_2D_symmetric(w_3d, self.nbt, self.zpairs_auto, zbins)
-        gammat_2D = sl.Cl_3D_to_2D_asymmetric(gammat_3d)
+    # Check the effective dof again
+    dof_sb = np.trace(cov_sb_full_2d @ cov_sb_inv)
+    dof_oc = np.trace(cov_oc_mat @ cov_oc_mat_inv)
+    # dof_oc = dv_fid.shape[0]
+    print(f'Effective dof (SB, reg): {dof_sb}, Effective dof (OC, reg): {dof_oc}')
 
-        # the order we are using is zpair_ell, so I need to transpose
-        xip_1d = xip_2D.T.flatten()
-        xim_1d = xim_2D.T.flatten()
-        w_1d = w_2D.T.flatten()
-        gammat_1d = gammat_2D.T.flatten()
+    # compute the chi2
+    chi2_sb = np.einsum('ij,jk,ik->i', delta_dv, cov_sb_inv, delta_dv)
+    # chi2_oc_list = np.einsum('ij,jk,ik->i', delta_dv, cov_oc_list_inv, delta_dv)
+    chi2_oc_mat = np.einsum('ij,jk,ik->i', delta_dv, cov_oc_mat_inv, delta_dv)
 
-        # invert covs
-        cov_sb_inv = np.linalg.inv(cov_sb_full_2d)
-        # cov_oc_list_inv = np.linalg.inv(cov_oc_list_2d)
-        cov_oc_mat_inv = np.linalg.inv(cov_oc_mat)
+    # theoretical chi2 distribution
+    # Define the range of chi-squared values for the theoretical curve
 
-        if regularise:
-            # ! regularize opt. A: add small value to the diagonal of the cov
-            # reg = 0.09e-14
-            # cov_sb_reg_inv = np.linalg.inv(cov_sb_full_2d + reg * np.eye(cov_sb_full_2d.shape[0]))
-            # cov_oc_mat_inv = np.linalg.inv(cov_oc_mat + reg * np.eye(cov_oc_mat.shape[0]))
+    plt.figure()
+    # plt.hist(chi2_oc_list, bins=20, density=True, histtype='step', label='oc_list cov')
+    plt.hist(
+        chi2_oc_mat, bins=30, density=True, histtype='step', label='oc_mat cov'
+    )
+    plt.hist(chi2_sb, bins=30, density=True, histtype='step', label='sb cov')
 
-            # ! regularize opt. B: eigenvalue cutoff
-            cov_sb_inv = regularize_by_eigenvalue_cutoff(cov_sb_full_2d, eig_threshold)
-            cov_oc_mat_inv = regularize_by_eigenvalue_cutoff(cov_oc_mat, eig_threshold)
-            # cov_oc_mat = np.linalg.inv(cov_oc_mat_inv)
+    x = np.linspace(dof_oc - dof_oc * 0.4, dof_oc + dof_oc * 0.4, 1000)
 
-        # generate samples
-        nreal = 5_000
-        dv_fid = np.hstack([w_1d, gammat_1d, xip_1d, xim_1d])
-        dv_sampled = np.random.multivariate_normal(dv_fid, cov_oc_mat, size=nreal)
-        delta_dv = dv_sampled - dv_fid  # Shape: (nreal, data_dim)
+    chi2_dist = chi2.pdf(x, df=dof_oc)
+    plt.plot(
+        x,
+        chi2_dist,
+        label=f'th $\chi^2$ (eff. dof={dof_oc:.2f})',
+        linestyle='--',
+        c='k',
+    )
+    plt.legend()
+    plt.xlabel('$\chi^2$')
+    plt.ylabel('$p(\chi^2)$')
+    plt.title('Gaussian cov, regularised covs')
 
-        # check that the dv and cov follow the same ordering
-        # plt.figure()
-        # plt.semilogy(dv_fid, label='dv_fid')
-        # plt.semilogy(dv_sampled[0], label='dv_sampled', ls='--')
-        # plt.semilogy(np.diag(cov_oc_mat), label='cov diagonal')
-        # plt.semilogy(np.var(dv_sampled, axis=0), label='sample variance', ls='--')
-        # plt.legend()
-        # plt.show()
-
-        # this is another check: re-compute covariance from the samples and plot corr matrix
-        # cov_sampled = np.cov(dv_sampled, rowvar=False)
-        # sl.compare_arrays(
-        #     cov_sampled,
-        #     cov_oc_mat,
-        #     'cov sampled (ordering check)',
-        #     'cov oc mat',
-        #     plot_diff=False,
-        # )
-
-        # Check the effective dof again
-        dof_sb = np.trace(cov_sb_full_2d @ cov_sb_inv)
-        dof_oc = np.trace(cov_oc_mat @ cov_oc_mat_inv)
-        # dof_oc = dv_fid.shape[0]
-        print(f'Effective dof (SB, reg): {dof_sb}, Effective dof (OC, reg): {dof_oc}')
-
-        # compute the chi2
-        chi2_sb = np.einsum('ij,jk,ik->i', delta_dv, cov_sb_inv, delta_dv)
-        # chi2_oc_list = np.einsum('ij,jk,ik->i', delta_dv, cov_oc_list_inv, delta_dv)
-        chi2_oc_mat = np.einsum('ij,jk,ik->i', delta_dv, cov_oc_mat_inv, delta_dv)
-
-        # theoretical chi2 distribution
-        # Define the range of chi-squared values for the theoretical curve
-
-        plt.figure()
-        # plt.hist(chi2_oc_list, bins=20, density=True, histtype='step', label='oc_list cov')
-        plt.hist(
-            chi2_oc_mat, bins=30, density=True, histtype='step', label='oc_mat cov'
-        )
-        plt.hist(chi2_sb, bins=30, density=True, histtype='step', label='sb cov')
-
-        x = np.linspace(dof_oc - dof_oc * 0.4, dof_oc + dof_oc * 0.4, 1000)
-
-        chi2_dist = chi2.pdf(x, df=dof_oc)
-        plt.plot(
-            x,
-            chi2_dist,
-            label=f'th $\chi^2$ (eff. dof={dof_oc:.2f})',
-            linestyle='--',
-            c='k',
-        )
-        plt.legend()
-        plt.xlabel('$\chi^2$')
-        plt.ylabel('$p(\chi^2)$')
-        plt.title('Gaussian cov, regularised covs')
-
-        print('Done.')
-        """
+    print('Done.')
+    """
